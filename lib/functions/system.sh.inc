@@ -2029,8 +2029,8 @@ update_sources_list() {
   apt-get clean -qq &> /dev/null
   rm -f -r /var/lib/apt/lists/*
   ###--------------------###
-  if [ -e "${pthLog}/apt-fast-install-log.txt" ] \
-    || [ -e "/var/log/apt-fast-install-log.txt" ]; then
+  if [ -e "${pthLog}/apt-updates-stretch.txt" ] \
+    || [ -e "/var/log/apt-updates-stretch.txt" ]; then
     _APT_SOURCES_REWRITE=NO
     if [ ! -z "${_LOCAL_DEBIAN_MIRROR}" ]; then
       _APT_SOURCES_REWRITE=YES
@@ -2166,38 +2166,33 @@ update_sources_list() {
       echo "deb-src http://${_MIRROR}/debian/ ${_OSV} main contrib non-free" \
         >> ${aptLiSys}
       echo "" >> ${aptLiSys}
-      echo "## MAJOR BUG FIX UPDATES produced after the final release" \
+      if [ "${_OSV}" = "stretch" ]; then
+        echo "## MAJOR BUG FIX UPDATES produced after the final release" \
         >> ${aptLiSys}
-      if [ "${_OSV}" = "deprecated" ]; then
-        echo "deb http://archive.debian.org/debian-volatile \
-          ${_OSV}/volatile main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-        echo "deb-src http://archive.debian.org/debian-volatile \
-          ${_OSV}/volatile main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-      else
         echo "deb http://${_MIRROR}/debian/ ${_OSV}-updates main \
           contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
         echo "deb-src http://${_MIRROR}/debian/ ${_OSV}-updates main \
           contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
         echo "" >> ${aptLiSys}
-        echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
-        echo "deb http://security.debian.org/ ${_OSV}/updates main \
-          contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-        echo "deb-src http://security.debian.org/ ${_OSV}/updates main \
-          contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
         echo "" >> ${aptLiSys}
         echo "## DEBIAN PROPOSED UPDATES" >> ${aptLiSys}
         echo "deb http://${_MIRROR}/debian/ ${_OSV}-proposed-updates main \
           contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-        if [ -e "${locCnf}/etc-apt-preferences-debian.txt" ]; then
-          cp -af ${locCnf}/etc-apt-preferences-debian.txt /etc/apt/preferences
-        else
-          curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-debian.txt" \
-            -o /etc/apt/preferences
-        fi
+      fi
+      echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
+      echo "deb http://security.debian.org/ ${_OSV}/updates main \
+        contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb-src http://security.debian.org/ ${_OSV}/updates main \
+        contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      if [ -e "${locCnf}/etc-apt-preferences-debian.txt" ]; then
+        cp -af ${locCnf}/etc-apt-preferences-debian.txt /etc/apt/preferences
+      else
+        curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-debian.txt" \
+          -o /etc/apt/preferences
       fi
     fi
     mkdir -p ${pthLog}
-    touch ${pthLog}/apt-fast-install-log.txt
+    touch ${pthLog}/apt-updates-stretch.txt
     cd /var/opt
   fi
   if [ ! -e "/etc/apt/preferences" ]; then

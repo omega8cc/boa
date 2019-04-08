@@ -61,16 +61,18 @@ check_root() {
       echo "deb http://http.debian.net/debian/ ${_OSR} main contrib non-free"          >> /etc/apt/sources.list
       echo "deb-src http://http.debian.net/debian/ ${_OSR} main contrib non-free"      >> /etc/apt/sources.list
       echo ""                                                                          >> /etc/apt/sources.list
-      echo "## MAJOR BUG FIX UPDATES produced after the final release"                 >> /etc/apt/sources.list
-      echo "deb http://http.debian.net/debian/ ${_OSR}-updates main"                   >> /etc/apt/sources.list
-      echo "deb-src http://http.debian.net/debian/ ${_OSR}-updates main"               >> /etc/apt/sources.list
-      echo ""                                                                          >> /etc/apt/sources.list
+      if [ "${_OSR}" = "stretch" ]; then
+        echo "## MAJOR BUG FIX UPDATES produced after the final release"               >> /etc/apt/sources.list
+        echo "deb http://http.debian.net/debian/ ${_OSR}-updates main"                 >> /etc/apt/sources.list
+        echo "deb-src http://http.debian.net/debian/ ${_OSR}-updates main"             >> /etc/apt/sources.list
+        echo ""                                                                        >> /etc/apt/sources.list
+        echo "## DEBIAN PROPOSED UPDATES"                                              >> /etc/apt/sources.list
+        echo "deb http://http.debian.net/debian/ ${_OSR}-proposed-updates main"        >> /etc/apt/sources.list
+        echo ""                                                                        >> /etc/apt/sources.list
+      fi
       echo "## DEBIAN SECURITY UPDATES"                                                >> /etc/apt/sources.list
       echo "deb http://security.debian.org/ ${_OSR}/updates main contrib non-free"     >> /etc/apt/sources.list
       echo "deb-src http://security.debian.org/ ${_OSR}/updates main contrib non-free" >> /etc/apt/sources.list
-      echo ""                                                                          >> /etc/apt/sources.list
-      echo "## DEBIAN PROPOSED UPDATES"                                                >> /etc/apt/sources.list
-      echo "deb http://http.debian.net/debian/ ${_OSR}-proposed-updates main"          >> /etc/apt/sources.list
       echo
       apt-get clean ${_NOISE}
       rm -f -r /var/lib/apt/lists/*
@@ -1135,16 +1137,18 @@ install_host() {
   echo "deb http://http.debian.net/debian/ ${_OSR} main contrib non-free"          >> /etc/apt/sources.list
   echo "deb-src http://http.debian.net/debian/ ${_OSR} main contrib non-free"      >> /etc/apt/sources.list
   echo ""                                                                          >> /etc/apt/sources.list
-  echo "## MAJOR BUG FIX UPDATES produced after the final release"                 >> /etc/apt/sources.list
-  echo "deb http://http.debian.net/debian/ ${_OSR}-updates main"                   >> /etc/apt/sources.list
-  echo "deb-src http://http.debian.net/debian/ ${_OSR}-updates main"               >> /etc/apt/sources.list
-  echo ""                                                                          >> /etc/apt/sources.list
+  if [ "${_OSR}" = "stretch" ]; then
+    echo "## MAJOR BUG FIX UPDATES produced after the final release"               >> /etc/apt/sources.list
+    echo "deb http://http.debian.net/debian/ ${_OSR}-updates main"                 >> /etc/apt/sources.list
+    echo "deb-src http://http.debian.net/debian/ ${_OSR}-updates main"             >> /etc/apt/sources.list
+    echo ""                                                                        >> /etc/apt/sources.list
+    echo "## DEBIAN PROPOSED UPDATES"                                              >> /etc/apt/sources.list
+    echo "deb http://http.debian.net/debian/ ${_OSR}-proposed-updates main"        >> /etc/apt/sources.list
+    echo ""                                                                        >> /etc/apt/sources.list
+  fi
   echo "## DEBIAN SECURITY UPDATES"                                                >> /etc/apt/sources.list
   echo "deb http://security.debian.org/ ${_OSR}/updates main contrib non-free"     >> /etc/apt/sources.list
   echo "deb-src http://security.debian.org/ ${_OSR}/updates main contrib non-free" >> /etc/apt/sources.list
-  echo ""                                                                          >> /etc/apt/sources.list
-  echo "## DEBIAN PROPOSED UPDATES"                                                >> /etc/apt/sources.list
-  echo "deb http://http.debian.net/debian/ ${_OSR}-proposed-updates main"          >> /etc/apt/sources.list
   echo
   cat /etc/apt/sources.list
 
