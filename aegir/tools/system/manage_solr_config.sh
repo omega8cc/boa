@@ -295,31 +295,6 @@ setup_solr() {
     chmod 0664 ${_DIR_CTRL_F} &> /dev/null
   fi
   ###
-  ### Support for solr_custom_config directive
-  ###
-  if [ -e "${_DIR_CTRL_F}" ]; then
-    _SLR_CM_CFG_P=$(grep "solr_custom_config" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_SLR_CM_CFG_P}" =~ "solr_custom_config" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";solr_custom_config = NO" >> ${_DIR_CTRL_F}
-    fi
-    _SLR_CM_CFG_RT=NO
-    _SOLR_PROTECT_CTRL="${_SOLR_DIR}/conf/.protected.conf"
-    _SLR_CM_CFG_T=$(grep "^solr_custom_config = YES" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_SLR_CM_CFG_T}" =~ "solr_custom_config = YES" ]]; then
-      _SLR_CM_CFG_RT=YES
-      if [ ! -e "${_SOLR_PROTECT_CTRL}" ]; then
-        touch ${_SOLR_PROTECT_CTRL}
-      fi
-      echo "Solr config for ${_SOLR_DIR} is protected"
-    else
-      if [ -e "${_SOLR_PROTECT_CTRL}" ]; then
-        rm -f ${_SOLR_PROTECT_CTRL}
-      fi
-    fi
-  fi
-  ###
   ### Support for solr_integration_module directive
   ###
   if [ -e "${_DIR_CTRL_F}" ]; then
@@ -365,6 +340,31 @@ setup_solr() {
       delete_solr "${_SOLR_DIR_DEL}"
       _SOLR_DIR_DEL="/var/solr7/data/${OldSolrCoreID}"
       delete_solr "${_SOLR_DIR_DEL}"
+    fi
+  fi
+  ###
+  ### Support for solr_custom_config directive
+  ###
+  if [ -e "${_DIR_CTRL_F}" ]; then
+    _SLR_CM_CFG_P=$(grep "solr_custom_config" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_SLR_CM_CFG_P}" =~ "solr_custom_config" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";solr_custom_config = NO" >> ${_DIR_CTRL_F}
+    fi
+    _SLR_CM_CFG_RT=NO
+    _SOLR_PROTECT_CTRL="${_SOLR_DIR}/conf/.protected.conf"
+    _SLR_CM_CFG_T=$(grep "^solr_custom_config = YES" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_SLR_CM_CFG_T}" =~ "solr_custom_config = YES" ]]; then
+      _SLR_CM_CFG_RT=YES
+      if [ ! -e "${_SOLR_PROTECT_CTRL}" ]; then
+        touch ${_SOLR_PROTECT_CTRL}
+      fi
+      echo "Solr config for ${_SOLR_DIR} is protected"
+    else
+      if [ -e "${_SOLR_PROTECT_CTRL}" ]; then
+        rm -f ${_SOLR_PROTECT_CTRL}
+      fi
     fi
   fi
   ###
