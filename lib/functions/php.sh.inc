@@ -996,9 +996,9 @@ install_php_multi() {
                 --with-jpeg-dir=/usr \
                 --with-kerberos \
                 --with-mysql-sock=/var/run/mysqld/mysqld.sock \
-                --with-mysqli=/usr/bin/mysql_config \
+                --with-mysqli=shared,/usr/bin/mysql_config \
                 --with-openssl \
-                --with-pdo-mysql=/usr \
+                --with-pdo-mysql=shared,/usr \
                 --with-pear \
                 --with-png-dir=/usr \
                 --with-xmlrpc \
@@ -1036,9 +1036,9 @@ install_php_multi() {
                 --with-jpeg-dir=/usr \
                 --with-kerberos \
                 --with-mysql-sock=/var/run/mysqld/mysqld.sock \
-                --with-mysqli=/usr/bin/mysql_config \
+                --with-mysqli=shared,/usr/bin/mysql_config \
                 --with-openssl \
-                --with-pdo-mysql=/usr \
+                --with-pdo-mysql=shared,/usr \
                 --with-pear \
                 --with-png-dir=/usr \
                 --with-xmlrpc \

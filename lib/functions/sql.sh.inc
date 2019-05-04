@@ -429,7 +429,7 @@ install_db_sql() {
     aptRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
     aptLiDb="${aptLiSys}.d/mariadb.list"
     echo "## MariaDB APT Repository" > ${aptLiDb}
-    echo "deb http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
+    echo "deb [arch=amd64,i386] http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
     echo "deb-src http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
   fi
   xtraRepo="repo.percona.com/apt"
@@ -730,7 +730,7 @@ install_db_server() {
         aptRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
         aptLiDb="${aptLiSys}.d/mariadb.list"
         echo "## MariaDB APT Repository" > ${aptLiDb}
-        echo "deb http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
+        echo "deb [arch=amd64,i386] http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
         echo "deb-src http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
         rm -f /etc/apt/sources.list.d/percona-release.*
         rm -f /etc/apt/preferences.d/00percona.pref
