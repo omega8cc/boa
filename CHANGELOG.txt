@@ -374,7 +374,7 @@
     * PHP 5.6.33
     * PHP 7.0.27
     * PHP extension for Redis 3.1.6
-    * Pure-FTPd 1.0.47
+    * Pure-FTPd 1.0.49
     * Redis Server 4.0.6
     * Ruby 2.4.2
     * Use Redis integration mod-30-12-2017 (D7)
