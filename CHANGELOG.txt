@@ -246,7 +246,7 @@
     * PHP 7.3.5, 7.2.18, 7.1.29, 7.0.33, 5.6.40
     * PHP Redis extension 4.2.0
     * Redis Module 8.x mod-05-02-2019
-    * Redis Server 4.0.13
+    * Redis Server 4.0.14
     * Ruby 2.6.0
     * Use latest Duplicity and dependencies
 
