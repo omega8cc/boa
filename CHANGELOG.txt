@@ -239,7 +239,7 @@
     * MariaDB 10.2.19, Galera 10.0.37
     * MariaDB Server 10.1.38
     * MySQLTuner 1.7.13
-    * Nginx 1.15.9
+    * Nginx 1.16.0
     * Node.js v10.x LTS
     * OpenSSH Server 8.0p1
     * OpenSSL 1.0.2r for Nginx
