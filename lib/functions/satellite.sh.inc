@@ -3760,6 +3760,8 @@ satellite_make() {
   fi
   if [ ! -e "${_ROOT}/static/control" ]; then
     mkdir -p ${_ROOT}/static/control
+    chmod 755 ${_ROOT}/static/control
+    chown -R ${_USER}.ftp:${_USRG} ${_ROOT}/static/control
   fi
   if [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
     echo ${_PHP_FPM_VERSION} > ${_ROOT}/static/control/fpm.info
@@ -3782,8 +3784,7 @@ satellite_make() {
         ${_ROOT}/static/control/README.txt &> /dev/null
       chmod 0644 ${_ROOT}/static/control/README.txt
     fi
-    chown -R ${_USER}.ftp:${_USRG} \
-      ${_ROOT}/static/control &> /dev/null
+    chown -R ${_USER}.ftp:${_USRG} ${_ROOT}/static/control
     rm -f ${_ROOT}/static/control/.ctrl.*
     echo OK > ${_ROOT}/static/control/.ctrl.${_X_SE}.pid
   fi
