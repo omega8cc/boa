@@ -74,13 +74,14 @@
   For more details please check the docs at:
     https://github.com/omega8cc/boa/blob/master/docs/SOLR.txt
 
-@=> Drupal 8 platforms and Composer support
+@=> Drupal 8.7.0 platforms and Composer support
 
-  Since BOA-4.0.1 three new Drupal 8 based platforms are included:
+  Since BOA-4.0.1 new Drupal 8.7.0 based platforms are included:
 
   Lightning 3.3.0 -------------- https://drupal.org/project/lightning
   Thunder 8.2.39 --------------- https://drupal.org/project/thunder
   Varbase 8.6.8 ---------------- https://drupal.org/project/varbase
+  Social 8.5.1 (8.6.15 core) --- https://drupal.org/project/social
 
   IMPORTANT: You must switch your ~/static/control/cli.info to 7.1 or newer
   PHP version (BOA hosted on Omega8.cc comes with 7,1, 7.2 and 7.3), because

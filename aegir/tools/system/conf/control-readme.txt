@@ -166,6 +166,7 @@
 ### LHG ----------- Lightning
 ### THR ----------- Thunder
 ### VBE ----------- Varbase
+### SOC ----------- Social
 ###
 ### Drupal 7 based
 ###

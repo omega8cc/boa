@@ -3359,6 +3359,13 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
+    if [ -d "${_QR}/social-${_SOCIAL}-8.6.15/html/sites" ]; then
+      if [ ! -L "${_QH}/social-${_SOCIAL}-8.6.15" ]; then
+        _A="${_QR}/social-${_SOCIAL}-8.6.15/html/sites"
+        _B="${_QH}/social-${_SOCIAL}-8.6.15"
+        ln -sf ${_A} ${_B}
+      fi
+    fi
   fi
 }
 
@@ -3683,6 +3690,7 @@ satellite_make() {
   echo "_USER=\"${_USER}\""                           >> ${writeTo}
   echo "_USRG=\"${_USRG}\""                           >> ${writeTo}
   echo "_VARBASE=\"${_VARBASE}\""                     >> ${writeTo}
+  echo "_SOCIAL=\"${_SOCIAL}\""                       >> ${writeTo}
   echo "_WEBG=\"${_WEBG}\""                           >> ${writeTo}
   echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${writeTo}
 

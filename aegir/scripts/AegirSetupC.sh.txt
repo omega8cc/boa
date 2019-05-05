@@ -705,6 +705,7 @@ _F_UBER_CART_T="Ubercart ${_UBERCART7} [ud2] ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_UBERCART6="Ubercart ${_UBERCART6} ${_SMALLCORE6} [${_THIS_CORE}]"
 _F_UBERCART7="Ubercart ${_UBERCART7} [aq3] ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_VARBASE="Varbase ${_VARBASE} ${_SMALLCORE8} [${_THIS_CORE}]"
+_F_SOCIAL="Social ${_SOCIAL} 8.6.15 [${_THIS_CORE}]"
 #
 _F_DRUPAL6_D="Drupal ${_SMALLCORE6} D.${_THIS_CORE}"
 _F_DRUPAL6_S="Drupal ${_SMALLCORE6} S.${_THIS_CORE}"
@@ -2411,6 +2412,37 @@ varbase_install() {
   fi
 }
 
+social_install() {
+###---### Social
+#
+  _REAL_PRNAME="social"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_SOCIAL}-8.6.15"
+  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
+  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
+  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/html"
+  if [ "${_ALLOW_ALL}" = "YES" ]; then
+    if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+      || [[ "${_PLATFORMS_LIST}" =~ "SOC" ]]; then
+      if [ ! -d "${_OCTO_PLPATH}" ]; then
+        if prompt_yes_no "$_F_SOCIAL - ${urlPrt}/social" ; then
+          true
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_SOCIAL ${yOk}"
+          if [ ! -d "${_OCTO_PLPATH}" ]; then
+            cd ${_ROOT}/distro/${_THIS_CORE}
+            get_distro_ext "${_SHRD_PLNAME}.tar.gz"
+          fi
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            msg "DISTRO: $_F_SOCIAL installed"
+            _RUN_VERIFY=YES
+          fi
+        else
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_SOCIAL ${noT}"
+        fi
+      fi
+    fi
+  fi
+}
+
 ###---### Save & verify platforms.
 #
 save_verify_platforms() {
@@ -2679,6 +2711,12 @@ save_verify_platforms() {
         ${pthDst}/varbase-${_VARBASE}-${_SMALLCORE8}/docroot &> /dev/null
     fi
   fi
+  if [ -d "${pthDst}/social-${_SOCIAL}-8.6.15/html" ]; then
+    if [ ! -e "${pthDst}/social-${_SOCIAL}-8.6.15/html/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "$_F_SOCIAL" social \
+        ${pthDst}/social-${_SOCIAL}-8.6.15/html &> /dev/null
+    fi
+  fi
   if [ -d "${pthDst}/pressflow-${_SMALLCORE6}-dev" ]; then
     if [ ! -e "${pthDst}/pressflow-${_SMALLCORE6}-dev/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL6_D" default \
@@ -2771,6 +2809,7 @@ ubercart6_install
 ubercart7_install
 ubercart7_testing_install
 varbase_install
+social_install
 
 ### openacademy_install
 ### openblog_install

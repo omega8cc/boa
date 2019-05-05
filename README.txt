@@ -155,6 +155,7 @@ Octopus can install and/or support the platforms listed below:
  Lightning 3.3.0 -------------- https://drupal.org/project/lightning
  Thunder 8.2.39 --------------- https://drupal.org/project/thunder
  Varbase 8.6.8 ---------------- https://drupal.org/project/varbase
+ Social 8.5.1 (8.6.15 core) --- https://drupal.org/project/social
 
  @ Drupal 7.66.1
 
