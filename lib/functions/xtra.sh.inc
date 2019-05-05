@@ -451,6 +451,7 @@ if_install_rvm() {
         curl -sSL https://rvm.io/pkuczynski.asc | ${_GPG} --import - &> /dev/null
         curl -sSL https://get.rvm.io | bash -s stable &> /dev/null
         echo rvm_autoupdate_flag=0 > ~/.rvmrc
+        wait
         echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc
         if [ -e "/etc/profile.d/rvm.sh" ]; then
           source /etc/profile.d/rvm.sh
