@@ -172,7 +172,7 @@ Octopus can install and/or support the platforms listed below:
  Opigno LMS 1.39 -------------- https://drupal.org/project/opigno_lms
  Panopoly 1.66 ---------------- https://drupal.org/project/panopoly
  Restaurant 1.15 -------------- https://drupal.org/project/restaurant
- Ubercart 3.11 ---------------- https://drupal.org/project/ubercart
+ Ubercart 3.12 ---------------- https://drupal.org/project/ubercart
 
  @ Pressflow 6.49.1
 
@@ -207,7 +207,7 @@ BOA development is maintained and sponsored by Omega8.cc
 ### DONATIONS
 
 If you wish to support BOA development or simply send a nice 'Thank you'
-to the Universe, please donate to the Aegir project. BOA devs participate
+to the Universe, please donate to the Aegir project. BOA devs participated
 in Aegir core development for years, and BOA project, which is maintained
 by Omega8.cc exists only thanks to Aegir project continued development.
 

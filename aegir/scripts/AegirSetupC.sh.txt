@@ -584,18 +584,18 @@ upgrade_contrib_less() {
   if [ -e "${_SHRD_PRPATH}/modules/contrib/rules" ]; then
     rm -rf ${_SHRD_PRPATH}/modules/contrib/rules
     cd ${_SHRD_PRPATH}/modules/contrib
-    get_dev_contrib "rules-7.x-2.11.tar.gz"
+    get_dev_contrib "rules-7.x-2.12.tar.gz"
     if [ ! -e "${_SHRD_PRPATH}/modules/contrib/rules" ]; then
-      get_dev_contrib "rules-7.x-2.11.tar.gz"
+      get_dev_contrib "rules-7.x-2.12.tar.gz"
     fi
     cd ${_CORE}
   fi
   if [ -e "${_SHRD_PRPATH}/modules/rules" ]; then
     rm -rf ${_SHRD_PRPATH}/modules/rules
     cd ${_SHRD_PRPATH}/modules
-    get_dev_contrib "rules-7.x-2.11.tar.gz"
+    get_dev_contrib "rules-7.x-2.12.tar.gz"
     if [ ! -e "${_SHRD_PRPATH}/modules/rules" ]; then
-      get_dev_contrib "rules-7.x-2.11.tar.gz"
+      get_dev_contrib "rules-7.x-2.12.tar.gz"
     fi
     cd ${_CORE}
   fi
@@ -2281,10 +2281,10 @@ ubercart7_install() {
               get_dev_contrib "colorbox-7.x-2.13.tar.gz"
               get_dev_contrib "ctools-7.x-1.15.tar.gz"
               get_dev_contrib "entity-7.x-1.9.tar.gz"
-              get_dev_contrib "google_analytics-7.x-2.5.tar.gz"
+              get_dev_contrib "google_analytics-7.x-2.6.tar.gz"
               get_dev_contrib "libraries-7.x-2.5.tar.gz"
               get_dev_contrib "pathauto-7.x-1.3.tar.gz"
-              get_dev_contrib "rules-7.x-2.11.tar.gz"
+              get_dev_contrib "rules-7.x-2.12.tar.gz"
               get_dev_contrib "token-7.x-1.7.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
               get_dev_contrib "views-7.x-3.22.tar.gz"
@@ -2351,10 +2351,10 @@ ubercart7_testing_install() {
               get_dev_contrib "colorbox-7.x-2.13.tar.gz"
               get_dev_contrib "ctools-7.x-1.15.tar.gz"
               get_dev_contrib "entity-7.x-1.9.tar.gz"
-              get_dev_contrib "google_analytics-7.x-2.5.tar.gz"
+              get_dev_contrib "google_analytics-7.x-2.6.tar.gz"
               get_dev_contrib "libraries-7.x-2.5.tar.gz"
               get_dev_contrib "pathauto-7.x-1.3.tar.gz"
-              get_dev_contrib "rules-7.x-2.11.tar.gz"
+              get_dev_contrib "rules-7.x-2.12.tar.gz"
               get_dev_contrib "token-7.x-1.7.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
               get_dev_contrib "views-7.x-3.22.tar.gz"
