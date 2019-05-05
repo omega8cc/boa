@@ -9,8 +9,10 @@ fix_lfd_uidignore() {
     else
       echo "#root"          >> /etc/csf/csf.uidignore
       echo `id -u root`     >> /etc/csf/csf.uidignore
-      echo "#pdnsd"         >> /etc/csf/csf.uidignore
-      echo `id -u pdnsd`    >> /etc/csf/csf.uidignore
+      if [ -r "/etc/pdnsd.conf" ]; then
+        echo "#pdnsd"       >> /etc/csf/csf.uidignore
+        echo `id -u pdnsd`  >> /etc/csf/csf.uidignore
+      fi
       echo "#postfix"       >> /etc/csf/csf.uidignore
       echo `id -u postfix`  >> /etc/csf/csf.uidignore
       echo "#www-data"      >> /etc/csf/csf.uidignore
