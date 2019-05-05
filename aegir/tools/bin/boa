@@ -161,8 +161,10 @@ system_check_clean() {
     || [ -e "/etc/apache2" ] \
     || [ -e "/etc/mysql" ] \
     || [ -e "/var/lib/mysql" ]; then
-    echo "ERROR: BOA requires minimal, supported OS, with no services installed"
-    echo "ERROR: The only acceptable exceptions are: sshd and mail servers"
+    echo "ERROR: BOA installation procedure requires minimal supported OS."
+    echo "ERROR: Please make sure you don't have MySQL nor Apache installed."
+    echo "ERROR: Here's the list of directories which shouldn't exist:"
+    echo "ERROR: /etc/nginx /etc/apache2 /etc/mysql /var/lib/mysql /var/aegir"
     echo "Bye"
     clean_pid_exit
   fi
