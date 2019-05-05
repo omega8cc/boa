@@ -108,52 +108,43 @@ production settings.
 
 === Included/enabled by default - see docs/NOTES.txt for details
 
-* All libraries & tools required to install and run Nginx based Aegir system.
-* Latest release of MariaDB 5.5 or 10.1 database server with Adminer manager.
-* Latest version of Nginx web server.
-* Letsencrypt.org SSL support - see docs/SSL.txt for details.
-* HTTPS access with self-signed certificate for all hosted sites.
-* HTTP/2 or SPDY Nginx support.
-* PFS (Perfect Forward Secrecy) support in Nginx.
 * PHP-FPM 7.3, 7.2, 7.1, 7.0, 5.6 multi-install mode, configurable per site.
-* PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse and ionCube.
-* Fast Redis Cache with DB auto-failover for all Drupal core versions.
-* Fast Redis Lock support with DB auto-failover.
-* Fast Redis Path support with DB auto-failover.
-* Fast proxy DNS server (pdnsd) with permanent caching.
-* Limited Shell, SFTP and FTPS separate accounts per Octopus instance.
-* Limited Shell, SFTP and FTPS accounts per Aegir Client with per site access.
-* Drush access on command line in all shell accounts.
-* Drush Make access on command line for main shell account only.
-* Support for New Relic monitoring with per Octopus instance license key.
-* Solr cores can be added/updated/deleted via site level INI settings.
+* Latest release of MariaDB 5.5 or 10.1 database server with Adminer manager.
+* All libraries & tools required to install and run Nginx based Aegir system.
 * Magic Speed Booster cache, working like a Boost + AuthCache, but per user.
 * Entry level XSS built-in protection on the Nginx level.
 * Firewall csf/lfd integrated with Nginx abuse guard.
-* PHP errors debugging, including WSOD, enabled on the fly on .dev. aliases.
-* Boost, AdvAgg, Domain Access and Drupal for Facebook built-in support.
-* Built-in collection of useful modules available in all platforms.
 * Autonomous Maintenance & Auto-Healing scripts in /var/xdrago.
 * Every 3 seconds uptime/self-healing local monitoring.
 * Automated, rotated daily backups for all databases in /data/disk/arch/sql.
+* Letsencrypt.org SSL support - see docs/SSL.txt for details.
+* HTTP/2 or SPDY Nginx support.
+* PFS (Perfect Forward Secrecy) support in Nginx.
+* PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse and ionCube.
+* Fast Redis Cache/Lock/Path with DB auto-failover for all Drupal core versions.
+* Limited Shell, SFTP and FTPS accounts per Aegir Client with per site access.
+* Drush access on command line in all shell accounts.
+* Composer and Drush Make access on command line for main shell account only.
+* PHP errors debugging, including WSOD, enabled on the fly on .dev. aliases.
+* Built-in collection of useful modules available in all platforms.
 
 === Optional add-ons - see docs/NOTES.txt for details
 
-* RVM, Compass Tools, and NPM - see docs/RVM.txt for details.
-* HHVM support - see docs/HHVM.txt for details.
 * MultiCore Apache Solr 7 and Solr 4 - see docs/SOLR.txt for details.
 * New Relic Apps Monitor with per Octopus license and per Site reporting.
+* RVM, Compass Tools, and NPM - see docs/RVM.txt for details.
 * Image Optimize toolkit binaries.
 * FFmpeg support.
 * Bind9 DNS server.
-* Webmin Control Panel.
-* Chive database manager
-* SQL Buddy database manager.
 * Collectd server monitor.
-* LDAP Nginx support via third-party module (experimental).
-* MongoDB driver for PHP (experimental).
-* GEOS extension for PHP (all supported PHP versions).
-
+* Fast DNS Cache Server (pdnsd) (not supported on Linode)
+* LDAP Nginx support via third-party module (experimental)
+* MongoDB driver for PHP (experimental)
+* GEOS extension for PHP (experimental)
+* Chive database manager (deprecated)
+* SQL Buddy database manager (deprecated)
+* HHVM support - see docs/HHVM.txt for details (deprecated)
+* Webmin Control Panel (deprecated)
 
 ### OCTOPUS PLATFORMS
 
