@@ -34,8 +34,8 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
+_X_SE="401prodQ1"
 _WEBG=www-data
-_X_SE="3.2.2-stable"
 _OSV=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
@@ -486,6 +486,7 @@ load_control() {
 start_up() {
   if [ -d "/var/xdrago/conf/solr" ] \
     && [ ! -e "/data/conf/solr/.ctrl.${_X_SE}.pid" ]; then
+    rm -f -r /data/conf/solr
     cp -af /var/xdrago/conf/solr /data/conf/
     touch /data/conf/solr/.ctrl.${_X_SE}.pid
   fi

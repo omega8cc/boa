@@ -4,7 +4,7 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 branch="4.x"
-cluster="BOA-3.2.2"
+cluster="BOA-4.0.1"
 hd="HEAD"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
@@ -12,7 +12,7 @@ lgcC="BOA-2.4.9"
 lgcD="BOA-3.2.2"
 master="master"
 nextv="BOA-4.0.1-prod"
-stbl="BOA-3.2.2"
+stbl="BOA-4.0.1"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"

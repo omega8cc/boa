@@ -1026,6 +1026,7 @@ if_display_login_link() {
 #
 # Update local INI for PHP CLI on the Aegir Master Instance.
 update_php_cli_local_ini() {
+  _X_SE="401prodQ1"
   _U_HD="/var/aegir/.drush"
   _U_TP="/var/aegir/.tmp"
   _U_II="${_U_HD}/php.ini"
@@ -1041,7 +1042,7 @@ update_php_cli_local_ini() {
   if [ "$_PHP_CLI_UPDATE" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
-    || [ ! -e "${_U_HD}/.ctrl.400stableQ6.pid" ]; then
+    || [ ! -e "${_U_HD}/.ctrl.${_X_SE}.pid" ]; then
     mkdir -p ${_U_TP}
     touch ${_U_TP}
     find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -1102,7 +1103,7 @@ update_php_cli_local_ini() {
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
       echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
-      echo > ${_U_HD}/.ctrl.400stableQ6.pid
+      echo > ${_U_HD}/.ctrl.${_X_SE}.pid
     fi
   fi
 }
