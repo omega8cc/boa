@@ -158,6 +158,7 @@ _PHP_CLI_VERSION=7.2
 ###
 ### BDD --- SQL Buddy DB Manager
 ### BND --- Bind9 DNS Server
+### DCS --- Local DNS Cache Server pdnsd (not supported on Linode)
 ### BZR --- Bazaar
 ### CHV --- Chive DB Manager
 ### FMG --- FFmpeg support

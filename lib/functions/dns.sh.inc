@@ -778,3 +778,9 @@ install_upgrade_pdnsd() {
     fi
   fi
 }
+
+if_install_upgrade_pdnsd() {
+  if [ -r "/etc/pdnsd.conf" ] || [[ "${_XTRAS_LIST}" =~ "DCS" ]]; then
+    install_upgrade_pdnsd
+  fi
+}

@@ -20,6 +20,7 @@
     ###
     ### BDD --- SQL Buddy DB Manager
     ### BND --- Bind9 DNS Server (available on Debian only)
+    ### DCS --- Local DNS Cache Server pdnsd (not supported on Linode)
     ### BZR --- Bazaar
     ### CHV --- Chive DB Manager
     ### FMG --- FFmpeg support

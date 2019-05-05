@@ -428,7 +428,7 @@ install_upgrade_csf_lfd
 ###
 ### Install or upgrade DNS cache pdnsd server
 ###
-install_upgrade_pdnsd
+if_install_upgrade_pdnsd
 
 
 ###
