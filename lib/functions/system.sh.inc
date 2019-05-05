@@ -3074,8 +3074,8 @@ basic_packages_install_on_init() {
       fi
       echo
       msg "NOTE: Please reboot and run barracuda upgrade"
-      msg "NOTE: when boa will complete initial installation"
-      msg "NOTE: to cleanly remove not used systemd packages!"
+      msg "NOTE: after boa completes initial installation"
+      msg "NOTE: in order to remove unused systemd packages!"
       echo
       mrun "sleep 8"
     fi
