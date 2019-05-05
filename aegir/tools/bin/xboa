@@ -781,6 +781,10 @@ migrate_init() {
       rsync -aEAXq ${ieni} -e ssh /opt/solr4 root@${tgt}:/opt/
       echo "INFO: ${cmd} for ${oct} /opt/solr4 complete"
     fi
+    if [ -e "/var/solr7/data" ]; then
+      rsync -aEAXq ${ieni} -e ssh /var/solr7/data root@${tgt}:/var/solr7/
+      echo "INFO: ${cmd} for ${oct} /var/solr7/data complete"
+    fi
     if [ -e "/var/www/static" ]; then
       rsync -aEAXq ${ieni} -e ssh /var/www/static root@${tgt}:/var/www/
       echo "INFO: ${cmd} for ${oct} /var/www/static complete"
