@@ -3764,7 +3764,7 @@ satellite_make() {
   fi
 
   if [ ! -e "${_ROOT}/static/control/.ctrl.400stableQ5.pid" ] \
-    || [ ! -e "${_ROOT}/static/control/README.txt" ]; then
+    && [ -e "/home/${_USER}.ftp/users" ]; then
     mkdir -p ${_ROOT}/static/control
     chmod 755 ${_ROOT}/static/control
     if [ -e "/var/xdrago/conf/control-readme.txt" ]; then

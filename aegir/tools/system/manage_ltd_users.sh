@@ -1935,7 +1935,8 @@ manage_user() {
         chmod 02755 ${dscUsr}/.tmp &> /dev/null
         echo OK > ${dscUsr}/.tmp/.ctrl.400stableQ5.pid
       fi
-      if [ ! -e "${dscUsr}/static/control/.ctrl.400stableQ5.pid" ]; then
+      if [ ! -e "${dscUsr}/static/control/.ctrl.400stableQ5.pid" ] \
+        && [ -e "/home/${_USER}.ftp/users" ]; then
         mkdir -p ${dscUsr}/static/control
         chmod 755 ${dscUsr}/static/control
         if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
