@@ -37,11 +37,11 @@ Please read for more details:
 
 @=> Drupal 8 platforms and Composer support
 
-Since BOA-4.0.0-prod three new Drupal 8 based platforms are included:
+Since BOA-4.0.1-prod three new Drupal 8 based platforms are included:
 
-Lightning 3.2.5 -------------- https://drupal.org/project/lightning
-Thunder 8.2.33 --------------- https://drupal.org/project/thunder
-Varbase 8.6.4 ---------------- https://drupal.org/project/varbase
+Lightning 3.3.0 -------------- https://drupal.org/project/lightning
+Thunder 8.2.39 --------------- https://drupal.org/project/thunder
+Varbase 8.6.8 ---------------- https://drupal.org/project/varbase
 
 IMPORTANT: You must switch your ~/static/control/cli.info to 7.1 or newer
 PHP version (BOA hosted on Omega8.cc comes with 7,1, 7.2 and 7.3), because
@@ -70,7 +70,7 @@ Still on PHP 5.6? You should switch to PHP 7.3 — It’s twice as fast as 5.6!
 But don't switch blindly -- even sites already running on PHP 7.0 before
 are most probably not ready for PHP 7.2 or 7.3 without proper fixes.
 
-Note: BOA-4.0.0-prod release removes PHP 5.3, 5.4 and 5.5, if installed.
+Note: BOA-4.0.1-prod release removes PHP 5.3, 5.4 and 5.5, if installed.
 In addition to still supported, even if officially deprecated 5.6 and 7.0
 versions, this release adds support for PHP 7.3, 7.2 and 7.1
 
