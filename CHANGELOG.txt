@@ -239,7 +239,7 @@
     * Lshell 0.9.18.9
     * MariaDB 10.2.19, Galera 10.0.37
     * MariaDB Server 10.1.39
-    * MySQLTuner 1.7.13
+    * MySQLTuner 1.7.15
     * Nginx 1.16.0
     * Node.js v10.x LTS
     * OpenSSH Server 8.0p1
