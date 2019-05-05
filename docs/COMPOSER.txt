@@ -5,7 +5,7 @@ The only documentation source for anything Aegir on BOA related is available at:
   https://learn.omega8.cc
   https://github.com/omega8cc/boa/issues?utf8=✓&q=is%3Aissue+composer
 
-Since BOA-4.0.1-prod three new Drupal 8 based platforms are included:
+Since BOA-4.0.1 three new Drupal 8 based platforms are included:
 
 Lightning 3.3.0 -------------- https://drupal.org/project/lightning
 Thunder 8.2.39 --------------- https://drupal.org/project/thunder
@@ -56,7 +56,7 @@ hosted. Just use it to build new codebases and then add them as platforms
 when the build works without errors.
 
 Remember that Drush must be removed from the codebase, or it will take over
-Aegir tasks and they will fail, but since BOA-4.0.1-prod our modified Aegir
+Aegir tasks and they will fail, but since BOA-4.0.1 our modified Aegir
 backend will automatically check and remove drush from the vendor directory
 if found, on every Verify.
 

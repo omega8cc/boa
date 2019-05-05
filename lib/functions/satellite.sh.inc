@@ -4012,7 +4012,7 @@ satellite_check_octopus_versus_barracuda_version() {
   else
     _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
-      || [[ "${_VERSIONS_TEST}" =~ "BOA-4.0.1-dev" ]]; then
+      || [[ "${_VERSIONS_TEST}" =~ "BOA-4.0.1" ]]; then
       _VERSIONS_TEST_RESULT=OK
     else
       msg "ERROR: This octopus installer can be used only when the same version"

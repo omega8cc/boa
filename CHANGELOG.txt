@@ -1,5 +1,5 @@
 
-### Stable BOA-4.0.1-prod Release - Full Edition
+### Stable BOA-4.0.1 Release - Full Edition
 ### Date: TBD
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/4.0.1
 
@@ -31,7 +31,7 @@
 
   Note: If you are using WinSCP and/or Putty on Windows, or Transmit/Coda
   by Panic on a Mac, please check the Known Issues section at the bottom of this
-  BOA-4.0.1-prod release notes.
+  BOA-4.0.1 release notes.
 
 @=> Solr 7 and Solr 4 support changes and improvements
 
@@ -76,7 +76,7 @@
 
 @=> Drupal 8 platforms and Composer support
 
-  Since BOA-4.0.1-prod three new Drupal 8 based platforms are included:
+  Since BOA-4.0.1 three new Drupal 8 based platforms are included:
 
   Lightning 3.3.0 -------------- https://drupal.org/project/lightning
   Thunder 8.2.39 --------------- https://drupal.org/project/thunder
@@ -132,7 +132,7 @@
   But don't switch blindly -- even sites already running on PHP 7.0 before
   are most probably not ready for PHP 7.2 or 7.3 without proper fixes.
 
-  Note: BOA-4.0.1-prod release removes PHP 5.3, 5.4 and 5.5, if installed.
+  Note: BOA-4.0.1 release removes PHP 5.3, 5.4 and 5.5, if installed.
   In addition to still supported, even if officially deprecated 5.6 and 7.0
   versions, this release adds support for PHP 7.3, 7.2 and 7.1
 
