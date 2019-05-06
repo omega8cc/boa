@@ -484,11 +484,18 @@ load_control() {
 }
 
 start_up() {
-  if [ -d "/var/xdrago/conf/solr" ] \
-    && [ ! -e "/data/conf/solr/.ctrl.${_X_SE}.pid" ]; then
-    rm -f -r /data/conf/solr
-    cp -af /var/xdrago/conf/solr /data/conf/
-    touch /data/conf/solr/.ctrl.${_X_SE}.pid
+  if [ -d "/var/xdrago/conf/solr" ]; then
+    baseCpy="/var/xdrago/conf/solr/search_api_solr/8/schema.xml"
+    liveCpy="/data/conf/solr/search_api_solr/8/schema.xml"
+    check_config_diff "${baseCpy}" "${liveCpy}"
+    if [ ! -e "/data/conf/solr/search_api_solr/8/solrconfig_extra.xml" ] \
+      || [ ! -e "/data/conf/solr/.ctrl.${_X_SE}.pid" ] \
+      || [ ! -z "${myCnfUpdate}" ]; then
+      rm -f -r /data/conf/solr
+      cp -af /var/xdrago/conf/solr /data/conf/
+      rm -f /data/conf/solr/.ctrl*
+      touch /data/conf/solr/.ctrl.${_X_SE}.pid
+    fi
   fi
   for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     count_cpu
