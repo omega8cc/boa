@@ -369,8 +369,10 @@ master_download_for_local_build() {
     fi
     ### Aegir Golden + BOA Settings
     if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+      ${gCb} 7.x-3.x ${gitHub}/aegir_objects.git               &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_civicrm.git             &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_custom_settings.git     &> /dev/null
+      ${gCb} 7.x-3.x ${gitHub}/hosting_deploy.git              &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_git.git                 &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_le.git                  &> /dev/null
       ${gCb} 7.x-3.x ${gitHub}/hosting_remote_import.git       &> /dev/null
@@ -378,8 +380,10 @@ master_download_for_local_build() {
       ${gCb} 7.x-3.x ${gitHub}/hosting_tasks_extra.git         &> /dev/null
       rm -rf */.git
     else
+      get_dev_ext "aegir_objects.tar.gz"
       get_dev_ext "hosting_civicrm.tar.gz"
       get_dev_ext "hosting_custom_settings.tar.gz"
+      get_dev_ext "hosting_deploy.tar.gz"
       get_dev_ext "hosting_git.tar.gz"
       get_dev_ext "hosting_le.tar.gz"
       get_dev_ext "hosting_remote_import.tar.gz"
