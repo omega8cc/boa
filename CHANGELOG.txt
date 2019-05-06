@@ -160,7 +160,7 @@
 
 @=> BOA release policy changes
 
-  In the last 12 months since BOA-3.2.2 release we have tested a more agile
+  In over 15 months since BOA-3.2.2 release we have tested a more agile
   approach with Rolling Release policy for BOA system part known as Barracuda.
 
   We have implemented many changes and updates only in BOA HEAD and used
@@ -211,13 +211,16 @@
 
   # Changes:
 
+    * Add innodb_default_row_format = dynamic — fixes #1366
     * Advanced Nginx microcaching to improve cache HITs #1271
     * Change to dashes in bucket names and upgrade boto/duplicity #1247
+    * Create fpm.info and cli.info ctrl files on Octopus install
     * Deprecate MariaDB 5.5 and force 10.1 instead
     * Enable uploadprogress.so for testing on PHP 7+
     * Force Composer to use PHP 7.2 if available #1213
     * Higher PHP CLI limits to make Composer happy
     * Increase default TTLs to make BOA more friendly for big sites
+    * Make DNS Cache Server pdnsd optional -- needs DCS keyword in _XTRAS_LIST
     * Minimum 4 GB RAM and 2 CPU (with Solr minimum 8 GB RAM and 4+ CPU rec.)
     * Re-verify LE enabled sites daily
     * Refresh the tasks list more frequently
@@ -226,6 +229,7 @@
     * Remove ultimate_cron and background_process from the blacklist
     * Replace Google DNS servers for Cloudflare DNS servers #1317
     * Replace the complex public IP detection with an external API #1089
+    * Set PHP CLI to FPM version if only FPM is defined
     * SQL: disable innodb_adaptive_hash_index by default
     * Upgrade imagick to 3.4.3 for PHP7 support #1253
     * Use /root/.backboa.autoupdate by default
@@ -236,9 +240,11 @@
     * Adminer 4.7.0
     * CSF/LFD 12.10
     * Drush 8.2.3.1
+    * Galera 10.0.37
     * Lshell 0.9.18.9
-    * MariaDB 10.2.19, Galera 10.0.37
     * MariaDB Server 10.1.39
+    * MariaDB Server 10.2.19
+    * MariaDB Server 10.3.14
     * MySQLTuner 1.7.15
     * Nginx 1.16.0
     * Node.js v10.x LTS
@@ -246,6 +252,7 @@
     * OpenSSL 1.0.2r for Nginx
     * PHP 7.3.5, 7.2.18, 7.1.29, 7.0.33, 5.6.40
     * PHP Redis extension 4.2.0
+    * Pure-FTPd 1.0.49
     * Redis Module 8.x mod-05-02-2019
     * Redis Server 4.0.14
     * Ruby 2.6.0
@@ -253,21 +260,30 @@
 
   # Fixes:
 
+    * Add fix_ping_perms()
     * Add libzip-dev to satisfy PHP 7.3 requirements
     * Add nginx config to mitigate SA-CORE-2018-002
     * Add patches for CORE-2018-004 and SA-CORE-2018-002
     * Add procedure satellite_fix_broken_entity_module()
     * Add re_set_default_php_cli() procedure
+    * Add redis_slow_check()
+    * Ajax 200 parsererror on every Drupal site #1344
     * Avoid potentially problematic --force-yes for apt-get
     * Backboa AWS S3 backup integration no longer working #1138
     * Backboa not installed #1310
     * Backboa: Certificate error #1141
     * Cannot switch php-cli, cannot create varbase composer project. #1308
+    * Check sshd not ssh version
     * CiviCRM 4.7 not working under BOA #1223
+    * Crawlers see 403 on public path #1329
+    * Debian 9 (Stretch) _apt user + _STRICT_BIN_PERMISSIONS errors #1352
+    * Do not lock old/all hostmaster platforms automatically
+    * Downgrade MySecureShell until we can figure out compatibility issues
     * Errors using site with CiviCRM #1304
     * Extra cleanup for any codebase level drush copy
     * Fix for empty old hostmaster platforms cleanup
     * Fix for incomplete logic in multi-fpm mode
+    * Fix for jessie-backports
     * Fix SA-CORE-2018-006 for D8 and D7
     * Fix the site specific composer_manager dir also for D8
     * Fix to include gitlab.com in ~/.ssh/known_hosts
@@ -276,6 +292,9 @@
     * Infinite loop on INFO: Retrieving F1656F24C74CD1D8 key.. #1323
     * Known issues with contrib module Redirect in Drupal 8 and BOA #1239
     * Make sure redis-server is up immediately after upgrade
+    * Make sure that ~/.rvmrc is fixed
+    * Make sure that composer permissions are fixed
+    * Make sure that the ownership on static/control is correct
     * Make sure to fix Redis permissions
     * Nginx: the "ssl" directive is deprecated since 1.15.0
     * No live certificates from Let's Encrypt #1255
@@ -283,16 +302,21 @@
     * PSA-2018-003: Drupal core security release #1283
     * Remove deprecated option UsePrivilegeSeparation if exists
     * Restore Jessie default apt mode on Stretch+
+    * Solr dir is not defined in in setup_solr() #1370
     * SSHD - use without-password for backward compatibility
     * Switching out DNS servers caused breakage #1318
     * Sync permissions fix on platform verify for D8, D7, D6
+    * Sync Solr 7 memory management logic
     * The _PERMISSIONS_FIX var gets overridden to YES daily basis #1311
+    * The innodb_lazy_drop_table has been deprecated in Percona
+    * Update ~/static/control/README.txt if needed
     * Update boa info [more] for current years #1248
     * Update lshell.config to not break valid D8 specific Drush commands
     * Update, sync and de-duplicate Zend OPcache config directives
     * Updated default robots.txt #1172
     * Use gpg2 directly instead of deprecated apt-key
     * Use IP directly as a last fallback
+    * xboa migrate Solr 7 data #1376
 
   # Known issues:
 
