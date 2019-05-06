@@ -1945,8 +1945,7 @@ manage_user() {
             ${dscUsr}/static/control/README.txt &> /dev/null
           chmod 0644 ${dscUsr}/static/control/README.txt
         fi
-        chown -R ${_USER}.ftp:${usrGroup} \
-          ${dscUsr}/static/control &> /dev/null
+        chown -R ${_USER}.ftp:${usrGroup} ${dscUsr}/static/control
         rm -f ${dscUsr}/static/control/.ctrl.*
         echo OK > ${dscUsr}/static/control/.ctrl.${_X_SE}.pid
       fi
