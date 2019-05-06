@@ -480,6 +480,8 @@ upgrade_aegir_master() {
     chown -R aegir:aegir ${_THIS_HM_ROOT}/sites/all
     _U_HD="/var/aegir/.drush"
     chattr -i ${_U_HD}/php.ini
+    mkdir -p /var/aegir/backups/system
+    chmod 700 /var/aegir/backups/system
     chown -R aegir:aegir /var/aegir/.drush
     chown -R aegir:aegir /var/aegir/backups
     chown -R aegir:aegir /var/aegir/clients
