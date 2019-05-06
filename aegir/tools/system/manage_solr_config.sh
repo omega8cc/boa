@@ -165,6 +165,7 @@ update_solr() {
           chmod 644 ${2}/conf/*
           chown solr7:solr7 ${2}/conf/*
           rm -f ${Plr}/sites/${Dom}/files/solr/*
+          touch ${2}/conf/.yes-custom.txt
           touch ${2}/conf/yes-update.txt
         else
           rm -f ${2}/conf/yes-update.txt
@@ -173,7 +174,9 @@ update_solr() {
     elif [ "${1}" = "search_api_solr" ] \
       && [ ! -e "${Plr}/sites/${Dom}/files/solr/schema.xml" ] \
       && [ -e "${Plr}/modules/o_contrib_eight" ]; then
-      if [ ! -e "${2}/conf/.protected.conf" ] && [ -e "${2}/conf" ]; then
+      if [ ! -e "${2}/conf/.protected.conf" ] \
+        && [ ! -e "${2}/conf/.yes-custom.txt" ] \
+        && [ -e "${2}/conf" ]; then
         check_config_diff "/data/conf/solr/apachesolr/8/schema.xml" "${2}/conf/schema.xml"
         if [ ! -z "${myCnfUpdate}" ]; then
           cp -af /data/conf/solr/search_api_solr/8/* ${2}/conf/
