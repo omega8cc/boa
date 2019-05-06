@@ -10,7 +10,7 @@ Drupal distributions updated to latest versions, and supplied with latest
 Drupal 7 or Drupal 8 core, if possible. Yes, BOA still supports Pressflow 6.
 Yes, we have added Solr 7 support and every 5 minutes updates!
 
-Three Drupal 8 based popular distributions have been included by default,
+Four Drupal 8 based popular distributions have been included by default,
 plus much improved Composer support and automatic permissions-fix-magic
 on Platform and Site Verify tasks. No more manual fixes!
 

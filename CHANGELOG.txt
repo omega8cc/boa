@@ -12,7 +12,7 @@
   Yes, Debian Stretch is supported. No newer Ubuntu releases are supported yet.
   Yes, we have added Solr 7 support and every 5 minutes updates!
 
-  Three Drupal 8 based popular distributions have been included by default,
+  Four Drupal 8 based popular distributions have been included by default,
   plus much improved Composer support and automatic permissions-fix-magic
   on Platform and Site Verify tasks. No more manual fixes!
 
