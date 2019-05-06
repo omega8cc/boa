@@ -156,12 +156,12 @@ update_solr() {
     elif [ "${1}" = "search_api_solr" ] \
       && [ -e "${Plr}/sites/${Dom}/files/solr/schema.xml" ] \
       && [ -e "${Plr}/sites/${Dom}/files/solr/solrconfig.xml" ] \
+      && [ -e "${Plr}/sites/${Dom}/files/solr/solrcore.properties" ] \
       && [ -e "${Plr}/modules/o_contrib_eight" ]; then
       if [ ! -e "${2}/conf/.protected.conf" ] && [ -e "${2}/conf" ]; then
         check_config_diff "${Plr}/sites/${Dom}/files/solr/schema.xml" "${2}/conf/schema.xml"
         if [ ! -z "${myCnfUpdate}" ]; then
           cp -af ${Plr}/sites/${Dom}/files/solr/* ${2}/conf/
-          cp -af /data/conf/solr/search_api_solr/8/solrcore.properties ${2}/conf/
           chmod 644 ${2}/conf/*
           chown solr7:solr7 ${2}/conf/*
           rm -f ${Plr}/sites/${Dom}/files/solr/*
