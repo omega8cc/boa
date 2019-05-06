@@ -3765,7 +3765,6 @@ satellite_make() {
   if [ ! -e "${_ROOT}/static/control" ]; then
     mkdir -p ${_ROOT}/static/control
     chmod 755 ${_ROOT}/static/control
-    chown -R ${_USER}.ftp:${_USRG} ${_ROOT}/static/control
   fi
   if [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
     echo ${_PHP_FPM_VERSION} > ${_ROOT}/static/control/fpm.info
@@ -3781,17 +3780,15 @@ satellite_make() {
   _X_SE="401prodQ1"
   if [ ! -e "${_ROOT}/static/control/.ctrl.${_X_SE}.pid" ] \
     && [ -e "/home/${_USER}.ftp/users" ]; then
-    mkdir -p ${_ROOT}/static/control
-    chmod 755 ${_ROOT}/static/control
     if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
       cp -af /var/xdrago/conf/control-readme.txt \
         ${_ROOT}/static/control/README.txt &> /dev/null
       chmod 0644 ${_ROOT}/static/control/README.txt
     fi
-    chown -R ${_USER}.ftp:${_USRG} ${_ROOT}/static/control
     rm -f ${_ROOT}/static/control/.ctrl.*
     echo OK > ${_ROOT}/static/control/.ctrl.${_X_SE}.pid
   fi
+  chown -R ${_USER}.ftp:${_USRG} ${_ROOT}/static/control
 
   if [ -d "/data/all/000" ]; then
     if [ ! -e "/data/all/000/core-v-${_SMALLCORE6}.txt" ] \

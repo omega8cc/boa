@@ -401,6 +401,7 @@ satellite_check_up_php() {
             echo 5.6 > ${User}/static/control/cli.info
           fi
         fi
+        chown -R ${octUsr}.ftp:users ${User}/static/control
       fi
       if [[ "${_SERIES_TEST}" =~ "${stbl}" ]]; then
         if [ "${orgMcmode}" != "force" ]; then
@@ -513,6 +514,7 @@ satellite_check_switch_php() {
         echo 5.6 > ${User}/static/control/fpm.info
         echo 5.6 > ${User}/static/control/cli.info
       fi
+      chown -R ${octUsr}.ftp:users ${User}/static/control
       echo
       echo "This instance ${octUsr} still depends on the old PHP version"
       echo "FPM.${_T_FPM_VRN} CLI.${_T_CLI_VRN}"
