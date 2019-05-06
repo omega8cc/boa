@@ -121,9 +121,9 @@ update_solr() {
             cp -af /data/conf/solr/apachesolr/7/* ${2}/conf/
             chmod 644 ${2}/conf/*
             chown jetty9:jetty9 ${2}/conf/*
-            touch ${2}/conf/yes-update.txt
+            touch ${2}/conf/.yes-update.txt
           else
-            rm -f ${2}/conf/yes-update.txt
+            rm -f ${2}/conf/.yes-update.txt
           fi
         fi
       else
@@ -134,9 +134,9 @@ update_solr() {
             cp -af /data/conf/solr/apachesolr/6/* ${2}/conf/
             chmod 644 ${2}/conf/*
             chown jetty9:jetty9 ${2}/conf/*
-            touch ${2}/conf/yes-update.txt
+            touch ${2}/conf/.yes-update.txt
           else
-            rm -f ${2}/conf/yes-update.txt
+            rm -f ${2}/conf/.yes-update.txt
           fi
         fi
       fi
@@ -148,9 +148,9 @@ update_solr() {
           cp -af /data/conf/solr/search_api_solr/7/* ${2}/conf/
           chmod 644 ${2}/conf/*
           chown solr7:solr7 ${2}/conf/*
-          touch ${2}/conf/yes-update.txt
+          touch ${2}/conf/.yes-update.txt
         else
-          rm -f ${2}/conf/yes-update.txt
+          rm -f ${2}/conf/.yes-update.txt
         fi
       fi
     elif [ "${1}" = "search_api_solr" ] \
@@ -166,9 +166,9 @@ update_solr() {
           chown solr7:solr7 ${2}/conf/*
           rm -f ${Plr}/sites/${Dom}/files/solr/*
           touch ${2}/conf/.yes-custom.txt
-          touch ${2}/conf/yes-update.txt
+          touch ${2}/conf/.yes-update.txt
         else
-          rm -f ${2}/conf/yes-update.txt
+          rm -f ${2}/conf/.yes-update.txt
         fi
       fi
     elif [ "${1}" = "search_api_solr" ] \
@@ -182,16 +182,16 @@ update_solr() {
           cp -af /data/conf/solr/search_api_solr/8/* ${2}/conf/
           chmod 644 ${2}/conf/*
           chown solr7:solr7 ${2}/conf/*
-          touch ${2}/conf/yes-update.txt
+          touch ${2}/conf/.yes-update.txt
         else
-          rm -f ${2}/conf/yes-update.txt
+          rm -f ${2}/conf/.yes-update.txt
         fi
       fi
     fi
     fiLe="${Dir}/solr.php"
     echo "Info file for ${Dom} is ${fiLe}"
     echo "Info _SERV is ${_SERV}"
-    if [ ! -e "${fiLe}" ] || [ -e "${2}/conf/yes-update.txt" ]; then
+    if [ ! -e "${fiLe}" ] || [ -e "${2}/conf/.yes-update.txt" ]; then
       if [[ "${2}" =~ "/opt/solr4" ]] && [ ! -z "${_SERV}" ]; then
         write_solr_config ${1} ${fiLe} ${_SERV}
         echo "Updated ${_SERV} with ${1} for ${2}"
