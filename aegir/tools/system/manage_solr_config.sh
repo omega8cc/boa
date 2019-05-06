@@ -161,6 +161,7 @@ update_solr() {
       if [ ! -e "${2}/conf/.protected.conf" ] && [ -e "${2}/conf" ]; then
         check_config_diff "${Plr}/sites/${Dom}/files/solr/schema.xml" "${2}/conf/schema.xml"
         if [ ! -z "${myCnfUpdate}" ]; then
+          rm -f ${2}/conf/*
           cp -af ${Plr}/sites/${Dom}/files/solr/* ${2}/conf/
           chmod 644 ${2}/conf/*
           chown solr7:solr7 ${2}/conf/*
