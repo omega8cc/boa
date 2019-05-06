@@ -165,6 +165,7 @@ Hostmaster [E]xtensions [M]aster [S]atellite:
 
  hosting_civicrm ------------ [D7] ------ [S] [B] [FE] [ES]
  hosting_custom_settings ---- [D7] ------ [S] [B] [FE] [ES]
+ hosting_deploy ------------- [D7] ------ [S] [B]      [ES]
  hosting_git ---------------- [D7] ------ [S] [B]      [ES]
  hosting_le ----------------- [D7] ------ [S] [B] [FE] [ES]
  hosting_remote_import ------ [D7] ------ [S] [B]      [ES]

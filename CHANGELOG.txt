@@ -3341,9 +3341,9 @@
 ;;
 ;;  Currently used versions are listed below:
 ;;
-;;    http://ftp.drupal.org/files/projects/search_api_solr-7.x-1.6.tar.gz
-;;    http://ftp.drupal.org/files/projects/apachesolr-7.x-1.7.tar.gz
-;;    http://ftp.drupal.org/files/projects/apachesolr-6.x-3.0.tar.gz
+;;    https://ftp.drupal.org/files/projects/search_api_solr-7.x-1.6.tar.gz
+;;    https://ftp.drupal.org/files/projects/apachesolr-7.x-1.7.tar.gz
+;;    https://ftp.drupal.org/files/projects/apachesolr-6.x-3.0.tar.gz
 ;;
 ;;  Note that you still need to add preferred integration module along with
 ;;  any its dependencies in your codebase since this feature doesn't modify
