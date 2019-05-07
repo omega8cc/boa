@@ -134,6 +134,7 @@ update_solr() {
             touch ${2}/conf/.just-updated.pid
           else
             rm -f ${2}/conf/.just-updated.pid
+            rm -f ${2}/conf/.yes-update.txt
           fi
         fi
       elif [ -e "${Plr}/modules/o_contrib" ]; then
@@ -148,6 +149,7 @@ update_solr() {
             touch ${2}/conf/.just-updated.pid
           else
             rm -f ${2}/conf/.just-updated.pid
+            rm -f ${2}/conf/.yes-update.txt
           fi
         fi
       fi
@@ -163,6 +165,7 @@ update_solr() {
           touch ${2}/conf/.just-updated.pid
         else
           rm -f ${2}/conf/.just-updated.pid
+          rm -f ${2}/conf/.yes-update.txt
         fi
       fi
     elif [ "${1}" = "search_api_solr" ] \
@@ -182,6 +185,7 @@ update_solr() {
           touch ${2}/conf/.just-updated.pid
         else
           rm -f ${2}/conf/.just-updated.pid
+          rm -f ${2}/conf/.yes-update.txt
         fi
       fi
     elif [ "${1}" = "search_api_solr" ] \
@@ -199,6 +203,7 @@ update_solr() {
           touch ${2}/conf/.just-updated.pid
         else
           rm -f ${2}/conf/.just-updated.pid
+          rm -f ${2}/conf/.yes-update.txt
         fi
       fi
     fi
