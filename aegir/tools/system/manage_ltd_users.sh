@@ -336,7 +336,7 @@ enable_chattr() {
         touch /var/run/manage_rvm_users.pid
         su -s /bin/bash - ${UQ} -c "\curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import -"
         su -s /bin/bash - ${UQ} -c "\curl -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import -"
-        su -s /bin/bash - ${UQ} -c "\curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable"
+        su -s /bin/bash   ${UQ} -c "\curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable"
         su -s /bin/bash - ${UQ} -c "rvm get stable --auto-dotfiles"
         su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
         wait
