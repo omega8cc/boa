@@ -427,29 +427,9 @@ if_install_rvm() {
           rm -rf /usr/local/rvm
           touch ${pthLog}/ruby-root-clean-reload.log
         fi
-        _KEYS_SIG="409B6B1796C275462A1703113804BB82D39DC0E3"
-        _KEYS_SERVER_TEST=FALSE
-        until [[ "${_KEYS_SERVER_TEST}" =~ "Michal Papis" ]]; do
-          echo "Retrieving ${_KEYS_SIG} key.."
-          ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
-          ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
-          _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
-          sleep 2
-        done
-        _KEYS_SIG="7D2BAF1CF37B13E2069D6956105BD0E739499BDB"
-        _KEYS_SERVER_TEST=FALSE
-        until [[ "${_KEYS_SERVER_TEST}" =~ "Piotr Kuczynski" ]]; do
-          echo "Retrieving ${_KEYS_SIG} key.."
-          ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
-          ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
-          _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
-          sleep 2
-        done
-        _KEYS_SIG=""
-        _KEYS_SERVER_TEST=FALSE
-        curl -sSL https://rvm.io/mpapis.asc | ${_GPG} --import - &> /dev/null
-        curl -sSL https://rvm.io/pkuczynski.asc | ${_GPG} --import - &> /dev/null
-        curl -sSL https://get.rvm.io | bash -s stable &> /dev/null
+        \curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import - &> /dev/null
+        \curl -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import - &> /dev/null
+        \curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable &> /dev/null
         echo rvm_autoupdate_flag=0 > ~/.rvmrc
         wait
         echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc
