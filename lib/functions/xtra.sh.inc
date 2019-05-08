@@ -456,24 +456,49 @@ if_install_rvm() {
             || [ "${_RUBY_RELOAD}" = "YES" ]; then
             rm -f /etc/apt/sources.list.d/openssl.list
             mrun "apt-get update -qq" &> /dev/null
-            mrun "apt-get remove rubygems \
-                                 ruby1.9.1-dev \
-                                 libruby1.9.1 \
-                                 ruby1.9.1 \
-                                 -y -qq" &> /dev/null
-            mrun "${rvmPth} install ${_RUBY_VRN}" &> /dev/null
-            mrun "${rvmPth} use ${_RUBY_VRN} --default" &> /dev/null
-            mrun "${rvmPth} get stable" 2> /dev/null
-            mrun "${rvmPth} @global do gem update -q" 2> /dev/null
-            \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
-            mrun "${_INSTALL} nodejs" 2> /dev/null
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              mrun "apt-get remove rubygems \
+                                   ruby1.9.1-dev \
+                                   libruby1.9.1 \
+                                   ruby1.9.1 \
+                                   -y"
+              mrun "${rvmPth} install ${_RUBY_VRN}"
+              mrun "${rvmPth} use ${_RUBY_VRN} --default"
+              mrun "${rvmPth} get stable"
+              mrun "${rvmPth} @global do gem update -q"
+              \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+              mrun "${_INSTALL} nodejs"
+            else
+              mrun "apt-get remove rubygems \
+                                   ruby1.9.1-dev \
+                                   libruby1.9.1 \
+                                   ruby1.9.1 \
+                                   -y -qq" &> /dev/null
+              mrun "${rvmPth} install ${_RUBY_VRN}" &> /dev/null
+              mrun "${rvmPth} use ${_RUBY_VRN} --default" &> /dev/null
+              mrun "${rvmPth} get stable" 2> /dev/null
+              mrun "${rvmPth} @global do gem update -q" 2> /dev/null
+              \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
+              mrun "${_INSTALL} nodejs" 2> /dev/null
+            fi
           else
-            mrun "${rvmPth} install ${_RUBY_VRN}" &> /dev/null
-            mrun "${rvmPth} use ${_RUBY_VRN} --default" &> /dev/null
-            mrun "${rvmPth} get stable" 2> /dev/null
-            mrun "${rvmPth} @global do gem update -q" 2> /dev/null
-            \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
-            mrun "${_INSTALL} nodejs" 2> /dev/null
+            rm -f /etc/apt/sources.list.d/openssl.list
+            mrun "apt-get update -qq" &> /dev/null
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              mrun "${rvmPth} install ${_RUBY_VRN}"
+              mrun "${rvmPth} use ${_RUBY_VRN} --default"
+              mrun "${rvmPth} get stable"
+              mrun "${rvmPth} @global do gem update -q"
+              \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+              mrun "${_INSTALL} nodejs"
+            else
+              mrun "${rvmPth} install ${_RUBY_VRN}" &> /dev/null
+              mrun "${rvmPth} use ${_RUBY_VRN} --default" &> /dev/null
+              mrun "${rvmPth} get stable" 2> /dev/null
+              mrun "${rvmPth} @global do gem update -q" 2> /dev/null
+              \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
+              mrun "${_INSTALL} nodejs" 2> /dev/null
+            fi
           fi
           _RBY_FILE="/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/ruby"
           _RBY_PATH=${_RBY_FILE//\//\\\/}
