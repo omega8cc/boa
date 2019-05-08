@@ -427,9 +427,15 @@ if_install_rvm() {
           rm -rf /usr/local/rvm
           touch ${pthLog}/ruby-root-clean-reload.log
         fi
-        \curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import - &> /dev/null
-        \curl -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import - &> /dev/null
-        \curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable &> /dev/null
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          \curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import -
+          \curl -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import -
+          \curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable
+        else
+          \curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import - &> /dev/null
+          \curl -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import - &> /dev/null
+          \curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable &> /dev/null
+        fi
         echo rvm_autoupdate_flag=0 > ~/.rvmrc
         wait
         echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc
