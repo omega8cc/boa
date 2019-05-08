@@ -1929,34 +1929,57 @@ check_apt_updates() {
 # Install wkhtmltopdf and wkhtmltoimage.
 install_wkhtmltopdf_wkhtmltoimage() {
   ###--------------------###
-  if [ ! -e "${pthLog}/wkhtmltox-${_WKHTMLTOX_VRN}-fix.log" ] \
-    || [ ! -x "/usr/bin/wkhtmltopdf" ] \
-    || [ ! -x "/usr/bin/wkhtmltoimage" ] \
-    || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-    _X86_64_TEST=$(uname -m 2>&1)
-    if [ "${_X86_64_TEST}" = "x86_64" ]; then
-      SYSTEMARCH="x86_64"
-      msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
+  _THIS_RV=$(lsb_release -sc 2>&1)
+  _X86_64_TEST=$(uname -m 2>&1)
+  _WOX_IS=OLD
+  _WOX_ITD=$(wkhtmltopdf --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f2 \
+    | awk '{ print $1}')
+  if [[ "${_WOX_ITD}" =~ "0.12.5" ]]; then
+    _WOX_IS=NEW
+  fi
+  if [ "${_THIS_RV}" = "stretch" ] \
+    || [ "${_THIS_RV}" = "jessie" ] \
+    || [ "${_THIS_RV}" = "trusty" ]; then
+    if[ "${_WOX_IS}" = "OLD" ] \
+      || [ ! -x "/usr/local/bin/wkhtmltopdf" ] \
+      || [ ! -x "/usr/local/bin/wkhtmltoimage" ] \
+      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      if [ "${_X86_64_TEST}" = "x86_64" ]; then
+        SYSTEMARCH="x86_64"
+        msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
+        cd /var/opt
+        rm -rf wkhtmltox*
+        get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb.gz" &> /dev/null
+        mrun "${_INSTALL} xfonts-75dpi xfonts-base" 2> /dev/null
+        mrun "dpkg -i wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb" 2> /dev/null
+        mrun "apt-get install -f" 2> /dev/null
+      else
+        SYSTEMARCH="x86"
+        msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
+        cd /var/opt
+        rm -rf wkhtmltox*
+        get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_i386.deb.gz" &> /dev/null
+        mrun "${_INSTALL} xfonts-75dpi xfonts-base" 2> /dev/null
+        mrun "dpkg -i wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_i386.deb" 2> /dev/null
+        mrun "apt-get install -f" 2> /dev/null
+      fi
+      if [ -x "/usr/local/bin/wkhtmltopdf" ]; then
+        if [ ! -e "/usr/bin/wkhtmltopdf-0.12.4" ]; then
+          mv -f /usr/bin/wkhtmltopdf /usr/bin/wkhtmltopdf-0.12.4 &> /dev/null
+        fi
+        ln -sf /usr/local/bin/wkhtmltopdf /usr/bin/wkhtmltopdf
+      fi
+      if [ -x "/usr/local/bin/wkhtmltoimage" ]; then
+        if [ ! -e "/usr/bin/wkhtmltoimage-0.12.4" ]; then
+          mv -f /usr/bin/wkhtmltoimage /usr/bin/wkhtmltoimage-0.12.4 &> /dev/null
+        fi
+        ln -sf /usr/local/bin/wkhtmltoimage /usr/bin/wkhtmltoimage
+      fi
+      touch ${pthLog}/wkhtmltox-${_WKHTMLTOX_VRN}-fix.log
       cd /var/opt
-      rm -rf wkhtmltox*
-      get_dev_arch "wkhtmltox-${_WKHTMLTOX_VRN}_linux-generic-amd64.tar.xz" &> /dev/null
-      cd wkhtmltox/bin/
-    else
-      SYSTEMARCH="x86"
-      msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
-      cd /var/opt
-      rm -rf wkhtmltox*
-      get_dev_arch "wkhtmltox-${_WKHTMLTOX_VRN}_linux-generic-i386.tar.xz" &> /dev/null
-      cd wkhtmltox/bin/
     fi
-    cp -af wkhtmltopdf /usr/bin/wkhtmltopdf
-    cp -af wkhtmltoimage /usr/bin/wkhtmltoimage
-    chown root:root /usr/bin/wkhtmltopdf
-    chown root:root /usr/bin/wkhtmltoimage
-    chmod 755 /usr/bin/wkhtmltopdf
-    chmod 755 /usr/bin/wkhtmltoimage
-    touch ${pthLog}/wkhtmltox-${_WKHTMLTOX_VRN}-fix.log
-    cd /var/opt
   fi
 }
 
