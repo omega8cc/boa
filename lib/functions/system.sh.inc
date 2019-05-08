@@ -1942,7 +1942,7 @@ install_wkhtmltopdf_wkhtmltoimage() {
   if [ "${_THIS_RV}" = "stretch" ] \
     || [ "${_THIS_RV}" = "jessie" ] \
     || [ "${_THIS_RV}" = "trusty" ]; then
-    if[ "${_WOX_IS}" = "OLD" ] \
+    if [ "${_WOX_IS}" = "OLD" ] \
       || [ ! -x "/usr/local/bin/wkhtmltopdf" ] \
       || [ ! -x "/usr/local/bin/wkhtmltoimage" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
