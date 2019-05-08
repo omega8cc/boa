@@ -761,7 +761,7 @@ install_db_server() {
         rm -f /etc/csf/csf.error
         csf -x &> /dev/null
       fi
-      msg "INFO: Running ${_DB_SERVER} upgrade and then PHP forced rebuild..."
+      msg "INFO: Running ${_DB_SERVER} upgrade..."
       if [ ! -e "/root/.proxy.cnf" ]; then
         mrun "sleep 120"
         mrun "service nginx stop" &> /dev/null
@@ -809,7 +809,6 @@ install_db_server() {
       install_with_aptitude_sql
       sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf
       wait
-      _PHP_FORCE_REINSTALL=YES
       _CUSTOM_CONFIG_SQL=NO
       mrun "sleep 8"
       msg "INFO: Running ${_DB_SERVER} system tables upgrade, please wait..."
