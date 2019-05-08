@@ -468,10 +468,10 @@ if_install_rvm() {
                                    libruby1.9.1 \
                                    ruby1.9.1 \
                                    -y"
-              mrun "${rvmPth} install ${_RUBY_VRN}"
-              mrun "${rvmPth} use ${_RUBY_VRN} --default"
-              mrun "${rvmPth} get stable"
-              mrun "${rvmPth} @global do gem update -q"
+              ${rvmPth} install ${_RUBY_VRN}
+              ${rvmPth} use ${_RUBY_VRN} --default
+              ${rvmPth} get stable
+              ${rvmPth} @global do gem update -q
               \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
               mrun "${_INSTALL} nodejs"
             else
@@ -480,10 +480,10 @@ if_install_rvm() {
                                    libruby1.9.1 \
                                    ruby1.9.1 \
                                    -y -qq" &> /dev/null
-              mrun "${rvmPth} install ${_RUBY_VRN}" &> /dev/null
-              mrun "${rvmPth} use ${_RUBY_VRN} --default" &> /dev/null
-              mrun "${rvmPth} get stable" 2> /dev/null
-              mrun "${rvmPth} @global do gem update -q" 2> /dev/null
+              ${rvmPth} install ${_RUBY_VRN} &> /dev/null
+              ${rvmPth} use ${_RUBY_VRN} --default &> /dev/null
+              ${rvmPth} get stable 2> /dev/null
+              ${rvmPth} @global do gem update -q 2> /dev/null
               \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
               mrun "${_INSTALL} nodejs" 2> /dev/null
             fi
@@ -491,17 +491,17 @@ if_install_rvm() {
             rm -f /etc/apt/sources.list.d/openssl.list
             mrun "apt-get update -qq" &> /dev/null
             if [ "${_DEBUG_MODE}" = "YES" ]; then
-              mrun "${rvmPth} install ${_RUBY_VRN}"
-              mrun "${rvmPth} use ${_RUBY_VRN} --default"
-              mrun "${rvmPth} get stable"
-              mrun "${rvmPth} @global do gem update -q"
+              ${rvmPth} install ${_RUBY_VRN}
+              ${rvmPth} use ${_RUBY_VRN} --default
+              ${rvmPth} get stable
+              ${rvmPth} @global do gem update -q
               \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
               mrun "${_INSTALL} nodejs"
             else
-              mrun "${rvmPth} install ${_RUBY_VRN}" &> /dev/null
-              mrun "${rvmPth} use ${_RUBY_VRN} --default" &> /dev/null
-              mrun "${rvmPth} get stable" 2> /dev/null
-              mrun "${rvmPth} @global do gem update -q" 2> /dev/null
+              ${rvmPth} install ${_RUBY_VRN} &> /dev/null
+              ${rvmPth} use ${_RUBY_VRN} --default &> /dev/null
+              ${rvmPth} get stable 2> /dev/null
+              ${rvmPth} @global do gem update -q 2> /dev/null
               \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
               mrun "${_INSTALL} nodejs" 2> /dev/null
             fi
@@ -544,7 +544,9 @@ if_install_rvm() {
           fi
           PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin;export PATH
           touch ${pthLog}/compass-${_X_VERSION}-ruby-${_RUBY_VRN}-nodejs.log
-          msg "INFO: Ruby with RVM ${_L_ST} completed"
+          if [ -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
+            msg "INFO: Ruby with RVM ${_L_ST} completed"
+          fi
         fi
       else
         msg "INFO: Ruby with RVM ${_L_ST} skipped"
