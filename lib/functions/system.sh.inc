@@ -3188,7 +3188,7 @@ if_jessie_to_stretch() {
         cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
       fi
     fi
-    rm -f ${pthLog}/ruby-root-clean-reload.log
+    rm -f ${pthLog}/ruby-sys-clean-reload.log
     mv -f /var/xdrago /var/xdrago_wait &> /dev/null
     msg "WARN: Too late! Jessie to Stretch upgrade in progress..."
     msg "HINT: Run tail -f ${_LOG}"

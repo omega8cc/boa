@@ -417,15 +417,15 @@ if_install_rvm() {
     else
       _L_ST="install"
     fi
-    if [ ! -e "${pthLog}/compass-${_X_VERSION}-ruby-${_RUBY_VRN}-nodejs.log" ]; then
+    if [ ! -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
       echo " "
       if prompt_yes_no "Do you want to ${_L_ST} Ruby with RVM?" ; then
         true
         msg "INFO: Running Ruby with RVM ${_L_ST}..."
-        if [ ! -e "${pthLog}/ruby-root-clean-reload.log" ]; then
+        if [ ! -e "${pthLog}/ruby-sys-clean-reload.log" ]; then
           _RUBY_RELOAD=YES
           rm -rf /usr/local/rvm
-          touch ${pthLog}/ruby-root-clean-reload.log
+          touch ${pthLog}/ruby-sys-clean-reload.log
         fi
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           \curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import -
@@ -505,6 +505,9 @@ if_install_rvm() {
               \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
               mrun "${_INSTALL} nodejs" 2> /dev/null
             fi
+          fi
+          if [ ! -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
+            msg "WARN: Ruby ${_RUBY_VRN} install failed!"
           fi
           _RBY_FILE="/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/ruby"
           _RBY_PATH=${_RBY_FILE//\//\\\/}
