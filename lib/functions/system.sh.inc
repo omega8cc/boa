@@ -1946,27 +1946,26 @@ install_wkhtmltopdf_wkhtmltoimage() {
       if [ "${_X86_64_TEST}" = "x86_64" ]; then
         SYSTEMARCH="x86_64"
         msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
+        mrun "${_INSTALL} xfonts-75dpi xfonts-base"
         cd /var/opt
         rm -rf wkhtmltox*
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb.gz"
-          mrun "${_INSTALL} xfonts-75dpi xfonts-base"
-          mrun "dpkg -i wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb"
+          dpkg -i /var/opt/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb
           mrun "apt-get install -f"
         else
           get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb.gz" &> /dev/null
-          mrun "${_INSTALL} xfonts-75dpi xfonts-base" 2> /dev/null
-          mrun "dpkg -i wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb" 2> /dev/null
+          dpkg -i /var/opt/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb 2> /dev/null
           mrun "apt-get install -f" 2> /dev/null
         fi
       else
         SYSTEMARCH="x86"
         msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
+        mrun "${_INSTALL} xfonts-75dpi xfonts-base" 2> /dev/null
         cd /var/opt
         rm -rf wkhtmltox*
         get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_i386.deb.gz" &> /dev/null
-        mrun "${_INSTALL} xfonts-75dpi xfonts-base" 2> /dev/null
-        mrun "dpkg -i wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_i386.deb" 2> /dev/null
+        dpkg -i /var/opt/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_i386.deb 2> /dev/null
         mrun "apt-get install -f" 2> /dev/null
       fi
       if [ -x "/usr/local/bin/wkhtmltopdf" ]; then
