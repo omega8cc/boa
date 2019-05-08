@@ -122,7 +122,7 @@ fix_php_ini_newrelic_all() {
     _PHP_V="73 72 71 70 56"
     if [ "${_DB_SERIES}" = "10.3" ] \
       || [ "${_DB_SERIES}" = "10.2" ]; then
-      _PHP_V="70 56"
+      _PHP_V="56 70 71 72 73"
     fi
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
@@ -158,7 +158,7 @@ fix_php_ini_opcache_all() {
   _PHP_V="73 72 71 70 56"
   if [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ]; then
-    _PHP_V="70 56"
+    _PHP_V="56 70 71 72 73"
   fi
   for e in ${_PHP_V}; do
     case "${e}" in
@@ -305,7 +305,7 @@ update_php_conf() {
   _PHP_V="73 72 71 70 56"
   if [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ]; then
-    _PHP_V="70 56"
+    _PHP_V="56 70 71 72 73"
   fi
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
@@ -391,7 +391,7 @@ tune_web_server_config() {
   _PHP_V="73 72 71 70 56"
   if [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ]; then
-    _PHP_V="70 56"
+    _PHP_V="56 70 71 72 73"
   fi
   for e in ${_PHP_V}; do
     sed -i "s/process.max =.*/process.max = ${_PROCESS_MAX_FPM}/g" \
@@ -549,7 +549,7 @@ install_php_extensions() {
       _PHP_V="73 72 71 70 56"
       if [ "${_DB_SERIES}" = "10.3" ] \
         || [ "${_DB_SERIES}" = "10.2" ]; then
-        _PHP_V="70 56"
+        _PHP_V="56 70 71 72 73"
       fi
       for e in ${_PHP_V}; do
         if [ "$1" = "${e}" ]; then
@@ -777,7 +777,7 @@ update_php_extensions() {
       _PHP_V="73 72 71 70 56"
       if [ "${_DB_SERIES}" = "10.3" ] \
         || [ "${_DB_SERIES}" = "10.2" ]; then
-        _PHP_V="70 56"
+        _PHP_V="56 70 71 72 73"
       fi
       for e in ${_PHP_V}; do
         if [ "$1" = "${e}" ]; then
@@ -966,7 +966,7 @@ install_php_multi() {
   elif [ "$1" = "70" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --enable-gd-native-ttf --with-mcrypt"
   elif [ "$1" = "56" ]; then
-    _PHP_EXTRA="${_PHP_EXTRA} --enable-gd-native-ttf --with-mcrypt --with-mysql=/usr"
+    _PHP_EXTRA="${_PHP_EXTRA} --enable-gd-native-ttf --with-mcrypt"
     if [ "${_OSV}" = "stretch" ]; then
       patchFile="PHP-5.6.31-OpenSSL-1.1.0-compatibility-20170801.patch"
       patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
@@ -996,9 +996,9 @@ install_php_multi() {
                 --with-jpeg-dir=/usr \
                 --with-kerberos \
                 --with-mysql-sock=/var/run/mysqld/mysqld.sock \
-                --with-mysqli=/usr/bin/mysql_config \
+                --with-mysqli=mysqlnd \
                 --with-openssl \
-                --with-pdo-mysql=/usr \
+                --with-pdo-mysql=mysqlnd \
                 --with-pear \
                 --with-png-dir=/usr \
                 --with-xmlrpc \
@@ -1036,9 +1036,9 @@ install_php_multi() {
                 --with-jpeg-dir=/usr \
                 --with-kerberos \
                 --with-mysql-sock=/var/run/mysqld/mysqld.sock \
-                --with-mysqli=/usr/bin/mysql_config \
+                --with-mysqli=mysqlnd \
                 --with-openssl \
-                --with-pdo-mysql=/usr \
+                --with-pdo-mysql=mysqlnd \
                 --with-pear \
                 --with-png-dir=/usr \
                 --with-xmlrpc \
