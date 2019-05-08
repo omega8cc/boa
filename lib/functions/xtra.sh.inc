@@ -419,7 +419,7 @@ if_install_rvm() {
     fi
     if [ ! -e "${pthLog}/compass-${_X_VERSION}-ruby-${_RUBY_VRN}-nodejs.log" ]; then
       echo " "
-      if prompt_yes_no "Do you want to ${_L_ST} Ruby with RVM for root?" ; then
+      if prompt_yes_no "Do you want to ${_L_ST} Ruby with RVM?" ; then
         true
         msg "INFO: Running Ruby with RVM ${_L_ST}..."
         if [ ! -e "${pthLog}/ruby-root-clean-reload.log" ]; then
@@ -427,12 +427,13 @@ if_install_rvm() {
           rm -rf /usr/local/rvm
           touch ${pthLog}/ruby-root-clean-reload.log
         fi
-        \curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import -
-        \curl -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import -
-        \curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable
+        \curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import - &> /dev/null
+        \curl -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import - &> /dev/null
+        \curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable &> /dev/null
         echo rvm_autoupdate_flag=0 > ~/.rvmrc
         wait
         echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc
+        mrun "sleep 15"
         if [ -e "/etc/profile.d/rvm.sh" ]; then
           source /etc/profile.d/rvm.sh
         fi
@@ -446,6 +447,7 @@ if_install_rvm() {
           msg "WARN: RVM ${_L_ST} failed, so we can't install Ruby!"
         fi
         if [ -x "${rvmPth}" ]; then
+          usermod -aG rvm root &> /dev/null
           if [ ! -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
             _RUBY_UPGRADE=YES
           fi
@@ -463,12 +465,14 @@ if_install_rvm() {
             mrun "${rvmPth} use ${_RUBY_VRN} --default" &> /dev/null
             mrun "${rvmPth} get stable" 2> /dev/null
             mrun "${rvmPth} @global do gem update -q" 2> /dev/null
-            \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+            \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
             mrun "${_INSTALL} nodejs" 2> /dev/null
           else
+            mrun "${rvmPth} install ${_RUBY_VRN}" &> /dev/null
+            mrun "${rvmPth} use ${_RUBY_VRN} --default" &> /dev/null
             mrun "${rvmPth} get stable" 2> /dev/null
             mrun "${rvmPth} @global do gem update -q" 2> /dev/null
-            \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+            \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
             mrun "${_INSTALL} nodejs" 2> /dev/null
           fi
           _RBY_FILE="/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/ruby"
@@ -479,7 +483,7 @@ if_install_rvm() {
           _VAR_IF_PRESENT=$(grep "scout" ${_GEM_CRON} 2>&1)
           if [[ "${_VAR_IF_PRESENT}" =~ "scout" ]]; then
             if [ ! -e "$_GEM_FILE" ] && [ ! -z "${_SCOUT_KEY}" ]; then
-              mrun "rvm @global do gem install --conservative scout" 2> /dev/null
+              mrun "${rvmPth} @global do gem install --conservative scout" 2> /dev/null
               adduser --system --group --home /var/scout scout &> /dev/null
               usermod -aG users scout &> /dev/null
               sed -i "s/\* \* \* \* \* scout .*/* * * * * scout $_GEM_PATH ${_SCOUT_KEY}/g" ${_GEM_CRON} &> /dev/null
@@ -490,7 +494,7 @@ if_install_rvm() {
             fi
           else
             if [ ! -z "${_SCOUT_KEY}" ]; then
-              mrun "rvm @global do gem install --conservative scout" 2> /dev/null
+              mrun "${rvmPth} @global do gem install --conservative scout" 2> /dev/null
               adduser --system --group --home /var/scout scout &> /dev/null
               usermod -aG users scout &> /dev/null
               echo -e "* * * * * scout $_GEM_FILE ${_SCOUT_KEY}" \

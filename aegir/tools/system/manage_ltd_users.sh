@@ -156,11 +156,33 @@ add_ltd_group_if_not_exists() {
   fi
 }
 #
+# Add to rvm group if needed.
+if_add_to_rvm_group() {
+  isTest="$1"
+  isTest=${isTest//[^a-z0-9]/}
+  if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
+    _ID_SHELLS=$(id -nG ${isTest} 2>&1)
+    if [[ ! "${_ID_SHELLS}" =~ "rvm" ]]; then
+      isRvm=$(which rvm 2>&1)
+      if [ -x "${isRvm}" ]; then
+        rvmPth="${isRvm}"
+      elif [ -x "/usr/local/rvm/bin/rvm" ]; then
+        rvmPth="/usr/local/rvm/bin/rvm"
+      fi
+      if [ -x "${rvmPth}" ]; then
+        usermod -aG rvm ${isTest}
+      fi
+    fi
+    _ID_SHELLS=""
+  fi
+}
+#
 # Enable chattr.
 enable_chattr() {
   isTest="$1"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
+    if_add_to_rvm_group ${isTest}
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
     _U_II="${_U_HD}/php.ini"
@@ -702,6 +724,15 @@ ok_create_user() {
       passwd -w 7 -x 90 ${usrLtd}
       usermod -aG lshellg ${usrLtd}
       usermod -aG ltd-shell ${usrLtd}
+      isRvm=$(which rvm 2>&1)
+      if [ -x "${isRvm}" ]; then
+        rvmPth="${isRvm}"
+      elif [ -x "/usr/local/rvm/bin/rvm" ]; then
+        rvmPth="/usr/local/rvm/bin/rvm"
+      fi
+      if [ -x "${rvmPth}" ]; then
+        usermod -aG rvm ${usrLtd}
+      fi
     fi
     if [ ! -e "/home/${_ADMIN}/users/${usrLtd}" ] \
       && [ ! -z "${_ESC_LUPASS}" ]; then

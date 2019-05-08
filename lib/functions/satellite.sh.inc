@@ -2801,6 +2801,24 @@ satellite_if_add_ftps_lshell_access() {
   fi
 }
 
+satellite_if_add_to_rvm_group() {
+  ###---### Add to rvm group if needed.
+  #
+  _ID_SHELLS=$(id -nG ${_USERFTP} 2>&1)
+  if [[ ! "${_ID_SHELLS}" =~ "rvm" ]]; then
+    isRvm=$(which rvm 2>&1)
+    if [ -x "${isRvm}" ]; then
+      rvmPth="${isRvm}"
+    elif [ -x "/usr/local/rvm/bin/rvm" ]; then
+      rvmPth="/usr/local/rvm/bin/rvm"
+    fi
+    if [ -x "${rvmPth}" ]; then
+      usermod -aG rvm ${_USERFTP}
+    fi
+  fi
+  _ID_SHELLS=""
+}
+
 satellite_if_add_update_user_symlinks() {
   ###---### Add symlink to the sites backups.
   #
