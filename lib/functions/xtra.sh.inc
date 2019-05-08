@@ -415,7 +415,7 @@ if_install_rvm() {
     if [ "${_STATUS}" = "INIT" ]; then
       _L_ST="install"
     else
-      _L_ST="upgrade"
+      _L_ST="install"
     fi
     if [ ! -e "${pthLog}/compass-${_X_VERSION}-ruby-${_RUBY_VRN}-nodejs.log" ]; then
       echo " "
@@ -427,78 +427,89 @@ if_install_rvm() {
           rm -rf /usr/local/rvm
           touch ${pthLog}/ruby-root-clean-reload.log
         fi
-        \curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import - &> /dev/null
-        \curl -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import - &> /dev/null
-        \curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable &> /dev/null
+        \curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import -
+        \curl -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import -
+        \curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable
         echo rvm_autoupdate_flag=0 > ~/.rvmrc
         wait
         echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc
         if [ -e "/etc/profile.d/rvm.sh" ]; then
           source /etc/profile.d/rvm.sh
         fi
-        if [ ! -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
-          _RUBY_UPGRADE=YES
-        fi
-        if [ "${_STATUS}" = "INIT" ] \
-          || [ "${_RUBY_UPGRADE}" = "YES" ] \
-          || [ "${_RUBY_RELOAD}" = "YES" ]; then
-          rm -f /etc/apt/sources.list.d/openssl.list
-          mrun "apt-get update -qq" &> /dev/null
-          mrun "apt-get remove rubygems \
-                               ruby1.9.1-dev \
-                               libruby1.9.1 \
-                               ruby1.9.1 \
-                               -y -qq" &> /dev/null
-          mrun "rvm install ${_RUBY_VRN}" &> /dev/null
-          mrun "rvm use ${_RUBY_VRN} --default" &> /dev/null
-          mrun "rvm get stable" 2> /dev/null
-          mrun "rvm @global do gem update -q" 2> /dev/null
-          curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
-          mrun "${_INSTALL} nodejs" 2> /dev/null
+        isRvm=$(which rvm 2>&1)
+        if [ -x "${isRvm}" ]; then
+          rvmPth="${isRvm}"
+        elif [ -x "/usr/local/rvm/bin/rvm" ]; then
+          rvmPth="/usr/local/rvm/bin/rvm"
         else
-          mrun "rvm get stable" 2> /dev/null
-          mrun "rvm @global do gem update -q" 2> /dev/null
-          curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
-          mrun "${_INSTALL} nodejs" 2> /dev/null
+          rvmPth=""
+          msg "WARN: RVM ${_L_ST} failed, so we can't install Ruby!"
         fi
-        _RBY_FILE="/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/ruby"
-        _RBY_PATH=${_RBY_FILE//\//\\\/}
-        _GEM_FILE="/usr/local/rvm/gems/ruby-${_RUBY_VRN}@global/bin/scout"
-        _GEM_PATH=${_GEM_FILE//\//\\\/}
-        _GEM_CRON="/etc/crontab"
-        _VAR_IF_PRESENT=$(grep "scout" ${_GEM_CRON} 2>&1)
-        if [[ "${_VAR_IF_PRESENT}" =~ "scout" ]]; then
-          if [ ! -e "$_GEM_FILE" ] && [ ! -z "${_SCOUT_KEY}" ]; then
-            mrun "rvm @global do gem install --conservative scout" 2> /dev/null
-            adduser --system --group --home /var/scout scout &> /dev/null
-            usermod -aG users scout &> /dev/null
-            sed -i "s/\* \* \* \* \* scout .*/* * * * * scout $_GEM_PATH ${_SCOUT_KEY}/g" ${_GEM_CRON} &> /dev/null
+        if [ -x "${rvmPth}" ]; then
+          if [ ! -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
+            _RUBY_UPGRADE=YES
           fi
-          _VAR_IF_PRESENT=$(grep "scout ALL=NOPASSWD" /etc/sudoers 2>&1)
-          if [[ ! "${_VAR_IF_PRESENT}" =~ "scout ALL=NOPASSWD" ]]; then
-            echo "scout ALL=NOPASSWD: /usr/bin/mysql" >> /etc/sudoers
+          if [ "${_STATUS}" = "INIT" ] \
+            || [ "${_RUBY_UPGRADE}" = "YES" ] \
+            || [ "${_RUBY_RELOAD}" = "YES" ]; then
+            rm -f /etc/apt/sources.list.d/openssl.list
+            mrun "apt-get update -qq" &> /dev/null
+            mrun "apt-get remove rubygems \
+                                 ruby1.9.1-dev \
+                                 libruby1.9.1 \
+                                 ruby1.9.1 \
+                                 -y -qq" &> /dev/null
+            mrun "${rvmPth} install ${_RUBY_VRN}" &> /dev/null
+            mrun "${rvmPth} use ${_RUBY_VRN} --default" &> /dev/null
+            mrun "${rvmPth} get stable" 2> /dev/null
+            mrun "${rvmPth} @global do gem update -q" 2> /dev/null
+            \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+            mrun "${_INSTALL} nodejs" 2> /dev/null
+          else
+            mrun "${rvmPth} get stable" 2> /dev/null
+            mrun "${rvmPth} @global do gem update -q" 2> /dev/null
+            \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+            mrun "${_INSTALL} nodejs" 2> /dev/null
           fi
-        else
-          if [ ! -z "${_SCOUT_KEY}" ]; then
-            mrun "rvm @global do gem install --conservative scout" 2> /dev/null
-            adduser --system --group --home /var/scout scout &> /dev/null
-            usermod -aG users scout &> /dev/null
-            echo -e "* * * * * scout $_GEM_FILE ${_SCOUT_KEY}" \
-              | fmt -su -w 2500 | tee -a ${_GEM_CRON} >/dev/null 2>&1
+          _RBY_FILE="/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/ruby"
+          _RBY_PATH=${_RBY_FILE//\//\\\/}
+          _GEM_FILE="/usr/local/rvm/gems/ruby-${_RUBY_VRN}@global/bin/scout"
+          _GEM_PATH=${_GEM_FILE//\//\\\/}
+          _GEM_CRON="/etc/crontab"
+          _VAR_IF_PRESENT=$(grep "scout" ${_GEM_CRON} 2>&1)
+          if [[ "${_VAR_IF_PRESENT}" =~ "scout" ]]; then
+            if [ ! -e "$_GEM_FILE" ] && [ ! -z "${_SCOUT_KEY}" ]; then
+              mrun "rvm @global do gem install --conservative scout" 2> /dev/null
+              adduser --system --group --home /var/scout scout &> /dev/null
+              usermod -aG users scout &> /dev/null
+              sed -i "s/\* \* \* \* \* scout .*/* * * * * scout $_GEM_PATH ${_SCOUT_KEY}/g" ${_GEM_CRON} &> /dev/null
+            fi
             _VAR_IF_PRESENT=$(grep "scout ALL=NOPASSWD" /etc/sudoers 2>&1)
             if [[ ! "${_VAR_IF_PRESENT}" =~ "scout ALL=NOPASSWD" ]]; then
               echo "scout ALL=NOPASSWD: /usr/bin/mysql" >> /etc/sudoers
             fi
+          else
+            if [ ! -z "${_SCOUT_KEY}" ]; then
+              mrun "rvm @global do gem install --conservative scout" 2> /dev/null
+              adduser --system --group --home /var/scout scout &> /dev/null
+              usermod -aG users scout &> /dev/null
+              echo -e "* * * * * scout $_GEM_FILE ${_SCOUT_KEY}" \
+                | fmt -su -w 2500 | tee -a ${_GEM_CRON} >/dev/null 2>&1
+              _VAR_IF_PRESENT=$(grep "scout ALL=NOPASSWD" /etc/sudoers 2>&1)
+              if [[ ! "${_VAR_IF_PRESENT}" =~ "scout ALL=NOPASSWD" ]]; then
+                echo "scout ALL=NOPASSWD: /usr/bin/mysql" >> /etc/sudoers
+              fi
+            fi
           fi
+          if [ -e "$_GEM_FILE" ]; then
+            sed -i "s/^#\!\/.*/#\!$_RBY_PATH/g" $_GEM_FILE &> /dev/null
+          fi
+          PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin;export PATH
+          touch ${pthLog}/compass-${_X_VERSION}-ruby-${_RUBY_VRN}-nodejs.log
+          msg "INFO: Ruby with RVM ${_L_ST} completed"
         fi
-        if [ -e "$_GEM_FILE" ]; then
-          sed -i "s/^#\!\/.*/#\!$_RBY_PATH/g" $_GEM_FILE &> /dev/null
-        fi
-        PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin;export PATH
-        touch ${pthLog}/compass-${_X_VERSION}-ruby-${_RUBY_VRN}-nodejs.log
-        msg "INFO: Ruby with RVM ${_L_ST} for root completed"
       else
-        msg "INFO: Ruby with RVM ${_L_ST} for root skipped"
+        msg "INFO: Ruby with RVM ${_L_ST} skipped"
       fi
     fi
   fi
