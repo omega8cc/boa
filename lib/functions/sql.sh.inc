@@ -146,7 +146,9 @@ tune_sql_memory_limits() {
   wait
   if [ ! -e "${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}" ]; then
     mkdir -p ${vBs}/dragon/t/
-    cp -af /etc/mysql/my.cnf ${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}
+    if [ -e "/etc/mysql/my.cnf" ]; then
+      cp -af /etc/mysql/my.cnf ${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}
+    fi
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
     _DO_NOTHING=YES
@@ -248,7 +250,9 @@ tune_sql_memory_limits() {
       if [ "${_INNODB_BPI}" -lt "1" ] || [ -z "${_INNODB_BPI}" ]; then
         _INNODB_BPI="1"
       fi
-      sed -i "s/innodb_file_per_table   = 1/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
+      if [ -e "/etc/mysql/my.cnf" ]; then
+        sed -i "s/innodb_file_per_table   = 1/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
+      fi
       wait
       if [ "${_USE_INNODB_MEM}" -lt "256" ] \
         || [ -z "${_USE_INNODB_MEM}" ]; then
@@ -275,7 +279,9 @@ tune_sql_memory_limits() {
         _INNODB_LOG_FILE_SIZE=64
       fi
       _USE_INNODB_MEM="${_USE_INNODB_MEM}M"
-      sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf
+      if [ -e "/etc/mysql/my.cnf" ]; then
+        sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf
+      fi
       wait
     else
       _USE_INNODB_MEM="${_USE_SQL}M"
@@ -300,7 +306,9 @@ tune_sql_memory_limits() {
         _INNODB_LOG_FILE_SIZE=64
       fi
       msg "ALRT! _USE_INNODB_MEM is ${_USE_INNODB_MEM} because _REC_INNODB_MEM was empty!"
-      sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf
+      if [ -e "/etc/mysql/my.cnf" ]; then
+        sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf
+      fi
       wait
     fi
   else
@@ -331,7 +339,9 @@ tune_sql_memory_limits() {
       || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
       _INNODB_LOG_FILE_SIZE=64
     fi
-    sed -i "s/= 181/= ${_USE_SQL}/g"  /etc/mysql/my.cnf
+    if [ -e "/etc/mysql/my.cnf" ]; then
+      sed -i "s/= 181/= ${_USE_SQL}/g"  /etc/mysql/my.cnf
+    fi
     wait
   fi
 }
@@ -800,14 +810,18 @@ install_db_server() {
       if [ "${_DB_SERVER}" = "MariaDB" ]; then
         cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
       fi
-      sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
-      wait
-      sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
-      wait
+      if [ -e "/etc/mysql/my.cnf" ]; then
+        sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
+        wait
+        sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
+        wait
+      fi
       rm -f /var/lib/mysql/debian-*.flag &> /dev/null
       rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
       install_with_aptitude_sql
-      sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf
+      if [ -e "/etc/mysql/my.cnf" ]; then
+        sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf
+      fi
       wait
       _CUSTOM_CONFIG_SQL=NO
       mrun "sleep 8"
