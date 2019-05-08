@@ -1920,9 +1920,6 @@ check_apt_updates() {
       *)  ;;
     esac
   done
-  if [ "${_UP_SQL}" = "YES" ]; then
-    _UP_PHP=YES
-  fi
 }
 
 #
