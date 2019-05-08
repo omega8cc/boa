@@ -180,7 +180,7 @@ _PHP_CLI_VERSION=7.2
 ### list once it is already installed, will
 ### NOT uninstall anything.
 ###
-_XTRAS_LIST="ADM CSF FTP"
+_XTRAS_LIST="ADM CSF FTP CSS"
 
 
 ###----------------------------------------###

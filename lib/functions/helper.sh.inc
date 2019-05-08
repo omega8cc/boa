@@ -308,7 +308,7 @@ mode_detection() {
       _LOCAL_NETWORK_HN="aegir.local"
     elif [ "${_EASY_SETUP}" = "PUBLIC" ]; then
       msg "INFO: Public Setup Mode Active"
-      _XTRAS_LIST="ADM CSF FTP"
+      _XTRAS_LIST="ADM CSF FTP CSS"
       _AUTOPILOT=YES
       _DEBUG_MODE=NO
       _DB_SERVER=MariaDB
