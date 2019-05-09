@@ -484,7 +484,7 @@ if_install_rvm() {
               ${rvmPth} use ${_RUBY_VRN} --default &> /dev/null
               ${rvmPth} get stable 2> /dev/null
               ${rvmPth} @global do gem update -q 2> /dev/null
-              \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
+              curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
               mrun "${_INSTALL} nodejs" 2> /dev/null
             fi
           else
@@ -495,14 +495,14 @@ if_install_rvm() {
               ${rvmPth} use ${_RUBY_VRN} --default
               ${rvmPth} get stable
               ${rvmPth} @global do gem update -q
-              \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+              curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
               mrun "${_INSTALL} nodejs"
             else
               ${rvmPth} install ${_RUBY_VRN} &> /dev/null
               ${rvmPth} use ${_RUBY_VRN} --default &> /dev/null
               ${rvmPth} get stable 2> /dev/null
               ${rvmPth} @global do gem update -q 2> /dev/null
-              \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
+              curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
               mrun "${_INSTALL} nodejs" 2> /dev/null
             fi
           fi
