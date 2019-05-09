@@ -439,7 +439,7 @@ if_install_rvm() {
         echo rvm_autoupdate_flag=0 > ~/.rvmrc
         wait
         echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc
-        mrun "sleep 15"
+        mrun "sleep 5"
         if [ -e "/etc/profile.d/rvm.sh" ]; then
           source /etc/profile.d/rvm.sh
         fi
@@ -482,10 +482,10 @@ if_install_rvm() {
                                    -y -qq" &> /dev/null
               ${rvmPth} install ${_RUBY_VRN} &> /dev/null
               ${rvmPth} use ${_RUBY_VRN} --default &> /dev/null
-              ${rvmPth} get stable 2> /dev/null
-              ${rvmPth} @global do gem update -q 2> /dev/null
+              ${rvmPth} get stable &> /dev/null
+              ${rvmPth} @global do gem update -q &> /dev/null
               curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
-              mrun "${_INSTALL} nodejs" 2> /dev/null
+              mrun "${_INSTALL} nodejs" &> /dev/null
             fi
           else
             rm -f /etc/apt/sources.list.d/openssl.list
@@ -500,10 +500,10 @@ if_install_rvm() {
             else
               ${rvmPth} install ${_RUBY_VRN} &> /dev/null
               ${rvmPth} use ${_RUBY_VRN} --default &> /dev/null
-              ${rvmPth} get stable 2> /dev/null
-              ${rvmPth} @global do gem update -q 2> /dev/null
+              ${rvmPth} get stable &> /dev/null
+              ${rvmPth} @global do gem update -q &> /dev/null
               curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
-              mrun "${_INSTALL} nodejs" 2> /dev/null
+              mrun "${_INSTALL} nodejs" &> /dev/null
             fi
           fi
           if [ ! -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
