@@ -2804,6 +2804,7 @@ satellite_if_add_ftps_lshell_access() {
 satellite_if_add_to_rvm_group() {
   ###---### Add to rvm group if needed.
   #
+  _USERFTP="${_USER}.ftp"
   _ID_SHELLS=$(id -nG ${_USERFTP} 2>&1)
   if [[ ! "${_ID_SHELLS}" =~ "rvm" ]]; then
     isRvm=$(which rvm 2>&1)
