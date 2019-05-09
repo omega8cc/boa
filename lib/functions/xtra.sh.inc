@@ -479,8 +479,8 @@ if_install_rvm() {
                 -y"
               su -s /bin/bash - root -c "${rvmPth} install ${_RUBY_VRN}"
               su -s /bin/bash - root -c "${rvmPth} use ${_RUBY_VRN} --default"
-              ${rvmPth} get stable
-              ${rvmPth} @global do gem update -q
+              su -s /bin/bash - root -c "${rvmPth} get stable"
+              su -s /bin/bash - root -c "${rvmPth} @global do gem update -q"
               curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
               mrun "${_INSTALL} nodejs"
             else
@@ -497,8 +497,8 @@ if_install_rvm() {
                 -y -qq" &> /dev/null
               su -s /bin/bash - root -c "${rvmPth} install ${_RUBY_VRN}" &> /dev/null
               su -s /bin/bash - root -c "${rvmPth} use ${_RUBY_VRN} --default" &> /dev/null
-              ${rvmPth} get stable &> /dev/null
-              ${rvmPth} @global do gem update -q &> /dev/null
+              su -s /bin/bash - root -c "${rvmPth} get stable" &> /dev/null
+              su -s /bin/bash - root -c "${rvmPth} @global do gem update -q" &> /dev/null
               curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
               mrun "${_INSTALL} nodejs" &> /dev/null
             fi
@@ -508,15 +508,15 @@ if_install_rvm() {
             if [ "${_DEBUG_MODE}" = "YES" ]; then
               su -s /bin/bash - root -c "${rvmPth} install ${_RUBY_VRN}"
               su -s /bin/bash - root -c "${rvmPth} use ${_RUBY_VRN} --default"
-              ${rvmPth} get stable
-              ${rvmPth} @global do gem update -q
+              su -s /bin/bash - root -c "${rvmPth} get stable"
+              su -s /bin/bash - root -c "${rvmPth} @global do gem update -q"
               curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
               mrun "${_INSTALL} nodejs"
             else
               su -s /bin/bash - root -c "${rvmPth} install ${_RUBY_VRN}" &> /dev/null
               su -s /bin/bash - root -c "${rvmPth} use ${_RUBY_VRN} --default" &> /dev/null
-              ${rvmPth} get stable &> /dev/null
-              ${rvmPth} @global do gem update -q &> /dev/null
+              su -s /bin/bash - root -c "${rvmPth} get stable" &> /dev/null
+              su -s /bin/bash - root -c "${rvmPth} @global do gem update -q" &> /dev/null
               curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
               mrun "${_INSTALL} nodejs" &> /dev/null
             fi
