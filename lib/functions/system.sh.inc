@@ -3849,7 +3849,6 @@ sys_packages_install() {
               libhtml-template-perl \
               libjpeg-dev \
               libjpeg62 \
-              libmagickwand-dev \
               libnet-daemon-perl \
               libpam-umask \
               libpq5 \
