@@ -1946,18 +1946,19 @@ install_wkhtmltopdf_wkhtmltoimage() {
       if [ "${_X86_64_TEST}" = "x86_64" ]; then
         SYSTEMARCH="x86_64"
         msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
-        mrun "${_INSTALL} xfonts-75dpi xfonts-base"
         cd /var/opt
         rm -rf wkhtmltox*
         mkdir -p /var/opt/wkhtmltox
         if [ "${_DEBUG_MODE}" = "YES" ]; then
+          mrun "${_INSTALL} xfonts-75dpi xfonts-base"
           get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb.gz"
-          dpkg -i /var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb
-          mrun "apt-get install -f"
+          dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb"
+          apt-get install -f
         else
+          mrun "${_INSTALL} xfonts-75dpi xfonts-base" 2> /dev/null
           get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb.gz" &> /dev/null
-          dpkg -i /var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb 2> /dev/null
-          mrun "apt-get install -f" 2> /dev/null
+          dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb" &> /dev/null
+          apt-get install -f 2> /dev/null
         fi
       else
         SYSTEMARCH="x86"
@@ -1967,8 +1968,8 @@ install_wkhtmltopdf_wkhtmltoimage() {
         rm -rf wkhtmltox*
         mkdir -p /var/opt/wkhtmltox
         get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_i386.deb.gz" &> /dev/null
-        dpkg -i /var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_i386.deb 2> /dev/null
-        mrun "apt-get install -f" 2> /dev/null
+        dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_i386.deb" 2> /dev/null
+        apt-get install -f 2> /dev/null
       fi
       if [ -x "/usr/local/bin/wkhtmltopdf" ]; then
         if [ ! -e "/usr/bin/wkhtmltopdf-0.12.4" ]; then
@@ -1982,7 +1983,11 @@ install_wkhtmltopdf_wkhtmltoimage() {
         fi
         ln -sf /usr/local/bin/wkhtmltoimage /usr/bin/wkhtmltoimage
       fi
-      touch ${pthLog}/wkhtmltox-${_WKHTMLTOX_VRN}-fix.log
+      if [ -x "/usr/local/bin/wkhtmltoimage" ] \
+        && [ -x "/usr/local/bin/wkhtmltopdf" ]; then
+        touch ${pthLog}/wkhtmltox-${_WKHTMLTOX_VRN}-fix.log
+        msg "INFO: Both wkhtmltopdf and wkhtmltoimage installation complete"
+      fi
       cd /var/opt
     fi
   fi
