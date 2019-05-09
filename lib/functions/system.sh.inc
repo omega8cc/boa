@@ -3562,21 +3562,21 @@ sys_packages_update() {
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
     mrun "${_RMAPP} php5 \
-                    php5-cgi \
-				    php5-curl \
-				    php5-fpm \
-				    php5-gd \
-				    php5-geoip \
-				    php5-gmp \
-				    php5-imagick \
-				    php5-imap \
-				    php5-ldap \
-				    php5-mcrypt \
-				    php5-memcache \
-				    php5-mysql \
-				    php5-sqlite \
-				    php5-xmlrpc \
-				    php5-xsl" &> /dev/null
+      php5-cgi \
+      php5-curl \
+      php5-fpm \
+      php5-gd \
+      php5-geoip \
+      php5-gmp \
+      php5-imagick \
+      php5-imap \
+      php5-ldap \
+      php5-mcrypt \
+      php5-memcache \
+      php5-mysql \
+      php5-sqlite \
+      php5-xmlrpc \
+      php5-xsl" &> /dev/null
     mrun "${_RMAPP} phpunit php-pear php-benchmark" &> /dev/null
     mrun "${_RMAPP} php5-cli php5-common" &> /dev/null
     mrun "${_RMAPP} php5-apc" &> /dev/null
@@ -4534,9 +4534,9 @@ check_fix_newrelic() {
       service newrelic-sysmond stop &> /dev/null
       update-rc.d -f newrelic-sysmond remove &> /dev/null
       st_runner "${_RMAPP} newrelic-php5 \
-                 newrelic-php5-common \
-                 newrelic-daemon \
-                 newrelic-sysmond" &> /dev/null
+        newrelic-php5-common \
+        newrelic-daemon \
+        newrelic-sysmond" &> /dev/null
       mv -f /etc/newrelic \
         ${vBs}/nr/etc-newrelic-pre-${_X_VERSION}-${_NOW} &> /dev/null
       rm -f /etc/init.d/newrelic-sysmond

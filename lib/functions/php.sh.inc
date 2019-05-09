@@ -1148,9 +1148,9 @@ update_newrelic() {
       cat 548C16BF.gpg | ${_GPG} --import &> /dev/null
       rm -f 548C16BF.gpg*
       st_runner "${_RMAPP} newrelic-php5 \
-                 newrelic-php5-common \
-                 newrelic-daemon \
-                 newrelic-sysmond" &> /dev/null
+        newrelic-php5-common \
+        newrelic-daemon \
+        newrelic-sysmond" &> /dev/null
       mkdir -p ${vBs}/nr
       mv -f /etc/newrelic \
         ${vBs}/nr/etc-newrelic-pre-${_X_VERSION}-${_NOW} &> /dev/null
