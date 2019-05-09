@@ -357,9 +357,13 @@ install_db_sql() {
       | awk '{ print $1}' \
       | sed "s/[\,']//g" 2>&1)
   fi
-  _PHP_MYSQLND_TEST=$(/usr/bin/php -i | grep "with-mysqli=mysqlnd" 2>&1)
-  if [ -z "${_PHP_MYSQLND_TEST}" ]; then
-    _SQL_MAJOR_UP_ALLOW=NO
+  if [ -e "/usr/bin/php" ]; then
+    _PHP_MYSQLND_TEST=$(/usr/bin/php -i | grep "with-mysqli=mysqlnd" 2>&1)
+    if [ -z "${_PHP_MYSQLND_TEST}" ]; then
+      _SQL_MAJOR_UP_ALLOW=NO
+    else
+      _SQL_MAJOR_UP_ALLOW=YES
+    fi
   else
     _SQL_MAJOR_UP_ALLOW=YES
   fi
