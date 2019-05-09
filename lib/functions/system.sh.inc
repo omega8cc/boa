@@ -1838,7 +1838,7 @@ run_aptitude_full_upgrade() {
   _THIS_DB_SERVER_TEST=$(mysql -V 2>&1)
   if [[ "${_THIS_DB_SERVER_TEST}" =~ "MariaDB" ]] \
     && [ ! -e "${pthLog}/fixed-mytop-mariadb.log" ]; then
-    st_runner "aptitude remove mytop -y" &> /dev/null
+    st_runner "${_RMAPP} mytop" &> /dev/null
     st_runner "apt-get purge mytop -y -qq" &> /dev/null
     rm -f /usr/bin/mytop
     if [ -e "${pthLog}" ]; then
@@ -3561,28 +3561,28 @@ sys_packages_update() {
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
-    mrun "aptitude remove php5 \
-                      php5-cgi \
-                      php5-curl \
-                      php5-fpm \
-                      php5-gd \
-                      php5-geoip \
-                      php5-gmp \
-                      php5-imagick \
-                      php5-imap \
-                      php5-ldap \
-                      php5-mcrypt \
-                      php5-memcache \
-                      php5-mysql \
-                      php5-sqlite \
-                      php5-xmlrpc \
-                      php5-xsl -y" &> /dev/null
-    mrun "aptitude remove phpunit php-pear php-benchmark -y" &> /dev/null
-    mrun "aptitude remove php5-cli php5-common -y" &> /dev/null
-    mrun "aptitude remove php5-apc -y" &> /dev/null
-    mrun "aptitude remove php-apc -y" &> /dev/null
-    mrun "aptitude remove apache2.2-common -y" &> /dev/null
-    mrun "aptitude remove apache2.2-bin -y" &> /dev/null
+    mrun "${_RMAPP} php5 \
+                    php5-cgi \
+				    php5-curl \
+				    php5-fpm \
+				    php5-gd \
+				    php5-geoip \
+				    php5-gmp \
+				    php5-imagick \
+				    php5-imap \
+				    php5-ldap \
+				    php5-mcrypt \
+				    php5-memcache \
+				    php5-mysql \
+				    php5-sqlite \
+				    php5-xmlrpc \
+				    php5-xsl" &> /dev/null
+    mrun "${_RMAPP} phpunit php-pear php-benchmark" &> /dev/null
+    mrun "${_RMAPP} php5-cli php5-common" &> /dev/null
+    mrun "${_RMAPP} php5-apc" &> /dev/null
+    mrun "${_RMAPP} php-apc" &> /dev/null
+    mrun "${_RMAPP} apache2.2-common" &> /dev/null
+    mrun "${_RMAPP} apache2.2-bin" &> /dev/null
     mrun "aptitude install lsof -y --allow-untrusted" &> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
       rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
@@ -3926,10 +3926,10 @@ sys_packages_install() {
 
 fix_postfix() {
   if [ "${_STATUS}" = "INIT" ]; then
-    st_runner "aptitude remove exim4 exim4-base exim4-config sendmail \
-      sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
+    st_runner "${_RMAPP} exim4 exim4-base exim4-config sendmail \
+               sendmail-base sendmail-cf sendmail-bin" &> /dev/null
     st_runner "apt-get purge exim4 exim4-base exim4-config sendmail \
-      sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
+               sendmail-base sendmail-cf sendmail-bin" &> /dev/null
     rm -f /etc/aliases
     rm -rf /etc/mail
     killall -9 sendmail &> /dev/null
@@ -4533,10 +4533,10 @@ check_fix_newrelic() {
       update-rc.d -f newrelic-daemon remove &> /dev/null
       service newrelic-sysmond stop &> /dev/null
       update-rc.d -f newrelic-sysmond remove &> /dev/null
-      st_runner "aptitude remove newrelic-php5 \
-        newrelic-php5-common \
-        newrelic-daemon \
-        newrelic-sysmond -y" &> /dev/null
+      st_runner "${_RMAPP} newrelic-php5 \
+                 newrelic-php5-common \
+                 newrelic-daemon \
+                 newrelic-sysmond" &> /dev/null
       mv -f /etc/newrelic \
         ${vBs}/nr/etc-newrelic-pre-${_X_VERSION}-${_NOW} &> /dev/null
       rm -f /etc/init.d/newrelic-sysmond

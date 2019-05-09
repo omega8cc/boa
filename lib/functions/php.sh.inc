@@ -1147,10 +1147,10 @@ update_newrelic() {
       done
       cat 548C16BF.gpg | ${_GPG} --import &> /dev/null
       rm -f 548C16BF.gpg*
-      st_runner "aptitude remove newrelic-php5 \
-                                 newrelic-php5-common \
-                                 newrelic-daemon \
-                                 newrelic-sysmond -y" &> /dev/null
+      st_runner "${_RMAPP} newrelic-php5 \
+                 newrelic-php5-common \
+                 newrelic-daemon \
+                 newrelic-sysmond" &> /dev/null
       mkdir -p ${vBs}/nr
       mv -f /etc/newrelic \
         ${vBs}/nr/etc-newrelic-pre-${_X_VERSION}-${_NOW} &> /dev/null
@@ -1863,7 +1863,7 @@ install_update_php() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Checking if PHP upgrade is available"
     fi
-    st_runner "aptitude remove php5-sasl php5-suhosin -y" &> /dev/null
+    st_runner "${_RMAPP} php5-sasl php5-suhosin" &> /dev/null
     st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
   fi
   if [ "${_OSV}" = "stretch" ] \

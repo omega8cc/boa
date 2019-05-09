@@ -476,7 +476,7 @@ install_db_sql() {
   #     st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
   #   fi
   # fi
-  st_runner "aptitude remove mytop -y" &> /dev/null
+  st_runner "${_RMAPP} mytop" &> /dev/null
   st_runner "apt-get purge mytop -y" &> /dev/null
   rm -f /usr/bin/mytop
   st_runner "apt-get update -qq" &> /dev/null
@@ -491,19 +491,19 @@ install_db_sql() {
   elif [ "${_DB_SERIES}" = "10.3" ]; then
     if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-      st_runner "aptitude remove mariadb-server-5.5 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-client-5.5 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-server-10.1 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-client-10.1 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-server-10.2 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-client-10.2 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-server -y" &> /dev/null
-      st_runner "aptitude remove mariadb-common -y" &> /dev/null
-      st_runner "aptitude remove libmysqlclient18.1 -y" &> /dev/null
-      st_runner "aptitude remove libmariadbclient-dev -y" &> /dev/null
-      st_runner "aptitude remove libmariadb-dev -y" &> /dev/null
-      st_runner "aptitude remove libmariadbd-dev -y" &> /dev/null
-      st_runner "aptitude remove libmysqlclient18 -y" &> /dev/null
+      st_runner "${_RMAPP} mariadb-server-5.5" &> /dev/null
+      st_runner "${_RMAPP} mariadb-client-5.5" &> /dev/null
+      st_runner "${_RMAPP} mariadb-server-10.1" &> /dev/null
+      st_runner "${_RMAPP} mariadb-client-10.1" &> /dev/null
+      st_runner "${_RMAPP} mariadb-server-10.2" &> /dev/null
+      st_runner "${_RMAPP} mariadb-client-10.2" &> /dev/null
+      st_runner "${_RMAPP} mariadb-server" &> /dev/null
+      st_runner "${_RMAPP} mariadb-common" &> /dev/null
+      st_runner "${_RMAPP} libmysqlclient18.1" &> /dev/null
+      st_runner "${_RMAPP} libmariadbclient-dev" &> /dev/null
+      st_runner "${_RMAPP} libmariadb-dev" &> /dev/null
+      st_runner "${_RMAPP} libmariadbd-dev" &> /dev/null
+      st_runner "${_RMAPP} libmysqlclient18" &> /dev/null
       st_runner "apt-get purge mysql-common -y" &> /dev/null
       st_runner "apt-get purge libmysqlclient18.1 -y" &> /dev/null
       st_runner "apt-get purge libmariadbclient-dev -y" &> /dev/null
@@ -515,19 +515,19 @@ install_db_sql() {
   elif [ "${_DB_SERIES}" = "10.2" ]; then
     if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-      st_runner "aptitude remove mariadb-server-5.5 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-client-5.5 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-server-10.1 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-client-10.1 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-server-10.3 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-client-10.3 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-server -y" &> /dev/null
-      st_runner "aptitude remove mariadb-common -y" &> /dev/null
-      st_runner "aptitude remove libmysqlclient18.1 -y" &> /dev/null
-      st_runner "aptitude remove libmariadbclient-dev -y" &> /dev/null
-      st_runner "aptitude remove libmariadb-dev -y" &> /dev/null
-      st_runner "aptitude remove libmariadbd-dev -y" &> /dev/null
-      st_runner "aptitude remove libmysqlclient18 -y" &> /dev/null
+      st_runner "${_RMAPP} mariadb-server-5.5" &> /dev/null
+      st_runner "${_RMAPP} mariadb-client-5.5" &> /dev/null
+      st_runner "${_RMAPP} mariadb-server-10.1" &> /dev/null
+      st_runner "${_RMAPP} mariadb-client-10.1" &> /dev/null
+      st_runner "${_RMAPP} mariadb-server-10.3" &> /dev/null
+      st_runner "${_RMAPP} mariadb-client-10.3" &> /dev/null
+      st_runner "${_RMAPP} mariadb-server" &> /dev/null
+      st_runner "${_RMAPP} mariadb-common" &> /dev/null
+      st_runner "${_RMAPP} libmysqlclient18.1" &> /dev/null
+      st_runner "${_RMAPP} libmariadbclient-dev" &> /dev/null
+      st_runner "${_RMAPP} libmariadb-dev" &> /dev/null
+      st_runner "${_RMAPP} libmariadbd-dev" &> /dev/null
+      st_runner "${_RMAPP} libmysqlclient18" &> /dev/null
       st_runner "apt-get purge mysql-common -y" &> /dev/null
       st_runner "apt-get purge libmysqlclient18.1 -y" &> /dev/null
       st_runner "apt-get purge libmariadbclient-dev -y" &> /dev/null
@@ -539,19 +539,19 @@ install_db_sql() {
   elif [ "${_DB_SERIES}" = "10.1" ]; then
     if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-      st_runner "aptitude remove mariadb-server-5.5 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-client-5.5 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-server-10.2 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-client-10.2 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-server-10.3 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-client-10.3 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-server -y" &> /dev/null
-      st_runner "aptitude remove mariadb-common -y" &> /dev/null
-      st_runner "aptitude remove libmysqlclient18.1 -y" &> /dev/null
-      st_runner "aptitude remove libmariadbclient-dev -y" &> /dev/null
-      st_runner "aptitude remove libmariadb-dev -y" &> /dev/null
-      st_runner "aptitude remove libmariadbd-dev -y" &> /dev/null
-      st_runner "aptitude remove libmysqlclient18 -y" &> /dev/null
+      st_runner "${_RMAPP} mariadb-server-5.5" &> /dev/null
+      st_runner "${_RMAPP} mariadb-client-5.5" &> /dev/null
+      st_runner "${_RMAPP} mariadb-server-10.2" &> /dev/null
+      st_runner "${_RMAPP} mariadb-client-10.2" &> /dev/null
+      st_runner "${_RMAPP} mariadb-server-10.3" &> /dev/null
+      st_runner "${_RMAPP} mariadb-client-10.3" &> /dev/null
+      st_runner "${_RMAPP} mariadb-server" &> /dev/null
+      st_runner "${_RMAPP} mariadb-common" &> /dev/null
+      st_runner "${_RMAPP} libmysqlclient18.1" &> /dev/null
+      st_runner "${_RMAPP} libmariadbclient-dev" &> /dev/null
+      st_runner "${_RMAPP} libmariadb-dev" &> /dev/null
+      st_runner "${_RMAPP} libmariadbd-dev" &> /dev/null
+      st_runner "${_RMAPP} libmysqlclient18" &> /dev/null
       st_runner "apt-get purge mysql-common -y" &> /dev/null
       st_runner "apt-get purge libmysqlclient18.1 -y" &> /dev/null
       st_runner "apt-get purge libmariadbclient-dev -y" &> /dev/null
@@ -563,21 +563,21 @@ install_db_sql() {
   elif [ "${_DB_SERIES}" = "5.7" ]; then
     if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-      st_runner "aptitude remove mariadb-server-5.5 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-client-5.5 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-server-10.1 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-client-10.1 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-server-10.2 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-client-10.2 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-server-10.3 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-client-10.3 -y" &> /dev/null
-      st_runner "aptitude remove mariadb-server -y" &> /dev/null
-      st_runner "aptitude remove mariadb-common -y" &> /dev/null
-      st_runner "aptitude remove libmysqlclient18.1 -y" &> /dev/null
-      st_runner "aptitude remove libmariadbclient-dev -y" &> /dev/null
-      st_runner "aptitude remove libmariadb-dev -y" &> /dev/null
-      st_runner "aptitude remove libmariadbd-dev -y" &> /dev/null
-      st_runner "aptitude remove libmysqlclient18 -y" &> /dev/null
+      st_runner "${_RMAPP} mariadb-server-5.5" &> /dev/null
+      st_runner "${_RMAPP} mariadb-client-5.5" &> /dev/null
+      st_runner "${_RMAPP} mariadb-server-10.1" &> /dev/null
+      st_runner "${_RMAPP} mariadb-client-10.1" &> /dev/null
+      st_runner "${_RMAPP} mariadb-server-10.2" &> /dev/null
+      st_runner "${_RMAPP} mariadb-client-10.2" &> /dev/null
+      st_runner "${_RMAPP} mariadb-server-10.3" &> /dev/null
+      st_runner "${_RMAPP} mariadb-client-10.3" &> /dev/null
+      st_runner "${_RMAPP} mariadb-server" &> /dev/null
+      st_runner "${_RMAPP} mariadb-common" &> /dev/null
+      st_runner "${_RMAPP} libmysqlclient18.1" &> /dev/null
+      st_runner "${_RMAPP} libmariadbclient-dev" &> /dev/null
+      st_runner "${_RMAPP} libmariadb-dev" &> /dev/null
+      st_runner "${_RMAPP} libmariadbd-dev" &> /dev/null
+      st_runner "${_RMAPP} libmysqlclient18" &> /dev/null
       st_runner "apt-get purge mysql-common -y" &> /dev/null
       st_runner "apt-get purge libmysqlclient18.1 -y" &> /dev/null
       st_runner "apt-get purge libmariadbclient-dev -y" &> /dev/null
@@ -587,7 +587,7 @@ install_db_sql() {
     fi
     SQLDEB="percona-server-server-${_DB_SERIES}"
   else
-    st_runner "aptitude remove mysql-common -y" &> /dev/null
+    st_runner "${_RMAPP} mysql-common" &> /dev/null
     st_runner "apt-get purge mysql-common -y" &> /dev/null
     SQLDEB="mariadb-server"
   fi
