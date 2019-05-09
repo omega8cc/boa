@@ -282,6 +282,7 @@ check_fix_java
 fix_postfix
 install_with_aptitude_deps
 fix_locales
+sys_packages_install
 install_with_aptitude_deps
 
 
@@ -330,6 +331,7 @@ install_db_server
 ### Install other services and apply fixes
 ###
 run_aptitude_full_upgrade
+sys_packages_install
 install_with_aptitude_deps
 if_install_bind
 check_install_latest_git
