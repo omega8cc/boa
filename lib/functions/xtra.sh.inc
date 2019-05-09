@@ -467,6 +467,12 @@ if_install_rvm() {
             mrun "apt-get update -qq" &> /dev/null
             if [ "${_DEBUG_MODE}" = "YES" ]; then
               mrun "apt-get remove rubygems \
+                                   ruby2.3.0-dev \
+                                   libruby2.3.0 \
+                                   ruby2.3.0 \
+                                   ruby2.1.0-dev \
+                                   libruby2.1.0 \
+                                   ruby2.1.0 \
                                    ruby1.9.1-dev \
                                    libruby1.9.1 \
                                    ruby1.9.1 \
@@ -479,6 +485,12 @@ if_install_rvm() {
               mrun "${_INSTALL} nodejs"
             else
               mrun "apt-get remove rubygems \
+                                   ruby2.3.0-dev \
+                                   libruby2.3.0 \
+                                   ruby2.3.0 \
+                                   ruby2.1.0-dev \
+                                   libruby2.1.0 \
+                                   ruby2.1.0 \
                                    ruby1.9.1-dev \
                                    libruby1.9.1 \
                                    ruby1.9.1 \
