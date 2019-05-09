@@ -471,6 +471,57 @@ install_db_sql() {
     || [ -e "/root/.dbhd.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ]; then
     SQLDEB="mariadb-galera-server"
+  elif [ "${_DB_SERIES}" = "10.3" ]; then
+    st_runner "aptitude remove mariadb-server-5.5 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-client-5.5 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-server-10.1 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-client-10.1 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-server-10.2 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-client-10.2 -y" &> /dev/null
+    st_runner "aptitude remove libmysqlclient18.1 -y" &> /dev/null
+    st_runner "aptitude remove libmariadbclient-dev -y" &> /dev/null
+    st_runner "aptitude remove libmariadb-dev -y" &> /dev/null
+    st_runner "aptitude remove libmariadbd-dev -y" &> /dev/null
+    st_runner "aptitude remove libmysqlclient18 -y" &> /dev/null
+    st_runner "apt-get purge libmysqlclient18.1 -y" &> /dev/null
+    st_runner "apt-get purge libmariadbclient-dev -y" &> /dev/null
+    st_runner "apt-get purge libmariadb-dev -y" &> /dev/null
+    st_runner "apt-get purge libmariadbd-dev -y" &> /dev/null
+    st_runner "apt-get purge libmysqlclient18 -y" &> /dev/null
+  elif [ "${_DB_SERIES}" = "10.2" ]; then
+    st_runner "aptitude remove mariadb-server-5.5 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-client-5.5 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-server-10.1 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-client-10.1 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-server-10.3 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-client-10.3 -y" &> /dev/null
+    st_runner "aptitude remove libmysqlclient18.1 -y" &> /dev/null
+    st_runner "aptitude remove libmariadbclient-dev -y" &> /dev/null
+    st_runner "aptitude remove libmariadb-dev -y" &> /dev/null
+    st_runner "aptitude remove libmariadbd-dev -y" &> /dev/null
+    st_runner "aptitude remove libmysqlclient18 -y" &> /dev/null
+    st_runner "apt-get purge libmysqlclient18.1 -y" &> /dev/null
+    st_runner "apt-get purge libmariadbclient-dev -y" &> /dev/null
+    st_runner "apt-get purge libmariadb-dev -y" &> /dev/null
+    st_runner "apt-get purge libmariadbd-dev -y" &> /dev/null
+    st_runner "apt-get purge libmysqlclient18 -y" &> /dev/null
+  elif [ "${_DB_SERIES}" = "10.1" ]; then
+    st_runner "aptitude remove mariadb-server-5.5 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-client-5.5 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-server-10.2 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-client-10.2 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-server-10.3 -y" &> /dev/null
+    st_runner "aptitude remove mariadb-client-10.3 -y" &> /dev/null
+    st_runner "aptitude remove libmysqlclient18.1 -y" &> /dev/null
+    st_runner "aptitude remove libmariadbclient-dev -y" &> /dev/null
+    st_runner "aptitude remove libmariadb-dev -y" &> /dev/null
+    st_runner "aptitude remove libmariadbd-dev -y" &> /dev/null
+    st_runner "aptitude remove libmysqlclient18 -y" &> /dev/null
+    st_runner "apt-get purge libmysqlclient18.1 -y" &> /dev/null
+    st_runner "apt-get purge libmariadbclient-dev -y" &> /dev/null
+    st_runner "apt-get purge libmariadb-dev -y" &> /dev/null
+    st_runner "apt-get purge libmariadbd-dev -y" &> /dev/null
+    st_runner "apt-get purge libmysqlclient18 -y" &> /dev/null
   elif [ "${_DB_SERIES}" = "5.7" ]; then
     st_runner "aptitude remove mariadb-server-5.5 -y" &> /dev/null
     st_runner "aptitude remove mariadb-client-5.5 -y" &> /dev/null
@@ -480,7 +531,8 @@ install_db_sql() {
     st_runner "aptitude remove mariadb-client-10.2 -y" &> /dev/null
     st_runner "aptitude remove mariadb-server-10.3 -y" &> /dev/null
     st_runner "aptitude remove mariadb-client-10.3 -y" &> /dev/null
-    st_runner "aptitude remove mariadb-server mariadb-common -y" &> /dev/null
+    st_runner "aptitude remove mariadb-server -y" &> /dev/null
+    st_runner "aptitude remove mariadb-common -y" &> /dev/null
     st_runner "aptitude remove libmysqlclient18.1 -y" &> /dev/null
     st_runner "aptitude remove libmariadbclient-dev -y" &> /dev/null
     st_runner "aptitude remove libmariadb-dev -y" &> /dev/null
@@ -495,31 +547,22 @@ install_db_sql() {
   else
     st_runner "aptitude remove mysql-common -y" &> /dev/null
     st_runner "apt-get purge mysql-common -y" &> /dev/null
-    SQLDEB="mariadb-server-${_DB_SERIES} \
-            mariadb-client-${_DB_SERIES} \
-            mariadb-server \
-            mariadb-common"
+    SQLDEB="mariadb-server"
   fi
   if [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ]; then
-    SQLADD="libmariadb-dev \
-            libmariadbd-dev \
-            libmysqlclient18 \
-            libdbd-mysql-perl \
+    SQLADD="libdbd-mysql-perl \
             percona-xtrabackup-24 \
             python-mysqldb \
             libdbi-perl"
   elif [ "${_DB_SERIES}" = "10.1" ] \
     || [ "${_DB_SERIES}" = "5.5" ]; then
-    SQLADD="libmariadbclient-dev \
-            libmysqlclient18.1 \
-            libdbd-mysql-perl \
+    SQLADD="libdbd-mysql-perl \
             percona-xtrabackup-24 \
             python-mysqldb \
             libdbi-perl"
   elif [ "${_DB_SERIES}" = "5.7" ]; then
-    SQLADD="default-libmysqlclient-dev \
-            percona-xtrabackup-24 \
+    SQLADD="percona-xtrabackup-24 \
             python-mysqldb \
             libdbi-perl"
   fi
