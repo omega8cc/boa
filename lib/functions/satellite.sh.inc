@@ -2813,7 +2813,7 @@ satellite_if_add_to_rvm_group() {
       rvmPth="/usr/local/rvm/bin/rvm"
     fi
     if [ -x "${rvmPth}" ]; then
-      usermod -aG rvm ${_USERFTP}
+      usermod -aG rvm ${_USERFTP} &> /dev/null
     fi
   fi
   _ID_SHELLS=""
