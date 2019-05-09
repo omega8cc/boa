@@ -390,6 +390,12 @@ mode_detection() {
       -o Dpkg::Options::=--force-confdef \
       -o Dpkg::Options::=--force-confold install"
   fi
+
+  _RMAPP="/usr/bin/aptitude -f -y -q \
+    --allow-untrusted \
+    -o Dpkg::Options::=--force-confdef \
+    -o Dpkg::Options::=--force-confold remove"
+
   _SRCDIR="/opt/tmp/files"
   rm -rf /var/opt/*
   mkdir -p ${_SRCDIR}
