@@ -457,6 +457,9 @@ if_install_rvm() {
           if [ ! -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
             _RUBY_UPGRADE=YES
           fi
+          if [ -e "/etc/profile.d/rvm.sh" ]; then
+            source /etc/profile.d/rvm.sh
+          fi
           if [ "${_STATUS}" = "INIT" ] \
             || [ "${_RUBY_UPGRADE}" = "YES" ] \
             || [ "${_RUBY_RELOAD}" = "YES" ]; then
