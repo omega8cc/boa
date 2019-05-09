@@ -472,7 +472,7 @@ if_install_rvm() {
               ${rvmPth} use ${_RUBY_VRN} --default
               ${rvmPth} get stable
               ${rvmPth} @global do gem update -q
-              \curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+              curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
               mrun "${_INSTALL} nodejs"
             else
               mrun "apt-get remove rubygems \
@@ -551,6 +551,19 @@ if_install_rvm() {
       else
         msg "INFO: Ruby with RVM ${_L_ST} skipped"
       fi
+      _ID_SHELLS=$(id -nG root 2>&1)
+      if [[ ! "${_ID_SHELLS}" =~ "rvm" ]]; then
+        isRvm=$(which rvm 2>&1)
+        if [ -x "${isRvm}" ]; then
+          rvmPth="${isRvm}"
+        elif [ -x "/usr/local/rvm/bin/rvm" ]; then
+          rvmPth="/usr/local/rvm/bin/rvm"
+        fi
+        if [ -x "${rvmPth}" ]; then
+          usermod -aG rvm root &> /dev/null
+        fi
+      fi
+      _ID_SHELLS=""
     fi
   fi
   if [ -e "/var/scout" ]; then
