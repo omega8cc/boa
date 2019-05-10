@@ -1923,15 +1923,20 @@ check_apt_updates() {
 }
 
 #
-# Install libmagickwand-dev.
-install_libmagickwand() {
+# Install PHP deps.
+install_php_deps() {
   ###--------------------###
+  st_runner "${_INSTALL} libgd2-dev" 2> /dev/null
+  st_runner "${_INSTALL} libgd3" 2> /dev/null
+  st_runner "${_INSTALL} libkrb5-dev" 2> /dev/null
+  st_runner "${_INSTALL} libldap-dev" 2> /dev/null
   st_runner "${_INSTALL} libmagickwand-dev" 2> /dev/null
+  st_runner "${_INSTALL} libxpm-dev" 2> /dev/null
 }
 
 #
 # Install wkhtmltopdf and wkhtmltoimage.
-install_wkhtmltopdf_wkhtmltoimage() {
+install_wkhtmltox() {
   ###--------------------###
   _THIS_RV=$(lsb_release -sc 2>&1)
   _X86_64_TEST=$(uname -m 2>&1)
@@ -1964,7 +1969,7 @@ install_wkhtmltopdf_wkhtmltoimage() {
         else
           mrun "${_INSTALL} xfonts-75dpi xfonts-base" &> /dev/null
           get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb.gz" &> /dev/null
-          dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb" 2> /dev/null
+          dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb" &> /dev/null
           apt-get install -f -y 2> /dev/null
         fi
       else
@@ -1975,7 +1980,7 @@ install_wkhtmltopdf_wkhtmltoimage() {
         rm -rf wkhtmltox*
         mkdir -p /var/opt/wkhtmltox
         get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_i386.deb.gz" &> /dev/null
-        dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_i386.deb" 2> /dev/null
+        dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_i386.deb" &> /dev/null
         apt-get install -f -y 2> /dev/null
       fi
       if [ -x "/usr/local/bin/wkhtmltopdf" ]; then

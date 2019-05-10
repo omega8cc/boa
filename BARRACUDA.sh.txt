@@ -331,7 +331,7 @@ install_db_server
 ###
 run_aptitude_full_upgrade
 install_with_aptitude_deps
-install_libmagickwand
+install_php_deps
 if_install_bind
 check_install_latest_git
 install_upgrade_nginx
@@ -339,7 +339,7 @@ kill_nash
 fix_sftp_ftps_modern
 disable_old_purge_cruft_machine
 enable_weekly_usage_monitor
-install_wkhtmltopdf_wkhtmltoimage
+install_wkhtmltox
 fix_libs_php
 fix_libssl
 check_smtp
