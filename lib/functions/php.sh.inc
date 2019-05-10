@@ -593,7 +593,7 @@ install_php_extensions() {
   ###--------------------###
   msg "INFO: Installing Imagick for PHP ${_T_PHP_VRN}..."
   if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
-    mrun "apt-get install libmagickwand-dev ${forCer}" 2> /dev/null
+    mrun "${_INSTALL} libmagickwand-dev" 2> /dev/null
     touch ${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
   fi
   cd /var/opt
@@ -827,7 +827,7 @@ update_php_extensions() {
   if [ ! -e "${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
     msg "INFO: Installing Imagick upgrade for PHP ${_T_PHP_VRN}..."
     if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
-      mrun "apt-get install libmagickwand-dev ${forCer}" 2> /dev/null
+      mrun "${_INSTALL} libmagickwand-dev" 2> /dev/null
       touch ${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
     fi
     cd /var/opt

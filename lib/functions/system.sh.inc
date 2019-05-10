@@ -1923,6 +1923,13 @@ check_apt_updates() {
 }
 
 #
+# Install libmagickwand-dev.
+install_libmagickwand() {
+  ###--------------------###
+  st_runner "${_INSTALL} libmagickwand-dev" 2> /dev/null
+}
+
+#
 # Install wkhtmltopdf and wkhtmltoimage.
 install_wkhtmltopdf_wkhtmltoimage() {
   ###--------------------###
@@ -1953,12 +1960,12 @@ install_wkhtmltopdf_wkhtmltoimage() {
           mrun "${_INSTALL} xfonts-75dpi xfonts-base"
           get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb.gz"
           dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb"
-          apt-get install -f
+          apt-get install -f -y
         else
           mrun "${_INSTALL} xfonts-75dpi xfonts-base" &> /dev/null
           get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb.gz" &> /dev/null
           dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb" 2> /dev/null
-          apt-get install -f 2> /dev/null
+          apt-get install -f -y 2> /dev/null
         fi
       else
         SYSTEMARCH="x86"
@@ -1969,7 +1976,7 @@ install_wkhtmltopdf_wkhtmltoimage() {
         mkdir -p /var/opt/wkhtmltox
         get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_i386.deb.gz" &> /dev/null
         dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_i386.deb" 2> /dev/null
-        apt-get install -f 2> /dev/null
+        apt-get install -f -y 2> /dev/null
       fi
       if [ -x "/usr/local/bin/wkhtmltopdf" ]; then
         if [ ! -e "/usr/bin/wkhtmltopdf-0.12.4" ]; then

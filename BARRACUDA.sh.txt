@@ -331,6 +331,7 @@ install_db_server
 ###
 run_aptitude_full_upgrade
 install_with_aptitude_deps
+install_libmagickwand
 if_install_bind
 check_install_latest_git
 install_upgrade_nginx
