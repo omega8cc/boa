@@ -428,13 +428,13 @@ if_install_rvm() {
           touch ${pthLog}/ruby-sys-clean-reload.log
         fi
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          \curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import -
-          \curl -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import -
-          \curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable
+          su -s /bin/bash - root -c "\curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import -"
+          su -s /bin/bash - root -c "\curl -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import -"
+          su -s /bin/bash   root -c "\curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable"
         else
-          \curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import - &> /dev/null
-          \curl -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import - &> /dev/null
-          \curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable &> /dev/null
+          su -s /bin/bash - root -c "\curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import -" &> /dev/null
+          su -s /bin/bash - root -c "\curl -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import -" &> /dev/null
+          su -s /bin/bash   root -c "\curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable" &> /dev/null
         fi
         echo rvm_autoupdate_flag=0 > ~/.rvmrc
         wait
@@ -460,6 +460,22 @@ if_install_rvm() {
           if [ -e "/etc/profile.d/rvm.sh" ]; then
             source /etc/profile.d/rvm.sh
           fi
+          if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
+            _WEB_SH=$(readlink -n /bin/sh 2>&1)
+            _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
+            if [ -x "/bin/dash" ]; then
+              if [ "${_WEB_SH}" != "/bin/dash" ]; then
+                rm -f /bin/sh
+                ln -s /bin/dash /bin/sh
+              fi
+            else
+              if [ "${_WEB_SH}" != "/bin/bash" ]; then
+                rm -f /bin/sh
+                ln -s /bin/bash /bin/sh
+              fi
+            fi
+          fi
+          touch /var/run/manage_rvm_users.pid
           if [ "${_STATUS}" = "INIT" ] \
             || [ "${_RUBY_UPGRADE}" = "YES" ] \
             || [ "${_RUBY_RELOAD}" = "YES" ]; then
@@ -479,8 +495,6 @@ if_install_rvm() {
                 -y"
               su -s /bin/bash - root -c "${rvmPth} install ${_RUBY_VRN}"
               su -s /bin/bash - root -c "${rvmPth} use ${_RUBY_VRN} --default"
-              su -s /bin/bash - root -c "${rvmPth} get stable"
-              su -s /bin/bash - root -c "${rvmPth} @global do gem update -q"
               curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
               mrun "${_INSTALL} nodejs"
             else
@@ -497,8 +511,6 @@ if_install_rvm() {
                 -y -qq" &> /dev/null
               su -s /bin/bash - root -c "${rvmPth} install ${_RUBY_VRN}" &> /dev/null
               su -s /bin/bash - root -c "${rvmPth} use ${_RUBY_VRN} --default" &> /dev/null
-              su -s /bin/bash - root -c "${rvmPth} get stable" &> /dev/null
-              su -s /bin/bash - root -c "${rvmPth} @global do gem update -q" &> /dev/null
               curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
               mrun "${_INSTALL} nodejs" &> /dev/null
             fi
@@ -508,15 +520,11 @@ if_install_rvm() {
             if [ "${_DEBUG_MODE}" = "YES" ]; then
               su -s /bin/bash - root -c "${rvmPth} install ${_RUBY_VRN}"
               su -s /bin/bash - root -c "${rvmPth} use ${_RUBY_VRN} --default"
-              su -s /bin/bash - root -c "${rvmPth} get stable"
-              su -s /bin/bash - root -c "${rvmPth} @global do gem update -q"
               curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
               mrun "${_INSTALL} nodejs"
             else
               su -s /bin/bash - root -c "${rvmPth} install ${_RUBY_VRN}" &> /dev/null
               su -s /bin/bash - root -c "${rvmPth} use ${_RUBY_VRN} --default" &> /dev/null
-              su -s /bin/bash - root -c "${rvmPth} get stable" &> /dev/null
-              su -s /bin/bash - root -c "${rvmPth} @global do gem update -q" &> /dev/null
               curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
               mrun "${_INSTALL} nodejs" &> /dev/null
             fi
@@ -561,6 +569,7 @@ if_install_rvm() {
           touch ${pthLog}/compass-${_X_VERSION}-ruby-${_RUBY_VRN}-nodejs.log
           if [ -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
             msg "INFO: Ruby with RVM ${_L_ST} completed"
+            rm -f /var/run/manage_rvm_users.pid
           fi
         fi
       else
