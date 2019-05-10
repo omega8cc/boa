@@ -482,33 +482,13 @@ if_install_rvm() {
             rm -f /etc/apt/sources.list.d/openssl.list
             mrun "apt-get update -qq" &> /dev/null
             if [ "${_DEBUG_MODE}" = "YES" ]; then
-              mrun "apt-get remove rubygems \
-                ruby2.3.0-dev \
-                libruby2.3.0 \
-                ruby2.3.0 \
-                ruby2.1.0-dev \
-                libruby2.1.0 \
-                ruby2.1.0 \
-                ruby1.9.1-dev \
-                libruby1.9.1 \
-                ruby1.9.1 \
-                -y"
+              su -s /bin/bash - root -c "${rvmPth} get stable --auto-dotfiles"
               su -s /bin/bash - root -c "${rvmPth} install ${_RUBY_VRN}"
               su -s /bin/bash - root -c "${rvmPth} use ${_RUBY_VRN} --default"
               curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
               mrun "${_INSTALL} nodejs"
             else
-              mrun "apt-get remove rubygems \
-                ruby2.3.0-dev \
-                libruby2.3.0 \
-                ruby2.3.0 \
-                ruby2.1.0-dev \
-                libruby2.1.0 \
-                ruby2.1.0 \
-                ruby1.9.1-dev \
-                libruby1.9.1 \
-                ruby1.9.1 \
-                -y -qq" &> /dev/null
+              su -s /bin/bash - root -c "${rvmPth} get stable --auto-dotfiles" &> /dev/null
               su -s /bin/bash - root -c "${rvmPth} install ${_RUBY_VRN}" &> /dev/null
               su -s /bin/bash - root -c "${rvmPth} use ${_RUBY_VRN} --default" &> /dev/null
               curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
@@ -518,11 +498,13 @@ if_install_rvm() {
             rm -f /etc/apt/sources.list.d/openssl.list
             mrun "apt-get update -qq" &> /dev/null
             if [ "${_DEBUG_MODE}" = "YES" ]; then
+              su -s /bin/bash - root -c "${rvmPth} get stable --auto-dotfiles"
               su -s /bin/bash - root -c "${rvmPth} install ${_RUBY_VRN}"
               su -s /bin/bash - root -c "${rvmPth} use ${_RUBY_VRN} --default"
               curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
               mrun "${_INSTALL} nodejs"
             else
+              su -s /bin/bash - root -c "${rvmPth} get stable --auto-dotfiles" &> /dev/null
               su -s /bin/bash - root -c "${rvmPth} install ${_RUBY_VRN}" &> /dev/null
               su -s /bin/bash - root -c "${rvmPth} use ${_RUBY_VRN} --default" &> /dev/null
               curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
