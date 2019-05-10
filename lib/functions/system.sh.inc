@@ -1957,7 +1957,7 @@ install_wkhtmltox() {
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       if [ "${_X86_64_TEST}" = "x86_64" ]; then
         SYSTEMARCH="x86_64"
-        msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
+        msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
         cd /var/opt
         rm -rf wkhtmltox*
         mkdir -p /var/opt/wkhtmltox
@@ -1974,7 +1974,7 @@ install_wkhtmltox() {
         fi
       else
         SYSTEMARCH="x86"
-        msg "INFO: Installing wkhtmltopdf and wkhtmltoimage ${SYSTEMARCH}..."
+        msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
         mrun "${_INSTALL} xfonts-75dpi xfonts-base" &> /dev/null
         cd /var/opt
         rm -rf wkhtmltox*
@@ -1998,7 +1998,7 @@ install_wkhtmltox() {
       if [ -x "/usr/local/bin/wkhtmltoimage" ] \
         && [ -x "/usr/local/bin/wkhtmltopdf" ]; then
         touch ${pthLog}/wkhtmltox-${_WKHTMLTOX_VRN}-fix.log
-        msg "INFO: Both wkhtmltopdf and wkhtmltoimage installation complete"
+        msg "INFO: The wkhtmltox tools v.0.${_WKHTMLTOX_VRN} installation complete"
       fi
       cd /var/opt
     fi
