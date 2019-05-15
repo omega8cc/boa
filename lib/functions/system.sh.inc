@@ -2748,6 +2748,14 @@ strict_bin_permissions() {
 
   _BACKEND_ITEMS="advdef \
                   advpng \
+                  apt \
+                  apt-cache \
+                  apt-config \
+                  apt-get \
+                  apt-key \
+                  apt-listchanges \
+                  apt-mark \
+                  aptitude \
                   avconv \
                   bash \
                   clambc \
@@ -2768,6 +2776,10 @@ strict_bin_permissions() {
                   flvtool2 \
                   freshclam \
                   git \
+                  gpg \
+                  gpgv \
+                  gpgv1 \
+                  gpgv2 \
                   gs \
                   hhvm \
                   id \
@@ -2802,6 +2814,8 @@ strict_bin_permissions() {
                   pngquant \
                   redis-server \
                   rrdtool \
+                  ruby \
+                  rvm \
                   sass \
                   sass-convert \
                   scss \
