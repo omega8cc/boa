@@ -3076,6 +3076,10 @@ basic_packages_install_on_init() {
   if [[ "${_MAN_SHELLS}" =~ "man" ]]; then
     usermod -aG users man
   fi
+  if [ ! -e "/etc/apt/apt.conf.d/00temp" ] \
+    && [ -e "/etc/apt/apt.conf.d" ]; then
+    echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00temp
+  fi
   if [ ! -e "/etc/apt/apt.conf.d/99ignorestrict" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Get::AllowInsecureRepositories \"true\";" > /etc/apt/apt.conf.d/99ignorestrict

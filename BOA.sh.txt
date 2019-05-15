@@ -1770,6 +1770,10 @@ if [ `whoami` = "root" ]; then
     service cron reload &> /dev/null
   fi
   if [ "${_SCREEN_INIT}" = "YES" ]; then
+    if [ ! -e "/etc/apt/apt.conf.d/00temp" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00temp
+    fi
     if [ ! -e "/etc/apt/apt.conf.d/99ignorestrict" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Get::AllowInsecureRepositories \"true\";" > /etc/apt/apt.conf.d/99ignorestrict
