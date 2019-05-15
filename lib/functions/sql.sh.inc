@@ -383,7 +383,8 @@ install_db_sql() {
   until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
     msg "INFO: Retrieving ${_KEYS_SIG} key.."
     ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
-    ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+    ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
+    apt-get update -qq &> /dev/null
     _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
     sleep 2
   done
@@ -392,7 +393,8 @@ install_db_sql() {
   until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
     msg "INFO: Retrieving ${_KEYS_SIG} key.."
     ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
-    ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+    ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
+    apt-get update -qq &> /dev/null
     _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
     sleep 2
   done
@@ -885,7 +887,8 @@ install_db_server() {
       until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
         msg "INFO: Retrieving ${_KEYS_SIG} key.."
         ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
-        ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+        ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
+        apt-get update -qq &> /dev/null
         _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
         sleep 2
       done
@@ -894,7 +897,8 @@ install_db_server() {
       until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
         msg "INFO: Retrieving ${_KEYS_SIG} key.."
         ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
-        ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+        ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
+        apt-get update -qq &> /dev/null
         _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
         sleep 2
       done

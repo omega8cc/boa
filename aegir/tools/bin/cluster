@@ -855,7 +855,7 @@ install_db_cluster() {
     echo "deb-src http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
     _KEYS_SIG="9334A25F8507EFA5"
     vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
-    vserver ${idn} exec ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+    vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
   	vserver ${idn} exec apt-get update ${_NOISE}
   	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57
   	vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24
