@@ -3068,6 +3068,18 @@ install_with_aptitude_deps() {
 }
 
 basic_packages_install_on_init() {
+  _APT_SHELLS=$(id -nG _apt 2>&1)
+  if [[ "${_APT_SHELLS}" =~ "nogroup" ]]; then
+    usermod -aG users _apt
+  fi
+  _MAN_SHELLS=$(id -nG man 2>&1)
+  if [[ "${_MAN_SHELLS}" =~ "man" ]]; then
+    usermod -aG users man
+  fi
+  _SQL_SHELLS=$(id -nG mysql 2>&1)
+  if [[ "${_SQL_SHELLS}" =~ "mysql" ]]; then
+    usermod -aG users mysql
+  fi
   if [ ! -e "/etc/apt/apt.conf.d/99ignorestrict" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Get::AllowInsecureRepositories \"true\";" > /etc/apt/apt.conf.d/99ignorestrict
