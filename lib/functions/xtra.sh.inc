@@ -428,13 +428,13 @@ if_install_rvm() {
           touch ${pthLog}/ruby-sys-clean-reload.log
         fi
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          su -s /bin/bash - root -c "\curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import -"
-          su -s /bin/bash - root -c "\curl -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import -"
-          su -s /bin/bash   root -c "\curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable"
+          \curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import -
+          \curl -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import -
+          \curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable
         else
-          su -s /bin/bash - root -c "\curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import -" &> /dev/null
-          su -s /bin/bash - root -c "\curl -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import -" &> /dev/null
-          su -s /bin/bash   root -c "\curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable" &> /dev/null
+          \curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import - &> /dev/null
+          \curl -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import - &> /dev/null
+          \curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable &> /dev/null
         fi
         echo rvm_autoupdate_flag=0 > ~/.rvmrc
         wait
@@ -482,15 +482,15 @@ if_install_rvm() {
             rm -f /etc/apt/sources.list.d/openssl.list
             mrun "apt-get update -qq" &> /dev/null
             if [ "${_DEBUG_MODE}" = "YES" ]; then
-              su -s /bin/bash - root -c "${rvmPth} get stable --auto-dotfiles"
-              su -s /bin/bash - root -c "${rvmPth} install ${_RUBY_VRN}"
-              su -s /bin/bash - root -c "${rvmPth} use ${_RUBY_VRN} --default"
+              ${rvmPth} get stable --auto-dotfiles
+              ${rvmPth} install ${_RUBY_VRN}
+              ${rvmPth} use ${_RUBY_VRN} --default
               curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
               mrun "${_INSTALL} nodejs"
             else
-              su -s /bin/bash - root -c "${rvmPth} get stable --auto-dotfiles" &> /dev/null
-              su -s /bin/bash - root -c "${rvmPth} install ${_RUBY_VRN}" &> /dev/null
-              su -s /bin/bash - root -c "${rvmPth} use ${_RUBY_VRN} --default" &> /dev/null
+              ${rvmPth} get stable --auto-dotfiles &> /dev/null
+              ${rvmPth} install ${_RUBY_VRN} &> /dev/null
+              ${rvmPth} use ${_RUBY_VRN} --default &> /dev/null
               curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
               mrun "${_INSTALL} nodejs" &> /dev/null
             fi
@@ -498,15 +498,15 @@ if_install_rvm() {
             rm -f /etc/apt/sources.list.d/openssl.list
             mrun "apt-get update -qq" &> /dev/null
             if [ "${_DEBUG_MODE}" = "YES" ]; then
-              su -s /bin/bash - root -c "${rvmPth} get stable --auto-dotfiles"
-              su -s /bin/bash - root -c "${rvmPth} install ${_RUBY_VRN}"
-              su -s /bin/bash - root -c "${rvmPth} use ${_RUBY_VRN} --default"
+              ${rvmPth} get stable --auto-dotfiles
+              ${rvmPth} install ${_RUBY_VRN}
+              ${rvmPth} use ${_RUBY_VRN} --default
               curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
               mrun "${_INSTALL} nodejs"
             else
-              su -s /bin/bash - root -c "${rvmPth} get stable --auto-dotfiles" &> /dev/null
-              su -s /bin/bash - root -c "${rvmPth} install ${_RUBY_VRN}" &> /dev/null
-              su -s /bin/bash - root -c "${rvmPth} use ${_RUBY_VRN} --default" &> /dev/null
+              ${rvmPth} get stable --auto-dotfiles &> /dev/null
+              ${rvmPth} install ${_RUBY_VRN} &> /dev/null
+              ${rvmPth} use ${_RUBY_VRN} --default &> /dev/null
               curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
               mrun "${_INSTALL} nodejs" &> /dev/null
             fi
