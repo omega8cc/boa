@@ -5218,10 +5218,10 @@ complete() {
   re_set_default_php_cli
   install_update_composer
   if [ "${_STRICT_BIN_PERMISSIONS}" = "YES" ]; then
-    usermod -aG users aegir  &> /dev/null
-    usermod -aG users man    &> /dev/null
-    usermod -aG users mysql  &> /dev/null
-    usermod -aG users _apt   &> /dev/null
+    usermod -aG users aegir
+    usermod -aG users man
+    usermod -aG users mysql
+    usermod -aG users _apt
     if [ -x "/bin/bash" ]; then
       switch_to_bash
     elif [ -x "/bin/dash" ]; then

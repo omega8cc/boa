@@ -453,7 +453,7 @@ if_install_rvm() {
           msg "WARN: RVM ${_L_ST} failed, so we can't install Ruby!"
         fi
         if [ -x "${rvmPth}" ]; then
-          usermod -aG rvm root &> /dev/null
+          usermod -aG rvm root
           if [ ! -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
             _RUBY_UPGRADE=YES
           fi
@@ -524,7 +524,7 @@ if_install_rvm() {
             if [ ! -e "$_GEM_FILE" ] && [ ! -z "${_SCOUT_KEY}" ]; then
               mrun "${rvmPth} @global do gem install --conservative scout" 2> /dev/null
               adduser --system --group --home /var/scout scout &> /dev/null
-              usermod -aG users scout &> /dev/null
+              usermod -aG users scout
               sed -i "s/\* \* \* \* \* scout .*/* * * * * scout $_GEM_PATH ${_SCOUT_KEY}/g" ${_GEM_CRON} &> /dev/null
             fi
             _VAR_IF_PRESENT=$(grep "scout ALL=NOPASSWD" /etc/sudoers 2>&1)
@@ -535,7 +535,7 @@ if_install_rvm() {
             if [ ! -z "${_SCOUT_KEY}" ]; then
               mrun "${rvmPth} @global do gem install --conservative scout" 2> /dev/null
               adduser --system --group --home /var/scout scout &> /dev/null
-              usermod -aG users scout &> /dev/null
+              usermod -aG users scout
               echo -e "* * * * * scout $_GEM_FILE ${_SCOUT_KEY}" \
                 | fmt -su -w 2500 | tee -a ${_GEM_CRON} >/dev/null 2>&1
               _VAR_IF_PRESENT=$(grep "scout ALL=NOPASSWD" /etc/sudoers 2>&1)
@@ -566,7 +566,7 @@ if_install_rvm() {
           rvmPth="/usr/local/rvm/bin/rvm"
         fi
         if [ -x "${rvmPth}" ]; then
-          usermod -aG rvm root &> /dev/null
+          usermod -aG rvm root
         fi
       fi
       _ID_SHELLS=""

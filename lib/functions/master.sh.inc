@@ -428,7 +428,7 @@ upgrade_aegir_master() {
     if [ ! -e "/root/.upstart.cnf" ]; then
       service cron stop &> /dev/null
     fi
-    usermod -aG users aegir &> /dev/null
+    usermod -aG users aegir
     _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD" /etc/sudoers 2>&1)
     if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
       echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
@@ -642,8 +642,8 @@ install_upgrade_aegir_master() {
       touch /data/conf/clstr.cnf &> /dev/null
     fi
     adduser --system --group --home /var/aegir aegir &> /dev/null
-    usermod -aG www-data aegir &> /dev/null
-    usermod -aG users aegir &> /dev/null
+    usermod -aG www-data aegir
+    usermod -aG users aegir
     echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     ln -sf /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf &> /dev/null
     update_nginx_conf

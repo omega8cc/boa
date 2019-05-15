@@ -392,7 +392,7 @@ install_pdnsd_cache() {
     mrun "make --quiet install" 2> /dev/null
     echo "START_DAEMON=yes" > /etc/default/pdnsd
     adduser --system --ingroup proxy --home /var/cache/pdnsd pdnsd &> /dev/null
-    usermod -aG proxy pdnsd &> /dev/null
+    usermod -aG proxy pdnsd
     cp -af ${locCnf}/pdnsd /etc/init.d/pdnsd
     cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
     ln -sf /etc/pdnsd.conf /usr/etc/pdnsd.conf

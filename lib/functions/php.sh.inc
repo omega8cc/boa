@@ -310,7 +310,7 @@ update_php_conf() {
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
       adduser --system --group --home /var/www/www${e} www${e} &> /dev/null
-      usermod -aG www-data www${e} &> /dev/null
+      usermod -aG www-data www${e}
     fi
     if [ ! -e "/opt/php${e}/etc/php${e}.ini" ] \
       || [ ! -e "/opt/php${e}/etc/pool.d/www${e}.conf" ]; then

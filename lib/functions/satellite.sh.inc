@@ -2791,7 +2791,7 @@ satellite_if_add_ftps_lshell_access() {
       usermod -p $ph ${_USERFTP} &> /dev/null
       passwd -w 7 -x 90 ${_USERFTP} &> /dev/null
     fi
-    usermod -aG lshellg ${_USERFTP} &> /dev/null
+    usermod -aG lshellg ${_USERFTP}
     chsh -s ${_PATH_LSHELL} ${_USERFTP} &> /dev/null
     echo >> /etc/lshell.conf
     echo "[${_USERFTP}]" >> /etc/lshell.conf
@@ -2814,7 +2814,7 @@ satellite_if_add_to_rvm_group() {
       rvmPth="/usr/local/rvm/bin/rvm"
     fi
     if [ -x "${rvmPth}" ]; then
-      usermod -aG rvm ${_USERFTP} &> /dev/null
+      usermod -aG rvm ${_USERFTP}
     fi
   fi
   _ID_SHELLS=""
