@@ -674,6 +674,7 @@ install_with_aptitude_sql() {
       mrun "mysql_upgrade --force" &> /dev/null
     fi
   fi
+  usermod -aG users mysql
 }
 
 #
