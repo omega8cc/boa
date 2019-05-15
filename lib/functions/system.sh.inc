@@ -3076,10 +3076,6 @@ basic_packages_install_on_init() {
   if [[ "${_MAN_SHELLS}" =~ "man" ]]; then
     usermod -aG users man
   fi
-  _SQL_SHELLS=$(id -nG mysql 2>&1)
-  if [[ "${_SQL_SHELLS}" =~ "mysql" ]]; then
-    usermod -aG users mysql
-  fi
   if [ ! -e "/etc/apt/apt.conf.d/99ignorestrict" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Get::AllowInsecureRepositories \"true\";" > /etc/apt/apt.conf.d/99ignorestrict
