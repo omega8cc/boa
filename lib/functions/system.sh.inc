@@ -5213,6 +5213,9 @@ complete() {
   fix_cnf_postfix
   re_set_default_php_cli
   install_update_composer
+  if [ "${_STATUS}" = "INIT" ]; then
+    _STRICT_BIN_PERMISSIONS=NO
+  fi
   if [ "${_STRICT_BIN_PERMISSIONS}" = "YES" ]; then
     usermod -aG users aegir
     usermod -aG users man
