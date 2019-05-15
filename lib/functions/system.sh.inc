@@ -1569,8 +1569,8 @@ barracuda_cnf() {
         wait
         # sed -i "s/^_SSH_ARMOUR=.*/_SSH_ARMOUR=YES/g"                               ${barCnf}
         # wait
-        sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       ${barCnf}
-        wait
+        # sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       ${barCnf}
+        # wait
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   ${barCnf}
         wait
         sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                     ${barCnf}
