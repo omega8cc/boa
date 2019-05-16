@@ -3068,6 +3068,8 @@ install_with_aptitude_deps() {
 }
 
 basic_packages_install_on_init() {
+  apt-get remove --purge unscd -y &> /dev/null
+  userdel -r debian &> /dev/null
   _APT_SHELLS=$(id -nG _apt 2>&1)
   if [[ "${_APT_SHELLS}" =~ "nogroup" ]]; then
     usermod -aG users _apt
@@ -5231,6 +5233,7 @@ complete() {
       switch_to_dash
     fi
     strict_bin_permissions
+    rm -f /etc/apt/apt.conf.d/00temp
   fi
   finale
 }
