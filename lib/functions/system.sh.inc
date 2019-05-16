@@ -3078,9 +3078,9 @@ basic_packages_install_on_init() {
   if [[ "${_MAN_SHELLS}" =~ "man" ]]; then
     usermod -aG users man
   fi
-  if [ ! -e "/etc/apt/apt.conf.d/00temp" ] \
+  if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
-    echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00temp
+    echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
   fi
   if [ ! -e "/etc/apt/apt.conf.d/99ignorestrict" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -5233,6 +5233,7 @@ complete() {
       switch_to_dash
     fi
     strict_bin_permissions
+    rm -f /etc/apt/apt.conf.d/00sandboxtmp
     rm -f /etc/apt/apt.conf.d/00temp
   fi
   finale
