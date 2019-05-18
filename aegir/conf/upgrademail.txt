@@ -41,7 +41,7 @@ Since BOA-4.0.1 new Drupal 8.7.0 based platforms are included:
 
 Lightning 4.0.0 -------------- https://drupal.org/project/lightning
 Thunder 8.2.41 --------------- https://drupal.org/project/thunder
-Varbase 8.6.8 ---------------- https://drupal.org/project/varbase
+Varbase 8.6.9 ---------------- https://drupal.org/project/varbase
 Social 8.5.1 (8.6.15 core) --- https://drupal.org/project/social
 
 IMPORTANT: You must switch your ~/static/control/cli.info to 7.1 or newer
