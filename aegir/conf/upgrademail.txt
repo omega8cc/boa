@@ -35,9 +35,9 @@ Please read for more details:
   https://github.com/omega8cc/boa/blob/master/docs/SOLR.txt
   https://github.com/omega8cc/boa/blob/master/CHANGELOG.txt
 
-@=> Drupal 8.7.0 platforms and Composer support
+@=> Drupal 8.7.1 platforms and Composer support
 
-Since BOA-4.0.1 new Drupal 8.7.0 based platforms are included:
+Since BOA-4.0.1 new Drupal 8.7.1 based platforms are included:
 
 Lightning 4.0.0 -------------- https://drupal.org/project/lightning
 Thunder 8.2.41 --------------- https://drupal.org/project/thunder

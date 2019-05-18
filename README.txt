@@ -150,7 +150,7 @@ production settings.
 
 Octopus can install and/or support the platforms listed below:
 
- @ Drupal 8.7.0
+ @ Drupal 8.7.1
 
  Lightning 4.0.0 -------------- https://drupal.org/project/lightning
  Thunder 8.2.41 --------------- https://drupal.org/project/thunder
