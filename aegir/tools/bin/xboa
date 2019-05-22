@@ -396,7 +396,7 @@ EOFMYSQL
       elif [ "${cmd}" = "proxy" ]; then
         if [ -e "${_USR}/log/exported.pid" ] && [ ! -z "${tgt}" ]; then
           if [ -e "${Vht}" ]; then
-            _NMS=`cat ${Vht} | grep "server_name" | sed "s/server_name//g; s/;//g" | tr -d "\n" | sed "s/  / /g; s/  / /g; s/  / /g" | uniq`
+            _NMS=`cat ${Vht} | grep "server_name" | sed "s/server_name//g; s/;//g" | sort | uniq | tr -d "\n" | sed "s/  / /g; s/  / /g; s/  / /g" | sort | uniq`
             if [ -e "${_USR}/config/server_master/ssl.d/${Dom}/openssl.key" ] \
               && [ -e "/var/xdrago/conf/https_proxy_le.conf" ]; then
               cp -a /var/xdrago/conf/https_proxy_le.conf ${Vhs}
