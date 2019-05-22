@@ -2419,7 +2419,7 @@ check_update_le_ssl() {
     if [[ "${_SSL_ON_TEST}" =~ "443 ssl http2" ]]; then
       if [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
         echo "Running LE cert check directly for ${Dom}"
-        siteAliases=""
+        useAliases=""
         siteAliases=`cat ${Vht} \
           | grep "server_name" \
           | sed "s/server_name//g; s/;//g" \
@@ -2429,19 +2429,20 @@ check_update_le_ssl() {
           | sort | uniq`
         for alias in `echo "${siteAliases}"`; do
           echo "--domain $alias"
-          if [ -z "${siteAliases}" ] && [ ! -z "${alias}" ]; then
-            siteAliases="--domain $alias"
+          if [ -z "${useAliases}" ] && [ ! -z "${alias}" ]; then
+            useAliases="--domain $alias"
           else
             if [ ! -z "${alias}" ]; then
-              siteAliases="${siteAliases} --domain $alias"
+              useAliases="${useAliases} --domain $alias"
             fi
           fi
         done
+        echo "ALL is --domain ${Dom} ${useAliases}"
         su -s /bin/bash - ${_HM_U} -c "${exeLe} \
           --cron \
           --ipv4 \
           --domain ${Dom} \
-          ${siteAliases}"
+          ${useAliases}"
         echo ${_MOMENT} >> /var/xdrago/log/le/${Dom}
         sleep 1
       fi
