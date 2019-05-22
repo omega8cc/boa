@@ -571,6 +571,10 @@ else
       || [[ "$2" =~ "drush" ]]; then
       if [[ "$2" =~ "uli" ]] \
         || [[ "$2" =~ "vget" ]] \
+        || [[ "$2" =~ "config-list" ]] \
+        || [[ "$2" =~ "config-edit" ]] \
+        || [[ "$2" =~ "config-get" ]] \
+        || [[ "$2" =~ "config-set" ]] \
         || [[ "$2" =~ "--version" ]] \
         || [[ "$2" =~ "vset" ]] \
         || [[ "$2" =~ "status" ]]; then

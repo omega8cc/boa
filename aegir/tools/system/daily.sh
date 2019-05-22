@@ -240,11 +240,19 @@ check_if_required() {
         "echo _REQ for $1 is ${_REQ} in ${Dom} == 7 == via ${_REW_TEST}"
       fi
     fi
-    Profile=$(run_drush8_nosilent_cmd "vget ^install_profile$" \
-      | cut -d: -f2 \
-      | awk '{ print $1}' \
-      | sed "s/['\"]//g" \
-      | tr -d "\n" 2>&1)
+    if [ -e "${Plr}/core" ]; then
+      Profile=$(run_drush8_nosilent_cmd "config-get core.extension profile" \
+        | cut -d: -f3 \
+        | awk '{ print $1}' \
+        | sed "s/['\"]//g" \
+        | tr -d "\n" 2>&1)
+    else
+      Profile=$(run_drush8_nosilent_cmd "vget ^install_profile$" \
+        | cut -d: -f2 \
+        | awk '{ print $1}' \
+        | sed "s/['\"]//g" \
+        | tr -d "\n" 2>&1)
+    fi
     Profile=${Profile//[^a-z_]/}
     echo "Profile is == ${Profile} =="
     if [ ! -z "${Profile}" ]; then
@@ -444,7 +452,8 @@ fix_user_register_protection() {
     _DISABLE_USER_REGISTER_PROTECTION=NO
   fi
 
-  if [ "${_DISABLE_USER_REGISTER_PROTECTION}" = "NO" ]; then
+  if [ "${_DISABLE_USER_REGISTER_PROTECTION}" = "NO" ] \
+    && [ ! -e "${Plr}/core" ]; then
     Prm=$(run_drush8_nosilent_cmd "vget ^user_register$" \
       | cut -d: -f2 \
       | awk '{ print $1}' \
@@ -1336,7 +1345,8 @@ fix_modules() {
     fi
   fi
 
-  if [ -e "${Plr}/modules/o_contrib_seven" ]; then
+  if [ -e "${Plr}/modules/o_contrib_seven" ] \
+    && [ ! -e "${Plr}/core" ; then
     _PRIV_TEST=$(run_drush8_nosilent_cmd "vget ^file_default_scheme$" 2>&1)
     if [[ "${_PRIV_TEST}" =~ "No matching variable" ]]; then
       _PRIV_TEST_RESULT=NONE
