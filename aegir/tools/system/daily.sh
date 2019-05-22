@@ -1346,7 +1346,7 @@ fix_modules() {
   fi
 
   if [ -e "${Plr}/modules/o_contrib_seven" ] \
-    && [ ! -e "${Plr}/core" ; then
+    && [ ! -e "${Plr}/core" ]; then
     _PRIV_TEST=$(run_drush8_nosilent_cmd "vget ^file_default_scheme$" 2>&1)
     if [[ "${_PRIV_TEST}" =~ "No matching variable" ]]; then
       _PRIV_TEST_RESULT=NONE
