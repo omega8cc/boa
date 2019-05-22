@@ -179,7 +179,7 @@ disable_chattr() {
 }
 
 run_drush8_cmd() {
-  su -s /bin/bash - ${_HM_U}.ftp -c "drush8 @${Dom} $1" &> /dev/null
+  su -s /bin/bash - ${_HM_U} -c "drush8 @${Dom} $1" &> /dev/null
 }
 
 run_drush8_hmr_cmd() {
@@ -191,7 +191,7 @@ run_drush8_hmr_master_cmd() {
 }
 
 run_drush8_nosilent_cmd() {
-  su -s /bin/bash - ${_HM_U}.ftp -c "drush8 @${Dom} $1"
+  su -s /bin/bash - ${_HM_U} -c "drush8 @${Dom} $1"
 }
 
 check_if_required() {
@@ -2926,7 +2926,7 @@ action() {
         mkdir -p ${User}/log/ctrl
         su -s /bin/bash ${_HM_U} -c "drush8 cc drush" &> /dev/null
         rm -rf ${User}/.tmp/cache
-        su -s /bin/bash - ${_HM_U}.ftp -c "drush8 cc drush" &> /dev/null
+        su -s /bin/bash - ${_HM_U} -c "drush8 cc drush" &> /dev/null
         rm -rf /home/${_HM_U}.ftp/.tmp/cache
         _SQL_CONVERT=NO
         _DEL_OLD_EMPTY_PLATFORMS="0"
