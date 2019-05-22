@@ -2396,18 +2396,45 @@ check_update_le_hm_ssl() {
     && [ ! -z "${hmFront}" ] \
     && [ -e "${User}/tools/le/certs/${hmFront}/fullchain.pem" ]; then
     echo "Running LE cert check directly for hostmaster ${_HM_U}"
-    su -s /bin/bash - ${_HM_U} -c "${exeLe} -c -d ${hmFront}"
+    su -s /bin/bash - ${_HM_U} -c "${exeLe} --cron --ipv4 --domain ${hmFront}"
     sleep 3
   fi
 }
 
 check_update_le_ssl() {
-  if [ ! -e "${User}/static/control/noverify.info" ]; then
-    if [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
-      echo "Running LE cert check via Verify task for ${Dom}"
-      run_drush8_hmr_cmd "hosting-task @${Dom} verify --force"
-      echo ${_MOMENT} >> /var/xdrago/log/le/${Dom}
-      sleep 3
+  exeLe="${User}/tools/le/letsencrypt.sh"
+  Vht="${User}/config/server_master/nginx/vhost.d/${Dom}"
+  if [ -x "${exeLe}" ] && [ -e "${Vht}" ]; then
+    _SSL_ON_TEST=$(cat ${Vht} | grep "443 ssl http2" 2>&1)
+    if [[ "${_SSL_ON_TEST}" =~ "443 ssl http2" ]]; then
+      if [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
+        echo "Running LE cert check directly for ${Dom}"
+        siteAliases=""
+        siteAliases=`cat ${Vht} \
+          | grep "server_name" \
+          | sed "s/server_name//g; s/;//g" \
+          | sort | uniq \
+          | tr -d "\n" \
+          | sed "s/  / /g; s/  / /g; s/  / /g" \
+          | sort | uniq`
+        for alias in `echo "${siteAliases}"`; do
+          echo "--domain $alias"
+          if [ -z "${siteAliases}" ] && [ ! -z "${alias}" ]; then
+            siteAliases="--domain $alias"
+          else
+            if [ ! -z "${alias}" ]; then
+              siteAliases="${siteAliases} --domain $alias"
+            fi
+          fi
+        done
+        su -s /bin/bash - ${_HM_U} -c "${exeLe} \
+          --cron \
+          --ipv4 \
+          --domain ${Dom} \
+          ${siteAliases}"
+        echo ${_MOMENT} >> /var/xdrago/log/le/${Dom}
+        sleep 1
+      fi
     fi
   fi
 }
