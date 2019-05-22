@@ -2963,7 +2963,7 @@ action() {
         mkdir -p ${User}/log/ctrl
         su -s /bin/bash ${_HM_U} -c "drush8 cc drush" &> /dev/null
         rm -rf ${User}/.tmp/cache
-        su -s /bin/bash - ${_HM_U} -c "drush8 cc drush" &> /dev/null
+        su -s /bin/bash - ${_HM_U}.ftp -c "drush8 cc drush" &> /dev/null
         rm -rf /home/${_HM_U}.ftp/.tmp/cache
         _SQL_CONVERT=NO
         _DEL_OLD_EMPTY_PLATFORMS="0"
