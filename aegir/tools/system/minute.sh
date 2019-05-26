@@ -234,6 +234,40 @@ redis_slow_check() {
 }
 redis_slow_check
 
+fpm_sockets_healing() {
+  if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
+    | grep --count "Address already in use"` -gt "0" ]; then
+    touch /var/run/fmp_wait.pid
+    sleep 8
+    _NOW=$(date +%y%m%d-%H%M 2>&1)
+    _NOW=${_NOW//[^0-9-]/}
+    mkdir -p /var/backups/php-logs/${_NOW}/
+    mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
+    kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+    renice ${_B_NICE} -p $$ &> /dev/null
+    if [ -e "/etc/init.d/php73-fpm" ]; then
+      service php73-fpm start
+    fi
+    if [ -e "/etc/init.d/php72-fpm" ]; then
+      service php72-fpm start
+    fi
+    if [ -e "/etc/init.d/php71-fpm" ]; then
+      service php71-fpm start
+    fi
+    if [ -e "/etc/init.d/php70-fpm" ]; then
+      service php70-fpm start
+    fi
+    if [ -e "/etc/init.d/php56-fpm" ]; then
+      service php56-fpm start
+    fi
+    sleep 8
+    rm -f /var/run/fmp_wait.pid
+    echo "$(date 2>&1) FPM Sockets conflict detected" >> \
+      /var/xdrago/log/fpm.sockets.incident.log
+  fi
+}
+fpm_sockets_healing
+
 jetty_restart() {
   touch /var/run/boa_run.pid
   sleep 5
