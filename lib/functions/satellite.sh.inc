@@ -1645,13 +1645,13 @@ satellite_download_o_contrib_eight() {
   get_dev_contrib "advagg-8.x-3.5.tar.gz"
   get_dev_contrib "cdn-8.x-3.2.tar.gz"
   get_dev_contrib "robotstxt-8.x-1.2.tar.gz"
-  if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_E_VERSION}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_eight
-    get_dev_contrib "redis_eight-${_REDIS_E_VERSION}.tar.gz"
+    get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
     rm -f redis_eight/redis.info
-    echo update > redis_eight/${_REDIS_E_VERSION}.info
+    echo update > redis_eight/${_REDIS_N_VERSION}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1737,13 +1737,13 @@ satellite_download_o_contrib_seven() {
     rm -f redis/redis.info
     echo update > redis/update-${_X_VERSION}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_M_VERSION}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_edge
-    get_dev_contrib "redis_edge-${_REDIS_M_VERSION}.tar.gz"
+    get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
     rm -f redis_edge/redis.info
-    echo update > redis_edge/${_REDIS_M_VERSION}.info
+    echo update > redis_edge/${_REDIS_L_VERSION}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1825,13 +1825,13 @@ satellite_download_o_contrib_six() {
     rm -f redis/redis.info
     echo update > redis/update-${_X_VERSION}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_M_VERSION}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_edge
-    get_dev_contrib "redis_edge-${_REDIS_M_VERSION}.tar.gz"
+    get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
     rm -f redis_edge/redis.info
-    echo update > redis_edge/${_REDIS_M_VERSION}.info
+    echo update > redis_edge/${_REDIS_L_VERSION}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1885,21 +1885,21 @@ satellite_check_fix_o_contrib() {
     rm -f redis/redis.info
     echo update > redis/update-${_X_VERSION}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_M_VERSION}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_edge
-    get_dev_contrib "redis_edge-${_REDIS_M_VERSION}.tar.gz"
+    get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
     rm -f redis_edge/redis.info
-    echo update > redis_edge/${_REDIS_M_VERSION}.info
+    echo update > redis_edge/${_REDIS_L_VERSION}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_E_VERSION}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_eight
-    get_dev_contrib "redis_eight-${_REDIS_E_VERSION}.tar.gz"
+    get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
     rm -f redis_eight/redis.info
-    echo update > redis_eight/${_REDIS_E_VERSION}.info
+    echo update > redis_eight/${_REDIS_N_VERSION}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -3690,8 +3690,8 @@ satellite_make() {
   echo "_PURGE_FOR_SEVEN=\"${_PURGE_FOR_SEVEN}\""     >> ${writeTo}
   echo "_PURGE_MODE=\"${_PURGE_MODE}\""               >> ${writeTo}
   echo "_RECRUITER=\"${_RECRUITER}\""                 >> ${writeTo}
-  echo "_REDIS_E_VERSION=\"${_REDIS_E_VERSION}\""     >> ${writeTo}
-  echo "_REDIS_M_VERSION=\"${_REDIS_M_VERSION}\""     >> ${writeTo}
+  echo "_REDIS_N_VERSION=\"${_REDIS_N_VERSION}\""     >> ${writeTo}
+  echo "_REDIS_L_VERSION=\"${_REDIS_L_VERSION}\""     >> ${writeTo}
   echo "_RESTAURANT=\"${_RESTAURANT}\""               >> ${writeTo}
   echo "_THUNDER=\"${_THUNDER}\""                     >> ${writeTo}
   echo "_SERIES_RESULT=\"${_SERIES_RESULT}\""         >> ${writeTo}
