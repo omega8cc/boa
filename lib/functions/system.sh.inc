@@ -3076,9 +3076,11 @@ install_with_aptitude_deps() {
 basic_packages_install_on_init() {
   apt-get remove --purge unscd -y &> /dev/null
   userdel -r debian &> /dev/null
-  _APT_SHELLS=$(id -nG _apt 2>&1)
-  if [[ "${_APT_SHELLS}" =~ "nogroup" ]]; then
-    usermod -aG users _apt
+  if [ "${_THIS_RV}" = "stretch" ]; then
+    _APT_SHELLS=$(id -nG _apt 2>&1)
+    if [[ "${_APT_SHELLS}" =~ "nogroup" ]]; then
+      usermod -aG users _apt
+    fi
   fi
   _MAN_SHELLS=$(id -nG man 2>&1)
   if [[ "${_MAN_SHELLS}" =~ "man" ]]; then
@@ -5232,7 +5234,9 @@ complete() {
     usermod -aG users aegir
     usermod -aG users man
     usermod -aG users mysql
-    usermod -aG users _apt
+    if [ "${_THIS_RV}" = "stretch" ]; then
+      usermod -aG users _apt
+    fi
     if [ -x "/bin/bash" ]; then
       switch_to_bash
     elif [ -x "/bin/dash" ]; then
