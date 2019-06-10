@@ -331,7 +331,7 @@ _REDIS_LISTEN_MODE=SOCKET
 ###
 ### Supported values: 4 or 5
 ###
-_REDIS_MAJOR_RELEASE=4
+_REDIS_MAJOR_RELEASE=5
 
 
 ###----------------------------------------###
