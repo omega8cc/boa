@@ -773,11 +773,11 @@ barracuda_cnf() {
         _DBS_VRN="${_GALERA_10_VRN}"
       else
         if [ "${_DB_SERIES}" = "10.0" ] && [ -e "${barCnf}" ]; then
-          sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.1/g" ${barCnf}
-          _DB_SERIES=10.1
+          sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g" ${barCnf}
+          _DB_SERIES=10.2
         fi
         if [ -e "${barCnf}" ]; then
-          sed -i "s/^_DB_SERIES=5.5/_DB_SERIES=10.1/g"  ${barCnf}
+          sed -i "s/^_DB_SERIES=5.5/_DB_SERIES=10.2/g"  ${barCnf}
         fi
         if [ "${_DB_SERIES}" = "10.3" ]; then
           _DB_SERVER=MariaDB
@@ -793,14 +793,14 @@ barracuda_cnf() {
           _DBS_VRN="${_PERCONA_5_7_VRN}"
         else
           _DB_SERVER=MariaDB
-          _DB_SERIES=10.1
-          _DBS_VRN="${_MARIADB_10_1_VRN}"
+          _DB_SERIES=10.2
+          _DBS_VRN="${_MARIADB_10_2_VRN}"
         fi
       fi
     else
       _DB_SERVER=MariaDB
-      _DB_SERIES=10.1
-      _DBS_VRN="${_MARIADB_10_1_VRN}"
+      _DB_SERIES=10.2
+      _DBS_VRN="${_MARIADB_10_2_VRN}"
     fi
     msg "INFO: Creating your ${barCnf} config file"
     sleep 1
@@ -1646,10 +1646,10 @@ barracuda_cnf() {
         _DBS_VRN="${_GALERA_10_VRN}"
       else
         if [ "${_DB_SERIES}" = "10.0" ]; then
-          sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.1/g" ${barCnf}
-          _DB_SERIES=10.1
+          sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g" ${barCnf}
+          _DB_SERIES=10.2
         fi
-        sed -i "s/^_DB_SERIES=5.5/_DB_SERIES=10.1/g"  ${barCnf}
+        sed -i "s/^_DB_SERIES=5.5/_DB_SERIES=10.2/g"  ${barCnf}
         if [ "${_DB_SERIES}" = "10.3" ]; then
           _DB_SERVER=MariaDB
           _DBS_VRN="${_MARIADB_10_3_VRN}"
@@ -1664,14 +1664,14 @@ barracuda_cnf() {
           _DBS_VRN="${_PERCONA_5_7_VRN}"
         else
           _DB_SERVER=MariaDB
-          _DB_SERIES=10.1
-          _DBS_VRN="${_MARIADB_10_1_VRN}"
+          _DB_SERIES=10.2
+          _DBS_VRN="${_MARIADB_10_2_VRN}"
         fi
       fi
     else
       _DB_SERVER=MariaDB
-      _DB_SERIES=10.1
-      _DBS_VRN="${_MARIADB_10_1_VRN}"
+      _DB_SERIES=10.2
+      _DBS_VRN="${_MARIADB_10_2_VRN}"
     fi
     _CHECK_HOST=$(uname -n 2>&1)
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then

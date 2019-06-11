@@ -532,8 +532,8 @@ os_detection() {
         _DBS_VRN="${_PERCONA_5_7_VRN}"
       else
         _DB_SERVER=MariaDB
-        _DB_SERIES=10.1
-        _DBS_VRN="${_MARIADB_10_1_VRN}"
+        _DB_SERIES=10.2
+        _DBS_VRN="${_MARIADB_10_2_VRN}"
       fi
     elif [ "${_THIS_RV}" = "precise" ]; then
       _OSV="precise"
@@ -568,8 +568,8 @@ os_detection() {
       _DBS_VRN="${_PERCONA_5_7_VRN}"
     else
       _DB_SERVER=MariaDB
-      _DB_SERIES=10.1
-      _DBS_VRN="${_MARIADB_10_1_VRN}"
+      _DB_SERIES=10.2
+      _DBS_VRN="${_MARIADB_10_2_VRN}"
     fi
     _SPINNER=NO
     _SKIP_LEGACY_PHP=YES

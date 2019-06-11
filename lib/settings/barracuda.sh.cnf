@@ -291,14 +291,12 @@ _DB_SERVER=MariaDB
 ### DB SERIES                              ###
 ###----------------------------------------###
 ###
-### You should choose 5.7 or 10.1
+### Supported values:
+### 10.1 or 10.2 or 10.3 (MariaDB)
+### 5.7 (Percona)
 ###
-### MariaDB 10.2 and 10.3 will be supported
-### once compatibility issues with PHP 7.1+
-### are fixed:
-### https://jira.mariadb.org/browse/MDEV-14555
 ###
-_DB_SERIES=10.1
+_DB_SERIES=10.2
 
 
 ###----------------------------------------###

@@ -435,8 +435,8 @@ install_db_sql() {
         echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
       else
         _DB_SERVER=MariaDB
-        _DB_SERIES=10.1
-        _DBS_VRN="${_MARIADB_10_1_VRN}"
+        _DB_SERIES=10.2
+        _DBS_VRN="${_MARIADB_10_2_VRN}"
       fi
     fi
     msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSV}"
@@ -448,13 +448,13 @@ install_db_sql() {
       || [ "${_DB_SERIES}" = "5.5" ]; then
       _DO_NOTHING=YES
     else
-      _DB_SERIES=10.1
-      _DBS_VRN="${_MARIADB_10_1_VRN}"
+      _DB_SERIES=10.2
+      _DBS_VRN="${_MARIADB_10_2_VRN}"
       msg "INFO: Forced ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSV}"
     fi
     if [ -z "${_DB_SERIES}" ]; then
-      _DB_SERIES=10.1
-      _DBS_VRN="${_MARIADB_10_1_VRN}"
+      _DB_SERIES=10.2
+      _DBS_VRN="${_MARIADB_10_2_VRN}"
       msg "INFO: Forced ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSV}"
     fi
   fi
