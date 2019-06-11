@@ -2016,7 +2016,7 @@ install_wkhtmltox() {
 get_drush_versions() {
   msg "INFO: Installing extra Drush versions..."
   ###--------------------###
-  mkdir -p /opt/tools/drush/{7,8}
+  mkdir -p /opt/tools/drush/{7,8,9}
   chown -R root:root /opt/tools
   rm -rf /opt/tools/drush/7/*
   cd /opt/tools/drush/7/
@@ -2035,6 +2035,28 @@ get_drush_versions() {
   get_dev_ext "vendor-${_DRUSH8_VRN}.tar.gz"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH8_VRN} installation complete"
+  fi
+  if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+    if [ -x "/usr/local/bin/composer" ]; then
+      rm -rf /opt/tools/drush/9/*
+      mkdir -p /opt/tools/drush/9/drush/vendor
+      rm -f -r /opt/tools/drush/*/drush/cache/*
+      COMPOSER_HOME=/opt/tools/drush/9/drush \
+      COMPOSER_BIN_DIR=/usr/local/bin \
+      COMPOSER_VENDOR_DIR=/opt/tools/drush/9/drush/vendor \
+      composer global require drush/drush:^9 &> /dev/null
+      rm -f -r /opt/tools/drush/*/drush/cache/*
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Drush ${_DRUSH9_VRN} installation complete"
+      fi
+    fi
+  else
+    rm -rf /opt/tools/drush/9/*
+    cd /opt/tools/drush/9/
+    get_dev_ext "drush-${_DRUSH9_VRN}.tar.gz"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Drush ${_DRUSH9_VRN} installation complete"
+    fi
   fi
   find /opt/tools -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tools -type f -exec chmod 0644 {} \; &> /dev/null
@@ -2055,6 +2077,10 @@ get_drush_versions() {
     rm -f /usr/bin/drush
     ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush8
     ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush
+  fi
+  if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+    rm -f /usr/bin/drush9
+    ln -s /opt/tools/drush/9/drush/vendor/drush/drush/drush /usr/bin/drush9
   fi
   if [ -e "/opt/tools/drush/6" ]; then
     rm -rf /opt/tools/drush/6
