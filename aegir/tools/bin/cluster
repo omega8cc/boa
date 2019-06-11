@@ -925,6 +925,7 @@ binlog_row_image=minimal
 wsrep_log_conflicts=ON
 #pxc_strict_mode=ENFORCING
 pxc_strict_mode=PERMISSIVE
+performance_schema=ON
 
 # Galera Provider Configuration
 wsrep_provider=/usr/lib/galera3/libgalera_smm.so
@@ -970,6 +971,7 @@ character_set_server    = utf8mb4
 collation_server        = utf8mb4_general_ci
 skip-external-locking
 skip-name-resolve
+performance_schema      = ON
 connect_timeout         = 60
 join_buffer_size        = 4M
 key_buffer_size         = 1024M

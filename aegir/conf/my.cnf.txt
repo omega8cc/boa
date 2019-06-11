@@ -18,6 +18,7 @@ character_set_server    = utf8mb4
 collation_server        = utf8mb4_general_ci
 skip-external-locking
 skip-name-resolve
+performance_schema      = ON
 symbolic-links          = 0
 connect_timeout         = 60
 join_buffer_size        = 1M
