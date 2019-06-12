@@ -669,11 +669,13 @@ install_with_aptitude_sql() {
   if [ "${_EASY_SETUP}" = "DBHD" ] \
     || [ -e "/etc/mysql/conf.d/galera.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    msg "INFO: Running ${_DB_SERVER} system tables upgrade, please wait..."
-    if [ -x "/usr/bin/mariadb_upgrade" ]; then
-      mrun "mariadb_upgrade --force" &> /dev/null
-    elif [ -x "/usr/bin/mysql_upgrade" ]; then
-      mrun "mysql_upgrade --force" &> /dev/null
+    if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERIES}" ]]; then
+      msg "INFO: Running ${_DB_SERVER} system tables upgrade, please wait..."
+	  if [ -x "/usr/bin/mariadb_upgrade" ]; then
+	    mrun "mariadb_upgrade --force" &> /dev/null
+	  elif [ -x "/usr/bin/mysql_upgrade" ]; then
+	    mrun "mysql_upgrade --force" &> /dev/null
+	  fi
     fi
   fi
   usermod -aG users mysql
@@ -932,11 +934,13 @@ install_db_server() {
       wait
       _CUSTOM_CONFIG_SQL=NO
       mrun "sleep 8"
-      msg "INFO: Running ${_DB_SERVER} system tables upgrade, please wait..."
-      if [ -x "/usr/bin/mariadb_upgrade" ]; then
-        mrun "mariadb_upgrade --force" &> /dev/null
-      elif [ -x "/usr/bin/mysql_upgrade" ]; then
-        mrun "mysql_upgrade --force" &> /dev/null
+      if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERIES}" ]]; then
+        msg "INFO: Running ${_DB_SERVER} system tables upgrade, please wait..."
+        if [ -x "/usr/bin/mariadb_upgrade" ]; then
+          mrun "mariadb_upgrade --force" &> /dev/null
+        elif [ -x "/usr/bin/mysql_upgrade" ]; then
+          mrun "mysql_upgrade --force" &> /dev/null
+        fi
       fi
       tune_memory_limits
       myCnf="/etc/mysql/my.cnf"
