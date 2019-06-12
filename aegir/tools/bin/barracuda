@@ -723,6 +723,8 @@ up_action() {
           wait
           sed -i "s/^_DB_SERIES=5.5/_DB_SERIES=10.2/g"                 ${barCnf}
           wait
+          sed -i "s/^_DB_SERIES=10.1/_DB_SERIES=10.2/g"                ${barCnf}
+          wait
           if [ -e "/root/.mstr.clstr.cnf" ] \
             || [ -e "/root/.wbhd.clstr.cnf" ] \
             || [ -e "/root/.dbhd.clstr.cnf" ] \
