@@ -966,7 +966,7 @@ install_php_multi() {
   elif [ "$1" = "70" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --enable-gd-native-ttf --with-mcrypt"
   elif [ "$1" = "56" ]; then
-    _PHP_EXTRA="${_PHP_EXTRA} --enable-gd-native-ttf --with-mcrypt"
+    _PHP_EXTRA="${_PHP_EXTRA} --enable-gd-native-ttf --with-mcrypt --with-mysql=mysqlnd"
     if [ "${_OSV}" = "stretch" ]; then
       patchFile="PHP-5.6.31-OpenSSL-1.1.0-compatibility-20170801.patch"
       patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
@@ -1383,7 +1383,11 @@ check_php_rebuild() {
     fi
   fi
   if [ -x "/opt/php$1/bin/php" ]; then
-    _PHP_DRIVERS=$(/opt/php$1/bin/php -i | grep "with-mysqli=mysqlnd" 2>&1)
+    if [ "$1" = "56" ]; then
+      _PHP_DRIVERS=$(/opt/php$1/bin/php -i | grep "with-mysql=mysqlnd" 2>&1)
+    else
+      _PHP_DRIVERS=$(/opt/php$1/bin/php -i | grep "with-mysqli=mysqlnd" 2>&1)
+    fi
     if [ -z "${_PHP_DRIVERS}" ]; then
       _PHP_DRIVERS_BUILD=NO
     else
