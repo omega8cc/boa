@@ -96,7 +96,11 @@ sub makeactions
           $skip_post = 1;
         }
         elsif ($line =~ /POST \/.*/ && $line =~ /\/cart\/checkout/) {
-          ### print "Not Counted Static Request URI: $line\n";
+          ### print "Not Counted Dynamic Request URI: $line\n";
+          $skip_post = 1;
+        }
+        elsif ($line =~ /POST \/.*/ && $line =~ /\/embed\/preview/) {
+          ### print "Not Counted Dynamic Request URI: $line\n";
           $skip_post = 1;
         }
         else {
@@ -146,7 +150,11 @@ sub makeactions
           $skip_post = 1;
         }
         elsif ($line =~ /POST \/.*/ && $line =~ /\/cart\/checkout/) {
-          ### print "Not Counted Static Request URI: $line\n";
+          ### print "Not Counted Dynamic Request URI: $line\n";
+          $skip_post = 1;
+        }
+        elsif ($line =~ /POST \/.*/ && $line =~ /\/embed\/preview/) {
+          ### print "Not Counted Dynamic Request URI: $line\n";
           $skip_post = 1;
         }
         else {
