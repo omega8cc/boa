@@ -5038,8 +5038,33 @@ update_initd() {
     fi
     if [ ! -e "/var/run/aegir_upgrade.pid" ] \
       && [ ! -e "/root/.proxy.cnf" ]; then
-      msg "INFO: Restarting Redis..."
+      msg "INFO: Restarting Redis, PHP-FPM and Nginx..."
       mrun "service redis-server restart" &> /dev/null
+      mrun "update-rc.d -f php5-fpm remove" &> /dev/null
+      mrun "service nginx stop" &> /dev/null
+      if [ -e "/etc/init.d/php73-fpm" ]; then
+        mrun "update-rc.d php73-fpm defaults" &> /dev/null
+        mrun "service php73-fpm stop" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php72-fpm" ]; then
+        mrun "update-rc.d php72-fpm defaults" &> /dev/null
+        mrun "service php72-fpm stop" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php71-fpm" ]; then
+        mrun "update-rc.d php71-fpm defaults" &> /dev/null
+        mrun "service php71-fpm stop" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php70-fpm" ]; then
+        mrun "update-rc.d php70-fpm defaults" &> /dev/null
+        mrun "service php70-fpm stop" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php56-fpm" ]; then
+        mrun "update-rc.d php56-fpm defaults" &> /dev/null
+        mrun "service php56-fpm stop" &> /dev/null
+      fi
+      killall -9 php-fpm &> /dev/null
+      killall -9 php-cgi &> /dev/null
+      killall -9 pure-ftpd &> /dev/null
       if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERIES}" ]]; then
         msg "INFO: Running ${_DB_SERVER} system tables upgrade, please wait..."
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
@@ -5102,6 +5127,22 @@ update_initd() {
         mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
         msg "INFO: ${_DB_SERVER} server restart completed"
       fi
+      if [ -e "/etc/init.d/php73-fpm" ]; then
+        mrun "service php73-fpm start" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php72-fpm" ]; then
+        mrun "service php72-fpm start" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php71-fpm" ]; then
+        mrun "service php71-fpm start" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php70-fpm" ]; then
+        mrun "service php70-fpm start" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php56-fpm" ]; then
+        mrun "service php56-fpm start" &> /dev/null
+      fi
+      mrun "service nginx start" &> /dev/null
     fi
   fi
 }
