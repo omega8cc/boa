@@ -5040,14 +5040,6 @@ update_initd() {
       && [ ! -e "/root/.proxy.cnf" ]; then
       msg "INFO: Restarting Redis..."
       mrun "service redis-server restart" &> /dev/null
-      if [ -e "/etc/init.d/solr7" ]; then
-        msg "INFO: Restarting Solr7..."
-        mrun "service solr7 restart" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/jetty9" ]; then
-        msg "INFO: Restarting Jetty9..."
-        mrun "service jetty9 restart" &> /dev/null
-      fi
       if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERIES}" ]]; then
         msg "INFO: Running ${_DB_SERVER} system tables upgrade, please wait..."
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
