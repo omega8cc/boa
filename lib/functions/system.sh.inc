@@ -5065,6 +5065,22 @@ update_initd() {
       killall -9 php-fpm &> /dev/null
       killall -9 php-cgi &> /dev/null
       killall -9 pure-ftpd &> /dev/null
+      if [ -e "/etc/init.d/php73-fpm" ]; then
+        mrun "service php73-fpm start" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php72-fpm" ]; then
+        mrun "service php72-fpm start" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php71-fpm" ]; then
+        mrun "service php71-fpm start" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php70-fpm" ]; then
+        mrun "service php70-fpm start" &> /dev/null
+      fi
+      if [ -e "/etc/init.d/php56-fpm" ]; then
+        mrun "service php56-fpm start" &> /dev/null
+      fi
+      mrun "service nginx start" &> /dev/null
       if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERIES}" ]]; then
         msg "INFO: Running ${_DB_SERVER} system tables upgrade, please wait..."
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
@@ -5127,22 +5143,6 @@ update_initd() {
         mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
         msg "INFO: ${_DB_SERVER} server restart completed"
       fi
-      if [ -e "/etc/init.d/php73-fpm" ]; then
-        mrun "service php73-fpm start" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php72-fpm" ]; then
-        mrun "service php72-fpm start" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php71-fpm" ]; then
-        mrun "service php71-fpm start" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php70-fpm" ]; then
-        mrun "service php70-fpm start" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php56-fpm" ]; then
-        mrun "service php56-fpm start" &> /dev/null
-      fi
-      mrun "service nginx start" &> /dev/null
     fi
   fi
 }
