@@ -758,7 +758,7 @@ if (!$is_dev) {
         $conf['httprl_server_addr'] = "-1";
         $conf['httprl_timeout'] = "10";
         $conf['httprl_ttfb_timeout'] = "5";
-        ### $conf['drupal_http_request_function'] = "httprl_override_core";
+        // $conf['drupal_http_request_function'] = "httprl_override_core";
       }
     }
   }
