@@ -423,13 +423,6 @@ tune_web_server_config() {
   # Redis config should sync with PHP-CLI
   sed -i "s/^timeout .*/timeout 9999/g" /etc/redis/redis.conf                                  &> /dev/null
   wait
-  if [ ! -z "${_L_NGX_WRKS}" ]; then
-    sed -i "s/worker_processes.*/worker_processes  ${_L_NGX_WRKS};/g" /etc/nginx/nginx.conf    &> /dev/null
-    wait
-  else
-    sed -i "s/worker_processes.*/worker_processes  4;/g" /etc/nginx/nginx.conf                 &> /dev/null
-    wait
-  fi
 }
 
 #
