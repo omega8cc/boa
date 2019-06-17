@@ -1065,17 +1065,10 @@ install_php_multi() {
       || [ -e "/root/.dbhd.clstr.cnf" ]; then
       _T_DBS_VRN="${_GALERA_10_VRN}"
     else
-      if [ "${_DB_SERIES}" = "10.0" ]; then
-        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g" ${barCnf}
-        _DB_SERIES=10.2
-      fi
-      sed -i "s/^_DB_SERIES=5.5/_DB_SERIES=10.2/g"  ${barCnf}
       if [ "${_DB_SERIES}" = "10.3" ] \
         || [ "${_DB_SERIES}" = "10.2" ] \
         || [ "${_DB_SERIES}" = "10.1" ] \
-        || [ "${_DB_SERIES}" = "10.0" ] \
-        || [ "${_DB_SERIES}" = "5.7" ] \
-        || [ "${_DB_SERIES}" = "5.5" ]; then
+        || [ "${_DB_SERIES}" = "5.7" ]; then
         if [ "${_DB_SERIES}" = "10.3" ]; then
           _DB_SERVER=MariaDB
           _DBS_VRN="${_MARIADB_10_3_VRN}"
@@ -1095,7 +1088,12 @@ install_php_multi() {
         fi
         _T_DBS_VRN="${_DBS_VRN}"
       else
+        _DB_SERVER=MariaDB
+        _DBS_VRN="${_MARIADB_10_2_VRN}"
         _T_DBS_VRN="${_DBS_VRN}"
+        if [ -e "${barCnf}" ]; then
+          sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g" ${barCnf}
+        fi
       fi
     fi
     touch ${pthLog}/installed-${_PHP_VERSION}-${_T_DBS_VRN}-${_DB_SERVER}.log

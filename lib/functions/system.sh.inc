@@ -764,21 +764,12 @@ barracuda_cnf() {
     if [ "${_DB_SERIES}" = "10.3" ] \
       || [ "${_DB_SERIES}" = "10.2" ] \
       || [ "${_DB_SERIES}" = "10.1" ] \
-      || [ "${_DB_SERIES}" = "10.0" ] \
-      || [ "${_DB_SERIES}" = "5.7" ] \
-      || [ "${_DB_SERIES}" = "5.5" ]; then
+      || [ "${_DB_SERIES}" = "5.7" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
         _DBS_VRN="${_GALERA_10_VRN}"
       else
-        if [ "${_DB_SERIES}" = "10.0" ] && [ -e "${barCnf}" ]; then
-          sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g" ${barCnf}
-          _DB_SERIES=10.2
-        fi
-        if [ -e "${barCnf}" ]; then
-          sed -i "s/^_DB_SERIES=5.5/_DB_SERIES=10.2/g"  ${barCnf}
-        fi
         if [ "${_DB_SERIES}" = "10.3" ]; then
           _DB_SERVER=MariaDB
           _DBS_VRN="${_MARIADB_10_3_VRN}"
@@ -801,6 +792,9 @@ barracuda_cnf() {
       _DB_SERVER=MariaDB
       _DB_SERIES=10.2
       _DBS_VRN="${_MARIADB_10_2_VRN}"
+      if [ -e "${barCnf}" ]; then
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g" ${barCnf}
+      fi
     fi
     msg "INFO: Creating your ${barCnf} config file"
     sleep 1
@@ -1637,19 +1631,12 @@ barracuda_cnf() {
     if [ "${_DB_SERIES}" = "10.3" ] \
       || [ "${_DB_SERIES}" = "10.2" ] \
       || [ "${_DB_SERIES}" = "10.1" ] \
-      || [ "${_DB_SERIES}" = "10.0" ] \
-      || [ "${_DB_SERIES}" = "5.7" ] \
-      || [ "${_DB_SERIES}" = "5.5" ]; then
+      || [ "${_DB_SERIES}" = "5.7" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
         _DBS_VRN="${_GALERA_10_VRN}"
       else
-        if [ "${_DB_SERIES}" = "10.0" ]; then
-          sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g" ${barCnf}
-          _DB_SERIES=10.2
-        fi
-        sed -i "s/^_DB_SERIES=5.5/_DB_SERIES=10.2/g"  ${barCnf}
         if [ "${_DB_SERIES}" = "10.3" ]; then
           _DB_SERVER=MariaDB
           _DBS_VRN="${_MARIADB_10_3_VRN}"
@@ -1672,6 +1659,9 @@ barracuda_cnf() {
       _DB_SERVER=MariaDB
       _DB_SERIES=10.2
       _DBS_VRN="${_MARIADB_10_2_VRN}"
+      if [ -e "${barCnf}" ]; then
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g" ${barCnf}
+      fi
     fi
     _CHECK_HOST=$(uname -n 2>&1)
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then

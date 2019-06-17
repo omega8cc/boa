@@ -452,9 +452,7 @@ install_db_sql() {
   else
     if [ "${_DB_SERIES}" = "10.3" ] \
       || [ "${_DB_SERIES}" = "10.2" ] \
-      || [ "${_DB_SERIES}" = "10.1" ] \
-      || [ "${_DB_SERIES}" = "10.0" ] \
-      || [ "${_DB_SERIES}" = "5.5" ]; then
+      || [ "${_DB_SERIES}" = "10.1" ]; then
       _DO_NOTHING=YES
     else
       _DB_SERIES=10.2
@@ -798,19 +796,11 @@ install_db_server() {
     fi
     if [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]] \
       || [[ "${_DB_SERVER_TEST}" =~ "Percona" ]]; then
-      if [[ "${_DB_SERVER_TEST}" =~ " 5.1." ]] \
-        || [[ "${_DB_SERVER_TEST}" =~ " 5.2." ]]; then
-        _SQL_UPGRADE=YES
-      elif [ "${_DB_SERIES}" = "5.5" ]; then
-        if [[ ! "${_DB_SERVER_TEST}" =~ "5.5." ]]; then
-          _SQL_UPGRADE=YES
-        fi
-      elif [ "${_DB_SERIES}" = "5.7" ]; then
+      if [ "${_DB_SERIES}" = "5.7" ]; then
         if [[ ! "${_DB_SERVER_TEST}" =~ "5.7" ]]; then
           _SQL_UPGRADE=YES
         fi
-      elif [ "${_DB_SERIES}" = "10.1" ] \
-        || [ "${_DB_SERIES}" = "10.0" ]; then
+      elif [ "${_DB_SERIES}" = "10.1" ]; then
         if [[ ! "${_DB_SERVER_TEST}" =~ "10.1." ]]; then
           _SQL_UPGRADE=YES
         fi
