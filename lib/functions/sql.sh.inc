@@ -2,6 +2,7 @@
 # Update innodb_log_file_size.
 update_innodb_log_file_size() {
   msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
+  mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   if [ -z "${_IS_MYSQLD_RUNNING}" ]; then

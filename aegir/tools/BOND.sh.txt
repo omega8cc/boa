@@ -668,6 +668,7 @@ update_innodb_log_file_size() {
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   fi
   mrun "service mysql stop" &> /dev/null
   mrun "sleep 15"
