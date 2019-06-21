@@ -735,17 +735,32 @@ forced_mysql_root_password_update() {
     _ESC_PASS="${_ROOT_SQL_PASWD}"
   fi
   if [ ! -z "${_ESC_PASS}" ]; then
+    if [ "${_DB_SERIES}" = "10.4" ]; then
+      myUsrTbl="mysql.global_priv"
+    else
+      myUsrTbl="mysql.user"
+    fi
     cp -af /root/.my.cnf /root/.my.cnf-pre-${_X_VERSION}-${_NOW}
     cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-${_X_VERSION}-${_NOW}
     mysql -u root -e "FLUSH HOSTS;" &> /dev/null
-    mysql -u root -e "DELETE FROM mysql.user WHERE User='';" &> /dev/null
-    mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host \
+    mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';" &> /dev/null
+    mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND Host \
       NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
     mysql -u root -e "DROP DATABASE test;" &> /dev/null
     mysql -u root -e "DELETE FROM mysql.db \
       WHERE Db='test' OR Db='test\\_%';" &> /dev/null
-    mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ESC_PASS}') \
-      WHERE User='root';" &> /dev/null
+    if [ "${_DB_SERIES}" = "10.4" ]; then
+      mysql -u root -e "SET PASSWORD \
+        FOR 'root'@'localhost' = PASSWORD('${_ESC_PASS}');" &> /dev/null
+      mysql -u root -e "SET PASSWORD \
+        FOR 'root'@'127.0.0.1' = PASSWORD('${_ESC_PASS}');" &> /dev/null
+      mysql -u root -e "SET PASSWORD \
+        FOR 'root'@'${_MY_HOSTN}' = PASSWORD('${_ESC_PASS}');" &> /dev/null
+    else
+      mysql -u root -e "UPDATE ${myUsrTbl} \
+        SET Password=PASSWORD('${_ESC_PASS}') \
+        WHERE User='root';" &> /dev/null
+    fi
     mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
     echo "[client]" > /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
@@ -1089,21 +1104,36 @@ finalize_sql_initial_setup() {
     # - reload privileges table
     #
     if [ -e "/root/.my.pass.txt" ]; then
+      if [ "${_DB_SERIES}" = "10.4" ]; then
+        myUsrTbl="mysql.global_priv"
+      else
+        myUsrTbl="mysql.user"
+      fi
       if [ -z "${_ESC_PASS}" ]; then
         PXSWD=$(cat /root/.my.pass.txt 2>&1)
       else
         PXSWD="${_ESC_PASS}"
       fi
-      PASWD=$(echo -n $PXSWD | tr -d "\n" 2>&1)
+      PASWD=$(echo -n ${PXSWD} | tr -d "\n" 2>&1)
       mysql -u root -e "FLUSH HOSTS;" &> /dev/null
-      mysql -u root -e "DELETE FROM mysql.user WHERE User='';" &> /dev/null
-      mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND \
+      mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';" &> /dev/null
+      mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND \
         Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
       mysql -u root -e "DROP DATABASE test;" &> /dev/null
       mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR \
         Db='test\\_%';" &> /dev/null
-      mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$PASWD') \
-        WHERE User='root';" &> /dev/null
+      if [ "${_DB_SERIES}" = "10.4" ]; then
+        mysql -u root -e "SET PASSWORD \
+          FOR 'root'@'localhost' = PASSWORD('${PASWD}');" &> /dev/null
+        mysql -u root -e "SET PASSWORD \
+          FOR 'root'@'127.0.0.1' = PASSWORD('${PASWD}');" &> /dev/null
+        mysql -u root -e "SET PASSWORD \
+          FOR 'root'@'${_MY_HOSTN}' = PASSWORD('${PASWD}');" &> /dev/null
+      else
+        mysql -u root -e "UPDATE ${myUsrTbl} \
+          SET Password=PASSWORD('${PASWD}') \
+          WHERE User='root';" &> /dev/null
+      fi
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
@@ -1111,8 +1141,19 @@ finalize_sql_initial_setup() {
         _DO_NOTHING=YES
       else
         if [ -e "/etc/mysql/debian.cnf" ] && [ "${_STATUS}" = "INIT" ]; then
-          mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${PASWD}') \
-            WHERE User='debian-sys-maint';" &> /dev/null
+          mySysMn="debian-sys-maint"
+          if [ "${_DB_SERIES}" = "10.4" ]; then
+            mysql -u root -e "SET PASSWORD \
+              FOR '${mySysMn}'@'localhost' = PASSWORD('${PASWD}');" &> /dev/null
+            mysql -u root -e "SET PASSWORD \
+              FOR '${mySysMn}'@'127.0.0.1' = PASSWORD('${PASWD}');" &> /dev/null
+            mysql -u root -e "SET PASSWORD \
+              FOR '${mySysMn}'@'${_MY_HOSTN}' = PASSWORD('${PASWD}');" &> /dev/null
+          else
+            mysql -u root -e "UPDATE ${myUsrTbl} \
+              SET Password=PASSWORD('${PASWD}') \
+              WHERE User='${mySysMn}';" &> /dev/null
+          fi
           mkdir -p ${vBs}
           cp -af /etc/mysql/debian.cnf \
             ${vBs}/debian.cnf-pre-${_X_VERSION}-${_NOW}.txt
@@ -1180,7 +1221,7 @@ finalize_sql_initial_setup() {
     if [ ! -e "${pthLog}/fixed-cluster-ip-grants.log" ] \
       && [ -e "/root/.dbhd.clstr.cnf" ]; then
       PXSWD=$(cat /root/.my.pass.txt 2>&1)
-      PASWD=$(echo -n $PXSWD | tr -d "\n" 2>&1)
+      PASWD=$(echo -n ${PXSWD} | tr -d "\n" 2>&1)
       if [ -e "/root/.remote.IP.list" ]; then
         _ESC="*.*"
         for _IP in `cat /root/.remote.IP.list \
