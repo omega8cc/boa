@@ -54,7 +54,7 @@ if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+  || [[ "${_VM_TEST}" =~ "3.9.8-beng" ]]; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
@@ -988,7 +988,7 @@ satellite_tune_fpm_workers() {
     || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+    || [[ "${_VM_TEST}" =~ "3.9.8-beng" ]]; then
     _VMFAMILY="VS"
   fi
   if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \

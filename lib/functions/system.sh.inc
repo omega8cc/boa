@@ -32,7 +32,7 @@ if_running_as_root_barracuda() {
       || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+      || [[ "${_VM_TEST}" =~ "3.9.8-beng" ]]; then
       _VMFAMILY="VS"
       touch /var/run/cloud_vhost.pid
       if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
@@ -107,7 +107,7 @@ kill_nash() {
     || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+    || [[ "${_VM_TEST}" =~ "3.9.8-beng" ]]; then
     _DO_NOTHING=YES
   else
     _NASH_TEST=$(grep nash-hotplug /etc/rc.local 2>&1)
@@ -270,7 +270,7 @@ tune_memory_limits() {
     || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
     || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+    || [[ "${_VM_TEST}" =~ "3.9.8-beng" ]]; then
     _VMFAMILY="VS"
   fi
   if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
@@ -1162,7 +1162,7 @@ barracuda_cnf() {
       || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+      || [[ "${_VM_TEST}" =~ "3.9.8-beng" ]]; then
       _VMFAMILY="VS"
     fi
     if [ -e "/root/.auto.up.cnf" ] \
@@ -3453,7 +3453,7 @@ if_jessie_to_stretch() {
       || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
       || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+      || [[ "${_VM_TEST}" =~ "3.9.8-beng" ]]; then
       _PTMX=OK
       _REMOVE_LINKS="buagent \
                      checkroot.sh \
