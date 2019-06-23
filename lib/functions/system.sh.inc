@@ -3055,7 +3055,6 @@ finale() {
     csf -uf &> /dev/null
     csf -e  &> /dev/null
     csf -q  &> /dev/null
-    echo "Waiting 8 seconds for firewall clean update..."
     sleep 8
     service lfd start &> /dev/null
     ### Linux kernel TCP SACK CVEs mitigation
@@ -3065,9 +3064,9 @@ finale() {
     if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
-        sysctl net.ipv4.tcp_mtu_probing=0
-        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
-        ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
+        sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
+        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+        ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
       fi
     fi
   fi
