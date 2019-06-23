@@ -43,10 +43,10 @@ if [ -e "/root/.my.cluster_backup_proxysql.txt" ]; then
   _SQL_HOST="127.0.0.1"
 else
   _SQL_PORT="3306"
-if [ -e "/root/.my.cluster_write_node.txt" ]; then
-  _SQL_HOST=$(cat /root/.my.cluster_write_node.txt 2>&1)
-  _SQL_HOST=$(echo -n ${_SQL_HOST} | tr -d "\n" 2>&1)
-fi
+  if [ -e "/root/.my.cluster_write_node.txt" ]; then
+    _SQL_HOST=$(cat /root/.my.cluster_write_node.txt 2>&1)
+    _SQL_HOST=$(echo -n ${_SQL_HOST} | tr -d "\n" 2>&1)
+  fi
   [ -z ${_SQL_HOST} ] && _SQL_HOST="127.0.0.1" && _SQL_PORT="3306"
 fi
 
