@@ -30,11 +30,12 @@ check_root() {
 check_root
 
 [ -e "/root/.proxy.cnf" ] && exit 0
-[ ! -e "/root/.my.cluster_maint_pwd.txt" ] && exit 0
-[ ! -e "/root/.my.cluster_root_pwd.txt" ] && exit 0
 
 if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
   _SQL_PSWD=$(cat /root/.my.cluster_root_pwd.txt 2>&1)
+  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+elif [ -e "/root/.my.pass.txt" ]; then
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
 fi
 
