@@ -1385,6 +1385,19 @@ update_wrappers() {
     if [ -x "${_CSF_TEST}" ]; then
       csf -uf
       csf -q
+      sleep 15
+      ### Linux kernel TCP SACK CVEs mitigation
+      ### CVE-2019-11477 SACK Panic
+      ### CVE-2019-11478 SACK Slowness
+      ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
+      if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+        _SACK_TEST=$(iptables --list | grep tcpmss 2>&1)
+        if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
+          sysctl net.ipv4.tcp_mtu_probing=0
+          iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
+          ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
+        fi
+      fi
     fi
   fi
   mkdir -p ${usrBin}
@@ -1632,6 +1645,27 @@ check_redis_oom() {
 
 ###--------------------###
 if [ `whoami` = "root" ]; then
+
+  ### Linux kernel TCP SACK CVEs mitigation
+  ### CVE-2019-11477 SACK Panic
+  ### CVE-2019-11478 SACK Slowness
+  ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
+  if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+    _SACK_TEST=$(iptables --list | grep tcpmss 2>&1)
+    if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
+      sysctl net.ipv4.tcp_mtu_probing=0
+      iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
+      ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
+    fi
+  fi
+  ### More aggressive mitigation affecting network performance
+  # if [ -e "/proc/sys/net/ipv4/tcp_sack" ]; then
+  #   _SACK_TEST=$(cat /proc/sys/net/ipv4/tcp_sack 2>&1)
+  #   _SACK_TEST=$(echo -n ${_SACK_TEST} | tr -d "\n" 2>&1)
+  #   if [[ "${_SACK_TEST}" =~ "1" ]]; then
+  #     echo "0" > /proc/sys/net/ipv4/tcp_sack
+  #   fi
+  # fi
 
   ### Block known attackers IPs
   _CSF_TEST=$(which csf 2> /dev/null)

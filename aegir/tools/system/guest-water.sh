@@ -357,13 +357,25 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
 
   rm -f /etc/csf/csf.error
   service lfd restart
-  sleep 8
+  sleep 15
   csf -e
   sleep 1
   csf -q
-  sleep 8
+  sleep 15
   csf -tf
   sleep 1
+  ### Linux kernel TCP SACK CVEs mitigation
+  ### CVE-2019-11477 SACK Panic
+  ### CVE-2019-11478 SACK Slowness
+  ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
+  if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+    _SACK_TEST=$(iptables --list | grep tcpmss 2>&1)
+    if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
+      sysctl net.ipv4.tcp_mtu_probing=0
+      iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
+      ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
+    fi
+  fi
 
   echo local start `date`
   local_ip_rg
@@ -383,11 +395,23 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
 
   rm -f /etc/csf/csf.error
   service lfd restart
-  sleep 8
+  sleep 15
   csf -e
   sleep 1
   csf -q
-  sleep 8
+  sleep 15
+  ### Linux kernel TCP SACK CVEs mitigation
+  ### CVE-2019-11477 SACK Panic
+  ### CVE-2019-11478 SACK Slowness
+  ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
+  if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+    _SACK_TEST=$(iptables --list | grep tcpmss 2>&1)
+    if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
+      sysctl net.ipv4.tcp_mtu_probing=0
+      iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
+      ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
+    fi
+  fi
   rm -f /var/run/water.pid
   echo guard fin `date`
 
