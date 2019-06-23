@@ -86,11 +86,11 @@ check_root() {
       exit 1
     fi
     if [ "${_OSR}" = "jessie" ]; then
-      _BENG_SERIES="4.1"
-      _BNG_VERSION="4.1.50-vs2.3.8.6"
+      _BENG_SERIES="4.9"
+      _BNG_VERSION="4.9.164-vs2.3.9.8"
     elif [ "${_OSR}" = "stretch" ]; then
-      _BENG_SERIES="4.1"
-      _BNG_VERSION="4.1.50-vs2.3.8.6"
+      _BENG_SERIES="4.9"
+      _BNG_VERSION="4.9.164-vs2.3.9.8"
     else
       echo "ERROR: Not supported OS detected: ${_OSV}/${_OSR}"
       exit 1
