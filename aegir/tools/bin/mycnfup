@@ -405,11 +405,6 @@ tune_sql_memory_limits() {
       cp -af /etc/mysql/my.cnf ${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}
     fi
   fi
-  if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
-    _DO_NOTHING=YES
-  else
-    cp -af ${locCnf}/my.cnf.txt /etc/mysql/my.cnf
-  fi
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
   pthTun="/var/opt/mysqltuner.pl"
   outTun="/var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt"
