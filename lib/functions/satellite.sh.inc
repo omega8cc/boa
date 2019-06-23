@@ -5034,6 +5034,7 @@ satellite_child_b_aegir_build() {
       ${_DRUSHCMD} @hostmaster sqlq "INSERT INTO hosting_service (nid, vid, service, type, restart_cmd, port, available) VALUES ('2', '2', 'http', 'nginx_ssl', 'sudo /etc/init.d/nginx reload', '80', '1')"
       ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force
       ${_DRUSHCMD} @hostmaster hosting-dispatch
+      msg "${_STATUS} B: Waiting 15 seconds..."
       sleep 15
     fi
 

@@ -671,6 +671,7 @@ update_innodb_log_file_size() {
     mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   fi
   mrun "service mysql stop" &> /dev/null
+  echo "Waiting 15 seconds..."
   mrun "sleep 15"
   if [ ! -e "/var/run/mysqld/mysqld.sock" ] \
     && [ ! -e "/var/run/mysqld/mysqld.pid" ]; then
@@ -680,6 +681,7 @@ update_innodb_log_file_size() {
     mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
     wait
+    echo "Waiting 15 seconds..."
     mrun "sleep 15"
   fi
   if [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
@@ -840,13 +842,14 @@ restart_services() {
   mrun "service redis-server restart" &> /dev/null
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     mrun "csf -q" &> /dev/null
-    sleep 15
+    echo "Waiting 8 seconds for firewall clean update..."
+    sleep 8
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic
     ### CVE-2019-11478 SACK Slowness
     ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
     if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-      _SACK_TEST=$(iptables --list | grep tcpmss 2>&1)
+      _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
         sysctl net.ipv4.tcp_mtu_probing=0
         iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP

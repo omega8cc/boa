@@ -318,6 +318,7 @@ hostmaster_mi_up() {
     ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_service SET type='nginx_ssl' WHERE service='http'"
     ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force
     ${_DRUSHCMD} @hostmaster hosting-dispatch
+    msg "INFO: Waiting 15 seconds..."
     sleep 15
   fi
   if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then

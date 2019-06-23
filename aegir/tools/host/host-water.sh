@@ -373,11 +373,13 @@ if [ -e "/vservers" ] \
 
   rm -f /etc/csf/csf.error
   service lfd restart
-  sleep 15
+  echo "Waiting 8 seconds for firewall clean start..."
+  sleep 8
   csf -e
   sleep 1
   csf -q
-  sleep 15
+  echo "Waiting 8 seconds for firewall clean restart..."
+  sleep 8
   csf -tf
   sleep 1
   ### Linux kernel TCP SACK CVEs mitigation
@@ -385,7 +387,7 @@ if [ -e "/vservers" ] \
   ### CVE-2019-11478 SACK Slowness
   ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-    _SACK_TEST=$(iptables --list | grep tcpmss 2>&1)
+    _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
     if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
       sysctl net.ipv4.tcp_mtu_probing=0
       iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
@@ -412,17 +414,19 @@ if [ -e "/vservers" ] \
 
   rm -f /etc/csf/csf.error
   service lfd restart
-  sleep 15
+  echo "Waiting 8 seconds for firewall clean update..."
+  sleep 8
   csf -e
   sleep 1
   csf -q
-  sleep 15
+  echo "Waiting 8 seconds for firewall clean update..."
+  sleep 8
   ### Linux kernel TCP SACK CVEs mitigation
   ### CVE-2019-11477 SACK Panic
   ### CVE-2019-11478 SACK Slowness
   ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-    _SACK_TEST=$(iptables --list | grep tcpmss 2>&1)
+    _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
     if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
       sysctl net.ipv4.tcp_mtu_probing=0
       iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP

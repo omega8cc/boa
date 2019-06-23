@@ -233,14 +233,15 @@ install_upgrade_csf_lfd() {
         mrun "csf -x" &> /dev/null
         mrun "csf -e" &> /dev/null
         mrun "csf -q" &> /dev/null
-        sleep 15
+        echo "Waiting 8 seconds for firewall clean update..."
+        sleep 8
         service lfd start &> /dev/null
         ### Linux kernel TCP SACK CVEs mitigation
         ### CVE-2019-11477 SACK Panic
         ### CVE-2019-11478 SACK Slowness
         ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
         if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-          _SACK_TEST=$(iptables --list | grep tcpmss 2>&1)
+          _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
           if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
             sysctl net.ipv4.tcp_mtu_probing=0
             iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP
