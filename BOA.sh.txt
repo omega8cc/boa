@@ -1556,19 +1556,20 @@ setup() {
   fi
   mkdir -p ${optBin}
   rm -f ${optBin}/.{boa*,fix*}
-  rm -f ${usrBin}/{autoupboa*,barracuda*,boa*,ffmirror*}
+  rm -f ${usrBin}/{autoupboa*,barracuda*,boa*,ffmirror*,mycnfup*}
   rm -f ${usrBin}/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
   if [ ! -e "/data/disk" ]; then
     ln -s ${optBin}/boa       ${usrBin}/boa
     ln -s ${optBin}/barracuda ${usrBin}/barracuda
     ln -s ${optBin}/octopus   ${usrBin}/octopus
   fi
-  rm -f ${optBin}/{autoupboa*,barracuda*,boa*,ffmirror*,xboa*}
+  rm -f ${optBin}/{autoupboa*,barracuda*,boa*,ffmirror*,xboa*,mycnfup*}
   rm -f ${optBin}/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
   curl ${crlGet} "${urlHmr}/${tBn}/autoupboa"      -o ${optBin}/autoupboa
   curl ${crlGet} "${urlHmr}/${tBn}/barracuda"      -o ${optBin}/barracuda
   curl ${crlGet} "${urlHmr}/${tBn}/boa"            -o ${optBin}/boa
   curl ${crlGet} "${urlHmr}/${tBn}/ffmirror"       -o ${optBin}/ffmirror
+  curl ${crlGet} "${urlHmr}/${tBn}/mycnfup"        -o ${optBin}/mycnfup
   curl ${crlGet} "${urlHmr}/${tBn}/octopus"        -o ${optBin}/octopus
   curl ${crlGet} "${urlHmr}/${tBn}/randpass"       -o ${optBin}/randpass
   curl ${crlGet} "${urlHmr}/${tBn}/sqlmagic"       -o ${optBin}/sqlmagic
@@ -1597,7 +1598,7 @@ setup() {
     fi
   fi
   chmod 700 ${optBin}/{autoupboa,backboa,barracuda,boa,duobackboa}
-  chmod 700 ${optBin}/{ffmirror,octopus,syncpass,xboa}
+  chmod 700 ${optBin}/{ffmirror,octopus,syncpass,xboa,mycnfup}
   chmod 755 ${optBin}/{randpass,sqlmagic,thinkdifferent}
   echo
   echo "BOA Meta Installer setup completed"
