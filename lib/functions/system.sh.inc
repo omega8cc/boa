@@ -1901,6 +1901,7 @@ check_apt_updates() {
       *newrelic*)   _UP_NRC=YES ;;
       *openjdk*)    _UP_JDK=YES ;;
       *openssl*)    _UP_PHP=YES ;;
+      *proxysql*)   _UP_PXC=YES ;;
       *)  ;;
     esac
   done
@@ -3240,6 +3241,44 @@ more_packages_install_on_init() {
   fi
 }
 
+if_proxysql_update() {
+  isPxyVer=$(proxysql --version 2>&1)
+  if [[ ! "${isPxyVer}" =~ "${_PXC_VRN}" ]]; then
+    _UP_PXC=YES
+  fi
+  if [ "${_UP_PXC}" = "YES" ] \
+    && [ "${_THIS_OS}" = "Debian" ]; then
+     if [ ! -e "/etc/apt/sources.list.d/proxysql.list" ]; then
+       wget -O - 'http://repo.proxysql.com/ProxySQL/repo_pub_key' | apt-key add - &> /dev/null
+       echo deb http://repo.proxysql.com/ProxySQL/proxysql-1.4.x/$(lsb_release -sc)/ ./ \
+         | tee /etc/apt/sources.list.d/proxysql.list &> /dev/null
+       mrun "apt-get update -qq" 2> /dev/null
+     fi
+     mrun "${_INSTALL} sysbench" 2> /dev/null
+     mrun "${_INSTALL} debconf-utils" 2> /dev/null
+     isPxy=$(which proxysql 2>&1)
+     if [ ! -x "${isPxy}" ]; then
+       mrun "${_INSTALL} proxysql" 2> /dev/null
+     else
+       mrun "apt-get upgrade ${nrmUpArg} proxysql" 2> /dev/null
+     fi
+     cd /var/opt
+     rm -rf proxysql*
+     if [ "${_OSV}" = "jessie" ]; then
+       wget -q -U iCab \
+         https://github.com/sysown/proxysql/releases/download/v${_PXC_VRN}/proxysql_${_PXC_VRN}-debian8_amd64.deb &> /dev/null
+       dpkg -i proxysql_${_PXC_VRN}-debian8_amd64.deb &> /dev/null
+     elif [ "${_OSV}" = "stretch" ]; then
+       wget -q -U iCab \
+         https://github.com/sysown/proxysql/releases/download/v${_PXC_VRN}/proxysql_${_PXC_VRN}-debian9_amd64.deb &> /dev/null
+       dpkg -i proxysql_${_PXC_VRN}-debian9_amd64.deb &> /dev/null
+     fi
+     if [ -x "${isPxy}" ]; then
+       mrun "service proxysql restart" 2> /dev/null
+     fi
+  fi
+}
+
 if_jessie_to_stretch() {
   if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
     && [ "${_OSV}" = "jessie" ]; then
@@ -3671,6 +3710,8 @@ sys_packages_update() {
     _UP_LNX=NO
     _UP_NRC=NO
     _UP_PHP=NO
+    _UP_PXC=NO
+    _UP_SQL=NO
     check_apt_updates
   fi
 }
