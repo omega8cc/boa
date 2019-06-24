@@ -929,7 +929,6 @@ tune_memory_limits() {
 }
 
 tune_sql() {
-  rm -f /var/run/mysql_restart_running.pid
   check_running
   create_locks
   tune_memory_limits
