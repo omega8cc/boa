@@ -788,8 +788,8 @@ tune_memory_limits() {
   else
     _USE_SQL=$(( _RAM / 8 ))
   fi
-  if [ "${_USE_SQL}" -lt "1024" ]; then
-    _USE_SQL=1024
+  if [ "${_USE_SQL}" -lt "512" ]; then
+    _USE_SQL=512
   fi
   _TMP_SQL="${_USE_SQL}M"
   _SRT_SQL=$(( _USE_SQL * 2 ))
@@ -806,9 +806,6 @@ tune_memory_limits() {
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
     _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
-    if [ "${_MXC_SQL}" -lt "96" ]; then
-      _MXC_SQL=96
-    fi
   elif [ "${_USE}" -ge "2048" ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
       _USE_PHP=2048
@@ -822,9 +819,6 @@ tune_memory_limits() {
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
       _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
-      if [ "${_MXC_SQL}" -lt "192" ]; then
-        _MXC_SQL=192
-      fi
     elif [ "${_VMFAMILY}" = "VS" ] || [ "${_VMFAMILY}" = "TG" ]; then
       if [ -e "/root/.my.cluster_root_pwd.txt" ] \
         || [ -e "/root/.tg.cnf" ]; then
@@ -839,8 +833,8 @@ tune_memory_limits() {
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
         _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
-        if [ "${_MXC_SQL}" -lt "192" ]; then
-          _MXC_SQL=192
+        if [ "${_MXC_SQL}" -lt "48" ]; then
+          _MXC_SQL=48
         fi
       else
         _USE_PHP=2048
@@ -854,9 +848,6 @@ tune_memory_limits() {
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
         _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
-        if [ "${_MXC_SQL}" -lt "96" ]; then
-          _MXC_SQL=96
-        fi
       fi
     else
       _USE_PHP=2048
@@ -870,9 +861,6 @@ tune_memory_limits() {
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
       _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
-      if [ "${_MXC_SQL}" -lt "96" ]; then
-        _MXC_SQL=96
-      fi
     fi
   else
     _USE_PHP="${_USE}"

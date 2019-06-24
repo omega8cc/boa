@@ -1123,9 +1123,6 @@ tune_memory_limits() {
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
     _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
-    if [ "${_MXC_SQL}" -lt "96" ]; then
-      _MXC_SQL=96
-    fi
     if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
       _L_NGX_WRKS=${_CPU_MX}
     else
@@ -1144,9 +1141,6 @@ tune_memory_limits() {
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
       _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
-      if [ "${_MXC_SQL}" -lt "192" ]; then
-        _MXC_SQL=192
-      fi
       if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
         _L_NGX_WRKS=${_CPU_MX}
       else
@@ -1156,7 +1150,7 @@ tune_memory_limits() {
       if [ -e "/boot/grub/grub.cfg" ] \
         || [ -e "/boot/grub/menu.lst" ] \
         || [ -e "/root/.tg.cnf" ]; then
-        _USE_PHP=2048
+        _USE_PHP=4096
         _USE_OPC=4096
         _QCE_SQL=64M
         _RND_SQL=8M
@@ -1167,8 +1161,8 @@ tune_memory_limits() {
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
         _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
-        if [ "${_MXC_SQL}" -lt "192" ]; then
-          _MXC_SQL=192
+        if [ "${_MXC_SQL}" -lt "48" ]; then
+          _MXC_SQL=48
         fi
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
           _L_NGX_WRKS=${_CPU_TG}
@@ -1192,9 +1186,6 @@ tune_memory_limits() {
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
         _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
-        if [ "${_MXC_SQL}" -lt "96" ]; then
-          _MXC_SQL=96
-        fi
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
           _L_NGX_WRKS=${_CPU_VS}
         else
@@ -1213,9 +1204,6 @@ tune_memory_limits() {
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
       _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
-      if [ "${_MXC_SQL}" -lt "96" ]; then
-        _MXC_SQL=96
-      fi
       if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
         _L_NGX_WRKS=${_CPU_MX}
       else
