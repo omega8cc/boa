@@ -127,6 +127,18 @@ if [ ! -e "${xtraList}" ] \
     csf -e &> /dev/null
     sleep 3
     service lfd start &> /dev/null
+    ### Linux kernel TCP SACK CVEs mitigation
+    ### CVE-2019-11477 SACK Panic
+    ### CVE-2019-11478 SACK Slowness
+    ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
+    if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+      _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+      if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
+        sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
+        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/sull
+        ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+      fi
+    fi
   fi
   apt-get update -qq
   apt-get install percona-xtrabackup-24 -y
