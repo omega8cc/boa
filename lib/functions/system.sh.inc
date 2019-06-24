@@ -3263,18 +3263,18 @@ if_proxysql_update() {
        mrun "${_INSTALL} debconf-utils" 2> /dev/null
        mrun "${_INSTALL} proxysql" 2> /dev/null
      else
-       mrun "apt-get upgrade ${dstUpArg} proxysql" 2> /dev/null
+       mrun "apt-get upgrade ${nrmUpArg} proxysql" 2> /dev/null
      fi
      cd /var/opt
      rm -rf proxysql*
      if [ "${_OSV}" = "jessie" ]; then
        wget -q -U iCab \
          https://github.com/sysown/proxysql/releases/download/v${_PXC_VRN}/proxysql_${_PXC_VRN}-debian8_amd64.deb &> /dev/null
-       dpkg -i proxysql_${_PXC_VRN}-debian8_amd64.deb &> /dev/null
+       dpkg -i /var/opt/proxysql_${_PXC_VRN}-debian8_amd64.deb 2> /dev/null
      elif [ "${_OSV}" = "stretch" ]; then
        wget -q -U iCab \
          https://github.com/sysown/proxysql/releases/download/v${_PXC_VRN}/proxysql_${_PXC_VRN}-debian9_amd64.deb &> /dev/null
-       dpkg -i proxysql_${_PXC_VRN}-debian9_amd64.deb &> /dev/null
+       dpkg -i /var/opt/proxysql_${_PXC_VRN}-debian9_amd64.deb 2> /dev/null
      fi
      if [ ! -e "/etc/proxysql.cnf" ]; then
        msg "OOPS: Unable to open config file /etc/proxysql.cnf"
