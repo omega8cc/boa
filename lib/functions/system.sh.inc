@@ -3248,7 +3248,7 @@ if_proxysql_update() {
   fi
   if [ "${_UP_PXC}" = "YES" ] \
     && [ "${_THIS_OS}" = "Debian" ]; then
-     msg "INFO: Running ProxySQL upgrade..."
+     msg "INFO: Running ProxySQL upgrade to ${_PXC_VRN}..."
      # if [ ! -e "/etc/apt/sources.list.d/proxysql.list" ]; then
      #   wget -O - 'http://repo.proxysql.com/ProxySQL/repo_pub_key' | apt-key add - &> /dev/null
      #   echo deb http://repo.proxysql.com/ProxySQL/proxysql-1.4.x/$(lsb_release -sc)/ ./ \
