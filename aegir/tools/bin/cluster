@@ -407,6 +407,8 @@ install_proxysql() {
       vserver ${idn} exec apt-get purge -y ${_NOISE} proxysql
       rm -f -r /vservers/${idn}/var/lib/proxysql
       rm -f -r /vservers/${idn}/var/log/proxysql
+      rm -f /vservers/${idn}/etc/proxysql-admin.cnf
+      rm -f /vservers/${idn}/etc/proxysql.cnf
       for IP in "${_DB_NODE_IP[@]}"; do
         ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"DROP USER 'monitor'@'${IP}';\""
         ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"DROP USER 'proxysql_user'@'${IP}';\""
@@ -438,6 +440,10 @@ install_proxysql() {
     vserver ${idn} exec chown -R proxysql:proxysql /var/log/proxysql
     vserver ${idn} exec chmod 700 /var/log/proxysql
     vserver ${idn} exec usermod -aG users proxysql
+
+    echo "Pausing ProxySQL..."
+    vserver ${idn} exec service proxysql stop
+    sleep 5
 
     sed -i "s/admin:admin/admin:${_E_PROXYSQL_PASSWORD}/g" /vservers/${idn}/etc/proxysql.cnf
     wait
@@ -473,14 +479,13 @@ install_proxysql() {
     sleep 1
 
     echo "Starting ProxySQL..."
-    vserver ${idn} exec service proxysql stop
-    sleep 5
     vserver ${idn} exec service proxysql initial
     sleep 5
 
     echo "Running default auto-configuration of ProxySQL..."
     # ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --write-node=${_DB_NODE_IP[1]}:3600 --enable"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --config-file=/etc/proxysql-admin.cnf --proxysql-password=${_PROXYSQL_PASSWORD} --cluster-password=${_CLUSTER_APP_PASSWORD} --monitor-password=${_MONITOR_PASSWORD} --mode=loadbal --enable"
+    # ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --config-file=/etc/proxysql-admin.cnf --proxysql-password='${_PROXYSQL_PASSWORD}' --cluster-password='${_CLUSTER_APP_PASSWORD}' --monitor-password='${_MONITOR_PASSWORD}' --mode=loadbal --enable"
+    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --config-file=/etc/proxysql-admin.cnf --mode=loadbal --enable"
     sleep 10
 
     echo "Adding root user to mysql_users in ProxySQL..."
