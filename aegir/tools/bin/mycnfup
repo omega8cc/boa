@@ -3,6 +3,28 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
+###
+### Avoid too many questions
+###
+export DEBIAN_FRONTEND=noninteractive
+if [ -z "${TERM+x}" ]; then
+  export TERM=vt100
+fi
+
+_AEGIR_VERSION="BOA-4.0.1"
+_BRANCH_BOA="4.x"
+_X_VERSION="BOA-4.0.1"
+_MYSQLTUNER_VRN=1.7.15
+_PHP_FPM_WORKERS=AUTO
+_CUSTOM_CONFIG_SQL=NO
+_RESERVED_RAM=0
+
+crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+forCer="-fuy --allow-unauthenticated --reinstall"
+vBs="/var/backups"
+
+###-------------SYSTEM-----------------###
+
 check_root() {
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
@@ -30,6 +52,43 @@ check_root() {
 check_root
 
 [ -e "/root/.proxy.cnf" ] && exit 0
+
+find_fast_mirror() {
+  isNetc=$(which netcat 2>&1)
+  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    rm -f /etc/apt/sources.list.d/openssl.list
+    apt-get update -qq &> /dev/null
+    apt-get install netcat ${forCer} &> /dev/null
+    sleep 3
+  fi
+  ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${ffMirr}" ]; then
+    ffList="/var/backups/boa-mirrors.txt"
+    mkdir -p /var/backups
+    if [ ! -e "${ffList}" ]; then
+      echo "jp.files.aegir.cc"  > ${ffList}
+      echo "nl.files.aegir.cc" >> ${ffList}
+      echo "uk.files.aegir.cc" >> ${ffList}
+      echo "us.files.aegir.cc" >> ${ffList}
+    fi
+    if [ -e "${ffList}" ]; then
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      _USE_MIR="${_CHECK_MIRROR}"
+      [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+    else
+      _USE_MIR="files.aegir.cc"
+    fi
+  else
+    _USE_MIR="files.aegir.cc"
+  fi
+  if ! netcat -w 10 -z "${_USE_MIR}" 80; then
+    echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
+    _USE_MIR="104.245.208.226"
+  fi
+  urlDev="http://${_USE_MIR}/dev"
+  urlHmr="http://${_USE_MIR}/versions/master/aegir"
+}
+find_fast_mirror
 
 if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
   _SQL_PSWD=$(cat /root/.my.cluster_root_pwd.txt 2>&1)
@@ -65,6 +124,14 @@ fi
 
 _CHECK_HOST=$(uname -n 2>&1)
 _DATE=$(date +%y%m%d-%H%M 2>&1)
+_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=${_TODAY//[^0-9]/}
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=${_NOW//[^0-9-]/}
+_CHECK_HOST=$(uname -n 2>&1)
+_LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
+_UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
+_VMFAMILY=XEN
 _VM_TEST=$(uname -a 2>&1)
 if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
   || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
@@ -87,21 +154,26 @@ if [ -z "${_B_NICE}" ]; then
 fi
 
 create_locks() {
-  echo "Creating locks.."
-  touch /var/run/mysql_restart_running.pid
+  if [ ! -e "/var/run/mysql_restart_running.pid" ]; then
+    echo "Creating locks.."
+    touch /var/run/mysql_restart_running.pid
+  fi
 }
 
 remove_locks() {
-  echo "Removing locks.."
-  rm -f /var/run/mysql_restart_running.pid
+  if [ -e "/var/run/mysql_restart_running.pid" ]; then
+    echo "Removing locks.."
+    rm -f /var/run/mysql_restart_running.pid
+  fi
 }
 
 check_running() {
-  if [ -e "/var/run/mysql_restart_running.pid" ]; then
-    echo "MySQLD restart procedure in progress?"
-    echo "Nothing to do, let's quit now. Bye!"
-    exit 1
-  fi
+  until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
+    && [ -e "/var/run/mysqld/mysqld.sock" ]; do
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    echo "Waiting for MySQLD availability.."
+    sleep 3
+  done
 }
 
 start_sql() {
@@ -182,6 +254,49 @@ restart_sql() {
   exit 0
 }
 
+if_restart_sql() {
+  _DB_SERVER=Percona
+  myCnf="/etc/mysql/my.cnf"
+  preCnf="${vBs}/dragon/t/my.cnf-pre-${_NOW}"
+  if [ -f "${myCnf}" ]; then
+    myCnfUpdate=NO
+    myRstrd=NO
+    if [ ! -f "${preCnf}" ]; then
+      mkdir -p ${vBs}/dragon/t/
+      cp -af ${myCnf} ${preCnf}
+    fi
+    diffMyTest=$(diff -w -B \
+      -I tmp_table_size \
+      -I max_heap_table_size \
+      -I myisam_sort_buffer_size \
+      -I key_buffer_size ${myCnf} ${preCnf} 2>&1)
+    if [ -z "${diffMyTest}" ]; then
+      myCnfUpdate=NO
+      echo "INFO: ${_DB_SERVER} diff0 empty"
+    else
+      myCnfUpdate=YES
+      echo "INFO: ${_DB_SERVER} diff1 ${diffMyTest}"
+    fi
+    if [[ "${diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
+      myCnfUpdate=YES
+      echo "INFO: ${_DB_SERVER} diff2 ${diffMyTest}"
+    fi
+    if [[ "${diffMyTest}" =~ "No such file or directory" ]]; then
+      myCnfUpdate=NO
+      echo "INFO: ${_DB_SERVER} diff3 ${diffMyTest}"
+    fi
+  fi
+  myUptime=$(mysqladmin -P${_SQL_PORT} --protocol=tcp version | grep -i uptime 2>&1)
+  myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
+  echo "INFO: ${_DB_SERVER} ${myUptime}"
+  if [ "${myCnfUpdate}" = "YES" ]; then
+    echo "INFO: Restarting ${_DB_SERVER} server..."
+    restart_sql
+    echo "INFO: ${_DB_SERVER} server restart completed"
+    myRstrd=YES
+  fi
+}
+
 truncate_cache_tables() {
   check_running
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^cache | uniq | sort 2>&1)
@@ -254,22 +369,22 @@ EOFMYSQL
 #
 # Update innodb_log_file_size.
 update_innodb_log_file_size() {
-  msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
+  echo "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
-  mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
+  stop_sql "chain"
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
     mkdir -p ${vBs}/old-sql-ib-log-${_NOW}
-    mrun "sleep 1"
+    sleep 1
     mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
     wait
-    mrun "bash /var/xdrago/move_sql.sh start" &> /dev/null
+    start_sql "chain"
   else
-    msg "INFO: Waiting 180s for ${_DB_SERVER} clean shutdown..."
-    mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
-    mrun "sleep 180"
+    echo "INFO: Waiting 180s for ${_DB_SERVER} clean shutdown..."
+    stop_sql "chain"
+    sleep 180
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       mkdir -p ${vBs}/old-sql-ib-log-${_NOW}
@@ -278,10 +393,10 @@ update_innodb_log_file_size() {
       mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
       wait
-      mrun "bash /var/xdrago/move_sql.sh start" &> /dev/null
+      start_sql "chain"
     else
-      msg "WARN: ${_DB_SERVER} refused to stop, InnoDB log file size not updated"
-      mrun "sleep 5"
+      echo "WARN: ${_DB_SERVER} refused to stop, InnoDB log file size not updated"
+      sleep 5
     fi
   fi
 }
@@ -308,8 +423,6 @@ update_sql_conf() {
     wait
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
-    || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
     || [ -e "/root/.my.cluster_root_pwd.txt" ] \
     || [ "${_VMFAMILY}" = "VS" ]; then
     if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
@@ -320,7 +433,7 @@ update_sql_conf() {
         if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
           _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
           _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
-            ${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW} 2>&1)
+            ${vBs}/dragon/t/my.cnf-pre-${_NOW} 2>&1)
           if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
             _INNODB_LOG_FILE_SIZE_SAME=YES
           else
@@ -399,26 +512,18 @@ update_sql_conf() {
 tune_sql_memory_limits() {
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
   wait
-  if [ ! -e "${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}" ]; then
+  if [ ! -e "${vBs}/dragon/t/my.cnf-pre-${_NOW}" ]; then
     mkdir -p ${vBs}/dragon/t/
     if [ -e "/etc/mysql/my.cnf" ]; then
-      cp -af /etc/mysql/my.cnf ${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}
+      cp -af /etc/mysql/my.cnf ${vBs}/dragon/t/my.cnf-pre-${_NOW}
     fi
   fi
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
   pthTun="/var/opt/mysqltuner.pl"
-  outTun="/var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt"
-  if [ -e "/root/.mstr.clstr.cnf" ] \
-    || [ -e "/root/.wbhd.clstr.cnf" ] \
-    || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    _GALERA_COMP=NO
-  fi
-  if [ ! -e "${outTun}" ] \
-    && [ "${_USE_MYSQLTUNER}" != "NO" ] \
-    && [ "${_STATUS}" = "UPGRADE" ] \
-    && [ -z "${_GALERA_COMP}" ]; then
-    msg "INFO: Running MySQLTuner check on all databases..."
-    msg "NOTE! This step may take a LONG time, please wait..."
+  outTun="/var/opt/mysqltuner-${_NOW}.txt"
+  if [ ! -e "${outTun}" ]; then
+    echo "INFO: Running MySQLTuner check on all databases..."
+    echo "NOTE! This step may take a LONG time, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
     rm -f /var/opt/mysqltuner*
     curl ${crlGet} "${urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${pthTun}
@@ -430,9 +535,7 @@ tune_sql_memory_limits() {
     fi
   fi
   if [ -e "${pthTun}" ] \
-    && [ -e "${outTun}" ] \
-    && [ "${_USE_MYSQLTUNER}" != "NO" ] \
-    && [ "${_STATUS}" = "UPGRADE" ]; then
+    && [ -e "${outTun}" ]; then
     _REC_MYISAM_MEM=$(cat ${outTun} \
       | grep "Data in MyISAM tables" \
       | cut -d: -f2 \
@@ -447,9 +550,9 @@ tune_sql_memory_limits() {
       || [[ "${_MYSQLTUNER_TEST}" =~ "Cannot calculate MyISAM index" ]] \
       || [[ "${_MYSQLTUNER_TEST}" =~ "InnoDB is enabled but isn" ]]; then
       _MYSQLTUNER_TEST_RESULT=FAIL
-      msg "ALRT! The MySQLTuner test failed!"
-      msg "ALRT! Please review ${outTun}"
-      msg "ALRT! We will use some sane SQL defaults instead, do not worry!"
+      echo "ALRT! The MySQLTuner test failed!"
+      echo "ALRT! Please review ${outTun}"
+      echo "ALRT! We will use some sane SQL defaults instead, do not worry!"
     fi
     ###--------------------###
     if [ ! -z "${_REC_MYISAM_MEM}" ] \
@@ -471,14 +574,14 @@ tune_sql_memory_limits() {
         _USE_MYISAM_MEM="${_USE_SQL}"
       fi
       _USE_MYISAM_MEM="${_USE_MYISAM_MEM}M"
-      # sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
+      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
       wait
     else
       _USE_MYISAM_MEM="${_USE_SQL}M"
       if [ "${_MYSQLTUNER_TEST_RESULT}" = "FAIL" ]; then
-        msg "ALRT! _USE_MYISAM_MEM is ${_USE_MYISAM_MEM} because _REC_MYISAM_MEM was empty!"
+        echo "ALRT! _USE_MYISAM_MEM is ${_USE_MYISAM_MEM} because _REC_MYISAM_MEM was empty!"
       fi
-      # sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
+      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
       wait
     fi
     ###--------------------###
@@ -501,9 +604,13 @@ tune_sql_memory_limits() {
         _INNODB_BPI="1"
       fi
       if [ -e "/etc/mysql/my.cnf" ]; then
+        sed -i "s/^innodb_buffer_pool_instances.*//g"  /etc/mysql/my.cnf
+        wait
+        sed -i "/^$/d" /etc/mysql/my.cnf
+        wait
         sed -i "s/innodb_file_per_table   = 1/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
+        wait
       fi
-      wait
       if [ "${_USE_INNODB_MEM}" -lt "256" ] \
         || [ -z "${_USE_INNODB_MEM}" ]; then
         _USE_INNODB_MEM="${_USE_SQL}"
@@ -561,7 +668,7 @@ tune_sql_memory_limits() {
         || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         _INNODB_LOG_FILE_SIZE=64
       fi
-      msg "ALRT! _USE_INNODB_MEM is ${_USE_INNODB_MEM} because _REC_INNODB_MEM was empty!"
+      echo "ALRT! _USE_INNODB_MEM is ${_USE_INNODB_MEM} because _REC_INNODB_MEM was empty!"
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf
       fi
@@ -569,11 +676,9 @@ tune_sql_memory_limits() {
     fi
   else
     _THIS_USE_MEM="${_USE_SQL}M"
-    if [ "${_MYSQLTUNER_TEST_RESULT}" = "FAIL" ] \
-      && [ "${_STATUS}" = "UPGRADE" ] \
-      && [ -z "${_GALERA_COMP}" ]; then
-      msg "ALRT! _USE_MYISAM_MEM is ${_THIS_USE_MEM} because _REC_MYISAM_MEM was empty!"
-      msg "ALRT! _USE_INNODB_MEM is ${_THIS_USE_MEM} because _REC_INNODB_MEM was empty!"
+    if [ "${_MYSQLTUNER_TEST_RESULT}" = "FAIL" ]; then
+      echo "ALRT! _USE_MYISAM_MEM is ${_THIS_USE_MEM} because _REC_MYISAM_MEM was empty!"
+      echo "ALRT! _USE_INNODB_MEM is ${_THIS_USE_MEM} because _REC_INNODB_MEM was empty!"
     fi
     _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
     _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
@@ -599,7 +704,7 @@ tune_sql_memory_limits() {
       _INNODB_LOG_FILE_SIZE=64
     fi
     if [ -e "/etc/mysql/my.cnf" ]; then
-      sed -i "s/= 181/= ${_USE_SQL}/g"  /etc/mysql/my.cnf
+      sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_SQL}M/g"  /etc/mysql/my.cnf
     fi
     wait
   fi
@@ -669,9 +774,7 @@ tune_memory_limits() {
   fi
   _USE=$(( _RAM / 4 ))
   if [ "${_VMFAMILY}" = "VS" ] \
-    || [ -e "/root/.my.cluster_root_pwd.txt" ] \
-    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-    || [[ "${_THISHOST}" =~ ".host8." ]]; then
+    || [ -e "/root/.my.cluster_root_pwd.txt" ]; then
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.tg.cnf" ] \
         || [ -e "/root/.my.cluster_root_pwd.txt" ]; then
@@ -723,9 +826,7 @@ tune_memory_limits() {
         _MXC_SQL=192
       fi
     elif [ "${_VMFAMILY}" = "VS" ] || [ "${_VMFAMILY}" = "TG" ]; then
-      if [ -e "/boot/grub/grub.cfg" ] \
-        || [ -e "/boot/grub/menu.lst" ] \
-        || [ -e "/root/.my.cluster_root_pwd.txt" ] \
+      if [ -e "/root/.my.cluster_root_pwd.txt" ] \
         || [ -e "/root/.tg.cnf" ]; then
         _USE_PHP=4096
         _USE_OPC=4096
@@ -796,30 +897,43 @@ tune_memory_limits() {
     else
       _UXC_SQL=$(( _MXC_SQL / 2 ))
     fi
-    sed -i "s/= 191/= ${_UXC_SQL}/g"                                              /etc/mysql/my.cnf
+    sed -i "s/^max_connect_errors.*/max_connect_errors      = ${_UXC_SQL}/g"      /etc/mysql/my.cnf
     wait
-    sed -i "s/= 292/= ${_MXC_SQL}/g"                                              /etc/mysql/my.cnf
+    sed -i "s/^max_user_connections.*/max_user_connections    = ${_UXC_SQL}/g"    /etc/mysql/my.cnf
+    wait
+    sed -i "s/^max_connections.*/max_connections         = ${_MXC_SQL}/g"         /etc/mysql/my.cnf
     wait
     sed -i "s/^tmp_table_size.*/tmp_table_size          = ${_TMP_SQL}/g"          /etc/mysql/my.cnf
     wait
     sed -i "s/^max_heap_table_size.*/max_heap_table_size     = ${_TMP_SQL}/g"     /etc/mysql/my.cnf
     wait
-    # sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = ${_SRT_SQL}/g" /etc/mysql/my.cnf
-    # wait
+    sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = ${_SRT_SQL}/g" /etc/mysql/my.cnf
+    wait
     sed -i "s/^query_cache_size.*/query_cache_size        = ${_QCE_SQL}/g"        /etc/mysql/my.cnf
     wait
     sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = ${_RND_SQL}/g"    /etc/mysql/my.cnf
     wait
     sed -i "s/^join_buffer_size.*/join_buffer_size        = ${_JBF_SQL}/g"        /etc/mysql/my.cnf
     wait
+    echo _USE_SQL is ${_USE_SQL}
+    echo _USE_PHP is ${_USE_PHP}
+    echo _UXC_SQL is ${_UXC_SQL}
+    echo _MXC_SQL is ${_MXC_SQL}
+    echo _TMP_SQL is ${_TMP_SQL}
+    echo _QCE_SQL is ${_QCE_SQL}
+    echo _RND_SQL is ${_RND_SQL}
+    echo _JBF_SQL is ${_JBF_SQL}
+    echo _SRT_SQL is ${_SRT_SQL}
+    echo _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}
   fi
 }
 
 tune_sql() {
+  rm -f /var/run/mysql_restart_running.pid
   check_running
   create_locks
   tune_memory_limits
-  restart_sql
+  if_restart_sql
   remove_locks
   exit 0
 }
@@ -827,7 +941,7 @@ tune_sql() {
 case "$1" in
   restart) restart_sql ;;
   start)   start_sql "only" ;;
-  stop)    stop_sql "only" ;;
+  stop)    stop_sql  "only" ;;
   init)    start_sql "init" ;;
   tune)    tune_sql ;;
   *)       tune_sql
@@ -835,5 +949,3 @@ case "$1" in
 esac
 
 ###EOF2019###
-
-
