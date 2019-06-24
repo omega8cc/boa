@@ -404,7 +404,7 @@ master_download_for_local_build() {
     get_dev_stc "tfa-7.x-2.0.tar.gz"
     get_dev_stc "timeago-7.x-2.3.tar.gz"
     get_dev_stc "views_bulk_operations-7.x-3.5.tar.gz"
-    get_dev_stc "views-7.x-3.22.tar.gz"
+    get_dev_stc "views-7.x-3.23.tar.gz"
     ### BOA Drupal Contrib
     get_dev_stc "features_extra-7.x-1.0.tar.gz"
     get_dev_stc "features-7.x-2.11.tar.gz"
