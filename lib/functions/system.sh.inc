@@ -3260,7 +3260,7 @@ if_proxysql_update() {
      if [ ! -x "${isPxy}" ]; then
        mrun "${_INSTALL} proxysql" 2> /dev/null
      else
-       mrun "apt-get upgrade ${nrmUpArg} proxysql" 2> /dev/null
+       mrun "apt-get upgrade ${dstUpArg} proxysql" 2> /dev/null
      fi
      cd /var/opt
      rm -rf proxysql*
