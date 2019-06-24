@@ -3248,6 +3248,7 @@ if_proxysql_update() {
   fi
   if [ "${_UP_PXC}" = "YES" ] \
     && [ "${_THIS_OS}" = "Debian" ]; then
+     msg "INFO: Running ProxySQL upgrade..."
      if [ ! -e "/etc/apt/sources.list.d/proxysql.list" ]; then
        wget -O - 'http://repo.proxysql.com/ProxySQL/repo_pub_key' | apt-key add - &> /dev/null
        echo deb http://repo.proxysql.com/ProxySQL/proxysql-1.4.x/$(lsb_release -sc)/ ./ \
@@ -3262,19 +3263,29 @@ if_proxysql_update() {
      else
        mrun "apt-get upgrade ${dstUpArg} proxysql" 2> /dev/null
      fi
-     cd /var/opt
-     rm -rf proxysql*
-     if [ "${_OSV}" = "jessie" ]; then
-       wget -q -U iCab \
-         https://github.com/sysown/proxysql/releases/download/v${_PXC_VRN}/proxysql_${_PXC_VRN}-debian8_amd64.deb &> /dev/null
-       dpkg -i proxysql_${_PXC_VRN}-debian8_amd64.deb &> /dev/null
-     elif [ "${_OSV}" = "stretch" ]; then
-       wget -q -U iCab \
-         https://github.com/sysown/proxysql/releases/download/v${_PXC_VRN}/proxysql_${_PXC_VRN}-debian9_amd64.deb &> /dev/null
-       dpkg -i proxysql_${_PXC_VRN}-debian9_amd64.deb &> /dev/null
+     # cd /var/opt
+     # rm -rf proxysql*
+     # if [ "${_OSV}" = "jessie" ]; then
+     #   wget -q -U iCab \
+     #     https://github.com/sysown/proxysql/releases/download/v${_PXC_VRN}/proxysql_${_PXC_VRN}-debian8_amd64.deb &> /dev/null
+     #   dpkg -i proxysql_${_PXC_VRN}-debian8_amd64.deb &> /dev/null
+     # elif [ "${_OSV}" = "stretch" ]; then
+     #   wget -q -U iCab \
+     #     https://github.com/sysown/proxysql/releases/download/v${_PXC_VRN}/proxysql_${_PXC_VRN}-debian9_amd64.deb &> /dev/null
+     #   dpkg -i proxysql_${_PXC_VRN}-debian9_amd64.deb &> /dev/null
+     # fi
+     if [ ! -e "/etc/proxysql.cnf" ]; then
+       msg "OOPS: Unable to open config file /etc/proxysql.cnf"
      fi
-     if [ -x "${isPxy}" ]; then
+     if [ ! -e "/etc/proxysql-admin.cnf" ]; then
+       msg "OOPS: Unable to open config file /etc/proxysql-admin.cnf"
+     fi
+     if [ -x "${isPxy}" ] \
+       && [ -e "/etc/proxysql.cnf" ] \
+       && [ -e "/etc/proxysql-admin.cnf" ]; then
        mrun "service proxysql restart" 2> /dev/null
+     else
+       msg "OOPS: ProxySQL will not work!"
      fi
   fi
 }
