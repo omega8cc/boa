@@ -748,21 +748,14 @@ tune_memory_limits() {
   if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
     _CPU_NR=1
   fi
-  _CPU_MX=$(( _CPU_NR * 2 ))
-  if [ "${_CPU_MX}" -lt "4" ]; then
-    _CPU_MX=4
-  fi
-  _CPU_TG=$(( _CPU_NR / 2 ))
-  if [ "${_CPU_TG}" -lt "4" ]; then
-    _CPU_TG=4
-  fi
-  _CPU_VS=$(( _CPU_NR / 12 ))
-  if [ "${_CPU_VS}" -lt "2" ]; then
-    _CPU_VS=2
+  _CPU_MX=$(( _CPU_NR * 4 ))
+  if [ "${_CPU_MX}" -lt "96" ]; then
+    _CPU_MX=96
   fi
   PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
   PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
   if [[ "${PrTestPower}" =~ "POWER" ]] \
+    || [ -e "/root/.my.cluster_root_pwd.txt" ] \
     || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
     if [ "${_CPU_VS}" -lt "8" ]; then
       _CPU_VS=8

@@ -868,7 +868,30 @@ upgrade_web_node() {
 }
 
 default_my_cnf_copy() {
-  	ssh ${_NOSTRICT} root@${IP} "echo '
+
+  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+  _CPU_INFO=${_CPU_INFO//[^0-9]/}
+  _NPROC_TEST=$(which nproc 2>&1)
+  if [ -z "${_NPROC_TEST}" ]; then
+    _CPU_NR="${_CPU_INFO}"
+  else
+    _CPU_NR=$(nproc 2>&1)
+  fi
+  _CPU_NR=${_CPU_NR//[^0-9]/}
+  if [ ! -z "${_CPU_NR}" ] && [ ! -z "${_CPU_INFO}" ] \
+    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt "0" ]; then
+    _CPU_NR="${_CPU_INFO}"
+  fi
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+    _CPU_NR=1
+  fi
+  _CPU_MX=$(( _CPU_NR * 4 ))
+  if [ "${_CPU_MX}" -lt "96" ]; then
+    _CPU_MX=96
+  fi
+  _CPU_FC=$(( _CPU_MX * 5 ))
+
+  ssh ${_NOSTRICT} root@${IP} "echo '
 [mysqld]
 
 ###
@@ -885,44 +908,61 @@ default_my_cnf_copy() {
 # MySQL User
 #user=mysql
 
-# Mandatory for Galera
+### Mandatory for Galera
+#
 binlog_format=ROW
 default_storage_engine=InnoDB
 innodb_autoinc_lock_mode=2
 
-# Recommended for Galera
+### Recommended for Galera
+#
 innodb_flush_log_at_trx_commit=0
 query_cache_size=0
 query_cache_type=0
 binlog_row_image=minimal
-#bind-address=0.0.0.0
-#wsrep_slave_threads=8
+wsrep_slave_threads=${_CPU_MX}
 wsrep_log_conflicts=ON
-#pxc_strict_mode=ENFORCING
 pxc_strict_mode=PERMISSIVE
 performance_schema=ON
 
-# Galera Provider Configuration
-wsrep_provider=/usr/lib/galera3/libgalera_smm.so
-#wsrep_provider_options=\"gcache.size=32G;socket.checksum=1\"
+### Optional Memory Settings for Galera
+#
+# gcs.recv_q_hard_limit=64G
+# gcs.recv_q_soft_limit=32G
+# gcs.max_throttle=0.25
+# gcs.fc_limit=${_CPU_FC}
+# gcs.fc_factor=0.8
 
-# Galera Cluster Configuration
+### Galera Provider Configuration
+#
+wsrep_provider=/usr/lib/galera3/libgalera_smm.so
+wsrep_provider_options=\"gcs.recv_q_soft_limit=32G;gcs.recv_q_hard_limit=64G;gcs.fc_limit=${_CPU_FC};gcs.fc_factor=0.8\"
+
+### Galera Cluster Configuration
+#
 wsrep_cluster_name=\"'${_CLUSTER_NAME}'\"
 wsrep_cluster_address=\"'${_CLUSTER_STRING}',...?pc.wait_prim=no\"
 
-# Galera Synchronization Congifuration
+### Galera Synchronization Congifuration
+#
 wsrep_sst_method=rsync
-#wsrep_sst_method=xtrabackup-v2
 wsrep_sst_auth=sstuser:'${_MAINT_USER_PWD}'
 
-# Galera extra tuning
+### Galera extra tuning
+#
 wsrep_debug=OFF
 wsrep_retry_autocommit=8
 wsrep_sync_wait=7
 
-# Galera Node Configuration
+### Galera Node Configuration
+#
 wsrep_node_address=\"'${IP}'\"
 wsrep_node_name=\"'${IP}'\"
+
+### Optional MyISAM Support in Galera
+#
+wsrep_replicate_myisam=1
+
 ' > /etc/mysql/conf.d/galera.cnf"
 
   	ssh ${_NOSTRICT} root@${IP} "echo '
