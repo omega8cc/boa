@@ -404,11 +404,15 @@ install_proxysql() {
       mkdir -p ${_XPSQL}
       cp -af /vservers/${idn}/var/lib/proxysql/* ${_XPSQL}/
       vserver ${idn} exec service proxysql stop
+      vserver ${idn} exec apt-get clean
+      vserver ${idn} exec apt-get update
+      vserver ${idn} exec apt-get remove -y ${_NOISE} proxysql
       vserver ${idn} exec apt-get purge -y ${_NOISE} proxysql
       rm -f -r /vservers/${idn}/var/lib/proxysql
       rm -f -r /vservers/${idn}/var/log/proxysql
       rm -f /vservers/${idn}/etc/proxysql-admin.cnf
       rm -f /vservers/${idn}/etc/proxysql.cnf
+      rm -f /vservers/${idn}/etc/apt/sources.list.d/proxysql.list
       for IP in "${_DB_NODE_IP[@]}"; do
         ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"DROP USER 'monitor'@'${IP}';\""
         ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"DROP USER 'proxysql_user'@'${IP}';\""
@@ -436,6 +440,7 @@ install_proxysql() {
     vserver ${idn} exec ${_INSTAPP} sysbench
     vserver ${idn} exec ${_INSTAPP} debconf-utils
     vserver ${idn} exec ${_INSTAPP} proxysql
+    vserver ${idn} exec apt-get upgrade proxysql
     vserver ${idn} exec mkdir -p /var/log/proxysql
     vserver ${idn} exec chown -R proxysql:proxysql /var/log/proxysql
     vserver ${idn} exec chmod 700 /var/log/proxysql
