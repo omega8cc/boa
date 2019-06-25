@@ -483,9 +483,15 @@ install_proxysql() {
     wait
     sleep 1
 
+    chmod 640 /vservers/${idn}/etc/proxysql.cnf
+    chmod 640 /vservers/${idn}/etc/proxysql-admin.cnf
+
     echo "Starting ProxySQL..."
     vserver ${idn} exec service proxysql initial
     sleep 5
+
+    chmod 640 /vservers/${idn}/etc/proxysql.cnf
+    chmod 640 /vservers/${idn}/etc/proxysql-admin.cnf
 
     echo "Running default auto-configuration of ProxySQL..."
     # ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --write-node=${_DB_NODE_IP[1]}:3600 --enable"
@@ -876,10 +882,9 @@ install_web_node() {
 upgrade_web_node() {
   check_config_cluster
   idn="${_CLUSTER_PREFIX}web"
-  vserver ${idn} exec which barracuda
-  vserver ${idn} exec /opt/local/bin/barracuda up-${ver}
-  vserver ${idn} exec which octopus
-  vserver ${idn} exec /opt/local/bin/octopus up-${ver} all force
+  vserver ${idn} exec /opt/local/bin/barracuda up-${ver} system
+  ###vserver ${idn} exec which octopus
+  ###vserver ${idn} exec /opt/local/bin/octopus up-${ver} all force
 }
 
 default_my_cnf_copy() {

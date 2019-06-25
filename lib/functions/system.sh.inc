@@ -3278,9 +3278,13 @@ if_proxysql_update() {
      fi
      if [ ! -e "/etc/proxysql.cnf" ]; then
        msg "OOPS: Unable to open config file /etc/proxysql.cnf"
+     else
+       chmod 640 /etc/proxysql.cnf
      fi
      if [ ! -e "/etc/proxysql-admin.cnf" ]; then
        msg "OOPS: Unable to open config file /etc/proxysql-admin.cnf"
+     else
+       chmod 640 /etc/proxysql-admin.cnf
      fi
      if [ -x "${isPxy}" ] \
        && [ -e "/etc/proxysql.cnf" ] \
