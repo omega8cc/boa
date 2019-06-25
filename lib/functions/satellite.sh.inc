@@ -4599,7 +4599,7 @@ satellite_display_url_finalize() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _DO_NOTHING=YES
     else
-      _AEGIR_LOGIN_URL=$(grep --text "^http://${_DOMAIN}" ${_ROOT}/log/install.log 2>&1)
+      _AEGIR_LOGIN_URL=$(grep --text "^Login url: http://${_DOMAIN}" ${_ROOT}/log/install.log 2>&1)
       if [ ! -z "${_AEGIR_LOGIN_URL}" ]; then
         echo " "
         msg "INFO: Congratulations, Aegir have been installed successfully!"

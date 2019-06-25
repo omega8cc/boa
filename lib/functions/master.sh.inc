@@ -1009,7 +1009,7 @@ if_display_login_link() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _DO_NOTHING=YES
     else
-      _AEGIR_LOGIN_URL=$(grep --text "^http://${_THIS_FRONT}" \
+      _AEGIR_LOGIN_URL=$(grep --text "^Login url: http://${_THIS_FRONT}" \
         /var/aegir/install.log 2>&1)
       if [ ! -z "${_AEGIR_LOGIN_URL}" ]; then
         echo " "
