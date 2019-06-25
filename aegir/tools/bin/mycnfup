@@ -216,18 +216,13 @@ stop_sql() {
 
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
-    if [ "${_DB_SERIES}" = "10.3" ] \
-      || [ "${_DB_SERIES}" = "10.2" ] \
-      || [ "${_DB_SERIES}" = "10.1" ] \
-      || [ "${_DB_SERIES}" = "5.7" ]; then
-      echo "Preparing MySQLD for quick shutdown.."
-      mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
-      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-      mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;" &> /dev/null
-      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-    fi
+    echo "Preparing MySQLD for quick shutdown.."
+    mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
     echo "Stopping MySQLD now.."
-    service mysql stop &> /dev/null
+    service mysql stop
   else
     echo "MySQLD already stopped?"
     echo "Nothing to do. Bye!"
@@ -294,6 +289,9 @@ if_restart_sql() {
     restart_sql
     echo "INFO: ${_DB_SERVER} server restart completed"
     myRstrd=YES
+  else
+    echo "INFO: Starting ${_DB_SERVER} server without config update..."
+    start_sql "chain"
   fi
 }
 
@@ -404,24 +402,14 @@ update_innodb_log_file_size() {
 #
 # Update SQL Config.
 update_sql_conf() {
-  # if [ "${_DB_SERIES}" = "10.1" ]; then
-  #   sed -i "s/.*innodb-defragment/innodb-defragment/g" /etc/mysql/my.cnf
-  #   wait
-  # fi
-  if [ "${_DB_SERIES}" = "10.2" ] \
-    || [ "${_DB_SERIES}" = "10.3" ]; then
-    sed -i "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" /etc/mysql/my.cnf
-    wait
-  fi
-  if [ "${_DB_SERIES}" != "10.2" ] \
-    && [ "${_DB_SERIES}" != "10.1" ]; then
-    sed -i "s/.*innodb_buffer_pool_dump_at_shutdown/#innodb_buffer_pool_dump_at_shutdown/g" /etc/mysql/my.cnf
-    wait
-    sed -i "s/.*innodb_buffer_pool_load_at_startup/#innodb_buffer_pool_load_at_startup/g" /etc/mysql/my.cnf
-    wait
-    sed -i "s/.*innodb_buffer_pool_dump_pct/#innodb_buffer_pool_dump_pct/g" /etc/mysql/my.cnf
-    wait
-  fi
+  sed -i "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" /etc/mysql/my.cnf
+  wait
+  sed -i "s/.*innodb_buffer_pool_dump_at_shutdown/#innodb_buffer_pool_dump_at_shutdown/g" /etc/mysql/my.cnf
+  wait
+  sed -i "s/.*innodb_buffer_pool_load_at_startup/#innodb_buffer_pool_load_at_startup/g" /etc/mysql/my.cnf
+  wait
+  sed -i "s/.*innodb_buffer_pool_dump_pct/#innodb_buffer_pool_dump_pct/g" /etc/mysql/my.cnf
+  wait
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
     || [ -e "/root/.my.cluster_root_pwd.txt" ] \
     || [ "${_VMFAMILY}" = "VS" ]; then
@@ -912,6 +900,7 @@ tune_sql() {
   create_locks
   tune_memory_limits
   if_restart_sql
+  start_sql "chain"
   remove_locks
   exit 0
 }
