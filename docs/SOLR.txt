@@ -2,7 +2,7 @@
 You can very easily add, update or delete Solr cores powered by very fast
 Jetty server. It's fully automated and can be managed very easily via site level
 active INI file. Of course Solr must be already installed on the system
-with SR4 keyword present in _XTRAS_LIST in the /root/.barracuda.cnf file.
+with SR7 and SR4 keywords in _XTRAS_LIST in the /root/.barracuda.cnf file.
 
 There are three INI variables you can use to control Solr automated setup:
 solr_integration_module, solr_update_config and solr_custom_config -- just
