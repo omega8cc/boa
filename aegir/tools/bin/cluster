@@ -956,7 +956,6 @@ performance_schema=ON
 ### Galera Provider Configuration
 #
 wsrep_provider=/usr/lib/galera3/libgalera_smm.so
-wsrep_provider_options=\"gcs.recv_q_soft_limit=32G;gcs.recv_q_hard_limit=64G;gcs.fc_limit=${_CPU_FC};gcs.fc_factor=0.8\"
 
 ### Galera Cluster Configuration
 #
