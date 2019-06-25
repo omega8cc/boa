@@ -498,8 +498,6 @@ update_sql_conf() {
 #
 # Tune memory limits for SQL server.
 tune_sql_memory_limits() {
-  sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
-  wait
   if [ ! -e "${vBs}/dragon/t/my.cnf-pre-${_NOW}" ]; then
     mkdir -p ${vBs}/dragon/t/
     if [ -e "/etc/mysql/my.cnf" ]; then
@@ -719,35 +717,6 @@ tune_memory_limits() {
   if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
     || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
     _VMFAMILY="AWS"
-  fi
-  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
-  _CPU_INFO=${_CPU_INFO//[^0-9]/}
-  _NPROC_TEST=$(which nproc 2>&1)
-  if [ -z "${_NPROC_TEST}" ]; then
-    _CPU_NR="${_CPU_INFO}"
-  else
-    _CPU_NR=$(nproc 2>&1)
-  fi
-  _CPU_NR=${_CPU_NR//[^0-9]/}
-  if [ ! -z "${_CPU_NR}" ] && [ ! -z "${_CPU_INFO}" ] \
-    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt "0" ]; then
-    _CPU_NR="${_CPU_INFO}"
-  fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
-    _CPU_NR=1
-  fi
-  _CPU_MX=$(( _CPU_NR * 4 ))
-  if [ "${_CPU_MX}" -lt "96" ]; then
-    _CPU_MX=96
-  fi
-  PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
-  PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-  if [[ "${PrTestPower}" =~ "POWER" ]] \
-    || [ -e "/root/.my.cluster_root_pwd.txt" ] \
-    || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
-    if [ "${_CPU_VS}" -lt "8" ]; then
-      _CPU_VS=8
-    fi
   fi
   _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
   if [ "${_RESERVED_RAM}" -gt "0" ]; then
