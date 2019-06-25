@@ -803,6 +803,7 @@ install_vps() {
         vserver ${idn} exec ${_INSTAPP} kilobyte-archive-keyring
         vserver ${idn} exec ${_INSTAPP} sysvinit-core
         vserver ${idn} exec ${_INSTAPP} sysvinit-utils
+        vserver ${idn} exec ${_INSTAPP} bc
         if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
           cp -af /vservers/${idn}/usr/share/sysvinit/inittab /vservers/${idn}/etc/inittab
         fi
@@ -1275,6 +1276,7 @@ upgrade_db_cluster() {
     _MAINT_USER_PWD=`cat /vservers/${idn}/root/.my.cluster_maint_pwd.txt`
     _ROOT_SQL_PASWD=`cat /vservers/${idn}/root/.my.cluster_root_pwd.txt`
   	vserver ${idn} exec apt-get update ${_NOISE}
+  	vserver ${idn} exec ${_INSTAPP} bc ${_NOISE}
   	vserver ${idn} exec apt-get upgrade -y ${_NOISE}
   	vserver ${idn} exec apt-get dist-upgrade -y ${_NOISE}
 
