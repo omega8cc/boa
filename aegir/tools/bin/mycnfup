@@ -29,12 +29,134 @@ tVr="0.4"
 check_root() {
   echo "running ${tVr} check_root procedure.."
   if [ `whoami` = "root" ]; then
+    if [ -e "/root/.barracuda.cnf" ]; then
+      source /root/.barracuda.cnf
+      _B_NICE=${_B_NICE//[^0-9]/}
+    fi
+    if [ -z "${_B_NICE}" ]; then
+      _B_NICE=10
+    fi
+    renice ${_B_NICE} -p $$ &> /dev/null
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
         rm -rf /dev/fd
         ln -s /proc/self/fd /dev/fd
       fi
+    fi
+
+    _VM_TEST=$(uname -a 2>&1)
+    _AWS_TEST_A=$(dmidecode -s bios-version 2>&1)
+    _AWS_TEST_B=$(head -c 3 /sys/hypervisor/uuid 2>&1)
+    if [ -e "/proc/bean_counters" ]; then
+      _VMFAMILY="VZ"
+    else
+      _VMFAMILY="XEN"
+    fi
+    if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
+      || [[ "${_VM_TEST}" =~ "3.9.8-beng" ]]; then
+      _VMFAMILY="VS"
+    fi
+    if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
+      || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
+      _VMFAMILY="AWS"
+    fi
+
+    if [ "${_VMFAMILY}" = "VS" ]; then
+      if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
+        mkdir -p /etc/apt/preferences.d/
+        echo -e 'Package: fuse\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
+        apt-get update -qq &> /dev/null
+      fi
+      if [ ! -e "/etc/apt/preferences.d/udev" ]; then
+        mkdir -p /etc/apt/preferences.d/
+        echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
+        apt-get update -qq &> /dev/null
+      fi
+      if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
+        mkdir -p /etc/apt/preferences.d/
+        echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
+        apt-get update -qq &> /dev/null
+      fi
+      apt-get remove fuse -y -qq &> /dev/null
+      apt-get purge fuse -y -qq &> /dev/null
+      apt-get remove udev -y -qq &> /dev/null
+      apt-get purge udev -y -qq &> /dev/null
+      apt-get remove makedev -y -qq &> /dev/null
+      apt-get purge makedev -y -qq &> /dev/null
+      _PTMX=OK
+      if [ -e "/sbin/hdparm" ]; then
+        apt-get remove hdparm -y -qq &> /dev/null
+        apt-get purge hdparm -y -qq &> /dev/null
+      fi
+      if [ -e "/sbin/auditd" ]; then
+        apt-get remove auditd -y -qq &> /dev/null
+        apt-get purge auditd -y -qq &> /dev/null
+      fi
+      _REMOVE_LINKS="buagent \
+                     checkroot.sh \
+                     fancontrol \
+                     halt \
+                     hwclock.sh \
+                     hwclockfirst.sh \
+                     ifupdown \
+                     ifupdown-clean \
+                     kerneloops \
+                     klogd \
+                     mountall-bootclean.sh \
+                     mountall.sh \
+                     mountdevsubfs.sh \
+                     mountkernfs.sh \
+                     mountnfs-bootclean.sh \
+                     mountnfs.sh \
+                     mountoverflowtmp \
+                     mountvirtfs \
+                     mtab.sh \
+                     networking \
+                     procps \
+                     reboot \
+                     sendsigs \
+                     setserial \
+                     svscan \
+                     sysstat \
+                     umountfs \
+                     umountnfs.sh \
+                     umountroot \
+                     urandom \
+                     vnstat"
+      for link in ${_REMOVE_LINKS}; do
+        if [ -e "/etc/init.d/${link}" ]; then
+          update-rc.d -f ${link} remove &> /dev/null
+          mv -f /etc/init.d/${link} /var/backups/init.d.${link}
+        fi
+      done
+      for s in cron dbus ssh; do
+        sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/$s > /etc/insserv/overrides/$s
+      done
+      /sbin/insserv -v -d &> /dev/null
+    else
+      _PTMX=CHECK
+    fi
+    _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
+    if [[ ! "${_PTS_TEST}" =~ "devpts" ]] && [ ! -e "/dev/pts/ptmx" ]; then
+      _PTS=FIX
+    else
+      _PTS=OK
+    fi
+    if [ "${_PTMX}" = "CHECK" ] && [ "${_PTS}" = "FIX" ]; then
+      echo "Required /dev/pts/ptmx does not exist! We will fix this now..."
+      mkdir -p /dev/pts
+      rm -rf /dev/pts/*
+      rm -f /etc/apt/sources.list.d/openssl.list
+      apt-get update -qq &> /dev/null
+      apt-get install udev -y --allow-unauthenticated &> /dev/null
+      echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
+      mount -t devpts devpts /dev/pts &> /dev/null
     fi
   else
     echo "ERROR: This script should be ran as a root user"
@@ -50,8 +172,13 @@ check_root() {
     echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
   fi
+  if [ -e "${barCnf}" ]; then
+    source ${barCnf}
+  fi
+  [ "$1" = "check" ] && exit 0
 }
-check_root
+
+[ "$1" != "check" ] && check_root
 
 [ -e "/root/.proxy.cnf" ] && exit 0
 
@@ -98,7 +225,6 @@ _C_SQL="mysql --user=root --password=${_SQL_PSWD} --host=${_SQL_HOST} --port=${_
 
 echo "SQL --host=${_SQL_HOST} --port=${_SQL_PORT}"
 
-_CHECK_HOST=$(uname -n 2>&1)
 _DATE=$(date +%y%m%d-%H%M 2>&1)
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
@@ -107,27 +233,6 @@ _NOW=${_NOW//[^0-9-]/}
 _CHECK_HOST=$(uname -n 2>&1)
 _LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
-_VMFAMILY=XEN
-_VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.9.8-beng" ]]; then
-  _VMFAMILY="VS"
-else
-  _VMFAMILY="XEN"
-fi
-
-if [ -e "/root/.barracuda.cnf" ]; then
-  source /root/.barracuda.cnf
-  _B_NICE=${_B_NICE//[^0-9]/}
-fi
-if [ -z "${_B_NICE}" ]; then
-  _B_NICE=10
-fi
 
 create_locks() {
   echo "running ${tVr} create_locks procedure.."
@@ -701,25 +806,6 @@ tune_sql_memory_limits() {
 # Tune memory limits for MariaDB or Percona.
 tune_memory_limits() {
   echo "running ${tVr} tune_memory_limits procedure.."
-  _VM_TEST=$(uname -a 2>&1)
-  if [ -e "/proc/bean_counters" ]; then
-    _VMFAMILY="VZ"
-  else
-    _VMFAMILY="XEN"
-  fi
-  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.9.8-beng" ]]; then
-    _VMFAMILY="VS"
-  fi
-  if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
-    || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
-    _VMFAMILY="AWS"
-  fi
   _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
   if [ "${_RESERVED_RAM}" -gt "0" ]; then
     _RAM=$(( _RAM - _RESERVED_RAM ))
@@ -881,6 +967,7 @@ case "$1" in
   start)   start_sql "only" ;;
   stop)    stop_sql  "only" ;;
   init)    start_sql "init" ;;
+  check)   check_root "check" ;;
   tune)    tune_sql ;;
   *)       tune_sql
   ;;

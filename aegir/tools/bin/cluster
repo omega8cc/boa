@@ -1266,6 +1266,16 @@ upgrade_db_cluster() {
       echo "APT::Sandbox::User \"root\";" > /vservers/${idn}/etc/apt/apt.conf.d/00sandboxtmp
     fi
 
+    if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
+      rm -f /vservers/${idn}${optBin}/mycnfup
+    fi
+    mkdir -p /vservers/${idn}/${optBin}
+    curl ${crlGet} "${urlHmr}/${tBn}/mycnfup" -o /vservers/${idn}${optBin}/mycnfup
+    ssh ${_NOSTRICT} root@${IP} "chmod 700 ${optBin}/mycnfup"
+    if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
+      ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup check"
+    fi
+
     if [ -x "/vservers/${idn}/usr/bin/gpg2" ]; then
       _GPG=gpg2
     else
@@ -1292,12 +1302,6 @@ upgrade_db_cluster() {
 
   	default_my_cnf_copy
 
-    if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
-      rm -f /vservers/${idn}${optBin}/mycnfup
-    fi
-    mkdir -p /vservers/${idn}/${optBin}
-    curl ${crlGet} "${urlHmr}/${tBn}/mycnfup" -o /vservers/${idn}${optBin}/mycnfup
-    ssh ${_NOSTRICT} root@${IP} "chmod 700 ${optBin}/mycnfup"
     if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
       ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup tune"
     fi
