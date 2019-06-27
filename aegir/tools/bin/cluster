@@ -1159,6 +1159,10 @@ install_db_cluster() {
       install_vps
       echo "Installing Percona Cluster on VPS ${idn}..."
     fi
+    if [ ! -e "/vservers/${idn}/etc/apt/apt.conf.d/00sandboxtmp" ] \
+      && [ -e "/vservers/${idn}/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /vservers/${idn}/etc/apt/apt.conf.d/00sandboxtmp
+    fi
     inc=$((inc+1))
     echo "${_MAINT_USER_PWD}" > /vservers/${idn}/root/.my.cluster_maint_pwd.txt
     echo "${_ROOT_SQL_PASWD}" > /vservers/${idn}/root/.my.cluster_root_pwd.txt
@@ -1171,9 +1175,10 @@ install_db_cluster() {
     echo "## Percona Cluster APT Repository" > /vservers/${idn}${xtraList}
     echo "deb http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
     echo "deb-src http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
-    _KEYS_SIG="9334A25F8507EFA5"
-    vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
-    vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
+    _KEYS_SIG="8507EFA5"
+    vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}"
+    vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add -
+    vserver ${idn} exec apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}"
   	vserver ${idn} exec apt-get update ${_APT_XTR}
   	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57
   	vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24
@@ -1276,22 +1281,30 @@ upgrade_db_cluster() {
     _MAINT_USER_PWD=`cat /vservers/${idn}/root/.my.cluster_maint_pwd.txt`
     _ROOT_SQL_PASWD=`cat /vservers/${idn}/root/.my.cluster_root_pwd.txt`
 
+    if [ ! -e "/vservers/${idn}/etc/apt/apt.conf.d/00sandboxtmp" ] \
+      && [ -e "/vservers/${idn}/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /vservers/${idn}/etc/apt/apt.conf.d/00sandboxtmp
+    fi
+
     if [ -x "/vservers/${idn}/usr/bin/gpg2" ]; then
       _GPG=gpg2
     else
       _GPG=gpg
     fi
-      _KEYS_SIG="9334A25F8507EFA5"
-      _KEYS_SERVER_TEST=FALSE
+    _KEYS_SIG="8507EFA5"
+    _KEYS_SERVER_TEST=FALSE
     until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
       echo "INFO: Retrieving ${_KEYS_SIG} key.."
       vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}"
       vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add -
+      vserver ${idn} exec apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}"
       apt-get update -qq
       _KEYS_SERVER_TEST=$(vserver ${idn} exec ${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
       sleep 2
     done
-
+    vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}"
+    vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add -
+    vserver ${idn} exec apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}"
   	vserver ${idn} exec apt-get update ${_APT_XTR}
   	vserver ${idn} exec ${_INSTAPP} bc
   	vserver ${idn} exec apt-get upgrade ${_APT_XTR}

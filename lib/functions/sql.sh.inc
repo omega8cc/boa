@@ -393,22 +393,24 @@ install_db_sql() {
     || [ "${_OSV}" = "trusty" ]; then
     st_runner "${_INSTAPP} software-properties-common dirmngr" 2> /dev/null
   fi
-  _KEYS_SIG="F1656F24C74CD1D8"
+  _KEYS_SIG="C74CD1D8"
   _KEYS_SERVER_TEST=FALSE
   until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
     msg "INFO: Retrieving ${_KEYS_SIG} key.."
     ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
     ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
+    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}" &> /dev/null
     apt-get update -qq &> /dev/null
     _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
     sleep 2
   done
-  _KEYS_SIG="9334A25F8507EFA5"
+  _KEYS_SIG="8507EFA5"
   _KEYS_SERVER_TEST=FALSE
   until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
     msg "INFO: Retrieving ${_KEYS_SIG} key.."
     ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
     ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
+    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}" &> /dev/null
     apt-get update -qq &> /dev/null
     _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
     sleep 2
@@ -904,22 +906,24 @@ install_db_server() {
         mrun "service nginx stop" &> /dev/null
       fi
       rm -f ${aptLiSys}.d/ourdelta.list
-      _KEYS_SIG="F1656F24C74CD1D8"
+      _KEYS_SIG="C74CD1D8"
       _KEYS_SERVER_TEST=FALSE
       until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
         msg "INFO: Retrieving ${_KEYS_SIG} key.."
         ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
         ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
+        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}" &> /dev/null
         apt-get update -qq &> /dev/null
         _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
         sleep 2
       done
-      _KEYS_SIG="9334A25F8507EFA5"
+      _KEYS_SIG="8507EFA5"
       _KEYS_SERVER_TEST=FALSE
       until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
         msg "INFO: Retrieving ${_KEYS_SIG} key.."
         ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
         ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
+        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}" &> /dev/null
         apt-get update -qq &> /dev/null
         _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
         sleep 2
