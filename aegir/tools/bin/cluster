@@ -1300,13 +1300,16 @@ upgrade_db_cluster() {
     ssh ${_NOSTRICT} root@${IP} "chmod 700 ${optBin}/mycnfup"
     if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
       ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup tune"
-      echo "Waiting 60 seconds after ${idn} update..."
-      sleep 60
     fi
+    sleep 5
+    echo "Running mysql_upgrade to update tables if needed"
+    ssh ${_NOSTRICT} root@${IP} "mysql_upgrade"
     echo "Checking wsrep status on ${idn}"
-    sleep 2
+    sleep 3
     ssh ${_NOSTRICT} root@${IP} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep%';\""
-
+    echo "Waiting 60 seconds after ${idn} upgrade..."
+    sleep 60
+    echo "Upgrade for ${idn} on ${IP} completed!"
   done
 
   echo "All DB nodes updated!"
