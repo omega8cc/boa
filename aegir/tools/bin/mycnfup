@@ -729,8 +729,9 @@ tune_memory_limits() {
   if [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.my.cluster_root_pwd.txt" ]; then
     if [ "${_VMFAMILY}" = "VS" ]; then
-      if [ -e "/root/.tg.cnf" ] \
-        || [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+      if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+        _USE_SQL=$(( _RAM / 12 ))
+      elif [ -e "/root/.tg.cnf" ]; then
         _USE_SQL=$(( _RAM / 8 ))
       else
         _USE_SQL=$(( _RAM / 18 ))
