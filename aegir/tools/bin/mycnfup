@@ -253,7 +253,6 @@ stop_sql() {
 restart_sql() {
   stop_sql "chain"
   start_sql "chain"
-  remove_locks
   exit 0
 }
 
@@ -297,14 +296,10 @@ if_restart_sql() {
     restart_sql
     echo "INFO: ${_DB_SERVER} server restart completed"
     myRstrd=YES
-  #else
-  #  echo "INFO: Starting ${_DB_SERVER} server without config update..."
-  #  start_sql "chain"
   fi
 }
 
 truncate_cache_tables() {
-  check_restart_if_running
   check_mysql_up
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^cache | uniq | sort 2>&1)
   for C in ${_TABLES}; do
@@ -316,7 +311,6 @@ EOFMYSQL
 }
 
 truncate_watchdog_tables() {
-  check_restart_if_running
   check_mysql_up
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^watchdog$ 2>&1)
   for A in ${_TABLES}; do
@@ -328,7 +322,6 @@ EOFMYSQL
 }
 
 truncate_accesslog_tables() {
-  check_restart_if_running
   check_mysql_up
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^accesslog$ 2>&1)
   for A in ${_TABLES}; do
@@ -340,7 +333,6 @@ EOFMYSQL
 }
 
 truncate_queue_tables() {
-  check_restart_if_running
   check_mysql_up
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^queue$ 2>&1)
   for Q in ${_TABLES}; do
@@ -352,13 +344,11 @@ EOFMYSQL
 }
 
 repair_this_database() {
-  check_restart_if_running
   check_mysql_up
   mysqlcheck --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp --user=root --repair --silent ${_DB}
 }
 
 optimize_this_database() {
-  check_restart_if_running
   check_mysql_up
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | uniq | sort 2>&1)
   for T in ${_TABLES}; do
@@ -369,7 +359,6 @@ EOFMYSQL
 }
 
 convert_to_innodb() {
-  check_restart_if_running
   check_mysql_up
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | uniq | sort 2>&1)
   for T in ${_TABLES}; do
@@ -880,13 +869,9 @@ tune_memory_limits() {
 }
 
 tune_sql() {
-  check_restart_if_running
   check_mysql_up
-  create_locks
   tune_memory_limits
   if_restart_sql
-  #start_sql "chain"
-  remove_locks
   exit 0
 }
 
