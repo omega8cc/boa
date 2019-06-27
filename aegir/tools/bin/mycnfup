@@ -571,7 +571,7 @@ tune_sql_memory_limits() {
     ###--------------------###
     if [ ! -z "${_REC_INNODB_MEM}" ] \
       && [ "${_MYSQLTUNER_TEST_RESULT}" = "OK" ]; then
-      echo _RAW_INNODB_MEM is ${_RAW_INNODB_MEM}
+      echo _REC_INNODB_MEM is ${_REC_INNODB_MEM}
       _RAW_INNODB_MEM=$(echo ${_REC_INNODB_MEM} | sed "s/[A-Z]//g" 2>&1)
       if [[ "${_REC_INNODB_MEM}" =~ "G" ]]; then
         _RAW_INNODB_MEM=$(echo ${_RAW_INNODB_MEM} | awk '{print int($1+0.6)}' 2>&1)
