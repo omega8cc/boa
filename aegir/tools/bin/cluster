@@ -1282,6 +1282,9 @@ upgrade_db_cluster() {
 
   	default_my_cnf_copy
 
+    if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
+      rm -f /vservers/${idn}${optBin}/mycnfup
+    fi
     mkdir -p /vservers/${idn}/${optBin}
     curl ${crlGet} "${urlHmr}/${tBn}/mycnfup" -o /vservers/${idn}${optBin}/mycnfup
     ssh ${_NOSTRICT} root@${IP} "chmod 700 ${optBin}/mycnfup"
