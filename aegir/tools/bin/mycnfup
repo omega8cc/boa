@@ -374,6 +374,7 @@ update_innodb_log_file_size() {
     mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
     wait
+    echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
     start_sql "chain"
   else
     echo "INFO: Waiting 180s for ${_DB_SERVER} clean shutdown..."
@@ -387,6 +388,7 @@ update_innodb_log_file_size() {
       mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
       wait
+      echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
       start_sql "chain"
     else
       echo "WARN: ${_DB_SERVER} refused to stop, InnoDB log file size not updated"
@@ -470,12 +472,13 @@ update_sql_conf() {
       if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
         _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
         _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
-          /etc/mysql/my.cnf 2>&1)
+          /root/.my.cluster_innodb_log_file_size.txt 2>&1)
         if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
           _DO_NOTHING=YES
         else
           if [ "${_INNODB_LOG_FILE_SIZE_SAME}" = "YES" ]; then
             sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+            echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
             wait
           else
             update_innodb_log_file_size
