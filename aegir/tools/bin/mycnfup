@@ -167,7 +167,15 @@ remove_locks() {
   fi
 }
 
-check_running() {
+check_restart_if_running() {
+  if [ -e "/var/run/mysql_restart_running.pid" ]; then
+    echo "MySQLD restart procedure in progress?"
+    echo "Nothing to do, let's quit now. Bye!"
+    exit 1
+  fi
+}
+
+check_mysql_up() {
   until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
     && [ -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
@@ -177,7 +185,7 @@ check_running() {
 }
 
 start_sql() {
-  check_running
+  check_restart_if_running
   create_locks
 
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
@@ -211,7 +219,7 @@ start_sql() {
 }
 
 stop_sql() {
-  check_running
+  check_restart_if_running
   create_locks
 
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
@@ -289,14 +297,15 @@ if_restart_sql() {
     restart_sql
     echo "INFO: ${_DB_SERVER} server restart completed"
     myRstrd=YES
-  else
-    echo "INFO: Starting ${_DB_SERVER} server without config update..."
-    start_sql "chain"
+  #else
+  #  echo "INFO: Starting ${_DB_SERVER} server without config update..."
+  #  start_sql "chain"
   fi
 }
 
 truncate_cache_tables() {
-  check_running
+  check_restart_if_running
+  check_mysql_up
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^cache | uniq | sort 2>&1)
   for C in ${_TABLES}; do
 ${_C_SQL} ${_DB}<<EOFMYSQL
@@ -307,7 +316,8 @@ EOFMYSQL
 }
 
 truncate_watchdog_tables() {
-  check_running
+  check_restart_if_running
+  check_mysql_up
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^watchdog$ 2>&1)
   for A in ${_TABLES}; do
 ${_C_SQL} ${_DB}<<EOFMYSQL
@@ -318,7 +328,8 @@ EOFMYSQL
 }
 
 truncate_accesslog_tables() {
-  check_running
+  check_restart_if_running
+  check_mysql_up
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^accesslog$ 2>&1)
   for A in ${_TABLES}; do
 ${_C_SQL} ${_DB}<<EOFMYSQL
@@ -329,7 +340,8 @@ EOFMYSQL
 }
 
 truncate_queue_tables() {
-  check_running
+  check_restart_if_running
+  check_mysql_up
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^queue$ 2>&1)
   for Q in ${_TABLES}; do
 ${_C_SQL} ${_DB}<<EOFMYSQL
@@ -340,12 +352,14 @@ EOFMYSQL
 }
 
 repair_this_database() {
-  check_running
+  check_restart_if_running
+  check_mysql_up
   mysqlcheck --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp --user=root --repair --silent ${_DB}
 }
 
 optimize_this_database() {
-  check_running
+  check_restart_if_running
+  check_mysql_up
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | uniq | sort 2>&1)
   for T in ${_TABLES}; do
 ${_C_SQL} ${_DB}<<EOFMYSQL
@@ -355,7 +369,8 @@ EOFMYSQL
 }
 
 convert_to_innodb() {
-  check_running
+  check_restart_if_running
+  check_mysql_up
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | uniq | sort 2>&1)
   for T in ${_TABLES}; do
 ${_C_SQL} ${_DB}<<EOFMYSQL
@@ -865,11 +880,12 @@ tune_memory_limits() {
 }
 
 tune_sql() {
-  check_running
+  check_restart_if_running
+  check_mysql_up
   create_locks
   tune_memory_limits
   if_restart_sql
-  start_sql "chain"
+  #start_sql "chain"
   remove_locks
   exit 0
 }
