@@ -247,7 +247,9 @@ tune_sql_memory_limits() {
         _RAW_INNODB_MEM=$(echo "${_RAW_INNODB_MEM} * 1" | bc -l 2>&1)
       fi
       _RAW_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
-      if [ "${_RAW_INNODB_MEM}" -gt "${_USE_SQL}" ]; then
+      if [ "${_RAW_INNODB_MEM}" -gt "${_USE_SQL}" ] \
+        || [ -z "${_USE_INNODB_MEM}" ] \
+        || [ "${_RAW_INNODB_MEM}" -lt "512" ]; then
         _USE_INNODB_MEM="${_USE_SQL}"
       else
         _RAW_INNODB_MEM=$(echo "scale=2; (${_RAW_INNODB_MEM} * 1.1)" | bc 2>&1)
@@ -264,11 +266,6 @@ tune_sql_memory_limits() {
         wait
         sed -i "s/^innodb_file_per_table.*/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
         wait
-      fi
-      wait
-      if [ "${_USE_INNODB_MEM}" -lt "256" ] \
-        || [ -z "${_USE_INNODB_MEM}" ]; then
-        _USE_INNODB_MEM="${_USE_SQL}"
       fi
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_INNODB_MEM}/4/40*40" | bc 2>&1)
       _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
