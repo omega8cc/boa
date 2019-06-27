@@ -7,8 +7,8 @@ _CSF_VRN="12.12"
 _PROXYSQL_VRN="1.3.5-debian8_amd64"
 _UTIL_VRN="0.30.216-pre3126"
 _VNSTAT_VRN="2.2"
-_NOISE="-q"
-_INST="/usr/bin/apt-get -y --allow-unauthenticated ${_NOISE} install"
+_APT_XTR="-y --force-yes"
+_INST="/usr/bin/apt-get --allow-unauthenticated ${_APT_XTR} install"
 
 _INSTAPP="/usr/bin/aptitude -f -y -q \
   --allow-untrusted \
@@ -60,10 +60,10 @@ check_root() {
     forCer="-fuy --allow-unauthenticated --reinstall"
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ ! -x "${_LSB_TEST}" ]; then
-      apt-get clean ${_NOISE}
+      apt-get clean ${_APT_XTR}
       rm -f -r /var/lib/apt/lists/*
-      apt-get update ${_NOISE}
-      apt-get install lsb-release ${forCer} ${_NOISE}
+      apt-get update ${_APT_XTR}
+      apt-get install lsb-release ${forCer} ${_APT_XTR}
       _OSV=$(lsb_release -si 2>&1)
       _OSR=$(lsb_release -sc 2>&1)
       if [ "${_OSV}" != "Debian" ]; then
@@ -88,10 +88,10 @@ check_root() {
       echo "deb http://security.debian.org/ ${_OSR}/updates main contrib non-free"     >> /etc/apt/sources.list
       echo "deb-src http://security.debian.org/ ${_OSR}/updates main contrib non-free" >> /etc/apt/sources.list
       echo
-      apt-get clean ${_NOISE}
+      apt-get clean ${_APT_XTR}
       rm -f -r /var/lib/apt/lists/*
-      apt-get update ${_NOISE}
-      apt-get install lsb-release ${forCer} ${_NOISE}
+      apt-get update ${_APT_XTR}
+      apt-get install lsb-release ${forCer} ${_APT_XTR}
     fi
     _OSV=$(lsb_release -si 2>&1)
     _OSR=$(lsb_release -sc 2>&1)
@@ -406,8 +406,8 @@ install_proxysql() {
       vserver ${idn} exec service proxysql stop
       vserver ${idn} exec apt-get clean
       vserver ${idn} exec apt-get update
-      vserver ${idn} exec apt-get remove -y ${_NOISE} proxysql
-      vserver ${idn} exec apt-get purge -y ${_NOISE} proxysql
+      vserver ${idn} exec apt-get remove ${_APT_XTR} proxysql
+      vserver ${idn} exec apt-get purge ${_APT_XTR} proxysql
       rm -f -r /vservers/${idn}/var/lib/proxysql
       rm -f -r /vservers/${idn}/var/log/proxysql
       rm -f /vservers/${idn}/etc/proxysql-admin.cnf
@@ -787,7 +787,7 @@ install_vps() {
         if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
           cp -af /vservers/${idn}/usr/share/sysvinit/inittab /vservers/${idn}/etc/inittab
         fi
-        vserver ${idn} exec apt-get remove systemd -y ${_NOISE} --purge --auto-remove
+        vserver ${idn} exec apt-get remove systemd ${_APT_XTR} --purge --auto-remove
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /vservers/${idn}/etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /vservers/${idn}/etc/apt/preferences.d/systemd
         vserver ${idn} exec ${_INSTAPP} sysvinit-core
@@ -807,7 +807,7 @@ install_vps() {
         if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
           cp -af /vservers/${idn}/usr/share/sysvinit/inittab /vservers/${idn}/etc/inittab
         fi
-        vserver ${idn} exec apt-get remove systemd -y ${_NOISE} --purge --auto-remove
+        vserver ${idn} exec apt-get remove systemd ${_APT_XTR} --purge --auto-remove
       fi
     fi
   else
@@ -1162,11 +1162,11 @@ install_db_cluster() {
     inc=$((inc+1))
     echo "${_MAINT_USER_PWD}" > /vservers/${idn}/root/.my.cluster_maint_pwd.txt
     echo "${_ROOT_SQL_PASWD}" > /vservers/${idn}/root/.my.cluster_root_pwd.txt
-  	vserver ${idn} exec apt-get update ${_NOISE}
+  	vserver ${idn} exec apt-get update ${_APT_XTR}
     vserver ${idn} exec ${_INSTAPP} debian-keyring
     vserver ${idn} exec ${_INSTAPP} debian-archive-keyring
-  	vserver ${idn} exec apt-get upgrade -y ${_NOISE}
-  	vserver ${idn} exec apt-get remove apparmor -y ${_NOISE}
+  	vserver ${idn} exec apt-get upgrade ${_APT_XTR}
+  	vserver ${idn} exec apt-get remove apparmor ${_APT_XTR}
   	vserver ${idn} exec ${_INSTAPP} software-properties-common dirmngr
     echo "## Percona Cluster APT Repository" > /vservers/${idn}${xtraList}
     echo "deb http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
@@ -1174,7 +1174,7 @@ install_db_cluster() {
     _KEYS_SIG="9334A25F8507EFA5"
     vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
     vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
-  	vserver ${idn} exec apt-get update ${_NOISE}
+  	vserver ${idn} exec apt-get update ${_APT_XTR}
   	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57
   	vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24
     echo "[client]" > /vservers/${idn}/root/.my.cnf
@@ -1275,10 +1275,27 @@ upgrade_db_cluster() {
     inc=$((inc+1))
     _MAINT_USER_PWD=`cat /vservers/${idn}/root/.my.cluster_maint_pwd.txt`
     _ROOT_SQL_PASWD=`cat /vservers/${idn}/root/.my.cluster_root_pwd.txt`
-  	vserver ${idn} exec apt-get update ${_NOISE}
-  	vserver ${idn} exec ${_INSTAPP} bc ${_NOISE}
-  	vserver ${idn} exec apt-get upgrade -y ${_NOISE}
-  	vserver ${idn} exec apt-get dist-upgrade -y ${_NOISE}
+
+    if [ -x "/vservers/${idn}/usr/bin/gpg2" ]; then
+      _GPG=gpg2
+    else
+      _GPG=gpg
+    fi
+      _KEYS_SIG="9334A25F8507EFA5"
+      _KEYS_SERVER_TEST=FALSE
+    until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
+      echo "INFO: Retrieving ${_KEYS_SIG} key.."
+      vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}"
+      vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add -
+      apt-get update -qq
+      _KEYS_SERVER_TEST=$(vserver ${idn} exec ${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
+      sleep 2
+    done
+
+  	vserver ${idn} exec apt-get update ${_APT_XTR}
+  	vserver ${idn} exec ${_INSTAPP} bc
+  	vserver ${idn} exec apt-get upgrade ${_APT_XTR}
+  	vserver ${idn} exec apt-get dist-upgrade ${_APT_XTR}
 
   	default_my_cnf_copy
 
@@ -1341,9 +1358,9 @@ install_host() {
   cat /etc/apt/sources.list
 
   echo "Installing basic tools..."
-  apt-get update ${_NOISE}
-  apt-get upgrade -y ${_NOISE}
-  apt-get update ${_NOISE}
+  apt-get update ${_APT_XTR}
+  apt-get upgrade ${_APT_XTR}
+  apt-get update ${_APT_XTR}
   ${_INSTAPP} locales
   ${_INSTAPP} lsb-release
   ${_INSTAPP} dnsutils
@@ -1450,7 +1467,7 @@ install_host() {
     done
     cat pubkey.txt | ${_GPG} --import &> /dev/null
     rm -f pubkey.txt*
-    apt-get update ${_NOISE}
+    apt-get update ${_APT_XTR}
     ${_INSTAPP} build-essential
     ${_INSTAPP} linux-headers-vserver-${_BENG_SERIES}-beng
     ${_INSTAPP} linux-image-vserver-${_BENG_SERIES}-beng
@@ -1540,11 +1557,11 @@ upgrade_host() {
         cp -af /usr/share/sysvinit/inittab /etc/inittab
       fi
     fi
-    apt-get remove systemd -y ${_NOISE} --purge --auto-remove
+    apt-get remove systemd ${_APT_XTR} --purge --auto-remove
   fi
 
   echo "Installing vserver tools dependencies..."
-  apt-get update ${_NOISE}
+  apt-get update ${_APT_XTR}
   ${_INSTAPP} vlan
   ${_INSTAPP} e2fslibs-dev
   ${_INSTAPP} libnss3-dev
@@ -1564,8 +1581,8 @@ upgrade_host() {
   service irqbalance start
 
   echo "Installing vserver tools..."
-  apt-get remove util-vserver -y ${_NOISE}
-  apt-get autoremove -y ${_NOISE}
+  apt-get remove util-vserver ${_APT_XTR}
+  apt-get autoremove ${_APT_XTR}
   cd /var/opt
   rm -f -r util-vserver*
   wget -q -U iCab http://files.aegir.cc/dev/src/util-vserver-${_UTIL_VRN}.tar.gz
@@ -1658,9 +1675,9 @@ upgrade_host() {
   service postfix restart
 
   echo "Updating packages on this system..."
-  apt-get update -y ${_NOISE} \
-    && apt-get upgrade -y ${_NOISE} \
-    && apt-get dist-upgrade -y ${_NOISE} \
+  apt-get update ${_APT_XTR} \
+    && apt-get upgrade ${_APT_XTR} \
+    && apt-get dist-upgrade ${_APT_XTR} \
     && ${_INSTAPP} rkhunter
 
   if_firewall_update
