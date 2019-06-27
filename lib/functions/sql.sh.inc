@@ -256,7 +256,7 @@ tune_sql_memory_limits() {
         wait
         sed -i "/^$/d" /etc/mysql/my.cnf
         wait
-        sed -i "s/innodb_file_per_table   = 1/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
+        sed -i "s/^innodb_file_per_table.*/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
         wait
       fi
       wait
