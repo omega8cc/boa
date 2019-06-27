@@ -886,9 +886,9 @@ default_my_cnf_copy() {
   if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
     _CPU_NR=1
   fi
-  _CPU_MX=$(( _CPU_NR * 4 ))
-  if [ "${_CPU_MX}" -lt "96" ]; then
-    _CPU_MX=96
+  _CPU_MX=$(( _CPU_NR * 2 ))
+  if [ "${_CPU_MX}" -lt "64" ]; then
+    _CPU_MX=64
   fi
   _CPU_FC=$(( _CPU_MX * 5 ))
 
