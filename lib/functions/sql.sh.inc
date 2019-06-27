@@ -209,6 +209,9 @@ tune_sql_memory_limits() {
       if [[ "${_REC_MYISAM_MEM}" =~ "G" ]]; then
         _RAW_MYISAM_MEM=$(echo ${_RAW_MYISAM_MEM} | awk '{print int($1+0.6)}' 2>&1)
         _RAW_MYISAM_MEM=$(echo "${_RAW_MYISAM_MEM} * 1024" | bc -l 2>&1)
+      elif [[ "${_REC_MYISAM_MEM}" =~ "M" ]]; then
+        _RAW_MYISAM_MEM=$(echo ${_RAW_MYISAM_MEM} | awk '{print int($1+0.6)}' 2>&1)
+        _RAW_MYISAM_MEM=$(echo "${_RAW_MYISAM_MEM} * 1" | bc -l 2>&1)
       fi
       _RAW_MYISAM_MEM=$(echo "(${_RAW_MYISAM_MEM}+0.5)/1" | bc 2>&1)
       if [ "${_RAW_MYISAM_MEM}" -gt "${_USE_SQL}" ]; then
@@ -239,6 +242,9 @@ tune_sql_memory_limits() {
       if [[ "${_REC_INNODB_MEM}" =~ "G" ]]; then
         _RAW_INNODB_MEM=$(echo ${_RAW_INNODB_MEM} | awk '{print int($1+0.6)}' 2>&1)
         _RAW_INNODB_MEM=$(echo "${_RAW_INNODB_MEM} * 1024" | bc -l 2>&1)
+      elif [[ "${_REC_INNODB_MEM}" =~ "M" ]]; then
+        _RAW_INNODB_MEM=$(echo ${_RAW_INNODB_MEM} | awk '{print int($1+0.6)}' 2>&1)
+        _RAW_INNODB_MEM=$(echo "${_RAW_INNODB_MEM} * 1" | bc -l 2>&1)
       fi
       _RAW_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
       if [ "${_RAW_INNODB_MEM}" -gt "${_USE_SQL}" ]; then
