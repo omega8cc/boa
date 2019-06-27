@@ -604,15 +604,20 @@ tune_sql_memory_limits() {
         _RAW_INNODB_MEM=$(echo "${_RAW_INNODB_MEM} * 1024" | bc -l 2>&1)
       fi
       _RAW_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
+      echo _RAW_INNODB_MEM is ${_RAW_INNODB_MEM}
       if [ "${_RAW_INNODB_MEM}" -gt "${_USE_SQL}" ]; then
         _USE_INNODB_MEM="${_USE_SQL}"
       else
         _RAW_INNODB_MEM=$(echo "scale=2; (${_RAW_INNODB_MEM} * 1.1)" | bc 2>&1)
         _USE_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
       fi
+      echo _RAW_INNODB_MEM is ${_RAW_INNODB_MEM}
+      echo _USE_INNODB_MEM is ${_USE_INNODB_MEM}
       _INNODB_BPI=$(echo "scale=0; ${_USE_INNODB_MEM}/1024" | bc 2>&1)
+      echo Initial _INNODB_BPI is ${_INNODB_BPI}
       if [ "${_INNODB_BPI}" -lt "1" ] || [ -z "${_INNODB_BPI}" ]; then
         _INNODB_BPI="1"
+        echo Forced _INNODB_BPI is ${_INNODB_BPI}
       fi
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/^innodb_buffer_pool_instances.*//g"  /etc/mysql/my.cnf
@@ -886,6 +891,7 @@ tune_memory_limits() {
     echo _RND_SQL is ${_RND_SQL}
     echo _JBF_SQL is ${_JBF_SQL}
     echo _SRT_SQL is ${_SRT_SQL}
+    echo _INNODB_BPI is ${_INNODB_BPI}
     echo _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}
   fi
 }
