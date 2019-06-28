@@ -253,16 +253,17 @@ elif [ -e "/root/.my.pass.txt" ]; then
   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
 fi
 
-if [ -e "/root/.my.cluster_backup_proxysql.txt" ]; then
+_SQL_HOST="127.0.0.1"
+_SQL_PORT="3306"
+
+if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
   _SQL_PORT="6033"
   _SQL_HOST="127.0.0.1"
 else
-  _SQL_PORT="3306"
   if [ -e "/root/.my.cluster_write_node.txt" ]; then
     _SQL_HOST=$(cat /root/.my.cluster_write_node.txt 2>&1)
     _SQL_HOST=$(echo -n ${_SQL_HOST} | tr -d "\n" 2>&1)
   fi
-  [ -z ${_SQL_HOST} ] && _SQL_HOST="127.0.0.1" && _SQL_PORT="3306"
 fi
 
 _C_SQL="mysql --user=root --password=${_SQL_PSWD} --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp"
@@ -421,7 +422,11 @@ if_restart_sql() {
       echo "INFO: ${_DB_SERVER} diff3 ${diffMyTest}"
     fi
   fi
-  myUptime=$(mysqladmin -P${_SQL_PORT} --protocol=tcp version | grep -i uptime 2>&1)
+  if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
+    myUptime=$(mysqladmin -P${_SQL_PORT} --protocol=tcp version | grep -i uptime 2>&1)
+  else
+    myUptime=$(mysqladmin version | grep -i uptime 2>&1)
+  fi
   myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
   echo "INFO: ${_DB_SERVER} ${myUptime}"
   if [ "${myCnfUpdate}" = "YES" ]; then
