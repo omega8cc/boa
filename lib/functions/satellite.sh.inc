@@ -1490,20 +1490,22 @@ satellite_o_contrib_seven_update_global() {
       done
       _ADMINER_VRN=4.7.0
       cd ${_D}/${i}/o_contrib_seven
-      if [ ! -d "${_D}/${i}/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}-mysql.php" ]; then
+      if [ ! -e "${_D}/${i}/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}-mysql.php" ]; then
         rm -rf ${_D}/${i}/o_contrib_seven/adminer
         get_dev_contrib "adminer_bundle-7.x-1.2.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/advagg" ]; then
         get_dev_contrib "advagg-7.x-2.33.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/autoslave" ]; then
+      if [ ! -e "${_D}/${i}/o_contrib_seven/autoslave/patches/update-pdo-7.22.patch" ]; then
+        rm -rf ${_D}/${i}/o_contrib_seven/autoslave
         get_dev_contrib "autoslave-7.x-1.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/boost" ]; then
         get_dev_contrib "boost-7.x-1.2.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/cache_consistent" ]; then
+      if [ ! -e "${_D}/${i}/o_contrib_seven/cache_consistent/3010585-cache-consistent-php72-2.patch" ]; then
+        rm -rf ${_D}/${i}/o_contrib_seven/cache_consistent
         get_dev_contrib "cache_consistent-7.x-2.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/cdn" ]; then
