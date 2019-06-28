@@ -167,6 +167,17 @@ update_solr() {
           rm -f ${2}/conf/.just-updated.pid
           rm -f ${2}/conf/.yes-update.txt
         fi
+        check_config_diff "/data/conf/solr/search_api_solr/7/solrcore.properties" "${2}/conf/solrcore.properties"
+        if [ ! -z "${myCnfUpdate}" ]; then
+          rm -f ${2}/conf/*
+          cp -af /data/conf/solr/search_api_solr/7/* ${2}/conf/
+          chmod 644 ${2}/conf/*
+          chown solr7:solr7 ${2}/conf/*
+          touch ${2}/conf/.just-updated.pid
+        else
+          rm -f ${2}/conf/.just-updated.pid
+          rm -f ${2}/conf/.yes-update.txt
+        fi
       fi
     elif [ "${1}" = "search_api_solr" ] \
       && [ -e "${Plr}/sites/${Dom}/files/solr/schema.xml" ] \
@@ -195,6 +206,17 @@ update_solr() {
         && [ ! -e "${2}/conf/.yes-custom.txt" ] \
         && [ -e "${2}/conf" ]; then
         check_config_diff "/data/conf/solr/search_api_solr/8/schema.xml" "${2}/conf/schema.xml"
+        if [ ! -z "${myCnfUpdate}" ]; then
+          rm -f ${2}/conf/*
+          cp -af /data/conf/solr/search_api_solr/8/* ${2}/conf/
+          chmod 644 ${2}/conf/*
+          chown solr7:solr7 ${2}/conf/*
+          touch ${2}/conf/.just-updated.pid
+        else
+          rm -f ${2}/conf/.just-updated.pid
+          rm -f ${2}/conf/.yes-update.txt
+        fi
+        check_config_diff "/data/conf/solr/search_api_solr/8/solrcore.properties" "${2}/conf/solrcore.properties"
         if [ ! -z "${myCnfUpdate}" ]; then
           rm -f ${2}/conf/*
           cp -af /data/conf/solr/search_api_solr/8/* ${2}/conf/
@@ -521,6 +543,64 @@ load_control() {
 }
 
 start_up() {
+  for pRp in `find /var/solr7/data/oct.*/conf/solrcore.properties -maxdepth 1 | sort`; do
+    if [ -e "${pRp}" ]; then
+      _PRP_TEST_ID=$(grep "solr.install.dir" ${pRp} 2>&1)
+      _PRP_TEST_LV=$(grep "luceneMatchVersion=6.0" ${pRp} 2>&1)
+      if [[ ! "${_PRP_TEST_ID}" =~ "solr7" ]] \
+        && [[ "${_PRP_TEST_LV}" =~ "lucene" ]]; then
+        sed -i "s/^solr\.install\.dir.*//g" ${pRp}
+        sed -i "s/^solr\.contrib\.dir.*//g" ${pRp}
+        echo "solr.install.dir=/opt/solr7" >> ${pRp}
+        sed -i "/^$/d" ${pRp}
+        echo "Fixed ${pRp}"
+      fi
+    fi
+  done
+  pRp="/var/xdrago/conf/solr/search_api_solr/7/solrcore.properties"
+  if [ -e "${pRp}" ]; then
+    _PRP_TEST_ID=$(grep "solr7" ${pRp} 2>&1)
+    if [[ ! "${_PRP_TEST_ID}" =~ "solr7" ]]; then
+      sed -i "s/^solr\.install\.dir.*//g" ${pRp}
+      sed -i "s/^solr\.contrib\.dir.*//g" ${pRp}
+      echo "solr.install.dir=/opt/solr7" >> ${pRp}
+      sed -i "/^$/d" ${pRp}
+      echo "Fixed ${pRp}"
+    fi
+  fi
+  pRp="/var/xdrago/conf/solr/search_api_solr/8/solrcore.properties"
+  if [ -e "${pRp}" ]; then
+    _PRP_TEST_ID=$(grep "solr7" ${pRp} 2>&1)
+    if [[ ! "${_PRP_TEST_ID}" =~ "solr7" ]]; then
+      sed -i "s/^solr\.install\.dir.*//g" ${pRp}
+      sed -i "s/^solr\.contrib\.dir.*//g" ${pRp}
+      echo "solr.install.dir=/opt/solr7" >> ${pRp}
+      sed -i "/^$/d" ${pRp}
+      echo "Fixed ${pRp}"
+    fi
+  fi
+  pRp="/data/conf/solr/search_api_solr/7/solrcore.properties"
+  if [ -e "${pRp}" ]; then
+    _PRP_TEST_ID=$(grep "solr7" ${pRp} 2>&1)
+    if [[ ! "${_PRP_TEST_ID}" =~ "solr7" ]]; then
+      sed -i "s/^solr\.install\.dir.*//g" ${pRp}
+      sed -i "s/^solr\.contrib\.dir.*//g" ${pRp}
+      echo "solr.install.dir=/opt/solr7" >> ${pRp}
+      sed -i "/^$/d" ${pRp}
+      echo "Fixed ${pRp}"
+    fi
+  fi
+  pRp="/data/conf/solr/search_api_solr/8/solrcore.properties"
+  if [ -e "${pRp}" ]; then
+    _PRP_TEST_ID=$(grep "solr7" ${pRp} 2>&1)
+    if [[ ! "${_PRP_TEST_ID}" =~ "solr7" ]]; then
+      sed -i "s/^solr\.install\.dir.*//g" ${pRp}
+      sed -i "s/^solr\.contrib\.dir.*//g" ${pRp}
+      echo "solr.install.dir=/opt/solr7" >> ${pRp}
+      sed -i "/^$/d" ${pRp}
+      echo "Fixed ${pRp}"
+    fi
+  fi
   if [ -d "/var/xdrago/conf/solr/search_api_solr/8" ]; then
     baseCpy="/var/xdrago/conf/solr/search_api_solr/8/schema.xml"
     liveCpy="/data/conf/solr/search_api_solr/8/schema.xml"
