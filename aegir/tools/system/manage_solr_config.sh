@@ -542,65 +542,81 @@ load_control() {
   _O_LOAD_MAX=$(( 100 * _CPU_MAX_RATIO ))
 }
 
-start_up() {
-  for pRp in `find /var/solr7/data/oct.*/conf/solrcore.properties -maxdepth 1 | sort`; do
+fix_solr7_cnf() {
+  if [ -x "/etc/init.d/solr7" ] && [ -e "/var/solr7/logs" ]; then
+    _IF_RESTART_SOLR=NO
+    for pRp in `find /var/solr7/data/oct.*/conf/solrcore.properties -maxdepth 1 | sort`; do
+      if [ -e "${pRp}" ]; then
+        _PRP_TEST_ID=$(grep "solr7" ${pRp} 2>&1)
+        if [[ ! "${_PRP_TEST_ID}" =~ "solr7" ]]; then
+          sed -i "s/^solr\.install\.dir.*//g" ${pRp}
+          sed -i "s/^solr\.contrib\.dir.*//g" ${pRp}
+          echo "solr.install.dir=/opt/solr7" >> ${pRp}
+          sed -i "/^$/d" ${pRp}
+          echo "Fixed ${pRp}"
+          _IF_RESTART_SOLR=YES
+        fi
+      fi
+    done
+    pRp="/var/xdrago/conf/solr/search_api_solr/7/solrcore.properties"
     if [ -e "${pRp}" ]; then
-      _PRP_TEST_ID=$(grep "solr.install.dir" ${pRp} 2>&1)
-      _PRP_TEST_LV=$(grep "luceneMatchVersion=6.0" ${pRp} 2>&1)
-      if [[ ! "${_PRP_TEST_ID}" =~ "solr7" ]] \
-        && [[ "${_PRP_TEST_LV}" =~ "lucene" ]]; then
+      _PRP_TEST_ID=$(grep "solr7" ${pRp} 2>&1)
+      if [[ ! "${_PRP_TEST_ID}" =~ "solr7" ]]; then
         sed -i "s/^solr\.install\.dir.*//g" ${pRp}
         sed -i "s/^solr\.contrib\.dir.*//g" ${pRp}
         echo "solr.install.dir=/opt/solr7" >> ${pRp}
         sed -i "/^$/d" ${pRp}
         echo "Fixed ${pRp}"
+        _IF_RESTART_SOLR=YES
       fi
     fi
-  done
-  pRp="/var/xdrago/conf/solr/search_api_solr/7/solrcore.properties"
-  if [ -e "${pRp}" ]; then
-    _PRP_TEST_ID=$(grep "solr7" ${pRp} 2>&1)
-    if [[ ! "${_PRP_TEST_ID}" =~ "solr7" ]]; then
-      sed -i "s/^solr\.install\.dir.*//g" ${pRp}
-      sed -i "s/^solr\.contrib\.dir.*//g" ${pRp}
-      echo "solr.install.dir=/opt/solr7" >> ${pRp}
-      sed -i "/^$/d" ${pRp}
-      echo "Fixed ${pRp}"
+    pRp="/var/xdrago/conf/solr/search_api_solr/8/solrcore.properties"
+    if [ -e "${pRp}" ]; then
+      _PRP_TEST_ID=$(grep "solr7" ${pRp} 2>&1)
+      if [[ ! "${_PRP_TEST_ID}" =~ "solr7" ]]; then
+        sed -i "s/^solr\.install\.dir.*//g" ${pRp}
+        sed -i "s/^solr\.contrib\.dir.*//g" ${pRp}
+        echo "solr.install.dir=/opt/solr7" >> ${pRp}
+        sed -i "/^$/d" ${pRp}
+        echo "Fixed ${pRp}"
+        _IF_RESTART_SOLR=YES
+      fi
+    fi
+    pRp="/data/conf/solr/search_api_solr/7/solrcore.properties"
+    if [ -e "${pRp}" ]; then
+      _PRP_TEST_ID=$(grep "solr7" ${pRp} 2>&1)
+      if [[ ! "${_PRP_TEST_ID}" =~ "solr7" ]]; then
+        sed -i "s/^solr\.install\.dir.*//g" ${pRp}
+        sed -i "s/^solr\.contrib\.dir.*//g" ${pRp}
+        echo "solr.install.dir=/opt/solr7" >> ${pRp}
+        sed -i "/^$/d" ${pRp}
+        echo "Fixed ${pRp}"
+        _IF_RESTART_SOLR=YES
+      fi
+    fi
+    pRp="/data/conf/solr/search_api_solr/8/solrcore.properties"
+    if [ -e "${pRp}" ]; then
+      _PRP_TEST_ID=$(grep "solr7" ${pRp} 2>&1)
+      if [[ ! "${_PRP_TEST_ID}" =~ "solr7" ]]; then
+        sed -i "s/^solr\.install\.dir.*//g" ${pRp}
+        sed -i "s/^solr\.contrib\.dir.*//g" ${pRp}
+        echo "solr.install.dir=/opt/solr7" >> ${pRp}
+        sed -i "/^$/d" ${pRp}
+        echo "Fixed ${pRp}"
+        _IF_RESTART_SOLR=YES
+      fi
+    fi
+    rStart="/var/solr7/logs/.restarted_fix_solr7_cnf.txt"
+    if [ "${_IF_RESTART_SOLR}" = "YES" ] \
+      || [ ! -e "${rStart}" ]; then
+      echo "Restarting Solr 7..."
+      service solr7 restart
+      touch ${rStart}
     fi
   fi
-  pRp="/var/xdrago/conf/solr/search_api_solr/8/solrcore.properties"
-  if [ -e "${pRp}" ]; then
-    _PRP_TEST_ID=$(grep "solr7" ${pRp} 2>&1)
-    if [[ ! "${_PRP_TEST_ID}" =~ "solr7" ]]; then
-      sed -i "s/^solr\.install\.dir.*//g" ${pRp}
-      sed -i "s/^solr\.contrib\.dir.*//g" ${pRp}
-      echo "solr.install.dir=/opt/solr7" >> ${pRp}
-      sed -i "/^$/d" ${pRp}
-      echo "Fixed ${pRp}"
-    fi
-  fi
-  pRp="/data/conf/solr/search_api_solr/7/solrcore.properties"
-  if [ -e "${pRp}" ]; then
-    _PRP_TEST_ID=$(grep "solr7" ${pRp} 2>&1)
-    if [[ ! "${_PRP_TEST_ID}" =~ "solr7" ]]; then
-      sed -i "s/^solr\.install\.dir.*//g" ${pRp}
-      sed -i "s/^solr\.contrib\.dir.*//g" ${pRp}
-      echo "solr.install.dir=/opt/solr7" >> ${pRp}
-      sed -i "/^$/d" ${pRp}
-      echo "Fixed ${pRp}"
-    fi
-  fi
-  pRp="/data/conf/solr/search_api_solr/8/solrcore.properties"
-  if [ -e "${pRp}" ]; then
-    _PRP_TEST_ID=$(grep "solr7" ${pRp} 2>&1)
-    if [[ ! "${_PRP_TEST_ID}" =~ "solr7" ]]; then
-      sed -i "s/^solr\.install\.dir.*//g" ${pRp}
-      sed -i "s/^solr\.contrib\.dir.*//g" ${pRp}
-      echo "solr.install.dir=/opt/solr7" >> ${pRp}
-      sed -i "/^$/d" ${pRp}
-      echo "Fixed ${pRp}"
-    fi
-  fi
+}
+start_up() {
+  fix_solr7_cnf
   if [ -d "/var/xdrago/conf/solr/search_api_solr/8" ]; then
     baseCpy="/var/xdrago/conf/solr/search_api_solr/8/schema.xml"
     liveCpy="/data/conf/solr/search_api_solr/8/schema.xml"
