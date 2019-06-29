@@ -536,7 +536,7 @@ function upgrade_scheduler(){
     local s_cluster_name=$(echo "$i" | awk '{print $10}')
     local s_mode=""
 
-    log $LINENO "Modifying the scheduler for write hostgroup: $s_write_hg"
+    log $LINENO "Modifying the scheduler for write hostgroup: 10"
 
     # Get the mode for this cluster
     local proxysql_mode_file

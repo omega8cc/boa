@@ -3240,6 +3240,13 @@ more_packages_install_on_init() {
 }
 
 if_proxysql_update() {
+  isPxy=$(which proxysql 2>&1)
+  if [ -x "${isPxy}" ]; then
+    pGc="/usr/bin/proxysql_galera_checker"
+    if [ ! -e "${pGc}" ]; then
+      _UP_PXC=YES
+    fi
+  fi
   isPxyVer=$(proxysql --version 2>&1)
   if [[ ! "${isPxyVer}" =~ "${_PXC_VRN}" ]]; then
     _UP_PXC=YES
@@ -3257,12 +3264,6 @@ if_proxysql_update() {
      else
        mrun "apt-get install --only-upgrade ${nrmUpArg} proxysql" 2> /dev/null
      fi
-     pGc="/usr/bin/proxysql_galera_checker"
-     if [ -e "${pGc}" ]; then
-       rm -f ${pGc}
-     fi
-     curl ${crlGet} "${urlHmr}/${tBn}/proxysql_galera_checker" -o ${pGc}
-     chmod 755 ${pGc}
      if [ ! -e "/etc/proxysql.cnf" ]; then
        msg "OOPS: Unable to open config file /etc/proxysql.cnf"
      else
@@ -3276,7 +3277,28 @@ if_proxysql_update() {
      if [ -x "${isPxy}" ] \
        && [ -e "/etc/proxysql.cnf" ] \
        && [ -e "/etc/proxysql-admin.cnf" ]; then
-       mrun "service proxysql restart" 2> /dev/null
+       msg "INFO: Updating ProxySQL Galera Checker..."
+       if [ -e "${pGc}" ]; then
+         rm -f ${pGc}
+       fi
+       curl ${crlGet} "${urlHmr}/${tBn}/proxysql_galera_checker" -o ${pGc}
+       if [ -e "${pGc}" ]; then
+         chmod 755 ${pGc}
+         echo loadbal > /var/lib/proxysql/mode
+         echo loadbal > /var/lib/proxysql/c1r_galera_mode
+         echo loadbal > /var/lib/proxysql/--mode=singlewrite_mode
+         echo loadbal > /var/lib/proxysql/--mode=loadbal_mode
+         chown proxysql:proxysql /var/lib/proxysql/*mode*
+         rm -f /var/lib/proxysql/pxc_test_proxysql_galera_check.log
+         proxysql_galera_checker --log=/var/lib/proxysql/pxc_test_proxysql_galera_check.log --debug
+         cat /var/lib/proxysql/pxc_test_proxysql_galera_check.log
+         msg "INFO: Restarting ProxySQL server..."
+         mrun "service proxysql restart" 2> /dev/null
+         mysql -uadmin -p`cat /root/.my.proxysql_adm_pwd.txt` -h127.0.0.1 -P6032 -e "SELECT * FROM scheduler\G"
+         mysql -uadmin -p`cat /root/.my.proxysql_adm_pwd.txt` -h127.0.0.1 -P6032 -e "SELECT * FROM mysql_servers;"
+       else
+         msg "OOPS: ProxySQL Galera Checker will not work!"
+       fi
      else
        msg "OOPS: ProxySQL will not work!"
      fi
