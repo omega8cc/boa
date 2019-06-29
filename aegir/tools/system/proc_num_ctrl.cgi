@@ -162,11 +162,11 @@ if (-f "/root/.dbhd.clstr.cnf") {
   }
 }
 else {
-  system("service php73-fpm restart") if ((!$php73lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php73-fpm.pid") && -f "/etc/init.d/php73-fpm" && !-f "/var/run/boa_run.pid");
-  system("service php72-fpm restart") if ((!$php72lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php72-fpm.pid") && -f "/etc/init.d/php72-fpm" && !-f "/var/run/boa_run.pid");
-  system("service php71-fpm restart") if ((!$php71lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php71-fpm.pid") && -f "/etc/init.d/php71-fpm" && !-f "/var/run/boa_run.pid");
-  system("service php70-fpm restart") if ((!$php70lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php70-fpm.pid") && -f "/etc/init.d/php70-fpm" && !-f "/var/run/boa_run.pid");
-  system("service php56-fpm restart") if ((!$php56lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm" && !-f "/var/run/boa_run.pid");
+  system("service php73-fpm restart") if ((!$php73lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php73-fpm.pid") && -f "/etc/init.d/php73-fpm");
+  system("service php72-fpm restart") if ((!$php72lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php72-fpm.pid") && -f "/etc/init.d/php72-fpm");
+  system("service php71-fpm restart") if ((!$php71lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php71-fpm.pid") && -f "/etc/init.d/php71-fpm");
+  system("service php70-fpm restart") if ((!$php70lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php70-fpm.pid") && -f "/etc/init.d/php70-fpm");
+  system("service php56-fpm restart") if ((!$php56lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
 }
 
 system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7" && !-f "/var/run/boa_run.pid");
