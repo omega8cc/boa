@@ -3247,12 +3247,6 @@ if_proxysql_update() {
   if [ "${_UP_PXC}" = "YES" ] \
     && [ "${_THIS_OS}" = "Debian" ]; then
      msg "INFO: Running ProxySQL upgrade to ${_PXC_VRN}..."
-     # if [ ! -e "/etc/apt/sources.list.d/proxysql.list" ]; then
-     #   wget -O - 'http://repo.proxysql.com/ProxySQL/repo_pub_key' | apt-key add - &> /dev/null
-     #   echo deb http://repo.proxysql.com/ProxySQL/proxysql-1.4.x/$(lsb_release -sc)/ ./ \
-     #     | tee /etc/apt/sources.list.d/proxysql.list &> /dev/null
-     #   mrun "apt-get update -qq" 2> /dev/null
-     # fi
      isPxy=$(which proxysql 2>&1)
      if [ ! -x "${isPxy}" ]; then
        mrun "apt-get clean" 2> /dev/null
@@ -3263,17 +3257,12 @@ if_proxysql_update() {
      else
        mrun "apt-get install --only-upgrade ${nrmUpArg} proxysql" 2> /dev/null
      fi
-     cd /var/opt
-     rm -rf proxysql*
-     if [ "${_OSV}" = "jessie" ]; then
-       wget -q -U iCab \
-         https://github.com/sysown/proxysql/releases/download/v${_PXC_VRN}/proxysql_${_PXC_VRN}-debian8_amd64.deb &> /dev/null
-       dpkg -i /var/opt/proxysql_${_PXC_VRN}-debian8_amd64.deb 2> /dev/null
-     elif [ "${_OSV}" = "stretch" ]; then
-       wget -q -U iCab \
-         https://github.com/sysown/proxysql/releases/download/v${_PXC_VRN}/proxysql_${_PXC_VRN}-debian9_amd64.deb &> /dev/null
-       dpkg -i /var/opt/proxysql_${_PXC_VRN}-debian9_amd64.deb 2> /dev/null
+     pGc="/usr/bin/proxysql_galera_checker"
+     if [ -e "${pGc}" ]; then
+       rm -f ${pGc}
      fi
+     curl ${crlGet} "${urlHmr}/${tBn}/proxysql_galera_checker" -o ${pGc}
+     chmod 755 ${pGc}
      if [ ! -e "/etc/proxysql.cnf" ]; then
        msg "OOPS: Unable to open config file /etc/proxysql.cnf"
      else
