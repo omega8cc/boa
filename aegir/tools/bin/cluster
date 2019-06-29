@@ -1312,7 +1312,6 @@ upgrade_db_cluster() {
   inc="0"
 
   for IP in "${_DB_NODE_IP[@]}"; do
-  	echo "Upgrading DB cluster node on ${IP}/${idn}..."
     idn="${_CLUSTER_PREFIX}db${inc}"
     hst="${_CLUSTER_PREFIX}db${inc}.${_CLUSTER_SUFFIX}"
     vip="${IP}"
@@ -1322,6 +1321,8 @@ upgrade_db_cluster() {
     inc=$((inc+1))
     _MAINT_USER_PWD=`cat /vservers/${idn}/root/.my.cluster_maint_pwd.txt`
     _ROOT_SQL_PASWD=`cat /vservers/${idn}/root/.my.cluster_root_pwd.txt`
+
+    echo "Upgrading DB cluster node on ${idn}/${IP}..."
 
     if [ ! -e "/vservers/${idn}/etc/apt/apt.conf.d/00sandboxtmp" ] \
       && [ -e "/vservers/${idn}/etc/apt/apt.conf.d" ]; then
