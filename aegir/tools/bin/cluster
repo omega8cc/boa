@@ -1312,7 +1312,7 @@ upgrade_db_cluster() {
   inc="0"
 
   for IP in "${_DB_NODE_IP[@]}"; do
-  	echo "Upgrading DB cluster node on ${IP} ..."
+  	echo "Upgrading DB cluster node on ${IP}/${idn}..."
     idn="${_CLUSTER_PREFIX}db${inc}"
     hst="${_CLUSTER_PREFIX}db${inc}.${_CLUSTER_SUFFIX}"
     vip="${IP}"
@@ -1335,6 +1335,7 @@ upgrade_db_cluster() {
     curl ${crlGet} "${urlHmr}/${tBn}/mycnfup" -o /vservers/${idn}${optBin}/mycnfup
     ssh ${_NOSTRICT} root@${IP} "chmod 700 ${optBin}/mycnfup"
     if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
+      echo "Running mycnfup check on ${idn}/${IP}..."
       ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup check"
     fi
 
@@ -1346,7 +1347,7 @@ upgrade_db_cluster() {
     _KEYS_SIG="8507EFA5"
     _KEYS_SERVER_TEST=FALSE
     until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
-      echo "INFO: Retrieving ${_KEYS_SIG} key.."
+      echo "INFO: Retrieving ${_KEYS_SIG} key on ${idn}/${IP}..."
       vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}"
       vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add -
       vserver ${idn} exec apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}"
@@ -1365,17 +1366,18 @@ upgrade_db_cluster() {
   	default_my_cnf_copy
 
     if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
+      echo "Running mycnfup tune on ${idn}/${IP}..."
       ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup tune"
     fi
     sleep 5
-    echo "Running mysql_upgrade to update tables if needed"
+    echo "Running mysql_upgrade on ${idn}/${IP} to update tables if needed"
     ssh ${_NOSTRICT} root@${IP} "mysql_upgrade"
-    echo "Checking wsrep status on ${idn}"
+    echo "Checking wsrep status on ${idn}/${IP}"
     sleep 3
     ssh ${_NOSTRICT} root@${IP} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep%';\""
-    echo "Waiting 60 seconds after ${idn} upgrade..."
+    echo "Waiting 60 seconds after ${idn}/${IP} upgrade..."
     sleep 60
-    echo "Upgrade for ${idn} on ${IP} completed!"
+    echo "Upgrade for ${idn}/${IP} completed!"
   done
 
   echo "All DB nodes updated!"
