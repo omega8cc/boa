@@ -609,6 +609,7 @@ update_sql_conf() {
           wait
         else
           echo "Changes required on `hostname` for ${_INNODB_LOG_FILE_SIZE_MB}"
+          echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
           update_innodb_log_file_size
         fi
       fi
@@ -976,6 +977,7 @@ tune_memory_limits() {
 
 tune_sql() {
   echo "running ${tVr} `hostname` tune_sql procedure.."
+  rm -f /var/run/mysql_restart_running.pid
   check_mysql_up
   tune_memory_limits
   if_restart_sql
