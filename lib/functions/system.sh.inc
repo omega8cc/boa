@@ -3261,7 +3261,7 @@ if_proxysql_update() {
        mrun "${_INSTALL} debconf-utils" 2> /dev/null
        mrun "${_INSTALL} proxysql" 2> /dev/null
      else
-       mrun "apt-get upgrade ${nrmUpArg} proxysql" 2> /dev/null
+       mrun "apt-get install --only-upgrade ${nrmUpArg} proxysql" 2> /dev/null
      fi
      cd /var/opt
      rm -rf proxysql*

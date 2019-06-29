@@ -41,6 +41,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /xinetd/) {$xinetdlives = "YES"; $xinetdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /lsyncd/) {$lsyncdlives = "YES"; $lsyncdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /sshd/) {$sshdlives = "YES"; $sshdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /proxysql/) {$pxydlives = "YES"; $pxydsumar = $li_cnt{$COMMAND};}
 }
 foreach $X (sort keys %li_cnt) {
   if ($X =~ /php73/) {$php73lives = "YES";}
@@ -87,9 +88,12 @@ print "\n $convertsumar Convert procs\t\tGLOBAL" if ($convertlives);
 print "\n $xinetdsumar Xinetd procs\t\tGLOBAL" if ($xinetdlives);
 print "\n $lsyncdsumar Lsyncd procs\t\tGLOBAL" if ($lsyncdlives);
 print "\n $sshdsumar SSHd procs\t\tGLOBAL" if ($sshdlives);
+print "\n $pxydsumar PxySQL procs\t\tGLOBAL" if ($pxydlives);
+print "\n";
 
 system("service bind9 restart") if (!$namedsumar && -f "/etc/init.d/bind9");
 system("service ssh restart") if (!$sshdsumar && -f "/etc/init.d/ssh");
+system("service proxysql restart") if (!$pxydsumar && -f "/etc/init.d/proxysql");
 
 if (-e "/usr/sbin/pdnsd" && (!$pdnsdsumar || !-e "/etc/resolvconf/run/interface/lo.pdnsd") && !-f "/var/run/boa_run.pid") {
   system("mkdir -p /var/cache/pdnsd");

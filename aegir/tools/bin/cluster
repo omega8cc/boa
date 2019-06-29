@@ -378,7 +378,9 @@ install_proxysql() {
   echo "Installing ProxySQL on the web cluster node..."
   if [ ! -z "${_E_PROXYSQL_PASSWORD}" ] && [ ! -z "${_E_ROOT_SQL_PASWD}" ]; then
 
-    if [ "${cmd}" = "in-pxy" ] && [ -e "/vservers/${idn}/usr/bin/proxysql" ]; then
+    if [ "${cmd}" = "in-pxy" ] \
+      && [ -e "/vservers/${idn}/usr/bin/proxysql" ] \
+      && [ -e "/vservers/${idn}/var/lib/proxysql" ]; then
       _ATMIS=`date +%y%m%d-%H%M%S`
       _XPSQL="/vservers/${idn}/var/backups/xpySQL/${_ATMIS}"
       mkdir -p ${_XPSQL}
@@ -834,12 +836,14 @@ install_octopus() {
   fi
 }
 
-install_pxy() {
+re_install_pxy() {
   check_config_cluster
   idn="${idn}"
   vip="${vip}"
+  fce="${fce}"
   if [ -e "/vservers/${idn}/usr/bin/mysql" ] \
-    && [ "${vip}" = "${_WEB_NODE_IP}" ]; then
+    && [ "${vip}" = "${_WEB_NODE_IP}" ] \
+    && [ "${fce}" = "force-reinstall" ]; then
     install_proxysql
   fi
 }
@@ -1744,8 +1748,9 @@ case "$1" in
   in-pxy)  cmd="$1"
            idn="$2"
            vip="$3"
+           fce="$4"
            check_all
-           install_pxy
+           re_install_pxy
   ;;
   *)       echo
            echo "Usage: cluster {in-host|up-host} {fqdn}"
@@ -1755,7 +1760,7 @@ case "$1" in
            echo "Usage: cluster {up-web} {stable|head}"
            echo "Usage: cluster {up-all} {stable|head}"
            echo "Usage: cluster {in-oct} {email} {o2} {mini|max|none} {stable|head}"
-           echo "Usage: cluster {in-pxy} {id} {ip}"
+           echo "Usage: cluster {in-pxy} {id} {ip} force-reinstall"
            echo
            exit 1
   ;;
