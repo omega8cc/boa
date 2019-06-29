@@ -16,7 +16,6 @@ _BRANCH_BOA="4.x"
 _X_VERSION="BOA-4.0.1"
 _MYSQLTUNER_VRN=1.7.15
 _PHP_FPM_WORKERS=AUTO
-_CUSTOM_CONFIG_SQL=NO
 _RESERVED_RAM=0
 
 _APT_XTR="-y --force-yes"
@@ -24,7 +23,7 @@ _INST="/usr/bin/apt-get --allow-unauthenticated ${_APT_XTR} install"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 forCer="-fuy --allow-unauthenticated --reinstall"
 vBs="/var/backups"
-tVr="0.4"
+tVr="0.5"
 
 ###-------------SYSTEM-----------------###
 
@@ -563,35 +562,30 @@ update_sql_conf() {
   wait
   sed -i "s/.*innodb_buffer_pool_dump_pct/#innodb_buffer_pool_dump_pct/g" /etc/mysql/my.cnf
   wait
-  if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
-    || [ -e "/root/.my.cluster_root_pwd.txt" ] \
+  if [ -e "/root/.my.cluster_root_pwd.txt" ] \
     || [ "${_VMFAMILY}" = "VS" ]; then
-    if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
-      _DO_NOTHING=YES
-    else
-      _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
-      if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
-        if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
-          _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
-          _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
-            ${vBs}/dragon/t/my.cnf-pre-${_NOW} 2>&1)
-          if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
-            _INNODB_LOG_FILE_SIZE_SAME=YES
-          else
-            _INNODB_LOG_FILE_SIZE_SAME=NO
-          fi
+    _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
+    if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
+      if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
+        _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
+        _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
+          ${vBs}/dragon/t/my.cnf-pre-${_NOW} 2>&1)
+        if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
+          _INNODB_LOG_FILE_SIZE_SAME=YES
+        else
+          _INNODB_LOG_FILE_SIZE_SAME=NO
         fi
       fi
-      sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf
+    fi
+    sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf
+    wait
+    sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf
+    wait
+    sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf
+    wait
+    if [ ! -e "/etc/mysql/skip-name-resolve.txt" ]; then
+      sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf
       wait
-      sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf
-      wait
-      sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf
-      wait
-      if [ ! -e "/etc/mysql/skip-name-resolve.txt" ]; then
-        sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf
-        wait
-      fi
     fi
   fi
   mv -f /etc/mysql/my.cnf-pre* ${vBs}/dragon/t/ &> /dev/null
@@ -601,42 +595,21 @@ update_sql_conf() {
   wait
   sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf
   wait
-  if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
-    if [ "${_DB_BINARY_LOG}" = "NO" ]; then
-      bash /var/xdrago/purge_binlogs.sh &> /dev/null
-      sed -i "s/.*purge_binlogs.*//g" /var/spool/cron/crontabs/root
-      wait
-      sed -i "/^$/d"                  /var/spool/cron/crontabs/root
-      wait
-      sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf
-      wait
-      sed -i "s/^expire_logs_days/#expire_logs_days/g" /etc/mysql/my.cnf
-      wait
-      sed -i "s/^max_binlog_size/#max_binlog_size/g"   /etc/mysql/my.cnf
-      wait
-    elif [ "${_DB_BINARY_LOG}" = "YES" ]; then
-      sed -i "s/.*log_bin/log_bin/g"                   /etc/mysql/my.cnf
-      wait
-      sed -i "s/.*expire_logs_days/expire_logs_days/g" /etc/mysql/my.cnf
-      wait
-      sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf
-      wait
-    fi
-    if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
-      if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
-        _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
-        _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
-          /root/.my.cluster_innodb_log_file_size.txt 2>&1)
-        if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
-          _DO_NOTHING=YES
+  if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
+    if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
+      _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
+      _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
+        /root/.my.cluster_innodb_log_file_size.txt 2>&1)
+      if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
+        echo "No changes on `hostname` for ${_INNODB_LOG_FILE_SIZE_MB}"
+      else
+        if [ "${_INNODB_LOG_FILE_SIZE_SAME}" = "YES" ]; then
+          sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+          echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+          wait
         else
-          if [ "${_INNODB_LOG_FILE_SIZE_SAME}" = "YES" ]; then
-            sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
-            echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
-            wait
-          else
-            update_innodb_log_file_size
-          fi
+          echo "Changes required on `hostname` for ${_INNODB_LOG_FILE_SIZE_MB}"
+          update_innodb_log_file_size
         fi
       fi
     fi
@@ -963,44 +936,42 @@ tune_memory_limits() {
     fi
     _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
   fi
-  if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
-    tune_sql_memory_limits
-    update_sql_conf
-    if [[ "${PrTestPower}" =~ "POWER" ]] \
-      || [ -e "/root/.my.cluster_root_pwd.txt" ] \
-      || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
-      _UXC_SQL="${_MXC_SQL}"
-    else
-      _UXC_SQL=$(( _MXC_SQL / 2 ))
-    fi
-    sed -i "s/^max_connect_errors.*/max_connect_errors      = ${_UXC_SQL}/g"      /etc/mysql/my.cnf
-    wait
-    sed -i "s/^max_user_connections.*/max_user_connections    = ${_UXC_SQL}/g"    /etc/mysql/my.cnf
-    wait
-    sed -i "s/^max_connections.*/max_connections         = ${_MXC_SQL}/g"         /etc/mysql/my.cnf
-    wait
-    sed -i "s/^tmp_table_size.*/tmp_table_size          = ${_TMP_SQL}/g"          /etc/mysql/my.cnf
-    wait
-    sed -i "s/^max_heap_table_size.*/max_heap_table_size     = ${_TMP_SQL}/g"     /etc/mysql/my.cnf
-    wait
-    sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = ${_SRT_SQL}/g" /etc/mysql/my.cnf
-    wait
-    sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = ${_RND_SQL}/g"    /etc/mysql/my.cnf
-    wait
-    sed -i "s/^join_buffer_size.*/join_buffer_size        = ${_JBF_SQL}/g"        /etc/mysql/my.cnf
-    wait
-    echo _USE_SQL is ${_USE_SQL}
-    echo _USE_PHP is ${_USE_PHP}
-    echo _UXC_SQL is ${_UXC_SQL}
-    echo _MXC_SQL is ${_MXC_SQL}
-    echo _TMP_SQL is ${_TMP_SQL}
-    echo _QCE_SQL is ${_QCE_SQL}
-    echo _RND_SQL is ${_RND_SQL}
-    echo _JBF_SQL is ${_JBF_SQL}
-    echo _SRT_SQL is ${_SRT_SQL}
-    echo _INNODB_BPI is ${_INNODB_BPI}
-    echo _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}
+  tune_sql_memory_limits
+  update_sql_conf
+  if [[ "${PrTestPower}" =~ "POWER" ]] \
+    || [ -e "/root/.my.cluster_root_pwd.txt" ] \
+    || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
+    _UXC_SQL="${_MXC_SQL}"
+  else
+    _UXC_SQL=$(( _MXC_SQL / 2 ))
   fi
+  sed -i "s/^max_connect_errors.*/max_connect_errors      = ${_UXC_SQL}/g"      /etc/mysql/my.cnf
+  wait
+  sed -i "s/^max_user_connections.*/max_user_connections    = ${_UXC_SQL}/g"    /etc/mysql/my.cnf
+  wait
+  sed -i "s/^max_connections.*/max_connections         = ${_MXC_SQL}/g"         /etc/mysql/my.cnf
+  wait
+  sed -i "s/^tmp_table_size.*/tmp_table_size          = ${_TMP_SQL}/g"          /etc/mysql/my.cnf
+  wait
+  sed -i "s/^max_heap_table_size.*/max_heap_table_size     = ${_TMP_SQL}/g"     /etc/mysql/my.cnf
+  wait
+  sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = ${_SRT_SQL}/g" /etc/mysql/my.cnf
+  wait
+  sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = ${_RND_SQL}/g"    /etc/mysql/my.cnf
+  wait
+  sed -i "s/^join_buffer_size.*/join_buffer_size        = ${_JBF_SQL}/g"        /etc/mysql/my.cnf
+  wait
+  echo _USE_SQL is ${_USE_SQL}
+  echo _USE_PHP is ${_USE_PHP}
+  echo _UXC_SQL is ${_UXC_SQL}
+  echo _MXC_SQL is ${_MXC_SQL}
+  echo _TMP_SQL is ${_TMP_SQL}
+  echo _QCE_SQL is ${_QCE_SQL}
+  echo _RND_SQL is ${_RND_SQL}
+  echo _JBF_SQL is ${_JBF_SQL}
+  echo _SRT_SQL is ${_SRT_SQL}
+  echo _INNODB_BPI is ${_INNODB_BPI}
+  echo _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}
 }
 
 tune_sql() {
