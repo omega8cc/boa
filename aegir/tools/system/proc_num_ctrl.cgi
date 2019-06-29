@@ -140,7 +140,7 @@ system("service newrelic-sysmond restart") if (!$newrelicsysmondsumar && -f "/et
 system("service newrelic-sysmond stop") if ($newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/root/.enable.newrelic.sysmond.cnf");
 system("service postfix restart") if (!$postfixsumar && -f "/etc/init.d/postfix" && !-f "/var/run/boa_run.pid");
 
-if (!$nginxsumar && -f "/etc/init.d/nginx" && !-f "/var/run/boa_run.pid" && !-f "/root/.dbhd.clstr.cnf") {
+if (!$nginxsumar && -f "/etc/init.d/nginx" && !-f "/root/.dbhd.clstr.cnf") {
   system("killall -9 nginx");
   system("service nginx start");
 }
