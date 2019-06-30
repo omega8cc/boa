@@ -3243,6 +3243,7 @@ if_proxysql_update() {
   isPxy=$(which proxysql 2>&1)
   _REINSTALL_PXC=NO
   if [ -x "${isPxy}" ]; then
+    msg "INFO: `proxysql --version`"
     pGc="/usr/bin/proxysql_galera_checker"
     if [ ! -e "${pGc}" ]; then
       _UP_PXC=YES
@@ -3307,6 +3308,8 @@ if_proxysql_update() {
       && [ -e "/etc/proxysql.cnf" ] \
       && [ -e "/etc/proxysql-admin.cnf" ]; then
 
+      msg "INFO: `proxysql --version`"
+
       msg "INFO: Updating ProxySQL Node Monitor..."
       if [ -e "${pNm}" ]; then
         rm -f ${pNm}
@@ -3318,18 +3321,18 @@ if_proxysql_update() {
       curl ${crlGet} "${tURL}" -o ${pNm}
       if [ ! -e "${pNm}" ]; then
         curl ${crlGet} "${tURL}" -o ${pNm}
-        ll ${pNm}
       else
         _PAV_TEST=$(grep Vivaldi ${pNm} 2>&1)
         if [[ ! "${_PAV_TEST}" =~ "Vivaldi" ]]; then
           rm -f ${pNm}
           curl ${crlGet} "${tURL}" -o ${pNm}
-          ll ${pNm}
         fi
       fi
       curl ${crlGet} "${tURL}" -o ${pNm}
+      ls -la ${pNm}
       if [ -e "${pNm}" ]; then
         chmod 755 ${pNm}
+        msg "INFO: `${pNm} --version`"
       fi
 
       msg "INFO: Updating ProxySQL Galera Checker..."
@@ -3343,19 +3346,19 @@ if_proxysql_update() {
       curl ${crlGet} "${tURL}" -o ${pGc}
       if [ ! -e "${pGc}" ]; then
         curl ${crlGet} "${tURL}" -o ${pGc}
-        ll ${pGc}
       else
         _PAV_TEST=$(grep Maestro ${pGc} 2>&1)
         if [[ ! "${_PAV_TEST}" =~ "Maestro" ]]; then
           rm -f ${pGc}
           curl ${crlGet} "${tURL}" -o ${pGc}
-          ll ${pGc}
         fi
       fi
       curl ${crlGet} "${tURL}" -o ${pGc}
+      ls -la ${pGc}
 
       if [ -e "${pGc}" ]; then
         chmod 755 ${pGc}
+        msg "INFO: `${pGc} --version`"
         echo loadbal > /var/lib/proxysql/mode
         echo loadbal > /var/lib/proxysql/c1r_galera_mode
         echo loadbal > /var/lib/proxysql/--mode=singlewrite_mode
