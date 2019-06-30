@@ -621,6 +621,15 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
         rm -f ${pGc}
       fi
       curl ${crlGet} "${urlHmr}/${tBn}/proxysql_galera_checker" -o ${pGc}
+      if [ ! -e "${pGc}" ]; then
+        curl ${crlGet} "${urlHmr}/${tBn}/proxysql_galera_checker" -o ${pGc}
+      else
+        _PAV_TEST=$(grep PROXYSQL_ADMIN_VERSION ${pGc} 2>&1)
+        if [[ ! "${_PAV_TEST}" =~ "PROXYSQL_ADMIN_VERSION" ]]; then
+          rm -f ${pGc}
+          curl ${crlGet} "${urlHmr}/${tBn}/proxysql_galera_checker" -o ${pGc}
+        fi
+      fi
       chmod 755 ${pGc}
       echo loadbal > /vservers/${idn}/var/lib/proxysql/mode
       echo loadbal > /vservers/${idn}/var/lib/proxysql/c1r_galera_mode
