@@ -3245,6 +3245,11 @@ if_proxysql_update() {
     pGc="/usr/bin/proxysql_galera_checker"
     if [ ! -e "${pGc}" ]; then
       _UP_PXC=YES
+    else
+      _PAV_TEST=$(grep PROXYSQL_ADMIN_VERSION ${pGc} 2>&1)
+      if [[ ! "${_PAV_TEST}" =~ "PROXYSQL_ADMIN_VERSION" ]]; then
+        _UP_PXC=YES
+      fi
     fi
   fi
   isPxyVer=$(proxysql --version 2>&1)
