@@ -638,6 +638,9 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
       echo loadbal > /vservers/${idn}/var/lib/proxysql/c1r_galera_mode
       echo loadbal > /vservers/${idn}/var/lib/proxysql/--mode=singlewrite_mode
       echo loadbal > /vservers/${idn}/var/lib/proxysql/--mode=loadbal_mode
+      echo 0 > /vservers/${idn}/var/lib/proxysql/reload
+      echo 0 > /vservers/${idn}/var/lib/proxysql/c1r_galera_reload
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "chown proxysql:proxysql /var/lib/proxysql/*reload"
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "chown proxysql:proxysql /var/lib/proxysql/*mode*"
       rm -f /vservers/${idn}/var/lib/proxysql/pxc_test_proxysql_galera_check.log
       pxyCmd="proxysql_galera_checker --log=/var/lib/proxysql/pxc_test_proxysql_galera_check.log --debug"

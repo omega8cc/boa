@@ -3364,6 +3364,9 @@ if_proxysql_update() {
         echo loadbal > /var/lib/proxysql/--mode=singlewrite_mode
         echo loadbal > /var/lib/proxysql/--mode=loadbal_mode
         chown proxysql:proxysql /var/lib/proxysql/*mode*
+        echo 0 > /var/lib/proxysql/reload
+        echo 0 > /var/lib/proxysql/c1r_galera_reload
+        chown proxysql:proxysql /var/lib/proxysql/*reload
         rm -f /var/lib/proxysql/pxc_test_proxysql_galera_check.log
         proxysql_galera_checker --log=/var/lib/proxysql/pxc_test_proxysql_galera_check.log --debug
         cat /var/lib/proxysql/pxc_test_proxysql_galera_check.log

@@ -25,7 +25,7 @@ readonly    PROXYSQL_ADMIN_VERSION="1.4.14"
 
 declare     CONFIG_FILE="/etc/proxysql-admin.cnf"
 declare     ERR_FILE="/dev/null"
-declare     RELOAD_CHECK_FILE=""
+declare     RELOAD_CHECK_FILE="/var/lib/proxysql/reload"
 
 # Set to send output here when DEBUG is set
 declare     DEBUG_ERR_FILE="/dev/null"
