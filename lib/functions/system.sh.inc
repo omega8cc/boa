@@ -3241,13 +3241,25 @@ more_packages_install_on_init() {
 
 if_proxysql_update() {
   isPxy=$(which proxysql 2>&1)
+  _REINSTALL_PXC=NO
   if [ -x "${isPxy}" ]; then
     pGc="/usr/bin/proxysql_galera_checker"
     if [ ! -e "${pGc}" ]; then
       _UP_PXC=YES
+      _REINSTALL_PXC=YES
     else
-      _PAV_TEST=$(grep PROXYSQL_ADMIN_VERSION ${pGc} 2>&1)
-      if [[ ! "${_PAV_TEST}" =~ "PROXYSQL_ADMIN_VERSION" ]]; then
+      _PAV_TEST=$(grep Maestro ${pGc} 2>&1)
+      if [[ ! "${_PAV_TEST}" =~ "Maestro" ]]; then
+        _UP_PXC=YES
+      fi
+    fi
+    pNm="/usr/bin/proxysql_node_monitor"
+    if [ ! -e "${pNm}" ]; then
+      _UP_PXC=YES
+      _REINSTALL_PXC=YES
+    else
+      _PAV_TEST=$(grep Vivaldi ${pNm} 2>&1)
+      if [[ ! "${_PAV_TEST}" =~ "Vivaldi" ]]; then
         _UP_PXC=YES
       fi
     fi
@@ -3258,7 +3270,19 @@ if_proxysql_update() {
   fi
   if [ "${_UP_PXC}" = "YES" ] \
     && [ "${_THIS_OS}" = "Debian" ]; then
-    msg "INFO: Running ProxySQL upgrade to ${_PXC_VRN}..."
+    if [ "${_REINSTALL_PXC}" = "YES" ]; then
+      msg "INFO: Running ProxySQL upgrade to ${_PXC_VRN}..."
+    else
+      msg "INFO: Running ProxySQL re-install to ${_PXC_VRN}..."
+      mrun "apt-get clean" 2> /dev/null
+      mrun "apt-get update -qq" 2> /dev/null
+      mrun "${_INSTALL} sysbench" 2> /dev/null
+      mrun "${_INSTALL} debconf-utils" 2> /dev/null
+      mrun "apt-get remove proxysql -y" 2> /dev/null
+      mrun "apt-get clean" 2> /dev/null
+      mrun "apt-get update -qq" 2> /dev/null
+      mrun "${_INSTALL} proxysql" 2> /dev/null
+    fi
     isPxy=$(which proxysql 2>&1)
     if [ ! -x "${isPxy}" ]; then
       mrun "apt-get clean" 2> /dev/null
@@ -3282,6 +3306,32 @@ if_proxysql_update() {
     if [ -x "${isPxy}" ] \
       && [ -e "/etc/proxysql.cnf" ] \
       && [ -e "/etc/proxysql-admin.cnf" ]; then
+
+      msg "INFO: Updating ProxySQL Node Monitor..."
+      if [ -e "${pNm}" ]; then
+        rm -f ${pNm}
+      fi
+      tBn="tools/bin"
+      tURL="${urlHmr}/${tBn}/proxysql_node_monitor"
+      msg "PNM download URL is ${tURL}"
+      curl -I ${tURL}
+      curl ${crlGet} "${tURL}" -o ${pNm}
+      if [ ! -e "${pNm}" ]; then
+        curl ${crlGet} "${tURL}" -o ${pNm}
+        ll ${pNm}
+      else
+        _PAV_TEST=$(grep Vivaldi ${pNm} 2>&1)
+        if [[ ! "${_PAV_TEST}" =~ "Vivaldi" ]]; then
+          rm -f ${pNm}
+          curl ${crlGet} "${tURL}" -o ${pNm}
+          ll ${pNm}
+        fi
+      fi
+      curl ${crlGet} "${tURL}" -o ${pNm}
+      if [ -e "${pNm}" ]; then
+        chmod 755 ${pNm}
+      fi
+
       msg "INFO: Updating ProxySQL Galera Checker..."
       if [ -e "${pGc}" ]; then
         rm -f ${pGc}
@@ -3295,14 +3345,15 @@ if_proxysql_update() {
         curl ${crlGet} "${tURL}" -o ${pGc}
         ll ${pGc}
       else
-        _PAV_TEST=$(grep PROXYSQL_ADMIN_VERSION ${pGc} 2>&1)
-        if [[ ! "${_PAV_TEST}" =~ "PROXYSQL_ADMIN_VERSION" ]]; then
+        _PAV_TEST=$(grep Maestro ${pGc} 2>&1)
+        if [[ ! "${_PAV_TEST}" =~ "Maestro" ]]; then
           rm -f ${pGc}
           curl ${crlGet} "${tURL}" -o ${pGc}
           ll ${pGc}
         fi
       fi
       curl ${crlGet} "${tURL}" -o ${pGc}
+
       if [ -e "${pGc}" ]; then
         chmod 755 ${pGc}
         echo loadbal > /var/lib/proxysql/mode

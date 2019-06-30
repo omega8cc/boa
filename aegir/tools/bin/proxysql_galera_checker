@@ -31,7 +31,7 @@ declare     NRED=""
 # Global variables used by the script
 #
 declare     ERR_FILE="/dev/stderr"
-declare     NODE_MONITOR_LOG_FILE=""
+declare     NODE_MONITOR_LOG_FILE="/var/lib/proxysql/c1r_galera_proxysql_node_monitor.log"
 declare     CONFIG_FILE="/etc/proxysql-admin.cnf"
 declare     HOST_PRIORITY_FILE=""
 declare     CHECKER_PIDFILE=""
