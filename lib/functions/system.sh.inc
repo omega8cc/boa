@@ -3286,6 +3286,7 @@ if_proxysql_update() {
       if [ -e "${pGc}" ]; then
         rm -f ${pGc}
       fi
+      tBn="tools/bin"
       tURL="${urlHmr}/${tBn}/proxysql_galera_checker"
       msg "PGC download URL is ${tURL}"
       curl -I ${tURL}
@@ -3301,7 +3302,7 @@ if_proxysql_update() {
           ll ${pGc}
         fi
       fi
-      curl ${crlGet} "${urlHmr}/${tBn}/proxysql_galera_checker" -o ${pGc}
+      curl ${crlGet} "${tURL}" -o ${pGc}
       if [ -e "${pGc}" ]; then
         chmod 755 ${pGc}
         echo loadbal > /var/lib/proxysql/mode
