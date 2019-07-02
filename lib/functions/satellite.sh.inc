@@ -5378,12 +5378,17 @@ satellite_child_b_aegir_ui_enhance() {
     cd ${_HM_ROOT}/sites/${_DOMAIN}
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache
+    ${_DRUSHCMD} @hostmaster en aegir_objects -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en fix_ownership -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en fix_permissions -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_civicrm -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_civicrm_cron -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_client -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_cron -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_deploy -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_platform_composer -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_platform_composer_git -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_platform_git -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_site_backup_manager -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_tasks_extra -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en libraries -y &> /dev/null

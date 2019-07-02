@@ -163,9 +163,10 @@ Provision [E]xtensions [M]aster [S]atellite:
 
 Hostmaster [E]xtensions [M]aster [S]atellite:
 
+ aegir_objects -------------- [D7] ------ [S] [B] [FE] [ES]
  hosting_civicrm ------------ [D7] ------ [S] [B] [FE] [ES]
  hosting_custom_settings ---- [D7] ------ [S] [B] [FE] [ES]
- hosting_deploy ------------- [D7] ------ [S] [B]      [ES]
+ hosting_deploy ------------- [D7] ------ [S] [B] [FE] [ES]
  hosting_git ---------------- [D7] ------ [S] [B]      [ES]
  hosting_le ----------------- [D7] ------ [S] [B] [FE] [ES]
  hosting_remote_import ------ [D7] ------ [S] [B]      [ES]
