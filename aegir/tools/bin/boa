@@ -1580,11 +1580,13 @@ display_info() {
           | awk '{ print $1}' 2>&1)
       fi
     fi
-    _PHP=$(/usr/bin/php-cli -v | grep 'PHP 7' \
-      | cut -d: -f1 | awk '{ print $2}' 2>&1)
-    if [ -z "${_PHP}" ]; then
-      _PHP=$(/usr/bin/php-cli -v | grep 'PHP 5' \
+    if [ -x "/usr/bin/php-cli" ]; then
+      _PHP=$(/usr/bin/php-cli -v | grep 'PHP 7' \
         | cut -d: -f1 | awk '{ print $2}' 2>&1)
+      if [ -z "${_PHP}" ]; then
+        _PHP=$(/usr/bin/php-cli -v | grep 'PHP 5' \
+          | cut -d: -f1 | awk '{ print $2}' 2>&1)
+      fi
     fi
     _DBV=$(mysql -V 2>&1 \
       | tr -d "\n" \
@@ -1599,16 +1601,18 @@ display_info() {
         | cut -d"-" -f1 \
         | awk '{ print $3}' 2>&1)
     fi
-    _RDS=$(redis-server -v 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f4 \
-      | awk '{ print $1}' 2>&1)
-    if [[ "${_RDS}" =~ "sha" ]]; then
+    if [ -x "/usr/bin/redis-server" ]; then
       _RDS=$(redis-server -v 2>&1 \
         | tr -d "\n" \
-        | tr -d "v=" \
-        | cut -d" " -f3 \
+        | cut -d" " -f4 \
         | awk '{ print $1}' 2>&1)
+      if [[ "${_RDS}" =~ "sha" ]]; then
+        _RDS=$(redis-server -v 2>&1 \
+          | tr -d "\n" \
+          | tr -d "v=" \
+          | cut -d" " -f3 \
+          | awk '{ print $1}' 2>&1)
+      fi
     fi
     _SSL=$(openssl version 2>&1 \
       | tr -d "\n" \
@@ -1624,27 +1628,27 @@ display_info() {
       | cut -d"_" -f2 \
       | awk '{ print $1}' 2>&1)
     _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
-    _XTR=$(grep _XTRAS_LIST /root/.barracuda.cnf 2>&1)
-    _MFX=$(grep _MODULES_FIX /root/.barracuda.cnf 2>&1)
-    _PFX=$(grep _PERMISSIONS_FIX /root/.barracuda.cnf 2>&1)
-    _DBS=$(grep _DB_SERIES /root/.barracuda.cnf 2>&1)
-    _DNS=$(grep _DNS_SETUP_TEST /root/.barracuda.cnf 2>&1)
-    _PKG=$(grep _EXTRA_PACKAGES /root/.barracuda.cnf 2>&1)
-    _ARM=$(grep _SSH_ARMOUR /root/.barracuda.cnf 2>&1)
-    _STG=$(grep _STRONG_PASSWORDS /root/.barracuda.cnf 2>&1)
-    _CSF=$(grep _CUSTOM_CONFIG_CSF /root/.barracuda.cnf 2>&1)
-    _LSH=$(grep _CUSTOM_CONFIG_LSHELL /root/.barracuda.cnf 2>&1)
-    _RIS=$(grep _CUSTOM_CONFIG_REDIS /root/.barracuda.cnf 2>&1)
-    _SQL=$(grep _CUSTOM_CONFIG_SQL /root/.barracuda.cnf 2>&1)
-    _BIL=$(grep _BACKEND_ITEMS_LIST /root/.barracuda.cnf 2>&1)
-    _SKY=$(grep _SKYNET_MODE /root/.barracuda.cnf 2>&1)
-    _BIN=$(grep _STRICT_BIN_PERMISSIONS /root/.barracuda.cnf 2>&1)
-    _TUN=$(grep _USE_MYSQLTUNER /root/.barracuda.cnf 2>&1)
-    _CLI=$(grep _PHP_CLI_VERSION /root/.barracuda.cnf 2>&1)
     clear
     echo
     thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
     if [ -e "/var/log/barracuda_log.txt" ]; then
+      _XTR=$(grep _XTRAS_LIST /root/.barracuda.cnf 2>&1)
+      _MFX=$(grep _MODULES_FIX /root/.barracuda.cnf 2>&1)
+      _PFX=$(grep _PERMISSIONS_FIX /root/.barracuda.cnf 2>&1)
+      _DBS=$(grep _DB_SERIES /root/.barracuda.cnf 2>&1)
+      _DNS=$(grep _DNS_SETUP_TEST /root/.barracuda.cnf 2>&1)
+      _PKG=$(grep _EXTRA_PACKAGES /root/.barracuda.cnf 2>&1)
+      _ARM=$(grep _SSH_ARMOUR /root/.barracuda.cnf 2>&1)
+      _STG=$(grep _STRONG_PASSWORDS /root/.barracuda.cnf 2>&1)
+      _CSF=$(grep _CUSTOM_CONFIG_CSF /root/.barracuda.cnf 2>&1)
+      _LSH=$(grep _CUSTOM_CONFIG_LSHELL /root/.barracuda.cnf 2>&1)
+      _RIS=$(grep _CUSTOM_CONFIG_REDIS /root/.barracuda.cnf 2>&1)
+      _SQL=$(grep _CUSTOM_CONFIG_SQL /root/.barracuda.cnf 2>&1)
+      _BIL=$(grep _BACKEND_ITEMS_LIST /root/.barracuda.cnf 2>&1)
+      _SKY=$(grep _SKYNET_MODE /root/.barracuda.cnf 2>&1)
+      _BIN=$(grep _STRICT_BIN_PERMISSIONS /root/.barracuda.cnf 2>&1)
+      _TUN=$(grep _USE_MYSQLTUNER /root/.barracuda.cnf 2>&1)
+      _CLI=$(grep _PHP_CLI_VERSION /root/.barracuda.cnf 2>&1)
       crlBoav=`tail --lines=1 /var/log/barracuda_log.txt \
         | cut -d '/' -f4 \
         | sed "s/ Barracuda //g"`
