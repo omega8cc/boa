@@ -1649,8 +1649,12 @@ display_info() {
         | cut -d '/' -f4 \
         | sed "s/ Barracuda //g"`
       crlBoav=${crlBoav//[^a-zA-Z0-9-.]/}
+    else
+      crlBoav="BOA Cluster"
     fi
     echo "Aegir ${crlBoav} on ${thiSys}"
+    [ "${mode}" = "report" ] && echo "Host `hostname` check on `date`"
+    [ "${mode}" = "report" ] && echo "Host uptime `uptime`"
     [ ! -z "${_VIRT_IS}" ] && echo "  VPS ${_VIRT_IS}"
     [ -z "${_VIRT_IS}" ] && echo "  VPS unknown / not a virtual machine"
     echo "  DSK ${_DF_TEST}/100"
@@ -1664,26 +1668,26 @@ display_info() {
     [ ! -z "${_SSH}" ] && echo "  SSH ${_SSH}"
     [ ! -z "${_SSL}" ] && echo "  SSL ${_SSL}"
     [ ! -z "${_CRL}" ] && echo "  CRL ${_CRL}"
-    [ "${mode}" != "raport" ] && echo "  STG ${_STG}"
-    [ "${mode}" != "raport" ] && echo "  CSF ${_CSF}"
-    [ "${mode}" != "raport" ] && echo "  LSH ${_LSH}"
-    [ "${mode}" != "raport" ] && echo "  RIS ${_RIS}"
-    [ "${mode}" != "raport" ] && echo "  SQL ${_SQL}"
-    [ "${mode}" != "raport" ] && echo "  XTR ${_XTR}"
-    [ "${mode}" != "raport" ] && echo "  MFX ${_MFX}"
-    [ "${mode}" != "raport" ] && echo "  PFX ${_PFX}"
-    [ "${mode}" != "raport" ] && echo "  DNS ${_DNS}"
-    [ "${mode}" != "raport" ] && echo "  PKG ${_PKG}"
-    [ "${mode}" != "raport" ] && [ ! -z "${_CLI}" ] && echo "  CLI ${_CLI}"
-    [ "${mode}" != "raport" ] && [ ! -z "${_DBS}" ] && echo "  DBS ${_DBS}"
-    [ "${mode}" != "raport" ] && [ ! -z "${_TUN}" ] && echo "  TUN ${_TUN}"
-    [ "${mode}" != "raport" ] && [ ! -z "${_BIL}" ] && echo "  BIL ${_BIL}"
-    [ "${mode}" != "raport" ] && [ ! -z "${_BIN}" ] && echo "  BIN ${_BIN}"
-    [ "${mode}" != "raport" ] && [ ! -z "${_ARM}" ] && echo "  ARM ${_ARM}"
+    [ "${mode}" != "report" ] && echo "  STG ${_STG}"
+    [ "${mode}" != "report" ] && echo "  CSF ${_CSF}"
+    [ "${mode}" != "report" ] && echo "  LSH ${_LSH}"
+    [ "${mode}" != "report" ] && echo "  RIS ${_RIS}"
+    [ "${mode}" != "report" ] && echo "  SQL ${_SQL}"
+    [ "${mode}" != "report" ] && echo "  XTR ${_XTR}"
+    [ "${mode}" != "report" ] && echo "  MFX ${_MFX}"
+    [ "${mode}" != "report" ] && echo "  PFX ${_PFX}"
+    [ "${mode}" != "report" ] && echo "  DNS ${_DNS}"
+    [ "${mode}" != "report" ] && echo "  PKG ${_PKG}"
+    [ "${mode}" != "report" ] && [ ! -z "${_CLI}" ] && echo "  CLI ${_CLI}"
+    [ "${mode}" != "report" ] && [ ! -z "${_DBS}" ] && echo "  DBS ${_DBS}"
+    [ "${mode}" != "report" ] && [ ! -z "${_TUN}" ] && echo "  TUN ${_TUN}"
+    [ "${mode}" != "report" ] && [ ! -z "${_BIL}" ] && echo "  BIL ${_BIL}"
+    [ "${mode}" != "report" ] && [ ! -z "${_BIN}" ] && echo "  BIN ${_BIN}"
+    [ "${mode}" != "report" ] && [ ! -z "${_ARM}" ] && echo "  ARM ${_ARM}"
     [ ! -z "${_SKY}" ] && echo "  SKY ${_SKY}"
     echo
     if [ -e "/var/log/barracuda_log.txt" ]; then
-      if [ "${mode}" = "raport" ]; then
+      if [ "${mode}" = "report" ]; then
         display="system"
         if [ "${extra}" = "octopus" ]; then
           grep _PHP_CLI_VERSION /root/.*.octopus.cnf
@@ -1859,7 +1863,7 @@ case "$1" in
              echo "Usage: $(basename "$0") {version} {mode} {fqdn} {email} {user} {platforms} {extra}"
              echo "Usage: $(basename "$0") version"
              echo "Usage: $(basename "$0") info {more}"
-             echo "Usage: $(basename "$0") info raport {octopus|backups}"
+             echo "Usage: $(basename "$0") info report {octopus|backups}"
              echo
              cat <<EOF
 

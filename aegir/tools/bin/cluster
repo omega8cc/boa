@@ -1343,6 +1343,13 @@ upgrade_db_cluster() {
       echo "APT::Sandbox::User \"root\";" > /vservers/${idn}/etc/apt/apt.conf.d/00sandboxtmp
     fi
 
+    if [ -e "/vservers/${idn}${optBin}/boa" ]; then
+      rm -f /vservers/${idn}${optBin}/boa
+    fi
+    mkdir -p /vservers/${idn}/${optBin}
+    curl ${crlGet} "${urlHmr}/${tBn}/boa" -o /vservers/${idn}${optBin}/boa
+    ssh ${_NOSTRICT} root@${IP} "chmod 700 ${optBin}/boa"
+
     if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
       rm -f /vservers/${idn}${optBin}/mycnfup
     fi
@@ -1609,6 +1616,12 @@ EOF
 
 upgrade_host() {
 
+  if [ "${mod}" = "upgrade" ]; then
+    thisMode="UPGRADE"
+  else
+    thisMode="UPDATE"
+  fi
+
   if [ -x "/lib/systemd/systemd" ]; then
     echo "Removing systemd on ${_OSV} ${_OSR}..."
     if [ "${osx}" = "jessie" ] || [ "${osx}" = "stretch" ]; then
@@ -1639,44 +1652,46 @@ upgrade_host() {
     apt-get remove systemd ${_APT_XTR} --purge --auto-remove
   fi
 
-  echo "Installing vserver tools dependencies..."
-  apt-get update ${_APT_XTR}
-  ${_INSTAPP} vlan
-  ${_INSTAPP} e2fslibs-dev
-  ${_INSTAPP} libnss3-dev
-  ${_INSTAPP} libvserver0-dev
-  ${_INSTAPP} libvserver0
-  ${_INSTAPP} debootstrap
-  if [ -e "/etc/cron.daily/mlocate" ]; then
-    mv -f /etc/cron.daily/mlocate /var/backups/
+  if [ "${thisMode}" = "UPGRADE" ]; then
+    echo "Installing vserver tools dependencies..."
+    apt-get update ${_APT_XTR}
+    ${_INSTAPP} vlan
+    ${_INSTAPP} e2fslibs-dev
+    ${_INSTAPP} libnss3-dev
+    ${_INSTAPP} libvserver0-dev
+    ${_INSTAPP} libvserver0
+    ${_INSTAPP} debootstrap
+    if [ -e "/etc/cron.daily/mlocate" ]; then
+      mv -f /etc/cron.daily/mlocate /var/backups/
+    fi
+
+    echo "Installing otherwise uninstalled stuff..."
+    ${_INSTAPP} irqbalance
+    ${_INSTAPP} libuuid-perl
+    ${_INSTAPP} linux-base
+    echo "OPTIONS=\"--hintpolicy=ignore\"" >> /etc/default/irqbalance
+    service irqbalance stop
+    service irqbalance start
+
+    echo "Installing vserver tools..."
+    apt-get remove util-vserver ${_APT_XTR}
+    apt-get autoremove ${_APT_XTR}
+    cd /var/opt
+    rm -f -r util-vserver*
+    wget -q -U iCab http://files.aegir.cc/dev/src/util-vserver-${_UTIL_VRN}.tar.gz
+    tar -xzf util-vserver-${_UTIL_VRN}.tar.gz
+    cd util-vserver-${_UTIL_VRN}
+    ./configure --prefix=/usr
+    make --quiet
+    make --quiet install
+    make --quiet install-distribution
+    cd
+    vserver --version
+
+    chmod 755 /vservers
+    setattr --barrier /vservers
+    echo "kernel.vshelper = /sbin/vshelper" >> /etc/sysctl.conf
   fi
-
-  echo "Installing otherwise uninstalled stuff..."
-  ${_INSTAPP} irqbalance
-  ${_INSTAPP} libuuid-perl
-  ${_INSTAPP} linux-base
-  echo "OPTIONS=\"--hintpolicy=ignore\"" >> /etc/default/irqbalance
-  service irqbalance stop
-  service irqbalance start
-
-  echo "Installing vserver tools..."
-  apt-get remove util-vserver ${_APT_XTR}
-  apt-get autoremove ${_APT_XTR}
-  cd /var/opt
-  rm -f -r util-vserver*
-  wget -q -U iCab http://files.aegir.cc/dev/src/util-vserver-${_UTIL_VRN}.tar.gz
-  tar -xzf util-vserver-${_UTIL_VRN}.tar.gz
-  cd util-vserver-${_UTIL_VRN}
-  ./configure --prefix=/usr
-  make --quiet
-  make --quiet install
-  make --quiet install-distribution
-  cd
-  vserver --version
-
-  chmod 755 /vservers
-  setattr --barrier /vservers
-  echo "kernel.vshelper = /sbin/vshelper" >> /etc/sysctl.conf
 
   cd
   cp -af /etc/sysctl.conf /etc/sysctl.conf.thrd.three
@@ -1688,24 +1703,26 @@ upgrade_host() {
   swapoff -a
   swapon -a
 
-  echo "Installing vserver initd scripts..."
-  cp -af /usr/etc/init.d/vservers-default /etc/init.d/
-  cp -af /usr/etc/init.d/vprocunhide /etc/init.d/
-  cp -af /usr/etc/init.d/util-vserver /etc/init.d/
-  update-rc.d util-vserver defaults
-  update-rc.d vprocunhide defaults
-  update-rc.d vservers-default defaults
-  service vprocunhide start
-  service util-vserver start
-  service vservers-default start
+  if [ "${thisMode}" = "UPGRADE" ]; then
+    echo "Installing vserver initd scripts..."
+    cp -af /usr/etc/init.d/vservers-default /etc/init.d/
+    cp -af /usr/etc/init.d/vprocunhide /etc/init.d/
+    cp -af /usr/etc/init.d/util-vserver /etc/init.d/
+    update-rc.d util-vserver defaults
+    update-rc.d vprocunhide defaults
+    update-rc.d vservers-default defaults
+    service vprocunhide start
+    service util-vserver start
+    service vservers-default start
 
-  echo "Updating vserver defaults..."
-  echo "none  /proc     proc    defaults        0 0" >/usr/share/util-vserver/defaults/fstab
-  echo "none  /dev/pts  devpts  gid=5,mode=620  0 0" >>/usr/share/util-vserver/defaults/fstab
+    echo "Updating vserver defaults..."
+    echo "none  /proc     proc    defaults        0 0" >/usr/share/util-vserver/defaults/fstab
+    echo "none  /dev/pts  devpts  gid=5,mode=620  0 0" >>/usr/share/util-vserver/defaults/fstab
 
-  if [ ! -e "/usr/etc/vservers/.defaults/apps/vunify/hash/root" ]; then
-    mkdir -p /usr/etc/vservers/.defaults/apps/vunify/hash /vservers/.hash
-    ln -s /vservers/.hash /usr/etc/vservers/.defaults/apps/vunify/hash/root
+    if [ ! -e "/usr/etc/vservers/.defaults/apps/vunify/hash/root" ]; then
+      mkdir -p /usr/etc/vservers/.defaults/apps/vunify/hash /vservers/.hash
+      ln -s /vservers/.hash /usr/etc/vservers/.defaults/apps/vunify/hash/root
+    fi
   fi
 
   echo "Installing vnstat..."
@@ -1733,29 +1750,38 @@ upgrade_host() {
   killall vnstatd
   service vnstat restart
 
-  echo "Installing vserver-autostart..."
-  cd /usr/local/sbin/
-  wget -q -U iCab http://files.aegir.cc/cluster/vserver-autostart
-  if [ -e "/usr/local/sbin/vserver-autostart" ]; then
-    cd;chmod u+x /usr/local/sbin/vserver-autostart
-  else
-    echo "ERROR: /usr/local/sbin/vserver-autostart not available!"
+  if [ ! -e "/usr/local/sbin/vserver-autostart" ] \
+    || [ "${thisMode}" = "UPGRADE" ]; then
+    echo "Installing vserver-autostart..."
+    rm -f /usr/local/sbin/vserver-autostart
+    cd /usr/local/sbin/
+    wget -q -U iCab http://files.aegir.cc/cluster/vserver-autostart
+    if [ -e "/usr/local/sbin/vserver-autostart" ]; then
+      cd;chmod u+x /usr/local/sbin/vserver-autostart
+    else
+      echo "ERROR: /usr/local/sbin/vserver-autostart not available!"
+    fi
   fi
 
   chmod 755 /vservers
 
-  echo "Installing Postfix locally..."
-  ${_INSTAPP} postfix
-  lSmtp="localhost:25      inet  n       -       -       -       -       smtpd"
-  sed -i "s/^smtp.*inet.*n.*smtpd/${lSmtp}/g" /etc/postfix/master.cf
-  apt-get remove exim -y
-  apt-get purge exim -y
-  apt-get autoremove -y
-  service postfix restart
+  if [ "${thisMode}" = "UPGRADE" ]; then
+    echo "Installing Postfix locally..."
+    ${_INSTAPP} postfix
+    lSmtp="localhost:25      inet  n       -       -       -       -       smtpd"
+    sed -i "s/^smtp.*inet.*n.*smtpd/${lSmtp}/g" /etc/postfix/master.cf
+    apt-get remove exim -y
+    apt-get purge exim -y
+    apt-get autoremove -y
+    service postfix restart
+  fi
 
   echo "Updating packages on this system..."
   apt-get update ${_APT_XTR} \
-    && apt-get upgrade ${_APT_XTR} \
+    && apt-get install aptitude ${_APT_XTR} \
+    && aptitude full-upgrade -f -y -q \
+      -o Dpkg::Options::=--force-confdef \
+      -o Dpkg::Options::=--force-confold \
     && apt-get dist-upgrade ${_APT_XTR} \
     && ${_INSTAPP} rkhunter
 
@@ -1767,6 +1793,33 @@ upgrade_host() {
   exit 0
 }
 
+check_heads() {
+  check_config_cluster
+  idn="${_CLUSTER_PREFIX}web"
+  for i in `dir -d /vservers/*` ; do
+    _THIS_VM=`echo $i | cut -d'/' -f3 | awk '{ print $1}'`
+    _VS_NAME=`echo ${_THIS_VM} | cut -d'/' -f3 | awk '{ print $1}'`
+    if [ -e "${i}${optBin}/boa" ]; then
+      rm -f ${i}${optBin}/boa
+    fi
+    mkdir -p ${i}${optBin}
+    curl ${crlGet} "${urlHmr}/${tBn}/boa" -o ${i}${optBin}/boa
+    chmod 700 ${i}${optBin}/boa
+    ls -la ${i}${optBin}/boa
+    if [[ ${_THIS_VM} =~ v168q ]]; then
+      echo Check Skipped for $i
+    else
+      if [ -e "/usr/var/run/vservers/${_THIS_VM}" ] \
+        && [ -e "${i}/var/run/crond.pid" ] ; then
+        _VS_HOSTNAME=`vserver ${_VS_NAME} exec hostname 2>&1`
+        _VS_OS=`vserver ${_VS_NAME} exec lsb_release -sc 2>&1`
+        echo "The ${_VS_HOSTNAME} ${_VS_NAME} VM is running ${_VS_OS}"
+        vserver ${_VS_NAME} exec ${optBin}/boa info ${mod} ${ext}
+      fi
+    fi
+  done
+}
+
 case "$1" in
   in-host) cmd="$1"
            hst="$2"
@@ -1774,6 +1827,7 @@ case "$1" in
            install_host
   ;;
   up-host) cmd="$1"
+           mod="$2"
            check_all
            upgrade_host
   ;;
@@ -1827,8 +1881,15 @@ case "$1" in
            check_all
            re_install_pxy
   ;;
+  check)   cmd="$1"
+           mod="$2"
+           ext="$3"
+           check_all
+           check_heads
+  ;;
   *)       echo
-           echo "Usage: cluster {in-host|up-host} {fqdn}"
+           echo "Usage: cluster {in-host} {fqdn}"
+           echo "Usage: cluster {up-host} {update|upgrade}"
            echo "Usage: cluster {in-vps} {id} {fqdn} {ip} {os} {stable|head|galera} {email}"
            echo "Usage: cluster {in-all} {stable|head}"
            echo "Usage: cluster {up-dbs} {stable|head}"
@@ -1836,6 +1897,7 @@ case "$1" in
            echo "Usage: cluster {up-all} {stable|head}"
            echo "Usage: cluster {in-oct} {email} {o2} {mini|max|none} {stable|head}"
            echo "Usage: cluster {in-pxy} {id} {ip} force-reinstall"
+           echo "Usage: cluster {check} {more|report} {backups|octopus}"
            echo
            exit 1
   ;;
