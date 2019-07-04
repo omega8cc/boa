@@ -1553,17 +1553,49 @@ display_info() {
       _CPU_NR=$(nproc 2>&1)
     fi
     _CPU_NR=${_CPU_NR//[^0-9]/}
-    if [ ! -z "${_CPU_NR}" ] && [ ! -z "${_CPU_INFO}" ] \
-      && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt "0" ]; then
+    if [ ! -z "${_CPU_NR}" ] \
+      && [ ! -z "${_CPU_INFO}" ] \
+      && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
+      && [ "${_CPU_INFO}" -gt "0" ]; then
       _CPU_NR="${_CPU_INFO}"
     fi
+    _DF_TEST=$(df -kTh / -l \
+      | grep '/' \
+      | sed 's/\%//g' \
+      | awk '{print $6}' 2> /dev/null)
+    _DF_TEST=${_DF_TEST//[^0-9]/}
     if [ -x "/usr/sbin/nginx" ]; then
-      _NGX=$(/usr/sbin/nginx -v 2>&1 | tr -d "\n" \
-        | cut -d" " -f4 | awk '{ print $1}' 2>&1)
+      _NGX=$(/usr/sbin/nginx -v 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f4 \
+        | awk '{ print $1}' \
+        | cut -d"/" -f2 \
+        | awk '{ print $1}' 2>&1)
       if [ -z "${_NGX}" ]; then
-        _NGX=$(/usr/sbin/nginx -v 2>&1 | tr -d "\n" \
-          | cut -d" " -f3 | awk '{ print $1}' 2>&1)
+        _NGX=$(/usr/sbin/nginx -v 2>&1 \
+          | tr -d "\n" \
+          | cut -d" " -f3 \
+          | awk '{ print $1}' \
+          | cut -d"/" -f2 \
+          | awk '{ print $1}' 2>&1)
       fi
+    fi
+    if [ -x "/usr/bin/proxysql" ]; then
+      _PXY=$(proxysql --version 2>&1 \
+        | tr -d "\n" \
+        | cut -d"-" -f1 \
+        | awk '{ print $3}' 2>&1)
+    fi
+    _RDS=$(redis-server -v 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f4 \
+      | awk '{ print $1}' 2>&1)
+    if [[ "${_RDS}" =~ "sha" ]]; then
+      _RDS=$(redis-server -v 2>&1 \
+        | tr -d "\n" \
+        | tr -d "v=" \
+        | cut -d" " -f3 \
+        | awk '{ print $1}' 2>&1)
     fi
     _SSL=$(openssl version 2>&1 \
       | tr -d "\n" \
@@ -1595,12 +1627,14 @@ display_info() {
     _SKY=$(grep _SKYNET_MODE /root/.barracuda.cnf 2>&1)
     _BIN=$(grep _STRICT_BIN_PERMISSIONS /root/.barracuda.cnf 2>&1)
     _TUN=$(grep _USE_MYSQLTUNER /root/.barracuda.cnf 2>&1)
+    _CLI=$(grep _PHP_CLI_VERSION /root/.barracuda.cnf 2>&1)
     clear
     echo
     thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
     echo "Aegir on ${thiSys}"
     [ ! -z "${_VIRT_IS}" ] && echo "  VPS ${_VIRT_IS}"
     [ -z "${_VIRT_IS}" ] && echo "  VPS unknown / not a virtual machine"
+    echo "  DSK ${_DF_TEST}/100"
     echo "  CPU ${_CPU_NR}"
     echo "  RAM ${_RAM}"
     echo "  XTR ${_XTR}"
@@ -1610,9 +1644,12 @@ display_info() {
     echo "  DNS ${_DNS}"
     echo "  PKG ${_PKG}"
     echo "  NGX ${_NGX}"
+    echo "  RDS ${_RDS}"
+    echo "  PXY ${_PXY}"
     echo "  SSL ${_SSL}"
     echo "  CRL ${_CRL}"
     echo "  SSH ${_SSH}"
+    [ ! -z "${_CLI}" ] && echo "  CLI ${_CLI}"
     [ ! -z "${_ARM}" ] && echo "  ARM ${_ARM}"
     echo "  STG ${_STG}"
     echo "  CSF ${_CSF}"
@@ -1625,17 +1662,34 @@ display_info() {
     echo "  BIN ${_BIN}"
     echo
     if [ -e "/var/log/barracuda_log.txt" ]; then
-      if [ "${kind}" = "more" ]; then
+      if [ "${mode}" = "raport" ]; then
+        display="system"
+        grep _PHP_CLI_VERSION /root/.*.octopus.cnf
+        echo
+        grep _PHP_FPM_VERSION /root/.*.octopus.cnf
+        echo
+        grep _THIS_DB_PORT /root/.*.octopus.cnf
+        echo
+        tail --lines=19 /var/xdrago/log/*.archive.log
+        echo
+        display_version
+      elif [ "${mode}" = "full" ] || [ "${mode}" = "more" ]; then
+        display="default"
         cat /var/log/barracuda_log.txt | grep $(date +'%Y' -d 'last year')
+        cat /var/log/barracuda_log.txt | grep $(date +%Y)
+      else
+        display="default"
+        tail --lines=3 /var/log/barracuda_log.txt
       fi
-      cat /var/log/barracuda_log.txt | grep $(date +%Y)
     fi
     echo
-    echo "Please link this information in your submission,"
-    echo "but only in a form of Gist snippet and not inline,"
-    echo "along with your hosting provider name"
-    echo "in the BOA issue queue on GitHub."
-    echo
+    if [ "${display}" = "default" ]; then
+      echo "Please link this information in your submission,"
+      echo "but only in a form of Gist snippet and not inline,"
+      echo "along with your hosting provider name"
+      echo "in the BOA issue queue on GitHub."
+      echo
+    fi
     exit 0
   else
     echo "ERROR: This script should be ran as a root user"
@@ -1647,7 +1701,7 @@ check_root_direct
 
 case "$1" in
   info)      cmmand="$1"
-             kind="$2"
+             mode="$2"
              check_root_keys_pwd
              check_virt
              display_info
@@ -1778,6 +1832,9 @@ case "$1" in
   ;;
   *)         echo
              echo "Usage: $(basename "$0") {version} {mode} {fqdn} {email} {user} {platforms} {extra}"
+             echo "Usage: $(basename "$0") version"
+             echo "Usage: $(basename "$0") info more"
+             echo "Usage: $(basename "$0") info raport"
              echo
              cat <<EOF
 
