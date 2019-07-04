@@ -1580,6 +1580,19 @@ display_info() {
           | awk '{ print $1}' 2>&1)
       fi
     fi
+    _PHP=$(/usr/bin/php-cli -v | grep 'PHP 7' \
+      | cut -d: -f1 | awk '{ print $2}' 2>&1)
+    if [ -z "${_PHP}" ]; then
+      _PHP=$(/usr/bin/php-cli -v | grep 'PHP 5' \
+        | cut -d: -f1 | awk '{ print $2}' 2>&1)
+    fi
+    _DBV=$(mysql -V 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f6 \
+      | awk '{ print $1}' \
+      | cut -d"-" -f1 \
+      | awk '{ print $1}' \
+      | sed "s/[\,']//g" 2>&1)
     if [ -x "/usr/bin/proxysql" ]; then
       _PXY=$(proxysql --version 2>&1 \
         | tr -d "\n" \
@@ -1631,48 +1644,59 @@ display_info() {
     clear
     echo
     thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
-    echo "Aegir on ${thiSys}"
+    if [ -e "/var/log/barracuda_log.txt" ]; then
+      crlBoav=`tail --lines=1 /var/log/barracuda_log.txt \
+        | cut -d '/' -f4 \
+        | sed "s/ Barracuda //g"`
+      crlBoav=${crlBoav//[^a-zA-Z0-9-.]/}
+    fi
+    echo "Aegir ${crlBoav} on ${thiSys}"
     [ ! -z "${_VIRT_IS}" ] && echo "  VPS ${_VIRT_IS}"
     [ -z "${_VIRT_IS}" ] && echo "  VPS unknown / not a virtual machine"
     echo "  DSK ${_DF_TEST}/100"
     echo "  CPU ${_CPU_NR}"
     echo "  RAM ${_RAM}"
-    echo "  XTR ${_XTR}"
-    echo "  MFX ${_MFX}"
-    echo "  PFX ${_PFX}"
-    echo "  DBS ${_DBS}"
-    echo "  DNS ${_DNS}"
-    echo "  PKG ${_PKG}"
-    echo "  NGX ${_NGX}"
-    echo "  RDS ${_RDS}"
-    echo "  PXY ${_PXY}"
-    echo "  SSL ${_SSL}"
-    echo "  CRL ${_CRL}"
-    echo "  SSH ${_SSH}"
-    [ ! -z "${_CLI}" ] && echo "  CLI ${_CLI}"
-    [ ! -z "${_ARM}" ] && echo "  ARM ${_ARM}"
-    echo "  STG ${_STG}"
-    echo "  CSF ${_CSF}"
-    echo "  LSH ${_LSH}"
-    echo "  RIS ${_RIS}"
-    echo "  SQL ${_SQL}"
-    [ ! -z "${_TUN}" ] && echo "  TUN ${_TUN}"
-    [ ! -z "${_BIL}" ] && echo "  BIL ${_BIL}"
+    [ ! -z "${_NGX}" ] && echo "  NGX ${_NGX}"
+    [ ! -z "${_PHP}" ] && echo "  PHP ${_PHP}"
+    [ ! -z "${_DBV}" ] && echo "  DBV ${_DBV}"
+    [ ! -z "${_RDS}" ] && echo "  RDS ${_RDS}"
+    [ ! -z "${_PXY}" ] && echo "  PXY ${_PXY}"
+    [ ! -z "${_SSH}" ] && echo "  SSH ${_SSH}"
+    [ ! -z "${_SSL}" ] && echo "  SSL ${_SSL}"
+    [ ! -z "${_CRL}" ] && echo "  CRL ${_CRL}"
+    [ "${mode}" != "raport" ] && echo "  STG ${_STG}"
+    [ "${mode}" != "raport" ] && echo "  CSF ${_CSF}"
+    [ "${mode}" != "raport" ] && echo "  LSH ${_LSH}"
+    [ "${mode}" != "raport" ] && echo "  RIS ${_RIS}"
+    [ "${mode}" != "raport" ] && echo "  SQL ${_SQL}"
+    [ "${mode}" != "raport" ] && echo "  XTR ${_XTR}"
+    [ "${mode}" != "raport" ] && echo "  MFX ${_MFX}"
+    [ "${mode}" != "raport" ] && echo "  PFX ${_PFX}"
+    [ "${mode}" != "raport" ] && echo "  DNS ${_DNS}"
+    [ "${mode}" != "raport" ] && echo "  PKG ${_PKG}"
+    [ "${mode}" != "raport" ] && [ ! -z "${_CLI}" ] && echo "  CLI ${_CLI}"
+    [ "${mode}" != "raport" ] && [ ! -z "${_DBS}" ] && echo "  DBS ${_DBS}"
+    [ "${mode}" != "raport" ] && [ ! -z "${_TUN}" ] && echo "  TUN ${_TUN}"
+    [ "${mode}" != "raport" ] && [ ! -z "${_BIL}" ] && echo "  BIL ${_BIL}"
+    [ "${mode}" != "raport" ] && [ ! -z "${_BIN}" ] && echo "  BIN ${_BIN}"
+    [ "${mode}" != "raport" ] && [ ! -z "${_ARM}" ] && echo "  ARM ${_ARM}"
     [ ! -z "${_SKY}" ] && echo "  SKY ${_SKY}"
-    echo "  BIN ${_BIN}"
     echo
     if [ -e "/var/log/barracuda_log.txt" ]; then
       if [ "${mode}" = "raport" ]; then
         display="system"
-        grep _PHP_CLI_VERSION /root/.*.octopus.cnf
-        echo
-        grep _PHP_FPM_VERSION /root/.*.octopus.cnf
-        echo
-        grep _THIS_DB_PORT /root/.*.octopus.cnf
-        echo
-        tail --lines=19 /var/xdrago/log/*.archive.log
-        echo
-        display_version
+        if [ "${extra}" = "octopus" ]; then
+          grep _PHP_CLI_VERSION /root/.*.octopus.cnf
+          echo
+          grep _PHP_FPM_VERSION /root/.*.octopus.cnf
+          echo
+          grep _THIS_DB_PORT /root/.*.octopus.cnf
+          echo
+        fi
+        if [ "${extra}" = "backups" ]; then
+          tail --lines=19 /var/xdrago/log/*.archive.log
+          echo
+        fi
       elif [ "${mode}" = "full" ] || [ "${mode}" = "more" ]; then
         display="default"
         cat /var/log/barracuda_log.txt | grep $(date +'%Y' -d 'last year')
@@ -1682,8 +1706,8 @@ display_info() {
         tail --lines=3 /var/log/barracuda_log.txt
       fi
     fi
-    echo
     if [ "${display}" = "default" ]; then
+      echo
       echo "Please link this information in your submission,"
       echo "but only in a form of Gist snippet and not inline,"
       echo "along with your hosting provider name"
@@ -1702,6 +1726,7 @@ check_root_direct
 case "$1" in
   info)      cmmand="$1"
              mode="$2"
+             extra="$3"
              check_root_keys_pwd
              check_virt
              display_info
@@ -1833,8 +1858,8 @@ case "$1" in
   *)         echo
              echo "Usage: $(basename "$0") {version} {mode} {fqdn} {email} {user} {platforms} {extra}"
              echo "Usage: $(basename "$0") version"
-             echo "Usage: $(basename "$0") info more"
-             echo "Usage: $(basename "$0") info raport"
+             echo "Usage: $(basename "$0") info {more}"
+             echo "Usage: $(basename "$0") info raport {octopus|backups}"
              echo
              cat <<EOF
 
