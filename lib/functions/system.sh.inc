@@ -3240,145 +3240,147 @@ more_packages_install_on_init() {
 }
 
 if_proxysql_update() {
-  isPxy=$(which proxysql 2>&1)
-  _REINSTALL_PXC=NO
-  if [ -x "${isPxy}" ]; then
-    msg "INFO: `proxysql --version`"
-    pGc="/usr/bin/proxysql_galera_checker"
-    if [ ! -e "${pGc}" ]; then
-      _UP_PXC=YES
-      _REINSTALL_PXC=YES
-    else
-      _PAV_TEST=$(grep Maestro ${pGc} 2>&1)
-      if [[ ! "${_PAV_TEST}" =~ "Maestro" ]]; then
-        _UP_PXC=YES
-      fi
-    fi
-    pNm="/usr/bin/proxysql_node_monitor"
-    if [ ! -e "${pNm}" ]; then
-      _UP_PXC=YES
-      _REINSTALL_PXC=YES
-    else
-      _PAV_TEST=$(grep Vivaldi ${pNm} 2>&1)
-      if [[ ! "${_PAV_TEST}" =~ "Vivaldi" ]]; then
-        _UP_PXC=YES
-      fi
-    fi
-  fi
-  isPxyVer=$(proxysql --version 2>&1)
-  if [[ ! "${isPxyVer}" =~ "${_PXC_VRN}" ]]; then
-    _UP_PXC=YES
-  fi
-  if [ "${_UP_PXC}" = "YES" ] \
-    && [ "${_THIS_OS}" = "Debian" ]; then
-    if [ "${_REINSTALL_PXC}" = "YES" ]; then
-      msg "INFO: Running ProxySQL upgrade to ${_PXC_VRN}..."
-    else
-      msg "INFO: Running ProxySQL re-install to ${_PXC_VRN}..."
-      mrun "apt-get clean" 2> /dev/null
-      mrun "apt-get update -qq" 2> /dev/null
-      mrun "${_INSTALL} sysbench" 2> /dev/null
-      mrun "${_INSTALL} debconf-utils" 2> /dev/null
-      mrun "apt-get remove proxysql -y" 2> /dev/null
-      mrun "apt-get clean" 2> /dev/null
-      mrun "apt-get update -qq" 2> /dev/null
-      mrun "${_INSTALL} proxysql" 2> /dev/null
-    fi
+  if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
     isPxy=$(which proxysql 2>&1)
-    if [ ! -x "${isPxy}" ]; then
-      mrun "apt-get clean" 2> /dev/null
-      mrun "apt-get update -qq" 2> /dev/null
-      mrun "${_INSTALL} sysbench" 2> /dev/null
-      mrun "${_INSTALL} debconf-utils" 2> /dev/null
-      mrun "${_INSTALL} proxysql" 2> /dev/null
-    else
-      mrun "apt-get install --only-upgrade ${nrmUpArg} proxysql" 2> /dev/null
-    fi
-    if [ ! -e "/etc/proxysql.cnf" ]; then
-      msg "OOPS: Unable to open config file /etc/proxysql.cnf"
-    else
-      chmod 640 /etc/proxysql.cnf
-    fi
-    if [ ! -e "/etc/proxysql-admin.cnf" ]; then
-      msg "OOPS: Unable to open config file /etc/proxysql-admin.cnf"
-    else
-      chmod 640 /etc/proxysql-admin.cnf
-    fi
-    if [ -x "${isPxy}" ] \
-      && [ -e "/etc/proxysql.cnf" ] \
-      && [ -e "/etc/proxysql-admin.cnf" ]; then
-
+    _REINSTALL_PXC=NO
+    if [ -x "${isPxy}" ]; then
       msg "INFO: `proxysql --version`"
-
-      msg "INFO: Updating ProxySQL Node Monitor..."
-      if [ -e "${pNm}" ]; then
-        rm -f ${pNm}
-      fi
-      tBn="tools/bin"
-      tURL="${urlHmr}/${tBn}/proxysql_node_monitor"
-      msg "PNM download URL is ${tURL}"
-      curl -I ${tURL}
-      curl ${crlGet} "${tURL}" -o ${pNm}
-      if [ ! -e "${pNm}" ]; then
-        curl ${crlGet} "${tURL}" -o ${pNm}
-      else
-        _PAV_TEST=$(grep Vivaldi ${pNm} 2>&1)
-        if [[ ! "${_PAV_TEST}" =~ "Vivaldi" ]]; then
-          rm -f ${pNm}
-          curl ${crlGet} "${tURL}" -o ${pNm}
-        fi
-      fi
-      curl ${crlGet} "${tURL}" -o ${pNm}
-      ls -la ${pNm}
-      if [ -e "${pNm}" ]; then
-        chmod 755 ${pNm}
-        msg "INFO: `${pNm} --version`"
-      fi
-
-      msg "INFO: Updating ProxySQL Galera Checker..."
-      if [ -e "${pGc}" ]; then
-        rm -f ${pGc}
-      fi
-      tBn="tools/bin"
-      tURL="${urlHmr}/${tBn}/proxysql_galera_checker"
-      msg "PGC download URL is ${tURL}"
-      curl -I ${tURL}
-      curl ${crlGet} "${tURL}" -o ${pGc}
+      pGc="/usr/bin/proxysql_galera_checker"
       if [ ! -e "${pGc}" ]; then
-        curl ${crlGet} "${tURL}" -o ${pGc}
+        _UP_PXC=YES
+        _REINSTALL_PXC=YES
       else
         _PAV_TEST=$(grep Maestro ${pGc} 2>&1)
         if [[ ! "${_PAV_TEST}" =~ "Maestro" ]]; then
-          rm -f ${pGc}
-          curl ${crlGet} "${tURL}" -o ${pGc}
+          _UP_PXC=YES
         fi
       fi
-      curl ${crlGet} "${tURL}" -o ${pGc}
-      ls -la ${pGc}
-
-      if [ -e "${pGc}" ]; then
-        chmod 755 ${pGc}
-        msg "INFO: `${pGc} --version`"
-        echo loadbal > /var/lib/proxysql/mode
-        echo loadbal > /var/lib/proxysql/c1r_galera_mode
-        echo loadbal > /var/lib/proxysql/--mode=singlewrite_mode
-        echo loadbal > /var/lib/proxysql/--mode=loadbal_mode
-        chown proxysql:proxysql /var/lib/proxysql/*mode*
-        echo 0 > /var/lib/proxysql/reload
-        echo 0 > /var/lib/proxysql/c1r_galera_reload
-        chown proxysql:proxysql /var/lib/proxysql/*reload
-        rm -f /var/lib/proxysql/pxc_test_proxysql_galera_check.log
-        proxysql_galera_checker --log=/var/lib/proxysql/pxc_test_proxysql_galera_check.log --debug
-        cat /var/lib/proxysql/pxc_test_proxysql_galera_check.log
-        msg "INFO: Restarting ProxySQL server..."
-        mrun "service proxysql restart" 2> /dev/null
-        mysql -uadmin -p`cat /root/.my.proxysql_adm_pwd.txt` -h127.0.0.1 -P6032 -e "SELECT * FROM scheduler\G"
-        mysql -uadmin -p`cat /root/.my.proxysql_adm_pwd.txt` -h127.0.0.1 -P6032 -e "SELECT * FROM mysql_servers;"
+      pNm="/usr/bin/proxysql_node_monitor"
+      if [ ! -e "${pNm}" ]; then
+        _UP_PXC=YES
+        _REINSTALL_PXC=YES
       else
-        msg "OOPS: ProxySQL Galera Checker will not work!"
+        _PAV_TEST=$(grep Vivaldi ${pNm} 2>&1)
+        if [[ ! "${_PAV_TEST}" =~ "Vivaldi" ]]; then
+          _UP_PXC=YES
+        fi
       fi
-    else
-      msg "OOPS: ProxySQL will not work!"
+    fi
+    isPxyVer=$(proxysql --version 2>&1)
+    if [[ ! "${isPxyVer}" =~ "${_PXC_VRN}" ]]; then
+      _UP_PXC=YES
+    fi
+    if [ "${_UP_PXC}" = "YES" ] \
+      && [ "${_THIS_OS}" = "Debian" ]; then
+      if [ "${_REINSTALL_PXC}" = "YES" ]; then
+        msg "INFO: Running ProxySQL upgrade to ${_PXC_VRN}..."
+      else
+        msg "INFO: Running ProxySQL re-install to ${_PXC_VRN}..."
+        mrun "apt-get clean" 2> /dev/null
+        mrun "apt-get update -qq" 2> /dev/null
+        mrun "${_INSTALL} sysbench" 2> /dev/null
+        mrun "${_INSTALL} debconf-utils" 2> /dev/null
+        mrun "apt-get remove proxysql -y" 2> /dev/null
+        mrun "apt-get clean" 2> /dev/null
+        mrun "apt-get update -qq" 2> /dev/null
+        mrun "${_INSTALL} proxysql" 2> /dev/null
+      fi
+      isPxy=$(which proxysql 2>&1)
+      if [ ! -x "${isPxy}" ]; then
+        mrun "apt-get clean" 2> /dev/null
+        mrun "apt-get update -qq" 2> /dev/null
+        mrun "${_INSTALL} sysbench" 2> /dev/null
+        mrun "${_INSTALL} debconf-utils" 2> /dev/null
+        mrun "${_INSTALL} proxysql" 2> /dev/null
+      else
+        mrun "apt-get install --only-upgrade ${nrmUpArg} proxysql" 2> /dev/null
+      fi
+      if [ ! -e "/etc/proxysql.cnf" ]; then
+        msg "OOPS: Unable to open config file /etc/proxysql.cnf"
+      else
+        chmod 640 /etc/proxysql.cnf
+      fi
+      if [ ! -e "/etc/proxysql-admin.cnf" ]; then
+        msg "OOPS: Unable to open config file /etc/proxysql-admin.cnf"
+      else
+        chmod 640 /etc/proxysql-admin.cnf
+      fi
+      if [ -x "${isPxy}" ] \
+        && [ -e "/etc/proxysql.cnf" ] \
+        && [ -e "/etc/proxysql-admin.cnf" ]; then
+
+        msg "INFO: `proxysql --version`"
+
+        msg "INFO: Updating ProxySQL Node Monitor..."
+        if [ -e "${pNm}" ]; then
+          rm -f ${pNm}
+        fi
+        tBn="tools/bin"
+        tURL="${urlHmr}/${tBn}/proxysql_node_monitor"
+        msg "PNM download URL is ${tURL}"
+        curl -I ${tURL}
+        curl ${crlGet} "${tURL}" -o ${pNm}
+        if [ ! -e "${pNm}" ]; then
+          curl ${crlGet} "${tURL}" -o ${pNm}
+        else
+          _PAV_TEST=$(grep Vivaldi ${pNm} 2>&1)
+          if [[ ! "${_PAV_TEST}" =~ "Vivaldi" ]]; then
+            rm -f ${pNm}
+            curl ${crlGet} "${tURL}" -o ${pNm}
+          fi
+        fi
+        curl ${crlGet} "${tURL}" -o ${pNm}
+        ls -la ${pNm}
+        if [ -e "${pNm}" ]; then
+          chmod 755 ${pNm}
+          msg "INFO: `${pNm} --version`"
+        fi
+
+        msg "INFO: Updating ProxySQL Galera Checker..."
+        if [ -e "${pGc}" ]; then
+          rm -f ${pGc}
+        fi
+        tBn="tools/bin"
+        tURL="${urlHmr}/${tBn}/proxysql_galera_checker"
+        msg "PGC download URL is ${tURL}"
+        curl -I ${tURL}
+        curl ${crlGet} "${tURL}" -o ${pGc}
+        if [ ! -e "${pGc}" ]; then
+          curl ${crlGet} "${tURL}" -o ${pGc}
+        else
+          _PAV_TEST=$(grep Maestro ${pGc} 2>&1)
+          if [[ ! "${_PAV_TEST}" =~ "Maestro" ]]; then
+            rm -f ${pGc}
+            curl ${crlGet} "${tURL}" -o ${pGc}
+          fi
+        fi
+        curl ${crlGet} "${tURL}" -o ${pGc}
+        ls -la ${pGc}
+
+        if [ -e "${pGc}" ]; then
+          chmod 755 ${pGc}
+          msg "INFO: `${pGc} --version`"
+          echo loadbal > /var/lib/proxysql/mode
+          echo loadbal > /var/lib/proxysql/c1r_galera_mode
+          echo loadbal > /var/lib/proxysql/--mode=singlewrite_mode
+          echo loadbal > /var/lib/proxysql/--mode=loadbal_mode
+          chown proxysql:proxysql /var/lib/proxysql/*mode*
+          echo 0 > /var/lib/proxysql/reload
+          echo 0 > /var/lib/proxysql/c1r_galera_reload
+          chown proxysql:proxysql /var/lib/proxysql/*reload
+          rm -f /var/lib/proxysql/pxc_test_proxysql_galera_check.log
+          proxysql_galera_checker --log=/var/lib/proxysql/pxc_test_proxysql_galera_check.log --debug
+          cat /var/lib/proxysql/pxc_test_proxysql_galera_check.log
+          msg "INFO: Restarting ProxySQL server..."
+          mrun "service proxysql restart" 2> /dev/null
+          mysql -uadmin -p`cat /root/.my.proxysql_adm_pwd.txt` -h127.0.0.1 -P6032 -e "SELECT * FROM scheduler\G"
+          mysql -uadmin -p`cat /root/.my.proxysql_adm_pwd.txt` -h127.0.0.1 -P6032 -e "SELECT * FROM mysql_servers;"
+        else
+          msg "OOPS: ProxySQL Galera Checker will not work!"
+        fi
+      else
+        msg "OOPS: ProxySQL will not work!"
+      fi
     fi
   fi
 }
