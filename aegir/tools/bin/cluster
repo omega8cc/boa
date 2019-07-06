@@ -741,7 +741,6 @@ install_vps() {
     wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
     mv -f BOA.sh.txt /vservers/${idn}/root/
     vserver ${idn} exec bash /root/BOA.sh.txt
-    vserver ${idn} exec which boa
     vserver ${idn} exec /opt/local/bin/boa in-${ver} public ${hst} ${eml} o8 mini
   else
     _REMOVE_LINKS="buagent \
@@ -870,7 +869,6 @@ install_vps() {
     if [ ! -z "${_ROOT_SQL_PASWD}" ]; then
       echo "${_ROOT_SQL_PASWD}" > /vservers/${idn}/root/.my.cluster_root_pwd.txt
     fi
-    vserver ${idn} exec which barracuda
     vserver ${idn} exec /opt/local/bin/barracuda up-${ver}
     echo
   fi
