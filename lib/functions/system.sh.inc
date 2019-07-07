@@ -3244,7 +3244,11 @@ if_proxysql_update() {
     isPxy=$(which proxysql 2>&1)
     _REINSTALL_PXC=NO
     if [ -x "${isPxy}" ]; then
-      msg "INFO: `proxysql --version`"
+      _PXY=$(${isPxy} --version 2>&1 \
+        | tr -d "\n" \
+        | cut -d"-" -f1 \
+        | awk '{ print $3}' 2>&1)
+      msg "INFO: ProxySQL version detected ${_PXY}"
       pGc="/usr/bin/proxysql_galera_checker"
       if [ ! -e "${pGc}" ]; then
         _UP_PXC=YES
@@ -3308,9 +3312,11 @@ if_proxysql_update() {
       if [ -x "${isPxy}" ] \
         && [ -e "/etc/proxysql.cnf" ] \
         && [ -e "/etc/proxysql-admin.cnf" ]; then
-
-        msg "INFO: `proxysql --version`"
-
+        _PXY=$(${isPxy} --version 2>&1 \
+          | tr -d "\n" \
+          | cut -d"-" -f1 \
+          | awk '{ print $3}' 2>&1)
+        msg "INFO: ProxySQL version detected ${_PXY}"
         msg "INFO: Updating ProxySQL Node Monitor..."
         if [ -e "${pNm}" ]; then
           rm -f ${pNm}
