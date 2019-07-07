@@ -2046,6 +2046,11 @@ satellite_prepare_child_scripts() {
 #
 # Generate provision backend db_passwd.
 provision_backend_dbpass_generate() {
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _THIS_DB_PORT=6033
+  else
+    _THIS_DB_PORT=3306
+  fi
   _ESC_PASS=""
   _LEN_PASS=0
   if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
@@ -2228,6 +2233,11 @@ provision_backend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Syncing provision backend db_passwd..."
   fi
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _THIS_DB_PORT=6033
+  else
+    _THIS_DB_PORT=3306
+  fi
   _L_SYS="${_ROOT}/.${_USER}.pass.txt"
   mv -f ${_L_SYS} ${_L_SYS}-pre-${_X_VERSION}-${_NOW} &> /dev/null
   provision_backend_dbpass_generate
@@ -2307,6 +2317,11 @@ hostmaster_frontend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Syncing hostmaster frontend db_passwd..."
   fi
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _THIS_DB_PORT=6033
+  else
+    _THIS_DB_PORT=3306
+  fi
   _THIS_HM_SPTH=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
     | grep "site_path'" \
     | cut -d: -f2 \
@@ -2362,6 +2377,11 @@ EOFMYSQL
 }
 
 satellite_run_pre_install() {
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _THIS_DB_PORT=6033
+  else
+    _THIS_DB_PORT=3306
+  fi
   if [ "${_STATUS}" = "INIT" ]; then
     mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
     provision_backend_dbpass_generate
@@ -5559,7 +5579,7 @@ satellite_child_b_vhosts_hotfix() {
   wait
   sed -i "s/listen .*:80;/listen        \*:80;/g"      ${rPth}_*/nginx.conf
   wait
-  if [ -e "${_ROOT}/log/use_proxysql.txt" ]; then
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     sed -i "s/param db_port.*/param db_port   6033;/g" ${rPth}_*/nginx/vhost.d/*
   else
     sed -i "s/param db_port.*/param db_port   3306;/g" ${rPth}_*/nginx/vhost.d/*

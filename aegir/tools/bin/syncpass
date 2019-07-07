@@ -79,6 +79,9 @@ do_syncpass() {
       check_generate
       chown ${uname}:${uname} ${_L_SYS} &> /dev/null
       if [ ! -z "${_ESC_APASS}" ] && [ ! -z "${_ENC_APASS}" ]; then
+        if [ -e "/var/aegir/use_proxysql.txt" ]; then
+          _THIS_DB_PORT=6033
+        fi
         mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
         su -s /bin/bash - ${uname} -c "drush @hostmaster \
           sqlq \"UPDATE hosting_db_server \
@@ -139,6 +142,9 @@ EOFMYSQL
         check_generate
         chown ${uname}:users ${_L_SYS} &> /dev/null
         if [ ! -z "${_ESC_APASS}" ] && [ ! -z "${_ENC_APASS}" ]; then
+          if [ -e "/data/conf/${uname}_use_proxysql.txt" ]; then
+            _THIS_DB_PORT=6033
+          fi
           mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
           su -s /bin/bash - ${uname} -c "drush @hostmaster \
             sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_APASS}' \
@@ -148,9 +154,6 @@ EOFMYSQL
           _USE_AEGIR_HOST="$(uname -n 2>&1)"
           _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
             | cut -d: -f2 | awk '{ print $1}' 2>&1)"
-          if [ -e "/data/disk/${uname}/log/use_proxysql.txt" ]; then
-            _THIS_DB_PORT=6033
-          fi
           [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL2 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
           if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
             _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)

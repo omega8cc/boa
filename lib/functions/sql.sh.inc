@@ -792,6 +792,7 @@ forced_mysql_root_password_update() {
 }
 
 install_db_server() {
+  _THIS_DB_PORT=3306
   if [ -x "/usr/bin/gpg2" ]; then
     _GPG=gpg2
   else

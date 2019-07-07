@@ -104,6 +104,11 @@ provision_backend_dbpass_generate() {
   fi
 
   _ESC="*.*"
+  if [ -e "/var/aegir/use_proxysql.txt" ]; then
+    _THIS_DB_PORT=6033
+  else
+    _THIS_DB_PORT=3306
+  fi
   mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
 
   if [ "${_STATUS}" = "INIT" ]; then
@@ -202,6 +207,11 @@ provision_backend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Syncing provision backend db_passwd..."
   fi
+  if [ -e "/var/aegir/use_proxysql.txt" ]; then
+    _THIS_DB_PORT=6033
+  else
+    _THIS_DB_PORT=3306
+  fi
   _ADBU=aegir_root
   _L_SYS="/var/aegir/backups/system/.${_ADBU}.pass.txt"
   mv -f ${_L_SYS} ${_L_SYS}-pre-${_X_VERSION}-${_NOW} &> /dev/null
@@ -282,6 +292,11 @@ EOFMYSQL
 hostmaster_frontend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Syncing hostmaster frontend db_passwd..."
+  fi
+  if [ -e "/var/aegir/use_proxysql.txt" ]; then
+    _THIS_DB_PORT=6033
+  else
+    _THIS_DB_PORT=3306
   fi
   _THIS_HM_SPTH=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
     | grep "site_path'" \
@@ -424,6 +439,11 @@ upgrade_aegir_master() {
   if prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
     true
     msg "INFO: Running Aegir Master Instance upgrade"
+    if [ -e "/var/aegir/use_proxysql.txt" ]; then
+      _THIS_DB_PORT=6033
+    else
+      _THIS_DB_PORT=3306
+    fi
     rm -f /opt/tmp/testecho*
     if [ ! -e "/root/.upstart.cnf" ]; then
       service cron stop &> /dev/null

@@ -4990,6 +4990,7 @@ sshd_armour() {
 }
 
 update_initd() {
+  _THIS_DB_PORT=3306
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Updating init scripts"
     cp -af ${locCnf}/clean-boa-env /etc/init.d/clean-boa-env
