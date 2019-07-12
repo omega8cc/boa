@@ -4,7 +4,7 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 whitelist_ip_pingdom() {
-  if [ -e "/root/.whitelist.cleanup.cnf" ]; then
+  if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing pingdom ips from csf.allow
     sed -i "s/.*pingdom ips.*//g" /etc/csf/csf.allow
     wait
@@ -12,15 +12,16 @@ whitelist_ip_pingdom() {
     wait
   fi
 
-  _IPS=$(curl -s https://my.pingdom.com/probes/feed \
+  _IPS=$(curl -k -s https://my.pingdom.com/probes/feed \
     | grep '<pingdom:ip>' \
+    | sed 's/.*::.*//g' \
     | sed 's/[^0-9\.]//g' \
     | sort \
     | uniq 2>&1)
 
   for _IP in ${_IPS}; do
     echo checking pingdom ${_IP} now...
-    if [ -e "/root/.whitelist.cleanup.cnf" ]; then
+    if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
       echo removing ${_IP} from csf.allow
       sed -i "s/^${_IP} .*//g" /etc/csf/csf.allow
       wait
@@ -34,7 +35,6 @@ whitelist_ip_pingdom() {
     if [ -z "${_IP_CHECK}" ]; then
       echo "${_IP} not yet listed in /etc/csf/csf.allow"
       echo "tcp|in|d=80|s=${_IP} # pingdom ips" >> /etc/csf/csf.allow
-      echo "tcp|in|d=443|s=${_IP} # pingdom ips" >> /etc/csf/csf.allow
     else
       echo "${_IP} already listed in /etc/csf/csf.allow"
     fi
@@ -42,7 +42,7 @@ whitelist_ip_pingdom() {
 }
 
 whitelist_ip_cloudflare() {
-  if [ -e "/root/.whitelist.cleanup.cnf" ]; then
+  if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing cloudflare ips from csf.allow
     sed -i "s/.*cloudflare ips.*//g" /etc/csf/csf.allow
     wait
@@ -50,13 +50,19 @@ whitelist_ip_cloudflare() {
     wait
   fi
 
-  _IPS=$(curl -s https://www.cloudflare.com/ips-v4 \
+  _IPS=$(curl -k -s https://www.cloudflare.com/ips-v4 \
+    | sed 's/.*::.*//g' \
     | sed 's/[^0-9\.\/]//g' \
     | sort \
     | uniq 2>&1)
 
   for _IP in ${_IPS}; do
     echo checking cloudflare ${_IP} now...
+    if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
+      echo removing ${_IP} from csf.allow
+      sed -i "s/^${_IP} .*//g" /etc/csf/csf.allow
+      wait
+    fi
     _IP_CHECK=$(cat /etc/csf/csf.allow \
       | cut -d '#' -f1 \
       | sort \
@@ -66,7 +72,43 @@ whitelist_ip_cloudflare() {
     if [ -z "${_IP_CHECK}" ]; then
       echo "${_IP} not yet listed in /etc/csf/csf.allow"
       echo "tcp|in|d=80|s=${_IP} # cloudflare ips" >> /etc/csf/csf.allow
-      echo "tcp|in|d=443|s=${_IP} # cloudflare ips" >> /etc/csf/csf.allow
+    else
+      echo "${_IP} already listed in /etc/csf/csf.allow"
+    fi
+  done
+}
+
+whitelist_ip_incapsula() {
+  if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing incapsula ips from csf.allow
+    sed -i "s/.*incapsula ips.*//g" /etc/csf/csf.allow
+    wait
+    sed -i "/^$/d" /etc/csf/csf.allow
+    wait
+  fi
+
+  _IPS=$(curl -k -s --data "resp_format=text" https://my.incapsula.com/api/integration/v1/ips \
+    | sed 's/.*::.*//g' \
+    | sed 's/[^0-9\.\/]//g' \
+    | sort \
+    | uniq 2>&1)
+
+  for _IP in ${_IPS}; do
+    echo checking incapsula ${_IP} now...
+    if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
+      echo removing ${_IP} from csf.allow
+      sed -i "s/^${_IP} .*//g" /etc/csf/csf.allow
+      wait
+    fi
+    _IP_CHECK=$(cat /etc/csf/csf.allow \
+      | cut -d '#' -f1 \
+      | sort \
+      | uniq \
+      | tr -d "\s" \
+      | grep "${_IP}" 2>&1)
+    if [ -z "${_IP_CHECK}" ]; then
+      echo "${_IP} not yet listed in /etc/csf/csf.allow"
+      echo "tcp|in|d=80|s=${_IP} # incapsula ips" >> /etc/csf/csf.allow
     else
       echo "${_IP} already listed in /etc/csf/csf.allow"
     fi
@@ -74,7 +116,7 @@ whitelist_ip_cloudflare() {
 }
 
 whitelist_ip_googlebot() {
-  if [ -e "/root/.whitelist.cleanup.cnf" ]; then
+  if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing googlebot ips from csf.allow
     sed -i "s/.*googlebot ips.*//g" /etc/csf/csf.allow
     wait
@@ -86,6 +128,11 @@ whitelist_ip_googlebot() {
 
   for _IP in ${_IPS}; do
     echo checking googlebot ${_IP} now...
+    if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
+      echo removing ${_IP} from csf.allow
+      sed -i "s/^${_IP} .*//g" /etc/csf/csf.allow
+      wait
+    fi
     _IP_CHECK=$(cat /etc/csf/csf.allow \
       | cut -d '#' -f1 \
       | sort \
@@ -95,7 +142,6 @@ whitelist_ip_googlebot() {
     if [ -z "${_IP_CHECK}" ]; then
       echo "${_IP} not yet listed in /etc/csf/csf.allow"
       echo "tcp|in|d=80|s=${_IP} # googlebot ips" >> /etc/csf/csf.allow
-      echo "tcp|in|d=443|s=${_IP} # googlebot ips" >> /etc/csf/csf.allow
     else
       echo "${_IP} already listed in /etc/csf/csf.allow"
     fi
@@ -105,7 +151,7 @@ whitelist_ip_googlebot() {
 }
 
 whitelist_ip_microsoft() {
-  if [ -e "/root/.whitelist.cleanup.cnf" ]; then
+  if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing microsoft ips from csf.allow
     sed -i "s/.*microsoft ips.*//g" /etc/csf/csf.allow
     wait
@@ -117,6 +163,11 @@ whitelist_ip_microsoft() {
 
   for _IP in ${_IPS}; do
     echo checking microsoft ${_IP} now...
+    if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
+      echo removing ${_IP} from csf.allow
+      sed -i "s/^${_IP} .*//g" /etc/csf/csf.allow
+      wait
+    fi
     _IP_CHECK=$(cat /etc/csf/csf.allow \
       | cut -d '#' -f1 \
       | sort \
@@ -126,7 +177,6 @@ whitelist_ip_microsoft() {
     if [ -z "${_IP_CHECK}" ]; then
       echo "${_IP} not yet listed in /etc/csf/csf.allow"
       echo "tcp|in|d=80|s=${_IP} # microsoft ips" >> /etc/csf/csf.allow
-      echo "tcp|in|d=443|s=${_IP} # microsoft ips" >> /etc/csf/csf.allow
     else
       echo "${_IP} already listed in /etc/csf/csf.allow"
     fi
@@ -138,7 +188,7 @@ whitelist_ip_microsoft() {
 }
 
 whitelist_ip_sucuri() {
-  if [ -e "/root/.whitelist.cleanup.cnf" ]; then
+  if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing sucuri ips from csf.allow
     sed -i "s/.*sucuri ips.*//g" /etc/csf/csf.allow
     wait
@@ -150,6 +200,11 @@ whitelist_ip_sucuri() {
 
   for _IP in ${_IPS}; do
     echo checking sucuri ${_IP} now...
+    if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
+      echo removing ${_IP} from csf.allow
+      sed -i "s/^${_IP} .*//g" /etc/csf/csf.allow
+      wait
+    fi
     _IP_CHECK=$(cat /etc/csf/csf.allow \
       | cut -d '#' -f1 \
       | sort \
@@ -159,7 +214,6 @@ whitelist_ip_sucuri() {
     if [ -z "${_IP_CHECK}" ]; then
       echo "${_IP} not yet listed in /etc/csf/csf.allow"
       echo "tcp|in|d=80|s=${_IP} # sucuri ips" >> /etc/csf/csf.allow
-      echo "tcp|in|d=443|s=${_IP} # sucuri ips" >> /etc/csf/csf.allow
     else
       echo "${_IP} already listed in /etc/csf/csf.allow"
     fi
@@ -362,11 +416,12 @@ if [ -e "/vservers" ] \
 
   whitelist_ip_pingdom
   whitelist_ip_cloudflare
+  whitelist_ip_incapsula
   whitelist_ip_googlebot
   whitelist_ip_microsoft
   whitelist_ip_sucuri
 
-  if [ -e "/root/.whitelist.cleanup.cnf" ]; then
+  if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     sed -i "s/.*do not delete.*//g" /etc/csf/csf.deny
     sed -i "/^$/d" /etc/csf/csf.deny
   fi
