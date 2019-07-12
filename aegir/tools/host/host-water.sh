@@ -21,11 +21,6 @@ whitelist_ip_pingdom() {
 
   for _IP in ${_IPS}; do
     echo checking pingdom ${_IP} now...
-    if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
-      echo removing ${_IP} from csf.allow
-      sed -i "s/^${_IP} .*//g" /etc/csf/csf.allow
-      wait
-    fi
     _IP_CHECK=$(cat /etc/csf/csf.allow \
       | cut -d '#' -f1 \
       | sort \
@@ -58,11 +53,6 @@ whitelist_ip_cloudflare() {
 
   for _IP in ${_IPS}; do
     echo checking cloudflare ${_IP} now...
-    if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
-      echo removing ${_IP} from csf.allow
-      sed -i "s/^${_IP} .*//g" /etc/csf/csf.allow
-      wait
-    fi
     _IP_CHECK=$(cat /etc/csf/csf.allow \
       | cut -d '#' -f1 \
       | sort \
@@ -95,11 +85,6 @@ whitelist_ip_incapsula() {
 
   for _IP in ${_IPS}; do
     echo checking incapsula ${_IP} now...
-    if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
-      echo removing ${_IP} from csf.allow
-      sed -i "s/^${_IP} .*//g" /etc/csf/csf.allow
-      wait
-    fi
     _IP_CHECK=$(cat /etc/csf/csf.allow \
       | cut -d '#' -f1 \
       | sort \
@@ -128,11 +113,6 @@ whitelist_ip_googlebot() {
 
   for _IP in ${_IPS}; do
     echo checking googlebot ${_IP} now...
-    if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
-      echo removing ${_IP} from csf.allow
-      sed -i "s/^${_IP} .*//g" /etc/csf/csf.allow
-      wait
-    fi
     _IP_CHECK=$(cat /etc/csf/csf.allow \
       | cut -d '#' -f1 \
       | sort \
@@ -163,11 +143,6 @@ whitelist_ip_microsoft() {
 
   for _IP in ${_IPS}; do
     echo checking microsoft ${_IP} now...
-    if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
-      echo removing ${_IP} from csf.allow
-      sed -i "s/^${_IP} .*//g" /etc/csf/csf.allow
-      wait
-    fi
     _IP_CHECK=$(cat /etc/csf/csf.allow \
       | cut -d '#' -f1 \
       | sort \
@@ -200,11 +175,6 @@ whitelist_ip_sucuri() {
 
   for _IP in ${_IPS}; do
     echo checking sucuri ${_IP} now...
-    if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
-      echo removing ${_IP} from csf.allow
-      sed -i "s/^${_IP} .*//g" /etc/csf/csf.allow
-      wait
-    fi
     _IP_CHECK=$(cat /etc/csf/csf.allow \
       | cut -d '#' -f1 \
       | sort \
@@ -233,11 +203,6 @@ whitelist_ip_authzero() {
 
   for _IP in ${_IPS}; do
     echo checking authzero ${_IP} now...
-    if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
-      echo removing ${_IP} from csf.allow
-      sed -i "s/^${_IP} .*//g" /etc/csf/csf.allow
-      wait
-    fi
     _IP_CHECK=$(cat /etc/csf/csf.allow \
       | cut -d '#' -f1 \
       | sort \
