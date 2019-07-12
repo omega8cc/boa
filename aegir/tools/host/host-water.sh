@@ -6,7 +6,7 @@ SHELL=/bin/bash
 whitelist_ip_pingdom() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing pingdom ips from csf.allow
-    sed -i "s/.*pingdom ips.*//g" /etc/csf/csf.allow
+    sed -i "s/.*pingdom.*//g" /etc/csf/csf.allow
     wait
     sed -i "/^$/d" /etc/csf/csf.allow
     wait
@@ -44,7 +44,7 @@ whitelist_ip_pingdom() {
 whitelist_ip_cloudflare() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing cloudflare ips from csf.allow
-    sed -i "s/.*cloudflare ips.*//g" /etc/csf/csf.allow
+    sed -i "s/.*cloudflare.*//g" /etc/csf/csf.allow
     wait
     sed -i "/^$/d" /etc/csf/csf.allow
     wait
@@ -81,7 +81,7 @@ whitelist_ip_cloudflare() {
 whitelist_ip_incapsula() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing incapsula ips from csf.allow
-    sed -i "s/.*incapsula ips.*//g" /etc/csf/csf.allow
+    sed -i "s/.*incapsula.*//g" /etc/csf/csf.allow
     wait
     sed -i "/^$/d" /etc/csf/csf.allow
     wait
@@ -118,7 +118,7 @@ whitelist_ip_incapsula() {
 whitelist_ip_googlebot() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing googlebot ips from csf.allow
-    sed -i "s/.*googlebot ips.*//g" /etc/csf/csf.allow
+    sed -i "s/.*googlebot.*//g" /etc/csf/csf.allow
     wait
     sed -i "/^$/d" /etc/csf/csf.allow
     wait
@@ -153,7 +153,7 @@ whitelist_ip_googlebot() {
 whitelist_ip_microsoft() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing microsoft ips from csf.allow
-    sed -i "s/.*microsoft ips.*//g" /etc/csf/csf.allow
+    sed -i "s/.*microsoft.*//g" /etc/csf/csf.allow
     wait
     sed -i "/^$/d" /etc/csf/csf.allow
     wait
@@ -190,7 +190,7 @@ whitelist_ip_microsoft() {
 whitelist_ip_sucuri() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing sucuri ips from csf.allow
-    sed -i "s/.*sucuri ips.*//g" /etc/csf/csf.allow
+    sed -i "s/.*sucuri.*//g" /etc/csf/csf.allow
     wait
     sed -i "/^$/d" /etc/csf/csf.allow
     wait
@@ -223,7 +223,7 @@ whitelist_ip_sucuri() {
 whitelist_ip_authzero() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing authzero ips from csf.allow
-    sed -i "s/.*authzero ips.*//g" /etc/csf/csf.allow
+    sed -i "s/.*authzero.*//g" /etc/csf/csf.allow
     wait
     sed -i "/^$/d" /etc/csf/csf.allow
     wait
