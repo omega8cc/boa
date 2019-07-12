@@ -220,6 +220,39 @@ whitelist_ip_sucuri() {
   done
 }
 
+whitelist_ip_authzero() {
+  if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing authzero ips from csf.allow
+    sed -i "s/.*authzero ips.*//g" /etc/csf/csf.allow
+    wait
+    sed -i "/^$/d" /etc/csf/csf.allow
+    wait
+  fi
+
+  _IPS="35.167.74.121 35.166.202.113 35.160.3.103 54.183.64.135 54.67.77.38 54.67.15.170 54.183.204.205 35.171.156.124 18.233.90.226 3.211.189.167 52.28.56.226 52.28.45.240 52.16.224.164 52.16.193.66 34.253.4.94 52.50.106.250 52.211.56.181 52.213.38.246 52.213.74.69 52.213.216.142 35.156.51.163 35.157.221.52 52.28.184.187 52.28.212.16 52.29.176.99 52.57.230.214 54.76.184.103 52.210.122.50 52.208.95.174 52.210.122.50 52.208.95.174 54.76.184.103 52.64.84.177 52.64.111.197 54.153.131.0 13.210.52.131 13.55.232.24 13.54.254.182 52.62.91.160 52.63.36.78 52.64.120.184 54.66.205.24 54.79.46.4"
+
+  for _IP in ${_IPS}; do
+    echo checking authzero ${_IP} now...
+    if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
+      echo removing ${_IP} from csf.allow
+      sed -i "s/^${_IP} .*//g" /etc/csf/csf.allow
+      wait
+    fi
+    _IP_CHECK=$(cat /etc/csf/csf.allow \
+      | cut -d '#' -f1 \
+      | sort \
+      | uniq \
+      | tr -d "\s" \
+      | grep "${_IP}" 2>&1)
+    if [ -z "${_IP_CHECK}" ]; then
+      echo "${_IP} not yet listed in /etc/csf/csf.allow"
+      echo "tcp|in|d=80|s=${_IP} # authzero ips" >> /etc/csf/csf.allow
+    else
+      echo "${_IP} already listed in /etc/csf/csf.allow"
+    fi
+  done
+}
+
 local_ip_rg() {
   if [ -e "/root/.local.IP.list" ]; then
     echo "the file /root/.local.IP.list already exists"
@@ -420,6 +453,7 @@ if [ -e "/vservers" ] \
   whitelist_ip_googlebot
   whitelist_ip_microsoft
   whitelist_ip_sucuri
+  whitelist_ip_authzero
 
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     sed -i "s/.*do not delete.*//g" /etc/csf/csf.deny
