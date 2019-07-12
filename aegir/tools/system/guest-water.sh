@@ -438,7 +438,7 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
   whitelist_ip_sucuri
   whitelist_ip_authzero
 
-  if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
+  if [ -e "/root/.full.csf.cleanup.cnf" ]; then
     sed -i "s/.*do not delete.*//g" /etc/csf/csf.deny
     sed -i "/^$/d" /etc/csf/csf.deny
   fi
