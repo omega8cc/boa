@@ -711,7 +711,12 @@ install_vps() {
   incl="sysvinit-core,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales,screen,python3"
   excl="systemd,systemd-sysv,libsystemd0,udev,makedev,fuse"
 
-  vserver ${idn} build -n ${idn} -m debootstrap --i-know-its-there \
+  if [ "${fce}" = "force" ]; then
+    locMode="--force -m debootstrap"
+  else
+    locMode="-m debootstrap"
+  fi
+  vserver ${idn} build -n ${idn} ${locMode} --i-know-its-there \
     --hostname ${hst} \
     --interface eth0:${vip}/32 \
     -- -d ${osx} -- --arch=amd64 --include=${incl} \
@@ -1838,6 +1843,7 @@ case "$1" in
            osx="$5"
            ver="$6"
            eml="$7"
+           fce="$8"
            check_all
            install_vps
   ;;
@@ -1890,7 +1896,7 @@ case "$1" in
   *)       echo
            echo "Usage: cluster {in-host} {fqdn}"
            echo "Usage: cluster {up-host} {update|upgrade}"
-           echo "Usage: cluster {in-vps} {id} {fqdn} {ip} {os} {stable|head|galera} {email}"
+           echo "Usage: cluster {in-vps} {id} {fqdn} {ip} {os} {stable|head|galera} {email} {force}"
            echo "Usage: cluster {in-all} {stable|head}"
            echo "Usage: cluster {up-dbs} {stable|head}"
            echo "Usage: cluster {up-web} {stable|head}"
