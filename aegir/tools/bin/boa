@@ -1462,7 +1462,9 @@ check_root() {
       fi
     done
     for s in cron dbus ssh; do
-      sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/$s > /etc/insserv/overrides/$s
+      if [ -e "/etc/init.d/${s}" ]; then
+        sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/${s} > /etc/insserv/overrides/${s}
+      fi
     done
     /sbin/insserv -v -d &> /dev/null
   fi
