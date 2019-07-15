@@ -708,7 +708,7 @@ install_vps() {
 
   echo "Installing vps ${idn}..."
 
-  incl="sysvinit-core,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales,screen"
+  incl="sysvinit-core,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales,screen,python3"
   excl="systemd,systemd-sysv,libsystemd0,udev,makedev,fuse"
 
   vserver ${idn} build -n ${idn} -m debootstrap --i-know-its-there \
