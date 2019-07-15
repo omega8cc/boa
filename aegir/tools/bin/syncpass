@@ -222,11 +222,13 @@ check_root() {
     wait
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
     wait
+    sed -i "s/.*github.*//g" /etc/hosts
+    wait
     _GH_TEST=$(cat /etc/hosts | grep github 2>&1)
     if [[ ! "${_GH_TEST}" =~ "github.com" ]]; then
-      echo "192.30.253.113 github.com" >> /etc/hosts
+      echo "140.82.118.3 github.com" >> /etc/hosts
       wait
-      echo "151.101.32.133 raw.githubusercontent.com" >> /etc/hosts
+      echo "151.101.112.133 raw.githubusercontent.com" >> /etc/hosts
       wait
       echo >>/etc/hosts
       wait
