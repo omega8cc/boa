@@ -1029,10 +1029,7 @@ if_display_login_link() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _DO_NOTHING=YES
     else
-      _AEGIR_LOGIN_URL=$(grep --text "^Login url: http://${_THIS_FRONT}" \
-        /var/aegir/install.log 2>&1)
-      _AEGIR_LOGIN_URL=$(echo "${_AEGIR_LOGIN_URL}" | sed "s/Login url: http/http/g" 2>&1)
-      _AEGIR_LOGIN_URL=$(echo "${_AEGIR_LOGIN_URL}" | sed "s/\s\[success\]//g" 2>&1)
+      _AEGIR_LOGIN_URL=$(tail --lines=11 /var/aegir/install.log | grep --text "^http:" 2>&1)
       if [ ! -z "${_AEGIR_LOGIN_URL}" ]; then
         echo " "
         msg "INFO: Congratulations, Aegir have been installed successfully!"
