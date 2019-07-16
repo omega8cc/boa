@@ -350,26 +350,27 @@ mysql_proc_control() {
     | awk '{print $2, $4, $8, $12}' \
     | awk '{print $1}'`; do
     each=${each//[^0-9]/}
-    if [ "$each" != "1" ] \
-      && [ "$each" != "2" ] \
-      && [ ! -z "$each" ]; then
-      xtime=$(mysqladmin proc \
-        | awk '{print $2, $4, $8, $12}' \
-        | grep $each \
-        | awk '{print $4}' 2>&1)
-      xtime=${xtime//[^0-9]/}
-      xuser=$(mysqladmin proc \
-        | awk '{print $2, $4, $8, $12}' \
-        | grep $each \
-        | awk '{print $2}' 2>&1)
-      xuser=${xuser//[^0-9a-z_]/}
-      if [ ! -z "$xtime" ]; then
-        if [ "$xuser" = "xabuse" ]; then
-          limit=5
-          mysql_proc_kill
-        else
-          limit=9999
-          mysql_proc_kill
+    if [ ! -z "$each" ]; then
+      if [ "$each" -gt "5" ] \
+        && [ ! -z "$each" ]; then
+        xtime=$(mysqladmin proc \
+          | awk '{print $2, $4, $8, $12}' \
+          | grep $each \
+          | awk '{print $4}' 2>&1)
+        xtime=${xtime//[^0-9]/}
+        xuser=$(mysqladmin proc \
+          | awk '{print $2, $4, $8, $12}' \
+          | grep $each \
+          | awk '{print $2}' 2>&1)
+        xuser=${xuser//[^0-9a-z_]/}
+        if [ ! -z "$xtime" ]; then
+          if [ "$xuser" = "xabuse" ]; then
+            limit=15
+            mysql_proc_kill
+          else
+            limit=9999
+            mysql_proc_kill
+          fi
         fi
       fi
     fi;
