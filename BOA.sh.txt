@@ -1309,17 +1309,6 @@ update_wrappers() {
   wait
   sed -i "s/.*github.*//g" /etc/hosts
   wait
-  _GH_TEST=$(cat /etc/hosts | grep github 2>&1)
-  if [[ ! "${_GH_TEST}" =~ "github.com" ]]; then
-    echo "140.82.118.3 github.com" >> /etc/hosts
-    wait
-    echo "151.101.112.133 raw.githubusercontent.com" >> /etc/hosts
-    wait
-    echo >>/etc/hosts
-    wait
-    service pdnsd restart &> /dev/null
-    pdnsd-ctl empty-cache &> /dev/null
-  fi
   echo >>/etc/hosts
   sed -i "/^$/d" /etc/hosts
   wait
@@ -1470,17 +1459,6 @@ setup() {
   wait
   sed -i "s/.*github.*//g" /etc/hosts
   wait
-  _GH_TEST=$(cat /etc/hosts | grep github 2>&1)
-  if [[ ! "${_GH_TEST}" =~ "github.com" ]]; then
-    echo "140.82.118.3 github.com" >> /etc/hosts
-    wait
-    echo "151.101.112.133 raw.githubusercontent.com" >> /etc/hosts
-    wait
-    echo >>/etc/hosts
-    wait
-    service pdnsd restart &> /dev/null
-    pdnsd-ctl empty-cache &> /dev/null
-  fi
   echo >>/etc/hosts
   sed -i "/^$/d" /etc/hosts
   wait
