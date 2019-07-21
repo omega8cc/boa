@@ -44,6 +44,9 @@ cd ${site_path}
 
 printf "Setting correct permissions on all files and directories inside "${site_path}"...\n"
 ### directory and settings files - site level
+if [ -e "${site_path}/aegir.services.yml" ]; then
+  rm -f ${site_path}/aegir.services.yml
+fi
 find ${site_path}/*.php -type f -exec chmod 0440 {} \; &> /dev/null
 chmod 0640 ${site_path}/civicrm.settings.php &> /dev/null
 ### modules,themes,libraries - site level

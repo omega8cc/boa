@@ -2047,6 +2047,9 @@ fix_permissions() {
     && [ -e "${Dir}/private" ] \
     && [ -e "${Dir}/modules" ]; then
     ### directory and settings files - site level
+    if [ -e "${Dir}/aegir.services.yml" ]; then
+      rm -f ${Dir}/aegir.services.yml
+    fi
     chown ${_HM_U}:users ${Dir} &> /dev/null
     chown ${_HM_U}:www-data \
       ${Dir}/{local.settings.php,settings.php,civicrm.settings.php,solr.php} &> /dev/null
