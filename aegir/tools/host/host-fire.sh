@@ -12,6 +12,7 @@ guest_proc_monitor() {
     fi
   done
 }
+guest_proc_monitor
 
 guest_guard() {
 if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
@@ -71,7 +72,6 @@ if [ -e "/vservers" ] \
   && [ -e "/etc/csf/csf.deny" ] \
   && [ ! -e "/var/run/water.pid" ] \
   && [ -e "/usr/sbin/csf" ]; then
-  guest_proc_monitor
   [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
   [ ! -e "/var/run/water.pid" ] && guest_guard
