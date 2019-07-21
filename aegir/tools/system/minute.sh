@@ -320,6 +320,12 @@ if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt "5" 
     /var/xdrago/log/php-fpm-master-count.kill.log
 fi
 
+if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "3" ]; then
+  kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+  echo "$(date 2>&1) Too many dirmngr processes killed" >> \
+    /var/xdrago/log/dirmngr-count.kill.log
+fi
+
 if [ ! -e "/root/.high_traffic.cnf" ] \
   && [ ! -e "/root/.giant_traffic.cnf" ]; then
   perl /var/xdrago/monitor/check/segfault_alert
