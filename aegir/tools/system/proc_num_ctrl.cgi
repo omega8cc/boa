@@ -95,7 +95,7 @@ system("service bind9 restart") if (!$namedsumar && -f "/etc/init.d/bind9");
 system("service ssh restart") if (!$sshdsumar && -f "/etc/init.d/ssh");
 system("service proxysql restart") if (!$pxydsumar && -f "/etc/init.d/proxysql");
 
-if (-e "/usr/sbin/pdnsd" && (!$pdnsdsumar || !-e "/etc/resolvconf/run/interface/lo.pdnsd") && !-f "/var/run/boa_run.pid") {
+if (-e "/usr/sbin/pdnsd" && (!$pdnsdsumar || !-e "/etc/resolvconf/run/interface/lo.pdnsd")) {
   system("mkdir -p /var/cache/pdnsd");
   system("chown -R pdnsd:proxy /var/cache/pdnsd");
   system("resolvconf -u");
@@ -122,7 +122,7 @@ if (!-f "/root/.dbhd.clstr.cnf") {
     system("mkdir -p /var/run/redis");
     system("chown -R redis:redis /var/run/redis");
   }
-  if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis") && !-f "/var/run/boa_run.pid") {
+  if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis")) {
     if (-f "/etc/init.d/redis-server") { system("service redis-server start"); }
     elsif (-f "/etc/init.d/redis") { system("service redis start"); }
   }
@@ -135,10 +135,10 @@ if (!-f "/root/.dbhd.clstr.cnf") {
   system("service redis-server restart") if (!-f "/var/run/redis/redis.pid");
 }
 
-system("service newrelic-daemon restart") if (!$newrelicdaemonsumar && -f "/etc/init.d/newrelic-daemon" && !-f "/var/run/boa_run.pid");
-system("service newrelic-sysmond restart") if (!$newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/var/run/boa_run.pid" && -f "/root/.enable.newrelic.sysmond.cnf");
+system("service newrelic-daemon restart") if (!$newrelicdaemonsumar && -f "/etc/init.d/newrelic-daemon");
+system("service newrelic-sysmond restart") if (!$newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && -f "/root/.enable.newrelic.sysmond.cnf");
 system("service newrelic-sysmond stop") if ($newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/root/.enable.newrelic.sysmond.cnf");
-system("service postfix restart") if (!$postfixsumar && -f "/etc/init.d/postfix" && !-f "/var/run/boa_run.pid");
+system("service postfix restart") if (!$postfixsumar && -f "/etc/init.d/postfix");
 
 if (!$nginxsumar && -f "/etc/init.d/nginx" && !-f "/root/.dbhd.clstr.cnf") {
   system("killall -9 nginx");
@@ -169,13 +169,13 @@ else {
   system("service php56-fpm restart") if ((!$php56lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
 }
 
-system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7" && !-f "/var/run/boa_run.pid");
-system("service jetty8 start") if (!$jetty8sumar && -f "/etc/init.d/jetty8" && !-f "/var/run/boa_run.pid");
-system("service jetty9 start") if (!$jetty9sumar && -f "/etc/init.d/jetty9" && !-f "/var/run/boa_run.pid");
-system("service solr7 start") if (!$solr7sumar && -f "/etc/init.d/solr7" && !-f "/var/run/boa_run.pid");
-system("service collectd start") if (!$collectdsumar && -f "/etc/init.d/collectd" && !-f "/var/run/boa_run.pid");
-system("service xinetd start") if (!$xinetdsumar && -f "/etc/init.d/xinetd" && !-f "/var/run/boa_run.pid");
-system("service lsyncd start") if (!$lsyncdsumar && -f "/etc/init.d/lsyncd" && !-f "/var/run/boa_run.pid");
+system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7");
+system("service jetty8 start") if (!$jetty8sumar && -f "/etc/init.d/jetty8");
+system("service jetty9 start") if (!$jetty9sumar && -f "/etc/init.d/jetty9");
+system("service solr7 start") if (!$solr7sumar && -f "/etc/init.d/solr7");
+system("service collectd start") if (!$collectdsumar && -f "/etc/init.d/collectd");
+system("service xinetd start") if (!$xinetdsumar && -f "/etc/init.d/xinetd");
+system("service lsyncd start") if (!$lsyncdsumar && -f "/etc/init.d/lsyncd");
 system("service postfix restart") if (!-f "/var/spool/postfix/pid/master.pid");
 
 if (-f "/usr/local/sbin/pure-config.pl") {
@@ -185,7 +185,7 @@ if (-f "/usr/local/sbin/pure-config.pl") {
     }
   }
   else {
-    `/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf` if (!$ftpsumar && !-f "/var/run/boa_run.pid");
+    `/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf` if (!$ftpsumar);
   }
 }
 
