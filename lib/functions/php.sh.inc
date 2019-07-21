@@ -1393,7 +1393,7 @@ check_php_rebuild() {
     install_php_multi "$1"
   else
     if [[ "${_PHP_ITD}" =~ "${_PHP_VERSION}" ]]; then
-      if [ "$_UP_PHP" = "YES" ]; then
+      if [ "${_UP_PHP}" = "YES" ]; then
         if [ ! -z "${_PHP_ALREADY_REBUILT}" ] \
           && [ "${_PHP_ALREADY_REBUILT}" = "$1" ]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
