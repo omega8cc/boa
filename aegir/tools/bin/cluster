@@ -1227,8 +1227,8 @@ install_db_cluster() {
     echo "deb http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
     echo "deb-src http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
     _KEYS_SIG="8507EFA5"
-    # vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}"
-    # vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add -
+    vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}"
+    vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add -
     vserver ${idn} exec apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}"
   	vserver ${idn} exec apt-get update ${_APT_XTR}
   	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57
@@ -1375,15 +1375,15 @@ upgrade_db_cluster() {
     _KEYS_SERVER_TEST=FALSE
     until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
       echo "INFO: Retrieving ${_KEYS_SIG} key on ${idn}/${IP}..."
-      # vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}"
-      # vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add -
+      vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}"
+      vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add -
       vserver ${idn} exec apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}"
+      apt-get update -qq
       _KEYS_SERVER_TEST=$(vserver ${idn} exec ${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
       sleep 2
     done
-    apt-get update -qq
-    # vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}"
-    # vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add -
+    vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}"
+    vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add -
     vserver ${idn} exec apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}"
   	vserver ${idn} exec apt-get update ${_APT_XTR}
   	vserver ${idn} exec ${_INSTAPP} bc
