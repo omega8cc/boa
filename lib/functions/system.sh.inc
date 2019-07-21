@@ -3901,14 +3901,14 @@ sys_packages_install() {
     #     st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
     #   fi
     # fi
-    mrun "apt-get -f install -qq"                         &> /dev/null
-    mrun "service nginx start"                            &> /dev/null
+    mrun "apt-get -f install -qq"             &> /dev/null
+    mrun "service nginx start"                &> /dev/null
     mrun "apt-get remove nginx-extras -y -qq" &> /dev/null
     mrun "apt-get remove nginx -y -qq"        &> /dev/null
     mrun "apt-get remove nginx-common -y -qq" &> /dev/null
     mrun "apt-get remove nginx-full -y -qq"   &> /dev/null
     mrun "apt-get remove redis-server -y -qq" &> /dev/null
-    st_runner "apt-get update -qq"                        &> /dev/null
+    st_runner "apt-get update -qq"            &> /dev/null
   fi
   _EXTRA_LIB_APT="libmcrypt-dev"
   if [ ! -z "${_EXTRA_PACKAGES}" ]; then
