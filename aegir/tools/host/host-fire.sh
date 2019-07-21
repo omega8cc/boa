@@ -3,6 +3,16 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
+guest_proc_monitor() {
+  for i in `dir -d /vservers/*`; do
+    _THIS_VM=`echo $i | cut -d'/' -f3 | awk '{ print $1}'`
+    _VS_NAME=`echo ${_THIS_VM} | cut -d'/' -f3 | awk '{ print $1}'`
+    if [ -e "${i}/var/xdrago/proc_num_ctrl.cgi" ] && [ -e "/usr/var/run${i}" ]; then
+      vserver ${_VS_NAME} exec perl /var/xdrago/proc_num_ctrl.cgi
+    fi
+  done
+}
+
 guest_guard() {
 if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
   touch /var/run/fire.pid
@@ -61,6 +71,7 @@ if [ -e "/vservers" ] \
   && [ -e "/etc/csf/csf.deny" ] \
   && [ ! -e "/var/run/water.pid" ] \
   && [ -e "/usr/sbin/csf" ]; then
+  guest_proc_monitor
   [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 5
   [ ! -e "/var/run/water.pid" ] && guest_guard
