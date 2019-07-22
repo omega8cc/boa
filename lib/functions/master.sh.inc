@@ -445,9 +445,6 @@ upgrade_aegir_master() {
       _THIS_DB_PORT=3306
     fi
     rm -f /opt/tmp/testecho*
-    if [ ! -e "/root/.upstart.cnf" ]; then
-      service cron stop &> /dev/null
-    fi
     usermod -aG users aegir
     _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD" /etc/sudoers 2>&1)
     if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then

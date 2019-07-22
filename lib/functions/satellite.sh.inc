@@ -2531,9 +2531,6 @@ satellite_run_child_b() {
         msg "${_STATUS} A: Switching user and running AegirSetupB..."
       fi
       rm -f /opt/tmp/testecho*
-      if [ ! -e "/root/.upstart.cnf" ]; then
-        service cron stop &> /dev/null
-      fi
       _THIS_HM_ROOT=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
         | grep "root'" \
         | cut -d: -f2 \
@@ -2692,9 +2689,6 @@ satellite_run_child_c() {
       if prompt_yes_no "Do you want to install some ready to use platforms?"; then
         true
         _DIST_INSTALL=YES
-        if [ ! -e "/root/.upstart.cnf" ]; then
-          service cron stop &> /dev/null
-        fi
         rm -f /opt/tmp/testecho*
         satellite_create_shared_dirs
         satellite_manage_o_contrib

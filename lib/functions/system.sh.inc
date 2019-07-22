@@ -13,9 +13,6 @@ if_running_as_root_barracuda() {
     rm -rf /tmp/make_tmp*
     rm -f /tmp/pm-updatecode*
     rm -f /tmp/cache.inc*
-    if [ ! -e "/root/.upstart.cnf" ]; then
-      service cron stop &> /dev/null
-    fi
     touch /var/run/boa_run.pid
     mkdir -p ${pthLog}
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
@@ -3811,9 +3808,6 @@ sys_packages_update() {
       rm -f /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
     rm -f /var/lib/mysql/debian-*.flag &> /dev/null
-    if [ ! -e "/root/.upstart.cnf" ]; then
-      service cron stop &> /dev/null
-    fi
     if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       service lfd stop &> /dev/null
       sleep 3

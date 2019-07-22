@@ -809,7 +809,6 @@ install_db_server() {
     _GPG=gpg
   fi
   if [ "${_STATUS}" = "INIT" ]; then
-    service cron stop &> /dev/null
     if [ -e "/usr/sbin/csf" ] \
       && [ -e "/etc/csf/csf.deny" ]; then
       service lfd stop &> /dev/null
@@ -906,7 +905,6 @@ install_db_server() {
       st_runner "apt-get update -qq" &> /dev/null
     fi
     if [ "${_SQL_UPGRADE}" = "YES" ]; then
-      service cron stop &> /dev/null
       if [ -e "/usr/sbin/csf" ] \
         && [ -e "/etc/csf/csf.deny" ]; then
         service lfd stop &> /dev/null
