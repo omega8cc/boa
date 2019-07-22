@@ -1934,6 +1934,8 @@ install_wkhtmltox() {
     if [ "${_WOX_IS}" = "OLD" ] \
       || [ ! -x "/usr/local/bin/wkhtmltopdf" ] \
       || [ ! -x "/usr/local/bin/wkhtmltoimage" ] \
+      || [ ! -f "/usr/bin/wkhtmltopdf" ] \
+      || [ ! -f "/usr/bin/wkhtmltoimage" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       if [ "${_X86_64_TEST}" = "x86_64" ]; then
         SYSTEMARCH="x86_64"
@@ -1967,13 +1969,15 @@ install_wkhtmltox() {
         if [ ! -e "/usr/bin/wkhtmltopdf-0.12.4" ]; then
           mv -f /usr/bin/wkhtmltopdf /usr/bin/wkhtmltopdf-0.12.4 &> /dev/null
         fi
-        ln -sf /usr/local/bin/wkhtmltopdf /usr/bin/wkhtmltopdf
+        rm -f /usr/bin/wkhtmltopdf
+        cp -af /usr/local/bin/wkhtmltopdf /usr/bin/wkhtmltopdf
       fi
       if [ -x "/usr/local/bin/wkhtmltoimage" ]; then
         if [ ! -e "/usr/bin/wkhtmltoimage-0.12.4" ]; then
           mv -f /usr/bin/wkhtmltoimage /usr/bin/wkhtmltoimage-0.12.4 &> /dev/null
         fi
-        ln -sf /usr/local/bin/wkhtmltoimage /usr/bin/wkhtmltoimage
+        rm -f /usr/bin/wkhtmltoimage
+        cp -af /usr/local/bin/wkhtmltoimage /usr/bin/wkhtmltoimage
       fi
       if [ -x "/usr/local/bin/wkhtmltoimage" ] \
         && [ -x "/usr/local/bin/wkhtmltopdf" ]; then

@@ -1208,6 +1208,19 @@ fix_alt() {
   fi
 }
 
+fix_wkhtml() {
+  if [ -x "/usr/local/bin/wkhtmltopdf" ] \
+    && [ ! -f "/usr/bin/wkhtmltopdf" ]; then
+    rm -f /usr/bin/wkhtmltopdf
+    cp -af /usr/local/bin/wkhtmltopdf /usr/bin/wkhtmltopdf
+  fi
+  if [ -x "/usr/local/bin/wkhtmltoimage" ] \
+    && [ ! -f "/usr/bin/wkhtmltoimage" ]; then
+    rm -f /usr/bin/wkhtmltoimage
+    cp -af /usr/local/bin/wkhtmltoimage /usr/bin/wkhtmltoimage
+  fi
+}
+
 fix_eldir() {
   if [ -e "/var/xdrago" ] \
     && [ ! -e "${eldirP}" ]; then
@@ -1736,6 +1749,7 @@ if [ `whoami` = "root" ]; then
   fix_lshell
   fix_tcp
   fix_alt
+  fix_wkhtml
   fix_eldir
   fix_pure_ftpd
   fix_hosting_le
