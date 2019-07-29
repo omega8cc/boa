@@ -2046,6 +2046,8 @@ get_drush_versions() {
   chmod 755 /opt/tools/drush/*/drush/examples/drush.wrapper
   chmod 755 /opt/tools/drush/*/drush/examples/git-bisect.example.sh
   chmod 755 /opt/tools/drush/*/drush/examples/helloworld.script
+  chmod 755 /opt/tools/drush/9/drush/vendor/drush/drush/drush
+  chmod 755 /opt/tools/drush/9/drush/vendor/drush/drush/drush.php
   if [ -x "/opt/tools/drush/7/drush/drush" ]; then
     rm -f /usr/bin/drush7
     ln -s /opt/tools/drush/7/drush/drush /usr/bin/drush7
