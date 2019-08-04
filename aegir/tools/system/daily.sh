@@ -2391,7 +2391,7 @@ cleanup_ghost_drushrc() {
 }
 
 check_update_le_hm_ssl() {
-  exeLe="${User}/tools/le/letsencrypt.sh"
+  exeLe="${User}/tools/le/dehydrated"
   if [ -e "${User}/log/domain.txt" ]; then
     hmFront=$(cat ${User}/log/domain.txt 2>&1)
     hmFront=$(echo -n ${hmFront} | tr -d "\n" 2>&1)
@@ -2415,7 +2415,7 @@ check_update_le_hm_ssl() {
 }
 
 check_update_le_ssl() {
-  exeLe="${User}/tools/le/letsencrypt.sh"
+  exeLe="${User}/tools/le/dehydrated"
   Vht="${User}/config/server_master/nginx/vhost.d/${Dom}"
   if [ -x "${exeLe}" ] && [ -e "${Vht}" ]; then
     _SSL_ON_TEST=$(cat ${Vht} | grep "443 ssl http2" 2>&1)

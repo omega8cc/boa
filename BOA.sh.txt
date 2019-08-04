@@ -68,7 +68,7 @@ hLeP="/var/xdrago/conf/${hLeF}"
 hLeVtF="hosting_le_vhost.drush.inc"
 hLeVtP="/var/xdrago/conf/${hLeVtF}"
 #
-hLeShF="letsencrypt.sh"
+hLeShF="dehydrated"
 hLeShP="/var/xdrago/conf/${hLeShF}"
 
 fix_dns_settings() {

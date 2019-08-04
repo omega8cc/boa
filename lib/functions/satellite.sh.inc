@@ -4421,7 +4421,7 @@ satellite_letsencrypt_vhost_setup() {
   leKeyJ="${leRoot}/tools/le/private_key.json"
   leKeyP="${leRoot}/tools/le/private_key.pem"
   leCrtPath="${leRoot}/certs/${_DOMAIN}"
-  exeLe="${leRoot}/letsencrypt.sh"
+  exeLe="${leRoot}/dehydrated"
   Ssl="/var/aegir/config/server_master/nginx/pre.d/z_${_DOMAIN}_ssl_proxy.conf"
   if [ -e "${leRoot}/.ctrl/ssl-demo-mode.pid" ] \
     && [ -e "${leRoot}/config.sh" ]; then
@@ -5290,12 +5290,12 @@ satellite_child_b_letsencrypt() {
   leKeyJ="${leRoot}/tools/le/private_key.json"
   leKeyP="${leRoot}/tools/le/private_key.pem"
   leCrtPath="${leRoot}/certs/${_DOMAIN}"
-  exeLe="${leRoot}/letsencrypt.sh"
-  pthLe="${_ROOT}/backups/system/letsencrypt.sh"
+  exeLe="${leRoot}/dehydrated"
+  pthLe="${_ROOT}/backups/system/dehydrated"
   mkdir -p ${_ROOT}/backups/system
   chmod 700 ${_ROOT}/backups/system
   rm -f ${_ROOT}/backups/system/letsencrypt*
-  curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/letsencrypt.sh" -o ${pthLe}
+  curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/dehydrated" -o ${pthLe}
   if [ ! -e "${leRoot}" ]; then
     leSetup="YES"
   fi

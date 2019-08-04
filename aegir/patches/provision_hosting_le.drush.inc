@@ -10,7 +10,7 @@ function drush_provision_hosting_le_post_provision_verify() {
     $le_cert = d('@server_master')->aegir_root . "/tools/le/certs";
     $le_acme = d('@server_master')->aegir_root . "/tools/le/.acme-challenges";
     $le_ctrl = d('@server_master')->aegir_root . "/tools/le/.ctrl";
-    $le_exec = d('@server_master')->aegir_root . "/tools/le/letsencrypt.sh";
+    $le_exec = d('@server_master')->aegir_root . "/tools/le/dehydrated";
     $le_conf = d('@server_master')->aegir_root . "/tools/le/config.sh";
     $le_cnfx = d('@server_master')->aegir_root . "/tools/le/config";
     $le_acct = d('@server_master')->aegir_root . "/tools/le/accounts";
@@ -95,8 +95,8 @@ function drush_provision_hosting_le_post_provision_verify() {
     provision_file()->create_dir($le_ctrl, dt('[hosting_le] LE ctrl'), 0711);
 
     if (!provision_file()->exists($le_exec)->status()) {
-      drush_log('[hosting_le] Please upload letsencrypt.sh to ' . $le_exec, 'warning');
-      drush_log('[hosting_le] URL: https://raw.githubusercontent.com/omega8cc/letsencrypt.sh/master/letsencrypt.sh', 'warning');
+      drush_log('[hosting_le] Please upload dehydrated to ' . $le_exec, 'warning');
+      drush_log('[hosting_le] URL: https://raw.githubusercontent.com/omega8cc/dehydrated/master/dehydrated', 'warning');
       return FALSE;
     }
 
