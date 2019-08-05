@@ -695,6 +695,7 @@ update_agents() {
             cp -af ${hLeShP} ${locLeShFile}
             chown ${tUsr}:users ${locLeShFile}
             chmod 0700 ${locLeShFile}
+            su -s /bin/bash - ${tUsr} -c "bash ${locLeShFile} --register --accept-terms"
           fi
         fi
       fi
