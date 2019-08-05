@@ -5359,10 +5359,12 @@ satellite_child_b_letsencrypt() {
       msg "${_STATUS} B: Creating Letsencrypt cert for Hostmaster..."
     fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
+      bash ${exeLe} --register --accept-terms
       bash ${exeLe} -c -d ${_DOMAIN}
     else
       mkdir -p ${_ROOT}/log
-      bash ${exeLe} -c -d ${_DOMAIN} >${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
+      bash ${exeLe} --register --accept-terms >${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
+      bash ${exeLe} -c -d ${_DOMAIN} >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
     fi
   else
     if [ -e "${leCrtPath}/fullchain.pem" ]; then
