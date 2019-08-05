@@ -689,10 +689,13 @@ update_agents() {
           chmod 0644 ${locVhFile}
         fi
         locLeShFile="${dscUsr}/tools/le/${hLeShF}"
-        if [ -e "${locLeShFile}" ] && [ -e "${hLeShP}" ]; then
-          cp -af ${hLeShP} ${locLeShFile}
-          chown ${tUsr}:users ${locLeShFile}
-          chmod 0700 ${locLeShFile}
+        legacyLeShFile="${dscUsr}/tools/le/letsencrypt.sh"
+        if [ -e "${hLeShP}" ]; then
+          if [ -e "${locLeShFile}" ] || [ -e "${legacyLeShFile}" ]; then
+            cp -af ${hLeShP} ${locLeShFile}
+            chown ${tUsr}:users ${locLeShFile}
+            chmod 0700 ${locLeShFile}
+          fi
         fi
       fi
     done
