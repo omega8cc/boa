@@ -15,6 +15,7 @@ function drush_provision_hosting_le_post_provision_verify() {
     $le_cnfx = d('@server_master')->aegir_root . "/tools/le/config";
     $le_acct = d('@server_master')->aegir_root . "/tools/le/accounts";
     $le_hook = d('@server_master')->aegir_root . "/tools/le/letsencrypt-sh-hooks.sh";
+    $cf_hook = d('@server_master')->aegir_root . "/tools/le/hooks/cloudflare/hook.py";
 
     $is_boa = FALSE;
     $is_boa_ctrl = "/data/conf/global.inc";
@@ -53,6 +54,9 @@ function drush_provision_hosting_le_post_provision_verify() {
       drush_log('[hosting_le] This site main SSL name is ' . $main_name);
     }
 
+    $wildcard_ctrl = d('@server_master')->aegir_root . "/static/control/wildcard-enable-" . $main_name . ".info";
+    drush_log('[hosting_le] The optional wildcard flag is ' . $wildcard_ctrl);
+
     $legacy_tls_ctrl = d('@server_master')->aegir_root . "/static/control/tls-legacy-enable-" . $main_name . ".info";
     drush_log('[hosting_le] The optional legacy TLSv1 flag is ' . $legacy_tls_ctrl);
 
@@ -71,6 +75,17 @@ function drush_provision_hosting_le_post_provision_verify() {
     $force_renew = FALSE;
 
     $on_remote_server = !provision_is_local_host(d()->platform->web_server->remote_host);
+  }
+
+  $is_wildcard = FALSE;
+  if (provision_file()->exists($wildcard_ctrl)->status()) {
+    if (provision_file()->exists($cf_hook)->status()) {
+      if (provision_file()->exists($le_cnfx)->status()) {
+        $is_wildcard = TRUE;
+        $main_name = preg_replace('`^www\.`', '', $main_name);
+        $real_name = preg_replace('`^www\.`', '', $real_name);
+      }
+    }
   }
 
   if (d()->type == 'site' &&
@@ -186,8 +201,16 @@ function drush_provision_hosting_le_post_provision_verify() {
       if ($is_boa) {
         if (!empty(d()->aliases)) {
           foreach (d()->aliases as $alias) {
-            if (!preg_match("/\.(?:host8|boa)\.(?:biz|io)$/", $alias)) {
-              $alt_names .= ' --domain ' . str_replace('/', '.', $alias);
+            if ($is_wildcard) {
+              if (!preg_match("/\.(?:host8|boa)\.(?:biz|io)$/", $alias) &&
+                !strpos($alias, $main_name)) {
+                $alt_names .= ' --domain ' . str_replace('/', '.', $alias);
+              }
+            }
+            else {
+              if (!preg_match("/\.(?:host8|boa)\.(?:biz|io)$/", $alias)) {
+                $alt_names .= ' --domain ' . str_replace('/', '.', $alias);
+              }
             }
           }
         }
@@ -253,24 +276,49 @@ function drush_provision_hosting_le_post_provision_verify() {
       drush_log("[hosting_le] You could then replace existing cert with any other cert since it will be left here as-is forever.", 'info');
       drush_log("[hosting_le] NOTE: On hosted Aegir service you need to contact your host support for further assistance.", 'info');
       $output = '';
-      $le_options = '--cron --ipv4';
+      $le_options = "--cron --ipv4";
+      $le_challenge = " --domain " . $real_name . " --challenge dns-01 --hook 'hooks/cloudflare/hook.py'";
       if ($on_remote_server) {
-        $le_options .= ' --ipv4 --hook ' . $le_hook;
+        $le_options .= " --ipv4 --hook " . $le_hook;
       }
       if ($force_renew) {
         if ($no_alt_names || empty($alt_names)) {
-          exec("/bin/bash " . $le_exec . " $le_options --force --domain " . $main_name. ' 2>&1', $output);
+          if ($is_wildcard) {
+            $le_options .= " --alias " . $real_name . " --domain *." . $real_name . $le_challenge;
+            exec("/bin/bash " . $le_exec . $le_options . " --force 2>&1", $output);
+          }
+          else {
+            exec("/bin/bash " . $le_exec . $le_options . " --force --domain " . $main_name . ' 2>&1', $output);
+          }
         }
         else {
-          exec("/bin/bash " . $le_exec . " $le_options --force --domain " . $real_name . $alt_names . ' 2>&1', $output);
+          if ($is_wildcard) {
+            $le_options .= " --alias " . $real_name . " --domain *." . $real_name . $alt_names . $le_challenge;
+            exec("/bin/bash " . $le_exec . $le_options . " --force 2>&1", $output);
+          }
+          else {
+            exec("/bin/bash " . $le_exec . $le_options . " --force --domain " . $real_name . $alt_names . ' 2>&1', $output);
+          }
         }
       }
       else {
         if ($no_alt_names || empty($alt_names)) {
-          exec("/bin/bash " . $le_exec . " $le_options --domain " . $main_name . ' 2>&1', $output);
+          if ($is_wildcard) {
+            $le_options .= " --alias " . $real_name . " --domain *." . $real_name . $le_challenge;
+            exec("/bin/bash " . $le_exec . $le_options . " 2>&1", $output);
+          }
+          else {
+            exec("/bin/bash " . $le_exec . $le_options . " --domain " . $main_name . ' 2>&1', $output);
+          }
         }
         else {
-          exec("/bin/bash " . $le_exec . " $le_options --domain " . $real_name . $alt_names . ' 2>&1', $output);
+          if ($is_wildcard) {
+            $le_options .= " --alias " . $real_name . " --domain *." . $real_name . $alt_names . $le_challenge;
+            exec("/bin/bash " . $le_exec . $le_options . " 2>&1", $output);
+          }
+          else {
+            exec("/bin/bash " . $le_exec . $le_options . " --domain " . $real_name . $alt_names . ' 2>&1', $output);
+          }
         }
       }
       $acme_result = implode(' ', $output);

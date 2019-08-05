@@ -2431,21 +2431,52 @@ check_update_le_ssl() {
           | sed "s/  / /g; s/  / /g; s/  / /g" \
           | sort | uniq`
         for alias in `echo "${siteAliases}"`; do
-          echo "--domain $alias"
-          if [ -z "${useAliases}" ] && [ ! -z "${alias}" ]; then
-            useAliases="--domain $alias"
+          if [ -e "${User}/static/control/wildcard-enable-${Dom}.info" ]; then
+            Dom=$(echo ${Dom} | sed 's/^www.//g' 2>&1)
+            if [ -z "${useAliases}" ] \
+              && [ ! -z "${alias}" ] \
+              && [[ ! "${alias}" =~ "${Dom}" ]]; then
+              useAliases="--domain $alias"
+              echo "--domain $alias"
+            else
+              if [ ! -z "${alias}" ] \
+                && [[ ! "${alias}" =~ "${Dom}" ]]; then
+                useAliases="${useAliases} --domain $alias"
+                echo "--domain $alias"
+              fi
+            fi
           else
-            if [ ! -z "${alias}" ]; then
-              useAliases="${useAliases} --domain $alias"
+            echo "--domain $alias"
+            if [ -z "${useAliases}" ] && [ ! -z "${alias}" ]; then
+              useAliases="--domain $alias"
+            else
+              if [ ! -z "${alias}" ]; then
+                useAliases="${useAliases} --domain $alias"
+              fi
             fi
           fi
         done
-        echo "ALL is --domain ${Dom} ${useAliases}"
+        dhArgs="--domain ${Dom} ${useAliases}"
+        if [ -e "${User}/static/control/wildcard-enable-${Dom}.info" ]; then
+          Dom=$(echo ${Dom} | sed 's/^www.//g' 2>&1)
+          echo "--domain *.${Dom}"
+          if [ ! -e "${User}/tools/le/hooks/cloudflare/hook.py" ]; then
+            mkdir -p ${User}/tools/le/hooks
+            cd ${User}/tools/le
+            git clone https://github.com/kappataumu/letsencrypt-cloudflare-hook hooks/cloudflare
+            pip install -r hooks/cloudflare/requirements.txt
+          fi
+          if [ -e "${User}/tools/le/hooks/cloudflare/hook.py" ]; then
+            if [ -e "${User}/tools/le/config" ]; then
+              dhArgs="--alias ${Dom} --domain *.${Dom} --domain ${Dom} ${useAliases} --challenge dns-01 --hook 'hooks/cloudflare/hook.py'"
+            fi
+          fi
+        fi
+        echo "dhArgs is ${dhArgs}"
         su -s /bin/bash - ${_HM_U} -c "${exeLe} \
           --cron \
           --ipv4 \
-          --domain ${Dom} \
-          ${useAliases}"
+          ${dhArgs}"
         echo ${_MOMENT} >> /var/xdrago/log/le/${Dom}
         sleep 1
       fi
