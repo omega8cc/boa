@@ -2846,6 +2846,7 @@ purge_cruft_machine() {
   find ${User}/tmp/* \
     -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
 
+  chown -R ${_HM_U}:users ${User}/tools/le
   mkdir -p ${User}/static/trash
   chown ${_HM_U}.ftp:users ${User}/static/trash &> /dev/null
   find ${User}/static/trash/* \
