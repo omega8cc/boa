@@ -277,7 +277,7 @@ function drush_provision_hosting_le_post_provision_verify() {
       drush_log("[hosting_le] NOTE: On hosted Aegir service you need to contact your host support for further assistance.", 'info');
       $output = '';
       $le_options = " --cron --ipv4 ";
-      $le_challenge = " --domain " . $real_name . " --challenge dns-01 --hook 'hooks/cloudflare/hook.py'";
+      $le_challenge = " --domain " . $real_name . " --challenge dns-01 --hook " . $cf_hook;
       if ($on_remote_server) {
         $le_options .= " --ipv4 --hook " . $le_hook;
       }

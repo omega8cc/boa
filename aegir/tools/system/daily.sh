@@ -2468,7 +2468,8 @@ check_update_le_ssl() {
           fi
           if [ -e "${User}/tools/le/hooks/cloudflare/hook.py" ]; then
             if [ -e "${User}/tools/le/config" ]; then
-              dhArgs="--alias ${Dom} --domain *.${Dom} --domain ${Dom} ${useAliases} --challenge dns-01 --hook 'hooks/cloudflare/hook.py'"
+              dhArgs="--alias ${Dom} --domain *.${Dom} --domain ${Dom} ${useAliases}"
+              dhArgs=" ${dhArgs} --challenge dns-01 --hook '${User}/tools/le/hooks/cloudflare/hook.py'"
             fi
           fi
         fi
