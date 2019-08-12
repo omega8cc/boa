@@ -1936,6 +1936,8 @@ install_wkhtmltox() {
       || [ ! -x "/usr/local/bin/wkhtmltoimage" ] \
       || [ ! -f "/usr/bin/wkhtmltopdf" ] \
       || [ ! -f "/usr/bin/wkhtmltoimage" ] \
+      || [ -L "/usr/bin/wkhtmltopdf" ] \
+      || [ -L "/usr/bin/wkhtmltoimage" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       if [ "${_X86_64_TEST}" = "x86_64" ]; then
         SYSTEMARCH="x86_64"
