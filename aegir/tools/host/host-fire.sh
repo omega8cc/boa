@@ -3,6 +3,24 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
+csf_flood_guard() {
+  if [ `ps aux | grep -v "grep" | grep --count "csf"` -gt "2" ]; then
+    echo "$(date 2>&1) Too many csf processes killed" >> \
+      /var/log/csf-count.kill.log
+    kill -9 $(ps aux | grep '[c]sf' | awk '{print $2}') &> /dev/null
+    csf -tf
+    csf -df
+  fi
+  if [ `ps aux | grep -v "grep" | grep --count "fire.sh"` -gt "4" ]; then
+    echo "$(date 2>&1) Too many fire.sh processes killed" >> \
+      /var/log/fire-count.kill.log
+    csf -tf
+    csf -df
+    kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
+  fi
+}
+csf_flood_guard
+
 guest_proc_monitor() {
   for i in `dir -d /vservers/*`; do
     _THIS_VM=`echo $i | cut -d'/' -f3 | awk '{ print $1}'`
