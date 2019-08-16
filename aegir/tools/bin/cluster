@@ -1062,7 +1062,7 @@ connect_timeout         = 60
 join_buffer_size        = 4M
 key_buffer_size         = 1024M
 log_warnings            = 2
-max_allowed_packet      = 32M
+max_allowed_packet      = 64M
 max_connect_errors      = 300
 max_connections         = 300
 max_user_connections    = 150
@@ -1130,7 +1130,7 @@ syslog
 
 [mysqldump]
 quick
-max_allowed_packet      = 32M
+max_allowed_packet      = 64M
 quote-names
 
 [mysql]

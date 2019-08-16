@@ -1198,7 +1198,7 @@ tune_memory_limits() {
     else
       _USE_PHP=2048
       _USE_OPC=2048
-      _QCE_SQL=32M
+      _QCE_SQL=64M
       _RND_SQL=2M
       _JBF_SQL=2M
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
@@ -1216,7 +1216,7 @@ tune_memory_limits() {
   else
     _USE_PHP="${_USE}"
     _USE_OPC="${_USE}"
-    _QCE_SQL=32M
+    _QCE_SQL=64M
     _RND_SQL=1M
     _JBF_SQL=1M
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
