@@ -4045,6 +4045,7 @@ sys_packages_install() {
               gnupg \
               gnupg2 \
               htop \
+              icu-devtools \
               ifstat \
               ipset \
               iptables \
@@ -4068,6 +4069,7 @@ sys_packages_install() {
               libgeoip1 \
               libgmp3-dev \
               libhtml-template-perl \
+              libicu-dev \
               libjpeg-dev \
               libjpeg62 \
               libnet-daemon-perl \
