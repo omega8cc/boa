@@ -974,6 +974,7 @@ install_php_multi() {
                 --enable-calendar \
                 --enable-exif \
                 --enable-ftp \
+                --enable-intl \
                 --enable-mbstring \
                 --enable-opcache \
                 --enable-pcntl \
@@ -1014,6 +1015,7 @@ install_php_multi() {
                 --enable-calendar \
                 --enable-exif \
                 --enable-ftp \
+                --enable-intl \
                 --enable-mbstring \
                 --enable-opcache \
                 --enable-pcntl \
