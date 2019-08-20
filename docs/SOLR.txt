@@ -103,12 +103,13 @@ level via INI files, check our docs at https://omega8.cc/node/293
         for your information to know how to configure Solr in the given site.
 
         It is important, because once you clone the site, the new clone will
-        receive its own Solr core the next morning, so its solr.php file will be
+        receive its own Solr core in a few minutes, so its solr.php file will be
         populated with unique, new credentials to use, which will overwrite the
         solr.php file copied automatically during Clone task. It is the
         configuration inside the site admin area which tells Drupal which Solr
         core to use, and you need to update it on the cloned site, of course,
-        once the new core is created.
+        once the new core is created. It helps that cron is not enabled on the
+        cloned site by default, so it will not overwrite original site index.
 
   NOTE on ERRORS:
 
