@@ -537,6 +537,9 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
       pxyCmd="UPDATE global_variables SET variable_value='${_MONITOR_PASSWORD}' WHERE variable_name='mysql-monitor_password';"
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
       sleep 1
+      pxyCmd="UPDATE global_variables SET variable_value=67108864 WHERE variable_name='mysql-max_allowed_packet';"
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
+      sleep 1
 
       echo "Load ProxySQL variables to runtime and save to disk..."
       pxyCmd="LOAD MYSQL VARIABLES TO RUNTIME;"
