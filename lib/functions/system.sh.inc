@@ -2021,14 +2021,18 @@ get_drush_versions() {
       rm -rf /opt/tools/drush/9/*
       mkdir -p /opt/tools/drush/9/drush/vendor
       rm -f -r /opt/tools/drush/*/drush/cache/*
-      COMPOSER_HOME=/opt/tools/drush/9/drush \
-      COMPOSER_BIN_DIR=/usr/local/bin \
-      COMPOSER_VENDOR_DIR=/opt/tools/drush/9/drush/vendor \
-      composer global require drush/drush:^9 &> /dev/null
-      rm -f -r /opt/tools/drush/*/drush/cache/*
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Drush ${_DRUSH9_VRN} installation complete"
+        COMPOSER_HOME=/opt/tools/drush/9/drush \
+        COMPOSER_BIN_DIR=/usr/local/bin \
+        COMPOSER_VENDOR_DIR=/opt/tools/drush/9/drush/vendor \
+        composer global require drush/drush:^9
+      else
+        COMPOSER_HOME=/opt/tools/drush/9/drush \
+        COMPOSER_BIN_DIR=/usr/local/bin \
+        COMPOSER_VENDOR_DIR=/opt/tools/drush/9/drush/vendor \
+        composer global require drush/drush:^9 &> /dev/null
       fi
+      rm -f -r /opt/tools/drush/*/drush/cache/*
     fi
   else
     rm -rf /opt/tools/drush/9/*
@@ -2061,8 +2065,18 @@ get_drush_versions() {
     ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush
   fi
   if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+    rm -f /usr/local/bin/dcg
+    rm -f /usr/local/bin/drush
+    rm -f /usr/local/bin/php-parse
+    rm -f /usr/local/bin/psysh
+    rm -f /usr/local/bin/release
+    rm -f /usr/local/bin/robo
+    rm -f /usr/local/bin/var-dump-server
     rm -f /usr/bin/drush9
     ln -s /opt/tools/drush/9/drush/vendor/drush/drush/drush /usr/bin/drush9
+    msg "INFO: Drush ${_DRUSH9_VRN} installation complete"
+  else
+    msg "FAIL: Drush ${_DRUSH9_VRN} installation failed!"
   fi
   if [ -e "/opt/tools/drush/6" ]; then
     rm -rf /opt/tools/drush/6
