@@ -3137,6 +3137,7 @@ fi
 #
 if [ "${_VMFAMILY}" = "VS" ]; then
   _MODULES_FORCE="automated_cron \
+    backup_migrate \
     coder \
     cookie_cache_bypass \
     css_gzip hacked \
@@ -3160,11 +3161,13 @@ if [ "${_DOW}" = "7" ]; then
   _MODULES_ON_SIX="path_alias_cache \
     robotstxt"
   _MODULES_OFF_EIGHT="automated_cron \
+    backup_migrate \
     dblog \
     syslog \
     simpletest \
     update"
-  _MODULES_OFF_SEVEN="coder \
+  _MODULES_OFF_SEVEN="backup_migrate \
+    coder \
     dblog \
     devel \
     filefield_nginx_progress \
@@ -3182,7 +3185,8 @@ if [ "${_DOW}" = "7" ]; then
     varnish \
     watchdog_live \
     xhprof"
-  _MODULES_OFF_SIX="coder \
+  _MODULES_OFF_SIX="backup_migrate \
+    coder \
     cookie_cache_bypass \
     css_gzip \
     dblog \
@@ -3208,9 +3212,9 @@ else
   _MODULES_ON_EIGHT="robotstxt"
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
-  _MODULES_OFF_EIGHT="dblog syslog update"
-  _MODULES_OFF_SEVEN="dblog syslog update"
-  _MODULES_OFF_SIX="dblog syslog update"
+  _MODULES_OFF_EIGHT="dblog syslog update backup_migrate automated_cron"
+  _MODULES_OFF_SEVEN="dblog syslog update backup_migrate"
+  _MODULES_OFF_SIX="dblog syslog update backup_migrate"
 fi
 #
 _CTRL_TPL_FORCE_UPDATE=YES
