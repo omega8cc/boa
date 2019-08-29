@@ -1884,6 +1884,7 @@ manage_site_drush_alias_mirror() {
     rm -rf ${dscUsr}/config/self
   fi
 
+  isAliasUpdate=NO
   for Alias in `find ${pthParentUsr}/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
     AliasName=$(echo "$Alias" | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
@@ -1916,11 +1917,13 @@ manage_site_drush_alias_mirror() {
           if [ ! -e "${pthAliasCopy}" ]; then
             cp -af ${pthAliasMain} ${pthAliasCopy}
             chmod 440 ${pthAliasCopy}
+            isAliasUpdate=YES
           else
             _DIFF_T=$(diff -w -B ${pthAliasCopy} ${pthAliasMain} 2>&1)
             if [ ! -z "${_DIFF_T}" ]; then
               cp -af ${pthAliasMain} ${pthAliasCopy}
               chmod 440 ${pthAliasCopy}
+              isAliasUpdate=YES
             fi
           fi
         else
@@ -1930,6 +1933,15 @@ manage_site_drush_alias_mirror() {
       fi
     fi
   done
+  if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+    if [ "${isAliasUpdate}" = "YES" ] \
+      || [ ! -e "/home/${_USER}.ftp/.drush/sites/.checksums" ]; then
+      su -s /bin/bash - ${_USER}.ftp -c "rm -f ~/.drush/sites/*.yml"
+      su -s /bin/bash - ${_USER}.ftp -c "rm -f ~/.drush/sites/.checksums/*.md5"
+      su -s /bin/bash - ${_USER}.ftp -c "drush9 core:init --yes" &> /dev/null
+      su -s /bin/bash - ${_USER}.ftp -c "drush9 site:alias-convert ~/.drush/sites --yes" &> /dev/null
+    fi
+  fi
 }
 #
 # Manage Primary Users.
