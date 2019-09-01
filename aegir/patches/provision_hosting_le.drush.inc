@@ -30,44 +30,44 @@ function drush_provision_hosting_le_post_provision_verify() {
     }
 
     if (d()->redirection) {
-      drush_log('[hosting_le] This sitename redirection target is ' . d()->redirection);
+      drush_log('[hosting_le] This sitename redirection target is ' . d()->redirection, 'info');
       $main_name = d()->redirection;
       if ($is_boa) {
         $cert_dir = $le_cert . "/" . $real_name;
       }
       else {
         $cert_dir = $le_cert . "/" . $main_name;
-        drush_log('[hosting_le] LE SSL certificate will be valid only for ' . d()->redirection);
+        drush_log('[hosting_le] LE SSL certificate will be valid only for ' . d()->redirection, 'info');
       }
     }
     else {
       $cert_dir = $le_cert . "/" . $main_name;
     }
 
-    drush_log('[hosting_le] This cert_dir is ' . $cert_dir);
+    drush_log('[hosting_le] This cert_dir is ' . $cert_dir, 'info');
 
     if ($is_boa) {
-      drush_log('[hosting_le] This site main SSL name is ' . $real_name);
-      drush_log('[hosting_le] BOA system detected, congrats!');
+      drush_log('[hosting_le] This site main SSL name is ' . $real_name, 'info');
+      drush_log('[hosting_le] BOA system detected, congrats!', 'info');
     }
     else {
-      drush_log('[hosting_le] This site main SSL name is ' . $main_name);
+      drush_log('[hosting_le] This site main SSL name is ' . $main_name, 'info');
     }
 
     $wildcard_ctrl = d('@server_master')->aegir_root . "/static/control/wildcard-enable-" . $main_name . ".info";
-    drush_log('[hosting_le] The optional wildcard flag is ' . $wildcard_ctrl);
+    drush_log('[hosting_le] The optional wildcard flag is ' . $wildcard_ctrl, 'info');
 
     $legacy_tls_ctrl = d('@server_master')->aegir_root . "/static/control/tls-legacy-enable-" . $main_name . ".info";
-    drush_log('[hosting_le] The optional legacy TLSv1 flag is ' . $legacy_tls_ctrl);
+    drush_log('[hosting_le] The optional legacy TLSv1 flag is ' . $legacy_tls_ctrl, 'info');
 
     $no_san_ctrl = d('@server_master')->aegir_root . "/static/control/ssl-no-san-" . $main_name . ".info";
-    drush_log('[hosting_le] The optional no-SAN flag is ' . $no_san_ctrl);
+    drush_log('[hosting_le] The optional no-SAN flag is ' . $no_san_ctrl, 'info');
 
     $immutable = $le_ctrl . "/dont-overwrite-" . $main_name . ".pid";
-    drush_log('[hosting_le] The optional immutable flag is ' . $immutable);
+    drush_log('[hosting_le] The optional immutable flag is ' . $immutable, 'info');
 
     $demo_mode_ctrl = $le_ctrl . "/ssl-demo-mode.pid";
-    drush_log('[hosting_le] The optional demo flag is ' . $demo_mode_ctrl);
+    drush_log('[hosting_le] The optional demo flag is ' . $demo_mode_ctrl, 'info');
 
     $site_mode_demo_ctrl = $le_ctrl . "/demo-" . $main_name . ".pid";
     $site_mode_live_ctrl = $le_ctrl . "/live-" . $main_name . ".pid";
@@ -94,11 +94,11 @@ function drush_provision_hosting_le_post_provision_verify() {
     if (file_exists($cert_dir)) {
       exec("/bin/bash " . $le_exec . " --cleanup", $output_b);
       $acme_result_b = implode(' ', $output_b);
-      drush_log('[hosting_le] ACME Cleanup Output: ' . $acme_result_b);
+      drush_log('[hosting_le] ACME Cleanup Output: ' . $acme_result_b, 'info');
 
       exec("symlinks -dr " . $cert_dir, $output_c);
       $acme_result_c = implode(' ', $output_c);
-      drush_log('[hosting_le] ACME Cleanup Symlinks: ' . $acme_result_c);
+      drush_log('[hosting_le] ACME Cleanup Symlinks: ' . $acme_result_c, 'info');
     }
   }
   elseif (d()->type == 'site' &&
@@ -125,7 +125,7 @@ function drush_provision_hosting_le_post_provision_verify() {
           preg_match("/\.(?:dev|devel|temp|tmp|temporary)\./", $main_name) ||
           preg_match("/\.(?:test|testing|stage|staging)\./", $main_name)
          ) {
-        drush_log('[hosting_le] Skipping LE setup for ' . $main_name);
+        drush_log('[hosting_le] Skipping LE setup for ' . $main_name, 'info');
         return FALSE;
       }
     }
@@ -142,11 +142,11 @@ function drush_provision_hosting_le_post_provision_verify() {
         copy($le_conf, $le_cnfx);
 
         if (provision_file()->exists($le_acct)->status()) {
-          drush_log('[hosting_le] Demo LE account will be created.');
+          drush_log('[hosting_le] Demo LE account will be created.', 'info');
           rename($le_acct, $le_acct . "-live");
         }
       }
-      drush_log('[hosting_le] Demo LE mode active. No real LE certs will be generated.');
+      drush_log('[hosting_le] Demo LE mode active. No real LE certs will be generated.', 'info');
       $demo_mode = TRUE;
     }
     else {
@@ -156,9 +156,9 @@ function drush_provision_hosting_le_post_provision_verify() {
         if (provision_file()->exists($le_acct)->status()) {
           rename($le_acct, $le_acct . "-demo");
         }
-        drush_log('[hosting_le] Live LE account will be registered.');
+        drush_log('[hosting_le] Live LE account will be registered.', 'info');
       }
-      drush_log('[hosting_le] Live LE mode active. Real LE certs will be generated.');
+      drush_log('[hosting_le] Live LE mode active. Real LE certs will be generated.', 'info');
       $demo_mode = FALSE;
     }
 
@@ -166,7 +166,7 @@ function drush_provision_hosting_le_post_provision_verify() {
       if (file_exists($site_mode_live_ctrl) || !file_exists($site_mode_demo_ctrl)) {
         unlink($site_mode_live_ctrl);
         $force_renew = TRUE;
-        drush_log('[hosting_le] Forcing DEMO certificate renew for ' . $main_name);
+        drush_log('[hosting_le] Forcing DEMO certificate renew for ' . $main_name, 'info');
       }
       if (!file_exists($site_mode_demo_ctrl)) {
         provision_file()->file_put_contents($site_mode_demo_ctrl, $main_name)
@@ -178,7 +178,7 @@ function drush_provision_hosting_le_post_provision_verify() {
       if (file_exists($site_mode_demo_ctrl) || !file_exists($site_mode_live_ctrl)) {
         @unlink($site_mode_demo_ctrl);
         $force_renew = TRUE;
-        drush_log('[hosting_le] Forcing LIVE certificate renew for ' . $main_name);
+        drush_log('[hosting_le] Forcing LIVE certificate renew for ' . $main_name, 'info');
       }
       if (!file_exists($site_mode_live_ctrl)) {
         provision_file()->file_put_contents($site_mode_live_ctrl, $main_name)
@@ -190,11 +190,11 @@ function drush_provision_hosting_le_post_provision_verify() {
     // WIP: needed after certs deleted
     // $force_renew = TRUE;
 
-    drush_log('[hosting_le] LE certificate for ' . $main_name);
+    drush_log('[hosting_le] LE certificate for ' . $main_name, 'info');
 
     if (provision_file()->exists($no_san_ctrl)->status()) {
       $no_alt_names = TRUE;
-      drush_log('[hosting_le] SSL no-SAN mode ctrl file detected for ' . $main_name);
+      drush_log('[hosting_le] SSL no-SAN mode ctrl file detected for ' . $main_name, 'info');
     }
     else {
       $no_alt_names = FALSE;
@@ -221,7 +221,7 @@ function drush_provision_hosting_le_post_provision_verify() {
           $alt_names = ' --domain ' . $alt_names;
         }
       }
-      drush_log('[hosting_le] ALT names:' . $alt_names);
+      drush_log('[hosting_le] ALT names:' . $alt_names, 'info');
     }
 
     $web_server = d()->platform->web_server;
@@ -245,19 +245,19 @@ function drush_provision_hosting_le_post_provision_verify() {
       }
 
       $redirect_result = implode(' ', $grep_output);
-      drush_log('[hosting_le] Redirect check result for ' . $main_name . ' : ' . $redirect_result);
+      drush_log('[hosting_le] Redirect check result for ' . $main_name . ' : ' . $redirect_result, 'info');
 
       if ($redirect_result && !$no_alt_names && !$is_boa) {
         drush_log("[hosting_le] Aliases redirection must be disabled if all aliases are expected to be listed as SAN names.", 'info');
         drush_log("[hosting_le] The alternative is to disable SAN mode for this site with empty ctrl file: " . $no_san_ctrl, 'info');
-        drush_log('[hosting_le] Forcing no-SAN-mode for ' . $main_name);
+        drush_log('[hosting_le] Forcing no-SAN-mode for ' . $main_name, 'info');
         $no_alt_names = TRUE;
       }
     }
     else {
       drush_log("[hosting_le] The site's vhost must already exist, or the LE agent will not be able to proceed.", 'warning');
-      drush_log('[hosting_le] Path to vhost: ' . $site_vhost);
-      drush_log('[hosting_le] Skipping LE setup for ' . $main_name);
+      drush_log('[hosting_le] Path to vhost: ' . $site_vhost, 'info');
+      drush_log('[hosting_le] Skipping LE setup for ' . $main_name, 'info');
       return FALSE;
     }
 
@@ -322,7 +322,7 @@ function drush_provision_hosting_le_post_provision_verify() {
         }
       }
       $acme_result = implode(' ', $output);
-      drush_log('[hosting_le] ACME Output: ' . $acme_result);
+      drush_log("[hosting_le] ACME Output: " . $acme_result, 'info');
       if (!provision_file()->exists($cert_dir)->status()) {
         $needs_update = FALSE;
         drush_log("[hosting_le] Hmm.. For some reason cert_dir doesn't exist:  " . $cert_dir, 'info');
@@ -374,17 +374,17 @@ function drush_provision_hosting_le_post_provision_verify() {
 
       exec("/bin/bash " . $le_exec . " --cleanup", $output_clean);
       $acme_result_clean = implode(' ', $output_clean);
-      drush_log('[hosting_le] ACME Cleanup Output: ' . $acme_result_clean);
+      drush_log('[hosting_le] ACME Cleanup Output: ' . $acme_result_clean, 'info');
 
       $ssl_symlinks[] = d('@server_master')->ssld_path . "/" . $real_name;
       $ssl_symlinks[] = $web_server->http_ssld_path . "/" . $real_name;
 
       foreach ($ssl_symlinks as $symlink) {
         if (provision_file()->exists($symlink)->status()) {
-          drush_log('[hosting_le] File exists: ' . $symlink);
+          drush_log('[hosting_le] File exists: ' . $symlink, 'info');
 
           if (!is_link($symlink)) {
-            drush_log('[hosting_le] Moving original directory out of the way: ' . $symlink);
+            drush_log('[hosting_le] Moving original directory out of the way: ' . $symlink, 'info');
 
             // This will overwrite symlink.bak if necessary, so we don't end up
             // with dozens of backups of unused certificates.
@@ -396,7 +396,7 @@ function drush_provision_hosting_le_post_provision_verify() {
           }
         }
 
-        drush_log('[hosting_le] Creating symlink at ' . $symlink);
+        drush_log('[hosting_le] Creating symlink at ' . $symlink, 'info');
 
         if (symlink($cert_dir, $symlink)) {
           drush_log('[hosting_le] Symlinked cert directory to ' . $symlink, 'success');
@@ -406,7 +406,7 @@ function drush_provision_hosting_le_post_provision_verify() {
         }
       }
 
-      drush_log('[hosting_le] Replacing openssl symlinks.');
+      drush_log('[hosting_le] Replacing openssl symlinks.', 'info');
 
       $filenames = array(
         'openssl.crt' => 'cert.pem',
@@ -444,7 +444,7 @@ function drush_provision_hosting_le_post_provision_verify() {
         // We will not run the secondary Verify if pid file doesn't exist,
         // to avoid verify-inside-verify loop which could overload the system.
         if (provision_file()->exists($pid)->status()) {
-          drush_log('[hosting_le] Running Verify again to reload web server once openssl_chain.crt is present in the vhost');
+          drush_log('[hosting_le] Running Verify again to reload web server once openssl_chain.crt is present in the vhost', 'info');
           $local_uri_verify = '@' . $real_name;
           provision_backend_invoke($local_uri_verify, 'provision-verify');
           // We could run it via frontend but it is not needed currently.
@@ -453,7 +453,7 @@ function drush_provision_hosting_le_post_provision_verify() {
         }
       }
 
-      drush_log('[hosting_le] Restarting webserver');
+      drush_log('[hosting_le] Restarting webserver', 'info');
       $web_server->restart();
     }
   }
