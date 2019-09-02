@@ -1992,30 +1992,42 @@ install_wkhtmltox() {
 }
 
 #
-# Install or update Drush versions.
-get_drush_versions() {
-  msg "INFO: Installing extra Drush versions..."
-  ###--------------------###
-  mkdir -p /opt/tools/drush/{7,8,9}
-  chown -R root:root /opt/tools
-  rm -rf /opt/tools/drush/7/*
-  cd /opt/tools/drush/7/
-  get_dev_ext "drush-${_DRUSH7_VRN}.tar.gz"
-  cd /opt/tools/drush/7/drush/
-  rm -rf /opt/tools/drush/7/drush/vendor
-  get_dev_ext "vendor-${_DRUSH7_VRN}.tar.gz"
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Drush ${_DRUSH7_VRN} installation complete"
+# Clean Drush 9.
+clean_drush_nine() {
+  rm -f /usr/local/bin/dcg
+  rm -f /usr/local/bin/drush
+  rm -f /usr/local/bin/php-parse
+  rm -f /usr/local/bin/psysh
+  rm -f /usr/local/bin/release
+  rm -f /usr/local/bin/robo
+  rm -f /usr/local/bin/var-dump-server
+  rm -f /usr/bin/drush9
+  ln -s /opt/tools/drush/9/drush/vendor/drush/drush/drush /usr/bin/drush9
+  msg "INFO: Drush ${_DRUSH9_VRN} installation complete"
+}
+
+#
+# Set Drush permissions.
+set_drush_perm() {
+  find /opt/tools -type d -exec chmod 0755 {} \; &> /dev/null
+  find /opt/tools -type f -exec chmod 0644 {} \; &> /dev/null
+  chmod 755 /opt/tools/drush/*/drush/drush
+  chmod 755 /opt/tools/drush/*/drush/drush.complete.sh
+  chmod 755 /opt/tools/drush/*/drush/drush.launcher
+  chmod 755 /opt/tools/drush/*/drush/drush.php
+  chmod 755 /opt/tools/drush/*/drush/unish.sh
+  chmod 755 /opt/tools/drush/*/drush/examples/drush.wrapper
+  chmod 755 /opt/tools/drush/*/drush/examples/git-bisect.example.sh
+  chmod 755 /opt/tools/drush/*/drush/examples/helloworld.script
+  if [ -e "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+    chmod 755 /opt/tools/drush/9/drush/vendor/drush/drush/drush
+    chmod 755 /opt/tools/drush/9/drush/vendor/drush/drush/drush.php
   fi
-  rm -rf /opt/tools/drush/8/*
-  cd /opt/tools/drush/8/
-  get_dev_ext "drush-${_DRUSH8_VRN}.tar.gz"
-  cd /opt/tools/drush/8/drush/
-  rm -rf /opt/tools/drush/8/drush/vendor
-  get_dev_ext "vendor-${_DRUSH8_VRN}.tar.gz"
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Drush ${_DRUSH8_VRN} installation complete"
-  fi
+}
+
+#
+# Install or update Drush 9.
+get_drush_nine() {
   if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
     if [ -x "/usr/local/bin/composer" ]; then
       rm -rf /opt/tools/drush/9/*
@@ -2042,18 +2054,35 @@ get_drush_versions() {
       msg "INFO: Drush ${_DRUSH9_VRN} installation complete"
     fi
   fi
-  find /opt/tools -type d -exec chmod 0755 {} \; &> /dev/null
-  find /opt/tools -type f -exec chmod 0644 {} \; &> /dev/null
-  chmod 755 /opt/tools/drush/*/drush/drush
-  chmod 755 /opt/tools/drush/*/drush/drush.complete.sh
-  chmod 755 /opt/tools/drush/*/drush/drush.launcher
-  chmod 755 /opt/tools/drush/*/drush/drush.php
-  chmod 755 /opt/tools/drush/*/drush/unish.sh
-  chmod 755 /opt/tools/drush/*/drush/examples/drush.wrapper
-  chmod 755 /opt/tools/drush/*/drush/examples/git-bisect.example.sh
-  chmod 755 /opt/tools/drush/*/drush/examples/helloworld.script
-  chmod 755 /opt/tools/drush/9/drush/vendor/drush/drush/drush
-  chmod 755 /opt/tools/drush/9/drush/vendor/drush/drush/drush.php
+}
+
+#
+# Install or update Drush versions.
+get_drush_versions() {
+  msg "INFO: Installing extra Drush versions..."
+  ###--------------------###
+  mkdir -p /opt/tools/drush/{7,8,9}
+  chown -R root:root /opt/tools
+  rm -rf /opt/tools/drush/7/*
+  cd /opt/tools/drush/7/
+  get_dev_ext "drush-${_DRUSH7_VRN}.tar.gz"
+  cd /opt/tools/drush/7/drush/
+  rm -rf /opt/tools/drush/7/drush/vendor
+  get_dev_ext "vendor-${_DRUSH7_VRN}.tar.gz"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Drush ${_DRUSH7_VRN} installation complete"
+  fi
+  rm -rf /opt/tools/drush/8/*
+  cd /opt/tools/drush/8/
+  get_dev_ext "drush-${_DRUSH8_VRN}.tar.gz"
+  cd /opt/tools/drush/8/drush/
+  rm -rf /opt/tools/drush/8/drush/vendor
+  get_dev_ext "vendor-${_DRUSH8_VRN}.tar.gz"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Drush ${_DRUSH8_VRN} installation complete"
+  fi
+  get_drush_nine
+  set_drush_perm
   if [ -x "/opt/tools/drush/7/drush/drush" ]; then
     rm -f /usr/bin/drush7
     ln -s /opt/tools/drush/7/drush/drush /usr/bin/drush7
@@ -2065,18 +2094,17 @@ get_drush_versions() {
     ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush
   fi
   if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
-    rm -f /usr/local/bin/dcg
-    rm -f /usr/local/bin/drush
-    rm -f /usr/local/bin/php-parse
-    rm -f /usr/local/bin/psysh
-    rm -f /usr/local/bin/release
-    rm -f /usr/local/bin/robo
-    rm -f /usr/local/bin/var-dump-server
-    rm -f /usr/bin/drush9
-    ln -s /opt/tools/drush/9/drush/vendor/drush/drush/drush /usr/bin/drush9
-    msg "INFO: Drush ${_DRUSH9_VRN} installation complete"
+    clean_drush_nine
   else
-    msg "FAIL: Drush ${_DRUSH9_VRN} installation failed!"
+    msg "FAIL: Drush ${_DRUSH9_VRN} installation failed! Trying again.."
+    sleep 15
+    get_drush_nine
+    set_drush_perm
+    if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+      clean_drush_nine
+    else
+      msg "FAIL: Drush ${_DRUSH9_VRN} installation failed again! Oops.."
+    fi
   fi
   if [ -e "/opt/tools/drush/6" ]; then
     rm -rf /opt/tools/drush/6
