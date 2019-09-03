@@ -2396,6 +2396,10 @@ check_update_le_hm_ssl() {
     hmFront=$(cat ${User}/log/domain.txt 2>&1)
     hmFront=$(echo -n ${hmFront} | tr -d "\n" 2>&1)
   fi
+  if [ -e "${User}/log/extra_domain.txt" ]; then
+    hmFrontExtra=$(cat ${User}/log/extra_domain.txt 2>&1)
+    hmFrontExtra=$(echo -n ${hmFrontExtra} | tr -d "\n" 2>&1)
+  fi
   if [ -z "${hmFront}" ]; then
     if [ -e "${User}/.drush/hostmaster.alias.drushrc.php" ]; then
       hmFront=$(cat ${User}/.drush/hostmaster.alias.drushrc.php \
@@ -2408,8 +2412,13 @@ check_update_le_hm_ssl() {
   if [ -x "${exeLe}" ] \
     && [ ! -z "${hmFront}" ] \
     && [ -e "${User}/tools/le/certs/${hmFront}/fullchain.pem" ]; then
-    echo "Running LE cert check directly for hostmaster ${_HM_U}"
-    su -s /bin/bash - ${_HM_U} -c "${exeLe} --cron --ipv4 --domain ${hmFront}"
+    if [ ! -z "${hmFrontExtra}" ]; then
+      echo "Running LE cert check directly for hostmaster ${_HM_U} with ${hmFrontExtra}"
+      su -s /bin/bash - ${_HM_U} -c "${exeLe} --cron --ipv4 --domain ${hmFront} --domain ${hmFrontExtra}"
+    else
+      echo "Running LE cert check directly for hostmaster ${_HM_U}"
+      su -s /bin/bash - ${_HM_U} -c "${exeLe} --cron --ipv4 --domain ${hmFront}"
+    fi
     sleep 3
   fi
 }
