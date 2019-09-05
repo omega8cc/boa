@@ -1060,7 +1060,15 @@ sub_ssl_gen() {
       oct_mail=`echo $oct_mail | sed "s/\@/\\\@/g"`;
       if [ "${target_ip}" = "${dedicated_ip}" ]; then
         dedicated_ip="*"
-        dedicated_sn="${domain_name} www.${domain_name}"
+        if [ -e "/data/disk/${oct_uid}/log/extra_domain.txt" ]; then
+          hmFrontExtra=$(cat /data/disk/${oct_uid}/log/extra_domain.txt 2>&1)
+          hmFrontExtra=$(echo -n ${hmFrontExtra} | tr -d "\n" 2>&1)
+        fi
+        if [ ! -z "${hmFrontExtra}" ]; then
+          dedicated_sn="${domain_name} ${hmFrontExtra} www.${domain_name}"
+        else
+          dedicated_sn="${domain_name} www.${domain_name}"
+        fi
         single=YES
       else
         dedicated_sn="_"
