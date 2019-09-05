@@ -1795,6 +1795,9 @@ fix_modules() {
       if [ -d "${Dir}/.redisOff" ]; then
         rmdir ${Dir}/.redisOff
       fi
+      if [ -d "${Dir}/.redisLegacyOff" ]; then
+        rmdir ${Dir}/.redisLegacyOff
+      fi
     fi
   fi
   if [ -e "${Dir}/modules/commerce_ubercart_check.info" ]; then

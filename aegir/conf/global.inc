@@ -1041,16 +1041,16 @@ if ($redis_up && $use_redis && !$custom_cache) {
     }
   }
   if ($drupal_eight) {
-    if (file_exists('sites/' . $_SERVER['SERVER_NAME'] . '/.redisOff')) {
+    if (file_exists('sites/' . $_SERVER['SERVER_NAME'] . '/.redisLegacyOff')) {
       if ($is_dev && !$is_backend) {
-        header("X-Redis-Off-Ctrl-Exists: .redisOff");
+        header("X-Redis-Off-Ctrl-Exists: .redisLegacyOff");
       }
     }
     else {
-      if (file_exists('sites/' . $_SERVER['SERVER_NAME'] . '/.redisOn')) {
-        if ($is_dev && !$is_backend) {
-          header("X-Redis-On-Ctrl-Exists: .redisOn");
-        }
+      //if (file_exists('sites/' . $_SERVER['SERVER_NAME'] . '/.redisOn')) {
+      //  if ($is_dev && !$is_backend) {
+      //    header("X-Redis-On-Ctrl-Exists: .redisOn");
+      //  }
         if (is_readable('sites/' . $_SERVER['SERVER_NAME'] . '/files/development.services.yml')) {
           if ($is_dev && !$is_backend) {
             header("X-Dev-Services-Yml-Is-Readable: development.services.yml");
@@ -1059,14 +1059,21 @@ if ($redis_up && $use_redis && !$custom_cache) {
         else {
           if (is_readable('modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml')) {
             $cache_redis = TRUE;
-            $cache_services_path = 'modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml';
+            $example_services_path = 'modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml';
             $cache_gzip_path = 'modules/o_contrib_eight/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
             if ($is_dev && !$is_backend) {
-              header("X-Redis-Services-Is-Readable: " . $cache_services_path);
+              header("X-Example-Services-Is-Readable: " . $example_services_path);
+            }
+          }
+          if (is_readable('modules/o_contrib_eight/' . $redis_dirname . '/redis.services.yml')) {
+            $cache_redis = TRUE;
+            $redis_services_path = 'modules/o_contrib_eight/' . $redis_dirname . '/redis.services.yml';
+            if ($is_dev && !$is_backend) {
+              header("X-Redis-Services-Is-Readable: " . $redis_services_path);
             }
           }
         }
-      }
+      //}
     }
   }
   elseif ($drupal_seven) {
@@ -1126,6 +1133,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
   }
   if ($cache_redis) {
     if ($drupal_eight) {
+      $class_loader->addPsr4('Drupal\\redis\\', 'modules/o_contrib_eight/' . $redis_dirname . '/src');
       $settings['redis.connection']['interface'] = 'PhpRedis';
       $settings['redis.connection']['host']      = '127.0.0.1';
       $settings['redis.connection']['port']      = '6379';
@@ -1133,12 +1141,37 @@ if ($redis_up && $use_redis && !$custom_cache) {
       $settings['redis.connection']['base']      = '8';
       $settings['cache_prefix']                  = $this_prefix;
       $settings['cache']['default']              = 'cache.backend.redis';
-      $settings['container_yamls'][]             = $cache_services_path;
       // $settings['cache']['bins']['bootstrap']    = 'cache.backend.chainedfast';
       // $settings['cache']['bins']['discovery']    = 'cache.backend.chainedfast';
       // $settings['cache']['bins']['config']       = 'cache.backend.chainedfast';
       $settings['cache']['bins']['cache_form']   = 'cache.backend.database';
+      $settings['container_yamls'][]             = $example_services_path;
+      $settings['container_yamls'][]             = $redis_services_path;
       $settings['queue_default']                 = 'queue.redis';
+      $settings['bootstrap_container_definition'] = [
+        'parameters' => [],
+        'services' => [
+          'redis.factory' => [
+            'class' => 'Drupal\redis\ClientFactory',
+          ],
+          'cache.backend.redis' => [
+            'class' => 'Drupal\redis\Cache\CacheBackendFactory',
+            'arguments' => ['@redis.factory', '@cache_tags_provider.container', '@serialization.phpserialize'],
+          ],
+          'cache.container' => [
+            'class' => '\Drupal\redis\Cache\PhpRedis',
+            'factory' => ['@cache.backend.redis', 'get'],
+            'arguments' => ['container'],
+          ],
+          'cache_tags_provider.container' => [
+            'class' => 'Drupal\redis\Cache\RedisCacheTagsChecksum',
+            'arguments' => ['@redis.factory'],
+          ],
+          'serialization.phpserialize' => [
+            'class' => 'Drupal\Component\Serialization\PhpSerialize',
+          ],
+        ],
+      ];
     }
     else {
       if ($cache_backport) {
