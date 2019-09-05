@@ -883,7 +883,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     header("X-Cookie-Domain: " . $cookie_domain);
   }
 
-  $this_prefix = preg_replace('`^www\.`', '', $_SERVER['SERVER_NAME']) . '_y_';
+  $this_prefix = preg_replace('`^www\.`', '', $_SERVER['MAIN_SITE_NAME']) . '_y_';
   if ($is_dev) {
     header("X-Redis-Prefix: " . $this_prefix);
   }
