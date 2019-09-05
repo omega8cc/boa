@@ -1137,6 +1137,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
       $settings['cache']['bins']['discovery']    = 'cache.backend.chainedfast';
       $settings['cache']['bins']['config']       = 'cache.backend.chainedfast';
       $settings['container_yamls'][]             = $cache_services_path;
+      $settings['cache']['bins']['cache_form']   = 'cache.backend.database';
       $settings['queue_default']                 = 'queue.redis';
     }
     else {
@@ -1198,6 +1199,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
         $conf['consistent_cache_default_strict'] = FALSE;
         $conf['consistent_cache_strict_cache_bootstrap'] = TRUE;
       }
+      $conf['cache_class_cache_form']           = 'DrupalDatabaseCache';
       $conf['redis_client_interface']           = 'PhpRedis';
       $conf['redis_client_host']                = '127.0.0.1';
       $conf['redis_client_port']                = '6379';
