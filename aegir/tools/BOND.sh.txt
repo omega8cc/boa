@@ -1088,6 +1088,12 @@ tune_memory_limits() {
       _CPU_VS=8
     fi
   fi
+  PrTest=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+  if [[ "${PrTest}" =~ "CLUSTER" ]]; then
+    if [ "${_CPU_VS}" -lt "8" ]; then
+      _CPU_VS=8
+    fi
+  fi
   _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
   if [ "${_RESERVED_RAM}" -gt "0" ]; then
     _RAM=$(( _RAM - _RESERVED_RAM ))
@@ -1289,7 +1295,8 @@ tune_memory_limits() {
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     tune_sql_memory_limits
-    if [[ "${PrTest}" =~ "POWER" ]]; then
+    if [[ "${PrTest}" =~ "POWER" ]] \
+      || [[ "${PrTest}" =~ "CLUSTER" ]]; then
       _UXC_SQL="${_MXC_SQL}"
     else
       _UXC_SQL=$(( _MXC_SQL / 2 ))

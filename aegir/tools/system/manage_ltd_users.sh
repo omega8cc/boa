@@ -1654,7 +1654,8 @@ switch_php() {
           if [[ "${_THISHOST}" =~ ".host8." ]] \
             || [[ "${_THISHOST}" =~ ".boa.io" ]] \
             || [ "${_VMFAMILY}" = "VS" ]; then
-            if [ "${_CLIENT_OPTION}" = "POWER" ]; then
+            if [ "${_CLIENT_OPTION}" = "POWER" ] \
+              || [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
               if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
                 _LIM_FPM=32
                 _PHP_FPM_WORKERS=64

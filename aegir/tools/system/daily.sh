@@ -403,7 +403,8 @@ fix_user_register_protection() {
     if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
-      if [ "${_CLIENT_OPTION}" = "POWER" ]; then
+      if [ "${_CLIENT_OPTION}" = "POWER" ] \
+        || [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
         _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
           ${_PLR_CTRL_F} 2>&1)
         if [[ "${_DIS_URP_T}" =~ "disable_user_register_protection = TRUE" ]]; then

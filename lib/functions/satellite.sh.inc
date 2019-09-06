@@ -234,7 +234,8 @@ satellite_tune_fpm_config() {
   if [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
-    if [ "${_CLIENT_OPTION}" = "POWER" ]; then
+    if [ "${_CLIENT_OPTION}" = "POWER" ] \
+      || [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _LIM_FPM=32
         _PHP_FPM_WORKERS=64
@@ -4231,6 +4232,21 @@ satellite_if_init_or_upgrade() {
 
 satellite_if_major_upgrade() {
   if [ "${_CLIENT_OPTION}" = "POWER" ] \
+    && [ -e "${_ROOT}/log/octopus_log.txt" ]; then
+    _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
+    if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
+      || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
+      _IT_IS_OK=YES
+    else
+      if [ ! -e "${_ROOT}/log/satellite_major_upgrade_ok.txt" ]; then
+        msg "ERROR: Major version upgrade requires control file:"
+        msg "${_ROOT}/log/satellite_major_upgrade_ok.txt"
+        msg "Bye"
+        clean_pid_exit
+      fi
+    fi
+  fi
+  if [ "${_CLIENT_OPTION}" = "CLUSTER" ] \
     && [ -e "${_ROOT}/log/octopus_log.txt" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
     if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
