@@ -41,7 +41,8 @@ if_install() {
 	  if [ -e "/etc/goaccess.conf" ]; then
 	    echo 'date-format %d/%b/%Y' >> /etc/goaccess.conf
 	    echo 'time-format %H:%M:%S' >> /etc/goaccess.conf
-	    echo 'log-format "%^" %h [%d:%t %^] "%r" %s %b %^ %^ "%R" "%u" %T "%^"' >> /etc/goaccess.conf
+	    ### echo 'log-format "%^" %h [%d:%t %^] "%r" %s %b %^ %^ "%R" "%u" %T "%^"' >> /etc/goaccess.conf
+	    echo 'log-format "%^" %v [%d:%t %^] "%r" %s %b %r_length %b "%R" "%u" %T "%^"' >> /etc/goaccess.conf
 	    sleep 3
     else
       echo "ERROR: goaccess was not found.."
