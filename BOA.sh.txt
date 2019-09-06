@@ -1599,7 +1599,7 @@ setup() {
     fi
   fi
   chmod 700 ${optBin}/{autoupboa,backboa,barracuda,boa,duobackboa}
-  chmod 700 ${optBin}/{ffmirror,octopus,syncpass,xboa,mycnfup}
+  chmod 700 ${optBin}/{ffmirror,octopus,syncpass,xboa,mycnfup,weblogx}
   chmod 755 ${optBin}/{randpass,sqlmagic,thinkdifferent}
   echo
   echo "BOA Meta Installer setup completed"
