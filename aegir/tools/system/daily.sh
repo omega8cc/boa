@@ -2498,10 +2498,9 @@ check_update_le_ssl() {
 }
 
 if_gen_goaccess() {
-  PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
-  PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+  PrTestPower=$(grep "POWER" /root/.${_HM_U}.octopus.cnf 2>&1)
+  PrTestCluster=$(grep "CLUSTER" /root/.${_HM_U}.octopus.cnf 2>&1)
   if [[ "${PrTestPower}" =~ "POWER" ]] \
-    || [ -e "/root/.my.cluster_root_pwd.txt" ] \
     || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
     isWblgx=$(which weblogx 2>&1)
     if [ -x "${isWblgx}" ]; then
