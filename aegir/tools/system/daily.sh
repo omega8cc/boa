@@ -2497,6 +2497,19 @@ check_update_le_ssl() {
   fi
 }
 
+if_gen_goaccess() {
+  PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+  PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+  if [[ "${PrTestPower}" =~ "POWER" ]] \
+    || [ -e "/root/.my.cluster_root_pwd.txt" ] \
+    || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
+    isWblgx=$(which weblogx 2>&1)
+    if [ -x "${isWblgx}" ]; then
+      ${isWblgx} --site="${1}" --env="${_HM_U}"
+    fi
+  fi
+}
+
 process() {
   cleanup_ghost_vhosts
   cleanup_ghost_drushrc
@@ -2574,6 +2587,7 @@ process() {
             && [ ! -z "${Dan}" ] \
             && [ "${Dan}" != "hostmaster" ]; then
             if_site_db_conversion
+            if_gen_goaccess ${Dom}
             searchStringB=".dev."
             searchStringC=".devel."
             searchStringD=".temp."
@@ -2994,7 +3008,28 @@ shared_codebases_cleanup() {
   done
 }
 
+prepare_weblogx() {
+  _ARCHLOGS=/var/www/adminer/access/archive
+  mkdir -p ${_ARCHLOGS}/unzip
+  echo "[+] SYNCING LOGS TO: ${_ARCHLOGS}"
+  rsync -rlvz --size-only --progress /var/log/nginx/access* ${_ARCHLOGS}/
+  echo "[+] COPYING LOGS TO: ${_ARCHLOGS}/unzip/"
+  cp -af ${_ARCHLOGS}/access* ${_ARCHLOGS}/unzip/
+  echo "[+] DECOMPRESSING GZ FILES"
+  find ${_ARCHLOGS}/unzip -name "*.gz" -exec gunzip -f {} \;
+  touch ${_ARCHLOGS}/unzip/.global.pid
+}
+
+cleanup_weblogx() {
+  _ARCHLOGS=/var/www/adminer/access/archive
+  if [ -e "${_ARCHLOGS}/unzip" ]; then
+    rm -f ${_ARCHLOGS}/unzip/access*
+  fi
+  rm -f ${_ARCHLOGS}/unzip/.global.pid
+}
+
 action() {
+  prepare_weblogx
   for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     count_cpu
     load_control
@@ -3103,6 +3138,7 @@ action() {
           rm -f /home/${_HM_U}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
         fi
         check_update_le_hm_ssl ${_HM_U}
+        if_gen_goaccess "ALL"
         echo "Done for ${User}"
         enable_chattr ${_HM_U}.ftp
       else
@@ -3115,6 +3151,7 @@ action() {
   done
   shared_codebases_cleanup
   check_old_empty_hostmaster_platforms
+  cleanup_weblogx
 }
 
 ###--------------------###

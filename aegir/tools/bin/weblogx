@@ -1,0 +1,153 @@
+#!/bin/bash
+
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+SHELL=/bin/bash
+
+check_root() {
+  if [ `whoami` = "root" ]; then
+    ionice -c2 -n7 -p $$
+    renice 19 -p $$
+    chmod a+w /dev/null
+    if [ ! -e "/dev/fd" ]; then
+      if [ -e "/proc/self/fd" ]; then
+        rm -rf /dev/fd
+        ln -s /proc/self/fd /dev/fd
+      fi
+    fi
+  else
+    echo "ERROR: This script should be ran as a root user"
+    exit 1
+  fi
+  _DF_TEST=$(df -kTh / -l \
+    | grep '/' \
+    | sed 's/\%//g' \
+    | awk '{print $6}' 2> /dev/null)
+  _DF_TEST=${_DF_TEST//[^0-9]/}
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
+    exit 1
+  fi
+}
+check_root
+
+if_install() {
+	forCer="-fuy --allow-unauthenticated --reinstall"
+	isGoacs=$(which goaccess 2>&1)
+	if [ ! -x "${isGoacs}" ] || [ -z "${isGoacs}" ]; then
+	  apt-get update -qq &> /dev/null
+	  apt-get install goaccess ${forCer} &> /dev/null
+	  sleep 3
+	  if [ -e "/etc/goaccess.conf" ]; then
+	    echo 'date-format %d/%b/%Y' >> /etc/goaccess.conf
+	    echo 'time-format %H:%M:%S' >> /etc/goaccess.conf
+	    echo 'log-format "%^" %h [%d:%t %^] "%r" %s %b %^ %^ "%R" "%u" %T "%^"' >> /etc/goaccess.conf
+	    sleep 3
+    else
+      echo "ERROR: goaccess was not found.."
+      exit 1
+    fi
+  else
+    echo "GREAT: goaccess was found!"
+  fi
+}
+if_install
+
+for i in "$@"; do
+  case $i in
+    -s=*|--site=*)
+        _SITE="${i#*=}"
+        shift # --site=SiteName
+    ;;
+    -e=*|--env=*)
+        _ENV="${i#*=}"
+        shift # --env=[dev|stage|prod]
+    ;;
+    -u=*|--url=*)
+        _URL="${i#*=}"
+        shift # --url=https://site-d8.foo.bar.boa.io/
+    ;;
+    -d=*|--dir=*)
+        _DIR="${i#*=}"
+        shift # --dir=foo/bar
+    ;;
+    -c=*|--ga_conf=*)
+        _GACONF="${i#*=}"
+        shift # --ga_conf=/etc/goaccess.conf
+    ;;
+    *)
+        # nope
+    ;;
+  esac
+done
+
+if [ -z "${_URL}" ]; then
+  if [ -z "${_SITE}" ] && [ -z "${_ENV}" ]; then
+    echo "[-] --site and --env must be specified"
+    exit 1;
+  fi
+else
+  _SITE=${_URL%.boa.io}
+  _SITE=${_SITE%.boa.io}
+  _SITE=${_SITE#dev-}
+  _SITE=${_SITE#stage-}
+  _SITE=${_SITE#prod-}
+  _ENV="$( cut -d '-' -f 1 <<< "$_URL" )"
+fi
+
+echo "[+] _SITE NAME: ${_SITE} / _ENV: ${_ENV}"
+
+if [ -z "${_ARCH}" ]; then
+  _ARCHLOGS=/var/www/adminer/access/archive
+  mkdir -p ${_ARCHLOGS}/unzip
+else
+  _ARCHLOGS=${_ARCH}
+  mkdir -p ${_ARCH}/unzip
+fi
+
+if [ -z "${_DIR}" ]; then
+  mkdir -p /var/www/adminer/access/${_ENV}/${_SITE}
+  _TARGET=/var/www/adminer/access/${_ENV}/${_SITE}
+else
+  mkdir -p ${_DIR}
+  _TARGET=${_DIR}
+fi
+
+if [ ! -e "${_ARCHLOGS}/unzip/.global.pid" ]; then
+  echo "[+] SYNCING LOGS TO: ${_ARCHLOGS}"
+  rsync -rlvz --size-only --progress /var/log/nginx/access* ${_ARCHLOGS}/
+  echo "[+] COPYING LOGS TO: ${_ARCHLOGS}/unzip/"
+  cp -af ${_ARCHLOGS}/access* ${_ARCHLOGS}/unzip/
+  echo "[+] DECOMPRESSING GZ FILES"
+  find ${_ARCHLOGS}/unzip -name "*.gz" -exec gunzip -f {} \;
+fi
+
+echo "[+] MERGING AND FILTERING NGINX LOGS"
+if [ -e "${_TARGET}/mrgd_nginx.log" ]; then
+  rm -rf ${_TARGET}/mrgd_nginx.log
+fi
+
+if [[ "${_SITE}" =~ "ALL" ]]; then
+  _SITE_REGEX="/"
+else
+  _SITE_REGEX="${_SITE}"
+fi
+
+find ${_ARCHLOGS}/unzip -name "access*" -exec cat {} \; | grep "${_SITE_REGEX}" >> ${_TARGET}/mrgd_nginx.log
+
+echo "[+] EXPORTING GOACCESS REPORT HTML"
+_GOVER=$(goaccess -V | awk 'NR == 1 { print substr ($3,0,1)}')
+
+[[ ${_GACONF} ]] && conf=(-p "${_GACONF}")
+if [[ ${_GOVER} = 1 ]]; then
+  goaccess -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" -a -o "${_TARGET}/index.html"
+else
+  goaccess -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" > "${_TARGET}/index.html"
+fi
+
+if [ -e "${_TARGET}/mrgd_nginx.log" ]; then
+  rm -rf ${_TARGET}/mrgd_nginx.log
+fi
+
+echo ${_TARGET}/index.html
+echo "[+] DONE!"

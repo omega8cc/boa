@@ -1556,14 +1556,14 @@ setup() {
   fi
   mkdir -p ${optBin}
   rm -f ${optBin}/.{boa*,fix*}
-  rm -f ${usrBin}/{autoupboa*,barracuda*,boa*,ffmirror*,mycnfup*}
+  rm -f ${usrBin}/{autoupboa*,barracuda*,boa*,ffmirror*,mycnfup*,weblogx*}
   rm -f ${usrBin}/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
   if [ ! -e "/data/disk" ]; then
     ln -s ${optBin}/boa       ${usrBin}/boa
     ln -s ${optBin}/barracuda ${usrBin}/barracuda
     ln -s ${optBin}/octopus   ${usrBin}/octopus
   fi
-  rm -f ${optBin}/{autoupboa*,barracuda*,boa*,ffmirror*,xboa*,mycnfup*}
+  rm -f ${optBin}/{autoupboa*,barracuda*,boa*,ffmirror*,xboa*,mycnfup*,weblogx*}
   rm -f ${optBin}/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
   curl ${crlGet} "${urlHmr}/${tBn}/autoupboa"      -o ${optBin}/autoupboa
   curl ${crlGet} "${urlHmr}/${tBn}/barracuda"      -o ${optBin}/barracuda
@@ -1575,6 +1575,7 @@ setup() {
   curl ${crlGet} "${urlHmr}/${tBn}/sqlmagic"       -o ${optBin}/sqlmagic
   curl ${crlGet} "${urlHmr}/${tBn}/syncpass"       -o ${optBin}/syncpass
   curl ${crlGet} "${urlHmr}/${tBn}/thinkdifferent" -o ${optBin}/thinkdifferent
+  curl ${crlGet} "${urlHmr}/${tBn}/weblogx"        -o ${optBin}/weblogx
   curl ${crlGet} "${urlHmr}/${tBn}/xboa"           -o ${optBin}/xboa
   echo "### ${_TODAY} ###" >> ${optBin}/boa
   echo "### ${_TODAY} ###" >> ${optBin}/barracuda
