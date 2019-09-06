@@ -1940,7 +1940,7 @@ install_wkhtmltox() {
       || [ -L "/usr/bin/wkhtmltoimage" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       if [ "${_X86_64_TEST}" = "x86_64" ]; then
-        SYSTEMARCH="x86_64"
+        SYSTEM_ARCH="x86_64"
         msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
         cd /var/opt
         rm -rf wkhtmltox*
@@ -1957,7 +1957,7 @@ install_wkhtmltox() {
           apt-get install -f -y &> /dev/null
         fi
       else
-        SYSTEMARCH="x86"
+        SYSTEM_ARCH="x86"
         msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
         mrun "${_INSTALL} xfonts-75dpi xfonts-base" &> /dev/null
         cd /var/opt

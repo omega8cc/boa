@@ -435,13 +435,13 @@ install_ioncube() {
     mkdir -p /usr/local/ioncube
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
-      SYSTEMARCH="x86_64"
+      SYSTEM_ARCH="x86_64"
       msg "INFO: Installing IonCube ${_IONCUBE_VRN} for PHP..."
       cd /var/opt
       rm -rf ioncube_loaders*
       get_dev_arch "ioncube_loaders_lin_x86-64_${_IONCUBE_VRN}.tar.gz"
     else
-      SYSTEMARCH="x86"
+      SYSTEM_ARCH="x86"
       msg "INFO: Installing IonCube ${_IONCUBE_VRN} for PHP..."
       cd /var/opt
       rm -rf ioncube_loaders*
@@ -1174,28 +1174,28 @@ update_newrelic() {
       fi
       pthNra="/usr/lib/newrelic-php5/agent"
       if [ -e "$_PHP_EXT_DIR_73" ] && [ ! -e "$_PHP_EXT_DIR_73/newrelic.so" ] \
-        && [ -e "${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP73_API}.so" ]; then
-        ln -sf ${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP73_API}.so \
+        && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP73_API}.so" ]; then
+        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP73_API}.so \
           $_PHP_EXT_DIR_73/newrelic.so
       fi
       if [ -e "$_PHP_EXT_DIR_72" ] && [ ! -e "$_PHP_EXT_DIR_72/newrelic.so" ] \
-        && [ -e "${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP72_API}.so" ]; then
-        ln -sf ${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP72_API}.so \
+        && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP72_API}.so" ]; then
+        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP72_API}.so \
           $_PHP_EXT_DIR_72/newrelic.so
       fi
       if [ -e "$_PHP_EXT_DIR_71" ] && [ ! -e "$_PHP_EXT_DIR_71/newrelic.so" ] \
-        && [ -e "${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP71_API}.so" ]; then
-        ln -sf ${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP71_API}.so \
+        && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP71_API}.so" ]; then
+        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP71_API}.so \
           $_PHP_EXT_DIR_71/newrelic.so
       fi
       if [ -e "$_PHP_EXT_DIR_70" ] && [ ! -e "$_PHP_EXT_DIR_70/newrelic.so" ] \
-        && [ -e "${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP70_API}.so" ]; then
-        ln -sf ${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP70_API}.so \
+        && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP70_API}.so" ]; then
+        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP70_API}.so \
           $_PHP_EXT_DIR_70/newrelic.so
       fi
       if [ -e "$_PHP_EXT_DIR_56" ] && [ ! -e "$_PHP_EXT_DIR_56/newrelic.so" ] \
-        && [ -e "${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP56_API}.so" ]; then
-        ln -sf ${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP56_API}.so \
+        && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP56_API}.so" ]; then
+        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP56_API}.so \
           $_PHP_EXT_DIR_56/newrelic.so
       fi
       if [ ! -e "/etc/newrelic/newrelic.cfg" ]; then
@@ -1296,28 +1296,28 @@ install_newrelic() {
         fi
         pthNra="/usr/lib/newrelic-php5/agent"
         if [ -e "$_PHP_EXT_DIR_73" ] && [ ! -e "$_PHP_EXT_DIR_73/newrelic.so" ] \
-          && [ -e "${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP73_API}.so" ]; then
-          ln -sf ${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP73_API}.so \
+          && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP73_API}.so" ]; then
+          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP73_API}.so \
             $_PHP_EXT_DIR_73/newrelic.so
         fi
         if [ -e "$_PHP_EXT_DIR_72" ] && [ ! -e "$_PHP_EXT_DIR_72/newrelic.so" ] \
-          && [ -e "${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP72_API}.so" ]; then
-          ln -sf ${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP72_API}.so \
+          && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP72_API}.so" ]; then
+          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP72_API}.so \
             $_PHP_EXT_DIR_72/newrelic.so
         fi
         if [ -e "$_PHP_EXT_DIR_71" ] && [ ! -e "$_PHP_EXT_DIR_71/newrelic.so" ] \
-          && [ -e "${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP71_API}.so" ]; then
-          ln -sf ${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP71_API}.so \
+          && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP71_API}.so" ]; then
+          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP71_API}.so \
             $_PHP_EXT_DIR_71/newrelic.so
         fi
         if [ -e "$_PHP_EXT_DIR_70" ] && [ ! -e "$_PHP_EXT_DIR_70/newrelic.so" ] \
-          && [ -e "${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP70_API}.so" ]; then
-          ln -sf ${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP70_API}.so \
+          && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP70_API}.so" ]; then
+          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP70_API}.so \
             $_PHP_EXT_DIR_70/newrelic.so
         fi
         if [ -e "$_PHP_EXT_DIR_56" ] && [ ! -e "$_PHP_EXT_DIR_56/newrelic.so" ] \
-          && [ -e "${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP56_API}.so" ]; then
-          ln -sf ${pthNra}/$_SYSTEM_ARCH/newrelic-${_PHP56_API}.so \
+          && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP56_API}.so" ]; then
+          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP56_API}.so \
             $_PHP_EXT_DIR_56/newrelic.so
         fi
         if [ ! -e "/etc/newrelic/newrelic.cfg" ]; then

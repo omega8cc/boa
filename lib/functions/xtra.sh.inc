@@ -613,16 +613,16 @@ if_install_ffmpeg() {
           _X86_64_TEST=$(uname -m 2>&1)
           rm -rf ffmpeg*
           if [ "${_X86_64_TEST}" = "x86_64" ]; then
-            SYSTEMARCH="x86_64"
-            msg "INFO: Installing ffmpeg ${SYSTEMARCH}..."
+            SYSTEM_ARCH="x86_64"
+            msg "INFO: Installing ffmpeg ${SYSTEM_ARCH}..."
             curl ${crlGet} "http://johnvansickle.com/ffmpeg/releases/ffmpeg-release-64bit-static.tar.xz" -o "ffmpeg-release-64bit-static.tar.xz"
             unxz "ffmpeg-release-64bit-static.tar.xz"
             mkdir ffmpeg-release-64bit-static
             tar -xf ffmpeg-release-64bit-static.tar --strip-components 1 -C ffmpeg-release-64bit-static
             cd ffmpeg-release-64bit-static
           else
-            SYSTEMARCH="x86"
-            msg "INFO: Installing ffmpeg ${SYSTEMARCH}..."
+            SYSTEM_ARCH="x86"
+            msg "INFO: Installing ffmpeg ${SYSTEM_ARCH}..."
             curl ${crlGet} "http://johnvansickle.com/ffmpeg/releases/ffmpeg-release-32bit-static.tar.xz" -o "ffmpeg-release-32bit-static.tar.xz"
             unxz "ffmpeg-release-32bit-static.tar.xz"
             mkdir ffmpeg-release-32bit-static
