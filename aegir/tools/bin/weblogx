@@ -216,9 +216,9 @@ _GOVER=$(goaccess -V | awk 'NR == 1 { print substr ($3,0,1)}')
 
 [[ ${_GACONF} ]] && conf=(-p "${_GACONF}")
 if [[ ${_GOVER} = 1 ]]; then
-  goaccess ~/.goaccessrc --no-global-config -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" -a -o "${_TARGET}/index.html"
+  goaccess -p ~/.goaccessrc --no-global-config -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" -a -o "${_TARGET}/index.html"
 else
-  goaccess ~/.goaccessrc --no-global-config -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" > "${_TARGET}/index.html"
+  goaccess -p ~/.goaccessrc --no-global-config -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" > "${_TARGET}/index.html"
 fi
 
 if [ -e "${_TARGET}/mrgd_nginx.log" ]; then
