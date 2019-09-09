@@ -4,6 +4,7 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+_USE_GITHUB=/root/.goaccess.use.github.txt
 _GOACCESS_VRN=1.3
 
 check_root() {
@@ -83,14 +84,22 @@ install_goaccess() {
   aptitude purge goaccess -y
   apt-get install libncurses5-dev -y
   apt-get install libncursesw5-dev -y
+  apt-get install autopoint -y
   find_fast_mirror
   mkdir -p /var/opt
   cd /var/opt
   rm -rf /var/opt/goaccess
-  echo "Downloading from ${urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz"
-  curl -I ${urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz
-  curl ${crlGet} "${urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz" | tar -xzf -
-  cd /var/opt/goaccess-${_GOACCESS_VRN}
+  if [ -e "${_USE_GITHUB}" ]; then
+    echo "Downloading from https://github.com/allinurl/goaccess.git"
+    git clone https://github.com/allinurl/goaccess.git
+    cd /var/opt/goaccess
+    autoreconf -fi
+  else
+    echo "Downloading from ${urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz"
+    curl -I ${urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz
+    curl ${crlGet} "${urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz" | tar -xzf -
+    cd /var/opt/goaccess-${_GOACCESS_VRN}
+  fi
   bash ./configure --prefix=/usr --enable-utf8 --enable-geoip=legacy
   make --quiet
   make --quiet install
@@ -117,11 +126,12 @@ if_install() {
     fi
   fi
   if [ -e "/usr/etc/goaccess/goaccess.conf" ]; then
-    if [ ! -e "/root/.goaccessrc" ] || [ ! -e "/root/.goaccessrc.lf" ]; then
+    if [ ! -e "/root/.goaccessrc" ] || [ ! -e "/root/.goaccessrc.fix3" ]; then
       echo 'date-format %d/%b/%Y' > /root/.goaccessrc
       echo 'time-format %H:%M:%S' >> /root/.goaccessrc
       echo 'log-format "%^" %h [%d:%t %^] "%r" %s %b %^ %^ "%R" "%u" %T "%^"' >> /root/.goaccessrc
-      touch /root/.goaccessrc.lf
+      rm -f /root/.goaccessrc.fix*
+      touch /root/.goaccessrc.fix3
       sleep 1
     fi
   else
