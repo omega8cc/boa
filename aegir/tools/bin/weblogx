@@ -84,9 +84,9 @@ install_goaccess() {
   apt-get install libncurses5-dev -y
   apt-get install libncursesw5-dev -y
   find_fast_mirror
-  mkdir -p /opt/tmp
-  cd /opt/tmp
-  rm -rf /opt/tmp/goaccess
+  mkdir -p /var/opt
+  cd /var/opt
+  rm -rf /var/opt/goaccess
   echo "Downloading from ${urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz"
   curl -I ${urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz
   curl ${crlGet} "${urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz" | tar -xzf -
