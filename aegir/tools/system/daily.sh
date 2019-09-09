@@ -3017,6 +3017,11 @@ prepare_weblogx() {
   cp -af ${_ARCHLOGS}/access* ${_ARCHLOGS}/unzip/
   echo "[+] DECOMPRESSING GZ FILES"
   find ${_ARCHLOGS}/unzip -name "*.gz" -exec gunzip -f {} \;
+  echo "[+] RENAMING RAW FILES"
+  for _log in `find ${_ARCHLOGS}/unzip \
+    -maxdepth 1 -mindepth 1 -type f | sort`; do
+    mv -f ${_log} ${_log}.txt;
+  done
   touch ${_ARCHLOGS}/unzip/.global.pid
 }
 
