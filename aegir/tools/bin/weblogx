@@ -73,22 +73,29 @@ find_fast_mirror() {
 install_goaccess() {
   echo "Installing GoAccess ${_GOACCESS_VRN} with dependencies..."
   cd
+  if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+    && [ -e "/etc/apt/apt.conf.d" ]; then
+    echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+  fi
   apt-get clean -qq
   rm -f -r /var/lib/apt/lists/*
   apt-get update -qq
-  aptitude purge goaccess -y -qq
+  aptitude purge goaccess -y
   apt-get install libncurses5-dev -y
   apt-get install libncursesw5-dev -y
   find_fast_mirror
   mkdir -p /opt/tmp
   cd /opt/tmp
   rm -rf /opt/tmp/goaccess
+  echo "Downloading from ${urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz"
+  curl -I ${urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz
   curl ${crlGet} "${urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz" | tar -xzf -
   cd /var/opt/goaccess-${_GOACCESS_VRN}
   bash ./configure --prefix=/usr --enable-utf8 --enable-geoip=legacy
   make --quiet
   make --quiet install
   cd
+  rm -f /etc/apt/apt.conf.d/00sandboxtmp
 }
 
 if_install() {
