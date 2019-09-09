@@ -3022,6 +3022,7 @@ prepare_weblogx() {
     -maxdepth 1 -mindepth 1 -type f | sort`; do
     mv -f ${_log} ${_log}.txt;
   done
+  rm -f ${_ARCHLOGS}/unzip/*.txt.txt*
   touch ${_ARCHLOGS}/unzip/.global.pid
 }
 

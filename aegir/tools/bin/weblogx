@@ -213,6 +213,8 @@ if [ ! -e "${_ARCHLOGS}/unzip/.global.pid" ]; then
     -maxdepth 1 -mindepth 1 -type f | sort`; do
     mv -f ${_log} ${_log}.txt;
   done
+  mv -f ${_ARCHLOGS}/unzip/.global.pid.txt ${_ARCHLOGS}/unzip/.global.pid
+  rm -f ${_ARCHLOGS}/unzip/*.txt.txt*
 fi
 
 echo "[+] MERGING AND FILTERING NGINX LOGS"
@@ -233,9 +235,9 @@ _GOVER=$(goaccess -V | awk 'NR == 1 { print substr ($3,0,1)}')
 
 [[ ${_GACONF} ]] && conf=(-p "${_GACONF}")
 if [[ ${_GOVER} = 1 ]]; then
-  goaccess -p /root/.goaccessrc --no-global-config --anonymize-ip --num-tests=0 --real-os -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" -a -o "${_TARGET}/index.html"
+  goaccess -p /root/.goaccessrc --no-global-config --anonymize-ip --real-os -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" -a -o "${_TARGET}/index.html"
 else
-  goaccess -p /root/.goaccessrc --no-global-config --anonymize-ip --num-tests=0 --real-os -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" > "${_TARGET}/index.html"
+  goaccess -p /root/.goaccessrc --no-global-config --anonymize-ip --real-os -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" > "${_TARGET}/index.html"
 fi
 
 if [ -e "${_TARGET}/mrgd_nginx.log" ]; then
