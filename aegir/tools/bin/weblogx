@@ -117,10 +117,10 @@ if_install() {
     fi
   fi
   if [ -e "/usr/etc/goaccess/goaccess.conf" ]; then
-    echo 'date-format %d/%b/%Y' >> /usr/etc/goaccess/goaccess.conf
-    echo 'time-format %H:%M:%S' >> /usr/etc/goaccess/goaccess.conf
-    ### echo 'log-format "%^" %h [%d:%t %^] "%r" %s %b %^ %^ "%R" "%u" %T "%^"' >> /usr/etc/goaccess/goaccess.conf
-    echo 'log-format "%^" %v [%d:%t %^] "%r" %s %b %r_length %b "%R" "%u" %T "%^"' >> /usr/etc/goaccess/goaccess.conf
+    echo 'date-format %d/%b/%Y' > ~/.goaccessrc
+    echo 'time-format %H:%M:%S' >> ~/.goaccessrc
+    ### echo 'log-format "%^" %h [%d:%t %^] "%r" %s %b %^ %^ "%R" "%u" %T "%^"' >> ~/.goaccessrc
+    echo 'log-format "%^" %v [%d:%t %^] "%r" %s %b %r_length %b "%R" "%u" %T "%^"' >> ~/.goaccessrc
     sleep 1
   else
     echo "ERROR: GoAccess was not found.."
@@ -216,9 +216,9 @@ _GOVER=$(goaccess -V | awk 'NR == 1 { print substr ($3,0,1)}')
 
 [[ ${_GACONF} ]] && conf=(-p "${_GACONF}")
 if [[ ${_GOVER} = 1 ]]; then
-  goaccess -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" -a -o "${_TARGET}/index.html"
+  goaccess ~/.goaccessrc --no-global-config -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" -a -o "${_TARGET}/index.html"
 else
-  goaccess -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" > "${_TARGET}/index.html"
+  goaccess ~/.goaccessrc --no-global-config -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" > "${_TARGET}/index.html"
 fi
 
 if [ -e "${_TARGET}/mrgd_nginx.log" ]; then
