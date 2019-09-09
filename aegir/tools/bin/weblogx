@@ -213,7 +213,9 @@ if [ ! -e "${_ARCHLOGS}/unzip/.global.pid" ]; then
     -maxdepth 1 -mindepth 1 -type f | sort`; do
     mv -f ${_log} ${_log}.txt;
   done
-  mv -f ${_ARCHLOGS}/unzip/.global.pid.txt ${_ARCHLOGS}/unzip/.global.pid
+  if [ -e "${_ARCHLOGS}/unzip/.global.pid.txt" ]; then
+    mv -f ${_ARCHLOGS}/unzip/.global.pid.txt ${_ARCHLOGS}/unzip/.global.pid
+  fi
   rm -f ${_ARCHLOGS}/unzip/*.txt.txt*
 fi
 

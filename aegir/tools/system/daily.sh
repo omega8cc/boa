@@ -3030,8 +3030,8 @@ cleanup_weblogx() {
   _ARCHLOGS=/var/www/adminer/access/archive
   if [ -e "${_ARCHLOGS}/unzip" ]; then
     rm -f ${_ARCHLOGS}/unzip/access*
+    rm -f ${_ARCHLOGS}/unzip/.global.pid
   fi
-  rm -f ${_ARCHLOGS}/unzip/.global.pid
 }
 
 action() {
