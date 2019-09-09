@@ -1577,22 +1577,27 @@ setup() {
            xboa"
   for cbn in ${boaBins}; do
     if [ -e "${optBin}/${cbn}" ]; then
-	  if [ `ps aux | grep -v "grep" | grep --count "${cbn}"` -gt "0" ]; then
-		echo "The ${cbn} is running!"
-	  else
-	    rm -f ${optBin}/${cbn}.new
-	    curl ${crlGet} "${urlHmr}/${tBn}/${cbn}" -o ${optBin}/${cbn}.new
-		mv -f ${optBin}/${cbn} ${optBin}/${cbn}.prev
-		mv -f ${optBin}/${cbn}.new ${optBin}/${cbn}
-		if [ -e "${optBin}/${cbn}" ]; then
-		  chmod 755 ${optBin}/${cbn}
-		  rm -f ${optBin}/${cbn}.prev
-		else
-          mv -f ${optBin}/${cbn}.prev ${optBin}/${cbn}
-		fi
-	  fi
+      if [ `ps aux | grep -v "grep" | grep --count "${cbn}"` -gt "0" ]; then
+        echo "The ${cbn} is running!"
+      else
+        if [ "${cbn}" = "weblogx" ]] \
+          && [ `ps aux | grep -v "grep" | grep --count "daily.sh"` -gt "0" ]; then
+          echo "The ${cbn} and daily.sh is running!"
+        else
+          rm -f ${optBin}/${cbn}.new
+          curl ${crlGet} "${urlHmr}/${tBn}/${cbn}" -o ${optBin}/${cbn}.new
+          mv -f ${optBin}/${cbn} ${optBin}/${cbn}.prev
+          mv -f ${optBin}/${cbn}.new ${optBin}/${cbn}
+          if [ -e "${optBin}/${cbn}" ]; then
+            chmod 755 ${optBin}/${cbn}
+            rm -f ${optBin}/${cbn}.prev
+          else
+            mv -f ${optBin}/${cbn}.prev ${optBin}/${cbn}
+    		  fi
+        fi
+      fi
     else
-	  curl ${crlGet} "${urlHmr}/${tBn}/${cbn}" -o ${optBin}/${cbn}
+      curl ${crlGet} "${urlHmr}/${tBn}/${cbn}" -o ${optBin}/${cbn}
     fi
   done
   echo "### ${_TODAY} ###" >> ${optBin}/boa
