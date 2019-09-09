@@ -5,7 +5,7 @@ SHELL=/bin/bash
 
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 _USE_GITHUB=/root/.goaccess.use.github.txt
-_GOACCESS_VRN=1.3
+_GOACCESS_VRN=1.1.1
 
 check_root() {
   if [ `whoami` = "root" ]; then
@@ -126,12 +126,12 @@ if_install() {
     fi
   fi
   if [ -e "/usr/etc/goaccess/goaccess.conf" ]; then
-    if [ ! -e "/root/.goaccessrc" ] || [ ! -e "/root/.goaccessrc.fix9" ]; then
+    if [ ! -e "/root/.goaccessrc" ] || [ ! -e "/root/.goaccessrc.fix11" ]; then
       echo 'date-format %d/%b/%Y' > /root/.goaccessrc
       echo 'time-format %H:%M:%S' >> /root/.goaccessrc
-      echo 'log-format ~h{,"} %v [%d:%t %^] "%r" %s %^ %^ %b "%R" "%u" %T "%^"' >> /root/.goaccessrc
+      echo 'log-format ~h{, "} %v [%d:%t %^] "%r" %s %^ %^ %b "%R" "%u" %T "%^"' >> /root/.goaccessrc
       rm -f /root/.goaccessrc.fix*
-      touch /root/.goaccessrc.fix9
+      touch /root/.goaccessrc.fix11
       sleep 1
     fi
   else
