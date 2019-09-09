@@ -126,12 +126,12 @@ if_install() {
     fi
   fi
   if [ -e "/usr/etc/goaccess/goaccess.conf" ]; then
-    if [ ! -e "/root/.goaccessrc" ] || [ ! -e "/root/.goaccessrc.fix6" ]; then
+    if [ ! -e "/root/.goaccessrc" ] || [ ! -e "/root/.goaccessrc.fix9" ]; then
       echo 'date-format %d/%b/%Y' > /root/.goaccessrc
       echo 'time-format %H:%M:%S' >> /root/.goaccessrc
       echo 'log-format ~h{,"} %v [%d:%t %^] "%r" %s %^ %^ %b "%R" "%u" %T "%^"' >> /root/.goaccessrc
       rm -f /root/.goaccessrc.fix*
-      touch /root/.goaccessrc.fix6
+      touch /root/.goaccessrc.fix9
       sleep 1
     fi
   else
@@ -208,6 +208,11 @@ if [ ! -e "${_ARCHLOGS}/unzip/.global.pid" ]; then
   cp -af ${_ARCHLOGS}/access* ${_ARCHLOGS}/unzip/
   echo "[+] DECOMPRESSING GZ FILES"
   find ${_ARCHLOGS}/unzip -name "*.gz" -exec gunzip -f {} \;
+  echo "[+] RENAMING RAW FILES"
+  for _log in `find /var/www/adminer/access/archive/unzip \
+    -maxdepth 1 -mindepth 1 -type f | sort`; do
+    mv -f ${_log} ${_log}.txt;
+  done
 fi
 
 echo "[+] MERGING AND FILTERING NGINX LOGS"
@@ -228,9 +233,9 @@ _GOVER=$(goaccess -V | awk 'NR == 1 { print substr ($3,0,1)}')
 
 [[ ${_GACONF} ]] && conf=(-p "${_GACONF}")
 if [[ ${_GOVER} = 1 ]]; then
-  goaccess -p /root/.goaccessrc --no-global-config --anonymize-ip --num-tests=100 --real-os -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" -a -o "${_TARGET}/index.html"
+  goaccess -p /root/.goaccessrc --no-global-config --anonymize-ip --num-tests=0 --real-os -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" -a -o "${_TARGET}/index.html"
 else
-  goaccess -p /root/.goaccessrc --no-global-config --anonymize-ip --num-tests=100 --real-os -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" > "${_TARGET}/index.html"
+  goaccess -p /root/.goaccessrc --no-global-config --anonymize-ip --num-tests=0 --real-os -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" > "${_TARGET}/index.html"
 fi
 
 if [ -e "${_TARGET}/mrgd_nginx.log" ]; then
