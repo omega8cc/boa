@@ -41,19 +41,43 @@ if [ -e "/root/.proxy.cnf" ]; then
 fi
 
 action() {
+
   mkdir -p /usr/share/GeoIP
   chmod 755 /usr/share/GeoIP
-  cd /tmp
+  mkdir -p /opt/tmp
+  cd /opt/tmp
+
+# For IPv4 City database:
   wget -q -U iCab \
-    http://geolite.maxmind.com/download/geoip/database/GeoLiteCountry/GeoIP.dat.gz
-  gunzip GeoIP.dat.gz &> /dev/null
-  cp -af GeoIP.dat /usr/share/GeoIP/
+    http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz
+  gunzip GeoLiteCity.dat.gz &> /dev/null
+  cp -af GeoLiteCity.dat /usr/share/GeoIP/
+
+# For IPv6 City database:
+  wget -q -U iCab \
+    http://geolite.maxmind.com/download/geoip/database/GeoLiteCityv6-beta/GeoLiteCityv6.dat.gz
+  gunzip GeoLiteCityv6.dat.gz &> /dev/null
+  cp -af GeoLiteCityv6.dat /usr/share/GeoIP/
+
+# For IPv6 Country database:
   wget -q -U iCab \
     http://geolite.maxmind.com/download/geoip/database/GeoIPv6.dat.gz
   gunzip GeoIPv6.dat.gz &> /dev/null
   cp -af GeoIPv6.dat /usr/share/GeoIP/
+
+# For GeoIP2 City database:
+  wget -q -U iCab \
+    wget -N http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.mmdb.gz
+  gunzip GeoLite2-City.mmdb.gz &> /dev/null
+  cp -af GeoLite2-City.mmdb /usr/share/GeoIP/
+
+# For GeoIP2 Country database:
+  wget -q -U iCab \
+    wget -N http://geolite.maxmind.com/download/geoip/database/GeoLite2-Country.mmdb.gz
+  gunzip GeoLite2-Country.mmdb.gz &> /dev/null
+  cp -af GeoLite2-Country.mmdb /usr/share/GeoIP/
+
   chmod 644 /usr/share/GeoIP/*
-  rm -rf /tmp/GeoIP*
   rm -rf /opt/tmp
   mkdir -p /opt/tmp
   chmod 777 /opt/tmp
