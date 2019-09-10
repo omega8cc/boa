@@ -1593,7 +1593,7 @@ setup() {
             rm -f ${optBin}/${cbn}.prev
           else
             mv -f ${optBin}/${cbn}.prev ${optBin}/${cbn}
-    		  fi
+          fi
         fi
       fi
     else
