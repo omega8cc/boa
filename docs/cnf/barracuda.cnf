@@ -48,6 +48,8 @@ _LOCAL_UBUNTU_MIRROR= #--------- Allows to force non-default Ubuntu mirror
 _NEWRELIC_KEY= #---------------- Installs New Relic when license key is set
 _SCOUT_KEY= #------------------- Installs Scout App when license key is set
 ###
+_ENABLE_GOACCESS=NO #----------- Generate statistics with GoAccess when YES
+###
 _MAGICK_FROM_SOURCES=NO #------- Builds ImageMagick from sources when YES
 ###
 _NGINX_DOS_LIMIT=300 #---------- Allows to override default 250/300 limit

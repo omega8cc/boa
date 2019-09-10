@@ -976,6 +976,11 @@ _SSH_FROM_SOURCES=YES
 _SSH_ARMOUR=NO
 
 ###
+### Generate statistics with GoAccess when YES
+###
+_ENABLE_GOACCESS=NO
+
+###
 ### When set to YES it will force ImageMagick
 ### re-install from sources
 ###
