@@ -220,11 +220,11 @@ if_install() {
       echo 'sort-panel REFERRING_SITES,BY_VISITORS,DESC' >> /root/.goaccessrc
       echo 'sort-panel REQUESTS_STATIC,BY_VISITORS,DESC' >> /root/.goaccessrc
       echo 'sort-panel REQUESTS,BY_VISITORS,DESC' >> /root/.goaccessrc
-      if [ ! -e "/usr/share/GeoIP/GeoLiteCity.dat" ]; then
+      if [ ! -e "/usr/share/GeoIP/GeoLite2-City.mmdb" ]; then
         fetch_geoip
       fi
-      if [ -e "/usr/share/GeoIP/GeoLiteCity.dat" ]; then
-        echo 'geoip-database /usr/share/GeoIP/GeoLiteCity.dat' >> /root/.goaccessrc
+      if [ -e "/usr/share/GeoIP/GeoLite2-City.mmdb" ]; then
+        echo 'geoip-database /usr/share/GeoIP/GeoLite2-City.mmdb' >> /root/.goaccessrc
       fi
       echo 'html-prefs {"theme":"darkBlue","perPage":10,"visitors":{"plot":{"chartType":"bar"}},"visit_time":{"plot":{"chartType":"bar"}}}' >> /root/.goaccessrc
       rm -f /root/.goaccessrc.fix*
