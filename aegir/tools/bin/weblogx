@@ -92,24 +92,6 @@ fetch_geoip() {
   mkdir -p /opt/tmp
   cd /opt/tmp
 
-# For IPv4 City database:
-  wget -q -U iCab \
-    http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz
-  gunzip GeoLiteCity.dat.gz &> /dev/null
-  cp -af GeoLiteCity.dat /usr/share/GeoIP/
-
-# For IPv6 City database:
-  wget -q -U iCab \
-    http://geolite.maxmind.com/download/geoip/database/GeoLiteCityv6-beta/GeoLiteCityv6.dat.gz
-  gunzip GeoLiteCityv6.dat.gz &> /dev/null
-  cp -af GeoLiteCityv6.dat /usr/share/GeoIP/
-
-# For IPv6 Country database:
-  wget -q -U iCab \
-    http://geolite.maxmind.com/download/geoip/database/GeoIPv6.dat.gz
-  gunzip GeoIPv6.dat.gz &> /dev/null
-  cp -af GeoIPv6.dat /usr/share/GeoIP/
-
 # For GeoIP2 City database:
   wget -q -U iCab \
     wget -N http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.mmdb.gz
