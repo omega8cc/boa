@@ -146,7 +146,7 @@ install_goaccess() {
     curl ${crlGet} "${urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz" | tar -xzf -
     cd /var/opt/goaccess-${_GOACCESS_VRN}
   fi
-  bash ./configure --prefix=/usr --enable-utf8 --enable-geoip=legacy
+  bash ./configure --prefix=/usr --enable-utf8 --enable-geoip=mmdb
   make --quiet
   make --quiet install
   rm -rf /var/opt/goaccess*
