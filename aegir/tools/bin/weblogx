@@ -92,24 +92,6 @@ fetch_geoip() {
   mkdir -p /opt/tmp
   cd /opt/tmp
 
-# For IPv4 City database:
-  wget -q -U iCab \
-    http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz
-  gunzip GeoLiteCity.dat.gz &> /dev/null
-  cp -af GeoLiteCity.dat /usr/share/GeoIP/
-
-# For IPv6 City database:
-  wget -q -U iCab \
-    http://geolite.maxmind.com/download/geoip/database/GeoLiteCityv6-beta/GeoLiteCityv6.dat.gz
-  gunzip GeoLiteCityv6.dat.gz &> /dev/null
-  cp -af GeoLiteCityv6.dat /usr/share/GeoIP/
-
-# For IPv6 Country database:
-  wget -q -U iCab \
-    http://geolite.maxmind.com/download/geoip/database/GeoIPv6.dat.gz
-  gunzip GeoIPv6.dat.gz &> /dev/null
-  cp -af GeoIPv6.dat /usr/share/GeoIP/
-
 # For GeoIP2 City database:
   wget -q -U iCab \
     wget -N http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.mmdb.gz
@@ -138,6 +120,7 @@ install_goaccess() {
   rm -f -r /var/lib/apt/lists/*
   apt-get update -qq
   aptitude purge goaccess -y
+  apt-get install libmaxminddb-dev -y
   apt-get install libncurses5-dev -y
   apt-get install libncursesw5-dev -y
   apt-get install autopoint -y
@@ -164,7 +147,7 @@ install_goaccess() {
     curl ${crlGet} "${urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz" | tar -xzf -
     cd /var/opt/goaccess-${_GOACCESS_VRN}
   fi
-  bash ./configure --prefix=/usr --enable-utf8 --enable-geoip=legacy
+  bash ./configure --prefix=/usr --enable-utf8 --enable-geoip=mmdb
   make --quiet
   make --quiet install
   rm -rf /var/opt/goaccess*
@@ -238,11 +221,11 @@ if_install() {
       echo 'sort-panel REFERRING_SITES,BY_VISITORS,DESC' >> /root/.goaccessrc
       echo 'sort-panel REQUESTS_STATIC,BY_VISITORS,DESC' >> /root/.goaccessrc
       echo 'sort-panel REQUESTS,BY_VISITORS,DESC' >> /root/.goaccessrc
-      if [ ! -e "/usr/share/GeoIP/GeoLiteCity.dat" ]; then
+      if [ ! -e "/usr/share/GeoIP/GeoLite2-City.mmdb" ]; then
         fetch_geoip
       fi
-      if [ -e "/usr/share/GeoIP/GeoLiteCity.dat" ]; then
-        echo 'geoip-database /usr/share/GeoIP/GeoLiteCity.dat' >> /root/.goaccessrc
+      if [ -e "/usr/share/GeoIP/GeoLite2-City.mmdb" ]; then
+        echo 'geoip-database /usr/share/GeoIP/GeoLite2-City.mmdb' >> /root/.goaccessrc
       fi
       echo 'html-prefs {"theme":"darkBlue","perPage":10,"visitors":{"plot":{"chartType":"bar"}},"visit_time":{"plot":{"chartType":"bar"}}}' >> /root/.goaccessrc
       rm -f /root/.goaccessrc.fix*
