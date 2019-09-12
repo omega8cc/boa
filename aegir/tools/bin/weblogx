@@ -120,6 +120,7 @@ install_goaccess() {
   rm -f -r /var/lib/apt/lists/*
   apt-get update -qq
   aptitude purge goaccess -y
+  apt-get install libmaxminddb-dev -y
   apt-get install libncurses5-dev -y
   apt-get install libncursesw5-dev -y
   apt-get install autopoint -y
