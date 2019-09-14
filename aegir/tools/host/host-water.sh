@@ -453,11 +453,11 @@ if [ -e "/vservers" ] \
   local_ip_rg
 
   _HA=var/xdrago/monitor/hackcheck.archive.log
-  _HX=var/xdrago/monitor/hackcheck.archive.x.log
+  _HX=var/xdrago/monitor/hackcheck.archive.x2.log
   _WA=var/xdrago/monitor/scan_nginx.archive.log
-  _WX=var/xdrago/monitor/scan_nginx.archive.x.log
+  _WX=var/xdrago/monitor/scan_nginx.archive.x2.log
   _FA=var/xdrago/monitor/hackftp.archive.log
-  _FX=var/xdrago/monitor/hackftp.archive.x.log
+  _FX=var/xdrago/monitor/hackftp.archive.x2.log
 
   echo guard start `date`
   guard_stats
