@@ -572,15 +572,15 @@ fix_update_nginx_config() {
       wait
       sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
       wait
-      sed -i "s/.*listen .*:80;/  listen                        [::]:80;/g" /var/aegir/config/server_*/nginx/vhost.d/*          &> /dev/null
+      sed -i "s/.*listen .*:80;/  listen                       \*:80;/g" /var/aegir/config/server_*/nginx/vhost.d/*          &> /dev/null
       wait
-      sed -i "s/.*listen .*:443/  listen                        [::]:443/g" /var/aegir/config/server_*/nginx/vhost.d/adminer.*  &> /dev/null
+      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/adminer.*  &> /dev/null
       wait
-      sed -i "s/.*listen .*:443/  listen                        [::]:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
+      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
       wait
-      sed -i "s/.*listen .*:443/  listen                        [::]:443/g" /var/aegir/config/server_*/nginx/vhost.d/chive.*    &> /dev/null
+      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/chive.*    &> /dev/null
       wait
-      sed -i "s/.*listen .*:443/  listen                        [::]:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
+      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
       wait
       sed -i "s/SSLv3 TLSv1;/TLSv1.1 TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf             &> /dev/null
       wait
@@ -747,7 +747,7 @@ fix_update_nginx_config() {
       sed -i "s/.*listen.*127.0.0.1:80;.*//g" \
         /var/aegir/config/server_*/nginx.conf &> /dev/null
       wait
-      sed -i "s/listen .*/listen         [::]:80;/g" \
+      sed -i "s/listen .*/listen        \*:80;/g" \
         /var/aegir/config/server_*/nginx.conf &> /dev/null
       wait
     fi
@@ -755,13 +755,13 @@ fix_update_nginx_config() {
       sed -i "s/.*listen.*127.0.0.1:80;.*//g" \
         /data/disk/*/config/server_*/nginx.conf &> /dev/null
       wait
-      sed -i "s/listen .*/listen         [::]:80;/g" \
+      sed -i "s/listen .*/listen        \*:80;/g" \
         /data/disk/*/config/server_*/nginx.conf &> /dev/null
       wait
-      sed -i "s/.*listen .*:80;/  listen         [::]:80;/g" \
+      sed -i "s/.*listen .*:80;/  listen        \*:80;/g" \
         /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
       wait
-      sed -i "s/.*listen .*:443/  listen         [::]:443/g" \
+      sed -i "s/.*listen .*:443/  listen        \*:443/g" \
         /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
       wait
       sed -i "s/.*ssl .*on;//g" \
