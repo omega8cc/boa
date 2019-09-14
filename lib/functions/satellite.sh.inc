@@ -5589,7 +5589,7 @@ satellite_child_b_vhosts_hotfix() {
   rPth="${_ROOT}/config/server"
   sed -i "s/.*listen .*127.0.0.1:80;.*//g"             ${rPth}_*/nginx.conf
   wait
-  sed -i "s/listen .*:80;/listen        \*:80;/g"      ${rPth}_*/nginx.conf
+  sed -i "s/listen .*\*:80;/listen        \*:80;/g"      ${rPth}_*/nginx.conf
   wait
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     sed -i "s/param db_port.*/param db_port   6033;/g" ${rPth}_*/nginx/vhost.d/*
@@ -5597,7 +5597,7 @@ satellite_child_b_vhosts_hotfix() {
     sed -i "s/param db_port.*/param db_port   3306;/g" ${rPth}_*/nginx/vhost.d/*
   fi
   wait
-  sed -i "s/listen .*:80;/listen        \*:80;/g"      ${rPth}_*/nginx/vhost.d/*
+  sed -i "s/listen .*\*:80;/listen        \*:80;/g"      ${rPth}_*/nginx/vhost.d/*
   wait
 }
 
