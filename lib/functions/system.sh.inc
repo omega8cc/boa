@@ -2081,7 +2081,17 @@ get_drush_versions() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH8_VRN} installation complete"
   fi
-  get_drush_nine
+  _DRUSH_ITD=$(drush9 --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f4 \
+    | awk '{ print $1}' 2>&1)
+  if [ "${_DRUSH_ITD}" != "${_DRUSH9_VRN}" ] \
+    || [ ! -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+    msg "INFO: Drush ${_DRUSH9_VRN} re-installation required"
+    get_drush_nine
+  else
+    msg "INFO: Drush ${_DRUSH9_VRN} already installed"
+  fi
   set_drush_perm
   if [ -x "/opt/tools/drush/7/drush/drush" ]; then
     rm -f /usr/bin/drush7
