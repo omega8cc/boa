@@ -3216,7 +3216,7 @@ basic_packages_install_on_init() {
         fi
       fi
       echo
-      msg "NOTE: Please reboot and run barracuda upgrade"
+      msg "NOTE: Please reboot and run 'barracuda up-head system'"
       msg "NOTE: after boa completes initial installation"
       msg "NOTE: in order to remove unused systemd packages!"
       echo
