@@ -216,6 +216,43 @@ whitelist_ip_authzero() {
   done
 }
 
+whitelist_ip_site24x7() {
+  if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing site24x7 ips from csf.allow
+    sed -i "s/.*site24x7.*//g" /etc/csf/csf.allow
+    wait
+    sed -i "/^$/d" /etc/csf/csf.allow
+    wait
+  fi
+
+  _IPS=$(dig site24x7.enduserexp.com  \
+    | grep 'IN.*A' \
+    | cut -d 'A' -f2 \
+    | sed 's/[^0-9\.]//g' \
+    | sort \
+    | uniq 2>&1)
+
+  for _IP in ${_IPS}; do
+    echo checking site24x7 ${_IP} now...
+    _IP_CHECK=$(cat /etc/csf/csf.allow \
+      | cut -d '#' -f1 \
+      | sort \
+      | uniq \
+      | tr -d "\s" \
+      | grep "${_IP}" 2>&1)
+    if [ -z "${_IP_CHECK}" ]; then
+      echo "${_IP} not yet listed in /etc/csf/csf.allow"
+      echo "tcp|in|d=80|s=${_IP} # site24x7 ips" >> /etc/csf/csf.allow
+    else
+      echo "${_IP} already listed in /etc/csf/csf.allow"
+    fi
+  done
+  if [ ! -e "/root/.whitelist.site24x7.cnf" ]; then
+    csf -tf
+    csf -df
+    touch /root/.whitelist.site24x7.cnf
+  fi
+}
 
 local_ip_rg() {
   if [ -e "/root/.local.IP.list" ]; then
@@ -402,6 +439,7 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
   whitelist_ip_microsoft
   whitelist_ip_sucuri
   whitelist_ip_authzero
+  whitelist_ip_site24x7
 
   if [ -e "/root/.full.csf.cleanup.cnf" ]; then
     sed -i "s/.*do not delete.*//g" /etc/csf/csf.deny
