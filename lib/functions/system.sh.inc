@@ -2003,7 +2003,7 @@ clean_drush_nine() {
   rm -f /usr/local/bin/var-dump-server
   rm -f /usr/bin/drush9
   ln -s /opt/tools/drush/9/drush/vendor/drush/drush/drush /usr/bin/drush9
-  msg "INFO: Drush ${_DRUSH9_VRN} installation complete"
+  msg "INFO: Drush ${_DRUSH9_VRN} setup complete"
 }
 
 #
