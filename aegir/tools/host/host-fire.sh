@@ -5,14 +5,16 @@ SHELL=/bin/bash
 
 csf_flood_guard() {
   if [ `ps aux | grep -v "grep" | grep --count "csf"` -gt "3" ]; then
-    echo "$(date 2>&1) Too many csf processes killed" >> \
+    thisCountCsf=`ps aux | grep -v "grep" | grep --count "csf"`
+    echo "$(date 2>&1) Too many ${thisCountCsf} csf processes killed" >> \
       /var/log/csf-count.kill.log
     kill -9 $(ps aux | grep '[c]sf' | awk '{print $2}') &> /dev/null
     csf -tf
     csf -df
   fi
-  if [ `ps aux | grep -v "grep" | grep --count "fire.sh"` -gt "5" ]; then
-    echo "$(date 2>&1) Too many fire.sh processes killed" >> \
+  if [ `ps aux | grep -v "grep" | grep --count "fire.sh"` -gt "6" ]; then
+    thisCountFire=`ps aux | grep -v "grep" | grep --count "fire.sh"`
+    echo "$(date 2>&1) Too many ${thisCountFire} fire.sh processes killed" >> \
       /var/log/fire-count.kill.log
     csf -tf
     csf -df
