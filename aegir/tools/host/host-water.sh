@@ -319,6 +319,19 @@ guard_stats() {
     if [ -e "/root/.local.IP.list" ]; then
       cp -af /root/.local.IP.list ${i}/root/.local.IP.list
     fi
+    if [ ! -e "${i}/${_HX}" ]; then
+      mv -f ${i}/${_HA} ${i}/${_HX}
+    fi
+    if [ ! -e "${i}/${_WX}" ]; then
+      mv -f ${i}/${_WA} ${i}/${_WX}
+    fi
+    if [ ! -e "${i}/${_FX}" ]; then
+      mv -f ${i}/${_FA} ${i}/${_FX}
+      sed -i "s/.*do not delete.*//g" /etc/csf/csf.deny
+      sed -i "/^$/d" /etc/csf/csf.deny
+      csf -df
+      csf -tf
+    fi
     if [ -e "${i}/${_HA}" ] && [ -e "/usr/var/run${i}" ]; then
       for _IP in `cat ${i}/${_HA} | cut -d '#' -f1 | sort | uniq`; do
         _NR_TEST="0"
@@ -351,9 +364,6 @@ guard_stats() {
           fi
         fi
       done
-      if [ ! -e "${i}/${_HX}" ]; then
-        mv -f ${i}/${_HA} ${i}/${_HX}
-      fi
     fi
     if [ -e "${i}/${_WA}" ] && [ -e "/usr/var/run${i}" ]; then
       for _IP in `cat ${i}/${_WA} | cut -d '#' -f1 | sort | uniq`; do
@@ -387,9 +397,6 @@ guard_stats() {
           fi
         fi
       done
-      if [ ! -e "${i}/${_WX}" ]; then
-        mv -f ${i}/${_WA} ${i}/${_WX}
-      fi
     fi
     if [ -e "${i}/$_FA" ] && [ -e "/usr/var/run${i}" ]; then
       for _IP in `cat ${i}/$_FA | cut -d '#' -f1 | sort | uniq`; do
@@ -423,9 +430,6 @@ guard_stats() {
           fi
         fi
       done
-      if [ ! -e "${i}/${_FX}" ]; then
-        mv -f ${i}/${_FA} ${i}/${_FX}
-      fi
     fi
   done
 }
@@ -492,11 +496,11 @@ if [ -e "/vservers" ] \
   local_ip_rg
 
   _HA=var/xdrago/monitor/hackcheck.archive.log
-  _HX=var/xdrago/monitor/hackcheck.archive.x2.log
+  _HX=var/xdrago/monitor/hackcheck.archive.x3.log
   _WA=var/xdrago/monitor/scan_nginx.archive.log
-  _WX=var/xdrago/monitor/scan_nginx.archive.x2.log
+  _WX=var/xdrago/monitor/scan_nginx.archive.x3.log
   _FA=var/xdrago/monitor/hackftp.archive.log
-  _FX=var/xdrago/monitor/hackftp.archive.x2.log
+  _FX=var/xdrago/monitor/hackftp.archive.x3.log
 
   echo guard start `date`
   guard_stats

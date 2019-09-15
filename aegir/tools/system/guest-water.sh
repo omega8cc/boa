@@ -313,6 +313,19 @@ local_ip_rg() {
 }
 
 guard_stats() {
+  if [ ! -e "${_HX}" ]; then
+    mv -f ${_HA} ${_HX}
+  fi
+  if [ ! -e "${_WX}" ]; then
+    mv -f ${_WA} ${_WX}
+  fi
+  if [ ! -e "${_FX}" ]; then
+    mv -f ${_FA} ${_FX}
+    sed -i "s/.*do not delete.*//g" /etc/csf/csf.deny
+    sed -i "/^$/d" /etc/csf/csf.deny
+    csf -df
+    csf -tf
+  fi
   if [ -e "${_HA}" ]; then
     for _IP in `cat ${_HA} | cut -d '#' -f1 | sort | uniq`; do
       _NR_TEST="0"
@@ -474,11 +487,11 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
   local_ip_rg
 
   _HA=/var/xdrago/monitor/hackcheck.archive.log
-  _HX=/var/xdrago/monitor/hackcheck.archive.x2.log
+  _HX=/var/xdrago/monitor/hackcheck.archive.x3.log
   _WA=/var/xdrago/monitor/scan_nginx.archive.log
-  _WX=/var/xdrago/monitor/scan_nginx.archive.x2.log
+  _WX=/var/xdrago/monitor/scan_nginx.archive.x3.log
   _FA=/var/xdrago/monitor/hackftp.archive.log
-  _FX=/var/xdrago/monitor/hackftp.archive.x2.log
+  _FX=/var/xdrago/monitor/hackftp.archive.x3.log
 
   echo guard start `date`
   guard_stats
