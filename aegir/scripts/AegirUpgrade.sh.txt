@@ -309,17 +309,32 @@ hostmaster_mi_up() {
     cd ${_PREV_HM_ROOT}/profiles/hostmaster/modules/contrib
     get_dev_stc "entity-7.x-1.9.tar.gz"
     ${_DRUSHCMD} @hostmaster en entity -y
-    ${_DRUSHCMD} @hostmaster en hosting_ssl -y
-    ${_DRUSHCMD} @hostmaster en hosting_le -y
-    ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y
-    ${_DRUSHCMD} @hostmaster en hosting_nginx_ssl -y
+    ${_DRUSHCMD} @hostmaster dis hosting_ssl -y
+    ${_DRUSHCMD} @hostmaster dis hosting_le -y
+    ${_DRUSHCMD} @hostmaster dis hosting_le_vhost -y
+    ${_DRUSHCMD} @hostmaster dis hosting_nginx_ssl -y
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_service WHERE service LIKE 'http'"
-    ${_DRUSHCMD} @hostmaster sqlq "INSERT INTO hosting_service (nid, vid, service, type, restart_cmd, port, available) VALUES ('2', '2', 'http', 'nginx_ssl', 'sudo /etc/init.d/nginx reload', '80', '1')"
-    ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_service SET type='nginx_ssl' WHERE service='http'"
+    ${_DRUSHCMD} @hostmaster sqlq "INSERT INTO hosting_service (nid, vid, service, type, restart_cmd, port, available) VALUES ('2', '2', 'http', 'nginx', 'sudo /etc/init.d/nginx reload', '80', '1')"
+    ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_service SET type='nginx' WHERE service='http'"
     ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force
     ${_DRUSHCMD} @hostmaster hosting-dispatch
     msg "INFO: Waiting 15 seconds..."
     sleep 15
+  fi
+  if [ ! -e "/var/aegir/disable_nginx_ssl.log" ]; then
+    msg "INFO: Disabling nginx_ssl on master..."
+    ${_DRUSHCMD} @hostmaster dis hosting_ssl -y
+    ${_DRUSHCMD} @hostmaster dis hosting_le -y
+    ${_DRUSHCMD} @hostmaster dis hosting_le_vhost -y
+    ${_DRUSHCMD} @hostmaster dis hosting_nginx_ssl -y
+    ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_service WHERE service LIKE 'http'"
+    ${_DRUSHCMD} @hostmaster sqlq "INSERT INTO hosting_service (nid, vid, service, type, restart_cmd, port, available) VALUES ('2', '2', 'http', 'nginx', 'sudo /etc/init.d/nginx reload', '80', '1')"
+    ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_service SET type='nginx' WHERE service='http'"
+    ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force
+    ${_DRUSHCMD} @hostmaster hosting-dispatch
+    touch /var/aegir/disable_nginx_ssl.log
+    msg "INFO: Waiting 5 seconds..."
+    sleep 5
   fi
   if [ -e "${_PREV_HM_ROOT}/modules/path_alias_cache" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
