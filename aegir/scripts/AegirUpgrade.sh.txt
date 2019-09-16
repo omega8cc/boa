@@ -321,7 +321,8 @@ hostmaster_mi_up() {
     msg "INFO: Waiting 15 seconds..."
     sleep 15
   fi
-  if [ ! -e "/var/aegir/disable_nginx_ssl.log" ]; then
+  _BROKEN_SSL_TEST=$(grep "nginx default ssl server" /var/aegir/config/server_master/nginx.conf 2>&1)
+  if [ ! -z "${_BROKEN_SSL_TEST}" ]; then
     msg "INFO: Disabling nginx_ssl on master..."
     ${_DRUSHCMD} @hostmaster dis hosting_ssl -y
     ${_DRUSHCMD} @hostmaster dis hosting_le -y
