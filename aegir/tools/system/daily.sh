@@ -3127,8 +3127,15 @@ action() {
           SET status=1 WHERE publish_path LIKE '%/aegir/distro/%'\""
         check_old_empty_platforms
         run_drush8_hmr_cmd "${vSet} hosting_delete_force 0"
-        #run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
-        #  SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'\""
+        run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
+          SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'\""
+        _THIS_HM_PLR=$(cat ${User}/.drush/hostmaster.alias.drushrc.php \
+          | grep "root'" \
+          | cut -d: -f2 \
+          | awk '{ print $3}' \
+          | sed "s/[\,']//g" 2>&1)
+        run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
+          SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'\""
         purge_cruft_machine
         if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
           || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
