@@ -337,8 +337,9 @@ tune_memory_limits() {
   _SRT_SQL=$(( _USE_SQL * 2 ))
   _SRT_SQL="${_SRT_SQL}K"
   if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
-    _USE_PHP=2048
-    _USE_OPC=2048
+    _USE_PHP=4096
+    _USE_OPC=4096
+    _USE_CLI=8192
     _QCE_SQL=64M
     _RND_SQL=8M
     _JBF_SQL=4M
@@ -355,8 +356,9 @@ tune_memory_limits() {
     fi
   elif [ "${_USE}" -ge "2048" ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
-      _USE_PHP=2048
-      _USE_OPC=2048
+      _USE_PHP=4096
+      _USE_OPC=4096
+      _USE_CLI=8192
       _QCE_SQL=64M
       _RND_SQL=8M
       _JBF_SQL=4M
@@ -375,8 +377,9 @@ tune_memory_limits() {
       if [ -e "/boot/grub/grub.cfg" ] \
         || [ -e "/boot/grub/menu.lst" ] \
         || [ -e "/root/.tg.cnf" ]; then
-        _USE_PHP=4096
-        _USE_OPC=4096
+        _USE_PHP=8192
+        _USE_OPC=8192
+        _USE_CLI=24576
         _QCE_SQL=64M
         _RND_SQL=8M
         _JBF_SQL=4M
@@ -402,6 +405,7 @@ tune_memory_limits() {
       else
         _USE_PHP=2048
         _USE_OPC=2048
+        _USE_CLI=4096
         _QCE_SQL=64M
         _RND_SQL=2M
         _JBF_SQL=2M
@@ -420,6 +424,7 @@ tune_memory_limits() {
     else
       _USE_PHP=2048
       _USE_OPC=2048
+      _USE_CLI=4096
       _QCE_SQL=64M
       _RND_SQL=2M
       _JBF_SQL=2M
@@ -438,6 +443,7 @@ tune_memory_limits() {
   else
     _USE_PHP="${_USE}"
     _USE_OPC="${_USE}"
+    _USE_CLI="${_USE}"
     _QCE_SQL=64M
     _RND_SQL=1M
     _JBF_SQL=1M
@@ -482,31 +488,31 @@ tune_memory_limits() {
     sed -i "s/256/${_USE_FPM}/g" /opt/php73/etc/php73.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php73/etc/php73.ini &> /dev/null
-    sed -i "s/256/${_USE_PHP}/g" /opt/php73/lib/php.ini   &> /dev/null
+    sed -i "s/256/${_USE_CLI}/g" /opt/php73/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php72/etc/php72.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php72/etc/php72.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php72/etc/php72.ini &> /dev/null
-    sed -i "s/256/${_USE_PHP}/g" /opt/php72/lib/php.ini   &> /dev/null
+    sed -i "s/256/${_USE_CLI}/g" /opt/php72/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php71/etc/php71.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php71/etc/php71.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php71/etc/php71.ini &> /dev/null
-    sed -i "s/256/${_USE_PHP}/g" /opt/php71/lib/php.ini   &> /dev/null
+    sed -i "s/256/${_USE_CLI}/g" /opt/php71/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php70/etc/php70.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php70/etc/php70.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php70/etc/php70.ini &> /dev/null
-    sed -i "s/256/${_USE_PHP}/g" /opt/php70/lib/php.ini   &> /dev/null
+    sed -i "s/256/${_USE_CLI}/g" /opt/php70/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php56/etc/php56.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php56/etc/php56.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php56/etc/php56.ini &> /dev/null
-    sed -i "s/256/${_USE_PHP}/g" /opt/php56/lib/php.ini   &> /dev/null
+    sed -i "s/256/${_USE_CLI}/g" /opt/php56/lib/php.ini   &> /dev/null
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     tune_sql_memory_limits
