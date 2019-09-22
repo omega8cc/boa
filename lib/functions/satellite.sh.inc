@@ -5525,6 +5525,15 @@ satellite_child_b_aegir_ui_enhance() {
       fi
       rm -f make_client.php
     else
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
+        SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%'"
+      _THIS_HM_PLR=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
+          | grep "root'" \
+          | cut -d: -f2 \
+          | awk '{ print $3}' \
+          | sed "s/[\,']//g" 2>&1)
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
+        SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'"
       if [ "${_VMFAMILY}" = "VS" ]; then
         pBy="Octopus System powered by Barracuda"
         ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}" &> /dev/null
