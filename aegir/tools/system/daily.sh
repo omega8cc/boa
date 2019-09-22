@@ -3128,7 +3128,7 @@ action() {
         check_old_empty_platforms
         run_drush8_hmr_cmd "${vSet} hosting_delete_force 0"
         run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
-          SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'\""
+          SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%'\""
         _THIS_HM_PLR=$(cat ${User}/.drush/hostmaster.alias.drushrc.php \
           | grep "root'" \
           | cut -d: -f2 \
