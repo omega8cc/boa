@@ -202,7 +202,7 @@ redis_oom_check
 
 redis_slow_check() {
   if [ `tail --lines=500 /var/log/php/fpm-*-slow.log \
-    | grep --count "PhpRedis.php"` -gt "0" ]; then
+    | grep --count "PhpRedis.php"` -gt "5" ]; then
     touch /var/run/fmp_wait.pid
     sleep 8
     service redis-server restart
