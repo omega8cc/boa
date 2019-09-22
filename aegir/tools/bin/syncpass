@@ -191,8 +191,19 @@ EOFMYSQL
           echo "ERROR: did not work as expected, please try again"
           exit 1
         fi
+        _L_SYS_PHP="/data/disk/${uname}/.${uname}.pass.php"
+        echo "<?php" > ${_L_SYS_PHP}
+        echo "\$oct_db_user = \"${uname}\";" >> ${_L_SYS_PHP}
+        echo "\$oct_db_pass = \"${_ESC_APASS}\";" >> ${_L_SYS_PHP}
+        echo "\$oct_db_host = \"${_THIS_DB_HOST}\";" >> ${_L_SYS_PHP}
+        echo "\$oct_db_port = \"${_THIS_DB_PORT}\";" >> ${_L_SYS_PHP}
+        echo "\$oct_db_dirs = \"/data/disk/${uname}/backups\";" >> ${_L_SYS_PHP}
+        chown ${uname}:users ${_L_SYS_PHP}
+        chmod 0600 ${_L_SYS_PHP}
         echo "INFO: Fixed Aegir Satellite Instance system user=${uname}"
         echo "INFO: New system password=${_ESC_APASS} encoded=${_ENC_APASS}"
+        echo "INFO: With Satellite oct_db_host=${oct_db_host}"
+        echo "INFO: With Satellite oct_db_port=${oct_db_port}"
         echo "BYE!"
       else
         echo "ERROR: You must specify the existing Aegir \

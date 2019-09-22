@@ -2110,9 +2110,20 @@ provision_backend_dbpass_generate() {
     _ENC_PASS="${_ESC_PASS}"
   fi
 
-  echo "${_ESC_PASS}" > ${_ROOT}/.${_USER}.pass.txt
-  chown ${_USER}:${_USRG} ${_ROOT}/.${_USER}.pass.txt
-  chmod 0600 ${_ROOT}/.${_USER}.pass.txt
+  _L_SYS="${_ROOT}/.${_USER}.pass.txt"
+  echo "${_ESC_PASS}" > ${_L_SYS}
+  chown ${_USER}:${_USRG} ${_L_SYS}
+  chmod 0600 ${_L_SYS}
+
+  _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
+  echo "<?php" > ${_L_SYS_PHP}
+  echo "\$oct_db_user = \"${_USER}\";" >> ${_L_SYS_PHP}
+  echo "\$oct_db_pass = \"${_ESC_PASS}\";" >> ${_L_SYS_PHP}
+  echo "\$oct_db_host = \"${_THIS_DB_HOST}\";" >> ${_L_SYS_PHP}
+  echo "\$oct_db_port = \"${_THIS_DB_PORT}\";" >> ${_L_SYS_PHP}
+  echo "\$oct_db_dirs = \"/data/disk/${_USER}/backups\";" >> ${_L_SYS_PHP}
+  chown ${_USER}:${_USRG} ${_L_SYS_PHP}
+  chmod 0600 ${_L_SYS_PHP}
 
   _ESC="*.*"
   mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
@@ -2241,6 +2252,8 @@ provision_backend_dbpass_sync() {
   fi
   _L_SYS="${_ROOT}/.${_USER}.pass.txt"
   mv -f ${_L_SYS} ${_L_SYS}-pre-${_X_VERSION}-${_NOW} &> /dev/null
+  _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
+  mv -f ${_L_SYS_PHP} ${_L_SYS_PHP}-pre-${_X_VERSION}-${_NOW} &> /dev/null
   provision_backend_dbpass_generate
   if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
@@ -4869,7 +4882,6 @@ satellite_child_b_aegir_build() {
     cd ${_ROOT}
     _AGRPXSWD=$(cat ${_ROOT}/.${_USER}.pass.txt 2>&1)
     _AGRPASWD=$(echo -n ${_AGRPXSWD} | tr -d "\n" 2>&1)
-
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
@@ -4893,6 +4905,15 @@ satellite_child_b_aegir_build() {
       _USE_AEGIR_HOST=$(uname -n 2>&1)
       _THIS_DB_HOST=$(uname -n 2>&1)
     fi
+    _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
+    echo "<?php" > ${_L_SYS_PHP}
+    echo "\$oct_db_user = \"${_USER}\";" >> ${_L_SYS_PHP}
+    echo "\$oct_db_pass = \"${_AGRPASWD}\";" >> ${_L_SYS_PHP}
+    echo "\$oct_db_port = \"${_THIS_DB_PORT}\";" >> ${_L_SYS_PHP}
+    echo "\$oct_db_host = \"${_THIS_DB_HOST}\";" >> ${_L_SYS_PHP}
+    echo "\$oct_db_dirs = \"/data/disk/${_USER}/backups\";" >> ${_L_SYS_PHP}
+    chown ${_USER}:${_USRG} ${_L_SYS_PHP}
+    chmod 0600 ${_L_SYS_PHP}
 
     msg "${_STATUS} B: Running hostmaster-install, please wait..."
     ${_DRUSHCMD} cc drush >${_ROOT}/log/install.log 2>&1
