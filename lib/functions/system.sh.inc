@@ -2877,6 +2877,8 @@ strict_bin_permissions() {
                   mongosniff \
                   mongostat \
                   mongotop \
+                  mydumper \
+                  myloader \
                   newrelic-daemon \
                   node \
                   npm \
@@ -4469,6 +4471,43 @@ install_vnstat() {
   if [ -e "/usr/etc/vnstat.conf" ]; then
     sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /usr/etc/vnstat.conf
     mrun "service vnstat restart" &> /dev/null
+  fi
+}
+
+install_myquick_src() {
+  _MYQUICK_UPGRADE_REQUIRED=NO
+  _MYQUICK_ITD=$(mydumper -V 2>&1 \
+    | tr -d "\n" \
+    | tr -d "," \
+    | cut -d" " -f2 \
+    | awk '{ print $1}' 2>&1)
+  if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN}" ]; then
+    _MYQUICK_INSTALL_REQUIRED=YES
+    msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
+  fi
+  if [ "${_MYQUICK_INSTALL_REQUIRED}" = "YES" ]; then
+    msg "INFO: Building MyQuick ${_MYQUICK_VRN} from sources, please wait..."
+    mrun "${_INSTALL} cmake" 2> /dev/null
+    mrun "${_INSTALL} libmariadb-dev" 2> /dev/null
+    cd /var/opt
+    rm -rf mydumper*
+    get_dev_src "mydumper-${_MYQUICK_VRN}.tar.gz"
+    cd /var/opt/mydumper-${_MYQUICK_VRN}
+    mrun "cmake ." 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+  fi
+}
+
+check_install_myquick() {
+  isMyQuick=$(which mydumper 2>&1)
+  if [ ! -x "${isMyQuick}" ] \
+    || [ -z "${isMyQuick}" ]; then
+    install_myquick_src
+  fi
+  if [ ! -x "${isMyQuick}" ] \
+    || [ -z "${isMyQuick}" ]; then
+    install_myquick_src
   fi
 }
 
