@@ -1204,7 +1204,7 @@ satellite_force_advanced_nginx_config() {
 #
 # Update local INI for PHP CLI on the Aegir Satellite Instance.
 satellite_child_b_update_ini_php_cli() {
-  _X_SE="401prodQ37"
+  _X_SE="401prodQ38"
   _U_HD="${_ROOT}/.drush"
   _U_TP="${_ROOT}/.tmp"
   _U_II="${_U_HD}/php.ini"
@@ -3827,7 +3827,7 @@ satellite_make() {
     fi
   fi
 
-  _X_SE="401prodQ37"
+  _X_SE="401prodQ38"
   if [ ! -e "${_ROOT}/static/control/.ctrl.${_X_SE}.pid" ] \
     && [ -e "/home/${_USER}.ftp/users" ]; then
     if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
