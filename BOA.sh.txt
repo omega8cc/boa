@@ -732,11 +732,9 @@ update_agents() {
     fi
   fi
 
-  if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/redis_eight.ctrl.${_X_SE}.pid" ]; then
-    _Dir="/data/all/000/modules"
-    _REDIS_N_VERSION=mod-05-09-2019
+  _Dir="/data/all/000/modules"
+  _REDIS_N_VERSION=mod-05-09-2019
+  if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
     if [ ! -e "${_Dir}/redis_eight/${_REDIS_N_VERSION}.info" ]; then
       mkdir -p ${_Dir}
       cd ${_Dir}
