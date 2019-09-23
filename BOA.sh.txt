@@ -222,6 +222,8 @@ extract_archive() {
   fi
 }
 
+#
+# Download and extract archive from dev/src mirror.
 get_dev_src() {
   if [ ! -z "$1" ]; then
     curl ${crlGet} "${urlDev}/src/$1" -o "$1"
@@ -229,6 +231,19 @@ get_dev_src() {
       extract_archive "$1"
     else
       echo "OOPS: $1 failed download from ${urlDev}/src/$1"
+    fi
+  fi
+}
+
+#
+# Download and extract from dev/contrib mirror.
+get_dev_contrib() {
+  if [ ! -z "$1" ]; then
+    curl ${crlGet} "${urlDev}/HEAD/contrib/$1" -o "$1"
+    if [ -e "$1" ]; then
+      extract_archive "$1"
+    else
+      msg "OOPS: $1 failed download from ${urlDev}/HEAD/contrib/$1"
     fi
   fi
 }
@@ -715,6 +730,24 @@ update_agents() {
     else
       mv -f /var/xdrago/websh.sh.old /bin/websh
     fi
+  fi
+
+  if [ -e "/var/xdrago/manage_solr_config.sh" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/redis_eight.ctrl.${_X_SE}.pid" ]; then
+    _Dir="/data/all/000/modules"
+    _REDIS_N_VERSION=mod-05-09-2019
+    if [ ! -e "${_Dir}/redis_eight/${_REDIS_N_VERSION}.info" ]; then
+      mkdir -p ${_Dir}
+      cd ${_Dir}
+      rm -rf ${_Dir}/redis_eight
+      get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
+      rm -f redis_eight/redis.info
+      echo update > redis_eight/${_REDIS_N_VERSION}.info
+    fi
+    find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
+    find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
+    touch ${pthLog}/redis_eight.ctrl.${_X_SE}.pid
   fi
 }
 
