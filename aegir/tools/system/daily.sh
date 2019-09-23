@@ -1917,9 +1917,11 @@ if_site_db_conversion() {
 cleanup_ghost_platforms() {
   if [ -e "${Plr}" ]; then
     if [ ! -e "${Plr}/index.php" ] || [ ! -e "${Plr}/profiles" ]; then
-      mkdir -p ${User}/undo
-      mv -f ${Plr} ${User}/undo/ &> /dev/null
-      echo "GHOST platform ${Plr} detected and moved to ${User}/undo/"
+      if [ ! -e "${Plr}/vendor" ]; then
+        mkdir -p ${User}/undo
+        mv -f ${Plr} ${User}/undo/ &> /dev/null
+        echo "GHOST platform ${Plr} detected and moved to ${User}/undo/"
+      fi
     fi
   fi
 }
@@ -2339,13 +2341,15 @@ cleanup_ghost_drushrc() {
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
-      if [ -d "$Plm" ]; then
-        if [ ! -e "$Plm/index.php" ] || [ ! -e "$Plm/profiles" ]; then
-          mkdir -p ${User}/undo
-          mv -f $Plm ${User}/undo/ &> /dev/null
-          echo "GHOST broken platform dir $Plm detected and moved to ${User}/undo/"
-          mv -f ${Alias} ${User}/undo/ &> /dev/null
-          echo "GHOST broken platform alias ${Alias} detected and moved to ${User}/undo/"
+      if [ -d "${Plm}" ]; then
+        if [ ! -e "${Plm}/index.php" ] || [ ! -e "${Plm}/profiles" ]; then
+          if [ ! -e "${Plm}/vendor" ]; then
+            mkdir -p ${User}/undo
+            mv -f ${Plm} ${User}/undo/ &> /dev/null
+            echo "GHOST broken platform dir ${Plm} detected and moved to ${User}/undo/"
+            mv -f ${Alias} ${User}/undo/ &> /dev/null
+            echo "GHOST broken platform alias ${Alias} detected and moved to ${User}/undo/"
+          fi
         fi
       else
         mkdir -p ${User}/undo
@@ -2765,10 +2769,12 @@ check_old_empty_platforms() {
           | grep site_path 2>&1)
         if [ ! -e "${_T_PFM_ROOT}/sites/all" ] \
           || [ ! -e "${_T_PFM_ROOT}/index.php" ]; then
-          mkdir -p ${User}/undo
-          mv -f ${User}/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php \
-            ${User}/undo/ &> /dev/null
-          echo "GHOST platform ${_T_PFM_ROOT} detected and moved to ${User}/undo/"
+          if [ ! -e "${_T_PFM_ROOT}/vendor" ]; then
+            mkdir -p ${User}/undo
+            mv -f ${User}/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php \
+              ${User}/undo/ &> /dev/null
+            echo "GHOST platform ${_T_PFM_ROOT} detected and moved to ${User}/undo/"
+          fi
         fi
         if [[ "${_T_PFM_SITE}" =~ ".restore" ]]; then
           echo "WARNING: ghost site leftover found: ${_T_PFM_SITE}"
