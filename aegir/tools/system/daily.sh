@@ -34,7 +34,7 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
-_X_SE="401prodQ39"
+_X_SE="401prodQ40"
 _WEBG=www-data
 _OSV=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
@@ -2906,11 +2906,11 @@ purge_cruft_machine() {
       if [ ! -d "${User}/distro/${i}/keys" ]; then
         mkdir -p ${User}/distro/${i}/keys
       fi
-      RevisionTest=$(ls ${User}/distro/$i | wc -l | tr -d "\n" 2>&1)
+      RevisionTest=$(ls ${User}/distro/${i} | wc -l 2>&1)
       if [ "${RevisionTest}" -lt "2" ] && [ ! -z "${RevisionTest}" ]; then
-        mkdir -p ${User}/undo
-        mv -f ${User}/distro/$i ${User}/undo/ &> /dev/null
-        echo "GHOST revision ${User}/distro/$i detected and moved to ${User}/undo/"
+        mkdir -p ${User}/undo/dist
+        mv -f ${User}/distro/${i} ${User}/undo/dist/ &> /dev/null
+        echo "GHOST revision ${User}/distro/$i detected and moved to ${User}/undo/dist"
       fi
     fi
   done
@@ -2998,13 +2998,39 @@ shared_codebases_cleanup() {
           -type l -lname ${Codebase} | sort 2>&1)
         if [[ "${CodebaseTest}" =~ "No such file or directory" ]] \
           || [ -z "${CodebaseTest}" ]; then
-          mkdir -p ${_CLD}/$i
+          mkdir -p ${_CLD}/${i}
           echo "Moving no longer used ${CodebaseDir} to ${_CLD}/${i}/"
           mv -f ${CodebaseDir} ${_CLD}/${i}/
           sleep 1
         fi
       done
     fi
+  done
+}
+
+ghost_codebases_cleanup() {
+  _CLD="/var/backups/ghost-codebases-cleanup"
+  _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
+    016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
+    034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+  for i in ${_REVISIONS}; do
+    CodebaseTest=$(find /data/disk/*/distro/${i}/*/ -maxdepth 1 -mindepth 1 \
+      -type d -name vendor | sort 2>&1)
+    for vendor in ${CodebaseTest}; do
+      ParentDir=`echo ${vendor} | sed "s/\/vendor//g"`
+      if [ -d "${ParentDir}/docroot/sites/all" ] \
+        || [ -d "${ParentDir}/html/sites/all" ] \
+        || [ -d "${ParentDir}/web/sites/all" ]; then
+        _CLEAN_THIS=SKIP
+      else
+        _CLEAN_THIS="${ParentDir}"
+        _TSTAMP=`date +%y%m%d-%H%M%S`
+        mkdir -p ${_CLD}/${i}/${_TSTAMP}
+        echo "Moving ghost ${_CLEAN_THIS} to ${_CLD}/${i}/${_TSTAMP}/"
+        mv -f ${_CLEAN_THIS} ${_CLD}/${i}/${_TSTAMP}/
+        sleep 1
+      fi
+    done
   done
 }
 
@@ -3164,6 +3190,7 @@ action() {
     fi
   done
   shared_codebases_cleanup
+  ghost_codebases_cleanup
   check_old_empty_hostmaster_platforms
   cleanup_weblogx
 }
