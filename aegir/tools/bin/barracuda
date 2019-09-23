@@ -902,7 +902,7 @@ up_start() {
   else
     touch /var/run/boa_run.pid
     touch /var/run/boa_wait.pid
-    kill -9 $(ps aux | grep '[d]aily.sh' | awk '{print $2}')
+    kill -9 $(ps aux | grep '[d]aily.sh' | awk '{print $2}') &> /dev/null
     rm -f /run/*daily*.pid
     mkdir -p ${_LOG_DIR}
     cd ${vBs}
