@@ -59,7 +59,7 @@ fi
 
 _BACKUPDIR=/data/disk/arch/hourly
 _CHECK_HOST=$(uname -n 2>&1)
-_DATE=$(date +%y%m%d-%H%M 2>&1)
+_DATE=$(date +%y%m%d-%H%M%S 2>&1)
 _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e 2>&1)

@@ -1903,11 +1903,11 @@ if_site_db_conversion() {
     fi
     if [ "${_SQL_CONVERT}" = "myisam" ] \
       || [ "${_SQL_CONVERT}" = "innodb" ]; then
-      _TIMP=$(date +%y%m%d-%H%M 2>&1)
+      _TIMP=$(date +%y%m%d-%H%M%S 2>&1)
       echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
         for ${Dom} started"
       sql_convert
-      _TIMP=$(date +%y%m%d-%H%M 2>&1)
+      _TIMP=$(date +%y%m%d-%H%M%S 2>&1)
       echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
         for ${Dom} completed"
     fi
@@ -2519,7 +2519,7 @@ process() {
   cleanup_ghost_drushrc
   for Site in `find ${User}/config/server_master/nginx/vhost.d \
     -maxdepth 1 -mindepth 1 -type f | sort`; do
-    _MOMENT=$(date +%y%m%d-%H%M 2>&1)
+    _MOMENT=$(date +%y%m%d-%H%M%S 2>&1)
     echo ${_MOMENT} Start Counting Site $Site
     Dom=$(echo $Site | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
     Dan=
@@ -2661,7 +2661,7 @@ process() {
           fix_permissions
         fi
       fi
-     _MOMENT=$(date +%y%m%d-%H%M 2>&1)
+     _MOMENT=$(date +%y%m%d-%H%M%S 2>&1)
      echo ${_MOMENT} End Counting Site $Site
     fi
   done
@@ -2914,9 +2914,10 @@ purge_cruft_machine() {
       fi
       RevisionTest=$(ls ${User}/distro/${i} | wc -l 2>&1)
       if [ "${RevisionTest}" -lt "2" ] && [ ! -z "${RevisionTest}" ]; then
-        mkdir -p ${User}/undo/dist
-        mv -f ${User}/distro/${i} ${User}/undo/dist/ &> /dev/null
-        echo "GHOST revision ${User}/distro/$i detected and moved to ${User}/undo/dist"
+        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        mkdir -p ${User}/undo/dist/${_NOW}
+        mv -f ${User}/distro/${i} ${User}/undo/dist/${_NOW}/ &> /dev/null
+        echo "GHOST revision ${User}/distro/${i} detected and moved to ${User}/undo/dist/${_NOW}/"
       fi
     fi
   done
@@ -3208,7 +3209,7 @@ until [ ! -e "/var/run/boa_wait.pid" ]; do
   sleep 5
 done
 #
-_NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}

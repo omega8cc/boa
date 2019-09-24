@@ -41,7 +41,7 @@ if [ -e "/var/log/php" ]; then
     touch /var/run/fmp_wait.pid
     sleep 8
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
-    _NOW=$(date +%y%m%d-%H%M 2>&1)
+    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     _NOW=${_NOW//[^0-9-]/}
     mkdir -p /var/backups/php-logs/${_NOW}/
     mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
@@ -72,7 +72,7 @@ if [ -e "/var/log/php" ]; then
     touch /var/run/fmp_wait.pid
     sleep 8
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
-    _NOW=$(date +%y%m%d-%H%M 2>&1)
+    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     _NOW=${_NOW//[^0-9-]/}
     mkdir -p /var/backups/php-logs/${_NOW}/
     mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
@@ -206,7 +206,7 @@ redis_slow_check() {
     touch /var/run/fmp_wait.pid
     sleep 8
     service redis-server restart
-    _NOW=$(date +%y%m%d-%H%M 2>&1)
+    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     _NOW=${_NOW//[^0-9-]/}
     mkdir -p /var/backups/php-logs/${_NOW}/
     mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
@@ -239,7 +239,7 @@ fpm_sockets_healing() {
     | grep --count "Address already in use"` -gt "0" ]; then
     touch /var/run/fmp_wait.pid
     sleep 8
-    _NOW=$(date +%y%m%d-%H%M 2>&1)
+    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     _NOW=${_NOW//[^0-9-]/}
     mkdir -p /var/backups/php-logs/${_NOW}/
     mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/

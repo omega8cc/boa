@@ -271,7 +271,7 @@ _C_SQL="mysql --user=root --password=${_SQL_PSWD} --host=${_SQL_HOST} --port=${_
 
 echo "SQL --host=${_SQL_HOST} --port=${_SQL_PORT}"
 
-_DATE=$(date +%y%m%d-%H%M 2>&1)
+_DATE=$(date +%y%m%d-%H%M%S 2>&1)
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)

@@ -465,7 +465,7 @@ proceed_solr() {
 check_sites_list() {
   for Site in `find ${User}/config/server_master/nginx/vhost.d \
     -maxdepth 1 -mindepth 1 -type f | sort`; do
-    _MOMENT=$(date +%y%m%d-%H%M 2>&1)
+    _MOMENT=$(date +%y%m%d-%H%M%S 2>&1)
     echo ${_MOMENT} Start Checking Site $Site
     Dom=$(echo $Site | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
     if [ -e "${User}/config/server_master/nginx/vhost.d/${Dom}" ]; then
@@ -681,7 +681,7 @@ start_up() {
   done
 }
 
-_NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 mkdir -p /var/backups/solr/log
 find /var/backups/solr/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
