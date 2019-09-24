@@ -4505,6 +4505,7 @@ check_install_myquick() {
     || [ -z "${isMyQuick}" ]; then
     install_myquick_src
   fi
+  isMyQuick=$(which mydumper 2>&1)
   if [ ! -x "${isMyQuick}" ] \
     || [ -z "${isMyQuick}" ]; then
     install_myquick_src
