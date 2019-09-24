@@ -524,6 +524,7 @@ kill_zombies() {
   for Existing in `cat /etc/passwd | cut -d ':' -f1 | sort`; do
     _SEC_IDY=$(id -nG ${Existing} 2>&1)
     if [[ "${_SEC_IDY}" =~ "ltd-shell" ]] \
+      && [ ! -z "${Existing}" ] \
       && [[ ! "${Existing}" =~ ".ftp"($) ]] \
       && [[ ! "${Existing}" =~ ".web"($) ]]; then
       usrParent=$(echo ${Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
@@ -552,6 +553,7 @@ kill_zombies() {
     if [ ! -z "${isTest}" ]; then
       _SEC_IDY=$(id -nG ${Existing} 2>&1)
       if [[ "${_SEC_IDY}" =~ "No such user" ]] \
+        && [ ! -z "${Existing}" ] \
         && [[ ! "${Existing}" =~ ".ftp"($) ]] \
         && [[ ! "${Existing}" =~ ".web"($) ]]; then
         disable_chattr ${Existing}
@@ -1864,7 +1866,8 @@ manage_site_drush_alias_mirror() {
   for Alias in `find /home/${_USER}.ftp/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
     AliasFile=$(echo "$Alias" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
-    if [ ! -e "${pthParentUsr}/.drush/${AliasFile}" ]; then
+    if [ ! -e "${pthParentUsr}/.drush/${AliasFile}" ] \
+      && [ ! -z "${AliasFile}" ]; then
       rm -f /home/${_USER}.ftp/.drush/${AliasFile}
     fi
   done
@@ -1911,8 +1914,8 @@ manage_site_drush_alias_mirror() {
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
-        if [ -d "$SiteDir" ]; then
-          echo SiteDir is $SiteDir
+        if [ -d "${SiteDir}" ]; then
+          echo SiteDir is ${SiteDir}
           pthAliasMain="${pthParentUsr}/.drush/${SiteName}.alias.drushrc.php"
           pthAliasCopy="/home/${_USER}.ftp/.drush/${SiteName}.alias.drushrc.php"
           if [ ! -e "${pthAliasCopy}" ]; then
@@ -1929,7 +1932,7 @@ manage_site_drush_alias_mirror() {
           fi
         else
           rm -f ${pthAliasCopy}
-          echo "ZOMBIE $SiteDir IN ${pthAliasMain}"
+          echo "ZOMBIE ${SiteDir} IN ${pthAliasMain}"
         fi
       fi
     fi
