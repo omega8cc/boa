@@ -57,44 +57,49 @@ if [ -z "${script_user}" ] \
   exit 1
 fi
 
-if [ -e "${site_path}/libraries/ownership-fixed.pid" ]; then
-  exit 0
+if [ ! -e "${site_path}/libraries/ownership-fixed.pid" ]; then
+  ### ctrl pid
+  if [ ! -e "${site_path}/libraries" ]; then
+    mkdir ${site_path}/libraries
+  fi
+  touch ${site_path}/libraries/ownership-fixed.pid
+  cd ${site_path}
+  printf "Setting ownership of all files and directories inside "${site_path}" to: user => "${script_user}"\n"
+  if [ ! -e "${site_path}/libraries" ]; then
+    mkdir ${site_path}/libraries
+  fi
+  ### directory and settings files - site level
+  chown ${script_user}:users ${site_path} &> /dev/null
+  chown ${script_user}:www-data \
+    ${site_path}/{local.settings.php,settings.php,civicrm.settings.php,solr.php} &> /dev/null
+  ### modules,themes,libraries - site level
+  chown -R ${script_user}:users \
+    ${site_path}/{modules,themes,libraries}/* &> /dev/null
+  chown ${script_user}:users \
+    ${site_path}/drushrc.php \
+    ${site_path}/{modules,themes,libraries} &> /dev/null
 fi
 
-cd ${site_path}
-
-printf "Setting ownership of all files and directories inside "${site_path}" to: user => "${script_user}"\n"
-if [ ! -e "${site_path}/libraries" ]; then
-  mkdir ${site_path}/libraries
+if [ ! -e "${site_path}/files/ownership-fixed.pid" ]; then
+  ### ctrl pid
+  touch ${site_path}/files/ownership-fixed.pid
+  ### files - site level
+  chown -L -R ${script_user}:www-data ${site_path}/files &> /dev/null
+  chown ${script_user}:www-data ${site_path}/files &> /dev/null
+  chown ${script_user}:www-data ${site_path}/files/{tmp,images,pictures,css,js} &> /dev/null
+  chown ${script_user}:www-data ${site_path}/files/{advagg_css,advagg_js,ctools} &> /dev/null
+  chown ${script_user}:www-data ${site_path}/files/{ctools/css,imagecache,locations} &> /dev/null
+  chown ${script_user}:www-data ${site_path}/files/{xmlsitemap,deployment,styles,private} &> /dev/null
+  chown ${script_user}:www-data ${site_path}/files/{civicrm,civicrm/templates_c} &> /dev/null
+  chown ${script_user}:www-data ${site_path}/files/{civicrm/upload,civicrm/persist} &> /dev/null
+  chown ${script_user}:www-data ${site_path}/files/{civicrm/custom,civicrm/dynamic} &> /dev/null
+  ### private - site level
+  chown -L -R ${script_user}:www-data ${site_path}/private &> /dev/null
+  chown ${script_user}:www-data ${site_path}/private &> /dev/null
+  chown ${script_user}:www-data ${site_path}/private/{files,temp} &> /dev/null
+  chown ${script_user}:www-data ${site_path}/private/files/backup_migrate &> /dev/null
+  chown ${script_user}:www-data ${site_path}/private/files/backup_migrate/{manual,scheduled} &> /dev/null
+  chown -L -R ${script_user}:www-data ${site_path}/private/config &> /dev/null
 fi
-### ctrl pid
-touch ${site_path}/libraries/ownership-fixed.pid
-### directory and settings files - site level
-chown ${script_user}:users ${site_path} &> /dev/null
-chown ${script_user}:www-data \
-  ${site_path}/{local.settings.php,settings.php,civicrm.settings.php,solr.php} &> /dev/null
-### modules,themes,libraries - site level
-chown -R ${script_user}:users \
-  ${site_path}/{modules,themes,libraries}/* &> /dev/null
-chown ${script_user}:users \
-  ${site_path}/drushrc.php \
-  ${site_path}/{modules,themes,libraries} &> /dev/null
-### files - site level
-chown -L -R ${script_user}:www-data ${site_path}/files &> /dev/null
-chown ${script_user}:www-data ${site_path}/files &> /dev/null
-chown ${script_user}:www-data ${site_path}/files/{tmp,images,pictures,css,js} &> /dev/null
-chown ${script_user}:www-data ${site_path}/files/{advagg_css,advagg_js,ctools} &> /dev/null
-chown ${script_user}:www-data ${site_path}/files/{ctools/css,imagecache,locations} &> /dev/null
-chown ${script_user}:www-data ${site_path}/files/{xmlsitemap,deployment,styles,private} &> /dev/null
-chown ${script_user}:www-data ${site_path}/files/{civicrm,civicrm/templates_c} &> /dev/null
-chown ${script_user}:www-data ${site_path}/files/{civicrm/upload,civicrm/persist} &> /dev/null
-chown ${script_user}:www-data ${site_path}/files/{civicrm/custom,civicrm/dynamic} &> /dev/null
-### private - site level
-chown -L -R ${script_user}:www-data ${site_path}/private &> /dev/null
-chown ${script_user}:www-data ${site_path}/private &> /dev/null
-chown ${script_user}:www-data ${site_path}/private/{files,temp} &> /dev/null
-chown ${script_user}:www-data ${site_path}/private/files/backup_migrate &> /dev/null
-chown ${script_user}:www-data ${site_path}/private/files/backup_migrate/{manual,scheduled} &> /dev/null
-chown -L -R ${script_user}:www-data ${site_path}/private/config &> /dev/null
 
 echo "Done setting proper ownership of site files and directories."
