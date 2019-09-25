@@ -57,9 +57,18 @@ if [ -z "${script_user}" ] \
   exit 1
 fi
 
+if [ -e "${site_path}/libraries/ownership-fixed.pid" ]; then
+  exit 0
+fi
+
 cd ${site_path}
 
 printf "Setting ownership of all files and directories inside "${site_path}" to: user => "${script_user}"\n"
+if [ ! -e "${site_path}/libraries" ]; then
+  mkdir ${site_path}/libraries
+fi
+### ctrl pid
+touch ${site_path}/libraries/ownership-fixed.pid
 ### directory and settings files - site level
 chown ${script_user}:users ${site_path} &> /dev/null
 chown ${script_user}:www-data \

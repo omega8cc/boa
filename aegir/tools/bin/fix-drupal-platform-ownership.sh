@@ -60,11 +60,17 @@ if [ -z "${script_user}" ] \
     exit 1
 fi
 
+if [ -e "${drupal_root}/sites/all/libraries/ownership-fixed.pid" ]; then
+  exit 0
+fi
+
 cd ${drupal_root}
 
 printf "Setting ownership of "${drupal_root}" to: user => "${script_user}" group => "users"\n"
 chown ${script_user}:users ${drupal_root}
 mkdir -p ${drupal_root}/sites/all/{modules,themes,libraries,drush}
+### ctrl pid
+touch ${drupal_root}/sites/all/libraries/ownership-fixed.pid
 if [[ "${drupal_root}" =~ "/static/" ]] && [ -e "${drupal_root}/core" ]; then
   rm -f ${drupal_root}/../vendor/bin/drush*
   rm -f ${drupal_root}/vendor/bin/drush*

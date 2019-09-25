@@ -40,9 +40,18 @@ if [ -z "${site_path}" ] || [ ! -f "${site_path}/settings.php" ] ; then
   exit 1
 fi
 
+if [ -e "${site_path}/libraries/permissions-fixed.pid" ]; then
+  exit 0
+fi
+
 cd ${site_path}
 
 printf "Setting correct permissions on all files and directories inside "${site_path}"...\n"
+if [ ! -e "${site_path}/libraries" ]; then
+  mkdir ${site_path}/libraries
+fi
+### ctrl pid
+touch ${site_path}/libraries/permissions-fixed.pid
 ### directory and settings files - site level
 if [ -e "${site_path}/aegir.services.yml" ]; then
   rm -f ${site_path}/aegir.services.yml
