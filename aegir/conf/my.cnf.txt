@@ -71,6 +71,7 @@ sql_mode                = NO_ENGINE_SUBSTITUTION
 innodb_buffer_pool_size = 181M
 innodb_log_buffer_size  = 256M
 innodb_file_per_table   = 1
+innodb_use_native_aio   = 0
 innodb_large_prefix     = 1
 innodb_file_format      = Barracuda
 innodb_open_files       = 8000
