@@ -68,6 +68,9 @@ sync_binlog             = 0
 sql_mode                = NO_ENGINE_SUBSTITUTION
 # you can't just change log file size, requires special procedure
 #innodb_log_file_size   = 50M
+innodb_buffer_pool_instances = 4
+innodb_page_cleaners    = 4
+innodb_lru_scan_depth   = 256
 innodb_buffer_pool_size = 181M
 innodb_log_buffer_size  = 256M
 innodb_file_per_table   = 1

@@ -260,11 +260,9 @@ tune_sql_memory_limits() {
         _INNODB_BPI="1"
       fi
       if [ -e "/etc/mysql/my.cnf" ]; then
-        sed -i "s/^innodb_buffer_pool_instances.*//g"  /etc/mysql/my.cnf
+        sed -i "s/^innodb_buffer_pool_instances.*/innodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
         wait
-        sed -i "/^$/d" /etc/mysql/my.cnf
-        wait
-        sed -i "s/^innodb_file_per_table.*/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
+        sed -i "s/^innodb_page_cleaners.*/innodb_page_cleaners = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
         wait
       fi
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_INNODB_MEM}/4/40*40" | bc 2>&1)
