@@ -1228,6 +1228,13 @@ fix_tcp() {
   fi
 }
 
+fix_aio() {
+  _AIO_FIX=$(grep "fs.aio-max-nr" /etc/sysctl.conf 2>&1)
+  if [ -z "${_AIO_FIX}" ]; then
+    echo "fs.aio-max-nr = 2097152" >> /etc/sysctl.conf
+  fi
+}
+
 fix_alt() {
   if [ -x "/usr/lib/jvm/java-7-openjdk/jre/bin/java" ]; then
     if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
@@ -1809,6 +1816,7 @@ if [ `whoami` = "root" ]; then
   fix_ping_perms
   fix_lshell
   fix_tcp
+  fix_aio
   fix_alt
   fix_wkhtml
   fix_eldir
