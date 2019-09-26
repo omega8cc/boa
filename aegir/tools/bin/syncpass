@@ -202,8 +202,8 @@ EOFMYSQL
         chmod 0600 ${_L_SYS_PHP}
         echo "INFO: Fixed Aegir Satellite Instance system user=${uname}"
         echo "INFO: New system password=${_ESC_APASS} encoded=${_ENC_APASS}"
-        echo "INFO: With Satellite oct_db_host=${oct_db_host}"
-        echo "INFO: With Satellite oct_db_port=${oct_db_port}"
+        echo "INFO: With Satellite oct_db_host=${_THIS_DB_HOST}"
+        echo "INFO: With Satellite oct_db_port=${_THIS_DB_PORT}"
         echo "BYE!"
       else
         echo "ERROR: You must specify the existing Aegir \
