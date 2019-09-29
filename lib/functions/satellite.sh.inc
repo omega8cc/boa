@@ -5499,6 +5499,22 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \
       WHERE link_path='hosting/sites'" &> /dev/null
 
+    ${_DRUSHCMD} @hostmaster ev 'variable_set("hosting_task_logs_types_display", array(
+      "error" => "error",
+      "info" => "info",
+      "message" => "message",
+      "notice" => "notice",
+      "ok" => "ok",
+      "status" => "status",
+      "success" => "success",
+      "warning" => "warning",
+      "backup" => "backup",
+      "bootstrap" => "bootstrap",
+      "command" => "command",
+      "debug" => "debug",
+      "debugnotify" => "debugnotify",
+      "queue" => "queue"))'
+
     if [ "${_LOCAL_STATUS}" = "INIT" ]; then
       pBy="Octopus System powered by Barracuda"
       ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}" &> /dev/null
