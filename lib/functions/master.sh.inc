@@ -374,9 +374,9 @@ master_download_for_local_build() {
     mv -f ${mL}/drupal-${_SMALLCORE7} ${mL}/drupal
     ### Aegir Core
     if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
-      ${gCb} feature/3.0.x-profile ${gitHub}/hostmaster.git    &> /dev/null
-      ${gCb} feature/3.0.x-hosting ${gitHub}/hosting.git       &> /dev/null
-      ${gCb} feature/3.0.x-eldir ${gitHub}/eldir.git           &> /dev/null
+      ${gCb} feature/3.1.x-profile ${gitHub}/hostmaster.git    &> /dev/null
+      ${gCb} feature/3.1.x-hosting ${gitHub}/hosting.git       &> /dev/null
+      ${gCb} feature/3.1.x-eldir ${gitHub}/eldir.git           &> /dev/null
     else
       get_dev_ext "hostmaster.tar.gz"
       get_dev_ext "hosting.tar.gz"
