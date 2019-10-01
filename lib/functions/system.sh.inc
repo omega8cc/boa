@@ -2087,16 +2087,18 @@ get_drush_versions() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH8_VRN} installation complete"
   fi
-  _DRUSH_ITD=$(drush9 --version 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f4 \
-    | awk '{ print $1}' 2>&1)
-  if [ "${_DRUSH_ITD}" != "${_DRUSH9_VRN}" ] \
-    || [ ! -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
-    msg "INFO: Drush ${_DRUSH9_VRN} re-installation required"
-    get_drush_nine
-  else
-    msg "INFO: Drush ${_DRUSH9_VRN} already installed"
+  if [ -x "/usr/local/bin/composer" ]; then
+    _DRUSH_ITD=$(drush9 --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f4 \
+      | awk '{ print $1}' 2>&1)
+    if [ "${_DRUSH_ITD}" != "${_DRUSH9_VRN}" ] \
+      || [ ! -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+      msg "INFO: Drush ${_DRUSH9_VRN} re-installation required"
+      get_drush_nine
+    else
+      msg "INFO: Drush ${_DRUSH9_VRN} already installed"
+    fi
   fi
   set_drush_perm
   if [ -x "/opt/tools/drush/7/drush/drush" ]; then
@@ -2109,17 +2111,19 @@ get_drush_versions() {
     ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush8
     ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush
   fi
-  if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
-    clean_drush_nine
-  else
-    msg "FAIL: Drush ${_DRUSH9_VRN} installation failed! Trying again.."
-    sleep 15
-    get_drush_nine
-    set_drush_perm
+  if [ -x "/usr/local/bin/composer" ]; then
     if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
       clean_drush_nine
     else
-      msg "FAIL: Drush ${_DRUSH9_VRN} installation failed again! Oops.."
+      msg "FAIL: Drush ${_DRUSH9_VRN} installation failed! Trying again.."
+      sleep 15
+      get_drush_nine
+      set_drush_perm
+      if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+        clean_drush_nine
+      else
+        msg "FAIL: Drush ${_DRUSH9_VRN} installation failed again! Oops.."
+      fi
     fi
   fi
   if [ -e "/opt/tools/drush/6" ]; then
