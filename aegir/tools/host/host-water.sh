@@ -227,7 +227,7 @@ whitelist_ip_site24x7() {
     wait
   fi
 
-  _IPS=$(dig site24x7.enduserexp.com  \
+  _IPS=$(host -a site24x7.enduserexp.com 8.8.8.8  \
     | grep 'IN.*A' \
     | cut -d 'A' -f2 \
     | sed 's/[^0-9\.]//g' \
