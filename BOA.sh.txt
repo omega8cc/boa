@@ -1222,6 +1222,14 @@ fix_lshell() {
   fi
 }
 
+fix_authorized_keys() {
+  if [ ! -e "${pthLog}/fix_authorized_keys.ctrl.${_X_SE}.pid" ]; then
+    chmod 0600 /home/*/.ssh/authorized_keys
+    chmod 0700 /home/*/.ssh
+    touch ${pthLog}/fix_authorized_keys.ctrl.${_X_SE}.pid
+  fi
+}
+
 fix_tcp() {
   _TCP_FIX=$(grep "tcp_challenge_ack_limit" /etc/sysctl.conf 2>&1)
   if [ -z "${_TCP_FIX}" ]; then
@@ -1816,6 +1824,7 @@ if [ `whoami` = "root" ]; then
   setup
   fix_ping_perms
   fix_lshell
+  fix_authorized_keys
   fix_tcp
   fix_aio
   fix_alt
