@@ -619,6 +619,7 @@ update_sql_conf() {
     wait
     sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf
     wait
+    echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
     if [ ! -e "/etc/mysql/skip-name-resolve.txt" ]; then
       sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf
       wait
