@@ -1090,12 +1090,15 @@ userstat                = 1
 max_tmp_tables          = 16384
 server-id               = '${inc}'
 myisam-recover-options  = BACKUP
-log_bin                 = /var/log/mysql/mysql-bin
-log_bin_index           = /var/log/mysql/mysql-bin.index
-expire_logs_days        = 1
-max_binlog_size         = 100M
-open_files_limit        = 196608
+#log_bin                 = /var/log/mysql/mariadb-bin
+#log_bin_index           = /var/log/mysql/mariadb-bin.index
+#expire_logs_days        = 1
+#max_binlog_size         = 100M
+#binlog_row_image        = minimal
+#binlog_format           = ROW
 sync_binlog             = 0
+open_files_limit        = 294912
+innodb_autoinc_lock_mode= 2
 #slow_query_log          = 1
 #long_query_time         = 10
 #slow_query_log_file     = /var/log/mysql/sql-slow-query.log
@@ -1104,8 +1107,8 @@ sync_binlog             = 0
 
 # * InnoDB
 sql_mode                = NO_ENGINE_SUBSTITUTION
-innodb_buffer_pool_instances = 4
-innodb_page_cleaners    = 4
+innodb_buffer_pool_instances = 8
+innodb_page_cleaners    = 8
 innodb_lru_scan_depth   = 100
 innodb_log_file_size    = 1024M
 innodb_buffer_pool_size = 2048M
@@ -1114,8 +1117,8 @@ innodb_file_per_table   = 1
 innodb_use_native_aio   = 1
 innodb_large_prefix     = 1
 innodb_file_format      = Barracuda
-innodb_open_files       = 8000
-innodb_io_capacity      = 8000
+innodb_open_files       = 196608
+innodb_io_capacity      = 1000
 innodb_flush_method     = O_DIRECT
 innodb_flush_log_at_trx_commit = 2
 innodb_thread_concurrency = 0
@@ -1133,7 +1136,7 @@ innodb_read_io_threads = 64
 [mysqld_safe]
 socket                  = /var/run/mysqld/mysqld.sock
 nice                    = 0
-open_files_limit        = 196608
+open_files_limit        = 294912
 syslog
 
 [mysqldump]
