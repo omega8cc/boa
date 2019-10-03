@@ -666,7 +666,8 @@ update_innodb_log_file_size() {
     || [ "${_DB_SERIES}" = "5.7" ]; then
     mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   fi
@@ -716,14 +717,14 @@ restore_default_sql() {
           fi
         fi
       fi
-      sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf
       wait
-      sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf
       wait
-      sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf
       wait
       if [ ! -e "/etc/mysql/skip-name-resolve.txt" ]; then
-        sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf &> /dev/null
+        sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf
         wait
       fi
     fi
@@ -737,23 +738,31 @@ restore_default_sql() {
   wait
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
+      sed -i "s/.*purge_binlogs.*//g" /var/spool/cron/crontabs/root
+      wait
+      sed -i "/^$/d" /var/spool/cron/crontabs/root
       bash /var/xdrago/purge_binlogs.sh                                  &> /dev/null
-      sed -i "s/.*purge_binlogs.*//g" /var/spool/cron/crontabs/root      &> /dev/null
       wait
-      sed -i "/^$/d" /var/spool/cron/crontabs/root                       &> /dev/null
+      sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf
       wait
-      sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^expire_logs_days/#expire_logs_days/g" /etc/mysql/my.cnf
       wait
-      sed -i "s/^expire_logs_days/#expire_logs_days/g" /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^max_binlog_size/#max_binlog_size/g"   /etc/mysql/my.cnf
       wait
-      sed -i "s/^max_binlog_size/#max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^binlog_row_image/#binlog_row_image/g" /etc/mysql/my.cnf
+      wait
+      sed -i "s/^binlog_format/#binlog_format/g"       /etc/mysql/my.cnf
       wait
     elif [ "${_DB_BINARY_LOG}" = "YES" ]; then
-      sed -i "s/.*log_bin/log_bin/g"                   /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/.*log_bin/log_bin/g"                   /etc/mysql/my.cnf
       wait
-      sed -i "s/.*expire_logs_days/expire_logs_days/g" /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/.*expire_logs_days/expire_logs_days/g" /etc/mysql/my.cnf
       wait
-      sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf
+      wait
+      sed -i "s/.*binlog_row_image/binlog_row_image/g" /etc/mysql/my.cnf
+      wait
+      sed -i "s/.*binlog_format/binlog_format/g"       /etc/mysql/my.cnf
       wait
     fi
     if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
