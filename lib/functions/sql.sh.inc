@@ -98,7 +98,7 @@ update_sql_conf() {
       bash /var/xdrago/purge_binlogs.sh &> /dev/null
       sed -i "s/.*purge_binlogs.*//g" /var/spool/cron/crontabs/root
       wait
-      sed -i "/^$/d"                  /var/spool/cron/crontabs/root
+      sed -i "/^$/d" /var/spool/cron/crontabs/root
       wait
       sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf
       wait
@@ -106,12 +106,20 @@ update_sql_conf() {
       wait
       sed -i "s/^max_binlog_size/#max_binlog_size/g"   /etc/mysql/my.cnf
       wait
+      sed -i "s/^binlog_row_image/#binlog_row_image/g" /etc/mysql/my.cnf
+      wait
+      sed -i "s/^binlog_format/#binlog_format/g"       /etc/mysql/my.cnf
+      wait
     elif [ "${_DB_BINARY_LOG}" = "YES" ]; then
       sed -i "s/.*log_bin/log_bin/g"                   /etc/mysql/my.cnf
       wait
       sed -i "s/.*expire_logs_days/expire_logs_days/g" /etc/mysql/my.cnf
       wait
       sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf
+      wait
+      sed -i "s/.*binlog_row_image/binlog_row_image/g" /etc/mysql/my.cnf
+      wait
+      sed -i "s/.*binlog_format/binlog_format/g"       /etc/mysql/my.cnf
       wait
     fi
     _LEGACY_CLSTR=NO
@@ -999,6 +1007,7 @@ install_db_server() {
         diffMyTest=$(diff -w -B \
           -I innodb_buffer_pool_size \
           -I innodb_buffer_pool_instances \
+          -I innodb_page_cleaners \
           -I tmp_table_size \
           -I max_heap_table_size \
           -I myisam_sort_buffer_size \

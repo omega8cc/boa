@@ -2259,7 +2259,8 @@ else
           || [ "${_DB_SERIES}" = "5.7" ]; then
           mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
           mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;" &> /dev/null
+          mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
+          mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
           mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
         fi
         service mysql stop &> /dev/null

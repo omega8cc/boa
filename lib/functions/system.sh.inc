@@ -5353,6 +5353,7 @@ update_initd() {
         diffMyTest=$(diff -w -B \
           -I innodb_buffer_pool_size \
           -I innodb_buffer_pool_instances \
+          -I innodb_page_cleaners \
           -I tmp_table_size \
           -I max_heap_table_size \
           -I myisam_sort_buffer_size \
