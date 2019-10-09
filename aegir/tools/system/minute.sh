@@ -187,6 +187,36 @@ if [ ! -z "${_RAM_PCT_FREE}" ] && [ "${_RAM_PCT_FREE}" -lt "10" ]; then
 fi
 
 redis_oom_check() {
+  if [ `tail --lines=500 /var/log/php/error_log_* \
+    | grep --count "RedisException"` -gt "0" ]; then
+    service redis-server restart
+    echo "$(date 2>&1) RedisException OOM detected"
+    echo "$(date 2>&1) RedisException OOM detected" >> /var/xdrago/log/redis.watch.log
+    touch /var/run/fmp_wait.pid
+    sleep 8
+    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+    _NOW=${_NOW//[^0-9-]/}
+    mkdir -p /var/backups/php-logs/${_NOW}/
+    mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
+    renice ${_B_NICE} -p $$ &> /dev/null
+    if [ -e "/etc/init.d/php73-fpm" ]; then
+      service php73-fpm reload
+    fi
+    if [ -e "/etc/init.d/php72-fpm" ]; then
+      service php72-fpm reload
+    fi
+    if [ -e "/etc/init.d/php71-fpm" ]; then
+      service php71-fpm reload
+    fi
+    if [ -e "/etc/init.d/php70-fpm" ]; then
+      service php70-fpm reload
+    fi
+    if [ -e "/etc/init.d/php56-fpm" ]; then
+      service php56-fpm reload
+    fi
+    sleep 8
+    rm -f /var/run/fmp_wait.pid
+  fi
   if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
     _REDIS_TEST=$(su -s /bin/bash - aegir -c "drush8 @hostmaster status" 2>&1)
     if [[ "${_REDIS_TEST}" =~ "RedisException" ]]; then
