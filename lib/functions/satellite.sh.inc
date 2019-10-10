@@ -5122,6 +5122,9 @@ satellite_child_b_aegir_build() {
     rm -rf ${_ROOT}/.tmp/cache
 
     ${_DRUSHCMD} @hostmaster sqlc < ${bldPth}/aegir/helpers/hosting_cron.sql &> /dev/null
+    ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task_log \
+      WHERE timestamp < UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 6 MONTH))" &> /dev/null
+    ${_DRUSHCMD} @hostmaster sqlq "OPTIMIZE TABLE hosting_task_log" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
       WHERE task_type='delete' AND task_status='-1'" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
