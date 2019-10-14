@@ -57,28 +57,25 @@ if [ -z "${script_user}" ] \
   exit 1
 fi
 
-if [ ! -e "${site_path}/libraries/ownership-fixed.pid" ]; then
-  ### ctrl pid
-  if [ ! -e "${site_path}/libraries" ]; then
-    mkdir ${site_path}/libraries
-  fi
-  touch ${site_path}/libraries/ownership-fixed.pid
-  cd ${site_path}
-  printf "Setting ownership of all files and directories inside "${site_path}" to: user => "${script_user}"\n"
-  if [ ! -e "${site_path}/libraries" ]; then
-    mkdir ${site_path}/libraries
-  fi
-  ### directory and settings files - site level
-  chown ${script_user}:users ${site_path} &> /dev/null
-  chown ${script_user}:www-data \
-    ${site_path}/{local.settings.php,settings.php,civicrm.settings.php,solr.php} &> /dev/null
-  ### modules,themes,libraries - site level
-  chown -R ${script_user}:users \
-    ${site_path}/{modules,themes,libraries}/* &> /dev/null
-  chown ${script_user}:users \
-    ${site_path}/drushrc.php \
-    ${site_path}/{modules,themes,libraries} &> /dev/null
+if [ -e "${site_path}/libraries/ownership-fixed.pid" ]; then
+  rm -f ${site_path}/libraries/ownership-fixed.pid
 fi
+
+cd ${site_path}
+printf "Setting ownership of key files and directories inside "${site_path}" to: user => "${script_user}"\n"
+if [ ! -e "${site_path}/libraries" ]; then
+  mkdir ${site_path}/libraries
+fi
+### directory and settings files - site level
+chown ${script_user}:users ${site_path} &> /dev/null
+chown ${script_user}:www-data \
+  ${site_path}/{local.settings.php,settings.php,civicrm.settings.php,solr.php} &> /dev/null
+### modules,themes,libraries - site level
+chown -R ${script_user}:users \
+  ${site_path}/{modules,themes,libraries}/* &> /dev/null
+chown ${script_user}:users \
+  ${site_path}/drushrc.php \
+  ${site_path}/{modules,themes,libraries} &> /dev/null
 
 if [ ! -e "${site_path}/files/ownership-fixed.pid" ]; then
   ### ctrl pid

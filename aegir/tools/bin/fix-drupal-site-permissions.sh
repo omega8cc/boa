@@ -41,25 +41,21 @@ if [ -z "${site_path}" ] || [ ! -f "${site_path}/settings.php" ] ; then
 fi
 
 if [ -e "${site_path}/libraries/permissions-fixed.pid" ]; then
-  ### ctrl pid
-  if [ ! -e "${site_path}/libraries" ]; then
-    mkdir ${site_path}/libraries
-  fi
-  touch ${site_path}/libraries/permissions-fixed.pid
-  cd ${site_path}
-  printf "Setting correct permissions on all files and directories inside "${site_path}"...\n"
-  ### directory and settings files - site level
-  if [ -e "${site_path}/aegir.services.yml" ]; then
-    rm -f ${site_path}/aegir.services.yml
-  fi
-  find ${site_path}/*.php -type f -exec chmod 0440 {} \; &> /dev/null
-  chmod 0640 ${site_path}/civicrm.settings.php &> /dev/null
-  ### modules,themes,libraries - site level
-  find ${site_path}/{modules,themes,libraries} -type d -exec \
-    chmod 02775 {} \; &> /dev/null
-  find ${site_path}/{modules,themes,libraries} -type f -exec \
-    chmod 0664 {} \; &> /dev/null
+  rm -f ${site_path}/libraries/permissions-fixed.pid
 fi
+cd ${site_path}
+printf "Setting correct permissions on key files and directories inside "${site_path}"...\n"
+### directory and settings files - site level
+if [ -e "${site_path}/aegir.services.yml" ]; then
+  rm -f ${site_path}/aegir.services.yml
+fi
+find ${site_path}/*.php -type f -exec chmod 0440 {} \; &> /dev/null
+chmod 0640 ${site_path}/civicrm.settings.php &> /dev/null
+### modules,themes,libraries - site level
+find ${site_path}/{modules,themes,libraries} -type d -exec \
+  chmod 02775 {} \; &> /dev/null
+find ${site_path}/{modules,themes,libraries} -type f -exec \
+  chmod 0664 {} \; &> /dev/null
 
 if [ ! -e "${site_path}/files/permissions-fixed.pid" ]; then
   ### ctrl pid
