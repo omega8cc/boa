@@ -5502,6 +5502,8 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \
       WHERE link_path='hosting/sites'" &> /dev/null
 
+    ${_DRUSHCMD} @hostmaster vdel -y --exact hosting_task_logs_types_display &> /dev/null
+
     ${_DRUSHCMD} @hostmaster ev 'variable_set("hosting_task_logs_types_display", array(
       "error" => "error",
       "info" => "info",
@@ -5514,8 +5516,8 @@ satellite_child_b_aegir_ui_enhance() {
       "backup" => "backup",
       "bootstrap" => "bootstrap",
       "command" => "command",
-      "debug" => "debug",
-      "debugnotify" => "debugnotify",
+      "debug" => "none",
+      "debugnotify" => "none",
       "queue" => "queue"))'
 
     if [ "${_LOCAL_STATUS}" = "INIT" ]; then
