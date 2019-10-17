@@ -22,6 +22,8 @@ $is_bot       = FALSE;
 $is_dev       = FALSE;
 $is_install   = FALSE;
 $is_tmp       = FALSE;
+$no_dns       = FALSE;
+$ok_dns       = FALSE;
 $raw_host     = FALSE;
 $redis_lock   = FALSE;
 $redis_path   = FALSE;
@@ -125,6 +127,67 @@ if (isset($_SERVER['HTTP_HOST']) &&
 
 
 /**
+ * Fix for Mollom, CloudFlare and others running via Proxy
+ */
+if (isset($_SERVER['REMOTE_ADDR'])) {
+  if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) &&
+      $_SERVER['HTTP_X_FORWARDED_FOR'] != "127.0.0.1") {
+    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_FORWARDED_FOR'];
+  }
+  if (isset($_SERVER['HTTP_X_REAL_IP']) &&
+      $_SERVER['HTTP_X_REAL_IP'] != "127.0.0.1") {
+    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_REAL_IP'];
+  }
+  if (isset($_SERVER['HTTP_CF_CONNECTING_IP']) &&
+      $_SERVER['HTTP_CF_CONNECTING_IP'] != "127.0.0.1") {
+    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
+  }
+}
+
+
+/**
+ * The nodns mode detection
+ */
+if (isset($_SERVER['HTTP_HOST']) &&
+    (preg_match("/(?:^nodns\.|\.nodns\.)/i", $_SERVER['HTTP_HOST']))) {
+  $no_dns = TRUE;
+}
+
+
+/**
+ * Local nodns request detection
+ */
+if (isset($_SERVER['REMOTE_ADDR']) &&
+    (preg_match("/(^127\.0\.0\.1)$/i", $_SERVER['REMOTE_ADDR']) ||
+     preg_match("/(^127\.0\.0\.1\, 127\.0\.0\.1)$/i", $_SERVER['REMOTE_ADDR']))) {
+  $ok_dns = TRUE;
+}
+
+
+/**
+ * The nodns protection
+ */
+if ($no_dns) {
+  if ($ok_dns) {
+    // Allow local requests
+    if (!$is_backend && isset($_SERVER['REMOTE_ADDR'])) {
+      header("X-Local-Y: " . $_SERVER['REMOTE_ADDR']);
+    }
+  }
+  else {
+    // Ignore remote requests
+    //if (!$is_backend && isset($_SERVER['REMOTE_ADDR'])) {
+    //  header("X-Local-N: " . $_SERVER['REMOTE_ADDR']);
+    //}
+    header('X-Accel-Expires: 60');
+    header('HTTP/1.0 404 Not Found');
+    header("Connection: close");
+    exit;
+  }
+}
+
+
+/**
  * Bots protection for all tmp/dev sites - works also for aliases
  */
 if ($is_bot) {
@@ -207,25 +270,6 @@ else {
   $drupal_unknown = TRUE;
   if ($is_dev && !$is_backend) {
     header('X-Backend: U');
-  }
-}
-
-
-/**
- * Fix for Mollom, CloudFlare and others running via Proxy
- */
-if (isset($_SERVER['REMOTE_ADDR'])) {
-  if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) &&
-      $_SERVER['HTTP_X_FORWARDED_FOR'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_FORWARDED_FOR'];
-  }
-  if (isset($_SERVER['HTTP_X_REAL_IP']) &&
-      $_SERVER['HTTP_X_REAL_IP'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_REAL_IP'];
-  }
-  if (isset($_SERVER['HTTP_CF_CONNECTING_IP']) &&
-      $_SERVER['HTTP_CF_CONNECTING_IP'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
   }
 }
 
