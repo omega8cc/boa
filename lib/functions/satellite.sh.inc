@@ -5354,7 +5354,7 @@ satellite_child_b_letsencrypt() {
         || [ "${leSetup}" = "YES" ] \
         || [ -e "${leRoot}/.ctrl/ssl-demo-mode.pid" ]; then
         touch ${leRoot}/.ctrl/ssl-demo-mode.pid
-        echo -e 'CA="https://acme-staging.api.letsencrypt.org/directory"\n' > ${leRoot}/config.sh
+        echo -e 'CA="https://acme-staging-v02.api.letsencrypt.org/directory"\n' > ${leRoot}/config.sh
         cp -af ${leRoot}/config.sh ${leRoot}/config
         if [ -e "${leKeyJ}" ]; then
           mv -f ${leKeyJ} "${leKeyJ}-prev"

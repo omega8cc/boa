@@ -133,7 +133,7 @@ function drush_provision_hosting_le_post_provision_verify() {
     if (provision_file()->exists($demo_mode_ctrl)->status()) {
       if (!provision_file()->exists($le_conf)->status()) {
 
-        $le_conf_lines = "CA=\"https://acme-staging.api.letsencrypt.org/directory\"\n";
+        $le_conf_lines = "CA=\"https://acme-staging-v02.api.letsencrypt.org/directory\"\n";
 
         provision_file()->file_put_contents($le_conf, $le_conf_lines)
           ->succeed('[hosting_le] Created cnf ' . $le_conf)
