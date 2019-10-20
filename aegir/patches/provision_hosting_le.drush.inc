@@ -148,7 +148,7 @@ function drush_provision_hosting_le_post_provision_verify() {
 
         drush_log('[hosting_le] New LE accounts require registration on ACMEv2.', 'info');
         drush_log('[hosting_le] Running --register --accept-terms as required by ACMEv2.', 'info');
-        $le_register = "--register --accept-terms";
+        $le_register = " --register --accept-terms";
         exec("/bin/bash " . $le_exec . $le_register . " 2>&1", $register_output);
         $acme_register = implode(' ', $register_output);
         drush_log("[hosting_le] ACMEv2 Demo Register Output: " . $acme_register, 'info');
@@ -167,7 +167,7 @@ function drush_provision_hosting_le_post_provision_verify() {
         drush_log('[hosting_le] Live LE account will be registered.', 'info');
         drush_log('[hosting_le] New LE accounts require registration on ACMEv2.', 'info');
         drush_log('[hosting_le] Running --register --accept-terms as required by ACMEv2.', 'info');
-        $le_register = "--register --accept-terms";
+        $le_register = " --register --accept-terms";
         exec("/bin/bash " . $le_exec . $le_register . " 2>&1", $register_output);
         $acme_register = implode(' ', $register_output);
         drush_log("[hosting_le] ACMEv2 Live Register Output: " . $acme_register, 'info');
