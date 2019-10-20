@@ -70,6 +70,7 @@ hLeVtP="/var/xdrago/conf/${hLeVtF}"
 #
 hLeShF="dehydrated"
 hLeShP="/var/xdrago/conf/${hLeShF}"
+legacyLeSh="/var/xdrago/conf/letsencrypt.sh"
 
 fix_dns_settings() {
   dnsLi="/root/.local.dns.IP.list"
@@ -676,7 +677,6 @@ update_agents() {
   if [ -e "/opt/tools/drush/8/drush/drush" ] \
     && [ -e "${hLeP}" ] \
     && [ -e "${hLeVtP}" ] \
-    && [ -e "${hLeShP}" ] \
     && [ -e "/var/xdrago" ] \
     && [ ! -e "${pthLog}/hosting_le_vt.ctrl.${_X_SE}.pid" ]; then
     leBasePath="profiles/hostmaster/modules/aegir/hosting_le"
@@ -1302,11 +1302,13 @@ fix_hosting_le() {
       || [ -e "/root/${hLeF}" ] \
       || [ -e "/root/hosting_le_vhost.drush.inc.ctrl.${_X_SE}.pid" ] \
       || [ -e "/root/${hLeVtF}" ] \
+      || [ -e "${legacyLeSh}" ] \
       || [ ! -e "${hLeShP}" ] \
       || [ ! -e "${hLeP}.ctrl.${_X_SE}.pid" ]; then
       mkdir -p /var/xdrago/conf
       rm -f /var/xdrago/*.drush.inc*
       rm -f /root/*.drush.inc*
+      rm -f ${legacyLeSh}
       rm -f ${hLeShP}.ctrl.${_X_SE}.pid
       rm -f ${hLeVtP}.ctrl.${_X_SE}.pid
       rm -f ${hLeP}.ctrl.${_X_SE}.pid
