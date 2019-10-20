@@ -157,7 +157,7 @@ load_config() {
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
-    echo "# !! WARNING !! No main config file found, using default config!" >&2
+    echo "# BOA auto-config mode" >&2
     echo "#" >&2
   elif [[ -f "${CONFIG}" ]]; then
     echo "# INFO: Using main config file ${CONFIG}"
