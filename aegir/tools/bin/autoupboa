@@ -24,7 +24,7 @@ crontab_update() {
     wait
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
       echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
-      echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "01 6    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
       echo "44 22    * * *   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
@@ -89,7 +89,7 @@ crontab_clean() {
     wait
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
       echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
-      echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "01 6    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
       echo "44 22    * * *   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
