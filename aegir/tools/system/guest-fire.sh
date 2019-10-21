@@ -4,7 +4,7 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 csf_flood_guard() {
-  if [ `ps aux | grep -v "grep" | grep --count "csf"` -gt "3" ]; then
+  if [ `ps aux | grep -v "grep" | grep --count "csf"` -gt "4" ]; then
     thisCountCsf=`ps aux | grep -v "grep" | grep --count "csf"`
     echo "$(date 2>&1) Too many ${thisCountCsf} csf processes killed" >> \
       /var/log/csf-count.kill.log
@@ -13,15 +13,15 @@ csf_flood_guard() {
     csf -df
   fi
   if [ `ps aux | grep -v "grep" | grep --count "fire.sh"` -gt "6" ]; then
-    thisCountFire=`ps aux | grep -v "grep" | grep --count "fire.sh"`
-    echo "$(date 2>&1) Too many ${thisCountFire} fire.sh processes killed" >> \
+    thisCountFire=`ps aux | grep -v "grep" | grep --count "guest-fire.sh"`
+    echo "$(date 2>&1) Too many ${thisCountFire} guest-fire.sh processes killed" >> \
       /var/log/fire-count.kill.log
     csf -tf
     csf -df
     kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
   fi
 }
-csf_flood_guard
+[ ! -e "/var/run/water.pid" ] && csf_flood_guard
 
 guest_guard() {
 if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then

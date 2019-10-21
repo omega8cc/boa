@@ -449,10 +449,10 @@ if [ -e "/vservers" ] \
     done
   fi
 
-  n=$((RANDOM%120+30))
+  n=$((RANDOM%120+90))
+  touch /var/run/water.pid
   echo Waiting $n seconds...
   sleep $n
-  touch /var/run/water.pid
 
   whitelist_ip_pingdom
   whitelist_ip_cloudflare
