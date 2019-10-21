@@ -24,6 +24,7 @@ $is_install   = FALSE;
 $is_tmp       = FALSE;
 $no_dns       = FALSE;
 $ok_dns       = FALSE;
+$hidden_uri   = FALSE;
 $raw_host     = FALSE;
 $redis_lock   = FALSE;
 $redis_path   = FALSE;
@@ -165,6 +166,14 @@ if (isset($_SERVER['REMOTE_ADDR']) &&
 
 
 /**
+ * Local path request check
+ */
+if (preg_match("/\/api\/hidden\//", $_SERVER['REQUEST_URI'])) {
+  $hidden_uri = TRUE;
+}
+
+
+/**
  * The nodns protection
  */
 if ($no_dns) {
@@ -176,9 +185,26 @@ if ($no_dns) {
   }
   else {
     // Ignore remote requests
-    //if (!$is_backend && isset($_SERVER['REMOTE_ADDR'])) {
-    //  header("X-Local-N: " . $_SERVER['REMOTE_ADDR']);
-    //}
+    header('X-Accel-Expires: 60');
+    header('HTTP/1.0 404 Not Found');
+    header("Connection: close");
+    exit;
+  }
+}
+
+
+/**
+ * The hidden uri protection
+ */
+if ($hidden_uri) {
+  if ($ok_dns) {
+    // Allow local requests to hidden uri
+    if (!$is_backend && isset($_SERVER['REMOTE_ADDR'])) {
+      header("X-Local-URI-Y: " . $_SERVER['REMOTE_ADDR']);
+    }
+  }
+  else {
+    // Ignore remote requests
     header('X-Accel-Expires: 60');
     header('HTTP/1.0 404 Not Found');
     header("Connection: close");
