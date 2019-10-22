@@ -14,6 +14,7 @@ $drupal_eight = FALSE;
 $drupal_five  = FALSE;
 $drupal_seven = FALSE;
 $drupal_six   = FALSE;
+$hidden_uri   = FALSE;
 $high_traffic = FALSE;
 $ini_loc_src  = FALSE;
 $ini_plr_src  = FALSE;
@@ -22,9 +23,8 @@ $is_bot       = FALSE;
 $is_dev       = FALSE;
 $is_install   = FALSE;
 $is_tmp       = FALSE;
+$local_req    = FALSE;
 $no_dns       = FALSE;
-$ok_dns       = FALSE;
-$hidden_uri   = FALSE;
 $raw_host     = FALSE;
 $redis_lock   = FALSE;
 $redis_path   = FALSE;
@@ -161,7 +161,7 @@ if (isset($_SERVER['HTTP_HOST']) &&
 if (isset($_SERVER['REMOTE_ADDR']) &&
     (preg_match("/(^127\.0\.0\.1)$/i", $_SERVER['REMOTE_ADDR']) ||
      preg_match("/(^127\.0\.0\.1\, 127\.0\.0\.1)$/i", $_SERVER['REMOTE_ADDR']))) {
-  $ok_dns = TRUE;
+  $local_req = TRUE;
 }
 
 
@@ -177,7 +177,7 @@ if (preg_match("/\/api\/hidden\//", $_SERVER['REQUEST_URI'])) {
  * The nodns protection
  */
 if ($no_dns) {
-  if ($ok_dns) {
+  if ($local_req) {
     // Allow local requests
     if (!$is_backend && isset($_SERVER['REMOTE_ADDR'])) {
       header("X-Local-Y: " . $_SERVER['REMOTE_ADDR']);
@@ -197,7 +197,7 @@ if ($no_dns) {
  * The hidden uri protection
  */
 if ($hidden_uri) {
-  if ($ok_dns) {
+  if ($local_req) {
     // Allow local requests to hidden uri
     if (!$is_backend && isset($_SERVER['REMOTE_ADDR'])) {
       header("X-Local-URI-Y: " . $_SERVER['REMOTE_ADDR']);
