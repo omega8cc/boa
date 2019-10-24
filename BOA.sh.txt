@@ -47,7 +47,6 @@ export DEBIAN_FRONTEND=noninteractive
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_VERSION="BOA-4.0.1"
 _X_SE="401prodQ51"
 #
 barCnf="/root/.barracuda.cnf"
@@ -1825,17 +1824,18 @@ if [ `whoami` = "root" ]; then
     fi
   fi
   setup
-  fix_ping_perms
-  fix_lshell
-  fix_authorized_keys
-  fix_tcp
-  fix_aio
-  fix_alt
-  fix_wkhtml
-  fix_eldir
-  fix_pure_ftpd
-  fix_hosting_le
   if [ -e "/var/log/barracuda_log.txt" ]; then
+    fix_ping_perms
+    fix_lshell
+    fix_authorized_keys
+    fix_tcp
+    fix_aio
+    fix_alt
+    fix_wkhtml
+    fix_eldir
+    fix_pure_ftpd
+    fix_hosting_le
+    update_agents
     saCoreN="SA-CORE-2018-002"
     fix_core_dgd
     sleep 3
@@ -1847,28 +1847,6 @@ if [ `whoami` = "root" ]; then
     #sleep 3
     #saCoreN="SA-CORE-2019-004"
     #fix_core_dgd
-    _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-    if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
-      _VERSIONS_TEST_RESULT=OK
-      if [ -e "/root/.mstr.clstr.cnf" ] \
-        || [ -e "/root/.wbhd.clstr.cnf" ] \
-        || [ -e "/root/.dbhd.clstr.cnf" ] \
-        || [ -e "/root/.host8.cnf" ] \
-        || [ ! -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ] \
-        || [ "${_BENG_VS}" = "YES" ]; then
-        update_agents
-      fi
-    else
-      update_agents
-      # force_rebuild
-      if [[ "${_VERSIONS_TEST}" =~ "BOA-3." ]] \
-        || [[ "${_VERSIONS_TEST}" =~ "BOA-2.4." ]] \
-        || [[ "${_VERSIONS_TEST}" =~ "BOA-2.3.8" ]]; then
-        _DO_NOTHING=YES
-      else
-        _DO_NOTHING=YES
-      fi
-    fi
   fi
   if [ ! -e "/etc/ssl/private/4096.dhp" ] && [ -d "/var/xdrago" ]; then
     echo "Generating 4096.dhp -- it may take a very long time..."
