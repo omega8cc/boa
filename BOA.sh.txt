@@ -1442,7 +1442,7 @@ update_wrappers() {
       echo "" > /etc/csf/csfpost.sh
       echo "iptables -t raw -A PREROUTING -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
       echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
-      chmod 755 /etc/csf/csfpost.sh
+      chmod 700 /etc/csf/csfpost.sh
     fi
     rm -f /usr/sbin/ipset
     ln -sf /sbin/ipset /usr/sbin/ipset

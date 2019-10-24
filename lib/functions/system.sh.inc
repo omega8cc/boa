@@ -3108,7 +3108,7 @@ finale() {
       echo "" > /etc/csf/csfpost.sh
       echo "iptables -t raw -A PREROUTING -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
       echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
-      chmod 755 /etc/csf/csfpost.sh
+      chmod 700 /etc/csf/csfpost.sh
     fi
     service lfd stop &> /dev/null
     sleep 3

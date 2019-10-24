@@ -1310,7 +1310,7 @@ check_fix_csf() {
       echo "" > /etc/csf/csfpost.sh
       echo "iptables -t raw -A PREROUTING -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
       echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
-      chmod 755 /etc/csf/csfpost.sh
+      chmod 700 /etc/csf/csfpost.sh
     fi
     csf -a 50.31.251.116 jp.files.aegir.cc   &> /dev/null
     csf -a 50.31.233.231 nl.files.aegir.cc   &> /dev/null
