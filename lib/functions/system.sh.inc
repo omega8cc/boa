@@ -3104,6 +3104,12 @@ finale() {
     service cron start     &> /dev/null
   fi
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+    if [ ! -x "/etc/csf/csfpost.sh" ]; then
+      echo "" > /etc/csf/csfpost.sh
+      echo "iptables -t raw -A PREROUTING -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
+      echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
+      chmod 755 /etc/csf/csfpost.sh
+    fi
     service lfd stop &> /dev/null
     sleep 3
     rm -f /etc/csf/csf.error

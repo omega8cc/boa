@@ -1438,6 +1438,12 @@ update_wrappers() {
     apt-get install ipset ${forCer} &> /dev/null
   fi
   if [ -x "/sbin/ipset" ] && [ ! -L "/usr/sbin/ipset" ]; then
+    if [ ! -x "/etc/csf/csfpost.sh" ]; then
+      echo "" > /etc/csf/csfpost.sh
+      echo "iptables -t raw -A PREROUTING -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
+      echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
+      chmod 755 /etc/csf/csfpost.sh
+    fi
     rm -f /usr/sbin/ipset
     ln -sf /sbin/ipset /usr/sbin/ipset
     _CSF_TEST=$(which csf 2> /dev/null)
