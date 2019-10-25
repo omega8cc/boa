@@ -313,18 +313,14 @@ local_ip_rg() {
 }
 
 guard_stats() {
-  if [ ! -e "${_HX}" ]; then
+  if [ ! -e "${_HX}" ] && [ -e "${_HA}" ]; then
     mv -f ${_HA} ${_HX}
   fi
-  if [ ! -e "${_WX}" ]; then
+  if [ ! -e "${_WX}" ] && [ -e "${_WA}" ]; then
     mv -f ${_WA} ${_WX}
   fi
-  if [ ! -e "${_FX}" ]; then
+  if [ ! -e "${_FX}" ] && [ -e "${_FA}" ]; then
     mv -f ${_FA} ${_FX}
-    sed -i "s/.*do not delete.*//g" /etc/csf/csf.deny
-    sed -i "/^$/d" /etc/csf/csf.deny
-    csf -df
-    csf -tf
   fi
   if [ -e "${_HA}" ]; then
     for _IP in `cat ${_HA} | cut -d '#' -f1 | sort | uniq`; do

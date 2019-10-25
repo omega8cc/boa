@@ -319,18 +319,14 @@ guard_stats() {
     if [ -e "/root/.local.IP.list" ]; then
       cp -af /root/.local.IP.list ${i}/root/.local.IP.list
     fi
-    if [ ! -e "${i}/${_HX}" ]; then
+    if [ ! -e "${i}/${_HX}" ] && [ -e "${i}/${_HA}" ]; then
       mv -f ${i}/${_HA} ${i}/${_HX}
     fi
-    if [ ! -e "${i}/${_WX}" ]; then
+    if [ ! -e "${i}/${_WX}" ] && [ -e "${i}/${_WA}" ]; then
       mv -f ${i}/${_WA} ${i}/${_WX}
     fi
-    if [ ! -e "${i}/${_FX}" ]; then
+    if [ ! -e "${i}/${_FX}" ] && [ -e "${i}/${_FA}" ]; then
       mv -f ${i}/${_FA} ${i}/${_FX}
-      sed -i "s/.*do not delete.*//g" /etc/csf/csf.deny
-      sed -i "/^$/d" /etc/csf/csf.deny
-      csf -df
-      csf -tf
     fi
     if [ -e "${i}/${_HA}" ] && [ -e "/usr/var/run${i}" ]; then
       for _IP in `cat ${i}/${_HA} | cut -d '#' -f1 | sort | uniq`; do
