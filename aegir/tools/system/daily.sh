@@ -34,7 +34,7 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
-_X_SE="401prodQ51"
+_X_SE="401prodQ52"
 _WEBG=www-data
 _OSV=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
@@ -182,6 +182,10 @@ run_drush8_cmd() {
   su -s /bin/bash - ${_HM_U} -c "drush8 @${Dom} $1" &> /dev/null
 }
 
+run_drush9_cmd() {
+  su -s /bin/bash - ${_HM_U} -c "drush9 @${Dom} $1" &> /dev/null
+}
+
 run_drush8_hmr_cmd() {
   su -s /bin/bash - ${_HM_U} -c "drush8 @hostmaster $1" &> /dev/null
 }
@@ -192,6 +196,10 @@ run_drush8_hmr_master_cmd() {
 
 run_drush8_nosilent_cmd() {
   su -s /bin/bash - ${_HM_U} -c "drush8 @${Dom} $1"
+}
+
+run_drush9_nosilent_cmd() {
+  su -s /bin/bash - ${_HM_U} -c "drush9 @${Dom} $1"
 }
 
 check_if_required() {
