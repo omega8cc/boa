@@ -2518,24 +2518,30 @@ check_update_le_ssl() {
             Dom=$(echo ${Dom} | sed 's/^www.//g' 2>&1)
             if [ -z "${useAliases}" ] \
               && [ ! -z "${alias}" ] \
+              && [[ ! "${alias}" =~ ".nodns." ]] \
               && [[ ! "${alias}" =~ "${Dom}" ]]; then
-              useAliases="--domain $alias"
-              echo "--domain $alias"
+              useAliases="--domain ${alias}"
+              echo "--domain ${alias}"
             else
               if [ ! -z "${alias}" ] \
+                && [[ ! "${alias}" =~ ".nodns." ]] \
                 && [[ ! "${alias}" =~ "${Dom}" ]]; then
-                useAliases="${useAliases} --domain $alias"
-                echo "--domain $alias"
+                useAliases="${useAliases} --domain ${alias}"
+                echo "--domain ${alias}"
               fi
             fi
           else
-            echo "--domain $alias"
-            if [ -z "${useAliases}" ] && [ ! -z "${alias}" ]; then
-              useAliases="--domain $alias"
-            else
-              if [ ! -z "${alias}" ]; then
-                useAliases="${useAliases} --domain $alias"
+            if [[ ! "${alias}" =~ ".nodns." ]]; then
+              echo "--domain ${alias}"
+              if [ -z "${useAliases}" ] && [ ! -z "${alias}" ]; then
+                useAliases="--domain ${alias}"
+              else
+                if [ ! -z "${alias}" ]; then
+                  useAliases="${useAliases} --domain ${alias}"
+                fi
               fi
+            else
+              echo "ignored alias ${alias}"
             fi
           fi
         done
