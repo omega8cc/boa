@@ -1852,12 +1852,11 @@ fix_modules() {
         fi
       fi
       enable_modules_with_drush9 "redis"
+      run_drush8_cmd "cache-rebuild"
       if [ ! -e "${Dir}/.redisOn" ]; then
         mkdir ${Dir}/.redisOn
         chown -R ${_HM_U}:users ${Dir}/.redisOn &> /dev/null
         chmod 0755 ${Dir}/.redisOn &> /dev/null
-        run_drush8_cmd "cache-rebuild"
-        run_drush9_cmd "cache-rebuild"
       fi
       if [ -d "${Dir}/.redisOff" ]; then
         rmdir ${Dir}/.redisOff
