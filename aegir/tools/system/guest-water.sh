@@ -340,6 +340,7 @@ guard_stats() {
       fi
       if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "24" ]; then
         echo ${_IP} ${_NR_TEST}
+        _FW_TEST=
         _FW_TEST=$(csf -g ${_IP} 2>&1)
         if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
           echo "${_IP} already denied or allowed on port 22"
@@ -373,6 +374,7 @@ guard_stats() {
       fi
       if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "24" ]; then
         echo ${_IP} ${_NR_TEST}
+        _FW_TEST=
         _FW_TEST=$(csf -g ${_IP} 2>&1)
         if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
           echo "${_IP} already denied or allowed on port 80"
@@ -406,6 +408,7 @@ guard_stats() {
       fi
       if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "24" ]; then
         echo ${_IP} ${_NR_TEST}
+        _FW_TEST=
         _FW_TEST=$(csf -g ${_IP} 2>&1)
         if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
           echo "${_IP} already denied or allowed on port 21"
