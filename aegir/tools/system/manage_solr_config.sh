@@ -91,7 +91,8 @@ write_solr_config() {
     echo "  Solr version .....: ${_VRS}"                                 >> ${2}
     echo "  Solr host ........: 127.0.0.1"                               >> ${2}
     echo "  Solr port ........: ${_PRT}"                                 >> ${2}
-    echo "  Solr path ........: /solr/${SolrCoreID}"                     >> ${2}
+    echo "  Solr path ........: leave empty"                             >> ${2}
+    echo "  Solr core ........: ${SolrCoreID}"                           >> ${2}
     echo                                                                 >> ${2}
     echo "It has been auto-configured to work with latest version"       >> ${2}
     echo "of ${1} module, but you need to add the module to"             >> ${2}
