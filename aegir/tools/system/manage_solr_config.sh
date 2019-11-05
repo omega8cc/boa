@@ -88,11 +88,21 @@ write_solr_config() {
     fi
     echo "Your SOLR core access details for ${Dom} site are as follows:"  > ${2}
     echo                                                                 >> ${2}
+    echo "  Drupal 8:"                                                   >> ${2}
     echo "  Solr version .....: ${_VRS}"                                 >> ${2}
     echo "  Solr host ........: 127.0.0.1"                               >> ${2}
     echo "  Solr port ........: ${_PRT}"                                 >> ${2}
     echo "  Solr path ........: leave empty"                             >> ${2}
     echo "  Solr core ........: ${SolrCoreID}"                           >> ${2}
+    echo                                                                 >> ${2}
+    echo "  Don't forget to manually upload the configuration files"     >> ${2}
+    echo "  (schema.xml, solrconfig.xml) under ${Dom}/files/solr"        >> ${2}
+    echo                                                                 >> ${2}
+    echo "  Drupal 7:"                                                   >> ${2}
+    echo "  Solr version .....: ${_VRS}"                                 >> ${2}
+    echo "  Solr host ........: 127.0.0.1"                               >> ${2}
+    echo "  Solr port ........: ${_PRT}"                                 >> ${2}
+    echo "  Solr path ........: /solr/${SolrCoreID}"                     >> ${2}
     echo                                                                 >> ${2}
     echo "It has been auto-configured to work with latest version"       >> ${2}
     echo "of ${1} module, but you need to add the module to"             >> ${2}
