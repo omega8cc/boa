@@ -741,8 +741,8 @@ update_agents() {
       cd ${_Dir}
       rm -rf ${_Dir}/redis_eight
       get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
-      rm -f redis_eight/redis.info
-      echo update > redis_eight/${_REDIS_N_VERSION}.info
+      rm -f ${_Dir}/redis_eight/redis.info
+      echo update > ${_Dir}/redis_eight/${_REDIS_N_VERSION}.info
       find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
       find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
       touch ${pthLog}/redis_eight.ctrl.${_X_SE}.pid

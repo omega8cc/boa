@@ -1653,8 +1653,8 @@ satellite_download_o_contrib_eight() {
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_eight
     get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
-    rm -f redis_eight/redis.info
-    echo update > redis_eight/${_REDIS_N_VERSION}.info
+    rm -f ${_D}/000/modules/redis_eight/redis.info
+    echo update > ${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1901,8 +1901,8 @@ satellite_check_fix_o_contrib() {
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_eight
     get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
-    rm -f redis_eight/redis.info
-    echo update > redis_eight/${_REDIS_N_VERSION}.info
+    rm -f ${_D}/000/modules/redis_eight/redis.info
+    echo update > ${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
