@@ -83,7 +83,7 @@ action() {
   service nginx reload
   if [ ! -e "/root/.giant_traffic.cnf" ] \
     && [ ! -e "/root/.high_traffic.cnf" ]; then
-    echo "INFO: Redis and Jetty servers will be restarted in 60 seconds"
+    echo "INFO: Solr and Jetty servers will be restarted in 60 seconds"
     touch /var/run/boa_wait.pid
     sleep 60
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
@@ -103,15 +103,8 @@ action() {
     if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
       service jetty7 start
     fi
-    service redis-server stop
-    killall -9 redis-server
-    rm -f /var/run/redis.pid
-    rm -f /var/run/redis/redis.pid
-    rm -f /var/lib/redis/*
-    rm -f /var/log/redis/redis-server.log
-    service redis-server start
     rm -f /var/run/boa_wait.pid
-    echo "INFO: Redis and Jetty servers restarted OK"
+    echo "INFO: Solr and Jetty servers restarted OK"
   fi
   _IF_BCP=$(ps aux | grep '[d]uplicity' | awk '{print $2}')
   if [ -z "${_IF_BCP}" ] \
