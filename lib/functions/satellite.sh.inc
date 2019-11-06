@@ -1737,16 +1737,16 @@ satellite_download_o_contrib_seven() {
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis
     get_dev_contrib "redis-mod-26-06-2015.tar.gz"
-    rm -f redis/redis.info
-    echo update > redis/update-${_X_VERSION}.info
+    rm -f ${_D}/000/modules/redis/redis.info
+    echo update > ${_D}/000/modules/redis/update-${_X_VERSION}.info
   fi
   if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_edge
     get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
-    rm -f redis_edge/redis.info
-    echo update > redis_edge/${_REDIS_L_VERSION}.info
+    rm -f ${_D}/000/modules/redis_edge/redis.info
+    echo update > ${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1825,16 +1825,16 @@ satellite_download_o_contrib_six() {
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis
     get_dev_contrib "redis-mod-26-06-2015.tar.gz"
-    rm -f redis/redis.info
-    echo update > redis/update-${_X_VERSION}.info
+    rm -f ${_D}/000/modules/redis/redis.info
+    echo update > ${_D}/000/modules/redis/update-${_X_VERSION}.info
   fi
   if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_edge
     get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
-    rm -f redis_edge/redis.info
-    echo update > redis_edge/${_REDIS_L_VERSION}.info
+    rm -f ${_D}/000/modules/redis_edge/redis.info
+    echo update > ${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1885,16 +1885,16 @@ satellite_check_fix_o_contrib() {
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis
     get_dev_contrib "redis-mod-26-06-2015.tar.gz"
-    rm -f redis/redis.info
-    echo update > redis/update-${_X_VERSION}.info
+    rm -f ${_D}/000/modules/redis/redis.info
+    echo update > ${_D}/000/modules/redis/update-${_X_VERSION}.info
   fi
   if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_edge
     get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
-    rm -f redis_edge/redis.info
-    echo update > redis_edge/${_REDIS_L_VERSION}.info
+    rm -f ${_D}/000/modules/redis_edge/redis.info
+    echo update > ${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.info
   fi
   if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
