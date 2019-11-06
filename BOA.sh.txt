@@ -264,6 +264,7 @@ update_agents() {
     fi
     echo ${InTest} > /root/.high_traffic.cnf
     echo ${InTest} > /root/.my.optimize.cnf
+    echo ${InTest} > /root/.no.swap.clear.cnf
     # if [[ "${PrTestPower}" =~ "POWER" ]] \
     #   || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
     #   echo ${InTest} > /root/.fast.cron.cnf

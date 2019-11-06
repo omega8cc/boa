@@ -3,12 +3,38 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-if [ -e "/root/.barracuda.cnf" ]; then
-  source /root/.barracuda.cnf
-  _B_NICE=${_B_NICE//[^0-9]/}
-fi
-if [ -z "${_B_NICE}" ]; then
-  _B_NICE=10
+check_root() {
+  if [ `whoami` = "root" ]; then
+    if [ -e "/root/.barracuda.cnf" ]; then
+      source /root/.barracuda.cnf
+      _B_NICE=${_B_NICE//[^0-9]/}
+    fi
+    if [ -z "${_B_NICE}" ]; then
+      _B_NICE=10
+    fi
+    chmod a+w /dev/null
+    if [ ! -e "/dev/fd" ]; then
+      if [ -e "/proc/self/fd" ]; then
+        rm -rf /dev/fd
+        ln -s /proc/self/fd /dev/fd
+      fi
+    fi
+  else
+    echo "ERROR: This script should be ran as a root user"
+    exit 1
+  fi
+}
+check_root
+
+if [ -e "/etc/cron.daily/logrotate" ]; then
+  _SYSLOG_SIZE_TEST=$(du -s -h /var/log/syslog)
+  if [[ "${_SYSLOG_SIZE_TEST}" =~ "G" ]]; then
+    echo ${_SYSLOG_SIZE_TEST} too big
+    bash /etc/cron.daily/logrotate &> /dev/null
+    echo system logs rotated
+    echo "$(date 2>&1) ${_SYSLOG_SIZE_TEST} too big, logrotate forced" >> \
+      /var/xdrago/log/giant.syslog.incident.log
+  fi
 fi
 
 check_pdnsd() {
