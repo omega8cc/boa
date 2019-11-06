@@ -2032,9 +2032,6 @@ fix_static_permissions() {
       fi
     fi
     if [ ! -f "${User}/log/ctrl/plr.${PlrID}.perm-fix-${_NOW}.info" ]; then
-      find ${Plr}/profiles -type f -name "*.info" -print0 | xargs -0 sed -i \
-        's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
-      wait
       find ${Plr} -type d -exec chmod 0775 {} \; &> /dev/null
       find ${Plr} -type f -exec chmod 0664 {} \; &> /dev/null
     fi
@@ -2069,10 +2066,6 @@ fix_permissions() {
   if [ ! -f "${User}/log/ctrl/plr.${PlrID}.perm-fix-${_NOW}.info" ] \
     && [ -e "${Plr}" ]; then
     mkdir -p ${Plr}/sites/all/{modules,themes,libraries,drush}
-    find ${Plr}/sites/all/modules -type f -name "*.info" -print0 \
-      | xargs -0 sed -i \
-      's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
-    wait
     find ${Plr}/sites/all/{modules,themes,libraries,drush}/*{.tar,.tar.gz,.zip} \
       -type f -exec rm -f {} \; &> /dev/null
     if [ ! -e "${User}/static/control/unlock.info" ] \
@@ -3494,9 +3487,6 @@ else
     _CLEAR_BOOST=YES
   fi
   if [ -e "/data/all" ]; then
-    find /data/all -type f -name "*.info" -print0 | xargs -0 sed -i \
-      's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
-    wait
     if [ ! -e "/data/all/permissions-fix-post-up-${_X_SE}.info" ]; then
       rm -f /data/all/permissions-fix*
       find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} \
@@ -3506,9 +3496,6 @@ else
       echo fixed > /data/all/permissions-fix-post-up-${_X_SE}.info
     fi
   elif [ -e "/data/disk/all" ]; then
-    find /data/disk/all -type f -name "*.info" -print0 | xargs -0 sed -i \
-      's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
-    wait
     if [ ! -e "/data/disk/all/permissions-fix-post-up-${_X_SE}.info" ]; then
       rm -f /data/disk/all/permissions-fix*
       find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} \
