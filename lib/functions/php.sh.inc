@@ -530,7 +530,6 @@ install_php_extensions() {
     if [ "$1" = "56" ]; then
       msg "INFO: Building GEOS extension for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
-        rm -f /etc/apt/sources.list.d/openssl.list
         st_runner "apt-get update -qq" &> /dev/null
         st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
         touch ${pthLog}/geos-${_X_VERSION}.log
@@ -758,7 +757,6 @@ update_php_extensions() {
     if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
       msg "INFO: Building GEOS upgrade for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
-        rm -f /etc/apt/sources.list.d/openssl.list
         st_runner "apt-get update -qq" &> /dev/null
         st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
         touch ${pthLog}/geos-${_X_VERSION}.log
@@ -1157,7 +1155,6 @@ update_newrelic() {
       echo "## New Relic APT Repository" > ${aptLiSys}.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
         >> ${aptLiSys}.d/newrelic.list
-      rm -f /etc/apt/sources.list.d/openssl.list
       st_runner "apt-get update -qq" &> /dev/null
       st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
       st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null
@@ -1277,7 +1274,6 @@ install_newrelic() {
         ${aptLiSys}.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
         >> ${aptLiSys}.d/newrelic.list
-      rm -f /etc/apt/sources.list.d/openssl.list
       st_runner "apt-get update -qq" &> /dev/null
       st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
       st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null

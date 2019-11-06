@@ -87,7 +87,10 @@ check_vps
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-    rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+    fi
     apt-get update -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
@@ -132,7 +135,10 @@ install() {
     echo "Installing duplicity dependencies..."
     cd
     find_fast_mirror
-    rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+    fi
     apt-get clean -qq                    &> /dev/null
     rm -f -r /var/lib/apt/lists/*
     apt-get update -qq                   &> /dev/null
@@ -337,6 +343,10 @@ if [ -e "${_LOGPTH}/${BUCKET_DOT}.archive.log" ]; then
   mv ${_LOGPTH}/${BUCKET_DOT}.archive.log /var/backups/${BUCKET_DOT}.archive.log
   cat ${_LOGPTH}/${BUCKET_DOT}.randomize.cleanup.log >> ${_LOGPTH}/${BUCKET}.randomize.cleanup.log
   mv ${_LOGPTH}/${BUCKET_DOT}.randomize.cleanup.log /var/backups/${BUCKET_DOT}.randomize.cleanup.log
+  if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+    && [ -e "/etc/apt/apt.conf.d" ]; then
+    echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+  fi
   apt-get clean -qq                    &> /dev/null
   rm -f -r /var/lib/apt/lists/*
   apt-get update -qq                   &> /dev/null

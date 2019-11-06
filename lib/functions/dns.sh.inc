@@ -367,7 +367,6 @@ install_pdnsd_cache() {
     echo "nameserver 1.1.1.1" > /etc/resolv.conf
     echo "nameserver 1.0.0.1" >> /etc/resolv.conf
   fi
-  rm -f /etc/apt/sources.list.d/openssl.list
   st_runner "apt-get update -qq" &> /dev/null
   st_runner "aptitude purge pdnsd -y" &> /dev/null
   st_runner "aptitude purge resolvconf -y" &> /dev/null

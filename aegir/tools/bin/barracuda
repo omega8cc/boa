@@ -1000,7 +1000,10 @@ set_pin_priority() {
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-    rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+    fi
     apt-get update -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
@@ -1053,6 +1056,10 @@ check_dns_curl() {
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+    fi
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt-get clean -qq &> /dev/null
     rm -f -r /var/lib/apt/lists/*
@@ -1128,6 +1135,10 @@ check_root() {
         rm -rf /dev/fd
         ln -s /proc/self/fd /dev/fd
       fi
+    fi
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
@@ -1216,7 +1227,10 @@ check_root() {
       echo "Required /dev/pts/ptmx does not exist! We will fix this now..."
       mkdir -p /dev/pts
       rm -rf /dev/pts/*
-      rm -f /etc/apt/sources.list.d/openssl.list
+      if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+        && [ -e "/etc/apt/apt.conf.d" ]; then
+        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+      fi
       apt-get update -qq &> /dev/null
       apt-get install udev -y --allow-unauthenticated &> /dev/null
       echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab

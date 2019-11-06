@@ -62,7 +62,6 @@ if_running_as_root_barracuda() {
         mrun "apt-get purge auditd -y -qq" &> /dev/null
       fi
       if [ -d "/etc/webmin" ]; then
-        rm -f /etc/apt/sources.list.d/openssl.list
         mrun "dpkg --configure -a" &> /dev/null
         mrun "apt-get clean -qq"   &> /dev/null
         rm -f -r /var/lib/apt/lists/*
@@ -1806,7 +1805,6 @@ barracuda_cnf() {
 # Running aptitude full-upgrade.
 run_aptitude_full_upgrade() {
   msg "INFO: Running aptitude full-upgrade..."
-  rm -f /etc/apt/sources.list.d/openssl.list
   # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
   # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
   #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
@@ -2334,7 +2332,6 @@ update_sources_list() {
     fi
   fi
   ###--------------------###
-  rm -f /etc/apt/sources.list.d/openssl.list
   apt-get update -qq &> /dev/null
   ###--------------------###
 }
@@ -3194,7 +3191,6 @@ basic_packages_install_on_init() {
   fi
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Installing some basic tools now, please wait..."
-    rm -f /etc/apt/sources.list.d/openssl.list
     # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
     # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
     #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
@@ -3299,7 +3295,6 @@ more_packages_install_on_init() {
         wait
       fi
     fi
-    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get update -qq &> /dev/null
     ${_INITINS} locales &> /dev/null
     fix_locales
@@ -3615,7 +3610,6 @@ if_jessie_to_stretch() {
         /etc/apt/apt.conf &> /dev/null
       wait
     fi
-    rm -f /etc/apt/sources.list.d/openssl.list
     mrun "apt-get update -qq" 2> /dev/null
     ### Two step upgrade with apt-get only
     mrun "apt-get install apt -t stretch ${dstUpArg}" 2> /dev/null
@@ -3738,7 +3732,6 @@ if_jessie_to_stretch() {
         msg "WARN: Required /dev/pts/ptmx does not exist! We will fix this now..."
         mkdir -p /dev/pts
         rm -rf /dev/pts/*
-        rm -f /etc/apt/sources.list.d/openssl.list
         apt-get update -qq &> /dev/null
         apt-get install udev -y --allow-unauthenticated &> /dev/null
         echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
@@ -3827,7 +3820,6 @@ sys_packages_update() {
   fi
   update_webmin_apt
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
-  rm -f /etc/apt/sources.list.d/openssl.list
   # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
   # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
   #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
@@ -3961,7 +3953,6 @@ sys_packages_install() {
       _APT_XTRA=""
     fi
     _APT_ELSE="netcat"
-    rm -f /etc/apt/sources.list.d/openssl.list
     # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
     # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
     #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
@@ -4233,7 +4224,6 @@ fix_postfix() {
   else
     _POSTFIX_TEST=$(grep "fatal: open lock file" /var/log/mail.log 2>&1)
     if [[ "${_POSTFIX_TEST}" =~ "fatal: open lock file" ]]; then
-      rm -f /etc/apt/sources.list.d/openssl.list
       # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
       # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
       #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then

@@ -306,7 +306,6 @@ if_install_hhvm() {
             sleep 2
           done
           cat /var/opt/hhvm.gpg.key | ${_GPG} --import &> /dev/null
-          rm -f /etc/apt/sources.list.d/openssl.list
           st_runner "apt-get update -qq" &> /dev/null
           st_runner "apt-get install hhvm ${forCer}" 2> /dev/null
           msg "INFO: HHVM Engine installed"
@@ -346,7 +345,6 @@ if_install_webmin() {
         cat jcameron-key.gpg | ${_GPG} --import &> /dev/null
         rm -f jcameron-key.gpg*
         touch ${pthLog}/webmin_update_apt_src.log
-        rm -f /etc/apt/sources.list.d/openssl.list
         st_runner "apt-get update -qq" &> /dev/null
         st_runner "${_INSTAPP} webmin \
                              libxml-simple-perl \
@@ -479,7 +477,6 @@ if_install_rvm() {
           if [ "${_STATUS}" = "INIT" ] \
             || [ "${_RUBY_UPGRADE}" = "YES" ] \
             || [ "${_RUBY_RELOAD}" = "YES" ]; then
-            rm -f /etc/apt/sources.list.d/openssl.list
             mrun "apt-get update -qq" &> /dev/null
             if [ "${_DEBUG_MODE}" = "YES" ]; then
               ${rvmPth} get stable --auto-dotfiles
@@ -495,7 +492,6 @@ if_install_rvm() {
               mrun "${_INSTALL} nodejs" &> /dev/null
             fi
           else
-            rm -f /etc/apt/sources.list.d/openssl.list
             mrun "apt-get update -qq" &> /dev/null
             if [ "${_DEBUG_MODE}" = "YES" ]; then
               ${rvmPth} get stable --auto-dotfiles

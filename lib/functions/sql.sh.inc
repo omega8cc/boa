@@ -499,7 +499,6 @@ install_db_sql() {
   else
     _SQL_FORCE_REINSTALL=YES
   fi
-  rm -f /etc/apt/sources.list.d/openssl.list
   if [ "${_DB_SERVER}" = "MariaDB" ]; then
     aptRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
     aptLiDb="${aptLiSys}.d/mariadb.list"
@@ -907,7 +906,6 @@ install_db_server() {
         rm -f /etc/apt/sources.list.d/mariadb.*
         echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
       fi
-      rm -f /etc/apt/sources.list.d/openssl.list
       st_runner "apt-get update -qq" &> /dev/null
     fi
     if [ "${_SQL_UPGRADE}" = "YES" ]; then
@@ -963,7 +961,6 @@ install_db_server() {
       elif [ "${_THIS_OS}" = "Ubuntu" ]; then
         _OSN=ubuntu
       fi
-      rm -f /etc/apt/sources.list.d/openssl.list
       st_runner "aptitude autoclean -y" &> /dev/null
       st_runner "apt-get clean -qq" &> /dev/null
       rm -f -r /var/lib/apt/lists/*
