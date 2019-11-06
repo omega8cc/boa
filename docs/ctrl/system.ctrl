@@ -159,10 +159,9 @@ by the BOA install and upgrade tools exclusively.
  @=> /root/.high_traffic.cnf
 
   Recommended if you have a very busy site(s) hosted. It prevents PHP-FPM
-  restarts when the system detects segfault. It also allows to skip daily Redis
-  restarts. Note that unlike before, even without this file, PHP-FPM will not
-  be restarted at midnight, thanks to some improvements elsewhere in the
-  self-healing procedures.
+  restarts when the system detects segfault. Note that unlike before,
+  even without this file, PHP-FPM will not be restarted at midnight,
+  thanks to some improvements elsewhere in the self-healing procedures.
 
  @=> /root/.giant_traffic.cnf
 
