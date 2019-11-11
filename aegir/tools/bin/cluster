@@ -1137,6 +1137,7 @@ innodb_adaptive_hash_index = 0
 innodb_default_row_format = dynamic
 innodb_write_io_threads = 64
 innodb_read_io_threads = 64
+innodb_print_all_deadlocks = ON
 
 [mysqld_safe]
 socket                  = /var/run/mysqld/mysqld.sock
