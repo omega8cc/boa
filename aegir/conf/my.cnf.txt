@@ -16,6 +16,8 @@ lc_messages_dir         = /usr/share/mysql
 lc_messages             = en_US
 character_set_server    = utf8mb4
 collation_server        = utf8mb4_general_ci
+transaction-isolation   = READ-COMMITTED
+transaction-read-only   = OFF
 skip-external-locking
 skip-name-resolve
 performance_schema      = ON
