@@ -23,13 +23,7 @@ if_running_as_root_barracuda() {
       _VMFAMILY="AWS"
     fi
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.9.8-beng" ]]; then
+    if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _VMFAMILY="VS"
       touch /var/run/cloud_vhost.pid
       if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
@@ -97,13 +91,7 @@ set_xterm() {
 # Kill nash-hotplug.
 kill_nash() {
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.9.8-beng" ]]; then
+  if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _DO_NOTHING=YES
   else
     _NASH_TEST=$(grep nash-hotplug /etc/rc.local 2>&1)
@@ -260,13 +248,7 @@ tune_memory_limits() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.9.8-beng" ]]; then
+  if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
   if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
@@ -1144,13 +1126,7 @@ barracuda_cnf() {
     _CHECK_HOST=$(uname -n 2>&1)
     _VMFAMILY=XEN
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.9.8-beng" ]]; then
+    if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _VMFAMILY="VS"
     fi
     if [ -e "/root/.auto.up.cnf" ] \
@@ -3667,13 +3643,7 @@ if_jessie_to_stretch() {
       apt-get remove systemd -y -qq --purge --auto-remove &> /dev/null
     fi
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.9.8-beng" ]]; then
+    if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _PTMX=OK
       _REMOVE_LINKS="buagent \
                      checkroot.sh \

@@ -1517,13 +1517,7 @@ setup() {
   _BENG_VS=NO
   _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.9.8-beng" ]]; then
+  if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   else
     _VMFAMILY="XEN"

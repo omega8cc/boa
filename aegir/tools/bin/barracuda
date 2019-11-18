@@ -36,13 +36,7 @@ _LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
 _VMFAMILY=XEN
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.9.8-beng" ]]; then
+if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
