@@ -1263,48 +1263,23 @@ fix_alt() {
 }
 
 fix_wkhtml_perms() {
-  if [ -x "/usr/local/bin/wkhtmltopdf" ]; then
-    _PERM_TEST=$(ls -la /usr/local/bin/wkhtmltopdf | grep rwxr-xr-x 2>&1)
-    if [ -z "${_PERM_TEST}" ]; then
-      chgrp root /usr/local/bin/wkhtmltopdf &> /dev/null
-      chmod 755 /usr/local/bin/wkhtmltopdf &> /dev/null
+
+  _WKHTML_ARRAY="/usr/local/bin/wkhtmltopdf \
+                  /usr/bin/wkhtmltopdf \
+                  /usr/bin/wkhtmltopdf-0.12.4 \
+                  /usr/local/bin/wkhtmltoimage \
+                  /usr/bin/wkhtmltoimage \
+                  /usr/bin/wkhtmltoimage-0.12.4"
+
+  for _WKHTML_ITEM in ${_WKHTML_ARRAY}; do
+    if [ -x "${_WKHTML_ITEM}" ]; then
+      _PERM_TEST=$(ls -la ${_WKHTML_ITEM} | grep rwxr-xr-x 2>&1)
+      if [ -z "${_PERM_TEST}" ]; then
+        chgrp root ${_WKHTML_ITEM} &> /dev/null
+        chmod 755 ${_WKHTML_ITEM} &> /dev/null
+      fi
     fi
-  fi
-  if [ -x "/usr/bin/wkhtmltopdf" ]; then
-    _PERM_TEST=$(ls -la /usr/bin/wkhtmltopdf | grep rwxr-xr-x 2>&1)
-    if [ -z "${_PERM_TEST}" ]; then
-      chgrp root /usr/bin/wkhtmltopdf &> /dev/null
-      chmod 755 /usr/bin/wkhtmltopdf &> /dev/null
-    fi
-  fi
-  if [ -x "/usr/bin/wkhtmltopdf-0.12.4" ]; then
-    _PERM_TEST=$(ls -la /usr/bin/wkhtmltopdf-0.12.4 | grep rwxr-xr-x 2>&1)
-    if [ -z "${_PERM_TEST}" ]; then
-      chgrp root /usr/bin/wkhtmltopdf-0.12.4 &> /dev/null
-      chmod 755 /usr/bin/wkhtmltopdf-0.12.4 &> /dev/null
-    fi
-  fi
-  if [ -x "/usr/localbin/wkhtmltoimage" ]; then
-    _PERM_TEST=$(ls -la /usr/localbin/wkhtmltoimage | grep rwxr-xr-x 2>&1)
-    if [ -z "${_PERM_TEST}" ]; then
-      chgrp root /usr/localbin/wkhtmltoimage &> /dev/null
-      chmod 755 /usr/localbin/wkhtmltoimage &> /dev/null
-    fi
-  fi
-  if [ -x "/usr/bin/wkhtmltoimage" ]; then
-    _PERM_TEST=$(ls -la /usr/bin/wkhtmltoimage | grep rwxr-xr-x 2>&1)
-    if [ -z "${_PERM_TEST}" ]; then
-      chgrp root /usr/bin/wkhtmltoimage &> /dev/null
-      chmod 755 /usr/bin/wkhtmltoimage &> /dev/null
-    fi
-  fi
-  if [ -x "/usr/bin/wkhtmltoimage-0.12.4" ]; then
-    _PERM_TEST=$(ls -la /usr/bin/wkhtmltoimage-0.12.4 | grep rwxr-xr-x 2>&1)
-    if [ -z "${_PERM_TEST}" ]; then
-      chgrp root /usr/bin/wkhtmltoimage-0.12.4 &> /dev/null
-      chmod 755 /usr/bin/wkhtmltoimage-0.12.4 &> /dev/null
-    fi
-  fi
+  done
 }
 
 fix_wkhtml() {
