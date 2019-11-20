@@ -2873,6 +2873,8 @@ strict_bin_permissions() {
                   sendmail \
                   wget \
                   which \
+                  wkhtmltoimage-0.12.4 \
+                  wkhtmltopdf-0.12.4 \
                   wkhtmltoimage \
                   wkhtmltopdf"
   if [ ! -z "${_BACKEND_ITEMS_LIST}" ]; then

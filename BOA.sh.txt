@@ -1262,16 +1262,65 @@ fix_alt() {
   fi
 }
 
+fix_wkhtml_perms() {
+  if [ -x "/usr/local/bin/wkhtmltopdf" ]; then
+    _PERM_TEST=$(ls -la /usr/local/bin/wkhtmltopdf | grep rwxr-xr-x 2>&1)
+    if [ -z "${_PERM_TEST}" ]; then
+      chgrp root /usr/local/bin/wkhtmltopdf &> /dev/null
+      chmod 755 /usr/local/bin/wkhtmltopdf &> /dev/null
+    fi
+  fi
+  if [ -x "/usr/bin/wkhtmltopdf" ]; then
+    _PERM_TEST=$(ls -la /usr/bin/wkhtmltopdf | grep rwxr-xr-x 2>&1)
+    if [ -z "${_PERM_TEST}" ]; then
+      chgrp root /usr/bin/wkhtmltopdf &> /dev/null
+      chmod 755 /usr/bin/wkhtmltopdf &> /dev/null
+    fi
+  fi
+  if [ -x "/usr/bin/wkhtmltopdf-0.12.4" ]; then
+    _PERM_TEST=$(ls -la /usr/bin/wkhtmltopdf-0.12.4 | grep rwxr-xr-x 2>&1)
+    if [ -z "${_PERM_TEST}" ]; then
+      chgrp root /usr/bin/wkhtmltopdf-0.12.4 &> /dev/null
+      chmod 755 /usr/bin/wkhtmltopdf-0.12.4 &> /dev/null
+    fi
+  fi
+  if [ -x "/usr/localbin/wkhtmltoimage" ]; then
+    _PERM_TEST=$(ls -la /usr/localbin/wkhtmltoimage | grep rwxr-xr-x 2>&1)
+    if [ -z "${_PERM_TEST}" ]; then
+      chgrp root /usr/localbin/wkhtmltoimage &> /dev/null
+      chmod 755 /usr/localbin/wkhtmltoimage &> /dev/null
+    fi
+  fi
+  if [ -x "/usr/bin/wkhtmltoimage" ]; then
+    _PERM_TEST=$(ls -la /usr/bin/wkhtmltoimage | grep rwxr-xr-x 2>&1)
+    if [ -z "${_PERM_TEST}" ]; then
+      chgrp root /usr/bin/wkhtmltoimage &> /dev/null
+      chmod 755 /usr/bin/wkhtmltoimage &> /dev/null
+    fi
+  fi
+  if [ -x "/usr/bin/wkhtmltoimage-0.12.4" ]; then
+    _PERM_TEST=$(ls -la /usr/bin/wkhtmltoimage-0.12.4 | grep rwxr-xr-x 2>&1)
+    if [ -z "${_PERM_TEST}" ]; then
+      chgrp root /usr/bin/wkhtmltoimage-0.12.4 &> /dev/null
+      chmod 755 /usr/bin/wkhtmltoimage-0.12.4 &> /dev/null
+    fi
+  fi
+}
+
 fix_wkhtml() {
   if [ -x "/usr/local/bin/wkhtmltopdf" ] \
     && [ -L "/usr/bin/wkhtmltopdf" ]; then
     rm -f /usr/bin/wkhtmltopdf
     cp -af /usr/local/bin/wkhtmltopdf /usr/bin/wkhtmltopdf
+    chgrp root /usr/bin/wkhtmltopdf &> /dev/null
+    chmod 755 /usr/bin/wkhtmltopdf &> /dev/null
   fi
   if [ -x "/usr/local/bin/wkhtmltoimage" ] \
     && [ -L "/usr/bin/wkhtmltoimage" ]; then
     rm -f /usr/bin/wkhtmltoimage
     cp -af /usr/local/bin/wkhtmltoimage /usr/bin/wkhtmltoimage
+    chgrp root /usr/bin/wkhtmltoimage &> /dev/null
+    chmod 755 /usr/bin/wkhtmltoimage &> /dev/null
   fi
 }
 
@@ -1858,6 +1907,7 @@ if [ `whoami` = "root" ]; then
     fix_aio
     fix_alt
     fix_wkhtml
+    fix_wkhtml_perms
     fix_eldir
     fix_pure_ftpd
     fix_hosting_le
