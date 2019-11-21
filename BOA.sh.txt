@@ -707,6 +707,10 @@ update_agents() {
         fi
         locLeShFile="${dscUsr}/tools/le/${hLeShF}"
         legacyLeShFile="${dscUsr}/tools/le/letsencrypt.sh"
+        lockLeFile="${dscUsr}/tools/le/lock"
+        if [ -e "${lockLeFile}" ]; then
+          rm -f ${lockLeFile}
+        fi
         if [ -e "${hLeShP}" ]; then
           if [ -e "${locLeShFile}" ] || [ -e "${legacyLeShFile}" ]; then
             cp -af ${hLeShP} ${locLeShFile}
