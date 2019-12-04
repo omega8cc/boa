@@ -5539,7 +5539,12 @@ satellite_child_b_aegir_ui_enhance() {
           | sed "s/[\,']//g" 2>&1)
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
         SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'"
-      if [ "${_VMFAMILY}" = "VS" ]; then
+      _CHECK_HOST=$(uname -n 2>&1)
+      if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        || [ "${_VMFAMILY}" = "VS" ] \
+        || [ -e "/root/.host8.cnf" ] \
+        || [ "${_AUTO_UP}" = "YES" ]; then
         pBy="Octopus System powered by Barracuda"
         ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}" &> /dev/null
         cp -af /opt/tmp/boa/aegir/helpers/make_home.php.txt ./
