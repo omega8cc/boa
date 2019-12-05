@@ -1038,7 +1038,7 @@ wsrep_node_name=\"'${IP}'\"
 
 ### Optional MyISAM Support in Galera
 #
-wsrep_replicate_myisam=1
+# wsrep_replicate_myisam=1
 
 ' > /etc/mysql/conf.d/galera.cnf"
 
