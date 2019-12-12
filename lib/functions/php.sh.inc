@@ -936,8 +936,9 @@ install_php_multi() {
   msg "INFO: Building PHP ${_PHP_VERSION} part 1/3"
   cd /var/opt/php-${_PHP_VERSION}
   mrun "sh ./buildconf --force" 2> /dev/null
-  if [ "${_OSV}" = "jessie" ] \
+  if [ "${_OSV}" = "buster" ] \
     || [ "${_OSV}" = "stretch" ] \
+    || [ "${_OSV}" = "jessie" ] \
     || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
@@ -958,7 +959,8 @@ install_php_multi() {
     _PHP_EXTRA="${_PHP_EXTRA} --enable-gd-native-ttf --with-mcrypt"
   elif [ "$1" = "56" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --enable-gd-native-ttf --with-mcrypt --with-mysql=mysqlnd"
-    if [ "${_OSV}" = "stretch" ]; then
+    if [ "${_OSV}" = "buster" ] \
+      || [ "${_OSV}" = "stretch" ]; then
       patchFile="PHP-5.6.31-OpenSSL-1.1.0-compatibility-20170801.patch"
       patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
     fi
@@ -1823,8 +1825,9 @@ php_upgrade_all() {
 
 get_php_conf_extra() {
   _PHP_EXTRA=""
-  if [ "${_OSV}" = "jessie" ] \
+  if [ "${_OSV}" = "buster" ] \
     || [ "${_OSV}" = "stretch" ] \
+    || [ "${_OSV}" = "jessie" ] \
     || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
@@ -1859,7 +1862,8 @@ install_update_php() {
     st_runner "${_RMAPP} php5-sasl php5-suhosin" &> /dev/null
     st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
   fi
-  if [ "${_OSV}" = "stretch" ] \
+  if [ "${_OSV}" = "buster" ] \
+    || [ "${_OSV}" = "stretch" ] \
     || [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "trusty" ]; then
     ln -sf /usr/include/freetype2 /usr/include/freetype2/freetype

@@ -1908,7 +1908,8 @@ install_wkhtmltox() {
   if [[ "${_WOX_ITD}" =~ "0.12.5" ]]; then
     _WOX_IS=NEW
   fi
-  if [ "${_THIS_RV}" = "stretch" ] \
+  if [ "${_THIS_RV}" = "buster" ] \
+    || [ "${_THIS_RV}" = "stretch" ] \
     || [ "${_THIS_RV}" = "jessie" ] \
     || [ "${_THIS_RV}" = "trusty" ]; then
     if [ "${_WOX_IS}" = "OLD" ] \
@@ -2261,7 +2262,8 @@ update_sources_list() {
       echo "deb-src http://${_MIRROR}/debian/ ${_OSV} main contrib non-free" \
         >> ${aptLiSys}
       echo "" >> ${aptLiSys}
-      if [ "${_OSV}" = "stretch" ]; then
+      if [ "${_OSV}" = "buster" ] \
+        || [ "${_OSV}" = "stretch" ]; then
         echo "## MAJOR BUG FIX UPDATES produced after the final release" \
         >> ${aptLiSys}
         echo "deb http://${_MIRROR}/debian/ ${_OSV}-updates main \
@@ -2315,7 +2317,9 @@ update_sources_list() {
 #
 # Install OpenSSH from sources.
 install_ssh_src() {
-  if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "stretch" ]; then
+  if [ "${_OSV}" = "buster" ] \
+    || [ "${_OSV}" = "stretch" ] \
+    || [ "${_OSV}" = "jessie" ]; then
     _SSH_GET_DPKG=$(dpkg --get-selections | grep openssh-sftp-server | grep 'hold$' 2>&1)
   else
     _SSH_GET_DPKG=$(dpkg --get-selections | grep ssh | grep 'hold$' 2>&1)
@@ -2356,7 +2360,9 @@ install_ssh_src() {
       echo "openssh-client hold" | dpkg --set-selections &> /dev/null
       echo "openssh-server hold" | dpkg --set-selections &> /dev/null
       echo "ssh hold" | dpkg --set-selections &> /dev/null
-      if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "stretch" ]; then
+      if [ "${_OSV}" = "buster" ] \
+        || [ "${_OSV}" = "stretch" ] \
+        || [ "${_OSV}" = "jessie" ]; then
         echo "openssh-sftp-server hold" | dpkg --set-selections &> /dev/null
       fi
     fi
@@ -2368,7 +2374,9 @@ install_ssh_src() {
       echo "openssh-client hold" | dpkg --set-selections &> /dev/null
       echo "openssh-server hold" | dpkg --set-selections &> /dev/null
       echo "ssh hold" | dpkg --set-selections &> /dev/null
-      if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "stretch" ]; then
+      if [ "${_OSV}" = "buster" ] \
+        || [ "${_OSV}" = "stretch" ] \
+        || [ "${_OSV}" = "jessie" ]; then
         echo "openssh-sftp-server hold" | dpkg --set-selections &> /dev/null
       fi
     fi
@@ -3141,7 +3149,8 @@ install_with_aptitude_deps() {
 basic_packages_install_on_init() {
   apt-get remove --purge unscd -y &> /dev/null
   userdel -r debian &> /dev/null
-  if [ "${_THIS_RV}" = "stretch" ]; then
+  if [ "${_THIS_RV}" = "buster" ] \
+    || [ "${_THIS_RV}" = "stretch" ]; then
     _APT_SHELLS=$(id -nG _apt 2>&1)
     if [[ "${_APT_SHELLS}" =~ "nogroup" ]]; then
       usermod -aG users _apt
@@ -3161,7 +3170,9 @@ basic_packages_install_on_init() {
     echo "APT::Get::AllowUnauthenticated \"true\";"     >> /etc/apt/apt.conf.d/99ignorestrict
     echo "Aptitude::CmdLine::Fix-Broken \"true\";"      >> /etc/apt/apt.conf.d/99ignorestrict
   fi
-  if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "stretch" ]; then
+  if [ "${_OSV}" = "buster" ] \
+    || [ "${_OSV}" = "stretch" ] \
+    || [ "${_OSV}" = "jessie" ]; then
     _GRUB_TEST=$(grep systemd /etc/default/grub 2>&1)
     if [[ "${_GRUB_TEST}" =~ "systemd" ]]; then
       _GRUB_FIX=YES
@@ -3192,7 +3203,9 @@ basic_packages_install_on_init() {
     ${_INITINS} wget &> /dev/null
     if [ -x "/lib/systemd/systemd" ]; then
       msg "INFO: Installing sysvinit-core on ${_THIS_OS} ${_OSV}..."
-      if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "stretch" ]; then
+      if [ "${_OSV}" = "buster" ] \
+        || [ "${_OSV}" = "stretch" ] \
+        || [ "${_OSV}" = "jessie" ]; then
         ${_INITINS} sysvinit-core &> /dev/null
         ${_INITINS} sysvinit-utils &> /dev/null
         if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -3227,7 +3240,9 @@ basic_packages_install_on_init() {
   else
     if [ -x "/lib/systemd/systemd" ]; then
       msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
-      if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "stretch" ]; then
+      if [ "${_OSV}" = "buster" ] \
+        || [ "${_OSV}" = "stretch" ] \
+        || [ "${_OSV}" = "jessie" ]; then
         ${_INITINS} sysvinit-core &> /dev/null
         ${_INITINS} sysvinit-utils &> /dev/null
         if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -3617,7 +3632,9 @@ if_jessie_to_stretch() {
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     if [ -x "/lib/systemd/systemd" ]; then
       msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
-      if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "stretch" ]; then
+      if [ "${_OSV}" = "buster" ] \
+        || [ "${_OSV}" = "stretch" ] \
+        || [ "${_OSV}" = "jessie" ]; then
         ${_INITINS} sysvinit-core &> /dev/null
         ${_INITINS} sysvinit-utils &> /dev/null
         if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -3892,6 +3909,8 @@ sys_packages_install() {
         _APT_XTRA="openjdk-7-jre-headless ca-certificates-java nginx"
       elif [ "${_OSV}" = "stretch" ]; then
         _APT_XTRA="openjdk-8-jre-headless ca-certificates-java nginx"
+      elif [ "${_OSV}" = "buster" ]; then
+        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java nginx"
       fi
     else
       _APT_XTRA="nginx"
@@ -3919,6 +3938,8 @@ sys_packages_install() {
       elif [ "${_OSV}" = "jessie" ]; then
         _APT_XTRA="openjdk-7-jre-headless ca-certificates-java"
       elif [ "${_OSV}" = "stretch" ]; then
+        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java"
+      elif [ "${_OSV}" = "buster" ]; then
         _APT_XTRA="openjdk-8-jre-headless ca-certificates-java"
       fi
     else
@@ -3972,7 +3993,19 @@ sys_packages_install() {
     _SYSLOGD=rsyslog
   fi
 
-  if [ "${_OSV}" = "stretch" ]; then
+  if [ "${_OSV}" = "buster" ]; then
+    _EXTRA_PACKAGES="autoconf2.59 \
+                     libpcre2-dev \
+                     libpcre3 \
+                     libpcre3-dev \
+                     libpng-dev \
+                     libpng16-16 \
+                     gnupg1-curl \
+                     software-properties-common \
+                     libpcre2-posix0 \
+                     automake1.11 \
+                     ${_EXTRA_PACKAGES}"
+  elif [ "${_OSV}" = "stretch" ]; then
     _EXTRA_PACKAGES="autoconf2.59 \
                      libpcre2-dev \
                      libpcre3 \
@@ -4043,8 +4076,9 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  if [ "${_OSV}" = "jessie" ] \
+  if [ "${_OSV}" = "buster" ] \
     || [ "${_OSV}" = "stretch" ] \
+    || [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
     _DEBDEPS="apticron \
@@ -4226,8 +4260,9 @@ fix_libs_php() {
     && [ "${_LOC_OSV}" = "jessie" ]; then
     _DO_FIX=YES
   fi
-  if [ "${_OSV}" = "jessie" ] \
+  if [ "${_OSV}" = "buster" ] \
     || [ "${_OSV}" = "stretch" ] \
+    || [ "${_OSV}" = "jessie" ] \
     || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
@@ -4293,16 +4328,18 @@ fix_libssl() {
     && [ "${_LOC_OSV}" = "jessie" ]; then
     _DO_FIX=YES
   fi
-  if [ "${_OSV}" = "jessie" ] \
+  if [ "${_OSV}" = "buster" ] \
     || [ "${_OSV}" = "stretch" ] \
+    || [ "${_OSV}" = "jessie" ] \
     || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
     _SSL_FIX_REQUIRED=YES
     if [ "${_NGINX_SPDY}" = "YES" ] \
       || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
-      if [ "${_OSV}" = "jessie" ] \
+      if [ "${_OSV}" = "buster" ] \
         || [ "${_OSV}" = "stretch" ] \
+        || [ "${_OSV}" = "jessie" ] \
         || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
@@ -5483,7 +5520,8 @@ complete() {
     usermod -aG users aegir
     usermod -aG users man
     usermod -aG users mysql
-    if [ "${_THIS_RV}" = "stretch" ]; then
+    if [ "${_THIS_RV}" = "buster" ] \
+      || [ "${_THIS_RV}" = "stretch" ]; then
       usermod -aG users _apt
     fi
     if [ -x "/bin/bash" ]; then

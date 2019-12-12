@@ -80,7 +80,8 @@ check_root() {
       echo "deb http://http.debian.net/debian/ ${_OSR} main contrib non-free"          >> /etc/apt/sources.list
       echo "deb-src http://http.debian.net/debian/ ${_OSR} main contrib non-free"      >> /etc/apt/sources.list
       echo ""                                                                          >> /etc/apt/sources.list
-      if [ "${_OSR}" = "stretch" ]; then
+      if [ "${_OSR}" = "stretch" ] \
+        || [ "${_OSR}" = "buster" ]; then
         echo "## MAJOR BUG FIX UPDATES produced after the final release"               >> /etc/apt/sources.list
         echo "deb http://http.debian.net/debian/ ${_OSR}-updates main"                 >> /etc/apt/sources.list
         echo "deb-src http://http.debian.net/debian/ ${_OSR}-updates main"             >> /etc/apt/sources.list

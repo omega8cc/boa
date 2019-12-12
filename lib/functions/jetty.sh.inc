@@ -70,6 +70,9 @@ if_install_jetty() {
       elif [ "${_OSV}" = "stretch" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # Path to Java 1.8" >> \
           /etc/default/${_N_SOLR}.in.sh
+      elif [ "${_OSV}" = "buster" ]; then
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # Path to Java 1.8" >> \
+          /etc/default/${_N_SOLR}.in.sh
       fi
     fi
     if [ ! -e "${_SOLR_CTRL}" ]; then
@@ -85,8 +88,9 @@ if_install_jetty() {
   fi
 
   ###--------------------###
-  if [ "${_OSV}" = "jessie" ] \
+  if [ "${_OSV}" = "buster" ] \
     || [ "${_OSV}" = "stretch" ] \
+    || [ "${_OSV}" = "jessie" ] \
     || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
@@ -111,8 +115,9 @@ if_install_jetty() {
       && [ ! -e "/root/.mstr.clstr.cnf" ] \
       && [ ! -e "/root/.wbhd.clstr.cnf" ] \
       && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
-      if [ "${_OSV}" = "jessie" ] \
+      if [ "${_OSV}" = "buster" ] \
         || [ "${_OSV}" = "stretch" ] \
+        || [ "${_OSV}" = "jessie" ] \
         || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then
@@ -132,8 +137,9 @@ if_install_jetty() {
         rm -rf /opt/solr4
         rm -rf /opt/jetty9
         rm -f /etc/jetty.conf
-        if [ "${_OSV}" = "jessie" ] \
+        if [ "${_OSV}" = "buster" ] \
           || [ "${_OSV}" = "stretch" ] \
+          || [ "${_OSV}" = "jessie" ] \
           || [ "${_DO_FIX}" = "YES" ] \
           || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then
@@ -227,8 +233,9 @@ if_install_jetty() {
         echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m -Djava.awt.headless=true \
           -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" \
           # Options" | fmt -su -w 2500 >> /etc/default/jetty9
-        if [ "${_OSV}" = "jessie" ] \
+        if [ "${_OSV}" = "buster" ] \
           || [ "${_OSV}" = "stretch" ] \
+          || [ "${_OSV}" = "jessie" ] \
           || [ "${_DO_FIX}" = "YES" ] \
           || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then
@@ -312,8 +319,9 @@ if_install_jetty() {
       rm -rf jetty-distribution-*
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
       mv -f /opt/jetty9 ${vBs}/jetty9-${_X_VERSION}-${_NOW}
-      if [ "${_OSV}" = "jessie" ] \
+      if [ "${_OSV}" = "buster" ] \
         || [ "${_OSV}" = "stretch" ] \
+        || [ "${_OSV}" = "jessie" ] \
         || [ "${_DO_FIX}" = "YES" ] \
         || [ "${_OSV}" = "trusty" ] \
         || [ "${_OSV}" = "precise" ]; then

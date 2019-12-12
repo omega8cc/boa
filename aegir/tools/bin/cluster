@@ -74,7 +74,8 @@ check_root() {
       echo "deb http://http.debian.net/debian/ ${_OSR} main contrib non-free"          >> /etc/apt/sources.list
       echo "deb-src http://http.debian.net/debian/ ${_OSR} main contrib non-free"      >> /etc/apt/sources.list
       echo ""                                                                          >> /etc/apt/sources.list
-      if [ "${_OSR}" = "stretch" ]; then
+      if [ "${_OSR}" = "stretch" ] \
+        || [ "${_OSR}" = "buster" ]; then
         echo "## MAJOR BUG FIX UPDATES produced after the final release"               >> /etc/apt/sources.list
         echo "deb http://http.debian.net/debian/ ${_OSR}-updates main"                 >> /etc/apt/sources.list
         echo "deb-src http://http.debian.net/debian/ ${_OSR}-updates main"             >> /etc/apt/sources.list
@@ -100,10 +101,13 @@ check_root() {
     fi
     if [ "${_OSR}" = "jessie" ]; then
       _BENG_SERIES="4.9"
-      _BNG_VERSION="4.9.197-vs2.3.9.9"
+      _BNG_VERSION="4.9.202-vs2.3.9.9"
     elif [ "${_OSR}" = "stretch" ]; then
       _BENG_SERIES="4.9"
-      _BNG_VERSION="4.9.197-vs2.3.9.9"
+      _BNG_VERSION="4.9.202-vs2.3.9.9"
+    elif [ "${_OSR}" = "buster" ]; then
+      _BENG_SERIES="4.9"
+      _BNG_VERSION="4.9.202-vs2.3.9.9"
     else
       echo "ERROR: Not supported OS detected: ${_OSV}/${_OSR}"
       exit 1
@@ -839,7 +843,9 @@ install_vps() {
     echo "Running post-install Galera VPS upgrade..."
     if [ -x "/vservers/${idn}/lib/systemd/systemd" ]; then
       echo "Removing systemd on ${osx}..."
-      if [ "${osx}" = "jessie" ] || [ "${osx}" = "stretch" ]; then
+      if [ "${osx}" = "jessie" ] \
+        || [ "${osx}" = "stretch" ] \
+        || [ "${osx}" = "buster" ]; then
         vserver ${idn} exec ${_INSTAPP} sysvinit-core
         vserver ${idn} exec ${_INSTAPP} sysvinit-utils
         if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
@@ -1454,7 +1460,8 @@ install_host() {
   echo "deb http://http.debian.net/debian/ ${_OSR} main contrib non-free"          >> /etc/apt/sources.list
   echo "deb-src http://http.debian.net/debian/ ${_OSR} main contrib non-free"      >> /etc/apt/sources.list
   echo ""                                                                          >> /etc/apt/sources.list
-  if [ "${_OSR}" = "stretch" ]; then
+  if [ "${_OSR}" = "stretch" ] \
+    || [ "${_OSR}" = "buster" ]; then
     echo "## MAJOR BUG FIX UPDATES produced after the final release"               >> /etc/apt/sources.list
     echo "deb http://http.debian.net/debian/ ${_OSR}-updates main"                 >> /etc/apt/sources.list
     echo "deb-src http://http.debian.net/debian/ ${_OSR}-updates main"             >> /etc/apt/sources.list
@@ -1594,7 +1601,9 @@ install_host() {
 
   if [ -x "/lib/systemd/systemd" ]; then
     echo "Installing sysvinit-core on ${_OSV} ${_OSR}..."
-    if [ "${osx}" = "jessie" ] || [ "${osx}" = "stretch" ]; then
+    if [ "${osx}" = "jessie" ] \
+      || [ "${osx}" = "stretch" ] \
+      || [ "${osx}" = "buster" ]; then
       ${_INSTAPP} sysvinit-core
       ${_INSTAPP} sysvinit-utils
       if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -1655,7 +1664,9 @@ upgrade_host() {
 
   if [ -x "/lib/systemd/systemd" ]; then
     echo "Removing systemd on ${_OSV} ${_OSR}..."
-    if [ "${osx}" = "jessie" ] || [ "${osx}" = "stretch" ]; then
+    if [ "${osx}" = "jessie" ] \
+      || [ "${osx}" = "stretch" ] \
+      || [ "${osx}" = "buster" ]; then
       ${_INSTAPP} sysvinit-core
       ${_INSTAPP} sysvinit-utils
       if [ -e "/usr/share/sysvinit/inittab" ]; then

@@ -2626,8 +2626,9 @@ process() {
       _PLR_CTRL_F="${Plr}/sites/all/modules/boa_platform_control.ini"
       if [ -e "${Plr}" ]; then
         if [ "${_NEW_SSL}" = "YES" ] \
-          || [ "${_OSV}" = "jessie" ] \
+          || [ "${_OSV}" = "buster" ] \
           || [ "${_OSV}" = "stretch" ] \
+          || [ "${_OSV}" = "jessie" ] \
           || [ "${_OSV}" = "trusty" ] \
           || [ "${_OSV}" = "precise" ]; then
           PlrID=$(echo ${Plr} \

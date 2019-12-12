@@ -1338,7 +1338,7 @@ if [ ! -z "${silent}" ]; then
     || [ "${silent}" = "cluster" ] \
     || [ "${silent}" = "drush" ] \
     || [ "${silent}" = "gravcms" ] \
-    || [ "${silent}" = "stretch" ] \
+    || [ "${silent}" = "buster" ] \
     || [ "${silent}" = "system" ]; then
     silent="$2"
   else

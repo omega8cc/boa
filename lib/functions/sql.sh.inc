@@ -397,7 +397,8 @@ install_db_sql() {
     _GPG=gpg
   fi
   cd /var/opt
-  if [ "${_OSV}" = "stretch" ] \
+  if [ "${_OSV}" = "buster" ] \
+    || [ "${_OSV}" = "stretch" ] \
     || [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "trusty" ]; then
     st_runner "${_INSTAPP} software-properties-common dirmngr" 2> /dev/null
@@ -441,7 +442,8 @@ install_db_sql() {
   elif [ "${_THIS_OS}" = "Ubuntu" ]; then
     _OSN=ubuntu
   fi
-  if [ "${_OSV}" = "stretch" ] \
+  if [ "${_OSV}" = "buster" ] \
+    || [ "${_OSV}" = "stretch" ] \
     || [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "trusty" ]; then
     if [ -e "/root/.mstr.clstr.cnf" ] \
@@ -663,7 +665,8 @@ install_db_sql() {
 }
 
 install_with_aptitude_sql() {
-  if [ "${_OSV}" = "stretch" ] \
+  if [ "${_OSV}" = "buster" ] \
+    || [ "${_OSV}" = "stretch" ] \
     || [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then

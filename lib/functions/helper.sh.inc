@@ -544,7 +544,9 @@ os_detection() {
       not_supported_os
     fi
   elif [ "${_THIS_OS}" = "Debian" ]; then
-    if [ "${_THIS_RV}" = "stretch" ]; then
+    if [ "${_THIS_RV}" = "buster" ]; then
+      _OSV="buster"
+    elif [ "${_THIS_RV}" = "stretch" ]; then
       _OSV="stretch"
     elif [ "${_THIS_RV}" = "jessie" ]; then
       _OSV="jessie"

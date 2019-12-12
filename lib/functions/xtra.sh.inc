@@ -276,8 +276,9 @@ if_install_hhvm() {
     else
       _GPG=gpg
     fi
-    if [ "${_OSV}" = "jessie" ] \
+    if [ "${_OSV}" = "buster" ] \
       || [ "${_OSV}" = "stretch" ] \
+      || [ "${_OSV}" = "jessie" ] \
       || [ "${_OSV}" = "trusty" ] \
       || [ "${_DO_FIX}" = "YES" ]; then
       if [ ! -x "/usr/bin/hhvm" ]; then
@@ -292,6 +293,9 @@ if_install_hhvm() {
               ${aptLiSys}.d/hhvm.list
           elif [ "${_OSV}" = "stretch" ] || [ "${_DO_FIX}" = "YES" ]; then
             echo "deb http://dl.hhvm.com/debian stretch main" >> \
+              ${aptLiSys}.d/hhvm.list
+          elif [ "${_OSV}" = "buster" ] || [ "${_DO_FIX}" = "YES" ]; then
+            echo "deb http://dl.hhvm.com/debian buster main" >> \
               ${aptLiSys}.d/hhvm.list
           elif [ "${_OSV}" = "trusty" ]; then
             echo "deb http://dl.hhvm.com/ubuntu trusty main" >> \
@@ -592,7 +596,9 @@ if_install_ffmpeg() {
         true
         msg "INFO: Installing FFmpeg..."
         cd /var/opt
-        if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "stretch" ]; then
+        if [ "${_OSV}" = "buster" ] \
+          || [ "${_OSV}" = "stretch" ] \
+          || [ "${_OSV}" = "jessie" ]; then
           echo "## deb-multimedia APT Repository for FFmpeg" > ${aptLiSys}.d/ffmpeg.list
           if [ "${_OSV}" = "jessie" ]; then
             echo "deb http://www.deb-multimedia.org jessie main non-free" >> ${aptLiSys}.d/ffmpeg.list
@@ -600,6 +606,9 @@ if_install_ffmpeg() {
           elif [ "${_OSV}" = "stretch" ]; then
             echo "deb http://www.deb-multimedia.org stretch main non-free" >> ${aptLiSys}.d/ffmpeg.list
             echo "deb http://www.deb-multimedia.org stretch-backports main" >> ${aptLiSys}.d/ffmpeg.list
+          elif [ "${_OSV}" = "buster" ]; then
+            echo "deb http://www.deb-multimedia.org buster main non-free" >> ${aptLiSys}.d/ffmpeg.list
+            echo "deb http://www.deb-multimedia.org buster-backports main" >> ${aptLiSys}.d/ffmpeg.list
           fi
           st_runner "apt-get update -qq" &> /dev/null
           st_runner "apt-get install deb-multimedia-keyring ${forCer}" 2> /dev/null

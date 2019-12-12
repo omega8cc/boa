@@ -947,7 +947,7 @@ up_head() {
     || [ "${silent}" = "cluster" ] \
     || [ "${silent}" = "drush" ] \
     || [ "${silent}" = "gravcms" ] \
-    || [ "${silent}" = "stretch" ]; then
+    || [ "${silent}" = "buster" ]; then
     echo "FEATURE MODE: ${silent}"
     master="feature/${silent}"
     branch="feature/${silent}"
