@@ -155,10 +155,18 @@ system_check_clean() {
     || [ -e "/etc/apache2" ] \
     || [ -e "/etc/mysql" ] \
     || [ -e "/var/lib/mysql" ]; then
-    echo "ERROR: BOA installation procedure requires minimal supported OS."
-    echo "ERROR: Please make sure you don't have MySQL nor Apache installed."
-    echo "ERROR: Here's the list of directories which shouldn't exist:"
-    echo "ERROR: /etc/nginx /etc/apache2 /etc/mysql /var/lib/mysql /var/aegir"
+    echo "ERROR: BOA requires minimal supported OS with no services installed."
+    echo
+    echo "Please make sure you don't have MySQL nor Apache installed."
+    echo "Here's the list of directories which shouldn't exist:"
+    echo "/etc/nginx /etc/apache2 /etc/mysql /var/lib/mysql /var/aegir"
+    if [ ! -e "/etc/nginx" ]; then
+      echo
+      echo "HINT: Try to run: apt-get purge mysql-common --and then try again."
+      echo "HINT: You can also enforce installation with empty control file:"
+      echo " touch /root/.force.reinstall.cnf -- and then try again."
+      echo
+    fi
     echo "Bye"
     clean_pid_exit
   fi
