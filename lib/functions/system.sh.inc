@@ -1886,7 +1886,7 @@ check_apt_updates() {
 # Install PHP deps.
 install_php_deps() {
   ###--------------------###
-  st_runner "${_INSTALL} libgd2-dev" 2> /dev/null
+  st_runner "${_INSTALL} libgd-dev" 2> /dev/null
   st_runner "${_INSTALL} libgd3" 2> /dev/null
   st_runner "${_INSTALL} libkrb5-dev" 2> /dev/null
   st_runner "${_INSTALL} libldap-dev" 2> /dev/null
