@@ -300,23 +300,6 @@ fi
 
 
 ###
-### Install SPDY and PFS dependencies if needed
-###
-if [ "${_NGINX_SPDY}" = "YES" ] \
-  || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
-  if [ "${_OSV}" = "stretch" ] \
-    || [ "${_OSV}" = "wily" ]; then
-    _DO_NOTHING=YES
-  else
-    if [ "${_THIS_OS}" = "Debian" ]; then
-      install_ssh_src
-    fi
-    install_curl_src
-  fi
-fi
-
-
-###
 ### Install OpenSSH from sources if needed
 ###
 if [ "${_SSH_FROM_SOURCES}" = "YES" ]; then
