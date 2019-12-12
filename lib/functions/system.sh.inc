@@ -4113,7 +4113,6 @@ sys_packages_install() {
               gnupg2 \
               htop \
               icu-devtools \
-              ifstat \
               ipset \
               iptables \
               ldap-utils \
