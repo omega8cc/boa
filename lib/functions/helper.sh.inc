@@ -546,6 +546,9 @@ os_detection() {
   elif [ "${_THIS_OS}" = "Debian" ]; then
     if [ "${_THIS_RV}" = "buster" ]; then
       _OSV="buster"
+      _DB_SERVER=MariaDB
+      _DB_SERIES=10.3
+      _DBS_VRN="${_MARIADB_10_3_VRN}"
     elif [ "${_THIS_RV}" = "stretch" ]; then
       _OSV="stretch"
     elif [ "${_THIS_RV}" = "jessie" ]; then
