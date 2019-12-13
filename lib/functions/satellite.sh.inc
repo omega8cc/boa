@@ -3941,6 +3941,7 @@ satellite_if_running_as_root_octopus() {
 satellite_check_sanitize_user_name() {
   _USER=${_USER//[^a-zA-Z0-9-.]/}
   _USER=$(echo -n ${_USER} | tr A-Z a-z 2>&1)
+  _WEB="${_USER}.web"
   _ROOT="/data/disk/${_USER}"
   if [ -d "${_ROOT}" ]; then
     _STATUS=UPGRADE
