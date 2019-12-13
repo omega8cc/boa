@@ -4004,6 +4004,8 @@ sys_packages_install() {
                      software-properties-common \
                      libpcre2-posix0 \
                      automake1.11 \
+                     libcurl4 \
+                     libcurl4-gnutls-dev \
                      ${_EXTRA_PACKAGES}"
   elif [ "${_OSV}" = "stretch" ]; then
     _EXTRA_PACKAGES="autoconf2.59 \
@@ -4013,6 +4015,8 @@ sys_packages_install() {
                      libpng-dev \
                      libpng16-16 \
                      gnupg1-curl \
+                     libcurl3 \
+                     libcurl3-gnutls \
                      software-properties-common \
                      libpcre2-posix0 \
                      automake1.11 \
@@ -4023,6 +4027,8 @@ sys_packages_install() {
                      libpcre3 \
                      t1lib-bin \
                      gnupg-curl \
+                     libcurl3 \
+                     libcurl3-gnutls \
                      libt1-5 \
                      libpng12-0 \
                      libpng12-dev \
@@ -4034,7 +4040,8 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  if [ "${_OSV}" = "stretch" ] \
+  if [ "${_OSV}" = "buster" ] \
+    || [ "${_OSV}" = "stretch" ] \
     || [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "trusty" ]; then
     _EXTRA_PACKAGES="libgd2-noxpm-dev \
@@ -4123,8 +4130,6 @@ sys_packages_install() {
               libc-client-dev \
               libc-client2007e \
               libc-client2007e-dev \
-              libcurl3 \
-              libcurl3-gnutls \
               libcurl4-openssl-dev \
               libfilesys-diskspace-perl \
               libfontconfig1 \
