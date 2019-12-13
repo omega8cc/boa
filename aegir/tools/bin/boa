@@ -404,6 +404,9 @@ octopus_install() {
 
     if [ -z "${user}" ]; then
       user="o1"
+    else
+      user=${user//[^a-zA-Z0-9-.]/}
+      user=$(echo -n ${user} | tr A-Z a-z 2>&1)
     fi
     _CHECK_HOST=$(uname -n 2>&1)
 
