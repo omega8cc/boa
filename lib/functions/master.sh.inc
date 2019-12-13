@@ -424,7 +424,7 @@ master_download_for_local_build() {
     get_dev_stc "features_extra-7.x-1.0.tar.gz"
     get_dev_stc "features-7.x-2.11.tar.gz"
     get_dev_stc "idna_convert-7.x-1.0.tar.gz"
-    get_dev_stc "revision_deletion-7.x-1.x-dev.tar.gz"
+    get_dev_stc "revision_deletion-7.x-1.3.tar.gz"
     get_dev_stc "strongarm-7.x-2.0.tar.gz"
     get_dev_stc "userprotect-7.x-1.2.tar.gz"
   fi
