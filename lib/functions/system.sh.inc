@@ -4185,7 +4185,6 @@ sys_packages_install() {
               rkhunter \
               rrdtool \
               rsync \
-              s3cmd \
               shtool \
               sipcalc \
               sqlite3 \
