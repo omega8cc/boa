@@ -545,11 +545,6 @@ nginx_wildcard_ssl() {
 }
 
 fix_update_nginx_config() {
-  if [ "${_FORCE_REDIS_RESTART}" = "YES" ]; then
-    service redis-server stop &> /dev/null
-    killall -9 redis-server &> /dev/null
-    service redis-server start &> /dev/null
-  fi
   if [ "${_STATUS}" = "INIT" ]; then
     service cron start &> /dev/null
     if [ "${_EASY_SETUP}" = "NO" ]; then

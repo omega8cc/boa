@@ -61,6 +61,11 @@ forced_redis_password_update() {
     chown redis:redis /etc/redis/redis.conf
     chmod 0600 /etc/redis/redis.conf
   fi
+  if [ "${_FORCE_REDIS_RESTART}" = "YES" ]; then
+    service redis-server stop &> /dev/null
+    killall -9 redis-server &> /dev/null
+    service redis-server start &> /dev/null
+  fi
 }
 #
 # Fix Redis mode.
@@ -125,8 +130,10 @@ fix_redis_mode() {
               /data/conf/global.inc &> /dev/null
             wait
             service redis-server stop &> /dev/null
+            killall -9 redis-server &> /dev/null
             update-rc.d -f redis-server remove &> /dev/null
             service redis stop &> /dev/null
+            killall -9 redis &> /dev/null
             update-rc.d -f redis remove &> /dev/null
             mv -f /etc/init.d/redis /etc/init.d/redis-off &> /dev/null
             mv -f /etc/init.d/redis-server \
@@ -143,8 +150,10 @@ fix_redis_mode() {
             /data/conf/global.inc &> /dev/null
           wait
           service redis-server stop &> /dev/null
+          killall -9 redis-server &> /dev/null
           update-rc.d -f redis-server remove &> /dev/null
           service redis stop &> /dev/null
+          killall -9 redis &> /dev/null
           update-rc.d -f redis remove &> /dev/null
           mv -f /etc/init.d/redis /etc/init.d/redis-off &> /dev/null
           mv -f /etc/init.d/redis-server \

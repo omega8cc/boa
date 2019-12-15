@@ -5299,6 +5299,10 @@ update_initd() {
     if [ ! -e "/var/run/aegir_upgrade.pid" ] \
       && [ ! -e "/root/.proxy.cnf" ]; then
       msg "INFO: Restarting Redis, PHP-FPM and Nginx..."
+      mrun "service redis-server stop" &> /dev/null
+      mrun "killall -9 redis-server" &> /dev/null
+      mrun "service redis-server start" &> /dev/null
+      sleep 3
       mrun "service redis-server restart" &> /dev/null
       mrun "update-rc.d -f php5-fpm remove" &> /dev/null
       mrun "service nginx stop" &> /dev/null

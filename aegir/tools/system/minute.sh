@@ -215,7 +215,9 @@ fi
 redis_oom_check() {
   if [ `tail --lines=500 /var/log/php/error_log_* \
     | grep --count "RedisException"` -gt "0" ]; then
-    service redis-server restart
+    service redis-server stop &> /dev/null
+    killall -9 redis-server &> /dev/null
+    service redis-server start &> /dev/null
     echo "$(date 2>&1) RedisException OOM detected"
     echo "$(date 2>&1) RedisException OOM detected" >> /var/xdrago/log/redis.watch.log
     touch /var/run/fmp_wait.pid
@@ -246,7 +248,9 @@ redis_oom_check() {
   if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
     _REDIS_TEST=$(su -s /bin/bash - aegir -c "drush8 @hostmaster status" 2>&1)
     if [[ "${_REDIS_TEST}" =~ "RedisException" ]]; then
-      service redis-server restart
+      service redis-server stop &> /dev/null
+      killall -9 redis-server &> /dev/null
+      service redis-server start &> /dev/null
       echo "$(date 2>&1) RedisException OOM detected"
       echo "$(date 2>&1) RedisException OOM detected" >> /var/xdrago/log/redis.watch.log
     else
@@ -261,7 +265,9 @@ redis_slow_check() {
     | grep --count "PhpRedis.php"` -gt "5" ]; then
     touch /var/run/fmp_wait.pid
     sleep 8
-    service redis-server restart
+    service redis-server stop &> /dev/null
+    killall -9 redis-server &> /dev/null
+    service redis-server start &> /dev/null
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     _NOW=${_NOW//[^0-9-]/}
     mkdir -p /var/backups/php-logs/${_NOW}/
