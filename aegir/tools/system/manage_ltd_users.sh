@@ -1873,12 +1873,6 @@ manage_site_drush_alias_mirror() {
   if [ -e "${dscUsr}/.drush/.alias.drushrc.php" ]; then
     rm -f ${dscUsr}/.drush/.alias.drushrc.php
   fi
-  if [ -e "${dscUsr}/.drush/self.alias.drushrc.php" ]; then
-    rm -f ${dscUsr}/.drush/self.alias.drushrc.php
-  fi
-  if [ -e "${dscUsr}/config/self" ]; then
-    rm -rf ${dscUsr}/config/self
-  fi
 
   isAliasUpdate=NO
   for Alias in `find ${pthParentUsr}/.drush/*.alias.drushrc.php \
