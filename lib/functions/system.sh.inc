@@ -3994,7 +3994,7 @@ sys_packages_install() {
   fi
 
   if [ "${_OSV}" = "buster" ]; then
-    _EXTRA_PACKAGES="autoconf2.59 \
+    _EXTRA_PACKAGES="autoconf2.64 \
                      libpcre2-dev \
                      libpcre3 \
                      libpcre3-dev \
@@ -4017,6 +4017,7 @@ sys_packages_install() {
                      gnupg1-curl \
                      libcurl3 \
                      libcurl3-gnutls \
+                     libcurl4-openssl-dev \
                      software-properties-common \
                      libpcre2-posix0 \
                      automake1.11 \
@@ -4029,12 +4030,12 @@ sys_packages_install() {
                      gnupg-curl \
                      libcurl3 \
                      libcurl3-gnutls \
+                     libcurl4-openssl-dev \
                      libt1-5 \
                      libpng12-0 \
                      libpng12-dev \
                      libt1-dev \
                      defoma \
-                     libpam-unix2 \
                      python-software-properties \
                      libpcre3-dev \
                      ${_EXTRA_PACKAGES}"
@@ -4130,7 +4131,6 @@ sys_packages_install() {
               libc-client-dev \
               libc-client2007e \
               libc-client2007e-dev \
-              libcurl4-openssl-dev \
               libfilesys-diskspace-perl \
               libfontconfig1 \
               libfreetype6 \
@@ -4153,11 +4153,9 @@ sys_packages_install() {
               libtext-template-perl \
               libtool \
               libwww-perl \
-              libxcrypt1 \
               libxml2-dev \
               libxpm4 \
               libxslt-dev \
-              libxslt1-dbg \
               libxslt1-dev \
               libxslt1.1 \
               libzip-dev \
