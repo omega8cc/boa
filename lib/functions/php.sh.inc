@@ -965,6 +965,10 @@ install_php_multi() {
       patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
     fi
   fi
+  if [ "${_OSV}" = "buster" ]; then
+    patchFile="freetype.patch"
+    patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
+  fi
   _PHP_EXTRA="${_PHP_EXTRA} --enable-opcache"
   mrun "sh ./configure \
                 --quiet \
@@ -983,7 +987,6 @@ install_php_multi() {
                 --with-curl \
                 --with-fpm-group=www-data \
                 --with-fpm-user=www-data \
-                --with-freetype-dir=/usr \
                 --with-gd \
                 --with-imap \
                 --with-imap-ssl \
@@ -1024,7 +1027,6 @@ install_php_multi() {
                 --with-curl \
                 --with-fpm-group=www-data \
                 --with-fpm-user=www-data \
-                --with-freetype-dir=/usr \
                 --with-gd \
                 --with-imap \
                 --with-imap-ssl \
@@ -1825,13 +1827,13 @@ php_upgrade_all() {
 
 get_php_conf_extra() {
   _PHP_EXTRA=""
-  if [ "${_OSV}" = "buster" ] \
-    || [ "${_OSV}" = "stretch" ] \
+  if [ "${_OSV}" = "buster" ]; then
+    _PHP_EXTRA="--with-ldap --with-gmp --with-xpm-dir=/usr"
+  elif [ "${_OSV}" = "stretch" ] \
     || [ "${_OSV}" = "jessie" ] \
-    || [ "${_DO_FIX}" = "YES" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
-    _PHP_EXTRA="--with-ldap --with-gmp --with-xpm-dir=/usr"
+    _PHP_EXTRA="--with-ldap --with-gmp --with-xpm-dir=/usr --with-freetype-dir=/usr"
   else
     _PHP_EXTRA="--with-ldap --with-gmp"
   fi
@@ -1866,7 +1868,11 @@ install_update_php() {
     || [ "${_OSV}" = "stretch" ] \
     || [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "trusty" ]; then
-    ln -sf /usr/include/freetype2 /usr/include/freetype2/freetype
+    rm -f /usr/include/freetype2/freetype/freetype2
+    if [ -e "/usr/include/freetype2" ] \
+      && [ ! -e "/usr/include/freetype2/freetype" ]; then
+      ln -sf /usr/include/freetype2 /usr/include/freetype2/freetype
+    fi
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "5.6" ]] \
     && [ ! -x "/opt/php56/bin/php" ]; then
