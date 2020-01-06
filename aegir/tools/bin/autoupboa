@@ -176,4 +176,4 @@ if [ -e "/data/disk/arch" ]; then
     crontab_clean
   fi
 fi
-###EOF2019###
+###EOF2020###

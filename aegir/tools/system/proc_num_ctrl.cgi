@@ -391,4 +391,4 @@ sub cpu_count_load
   $MAXSQLCPU = $MAXSQLCPU - 5;
   $MAXFPMCPU = $MAXFPMCPU - 5;
 }
-###EOF2019###
+###EOF2020###

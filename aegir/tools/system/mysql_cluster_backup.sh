@@ -283,4 +283,4 @@ rm -f /var/run/boa_sql_cluster_backup.pid
 touch /var/xdrago/log/last-run-cluster-backup
 echo "ALL TASKS COMPLETED"
 exit 0
-###EOF2019###
+###EOF2020###
