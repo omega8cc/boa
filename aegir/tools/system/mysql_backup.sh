@@ -202,6 +202,20 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
           echo "Truncated giant watchdog in ${_DB}"
         fi
       fi
+      if [ -e "/var/lib/mysql/${_DB}/queue.ibd" ]; then
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/queue.ibd | grep "G" 2>&1)
+        if [[ "${_IS_GB}" =~ "queue" ]]; then
+          truncate_queue_tables &> /dev/null
+          echo "Truncated giant queue in ${_DB}"
+        fi
+      fi
+      if [ -e "/var/lib/mysql/${_DB}/accesslog.ibd" ]; then
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/accesslog.ibd | grep "G" 2>&1)
+        if [[ "${_IS_GB}" =~ "accesslog" ]]; then
+          truncate_accesslog_tables &> /dev/null
+          echo "Truncated giant accesslog in ${_DB}"
+        fi
+      fi
       # truncate_accesslog_tables &> /dev/null
       # echo "Truncated not used accesslog in ${_DB}"
       # truncate_queue_tables &> /dev/null
