@@ -32,7 +32,7 @@ sqlmagic_convert() {
     echo "Bye"
     exit 1
   fi
-  if drush ${alias} status | grep "Successful" 2>&1 \
+  if drush ${alias} status | grep "Connected" 2>&1 \
     && [ -e "${HOME}/static" ]; then
     _THIS_VN=$(drush ${alias} status \
       | grep "Drupal version" \

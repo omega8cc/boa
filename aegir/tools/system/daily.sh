@@ -1181,8 +1181,8 @@ check_site_status() {
   fi
   if [ "${_SITE_TEST_RESULT}" = "OK" ]; then
     _STATUS_TEST=$(run_drush8_nosilent_cmd "status \
-      | grep 'Drupal bootstrap.*:.*Successful'" 2>&1)
-    if [[ "${_STATUS_TEST}" =~ "Successful" ]]; then
+      | grep 'Database.*:.*Connected'" 2>&1)
+    if [[ "${_STATUS_TEST}" =~ "Connected" ]]; then
       _STATUS=OK
       _RUN_DGN=NO
       if [ -e "${User}/static/control/drupalgeddon.info" ]; then
