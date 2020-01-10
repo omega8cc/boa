@@ -753,6 +753,22 @@ update_agents() {
       touch ${pthLog}/redis_eight.ctrl.${_X_SE}.pid
     fi
   fi
+
+  _Dir="/data/all/000/modules"
+  _REDIS_L_VERSION=mod-30-10-2019
+  if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
+    if [ ! -e "${_Dir}/redis_edge/${_REDIS_L_VERSION}.info" ]; then
+      mkdir -p ${_Dir}
+      cd ${_Dir}
+      rm -rf ${_Dir}/redis_edge
+      get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
+      rm -f ${_Dir}/redis_edge/redis.info
+      echo update > ${_Dir}/redis_edge/${_REDIS_L_VERSION}.info
+      find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
+      touch ${pthLog}/redis_edge.ctrl.${_X_SE}.pid
+    fi
+  fi
 }
 
 fix_core_dgd() {
