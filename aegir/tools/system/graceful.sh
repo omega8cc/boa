@@ -64,16 +64,16 @@ action() {
   cd /opt/tmp
 
 # For GeoIP2 City database:
-  wget -q -U iCab \
-    wget -N http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.mmdb.gz
-  gunzip GeoLite2-City.mmdb.gz &> /dev/null
-  cp -af GeoLite2-City.mmdb /usr/share/GeoIP/
+#   wget -q -U iCab \
+#     wget -N http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.mmdb.gz
+#   gunzip GeoLite2-City.mmdb.gz &> /dev/null
+#   cp -af GeoLite2-City.mmdb /usr/share/GeoIP/
 
 # For GeoIP2 Country database:
-  wget -q -U iCab \
-    wget -N http://geolite.maxmind.com/download/geoip/database/GeoLite2-Country.mmdb.gz
-  gunzip GeoLite2-Country.mmdb.gz &> /dev/null
-  cp -af GeoLite2-Country.mmdb /usr/share/GeoIP/
+#   wget -q -U iCab \
+#     wget -N http://geolite.maxmind.com/download/geoip/database/GeoLite2-Country.mmdb.gz
+#   gunzip GeoLite2-Country.mmdb.gz &> /dev/null
+#   cp -af GeoLite2-Country.mmdb /usr/share/GeoIP/
 
   chmod 644 /usr/share/GeoIP/*
   rm -rf /opt/tmp
