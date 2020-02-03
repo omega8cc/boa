@@ -62,7 +62,7 @@ find_fast_mirror() {
     mkdir -p /var/backups
     if [ ! -e "${ffList}" ]; then
       echo "jp.files.aegir.cc"  > ${ffList}
-      echo "nl.files.aegir.cc" >> ${ffList}
+      #echo "nl.files.aegir.cc" >> ${ffList}
       echo "uk.files.aegir.cc" >> ${ffList}
       echo "us.files.aegir.cc" >> ${ffList}
     fi
