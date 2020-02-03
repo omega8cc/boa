@@ -430,15 +430,17 @@ install_proxysql() {
     echo "\$writer_node_ip = \"${_DB_NODE_IP[1]}\";"     >> /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
     echo "ProxySQL" > /vservers/${idn}/data/conf/clstr.cnf
     mkdir -p /vservers/${idn}/opt/tmp
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "echo '
+    echo '
 APT::Get::Assume-Yes "true";
 APT::Get::Show-Upgraded "true";
 APT::Quiet "true";
 DPkg::Options {"--force-confdef";"--force-confmiss";"--force-confold"};
 DPkg::Pre-Install-Pkgs {"/usr/sbin/dpkg-preconfigure --apt";};
 Dir::Etc::SourceList "/etc/apt/sources.list";
-' > /vservers/${idn}/opt/tmp/apt.conf.noi.nrml"
+' > /vservers/${idn}/opt/tmp/apt.conf.noi.nrml
     nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/tmp/apt.conf.noi.nrml"
+    vserver ${idn} exec apt-get clean
+    vserver ${idn} exec apt-get update -qq
     vserver ${idn} exec ${_INSTAPP} sysbench
     vserver ${idn} exec ${_INSTAPP} debconf-utils
     vserver ${idn} exec ${_INSTAPP} proxysql
