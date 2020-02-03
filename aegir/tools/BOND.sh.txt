@@ -1114,9 +1114,9 @@ tune_memory_limits() {
     || [[ "${_THISHOST}" =~ ".host8." ]]; then
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.tg.cnf" ]; then
-        _USE_SQL=$(( _RAM / 8 ))
+        _USE_SQL=$(( _RAM / 12 ))
       else
-        _USE_SQL=$(( _RAM / 18 ))
+        _USE_SQL=$(( _RAM / 24 ))
       fi
     else
       _USE_SQL=$(( _RAM / 8 ))
