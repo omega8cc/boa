@@ -1897,7 +1897,6 @@ if [ `whoami` = "root" ]; then
   fi
   setup
   if [ -e "/var/log/barracuda_log.txt" ]; then
-    killall wget
     fix_ping_perms
     fix_lshell
     fix_authorized_keys
