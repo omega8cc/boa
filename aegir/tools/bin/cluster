@@ -621,10 +621,11 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
     pxyCmd="SELECT hostgroup_id,hostname,port,status,weight FROM mysql_servers;"
     ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
 
-    isPxy=`ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "$(which proxysql 2>&1)"`
-    echo "isPxy is ${isPxy}"
+    isPxy=$(vserver ${idn} exec which proxysql 2>&1)
+    echo "Relative isPxy is ${isPxy}"
+    echo "Absolute isPxy is /vservers/${idn}${isPxy}"
 
-    if [ -x "${isPxy}" ] \
+    if [ -x "/vservers/${idn}${isPxy}" ] \
       && [ -e "/vservers/${idn}/etc/proxysql.cnf" ] \
       && [ -e "${pXcnf}" ]; then
       echo "INFO: Updating ProxySQL Galera Checker..."
