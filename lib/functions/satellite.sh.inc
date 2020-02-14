@@ -1605,6 +1605,9 @@ satellite_o_contrib_eight_update_global() {
     elif [ -e "${_D}/${i}/o_contrib_eight" ] \
       && [ ! -L "${_D}/${i}/o_contrib_eight/redis_eight" ]; then
       _FORCE_UP_EIGHT=YES
+    elif [ -e "${_D}/${i}/o_contrib_eight" ] \
+      && [ ! -L "${_D}/${i}/o_contrib_eight/redis_compr" ]; then
+      _FORCE_UP_EIGHT=YES
     else
       _FORCE_UP_EIGHT=NO
     fi
@@ -1622,6 +1625,10 @@ satellite_o_contrib_eight_update_global() {
       if [ -e "${_D}/000/modules/redis_eight" ] \
         && [ ! -L "${_D}/${i}/o_contrib_eight/redis_eight" ]; then
         ln -sf ${_D}/000/modules/redis_eight ${_D}/${i}/o_contrib_eight/redis_eight
+      fi
+      if [ -e "${_D}/000/modules/redis_compr" ] \
+        && [ ! -L "${_D}/${i}/o_contrib_eight/redis_compr" ]; then
+        ln -sf ${_D}/000/modules/redis_compr ${_D}/${i}/o_contrib_eight/redis_compr
       fi
       find ${_D}/${i}/o_contrib_eight -type d -exec chmod 0755 {} \; &> /dev/null
       find ${_D}/${i}/o_contrib_eight -type f -exec chmod 0644 {} \; &> /dev/null
