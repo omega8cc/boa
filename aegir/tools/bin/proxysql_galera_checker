@@ -18,7 +18,7 @@ set -o nounset    # no undefined variables
 # Script parameters/constants
 #
 declare  -i DEBUG=0
-readonly    PROXYSQL_ADMIN_VERSION="1.4.14"
+readonly    PROXYSQL_ADMIN_VERSION="1.4.16"
 
 #Timeout exists for instances where mysqld may be hung
 declare  -i TIMEOUT=10

@@ -21,7 +21,7 @@ declare NRED=""
 #
 
 declare -i  DEBUG=0
-readonly    PROXYSQL_ADMIN_VERSION="1.4.14"
+readonly    PROXYSQL_ADMIN_VERSION="1.4.16"
 
 declare     CONFIG_FILE="/etc/proxysql-admin.cnf"
 declare     ERR_FILE="/dev/null"
