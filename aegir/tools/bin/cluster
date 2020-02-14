@@ -1874,7 +1874,50 @@ check_heads() {
   done
 }
 
+restart_db_cluster() {
+  check_config_cluster
+
+  inc="0"
+  for IP in "${_DB_NODE_IP[@]}"; do
+    idn="${_CLUSTER_PREFIX}db${inc}"
+    if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
+      echo "Running mycnfup stop on ${idn}/${IP}..."
+      ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup stop"
+    else
+      mkdir -p /vservers/${idn}/${optBin}
+      curl ${crlGet} "${urlHmr}/${tBn}/mycnfup" -o /vservers/${idn}${optBin}/mycnfup
+      ssh ${_NOSTRICT} root@${IP} "chmod 700 ${optBin}/mycnfup"
+      echo "Running mycnfup stop on ${idn}/${IP}..."
+      ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup stop"
+    fi
+    inc=$((inc+1))
+    echo
+    echo "Testing ${idn} status..."
+    vserver-stat | grep ${idn}
+    echo
+  done
+
+  echo "Waiting for ${_DB_NODE_IP[1]} DB node bootstrap-pxc..."
+  echo "Running mycnfup init on ${_DB_NODE_IP[1]}..."
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "bash ${optBin}/mycnfup init"
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep%';\""
+
+  for IP in "${_DB_NODE_IP[@]}"; do
+    if [ "${IP}" != "${_DB_NODE_IP[1]}" ]; then
+	  echo "Running mycnfup start on ${IP}..."
+      ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup start"
+      ssh ${_NOSTRICT} root@${IP} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep%';\""
+    fi
+  done
+  echo "All DB nodes started in cluster mode!"
+}
+
 case "$1" in
+  re-dbs)  cmd="$1"
+           hst="$2"
+           check_all
+           restart_db_cluster
+  ;;
   in-host) cmd="$1"
            hst="$2"
            check_all
