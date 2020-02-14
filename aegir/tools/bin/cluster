@@ -735,17 +735,8 @@ install_vps() {
     -- -d ${osx} -- --arch=amd64 --include=${incl} \
     --exclude=${excl};
 
-  if [ -e "/vservers/${idn}/" ]; then
-    if [[ ! "${idn}" =~ "web" ]]; then
-      vserver-autostart ${idn}
-      echo "Auto-start for vps ${idn}... ON"
-    else
-      vserver-autostart ${idn} none
-      echo "Auto-start for vps ${idn}... OFF"
-    fi
-  fi
-
   echo "Starting vps ${idn}..."
+  vserver-autostart ${idn}
   vserver ${idn} start
 
   echo "en_US.UTF-8 UTF-8" >> /vservers/${idn}/etc/locale.gen
