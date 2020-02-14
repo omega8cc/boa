@@ -1838,8 +1838,19 @@ upgrade_host() {
   exit 0
 }
 
+check_vsd() {
+  _VSD_TEST=$(grep "cluster" /etc/init.d/vservers-default 2>&1)
+  if [ -z "${_VSD_TEST}" ]; then
+    echo "##" >> /etc/init.d/vservers-default
+    echo "sleep 30" >> /etc/init.d/vservers-default
+    echo "exec \"/usr/local/bin/cluster re-dbs\"" >> /etc/init.d/vservers-default
+    echo "##" >> /etc/init.d/vservers-default
+  fi
+}
+
 check_heads() {
   check_config_cluster
+  check_vsd
   idn="${_CLUSTER_PREFIX}web"
   for i in `dir -d /vservers/*` ; do
     _THIS_VM=`echo $i | cut -d'/' -f3 | awk '{ print $1}'`
