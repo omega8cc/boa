@@ -917,7 +917,7 @@ install_octopus() {
   check_config_cluster
   idn="${_CLUSTER_PREFIX}web"
   if [ -e "/vservers/${idn}/data/all" ] \
-    && [ "${idn}" != "web" ]; then
+    && [[ ! "${idn}" =~ "web" ]]; then
     vserver ${idn} exec /opt/local/bin/boa in-oct ${email} ${user} ${mode} ${copt} ${csub} ${ccor}
     exit 0
   else
@@ -952,7 +952,7 @@ install_web_node() {
   fi
   eml="${_CLUSTER_EMAIL}"
   if [ ! -e "/vservers/${idn}/" ] \
-    && [ "${idn}" != "web" ]; then
+    && [[ ! "${idn}" =~ "web" ]]; then
     install_vps
   fi
 }
