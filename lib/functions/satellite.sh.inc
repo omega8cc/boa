@@ -1650,6 +1650,14 @@ satellite_download_o_contrib_eight() {
     rm -f ${_D}/000/modules/redis_eight/redis.info
     echo update > ${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.info
   fi
+  if [ ! -e "${_D}/000/modules/redis_compr/${_REDIS_C_VERSION}.info" ]; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -rf ${_D}/000/modules/redis_compr
+    get_dev_contrib "redis_compr-${_REDIS_C_VERSION}.tar.gz"
+    rm -f ${_D}/000/modules/redis_compr/redis.info
+    echo update > ${_D}/000/modules/redis_compr/${_REDIS_C_VERSION}.info
+  fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
 }
@@ -1897,6 +1905,14 @@ satellite_check_fix_o_contrib() {
     get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
     rm -f ${_D}/000/modules/redis_eight/redis.info
     echo update > ${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.info
+  fi
+  if [ ! -e "${_D}/000/modules/redis_compr/${_REDIS_C_VERSION}.info" ]; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -rf ${_D}/000/modules/redis_compr
+    get_dev_contrib "redis_compr-${_REDIS_C_VERSION}.tar.gz"
+    rm -f ${_D}/000/modules/redis_compr/redis.info
+    echo update > ${_D}/000/modules/redis_compr/${_REDIS_C_VERSION}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -3714,6 +3730,7 @@ satellite_make() {
   echo "_PURGE_FOR_SEVEN=\"${_PURGE_FOR_SEVEN}\""     >> ${writeTo}
   echo "_PURGE_MODE=\"${_PURGE_MODE}\""               >> ${writeTo}
   echo "_RECRUITER=\"${_RECRUITER}\""                 >> ${writeTo}
+  echo "_REDIS_C_VERSION=\"${_REDIS_C_VERSION}\""     >> ${writeTo}
   echo "_REDIS_N_VERSION=\"${_REDIS_N_VERSION}\""     >> ${writeTo}
   echo "_REDIS_L_VERSION=\"${_REDIS_L_VERSION}\""     >> ${writeTo}
   echo "_RESTAURANT=\"${_RESTAURANT}\""               >> ${writeTo}
