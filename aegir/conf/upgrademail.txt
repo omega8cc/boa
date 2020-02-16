@@ -1,13 +1,22 @@
 Hello,
 
-This email is unsually long this time, but it's very important that you read it
+This email is very long this time, but it's very important that you read it
 and also check the links for more information, both to benefit from all new
-features and also to avoid known issues. Enjoy!
+features and also to avoid known issues.
 
-New BOA release provides three new PHP versions, system updates, including
+Note that we list here changes which could be already installed
+on some BOA instances before, because this information is still relevant
+and often overlooked, because who likes to read boring update emails..
+but, please, make exception now and read it in full -- you will learn
+about features you could be unaware of before. Enjoy!
+
+This BOA update provides latest PHP versions, system updates, including
 security fixes, many bug fixes, latest Aegir version, plus all included
 Drupal distributions updated to latest versions, and supplied with latest
-Drupal 7 or Drupal 8 core, if possible. Yes, BOA still supports Pressflow 6.
+Drupal 7 or Drupal 8 core, if possible.
+
+Yes, BOA still supports Pressflow 6 (LTS).
+
 Yes, we have added Solr 7 support and every 5 minutes updates!
 
 Four Drupal 8 based popular distributions have been included by default,
@@ -40,8 +49,8 @@ Please read for more details:
 Since BOA-4.0.1 new Drupal 8.7 based platforms are included:
 
 Lightning 4.1.0 -------------- https://drupal.org/project/lightning
-Thunder 8.4.0 --------------- https://drupal.org/project/thunder
-Varbase 8.7.3 --------------- https://drupal.org/project/varbase
+Thunder 8.4.0 ---------------- https://drupal.org/project/thunder
+Varbase 8.7.3 ---------------- https://drupal.org/project/varbase
 Social 8.7.1 ----------------- https://drupal.org/project/social
 
 IMPORTANT: You must switch your ~/static/control/cli.info to 7.1 or newer
@@ -136,23 +145,6 @@ Also, your Aegir instance has been upgraded to version boa.version
 Please read about all improvements and changes at:
 
   https://github.com/omega8cc/boa/blob/master/CHANGELOG.txt
-
-Known issues -- affects WinSCP/Putty users
-
-  The "Error decoding SFTP packet" -- affects WinSCP/Putty
-  We recommend to use CybderDuck for reliable SFTP access.
-  For known fix please check https://bit.ly/2HMGd6u -- quote below:
-  >>>>>
-    Basically we need to set the ‘Preferred SFTP protocol version’ to 3.
-    How to do this:
-      Edit the connection in WinSCP
-      Open the Advanced menu
-      Choose Advanced
-      This will bring up a new popup.
-      Under Environment click on SFTP
-      Change ‘Preferred SFTP protocol version’ to 3
-      Save the changes.
-  >>>>>
 
 Questions? Comments? Join us on Gitter and GitHub:
 
