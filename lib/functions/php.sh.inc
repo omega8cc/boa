@@ -1485,7 +1485,7 @@ check_php_broken() {
   else
     _PHP_ALREADY_REBUILT=
   fi
-  check_php_broken_freetype
+  check_php_broken_freetype "$1"
 }
 
 #
