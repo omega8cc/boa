@@ -906,6 +906,7 @@ install_php_multi() {
     && [ "${_LOC_OSV}" = "jessie" ]; then
     _DO_FIX=YES
   fi
+  get_php_conf_extra
   _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-curlwrappers//g" 2>&1)
   ###--------------------###
   msg "INFO: Building PHP ${_PHP_VERSION} from sources, please wait..."
@@ -1888,7 +1889,6 @@ install_update_php() {
     && [ ! -x "/opt/php56/bin/php" ]; then
     _PHP_VERSION="${_PHP56_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    get_php_conf_extra
     install_php_multi "56"
     switch_php_cli "56"
     _PHP_VERSION=""
@@ -1900,7 +1900,6 @@ install_update_php() {
     && [ ! -x "/opt/php70/bin/php" ]; then
     _PHP_VERSION="${_PHP70_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    get_php_conf_extra
     install_php_multi "70"
     switch_php_cli "70"
     _PHP_VERSION=""
@@ -1912,7 +1911,6 @@ install_update_php() {
     && [ ! -x "/opt/php71/bin/php" ]; then
     _PHP_VERSION="${_PHP71_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    get_php_conf_extra
     install_php_multi "71"
     switch_php_cli "71"
     _PHP_VERSION=""
@@ -1924,7 +1922,6 @@ install_update_php() {
     && [ ! -x "/opt/php72/bin/php" ]; then
     _PHP_VERSION="${_PHP72_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    get_php_conf_extra
     install_php_multi "72"
     switch_php_cli "72"
     _PHP_VERSION=""
@@ -1936,7 +1933,6 @@ install_update_php() {
     && [ ! -x "/opt/php73/bin/php" ]; then
     _PHP_VERSION="${_PHP73_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    get_php_conf_extra
     install_php_multi "73"
     switch_php_cli "73"
     _PHP_VERSION=""
