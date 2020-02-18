@@ -114,15 +114,25 @@ else
   fi
   if [ -e "/root/.fast.cron.cnf" ]; then
     action
-    sleep 10
+    sleep 5
     action
-    sleep 10
+    sleep 5
     action
-    sleep 10
+    sleep 5
     action
-    sleep 10
+    sleep 5
     action
-    sleep 10
+    sleep 5
+    action
+    sleep 5
+    action
+    sleep 5
+    action
+    sleep 5
+    action
+    sleep 5
+    action
+    sleep 5
     action
   else
     action
