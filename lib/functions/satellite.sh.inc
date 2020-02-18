@@ -5485,9 +5485,9 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_ignore_default_profiles 0 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_queue_tasks_frequency 5 &> /dev/null
+      hosting_queue_tasks_frequency 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_queue_tasks_items 1 &> /dev/null
+      hosting_queue_tasks_items 2 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_delete_force 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
