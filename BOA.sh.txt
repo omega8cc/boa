@@ -262,15 +262,14 @@ update_agents() {
     else
       rm -f /root/.tg.cnf
     fi
-    echo ${InTest} > /root/.high_traffic.cnf
-    echo ${InTest} > /root/.my.optimize.cnf
-    echo ${InTest} > /root/.no.swap.clear.cnf
-    if [[ "${PrTestPower}" =~ "CLUSTER" ]] \
-      || [[ "${PrTestCluster}" =~ "XPRO" ]]; then
+    if [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
       echo ${InTest} > /root/.fast.cron.cnf
     else
       rm -f /root/.fast.cron.cnf
     fi
+    echo ${InTest} > /root/.high_traffic.cnf
+    echo ${InTest} > /root/.my.optimize.cnf
+    echo ${InTest} > /root/.no.swap.clear.cnf
     if [ "${_RANDOMIZE}" = "YES" ]; then
       echo ${InTest} > /root/.randomize_duplicity_full_backup_day.cnf
       echo ${InTest} > /root/.skip_duplicity_monthly_cleanup.cnf
