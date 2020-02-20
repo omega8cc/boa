@@ -4485,16 +4485,6 @@ install_vnstat() {
 }
 
 install_myquick_src() {
-  _MYQUICK_UPGRADE_REQUIRED=NO
-  _MYQUICK_ITD=$(mydumper -V 2>&1 \
-    | tr -d "\n" \
-    | tr -d "," \
-    | cut -d" " -f2 \
-    | awk '{ print $1}' 2>&1)
-  if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN}" ]; then
-    _MYQUICK_INSTALL_REQUIRED=YES
-    msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
-  fi
   if [ "${_MYQUICK_INSTALL_REQUIRED}" = "YES" ]; then
     msg "INFO: Building MyQuick ${_MYQUICK_VRN} from sources, please wait..."
     mrun "${_INSTALL} cmake" 2> /dev/null
@@ -4515,9 +4505,20 @@ check_install_myquick() {
     || [ -z "${isMyQuick}" ]; then
     install_myquick_src
   fi
-  isMyQuick=$(which mydumper 2>&1)
+  isMyQuick=$(which myloader 2>&1)
   if [ ! -x "${isMyQuick}" ] \
     || [ -z "${isMyQuick}" ]; then
+    install_myquick_src
+  fi
+  _MYQUICK_UPGRADE_REQUIRED=NO
+  _MYQUICK_ITD=$(mydumper -V 2>&1 \
+    | tr -d "\n" \
+    | tr -d "," \
+    | cut -d" " -f2 \
+    | awk '{ print $1}' 2>&1)
+  if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN}" ]; then
+    _MYQUICK_INSTALL_REQUIRED=YES
+    msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
     install_myquick_src
   fi
 }
