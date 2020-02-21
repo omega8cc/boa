@@ -4493,7 +4493,7 @@ install_myquick_src() {
     rm -rf mydumper*
     get_dev_src "mydumper-${_MYQUICK_VRN}.tar.gz"
     cd /var/opt/mydumper-${_MYQUICK_VRN}
-    mrun "cmake ." 2> /dev/null
+    mrun "cmake -DWITH_SSL=OFF ." 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
   fi
