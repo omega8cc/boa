@@ -1180,9 +1180,12 @@ check_site_status() {
     _SITE_TEST_RESULT=OK
   fi
   if [ "${_SITE_TEST_RESULT}" = "OK" ]; then
-    _STATUS_TEST=$(run_drush8_nosilent_cmd "status \
-      | grep 'Database.*:.*Connected'" 2>&1)
-    if [[ "${_STATUS_TEST}" =~ "Connected" ]]; then
+    _STATUS_BOOTSTRAP=$(run_drush8_nosilent_cmd "status bootstrap \
+      | grep 'Drupal bootstrap.*:.*'" 2>&1)
+    _STATUS_STATUS=$(run_drush8_nosilent_cmd "status status \
+      | grep 'Database.*:.*'" 2>&1)
+    if [[ "${_STATUS_BOOTSTRAP}" =~ "Drupal bootstrap" ]] \
+      && [[ "${_STATUS_STATUS}" =~ "Database" ]]; then
       _STATUS=OK
       _RUN_DGN=NO
       if [ -e "${User}/static/control/drupalgeddon.info" ]; then
