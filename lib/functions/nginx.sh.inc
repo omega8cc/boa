@@ -764,6 +764,9 @@ fix_update_nginx_config() {
       sed -i "s/.*ssl .*on;//g" \
         /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
       wait
+      sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" \
+        /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
+      wait
     fi
 
     if [ -e "/data/disk" ]; then
