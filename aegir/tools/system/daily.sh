@@ -3593,6 +3593,8 @@ else
     wait
     sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /data/disk/*/config/server_*/nginx/vhost.d/*  &> /dev/null
     wait
+    sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx.conf  &> /dev/null
+    wait
     service nginx reload
   fi
 fi
