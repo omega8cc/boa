@@ -69,6 +69,9 @@ function drush_provision_hosting_le_post_provision_verify() {
     $demo_mode_ctrl = $le_ctrl . "/ssl-demo-mode.pid";
     drush_log('[hosting_le] The optional demo flag is ' . $demo_mode_ctrl, 'info');
 
+    // https://community.letsencrypt.org/t/revoking-certain-certificates-on-march-4/114864
+    $forced_renewal_ctrl = $le_ctrl . "/forced-renewal-01-" . $main_name . ".pid";
+
     $site_mode_demo_ctrl = $le_ctrl . "/demo-" . $main_name . ".pid";
     $site_mode_live_ctrl = $le_ctrl . "/live-" . $main_name . ".pid";
 
@@ -200,6 +203,13 @@ function drush_provision_hosting_le_post_provision_verify() {
           ->succeed('[hosting_le] Created pid ' . $site_mode_live_ctrl)
           ->fail('[hosting_le] Could not create pid ' . $site_mode_live_ctrl);
       }
+    }
+
+    if (!file_exists($forced_renewal_ctrl)) {
+      $force_renew = TRUE;
+      provision_file()->file_put_contents($forced_renewal_ctrl, $main_name)
+        ->succeed('[hosting_le] Created pid ' . $forced_renewal_ctrl)
+        ->fail('[hosting_le] Could not create pid ' . $forced_renewal_ctrl);
     }
 
     // WIP: needed after certs deleted
