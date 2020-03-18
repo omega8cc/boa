@@ -1538,6 +1538,18 @@ update_wrappers() {
       fi
     fi
   fi
+  if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.conf" ]; then
+    _CC_SRC_TEST=$(grep CC_SRC /etc/csf/csf.conf 2>&1)
+    if [[ ! "${_CC_SRC_TEST}" =~ "2" ]]; then
+      csf -uf
+      sleep 8
+      sed -i "s/^CC_SRC .*/CC_SRC = \"2\"/g" /etc/csf/csf.conf &> /dev/null
+      wait
+      sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"1\"/g" /etc/csf/csf.conf &> /dev/null
+      wait
+      csf -q
+    fi
+  fi
   mkdir -p ${usrBin}
   if [ -e "${pthLog}" ] && [ ! -e "${pthLog}/fixPSop.ctrl.${_X_SE}.pid" ]; then
     fxPp="fix-drupal-platform-permissions.sh"
