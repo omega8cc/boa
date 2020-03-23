@@ -128,7 +128,7 @@ function drush_provision_hosting_le_post_provision_verify() {
           preg_match("/\.(?:dev|devel|temp|tmp|temporary)\./", $main_name) ||
           preg_match("/\.(?:test|testing|stage|staging|nodns)\./", $main_name)
          ) {
-        drush_log('[hosting_le] Skipping LE setup for ' . $main_name, 'info');
+        drush_log('[hosting_le] Skipping LE setup for ' . $main_name, 'warning');
         return FALSE;
       }
     }
@@ -284,7 +284,7 @@ function drush_provision_hosting_le_post_provision_verify() {
     else {
       drush_log("[hosting_le] The site's vhost must already exist, or the LE agent will not be able to proceed.", 'warning');
       drush_log('[hosting_le] Path to vhost: ' . $site_vhost, 'info');
-      drush_log('[hosting_le] Skipping LE setup for ' . $main_name, 'info');
+      drush_log('[hosting_le] Skipping LE setup for ' . $main_name, 'warning');
       return FALSE;
     }
 
