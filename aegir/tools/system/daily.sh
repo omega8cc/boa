@@ -2565,8 +2565,12 @@ check_update_le_ssl() {
           --cron \
           --ipv4 \
           ${dhArgs}"
+        if [ -e "${User}/static/control/wildcard-enable-${Dom}.info" ]; then
+          sleep 30
+        else
+          sleep 3
+        fi
         echo ${_MOMENT} >> /var/xdrago/log/le/${Dom}
-        sleep 1
       fi
     fi
   fi
