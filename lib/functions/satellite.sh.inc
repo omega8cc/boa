@@ -1528,7 +1528,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "httprl-7.x-1.14.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/js" ]; then
-        get_dev_contrib "js-7.x-2.4.tar.gz"
+        get_dev_contrib "js-7.x-2.5.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/panels_content_cache" ]; then
         get_dev_contrib "panels_content_cache-7.x-1.4.tar.gz"
@@ -1646,9 +1646,9 @@ satellite_download_o_contrib_eight() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_eight modules..."
   fi
-  get_dev_contrib "advagg-8.x-3.5.tar.gz"
-  get_dev_contrib "cdn-8.x-3.2.tar.gz"
-  get_dev_contrib "robotstxt-8.x-1.2.tar.gz"
+  get_dev_contrib "advagg-8.x-4.0.tar.gz"
+  get_dev_contrib "cdn-8.x-3.5.tar.gz"
+  get_dev_contrib "robotstxt-8.x-1.4.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
@@ -1704,13 +1704,13 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "force_password_change-7.x-2.2.tar.gz"
   get_dev_contrib "fpa-7.x-2.6.tar.gz"
   get_dev_contrib "httprl-7.x-1.14.tar.gz"
-  get_dev_contrib "js-7.x-2.4.tar.gz"
+  get_dev_contrib "js-7.x-2.5.tar.gz"
   get_dev_contrib "login_security-7.x-1.9.tar.gz"
   get_dev_contrib "nocurrent_pass-7.x-1.1.tar.gz"
   get_dev_contrib "panels_content_cache-7.x-1.4.tar.gz"
   get_dev_contrib "print-7.x-2.2.tar.gz"
   get_dev_contrib "readonlymode-7.x-1.2.tar.gz"
-  get_dev_contrib "reroute_email-7.x-1.3.tar.gz"
+  get_dev_contrib "reroute_email-7.x-1.4.tar.gz"
   get_dev_contrib "robotstxt-7.x-1.4.tar.gz"
   get_dev_contrib "securesite-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
