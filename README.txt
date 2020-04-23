@@ -160,18 +160,18 @@ Octopus can install and/or support the platforms listed below:
  @ Drupal 7.69.1
 
  aGov 3.12 -------------------- https://drupal.org/project/agov
- Commerce 1.59 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.63 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 1.60 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 2.64 ---------------- https://drupal.org/project/commerce_kickstart
  Commons 3.50 ----------------- https://drupal.org/project/commons
  Drupal 7.69.1 ---------------- https://drupal.org/project/drupal/releases/7.69
- Guardr 2.51 ------------------ https://drupal.org/project/guardr
+ Guardr 2.52 ------------------ https://drupal.org/project/guardr
  OpenAid 2.8 ------------------ https://drupal.org/project/openaid
- OpenAtrium 2.644 ------------- https://drupal.org/project/openatrium
+ OpenAtrium 2.645 ------------- https://drupal.org/project/openatrium
  OpenLucius 1.7 --------------- https://drupal.org/project/openlucius
- OpenOutreach 1.57 ------------ https://drupal.org/project/openoutreach
+ OpenOutreach 1.59 ------------ https://drupal.org/project/openoutreach
  OpenPublic 1.30 -------------- https://drupal.org/project/openpublic
- Opigno LMS 1.42 -------------- https://drupal.org/project/opigno_lms
- Panopoly 1.71 ---------------- https://drupal.org/project/panopoly
+ Opigno LMS 1.44 -------------- https://drupal.org/project/opigno_lms
+ Panopoly 1.72 ---------------- https://drupal.org/project/panopoly
  Restaurant 1.15 -------------- https://drupal.org/project/restaurant
  Ubercart 3.13 ---------------- https://drupal.org/project/ubercart
 
