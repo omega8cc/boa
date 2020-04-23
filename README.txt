@@ -150,12 +150,13 @@ production settings.
 
 Octopus can install and/or support the platforms listed below:
 
- @ Drupal 8.7
+ @ Drupal 8
 
- Lightning 4.1.0 -------------- https://drupal.org/project/lightning
- Thunder 8.4.0 ---------------- https://drupal.org/project/thunder
- Varbase 8.7.3 ---------------- https://drupal.org/project/varbase
- Social 8.7.1 ----------------- https://drupal.org/project/social
+ Lightning 4.103 -------------- https://drupal.org/project/lightning
+ Opigno LMS 2.11 -------------- https://drupal.org/project/opigno_lms
+ Social 8.2 ------------------- https://drupal.org/project/social
+ Thunder 4.5 ------------------ https://drupal.org/project/thunder
+ Varbase 8.4 ------------------ https://drupal.org/project/varbase
 
  @ Drupal 7.69.1
 
