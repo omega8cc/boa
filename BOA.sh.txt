@@ -1540,12 +1540,14 @@ update_wrappers() {
   fi
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.conf" ]; then
     _CC_SRC_TEST=$(grep CC_SRC /etc/csf/csf.conf 2>&1)
-    if [[ ! "${_CC_SRC_TEST}" =~ "2" ]]; then
+    echo _CC_SRC_TEST 1 is ${_CC_SRC_TEST}
+    if [[ ! "${_CC_SRC_TEST}" =~ "CC_SRC =.*2" ]]; then
+      echo _CC_SRC_TEST 2 is ${_CC_SRC_TEST}
       csf -uf
       sleep 8
-      sed -i "s/^CC_SRC .*/CC_SRC = \"2\"/g" /etc/csf/csf.conf &> /dev/null
+      sed -i "s/^CC_SRC .*/CC_SRC = \"2\"/g" /etc/csf/csf.conf
       wait
-      sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"1\"/g" /etc/csf/csf.conf &> /dev/null
+      sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"1\"/g" /etc/csf/csf.conf
       wait
       csf -q
     fi
