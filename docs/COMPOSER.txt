@@ -5,12 +5,13 @@ The only documentation source for anything Aegir on BOA related is available at:
   https://learn.omega8.cc
   https://github.com/omega8cc/boa/issues?utf8=✓&q=is%3Aissue+composer
 
-Since BOA-4.0.1 new Drupal 8.7 based platforms are included:
+Since BOA-4.0.1 new Drupal 8 based platforms are included:
 
-Lightning 4.1.0 -------------- https://drupal.org/project/lightning
-Thunder 8.4.0 --------------- https://drupal.org/project/thunder
-Varbase 8.7.3 --------------- https://drupal.org/project/varbase
-Social 8.7.1 ----------------- https://drupal.org/project/social
+ Lightning 4.103 -------------- https://drupal.org/project/lightning
+ Opigno LMS 2.11 -------------- https://drupal.org/project/opigno_lms
+ Social 8.2 ------------------- https://drupal.org/project/social
+ Thunder 4.5 ------------------ https://drupal.org/project/thunder
+ Varbase 8.4 ------------------ https://drupal.org/project/varbase
 
 IMPORTANT: You must switch your ~/static/control/cli.info to 7.1 or newer
 PHP version (BOA hosted on Omega8.cc comes with 7,1, 7.2 and 7.3), because

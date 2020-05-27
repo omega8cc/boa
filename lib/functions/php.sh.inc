@@ -906,6 +906,7 @@ install_php_multi() {
     && [ "${_LOC_OSV}" = "jessie" ]; then
     _DO_FIX=YES
   fi
+  get_php_conf_extra
   _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-curlwrappers//g" 2>&1)
   ###--------------------###
   msg "INFO: Building PHP ${_PHP_VERSION} from sources, please wait..."
@@ -1454,18 +1455,38 @@ check_php_rebuild() {
 }
 
 #
+# Check if the PHP build has broken freetype support.
+check_php_broken_freetype() {
+  if [ -e "/usr/include/freetype2" ] \
+    && [ ! -e "/usr/include/freetype2/freetype/freetype2" ]; then
+    ln -sf /usr/include/freetype2 /usr/include/freetype2/freetype/freetype2
+  fi
+  isFreeType=
+  isFreeType=$(/opt/php$1/bin/php -i | grep with-freetype 2>&1)
+  if [[ ! "${isFreeType}" =~ "with-freetype" ]] \
+    || [ -z "${isFreeType}" ]; then
+    msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix freetype support..."
+    install_php_multi "$1"
+    _PHP_ALREADY_REBUILT=$1
+  else
+    _PHP_ALREADY_REBUILT=
+  fi
+}
+
+#
 # Check if the PHP build is broken.
 check_php_broken() {
   _BROKEN_LIBCURL_TEST=$(/opt/php$1/bin/php -v 2>&1)
   if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]]; then
     _PHP_BIN_BROKEN=YES
-    msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix broken libcurl"
+    msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix broken libcurl..."
     install_curl_src
     install_php_multi "$1"
     _PHP_ALREADY_REBUILT=$1
   else
     _PHP_ALREADY_REBUILT=
   fi
+  check_php_broken_freetype "$1"
 }
 
 #
@@ -1864,21 +1885,10 @@ install_update_php() {
     st_runner "${_RMAPP} php5-sasl php5-suhosin" &> /dev/null
     st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
   fi
-  if [ "${_OSV}" = "buster" ] \
-    || [ "${_OSV}" = "stretch" ] \
-    || [ "${_OSV}" = "jessie" ] \
-    || [ "${_OSV}" = "trusty" ]; then
-    rm -f /usr/include/freetype2/freetype/freetype2
-    if [ -e "/usr/include/freetype2" ] \
-      && [ ! -e "/usr/include/freetype2/freetype" ]; then
-      ln -sf /usr/include/freetype2 /usr/include/freetype2/freetype
-    fi
-  fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "5.6" ]] \
     && [ ! -x "/opt/php56/bin/php" ]; then
     _PHP_VERSION="${_PHP56_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    get_php_conf_extra
     install_php_multi "56"
     switch_php_cli "56"
     _PHP_VERSION=""
@@ -1890,7 +1900,6 @@ install_update_php() {
     && [ ! -x "/opt/php70/bin/php" ]; then
     _PHP_VERSION="${_PHP70_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    get_php_conf_extra
     install_php_multi "70"
     switch_php_cli "70"
     _PHP_VERSION=""
@@ -1902,7 +1911,6 @@ install_update_php() {
     && [ ! -x "/opt/php71/bin/php" ]; then
     _PHP_VERSION="${_PHP71_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    get_php_conf_extra
     install_php_multi "71"
     switch_php_cli "71"
     _PHP_VERSION=""
@@ -1914,7 +1922,6 @@ install_update_php() {
     && [ ! -x "/opt/php72/bin/php" ]; then
     _PHP_VERSION="${_PHP72_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    get_php_conf_extra
     install_php_multi "72"
     switch_php_cli "72"
     _PHP_VERSION=""
@@ -1926,7 +1933,6 @@ install_update_php() {
     && [ ! -x "/opt/php73/bin/php" ]; then
     _PHP_VERSION="${_PHP73_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    get_php_conf_extra
     install_php_multi "73"
     switch_php_cli "73"
     _PHP_VERSION=""
@@ -1938,6 +1944,18 @@ install_update_php() {
 
 check_fix_php() {
   check_php_cli
+  isFreeType=$(php -i | grep with-freetype 2>&1)
+  if [[ ! "${isFreeType}" =~ "with-freetype" ]] \
+    || [ ! -e "/usr/include/freetype2/freetype/freetype2" ] \
+    || [ -z "${isFreeType}" ]; then
+    if [ -e "/usr/include/freetype2" ] \
+      && [ ! -e "/usr/include/freetype2/freetype/freetype2" ]; then
+      ln -sf /usr/include/freetype2 /usr/include/freetype2/freetype/freetype2
+    fi
+    msg "INFO: PHP rebuild required to fix freetype support..."
+    _PHP_FORCE_REINSTALL=YES
+    php_upgrade_all
+  fi
   if [ -x "/opt/php56/bin/php" ]; then
     _CURLWRAPPERS_TEST=$(/opt/php56/bin/php -i | grep "with-curlwrappers" 2>&1)
     if [[ "$_CURLWRAPPERS_TEST" =~ "with-curlwrappers" ]]; then

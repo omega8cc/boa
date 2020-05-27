@@ -10,6 +10,7 @@ $custom_da    = FALSE;
 $custom_fb    = FALSE;
 $da_inc       = FALSE;
 $deny_anon    = FALSE;
+$drupal_compr = FALSE;
 $drupal_eight = FALSE;
 $drupal_five  = FALSE;
 $drupal_seven = FALSE;
@@ -69,7 +70,7 @@ if (function_exists('drush_get_command')) {
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
       !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.17.8';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.18.0';
   }
 }
 
@@ -262,6 +263,12 @@ if (file_exists('web.config')) {
       $use_redis = TRUE;
       if ($is_dev && !$is_backend) {
         header('X-Backend: A');
+      }
+      if (file_exists('composer')) {
+        $drupal_compr = TRUE;
+        if ($is_dev && !$is_backend) {
+          header('X-Backend: A2');
+        }
       }
     }
     else {
@@ -1074,6 +1081,9 @@ if ($redis_up && $use_redis && !$custom_cache) {
   if ($all_ini['redis_use_modern']) {
     if ($drupal_eight) {
       $redis_dirname = 'redis_eight';
+      if ($drupal_compr) {
+        $redis_dirname = 'redis_compr';
+      }
     }
     else {
       $redis_dirname = 'redis_edge';

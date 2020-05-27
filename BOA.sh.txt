@@ -47,7 +47,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_SE="401prodQ61"
+_X_SE="401prodQ74"
 #
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
@@ -262,16 +262,14 @@ update_agents() {
     else
       rm -f /root/.tg.cnf
     fi
+    if [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
+      echo ${InTest} > /root/.fast.cron.cnf
+    else
+      rm -f /root/.fast.cron.cnf
+    fi
     echo ${InTest} > /root/.high_traffic.cnf
     echo ${InTest} > /root/.my.optimize.cnf
     echo ${InTest} > /root/.no.swap.clear.cnf
-    # if [[ "${PrTestPower}" =~ "POWER" ]] \
-    #   || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
-    #   echo ${InTest} > /root/.fast.cron.cnf
-    # else
-    #   rm -f /root/.fast.cron.cnf
-    # fi
-    rm -f /root/.fast.cron.cnf
     if [ "${_RANDOMIZE}" = "YES" ]; then
       echo ${InTest} > /root/.randomize_duplicity_full_backup_day.cnf
       echo ${InTest} > /root/.skip_duplicity_monthly_cleanup.cnf
@@ -735,6 +733,22 @@ update_agents() {
       touch ${pthLog}/websh.ctrl.${_X_SE}.pid
     else
       mv -f /var/xdrago/websh.sh.old /bin/websh
+    fi
+  fi
+
+  _Dir="/data/all/000/modules"
+  _REDIS_C_VERSION=mod-14-02-2020
+  if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
+    if [ ! -e "${_Dir}/redis_compr/${_REDIS_C_VERSION}.info" ]; then
+      mkdir -p ${_Dir}
+      cd ${_Dir}
+      rm -rf ${_Dir}/redis_compr
+      get_dev_contrib "redis_compr-${_REDIS_C_VERSION}.tar.gz"
+      rm -f ${_Dir}/redis_compr/redis.info
+      echo update > ${_Dir}/redis_compr/${_REDIS_C_VERSION}.info
+      find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
+      touch ${pthLog}/redis_compr.ctrl.${_X_SE}.pid
     fi
   fi
 
@@ -1522,6 +1536,20 @@ update_wrappers() {
           ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
         fi
       fi
+    fi
+  fi
+  if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.conf" ]; then
+    _CC_SRC_TEST=$(grep CC_SRC /etc/csf/csf.conf 2>&1)
+    echo _CC_SRC_TEST 1 is ${_CC_SRC_TEST}
+    if [[ ! "${_CC_SRC_TEST}" =~ "CC_SRC =.*2" ]]; then
+      echo _CC_SRC_TEST 2 is ${_CC_SRC_TEST}
+      csf -uf
+      sleep 8
+      sed -i "s/^CC_SRC .*/CC_SRC = \"2\"/g" /etc/csf/csf.conf
+      wait
+      sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"1\"/g" /etc/csf/csf.conf
+      wait
+      csf -q
     fi
   fi
   mkdir -p ${usrBin}

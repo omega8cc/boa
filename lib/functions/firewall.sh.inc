@@ -115,6 +115,8 @@ csf_install() {
     sed -i "s/TCP_IN = \"20,21,22,/TCP_IN = \"20,21,${_SSH_PORT},/g" \
       /etc/csf/csf.conf &> /dev/null
     wait
+    sed -i "s/^CC_SRC .*/CC_SRC = \"2\"/g" /etc/csf/csf.conf &> /dev/null
+    wait
     chmod 600 /etc/csf/csf.conf &> /dev/null
     if [ -e "/etc/ssh/sshd_config" ]; then
       sed -i "s/^Port.*/Port ${_SSH_PORT}/g"  /etc/ssh/sshd_config

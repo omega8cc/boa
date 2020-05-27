@@ -34,7 +34,7 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
-_X_SE="401prodQ61"
+_X_SE="401prodQ74"
 _CHECK_HOST=$(uname -n 2>&1)
 usrGroup=users
 _WEBG=www-data
@@ -77,7 +77,7 @@ find_fast_mirror() {
   fi
   ffMirr=$(which ffmirror 2>&1)
   if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors.txt"
+    ffList="/var/backups/boa-mirrors-2020-02.txt"
     mkdir -p /var/backups
     if [ ! -e "${ffList}" ]; then
       echo "jp.files.aegir.cc"  > ${ffList}

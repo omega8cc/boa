@@ -3,7 +3,7 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-_CSF_VRN="13.08"
+_CSF_VRN="14.02"
 _PROXYSQL_VRN="1.3.5-debian8_amd64"
 _UTIL_VRN="0.30.216-pre3126"
 _VNSTAT_VRN="2.2"
@@ -28,7 +28,7 @@ fi
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
 _X_VERSION="BOA-4.0.1"
-_X_SE="401prodQ61"
+_X_SE="401prodQ74"
 #
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
@@ -430,15 +430,17 @@ install_proxysql() {
     echo "\$writer_node_ip = \"${_DB_NODE_IP[1]}\";"     >> /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
     echo "ProxySQL" > /vservers/${idn}/data/conf/clstr.cnf
     mkdir -p /vservers/${idn}/opt/tmp
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "echo '
+    echo '
 APT::Get::Assume-Yes "true";
 APT::Get::Show-Upgraded "true";
 APT::Quiet "true";
 DPkg::Options {"--force-confdef";"--force-confmiss";"--force-confold"};
 DPkg::Pre-Install-Pkgs {"/usr/sbin/dpkg-preconfigure --apt";};
 Dir::Etc::SourceList "/etc/apt/sources.list";
-' > /vservers/${idn}/opt/tmp/apt.conf.noi.nrml"
+' > /vservers/${idn}/opt/tmp/apt.conf.noi.nrml
     nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/tmp/apt.conf.noi.nrml"
+    vserver ${idn} exec apt-get clean
+    vserver ${idn} exec apt-get update -qq
     vserver ${idn} exec ${_INSTAPP} sysbench
     vserver ${idn} exec ${_INSTAPP} debconf-utils
     vserver ${idn} exec ${_INSTAPP} proxysql
@@ -619,10 +621,11 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
     pxyCmd="SELECT hostgroup_id,hostname,port,status,weight FROM mysql_servers;"
     ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
 
-    isPxy=`ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "$(which proxysql 2>&1)"`
-    echo "isPxy is ${isPxy}"
+    isPxy=$(vserver ${idn} exec which proxysql 2>&1)
+    echo "Relative isPxy is ${isPxy}"
+    echo "Absolute isPxy is /vservers/${idn}${isPxy}"
 
-    if [ -x "${isPxy}" ] \
+    if [ -x "/vservers/${idn}${isPxy}" ] \
       && [ -e "/vservers/${idn}/etc/proxysql.cnf" ] \
       && [ -e "${pXcnf}" ]; then
       echo "INFO: Updating ProxySQL Galera Checker..."
@@ -905,7 +908,7 @@ install_octopus() {
   check_config_cluster
   idn="${_CLUSTER_PREFIX}web"
   if [ -e "/vservers/${idn}/data/all" ] \
-    && [ "${idn}" != "web" ]; then
+    && [[ ! "${idn}" =~ "web" ]]; then
     vserver ${idn} exec /opt/local/bin/boa in-oct ${email} ${user} ${mode} ${copt} ${csub} ${ccor}
     exit 0
   else
@@ -940,7 +943,7 @@ install_web_node() {
   fi
   eml="${_CLUSTER_EMAIL}"
   if [ ! -e "/vservers/${idn}/" ] \
-    && [ "${idn}" != "web" ]; then
+    && [[ ! "${idn}" =~ "web" ]]; then
     install_vps
   fi
 }
@@ -1835,8 +1838,19 @@ upgrade_host() {
   exit 0
 }
 
+check_vsd() {
+  _VSD_TEST=$(grep "cluster" /etc/init.d/vservers-default 2>&1)
+  if [ -z "${_VSD_TEST}" ]; then
+    echo "##" >> /etc/init.d/vservers-default
+    echo "sleep 30" >> /etc/init.d/vservers-default
+    echo "exec \"/usr/local/bin/cluster re-dbs\"" >> /etc/init.d/vservers-default
+    echo "##" >> /etc/init.d/vservers-default
+  fi
+}
+
 check_heads() {
   check_config_cluster
+  check_vsd
   idn="${_CLUSTER_PREFIX}web"
   for i in `dir -d /vservers/*` ; do
     _THIS_VM=`echo $i | cut -d'/' -f3 | awk '{ print $1}'`
@@ -1862,7 +1876,50 @@ check_heads() {
   done
 }
 
+restart_db_cluster() {
+  check_config_cluster
+
+  inc="0"
+  for IP in "${_DB_NODE_IP[@]}"; do
+    idn="${_CLUSTER_PREFIX}db${inc}"
+    if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
+      echo "Running mycnfup stop on ${idn}/${IP}..."
+      ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup stop"
+    else
+      mkdir -p /vservers/${idn}/${optBin}
+      curl ${crlGet} "${urlHmr}/${tBn}/mycnfup" -o /vservers/${idn}${optBin}/mycnfup
+      ssh ${_NOSTRICT} root@${IP} "chmod 700 ${optBin}/mycnfup"
+      echo "Running mycnfup stop on ${idn}/${IP}..."
+      ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup stop"
+    fi
+    inc=$((inc+1))
+    echo
+    echo "Testing ${idn} status..."
+    vserver-stat | grep ${idn}
+    echo
+  done
+
+  echo "Waiting for ${_DB_NODE_IP[1]} DB node bootstrap-pxc..."
+  echo "Running mycnfup init on ${_DB_NODE_IP[1]}..."
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "bash ${optBin}/mycnfup init"
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep%';\""
+
+  for IP in "${_DB_NODE_IP[@]}"; do
+    if [ "${IP}" != "${_DB_NODE_IP[1]}" ]; then
+	  echo "Running mycnfup start on ${IP}..."
+      ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup start"
+      ssh ${_NOSTRICT} root@${IP} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep%';\""
+    fi
+  done
+  echo "All DB nodes started in cluster mode!"
+}
+
 case "$1" in
+  re-dbs)  cmd="$1"
+           hst="$2"
+           check_all
+           restart_db_cluster
+  ;;
   in-host) cmd="$1"
            hst="$2"
            check_all

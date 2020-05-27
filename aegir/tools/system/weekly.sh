@@ -74,9 +74,17 @@ read_account_data() {
     _CLIENT_OPTION=$(echo -n ${_CLIENT_OPTION} | tr -d "\n" 2>&1)
   fi
   if [ -e "/data/disk/${_THIS_U}/log/extra.txt" ]; then
-    _EXTRA_ENGINE=$(cat /data/disk/${_THIS_U}/log/extra.txt 2>&1)
+    mv -f /data/disk/${_THIS_U}/log/extra.txt /data/disk/${_THIS_U}/log/extra_edge.txt
+  fi
+  if [ -e "/data/disk/${_THIS_U}/log/extra_edge.txt" ]; then
+    _EXTRA_ENGINE=$(cat /data/disk/${_THIS_U}/log/extra_edge.txt 2>&1)
     _EXTRA_ENGINE=$(echo -n ${_EXTRA_ENGINE} | tr -d "\n" 2>&1)
     _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x EDGE"
+  fi
+  if [ -e "/data/disk/${_THIS_U}/log/extra_power.txt" ]; then
+    _EXTRA_ENGINE=$(cat /data/disk/${_THIS_U}/log/extra_power.txt 2>&1)
+    _EXTRA_ENGINE=$(echo -n ${_EXTRA_ENGINE} | tr -d "\n" 2>&1)
+    _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x POWER"
   fi
   if [ -e "/data/disk/${_THIS_U}/static/control/cli.info" ]; then
     _CLIENT_CLI=$(cat //data/disk/${_THIS_U}/static/control/cli.info 2>&1)

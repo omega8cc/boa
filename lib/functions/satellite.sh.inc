@@ -1198,7 +1198,7 @@ satellite_force_advanced_nginx_config() {
 #
 # Update local INI for PHP CLI on the Aegir Satellite Instance.
 satellite_child_b_update_ini_php_cli() {
-  _X_SE="401prodQ61"
+  _X_SE="401prodQ74"
   _U_HD="${_ROOT}/.drush"
   _U_TP="${_ROOT}/.tmp"
   _U_II="${_U_HD}/php.ini"
@@ -1528,7 +1528,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "httprl-7.x-1.14.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/js" ]; then
-        get_dev_contrib "js-7.x-2.4.tar.gz"
+        get_dev_contrib "js-7.x-2.5.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/panels_content_cache" ]; then
         get_dev_contrib "panels_content_cache-7.x-1.4.tar.gz"
@@ -1605,6 +1605,9 @@ satellite_o_contrib_eight_update_global() {
     elif [ -e "${_D}/${i}/o_contrib_eight" ] \
       && [ ! -L "${_D}/${i}/o_contrib_eight/redis_eight" ]; then
       _FORCE_UP_EIGHT=YES
+    elif [ -e "${_D}/${i}/o_contrib_eight" ] \
+      && [ ! -L "${_D}/${i}/o_contrib_eight/redis_compr" ]; then
+      _FORCE_UP_EIGHT=YES
     else
       _FORCE_UP_EIGHT=NO
     fi
@@ -1623,6 +1626,10 @@ satellite_o_contrib_eight_update_global() {
         && [ ! -L "${_D}/${i}/o_contrib_eight/redis_eight" ]; then
         ln -sf ${_D}/000/modules/redis_eight ${_D}/${i}/o_contrib_eight/redis_eight
       fi
+      if [ -e "${_D}/000/modules/redis_compr" ] \
+        && [ ! -L "${_D}/${i}/o_contrib_eight/redis_compr" ]; then
+        ln -sf ${_D}/000/modules/redis_compr ${_D}/${i}/o_contrib_eight/redis_compr
+      fi
       find ${_D}/${i}/o_contrib_eight -type d -exec chmod 0755 {} \; &> /dev/null
       find ${_D}/${i}/o_contrib_eight -type f -exec chmod 0644 {} \; &> /dev/null
       touch ${_D}/${i}/o_contrib_eight/update-${_X_VERSION}.info
@@ -1639,9 +1646,9 @@ satellite_download_o_contrib_eight() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_eight modules..."
   fi
-  get_dev_contrib "advagg-8.x-3.5.tar.gz"
-  get_dev_contrib "cdn-8.x-3.2.tar.gz"
-  get_dev_contrib "robotstxt-8.x-1.2.tar.gz"
+  get_dev_contrib "advagg-8.x-4.0.tar.gz"
+  get_dev_contrib "cdn-8.x-3.5.tar.gz"
+  get_dev_contrib "robotstxt-8.x-1.4.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
@@ -1649,6 +1656,14 @@ satellite_download_o_contrib_eight() {
     get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
     rm -f ${_D}/000/modules/redis_eight/redis.info
     echo update > ${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.info
+  fi
+  if [ ! -e "${_D}/000/modules/redis_compr/${_REDIS_C_VERSION}.info" ]; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -rf ${_D}/000/modules/redis_compr
+    get_dev_contrib "redis_compr-${_REDIS_C_VERSION}.tar.gz"
+    rm -f ${_D}/000/modules/redis_compr/redis.info
+    echo update > ${_D}/000/modules/redis_compr/${_REDIS_C_VERSION}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1689,13 +1704,13 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "force_password_change-7.x-2.2.tar.gz"
   get_dev_contrib "fpa-7.x-2.6.tar.gz"
   get_dev_contrib "httprl-7.x-1.14.tar.gz"
-  get_dev_contrib "js-7.x-2.4.tar.gz"
+  get_dev_contrib "js-7.x-2.5.tar.gz"
   get_dev_contrib "login_security-7.x-1.9.tar.gz"
   get_dev_contrib "nocurrent_pass-7.x-1.1.tar.gz"
   get_dev_contrib "panels_content_cache-7.x-1.4.tar.gz"
   get_dev_contrib "print-7.x-2.2.tar.gz"
   get_dev_contrib "readonlymode-7.x-1.2.tar.gz"
-  get_dev_contrib "reroute_email-7.x-1.3.tar.gz"
+  get_dev_contrib "reroute_email-7.x-1.4.tar.gz"
   get_dev_contrib "robotstxt-7.x-1.4.tar.gz"
   get_dev_contrib "securesite-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
@@ -1897,6 +1912,14 @@ satellite_check_fix_o_contrib() {
     get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
     rm -f ${_D}/000/modules/redis_eight/redis.info
     echo update > ${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.info
+  fi
+  if [ ! -e "${_D}/000/modules/redis_compr/${_REDIS_C_VERSION}.info" ]; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -rf ${_D}/000/modules/redis_compr
+    get_dev_contrib "redis_compr-${_REDIS_C_VERSION}.tar.gz"
+    rm -f ${_D}/000/modules/redis_compr/redis.info
+    echo update > ${_D}/000/modules/redis_compr/${_REDIS_C_VERSION}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -3343,10 +3366,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7}/sites" ]; then
-      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7}" ]; then
-        _A="${_QR}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7}/sites"
-        _B="${_QH}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7}"
+    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7}/sites" ]; then
+      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7}" ]; then
+        _A="${_QR}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7}/sites"
+        _B="${_QH}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7}"
         ln -sf ${_A} ${_B}
       fi
     fi
@@ -3410,6 +3433,13 @@ satellite_if_add_update_user_platforms_symlinks() {
       if [ ! -L "${_QH}/social-${_SOCIAL}-${_SOCIAL_CORE}" ]; then
         _A="${_QR}/social-${_SOCIAL}-${_SOCIAL_CORE}/html/sites"
         _B="${_QH}/social-${_SOCIAL}-${_SOCIAL_CORE}"
+        ln -sf ${_A} ${_B}
+      fi
+    fi
+    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS8}-${_SMALLCORE8}/web/sites" ]; then
+      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS8}-${_SMALLCORE8}" ]; then
+        _A="${_QR}/opigno_lms-${_OPIGNOLMS8}-${_SMALLCORE8}/web/sites"
+        _B="${_QH}/opigno_lms-${_OPIGNOLMS8}-${_SMALLCORE8}"
         ln -sf ${_A} ${_B}
       fi
     fi
@@ -3704,7 +3734,8 @@ satellite_make() {
   echo "_OPENPUBLIC=\"${_OPENPUBLIC}\""               >> ${writeTo}
   echo "_OPENPUBLISH=\"${_OPENPUBLISH}\""             >> ${writeTo}
   echo "_OPENSCHOLAR=\"${_OPENSCHOLAR}\""             >> ${writeTo}
-  echo "_OPIGNOLMS=\"${_OPIGNOLMS}\""                 >> ${writeTo}
+  echo "_OPIGNOLMS7=\"${_OPIGNOLMS7}\""               >> ${writeTo}
+  echo "_OPIGNOLMS8=\"${_OPIGNOLMS8}\""               >> ${writeTo}
   echo "_OSV=\"${_OSV}\""                             >> ${writeTo}
   echo "_PANOPOLY=\"${_PANOPOLY}\""                   >> ${writeTo}
   echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${writeTo}
@@ -3714,6 +3745,7 @@ satellite_make() {
   echo "_PURGE_FOR_SEVEN=\"${_PURGE_FOR_SEVEN}\""     >> ${writeTo}
   echo "_PURGE_MODE=\"${_PURGE_MODE}\""               >> ${writeTo}
   echo "_RECRUITER=\"${_RECRUITER}\""                 >> ${writeTo}
+  echo "_REDIS_C_VERSION=\"${_REDIS_C_VERSION}\""     >> ${writeTo}
   echo "_REDIS_N_VERSION=\"${_REDIS_N_VERSION}\""     >> ${writeTo}
   echo "_REDIS_L_VERSION=\"${_REDIS_L_VERSION}\""     >> ${writeTo}
   echo "_RESTAURANT=\"${_RESTAURANT}\""               >> ${writeTo}
@@ -3821,7 +3853,7 @@ satellite_make() {
     fi
   fi
 
-  _X_SE="401prodQ61"
+  _X_SE="401prodQ74"
   if [ ! -e "${_ROOT}/static/control/.ctrl.${_X_SE}.pid" ] \
     && [ -e "/home/${_USER}.ftp/users" ]; then
     if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
@@ -5461,9 +5493,9 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_ignore_default_profiles 0 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_queue_tasks_frequency 5 &> /dev/null
+      hosting_queue_tasks_frequency 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_queue_tasks_items 1 &> /dev/null
+      hosting_queue_tasks_items 2 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_delete_force 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \

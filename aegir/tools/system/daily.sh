@@ -34,7 +34,7 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
-_X_SE="401prodQ61"
+_X_SE="401prodQ74"
 _WEBG=www-data
 _OSV=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
@@ -64,7 +64,7 @@ find_fast_mirror() {
   fi
   ffMirr=$(which ffmirror 2>&1)
   if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors.txt"
+    ffList="/var/backups/boa-mirrors-2020-02.txt"
     mkdir -p /var/backups
     if [ ! -e "${ffList}" ]; then
       echo "jp.files.aegir.cc"  > ${ffList}
@@ -1180,9 +1180,12 @@ check_site_status() {
     _SITE_TEST_RESULT=OK
   fi
   if [ "${_SITE_TEST_RESULT}" = "OK" ]; then
-    _STATUS_TEST=$(run_drush8_nosilent_cmd "status \
-      | grep 'Database.*:.*Connected'" 2>&1)
-    if [[ "${_STATUS_TEST}" =~ "Connected" ]]; then
+    _STATUS_BOOTSTRAP=$(run_drush8_nosilent_cmd "status bootstrap \
+      | grep 'Drupal bootstrap.*:.*'" 2>&1)
+    _STATUS_STATUS=$(run_drush8_nosilent_cmd "status status \
+      | grep 'Database.*:.*'" 2>&1)
+    if [[ "${_STATUS_BOOTSTRAP}" =~ "Drupal bootstrap" ]] \
+      && [[ "${_STATUS_STATUS}" =~ "Database" ]]; then
       _STATUS=OK
       _RUN_DGN=NO
       if [ -e "${User}/static/control/drupalgeddon.info" ]; then
@@ -2562,8 +2565,12 @@ check_update_le_ssl() {
           --cron \
           --ipv4 \
           ${dhArgs}"
+        if [ -e "${User}/static/control/wildcard-enable-${Dom}.info" ]; then
+          sleep 30
+        else
+          sleep 3
+        fi
         echo ${_MOMENT} >> /var/xdrago/log/le/${Dom}
-        sleep 1
       fi
     fi
   fi
@@ -3203,7 +3210,8 @@ action() {
             run_drush8_hmr_cmd "${vSet} hosting_cron_use_backend 0"
           fi
           run_drush8_hmr_cmd "${vSet} hosting_ignore_default_profiles 0"
-          run_drush8_hmr_cmd "${vSet} hosting_queue_tasks_items 1"
+          run_drush8_hmr_cmd "${vSet} hosting_queue_tasks_frequency 1"
+          run_drush8_hmr_cmd "${vSet} hosting_queue_tasks_items 2"
           run_drush8_hmr_cmd "${vSet} hosting_delete_force 1"
           run_drush8_hmr_cmd "${vSet} aegir_backup_export_path ${User}/backup-exports"
           run_drush8_hmr_cmd "fr hosting_custom_settings -y"
@@ -3587,6 +3595,10 @@ else
     wait
     sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf                      &> /dev/null
     wait
+    sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /data/disk/*/config/server_*/nginx/vhost.d/*
+    sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx.conf
+    sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/vhost.d/*
+    sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf
     service nginx reload
   fi
 fi

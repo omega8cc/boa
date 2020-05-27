@@ -301,9 +301,9 @@ tune_memory_limits() {
     || [[ "${_THISHOST}" =~ ".host8." ]]; then
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.tg.cnf" ]; then
-        _USE_SQL=$(( _RAM / 8 ))
+        _USE_SQL=$(( _RAM / 12 ))
       else
-        _USE_SQL=$(( _RAM / 18 ))
+        _USE_SQL=$(( _RAM / 24 ))
       fi
     else
       _USE_SQL=$(( _RAM / 8 ))
@@ -4485,16 +4485,6 @@ install_vnstat() {
 }
 
 install_myquick_src() {
-  _MYQUICK_UPGRADE_REQUIRED=NO
-  _MYQUICK_ITD=$(mydumper -V 2>&1 \
-    | tr -d "\n" \
-    | tr -d "," \
-    | cut -d" " -f2 \
-    | awk '{ print $1}' 2>&1)
-  if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN}" ]; then
-    _MYQUICK_INSTALL_REQUIRED=YES
-    msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
-  fi
   if [ "${_MYQUICK_INSTALL_REQUIRED}" = "YES" ]; then
     msg "INFO: Building MyQuick ${_MYQUICK_VRN} from sources, please wait..."
     mrun "${_INSTALL} cmake" 2> /dev/null
@@ -4503,7 +4493,7 @@ install_myquick_src() {
     rm -rf mydumper*
     get_dev_src "mydumper-${_MYQUICK_VRN}.tar.gz"
     cd /var/opt/mydumper-${_MYQUICK_VRN}
-    mrun "cmake ." 2> /dev/null
+    mrun "cmake -DWITH_SSL=OFF ." 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
   fi
@@ -4515,9 +4505,20 @@ check_install_myquick() {
     || [ -z "${isMyQuick}" ]; then
     install_myquick_src
   fi
-  isMyQuick=$(which mydumper 2>&1)
+  isMyQuick=$(which myloader 2>&1)
   if [ ! -x "${isMyQuick}" ] \
     || [ -z "${isMyQuick}" ]; then
+    install_myquick_src
+  fi
+  _MYQUICK_UPGRADE_REQUIRED=NO
+  _MYQUICK_ITD=$(mydumper -V 2>&1 \
+    | tr -d "\n" \
+    | tr -d "," \
+    | cut -d" " -f2 \
+    | awk '{ print $1}' 2>&1)
+  if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN}" ]; then
+    _MYQUICK_INSTALL_REQUIRED=YES
+    msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
     install_myquick_src
   fi
 }

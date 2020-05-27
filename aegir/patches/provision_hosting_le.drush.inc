@@ -58,7 +58,7 @@ function drush_provision_hosting_le_post_provision_verify() {
     drush_log('[hosting_le] The optional wildcard flag is ' . $wildcard_ctrl, 'info');
 
     $legacy_tls_ctrl = d('@server_master')->aegir_root . "/static/control/tls-legacy-enable-" . $main_name . ".info";
-    drush_log('[hosting_le] The optional legacy TLSv1 flag is ' . $legacy_tls_ctrl, 'info');
+    drush_log('[hosting_le] The optional legacy TLSv1.1 flag is ' . $legacy_tls_ctrl, 'info');
 
     $no_san_ctrl = d('@server_master')->aegir_root . "/static/control/ssl-no-san-" . $main_name . ".info";
     drush_log('[hosting_le] The optional no-SAN flag is ' . $no_san_ctrl, 'info');
@@ -68,6 +68,9 @@ function drush_provision_hosting_le_post_provision_verify() {
 
     $demo_mode_ctrl = $le_ctrl . "/ssl-demo-mode.pid";
     drush_log('[hosting_le] The optional demo flag is ' . $demo_mode_ctrl, 'info');
+
+    // https://community.letsencrypt.org/t/revoking-certain-certificates-on-march-4/114864
+    $forced_renewal_ctrl = $le_ctrl . "/forced-renewal-01-" . $main_name . ".pid";
 
     $site_mode_demo_ctrl = $le_ctrl . "/demo-" . $main_name . ".pid";
     $site_mode_live_ctrl = $le_ctrl . "/live-" . $main_name . ".pid";
@@ -125,7 +128,7 @@ function drush_provision_hosting_le_post_provision_verify() {
           preg_match("/\.(?:dev|devel|temp|tmp|temporary)\./", $main_name) ||
           preg_match("/\.(?:test|testing|stage|staging|nodns)\./", $main_name)
          ) {
-        drush_log('[hosting_le] Skipping LE setup for ' . $main_name, 'info');
+        drush_log('[hosting_le] Skipping LE setup for ' . $main_name, 'warning');
         return FALSE;
       }
     }
@@ -202,6 +205,13 @@ function drush_provision_hosting_le_post_provision_verify() {
       }
     }
 
+    if (!file_exists($forced_renewal_ctrl)) {
+      $force_renew = TRUE;
+      provision_file()->file_put_contents($forced_renewal_ctrl, $main_name)
+        ->succeed('[hosting_le] Created pid ' . $forced_renewal_ctrl)
+        ->fail('[hosting_le] Could not create pid ' . $forced_renewal_ctrl);
+    }
+
     // WIP: needed after certs deleted
     // $force_renew = TRUE;
 
@@ -274,7 +284,7 @@ function drush_provision_hosting_le_post_provision_verify() {
     else {
       drush_log("[hosting_le] The site's vhost must already exist, or the LE agent will not be able to proceed.", 'warning');
       drush_log('[hosting_le] Path to vhost: ' . $site_vhost, 'info');
-      drush_log('[hosting_le] Skipping LE setup for ' . $main_name, 'info');
+      drush_log('[hosting_le] Skipping LE setup for ' . $main_name, 'warning');
       return FALSE;
     }
 
