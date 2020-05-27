@@ -1044,7 +1044,7 @@ action() {
           check_limits
           if [ -e "${_THIS_HM_SITE}" ]; then
             su -s /bin/bash - ${_THIS_U} -c "drush @hostmaster \
-              vset --always-set site_footer 'System Check on ${_DATE} \
+              vset --always-set site_footer 'Usage on ${_DATE} \
               | ALL Files <strong>${HomSizH}</strong> MB \
               | LIVE Dbs <strong>${SumDatH}</strong> MB \
               | DEV Dbs <strong>${SkipDtH}</strong> MB \
