@@ -839,12 +839,6 @@ fix_core_dgd() {
         if [ -d "${Core}" ] && [ ! -e "${Core}/core" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
-          if [[ "${saCoreN}" =~ "3143016-83" ]]; then
-            rm -f ${Core}/sites/*/files/js/*.js
-            rm -f ${Core}/sites/*/files/js/*.js.gz
-            rm -f ${Core}/sites/*/files/advagg_js/*.js
-            rm -f ${Core}/sites/*/files/advagg_js/*.js.gz
-          fi
         fi
       done
       touch ${pthLog}/hostmaster-octopus-${saCoreN}-fixed-d7.log
@@ -865,12 +859,6 @@ fix_core_dgd() {
         if [ -d "${Core}" ] && [ ! -e "${Core}/core" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
-          if [[ "${saCoreN}" =~ "3143016-83" ]]; then
-            rm -f ${Core}/sites/*/files/js/*.js
-            rm -f ${Core}/sites/*/files/js/*.js.gz
-            rm -f ${Core}/sites/*/files/advagg_js/*.js
-            rm -f ${Core}/sites/*/files/advagg_js/*.js.gz
-          fi
         fi
       done
 
@@ -882,12 +870,6 @@ fix_core_dgd() {
         if [ -d "${Core}" ] && [ ! -e "${Core}/core" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
-          if [[ "${saCoreN}" =~ "3143016-83" ]]; then
-            rm -f ${Core}/sites/*/files/js/*.js
-            rm -f ${Core}/sites/*/files/js/*.js.gz
-            rm -f ${Core}/sites/*/files/advagg_js/*.js
-            rm -f ${Core}/sites/*/files/advagg_js/*.js.gz
-          fi
         fi
       done
 
@@ -965,12 +947,6 @@ fix_core_dgd() {
           && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
-          if [[ "${saCoreN}" =~ "3143016-83" ]]; then
-            rm -f ${Core}/sites/*/files/js/*.js
-            rm -f ${Core}/sites/*/files/js/*.js.gz
-            rm -f ${Core}/sites/*/files/advagg_js/*.js
-            rm -f ${Core}/sites/*/files/advagg_js/*.js.gz
-          fi
           echo fixed > ${Core}/profiles/${saCoreS}-fix.info
         fi
       done
@@ -984,12 +960,6 @@ fix_core_dgd() {
           && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
-          if [[ "${saCoreN}" =~ "3143016-83" ]]; then
-            rm -f ${Core}/sites/*/files/js/*.js
-            rm -f ${Core}/sites/*/files/js/*.js.gz
-            rm -f ${Core}/sites/*/files/advagg_js/*.js
-            rm -f ${Core}/sites/*/files/advagg_js/*.js.gz
-          fi
           echo fixed > ${Core}/profiles/${saCoreS}-fix.info
         fi
       done
@@ -1003,12 +973,6 @@ fix_core_dgd() {
           && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
-          if [[ "${saCoreN}" =~ "3143016-83" ]]; then
-            rm -f ${Core}/sites/*/files/js/*.js
-            rm -f ${Core}/sites/*/files/js/*.js.gz
-            rm -f ${Core}/sites/*/files/advagg_js/*.js
-            rm -f ${Core}/sites/*/files/advagg_js/*.js.gz
-          fi
           echo fixed > ${Core}/profiles/${saCoreS}-fix.info
         fi
       done
@@ -1022,12 +986,6 @@ fix_core_dgd() {
           && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
-          if [[ "${saCoreN}" =~ "3143016-83" ]]; then
-            rm -f ${Core}/sites/*/files/js/*.js
-            rm -f ${Core}/sites/*/files/js/*.js.gz
-            rm -f ${Core}/sites/*/files/advagg_js/*.js
-            rm -f ${Core}/sites/*/files/advagg_js/*.js.gz
-          fi
           echo fixed > ${Core}/profiles/${saCoreS}-fix.info
         fi
       done
@@ -1041,12 +999,6 @@ fix_core_dgd() {
           && [ ! -e "${Core}/profiles/${saCoreS}-fix.info" ]; then
           cd ${Core}
           patch -p1 < ${saPatch} &> /dev/null
-          if [[ "${saCoreN}" =~ "3143016-83" ]]; then
-            rm -f ${Core}/sites/*/files/js/*.js
-            rm -f ${Core}/sites/*/files/js/*.js.gz
-            rm -f ${Core}/sites/*/files/advagg_js/*.js
-            rm -f ${Core}/sites/*/files/advagg_js/*.js.gz
-          fi
           echo fixed > ${Core}/profiles/${saCoreS}-fix.info
         fi
       done
