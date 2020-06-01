@@ -2699,6 +2699,11 @@ process() {
             fi
             fix_site_control_files
             fix_user_register_protection
+            if [ -e "${Plr}/modules/o_contrib_seven" ]; then
+              if [[ "${_X_SE}" =~ "401prodQ75" ]]; then
+                run_drush8_cmd "cc all"
+              fi
+            fi
           fi
         fi
         ###
