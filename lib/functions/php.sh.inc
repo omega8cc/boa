@@ -952,18 +952,33 @@ install_php_multi() {
   ### patch -p1 < ${bldPth}/aegir/patches/fpm_main.c.patch &> /dev/null
   ### cd /var/opt/php-${_PHP_VERSION}
   msg "INFO: Building PHP ${_PHP_VERSION} part 2/3"
+  _PRE_SNFR="--enable-zip \
+             --with-gd \
+             --with-jpeg-dir=/usr \
+             --with-png-dir=/usr \
+             --with-xpm-dir=/usr \
+             --with-ldap \
+             --with-gmp"
+  _NEW_SNFR="--with-zip \
+             --enable-gd \
+             --with-jpeg \
+             --with-xpm \
+             --with-freetype \
+             --with-ldap \
+             --with-gmp"
   if [ "$1" = "74" ]; then
-    _PHP_EXTRA="${_PHP_EXTRA}"
+    _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-freetype-dir=\/usr//g" 2>&1)
+    _PHP_EXTRA="${_PHP_EXTRA} ${_NEW_SNFR}"
   elif [ "$1" = "73" ]; then
-    _PHP_EXTRA="${_PHP_EXTRA}"
+    _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR}"
   elif [ "$1" = "72" ]; then
-    _PHP_EXTRA="${_PHP_EXTRA}"
+    _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR}"
   elif [ "$1" = "71" ]; then
-    _PHP_EXTRA="${_PHP_EXTRA} --enable-gd-native-ttf --with-mcrypt"
+    _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR} --enable-gd-native-ttf --with-mcrypt"
   elif [ "$1" = "70" ]; then
-    _PHP_EXTRA="${_PHP_EXTRA} --enable-gd-native-ttf --with-mcrypt"
+    _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR} --enable-gd-native-ttf --with-mcrypt"
   elif [ "$1" = "56" ]; then
-    _PHP_EXTRA="${_PHP_EXTRA} --enable-gd-native-ttf --with-mcrypt --with-mysql=mysqlnd"
+    _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR} --enable-gd-native-ttf --with-mcrypt --with-mysql=mysqlnd"
     if [ "${_OSV}" = "buster" ] \
       || [ "${_OSV}" = "stretch" ]; then
       patchFile="PHP-5.6.31-OpenSSL-1.1.0-compatibility-20170801.patch"
@@ -988,21 +1003,17 @@ install_php_multi() {
                 --enable-opcache \
                 --enable-pcntl \
                 --enable-soap \
-                --enable-zip \
                 --with-curl \
                 --with-fpm-group=www-data \
                 --with-fpm-user=www-data \
-                --with-gd \
                 --with-imap \
                 --with-imap-ssl \
-                --with-jpeg-dir=/usr \
                 --with-kerberos \
                 --with-mysql-sock=/var/run/mysqld/mysqld.sock \
                 --with-mysqli=mysqlnd \
                 --with-openssl \
                 --with-pdo-mysql=mysqlnd \
                 --with-pear \
-                --with-png-dir=/usr \
                 --with-xmlrpc \
                 --with-xsl \
                 --with-zlib \
@@ -1028,21 +1039,17 @@ install_php_multi() {
                 --enable-opcache \
                 --enable-pcntl \
                 --enable-soap \
-                --enable-zip \
                 --with-curl \
                 --with-fpm-group=www-data \
                 --with-fpm-user=www-data \
-                --with-gd \
                 --with-imap \
                 --with-imap-ssl \
-                --with-jpeg-dir=/usr \
                 --with-kerberos \
                 --with-mysql-sock=/var/run/mysqld/mysqld.sock \
                 --with-mysqli=mysqlnd \
                 --with-openssl \
                 --with-pdo-mysql=mysqlnd \
                 --with-pear \
-                --with-png-dir=/usr \
                 --with-xmlrpc \
                 --with-xsl \
                 --with-zlib \
@@ -1967,15 +1974,11 @@ php_upgrade_all() {
 
 get_php_conf_extra() {
   _PHP_EXTRA=""
-  if [ "${_OSV}" = "buster" ]; then
-    _PHP_EXTRA="--with-ldap --with-gmp --with-xpm-dir=/usr"
-  elif [ "${_OSV}" = "stretch" ] \
+  if [ "${_OSV}" = "stretch" ] \
     || [ "${_OSV}" = "jessie" ] \
     || [ "${_OSV}" = "trusty" ] \
     || [ "${_OSV}" = "precise" ]; then
-    _PHP_EXTRA="--with-ldap --with-gmp --with-xpm-dir=/usr --with-freetype-dir=/usr"
-  else
-    _PHP_EXTRA="--with-ldap --with-gmp"
+    _PHP_EXTRA="--with-freetype-dir=/usr"
   fi
   if [ ! -z "${_PHP_EXTRA_CONF}" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} ${_PHP_EXTRA_CONF}"
