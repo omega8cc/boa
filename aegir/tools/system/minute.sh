@@ -394,7 +394,7 @@ if [ -e "/var/log/jetty7" ]; then
   fi
 fi
 
-if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt "5" ]; then
+if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt "6" ]; then
   kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) Too many PHP-FPM master processes killed" >> \
     /var/xdrago/log/php-fpm-master-count.kill.log
