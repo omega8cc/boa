@@ -113,7 +113,10 @@ check_php_cli_version() {
       _PHP_CLI=$(grep "/opt/php" /data/disk/${_Y_USR}/tools/drush/drush.php 2>&1)
     fi
   fi
-  if [[ "${_PHP_CLI}" =~ "php73" ]]; then
+  if [[ "${_PHP_CLI}" =~ "php74" ]]; then
+    DRUSH_PHP="/opt/php74/bin/php"
+    PHP_INI="/opt/php74/lib/php.ini"
+  elif [[ "${_PHP_CLI}" =~ "php73" ]]; then
     DRUSH_PHP="/opt/php73/bin/php"
     PHP_INI="/opt/php73/lib/php.ini"
   elif [[ "${_PHP_CLI}" =~ "php72" ]]; then
@@ -163,7 +166,9 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             _PHP_DEFAULT=$(/usr/bin/php-cli -v | grep 'PHP 5' \
               | cut -d: -f1 | awk '{ print $2}' 2>&1)
           fi
-          if [[ "${_PHP_DEFAULT}" =~ "7.3." ]]; then
+          if [[ "${_PHP_DEFAULT}" =~ "7.4." ]]; then
+            PHP_INI="/opt/php74/lib/php.ini"
+          elif [[ "${_PHP_DEFAULT}" =~ "7.3." ]]; then
             PHP_INI="/opt/php73/lib/php.ini"
           elif [[ "${_PHP_DEFAULT}" =~ "7.2." ]]; then
             PHP_INI="/opt/php72/lib/php.ini"

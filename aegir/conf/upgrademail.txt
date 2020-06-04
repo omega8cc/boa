@@ -54,12 +54,12 @@ Since BOA-4.0.1 new Drupal 8 based platforms are included:
  Thunder 4.5 ------------------ https://drupal.org/project/thunder
  Varbase 8.4 ------------------ https://drupal.org/project/varbase
 
-IMPORTANT: You must switch your ~/static/control/cli.info to 7.1 or newer
-PHP version (BOA hosted on Omega8.cc comes with 7,1, 7.2 and 7.3), because
-D8 based distros require at least PHP 7.1 -- this also means that to run
-the sites installed after switching cli.info to 7.1 or newer, you will also
-need to either switch your ~/static/control/fpm.info to 7.1 or newer, or
-more probably, to not break any existing sites not compatible with PHP 7.1+
+IMPORTANT: You must switch your ~/static/control/cli.info to 7.2 or newer
+PHP version (BOA hosted on Omega8.cc comes with 7.4, 7.3 and 7.2), because
+D8 based distros require at least PHP 7.2 -- this also means that to run
+the sites installed after switching cli.info to 7.2 or newer, you will also
+need to either switch your ~/static/control/fpm.info to 7.2 or newer, or
+more probably, to not break any existing sites not compatible with PHP 7.2+
 you will need to list these D8 sites names in ~/static/control/multi-fpm.info
 
 Please check for more information:
@@ -79,19 +79,18 @@ Please read for more details:
 
 Still on PHP 5.6? You should switch to PHP 7.3 — It’s twice as fast as 5.6!
 But don't switch blindly -- even sites already running on PHP 7.0 before
-are most probably not ready for PHP 7.2 or 7.3 without proper fixes.
+are most probably not ready for PHP 7.4 or 7.3 without proper fixes.
 
-Note: BOA-4.0.1 release removes PHP 5.3, 5.4 and 5.5, if installed.
-In addition to still supported, even if officially deprecated 5.6 and 7.0
-versions, this release adds support for PHP 7.3, 7.2 and 7.1
+In addition to still supported, even if officially deprecated 5.6, 7.0, 7.1
+versions, this release supports PHP 7.4, 7.3 and 7.2
 
 Please check the PHP officially supported versions list at:
   http://php.net/supported-versions.php
 
 In our limited testing Drupal 7 core version included in this release works
-without noticeable issues with both PHP 7.2 and 7.3, although many contrib
-modules may not be ready to switch your instance to 7.3 or 7.2 just yet,
-especially if you have not used PHP 7.0 already.
+without noticeable issues with both PHP 7.3 and 7.4, although many contrib
+modules may not be ready to switch your instance to 7.4 or 7.3 just yet,
+especially if you have not used PHP 7.x already.
 
 We recommend to test your sites clones with newer PHP versions using BOA
 multi-PHP-version support via ~/static/control/multi-fpm.info before

@@ -44,6 +44,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /proxysql/) {$pxydlives = "YES"; $pxydsumar = $li_cnt{$COMMAND};}
 }
 foreach $X (sort keys %li_cnt) {
+  if ($X =~ /php74/) {$php74lives = "YES";}
   if ($X =~ /php73/) {$php73lives = "YES";}
   if ($X =~ /php72/) {$php72lives = "YES";}
   if ($X =~ /php71/) {$php71lives = "YES";}
@@ -63,6 +64,7 @@ print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
 print "\n $collectdsumar Collectd\t\tGLOBAL" if ($collectdlives);
 print "\n $dhcpcdsumar dhcpcd procs\t\tGLOBAL" if ($dhcpcdlives);
 print "\n $fpmsumar FPM procs\t\tGLOBAL" if ($fpmlives);
+print "\n 1 FPM74 procs\t\tGLOBAL" if ($php74lives);
 print "\n 1 FPM73 procs\t\tGLOBAL" if ($php73lives);
 print "\n 1 FPM72 procs\t\tGLOBAL" if ($php72lives);
 print "\n 1 FPM71 procs\t\tGLOBAL" if ($php71lives);
@@ -155,7 +157,7 @@ if ($nginxsumar) {
 }
 
 if (-f "/root/.dbhd.clstr.cnf") {
-  if ($php73lives || $php72lives || $php71lives || $php70lives || $php56lives) {
+  if ($php74lives || $php73lives || $php72lives || $php71lives || $php70lives || $php56lives) {
     system("killall -9 php-fpm");
   }
   if ($redislives) {
@@ -163,11 +165,12 @@ if (-f "/root/.dbhd.clstr.cnf") {
   }
 }
 else {
-  system("service php73-fpm restart") if ((!$php73lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php73-fpm.pid") && -f "/etc/init.d/php73-fpm");
-  system("service php72-fpm restart") if ((!$php72lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php72-fpm.pid") && -f "/etc/init.d/php72-fpm");
-  system("service php71-fpm restart") if ((!$php71lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php71-fpm.pid") && -f "/etc/init.d/php71-fpm");
-  system("service php70-fpm restart") if ((!$php70lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php70-fpm.pid") && -f "/etc/init.d/php70-fpm");
-  system("service php56-fpm restart") if ((!$php56lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
+  system("service php74-fpm restart") if ((!$php74lives || !$fpmsumar || $fpmsumar > 6 || !-f "/var/run/php74-fpm.pid") && -f "/etc/init.d/php74-fpm");
+  system("service php73-fpm restart") if ((!$php73lives || !$fpmsumar || $fpmsumar > 6 || !-f "/var/run/php73-fpm.pid") && -f "/etc/init.d/php73-fpm");
+  system("service php72-fpm restart") if ((!$php72lives || !$fpmsumar || $fpmsumar > 6 || !-f "/var/run/php72-fpm.pid") && -f "/etc/init.d/php72-fpm");
+  system("service php71-fpm restart") if ((!$php71lives || !$fpmsumar || $fpmsumar > 6 || !-f "/var/run/php71-fpm.pid") && -f "/etc/init.d/php71-fpm");
+  system("service php70-fpm restart") if ((!$php70lives || !$fpmsumar || $fpmsumar > 6 || !-f "/var/run/php70-fpm.pid") && -f "/etc/init.d/php70-fpm");
+  system("service php56-fpm restart") if ((!$php56lives || !$fpmsumar || $fpmsumar > 6 || !-f "/var/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
 }
 
 system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7");

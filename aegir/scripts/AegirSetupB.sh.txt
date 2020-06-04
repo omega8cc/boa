@@ -128,7 +128,10 @@ _PREV_HM_ROOT="${_ROOT}/aegir/distro/${_LAST_HMR}"
 _D="/data/all"
 _SRCDIR="/opt/tmp/files"
 _LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
-if [ "${_PHP_CLI_VERSION}" = "7.3" ] \
+if [ "${_PHP_CLI_VERSION}" = "7.4" ] \
+  && [ -x "/opt/php74/bin/php" ]; then
+  _T_CLI=/opt/php74/bin
+elif [ "${_PHP_CLI_VERSION}" = "7.3" ] \
   && [ -x "/opt/php73/bin/php" ]; then
   _T_CLI=/opt/php73/bin
 elif [ "${_PHP_CLI_VERSION}" = "7.2" ] \

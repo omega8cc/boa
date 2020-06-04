@@ -479,6 +479,9 @@ update_agents() {
     && [ -e "/var/xdrago" ] \
     && [ ! -e "${pthLog}/fast_shutdown.ctrl.${_X_SE}.pid" ]; then
     sed -i "s/.*opcache.fast_shutdown.*//g" /opt/etc/fpm/fpm-pool-common.conf
+    if [ -e "/etc/init.d/php74-fpm" ]; then
+      service php74-fpm reload &> /dev/null
+    fi
     if [ -e "/etc/init.d/php73-fpm" ]; then
       service php73-fpm reload &> /dev/null
     fi

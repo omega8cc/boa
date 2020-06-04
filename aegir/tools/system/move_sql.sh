@@ -79,6 +79,9 @@ stop_sql() {
   echo "Nginx stopped"
 
   echo "Stopping all PHP-FPM instances now.."
+  if [ -e "/etc/init.d/php74-fpm" ]; then
+    service php74-fpm stop &> /dev/null
+  fi
   if [ -e "/etc/init.d/php73-fpm" ]; then
     service php73-fpm stop &> /dev/null
   fi

@@ -378,6 +378,7 @@ tune_memory_limits() {
         else
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
+        sed -i "s/64000/128000/g"  /opt/php74/etc/php74.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php73/etc/php73.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php72/etc/php72.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php71/etc/php71.ini &> /dev/null
@@ -464,6 +465,12 @@ tune_memory_limits() {
   chmod 644 /data/conf/hhvm_intercept.php
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
+  fi
+  if [ -e "/opt/php74/etc/php74.ini" ]; then
+    sed -i "s/256/${_USE_FPM}/g" /opt/php74/etc/php74.ini &> /dev/null
+    wait
+    sed -i "s/181/${_USE_OPC}/g" /opt/php74/etc/php74.ini &> /dev/null
+    sed -i "s/256/${_USE_CLI}/g" /opt/php74/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php73/etc/php73.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php73/etc/php73.ini &> /dev/null
@@ -1172,7 +1179,8 @@ barracuda_cnf() {
           fi
         else
           if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-            if [ "${_PHP_SINGLE_INSTALL}" = "7.3" ] \
+            if [ "${_PHP_SINGLE_INSTALL}" = "7.4" ] \
+              || [ "${_PHP_SINGLE_INSTALL}" = "7.3" ] \
               || [ "${_PHP_SINGLE_INSTALL}" = "7.2" ] \
               || [ "${_PHP_SINGLE_INSTALL}" = "7.1" ] \
               || [ "${_PHP_SINGLE_INSTALL}" = "7.0" ] \
@@ -1183,13 +1191,14 @@ barracuda_cnf() {
             fi
           else
             if [ ! -e "/root/.debug.cnf" ] || [ -e "/root/.default.cnf" ]; then
-              _PHP_MULTI_INSTALL="7.3 7.2 7.1 7.0 5.6"
+              _PHP_MULTI_INSTALL="7.4 7.3 7.2 7.1 7.0 5.6"
             fi
           fi
         fi
       fi
       if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-        if [ "${_PHP_SINGLE_INSTALL}" = "7.3" ] \
+        if [ "${_PHP_SINGLE_INSTALL}" = "7.4" ] \
+          || [ "${_PHP_SINGLE_INSTALL}" = "7.3" ] \
           || [ "${_PHP_SINGLE_INSTALL}" = "7.2" ] \
           || [ "${_PHP_SINGLE_INSTALL}" = "7.1" ] \
           || [ "${_PHP_SINGLE_INSTALL}" = "7.0" ] \
@@ -1648,7 +1657,8 @@ barracuda_cnf() {
 
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-      if [ "${_PHP_SINGLE_INSTALL}" = "7.3" ] \
+      if [ "${_PHP_SINGLE_INSTALL}" = "7.4" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "7.3" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "7.2" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "7.1" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "7.0" ] \
@@ -2633,6 +2643,7 @@ switch_to_dash() {
                   /opt/php71/bin \
                   /opt/php72/bin \
                   /opt/php73/bin \
+                  /opt/php74/bin \
                   /sbin \
                   /usr/bin \
                   /usr/lib/ConsoleKit/run-session.d \
@@ -2689,6 +2700,7 @@ switch_to_bash() {
                   /opt/php71/bin \
                   /opt/php72/bin \
                   /opt/php73/bin \
+                  /opt/php74/bin \
                   /sbin \
                   /usr/bin \
                   /usr/lib/ConsoleKit/run-session.d \
@@ -2734,6 +2746,7 @@ strict_bin_permissions() {
               /opt/php71/bin \
               /opt/php72/bin \
               /opt/php73/bin \
+              /opt/php74/bin \
               /sbin \
               /usr/bin \
               /usr/local/bin \
@@ -5178,6 +5191,10 @@ update_initd() {
       killall -9 nginx php-cgi php-fpm &> /dev/null
       mrun "update-rc.d -f php5-fpm remove" &> /dev/null
       mrun "update-rc.d cron defaults" &> /dev/null
+      if [ -e "/etc/init.d/php74-fpm" ]; then
+        mrun "update-rc.d php74-fpm defaults" &> /dev/null
+        mrun "service php74-fpm start" &> /dev/null
+      fi
       if [ -e "/etc/init.d/php73-fpm" ]; then
         mrun "update-rc.d php73-fpm defaults" &> /dev/null
         mrun "service php73-fpm start" &> /dev/null
@@ -5305,6 +5322,10 @@ update_initd() {
       mrun "service redis-server restart" &> /dev/null
       mrun "update-rc.d -f php5-fpm remove" &> /dev/null
       mrun "service nginx stop" &> /dev/null
+      if [ -e "/etc/init.d/php74-fpm" ]; then
+        mrun "update-rc.d php74-fpm defaults" &> /dev/null
+        mrun "service php74-fpm stop" &> /dev/null
+      fi
       if [ -e "/etc/init.d/php73-fpm" ]; then
         mrun "update-rc.d php73-fpm defaults" &> /dev/null
         mrun "service php73-fpm stop" &> /dev/null
@@ -5328,6 +5349,9 @@ update_initd() {
       killall -9 php-fpm &> /dev/null
       killall -9 php-cgi &> /dev/null
       killall -9 pure-ftpd &> /dev/null
+      if [ -e "/etc/init.d/php74-fpm" ]; then
+        mrun "service php74-fpm start" &> /dev/null
+      fi
       if [ -e "/etc/init.d/php73-fpm" ]; then
         mrun "service php73-fpm start" &> /dev/null
       fi

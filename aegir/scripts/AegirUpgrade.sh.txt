@@ -82,7 +82,10 @@ done
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
   _THIS_DB_HOST=$(uname -n 2>&1)
 fi
-if [ "${_PHP_CLI_VERSION}" = "7.3" ] \
+if [ "${_PHP_CLI_VERSION}" = "7.4" ] \
+  && [ -x "/opt/php74/bin/php" ]; then
+  _T_CLI=/opt/php74/bin
+elif [ "${_PHP_CLI_VERSION}" = "7.3" ] \
   && [ -x "/opt/php73/bin/php" ]; then
   _T_CLI=/opt/php73/bin
 elif [ "${_PHP_CLI_VERSION}" = "7.2" ] \
@@ -130,7 +133,11 @@ fi
 # Update php-cli for Drush.
 update_php_cli_drush() {
   _DRUSH_FILE="${_ROOT}/drush/drush.php"
-  if [ "${_PHP_CLI_VERSION}" = "7.3" ] \
+  if [ "${_PHP_CLI_VERSION}" = "7.4" ] \
+    && [ -x "/opt/php74/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "7.3" ] \
     && [ -x "/opt/php73/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php73\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null

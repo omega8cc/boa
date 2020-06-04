@@ -13,6 +13,9 @@ hold() {
   killall -9 nginx &> /dev/null
   sleep 1
   killall -9 nginx &> /dev/null
+  if [ -e "/etc/init.d/php74-fpm" ]; then
+    service php74-fpm stop &> /dev/null
+  fi
   if [ -e "/etc/init.d/php73-fpm" ]; then
     service php73-fpm stop &> /dev/null
   fi

@@ -606,7 +606,10 @@ update_php_cli_cron() {
   if [ -e "/var/spool/cron/crontabs/aegir" ]; then
     sed -i "s/hosting-dispatch.*/hosting-dispatch \>\/dev\/null 2\>\&1/g" \
       /var/spool/cron/crontabs/aegir &> /dev/null
-    if [ "${_PHP_CLI_VERSION}" = "7.3" ] && [ -x "/opt/php73/bin/php" ]; then
+    if [ "${_PHP_CLI_VERSION}" = "7.4" ] && [ -x "/opt/php74/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php74\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "7.3" ] && [ -x "/opt/php73/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php73\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
         /var/spool/cron/crontabs/aegir &> /dev/null
     elif [ "${_PHP_CLI_VERSION}" = "7.2" ] && [ -x "/opt/php72/bin/php" ]; then
@@ -1072,7 +1075,10 @@ update_php_cli_local_ini() {
     mkdir -p ${_U_HD}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php73" ]]; then
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php74" ]]; then
+      cp -af /opt/php74/lib/php.ini ${_U_II}
+      _U_INI=74
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php73" ]]; then
       cp -af /opt/php73/lib/php.ini ${_U_II}
       _U_INI=73
     elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php72" ]]; then
@@ -1098,6 +1104,7 @@ update_php_cli_local_ini() {
         /opt/php71:          \
         /opt/php72:          \
         /opt/php73:          \
+        /opt/php74:          \
         /opt/tika:           \
         /opt/tika7:          \
         /opt/tika8:          \

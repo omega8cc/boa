@@ -589,14 +589,13 @@ os_detection() {
 }
 
 check_boa_php_compatibility() {
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.3" ]] \
-    || [[ "${_PHP_MULTI_INSTALL}" =~ "7.2" ]] \
-    || [[ "${_PHP_MULTI_INSTALL}" =~ "7.1" ]] \
-    || [[ "${_PHP_MULTI_INSTALL}" =~ "7.0" ]]; then
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.4" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "7.3" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "7.2" ]]; then
     _DO_NOTHING=YES
   else
-    msg "ERROR: This BOA version depends on PHP 7.1 or newer"
-    msg "Please add 7.1 and/or 7.2 to _PHP_MULTI_INSTALL"
+    msg "ERROR: This BOA version depends on PHP 7.2 or newer"
+    msg "Please add 7.2 and/or 7.3 to _PHP_MULTI_INSTALL"
     msg "in /root/.barracuda.cnf before trying again"
     msg "Bye"
     clean_pid_exit
@@ -604,11 +603,17 @@ check_boa_php_compatibility() {
   if [ "${_PHP_FPM_VERSION}" = "5.3" ] \
     || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
     || [ "${_PHP_FPM_VERSION}" = "5.5" ] \
+    || [ "${_PHP_FPM_VERSION}" = "5.6" ] \
+    || [ "${_PHP_FPM_VERSION}" = "7.0" ] \
+    || [ "${_PHP_FPM_VERSION}" = "7.1" ] \
     || [ "${_PHP_CLI_VERSION}" = "5.3" ] \
     || [ "${_PHP_CLI_VERSION}" = "5.4" ] \
-    || [ "${_PHP_CLI_VERSION}" = "5.5" ]; then
-    msg "ERROR: This BOA version depends on PHP 7.1 or newer"
-    msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to 7.1 or 7.2"
+    || [ "${_PHP_CLI_VERSION}" = "5.5" ] \
+    || [ "${_PHP_CLI_VERSION}" = "5.6" ] \
+    || [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+    || [ "${_PHP_CLI_VERSION}" = "7.1" ]; then
+    msg "ERROR: This BOA version depends on PHP 7.2 or newer"
+    msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to 7.2 or 7.3"
     msg "in /root/.barracuda.cnf before trying again"
     msg "Bye"
     clean_pid_exit

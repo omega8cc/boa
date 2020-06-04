@@ -72,6 +72,7 @@ _CLIENT_CORES="8" #------------- Currently not used
 ###
 ### Supported values for single PHP-FPM mode which can be written in this file:
 ###
+### 7.4
 ### 7.3
 ### 7.2
 ### 7.1
@@ -122,6 +123,7 @@ _CLIENT_CORES="8" #------------- Currently not used
 ###
 ### Supported values which can be written in this file:
 ###
+### 7.4
 ### 7.3
 ### 7.2
 ### 7.1

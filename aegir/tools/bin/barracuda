@@ -348,7 +348,9 @@ check_report() {
 check_php_cli() {
   _PHP_CHECK=$(readlink -n /usr/bin/php 2>&1)
   if [ ! -x "$_PHP_CHECK" ]; then
-    if [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
+    if [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
+      _PHP_CLI_PATH="/opt/php74/bin/php"
+    elif [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
       _PHP_CLI_PATH="/opt/php73/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "7.2" ]; then
       _PHP_CLI_PATH="/opt/php72/bin/php"
@@ -368,6 +370,8 @@ check_php_cli() {
         _USE_PHP_CLI_PATH="/opt/php72/bin/php"
       elif  [ -x "/opt/php73/bin/php" ]; then
         _USE_PHP_CLI_PATH="/opt/php73/bin/php"
+      elif  [ -x "/opt/php74/bin/php" ]; then
+        _USE_PHP_CLI_PATH="/opt/php74/bin/php"
       elif  [ -x "/opt/php71/bin/php" ]; then
         _USE_PHP_CLI_PATH="/opt/php71/bin/php"
       elif  [ -x "/opt/php70/bin/php" ]; then
@@ -391,7 +395,9 @@ check_php_cli() {
 up_action() {
   if [ -e "${vBs}/${barName}" ] && [ -e "${barCnf}" ]; then
     if [ ! -z "${rkey}" ]; then
-      if [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
+      if [ "${rkey}" = "php-74" ] || [ "${rkey}" = "php-7.4" ]; then
+        phpS="7.4"
+      elif [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
         phpS="7.3"
       elif [ "${rkey}" = "php-72" ] || [ "${rkey}" = "php-7.2" ]; then
         phpS="7.2"
@@ -432,7 +438,8 @@ up_action() {
 
     fi
     ### Make sure that _PHP_SINGLE_INSTALL is set in ${barCnf}
-    if [ "${phpS}" = "7.3" ] \
+    if [ "${phpS}" = "7.4" ] \
+      || [ "${phpS}" = "7.3" ] \
       || [ "${phpS}" = "7.2" ] \
       || [ "${phpS}" = "7.1" ] \
       || [ "${phpS}" = "7.0" ] \
@@ -447,7 +454,8 @@ up_action() {
     fi
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${phpS}" ]; then
-      if [ "${phpS}" = "7.3" ] \
+      if [ "${phpS}" = "7.4" ] \
+        || [ "${phpS}" = "7.3" ] \
         || [ "${phpS}" = "7.2" ] \
         || [ "${phpS}" = "7.1" ] \
         || [ "${phpS}" = "7.0" ] \
@@ -517,7 +525,7 @@ up_action() {
           done
         fi
       elif [ "${phpS}" = "ALL" ]; then
-        phpM="7.3 7.2 7.1 7.0 5.6"
+        phpM="7.4 7.3 7.2 7.1 7.0 5.6"
         phpS="7.2"
 
         ### Debugging
@@ -1308,7 +1316,7 @@ proceed() {
     _SCRIPT_URL="$rgUrl/${lgcA}/${barName}"
   else
     echo
-    echo "Usage: $(basename "$0") {up-stable|up-head|up-2.4|up-2.3|up-2.2} {system|log} {newrelickey|php-7.3|php-7.2|php-7.1|php-7.0|php-5.6|php-all|nodns}"
+    echo "Usage: $(basename "$0") {up-stable|up-head|up-2.4|up-2.3|up-2.2} {system|log} {newrelickey|php-7.4|php-7.3|php-7.2|php-7.1|php-7.0|php-5.6|php-all|nodns}"
     echo
     echo "  Silent Mode Option: system == OS only upgrade"
     echo "  Silent Mode Option: log ===== OS and Aegir Master Instance upgrade"

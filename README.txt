@@ -108,8 +108,8 @@ production settings.
 
 === Included/enabled by default - see docs/NOTES.txt for details
 
-* PHP-FPM 7.3, 7.2, 7.1, 7.0, 5.6 multi-install mode, configurable per site.
-* Latest release of MariaDB 5.5 or 10.1 database server with Adminer manager.
+* PHP-FPM 7.4 7.3 7.2 7.1 7.0 5.6 in multi-install mode, configurable per site.
+* Latest release of MariaDB 10.2 or 10.3 database server with Adminer manager.
 * All libraries & tools required to install and run Nginx based Aegir system.
 * Magic Speed Booster cache, working like a Boost + AuthCache, but per user.
 * Entry level XSS built-in protection on the Nginx level.

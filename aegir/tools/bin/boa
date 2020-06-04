@@ -784,7 +784,20 @@ barracuda_install() {
     if [ ! -z "${rkey}" ] \
       && [ -e "${vBs}/${filIncB}" ] \
       && [ -e "${vBs}/${filIncO}" ]; then
-      if [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
+      if [ "${rkey}" = "php-74" ] || [ "${rkey}" = "php-7.4" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.4/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.4/g"   ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${filIncO}
+        wait
+      elif [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.3/g" ${vBs}/${filIncB}
         wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.3/g"   ${vBs}/${filIncB}
@@ -851,7 +864,7 @@ barracuda_install() {
         wait
       elif [ "${rkey}" = "php-all" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=/g"    ${vBs}/${filIncB}
-        pA="7.3 7.2 7.1 7.0 5.6"
+        pA="7.4 7.3 7.2 7.1 7.0 5.6"
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${filIncB}
         wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.2/g" ${vBs}/${filIncB}
@@ -879,7 +892,16 @@ barracuda_install() {
       && [ -e "${vBs}/${barName}" ] \
       && [ -e "${vBs}/${octName}" ]; then
       ### Legacy method
-      if [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
+      if [ "${rkey}" = "php-74" ] || [ "${rkey}" = "php-7.4" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.4/g" ${vBs}/${barName}
+        wait
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.4/g"   ${vBs}/${barName}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${octName}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${octName}
+        wait
+      elif [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.3/g" ${vBs}/${barName}
         wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.3/g"   ${vBs}/${barName}
@@ -926,7 +948,7 @@ barracuda_install() {
         wait
       elif [ "${rkey}" = "php-all" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=/g"    ${vBs}/${barName}
-        pA="7.3 7.2 7.1 7.0 5.6"
+        pA="7.4 7.3 7.2 7.1 7.0 5.6"
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${barName}
         wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.2/g" ${vBs}/${barName}
@@ -1918,6 +1940,7 @@ case "$1" in
 
   {extra}
       license <------ valid new relic license key
+      php-7.4 <------ single PHP version to install and use
       php-7.3 <------ single PHP version to install and use
       php-7.2 <------ single PHP version to install and use
       php-7.1 <------ single PHP version to install and use
