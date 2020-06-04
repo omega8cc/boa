@@ -4157,6 +4157,7 @@ sys_packages_install() {
               libjpeg-dev \
               libjpeg62 \
               libnet-daemon-perl \
+              libonig-dev \
               libpam-umask \
               libpq5 \
               libsasl2-modules \
