@@ -951,7 +951,9 @@ install_php_multi() {
   ### patch -p1 < ${bldPth}/aegir/patches/fpm_main.c.patch &> /dev/null
   ### cd /var/opt/php-${_PHP_VERSION}
   msg "INFO: Building PHP ${_PHP_VERSION} part 2/3"
-  if [ "$1" = "73" ]; then
+  if [ "$1" = "74" ]; then
+    _PHP_EXTRA="${_PHP_EXTRA}"
+  elif [ "$1" = "73" ]; then
     _PHP_EXTRA="${_PHP_EXTRA}"
   elif [ "$1" = "72" ]; then
     _PHP_EXTRA="${_PHP_EXTRA}"
