@@ -1499,6 +1499,21 @@ check_php_broken_freetype() {
 }
 
 #
+# Check if the PHP build has broken GD support.
+check_php_broken_gd() {
+  isGd=
+  isGd=$(/opt/php$1/bin/php -i | grep GD 2>&1)
+  if [[ ! "${isGd}" =~ "GD Support" ]] \
+    || [ -z "${isGd}" ]; then
+    msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix GD support..."
+    install_php_multi "$1"
+    _PHP_ALREADY_REBUILT=$1
+  else
+    _PHP_ALREADY_REBUILT=
+  fi
+}
+
+#
 # Check if the PHP build is broken.
 check_php_broken() {
   _BROKEN_LIBCURL_TEST=$(/opt/php$1/bin/php -v 2>&1)
@@ -1512,6 +1527,7 @@ check_php_broken() {
     _PHP_ALREADY_REBUILT=
   fi
   check_php_broken_freetype "$1"
+  check_php_broken_gd "$1"
 }
 
 #
