@@ -150,6 +150,10 @@ production settings.
 
 Octopus can install and/or support the platforms listed below:
 
+ @ Drupal 9
+
+ Drupal 9.0.0 ----------------- https://drupal.org/project/drupal/releases/9.0.0
+
  @ Drupal 8
 
  Lightning 4.103 -------------- https://drupal.org/project/lightning
