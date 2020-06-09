@@ -1577,7 +1577,7 @@ satellite_o_contrib_seven_update_global() {
           rm -rf ${_D}/${i}/o_contrib_seven/$m
         fi
       done
-      _ADMINER_VRN=4.7.0
+      _ADMINER_VRN=4.7.7
       cd ${_D}/${i}/o_contrib_seven
       if [ ! -e "${_D}/${i}/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}-mysql.php" ]; then
         rm -rf ${_D}/${i}/o_contrib_seven/adminer

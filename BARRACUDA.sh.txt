@@ -33,7 +33,7 @@
 ###
 ### Software versions
 ###
-_ADMINER_VRN=4.7.0
+_ADMINER_VRN=4.7.7
 _BZR_VRN=2.6.0
 _CGP_VRN=master-30-03-2014
 _CHIVE_VRN=1.3
