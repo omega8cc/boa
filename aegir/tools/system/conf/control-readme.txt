@@ -1,5 +1,50 @@
 
 ###
+### Super fast site cloning and migration
+###
+### It is now possible to enable blazing fast migrations and cloning even sites
+### with complex and giant databases with this empty control file:
+###
+### ~/static/control/MyQuick.info
+###
+### By the way, how fast is the super-fast? It's faster than you would expect!
+### We have seen it speeding up the clone and migrate tasks normally taking
+### 1-2 hours to... even 3-6 minutes! Yes, that's how fast it's!
+###
+### This file, if exists, will enable a super fast per table and parallel DB
+### dump and import, although without leaving a conventional complete database
+### dump file in the site archive normally created by Aegir when you run
+### not only the backup task, but also clone, migrate and delete tasks.
+###
+### We need to emphasise this again: with this control file present all normally
+### super slow tasks will become blazing fast, but at the cost of not keeping
+### an archived complete database dump file in the archive of the site directory
+### where it would be otherwise included.
+###
+### Of course the system still maintains nightly backups of all your sites
+### using the classic single dump archives, but with this control file present
+### you won't be able to use restore task in Aegir, because the site archive
+### won't include the database dump.
+###
+
+###
+### Let's Encrypt support for live certificates
+###
+### Your Aegir system by default comes with Let's Encrypt support in demo mode,
+### so you won't hit LE limits for real certificates just by playing around.
+### This means that unless you have already added the control file, Aegir will
+### create a "demo" or "fake" LE certificates. Once you are ready to go live,
+### simply add an empty control file and run Verify task on the site with
+### enabled Encryption. Once the tasks completes in all-green, you can edit
+### the site's node again to make the Encryption Required, if you prefer.
+###
+### ~/static/control/ssl-live-mode.info
+###
+### It is a one-time operation, so even if you will delete this control file
+### later, the system will not switch your instance back to LE demo mode.
+###
+
+###
 ### Support for PHP-FPM version switch per Octopus instance (also per site)
 ###
 ### ~/static/control/fpm.info
