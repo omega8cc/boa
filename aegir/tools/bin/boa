@@ -1946,7 +1946,7 @@ case "$1" in
       php-7.1 <------ single PHP version to install and use
       php-7.0 <------ single PHP version to install and use
       php-5.6 <------ single PHP version to install and use
-      php-all <------ all PHP versions to install, use 7.2 by default
+      php-all <------ all PHP versions to install, use 7.3 by default
       nodns <-------- disable DNS checks on the fly
 
   See docs/INSTALL.txt for more details.

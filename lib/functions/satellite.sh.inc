@@ -1140,15 +1140,15 @@ satellite_cnf() {
       fi
     elif [ "${_PHP_FPM_VERSION}" = "5.2" ] \
       || [ "${_PHP_CLI_VERSION}" = "5.2" ]; then
-      if [ -x "/opt/php72/bin/php" ]; then
-        _PHP_FPM_VERSION=7.2
-        _PHP_CLI_VERSION=7.2
-      elif [ -x "/opt/php73/bin/php" ]; then
+      if [ -x "/opt/php73/bin/php" ]; then
         _PHP_FPM_VERSION=7.3
         _PHP_CLI_VERSION=7.3
       elif [ -x "/opt/php74/bin/php" ]; then
         _PHP_FPM_VERSION=7.4
         _PHP_CLI_VERSION=7.4
+      elif [ -x "/opt/php72/bin/php" ]; then
+        _PHP_FPM_VERSION=7.2
+        _PHP_CLI_VERSION=7.2
       elif [ -x "/opt/php71/bin/php" ]; then
         _PHP_FPM_VERSION=7.1
         _PHP_CLI_VERSION=7.1

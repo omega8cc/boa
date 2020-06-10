@@ -160,7 +160,7 @@ if [ -e "/data/disk/arch" ]; then
     _AUTO_UP_DAY=
     _AUTO_PHP=
     _AUTO_VER="stable"
-    sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"7.2 5.6\"/g" ${barCnf}
+    sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"7.3 5.6\"/g" ${barCnf}
     wait
     sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g" ${barCnf}
     wait

@@ -123,7 +123,7 @@ supported versions: 7.4, 7.3, 7.2, 7.1, 7.0 or 5.6
 
 To switch PHP-FPM version on command line, please type:
 
-  echo 7.2 > ~/static/control/fpm.info
+  echo 7.3 > ~/static/control/fpm.info
 
 You can find more details at: https://learn.omega8.cc/node/330
 
@@ -158,7 +158,7 @@ supported versions: 7.4, 7.3, 7.2, 7.1, 7.0 or 5.6
 
 To switch PHP-FPM version on command line, please type:
 
-  echo 7.2 > ~/static/control/fpm.info
+  echo 7.3 > ~/static/control/fpm.info
 
 You can find more details at: https://learn.omega8.cc/node/330
 
@@ -193,7 +193,7 @@ supported versions: 7.4, 7.3, 7.2, 7.1, 7.0 or 5.6
 
 To switch PHP-FPM version on command line, please type:
 
-  echo 7.2 > ~/static/control/fpm.info
+  echo 7.3 > ~/static/control/fpm.info
 
 You can find more details at: https://learn.omega8.cc/node/330
 
