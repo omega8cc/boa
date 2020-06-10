@@ -4503,6 +4503,16 @@ install_myquick_src() {
     msg "INFO: Building MyQuick ${_MYQUICK_VRN} from sources, please wait..."
     mrun "${_INSTALL} cmake" 2> /dev/null
     mrun "${_INSTALL} libmariadb-dev" 2> /dev/null
+    if [ "${_DB_SERIES}" = "10.3" ]; then
+      if [ ! -e "/usr/include/mysql" ] \
+        && [ -d "/usr/include/mariadb" ]; then
+        ln -sf /usr/include/mariadb /usr/include/mysql
+      fi
+      if [ ! -e "/usr/bin/mysql_config" ] \
+        && [ -e "/usr/bin/mariadb_config" ]; then
+        ln -sf /usr/bin/mariadb_config /usr/bin/mysql_config
+      fi
+    fi
     cd /var/opt
     rm -rf mydumper*
     get_dev_src "mydumper-${_MYQUICK_VRN}.tar.gz"
