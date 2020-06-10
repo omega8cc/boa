@@ -1516,18 +1516,23 @@ check_php_broken_gd() {
 #
 # Check if the PHP build is broken.
 check_php_broken() {
-  _BROKEN_LIBCURL_TEST=$(/opt/php$1/bin/php -v 2>&1)
-  if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]]; then
-    _PHP_BIN_BROKEN=YES
-    msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix broken libcurl..."
-    install_curl_src
-    install_php_multi "$1"
-    _PHP_ALREADY_REBUILT=$1
+  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
+    && [ "${_LOC_OSV}" = "jessie" ]; then
+    _DO_NOTHING=YES
   else
-    _PHP_ALREADY_REBUILT=
+    _BROKEN_LIBCURL_TEST=$(/opt/php$1/bin/php -v 2>&1)
+    if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]]; then
+      _PHP_BIN_BROKEN=YES
+      msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix broken libcurl..."
+      install_curl_src
+      install_php_multi "$1"
+      _PHP_ALREADY_REBUILT=$1
+    else
+      _PHP_ALREADY_REBUILT=
+    fi
+    check_php_broken_freetype "$1"
+    check_php_broken_gd "$1"
   fi
-  check_php_broken_freetype "$1"
-  check_php_broken_gd "$1"
 }
 
 #
