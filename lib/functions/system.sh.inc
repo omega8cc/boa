@@ -4540,11 +4540,35 @@ check_install_myquick() {
     | tr -d "," \
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
-  if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN}" ]; then
+  _DB_V=$(mysql -V 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f6 \
+    | awk '{ print $1}' \
+    | cut -d"-" -f1 \
+    | awk '{ print $1}' \
+    | sed "s/[\,']//g" 2>&1)
+  _MD_V=$(mydumper --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f6 \
+    | awk '{ print $1}' \
+    | cut -d"-" -f1 \
+    | awk '{ print $1}' \
+    | sed "s/[\,']//g" 2>&1)
+  if [ "${_DB_V}" != "${_MD_V}" ]; then
     _MYQUICK_INSTALL_REQUIRED=YES
-    msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
+    msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, rebuild required"
     install_myquick_src
   fi
+  if [ ! -e "/usr/include/mysql" ] || [ ! -e "/usr/include/mysql" ]; then
+    _MYQUICK_INSTALL_REQUIRED=YES
+    msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, rebuild required"
+    install_myquick_src
+  fi
+  # if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN}" ]; then
+  #   _MYQUICK_INSTALL_REQUIRED=YES
+  #   msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
+  #   install_myquick_src
+  # fi
 }
 
 install_update_xdrago() {
