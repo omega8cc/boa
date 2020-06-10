@@ -615,7 +615,7 @@ check_boa_php_compatibility() {
     || [ "${_PHP_CLI_VERSION}" = "7.0" ] \
     || [ "${_PHP_CLI_VERSION}" = "7.1" ] \
     || [ "${_PHP_CLI_VERSION}" = "7.2" ]; then
-    msg "ERROR: This BOA version depends on PHP 7.2 or newer"
+    msg "ERROR: This BOA version depends on PHP 7.3 or newer"
     msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to 7.3 or 7.4"
     msg "in /root/.barracuda.cnf before trying again"
     msg "NOTE: You can still install also 7.2, 7.1, 7.0 and even legacy 5.6"
