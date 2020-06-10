@@ -1572,6 +1572,10 @@ barracuda_cnf() {
           wait
           sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=7.2/g"                  ${barCnf}
           wait
+          sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=7.3/g"                  ${barCnf}
+          wait
+          sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=7.3/g"                  ${barCnf}
+          wait
         fi
         if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
           || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
