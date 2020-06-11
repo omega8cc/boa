@@ -2454,7 +2454,7 @@ install_curl_src() {
   touch /root/.use.curl.from.packages.cnf
   if [ "${_OSV}" = "precise" ]; then
     touch /root/.use.curl.from.packages.cnf
-    _CURL_VRN=7.22.0
+    _CURL_VRN=7.70.0
   fi
   _CURL_INSTALL_REQUIRED=NO
   _CURL_GET_DPKG=$(dpkg --get-selections | grep curl | grep 'hold$' 2>&1)
