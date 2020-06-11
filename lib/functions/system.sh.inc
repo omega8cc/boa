@@ -2483,7 +2483,7 @@ install_curl_src() {
       _CURL_INSTALL_REQUIRED=NO
     else
       _CURL_INSTALL_REQUIRED=YES
-      # msg "INFO: Installed cURL version ${_CURL_ITD}, upgrade required"
+      msg "INFO: Installed cURL version ${_CURL_ITD}, upgrade required"
     fi
   fi
   _BROKEN_CURL_TEST=$(curl --version 2>&1)
@@ -2521,7 +2521,9 @@ install_curl_src() {
         echo "curl hold" | dpkg --set-selections &> /dev/null
       fi
       msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
-      mrun "apt-get build-dep curl" 2> /dev/null
+      mrun "apt-get build-dep curl -y" 2> /dev/null
+      mrun "${_INSTALL} libssl-dev" 2> /dev/null
+      mrun "${_INSTALL} libc-client2007e-dev" 2> /dev/null
       cd /var/opt
       rm -rf curl*
       wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
