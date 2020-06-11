@@ -1845,6 +1845,7 @@ do_install_latest_git() {
     mrun "sh ./configure --without-tcltk --quiet" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
+    mrun "ldconfig" 2> /dev/null
     mv -f /usr/bin/git /usr/bin/git-old
     ln -sf /usr/local/bin/git /usr/bin/git
     cd /var/opt
@@ -1921,6 +1922,7 @@ install_php_deps() {
       --prefix=/usr/local" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
+    mrun "ldconfig" 2> /dev/null
   fi
 }
 
@@ -2382,6 +2384,7 @@ install_ssh_src() {
       --with-pam" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
+    mrun "ldconfig" 2> /dev/null
     mrun "service ssh restart" &> /dev/null
     if [[ ! "${_SSH_GET_DPKG}" =~ "hold" ]]; then
       ### aptitude hold openssh-server &> /dev/null
@@ -2444,6 +2447,7 @@ install_magick_src() {
     mrun "apt-get remove imagemagick" 2> /dev/null
     mrun "apt-get purge imagemagick" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
+    mrun "ldconfig" 2> /dev/null
     msg "HINT: Please modify /usr/etc/ImageMagick-7/policy.xml file, if needed"
   fi
 }
@@ -2532,6 +2536,7 @@ install_curl_src() {
         --prefix=/usr/local" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
+      mrun "ldconfig" 2> /dev/null
     fi
     _CURL_ALREADY_REBUILT=YES
   fi
@@ -2584,6 +2589,7 @@ install_ssl_src() {
     st_runner "./configure --prefix=/usr" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
+    mrun "ldconfig" 2> /dev/null
     ###--------------------###
     msg "INFO: Building OpenSSL ${_OPENSSL_VRN} from sources, please wait..."
     cd /var/opt
@@ -2605,6 +2611,7 @@ install_ssl_src() {
     mrun "make depend" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
+    mrun "ldconfig" 2> /dev/null
     ###--------------------###
     _SSL_GET_DPKG=$(dpkg --get-selections \
       | grep openssl \
@@ -4484,6 +4491,7 @@ install_vnstat() {
       mrun "sh ./configure --prefix=/usr --sysconfdir=/etc" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
+      mrun "ldconfig" 2> /dev/null
       for INF in `vnstat --iflist \
         | sed "s/Available interfaces//g; s/(1000 Mbit)//g; s/(100 Mbit)//g; s/ lo//g;" \
         | cut -d: -f2` ;do vnstat -i $INF &> /dev/null;done
@@ -4541,6 +4549,7 @@ install_myquick_src() {
     mrun "cmake -DWITH_SSL=OFF ." 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
+    mrun "ldconfig" 2> /dev/null
   fi
 }
 

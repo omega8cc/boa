@@ -411,6 +411,7 @@ install_upgrade_nginx() {
       --with-debug ${_NGINX_EXTRA}" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
+    mrun "ldconfig" 2> /dev/null
     if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
       && [ "${_LOC_OSV}" = "jessie" ]; then
       _DO_NOTHING=YES
