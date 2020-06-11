@@ -1040,9 +1040,6 @@ install_php_multi() {
                 --enable-soap \
                 --with-fpm-group=www-data \
                 --with-fpm-user=www-data \
-                --with-imap \
-                --with-imap-ssl \
-                --with-kerberos \
                 --with-mysql-sock=/var/run/mysqld/mysqld.sock \
                 --with-mysqli=mysqlnd \
                 --with-openssl \
@@ -1076,9 +1073,6 @@ install_php_multi() {
                 --enable-soap \
                 --with-fpm-group=www-data \
                 --with-fpm-user=www-data \
-                --with-imap \
-                --with-imap-ssl \
-                --with-kerberos \
                 --with-mysql-sock=/var/run/mysqld/mysqld.sock \
                 --with-mysqli=mysqlnd \
                 --with-openssl \
