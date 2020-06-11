@@ -2517,6 +2517,7 @@ install_curl_src() {
         echo "curl hold" | dpkg --set-selections &> /dev/null
       fi
       msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
+      mrun "apt-get build-dep curl" 2> /dev/null
       cd /var/opt
       rm -rf curl*
       wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
