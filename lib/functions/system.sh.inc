@@ -2528,7 +2528,7 @@ install_curl_src() {
       cd /var/opt/curl-${_CURL_VRN}
       mrun "sh ./configure \
         --with-ssl \
-        --prefix=/usr/local" 2> /dev/null
+        --prefix=/usr" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
     fi
