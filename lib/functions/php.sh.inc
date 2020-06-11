@@ -955,6 +955,11 @@ install_php_multi() {
   if [ -d "/usr/local/lib/icu/67.1" ]; then
     _PRE_SNFR="--with-icu-dir=/usr/local"
   fi
+  if [ -d "/usr/local/include/curl" ]; then
+    _PHP_EXTRA="${_PHP_EXTRA} --with-curl=/usr/local"
+  else
+    _PHP_EXTRA="${_PHP_EXTRA} --with-curl"
+  fi
   _PRE_SNFR="--enable-zip \
              --with-gd \
              --with-jpeg-dir=/usr \
@@ -1007,7 +1012,6 @@ install_php_multi() {
                 --enable-opcache \
                 --enable-pcntl \
                 --enable-soap \
-                --with-curl \
                 --with-fpm-group=www-data \
                 --with-fpm-user=www-data \
                 --with-imap \
@@ -1043,7 +1047,6 @@ install_php_multi() {
                 --enable-opcache \
                 --enable-pcntl \
                 --enable-soap \
-                --with-curl \
                 --with-fpm-group=www-data \
                 --with-fpm-user=www-data \
                 --with-imap \
