@@ -4588,12 +4588,12 @@ check_install_myquick() {
     | sed "s/[\,']//g" 2>&1)
   if [ "${_DB_V}" != "${_MD_V}" ]; then
     _MYQUICK_INSTALL_REQUIRED=YES
-    msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, rebuild required"
+    msg "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V}), rebuild required"
     install_myquick_src
   fi
   if [ ! -e "/usr/include/mysql" ] || [ ! -e "/usr/include/mysql" ]; then
     _MYQUICK_INSTALL_REQUIRED=YES
-    msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, rebuild required"
+    msg "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V}), rebuild required"
     install_myquick_src
   fi
   # if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN}" ]; then
