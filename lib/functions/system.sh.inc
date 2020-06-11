@@ -1910,6 +1910,18 @@ install_php_deps() {
   st_runner "${_INSTALL} libldap-dev" 2> /dev/null
   st_runner "${_INSTALL} libmagickwand-dev" 2> /dev/null
   st_runner "${_INSTALL} libxpm-dev" 2> /dev/null
+  if [ ! -d "/usr/local/lib/icu/67.1" ]; then
+    if [ ! -e "/var/opt/icu/source" ]; then
+      cd /var/opt
+      rm -rf icu*
+      get_dev_src "icu4c-${_ICU_VRN}-src.tgz"
+    fi
+    cd /var/opt/icu/source/
+    mrun "sh ./configure \
+      --prefix=/usr/local" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+  fi
 }
 
 #

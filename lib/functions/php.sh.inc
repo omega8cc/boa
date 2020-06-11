@@ -952,13 +952,17 @@ install_php_multi() {
   ### patch -p1 < ${bldPth}/aegir/patches/fpm_main.c.patch &> /dev/null
   ### cd /var/opt/php-${_PHP_VERSION}
   msg "INFO: Building PHP ${_PHP_VERSION} part 2/3"
+  if [ -d "/usr/local/lib/icu/67.1" ]; then
+    _PRE_SNFR="--with-icu-dir=/usr/local"
+  fi
   _PRE_SNFR="--enable-zip \
              --with-gd \
              --with-jpeg-dir=/usr \
              --with-png-dir=/usr \
              --with-xpm-dir=/usr \
              --with-ldap \
-             --with-gmp"
+             --with-gmp \
+             ${_PRE_SNFR}"
   _NEW_SNFR="--with-zip \
              --enable-gd \
              --with-jpeg \
