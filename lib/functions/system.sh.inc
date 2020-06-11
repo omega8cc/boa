@@ -2496,7 +2496,7 @@ install_curl_src() {
   fi
   if [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
-    if [ -e "/root/.use.curl.from.packages.cnf" ]; then
+    if [ -e "/root/OFF.use.curl.from.packages.cnf" ]; then
       if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
         echo "curl install" | dpkg --set-selections &> /dev/null
         if [ -z "${_CURL_ALREADY_REBUILT}" ]; then
