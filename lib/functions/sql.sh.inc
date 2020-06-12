@@ -741,7 +741,7 @@ install_with_aptitude_sql() {
 	  fi
     fi
   fi
-  if [ "${_DB_SERIES}" = "10.3" ]; then
+  if [ "${_DB_SERIES}" = "10.3" ] || [ "${_DB_SERIES}" = "10.4" ]; then
     if [ ! -e "/usr/include/mysql" ] \
       && [ -d "/usr/include/mariadb" ]; then
       ln -sf /usr/include/mariadb /usr/include/mysql

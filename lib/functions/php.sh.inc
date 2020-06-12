@@ -120,7 +120,8 @@ fix_php_ini_newrelic_all() {
       _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
     fi
     _PHP_V="72 73 74 56 71 70"
-    if [ "${_DB_SERIES}" = "10.3" ] \
+    if [ "${_DB_SERIES}" = "10.4" ] \
+      || [ "${_DB_SERIES}" = "10.3" ] \
       || [ "${_DB_SERIES}" = "10.2" ]; then
       _PHP_V="72 73 74 56 71 70"
     fi
@@ -156,7 +157,8 @@ fix_php_ini_opcache() {
 # Fix all FMP php.ini files to add Zend OPcache
 fix_php_ini_opcache_all() {
   _PHP_V="72 73 74 56 71 70"
-  if [ "${_DB_SERIES}" = "10.3" ] \
+  if [ "${_DB_SERIES}" = "10.4" ] \
+    || [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ]; then
     _PHP_V="72 73 74 56 71 70"
   fi
@@ -304,7 +306,8 @@ update_php_conf() {
   sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
   wait
   _PHP_V="72 73 74 56 71 70"
-  if [ "${_DB_SERIES}" = "10.3" ] \
+  if [ "${_DB_SERIES}" = "10.4" ] \
+    || [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ]; then
     _PHP_V="72 73 74 56 71 70"
   fi
@@ -390,7 +393,8 @@ tune_web_server_config() {
     fi
   fi
   _PHP_V="72 73 74 56 71 70"
-  if [ "${_DB_SERIES}" = "10.3" ] \
+  if [ "${_DB_SERIES}" = "10.4" ] \
+    || [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ]; then
     _PHP_V="72 73 74 56 71 70"
   fi
@@ -545,7 +549,8 @@ install_php_extensions() {
       get_dev_src "geos-${_GEOS_VRN}.tar.bz2"
       cd geos-${_GEOS_VRN}
       _PHP_V="72 73 74 56 71 70"
-      if [ "${_DB_SERIES}" = "10.3" ] \
+      if [ "${_DB_SERIES}" = "10.4" ] \
+        || [ "${_DB_SERIES}" = "10.3" ]
         || [ "${_DB_SERIES}" = "10.2" ]; then
         _PHP_V="72 73 74 56 71 70"
       fi
@@ -785,7 +790,8 @@ update_php_extensions() {
       get_dev_src "geos-${_GEOS_VRN}.tar.bz2"
       cd geos-${_GEOS_VRN}
       _PHP_V="72 73 74 56 71 70"
-      if [ "${_DB_SERIES}" = "10.3" ] \
+      if [ "${_DB_SERIES}" = "10.4" ] \
+        || [ "${_DB_SERIES}" = "10.3" ]
         || [ "${_DB_SERIES}" = "10.2" ]; then
         _PHP_V="72 73 74 56 71 70"
       fi
@@ -1116,9 +1122,9 @@ install_php_multi() {
       || [ -e "/root/.dbhd.clstr.cnf" ]; then
       _T_DBS_VRN="${_GALERA_10_VRN}"
     else
-      if [ "${_DB_SERIES}" = "10.3" ] \
+      if [ "${_DB_SERIES}" = "10.4" ] \
+        || [ "${_DB_SERIES}" = "10.3" ] \
         || [ "${_DB_SERIES}" = "10.2" ] \
-        || [ "${_DB_SERIES}" = "10.4" ] \
         || [ "${_DB_SERIES}" = "5.7" ]; then
         if [ "${_DB_SERIES}" = "10.3" ]; then
           _DB_SERVER=MariaDB
@@ -1481,9 +1487,9 @@ check_php_rebuild() {
       install_php_multi "$1"
     fi
   fi
-  if [ "${_DB_SERIES}" = "10.3" ] \
+  if [ "${_DB_SERIES}" = "10.4" ] \
+    || [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ] \
-    || [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "10.0" ] \
     || [ "${_DB_SERIES}" = "5.7" ] \
     || [ "${_DB_SERIES}" = "5.5" ]; then
