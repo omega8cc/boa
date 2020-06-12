@@ -550,7 +550,7 @@ install_php_extensions() {
       cd geos-${_GEOS_VRN}
       _PHP_V="72 73 74 56 71 70"
       if [ "${_DB_SERIES}" = "10.4" ] \
-        || [ "${_DB_SERIES}" = "10.3" ]
+        || [ "${_DB_SERIES}" = "10.3" ] \
         || [ "${_DB_SERIES}" = "10.2" ]; then
         _PHP_V="72 73 74 56 71 70"
       fi
@@ -791,7 +791,7 @@ update_php_extensions() {
       cd geos-${_GEOS_VRN}
       _PHP_V="72 73 74 56 71 70"
       if [ "${_DB_SERIES}" = "10.4" ] \
-        || [ "${_DB_SERIES}" = "10.3" ]
+        || [ "${_DB_SERIES}" = "10.3" ] \
         || [ "${_DB_SERIES}" = "10.2" ]; then
         _PHP_V="72 73 74 56 71 70"
       fi
