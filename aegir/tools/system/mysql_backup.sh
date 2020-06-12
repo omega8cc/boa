@@ -178,7 +178,7 @@ backup_this_database() {
 
 if [ "${_DB_SERIES}" = "10.3" ] \
   || [ "${_DB_SERIES}" = "10.2" ] \
-  || [ "${_DB_SERIES}" = "10.1" ] \
+  || [ "${_DB_SERIES}" = "10.4" ] \
   || [ "${_DB_SERIES}" = "5.7" ]; then
   check_running
   mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
@@ -263,7 +263,7 @@ if [ "${_OPTIM}" = "YES" ] \
   ionice -c2 -n2 -p $$
   if [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ] \
-    || [ "${_DB_SERIES}" = "10.1" ] \
+    || [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "5.7" ]; then
     check_running
     mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null

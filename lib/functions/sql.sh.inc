@@ -38,12 +38,13 @@ update_innodb_log_file_size() {
 update_sql_conf() {
   sed -i "s/.*innodb_force_recovery/#innodb_force_recovery/g" /etc/mysql/my.cnf
   wait
-  # if [ "${_DB_SERIES}" = "10.1" ]; then
+  # if [ "${_DB_SERIES}" = "10.4" ]; then
   #   sed -i "s/.*innodb-defragment/innodb-defragment/g" /etc/mysql/my.cnf
   #   wait
   # fi
   if [ "${_DB_SERIES}" = "10.2" ] \
-    || [ "${_DB_SERIES}" = "10.3" ]; then
+    || [ "${_DB_SERIES}" = "10.3" ] \
+    || [ "${_DB_SERIES}" = "10.4" ]; then
     sed -i "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" /etc/mysql/my.cnf
     wait
   fi
@@ -459,9 +460,9 @@ install_db_sql() {
       elif [ "${_DB_SERIES}" = "10.2" ]; then
         _DB_SERVER=MariaDB
         _DBS_VRN="${_MARIADB_10_2_VRN}"
-      elif [ "${_DB_SERIES}" = "10.1" ]; then
+      elif [ "${_DB_SERIES}" = "10.4" ]; then
         _DB_SERVER=MariaDB
-        _DBS_VRN="${_MARIADB_10_1_VRN}"
+        _DBS_VRN="${_MARIADB_10_4_VRN}"
       elif [ "${_DB_SERIES}" = "5.7" ] \
         && [ "${_SQL_MAJOR_UP_ALLOW}" = "YES" ]; then
         _DB_SERVER=Percona
@@ -483,7 +484,7 @@ install_db_sql() {
   else
     if [ "${_DB_SERIES}" = "10.3" ] \
       || [ "${_DB_SERIES}" = "10.2" ] \
-      || [ "${_DB_SERIES}" = "10.1" ]; then
+      || [ "${_DB_SERIES}" = "10.4" ]; then
       _DO_NOTHING=YES
     else
       _DB_SERIES=10.2
@@ -603,7 +604,7 @@ install_db_sql() {
       fi
     fi
     SQLDEB="mariadb-server"
-  elif [ "${_DB_SERIES}" = "10.1" ]; then
+  elif [ "${_DB_SERIES}" = "10.4" ]; then
     if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       st_runner "${_RMAPP} mariadb-server-5.5" &> /dev/null
@@ -675,7 +676,7 @@ install_db_sql() {
             python-mysqldb \
             libmariadb-dev \
             libdbi-perl"
-  elif [ "${_DB_SERIES}" = "10.1" ] \
+  elif [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "5.5" ]; then
     SQLADD="libdbd-mysql-perl \
             percona-xtrabackup-24 \
@@ -884,7 +885,7 @@ install_db_server() {
         if [[ ! "${_DB_SERVER_TEST}" =~ "5.7" ]]; then
           _SQL_UPGRADE=YES
         fi
-      elif [ "${_DB_SERIES}" = "10.1" ]; then
+      elif [ "${_DB_SERIES}" = "10.4" ]; then
         if [[ ! "${_DB_SERVER_TEST}" =~ "10.1." ]]; then
           _SQL_UPGRADE=YES
         fi

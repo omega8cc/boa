@@ -524,9 +524,9 @@ os_detection() {
       elif [ "${_DB_SERIES}" = "10.2" ]; then
         _DB_SERVER=MariaDB
         _DBS_VRN="${_MARIADB_10_2_VRN}"
-      elif [ "${_DB_SERIES}" = "10.1" ]; then
+      elif [ "${_DB_SERIES}" = "10.4" ]; then
         _DB_SERVER=MariaDB
-        _DBS_VRN="${_MARIADB_10_1_VRN}"
+        _DBS_VRN="${_MARIADB_10_4_VRN}"
       elif [ "${_DB_SERIES}" = "5.7" ]; then
         _DB_SERVER=Percona
         _DBS_VRN="${_PERCONA_5_7_VRN}"
@@ -565,9 +565,9 @@ os_detection() {
     elif [ "${_DB_SERIES}" = "10.2" ]; then
       _DB_SERVER=MariaDB
       _DBS_VRN="${_MARIADB_10_2_VRN}"
-    elif [ "${_DB_SERIES}" = "10.1" ]; then
+    elif [ "${_DB_SERIES}" = "10.4" ]; then
       _DB_SERVER=MariaDB
-      _DBS_VRN="${_MARIADB_10_1_VRN}"
+      _DBS_VRN="${_MARIADB_10_4_VRN}"
     elif [ "${_DB_SERIES}" = "5.7" ]; then
       _DB_SERVER=Percona
       _DBS_VRN="${_PERCONA_5_7_VRN}"

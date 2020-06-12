@@ -118,7 +118,7 @@ stop_sql() {
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     if [ "${_DB_SERIES}" = "10.3" ] \
       || [ "${_DB_SERIES}" = "10.2" ] \
-      || [ "${_DB_SERIES}" = "10.1" ] \
+      || [ "${_DB_SERIES}" = "10.4" ] \
       || [ "${_DB_SERIES}" = "5.7" ]; then
       echo "Preparing MySQLD for quick shutdown.."
       mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
