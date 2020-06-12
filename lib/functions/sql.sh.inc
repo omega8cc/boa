@@ -554,11 +554,13 @@ install_db_sql() {
         st_runner "${_RMAPP} libmariadb-dev" &> /dev/null
         st_runner "${_RMAPP} libmariadbd-dev" &> /dev/null
         st_runner "${_RMAPP} libmysqlclient18" &> /dev/null
+        st_runner "${_RMAPP} libmariadb3" &> /dev/null
         st_runner "apt-get purge libmysqlclient18.1 -y" &> /dev/null
         st_runner "apt-get purge libmariadbclient-dev -y" &> /dev/null
         st_runner "apt-get purge libmariadb-dev -y" &> /dev/null
         st_runner "apt-get purge libmariadbd-dev -y" &> /dev/null
         st_runner "apt-get purge libmysqlclient18 -y" &> /dev/null
+        st_runner "apt-get purge libmariadb3 -y" &> /dev/null
       fi
     fi
     SQLDEB="mariadb-server"
@@ -580,11 +582,13 @@ install_db_sql() {
         st_runner "${_RMAPP} libmariadb-dev" &> /dev/null
         st_runner "${_RMAPP} libmariadbd-dev" &> /dev/null
         st_runner "${_RMAPP} libmysqlclient18" &> /dev/null
+        st_runner "${_RMAPP} libmariadb3" &> /dev/null
         st_runner "apt-get purge libmysqlclient18.1 -y" &> /dev/null
         st_runner "apt-get purge libmariadbclient-dev -y" &> /dev/null
         st_runner "apt-get purge libmariadb-dev -y" &> /dev/null
         st_runner "apt-get purge libmariadbd-dev -y" &> /dev/null
         st_runner "apt-get purge libmysqlclient18 -y" &> /dev/null
+        st_runner "apt-get purge libmariadb3 -y" &> /dev/null
       fi
     fi
     SQLDEB="mariadb-server"
@@ -606,11 +610,13 @@ install_db_sql() {
         st_runner "${_RMAPP} libmariadb-dev" &> /dev/null
         st_runner "${_RMAPP} libmariadbd-dev" &> /dev/null
         st_runner "${_RMAPP} libmysqlclient18" &> /dev/null
+        st_runner "${_RMAPP} libmariadb3" &> /dev/null
         st_runner "apt-get purge libmysqlclient18.1 -y" &> /dev/null
         st_runner "apt-get purge libmariadbclient-dev -y" &> /dev/null
         st_runner "apt-get purge libmariadb-dev -y" &> /dev/null
         st_runner "apt-get purge libmariadbd-dev -y" &> /dev/null
         st_runner "apt-get purge libmysqlclient18 -y" &> /dev/null
+        st_runner "apt-get purge libmariadb3 -y" &> /dev/null
       fi
     fi
     SQLDEB="mariadb-server"
@@ -632,12 +638,14 @@ install_db_sql() {
       st_runner "${_RMAPP} libmariadb-dev" &> /dev/null
       st_runner "${_RMAPP} libmariadbd-dev" &> /dev/null
       st_runner "${_RMAPP} libmysqlclient18" &> /dev/null
+      st_runner "${_RMAPP} libmariadb3" &> /dev/null
       st_runner "apt-get purge mysql-common -y" &> /dev/null
       st_runner "apt-get purge libmysqlclient18.1 -y" &> /dev/null
       st_runner "apt-get purge libmariadbclient-dev -y" &> /dev/null
       st_runner "apt-get purge libmariadb-dev -y" &> /dev/null
       st_runner "apt-get purge libmariadbd-dev -y" &> /dev/null
       st_runner "apt-get purge libmysqlclient18 -y" &> /dev/null
+      st_runner "apt-get purge libmariadb3 -y" &> /dev/null
     fi
     SQLDEB="percona-server-server-${_DB_SERIES}"
   else
