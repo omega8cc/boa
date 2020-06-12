@@ -432,6 +432,8 @@ fix_php_ini_opcache_all() {
   _PHP_V="72 73 74 56 71 70"
   for e in ${_PHP_V}; do
     case "${e}" in
+      74) _P_API="${_PHP74_API}" ;;
+      73) _P_API="${_PHP73_API}" ;;
       72) _P_API="${_PHP72_API}" ;;
       71) _P_API="${_PHP71_API}" ;;
       70) _P_API="${_PHP70_API}" ;;
