@@ -1912,6 +1912,7 @@ install_php_deps() {
   st_runner "${_INSTALL} libmagickwand-dev" 2> /dev/null
   st_runner "${_INSTALL} libxpm-dev" 2> /dev/null
   if [ ! -d "/usr/local/lib/icu/67.1" ]; then
+    msg "INFO: Installing ICU libs version ${_ICU_VRN}..."
     if [ ! -e "/var/opt/icu/source" ]; then
       cd /var/opt
       rm -rf icu*
