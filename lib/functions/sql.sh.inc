@@ -530,6 +530,11 @@ install_db_sql() {
   st_runner "apt-get purge mytop -y" &> /dev/null
   rm -f /usr/bin/mytop
   st_runner "apt-get update -qq" &> /dev/null
+  if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
+    || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+    sed -i "s/.*innodb_force_recovery.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf
+    wait
+  fi
   if [ "${_EASY_SETUP}" = "MSTR" ] \
     || [ "${_EASY_SETUP}" = "DBHD" ] \
     || [ "${_EASY_SETUP}" = "WBHD" ] \
