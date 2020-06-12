@@ -36,6 +36,8 @@ update_innodb_log_file_size() {
 #
 # Update SQL Config.
 update_sql_conf() {
+  sed -i "s/.*innodb_force_recovery/#innodb_force_recovery/g" /etc/mysql/my.cnf
+  wait
   # if [ "${_DB_SERIES}" = "10.1" ]; then
   #   sed -i "s/.*innodb-defragment/innodb-defragment/g" /etc/mysql/my.cnf
   #   wait

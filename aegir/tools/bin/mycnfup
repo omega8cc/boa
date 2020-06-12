@@ -596,6 +596,8 @@ update_innodb_log_file_size() {
 # Update SQL Config.
 update_sql_conf() {
   echo "running ${tVr} `hostname` update_sql_conf procedure.."
+  sed -i "s/.*innodb_force_recovery/#innodb_force_recovery/g" /etc/mysql/my.cnf
+  wait
   sed -i "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" /etc/mysql/my.cnf
   wait
   sed -i "s/.*innodb_buffer_pool_dump_at_shutdown/#innodb_buffer_pool_dump_at_shutdown/g" /etc/mysql/my.cnf
