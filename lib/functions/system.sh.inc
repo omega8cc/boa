@@ -4534,8 +4534,12 @@ install_myquick_src() {
   if [ "${_MYQUICK_INSTALL_REQUIRED}" = "YES" ]; then
     msg "INFO: Building MyQuick ${_MYQUICK_VRN} from sources, please wait..."
     mrun "${_INSTALL} cmake" 2> /dev/null
-    mrun "${_INSTALL} libmariadb-dev" 2> /dev/null
-    if [ "${_DB_SERIES}" = "10.3" ]; then
+    if [ "${_DB_SERVER}" = "Percona" ]; then
+      mrun "${_INSTALL} libperconaserverclient20-dev" 2> /dev/null
+    else
+      mrun "${_INSTALL} libmariadb-dev" 2> /dev/null
+    fi
+    if [ "${_DB_SERIES}" = "10.3" ] || [ "${_DB_SERIES}" = "5.7" ]; then
       if [ ! -e "/usr/include/mysql" ] \
         && [ -d "/usr/include/mariadb" ]; then
         ln -sf /usr/include/mariadb /usr/include/mysql

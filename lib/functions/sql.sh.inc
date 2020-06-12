@@ -668,15 +668,18 @@ install_db_sql() {
     SQLADD="libdbd-mysql-perl \
             percona-xtrabackup-24 \
             python-mysqldb \
+            libmariadb-dev \
             libdbi-perl"
   elif [ "${_DB_SERIES}" = "10.1" ] \
     || [ "${_DB_SERIES}" = "5.5" ]; then
     SQLADD="libdbd-mysql-perl \
             percona-xtrabackup-24 \
             python-mysqldb \
+            libmariadb-dev \
             libdbi-perl"
   elif [ "${_DB_SERIES}" = "5.7" ]; then
     SQLADD="percona-xtrabackup-24 \
+            libperconaserverclient20-dev \
             python-mysqldb \
             libdbi-perl"
   fi
