@@ -731,6 +731,10 @@ install_with_aptitude_sql() {
       && [ -e "/usr/bin/mariadb_config" ]; then
       ln -sf /usr/bin/mariadb_config /usr/bin/mysql_config
     fi
+    if [ ! -e "/usr/bin/mysql-service-convert" ] \
+      && [ -e "/usr/bin/mariadb-service-convert" ]; then
+      ln -sf /usr/bin/mariadb-service-convert /usr/bin/mysql-service-convert
+    fi
   fi
   usermod -aG users mysql
 }
