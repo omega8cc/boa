@@ -42,7 +42,6 @@ table_open_cache        = 2048
 table_definition_cache  = 512
 thread_stack            = 256K
 thread_cache_size       = 128
-thread_concurrency      = 8
 wait_timeout            = 9999
 tmp_table_size          = 64M
 max_heap_table_size     = 128M
