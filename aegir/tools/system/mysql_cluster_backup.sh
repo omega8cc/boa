@@ -203,10 +203,12 @@ if [ "${_DB_SERIES}" = "10.3" ] \
   || [ "${_DB_SERIES}" = "10.4" ]; then
   check_running
   ${_C_SQL} -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+  ${_C_SQL} -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
   ${_C_SQL} -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
   ${_C_SQL} -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
   ${_C_SQL} -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
   ${_C_SQL} -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+  ${_C_SQL} -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
 fi
 
 for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do

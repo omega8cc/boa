@@ -182,10 +182,12 @@ if [ "${_DB_SERIES}" = "10.4" ] \
   || [ "${_DB_SERIES}" = "5.7" ]; then
   check_running
   mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+  mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
   mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
   mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
   mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
   mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+  mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
 fi
 
 for _DB in `mysql -e "show databases" -s | uniq | sort`; do
@@ -267,10 +269,12 @@ if [ "${_OPTIM}" = "YES" ] \
     || [ "${_DB_SERIES}" = "5.7" ]; then
     check_running
     mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
   fi
   bash /var/xdrago/move_sql.sh
 fi
