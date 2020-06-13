@@ -1126,15 +1126,15 @@ install_php_multi() {
         || [ "${_DB_SERIES}" = "10.3" ] \
         || [ "${_DB_SERIES}" = "10.2" ] \
         || [ "${_DB_SERIES}" = "5.7" ]; then
-        if [ "${_DB_SERIES}" = "10.3" ]; then
+        if [ "${_DB_SERIES}" = "10.4" ]; then
+          _DB_SERVER=MariaDB
+          _DBS_VRN="${_MARIADB_10_4_VRN}"
+        elif [ "${_DB_SERIES}" = "10.3" ]; then
           _DB_SERVER=MariaDB
           _DBS_VRN="${_MARIADB_10_3_VRN}"
         elif [ "${_DB_SERIES}" = "10.2" ]; then
           _DB_SERVER=MariaDB
           _DBS_VRN="${_MARIADB_10_2_VRN}"
-        elif [ "${_DB_SERIES}" = "10.4" ]; then
-          _DB_SERVER=MariaDB
-          _DBS_VRN="${_MARIADB_10_4_VRN}"
         elif [ "${_DB_SERIES}" = "5.7" ]; then
           _DB_SERVER=Percona
           _DBS_VRN="${_PERCONA_5_7_VRN}"
@@ -1490,18 +1490,16 @@ check_php_rebuild() {
   if [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ] \
-    || [ "${_DB_SERIES}" = "10.0" ] \
-    || [ "${_DB_SERIES}" = "5.7" ] \
-    || [ "${_DB_SERIES}" = "5.5" ]; then
-    if [ "${_DB_SERIES}" = "10.3" ]; then
+    || [ "${_DB_SERIES}" = "5.7" ]; then
+    if [ "${_DB_SERIES}" = "10.4" ]; then
+      _DB_SERVER=MariaDB
+      _DBS_VRN="${_MARIADB_10_4_VRN}"
+    elif [ "${_DB_SERIES}" = "10.3" ]; then
       _DB_SERVER=MariaDB
       _DBS_VRN="${_MARIADB_10_3_VRN}"
     elif [ "${_DB_SERIES}" = "10.2" ]; then
       _DB_SERVER=MariaDB
       _DBS_VRN="${_MARIADB_10_2_VRN}"
-    elif [ "${_DB_SERIES}" = "10.4" ]; then
-      _DB_SERVER=MariaDB
-      _DBS_VRN="${_MARIADB_10_4_VRN}"
     elif [ "${_DB_SERIES}" = "5.7" ]; then
       _DB_SERVER=Percona
       _DBS_VRN="${_PERCONA_5_7_VRN}"
@@ -1512,7 +1510,13 @@ check_php_rebuild() {
     fi
     _T_DBS_VRN="${_DBS_VRN}"
   else
+    _DB_SERVER=MariaDB
+    _DB_SERIES=10.2
+    _DBS_VRN="${_MARIADB_10_2_VRN}"
     _T_DBS_VRN="${_DBS_VRN}"
+    if [ -e "${barCnf}" ]; then
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g" ${barCnf}
+    fi
   fi
   # if [ ! -e "${pthLog}/installed-${_PHP_VERSION}-${_T_DBS_VRN}-${_DB_SERVER}.log" ]; then
   #   msg "INFO: PHP ${_PHP_VERSION} rebuild required for ${_DB_SERVER} ${_T_DBS_VRN}"

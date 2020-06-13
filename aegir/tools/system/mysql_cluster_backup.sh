@@ -198,9 +198,9 @@ backup_this_database() {
 
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
-if [ "${_DB_SERIES}" = "10.3" ] \
-  || [ "${_DB_SERIES}" = "10.2" ] \
-  || [ "${_DB_SERIES}" = "10.4" ]; then
+if [ "${_DB_SERIES}" = "10.4" ] \
+  || [ "${_DB_SERIES}" = "10.3" ] \
+  || [ "${_DB_SERIES}" = "10.2" ]; then
   check_running
   ${_C_SQL} -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
   ${_C_SQL} -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
