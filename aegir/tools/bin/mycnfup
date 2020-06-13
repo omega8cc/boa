@@ -602,12 +602,6 @@ update_sql_conf() {
   wait
   sed -i "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" /etc/mysql/my.cnf
   wait
-  sed -i "s/.*innodb_buffer_pool_dump_at_shutdown/#innodb_buffer_pool_dump_at_shutdown/g" /etc/mysql/my.cnf
-  wait
-  sed -i "s/.*innodb_buffer_pool_load_at_startup/#innodb_buffer_pool_load_at_startup/g" /etc/mysql/my.cnf
-  wait
-  sed -i "s/.*innodb_buffer_pool_dump_pct/#innodb_buffer_pool_dump_pct/g" /etc/mysql/my.cnf
-  wait
   if [ -e "/root/.my.cluster_root_pwd.txt" ] \
     || [ "${_VMFAMILY}" = "VS" ]; then
     _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
