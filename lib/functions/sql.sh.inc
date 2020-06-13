@@ -886,7 +886,7 @@ install_db_server() {
           _SQL_UPGRADE=YES
         fi
       elif [ "${_DB_SERIES}" = "10.4" ]; then
-        if [[ ! "${_DB_SERVER_TEST}" =~ "10.1." ]]; then
+        if [[ ! "${_DB_SERVER_TEST}" =~ "10.4." ]]; then
           _SQL_UPGRADE=YES
         fi
       elif [ "${_DB_SERIES}" = "10.2" ]; then
