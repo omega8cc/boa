@@ -987,6 +987,7 @@ install_php_multi() {
   if [ -d "/usr/local/lib/icu/67.1" ]; then
     _PRE_SNFR="--with-icu-dir=/usr/local"
   fi
+  _PRE_SNFR=
   if [ -d "/usr/local/include/curl" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --with-curl=/usr/local"
   else
