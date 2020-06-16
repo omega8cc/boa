@@ -4658,11 +4658,11 @@ install_update_xdrago() {
         _NGINX_DOS_LIMIT=888
       else
         if [ -z "${_NGINX_DOS_LIMIT}" ] \
-          || [ "${_NGINX_DOS_LIMIT}" = "300" ]; then
+          || [ "${_NGINX_DOS_LIMIT}" = "299" ]; then
           if [ "${_VMFAMILY}" = "VS" ]; then
-            _NGINX_DOS_LIMIT=249
+            _NGINX_DOS_LIMIT=155
           else
-            _NGINX_DOS_LIMIT=288
+            _NGINX_DOS_LIMIT=250
           fi
         fi
       fi
@@ -4740,11 +4740,11 @@ install_update_xdrago() {
         _NGINX_DOS_LIMIT=888
       else
         if [ -z "${_NGINX_DOS_LIMIT}" ] \
-          || [ "${_NGINX_DOS_LIMIT}" = "300" ]; then
+          || [ "${_NGINX_DOS_LIMIT}" = "299" ]; then
           if [ "${_VMFAMILY}" = "VS" ]; then
-            _NGINX_DOS_LIMIT=249
+            _NGINX_DOS_LIMIT=155
           else
-            _NGINX_DOS_LIMIT=288
+            _NGINX_DOS_LIMIT=250
           fi
         fi
       fi

@@ -888,11 +888,11 @@ _CPU_CRIT_RATIO=9
 
 ###
 ### Set max allowed page views from one IP
-### out of last 500. Note that it will lock
+### out of last 300. Note that it will lock
 ### the access completely for 1 hour on the
 ### firewall level in /etc/csf/csf.deny
 ###
-_NGINX_DOS_LIMIT=300
+_NGINX_DOS_LIMIT=299
 
 ###
 ### Nginx Headers More support is available
