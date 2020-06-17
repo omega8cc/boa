@@ -670,6 +670,7 @@ install_db_sql() {
     mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/aria_log.00000001 ${vBs}/aria_log.00000001-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/aria_log_control ${vBs}/aria_log_control-${_NOW}/ &> /dev/null
+    sed -i "s/.*innodb-defragment/innodb_force_recovery = 3/g" /etc/mysql/my.cnf
   fi
   if [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "10.3" ] \
