@@ -2497,7 +2497,7 @@ install_curl_src() {
       _CURL_INSTALL_REQUIRED=NO
     else
       _CURL_INSTALL_REQUIRED=YES
-      msg "INFO: Installed cURL version ${_CURL_ITD}, upgrade required"
+      # msg "INFO: Installed cURL version ${_CURL_ITD}, upgrade required"
     fi
   fi
   _BROKEN_CURL_TEST=$(curl --version 2>&1)
