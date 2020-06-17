@@ -735,11 +735,11 @@ install_with_aptitude_sql() {
       rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
   	  if [ -x "/usr/bin/mariadb_upgrade" ]; then
   	    mrun "mariadb_upgrade --force" &> /dev/null
-  	    mrun "mysqlcheck -Ar" &> /dev/null
+  	    mrun "mysqlcheck -A --auto-repair" &> /dev/null
   	    mrun "mariadb_upgrade --force" &> /dev/null
   	  elif [ -x "/usr/bin/mysql_upgrade" ]; then
   	    mrun "mysql_upgrade --force" &> /dev/null
-  	    mrun "mysqlcheck -Ar" &> /dev/null
+  	    mrun "mysqlcheck -A --auto-repair" &> /dev/null
   	    mrun "mysql_upgrade --force" &> /dev/null
   	  fi
     fi
@@ -971,11 +971,11 @@ install_db_server() {
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
         if [ -x "/usr/bin/mariadb_upgrade" ]; then
           mrun "mariadb_upgrade --force" &> /dev/null
-          mrun "mysqlcheck -Ar" &> /dev/null
+          mrun "mysqlcheck -A --auto-repair" &> /dev/null
           mrun "mariadb_upgrade --force" &> /dev/null
         elif [ -x "/usr/bin/mysql_upgrade" ]; then
           mrun "mysql_upgrade --force" &> /dev/null
-          mrun "mysqlcheck -Ar" &> /dev/null
+          mrun "mysqlcheck -A --auto-repair" &> /dev/null
           mrun "mysql_upgrade --force" &> /dev/null
         fi
       fi
