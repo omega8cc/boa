@@ -1902,15 +1902,9 @@ check_apt_updates() {
 }
 
 #
-# Install PHP deps.
-install_php_deps() {
+# Install ICU from sources.
+install_icu() {
   ###--------------------###
-  st_runner "${_INSTALL} libgd-dev" 2> /dev/null
-  st_runner "${_INSTALL} libgd3" 2> /dev/null
-  st_runner "${_INSTALL} libkrb5-dev" 2> /dev/null
-  st_runner "${_INSTALL} libldap-dev" 2> /dev/null
-  st_runner "${_INSTALL} libmagickwand-dev" 2> /dev/null
-  st_runner "${_INSTALL} libxpm-dev" 2> /dev/null
   if [ ! -d "/usr/local/lib/icu/67.1" ]; then
     msg "INFO: Installing ICU libs version ${_ICU_VRN}..."
     if [ ! -e "/var/opt/icu/source" ]; then
@@ -1924,6 +1918,25 @@ install_php_deps() {
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
+  fi
+}
+
+#
+# Install PHP deps.
+install_php_deps() {
+  ###--------------------###
+  st_runner "${_INSTALL} libgd-dev" 2> /dev/null
+  st_runner "${_INSTALL} libgd3" 2> /dev/null
+  st_runner "${_INSTALL} libkrb5-dev" 2> /dev/null
+  st_runner "${_INSTALL} libldap-dev" 2> /dev/null
+  st_runner "${_INSTALL} libmagickwand-dev" 2> /dev/null
+  st_runner "${_INSTALL} libxpm-dev" 2> /dev/null
+  #install_icu
+  if [ -d "/usr/local/lib/icu/67.1" ]; then
+    rm -f -r /usr/local/lib/icu
+    rm -f /usr/local/lib/libicu*
+    mrun "ldconfig" 2> /dev/null
+    _PHP_FORCE_REINSTALL=YES
   fi
 }
 
