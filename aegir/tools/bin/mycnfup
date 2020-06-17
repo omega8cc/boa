@@ -602,6 +602,8 @@ update_sql_conf() {
   wait
   sed -i "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" /etc/mysql/my.cnf
   wait
+  sed -i "s/^thread_concurrency.*//g" /etc/mysql/my.cnf
+  wait
   if [ -e "/root/.my.cluster_root_pwd.txt" ] \
     || [ "${_VMFAMILY}" = "VS" ]; then
     _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
