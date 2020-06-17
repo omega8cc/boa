@@ -4548,9 +4548,9 @@ install_myquick_src() {
     msg "INFO: Building MyQuick ${_MYQUICK_VRN} from sources, please wait..."
     mrun "${_INSTALL} cmake" 2> /dev/null
     if [ "${_DB_SERVER}" = "Percona" ]; then
-      rm -f /usr/include/mysql
-      rm -f /usr/bin/mysql_config
-      rm -f /usr/bin/mysql-service-convert
+      rm -f /usr/include/mysql 2> /dev/null
+      rm -f /usr/bin/mysql_config 2> /dev/null
+      rm -f /usr/bin/mysql-service-convert 2> /dev/null
       mrun "${_INSTALL} libperconaserverclient20-dev" 2> /dev/null
     else
       mrun "${_INSTALL} libmariadb-dev" 2> /dev/null
