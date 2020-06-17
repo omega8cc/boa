@@ -469,9 +469,9 @@ install_db_sql() {
     fi
     msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSV}"
   else
-    if [ "${_DB_SERIES}" = "10.3" ] \
-      || [ "${_DB_SERIES}" = "10.2" ] \
-      || [ "${_DB_SERIES}" = "10.4" ]; then
+    if [ "${_DB_SERIES}" = "10.4" ] \
+      || [ "${_DB_SERIES}" = "10.3" ] \
+      || [ "${_DB_SERIES}" = "10.2" ]; then
       _DO_NOTHING=YES
     else
       _DB_SERIES=10.2
@@ -662,6 +662,15 @@ install_db_sql() {
     st_runner "apt-get purge mysql-common -y" &> /dev/null
     SQLDEB="mariadb-server"
   fi
+  if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
+    || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+    mkdir -p ${vBs}/old-sql-ib-log-${_NOW}
+    mrun "sleep 1"
+    mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
+    mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
+    mv -f /var/lib/mysql/aria_log.00000001 ${vBs}/aria_log.00000001-${_NOW}/ &> /dev/null
+    mv -f /var/lib/mysql/aria_log_control ${vBs}/aria_log_control-${_NOW}/ &> /dev/null
+  fi
   if [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ]; then
@@ -719,29 +728,36 @@ install_with_aptitude_sql() {
   if [ "${_EASY_SETUP}" = "DBHD" ] \
     || [ -e "/etc/mysql/conf.d/galera.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERIES}" ]]; then
-      msg "INFO: Running ${_DB_SERVER} system tables upgrade, please wait..."
-	  if [ -x "/usr/bin/mariadb_upgrade" ]; then
-	    mrun "mariadb_upgrade --force" &> /dev/null
-	  elif [ -x "/usr/bin/mysql_upgrade" ]; then
-	    mrun "mysql_upgrade --force" &> /dev/null
-	  fi
+    if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERIES}" ]] \
+      || [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
+      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      msg "INFO: Running ${_DB_SERVER} tables check and upgrade, please wait..."
+      rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
+  	  if [ -x "/usr/bin/mariadb_upgrade" ]; then
+  	    mrun "mariadb_upgrade --force" &> /dev/null
+  	    mrun "mysqlcheck -Ar" &> /dev/null
+  	    mrun "mariadb_upgrade --force" &> /dev/null
+  	  elif [ -x "/usr/bin/mysql_upgrade" ]; then
+  	    mrun "mysql_upgrade --force" &> /dev/null
+  	    mrun "mysqlcheck -Ar" &> /dev/null
+  	    mrun "mysql_upgrade --force" &> /dev/null
+  	  fi
     fi
   fi
-  if [ "${_DB_SERIES}" = "10.3" ] || [ "${_DB_SERIES}" = "10.4" ]; then
-    if [ ! -e "/usr/include/mysql" ] \
-      && [ -d "/usr/include/mariadb" ]; then
-      ln -sf /usr/include/mariadb /usr/include/mysql
-    fi
-    if [ ! -e "/usr/bin/mysql_config" ] \
-      && [ -e "/usr/bin/mariadb_config" ]; then
-      ln -sf /usr/bin/mariadb_config /usr/bin/mysql_config
-    fi
-    if [ ! -e "/usr/bin/mysql-service-convert" ] \
-      && [ -e "/usr/bin/mariadb-service-convert" ]; then
-      ln -sf /usr/bin/mariadb-service-convert /usr/bin/mysql-service-convert
-    fi
-  fi
+  # if [ "${_DB_SERIES}" = "10.3" ] || [ "${_DB_SERIES}" = "10.4" ]; then
+  #   if [ ! -e "/usr/include/mysql" ] \
+  #     && [ -d "/usr/include/mariadb" ]; then
+  #     ln -sf /usr/include/mariadb /usr/include/mysql
+  #   fi
+  #   if [ ! -e "/usr/bin/mysql_config" ] \
+  #     && [ -e "/usr/bin/mariadb_config" ]; then
+  #     ln -sf /usr/bin/mariadb_config /usr/bin/mysql_config
+  #   fi
+  #   if [ ! -e "/usr/bin/mysql-service-convert" ] \
+  #     && [ -e "/usr/bin/mariadb-service-convert" ]; then
+  #     ln -sf /usr/bin/mariadb-service-convert /usr/bin/mysql-service-convert
+  #   fi
+  # fi
   usermod -aG users mysql
 }
 
@@ -951,6 +967,17 @@ install_db_server() {
       if [ ! -e "/root/.proxy.cnf" ]; then
         mrun "sleep 120"
         mrun "service nginx stop" &> /dev/null
+        msg "INFO: Running ${_DB_SERVER} tables check and upgrade, please wait..."
+        rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
+        if [ -x "/usr/bin/mariadb_upgrade" ]; then
+          mrun "mariadb_upgrade --force" &> /dev/null
+          mrun "mysqlcheck -Ar" &> /dev/null
+          mrun "mariadb_upgrade --force" &> /dev/null
+        elif [ -x "/usr/bin/mysql_upgrade" ]; then
+          mrun "mysql_upgrade --force" &> /dev/null
+          mrun "mysqlcheck -Ar" &> /dev/null
+          mrun "mysql_upgrade --force" &> /dev/null
+        fi
       fi
       rm -f ${aptLiSys}.d/ourdelta.list
       _KEYS_SIG="C74CD1D8"
@@ -1015,10 +1042,13 @@ install_db_server() {
       _CUSTOM_CONFIG_SQL=NO
       mrun "sleep 8"
       if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERIES}" ]]; then
-        msg "INFO: Running ${_DB_SERVER} system tables upgrade, please wait..."
+        msg "INFO: Running ${_DB_SERVER} tables check and upgrade, please wait..."
+        rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
         if [ -x "/usr/bin/mariadb_upgrade" ]; then
           mrun "mariadb_upgrade --force" &> /dev/null
+          mrun "mariadb_upgrade --force" &> /dev/null
         elif [ -x "/usr/bin/mysql_upgrade" ]; then
+          mrun "mysql_upgrade --force" &> /dev/null
           mrun "mysql_upgrade --force" &> /dev/null
         fi
       fi

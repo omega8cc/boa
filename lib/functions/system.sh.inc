@@ -4555,20 +4555,20 @@ install_myquick_src() {
     else
       mrun "${_INSTALL} libmariadb-dev" 2> /dev/null
     fi
-    if [ "${_DB_SERIES}" = "10.3" ] || [ "${_DB_SERIES}" = "10.4" ]; then
-      if [ ! -e "/usr/include/mysql" ] \
-        && [ -d "/usr/include/mariadb" ]; then
-        ln -sf /usr/include/mariadb /usr/include/mysql
-      fi
-      if [ ! -e "/usr/bin/mysql_config" ] \
-        && [ -e "/usr/bin/mariadb_config" ]; then
-        ln -sf /usr/bin/mariadb_config /usr/bin/mysql_config
-      fi
-      if [ ! -e "/usr/bin/mysql-service-convert" ] \
-        && [ -e "/usr/bin/mariadb-service-convert" ]; then
-        ln -sf /usr/bin/mariadb-service-convert /usr/bin/mysql-service-convert
-      fi
-    fi
+    # if [ "${_DB_SERIES}" = "10.3" ] || [ "${_DB_SERIES}" = "10.4" ]; then
+    #   if [ ! -e "/usr/include/mysql" ] \
+    #     && [ -d "/usr/include/mariadb" ]; then
+    #     ln -sf /usr/include/mariadb /usr/include/mysql
+    #   fi
+    #   if [ ! -e "/usr/bin/mysql_config" ] \
+    #     && [ -e "/usr/bin/mariadb_config" ]; then
+    #     ln -sf /usr/bin/mariadb_config /usr/bin/mysql_config
+    #   fi
+    #   if [ ! -e "/usr/bin/mysql-service-convert" ] \
+    #     && [ -e "/usr/bin/mariadb-service-convert" ]; then
+    #     ln -sf /usr/bin/mariadb-service-convert /usr/bin/mysql-service-convert
+    #   fi
+    # fi
     cd /var/opt
     rm -rf mydumper*
     get_dev_src "mydumper-${_MYQUICK_VRN}.tar.gz"
@@ -5461,11 +5461,13 @@ update_initd() {
       fi
       mrun "service nginx start" &> /dev/null
       if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERIES}" ]]; then
-        msg "INFO: Running ${_DB_SERVER} system tables upgrade, please wait..."
+        msg "INFO: Running ${_DB_SERVER} tables check and upgrade, please wait..."
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
         if [ -x "/usr/bin/mariadb_upgrade" ]; then
           mrun "mariadb_upgrade --force" &> /dev/null
+          mrun "mariadb_upgrade --force" &> /dev/null
         elif [ -x "/usr/bin/mysql_upgrade" ]; then
+          mrun "mysql_upgrade --force" &> /dev/null
           mrun "mysql_upgrade --force" &> /dev/null
         fi
       fi
