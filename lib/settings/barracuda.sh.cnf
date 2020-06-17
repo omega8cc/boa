@@ -329,9 +329,9 @@ _REDIS_LISTEN_MODE=SOCKET
 ### REDIS MAJOR RELEASE                    ###
 ###----------------------------------------###
 ###
-### Supported values: 4 or 5
+### Supported values: 4, 5, 6
 ###
-_REDIS_MAJOR_RELEASE=5
+_REDIS_MAJOR_RELEASE=6
 
 
 ###----------------------------------------###
