@@ -733,7 +733,7 @@ install_with_aptitude_sql() {
     if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]] \
       || [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-      msg "INFO: Running ${_DB_SERVER} tables check and upgrade, please wait..."
+      msg "INFO: Running ${_DB_SERVER} tables check and upgrade (1)..."
       rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
   	  if [ -x "/usr/bin/mariadb_upgrade" ]; then
   	    mrun "mariadb_upgrade --force" &> /dev/null
@@ -975,7 +975,7 @@ install_db_server() {
       if [ ! -e "/root/.proxy.cnf" ]; then
         mrun "sleep 120"
         mrun "service nginx stop" &> /dev/null
-        msg "INFO: Running ${_DB_SERVER} tables check and upgrade, please wait..."
+        msg "INFO: Running ${_DB_SERVER} tables check and upgrade (2)..."
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
         if [ -x "/usr/bin/mariadb_upgrade" ]; then
           mrun "mariadb_upgrade --force" &> /dev/null
@@ -1050,7 +1050,7 @@ install_db_server() {
       _CUSTOM_CONFIG_SQL=NO
       mrun "sleep 8"
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
-        msg "INFO: Running ${_DB_SERVER} tables check and upgrade, please wait..."
+        msg "INFO: Running ${_DB_SERVER} tables upgrade (1)..."
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
         if [ -x "/usr/bin/mariadb_upgrade" ]; then
           mrun "mariadb_upgrade --force" &> /dev/null
