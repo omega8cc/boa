@@ -147,7 +147,8 @@ check_mysqld_running() {
     && [ -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     msg "INFO: Waiting for MySQLD availability before tune_sql_memory_limits..."
-    sleep 3
+    sleep 5
+    service mysql start &> /dev/null
   done
 }
 
