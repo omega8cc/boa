@@ -1148,7 +1148,7 @@ innodb_write_io_threads = 64
 innodb_read_io_threads = 64
 innodb_print_all_deadlocks = ON
 innodb_doublewrite = 0
-innodb_force_recovery = 3
+#innodb_force_recovery = 3
 
 [mysqld_safe]
 socket                  = /var/run/mysqld/mysqld.sock
