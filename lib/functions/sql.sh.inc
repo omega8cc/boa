@@ -730,42 +730,31 @@ install_with_aptitude_sql() {
   if [ "${_EASY_SETUP}" = "DBHD" ] \
     || [ -e "/etc/mysql/conf.d/galera.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]] \
-      || [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
-      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-      msg "INFO: Running ${_DB_SERVER} tables check and upgrade (1)..."
-      rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-  	  if [ -x "/usr/bin/mariadb_upgrade" ]; then
+    if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERIES}" ]]; then
+      msg "INFO: Running ${_DB_SERVER} all tables check (1) upgrade..."
+	  if [ -x "/usr/bin/mariadb_upgrade" ]; then
   	    mrun "mariadb_upgrade --force" &> /dev/null
   	    mrun "mysqlcheck -A --auto-repair" &> /dev/null
   	    mrun "mariadb_upgrade --force" &> /dev/null
-  	  elif [ -x "/usr/bin/mysql_upgrade" ]; then
+	  elif [ -x "/usr/bin/mysql_upgrade" ]; then
+	    mrun "mysql_upgrade --force" &> /dev/null
   	    mrun "mysqlcheck -A --auto-repair" &> /dev/null
   	    mrun "mysql_upgrade --force" &> /dev/null
-        if [ "${_DB_SERVER}" = "Percona" ] || [ "${_DB_SERIES}" = "5.7" ]; then
-          mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;" &> /dev/null
-          mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;" &> /dev/null
-          mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;" &> /dev/null
-        fi
-  	    mrun "mysql_upgrade --force" &> /dev/null
-  	    mrun "mysql_upgrade --force" &> /dev/null
-  	  fi
+	  fi
     fi
   fi
-  # if [ "${_DB_SERIES}" = "10.3" ] || [ "${_DB_SERIES}" = "10.4" ]; then
-  #   if [ ! -e "/usr/include/mysql" ] \
-  #     && [ -d "/usr/include/mariadb" ]; then
-  #     ln -sf /usr/include/mariadb /usr/include/mysql
-  #   fi
-  #   if [ ! -e "/usr/bin/mysql_config" ] \
-  #     && [ -e "/usr/bin/mariadb_config" ]; then
-  #     ln -sf /usr/bin/mariadb_config /usr/bin/mysql_config
-  #   fi
-  #   if [ ! -e "/usr/bin/mysql-service-convert" ] \
-  #     && [ -e "/usr/bin/mariadb-service-convert" ]; then
-  #     ln -sf /usr/bin/mariadb-service-convert /usr/bin/mysql-service-convert
-  #   fi
-  # fi
+  if [ "${_DB_SERVER}" = "Percona" ] \
+    && [ "${_DB_SERIES}" = "5.7" ] \
+    && [ "${_SQL_FORCE_REINSTALL}" = "YES" ]; then
+    msg "INFO: Running ${_DB_SERVER} tables fix, check and upgrade..."
+    rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
+    mrun "mysqlcheck -A --auto-repair" &> /dev/null
+    mrun "mysql_upgrade --force" &> /dev/null
+    mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;" &> /dev/null
+    mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;" &> /dev/null
+    mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;" &> /dev/null
+    mrun "mysql_upgrade --force" &> /dev/null
+  fi
   usermod -aG users mysql
 }
 
@@ -975,7 +964,7 @@ install_db_server() {
       if [ ! -e "/root/.proxy.cnf" ]; then
         mrun "sleep 120"
         mrun "service nginx stop" &> /dev/null
-        msg "INFO: Running ${_DB_SERVER} tables check and upgrade (2)..."
+        msg "INFO: Running ${_DB_SERVER} all tables check (2) upgrade..."
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
         if [ -x "/usr/bin/mariadb_upgrade" ]; then
           mrun "mariadb_upgrade --force" &> /dev/null
@@ -1050,7 +1039,7 @@ install_db_server() {
       _CUSTOM_CONFIG_SQL=NO
       mrun "sleep 8"
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
-        msg "INFO: Running ${_DB_SERVER} tables upgrade (1)..."
+        msg "INFO: Running ${_DB_SERVER} system tables (1) upgrade..."
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
         if [ -x "/usr/bin/mariadb_upgrade" ]; then
           mrun "mariadb_upgrade --force" &> /dev/null
