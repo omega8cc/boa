@@ -730,7 +730,7 @@ install_with_aptitude_sql() {
   if [ "${_EASY_SETUP}" = "DBHD" ] \
     || [ -e "/etc/mysql/conf.d/galera.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERIES}" ]] \
+    if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]] \
       || [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       msg "INFO: Running ${_DB_SERVER} tables check and upgrade, please wait..."
@@ -876,7 +876,7 @@ install_db_server() {
       update_newrelic
     fi
     _SQL_UPGRADE=NO
-    if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERVER}" ]]; then
+    if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
       _SQL_TEST_UPGRADE=NO
     else
       _SQL_TEST_UPGRADE=YES
@@ -885,21 +885,21 @@ install_db_server() {
       _SQL_UPGRADE=YES
     fi
     if [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]] \
-      || [[ "${_DB_SERVER_TEST}" =~ "Percona" ]]; then
+      || [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
       if [ "${_DB_SERIES}" = "5.7" ]; then
-        if [[ ! "${_DB_SERVER_TEST}" =~ "5.7" ]]; then
+        if [[ ! "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
           _SQL_UPGRADE=YES
         fi
       elif [ "${_DB_SERIES}" = "10.4" ]; then
-        if [[ ! "${_DB_SERVER_TEST}" =~ "10.4." ]]; then
+        if [[ ! "${_DB_SERVER_TEST}" =~ "Distrib 10.4." ]]; then
           _SQL_UPGRADE=YES
         fi
       elif [ "${_DB_SERIES}" = "10.2" ]; then
-        if [[ ! "${_DB_SERVER_TEST}" =~ "10.2." ]]; then
+        if [[ ! "${_DB_SERVER_TEST}" =~ "Distrib 10.2." ]]; then
           _SQL_UPGRADE=YES
         fi
       elif [ "${_DB_SERIES}" = "10.3" ]; then
-        if [[ ! "${_DB_SERVER_TEST}" =~ "10.3." ]]; then
+        if [[ ! "${_DB_SERVER_TEST}" =~ "Distrib 10.3." ]]; then
           _SQL_UPGRADE=YES
         fi
       fi
@@ -1043,7 +1043,7 @@ install_db_server() {
       wait
       _CUSTOM_CONFIG_SQL=NO
       mrun "sleep 8"
-      if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERIES}" ]]; then
+      if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
         msg "INFO: Running ${_DB_SERVER} tables check and upgrade, please wait..."
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
         if [ -x "/usr/bin/mariadb_upgrade" ]; then

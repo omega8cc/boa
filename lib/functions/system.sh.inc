@@ -4547,7 +4547,7 @@ install_myquick_src() {
   if [ "${_MYQUICK_INSTALL_REQUIRED}" = "YES" ]; then
     msg "INFO: Building MyQuick ${_MYQUICK_VRN} from sources, please wait..."
     mrun "${_INSTALL} cmake" 2> /dev/null
-    if [ "${_DB_SERVER}" = "Percona" ]; then
+    if [ "${_DB_SERVER}" = "Percona" ] || [ "${_DB_SERIES}" = "5.7" ]; then
       mrun "${_INSTALL} libperconaserverclient20-dev" 2> /dev/null
     else
       mrun "${_INSTALL} libmariadb-dev" 2> /dev/null
@@ -5457,7 +5457,7 @@ update_initd() {
         mrun "service php56-fpm start" &> /dev/null
       fi
       mrun "service nginx start" &> /dev/null
-      if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERIES}" ]]; then
+      if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
         msg "INFO: Running ${_DB_SERVER} tables check and upgrade, please wait..."
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
         if [ -x "/usr/bin/mariadb_upgrade" ]; then
