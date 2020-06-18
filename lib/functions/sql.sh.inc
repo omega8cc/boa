@@ -141,8 +141,20 @@ update_sql_conf() {
 }
 
 #
+#
+check_mysqld_running() {
+  until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
+    && [ -e "/var/run/mysqld/mysqld.sock" ]; do
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    echo "Waiting for MySQLD availability before tune_sql_memory_limits.."
+    sleep 3
+  done
+}
+
+#
 # Tune memory limits for SQL server.
 tune_sql_memory_limits() {
+  check_mysqld_running
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
   wait
   if [ ! -e "${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}" ]; then
