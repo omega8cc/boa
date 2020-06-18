@@ -535,7 +535,7 @@ install_db_sql() {
   st_runner "apt-get update -qq" &> /dev/null
   if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-    sed -i "s/.*innodb_force_recovery.*/#innodb_force_recovery = 3/g" /etc/mysql/my.cnf
+    sed -i "s/.*innodb_force_recovery.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf
     wait
   fi
   if [ "${_EASY_SETUP}" = "MSTR" ] \
@@ -683,10 +683,8 @@ install_db_sql() {
     mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/aria_log.00000001 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/aria_log_control ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
-    sed -i "s/.*innodb-defragment.*/#innodb_force_recovery = 3/g" /etc/mysql/my.cnf
-    wait
+    sed -i "s/.*innodb-defragment.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf
     sed -i "s/^thread_concurrency.*//g" /etc/mysql/my.cnf
-    wait
   fi
   if [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "10.3" ] \
