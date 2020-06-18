@@ -1,6 +1,16 @@
 #
 # Only supported upgrade path allowed.
 sql_strict_upgrade_path() {
+  _DBS_TEST=$(which mysql 2>&1)
+  if [ ! -z "${_DBS_TEST}" ]; then
+    _NOW_DB_V=$(mysql -V 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f6 \
+      | awk '{ print $1}' \
+      | cut -d"-" -f1 \
+      | awk '{ print $1}' \
+      | sed "s/[\,']//g" 2>&1)
+  fi
   if [ ! -z "${_NOW_DB_V}" ]; then
     if [[ ! "${_NOW_DB_V}" =~ (^)"${_DB_SERIES}" ]]; then
       _SQL_FORCE_REINSTALL=YES
