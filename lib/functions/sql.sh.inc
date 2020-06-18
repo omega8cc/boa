@@ -740,6 +740,7 @@ install_with_aptitude_sql() {
   	    mrun "mysqlcheck -A --auto-repair" &> /dev/null
   	    mrun "mariadb_upgrade --force" &> /dev/null
   	  elif [ -x "/usr/bin/mysql_upgrade" ]; then
+  	    mrun "mysqlcheck -A --auto-repair" &> /dev/null
   	    mrun "mysql_upgrade --force" &> /dev/null
         if [ "${_DB_SERVER}" = "Percona" ] || [ "${_DB_SERIES}" = "5.7" ]; then
           mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;" &> /dev/null
@@ -747,7 +748,7 @@ install_with_aptitude_sql() {
           mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;" &> /dev/null
           mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN password_expired;" &> /dev/null
         fi
-  	    mrun "mysqlcheck -A --auto-repair" &> /dev/null
+  	    mrun "mysql_upgrade --force" &> /dev/null
   	    mrun "mysql_upgrade --force" &> /dev/null
   	  fi
     fi
