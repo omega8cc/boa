@@ -1,4 +1,96 @@
 #
+# Only supported upgrade path allowed.
+sql_strict_upgrade_path() {
+  if [ ! -z "${_NOW_DB_V}" ]; then
+    if [[ ! "${_NOW_DB_V}" =~ (^)"${_DB_SERIES}" ]]; then
+      _SQL_FORCE_REINSTALL=YES
+    fi
+  else
+    _SQL_FORCE_REINSTALL=YES
+  fi
+  if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
+    _SQL_UPGRADE=NO
+  else
+    _SQL_UPGRADE=YES
+  fi
+  if [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+    _ALL_FORCE_REINSTALL=YES
+  else
+    _ALL_FORCE_REINSTALL=NO
+  fi
+  if [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]] \
+    || [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
+    if [ "${_DB_SERIES}" = "5.7" ]; then
+      if [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
+        _SQL_UPGRADE=YES
+        _SQL_FORCE_REINSTALL=NO
+        _ALL_FORCE_REINSTALL=NO
+      elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.2." ]]; then
+        _SQL_UPGRADE=YES
+      else
+        _SQL_UPGRADE=NO
+        _SQL_FORCE_REINSTALL=NO
+        _ALL_FORCE_REINSTALL=NO
+        msg "WARN: SQL upgrade to ${_DB_SERIES} from ${_NOW_DB_V} not supported"
+        msg "HINT: You can upgrade to ${_DB_SERIES} only from 10.2"
+      fi
+    elif [ "${_DB_SERIES}" = "10.4" ]; then
+      if [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.4." ]]; then
+        _SQL_UPGRADE=YES
+        _SQL_FORCE_REINSTALL=NO
+        _ALL_FORCE_REINSTALL=NO
+      elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.3." ]]; then
+        _SQL_UPGRADE=YES
+      else
+        _SQL_UPGRADE=NO
+        _SQL_FORCE_REINSTALL=NO
+        _ALL_FORCE_REINSTALL=NO
+        msg "WARN: SQL upgrade to ${_DB_SERIES} from ${_NOW_DB_V} not supported"
+        msg "HINT: You can upgrade to ${_DB_SERIES} only from 10.3"
+      fi
+    elif [ "${_DB_SERIES}" = "10.3" ]; then
+      if [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.3." ]]; then
+        _SQL_UPGRADE=YES
+        _SQL_FORCE_REINSTALL=NO
+        _ALL_FORCE_REINSTALL=NO
+      elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.2." ]]; then
+        _SQL_UPGRADE=YES
+      else
+        _SQL_UPGRADE=NO
+        _SQL_FORCE_REINSTALL=NO
+        _ALL_FORCE_REINSTALL=NO
+        msg "WARN: SQL upgrade to ${_DB_SERIES} from ${_NOW_DB_V} not supported"
+        msg "HINT: You can upgrade to ${_DB_SERIES} only from 10.2"
+      fi
+    elif [ "${_DB_SERIES}" = "10.2" ]; then
+      if [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.2." ]]; then
+        _SQL_UPGRADE=YES
+        _SQL_FORCE_REINSTALL=NO
+        _ALL_FORCE_REINSTALL=NO
+      elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.1." ]]; then
+        _SQL_UPGRADE=YES
+      else
+        _SQL_UPGRADE=NO
+        _SQL_FORCE_REINSTALL=NO
+        _ALL_FORCE_REINSTALL=NO
+        msg "WARN: SQL upgrade to ${_DB_SERIES} from ${_NOW_DB_V} not supported"
+        msg "HINT: You can upgrade to ${_DB_SERIES} only from 10.1"
+      fi
+    else
+      _SQL_UPGRADE=YES
+      _SQL_FORCE_REINSTALL=NO
+      _ALL_FORCE_REINSTALL=NO
+      msg "WARN: SQL upgrade to ${_DB_SERIES} from ${_NOW_DB_V} not supported"
+      msg "HINT: You can upgrade to ${_DB_SERIES} only from 10.1"
+    fi
+  fi
+  if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
+    || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
+    _SQL_UPGRADE=YES
+  fi
+}
+
+#
 # Update innodb_log_file_size.
 update_innodb_log_file_size() {
   msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
@@ -456,12 +548,12 @@ install_db_sql() {
       || [ -e "/root/.dbhd.clstr.cnf" ]; then
       _DBS_VRN="${_GALERA_10_VRN}"
     else
-      if [ "${_DB_SERIES}" = "10.3" ]; then
-        _DB_SERVER=MariaDB
-        _DBS_VRN="${_MARIADB_10_3_VRN}"
-      elif [ "${_DB_SERIES}" = "10.2" ]; then
+      if [ "${_DB_SERIES}" = "10.2" ]; then
         _DB_SERVER=MariaDB
         _DBS_VRN="${_MARIADB_10_2_VRN}"
+      elif [ "${_DB_SERIES}" = "10.3" ]; then
+        _DB_SERVER=MariaDB
+        _DBS_VRN="${_MARIADB_10_3_VRN}"
       elif [ "${_DB_SERIES}" = "10.4" ]; then
         _DB_SERVER=MariaDB
         _DBS_VRN="${_MARIADB_10_4_VRN}"
@@ -499,13 +591,10 @@ install_db_sql() {
       msg "INFO: Forced ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSV}"
     fi
   fi
-  if [ ! -z "${_NOW_DB_V}" ]; then
-    if [[ ! "${_NOW_DB_V}" =~ (^)"${_DB_SERIES}" ]]; then
-      _SQL_FORCE_REINSTALL=YES
-    fi
-  else
-    _SQL_FORCE_REINSTALL=YES
-  fi
+
+  ### Only supported upgrade path allowed
+  sql_strict_upgrade_path
+
   if [ "${_DB_SERVER}" = "MariaDB" ]; then
     aptRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
     aptLiDb="${aptLiSys}.d/mariadb.list"
@@ -548,7 +637,7 @@ install_db_sql() {
     SQLDEB="mariadb-galera-server"
   elif [ "${_DB_SERIES}" = "10.4" ]; then
     if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
-      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
       st_runner "${_RMAPP} mariadb-server-5.5" &> /dev/null
       st_runner "${_RMAPP} mariadb-client-5.5" &> /dev/null
       st_runner "${_RMAPP} mariadb-server-10.1" &> /dev/null
@@ -580,7 +669,7 @@ install_db_sql() {
     SQLDEB="mariadb-server"
   elif [ "${_DB_SERIES}" = "10.3" ]; then
     if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
-      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
       st_runner "${_RMAPP} mariadb-server-5.5" &> /dev/null
       st_runner "${_RMAPP} mariadb-client-5.5" &> /dev/null
       st_runner "${_RMAPP} mariadb-server-10.1" &> /dev/null
@@ -612,7 +701,7 @@ install_db_sql() {
     SQLDEB="mariadb-server"
   elif [ "${_DB_SERIES}" = "10.2" ]; then
     if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
-      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
       st_runner "${_RMAPP} mariadb-server-5.5" &> /dev/null
       st_runner "${_RMAPP} mariadb-client-5.5" &> /dev/null
       st_runner "${_RMAPP} mariadb-server-10.1" &> /dev/null
@@ -644,7 +733,7 @@ install_db_sql() {
     SQLDEB="mariadb-server"
   elif [ "${_DB_SERIES}" = "5.7" ]; then
     if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
-      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
       st_runner "${_RMAPP} mariadb-server-5.5" &> /dev/null
       st_runner "${_RMAPP} mariadb-client-5.5" &> /dev/null
       st_runner "${_RMAPP} mariadb-server-10.1" &> /dev/null
@@ -676,7 +765,7 @@ install_db_sql() {
     SQLDEB="mariadb-server"
   fi
   if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
-    || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+    || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
     mkdir -p ${vBs}/old-sql-ib-log-${_NOW}
     mrun "sleep 1"
     mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
@@ -745,15 +834,15 @@ install_with_aptitude_sql() {
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
     if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERIES}" ]]; then
       msg "INFO: Running ${_DB_SERVER} all tables check (1) upgrade..."
-	  if [ -x "/usr/bin/mariadb_upgrade" ]; then
-  	    mrun "mariadb_upgrade --force" &> /dev/null
-  	    mrun "mysqlcheck -A --auto-repair" &> /dev/null
-  	    mrun "mariadb_upgrade --force" &> /dev/null
-	  elif [ -x "/usr/bin/mysql_upgrade" ]; then
-	    mrun "mysql_upgrade --force" &> /dev/null
-  	    mrun "mysqlcheck -A --auto-repair" &> /dev/null
-  	    mrun "mysql_upgrade --force" &> /dev/null
-	  fi
+      if [ -x "/usr/bin/mariadb_upgrade" ]; then
+        mrun "mariadb_upgrade --force" &> /dev/null
+        mrun "mysqlcheck -A --auto-repair" &> /dev/null
+        mrun "mariadb_upgrade --force" &> /dev/null
+      elif [ -x "/usr/bin/mysql_upgrade" ]; then
+        mrun "mysql_upgrade --force" &> /dev/null
+        mrun "mysqlcheck -A --auto-repair" &> /dev/null
+        mrun "mysql_upgrade --force" &> /dev/null
+      fi
     fi
   fi
   if [ "${_DB_SERVER}" = "Percona" ] \
@@ -883,39 +972,10 @@ install_db_server() {
     if [ "${_UP_NRC}" = "YES" ]; then
       update_newrelic
     fi
-    _SQL_UPGRADE=NO
-    if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
-      _SQL_TEST_UPGRADE=NO
-    else
-      _SQL_TEST_UPGRADE=YES
-    fi
-    if [ "${_SQL_TEST_UPGRADE}" = "YES" ]; then
-      _SQL_UPGRADE=YES
-    fi
-    if [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]] \
-      || [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
-      if [ "${_DB_SERIES}" = "5.7" ]; then
-        if [[ ! "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
-          _SQL_UPGRADE=YES
-        fi
-      elif [ "${_DB_SERIES}" = "10.4" ]; then
-        if [[ ! "${_DB_SERVER_TEST}" =~ "Distrib 10.4." ]]; then
-          _SQL_UPGRADE=YES
-        fi
-      elif [ "${_DB_SERIES}" = "10.2" ]; then
-        if [[ ! "${_DB_SERVER_TEST}" =~ "Distrib 10.2." ]]; then
-          _SQL_UPGRADE=YES
-        fi
-      elif [ "${_DB_SERIES}" = "10.3" ]; then
-        if [[ ! "${_DB_SERVER_TEST}" =~ "Distrib 10.3." ]]; then
-          _SQL_UPGRADE=YES
-        fi
-      fi
-    fi
-    if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
-      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-      _SQL_UPGRADE=YES
-    fi
+
+    ### Only supported upgrade path allowed
+    sql_strict_upgrade_path
+
     if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
       && [ "${_LOC_OSV}" = "jessie" ]; then
       _SQL_UPGRADE=NO
