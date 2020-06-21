@@ -32,7 +32,7 @@ sql_strict_upgrade_path() {
     || [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
     if [ "${_DB_SERIES}" = "5.7" ]; then
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
-        _SQL_UPGRADE=YES
+        _SQL_UPGRADE=NO
         _SQL_FORCE_REINSTALL=NO
         _ALL_FORCE_REINSTALL=NO
       elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.2." ]]; then
@@ -46,7 +46,7 @@ sql_strict_upgrade_path() {
       fi
     elif [ "${_DB_SERIES}" = "10.4" ]; then
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.4." ]]; then
-        _SQL_UPGRADE=YES
+        _SQL_UPGRADE=NO
         _SQL_FORCE_REINSTALL=NO
         _ALL_FORCE_REINSTALL=NO
       elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.3." ]]; then
@@ -60,7 +60,7 @@ sql_strict_upgrade_path() {
       fi
     elif [ "${_DB_SERIES}" = "10.3" ]; then
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.3." ]]; then
-        _SQL_UPGRADE=YES
+        _SQL_UPGRADE=NO
         _SQL_FORCE_REINSTALL=NO
         _ALL_FORCE_REINSTALL=NO
       elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.2." ]]; then
@@ -74,7 +74,7 @@ sql_strict_upgrade_path() {
       fi
     elif [ "${_DB_SERIES}" = "10.2" ]; then
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.2." ]]; then
-        _SQL_UPGRADE=YES
+        _SQL_UPGRADE=NO
         _SQL_FORCE_REINSTALL=NO
         _ALL_FORCE_REINSTALL=NO
       elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.1." ]]; then
@@ -87,7 +87,7 @@ sql_strict_upgrade_path() {
         msg "HINT: You can upgrade to ${_DB_SERIES} only from 10.1"
       fi
     else
-      _SQL_UPGRADE=YES
+      _SQL_UPGRADE=NO
       _SQL_FORCE_REINSTALL=NO
       _ALL_FORCE_REINSTALL=NO
       msg "WARN: SQL upgrade to ${_DB_SERIES} from ${_NOW_DB_V} not supported"
