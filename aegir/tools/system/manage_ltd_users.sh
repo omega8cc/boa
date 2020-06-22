@@ -322,6 +322,7 @@ enable_chattr() {
           /dev/urandom:     \
           /opt/tools/drush: \
           /usr/bin:         \
+          /usr/local/bin:   \
           ${dscUsr}/.drush/usr: \
           ${dscUsr}/distro:     \
           ${dscUsr}/platforms:  \
@@ -918,6 +919,7 @@ update_php_cli_local_ini() {
         /opt/tmp/make_local: \
         /opt/tools/drush:    \
         ${dscUsr}:           \
+        /usr/local/bin:      \
         /usr/bin\""
       _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
       _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
@@ -1194,6 +1196,7 @@ satellite_update_web_user() {
           /dev/urandom:   \
           /srv:           \
           /usr/bin:       \
+          /usr/local/bin: \
           /var/second/${_USER}:     \
           ${dscUsr}/aegir:          \
           ${dscUsr}/backup-exports: \

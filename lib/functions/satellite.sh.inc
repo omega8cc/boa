@@ -147,6 +147,7 @@ satellite_update_web_user() {
           /dev/urandom:   \
           /srv:           \
           /usr/bin:       \
+          /usr/local/bin: \
           /var/second/${_USER}:    \
           ${_ROOT}/aegir:          \
           ${_ROOT}/backup-exports: \
@@ -1348,6 +1349,7 @@ satellite_child_b_update_ini_php_cli() {
         /opt/tmp/make_local: \
         /opt/tools/drush:    \
         ${_ROOT}:            \
+        /usr/local/bin:      \
         /usr/bin\""
       _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
       _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)

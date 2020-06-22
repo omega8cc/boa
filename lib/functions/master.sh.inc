@@ -1124,6 +1124,7 @@ update_php_cli_local_ini() {
         /opt/tools/drush:    \
         /tmp:                \
         /usr/bin:            \
+        /usr/local/bin:      \
         /var/aegir\""
       _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
       _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
