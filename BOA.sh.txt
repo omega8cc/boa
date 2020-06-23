@@ -1383,6 +1383,17 @@ fix_hosting_le() {
   fi
 }
 
+fix_newrelic() {
+  _PHP_EXT_DIR_74="/opt/php74/lib/php/extensions/no-debug-non-zts-20190902"
+  _NR_SO="/usr/lib/newrelic-php5/agent/x64/newrelic-20190902.so"
+  if [ -e "${_PHP_EXT_DIR_74}" ] \
+    && [ -e "${_NR_SO}" ] \
+    && [ ! -e "${_PHP_EXT_DIR_74}/newrelic.so" ]; then
+    ln -s ${_NR_SO} ${_PHP_EXT_DIR_74}/newrelic.so
+    service php74-fpm reload
+  fi
+}
+
 force_rebuild() {
   if [ ! -e "${pthLog}/forced.rebuild.glibc.txt" ]; then
     echo "_GIT_FORCE_REINSTALL=YES" >> ${barCnf}
@@ -1939,6 +1950,7 @@ if [ `whoami` = "root" ]; then
     fix_eldir
     fix_pure_ftpd
     fix_hosting_le
+    fix_newrelic
     update_agents
     saCoreN="SA-CORE-2018-002"
     fix_core_dgd
