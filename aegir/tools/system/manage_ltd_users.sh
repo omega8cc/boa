@@ -1539,13 +1539,11 @@ switch_php() {
       if [ -f "${dscUsr}/static/control/multi-fpm.info" ] \
         && [ -d "${dscUsr}/tools/le" ]; then
         _PHP_FPM_MULTI=YES
-        if [ ! -e "${dscUsr}/static/control/.multi-fpm.pid" ]; then
+        if [ ! -e "${dscUsr}/static/control/.multi-fpm.${_X_SE}.pid" ]; then
           _FORCE_FPM_SETUP=YES
         fi
       else
-        if [ -e "${dscUsr}/static/control/.multi-fpm.pid" ]; then
-          rm -f ${dscUsr}/static/control/.multi-fpm.pid
-        fi
+        rm -f ${dscUsr}/static/control/.multi-fpm*.pid
         if [ -e "${dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc" ]; then
           rm -f ${dscUsr}/config/server_master/nginx/post.d/fpm_include_*
           service nginx reload &> /dev/null
@@ -1676,7 +1674,7 @@ switch_php() {
           _D_POOL="${_USER}.${_PHP_SV}"
           if [ ! -e "${_FMP_D_INC}" ]; then
             echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
-            touch ${dscUsr}/static/control/.multi-fpm.pid
+            touch ${dscUsr}/static/control/.multi-fpm.${_X_SE}.pid
             _NEW_FPM_SETUP=YES
           else
             _CHECK_FMP_D=$(grep "${_D_POOL}" ${_FMP_D_INC} 2>&1)
@@ -1685,13 +1683,13 @@ switch_php() {
             else
               echo "${_D_POOL} must be updated in ${_FMP_D_INC}"
               echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
-              touch ${dscUsr}/static/control/.multi-fpm.pid
+              touch ${dscUsr}/static/control/.multi-fpm.${_X_SE}.pid
               _NEW_FPM_SETUP=YES
             fi
           fi
         else
           _PHP_M_V="${_PHP_SV}"
-          rm -f ${dscUsr}/static/control/.multi-fpm.pid
+          rm -f ${dscUsr}/static/control/.multi-fpm*.pid
           rm -f ${_FMP_D_INC}
         fi
         if [ ! -z "${_T_FPM_VRN}" ] \
@@ -1764,7 +1762,7 @@ switch_php() {
             _D_POOL="${_USER}.${_PHP_SV}"
             if [ ! -e "${_FMP_D_INC}" ]; then
               echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
-              touch ${dscUsr}/static/control/.multi-fpm.pid
+              touch ${dscUsr}/static/control/.multi-fpm.${_X_SE}.pid
             else
               _CHECK_FMP_D=$(grep "${_D_POOL}" ${_FMP_D_INC} 2>&1)
               if [[ "${_CHECK_FMP_D}" =~ "${_D_POOL}" ]]; then
@@ -1772,12 +1770,12 @@ switch_php() {
               else
                 echo "${_D_POOL} must be updated in ${_FMP_D_INC}"
                 echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
-                touch ${dscUsr}/static/control/.multi-fpm.pid
+                touch ${dscUsr}/static/control/.multi-fpm.${_X_SE}.pid
               fi
             fi
           else
             _PHP_M_V="${_PHP_SV}"
-            rm -f ${dscUsr}/static/control/.multi-fpm.pid
+            rm -f ${dscUsr}/static/control/.multi-fpm*.pid
             rm -f ${_FMP_D_INC}
           fi
           for m in ${_PHP_M_V}; do
