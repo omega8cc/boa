@@ -159,7 +159,7 @@ if_add_to_rvm_group() {
   isTest="$1"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
-    _ID_SHELLS=$(id -nG ${isTest} 2>&1)
+    _ID_SHELLS=$(id -nG $1 2>&1)
     if [[ ! "${_ID_SHELLS}" =~ "rvm" ]]; then
       isRvm=$(which rvm 2>&1)
       if [ -x "${isRvm}" ]; then
@@ -168,7 +168,7 @@ if_add_to_rvm_group() {
         rvmPth="/usr/local/rvm/bin/rvm"
       fi
       if [ -x "${rvmPth}" ]; then
-        usermod -aG rvm ${isTest}
+        usermod -aG rvm $1
       fi
     fi
     _ID_SHELLS=""
@@ -180,7 +180,7 @@ enable_chattr() {
   isTest="$1"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
-    if_add_to_rvm_group ${isTest}
+    if_add_to_rvm_group $1
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
     _U_II="${_U_HD}/php.ini"
