@@ -1288,8 +1288,8 @@ satellite_create_web_user() {
 # Add site specific socket config include.
 site_socket_inc_gen() {
   mltFpm="${dscUsr}/static/control/multi-fpm.info"
-  preFpm="${dscUsr}/static/control/.multi-fpm-pre.info"
-  mltNgx="${dscUsr}/static/control/.multi-fpm-nginx.pid"
+  preFpm="${dscUsr}/static/control/.prev-multi-fpm.info"
+  mltNgx="${dscUsr}/static/control/.multi-nginx-fpm.pid"
   fpmPth="${dscUsr}/config/server_master/nginx/post.d"
   if [ -f "${mltFpm}" ]; then
     mltFpmUpdate=NO
