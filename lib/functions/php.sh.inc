@@ -1299,6 +1299,10 @@ install_newrelic() {
     _PHP_EXT_DIR_71="/opt/php71/lib/php/extensions/no-debug-non-zts-${_PHP71_API}"
     _PHP_EXT_DIR_70="/opt/php70/lib/php/extensions/no-debug-non-zts-${_PHP70_API}"
     _PHP_EXT_DIR_56="/opt/php56/lib/php/extensions/no-debug-non-zts-${_PHP56_API}"
+    if [ -e "$_PHP_EXT_DIR_74" ] \
+      && [ ! -e "$_PHP_EXT_DIR_74/newrelic.so" ]; then
+      _MULTI_NR=YES
+    fi
     if [ -e "$_PHP_EXT_DIR_73" ] \
       && [ ! -e "$_PHP_EXT_DIR_73/newrelic.so" ]; then
       _MULTI_NR=YES
