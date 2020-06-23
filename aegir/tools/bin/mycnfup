@@ -24,7 +24,7 @@ crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 forCer="-fuy --allow-unauthenticated --reinstall"
 vBs="/var/backups"
 tVr="0.6"
-_X_SE="401prodQ76"
+_X_SE="401prodQ77"
 
 ###-------------SYSTEM-----------------###
 
