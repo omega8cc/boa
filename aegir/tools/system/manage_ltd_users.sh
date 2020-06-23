@@ -1349,6 +1349,11 @@ switch_php() {
     || [ -e "${dscUsr}/static/control/cli.info" ] \
     || [ -e "${dscUsr}/static/control/hhvm.info" ]; then
     echo "Custom FPM, HHVM or CLI settings for ${_USER} exist, running switch_php checks"
+    if [ ! -e "${dscUsr}/static/control/.single-fpm.${_X_SE}.pid" ]; then
+      rm -f ${dscUsr}/static/control/.single-fpm*.pid
+      echo OK > ${dscUsr}/static/control/.single-fpm.${_X_SE}.pid
+      _FORCE_FPM_SETUP=YES
+    fi
     if [ -e "${dscUsr}/static/control/cli.info" ]; then
       _T_CLI_VRN=$(cat ${dscUsr}/static/control/cli.info 2>&1)
       _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
@@ -1543,6 +1548,7 @@ switch_php() {
         _PHP_FPM_MULTI=YES
         if [ ! -e "${dscUsr}/static/control/.multi-fpm.${_X_SE}.pid" ]; then
           rm -f ${dscUsr}/static/control/.multi-fpm*.pid
+          echo OK > ${dscUsr}/static/control/.multi-fpm.${_X_SE}.pid
           _FORCE_FPM_SETUP=YES
         fi
       else
