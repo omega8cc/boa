@@ -60,7 +60,10 @@ if [ -z "${script_user}" ] \
     exit 1
 fi
 
-if [ -e "${drupal_root}/sites/all/libraries/ownership-fixed.pid" ]; then
+_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=${_TODAY//[^0-9]/}
+
+if [ -e "${drupal_root}/sites/all/libraries/ownership-fixed-${_TODAY}.pid" ]; then
   exit 0
 fi
 
@@ -70,7 +73,8 @@ printf "Setting ownership of "${drupal_root}" to: user => "${script_user}" group
 chown ${script_user}:users ${drupal_root}
 mkdir -p ${drupal_root}/sites/all/{modules,themes,libraries,drush}
 ### ctrl pid
-touch ${drupal_root}/sites/all/libraries/ownership-fixed.pid
+rm -f ${drupal_root}/sites/all/libraries/ownership-fixed*.pid
+touch ${drupal_root}/sites/all/libraries/ownership-fixed-${_TODAY}.pid
 if [[ "${drupal_root}" =~ "/static/" ]] && [ -e "${drupal_root}/core" ]; then
   rm -f ${drupal_root}/../vendor/bin/drush*
   rm -f ${drupal_root}/vendor/bin/drush*

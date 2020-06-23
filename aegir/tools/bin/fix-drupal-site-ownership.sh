@@ -61,6 +61,9 @@ if [ -e "${site_path}/libraries/ownership-fixed.pid" ]; then
   rm -f ${site_path}/libraries/ownership-fixed.pid
 fi
 
+_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=${_TODAY//[^0-9]/}
+
 cd ${site_path}
 printf "Setting ownership of key files and directories inside "${site_path}" to: user => "${script_user}"\n"
 if [ ! -e "${site_path}/libraries" ]; then
@@ -77,9 +80,10 @@ chown ${script_user}:users \
   ${site_path}/drushrc.php \
   ${site_path}/{modules,themes,libraries} &> /dev/null
 
-if [ ! -e "${site_path}/files/ownership-fixed.pid" ]; then
+if [ ! -e "${site_path}/files/ownership-fixed-${_TODAY}.pid" ]; then
   ### ctrl pid
-  touch ${site_path}/files/ownership-fixed.pid
+  rm -f ${site_path}/files/ownership-fixed*.pid
+  touch ${site_path}/files/ownership-fixed-${_TODAY}.pid
   ### files - site level
   chown -L -R ${script_user}:www-data ${site_path}/files &> /dev/null
   chown ${script_user}:www-data ${site_path}/files &> /dev/null

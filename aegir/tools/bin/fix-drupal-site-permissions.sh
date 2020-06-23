@@ -40,6 +40,9 @@ if [ -z "${site_path}" ] || [ ! -f "${site_path}/settings.php" ] ; then
   exit 1
 fi
 
+_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=${_TODAY//[^0-9]/}
+
 if [ -e "${site_path}/libraries/permissions-fixed.pid" ]; then
   rm -f ${site_path}/libraries/permissions-fixed.pid
 fi
@@ -57,9 +60,10 @@ find ${site_path}/{modules,themes,libraries} -type d -exec \
 find ${site_path}/{modules,themes,libraries} -type f -exec \
   chmod 0664 {} \; &> /dev/null
 
-if [ ! -e "${site_path}/files/permissions-fixed.pid" ]; then
+if [ ! -e "${site_path}/files/permissions-fixed-${_TODAY}.pid" ]; then
   ### ctrl pid
-  touch ${site_path}/files/permissions-fixed.pid
+  rm -f ${site_path}/files/permissions-fixed*.pid
+  touch ${site_path}/files/permissions-fixed-${_TODAY}.pid
   ### files - site level
   find ${site_path}/files/ -type d -exec chmod 02775 {} \; &> /dev/null
   find ${site_path}/files/ -type f -exec chmod 0664 {} \; &> /dev/null

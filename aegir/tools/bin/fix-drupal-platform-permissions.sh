@@ -43,7 +43,10 @@ if [ -z "${drupal_root}" ] \
     exit 1
 fi
 
-if [ -e "${drupal_root}/sites/all/libraries/permissions-fixed.pid" ]; then
+_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=${_TODAY//[^0-9]/}
+
+if [ -e "${drupal_root}/sites/all/libraries/permissions-fixed-${_TODAY}.pid" ]; then
   exit 0
 fi
 
@@ -52,7 +55,8 @@ cd ${drupal_root}
 printf "Setting main permissions inside "${drupal_root}"...\n"
 mkdir -p ${drupal_root}/sites/all/{modules,themes,libraries,drush}
 ### ctrl pid
-touch ${drupal_root}/sites/all/libraries/permissions-fixed.pid
+rm -f ${drupal_root}/sites/all/libraries/permissions-fixed*.pid
+touch ${drupal_root}/sites/all/libraries/permissions-fixed-${_TODAY}.pid
 chmod 0644 ${drupal_root}/*.php
 chmod 0751 ${drupal_root}/sites
 chmod 0755 ${drupal_root}/sites/*
