@@ -1342,6 +1342,8 @@ site_socket_inc_gen() {
 # Switch PHP Version.
 switch_php() {
   _PHP_CLI_UPDATE=NO
+  _FORCE_FPM_SETUP=NO
+  _NEW_FPM_SETUP=NO
   _T_CLI_VRN=""
   if [ -e "${dscUsr}/static/control/fpm.info" ] \
     || [ -e "${dscUsr}/static/control/cli.info" ] \
@@ -1540,12 +1542,13 @@ switch_php() {
         && [ -d "${dscUsr}/tools/le" ]; then
         _PHP_FPM_MULTI=YES
         if [ ! -e "${dscUsr}/static/control/.multi-fpm.${_X_SE}.pid" ]; then
+          rm -f ${dscUsr}/static/control/.multi-fpm*.pid
           _FORCE_FPM_SETUP=YES
         fi
       else
-        rm -f ${dscUsr}/static/control/.multi-fpm*.pid
         if [ -e "${dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc" ]; then
           rm -f ${dscUsr}/config/server_master/nginx/post.d/fpm_include_*
+          rm -f ${dscUsr}/static/control/.multi-fpm*.pid
           service nginx reload &> /dev/null
         fi
       fi
@@ -1660,7 +1663,6 @@ switch_php() {
         if [ "${_T_FPM_VRN}" != "${_PHP_FPM_VERSION}" ] \
           || [ "${_FORCE_FPM_SETUP}" = "YES" ]; then
           _NEW_FPM_SETUP=YES
-          _FORCE_FPM_SETUP=NO
         fi
         ### update fpm_include_default.inc if needed
         _PHP_SV=${_T_FPM_VRN//[^0-9]/}
@@ -1694,7 +1696,6 @@ switch_php() {
         fi
         if [ ! -z "${_T_FPM_VRN}" ] \
           && [ "${_NEW_FPM_SETUP}" = "YES" ]; then
-          _NEW_FPM_SETUP=NO
           satellite_tune_fpm_workers
           _LIM_FPM="${_L_PHP_FPM_WORKERS}"
           if [[ "${_THISHOST}" =~ ".host8." ]] \
