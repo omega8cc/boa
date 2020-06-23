@@ -1070,7 +1070,7 @@ update_php_cli_local_ini() {
   _PHP_V="72 73 74 56 71 70"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
-      && [ ! -e "${_U_HD}/.ctrl.php${e}.pid" ]; then
+      && [ ! -e "${_U_HD}/.ctrl.php${e}.${_X_SE}.pid" ]; then
       _PHP_CLI_UPDATE=YES
     fi
   done
@@ -1142,7 +1142,7 @@ update_php_cli_local_ini() {
       wait
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
-      echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
+      echo > ${_U_HD}/.ctrl.php${_U_INI}.${_X_SE}.pid
       echo > ${_U_HD}/.ctrl.${_X_SE}.pid
     fi
   fi

@@ -249,7 +249,7 @@ enable_chattr() {
     _PHP_V="72 73 74 56 71 70"
     for e in ${_PHP_V}; do
       if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
-        && [ ! -e "${_U_HD}/.ctrl.php${e}.pid" ]; then
+        && [ ! -e "${_U_HD}/.ctrl.php${e}.${_X_SE}.pid" ]; then
         _PHP_CLI_UPDATE=YES
       fi
     done
@@ -343,7 +343,7 @@ enable_chattr() {
         wait
         sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
         wait
-        echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
+        echo > ${_U_HD}/.ctrl.php${_U_INI}.${_X_SE}.pid
         echo > ${_U_HD}/.ctrl.${_X_SE}.pid
       fi
     fi
@@ -862,7 +862,7 @@ update_php_cli_local_ini() {
   _PHP_V="72 73 74 56 71 70"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
-      && [ ! -e "${_U_HD}/.ctrl.php${e}.pid" ]; then
+      && [ ! -e "${_U_HD}/.ctrl.php${e}.${_X_SE}.pid" ]; then
       _PHP_CLI_UPDATE=YES
     fi
   done
@@ -937,7 +937,7 @@ update_php_cli_local_ini() {
       wait
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
-      echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
+      echo > ${_U_HD}/.ctrl.php${_U_INI}.${_X_SE}.pid
       echo > ${_U_HD}/.ctrl.${_X_SE}.pid
     fi
     chattr +i ${_U_II}
@@ -1227,7 +1227,7 @@ satellite_update_web_user() {
           wait
         fi
         rm -f ${_T_HD}/.ctrl.php*
-        echo > ${_T_HD}/.ctrl.php${_T_PV}.pid
+        echo > ${_T_HD}/.ctrl.php${_T_PV}.${_X_SE}.pid
       fi
       chmod 700 /home/${_WEB}
       chown -R ${_WEB}:${_WEBG} /home/${_WEB}
@@ -1796,7 +1796,7 @@ switch_php() {
                 for e in ${_PHP_V}; do
                   if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
                     if [ "${e}" != "${m}" ] \
-                      || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${m}.pid" ]; then
+                      || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${m}.${_X_SE}.pid" ]; then
                       echo _OLD_PHP_IN_USE is ${_OLD_PHP_IN_USE} for ${_WEB} update
                       echo _NEW_PHP_TO_USE is ${m} for ${_WEB} update
                       satellite_update_web_user "${m}"

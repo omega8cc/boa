@@ -68,6 +68,7 @@ satellite_tune_fpm_workers() {
 #
 # Update web user.
 satellite_update_web_user() {
+  _X_SE="401prodQ77"
   isTest="${_WEB}"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ]; then
@@ -172,7 +173,7 @@ satellite_update_web_user() {
         sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_T_II}
         wait
         rm -f ${_T_HD}/.ctrl.php*
-        echo > ${_T_HD}/.ctrl.php${_T_PV}.pid
+        echo > ${_T_HD}/.ctrl.php${_T_PV}.${_X_SE}.pid
       fi
       chmod 700 /home/${_WEB}/
       chown -R ${_WEB}:www-data /home/${_WEB}/
@@ -319,7 +320,7 @@ satellite_tune_fpm_config() {
         for e in ${_PHP_V}; do
           if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
             if [ "${e}" != "${_PHP_SV}" ] \
-              || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${_PHP_SV}.pid" ]; then
+              || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${_PHP_SV}.${_X_SE}.pid" ]; then
               satellite_update_web_user "${_PHP_SV}"
             fi
           fi
@@ -1296,7 +1297,7 @@ satellite_child_b_update_ini_php_cli() {
   _PHP_V="72 73 74 56 71 70"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
-      && [ ! -e "${_U_HD}/.ctrl.php${e}.pid" ]; then
+      && [ ! -e "${_U_HD}/.ctrl.php${e}.${_X_SE}.pid" ]; then
       _PHP_CLI_UPDATE=YES
     fi
   done
@@ -1367,7 +1368,7 @@ satellite_child_b_update_ini_php_cli() {
       wait
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
-      echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
+      echo > ${_U_HD}/.ctrl.php${_U_INI}.${_X_SE}.pid
       echo > ${_U_HD}/.ctrl.${_X_SE}.pid
     fi
   fi
