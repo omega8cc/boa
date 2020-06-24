@@ -125,8 +125,10 @@ function drush_provision_hosting_le_post_provision_verify() {
 
     if ($is_boa) {
       if (preg_match("/\.(?:host8|boa)\.(?:biz|io)$/", $main_name) ||
-          preg_match("/\.(?:dev|devel|temp|tmp|temporary)\./", $main_name) ||
-          preg_match("/\.(?:test|testing|stage|staging|nodns)\./", $main_name)
+          preg_match("/\.(?:nodns)\./", $main_name) ||
+          preg_match("/\.(?:temp|tmp|temporary)\./", $main_name) ||
+          preg_match("/\.(?:test|testing)\./", $main_name) ||
+          preg_match("/\.(?:stage|staging)\./", $main_name)
          ) {
         drush_log('[hosting_le] Skipping LE setup for ' . $main_name, 'warning');
         return FALSE;
