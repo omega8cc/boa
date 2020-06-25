@@ -615,7 +615,7 @@ up_action() {
       wait
       sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"          ${vBs}/${filIncB}
       wait
-      sed -i "s/^_REDIS_MAJOR_RELEASE=.*/_REDIS_MAJOR_RELEASE=6/g"     ${barCnf}
+      sed -i "s/^_REDIS_MAJOR_RELEASE=.*/_REDIS_MAJOR_RELEASE=5/g"     ${barCnf}
       wait
       sed -i "s/^_DB_SERIES=10.1/_DB_SERIES=10.2/g"                    ${barCnf}
       wait
