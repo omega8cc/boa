@@ -259,9 +259,14 @@ update_agents() {
       || [[ "${PrTestPower}" =~ "POWER" ]] \
       || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
       echo ${InTest} > /root/.tg.cnf
-      echo ${InTest} > /root/.hr.monitor.cnf
     else
       rm -f /root/.tg.cnf
+      rm -f /root/.hr.monitor.cnf
+    fi
+    if [ "${InTest}" -gt "14" ]; then
+      echo ${InTest} > /root/.hr.monitor.cnf
+    else
+      rm -f /root/.hr.monitor.cnf
     fi
     if [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
       echo ${InTest} > /root/.fast.cron.cnf
