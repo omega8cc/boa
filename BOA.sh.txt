@@ -259,6 +259,7 @@ update_agents() {
       || [[ "${PrTestPower}" =~ "POWER" ]] \
       || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
       echo ${InTest} > /root/.tg.cnf
+      echo ${InTest} > /root/.hr.monitor.cnf
     else
       rm -f /root/.tg.cnf
     fi
