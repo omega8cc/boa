@@ -27,7 +27,11 @@ guest_proc_monitor() {
   for i in `dir -d /vservers/*`; do
     _THIS_VM=`echo $i | cut -d'/' -f3 | awk '{ print $1}'`
     _VS_NAME=`echo ${_THIS_VM} | cut -d'/' -f3 | awk '{ print $1}'`
-    if [ -e "${i}/var/xdrago/proc_num_ctrl.cgi" ] && [ -e "/usr/var/run${i}" ]; then
+    if [ -e "${i}/var/xdrago/proc_num_ctrl.cgi" ] \
+      && [ ! -e "${i}/var/run/fmp_wait.pid" ] \
+      && [ ! -e "${i}/var/run/boa_wait.pid" ] \
+      && [ ! -e "${i}/var/run/mysql_restart_running.pid" ] \
+      && [ -e "/usr/var/run${i}" ]; then
       vserver ${_VS_NAME} exec perl /var/xdrago/proc_num_ctrl.cgi
     fi
   done
