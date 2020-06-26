@@ -325,7 +325,7 @@ tune_memory_limits() {
     _RND_SQL=8M
     _JBF_SQL=4M
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=24
+      _L_PHP_FPM_WORKERS=12
     else
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
@@ -344,7 +344,7 @@ tune_memory_limits() {
       _RND_SQL=8M
       _JBF_SQL=4M
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=48
+        _L_PHP_FPM_WORKERS=12
       else
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
@@ -365,7 +365,7 @@ tune_memory_limits() {
         _RND_SQL=8M
         _JBF_SQL=4M
         if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=48
+          _L_PHP_FPM_WORKERS=12
         else
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
@@ -392,7 +392,7 @@ tune_memory_limits() {
         _RND_SQL=2M
         _JBF_SQL=2M
         if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=24
+          _L_PHP_FPM_WORKERS=12
         else
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
@@ -411,7 +411,7 @@ tune_memory_limits() {
       _RND_SQL=2M
       _JBF_SQL=2M
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=24
+        _L_PHP_FPM_WORKERS=12
       else
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
