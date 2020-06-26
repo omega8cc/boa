@@ -49,7 +49,7 @@ check_pdnsd() {
   if [ -e "/etc/resolv.conf" ]; then
     _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
     if [[ "$_RESOLV_TEST" =~ "nameserver 127.0.0.1" ]]; then
-      _THIS_DNS_TEST=$(host -a files.aegir.cc 127.0.0.1 -w 3 2>&1)
+      _THIS_DNS_TEST=$(host files.aegir.cc 127.0.0.1 -w 3 2>&1)
       if [[ "${_THIS_DNS_TEST}" =~ "no servers could be reached" ]]; then
         service pdnsd stop &> /dev/null
         sleep 1
