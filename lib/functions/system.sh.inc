@@ -371,7 +371,7 @@ tune_memory_limits() {
         fi
         _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
         if [ "${_MXC_SQL}" -lt "48" ]; then
-          _MXC_SQL=48
+          _MXC_SQL=96
         fi
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
           _L_NGX_WRKS=${_CPU_TG}
