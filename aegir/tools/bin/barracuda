@@ -749,7 +749,7 @@ up_action() {
             #   wait
             # fi
             if [ -e "/etc/init.d/redis-server" ]; then
-              sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"     ${barCnf}
+              sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"     ${barCnf}
             else
               sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"      ${barCnf}
             fi
