@@ -637,9 +637,17 @@ update_agents() {
     && [ ! -e "${pthLog}/fpm-cli.ctrl.${_X_SE}.pid" ]; then
     usrGroup=users
     for pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
-      if [ ! -e "${pthSysUsr}/log/CANCELLED" ]; then
-        tUsr=
-        tUsr=$(echo ${pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+      tUsr=
+      tUsr=$(echo ${pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+      if [ -e "${pthSysUsr}/log/CANCELLED" ] \
+        || [ ! -e "${pthSysUsr}/static/control/cli.info" ]; then
+        if [ -e "/var/xdrago/run-${tUsr}" ]; then
+          if [ ! -e "/var/backups/off-run" ]; then
+            mkdir -p /var/backups/off-run/
+          fi
+          mv -f /var/xdrago/run-${tUsr} /var/backups/off-run/
+        fi
+      else
         dscUsr="/data/disk/${tUsr}"
         ngxCnf="${dscUsr}/config/includes/nginx_vhost_common.conf"
         _NGINX_CNF_TEST=$(grep "foobaroff" ${ngxCnf} 2>&1)
@@ -691,6 +699,7 @@ update_agents() {
     leVhPath="${leBasePath}/hosting_le_vhost/drush/${hLeVtF}"
     for pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       if [ -e "${pthSysUsr}/config/server_master/nginx/vhost.d" ] \
+        && [ -e "${pthSysUsr}/static/control/cli.info" ] \
         && [ ! -e "${pthSysUsr}/log/CANCELLED" ]; then
         tUsr=
         tUsr=$(echo ${pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
