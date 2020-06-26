@@ -97,7 +97,8 @@ done
 ###-------------SYSTEM-----------------###
 
 if [ -e "/var/run/boa_wait.pid" ] \
-  || [ -e "/var/run/manage_rvm_users.pid" ]; then
+  || [ -e "/var/run/manage_rvm_users.pid" ] \
+  || [ -e "/var/run/boa_cron_wait.pid" ]; then
   touch /var/xdrago/log/wait-runner
   echo "Another BOA task is running, we will try again later.."
   exit 0
@@ -112,7 +113,13 @@ else
     echo "Aegir tasks ignored on this cluster node"
     exit 0
   fi
-  if [ -e "/root/.fast.cron.cnf" ]; then
+  if [ -e "/root/.slow.cron.cnf" ]; then
+    action
+    touch /var/run/boa_cron_wait.pid
+    sleep 180
+    rm -f /var/run/boa_cron_wait.pid
+  elif [ -e "/root/.fast.cron.cnf" ]; then
+    rm -f /var/run/boa_cron_wait.pid
     action
     sleep 5
     action

@@ -254,22 +254,26 @@ update_agents() {
     && [ -e "/var/xdrago" ]; then
     PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
     PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-    InTest=$(ls /data/disk/ | wc -l 2>&1)
-    if [ "${InTest}" -gt "14" ] \
+    InTest=$(ls /data/disk/*/static/control/cli.info | wc -l 2>&1)
+    if [ "${InTest}" -gt "10" ] \
       || [[ "${PrTestPower}" =~ "POWER" ]] \
       || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
       echo ${InTest} > /root/.tg.cnf
+      echo ${InTest} > /root/.slow.cron.cnf
     else
       rm -f /root/.tg.cnf
       rm -f /root/.hr.monitor.cnf
     fi
     if [ "${InTest}" -gt "6" ]; then
       echo ${InTest} > /root/.hr.monitor.cnf
+      echo ${InTest} > /root/.slow.cron.cnf
     else
       rm -f /root/.hr.monitor.cnf
+      rm -f /root/.slow.cron.cnf
     fi
     if [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
       echo ${InTest} > /root/.fast.cron.cnf
+      rm -f /root/.slow.cron.cnf
     else
       rm -f /root/.fast.cron.cnf
     fi

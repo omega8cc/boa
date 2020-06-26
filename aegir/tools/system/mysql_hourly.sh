@@ -78,7 +78,7 @@ if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
   || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
   || [ "${_VMFAMILY}" = "VS" ]; then
   PrTest=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
-  InTest=$(ls /data/disk/ | wc -l 2>&1)
+  InTest=$(ls /data/disk/*/static/control/cli.info | wc -l 2>&1)
   #if [ "${InTest}" -le "5" ] && [[ "${PrTest}" =~ "POWER" ]]; then
   #  _HOURLY_DB_BACKUPS="YES"
   #fi
