@@ -29,7 +29,7 @@ satellite_tune_fpm_workers() {
   elif [ "${_USE}" -ge "1024" ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=48
+        _L_PHP_FPM_WORKERS=24
       else
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
@@ -38,7 +38,7 @@ satellite_tune_fpm_workers() {
         || [ -e "/boot/grub/menu.lst" ] \
         || [ -e "/root/.tg.cnf" ]; then
         if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=48
+          _L_PHP_FPM_WORKERS=24
         else
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
