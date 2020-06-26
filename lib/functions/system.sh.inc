@@ -318,9 +318,9 @@ tune_memory_limits() {
   _SRT_SQL=$(( _USE_SQL * 2 ))
   _SRT_SQL="${_SRT_SQL}K"
   if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
-    _USE_PHP=4096
-    _USE_OPC=4096
-    _USE_CLI=8192
+    _USE_PHP=2048
+    _USE_OPC=2048
+    _USE_CLI=2048
     _QCE_SQL=64M
     _RND_SQL=8M
     _JBF_SQL=4M
@@ -337,9 +337,9 @@ tune_memory_limits() {
     fi
   elif [ "${_USE}" -ge "2048" ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
-      _USE_PHP=4096
-      _USE_OPC=4096
-      _USE_CLI=8192
+      _USE_PHP=2048
+      _USE_OPC=2048
+      _USE_CLI=2048
       _QCE_SQL=64M
       _RND_SQL=8M
       _JBF_SQL=4M
@@ -358,9 +358,9 @@ tune_memory_limits() {
       if [ -e "/boot/grub/grub.cfg" ] \
         || [ -e "/boot/grub/menu.lst" ] \
         || [ -e "/root/.tg.cnf" ]; then
-        _USE_PHP=8192
-        _USE_OPC=8192
-        _USE_CLI=24576
+        _USE_PHP=2048
+        _USE_OPC=2048
+        _USE_CLI=2048
         _QCE_SQL=64M
         _RND_SQL=8M
         _JBF_SQL=4M
@@ -387,7 +387,7 @@ tune_memory_limits() {
       else
         _USE_PHP=2048
         _USE_OPC=2048
-        _USE_CLI=4096
+        _USE_CLI=2048
         _QCE_SQL=64M
         _RND_SQL=2M
         _JBF_SQL=2M
@@ -406,7 +406,7 @@ tune_memory_limits() {
     else
       _USE_PHP=2048
       _USE_OPC=2048
-      _USE_CLI=4096
+      _USE_CLI=2048
       _QCE_SQL=64M
       _RND_SQL=2M
       _JBF_SQL=2M
@@ -445,12 +445,12 @@ tune_memory_limits() {
   if [ "${_VMFAMILY}" = "VZ" ]; then
     _USE_OPC=64
   fi
+  if [ "${_USE_PHP}" -lt "2048" ]; then
+    _USE_PHP=2048
+  fi
   _USE_FPM=$(( _USE_PHP / 2 ))
   if [ "${_USE_FPM}" -lt "256" ]; then
     _USE_FPM=256
-  fi
-  if [ "${_USE_PHP}" -lt "2048" ]; then
-    _USE_PHP=2048
   fi
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
     mkdir -p /var/xdrago/conf

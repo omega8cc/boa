@@ -939,8 +939,8 @@ tune_memory_limits() {
     elif [ "${_VMFAMILY}" = "VS" ] || [ "${_VMFAMILY}" = "TG" ]; then
       if [ -e "/root/.my.cluster_root_pwd.txt" ] \
         || [ -e "/root/.tg.cnf" ]; then
-        _USE_PHP=4096
-        _USE_OPC=4096
+        _USE_PHP=2048
+        _USE_OPC=2048
         _QCE_SQL=64M
         _RND_SQL=8M
         _JBF_SQL=4M
