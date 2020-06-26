@@ -929,18 +929,18 @@ barracuda_cnf() {
           sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=7.3/g"                  ${barCnf}
           wait
         fi
-        if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-          || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-          || [ "${_VMFAMILY}" = "VS" ]; then
-          if [ "${_VMFAMILY}" = "VS" ]; then
-            sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                     ${barCnf}
-            wait
-            sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                       ${barCnf}
-            wait
-            sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                 ${barCnf}
-            wait
-          fi
-        fi
+        # if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+        #   || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        #   || [ "${_VMFAMILY}" = "VS" ]; then
+        #   if [ "${_VMFAMILY}" = "VS" ]; then
+        #     sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                     ${barCnf}
+        #     wait
+        #     sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                       ${barCnf}
+        #     wait
+        #     sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                 ${barCnf}
+        #     wait
+        #   fi
+        # fi
       fi
     fi
     if [ "${_LOCAL_DEBIAN_MIRROR}" = "http.debian.net" ] \
@@ -1577,18 +1577,18 @@ barracuda_cnf() {
           sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=7.3/g"                  ${barCnf}
           wait
         fi
-        if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-          || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-          || [ "${_VMFAMILY}" = "VS" ]; then
-          if [ "${_VMFAMILY}" = "VS" ]; then
-            sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                     ${barCnf}
-            wait
-            sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                       ${barCnf}
-            wait
-            sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                 ${barCnf}
-            wait
-          fi
-        fi
+        # if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+        #   || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        #   || [ "${_VMFAMILY}" = "VS" ]; then
+        #   if [ "${_VMFAMILY}" = "VS" ]; then
+        #     sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                     ${barCnf}
+        #     wait
+        #     sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                       ${barCnf}
+        #     wait
+        #     sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                 ${barCnf}
+        #     wait
+        #   fi
+        # fi
       fi
     fi
     sed -i "/^$/d" ${barCnf}
