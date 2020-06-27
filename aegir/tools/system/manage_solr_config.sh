@@ -55,17 +55,17 @@ check_config_diff() {
   # $1 is template path
   # $2 is a path to core config
   preCnf="$1"
-  myCnf="$2"
-  if [ -f "${preCnf}" ] && [ -f "${myCnf}" ]; then
-    myCnfUpdate=NO
-    diffMyTest=$(diff -w -B ${myCnf} ${preCnf} 2>&1)
+  slrCnf="$2"
+  if [ -f "${preCnf}" ] && [ -f "${slrCnf}" ]; then
+    slrCnfUpdate=NO
+    diffMyTest=$(diff -w -B ${slrCnf} ${preCnf} 2>&1)
     if [ -z "${diffMyTest}" ]; then
-      myCnfUpdate=""
-      echo "INFO: ${myCnf} diff0 empty -- nothing to update"
+      slrCnfUpdate=""
+      echo "INFO: ${slrCnf} diff0 empty -- nothing to update"
     else
-      myCnfUpdate=YES
+      slrCnfUpdate=YES
       # diffMyTest=$(echo -n ${diffMyTest} | fmt -su -w 2500 2>&1)
-      echo "INFO: ${myCnf} diff1 ${diffMyTest}"
+      echo "INFO: ${slrCnf} diff1 ${diffMyTest}"
     fi
   fi
 }
@@ -124,9 +124,9 @@ update_solr() {
       _SERV="jetty9"
       if [ -e "${Plr}/modules/o_contrib_seven" ]; then
         if [ ! -e "${2}/conf/.protected.conf" ] && [ -e "${2}/conf" ]; then
-          myCnfUpdate=""
+          slrCnfUpdate=""
           check_config_diff "/data/conf/solr/apachesolr/7/schema.xml" "${2}/conf/schema.xml"
-          if [ ! -z "${myCnfUpdate}" ]; then
+          if [ ! -z "${slrCnfUpdate}" ]; then
             rm -f ${2}/conf/*
             cp -af /data/conf/solr/apachesolr/7/* ${2}/conf/
             chmod 644 ${2}/conf/*
@@ -139,9 +139,9 @@ update_solr() {
         fi
       elif [ -e "${Plr}/modules/o_contrib" ]; then
         if [ ! -e "${2}/conf/.protected.conf" ] && [ -e "${2}/conf" ]; then
-          myCnfUpdate=""
+          slrCnfUpdate=""
           check_config_diff "/data/conf/solr/apachesolr/6/schema.xml" "${2}/conf/schema.xml"
-          if [ ! -z "${myCnfUpdate}" ]; then
+          if [ ! -z "${slrCnfUpdate}" ]; then
             rm -f ${2}/conf/*
             cp -af /data/conf/solr/apachesolr/6/* ${2}/conf/
             chmod 644 ${2}/conf/*
@@ -157,7 +157,7 @@ update_solr() {
       && [ -e "${Plr}/modules/o_contrib_seven" ]; then
       if [ ! -e "${2}/conf/.protected.conf" ] && [ -e "${2}/conf" ]; then
         check_config_diff "/data/conf/solr/search_api_solr/7/schema.xml" "${2}/conf/schema.xml"
-        if [ ! -z "${myCnfUpdate}" ]; then
+        if [ ! -z "${slrCnfUpdate}" ]; then
           rm -f ${2}/conf/*
           cp -af /data/conf/solr/search_api_solr/7/* ${2}/conf/
           chmod 644 ${2}/conf/*
@@ -168,7 +168,7 @@ update_solr() {
           rm -f ${2}/conf/.yes-update.txt
         fi
         check_config_diff "/data/conf/solr/search_api_solr/7/solrcore.properties" "${2}/conf/solrcore.properties"
-        if [ ! -z "${myCnfUpdate}" ]; then
+        if [ ! -z "${slrCnfUpdate}" ]; then
           rm -f ${2}/conf/*
           cp -af /data/conf/solr/search_api_solr/7/* ${2}/conf/
           chmod 644 ${2}/conf/*
@@ -186,7 +186,7 @@ update_solr() {
       && [ -e "${Plr}/modules/o_contrib_eight" ]; then
       if [ ! -e "${2}/conf/.protected.conf" ] && [ -e "${2}/conf" ]; then
         check_config_diff "${Plr}/sites/${Dom}/files/solr/schema.xml" "${2}/conf/schema.xml"
-        if [ ! -z "${myCnfUpdate}" ]; then
+        if [ ! -z "${slrCnfUpdate}" ]; then
           rm -f ${2}/conf/*
           cp -af ${Plr}/sites/${Dom}/files/solr/* ${2}/conf/
           chmod 644 ${2}/conf/*
@@ -206,7 +206,7 @@ update_solr() {
         && [ ! -e "${2}/conf/.yes-custom.txt" ] \
         && [ -e "${2}/conf" ]; then
         check_config_diff "/data/conf/solr/search_api_solr/8/schema.xml" "${2}/conf/schema.xml"
-        if [ ! -z "${myCnfUpdate}" ]; then
+        if [ ! -z "${slrCnfUpdate}" ]; then
           rm -f ${2}/conf/*
           cp -af /data/conf/solr/search_api_solr/8/* ${2}/conf/
           chmod 644 ${2}/conf/*
@@ -217,7 +217,7 @@ update_solr() {
           rm -f ${2}/conf/.yes-update.txt
         fi
         check_config_diff "/data/conf/solr/search_api_solr/8/solrcore.properties" "${2}/conf/solrcore.properties"
-        if [ ! -z "${myCnfUpdate}" ]; then
+        if [ ! -z "${slrCnfUpdate}" ]; then
           rm -f ${2}/conf/*
           cp -af /data/conf/solr/search_api_solr/8/* ${2}/conf/
           chmod 644 ${2}/conf/*
@@ -623,7 +623,7 @@ start_up() {
     check_config_diff "${baseCpy}" "${liveCpy}"
     if [ ! -e "/data/conf/solr/search_api_solr/8/solrconfig_extra.xml" ] \
       || [ ! -e "/data/conf/solr/.ctrl.${_X_SE}.pid" ] \
-      || [ ! -z "${myCnfUpdate}" ]; then
+      || [ ! -z "${slrCnfUpdate}" ]; then
       rm -rf /data/conf/solr
       cp -af /var/xdrago/conf/solr /data/conf/
       rm -f /data/conf/solr/.ctrl*
@@ -636,7 +636,7 @@ start_up() {
     check_config_diff "${baseCpy}" "${liveCpy}"
     if [ ! -e "/data/conf/solr/search_api_solr/7/solrconfig_extra.xml" ] \
       || [ ! -e "/data/conf/solr/.ctrl.${_X_SE}.pid" ] \
-      || [ ! -z "${myCnfUpdate}" ]; then
+      || [ ! -z "${slrCnfUpdate}" ]; then
       rm -rf /data/conf/solr
       cp -af /var/xdrago/conf/solr /data/conf/
       rm -f /data/conf/solr/.ctrl*
@@ -649,7 +649,7 @@ start_up() {
     check_config_diff "${baseCpy}" "${liveCpy}"
     if [ ! -e "/data/conf/solr/apachesolr/7/solrconfig_extra.xml" ] \
       || [ ! -e "/data/conf/solr/.ctrl.${_X_SE}.pid" ] \
-      || [ ! -z "${myCnfUpdate}" ]; then
+      || [ ! -z "${slrCnfUpdate}" ]; then
       rm -rf /data/conf/solr
       cp -af /var/xdrago/conf/solr /data/conf/
       rm -f /data/conf/solr/.ctrl*
