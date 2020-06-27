@@ -1443,9 +1443,9 @@ force_rebuild() {
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt-get update -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
@@ -1487,9 +1487,9 @@ update_wrappers() {
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt-get clean -qq &> /dev/null
@@ -1516,9 +1516,9 @@ update_wrappers() {
   fi
   _LSB_TEST=$(which lsb_release 2> /dev/null)
   if [ ! -x "${_LSB_TEST}" ]; then
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt-get clean -qq &> /dev/null
     rm -f -r /var/lib/apt/lists/*
@@ -1527,9 +1527,9 @@ update_wrappers() {
   fi
   _IPSET_TEST=$(which ipset 2> /dev/null)
   if [ ! -x "${_IPSET_TEST}" ]; then
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt-get clean -qq &> /dev/null
     rm -f -r /var/lib/apt/lists/*
@@ -1662,9 +1662,9 @@ setup() {
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt-get clean -qq &> /dev/null
@@ -1691,9 +1691,9 @@ setup() {
   fi
   _VIRT_TEST=$(which virt-what 2> /dev/null)
   if [ ! -x "${_VIRT_TEST}" ]; then
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt-get clean -qq &> /dev/null
     rm -f -r /var/lib/apt/lists/*
@@ -1702,9 +1702,9 @@ setup() {
   fi
   _LSB_TEST=$(which lsb_release 2> /dev/null)
   if [ ! -x "${_LSB_TEST}" ]; then
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt-get clean -qq &> /dev/null
     rm -f -r /var/lib/apt/lists/*
@@ -1992,9 +1992,9 @@ if [ `whoami` = "root" ]; then
     service cron reload &> /dev/null
   fi
   if [ "${_SCREEN_INIT}" = "YES" ]; then
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     if [ ! -e "/etc/apt/apt.conf.d/99ignorestrict" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then

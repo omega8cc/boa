@@ -53,9 +53,9 @@ fi
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt-get update -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
@@ -96,9 +96,9 @@ fetch_geoip() {
 install_goaccess() {
   echo "Installing GoAccess ${_GOACCESS_VRN} with dependencies..."
   cd
-  if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+  if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
-    echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+    echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   fi
   apt-get clean -qq
   rm -f -r /var/lib/apt/lists/*
@@ -136,7 +136,6 @@ install_goaccess() {
   make --quiet install
   rm -rf /var/opt/goaccess*
   rm -rf /var/opt/tokyocabinet*
-  rm -f /etc/apt/apt.conf.d/00sandboxtmp
   cd
 }
 

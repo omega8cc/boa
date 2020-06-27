@@ -48,9 +48,9 @@ touch /var/run/clear_m.pid
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt-get update -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
@@ -71,9 +71,9 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
     isCurl=$(curl --version 2>&1)
     if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
       rm -f /etc/apt/sources.list.d/openssl.list
-      if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
         && [ -e "/etc/apt/apt.conf.d" ]; then
-        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
       fi
       echo "curl install" | dpkg --set-selections &> /dev/null
       apt-get clean -qq &> /dev/null

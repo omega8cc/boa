@@ -272,9 +272,9 @@ check_config_cluster() {
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt-get update -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
@@ -1238,9 +1238,9 @@ install_db_cluster() {
       install_vps
       echo "Installing Percona Cluster on VPS ${idn}..."
     fi
-    if [ ! -e "/vservers/${idn}/etc/apt/apt.conf.d/00sandboxtmp" ] \
+    if [ ! -e "/vservers/${idn}/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/vservers/${idn}/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /vservers/${idn}/etc/apt/apt.conf.d/00sandboxtmp
+      echo "APT::Sandbox::User \"root\";" > /vservers/${idn}/etc/apt/apt.conf.d/00sandboxoff
     fi
     inc=$((inc+1))
     echo "${_MAINT_USER_PWD}" > /vservers/${idn}/root/.my.cluster_maint_pwd.txt
@@ -1371,9 +1371,9 @@ upgrade_db_cluster() {
 
     echo "Upgrading DB cluster node on ${idn}/${IP}..."
 
-    if [ ! -e "/vservers/${idn}/etc/apt/apt.conf.d/00sandboxtmp" ] \
+    if [ ! -e "/vservers/${idn}/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/vservers/${idn}/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /vservers/${idn}/etc/apt/apt.conf.d/00sandboxtmp
+      echo "APT::Sandbox::User \"root\";" > /vservers/${idn}/etc/apt/apt.conf.d/00sandboxoff
     fi
 
     if [ -e "/vservers/${idn}${optBin}/boa" ]; then

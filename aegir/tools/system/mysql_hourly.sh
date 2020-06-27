@@ -121,9 +121,9 @@ if [ ! -e "${xtraList}" ] \
         /var/xdrago/log/dirmngr-count.kill.log
     fi
   done
-  if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+  if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
-    echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+    echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   fi
   apt-get update -qq &> /dev/null
   if [ -e "/usr/sbin/csf" ] \

@@ -81,9 +81,9 @@ check_vps
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt-get update -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
@@ -316,9 +316,9 @@ if [ -e "${_LOGPTH}/${BUCKET_DOT}.archive.log" ]; then
   mv ${_LOGPTH}/${BUCKET_DOT}.randomize.cleanup.log /var/backups/${BUCKET_DOT}.randomize.cleanup.log
   apt-get clean -qq                    &> /dev/null
   rm -f -r /var/lib/apt/lists/*
-  if [ ! -e "/etc/apt/apt.conf.d/00sandboxtmp" ] \
+  if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
-    echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxtmp
+    echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   fi
   apt-get update -qq                   &> /dev/null
   apt-get install python-pip -y        &> /dev/null
