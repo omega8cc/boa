@@ -1810,7 +1810,7 @@ run_aptitude_full_upgrade() {
   #     st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
   #   fi
   # fi
-  st_runner "dpkg --configure --force-all -a" 2> /dev/null
+  st_runner "dpkg --configure --force-all -a" &> /dev/null
   st_runner "apt-get update -qq" &> /dev/null
   _THIS_DB_SERVER_TEST=$(mysql -V 2>&1)
   if [[ "${_THIS_DB_SERVER_TEST}" =~ "MariaDB" ]] \
@@ -3865,7 +3865,7 @@ sys_packages_update() {
     echo "zlibc install"          | dpkg --set-selections &> /dev/null
   fi
   update_webmin_apt
-  st_runner "dpkg --configure --force-all -a" 2> /dev/null
+  st_runner "dpkg --configure --force-all -a" &> /dev/null
   # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
   # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
   #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
