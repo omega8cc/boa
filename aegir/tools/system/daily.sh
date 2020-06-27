@@ -1947,7 +1947,7 @@ if_site_db_conversion() {
   fi
   if [ -z "${_DENY_SQL_CONVERT}" ] \
     && [ ! -z "${_SQL_CONVERT}" ] \
-    && [ "${_DOW}" = "7" ]; then
+    && [ "${_DOW}" = "8" ]; then
     if [ "${_SQL_CONVERT}" = "YES" ]; then
       _SQL_CONVERT=innodb
     elif [ "${_SQL_CONVERT}" = "NO" ]; then
@@ -3315,7 +3315,7 @@ if [ "${_VMFAMILY}" = "VS" ]; then
     xhprof"
 fi
 #
-if [ "${_DOW}" = "7" ]; then
+if [ "${_DOW}" = "8" ]; then
   _MODULES_ON_EIGHT="robotstxt"
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache \
