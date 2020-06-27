@@ -119,11 +119,11 @@ fix_php_ini_newrelic_all() {
       _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
       _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
     fi
-    _PHP_V="72 73 74 56 71 70"
+    _PHP_V="74 73 72 71 70 56"
     if [ "${_DB_SERIES}" = "10.4" ] \
       || [ "${_DB_SERIES}" = "10.3" ] \
       || [ "${_DB_SERIES}" = "10.2" ]; then
-      _PHP_V="72 73 74 56 71 70"
+      _PHP_V="74 73 72 71 70 56"
     fi
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
@@ -156,11 +156,11 @@ fix_php_ini_opcache() {
 #
 # Fix all FMP php.ini files to add Zend OPcache
 fix_php_ini_opcache_all() {
-  _PHP_V="72 73 74 56 71 70"
+  _PHP_V="74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ]; then
-    _PHP_V="72 73 74 56 71 70"
+    _PHP_V="74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
     case "${e}" in
@@ -197,7 +197,7 @@ fix_php_ini_tet() {
 # Fix all php.ini files to add php_tet.so
 fix_php_ini_tet_all() {
   if [ "${_PHP_TET}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "TET" ]]; then
-    _PHP_V="56 55"
+    _PHP_V="56"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       fix_php_ini_tet
@@ -271,7 +271,7 @@ fix_php_ini_mongo_all() {
       _THIS_FILE=/opt/php${e}/lib/php.ini
       fix_php_ini_mongo
     done
-    _PHP_V="70"
+    _PHP_V="72 71 70"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       fix_php_ini_mongodb
@@ -305,11 +305,11 @@ update_php_conf() {
   wait
   sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
   wait
-  _PHP_V="72 73 74 56 71 70"
+  _PHP_V="74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ]; then
-    _PHP_V="72 73 74 56 71 70"
+    _PHP_V="74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
@@ -392,11 +392,11 @@ tune_web_server_config() {
       _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
     fi
   fi
-  _PHP_V="72 73 74 56 71 70"
+  _PHP_V="74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ]; then
-    _PHP_V="72 73 74 56 71 70"
+    _PHP_V="74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
     sed -i "s/process.max =.*/process.max = ${_PROCESS_MAX_FPM}/g" \
@@ -548,11 +548,11 @@ install_php_extensions() {
       rm -rf geos*
       get_dev_src "geos-${_GEOS_VRN}.tar.bz2"
       cd geos-${_GEOS_VRN}
-      _PHP_V="72 73 74 56 71 70"
+      _PHP_V="74 73 72 71 70 56"
       if [ "${_DB_SERIES}" = "10.4" ] \
         || [ "${_DB_SERIES}" = "10.3" ] \
         || [ "${_DB_SERIES}" = "10.2" ]; then
-        _PHP_V="72 73 74 56 71 70"
+        _PHP_V="74 73 72 71 70 56"
       fi
       for e in ${_PHP_V}; do
         if [ "$1" = "${e}" ]; then
@@ -789,11 +789,11 @@ update_php_extensions() {
       rm -rf geos*
       get_dev_src "geos-${_GEOS_VRN}.tar.bz2"
       cd geos-${_GEOS_VRN}
-      _PHP_V="72 73 74 56 71 70"
+      _PHP_V="74 73 72 71 70 56"
       if [ "${_DB_SERIES}" = "10.4" ] \
         || [ "${_DB_SERIES}" = "10.3" ] \
         || [ "${_DB_SERIES}" = "10.2" ]; then
-        _PHP_V="72 73 74 56 71 70"
+        _PHP_V="74 73 72 71 70 56"
       fi
       for e in ${_PHP_V}; do
         if [ "$1" = "${e}" ]; then

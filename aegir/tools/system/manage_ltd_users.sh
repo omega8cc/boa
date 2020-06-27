@@ -227,7 +227,7 @@ enable_chattr() {
 
     _CHECK_USE_PHP_CLI=$(grep "/opt/php" \
       ${dscUsr}/tools/drush/drush.php 2>&1)
-    _PHP_V="72 73 74 56 71 70"
+    _PHP_V="74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
         && [ ! -e "${_U_HD}/.ctrl.php${e}.${_X_SE}.pid" ]; then
@@ -840,7 +840,7 @@ update_php_cli_local_ini() {
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="72 73 74 56 71 70"
+  _PHP_V="74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
       && [ ! -e "${_U_HD}/.ctrl.php${e}.${_X_SE}.pid" ]; then
@@ -1659,7 +1659,7 @@ switch_php() {
         _FMP_D_INC="${dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
         if [ "${_PHP_FPM_MULTI}" = "YES" ] \
           && [ -d "${dscUsr}/tools/le" ]; then
-          _PHP_M_V="72 73 74 56 71 70"
+          _PHP_M_V="74 73 72 71 70 56"
           _D_POOL="${_USER}.${_PHP_SV}"
           if [ ! -e "${_FMP_D_INC}" ]; then
             echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
@@ -1746,7 +1746,7 @@ switch_php() {
           _FMP_D_INC="${dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
           if [ "${_PHP_FPM_MULTI}" = "YES" ] \
             && [ -d "${dscUsr}/tools/le" ]; then
-            _PHP_M_V="72 73 74 56 71 70"
+            _PHP_M_V="74 73 72 71 70 56"
             _D_POOL="${_USER}.${_PHP_SV}"
             if [ ! -e "${_FMP_D_INC}" ]; then
               echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
@@ -1778,7 +1778,7 @@ switch_php() {
               fi
               if [ -e "/home/${_WEB}/.drush/php.ini" ]; then
                 _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
-                _PHP_V="72 73 74 56 71 70"
+                _PHP_V="74 73 72 71 70 56"
                 for e in ${_PHP_V}; do
                   if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
                     if [ "${e}" != "${m}" ] \
@@ -1798,7 +1798,7 @@ switch_php() {
           ### create or update special system user if needed
           if [ "${_PHP_FPM_MULTI}" = "YES" ] \
             && [ -d "${dscUsr}/tools/le" ]; then
-            _PHP_M_V="72 73 74 56 71 70"
+            _PHP_M_V="74 73 72 71 70 56"
             rm -f /opt/php*/etc/pool.d/${_USER}.conf
           else
             _PHP_M_V="${_PHP_SV}"
@@ -2055,7 +2055,7 @@ manage_user() {
           fi
         fi
         if [ -f "${dscUsr}/static/control/multi-fpm.info" ]; then
-          _PHP_M_V="72 73 74 56 71 70"
+          _PHP_M_V="74 73 72 71 70 56"
           for m in ${_PHP_M_V}; do
             if [ -x "/opt/php${m}/bin/php" ] \
               && [ -e "/opt/php${m}/etc/pool.d/${_USER}.${m}.conf" ]; then
