@@ -466,6 +466,9 @@ if_restart_sql() {
       echo "INFO: ${_DB_SERVER} diff3 ${diffMyTest}"
     fi
   fi
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
+  fi
   if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
     myUptime=$(mysqladmin -P${_SQL_PORT} --protocol=tcp version | grep -i uptime 2>&1)
   else

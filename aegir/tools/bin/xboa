@@ -330,6 +330,9 @@ migrate_sites() {
             if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
               _THIS_DB_PORT=6033
             fi
+            if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+              mkdir -p /etc/mysql/mariadb.conf.d/
+            fi
             mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
             [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL3 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
             if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then

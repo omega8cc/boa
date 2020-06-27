@@ -68,6 +68,9 @@ check_generate() {
 }
 
 do_syncpass() {
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
+  fi
   if [ ! -z "${uname}" ]; then
     prH="/var/aegir/.drush"
     if [ "${uname}" = "aegir" ] && [ -e "/var/aegir/backups" ]; then

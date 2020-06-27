@@ -109,6 +109,9 @@ provision_backend_dbpass_generate() {
   else
     _THIS_DB_PORT=3306
   fi
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
+  fi
   mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
 
   if [ "${_STATUS}" = "INIT" ]; then
@@ -198,6 +201,9 @@ GRANT ALL ON ${_ESC} TO '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WIT
 GRANT ALL ON ${_ESC} TO '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
 EOFMYSQL
   fi
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
+  fi
   mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
 }
 
@@ -260,6 +266,9 @@ EOFMYSQL
     sed -i "s/mysql:\/\/${_ADBU}:.*/mysql:\/\/${_ADBU}:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
       /var/aegir/.drush/server_*.alias.drushrc.php &> /dev/null
     wait
+  fi
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
   fi
   mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
   su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
@@ -353,6 +362,9 @@ PROXYSQL
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
 EOFMYSQL
+  fi
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
   fi
   mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
 }
@@ -536,6 +548,9 @@ upgrade_aegir_master() {
     echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${vBs}/${filIncB}
     echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${vBs}/${filIncB}
 
+    if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+      mkdir -p /etc/mysql/mariadb.conf.d/
+    fi
     mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
     _RST=$(syncpass fix aegir 2>&1)
     provision_backend_dbpass_sync

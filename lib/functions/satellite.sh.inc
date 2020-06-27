@@ -2240,6 +2240,9 @@ provision_backend_dbpass_generate() {
   chmod 0600 ${_L_SYS_PHP}
 
   _ESC="*.*"
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
+  fi
   mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
 
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
@@ -2350,6 +2353,9 @@ EOFMYSQL
       fi
     fi
   fi
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
+  fi
   mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
 }
 
@@ -2409,6 +2415,9 @@ EOFMYSQL
       "s/mysql:\/\/${_USER}:.*/mysql:\/\/${_USER}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
       ${_ROOT}/.drush/server_*.alias.drushrc.php &> /dev/null
     wait
+  fi
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
   fi
   mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush" &> /dev/null
@@ -2501,6 +2510,9 @@ GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
 EOFMYSQL
   fi
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
+  fi
   mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
 }
 
@@ -2511,6 +2523,9 @@ satellite_run_pre_install() {
     _THIS_DB_PORT=3306
   fi
   if [ "${_STATUS}" = "INIT" ]; then
+    if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+      mkdir -p /etc/mysql/mariadb.conf.d/
+    fi
     mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
     provision_backend_dbpass_generate
     echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
@@ -2532,6 +2547,9 @@ satellite_run_pre_install() {
         chmod 0440 /etc/sudoers.d/${SCRIPT}
       fi
     done
+    if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+      mkdir -p /etc/mysql/mariadb.conf.d/
+    fi
     mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
     _RST=$(syncpass fix ${_USER} 2>&1)
     provision_backend_dbpass_sync

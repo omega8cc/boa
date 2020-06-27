@@ -4578,6 +4578,9 @@ install_myquick_src() {
 }
 
 check_install_myquick() {
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
+  fi
   isMyQuick=$(which mydumper 2>&1)
   if [ ! -x "${isMyQuick}" ] \
     || [ -z "${isMyQuick}" ]; then
@@ -5508,6 +5511,9 @@ update_initd() {
           myCnfUpdate=YES
           msg "INFO: ${_DB_SERVER} restart after upgrade forced"
         fi
+      fi
+      if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+        mkdir -p /etc/mysql/mariadb.conf.d/
       fi
       myUptime=$(mysqladmin -P${_THIS_DB_PORT} --protocol=tcp version | grep -i uptime 2>&1)
       myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
