@@ -103,6 +103,14 @@ crontab_clean() {
   fi
 }
 
+if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+  && [ -e "/etc/apt/apt.conf.d" ]; then
+  echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+  rm -f /etc/apt/apt.conf.d/00sandboxtmp
+  rm -f /etc/apt/apt.conf.d/00temp
+  apt-get update -qq &> /dev/null
+fi
+
 if [ -e "/data/disk/arch" ]; then
   _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
@@ -112,30 +120,35 @@ if [ -e "/data/disk/arch" ]; then
   fi
   if [ -e "${barCnf}" ]; then
     source ${barCnf}
-  fi
-  _AUTO_UP_WEEKLY=${_AUTO_UP_WEEKLY//[^0-9]/}
-  _AUTO_UP_MONTH=${_AUTO_UP_MONTH//[^0-9]/}
-  _AUTO_UP_DAY=${_AUTO_UP_DAY//[^0-9]/}
-  if [[ "${_MY_EMAIL}" =~ "omega8" ]]; then
-    _AUTO_UP=YES
-  fi
-  if [ -e "/etc/apticron/apticron.conf" ]; then
-    sed -i "s/^# be something like.*/# be something like ${_MY_EMAIL}/g" \
-      /etc/apticron/apticron.conf
-    [ -r "/root/.auto.up.cnf" ] && rm -f /root/.auto.up.cnf
-    _APTICRON_TEST=$(grep "omega8" /etc/apticron/apticron.conf 2>&1)
-    if [[ "${_APTICRON_TEST}" =~ "omega8" ]]; then
+    _AUTO_UP_WEEKLY=${_AUTO_UP_WEEKLY//[^0-9]/}
+    _AUTO_UP_MONTH=${_AUTO_UP_MONTH//[^0-9]/}
+    _AUTO_UP_DAY=${_AUTO_UP_DAY//[^0-9]/}
+    if [ -e "/etc/apticron/apticron.conf" ]; then
+      sed -i "s/^# be something like.*/# be something like ${_MY_EMAIL}/g" \
+        /etc/apticron/apticron.conf
+      [ -r "/root/.auto.up.cnf" ] && rm -f /root/.auto.up.cnf
+      _APTICRON_TEST=$(grep "omega8" /etc/apticron/apticron.conf 2>&1)
+      if [[ "${_APTICRON_TEST}" =~ "omega8" ]]; then
+        _AUTO_UP=YES
+      fi
+    fi
+    if [ ! -e "/root/.auto.up.cnf" ] && [ "${_AUTO_UP}" = "YES" ]; then
+      touch /root/.auto.up.cnf
+    fi
+    if [[ "${_MY_EMAIL}" =~ "omega8" ]]; then
       _AUTO_UP=YES
     fi
-  fi
-  if [ ! -e "/root/.auto.up.cnf" ] && [ "${_AUTO_UP}" = "YES" ]; then
-    touch /root/.auto.up.cnf
   fi
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
     || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] \
     || [ "${_AUTO_UP}" = "YES" ]; then
+    if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"  ${barCnf}
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"  ${barCnf}
+      sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"  ${barCnf}
+    fi
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
@@ -150,7 +163,7 @@ if [ -e "/data/disk/arch" ]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
-    _AUTO_VER="stable"
+    _AUTO_VER="head"
   fi
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -159,7 +172,7 @@ if [ -e "/data/disk/arch" ]; then
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
     _AUTO_PHP=
-    _AUTO_VER="stable"
+    _AUTO_VER="head"
     sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"7.3 5.6\"/g" ${barCnf}
     wait
     sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g" ${barCnf}
