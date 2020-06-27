@@ -58,7 +58,7 @@ if_running_as_root_barracuda() {
       if [ -d "/etc/webmin" ]; then
         mrun "dpkg --configure -a" &> /dev/null
         mrun "apt-get clean -qq"   &> /dev/null
-        rm -f -r /var/lib/apt/lists/*
+        rm -rf /var/lib/apt/lists/*
         mrun "apt-get update -qq"  &> /dev/null
         mrun "apt-get remove webmin -y -qq" &> /dev/null
         mrun "apt-get purge webmin -y -qq"  &> /dev/null
@@ -1933,7 +1933,7 @@ install_php_deps() {
   st_runner "${_INSTALL} libxpm-dev" 2> /dev/null
   #install_icu
   if [ -d "/usr/local/lib/icu/67.1" ]; then
-    rm -f -r /usr/local/lib/icu
+    rm -rf /usr/local/lib/icu
     rm -f /usr/local/lib/libicu*
     mrun "ldconfig" 2> /dev/null
     _PHP_FORCE_REINSTALL=YES
@@ -2059,7 +2059,7 @@ get_drush_nine() {
     if [ -x "/usr/local/bin/composer" ]; then
       rm -rf /opt/tools/drush/9/*
       mkdir -p /opt/tools/drush/9/drush/vendor
-      rm -f -r /opt/tools/drush/*/drush/cache/*
+      rm -rf /opt/tools/drush/*/drush/cache/*
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         COMPOSER_HOME=/opt/tools/drush/9/drush \
         COMPOSER_BIN_DIR=/usr/local/bin \
@@ -2071,7 +2071,7 @@ get_drush_nine() {
         COMPOSER_VENDOR_DIR=/opt/tools/drush/9/drush/vendor \
         composer global require drush/drush:^9 &> /dev/null
       fi
-      rm -f -r /opt/tools/drush/*/drush/cache/*
+      rm -rf /opt/tools/drush/*/drush/cache/*
     fi
   else
     rm -rf /opt/tools/drush/9/*
@@ -2169,7 +2169,7 @@ update_sources_list() {
   ###--------------------###
   aptitude autoclean -y &> /dev/null
   apt-get clean -qq &> /dev/null
-  rm -f -r /var/lib/apt/lists/*
+  rm -rf /var/lib/apt/lists/*
   ###--------------------###
   if [ -e "${pthLog}/apt-updates-stretch.txt" ] \
     || [ -e "/var/log/apt-updates-stretch.txt" ]; then
@@ -2522,7 +2522,7 @@ install_curl_src() {
           echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
           echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
           mrun "apt-get clean -qq" 2> /dev/null
-          rm -f -r /var/lib/apt/lists/*
+          rm -rf /var/lib/apt/lists/*
           mrun "apt-get update -qq" 2> /dev/null
           mrun "apt-get install libcurl3 ${forCer}" 2> /dev/null
           mrun "apt-get install libcurl3-gnutls ${forCer}" 2> /dev/null
@@ -3055,7 +3055,7 @@ finale() {
   echo >> /etc/motd.tail
   aptitude autoclean -y &> /dev/null
   apt-get clean -qq &> /dev/null
-  rm -f -r /var/lib/apt/lists/*
+  rm -rf /var/lib/apt/lists/*
   mkdir -p /data/conf/arch
   mv -f /data/conf/global.inc-pre* /data/conf/arch/     &> /dev/null
   mv -f /data/conf/global.inc-before* /data/conf/arch/  &> /dev/null
@@ -3249,7 +3249,7 @@ basic_packages_install_on_init() {
     #   fi
     # fi
     apt-get clean -qq &> /dev/null
-    rm -f -r /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/*
     apt-get update -qq &> /dev/null
     ${_INITINS} locales &> /dev/null
     fix_locales
@@ -4302,7 +4302,7 @@ fix_postfix() {
       # fi
       mrun "dpkg --configure -a"      &> /dev/null
       mrun "apt-get clean -qq"        &> /dev/null
-      rm -f -r /var/lib/apt/lists/*
+      rm -rf /var/lib/apt/lists/*
       mrun "apt-get update -qq"       &> /dev/null
       mrun "apt-get purge postfix -y" &> /dev/null
       echo > /var/log/mail.log

@@ -86,7 +86,7 @@ fi
 
 if [ -z "${_HOURLY_DB_BACKUPS}" ] \
   || [ "${_HOURLY_DB_BACKUPS}" != "YES" ]; then
-  rm -f -r /data/disk/arch/hourly/*
+  rm -rf /data/disk/arch/hourly/*
   exit 1
 fi
 
@@ -218,7 +218,7 @@ chmod 700 ${_BACKUPDIR}
 chmod 700 /data/disk/arch
 echo "Permissions fixed"
 
-rm -f -r ${_CHECK_HOST}-${_DATE}
+rm -rf ${_CHECK_HOST}-${_DATE}
 rm -f /var/run/boa_live_sql_backup.pid
 touch /var/xdrago/log/last-run-live-mysql-backup
 echo "ALL TASKS COMPLETED"

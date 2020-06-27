@@ -5217,7 +5217,7 @@ satellite_child_b_aegir_build() {
     #
     if [ -e "${_PREV_HM_ROOT}/${pthA}/${pthB}" ]; then
       msg "${_STATUS} B: Fixing broken Entity module..."
-      rm -f -r ${_PREV_HM_ROOT}/${pthA}
+      rm -rf ${_PREV_HM_ROOT}/${pthA}
       cd ${_PREV_HM_ROOT}/profiles/hostmaster/modules/contrib
       get_dev_stc "entity-7.x-1.9.tar.gz"
       ${_DRUSHCMD} @hostmaster en entity -y

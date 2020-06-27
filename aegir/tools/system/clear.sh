@@ -77,7 +77,7 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
       fi
       echo "curl install" | dpkg --set-selections &> /dev/null
       apt-get clean -qq &> /dev/null
-      rm -f -r /var/lib/apt/lists/*
+      rm -rf /var/lib/apt/lists/*
       apt-get update -qq &> /dev/null
       apt-get install curl ${forCer} &> /dev/null
       touch /root/.use.curl.from.packages.cnf

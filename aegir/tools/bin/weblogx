@@ -44,7 +44,7 @@ fi
 
 if [ "${_ENABLE_GOACCESS}" != "YES" ]; then
   if [ -d "/var/www/adminer/access/archive" ]; then
-    rm -f -r /var/www/adminer/access
+    rm -rf /var/www/adminer/access
     rm -f /root/.goaccessrc*
   fi
   exit 0
@@ -101,7 +101,7 @@ install_goaccess() {
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   fi
   apt-get clean -qq
-  rm -f -r /var/lib/apt/lists/*
+  rm -rf /var/lib/apt/lists/*
   apt-get update -qq
   aptitude purge goaccess -y
   apt-get install libmaxminddb-dev -y

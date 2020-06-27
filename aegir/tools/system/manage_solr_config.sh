@@ -624,7 +624,7 @@ start_up() {
     if [ ! -e "/data/conf/solr/search_api_solr/8/solrconfig_extra.xml" ] \
       || [ ! -e "/data/conf/solr/.ctrl.${_X_SE}.pid" ] \
       || [ ! -z "${myCnfUpdate}" ]; then
-      rm -f -r /data/conf/solr
+      rm -rf /data/conf/solr
       cp -af /var/xdrago/conf/solr /data/conf/
       rm -f /data/conf/solr/.ctrl*
       touch /data/conf/solr/.ctrl.${_X_SE}.pid
@@ -637,7 +637,7 @@ start_up() {
     if [ ! -e "/data/conf/solr/search_api_solr/7/solrconfig_extra.xml" ] \
       || [ ! -e "/data/conf/solr/.ctrl.${_X_SE}.pid" ] \
       || [ ! -z "${myCnfUpdate}" ]; then
-      rm -f -r /data/conf/solr
+      rm -rf /data/conf/solr
       cp -af /var/xdrago/conf/solr /data/conf/
       rm -f /data/conf/solr/.ctrl*
       touch /data/conf/solr/.ctrl.${_X_SE}.pid
@@ -650,7 +650,7 @@ start_up() {
     if [ ! -e "/data/conf/solr/apachesolr/7/solrconfig_extra.xml" ] \
       || [ ! -e "/data/conf/solr/.ctrl.${_X_SE}.pid" ] \
       || [ ! -z "${myCnfUpdate}" ]; then
-      rm -f -r /data/conf/solr
+      rm -rf /data/conf/solr
       cp -af /var/xdrago/conf/solr /data/conf/
       rm -f /data/conf/solr/.ctrl*
       touch /data/conf/solr/.ctrl.${_X_SE}.pid

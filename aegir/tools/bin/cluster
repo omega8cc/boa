@@ -60,7 +60,7 @@ check_root() {
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ ! -x "${_LSB_TEST}" ]; then
       apt-get clean ${_APT_XTR}
-      rm -f -r /var/lib/apt/lists/*
+      rm -rf /var/lib/apt/lists/*
       apt-get update ${_APT_XTR}
       apt-get install lsb-release ${forCer} ${_APT_XTR}
       _OSV=$(lsb_release -si 2>&1)
@@ -89,7 +89,7 @@ check_root() {
       echo "deb-src http://security.debian.org/ ${_OSR}/updates main contrib non-free" >> /etc/apt/sources.list
       echo
       apt-get clean ${_APT_XTR}
-      rm -f -r /var/lib/apt/lists/*
+      rm -rf /var/lib/apt/lists/*
       apt-get update ${_APT_XTR}
       apt-get install lsb-release ${forCer} ${_APT_XTR}
     fi
@@ -400,8 +400,8 @@ install_proxysql() {
       vserver ${idn} exec apt-get update
       vserver ${idn} exec apt-get remove ${_APT_XTR} proxysql
       vserver ${idn} exec apt-get purge ${_APT_XTR} proxysql
-      rm -f -r /vservers/${idn}/var/lib/proxysql
-      rm -f -r /vservers/${idn}/var/log/proxysql
+      rm -rf /vservers/${idn}/var/lib/proxysql
+      rm -rf /vservers/${idn}/var/log/proxysql
       rm -f ${pXcnf}
       rm -f /vservers/${idn}/etc/proxysql.cnf
       rm -f /vservers/${idn}/etc/apt/sources.list.d/proxysql.list
@@ -1535,7 +1535,7 @@ install_host() {
   invoke-rc.d cron restart
   invoke-rc.d lfd start
   invoke-rc.d csf start
-  rm -f -r /var/opt/csf*
+  rm -rf /var/opt/csf*
 
   if_firewall_update
 
@@ -1724,7 +1724,7 @@ upgrade_host() {
     apt-get remove util-vserver ${_APT_XTR}
     apt-get autoremove ${_APT_XTR}
     cd /var/opt
-    rm -f -r util-vserver*
+    rm -rf util-vserver*
     wget -q -U iCab http://files.aegir.cc/dev/src/util-vserver-${_UTIL_VRN}.tar.gz
     tar -xzf util-vserver-${_UTIL_VRN}.tar.gz
     cd util-vserver-${_UTIL_VRN}
@@ -1774,7 +1774,7 @@ upgrade_host() {
 
   echo "Installing vnstat..."
   cd /var/opt
-  rm -f -r vnstat*
+  rm -rf vnstat*
   wget -q -U iCab http://files.aegir.cc/dev/src/vnstat-${_VNSTAT_VRN}.tar.gz
   tar -xzf vnstat-${_VNSTAT_VRN}.tar.gz
   cd vnstat-${_VNSTAT_VRN}
