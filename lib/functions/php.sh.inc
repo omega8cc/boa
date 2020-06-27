@@ -1534,6 +1534,7 @@ check_php_rebuild() {
 check_php_broken_freetype() {
   if [ -e "/usr/include/freetype2" ] \
     && [ ! -e "/usr/include/freetype2/freetype/freetype2" ]; then
+    mkdir -p /usr/include/freetype2/freetype
     ln -sf /usr/include/freetype2 /usr/include/freetype2/freetype/freetype2
   fi
   isFreeType=
@@ -2154,6 +2155,7 @@ check_fix_php() {
     || [ -z "${isFreeType}" ]; then
     if [ -e "/usr/include/freetype2" ] \
       && [ ! -e "/usr/include/freetype2/freetype/freetype2" ]; then
+      mkdir -p /usr/include/freetype2/freetype
       ln -sf /usr/include/freetype2 /usr/include/freetype2/freetype/freetype2
     fi
     msg "INFO: PHP rebuild required to fix freetype support..."
