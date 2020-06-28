@@ -349,7 +349,7 @@ fpm_sockets_healing() {
 fpm_sockets_healing
 
 jetty_restart() {
-  touch /var/run/boa_run.pid
+  touch /var/run/boa_wait.pid
   sleep 5
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
   rm -f /var/log/jetty{7,8,9}/*
@@ -364,7 +364,7 @@ jetty_restart() {
     service jetty7 start
   fi
   sleep 5
-  rm -f /var/run/boa_run.pid
+  rm -f /var/run/boa_wait.pid
 }
 
 if [ -e "/var/log/jetty9" ]; then
