@@ -257,18 +257,6 @@ redis_oom_check() {
     sleep 8
     rm -f /var/run/fmp_wait.pid
   fi
-  if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
-    _REDIS_TEST=$(su -s /bin/bash - aegir -c "drush8 @hostmaster status" 2>&1)
-    if [[ "${_REDIS_TEST}" =~ "RedisException" ]]; then
-      service redis-server stop &> /dev/null
-      killall -9 redis-server &> /dev/null
-      service redis-server start &> /dev/null
-      echo "$(date 2>&1) RedisException OOM detected"
-      echo "$(date 2>&1) RedisException OOM detected" >> /var/xdrago/log/redis.watch.log
-    else
-      echo "Redis is fine"
-    fi
-  fi
 }
 redis_oom_check
 
