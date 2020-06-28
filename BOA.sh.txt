@@ -278,13 +278,14 @@ update_agents() {
     if [[ "${PrTestPower}" =~ "POWER" ]]; then
       echo ${InTest} > /root/.tg.cnf
       echo ${InTest} > /root/.slow.cron.cnf
-      echo ${InTest} > /root/.hr.monitor.cnf
+      rm -f /root/.hr.monitor.cnf
       rm -f /root/.fast.cron.cnf
     fi
     if [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
       echo ${InTest} > /root/.tg.cnf
       echo ${InTest} > /root/.fast.cron.cnf
       rm -f /root/.slow.cron.cnf
+      rm -f /root/.hr.monitor.cnf
     fi
     if [ -e "/root/.tg.cnf" ]; then
       sed -i "s/^_PHP_FPM_WORKERS=.*/_PHP_FPM_WORKERS=100/g" /root/.barracuda.cnf
