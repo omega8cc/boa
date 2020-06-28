@@ -92,17 +92,6 @@ provision_backend_dbpass_generate() {
     _SQL_CONNECT=localhost
   fi
 
-  _RESOLVEIP=$(echo $(getent ahostsv4 ${_AEGIR_HOST}) \
-    | cut -d: -f2 \
-    | awk '{ print $1}' 2>&1)
-
-  if [ -z "${_RESOLVEIP}" ]; then
-    msg "FATAL ERROR:: DNS looks broken for server ${_AEGIR_HOST}"
-    msg "FATAL ERROR:: Aborting Barracuda installer NOW!"
-    touch /opt/tmp/status-Barracuda-FAIL
-    clean_pid_exit
-  fi
-
   _ESC="*.*"
   if [ -e "/var/aegir/use_proxysql.txt" ]; then
     _THIS_DB_PORT=6033
@@ -178,7 +167,8 @@ EOFMYSQL
     _EXTRA_GRANTS=NO
   else
     _LOCAL_HOST=$(uname -n 2>&1)
-    _LOCAL_IP=$(echo $(getent ahostsv4 ${_LOCAL_HOST}) | cut -d: -f2 | awk '{ print $1}' 2>&1)
+    find_correct_ip
+    _LOCAL_IP="${_LOC_IP}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL9 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
       _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
@@ -210,6 +200,9 @@ EOFMYSQL
 #
 # Sync provision backend db_passwd.
 provision_backend_dbpass_sync() {
+  find_correct_ip
+  _USE_RESOLVEIP="${_LOC_IP}"
+  _RESOLVEIP="${_LOC_IP}"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Syncing provision backend db_passwd..."
   fi
@@ -234,8 +227,6 @@ provision_backend_dbpass_sync() {
     _ESC="*.*"
     _USE_DB_USER="${_ADBU}"
     _USE_AEGIR_HOST="$(uname -n 2>&1)"
-    _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
-      | cut -d: -f2 | awk '{ print $1}' 2>&1)"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL10 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
       _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
@@ -333,8 +324,6 @@ hostmaster_frontend_dbpass_sync() {
     _ESC="*.*"
     _USE_DB_USER="${_THIS_HM_DBUR}"
     _USE_AEGIR_HOST="$(uname -n 2>&1)"
-    _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
-      | cut -d: -f2 | awk '{ print $1}' 2>&1)"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL11 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
       _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
@@ -553,6 +542,9 @@ upgrade_aegir_master() {
     fi
     mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
     _RST=$(syncpass fix aegir 2>&1)
+    find_correct_ip
+    _USE_RESOLVEIP="${_LOC_IP}"
+    _RESOLVEIP="${_LOC_IP}"
     provision_backend_dbpass_sync
     hostmaster_frontend_dbpass_sync
     master_download_for_local_build
@@ -719,9 +711,8 @@ install_upgrade_aegir_master() {
       _SQL_CONNECT=localhost
     fi
 
-    _RESOLVEIP=$(echo $(getent ahostsv4 ${_AEGIR_HOST}) \
-      | cut -d: -f2 \
-      | awk '{ print $1}' 2>&1)
+    find_correct_ip
+    _RESOLVEIP="${_LOC_IP}"
     if [ -z "${_RESOLVEIP}" ]; then
       msg "FATAL ERROR: DNS looks broken for server ${_AEGIR_HOST}"
       clean_pid_exit
@@ -828,7 +819,8 @@ EOFMYSQL
       _EXTRA_GRANTS=NO
     else
       _LOCAL_HOST=$(uname -n 2>&1)
-      _LOCAL_IP=$(echo $(getent ahostsv4 ${_LOCAL_HOST}) | cut -d: -f2 | awk '{ print $1}' 2>&1)
+      find_correct_ip
+      _LOCAL_IP="${_LOC_IP}"
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL13 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
       if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
         _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)

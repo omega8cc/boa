@@ -11,6 +11,17 @@ sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g; s/\(['"'"'\]\)//g'
 }
 
+#
+# Find correct IP.
+find_correct_ip() {
+  _LOC_IP=$(curl ${crlGet} https://api.ipify.org \
+    | sed 's/[^0-9\.]//g' 2>&1)
+  if [ -z "${_LOC_IP}" ]; then
+    _LOC_IP=$(curl ${crlGet} http://ip4.icanhazip.com \
+      | sed 's/[^0-9\.]//g' 2>&1)
+  fi
+}
+
 check_generate() {
   rm -f ${_L_SYS}
   if [ -e "${_L_SYS}" ]; then
@@ -72,6 +83,7 @@ do_syncpass() {
     mkdir -p /etc/mysql/mariadb.conf.d/
   fi
   if [ ! -z "${uname}" ]; then
+    find_correct_ip
     prH="/var/aegir/.drush"
     if [ "${uname}" = "aegir" ] && [ -e "/var/aegir/backups" ]; then
       _L_SYS="/var/aegir/backups/system/.aegir_root.pass.txt"
@@ -93,8 +105,7 @@ do_syncpass() {
         _ESC="*.*"
         _USE_DB_USER="aegir_root"
         _USE_AEGIR_HOST="$(uname -n 2>&1)"
-        _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
-          | cut -d: -f2 | awk '{ print $1}' 2>&1)"
+        _USE_RESOLVEIP="${_LOC_IP}"
         [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL1 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
         if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
           _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
@@ -155,8 +166,7 @@ EOFMYSQL
           _ESC="*.*"
           _USE_DB_USER="${uname}"
           _USE_AEGIR_HOST="$(uname -n 2>&1)"
-          _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
-            | cut -d: -f2 | awk '{ print $1}' 2>&1)"
+          _USE_RESOLVEIP="${_LOC_IP}"
           [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL2 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
           if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
             _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)

@@ -2122,6 +2122,17 @@ manage_user() {
   done
 }
 
+#
+# Find correct IP.
+find_correct_ip() {
+  _LOC_IP=$(curl ${crlGet} https://api.ipify.org \
+    | sed 's/[^0-9\.]//g' 2>&1)
+  if [ -z "${_LOC_IP}" ]; then
+    _LOC_IP=$(curl ${crlGet} http://ip4.icanhazip.com \
+      | sed 's/[^0-9\.]//g' 2>&1)
+  fi
+}
+
 ###-------------SYSTEM-----------------###
 
 if [ ! -e "/home/.ctrl.${_X_SE}.pid" ]; then
@@ -2183,11 +2194,8 @@ else
   find_fast_mirror
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   cat /var/xdrago/conf/lshell.conf > ${_THIS_LTD_CONF}
-  _THISHTNM=$(hostname --fqdn 2>&1)
-  _THISHTIP=$(echo $(getent ahostsv4 ${_THISHTNM}) \
-    | cut -d: -f2 \
-    | awk '{ print $1}' 2>&1)
-  sed -i "s/1.1.1.1/${_THISHTIP}/g" ${_THIS_LTD_CONF}
+  find_correct_ip
+  sed -i "s/1.1.1.1/${_LOC_IP}/g" ${_THIS_LTD_CONF}
   wait
   if [ ! -e "/root/.allow.mc.cnf" ]; then
     sed -i "s/'mc', //g" ${_THIS_LTD_CONF}

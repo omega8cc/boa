@@ -2265,14 +2265,8 @@ provision_backend_dbpass_generate() {
     _USE_AEGIR_HOST=$(uname -n 2>&1)
     _SQL_CONNECT=localhost
   fi
-  _USE_RESOLVEIP=$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
-    | cut -d: -f2 | awk '{ print $1}' 2>&1)
-  if [ -z "${_USE_RESOLVEIP}" ]; then
-    msg "${_STATUS} A: FATAL ERROR: DNS looks broken for ${_USE_AEGIR_HOST}"
-    msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-    touch /opt/tmp/status-AegirSetupA-FAIL
-    exit 1
-  fi
+  find_correct_ip
+  _USE_RESOLVEIP="${_LOC_IP}"
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
     || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
     || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
@@ -2362,6 +2356,9 @@ EOFMYSQL
 #
 # Sync provision backend db_passwd.
 provision_backend_dbpass_sync() {
+  find_correct_ip
+  _USE_RESOLVEIP="${_LOC_IP}"
+  _RESOLVEIP="${_LOC_IP}"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Syncing provision backend db_passwd..."
   fi
@@ -2382,8 +2379,8 @@ provision_backend_dbpass_sync() {
     _ESC="*.*"
     _USE_DB_USER="${_USER}"
     _USE_AEGIR_HOST="$(uname -n 2>&1)"
-    _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
-      | cut -d: -f2 | awk '{ print $1}' 2>&1)"
+    find_correct_ip
+    _USE_RESOLVEIP="${_LOC_IP}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL16 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
       _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
@@ -2480,8 +2477,8 @@ hostmaster_frontend_dbpass_sync() {
     _ESC="*.*"
     _USE_DB_USER="${_THIS_HM_DBUR}"
     _USE_AEGIR_HOST="$(uname -n 2>&1)"
-    _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
-      | cut -d: -f2 | awk '{ print $1}' 2>&1)"
+    find_correct_ip
+    _USE_RESOLVEIP="${_LOC_IP}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL17 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
       _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
@@ -2517,6 +2514,9 @@ EOFMYSQL
 }
 
 satellite_run_pre_install() {
+  find_correct_ip
+  _USE_RESOLVEIP="${_LOC_IP}"
+  _RESOLVEIP="${_LOC_IP}"
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _THIS_DB_PORT=6033
   else
@@ -2636,6 +2636,8 @@ satellite_download_for_local_build() {
 #
 # Run child B.
 satellite_run_child_b() {
+  find_correct_ip
+  _USE_RESOLVEIP="${_LOC_IP}"
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} A: Switching user and running AegirSetupB..."

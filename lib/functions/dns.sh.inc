@@ -213,11 +213,6 @@ find_correct_ip() {
     _LOC_IP=$(curl ${crlGet} http://ip4.icanhazip.com \
       | sed 's/[^0-9\.]//g' 2>&1)
   fi
-  if [ -z "${_LOC_IP}" ]; then
-    _LOC_IP=$(echo $(getent ahostsv4 $_LOC_DOM) \
-      | cut -d: -f2 \
-      | awk '{ print $1}' 2>&1)
-  fi
 }
 
 #
