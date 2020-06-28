@@ -30,6 +30,7 @@ guest_proc_monitor() {
     if [ -e "${i}/var/xdrago/proc_num_ctrl.cgi" ] \
       && [ ! -e "${i}/var/run/fmp_wait.pid" ] \
       && [ ! -e "${i}/var/run/boa_wait.pid" ] \
+      && [ ! -e "${i}/var/run/boa_run.pid" ] \
       && [ ! -e "${i}/var/run/mysql_restart_running.pid" ] \
       && [ -e "/usr/var/run${i}" ]; then
       vserver ${_VS_NAME} exec perl /var/xdrago/proc_num_ctrl.cgi
