@@ -30,6 +30,10 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
+if [ -e "/root/.pause_tasks_maint.cnf" ]; then
+  exit 0
+fi
+
 action() {
 
   #
