@@ -105,6 +105,10 @@ sql_strict_upgrade_path() {
 # Update innodb_log_file_size.
 update_innodb_log_file_size() {
   msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
+  if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
+    sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf
+    wait
+  fi
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
@@ -141,6 +145,10 @@ update_innodb_log_file_size() {
 update_sql_conf() {
   sed -i "s/.*innodb_force_recovery/#innodb_force_recovery/g" /etc/mysql/my.cnf
   wait
+  if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
+    sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf
+    wait
+  fi
   # if [ "${_DB_SERIES}" = "10.4" ]; then
   #   sed -i "s/.*innodb-defragment/innodb-defragment/g" /etc/mysql/my.cnf
   #   wait
@@ -271,6 +279,10 @@ tune_sql_memory_limits() {
     _DO_NOTHING=YES
   else
     cp -af ${locCnf}/my.cnf.txt /etc/mysql/my.cnf
+  fi
+  if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
+    sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf
+    wait
   fi
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
   pthTun="/var/opt/mysqltuner.pl"
@@ -1118,8 +1130,18 @@ install_db_server() {
       install_with_aptitude_sql
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf
+        wait
       fi
-      wait
+      if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
+        sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf
+        wait
+      fi
+      if [ -e "/etc/mysql/my.cnf" ]; then
+        sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
+        wait
+        sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
+        wait
+      fi
       _CUSTOM_CONFIG_SQL=NO
       mrun "sleep 8"
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
