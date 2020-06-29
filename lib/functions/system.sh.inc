@@ -1179,7 +1179,7 @@ barracuda_cnf() {
           if [ ! -z "${_CLSTR_PHP_MULTI_INSTALL}" ]; then
             _PHP_MULTI_INSTALL="${_CLSTR_PHP_MULTI_INSTALL}"
           else
-            _PHP_MULTI_INSTALL="7.2"
+            _PHP_MULTI_INSTALL="7.3 7.2"
           fi
         else
           if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then

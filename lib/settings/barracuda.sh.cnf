@@ -74,7 +74,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### which are used to define version to be
 ### used by Master or Satellite Instance.
 ###
-_PHP_MULTI_INSTALL="7.2"
+_PHP_MULTI_INSTALL="7.3 7.2"
 
 
 ###----------------------------------------###
