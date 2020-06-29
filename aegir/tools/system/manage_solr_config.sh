@@ -34,10 +34,6 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
-if [ -e "/root/.pause_tasks_maint.cnf" ]; then
-  exit 0
-fi
-
 _X_SE="401prodQ94"
 _WEBG=www-data
 _OSV=$(lsb_release -sc 2>&1)
