@@ -100,6 +100,7 @@ innodb_read_io_threads = 64
 innodb_doublewrite = 0
 innodb_support_xa = 0
 innodb_checksums = 0
+innodb_flush_log_at_timeout = 5
 innodb_force_recovery = 3
 
 [mysqld_safe]
