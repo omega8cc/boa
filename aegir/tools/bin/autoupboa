@@ -160,6 +160,9 @@ if [ -e "/data/disk/arch" ]; then
       sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"  ${barCnf}
       sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"  ${barCnf}
     else
+      mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_support_xa=0;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
       mysql -u root -e "SET GLOBAL show_compatibility_56=ON;" &> /dev/null
     fi
     sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"  ${barCnf}
