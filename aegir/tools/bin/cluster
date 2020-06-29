@@ -1272,6 +1272,7 @@ install_db_cluster() {
     vserver ${idn} exec chmod 0600 /root/.my.cnf
     echo "db=mysql" > /vservers/${idn}/root/.mytop
     vserver ${idn} exec chmod 0600 /root/.mytop
+    vserver ${idn} exec update-rc.d -f mysql remove
 
     ##echo "Running mysql_secure_installation procedure on ${IP} DB node..."
     ##vserver ${idn} exec mysql -u root -e "FLUSH HOSTS;"
@@ -1889,6 +1890,7 @@ restart_db_cluster() {
   inc="0"
   for IP in "${_DB_NODE_IP[@]}"; do
     idn="${_CLUSTER_PREFIX}db${inc}"
+    vserver ${idn} exec update-rc.d -f mysql remove
     if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
       echo "Running mycnfup stop on ${idn}/${IP}..."
       ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup stop"

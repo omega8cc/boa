@@ -370,6 +370,7 @@ start_sql() {
 
   echo "Starting MySQLD again.."
   renice ${_B_NICE} -p $$ &> /dev/null
+  update-rc.d -f mysql remove &> /dev/null
   if [ "$1" = "init" ]; then
     _MASTER_START=YES
     service mysql bootstrap-pxc
