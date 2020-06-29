@@ -1901,6 +1901,9 @@ restart_db_cluster() {
       echo "Running mycnfup stop on ${idn}/${IP}..."
       ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup stop"
     fi
+    if [ "${IP}" = "${_DB_NODE_IP[1]}" ]; then
+      sed -i "s/^safe_to_bootstrap.*/safe_to_bootstrap: 1/g"  /vservers/${idn}/var/lib/mysql/grastate.dat
+    fi
     inc=$((inc+1))
     echo
     echo "Testing ${idn} status..."
