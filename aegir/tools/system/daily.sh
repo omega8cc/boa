@@ -38,7 +38,7 @@ if [ -e "/root/.pause_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-_X_SE="401prodQ92"
+_X_SE="401prodQ93"
 _WEBG=www-data
 _OSV=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
@@ -2685,7 +2685,7 @@ process() {
             fix_site_control_files
             fix_user_register_protection
             if [ -e "${Plr}/modules/o_contrib_seven" ]; then
-              if [[ "${_X_SE}" =~ "401prodQ92" ]]; then
+              if [[ "${_X_SE}" =~ "401prodQ93" ]]; then
                 run_drush8_cmd "advagg-force-new-aggregates"
                 run_drush8_cmd "cc all"
               fi
