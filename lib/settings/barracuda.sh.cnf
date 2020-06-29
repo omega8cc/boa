@@ -860,7 +860,7 @@ _DB_BINARY_LOG=NO
 ### Can be disabled when set to NO, if causes
 ### too high load spikes on too weak systems.
 ###
-_USE_MYSQLTUNER=NO
+_USE_MYSQLTUNER=YES
 
 ###
 ### Set max 1 min load per CPU core before blocking

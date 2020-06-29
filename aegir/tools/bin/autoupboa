@@ -161,8 +161,10 @@ if [ -e "/data/disk/arch" ]; then
     if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
       sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"  ${barCnf}
       sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"  ${barCnf}
-      sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"  ${barCnf}
+    else
+      mysql -u root -e "SET GLOBAL show_compatibility_56=ON;" &> /dev/null
     fi
+    sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"  ${barCnf}
     _AUTO_UP_WEEKLY=7
     _AUTO_UP_MONTH=1
     _AUTO_UP_DAY=8

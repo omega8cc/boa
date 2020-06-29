@@ -749,7 +749,10 @@ up_action() {
             #   wait
             # fi
             if [ -e "/etc/init.d/redis-server" ]; then
-              sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"     ${barCnf}
+              sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"     ${barCnf}
+              if [[ "${_DB_SERVER}" =~ "Percona" ]]; then
+                mysql -u root -e "SET GLOBAL show_compatibility_56=ON;" &> /dev/null
+              fi
             else
               sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"      ${barCnf}
             fi
