@@ -57,8 +57,6 @@ crontab_update() {
     echo "# Barracuda weekly system only upgrade" >> /etc/crontab
     echo "11 0    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
     echo "14 0    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
-    echo "11 4    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
-    echo "14 4    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
     echo "# Barracuda ${_AUTO_VER} full upgrade" >> /etc/crontab
     echo "05 0  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
     echo "08 0  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
