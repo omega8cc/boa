@@ -267,7 +267,7 @@ if_install_collectd() {
 
 if_install_hhvm() {
   if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "jessie" ]; then
+    && [ "${_LOC_OSR}" = "jessie" ]; then
     _DO_FIX=YES
   fi
   if [[ "${_XTRAS_LIST}" =~ "HVM" ]]; then
@@ -276,10 +276,10 @@ if_install_hhvm() {
     else
       _GPG=gpg
     fi
-    if [ "${_OSV}" = "buster" ] \
-      || [ "${_OSV}" = "stretch" ] \
-      || [ "${_OSV}" = "jessie" ] \
-      || [ "${_OSV}" = "trusty" ] \
+    if [ "${_OSR}" = "buster" ] \
+      || [ "${_OSR}" = "stretch" ] \
+      || [ "${_OSR}" = "jessie" ] \
+      || [ "${_OSR}" = "trusty" ] \
       || [ "${_DO_FIX}" = "YES" ]; then
       if [ ! -x "/usr/bin/hhvm" ]; then
         echo " "
@@ -288,16 +288,16 @@ if_install_hhvm() {
           msg "INFO: Installing HHVM Engine..."
           cd /var/opt
           echo "## HHVM APT Repository" > ${aptLiSys}.d/hhvm.list
-          if [ "${_OSV}" = "jessie" ]; then
+          if [ "${_OSR}" = "jessie" ]; then
             echo "deb http://dl.hhvm.com/debian jessie main" >> \
               ${aptLiSys}.d/hhvm.list
-          elif [ "${_OSV}" = "stretch" ] || [ "${_DO_FIX}" = "YES" ]; then
+          elif [ "${_OSR}" = "stretch" ] || [ "${_DO_FIX}" = "YES" ]; then
             echo "deb http://dl.hhvm.com/debian stretch main" >> \
               ${aptLiSys}.d/hhvm.list
-          elif [ "${_OSV}" = "buster" ] || [ "${_DO_FIX}" = "YES" ]; then
+          elif [ "${_OSR}" = "buster" ] || [ "${_DO_FIX}" = "YES" ]; then
             echo "deb http://dl.hhvm.com/debian buster main" >> \
               ${aptLiSys}.d/hhvm.list
-          elif [ "${_OSV}" = "trusty" ]; then
+          elif [ "${_OSR}" = "trusty" ]; then
             echo "deb http://dl.hhvm.com/ubuntu trusty main" >> \
               ${aptLiSys}.d/hhvm.list
           fi
@@ -596,17 +596,17 @@ if_install_ffmpeg() {
         true
         msg "INFO: Installing FFmpeg..."
         cd /var/opt
-        if [ "${_OSV}" = "buster" ] \
-          || [ "${_OSV}" = "stretch" ] \
-          || [ "${_OSV}" = "jessie" ]; then
+        if [ "${_OSR}" = "buster" ] \
+          || [ "${_OSR}" = "stretch" ] \
+          || [ "${_OSR}" = "jessie" ]; then
           echo "## deb-multimedia APT Repository for FFmpeg" > ${aptLiSys}.d/ffmpeg.list
-          if [ "${_OSV}" = "jessie" ]; then
+          if [ "${_OSR}" = "jessie" ]; then
             echo "deb http://www.deb-multimedia.org jessie main non-free" >> ${aptLiSys}.d/ffmpeg.list
             echo "deb http://www.deb-multimedia.org jessie-backports main" >> ${aptLiSys}.d/ffmpeg.list
-          elif [ "${_OSV}" = "stretch" ]; then
+          elif [ "${_OSR}" = "stretch" ]; then
             echo "deb http://www.deb-multimedia.org stretch main non-free" >> ${aptLiSys}.d/ffmpeg.list
             echo "deb http://www.deb-multimedia.org stretch-backports main" >> ${aptLiSys}.d/ffmpeg.list
-          elif [ "${_OSV}" = "buster" ]; then
+          elif [ "${_OSR}" = "buster" ]; then
             echo "deb http://www.deb-multimedia.org buster main non-free" >> ${aptLiSys}.d/ffmpeg.list
             echo "deb http://www.deb-multimedia.org buster-backports main" >> ${aptLiSys}.d/ffmpeg.list
           fi
@@ -614,7 +614,7 @@ if_install_ffmpeg() {
           st_runner "apt-get install deb-multimedia-keyring ${forCer}" 2> /dev/null
           st_runner "apt-get update -qq" &> /dev/null
           st_runner "${_INSTAPP} ffmpeg" 2> /dev/null
-        elif [ "${_OSV}" = "trusty" ] || [ "${_OSV}" = "precise" ]; then
+        elif [ "${_OSR}" = "trusty" ] || [ "${_OSR}" = "precise" ]; then
           _X86_64_TEST=$(uname -m 2>&1)
           rm -rf ffmpeg*
           if [ "${_X86_64_TEST}" = "x86_64" ]; then

@@ -374,8 +374,8 @@ install_pdnsd_cache() {
     echo "nameserver 1.1.1.1" > /etc/resolv.conf
     echo "nameserver 1.0.0.1" >> /etc/resolv.conf
   fi
-  if [ "${_OSV}" = "buster" ] \
-    || [ "${_OSV}" = "stretch" ]; then
+  if [ "${_OSR}" = "buster" ] \
+    || [ "${_OSR}" = "stretch" ]; then
     st_runner "${_INSTALL} resolvconf" &> /dev/null
     msg "INFO: Building pdnsd ${_PDNSD_VRN} from sources, please wait..."
     cd /var/opt

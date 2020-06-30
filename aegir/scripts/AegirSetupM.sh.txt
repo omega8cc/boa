@@ -101,7 +101,7 @@ elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
   && [ -x "/opt/php56/bin/php" ]; then
   _T_CLI=/opt/php56/bin
 fi
-_OSV=$(lsb_release -sc 2>&1)
+_OSR=$(lsb_release -sc 2>&1)
 _ROOT="${HOME}"
 if [ -e "/opt/tools/d7.ini" ] \
   && [ -e "/opt/tools/drush/7/drush/drush.php" ]; then

@@ -3780,7 +3780,7 @@ satellite_send_welcome_email() {
 # Satellite start.
 satellite_make() {
   export _THIS_OS=$(lsb_release -si 2>&1)
-  export _OSV=$(lsb_release -sc 2>&1)
+  export _OSR=$(lsb_release -sc 2>&1)
   if [ -d "/data/all/000" ]; then
     if [ ! -e "/data/all/000/core-v-${_SMALLCORE6}.txt" ] \
       || [ ! -e "/data/all/000/core-v-${_SMALLCORE7}.txt" ]; then
@@ -3853,7 +3853,7 @@ satellite_make() {
   echo "_OPENSCHOLAR=\"${_OPENSCHOLAR}\""             >> ${writeTo}
   echo "_OPIGNOLMS7=\"${_OPIGNOLMS7}\""               >> ${writeTo}
   echo "_OPIGNOLMS8=\"${_OPIGNOLMS8}\""               >> ${writeTo}
-  echo "_OSV=\"${_OSV}\""                             >> ${writeTo}
+  echo "_OSR=\"${_OSR}\""                             >> ${writeTo}
   echo "_PANOPOLY=\"${_PANOPOLY}\""                   >> ${writeTo}
   echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${writeTo}
   echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${writeTo}
@@ -4677,7 +4677,7 @@ satellite_log_update() {
     echo ${_F_TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
   fi
   _OCTOPUS_VERSION_INFO="${_F_TIME} / \
-    ${_THIS_OS}.${_OSV} $(uname -m 2>&1) \
+    ${_THIS_OS}.${_OSR} $(uname -m 2>&1) \
     / Aegir ${_AEGIR_VERSION} / Octopus ${_X_VERSION} \
     / FPM ${_PHP_FPM_VERSION} / CLI ${_PHP_CLI_VERSION}"
   echo "${_OCTOPUS_VERSION_INFO}" | fmt -su -w 2500 >> \

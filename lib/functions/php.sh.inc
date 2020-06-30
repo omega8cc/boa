@@ -935,7 +935,7 @@ update_php_extensions() {
 # Install modern PHP version
 install_php_multi() {
   if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "jessie" ]; then
+    && [ "${_LOC_OSR}" = "jessie" ]; then
     _DO_FIX=YES
   fi
   get_php_conf_extra
@@ -971,12 +971,12 @@ install_php_multi() {
   msg "INFO: Building PHP ${_PHP_VERSION} part 1/3"
   cd /var/opt/php-${_PHP_VERSION}
   mrun "sh ./buildconf --force" 2> /dev/null
-  if [ "${_OSV}" = "buster" ] \
-    || [ "${_OSV}" = "stretch" ] \
-    || [ "${_OSV}" = "jessie" ] \
+  if [ "${_OSR}" = "buster" ] \
+    || [ "${_OSR}" = "stretch" ] \
+    || [ "${_OSR}" = "jessie" ] \
     || [ "${_DO_FIX}" = "YES" ] \
-    || [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "precise" ]; then
+    || [ "${_OSR}" = "trusty" ] \
+    || [ "${_OSR}" = "precise" ]; then
     patchFile="disable_SSLv2_for_openssl_1_0_0.patch"
     patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
   fi
@@ -1021,13 +1021,13 @@ install_php_multi() {
     _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR} --enable-gd-native-ttf --with-mcrypt"
   elif [ "$1" = "56" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR} --enable-gd-native-ttf --with-mcrypt --with-mysql=mysqlnd"
-    if [ "${_OSV}" = "buster" ] \
-      || [ "${_OSV}" = "stretch" ]; then
+    if [ "${_OSR}" = "buster" ] \
+      || [ "${_OSR}" = "stretch" ]; then
       patchFile="PHP-5.6.31-OpenSSL-1.1.0-compatibility-20170801.patch"
       patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
     fi
   fi
-  if [ "${_OSV}" = "buster" ]; then
+  if [ "${_OSR}" = "buster" ]; then
     patchFile="freetype.patch"
     patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
   fi
@@ -1568,7 +1568,7 @@ check_php_broken_gd() {
 # Check if the PHP build is broken.
 check_php_broken() {
   if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "jessie" ]; then
+    && [ "${_LOC_OSR}" = "jessie" ]; then
     _DO_NOTHING=YES
   else
     _BROKEN_LIBCURL_TEST=$(/opt/php$1/bin/php -v 2>&1)
@@ -2046,10 +2046,10 @@ php_upgrade_all() {
 
 get_php_conf_extra() {
   _PHP_EXTRA=""
-  if [ "${_OSV}" = "stretch" ] \
-    || [ "${_OSV}" = "jessie" ] \
-    || [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "precise" ]; then
+  if [ "${_OSR}" = "stretch" ] \
+    || [ "${_OSR}" = "jessie" ] \
+    || [ "${_OSR}" = "trusty" ] \
+    || [ "${_OSR}" = "precise" ]; then
     _PHP_EXTRA="--with-freetype-dir=/usr"
   fi
   if [ ! -z "${_PHP_EXTRA_CONF}" ]; then
@@ -2064,11 +2064,11 @@ get_php_conf_extra() {
 
 install_update_php() {
   if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "jessie" ]; then
+    && [ "${_LOC_OSR}" = "jessie" ]; then
     _DO_FIX=YES
   fi
   # if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-  #   && [ "${_LOC_OSV}" = "jessie" ]; then
+  #   && [ "${_LOC_OSR}" = "jessie" ]; then
   #   mrun "service nginx stop" &> /dev/null
   #   killall -9 nginx &> /dev/null
   # fi

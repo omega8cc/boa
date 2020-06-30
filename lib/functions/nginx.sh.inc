@@ -67,7 +67,7 @@ force_advanced_nginx_config() {
   sed -i "s/ 90;/ 180;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
   wait
   if [ "${_NGINX_SPDY}" = "YES" ]; then
-    if [ "${_OSV}" = "none" ]; then
+    if [ "${_OSR}" = "none" ]; then
       sed -i "s/:443;/:443 ssl spdy;/g" ${mtrNgx}/pre.d/*.conf           &> /dev/null
       wait
       sed -i "s/:443;/:443 ssl spdy;/g" ${mtrNgx}/vhost.d/*              &> /dev/null
@@ -371,7 +371,7 @@ install_upgrade_nginx() {
       fi
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
-      if [ "${_OSV}" = "none" ]; then
+      if [ "${_OSR}" = "none" ]; then
         _NGINX_EXTRA="--with-http_spdy_module ${_NGINX_EXTRA}"
       else
         _NGINX_EXTRA="--with-http_v2_module ${_NGINX_EXTRA}"
@@ -413,7 +413,7 @@ install_upgrade_nginx() {
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "jessie" ]; then
+      && [ "${_LOC_OSR}" = "jessie" ]; then
       _DO_NOTHING=YES
     else
       mrun "service nginx stop" &> /dev/null
@@ -637,7 +637,7 @@ fix_update_nginx_config() {
       wait
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
-      if [ "${_OSV}" = "none" ]; then
+      if [ "${_OSR}" = "none" ]; then
         sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf           &> /dev/null
         wait
         sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/vhost.d/*              &> /dev/null

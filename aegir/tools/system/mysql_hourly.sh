@@ -71,7 +71,7 @@ _DOM=${_DOM//[^0-9]/}
 _SAVELOCATION=${_BACKUPDIR}/${_CHECK_HOST}-${_DATE}
 _VM_TEST=$(uname -a 2>&1)
 _LOGDIR="/var/xdrago/log/hourly"
-_OSV=$(lsb_release -sc 2>&1)
+_OSR=$(lsb_release -sc 2>&1)
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 else
@@ -101,8 +101,8 @@ if [ ! -e "${xtraList}" ] \
   || [ ! -e "/usr/bin/innobackupex" ]; then
   xtraRepo="repo.percona.com/apt"
   echo "## Percona XtraBackup APT Repository" > ${xtraList}
-  echo "deb http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
-  echo "deb-src http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
+  echo "deb http://${xtraRepo}/ ${_OSR} main" >> ${xtraList}
+  echo "deb-src http://${xtraRepo}/ ${_OSR} main" >> ${xtraList}
   if [ -e "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
     service lfd stop &> /dev/null

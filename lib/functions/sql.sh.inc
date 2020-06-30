@@ -517,10 +517,10 @@ install_db_sql() {
     _GPG=gpg
   fi
   cd /var/opt
-  if [ "${_OSV}" = "buster" ] \
-    || [ "${_OSV}" = "stretch" ] \
-    || [ "${_OSV}" = "jessie" ] \
-    || [ "${_OSV}" = "trusty" ]; then
+  if [ "${_OSR}" = "buster" ] \
+    || [ "${_OSR}" = "stretch" ] \
+    || [ "${_OSR}" = "jessie" ] \
+    || [ "${_OSR}" = "trusty" ]; then
     st_runner "${_INSTAPP} software-properties-common dirmngr" 2> /dev/null
   fi
   _KEYS_SIG="C74CD1D8"
@@ -562,10 +562,10 @@ install_db_sql() {
   elif [ "${_THIS_OS}" = "Ubuntu" ]; then
     _OSN=ubuntu
   fi
-  if [ "${_OSV}" = "buster" ] \
-    || [ "${_OSV}" = "stretch" ] \
-    || [ "${_OSV}" = "jessie" ] \
-    || [ "${_OSV}" = "trusty" ]; then
+  if [ "${_OSR}" = "buster" ] \
+    || [ "${_OSR}" = "stretch" ] \
+    || [ "${_OSR}" = "jessie" ] \
+    || [ "${_OSR}" = "trusty" ]; then
     if [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ]; then
@@ -597,7 +597,7 @@ install_db_sql() {
         _DBS_VRN="${_MARIADB_10_2_VRN}"
       fi
     fi
-    msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSV}"
+    msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSR}"
   else
     if [ "${_DB_SERIES}" = "10.4" ] \
       || [ "${_DB_SERIES}" = "10.3" ] \
@@ -606,12 +606,12 @@ install_db_sql() {
     else
       _DB_SERIES=10.2
       _DBS_VRN="${_MARIADB_10_2_VRN}"
-      msg "INFO: Forced ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSV}"
+      msg "INFO: Forced ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSR}"
     fi
     if [ -z "${_DB_SERIES}" ]; then
       _DB_SERIES=10.2
       _DBS_VRN="${_MARIADB_10_2_VRN}"
-      msg "INFO: Forced ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSV}"
+      msg "INFO: Forced ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSR}"
     fi
   fi
 
@@ -622,14 +622,14 @@ install_db_sql() {
     aptRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
     aptLiDb="${aptLiSys}.d/mariadb.list"
     echo "## MariaDB APT Repository" > ${aptLiDb}
-    echo "deb [arch=amd64,i386] http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
-    echo "deb-src http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
+    echo "deb [arch=amd64,i386] http://${aptRepo}/${_OSN} ${_OSR} main" >> ${aptLiDb}
+    echo "deb-src http://${aptRepo}/${_OSN} ${_OSR} main" >> ${aptLiDb}
   fi
   xtraRepo="repo.percona.com/apt"
   xtraList="${aptLiSys}.d/xtrabackup.list"
   echo "## Percona XtraBackup APT Repository" > ${xtraList}
-  echo "deb http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
-  echo "deb-src http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
+  echo "deb http://${xtraRepo}/ ${_OSR} main" >> ${xtraList}
+  echo "deb-src http://${xtraRepo}/ ${_OSR} main" >> ${xtraList}
   # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
   # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
   #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
@@ -815,11 +815,11 @@ install_db_sql() {
 }
 
 install_with_aptitude_sql() {
-  if [ "${_OSV}" = "buster" ] \
-    || [ "${_OSV}" = "stretch" ] \
-    || [ "${_OSV}" = "jessie" ] \
-    || [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "precise" ]; then
+  if [ "${_OSR}" = "buster" ] \
+    || [ "${_OSR}" = "stretch" ] \
+    || [ "${_OSR}" = "jessie" ] \
+    || [ "${_OSR}" = "trusty" ] \
+    || [ "${_OSR}" = "precise" ]; then
     if [ "${_EASY_SETUP}" = "MSTR" ] \
       || [ "${_EASY_SETUP}" = "DBHD" ] \
       || [ "${_EASY_SETUP}" = "WBHD" ] \
@@ -1000,23 +1000,23 @@ install_db_server() {
     sql_strict_upgrade_path
 
     if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "jessie" ]; then
+      && [ "${_LOC_OSR}" = "jessie" ]; then
       _SQL_UPGRADE=NO
     fi
     if [ "${_DB_SERVER}" = "MariaDB" ]; then
       _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
         ${aptLiSys}.d/mariadb.list 2>&1)
-      _SQL_DEB_SRC_TEST_B=$(grep ${_OSV} \
+      _SQL_DEB_SRC_TEST_B=$(grep ${_OSR} \
         ${aptLiSys}.d/mariadb.list 2>&1)
     else
       _DB_SRC="percona"
       _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
         ${aptLiSys}.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_B=$(grep ${_OSV} \
+      _SQL_DEB_SRC_TEST_B=$(grep ${_OSR} \
         ${aptLiSys}.d/percona-release.list 2>&1)
     fi
     if [[ "${_SQL_DEB_SRC_TEST_A}" =~ "${_DB_SRC}" ]] \
-      && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_OSV}" ]]; then
+      && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_OSR}" ]]; then
       _SQL_DEB_SRC_UPDATE=NO
     else
       if [ "${_THIS_OS}" = "Debian" ]; then
@@ -1028,16 +1028,16 @@ install_db_server() {
         aptRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
         aptLiDb="${aptLiSys}.d/mariadb.list"
         echo "## MariaDB APT Repository" > ${aptLiDb}
-        echo "deb [arch=amd64,i386] http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
-        echo "deb-src http://${aptRepo}/${_OSN} ${_OSV} main" >> ${aptLiDb}
+        echo "deb [arch=amd64,i386] http://${aptRepo}/${_OSN} ${_OSR} main" >> ${aptLiDb}
+        echo "deb-src http://${aptRepo}/${_OSN} ${_OSR} main" >> ${aptLiDb}
         rm -f /etc/apt/sources.list.d/percona-release.*
         rm -f /etc/apt/preferences.d/00percona.pref
       else
         xtraRepo="repo.percona.com/apt"
         xtraList="${aptLiSys}.d/xtrabackup.list"
         echo "## Percona XtraBackup APT Repository" > ${xtraList}
-        echo "deb http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
-        echo "deb-src http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
+        echo "deb http://${xtraRepo}/ ${_OSR} main" >> ${xtraList}
+        echo "deb-src http://${xtraRepo}/ ${_OSR} main" >> ${xtraList}
         cd /var/opt
         rm -rf /var/opt/percona*
         wget -q -U iCab \

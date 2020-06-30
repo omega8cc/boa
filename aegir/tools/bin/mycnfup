@@ -63,16 +63,24 @@ check_root() {
       _VMFAMILY="AWS"
     fi
 
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ ! -x "${_LSB_TEST}" ]; then
-      apt-get clean -qq &> /dev/null
-      rm -rf /var/lib/apt/lists/*
-      apt-get update -qq &> /dev/null
+      apt-get clean -qq
+      rm -rf /var/lib/apt/lists/**
+      apt-get update -qq
       apt-get install lsb-release ${forCer}
-      _OSV=$(lsb_release -si 2>&1)
+    fi
+    _LSB_TEST=$(which lsb_release 2> /dev/null)
+    if [ -x "${_LSB_TEST}" ]; then
+      _THIS_OS=$(lsb_release -si 2>&1)
       _OSR=$(lsb_release -sc 2>&1)
-      if [ "${_OSV}" != "Debian" ]; then
-        echo "ERROR: Not supported OS detected: ${_OSV}/${_OSR}"
+      if [ "${_THIS_OS}" != "Debian" ]; then
+        echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
         exit 1
       fi
       echo
@@ -97,18 +105,12 @@ check_root() {
       apt-get clean -qq &> /dev/null
       rm -rf /var/lib/apt/lists/*
       apt-get update -qq &> /dev/null
-      apt-get install lsb-release ${forCer}
     fi
-    _OSV=$(lsb_release -si 2>&1)
+    _THIS_OS=$(lsb_release -si 2>&1)
     _OSR=$(lsb_release -sc 2>&1)
-    if [ "${_OSV}" != "Debian" ]; then
-      echo "ERROR: Not supported OS detected: ${_OSV}/${_OSR}"
+    if [ "${_THIS_OS}" != "Debian" ]; then
+      echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
       exit 1
-    fi
-
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-      && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
 
     if [ "${_VMFAMILY}" = "VS" ]; then

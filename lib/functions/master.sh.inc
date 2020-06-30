@@ -984,7 +984,7 @@ EOFMYSQL
   else
     echo " "
     if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "jessie" ]; then
+      && [ "${_LOC_OSR}" = "jessie" ]; then
       msg "INFO: Aegir Master Instance upgrade skipped!"
       echo " "
       msg "NOTE! You must reboot the server and run barracuda upgrade"

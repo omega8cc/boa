@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-_OSV=$(lsb_release -sc 2>&1)
+_OSR=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
   | cut -d" " -f2 \
@@ -33,11 +33,11 @@ randpass() {
   elif [ "${kind}" = "hash" ]; then
     CHAR="[:alnum:]"
     if [ "${_NEW_SSL}" = "YES" ] \
-      || [ "${_OSV}" = "buster" ] \
-      || [ "${_OSV}" = "stretch" ] \
-      || [ "${_OSV}" = "jessie" ] \
-      || [ "${_OSV}" = "trusty" ] \
-      || [ "${_OSV}" = "precise" ]; then
+      || [ "${_OSR}" = "buster" ] \
+      || [ "${_OSR}" = "stretch" ] \
+      || [ "${_OSR}" = "jessie" ] \
+      || [ "${_OSR}" = "trusty" ] \
+      || [ "${_OSR}" = "precise" ]; then
       cat /dev/urandom \
         | tr -cd "$CHAR" \
         | head -c ${1:-$rkey} \

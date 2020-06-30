@@ -2228,27 +2228,27 @@ update_sources_list() {
       fi
       cd /var/opt
       echo "## MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_MIRROR}/ubuntu/ ${_OSV} main \
+      echo "deb http://${_MIRROR}/ubuntu/ ${_OSR} main \
         restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
-      echo "deb-src http://${_MIRROR}/ubuntu/ ${_OSV} main \
+      echo "deb-src http://${_MIRROR}/ubuntu/ ${_OSR} main \
         restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES" >> ${aptLiSys}
-      echo "deb http://${_MIRROR}/ubuntu/ ${_OSV}-updates main \
+      echo "deb http://${_MIRROR}/ubuntu/ ${_OSR}-updates main \
         restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
-      echo "deb-src http://${_MIRROR}/ubuntu/ ${_OSV}-updates main \
+      echo "deb-src http://${_MIRROR}/ubuntu/ ${_OSR}-updates main \
         restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## BACKPORTS" >> ${aptLiSys}
-      echo "deb http://${_MIRROR}/ubuntu/ ${_OSV}-backports main \
+      echo "deb http://${_MIRROR}/ubuntu/ ${_OSR}-backports main \
         restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
-      echo "deb-src http://${_MIRROR}/ubuntu/ ${_OSV}-backports main \
+      echo "deb-src http://${_MIRROR}/ubuntu/ ${_OSR}-backports main \
         restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## UBUNTU SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://security.ubuntu.com/ubuntu ${_OSV}-security \
+      echo "deb http://security.ubuntu.com/ubuntu ${_OSR}-security \
         main restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
-      echo "deb-src http://security.ubuntu.com/ubuntu ${_OSV}-security \
+      echo "deb-src http://security.ubuntu.com/ubuntu ${_OSR}-security \
         main restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
       if [ -e "${locCnf}/etc-apt-preferences-ubuntu.txt" ]; then
         cp -af ${locCnf}/etc-apt-preferences-ubuntu.txt /etc/apt/preferences
@@ -2258,7 +2258,7 @@ update_sources_list() {
       fi
     elif [ "${_THIS_OS}" = "Debian" ]; then
       _MIRROR_CHECK=NO
-      if [ "${_OSV}" = "deprecated" ]; then
+      if [ "${_OSR}" = "deprecated" ]; then
         _MIRROR=archive.debian.org
       else
         if [ "${_AUTOPILOT}" = "YES" ]; then
@@ -2303,29 +2303,29 @@ update_sources_list() {
       fi
       cd /var/opt
       echo "## MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_MIRROR}/debian/ ${_OSV} main contrib non-free" \
+      echo "deb http://${_MIRROR}/debian/ ${_OSR} main contrib non-free" \
         >> ${aptLiSys}
-      echo "deb-src http://${_MIRROR}/debian/ ${_OSV} main contrib non-free" \
+      echo "deb-src http://${_MIRROR}/debian/ ${_OSR} main contrib non-free" \
         >> ${aptLiSys}
       echo "" >> ${aptLiSys}
-      if [ "${_OSV}" = "buster" ] \
-        || [ "${_OSV}" = "stretch" ]; then
+      if [ "${_OSR}" = "buster" ] \
+        || [ "${_OSR}" = "stretch" ]; then
         echo "## MAJOR BUG FIX UPDATES produced after the final release" \
         >> ${aptLiSys}
-        echo "deb http://${_MIRROR}/debian/ ${_OSV}-updates main \
+        echo "deb http://${_MIRROR}/debian/ ${_OSR}-updates main \
           contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-        echo "deb-src http://${_MIRROR}/debian/ ${_OSV}-updates main \
+        echo "deb-src http://${_MIRROR}/debian/ ${_OSR}-updates main \
           contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
         echo "" >> ${aptLiSys}
         echo "" >> ${aptLiSys}
         echo "## DEBIAN PROPOSED UPDATES" >> ${aptLiSys}
-        echo "deb http://${_MIRROR}/debian/ ${_OSV}-proposed-updates main \
+        echo "deb http://${_MIRROR}/debian/ ${_OSR}-proposed-updates main \
           contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       fi
       echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://security.debian.org/ ${_OSV}/updates main \
+      echo "deb http://security.debian.org/ ${_OSR}/updates main \
         contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-      echo "deb-src http://security.debian.org/ ${_OSV}/updates main \
+      echo "deb-src http://security.debian.org/ ${_OSR}/updates main \
         contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       if [ -e "${locCnf}/etc-apt-preferences-debian.txt" ]; then
         cp -af ${locCnf}/etc-apt-preferences-debian.txt /etc/apt/preferences
@@ -2363,9 +2363,9 @@ update_sources_list() {
 #
 # Install OpenSSH from sources.
 install_ssh_src() {
-  if [ "${_OSV}" = "buster" ] \
-    || [ "${_OSV}" = "stretch" ] \
-    || [ "${_OSV}" = "jessie" ]; then
+  if [ "${_OSR}" = "buster" ] \
+    || [ "${_OSR}" = "stretch" ] \
+    || [ "${_OSR}" = "jessie" ]; then
     _SSH_GET_DPKG=$(dpkg --get-selections | grep openssh-sftp-server | grep 'hold$' 2>&1)
   else
     _SSH_GET_DPKG=$(dpkg --get-selections | grep ssh | grep 'hold$' 2>&1)
@@ -2407,9 +2407,9 @@ install_ssh_src() {
       echo "openssh-client hold" | dpkg --set-selections &> /dev/null
       echo "openssh-server hold" | dpkg --set-selections &> /dev/null
       echo "ssh hold" | dpkg --set-selections &> /dev/null
-      if [ "${_OSV}" = "buster" ] \
-        || [ "${_OSV}" = "stretch" ] \
-        || [ "${_OSV}" = "jessie" ]; then
+      if [ "${_OSR}" = "buster" ] \
+        || [ "${_OSR}" = "stretch" ] \
+        || [ "${_OSR}" = "jessie" ]; then
         echo "openssh-sftp-server hold" | dpkg --set-selections &> /dev/null
       fi
     fi
@@ -2421,9 +2421,9 @@ install_ssh_src() {
       echo "openssh-client hold" | dpkg --set-selections &> /dev/null
       echo "openssh-server hold" | dpkg --set-selections &> /dev/null
       echo "ssh hold" | dpkg --set-selections &> /dev/null
-      if [ "${_OSV}" = "buster" ] \
-        || [ "${_OSV}" = "stretch" ] \
-        || [ "${_OSV}" = "jessie" ]; then
+      if [ "${_OSR}" = "buster" ] \
+        || [ "${_OSR}" = "stretch" ] \
+        || [ "${_OSR}" = "jessie" ]; then
         echo "openssh-sftp-server hold" | dpkg --set-selections &> /dev/null
       fi
     fi
@@ -2440,7 +2440,7 @@ install_magick_src() {
     | cut -d" " -f3 \
     | awk '{ print $1}' 2>&1)
   if [ "${_MAGICK_ITD}" != "${_IMAGE_MAGICK_VRN}" ]; then
-    if [ "${_OSV}" = "none" ]; then
+    if [ "${_OSR}" = "none" ]; then
       _MAGICK_INSTALL_REQUIRED=NO
     else
       _MAGICK_INSTALL_REQUIRED=YES
@@ -2470,7 +2470,7 @@ install_magick_src() {
 # Install cURL from sources.
 install_curl_src() {
   touch /root/.use.curl.from.packages.cnf
-  if [ "${_OSV}" = "precise" ]; then
+  if [ "${_OSR}" = "precise" ]; then
     touch /root/.use.curl.from.packages.cnf
     _CURL_VRN=7.70.0
   fi
@@ -2493,7 +2493,7 @@ install_curl_src() {
     | cut -d"/" -f2 \
     | awk '{ print $1}' 2>&1)
   if [ "${_CURL_ITD}" != "${_CURL_VRN}" ]; then
-    if [ "${_OSV}" = "none" ]; then
+    if [ "${_OSR}" = "none" ]; then
       _CURL_INSTALL_REQUIRED=NO
     else
       _CURL_INSTALL_REQUIRED=YES
@@ -3181,7 +3181,7 @@ finale() {
 
 install_with_aptitude_deps() {
   if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "jessie" ]; then
+    && [ "${_LOC_OSR}" = "jessie" ]; then
     _DO_FIX=YES
   fi
   if [ "${_THIS_OS}" = "Debian" ]; then
@@ -3227,9 +3227,9 @@ basic_packages_install_on_init() {
     echo "APT::Get::AllowUnauthenticated \"true\";"     >> /etc/apt/apt.conf.d/99ignorestrict
     echo "Aptitude::CmdLine::Fix-Broken \"true\";"      >> /etc/apt/apt.conf.d/99ignorestrict
   fi
-  if [ "${_OSV}" = "buster" ] \
-    || [ "${_OSV}" = "stretch" ] \
-    || [ "${_OSV}" = "jessie" ]; then
+  if [ "${_OSR}" = "buster" ] \
+    || [ "${_OSR}" = "stretch" ] \
+    || [ "${_OSR}" = "jessie" ]; then
     _GRUB_TEST=$(grep systemd /etc/default/grub 2>&1)
     if [[ "${_GRUB_TEST}" =~ "systemd" ]]; then
       _GRUB_FIX=YES
@@ -3259,10 +3259,10 @@ basic_packages_install_on_init() {
     ${_INITINS} curl &> /dev/null
     ${_INITINS} wget &> /dev/null
     if [ -x "/lib/systemd/systemd" ]; then
-      msg "INFO: Installing sysvinit-core on ${_THIS_OS} ${_OSV}..."
-      if [ "${_OSV}" = "buster" ] \
-        || [ "${_OSV}" = "stretch" ] \
-        || [ "${_OSV}" = "jessie" ]; then
+      msg "INFO: Installing sysvinit-core on ${_THIS_OS} ${_OSR}..."
+      if [ "${_OSR}" = "buster" ] \
+        || [ "${_OSR}" = "stretch" ] \
+        || [ "${_OSR}" = "jessie" ]; then
         ${_INITINS} sysvinit-core &> /dev/null
         ${_INITINS} sysvinit-utils &> /dev/null
         if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -3296,10 +3296,10 @@ basic_packages_install_on_init() {
     fi
   else
     if [ -x "/lib/systemd/systemd" ]; then
-      msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
-      if [ "${_OSV}" = "buster" ] \
-        || [ "${_OSV}" = "stretch" ] \
-        || [ "${_OSV}" = "jessie" ]; then
+      msg "INFO: Removing systemd on ${_THIS_OS} ${_OSR}..."
+      if [ "${_OSR}" = "buster" ] \
+        || [ "${_OSR}" = "stretch" ] \
+        || [ "${_OSR}" = "jessie" ]; then
         ${_INITINS} sysvinit-core &> /dev/null
         ${_INITINS} sysvinit-utils &> /dev/null
         if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -3513,11 +3513,11 @@ if_proxysql_update() {
 
 if_jessie_to_stretch() {
   if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_OSV}" = "jessie" ]; then
-    _LOC_OSV=jessie
+    && [ "${_OSR}" = "jessie" ]; then
+    _LOC_OSR=jessie
   fi
   if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "jessie" ]; then
+    && [ "${_LOC_OSR}" = "jessie" ]; then
     msg "WARN: Jessie to Stretch upgrade will start in 60 seconds..."
     msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
     if [ ! -e "/root/.upstart.cnf" ]; then
@@ -3688,10 +3688,10 @@ if_jessie_to_stretch() {
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     if [ -x "/lib/systemd/systemd" ]; then
-      msg "INFO: Removing systemd on ${_THIS_OS} ${_OSV}..."
-      if [ "${_OSV}" = "buster" ] \
-        || [ "${_OSV}" = "stretch" ] \
-        || [ "${_OSV}" = "jessie" ]; then
+      msg "INFO: Removing systemd on ${_THIS_OS} ${_OSR}..."
+      if [ "${_OSR}" = "buster" ] \
+        || [ "${_OSR}" = "stretch" ] \
+        || [ "${_OSR}" = "jessie" ]; then
         ${_INITINS} sysvinit-core &> /dev/null
         ${_INITINS} sysvinit-utils &> /dev/null
         if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -3942,7 +3942,7 @@ sys_packages_update() {
 
 sys_packages_install() {
   if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "jessie" ]; then
+    && [ "${_LOC_OSR}" = "jessie" ]; then
     _DO_FIX=YES
   fi
   if [ "${_STATUS}" = "INIT" ]; then
@@ -3959,14 +3959,14 @@ sys_packages_install() {
       || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
-      if [ "${_OSV}" = "trusty" ] \
-        || [ "${_OSV}" = "precise" ]; then
+      if [ "${_OSR}" = "trusty" ] \
+        || [ "${_OSR}" = "precise" ]; then
         _APT_XTRA="openjdk-7-jre-headless ca-certificates-java nginx"
-      elif [ "${_OSV}" = "jessie" ]; then
+      elif [ "${_OSR}" = "jessie" ]; then
         _APT_XTRA="openjdk-7-jre-headless ca-certificates-java nginx"
-      elif [ "${_OSV}" = "stretch" ]; then
+      elif [ "${_OSR}" = "stretch" ]; then
         _APT_XTRA="openjdk-8-jre-headless ca-certificates-java nginx"
-      elif [ "${_OSV}" = "buster" ]; then
+      elif [ "${_OSR}" = "buster" ]; then
         _APT_XTRA="openjdk-8-jre-headless ca-certificates-java nginx"
       fi
     else
@@ -3989,14 +3989,14 @@ sys_packages_install() {
       || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
-      if [ "${_OSV}" = "trusty" ] \
-        || [ "${_OSV}" = "precise" ]; then
+      if [ "${_OSR}" = "trusty" ] \
+        || [ "${_OSR}" = "precise" ]; then
         _APT_XTRA="openjdk-7-jre-headless ca-certificates-java"
-      elif [ "${_OSV}" = "jessie" ]; then
+      elif [ "${_OSR}" = "jessie" ]; then
         _APT_XTRA="openjdk-7-jre-headless ca-certificates-java"
-      elif [ "${_OSV}" = "stretch" ]; then
+      elif [ "${_OSR}" = "stretch" ]; then
         _APT_XTRA="openjdk-8-jre-headless ca-certificates-java"
-      elif [ "${_OSV}" = "buster" ]; then
+      elif [ "${_OSR}" = "buster" ]; then
         _APT_XTRA="openjdk-8-jre-headless ca-certificates-java"
       fi
     else
@@ -4041,8 +4041,8 @@ sys_packages_install() {
     mrun "killall -9 sysklogd" &> /dev/null
     mrun "killall -9 rsyslogd" &> /dev/null
   elif [ -e "/root/.use.sysklogd.cnf" ] \
-    || [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "precise" ]; then
+    || [ "${_OSR}" = "trusty" ] \
+    || [ "${_OSR}" = "precise" ]; then
     _SYSLOGD=sysklogd
     mrun "apt-get purge rsyslog -y" &> /dev/null
     mrun "killall -9 rsyslogd" &> /dev/null
@@ -4050,7 +4050,7 @@ sys_packages_install() {
     _SYSLOGD=rsyslog
   fi
 
-  if [ "${_OSV}" = "buster" ]; then
+  if [ "${_OSR}" = "buster" ]; then
     _EXTRA_PACKAGES="autoconf2.64 \
                      libpcre2-dev \
                      libpcre3 \
@@ -4064,7 +4064,7 @@ sys_packages_install() {
                      libcurl4 \
                      libcurl4-gnutls-dev \
                      ${_EXTRA_PACKAGES}"
-  elif [ "${_OSV}" = "stretch" ]; then
+  elif [ "${_OSR}" = "stretch" ]; then
     _EXTRA_PACKAGES="autoconf2.59 \
                      libpcre2-dev \
                      libpcre3 \
@@ -4098,10 +4098,10 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  if [ "${_OSV}" = "buster" ] \
-    || [ "${_OSV}" = "stretch" ] \
-    || [ "${_OSV}" = "jessie" ] \
-    || [ "${_OSV}" = "trusty" ]; then
+  if [ "${_OSR}" = "buster" ] \
+    || [ "${_OSR}" = "stretch" ] \
+    || [ "${_OSR}" = "jessie" ] \
+    || [ "${_OSR}" = "trusty" ]; then
     _EXTRA_PACKAGES="libgd2-noxpm-dev \
                      libgd2-xpm-dev \
                      libgd2-dev \
@@ -4141,11 +4141,11 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  if [ "${_OSV}" = "buster" ] \
-    || [ "${_OSV}" = "stretch" ] \
-    || [ "${_OSV}" = "jessie" ] \
-    || [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "precise" ]; then
+  if [ "${_OSR}" = "buster" ] \
+    || [ "${_OSR}" = "stretch" ] \
+    || [ "${_OSR}" = "jessie" ] \
+    || [ "${_OSR}" = "trusty" ] \
+    || [ "${_OSR}" = "precise" ]; then
     _DEBDEPS="apticron \
               aptitude \
               m4 \
@@ -4316,20 +4316,20 @@ fix_postfix() {
 
 fix_libs_php() {
   if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "jessie" ]; then
+    && [ "${_LOC_OSR}" = "jessie" ]; then
     _DO_FIX=YES
   fi
-  if [ "${_OSV}" = "buster" ] \
-    || [ "${_OSV}" = "stretch" ] \
-    || [ "${_OSV}" = "jessie" ] \
+  if [ "${_OSR}" = "buster" ] \
+    || [ "${_OSR}" = "stretch" ] \
+    || [ "${_OSR}" = "jessie" ] \
     || [ "${_DO_FIX}" = "YES" ] \
-    || [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "precise" ]; then
+    || [ "${_OSR}" = "trusty" ] \
+    || [ "${_OSR}" = "precise" ]; then
     if [ ! -L "/usr/lib/librtmp.so" ] \
       || [ ! -e "/usr/lib/libgmp.so.3" ] \
       || [ ! -e "/usr/lib/libcurl.so" ] \
       || [ ! -e "/usr/include/gmp.h" ]; then
-      msg "INFO: Fix #1 for libs in ${_THIS_OS} ${_OSV}"
+      msg "INFO: Fix #1 for libs in ${_THIS_OS} ${_OSR}"
       _X86_64_TEST=$(uname -m 2>&1)
       if [ "${_X86_64_TEST}" = "x86_64" ]; then
         ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
@@ -4384,24 +4384,24 @@ fix_libs_php() {
 
 fix_libssl() {
   if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "jessie" ]; then
+    && [ "${_LOC_OSR}" = "jessie" ]; then
     _DO_FIX=YES
   fi
-  if [ "${_OSV}" = "buster" ] \
-    || [ "${_OSV}" = "stretch" ] \
-    || [ "${_OSV}" = "jessie" ] \
+  if [ "${_OSR}" = "buster" ] \
+    || [ "${_OSR}" = "stretch" ] \
+    || [ "${_OSR}" = "jessie" ] \
     || [ "${_DO_FIX}" = "YES" ] \
-    || [ "${_OSV}" = "trusty" ] \
-    || [ "${_OSV}" = "precise" ]; then
+    || [ "${_OSR}" = "trusty" ] \
+    || [ "${_OSR}" = "precise" ]; then
     _SSL_FIX_REQUIRED=YES
     if [ "${_NGINX_SPDY}" = "YES" ] \
       || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
-      if [ "${_OSV}" = "buster" ] \
-        || [ "${_OSV}" = "stretch" ] \
-        || [ "${_OSV}" = "jessie" ] \
+      if [ "${_OSR}" = "buster" ] \
+        || [ "${_OSR}" = "stretch" ] \
+        || [ "${_OSR}" = "jessie" ] \
         || [ "${_DO_FIX}" = "YES" ] \
-        || [ "${_OSV}" = "trusty" ] \
-        || [ "${_OSV}" = "precise" ]; then
+        || [ "${_OSR}" = "trusty" ] \
+        || [ "${_OSR}" = "precise" ]; then
         _SSL_FIX_REQUIRED=YES
       else
         _SSL_FIX_REQUIRED=NO
@@ -4409,7 +4409,7 @@ fix_libssl() {
     fi
     if [ ! -e "/usr/lib/libssl.so" ] \
       && [ "${_SSL_FIX_REQUIRED}" = "YES" ]; then
-      msg "INFO: Fix #2 for libs in ${_THIS_OS} ${_OSV}"
+      msg "INFO: Fix #2 for libs in ${_THIS_OS} ${_OSR}"
       _X86_64_TEST=$(uname -m 2>&1)
       if [ "${_X86_64_TEST}" = "x86_64" ]; then
         if [ -e "/usr/lib/x86_64-linux-gnu/libssl.so" ] \

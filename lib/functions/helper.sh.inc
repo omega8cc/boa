@@ -514,7 +514,7 @@ os_detection() {
   _THIS_RV=$(lsb_release -sc 2>&1)
   if [ "${_THIS_OS}" = "Ubuntu" ]; then
     if [ "${_THIS_RV}" = "trusty" ]; then
-      _OSV="trusty"
+      _OSR="trusty"
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=NO
@@ -536,7 +536,7 @@ os_detection() {
         _DBS_VRN="${_MARIADB_10_2_VRN}"
       fi
     elif [ "${_THIS_RV}" = "precise" ]; then
-      _OSV="precise"
+      _OSR="precise"
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=NO
@@ -545,14 +545,14 @@ os_detection() {
     fi
   elif [ "${_THIS_OS}" = "Debian" ]; then
     if [ "${_THIS_RV}" = "buster" ]; then
-      _OSV="buster"
+      _OSR="buster"
       _DB_SERVER=MariaDB
       _DB_SERIES=10.4
       _DBS_VRN="${_MARIADB_10_4_VRN}"
     elif [ "${_THIS_RV}" = "stretch" ]; then
-      _OSV="stretch"
+      _OSR="stretch"
     elif [ "${_THIS_RV}" = "jessie" ]; then
-      _OSV="jessie"
+      _OSR="jessie"
     else
       not_supported_os
     fi

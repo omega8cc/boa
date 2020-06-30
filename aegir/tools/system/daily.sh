@@ -40,7 +40,7 @@ fi
 
 _X_SE="401prodQ94"
 _WEBG=www-data
-_OSV=$(lsb_release -sc 2>&1)
+_OSR=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
   | cut -d" " -f2 \
@@ -2618,11 +2618,11 @@ process() {
       _PLR_CTRL_F="${Plr}/sites/all/modules/boa_platform_control.ini"
       if [ -e "${Plr}" ]; then
         if [ "${_NEW_SSL}" = "YES" ] \
-          || [ "${_OSV}" = "buster" ] \
-          || [ "${_OSV}" = "stretch" ] \
-          || [ "${_OSV}" = "jessie" ] \
-          || [ "${_OSV}" = "trusty" ] \
-          || [ "${_OSV}" = "precise" ]; then
+          || [ "${_OSR}" = "buster" ] \
+          || [ "${_OSR}" = "stretch" ] \
+          || [ "${_OSR}" = "jessie" ] \
+          || [ "${_OSR}" = "trusty" ] \
+          || [ "${_OSR}" = "precise" ]; then
           PlrID=$(echo ${Plr} \
             | openssl md5 \
             | awk '{ print $2}' \

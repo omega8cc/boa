@@ -36,7 +36,7 @@ fi
 
 _X_SE="401prodQ94"
 _WEBG=www-data
-_OSV=$(lsb_release -sc 2>&1)
+_OSR=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
   | cut -d" " -f2 \
