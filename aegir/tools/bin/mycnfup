@@ -187,27 +187,6 @@ check_root() {
         fi
       done
       /sbin/insserv -v -d &> /dev/null
-    else
-      _PTMX=CHECK
-    fi
-    _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
-    if [[ ! "${_PTS_TEST}" =~ "devpts" ]] && [ ! -e "/dev/pts/ptmx" ]; then
-      _PTS=FIX
-    else
-      _PTS=OK
-    fi
-    if [ "${_PTMX}" = "CHECK" ] && [ "${_PTS}" = "FIX" ]; then
-      echo "Required /dev/pts/ptmx does not exist! We will fix this now..."
-      mkdir -p /dev/pts
-      rm -rf /dev/pts/*
-      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-        && [ -e "/etc/apt/apt.conf.d" ]; then
-        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-      fi
-      apt-get update -qq &> /dev/null
-      apt-get install udev -y --allow-unauthenticated &> /dev/null
-      echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
-      mount -t devpts devpts /dev/pts &> /dev/null
     fi
   else
     echo "ERROR: This script should be ran as a root user"
