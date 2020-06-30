@@ -17,14 +17,20 @@ _X_VERSION="BOA-4.0.1"
 _MYSQLTUNER_VRN=1.7.19
 _PHP_FPM_WORKERS=AUTO
 _RESERVED_RAM=0
-
-_APT_XTR="-y --force-yes"
-_INST="/usr/bin/apt-get -y --allow-unauthenticated install"
-crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-forCer="-fuy --allow-unauthenticated --reinstall"
-vBs="/var/backups"
-tVr="0.6"
 _X_SE="401prodQ94"
+
+###
+### Commands shortcuts
+###
+dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
+nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
+_INSTALL="/usr/bin/apt-get ${nrmUpArg} install"
+_INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
+forCer="-fuy --allow-unauthenticated --reinstall"
+crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+vBs="/var/backups"
+tVr="0.7"
+
 
 ###-------------SYSTEM-----------------###
 
@@ -46,7 +52,6 @@ check_root() {
         ln -s /proc/self/fd /dev/fd
       fi
     fi
-
     _VM_TEST=$(uname -a 2>&1)
     _AWS_TEST_A=$(dmidecode -s bios-version 2>&1)
     _AWS_TEST_B=$(head -c 3 /sys/hypervisor/uuid 2>&1)
@@ -62,12 +67,26 @@ check_root() {
       || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
       _VMFAMILY="AWS"
     fi
-
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-
+    if [ ! -e "/opt/apt/apt.conf.noi.dist" ] \
+      || [ ! -e "/opt/apt/apt.conf.noi.nrml" ]; then
+      mkdir -p /opt/apt
+      echo "APT::Get::Assume-Yes \"true\";"                                    > /opt/apt/apt.conf.noi.dist
+      echo "APT::Get::Show-Upgraded \"true\";"                                >> /opt/apt/apt.conf.noi.dist
+      echo "APT::Quiet \"true\";"                                             >> /opt/apt/apt.conf.noi.dist
+      echo "DPkg::Options {\"--force-confnew\";\"--force-confmiss\";};"       >> /opt/apt/apt.conf.noi.dist
+      echo "DPkg::Pre-Install-Pkgs {\"/usr/sbin/dpkg-preconfigure --apt\";};" >> /opt/apt/apt.conf.noi.dist
+      echo "Dir::Etc::SourceList \"/etc/apt/sources.list\";"                  >> /opt/apt/apt.conf.noi.dist
+      echo "APT::Get::Assume-Yes \"true\";"                                                 > /opt/apt/apt.conf.noi.nrml
+      echo "APT::Get::Show-Upgraded \"true\";"                                             >> /opt/apt/apt.conf.noi.nrml
+      echo "APT::Quiet \"true\";"                                                          >> /opt/apt/apt.conf.noi.nrml
+      echo "DPkg::Options {\"--force-confdef\";\"--force-confmiss\";\"--force-confold\"};" >> /opt/apt/apt.conf.noi.nrml
+      echo "DPkg::Pre-Install-Pkgs {\"/usr/sbin/dpkg-preconfigure --apt\";};"              >> /opt/apt/apt.conf.noi.nrml
+      echo "Dir::Etc::SourceList \"/etc/apt/sources.list\";"                               >> /opt/apt/apt.conf.noi.nrml
+    fi
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ ! -x "${_LSB_TEST}" ]; then
       apt-get clean -qq
@@ -112,7 +131,6 @@ check_root() {
       echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
       exit 1
     fi
-
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
         mkdir -p /etc/apt/preferences.d/
@@ -1025,7 +1043,145 @@ tune_sql() {
   exit 0
 }
 
+db_head_to_stretch_first()
+{
+  if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ] ; then
+    _HOST_HOSTNAME=`hostname 2>&1`
+    _HOST_OSR=$(lsb_release -sc 2>&1)
+    if [[ "${_HOST_OSR}" =~ "stretch" ]]; then
+      echo "The ${_HOST_HOSTNAME} is already running Stretch"
+    elif [[ "${_HOST_OSR}" =~ "jessie" ]]; then
+  	  cat /etc/resolv.conf > /var/backups/resolv.conf.pre-dist-upgrade
+  	  rm -f /etc/resolv.conf
+  	  echo "nameserver 8.8.8.8" >/etc/resolv.conf
+  	  echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+  	  cat /etc/resolv.conf
+  	  apt-get update -qq &> /dev/null
+  	  echo "curl install"           | dpkg --set-selections
+  	  echo "git install"            | dpkg --set-selections
+  	  echo "git-core install"       | dpkg --set-selections
+  	  echo "git-man install"        | dpkg --set-selections
+  	  echo "libssl-dev install"     | dpkg --set-selections
+  	  echo "openssh-client install" | dpkg --set-selections
+  	  echo "openssh-server install" | dpkg --set-selections
+  	  echo "openssh-sftp-server install" | dpkg --set-selections
+  	  echo "openssl install"        | dpkg --set-selections
+  	  echo "ssh install"            | dpkg --set-selections
+  	  echo "zlib1g install"         | dpkg --set-selections
+  	  echo "zlib1g-dev install"     | dpkg --set-selections
+  	  echo "zlibc install"          | dpkg --set-selections
+  	  ${_INSTALL} zlib1g
+  	  ${_INSTALL} zlib1g-dev
+  	  ${_INSTALL} zlibc
+  	  ${_INSTALL} openssl
+  	  ${_INSTALL} libssl-dev
+  	  apt-get install curl ${forCer}
+  	  apt-get install openssh-client ${forCer}
+  	  apt-get install openssh-server ${forCer}
+  	  apt-get install ssh ${forCer}
+  	  apt-get upgrade ${nrmUpArg}
+  	  apt-get dist-upgrade ${nrmUpArg}
+      ### Check if we can continue
+      _AUDIT_DPKG=$(dpkg --audit 2>&1)
+      if [ ! -z "${_AUDIT_DPKG}" ]; then
+        echo "ALRT! I can not continue until dpkg --audit is clean"
+        echo "ALRT! ${_AUDIT_DPKG}"
+        echo "ALRT! Aborting installer NOW!"
+        exit 1
+      fi
+      _HOLD_TEST_DPKG=$(dpkg --get-selections | grep 'hold$' 2>&1)
+      if [ ! -z "${_HOLD_TEST_DPKG}" ]; then
+        echo "ALRT! I can not continue until these packages are un-hold"
+        echo "ALRT! ${_HOLD_TEST_DPKG}"
+        echo "ALRT! Aborting installer NOW!"
+        exit 1
+      fi
+      _HOLD_TEST_ATE=$(aptitude search "~ahold" 2>&1)
+      if [ ! -z "${_HOLD_TEST_ATE}" ]; then
+        echo "ALRT! I can not continue until these packages are un-hold"
+        echo "ALRT! ${_HOLD_TEST_ATE}"
+        echo "ALRT! Aborting installer NOW!"
+        exit 1
+      fi
+      sed -i "s/.*DEBIAN LTS.*//g" /etc/apt/sources.list
+      wait
+      sed -i "s/.*jessie-lts.*//g" /etc/apt/sources.list
+      wait
+      sed -i "s/.*PROPOSED.*//g"   /etc/apt/sources.list
+      wait
+      sed -i "s/.*proposed.*//g"   /etc/apt/sources.list
+      wait
+      sed -i "s/jessie/stretch/g"   /etc/apt/sources.list
+      wait
+      sed -i "s/jessie/stretch/g"   /etc/apt/sources.list.d/*
+      wait
+      if [ -e "/etc/apt/apt.conf" ]; then
+        sed -i "s/APT::Default-Release.*/APT::Default-Release \"stretch\";/g" \
+        /etc/apt/apt.conf &> /dev/null
+        wait
+      fi
+  	  cat /etc/apt/sources.list
+  	  apt-get update -qq &> /dev/null
+  	  apt-get install apt -t stretch ${dstUpArg}
+  	  apt-get upgrade ${dstUpArg}
+  	  apt-get install apt dpkg aptitude util-linux ${dstUpArg}
+  	  apt-get upgrade ${dstUpArg}
+  	  apt-get dist-upgrade ${dstUpArg}
+  	  apt-get install lsb-release ${dstUpArg}
+  	  if [ -x "/lib/systemd/systemd" ]; then
+    		ls -la /lib/systemd/systemd
+    		${_INSTALL} sysvinit
+    		${_INSTALL} sysvinit-core
+    		${_INSTALL} sysvinit-utils
+    		ls -la /usr/share/sysvinit/inittab
+    		if [ -e "/usr/share/sysvinit/inittab" ]; then
+    		  cp -af /usr/share/sysvinit/inittab /etc/inittab
+    		fi
+    		apt-get remove systemd -y --force-yes -qq --purge --auto-remove
+    		echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+    		echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+    		${_INSTALL} sysvinit-core &> /dev/null
+    		${_INSTALL} sysvinit-utils &> /dev/null
+  	  fi
+      echo "Upgrade OS to Stretch 1st stage complete!"
+      echo "Bye!"
+    fi
+  fi
+}
+
+db_head_to_stretch_second()
+{
+  if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ] ; then
+    _HOST_HOSTNAME=`hostname 2>&1`
+    _HOST_OSR=$(lsb_release -sc 2>&1)
+    if [[ "${_HOST_OSR}" =~ "stretch" ]]; then
+	    apt-get update -qq &> /dev/null
+  	  if [ -x "/lib/systemd/systemd" ]; then
+        ls -la /lib/systemd/systemd
+        ${_INSTALL} sysvinit
+        ${_INSTALL} sysvinit-core
+        ${_INSTALL} sysvinit-utils
+        ls -la /usr/share/sysvinit/inittab
+        if [ -e "/usr/share/sysvinit/inittab" ]; then
+          cp -af /usr/share/sysvinit/inittab /etc/inittab
+        fi
+        apt-get remove systemd -y --force-yes -qq --purge --auto-remove
+        echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+        echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+        ${_INSTALL} sysvinit-core &> /dev/null
+        ${_INSTALL} sysvinit-utils &> /dev/null
+  	  fi
+  	  apt-get upgrade ${nrmUpArg}
+  	  apt-get dist-upgrade ${nrmUpArg}
+  	  echo "Upgrade OS to Stretch 2nd stage complete!"
+      echo "Bye!"
+    fi
+  fi
+}
+
 case "$1" in
+  stretch-first) db_head_to_stretch_first ;;
+  stretch-second) db_head_to_stretch_second ;;
   restart) restart_sql ;;
   start)   start_sql "only" ;;
   stop)    stop_sql  "only" ;;
