@@ -19,7 +19,7 @@ _PHP_FPM_WORKERS=AUTO
 _RESERVED_RAM=0
 
 _APT_XTR="-y --force-yes"
-_INST="/usr/bin/apt-get --allow-unauthenticated ${_APT_XTR} install"
+_INST="/usr/bin/apt-get -y --allow-unauthenticated install"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 forCer="-fuy --allow-unauthenticated --reinstall"
 vBs="/var/backups"
@@ -65,10 +65,10 @@ check_root() {
 
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ ! -x "${_LSB_TEST}" ]; then
-      apt-get clean ${_APT_XTR}
+      apt-get clean -qq &> /dev/null
       rm -rf /var/lib/apt/lists/*
-      apt-get update ${_APT_XTR}
-      apt-get install lsb-release ${forCer} ${_APT_XTR}
+      apt-get update -qq &> /dev/null
+      apt-get install lsb-release ${forCer}
       _OSV=$(lsb_release -si 2>&1)
       _OSR=$(lsb_release -sc 2>&1)
       if [ "${_OSV}" != "Debian" ]; then
@@ -94,10 +94,10 @@ check_root() {
       echo "deb http://security.debian.org/ ${_OSR}/updates main contrib non-free"     >> /etc/apt/sources.list
       echo "deb-src http://security.debian.org/ ${_OSR}/updates main contrib non-free" >> /etc/apt/sources.list
       echo
-      apt-get clean ${_APT_XTR}
+      apt-get clean -qq &> /dev/null
       rm -rf /var/lib/apt/lists/*
-      apt-get update ${_APT_XTR}
-      apt-get install lsb-release ${forCer} ${_APT_XTR}
+      apt-get update -qq &> /dev/null
+      apt-get install lsb-release ${forCer}
     fi
     _OSV=$(lsb_release -si 2>&1)
     _OSR=$(lsb_release -sc 2>&1)
@@ -373,6 +373,7 @@ start_sql() {
   update-rc.d -f mysql remove &> /dev/null
   if [ "$1" = "init" ]; then
     _MASTER_START=YES
+    sed -i "s/^safe_to_bootstrap.*/safe_to_bootstrap: 1/g"  /var/lib/mysql/grastate.dat
     service mysql bootstrap-pxc
   else
     _MASTER_START=NO
