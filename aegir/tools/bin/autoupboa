@@ -172,11 +172,12 @@ if [ -e "/data/disk/arch" ]; then
     _AUTO_UP_DAY=8
     _AUTO_PHP="php-all"
     _AUTO_VER="head"
-    if [ ! -e "/root/.pause_tasks_maint.cnf" ]; then
-      touch /root/.pause_tasks_maint.cnf
-      kill -9 $(ps aux | grep '[d]aily.sh' | awk '{print $2}') &> /dev/null
-      rm -f /run/*daily*.pid
-    fi
+    #if [ ! -e "/root/.pause_tasks_maint.cnf" ]; then
+    #  touch /root/.pause_tasks_maint.cnf
+    #  kill -9 $(ps aux | grep '[d]aily.sh' | awk '{print $2}') &> /dev/null
+    #  rm -f /run/*daily*.pid
+    #fi
+    rm -f /root/.pause_tasks_maint.cnf
   fi
   if [ ! -e "/etc/init.d/ssh" ] \
     || [ ! -e "/etc/init.d/redis-server" ] \
