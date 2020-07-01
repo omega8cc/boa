@@ -262,30 +262,45 @@ update_agents() {
       rm -f /root/.slow.cron.cnf
       rm -f /root/.fast.cron.cnf
       rm -f /root/.tg.cnf
+      mysql -u root -e "SET GLOBAL max_connect_errors = 10;"
+      mysql -u root -e "SET GLOBAL max_connections = 100;"
+      mysql -u root -e "SET GLOBAL max_user_connections = 10;"
     fi
     if [ "${InTest}" -ge "9" ] && [ "${InTest}" -le "18" ]; then
       echo ${InTest} > /root/.hr.monitor.cnf
       echo ${InTest} > /root/.slow.cron.cnf
       rm -f /root/.fast.cron.cnf
       rm -f /root/.tg.cnf
+      mysql -u root -e "SET GLOBAL max_connect_errors = 10;"
+      mysql -u root -e "SET GLOBAL max_connections = 100;"
+      mysql -u root -e "SET GLOBAL max_user_connections = 10;"
     fi
     if [ "${InTest}" -gt "18" ]; then
       echo ${InTest} > /root/.tg.cnf
       echo ${InTest} > /root/.hr.monitor.cnf
       echo ${InTest} > /root/.slow.cron.cnf
       rm -f /root/.fast.cron.cnf
+      mysql -u root -e "SET GLOBAL max_connect_errors = 10;"
+      mysql -u root -e "SET GLOBAL max_connections = 200;"
+      mysql -u root -e "SET GLOBAL max_user_connections = 10;"
     fi
     if [[ "${PrTestPower}" =~ "POWER" ]]; then
       echo ${InTest} > /root/.tg.cnf
       echo ${InTest} > /root/.slow.cron.cnf
       rm -f /root/.hr.monitor.cnf
       rm -f /root/.fast.cron.cnf
+      mysql -u root -e "SET GLOBAL max_connect_errors = 40;"
+      mysql -u root -e "SET GLOBAL max_connections = 200;"
+      mysql -u root -e "SET GLOBAL max_user_connections = 40;"
     fi
     if [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
       echo ${InTest} > /root/.tg.cnf
       echo ${InTest} > /root/.fast.cron.cnf
       rm -f /root/.slow.cron.cnf
       rm -f /root/.hr.monitor.cnf
+      mysql -u root -e "SET GLOBAL max_connect_errors = 100;"
+      mysql -u root -e "SET GLOBAL max_connections = 200;"
+      mysql -u root -e "SET GLOBAL max_user_connections = 100;"
     fi
     if [ -e "/root/.tg.cnf" ]; then
       sed -i "s/^_PHP_FPM_WORKERS=.*/_PHP_FPM_WORKERS=100/g" /root/.barracuda.cnf
