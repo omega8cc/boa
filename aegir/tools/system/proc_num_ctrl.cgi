@@ -391,7 +391,7 @@ sub cpu_count_load
   $MAXFPMCPU = $PROCS."00";
   if ($PROCS > 2)
   {
-    $MAXSQLCPU = 200;
+    $MAXSQLCPU = 600;
   }
   $MAXSQLCPU = $MAXSQLCPU - 5;
   $MAXFPMCPU = $MAXFPMCPU - 5;
