@@ -440,14 +440,9 @@ upgrade_aegir_master() {
   if prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
     true
     msg "INFO: Running Aegir Master Instance upgrade"
-    msg "INFO: Running SQL tables check and upgrade, please wait..."
     if [ -x "/usr/bin/mariadb_upgrade" ]; then
       mrun "mariadb_upgrade --force" &> /dev/null
-      mrun "mysqlcheck -A --auto-repair" &> /dev/null
-      mrun "mariadb_upgrade --force" &> /dev/null
     elif [ -x "/usr/bin/mysql_upgrade" ]; then
-      mrun "mysql_upgrade --force" &> /dev/null
-      mrun "mysqlcheck -A --auto-repair" &> /dev/null
       mrun "mysql_upgrade --force" &> /dev/null
     fi
     if [ -e "/var/aegir/use_proxysql.txt" ]; then

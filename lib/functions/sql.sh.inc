@@ -856,14 +856,10 @@ install_with_aptitude_sql() {
     || [ -e "/etc/mysql/conf.d/galera.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
     if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERIES}" ]]; then
-      msg "INFO: Running ${_DB_SERVER} all tables check (1) upgrade..."
+      msg "INFO: Running ${_DB_SERVER} system tables check..."
       if [ -x "/usr/bin/mariadb_upgrade" ]; then
         mrun "mariadb_upgrade --force" &> /dev/null
-        mrun "mysqlcheck -A --auto-repair" &> /dev/null
-        mrun "mariadb_upgrade --force" &> /dev/null
       elif [ -x "/usr/bin/mysql_upgrade" ]; then
-        mrun "mysql_upgrade --force" &> /dev/null
-        mrun "mysqlcheck -A --auto-repair" &> /dev/null
         mrun "mysql_upgrade --force" &> /dev/null
       fi
     fi
@@ -1060,15 +1056,11 @@ install_db_server() {
       if [ ! -e "/root/.proxy.cnf" ]; then
         mrun "sleep 120"
         mrun "service nginx stop" &> /dev/null
-        msg "INFO: Running ${_DB_SERVER} all tables check (2) upgrade..."
+        msg "INFO: Running ${_DB_SERVER} system tables check..."
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
         if [ -x "/usr/bin/mariadb_upgrade" ]; then
           mrun "mariadb_upgrade --force" &> /dev/null
-          mrun "mysqlcheck -A --auto-repair" &> /dev/null
-          mrun "mariadb_upgrade --force" &> /dev/null
         elif [ -x "/usr/bin/mysql_upgrade" ]; then
-          mrun "mysql_upgrade --force" &> /dev/null
-          mrun "mysqlcheck -A --auto-repair" &> /dev/null
           mrun "mysql_upgrade --force" &> /dev/null
         fi
       fi
