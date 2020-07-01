@@ -1,5 +1,16 @@
 
 #
+# Find correct IP.
+find_correct_ip() {
+  _LOC_IP=$(curl ${crlGet} https://api.ipify.org \
+    | sed 's/[^0-9\.]//g' 2>&1)
+  if [ -z "${_LOC_IP}" ]; then
+    _LOC_IP=$(curl ${crlGet} http://ip4.icanhazip.com \
+      | sed 's/[^0-9\.]//g' 2>&1)
+  fi
+}
+
+#
 # Tune FPM workers.
 satellite_tune_fpm_workers() {
   _VM_TEST=$(uname -a 2>&1)
