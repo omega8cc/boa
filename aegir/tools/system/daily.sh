@@ -537,8 +537,7 @@ fix_user_register_protection() {
 fix_robots_txt() {
   find ${Dir}/files/robots.txt -mtime +6 -exec rm -f {} \; &> /dev/null
   if [ ! -e "${Dir}/files/robots.txt" ] \
-    && [ ! -e "${Plr}/profiles/hostmaster" ] \
-    && [ "${_STATUS}" = "OK" ]; then
+    && [ ! -e "${Plr}/profiles/hostmaster" ]; then
     curl -L --max-redirs 10 -k -s --retry 2 --retry-delay 5 \
       -A iCab "http://${Dom}/robots.txt?nocache=1&noredis=1" \
       -o ${Dir}/files/robots.txt
@@ -2647,8 +2646,7 @@ process() {
           else
             check_site_status
           fi
-          if [ "${_STATUS}" = "OK" ] \
-            && [ ! -z "${Dan}" ] \
+          if [ ! -z "${Dan}" ] \
             && [ "${Dan}" != "hostmaster" ]; then
             if_site_db_conversion
             if_gen_goaccess ${Dom}
@@ -2673,7 +2671,9 @@ process() {
               *"$searchStringJ"*) ;;
               *)
               if [ "${_MODULES_FIX}" = "YES" ]; then
-                fix_modules
+                if [ "${_STATUS}" = "OK" ]; then
+                  fix_modules
+                fi
                 fix_robots_txt
               fi
               check_update_le_ssl
