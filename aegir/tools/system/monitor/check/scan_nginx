@@ -16,7 +16,7 @@ print "myip is $myip";
 chomp($myip);
 if (-e "/root/.hr.monitor.cnf") {
   $default_critnumber = 99;
-  $default_lines = 999;
+  $default_lines = 300;
   $default_mode = 1;
 }
 else {
