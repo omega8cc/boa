@@ -267,8 +267,8 @@ update_agents() {
       mysql -u root -e "SET GLOBAL max_user_connections = 30;"
     fi
     if [ "${InTest}" -ge "9" ] && [ "${InTest}" -le "18" ]; then
-      echo ${InTest} > /root/.hr.monitor.cnf
       echo ${InTest} > /root/.slow.cron.cnf
+      rm -f /root/.hr.monitor.cnf
       rm -f /root/.fast.cron.cnf
       rm -f /root/.tg.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 30;"
