@@ -337,9 +337,9 @@ tune_memory_limits() {
     fi
   elif [ "${_USE}" -ge "2048" ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
-      _USE_PHP=2048
-      _USE_OPC=2048
-      _USE_CLI=2048
+      _USE_PHP=4096
+      _USE_OPC=4096
+      _USE_CLI=4096
       _QCE_SQL=64M
       _RND_SQL=8M
       _JBF_SQL=4M
@@ -358,9 +358,9 @@ tune_memory_limits() {
       if [ -e "/boot/grub/grub.cfg" ] \
         || [ -e "/boot/grub/menu.lst" ] \
         || [ -e "/root/.tg.cnf" ]; then
-        _USE_PHP=2048
-        _USE_OPC=2048
-        _USE_CLI=2048
+        _USE_PHP=4096
+        _USE_OPC=4096
+        _USE_CLI=4096
         _QCE_SQL=64M
         _RND_SQL=8M
         _JBF_SQL=4M
@@ -385,9 +385,9 @@ tune_memory_limits() {
         sed -i "s/64000/128000/g"  /opt/php70/etc/php70.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php56/etc/php56.ini &> /dev/null
       else
-        _USE_PHP=2048
-        _USE_OPC=2048
-        _USE_CLI=2048
+        _USE_PHP=4096
+        _USE_OPC=4096
+        _USE_CLI=4096
         _QCE_SQL=64M
         _RND_SQL=2M
         _JBF_SQL=2M

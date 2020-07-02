@@ -929,8 +929,8 @@ tune_memory_limits() {
     _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 2 ))
   elif [ "${_USE}" -ge "2048" ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
-      _USE_PHP=2048
-      _USE_OPC=2048
+      _USE_PHP=4096
+      _USE_OPC=4096
       _QCE_SQL=64M
       _RND_SQL=8M
       _JBF_SQL=4M
@@ -943,8 +943,8 @@ tune_memory_limits() {
     elif [ "${_VMFAMILY}" = "VS" ] || [ "${_VMFAMILY}" = "TG" ]; then
       if [ -e "/root/.my.cluster_root_pwd.txt" ] \
         || [ -e "/root/.tg.cnf" ]; then
-        _USE_PHP=2048
-        _USE_OPC=2048
+        _USE_PHP=4096
+        _USE_OPC=4096
         _QCE_SQL=64M
         _RND_SQL=8M
         _JBF_SQL=4M
@@ -958,8 +958,8 @@ tune_memory_limits() {
           _MXC_SQL=96
         fi
       else
-        _USE_PHP=2048
-        _USE_OPC=2048
+        _USE_PHP=4096
+        _USE_OPC=4096
         _QCE_SQL=64M
         _RND_SQL=2M
         _JBF_SQL=2M
