@@ -2685,7 +2685,7 @@ process() {
             fix_site_control_files
             fix_user_register_protection
             if [ -e "${Plr}/modules/o_contrib_seven" ]; then
-              if [[ "${_X_SE}" =~ "401prodQ95" ]]; then
+              if [[ "${_X_SE}" =~ "OFF" ]]; then
                 run_drush8_cmd "advagg-force-new-aggregates"
                 run_drush8_cmd "cc all"
               fi
