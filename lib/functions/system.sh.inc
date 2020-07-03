@@ -2920,8 +2920,6 @@ strict_bin_permissions() {
                   mongosniff \
                   mongostat \
                   mongotop \
-                  mydumper \
-                  myloader \
                   newrelic-daemon \
                   node \
                   npm \
