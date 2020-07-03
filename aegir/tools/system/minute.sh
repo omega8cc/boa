@@ -407,6 +407,9 @@ mysql_proc_kill() {
       echo "proc to kill is $each by $xuser after $xtime"
       xkill=$(mysqladmin kill $each 2>&1)
       times=$(date 2>&1)
+      load=$(cat /proc/loadavg 2>&1)
+      echo "$load"
+      echo "$load" >> /var/xdrago/log/sql_watch.log
       echo $times $each $xuser $xtime $xkill
       echo "$times $each $xuser $xtime $xkill" >> /var/xdrago/log/sql_watch.log
     fi
