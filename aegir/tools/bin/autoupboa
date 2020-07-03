@@ -186,12 +186,15 @@ if [ -e "/data/disk/arch" ]; then
     _AUTO_UP_DAY=8
     _AUTO_PHP="php-all"
     _AUTO_VER="head"
-    rm -f /root/.pause_tasks_maint.cnf
-#     if [ ! -e "/root/.pause_tasks_maint.cnf" ]; then
-#       touch /root/.pause_tasks_maint.cnf
-#       kill -9 $(ps aux | grep '[d]aily.sh' | awk '{print $2}') &> /dev/null
-#       rm -f /run/*daily*.pid
-#     fi
+    if [[ "${_CHECK_HOST}" =~ ".sx.ax.boa.io" ]]; then
+      if [ ! -e "/root/.pause_tasks_maint.cnf" ]; then
+        touch /root/.pause_tasks_maint.cnf
+        chmod 750 /usr/bin/rsync
+        chmod 750 /usr/bin/mysqldump
+      fi
+    else
+      rm -f /root/.pause_tasks_maint.cnf
+    fi
   fi
   if [ ! -e "/etc/init.d/ssh" ] \
     || [ ! -e "/etc/init.d/redis-server" ] \
