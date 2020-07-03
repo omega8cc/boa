@@ -448,9 +448,9 @@ mysql_proc_control() {
               | sort \
               | uniq \
               | tr -d "\s"`; do
-              echo killing ${_XQ} to avoid issues
               if [ "$xuser" = "${_XQ}" ]; then
-                limit=3
+                echo killing ${_XQ} to avoid issues
+                limit=1
                 mysql_proc_kill
               fi
             done
