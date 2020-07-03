@@ -781,7 +781,7 @@ tune_sql_memory_limits() {
       fi
       echo _RAW_INNODB_MEM is ${_RAW_INNODB_MEM}
       echo _USE_INNODB_MEM is ${_USE_INNODB_MEM}
-      _INNODB_BPI=$(echo "scale=0; ${_USE_INNODB_MEM}/1024" | bc 2>&1)
+      _INNODB_BPI=$(echo "scale=0; ${_USE_INNODB_MEM}/1024/2" | bc 2>&1)
       echo Initial _INNODB_BPI is ${_INNODB_BPI}
       if [ "${_INNODB_BPI}" -lt "1" ] || [ -z "${_INNODB_BPI}" ]; then
         _INNODB_BPI="1"
