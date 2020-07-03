@@ -418,7 +418,7 @@ mysql_proc_control() {
     echo "$(date 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
     echo "$(mysqladmin proc 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
   fi
-  limit=9999
+  limit=3600
   xkill=null
   for each in `mysqladmin proc \
     | awk '{print $2, $4, $8, $12}' \
@@ -438,11 +438,24 @@ mysql_proc_control() {
           | awk '{print $2}' 2>&1)
         xuser=${xuser//[^0-9a-z_]/}
         if [ ! -z "$xtime" ]; then
-          if [ "$xuser" = "xabuse" ]; then
-            limit=15
-            mysql_proc_kill
+          if [ -e "/root/.sql.blacklist.cnf" ]; then
+            ## cat /root/.sql.blacklist.cnf
+            # xsqlfoo # db name/user causing problems, w/o # in front
+            # xsqlbar # db name/user causing problems, w/o # in front
+            # xsqlnew # db name/user causing problems, w/o # in front
+            for _XQ in `cat /root/.sql.blacklist.cnf \
+              | cut -d '#' -f1 \
+              | sort \
+              | uniq \
+              | tr -d "\s"`; do
+              echo killing ${_XQ} to avoid issues
+              if [ "$xuser" = "${_XQ}" ]; then
+                limit=3
+                mysql_proc_kill
+              fi
+            done
           else
-            limit=9999
+            limit=3600
             mysql_proc_kill
           fi
         fi
