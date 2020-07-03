@@ -508,9 +508,9 @@ tune_memory_limits() {
     if [[ "${PrTestPower}" =~ "POWER" ]] \
       || [ -e "/root/.my.cluster_root_pwd.txt" ] \
       || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
-      _UXC_SQL=$(( _MXC_SQL / 5 ))
+      _UXC_SQL="${_MXC_SQL}"
     else
-      _UXC_SQL=$(( _MXC_SQL / 20 ))
+      _UXC_SQL=$(echo "scale=0; ${_MXC_SQL}/2" | bc 2>&1)
     fi
     sed -i "s/= 191/= ${_UXC_SQL}/g"                                              /etc/mysql/my.cnf
     wait
