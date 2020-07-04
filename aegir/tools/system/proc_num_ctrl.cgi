@@ -268,7 +268,7 @@ sub global_action
            `echo "$USER CPU:$CPU MAXSQLCPU:$MAXSQLCPU $STAT START:$START TIME:${TIME} $timedate" >> /var/xdrago/log/mysql.forced.restart.log`;
           }
         }
-        if ($CPU > 50 && !-f "/var/run/boa_sql_backup.pid") {
+        if ($CPU > 100 && !-f "/var/run/boa_sql_backup.pid") {
          `echo "$USER CPU:$CPU MAXSQLCPU:$MAXSQLCPU $STAT START:$START TIME:${TIME} $timedate" >> /var/xdrago/log/mysql.watch.log`;
         }
       }

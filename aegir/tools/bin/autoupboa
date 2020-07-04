@@ -186,14 +186,30 @@ if [ -e "/data/disk/arch" ]; then
     _AUTO_UP_DAY=8
     _AUTO_PHP="php-all"
     _AUTO_VER="head"
-    if [[ "${_CHECK_HOST}" =~ ".sx.ax.boa.io" ]]; then
-      if [ ! -e "/root/.pause_tasks_maint.cnf" ]; then
-        touch /root/.pause_tasks_maint.cnf
-        chmod 750 /usr/bin/rsync
-        chmod 750 /usr/bin/mysqldump
-      fi
+    if [ -e "/var/run/boa_sql_backup.pid" ] \
+      || [ -e "/var/run/boa_run.pid" ] \
+      || [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ] \
+      || [ -e "/var/run/mysql_restart_running.pid" ]; then
+      touch /root/.pause_tasks_maint.cnf
     else
       rm -f /root/.pause_tasks_maint.cnf
+    fi
+    if [[ "${_CHECK_HOST}" =~ "bad.sx.ax.boa.io" ]]; then
+      if [ ! -e "/root/.pause_tasks_maint.cnf" ]; then
+        #touch /root/.pause_tasks_maint.cnf
+        killall rsync
+        #killall mysqldump
+        #killall php
+        #kill -9 $(ps aux | grep '[d]aily.sh' | awk '{print $2}') &> /dev/null
+        #rm -f /run/*daily*.pid
+      fi
+    fi
+    if [[ "${_CHECK_HOST}" =~ "bad.sx.ax.boa.io" ]]; then
+      chmod 700 /usr/bin/rsync
+      chmod 700 /usr/bin/mysqldump
+    else
+      chmod 750 /usr/bin/rsync
+      chmod 750 /usr/bin/mysqldump
     fi
   fi
   if [ ! -e "/etc/init.d/ssh" ] \

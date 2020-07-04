@@ -200,6 +200,20 @@ oom_restart() {
   exit 0
 }
 
+sql_restart() {
+  touch /var/run/boa_run.pid
+  echo "$(date 2>&1) LOW $1 detected"                               >> ${pthOml}
+  sleep 5
+  echo "$(date 2>&1) LOW incident response started"                 >> ${pthOml}
+  bash /var/xdrago/move_sql.sh
+  echo "$(date 2>&1) LOW mysql restarted"                           >> ${pthOml}
+  echo "$(date 2>&1) LOW incident response completed"               >> ${pthOml}
+  echo                                                              >> ${pthOml}
+  sleep 5
+  rm -f /var/run/boa_run.pid
+  exit 0
+}
+
 if [ -e "/var/log/nginx/error.log" ]; then
   if [ `tail --lines=500 /var/log/nginx/error.log \
     | grep --count "Cannot allocate memory"` -gt "0" ]; then
@@ -209,7 +223,7 @@ fi
 
 _RAM_TOTAL=$(free -mt | grep Mem: | cut -d: -f2 | awk '{ print $1}' 2>&1)
 _RAM_FREE_TEST=$(free -mt 2>&1)
-if [[ "$_RAM_FREE_TEST" =~ "buffers/cache:" ]]; then
+if [[ "${_RAM_FREE_TEST}" =~ "buffers/cache:" ]]; then
   _RAM_FREE=$(free -mt | grep /+ | cut -d: -f2 | awk '{ print $2}' 2>&1)
 else
   _RAM_FREE=$(free -mt | grep Mem: | cut -d: -f2 | awk '{ print $6}' 2>&1)
@@ -217,8 +231,11 @@ fi
 _RAM_PCT_FREE=$(echo "scale=0; $(bc -l <<< "${_RAM_FREE} / ${_RAM_TOTAL} * 100")/1" | bc 2>&1)
 _RAM_PCT_FREE=${_RAM_PCT_FREE//[^0-9]/}
 
+echo _RAM_TOTAL is ${_RAM_TOTAL}
+echo _RAM_PCT_FREE is ${_RAM_PCT_FREE}
+
 if [ ! -z "${_RAM_PCT_FREE}" ] && [ "${_RAM_PCT_FREE}" -lt "10" ]; then
-  oom_restart "ram"
+  oom_restart "RAM"
 fi
 
 redis_oom_check() {
@@ -420,6 +437,9 @@ mysql_proc_control() {
   if [ ! -z "${_SQLMONITOR}" ] && [ "${_SQLMONITOR}" = "YES" ]; then
     echo "$(date 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
     echo "$(mysqladmin proc 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
+    if [ ! -z "${_RAM_PCT_FREE}" ] && [ "${_RAM_PCT_FREE}" -lt "20" ]; then
+      sql_restart "RAM"
+    fi
   fi
   limit=3600
   xkill=null
