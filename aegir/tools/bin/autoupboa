@@ -194,17 +194,15 @@ if [ -e "/data/disk/arch" ]; then
     else
       rm -f /root/.pause_tasks_maint.cnf
     fi
-    if [[ "${_CHECK_HOST}" =~ "bad.sx.ax.boa.io" ]]; then
-      if [ ! -e "/root/.pause_tasks_maint.cnf" ]; then
-        #touch /root/.pause_tasks_maint.cnf
-        killall rsync
-        #killall mysqldump
-        #killall php
-        #kill -9 $(ps aux | grep '[d]aily.sh' | awk '{print $2}') &> /dev/null
-        #rm -f /run/*daily*.pid
-      fi
+    if [ -e "/root/.restrict_this_vm.cnf" ]; then
+      #touch /root/.pause_tasks_maint.cnf
+      killall rsync
+      #killall mysqldump
+      #killall php
+      #kill -9 $(ps aux | grep '[d]aily.sh' | awk '{print $2}') &> /dev/null
+      #rm -f /run/*daily*.pid
     fi
-    if [[ "${_CHECK_HOST}" =~ "bad.sx.ax.boa.io" ]]; then
+    if [ -e "/root/.restrict_this_vm.cnf" ]; then
       chmod 700 /usr/bin/rsync
       chmod 700 /usr/bin/mysqldump
     else
