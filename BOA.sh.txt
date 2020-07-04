@@ -324,7 +324,6 @@ update_agents() {
     rm -f /root/.debug.cnf
     rm -f /root/.debug-boa-installer.cnf
     rm -f /root/.mysqladmin.monitor.cnf
-    rm -f /var/xdrago/log/mysqladmin.monitor.log
     sed -i "s/.*scout.*//g" /etc/crontab
     sed -i "s/_SCOUT_KEY=.*/_SCOUT_KEY=/g" /root/.barracuda.cnf
     # if [ -e "/data/conf/override.global.inc" ] \
