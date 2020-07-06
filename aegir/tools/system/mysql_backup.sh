@@ -74,13 +74,13 @@ fi
 touch /var/run/boa_sql_backup.pid
 
 create_locks() {
-  echo "Creating locks.."
+  echo "Creating locks for $1"
   #touch /var/run/boa_wait.pid
   touch /var/run/mysql_backup_running.pid
 }
 
 remove_locks() {
-  echo "Removing locks.."
+  echo "Removing locks for $1"
   #rm -f /var/run/boa_wait.pid
   rm -f /var/run/mysql_backup_running.pid
 }
@@ -200,7 +200,7 @@ compress_backup() {
       if [ -e "${DbPath}/metadata" ]; then
         DbName=$(echo ${DbPath} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
         cd ${_SAVELOCATION}
-        tar cvfj ${DbName}-${_DATE}.tar.bz2 ${DbName}
+        tar cvfj ${DbName}-${_DATE}.tar.bz2 ${DbName} &> /dev/null
         rm -f -r ${DbName}
       fi
     done
@@ -235,7 +235,7 @@ if [ "${_DB_SERIES}" = "10.4" ] \
 fi
 
 _MYQUICK_STATUS=
-if [ -e "/usr/local/bin/mydumper" ]; then
+if [ -x "/usr/local/bin/mydumper" ]; then
   _DB_V=$(mysql -V 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f6 \
@@ -266,7 +266,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     && [ "${_DB}" != "information_schema" ] \
     && [ "${_DB}" != "performance_schema" ]; then
     check_running
-    create_locks
+    create_locks ${_DB}
     if [ "${_DB}" != "mysql" ]; then
       if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>&1)
@@ -325,7 +325,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     else
       backup_this_database_with_mysqldump &> /dev/null
     fi
-    remove_locks
+    remove_locks ${_DB}
     echo "Backup completed for ${_DB}"
     echo " "
   fi
@@ -361,7 +361,7 @@ fi
 find ${_BACKUPDIR} -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
 echo "Backups older than ${_DB_BACKUPS_TTL} days deleted"
 
-compress_backup
+compress_backup &> /dev/null
 
 rm -f /var/run/boa_sql_backup.pid
 touch /var/xdrago/log/last-run-backup
