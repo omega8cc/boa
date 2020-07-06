@@ -124,6 +124,13 @@ if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
 fi
 
 if [ -e "/data/disk/arch" ]; then
+  if [ ! -e "/root/.fixed_scan_nginx.pid" ]; then
+    sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=299/g"  /root/.barracuda.cnf
+    sed -i "s/default_critnumber = 300/default_critnumber = 250/g" /var/xdrago/monitor/check/scan_nginx
+    sed -i "s/default_critnumber = 155/default_critnumber = 250/g" /var/xdrago/monitor/check/scan_nginx
+    sed -i "s/default_lines = 999/default_lines = 300/g" /var/xdrago/monitor/check/scan_nginx
+    touch /root/.fixed_scan_nginx.pid
+  fi
   _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
   [ -z "${_AUTO_VER}" ] && _AUTO_VER="stable"
@@ -156,6 +163,14 @@ if [ -e "/data/disk/arch" ]; then
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] \
     || [ "${_AUTO_UP}" = "YES" ]; then
+    if [ ! -e "/root/.fixed_scan_dos_nginx.pid" ]; then
+      sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=299/g"  /root/.barracuda.cnf
+      sed -i "s/default_critnumber = 300/default_critnumber = 155/g" /var/xdrago/monitor/check/scan_nginx
+      sed -i "s/default_critnumber = 250/default_critnumber = 155/g" /var/xdrago/monitor/check/scan_nginx
+      sed -i "s/default_critnumber = 249/default_critnumber = 155/g" /var/xdrago/monitor/check/scan_nginx
+      sed -i "s/default_lines = 999/default_lines = 300/g" /var/xdrago/monitor/check/scan_nginx
+      touch /root/.fixed_scan_dos_nginx.pid
+    fi
     if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
       sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"  ${barCnf}
       sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"  ${barCnf}
