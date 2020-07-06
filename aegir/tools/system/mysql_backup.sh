@@ -184,9 +184,6 @@ backup_this_database_with_mydumper() {
 }
 
 backup_this_database_with_mysqldump() {
-  n=$((RANDOM%15+5))
-  echo waiting ${n} sec
-  sleep ${n}
   check_running
   mysqldump \
     --single-transaction \
