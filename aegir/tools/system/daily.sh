@@ -1800,12 +1800,12 @@ fix_modules() {
       echo "WARNING: THIS PLATFORM IS NOT A VALID PRESSFLOW PLATFORM! ${Plr}"
     elif [ -e "${Plr}/modules/path_alias_cache" ] \
       && [ -e "${Plr}/modules/user" ]; then
-      if [ ! -z "${_MODULES_OFF_SIX}" ]; then
-        disable_modules_with_drush8 "${_MODULES_OFF_SIX}"
-      fi
-      if [ ! -z "${_MODULES_ON_SIX}" ]; then
-        enable_modules_with_drush8 "${_MODULES_ON_SIX}"
-      fi
+      # if [ ! -z "${_MODULES_OFF_SIX}" ]; then
+      #   disable_modules_with_drush8 "${_MODULES_OFF_SIX}"
+      # fi
+      # if [ ! -z "${_MODULES_ON_SIX}" ]; then
+      #   enable_modules_with_drush8 "${_MODULES_ON_SIX}"
+      # fi
       run_drush8_cmd "sqlq \"UPDATE system SET weight = '-1' \
         WHERE type = 'module' AND name = 'path_alias_cache'\""
     fi
@@ -1815,15 +1815,16 @@ fix_modules() {
       || [ ! -e "${Plr}/profiles" ]; then
       echo "WARNING: THIS PLATFORM IS BROKEN! ${Plr}"
     else
-      if [ ! -z "${_MODULES_OFF_SEVEN}" ]; then
-        disable_modules_with_drush8 "${_MODULES_OFF_SEVEN}"
-      fi
-      if [ "${_ENTITYCACHE_DONT_ENABLE}" = "NO" ]; then
-        enable_modules_with_drush8 "entitycache"
-      fi
-      if [ ! -z "${_MODULES_ON_SEVEN}" ]; then
-        enable_modules_with_drush8 "${_MODULES_ON_SEVEN}"
-      fi
+      _MODX=OFF
+      # if [ ! -z "${_MODULES_OFF_SEVEN}" ]; then
+      #   disable_modules_with_drush8 "${_MODULES_OFF_SEVEN}"
+      # fi
+      # if [ "${_ENTITYCACHE_DONT_ENABLE}" = "NO" ]; then
+      #   enable_modules_with_drush8 "entitycache"
+      # fi
+      # if [ ! -z "${_MODULES_ON_SEVEN}" ]; then
+      #   enable_modules_with_drush8 "${_MODULES_ON_SEVEN}"
+      # fi
     fi
   elif [ -e "${Plr}/modules/o_contrib_eight" ]; then
     if [ ! -e "${Plr}/core/modules/node" ] \
@@ -1831,19 +1832,20 @@ fix_modules() {
       || [ ! -e "${Plr}/profiles" ]; then
       echo "WARNING: THIS PLATFORM IS BROKEN! ${Plr}"
     else
-      if [ ! -z "${_MODULES_OFF_EIGHT}" ]; then
-        uninstall_modules_with_drush9 "${_MODULES_OFF_EIGHT}"
-      fi
-      if [ ! -z "${_MODULES_ON_EIGHT}" ]; then
-        if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
-          enable_modules_with_drush9 "${_MODULES_ON_EIGHT}"
-        else
-          enable_modules_with_drush8 "${_MODULES_ON_EIGHT}"
-        fi
-      fi
-      enable_modules_with_drush9 "redis"
-      run_drush8_cmd "cache-rebuild"
+      _MODX=OFF
+      # if [ ! -z "${_MODULES_OFF_EIGHT}" ]; then
+      #   uninstall_modules_with_drush9 "${_MODULES_OFF_EIGHT}"
+      # fi
+      # if [ ! -z "${_MODULES_ON_EIGHT}" ]; then
+      #   if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+      #     enable_modules_with_drush9 "${_MODULES_ON_EIGHT}"
+      #   else
+      #     enable_modules_with_drush8 "${_MODULES_ON_EIGHT}"
+      #   fi
+      # fi
       if [ ! -e "${Dir}/.redisOn" ]; then
+        enable_modules_with_drush9 "redis"
+        run_drush8_cmd "cache-rebuild"
         mkdir ${Dir}/.redisOn
         chown -R ${_HM_U}:users ${Dir}/.redisOn &> /dev/null
         chmod 0755 ${Dir}/.redisOn &> /dev/null
@@ -1856,48 +1858,48 @@ fix_modules() {
       fi
     fi
   fi
-  if [ -e "${Dir}/modules/commerce_ubercart_check.info" ]; then
-    touch ${User}/log/ctrl/site.${Dom}.cart-check.info
-    rm -f ${Dir}/modules/commerce_ubercart_check.info
-  fi
-  if [ ! -e "${User}/log/ctrl/site.${Dom}.cart-check.info" ]; then
-    _COMMERCE_TEST=$(run_drush8_nosilent_cmd "pml --status=enabled \
-      --no-core --type=module | grep \(commerce\)" 2>&1)
-    _UBERCART_TEST=$(run_drush8_nosilent_cmd "pml --status=enabled \
-      --no-core --type=module | grep \(uc_cart\)" 2>&1)
-    if [[ "${_COMMERCE_TEST}" =~ "Commerce" ]] \
-      || [[ "${_UBERCART_TEST}" =~ "Ubercart" ]]; then
-      disable_modules_with_drush8 "views_cache_bully"
-    fi
-    touch ${User}/log/ctrl/site.${Dom}.cart-check.info
-  fi
-  if [ -e "${User}/static/control/enable_views_cache_bully.info" ] \
-    || [ -e "${User}/static/control/enable_views_content_cache.info" ]; then
-    _VIEWS_TEST=$(run_drush8_nosilent_cmd "pml --status=enabled \
-      --no-core --type=module | grep \(views\)" 2>&1)
-    if [ -e "${User}/static/control/enable_views_content_cache.info" ]; then
-      _CTOOLS_TEST=$(run_drush8_nosilent_cmd "pml --status=enabled \
-        --no-core --type=module | grep \(ctools\)" 2>&1)
-    fi
-    if [[ "${_VIEWS_TEST}" =~ "Views" ]] \
-      && [ ! -e "${Plr}/profiles/hostmaster" ]; then
-      if [ "${_VIEWS_CACHE_BULLY_DONT_ENABLE}" = "NO" ] \
-        && [ -e "${User}/static/control/enable_views_cache_bully.info" ]; then
-        if [ -e "${Plr}/modules/o_contrib_seven/views_cache_bully" ] \
-          || [ -e "${Plr}/modules/o_contrib/views_cache_bully" ]; then
-          enable_modules_with_drush8 "views_cache_bully"
-        fi
-      fi
-      if [[ "${_CTOOLS_TEST}" =~ "Chaos" ]] \
-        && [ "${_VIEWS_CONTENT_CACHE_DONT_ENABLE}" = "NO" ] \
-        && [ -e "${User}/static/control/enable_views_content_cache.info" ]; then
-        if [ -e "${Plr}/modules/o_contrib_seven/views_content_cache" ] \
-          || [ -e "${Plr}/modules/o_contrib/views_content_cache" ]; then
-          enable_modules_with_drush8 "views_content_cache"
-        fi
-      fi
-    fi
-  fi
+  # if [ -e "${Dir}/modules/commerce_ubercart_check.info" ]; then
+  #   touch ${User}/log/ctrl/site.${Dom}.cart-check.info
+  #   rm -f ${Dir}/modules/commerce_ubercart_check.info
+  # fi
+  # if [ ! -e "${User}/log/ctrl/site.${Dom}.cart-check.info" ]; then
+  #   _COMMERCE_TEST=$(run_drush8_nosilent_cmd "pml --status=enabled \
+  #     --no-core --type=module | grep \(commerce\)" 2>&1)
+  #   _UBERCART_TEST=$(run_drush8_nosilent_cmd "pml --status=enabled \
+  #     --no-core --type=module | grep \(uc_cart\)" 2>&1)
+  #   if [[ "${_COMMERCE_TEST}" =~ "Commerce" ]] \
+  #     || [[ "${_UBERCART_TEST}" =~ "Ubercart" ]]; then
+  #     disable_modules_with_drush8 "views_cache_bully"
+  #   fi
+  #   touch ${User}/log/ctrl/site.${Dom}.cart-check.info
+  # fi
+  # if [ -e "${User}/static/control/enable_views_cache_bully.info" ] \
+  #   || [ -e "${User}/static/control/enable_views_content_cache.info" ]; then
+  #   _VIEWS_TEST=$(run_drush8_nosilent_cmd "pml --status=enabled \
+  #     --no-core --type=module | grep \(views\)" 2>&1)
+  #   if [ -e "${User}/static/control/enable_views_content_cache.info" ]; then
+  #     _CTOOLS_TEST=$(run_drush8_nosilent_cmd "pml --status=enabled \
+  #       --no-core --type=module | grep \(ctools\)" 2>&1)
+  #   fi
+  #   if [[ "${_VIEWS_TEST}" =~ "Views" ]] \
+  #     && [ ! -e "${Plr}/profiles/hostmaster" ]; then
+  #     if [ "${_VIEWS_CACHE_BULLY_DONT_ENABLE}" = "NO" ] \
+  #       && [ -e "${User}/static/control/enable_views_cache_bully.info" ]; then
+  #       if [ -e "${Plr}/modules/o_contrib_seven/views_cache_bully" ] \
+  #         || [ -e "${Plr}/modules/o_contrib/views_cache_bully" ]; then
+  #         enable_modules_with_drush8 "views_cache_bully"
+  #       fi
+  #     fi
+  #     if [[ "${_CTOOLS_TEST}" =~ "Chaos" ]] \
+  #       && [ "${_VIEWS_CONTENT_CACHE_DONT_ENABLE}" = "NO" ] \
+  #       && [ -e "${User}/static/control/enable_views_content_cache.info" ]; then
+  #       if [ -e "${Plr}/modules/o_contrib_seven/views_content_cache" ] \
+  #         || [ -e "${Plr}/modules/o_contrib/views_content_cache" ]; then
+  #         enable_modules_with_drush8 "views_content_cache"
+  #       fi
+  #     fi
+  #   fi
+  # fi
 }
 
 if_site_db_conversion() {
