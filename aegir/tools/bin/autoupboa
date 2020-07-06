@@ -107,12 +107,9 @@ if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
   mkdir -p /etc/mysql/mariadb.conf.d
 fi
 
-if [ -e "/root/.disable_daily_maintenanace.cnf" ]; then
-  mv -f /root/.disable_daily_maintenanace.cnf /root/.pause_tasks_maint.cnf
-fi
-
-if [ -e "/root/.pause_tasks_maint.cnf" ]; then
-  killall mysqldump
+if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
+  killall -9 mysqldump
+  killall -9 rsync
 fi
 
 if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -216,7 +213,7 @@ if [ -e "/data/disk/arch" ]; then
       rm -f /root/.restrict_this_vm.cnf
     fi
     if [ -e "/root/.restrict_this_vm.cnf" ]; then
-      killall rsync
+      killall -9 rsync
       chmod 700 /usr/bin/rsync
       chmod 700 /usr/bin/mysqldump
     else
