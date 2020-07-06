@@ -163,7 +163,27 @@ EOFMYSQL
   done
 }
 
-backup_this_database() {
+backup_this_database_with_mydumper() {
+  check_running
+  if [ ! -d "${_SAVELOCATION}/${_DB}" ]; then
+    mkdir -p ${_SAVELOCATION}/${_DB}
+  fi
+  mydumper \
+    --database=${_DB} \
+    --host=localhost \
+    --user=root \
+    --password=${_SQL_PSWD} \
+    --port=3306 \
+    --outputdir=${_SAVELOCATION}/${_DB}/ \
+    --rows=50000 \
+    --build-empty-files \
+    --threads=4 \
+    --less-locking \
+    --long-query-guard=900 \
+    --verbose=1
+}
+
+backup_this_database_with_mysqldump() {
   n=$((RANDOM%15+5))
   echo waiting ${n} sec
   sleep ${n}
@@ -174,7 +194,31 @@ backup_this_database() {
     --no-autocommit \
     --skip-add-locks \
     --hex-blob ${_DB} \
-    | bzip2 -c > ${_SAVELOCATION}/${_DB}.sql.bz2
+    > ${_SAVELOCATION}/${_DB}.sql
+}
+
+compress_backup() {
+  if [ "${_MYQUICK_STATUS}" = "OK" ]; then
+    for DbPath in `find ${_SAVELOCATION}/ -maxdepth 1 -mindepth 1 | sort`; do
+      if [ -e "${DbPath}/metadata" ]; then
+        DbName=$(echo ${DbPath} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
+        cd ${_SAVELOCATION}
+        tar cvfj ${DbName}-${_DATE}.tar.bz2 ${DbName}
+        rm -f -r ${DbName}
+      fi
+    done
+    chmod 600 ${_SAVELOCATION}/*
+    chmod 700 ${_SAVELOCATION}
+    chmod 700 /data/disk/arch
+    echo "Permissions fixed"
+  else
+    bzip2 ${_SAVELOCATION}/*.sql
+    chmod 600 ${_BACKUPDIR}/*/*
+    chmod 700 ${_BACKUPDIR}/*
+    chmod 700 ${_BACKUPDIR}
+    chmod 700 /data/disk/arch
+    echo "Permissions fixed"
+  fi
 }
 
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
@@ -191,6 +235,33 @@ if [ "${_DB_SERIES}" = "10.4" ] \
   mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
   mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
   mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+fi
+
+_MYQUICK_STATUS=
+if [ -e "/usr/local/bin/mydumper" ]; then
+  _DB_V=$(mysql -V 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f6 \
+    | awk '{ print $1}' \
+    | cut -d"-" -f1 \
+    | awk '{ print $1}' \
+    | sed "s/[\,']//g" 2>&1)
+  _MD_V=$(mydumper --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f6 \
+    | awk '{ print $1}' \
+    | cut -d"-" -f1 \
+    | awk '{ print $1}' \
+    | sed "s/[\,']//g" 2>&1)
+  if [ "${_DB_V}" = "${_MD_V}" ]; then
+    _MYQUICK_STATUS=OK
+    echo "INFO: Installed MyQuick for ${_MD_V} (${_DB_V}) looks fine"
+  fi
+fi
+
+if [ -e "/root/.my.pass.txt" ]; then
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
 fi
 
 for _DB in `mysql -e "show databases" -s | uniq | sort`; do
@@ -252,7 +323,11 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         echo "All cache tables in ${_DB} truncated"
       fi
     fi
-    backup_this_database &> /dev/null
+    if [ "${_MYQUICK_STATUS}" = "OK" ]; then
+      backup_this_database_with_mydumper &> /dev/null
+    else
+      backup_this_database_with_mysqldump &> /dev/null
+    fi
     remove_locks
     echo "Backup completed for ${_DB}"
     echo " "
@@ -289,11 +364,7 @@ fi
 find ${_BACKUPDIR} -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
 echo "Backups older than ${_DB_BACKUPS_TTL} days deleted"
 
-chmod 600 ${_BACKUPDIR}/*/*
-chmod 700 ${_BACKUPDIR}/*
-chmod 700 ${_BACKUPDIR}
-chmod 700 /data/disk/arch
-echo "Permissions fixed"
+compress_backup
 
 rm -f /var/run/boa_sql_backup.pid
 touch /var/xdrago/log/last-run-backup
