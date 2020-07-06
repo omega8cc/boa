@@ -5,6 +5,8 @@ SHELL=/bin/bash
 
 check_root() {
   if [ `whoami` = "root" ]; then
+    ionice -c2 -n7 -p $$
+    renice 19 -p $$
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -179,8 +181,6 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     fi
   fi
 done
-
-ionice -c2 -n7 -p $$
 
 innobackupex --user=root --no-timestamp ${_SAVELOCATION} >${_LOGDIR}/XtraBackupA-${_DATE}.log 2>&1
 _BACKUP_RESULT=$(tail --lines=3 ${_LOGDIR}/XtraBackupA-${_DATE}.log | tr -d "\n" 2>&1)

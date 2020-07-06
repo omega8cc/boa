@@ -5,6 +5,8 @@ SHELL=/bin/bash
 
 check_root() {
   if [ `whoami` = "root" ]; then
+    ionice -c2 -n7 -p $$
+    renice 19 -p $$
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -272,7 +274,6 @@ if [ -z "${_DB_BACKUPS_TTL}" ]; then
   _DB_BACKUPS_TTL="30"
 fi
 
-ionice -c2 -n7 -p $$
 find ${_BACKUPDIR} -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
 echo "Backups older than ${_DB_BACKUPS_TTL} days deleted"
 
