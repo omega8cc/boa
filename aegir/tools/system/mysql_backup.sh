@@ -39,11 +39,8 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-n=$((RANDOM%3600+8))
-echo "Waiting $n seconds 1/2 on `date` before running backup..."
-sleep $n
 n=$((RANDOM%1800+8))
-echo "Waiting $n seconds 2/2 on `date` before running backup..."
+echo "Waiting $n seconds on `date` before running backup..."
 sleep $n
 echo "Starting backup on `date`"
 
