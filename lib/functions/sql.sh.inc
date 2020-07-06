@@ -592,25 +592,28 @@ install_db_sql() {
         rm -f /etc/apt/sources.list.d/mariadb.*
         echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
       else
-        _DB_SERVER=MariaDB
-        _DB_SERIES=10.2
-        _DBS_VRN="${_MARIADB_10_2_VRN}"
+        _DB_SERVER=Percona
+        _DB_SERIES=5.7
+        _DBS_VRN="${_PERCONA_5_7_VRN}"
       fi
     fi
     msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSR}"
   else
     if [ "${_DB_SERIES}" = "10.4" ] \
       || [ "${_DB_SERIES}" = "10.3" ] \
-      || [ "${_DB_SERIES}" = "10.2" ]; then
+      || [ "${_DB_SERIES}" = "10.2" ] \
+      || [ "${_DB_SERIES}" = "5.7" ]; then
       _DO_NOTHING=YES
     else
-      _DB_SERIES=10.2
-      _DBS_VRN="${_MARIADB_10_2_VRN}"
+      _DB_SERVER=Percona
+      _DB_SERIES=5.7
+      _DBS_VRN="${_PERCONA_5_7_VRN}"
       msg "INFO: Forced ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSR}"
     fi
     if [ -z "${_DB_SERIES}" ]; then
-      _DB_SERIES=10.2
-      _DBS_VRN="${_MARIADB_10_2_VRN}"
+      _DB_SERVER=Percona
+      _DB_SERIES=5.7
+      _DBS_VRN="${_PERCONA_5_7_VRN}"
       msg "INFO: Forced ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSR}"
     fi
   fi

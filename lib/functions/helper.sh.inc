@@ -300,7 +300,7 @@ mode_detection() {
       _XTRAS_LIST="ADM"
       _AUTOPILOT=YES
       _DEBUG_MODE=NO
-      _DB_SERVER=MariaDB
+      _DB_SERVER=Percona
       _SSH_PORT=22
       _DNS_SETUP_TEST=NO
       _SMTP_RELAY_TEST=NO
@@ -311,7 +311,7 @@ mode_detection() {
       _XTRAS_LIST="ADM CSF FTP CSS"
       _AUTOPILOT=YES
       _DEBUG_MODE=NO
-      _DB_SERVER=MariaDB
+      _DB_SERVER=Percona
       _SSH_PORT=22
       _DNS_SETUP_TEST=YES
       _SMTP_RELAY_TEST=YES
@@ -324,8 +324,8 @@ mode_detection() {
       _XTRAS_LIST=""
       _AUTOPILOT=YES
       _DEBUG_MODE=NO
-      _DB_SERVER=MariaDB
-      _DB_SERIES=10.0
+      _DB_SERVER=Percona
+      _DB_SERIES=5.7
       _SSH_PORT=22
       _DNS_SETUP_TEST=NO
       _SMTP_RELAY_TEST=NO
@@ -341,8 +341,8 @@ mode_detection() {
       _XTRAS_LIST=""
       _AUTOPILOT=YES
       _DEBUG_MODE=NO
-      _DB_SERVER=MariaDB
-      _DB_SERIES=10.0
+      _DB_SERVER=Percona
+      _DB_SERIES=5.7
       _SSH_PORT=22
       _DNS_SETUP_TEST=NO
       _SMTP_RELAY_TEST=NO
@@ -358,8 +358,8 @@ mode_detection() {
       _XTRAS_LIST=""
       _AUTOPILOT=YES
       _DEBUG_MODE=NO
-      _DB_SERVER=MariaDB
-      _DB_SERIES=10.0
+      _DB_SERVER=Percona
+      _DB_SERIES=5.7
       _SSH_PORT=22
       _DNS_SETUP_TEST=NO
       _SMTP_RELAY_TEST=NO
@@ -531,9 +531,9 @@ os_detection() {
         _DB_SERVER=Percona
         _DBS_VRN="${_PERCONA_5_7_VRN}"
       else
-        _DB_SERVER=MariaDB
-        _DB_SERIES=10.2
-        _DBS_VRN="${_MARIADB_10_2_VRN}"
+        _DB_SERVER=Percona
+        _DB_SERIES=5.7
+        _DBS_VRN="${_PERCONA_5_7_VRN}"
       fi
     elif [ "${_THIS_RV}" = "precise" ]; then
       _OSR="precise"
@@ -546,9 +546,9 @@ os_detection() {
   elif [ "${_THIS_OS}" = "Debian" ]; then
     if [ "${_THIS_RV}" = "buster" ]; then
       _OSR="buster"
-      _DB_SERVER=MariaDB
-      _DB_SERIES=10.4
-      _DBS_VRN="${_MARIADB_10_4_VRN}"
+      _DB_SERVER=Percona
+      _DB_SERIES=5.7
+      _DBS_VRN="${_PERCONA_5_7_VRN}"
     elif [ "${_THIS_RV}" = "stretch" ]; then
       _OSR="stretch"
     elif [ "${_THIS_RV}" = "jessie" ]; then
@@ -572,9 +572,9 @@ os_detection() {
       _DB_SERVER=Percona
       _DBS_VRN="${_PERCONA_5_7_VRN}"
     else
-      _DB_SERVER=MariaDB
-      _DB_SERIES=10.2
-      _DBS_VRN="${_MARIADB_10_2_VRN}"
+      _DB_SERVER=Percona
+      _DB_SERIES=5.7
+      _DBS_VRN="${_PERCONA_5_7_VRN}"
     fi
     _SPINNER=NO
     _SKIP_LEGACY_PHP=YES

@@ -1045,7 +1045,7 @@ tune_sql_memory_limits() {
   fi
 }
 #
-# Tune memory limits for PHP, Nginx and MariaDB.
+# Tune memory limits for PHP, Nginx and Percona.
 tune_memory_limits() {
   msg "INFO: Default Memory Tuning"
   _VM_TEST=$(uname -a 2>&1)

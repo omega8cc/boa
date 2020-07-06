@@ -619,7 +619,6 @@ up_action() {
       wait
       sed -i "s/^_DB_SERIES=10.1/_DB_SERIES=10.2/g"                    ${barCnf}
       wait
-      #sed -i "s/^_DB_SERIES=10.2/_DB_SERIES=10.3/g"                   ${barCnf}
     else
       if [ -e "${vBs}/${filIncB}" ]; then
         sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncB}

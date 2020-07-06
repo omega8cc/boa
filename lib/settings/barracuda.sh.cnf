@@ -284,9 +284,9 @@ _DEBUG_MODE=NO
 ### DB SERVER                              ###
 ###----------------------------------------###
 ###
-### MariaDB or Percona.
+### Percona or MariaDB.
 ###
-_DB_SERVER=MariaDB
+_DB_SERVER=Percona
 
 
 ###----------------------------------------###
@@ -294,11 +294,11 @@ _DB_SERVER=MariaDB
 ###----------------------------------------###
 ###
 ### Supported values:
-### 10.1 or 10.2 or 10.3 (MariaDB)
 ### 5.7 (Percona)
+### 10.2 or 10.3 or 10.4 (MariaDB)
 ###
 ###
-_DB_SERIES=10.2
+_DB_SERIES=5.7
 
 
 ###----------------------------------------###

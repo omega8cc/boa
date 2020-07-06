@@ -885,7 +885,7 @@ tune_sql_memory_limits() {
 }
 
 #
-# Tune memory limits for MariaDB or Percona.
+# Tune memory limits for Percona.
 tune_memory_limits() {
   echo "running ${tVr} `hostname` tune_memory_limits procedure.."
   _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)

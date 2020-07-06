@@ -314,7 +314,7 @@ fi
 
 
 ###
-### Install MariaDB server
+### Install Percona server
 ###
 install_db_server
 
@@ -399,7 +399,7 @@ sshd_armour
 
 
 ###
-### Finalize initial MariaDB server setup
+### Finalize initial Percona server setup
 ###
 finalize_sql_initial_setup
 

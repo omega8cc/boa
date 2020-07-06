@@ -122,7 +122,8 @@ fix_php_ini_newrelic_all() {
     _PHP_V="74 73 72 71 70 56"
     if [ "${_DB_SERIES}" = "10.4" ] \
       || [ "${_DB_SERIES}" = "10.3" ] \
-      || [ "${_DB_SERIES}" = "10.2" ]; then
+      || [ "${_DB_SERIES}" = "10.2" ] \
+      || [ "${_DB_SERIES}" = "5.7" ]; then
       _PHP_V="74 73 72 71 70 56"
     fi
     for e in ${_PHP_V}; do
@@ -159,7 +160,8 @@ fix_php_ini_opcache_all() {
   _PHP_V="74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "10.3" ] \
-    || [ "${_DB_SERIES}" = "10.2" ]; then
+    || [ "${_DB_SERIES}" = "10.2" ] \
+    || [ "${_DB_SERIES}" = "5.7" ]; then
     _PHP_V="74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
@@ -308,7 +310,8 @@ update_php_conf() {
   _PHP_V="74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "10.3" ] \
-    || [ "${_DB_SERIES}" = "10.2" ]; then
+    || [ "${_DB_SERIES}" = "10.2" ] \
+    || [ "${_DB_SERIES}" = "5.7" ]; then
     _PHP_V="74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
@@ -395,7 +398,8 @@ tune_web_server_config() {
   _PHP_V="74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "10.3" ] \
-    || [ "${_DB_SERIES}" = "10.2" ]; then
+    || [ "${_DB_SERIES}" = "10.2" ] \
+    || [ "${_DB_SERIES}" = "5.7" ]; then
     _PHP_V="74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
@@ -551,7 +555,8 @@ install_php_extensions() {
       _PHP_V="74 73 72 71 70 56"
       if [ "${_DB_SERIES}" = "10.4" ] \
         || [ "${_DB_SERIES}" = "10.3" ] \
-        || [ "${_DB_SERIES}" = "10.2" ]; then
+        || [ "${_DB_SERIES}" = "10.2" ] \
+        || [ "${_DB_SERIES}" = "5.7" ]; then
         _PHP_V="74 73 72 71 70 56"
       fi
       for e in ${_PHP_V}; do
@@ -792,7 +797,8 @@ update_php_extensions() {
       _PHP_V="74 73 72 71 70 56"
       if [ "${_DB_SERIES}" = "10.4" ] \
         || [ "${_DB_SERIES}" = "10.3" ] \
-        || [ "${_DB_SERIES}" = "10.2" ]; then
+        || [ "${_DB_SERIES}" = "10.2" ] \
+        || [ "${_DB_SERIES}" = "5.7" ]; then
         _PHP_V="74 73 72 71 70 56"
       fi
       for e in ${_PHP_V}; do
@@ -1140,15 +1146,15 @@ install_php_multi() {
           _DB_SERVER=Percona
           _DBS_VRN="${_PERCONA_5_7_VRN}"
         else
-          _DB_SERVER=MariaDB
-          _DB_SERIES=10.2
-          _DBS_VRN="${_MARIADB_10_2_VRN}"
+          _DB_SERVER=Percona
+          _DB_SERIES=5.7
+          _DBS_VRN="${_PERCONA_5_7_VRN}"
         fi
         _T_DBS_VRN="${_DBS_VRN}"
       else
-        _DB_SERVER=MariaDB
-        _DBS_VRN="${_MARIADB_10_2_VRN}"
-        _T_DBS_VRN="${_DBS_VRN}"
+        _DB_SERVER=Percona
+        _DB_SERIES=5.7
+        _DBS_VRN="${_PERCONA_5_7_VRN}"
         if [ -e "${barCnf}" ]; then
           sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g" ${barCnf}
         fi
@@ -1509,15 +1515,15 @@ check_php_rebuild() {
       _DB_SERVER=Percona
       _DBS_VRN="${_PERCONA_5_7_VRN}"
     else
-      _DB_SERVER=MariaDB
-      _DB_SERIES=10.2
-      _DBS_VRN="${_MARIADB_10_2_VRN}"
+      _DB_SERVER=Percona
+      _DB_SERIES=5.7
+      _DBS_VRN="${_PERCONA_5_7_VRN}"
     fi
     _T_DBS_VRN="${_DBS_VRN}"
   else
-    _DB_SERVER=MariaDB
-    _DB_SERIES=10.2
-    _DBS_VRN="${_MARIADB_10_2_VRN}"
+    _DB_SERVER=Percona
+    _DB_SERIES=5.7
+    _DBS_VRN="${_PERCONA_5_7_VRN}"
     _T_DBS_VRN="${_DBS_VRN}"
     if [ -e "${barCnf}" ]; then
       sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g" ${barCnf}
