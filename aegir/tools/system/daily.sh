@@ -2646,7 +2646,8 @@ process() {
               touch ${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info
             fi
           else
-            check_site_status
+            _CHECK_IS=OFF
+            #check_site_status
           fi
           if [ ! -z "${Dan}" ] \
             && [ "${Dan}" != "hostmaster" ]; then
@@ -2673,9 +2674,10 @@ process() {
               *"$searchStringJ"*) ;;
               *)
               if [ "${_MODULES_FIX}" = "YES" ]; then
-                if [ "${_STATUS}" = "OK" ]; then
+                _CHECK_IS=OFF
+                #if [ "${_STATUS}" = "OK" ]; then
                   fix_modules
-                fi
+                #fi
                 fix_robots_txt
               fi
               check_update_le_ssl
