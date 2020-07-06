@@ -143,7 +143,7 @@ EOFMYSQL
 
 repair_this_database() {
   check_running
-  mysqlcheck --repair --silent ${_DB}
+  mysqlcheck --auto-repair --silent ${_DB}
 }
 
 optimize_this_database() {

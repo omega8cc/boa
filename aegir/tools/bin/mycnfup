@@ -536,7 +536,7 @@ EOFMYSQL
 repair_this_database() {
   echo "running ${tVr} `hostname` repair_this_database procedure.."
   check_mysql_up
-  mysqlcheck --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp --user=root --repair --silent ${_DB}
+  mysqlcheck --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp --user=root --auto-repair --silent ${_DB}
 }
 
 optimize_this_database() {

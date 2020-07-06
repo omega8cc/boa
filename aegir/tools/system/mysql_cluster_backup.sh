@@ -156,7 +156,7 @@ EOFMYSQL
 
 repair_this_database() {
   check_running
-  mysqlcheck --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp --user=root --repair --silent ${_DB}
+  mysqlcheck --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp --user=root --auto-repair --silent ${_DB}
 }
 
 optimize_this_database() {
