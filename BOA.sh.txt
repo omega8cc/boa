@@ -295,12 +295,12 @@ update_agents() {
     fi
     if [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
       echo ${InTest} > /root/.tg.cnf
-      echo ${InTest} > /root/.fast.cron.cnf
       rm -f /root/.slow.cron.cnf
       rm -f /root/.hr.monitor.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 200;"
       mysql -u root -e "SET GLOBAL max_connections = 300;"
       mysql -u root -e "SET GLOBAL max_user_connections = 200;"
+      rm -f /root/.fast.cron.cnf
     fi
     if [ -e "/root/.tg.cnf" ]; then
       sed -i "s/^_PHP_FPM_WORKERS=.*/_PHP_FPM_WORKERS=100/g" /root/.barracuda.cnf
