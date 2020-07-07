@@ -203,6 +203,7 @@ if [ -e "/data/disk/arch" ]; then
       mv -f /root/.restrict_this_vm.cnf /root/.OFF.restrict_this_vm.cnf
     fi
     if [ -e "/var/run/boa_sql_backup.pid" ] \
+      || [ -e "/var/run/boa_sql_cluster_backup.pid" ] \
       || [ -e "/var/run/boa_run.pid" ] \
       || [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ] \
       || [ -e "/var/run/mysql_restart_running.pid" ]; then
