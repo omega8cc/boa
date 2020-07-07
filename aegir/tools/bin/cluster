@@ -1432,6 +1432,8 @@ upgrade_db_cluster() {
   	vserver ${idn} exec ${_INSTAPP} bc
   	vserver ${idn} exec apt-get upgrade ${_APT_XTR}
   	vserver ${idn} exec apt-get dist-upgrade ${_APT_XTR}
+  	vserver ${idn} exec dpkg --configure -a
+  	vserver ${idn} exec update-rc.d -f mysql remove
 
   	default_my_cnf_copy
 

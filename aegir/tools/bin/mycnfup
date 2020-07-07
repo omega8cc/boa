@@ -407,6 +407,7 @@ stop_sql() {
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
     echo "Stopping MySQLD now.."
+    update-rc.d -f mysql remove &> /dev/null
     service mysql stop
   else
     echo "MySQLD already stopped?"
