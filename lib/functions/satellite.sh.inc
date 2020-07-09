@@ -1598,7 +1598,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "adminer_bundle-7.x-1.2.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/advagg" ]; then
-        get_dev_contrib "advagg-7.x-2.33.tar.gz"
+        get_dev_contrib "advagg-7.x-2.34.tar.gz"
       fi
       if [ ! -e "${_D}/${i}/o_contrib_seven/autoslave/patches/update-pdo-7.22.patch" ]; then
         rm -rf ${_D}/${i}/o_contrib_seven/autoslave
@@ -1754,7 +1754,7 @@ satellite_download_o_contrib_eight() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_eight modules..."
   fi
-  get_dev_contrib "advagg-8.x-4.0.tar.gz"
+  get_dev_contrib "advagg-8.x-4.1.tar.gz"
   get_dev_contrib "cdn-8.x-3.5.tar.gz"
   get_dev_contrib "robotstxt-8.x-1.4.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.info" ]; then
@@ -1795,7 +1795,7 @@ satellite_download_o_contrib_seven() {
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/edit-textarea.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/edit-textarea.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/version-noverify.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/version-noverify.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/frames.php"
-  get_dev_contrib "advagg-7.x-2.33.tar.gz"
+  get_dev_contrib "advagg-7.x-2.34.tar.gz"
   get_dev_contrib "autoslave-7.x-1.x-dev.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.1.tar.gz"
   get_dev_contrib "boost-7.x-1.2.tar.gz"
