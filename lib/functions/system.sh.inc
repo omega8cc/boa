@@ -532,6 +532,7 @@ tune_memory_limits() {
   else
     _MAX_MEM_REDIS="${_USE_OPC}"
   fi
+  _MAX_MEM_REDIS=$(( _MAX_MEM_REDIS * 2 ))
   _MAX_MEM_REDIS="${_MAX_MEM_REDIS}MB"
   sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_REDIS}/g" \
     /etc/redis/redis.conf &> /dev/null
