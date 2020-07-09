@@ -102,19 +102,25 @@ _SYSTEM_UPGRADE_ONLY=NO #------- Managed on the fly with 'system' keyword
 ###
 
 ###
-### You can configure BOA to run automated upgrades to latest stable version
+### You can configure BOA to run automated upgrades to latest head version
 ### for both Barracuda and all Octopus instances with three variables, empty
 ### by default. All three variables must be defined to enable auto-upgrade.
 ### You can set _AUTO_UP_MONTH and _AUTO_UP_DAY to any date in the past
 ### if you wish to enable only weekly system upgrades.
 ###
 ### Remember that one-time upgrades will include complete upgrade to latest BOA
-### stable for Barracuda and all Octopus instances, while weekly upgrade is
-### designed to run only 'barracuda up-stable system' upgrade.
+### head for Barracuda and all Octopus instances, while weekly upgrade is
+### designed to run only 'barracuda up-head system' upgrade.
+###
+### You can further modify the auto-upgrade by specifying either head or stable
+### with _AUTO_VER variable, plus you can include all supported PHP versions
+### with _AUTO_PHP variable set to "php-all" -- otherwise it will be ignored.
 ###
 _AUTO_UP_WEEKLY= #-------------- Day of week (1-7) for weekly system upgrades
 _AUTO_UP_MONTH= #--------------- Month (1-12) to define date of one-time upgrade
 _AUTO_UP_DAY= #----------------- Day (1-31) to define date of one-time upgrade
+_AUTO_VER=head #---------------- Use head (default) or stable (only if released)
+_AUTO_PHP= #-------------------- Useful to force php-all, otherwise ignored
 
 ###
 ### You can whitelist extra binaries to make them available for web server

@@ -130,7 +130,7 @@ if [ -e "/data/disk/arch" ]; then
   fi
   _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
-  [ -z "${_AUTO_VER}" ] && _AUTO_VER="stable"
+  [ -z "${_AUTO_VER}" ] && _AUTO_VER="head"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
