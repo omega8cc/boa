@@ -237,7 +237,7 @@ send_notice_core() {
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
   cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
-    -s "URGENT: Please migrate ${Dom} site to Pressflow" ${_CLIENT_EMAIL}
+    -s "URGENT: Please migrate ${Dom} site to Pressflow (LTS)" ${_CLIENT_EMAIL}
 Hello,
 
 Our system detected that you are using vanilla Drupal core
@@ -265,7 +265,7 @@ This email has been sent by your Aegir platform core monitor.
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
   cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
-    -s "URGENT: Please migrate ${Dom} site to Pressflow" ${_CLIENT_EMAIL}
+    -s "URGENT: Please migrate ${Dom} site to Pressflow (LTS)" ${_CLIENT_EMAIL}
 Hello,
 
 Our system detected that you are using vanilla Drupal core
@@ -293,7 +293,7 @@ This email has been sent by your Aegir platform core monitor.
 EOF
   else
   cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
-    -s "URGENT: Please migrate ${Dom} site to Pressflow" ${_CLIENT_EMAIL}
+    -s "URGENT: Please migrate ${Dom} site to Pressflow (LTS)" ${_CLIENT_EMAIL}
 Hello,
 
 Our system detected that you are using vanilla Drupal core

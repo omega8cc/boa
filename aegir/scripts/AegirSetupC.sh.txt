@@ -1031,7 +1031,7 @@ commons_7_install() {
 
 
 drupal6_install() {
-###---### Drupal 6 Pressflow
+###---### Drupal 6 Pressflow (LTS)
 #
   if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "D6D" ]] \

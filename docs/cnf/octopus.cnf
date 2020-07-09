@@ -194,7 +194,7 @@ _CLIENT_CORES="8" #------------- Currently not used
 ###
 ### Drupal 6 based
 ###
-### D6P D6S D6D --- Pressflow prod/stage/dev
+### D6P D6S D6D --- Pressflow (LTS) prod/stage/dev
 ### DCS ----------- Commons
 ### UCT ----------- Ubercart
 ###
