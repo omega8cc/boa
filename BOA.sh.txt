@@ -1439,6 +1439,12 @@ fix_newrelic() {
   fi
 }
 
+fix_leftovers() {
+  if [ -e "/data/disk/arch/static/control" ]; then
+    rm -rf /data/disk/arch/static
+  fi
+}
+
 force_rebuild() {
   if [ ! -e "${pthLog}/forced.rebuild.glibc.txt" ]; then
     echo "_GIT_FORCE_REINSTALL=YES" >> ${barCnf}
@@ -1959,6 +1965,7 @@ if [ `whoami` = "root" ]; then
     fix_pure_ftpd
     fix_hosting_le
     fix_newrelic
+    fix_leftovers
     update_agents
     saCoreN="SA-CORE-2018-002"
     fix_core_dgd
