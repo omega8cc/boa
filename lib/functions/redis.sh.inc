@@ -241,9 +241,13 @@ install_redis_src() {
       || [[ "${_THISHOST}" =~ ".host8." ]] \
       || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
-      if [ "${_REDIS_INSTALL_MISMATCH}" = "YES" ] \
-        || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log" ]; then
-        cp -af ${locCnf}/${redisCnfTpl} /etc/redis/redis.conf
+      if [ "${_CUSTOM_CONFIG_REDIS}" = "YES" ]; then
+        _DO_NOTHING=YES
+      else
+        if [ "${_REDIS_INSTALL_MISMATCH}" = "YES" ] \
+          || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log" ]; then
+          cp -af ${locCnf}/${redisCnfTpl} /etc/redis/redis.conf
+        fi
       fi
     fi
   else
