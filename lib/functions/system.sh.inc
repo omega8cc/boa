@@ -872,14 +872,14 @@ barracuda_cnf() {
     wait
     sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${barCnf}
     wait
-    ### Force latest OpenSSH from sources on supported systems
-    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
-    wait
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
+      ### Force latest OpenSSH from sources on supported systems
+      sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"   ${barCnf}
+      wait
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
@@ -1514,14 +1514,14 @@ barracuda_cnf() {
     wait
     sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${barCnf}
     wait
-    ### Force latest OpenSSH from sources on supported systems
-    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
-    wait
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
+      ### Force latest OpenSSH from sources on supported systems
+      sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"   ${barCnf}
+      wait
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else

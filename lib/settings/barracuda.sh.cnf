@@ -968,7 +968,7 @@ _PHP_GEOS=NO
 ### When set to YES it will force OpenSSH
 ### re-install from sources (Debian only)
 ###
-_SSH_FROM_SOURCES=YES
+_SSH_FROM_SOURCES=NO
 
 ###
 ### When set to YES it will force OpenSSH

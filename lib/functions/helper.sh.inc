@@ -558,7 +558,6 @@ os_detection() {
     fi
     _NGINX_FORWARD_SECRECY=YES
     _NGINX_SPDY=YES
-    _SSH_FROM_SOURCES=YES
     if [ "${_DB_SERIES}" = "10.4" ]; then
       _DB_SERVER=MariaDB
       _DBS_VRN="${_MARIADB_10_4_VRN}"
