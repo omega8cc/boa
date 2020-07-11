@@ -55,7 +55,7 @@ fi
 _C_SQL="mysql --user=root --password=${_SQL_PSWD} --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp"
 
 echo "SQL --host=${_SQL_HOST} --port=${_SQL_PORT}"
-n=$((RANDOM%1800+8))
+n=$((RANDOM%3600+8))
 echo "Waiting $n seconds on `date` before running backup..."
 sleep $n
 echo "Starting backup on `date`"
