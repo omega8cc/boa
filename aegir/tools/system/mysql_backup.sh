@@ -39,8 +39,11 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
+n=$((RANDOM%3600+8))
+echo "Waiting $n seconds 1/2 on `date` before running backup..."
+sleep $n
 n=$((RANDOM%1800+8))
-echo "Waiting $n seconds on `date` before running backup..."
+echo "Waiting $n seconds 2/2 on `date` before running backup..."
 sleep $n
 echo "Starting backup on `date`"
 
@@ -164,6 +167,9 @@ EOFMYSQL
 }
 
 backup_this_database_with_mydumper() {
+  n=$((RANDOM%15+5))
+  echo waiting ${n} sec
+  sleep ${n}
   check_running
   if [ ! -d "${_SAVELOCATION}/${_DB}" ]; then
     mkdir -p ${_SAVELOCATION}/${_DB}
@@ -184,6 +190,9 @@ backup_this_database_with_mydumper() {
 }
 
 backup_this_database_with_mysqldump() {
+  n=$((RANDOM%15+5))
+  echo waiting ${n} sec
+  sleep ${n}
   check_running
   mysqldump \
     --single-transaction \
@@ -362,6 +371,10 @@ if [ -z "${_DB_BACKUPS_TTL}" ]; then
 fi
 find ${_BACKUPDIR} -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
 echo "Backups older than ${_DB_BACKUPS_TTL} days deleted"
+n=$((RANDOM%1800+8))
+echo "Waiting $n seconds on `date` before running compress..."
+sleep $n
+echo "Starting compress on `date`"
 echo "COMPRESS"
 compress_backup &> /dev/null
 touch /var/xdrago/log/last-run-backup

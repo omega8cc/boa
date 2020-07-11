@@ -345,6 +345,11 @@ if [ -z "${_DB_BACKUPS_TTL}" ]; then
 fi
 find ${_BACKUPDIR} -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
 echo "Backups older than ${_DB_BACKUPS_TTL} days deleted"
+echo "Backups older than ${_DB_BACKUPS_TTL} days deleted"
+n=$((RANDOM%1800+8))
+echo "Waiting $n seconds on `date` before running compress..."
+sleep $n
+echo "Starting compress on `date`"
 echo "COMPRESS"
 compress_backup &> /dev/null
 touch /var/xdrago/log/last-run-cluster-backup
