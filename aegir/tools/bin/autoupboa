@@ -6,20 +6,6 @@ barCnf="/root/.barracuda.cnf"
 
 crontab_update() {
   if [ -e "/etc/crontab" ]; then
-    sed -i "s/.*barracuda.*//gi"  /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*BOA.sh.txt.*//gi" /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*daily.sh.*//gi"   /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*fire.*//gi"       /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*octopus.*//gi"    /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*water.*//gi"      /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*weekly.sh.*//gi"  /etc/crontab &> /dev/null
-    wait
     sed -i "s/.*xdrago.*//gi"     /etc/crontab &> /dev/null
     wait
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
@@ -75,20 +61,6 @@ crontab_update() {
 
 crontab_clean() {
   if [ -e "/etc/crontab" ]; then
-    sed -i "s/.*barracuda.*//gi"  /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*BOA.sh.txt.*//gi" /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*daily.sh.*//gi"   /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*fire.*//gi"       /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*octopus.*//gi"    /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*water.*//gi"      /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*weekly.sh.*//gi"  /etc/crontab &> /dev/null
-    wait
     sed -i "s/.*xdrago.*//gi"     /etc/crontab &> /dev/null
     wait
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
