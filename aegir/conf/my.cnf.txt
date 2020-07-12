@@ -100,7 +100,7 @@ innodb_read_io_threads = 64
 innodb_doublewrite = 0
 innodb_checksum_algorithm=NONE
 innodb_flush_log_at_timeout = 5
-innodb_force_recovery = 3
+#innodb_force_recovery = 3
 
 [mysqld_safe]
 socket                  = /var/run/mysqld/mysqld.sock
