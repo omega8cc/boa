@@ -490,7 +490,7 @@ tune_sql_memory_limits() {
   fi
 }
 
-install_db_sql() {
+prep_for_install_db_sql() {
   _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
     _NOW_DB_V=$(mysql -V 2>&1 \
@@ -654,9 +654,11 @@ install_db_sql() {
   #     st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
   #   fi
   # fi
-  st_runner "${_RMAPP} mytop" &> /dev/null
-  st_runner "apt-get purge mytop -y" &> /dev/null
-  rm -f /usr/bin/mytop
+  if [ -e "/usr/bin/mytop" ]; then
+    st_runner "${_RMAPP} mytop" &> /dev/null
+    st_runner "apt-get purge mytop -y" &> /dev/null
+    rm -f /usr/bin/mytop
+  fi
   st_runner "apt-get update -qq" &> /dev/null
   if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
@@ -822,6 +824,7 @@ install_db_sql() {
   elif [ "${_DB_SERIES}" = "5.7" ]; then
     SQLADD="percona-xtrabackup-24 \
             libperconaserverclient20-dev \
+            percona-toolkit \
             python-mysqldb \
             libdbi-perl"
   fi
@@ -857,14 +860,21 @@ install_with_aptitude_sql() {
       msg "INFO: Installing ${_DB_SERVER}..."
     fi
   fi
-  install_db_sql
-  st_runner "${_INSTAPP} mytop" 2> /dev/null
-  if [ -e "${pthLog}" ]; then
-    touch ${pthLog}/fixed-mytop-mariadb.log
-  fi
+  prep_for_install_db_sql
   st_runner "${_INSTAPP} ${SQLDEB}" 2> /dev/null
   st_runner "${_INSTAPP} ${SQLADD}" 2> /dev/null
   st_runner "${_INSTAPP} ${SQLDEB}" 2> /dev/null
+  if [ ! -e "/usr/local/bin/mytop" ] && [ -e "/usr/bin/mysql" ]; then
+    msg "INFO: Building MyTop from sources, please wait..."
+    cd /var/opt
+    rm -rf git*
+    get_dev_src "mytop-1.6.tar.gz"
+    cd /var/opt/mytop-1.6
+    mrun "perl Makefile.PL" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    mrun "ldconfig" 2> /dev/null
+  fi
   if [ "${_EASY_SETUP}" = "DBHD" ] \
     || [ -e "/etc/mysql/conf.d/galera.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then

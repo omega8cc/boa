@@ -1802,23 +1802,25 @@ run_aptitude_full_upgrade() {
   # fi
   st_runner "dpkg --configure --force-all -a" &> /dev/null
   st_runner "apt-get update -qq" &> /dev/null
-  _THIS_DB_SERVER_TEST=$(mysql -V 2>&1)
-  if [[ "${_THIS_DB_SERVER_TEST}" =~ "MariaDB" ]] \
-    && [ ! -e "${pthLog}/fixed-mytop-mariadb.log" ]; then
+  if [ -e "/usr/bin/mytop" ]; then
     st_runner "${_RMAPP} mytop" &> /dev/null
     st_runner "apt-get purge mytop -y -qq" &> /dev/null
     rm -f /usr/bin/mytop
-    if [ -e "${pthLog}" ]; then
-      touch ${pthLog}/fixed-mytop-mariadb.log
-    fi
   fi
   st_runner "aptitude full-upgrade -f -y -q \
     --allow-untrusted \
     -o Dpkg::Options::=--force-confdef \
     -o Dpkg::Options::=--force-confold" 2> /dev/null
-  if [[ "${_THIS_DB_SERVER_TEST}" =~ "MariaDB" ]] \
-    && [ -e "${pthLog}/fixed-mytop-mariadb.log" ]; then
-    st_runner "${_INSTAPP} mytop" 2> /dev/null
+  if [ ! -e "/usr/local/bin/mytop" ] && [ -e "/usr/bin/mysql" ]; then
+    msg "INFO: Building MyTop from sources, please wait..."
+    cd /var/opt
+    rm -rf git*
+    get_dev_src "mytop-1.6.tar.gz"
+    cd /var/opt/mytop-1.6
+    mrun "perl Makefile.PL" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    mrun "ldconfig" 2> /dev/null
   fi
 }
 
