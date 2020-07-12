@@ -537,6 +537,11 @@ install_db_sql() {
       echo "$(date 2>&1) Too many dirmngr processes killed" >> \
         /var/xdrago/log/dirmngr-count.kill.log
     fi
+    if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "1" ]; then
+      kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+      echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
+        /var/xdrago/log/gpg-agent-count.kill.log
+    fi
   done
   apt-get update -qq &> /dev/null
   _KEYS_SIG="8507EFA5"
@@ -552,6 +557,11 @@ install_db_sql() {
       kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
       echo "$(date 2>&1) Too many dirmngr processes killed" >> \
         /var/xdrago/log/dirmngr-count.kill.log
+    fi
+    if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "1" ]; then
+      kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+      echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
+        /var/xdrago/log/gpg-agent-count.kill.log
     fi
   done
   apt-get update -qq &> /dev/null
@@ -1082,6 +1092,11 @@ install_db_server() {
           echo "$(date 2>&1) Too many dirmngr processes killed" >> \
             /var/xdrago/log/dirmngr-count.kill.log
         fi
+        if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "1" ]; then
+          kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+          echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
+            /var/xdrago/log/gpg-agent-count.kill.log
+        fi
       done
       apt-get update -qq &> /dev/null
       _KEYS_SIG="8507EFA5"
@@ -1097,6 +1112,11 @@ install_db_server() {
           kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
           echo "$(date 2>&1) Too many dirmngr processes killed" >> \
             /var/xdrago/log/dirmngr-count.kill.log
+        fi
+        if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "1" ]; then
+          kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+          echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
+            /var/xdrago/log/gpg-agent-count.kill.log
         fi
       done
       apt-get update -qq &> /dev/null

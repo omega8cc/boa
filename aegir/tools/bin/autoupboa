@@ -186,6 +186,16 @@ if [ -e "/data/disk/arch" ]; then
     else
       rm -f /root/.pause_tasks_maint.cnf
       rm -f /root/.restrict_this_vm.cnf
+      if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "0" ]; then
+        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+        echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
+          /var/xdrago/log/gpg-agent-count.kill.log
+      fi
+      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "0" ]; then
+        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+        echo "$(date 2>&1) Too many dirmngr processes killed" >> \
+          /var/xdrago/log/dirmngr-count.kill.log
+      fi
     fi
     if [ -e "/root/.restrict_this_vm.cnf" ]; then
       killall -9 rsync
