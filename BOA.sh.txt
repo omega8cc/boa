@@ -322,7 +322,6 @@ update_agents() {
     rm -f /root/.giant_traffic.cnf
     rm -f /root/.default.cnf
     rm -f /root/.debug.cnf
-    rm -f /root/.debug-boa-installer.cnf
     sed -i "s/.*scout.*//g" /etc/crontab
     sed -i "s/_SCOUT_KEY=.*/_SCOUT_KEY=/g" /root/.barracuda.cnf
     # if [ -e "/data/conf/override.global.inc" ] \
