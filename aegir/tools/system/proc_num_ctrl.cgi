@@ -242,7 +242,7 @@ sub global_action
       local($HOUR, $MIN) = split(/:/,${TIME});
       $MIN =~ s/^0//g;
 
-      if ($COMMAND =~ /^(\\)/ && $START =~ /[A-Z]/ && $B =~ /php/ && $B !~ /php-fpm/ && $B !~ /php-cgi/)
+      if ($COMMAND =~ /^(\\)/ && $START =~ /[A-Z]/ && $B =~ /php/ && $B !~ /php-fpm/ && $B !~ /php-cgi/ && !-f "/var/run/boa_run.pid")
       {
         $timedate=`date +%y%m%d-%H%M`;
         chomp($timedate);
@@ -291,7 +291,7 @@ sub global_action
         }
       }
 
-      if ($COMMAND =~ /^(sh|git)/ && $START =~ /[A-Z]/ && $B =~ /(-c|git|clone)/)
+      if ($COMMAND =~ /^(sh|git)/ && $START =~ /[A-Z]/ && $B =~ /(-c|git|clone)/ && !-f "/var/run/boa_run.pid")
       {
          $timedate=`date +%y%m%d-%H%M%S`;
          chomp($timedate);
@@ -304,7 +304,7 @@ sub global_action
          }
       }
 
-      if ($COMMAND =~ /^(\\)/ && $B =~ /^(sh|git)/ && $START =~ /[A-Z]/ && $K =~ /(-c|git|clone)/)
+      if ($COMMAND =~ /^(\\)/ && $B =~ /^(sh|git)/ && $START =~ /[A-Z]/ && $K =~ /(-c|git|clone)/ && !-f "/var/run/boa_run.pid")
       {
          $timedate=`date +%y%m%d-%H%M%S`;
          chomp($timedate);
@@ -317,7 +317,7 @@ sub global_action
          }
       }
 
-      if ($USER =~ /jetty/ && $COMMAND =~ /java/ && $STAT =~ /R/)
+      if ($USER =~ /jetty/ && $COMMAND =~ /java/ && $STAT =~ /R/ && !-f "/var/run/boa_run.pid")
       {
          system("kill -9 $PID");
          $timedate=`date +%y%m%d-%H%M%S`;
