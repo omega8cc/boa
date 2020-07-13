@@ -735,9 +735,16 @@ install_vps() {
   else
     locMode="-m debootstrap"
   fi
+
+  eth=$(ifconfig 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f1 \
+    | awk '{ print $1}' \
+    | sed "s/[\,':]//g" 2>&1)
+
   vserver ${idn} build -n ${idn} ${locMode} --i-know-its-there \
     --hostname ${hst} \
-    --interface eth0:${vip}/32 \
+    --interface ${eth}:${vip}/32 \
     -- -d ${osx} -- --arch=amd64 --include=${incl} \
     --exclude=${excl};
 
