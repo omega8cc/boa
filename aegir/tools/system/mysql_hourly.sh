@@ -121,7 +121,7 @@ if [ ! -e "${xtraList}" ] \
     ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
     _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
     sleep 2
-    if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "3" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "1" ]; then
       kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
       echo "$(date 2>&1) Too many dirmngr processes killed" >> \
         /var/xdrago/log/dirmngr-count.kill.log
