@@ -106,7 +106,7 @@ sql_strict_upgrade_path() {
 update_innodb_log_file_size() {
   msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
-    sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf
+    sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf &> /dev/null
     wait
   fi
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
@@ -117,7 +117,7 @@ update_innodb_log_file_size() {
     mrun "sleep 1"
     mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
-    sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+    sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf &> /dev/null
     wait
     mrun "bash /var/xdrago/move_sql.sh start" &> /dev/null
   else
@@ -130,7 +130,7 @@ update_innodb_log_file_size() {
       mrun "sleep 1"
       mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
-      sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+      sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf &> /dev/null
       wait
       mrun "bash /var/xdrago/move_sql.sh start" &> /dev/null
     else
@@ -143,19 +143,19 @@ update_innodb_log_file_size() {
 #
 # Update SQL Config.
 update_sql_conf() {
-  sed -i "s/.*innodb_force_recovery/#innodb_force_recovery/g" /etc/mysql/my.cnf
+  sed -i "s/.*innodb_force_recovery/#innodb_force_recovery/g" /etc/mysql/my.cnf &> /dev/null
   wait
   if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
-    sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf
+    sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf &> /dev/null
     wait
   fi
   # if [ "${_DB_SERIES}" = "10.4" ]; then
-  #   sed -i "s/.*innodb-defragment/innodb-defragment/g" /etc/mysql/my.cnf
+  #   sed -i "s/.*innodb-defragment/innodb-defragment/g" /etc/mysql/my.cnf &> /dev/null
   #   wait
   # fi
-  sed -i "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" /etc/mysql/my.cnf
+  sed -i "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" /etc/mysql/my.cnf &> /dev/null
   wait
-  sed -i "s/^thread_concurrency.*//g" /etc/mysql/my.cnf
+  sed -i "s/^thread_concurrency.*//g" /etc/mysql/my.cnf &> /dev/null
   wait
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
@@ -177,24 +177,24 @@ update_sql_conf() {
           fi
         fi
       fi
-      sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf
+      sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf &> /dev/null
       wait
-      sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf
+      sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf &> /dev/null
       wait
-      sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf
+      sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf &> /dev/null
       wait
       if [ ! -e "/etc/mysql/skip-name-resolve.txt" ]; then
-        sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf
+        sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf &> /dev/null
         wait
       fi
     fi
   fi
   mv -f /etc/mysql/my.cnf-pre* ${vBs}/dragon/t/ &> /dev/null
-  sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
+  sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
   wait
-  sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
+  sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
   wait
-  sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf
+  sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf &> /dev/null
   wait
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
@@ -203,26 +203,26 @@ update_sql_conf() {
       wait
       sed -i "/^$/d" /var/spool/cron/crontabs/root
       wait
-      sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf
+      sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf &> /dev/null
       wait
-      sed -i "s/^expire_logs_days/#expire_logs_days/g" /etc/mysql/my.cnf
+      sed -i "s/^expire_logs_days/#expire_logs_days/g" /etc/mysql/my.cnf &> /dev/null
       wait
-      sed -i "s/^max_binlog_size/#max_binlog_size/g"   /etc/mysql/my.cnf
+      sed -i "s/^max_binlog_size/#max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
       wait
-      sed -i "s/^binlog_row_image/#binlog_row_image/g" /etc/mysql/my.cnf
+      sed -i "s/^binlog_row_image/#binlog_row_image/g" /etc/mysql/my.cnf &> /dev/null
       wait
-      sed -i "s/^binlog_format/#binlog_format/g"       /etc/mysql/my.cnf
+      sed -i "s/^binlog_format/#binlog_format/g"       /etc/mysql/my.cnf &> /dev/null
       wait
     elif [ "${_DB_BINARY_LOG}" = "YES" ]; then
-      sed -i "s/.*log_bin/log_bin/g"                   /etc/mysql/my.cnf
+      sed -i "s/.*log_bin/log_bin/g"                   /etc/mysql/my.cnf &> /dev/null
       wait
-      sed -i "s/.*expire_logs_days/expire_logs_days/g" /etc/mysql/my.cnf
+      sed -i "s/.*expire_logs_days/expire_logs_days/g" /etc/mysql/my.cnf &> /dev/null
       wait
-      sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf
+      sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
       wait
-      sed -i "s/.*binlog_row_image/binlog_row_image/g" /etc/mysql/my.cnf
+      sed -i "s/.*binlog_row_image/binlog_row_image/g" /etc/mysql/my.cnf &> /dev/null
       wait
-      sed -i "s/.*binlog_format/binlog_format/g"       /etc/mysql/my.cnf
+      sed -i "s/.*binlog_format/binlog_format/g"       /etc/mysql/my.cnf &> /dev/null
       wait
     fi
     _LEGACY_CLSTR=NO
@@ -240,7 +240,7 @@ update_sql_conf() {
           _DO_NOTHING=YES
         else
           if [ "${_INNODB_LOG_FILE_SIZE_SAME}" = "YES" ]; then
-            sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+            sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf &> /dev/null
             wait
           else
             update_innodb_log_file_size
@@ -267,7 +267,7 @@ check_mysqld_running() {
 # Tune memory limits for SQL server.
 tune_sql_memory_limits() {
   check_mysqld_running
-  sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
+  sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
   wait
   if [ ! -e "${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}" ]; then
     mkdir -p ${vBs}/dragon/t/
@@ -281,7 +281,7 @@ tune_sql_memory_limits() {
     cp -af ${locCnf}/my.cnf.txt /etc/mysql/my.cnf
   fi
   if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
-    sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf
+    sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf &> /dev/null
     wait
   fi
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
@@ -353,14 +353,14 @@ tune_sql_memory_limits() {
         _USE_MYISAM_MEM="${_USE_SQL}"
       fi
       _USE_MYISAM_MEM="${_USE_MYISAM_MEM}M"
-      # sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
+      # sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
       wait
     else
       _USE_MYISAM_MEM="${_USE_SQL}M"
       if [ "${_MYSQLTUNER_TEST_RESULT}" = "FAIL" ]; then
         msg "ALRT! _USE_MYISAM_MEM is ${_USE_MYISAM_MEM} because _REC_MYISAM_MEM was empty!"
       fi
-      # sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
+      # sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
       wait
     fi
     ###--------------------###
@@ -388,9 +388,9 @@ tune_sql_memory_limits() {
         _INNODB_BPI="1"
       fi
       if [ -e "/etc/mysql/my.cnf" ]; then
-        sed -i "s/^innodb_buffer_pool_instances.*/innodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
+        sed -i "s/^innodb_buffer_pool_instances.*/innodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf &> /dev/null
         wait
-        sed -i "s/^innodb_page_cleaners.*/innodb_page_cleaners = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
+        sed -i "s/^innodb_page_cleaners.*/innodb_page_cleaners = ${_INNODB_BPI}/g" /etc/mysql/my.cnf &> /dev/null
         wait
       fi
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_INNODB_MEM}/4/40*40" | bc 2>&1)
@@ -418,7 +418,7 @@ tune_sql_memory_limits() {
       fi
       _USE_INNODB_MEM="${_USE_INNODB_MEM}M"
       if [ -e "/etc/mysql/my.cnf" ]; then
-        sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf
+        sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
       fi
       wait
     else
@@ -448,7 +448,7 @@ tune_sql_memory_limits() {
       fi
       msg "ALRT! _USE_INNODB_MEM is ${_USE_INNODB_MEM} because _REC_INNODB_MEM was empty!"
       if [ -e "/etc/mysql/my.cnf" ]; then
-        sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf
+        sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
       fi
       wait
     fi
@@ -484,7 +484,7 @@ tune_sql_memory_limits() {
       _INNODB_LOG_FILE_SIZE=64
     fi
     if [ -e "/etc/mysql/my.cnf" ]; then
-      sed -i "s/= 181/= ${_USE_SQL}/g"  /etc/mysql/my.cnf
+      sed -i "s/= 181/= ${_USE_SQL}/g"  /etc/mysql/my.cnf &> /dev/null
     fi
     wait
   fi
@@ -662,7 +662,7 @@ prep_for_install_db_sql() {
   st_runner "apt-get update -qq" &> /dev/null
   if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-    sed -i "s/.*innodb_force_recovery.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf
+    sed -i "s/.*innodb_force_recovery.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf &> /dev/null
     wait
   fi
   if [ "${_EASY_SETUP}" = "MSTR" ] \
@@ -810,8 +810,8 @@ prep_for_install_db_sql() {
     mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/aria_log.00000001 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/aria_log_control ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
-    sed -i "s/.*innodb-defragment.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf
-    sed -i "s/^thread_concurrency.*//g" /etc/mysql/my.cnf
+    sed -i "s/.*innodb-defragment.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^thread_concurrency.*//g" /etc/mysql/my.cnf &> /dev/null
   fi
   if [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "10.3" ] \
@@ -1145,26 +1145,26 @@ install_db_server() {
         cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
       fi
       if [ -e "/etc/mysql/my.cnf" ]; then
-        sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
+        sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
         wait
-        sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
+        sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
         wait
       fi
       rm -f /var/lib/mysql/debian-*.flag &> /dev/null
       rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
       install_with_aptitude_sql
       if [ -e "/etc/mysql/my.cnf" ]; then
-        sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf
+        sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf &> /dev/null
         wait
       fi
       if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
-        sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf
+        sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf &> /dev/null
         wait
       fi
       if [ -e "/etc/mysql/my.cnf" ]; then
-        sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
+        sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
         wait
-        sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
+        sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
         wait
       fi
       _CUSTOM_CONFIG_SQL=NO
@@ -1467,7 +1467,7 @@ finalize_sql_initial_setup() {
       || [ -e "/root/.dbhd.clstr.cnf" ]; then
       echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
     else
-      sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf
+      sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf &> /dev/null
       wait
     fi
     sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" \
