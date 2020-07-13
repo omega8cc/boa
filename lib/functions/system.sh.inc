@@ -4005,6 +4005,7 @@ sys_packages_install() {
     #   fi
     # fi
     mrun "apt-get -f install -qq"             &> /dev/null
+    rm -f /etc/nginx/modules-enabled/*        &> /dev/null
     mrun "service nginx start"                &> /dev/null
     mrun "apt-get remove nginx-extras -y -qq" &> /dev/null
     mrun "apt-get remove nginx -y -qq"        &> /dev/null
@@ -5298,6 +5299,7 @@ update_initd() {
         mrun "service php56-fpm start" &> /dev/null
       fi
       mrun "update-rc.d nginx defaults" &> /dev/null
+      rm -f /etc/nginx/modules-enabled/* &> /dev/null
       mrun "service nginx start" &> /dev/null
     fi
   else
@@ -5449,6 +5451,7 @@ update_initd() {
       if [ -e "/etc/init.d/php56-fpm" ]; then
         mrun "service php56-fpm start" &> /dev/null
       fi
+      rm -f /etc/nginx/modules-enabled/* &> /dev/null
       mrun "service nginx start" &> /dev/null
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
         msg "INFO: Running ${_DB_SERVER} system tables (2) upgrade..."
