@@ -3951,18 +3951,15 @@ sys_packages_install() {
       || [ -e "/root/.host8.cnf" ]; then
       if [ "${_OSR}" = "trusty" ] \
         || [ "${_OSR}" = "precise" ]; then
-        _APT_XTRA="openjdk-7-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-7-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "jessie" ]; then
-        _APT_XTRA="openjdk-7-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-7-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "stretch" ]; then
-        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "buster" ]; then
-        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java"
       fi
-    else
-      _APT_XTRA="nginx"
     fi
-    _APT_ELSE="netcat nginx"
   else
     _APT_ITEM=$(dpkg --get-selections | grep openjdk-6-jdk | grep install 2>&1)
     if [[ "${_APT_ITEM}" =~ "install" ]]; then
@@ -3992,7 +3989,6 @@ sys_packages_install() {
     else
       _APT_XTRA=""
     fi
-    _APT_ELSE="netcat"
     # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
     # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
     #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
@@ -4005,12 +4001,6 @@ sys_packages_install() {
     #   fi
     # fi
     mrun "apt-get -f install -qq"             &> /dev/null
-    rm -f /etc/nginx/modules-enabled/*        &> /dev/null
-    mrun "service nginx start"                &> /dev/null
-    mrun "apt-get remove nginx-extras -y -qq" &> /dev/null
-    mrun "apt-get remove nginx -y -qq"        &> /dev/null
-    mrun "apt-get remove nginx-common -y -qq" &> /dev/null
-    mrun "apt-get remove nginx-full -y -qq"   &> /dev/null
     mrun "apt-get remove redis-server -y -qq" &> /dev/null
     st_runner "apt-get update -qq"            &> /dev/null
   fi

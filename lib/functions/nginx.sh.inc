@@ -221,6 +221,9 @@ detect_cdorked_malware() {
 #
 # Install or upgrade Nginx.
 install_upgrade_nginx() {
+  if [ "${_STATUS}" = "INIT" ]; then
+    st_runner "${_INSTALL} nginx-light nginx-common" 2> /dev/null
+  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Testing Nginx version..."
   fi
@@ -424,6 +427,13 @@ install_upgrade_nginx() {
   fi
   if [ ! -L "/usr/bin/nginx" ]; then
     ln -sf /usr/sbin/nginx /usr/bin/nginx
+  fi
+  mrun "service nginx start" &> /dev/null
+  if [ "${_STATUS}" = "INIT" ]; then
+    mrun "apt-get remove nginx-extras -y -qq" &> /dev/null
+    mrun "apt-get remove nginx -y -qq"        &> /dev/null
+    mrun "apt-get remove nginx-common -y -qq" &> /dev/null
+    mrun "apt-get remove nginx-full -y -qq"   &> /dev/null
   fi
 }
 
