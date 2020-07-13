@@ -523,48 +523,51 @@ prep_for_install_db_sql() {
     || [ "${_OSR}" = "trusty" ]; then
     st_runner "${_INSTAPP} software-properties-common dirmngr" 2> /dev/null
   fi
-  _KEYS_SIG="C74CD1D8"
-  _KEYS_SERVER_TEST=FALSE
-  until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
-    msg "INFO: Retrieving ${_KEYS_SIG} key.."
-    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}" &> /dev/null
-    ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
-    ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
-    _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
-    sleep 2
-    if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "1" ]; then
-      kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-      echo "$(date 2>&1) Too many dirmngr processes killed" >> \
-        /var/xdrago/log/dirmngr-count.kill.log
-    fi
-    if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "1" ]; then
-      kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
-      echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
-        /var/xdrago/log/gpg-agent-count.kill.log
-    fi
-  done
-  apt-get update -qq &> /dev/null
-  _KEYS_SIG="8507EFA5"
-  _KEYS_SERVER_TEST=FALSE
-  until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
-    msg "INFO: Retrieving ${_KEYS_SIG} key.."
-    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}" &> /dev/null
-    ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
-    ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
-    _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
-    sleep 2
-    if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "1" ]; then
-      kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-      echo "$(date 2>&1) Too many dirmngr processes killed" >> \
-        /var/xdrago/log/dirmngr-count.kill.log
-    fi
-    if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "1" ]; then
-      kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
-      echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
-        /var/xdrago/log/gpg-agent-count.kill.log
-    fi
-  done
-  apt-get update -qq &> /dev/null
+  if [ "${_DB_SERVER}" = "Percona" ] || [ "${_DB_SERIES}" = "5.7" ]; then
+    _KEYS_SIG="8507EFA5"
+    _KEYS_SERVER_TEST=FALSE
+    until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
+      msg "INFO: Retrieving ${_KEYS_SIG} key.."
+      apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}" &> /dev/null
+      ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+      ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
+      _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
+      sleep 2
+      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "1" ]; then
+        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+        echo "$(date 2>&1) Too many dirmngr processes killed" >> \
+          /var/xdrago/log/dirmngr-count.kill.log
+      fi
+      if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "1" ]; then
+        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+        echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
+          /var/xdrago/log/gpg-agent-count.kill.log
+      fi
+    done
+    apt-get update -qq &> /dev/null
+  else
+    _KEYS_SIG="C74CD1D8"
+    _KEYS_SERVER_TEST=FALSE
+    until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
+      msg "INFO: Retrieving ${_KEYS_SIG} key.."
+      apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}" &> /dev/null
+      ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+      ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
+      _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
+      sleep 2
+      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "1" ]; then
+        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+        echo "$(date 2>&1) Too many dirmngr processes killed" >> \
+          /var/xdrago/log/dirmngr-count.kill.log
+      fi
+      if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "1" ]; then
+        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+        echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
+          /var/xdrago/log/gpg-agent-count.kill.log
+      fi
+    done
+    apt-get update -qq &> /dev/null
+  fi
   _KEYS_SIG=""
   _KEYS_SERVER_TEST=FALSE
   if [ "${_THIS_OS}" = "Debian" ]; then
@@ -1088,48 +1091,51 @@ install_db_server() {
         fi
       fi
       rm -f ${aptLiSys}.d/ourdelta.list
-      _KEYS_SIG="C74CD1D8"
-      _KEYS_SERVER_TEST=FALSE
-      until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
-        msg "INFO: Retrieving ${_KEYS_SIG} key.."
-        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}" &> /dev/null
-        ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
-        ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
-        _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
-        sleep 2
-        if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "1" ]; then
-          kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-          echo "$(date 2>&1) Too many dirmngr processes killed" >> \
-            /var/xdrago/log/dirmngr-count.kill.log
-        fi
-        if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "1" ]; then
-          kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
-          echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
-            /var/xdrago/log/gpg-agent-count.kill.log
-        fi
-      done
-      apt-get update -qq &> /dev/null
-      _KEYS_SIG="8507EFA5"
-      _KEYS_SERVER_TEST=FALSE
-      until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
-        msg "INFO: Retrieving ${_KEYS_SIG} key.."
-        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}" &> /dev/null
-        ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
-        ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
-        _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
-        sleep 2
-        if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "1" ]; then
-          kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-          echo "$(date 2>&1) Too many dirmngr processes killed" >> \
-            /var/xdrago/log/dirmngr-count.kill.log
-        fi
-        if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "1" ]; then
-          kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
-          echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
-            /var/xdrago/log/gpg-agent-count.kill.log
-        fi
-      done
-      apt-get update -qq &> /dev/null
+      if [ "${_DB_SERVER}" = "Percona" ] || [ "${_DB_SERIES}" = "5.7" ]; then
+        _KEYS_SIG="8507EFA5"
+        _KEYS_SERVER_TEST=FALSE
+        until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
+          msg "INFO: Retrieving ${_KEYS_SIG} key.."
+          apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}" &> /dev/null
+          ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+          ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
+          _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
+          sleep 2
+          if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "1" ]; then
+            kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+            echo "$(date 2>&1) Too many dirmngr processes killed" >> \
+              /var/xdrago/log/dirmngr-count.kill.log
+          fi
+          if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "1" ]; then
+            kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+            echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
+              /var/xdrago/log/gpg-agent-count.kill.log
+          fi
+        done
+        apt-get update -qq &> /dev/null
+      else
+        _KEYS_SIG="C74CD1D8"
+        _KEYS_SERVER_TEST=FALSE
+        until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
+          msg "INFO: Retrieving ${_KEYS_SIG} key.."
+          apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}" &> /dev/null
+          ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
+          ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
+          _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
+          sleep 2
+          if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "1" ]; then
+            kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+            echo "$(date 2>&1) Too many dirmngr processes killed" >> \
+              /var/xdrago/log/dirmngr-count.kill.log
+          fi
+          if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "1" ]; then
+            kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+            echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
+              /var/xdrago/log/gpg-agent-count.kill.log
+          fi
+        done
+        apt-get update -qq &> /dev/null
+      fi
       _KEYS_SIG=""
       _KEYS_SERVER_TEST=FALSE
       if [ "${_THIS_OS}" = "Debian" ]; then
