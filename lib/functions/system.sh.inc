@@ -190,7 +190,7 @@ enable_weekly_usage_monitor() {
     wait
     sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
-    echo "08 8    * * *   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
+    echo "44 22   * * *   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
   fi
 }
 
