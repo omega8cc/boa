@@ -35,8 +35,6 @@ _VMFAMILY=XEN
 _VM_TEST=$(uname -a 2>&1)
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
-else
-  _VMFAMILY="XEN"
 fi
 
 clean_pid_exit() {

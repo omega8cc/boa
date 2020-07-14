@@ -721,16 +721,27 @@ EOF
 #
 # Read or create Barracuda cnf file.
 barracuda_cnf() {
+  _CHECK_HOST=$(uname -n 2>&1)
+  _VMFAMILY=XEN
+  _VM_TEST=$(uname -a 2>&1)
+  if [[ "${_VM_TEST}" =~ "-beng" ]]; then
+    _VMFAMILY="VS"
+  fi
+  if [ -e "/root/.auto.up.cnf" ] \
+    || [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+    || [ "${_VMFAMILY}" = "VS" ]; then
+    echo "YES" > /root/.debug-boa-installer.cnf
+    _DEBUG_MODE=YES
+  fi
   if [ ! -e "${barCnf}" ]; then
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
-      _CHECK_HOST=$(uname -n 2>&1)
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
-        echo "YES" > /root/.debug-boa-installer.cnf
-        _DEBUG_MODE=YES
         if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
           _DO_NOTHING=YES
         else
