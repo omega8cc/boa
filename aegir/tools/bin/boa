@@ -30,6 +30,7 @@ _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
+_CHECK_HOST=$(uname -n 2>&1)
 _VMFAMILY=XEN
 _VM_TEST=$(uname -a 2>&1)
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
@@ -401,15 +402,12 @@ check_dns_settings() {
 
 octopus_install() {
   if [ -e "${vBs}/${octName}" ]; then
-
     if [ -z "${user}" ]; then
       user="o1"
     else
       user=${user//[^a-zA-Z0-9-.]/}
       user=$(echo -n ${user} | tr A-Z a-z 2>&1)
     fi
-    _CHECK_HOST=$(uname -n 2>&1)
-
     if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
@@ -1375,7 +1373,17 @@ check_fix_csf() {
 
 check_root() {
   if [ `whoami` = "root" ]; then
+    if [ -e "/root/.auto.up.cnf" ] \
+      || [ -e "/root/.host8.cnf" ] \
+      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+      || [ "${_VMFAMILY}" = "VS" ]; then
+      echo "YES" > /root/.debug-boa-installer.cnf
+    fi
     if [ -e "/root/.barracuda.cnf" ]; then
+      if [ -e "/root/.debug-boa-installer.cnf" ]; then
+        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g" /root/.barracuda.cnf
+      fi
       source /root/.barracuda.cnf
       _B_NICE=${_B_NICE//[^0-9]/}
     fi
