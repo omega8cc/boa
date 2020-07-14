@@ -772,7 +772,8 @@ barracuda_cnf() {
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
       if [ -e "${barCnf}" ]; then
-        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g" ${barCnf}
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g" ${barCnf}
+        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g" ${barCnf}
       fi
     fi
     msg "INFO: Creating your ${barCnf} config file"
@@ -1631,7 +1632,8 @@ barracuda_cnf() {
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
       if [ -e "${barCnf}" ]; then
-        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g" ${barCnf}
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g" ${barCnf}
+        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g" ${barCnf}
       fi
     fi
     _CHECK_HOST=$(uname -n 2>&1)

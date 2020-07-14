@@ -1156,7 +1156,8 @@ install_php_multi() {
         _DB_SERIES=5.7
         _DBS_VRN="${_PERCONA_5_7_VRN}"
         if [ -e "${barCnf}" ]; then
-          sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g" ${barCnf}
+          sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g" ${barCnf}
+          sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g" ${barCnf}
         fi
       fi
     fi
@@ -1526,7 +1527,8 @@ check_php_rebuild() {
     _DBS_VRN="${_PERCONA_5_7_VRN}"
     _T_DBS_VRN="${_DBS_VRN}"
     if [ -e "${barCnf}" ]; then
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g" ${barCnf}
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g" ${barCnf}
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g" ${barCnf}
     fi
   fi
   # if [ ! -e "${pthLog}/installed-${_PHP_VERSION}-${_T_DBS_VRN}-${_DB_SERVER}.log" ]; then
