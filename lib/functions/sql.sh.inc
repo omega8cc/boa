@@ -959,27 +959,27 @@ forced_mysql_root_password_update() {
     fi
     cp -af /root/.my.cnf /root/.my.cnf-pre-${_X_VERSION}-${_NOW}
     cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-${_X_VERSION}-${_NOW}
-    mysql -u root -e "FLUSH HOSTS;" &> /dev/null
-    mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';" &> /dev/null
+    mysql -u root -e "FLUSH HOSTS;"
+    mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';"
     mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND Host \
-      NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
-    mysql -u root -e "DROP DATABASE test;" &> /dev/null
+      NOT IN ('localhost', '127.0.0.1', '::1');"
+    mysql -u root -e "DROP DATABASE test;"
     mysql -u root -e "DELETE FROM mysql.db \
-      WHERE Db='test' OR Db='test\\_%';" &> /dev/null
+      WHERE Db='test' OR Db='test\\_%';"
     if [ "${_DB_SERIES}" = "5.7" ] \
       || [ "${_DB_SERIES}" = "10.4" ]; then
       mysql -u root -e "SET PASSWORD \
-        FOR 'root'@'localhost' = PASSWORD('${_ESC_PASS}');" &> /dev/null
+        FOR 'root'@'localhost' = PASSWORD('${_ESC_PASS}');"
       mysql -u root -e "SET PASSWORD \
-        FOR 'root'@'127.0.0.1' = PASSWORD('${_ESC_PASS}');" &> /dev/null
+        FOR 'root'@'127.0.0.1' = PASSWORD('${_ESC_PASS}');"
       mysql -u root -e "SET PASSWORD \
-        FOR 'root'@'${_MY_HOSTN}' = PASSWORD('${_ESC_PASS}');" &> /dev/null
+        FOR 'root'@'${_MY_HOSTN}' = PASSWORD('${_ESC_PASS}');"
     else
       mysql -u root -e "UPDATE ${myUsrTbl} \
         SET Password=PASSWORD('${_ESC_PASS}') \
-        WHERE User='root';" &> /dev/null
+        WHERE User='root';"
     fi
-    mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
+    mysql -u root -e "FLUSH PRIVILEGES;"
     echo "[client]" > /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
     echo "password=${_ESC_PASS}" >> /root/.my.cnf
@@ -995,6 +995,8 @@ forced_mysql_root_password_update() {
         msg "INFO: New random password for ${_DB_SERVER} generated"
       fi
     fi
+  else
+    msg "CRIT: _ESC_PASS empty or not generated"
   fi
 }
 
@@ -1383,25 +1385,25 @@ finalize_sql_initial_setup() {
         PXSWD="${_ESC_PASS}"
       fi
       PASWD=$(echo -n ${PXSWD} | tr -d "\n" 2>&1)
-      mysql -u root -e "FLUSH HOSTS;" &> /dev/null
-      mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';" &> /dev/null
+      mysql -u root -e "FLUSH HOSTS;"
+      mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';"
       mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND \
-        Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
-      mysql -u root -e "DROP DATABASE test;" &> /dev/null
+        Host NOT IN ('localhost', '127.0.0.1', '::1');"
+      mysql -u root -e "DROP DATABASE test;"
       mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR \
-        Db='test\\_%';" &> /dev/null
+        Db='test\\_%';"
       if [ "${_DB_SERIES}" = "5.7" ] \
         || [ "${_DB_SERIES}" = "10.4" ]; then
         mysql -u root -e "SET PASSWORD \
-          FOR 'root'@'localhost' = PASSWORD('${PASWD}');" &> /dev/null
+          FOR 'root'@'localhost' = PASSWORD('${PASWD}');"
         mysql -u root -e "SET PASSWORD \
-          FOR 'root'@'127.0.0.1' = PASSWORD('${PASWD}');" &> /dev/null
+          FOR 'root'@'127.0.0.1' = PASSWORD('${PASWD}');"
         mysql -u root -e "SET PASSWORD \
-          FOR 'root'@'${_MY_HOSTN}' = PASSWORD('${PASWD}');" &> /dev/null
+          FOR 'root'@'${_MY_HOSTN}' = PASSWORD('${PASWD}');"
       else
         mysql -u root -e "UPDATE ${myUsrTbl} \
           SET Password=PASSWORD('${PASWD}') \
-          WHERE User='root';" &> /dev/null
+          WHERE User='root';"
       fi
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -1414,15 +1416,15 @@ finalize_sql_initial_setup() {
           if [ "${_DB_SERIES}" = "5.7" ] \
             || [ "${_DB_SERIES}" = "10.4" ]; then
             mysql -u root -e "SET PASSWORD \
-              FOR '${mySysMn}'@'localhost' = PASSWORD('${PASWD}');" &> /dev/null
+              FOR '${mySysMn}'@'localhost' = PASSWORD('${PASWD}');"
             mysql -u root -e "SET PASSWORD \
-              FOR '${mySysMn}'@'127.0.0.1' = PASSWORD('${PASWD}');" &> /dev/null
+              FOR '${mySysMn}'@'127.0.0.1' = PASSWORD('${PASWD}');"
             mysql -u root -e "SET PASSWORD \
-              FOR '${mySysMn}'@'${_MY_HOSTN}' = PASSWORD('${PASWD}');" &> /dev/null
+              FOR '${mySysMn}'@'${_MY_HOSTN}' = PASSWORD('${PASWD}');"
           else
             mysql -u root -e "UPDATE ${myUsrTbl} \
               SET Password=PASSWORD('${PASWD}') \
-              WHERE User='${mySysMn}';" &> /dev/null
+              WHERE User='${mySysMn}';"
           fi
           mkdir -p ${vBs}
           cp -af /etc/mysql/debian.cnf \
@@ -1441,7 +1443,7 @@ finalize_sql_initial_setup() {
             | tr -d "\s"`; do
             mysql -u root -e "GRANT ALL ON ${_ESC} \
               TO 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
-              WITH GRANT OPTION;" &> /dev/null
+              WITH GRANT OPTION;"
           done
         fi
         if [ -e "/root/.cluster.IP.list" ]; then
@@ -1452,14 +1454,14 @@ finalize_sql_initial_setup() {
             | tr -d "\s"`; do
             mysql -u root -e "GRANT ALL ON ${_ESC} \
               TO 'root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
-              WITH GRANT OPTION;" &> /dev/null
+              WITH GRANT OPTION;"
           done
           mysql -u root -e "GRANT ALL ON ${_ESC} \
-            TO 'wsrep'@'%' IDENTIFIED BY '${PASWD}';" &> /dev/null
+            TO 'wsrep'@'%' IDENTIFIED BY '${PASWD}';"
         fi
         touch ${pthLog}/fixed-cluster-ip-grants.log
       fi
-      mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
+      mysql -u root -e "FLUSH PRIVILEGES;"
     fi
     echo "[client]" > /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
@@ -1501,7 +1503,7 @@ finalize_sql_initial_setup() {
           | tr -d "\s"`; do
           mysql -u root -e "GRANT ALL ON ${_ESC} \
             TO 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
-            WITH GRANT OPTION;" &> /dev/null
+            WITH GRANT OPTION;"
         done
       fi
       if [ -e "/root/.cluster.IP.list" ]; then
@@ -1512,10 +1514,10 @@ finalize_sql_initial_setup() {
           | tr -d "\s"`; do
           mysql -u root -e "GRANT ALL ON ${_ESC} \
             TO 'root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
-            WITH GRANT OPTION;" &> /dev/null
+            WITH GRANT OPTION;"
         done
         mysql -u root -e "GRANT ALL ON ${_ESC} \
-          TO 'wsrep'@'%' IDENTIFIED BY '${PASWD}';" &> /dev/null
+          TO 'wsrep'@'%' IDENTIFIED BY '${PASWD}';"
       fi
       touch ${pthLog}/fixed-cluster-ip-grants.log
     fi

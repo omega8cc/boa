@@ -2387,7 +2387,7 @@ provision_backend_dbpass_sync() {
   _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
   mv -f ${_L_SYS_PHP} ${_L_SYS_PHP}-pre-${_X_VERSION}-${_NOW} &> /dev/null
   provision_backend_dbpass_generate
-  if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
+  if [ ! -z "${_ESC_PASS}" ] || [ ! -z "${_ENC_PASS}" ]; then
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
       WHERE db_user='${_USER}'\"" &> /dev/null
@@ -2429,6 +2429,8 @@ EOFMYSQL
       "s/mysql:\/\/${_USER}:.*/mysql:\/\/${_USER}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
       ${_ROOT}/.drush/server_*.alias.drushrc.php &> /dev/null
     wait
+  else
+    msg "CRIT: _ESC_PASS empty or not generated"
   fi
   if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
     mkdir -p /etc/mysql/mariadb.conf.d/
