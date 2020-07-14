@@ -729,6 +729,8 @@ barracuda_cnf() {
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
+        echo "YES" > /root/.debug-boa-installer.cnf
+        _DEBUG_MODE=YES
         if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
           _DO_NOTHING=YES
         else
