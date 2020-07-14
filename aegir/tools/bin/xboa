@@ -353,6 +353,8 @@ PROXYSQL
             fi
             mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 CREATE DATABASE ${_DBN} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+CREATE USER IF NOT EXISTS '${_DBN}'@'localhost' IDENTIFIED BY '${_DBP}';
+CREATE USER IF NOT EXISTS '${_DBN}'@'%' IDENTIFIED BY '${_DBP}';
 GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'localhost' IDENTIFIED BY '${_DBP}';
 GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'%' IDENTIFIED BY '${_DBP}';
 EOFMYSQL

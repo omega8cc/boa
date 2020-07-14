@@ -566,9 +566,13 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
 
       echo "Adding grants for ProxySQL monitor user on Percona Cluster..."
       for IP in "${_DB_NODE_IP[@]}"; do
+        pxyCmd="CREATE USER IF NOT EXISTS 'monitor'@'${IP}' IDENTIFIED BY '${_MONITOR_PASSWORD}';"
+        ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
         pxyCmd="GRANT USAGE ON *.* TO 'monitor'@'${IP}' IDENTIFIED BY '${_MONITOR_PASSWORD}';"
         ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
       done
+      pxyCmd="CREATE USER IF NOT EXISTS 'monitor'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_MONITOR_PASSWORD}';"
+      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
       pxyCmd="GRANT USAGE ON *.* TO 'monitor'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_MONITOR_PASSWORD}';"
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
 
@@ -579,9 +583,13 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
 
       echo "Adding grants for ProxySQL proxysql_user on Percona Cluster..."
       for IP in "${_DB_NODE_IP[@]}"; do
+        pxyCmd="CREATE USER IF NOT EXISTS 'proxysql_user'@'${IP}' IDENTIFIED BY '${_CLUSTER_APP_PASSWORD}';"
+        ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
         pxyCmd="GRANT USAGE ON *.* TO 'proxysql_user'@'${IP}' IDENTIFIED BY '${_CLUSTER_APP_PASSWORD}';"
         ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
       done
+      pxyCmd="CREATE USER IF NOT EXISTS 'proxysql_user'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_CLUSTER_APP_PASSWORD}';"
+      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
       pxyCmd="GRANT USAGE ON *.* TO 'proxysql_user'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_CLUSTER_APP_PASSWORD}';"
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
 
@@ -1328,27 +1336,42 @@ basedir  = /usr
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "service mysql bootstrap-pxc"
   sleep 180
 
-  pxyCmd="GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO ’sstuser’@’localhost’ IDENTIFIED BY '${_MAINT_USER_PWD}';"
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
-  pxyCmd="GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO ’sstuser’@’127.0.0.1’ IDENTIFIED BY '${_MAINT_USER_PWD}';"
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  echo "Adding grants for Galera sstuser on Percona Cluster..."
   for IP in "${_DB_NODE_IP[@]}"; do
     pxyCmd="GRANT ALL ON *.* TO 'root'@'${IP}' IDENTIFIED BY '${_ROOT_SQL_PASWD}' WITH GRANT OPTION;"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+    pxyCmd="CREATE USER IF NOT EXISTS ’sstuser’@’${IP}’ IDENTIFIED BY '${_MAINT_USER_PWD}';"
     ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
     pxyCmd="GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO ’sstuser’@’${IP}’ IDENTIFIED BY '${_MAINT_USER_PWD}';"
     ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
   done
+  pxyCmd="CREATE USER IF NOT EXISTS ’sstuser’@’localhost’ IDENTIFIED BY '${_MAINT_USER_PWD}';"
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="CREATE USER IF NOT EXISTS ’sstuser’@’127.0.0.1’ IDENTIFIED BY '${_MAINT_USER_PWD}';"
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO ’sstuser’@’localhost’ IDENTIFIED BY '${_MAINT_USER_PWD}';"
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO ’sstuser’@’127.0.0.1’ IDENTIFIED BY '${_MAINT_USER_PWD}';"
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
 
+  echo "Adding grants for legacy debian-sys-maint on Percona Cluster..."
+  pxyCmd="CREATE USER IF NOT EXISTS ’debian-sys-maint’@’localhost’ IDENTIFIED BY '${_MAINT_USER_PWD}';"
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="CREATE USER IF NOT EXISTS ’debian-sys-maint’@’127.0.0.1’ IDENTIFIED BY '${_MAINT_USER_PWD}';"
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
   pxyCmd="GRANT ALL ON *.* TO 'debian-sys-maint'@'localhost' IDENTIFIED BY '${_MAINT_USER_PWD}';"
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
   pxyCmd="GRANT ALL ON *.* TO 'debian-sys-maint'@'127.0.0.1' IDENTIFIED BY '${_MAINT_USER_PWD}';"
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+
+  echo "Syncing grants for root on Percona Cluster..."
   pxyCmd="GRANT ALL ON *.* TO 'root'@'localhost' IDENTIFIED BY '${_ROOT_SQL_PASWD}' WITH GRANT OPTION;"
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
   pxyCmd="GRANT ALL ON *.* TO 'root'@'127.0.0.1' IDENTIFIED BY '${_ROOT_SQL_PASWD}' WITH GRANT OPTION;"
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
   pxyCmd="GRANT ALL ON *.* TO 'root'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_ROOT_SQL_PASWD}' WITH GRANT OPTION;"
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+
   pxyCmd="SHOW STATUS LIKE 'wsrep_%';"
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
 
