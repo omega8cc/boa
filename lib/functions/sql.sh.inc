@@ -966,7 +966,8 @@ forced_mysql_root_password_update() {
     mysql -u root -e "DROP DATABASE test;" &> /dev/null
     mysql -u root -e "DELETE FROM mysql.db \
       WHERE Db='test' OR Db='test\\_%';" &> /dev/null
-    if [ "${_DB_SERIES}" = "10.4" ]; then
+    if [ "${_DB_SERIES}" = "5.7" ] \
+      || [ "${_DB_SERIES}" = "10.4" ]; then
       mysql -u root -e "SET PASSWORD \
         FOR 'root'@'localhost' = PASSWORD('${_ESC_PASS}');" &> /dev/null
       mysql -u root -e "SET PASSWORD \
@@ -1389,7 +1390,8 @@ finalize_sql_initial_setup() {
       mysql -u root -e "DROP DATABASE test;" &> /dev/null
       mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR \
         Db='test\\_%';" &> /dev/null
-      if [ "${_DB_SERIES}" = "10.4" ]; then
+      if [ "${_DB_SERIES}" = "5.7" ] \
+        || [ "${_DB_SERIES}" = "10.4" ]; then
         mysql -u root -e "SET PASSWORD \
           FOR 'root'@'localhost' = PASSWORD('${PASWD}');" &> /dev/null
         mysql -u root -e "SET PASSWORD \
@@ -1409,7 +1411,8 @@ finalize_sql_initial_setup() {
       else
         if [ -e "/etc/mysql/debian.cnf" ] && [ "${_STATUS}" = "INIT" ]; then
           mySysMn="debian-sys-maint"
-          if [ "${_DB_SERIES}" = "10.4" ]; then
+          if [ "${_DB_SERIES}" = "5.7" ] \
+            || [ "${_DB_SERIES}" = "10.4" ]; then
             mysql -u root -e "SET PASSWORD \
               FOR '${mySysMn}'@'localhost' = PASSWORD('${PASWD}');" &> /dev/null
             mysql -u root -e "SET PASSWORD \
