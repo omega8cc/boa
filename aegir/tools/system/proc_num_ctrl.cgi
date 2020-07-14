@@ -291,32 +291,6 @@ sub global_action
         }
       }
 
-      if ($COMMAND =~ /^(sh|git)/ && $START =~ /[A-Z]/ && $B =~ /(-c|git|clone)/ && !-f "/var/run/boa_run.pid")
-      {
-         $timedate=`date +%y%m%d-%H%M%S`;
-         chomp($timedate);
-         $hourminute=`date +%H%M%S`;
-         chomp($hourminute);
-         if ($hourminute !~ /^000/)
-         {
-            system("kill -9 $PID");
-           `echo "$timedate ${TIME} $STAT $START $B" >> /var/xdrago/log/git.kill.log`;
-         }
-      }
-
-      if ($COMMAND =~ /^(\\)/ && $B =~ /^(sh|git)/ && $START =~ /[A-Z]/ && $K =~ /(-c|git|clone)/ && !-f "/var/run/boa_run.pid")
-      {
-         $timedate=`date +%y%m%d-%H%M%S`;
-         chomp($timedate);
-         $hourminute=`date +%H%M%S`;
-         chomp($hourminute);
-         if ($hourminute !~ /^000/)
-         {
-            system("kill -9 $PID");
-           `echo "$timedate ${TIME} $STAT $START $B" >> /var/xdrago/log/git.kill.log`;
-         }
-      }
-
       if ($USER =~ /jetty/ && $COMMAND =~ /java/ && $STAT =~ /R/ && !-f "/var/run/boa_run.pid")
       {
          system("kill -9 $PID");
