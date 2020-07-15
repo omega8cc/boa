@@ -105,7 +105,7 @@ urlHmr="http://${_USE_MIR}/versions/master/aegir"
 ###
 ### Include shared functions
 ###
-_FL="helper dns satellite"
+_FL="helper satellite"
 for f in ${_FL}; do
   [ -r "${libFnc}/${f}.sh.inc" ] || panic_exit "${f}"
   source "${libFnc}/${f}.sh.inc"

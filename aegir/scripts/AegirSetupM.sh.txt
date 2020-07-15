@@ -69,7 +69,7 @@ panic_exit() {
 ###
 ### Include shared functions
 ###
-_FL="helper dns master"
+_FL="helper master"
 for f in ${_FL}; do
   [ -r "${libFnc}/${f}.sh.inc" ] || panic_exit "${f}"
   source "${libFnc}/${f}.sh.inc"
