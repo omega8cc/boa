@@ -926,13 +926,13 @@ barracuda_cnf() {
           wait
         fi
         if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
-          sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=7.3/g"                  ${barCnf}
+          sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=7.2/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=7.3/g"                  ${barCnf}
+          sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=7.2/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=7.3/g"                  ${barCnf}
+          sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=7.2/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=7.3/g"                  ${barCnf}
+          sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=7.2/g"                  ${barCnf}
           wait
         fi
         # if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -1185,7 +1185,7 @@ barracuda_cnf() {
           if [ ! -z "${_CLSTR_PHP_MULTI_INSTALL}" ]; then
             _PHP_MULTI_INSTALL="${_CLSTR_PHP_MULTI_INSTALL}"
           else
-            _PHP_MULTI_INSTALL="7.3 7.2"
+            _PHP_MULTI_INSTALL="7.2"
           fi
         else
           if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
@@ -1568,9 +1568,9 @@ barracuda_cnf() {
           wait
           sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=7.2/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=7.3/g"                  ${barCnf}
+          sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=7.2/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=7.3/g"                  ${barCnf}
+          sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=7.2/g"                  ${barCnf}
           wait
         fi
         # if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
