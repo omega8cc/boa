@@ -914,6 +914,7 @@ forced_mysql_root_password_update() {
   chmod 0600 /root/.my.pass.txt &> /dev/null
   _ESC_PASS=""
   _LEN_PASS=0
+  _ESC="*.*"
   if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
     _PWD_CHARS=32
   elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
@@ -968,6 +969,9 @@ forced_mysql_root_password_update() {
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_HOSTN}';"
+    mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
+    mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
+    mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_HOSTN}' WITH GRANT OPTION;"
     mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${_ESC_PASS}';"
     mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}';"
     mysql -u root -e "ALTER USER 'root'@'${_MY_HOSTN}' IDENTIFIED BY '${_ESC_PASS}';"
@@ -1377,6 +1381,7 @@ finalize_sql_initial_setup() {
         PXSWD="${_ESC_PASS}"
       fi
       PASWD=$(echo -n ${PXSWD} | tr -d "\n" 2>&1)
+      _ESC="*.*"
       mysql -u root -e "FLUSH HOSTS;" &> /dev/null
       mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';" &> /dev/null
       mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND \
@@ -1386,6 +1391,9 @@ finalize_sql_initial_setup() {
       mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
       mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
       mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_HOSTN}';"
+      mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
+      mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
+      mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_HOSTN}' WITH GRANT OPTION;"
       mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${PASWD}';"
       mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${PASWD}';"
       mysql -u root -e "ALTER USER 'root'@'${_MY_HOSTN}' IDENTIFIED BY '${PASWD}';"
@@ -1397,9 +1405,12 @@ finalize_sql_initial_setup() {
       else
         if [ -e "/etc/mysql/debian.cnf" ] && [ "${_STATUS}" = "INIT" ]; then
           mySysMn="debian-sys-maint"
-          mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
-          mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
-          mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_HOSTN}';"
+          mysql -u root -e "CREATE USER IF NOT EXISTS '${mySysMn}'@'localhost';"
+          mysql -u root -e "CREATE USER IF NOT EXISTS '${mySysMn}'@'127.0.0.1';"
+          mysql -u root -e "CREATE USER IF NOT EXISTS '${mySysMn}'@'${_MY_HOSTN}';"
+          mysql -u root -e "GRANT ALL ON ${_ESC} TO '${mySysMn}'@'localhost' WITH GRANT OPTION;"
+          mysql -u root -e "GRANT ALL ON ${_ESC} TO '${mySysMn}'@'127.0.0.1' WITH GRANT OPTION;"
+          mysql -u root -e "GRANT ALL ON ${_ESC} TO '${mySysMn}'@'${_MY_HOSTN}' WITH GRANT OPTION;"
           mysql -u root -e "ALTER USER '${mySysMn}'@'localhost' IDENTIFIED BY '${PASWD}';"
           mysql -u root -e "ALTER USER '${mySysMn}'@'127.0.0.1' IDENTIFIED BY '${PASWD}';"
           mysql -u root -e "ALTER USER '${mySysMn}'@'${_MY_HOSTN}' IDENTIFIED BY '${PASWD}';"
