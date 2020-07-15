@@ -963,7 +963,6 @@ forced_mysql_root_password_update() {
     mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';"
     mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND Host \
       NOT IN ('localhost', '127.0.0.1', '::1');"
-    mysql -u root -e "DROP DATABASE test;"
     mysql -u root -e "DELETE FROM mysql.db \
       WHERE Db='test' OR Db='test\\_%';"
     if [ "${_DB_SERIES}" = "5.7" ] \
@@ -1389,7 +1388,6 @@ finalize_sql_initial_setup() {
       mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';"
       mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND \
         Host NOT IN ('localhost', '127.0.0.1', '::1');"
-      mysql -u root -e "DROP DATABASE test;"
       mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR \
         Db='test\\_%';"
       if [ "${_DB_SERIES}" = "5.7" ] \

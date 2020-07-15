@@ -1298,7 +1298,6 @@ install_db_cluster() {
     ##vserver ${idn} exec mysql -u root -e "FLUSH HOSTS;"
     ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='';"
     ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
-    ##vserver ${idn} exec mysql -u root -e "DROP DATABASE test;"
     ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
     ##vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ROOT_SQL_PASWD}') WHERE User='root';"
     ##vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_MAINT_USER_PWD}') WHERE User='debian-sys-maint';"
