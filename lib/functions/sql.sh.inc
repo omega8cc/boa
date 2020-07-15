@@ -959,25 +959,18 @@ forced_mysql_root_password_update() {
     fi
     cp -af /root/.my.cnf /root/.my.cnf-pre-${_X_VERSION}-${_NOW}
     cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-${_X_VERSION}-${_NOW}
-    mysql -u root -e "FLUSH HOSTS;"
-    mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';"
+    mysql -u root -e "FLUSH HOSTS;" &> /dev/null
+    mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';" &> /dev/null
     mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND Host \
-      NOT IN ('localhost', '127.0.0.1', '::1');"
+      NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
     mysql -u root -e "DELETE FROM mysql.db \
-      WHERE Db='test' OR Db='test\\_%';"
-    if [ "${_DB_SERIES}" = "5.7" ] \
-      || [ "${_DB_SERIES}" = "10.4" ]; then
-      mysql -u root -e "SET PASSWORD \
-        FOR 'root'@'localhost' = PASSWORD('${_ESC_PASS}');"
-      mysql -u root -e "SET PASSWORD \
-        FOR 'root'@'127.0.0.1' = PASSWORD('${_ESC_PASS}');"
-      mysql -u root -e "SET PASSWORD \
-        FOR 'root'@'${_MY_HOSTN}' = PASSWORD('${_ESC_PASS}');"
-    else
-      mysql -u root -e "UPDATE ${myUsrTbl} \
-        SET Password=PASSWORD('${_ESC_PASS}') \
-        WHERE User='root';"
-    fi
+      WHERE Db='test' OR Db='test\\_%';" &> /dev/null
+    mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
+    mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
+    mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_HOSTN}';"
+    mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${_ESC_PASS}';"
+    mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}';"
+    mysql -u root -e "ALTER USER 'root'@'${_MY_HOSTN}' IDENTIFIED BY '${_ESC_PASS}';"
     mysql -u root -e "FLUSH PRIVILEGES;"
     echo "[client]" > /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
@@ -1384,25 +1377,18 @@ finalize_sql_initial_setup() {
         PXSWD="${_ESC_PASS}"
       fi
       PASWD=$(echo -n ${PXSWD} | tr -d "\n" 2>&1)
-      mysql -u root -e "FLUSH HOSTS;"
-      mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';"
+      mysql -u root -e "FLUSH HOSTS;" &> /dev/null
+      mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';" &> /dev/null
       mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND \
-        Host NOT IN ('localhost', '127.0.0.1', '::1');"
+        Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
       mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR \
-        Db='test\\_%';"
-      if [ "${_DB_SERIES}" = "5.7" ] \
-        || [ "${_DB_SERIES}" = "10.4" ]; then
-        mysql -u root -e "SET PASSWORD \
-          FOR 'root'@'localhost' = PASSWORD('${PASWD}');"
-        mysql -u root -e "SET PASSWORD \
-          FOR 'root'@'127.0.0.1' = PASSWORD('${PASWD}');"
-        mysql -u root -e "SET PASSWORD \
-          FOR 'root'@'${_MY_HOSTN}' = PASSWORD('${PASWD}');"
-      else
-        mysql -u root -e "UPDATE ${myUsrTbl} \
-          SET Password=PASSWORD('${PASWD}') \
-          WHERE User='root';"
-      fi
+        Db='test\\_%';" &> /dev/null
+      mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
+      mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
+      mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_HOSTN}';"
+      mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${PASWD}';"
+      mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${PASWD}';"
+      mysql -u root -e "ALTER USER 'root'@'${_MY_HOSTN}' IDENTIFIED BY '${PASWD}';"
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
@@ -1411,19 +1397,12 @@ finalize_sql_initial_setup() {
       else
         if [ -e "/etc/mysql/debian.cnf" ] && [ "${_STATUS}" = "INIT" ]; then
           mySysMn="debian-sys-maint"
-          if [ "${_DB_SERIES}" = "5.7" ] \
-            || [ "${_DB_SERIES}" = "10.4" ]; then
-            mysql -u root -e "SET PASSWORD \
-              FOR '${mySysMn}'@'localhost' = PASSWORD('${PASWD}');"
-            mysql -u root -e "SET PASSWORD \
-              FOR '${mySysMn}'@'127.0.0.1' = PASSWORD('${PASWD}');"
-            mysql -u root -e "SET PASSWORD \
-              FOR '${mySysMn}'@'${_MY_HOSTN}' = PASSWORD('${PASWD}');"
-          else
-            mysql -u root -e "UPDATE ${myUsrTbl} \
-              SET Password=PASSWORD('${PASWD}') \
-              WHERE User='${mySysMn}';"
-          fi
+          mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
+          mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
+          mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_HOSTN}';"
+          mysql -u root -e "ALTER USER '${mySysMn}'@'localhost' IDENTIFIED BY '${PASWD}';"
+          mysql -u root -e "ALTER USER '${mySysMn}'@'127.0.0.1' IDENTIFIED BY '${PASWD}';"
+          mysql -u root -e "ALTER USER '${mySysMn}'@'${_MY_HOSTN}' IDENTIFIED BY '${PASWD}';"
           mkdir -p ${vBs}
           cp -af /etc/mysql/debian.cnf \
             ${vBs}/debian.cnf-pre-${_X_VERSION}-${_NOW}.txt

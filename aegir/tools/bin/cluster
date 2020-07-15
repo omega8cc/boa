@@ -1345,6 +1345,8 @@ basedir  = /usr
 
   echo "Adding grants for Galera sstuser on Percona Cluster..."
   for IP in "${_DB_NODE_IP[@]}"; do
+    pxyCmd="CREATE USER IF NOT EXISTS 'root'@'${IP}';"
+      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
     pxyCmd="GRANT ALL ON *.* TO 'root'@'${IP}' WITH GRANT OPTION;"
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
     pxyCmd="ALTER USER 'root'@'${IP}' IDENTIFIED BY '${_ROOT_SQL_PASWD}';"
@@ -1384,6 +1386,12 @@ basedir  = /usr
     ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
 
   echo "Syncing grants for root on Percona Cluster..."
+  pxyCmd="CREATE USER IF NOT EXISTS 'root'@'localhost';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="CREATE USER IF NOT EXISTS 'root'@'${_WEB_NODE_IP}';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
   pxyCmd="GRANT ALL ON *.* TO 'root'@'localhost' WITH GRANT OPTION;"
     ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
   pxyCmd="GRANT ALL ON *.* TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
