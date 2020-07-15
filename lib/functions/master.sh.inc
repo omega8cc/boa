@@ -1,8 +1,8 @@
 #
 # Generate provision backend db_passwd.
 provision_backend_dbpass_generate() {
-  _ESC_APASS=""
-  _LEN_APASS=0
+  _ESC_PASS=""
+  _LEN_PASS=0
   if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
     _PWD_CHARS=32
   elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
@@ -27,41 +27,41 @@ provision_backend_dbpass_generate() {
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-        _ESC_APASS="$(openssl rand -base64 32 2>&1)"
+        _ESC_PASS="$(openssl rand -base64 32 2>&1)"
       else
-        _ESC_APASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+        _ESC_PASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
       fi
     else
       if [ -e "/root/.my.pass.txt" ]; then
-        _ESC_APASS=$(cat /root/.my.pass.txt 2>&1)
+        _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
       else
-        _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+        _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
     fi
-    _ESC_APASS=$(echo -n "${_ESC_APASS}" | tr -d "\n" 2>&1)
-    _ENC_APASS=$(python -c "import urllib; print urllib.quote('''${_ESC_APASS}''')")
-    _LEN_APASS=$(echo ${#_ESC_APASS} 2>&1)
+    _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+    _ENC_PASS=$(python -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
+    _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
 
-  if [ -z "${_ESC_APASS}" ] || [ "${_LEN_APASS}" -lt "9" ]; then
+  if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-      _ESC_APASS=$(pwgen -v -s -1 2>&1)
-      _ESC_APASS=$(echo -n "${_ESC_APASS}" | tr -d "\n" 2>&1)
-      _ESC_APASS=$(sanitize_string "${_ESC_APASS}" 2>&1)
+      _ESC_PASS=$(pwgen -v -s -1 2>&1)
+      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+      _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
     else
       if [ -e "/root/.my.pass.txt" ]; then
-        _ESC_APASS=$(cat /root/.my.pass.txt 2>&1)
+        _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
       else
-        _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+        _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
     fi
-    _ENC_APASS="${_ESC_APASS}"
+    _ENC_PASS="${_ESC_PASS}"
   fi
 
-  echo "${_ESC_APASS}" > ${_L_SYS}
+  echo "${_ESC_PASS}" > ${_L_SYS}
   chown aegir:aegir ${_L_SYS} &> /dev/null
   chmod 0600 ${_L_SYS}
 
@@ -111,7 +111,7 @@ provision_backend_dbpass_generate() {
       mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_ADBU}';
 DELETE FROM mysql_query_rules WHERE username='${_ADBU}';
-INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_APASS}','10');
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_PASS}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;
 SAVE MYSQL USERS TO DISK;
@@ -122,10 +122,12 @@ SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
     mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-CREATE USER IF NOT EXISTS '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_APASS}';
-CREATE USER IF NOT EXISTS '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_APASS}';
-GRANT ALL ON ${_ESC} TO '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_ADBU}'@'localhost';
+CREATE USER IF NOT EXISTS '${_ADBU}'@'%';
+GRANT ALL ON ${_ESC} TO '${_ADBU}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_ADBU}'@'%' WITH GRANT OPTION;
+ALTER USER '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
   else
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
@@ -139,7 +141,7 @@ EOFMYSQL
         mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_ADBU}';
 DELETE FROM mysql_query_rules WHERE username='${_ADBU}';
-INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_APASS}','10');
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_PASS}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;
 SAVE MYSQL USERS TO DISK;
@@ -156,10 +158,12 @@ PROXYSQL
       ${_C_SQL} "DROP USER '${_ADBU}'@'127.0.0.1';" &> /dev/null
       ${_C_SQL} "DROP USER '${_ADBU}'@'%';" &> /dev/null
       mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-CREATE USER IF NOT EXISTS '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_APASS}';
-CREATE USER IF NOT EXISTS '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_APASS}';
-GRANT ALL ON ${_ESC} TO '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_ADBU}'@'localhost';
+CREATE USER IF NOT EXISTS '${_ADBU}'@'%';
+GRANT ALL ON ${_ESC} TO '${_ADBU}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_ADBU}'@'%' WITH GRANT OPTION;
+ALTER USER '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     fi
   fi
@@ -180,7 +184,7 @@ EOFMYSQL
       mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_ADBU}';
 DELETE FROM mysql_query_rules WHERE username='${_ADBU}';
-INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_APASS}','10');
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_PASS}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;
 SAVE MYSQL USERS TO DISK;
@@ -191,10 +195,12 @@ SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
     mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-CREATE USER IF NOT EXISTS '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_APASS}';
-CREATE USER IF NOT EXISTS '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_APASS}';
-GRANT ALL ON ${_ESC} TO '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_ADBU}'@'localhost';
+CREATE USER IF NOT EXISTS '${_ADBU}'@'%';
+GRANT ALL ON ${_ESC} TO '${_ADBU}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_ADBU}'@'%' WITH GRANT OPTION;
+ALTER USER '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
   fi
   if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
@@ -221,9 +227,9 @@ provision_backend_dbpass_sync() {
   _L_SYS="/var/aegir/backups/system/.${_ADBU}.pass.txt"
   mv -f ${_L_SYS} ${_L_SYS}-pre-${_X_VERSION}-${_NOW} &> /dev/null
   provision_backend_dbpass_generate
-  if [ ! -z "${_ESC_APASS}" ] && [ ! -z "${_ENC_APASS}" ]; then
+  if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
     su -s /bin/bash - aegir -c "drush @hostmaster \
-      sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_APASS}' \
+      sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
       WHERE db_user='${_ADBU}'\"" &> /dev/null
     _SQL_CONNECT=localhost
     if [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -240,7 +246,7 @@ provision_backend_dbpass_sync() {
       mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
-INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_APASS}','10');
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;
 SAVE MYSQL USERS TO DISK;
@@ -257,12 +263,14 @@ PROXYSQL
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
     mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}';
-CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_APASS}';
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
+ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
-    sed -i "s/mysql:\/\/${_ADBU}:.*/mysql:\/\/${_ADBU}:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
+    sed -i "s/mysql:\/\/${_ADBU}:.*/mysql:\/\/${_ADBU}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
       /var/aegir/.drush/server_*.alias.drushrc.php &> /dev/null
     wait
   fi
@@ -356,10 +364,12 @@ PROXYSQL
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
     mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
-CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
+ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
+ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
 EOFMYSQL
   fi
   if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
@@ -736,8 +746,8 @@ install_upgrade_aegir_master() {
     fi
 
     _AEGIR_DB_USER=aegir_root
-    _ESC_APASS=""
-    _LEN_APASS=0
+    _ESC_PASS=""
+    _LEN_PASS=0
 
     if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
       _PWD_CHARS=32
@@ -762,34 +772,34 @@ install_upgrade_aegir_master() {
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-          _ESC_APASS="$(openssl rand -base64 32 2>&1)"
+          _ESC_PASS="$(openssl rand -base64 32 2>&1)"
         else
-          _ESC_APASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+          _ESC_PASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
         fi
       else
         if [ -e "/root/.my.pass.txt" ]; then
-          _ESC_APASS=$(cat /root/.my.pass.txt 2>&1)
+          _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
         else
-          _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+          _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
         fi
       fi
-      _ESC_APASS=$(echo -n "${_ESC_APASS}" | tr -d "\n" 2>&1)
-      _LEN_APASS=$(echo ${#_ESC_APASS} 2>&1)
+      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+      _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
     fi
 
-    if [ -z "${_ESC_APASS}" ] || [ "${_LEN_APASS}" -lt "9" ]; then
+    if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-        _ESC_APASS=$(pwgen -v -s -1 2>&1)
-        _ESC_APASS=$(echo -n "${_ESC_APASS}" | tr -d "\n" 2>&1)
-        _ESC_APASS=$(sanitize_string "${_ESC_APASS}" 2>&1)
+        _ESC_PASS=$(pwgen -v -s -1 2>&1)
+        _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+        _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
       else
         if [ -e "/root/.my.pass.txt" ]; then
-          _ESC_APASS=$(cat /root/.my.pass.txt 2>&1)
+          _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
         else
-          _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+          _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
         fi
       fi
     fi
@@ -802,7 +812,7 @@ install_upgrade_aegir_master() {
       mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_AEGIR_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_AEGIR_DB_USER}';
-INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_AEGIR_DB_USER}','${_ESC_APASS}','10');
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_AEGIR_DB_USER}','${_ESC_PASS}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;
 SAVE MYSQL USERS TO DISK;
@@ -813,10 +823,12 @@ SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
     mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-CREATE USER IF NOT EXISTS '${_AEGIR_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}';
-CREATE USER IF NOT EXISTS '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_APASS}';
-GRANT ALL ON ${_ESC} TO '${_AEGIR_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_AEGIR_DB_USER}'@'localhost';
+CREATE USER IF NOT EXISTS '${_AEGIR_DB_USER}'@'%';
+GRANT ALL ON ${_ESC} TO '${_AEGIR_DB_USER}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_AEGIR_DB_USER}'@'%' WITH GRANT OPTION;
+ALTER USER '${_AEGIR_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
 
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
@@ -835,7 +847,7 @@ EOFMYSQL
         mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_AEGIR_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_AEGIR_DB_USER}';
-INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_AEGIR_DB_USER}','${_ESC_APASS}','10');
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_AEGIR_DB_USER}','${_ESC_PASS}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;
 SAVE MYSQL USERS TO DISK;
@@ -846,10 +858,12 @@ SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
       fi
       mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-CREATE USER IF NOT EXISTS '${_AEGIR_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}';
-CREATE USER IF NOT EXISTS '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_APASS}';
-GRANT ALL ON ${_ESC} TO '${_AEGIR_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_AEGIR_DB_USER}'@'localhost';
+CREATE USER IF NOT EXISTS '${_AEGIR_DB_USER}'@'%';
+GRANT ALL ON ${_ESC} TO '${_AEGIR_DB_USER}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_AEGIR_DB_USER}'@'%' WITH GRANT OPTION;
+ALTER USER '${_AEGIR_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     fi
 
@@ -864,7 +878,7 @@ EOFMYSQL
     echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${vBs}/${filIncB}
     echo "_DOMAIN=\"${_THIS_FRONT}\""                   >> ${vBs}/${filIncB}
     echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${vBs}/${filIncB}
-    echo "_ESC_APASS=\"${_ESC_APASS}\""                 >> ${vBs}/${filIncB}
+    echo "_ESC_PASS=\"${_ESC_PASS}\""                 >> ${vBs}/${filIncB}
     echo "_LOCAL_NETWORK_IP=\"${_LOCAL_NETWORK_IP}\""   >> ${vBs}/${filIncB}
     echo "_MY_OWNIP=\"${_MY_OWNIP}\""                   >> ${vBs}/${filIncB}
     echo "_NOW=\"${_NOW}\""                             >> ${vBs}/${filIncB}

@@ -1239,7 +1239,7 @@ install_db_server() {
       if [[ "${_DB_SERIES}" =~ "5.7" ]]; then
         _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
         if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
-          _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test' IDENTIFIED BY 'drandom_2test';" 2>&1)
+          _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
           echo _CHECK_REPAIR 1 ${_CHECK_REPAIR}
           if [[ "${_CHECK_REPAIR}" =~ "corrupted" ]]; then
             # mysqlcheck -A --auto-repair
@@ -1249,7 +1249,7 @@ install_db_server() {
             mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;"
             mysql_upgrade --force
           fi
-          _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test' IDENTIFIED BY 'drandom_2test';" 2>&1)
+          _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
           echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
         fi
         mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
@@ -1439,9 +1439,9 @@ finalize_sql_initial_setup() {
             | sort \
             | uniq \
             | tr -d "\s"`; do
-            mysql -u root -e "GRANT ALL ON ${_ESC} \
-              TO 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
-              WITH GRANT OPTION;"
+            mysql -u root -e "CREATE USER IF NOT EXISTS 'aegir_root'@'${_IP}';"
+            mysql -u root -e "GRANT ALL ON ${_ESC} TO 'aegir_root'@'${_IP}' WITH GRANT OPTION;"
+            mysql -u root -e "ALTER USER 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
           done
         fi
         if [ -e "/root/.cluster.IP.list" ]; then
@@ -1450,12 +1450,13 @@ finalize_sql_initial_setup() {
             | sort \
             | uniq \
             | tr -d "\s"`; do
-            mysql -u root -e "GRANT ALL ON ${_ESC} \
-              TO 'root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
-              WITH GRANT OPTION;"
+            mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_IP}';"
+            mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_IP}' WITH GRANT OPTION;"
+            mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
           done
-          mysql -u root -e "GRANT ALL ON ${_ESC} \
-            TO 'wsrep'@'%' IDENTIFIED BY '${PASWD}';"
+          mysql -u root -e "CREATE USER IF NOT EXISTS 'wsrep'@'%';"
+          mysql -u root -e "GRANT ALL ON ${_ESC} TO 'wsrep'@'%' WITH GRANT OPTION;"
+          mysql -u root -e "ALTER USER 'wsrep'@'%' IDENTIFIED BY '${PASWD}';"
         fi
         touch ${pthLog}/fixed-cluster-ip-grants.log
       fi
@@ -1499,9 +1500,9 @@ finalize_sql_initial_setup() {
           | sort \
           | uniq \
           | tr -d "\s"`; do
-          mysql -u root -e "GRANT ALL ON ${_ESC} \
-            TO 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
-            WITH GRANT OPTION;"
+          mysql -u root -e "CREATE USER IF NOT EXISTS 'aegir_root'@'${_IP}';"
+          mysql -u root -e "GRANT ALL ON ${_ESC} TO 'aegir_root'@'${_IP}' WITH GRANT OPTION;"
+          mysql -u root -e "ALTER USER 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
         done
       fi
       if [ -e "/root/.cluster.IP.list" ]; then
@@ -1510,12 +1511,13 @@ finalize_sql_initial_setup() {
           | sort \
           | uniq \
           | tr -d "\s"`; do
-          mysql -u root -e "GRANT ALL ON ${_ESC} \
-            TO 'root'@'${_IP}' IDENTIFIED BY '${PASWD}' \
-            WITH GRANT OPTION;"
+          mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_IP}';"
+          mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_IP}' WITH GRANT OPTION;"
+          mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
         done
-        mysql -u root -e "GRANT ALL ON ${_ESC} \
-          TO 'wsrep'@'%' IDENTIFIED BY '${PASWD}';"
+        mysql -u root -e "CREATE USER IF NOT EXISTS 'wsrep'@'%';"
+        mysql -u root -e "GRANT ALL ON ${_ESC} TO 'wsrep'@'%' WITH GRANT OPTION;"
+        mysql -u root -e "ALTER USER 'wsrep'@'%' IDENTIFIED BY '${PASWD}';"
       fi
       touch ${pthLog}/fixed-cluster-ip-grants.log
     fi

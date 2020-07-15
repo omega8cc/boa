@@ -25,7 +25,7 @@ find_correct_ip() {
 check_generate() {
   rm -f ${_L_SYS}
   if [ -e "${_L_SYS}" ]; then
-    _ESC_APASS=$(cat ${_L_SYS} 2>&1)
+    _ESC_PASS=$(cat ${_L_SYS} 2>&1)
   else
     echo "INFO: Expected file ${_L_SYS} does not exist"
     if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
@@ -48,32 +48,32 @@ check_generate() {
       || [ "${_PWD_CHARS}" -gt "8" ]; then
       echo "INFO: We will generate new random strong password (${_PWD_CHARS})"
       if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-        _ESC_APASS="$(openssl rand -base64 32 2>&1)"
+        _ESC_PASS="$(openssl rand -base64 32 2>&1)"
       else
-        _ESC_APASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+        _ESC_PASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
       fi
-      _ESC_APASS=$(echo -n "${_ESC_APASS}" | tr -d "\n" 2>&1)
-      _ENC_APASS=$(python -c "import urllib; print urllib.quote('''${_ESC_APASS}''')")
-      echo "${_ESC_APASS}" > ${_L_SYS}
+      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+      _ENC_PASS=$(python -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
+      echo "${_ESC_PASS}" > ${_L_SYS}
     else
        echo "INFO: We will generate new random password using pwgen tool"
-      _ESC_APASS=$(pwgen -v -s -1 2>&1)
-      _ESC_APASS=$(echo -n "${_ESC_APASS}" | tr -d "\n" 2>&1)
-      _ESC_APASS=$(sanitize_string "${_ESC_APASS}" 2>&1)
-      _ENC_APASS="${_ESC_APASS}"
-      echo "${_ESC_APASS}" > ${_L_SYS}
+      _ESC_PASS=$(pwgen -v -s -1 2>&1)
+      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+      _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+      _ENC_PASS="${_ESC_PASS}"
+      echo "${_ESC_PASS}" > ${_L_SYS}
       chmod 0600 ${_L_SYS}
     fi
   fi
-  _LEN_APASS=$(echo ${#_ESC_APASS} 2>&1)
-  if [ -z "${_ESC_APASS}" ] || [ "${_LEN_APASS}" -lt "9" ]; then
-     echo "WARN: The random password=${_ESC_APASS} does not look good"
+  _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
+  if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
+     echo "WARN: The random password=${_ESC_PASS} does not look good"
      echo "INFO: We will generate new random password using pwgen tool"
-    _ESC_APASS=$(pwgen -v -s -1 2>&1)
-    _ESC_APASS=$(echo -n "${_ESC_APASS}" | tr -d "\n" 2>&1)
-    _ESC_APASS=$(sanitize_string "${_ESC_APASS}" 2>&1)
-    _ENC_APASS="${_ESC_APASS}"
-    echo "${_ESC_APASS}" > ${_L_SYS}
+    _ESC_PASS=$(pwgen -v -s -1 2>&1)
+    _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+    _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+    _ENC_PASS="${_ESC_PASS}"
+    echo "${_ESC_PASS}" > ${_L_SYS}
     chmod 0600 ${_L_SYS}
   fi
 }
@@ -93,14 +93,14 @@ do_syncpass() {
         ${vBs}/server_master.alias.drushrc.php.${uname}-${_NOW} &> /dev/null
       check_generate
       chown ${uname}:${uname} ${_L_SYS} &> /dev/null
-      if [ ! -z "${_ESC_APASS}" ] && [ ! -z "${_ENC_APASS}" ]; then
+      if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
         if [ -e "/var/aegir/use_proxysql.txt" ]; then
           _THIS_DB_PORT=6033
         fi
         mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
         su -s /bin/bash - ${uname} -c "drush @hostmaster \
           sqlq \"UPDATE hosting_db_server \
-          SET db_passwd='${_ESC_APASS}' \
+          SET db_passwd='${_ESC_PASS}' \
           WHERE db_user='aegir_root'\"" &> /dev/null
         _ESC="*.*"
         _USE_DB_USER="aegir_root"
@@ -113,7 +113,7 @@ do_syncpass() {
           mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
-INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_APASS}','10');
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;
 SAVE MYSQL USERS TO DISK;
@@ -130,13 +130,15 @@ PROXYSQL
         ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
         ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
         mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}';
-CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_APASS}';
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
+ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
         sed -i \
-          "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
+          "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
           ${prH}/server_*.alias.drushrc.php &> /dev/null
         wait
         mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
@@ -146,7 +148,7 @@ EOFMYSQL
         exit 1
       fi
       echo "INFO: Fixed Aegir Master Instance system user=aegir_root"
-      echo "INFO: New system password=${_ESC_APASS} encoded=${_ENC_APASS}"
+      echo "INFO: New system password=${_ESC_PASS} encoded=${_ENC_PASS}"
       echo "BYE!"
     else
       if [ -e "/data/disk/${uname}" ]; then
@@ -157,13 +159,13 @@ EOFMYSQL
           ${vBs}/server_master.alias.drushrc.php.${uname}-${_NOW} &> /dev/null
         check_generate
         chown ${uname}:users ${_L_SYS} &> /dev/null
-        if [ ! -z "${_ESC_APASS}" ] && [ ! -z "${_ENC_APASS}" ]; then
+        if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
           if [ -e "/data/conf/${uname}_use_proxysql.txt" ]; then
             _THIS_DB_PORT=6033
           fi
           mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
           su -s /bin/bash - ${uname} -c "drush @hostmaster \
-            sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_APASS}' \
+            sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
             WHERE db_user='${uname}'\"" &> /dev/null
           _ESC="*.*"
           _USE_DB_USER="${uname}"
@@ -176,7 +178,7 @@ EOFMYSQL
             mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
-INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_APASS}','10');
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;
 SAVE MYSQL USERS TO DISK;
@@ -193,13 +195,15 @@ PROXYSQL
           ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
           ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
           mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}';
-CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_APASS}';
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
+ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
           sed -i \
-            "s/mysql:\/\/${uname}:.*/mysql:\/\/${uname}:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
+            "s/mysql:\/\/${uname}:.*/mysql:\/\/${uname}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
             /data/disk/${uname}/.drush/server_*.alias.drushrc.php &> /dev/null
           wait
           mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
@@ -211,14 +215,14 @@ EOFMYSQL
         _L_SYS_PHP="/data/disk/${uname}/.${uname}.pass.php"
         echo "<?php" > ${_L_SYS_PHP}
         echo "\$oct_db_user = \"${uname}\";" >> ${_L_SYS_PHP}
-        echo "\$oct_db_pass = \"${_ESC_APASS}\";" >> ${_L_SYS_PHP}
+        echo "\$oct_db_pass = \"${_ESC_PASS}\";" >> ${_L_SYS_PHP}
         echo "\$oct_db_host = \"${_THIS_DB_HOST}\";" >> ${_L_SYS_PHP}
         echo "\$oct_db_port = \"${_THIS_DB_PORT}\";" >> ${_L_SYS_PHP}
         echo "\$oct_db_dirs = \"/data/disk/${uname}/backups\";" >> ${_L_SYS_PHP}
         chown ${uname}:users ${_L_SYS_PHP}
         chmod 0600 ${_L_SYS_PHP}
         echo "INFO: Fixed Aegir Satellite Instance system user=${uname}"
-        echo "INFO: New system password=${_ESC_APASS} encoded=${_ENC_APASS}"
+        echo "INFO: New system password=${_ESC_PASS} encoded=${_ENC_PASS}"
         echo "INFO: With Satellite oct_db_host=${_THIS_DB_HOST}"
         echo "INFO: With Satellite oct_db_port=${_THIS_DB_PORT}"
         echo "BYE!"
