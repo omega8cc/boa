@@ -5647,7 +5647,7 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_queue_tasks_items 2 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_delete_force 1 &> /dev/null
+      hosting_delete_force 0 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_alias_automatic_no_www 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \

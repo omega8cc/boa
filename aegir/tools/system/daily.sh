@@ -3208,7 +3208,7 @@ action() {
           run_drush8_hmr_cmd "${vSet} hosting_ignore_default_profiles 0"
           run_drush8_hmr_cmd "${vSet} hosting_queue_tasks_frequency 1"
           run_drush8_hmr_cmd "${vSet} hosting_queue_tasks_items 2"
-          run_drush8_hmr_cmd "${vSet} hosting_delete_force 1"
+          run_drush8_hmr_cmd "${vSet} hosting_delete_force 0"
           run_drush8_hmr_cmd "${vSet} aegir_backup_export_path ${User}/backup-exports"
           run_drush8_hmr_cmd "fr hosting_custom_settings -y"
           run_drush8_hmr_cmd "cc all"
@@ -3234,7 +3234,7 @@ action() {
           WHERE task_type='delete' AND task_status='-1'\""
         run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task \
           WHERE task_type='delete' AND task_status='0' AND executed='0'\""
-        run_drush8_hmr_cmd "${vSet} hosting_delete_force 1"
+        run_drush8_hmr_cmd "${vSet} hosting_delete_force 0"
         run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
           SET status=1 WHERE publish_path LIKE '%/aegir/distro/%'\""
         check_old_empty_platforms
