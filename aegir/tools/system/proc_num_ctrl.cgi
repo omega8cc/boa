@@ -241,64 +241,6 @@ sub global_action
     {
       local($HOUR, $MIN) = split(/:/,${TIME});
       $MIN =~ s/^0//g;
-
-      if ($COMMAND =~ /^(\\)/ && $START =~ /[A-Z]/ && $B =~ /php/ && $B !~ /php-fpm/ && $B !~ /php-cgi/ && !-f "/var/run/boa_run.pid")
-      {
-        $timedate=`date +%y%m%d-%H%M`;
-        chomp($timedate);
-        $hourminute=`date +%H%M`;
-        chomp($hourminute);
-        if ($hourminute !~ /^000/)
-        {
-          system("kill -9 $PID");
-         `echo "G $timedate ${TIME} $STAT $START $COMMAND, $B, $K, $X, $Y, $Z, $T" >> /var/xdrago/log/php-cli.kill.log`;
-        }
-      }
-
-      if ($COMMAND =~ /^(\\)/ && $B =~ /mysqld/ && $CPU > 10 && $USER =~ /mysql/)
-      {
-        $timedate=`date +%y%m%d-%H%M%S`;
-        chomp($timedate);
-        if ($CPU > $MAXSQLCPU && $HOUR > 1 && ($STAT =~ /R/ || $STAT =~ /Z/))
-        {
-          if (!-f "/var/run/mysql_restart_running.pid" && !-f "/var/run/boa_run.pid" && !-e "/root/.no.sql.cpu.limit.cnf") {
-            system("bash /var/xdrago/move_sql.sh");
-            $timedate=`date +%y%m%d-%H%M%S`;
-            chomp($timedate);
-           `echo "$USER CPU:$CPU MAXSQLCPU:$MAXSQLCPU $STAT START:$START TIME:${TIME} $timedate" >> /var/xdrago/log/mysql.forced.restart.log`;
-          }
-        }
-        if ($CPU > 100 && !-f "/var/run/boa_sql_backup.pid") {
-         `echo "$USER CPU:$CPU MAXSQLCPU:$MAXSQLCPU $STAT START:$START TIME:${TIME} $timedate" >> /var/xdrago/log/mysql.watch.log`;
-        }
-      }
-
-      if ($COMMAND =~ /^(\\)/ && $B =~ /php-fpm/ && $K =~ /pool/ && $CPU > 100 && ($STAT =~ /R/ || $STAT =~ /Z/) && $USER !~ /root/)
-      {
-        if ($HOUR > "0" || $MIN > 9)
-        {
-          $timedate=`date +%y%m%d-%H%M%S`;
-          chomp($timedate);
-          if ($CPU > $MAXFPMCPU)
-          {
-            if (!-e "/root/.no.fpm.cpu.limit.cnf") {
-              system("kill -9 $PID");
-             `echo "$X CPU:$CPU MAXFPMCPU:$MAXFPMCPU $STAT START:$START TIME:${TIME} $timedate" >> /var/xdrago/log/php-fpm.kill.log`;
-              $fpm_result = "KILLED";
-            }
-          }
-         `echo "$X CPU:$CPU $STAT START:$START TIME:${TIME} $timedate $fpm_result" >> /var/xdrago/log/php-fpm.watch.log`;
-        }
-      }
-
-      if ($USER =~ /jetty/ && $COMMAND =~ /java/ && $STAT =~ /R/ && !-f "/var/run/boa_run.pid")
-      {
-         system("kill -9 $PID");
-         $timedate=`date +%y%m%d-%H%M%S`;
-         chomp($timedate);
-        `echo "$timedate ${TIME} $CPU $MEM $STAT $START $USER" >> /var/xdrago/log/jetty-java.kill.log`;
-      }
-
       if ($COMMAND !~ /^(\\)/ && $COMMAND !~ /^(\|)/)
       {
         if ($COMMAND =~ /nginx/) {
