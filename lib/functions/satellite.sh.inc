@@ -5119,17 +5119,7 @@ satellite_child_b_aegir_build() {
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "${_STATUS} B: Running hosting-dispatch (1/3)..."
-    fi
-    ${_DRUSHCMD} '@hostmaster' hosting-dispatch &> /dev/null
-    sleep 5
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "${_STATUS} B: Running hosting-dispatch (2/3)..."
-    fi
-    ${_DRUSHCMD} '@hostmaster' hosting-dispatch &> /dev/null
-    sleep 5
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "${_STATUS} B: Running hosting-dispatch (3/3)..."
+      msg "${_STATUS} B: Running hosting-dispatch..."
     fi
     ${_DRUSHCMD} '@hostmaster' hosting-dispatch &> /dev/null
   else
