@@ -302,6 +302,7 @@ update_agents() {
       mysql -u root -e "SET GLOBAL max_connections = 200;"
       mysql -u root -e "SET GLOBAL max_user_connections = 150;"
     fi
+    rm -f /root/.force.sites.verify.cnf
     if [ -e "/root/.tg.cnf" ]; then
       sed -i "s/^_PHP_FPM_WORKERS=.*/_PHP_FPM_WORKERS=100/g" /root/.barracuda.cnf
     fi
