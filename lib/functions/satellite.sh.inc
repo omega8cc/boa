@@ -2454,19 +2454,7 @@ EOFMYSQL
       hosting-task @server_master verify --force" &> /dev/null
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "${_STATUS} A: Running hosting-dispatch (1/3)..."
-  fi
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} '@hostmaster' \
-    hosting-dispatch" &> /dev/null
-  mrun "sleep 5"
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "${_STATUS} A: Running hosting-dispatch (2/3)..."
-  fi
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} '@hostmaster' \
-    hosting-dispatch" &> /dev/null
-  mrun "sleep 5"
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "${_STATUS} A: Running hosting-dispatch (3/3)..."
+    msg "${_STATUS} A: Running hosting-dispatch..."
   fi
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} '@hostmaster' \
     hosting-dispatch" &> /dev/null

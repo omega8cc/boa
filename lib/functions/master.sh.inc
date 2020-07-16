@@ -288,17 +288,7 @@ EOFMYSQL
       verify --force" &> /dev/null
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Running hosting-dispatch (1/3)..."
-  fi
-  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
-  mrun "sleep 5"
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Running hosting-dispatch (2/3)..."
-  fi
-  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
-  mrun "sleep 5"
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Running hosting-dispatch (3/3)..."
+    msg "INFO: Running hosting-dispatch..."
   fi
   su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
 }
