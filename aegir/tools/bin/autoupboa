@@ -187,7 +187,6 @@ if [ -e "/data/disk/arch" ]; then
     if [ -e "/var/run/boa_sql_backup.pid" ] \
       || [ -e "/var/run/boa_sql_cluster_backup.pid" ] \
       || [ -e "/var/run/boa_run.pid" ] \
-      || [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ] \
       || [ -e "/var/run/mysql_restart_running.pid" ]; then
       touch /root/.pause_tasks_maint.cnf
       touch /root/.restrict_this_vm.cnf
