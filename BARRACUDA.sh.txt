@@ -320,6 +320,12 @@ install_db_server
 
 
 ###
+### Finalize initial Percona server setup
+###
+finalize_sql_initial_setup
+
+
+###
 ### Install other services and apply fixes
 ###
 run_aptitude_full_upgrade
@@ -396,12 +402,6 @@ update_initd
 ### Make sshd armoured
 ###
 sshd_armour
-
-
-###
-### Finalize initial Percona server setup
-###
-finalize_sql_initial_setup
 
 
 ###
