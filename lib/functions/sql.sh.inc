@@ -1382,18 +1382,39 @@ finalize_sql_initial_setup() {
       fi
       PASWD=$(echo -n ${PXSWD} | tr -d "\n" 2>&1)
       _ESC="*.*"
-      mysql -u root -e "FLUSH HOSTS;" &> /dev/null
-      mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';" &> /dev/null
-      mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND \
-        Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
-      mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR \
-        Db='test\\_%';" &> /dev/null
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "DEBG: ${_DB_SERVER} init cleanup"
+      fi
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        mysql -u root -e "FLUSH HOSTS;"
+        mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';"
+        mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND \
+          Host NOT IN ('localhost', '127.0.0.1', '::1');"
+        mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR \
+          Db='test\\_%';"
+      else
+        mysql -u root -e "FLUSH HOSTS;" &> /dev/null
+        mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';" &> /dev/null
+        mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND \
+          Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
+        mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR \
+          Db='test\\_%';" &> /dev/null
+      fi
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "DEBG: ${_DB_SERVER} init CREATE USER"
+      fi
       mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
       mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
       mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_HOSTN}';"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "DEBG: ${_DB_SERVER} init GRANT ALL"
+      fi
       mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
       mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
       mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_HOSTN}' WITH GRANT OPTION;"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "DEBG: ${_DB_SERVER} init ALTER USER"
+      fi
       mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${PASWD}';"
       mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${PASWD}';"
       mysql -u root -e "ALTER USER 'root'@'${_MY_HOSTN}' IDENTIFIED BY '${PASWD}';"
@@ -1449,6 +1470,9 @@ finalize_sql_initial_setup() {
           mysql -u root -e "ALTER USER 'wsrep'@'%' IDENTIFIED BY '${PASWD}';"
         fi
         touch ${pthLog}/fixed-cluster-ip-grants.log
+      fi
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "DEBG: ${_DB_SERVER} init FLUSH PRIVILEGES"
       fi
       mysql -u root -e "FLUSH PRIVILEGES;"
     fi
