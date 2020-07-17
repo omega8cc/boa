@@ -961,6 +961,8 @@ forced_mysql_root_password_update() {
     _ESC_PASS="${_ROOT_SQL_PASWD}"
   fi
   if [ ! -z "${_ESC_PASS}" ]; then
+    msg "FXOW: _ESC_PASS ${_ESC_PASS}"
+    msg "FXOW: _MY_OWNIP ${_MY_OWNIP}"
     if [ "${_DB_SERIES}" = "10.4" ]; then
       myUsrTbl="mysql.global_priv"
     else
