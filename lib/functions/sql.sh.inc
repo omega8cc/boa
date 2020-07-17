@@ -970,8 +970,6 @@ forced_mysql_root_password_update() {
     fi
     cp -af /root/.my.cnf /root/.my.cnf-pre-${_X_VERSION}-${_NOW}
     cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-${_X_VERSION}-${_NOW}
-    mysqladmin -P3306 --protocol=tcp flush-privileges
-    mysqladmin -P3306 --protocol=tcp flush-hosts
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_OWNIP}';"
@@ -981,8 +979,6 @@ forced_mysql_root_password_update() {
     mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${_ESC_PASS}';"
     mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}';"
     mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${_ESC_PASS}';"
-    mysqladmin -P3306 --protocol=tcp flush-privileges
-    mysqladmin -P3306 --protocol=tcp flush-hosts
     echo "[client]" > /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
     echo "password=${_ESC_PASS}" >> /root/.my.cnf
@@ -990,6 +986,10 @@ forced_mysql_root_password_update() {
     echo "db=mysql" > /root/.mytop
     chmod 0600 /root/.mytop
     echo "${_ESC_PASS}" > /root/.my.pass.txt
+    _MY_PASS=$(cat /root/.my.pass.txt 2>&1)
+    msg "FXOW: _MY_PASS ${_MY_PASS}"
+    mysqladmin -P3306 --protocol=tcp flush-privileges
+    mysqladmin -P3306 --protocol=tcp flush-hosts
     echo " "
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
