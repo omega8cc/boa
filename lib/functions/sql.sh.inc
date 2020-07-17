@@ -1382,37 +1382,54 @@ finalize_sql_initial_setup() {
       fi
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         mysql -u root -e "FLUSH HOSTS;"
+          sleep 1
         mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';"
+          sleep 1
         mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND \
           Host NOT IN ('localhost', '127.0.0.1', '::1');"
+          sleep 1
         mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR \
           Db='test\\_%';"
+          sleep 1
       else
         mysql -u root -e "FLUSH HOSTS;" &> /dev/null
+          sleep 1
         mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';" &> /dev/null
+          sleep 1
         mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND \
           Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
+          sleep 1
         mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR \
           Db='test\\_%';" &> /dev/null
+          sleep 1
       fi
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "DEBG: ${_DB_SERVER} init CREATE USER"
       fi
       mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
+        sleep 1
       mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
+        sleep 1
       mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_HOSTN}';"
+        sleep 1
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "DEBG: ${_DB_SERVER} init GRANT ALL"
       fi
       mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
+        sleep 1
       mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
+        sleep 1
       mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_HOSTN}' WITH GRANT OPTION;"
+        sleep 1
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "DEBG: ${_DB_SERVER} init ALTER USER"
       fi
       mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${PASWD}';"
+        sleep 1
       mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${PASWD}';"
+        sleep 1
       mysql -u root -e "ALTER USER 'root'@'${_MY_HOSTN}' IDENTIFIED BY '${PASWD}';"
+        sleep 1
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
@@ -1422,14 +1439,23 @@ finalize_sql_initial_setup() {
         if [ -e "/etc/mysql/debian.cnf" ] && [ "${_STATUS}" = "INIT" ]; then
           mySysMn="debian-sys-maint"
           mysql -u root -e "CREATE USER IF NOT EXISTS '${mySysMn}'@'localhost';"
+            sleep 1
           mysql -u root -e "CREATE USER IF NOT EXISTS '${mySysMn}'@'127.0.0.1';"
+            sleep 1
           mysql -u root -e "CREATE USER IF NOT EXISTS '${mySysMn}'@'${_MY_HOSTN}';"
+            sleep 1
           mysql -u root -e "GRANT ALL ON ${_ESC} TO '${mySysMn}'@'localhost' WITH GRANT OPTION;"
+            sleep 1
           mysql -u root -e "GRANT ALL ON ${_ESC} TO '${mySysMn}'@'127.0.0.1' WITH GRANT OPTION;"
+            sleep 1
           mysql -u root -e "GRANT ALL ON ${_ESC} TO '${mySysMn}'@'${_MY_HOSTN}' WITH GRANT OPTION;"
+            sleep 1
           mysql -u root -e "ALTER USER '${mySysMn}'@'localhost' IDENTIFIED BY '${PASWD}';"
+            sleep 1
           mysql -u root -e "ALTER USER '${mySysMn}'@'127.0.0.1' IDENTIFIED BY '${PASWD}';"
+            sleep 1
           mysql -u root -e "ALTER USER '${mySysMn}'@'${_MY_HOSTN}' IDENTIFIED BY '${PASWD}';"
+            sleep 1
           mkdir -p ${vBs}
           cp -af /etc/mysql/debian.cnf \
             ${vBs}/debian.cnf-pre-${_X_VERSION}-${_NOW}.txt
@@ -1446,8 +1472,11 @@ finalize_sql_initial_setup() {
             | uniq \
             | tr -d "\s"`; do
             mysql -u root -e "CREATE USER IF NOT EXISTS 'aegir_root'@'${_IP}';"
+              sleep 1
             mysql -u root -e "GRANT ALL ON ${_ESC} TO 'aegir_root'@'${_IP}' WITH GRANT OPTION;"
+              sleep 1
             mysql -u root -e "ALTER USER 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
+              sleep 1
           done
         fi
         if [ -e "/root/.cluster.IP.list" ]; then
@@ -1457,12 +1486,18 @@ finalize_sql_initial_setup() {
             | uniq \
             | tr -d "\s"`; do
             mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_IP}';"
+              sleep 1
             mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_IP}' WITH GRANT OPTION;"
+              sleep 1
             mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
+              sleep 1
           done
           mysql -u root -e "CREATE USER IF NOT EXISTS 'wsrep'@'%';"
+            sleep 1
           mysql -u root -e "GRANT ALL ON ${_ESC} TO 'wsrep'@'%' WITH GRANT OPTION;"
+            sleep 1
           mysql -u root -e "ALTER USER 'wsrep'@'%' IDENTIFIED BY '${PASWD}';"
+            sleep 1
         fi
         touch ${pthLog}/fixed-cluster-ip-grants.log
       fi
