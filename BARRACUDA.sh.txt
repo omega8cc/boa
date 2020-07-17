@@ -322,7 +322,6 @@ install_db_server
 ###
 ### Finalize initial Percona server setup
 ###
-check_update_sql_credentials
 finalize_sql_initial_setup
 
 
@@ -361,8 +360,9 @@ check_fix_java
 
 
 ###
-### PHP config update
+### SQL credentials and PHP config update
 ###
+check_update_sql_credentials
 check_update_php_config
 
 
