@@ -988,6 +988,7 @@ forced_mysql_root_password_update() {
     echo "${_ESC_PASS}" > /root/.my.pass.txt
     _MY_PASS=$(cat /root/.my.pass.txt 2>&1)
     msg "FXOW: _MY_PASS ${_MY_PASS}"
+    echo "MSQL S1"
     mysqladmin -P3306 --protocol=tcp flush-privileges
     mysqladmin -P3306 --protocol=tcp flush-hosts
     echo " "
@@ -1231,6 +1232,7 @@ install_db_server() {
       if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
         mkdir -p /etc/mysql/mariadb.conf.d/
       fi
+      echo "MSQL U"
       myUptime=$(mysqladmin -P${_THIS_DB_PORT} --protocol=tcp version | grep -i uptime 2>&1)
       myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
       msg "INFO: ${_DB_SERVER} ${myUptime}"
@@ -1512,6 +1514,7 @@ finalize_sql_initial_setup() {
         sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" \
           /etc/mysql/debian-start &> /dev/null
         wait
+        echo "MSQL S2"
         mysqladmin -P3306 --protocol=tcp flush-privileges
         mysqladmin -P3306 --protocol=tcp flush-hosts
         msg "INFO: Restarting ${_DB_SERVER} server..."
