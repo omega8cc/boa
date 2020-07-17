@@ -970,12 +970,6 @@ forced_mysql_root_password_update() {
     fi
     cp -af /root/.my.cnf /root/.my.cnf-pre-${_X_VERSION}-${_NOW}
     cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-${_X_VERSION}-${_NOW}
-    mysql -u root -e "FLUSH HOSTS;" &> /dev/null
-    mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';" &> /dev/null
-    mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND Host \
-      NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
-    mysql -u root -e "DELETE FROM mysql.db \
-      WHERE Db='test' OR Db='test\\_%';" &> /dev/null
     mysqladmin -P3306 --protocol=tcp flush-privileges
     mysqladmin -P3306 --protocol=tcp flush-hosts
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
