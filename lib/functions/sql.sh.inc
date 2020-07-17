@@ -1335,6 +1335,11 @@ check_update_sql_credentials() {
       sed -i "s/php-fpm nginx php/php-fpm php-cgi nginx php/g" $Files &> /dev/null
       wait
     done
+    if [ "${_STATUS}" = "INIT" ]; then
+      msg "INFO: Updating ${_DB_SERVER} configuration"
+      msg "INFO: Restarting ${_DB_SERVER} server..."
+      mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
+    fi
   else
     msg "EXIT on error due to not found file with your ${_DB_SERVER} root password"
     cat <<EOF
