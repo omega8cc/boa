@@ -971,14 +971,23 @@ forced_mysql_root_password_update() {
     cp -af /root/.my.cnf /root/.my.cnf-pre-${_X_VERSION}-${_NOW}
     cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-${_X_VERSION}-${_NOW}
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
+    wait
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
+    wait
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_OWNIP}';"
+    wait
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
+    wait
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
+    wait
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_OWNIP}' WITH GRANT OPTION;"
+    wait
     mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${_ESC_PASS}';"
+    wait
     mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}';"
+    wait
     mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${_ESC_PASS}';"
+    wait
     echo "[client]" > /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
     echo "password=${_ESC_PASS}" >> /root/.my.cnf
