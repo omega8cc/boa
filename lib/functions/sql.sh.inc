@@ -976,6 +976,8 @@ forced_mysql_root_password_update() {
       NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
     mysql -u root -e "DELETE FROM mysql.db \
       WHERE Db='test' OR Db='test\\_%';" &> /dev/null
+    mysqladmin -P3306 --protocol=tcp flush-privileges
+    mysqladmin -P3306 --protocol=tcp flush-hosts
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_OWNIP}';"
@@ -985,7 +987,6 @@ forced_mysql_root_password_update() {
     mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${_ESC_PASS}';"
     mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}';"
     mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${_ESC_PASS}';"
-    mysql -u root -e "FLUSH PRIVILEGES;"
     mysqladmin -P3306 --protocol=tcp flush-privileges
     mysqladmin -P3306 --protocol=tcp flush-hosts
     echo "[client]" > /root/.my.cnf
