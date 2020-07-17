@@ -575,8 +575,10 @@ satellite_cnf() {
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       _LD_DOM=YES
-      _DEBUG_MODE=YES
-      sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g" ${octCnf}
+      if [ -e "/root/.debug-boa-installer.cnf" ]; then
+        _DEBUG_MODE=YES
+        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g" ${octCnf}
+      fi
     else
       _LD_DOM=NO
     fi

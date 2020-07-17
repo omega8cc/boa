@@ -732,8 +732,7 @@ barracuda_cnf() {
     || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
     || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
-    echo "YES" > /root/.debug-boa-installer.cnf
-    _DEBUG_MODE=YES
+    rm -f /root/.debug-boa-installer.cnf
   fi
   if [ ! -e "${barCnf}" ]; then
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
