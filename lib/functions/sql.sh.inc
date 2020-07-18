@@ -107,7 +107,7 @@ update_innodb_log_file_size() {
   msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
     sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf &> /dev/null
-    wait
+      wait
   fi
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
@@ -118,7 +118,7 @@ update_innodb_log_file_size() {
     mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf &> /dev/null
-    wait
+      wait
     mrun "bash /var/xdrago/move_sql.sh start" &> /dev/null
   else
     msg "INFO: Waiting 180s for ${_DB_SERVER} clean shutdown..."
@@ -131,7 +131,7 @@ update_innodb_log_file_size() {
       mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf &> /dev/null
-      wait
+        wait
       mrun "bash /var/xdrago/move_sql.sh start" &> /dev/null
     else
       msg "WARN: ${_DB_SERVER} refused to stop, InnoDB log file size not updated"
@@ -144,19 +144,19 @@ update_innodb_log_file_size() {
 # Update SQL Config.
 update_sql_conf() {
   sed -i "s/.*innodb_force_recovery/#innodb_force_recovery/g" /etc/mysql/my.cnf &> /dev/null
-  wait
+    wait
   if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
     sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf &> /dev/null
-    wait
+      wait
   fi
   # if [ "${_DB_SERIES}" = "10.4" ]; then
   #   sed -i "s/.*innodb-defragment/innodb-defragment/g" /etc/mysql/my.cnf &> /dev/null
-  #   wait
+  #     wait
   # fi
   sed -i "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" /etc/mysql/my.cnf &> /dev/null
-  wait
+    wait
   sed -i "s/^thread_concurrency.*//g" /etc/mysql/my.cnf &> /dev/null
-  wait
+    wait
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
@@ -178,52 +178,52 @@ update_sql_conf() {
         fi
       fi
       sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf &> /dev/null
-      wait
+        wait
       sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf &> /dev/null
-      wait
+        wait
       sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf &> /dev/null
-      wait
+        wait
       if [ ! -e "/etc/mysql/skip-name-resolve.txt" ]; then
         sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf &> /dev/null
-        wait
+          wait
       fi
     fi
   fi
   mv -f /etc/mysql/my.cnf-pre* ${vBs}/dragon/t/ &> /dev/null
   sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
-  wait
+    wait
   sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
-  wait
+    wait
   sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf &> /dev/null
-  wait
+    wait
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
       bash /var/xdrago/purge_binlogs.sh &> /dev/null
       sed -i "s/.*purge_binlogs.*//g" /var/spool/cron/crontabs/root
-      wait
+        wait
       sed -i "/^$/d" /var/spool/cron/crontabs/root
-      wait
+        wait
       sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf &> /dev/null
-      wait
+        wait
       sed -i "s/^expire_logs_days/#expire_logs_days/g" /etc/mysql/my.cnf &> /dev/null
-      wait
+        wait
       sed -i "s/^max_binlog_size/#max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
-      wait
+        wait
       sed -i "s/^binlog_row_image/#binlog_row_image/g" /etc/mysql/my.cnf &> /dev/null
-      wait
+        wait
       sed -i "s/^binlog_format/#binlog_format/g"       /etc/mysql/my.cnf &> /dev/null
-      wait
+        wait
     elif [ "${_DB_BINARY_LOG}" = "YES" ]; then
       sed -i "s/.*log_bin/log_bin/g"                   /etc/mysql/my.cnf &> /dev/null
-      wait
+        wait
       sed -i "s/.*expire_logs_days/expire_logs_days/g" /etc/mysql/my.cnf &> /dev/null
-      wait
+        wait
       sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
-      wait
+        wait
       sed -i "s/.*binlog_row_image/binlog_row_image/g" /etc/mysql/my.cnf &> /dev/null
-      wait
+        wait
       sed -i "s/.*binlog_format/binlog_format/g"       /etc/mysql/my.cnf &> /dev/null
-      wait
+        wait
     fi
     _LEGACY_CLSTR=NO
     if [ -f "/root/.mstr.clstr.cnf" ] \
@@ -241,7 +241,7 @@ update_sql_conf() {
         else
           if [ "${_INNODB_LOG_FILE_SIZE_SAME}" = "YES" ]; then
             sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf &> /dev/null
-            wait
+              wait
           else
             update_innodb_log_file_size
           fi
@@ -268,7 +268,7 @@ check_mysqld_running() {
 tune_sql_memory_limits() {
   check_mysqld_running
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
-  wait
+    wait
   if [ ! -e "${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}" ]; then
     mkdir -p ${vBs}/dragon/t/
     if [ -e "/etc/mysql/my.cnf" ]; then
@@ -282,7 +282,7 @@ tune_sql_memory_limits() {
   fi
   if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
     sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf &> /dev/null
-    wait
+      wait
   fi
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
   pthTun="/var/opt/mysqltuner.pl"
@@ -354,14 +354,14 @@ tune_sql_memory_limits() {
       fi
       _USE_MYISAM_MEM="${_USE_MYISAM_MEM}M"
       # sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
-      wait
+        wait
     else
       _USE_MYISAM_MEM="${_USE_SQL}M"
       if [ "${_MYSQLTUNER_TEST_RESULT}" = "FAIL" ]; then
         msg "ALRT! _USE_MYISAM_MEM is ${_USE_MYISAM_MEM} because _REC_MYISAM_MEM was empty!"
       fi
       # sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
-      wait
+        wait
     fi
     ###--------------------###
     if [ ! -z "${_REC_INNODB_MEM}" ] \
@@ -389,9 +389,9 @@ tune_sql_memory_limits() {
       fi
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/^innodb_buffer_pool_instances.*/innodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf &> /dev/null
-        wait
+          wait
         sed -i "s/^innodb_page_cleaners.*/innodb_page_cleaners = ${_INNODB_BPI}/g" /etc/mysql/my.cnf &> /dev/null
-        wait
+          wait
       fi
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_INNODB_MEM}/4/40*40" | bc 2>&1)
       _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
@@ -420,7 +420,7 @@ tune_sql_memory_limits() {
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
       fi
-      wait
+        wait
     else
       _USE_INNODB_MEM="${_USE_SQL}M"
       _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
@@ -450,7 +450,7 @@ tune_sql_memory_limits() {
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
       fi
-      wait
+        wait
     fi
   else
     _THIS_USE_MEM="${_USE_SQL}M"
@@ -486,7 +486,7 @@ tune_sql_memory_limits() {
     if [ -e "/etc/mysql/my.cnf" ]; then
       sed -i "s/= 181/= ${_USE_SQL}/g"  /etc/mysql/my.cnf &> /dev/null
     fi
-    wait
+      wait
   fi
 }
 
@@ -666,7 +666,7 @@ prep_for_install_db_sql() {
   if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     sed -i "s/.*innodb_force_recovery.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf &> /dev/null
-    wait
+      wait
   fi
   if [ "${_EASY_SETUP}" = "MSTR" ] \
     || [ "${_EASY_SETUP}" = "DBHD" ] \
@@ -885,8 +885,10 @@ install_with_aptitude_sql() {
       msg "INFO: Running ${_DB_SERVER} system tables check..."
       if [ -x "/usr/bin/mariadb_upgrade" ]; then
         mrun "mariadb_upgrade --force" &> /dev/null
+          wait
       elif [ -x "/usr/bin/mysql_upgrade" ]; then
         mrun "mysql_upgrade --force" &> /dev/null
+          wait
       fi
     fi
   fi
@@ -896,13 +898,20 @@ install_with_aptitude_sql() {
     msg "INFO: Running ${_DB_SERVER} tables fix, check and upgrade..."
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
     mrun "mysqlcheck -A --auto-repair" &> /dev/null
+      wait
     mrun "mysql_upgrade --force" &> /dev/null
+      wait
     mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;" &> /dev/null
+      wait
     mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;" &> /dev/null
+      wait
     mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;" &> /dev/null
+      wait
     mrun "mysql_upgrade --force" &> /dev/null
+      wait
   fi
   usermod -aG users mysql
+    wait
 }
 
 #
@@ -961,32 +970,44 @@ forced_mysql_root_password_update() {
     cp -af /root/.my.cnf /root/.my.cnf-pre-${_X_VERSION}-${_NOW}
     cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-${_X_VERSION}-${_NOW}
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
-    wait
+      wait
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
-    wait
+      wait
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_OWNIP}';"
-    wait
+      wait
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
-    wait
+      wait
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
-    wait
+      wait
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_OWNIP}' WITH GRANT OPTION;"
-    wait
+      wait
     mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${_ESC_PASS}';"
     wait
     mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}';"
     wait
     mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${_ESC_PASS}';"
     wait
+      wait
+      wait
+      wait
     echo "[client]" > /root/.my.cnf
+      wait
     echo "user=root" >> /root/.my.cnf
+      wait
     echo "password=${_ESC_PASS}" >> /root/.my.cnf
+      wait
     chmod 0600 /root/.my.cnf
+      wait
     echo "db=mysql" > /root/.mytop
+      wait
     chmod 0600 /root/.mytop
+      wait
     echo "${_ESC_PASS}" > /root/.my.pass.txt
+      wait
     mysqladmin -P3306 --protocol=tcp flush-privileges
+      wait
     mysqladmin -P3306 --protocol=tcp flush-hosts
+      wait
     echo " "
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
@@ -1089,8 +1110,10 @@ install_db_server() {
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
         if [ -x "/usr/bin/mariadb_upgrade" ]; then
           mrun "mariadb_upgrade --force" &> /dev/null
+            wait
         elif [ -x "/usr/bin/mysql_upgrade" ]; then
           mrun "mysql_upgrade --force" &> /dev/null
+            wait
         fi
       fi
       rm -f ${aptLiSys}.d/ourdelta.list
@@ -1155,26 +1178,26 @@ install_db_server() {
       fi
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
-        wait
+          wait
         sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
-        wait
+          wait
       fi
       rm -f /var/lib/mysql/debian-*.flag &> /dev/null
       rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
       install_with_aptitude_sql
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf &> /dev/null
-        wait
+          wait
       fi
       if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
         sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf &> /dev/null
-        wait
+          wait
       fi
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
-        wait
+          wait
         sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
-        wait
+          wait
       fi
       _CUSTOM_CONFIG_SQL=NO
       mrun "sleep 8"
@@ -1183,10 +1206,14 @@ install_db_server() {
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
         if [ -x "/usr/bin/mariadb_upgrade" ]; then
           mrun "mariadb_upgrade --force" &> /dev/null
+            wait
           mrun "mariadb_upgrade --force" &> /dev/null
+            wait
         elif [ -x "/usr/bin/mysql_upgrade" ]; then
           mrun "mysql_upgrade --force" &> /dev/null
+            wait
           mrun "mysql_upgrade --force" &> /dev/null
+            wait
         fi
       fi
       tune_memory_limits
@@ -1233,6 +1260,7 @@ install_db_server() {
       if [ "${myCnfUpdate}" = "YES" ]; then
         msg "INFO: Restarting ${_DB_SERVER} server..."
         mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
+          wait
         mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
         msg "INFO: ${_DB_SERVER} server restart completed"
         myRstrd=YES
@@ -1245,10 +1273,15 @@ install_db_server() {
           if [[ "${_CHECK_REPAIR}" =~ "corrupted" ]]; then
             # mysqlcheck -A --auto-repair
             mysql_upgrade --force
+              wait
             mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;"
+              wait
             mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;"
+              wait
             mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;"
+              wait
             mysql_upgrade --force
+              wait
           fi
           _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
           echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
@@ -1337,7 +1370,7 @@ check_update_sql_credentials() {
   if [ -e "/root/.my.pass.txt" ]; then
     for Files in `find /var/xdrago -maxdepth 1 -mindepth 1 -type f`; do
       sed -i "s/php-fpm nginx php/php-fpm php-cgi nginx php/g" $Files &> /dev/null
-      wait
+        wait
     done
     if [ "${_STATUS}" = "INIT" ]; then
       msg "INFO: Updating ${_DB_SERVER} configuration"
@@ -1404,27 +1437,37 @@ finalize_sql_initial_setup() {
             Db='test\\_%';"
         else
           mysql -u root -e "FLUSH HOSTS;" &> /dev/null
+            wait
           mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';" &> /dev/null
+            wait
           mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND \
             Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
+            wait
           mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR \
             Db='test\\_%';" &> /dev/null
         fi
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "DEBG: ${_DB_SERVER} init CREATE USER"
+            wait
         fi
         mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
+          wait
         mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
+          wait
         mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_OWNIP}';"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "DEBG: ${_DB_SERVER} init GRANT ALL"
         fi
+          wait
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
+          wait
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
+          wait
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_OWNIP}' WITH GRANT OPTION;"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "DEBG: ${_DB_SERVER} init ALTER USER"
         fi
+          wait
         mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${PASWD}';"
         mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${PASWD}';"
         mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${PASWD}';"
@@ -1437,21 +1480,30 @@ finalize_sql_initial_setup() {
           if [ -e "/etc/mysql/debian.cnf" ] && [ "${_STATUS}" = "INIT" ]; then
             mySysMn="debian-sys-maint"
             mysql -u root -e "CREATE USER IF NOT EXISTS '${mySysMn}'@'localhost';"
+              wait
             mysql -u root -e "CREATE USER IF NOT EXISTS '${mySysMn}'@'127.0.0.1';"
+              wait
             mysql -u root -e "CREATE USER IF NOT EXISTS '${mySysMn}'@'${_MY_OWNIP}';"
+              wait
             mysql -u root -e "GRANT ALL ON ${_ESC} TO '${mySysMn}'@'localhost' WITH GRANT OPTION;"
+              wait
             mysql -u root -e "GRANT ALL ON ${_ESC} TO '${mySysMn}'@'127.0.0.1' WITH GRANT OPTION;"
+              wait
             mysql -u root -e "GRANT ALL ON ${_ESC} TO '${mySysMn}'@'${_MY_OWNIP}' WITH GRANT OPTION;"
+              wait
             mysql -u root -e "ALTER USER '${mySysMn}'@'localhost' IDENTIFIED BY '${PASWD}';"
+              wait
             mysql -u root -e "ALTER USER '${mySysMn}'@'127.0.0.1' IDENTIFIED BY '${PASWD}';"
+              wait
             mysql -u root -e "ALTER USER '${mySysMn}'@'${_MY_OWNIP}' IDENTIFIED BY '${PASWD}';"
+              wait
             mkdir -p ${vBs}
             cp -af /etc/mysql/debian.cnf \
               ${vBs}/debian.cnf-pre-${_X_VERSION}-${_NOW}.txt
             chmod 400 ${vBs}/debian.cnf-pre-${_X_VERSION}-${_NOW}.txt
             sed -i "s/^password =.*/password = ${PASWD}/g" \
               /etc/mysql/debian.cnf &> /dev/null
-            wait
+              wait
           fi
           if [ -e "/root/.remote.IP.list" ]; then
             _ESC="*.*"
@@ -1461,8 +1513,11 @@ finalize_sql_initial_setup() {
               | uniq \
               | tr -d "\s"`; do
               mysql -u root -e "CREATE USER IF NOT EXISTS 'aegir_root'@'${_IP}';"
+                wait
               mysql -u root -e "GRANT ALL ON ${_ESC} TO 'aegir_root'@'${_IP}' WITH GRANT OPTION;"
+                wait
               mysql -u root -e "ALTER USER 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
+                wait
             done
           fi
           if [ -e "/root/.cluster.IP.list" ]; then
@@ -1472,12 +1527,18 @@ finalize_sql_initial_setup() {
               | uniq \
               | tr -d "\s"`; do
               mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_IP}';"
+                wait
               mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_IP}' WITH GRANT OPTION;"
+                wait
               mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
+                wait
             done
             mysql -u root -e "CREATE USER IF NOT EXISTS 'wsrep'@'%';"
+              wait
             mysql -u root -e "GRANT ALL ON ${_ESC} TO 'wsrep'@'%' WITH GRANT OPTION;"
+              wait
             mysql -u root -e "ALTER USER 'wsrep'@'%' IDENTIFIED BY '${PASWD}';"
+              wait
           fi
           touch ${pthLog}/fixed-cluster-ip-grants.log
         fi
@@ -1501,16 +1562,19 @@ finalize_sql_initial_setup() {
           echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
         else
           sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf &> /dev/null
-          wait
+            wait
         fi
         sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" \
           /etc/mysql/debian-start &> /dev/null
-        wait
+          wait
         mysqladmin -P3306 --protocol=tcp flush-privileges
+          wait
         mysqladmin -P3306 --protocol=tcp flush-hosts
+          wait
         msg "INFO: Restarting ${_DB_SERVER} server..."
         mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
         mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
+          wait
         msg "INFO: ${_DB_SERVER} setup completed"
         msg "INFO: You can now log in as root by typing just 'mysql'"
       fi
@@ -1528,8 +1592,11 @@ finalize_sql_initial_setup() {
           | uniq \
           | tr -d "\s"`; do
           mysql -u root -e "CREATE USER IF NOT EXISTS 'aegir_root'@'${_IP}';"
+            wait
           mysql -u root -e "GRANT ALL ON ${_ESC} TO 'aegir_root'@'${_IP}' WITH GRANT OPTION;"
+            wait
           mysql -u root -e "ALTER USER 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
+            wait
         done
       fi
       if [ -e "/root/.cluster.IP.list" ]; then
@@ -1539,12 +1606,18 @@ finalize_sql_initial_setup() {
           | uniq \
           | tr -d "\s"`; do
           mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_IP}';"
+            wait
           mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_IP}' WITH GRANT OPTION;"
+            wait
           mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
+            wait
         done
         mysql -u root -e "CREATE USER IF NOT EXISTS 'wsrep'@'%';"
+          wait
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'wsrep'@'%' WITH GRANT OPTION;"
+          wait
         mysql -u root -e "ALTER USER 'wsrep'@'%' IDENTIFIED BY '${PASWD}';"
+          wait
       fi
       touch ${pthLog}/fixed-cluster-ip-grants.log
     fi
