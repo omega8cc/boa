@@ -982,13 +982,10 @@ forced_mysql_root_password_update() {
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_OWNIP}' WITH GRANT OPTION;"
       wait
     mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${_ESC_PASS}';"
-    wait
-    mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}';"
-    wait
-    mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${_ESC_PASS}';"
-    wait
       wait
+    mysqladmin -P3306 --protocol=tcp flush-privileges
       wait
+    mysqladmin -P3306 --protocol=tcp flush-hosts
       wait
     echo "[client]" > /root/.my.cnf
       wait
@@ -1003,6 +1000,10 @@ forced_mysql_root_password_update() {
     chmod 0600 /root/.mytop
       wait
     echo "${_ESC_PASS}" > /root/.my.pass.txt
+      wait
+    mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}';"
+      wait
+    mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${_ESC_PASS}';"
       wait
     mysqladmin -P3306 --protocol=tcp flush-privileges
       wait
@@ -1445,9 +1446,6 @@ finalize_sql_initial_setup() {
             wait
           mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR \
             Db='test\\_%';" &> /dev/null
-        fi
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "DEBG: ${_DB_SERVER} init CREATE USER"
             wait
         fi
         mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
@@ -1455,22 +1453,39 @@ finalize_sql_initial_setup() {
         mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
           wait
         mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_OWNIP}';"
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "DEBG: ${_DB_SERVER} init GRANT ALL"
-        fi
           wait
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
           wait
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
           wait
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_OWNIP}' WITH GRANT OPTION;"
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "DEBG: ${_DB_SERVER} init ALTER USER"
-        fi
           wait
         mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${PASWD}';"
+          wait
+        mysqladmin -P3306 --protocol=tcp flush-privileges
+          wait
+        mysqladmin -P3306 --protocol=tcp flush-hosts
+          wait
+        echo "[client]" > /root/.my.cnf
+          wait
+        echo "user=root" >> /root/.my.cnf
+          wait
+        echo "password=${PASWD}" >> /root/.my.cnf
+          wait
+        chmod 0600 /root/.my.cnf
+          wait
+        echo "db=mysql" > /root/.mytop
+          wait
+        chmod 0600 /root/.mytop
+          wait
         mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${PASWD}';"
+          wait
         mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${PASWD}';"
+          wait
+        mysqladmin -P3306 --protocol=tcp flush-privileges
+          wait
+        mysqladmin -P3306 --protocol=tcp flush-hosts
+          wait
         if [ "${_THIS_DB_HOST}" = "localhost" ] \
           || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
           || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
@@ -1542,16 +1557,6 @@ finalize_sql_initial_setup() {
           fi
           touch ${pthLog}/fixed-cluster-ip-grants.log
         fi
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "DEBG: ${_DB_SERVER} init FLUSH PRIVILEGES"
-        fi
-        mysql -u root -e "FLUSH PRIVILEGES;"
-        echo "[client]" > /root/.my.cnf
-        echo "user=root" >> /root/.my.cnf
-        echo "password=${PASWD}" >> /root/.my.cnf
-        chmod 0600 /root/.my.cnf
-        echo "db=mysql" > /root/.mytop
-        chmod 0600 /root/.mytop
         if [ "${_THIS_DB_HOST}" = "localhost" ] \
           || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
           || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
