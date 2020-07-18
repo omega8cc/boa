@@ -983,10 +983,6 @@ forced_mysql_root_password_update() {
       wait
     mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${_ESC_PASS}';"
       wait
-    mysqladmin -P3306 --protocol=tcp flush-privileges
-      wait
-    mysqladmin -P3306 --protocol=tcp flush-hosts
-      wait
     echo "[client]" > /root/.my.cnf
       wait
     echo "user=root" >> /root/.my.cnf
@@ -1461,10 +1457,6 @@ finalize_sql_initial_setup() {
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_OWNIP}' WITH GRANT OPTION;"
           wait
         mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${PASWD}';"
-          wait
-        mysqladmin -P3306 --protocol=tcp flush-privileges
-          wait
-        mysqladmin -P3306 --protocol=tcp flush-hosts
           wait
         echo "[client]" > /root/.my.cnf
           wait
