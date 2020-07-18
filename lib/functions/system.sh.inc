@@ -3254,6 +3254,8 @@ basic_packages_install_on_init() {
     ${_INITINS} netcat &> /dev/null
     ${_INITINS} curl &> /dev/null
     ${_INITINS} wget &> /dev/null
+    ${_INITINS} makepasswd &> /dev/null
+    ${_INITINS} pwgen &> /dev/null
     if [ -x "/lib/systemd/systemd" ]; then
       msg "INFO: Installing sysvinit-core on ${_THIS_OS} ${_OSR}..."
       if [ "${_OSR}" = "buster" ] \

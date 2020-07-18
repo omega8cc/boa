@@ -43,12 +43,18 @@ provision_backend_dbpass_generate() {
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
 
+  usePwgen=
+  isPwgen=$(which pwgen 2>&1)
+  if [ -x "${isPwgen}" ]; then
+    usePwgen=YES
+  fi
+
   if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-      _ESC_PASS=$(pwgen -v -s -1 2>&1)
+      _ESC_PASS=$(makepasswd 2>&1)
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
       _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
     else
@@ -782,7 +788,7 @@ install_upgrade_aegir_master() {
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-        _ESC_PASS=$(pwgen -v -s -1 2>&1)
+        _ESC_PASS=$(makepasswd 2>&1)
         _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
         _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
       else

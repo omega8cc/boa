@@ -67,6 +67,12 @@ fi
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 forCer="-fuy --allow-unauthenticated --reinstall"
 
+usePwgen=
+isPwgen=$(which pwgen 2>&1)
+if [ -x "${isPwgen}" ]; then
+  usePwgen=YES
+fi
+
 ###-------------SYSTEM-----------------###
 
 find_fast_mirror() {
@@ -707,7 +713,7 @@ ok_create_user() {
         _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
       fi
       if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ]; then
-        _ESC_LUPASS=$(pwgen -v -s -1 2>&1)
+        _ESC_LUPASS=$(makepasswd 2>&1)
         _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
         _ESC_LUPASS=$(sanitize_string "${_ESC_LUPASS}" 2>&1)
       fi
