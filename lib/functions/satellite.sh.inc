@@ -2258,7 +2258,6 @@ provision_backend_dbpass_generate() {
   if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
     mkdir -p /etc/mysql/mariadb.conf.d/
   fi
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
 
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
     || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -2282,6 +2281,14 @@ provision_backend_dbpass_generate() {
   fi
   find_correct_ip
   _USE_RESOLVEIP="${_LOC_IP}"
+
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _THIS_DB_PORT=6033
+    mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  else
+    mysqladmin flush-privileges
+  fi
+
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
     || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
     || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
@@ -2373,7 +2380,12 @@ EOFMYSQL
   if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
     mkdir -p /etc/mysql/mariadb.conf.d/
   fi
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _THIS_DB_PORT=6033
+    mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  else
+    mysqladmin flush-privileges
+  fi
 }
 
 #
@@ -2445,7 +2457,12 @@ EOFMYSQL
   if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
     mkdir -p /etc/mysql/mariadb.conf.d/
   fi
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _THIS_DB_PORT=6033
+    mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  else
+    mysqladmin flush-privileges
+  fi
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush" &> /dev/null
   rm -rf ${_ROOT}/.tmp/cache
   if [ -e "${_ROOT}/.drush/server_localhost.alias.drushrc.php" ]; then
@@ -2531,7 +2548,11 @@ EOFMYSQL
   if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
     mkdir -p /etc/mysql/mariadb.conf.d/
   fi
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  else
+    mysqladmin flush-privileges
+  fi
 }
 
 satellite_run_pre_install() {
@@ -2547,7 +2568,11 @@ satellite_run_pre_install() {
     if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
       mkdir -p /etc/mysql/mariadb.conf.d/
     fi
-    mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+    if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+      mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+    else
+      mysqladmin flush-hosts
+    fi
     provision_backend_dbpass_generate
     echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
@@ -2571,7 +2596,11 @@ satellite_run_pre_install() {
     if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
       mkdir -p /etc/mysql/mariadb.conf.d/
     fi
-    mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+    if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+      mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+    else
+      mysqladmin flush-hosts
+    fi
     _RST=$(syncpass fix ${_USER} 2>&1)
     provision_backend_dbpass_sync
   fi

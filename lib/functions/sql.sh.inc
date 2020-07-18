@@ -1001,9 +1001,9 @@ forced_mysql_root_password_update() {
       wait
     mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${_ESC_PASS}';"
       wait
-    mysqladmin -P3306 --protocol=tcp flush-privileges
+    mysqladmin flush-privileges
       wait
-    mysqladmin -P3306 --protocol=tcp flush-hosts
+    mysqladmin flush-hosts
       wait
     echo " "
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1251,7 +1251,7 @@ install_db_server() {
       if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
         mkdir -p /etc/mysql/mariadb.conf.d/
       fi
-      myUptime=$(mysqladmin -P${_THIS_DB_PORT} --protocol=tcp version | grep -i uptime 2>&1)
+      myUptime=$(mysqladmin version | grep -i uptime 2>&1)
       myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
       msg "INFO: ${_DB_SERVER} ${myUptime}"
       if [ "${myCnfUpdate}" = "YES" ]; then
@@ -1474,9 +1474,9 @@ finalize_sql_initial_setup() {
           wait
         mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${PASWD}';"
           wait
-        mysqladmin -P3306 --protocol=tcp flush-privileges
+        mysqladmin flush-privileges
           wait
-        mysqladmin -P3306 --protocol=tcp flush-hosts
+        mysqladmin flush-hosts
           wait
         if [ "${_THIS_DB_HOST}" = "localhost" ] \
           || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -1564,9 +1564,9 @@ finalize_sql_initial_setup() {
         sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" \
           /etc/mysql/debian-start &> /dev/null
           wait
-        mysqladmin -P3306 --protocol=tcp flush-privileges
+        mysqladmin flush-privileges
           wait
-        mysqladmin -P3306 --protocol=tcp flush-hosts
+        mysqladmin flush-hosts
           wait
         msg "INFO: Restarting ${_DB_SERVER} server..."
         mrun "bash /var/xdrago/move_sql.sh" &> /dev/null

@@ -94,10 +94,7 @@ do_syncpass() {
       check_generate
       chown ${uname}:${uname} ${_L_SYS} &> /dev/null
       if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
-        if [ -e "/var/aegir/use_proxysql.txt" ]; then
-          _THIS_DB_PORT=6033
-        fi
-        mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+        mysqladmin flush-hosts
         su -s /bin/bash - ${uname} -c "drush @hostmaster \
           sqlq \"UPDATE hosting_db_server \
           SET db_passwd='${_ESC_PASS}' \
@@ -141,7 +138,7 @@ EOFMYSQL
           "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
           ${prH}/server_*.alias.drushrc.php &> /dev/null
         wait
-        mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+        mysqladmin flush-privileges
       else
         echo "ERROR: Auto-generated password for aegir_root system user"
         echo "ERROR: did not work as expected, please try again"
@@ -162,8 +159,10 @@ EOFMYSQL
         if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
           if [ -e "/data/conf/${uname}_use_proxysql.txt" ]; then
             _THIS_DB_PORT=6033
+            mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+          else
+            mysqladmin flush-hosts
           fi
-          mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
           su -s /bin/bash - ${uname} -c "drush @hostmaster \
             sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
             WHERE db_user='${uname}'\"" &> /dev/null
@@ -206,7 +205,12 @@ EOFMYSQL
             "s/mysql:\/\/${uname}:.*/mysql:\/\/${uname}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
             /data/disk/${uname}/.drush/server_*.alias.drushrc.php &> /dev/null
           wait
-          mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+          if [ -e "/data/conf/${uname}_use_proxysql.txt" ]; then
+            _THIS_DB_PORT=6033
+            mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+          else
+            mysqladmin flush-privileges
+          fi
         else
           echo "ERROR: Auto-generated password for ${uname} system user"
           echo "ERROR: did not work as expected, please try again"

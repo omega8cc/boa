@@ -101,7 +101,7 @@ provision_backend_dbpass_generate() {
   if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
     mkdir -p /etc/mysql/mariadb.conf.d/
   fi
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  mysqladmin flush-privileges
 
   if [ "${_STATUS}" = "INIT" ]; then
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL7 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
@@ -206,7 +206,7 @@ EOFMYSQL
   if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
     mkdir -p /etc/mysql/mariadb.conf.d/
   fi
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  mysqladmin flush-privileges
 }
 
 #
@@ -277,7 +277,7 @@ EOFMYSQL
   if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
     mkdir -p /etc/mysql/mariadb.conf.d/
   fi
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  mysqladmin flush-privileges
   su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
   rm -rf /var/aegir/.tmp/cache
   if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ]; then
@@ -365,7 +365,7 @@ EOFMYSQL
   if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
     mkdir -p /etc/mysql/mariadb.conf.d/
   fi
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  mysqladmin flush-privileges
 }
 
 #
@@ -545,7 +545,7 @@ upgrade_aegir_master() {
     if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
       mkdir -p /etc/mysql/mariadb.conf.d/
     fi
-    mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+    mysqladmin flush-hosts
     _RST=$(syncpass fix aegir 2>&1)
     find_correct_ip
     _USE_RESOLVEIP="${_LOC_IP}"

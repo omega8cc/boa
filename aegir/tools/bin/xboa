@@ -329,11 +329,13 @@ migrate_sites() {
           if [ ! -d "/var/lib/mysql/${_DBN}" ]; then
             if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
               _THIS_DB_PORT=6033
+              mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+            else
+              mysqladmin flush-privileges
             fi
             if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
               mkdir -p /etc/mysql/mariadb.conf.d/
             fi
-            mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
             [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL3 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
             if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
               _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
@@ -360,7 +362,12 @@ GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'%' WITH GRANT OPTION;
 ALTER USER '${_DBN}'@'localhost' IDENTIFIED BY '${_DBP}';
 ALTER USER '${_DBN}'@'%' IDENTIFIED BY '${_DBP}';
 EOFMYSQL
-            mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+            if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
+              _THIS_DB_PORT=6033
+              mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+            else
+              mysqladmin flush-privileges
+            fi
             echo "INFO: site ${Dom} db setup on ${oct} complete"
           else
             echo "ALRT: site ${Dom} db ${_DBN} already exists!"
@@ -399,7 +406,7 @@ EOFMYSQL
         ### run_drush8_nosilent_cmd "vset --always-set site_readonly 1"
         ###
         echo "INFO: site ${Dom} readonlymode module on ${oct} enabled"
-        mysqldump -P${_THIS_DB_PORT} --protocol=tcp \
+        mysqldump -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp \
           --single-transaction \
           --quick \
           --no-autocommit \
@@ -529,7 +536,7 @@ migrate_prepare() {
     && [ ! -z "${_HDB}" ] \
     && [ ! -e "${_USR}/src/prev_hostmaster.sql" ] \
     && [ ! -e "${_USR}/log/exported.pid" ]; then
-      mysqldump -P${_THIS_DB_PORT} --protocol=tcp \
+      mysqldump -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp \
         --single-transaction \
         --quick \
         --no-autocommit \
