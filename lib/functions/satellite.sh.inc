@@ -2176,11 +2176,6 @@ satellite_prepare_child_scripts() {
 #
 # Generate provision backend db_passwd.
 provision_backend_dbpass_generate() {
-  usePwgen=
-  isPwgen=$(which pwgen 2>&1)
-  if [ -x "${isPwgen}" ]; then
-    usePwgen=YES
-  fi
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _THIS_DB_PORT=6033
   else
@@ -2231,7 +2226,7 @@ provision_backend_dbpass_generate() {
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-      _ESC_PASS=$(makepasswd 2>&1)
+      _ESC_PASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
       _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
     else
@@ -2926,11 +2921,6 @@ satellite_child_scripts_cleanup() {
 }
 
 satellite_if_add_ftps_lshell_access() {
-  usePwgen=
-  isPwgen=$(which pwgen 2>&1)
-  if [ -x "${isPwgen}" ]; then
-    usePwgen=YES
-  fi
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
     _USERFTP="${_USER}.ftp"
     _USERFTP_ROOT="/home/${_USERFTP}"
@@ -2974,7 +2964,7 @@ satellite_if_add_ftps_lshell_access() {
         _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
       fi
       if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ]; then
-        _ESC_LUPASS=$(makepasswd 2>&1)
+        _ESC_LUPASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
         _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
         _ESC_LUPASS=$(sanitize_string "${_ESC_LUPASS}" 2>&1)
       fi
@@ -3204,11 +3194,6 @@ satellite_if_add_update_user_dot_dirs() {
 ###---### Reading or creating pass.txt.
 #
 satellite_if_read_create_pass_txt() {
-  usePwgen=
-  isPwgen=$(which pwgen 2>&1)
-  if [ -x "${isPwgen}" ]; then
-    usePwgen=YES
-  fi
   if [ "${_HM_ONLY}" = "YES" ]; then
     _DO_NOTHING=YES
   else
@@ -3248,7 +3233,7 @@ satellite_if_read_create_pass_txt() {
         _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
       fi
       if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ]; then
-        _ESC_LUPASS=$(makepasswd 2>&1)
+        _ESC_LUPASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
         _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
         _ESC_LUPASS=$(sanitize_string "${_ESC_LUPASS}" 2>&1)
       fi

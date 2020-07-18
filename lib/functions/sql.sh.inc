@@ -917,11 +917,6 @@ install_with_aptitude_sql() {
 #
 # Forced MySQL root password update.
 forced_mysql_root_password_update() {
-  usePwgen=
-  isPwgen=$(which pwgen 2>&1)
-  if [ -x "${isPwgen}" ]; then
-    usePwgen=YES
-  fi
   mv -f /root/.my.cnf-pre-* ${vBs}/ &> /dev/null
   mv -f /root/.my.pass.txt-pre-* ${vBs}/ &> /dev/null
   touch /root/.my.pass.txt
@@ -957,7 +952,7 @@ forced_mysql_root_password_update() {
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
   if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
-    _ESC_PASS=$(makepasswd 2>&1)
+    _ESC_PASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
   fi
@@ -1315,11 +1310,6 @@ install_db_server() {
 }
 
 check_update_sql_credentials() {
-  usePwgen=
-  isPwgen=$(which pwgen 2>&1)
-  if [ -x "${isPwgen}" ]; then
-    usePwgen=YES
-  fi
   if [ ! -e "/root/.my.pass.txt" ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -1365,7 +1355,7 @@ check_update_sql_credentials() {
         _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
       fi
       if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
-        _ESC_PASS=$(makepasswd 2>&1)
+        _ESC_PASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
         _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
         _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
       fi

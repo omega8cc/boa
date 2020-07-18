@@ -23,11 +23,6 @@ find_correct_ip() {
 }
 
 check_generate() {
-  usePwgen=
-  isPwgen=$(which pwgen 2>&1)
-  if [ -x "${isPwgen}" ]; then
-    usePwgen=YES
-  fi
   rm -f ${_L_SYS}
   if [ -e "${_L_SYS}" ]; then
     _ESC_PASS=$(cat ${_L_SYS} 2>&1)
@@ -61,8 +56,8 @@ check_generate() {
       _ENC_PASS=$(python -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
       echo "${_ESC_PASS}" > ${_L_SYS}
     else
-       echo "INFO: We will generate new random password using makepasswd tool"
-      _ESC_PASS=$(makepasswd 2>&1)
+       echo "INFO: We will generate new random password using shuf tool"
+      _ESC_PASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
       _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
       _ENC_PASS="${_ESC_PASS}"
@@ -73,8 +68,8 @@ check_generate() {
   _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
      echo "WARN: The random password=${_ESC_PASS} does not look good"
-     echo "INFO: We will generate new random password using makepasswd tool"
-    _ESC_PASS=$(makepasswd 2>&1)
+     echo "INFO: We will generate new random password using shuf tool"
+    _ESC_PASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
     _ENC_PASS="${_ESC_PASS}"

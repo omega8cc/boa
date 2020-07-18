@@ -1,11 +1,6 @@
 #
 # Forced Redis password update.
 forced_redis_password_update() {
-  usePwgen=
-  isPwgen=$(which pwgen 2>&1)
-  if [ -x "${isPwgen}" ]; then
-    usePwgen=YES
-  fi
   if [ "${_REDIS_LISTEN_MODE}" = "SOCKET" ] \
     || [ "${_REDIS_LISTEN_MODE}" = "PORT" ] \
     || [ "${_REDIS_LISTEN_MODE}" = "127.0.0.1" ]; then
@@ -36,7 +31,7 @@ forced_redis_password_update() {
       _LEN_RPASS=$(echo ${#_ESC_RPASS} 2>&1)
     fi
     if [ -z "${_ESC_RPASS}" ] || [ "${_LEN_RPASS}" -lt "9" ]; then
-      _ESC_RPASS=$(makepasswd 2>&1)
+      _ESC_RPASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
       _ESC_RPASS=$(echo -n "${_ESC_RPASS}" | tr -d "\n" 2>&1)
       _ESC_RPASS=$(sanitize_string "${_ESC_RPASS}" 2>&1)
     fi
