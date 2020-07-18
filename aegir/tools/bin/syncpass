@@ -97,7 +97,6 @@ do_syncpass() {
         if [ -e "/var/aegir/use_proxysql.txt" ]; then
           _THIS_DB_PORT=6033
         fi
-        echo "MSQL 1"
         mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
         su -s /bin/bash - ${uname} -c "drush @hostmaster \
           sqlq \"UPDATE hosting_db_server \
@@ -142,7 +141,6 @@ EOFMYSQL
           "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
           ${prH}/server_*.alias.drushrc.php &> /dev/null
         wait
-        echo "MSQL 2"
         mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
       else
         echo "ERROR: Auto-generated password for aegir_root system user"
@@ -165,7 +163,6 @@ EOFMYSQL
           if [ -e "/data/conf/${uname}_use_proxysql.txt" ]; then
             _THIS_DB_PORT=6033
           fi
-          echo "MSQL 3"
           mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
           su -s /bin/bash - ${uname} -c "drush @hostmaster \
             sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
@@ -209,7 +206,6 @@ EOFMYSQL
             "s/mysql:\/\/${uname}:.*/mysql:\/\/${uname}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
             /data/disk/${uname}/.drush/server_*.alias.drushrc.php &> /dev/null
           wait
-          echo "MSQL 4"
           mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
         else
           echo "ERROR: Auto-generated password for ${uname} system user"

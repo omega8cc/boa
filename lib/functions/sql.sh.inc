@@ -1,7 +1,6 @@
 #
 # Only supported upgrade path allowed.
 sql_strict_upgrade_path() {
-  msg "FLOW: sql_strict_upgrade_path"
   _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
     _NOW_DB_V=$(mysql -V 2>&1 \
@@ -105,7 +104,6 @@ sql_strict_upgrade_path() {
 #
 # Update innodb_log_file_size.
 update_innodb_log_file_size() {
-  msg "FLOW: update_innodb_log_file_size"
   msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
     sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf &> /dev/null
@@ -145,7 +143,6 @@ update_innodb_log_file_size() {
 #
 # Update SQL Config.
 update_sql_conf() {
-  msg "FLOW: update_sql_conf"
   sed -i "s/.*innodb_force_recovery/#innodb_force_recovery/g" /etc/mysql/my.cnf &> /dev/null
   wait
   if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
@@ -257,7 +254,6 @@ update_sql_conf() {
 #
 #
 check_mysqld_running() {
-  msg "FLOW: check_mysqld_running"
   until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
     && [ -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
@@ -270,7 +266,6 @@ check_mysqld_running() {
 #
 # Tune memory limits for SQL server.
 tune_sql_memory_limits() {
-  msg "FLOW: tune_sql_memory_limits"
   check_mysqld_running
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
   wait
@@ -496,7 +491,6 @@ tune_sql_memory_limits() {
 }
 
 prep_for_install_db_sql() {
-  msg "FLOW: prep_for_install_db_sql"
   _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
     _NOW_DB_V=$(mysql -V 2>&1 \
@@ -840,7 +834,6 @@ prep_for_install_db_sql() {
 }
 
 install_with_aptitude_sql() {
-  msg "FLOW: install_with_aptitude_sql"
   if [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ] \
     || [ "${_OSR}" = "jessie" ] \
@@ -915,7 +908,6 @@ install_with_aptitude_sql() {
 #
 # Forced MySQL root password update.
 forced_mysql_root_password_update() {
-  msg "FLOW: forced_mysql_root_password_update"
   mv -f /root/.my.cnf-pre-* ${vBs}/ &> /dev/null
   mv -f /root/.my.pass.txt-pre-* ${vBs}/ &> /dev/null
   touch /root/.my.pass.txt
@@ -961,8 +953,6 @@ forced_mysql_root_password_update() {
     _ESC_PASS="${_ROOT_SQL_PASWD}"
   fi
   if [ ! -z "${_ESC_PASS}" ]; then
-    msg "FXOW: _ESC_PASS ${_ESC_PASS}"
-    msg "FXOW: _MY_OWNIP ${_MY_OWNIP}"
     if [ "${_DB_SERIES}" = "10.4" ]; then
       myUsrTbl="mysql.global_priv"
     else
@@ -995,9 +985,6 @@ forced_mysql_root_password_update() {
     echo "db=mysql" > /root/.mytop
     chmod 0600 /root/.mytop
     echo "${_ESC_PASS}" > /root/.my.pass.txt
-    _MY_PASS=$(cat /root/.my.pass.txt 2>&1)
-    msg "FXOW: _MY_PASS ${_MY_PASS}"
-    echo "MSQL S1"
     mysqladmin -P3306 --protocol=tcp flush-privileges
     mysqladmin -P3306 --protocol=tcp flush-hosts
     echo " "
@@ -1014,7 +1001,6 @@ forced_mysql_root_password_update() {
 }
 
 install_db_server() {
-  msg "FLOW: install_db_server"
   _THIS_DB_PORT=3306
   if [ -x "/usr/bin/gpg2" ]; then
     _GPG=gpg2
@@ -1241,7 +1227,6 @@ install_db_server() {
       if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
         mkdir -p /etc/mysql/mariadb.conf.d/
       fi
-      echo "MSQL U"
       myUptime=$(mysqladmin -P${_THIS_DB_PORT} --protocol=tcp version | grep -i uptime 2>&1)
       myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
       msg "INFO: ${_DB_SERVER} ${myUptime}"
@@ -1295,7 +1280,6 @@ install_db_server() {
 }
 
 check_update_sql_credentials() {
-  msg "FLOW: check_update_sql_credentials"
   if [ ! -e "/root/.my.pass.txt" ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -1377,7 +1361,6 @@ EOF
 }
 
 finalize_sql_initial_setup() {
-  msg "FLOW: finalize_sql_initial_setup"
   if [ ! -e "/root/.my.cnf" ]; then
     msg "INFO: ${_DB_SERVER} final setup"
     #
@@ -1523,7 +1506,6 @@ finalize_sql_initial_setup() {
         sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" \
           /etc/mysql/debian-start &> /dev/null
         wait
-        echo "MSQL S2"
         mysqladmin -P3306 --protocol=tcp flush-privileges
         mysqladmin -P3306 --protocol=tcp flush-hosts
         msg "INFO: Restarting ${_DB_SERVER} server..."

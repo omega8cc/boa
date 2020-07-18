@@ -5511,7 +5511,6 @@ update_initd() {
       if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
         mkdir -p /etc/mysql/mariadb.conf.d/
       fi
-      echo "MSQL X"
       myUptime=$(mysqladmin -P${_THIS_DB_PORT} --protocol=tcp version | grep -i uptime 2>&1)
       myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
       msg "INFO: ${_DB_SERVER} ${myUptime}"
