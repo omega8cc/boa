@@ -727,12 +727,6 @@ barracuda_cnf() {
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
-  if [ -e "/root/.auto.up.cnf" ] \
-    || [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-    || [ "${_VMFAMILY}" = "VS" ]; then
-  fi
   if [ ! -e "${barCnf}" ]; then
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
       if [ -e "/root/.auto.up.cnf" ] \
