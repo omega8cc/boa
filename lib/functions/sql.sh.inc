@@ -962,10 +962,6 @@ forced_mysql_root_password_update() {
     _ESC_PASS="${_ROOT_SQL_PASWD}"
   fi
   if [ ! -z "${_ESC_PASS}" ]; then
-    if [ "${_DB_SERIES}" = "10.4" ]; then
-      myUsrTbl="mysql.global_priv"
-    else
-      myUsrTbl="mysql.user"
     fi
     cp -af /root/.my.cnf /root/.my.cnf-pre-${_X_VERSION}-${_NOW}
     cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-${_X_VERSION}-${_NOW}
