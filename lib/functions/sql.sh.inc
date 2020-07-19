@@ -1365,10 +1365,6 @@ check_update_sql_credentials() {
     echo "${_ESC_PASS}" > /root/.my.pass.txt
   fi
   if [ -e "/root/.my.pass.txt" ]; then
-    for Files in `find /var/xdrago -maxdepth 1 -mindepth 1 -type f`; do
-      sed -i "s/php-fpm nginx php/php-fpm php-cgi nginx php/g" $Files &> /dev/null
-        wait
-    done
     if [ "${_STATUS}" = "INIT" ]; then
       msg "INFO: Updating ${_DB_SERVER} configuration"
       msg "INFO: Restarting ${_DB_SERVER} server..."
