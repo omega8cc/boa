@@ -1376,7 +1376,6 @@ check_root() {
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
-      rm -f /root/.debug-boa-installer.cnf
     fi
     if [ -e "/root/.barracuda.cnf" ]; then
       if [ -e "/root/.debug-boa-installer.cnf" ]; then
