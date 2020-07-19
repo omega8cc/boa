@@ -1540,11 +1540,6 @@ check_php_rebuild() {
 #
 # Check if the PHP build has broken freetype support.
 check_php_broken_freetype() {
-  if [ -e "/usr/include/freetype2" ] \
-    && [ ! -e "/usr/include/freetype2/freetype/freetype2" ]; then
-    mkdir -p /usr/include/freetype2/freetype
-    ln -sf /usr/include/freetype2 /usr/include/freetype2/freetype/freetype2
-  fi
   isFreeType=
   isFreeType=$(/opt/php$1/bin/php -i | grep with-freetype 2>&1)
   if [[ ! "${isFreeType}" =~ "with-freetype" ]] \
@@ -2157,15 +2152,10 @@ install_update_php() {
 
 check_fix_php() {
   check_php_cli
+  isFreeType=
   isFreeType=$(php -i | grep with-freetype 2>&1)
   if [[ ! "${isFreeType}" =~ "with-freetype" ]] \
-    || [ ! -e "/usr/include/freetype2/freetype/freetype2" ] \
     || [ -z "${isFreeType}" ]; then
-    if [ -e "/usr/include/freetype2" ] \
-      && [ ! -e "/usr/include/freetype2/freetype/freetype2" ]; then
-      mkdir -p /usr/include/freetype2/freetype
-      ln -sf /usr/include/freetype2 /usr/include/freetype2/freetype/freetype2
-    fi
     msg "INFO: PHP rebuild required to fix freetype support..."
     _PHP_FORCE_REINSTALL=YES
     php_upgrade_all
