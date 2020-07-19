@@ -102,7 +102,7 @@ if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
   apt-get update -qq &> /dev/null
 fi
 
-if [ -e "/data/disk/arch" ]; then
+if [ -e "/data/disk/arch/sql" ]; then
   if [ ! -e "/root/.fixed_scan_nginx.pid" ]; then
     sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=299/g"  /root/.barracuda.cnf
     sed -i "s/default_critnumber = 300/default_critnumber = 250/g" /var/xdrago/monitor/check/scan_nginx
