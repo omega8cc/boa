@@ -322,8 +322,8 @@ install_db_server
 ###
 ### Finalize initial Percona server setup
 ###
-check_update_sql_credentials
-finalize_sql_initial_setup
+init_sql_root_credentials
+update_sql_root_credentials
 
 
 ###

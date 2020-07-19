@@ -962,20 +962,22 @@ forced_mysql_root_password_update() {
     _ESC_PASS="${_ROOT_SQL_PASWD}"
   fi
   if [ ! -z "${_ESC_PASS}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "DBEF: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
+      mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
+      mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
+      if [ "${_DB_SERIES}" = "10.3" ] \
+        || [ "${_DB_SERIES}" = "10.2" ]; then
+        mysql -u root -e "SELECT user,host,password FROM mysql.user;"
+      elif [ "${_DB_SERIES}" = "5.7" ]; then
+        mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
+      fi
     fi
     cp -af /root/.my.cnf /root/.my.cnf-pre-${_X_VERSION}-${_NOW}
     cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-${_X_VERSION}-${_NOW}
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
       wait
-    mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
-      wait
-    mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_OWNIP}';"
-      wait
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
-      wait
-    mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
-      wait
-    mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_OWNIP}' WITH GRANT OPTION;"
       wait
     mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${_ESC_PASS}';"
       wait
@@ -993,6 +995,14 @@ forced_mysql_root_password_update() {
       wait
     echo "${_ESC_PASS}" > /root/.my.pass.txt
       wait
+    mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
+      wait
+    mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_OWNIP}';"
+      wait
+    mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
+      wait
+    mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_OWNIP}' WITH GRANT OPTION;"
+      wait
     mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}';"
       wait
     mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${_ESC_PASS}';"
@@ -1001,6 +1011,17 @@ forced_mysql_root_password_update() {
       wait
     mysqladmin flush-hosts
       wait
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "DAFT: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
+      mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
+      mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
+      if [ "${_DB_SERIES}" = "10.3" ] \
+        || [ "${_DB_SERIES}" = "10.2" ]; then
+        mysql -u root -e "SELECT user,host,password FROM mysql.user;"
+      elif [ "${_DB_SERIES}" = "5.7" ]; then
+        mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
+      fi
+    fi
     echo " "
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
@@ -1010,7 +1031,7 @@ forced_mysql_root_password_update() {
       fi
     fi
   else
-    msg "CRIT: _ESC_PASS empty or not generated"
+    msg "CRIT: _ESC_PASS empty or not generated, ignored, no changes"
   fi
 }
 
@@ -1305,7 +1326,7 @@ install_db_server() {
   fi
 }
 
-check_update_sql_credentials() {
+init_sql_root_credentials() {
   if [ ! -e "/root/.my.pass.txt" ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -1362,9 +1383,7 @@ check_update_sql_credentials() {
   fi
   if [ -e "/root/.my.pass.txt" ]; then
     if [ "${_STATUS}" = "INIT" ]; then
-      msg "INFO: Updating ${_DB_SERVER} configuration"
-      msg "INFO: Restarting ${_DB_SERVER} server..."
-      mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
+      msg "INFO: New ${_DB_SERVER} root password in /root/.my.pass.txt"
     fi
   else
     msg "EXIT on error due to not found file with your ${_DB_SERVER} root password"
@@ -1382,7 +1401,7 @@ EOF
   fi
 }
 
-finalize_sql_initial_setup() {
+update_sql_root_credentials() {
   if [ ! -e "/root/.my.cnf" ]; then
     msg "INFO: ${_DB_SERVER} final setup"
     #
@@ -1396,7 +1415,7 @@ finalize_sql_initial_setup() {
     # - reload privileges table
     #
     if [ ! -e "/root/.my.pass.txt" ]; then
-      check_update_sql_credentials
+      init_sql_root_credentials
     fi
     if [ -e "/root/.my.pass.txt" ]; then
       if [ "${_DB_SERIES}" = "10.4" ]; then
@@ -1415,38 +1434,48 @@ finalize_sql_initial_setup() {
         msg "CRIT: PASWD for ${_DB_SERVER} is empty!"
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "DEBG: ${_DB_SERVER} init cleanup"
+          msg "DBEF: ${_DB_SERVER} PASWD ${PASWD}"
+          mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
+          mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
+          if [ "${_DB_SERIES}" = "10.3" ] \
+            || [ "${_DB_SERIES}" = "10.2" ]; then
+            mysql -u root -e "SELECT user,host,password FROM mysql.user;"
+          elif [ "${_DB_SERIES}" = "5.7" ]; then
+            mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
+          fi
         fi
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          mysql -u root -e "FLUSH HOSTS;"
-          mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';"
-          mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND \
-            Host NOT IN ('localhost', '127.0.0.1', '::1');"
-          mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR \
-            Db='test\\_%';"
-        else
-          mysql -u root -e "FLUSH HOSTS;" &> /dev/null
+        if [ "${_DB_SERIES}" = "10.3" ] \
+          || [ "${_DB_SERIES}" = "10.2" ]; then
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "DEBG: ${_DB_SERVER} init cleanup"
+          fi
+          mysqladmin flush-privileges
             wait
-          mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';" &> /dev/null
+          mysqladmin flush-hosts
             wait
-          mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND \
-            Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
-            wait
-          mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR \
-            Db='test\\_%';" &> /dev/null
-            wait
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';"
+              wait
+            mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND \
+              Host NOT IN ('localhost', '127.0.0.1', '::1');"
+              wait
+            mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR \
+              Db='test\\_%';"
+              wait
+          else
+            mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';" &> /dev/null
+              wait
+            mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND \
+              Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
+              wait
+            mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR \
+              Db='test\\_%';" &> /dev/null
+              wait
+          fi
         fi
         mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
           wait
-        mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
-          wait
-        mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_OWNIP}';"
-          wait
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
-          wait
-        mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
-          wait
-        mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_OWNIP}' WITH GRANT OPTION;"
           wait
         mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${PASWD}';"
           wait
@@ -1462,6 +1491,14 @@ finalize_sql_initial_setup() {
           wait
         chmod 0600 /root/.mytop
           wait
+        mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
+          wait
+        mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_OWNIP}';"
+          wait
+        mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
+          wait
+        mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_OWNIP}' WITH GRANT OPTION;"
+          wait
         mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${PASWD}';"
           wait
         mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${PASWD}';"
@@ -1470,6 +1507,17 @@ finalize_sql_initial_setup() {
           wait
         mysqladmin flush-hosts
           wait
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "DAFT: ${_DB_SERVER} PASWD ${PASWD}"
+          mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
+          mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
+          if [ "${_DB_SERIES}" = "10.3" ] \
+            || [ "${_DB_SERIES}" = "10.2" ]; then
+            mysql -u root -e "SELECT user,host,password FROM mysql.user;"
+          elif [ "${_DB_SERIES}" = "5.7" ]; then
+            mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
+          fi
+        fi
         if [ "${_THIS_DB_HOST}" = "localhost" ] \
           || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
           || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
