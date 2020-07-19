@@ -1237,6 +1237,12 @@ init_setup() {
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncB}
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncO}
   fi
+  if [ -e "/root/.debug-barracuda-installer.cnf" ]; then
+    sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncB}
+  fi
+  if [ -e "/root/.debug-octopus-installer.cnf" ]; then
+    sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncO}
+  fi
   if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
     _OCTOPUS_ONLY=YES
   else
@@ -1378,7 +1384,8 @@ check_root() {
       || [ "${_VMFAMILY}" = "VS" ]; then
     fi
     if [ -e "/root/.barracuda.cnf" ]; then
-      if [ -e "/root/.debug-boa-installer.cnf" ]; then
+      if [ -e "/root/.debug-boa-installer.cnf" ] \
+        || [ -e "/root/.debug-barracuda-installer.cnf" ]; then
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g" /root/.barracuda.cnf
       fi
       source /root/.barracuda.cnf
