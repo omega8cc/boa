@@ -1233,6 +1233,10 @@ init_setup() {
     curl ${crlGet} "${rgUrl}/${lgcA}/${barName}"    -o ${vBs}/${barName}
     curl ${crlGet} "${rgUrl}/${lgcA}/${octName}"    -o ${vBs}/${octName}
   fi
+  if [ "${sql}" = "percona" ]; then
+    sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"         ${vBs}/${filIncB}
+    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"     ${vBs}/${filIncB}
+  fi
   if [ -e "/root/.debug-boa-installer.cnf" ]; then
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncB}
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncO}
@@ -1799,6 +1803,7 @@ case "$1" in
              user="$5"
              mode="$6"
              rkey="$7"
+             sql="$8"
              check_root
              check_root_keys_pwd
              check_virt
@@ -1826,6 +1831,7 @@ case "$1" in
              user="$5"
              mode="$6"
              rkey="$7"
+             sql="$8"
              check_root
              check_root_keys_pwd
              check_virt
@@ -1913,7 +1919,7 @@ case "$1" in
              init_setup
   ;;
   *)         echo
-             echo "Usage: $(basename "$0") {version} {mode} {fqdn} {email} {user} {platforms} {extra}"
+             echo "Usage: $(basename "$0") {version} {mode} {fqdn} {email} {user} {platforms} {extra} {mysql}"
              echo "Usage: $(basename "$0") version"
              echo "Usage: $(basename "$0") info {more}"
              echo "Usage: $(basename "$0") info report {octopus|backups}"
@@ -1960,6 +1966,10 @@ case "$1" in
       php-5.6 <------ single PHP version to install and use
       php-all <------ all PHP versions to install, use 7.3 by default
       nodns <-------- disable DNS checks on the fly
+
+  {mysql}
+      mariadb <------ database server to install (default)
+      percona <------ database server to install
 
   See docs/INSTALL.txt for more details.
 
