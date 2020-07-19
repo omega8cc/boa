@@ -979,7 +979,11 @@ forced_mysql_root_password_update() {
       wait
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
       wait
-    mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${_ESC_PASS}';"
+    if [ "${_DB_SERIES}" = "5.7" ]; then
+      mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
+    else
+      mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${_ESC_PASS}';"
+    fi
       wait
     echo "[client]" > /root/.my.cnf
       wait
@@ -1003,10 +1007,19 @@ forced_mysql_root_password_update() {
       wait
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_OWNIP}' WITH GRANT OPTION;"
       wait
-    mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}';"
-      wait
-    mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${_ESC_PASS}';"
-      wait
+    if [ "${_DB_SERIES}" = "5.7" ]; then
+      mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
+        wait
+      mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
+        wait
+    else
+      mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}';"
+        wait
+      mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED BY '${_ESC_PASS}';"
+        wait
+      mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${_ESC_PASS}';"
+        wait
+    fi
     mysqladmin flush-privileges
       wait
     mysqladmin flush-hosts
@@ -1477,7 +1490,11 @@ update_sql_root_credentials() {
           wait
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
           wait
-        mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${PASWD}';"
+        if [ "${_DB_SERIES}" = "5.7" ]; then
+          mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
+        else
+          mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${PASWD}';"
+        fi
           wait
         echo "[client]" > /root/.my.cnf
           wait
@@ -1499,10 +1516,17 @@ update_sql_root_credentials() {
           wait
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_OWNIP}' WITH GRANT OPTION;"
           wait
-        mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${PASWD}';"
-          wait
-        mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${PASWD}';"
-          wait
+        if [ "${_DB_SERIES}" = "5.7" ]; then
+          mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
+            wait
+          mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
+            wait
+        else
+          mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${PASWD}';"
+            wait
+          mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${PASWD}';"
+            wait
+        fi
         mysqladmin flush-privileges
           wait
         mysqladmin flush-hosts
@@ -1577,7 +1601,11 @@ update_sql_root_credentials() {
                 wait
               mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_IP}' WITH GRANT OPTION;"
                 wait
-              mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
+              if [ "${_DB_SERIES}" = "5.7" ]; then
+                mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
+              else
+                mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
+              fi
                 wait
             done
             mysql -u root -e "CREATE USER IF NOT EXISTS 'wsrep'@'%';"
@@ -1646,7 +1674,11 @@ update_sql_root_credentials() {
             wait
           mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_IP}' WITH GRANT OPTION;"
             wait
-          mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
+          if [ "${_DB_SERIES}" = "5.7" ]; then
+            mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
+          else
+            mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
+          fi
             wait
         done
         mysql -u root -e "CREATE USER IF NOT EXISTS 'wsrep'@'%';"
