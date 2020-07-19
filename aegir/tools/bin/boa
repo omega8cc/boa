@@ -13,6 +13,7 @@ lgcD="BOA-3.2.2"
 master="master"
 nextv="BOA-4.1.1-dev"
 stbl="BOA-4.0.1"
+verup="BOA-4.0.1"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
