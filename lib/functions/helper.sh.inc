@@ -299,8 +299,6 @@ mode_detection() {
       msg "INFO: Localhost Setup Mode Active"
       _XTRAS_LIST="ADM"
       _AUTOPILOT=YES
-      _DEBUG_MODE=NO
-      _DB_SERVER=Percona
       _SSH_PORT=22
       _DNS_SETUP_TEST=NO
       _SMTP_RELAY_TEST=NO
@@ -310,11 +308,7 @@ mode_detection() {
       msg "INFO: Public Setup Mode Active"
       _XTRAS_LIST="ADM CSF FTP CSS"
       _AUTOPILOT=YES
-      _DEBUG_MODE=NO
-      _DB_SERVER=Percona
       _SSH_PORT=22
-      _DNS_SETUP_TEST=YES
-      _SMTP_RELAY_TEST=YES
       _MY_HOSTN="${_EASY_HOSTNAME}"
       _MY_FRONT="master.${_EASY_HOSTNAME}"
       validate_public_ip &> /dev/null
@@ -323,7 +317,6 @@ mode_detection() {
       msg "INFO: Cluster Master Mode Active"
       _XTRAS_LIST=""
       _AUTOPILOT=YES
-      _DEBUG_MODE=NO
       _DB_SERVER=Percona
       _DB_SERIES=5.7
       _SSH_PORT=22
@@ -340,7 +333,6 @@ mode_detection() {
       msg "INFO: Cluster WEB Head Mode Active"
       _XTRAS_LIST=""
       _AUTOPILOT=YES
-      _DEBUG_MODE=NO
       _DB_SERVER=Percona
       _DB_SERIES=5.7
       _SSH_PORT=22
@@ -357,7 +349,6 @@ mode_detection() {
       msg "INFO: Cluster DB Head Mode Active"
       _XTRAS_LIST=""
       _AUTOPILOT=YES
-      _DEBUG_MODE=NO
       _DB_SERVER=Percona
       _DB_SERIES=5.7
       _SSH_PORT=22
