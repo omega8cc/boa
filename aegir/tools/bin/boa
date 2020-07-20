@@ -1237,6 +1237,9 @@ init_setup() {
   if [ "${sql}" = "percona" ]; then
     sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"         ${vBs}/${filIncB}
     sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"     ${vBs}/${filIncB}
+  elif [ "${sql}" = "mariadb" ]; then
+    sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g"        ${vBs}/${filIncB}
+    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"     ${vBs}/${filIncB}
   fi
   if [ -e "/root/.debug-boa-installer.cnf" ]; then
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncB}
@@ -1963,8 +1966,8 @@ case "$1" in
       nodns <-------- disable DNS checks on the fly
 
   {mysql}
-      mariadb <------ database server to install (default)
-      percona <------ database server to install
+      percona <------ database server to install (default)
+      mariadb <------ database server to install
 
   See docs/INSTALL.txt for more details.
 
