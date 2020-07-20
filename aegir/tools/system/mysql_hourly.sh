@@ -31,6 +31,9 @@ check_root() {
 }
 check_root
 
+rm -f /root/.pause_tasks_maint.cnf
+rm -f /root/.restrict_this_vm.cnf
+
 if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
