@@ -78,7 +78,7 @@ crontab_clean() {
     if [ "${_VMFAMILY}" = "VS" ]; then
       echo "44 22   * * *   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    echo "*/8 *    * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+    echo "*/5 *    * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     sed -i "/^$/d"                /etc/crontab &> /dev/null
     wait
     echo Cron Cleanup Completed
