@@ -175,7 +175,7 @@ if [ -e "/data/disk/arch/sql" ]; then
       mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
     fi
     sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"  ${barCnf}
-    _AUTO_UP_WEEKLY=9
+    _AUTO_UP_WEEKLY=7
     _AUTO_UP_MONTH=1
     _AUTO_UP_DAY=8
     _AUTO_PHP="php-all"
