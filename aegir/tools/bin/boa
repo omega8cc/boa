@@ -1236,20 +1236,28 @@ init_setup() {
   fi
   if [ "${sql}" = "percona" ]; then
     sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"         ${vBs}/${filIncB}
+    wait
     sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"     ${vBs}/${filIncB}
+    wait
   elif [ "${sql}" = "mariadb" ]; then
     sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g"        ${vBs}/${filIncB}
+    wait
     sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"     ${vBs}/${filIncB}
+    wait
   fi
   if [ -e "/root/.debug-boa-installer.cnf" ]; then
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncB}
+    wait
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncO}
+    wait
   fi
   if [ -e "/root/.debug-barracuda-installer.cnf" ]; then
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncB}
+    wait
   fi
   if [ -e "/root/.debug-octopus-installer.cnf" ]; then
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncO}
+    wait
   fi
   if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
     _OCTOPUS_ONLY=YES

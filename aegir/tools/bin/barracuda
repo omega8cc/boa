@@ -704,6 +704,25 @@ up_action() {
     ### Force Redis SOCKET mode if PORT was used before
     sed -i "s/^_REDIS_LISTEN_MODE=PORT/_REDIS_LISTEN_MODE=SOCKET/g"    ${barCnf}
     wait
+    if [ "${sql}" = "percona" ]; then
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"               ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"           ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"                       ${barCnf}
+      wait
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"                   ${barCnf}
+      wait
+    elif [ "${sql}" = "mariadb" ]; then
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g"              ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"           ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g"                      ${barCnf}
+      wait
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                   ${barCnf}
+      wait
+    fi
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -1321,7 +1340,7 @@ proceed() {
     _SCRIPT_URL="$rgUrl/${lgcA}/${barName}"
   else
     echo
-    echo "Usage: $(basename "$0") {up-stable|up-head|up-2.4|up-2.3|up-2.2} {system|log} {newrelickey|php-7.4|php-7.3|php-7.2|php-7.1|php-7.0|php-5.6|php-all|nodns}"
+    echo "Usage: $(basename "$0") {up-stable|up-head} {system|log} {newrelickey|php-7.4|php-7.3|php-7.2|php-all|nodns} {percona|mariadb}"
     echo
     echo "  Silent Mode Option: system == OS only upgrade"
     echo "  Silent Mode Option: log ===== OS and Aegir Master Instance upgrade"
@@ -1345,6 +1364,7 @@ cmmand="$1"
 silent="$2"
 rkey="$3"
 debug="$4"
+sql="$5"
 if [ ! -z "${silent}" ]; then
   if [ "${silent}" = "log" ] \
     || [ "${silent}" = "backdrop" ] \
@@ -1358,6 +1378,7 @@ if [ ! -z "${silent}" ]; then
     silent=
     rkey="$2"
     debug="$3"
+    sql="$4"
   fi
 fi
 proceed
