@@ -408,8 +408,10 @@ count() {
       if [ -e "${Dir}/drushrc.php" ] \
         && [ -e "${Dir}/files" ] \
         && [ -e "${Dir}/private" ] \
-        && [ -e "${Dir}/modules" ] \
         && [ ! -e "${Plr}/profiles/hostmaster" ]; then
+        if [ ! -e "${Dir}/modules" ]; then
+          mkdir ${Dir}/modules
+        fi
         #echo "${_THIS_U},${Dom},sitedir-exists"
         Dat=$(cat ${Dir}/drushrc.php \
           | grep "options\['db_name'\] = " \

@@ -2101,9 +2101,11 @@ fix_permissions() {
   if [ -e "${Dir}" ] \
     && [ -e "${Dir}/drushrc.php" ] \
     && [ -e "${Dir}/files" ] \
-    && [ -e "${Dir}/private" ] \
-    && [ -e "${Dir}/modules" ]; then
+    && [ -e "${Dir}/private" ]; then
     ### directory and settings files - site level
+    if [ ! -e "${Dir}/modules" ]; then
+      mkdir ${Dir}/modules
+    fi
     if [ -e "${Dir}/aegir.services.yml" ]; then
       rm -f ${Dir}/aegir.services.yml
     fi
@@ -2425,8 +2427,10 @@ cleanup_ghost_drushrc() {
           | sed "s/[\,']//g" 2>&1)
         if [ -e "${_T_SITE_FDIR}/drushrc.php" ] \
           && [ -e "${_T_SITE_FDIR}/files" ] \
-          && [ -e "${_T_SITE_FDIR}/private" ] \
-          && [ -e "${_T_SITE_FDIR}/modules" ]; then
+          && [ -e "${_T_SITE_FDIR}/private" ]; then
+          if [ ! -e "${Dir}/modules" ]; then
+            mkdir ${Dir}/modules
+          fi
           _IS_SITE=YES
         else
           mkdir -p ${User}/undo
