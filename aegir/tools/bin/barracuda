@@ -704,7 +704,9 @@ up_action() {
     ### Force Redis SOCKET mode if PORT was used before
     sed -i "s/^_REDIS_LISTEN_MODE=PORT/_REDIS_LISTEN_MODE=SOCKET/g"    ${barCnf}
     wait
-    if [ "${sql}" = "percona" ]; then
+    if [ "${sql}" = "percona" ] \
+      || [ "${rkey}" = "percona" ] \
+      || [ "${debug}" = "percona" ]; then
       sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"               ${vBs}/${filIncB}
       wait
       sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"           ${vBs}/${filIncB}
@@ -713,7 +715,9 @@ up_action() {
       wait
       sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"                   ${barCnf}
       wait
-    elif [ "${sql}" = "mariadb" ]; then
+    elif [ "${sql}" = "mariadb" ] \
+      || [ "${rkey}" = "mariadb" ] \
+      || [ "${debug}" = "mariadb" ]; then
       sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g"              ${vBs}/${filIncB}
       wait
       sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"           ${vBs}/${filIncB}
