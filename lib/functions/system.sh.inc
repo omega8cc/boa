@@ -4448,26 +4448,24 @@ check_smtp() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Checking SMTP connections..."
     fi
-    if ! netcat -w 14 -z smtp.gmail.com 25 ; then
-      WE_NEED_RELAY=YES
+    if ! netcat -w 10 -z smtp.gmail.com 25 ; then
       cat <<EOF
 
       Your outgoing SMTP port 25 doesn't work
       as expected, so your server can't send out
       any emails directly.
 
-      It appears you need a SMTP relayhost added
-      in your Postfix /etc/postfix/main.cf config.
+      Your SMTP relay host, if available, should be added as
+        _SMTP_RELAY_HOST="smtp.your.relay.server"
+      in the /root/.barracuda.cnf file.
 
-      Please enter your SMTP relay host name
-      as a value for _SMTP_RELAY_HOST="smtp.your.relay.server"
+      For now we will continue the installation anyway,
+      but you will have to find the welcome email with all
+      initial access credentials in the file located in:
 
-      Then run this script again.
+        /data/disk/o1/log/setupmail.txt
 
 EOF
-      clean_pid_exit
-    else
-      _DO_NOTHING=YES
     fi
     ###
     ### Required if outgoing smtp port is closed and smtp relay is in use
