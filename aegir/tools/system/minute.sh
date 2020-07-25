@@ -479,7 +479,7 @@ mysql_proc_control() {
               | tr -d "\s"`; do
               if [ "$xuser" = "${_XQ}" ]; then
                 echo killing ${_XQ} to avoid issues
-                limit=1
+                limit=30
                 mysql_proc_kill
               fi
             done
