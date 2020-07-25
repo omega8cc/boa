@@ -1809,7 +1809,7 @@ run_aptitude_full_upgrade() {
   st_runner "aptitude full-upgrade -f -y -q \
     --allow-untrusted \
     -o Dpkg::Options::=--force-confdef \
-    -o Dpkg::Options::=--force-confold" 2> /dev/null
+    -o Dpkg::Options::=--force-confold" &> /dev/null
   if [ ! -e "/usr/local/bin/mytop" ] && [ -e "/usr/bin/mysql" ]; then
     msg "INFO: Building MyTop from sources, please wait..."
     cd /var/opt
@@ -3872,12 +3872,12 @@ sys_packages_update() {
     st_runner "aptitude full-upgrade -f -y -q \
       --allow-untrusted \
       -o Dpkg::Options::=--force-confdef \
-      -o Dpkg::Options::=--force-confold" 2> /dev/null
+      -o Dpkg::Options::=--force-confold" &> /dev/null
     st_runner "apt-get update -qq" &> /dev/null
     st_runner "aptitude full-upgrade -f -y -q \
       --allow-untrusted \
       -o Dpkg::Options::=--force-confdef \
-      -o Dpkg::Options::=--force-confold" 2> /dev/null
+      -o Dpkg::Options::=--force-confold" &> /dev/null
     st_runner "aptitude autoclean -y" &> /dev/null
   else
     echo "gnupg-curl install" | dpkg --set-selections &> /dev/null
