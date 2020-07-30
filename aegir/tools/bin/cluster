@@ -1122,7 +1122,7 @@ install_web_node() {
   fi
   eml="${_CLUSTER_EMAIL}"
   if [ ! -e "/vservers/${idn}/" ] \
-    && [[ ! "${idn}" =~ "web" ]]; then
+    && [[ "${idn}" =~ "web" ]]; then
     install_vps
   fi
 }
