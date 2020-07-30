@@ -2180,6 +2180,18 @@ case "$1" in
            install_db_cluster
            install_web_node
   ;;
+  in-dbs)  cmd="$1"
+           ver="$2"
+           xer="$2"
+           check_all
+           install_db_cluster
+  ;;
+  in-web)  cmd="$1"
+           ver="$2"
+           xer="$2"
+           check_all
+           install_web_node
+  ;;
   up-dbs)  cmd="$1"
            ver="$2"
            check_all
@@ -2224,6 +2236,8 @@ case "$1" in
            echo "Usage: cluster {up-host} {update|upgrade}"
            echo "Usage: cluster {in-vps} {id} {fqdn} {ip} {os} {stable|head|galera} {email} {force}"
            echo "Usage: cluster {in-all} {stable|head}"
+           echo "Usage: cluster {in-dbs} {stable|head}"
+           echo "Usage: cluster {in-web} {stable|head}"
            echo "Usage: cluster {up-dbs} {stable|head}"
            echo "Usage: cluster {up-web} {stable|head}"
            echo "Usage: cluster {up-all} {stable|head}"
