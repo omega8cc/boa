@@ -1632,7 +1632,7 @@ upgrade_db_cluster() {
       vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add -
       _KEYS_SERVER_TEST=$(vserver ${idn} exec ${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
       sleep 2
-      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "3" ]; then
+      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "1" ]; then
         kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
         echo "$(date 2>&1) Too many dirmngr processes killed" >> \
           /var/xdrago/log/dirmngr-count.kill.log
@@ -1814,7 +1814,7 @@ install_host() {
       wget -q -U iCab http://repo.psand.net/pubkey.txt
       _KEYS_SERVER_TEST=$(grep GnuPG pubkey.txt 2>&1)
       sleep 2
-      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "3" ]; then
+      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "1" ]; then
         kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
         echo "$(date 2>&1) Too many dirmngr processes killed" >> \
           /var/xdrago/log/dirmngr-count.kill.log
