@@ -195,11 +195,161 @@ system_check_clean() {
   fi
 }
 
+#
+# Fix locales.
+fix_locales() {
+  if [ -e "/etc/ssh/sshd_config" ]; then
+    _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /etc/ssh/sshd_config 2>&1)
+    if [[ "${_SSH_LC_TEST}" =~ "AcceptEnv LANG LC_" ]]; then
+      _DO_NOTHING=YES
+    else
+      sed -i "s/.*AcceptEnv.*//g" /etc/ssh/sshd_config
+      wait
+      echo "AcceptEnv LANG LC_*" >> /etc/ssh/sshd_config
+    fi
+  fi
+  if [ -e "/usr/etc/sshd_config" ]; then
+    _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /usr/etc/sshd_config 2>&1)
+    if [[ "${_SSH_LC_TEST}" =~ "AcceptEnv LANG LC_" ]]; then
+      _DO_NOTHING=YES
+    else
+      sed -i "s/.*AcceptEnv.*//g" /usr/etc/sshd_config
+      wait
+      echo "AcceptEnv LANG LC_*" >> /usr/etc/sshd_config
+    fi
+  fi
+  _LOCALE_TEST=BROKEN
+  _LOC_TEST=$(locale 2>&1)
+  if [[ "${_LOC_TEST}" =~ LANG=.*UTF-8 ]]; then
+    _LOCALE_TEST=OK
+  fi
+  if [[ "${_LOC_TEST}" =~ "Cannot" ]]; then
+    _LOCALE_TEST=BROKEN
+  fi
+  if [ -n "${STY+x}" ]; then
+    _LOCALE_TEST=OK
+  fi
+  if [ "${_LOCALE_TEST}" = "BROKEN" ]; then
+    echo "WARNING!"
+    cat <<EOF
+
+  Locales on this system are broken or not installed
+  and/or not configured correctly yet. This is a known
+  issue on some systems/hosts which either don't configure
+  locales at all or don't use UTF-8 compatible locales
+  during initial OS setup.
+
+  We will fix this problem for you now by enforcing en_US.UTF-8
+  locale settings on the fly during install, and as system
+  defaults in /etc/default/locale for future sessions. This
+  overrides any locale settings passed by your SSH client.
+
+  You should log out when this installer will finish all its tasks
+  and display last line with "BYE!" and then log in again
+  to see the result.
+
+  We will continue in 5 seconds...
+
+EOF
+    sleep 5
+    if [ "${_THIS_OS}" = "Debian" ]; then
+      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
+      if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
+        echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+      fi
+      sed -i "/^$/d" /etc/locale.gen
+      locale-gen &> /dev/null
+    else
+      locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
+    fi
+    # Explicitly enforce all locale settings
+    update-locale \
+      LANG=en_US.UTF-8 \
+      LC_CTYPE=en_US.UTF-8 \
+      LC_COLLATE=POSIX \
+      LC_NUMERIC=POSIX \
+      LC_TIME=en_US.UTF-8 \
+      LC_MONETARY=en_US.UTF-8 \
+      LC_MESSAGES=en_US.UTF-8 \
+      LC_PAPER=en_US.UTF-8 \
+      LC_NAME=en_US.UTF-8 \
+      LC_ADDRESS=en_US.UTF-8 \
+      LC_TELEPHONE=en_US.UTF-8 \
+      LC_MEASUREMENT=en_US.UTF-8 \
+      LC_IDENTIFICATION=en_US.UTF-8 \
+      LC_ALL= &> /dev/null
+    # Define all locale settings on the fly to prevent unnecessary
+    # warnings during installation of packages.
+    export LANG=en_US.UTF-8
+    export LC_CTYPE=en_US.UTF-8
+    export LC_COLLATE=POSIX
+    export LC_NUMERIC=POSIX
+    export LC_TIME=en_US.UTF-8
+    export LC_MONETARY=en_US.UTF-8
+    export LC_MESSAGES=en_US.UTF-8
+    export LC_PAPER=en_US.UTF-8
+    export LC_NAME=en_US.UTF-8
+    export LC_ADDRESS=en_US.UTF-8
+    export LC_TELEPHONE=en_US.UTF-8
+    export LC_MEASUREMENT=en_US.UTF-8
+    export LC_IDENTIFICATION=en_US.UTF-8
+    export LC_ALL=
+  else
+    if [ "${_THIS_OS}" = "Debian" ]; then
+      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
+      if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
+        echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+      fi
+      sed -i "/^$/d" /etc/locale.gen
+      locale-gen &> /dev/null
+    else
+      locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
+    fi
+    # Explicitly enforce locale settings required for consistency
+    update-locale \
+      LANG=en_US.UTF-8 \
+      LC_CTYPE=en_US.UTF-8 \
+      LC_COLLATE=POSIX \
+      LC_NUMERIC=POSIX \
+      LC_ALL= &> /dev/null
+    # Define locale settings required for consistency also on the fly
+    if [ "${_STATUS}" != "INIT" ]; then
+      # On initial install it usually causes a warning:
+      # setlocale: LC_CTYPE: cannot change locale (en_US.UTF-8):
+      # No such file or directory
+      export LC_CTYPE=en_US.UTF-8
+    fi
+    export LC_COLLATE=POSIX
+    export LC_NUMERIC=POSIX
+    export LC_ALL=
+  fi
+  _LOCALES_BASHRC_TEST=$(grep LC_COLLATE /root/.bashrc 2>&1)
+  if [[ ! "${_LOCALES_BASHRC_TEST}" =~ "LC_COLLATE" ]]; then
+    printf "\n" >> /root/.bashrc
+    echo "export LANG=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_CTYPE=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_COLLATE=POSIX" >> /root/.bashrc
+    echo "export LC_NUMERIC=POSIX" >> /root/.bashrc
+    echo "export LC_TIME=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_MONETARY=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_MESSAGES=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_PAPER=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_NAME=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_ADDRESS=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_TELEPHONE=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_MEASUREMENT=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_IDENTIFICATION=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_ALL=" >> /root/.bashrc
+    printf "\n" >> /root/.bashrc
+  fi
+}
+
 check_all() {
   check_root
   check_root_direct
   check_root_keys_pwd
   system_check_clean
+  fix_locales
 }
 
 check_config_cluster() {
