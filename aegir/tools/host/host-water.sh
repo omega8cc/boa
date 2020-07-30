@@ -239,6 +239,20 @@ whitelist_ip_site24x7() {
     | sort \
     | uniq 2>&1)
 
+  if [ -z "${_IPS}" ] \
+    || [[ ! "${_IPS}" =~ "104.236.16.22" ]] \
+    || [[ "${_IPS}" =~ "HINFO" ]]; then
+    _IPS=$(dig site24x7.enduserexp.com \
+      | grep 'IN.*A' \
+      | cut -d 'A' -f2 \
+      | sed 's/[^0-9\.]//g' \
+      | sort \
+      | uniq 2>&1)
+  fi
+
+  echo _IPS site24x7 list..
+  echo ${_IPS}
+
   for _IP in ${_IPS}; do
     echo checking csf.allow site24x7 ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.allow \
