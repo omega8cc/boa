@@ -14,12 +14,16 @@ whitelist_ip_pingdom() {
 
   _IPS=$(curl -k -s https://my.pingdom.com/probes/feed \
     | grep '<pingdom:ip>' \
+    | sed 's/.*::.*//g' \
     | sed 's/[^0-9\.]//g' \
     | sort \
     | uniq 2>&1)
 
+  echo _IPS pingdom list..
+  echo ${_IPS}
+
   for _IP in ${_IPS}; do
-    echo checking pingdom ${_IP} now...
+    echo checking csf.allow pingdom ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.allow \
       | cut -d '#' -f1 \
       | sort \
@@ -45,12 +49,16 @@ whitelist_ip_cloudflare() {
   fi
 
   _IPS=$(curl -k -s https://www.cloudflare.com/ips-v4 \
+    | sed 's/.*::.*//g' \
     | sed 's/[^0-9\.\/]//g' \
     | sort \
     | uniq 2>&1)
 
+  echo _IPS cloudflare list..
+  echo ${_IPS}
+
   for _IP in ${_IPS}; do
-    echo checking cloudflare ${_IP} now...
+    echo checking csf.allow cloudflare ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.allow \
       | cut -d '#' -f1 \
       | sort \
@@ -81,8 +89,11 @@ whitelist_ip_incapsula() {
     | sort \
     | uniq 2>&1)
 
+  echo _IPS incapsula list..
+  echo ${_IPS}
+
   for _IP in ${_IPS}; do
-    echo checking incapsula ${_IP} now...
+    echo checking csf.allow incapsula ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.allow \
       | cut -d '#' -f1 \
       | sort \
@@ -109,8 +120,11 @@ whitelist_ip_googlebot() {
 
   _IPS="66.249.64.0/19"
 
+  echo _IPS googlebot list..
+  echo ${_IPS}
+
   for _IP in ${_IPS}; do
-    echo checking googlebot ${_IP} now...
+    echo checking csf.allow googlebot ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.allow \
       | cut -d '#' -f1 \
       | sort \
@@ -139,8 +153,11 @@ whitelist_ip_microsoft() {
 
   _IPS="65.52.0.0/14 199.30.16.0/20"
 
+  echo _IPS microsoft list..
+  echo ${_IPS}
+
   for _IP in ${_IPS}; do
-    echo checking microsoft ${_IP} now...
+    echo checking csf.allow microsoft ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.allow \
       | cut -d '#' -f1 \
       | sort \
@@ -171,8 +188,11 @@ whitelist_ip_sucuri() {
 
   _IPS="192.88.134.0/23 185.93.228.0/22 66.248.200.0/22 208.109.0.0/22"
 
+  echo _IPS sucuri list..
+  echo ${_IPS}
+
   for _IP in ${_IPS}; do
-    echo checking sucuri ${_IP} now...
+    echo checking csf.allow sucuri ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.allow \
       | cut -d '#' -f1 \
       | sort \
@@ -199,8 +219,11 @@ whitelist_ip_authzero() {
 
   _IPS="35.167.74.121 35.166.202.113 35.160.3.103 54.183.64.135 54.67.77.38 54.67.15.170 54.183.204.205 35.171.156.124 18.233.90.226 3.211.189.167 52.28.56.226 52.28.45.240 52.16.224.164 52.16.193.66 34.253.4.94 52.50.106.250 52.211.56.181 52.213.38.246 52.213.74.69 52.213.216.142 35.156.51.163 35.157.221.52 52.28.184.187 52.28.212.16 52.29.176.99 52.57.230.214 54.76.184.103 52.210.122.50 52.208.95.174 52.210.122.50 52.208.95.174 54.76.184.103 52.64.84.177 52.64.111.197 54.153.131.0 13.210.52.131 13.55.232.24 13.54.254.182 52.62.91.160 52.63.36.78 52.64.120.184 54.66.205.24 54.79.46.4"
 
+  echo _IPS authzero list..
+  echo ${_IPS}
+
   for _IP in ${_IPS}; do
-    echo checking authzero ${_IP} now...
+    echo checking csf.allow authzero ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.allow \
       | cut -d '#' -f1 \
       | sort \
@@ -268,7 +291,7 @@ whitelist_ip_site24x7() {
   done
 
   for _IP in ${_IPS}; do
-    echo checking site24x7 ${_IP} now...
+    echo checking csf.ignore site24x7 ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.ignore \
       | cut -d '#' -f1 \
       | sort \
@@ -475,10 +498,10 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
     done
   fi
 
-  n=$((RANDOM%120+30))
+  n=$((RANDOM%120+90))
+  touch /var/run/water.pid
   echo Waiting $n seconds...
   sleep $n
-  touch /var/run/water.pid
 
   whitelist_ip_pingdom
   whitelist_ip_cloudflare
