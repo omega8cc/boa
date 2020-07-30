@@ -505,12 +505,12 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
 
   whitelist_ip_pingdom
   whitelist_ip_cloudflare
-  whitelist_ip_incapsula
   whitelist_ip_googlebot
   whitelist_ip_microsoft
-  whitelist_ip_sucuri
-  whitelist_ip_authzero
-  whitelist_ip_site24x7
+  [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_incapsula
+  [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_sucuri
+  [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_authzero
+  [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_site24x7
 
   if [ -e "/root/.full.csf.cleanup.cnf" ]; then
     sed -i "s/.*do not delete.*//g" /etc/csf/csf.deny
