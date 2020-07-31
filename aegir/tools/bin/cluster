@@ -1074,8 +1074,10 @@ install_vps() {
     echo
   fi
 
-  if [ "${cmd}" = "in-all" ] && [ "${ver}" != "galera" ]; then
-    install_proxysql
+  if [ "${cmd}" = "in-all" ] || [ "${cmd}" = "in-web" ]; then
+    if [ "${ver}" != "galera" ]; then
+      install_proxysql
+    fi
   fi
 
   echo
