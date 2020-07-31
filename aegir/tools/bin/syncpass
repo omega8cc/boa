@@ -158,6 +158,7 @@ EOFMYSQL
         chown ${uname}:users ${_L_SYS} &> /dev/null
         if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
           if [ -e "/data/conf/${uname}_use_proxysql.txt" ]; then
+            _SQL_CONNECT=127.0.0.1
             _THIS_DB_PORT=6033
             mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
           else
@@ -206,6 +207,7 @@ EOFMYSQL
             /data/disk/${uname}/.drush/server_*.alias.drushrc.php &> /dev/null
           wait
           if [ -e "/data/conf/${uname}_use_proxysql.txt" ]; then
+            _SQL_CONNECT=127.0.0.1
             _THIS_DB_PORT=6033
             mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
           else

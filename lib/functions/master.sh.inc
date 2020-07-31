@@ -94,6 +94,7 @@ provision_backend_dbpass_generate() {
 
   _ESC="*.*"
   if [ -e "/var/aegir/use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
   else
     _THIS_DB_PORT=3306
@@ -219,6 +220,7 @@ provision_backend_dbpass_sync() {
     msg "INFO: Syncing provision backend db_passwd..."
   fi
   if [ -e "/var/aegir/use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
   else
     _THIS_DB_PORT=3306
@@ -300,6 +302,7 @@ hostmaster_frontend_dbpass_sync() {
     msg "INFO: Syncing hostmaster frontend db_passwd..."
   fi
   if [ -e "/var/aegir/use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
   else
     _THIS_DB_PORT=3306
@@ -456,6 +459,7 @@ upgrade_aegir_master() {
       mrun "mysql_upgrade --force" &> /dev/null
     fi
     if [ -e "/var/aegir/use_proxysql.txt" ]; then
+      _SQL_CONNECT=127.0.0.1
       _THIS_DB_PORT=6033
     else
       _THIS_DB_PORT=3306

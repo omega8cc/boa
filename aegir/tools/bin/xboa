@@ -328,6 +328,7 @@ migrate_sites() {
         if [ ! -z "${_DBN}" ] && [ ! -z "${_DBP}" ]; then
           if [ ! -d "/var/lib/mysql/${_DBN}" ]; then
             if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
+              _SQL_CONNECT=127.0.0.1
               _THIS_DB_PORT=6033
               mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
             else
@@ -363,6 +364,7 @@ ALTER USER '${_DBN}'@'localhost' IDENTIFIED BY '${_DBP}';
 ALTER USER '${_DBN}'@'%' IDENTIFIED BY '${_DBP}';
 EOFMYSQL
             if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
+              _SQL_CONNECT=127.0.0.1
               _THIS_DB_PORT=6033
               mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
             else
@@ -374,6 +376,7 @@ EOFMYSQL
           fi
           if [ -e "${_USR}/src/${_DBN}.sql" ]; then
             if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
+              _SQL_CONNECT=127.0.0.1
               _THIS_DB_PORT=6033
             fi
             [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL4 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
@@ -773,6 +776,7 @@ migrate_init() {
     exit 1
   fi
   if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
   fi
   rm -f /root/scentral_migration_notice.sh.txt

@@ -2177,6 +2177,7 @@ satellite_prepare_child_scripts() {
 # Generate provision backend db_passwd.
 provision_backend_dbpass_generate() {
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
   else
     _THIS_DB_PORT=3306
@@ -2283,6 +2284,7 @@ provision_backend_dbpass_generate() {
   _USE_RESOLVEIP="${_LOC_IP}"
 
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
     mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
   else
@@ -2381,6 +2383,7 @@ EOFMYSQL
     mkdir -p /etc/mysql/mariadb.conf.d/
   fi
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
     mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
   else
@@ -2398,6 +2401,7 @@ provision_backend_dbpass_sync() {
     msg "${_STATUS} A: Syncing provision backend db_passwd..."
   fi
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
   else
     _THIS_DB_PORT=3306
@@ -2458,6 +2462,7 @@ EOFMYSQL
     mkdir -p /etc/mysql/mariadb.conf.d/
   fi
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
     mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
   else
@@ -2486,6 +2491,7 @@ hostmaster_frontend_dbpass_sync() {
     msg "${_STATUS} A: Syncing hostmaster frontend db_passwd..."
   fi
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
   else
     _THIS_DB_PORT=3306
@@ -2549,6 +2555,8 @@ EOFMYSQL
     mkdir -p /etc/mysql/mariadb.conf.d/
   fi
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
+    _THIS_DB_PORT=6033
     mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
   else
     mysqladmin flush-privileges
@@ -2560,6 +2568,7 @@ satellite_run_pre_install() {
   _USE_RESOLVEIP="${_LOC_IP}"
   _RESOLVEIP="${_LOC_IP}"
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
   else
     _THIS_DB_PORT=3306
@@ -2569,6 +2578,8 @@ satellite_run_pre_install() {
       mkdir -p /etc/mysql/mariadb.conf.d/
     fi
     if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+      _SQL_CONNECT=127.0.0.1
+      _THIS_DB_PORT=6033
       mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
     else
       mysqladmin flush-hosts
@@ -2597,6 +2608,8 @@ satellite_run_pre_install() {
       mkdir -p /etc/mysql/mariadb.conf.d/
     fi
     if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+      _SQL_CONNECT=127.0.0.1
+      _THIS_DB_PORT=6033
       mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
     else
       mysqladmin flush-hosts
