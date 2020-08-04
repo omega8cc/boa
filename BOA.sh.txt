@@ -269,7 +269,7 @@ update_agents() {
       mysql -u root -e "SET GLOBAL max_connections = 100;"
       mysql -u root -e "SET GLOBAL max_user_connections = 80;"
     fi
-    if [ "${InTest}" -ge "9" ] && [ "${InTest}" -le "18" ]; then
+    if [ "${InTest}" -ge "9" ] && [ "${InTest}" -le "25" ]; then
       echo ${InTest} > /root/.slow.cron.cnf
       rm -f /root/.hr.monitor.cnf
       rm -f /root/.fast.cron.cnf
@@ -278,7 +278,7 @@ update_agents() {
       mysql -u root -e "SET GLOBAL max_connections = 200;"
       mysql -u root -e "SET GLOBAL max_user_connections = 80;"
     fi
-    if [ "${InTest}" -gt "18" ]; then
+    if [ "${InTest}" -gt "25" ]; then
       echo ${InTest} > /root/.tg.cnf
       echo ${InTest} > /root/.hr.monitor.cnf
       echo ${InTest} > /root/.slow.cron.cnf
