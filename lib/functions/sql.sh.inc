@@ -1524,6 +1524,8 @@ update_sql_root_credentials() {
         else
           mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${PASWD}';"
             wait
+          mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED BY '${PASWD}';"
+            wait
           mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${PASWD}';"
             wait
         fi
