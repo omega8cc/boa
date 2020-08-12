@@ -267,6 +267,10 @@ mode_detection() {
     msg "INFO: UPGRADE"
     barracuda_cnf
     touch /var/run/boa_wait.pid
+    if [ -e "/root/.auto.up.cnf" ] \
+      || [ -e "/root/.host8.cnf" ]; then
+      _XTRAS_LIST="ADM CSF FTP CSS DCS"
+    fi
   else
     _STATUS=INIT
     if [ -d "/var/aegir" ]; then
@@ -307,6 +311,10 @@ mode_detection() {
     elif [ "${_EASY_SETUP}" = "PUBLIC" ]; then
       msg "INFO: Public Setup Mode Active"
       _XTRAS_LIST="ADM CSF FTP CSS"
+      if [ -e "/root/.auto.up.cnf" ] \
+        || [ -e "/root/.host8.cnf" ]; then
+        _XTRAS_LIST="ADM CSF FTP CSS DCS"
+      fi
       _AUTOPILOT=YES
       _SSH_PORT=22
       _MY_HOSTN="${_EASY_HOSTNAME}"
