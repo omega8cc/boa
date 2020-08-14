@@ -674,9 +674,14 @@ update_agents() {
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ ! -e "${pthLog}/fpm-cli.ctrl.${_X_SE}.pid" ]; then
     usrGroup=users
+    cp -a /var/backups/off-run/run* /var/xdrago/
     for pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       tUsr=
       tUsr=$(echo ${pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+      if [ -e "${pthSysUsr}/static/control/fpm.info" ] \
+        && [ ! -e "${pthSysUsr}/static/control/cli.info" ]; then
+        cp ${pthSysUsr}/static/control/fpm.info ${pthSysUsr}/static/control/cli.info
+      fi
       if [ -e "${pthSysUsr}/log/CANCELLED" ] \
         || [ ! -e "${pthSysUsr}/static/control/cli.info" ]; then
         if [ -e "/var/xdrago/run-${tUsr}" ] \
