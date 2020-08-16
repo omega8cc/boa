@@ -432,8 +432,14 @@ count() {
           SumDir=$(( SumDir + DirSize ))
           echo "${_THIS_U},${Dom},DirSize:${DirSize}"
         fi
-        if [ ! -z "${Dat}" ] && [ -e "/var/lib/mysql/${Dat}" ]; then
-          DatSize=$(du -s /var/lib/mysql/${Dat} 2>&1)
+        if [ ! -z "${Dat}" ]; then
+          if [ -e "/root/.du.sql" ]; then
+            DatSize=$(grep "/var/lib/mysql/${Dat}" /root/.du.sql 2>&1)
+          elif [ -e "/root/.du.local.sql" ]; then
+            DatSize=$(grep "/var/lib/mysql/${Dat}" /root/.du.local.sql 2>&1)
+          elif [ -e "/var/lib/mysql/${Dat}" ]; then
+            DatSize=$(du -s /var/lib/mysql/${Dat} 2>&1)
+          fi
           DatSize=$(echo "${DatSize}" \
             | cut -d'/' -f1 \
             | awk '{ print $1}' \
@@ -1058,6 +1064,26 @@ action() {
               Aegir ${_CLIENT_OPTION} ${_ENGINE_NR} \
               | CLI <strong>${_CLIENT_CLI}</strong> \
               | FPM <strong>${_CLIENT_FPM}</strong>'" &> /dev/null
+            if [ ! -e "${User}/log/CANCELLED" ]; then
+              eMail=${_CLIENT_EMAIL//\\\@/\@}
+              AegirUrl=$(cat ${User}/log/domain.txt 2>&1)
+              if [ "${HomSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
+                Files="!x!FilesAll"
+              else
+                Files="FilesAll"
+              fi
+              if [ "${SumDatH}" -gt "${_SQL_MAX_LIMIT}" ]; then
+                DbsL="!x!DbsLive"
+              else
+                DbsL="DbsLive"
+              fi
+              if [ "${SkipDtH}" -gt "${_SQL_DEV_LIMIT}" ]; then
+                DbsD="!x!DbsDev"
+              else
+                DbsD="DbsDev"
+              fi
+              echo "${eMail},${AegirUrl},${Files}:${HomSizH},${DbsL}:${SumDatH},${DbsD}:${SkipDtH},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},Ext:${_ENGINE_NR},Sys:${_THIS_U}" >> /var/xdrago/log/usage/usage-latest.log
+            fi
             TmDir="${_THIS_HM_PLR}/profiles/hostmaster/themes/aegir/eldir"
             PgTpl="${TmDir}/page.tpl.php"
             EldirF="0001-Print-site_footer-if-defined.patch"

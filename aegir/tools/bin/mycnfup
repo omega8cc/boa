@@ -204,6 +204,10 @@ check_root() {
   if [ `whoami` = "root" ]; then
     fix_locales
     remove_systemd
+    sed -i "s/.*du.sql.*//gi"  /etc/crontab
+    echo "22 22   * * *   root    du -s /var/lib/mysql/* > /root/.du.sql" >> /etc/crontab
+    sed -i "/^$/d"  /etc/crontab
+    grep du.sql /etc/crontab
     if [ -e "/root/.barracuda.cnf" ]; then
       source /root/.barracuda.cnf
       _B_NICE=${_B_NICE//[^0-9]/}
