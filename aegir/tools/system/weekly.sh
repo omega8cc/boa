@@ -1082,7 +1082,7 @@ action() {
               else
                 DbsD="DbsDev"
               fi
-              echo "${eMail},${AegirUrl},${Files}:${HomSizH},${DbsL}:${SumDatH},${DbsD}:${SkipDtH},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},Ext:${_ENGINE_NR},Sys:${_THIS_U}" >> /var/xdrago/log/usage/usage-latest.log
+              echo "${AegirUrl},${Files}:${HomSizH},${DbsL}:${SumDatH},${DbsD}:${SkipDtH},${eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/xdrago/log/usage/usage-latest.log
             fi
             TmDir="${_THIS_HM_PLR}/profiles/hostmaster/themes/aegir/eldir"
             PgTpl="${TmDir}/page.tpl.php"
