@@ -991,8 +991,8 @@ post_mig() {
     if [ ! -e "/var/xdrago/daily.sh" ] && [ -e "/var/xdrago/.daily.sh.off" ]; then
       mv -f /var/xdrago/.daily.sh.off /var/xdrago/daily.sh
     fi
-    if [ ! -e "/var/xdrago/weekly.sh" ] && [ -e "/var/xdrago/.weekly.sh.off" ]; then
-      mv -f /var/xdrago/.weekly.sh.off /var/xdrago/weekly.sh
+    if [ ! -e "/var/xdrago/usage.sh" ] && [ -e "/var/xdrago/.usage.sh.off" ]; then
+      mv -f /var/xdrago/.usage.sh.off /var/xdrago/usage.sh
     fi
     if [ ! -e "/var/xdrago/graceful.sh" ] && [ -e "/var/xdrago/.graceful.sh.off" ]; then
       mv -f /var/xdrago/.graceful.sh.off /var/xdrago/graceful.sh
@@ -1019,8 +1019,8 @@ pre_mig() {
       mv -f /var/xdrago/daily.sh /var/xdrago/.daily.sh.off
       kill -9 $(ps aux | grep '[d]aily' | awk '{print $2}') &> /dev/null
     fi
-    if [ -e "/var/xdrago/weekly.sh" ]; then
-      mv -f /var/xdrago/weekly.sh /var/xdrago/.weekly.sh.off
+    if [ -e "/var/xdrago/usage.sh" ]; then
+      mv -f /var/xdrago/usage.sh /var/xdrago/.usage.sh.off
       kill -9 $(ps aux | grep '[w]eekly' | awk '{print $2}') &> /dev/null
     fi
     if [ -e "/var/xdrago/graceful.sh" ]; then

@@ -20,7 +20,7 @@ crontab_update() {
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
       echo "22 22   * * *   root    du -s /var/lib/mysql/* > /root/.du.local.sql" >> /etc/crontab
-      echo "44 22   * * *   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "44 22   * * *   root    bash /var/xdrago/usage.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     #echo "15 3    * * *   root    /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/mysql_backup.sh >/dev/null 2>&1" >> /etc/crontab
     #echo "15 3    * * *   root    /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/mysql_cluster_backup.sh >/dev/null 2>&1" >> /etc/crontab
@@ -79,7 +79,8 @@ crontab_clean() {
       echo "01 6    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
-      echo "44 22   * * *   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "22 22   * * *   root    du -s /var/lib/mysql/* > /root/.du.local.sql" >> /etc/crontab
+      echo "44 22   * * *   root    bash /var/xdrago/usage.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     echo "*/5 *    * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     sed -i "/^$/d"                /etc/crontab &> /dev/null

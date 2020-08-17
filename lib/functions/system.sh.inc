@@ -186,11 +186,11 @@ enable_weekly_usage_monitor() {
   if [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
-    sed -i "s/.*weekly.sh.*//g" /etc/crontab &> /dev/null
+    sed -i "s/.*usage.sh.*//g" /etc/crontab &> /dev/null
     wait
     sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
-    echo "44 22   * * *   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
+    echo "44 22   * * *   root    bash /var/xdrago/usage.sh >/dev/null 2>&1" >> /etc/crontab
   fi
 }
 
@@ -5579,7 +5579,7 @@ update_apticron() {
   sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
     /var/xdrago/daily.sh
   sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
-    /var/xdrago/weekly.sh
+    /var/xdrago/usage.sh
   sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \
     /var/xdrago/monitor/check/segfault_alert
   sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" \

@@ -456,14 +456,14 @@ update_agents() {
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/data/disk/arch/sql" ] \
     && [ ! -e "${pthLog}/weekly.ctrl.${_X_SE}.pid" ]; then
-    mv -f /var/xdrago/weekly.sh /var/xdrago/weekly.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/weekly.sh" -o /var/xdrago/weekly.sh
-    if [ -e "/var/xdrago/weekly.sh" ]; then
-      chmod 700 /var/xdrago/weekly.sh
-      chown root:root /var/xdrago/weekly.sh
+    mv -f /var/xdrago/usage.sh /var/xdrago/usage.sh.old
+    curl ${crlGet} "${urlHmr}/tools/system/usage.sh" -o /var/xdrago/usage.sh
+    if [ -e "/var/xdrago/usage.sh" ]; then
+      chmod 700 /var/xdrago/usage.sh
+      chown root:root /var/xdrago/usage.sh
       touch ${pthLog}/weekly.ctrl.${_X_SE}.pid
     else
-      mv -f /var/xdrago/weekly.sh.old /var/xdrago/weekly.sh
+      mv -f /var/xdrago/usage.sh.old /var/xdrago/usage.sh
     fi
   fi
 
