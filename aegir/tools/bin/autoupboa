@@ -12,7 +12,7 @@ crontab_update() {
     wait
     sed -i "s/.*ctopus.*//gi"    /etc/crontab &> /dev/null
     wait
-    sed -i "s/.*du.sql.*//gi"    /etc/crontab &> /dev/null
+    sed -i "s/.*du.*sql.*//gi"   /etc/crontab &> /dev/null
     wait
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
       echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
@@ -73,6 +73,8 @@ crontab_clean() {
     sed -i "s/.*arracuda.*//gi"  /etc/crontab &> /dev/null
     wait
     sed -i "s/.*ctopus.*//gi"    /etc/crontab &> /dev/null
+    wait
+    sed -i "s/.*du.*sql.*//gi"   /etc/crontab &> /dev/null
     wait
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
       echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
