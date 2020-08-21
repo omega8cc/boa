@@ -434,9 +434,9 @@ count() {
         fi
         if [ ! -z "${Dat}" ]; then
           if [ -e "/root/.du.sql" ]; then
-            DatSize=$(grep "/var/lib/mysql/${Dat}" /root/.du.sql 2>&1)
+            DatSize=$(grep "/var/lib/mysql/${Dat}$" /root/.du.sql 2>&1)
           elif [ -e "/root/.du.local.sql" ]; then
-            DatSize=$(grep "/var/lib/mysql/${Dat}" /root/.du.local.sql 2>&1)
+            DatSize=$(grep "/var/lib/mysql/${Dat}$" /root/.du.local.sql 2>&1)
           elif [ -e "/var/lib/mysql/${Dat}" ]; then
             DatSize=$(du -s /var/lib/mysql/${Dat} 2>&1)
           fi
