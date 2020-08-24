@@ -83,6 +83,7 @@ function hosting_le_vhost_provision_nginx_vhost_config($uri, $data) {
     $lines[] = "  ### Allow access to letsencrypt.org ACME challenges directory.";
     $lines[] = "  ###";
     $lines[] = "  location ^~ /.well-known/acme-challenge {";
+    $lines[] = "    allow all;";
     $lines[] = "    alias $aegir_root/tools/le/.acme-challenges;";
     $lines[] = "    try_files \$uri 404;";
     $lines[] = "  }";
