@@ -100,14 +100,32 @@ if [ -z "${_HOURLY_DB_BACKUPS}" ] \
 fi
 
 aptLiSys="/etc/apt/sources.list"
-xtraList="${aptLiSys}.d/xtrabackup.list"
+percList="${aptLiSys}.d/percona-release.list"
 
-if [ ! -e "${xtraList}" ] \
+if [ ! -e "${percList}" ] \
   || [ ! -e "/usr/bin/innobackupex" ]; then
-  xtraRepo="repo.percona.com/apt"
-  echo "## Percona XtraBackup APT Repository" > ${xtraList}
-  echo "deb http://${xtraRepo}/ ${_OSR} main" >> ${xtraList}
-  echo "deb-src http://${xtraRepo}/ ${_OSR} main" >> ${xtraList}
+  if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+    && [ -e "/etc/apt/apt.conf.d" ]; then
+    echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+  fi
+  cd /var/opt
+  rm -rf /var/opt/percona*
+  rm -f /etc/apt/sources.list.d/mariadb.*
+  rm -f /etc/apt/sources.list.d/percona-.*
+  rm -f /etc/apt/sources.list.d/xtrabackup.*
+  aptLiSys="/etc/apt/sources.list"
+  percList="${aptLiSys}.d/percona-release.list"
+  percRepo="repo.percona.com/percona/apt"
+  if [ ! -e "${percList}" ]; then
+    echo "## Percona APT Repository" > ${percList}
+    echo "deb http://${percRepo} ${_OSR} main" >> ${percList}
+    echo "deb-src http://${percRepo} ${_OSR} main" >> ${percList}
+    apt-get update -qq &> /dev/null
+  fi
+  isPercRel=$(which percona-release 2>&1)
+  if [ ! -x "${isPercRel}" ] || [ -z "${isPercRel}" ]; then
+    mrun "${_INSTALL} percona-release"
+  fi
   if [ -e "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
     service lfd stop &> /dev/null
@@ -135,10 +153,6 @@ if [ ! -e "${xtraList}" ] \
         /var/xdrago/log/gpg-agent-count.kill.log
     fi
   done
-  if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-    && [ -e "/etc/apt/apt.conf.d" ]; then
-    echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-  fi
   apt-get update -qq &> /dev/null
   if [ -e "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then

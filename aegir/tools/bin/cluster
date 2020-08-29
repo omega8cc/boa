@@ -1380,8 +1380,8 @@ install_db_cluster() {
   inc="0"
 
   aptLiSys="/etc/apt/sources.list"
-  xtraList="${aptLiSys}.d/xtrabackup.list"
-  xtraRepo="repo.percona.com/apt"
+  percList="${aptLiSys}.d/percona-release.list"
+  percRepo="repo.percona.com/percona/apt"
 
   for IP in "${_DB_NODE_IP[@]}"; do
     echo "${IP} # Cluster Galera Node" >> /etc/csf/csf.allow
@@ -1436,9 +1436,12 @@ install_db_cluster() {
   	vserver ${idn} exec apt-get upgrade -y -qq
   	vserver ${idn} exec apt-get remove apparmor -y -qq
   	vserver ${idn} exec ${_INSTAPP} software-properties-common dirmngr
-    echo "## Percona Cluster APT Repository" > /vservers/${idn}${xtraList}
-    echo "deb http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
-    echo "deb-src http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
+    rm -f /vservers/${idn}/etc/apt/sources.list.d/percona-.*
+    rm -f /vservers/${idn}/etc/apt/sources.list.d/xtrabackup.*
+    echo "## Percona Cluster APT Repository" > /vservers/${idn}${percList}
+    echo "deb http://${percRepo} ${_OSR} main" >> /vservers/${idn}${percList}
+    echo "deb-src http://${percRepo} ${_OSR} main" >> /vservers/${idn}${percList}
+    echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /vservers/${idn}/etc/apt/preferences.d/00percona.pref
     _KEYS_SIG="8507EFA5"
     vserver ${idn} exec apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}"
     vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}"

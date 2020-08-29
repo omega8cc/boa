@@ -599,15 +599,46 @@ prep_for_install_db_sql() {
         _DBS_VRN="${_PERCONA_5_7_VRN}"
         cd /var/opt
         rm -rf /var/opt/percona*
-        wget -q -U iCab \
-          https://repo.percona.com/apt/percona-release_latest.$(lsb_release -sc)_all.deb &> /dev/null
-        dpkg -i percona-release_latest.$(lsb_release -sc)_all.deb &> /dev/null
         rm -f /etc/apt/sources.list.d/mariadb.*
+        rm -f /etc/apt/sources.list.d/percona-.*
+        rm -f /etc/apt/sources.list.d/xtrabackup.*
         echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
+        aptLiSys="/etc/apt/sources.list"
+        percList="${aptLiSys}.d/percona-release.list"
+        percRepo="repo.percona.com/percona/apt"
+        if [ ! -e "${percList}" ]; then
+          echo "## Percona APT Repository" > ${percList}
+          echo "deb http://${percRepo} ${_OSR} main" >> ${percList}
+          echo "deb-src http://${percRepo} ${_OSR} main" >> ${percList}
+          apt-get update -qq &> /dev/null
+        fi
+        isPercRel=$(which percona-release 2>&1)
+        if [ ! -x "${isPercRel}" ] || [ -z "${isPercRel}" ]; then
+          mrun "${_INSTALL} percona-release"
+        fi
       else
         _DB_SERVER=Percona
         _DB_SERIES=5.7
         _DBS_VRN="${_PERCONA_5_7_VRN}"
+        rm -f /etc/apt/sources.list.d/mariadb.*
+        rm -f /etc/apt/sources.list.d/percona-.*
+        rm -f /etc/apt/sources.list.d/xtrabackup.*
+        echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
+        cd /var/opt
+        rm -rf /var/opt/percona*
+        aptLiSys="/etc/apt/sources.list"
+        percList="${aptLiSys}.d/percona-release.list"
+        percRepo="repo.percona.com/percona/apt"
+        if [ ! -e "${percList}" ]; then
+          echo "## Percona APT Repository" > ${percList}
+          echo "deb http://${percRepo} ${_OSR} main" >> ${percList}
+          echo "deb-src http://${percRepo} ${_OSR} main" >> ${percList}
+          apt-get update -qq &> /dev/null
+        fi
+        isPercRel=$(which percona-release 2>&1)
+        if [ ! -x "${isPercRel}" ] || [ -z "${isPercRel}" ]; then
+          mrun "${_INSTALL} percona-release"
+        fi
       fi
     fi
     msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSR}"
@@ -641,11 +672,11 @@ prep_for_install_db_sql() {
     echo "deb [arch=amd64,i386] http://${aptRepo}/${_OSN} ${_OSR} main" >> ${aptLiDb}
     echo "deb-src http://${aptRepo}/${_OSN} ${_OSR} main" >> ${aptLiDb}
   fi
-  xtraRepo="repo.percona.com/apt"
-  xtraList="${aptLiSys}.d/xtrabackup.list"
-  echo "## Percona XtraBackup APT Repository" > ${xtraList}
-  echo "deb http://${xtraRepo}/ ${_OSR} main" >> ${xtraList}
-  echo "deb-src http://${xtraRepo}/ ${_OSR} main" >> ${xtraList}
+  percRepo="repo.percona.com/percona/apt"
+  percList="${aptLiSys}.d/percona-release.list"
+  echo "## Percona APT Repository" > ${percList}
+  echo "deb http://${percRepo} ${_OSR} main" >> ${percList}
+  echo "deb-src http://${percRepo} ${_OSR} main" >> ${percList}
   # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
   # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
   #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
@@ -1104,20 +1135,28 @@ install_db_server() {
         echo "deb [arch=amd64,i386] http://${aptRepo}/${_OSN} ${_OSR} main" >> ${aptLiDb}
         echo "deb-src http://${aptRepo}/${_OSN} ${_OSR} main" >> ${aptLiDb}
         rm -f /etc/apt/sources.list.d/percona-release.*
+        rm -f /etc/apt/sources.list.d/xtrabackup.*
         rm -f /etc/apt/preferences.d/00percona.pref
       else
-        xtraRepo="repo.percona.com/apt"
-        xtraList="${aptLiSys}.d/xtrabackup.list"
-        echo "## Percona XtraBackup APT Repository" > ${xtraList}
-        echo "deb http://${xtraRepo}/ ${_OSR} main" >> ${xtraList}
-        echo "deb-src http://${xtraRepo}/ ${_OSR} main" >> ${xtraList}
         cd /var/opt
         rm -rf /var/opt/percona*
-        wget -q -U iCab \
-          https://repo.percona.com/apt/percona-release_latest.$(lsb_release -sc)_all.deb &> /dev/null
-        dpkg -i percona-release_latest.$(lsb_release -sc)_all.deb &> /dev/null
         rm -f /etc/apt/sources.list.d/mariadb.*
+        rm -f /etc/apt/sources.list.d/percona-.*
+        rm -f /etc/apt/sources.list.d/xtrabackup.*
         echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
+        aptLiSys="/etc/apt/sources.list"
+        percList="${aptLiSys}.d/percona-release.list"
+        percRepo="repo.percona.com/percona/apt"
+        if [ ! -e "${percList}" ]; then
+          echo "## Percona APT Repository" > ${percList}
+          echo "deb http://${percRepo} ${_OSR} main" >> ${percList}
+          echo "deb-src http://${percRepo} ${_OSR} main" >> ${percList}
+          st_runner "apt-get update -qq" &> /dev/null
+        fi
+        isPercRel=$(which percona-release 2>&1)
+        if [ ! -x "${isPercRel}" ] || [ -z "${isPercRel}" ]; then
+          mrun "${_INSTALL} percona-release"
+        fi
       fi
       st_runner "apt-get update -qq" &> /dev/null
     fi
