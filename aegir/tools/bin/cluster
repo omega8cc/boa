@@ -702,7 +702,7 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
       pxyCmd="UPDATE global_variables SET variable_value='${_MONITOR_PASSWORD}' WHERE variable_name='mysql-monitor_password';"
         ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
       sleep 1
-      pxyCmd="UPDATE global_variables SET variable_value=67108864 WHERE variable_name='mysql-max_allowed_packet';"
+      pxyCmd="UPDATE global_variables SET variable_value=268435456 WHERE variable_name='mysql-max_allowed_packet';"
         ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
       sleep 1
 
@@ -1262,7 +1262,7 @@ connect_timeout         = 60
 join_buffer_size        = 4M
 key_buffer_size         = 1024M
 log_warnings            = 2
-max_allowed_packet      = 128M
+max_allowed_packet      = 256M
 max_connect_errors      = 300
 max_connections         = 300
 max_user_connections    = 150
@@ -1343,7 +1343,7 @@ syslog
 
 [mysqldump]
 quick
-max_allowed_packet      = 128M
+max_allowed_packet      = 256M
 quote-names
 
 [mysql]
