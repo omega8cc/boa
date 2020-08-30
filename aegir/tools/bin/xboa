@@ -374,13 +374,47 @@ EOFMYSQL
           else
             echo "ALRT: site ${Dom} db ${_DBN} already exists!"
           fi
-          if [ -e "${_USR}/src/${_DBN}.sql" ]; then
+          if [ -e "${_USR}/src/${_DBN}" ]; then
             if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
               _SQL_CONNECT=127.0.0.1
               _THIS_DB_PORT=6033
             fi
             [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL4 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
-            mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_DBN} < ${_USR}/src/${_DBN}.sql
+            _MYQUICK_STATUS=
+            if [ -x "/usr/local/bin/mydumper" ]; then
+              _DB_V=$(mysql -V 2>&1 \
+                | tr -d "\n" \
+                | cut -d" " -f6 \
+                | awk '{ print $1}' \
+                | cut -d"-" -f1 \
+                | awk '{ print $1}' \
+                | sed "s/[\,']//g" 2>&1)
+              _MD_V=$(mydumper --version 2>&1 \
+                | tr -d "\n" \
+                | cut -d" " -f6 \
+                | awk '{ print $1}' \
+                | cut -d"-" -f1 \
+                | awk '{ print $1}' \
+                | sed "s/[\,']//g" 2>&1)
+              if [ "${_DB_V}" = "${_MD_V}" ]; then
+                _MYQUICK_STATUS=OK
+                echo "INFO: Installed MyQuick for ${_MD_V} (${_DB_V}) looks fine"
+              fi
+            fi
+            if [ -e "/root/.my.pass.txt" ]; then
+              _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+              _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+            fi
+            myloader \
+              --database=${_DBN} \
+              --host=localhost \
+              --user=root \
+              --password=${_SQL_PSWD} \
+              --port=3306 \
+              --directory=${_USR}/src/${_DBN}/ \
+              --threads=4 \
+              --overwrite-tables \
+              --verbose=1
             echo "INFO: site ${Dom} db import on ${oct} complete"
             ###
             ### Activate readonly on source via global.inc and not via drush
@@ -390,7 +424,7 @@ EOFMYSQL
             ### echo "INFO: site ${Dom} readonlymode on ${oct} disabled"
             ###
           else
-            echo "ALRT: site ${Dom} db failure due to missing ${_USR}/src/${_DBN}.sql"
+            echo "ALRT: site ${Dom} db failure due to missing ${_USR}/src/${_DBN}"
           fi
           if [ -e "${_USR}/.drush/${Dom}.alias.drushrc.php" ]; then
             run_drush8_hmr_cmd "hosting-task @${Dom} verify --force"
@@ -409,12 +443,45 @@ EOFMYSQL
         ### run_drush8_nosilent_cmd "vset --always-set site_readonly 1"
         ###
         echo "INFO: site ${Dom} readonlymode module on ${oct} enabled"
-        mysqldump -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp \
-          --single-transaction \
-          --quick \
-          --no-autocommit \
-          --skip-add-locks \
-          --hex-blob ${_DBN} > ${_USR}/src/${_DBN}.sql
+        _MYQUICK_STATUS=
+        if [ -x "/usr/local/bin/mydumper" ]; then
+          _DB_V=$(mysql -V 2>&1 \
+            | tr -d "\n" \
+            | cut -d" " -f6 \
+            | awk '{ print $1}' \
+            | cut -d"-" -f1 \
+            | awk '{ print $1}' \
+            | sed "s/[\,']//g" 2>&1)
+          _MD_V=$(mydumper --version 2>&1 \
+            | tr -d "\n" \
+            | cut -d" " -f6 \
+            | awk '{ print $1}' \
+            | cut -d"-" -f1 \
+            | awk '{ print $1}' \
+            | sed "s/[\,']//g" 2>&1)
+          if [ "${_DB_V}" = "${_MD_V}" ]; then
+            _MYQUICK_STATUS=OK
+            echo "INFO: Installed MyQuick for ${_MD_V} (${_DB_V}) looks fine"
+          fi
+        fi
+        if [ -e "/root/.my.pass.txt" ]; then
+          _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+          _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+        fi
+        mkdir -p ${_USR}/src/${_DBN}
+        mydumper \
+          --database=${_DBN} \
+          --host=localhost \
+          --user=root \
+          --password=${_SQL_PSWD} \
+          --port=3306 \
+          --outputdir=${_USR}/src/${_DBN}/ \
+          --rows=50000 \
+          --build-empty-files \
+          --threads=4 \
+          --less-locking \
+          --long-query-guard=900 \
+          --verbose=1
         echo "INFO: site ${Dom} db export on ${oct} complete"
       elif [ "${cmd}" = "proxy" ]; then
         if [ -e "${_USR}/log/exported.pid" ] && [ ! -z "${tgt}" ]; then
