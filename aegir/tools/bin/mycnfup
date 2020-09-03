@@ -514,17 +514,6 @@ check_restart_if_running() {
   fi
 }
 
-check_mysql_up() {
-  echo "running ${tVr} `hostname` check_mysql_up procedure.."
-  until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
-    && [ -e "/var/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
-    echo "Waiting for MySQLD availability.."
-    sleep 5
-    service mysql start
-  done
-}
-
 start_sql() {
   echo "running ${tVr} `hostname` start_sql procedure.."
   check_restart_if_running
