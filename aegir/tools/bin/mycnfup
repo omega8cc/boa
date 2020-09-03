@@ -548,6 +548,7 @@ start_sql() {
 
   remove_locks
   echo "MySQLD start procedure completed"
+  mysql -u root -e "SET GLOBAL optimizer_switch="derived_merge=off";"
   [ "$1" != "chain" ] && exit 0
 }
 
@@ -640,6 +641,17 @@ if_restart_sql() {
     echo "INFO: ${_DB_SERVER} server restart completed"
     myRstrd=YES
   fi
+}
+
+check_mysql_up() {
+  echo "running ${tVr} `hostname` check_mysql_up procedure.."
+  until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
+    && [ -e "/var/run/mysqld/mysqld.sock" ]; do
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    echo "Waiting for MySQLD availability.."
+    sleep 15
+    start_sql "chain"
+  done
 }
 
 truncate_cache_tables() {
@@ -823,21 +835,9 @@ update_sql_conf() {
 }
 
 #
-#
-check_mysqld_running() {
-  until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
-    && [ -e "/var/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
-    echo "Waiting for MySQLD availability before tune_sql_memory_limits.."
-    sleep 5
-    service mysql start
-  done
-}
-
-#
 # Tune memory limits for SQL server.
 tune_sql_memory_limits() {
-  check_mysqld_running
+  check_mysql_up
   echo "running ${tVr} `hostname` tune_sql_memory_limits procedure.."
   if [ ! -e "${vBs}/dragon/t/my.cnf-pre-${_NOW}" ]; then
     mkdir -p ${vBs}/dragon/t/
