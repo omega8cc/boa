@@ -548,7 +548,7 @@ start_sql() {
 
   remove_locks
   echo "MySQLD start procedure completed"
-  mysql -u root -e "SET GLOBAL optimizer_switch="derived_merge=off";"
+  mysql -u root -e "SET GLOBAL optimizer_switch='derived_merge=off';"
   [ "$1" != "chain" ] && exit 0
 }
 
