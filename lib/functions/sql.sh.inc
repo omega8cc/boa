@@ -616,6 +616,10 @@ prep_for_install_db_sql() {
         if [ ! -x "${isPercRel}" ] || [ -z "${isPercRel}" ]; then
           mrun "${_INSTALL} percona-release"
         fi
+        if [ -e "/etc/apt/sources.list.d/percona-original-release.list" ]; then
+          rm -f /etc/apt/sources.list.d/percona-.*
+          apt-get update -qq &> /dev/null
+        fi
       else
         _DB_SERVER=Percona
         _DB_SERIES=5.7
@@ -638,6 +642,10 @@ prep_for_install_db_sql() {
         isPercRel=$(which percona-release 2>&1)
         if [ ! -x "${isPercRel}" ] || [ -z "${isPercRel}" ]; then
           mrun "${_INSTALL} percona-release"
+        fi
+        if [ -e "/etc/apt/sources.list.d/percona-original-release.list" ]; then
+          rm -f /etc/apt/sources.list.d/percona-.*
+          apt-get update -qq &> /dev/null
         fi
       fi
     fi
@@ -1156,6 +1164,9 @@ install_db_server() {
         isPercRel=$(which percona-release 2>&1)
         if [ ! -x "${isPercRel}" ] || [ -z "${isPercRel}" ]; then
           mrun "${_INSTALL} percona-release"
+        fi
+        if [ -e "/etc/apt/sources.list.d/percona-original-release.list" ]; then
+          rm -f /etc/apt/sources.list.d/percona-.*
         fi
       fi
       st_runner "apt-get update -qq" &> /dev/null

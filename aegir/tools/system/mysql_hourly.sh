@@ -126,6 +126,10 @@ if [ ! -e "${percList}" ] \
   if [ ! -x "${isPercRel}" ] || [ -z "${isPercRel}" ]; then
     mrun "${_INSTALL} percona-release"
   fi
+  if [ -e "/etc/apt/sources.list.d/percona-original-release.list" ]; then
+    rm -f /etc/apt/sources.list.d/percona-.*
+    apt-get update -qq &> /dev/null
+  fi
   if [ -e "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
     service lfd stop &> /dev/null
