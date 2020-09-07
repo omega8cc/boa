@@ -119,9 +119,9 @@ else
   fi
   if [ -e "/root/.slow.cron.cnf" ]; then
     touch /var/run/boa_cron_wait.pid
-    sleep 30
+    sleep 15
     action
-    sleep 30
+    sleep 15
     rm -f /var/run/boa_cron_wait.pid
   elif [ -e "/root/.fast.cron.cnf" ]; then
     rm -f /var/run/boa_cron_wait.pid

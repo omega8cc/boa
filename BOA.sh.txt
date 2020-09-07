@@ -261,46 +261,46 @@ update_agents() {
     if [ "${InTest}" -lt "9" ] \
       && [[ ! "${PrTestPower}" =~ "POWER" ]] \
       && [[ ! "${PrTestCluster}" =~ "CLUSTER" ]]; then
+      rm -f /root/.fast.cron.cnf
       rm -f /root/.hr.monitor.cnf
       rm -f /root/.slow.cron.cnf
-      rm -f /root/.fast.cron.cnf
       rm -f /root/.tg.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 80;"
       mysql -u root -e "SET GLOBAL max_connections = 100;"
       mysql -u root -e "SET GLOBAL max_user_connections = 80;"
     fi
     if [ "${InTest}" -ge "9" ] && [ "${InTest}" -le "25" ]; then
-      echo ${InTest} > /root/.slow.cron.cnf
-      rm -f /root/.hr.monitor.cnf
       rm -f /root/.fast.cron.cnf
+      rm -f /root/.hr.monitor.cnf
+      rm -f /root/.slow.cron.cnf
       rm -f /root/.tg.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 80;"
       mysql -u root -e "SET GLOBAL max_connections = 200;"
       mysql -u root -e "SET GLOBAL max_user_connections = 80;"
     fi
     if [ "${InTest}" -gt "25" ]; then
+      rm -f /root/.fast.cron.cnf
       echo ${InTest} > /root/.tg.cnf
       echo ${InTest} > /root/.hr.monitor.cnf
       echo ${InTest} > /root/.slow.cron.cnf
-      rm -f /root/.fast.cron.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 80;"
       mysql -u root -e "SET GLOBAL max_connections = 200;"
       mysql -u root -e "SET GLOBAL max_user_connections = 80;"
     fi
     if [[ "${PrTestPower}" =~ "POWER" ]]; then
       echo ${InTest} > /root/.tg.cnf
-      echo ${InTest} > /root/.slow.cron.cnf
-      rm -f /root/.hr.monitor.cnf
       rm -f /root/.fast.cron.cnf
+      rm -f /root/.hr.monitor.cnf
+      rm -f /root/.slow.cron.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 150;"
       mysql -u root -e "SET GLOBAL max_connections = 200;"
       mysql -u root -e "SET GLOBAL max_user_connections = 150;"
     fi
     if [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
       echo ${InTest} > /root/.tg.cnf
-      rm -f /root/.slow.cron.cnf
-      rm -f /root/.hr.monitor.cnf
       rm -f /root/.fast.cron.cnf
+      rm -f /root/.hr.monitor.cnf
+      rm -f /root/.slow.cron.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 150;"
       mysql -u root -e "SET GLOBAL max_connections = 200;"
       mysql -u root -e "SET GLOBAL max_user_connections = 150;"
