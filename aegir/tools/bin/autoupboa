@@ -192,10 +192,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     fi
     rm -f /root/.pause_tasks_maint.cnf
     rm -f /root/.restrict_this_vm.cnf
-    if [ -e "/var/run/boa_sql_backup.pid" ] \
-      || [ -e "/var/run/boa_sql_cluster_backup.pid" ] \
-      || [ -e "/var/run/boa_run.pid" ] \
-      || [ -e "/var/run/mysql_restart_running.pid" ]; then
+    if [ -e "/var/run/boa_run.pid" ]; then
       touch /root/.pause_tasks_maint.cnf
       touch /root/.restrict_this_vm.cnf
     else
