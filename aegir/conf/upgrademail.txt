@@ -23,7 +23,7 @@ Four Drupal 8 based popular distributions have been included by default,
 plus much improved Composer support and automatic permissions-fix-magic
 on Platform and Site Verify tasks. No more manual fixes!
 
-By the way, Composer will now use PHP 7.2 by default, and you can find
+By the way, Composer will now use PHP 7.3 by default, and you can find
 many useful hints at:
   https://github.com/omega8cc/boa/blob/master/docs/COMPOSER.txt
 
