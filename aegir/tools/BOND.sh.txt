@@ -439,12 +439,38 @@ fix_php_ini_tet() {
 # Fix all php.ini files to add php_tet.so
 fix_php_ini_tet_all() {
   if [ "${_PHP_TET}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "TET" ]]; then
-    _PHP_V="56"
+    _PHP_V="56 70 71 72 73"
     for e in ${_PHP_V}; do
-      _THIS_FILE=/opt/php${e}/etc/php${e}.ini
-      fix_php_ini_tet
-      _THIS_FILE=/opt/php${e}/lib/php.ini
-      fix_php_ini_tet
+      case "${e}" in
+        74) _P_API="${_PHP74_API}" ;;
+        73) _P_API="${_PHP73_API}" ;;
+        72) _P_API="${_PHP72_API}" ;;
+        71) _P_API="${_PHP71_API}" ;;
+        70) _P_API="${_PHP70_API}" ;;
+        56) _P_API="${_PHP56_API}" ;;
+        *)  msg "WARN: Unknown PHP API version for PHP ${e}"
+        ;;
+      esac
+      _TET_BASE="/opt/php${e}/lib/php/extensions/no-debug-non-zts"
+      _TET_SO="${_TET_BASE}-${_P_API}/php_tet.so"
+      if [ ! -e "${_TET_SO}" ]; then
+        _TET_VRN="5.2-Linux-x86_64-Perl-PHP-Python-Ruby"
+        if [ ! -e "/var/opt/TET-${_TET_VRN}/bind/php" ]; then
+          mkdir -p  /var/opt
+          cd /var/opt
+          get_dev_src "TET-${_TET_VRN}.tar.gz"
+        fi
+        if [ -e "/var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts" ]; then
+          cd /var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts/
+          cp -a php_tet.so ${_TET_SO}
+        fi
+      fi
+      if [ -e "${_TET_SO}" ]; then
+        _THIS_FILE=/opt/php${e}/etc/php${e}.ini
+        fix_php_ini_tet
+        _THIS_FILE=/opt/php${e}/lib/php.ini
+        fix_php_ini_tet
+      fi
     done
   fi
 }
