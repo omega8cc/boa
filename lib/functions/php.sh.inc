@@ -189,8 +189,14 @@ fix_php_ini_tet() {
     _TET_INI_TEST=$(grep "^extension=php_tet.so" ${_THIS_FILE} 2>&1)
     if [[ "$_TET_INI_TEST" =~ "extension=php_tet.so" ]]; then
       _DO_NOTHING=YES
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "PROC: php_tet.so already present in ${_THIS_FILE}"
+      fi
     else
       echo "extension=php_tet.so" >> ${_THIS_FILE}
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "PROC: Just added php_tet.so to ${_THIS_FILE}"
+      fi
     fi
   fi
 }
