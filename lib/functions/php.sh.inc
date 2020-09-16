@@ -310,13 +310,6 @@ fix_php_ini_mongo_all() {
 }
 
 #
-# Check PHP Config.
-check_update_php_config() {
-  update_php_conf
-  update_ini_tpl
-}
-
-#
 # Update PHP Config.
 update_php_conf() {
   if [ -z "${_THISHTIP}" ]; then
@@ -398,6 +391,13 @@ update_php_conf() {
   fix_php_ini_mongo_all
   fix_php_ini_tet_all
   fix_php_ini_opcache_all
+}
+
+#
+# Check PHP Config.
+check_update_php_config() {
+  update_php_conf
+  update_ini_tpl
 }
 
 #
