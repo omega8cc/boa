@@ -439,7 +439,7 @@ fix_php_ini_tet() {
 # Fix all php.ini files to add php_tet.so
 fix_php_ini_tet_all() {
   if [ "${_PHP_TET}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "TET" ]]; then
-    _PHP_V="56 70 71 72 73"
+    _PHP_V="73 72 71 70 56"
     for e in ${_PHP_V}; do
       case "${e}" in
         74) _P_API="${_PHP74_API}" ;;
