@@ -3211,7 +3211,7 @@ action() {
           fi
           run_drush8_hmr_cmd "${vSet} hosting_ignore_default_profiles 0"
           run_drush8_hmr_cmd "${vSet} hosting_queue_tasks_frequency 1"
-          run_drush8_hmr_cmd "${vSet} hosting_queue_tasks_items 2"
+          run_drush8_hmr_cmd "${vSet} hosting_queue_tasks_items 1"
           run_drush8_hmr_cmd "${vSet} hosting_delete_force 0"
           run_drush8_hmr_cmd "${vSet} aegir_backup_export_path ${User}/backup-exports"
           run_drush8_hmr_cmd "fr hosting_custom_settings -y"
