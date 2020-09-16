@@ -199,7 +199,10 @@ fix_php_ini_tet() {
 # Fix all php.ini files to add php_tet.so
 fix_php_ini_tet_all() {
   if [ "${_PHP_TET}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "TET" ]]; then
-    _PHP_V="56 70 71 72 73"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "PROC: fix_php_ini_tet_all"
+    fi
+    _PHP_V="73 72 71 70 56"
     for e in ${_PHP_V}; do
       case "${e}" in
         74) _P_API="${_PHP74_API}" ;;
@@ -221,6 +224,9 @@ fix_php_ini_tet_all() {
           get_dev_src "TET-${_TET_VRN}.tar.gz"
         fi
         if [ -e "/var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts" ]; then
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "PROC: ${_TET_SO}"
+          fi
           cd /var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts/
           cp -a php_tet.so ${_TET_SO}
         fi
@@ -312,6 +318,9 @@ fix_php_ini_mongo_all() {
 #
 # Update PHP Config.
 update_php_conf() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: update_php_conf"
+  fi
   if [ -z "${_THISHTIP}" ]; then
     _LOC_DOM="${_THISHOST}"
     find_correct_ip
@@ -396,6 +405,9 @@ update_php_conf() {
 #
 # Check PHP Config.
 check_update_php_config() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_update_php_config"
+  fi
   update_php_conf
   update_ini_tpl
 }
