@@ -629,15 +629,15 @@ up_one() {
         if [ -e "${vBs}/${tocIncO}" ]; then
           sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"  ${vBs}/${tocIncO}
           wait
-          sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g" ${vBs}/${tocIncO}
+          sed -i "s/^_PLATFORMS_LIST.*/_PLATFORMS_LIST=none/g" ${vBs}/${tocIncO}
           wait
         fi
         ### Legacy method
         sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${vBs}/${tocName}
         wait
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${vBs}/${tocName}
+        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  ${vBs}/${tocName}
         wait
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${octCnf}
+        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  ${octCnf}
         wait
         sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             ${octCnf}
         wait
