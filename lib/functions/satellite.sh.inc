@@ -3800,7 +3800,7 @@ satellite_send_welcome_email() {
         msg "${_STATUS} A: Resending setup email on upgrade..."
       fi
       TIME=$(date 2>&1)
-      _Q="[${_X_VERSION}] Drupal 8, PHP 7.4, Solr 7 and Let’s Encrypt [${_USER}]"
+      _Q="[${_X_VERSION}] Super fast site cloning and migration [${_USER}]"
       echo ${TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
       if [ -e "${_ROOT}/log/upgrademail.txt" ]; then
         if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then

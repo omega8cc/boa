@@ -1,6 +1,6 @@
 Hello,
 
-This email is very long this time, but it's very important that you read it
+This email is very long this time, but it's *very* important that you read it
 and also check the links for more information, both to benefit from all new
 features and also to avoid known issues.
 
@@ -11,21 +11,46 @@ but, please, make exception now and read it in full -- you will learn
 about features you could be unaware of before. Enjoy!
 
 This BOA update provides latest PHP versions, system updates, including
-security fixes, many bug fixes, latest Aegir version, plus all included
-Drupal distributions updated to latest versions, and supplied with latest
-Drupal 7 or Drupal 8 core, if possible.
+security fixes, many bug fixes, latest Aegir version ..but no Aegir platforms
+are installed by default anymore, unless their keywords are listed in the file:
 
-Yes, BOA still supports Pressflow 6 (LTS).
+  ~/static/control/platforms.info (please read further below for details)
 
-Yes, we have added Solr 7 support and every 5 minutes updates!
+TL;DR
+* Yes, blazing fast site clone/migrate mode is available even for giant sites!
+* Yes, BOA still supports Pressflow 6 (LTS version only!)
+* No, we no longer install any supported Drupal distros as platforms by default.
 
-Four Drupal 8 based popular distributions have been included by default,
-plus much improved Composer support and automatic permissions-fix-magic
-on Platform and Site Verify tasks. No more manual fixes!
 
-By the way, Composer will now use PHP 7.3 by default, and you can find
-many useful hints at:
-  https://github.com/omega8cc/boa/blob/master/docs/COMPOSER.txt
+@=> Super fast site cloning and migration mode (NEW!)
+
+It is now possible to enable blazing fast migrations and cloning even sites
+with complex and giant databases with this empty control file:
+
+  ~/static/control/MyQuick.info
+
+By the way, how fast is the super-fast? It's faster than you would expect!
+We have seen it speeding up the clone and migrate tasks normally taking
+1-2 hours to... even 3-6 minutes! Yes, that's how fast it's!
+
+This file, if exists, will enable a super fast per table and parallel DB
+dump and import, although without leaving a conventional complete database
+dump file in the site archive normally created by Aegir when you run
+not only the backup task, but also clone, migrate and delete tasks, hence
+also restore task will not work anymore.
+
+We need to emphasise this again: with this control file present all normally
+super slow tasks will become blazing fast, but at the cost of not keeping
+an archived complete database dump file in the archive of the site directory
+where it would be otherwise included.
+
+Of course the system still maintains nightly backups of all your sites
+using the new split sql dump archives, but with this control file present
+you won't be able to use restore task in Aegir, because the site archive
+won't include the database dump -- you can still find that sql dump split
+into per table files in the backups directory, though, in the subdirectory
+with timestamp added, so you can still access it manually, if needed.
+
 
 @=> Solr 7 and Solr 4 support changes and improvements
 
@@ -42,17 +67,73 @@ integration modules are limited to latest versions of either search_api_solr
 
 Please read for more details:
   https://github.com/omega8cc/boa/blob/master/docs/SOLR.txt
-  https://github.com/omega8cc/boa/blob/master/CHANGELOG.txt
 
-@=> Drupal 8 platforms and Composer support
 
-Since BOA-4.0.1 new Drupal 8 based platforms are included:
+@=> Drupal platforms and Composer support
 
- Lightning 4.103 -------------- https://drupal.org/project/lightning
- Opigno LMS 2.11 -------------- https://drupal.org/project/opigno_lms
- Social 8.2 ------------------- https://drupal.org/project/social
- Thunder 4.5 ------------------ https://drupal.org/project/thunder
- Varbase 8.4 ------------------ https://drupal.org/project/varbase
+We no longer install any supported Drupal distros as platforms by default, but
+you can customize Octopus platform list via control file, which will be used
+on the next Octopus upgrade (you can request it individually if you are on
+hosted Aegir service):
+
+  ~/static/control/platforms.info
+
+This file, if exists and contains a list of symbols used to define supported
+platforms, allows to control/override the value of _PLATFORMS_LIST variable
+normally defined in the /root/.${_USER}.octopus.cnf file, which can't be
+modified by the Aegir instance owner with no system root access.
+
+IMPORTANT: If used, it will replace/override the value defined on initial
+instance install and all previous upgrades. It takes effect on every future
+Octopus instance upgrade, which means that you will miss all newly added
+distributions, if they will not be listed also in this control file.
+
+Supported values which can be written in this file, listed in a single line
+or one per line:
+
+Drupal 8 based
+
+  LHG ----------- Lightning
+  OPG ----------- Opigno LMS
+  SOC ----------- Social
+  THR ----------- Thunder
+  VBE ----------- Varbase
+
+Drupal 7 based
+
+  D7P D7S D7D --- Drupal 7 prod/stage/dev
+  AGV ----------- aGov
+  CME ----------- Commerce v.2
+  CS7 ----------- Commons
+  DCE ----------- Commerce v.1
+  GDR ----------- Guardr
+  OA7 ----------- OpenAtrium
+  OAD ----------- OpenAid
+  OLS ----------- OpenLucius
+  OOH ----------- OpenOutreach
+  OPC ----------- OpenPublic
+  OPO ----------- Opigno LMS
+  PPY ----------- Panopoly
+  RST ----------- Restaurant
+  UC7 ----------- Ubercart
+
+Drupal 6 based
+
+  D6P D6S D6D --- Pressflow (LTS) prod/stage/dev
+  DCS ----------- Commons
+  UCT ----------- Ubercart
+
+You can also use special keyword 'ALL' instead of any other symbols to have
+all available platforms installed, including newly added in all future BOA
+system releases.
+
+Examples:
+
+  ALL
+  LHG VBE D7P D7S D7D
+
+Composer will now use PHP 7.3 by default, and you can find many useful hints at:
+  https://github.com/omega8cc/boa/blob/master/docs/COMPOSER.txt
 
 IMPORTANT: You must switch your ~/static/control/cli.info to 7.2 or newer
 PHP version (BOA hosted on Omega8.cc comes with 7.4, 7.3 and 7.2), because
@@ -72,8 +153,6 @@ is not the codebase root directory, but the subdirectory where you see the
 Drupal own index.php and "core" subdirectory. It can be platform-name/web or
 platform-name/docroot or something similar depending on the distro design.
 
-Please read for more details:
-  https://github.com/omega8cc/boa/blob/master/CHANGELOG.txt
 
 @=> Important PHP versions availability changes
 
@@ -105,8 +184,6 @@ community support made the latest Pressflow 6 version compatible with PHP 7.2
 If you still have a reason to use Drupal 6 core, we recommend to use
 our version: https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
-Please read for more details:
-  https://github.com/omega8cc/boa/blob/master/CHANGELOG.txt
 
 @=> Let's Encrypt certificates
 
@@ -135,16 +212,9 @@ Note: If you have used SSL add-on with dedicated IP address before,
 you need to update DNS to point it to your instance default IP address,
 which can be found in your (long) welcome email, in the section #2
 
-@=> Speaking of docs. Be the change you want to see, and participate in
-@=> the BOA docs rewrite: http://bit.ly/2aK0Vli - your input is welcome!
-
-Also, your Aegir instance has been upgraded to version boa.version
+Your Aegir instance has been just upgraded to version boa.version
 
   https://aegir.url.name
-
-Please read about all improvements and changes at:
-
-  https://github.com/omega8cc/boa/blob/master/CHANGELOG.txt
 
 Questions? Comments? Join us on Gitter and GitHub:
 

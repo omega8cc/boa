@@ -14,7 +14,8 @@
 ### This file, if exists, will enable a super fast per table and parallel DB
 ### dump and import, although without leaving a conventional complete database
 ### dump file in the site archive normally created by Aegir when you run
-### not only the backup task, but also clone, migrate and delete tasks.
+### not only the backup task, but also clone, migrate and delete tasks, hence
+### also restore task will not work anymore.
 ###
 ### We need to emphasise this again: with this control file present all normally
 ### super slow tasks will become blazing fast, but at the cost of not keeping
@@ -22,9 +23,11 @@
 ### where it would be otherwise included.
 ###
 ### Of course the system still maintains nightly backups of all your sites
-### using the classic single dump archives, but with this control file present
+### using the new split sql dump archives, but with this control file present
 ### you won't be able to use restore task in Aegir, because the site archive
-### won't include the database dump.
+### won't include the database dump -- you can still find that sql dump split
+### into per table files in the backups directory, though, in the subdirectory
+### with timestamp added, so you can still access it manually, if needed.
 ###
 
 ###
