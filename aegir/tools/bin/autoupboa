@@ -58,8 +58,8 @@ crontab_update() {
     if [ ! -e "/root/.wbhd.clstr.cnf" ] && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
       if [ ! -z "${_OCTO_FULL}" ]; then
         echo "# Octopus ${_AUTO_VER} full upgrade" >> /etc/crontab
-        echo "05 5  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
-        echo "55 7  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
+        echo "05 3  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
+        echo "55 5  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
       fi
     fi
     echo Cron Update Completed
@@ -182,8 +182,8 @@ if [ -e "/data/disk/arch/sql" ]; then
     fi
     sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"  ${barCnf}
     _AUTO_UP_WEEKLY=7
-    _AUTO_UP_MONTH=1
-    _AUTO_UP_DAY=8
+    _AUTO_UP_MONTH=9
+    _AUTO_UP_DAY=21
     _AUTO_PHP="php-all"
     _AUTO_VER="head"
     if [ -e "/root/.restrict_this_vm.cnf" ] \
