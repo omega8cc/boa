@@ -658,11 +658,14 @@ up_one() {
       _F_SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
       if [[ "${_F_SERIES_TEST}" =~ "${nextv}" ]]; then
         _IGNORE_FORCE=YES
+        mcmode=
+        fmodey=
       else
         _IGNORE_FORCE=
+        mcmode=force
+        fmodey=force
       fi
       if [ -z "${_IS_OLD}" ] \
-        && [ ! -z "${_IGNORE_FORCE}" ] \
         && [ -z "${mcmode}" ] \
         && [ -e "${User}/.drush/sys/provision" ]; then
         if [ -z "${fmodey}" ]; then
