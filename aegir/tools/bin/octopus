@@ -655,7 +655,14 @@ up_one() {
         _IS_OLD=$(find ${User}/.drush/provision/ \
           -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example)
       fi
+      _F_SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
+      if [[ "${_F_SERIES_TEST}" =~ "${nextv}" ]]; then
+        _IGNORE_FORCE=YES
+      else
+        _IGNORE_FORCE=
+      fi
       if [ -z "${_IS_OLD}" ] \
+        && [ ! -z "${_IGNORE_FORCE}" ] \
         && [ -z "${mcmode}" ] \
         && [ -e "${User}/.drush/sys/provision" ]; then
         if [ -z "${fmodey}" ]; then
@@ -684,6 +691,7 @@ up_one() {
           up_mode
         fi
       fi
+      _IGNORE_FORCE=
     else
       echo "${vBs}/${tocName} installer not available - try again"
       clean_pid_exit
