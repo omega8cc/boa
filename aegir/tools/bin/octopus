@@ -684,40 +684,6 @@ up_one() {
           up_mode
         fi
       fi
-      if [ -e "${User}/log/cores.txt" ] \
-        && [ ! -e "${User}/log/CANCELLED" ]; then
-        if [ -e "${User}/.drush/bm.patch" ] \
-          && [ ! -e "${User}/.drush/sys/bm.patch" ] \
-          && [ -e "${User}/.drush/sys" ]; then
-          mv -f ${User}/.drush/bm.patch \
-            ${User}/.drush/sys/bm.patch
-        fi
-        if [ -e "${User}/.drush/sys/bm.patch" ]; then
-          cd ${User}/.drush/sys
-          patch -p1 < bm.patch &> /dev/null
-        fi
-        if [ -e "${User}/.drush/custom.patch" ] \
-          && [ ! -e "${User}/.drush/sys/custom.patch" ] \
-          && [ -e "${User}/.drush/sys" ]; then
-          mv -f ${User}/.drush/custom.patch \
-            ${User}/.drush/sys/custom.patch
-        fi
-        if [ -e "${User}/.drush/sys/custom.patch" ]; then
-          cd ${User}/.drush/sys
-          patch -p1 < custom.patch &> /dev/null
-        fi
-        if [ -e "${User}/.drush/uberdrupal.patch" ] \
-          && [ ! -e "${User}/.drush/sys/uberdrupal.patch" ] \
-          && [ -e "${User}/.drush/sys" ]; then
-          mv -f ${User}/.drush/uberdrupal.patch \
-            ${User}/.drush/sys/uberdrupal.patch
-        fi
-        if [ -e "${User}/.drush/sys/uberdrupal.patch" ]; then
-          cd ${User}/.drush/sys
-          patch -p1 < uberdrupal.patch &> /dev/null
-        fi
-        cd ${vBs}
-      fi
     else
       echo "${vBs}/${tocName} installer not available - try again"
       clean_pid_exit

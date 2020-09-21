@@ -901,6 +901,7 @@ migrate_init() {
       _CHECK_EMAIL=`echo -n ${_CHECK_EMAIL} | tr -d "\n"`
       _CHECK_EMAIL=${_CHECK_EMAIL//\\\@/\@}
       if [ "${_CHECK_EMAIL}" = "omega8cc@gmail.com" ] \
+        || [[ "${_CHECK_EMAIL}" =~ "emaylx@" ]] \
         || [[ "${_CHECK_EMAIL}" =~ "@omega8.cc" ]]; then
         _RESULT_EMAIL=OUR
       else
