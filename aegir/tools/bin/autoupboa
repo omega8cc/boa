@@ -118,7 +118,7 @@ if [ -e "/data/disk/arch/sql" ]; then
   fi
   _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
-  [ -z "${_AUTO_VER}" ] && _AUTO_VER="head"
+  [ -z "${_AUTO_VER}" ] && _AUTO_VER="stable"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
@@ -185,7 +185,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_UP_MONTH=9
     _AUTO_UP_DAY=21
     _AUTO_PHP="php-all"
-    _AUTO_VER="head"
+    _AUTO_VER="stable"
     if [ -e "/root/.restrict_this_vm.cnf" ] \
       && [ ! -e "/root/.OFF.restrict_this_vm.cnf" ]; then
       mv -f /root/.restrict_this_vm.cnf /root/.OFF.restrict_this_vm.cnf
@@ -226,7 +226,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
-    _AUTO_VER="head"
+    _AUTO_VER="stable"
   fi
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -235,7 +235,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
     _AUTO_PHP=
-    _AUTO_VER="head"
+    _AUTO_VER="stable"
     sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"7.2 5.6\"/g" ${barCnf}
     wait
     sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g" ${barCnf}
