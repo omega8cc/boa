@@ -113,7 +113,10 @@ check_php_cli_version() {
       _PHP_CLI=$(grep "/opt/php" /data/disk/${_Y_USR}/tools/drush/drush.php 2>&1)
     fi
   fi
-  if [[ "${_PHP_CLI}" =~ "php73" ]]; then
+  if [[ "${_PHP_CLI}" =~ "php74" ]]; then
+    DRUSH_PHP="/opt/php74/bin/php"
+    PHP_INI="/opt/php74/lib/php.ini"
+  elif [[ "${_PHP_CLI}" =~ "php73" ]]; then
     DRUSH_PHP="/opt/php73/bin/php"
     PHP_INI="/opt/php73/lib/php.ini"
   elif [[ "${_PHP_CLI}" =~ "php72" ]]; then
@@ -142,7 +145,10 @@ if [ "${_LTD_GID}" = "www-data users" ] \
   || [[ "${HOME}" =~ (^)"/var/aegir" ]] \
   || [[ "${HOME}" =~ (^)"/data/disk/" ]] \
   || [[ "${_LTD_GID}" =~ "lshellg"($) ]] \
+  || [[ "${_LTD_GID}" =~ "lshellg rvm"($) ]] \
   || [[ "${_LTD_GID}" =~ "ltd-shell"($) ]] \
+  || [[ "${_LTD_GID}" =~ "ltd-shell rvm"($) ]] \
+  || [[ "${_LTD_GID}" =~ "rvm ltd-shell"($) ]] \
   || [[ "${_LTD_GID}" =~ (^)"users www-data"($) ]] \
   || [[ "${_LTD_GID}" =~ (^)"aegir www-data users"($) ]]; then
   if [ "$1" = "-c" ]; then
@@ -160,7 +166,9 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             _PHP_DEFAULT=$(/usr/bin/php-cli -v | grep 'PHP 5' \
               | cut -d: -f1 | awk '{ print $2}' 2>&1)
           fi
-          if [[ "${_PHP_DEFAULT}" =~ "7.3." ]]; then
+          if [[ "${_PHP_DEFAULT}" =~ "7.4." ]]; then
+            PHP_INI="/opt/php74/lib/php.ini"
+          elif [[ "${_PHP_DEFAULT}" =~ "7.3." ]]; then
             PHP_INI="/opt/php73/lib/php.ini"
           elif [[ "${_PHP_DEFAULT}" =~ "7.2." ]]; then
             PHP_INI="/opt/php72/lib/php.ini"
@@ -188,11 +196,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "${_ALL}" =~ "drush8 make" ]] \
           || [[ "${_ALL}" =~ "drush cc drush" ]] \
           || [[ "${_ALL}" =~ "drush7 cc drush" ]] \
-          || [[ "${_ALL}" =~ "drush8 cc drush" ]]; then
+          || [[ "${_ALL}" =~ "drush8 cc drush" ]] \
+          || [[ "${_ALL}" =~ "drush9 cc drush" ]]; then
           if [[ "${_PWD}" =~ "/static" ]] \
             || [[ "${_ALL}" =~ "drush cc drush" ]] \
             || [[ "${_ALL}" =~ "drush7 cc drush" ]] \
-            || [[ "${_ALL}" =~ "drush8 cc drush" ]]; then
+            || [[ "${_ALL}" =~ "drush8 cc drush" ]] \
+            || [[ "${_ALL}" =~ "drush9 cc drush" ]]; then
             _CORRECT=YES
           else
             if [[ "${_ALL}" =~ "make-generate" ]] \
@@ -215,7 +225,8 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         else
           if [[ "${_ALL}" =~ "drush @" ]] \
             || [[ "${_ALL}" =~ "drush7 @" ]] \
-            || [[ "${_ALL}" =~ "drush8 @" ]]; then
+            || [[ "${_ALL}" =~ "drush8 @" ]] \
+            || [[ "${_ALL}" =~ "drush9 @" ]]; then
             if [[ "$3" =~ "restore"($) ]] \
               || [[ "$3" =~ "arr"($) ]] \
               || [[ "$3" =~ "cli"($) ]] \
@@ -256,6 +267,12 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             || [[ "${_ALL}" =~ "drush8 dl" ]] \
             || [[ "${_ALL}" =~ "drush8 pm-download" ]] \
             || [[ "${_ALL}" =~ "drush8 sa" ]] \
+            || [[ "${_ALL}" =~ "drush9 site-alias" ]] \
+            || [[ "${_ALL}" =~ "-c set -m; drush9 --version" ]] \
+            || [[ "${_ALL}" =~ "-c set -m; drush9 help" ]] \
+            || [[ "${_ALL}" =~ "drush9 dl" ]] \
+            || [[ "${_ALL}" =~ "drush9 pm-download" ]] \
+            || [[ "${_ALL}" =~ "drush9 sa" ]] \
             || [[ "${_ALL}" =~ "drush site-alias" ]] \
             || [[ "${_ALL}" =~ "-c set -m; drush --version" ]] \
             || [[ "${_ALL}" =~ "-c set -m; drush help" ]] \
@@ -282,7 +299,8 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     else
       if [[ "${_ALL}" =~ "drush @" ]] \
         || [[ "${_ALL}" =~ "drush7 @" ]] \
-        || [[ "${_ALL}" =~ "drush8 @" ]]; then
+        || [[ "${_ALL}" =~ "drush8 @" ]] \
+        || [[ "${_ALL}" =~ "drush9 @" ]]; then
         if [[ "$3" =~ "restore"($) ]] \
           || [[ "$3" =~ "arr"($) ]] \
           || [[ "$3" =~ "cli"($) ]] \
@@ -326,6 +344,14 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         _IN_PATH=YES
       elif [[ "${_RAW_IN_PATH}" =~ "/usr/bin/wkhtmltoimage" ]]; then
         _IN_PATH=YES
+      elif [[ "${_RAW_IN_PATH}" =~ "/usr/local/bin/wkhtmltopdf" ]]; then
+        _IN_PATH=YES
+      elif [[ "${_RAW_IN_PATH}" =~ "/usr/local/bin/wkhtmltoimage" ]]; then
+        _IN_PATH=YES
+      elif [[ "${_RAW_IN_PATH}" =~ "/usr/bin/wkhtmltopdf-0.12.4" ]]; then
+        _IN_PATH=YES
+      elif [[ "${_RAW_IN_PATH}" =~ "/usr/bin/wkhtmltoimage-0.12.4" ]]; then
+        _IN_PATH=YES
       elif [[ "${_RAW_IN_PATH}" =~ "/usr/bin/convert" ]]; then
         _IN_PATH=YES
       elif [[ "${_RAW_IN_PATH}" =~ "/usr/bin/gs" ]]; then
@@ -350,7 +376,8 @@ if [ "${_LTD_GID}" = "www-data users" ] \
   else
     if [[ "${_ALL}" =~ "drush @" ]] \
       || [[ "${_ALL}" =~ "drush7 @" ]] \
-      || [[ "${_ALL}" =~ "drush8 @" ]]; then
+      || [[ "${_ALL}" =~ "drush8 @" ]] \
+      || [[ "${_ALL}" =~ "drush9 @" ]]; then
       if [[ "$3" =~ "restore"($) ]] \
         || [[ "$3" =~ "arr"($) ]] \
         || [[ "$3" =~ "cli"($) ]] \
@@ -431,7 +458,10 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     fi
   fi
   if [[ "${_LTD_GID}" =~ "lshellg"($) ]] \
-    || [[ "${_LTD_GID}" =~ "ltd-shell"($) ]]; then
+    || [[ "${_LTD_GID}" =~ "lshellg rvm"($) ]] \
+    || [[ "${_LTD_GID}" =~ "ltd-shell"($) ]] \
+    || [[ "${_LTD_GID}" =~ "rvm ltd-shell"($) ]] \
+    || [[ "${_LTD_GID}" =~ "ltd-shell rvm"($) ]]; then
     if [[ "${_ALL}" =~ "*" ]]; then
       if [[ "${_ALL}" =~ "-c set -m; " ]]; then
         _SILENT=YES
@@ -481,7 +511,8 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     fi
     if [ "${_RUBY_ALLOW}" = "YES" ]; then
       _THIS_RV=$(lsb_release -sc 2>&1)
-      if [ "${_THIS_RV}" = "stretch" ] \
+      if [ "${_THIS_RV}" = "buster" ] \
+        || [ "${_THIS_RV}" = "stretch" ] \
         || [ "${_THIS_RV}" = "jessie" ] \
         || [ "${_THIS_RV}" = "trusty" ] \
         || [ "${_THIS_RV}" = "precise" ]; then
@@ -495,7 +526,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ]; then
           _RUBY_VP="${_DETECTED_RUBY_VP}"
         else
-          _RUBY_VP=2.6.0
+          _RUBY_VP=2.6.3
         fi
       else
         _DETECTED_RUBY_VP=$(grep 'RUBY_VERSION' \
@@ -567,6 +598,10 @@ else
       || [[ "$2" =~ "drush" ]]; then
       if [[ "$2" =~ "uli" ]] \
         || [[ "$2" =~ "vget" ]] \
+        || [[ "$2" =~ "config-list" ]] \
+        || [[ "$2" =~ "config-edit" ]] \
+        || [[ "$2" =~ "config-get" ]] \
+        || [[ "$2" =~ "config-set" ]] \
         || [[ "$2" =~ "--version" ]] \
         || [[ "$2" =~ "vset" ]] \
         || [[ "$2" =~ "status" ]]; then

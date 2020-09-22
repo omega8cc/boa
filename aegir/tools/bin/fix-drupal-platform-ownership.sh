@@ -60,19 +60,34 @@ if [ -z "${script_user}" ] \
     exit 1
 fi
 
+_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=${_TODAY//[^0-9]/}
+
+if [ -e "${drupal_root}/sites/all/libraries/ownership-fixed-${_TODAY}.pid" ]; then
+  exit 0
+fi
+
 cd ${drupal_root}
 
 printf "Setting ownership of "${drupal_root}" to: user => "${script_user}" group => "users"\n"
 chown ${script_user}:users ${drupal_root}
 mkdir -p ${drupal_root}/sites/all/{modules,themes,libraries,drush}
-rm -f ${drupal_root}/../vendor/bin/drush*
-rm -f ${drupal_root}/vendor/bin/drush*
-rm -f ${drupal_root}/../drush/*
-rm -f ${drupal_root}/sites/development.services.yml
+### ctrl pid
+rm -f ${drupal_root}/sites/all/libraries/ownership-fixed*.pid
+touch ${drupal_root}/sites/all/libraries/ownership-fixed-${_TODAY}.pid
+if [[ "${drupal_root}" =~ "/static/" ]] && [ -e "${drupal_root}/core" ]; then
+  rm -f ${drupal_root}/../vendor/bin/drush*
+  rm -f ${drupal_root}/vendor/bin/drush*
+  rm -f ${drupal_root}/../drush/*
+  rm -f ${drupal_root}/sites/development.services.yml
+fi
 chown -R ${script_user}:users \
   ${drupal_root}/sites/all/{modules,themes,libraries,includes,misc,profiles,core,vendor,drush}/*
-chown -R ${script_user}:users ${drupal_root}/../vendor/*
-chown -R ${script_user}:users ${drupal_root}/../drush/*
+if [[ "${drupal_root}" =~ "/static/" ]] && [ -e "${drupal_root}/core" ]; then
+  chown -R ${script_user}:users ${drupal_root}/../vendor/*
+  chown -R ${script_user}:users ${drupal_root}/../drush/*
+  chown ${script_user}:users ${drupal_root}/../vendor
+fi
 chown ${script_user}:users \
   ${drupal_root}/sites/all/drush/drushrc.php \
   ${drupal_root}/sites \
@@ -80,8 +95,7 @@ chown ${script_user}:users \
   ${drupal_root}/sites/sites.php \
   ${drupal_root}/sites/all \
   ${drupal_root}/sites/all/{modules,themes,libraries,drush} \
-  ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core,vendor} \
-  ${drupal_root}/../vendor
+  ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core,vendor}
 
 ### known exceptions
 chown -R ${script_user}:www-data \

@@ -10,15 +10,13 @@ $| = 1;
 $this_filename = "scan_nginx";
 $times=`date +%y%m%d-%H%M%S`;
 chomp($times);
-$myhn=`hostname --fqdn`;
-chomp($myhn);
-$llip=`echo \$(getent ahostsv4 $myhn) | cut -d: -f2 | awk '{ print $1}'`;
+$llip=`curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 3 -A iCab https://api.ipify.org`;
 local($myip, $rest) = split(/\s+/,$llip);
 print "myip is $myip";
 chomp($myip);
 if (-e "/root/.hr.monitor.cnf") {
-  $default_critnumber = 200;
-  $default_lines = 900;
+  $default_critnumber = 99;
+  $default_lines = 300;
   $default_mode = 1;
 }
 else {
@@ -27,7 +25,7 @@ else {
   $default_mode = 2;
 }
 &makeactions;
-print "CONTROL complete for $myip ($myhn)\n";
+print "\nCONTROL complete for $myip\n";
 exit;
 
 #############################################################################
@@ -96,7 +94,11 @@ sub makeactions
           $skip_post = 1;
         }
         elsif ($line =~ /POST \/.*/ && $line =~ /\/cart\/checkout/) {
-          ### print "Not Counted Static Request URI: $line\n";
+          ### print "Not Counted Dynamic Request URI: $line\n";
+          $skip_post = 1;
+        }
+        elsif ($line =~ /POST \/.*/ && $line =~ /\/embed\/preview/) {
+          ### print "Not Counted Dynamic Request URI: $line\n";
           $skip_post = 1;
         }
         else {
@@ -146,7 +148,11 @@ sub makeactions
           $skip_post = 1;
         }
         elsif ($line =~ /POST \/.*/ && $line =~ /\/cart\/checkout/) {
-          ### print "Not Counted Static Request URI: $line\n";
+          ### print "Not Counted Dynamic Request URI: $line\n";
+          $skip_post = 1;
+        }
+        elsif ($line =~ /POST \/.*/ && $line =~ /\/embed\/preview/) {
+          ### print "Not Counted Dynamic Request URI: $line\n";
           $skip_post = 1;
         }
         else {
@@ -341,4 +347,4 @@ sub check_own_ip
     }
   }
 }
-###EOF2019###
+###EOF2020###

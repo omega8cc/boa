@@ -5,7 +5,7 @@
 ###
 ###  Octopus Aegir Installer
 ###
-###  Copyright (C) 2010-2019 Omega8.cc
+###  Copyright (C) 2010-2020 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -127,7 +127,10 @@ _DISTRO_ROOT="${_ROOT}/distro/${_DISTRO}"
 _D="/data/all"
 _SRCDIR="/opt/tmp/files"
 _LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
-if [ "${_PHP_CLI_VERSION}" = "7.3" ] \
+if [ "${_PHP_CLI_VERSION}" = "7.4" ] \
+  && [ -x "/opt/php74/bin/php" ]; then
+  _T_CLI=/opt/php74/bin
+elif [ "${_PHP_CLI_VERSION}" = "7.3" ] \
   && [ -x "/opt/php73/bin/php" ]; then
   _T_CLI=/opt/php73/bin
 elif [ "${_PHP_CLI_VERSION}" = "7.2" ] \
@@ -200,6 +203,7 @@ satellite_run_child_c
 satellite_if_legacy_permissions_fix
 satellite_child_scripts_cleanup
 satellite_if_add_ftps_lshell_access
+satellite_if_add_to_rvm_group
 satellite_if_add_update_user_symlinks
 satellite_if_add_update_user_dot_dirs
 satellite_if_read_create_pass_txt
@@ -216,7 +220,7 @@ satellite_display_url_finalize
 ###----------------------------------------###
 ###
 ###  Octopus Aegir Installer
-###  Copyright (C) 2010-2019 Omega8.cc
+###  Copyright (C) 2010-2020 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###

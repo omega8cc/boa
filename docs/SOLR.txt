@@ -2,7 +2,7 @@
 You can very easily add, update or delete Solr cores powered by very fast
 Jetty server. It's fully automated and can be managed very easily via site level
 active INI file. Of course Solr must be already installed on the system
-with SR4 keyword present in _XTRAS_LIST in the /root/.barracuda.cnf file.
+with SR7 and SR4 keywords in _XTRAS_LIST in the /root/.barracuda.cnf file.
 
 There are three INI variables you can use to control Solr automated setup:
 solr_integration_module, solr_update_config and solr_custom_config -- just
@@ -38,6 +38,8 @@ level via INI files, check our docs at https://omega8.cc/node/293
 ;;  customized Solr core config files, which you should upload in the path:
 ;;  sites/foo.com/files/solr/ and wait 5-10 minutes to have them activated
 ;;  on the Solr 7 core the system will create for you.
+;;
+;;  NOTE: You must set 'solr_custom_config = NO' for the changes to take effect.
 ;;
 ;;  This setting affects the running every 5-10 minutes auto-installer, hence
 ;;  no need to wait until next morning to be able to use new Solr core. Win!
@@ -87,6 +89,13 @@ level via INI files, check our docs at https://omega8.cc/node/293
 ;;
 ;;  Please remember to use Solr compatible config files.
 ;;
+;;  IMPORTANT! -- Please note that with this option enabled you won't be able
+;;  to follow the Drupal 8 specific procedure for search_api_solr with config
+;;  files generated and uploaded to the files/solr/ directory in your site.
+;;  You could still use this option to make your Solr core immutable between
+;;  your upgrades, though, but you must remember about disabling this option
+;;  briefly (5-10 minutes) for the changes to take effect.
+;;
 ;solr_custom_config = NO
 
 
@@ -94,12 +103,13 @@ level via INI files, check our docs at https://omega8.cc/node/293
         for your information to know how to configure Solr in the given site.
 
         It is important, because once you clone the site, the new clone will
-        receive its own Solr core the next morning, so its solr.php file will be
+        receive its own Solr core in a few minutes, so its solr.php file will be
         populated with unique, new credentials to use, which will overwrite the
         solr.php file copied automatically during Clone task. It is the
         configuration inside the site admin area which tells Drupal which Solr
         core to use, and you need to update it on the cloned site, of course,
-        once the new core is created.
+        once the new core is created. It helps that cron is not enabled on the
+        cloned site by default, so it will not overwrite original site index.
 
   NOTE on ERRORS:
 

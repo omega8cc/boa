@@ -1,22 +1,56 @@
 Hello,
 
-This email is unsually long this time, but it's very important that you read it
+This email is very long this time, but it's *very* important that you read it
 and also check the links for more information, both to benefit from all new
-features and also to avoid known issues. Enjoy!
+features and also to avoid known issues.
 
-New BOA release provides three new PHP versions, system updates, including
-security fixes, many bug fixes, latest Aegir version, plus all included
-Drupal distributions updated to latest versions, and supplied with latest
-Drupal 7 or Drupal 8 core, if possible. Yes, BOA still supports Pressflow 6.
-Yes, we have added Solr 7 support and every 5 minutes updates!
+Note that we list here changes which could be already installed
+on some BOA instances before, because this information is still relevant
+and often overlooked, because who likes to read boring update emails..
+but, please, make exception now and read it in full -- you will learn
+about features you could be unaware of before. Enjoy!
 
-Three Drupal 8 based popular distributions have been included by default,
-plus much improved Composer support and automatic permissions-fix-magic
-on Platform and Site Verify tasks. No more manual fixes!
+This BOA update provides latest PHP versions, system updates, including
+security fixes, many bug fixes, latest Aegir version ..but no Aegir platforms
+are installed by default anymore, unless their keywords are listed in the file:
 
-By the way, Composer will now use PHP 7.2 by default, and you can find
-many useful hints at:
-  https://github.com/omega8cc/boa/blob/master/docs/COMPOSER.txt
+  ~/static/control/platforms.info (please read further below for details)
+
+TL;DR
+* Yes, blazing fast site clone/migrate mode is available even for giant sites!
+* Yes, BOA still supports Pressflow 6 (LTS version only!)
+* No, we no longer install any supported Drupal distros as platforms by default.
+
+
+@=> Super fast site cloning and migration mode (NEW!)
+
+It is now possible to enable blazing fast migrations and cloning even sites
+with complex and giant databases with this empty control file:
+
+  ~/static/control/MyQuick.info
+
+By the way, how fast is the super-fast? It's faster than you would expect!
+We have seen it speeding up the clone and migrate tasks normally taking
+1-2 hours to... even 3-6 minutes! Yes, that's how fast it's!
+
+This file, if exists, will enable a super fast per table and parallel DB
+dump and import, although without leaving a conventional complete database
+dump file in the site archive normally created by Aegir when you run
+not only the backup task, but also clone, migrate and delete tasks, hence
+also restore task will not work anymore.
+
+We need to emphasise this again: with this control file present all normally
+super slow tasks will become blazing fast, but at the cost of not keeping
+an archived complete database dump file in the archive of the site directory
+where it would be otherwise included.
+
+Of course the system still maintains nightly backups of all your sites
+using the new split sql dump archives, but with this control file present
+you won't be able to use restore task in Aegir, because the site archive
+won't include the database dump -- you can still find that sql dump split
+into per table files in the backups directory, though, in the subdirectory
+with timestamp added, so you can still access it manually, if needed.
+
 
 @=> Solr 7 and Solr 4 support changes and improvements
 
@@ -33,23 +67,80 @@ integration modules are limited to latest versions of either search_api_solr
 
 Please read for more details:
   https://github.com/omega8cc/boa/blob/master/docs/SOLR.txt
-  https://github.com/omega8cc/boa/blob/master/CHANGELOG.txt
 
-@=> Drupal 8.7.0 platforms and Composer support
 
-Since BOA-4.0.1 new Drupal 8.7.0 based platforms are included:
+@=> Drupal platforms and Composer support
 
-Lightning 3.3.0 -------------- https://drupal.org/project/lightning
-Thunder 8.2.39 --------------- https://drupal.org/project/thunder
-Varbase 8.6.8 ---------------- https://drupal.org/project/varbase
-Social 8.5.1 (8.6.15 core) --- https://drupal.org/project/social
+We no longer install any supported Drupal distros as platforms by default, but
+you can customize Octopus platform list via control file, which will be used
+on the next Octopus upgrade (you can request it individually if you are on
+hosted Aegir service):
 
-IMPORTANT: You must switch your ~/static/control/cli.info to 7.1 or newer
-PHP version (BOA hosted on Omega8.cc comes with 7,1, 7.2 and 7.3), because
-D8 based distros require at least PHP 7.1 -- this also means that to run
-the sites installed after switching cli.info to 7.1 or newer, you will also
-need to either switch your ~/static/control/fpm.info to 7.1 or newer, or
-more probably, to not break any existing sites not compatible with PHP 7.1+
+  ~/static/control/platforms.info
+
+This file, if exists and contains a list of symbols used to define supported
+platforms, allows to control/override the value of _PLATFORMS_LIST variable
+normally defined in the /root/.${_USER}.octopus.cnf file, which can't be
+modified by the Aegir instance owner with no system root access.
+
+IMPORTANT: If used, it will replace/override the value defined on initial
+instance install and all previous upgrades. It takes effect on every future
+Octopus instance upgrade, which means that you will miss all newly added
+distributions, if they will not be listed also in this control file.
+
+Supported values which can be written in this file, listed in a single line
+or one per line:
+
+Drupal 8 based
+
+  LHG ----------- Lightning
+  OPG ----------- Opigno LMS
+  SOC ----------- Social
+  THR ----------- Thunder
+  VBE ----------- Varbase
+
+Drupal 7 based
+
+  D7P D7S D7D --- Drupal 7 prod/stage/dev
+  AGV ----------- aGov
+  CME ----------- Commerce v.2
+  CS7 ----------- Commons
+  DCE ----------- Commerce v.1
+  GDR ----------- Guardr
+  OA7 ----------- OpenAtrium
+  OAD ----------- OpenAid
+  OLS ----------- OpenLucius
+  OOH ----------- OpenOutreach
+  OPC ----------- OpenPublic
+  OPO ----------- Opigno LMS
+  PPY ----------- Panopoly
+  RST ----------- Restaurant
+  UC7 ----------- Ubercart
+
+Drupal 6 based
+
+  D6P D6S D6D --- Pressflow (LTS) prod/stage/dev
+  DCS ----------- Commons
+  UCT ----------- Ubercart
+
+You can also use special keyword 'ALL' instead of any other symbols to have
+all available platforms installed, including newly added in all future BOA
+system releases.
+
+Examples:
+
+  ALL
+  LHG VBE D7P D7S D7D
+
+Composer will now use PHP 7.3 by default, and you can find many useful hints at:
+  https://github.com/omega8cc/boa/blob/master/docs/COMPOSER.txt
+
+IMPORTANT: You must switch your ~/static/control/cli.info to 7.2 or newer
+PHP version (BOA hosted on Omega8.cc comes with 7.4, 7.3 and 7.2), because
+D8 based distros require at least PHP 7.2 -- this also means that to run
+the sites installed after switching cli.info to 7.2 or newer, you will also
+need to either switch your ~/static/control/fpm.info to 7.2 or newer, or
+more probably, to not break any existing sites not compatible with PHP 7.2+
 you will need to list these D8 sites names in ~/static/control/multi-fpm.info
 
 Please check for more information:
@@ -62,26 +153,23 @@ is not the codebase root directory, but the subdirectory where you see the
 Drupal own index.php and "core" subdirectory. It can be platform-name/web or
 platform-name/docroot or something similar depending on the distro design.
 
-Please read for more details:
-  https://github.com/omega8cc/boa/blob/master/CHANGELOG.txt
 
 @=> Important PHP versions availability changes
 
 Still on PHP 5.6? You should switch to PHP 7.3 — It’s twice as fast as 5.6!
 But don't switch blindly -- even sites already running on PHP 7.0 before
-are most probably not ready for PHP 7.2 or 7.3 without proper fixes.
+are most probably not ready for PHP 7.4 or 7.3 without proper fixes.
 
-Note: BOA-4.0.1 release removes PHP 5.3, 5.4 and 5.5, if installed.
-In addition to still supported, even if officially deprecated 5.6 and 7.0
-versions, this release adds support for PHP 7.3, 7.2 and 7.1
+In addition to still supported, even if officially deprecated 5.6, 7.0, 7.1
+versions, this release supports PHP 7.4, 7.3 and 7.2
 
 Please check the PHP officially supported versions list at:
   http://php.net/supported-versions.php
 
 In our limited testing Drupal 7 core version included in this release works
-without noticeable issues with both PHP 7.2 and 7.3, although many contrib
-modules may not be ready to switch your instance to 7.3 or 7.2 just yet,
-especially if you have not used PHP 7.0 already.
+without noticeable issues with both PHP 7.3 and 7.4, although many contrib
+modules may not be ready to switch your instance to 7.4 or 7.3 just yet,
+especially if you have not used PHP 7.x already.
 
 We recommend to test your sites clones with newer PHP versions using BOA
 multi-PHP-version support via ~/static/control/multi-fpm.info before
@@ -96,8 +184,6 @@ community support made the latest Pressflow 6 version compatible with PHP 7.2
 If you still have a reason to use Drupal 6 core, we recommend to use
 our version: https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
-Please read for more details:
-  https://github.com/omega8cc/boa/blob/master/CHANGELOG.txt
 
 @=> Let's Encrypt certificates
 
@@ -126,33 +212,9 @@ Note: If you have used SSL add-on with dedicated IP address before,
 you need to update DNS to point it to your instance default IP address,
 which can be found in your (long) welcome email, in the section #2
 
-@=> Speaking of docs. Be the change you want to see, and participate in
-@=> the BOA docs rewrite: http://bit.ly/2aK0Vli - your input is welcome!
-
-Also, your Aegir instance has been upgraded to version boa.version
+Your Aegir instance has been just upgraded to version boa.version
 
   https://aegir.url.name
-
-Please read about all improvements and changes at:
-
-  https://github.com/omega8cc/boa/blob/master/CHANGELOG.txt
-
-Known issues -- affects WinSCP/Putty users
-
-  The "Error decoding SFTP packet" -- affects WinSCP/Putty
-  We recommend to use CybderDuck for reliable SFTP access.
-  For known fix please check https://bit.ly/2HMGd6u -- quote below:
-  >>>>>
-    Basically we need to set the ‘Preferred SFTP protocol version’ to 3.
-    How to do this:
-      Edit the connection in WinSCP
-      Open the Advanced menu
-      Choose Advanced
-      This will bring up a new popup.
-      Under Environment click on SFTP
-      Change ‘Preferred SFTP protocol version’ to 3
-      Save the changes.
-  >>>>>
 
 Questions? Comments? Join us on Gitter and GitHub:
 

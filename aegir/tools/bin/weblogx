@@ -1,0 +1,336 @@
+#!/bin/bash
+
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+SHELL=/bin/bash
+
+crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+_USE_GITHUB=/root/.goaccess.use.github.txt
+_GOACCESS_VRN=1.3
+_TOKYOCABINET_VRN=1.4.48
+sPmrs="https://raw.githubusercontent.com/matomo-org/referrer-spam-blacklist/master/spammers.txt"
+touch /root/.goaccess.use.github.txt
+
+check_root() {
+  if [ `whoami` = "root" ]; then
+    ionice -c2 -n7 -p $$
+    renice 19 -p $$
+    chmod a+w /dev/null
+    if [ ! -e "/dev/fd" ]; then
+      if [ -e "/proc/self/fd" ]; then
+        rm -rf /dev/fd
+        ln -s /proc/self/fd /dev/fd
+      fi
+    fi
+  else
+    echo "ERROR: This script should be ran as a root user"
+    exit 1
+  fi
+  _DF_TEST=$(df -kTh / -l \
+    | grep '/' \
+    | sed 's/\%//g' \
+    | awk '{print $6}' 2> /dev/null)
+  _DF_TEST=${_DF_TEST//[^0-9]/}
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
+    exit 1
+  fi
+}
+check_root
+
+if [ -e "/root/.pause_tasks_maint.cnf" ]; then
+  exit 0
+fi
+
+if [ -e "/root/.barracuda.cnf" ]; then
+  source /root/.barracuda.cnf
+fi
+
+if [ "${_ENABLE_GOACCESS}" != "YES" ]; then
+  if [ -d "/var/www/adminer/access/archive" ]; then
+    rm -rf /var/www/adminer/access
+    rm -f /root/.goaccessrc*
+  fi
+  exit 0
+fi
+
+find_fast_mirror() {
+  isNetc=$(which netcat 2>&1)
+  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    apt-get update -qq &> /dev/null
+    apt-get install netcat ${forCer} &> /dev/null
+    sleep 3
+  fi
+  _USE_MIR="files.aegir.cc"
+  if ! netcat -w 10 -z "${_USE_MIR}" 80; then
+    echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
+    _USE_MIR="104.245.208.226"
+  fi
+  urlDev="http://${_USE_MIR}/dev"
+  urlHmr="http://${_USE_MIR}/versions/master/aegir"
+}
+
+fetch_geoip() {
+  mkdir -p /usr/share/GeoIP
+  chmod 755 /usr/share/GeoIP
+  mkdir -p /opt/tmp
+  cd /opt/tmp
+
+# For GeoIP2 City database:
+#   wget -q -U iCab \
+#     wget -N http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.mmdb.gz
+#   gunzip GeoLite2-City.mmdb.gz &> /dev/null
+#   cp -af GeoLite2-City.mmdb /usr/share/GeoIP/
+
+# For GeoIP2 Country database:
+#   wget -q -U iCab \
+#     wget -N http://geolite.maxmind.com/download/geoip/database/GeoLite2-Country.mmdb.gz
+#   gunzip GeoLite2-Country.mmdb.gz &> /dev/null
+#   cp -af GeoLite2-Country.mmdb /usr/share/GeoIP/
+
+  chmod 644 /usr/share/GeoIP/*
+  rm -f /opt/tmp/Geo*
+  cd
+}
+
+install_goaccess() {
+  echo "Installing GoAccess ${_GOACCESS_VRN} with dependencies..."
+  cd
+  if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+    && [ -e "/etc/apt/apt.conf.d" ]; then
+    echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+  fi
+  apt-get clean -qq
+  rm -rf /var/lib/apt/lists/*
+  apt-get update -qq
+  aptitude purge goaccess -y
+  apt-get install libmaxminddb-dev -y
+  apt-get install libncurses5-dev -y
+  apt-get install libncursesw5-dev -y
+  apt-get install autopoint -y
+  find_fast_mirror
+  mkdir -p /var/opt
+  cd /var/opt
+  rm -rf /var/opt/goaccess*
+  rm -rf /var/opt/tokyocabinet*
+  echo "Downloading from ${urlDev}/src/tokyocabinet-${_TOKYOCABINET_VRN}.tar.gz"
+  curl -I ${urlDev}/src/tokyocabinet-${_TOKYOCABINET_VRN}.tar.gz
+  curl ${crlGet} "${urlDev}/src/tokyocabinet-${_TOKYOCABINET_VRN}.tar.gz" | tar -xzf -
+  cd /var/opt/tokyocabinet-${_TOKYOCABINET_VRN}
+  bash ./configure --prefix=/usr --enable-off64 --enable-fastest
+  make --quiet
+  make --quiet install
+  if [ -e "${_USE_GITHUB}" ]; then
+    echo "Downloading from https://github.com/allinurl/goaccess.git"
+    git clone https://github.com/allinurl/goaccess.git
+    cd /var/opt/goaccess
+    autoreconf -fi
+  else
+    echo "Downloading from ${urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz"
+    curl -I ${urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz
+    curl ${crlGet} "${urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz" | tar -xzf -
+    cd /var/opt/goaccess-${_GOACCESS_VRN}
+  fi
+  bash ./configure --prefix=/usr --enable-utf8 --enable-geoip=mmdb
+  make --quiet
+  make --quiet install
+  rm -rf /var/opt/goaccess*
+  rm -rf /var/opt/tokyocabinet*
+  cd
+}
+
+if_install() {
+  isGoacs=$(which goaccess 2>&1)
+  if [ ! -x "${isGoacs}" ] \
+    || [ -z "${isGoacs}" ]; then
+    install_goaccess
+  else
+    _GOACCESS_ITD=$(goaccess --version 2>&1 \
+      | tr -d "\n" \
+      | tr -d "v=" \
+      | tr -d "For" \
+      | cut -d" " -f3 \
+      | awk '{ print $1}' 2>&1)
+    if [ "${_GOACCESS_ITD}" = "${_GOACCESS_VRN}." ]; then
+      echo "Latest GoAccess ${_GOACCESS_VRN} already installed"
+    else
+      install_goaccess
+    fi
+  fi
+  if [ -e "/usr/etc/goaccess/goaccess.conf" ]; then
+    if [ ! -e "/root/.goaccessrc" ] || [ ! -e "/root/.goaccessrc.fix14" ]; then
+      echo 'date-format %d/%b/%Y' > /root/.goaccessrc
+      echo 'time-format %H:%M:%S' >> /root/.goaccessrc
+      echo 'log-format ~h{, "} %v [%d:%t %^] "%r" %s %^ %^ %b "%R" "%u" %T "%^"' >> /root/.goaccessrc
+      echo '444-as-404 true' >> /root/.goaccessrc
+      echo '4xx-to-unique-count false' >> /root/.goaccessrc
+      echo 'agent-list false' >> /root/.goaccessrc
+      echo 'all-static-files true' >> /root/.goaccessrc
+      echo 'anonymize-ip true' >> /root/.goaccessrc
+      echo 'browsers-file /usr/etc/goaccess/browsers.list' >> /root/.goaccessrc
+      echo 'double-decode true' >> /root/.goaccessrc
+      echo 'enable-panel BROWSERS' >> /root/.goaccessrc
+      echo 'enable-panel GEO_LOCATION' >> /root/.goaccessrc
+      echo 'enable-panel HOSTS' >> /root/.goaccessrc
+      echo 'enable-panel KEYPHRASES' >> /root/.goaccessrc
+      echo 'enable-panel NOT_FOUND' >> /root/.goaccessrc
+      echo 'enable-panel OS' >> /root/.goaccessrc
+      echo 'enable-panel REFERRERS' >> /root/.goaccessrc
+      echo 'enable-panel REFERRING_SITES' >> /root/.goaccessrc
+      echo 'enable-panel REMOTE_USER' >> /root/.goaccessrc
+      echo 'enable-panel REQUESTS_STATIC' >> /root/.goaccessrc
+      echo 'enable-panel REQUESTS' >> /root/.goaccessrc
+      echo 'enable-panel STATUS_CODES' >> /root/.goaccessrc
+      echo 'enable-panel VIRTUAL_HOSTS' >> /root/.goaccessrc
+      echo 'enable-panel VISIT_TIMES' >> /root/.goaccessrc
+      echo 'enable-panel VISITORS' >> /root/.goaccessrc
+      echo 'exclude-ip 127.0.0.1' >> /root/.goaccessrc
+      echo 'ignore-crawlers true' >> /root/.goaccessrc
+      if [ ! -e "/usr/etc/goaccess/spammers.txt" ]; then
+        curl -s -A iCab "${sPmrs}" -o /usr/etc/goaccess/spammers.txt
+      fi
+      if [ -e "/usr/etc/goaccess/spammers.txt" ]; then
+        echo 'ignore-referer /usr/etc/goaccess/spammers.txt' >> /root/.goaccessrc
+      fi
+      echo 'ignore-statics req' >> /root/.goaccessrc
+      echo 'ignore-status 301' >> /root/.goaccessrc
+      echo 'ignore-status 302' >> /root/.goaccessrc
+      echo 'real-os true' >> /root/.goaccessrc
+      echo 'sort-panel BROWSERS,BY_VISITORS,DESC' >> /root/.goaccessrc
+      echo 'sort-panel GEO_LOCATION,BY_VISITORS,DESC' >> /root/.goaccessrc
+      echo 'sort-panel HOSTS,BY_VISITORS,DESC' >> /root/.goaccessrc
+      echo 'sort-panel OS,BY_VISITORS,DESC' >> /root/.goaccessrc
+      echo 'sort-panel REFERRERS,BY_VISITORS,DESC' >> /root/.goaccessrc
+      echo 'sort-panel REFERRING_SITES,BY_VISITORS,DESC' >> /root/.goaccessrc
+      echo 'sort-panel REQUESTS_STATIC,BY_VISITORS,DESC' >> /root/.goaccessrc
+      echo 'sort-panel REQUESTS,BY_VISITORS,DESC' >> /root/.goaccessrc
+      if [ ! -e "/usr/share/GeoIP/GeoLite2-City.mmdb" ]; then
+        fetch_geoip
+      fi
+      if [ -e "/usr/share/GeoIP/GeoLite2-City.mmdb" ]; then
+        echo 'geoip-database /usr/share/GeoIP/GeoLite2-City.mmdb' >> /root/.goaccessrc
+      fi
+      echo 'html-prefs {"theme":"darkBlue","perPage":10,"visitors":{"plot":{"chartType":"bar"}},"visit_time":{"plot":{"chartType":"bar"}}}' >> /root/.goaccessrc
+      rm -f /root/.goaccessrc.fix*
+      touch /root/.goaccessrc.fix14
+      sleep 1
+    fi
+  else
+    echo "ERROR: GoAccess was not found.."
+    exit 1
+  fi
+}
+if_install
+
+for i in "$@"; do
+  case $i in
+    -s=*|--site=*)
+        _SITE="${i#*=}"
+        shift # --site=SiteName
+    ;;
+    -e=*|--env=*)
+        _ENV="${i#*=}"
+        shift # --env=[dev|stage|prod]
+    ;;
+    -u=*|--url=*)
+        _URL="${i#*=}"
+        shift # --url=https://site-d8.foo.bar.boa.io/
+    ;;
+    -d=*|--dir=*)
+        _DIR="${i#*=}"
+        shift # --dir=foo/bar
+    ;;
+    -c=*|--ga_conf=*)
+        _GACONF="${i#*=}"
+        shift # --ga_conf=/etc/goaccess.conf
+    ;;
+    *)
+        # nope
+    ;;
+  esac
+done
+
+if [ -z "${_URL}" ]; then
+  if [ -z "${_SITE}" ] && [ -z "${_ENV}" ]; then
+    echo "[-] --site and --env must be specified"
+    exit 1;
+  fi
+else
+  _SITE=${_URL%.boa.io}
+  _SITE=${_SITE%.boa.io}
+  _SITE=${_SITE#dev-}
+  _SITE=${_SITE#stage-}
+  _SITE=${_SITE#prod-}
+  _ENV="$( cut -d '-' -f 1 <<< "$_URL" )"
+fi
+
+echo "[+] _SITE NAME: ${_SITE} / _ENV: ${_ENV}"
+
+if [ -z "${_ARCH}" ]; then
+  _ARCHLOGS=/var/www/adminer/access/archive
+  mkdir -p ${_ARCHLOGS}/unzip
+else
+  _ARCHLOGS=${_ARCH}
+  mkdir -p ${_ARCH}/unzip
+fi
+
+if [ -z "${_DIR}" ]; then
+  mkdir -p /var/www/adminer/access/${_ENV}/${_SITE}
+  _TARGET=/var/www/adminer/access/${_ENV}/${_SITE}
+else
+  mkdir -p ${_DIR}
+  _TARGET=${_DIR}
+fi
+
+if [ ! -e "${_ARCHLOGS}/unzip/.global.pid" ]; then
+  echo "[+] SYNCING LOGS TO: ${_ARCHLOGS}"
+  rsync -rlvz --size-only --progress /var/log/nginx/access* ${_ARCHLOGS}/
+  echo "[+] COPYING LOGS TO: ${_ARCHLOGS}/unzip/"
+  cp -af ${_ARCHLOGS}/access* ${_ARCHLOGS}/unzip/
+  echo "[+] DECOMPRESSING GZ FILES"
+  find ${_ARCHLOGS}/unzip -name "*.gz" -exec gunzip -f {} \;
+  echo "[+] RENAMING RAW FILES"
+  for _log in `find ${_ARCHLOGS}/unzip \
+    -maxdepth 1 -mindepth 1 -type f | sort`; do
+    mv -f ${_log} ${_log}.txt;
+  done
+  if [ -e "${_ARCHLOGS}/unzip/.global.pid.txt" ]; then
+    mv -f ${_ARCHLOGS}/unzip/.global.pid.txt ${_ARCHLOGS}/unzip/.global.pid
+  fi
+  rm -f ${_ARCHLOGS}/unzip/*.txt.txt*
+fi
+
+echo "[+] MERGING AND FILTERING NGINX LOGS"
+if [ -e "${_TARGET}/mrgd_nginx.log" ]; then
+  rm -rf ${_TARGET}/mrgd_nginx.log
+fi
+
+if [[ "${_SITE}" =~ "ALL" ]]; then
+  _SITE_REGEX="/"
+else
+  _SITE_REGEX="${_SITE}"
+fi
+
+find ${_ARCHLOGS}/unzip -name "access*" -exec cat {} \; | grep "${_SITE_REGEX}" >> ${_TARGET}/mrgd_nginx.log
+
+echo "[+] EXPORTING GOACCESS REPORT HTML"
+_GOVER=$(goaccess -V | awk 'NR == 1 { print substr ($3,0,1)}')
+
+[[ ${_GACONF} ]] && conf=(-p "${_GACONF}")
+if [[ ${_GOVER} = 1 ]]; then
+  goaccess -p /root/.goaccessrc --no-global-config --no-query-string -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" -a -o "${_TARGET}/index.html"
+else
+  goaccess -p /root/.goaccessrc --no-global-config --no-query-string -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" > "${_TARGET}/index.html"
+fi
+
+if [ -e "${_TARGET}/mrgd_nginx.log" ]; then
+  rm -rf ${_TARGET}/mrgd_nginx.log
+fi
+
+echo ${_TARGET}/index.html
+echo "[+] DONE!"
+exit 0

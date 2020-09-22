@@ -5,7 +5,7 @@ BOA is an acronym of high performance Barracuda, Octopus and Aegir LEMP stack.
 
 Includes all-in-one bash scripts (see docs/INSTALL.txt for details) to install
 and upgrade high performance Aegir Hosting Systems for Drupal, with Nginx,
-PHP-FPM, Zend OPcache, MariaDB and Redis.
+PHP-FPM, Zend OPcache, Percona and Redis.
 
 
 ###--------------------------------------------------------------------------###
@@ -108,8 +108,8 @@ production settings.
 
 === Included/enabled by default - see docs/NOTES.txt for details
 
-* PHP-FPM 7.3, 7.2, 7.1, 7.0, 5.6 multi-install mode, configurable per site.
-* Latest release of MariaDB 5.5 or 10.1 database server with Adminer manager.
+* PHP-FPM 7.4 7.3 7.2 7.1 7.0 5.6 in multi-install mode, configurable per site.
+* Latest release of Percona 5.7 database server with Adminer manager.
 * All libraries & tools required to install and run Nginx based Aegir system.
 * Magic Speed Booster cache, working like a Boost + AuthCache, but per user.
 * Entry level XSS built-in protection on the Nginx level.
@@ -150,41 +150,46 @@ production settings.
 
 Octopus can install and/or support the platforms listed below:
 
- @ Drupal 8.7.0
+ @ Drupal 9
 
- Lightning 3.3.0 -------------- https://drupal.org/project/lightning
- Thunder 8.2.39 --------------- https://drupal.org/project/thunder
- Varbase 8.6.8 ---------------- https://drupal.org/project/varbase
- Social 8.5.1 (8.6.15 core) --- https://drupal.org/project/social
+ Drupal 9.0.0 ----------------- https://drupal.org/project/drupal/releases/9.0.0
 
- @ Drupal 7.66.1
+ @ Drupal 8
+
+ Lightning 4.103 -------------- https://drupal.org/project/lightning
+ Opigno LMS 2.11 -------------- https://drupal.org/project/opigno_lms
+ Social 8.2 ------------------- https://drupal.org/project/social
+ Thunder 4.5 ------------------ https://drupal.org/project/thunder
+ Varbase 8.4 ------------------ https://drupal.org/project/varbase
+
+ @ Drupal 7.72.1
 
  aGov 3.12 -------------------- https://drupal.org/project/agov
- Commerce 1.58 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.61 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 1.60 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 2.64 ---------------- https://drupal.org/project/commerce_kickstart
  Commons 3.50 ----------------- https://drupal.org/project/commons
- Drupal 7.66.1 ---------------- https://drupal.org/project/drupal/releases/7.66
- Guardr 2.49 ------------------ https://drupal.org/project/guardr
+ Drupal 7.72.1 ---------------- https://drupal.org/project/drupal/releases/7.72
+ Guardr 2.52 ------------------ https://drupal.org/project/guardr
  OpenAid 2.8 ------------------ https://drupal.org/project/openaid
- OpenAtrium 2.642 ------------- https://drupal.org/project/openatrium
+ OpenAtrium 2.645 ------------- https://drupal.org/project/openatrium
  OpenLucius 1.7 --------------- https://drupal.org/project/openlucius
- OpenOutreach 1.55 ------------ https://drupal.org/project/openoutreach
- OpenPublic 1.29 -------------- https://drupal.org/project/openpublic
- Opigno LMS 1.39 -------------- https://drupal.org/project/opigno_lms
- Panopoly 1.66 ---------------- https://drupal.org/project/panopoly
+ OpenOutreach 1.59 ------------ https://drupal.org/project/openoutreach
+ OpenPublic 1.30 -------------- https://drupal.org/project/openpublic
+ Opigno LMS 1.44 -------------- https://drupal.org/project/opigno_lms
+ Panopoly 1.72 ---------------- https://drupal.org/project/panopoly
  Restaurant 1.15 -------------- https://drupal.org/project/restaurant
- Ubercart 3.12 ---------------- https://drupal.org/project/ubercart
+ Ubercart 3.13 ---------------- https://drupal.org/project/ubercart
 
- @ Pressflow 6.49.1
+ @ Pressflow (D6 LTS included, thanks to myDropWizard) 6.54.1
 
  Commons 2.27 ----------------- https://drupal.org/project/commons
- Pressflow 6.49.1 ------------- http://pressflow.org
+ Pressflow 6.54.1 ------------- http://pressflow.org
  Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.66.1 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.72.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
-* All D6 platforms have been enhanced using Pressflow 6.49.1 +Extra core:
+* All D6 platforms have been enhanced using Pressflow (LTS) 6.54.1 +Extra core:
   https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
 * All D6 and D7 platforms include some useful and/all performance related

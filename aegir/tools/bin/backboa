@@ -19,7 +19,7 @@ _DUPLICITY_VRN="0.7.18.2"
 _BOTO_VRN="2.49.0"
 _FASTENERS_VRN="0.14.1"
 _LOGPTH="/var/xdrago/log"
-_NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
@@ -61,17 +61,15 @@ check_root() {
 }
 check_root
 
+if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
+  exit 0
+fi
+
 check_vps() {
   _BENG_VS=NO
   _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+  if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   else
     _VMFAMILY="ALIEN"
@@ -87,31 +85,15 @@ check_vps
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-    rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
     apt-get update -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
-  ffMirr=$(which ffmirror 2>&1)
-  if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors.txt"
-    mkdir -p /var/backups
-    if [ ! -e "${ffList}" ]; then
-      echo "jp.files.aegir.cc"  > ${ffList}
-      echo "nl.files.aegir.cc" >> ${ffList}
-      echo "uk.files.aegir.cc" >> ${ffList}
-      echo "us.files.aegir.cc" >> ${ffList}
-    fi
-    if [ -e "${ffList}" ]; then
-      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
-      _USE_MIR="${_CHECK_MIRROR}"
-      [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
-    else
-      _USE_MIR="files.aegir.cc"
-    fi
-  else
-    _USE_MIR="files.aegir.cc"
-  fi
+  _USE_MIR="files.aegir.cc"
   if ! netcat -w 10 -z "${_USE_MIR}" 80; then
     echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
     _USE_MIR="104.245.208.226"
@@ -132,9 +114,8 @@ install() {
     echo "Installing duplicity dependencies..."
     cd
     find_fast_mirror
-    rm -f /etc/apt/sources.list.d/openssl.list
     apt-get clean -qq                    &> /dev/null
-    rm -f -r /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/*
     apt-get update -qq                   &> /dev/null
     aptitude purge duplicity -y          &> /dev/null
     rm -rf /usr/local/lib/python2.7/dist-packages/fasteners*
@@ -338,7 +319,11 @@ if [ -e "${_LOGPTH}/${BUCKET_DOT}.archive.log" ]; then
   cat ${_LOGPTH}/${BUCKET_DOT}.randomize.cleanup.log >> ${_LOGPTH}/${BUCKET}.randomize.cleanup.log
   mv ${_LOGPTH}/${BUCKET_DOT}.randomize.cleanup.log /var/backups/${BUCKET_DOT}.randomize.cleanup.log
   apt-get clean -qq                    &> /dev/null
-  rm -f -r /var/lib/apt/lists/*
+  rm -rf /var/lib/apt/lists/*
+  if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+    && [ -e "/etc/apt/apt.conf.d" ]; then
+    echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+  fi
   apt-get update -qq                   &> /dev/null
   apt-get install python-pip -y        &> /dev/null
   pip install awscli                   &> /dev/null
@@ -385,7 +370,7 @@ monthly_cleanup() {
     && [ "${_DOM}" = "${_RCL}" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
     if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
-      n=$((RANDOM%10800+8))
+      n=$((RANDOM%7200+8))
       echo "Waiting $n seconds on `date` before running cleanup --force" > ${LOGFILE}
       sleep $n
     fi
@@ -433,12 +418,12 @@ set_mode() {
 run_backup() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
     if [ ! -e "/root/tmp/home/" ]; then
-      n=$((RANDOM%10800+8))
+      n=$((RANDOM%7200+8))
       echo "Waiting $n seconds on `date` before running restore home 7D tmp/home" >> ${LOGFILE}
       sleep $n
       restore home 7D tmp/home >> ${LOGFILE}
     fi
-    n=$((RANDOM%10800+8))
+    n=$((RANDOM%7200+8))
     echo "Waiting $n seconds on `date` before running ${_MODE} backup" >> ${LOGFILE}
     sleep $n
   fi
@@ -452,7 +437,7 @@ run_backup() {
 
 remove_older_than() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
-    n=$((RANDOM%10800+8))
+    n=$((RANDOM%7200+8))
     echo "Waiting $n seconds on `date` before running remove-older-than ${_AWS_TTL}" >> ${LOGFILE}
     sleep $n
   fi
@@ -463,7 +448,7 @@ remove_older_than() {
 
 collection_status() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
-    n=$((RANDOM%10800+8))
+    n=$((RANDOM%7200+8))
     echo "Waiting $n seconds on `date` before running collection-status" >> ${LOGFILE}
     sleep $n
   fi

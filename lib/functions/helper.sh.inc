@@ -267,6 +267,10 @@ mode_detection() {
     msg "INFO: UPGRADE"
     barracuda_cnf
     touch /var/run/boa_wait.pid
+    if [ -e "/root/.auto.up.cnf" ] \
+      || [ -e "/root/.host8.cnf" ]; then
+      _XTRAS_LIST="ADM CSF FTP CSS DCS"
+    fi
   else
     _STATUS=INIT
     if [ -d "/var/aegir" ]; then
@@ -299,8 +303,6 @@ mode_detection() {
       msg "INFO: Localhost Setup Mode Active"
       _XTRAS_LIST="ADM"
       _AUTOPILOT=YES
-      _DEBUG_MODE=NO
-      _DB_SERVER=MariaDB
       _SSH_PORT=22
       _DNS_SETUP_TEST=NO
       _SMTP_RELAY_TEST=NO
@@ -308,13 +310,13 @@ mode_detection() {
       _LOCAL_NETWORK_HN="aegir.local"
     elif [ "${_EASY_SETUP}" = "PUBLIC" ]; then
       msg "INFO: Public Setup Mode Active"
-      _XTRAS_LIST="ADM CSF FTP"
+      _XTRAS_LIST="ADM CSF FTP CSS"
+      if [ -e "/root/.auto.up.cnf" ] \
+        || [ -e "/root/.host8.cnf" ]; then
+        _XTRAS_LIST="ADM CSF FTP CSS DCS"
+      fi
       _AUTOPILOT=YES
-      _DEBUG_MODE=NO
-      _DB_SERVER=MariaDB
       _SSH_PORT=22
-      _DNS_SETUP_TEST=YES
-      _SMTP_RELAY_TEST=YES
       _MY_HOSTN="${_EASY_HOSTNAME}"
       _MY_FRONT="master.${_EASY_HOSTNAME}"
       validate_public_ip &> /dev/null
@@ -323,9 +325,8 @@ mode_detection() {
       msg "INFO: Cluster Master Mode Active"
       _XTRAS_LIST=""
       _AUTOPILOT=YES
-      _DEBUG_MODE=NO
-      _DB_SERVER=MariaDB
-      _DB_SERIES=10.0
+      _DB_SERVER=Percona
+      _DB_SERIES=5.7
       _SSH_PORT=22
       _DNS_SETUP_TEST=NO
       _SMTP_RELAY_TEST=NO
@@ -340,9 +341,8 @@ mode_detection() {
       msg "INFO: Cluster WEB Head Mode Active"
       _XTRAS_LIST=""
       _AUTOPILOT=YES
-      _DEBUG_MODE=NO
-      _DB_SERVER=MariaDB
-      _DB_SERIES=10.0
+      _DB_SERVER=Percona
+      _DB_SERIES=5.7
       _SSH_PORT=22
       _DNS_SETUP_TEST=NO
       _SMTP_RELAY_TEST=NO
@@ -357,9 +357,8 @@ mode_detection() {
       msg "INFO: Cluster DB Head Mode Active"
       _XTRAS_LIST=""
       _AUTOPILOT=YES
-      _DEBUG_MODE=NO
-      _DB_SERVER=MariaDB
-      _DB_SERIES=10.0
+      _DB_SERVER=Percona
+      _DB_SERIES=5.7
       _SSH_PORT=22
       _DNS_SETUP_TEST=NO
       _SMTP_RELAY_TEST=NO
@@ -390,6 +389,12 @@ mode_detection() {
       -o Dpkg::Options::=--force-confdef \
       -o Dpkg::Options::=--force-confold install"
   fi
+
+  _RMAPP="/usr/bin/aptitude -f -y -q \
+    --allow-untrusted \
+    -o Dpkg::Options::=--force-confdef \
+    -o Dpkg::Options::=--force-confold remove"
+
   _SRCDIR="/opt/tmp/files"
   rm -rf /var/opt/*
   mkdir -p ${_SRCDIR}
@@ -508,29 +513,29 @@ os_detection() {
   _THIS_RV=$(lsb_release -sc 2>&1)
   if [ "${_THIS_OS}" = "Ubuntu" ]; then
     if [ "${_THIS_RV}" = "trusty" ]; then
-      _OSV="trusty"
+      _OSR="trusty"
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=NO
-      if [ "${_DB_SERIES}" = "10.3" ]; then
+      if [ "${_DB_SERIES}" = "10.4" ]; then
+        _DB_SERVER=MariaDB
+        _DBS_VRN="${_MARIADB_10_4_VRN}"
+      elif [ "${_DB_SERIES}" = "10.3" ]; then
         _DB_SERVER=MariaDB
         _DBS_VRN="${_MARIADB_10_3_VRN}"
       elif [ "${_DB_SERIES}" = "10.2" ]; then
         _DB_SERVER=MariaDB
         _DBS_VRN="${_MARIADB_10_2_VRN}"
-      elif [ "${_DB_SERIES}" = "10.1" ]; then
-        _DB_SERVER=MariaDB
-        _DBS_VRN="${_MARIADB_10_1_VRN}"
       elif [ "${_DB_SERIES}" = "5.7" ]; then
         _DB_SERVER=Percona
         _DBS_VRN="${_PERCONA_5_7_VRN}"
       else
-        _DB_SERVER=MariaDB
-        _DB_SERIES=10.1
-        _DBS_VRN="${_MARIADB_10_1_VRN}"
+        _DB_SERVER=Percona
+        _DB_SERIES=5.7
+        _DBS_VRN="${_PERCONA_5_7_VRN}"
       fi
     elif [ "${_THIS_RV}" = "precise" ]; then
-      _OSV="precise"
+      _OSR="precise"
       _NGINX_FORWARD_SECRECY=YES
       _NGINX_SPDY=YES
       _SSH_FROM_SOURCES=NO
@@ -538,32 +543,36 @@ os_detection() {
       not_supported_os
     fi
   elif [ "${_THIS_OS}" = "Debian" ]; then
-    if [ "${_THIS_RV}" = "stretch" ]; then
-      _OSV="stretch"
+    if [ "${_THIS_RV}" = "buster" ]; then
+      _OSR="buster"
+      _DB_SERVER=Percona
+      _DB_SERIES=5.7
+      _DBS_VRN="${_PERCONA_5_7_VRN}"
+    elif [ "${_THIS_RV}" = "stretch" ]; then
+      _OSR="stretch"
     elif [ "${_THIS_RV}" = "jessie" ]; then
-      _OSV="jessie"
+      _OSR="jessie"
     else
       not_supported_os
     fi
     _NGINX_FORWARD_SECRECY=YES
     _NGINX_SPDY=YES
-    _SSH_FROM_SOURCES=YES
-    if [ "${_DB_SERIES}" = "10.3" ]; then
+    if [ "${_DB_SERIES}" = "10.4" ]; then
+      _DB_SERVER=MariaDB
+      _DBS_VRN="${_MARIADB_10_4_VRN}"
+    elif [ "${_DB_SERIES}" = "10.3" ]; then
       _DB_SERVER=MariaDB
       _DBS_VRN="${_MARIADB_10_3_VRN}"
     elif [ "${_DB_SERIES}" = "10.2" ]; then
       _DB_SERVER=MariaDB
       _DBS_VRN="${_MARIADB_10_2_VRN}"
-    elif [ "${_DB_SERIES}" = "10.1" ]; then
-      _DB_SERVER=MariaDB
-      _DBS_VRN="${_MARIADB_10_1_VRN}"
     elif [ "${_DB_SERIES}" = "5.7" ]; then
       _DB_SERVER=Percona
       _DBS_VRN="${_PERCONA_5_7_VRN}"
     else
-      _DB_SERVER=MariaDB
-      _DB_SERIES=10.1
-      _DBS_VRN="${_MARIADB_10_1_VRN}"
+      _DB_SERVER=Percona
+      _DB_SERIES=5.7
+      _DBS_VRN="${_PERCONA_5_7_VRN}"
     fi
     _SPINNER=NO
     _SKIP_LEGACY_PHP=YES
@@ -579,26 +588,34 @@ os_detection() {
 
 check_boa_php_compatibility() {
   if [[ "${_PHP_MULTI_INSTALL}" =~ "7.3" ]] \
-    || [[ "${_PHP_MULTI_INSTALL}" =~ "7.2" ]] \
-    || [[ "${_PHP_MULTI_INSTALL}" =~ "7.1" ]] \
-    || [[ "${_PHP_MULTI_INSTALL}" =~ "7.0" ]]; then
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "7.2" ]]; then
     _DO_NOTHING=YES
   else
-    msg "ERROR: This BOA version depends on PHP 7.1 or newer"
-    msg "Please add 7.1 and/or 7.2 to _PHP_MULTI_INSTALL"
+    msg "ERROR: This BOA version depends on PHP 7.2 or newer"
+    msg "Please add 7.2 and/or 7.3 to _PHP_MULTI_INSTALL"
     msg "in /root/.barracuda.cnf before trying again"
+    msg "NOTE: You can still install also 7.4, 7.1, 7.0 and even legacy 5.6"
+    msg "NOTE: but you must also include at least 7.3 to support Drupal 9"
     msg "Bye"
     clean_pid_exit
   fi
   if [ "${_PHP_FPM_VERSION}" = "5.3" ] \
     || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
     || [ "${_PHP_FPM_VERSION}" = "5.5" ] \
+    || [ "${_PHP_FPM_VERSION}" = "5.6" ] \
+    || [ "${_PHP_FPM_VERSION}" = "7.0" ] \
+    || [ "${_PHP_FPM_VERSION}" = "7.1" ] \
     || [ "${_PHP_CLI_VERSION}" = "5.3" ] \
     || [ "${_PHP_CLI_VERSION}" = "5.4" ] \
-    || [ "${_PHP_CLI_VERSION}" = "5.5" ]; then
-    msg "ERROR: This BOA version depends on PHP 7.1 or newer"
-    msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to 7.1 or 7.2"
+    || [ "${_PHP_CLI_VERSION}" = "5.5" ] \
+    || [ "${_PHP_CLI_VERSION}" = "5.6" ] \
+    || [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+    || [ "${_PHP_CLI_VERSION}" = "7.1" ]; then
+    msg "ERROR: This BOA version depends on PHP 7.2 or newer"
+    msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to 7.2 or 7.3"
     msg "in /root/.barracuda.cnf before trying again"
+    msg "NOTE: You can still install also 7.4, 7.1, 7.0 and even legacy 5.6"
+    msg "NOTE: but you must use as default version 7.3+ to support Drupal 9"
     msg "Bye"
     clean_pid_exit
   fi

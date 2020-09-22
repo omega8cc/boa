@@ -36,8 +36,8 @@ _CPU_MAX_RATIO=6 #-------------- Max load per CPU core before disabling Nginx
 _CPU_SPIDER_RATIO=3 #----------- Max load per CPU core before blocking spiders
 ###
 _DB_BINARY_LOG=NO #------------- Allows to enable binary logging when YES
-_DB_SERIES=10.1 #--------------- Supported production values: 10.1 or 5.7
-_DB_SERVER=MariaDB #------------ Allows to install MariaDB or Percona server
+_DB_SERIES=5.7 #---------------- Supported values: 5.7, 10.2, 10.3 or 10.4
+_DB_SERVER=Percona #------------ Allows to install Percona or MariaDB server
 _USE_MYSQLTUNER=YES #----------- Use MySQLTuner to configure SQL limits when YES
 ###
 _DNS_SETUP_TEST=YES #----------- Allows to skip DNS testing when NO
@@ -48,9 +48,11 @@ _LOCAL_UBUNTU_MIRROR= #--------- Allows to force non-default Ubuntu mirror
 _NEWRELIC_KEY= #---------------- Installs New Relic when license key is set
 _SCOUT_KEY= #------------------- Installs Scout App when license key is set
 ###
+_ENABLE_GOACCESS=NO #----------- Generate statistics with GoAccess when YES
+###
 _MAGICK_FROM_SOURCES=NO #------- Builds ImageMagick from sources when YES
 ###
-_NGINX_DOS_LIMIT=300 #---------- Allows to override default 250/300 limit
+_NGINX_DOS_LIMIT=100 #---------- Allows to override default 250/300 limit
 _NGINX_EXTRA_CONF="" #---------- Allows to add custom options to Nginx build
 _NGINX_FORWARD_SECRECY=YES #---- Installs PFS Nginx support when YES (default)
 _NGINX_HEADERS=NO #------------- Installs Nginx Headers More support when YES
@@ -59,22 +61,23 @@ _NGINX_NAXSI=NO #--------------- Installs NAXSI WAF when YES - experimental
 _NGINX_SPDY=YES #--------------- Installs SPDY Nginx support when YES (default)
 _NGINX_WORKERS=AUTO #----------- Allows to override AUTO with a valid integer
 ###
-_PHP_CLI_VERSION=7.2 #---------- PHP-CLI for Master Instance: 7.0/1/2/3 5.6
+_PHP_CLI_VERSION=7.3 #---------- PHP-CLI for Master Instance: 7.0/1/2/3/4 5.6
 _PHP_EXTRA_CONF="" #------------ Allows to add custom options to PHP build
 _PHP_FPM_DENY="" #-------------- Modify disable_functions -- see info below
-_PHP_FPM_VERSION=7.2 #---------- PHP-FPM for Master Instance: 7.0/1/2/3 5.6
+_PHP_FPM_VERSION=7.3 #---------- PHP-FPM for Master Instance: 7.0/1/2/3/4 5.6
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_IONCUBE=NO #--------------- Installs ionCube for all PHP versions when YES
 _PHP_GEOS=NO #------------------ Installs GEOS for all PHP versions when YES
 _PHP_MONGODB=NO #--------------- Installs MONGODB for all PHP versions when YES
-_PHP_MULTI_INSTALL="7.2 5.6" #-- PHP versions to install: 7.0/1/2/3 5.6
+_PHP_MULTI_INSTALL="7.3 5.6" #-- PHP versions to install: 7.0/1/2/3/4 5.6
 _PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 7.1
 ###
 _REDIS_LISTEN_MODE=SOCKET #----- Redis listen mode: SOCKET (recommended) or PORT
+_REDIS_MAJOR_RELEASE=6 #-------- Redis major release version: 4, 5, 6
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
 _SPEED_VALID_MAX=3600 #--------- Defines Speed Booster hourly cache TTL in sec
 _SSH_ARMOUR=NO #---------------- Allows to enhance OpenSSH security when YES
-_SSH_FROM_SOURCES=YES #--------- Allows to build OpenSSH from sources on Debian
+_SSH_FROM_SOURCES=NO #---------- Allows to build OpenSSH from sources on Debian
 _SSH_PORT=22 #------------------ Allows to configure non-standard SSH port
 _STRICT_BIN_PERMISSIONS=YES #--- Aggressively protect all binaries when YES
 _STRONG_PASSWORDS=NO #---------- Configurable length: 8-128, YES (32), NO (8)
@@ -99,19 +102,25 @@ _SYSTEM_UPGRADE_ONLY=NO #------- Managed on the fly with 'system' keyword
 ###
 
 ###
-### You can configure BOA to run automated upgrades to latest stable version
+### You can configure BOA to run automated upgrades to latest head version
 ### for both Barracuda and all Octopus instances with three variables, empty
 ### by default. All three variables must be defined to enable auto-upgrade.
 ### You can set _AUTO_UP_MONTH and _AUTO_UP_DAY to any date in the past
 ### if you wish to enable only weekly system upgrades.
 ###
 ### Remember that one-time upgrades will include complete upgrade to latest BOA
-### stable for Barracuda and all Octopus instances, while weekly upgrade is
-### designed to run only 'barracuda up-stable system' upgrade.
+### head for Barracuda and all Octopus instances, while weekly upgrade is
+### designed to run only 'barracuda up-head system' upgrade.
+###
+### You can further modify the auto-upgrade by specifying either head or stable
+### with _AUTO_VER variable, plus you can include all supported PHP versions
+### with _AUTO_PHP variable set to "php-all" -- otherwise it will be ignored.
 ###
 _AUTO_UP_WEEKLY= #-------------- Day of week (1-7) for weekly system upgrades
 _AUTO_UP_MONTH= #--------------- Month (1-12) to define date of one-time upgrade
 _AUTO_UP_DAY= #----------------- Day (1-31) to define date of one-time upgrade
+_AUTO_VER=head #---------------- Use head (default) or stable (only if released)
+_AUTO_PHP= #-------------------- Useful to force php-all, otherwise ignored
 
 ###
 ### You can whitelist extra binaries to make them available for web server

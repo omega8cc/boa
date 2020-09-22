@@ -4,15 +4,16 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 branch="4.x"
-cluster="BOA-4.0.1"
+cluster="BOA-4.1.2"
 hd="HEAD"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
 lgcD="BOA-3.2.2"
 master="master"
-nextv="BOA-4.0.2-dev"
-stbl="BOA-4.0.1"
+nextv="BOA-4.1.3-dev"
+stbl="BOA-4.1.2"
+verup="BOA-4.1.2"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -28,20 +29,13 @@ vBs="/var/backups"
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
+_CHECK_HOST=$(uname -n 2>&1)
 _VMFAMILY=XEN
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
-else
-  _VMFAMILY="XEN"
 fi
 
 clean_pid_exit() {
@@ -156,15 +150,25 @@ system_check_ready() {
 }
 
 system_check_clean() {
+  if [ -e "/etc/mysql" ]; then
+    mv -f /etc/mysql /etc/mysql_pre
+  fi
   if [ -e "/etc/nginx" ] \
     || [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
     || [ -e "/etc/apache2" ] \
-    || [ -e "/etc/mysql" ] \
     || [ -e "/var/lib/mysql" ]; then
-    echo "ERROR: BOA installation procedure requires minimal supported OS."
-    echo "ERROR: Please make sure you don't have MySQL nor Apache installed."
-    echo "ERROR: Here's the list of directories which shouldn't exist:"
-    echo "ERROR: /etc/nginx /etc/apache2 /etc/mysql /var/lib/mysql /var/aegir"
+    echo "ERROR: BOA requires minimal supported OS with no services installed."
+    echo
+    echo "Please make sure you don't have MySQL nor Apache installed."
+    echo "Here's the list of directories which shouldn't exist:"
+    echo "/etc/nginx /etc/apache2 /etc/mysql /var/lib/mysql /var/aegir"
+    if [ ! -e "/etc/nginx" ]; then
+      echo
+      echo "HINT: Try to run: apt-get purge mysql-common --and then try again."
+      echo "HINT: You can also enforce installation with empty control file:"
+      echo " touch /root/.force.reinstall.cnf -- and then try again."
+      echo
+    fi
     echo "Bye"
     clean_pid_exit
   fi
@@ -286,13 +290,6 @@ fix_dns_settings() {
     echo "nameserver 1.1.1.1" >${vBs}/resolv.conf.tmp
     echo "nameserver 1.0.0.1" >>${vBs}/resolv.conf.tmp
   fi
-  if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
-    for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
-      if [ -e "${Pre}" ] && [ -f "${Pre}" ] && [ ! -L "${Pre}" ]; then
-        cp -a ${Pre} ${vBs}/resolv.conf.vanilla
-      fi
-    done
-  fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ] \
     && [ -e "${vBs}/resolv.conf.tmp" ]; then
     if [ "${_USE_DEFAULT_DNS}" != "YES" ]; then
@@ -385,13 +382,13 @@ check_dns_settings() {
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
   else
-    _REMOTE_DNS_TEST=$(host -a files.aegir.cc 1.1.1.1 -w 10 2>&1)
+    _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10 2>&1)
   fi
   if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
     || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.aegir.cc not found" ]] \
     || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
-    _CTRL_DNS_TEST=$(host -a files.aegir.cc 2>&1)
+    _CTRL_DNS_TEST=$(host files.aegir.cc 2>&1)
     if [[ ! "${_CTRL_DNS_TEST}" =~ "104.245.208.226" ]] \
       || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
       || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
@@ -406,12 +403,12 @@ check_dns_settings() {
 
 octopus_install() {
   if [ -e "${vBs}/${octName}" ]; then
-
     if [ -z "${user}" ]; then
       user="o1"
+    else
+      user=${user//[^a-zA-Z0-9-.]/}
+      user=$(echo -n ${user} | tr A-Z a-z 2>&1)
     fi
-    _CHECK_HOST=$(uname -n 2>&1)
-
     if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
@@ -484,13 +481,13 @@ octopus_install() {
       if [ -e "${vBs}/${filIncO}" ]; then
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${filIncO}
         wait
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${vBs}/${filIncO}
+        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  ${vBs}/${filIncO}
         wait
       fi
       ### Legacy method
       sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${octName}
       wait
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     ${vBs}/${octName}
+      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"    ${vBs}/${octName}
       wait
     elif [ "${mode}" = "none" ]; then
       if [ -e "${vBs}/${filIncO}" ]; then
@@ -506,11 +503,11 @@ octopus_install() {
       wait
     else
       if [ -e "${vBs}/${filIncO}" ]; then
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${vBs}/${filIncO}
+        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  ${vBs}/${filIncO}
         wait
       fi
       ### Legacy method
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     ${vBs}/${octName}
+      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"    ${vBs}/${octName}
       wait
     fi
 
@@ -786,7 +783,20 @@ barracuda_install() {
     if [ ! -z "${rkey}" ] \
       && [ -e "${vBs}/${filIncB}" ] \
       && [ -e "${vBs}/${filIncO}" ]; then
-      if [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
+      if [ "${rkey}" = "php-74" ] || [ "${rkey}" = "php-7.4" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.4/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.4/g"   ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${filIncO}
+        wait
+      elif [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.3/g" ${vBs}/${filIncB}
         wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.3/g"   ${vBs}/${filIncB}
@@ -853,7 +863,7 @@ barracuda_install() {
         wait
       elif [ "${rkey}" = "php-all" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=/g"    ${vBs}/${filIncB}
-        pA="7.3 7.2 7.1 7.0 5.6"
+        pA="7.4 7.3 7.2 7.1 7.0 5.6"
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${filIncB}
         wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.2/g" ${vBs}/${filIncB}
@@ -881,7 +891,16 @@ barracuda_install() {
       && [ -e "${vBs}/${barName}" ] \
       && [ -e "${vBs}/${octName}" ]; then
       ### Legacy method
-      if [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
+      if [ "${rkey}" = "php-74" ] || [ "${rkey}" = "php-7.4" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.4/g" ${vBs}/${barName}
+        wait
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.4/g"   ${vBs}/${barName}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${octName}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${octName}
+        wait
+      elif [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.3/g" ${vBs}/${barName}
         wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.3/g"   ${vBs}/${barName}
@@ -928,7 +947,7 @@ barracuda_install() {
         wait
       elif [ "${rkey}" = "php-all" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=/g"    ${vBs}/${barName}
-        pA="7.3 7.2 7.1 7.0 5.6"
+        pA="7.4 7.3 7.2 7.1 7.0 5.6"
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${barName}
         wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.2/g" ${vBs}/${barName}
@@ -1217,9 +1236,30 @@ init_setup() {
     curl ${crlGet} "${rgUrl}/${lgcA}/${barName}"    -o ${vBs}/${barName}
     curl ${crlGet} "${rgUrl}/${lgcA}/${octName}"    -o ${vBs}/${octName}
   fi
+  if [ "${sql}" = "percona" ]; then
+    sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"         ${vBs}/${filIncB}
+    wait
+    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"     ${vBs}/${filIncB}
+    wait
+  elif [ "${sql}" = "mariadb" ]; then
+    sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g"        ${vBs}/${filIncB}
+    wait
+    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"     ${vBs}/${filIncB}
+    wait
+  fi
   if [ -e "/root/.debug-boa-installer.cnf" ]; then
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncB}
+    wait
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncO}
+    wait
+  fi
+  if [ -e "/root/.debug-barracuda-installer.cnf" ]; then
+    sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncB}
+    wait
+  fi
+  if [ -e "/root/.debug-octopus-installer.cnf" ]; then
+    sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncO}
+    wait
   fi
   if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
     _OCTOPUS_ONLY=YES
@@ -1235,14 +1275,17 @@ init_setup() {
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-    rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
     apt-get update -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
   if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors.txt"
+    ffList="/var/backups/boa-mirrors-2020-02.txt"
     mkdir -p /var/backups
     if [ ! -e "${ffList}" ]; then
       echo "jp.files.aegir.cc"  > ${ffList}
@@ -1288,9 +1331,13 @@ check_dns_curl() {
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt-get clean -qq &> /dev/null
-    rm -f -r /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/*
     apt-get update -qq &> /dev/null
     apt-get install curl ${forCer} &> /dev/null
     touch /root/.use.curl.from.packages.cnf
@@ -1313,6 +1360,12 @@ check_dns_curl() {
 
 check_fix_csf() {
   if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
+    if [ ! -x "/etc/csf/csfpost.sh" ]; then
+      echo "" > /etc/csf/csfpost.sh
+      echo "iptables -t raw -A PREROUTING -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
+      echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
+      chmod 700 /etc/csf/csfpost.sh
+    fi
     csf -a 50.31.251.116 jp.files.aegir.cc   &> /dev/null
     csf -a 50.31.233.231 nl.files.aegir.cc   &> /dev/null
     csf -a 134.19.164.236 uk.files.aegir.cc  &> /dev/null
@@ -1325,12 +1378,28 @@ check_fix_csf() {
     csf -e  &> /dev/null
     sleep 3
     service lfd start &> /dev/null
+    ### Linux kernel TCP SACK CVEs mitigation
+    ### CVE-2019-11477 SACK Panic
+    ### CVE-2019-11478 SACK Slowness
+    ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
+    if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+      _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+      if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
+        sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
+        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/sull
+        ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+      fi
+    fi
   fi
 }
 
 check_root() {
   if [ `whoami` = "root" ]; then
     if [ -e "/root/.barracuda.cnf" ]; then
+      if [ -e "/root/.debug-boa-installer.cnf" ] \
+        || [ -e "/root/.debug-barracuda-installer.cnf" ]; then
+        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g" /root/.barracuda.cnf
+      fi
       source /root/.barracuda.cnf
       _B_NICE=${_B_NICE//[^0-9]/}
     fi
@@ -1359,17 +1428,8 @@ check_root() {
     wait
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
     wait
-    _GH_TEST=$(cat /etc/hosts | grep github 2>&1)
-    if [[ ! "${_GH_TEST}" =~ "github.com" ]]; then
-      echo "192.30.253.113 github.com" >> /etc/hosts
-      wait
-      echo "151.101.32.133 raw.githubusercontent.com" >> /etc/hosts
-      wait
-      echo >>/etc/hosts
-      wait
-      service pdnsd restart &> /dev/null
-      pdnsd-ctl empty-cache &> /dev/null
-    fi
+    sed -i "s/.*github.*//g" /etc/hosts
+    wait
     echo >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
     wait
@@ -1386,6 +1446,10 @@ check_root() {
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
     clean_pid_exit
+  fi
+  if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+    && [ -e "/etc/apt/apt.conf.d" ]; then
+    echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   fi
   if [ "${_VMFAMILY}" = "VS" ]; then
     if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
@@ -1455,7 +1519,9 @@ check_root() {
       fi
     done
     for s in cron dbus ssh; do
-      sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/$s > /etc/insserv/overrides/$s
+      if [ -e "/etc/init.d/${s}" ]; then
+        sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/${s} > /etc/insserv/overrides/${s}
+      fi
     done
     /sbin/insserv -v -d &> /dev/null
   fi
@@ -1548,16 +1614,65 @@ display_info() {
       _CPU_NR=$(nproc 2>&1)
     fi
     _CPU_NR=${_CPU_NR//[^0-9]/}
-    if [ ! -z "${_CPU_NR}" ] && [ ! -z "${_CPU_INFO}" ] \
-      && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt "0" ]; then
+    if [ ! -z "${_CPU_NR}" ] \
+      && [ ! -z "${_CPU_INFO}" ] \
+      && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
+      && [ "${_CPU_INFO}" -gt "0" ]; then
       _CPU_NR="${_CPU_INFO}"
     fi
+    _DF_TEST=$(df -kTh / -l \
+      | grep '/' \
+      | sed 's/\%//g' \
+      | awk '{print $6}' 2> /dev/null)
+    _DF_TEST=${_DF_TEST//[^0-9]/}
     if [ -x "/usr/sbin/nginx" ]; then
-      _NGX=$(/usr/sbin/nginx -v 2>&1 | tr -d "\n" \
-        | cut -d" " -f4 | awk '{ print $1}' 2>&1)
+      _NGX=$(/usr/sbin/nginx -v 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f4 \
+        | awk '{ print $1}' \
+        | cut -d"/" -f2 \
+        | awk '{ print $1}' 2>&1)
       if [ -z "${_NGX}" ]; then
-        _NGX=$(/usr/sbin/nginx -v 2>&1 | tr -d "\n" \
-          | cut -d" " -f3 | awk '{ print $1}' 2>&1)
+        _NGX=$(/usr/sbin/nginx -v 2>&1 \
+          | tr -d "\n" \
+          | cut -d" " -f3 \
+          | awk '{ print $1}' \
+          | cut -d"/" -f2 \
+          | awk '{ print $1}' 2>&1)
+      fi
+    fi
+    if [ -x "/usr/bin/php-cli" ]; then
+      _PHP=$(/usr/bin/php-cli -v | grep 'PHP 7' \
+        | cut -d: -f1 | awk '{ print $2}' 2>&1)
+      if [ -z "${_PHP}" ]; then
+        _PHP=$(/usr/bin/php-cli -v | grep 'PHP 5' \
+          | cut -d: -f1 | awk '{ print $2}' 2>&1)
+      fi
+    fi
+    _DBV=$(mysql -V 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f6 \
+      | awk '{ print $1}' \
+      | cut -d"-" -f1 \
+      | awk '{ print $1}' \
+      | sed "s/[\,']//g" 2>&1)
+    if [ -x "/usr/bin/proxysql" ]; then
+      _PXY=$(proxysql --version 2>&1 \
+        | tr -d "\n" \
+        | cut -d"-" -f1 \
+        | awk '{ print $3}' 2>&1)
+    fi
+    if [ -x "/usr/bin/redis-server" ]; then
+      _RDS=$(redis-server -v 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f4 \
+        | awk '{ print $1}' 2>&1)
+      if [[ "${_RDS}" =~ "sha" ]]; then
+        _RDS=$(redis-server -v 2>&1 \
+          | tr -d "\n" \
+          | tr -d "v=" \
+          | cut -d" " -f3 \
+          | awk '{ print $1}' 2>&1)
       fi
     fi
     _SSL=$(openssl version 2>&1 \
@@ -1574,63 +1689,100 @@ display_info() {
       | cut -d"_" -f2 \
       | awk '{ print $1}' 2>&1)
     _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
-    _XTR=$(grep _XTRAS_LIST /root/.barracuda.cnf 2>&1)
-    _MFX=$(grep _MODULES_FIX /root/.barracuda.cnf 2>&1)
-    _PFX=$(grep _PERMISSIONS_FIX /root/.barracuda.cnf 2>&1)
-    _DBS=$(grep _DB_SERIES /root/.barracuda.cnf 2>&1)
-    _DNS=$(grep _DNS_SETUP_TEST /root/.barracuda.cnf 2>&1)
-    _PKG=$(grep _EXTRA_PACKAGES /root/.barracuda.cnf 2>&1)
-    _ARM=$(grep _SSH_ARMOUR /root/.barracuda.cnf 2>&1)
-    _STG=$(grep _STRONG_PASSWORDS /root/.barracuda.cnf 2>&1)
-    _CSF=$(grep _CUSTOM_CONFIG_CSF /root/.barracuda.cnf 2>&1)
-    _LSH=$(grep _CUSTOM_CONFIG_LSHELL /root/.barracuda.cnf 2>&1)
-    _RIS=$(grep _CUSTOM_CONFIG_REDIS /root/.barracuda.cnf 2>&1)
-    _SQL=$(grep _CUSTOM_CONFIG_SQL /root/.barracuda.cnf 2>&1)
-    _BIL=$(grep _BACKEND_ITEMS_LIST /root/.barracuda.cnf 2>&1)
-    _SKY=$(grep _SKYNET_MODE /root/.barracuda.cnf 2>&1)
-    _BIN=$(grep _STRICT_BIN_PERMISSIONS /root/.barracuda.cnf 2>&1)
-    _TUN=$(grep _USE_MYSQLTUNER /root/.barracuda.cnf 2>&1)
     clear
     echo
     thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
-    echo "Aegir on ${thiSys}"
+    if [ -e "/var/log/barracuda_log.txt" ]; then
+      _XTR=$(grep _XTRAS_LIST /root/.barracuda.cnf 2>&1)
+      _MFX=$(grep _MODULES_FIX /root/.barracuda.cnf 2>&1)
+      _PFX=$(grep _PERMISSIONS_FIX /root/.barracuda.cnf 2>&1)
+      _DBS=$(grep _DB_SERIES /root/.barracuda.cnf 2>&1)
+      _DNS=$(grep _DNS_SETUP_TEST /root/.barracuda.cnf 2>&1)
+      _PKG=$(grep _EXTRA_PACKAGES /root/.barracuda.cnf 2>&1)
+      _ARM=$(grep _SSH_ARMOUR /root/.barracuda.cnf 2>&1)
+      _STG=$(grep _STRONG_PASSWORDS /root/.barracuda.cnf 2>&1)
+      _CSF=$(grep _CUSTOM_CONFIG_CSF /root/.barracuda.cnf 2>&1)
+      _LSH=$(grep _CUSTOM_CONFIG_LSHELL /root/.barracuda.cnf 2>&1)
+      _RIS=$(grep _CUSTOM_CONFIG_REDIS /root/.barracuda.cnf 2>&1)
+      _SQL=$(grep _CUSTOM_CONFIG_SQL /root/.barracuda.cnf 2>&1)
+      _BIL=$(grep _BACKEND_ITEMS_LIST /root/.barracuda.cnf 2>&1)
+      _SKY=$(grep _SKYNET_MODE /root/.barracuda.cnf 2>&1)
+      _BIN=$(grep _STRICT_BIN_PERMISSIONS /root/.barracuda.cnf 2>&1)
+      _TUN=$(grep _USE_MYSQLTUNER /root/.barracuda.cnf 2>&1)
+      _CLI=$(grep _PHP_CLI_VERSION /root/.barracuda.cnf 2>&1)
+      crlBoav=`tail --lines=1 /var/log/barracuda_log.txt \
+        | cut -d '/' -f4 \
+        | sed "s/ Barracuda //g"`
+      crlBoav=${crlBoav//[^a-zA-Z0-9-.]/}
+    else
+      crlBoav="BOA Cluster"
+    fi
+    echo "Aegir ${crlBoav} on ${thiSys}"
+    [ "${mode}" = "report" ] && echo "Host `hostname` check on `date`"
+    [ "${mode}" = "report" ] && echo "Host uptime `uptime`"
     [ ! -z "${_VIRT_IS}" ] && echo "  VPS ${_VIRT_IS}"
     [ -z "${_VIRT_IS}" ] && echo "  VPS unknown / not a virtual machine"
+    echo "  DSK ${_DF_TEST}/100"
     echo "  CPU ${_CPU_NR}"
     echo "  RAM ${_RAM}"
-    echo "  XTR ${_XTR}"
-    echo "  MFX ${_MFX}"
-    echo "  PFX ${_PFX}"
-    echo "  DBS ${_DBS}"
-    echo "  DNS ${_DNS}"
-    echo "  PKG ${_PKG}"
-    echo "  NGX ${_NGX}"
-    echo "  SSL ${_SSL}"
-    echo "  CRL ${_CRL}"
-    echo "  SSH ${_SSH}"
-    [ ! -z "${_ARM}" ] && echo "  ARM ${_ARM}"
-    echo "  STG ${_STG}"
-    echo "  CSF ${_CSF}"
-    echo "  LSH ${_LSH}"
-    echo "  RIS ${_RIS}"
-    echo "  SQL ${_SQL}"
-    [ ! -z "${_TUN}" ] && echo "  TUN ${_TUN}"
-    [ ! -z "${_BIL}" ] && echo "  BIL ${_BIL}"
+    [ ! -z "${_NGX}" ] && echo "  NGX ${_NGX}"
+    [ ! -z "${_PHP}" ] && echo "  PHP ${_PHP}"
+    [ ! -z "${_DBV}" ] && echo "  DBV ${_DBV}"
+    [ ! -z "${_RDS}" ] && echo "  RDS ${_RDS}"
+    [ ! -z "${_PXY}" ] && echo "  PXY ${_PXY}"
+    [ ! -z "${_SSH}" ] && echo "  SSH ${_SSH}"
+    [ ! -z "${_SSL}" ] && echo "  SSL ${_SSL}"
+    [ ! -z "${_CRL}" ] && echo "  CRL ${_CRL}"
+    [ "${mode}" != "report" ] && echo "  STG ${_STG}"
+    [ "${mode}" != "report" ] && echo "  CSF ${_CSF}"
+    [ "${mode}" != "report" ] && echo "  LSH ${_LSH}"
+    [ "${mode}" != "report" ] && echo "  RIS ${_RIS}"
+    [ "${mode}" != "report" ] && echo "  SQL ${_SQL}"
+    [ "${mode}" != "report" ] && echo "  XTR ${_XTR}"
+    [ "${mode}" != "report" ] && echo "  MFX ${_MFX}"
+    [ "${mode}" != "report" ] && echo "  PFX ${_PFX}"
+    [ "${mode}" != "report" ] && echo "  DNS ${_DNS}"
+    [ "${mode}" != "report" ] && echo "  PKG ${_PKG}"
+    [ "${mode}" != "report" ] && [ ! -z "${_CLI}" ] && echo "  CLI ${_CLI}"
+    [ "${mode}" != "report" ] && [ ! -z "${_DBS}" ] && echo "  DBS ${_DBS}"
+    [ "${mode}" != "report" ] && [ ! -z "${_TUN}" ] && echo "  TUN ${_TUN}"
+    [ "${mode}" != "report" ] && [ ! -z "${_BIL}" ] && echo "  BIL ${_BIL}"
+    [ "${mode}" != "report" ] && [ ! -z "${_BIN}" ] && echo "  BIN ${_BIN}"
+    [ "${mode}" != "report" ] && [ ! -z "${_ARM}" ] && echo "  ARM ${_ARM}"
     [ ! -z "${_SKY}" ] && echo "  SKY ${_SKY}"
-    echo "  BIN ${_BIN}"
     echo
     if [ -e "/var/log/barracuda_log.txt" ]; then
-      if [ "${kind}" = "more" ]; then
+      if [ "${mode}" = "report" ]; then
+        display="system"
+        if [ "${extra}" = "octopus" ]; then
+          grep _PHP_CLI_VERSION /root/.*.octopus.cnf
+          echo
+          grep _PHP_FPM_VERSION /root/.*.octopus.cnf
+          echo
+          grep _THIS_DB_PORT /root/.*.octopus.cnf
+          echo
+        fi
+        if [ "${extra}" = "backups" ]; then
+          tail --lines=19 /var/xdrago/log/*.archive.log
+          echo
+        fi
+      elif [ "${mode}" = "full" ] || [ "${mode}" = "more" ]; then
+        display="default"
         cat /var/log/barracuda_log.txt | grep $(date +'%Y' -d 'last year')
+        cat /var/log/barracuda_log.txt | grep $(date +%Y)
+      else
+        display="default"
+        tail --lines=3 /var/log/barracuda_log.txt
       fi
-      cat /var/log/barracuda_log.txt | grep $(date +%Y)
     fi
-    echo
-    echo "Please link this information in your submission,"
-    echo "but only in a form of Gist snippet and not inline,"
-    echo "along with your hosting provider name"
-    echo "in the BOA issue queue on GitHub."
-    echo
+    if [ "${display}" = "default" ]; then
+      echo
+      echo "Please link this information in your submission,"
+      echo "but only in a form of Gist snippet and not inline,"
+      echo "along with your hosting provider name"
+      echo "in the BOA issue queue on GitHub."
+      echo
+    fi
     exit 0
   else
     echo "ERROR: This script should be ran as a root user"
@@ -1642,7 +1794,8 @@ check_root_direct
 
 case "$1" in
   info)      cmmand="$1"
-             kind="$2"
+             mode="$2"
+             extra="$3"
              check_root_keys_pwd
              check_virt
              display_info
@@ -1658,6 +1811,7 @@ case "$1" in
              user="$5"
              mode="$6"
              rkey="$7"
+             sql="$8"
              check_root
              check_root_keys_pwd
              check_virt
@@ -1685,6 +1839,7 @@ case "$1" in
              user="$5"
              mode="$6"
              rkey="$7"
+             sql="$8"
              check_root
              check_root_keys_pwd
              check_virt
@@ -1772,7 +1927,10 @@ case "$1" in
              init_setup
   ;;
   *)         echo
-             echo "Usage: $(basename "$0") {version} {mode} {fqdn} {email} {user} {platforms} {extra}"
+             echo "Usage: $(basename "$0") {version} {mode} {fqdn} {email} {user} {platforms} {extra} {mysql}"
+             echo "Usage: $(basename "$0") version"
+             echo "Usage: $(basename "$0") info {more}"
+             echo "Usage: $(basename "$0") info report {octopus|backups}"
              echo
              cat <<EOF
 
@@ -1808,13 +1966,18 @@ case "$1" in
 
   {extra}
       license <------ valid new relic license key
+      php-7.4 <------ single PHP version to install and use
       php-7.3 <------ single PHP version to install and use
       php-7.2 <------ single PHP version to install and use
       php-7.1 <------ single PHP version to install and use
       php-7.0 <------ single PHP version to install and use
       php-5.6 <------ single PHP version to install and use
-      php-all <------ all PHP versions to install, use 7.2 by default
+      php-all <------ all PHP versions to install, use 7.3 by default
       nodns <-------- disable DNS checks on the fly
+
+  {mysql}
+      percona <------ database server to install (default)
+      mariadb <------ database server to install
 
   See docs/INSTALL.txt for more details.
 

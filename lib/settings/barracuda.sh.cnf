@@ -60,9 +60,10 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### Instance with variables: _PHP_FPM_VERSION
 ### and _PHP_CLI_VERSION.
 ###
-### Available options: 7.3, 7.2, 7.1, 7.0, 5.6
+### Available options:
+### 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
 ###
-### Example: _PHP_MULTI_INSTALL="7.2 7.1"
+### Example: _PHP_MULTI_INSTALL="7.4 7.3 7.2"
 ###
 ### Note that removing any version from this
 ### list once it is already installed, will
@@ -73,7 +74,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### which are used to define version to be
 ### used by Master or Satellite Instance.
 ###
-_PHP_MULTI_INSTALL="7.2"
+_PHP_MULTI_INSTALL="7.3 7.2"
 
 
 ###----------------------------------------###
@@ -87,7 +88,8 @@ _PHP_MULTI_INSTALL="7.2"
 ### _PHP_CLI_VERSION
 ### _PHP_MULTI_INSTALL
 ###
-### Available options: 7.3, 7.2, 7.1, 7.0, 5.6
+### Available options:
+### 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
 ###
 ### Example: _PHP_SINGLE_INSTALL=7.2
 ###
@@ -103,13 +105,13 @@ _PHP_SINGLE_INSTALL=
 ### install and upgrade.
 ###
 ### Available options (if installed):
-### 7.3, 7.2, 7.1, 7.0, 5.6
+### 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
 ###
-### Note that 7.2 will be set automatically
+### Note that 7.3 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_FPM_VERSION=7.2
+_PHP_FPM_VERSION=7.3
 
 
 ###----------------------------------------###
@@ -121,13 +123,13 @@ _PHP_FPM_VERSION=7.2
 ### install and upgrade.
 ###
 ### Available options (if installed):
-### 7.3, 7.2, 7.1, 7.0, 5.6
+### 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
 ###
-### Note that 7.2 will be set automatically
+### Note that 7.3 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_CLI_VERSION=7.2
+_PHP_CLI_VERSION=7.3
 
 
 ###----------------------------------------###
@@ -180,7 +182,7 @@ _PHP_CLI_VERSION=7.2
 ### list once it is already installed, will
 ### NOT uninstall anything.
 ###
-_XTRAS_LIST="ADM CSF FTP"
+_XTRAS_LIST="ADM CSF FTP CSS"
 
 
 ###----------------------------------------###
@@ -282,7 +284,7 @@ _DEBUG_MODE=NO
 ### DB SERVER                              ###
 ###----------------------------------------###
 ###
-### MariaDB or Percona.
+### Percona or MariaDB.
 ###
 _DB_SERVER=MariaDB
 
@@ -291,14 +293,12 @@ _DB_SERVER=MariaDB
 ### DB SERIES                              ###
 ###----------------------------------------###
 ###
-### You should choose 5.7 or 10.1
+### Supported values:
+### 5.7 (Percona)
+### 10.2 or 10.3 or 10.4 (MariaDB)
 ###
-### MariaDB 10.2 and 10.3 will be supported
-### once compatibility issues with PHP 7.1+
-### are fixed:
-### https://jira.mariadb.org/browse/MDEV-14555
 ###
-_DB_SERIES=10.1
+_DB_SERIES=5.7
 
 
 ###----------------------------------------###
@@ -323,6 +323,15 @@ _DB_SERIES=10.1
 ### TCP connections via port 6379.
 ###
 _REDIS_LISTEN_MODE=SOCKET
+
+
+###----------------------------------------###
+### REDIS MAJOR RELEASE                    ###
+###----------------------------------------###
+###
+### Supported values: 4, 5, 6
+###
+_REDIS_MAJOR_RELEASE=6
 
 
 ###----------------------------------------###
@@ -879,11 +888,11 @@ _CPU_CRIT_RATIO=9
 
 ###
 ### Set max allowed page views from one IP
-### out of last 500. Note that it will lock
+### out of last 300. Note that it will lock
 ### the access completely for 1 hour on the
 ### firewall level in /etc/csf/csf.deny
 ###
-_NGINX_DOS_LIMIT=300
+_NGINX_DOS_LIMIT=299
 
 ###
 ### Nginx Headers More support is available
@@ -959,7 +968,7 @@ _PHP_GEOS=NO
 ### When set to YES it will force OpenSSH
 ### re-install from sources (Debian only)
 ###
-_SSH_FROM_SOURCES=YES
+_SSH_FROM_SOURCES=NO
 
 ###
 ### When set to YES it will force OpenSSH
@@ -967,6 +976,11 @@ _SSH_FROM_SOURCES=YES
 ### _SSH_FROM_SOURCES is set to YES
 ###
 _SSH_ARMOUR=NO
+
+###
+### Generate statistics with GoAccess when YES
+###
+_ENABLE_GOACCESS=NO
 
 ###
 ### When set to YES it will force ImageMagick
@@ -1027,14 +1041,17 @@ find_fast_mirror() {
   fi
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-    rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
     apt-get update -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
   if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors.txt"
+    ffList="/var/backups/boa-mirrors-2020-02.txt"
     mkdir -p /var/backups
     if [ ! -e "${ffList}" ]; then
       echo "jp.files.aegir.cc"  > ${ffList}
@@ -1072,7 +1089,6 @@ download_helpers_libs() {
   if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
     isGit=$(which git 2>&1)
     if [ ! -x "${isGit}" ] || [ -z "${isGit}" ]; then
-      rm -f /etc/apt/sources.list.d/openssl.list
       apt-get update -qq &> /dev/null
       apt-get install git -fuy --allow-unauthenticated --reinstall &> /dev/null
       apt-get install git-core -fuy --allow-unauthenticated --reinstall &> /dev/null

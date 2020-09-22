@@ -194,9 +194,9 @@ the built-in "Add platform" option in your Aegir control panel.
 Please remember to use full system paths. You can check the path
 with "pwd" command when logged in via SSH.
 
-Note that we allow only Pressflow core based platforms for
-5.x and 6.x Drupal versions, while 7.x platforms can use
-standard Drupal 7 core.
+Note that we allow only Pressflow (LTS) core based platforms for
+Drupal 6.x versions, while Drupal 7, 8 and 9 based platforms can use
+standard Drupal core.
 
 
 ----------------------------------------

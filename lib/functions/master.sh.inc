@@ -1,8 +1,8 @@
 #
 # Generate provision backend db_passwd.
 provision_backend_dbpass_generate() {
-  _ESC_APASS=""
-  _LEN_APASS=0
+  _ESC_PASS=""
+  _LEN_PASS=0
   if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
     _PWD_CHARS=32
   elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
@@ -27,41 +27,41 @@ provision_backend_dbpass_generate() {
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-        _ESC_APASS="$(openssl rand -base64 32 2>&1)"
+        _ESC_PASS="$(openssl rand -base64 32 2>&1)"
       else
-        _ESC_APASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+        _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
       fi
     else
       if [ -e "/root/.my.pass.txt" ]; then
-        _ESC_APASS=$(cat /root/.my.pass.txt 2>&1)
+        _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
       else
-        _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+        _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
     fi
-    _ESC_APASS=$(echo -n "${_ESC_APASS}" | tr -d "\n" 2>&1)
-    _ENC_APASS=$(python -c "import urllib; print urllib.quote('''${_ESC_APASS}''')")
-    _LEN_APASS=$(echo ${#_ESC_APASS} 2>&1)
+    _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+    _ENC_PASS=$(python -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
+    _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
 
-  if [ -z "${_ESC_APASS}" ] || [ "${_LEN_APASS}" -lt "9" ]; then
+  if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-      _ESC_APASS=$(pwgen -v -s -1 2>&1)
-      _ESC_APASS=$(echo -n "${_ESC_APASS}" | tr -d "\n" 2>&1)
-      _ESC_APASS=$(sanitize_string "${_ESC_APASS}" 2>&1)
+      _ESC_PASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
+      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+      _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
     else
       if [ -e "/root/.my.pass.txt" ]; then
-        _ESC_APASS=$(cat /root/.my.pass.txt 2>&1)
+        _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
       else
-        _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+        _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
     fi
-    _ENC_APASS="${_ESC_APASS}"
+    _ENC_PASS="${_ESC_PASS}"
   fi
 
-  echo "${_ESC_APASS}" > ${_L_SYS}
+  echo "${_ESC_PASS}" > ${_L_SYS}
   chown aegir:aegir ${_L_SYS} &> /dev/null
   chmod 0600 ${_L_SYS}
 
@@ -92,19 +92,17 @@ provision_backend_dbpass_generate() {
     _SQL_CONNECT=localhost
   fi
 
-  _RESOLVEIP=$(echo $(getent ahostsv4 ${_AEGIR_HOST}) \
-    | cut -d: -f2 \
-    | awk '{ print $1}' 2>&1)
-
-  if [ -z "${_RESOLVEIP}" ]; then
-    msg "FATAL ERROR:: DNS looks broken for server ${_AEGIR_HOST}"
-    msg "FATAL ERROR:: Aborting Barracuda installer NOW!"
-    touch /opt/tmp/status-Barracuda-FAIL
-    clean_pid_exit
-  fi
-
   _ESC="*.*"
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  if [ -e "/var/aegir/use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
+    _THIS_DB_PORT=6033
+  else
+    _THIS_DB_PORT=3306
+  fi
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
+  fi
+  mysqladmin flush-privileges
 
   if [ "${_STATUS}" = "INIT" ]; then
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL7 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
@@ -114,7 +112,7 @@ provision_backend_dbpass_generate() {
       mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_ADBU}';
 DELETE FROM mysql_query_rules WHERE username='${_ADBU}';
-INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_APASS}','10');
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_PASS}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;
 SAVE MYSQL USERS TO DISK;
@@ -125,8 +123,12 @@ SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
     mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL ON ${_ESC} TO '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_ADBU}'@'localhost';
+CREATE USER IF NOT EXISTS '${_ADBU}'@'%';
+GRANT ALL ON ${_ESC} TO '${_ADBU}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_ADBU}'@'%' WITH GRANT OPTION;
+ALTER USER '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
   else
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
@@ -140,7 +142,7 @@ EOFMYSQL
         mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_ADBU}';
 DELETE FROM mysql_query_rules WHERE username='${_ADBU}';
-INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_APASS}','10');
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_PASS}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;
 SAVE MYSQL USERS TO DISK;
@@ -157,8 +159,12 @@ PROXYSQL
       ${_C_SQL} "DROP USER '${_ADBU}'@'127.0.0.1';" &> /dev/null
       ${_C_SQL} "DROP USER '${_ADBU}'@'%';" &> /dev/null
       mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL ON ${_ESC} TO '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_ADBU}'@'localhost';
+CREATE USER IF NOT EXISTS '${_ADBU}'@'%';
+GRANT ALL ON ${_ESC} TO '${_ADBU}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_ADBU}'@'%' WITH GRANT OPTION;
+ALTER USER '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     fi
   fi
@@ -170,7 +176,8 @@ EOFMYSQL
     _EXTRA_GRANTS=NO
   else
     _LOCAL_HOST=$(uname -n 2>&1)
-    _LOCAL_IP=$(echo $(getent ahostsv4 ${_LOCAL_HOST}) | cut -d: -f2 | awk '{ print $1}' 2>&1)
+    find_correct_ip
+    _LOCAL_IP="${_LOC_IP}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL9 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
       _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
@@ -178,7 +185,7 @@ EOFMYSQL
       mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_ADBU}';
 DELETE FROM mysql_query_rules WHERE username='${_ADBU}';
-INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_APASS}','10');
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_ADBU}','${_ESC_PASS}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;
 SAVE MYSQL USERS TO DISK;
@@ -189,26 +196,42 @@ SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
     mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL ON ${_ESC} TO '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_ADBU}'@'localhost';
+CREATE USER IF NOT EXISTS '${_ADBU}'@'%';
+GRANT ALL ON ${_ESC} TO '${_ADBU}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_ADBU}'@'%' WITH GRANT OPTION;
+ALTER USER '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
   fi
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
+  fi
+  mysqladmin flush-privileges
 }
 
 #
 # Sync provision backend db_passwd.
 provision_backend_dbpass_sync() {
+  find_correct_ip
+  _USE_RESOLVEIP="${_LOC_IP}"
+  _RESOLVEIP="${_LOC_IP}"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Syncing provision backend db_passwd..."
+  fi
+  if [ -e "/var/aegir/use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
+    _THIS_DB_PORT=6033
+  else
+    _THIS_DB_PORT=3306
   fi
   _ADBU=aegir_root
   _L_SYS="/var/aegir/backups/system/.${_ADBU}.pass.txt"
   mv -f ${_L_SYS} ${_L_SYS}-pre-${_X_VERSION}-${_NOW} &> /dev/null
   provision_backend_dbpass_generate
-  if [ ! -z "${_ESC_APASS}" ] && [ ! -z "${_ENC_APASS}" ]; then
+  if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
     su -s /bin/bash - aegir -c "drush @hostmaster \
-      sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_APASS}' \
+      sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
       WHERE db_user='${_ADBU}'\"" &> /dev/null
     _SQL_CONNECT=localhost
     if [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -218,8 +241,6 @@ provision_backend_dbpass_sync() {
     _ESC="*.*"
     _USE_DB_USER="${_ADBU}"
     _USE_AEGIR_HOST="$(uname -n 2>&1)"
-    _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
-      | cut -d: -f2 | awk '{ print $1}' 2>&1)"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL10 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
       _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
@@ -227,7 +248,7 @@ provision_backend_dbpass_sync() {
       mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
-INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_APASS}','10');
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;
 SAVE MYSQL USERS TO DISK;
@@ -244,14 +265,21 @@ PROXYSQL
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
     mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
+ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
-    sed -i "s/mysql:\/\/${_ADBU}:.*/mysql:\/\/${_ADBU}:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
+    sed -i "s/mysql:\/\/${_ADBU}:.*/mysql:\/\/${_ADBU}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
       /var/aegir/.drush/server_*.alias.drushrc.php &> /dev/null
     wait
   fi
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
+  fi
+  mysqladmin flush-privileges
   su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
   rm -rf /var/aegir/.tmp/cache
   if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ]; then
@@ -262,17 +290,7 @@ EOFMYSQL
       verify --force" &> /dev/null
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Running hosting-dispatch (1/3)..."
-  fi
-  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
-  mrun "sleep 5"
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Running hosting-dispatch (2/3)..."
-  fi
-  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
-  mrun "sleep 5"
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Running hosting-dispatch (3/3)..."
+    msg "INFO: Running hosting-dispatch..."
   fi
   su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
 }
@@ -282,6 +300,12 @@ EOFMYSQL
 hostmaster_frontend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Syncing hostmaster frontend db_passwd..."
+  fi
+  if [ -e "/var/aegir/use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
+    _THIS_DB_PORT=6033
+  else
+    _THIS_DB_PORT=3306
   fi
   _THIS_HM_SPTH=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
     | grep "site_path'" \
@@ -309,8 +333,6 @@ hostmaster_frontend_dbpass_sync() {
     _ESC="*.*"
     _USE_DB_USER="${_THIS_HM_DBUR}"
     _USE_AEGIR_HOST="$(uname -n 2>&1)"
-    _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
-      | cut -d: -f2 | awk '{ print $1}' 2>&1)"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL11 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
       _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
@@ -335,11 +357,18 @@ PROXYSQL
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
     mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
+ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
+ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
 EOFMYSQL
   fi
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
+  fi
+  mysqladmin flush-privileges
 }
 
 #
@@ -359,9 +388,9 @@ master_download_for_local_build() {
     mv -f ${mL}/drupal-${_SMALLCORE7} ${mL}/drupal
     ### Aegir Core
     if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
-      ${gCb} feature/3.0.x-profile ${gitHub}/hostmaster.git    &> /dev/null
-      ${gCb} feature/3.0.x-hosting ${gitHub}/hosting.git       &> /dev/null
-      ${gCb} feature/3.0.x-eldir ${gitHub}/eldir.git           &> /dev/null
+      ${gCb} feature/3.1.x-profile ${gitHub}/hostmaster.git    &> /dev/null
+      ${gCb} feature/3.1.x-hosting ${gitHub}/hosting.git       &> /dev/null
+      ${gCb} feature/3.1.x-eldir ${gitHub}/eldir.git           &> /dev/null
     else
       get_dev_ext "hostmaster.tar.gz"
       get_dev_ext "hosting.tar.gz"
@@ -403,15 +432,15 @@ master_download_for_local_build() {
     get_dev_stc "tfa_basic-7.x-1.1.tar.gz"
     get_dev_stc "tfa-7.x-2.0.tar.gz"
     get_dev_stc "timeago-7.x-2.3.tar.gz"
-    get_dev_stc "views_bulk_operations-7.x-3.5.tar.gz"
-    get_dev_stc "views-7.x-3.22.tar.gz"
+    get_dev_stc "views_bulk_operations-7.x-3.6.tar.gz"
+    get_dev_stc "views-7.x-3.24.tar.gz"
     ### BOA Drupal Contrib
     get_dev_stc "features_extra-7.x-1.0.tar.gz"
     get_dev_stc "features-7.x-2.11.tar.gz"
     get_dev_stc "idna_convert-7.x-1.0.tar.gz"
-    get_dev_stc "revision_deletion-7.x-1.x-dev.tar.gz"
+    get_dev_stc "revision_deletion-7.x-1.3.tar.gz"
     get_dev_stc "strongarm-7.x-2.0.tar.gz"
-    get_dev_stc "userprotect-7.x-1.2.tar.gz"
+    get_dev_stc "userprotect-7.x-1.3.tar.gz"
   fi
   find ${mL} -type d -exec chmod 0755 {} \; &> /dev/null
   find ${mL} -type f -exec chmod 0644 {} \; &> /dev/null
@@ -424,11 +453,19 @@ upgrade_aegir_master() {
   if prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
     true
     msg "INFO: Running Aegir Master Instance upgrade"
-    rm -f /opt/tmp/testecho*
-    if [ ! -e "/root/.upstart.cnf" ]; then
-      service cron stop &> /dev/null
+    if [ -x "/usr/bin/mariadb_upgrade" ]; then
+      mrun "mariadb_upgrade --force" &> /dev/null
+    elif [ -x "/usr/bin/mysql_upgrade" ]; then
+      mrun "mysql_upgrade --force" &> /dev/null
     fi
-    usermod -aG users aegir &> /dev/null
+    if [ -e "/var/aegir/use_proxysql.txt" ]; then
+      _SQL_CONNECT=127.0.0.1
+      _THIS_DB_PORT=6033
+    else
+      _THIS_DB_PORT=3306
+    fi
+    rm -f /opt/tmp/testecho*
+    usermod -aG users aegir
     _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD" /etc/sudoers 2>&1)
     if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
       echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
@@ -480,6 +517,8 @@ upgrade_aegir_master() {
     chown -R aegir:aegir ${_THIS_HM_ROOT}/sites/all
     _U_HD="/var/aegir/.drush"
     chattr -i ${_U_HD}/php.ini
+    mkdir -p /var/aegir/backups/system
+    chmod 700 /var/aegir/backups/system
     chown -R aegir:aegir /var/aegir/.drush
     chown -R aegir:aegir /var/aegir/backups
     chown -R aegir:aegir /var/aegir/clients
@@ -507,8 +546,14 @@ upgrade_aegir_master() {
     echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${vBs}/${filIncB}
     echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${vBs}/${filIncB}
 
-    mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+    if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+      mkdir -p /etc/mysql/mariadb.conf.d/
+    fi
+    mysqladmin flush-hosts
     _RST=$(syncpass fix aegir 2>&1)
+    find_correct_ip
+    _USE_RESOLVEIP="${_LOC_IP}"
+    _RESOLVEIP="${_LOC_IP}"
     provision_backend_dbpass_sync
     hostmaster_frontend_dbpass_sync
     master_download_for_local_build
@@ -587,7 +632,10 @@ update_php_cli_cron() {
   if [ -e "/var/spool/cron/crontabs/aegir" ]; then
     sed -i "s/hosting-dispatch.*/hosting-dispatch \>\/dev\/null 2\>\&1/g" \
       /var/spool/cron/crontabs/aegir &> /dev/null
-    if [ "${_PHP_CLI_VERSION}" = "7.3" ] && [ -x "/opt/php73/bin/php" ]; then
+    if [ "${_PHP_CLI_VERSION}" = "7.4" ] && [ -x "/opt/php74/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php74\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        /var/spool/cron/crontabs/aegir &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "7.3" ] && [ -x "/opt/php73/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php73\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
         /var/spool/cron/crontabs/aegir &> /dev/null
     elif [ "${_PHP_CLI_VERSION}" = "7.2" ] && [ -x "/opt/php72/bin/php" ]; then
@@ -640,8 +688,8 @@ install_upgrade_aegir_master() {
       touch /data/conf/clstr.cnf &> /dev/null
     fi
     adduser --system --group --home /var/aegir aegir &> /dev/null
-    usermod -aG www-data aegir &> /dev/null
-    usermod -aG users aegir &> /dev/null
+    usermod -aG www-data aegir
+    usermod -aG users aegir
     echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     ln -sf /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf &> /dev/null
     update_nginx_conf
@@ -672,9 +720,8 @@ install_upgrade_aegir_master() {
       _SQL_CONNECT=localhost
     fi
 
-    _RESOLVEIP=$(echo $(getent ahostsv4 ${_AEGIR_HOST}) \
-      | cut -d: -f2 \
-      | awk '{ print $1}' 2>&1)
+    find_correct_ip
+    _RESOLVEIP="${_LOC_IP}"
     if [ -z "${_RESOLVEIP}" ]; then
       msg "FATAL ERROR: DNS looks broken for server ${_AEGIR_HOST}"
       clean_pid_exit
@@ -693,8 +740,8 @@ install_upgrade_aegir_master() {
     fi
 
     _AEGIR_DB_USER=aegir_root
-    _ESC_APASS=""
-    _LEN_APASS=0
+    _ESC_PASS=""
+    _LEN_PASS=0
 
     if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
       _PWD_CHARS=32
@@ -719,34 +766,34 @@ install_upgrade_aegir_master() {
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-          _ESC_APASS="$(openssl rand -base64 32 2>&1)"
+          _ESC_PASS="$(openssl rand -base64 32 2>&1)"
         else
-          _ESC_APASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+          _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
         fi
       else
         if [ -e "/root/.my.pass.txt" ]; then
-          _ESC_APASS=$(cat /root/.my.pass.txt 2>&1)
+          _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
         else
-          _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+          _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
         fi
       fi
-      _ESC_APASS=$(echo -n "${_ESC_APASS}" | tr -d "\n" 2>&1)
-      _LEN_APASS=$(echo ${#_ESC_APASS} 2>&1)
+      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+      _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
     fi
 
-    if [ -z "${_ESC_APASS}" ] || [ "${_LEN_APASS}" -lt "9" ]; then
+    if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-        _ESC_APASS=$(pwgen -v -s -1 2>&1)
-        _ESC_APASS=$(echo -n "${_ESC_APASS}" | tr -d "\n" 2>&1)
-        _ESC_APASS=$(sanitize_string "${_ESC_APASS}" 2>&1)
+        _ESC_PASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
+        _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+        _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
       else
         if [ -e "/root/.my.pass.txt" ]; then
-          _ESC_APASS=$(cat /root/.my.pass.txt 2>&1)
+          _ESC_PASS=$(cat /root/.my.pass.txt 2>&1)
         else
-          _ESC_APASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+          _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
         fi
       fi
     fi
@@ -759,7 +806,7 @@ install_upgrade_aegir_master() {
       mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_AEGIR_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_AEGIR_DB_USER}';
-INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_AEGIR_DB_USER}','${_ESC_APASS}','10');
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_AEGIR_DB_USER}','${_ESC_PASS}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;
 SAVE MYSQL USERS TO DISK;
@@ -770,8 +817,12 @@ SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
     mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL ON ${_ESC} TO '${_AEGIR_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_AEGIR_DB_USER}'@'localhost';
+CREATE USER IF NOT EXISTS '${_AEGIR_DB_USER}'@'%';
+GRANT ALL ON ${_ESC} TO '${_AEGIR_DB_USER}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_AEGIR_DB_USER}'@'%' WITH GRANT OPTION;
+ALTER USER '${_AEGIR_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
 
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
@@ -781,7 +832,8 @@ EOFMYSQL
       _EXTRA_GRANTS=NO
     else
       _LOCAL_HOST=$(uname -n 2>&1)
-      _LOCAL_IP=$(echo $(getent ahostsv4 ${_LOCAL_HOST}) | cut -d: -f2 | awk '{ print $1}' 2>&1)
+      find_correct_ip
+      _LOCAL_IP="${_LOC_IP}"
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL13 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
       if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
         _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
@@ -789,7 +841,7 @@ EOFMYSQL
         mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_AEGIR_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_AEGIR_DB_USER}';
-INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_AEGIR_DB_USER}','${_ESC_APASS}','10');
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_AEGIR_DB_USER}','${_ESC_PASS}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;
 SAVE MYSQL USERS TO DISK;
@@ -800,8 +852,12 @@ SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
       fi
       mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL ON ${_ESC} TO '${_AEGIR_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_AEGIR_DB_USER}'@'localhost';
+CREATE USER IF NOT EXISTS '${_AEGIR_DB_USER}'@'%';
+GRANT ALL ON ${_ESC} TO '${_AEGIR_DB_USER}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_AEGIR_DB_USER}'@'%' WITH GRANT OPTION;
+ALTER USER '${_AEGIR_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     fi
 
@@ -816,7 +872,7 @@ EOFMYSQL
     echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${vBs}/${filIncB}
     echo "_DOMAIN=\"${_THIS_FRONT}\""                   >> ${vBs}/${filIncB}
     echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${vBs}/${filIncB}
-    echo "_ESC_APASS=\"${_ESC_APASS}\""                 >> ${vBs}/${filIncB}
+    echo "_ESC_PASS=\"${_ESC_PASS}\""                 >> ${vBs}/${filIncB}
     echo "_LOCAL_NETWORK_IP=\"${_LOCAL_NETWORK_IP}\""   >> ${vBs}/${filIncB}
     echo "_MY_OWNIP=\"${_MY_OWNIP}\""                   >> ${vBs}/${filIncB}
     echo "_NOW=\"${_NOW}\""                             >> ${vBs}/${filIncB}
@@ -868,17 +924,7 @@ EOFMYSQL
     su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
     rm -rf /var/aegir/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Running hosting-dispatch (1/3)..."
-    fi
-    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
-    mrun "sleep 5"
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Running hosting-dispatch (2/3)..."
-    fi
-    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
-    mrun "sleep 5"
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Running hosting-dispatch (3/3)..."
+      msg "INFO: Running hosting-dispatch..."
     fi
     su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
     if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
@@ -945,7 +991,7 @@ EOFMYSQL
   else
     echo " "
     if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "jessie" ]; then
+      && [ "${_LOC_OSR}" = "jessie" ]; then
       msg "INFO: Aegir Master Instance upgrade skipped!"
       echo " "
       msg "NOTE! You must reboot the server and run barracuda upgrade"
@@ -1007,8 +1053,7 @@ if_display_login_link() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _DO_NOTHING=YES
     else
-      _AEGIR_LOGIN_URL=$(grep --text "^http://${_THIS_FRONT}" \
-        /var/aegir/install.log 2>&1)
+      _AEGIR_LOGIN_URL=$(tail --lines=11 /var/aegir/install.log | grep --text "^http:" 2>&1)
       if [ ! -z "${_AEGIR_LOGIN_URL}" ]; then
         echo " "
         msg "INFO: Congratulations, Aegir have been installed successfully!"
@@ -1030,16 +1075,16 @@ if_display_login_link() {
 #
 # Update local INI for PHP CLI on the Aegir Master Instance.
 update_php_cli_local_ini() {
-  _X_SE="401prodQ1"
+  _X_SE="412prodQ1"
   _U_HD="/var/aegir/.drush"
   _U_TP="/var/aegir/.tmp"
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="73 72 71 70 56"
+  _PHP_V="74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
-      && [ ! -e "${_U_HD}/.ctrl.php${e}.pid" ]; then
+      && [ ! -e "${_U_HD}/.ctrl.php${e}.${_X_SE}.pid" ]; then
       _PHP_CLI_UPDATE=YES
     fi
   done
@@ -1054,7 +1099,10 @@ update_php_cli_local_ini() {
     mkdir -p ${_U_HD}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php73" ]]; then
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php74" ]]; then
+      cp -af /opt/php74/lib/php.ini ${_U_II}
+      _U_INI=74
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php73" ]]; then
       cp -af /opt/php73/lib/php.ini ${_U_II}
       _U_INI=73
     elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php72" ]]; then
@@ -1080,6 +1128,7 @@ update_php_cli_local_ini() {
         /opt/php71:          \
         /opt/php72:          \
         /opt/php73:          \
+        /opt/php74:          \
         /opt/tika:           \
         /opt/tika7:          \
         /opt/tika8:          \
@@ -1089,6 +1138,7 @@ update_php_cli_local_ini() {
         /opt/tools/drush:    \
         /tmp:                \
         /usr/bin:            \
+        /usr/local/bin:      \
         /var/aegir\""
       _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
       _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
@@ -1106,7 +1156,7 @@ update_php_cli_local_ini() {
       wait
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
-      echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
+      echo > ${_U_HD}/.ctrl.php${_U_INI}.${_X_SE}.pid
       echo > ${_U_HD}/.ctrl.${_X_SE}.pid
     fi
   fi

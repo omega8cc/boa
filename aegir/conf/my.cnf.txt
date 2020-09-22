@@ -16,31 +16,34 @@ lc_messages_dir         = /usr/share/mysql
 lc_messages             = en_US
 character_set_server    = utf8mb4
 collation_server        = utf8mb4_general_ci
+transaction-isolation   = READ-COMMITTED
+transaction-read-only   = OFF
 skip-external-locking
 skip-name-resolve
+performance_schema      = ON
+show_compatibility_56   = ON
 symbolic-links          = 0
 connect_timeout         = 60
 join_buffer_size        = 1M
-key_buffer_size         = 64M
+key_buffer_size         = 1024M
 log_warnings            = 2
-max_allowed_packet      = 32M
+max_allowed_packet      = 256M
 max_connect_errors      = 191
 max_connections         = 292
 max_user_connections    = 191
 myisam_sort_buffer_size = 128K
 query_cache_limit       = 128K
-query_cache_size        = 64M
-query_cache_type        = 1
+query_cache_size        = 0
+query_cache_type        = 0
 read_buffer_size        = 8M
 read_rnd_buffer_size    = 4M
 sort_buffer_size        = 128K
 bulk_insert_buffer_size = 128K
-table_open_cache        = 256
+table_open_cache        = 2048
 table_definition_cache  = 512
 thread_stack            = 256K
 thread_cache_size       = 128
-thread_concurrency      = 8
-wait_timeout            = 9999
+wait_timeout            = 3600
 tmp_table_size          = 64M
 max_heap_table_size     = 128M
 low_priority_updates    = 1
@@ -49,19 +52,20 @@ userstat                = 1
 max_tmp_tables          = 16384
 server-id               = 8
 myisam-recover-options  = BACKUP
-log_bin                 = /var/log/mysql/mariadb-bin
-log_bin_index           = /var/log/mysql/mariadb-bin.index
-expire_logs_days        = 1
-max_binlog_size         = 100M
-open_files_limit        = 196608
+#log_bin                 = /var/log/mysql/mariadb-bin
+#log_bin_index           = /var/log/mysql/mariadb-bin.index
+#expire_logs_days        = 1
+#max_binlog_size         = 100M
+#binlog_row_image        = minimal
+#binlog_format           = ROW
 sync_binlog             = 0
+open_files_limit        = 294912
+innodb_autoinc_lock_mode= 2
 #slow_query_log          = 1
 #long_query_time         = 10
 #slow_query_log_file     = /var/log/mysql/sql-slow-query.log
 #log_queries_not_using_indexes
 #innodb-defragment       = 1
-
-
 # * InnoDB
 #
 # InnoDB is enabled by default with a 10MB datafile in /var/lib/mysql/.
@@ -69,35 +73,44 @@ sync_binlog             = 0
 sql_mode                = NO_ENGINE_SUBSTITUTION
 # you can't just change log file size, requires special procedure
 #innodb_log_file_size   = 50M
+innodb_buffer_pool_instances = 8
+innodb_page_cleaners    = 8
+innodb_lru_scan_depth   = 10
 innodb_buffer_pool_size = 181M
-innodb_log_buffer_size  = 4M
+innodb_log_buffer_size  = 256M
 innodb_file_per_table   = 1
+innodb_use_native_aio   = 1
 innodb_large_prefix     = 1
 innodb_file_format      = Barracuda
-innodb_open_files       = 8000
-innodb_io_capacity      = 8000
+innodb_open_files       = 196608
+innodb_io_capacity      = 1000
 innodb_flush_method     = O_DIRECT
 innodb_flush_log_at_trx_commit = 2
 innodb_thread_concurrency = 0
-innodb_lock_wait_timeout = 120
-innodb_corrupt_table_action = salvage
+innodb_lock_wait_timeout = 300
 innodb_buffer_pool_dump_at_shutdown = 1
 innodb_buffer_pool_load_at_startup = 1
 innodb_buffer_pool_dump_pct = 100
+innodb_buffer_pool_dump_now = ON
 innodb_stats_on_metadata = OFF
 innodb_adaptive_hash_index = 0
 innodb_default_row_format = dynamic
-
+innodb_write_io_threads = 64
+innodb_read_io_threads = 64
+innodb_doublewrite = 0
+innodb_checksum_algorithm=NONE
+innodb_flush_log_at_timeout = 5
+#innodb_force_recovery = 3
 
 [mysqld_safe]
 socket                  = /var/run/mysqld/mysqld.sock
 nice                    = 0
-open_files_limit        = 196608
+open_files_limit        = 294912
 syslog
 
 [mysqldump]
 quick
-max_allowed_packet      = 32M
+max_allowed_packet      = 256M
 quote-names
 
 [mysql]

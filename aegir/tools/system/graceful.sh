@@ -23,16 +23,6 @@ check_root() {
     echo "ERROR: This script should be ran as a root user"
     exit 1
   fi
-  _DF_TEST=$(df -kTh / -l \
-    | grep '/' \
-    | sed 's/\%//g' \
-    | awk '{print $6}' 2> /dev/null)
-  _DF_TEST=${_DF_TEST//[^0-9]/}
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
-    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
-    echo "ERROR: We can not proceed until it is below 90/100"
-    exit 1
-  fi
 }
 check_root
 
@@ -40,20 +30,56 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
+if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
+  exit 0
+fi
+
 action() {
+
+  #
+  # Clean up postfix queue to get rid of bounced emails.
+  # See also: https://omega8.cc/never-send-mailings-from-aegir-server-322
+  sudo postsuper -d ALL &> /dev/null
+
+  if [ -e "/etc/init.d/rsyslog" ]; then
+    killall -9 rsyslogd &> /dev/null
+    service rsyslog start &> /dev/null
+  elif [ -e "/etc/init.d/sysklogd" ]; then
+    killall -9 sysklogd &> /dev/null
+    service sysklogd start &> /dev/null
+  elif [ -e "/etc/init.d/inetutils-syslogd" ]; then
+    killall -9 syslogd &> /dev/null
+    service inetutils-syslogd start &> /dev/null
+  fi
+  rm -f /var/backups/.auth.IP.list*
+  find /var/xdrago/log/*.pid -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
+
+  if [ -d "/dev/disk" ]; then
+    _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}')
+    if [ -z "${_IF_CDP}" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then
+      swapoff -a
+      swapon -a
+    fi
+  fi
+
   mkdir -p /usr/share/GeoIP
   chmod 755 /usr/share/GeoIP
-  cd /tmp
-  wget -q -U iCab \
-    http://geolite.maxmind.com/download/geoip/database/GeoLiteCountry/GeoIP.dat.gz
-  gunzip GeoIP.dat.gz &> /dev/null
-  cp -af GeoIP.dat /usr/share/GeoIP/
-  wget -q -U iCab \
-    http://geolite.maxmind.com/download/geoip/database/GeoIPv6.dat.gz
-  gunzip GeoIPv6.dat.gz &> /dev/null
-  cp -af GeoIPv6.dat /usr/share/GeoIP/
+  mkdir -p /opt/tmp
+  cd /opt/tmp
+
+# For GeoIP2 City database:
+#   wget -q -U iCab \
+#     wget -N http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.mmdb.gz
+#   gunzip GeoLite2-City.mmdb.gz &> /dev/null
+#   cp -af GeoLite2-City.mmdb /usr/share/GeoIP/
+
+# For GeoIP2 Country database:
+#   wget -q -U iCab \
+#     wget -N http://geolite.maxmind.com/download/geoip/database/GeoLite2-Country.mmdb.gz
+#   gunzip GeoLite2-Country.mmdb.gz &> /dev/null
+#   cp -af GeoLite2-Country.mmdb /usr/share/GeoIP/
+
   chmod 644 /usr/share/GeoIP/*
-  rm -rf /tmp/GeoIP*
   rm -rf /opt/tmp
   mkdir -p /opt/tmp
   chmod 777 /opt/tmp
@@ -77,7 +103,7 @@ action() {
   service nginx reload
   if [ ! -e "/root/.giant_traffic.cnf" ] \
     && [ ! -e "/root/.high_traffic.cnf" ]; then
-    echo "INFO: Redis and Jetty servers will be restarted in 60 seconds"
+    echo "INFO: Solr and Jetty servers will be restarted in 60 seconds"
     touch /var/run/boa_wait.pid
     sleep 60
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
@@ -97,15 +123,8 @@ action() {
     if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
       service jetty7 start
     fi
-    service redis-server stop
-    killall -9 redis-server
-    rm -f /var/run/redis.pid
-    rm -f /var/run/redis/redis.pid
-    rm -f /var/lib/redis/*
-    rm -f /var/log/redis/redis-server.log
-    service redis-server start
     rm -f /var/run/boa_wait.pid
-    echo "INFO: Redis and Jetty servers restarted OK"
+    echo "INFO: Solr and Jetty servers restarted OK"
   fi
   _IF_BCP=$(ps aux | grep '[d]uplicity' | awk '{print $2}')
   if [ -z "${_IF_BCP}" ] \
@@ -125,17 +144,11 @@ action() {
 }
 
 ###--------------------###
-_NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
@@ -150,4 +163,4 @@ else
   rm -f /var/run/boa_wait.pid
   exit 0
 fi
-###EOF2019###
+###EOF2020###

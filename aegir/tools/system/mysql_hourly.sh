@@ -5,6 +5,8 @@ SHELL=/bin/bash
 
 check_root() {
   if [ `whoami` = "root" ]; then
+    ionice -c2 -n7 -p $$
+    renice 19 -p $$
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -29,7 +31,14 @@ check_root() {
 }
 check_root
 
+rm -f /root/.pause_tasks_maint.cnf
+rm -f /root/.restrict_this_vm.cnf
+
 if [ -e "/root/.proxy.cnf" ]; then
+  exit 0
+fi
+
+if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
@@ -59,7 +68,7 @@ fi
 
 _BACKUPDIR=/data/disk/arch/hourly
 _CHECK_HOST=$(uname -n 2>&1)
-_DATE=$(date +%y%m%d-%H%M 2>&1)
+_DATE=$(date +%y%m%d-%H%M%S 2>&1)
 _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e 2>&1)
@@ -67,14 +76,8 @@ _DOM=${_DOM//[^0-9]/}
 _SAVELOCATION=${_BACKUPDIR}/${_CHECK_HOST}-${_DATE}
 _VM_TEST=$(uname -a 2>&1)
 _LOGDIR="/var/xdrago/log/hourly"
-_OSV=$(lsb_release -sc 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+_OSR=$(lsb_release -sc 2>&1)
+if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
@@ -84,7 +87,7 @@ if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
   || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
   || [ "${_VMFAMILY}" = "VS" ]; then
   PrTest=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
-  InTest=$(ls /data/disk/ | wc -l 2>&1)
+  InTest=$(ls /data/disk/*/static/control/cli.info | wc -l 2>&1)
   #if [ "${InTest}" -le "5" ] && [[ "${PrTest}" =~ "POWER" ]]; then
   #  _HOURLY_DB_BACKUPS="YES"
   #fi
@@ -92,19 +95,41 @@ fi
 
 if [ -z "${_HOURLY_DB_BACKUPS}" ] \
   || [ "${_HOURLY_DB_BACKUPS}" != "YES" ]; then
-  rm -f -r /data/disk/arch/hourly/*
+  rm -rf /data/disk/arch/hourly/*
   exit 1
 fi
 
 aptLiSys="/etc/apt/sources.list"
-xtraList="${aptLiSys}.d/xtrabackup.list"
+percList="${aptLiSys}.d/percona-release.list"
 
-if [ ! -e "${xtraList}" ] \
+if [ ! -e "${percList}" ] \
   || [ ! -e "/usr/bin/innobackupex" ]; then
-  xtraRepo="repo.percona.com/apt"
-  echo "## Percona XtraBackup APT Repository" > ${xtraList}
-  echo "deb http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
-  echo "deb-src http://${xtraRepo}/ ${_OSV} main" >> ${xtraList}
+  if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+    && [ -e "/etc/apt/apt.conf.d" ]; then
+    echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+  fi
+  cd /var/opt
+  rm -rf /var/opt/percona*
+  rm -f /etc/apt/sources.list.d/mariadb.*
+  rm -f /etc/apt/sources.list.d/percona-.*
+  rm -f /etc/apt/sources.list.d/xtrabackup.*
+  aptLiSys="/etc/apt/sources.list"
+  percList="${aptLiSys}.d/percona-release.list"
+  percRepo="repo.percona.com/percona/apt"
+  if [ ! -e "${percList}" ]; then
+    echo "## Percona APT Repository" > ${percList}
+    echo "deb http://${percRepo} ${_OSR} main" >> ${percList}
+    echo "deb-src http://${percRepo} ${_OSR} main" >> ${percList}
+    apt-get update -qq &> /dev/null
+  fi
+  isPercRel=$(which percona-release 2>&1)
+  if [ ! -x "${isPercRel}" ] || [ -z "${isPercRel}" ]; then
+    mrun "${_INSTALL} percona-release"
+  fi
+  if [ -e "/etc/apt/sources.list.d/percona-original-release.list" ]; then
+    rm -f /etc/apt/sources.list.d/percona-.*
+    apt-get update -qq &> /dev/null
+  fi
   if [ -e "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
     service lfd stop &> /dev/null
@@ -112,20 +137,44 @@ if [ ! -e "${xtraList}" ] \
     rm -f /etc/csf/csf.error
     csf -x &> /dev/null
   fi
-  _KEYS_SIG="9334A25F8507EFA5"
+  _KEYS_SIG="8507EFA5"
   _KEYS_SERVER_TEST=FALSE
   until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
     echo "Retrieving ${_KEYS_SIG} key.."
+    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}" &> /dev/null
     ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
-    ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
+    ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
     _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
     sleep 2
+    if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "1" ]; then
+      kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+      echo "$(date 2>&1) Too many dirmngr processes killed" >> \
+        /var/xdrago/log/dirmngr-count.kill.log
+    fi
+    if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "1" ]; then
+      kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+      echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
+        /var/xdrago/log/gpg-agent-count.kill.log
+    fi
   done
+  apt-get update -qq &> /dev/null
   if [ -e "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
     csf -e &> /dev/null
     sleep 3
     service lfd start &> /dev/null
+    ### Linux kernel TCP SACK CVEs mitigation
+    ### CVE-2019-11477 SACK Panic
+    ### CVE-2019-11478 SACK Slowness
+    ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
+    if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+      _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+      if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
+        sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
+        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/sull
+        ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+      fi
+    fi
   fi
   apt-get update -qq
   apt-get install percona-xtrabackup-24 -y
@@ -158,8 +207,6 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     fi
   fi
 done
-
-ionice -c2 -n7 -p $$
 
 innobackupex --user=root --no-timestamp ${_SAVELOCATION} >${_LOGDIR}/XtraBackupA-${_DATE}.log 2>&1
 _BACKUP_RESULT=$(tail --lines=3 ${_LOGDIR}/XtraBackupA-${_DATE}.log | tr -d "\n" 2>&1)
@@ -201,9 +248,9 @@ chmod 700 ${_BACKUPDIR}
 chmod 700 /data/disk/arch
 echo "Permissions fixed"
 
-rm -f -r ${_CHECK_HOST}-${_DATE}
+rm -rf ${_CHECK_HOST}-${_DATE}
 rm -f /var/run/boa_live_sql_backup.pid
 touch /var/xdrago/log/last-run-live-mysql-backup
 echo "ALL TASKS COMPLETED"
 exit 0
-###EOF2019###
+###EOF2020###

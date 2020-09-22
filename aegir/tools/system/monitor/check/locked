@@ -12,6 +12,9 @@ chomp($now_is);
 &javacheck;
 if ($fpm_status ne "CLEAN") {
   `kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')`;
+  if (-f "/etc/init.d/php74-fpm") {
+    `service php74-fpm restart`;
+  }
   if (-f "/etc/init.d/php73-fpm") {
     `service php73-fpm restart`;
   }
@@ -133,4 +136,4 @@ local(@MYARR)=`grep "Apache Solr" /var/log/syslog | tail --lines=999 2>&1`;
     }
   }
 }
-###EOF2019###
+###EOF2020###

@@ -6,30 +6,25 @@ barCnf="/root/.barracuda.cnf"
 
 crontab_update() {
   if [ -e "/etc/crontab" ]; then
-    sed -i "s/.*barracuda.*//gi"  /etc/crontab &> /dev/null
+    sed -i "s/.*xdrago.*//gi"    /etc/crontab &> /dev/null
     wait
-    sed -i "s/.*BOA.sh.txt.*//gi" /etc/crontab &> /dev/null
+    sed -i "s/.*arracuda.*//gi"  /etc/crontab &> /dev/null
     wait
-    sed -i "s/.*daily.sh.*//gi"   /etc/crontab &> /dev/null
+    sed -i "s/.*ctopus.*//gi"    /etc/crontab &> /dev/null
     wait
-    sed -i "s/.*fire.*//gi"       /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*octopus.*//gi"    /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*water.*//gi"      /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*weekly.sh.*//gi"  /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*xdrago.*//gi"     /etc/crontab &> /dev/null
+    sed -i "s/.*du.*sql.*//gi"   /etc/crontab &> /dev/null
     wait
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
       echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
-      echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "01 6    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
-      echo "44 22    * * *   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "22 22   * * *   root    du -s /var/lib/mysql/* > /root/.du.local.sql" >> /etc/crontab
+      echo "44 22   * * *   root    bash /var/xdrago/usage.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    echo "*/8 *    * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+    #echo "15 3    * * *   root    /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/mysql_backup.sh >/dev/null 2>&1" >> /etc/crontab
+    #echo "15 3    * * *   root    /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/mysql_cluster_backup.sh >/dev/null 2>&1" >> /etc/crontab
+    echo "*/5 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     sed -i "/^$/d"                /etc/crontab &> /dev/null
     wait
     if [ -f "/root/.mstr.clstr.cnf" ] \
@@ -56,13 +51,15 @@ crontab_update() {
     fi
     echo "# Barracuda weekly system only upgrade" >> /etc/crontab
     echo "11 0    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
+    echo "14 0    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
     echo "# Barracuda ${_AUTO_VER} full upgrade" >> /etc/crontab
-    echo "05 0  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
+    echo "05 3  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
+    echo "08 3  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
     if [ ! -e "/root/.wbhd.clstr.cnf" ] && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
       if [ ! -z "${_OCTO_FULL}" ]; then
         echo "# Octopus ${_AUTO_VER} full upgrade" >> /etc/crontab
-        echo "05 5  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
-        echo "55 7  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
+        echo "05 4  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
+        echo "55 5  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
       fi
     fi
     echo Cron Update Completed
@@ -71,93 +68,157 @@ crontab_update() {
 
 crontab_clean() {
   if [ -e "/etc/crontab" ]; then
-    sed -i "s/.*barracuda.*//gi"  /etc/crontab &> /dev/null
+    sed -i "s/.*xdrago.*//gi"    /etc/crontab &> /dev/null
     wait
-    sed -i "s/.*BOA.sh.txt.*//gi" /etc/crontab &> /dev/null
+    sed -i "s/.*arracuda.*//gi"  /etc/crontab &> /dev/null
     wait
-    sed -i "s/.*daily.sh.*//gi"   /etc/crontab &> /dev/null
+    sed -i "s/.*ctopus.*//gi"    /etc/crontab &> /dev/null
     wait
-    sed -i "s/.*fire.*//gi"       /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*octopus.*//gi"    /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*water.*//gi"      /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*weekly.sh.*//gi"  /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*xdrago.*//gi"     /etc/crontab &> /dev/null
+    sed -i "s/.*du.*sql.*//gi"   /etc/crontab &> /dev/null
     wait
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
       echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
-      echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "01 6    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
-      echo "44 22    * * *   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "22 22   * * *   root    du -s /var/lib/mysql/* > /root/.du.local.sql" >> /etc/crontab
+      echo "44 22   * * *   root    bash /var/xdrago/usage.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    echo "*/8 *    * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+    echo "*/5 *    * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     sed -i "/^$/d"                /etc/crontab &> /dev/null
     wait
     echo Cron Cleanup Completed
   fi
 }
 
-if [ -e "/data/disk/arch" ]; then
+if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+  mkdir -p /etc/mysql/mariadb.conf.d
+fi
+
+if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
+  killall -9 mysqldump
+  killall -9 rsync
+fi
+
+if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+  && [ -e "/etc/apt/apt.conf.d" ]; then
+  echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+  rm -f /etc/apt/apt.conf.d/00sandboxtmp
+  rm -f /etc/apt/apt.conf.d/00temp
+  apt-get update -qq &> /dev/null
+fi
+
+if [ -e "/data/disk/arch/sql" ]; then
+  if [ ! -e "/root/.fixed_scan_nginx.pid" ]; then
+    sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=299/g"  /root/.barracuda.cnf
+    sed -i "s/default_critnumber = 300/default_critnumber = 250/g" /var/xdrago/monitor/check/scan_nginx
+    sed -i "s/default_critnumber = 155/default_critnumber = 250/g" /var/xdrago/monitor/check/scan_nginx
+    sed -i "s/default_lines = 999/default_lines = 300/g" /var/xdrago/monitor/check/scan_nginx
+    touch /root/.fixed_scan_nginx.pid
+  fi
   _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
-  [ -z "${_AUTO_VER}" ] && _AUTO_VER="stable"
-  if [[ "${_VM_TEST}" =~ "beng" ]]; then
+  [ -z "${_AUTO_VER}" ] && _AUTO_VER="head"
+  if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
-    _VM_VERSION_T_A=$(uname -a | grep "3.8.6-beng" 2>&1)
-    _VM_VERSION_T_B=$(uname -a | grep "3.8.5.2-beng" 2>&1)
-    _VM_VERSION_T_C=$(uname -a | grep "3.8.4-beng" 2>&1)
-    _VM_VERSION_T_D=$(uname -a | grep "3.7.5-beng" 2>&1)
-    _VM_VERSION_T_E=$(uname -a | grep "3.7.4-beng" 2>&1)
-    _VM_VERSION_T_F=$(uname -a | grep "3.6.15-beng" 2>&1)
-    if [[ "${_VM_VERSION_T_A}" =~ "3.8.6-beng" ]] \
-      || [[ "${_VM_VERSION_T_B}" =~ "3.8.5.2-beng" ]] \
-      || [[ "${_VM_VERSION_T_C}" =~ "3.8.4-beng" ]] \
-      || [[ "${_VM_VERSION_T_D}" =~ "3.7.5-beng" ]] \
-      || [[ "${_VM_VERSION_T_E}" =~ "3.7.4-beng" ]] \
-      || [[ "${_VM_VERSION_T_F}" =~ "3.6.15-beng" ]]; then
-      _VM_VERSION="MODERN"
-    else
-      _VM_VERSION="LEGACY"
-    fi
   fi
   if [ -e "${barCnf}" ]; then
     source ${barCnf}
-  fi
-  _AUTO_UP_WEEKLY=${_AUTO_UP_WEEKLY//[^0-9]/}
-  _AUTO_UP_MONTH=${_AUTO_UP_MONTH//[^0-9]/}
-  _AUTO_UP_DAY=${_AUTO_UP_DAY//[^0-9]/}
-  if [[ "${_MY_EMAIL}" =~ "omega8" ]]; then
-    _AUTO_UP=YES
-  fi
-  if [ -e "/etc/apticron/apticron.conf" ]; then
-    sed -i "s/^# be something like.*/# be something like ${_MY_EMAIL}/g" \
-      /etc/apticron/apticron.conf
-    [ -r "/root/.auto.up.cnf" ] && rm -f /root/.auto.up.cnf
-    _APTICRON_TEST=$(grep "omega8" /etc/apticron/apticron.conf 2>&1)
-    if [[ "${_APTICRON_TEST}" =~ "omega8" ]]; then
+    _AUTO_UP_WEEKLY=${_AUTO_UP_WEEKLY//[^0-9]/}
+    _AUTO_UP_MONTH=${_AUTO_UP_MONTH//[^0-9]/}
+    _AUTO_UP_DAY=${_AUTO_UP_DAY//[^0-9]/}
+    if [ -e "/etc/apticron/apticron.conf" ]; then
+      sed -i "s/^# be something like.*/# be something like ${_MY_EMAIL}/g" \
+        /etc/apticron/apticron.conf
+      [ -r "/root/.auto.up.cnf" ] && rm -f /root/.auto.up.cnf
+      _APTICRON_TEST=$(grep "omega8" /etc/apticron/apticron.conf 2>&1)
+      if [[ "${_APTICRON_TEST}" =~ "omega8" ]]; then
+        _AUTO_UP=YES
+      fi
+    fi
+    if [ ! -e "/root/.auto.up.cnf" ] && [ "${_AUTO_UP}" = "YES" ]; then
+      touch /root/.auto.up.cnf
+    fi
+    if [[ "${_MY_EMAIL}" =~ "omega8" ]]; then
       _AUTO_UP=YES
     fi
-  fi
-  if [ ! -e "/root/.auto.up.cnf" ] && [ "${_AUTO_UP}" = "YES" ]; then
-    touch /root/.auto.up.cnf
   fi
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
     || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] \
     || [ "${_AUTO_UP}" = "YES" ]; then
-    _AUTO_UP_WEEKLY=
-    _AUTO_UP_MONTH=
-    _AUTO_UP_DAY=
+    if [ ! -e "/root/.fixed_scan_dos_nginx.pid" ]; then
+      sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=299/g"  /root/.barracuda.cnf
+      sed -i "s/default_critnumber = 300/default_critnumber = 155/g" /var/xdrago/monitor/check/scan_nginx
+      sed -i "s/default_critnumber = 250/default_critnumber = 155/g" /var/xdrago/monitor/check/scan_nginx
+      sed -i "s/default_critnumber = 249/default_critnumber = 155/g" /var/xdrago/monitor/check/scan_nginx
+      sed -i "s/default_lines = 999/default_lines = 300/g" /var/xdrago/monitor/check/scan_nginx
+      touch /root/.fixed_scan_dos_nginx.pid
+    fi
+    if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"  ${barCnf}
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"  ${barCnf}
+    else
+      _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
+      if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
+        _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
+        echo _CHECK_REPAIR 1 ${_CHECK_REPAIR}
+        if [[ "${_CHECK_REPAIR}" =~ "corrupted" ]]; then
+          # mysqlcheck -A --auto-repair
+          mysql_upgrade --force
+          mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;"
+          mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;"
+          mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;"
+          mysql_upgrade --force
+        fi
+        _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
+        echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
+      fi
+      mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
+      mysql -u root -e "SET GLOBAL show_compatibility_56=ON;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
+    fi
+    sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"  ${barCnf}
+    _AUTO_UP_WEEKLY=7
+    _AUTO_UP_MONTH=9
+    _AUTO_UP_DAY=21
     _AUTO_PHP="php-all"
     _AUTO_VER="head"
+    if [ -e "/root/.restrict_this_vm.cnf" ] \
+      && [ ! -e "/root/.OFF.restrict_this_vm.cnf" ]; then
+      mv -f /root/.restrict_this_vm.cnf /root/.OFF.restrict_this_vm.cnf
+    fi
+    rm -f /root/.pause_tasks_maint.cnf
+    rm -f /root/.restrict_this_vm.cnf
+    if [ -e "/var/run/boa_run.pid" ]; then
+      touch /root/.pause_tasks_maint.cnf
+      touch /root/.restrict_this_vm.cnf
+    else
+      rm -f /root/.pause_tasks_maint.cnf
+      rm -f /root/.restrict_this_vm.cnf
+      if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "0" ]; then
+        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+        echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
+          /var/xdrago/log/gpg-agent-count.kill.log
+      fi
+      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "0" ]; then
+        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+        echo "$(date 2>&1) Too many dirmngr processes killed" >> \
+          /var/xdrago/log/dirmngr-count.kill.log
+      fi
+    fi
+    if [ -e "/root/.restrict_this_vm.cnf" ]; then
+      killall -9 rsync
+      chmod 700 /usr/bin/rsync
+      chmod 700 /usr/bin/mysqldump
+    else
+      chmod 750 /usr/bin/rsync
+      chmod 750 /usr/bin/mysqldump
+    fi
   fi
-  if [[ "${_VM_VERSION}" =~ "LEGACY" ]] \
-    || [ ! -e "/etc/init.d/ssh" ] \
+  if [ ! -e "/etc/init.d/ssh" ] \
     || [ ! -e "/etc/init.d/redis-server" ] \
     || [[ "${_CHECK_HOST}" =~ "v5.s8.lon." ]] \
     || [[ "${_CHECK_HOST}" =~ "v8.s4.ams." ]] \
@@ -165,7 +226,7 @@ if [ -e "/data/disk/arch" ]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
-    _AUTO_VER="stable"
+    _AUTO_VER="head"
   fi
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -174,7 +235,7 @@ if [ -e "/data/disk/arch" ]; then
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
     _AUTO_PHP=
-    _AUTO_VER="stable"
+    _AUTO_VER="head"
     sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"7.2 5.6\"/g" ${barCnf}
     wait
     sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g" ${barCnf}
@@ -193,4 +254,4 @@ if [ -e "/data/disk/arch" ]; then
     crontab_clean
   fi
 fi
-###EOF2019###
+###EOF2020###

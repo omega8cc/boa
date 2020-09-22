@@ -6,6 +6,7 @@ SHELL=/bin/bash
 check_root() {
   if [ `whoami` = "root" ]; then
     ionice -c2 -n7 -p $$
+    renice 19 -p $$
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -34,27 +35,26 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
-_X_SE="401prodQ1"
+if [ -e "/root/.pause_tasks_maint.cnf" ]; then
+  exit 0
+fi
+
+_X_SE="401prodQ96"
 _CHECK_HOST=$(uname -n 2>&1)
 usrGroup=users
 _WEBG=www-data
 _THIS_RV=$(lsb_release -sc 2>&1)
-if [ "${_THIS_RV}" = "jessie" ] \
+if [ "${_THIS_RV}" = "buster" ] \
   || [ "${_THIS_RV}" = "stretch" ] \
+  || [ "${_THIS_RV}" = "jessie" ] \
   || [ "${_THIS_RV}" = "trusty" ] \
   || [ "${_THIS_RV}" = "precise" ]; then
-  _RUBY_VRN=2.6.0
+  _RUBY_VRN=2.6.3
 else
   _RUBY_VRN=2.0.0
 fi
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
@@ -72,31 +72,15 @@ forCer="-fuy --allow-unauthenticated --reinstall"
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-    rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
     apt-get update -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
-  ffMirr=$(which ffmirror 2>&1)
-  if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors.txt"
-    mkdir -p /var/backups
-    if [ ! -e "${ffList}" ]; then
-      echo "jp.files.aegir.cc"  > ${ffList}
-      echo "nl.files.aegir.cc" >> ${ffList}
-      echo "uk.files.aegir.cc" >> ${ffList}
-      echo "us.files.aegir.cc" >> ${ffList}
-    fi
-    if [ -e "${ffList}" ]; then
-      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
-      _USE_MIR="${_CHECK_MIRROR}"
-      [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
-    else
-      _USE_MIR="files.aegir.cc"
-    fi
-  else
-    _USE_MIR="files.aegir.cc"
-  fi
+  _USE_MIR="files.aegir.cc"
   if ! netcat -w 10 -z "${_USE_MIR}" 80; then
     echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
     _USE_MIR="104.245.208.226"
@@ -156,11 +140,33 @@ add_ltd_group_if_not_exists() {
   fi
 }
 #
+# Add to rvm group if needed.
+if_add_to_rvm_group() {
+  isTest="$1"
+  isTest=${isTest//[^a-z0-9]/}
+  if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
+    _ID_SHELLS=$(id -nG $1 2>&1)
+    if [[ ! "${_ID_SHELLS}" =~ "rvm" ]]; then
+      isRvm=$(which rvm 2>&1)
+      if [ -x "${isRvm}" ]; then
+        rvmPth="${isRvm}"
+      elif [ -x "/usr/local/rvm/bin/rvm" ]; then
+        rvmPth="/usr/local/rvm/bin/rvm"
+      fi
+      if [ -x "${rvmPth}" ]; then
+        usermod -aG rvm $1
+      fi
+    fi
+    _ID_SHELLS=""
+  fi
+}
+#
 # Enable chattr.
 enable_chattr() {
   isTest="$1"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
+    if_add_to_rvm_group $1
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
     _U_II="${_U_HD}/php.ini"
@@ -226,10 +232,10 @@ enable_chattr() {
 
     _CHECK_USE_PHP_CLI=$(grep "/opt/php" \
       ${dscUsr}/tools/drush/drush.php 2>&1)
-    _PHP_V="73 72 71 70 56"
+    _PHP_V="74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
-        && [ ! -e "${_U_HD}/.ctrl.php${e}.pid" ]; then
+        && [ ! -e "${_U_HD}/.ctrl.php${e}.${_X_SE}.pid" ]; then
         _PHP_CLI_UPDATE=YES
       fi
     done
@@ -249,7 +255,9 @@ enable_chattr() {
         _CHECK_USE_PHP_CLI=$(grep "/opt/php" \
           ${dscUsr}/tools/drush/drush.php 2>&1)
         echo "_CHECK_USE_PHP_CLI is ${_CHECK_USE_PHP_CLI} for $1 at ${_USER}"
-        if [[ "${_CHECK_USE_PHP_CLI}" =~ "php73" ]]; then
+        if [[ "${_CHECK_USE_PHP_CLI}" =~ "php74" ]]; then
+          _USE_PHP_CLI=7.4
+        elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php73" ]]; then
           _USE_PHP_CLI=7.3
         elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php72" ]]; then
           _USE_PHP_CLI=7.2
@@ -262,7 +270,10 @@ enable_chattr() {
         fi
       fi
       echo _USE_PHP_CLI is ${_USE_PHP_CLI} for $1
-      if [ "${_USE_PHP_CLI}" = "7.3" ]; then
+      if [ "${_USE_PHP_CLI}" = "7.4" ]; then
+        cp -af /opt/php74/lib/php.ini ${_U_II}
+        _U_INI=74
+      elif [ "${_USE_PHP_CLI}" = "7.3" ]; then
         cp -af /opt/php73/lib/php.ini ${_U_II}
         _U_INI=73
       elif [ "${_USE_PHP_CLI}" = "7.2" ]; then
@@ -289,6 +300,7 @@ enable_chattr() {
           /opt/php71:       \
           /opt/php72:       \
           /opt/php73:       \
+          /opt/php74:       \
           /opt/tika:        \
           /opt/tika7:       \
           /opt/tika8:       \
@@ -296,6 +308,7 @@ enable_chattr() {
           /dev/urandom:     \
           /opt/tools/drush: \
           /usr/bin:         \
+          /usr/local/bin:   \
           ${dscUsr}/.drush/usr: \
           ${dscUsr}/distro:     \
           ${dscUsr}/platforms:  \
@@ -316,7 +329,7 @@ enable_chattr() {
         wait
         sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
         wait
-        echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
+        echo > ${_U_HD}/.ctrl.php${_U_INI}.${_X_SE}.pid
         echo > ${_U_HD}/.ctrl.${_X_SE}.pid
       fi
     fi
@@ -334,16 +347,18 @@ enable_chattr() {
       fi
       if [ ! -x "/home/${UQ}/.rvm/bin/rvm" ]; then
         touch /var/run/manage_rvm_users.pid
-        su -s /bin/bash - ${UQ} -c "${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3"
-        su -s /bin/bash - ${UQ} -c "${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 7D2BAF1CF37B13E2069D6956105BD0E739499BDB"
-        su -s /bin/bash - ${UQ} -c "\curl -sSL https://rvm.io/mpapis.asc | ${_GPG} --import -"
-        su -s /bin/bash - ${UQ} -c "\curl -sSL https://rvm.io/pkuczynski.asc | ${_GPG} --import -"
+        su -s /bin/bash - ${UQ} -c "\curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import -"
+        su -s /bin/bash - ${UQ} -c "\curl -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import -"
         su -s /bin/bash   ${UQ} -c "\curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable"
         su -s /bin/bash - ${UQ} -c "rvm get stable --auto-dotfiles"
         su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
+        wait
+        su -s /bin/bash - ${UQ} -c "echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc"
         rm -f /var/run/manage_rvm_users.pid
       fi
       su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
+      wait
+      su -s /bin/bash - ${UQ} -c "echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc"
       if [ ! -e "/home/${UQ}/.rvm/rubies/default" ]; then
         if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
           _WEB_SH=$(readlink -n /bin/sh 2>&1)
@@ -500,6 +515,7 @@ kill_zombies() {
   for Existing in `cat /etc/passwd | cut -d ':' -f1 | sort`; do
     _SEC_IDY=$(id -nG ${Existing} 2>&1)
     if [[ "${_SEC_IDY}" =~ "ltd-shell" ]] \
+      && [ ! -z "${Existing}" ] \
       && [[ ! "${Existing}" =~ ".ftp"($) ]] \
       && [[ ! "${Existing}" =~ ".web"($) ]]; then
       usrParent=$(echo ${Existing} | cut -d. -f1 | awk '{ print $1}' 2>&1)
@@ -528,6 +544,7 @@ kill_zombies() {
     if [ ! -z "${isTest}" ]; then
       _SEC_IDY=$(id -nG ${Existing} 2>&1)
       if [[ "${_SEC_IDY}" =~ "No such user" ]] \
+        && [ ! -z "${Existing}" ] \
         && [[ ! "${Existing}" =~ ".ftp"($) ]] \
         && [[ ! "${Existing}" =~ ".web"($) ]]; then
         disable_chattr ${Existing}
@@ -690,7 +707,7 @@ ok_create_user() {
         _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
       fi
       if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ]; then
-        _ESC_LUPASS=$(pwgen -v -s -1 2>&1)
+        _ESC_LUPASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
         _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
         _ESC_LUPASS=$(sanitize_string "${_ESC_LUPASS}" 2>&1)
       fi
@@ -700,6 +717,15 @@ ok_create_user() {
       passwd -w 7 -x 90 ${usrLtd}
       usermod -aG lshellg ${usrLtd}
       usermod -aG ltd-shell ${usrLtd}
+      isRvm=$(which rvm 2>&1)
+      if [ -x "${isRvm}" ]; then
+        rvmPth="${isRvm}"
+      elif [ -x "/usr/local/rvm/bin/rvm" ]; then
+        rvmPth="/usr/local/rvm/bin/rvm"
+      fi
+      if [ -x "${rvmPth}" ]; then
+        usermod -aG rvm ${usrLtd}
+      fi
     fi
     if [ ! -e "/home/${_ADMIN}/users/${usrLtd}" ] \
       && [ ! -z "${_ESC_LUPASS}" ]; then
@@ -819,10 +845,10 @@ update_php_cli_local_ini() {
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="73 72 71 70 56"
+  _PHP_V="74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
-      && [ ! -e "${_U_HD}/.ctrl.php${e}.pid" ]; then
+      && [ ! -e "${_U_HD}/.ctrl.php${e}.${_X_SE}.pid" ]; then
       _PHP_CLI_UPDATE=YES
     fi
   done
@@ -841,7 +867,10 @@ update_php_cli_local_ini() {
     chattr -i ${_U_II}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php73" ]]; then
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php74" ]]; then
+      cp -af /opt/php74/lib/php.ini ${_U_II}
+      _U_INI=74
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php73" ]]; then
       cp -af /opt/php73/lib/php.ini ${_U_II}
       _U_INI=73
     elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php72" ]]; then
@@ -867,6 +896,7 @@ update_php_cli_local_ini() {
         /opt/php71:          \
         /opt/php72:          \
         /opt/php73:          \
+        /opt/php74:          \
         /opt/tika:           \
         /opt/tika7:          \
         /opt/tika8:          \
@@ -875,6 +905,7 @@ update_php_cli_local_ini() {
         /opt/tmp/make_local: \
         /opt/tools/drush:    \
         ${dscUsr}:           \
+        /usr/local/bin:      \
         /usr/bin\""
       _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
       _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
@@ -892,7 +923,7 @@ update_php_cli_local_ini() {
       wait
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
-      echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
+      echo > ${_U_HD}/.ctrl.php${_U_INI}.${_X_SE}.pid
       echo > ${_U_HD}/.ctrl.${_X_SE}.pid
     fi
     chattr +i ${_U_II}
@@ -902,7 +933,10 @@ update_php_cli_local_ini() {
 # Update PHP-CLI for Drush.
 update_php_cli_drush() {
   _DRUSH_FILE="${dscUsr}/tools/drush/drush.php"
-  if [ "${_T_CLI_VRN}" = "7.3" ] && [ -x "/opt/php73/bin/php" ]; then
+  if [ "${_T_CLI_VRN}" = "7.4" ] && [ -x "/opt/php74/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    _T_CLI=/opt/php74/bin
+  elif [ "${_T_CLI_VRN}" = "7.3" ] && [ -x "/opt/php73/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php73\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
     _T_CLI=/opt/php73/bin
   elif [ "${_T_CLI_VRN}" = "7.2" ] && [ -x "/opt/php72/bin/php" ]; then
@@ -949,13 +983,7 @@ satellite_tune_fpm_workers() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+  if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
   if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
@@ -969,7 +997,7 @@ satellite_tune_fpm_workers() {
   _USE=$(( _RAM / 4 ))
   if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=24
+      _L_PHP_FPM_WORKERS=48
     else
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
@@ -991,21 +1019,21 @@ satellite_tune_fpm_workers() {
         fi
       else
         if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=24
+          _L_PHP_FPM_WORKERS=48
         else
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
       fi
     else
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=24
+        _L_PHP_FPM_WORKERS=48
       else
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
     fi
   else
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=6
+      _L_PHP_FPM_WORKERS=12
     else
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
@@ -1115,7 +1143,10 @@ satellite_update_web_user() {
       if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
         cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
       else
-        if [ -e "/opt/php73/etc/php73.ini" ]; then
+        if [ -e "/opt/php74/etc/php74.ini" ]; then
+          cp -af /opt/php74/etc/php74.ini ${_T_II}
+          _T_PV=74
+        elif [ -e "/opt/php73/etc/php73.ini" ]; then
           cp -af /opt/php73/etc/php73.ini ${_T_II}
           _T_PV=73
         elif [ -e "/opt/php72/etc/php72.ini" ]; then
@@ -1143,6 +1174,7 @@ satellite_update_web_user() {
           /opt/php71:     \
           /opt/php72:     \
           /opt/php73:     \
+          /opt/php74:     \
           /opt/tika:      \
           /opt/tika7:     \
           /opt/tika8:     \
@@ -1150,6 +1182,7 @@ satellite_update_web_user() {
           /dev/urandom:   \
           /srv:           \
           /usr/bin:       \
+          /usr/local/bin: \
           /var/second/${_USER}:     \
           ${dscUsr}/aegir:          \
           ${dscUsr}/backup-exports: \
@@ -1180,7 +1213,7 @@ satellite_update_web_user() {
           wait
         fi
         rm -f ${_T_HD}/.ctrl.php*
-        echo > ${_T_HD}/.ctrl.php${_T_PV}.pid
+        echo > ${_T_HD}/.ctrl.php${_T_PV}.${_X_SE}.pid
       fi
       chmod 700 /home/${_WEB}
       chown -R ${_WEB}:${_WEBG} /home/${_WEB}
@@ -1241,8 +1274,8 @@ satellite_create_web_user() {
 # Add site specific socket config include.
 site_socket_inc_gen() {
   mltFpm="${dscUsr}/static/control/multi-fpm.info"
-  preFpm="${dscUsr}/static/control/.multi-fpm-pre.info"
-  mltNgx="${dscUsr}/static/control/.multi-fpm-nginx.pid"
+  preFpm="${dscUsr}/static/control/.prev-multi-fpm.info"
+  mltNgx="${dscUsr}/static/control/.multi-nginx-fpm.pid"
   fpmPth="${dscUsr}/config/server_master/nginx/post.d"
   if [ -f "${mltFpm}" ]; then
     mltFpmUpdate=NO
@@ -1295,22 +1328,43 @@ site_socket_inc_gen() {
 # Switch PHP Version.
 switch_php() {
   _PHP_CLI_UPDATE=NO
+  _FORCE_FPM_SETUP=NO
+  _NEW_FPM_SETUP=NO
   _T_CLI_VRN=""
   if [ -e "${dscUsr}/static/control/fpm.info" ] \
     || [ -e "${dscUsr}/static/control/cli.info" ] \
     || [ -e "${dscUsr}/static/control/hhvm.info" ]; then
     echo "Custom FPM, HHVM or CLI settings for ${_USER} exist, running switch_php checks"
+    if [ ! -e "${dscUsr}/static/control/.single-fpm.${_X_SE}.pid" ]; then
+      rm -f ${dscUsr}/static/control/.single-fpm*.pid
+      echo OK > ${dscUsr}/static/control/.single-fpm.${_X_SE}.pid
+      _FORCE_FPM_SETUP=YES
+    fi
     if [ -e "${dscUsr}/static/control/cli.info" ]; then
       _T_CLI_VRN=$(cat ${dscUsr}/static/control/cli.info 2>&1)
       _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
       _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-      if [ "${_T_CLI_VRN}" = "7.3" ] \
+      if [ "${_T_CLI_VRN}" = "7.4" ] \
+        || [ "${_T_CLI_VRN}" = "7.3" ] \
         || [ "${_T_CLI_VRN}" = "7.2" ] \
         || [ "${_T_CLI_VRN}" = "7.1" ] \
         || [ "${_T_CLI_VRN}" = "7.0" ] \
         || [ "${_T_CLI_VRN}" = "5.6" ] \
         || [ "${_T_CLI_VRN}" = "5.2" ]; then
-        if [ "${_T_CLI_VRN}" = "7.3" ] \
+        if [ "${_T_CLI_VRN}" = "7.4" ] \
+          && [ ! -x "/opt/php74/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _T_CLI_VRN=7.3
+          elif [ -x "/opt/php72/bin/php" ]; then
+            _T_CLI_VRN=7.2
+          elif [ -x "/opt/php71/bin/php" ]; then
+            _T_CLI_VRN=7.1
+          elif [ -x "/opt/php70/bin/php" ]; then
+            _T_CLI_VRN=7.0
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _T_CLI_VRN=5.6
+          fi
+        elif [ "${_T_CLI_VRN}" = "7.3" ] \
           && [ ! -x "/opt/php73/bin/php" ]; then
           if [ -x "/opt/php72/bin/php" ]; then
             _T_CLI_VRN=7.2
@@ -1366,7 +1420,9 @@ switch_php() {
             _T_CLI_VRN=7.0
           fi
         elif [ "${_T_CLI_VRN}" = "5.2" ]; then
-          if [ -x "/opt/php73/bin/php" ]; then
+          if [ -x "/opt/php74/bin/php" ]; then
+            _T_CLI_VRN=7.4
+          elif [ -x "/opt/php73/bin/php" ]; then
             _T_CLI_VRN=7.3
           elif [ -x "/opt/php72/bin/php" ]; then
             _T_CLI_VRN=7.2
@@ -1476,22 +1532,24 @@ switch_php() {
       if [ -f "${dscUsr}/static/control/multi-fpm.info" ] \
         && [ -d "${dscUsr}/tools/le" ]; then
         _PHP_FPM_MULTI=YES
-        if [ ! -e "${dscUsr}/static/control/.multi-fpm.pid" ]; then
+        if [ ! -e "${dscUsr}/static/control/.multi-fpm.${_X_SE}.pid" ]; then
+          rm -f ${dscUsr}/static/control/.multi-fpm*.pid
+          echo OK > ${dscUsr}/static/control/.multi-fpm.${_X_SE}.pid
           _FORCE_FPM_SETUP=YES
         fi
       else
-        if [ -e "${dscUsr}/static/control/.multi-fpm.pid" ]; then
-          rm -f ${dscUsr}/static/control/.multi-fpm.pid
-        fi
         if [ -e "${dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc" ]; then
           rm -f ${dscUsr}/config/server_master/nginx/post.d/fpm_include_*
+          rm -f ${dscUsr}/static/control/.multi-fpm*.pid
           service nginx reload &> /dev/null
         fi
       fi
       _T_FPM_VRN=$(cat ${dscUsr}/static/control/fpm.info 2>&1)
       _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
       _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-      if [ "${_T_FPM_VRN}" = "73" ]; then
+      if [ "${_T_FPM_VRN}" = "74" ]; then
+        _T_FPM_VRN=7.4
+      elif [ "${_T_FPM_VRN}" = "73" ]; then
         _T_FPM_VRN=7.3
       elif [ "${_T_FPM_VRN}" = "72" ]; then
         _T_FPM_VRN=7.2
@@ -1504,13 +1562,27 @@ switch_php() {
       elif [ "${_T_FPM_VRN}" = "52" ]; then
         _T_FPM_VRN=5.2
       fi
-      if [ "${_T_FPM_VRN}" = "7.3" ] \
+      if [ "${_T_FPM_VRN}" = "7.4" ] \
+        || [ "${_T_FPM_VRN}" = "7.3" ] \
         || [ "${_T_FPM_VRN}" = "7.2" ] \
         || [ "${_T_FPM_VRN}" = "7.1" ] \
         || [ "${_T_FPM_VRN}" = "7.0" ] \
         || [ "${_T_FPM_VRN}" = "5.6" ] \
         || [ "${_T_FPM_VRN}" = "5.2" ]; then
-        if [ "${_T_FPM_VRN}" = "7.3" ] \
+        if [ "${_T_FPM_VRN}" = "7.4" ] \
+          && [ ! -x "/opt/php74/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _T_FPM_VRN=7.3
+          elif [ -x "/opt/php72/bin/php" ]; then
+            _T_FPM_VRN=7.2
+          elif [ -x "/opt/php71/bin/php" ]; then
+            _T_FPM_VRN=7.1
+          elif [ -x "/opt/php70/bin/php" ]; then
+            _T_FPM_VRN=7.0
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _T_FPM_VRN=5.6
+          fi
+        elif [ "${_T_FPM_VRN}" = "7.3" ] \
           && [ ! -x "/opt/php73/bin/php" ]; then
           if [ -x "/opt/php72/bin/php" ]; then
             _T_FPM_VRN=7.2
@@ -1566,7 +1638,9 @@ switch_php() {
             _T_FPM_VRN=7.0
           fi
         elif [ "${_T_FPM_VRN}" = "5.2" ]; then
-          if [ -x "/opt/php73/bin/php" ]; then
+          if [ -x "/opt/php74/bin/php" ]; then
+            _T_FPM_VRN=7.4
+          elif [ -x "/opt/php73/bin/php" ]; then
             _T_FPM_VRN=7.3
           elif [ -x "/opt/php72/bin/php" ]; then
             _T_FPM_VRN=7.2
@@ -1581,7 +1655,6 @@ switch_php() {
         if [ "${_T_FPM_VRN}" != "${_PHP_FPM_VERSION}" ] \
           || [ "${_FORCE_FPM_SETUP}" = "YES" ]; then
           _NEW_FPM_SETUP=YES
-          _FORCE_FPM_SETUP=NO
         fi
         ### update fpm_include_default.inc if needed
         _PHP_SV=${_T_FPM_VRN//[^0-9]/}
@@ -1591,11 +1664,11 @@ switch_php() {
         _FMP_D_INC="${dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
         if [ "${_PHP_FPM_MULTI}" = "YES" ] \
           && [ -d "${dscUsr}/tools/le" ]; then
-          _PHP_M_V="73 72 71 70 56"
+          _PHP_M_V="74 73 72 71 70 56"
           _D_POOL="${_USER}.${_PHP_SV}"
           if [ ! -e "${_FMP_D_INC}" ]; then
             echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
-            touch ${dscUsr}/static/control/.multi-fpm.pid
+            touch ${dscUsr}/static/control/.multi-fpm.${_X_SE}.pid
             _NEW_FPM_SETUP=YES
           else
             _CHECK_FMP_D=$(grep "${_D_POOL}" ${_FMP_D_INC} 2>&1)
@@ -1604,24 +1677,24 @@ switch_php() {
             else
               echo "${_D_POOL} must be updated in ${_FMP_D_INC}"
               echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
-              touch ${dscUsr}/static/control/.multi-fpm.pid
+              touch ${dscUsr}/static/control/.multi-fpm.${_X_SE}.pid
               _NEW_FPM_SETUP=YES
             fi
           fi
         else
           _PHP_M_V="${_PHP_SV}"
-          rm -f ${dscUsr}/static/control/.multi-fpm.pid
+          rm -f ${dscUsr}/static/control/.multi-fpm*.pid
           rm -f ${_FMP_D_INC}
         fi
         if [ ! -z "${_T_FPM_VRN}" ] \
           && [ "${_NEW_FPM_SETUP}" = "YES" ]; then
-          _NEW_FPM_SETUP=NO
           satellite_tune_fpm_workers
           _LIM_FPM="${_L_PHP_FPM_WORKERS}"
           if [[ "${_THISHOST}" =~ ".host8." ]] \
             || [[ "${_THISHOST}" =~ ".boa.io" ]] \
             || [ "${_VMFAMILY}" = "VS" ]; then
-            if [ "${_CLIENT_OPTION}" = "POWER" ]; then
+            if [ "${_CLIENT_OPTION}" = "POWER" ] \
+              || [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
               if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
                 _LIM_FPM=32
                 _PHP_FPM_WORKERS=64
@@ -1678,11 +1751,11 @@ switch_php() {
           _FMP_D_INC="${dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
           if [ "${_PHP_FPM_MULTI}" = "YES" ] \
             && [ -d "${dscUsr}/tools/le" ]; then
-            _PHP_M_V="73 72 71 70 56"
+            _PHP_M_V="74 73 72 71 70 56"
             _D_POOL="${_USER}.${_PHP_SV}"
             if [ ! -e "${_FMP_D_INC}" ]; then
               echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
-              touch ${dscUsr}/static/control/.multi-fpm.pid
+              touch ${dscUsr}/static/control/.multi-fpm.${_X_SE}.pid
             else
               _CHECK_FMP_D=$(grep "${_D_POOL}" ${_FMP_D_INC} 2>&1)
               if [[ "${_CHECK_FMP_D}" =~ "${_D_POOL}" ]]; then
@@ -1690,12 +1763,12 @@ switch_php() {
               else
                 echo "${_D_POOL} must be updated in ${_FMP_D_INC}"
                 echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
-                touch ${dscUsr}/static/control/.multi-fpm.pid
+                touch ${dscUsr}/static/control/.multi-fpm.${_X_SE}.pid
               fi
             fi
           else
             _PHP_M_V="${_PHP_SV}"
-            rm -f ${dscUsr}/static/control/.multi-fpm.pid
+            rm -f ${dscUsr}/static/control/.multi-fpm*.pid
             rm -f ${_FMP_D_INC}
           fi
           for m in ${_PHP_M_V}; do
@@ -1710,11 +1783,11 @@ switch_php() {
               fi
               if [ -e "/home/${_WEB}/.drush/php.ini" ]; then
                 _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
-                _PHP_V="73 72 71 70 56"
+                _PHP_V="74 73 72 71 70 56"
                 for e in ${_PHP_V}; do
                   if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
                     if [ "${e}" != "${m}" ] \
-                      || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${m}.pid" ]; then
+                      || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${m}.${_X_SE}.pid" ]; then
                       echo _OLD_PHP_IN_USE is ${_OLD_PHP_IN_USE} for ${_WEB} update
                       echo _NEW_PHP_TO_USE is ${m} for ${_WEB} update
                       satellite_update_web_user "${m}"
@@ -1730,7 +1803,7 @@ switch_php() {
           ### create or update special system user if needed
           if [ "${_PHP_FPM_MULTI}" = "YES" ] \
             && [ -d "${dscUsr}/tools/le" ]; then
-            _PHP_M_V="73 72 71 70 56"
+            _PHP_M_V="74 73 72 71 70 56"
             rm -f /opt/php*/etc/pool.d/${_USER}.conf
           else
             _PHP_M_V="${_PHP_SV}"
@@ -1830,7 +1903,8 @@ manage_site_drush_alias_mirror() {
   for Alias in `find /home/${_USER}.ftp/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
     AliasFile=$(echo "$Alias" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
-    if [ ! -e "${pthParentUsr}/.drush/${AliasFile}" ]; then
+    if [ ! -e "${pthParentUsr}/.drush/${AliasFile}" ] \
+      && [ ! -z "${AliasFile}" ]; then
       rm -f /home/${_USER}.ftp/.drush/${AliasFile}
     fi
   done
@@ -1844,13 +1918,8 @@ manage_site_drush_alias_mirror() {
   if [ -e "${dscUsr}/.drush/.alias.drushrc.php" ]; then
     rm -f ${dscUsr}/.drush/.alias.drushrc.php
   fi
-  if [ -e "${dscUsr}/.drush/self.alias.drushrc.php" ]; then
-    rm -f ${dscUsr}/.drush/self.alias.drushrc.php
-  fi
-  if [ -e "${dscUsr}/config/self" ]; then
-    rm -rf ${dscUsr}/config/self
-  fi
 
+  isAliasUpdate=NO
   for Alias in `find ${pthParentUsr}/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
     AliasName=$(echo "$Alias" | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
@@ -1876,27 +1945,38 @@ manage_site_drush_alias_mirror() {
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
-        if [ -d "$SiteDir" ]; then
-          echo SiteDir is $SiteDir
+        if [ -d "${SiteDir}" ]; then
+          echo SiteDir is ${SiteDir}
           pthAliasMain="${pthParentUsr}/.drush/${SiteName}.alias.drushrc.php"
           pthAliasCopy="/home/${_USER}.ftp/.drush/${SiteName}.alias.drushrc.php"
           if [ ! -e "${pthAliasCopy}" ]; then
             cp -af ${pthAliasMain} ${pthAliasCopy}
             chmod 440 ${pthAliasCopy}
+            isAliasUpdate=YES
           else
             _DIFF_T=$(diff -w -B ${pthAliasCopy} ${pthAliasMain} 2>&1)
             if [ ! -z "${_DIFF_T}" ]; then
               cp -af ${pthAliasMain} ${pthAliasCopy}
               chmod 440 ${pthAliasCopy}
+              isAliasUpdate=YES
             fi
           fi
         else
           rm -f ${pthAliasCopy}
-          echo "ZOMBIE $SiteDir IN ${pthAliasMain}"
+          echo "ZOMBIE ${SiteDir} IN ${pthAliasMain}"
         fi
       fi
     fi
   done
+  if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+    if [ "${isAliasUpdate}" = "YES" ] \
+      || [ ! -e "/home/${_USER}.ftp/.drush/sites/.checksums" ]; then
+      su -s /bin/bash - ${_USER}.ftp -c "rm -f ~/.drush/sites/*.yml"
+      su -s /bin/bash - ${_USER}.ftp -c "rm -f ~/.drush/sites/.checksums/*.md5"
+      su -s /bin/bash - ${_USER}.ftp -c "drush9 core:init --yes" &> /dev/null
+      su -s /bin/bash - ${_USER}.ftp -c "drush9 site:alias-convert ~/.drush/sites --yes" &> /dev/null
+    fi
+  fi
 }
 #
 # Manage Primary Users.
@@ -1980,7 +2060,7 @@ manage_user() {
           fi
         fi
         if [ -f "${dscUsr}/static/control/multi-fpm.info" ]; then
-          _PHP_M_V="73 72 71 70 56"
+          _PHP_M_V="74 73 72 71 70 56"
           for m in ${_PHP_M_V}; do
             if [ -x "/opt/php${m}/bin/php" ] \
               && [ -e "/opt/php${m}/etc/pool.d/${_USER}.${m}.conf" ]; then
@@ -2047,6 +2127,17 @@ manage_user() {
   done
 }
 
+#
+# Find correct IP.
+find_correct_ip() {
+  _LOC_IP=$(curl ${crlGet} https://api.ipify.org \
+    | sed 's/[^0-9\.]//g' 2>&1)
+  if [ -z "${_LOC_IP}" ]; then
+    _LOC_IP=$(curl ${crlGet} http://ip4.icanhazip.com \
+      | sed 's/[^0-9\.]//g' 2>&1)
+  fi
+}
+
 ###-------------SYSTEM-----------------###
 
 if [ ! -e "/home/.ctrl.${_X_SE}.pid" ]; then
@@ -2087,7 +2178,7 @@ if [ ! -L "/usr/bin/MySecureShell" ] && [ -x "/usr/bin/mysecureshell" ]; then
   ln -sf /usr/bin/mysecureshell /usr/bin/MySecureShell
 fi
 
-_NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 mkdir -p /var/backups/ltd/{conf,log,old}
 mkdir -p /var/backups/zombie/deleted
@@ -2108,11 +2199,8 @@ else
   find_fast_mirror
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   cat /var/xdrago/conf/lshell.conf > ${_THIS_LTD_CONF}
-  _THISHTNM=$(hostname --fqdn 2>&1)
-  _THISHTIP=$(echo $(getent ahostsv4 ${_THISHTNM}) \
-    | cut -d: -f2 \
-    | awk '{ print $1}' 2>&1)
-  sed -i "s/1.1.1.1/${_THISHTIP}/g" ${_THIS_LTD_CONF}
+  find_correct_ip
+  sed -i "s/1.1.1.1/${_LOC_IP}/g" ${_THIS_LTD_CONF}
   wait
   if [ ! -e "/root/.allow.mc.cnf" ]; then
     sed -i "s/'mc', //g" ${_THIS_LTD_CONF}
@@ -2204,14 +2292,17 @@ else
         service cron stop &> /dev/null
         sleep 180
         touch /root/.remote.db.cnf
-        if [ "${_DB_SERIES}" = "10.3" ] \
+        if [ "${_DB_SERIES}" = "10.4" ] \
+          || [ "${_DB_SERIES}" = "10.3" ] \
           || [ "${_DB_SERIES}" = "10.2" ] \
-          || [ "${_DB_SERIES}" = "10.1" ] \
           || [ "${_DB_SERIES}" = "5.7" ]; then
           mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+          mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
           mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;" &> /dev/null
+          mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
+          mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
           mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+          mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
         fi
         service mysql stop &> /dev/null
         sleep 5
@@ -2223,4 +2314,4 @@ else
   rm -f /var/run/manage_ltd_users.pid
   exit 0
 fi
-###EOF2019###
+###EOF2020###

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
-_NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 vBs="/var/backups"
 _THIS_DB_PORT=3306
@@ -11,10 +11,21 @@ sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g; s/\(['"'"'\]\)//g'
 }
 
+#
+# Find correct IP.
+find_correct_ip() {
+  _LOC_IP=$(curl ${crlGet} https://api.ipify.org \
+    | sed 's/[^0-9\.]//g' 2>&1)
+  if [ -z "${_LOC_IP}" ]; then
+    _LOC_IP=$(curl ${crlGet} http://ip4.icanhazip.com \
+      | sed 's/[^0-9\.]//g' 2>&1)
+  fi
+}
+
 check_generate() {
   rm -f ${_L_SYS}
   if [ -e "${_L_SYS}" ]; then
-    _ESC_APASS=$(cat ${_L_SYS} 2>&1)
+    _ESC_PASS=$(cat ${_L_SYS} 2>&1)
   else
     echo "INFO: Expected file ${_L_SYS} does not exist"
     if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
@@ -37,38 +48,42 @@ check_generate() {
       || [ "${_PWD_CHARS}" -gt "8" ]; then
       echo "INFO: We will generate new random strong password (${_PWD_CHARS})"
       if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-        _ESC_APASS="$(openssl rand -base64 32 2>&1)"
+        _ESC_PASS="$(openssl rand -base64 32 2>&1)"
       else
-        _ESC_APASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+        _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
       fi
-      _ESC_APASS=$(echo -n "${_ESC_APASS}" | tr -d "\n" 2>&1)
-      _ENC_APASS=$(python -c "import urllib; print urllib.quote('''${_ESC_APASS}''')")
-      echo "${_ESC_APASS}" > ${_L_SYS}
+      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+      _ENC_PASS=$(python -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
+      echo "${_ESC_PASS}" > ${_L_SYS}
     else
-       echo "INFO: We will generate new random password using pwgen tool"
-      _ESC_APASS=$(pwgen -v -s -1 2>&1)
-      _ESC_APASS=$(echo -n "${_ESC_APASS}" | tr -d "\n" 2>&1)
-      _ESC_APASS=$(sanitize_string "${_ESC_APASS}" 2>&1)
-      _ENC_APASS="${_ESC_APASS}"
-      echo "${_ESC_APASS}" > ${_L_SYS}
+       echo "INFO: We will generate new random password using shuf tool"
+      _ESC_PASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
+      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+      _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+      _ENC_PASS="${_ESC_PASS}"
+      echo "${_ESC_PASS}" > ${_L_SYS}
       chmod 0600 ${_L_SYS}
     fi
   fi
-  _LEN_APASS=$(echo ${#_ESC_APASS} 2>&1)
-  if [ -z "${_ESC_APASS}" ] || [ "${_LEN_APASS}" -lt "9" ]; then
-     echo "WARN: The random password=${_ESC_APASS} does not look good"
-     echo "INFO: We will generate new random password using pwgen tool"
-    _ESC_APASS=$(pwgen -v -s -1 2>&1)
-    _ESC_APASS=$(echo -n "${_ESC_APASS}" | tr -d "\n" 2>&1)
-    _ESC_APASS=$(sanitize_string "${_ESC_APASS}" 2>&1)
-    _ENC_APASS="${_ESC_APASS}"
-    echo "${_ESC_APASS}" > ${_L_SYS}
+  _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
+  if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
+     echo "WARN: The random password=${_ESC_PASS} does not look good"
+     echo "INFO: We will generate new random password using shuf tool"
+    _ESC_PASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
+    _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+    _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+    _ENC_PASS="${_ESC_PASS}"
+    echo "${_ESC_PASS}" > ${_L_SYS}
     chmod 0600 ${_L_SYS}
   fi
 }
 
 do_syncpass() {
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
+  fi
   if [ ! -z "${uname}" ]; then
+    find_correct_ip
     prH="/var/aegir/.drush"
     if [ "${uname}" = "aegir" ] && [ -e "/var/aegir/backups" ]; then
       _L_SYS="/var/aegir/backups/system/.aegir_root.pass.txt"
@@ -78,17 +93,16 @@ do_syncpass() {
         ${vBs}/server_master.alias.drushrc.php.${uname}-${_NOW} &> /dev/null
       check_generate
       chown ${uname}:${uname} ${_L_SYS} &> /dev/null
-      if [ ! -z "${_ESC_APASS}" ] && [ ! -z "${_ENC_APASS}" ]; then
-        mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+      if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
+        mysqladmin flush-hosts
         su -s /bin/bash - ${uname} -c "drush @hostmaster \
           sqlq \"UPDATE hosting_db_server \
-          SET db_passwd='${_ESC_APASS}' \
+          SET db_passwd='${_ESC_PASS}' \
           WHERE db_user='aegir_root'\"" &> /dev/null
         _ESC="*.*"
         _USE_DB_USER="aegir_root"
         _USE_AEGIR_HOST="$(uname -n 2>&1)"
-        _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
-          | cut -d: -f2 | awk '{ print $1}' 2>&1)"
+        _USE_RESOLVEIP="${_LOC_IP}"
         [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL1 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
         if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
           _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
@@ -96,7 +110,7 @@ do_syncpass() {
           mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
-INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_APASS}','10');
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;
 SAVE MYSQL USERS TO DISK;
@@ -113,21 +127,25 @@ PROXYSQL
         ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
         ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
         mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
+ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
         sed -i \
-          "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
+          "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
           ${prH}/server_*.alias.drushrc.php &> /dev/null
         wait
-        mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+        mysqladmin flush-privileges
       else
         echo "ERROR: Auto-generated password for aegir_root system user"
         echo "ERROR: did not work as expected, please try again"
         exit 1
       fi
       echo "INFO: Fixed Aegir Master Instance system user=aegir_root"
-      echo "INFO: New system password=${_ESC_APASS} encoded=${_ENC_APASS}"
+      echo "INFO: New system password=${_ESC_PASS} encoded=${_ENC_PASS}"
       echo "BYE!"
     else
       if [ -e "/data/disk/${uname}" ]; then
@@ -138,19 +156,21 @@ EOFMYSQL
           ${vBs}/server_master.alias.drushrc.php.${uname}-${_NOW} &> /dev/null
         check_generate
         chown ${uname}:users ${_L_SYS} &> /dev/null
-        if [ ! -z "${_ESC_APASS}" ] && [ ! -z "${_ENC_APASS}" ]; then
-          mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+        if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
+          if [ -e "/data/conf/${uname}_use_proxysql.txt" ]; then
+            _SQL_CONNECT=127.0.0.1
+            _THIS_DB_PORT=6033
+            mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+          else
+            mysqladmin flush-hosts
+          fi
           su -s /bin/bash - ${uname} -c "drush @hostmaster \
-            sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_APASS}' \
+            sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
             WHERE db_user='${uname}'\"" &> /dev/null
           _ESC="*.*"
           _USE_DB_USER="${uname}"
           _USE_AEGIR_HOST="$(uname -n 2>&1)"
-          _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
-            | cut -d: -f2 | awk '{ print $1}' 2>&1)"
-          if [ -e "/data/disk/${uname}/log/use_proxysql.txt" ]; then
-            _THIS_DB_PORT=6033
-          fi
+          _USE_RESOLVEIP="${_LOC_IP}"
           [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL2 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
           if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
             _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
@@ -158,7 +178,7 @@ EOFMYSQL
             mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032 --protocol=tcp<<PROXYSQL
 DELETE FROM mysql_users WHERE username='${_USE_DB_USER}';
 DELETE FROM mysql_query_rules WHERE username='${_USE_DB_USER}';
-INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_APASS}','10');
+INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('${_USE_DB_USER}','${_ESC_PASS}','10');
 LOAD MYSQL USERS TO RUNTIME;
 SAVE MYSQL USERS FROM RUNTIME;
 SAVE MYSQL USERS TO DISK;
@@ -175,21 +195,42 @@ PROXYSQL
           ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
           ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
           mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_APASS}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
+ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
           sed -i \
-            "s/mysql:\/\/${uname}:.*/mysql:\/\/${uname}:${_ENC_APASS}@${_SQL_CONNECT}',/g" \
+            "s/mysql:\/\/${uname}:.*/mysql:\/\/${uname}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
             /data/disk/${uname}/.drush/server_*.alias.drushrc.php &> /dev/null
           wait
-          mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+          if [ -e "/data/conf/${uname}_use_proxysql.txt" ]; then
+            _SQL_CONNECT=127.0.0.1
+            _THIS_DB_PORT=6033
+            mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+          else
+            mysqladmin flush-privileges
+          fi
         else
           echo "ERROR: Auto-generated password for ${uname} system user"
           echo "ERROR: did not work as expected, please try again"
           exit 1
         fi
+        _L_SYS_PHP="/data/disk/${uname}/.${uname}.pass.php"
+        echo "<?php" > ${_L_SYS_PHP}
+        echo "\$oct_db_user = \"${uname}\";" >> ${_L_SYS_PHP}
+        echo "\$oct_db_pass = \"${_ESC_PASS}\";" >> ${_L_SYS_PHP}
+        echo "\$oct_db_host = \"${_THIS_DB_HOST}\";" >> ${_L_SYS_PHP}
+        echo "\$oct_db_port = \"${_THIS_DB_PORT}\";" >> ${_L_SYS_PHP}
+        echo "\$oct_db_dirs = \"/data/disk/${uname}/backups\";" >> ${_L_SYS_PHP}
+        chown ${uname}:users ${_L_SYS_PHP}
+        chmod 0600 ${_L_SYS_PHP}
         echo "INFO: Fixed Aegir Satellite Instance system user=${uname}"
-        echo "INFO: New system password=${_ESC_APASS} encoded=${_ENC_APASS}"
+        echo "INFO: New system password=${_ESC_PASS} encoded=${_ENC_PASS}"
+        echo "INFO: With Satellite oct_db_host=${_THIS_DB_HOST}"
+        echo "INFO: With Satellite oct_db_port=${_THIS_DB_PORT}"
         echo "BYE!"
       else
         echo "ERROR: You must specify the existing Aegir \
@@ -219,17 +260,8 @@ check_root() {
     wait
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
     wait
-    _GH_TEST=$(cat /etc/hosts | grep github 2>&1)
-    if [[ ! "${_GH_TEST}" =~ "github.com" ]]; then
-      echo "192.30.253.113 github.com" >> /etc/hosts
-      wait
-      echo "151.101.32.133 raw.githubusercontent.com" >> /etc/hosts
-      wait
-      echo >>/etc/hosts
-      wait
-      service pdnsd restart &> /dev/null
-      pdnsd-ctl empty-cache &> /dev/null
-    fi
+    sed -i "s/.*github.*//g" /etc/hosts
+    wait
     echo >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
     wait

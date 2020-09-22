@@ -41,8 +41,10 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /xinetd/) {$xinetdlives = "YES"; $xinetdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /lsyncd/) {$lsyncdlives = "YES"; $lsyncdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /sshd/) {$sshdlives = "YES"; $sshdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /proxysql/) {$pxydlives = "YES"; $pxydsumar = $li_cnt{$COMMAND};}
 }
 foreach $X (sort keys %li_cnt) {
+  if ($X =~ /php74/) {$php74lives = "YES";}
   if ($X =~ /php73/) {$php73lives = "YES";}
   if ($X =~ /php72/) {$php72lives = "YES";}
   if ($X =~ /php71/) {$php71lives = "YES";}
@@ -62,6 +64,7 @@ print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
 print "\n $collectdsumar Collectd\t\tGLOBAL" if ($collectdlives);
 print "\n $dhcpcdsumar dhcpcd procs\t\tGLOBAL" if ($dhcpcdlives);
 print "\n $fpmsumar FPM procs\t\tGLOBAL" if ($fpmlives);
+print "\n 1 FPM74 procs\t\tGLOBAL" if ($php74lives);
 print "\n 1 FPM73 procs\t\tGLOBAL" if ($php73lives);
 print "\n 1 FPM72 procs\t\tGLOBAL" if ($php72lives);
 print "\n 1 FPM71 procs\t\tGLOBAL" if ($php71lives);
@@ -87,11 +90,14 @@ print "\n $convertsumar Convert procs\t\tGLOBAL" if ($convertlives);
 print "\n $xinetdsumar Xinetd procs\t\tGLOBAL" if ($xinetdlives);
 print "\n $lsyncdsumar Lsyncd procs\t\tGLOBAL" if ($lsyncdlives);
 print "\n $sshdsumar SSHd procs\t\tGLOBAL" if ($sshdlives);
+print "\n $pxydsumar PxySQL procs\t\tGLOBAL" if ($pxydlives);
+print "\n";
 
 system("service bind9 restart") if (!$namedsumar && -f "/etc/init.d/bind9");
 system("service ssh restart") if (!$sshdsumar && -f "/etc/init.d/ssh");
+system("service proxysql restart") if (!$pxydsumar && -f "/etc/init.d/proxysql");
 
-if (-e "/usr/sbin/pdnsd" && (!$pdnsdsumar || !-e "/etc/resolvconf/run/interface/lo.pdnsd") && !-f "/var/run/boa_run.pid") {
+if (-e "/usr/sbin/pdnsd" && (!$pdnsdsumar || !-e "/etc/resolvconf/run/interface/lo.pdnsd")) {
   system("mkdir -p /var/cache/pdnsd");
   system("chown -R pdnsd:proxy /var/cache/pdnsd");
   system("resolvconf -u");
@@ -106,9 +112,12 @@ if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/var/run/mysql_restart_running.p
 if (-f "/root/.mstr.clstr.cnf" || -f "/root/.wbhd.clstr.cnf") {
   if ($mysqlives && -f "/root/.remote.db.cnf") {
     system("mysql -u root -e \"SET GLOBAL innodb_max_dirty_pages_pct = 0\;\"");
+    system("mysql -u root -e \"SET GLOBAL innodb_change_buffering = \'none\'\;\"");
     system("mysql -u root -e \"SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1\;\"");
-    system("mysql -u root -e \"SET GLOBAL innodb_io_capacity = 8000\;\"");
+    system("mysql -u root -e \"SET GLOBAL innodb_io_capacity = 2000\;\"");
+    system("mysql -u root -e \"SET GLOBAL innodb_io_capacity_max = 4000\;\"");
     system("mysql -u root -e \"SET GLOBAL innodb_buffer_pool_dump_pct = 100\;\"");
+    system("mysql -u root -e \"SET GLOBAL innodb_buffer_pool_dump_now = ON\;\"");
     system("service mysql stop");
   }
 }
@@ -118,7 +127,7 @@ if (!-f "/root/.dbhd.clstr.cnf") {
     system("mkdir -p /var/run/redis");
     system("chown -R redis:redis /var/run/redis");
   }
-  if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis") && !-f "/var/run/boa_run.pid") {
+  if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis")) {
     if (-f "/etc/init.d/redis-server") { system("service redis-server start"); }
     elsif (-f "/etc/init.d/redis") { system("service redis start"); }
   }
@@ -131,12 +140,12 @@ if (!-f "/root/.dbhd.clstr.cnf") {
   system("service redis-server restart") if (!-f "/var/run/redis/redis.pid");
 }
 
-system("service newrelic-daemon restart") if (!$newrelicdaemonsumar && -f "/etc/init.d/newrelic-daemon" && !-f "/var/run/boa_run.pid");
-system("service newrelic-sysmond restart") if (!$newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/var/run/boa_run.pid" && -f "/root/.enable.newrelic.sysmond.cnf");
+system("service newrelic-daemon restart") if (!$newrelicdaemonsumar && -f "/etc/init.d/newrelic-daemon");
+system("service newrelic-sysmond restart") if (!$newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && -f "/root/.enable.newrelic.sysmond.cnf");
 system("service newrelic-sysmond stop") if ($newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/root/.enable.newrelic.sysmond.cnf");
-system("service postfix restart") if (!$postfixsumar && -f "/etc/init.d/postfix" && !-f "/var/run/boa_run.pid");
+system("service postfix restart") if (!$postfixsumar && -f "/etc/init.d/postfix");
 
-if (!$nginxsumar && -f "/etc/init.d/nginx" && !-f "/var/run/boa_run.pid" && !-f "/root/.dbhd.clstr.cnf") {
+if (!$nginxsumar && -f "/etc/init.d/nginx" && !-f "/root/.dbhd.clstr.cnf") {
   system("killall -9 nginx");
   system("service nginx start");
 }
@@ -150,7 +159,7 @@ if ($nginxsumar) {
 }
 
 if (-f "/root/.dbhd.clstr.cnf") {
-  if ($php73lives || $php72lives || $php71lives || $php70lives || $php56lives) {
+  if ($php74lives || $php73lives || $php72lives || $php71lives || $php70lives || $php56lives) {
     system("killall -9 php-fpm");
   }
   if ($redislives) {
@@ -158,20 +167,21 @@ if (-f "/root/.dbhd.clstr.cnf") {
   }
 }
 else {
-  system("service php73-fpm restart") if ((!$php73lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php73-fpm.pid") && -f "/etc/init.d/php73-fpm" && !-f "/var/run/boa_run.pid");
-  system("service php72-fpm restart") if ((!$php72lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php72-fpm.pid") && -f "/etc/init.d/php72-fpm" && !-f "/var/run/boa_run.pid");
-  system("service php71-fpm restart") if ((!$php71lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php71-fpm.pid") && -f "/etc/init.d/php71-fpm" && !-f "/var/run/boa_run.pid");
-  system("service php70-fpm restart") if ((!$php70lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php70-fpm.pid") && -f "/etc/init.d/php70-fpm" && !-f "/var/run/boa_run.pid");
-  system("service php56-fpm restart") if ((!$php56lives || !$fpmsumar || $fpmsumar > 5 || !-f "/var/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm" && !-f "/var/run/boa_run.pid");
+  system("service php74-fpm restart") if ((!$php74lives || !$fpmsumar || $fpmsumar > 6 || !-f "/var/run/php74-fpm.pid") && -f "/etc/init.d/php74-fpm");
+  system("service php73-fpm restart") if ((!$php73lives || !$fpmsumar || $fpmsumar > 6 || !-f "/var/run/php73-fpm.pid") && -f "/etc/init.d/php73-fpm");
+  system("service php72-fpm restart") if ((!$php72lives || !$fpmsumar || $fpmsumar > 6 || !-f "/var/run/php72-fpm.pid") && -f "/etc/init.d/php72-fpm");
+  system("service php71-fpm restart") if ((!$php71lives || !$fpmsumar || $fpmsumar > 6 || !-f "/var/run/php71-fpm.pid") && -f "/etc/init.d/php71-fpm");
+  system("service php70-fpm restart") if ((!$php70lives || !$fpmsumar || $fpmsumar > 6 || !-f "/var/run/php70-fpm.pid") && -f "/etc/init.d/php70-fpm");
+  system("service php56-fpm restart") if ((!$php56lives || !$fpmsumar || $fpmsumar > 6 || !-f "/var/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
 }
 
-system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7" && !-f "/var/run/boa_run.pid");
-system("service jetty8 start") if (!$jetty8sumar && -f "/etc/init.d/jetty8" && !-f "/var/run/boa_run.pid");
-system("service jetty9 start") if (!$jetty9sumar && -f "/etc/init.d/jetty9" && !-f "/var/run/boa_run.pid");
-system("service solr7 start") if (!$solr7sumar && -f "/etc/init.d/solr7" && !-f "/var/run/boa_run.pid");
-system("service collectd start") if (!$collectdsumar && -f "/etc/init.d/collectd" && !-f "/var/run/boa_run.pid");
-system("service xinetd start") if (!$xinetdsumar && -f "/etc/init.d/xinetd" && !-f "/var/run/boa_run.pid");
-system("service lsyncd start") if (!$lsyncdsumar && -f "/etc/init.d/lsyncd" && !-f "/var/run/boa_run.pid");
+system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7");
+system("service jetty8 start") if (!$jetty8sumar && -f "/etc/init.d/jetty8");
+system("service jetty9 start") if (!$jetty9sumar && -f "/etc/init.d/jetty9");
+system("service solr7 start") if (!$solr7sumar && -f "/etc/init.d/solr7");
+system("service collectd start") if (!$collectdsumar && -f "/etc/init.d/collectd");
+system("service xinetd start") if (!$xinetdsumar && -f "/etc/init.d/xinetd");
+system("service lsyncd start") if (!$lsyncdsumar && -f "/etc/init.d/lsyncd");
 system("service postfix restart") if (!-f "/var/spool/postfix/pid/master.pid");
 
 if (-f "/usr/local/sbin/pure-config.pl") {
@@ -181,7 +191,7 @@ if (-f "/usr/local/sbin/pure-config.pl") {
     }
   }
   else {
-    `/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf` if (!$ftpsumar && !-f "/var/run/boa_run.pid");
+    `/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf` if (!$ftpsumar);
   }
 }
 
@@ -231,90 +241,6 @@ sub global_action
     {
       local($HOUR, $MIN) = split(/:/,${TIME});
       $MIN =~ s/^0//g;
-
-      if ($COMMAND =~ /^(\\)/ && $START =~ /[A-Z]/ && $B =~ /php/ && $B !~ /php-fpm/ && $B !~ /php-cgi/)
-      {
-        $timedate=`date +%y%m%d-%H%M`;
-        chomp($timedate);
-        $hourminute=`date +%H%M`;
-        chomp($hourminute);
-        if ($hourminute !~ /^000/)
-        {
-          system("kill -9 $PID");
-         `echo "G $timedate ${TIME} $STAT $START $COMMAND, $B, $K, $X, $Y, $Z, $T" >> /var/xdrago/log/php-cli.kill.log`;
-        }
-      }
-
-      if ($COMMAND =~ /^(\\)/ && $B =~ /mysqld/ && $CPU > 10 && $USER =~ /mysql/)
-      {
-        $timedate=`date +%y%m%d-%H%M%S`;
-        chomp($timedate);
-        if ($CPU > $MAXSQLCPU && $HOUR > 1 && ($STAT =~ /R/ || $STAT =~ /Z/))
-        {
-          if (!-f "/var/run/mysql_restart_running.pid" && !-f "/var/run/boa_run.pid" && !-e "/root/.no.sql.cpu.limit.cnf") {
-            system("bash /var/xdrago/move_sql.sh");
-            $timedate=`date +%y%m%d-%H%M%S`;
-            chomp($timedate);
-           `echo "$USER CPU:$CPU MAXSQLCPU:$MAXSQLCPU $STAT START:$START TIME:${TIME} $timedate" >> /var/xdrago/log/mysql.forced.restart.log`;
-          }
-        }
-        if ($CPU > 50 && !-f "/var/run/boa_sql_backup.pid") {
-         `echo "$USER CPU:$CPU MAXSQLCPU:$MAXSQLCPU $STAT START:$START TIME:${TIME} $timedate" >> /var/xdrago/log/mysql.watch.log`;
-        }
-      }
-
-      if ($COMMAND =~ /^(\\)/ && $B =~ /php-fpm/ && $K =~ /pool/ && $CPU > 100 && ($STAT =~ /R/ || $STAT =~ /Z/) && $USER !~ /root/)
-      {
-        if ($HOUR > "0" || $MIN > 9)
-        {
-          $timedate=`date +%y%m%d-%H%M%S`;
-          chomp($timedate);
-          if ($CPU > $MAXFPMCPU)
-          {
-            if (!-e "/root/.no.fpm.cpu.limit.cnf") {
-              system("kill -9 $PID");
-             `echo "$X CPU:$CPU MAXFPMCPU:$MAXFPMCPU $STAT START:$START TIME:${TIME} $timedate" >> /var/xdrago/log/php-fpm.kill.log`;
-              $fpm_result = "KILLED";
-            }
-          }
-         `echo "$X CPU:$CPU $STAT START:$START TIME:${TIME} $timedate $fpm_result" >> /var/xdrago/log/php-fpm.watch.log`;
-        }
-      }
-
-      if ($COMMAND =~ /^(sh|git)/ && $START =~ /[A-Z]/ && $B =~ /(-c|git|clone)/)
-      {
-         $timedate=`date +%y%m%d-%H%M%S`;
-         chomp($timedate);
-         $hourminute=`date +%H%M%S`;
-         chomp($hourminute);
-         if ($hourminute !~ /^000/)
-         {
-            system("kill -9 $PID");
-           `echo "$timedate ${TIME} $STAT $START $B" >> /var/xdrago/log/git.kill.log`;
-         }
-      }
-
-      if ($COMMAND =~ /^(\\)/ && $B =~ /^(sh|git)/ && $START =~ /[A-Z]/ && $K =~ /(-c|git|clone)/)
-      {
-         $timedate=`date +%y%m%d-%H%M%S`;
-         chomp($timedate);
-         $hourminute=`date +%H%M%S`;
-         chomp($hourminute);
-         if ($hourminute !~ /^000/)
-         {
-            system("kill -9 $PID");
-           `echo "$timedate ${TIME} $STAT $START $B" >> /var/xdrago/log/git.kill.log`;
-         }
-      }
-
-      if ($USER =~ /jetty/ && $COMMAND =~ /java/ && $STAT =~ /R/)
-      {
-         system("kill -9 $PID");
-         $timedate=`date +%y%m%d-%H%M%S`;
-         chomp($timedate);
-        `echo "$timedate ${TIME} $CPU $MEM $STAT $START $USER" >> /var/xdrago/log/jetty-java.kill.log`;
-      }
-
       if ($COMMAND !~ /^(\\)/ && $COMMAND !~ /^(\|)/)
       {
         if ($COMMAND =~ /nginx/) {
@@ -381,9 +307,9 @@ sub cpu_count_load
   $MAXFPMCPU = $PROCS."00";
   if ($PROCS > 2)
   {
-    $MAXSQLCPU = 200;
+    $MAXSQLCPU = 600;
   }
   $MAXSQLCPU = $MAXSQLCPU - 5;
   $MAXFPMCPU = $MAXFPMCPU - 5;
 }
-###EOF2019###
+###EOF2020###

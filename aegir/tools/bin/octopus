@@ -4,15 +4,15 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 branch="4.x"
-cluster="BOA-4.0.1"
+cluster="BOA-4.1.2"
 hd="HEAD"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
 lgcD="BOA-3.2.2"
 master="master"
-nextv="BOA-4.0.2-dev"
-stbl="BOA-4.0.1"
+nextv="BOA-4.1.3-dev"
+stbl="BOA-4.1.2"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -30,22 +30,14 @@ vBs="/var/backups"
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _CHECK_HOST=$(uname -n 2>&1)
 _LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _VMFAMILY=XEN
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
-else
-  _VMFAMILY="XEN"
 fi
 
 clean_pid_exit() {
@@ -73,13 +65,6 @@ fix_dns_settings() {
   if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
     echo "nameserver 1.1.1.1" >${vBs}/resolv.conf.tmp
     echo "nameserver 1.0.0.1" >>${vBs}/resolv.conf.tmp
-  fi
-  if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
-    for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
-      if [ -e "${Pre}" ] && [ -f "${Pre}" ] && [ ! -L "${Pre}" ]; then
-        cp -a ${Pre} ${vBs}/resolv.conf.vanilla
-      fi
-    done
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ] \
     && [ -e "${vBs}/resolv.conf.tmp" ]; then
@@ -173,13 +158,13 @@ check_dns_settings() {
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
   else
-    _REMOTE_DNS_TEST=$(host -a files.aegir.cc 1.1.1.1 -w 10 2>&1)
+    _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10 2>&1)
   fi
   if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
     || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.aegir.cc not found" ]] \
     || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
-    _CTRL_DNS_TEST=$(host -a files.aegir.cc 2>&1)
+    _CTRL_DNS_TEST=$(host files.aegir.cc 2>&1)
     if [[ ! "${_CTRL_DNS_TEST}" =~ "104.245.208.226" ]] \
       || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
       || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
@@ -363,9 +348,10 @@ satellite_check_up_php() {
           _T_FPM_VRN=$(cat ${User}/static/control/fpm.info 2>&1)
           _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
           _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-          if [ "${_T_FPM_VRN}" = "7.3" ] \
+          if [ "${_T_FPM_VRN}" = "7.4" ] \
+            || [ "${_T_FPM_VRN}" = "7.3" ] \
             || [ "${_T_FPM_VRN}" = "7.2" ] \
-             || [ "${_T_FPM_VRN}" = "7.1" ] \
+            || [ "${_T_FPM_VRN}" = "7.1" ] \
             || [ "${_T_FPM_VRN}" = "7.0" ] \
             || [ "${_T_FPM_VRN}" = "5.6" ]; then
             _PHP_FPM_LEGACY_FREE=YES
@@ -379,7 +365,8 @@ satellite_check_up_php() {
           _T_CLI_VRN=$(cat ${User}/static/control/cli.info 2>&1)
           _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
           _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-          if [ "${_T_CLI_VRN}" = "7.3" ] \
+          if [ "${_T_CLI_VRN}" = "7.4" ] \
+            || [ "${_T_CLI_VRN}" = "7.3" ] \
             || [ "${_T_CLI_VRN}" = "7.2" ] \
             || [ "${_T_CLI_VRN}" = "7.1" ] \
             || [ "${_T_CLI_VRN}" = "7.0" ] \
@@ -401,6 +388,7 @@ satellite_check_up_php() {
             echo 5.6 > ${User}/static/control/cli.info
           fi
         fi
+        chown -R ${octUsr}.ftp:users ${User}/static/control
       fi
       if [[ "${_SERIES_TEST}" =~ "${stbl}" ]]; then
         if [ "${orgMcmode}" != "force" ]; then
@@ -464,7 +452,8 @@ satellite_check_switch_php() {
       _T_FPM_VRN=$(cat ${User}/static/control/fpm.info 2>&1)
       _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
       _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-      if [ "${_T_FPM_VRN}" = "7.3" ] \
+      if [ "${_T_FPM_VRN}" = "7.4" ] \
+        || [ "${_T_FPM_VRN}" = "7.3" ] \
         || [ "${_T_FPM_VRN}" = "7.2" ] \
         || [ "${_T_FPM_VRN}" = "7.1" ] \
         || [ "${_T_FPM_VRN}" = "7.0" ] \
@@ -480,7 +469,8 @@ satellite_check_switch_php() {
       _T_CLI_VRN=$(cat ${User}/static/control/cli.info 2>&1)
       _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
       _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-      if [ "${_T_CLI_VRN}" = "7.3" ] \
+      if [ "${_T_CLI_VRN}" = "7.4" ] \
+        || [ "${_T_CLI_VRN}" = "7.3" ] \
         || [ "${_T_CLI_VRN}" = "7.2" ] \
         || [ "${_T_CLI_VRN}" = "7.1" ] \
         || [ "${_T_CLI_VRN}" = "7.0" ] \
@@ -513,6 +503,7 @@ satellite_check_switch_php() {
         echo 5.6 > ${User}/static/control/fpm.info
         echo 5.6 > ${User}/static/control/cli.info
       fi
+      chown -R ${octUsr}.ftp:users ${User}/static/control
       echo
       echo "This instance ${octUsr} still depends on the old PHP version"
       echo "FPM.${_T_FPM_VRN} CLI.${_T_CLI_VRN}"
@@ -638,15 +629,15 @@ up_one() {
         if [ -e "${vBs}/${tocIncO}" ]; then
           sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"  ${vBs}/${tocIncO}
           wait
-          sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g" ${vBs}/${tocIncO}
+          sed -i "s/^_PLATFORMS_LIST.*/_PLATFORMS_LIST=none/g" ${vBs}/${tocIncO}
           wait
         fi
         ### Legacy method
         sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${vBs}/${tocName}
         wait
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${vBs}/${tocName}
+        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  ${vBs}/${tocName}
         wait
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   ${octCnf}
+        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  ${octCnf}
         wait
         sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             ${octCnf}
         wait
@@ -663,6 +654,16 @@ up_one() {
       elif [ -e "${User}/.drush/provision" ]; then
         _IS_OLD=$(find ${User}/.drush/provision/ \
           -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example)
+      fi
+      _F_SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
+      if [[ "${_F_SERIES_TEST}" =~ "${nextv}" ]]; then
+        _IGNORE_FORCE=YES
+        mcmode=
+        fmodey=
+      else
+        _IGNORE_FORCE=
+        mcmode=force
+        fmodey=force
       fi
       if [ -z "${_IS_OLD}" ] \
         && [ -z "${mcmode}" ] \
@@ -693,40 +694,7 @@ up_one() {
           up_mode
         fi
       fi
-      if [ -e "${User}/log/cores.txt" ] \
-        && [ ! -e "${User}/log/CANCELLED" ]; then
-        if [ -e "${User}/.drush/bm.patch" ] \
-          && [ ! -e "${User}/.drush/sys/bm.patch" ] \
-          && [ -e "${User}/.drush/sys" ]; then
-          mv -f ${User}/.drush/bm.patch \
-            ${User}/.drush/sys/bm.patch
-        fi
-        if [ -e "${User}/.drush/sys/bm.patch" ]; then
-          cd ${User}/.drush/sys
-          patch -p1 < bm.patch &> /dev/null
-        fi
-        if [ -e "${User}/.drush/custom.patch" ] \
-          && [ ! -e "${User}/.drush/sys/custom.patch" ] \
-          && [ -e "${User}/.drush/sys" ]; then
-          mv -f ${User}/.drush/custom.patch \
-            ${User}/.drush/sys/custom.patch
-        fi
-        if [ -e "${User}/.drush/sys/custom.patch" ]; then
-          cd ${User}/.drush/sys
-          patch -p1 < custom.patch &> /dev/null
-        fi
-        if [ -e "${User}/.drush/uberdrupal.patch" ] \
-          && [ ! -e "${User}/.drush/sys/uberdrupal.patch" ] \
-          && [ -e "${User}/.drush/sys" ]; then
-          mv -f ${User}/.drush/uberdrupal.patch \
-            ${User}/.drush/sys/uberdrupal.patch
-        fi
-        if [ -e "${User}/.drush/sys/uberdrupal.patch" ]; then
-          cd ${User}/.drush/sys
-          patch -p1 < uberdrupal.patch &> /dev/null
-        fi
-        cd ${vBs}
-      fi
+      _IGNORE_FORCE=
     else
       echo "${vBs}/${tocName} installer not available - try again"
       clean_pid_exit
@@ -958,7 +926,7 @@ up_head() {
     || [ "${silent}" = "cluster" ] \
     || [ "${silent}" = "drush" ] \
     || [ "${silent}" = "gravcms" ] \
-    || [ "${silent}" = "stretch" ]; then
+    || [ "${silent}" = "buster" ]; then
     echo "FEATURE MODE: ${silent}"
     master="feature/${silent}"
     branch="feature/${silent}"
@@ -1029,14 +997,17 @@ up_legacy() {
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-    rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
     apt-get update -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
   if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors.txt"
+    ffList="/var/backups/boa-mirrors-2020-02.txt"
     mkdir -p /var/backups
     if [ ! -e "${ffList}" ]; then
       echo "jp.files.aegir.cc"  > ${ffList}
@@ -1082,9 +1053,13 @@ check_dns_curl() {
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt-get clean -qq &> /dev/null
-    rm -f -r /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/*
     apt-get update -qq &> /dev/null
     apt-get install curl ${forCer} &> /dev/null
     touch /root/.use.curl.from.packages.cnf
@@ -1186,17 +1161,8 @@ check_root() {
     wait
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
     wait
-    _GH_TEST=$(cat /etc/hosts | grep github 2>&1)
-    if [[ ! "${_GH_TEST}" =~ "github.com" ]]; then
-      echo "192.30.253.113 github.com" >> /etc/hosts
-      wait
-      echo "151.101.32.133 raw.githubusercontent.com" >> /etc/hosts
-      wait
-      echo >>/etc/hosts
-      wait
-      service pdnsd restart &> /dev/null
-      pdnsd-ctl empty-cache &> /dev/null
-    fi
+    sed -i "s/.*github.*//g" /etc/hosts
+    wait
     echo >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
     wait

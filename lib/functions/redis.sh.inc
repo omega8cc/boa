@@ -31,7 +31,7 @@ forced_redis_password_update() {
       _LEN_RPASS=$(echo ${#_ESC_RPASS} 2>&1)
     fi
     if [ -z "${_ESC_RPASS}" ] || [ "${_LEN_RPASS}" -lt "9" ]; then
-      _ESC_RPASS=$(pwgen -v -s -1 2>&1)
+      _ESC_RPASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
       _ESC_RPASS=$(echo -n "${_ESC_RPASS}" | tr -d "\n" 2>&1)
       _ESC_RPASS=$(sanitize_string "${_ESC_RPASS}" 2>&1)
     fi
@@ -60,6 +60,11 @@ forced_redis_password_update() {
     wait
     chown redis:redis /etc/redis/redis.conf
     chmod 0600 /etc/redis/redis.conf
+  fi
+  if [ "${_FORCE_REDIS_RESTART}" = "YES" ]; then
+    service redis-server stop &> /dev/null
+    killall -9 redis-server &> /dev/null
+    service redis-server start &> /dev/null
   fi
 }
 #
@@ -113,7 +118,7 @@ fix_redis_mode() {
           || [[ "${_REDIS_LISTEN_MODE}" =~ (^)"192.168." ]] \
           || [[ "${_REDIS_LISTEN_MODE}" =~ (^)"172.16." ]] \
           || [[ "${_REDIS_LISTEN_MODE}" =~ (^)"127.0." ]]; then
-          if [ "$_REDIS_HOST" = "LOCAL" ]; then
+          if [ "${_REDIS_HOST}" = "LOCAL" ]; then
             sed -i "s/^bind 127.0.0.1/bind ${_REDIS_LISTEN_MODE}/g" \
               /etc/redis/redis.conf &> /dev/null
             wait
@@ -125,8 +130,10 @@ fix_redis_mode() {
               /data/conf/global.inc &> /dev/null
             wait
             service redis-server stop &> /dev/null
+            killall -9 redis-server &> /dev/null
             update-rc.d -f redis-server remove &> /dev/null
             service redis stop &> /dev/null
+            killall -9 redis &> /dev/null
             update-rc.d -f redis remove &> /dev/null
             mv -f /etc/init.d/redis /etc/init.d/redis-off &> /dev/null
             mv -f /etc/init.d/redis-server \
@@ -143,8 +150,10 @@ fix_redis_mode() {
             /data/conf/global.inc &> /dev/null
           wait
           service redis-server stop &> /dev/null
+          killall -9 redis-server &> /dev/null
           update-rc.d -f redis-server remove &> /dev/null
           service redis stop &> /dev/null
+          killall -9 redis &> /dev/null
           update-rc.d -f redis remove &> /dev/null
           mv -f /etc/init.d/redis /etc/init.d/redis-off &> /dev/null
           mv -f /etc/init.d/redis-server \
@@ -232,16 +241,20 @@ install_redis_src() {
       || [[ "${_THISHOST}" =~ ".host8." ]] \
       || [[ "${_THISHOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
-      if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] \
-        || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log" ]; then
-        cp -af ${locCnf}/redis.conf /etc/redis/redis.conf
+      if [ "${_CUSTOM_CONFIG_REDIS}" = "YES" ]; then
+        _DO_NOTHING=YES
+      else
+        if [ "${_REDIS_INSTALL_MISMATCH}" = "YES" ] \
+          || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log" ]; then
+          cp -af ${locCnf}/${redisCnfTpl} /etc/redis/redis.conf
+        fi
       fi
     fi
   else
     if [ ! -e "/etc/redis/redis.conf" ] \
-      || [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] \
+      || [ "${_REDIS_INSTALL_MISMATCH}" = "YES" ] \
       || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log" ]; then
-      cp -af ${locCnf}/redis.conf /etc/redis/redis.conf
+      cp -af ${locCnf}/${redisCnfTpl} /etc/redis/redis.conf
     fi
   fi
   update_redis_password
@@ -252,6 +265,18 @@ install_redis_src() {
 }
 
 install_update_redis() {
+  if [ "${_REDIS_MAJOR_RELEASE}" = "6" ] \
+    && [ ! -z "${_REDIS_SIX_VRN}" ]; then
+    _REDIS_VRN=${_REDIS_SIX_VRN}
+    redisCnfTpl="redis6.conf"
+  elif [ "${_REDIS_MAJOR_RELEASE}" = "5" ] \
+    && [ ! -z "${_REDIS_FIVE_VRN}" ]; then
+    _REDIS_VRN=${_REDIS_FIVE_VRN}
+    redisCnfTpl="redis5.conf"
+  else
+    _REDIS_VRN=${_REDIS_FOUR_VRN}
+    redisCnfTpl="redis4.conf"
+  fi
   if [ ! -e "/var/lib/redis" ]; then
     mrun "adduser --system --group redis" 2> /dev/null
   fi
@@ -266,21 +291,21 @@ install_update_redis() {
       | tr -d "\n" \
       | cut -d" " -f4 \
       | awk '{ print $1}' 2>&1)
-    if [[ "$_REDIS_V_ITD" =~ "sha" ]]; then
+    if [[ "${_REDIS_V_ITD}" =~ "sha" ]]; then
       _REDIS_V_ITD=$(redis-server -v 2>&1 \
         | tr -d "\n" \
         | tr -d "v=" \
         | cut -d" " -f3 \
         | awk '{ print $1}' 2>&1)
     fi
-    if [ "$_REDIS_V_ITD" = "${_REDIS_VRN}" ]; then
+    if [ "${_REDIS_V_ITD}" = "${_REDIS_VRN}" ]; then
       _REDIS_INSTALL_MISMATCH=NO
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed Redis version $_REDIS_V_ITD, OK"
+        msg "INFO: Installed Redis version ${_REDIS_V_ITD}, OK"
       fi
     else
       _REDIS_INSTALL_MISMATCH=YES
-      msg "INFO: Installed Redis version $_REDIS_V_ITD, upgrade required"
+      msg "INFO: Installed Redis version ${_REDIS_V_ITD}, upgrade required"
     fi
   else
     if [ -x "/usr/bin/redis-server" ]; then
@@ -288,30 +313,30 @@ install_update_redis() {
         | tr -d "\n" \
         | cut -d" " -f4 \
         | awk '{ print $1}' 2>&1)
-      if [[ "$_REDIS_V_ITD" =~ "sha" ]]; then
+      if [[ "${_REDIS_V_ITD}" =~ "sha" ]]; then
         _REDIS_V_ITD=$(redis-server -v 2>&1 \
           | tr -d "\n" \
           | tr -d "v=" \
           | cut -d" " -f3 \
           | awk '{ print $1}' 2>&1)
       fi
-      if [ "$_REDIS_V_ITD" = "${_REDIS_VRN}" ]; then
+      if [ "${_REDIS_V_ITD}" = "${_REDIS_VRN}" ]; then
         _REDIS_INSTALL_MISMATCH=NO
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Installed Redis version $_REDIS_V_ITD, OK"
+          msg "INFO: Installed Redis version ${_REDIS_V_ITD}, OK"
         fi
       else
         _REDIS_INSTALL_MISMATCH=YES
-        msg "INFO: Installed Redis version $_REDIS_V_ITD, rebuild required"
+        msg "INFO: Installed Redis version ${_REDIS_V_ITD}, rebuild required"
       fi
     fi
   fi
-  if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] \
+  if [ "${_REDIS_INSTALL_MISMATCH}" = "YES" ] \
     || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log" ] \
     || [ ! -d "/var/run/redis" ] \
     || [ ! -x "/usr/bin/redis-server" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-    if [ "$_REDIS_HOST" = "LOCAL" ] || [ -z "$_REDIS_HOST" ]; then
+    if [ "${_REDIS_HOST}" = "LOCAL" ] || [ -z "${_REDIS_HOST}" ]; then
       install_redis_src
     fi
   fi

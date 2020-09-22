@@ -23,8 +23,8 @@ _DEL_OLD_EMPTY_PLATFORMS="0" #-- Delete empty platforms if verified > X-days-ago
 _DEL_OLD_BACKUPS=0 #------------ Delete Aegir/b-migrate backups if > X-days-ago
 _DEL_OLD_TMP=0 #---------------- Delete sites temp files if > X-days-ago
 _LOCAL_NETWORK_IP= #------------ Web server IP if in localhost mode - auto-conf
-_PHP_FPM_VERSION=7.2 #---------- PHP-FPM for Satellite Instance: 7.0/1/2/3 5.6
-_PHP_CLI_VERSION=7.2 #---------- PHP-CLI for Satellite Instance: 7.0/1/2/3 5.6
+_PHP_FPM_VERSION=7.3 #---------- PHP-FPM for Satellite Instance: 7.0/1/2/3/4 5.6
+_PHP_CLI_VERSION=7.3 #---------- PHP-CLI for Satellite Instance: 7.0/1/2/3/4 5.6
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_FPM_TIMEOUT=AUTO #--------- Allows to override default 180 when 60-180
 _PHP_FPM_DENY="" #-------------- Modify the disable_functions list per instance
@@ -72,6 +72,7 @@ _CLIENT_CORES="8" #------------- Currently not used
 ###
 ### Supported values for single PHP-FPM mode which can be written in this file:
 ###
+### 7.4
 ### 7.3
 ### 7.2
 ### 7.1
@@ -84,10 +85,10 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### NOTE: if the file doesn't exist, the system will create it and set to the
 ### lowest available PHP version installed, not to the system default version.
 ### This is to guarantee backward compatibility for instances installed
-### before upgrade to BOA-4.0.1, when the default PHP version was 5.6,
+### before upgrade to BOA-4.1.2, when the default PHP version was 5.6,
 ### as otherwise after the upgrade the system would automatically switch such
-### accounts to the new default PHP version which is 7.2, and this could break
-### most of the sites hosted, never before tested for PHP 7.2 compatibility.
+### accounts to the new default PHP version which is 7.3, and this could break
+### most of the sites hosted, never before tested for PHP 7.3 compatibility.
 ###
 
 ###
@@ -122,6 +123,7 @@ _CLIENT_CORES="8" #------------- Currently not used
 ###
 ### Supported values which can be written in this file:
 ###
+### 7.4
 ### 7.3
 ### 7.2
 ### 7.1
@@ -134,16 +136,16 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### NOTE: if the file doesn't exist, the system will create it and set to the
 ### lowest available PHP version installed, not to the system default version.
 ### This is to guarantee backward compatibility for instances installed
-### before upgrade to BOA-4.0.1, when the default PHP version was 5.6,
+### before upgrade to BOA-4.1.2, when the default PHP version was 5.6,
 ### as otherwise after the upgrade the system would automatically switch such
-### accounts to the new default PHP version which is 7.2, and this could break
-### most of the sites hosted, never before tested for PHP 7.2 compatibility.
+### accounts to the new default PHP version which is 7.3, and this could break
+### most of the sites hosted, never before tested for PHP 7.3 compatibility.
 ###
 ### IMPORTANT: this file will affect only Drush on command line and Drush
 ### in Aegir backend, used for all tasks on hosted sites, but it will not
 ### affect PHP-CLI version used by Composer on command line, because Composer
 ### is installed globally and not per Octopus account, so it will use system
-### default PHP version, which is, since BOA-4.0.1, PHP 7.2 and can be
+### default PHP version, which is, since BOA-4.1.2, PHP 7.3 and can be
 ### changed only by changing system default _PHP_CLI_VERSION in the file
 ### /root/.barracuda.cnf and running barracuda upgrade.
 ###
@@ -167,9 +169,10 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### Drupal 8 based
 ###
 ### LHG ----------- Lightning
+### OPG ----------- Opigno LMS
+### SOC ----------- Social
 ### THR ----------- Thunder
 ### VBE ----------- Varbase
-### SOC ----------- Social
 ###
 ### Drupal 7 based
 ###
@@ -191,7 +194,7 @@ _CLIENT_CORES="8" #------------- Currently not used
 ###
 ### Drupal 6 based
 ###
-### D6P D6S D6D --- Pressflow prod/stage/dev
+### D6P D6S D6D --- Pressflow (LTS) prod/stage/dev
 ### DCS ----------- Commons
 ### UCT ----------- Ubercart
 ###

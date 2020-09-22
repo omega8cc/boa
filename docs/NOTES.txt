@@ -54,7 +54,7 @@
 
   * Your Aegir Master Instance control panel will be available at https://master.f-q-d-n
   * Your Fast DNS Cache Server (pdnsd) will listen on 127.0.0.1:53
-  * Your Adminer MariaDB Manager will be available at https://adminer.master.f-q-d-n
+  * Your Adminer Percona Manager will be available at https://adminer.master.f-q-d-n
   * Your CSF/LFD Firewall will support integrated Nginx Abuse Guard.
 
   NOTE: With _EASY_SETUP=NO option (default is PUBLIC) Barracuda will offer installation
@@ -62,9 +62,9 @@
 
   * Your Aegir Master Instance control panel will be available at https://master.f-q-d-n
   * Your Fast DNS Cache Server (pdnsd) will listen on 127.0.0.1:53
-  * Your (optional) Adminer MariaDB Manager will be available at https://adminer.master.f-q-d-n
+  * Your (optional) Adminer Percona Manager will be available at https://adminer.master.f-q-d-n
   * Your (optional) Bind9 DNS Server will listen on 123.45.67.89:53
-  * Your (optional) Chive MariaDB Manager will be available at https://chive.master.f-q-d-n
+  * Your (optional) Chive Percona Manager will be available at https://chive.master.f-q-d-n
   * Your (optional) Collectd Graph Panel will be available at https://cgp.master.f-q-d-n
   * Your (optional) CSF/LFD Firewall will support integrated Nginx Abuse Guard.
   * Your (optional) MultiCore Apache Solr 7.6.0 will listen on 127.0.0.1:9077
@@ -93,7 +93,7 @@
 
   * Your Aegir Master Instance control panel will be available at https://aegir.local
   * Your Fast DNS Cache Server (pdnsd) will listen on 127.0.0.1:53
-  * Your Adminer MariaDB Manager will be available at https://adminer.aegir.local
+  * Your Adminer Percona Manager will be available at https://adminer.aegir.local
 
 
 # Notes related to Barracuda and Octopus customized install and upgrades

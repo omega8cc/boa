@@ -327,7 +327,16 @@ migrate_sites() {
         echo "INFO: site ${Dom} db_host on ${_TGT_HM_USER} fixed"
         if [ ! -z "${_DBN}" ] && [ ! -z "${_DBP}" ]; then
           if [ ! -d "/var/lib/mysql/${_DBN}" ]; then
-            mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+            if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
+              _SQL_CONNECT=127.0.0.1
+              _THIS_DB_PORT=6033
+              mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+            else
+              mysqladmin flush-privileges
+            fi
+            if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+              mkdir -p /etc/mysql/mariadb.conf.d/
+            fi
             [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL3 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
             if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
               _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
@@ -347,17 +356,65 @@ PROXYSQL
             fi
             mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
 CREATE DATABASE ${_DBN} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'localhost' IDENTIFIED BY '${_DBP}';
-GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'%' IDENTIFIED BY '${_DBP}';
+CREATE USER IF NOT EXISTS '${_DBN}'@'localhost';
+CREATE USER IF NOT EXISTS '${_DBN}'@'%';
+GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'%' WITH GRANT OPTION;
+ALTER USER '${_DBN}'@'localhost' IDENTIFIED BY '${_DBP}';
+ALTER USER '${_DBN}'@'%' IDENTIFIED BY '${_DBP}';
 EOFMYSQL
-            mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+            if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
+              _SQL_CONNECT=127.0.0.1
+              _THIS_DB_PORT=6033
+              mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+            else
+              mysqladmin flush-privileges
+            fi
             echo "INFO: site ${Dom} db setup on ${oct} complete"
           else
             echo "ALRT: site ${Dom} db ${_DBN} already exists!"
           fi
-          if [ -e "${_USR}/src/${_DBN}.sql" ]; then
+          if [ -e "${_USR}/src/${_DBN}" ]; then
+            if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
+              _SQL_CONNECT=127.0.0.1
+              _THIS_DB_PORT=6033
+            fi
             [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL4 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
-            mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_DBN} < ${_USR}/src/${_DBN}.sql
+            _MYQUICK_STATUS=
+            if [ -x "/usr/local/bin/mydumper" ]; then
+              _DB_V=$(mysql -V 2>&1 \
+                | tr -d "\n" \
+                | cut -d" " -f6 \
+                | awk '{ print $1}' \
+                | cut -d"-" -f1 \
+                | awk '{ print $1}' \
+                | sed "s/[\,']//g" 2>&1)
+              _MD_V=$(mydumper --version 2>&1 \
+                | tr -d "\n" \
+                | cut -d" " -f6 \
+                | awk '{ print $1}' \
+                | cut -d"-" -f1 \
+                | awk '{ print $1}' \
+                | sed "s/[\,']//g" 2>&1)
+              if [ "${_DB_V}" = "${_MD_V}" ]; then
+                _MYQUICK_STATUS=OK
+                echo "INFO: Installed MyQuick for ${_MD_V} (${_DB_V}) looks fine"
+              fi
+            fi
+            if [ -e "/root/.my.pass.txt" ]; then
+              _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+              _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+            fi
+            myloader \
+              --database=${_DBN} \
+              --host=localhost \
+              --user=root \
+              --password=${_SQL_PSWD} \
+              --port=3306 \
+              --directory=${_USR}/src/${_DBN}/ \
+              --threads=4 \
+              --overwrite-tables \
+              --verbose=1
             echo "INFO: site ${Dom} db import on ${oct} complete"
             ###
             ### Activate readonly on source via global.inc and not via drush
@@ -367,7 +424,7 @@ EOFMYSQL
             ### echo "INFO: site ${Dom} readonlymode on ${oct} disabled"
             ###
           else
-            echo "ALRT: site ${Dom} db failure due to missing ${_USR}/src/${_DBN}.sql"
+            echo "ALRT: site ${Dom} db failure due to missing ${_USR}/src/${_DBN}"
           fi
           if [ -e "${_USR}/.drush/${Dom}.alias.drushrc.php" ]; then
             run_drush8_hmr_cmd "hosting-task @${Dom} verify --force"
@@ -386,17 +443,50 @@ EOFMYSQL
         ### run_drush8_nosilent_cmd "vset --always-set site_readonly 1"
         ###
         echo "INFO: site ${Dom} readonlymode module on ${oct} enabled"
-        mysqldump -P${_THIS_DB_PORT} --protocol=tcp \
-          --single-transaction \
-          --quick \
-          --no-autocommit \
-          --skip-add-locks \
-          --hex-blob ${_DBN} > ${_USR}/src/${_DBN}.sql
+        _MYQUICK_STATUS=
+        if [ -x "/usr/local/bin/mydumper" ]; then
+          _DB_V=$(mysql -V 2>&1 \
+            | tr -d "\n" \
+            | cut -d" " -f6 \
+            | awk '{ print $1}' \
+            | cut -d"-" -f1 \
+            | awk '{ print $1}' \
+            | sed "s/[\,']//g" 2>&1)
+          _MD_V=$(mydumper --version 2>&1 \
+            | tr -d "\n" \
+            | cut -d" " -f6 \
+            | awk '{ print $1}' \
+            | cut -d"-" -f1 \
+            | awk '{ print $1}' \
+            | sed "s/[\,']//g" 2>&1)
+          if [ "${_DB_V}" = "${_MD_V}" ]; then
+            _MYQUICK_STATUS=OK
+            echo "INFO: Installed MyQuick for ${_MD_V} (${_DB_V}) looks fine"
+          fi
+        fi
+        if [ -e "/root/.my.pass.txt" ]; then
+          _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+          _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+        fi
+        mkdir -p ${_USR}/src/${_DBN}
+        mydumper \
+          --database=${_DBN} \
+          --host=localhost \
+          --user=root \
+          --password=${_SQL_PSWD} \
+          --port=3306 \
+          --outputdir=${_USR}/src/${_DBN}/ \
+          --rows=50000 \
+          --build-empty-files \
+          --threads=4 \
+          --less-locking \
+          --long-query-guard=900 \
+          --verbose=1
         echo "INFO: site ${Dom} db export on ${oct} complete"
       elif [ "${cmd}" = "proxy" ]; then
         if [ -e "${_USR}/log/exported.pid" ] && [ ! -z "${tgt}" ]; then
           if [ -e "${Vht}" ]; then
-            _NMS=`cat ${Vht} | grep "server_name" | sed "s/server_name//g; s/;//g" | tr -d "\n" | sed "s/  / /g; s/  / /g; s/  / /g" | uniq`
+            _NMS=`cat ${Vht} | grep "server_name" | sed "s/server_name//g; s/;//g" | sort | uniq | tr -d "\n" | sed "s/  / /g; s/  / /g; s/  / /g" | sort | uniq`
             if [ -e "${_USR}/config/server_master/ssl.d/${Dom}/openssl.key" ] \
               && [ -e "/var/xdrago/conf/https_proxy_le.conf" ]; then
               cp -a /var/xdrago/conf/https_proxy_le.conf ${Vhs}
@@ -516,7 +606,7 @@ migrate_prepare() {
     && [ ! -z "${_HDB}" ] \
     && [ ! -e "${_USR}/src/prev_hostmaster.sql" ] \
     && [ ! -e "${_USR}/log/exported.pid" ]; then
-      mysqldump -P${_THIS_DB_PORT} --protocol=tcp \
+      mysqldump -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp \
         --single-transaction \
         --quick \
         --no-autocommit \
@@ -723,7 +813,7 @@ migrate_prepare() {
       && [ ! -z "${_CLIENT_OPTION}" ] \
       && [ ! -z "${_CLIENT_SUBSCR}" ] \
       && [ ! -z "${_CLIENT_CORES}" ]; then
-      ssh root@${tgt} "/opt/local/bin/boa in-octopus ${_CLIENT_EMAIL} ${_TGT_HM_USER} none ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES}"
+      ssh root@${tgt} "/opt/local/bin/boa in-octopus ${_CLIENT_EMAIL} ${_TGT_HM_USER} none head ${_CLIENT_SUBSCR} ${_CLIENT_CORES}"
       ssh root@${tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/.ctrl/ssl-demo-mode.pid"
       ssh root@${tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config"
       ssh root@${tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config.sh"
@@ -744,15 +834,16 @@ migrate_prepare() {
 
 migrate_init() {
   _USR=/data/disk/${oct}
-  if [ ! -e "${_USR}/tools/le/letsencrypt.sh" ] && [ "${oct}" != "shared" ]; then
+  if [ ! -e "${_USR}/tools/le/dehydrated" ] && [ "${oct}" != "shared" ]; then
     echo
     echo "ERROR: This version of xboa migration tool supports only BOA-3.2.2 or newer"
-    echo "ERROR: Please upgrade ${oct} instance to current BOA stable before trying again"
+    echo "ERROR: Please upgrade ${oct} instance to current BOA head before trying again"
     echo "Bye."
     echo
     exit 1
   fi
-  if [ -e "${_USR}/log/use_proxysql.txt" ]; then
+  if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
   fi
   rm -f /root/scentral_migration_notice.sh.txt
@@ -810,6 +901,7 @@ migrate_init() {
       _CHECK_EMAIL=`echo -n ${_CHECK_EMAIL} | tr -d "\n"`
       _CHECK_EMAIL=${_CHECK_EMAIL//\\\@/\@}
       if [ "${_CHECK_EMAIL}" = "omega8cc@gmail.com" ] \
+        || [[ "${_CHECK_EMAIL}" =~ "emaylx@" ]] \
         || [[ "${_CHECK_EMAIL}" =~ "@omega8.cc" ]]; then
         _RESULT_EMAIL=OUR
       else
@@ -967,8 +1059,8 @@ post_mig() {
     if [ ! -e "/var/xdrago/daily.sh" ] && [ -e "/var/xdrago/.daily.sh.off" ]; then
       mv -f /var/xdrago/.daily.sh.off /var/xdrago/daily.sh
     fi
-    if [ ! -e "/var/xdrago/weekly.sh" ] && [ -e "/var/xdrago/.weekly.sh.off" ]; then
-      mv -f /var/xdrago/.weekly.sh.off /var/xdrago/weekly.sh
+    if [ ! -e "/var/xdrago/usage.sh" ] && [ -e "/var/xdrago/.usage.sh.off" ]; then
+      mv -f /var/xdrago/.usage.sh.off /var/xdrago/usage.sh
     fi
     if [ ! -e "/var/xdrago/graceful.sh" ] && [ -e "/var/xdrago/.graceful.sh.off" ]; then
       mv -f /var/xdrago/.graceful.sh.off /var/xdrago/graceful.sh
@@ -995,8 +1087,8 @@ pre_mig() {
       mv -f /var/xdrago/daily.sh /var/xdrago/.daily.sh.off
       kill -9 $(ps aux | grep '[d]aily' | awk '{print $2}') &> /dev/null
     fi
-    if [ -e "/var/xdrago/weekly.sh" ]; then
-      mv -f /var/xdrago/weekly.sh /var/xdrago/.weekly.sh.off
+    if [ -e "/var/xdrago/usage.sh" ]; then
+      mv -f /var/xdrago/usage.sh /var/xdrago/.usage.sh.off
       kill -9 $(ps aux | grep '[w]eekly' | awk '{print $2}') &> /dev/null
     fi
     if [ -e "/var/xdrago/graceful.sh" ]; then
@@ -1054,7 +1146,15 @@ sub_ssl_gen() {
       oct_mail=`echo $oct_mail | sed "s/\@/\\\@/g"`;
       if [ "${target_ip}" = "${dedicated_ip}" ]; then
         dedicated_ip="*"
-        dedicated_sn="${domain_name} www.${domain_name}"
+        if [ -e "/data/disk/${oct_uid}/log/extra_domain.txt" ]; then
+          hmFrontExtra=$(cat /data/disk/${oct_uid}/log/extra_domain.txt 2>&1)
+          hmFrontExtra=$(echo -n ${hmFrontExtra} | tr -d "\n" 2>&1)
+        fi
+        if [ ! -z "${hmFrontExtra}" ]; then
+          dedicated_sn="${domain_name} ${hmFrontExtra} www.${domain_name}"
+        else
+          dedicated_sn="${domain_name} www.${domain_name}"
+        fi
         single=YES
       else
         dedicated_sn="_"

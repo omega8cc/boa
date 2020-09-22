@@ -1,0 +1,1352 @@
+#!/bin/bash
+
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+SHELL=/bin/bash
+
+###
+### Avoid too many questions
+###
+export DEBIAN_FRONTEND=noninteractive
+if [ -z "${TERM+x}" ]; then
+  export TERM=vt100
+fi
+
+_AEGIR_VERSION="BOA-4.1.2"
+_BRANCH_BOA="4.x"
+_X_VERSION="BOA-4.1.2"
+_MYSQLTUNER_VRN=1.7.19
+_PHP_FPM_WORKERS=AUTO
+_RESERVED_RAM=0
+_X_SE="412prodQ1"
+
+###
+### Commands shortcuts
+###
+dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
+nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
+_INSTALL="/usr/bin/apt-get ${nrmUpArg} install"
+_INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
+forCer="-fuy --allow-unauthenticated --reinstall"
+crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+vBs="/var/backups"
+tVr="0.7"
+
+
+###-------------SYSTEM-----------------###
+
+fix_locales() {
+  if [ -e "/etc/ssh/sshd_config" ]; then
+    _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /etc/ssh/sshd_config 2>&1)
+    if [[ "${_SSH_LC_TEST}" =~ "AcceptEnv LANG LC_" ]]; then
+      _DO_NOTHING=YES
+    else
+      sed -i "s/.*AcceptEnv.*//g" /etc/ssh/sshd_config
+      wait
+      echo "AcceptEnv LANG LC_*" >> /etc/ssh/sshd_config
+    fi
+  fi
+  if [ -e "/usr/etc/sshd_config" ]; then
+    _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /usr/etc/sshd_config 2>&1)
+    if [[ "${_SSH_LC_TEST}" =~ "AcceptEnv LANG LC_" ]]; then
+      _DO_NOTHING=YES
+    else
+      sed -i "s/.*AcceptEnv.*//g" /usr/etc/sshd_config
+      wait
+      echo "AcceptEnv LANG LC_*" >> /usr/etc/sshd_config
+    fi
+  fi
+  _LOCALE_TEST=BROKEN
+  _LOC_TEST=$(locale 2>&1)
+  if [[ "${_LOC_TEST}" =~ LANG=.*UTF-8 ]]; then
+    _LOCALE_TEST=OK
+  fi
+  if [[ "${_LOC_TEST}" =~ "Cannot" ]]; then
+    _LOCALE_TEST=BROKEN
+  fi
+  if [ -n "${STY+x}" ]; then
+    _LOCALE_TEST=OK
+  fi
+  if [ "${_LOCALE_TEST}" = "BROKEN" ]; then
+    echo "WARNING!"
+    cat <<EOF
+
+  Locales on this system are broken or not installed
+  and/or not configured correctly yet. This is a known
+  issue on some systems/hosts which either don't configure
+  locales at all or don't use UTF-8 compatible locales
+  during initial OS setup.
+
+  We will fix this problem for you now by enforcing en_US.UTF-8
+  locale settings on the fly during install, and as system
+  defaults in /etc/default/locale for future sessions. This
+  overrides any locale settings passed by your SSH client.
+
+  You should log out when this installer will finish all its tasks
+  and display last line with "BYE!" and then log in again
+  to see the result.
+
+  We will continue in 5 seconds...
+
+EOF
+    sleep 5
+    if [ "${_THIS_OS}" = "Debian" ]; then
+      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
+      if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
+        echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+      fi
+      sed -i "/^$/d" /etc/locale.gen
+      locale-gen &> /dev/null
+    else
+      locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
+    fi
+    # Explicitly enforce all locale settings
+    update-locale \
+      LANG=en_US.UTF-8 \
+      LC_CTYPE=en_US.UTF-8 \
+      LC_COLLATE=POSIX \
+      LC_NUMERIC=POSIX \
+      LC_TIME=en_US.UTF-8 \
+      LC_MONETARY=en_US.UTF-8 \
+      LC_MESSAGES=en_US.UTF-8 \
+      LC_PAPER=en_US.UTF-8 \
+      LC_NAME=en_US.UTF-8 \
+      LC_ADDRESS=en_US.UTF-8 \
+      LC_TELEPHONE=en_US.UTF-8 \
+      LC_MEASUREMENT=en_US.UTF-8 \
+      LC_IDENTIFICATION=en_US.UTF-8 \
+      LC_ALL= &> /dev/null
+    # Define all locale settings on the fly to prevent unnecessary
+    # warnings during installation of packages.
+    export LANG=en_US.UTF-8
+    export LC_CTYPE=en_US.UTF-8
+    export LC_COLLATE=POSIX
+    export LC_NUMERIC=POSIX
+    export LC_TIME=en_US.UTF-8
+    export LC_MONETARY=en_US.UTF-8
+    export LC_MESSAGES=en_US.UTF-8
+    export LC_PAPER=en_US.UTF-8
+    export LC_NAME=en_US.UTF-8
+    export LC_ADDRESS=en_US.UTF-8
+    export LC_TELEPHONE=en_US.UTF-8
+    export LC_MEASUREMENT=en_US.UTF-8
+    export LC_IDENTIFICATION=en_US.UTF-8
+    export LC_ALL=
+  else
+    if [ "${_THIS_OS}" = "Debian" ]; then
+      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
+      if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
+        echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+      fi
+      sed -i "/^$/d" /etc/locale.gen
+      locale-gen &> /dev/null
+    else
+      locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
+    fi
+    # Explicitly enforce locale settings required for consistency
+    update-locale \
+      LANG=en_US.UTF-8 \
+      LC_CTYPE=en_US.UTF-8 \
+      LC_COLLATE=POSIX \
+      LC_NUMERIC=POSIX \
+      LC_ALL= &> /dev/null
+    # Define locale settings required for consistency also on the fly
+    if [ "${_STATUS}" != "INIT" ]; then
+      # On initial install it usually causes a warning:
+      # setlocale: LC_CTYPE: cannot change locale (en_US.UTF-8):
+      # No such file or directory
+      export LC_CTYPE=en_US.UTF-8
+    fi
+    export LC_COLLATE=POSIX
+    export LC_NUMERIC=POSIX
+    export LC_ALL=
+  fi
+  _LOCALES_BASHRC_TEST=$(grep LC_COLLATE /root/.bashrc 2>&1)
+  if [[ ! "${_LOCALES_BASHRC_TEST}" =~ "LC_COLLATE" ]]; then
+    printf "\n" >> /root/.bashrc
+    echo "export LANG=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_CTYPE=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_COLLATE=POSIX" >> /root/.bashrc
+    echo "export LC_NUMERIC=POSIX" >> /root/.bashrc
+    echo "export LC_TIME=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_MONETARY=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_MESSAGES=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_PAPER=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_NAME=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_ADDRESS=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_TELEPHONE=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_MEASUREMENT=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_IDENTIFICATION=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_ALL=" >> /root/.bashrc
+    printf "\n" >> /root/.bashrc
+  fi
+}
+
+remove_systemd() {
+  if [ -x "/lib/systemd/systemd" ]; then
+    ls -la /lib/systemd/systemd
+    ${_INSTALL} sysvinit
+    ${_INSTALL} sysvinit-core
+    ${_INSTALL} sysvinit-utils
+    ls -la /usr/share/sysvinit/inittab
+    if [ -e "/usr/share/sysvinit/inittab" ]; then
+      cp -af /usr/share/sysvinit/inittab /etc/inittab
+    fi
+    apt-get remove systemd -y --force-yes -qq --purge --auto-remove
+    echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+    echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+    ${_INSTALL} sysvinit-core &> /dev/null
+    ${_INSTALL} sysvinit-utils &> /dev/null
+  fi
+}
+
+check_root() {
+  echo "running ${tVr} `hostname` check_root procedure.."
+  if [ `whoami` = "root" ]; then
+    fix_locales
+    remove_systemd
+    sed -i "s/.*du.sql.*//gi"  /etc/crontab
+    echo "22 22   * * *   root    du -s /var/lib/mysql/* > /root/.du.sql" >> /etc/crontab
+    sed -i "/^$/d"  /etc/crontab
+    grep du.sql /etc/crontab
+    if [ -e "/root/.barracuda.cnf" ]; then
+      source /root/.barracuda.cnf
+      _B_NICE=${_B_NICE//[^0-9]/}
+    fi
+    if [ -z "${_B_NICE}" ]; then
+      _B_NICE=10
+    fi
+    renice ${_B_NICE} -p $$ &> /dev/null
+    chmod a+w /dev/null
+    if [ ! -e "/dev/fd" ]; then
+      if [ -e "/proc/self/fd" ]; then
+        rm -rf /dev/fd
+        ln -s /proc/self/fd /dev/fd
+      fi
+    fi
+    _VM_TEST=$(uname -a 2>&1)
+    _AWS_TEST_A=$(dmidecode -s bios-version 2>&1)
+    _AWS_TEST_B=$(head -c 3 /sys/hypervisor/uuid 2>&1)
+    if [ -e "/proc/bean_counters" ]; then
+      _VMFAMILY="VZ"
+    else
+      _VMFAMILY="XEN"
+    fi
+    if [[ "${_VM_TEST}" =~ "-beng" ]]; then
+      _VMFAMILY="VS"
+    fi
+    if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
+      || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
+      _VMFAMILY="AWS"
+    fi
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    if [ ! -e "/opt/apt/apt.conf.noi.dist" ] \
+      || [ ! -e "/opt/apt/apt.conf.noi.nrml" ]; then
+      mkdir -p /opt/apt
+      echo "APT::Get::Assume-Yes \"true\";"                                    > /opt/apt/apt.conf.noi.dist
+      echo "APT::Get::Show-Upgraded \"true\";"                                >> /opt/apt/apt.conf.noi.dist
+      echo "APT::Quiet \"true\";"                                             >> /opt/apt/apt.conf.noi.dist
+      echo "DPkg::Options {\"--force-confnew\";\"--force-confmiss\";};"       >> /opt/apt/apt.conf.noi.dist
+      echo "DPkg::Pre-Install-Pkgs {\"/usr/sbin/dpkg-preconfigure --apt\";};" >> /opt/apt/apt.conf.noi.dist
+      echo "Dir::Etc::SourceList \"/etc/apt/sources.list\";"                  >> /opt/apt/apt.conf.noi.dist
+      echo "APT::Get::Assume-Yes \"true\";"                                                 > /opt/apt/apt.conf.noi.nrml
+      echo "APT::Get::Show-Upgraded \"true\";"                                             >> /opt/apt/apt.conf.noi.nrml
+      echo "APT::Quiet \"true\";"                                                          >> /opt/apt/apt.conf.noi.nrml
+      echo "DPkg::Options {\"--force-confdef\";\"--force-confmiss\";\"--force-confold\"};" >> /opt/apt/apt.conf.noi.nrml
+      echo "DPkg::Pre-Install-Pkgs {\"/usr/sbin/dpkg-preconfigure --apt\";};"              >> /opt/apt/apt.conf.noi.nrml
+      echo "Dir::Etc::SourceList \"/etc/apt/sources.list\";"                               >> /opt/apt/apt.conf.noi.nrml
+    fi
+    _LSB_TEST=$(which lsb_release 2> /dev/null)
+    if [ ! -x "${_LSB_TEST}" ]; then
+      apt-get clean -qq
+      rm -rf /var/lib/apt/lists/**
+      apt-get update -qq
+      apt-get install lsb-release ${forCer}
+    fi
+    _LSB_TEST=$(which lsb_release 2> /dev/null)
+    if [ -x "${_LSB_TEST}" ]; then
+      _THIS_OS=$(lsb_release -si 2>&1)
+      _OSR=$(lsb_release -sc 2>&1)
+      if [ "${_THIS_OS}" != "Debian" ]; then
+        echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
+        exit 1
+      fi
+      echo
+      echo "## MAIN REPOSITORIES"                                                       > /etc/apt/sources.list
+      echo "deb http://http.debian.net/debian/ ${_OSR} main contrib non-free"          >> /etc/apt/sources.list
+      echo "deb-src http://http.debian.net/debian/ ${_OSR} main contrib non-free"      >> /etc/apt/sources.list
+      echo ""                                                                          >> /etc/apt/sources.list
+      if [ "${_OSR}" = "stretch" ] \
+        || [ "${_OSR}" = "buster" ]; then
+        echo "## MAJOR BUG FIX UPDATES produced after the final release"               >> /etc/apt/sources.list
+        echo "deb http://http.debian.net/debian/ ${_OSR}-updates main"                 >> /etc/apt/sources.list
+        echo "deb-src http://http.debian.net/debian/ ${_OSR}-updates main"             >> /etc/apt/sources.list
+        echo ""                                                                        >> /etc/apt/sources.list
+        echo "## DEBIAN PROPOSED UPDATES"                                              >> /etc/apt/sources.list
+        echo "deb http://http.debian.net/debian/ ${_OSR}-proposed-updates main"        >> /etc/apt/sources.list
+        echo ""                                                                        >> /etc/apt/sources.list
+      fi
+      echo "## DEBIAN SECURITY UPDATES"                                                >> /etc/apt/sources.list
+      echo "deb http://security.debian.org/ ${_OSR}/updates main contrib non-free"     >> /etc/apt/sources.list
+      echo "deb-src http://security.debian.org/ ${_OSR}/updates main contrib non-free" >> /etc/apt/sources.list
+      echo
+      apt-get clean -qq &> /dev/null
+      rm -rf /var/lib/apt/lists/*
+      apt-get update -qq &> /dev/null
+    fi
+    _THIS_OS=$(lsb_release -si 2>&1)
+    _OSR=$(lsb_release -sc 2>&1)
+    if [ "${_THIS_OS}" != "Debian" ]; then
+      echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
+      exit 1
+    fi
+    if [ "${_VMFAMILY}" = "VS" ]; then
+      if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
+        mkdir -p /etc/apt/preferences.d/
+        echo -e 'Package: fuse\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
+        apt-get update -qq &> /dev/null
+      fi
+      if [ ! -e "/etc/apt/preferences.d/udev" ]; then
+        mkdir -p /etc/apt/preferences.d/
+        echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
+        apt-get update -qq &> /dev/null
+      fi
+      if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
+        mkdir -p /etc/apt/preferences.d/
+        echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
+        apt-get update -qq &> /dev/null
+      fi
+      apt-get remove fuse -y -qq &> /dev/null
+      apt-get purge fuse -y -qq &> /dev/null
+      apt-get remove udev -y -qq &> /dev/null
+      apt-get purge udev -y -qq &> /dev/null
+      apt-get remove makedev -y -qq &> /dev/null
+      apt-get purge makedev -y -qq &> /dev/null
+      _PTMX=OK
+      if [ -e "/sbin/hdparm" ]; then
+        apt-get remove hdparm -y -qq &> /dev/null
+        apt-get purge hdparm -y -qq &> /dev/null
+      fi
+      if [ -e "/sbin/auditd" ]; then
+        apt-get remove auditd -y -qq &> /dev/null
+        apt-get purge auditd -y -qq &> /dev/null
+      fi
+      _REMOVE_LINKS="buagent \
+                     checkroot.sh \
+                     fancontrol \
+                     halt \
+                     hwclock.sh \
+                     hwclockfirst.sh \
+                     ifupdown \
+                     ifupdown-clean \
+                     kerneloops \
+                     klogd \
+                     mountall-bootclean.sh \
+                     mountall.sh \
+                     mountdevsubfs.sh \
+                     mountkernfs.sh \
+                     mountnfs-bootclean.sh \
+                     mountnfs.sh \
+                     mountoverflowtmp \
+                     mountvirtfs \
+                     mtab.sh \
+                     networking \
+                     procps \
+                     reboot \
+                     sendsigs \
+                     setserial \
+                     svscan \
+                     sysstat \
+                     umountfs \
+                     umountnfs.sh \
+                     umountroot \
+                     urandom \
+                     vnstat"
+      for link in ${_REMOVE_LINKS}; do
+        if [ -e "/etc/init.d/${link}" ]; then
+          update-rc.d -f ${link} remove &> /dev/null
+          mv -f /etc/init.d/${link} /var/backups/init.d.${link}
+        fi
+      done
+      for s in cron dbus ssh; do
+        if [ -e "/etc/init.d/${s}" ]; then
+          sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/${s} > /etc/insserv/overrides/${s}
+        fi
+      done
+      /sbin/insserv -v -d &> /dev/null
+    fi
+  else
+    echo "ERROR: This script should be ran as a root user"
+    exit 1
+  fi
+  _DF_TEST=$(df -kTh / -l \
+    | grep '/' \
+    | sed 's/\%//g' \
+    | awk '{print $6}' 2> /dev/null)
+  _DF_TEST=${_DF_TEST//[^0-9]/}
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
+    exit 1
+  fi
+  if [ -e "${barCnf}" ]; then
+    source ${barCnf}
+  fi
+  [ "$1" = "check" ] && exit 0
+}
+
+[ "$1" != "check" ] && check_root
+
+[ -e "/root/.proxy.cnf" ] && exit 0
+
+find_fast_mirror() {
+  echo "running ${tVr} `hostname` find_fast_mirror procedure.."
+  isNetc=$(which netcat 2>&1)
+  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    apt-get update -qq &> /dev/null
+    apt-get install netcat ${forCer} &> /dev/null
+    sleep 3
+  fi
+  _USE_MIR="files.aegir.cc"
+  if ! netcat -w 10 -z "${_USE_MIR}" 80; then
+    echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
+    _USE_MIR="104.245.208.226"
+  fi
+  urlDev="http://${_USE_MIR}/dev"
+  urlHmr="http://${_USE_MIR}/versions/master/aegir"
+}
+find_fast_mirror
+
+update_sysctl() {
+  if [ ! -e "/root/.no.sysctl.update.cnf" ] \
+    && [ ! -e "/var/backups/sysctl.conf-${_X_SE}.log" ]; then
+    mkdir -p /var/backups
+    cd /var/backups
+    curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/conf/sysctl.conf" -o sysctl.conf
+    cp -af /var/backups/sysctl.conf /etc/sysctl.conf
+    if [ -e "/etc/security/limits.conf" ]; then
+      _IF_NF=$(grep '524288' /etc/security/limits.conf 2>&1)
+      if [ -z "${_IF_NF}" ]; then
+        echo "*         hard    nofile      524288"  >> /etc/security/limits.conf
+        echo "*         soft    nofile      524288"  >> /etc/security/limits.conf
+        echo "root      hard    nofile      1048576" >> /etc/security/limits.conf
+        echo "root      soft    nofile      1048576" >> /etc/security/limits.conf
+      fi
+    fi
+    if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ]; then
+      sysctl -p /etc/sysctl.conf &> /dev/null
+      _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}' 2>&1)
+      if [ -z "${_IF_CDP}" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then
+        msg "INFO: Cleaning up system swap, it may take a moment..."
+        st_runner "swapoff -a" &> /dev/null
+        st_runner "swapon -a" &> /dev/null
+      fi
+    else
+      sysctl -p /etc/sysctl.conf &> /dev/null
+    fi
+    touch /var/backups/sysctl.conf-${_X_SE}.log
+  fi
+}
+update_sysctl
+
+if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+  _SQL_PSWD=$(cat /root/.my.cluster_root_pwd.txt 2>&1)
+  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+elif [ -e "/root/.my.pass.txt" ]; then
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+fi
+
+_SQL_HOST="127.0.0.1"
+_SQL_PORT="3306"
+
+if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
+  _SQL_PORT="6033"
+  _SQL_HOST="127.0.0.1"
+else
+  if [ -e "/root/.my.cluster_write_node.txt" ]; then
+    _SQL_HOST=$(cat /root/.my.cluster_write_node.txt 2>&1)
+    _SQL_HOST=$(echo -n ${_SQL_HOST} | tr -d "\n" 2>&1)
+  fi
+fi
+
+_C_SQL="mysql --user=root --password=${_SQL_PSWD} --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp"
+
+echo "SQL --host=${_SQL_HOST} --port=${_SQL_PORT}"
+
+_DATE=$(date +%y%m%d-%H%M%S 2>&1)
+_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=${_TODAY//[^0-9]/}
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=${_NOW//[^0-9-]/}
+_CHECK_HOST=$(uname -n 2>&1)
+_LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
+_UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
+
+create_locks() {
+  echo "running ${tVr} `hostname` create_locks procedure.."
+  if [ ! -e "/var/run/mysql_restart_running.pid" ]; then
+    echo "Creating locks.."
+    touch /var/run/mysql_restart_running.pid
+  fi
+}
+
+remove_locks() {
+  echo "running ${tVr} `hostname` remove_locks procedure.."
+  if [ -e "/var/run/mysql_restart_running.pid" ]; then
+    echo "Removing locks.."
+    rm -f /var/run/mysql_restart_running.pid
+  fi
+}
+
+check_restart_if_running() {
+  echo "running ${tVr} `hostname` check_restart_if_running procedure.."
+  if [ -e "/var/run/mysql_restart_running.pid" ]; then
+    echo "MySQLD restart procedure in progress?"
+    echo "Nothing to do, let's quit now. Bye!"
+    exit 1
+  fi
+}
+
+start_sql() {
+  echo "running ${tVr} `hostname` start_sql procedure.."
+  check_restart_if_running
+  create_locks
+
+  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+  if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
+    echo "MySQLD already running?"
+    echo "Nothing to do. Bye!"
+    remove_locks
+    [ "$1" != "chain" ] && exit 1
+  fi
+
+  echo "Starting MySQLD again.."
+  renice ${_B_NICE} -p $$ &> /dev/null
+  update-rc.d -f mysql remove &> /dev/null
+  if [ "$1" = "init" ]; then
+    _MASTER_START=YES
+    sed -i "s/^safe_to_bootstrap.*/safe_to_bootstrap: 1/g"  /var/lib/mysql/grastate.dat
+    service mysql bootstrap-pxc
+  else
+    _MASTER_START=NO
+    service mysql start
+  fi
+  until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
+    && [ -e "/var/run/mysqld/mysqld.sock" ]; do
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    echo "Waiting for MySQLD graceful start.."
+    sleep 3
+  done
+  echo "MySQLD started"
+
+  remove_locks
+  echo "MySQLD start procedure completed"
+  mysql -u root -e "SET GLOBAL optimizer_switch='derived_merge=off';"
+  [ "$1" != "chain" ] && exit 0
+}
+
+stop_sql() {
+  echo "running ${tVr} `hostname` stop_sql procedure.."
+  check_restart_if_running
+  create_locks
+
+  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+  if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
+    echo "Preparing MySQLD for quick shutdown.."
+    mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+    echo "Stopping MySQLD now.."
+    update-rc.d -f mysql remove &> /dev/null
+    service mysql stop
+  else
+    echo "MySQLD already stopped?"
+    echo "Nothing to do. Bye!"
+    remove_locks
+    [ "$1" != "chain" ] && exit 1
+  fi
+
+  until [ -z "${_IS_MYSQLD_RUNNING}" ]; do
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    echo "Waiting for MySQLD graceful shutdown.."
+    sleep 3
+  done
+  echo "MySQLD stopped"
+
+  remove_locks
+  echo "MySQLD stop procedure completed"
+  [ "$1" != "chain" ] && exit 0
+}
+
+restart_sql() {
+  echo "running ${tVr} `hostname` restart_sql procedure.."
+  stop_sql "chain"
+  start_sql "chain"
+  exit 0
+}
+
+if_restart_sql() {
+  echo "running ${tVr} `hostname` if_restart_sql procedure.."
+  _DB_SERVER=Percona
+  myCnf="/etc/mysql/my.cnf"
+  preCnf="${vBs}/dragon/t/my.cnf-pre-${_NOW}"
+  if [ -f "${myCnf}" ]; then
+    myCnfUpdate=NO
+    myRstrd=NO
+    if [ ! -f "${preCnf}" ]; then
+      mkdir -p ${vBs}/dragon/t/
+      cp -af ${myCnf} ${preCnf}
+    fi
+    diffMyTest=$(diff -w -B \
+      -I tmp_table_size \
+      -I max_heap_table_size \
+      -I myisam_sort_buffer_size \
+      -I key_buffer_size ${myCnf} ${preCnf} 2>&1)
+    if [ -z "${diffMyTest}" ]; then
+      myCnfUpdate=NO
+      echo "INFO: ${_DB_SERVER} diff0 empty"
+    else
+      myCnfUpdate=YES
+      echo "INFO: ${_DB_SERVER} diff1 ${diffMyTest}"
+    fi
+    if [[ "${diffMyTest}" =~ "innodb_buffer_pool_size" ]]; then
+      myCnfUpdate=YES
+      echo "INFO: ${_DB_SERVER} diff2 ${diffMyTest}"
+    fi
+    if [[ "${diffMyTest}" =~ "No such file or directory" ]]; then
+      myCnfUpdate=NO
+      echo "INFO: ${_DB_SERVER} diff3 ${diffMyTest}"
+    fi
+  fi
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
+  fi
+  myUptime=$(mysqladmin version | grep -i uptime 2>&1)
+  myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
+  echo "INFO: ${_DB_SERVER} ${myUptime}"
+  if [ "${myCnfUpdate}" = "YES" ]; then
+    echo "INFO: Restarting ${_DB_SERVER} server..."
+    restart_sql
+    echo "INFO: ${_DB_SERVER} server restart completed"
+    myRstrd=YES
+  fi
+}
+
+check_mysql_up() {
+  echo "running ${tVr} `hostname` check_mysql_up procedure.."
+  until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
+    && [ -e "/var/run/mysqld/mysqld.sock" ]; do
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    echo "Waiting for MySQLD availability.."
+    sleep 15
+    start_sql "chain"
+  done
+}
+
+truncate_cache_tables() {
+  echo "running ${tVr} `hostname` truncate_cache_tables procedure.."
+  check_mysql_up
+  _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^cache | uniq | sort 2>&1)
+  for C in ${_TABLES}; do
+${_C_SQL} ${_DB}<<EOFMYSQL
+TRUNCATE ${C};
+EOFMYSQL
+    sleep 1
+  done
+}
+
+truncate_watchdog_tables() {
+  echo "running ${tVr} `hostname` truncate_watchdog_tables procedure.."
+  check_mysql_up
+  _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^watchdog$ 2>&1)
+  for A in ${_TABLES}; do
+${_C_SQL} ${_DB}<<EOFMYSQL
+TRUNCATE ${A};
+EOFMYSQL
+    sleep 1
+  done
+}
+
+truncate_accesslog_tables() {
+  echo "running ${tVr} `hostname` truncate_accesslog_tables procedure.."
+  check_mysql_up
+  _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^accesslog$ 2>&1)
+  for A in ${_TABLES}; do
+${_C_SQL} ${_DB}<<EOFMYSQL
+TRUNCATE ${A};
+EOFMYSQL
+    sleep 1
+  done
+}
+
+truncate_queue_tables() {
+  echo "running ${tVr} `hostname` truncate_queue_tables procedure.."
+  check_mysql_up
+  _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^queue$ 2>&1)
+  for Q in ${_TABLES}; do
+${_C_SQL} ${_DB}<<EOFMYSQL
+TRUNCATE ${Q};
+EOFMYSQL
+    sleep 1
+  done
+}
+
+repair_this_database() {
+  echo "running ${tVr} `hostname` repair_this_database procedure.."
+  check_mysql_up
+  mysqlcheck --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp --user=root --auto-repair --silent ${_DB}
+}
+
+optimize_this_database() {
+  echo "running ${tVr} `hostname` optimize_this_database procedure.."
+  check_mysql_up
+  _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | uniq | sort 2>&1)
+  for T in ${_TABLES}; do
+${_C_SQL} ${_DB}<<EOFMYSQL
+OPTIMIZE TABLE ${T};
+EOFMYSQL
+  done
+}
+
+convert_to_innodb() {
+  echo "running ${tVr} `hostname` convert_to_innodb procedure.."
+  check_mysql_up
+  _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | uniq | sort 2>&1)
+  for T in ${_TABLES}; do
+${_C_SQL} ${_DB}<<EOFMYSQL
+ALTER TABLE ${T} ENGINE=INNODB;
+EOFMYSQL
+  done
+}
+
+#
+# Update innodb_log_file_size.
+update_innodb_log_file_size() {
+  echo "running ${tVr} `hostname` update_innodb_log_file_size procedure.."
+  echo "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
+  mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
+  stop_sql "chain"
+  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+  if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
+    mkdir -p ${vBs}/old-sql-ib-log-${_NOW}
+    sleep 1
+    mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
+    mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
+    sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+    wait
+    echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+    start_sql "chain"
+  else
+    echo "INFO: Waiting 180s for ${_DB_SERVER} clean shutdown..."
+    stop_sql "chain"
+    sleep 180
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
+      mkdir -p ${vBs}/old-sql-ib-log-${_NOW}
+      mrun "sleep 1"
+      mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
+      mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
+      sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+      wait
+      echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+      start_sql "chain"
+    else
+      echo "WARN: ${_DB_SERVER} refused to stop, InnoDB log file size not updated"
+      sleep 5
+    fi
+  fi
+}
+
+#
+# Update SQL Config.
+update_sql_conf() {
+  echo "running ${tVr} `hostname` update_sql_conf procedure.."
+  sed -i "s/.*innodb_force_recovery/#innodb_force_recovery/g" /etc/mysql/my.cnf
+  wait
+  sed -i "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" /etc/mysql/my.cnf
+  wait
+  sed -i "s/^thread_concurrency.*//g" /etc/mysql/my.cnf
+  wait
+  if [ -e "/root/.my.cluster_root_pwd.txt" ] \
+    || [ "${_VMFAMILY}" = "VS" ]; then
+    _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
+    if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
+      if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
+        _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
+        _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
+          ${vBs}/dragon/t/my.cnf-pre-${_NOW} 2>&1)
+        if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
+          _INNODB_LOG_FILE_SIZE_SAME=YES
+        else
+          _INNODB_LOG_FILE_SIZE_SAME=NO
+        fi
+      fi
+    fi
+    sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf
+    wait
+    sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf
+    wait
+    sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf
+    wait
+    echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
+    if [ ! -e "/etc/mysql/skip-name-resolve.txt" ]; then
+      sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf
+      wait
+    fi
+  fi
+  mv -f /etc/mysql/my.cnf-pre* ${vBs}/dragon/t/ &> /dev/null
+  sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
+  wait
+  sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
+  wait
+  sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf
+  wait
+  if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
+    if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
+      _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
+      _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
+        /root/.my.cluster_innodb_log_file_size.txt 2>&1)
+      if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
+        echo "No changes on `hostname` for ${_INNODB_LOG_FILE_SIZE_MB}"
+      else
+        if [ "${_INNODB_LOG_FILE_SIZE_SAME}" = "YES" ]; then
+          sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+          echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+          wait
+        else
+          echo "Changes required on `hostname` for ${_INNODB_LOG_FILE_SIZE_MB}"
+          echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+          update_innodb_log_file_size
+        fi
+      fi
+    fi
+  fi
+}
+
+#
+# Tune memory limits for SQL server.
+tune_sql_memory_limits() {
+  check_mysql_up
+  echo "running ${tVr} `hostname` tune_sql_memory_limits procedure.."
+  if [ ! -e "${vBs}/dragon/t/my.cnf-pre-${_NOW}" ]; then
+    mkdir -p ${vBs}/dragon/t/
+    if [ -e "/etc/mysql/my.cnf" ]; then
+      cp -af /etc/mysql/my.cnf ${vBs}/dragon/t/my.cnf-pre-${_NOW}
+    fi
+  fi
+  # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
+  pthTun="/var/opt/mysqltuner.pl"
+  outTun="/var/opt/mysqltuner-${_NOW}.txt"
+  if [ ! -e "${outTun}" ]; then
+    echo "INFO: Running MySQLTuner check on all databases..."
+    echo "NOTE! This step may take a LONG time, please wait..."
+    _MYSQLTUNER_TEST_RESULT=OK
+    rm -f /var/opt/mysqltuner*
+    curl ${crlGet} "${urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${pthTun}
+    if [ ! -e "${pthTun}" ]; then
+      curl ${crlGet} "${urlDev}/mysqltuner.pl" -o ${pthTun}
+    fi
+    if [ -e "${pthTun}" ]; then
+      perl ${pthTun} > ${outTun} 2>&1
+    fi
+  fi
+  if [ -e "${pthTun}" ] \
+    && [ -e "${outTun}" ]; then
+    _REC_MYISAM_MEM=$(cat ${outTun} \
+      | grep "Data in MyISAM tables" \
+      | cut -d: -f2 \
+      | awk '{ print $1}' 2>&1)
+    _REC_INNODB_MEM=$(cat ${outTun} \
+      | grep "data size:" \
+      | cut -d/ -f3 \
+      | awk '{ print $1}' 2>&1)
+    _MYSQLTUNER_TEST=$(cat ${outTun} 2>&1)
+    cp -a ${outTun} ${pthLog}/
+    if [ -z "${_REC_INNODB_MEM}" ] \
+      || [[ "${_MYSQLTUNER_TEST}" =~ "Cannot calculate MyISAM index" ]] \
+      || [[ "${_MYSQLTUNER_TEST}" =~ "InnoDB is enabled but isn" ]]; then
+      _MYSQLTUNER_TEST_RESULT=FAIL
+      echo "ALRT! The MySQLTuner test failed!"
+      echo "ALRT! Please review ${outTun}"
+      echo "ALRT! We will use some sane SQL defaults instead, do not worry!"
+    fi
+    ###--------------------###
+    if [ ! -z "${_REC_MYISAM_MEM}" ] \
+      && [ "${_MYSQLTUNER_TEST_RESULT}" = "OK" ]; then
+      _RAW_MYISAM_MEM=$(echo ${_REC_MYISAM_MEM} | sed "s/[A-Z]//g" 2>&1)
+      if [[ "${_REC_MYISAM_MEM}" =~ "G" ]]; then
+        _RAW_MYISAM_MEM=$(echo ${_RAW_MYISAM_MEM} | awk '{print int($1+0.6)}' 2>&1)
+        _RAW_MYISAM_MEM=$(echo "${_RAW_MYISAM_MEM} * 1024" | bc -l 2>&1)
+      elif [[ "${_REC_MYISAM_MEM}" =~ "M" ]]; then
+        _RAW_MYISAM_MEM=$(echo ${_RAW_MYISAM_MEM} | awk '{print int($1+0.6)}' 2>&1)
+        _RAW_MYISAM_MEM=$(echo "${_RAW_MYISAM_MEM} * 1" | bc -l 2>&1)
+      fi
+      _RAW_MYISAM_MEM=$(echo "(${_RAW_MYISAM_MEM}+0.5)/1" | bc 2>&1)
+      if [ "${_RAW_MYISAM_MEM}" -gt "${_USE_SQL}" ]; then
+        _USE_MYISAM_MEM="${_USE_SQL}"
+      else
+        _RAW_MYISAM_MEM=$(echo "scale=2; (${_RAW_MYISAM_MEM} * 1.1)" | bc 2>&1)
+        _USE_MYISAM_MEM=$(echo "(${_RAW_MYISAM_MEM}+0.5)/1" | bc 2>&1)
+      fi
+      if [ "${_USE_MYISAM_MEM}" -lt "256" ] \
+        || [ -z "${_USE_MYISAM_MEM}" ]; then
+        _USE_MYISAM_MEM="${_USE_SQL}"
+      fi
+      _USE_MYISAM_MEM="${_USE_MYISAM_MEM}M"
+      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
+      wait
+    else
+      _USE_MYISAM_MEM="${_USE_SQL}M"
+      if [ "${_MYSQLTUNER_TEST_RESULT}" = "FAIL" ]; then
+        echo "ALRT! _USE_MYISAM_MEM is ${_USE_MYISAM_MEM} because _REC_MYISAM_MEM was empty!"
+      fi
+      sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf
+      wait
+    fi
+    ###--------------------###
+    if [ ! -z "${_REC_INNODB_MEM}" ] \
+      && [ "${_MYSQLTUNER_TEST_RESULT}" = "OK" ]; then
+      echo _REC_INNODB_MEM is ${_REC_INNODB_MEM}
+      _RAW_INNODB_MEM=$(echo ${_REC_INNODB_MEM} | sed "s/[A-Z]//g" 2>&1)
+      if [[ "${_REC_INNODB_MEM}" =~ "G" ]]; then
+        _RAW_INNODB_MEM=$(echo ${_RAW_INNODB_MEM} | awk '{print int($1+0.6)}' 2>&1)
+        _RAW_INNODB_MEM=$(echo "${_RAW_INNODB_MEM} * 1024" | bc -l 2>&1)
+      elif [[ "${_REC_INNODB_MEM}" =~ "M" ]]; then
+        _RAW_INNODB_MEM=$(echo ${_RAW_INNODB_MEM} | awk '{print int($1+0.6)}' 2>&1)
+        _RAW_INNODB_MEM=$(echo "${_RAW_INNODB_MEM} * 1" | bc -l 2>&1)
+      fi
+      _RAW_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
+      echo _RAW_INNODB_MEM is ${_RAW_INNODB_MEM}
+      if [ "${_RAW_INNODB_MEM}" -gt "${_USE_SQL}" ] \
+        || [ -z "${_USE_INNODB_MEM}" ] \
+        || [ "${_RAW_INNODB_MEM}" -lt "512" ]; then
+        _USE_INNODB_MEM="${_USE_SQL}"
+      else
+        _RAW_INNODB_MEM=$(echo "scale=2; (${_RAW_INNODB_MEM} * 1.1)" | bc 2>&1)
+        _USE_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
+      fi
+      echo _RAW_INNODB_MEM is ${_RAW_INNODB_MEM}
+      echo _USE_INNODB_MEM is ${_USE_INNODB_MEM}
+      _INNODB_BPI=$(echo "scale=0; ${_USE_INNODB_MEM}/1024/2" | bc 2>&1)
+      echo Initial _INNODB_BPI is ${_INNODB_BPI}
+      if [ "${_INNODB_BPI}" -lt "1" ] || [ -z "${_INNODB_BPI}" ]; then
+        _INNODB_BPI="1"
+        echo Forced _INNODB_BPI is ${_INNODB_BPI}
+      fi
+      if [ -e "/etc/mysql/my.cnf" ]; then
+        sed -i "s/^innodb_buffer_pool_instances.*/innodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
+        wait
+        sed -i "s/^innodb_page_cleaners.*/innodb_page_cleaners = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
+        wait
+      fi
+      _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_INNODB_MEM}/4/40*40" | bc 2>&1)
+      _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
+      if [ "${_DB_COUNT}" -gt "3" ]; then
+        if [ "${_INNODB_LOG_FILE_SIZE}" -gt "64" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le "256" ]; then
+          _INNODB_LOG_FILE_SIZE=256
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "256" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le "512" ]; then
+          _INNODB_LOG_FILE_SIZE=512
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "512" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le "1024" ]; then
+          _INNODB_LOG_FILE_SIZE=1024
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "1024" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le "2048" ]; then
+          _INNODB_LOG_FILE_SIZE=2048
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "2048" ]; then
+          _INNODB_LOG_FILE_SIZE=2048
+        fi
+      fi
+      if [ "${_INNODB_LOG_FILE_SIZE}" -le "64" ] \
+        || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
+        _INNODB_LOG_FILE_SIZE=64
+      fi
+      _USE_INNODB_MEM="${_USE_INNODB_MEM}M"
+      if [ -e "/etc/mysql/my.cnf" ]; then
+        sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf
+      fi
+      wait
+    else
+      _USE_INNODB_MEM="${_USE_SQL}M"
+      _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
+      _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
+      if [ "${_DB_COUNT}" -gt "3" ]; then
+        if [ "${_INNODB_LOG_FILE_SIZE}" -gt "64" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le "256" ]; then
+          _INNODB_LOG_FILE_SIZE=256
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "256" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le "512" ]; then
+          _INNODB_LOG_FILE_SIZE=512
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "512" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le "1024" ]; then
+          _INNODB_LOG_FILE_SIZE=1024
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "1024" ] \
+          && [ "${_INNODB_LOG_FILE_SIZE}" -le "2048" ]; then
+          _INNODB_LOG_FILE_SIZE=2048
+        elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "2048" ]; then
+          _INNODB_LOG_FILE_SIZE=2048
+        fi
+      fi
+      if [ "${_INNODB_LOG_FILE_SIZE}" -le "64" ] \
+        || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
+        _INNODB_LOG_FILE_SIZE=64
+      fi
+      echo "ALRT! _USE_INNODB_MEM is ${_USE_INNODB_MEM} because _REC_INNODB_MEM was empty!"
+      if [ -e "/etc/mysql/my.cnf" ]; then
+        sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf
+      fi
+      wait
+    fi
+  else
+    _THIS_USE_MEM="${_USE_SQL}M"
+    if [ "${_MYSQLTUNER_TEST_RESULT}" = "FAIL" ]; then
+      echo "ALRT! _USE_MYISAM_MEM is ${_THIS_USE_MEM} because _REC_MYISAM_MEM was empty!"
+      echo "ALRT! _USE_INNODB_MEM is ${_THIS_USE_MEM} because _REC_INNODB_MEM was empty!"
+    fi
+    _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
+    _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)
+    if [ "${_DB_COUNT}" -gt "3" ]; then
+      if [ "${_INNODB_LOG_FILE_SIZE}" -gt "64" ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -le "256" ]; then
+        _INNODB_LOG_FILE_SIZE=256
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "256" ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -le "512" ]; then
+        _INNODB_LOG_FILE_SIZE=512
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "512" ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -le "1024" ]; then
+        _INNODB_LOG_FILE_SIZE=1024
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "1024" ] \
+        && [ "${_INNODB_LOG_FILE_SIZE}" -le "2048" ]; then
+        _INNODB_LOG_FILE_SIZE=2048
+      elif [ "${_INNODB_LOG_FILE_SIZE}" -gt "2048" ]; then
+        _INNODB_LOG_FILE_SIZE=2048
+      fi
+    fi
+    if [ "${_INNODB_LOG_FILE_SIZE}" -le "64" ] \
+      || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
+      _INNODB_LOG_FILE_SIZE=64
+    fi
+  fi
+}
+
+#
+# Tune memory limits for Percona.
+tune_memory_limits() {
+  echo "running ${tVr} `hostname` tune_memory_limits procedure.."
+  _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
+  if [ "${_RESERVED_RAM}" -gt "0" ]; then
+    _RAM=$(( _RAM - _RESERVED_RAM ))
+  fi
+  _USE=$(( _RAM / 4 ))
+  if [ "${_VMFAMILY}" = "VS" ] \
+    || [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+    if [ "${_VMFAMILY}" = "VS" ]; then
+      if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
+        _USE_SQL=$(( _RAM / 24 ))
+      elif [ -e "/root/.tg.cnf" ]; then
+        _USE_SQL=$(( _RAM / 12 ))
+      else
+        _USE_SQL=$(( _RAM / 24 ))
+      fi
+    else
+      _USE_SQL=$(( _RAM / 8 ))
+    fi
+  else
+    _USE_SQL=$(( _RAM / 8 ))
+  fi
+  if [ "${_USE_SQL}" -lt "512" ]; then
+    _USE_SQL=512
+  fi
+  _TMP_SQL="${_USE_SQL}M"
+  _SRT_SQL=$(( _USE_SQL * 2 ))
+  _SRT_SQL="${_SRT_SQL}K"
+  if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
+    _USE_PHP=2048
+    _USE_OPC=2048
+    _QCE_SQL=64M
+    _RND_SQL=8M
+    _JBF_SQL=4M
+    if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+      _L_PHP_FPM_WORKERS=48
+    else
+      _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
+    fi
+    _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
+  elif [ "${_USE}" -ge "2048" ]; then
+    if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
+      _USE_PHP=4096
+      _USE_OPC=4096
+      _QCE_SQL=64M
+      _RND_SQL=8M
+      _JBF_SQL=4M
+      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+        _L_PHP_FPM_WORKERS=48
+      else
+        _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
+      fi
+      _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
+    elif [ "${_VMFAMILY}" = "VS" ] || [ "${_VMFAMILY}" = "TG" ]; then
+      if [ -e "/root/.my.cluster_root_pwd.txt" ] \
+        || [ -e "/root/.tg.cnf" ]; then
+        _USE_PHP=4096
+        _USE_OPC=4096
+        _QCE_SQL=64M
+        _RND_SQL=8M
+        _JBF_SQL=4M
+        if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+          _L_PHP_FPM_WORKERS=48
+        else
+          _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
+        fi
+        _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
+        if [ "${_MXC_SQL}" -lt "96" ]; then
+          _MXC_SQL=96
+        fi
+      else
+        _USE_PHP=4096
+        _USE_OPC=4096
+        _QCE_SQL=64M
+        _RND_SQL=2M
+        _JBF_SQL=2M
+        if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+          _L_PHP_FPM_WORKERS=48
+        else
+          _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
+        fi
+        _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
+      fi
+    else
+      _USE_PHP=2048
+      _USE_OPC=2048
+      _QCE_SQL=64M
+      _RND_SQL=2M
+      _JBF_SQL=2M
+      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+        _L_PHP_FPM_WORKERS=48
+      else
+        _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
+      fi
+      _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
+    fi
+  else
+    _USE_PHP="${_USE}"
+    _USE_OPC="${_USE}"
+    _QCE_SQL=64M
+    _RND_SQL=1M
+    _JBF_SQL=1M
+    if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+      _L_PHP_FPM_WORKERS=12
+    else
+      _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
+    fi
+    _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
+  fi
+  tune_sql_memory_limits
+  update_sql_conf
+  if [[ "${PrTestPower}" =~ "POWER" ]] \
+    || [ -e "/root/.my.cluster_root_pwd.txt" ] \
+    || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
+    _UXC_SQL="${_MXC_SQL}"
+  else
+    _UXC_SQL=$(echo "scale=0; ${_MXC_SQL}/2" | bc 2>&1)
+  fi
+  sed -i "s/^max_connect_errors.*/max_connect_errors      = ${_UXC_SQL}/g"      /etc/mysql/my.cnf
+  wait
+  sed -i "s/^max_user_connections.*/max_user_connections    = ${_UXC_SQL}/g"    /etc/mysql/my.cnf
+  wait
+  sed -i "s/^max_connections.*/max_connections         = ${_MXC_SQL}/g"         /etc/mysql/my.cnf
+  wait
+  sed -i "s/^tmp_table_size.*/tmp_table_size          = ${_TMP_SQL}/g"          /etc/mysql/my.cnf
+  wait
+  sed -i "s/^max_heap_table_size.*/max_heap_table_size     = ${_TMP_SQL}/g"     /etc/mysql/my.cnf
+  wait
+  sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = ${_SRT_SQL}/g" /etc/mysql/my.cnf
+  wait
+  sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = ${_RND_SQL}/g"    /etc/mysql/my.cnf
+  wait
+  sed -i "s/^join_buffer_size.*/join_buffer_size        = ${_JBF_SQL}/g"        /etc/mysql/my.cnf
+  wait
+  echo _USE_SQL is ${_USE_SQL}
+  echo _USE_PHP is ${_USE_PHP}
+  echo _UXC_SQL is ${_UXC_SQL}
+  echo _MXC_SQL is ${_MXC_SQL}
+  echo _TMP_SQL is ${_TMP_SQL}
+  echo _QCE_SQL is ${_QCE_SQL}
+  echo _RND_SQL is ${_RND_SQL}
+  echo _JBF_SQL is ${_JBF_SQL}
+  echo _SRT_SQL is ${_SRT_SQL}
+  echo _INNODB_BPI is ${_INNODB_BPI}
+  echo _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}
+}
+
+tune_sql() {
+  echo "running ${tVr} `hostname` tune_sql procedure.."
+  rm -f /var/run/mysql_restart_running.pid
+  check_mysql_up
+  tune_memory_limits
+  if_restart_sql
+  exit 0
+}
+
+db_head_to_stretch_first()
+{
+  if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ] ; then
+    _HOST_HOSTNAME=`hostname 2>&1`
+    _HOST_OSR=$(lsb_release -sc 2>&1)
+    if [[ "${_HOST_OSR}" =~ "stretch" ]]; then
+      echo "The ${_HOST_HOSTNAME} is already running Stretch"
+    elif [[ "${_HOST_OSR}" =~ "jessie" ]]; then
+  	  cat /etc/resolv.conf > /var/backups/resolv.conf.pre-dist-upgrade
+  	  rm -f /etc/resolv.conf
+  	  echo "nameserver 8.8.8.8" >/etc/resolv.conf
+  	  echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+  	  cat /etc/resolv.conf
+  	  apt-get update -qq &> /dev/null
+  	  echo "curl install"           | dpkg --set-selections
+  	  echo "git install"            | dpkg --set-selections
+  	  echo "git-core install"       | dpkg --set-selections
+  	  echo "git-man install"        | dpkg --set-selections
+  	  echo "libssl-dev install"     | dpkg --set-selections
+  	  echo "openssh-client install" | dpkg --set-selections
+  	  echo "openssh-server install" | dpkg --set-selections
+  	  echo "openssh-sftp-server install" | dpkg --set-selections
+  	  echo "openssl install"        | dpkg --set-selections
+  	  echo "ssh install"            | dpkg --set-selections
+  	  echo "zlib1g install"         | dpkg --set-selections
+  	  echo "zlib1g-dev install"     | dpkg --set-selections
+  	  echo "zlibc install"          | dpkg --set-selections
+  	  ${_INSTALL} zlib1g
+  	  ${_INSTALL} zlib1g-dev
+  	  ${_INSTALL} zlibc
+  	  ${_INSTALL} openssl
+  	  ${_INSTALL} libssl-dev
+  	  apt-get install curl ${forCer}
+  	  apt-get install openssh-client ${forCer}
+  	  apt-get install openssh-server ${forCer}
+  	  apt-get install ssh ${forCer}
+  	  apt-get upgrade ${nrmUpArg}
+  	  apt-get dist-upgrade ${nrmUpArg}
+      ### Check if we can continue
+      _AUDIT_DPKG=$(dpkg --audit 2>&1)
+      if [ ! -z "${_AUDIT_DPKG}" ]; then
+        echo "ALRT! I can not continue until dpkg --audit is clean"
+        echo "ALRT! ${_AUDIT_DPKG}"
+        echo "ALRT! Aborting installer NOW!"
+        exit 1
+      fi
+      _HOLD_TEST_DPKG=$(dpkg --get-selections | grep 'hold$' 2>&1)
+      if [ ! -z "${_HOLD_TEST_DPKG}" ]; then
+        echo "ALRT! I can not continue until these packages are un-hold"
+        echo "ALRT! ${_HOLD_TEST_DPKG}"
+        echo "ALRT! Aborting installer NOW!"
+        exit 1
+      fi
+      _HOLD_TEST_ATE=$(aptitude search "~ahold" 2>&1)
+      if [ ! -z "${_HOLD_TEST_ATE}" ]; then
+        echo "ALRT! I can not continue until these packages are un-hold"
+        echo "ALRT! ${_HOLD_TEST_ATE}"
+        echo "ALRT! Aborting installer NOW!"
+        exit 1
+      fi
+      sed -i "s/.*DEBIAN LTS.*//g" /etc/apt/sources.list
+      wait
+      sed -i "s/.*jessie-lts.*//g" /etc/apt/sources.list
+      wait
+      sed -i "s/.*PROPOSED.*//g"   /etc/apt/sources.list
+      wait
+      sed -i "s/.*proposed.*//g"   /etc/apt/sources.list
+      wait
+      sed -i "s/jessie/stretch/g"   /etc/apt/sources.list
+      wait
+      sed -i "s/jessie/stretch/g"   /etc/apt/sources.list.d/*
+      wait
+      if [ -e "/etc/apt/apt.conf" ]; then
+        sed -i "s/APT::Default-Release.*/APT::Default-Release \"stretch\";/g" \
+        /etc/apt/apt.conf &> /dev/null
+        wait
+      fi
+  	  cat /etc/apt/sources.list
+  	  apt-get update -qq &> /dev/null
+  	  apt-get install apt -t stretch ${dstUpArg}
+  	  apt-get upgrade ${dstUpArg}
+  	  apt-get install apt dpkg aptitude util-linux ${dstUpArg}
+  	  apt-get upgrade ${dstUpArg}
+  	  apt-get dist-upgrade ${dstUpArg}
+  	  apt-get install lsb-release ${dstUpArg}
+  	  if [ -x "/lib/systemd/systemd" ]; then
+        ls -la /lib/systemd/systemd
+        ${_INSTALL} sysvinit
+        ${_INSTALL} sysvinit-core
+        ${_INSTALL} sysvinit-utils
+        ls -la /usr/share/sysvinit/inittab
+        if [ -e "/usr/share/sysvinit/inittab" ]; then
+          cp -af /usr/share/sysvinit/inittab /etc/inittab
+        fi
+        apt-get remove systemd -y --force-yes -qq --purge --auto-remove
+        echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+        echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+        ${_INSTALL} sysvinit-core &> /dev/null
+        ${_INSTALL} sysvinit-utils &> /dev/null
+  	  fi
+      echo "Upgrade OS to Stretch 1st stage complete!"
+      echo "Bye!"
+    fi
+  fi
+}
+
+db_head_to_stretch_second()
+{
+  if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ] ; then
+    _HOST_HOSTNAME=`hostname 2>&1`
+    _HOST_OSR=$(lsb_release -sc 2>&1)
+    if [[ "${_HOST_OSR}" =~ "stretch" ]]; then
+	    apt-get update -qq &> /dev/null
+  	  if [ -x "/lib/systemd/systemd" ]; then
+        ls -la /lib/systemd/systemd
+        ${_INSTALL} sysvinit
+        ${_INSTALL} sysvinit-core
+        ${_INSTALL} sysvinit-utils
+        ls -la /usr/share/sysvinit/inittab
+        if [ -e "/usr/share/sysvinit/inittab" ]; then
+          cp -af /usr/share/sysvinit/inittab /etc/inittab
+        fi
+        apt-get remove systemd -y --force-yes -qq --purge --auto-remove
+        echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+        echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+        ${_INSTALL} sysvinit-core &> /dev/null
+        ${_INSTALL} sysvinit-utils &> /dev/null
+  	  fi
+  	  apt-get upgrade ${nrmUpArg}
+  	  apt-get dist-upgrade ${nrmUpArg}
+  	  echo "Upgrade OS to Stretch 2nd stage complete!"
+      echo "Bye!"
+    fi
+  fi
+}
+
+case "$1" in
+  stretch-first) db_head_to_stretch_first ;;
+  stretch-second) db_head_to_stretch_second ;;
+  restart) restart_sql ;;
+  start)   start_sql "only" ;;
+  stop)    stop_sql  "only" ;;
+  init)    start_sql "init" ;;
+  check)   check_root "check" ;;
+  tune)    tune_sql ;;
+  *)       tune_sql
+  ;;
+esac
+
+###EOF2020###

@@ -3,13 +3,12 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-_CSF_VRN="12.10"
+_CSF_VRN="14.04"
 _PROXYSQL_VRN="1.3.5-debian8_amd64"
 _UTIL_VRN="0.30.216-pre3126"
-_VNSTAT_VRN="2.0"
-
-_NOISE="-q"
-_INST="/usr/bin/apt-get -y --allow-unauthenticated ${_NOISE} install"
+_VNSTAT_VRN="2.2"
+_APT_XTR="-y --force-yes"
+_INST="/usr/bin/apt-get -y --allow-unauthenticated install"
 
 _INSTAPP="/usr/bin/aptitude -f -y -q \
   --allow-untrusted \
@@ -25,6 +24,20 @@ export DEBIAN_FRONTEND=noninteractive
 if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
+
+_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=${_TODAY//[^0-9]/}
+_X_VERSION="BOA-4.1.2"
+_X_SE="412prodQ1"
+#
+barCnf="/root/.barracuda.cnf"
+crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+forCer="-fuy --allow-unauthenticated --reinstall"
+optBin="/opt/local/bin"
+usrBin="/usr/local/bin"
+pthLog="/var/xdrago/log"
+tBn="tools/bin"
+#
 
 ###-------------SYSTEM-----------------###
 
@@ -44,16 +57,23 @@ check_root() {
       fi
     fi
     forCer="-fuy --allow-unauthenticated --reinstall"
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ ! -x "${_LSB_TEST}" ]; then
-      apt-get clean ${_NOISE}
-      rm -f -r /var/lib/apt/lists/*
-      apt-get update ${_NOISE}
-      apt-get install lsb-release ${forCer} ${_NOISE}
-      _OSV=$(lsb_release -si 2>&1)
+      apt-get clean -qq
+      rm -rf /var/lib/apt/lists/**
+      apt-get update -qq
+      apt-get install lsb-release ${forCer}
+    fi
+    _LSB_TEST=$(which lsb_release 2> /dev/null)
+    if [ -x "${_LSB_TEST}" ]; then
+      _THIS_OS=$(lsb_release -si 2>&1)
       _OSR=$(lsb_release -sc 2>&1)
-      if [ "${_OSV}" != "Debian" ]; then
-        echo "ERROR: Not supported OS detected: ${_OSV}/${_OSR}"
+      if [ "${_THIS_OS}" != "Debian" ]; then
+        echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
         exit 1
       fi
       echo
@@ -61,7 +81,8 @@ check_root() {
       echo "deb http://http.debian.net/debian/ ${_OSR} main contrib non-free"          >> /etc/apt/sources.list
       echo "deb-src http://http.debian.net/debian/ ${_OSR} main contrib non-free"      >> /etc/apt/sources.list
       echo ""                                                                          >> /etc/apt/sources.list
-      if [ "${_OSR}" = "stretch" ]; then
+      if [ "${_OSR}" = "stretch" ] \
+        || [ "${_OSR}" = "buster" ]; then
         echo "## MAJOR BUG FIX UPDATES produced after the final release"               >> /etc/apt/sources.list
         echo "deb http://http.debian.net/debian/ ${_OSR}-updates main"                 >> /etc/apt/sources.list
         echo "deb-src http://http.debian.net/debian/ ${_OSR}-updates main"             >> /etc/apt/sources.list
@@ -74,25 +95,27 @@ check_root() {
       echo "deb http://security.debian.org/ ${_OSR}/updates main contrib non-free"     >> /etc/apt/sources.list
       echo "deb-src http://security.debian.org/ ${_OSR}/updates main contrib non-free" >> /etc/apt/sources.list
       echo
-      apt-get clean ${_NOISE}
-      rm -f -r /var/lib/apt/lists/*
-      apt-get update ${_NOISE}
-      apt-get install lsb-release ${forCer} ${_NOISE}
+      apt-get clean -qq &> /dev/null
+      rm -rf /var/lib/apt/lists/*
+      apt-get update -qq &> /dev/null
     fi
-    _OSV=$(lsb_release -si 2>&1)
+    _THIS_OS=$(lsb_release -si 2>&1)
     _OSR=$(lsb_release -sc 2>&1)
-    if [ "${_OSV}" != "Debian" ]; then
-      echo "ERROR: Not supported OS detected: ${_OSV}/${_OSR}"
+    if [ "${_THIS_OS}" != "Debian" ]; then
+      echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
       exit 1
     fi
     if [ "${_OSR}" = "jessie" ]; then
-      _BENG_SERIES="4.1"
-      _BNG_VERSION="4.1.50-vs2.3.8.6"
+      _BENG_SERIES="4.9"
+      _BNG_VERSION="4.9.202-vs2.3.9.9"
     elif [ "${_OSR}" = "stretch" ]; then
-      _BENG_SERIES="4.1"
-      _BNG_VERSION="4.1.50-vs2.3.8.6"
+      _BENG_SERIES="4.9"
+      _BNG_VERSION="4.9.202-vs2.3.9.9"
+    elif [ "${_OSR}" = "buster" ]; then
+      _BENG_SERIES="4.9"
+      _BNG_VERSION="4.9.202-vs2.3.9.9"
     else
-      echo "ERROR: Not supported OS detected: ${_OSV}/${_OSR}"
+      echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
       exit 1
     fi
   else
@@ -172,11 +195,161 @@ system_check_clean() {
   fi
 }
 
+#
+# Fix locales.
+fix_locales() {
+  if [ -e "/etc/ssh/sshd_config" ]; then
+    _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /etc/ssh/sshd_config 2>&1)
+    if [[ "${_SSH_LC_TEST}" =~ "AcceptEnv LANG LC_" ]]; then
+      _DO_NOTHING=YES
+    else
+      sed -i "s/.*AcceptEnv.*//g" /etc/ssh/sshd_config
+      wait
+      echo "AcceptEnv LANG LC_*" >> /etc/ssh/sshd_config
+    fi
+  fi
+  if [ -e "/usr/etc/sshd_config" ]; then
+    _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /usr/etc/sshd_config 2>&1)
+    if [[ "${_SSH_LC_TEST}" =~ "AcceptEnv LANG LC_" ]]; then
+      _DO_NOTHING=YES
+    else
+      sed -i "s/.*AcceptEnv.*//g" /usr/etc/sshd_config
+      wait
+      echo "AcceptEnv LANG LC_*" >> /usr/etc/sshd_config
+    fi
+  fi
+  _LOCALE_TEST=BROKEN
+  _LOC_TEST=$(locale 2>&1)
+  if [[ "${_LOC_TEST}" =~ LANG=.*UTF-8 ]]; then
+    _LOCALE_TEST=OK
+  fi
+  if [[ "${_LOC_TEST}" =~ "Cannot" ]]; then
+    _LOCALE_TEST=BROKEN
+  fi
+  if [ -n "${STY+x}" ]; then
+    _LOCALE_TEST=OK
+  fi
+  if [ "${_LOCALE_TEST}" = "BROKEN" ]; then
+    echo "WARNING!"
+    cat <<EOF
+
+  Locales on this system are broken or not installed
+  and/or not configured correctly yet. This is a known
+  issue on some systems/hosts which either don't configure
+  locales at all or don't use UTF-8 compatible locales
+  during initial OS setup.
+
+  We will fix this problem for you now by enforcing en_US.UTF-8
+  locale settings on the fly during install, and as system
+  defaults in /etc/default/locale for future sessions. This
+  overrides any locale settings passed by your SSH client.
+
+  You should log out when this installer will finish all its tasks
+  and display last line with "BYE!" and then log in again
+  to see the result.
+
+  We will continue in 5 seconds...
+
+EOF
+    sleep 5
+    if [ "${_THIS_OS}" = "Debian" ]; then
+      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
+      if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
+        echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+      fi
+      sed -i "/^$/d" /etc/locale.gen
+      locale-gen &> /dev/null
+    else
+      locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
+    fi
+    # Explicitly enforce all locale settings
+    update-locale \
+      LANG=en_US.UTF-8 \
+      LC_CTYPE=en_US.UTF-8 \
+      LC_COLLATE=POSIX \
+      LC_NUMERIC=POSIX \
+      LC_TIME=en_US.UTF-8 \
+      LC_MONETARY=en_US.UTF-8 \
+      LC_MESSAGES=en_US.UTF-8 \
+      LC_PAPER=en_US.UTF-8 \
+      LC_NAME=en_US.UTF-8 \
+      LC_ADDRESS=en_US.UTF-8 \
+      LC_TELEPHONE=en_US.UTF-8 \
+      LC_MEASUREMENT=en_US.UTF-8 \
+      LC_IDENTIFICATION=en_US.UTF-8 \
+      LC_ALL= &> /dev/null
+    # Define all locale settings on the fly to prevent unnecessary
+    # warnings during installation of packages.
+    export LANG=en_US.UTF-8
+    export LC_CTYPE=en_US.UTF-8
+    export LC_COLLATE=POSIX
+    export LC_NUMERIC=POSIX
+    export LC_TIME=en_US.UTF-8
+    export LC_MONETARY=en_US.UTF-8
+    export LC_MESSAGES=en_US.UTF-8
+    export LC_PAPER=en_US.UTF-8
+    export LC_NAME=en_US.UTF-8
+    export LC_ADDRESS=en_US.UTF-8
+    export LC_TELEPHONE=en_US.UTF-8
+    export LC_MEASUREMENT=en_US.UTF-8
+    export LC_IDENTIFICATION=en_US.UTF-8
+    export LC_ALL=
+  else
+    if [ "${_THIS_OS}" = "Debian" ]; then
+      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
+      if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
+        echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+      fi
+      sed -i "/^$/d" /etc/locale.gen
+      locale-gen &> /dev/null
+    else
+      locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
+    fi
+    # Explicitly enforce locale settings required for consistency
+    update-locale \
+      LANG=en_US.UTF-8 \
+      LC_CTYPE=en_US.UTF-8 \
+      LC_COLLATE=POSIX \
+      LC_NUMERIC=POSIX \
+      LC_ALL= &> /dev/null
+    # Define locale settings required for consistency also on the fly
+    if [ "${_STATUS}" != "INIT" ]; then
+      # On initial install it usually causes a warning:
+      # setlocale: LC_CTYPE: cannot change locale (en_US.UTF-8):
+      # No such file or directory
+      export LC_CTYPE=en_US.UTF-8
+    fi
+    export LC_COLLATE=POSIX
+    export LC_NUMERIC=POSIX
+    export LC_ALL=
+  fi
+  _LOCALES_BASHRC_TEST=$(grep LC_COLLATE /root/.bashrc 2>&1)
+  if [[ ! "${_LOCALES_BASHRC_TEST}" =~ "LC_COLLATE" ]]; then
+    printf "\n" >> /root/.bashrc
+    echo "export LANG=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_CTYPE=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_COLLATE=POSIX" >> /root/.bashrc
+    echo "export LC_NUMERIC=POSIX" >> /root/.bashrc
+    echo "export LC_TIME=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_MONETARY=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_MESSAGES=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_PAPER=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_NAME=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_ADDRESS=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_TELEPHONE=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_MEASUREMENT=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_IDENTIFICATION=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_ALL=" >> /root/.bashrc
+    printf "\n" >> /root/.bashrc
+  fi
+}
+
 check_all() {
   check_root
   check_root_direct
   check_root_keys_pwd
   system_check_clean
+  fix_locales
 }
 
 check_config_cluster() {
@@ -252,6 +425,27 @@ check_config_cluster() {
   fi
 }
 
+find_fast_mirror() {
+  isNetc=$(which netcat 2>&1)
+  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    apt-get update -qq &> /dev/null
+    apt-get install netcat ${forCer} &> /dev/null
+    sleep 3
+  fi
+  _USE_MIR="files.aegir.cc"
+  if ! netcat -w 10 -z "${_USE_MIR}" 80; then
+    echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
+    _USE_MIR="104.245.208.226"
+  fi
+  urlDev="http://${_USE_MIR}/dev"
+  urlHmr="http://${_USE_MIR}/versions/master/aegir"
+}
+find_fast_mirror
+
 if_firewall_update() {
   if [ -e "/etc/csf" ]; then
     echo "Running Firewall Update on `hostname`..."
@@ -308,7 +502,20 @@ if_firewall_update() {
     sleep 3
     rm -f /etc/csf/csf.error
     csf -q
+    sleep 8
     service lfd start
+    ### Linux kernel TCP SACK CVEs mitigation
+    ### CVE-2019-11477 SACK Panic
+    ### CVE-2019-11478 SACK Slowness
+    ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
+    if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+      _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+      if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
+        sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
+        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+        ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+      fi
+    fi
   fi
 }
 
@@ -331,18 +538,29 @@ install_proxysql() {
   _E_MONITOR_PASSWORD="${_MONITOR_PASSWORD//\//\\\/}"
   _E_CLUSTER_APP_PASSWORD="${_CLUSTER_APP_PASSWORD//\//\\\/}"
 
+  pxyCtx="mysql -uadmin -p${_PROXYSQL_PASSWORD} -h127.0.0.1 -P6032"
+  pXcnf="/vservers/${idn}/etc/proxysql-admin.cnf"
+
   echo "Installing ProxySQL on the web cluster node..."
   if [ ! -z "${_E_PROXYSQL_PASSWORD}" ] && [ ! -z "${_E_ROOT_SQL_PASWD}" ]; then
 
-    if [ "${cmd}" = "in-pxy" ] && [ -e "/vservers/${idn}/usr/bin/proxysql" ]; then
-      _ATMIS=`date +%y%m%d-%H%M`
+    if [ "${cmd}" = "in-pxy" ] \
+      && [ -e "/vservers/${idn}/usr/bin/proxysql" ] \
+      && [ -e "/vservers/${idn}/var/lib/proxysql" ]; then
+      _ATMIS=`date +%y%m%d-%H%M%S`
       _XPSQL="/vservers/${idn}/var/backups/xpySQL/${_ATMIS}"
       mkdir -p ${_XPSQL}
       cp -af /vservers/${idn}/var/lib/proxysql/* ${_XPSQL}/
       vserver ${idn} exec service proxysql stop
-      vserver ${idn} exec apt-get purge -y ${_NOISE} proxysql
-      rm -f -r /vservers/${idn}/var/lib/proxysql
-      rm -f -r /vservers/${idn}/var/log/proxysql
+      vserver ${idn} exec apt-get clean
+      vserver ${idn} exec apt-get update
+      vserver ${idn} exec apt-get remove proxysql -y -qq
+      vserver ${idn} exec apt-get purge proxysql -y -qq
+      rm -rf /vservers/${idn}/var/lib/proxysql
+      rm -rf /vservers/${idn}/var/log/proxysql
+      rm -f ${pXcnf}
+      rm -f /vservers/${idn}/etc/proxysql.cnf
+      rm -f /vservers/${idn}/etc/apt/sources.list.d/proxysql.list
       for IP in "${_DB_NODE_IP[@]}"; do
         ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"DROP USER 'monitor'@'${IP}';\""
         ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"DROP USER 'proxysql_user'@'${IP}';\""
@@ -361,169 +579,267 @@ install_proxysql() {
     fi
 
     echo "${_ROOT_SQL_PASWD}" > /vservers/${idn}/root/.my.cluster_root_pwd.txt
-    echo "${_PROXYSQL_ADMIN_PWD}" > /vservers/${idn}/root/.my.proxysql_adm_pwd.txt
+    echo "${_PROXYSQL_PASSWORD}" > /vservers/${idn}/root/.my.proxysql_adm_pwd.txt
     echo "${_DB_NODE_IP[1]}" > /vservers/${idn}/root/.my.cluster_write_node.txt
     echo "<?php" > /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
-    echo "\$prxy_adm_paswd = \"${_PROXYSQL_ADMIN_PWD}\";" >> /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
+    echo "\$prxy_adm_paswd = \"${_PROXYSQL_PASSWORD}\";" >> /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
     echo "\$writer_node_ip = \"${_DB_NODE_IP[1]}\";"     >> /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
     echo "ProxySQL" > /vservers/${idn}/data/conf/clstr.cnf
-    vserver ${idn} exec ${_INSTAPP} proxysql
+    mkdir -p /vservers/${idn}/opt/tmp
+    echo '
+APT::Get::Assume-Yes "true";
+APT::Get::Show-Upgraded "true";
+APT::Quiet "true";
+DPkg::Options {"--force-confdef";"--force-confmiss";"--force-confold"};
+DPkg::Pre-Install-Pkgs {"/usr/sbin/dpkg-preconfigure --apt";};
+Dir::Etc::SourceList "/etc/apt/sources.list";
+' > /vservers/${idn}/opt/tmp/apt.conf.noi.nrml
+    nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/tmp/apt.conf.noi.nrml"
+    vserver ${idn} exec apt-get clean
+    vserver ${idn} exec apt-get update -qq
     vserver ${idn} exec ${_INSTAPP} sysbench
+    vserver ${idn} exec ${_INSTAPP} debconf-utils
+    vserver ${idn} exec ${_INSTAPP} proxysql
+    vserver ${idn} exec apt-get install --only-upgrade ${nrmUpArg} proxysql
     vserver ${idn} exec mkdir -p /var/log/proxysql
     vserver ${idn} exec chown -R proxysql:proxysql /var/log/proxysql
     vserver ${idn} exec chmod 700 /var/log/proxysql
     vserver ${idn} exec usermod -aG users proxysql
 
+    echo "Pausing ProxySQL..."
+    vserver ${idn} exec service proxysql stop
+    sleep 5
+
     sed -i "s/admin:admin/admin:${_E_PROXYSQL_PASSWORD}/g" /vservers/${idn}/etc/proxysql.cnf
     wait
     sed -i "s/localhost/127.0.0.1/g" /vservers/${idn}/etc/proxysql.cnf
 
-    sed -i "s/PROXYSQL_PASSWORD=.*/PROXYSQL_PASSWORD=\"${_E_PROXYSQL_PASSWORD}\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+    sed -i "s/PROXYSQL_PASSWORD=.*/PROXYSQL_PASSWORD=\"${_E_PROXYSQL_PASSWORD}\"/g" ${pXcnf}
     wait
-    sed -i "s/MONITOR_PASSWORD=.*/MONITOR_PASSWORD=\"${_E_MONITOR_PASSWORD}\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
-    wait
-    sed -i "s/CLUSTER_APP_PASSWORD=.*/CLUSTER_APP_PASSWORD=\"${_E_CLUSTER_APP_PASSWORD}\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+    sed -i "s/PROXYSQL_HOSTNAME=.*/PROXYSQL_HOSTNAME=\"127.0.0.1\"/g" ${pXcnf}
     wait
 
-    sed -i "s/CLUSTER_USERNAME=.*/CLUSTER_USERNAME=\"root\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+    sed -i "s/MONITOR_PASSWORD=.*/MONITOR_PASSWORD=\"${_E_MONITOR_PASSWORD}\"/g" ${pXcnf}
     wait
-    sed -i "s/CLUSTER_PASSWORD=.*/CLUSTER_PASSWORD=\"${_E_ROOT_SQL_PASWD}\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+
+    sed -i "s/CLUSTER_APP_PASSWORD=.*/CLUSTER_APP_PASSWORD=\"${_E_CLUSTER_APP_PASSWORD}\"/g" ${pXcnf}
     wait
-    sed -i "s/CLUSTER_HOSTNAME=.*/CLUSTER_HOSTNAME=\"${_DB_NODE_IP[1]}\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+
+    sed -i "s/CLUSTER_USERNAME=.*/CLUSTER_USERNAME=\"root\"/g" ${pXcnf}
     wait
-    sed -i "s/PROXYSQL_HOSTNAME=.*/PROXYSQL_HOSTNAME=\"127.0.0.1\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+    sed -i "s/CLUSTER_PASSWORD=.*/CLUSTER_PASSWORD=\"${_E_ROOT_SQL_PASWD}\"/g" ${pXcnf}
+    wait
+    sed -i "s/CLUSTER_HOSTNAME=.*/CLUSTER_HOSTNAME=\"${_DB_NODE_IP[1]}\"/g" ${pXcnf}
     wait
 
     if [ "${_CLUSTER_XCHECK}" = "YES" ]; then
-      sed -i "s/WRITE_HOSTGROUP_ID=.*/WRITE_HOSTGROUP_ID=\"500\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+      sed -i "s/WRITE_HOSTGROUP_ID=.*/WRITE_HOSTGROUP_ID=\"500\"/g" ${pXcnf}
       wait
-      sed -i "s/READ_HOSTGROUP_ID=.*/READ_HOSTGROUP_ID=\"501\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+      sed -i "s/READ_HOSTGROUP_ID=.*/READ_HOSTGROUP_ID=\"501\"/g" ${pXcnf}
       wait
     fi
 
-    sed -i "s/MODE=.*/MODE=\"loadbal\"/g" /vservers/${idn}/etc/proxysql-admin.cnf
+    sed -i "s/MODE=.*/MODE=\"loadbal\"/g" ${pXcnf}
     wait
     sleep 1
 
+    chmod 640 /vservers/${idn}/etc/proxysql.cnf
+    chmod 640 ${pXcnf}
+
     echo "Starting ProxySQL..."
-    vserver ${idn} exec service proxysql start
+    vserver ${idn} exec service proxysql initial
     sleep 5
 
+    chmod 640 /vservers/${idn}/etc/proxysql.cnf
+    chmod 640 ${pXcnf}
+
     echo "Running default auto-configuration of ProxySQL..."
-    # ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --write-node=${_DB_NODE_IP[1]}:3600 --enable"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "proxysql-admin --config-file=/etc/proxysql-admin.cnf --proxysql-password=${_PROXYSQL_PASSWORD} --cluster-password=${_CLUSTER_APP_PASSWORD} --monitor-password=${_MONITOR_PASSWORD} --mode=loadbal --enable"
+    pxyCmd="proxysql-admin --config-file=/etc/proxysql-admin.cnf --mode=loadbal --enable"
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCmd}"
     sleep 10
 
     echo "Adding root user to mysql_users in ProxySQL..."
     pxyCmd="INSERT INTO mysql_users (username,password,default_hostgroup) VALUES ('root','${_ROOT_SQL_PASWD}','10');"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
     pxyCmd="LOAD MYSQL USERS TO RUNTIME;"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
     pxyCmd="SAVE MYSQL USERS FROM RUNTIME;"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
     pxyCmd="SAVE MYSQL USERS TO DISK;"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
 
     echo "Adding root user to mysql_query_rules in ProxySQL..."
     pxyCmd="INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('root',10,1);"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
     pxyCmd="INSERT INTO mysql_query_rules (username,destination_hostgroup,active) VALUES ('root',11,1);"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
     pxyCmd="LOAD MYSQL QUERY RULES TO RUNTIME;"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
     pxyCmd="SAVE MYSQL QUERY RULES TO DISK;"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
 
     sleep 1
 
     if [ "${_CLUSTER_XCHECK}" != "YES" ]; then
       for IP in "${_DB_NODE_IP[@]}"; do
         pxyCmd="INSERT INTO mysql_servers (hostname,hostgroup_id,port,weight,comment) VALUES ('${IP}',11,3306,1000,'READWRITE');"
-        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+          ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
       done
       pxyCmd="LOAD MYSQL SERVERS TO RUNTIME;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
       pxyCmd="SAVE MYSQL SERVERS TO DISK;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
     fi
 
     if [ "${_CLUSTER_XCHECK}" = "YES" ]; then
       echo "Adding monitor user to ProxySQL..."
       pxyCmd="INSERT INTO mysql_users (username,password) VALUES ('monitor','${_MONITOR_PASSWORD}');"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
       sleep 1
       pxyCmd="UPDATE global_variables SET variable_value='monitor' WHERE variable_name='mysql-monitor_username';"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
       sleep 1
       pxyCmd="UPDATE global_variables SET variable_value='${_MONITOR_PASSWORD}' WHERE variable_name='mysql-monitor_password';"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
+      sleep 1
+      pxyCmd="UPDATE global_variables SET variable_value=268435456 WHERE variable_name='mysql-max_allowed_packet';"
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
       sleep 1
 
       echo "Load ProxySQL variables to runtime and save to disk..."
       pxyCmd="LOAD MYSQL VARIABLES TO RUNTIME;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
       sleep 1
       pxyCmd="SAVE MYSQL VARIABLES TO DISK;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
       sleep 1
 
       echo "Adding grants for ProxySQL monitor user on Percona Cluster..."
       for IP in "${_DB_NODE_IP[@]}"; do
-        ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'monitor'@'${IP}' IDENTIFIED BY '${_MONITOR_PASSWORD}';\""
+        pxyCmd="CREATE USER IF NOT EXISTS 'monitor'@'${IP}';"
+          ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+        pxyCmd="GRANT USAGE ON *.* TO 'monitor'@'${IP}';"
+          ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+        pxyCmd="ALTER USER 'monitor'@'${IP}' IDENTIFIED BY '${_MONITOR_PASSWORD}';"
+          ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
       done
-      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'monitor'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_MONITOR_PASSWORD}';\""
+      pxyCmd="CREATE USER IF NOT EXISTS 'monitor'@'${_WEB_NODE_IP}';"
+        ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+      pxyCmd="GRANT USAGE ON *.* TO 'monitor'@'${_WEB_NODE_IP}';"
+        ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+      pxyCmd="ALTER USER 'monitor'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_MONITOR_PASSWORD}';"
+        ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
 
       echo "Adding proxysql_user to ProxySQL..."
       pxyCmd="INSERT INTO mysql_users (username,password) VALUES ('proxysql_user','${_CLUSTER_APP_PASSWORD}');"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
       sleep 1
 
       echo "Adding grants for ProxySQL proxysql_user on Percona Cluster..."
       for IP in "${_DB_NODE_IP[@]}"; do
-        ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'proxysql_user'@'${IP}' IDENTIFIED BY '${_CLUSTER_APP_PASSWORD}';\""
+        pxyCmd="CREATE USER IF NOT EXISTS 'proxysql_user'@'${IP}';"
+          ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+        pxyCmd="GRANT USAGE ON *.* TO 'proxysql_user'@'${IP}';"
+          ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+        pxyCmd="ALTER USER 'proxysql_user'@'${IP}' IDENTIFIED BY '${_CLUSTER_APP_PASSWORD}';"
+          ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
       done
-      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT USAGE ON *.* TO 'proxysql_user'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_CLUSTER_APP_PASSWORD}';\""
+      pxyCmd="CREATE USER IF NOT EXISTS 'proxysql_user'@'${_WEB_NODE_IP}';"
+        ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+      pxyCmd="GRANT USAGE ON *.* TO 'proxysql_user'@'${_WEB_NODE_IP}';"
+        ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+      pxyCmd="ALTER USER 'proxysql_user'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_CLUSTER_APP_PASSWORD}';"
+        ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
 
       echo "Load ProxySQL users to runtime and save to disk..."
       pxyCmd="LOAD MYSQL USERS TO RUNTIME;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
       sleep 1
       pxyCmd="SAVE MYSQL USERS TO DISK;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
       sleep 1
     fi
 
     if [ "${_CLUSTER_XCHECK}" = "YES" ]; then
       echo "Adding mysql_servers in ProxySQL..."
       pxyCmd="DELETE FROM mysql_replication_hostgroups where writer_hostgroup=500;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
       pxyCmd="DELETE FROM mysql_servers where hostgroup_id in (500,501);"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
       cNt="100"
       for IP in "${_DB_NODE_IP[@]}"; do
         pxyCmd="INSERT INTO mysql_servers (hostname,hostgroup_id,port,weight) VALUES ('${IP}',500,3306,${cNt});"
-        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+          ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
         cNt=$(( 10000 * cNt ))
       done
       cNt="1000000000"
       for IP in "${_DB_NODE_IP[@]}"; do
         cNt=$(( cNt / 100 ))
         pxyCmd="INSERT INTO mysql_servers (hostname,hostgroup_id,port,weight) VALUES ('${IP}',501,3306,${cNt});"
-        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+          ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
       done
       pxyCmd="LOAD MYSQL SERVERS TO RUNTIME;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
       pxyCmd="SAVE MYSQL SERVERS TO DISK;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
     fi
 
     echo "Checking runtime_scheduler entries in ProxySQL..."
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"SELECT * FROM runtime_scheduler\\G\""
+    pxyCmd="SELECT * FROM runtime_scheduler\\G"
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
 
     echo "Checking mysql_servers status in ProxySQL..."
     sleep 10
     pxyCmd="SELECT hostgroup_id,hostname,port,status,weight FROM mysql_servers;"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
+
+    isPxy=$(vserver ${idn} exec which proxysql 2>&1)
+    echo "Relative isPxy is ${isPxy}"
+    echo "Absolute isPxy is /vservers/${idn}${isPxy}"
+
+    if [ -x "/vservers/${idn}${isPxy}" ] \
+      && [ -e "/vservers/${idn}/etc/proxysql.cnf" ] \
+      && [ -e "${pXcnf}" ]; then
+      echo "INFO: Updating ProxySQL Galera Checker..."
+      pGc="/vservers/${idn}/usr/bin/proxysql_galera_checker"
+      if [ -e "${pGc}" ]; then
+        rm -f ${pGc}
+      fi
+      tURL="${urlHmr}/${tBn}/proxysql_galera_checker"
+      echo PGC download URL is ${tURL}
+      curl -I ${tURL}
+      curl ${crlGet} "${tURL}" -o ${pGc}
+      if [ ! -e "${pGc}" ]; then
+        curl ${crlGet} "${tURL}" -o ${pGc}
+      else
+        _PAV_TEST=$(grep PROXYSQL_ADMIN_VERSION ${pGc} 2>&1)
+        if [[ ! "${_PAV_TEST}" =~ "PROXYSQL_ADMIN_VERSION" ]]; then
+          rm -f ${pGc}
+          curl ${crlGet} "${tURL}" -o ${pGc}
+        fi
+      fi
+      chmod 755 ${pGc}
+      echo loadbal > /vservers/${idn}/var/lib/proxysql/mode
+      echo loadbal > /vservers/${idn}/var/lib/proxysql/c1r_galera_mode
+      echo loadbal > /vservers/${idn}/var/lib/proxysql/--mode=singlewrite_mode
+      echo loadbal > /vservers/${idn}/var/lib/proxysql/--mode=loadbal_mode
+      echo 0 > /vservers/${idn}/var/lib/proxysql/reload
+      echo 0 > /vservers/${idn}/var/lib/proxysql/c1r_galera_reload
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "chown proxysql:proxysql /var/lib/proxysql/*reload"
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "chown proxysql:proxysql /var/lib/proxysql/*mode*"
+      rm -f /vservers/${idn}/var/lib/proxysql/pxc_test_proxysql_galera_check.log
+      pxyCmd="proxysql_galera_checker --log=/var/lib/proxysql/pxc_test_proxysql_galera_check.log --debug"
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCmd}"
+      cat /vservers/${idn}/var/lib/proxysql/pxc_test_proxysql_galera_check.log
+      echo "INFO: Restarting ProxySQL server..."
+      vserver ${idn} exec service proxysql restart
+      pxyCmd="SELECT * FROM runtime_scheduler\\G"
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
+      pxyCmd="SELECT * FROM mysql_servers;"
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
+    else
+      echo "OOPS: ProxySQL will not work!"
+    fi
   else
     echo "Can't install ProxySQL because _E_PROXYSQL_PASSWORD or _E_ROOT_SQL_PASWD is empty"
   fi
@@ -548,19 +864,19 @@ install_proxysql() {
       rplSchdrC="INSERT INTO scheduler (id,active,interval_ms,filename,arg1) VALUES (10,1,2000,'/var/lib/proxysql/galera_check.pl','-u=admin -p=${_PROXYSQL_PASSWORD} -h=127.0.0.1 -H=10:W,11:R -P=6032 --execution_time=1 --retry_down=2 --retry_up=1 --main_segment=1 --debug=0 --active_failover --log=/var/log/proxysql/galera_check.log');"
       rplSchdrD="LOAD SCHEDULER TO RUNTIME;"
       rplSchdrE="SAVE SCHEDULER TO DISK;"
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${rplSchdrA}\""
-      # ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${rplSchdrB}\""
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${rplSchdrC}\""
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${rplSchdrD}\""
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${rplSchdrE}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${rplSchdrA}\""
+        # ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${rplSchdrB}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${rplSchdrC}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${rplSchdrD}\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${rplSchdrE}\""
       echo "Checking modified runtime_scheduler in ProxySQL..."
-      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"SELECT * FROM runtime_scheduler\\G\""
+        ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"SELECT * FROM runtime_scheduler\\G\""
     fi
 
     echo "Checking mysql_servers status in ProxySQL..."
     sleep 10
     pxyCmd="SELECT hostgroup_id,hostname,port,status,weight FROM mysql_servers;"
-    ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "mysql -uadmin -p${_PROXYSQL_ADMIN_PWD} -h127.0.0.1 -P6032 -e \"${pxyCmd}\""
+      ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
 
   fi
 }
@@ -577,12 +893,24 @@ install_vps() {
 
   echo "Installing vps ${idn}..."
 
-  incl="sysvinit-core,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales,screen"
+  incl="sysvinit-core,sysvinit-utils,ssh,lsb-release,dnsutils,netcat,curl,wget,aptitude,locales,screen,python3"
   excl="systemd,systemd-sysv,libsystemd0,udev,makedev,fuse"
 
-  vserver ${idn} build -n ${idn} -m debootstrap --i-know-its-there \
+  if [ "${fce}" = "force" ]; then
+    locMode="--force -m debootstrap"
+  else
+    locMode="-m debootstrap"
+  fi
+
+  eth=$(ifconfig 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f1 \
+    | awk '{ print $1}' \
+    | sed "s/[\,':]//g" 2>&1)
+
+  vserver ${idn} build -n ${idn} ${locMode} --i-know-its-there \
     --hostname ${hst} \
-    --interface eth0:${vip}/32 \
+    --interface ${eth}:${vip}/32 \
     -- -d ${osx} -- --arch=amd64 --include=${incl} \
     --exclude=${excl};
 
@@ -610,7 +938,6 @@ install_vps() {
     wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
     mv -f BOA.sh.txt /vservers/${idn}/root/
     vserver ${idn} exec bash /root/BOA.sh.txt
-    vserver ${idn} exec which boa
     vserver ${idn} exec /opt/local/bin/boa in-${ver} public ${hst} ${eml} o8 mini
   else
     _REMOVE_LINKS="buagent \
@@ -651,7 +978,9 @@ install_vps() {
       fi
     done
     for s in cron dbus ssh; do
-      sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/$s > /etc/insserv/overrides/$s
+      if [ -e "/etc/init.d/${s}" ]; then
+        sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/${s} > /etc/insserv/overrides/${s}
+      fi
     done
     /sbin/insserv -v -d &> /dev/null
   fi
@@ -696,13 +1025,15 @@ install_vps() {
     echo "Running post-install Galera VPS upgrade..."
     if [ -x "/vservers/${idn}/lib/systemd/systemd" ]; then
       echo "Removing systemd on ${osx}..."
-      if [ "${osx}" = "jessie" ] || [ "${osx}" = "stretch" ]; then
+      if [ "${osx}" = "jessie" ] \
+        || [ "${osx}" = "stretch" ] \
+        || [ "${osx}" = "buster" ]; then
         vserver ${idn} exec ${_INSTAPP} sysvinit-core
         vserver ${idn} exec ${_INSTAPP} sysvinit-utils
         if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
           cp -af /vservers/${idn}/usr/share/sysvinit/inittab /vservers/${idn}/etc/inittab
         fi
-        vserver ${idn} exec apt-get remove systemd -y ${_NOISE} --purge --auto-remove
+        vserver ${idn} exec apt-get remove systemd -y -qq --purge --auto-remove
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /vservers/${idn}/etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /vservers/${idn}/etc/apt/preferences.d/systemd
         vserver ${idn} exec ${_INSTAPP} sysvinit-core
@@ -718,10 +1049,11 @@ install_vps() {
         vserver ${idn} exec ${_INSTAPP} kilobyte-archive-keyring
         vserver ${idn} exec ${_INSTAPP} sysvinit-core
         vserver ${idn} exec ${_INSTAPP} sysvinit-utils
+        vserver ${idn} exec ${_INSTAPP} bc
         if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
           cp -af /vservers/${idn}/usr/share/sysvinit/inittab /vservers/${idn}/etc/inittab
         fi
-        vserver ${idn} exec apt-get remove systemd -y ${_NOISE} --purge --auto-remove
+        vserver ${idn} exec apt-get remove systemd -y -qq --purge --auto-remove
       fi
     fi
   else
@@ -738,13 +1070,14 @@ install_vps() {
     if [ ! -z "${_ROOT_SQL_PASWD}" ]; then
       echo "${_ROOT_SQL_PASWD}" > /vservers/${idn}/root/.my.cluster_root_pwd.txt
     fi
-    vserver ${idn} exec which barracuda
     vserver ${idn} exec /opt/local/bin/barracuda up-${ver}
     echo
   fi
 
-  if [ "${cmd}" = "in-all" ] && [ "${ver}" != "galera" ]; then
-    install_proxysql
+  if [ "${cmd}" = "in-all" ] || [ "${cmd}" = "in-web" ]; then
+    if [ "${ver}" != "galera" ]; then
+      install_proxysql
+    fi
   fi
 
   echo
@@ -756,7 +1089,7 @@ install_octopus() {
   check_config_cluster
   idn="${_CLUSTER_PREFIX}web"
   if [ -e "/vservers/${idn}/data/all" ] \
-    && [ "${idn}" != "web" ]; then
+    && [[ "${idn}" =~ "web" ]]; then
     vserver ${idn} exec /opt/local/bin/boa in-oct ${email} ${user} ${mode} ${copt} ${csub} ${ccor}
     exit 0
   else
@@ -768,12 +1101,14 @@ install_octopus() {
   fi
 }
 
-install_pxy() {
+re_install_pxy() {
   check_config_cluster
   idn="${idn}"
   vip="${vip}"
+  fce="${fce}"
   if [ -e "/vservers/${idn}/usr/bin/mysql" ] \
-    && [ "${vip}" = "${_WEB_NODE_IP}" ]; then
+    && [ "${vip}" = "${_WEB_NODE_IP}" ] \
+    && [ "${fce}" = "force-reinstall" ]; then
     install_proxysql
   fi
 }
@@ -789,111 +1124,42 @@ install_web_node() {
   fi
   eml="${_CLUSTER_EMAIL}"
   if [ ! -e "/vservers/${idn}/" ] \
-    && [ "${idn}" != "web" ]; then
+    && [[ "${idn}" =~ "web" ]]; then
     install_vps
   fi
 }
 
 upgrade_web_node() {
   check_config_cluster
-  ### TODO
+  idn="${_CLUSTER_PREFIX}web"
+  vserver ${idn} exec /opt/local/bin/barracuda up-${ver} system
 }
 
-install_db_cluster() {
-  check_config_cluster
+default_my_cnf_copy() {
 
-  _CLUSTER_NAME="${_CLUSTER_PREFIX}_galera"
-  _MAINT_USER_PWD="$(openssl rand -base64 32 2>&1)"
-  _ROOT_SQL_PASWD="$(openssl rand -base64 32 2>&1)"
-  _E_MAINT_USER_PWD="${_MAINT_USER_PWD//\//\\\/}"
-  _E_ROOT_SQL_PASWD="${_ROOT_SQL_PASWD//\//\\\/}"
-  _CLUSTER_STRING="gcomm://"$(IFS=, ; echo "${_DB_NODE_IP[*]}")
-  inc="0"
-
-  aptLiSys="/etc/apt/sources.list"
-  xtraList="${aptLiSys}.d/xtrabackup.list"
-  xtraRepo="repo.percona.com/apt"
-
-  for IP in "${_DB_NODE_IP[@]}"; do
-    echo "${IP} # Cluster Galera Node" >> /etc/csf/csf.allow
-    echo "${IP} # Cluster Galera Node" >> /etc/csf/csf.ignore
-  done
-  if [ ! -z "${_WEB_NODE_IP}" ]; then
-    echo "${_WEB_NODE_IP} # Web Cluster Node" >> /etc/csf/csf.allow
-    echo "${_WEB_NODE_IP} # Web Cluster Node" >> /etc/csf/csf.ignore
+  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+  _CPU_INFO=${_CPU_INFO//[^0-9]/}
+  _NPROC_TEST=$(which nproc 2>&1)
+  if [ -z "${_NPROC_TEST}" ]; then
+    _CPU_NR="${_CPU_INFO}"
+  else
+    _CPU_NR=$(nproc 2>&1)
   fi
-  service lfd stop
-  sleep 3
-  rm -f /etc/csf/csf.error
-  csf -q
-  service lfd start
+  _CPU_NR=${_CPU_NR//[^0-9]/}
+  if [ ! -z "${_CPU_NR}" ] && [ ! -z "${_CPU_INFO}" ] \
+    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt "0" ]; then
+    _CPU_NR="${_CPU_INFO}"
+  fi
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+    _CPU_NR=1
+  fi
+  _CPU_MX=$(( _CPU_NR * 2 ))
+  if [ "${_CPU_MX}" -lt "64" ]; then
+    _CPU_MX=64
+  fi
+  _CPU_FC=$(( _CPU_MX * 5 ))
 
-  for IP in "${_DB_NODE_IP[@]}"; do
-  	echo "Installing DB cluster node on ${IP} ..."
-    idn="${_CLUSTER_PREFIX}db${inc}"
-    hst="${_CLUSTER_PREFIX}db${inc}.${_CLUSTER_SUFFIX}"
-    vip="${IP}"
-    osx="${_CLUSTER_OS}"
-    ver="galera"
-    eml="${_CLUSTER_EMAIL}"
-    if [ ! -e "/vservers/${idn}/" ] \
-      && [ ! -z "${idn}" ]; then
-      install_vps
-      echo "Installing Percona Cluster on VPS ${idn}..."
-    fi
-    inc=$((inc+1))
-    echo "${_MAINT_USER_PWD}" > /vservers/${idn}/root/.my.cluster_maint_pwd.txt
-    echo "${_ROOT_SQL_PASWD}" > /vservers/${idn}/root/.my.cluster_root_pwd.txt
-  	vserver ${idn} exec apt-get update ${_NOISE}
-    vserver ${idn} exec ${_INSTAPP} debian-keyring
-    vserver ${idn} exec ${_INSTAPP} debian-archive-keyring
-  	vserver ${idn} exec apt-get upgrade -y ${_NOISE}
-  	vserver ${idn} exec apt-get remove apparmor -y ${_NOISE}
-  	vserver ${idn} exec ${_INSTAPP} software-properties-common dirmngr
-    echo "## Percona Cluster APT Repository" > /vservers/${idn}${xtraList}
-    echo "deb http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
-    echo "deb-src http://${xtraRepo}/ ${_OSR} main" >> /vservers/${idn}${xtraList}
-    _KEYS_SIG="9334A25F8507EFA5"
-    vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
-    vserver ${idn} exec ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
-  	vserver ${idn} exec apt-get update ${_NOISE}
-  	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57
-  	vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24
-    echo "[client]" > /vservers/${idn}/root/.my.cnf
-    echo "user=root" >> /vservers/${idn}/root/.my.cnf
-    echo "password=${_ROOT_SQL_PASWD}" >> /vservers/${idn}/root/.my.cnf
-    vserver ${idn} exec chmod 0600 /root/.my.cnf
-    echo "db=mysql" > /vservers/${idn}/root/.mytop
-    vserver ${idn} exec chmod 0600 /root/.mytop
-
-    ##echo "Running mysql_secure_installation procedure on ${IP} DB node..."
-    ##vserver ${idn} exec mysql -u root -e "FLUSH HOSTS;"
-    ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='';"
-    ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
-    ##vserver ${idn} exec mysql -u root -e "DROP DATABASE test;"
-    ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
-    ##vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ROOT_SQL_PASWD}') WHERE User='root';"
-    ##vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_MAINT_USER_PWD}') WHERE User='debian-sys-maint';"
-    ##if [ -e "/vservers/${idn}/etc/mysql/debian.cnf" ]; then
-    ##  sed -i "s/^password =.*/password = ${_MAINT_USER_PWD}/g" /vservers/${idn}/etc/mysql/debian.cnf
-    ##fi
-    ##vserver ${idn} exec mysql -u root -e "FLUSH PRIVILEGES;"
-
-  	ssh ${_NOSTRICT} root@${IP} "echo '
-[client]
-host     = localhost
-user     = debian-sys-maint
-password = '${_MAINT_USER_PWD}'
-socket   = /var/run/mysqld/mysqld.sock
-[mysql_upgrade]
-host     = localhost
-user     = debian-sys-maint
-password = '${_MAINT_USER_PWD}'
-socket   = /var/run/mysqld/mysqld.sock
-basedir  = /usr
-' > /etc/mysql/debian.cnf"
-
-  	ssh ${_NOSTRICT} root@${IP} "echo '
+  ssh ${_NOSTRICT} root@${IP} "echo '
 [mysqld]
 
 ###
@@ -910,43 +1176,61 @@ basedir  = /usr
 # MySQL User
 #user=mysql
 
-# Mandatory for Galera
+### Mandatory for Galera
+#
 binlog_format=ROW
 default_storage_engine=InnoDB
 innodb_autoinc_lock_mode=2
 
-# Recommended for Galera
+### Recommended for Galera
+#
 innodb_flush_log_at_trx_commit=0
 query_cache_size=0
 query_cache_type=0
 binlog_row_image=minimal
-#bind-address=0.0.0.0
-#wsrep_slave_threads=8
+wsrep_slave_threads=${_CPU_MX}
 wsrep_log_conflicts=ON
-#pxc_strict_mode=ENFORCING
 pxc_strict_mode=PERMISSIVE
+performance_schema=ON
+show_compatibility_56=ON
 
-# Galera Provider Configuration
+### Optional Memory Settings for Galera
+#
+# gcs.recv_q_hard_limit=64G
+# gcs.recv_q_soft_limit=32G
+# gcs.max_throttle=0.25
+# gcs.fc_limit=${_CPU_FC}
+# gcs.fc_factor=0.8
+
+### Galera Provider Configuration
+#
 wsrep_provider=/usr/lib/galera3/libgalera_smm.so
-#wsrep_provider_options=\"gcache.size=32G;socket.checksum=1\"
 
-# Galera Cluster Configuration
+### Galera Cluster Configuration
+#
 wsrep_cluster_name=\"'${_CLUSTER_NAME}'\"
 wsrep_cluster_address=\"'${_CLUSTER_STRING}',...?pc.wait_prim=no\"
 
-# Galera Synchronization Congifuration
+### Galera Synchronization Congifuration
+#
 wsrep_sst_method=rsync
-#wsrep_sst_method=xtrabackup-v2
 wsrep_sst_auth=sstuser:'${_MAINT_USER_PWD}'
 
-# Galera extra tuning
+### Galera extra tuning
+#
 wsrep_debug=OFF
 wsrep_retry_autocommit=8
 wsrep_sync_wait=7
 
-# Galera Node Configuration
+### Galera Node Configuration
+#
 wsrep_node_address=\"'${IP}'\"
 wsrep_node_name=\"'${IP}'\"
+
+### Optional MyISAM Support in Galera
+#
+# wsrep_replicate_myisam=1
+
 ' > /etc/mysql/conf.d/galera.cnf"
 
   	ssh ${_NOSTRICT} root@${IP} "echo '
@@ -968,13 +1252,17 @@ lc_messages_dir         = /usr/share/mysql
 lc_messages             = en_US
 character_set_server    = utf8mb4
 collation_server        = utf8mb4_general_ci
+transaction-isolation   = READ-COMMITTED
+transaction-read-only   = OFF
 skip-external-locking
 skip-name-resolve
+performance_schema      = ON
+show_compatibility_56   = ON
 connect_timeout         = 60
 join_buffer_size        = 4M
 key_buffer_size         = 1024M
 log_warnings            = 2
-max_allowed_packet      = 32M
+max_allowed_packet      = 256M
 max_connect_errors      = 300
 max_connections         = 300
 max_user_connections    = 150
@@ -986,11 +1274,11 @@ read_buffer_size        = 8M
 read_rnd_buffer_size    = 8M
 sort_buffer_size        = 128K
 bulk_insert_buffer_size = 128K
-table_open_cache        = 256
+table_open_cache        = 2048
 table_definition_cache  = 512
 thread_stack            = 256K
 thread_cache_size       = 128
-wait_timeout            = 9999
+wait_timeout            = 3600
 tmp_table_size          = 1024M
 max_heap_table_size     = 1024M
 low_priority_updates    = 1
@@ -999,12 +1287,15 @@ userstat                = 1
 max_tmp_tables          = 16384
 server-id               = '${inc}'
 myisam-recover-options  = BACKUP
-log_bin                 = /var/log/mysql/mysql-bin
-log_bin_index           = /var/log/mysql/mysql-bin.index
-expire_logs_days        = 1
-max_binlog_size         = 100M
-open_files_limit        = 196608
+#log_bin                 = /var/log/mysql/mariadb-bin
+#log_bin_index           = /var/log/mysql/mariadb-bin.index
+#expire_logs_days        = 1
+#max_binlog_size         = 100M
+#binlog_row_image        = minimal
+#binlog_format           = ROW
 sync_binlog             = 0
+open_files_limit        = 294912
+innodb_autoinc_lock_mode= 2
 #slow_query_log          = 1
 #long_query_time         = 10
 #slow_query_log_file     = /var/log/mysql/sql-slow-query.log
@@ -1013,36 +1304,46 @@ sync_binlog             = 0
 
 # * InnoDB
 sql_mode                = NO_ENGINE_SUBSTITUTION
+innodb_buffer_pool_instances = 8
+innodb_page_cleaners    = 8
+innodb_lru_scan_depth   = 10
 innodb_log_file_size    = 1024M
 innodb_buffer_pool_size = 2048M
-innodb_log_buffer_size  = 4M
+innodb_log_buffer_size  = 256M
 innodb_file_per_table   = 1
-innodb_buffer_pool_instances = 2
+innodb_use_native_aio   = 1
 innodb_large_prefix     = 1
 innodb_file_format      = Barracuda
-innodb_open_files       = 8000
-innodb_io_capacity      = 8000
+innodb_open_files       = 196608
+innodb_io_capacity      = 1000
 innodb_flush_method     = O_DIRECT
-innodb_flush_log_at_trx_commit = 2
+innodb_flush_log_at_trx_commit = 0
 innodb_thread_concurrency = 0
-innodb_lock_wait_timeout = 120
-innodb_corrupt_table_action = salvage
+innodb_lock_wait_timeout = 300
 innodb_buffer_pool_dump_at_shutdown = 1
 innodb_buffer_pool_load_at_startup = 1
 innodb_buffer_pool_dump_pct = 100
+innodb_buffer_pool_dump_now = ON
 innodb_stats_on_metadata = OFF
 innodb_adaptive_hash_index = 0
 innodb_default_row_format = dynamic
+innodb_write_io_threads = 64
+innodb_read_io_threads = 64
+innodb_print_all_deadlocks = ON
+innodb_doublewrite = 0
+innodb_checksum_algorithm=NONE
+innodb_flush_log_at_timeout = 5
+#innodb_force_recovery = 3
 
 [mysqld_safe]
 socket                  = /var/run/mysqld/mysqld.sock
 nice                    = 0
-open_files_limit        = 196608
+open_files_limit        = 294912
 syslog
 
 [mysqldump]
 quick
-max_allowed_packet      = 32M
+max_allowed_packet      = 256M
 quote-names
 
 [mysql]
@@ -1065,6 +1366,124 @@ interactive-timeout
 
 !includedir /etc/mysql/conf.d/
 ' > /etc/mysql/my.cnf"
+}
+
+install_db_cluster() {
+  check_config_cluster
+
+  _CLUSTER_NAME="${_CLUSTER_PREFIX}_galera"
+  _MAINT_USER_PWD="$(openssl rand -base64 32 2>&1)"
+  _ROOT_SQL_PASWD="$(openssl rand -base64 32 2>&1)"
+  _E_MAINT_USER_PWD="${_MAINT_USER_PWD//\//\\\/}"
+  _E_ROOT_SQL_PASWD="${_ROOT_SQL_PASWD//\//\\\/}"
+  _CLUSTER_STRING="gcomm://"$(IFS=, ; echo "${_DB_NODE_IP[*]}")
+  inc="0"
+
+  aptLiSys="/etc/apt/sources.list"
+  percList="${aptLiSys}.d/percona-release.list"
+  percRepo="repo.percona.com/percona/apt"
+
+  for IP in "${_DB_NODE_IP[@]}"; do
+    echo "${IP} # Cluster Galera Node" >> /etc/csf/csf.allow
+    echo "${IP} # Cluster Galera Node" >> /etc/csf/csf.ignore
+  done
+  if [ ! -z "${_WEB_NODE_IP}" ]; then
+    echo "${_WEB_NODE_IP} # Web Cluster Node" >> /etc/csf/csf.allow
+    echo "${_WEB_NODE_IP} # Web Cluster Node" >> /etc/csf/csf.ignore
+  fi
+  service lfd stop
+  sleep 3
+  rm -f /etc/csf/csf.error
+  csf -q
+  sleep 8
+  service lfd start
+  ### Linux kernel TCP SACK CVEs mitigation
+  ### CVE-2019-11477 SACK Panic
+  ### CVE-2019-11478 SACK Slowness
+  ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
+  if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+    _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+    if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
+      sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
+      iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+      ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+    fi
+  fi
+
+  for IP in "${_DB_NODE_IP[@]}"; do
+  	echo "Installing DB cluster node on ${IP} ..."
+    idn="${_CLUSTER_PREFIX}db${inc}"
+    hst="${_CLUSTER_PREFIX}db${inc}.${_CLUSTER_SUFFIX}"
+    vip="${IP}"
+    osx="${_CLUSTER_OS}"
+    ver="galera"
+    eml="${_CLUSTER_EMAIL}"
+    if [ ! -e "/vservers/${idn}/" ] \
+      && [ ! -z "${idn}" ]; then
+      install_vps
+      echo "Installing Percona Cluster on VPS ${idn}..."
+    fi
+    if [ ! -e "/vservers/${idn}/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/vservers/${idn}/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /vservers/${idn}/etc/apt/apt.conf.d/00sandboxoff
+    fi
+    inc=$((inc+1))
+    echo "${_MAINT_USER_PWD}" > /vservers/${idn}/root/.my.cluster_maint_pwd.txt
+    echo "${_ROOT_SQL_PASWD}" > /vservers/${idn}/root/.my.cluster_root_pwd.txt
+  	vserver ${idn} exec apt-get update -qq
+    vserver ${idn} exec ${_INSTAPP} debian-keyring
+    vserver ${idn} exec ${_INSTAPP} debian-archive-keyring
+  	vserver ${idn} exec apt-get upgrade -y -qq
+  	vserver ${idn} exec apt-get remove apparmor -y -qq
+  	vserver ${idn} exec ${_INSTAPP} software-properties-common dirmngr
+    rm -f /vservers/${idn}/etc/apt/sources.list.d/percona-.*
+    rm -f /vservers/${idn}/etc/apt/sources.list.d/xtrabackup.*
+    echo "## Percona Cluster APT Repository" > /vservers/${idn}${percList}
+    echo "deb http://${percRepo} ${_OSR} main" >> /vservers/${idn}${percList}
+    echo "deb-src http://${percRepo} ${_OSR} main" >> /vservers/${idn}${percList}
+    echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /vservers/${idn}/etc/apt/preferences.d/00percona.pref
+    _KEYS_SIG="8507EFA5"
+    vserver ${idn} exec apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}"
+    vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}"
+    vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add -
+  	vserver ${idn} exec apt-get update -qq
+  	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57
+  	vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24
+    echo "[client]" > /vservers/${idn}/root/.my.cnf
+    echo "user=root" >> /vservers/${idn}/root/.my.cnf
+    echo "password=${_ROOT_SQL_PASWD}" >> /vservers/${idn}/root/.my.cnf
+    vserver ${idn} exec chmod 0600 /root/.my.cnf
+    echo "db=mysql" > /vservers/${idn}/root/.mytop
+    vserver ${idn} exec chmod 0600 /root/.mytop
+    vserver ${idn} exec update-rc.d -f mysql remove
+
+    ##echo "Running mysql_secure_installation procedure on ${IP} DB node..."
+    ##vserver ${idn} exec mysql -u root -e "FLUSH HOSTS;"
+    ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='';"
+    ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
+    ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
+    ##vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_ROOT_SQL_PASWD}') WHERE User='root';"
+    ##vserver ${idn} exec mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('${_MAINT_USER_PWD}') WHERE User='debian-sys-maint';"
+    ##if [ -e "/vservers/${idn}/etc/mysql/debian.cnf" ]; then
+    ##  sed -i "s/^password =.*/password = ${_MAINT_USER_PWD}/g" /vservers/${idn}/etc/mysql/debian.cnf
+    ##fi
+    ##vserver ${idn} exec mysql -u root -e "FLUSH PRIVILEGES;"
+
+  	ssh ${_NOSTRICT} root@${IP} "echo '
+[client]
+host     = localhost
+user     = debian-sys-maint
+password = '${_MAINT_USER_PWD}'
+socket   = /var/run/mysqld/mysqld.sock
+[mysql_upgrade]
+host     = localhost
+user     = debian-sys-maint
+password = '${_MAINT_USER_PWD}'
+socket   = /var/run/mysqld/mysqld.sock
+basedir  = /usr
+' > /etc/mysql/debian.cnf"
+
+    default_my_cnf_copy
 
     ssh ${_NOSTRICT} root@${IP} "service mysql stop"
 
@@ -1079,19 +1498,70 @@ interactive-timeout
   ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "service mysql bootstrap-pxc"
   sleep 180
 
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO ’sstuser’@’localhost’ IDENTIFIED BY '${_MAINT_USER_PWD}';\""
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO ’sstuser’@’127.0.0.1’ IDENTIFIED BY '${_MAINT_USER_PWD}';\""
+  echo "Adding grants for Galera sstuser on Percona Cluster..."
   for IP in "${_DB_NODE_IP[@]}"; do
-    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${IP}' IDENTIFIED BY '${_ROOT_SQL_PASWD}' WITH GRANT OPTION;\""
-    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO ’sstuser’@’${IP}’ IDENTIFIED BY '${_MAINT_USER_PWD}';\""
+    pxyCmd="CREATE USER IF NOT EXISTS 'root'@'${IP}';"
+      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+    pxyCmd="GRANT ALL ON *.* TO 'root'@'${IP}' WITH GRANT OPTION;"
+      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+    pxyCmd="ALTER USER 'root'@'${IP}' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+    pxyCmd="CREATE USER IF NOT EXISTS 'sstuser'@'${IP}';"
+      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+    pxyCmd="GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO 'sstuser'@'${IP}';"
+      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+    pxyCmd="ALTER USER 'sstuser'@'${IP}' IDENTIFIED BY '${_MAINT_USER_PWD}';"
+      ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
   done
+  pxyCmd="CREATE USER IF NOT EXISTS 'sstuser'@'localhost';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="CREATE USER IF NOT EXISTS 'sstuser'@'127.0.0.1';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO 'sstuser'@'localhost';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="GRANT RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO 'sstuser'@'127.0.0.1';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="ALTER USER 'sstuser'@'localhost' IDENTIFIED BY '${_MAINT_USER_PWD}';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="ALTER USER 'sstuser'@'127.0.0.1' IDENTIFIED BY '${_MAINT_USER_PWD}';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
 
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'debian-sys-maint'@'localhost' IDENTIFIED BY '${_MAINT_USER_PWD}';\""
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'debian-sys-maint'@'127.0.0.1' IDENTIFIED BY '${_MAINT_USER_PWD}';\""
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'localhost' IDENTIFIED BY '${_ROOT_SQL_PASWD}' WITH GRANT OPTION;\""
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'127.0.0.1' IDENTIFIED BY '${_ROOT_SQL_PASWD}' WITH GRANT OPTION;\""
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"GRANT ALL ON *.* TO 'root'@'${_WEB_NODE_IP}' IDENTIFIED BY '${_ROOT_SQL_PASWD}' WITH GRANT OPTION;\""
-  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep_%';\""
+  echo "Adding grants for legacy debian-sys-maint on Percona Cluster..."
+  pxyCmd="CREATE USER IF NOT EXISTS 'debian-sys-maint'@'localhost';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="CREATE USER IF NOT EXISTS 'debian-sys-maint'@'127.0.0.1';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="GRANT ALL ON *.* TO 'debian-sys-maint'@'localhost';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="GRANT ALL ON *.* TO 'debian-sys-maint'@'127.0.0.1';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="ALTER USER 'debian-sys-maint'@'localhost' IDENTIFIED BY '${_MAINT_USER_PWD}';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="ALTER USER 'debian-sys-maint'@'127.0.0.1' IDENTIFIED BY '${_MAINT_USER_PWD}';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+
+  echo "Syncing grants for root on Percona Cluster..."
+  pxyCmd="CREATE USER IF NOT EXISTS 'root'@'localhost';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="CREATE USER IF NOT EXISTS 'root'@'${_WEB_NODE_IP}';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="GRANT ALL ON *.* TO 'root'@'localhost' WITH GRANT OPTION;"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="GRANT ALL ON *.* TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="GRANT ALL ON *.* TO 'root'@'${_WEB_NODE_IP}' WITH GRANT OPTION;"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+  pxyCmd="ALTER USER 'root'@'${_WEB_NODE_IP}' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
+
+  pxyCmd="SHOW STATUS LIKE 'wsrep_%';"
+    ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
 
   for IP in "${_DB_NODE_IP[@]}"; do
     if [ "${IP}" != "${_DB_NODE_IP[1]}" ]; then
@@ -1112,7 +1582,95 @@ interactive-timeout
 
 upgrade_db_cluster() {
   check_config_cluster
-  ### TODO
+
+  _CLUSTER_NAME="${_CLUSTER_PREFIX}_galera"
+  _CLUSTER_STRING="gcomm://"$(IFS=, ; echo "${_DB_NODE_IP[*]}")
+  inc="0"
+
+  for IP in "${_DB_NODE_IP[@]}"; do
+    idn="${_CLUSTER_PREFIX}db${inc}"
+    hst="${_CLUSTER_PREFIX}db${inc}.${_CLUSTER_SUFFIX}"
+    vip="${IP}"
+    osx="${_CLUSTER_OS}"
+    ver="galera"
+    eml="${_CLUSTER_EMAIL}"
+    inc=$((inc+1))
+    _MAINT_USER_PWD=`cat /vservers/${idn}/root/.my.cluster_maint_pwd.txt`
+    _ROOT_SQL_PASWD=`cat /vservers/${idn}/root/.my.cluster_root_pwd.txt`
+
+    echo "Upgrading DB cluster node on ${idn}/${IP}..."
+
+    if [ ! -e "/vservers/${idn}/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/vservers/${idn}/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /vservers/${idn}/etc/apt/apt.conf.d/00sandboxoff
+    fi
+
+    if [ -e "/vservers/${idn}${optBin}/boa" ]; then
+      rm -f /vservers/${idn}${optBin}/boa
+    fi
+    mkdir -p /vservers/${idn}/${optBin}
+    curl ${crlGet} "${urlHmr}/${tBn}/boa" -o /vservers/${idn}${optBin}/boa
+    ssh ${_NOSTRICT} root@${IP} "chmod 700 ${optBin}/boa"
+
+    if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
+      rm -f /vservers/${idn}${optBin}/mycnfup
+    fi
+    mkdir -p /vservers/${idn}/${optBin}
+    curl ${crlGet} "${urlHmr}/${tBn}/mycnfup" -o /vservers/${idn}${optBin}/mycnfup
+    ssh ${_NOSTRICT} root@${IP} "chmod 700 ${optBin}/mycnfup"
+    if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
+      echo "Running mycnfup check on ${idn}/${IP}..."
+      ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup check"
+    fi
+
+    if [ -x "/vservers/${idn}/usr/bin/gpg2" ]; then
+      _GPG=gpg2
+    else
+      _GPG=gpg
+    fi
+    _KEYS_SIG="8507EFA5"
+    _KEYS_SERVER_TEST=FALSE
+    until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
+      echo "INFO: Retrieving ${_KEYS_SIG} key on ${idn}/${IP}..."
+      vserver ${idn} exec apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}"
+      vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}"
+      vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add -
+      _KEYS_SERVER_TEST=$(vserver ${idn} exec ${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
+      sleep 2
+      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "1" ]; then
+        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+        echo "$(date 2>&1) Too many dirmngr processes killed" >> \
+          /var/xdrago/log/dirmngr-count.kill.log
+      fi
+    done
+    vserver ${idn} exec apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}"
+    vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}"
+    vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add -
+  	vserver ${idn} exec apt-get update -qq
+  	vserver ${idn} exec ${_INSTAPP} bc
+  	vserver ${idn} exec apt-get upgrade ${_APT_XTR}
+  	vserver ${idn} exec apt-get dist-upgrade ${_APT_XTR}
+  	vserver ${idn} exec dpkg --configure -a
+  	vserver ${idn} exec update-rc.d -f mysql remove
+
+  	default_my_cnf_copy
+
+    if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
+      echo "Running mycnfup tune on ${idn}/${IP}..."
+      ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup tune"
+    fi
+    sleep 5
+    echo "Running mysql_upgrade on ${idn}/${IP} to update tables if needed"
+    ssh ${_NOSTRICT} root@${IP} "mysql_upgrade"
+    echo "Checking wsrep status on ${idn}/${IP}"
+    sleep 3
+    ssh ${_NOSTRICT} root@${IP} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep%';\""
+    echo "Waiting 60 seconds after ${idn}/${IP} upgrade..."
+    sleep 60
+    echo "Upgrade for ${idn}/${IP} completed!"
+  done
+
+  echo "All DB nodes updated!"
 }
 
 install_host() {
@@ -1138,7 +1696,8 @@ install_host() {
   echo "deb http://http.debian.net/debian/ ${_OSR} main contrib non-free"          >> /etc/apt/sources.list
   echo "deb-src http://http.debian.net/debian/ ${_OSR} main contrib non-free"      >> /etc/apt/sources.list
   echo ""                                                                          >> /etc/apt/sources.list
-  if [ "${_OSR}" = "stretch" ]; then
+  if [ "${_OSR}" = "stretch" ] \
+    || [ "${_OSR}" = "buster" ]; then
     echo "## MAJOR BUG FIX UPDATES produced after the final release"               >> /etc/apt/sources.list
     echo "deb http://http.debian.net/debian/ ${_OSR}-updates main"                 >> /etc/apt/sources.list
     echo "deb-src http://http.debian.net/debian/ ${_OSR}-updates main"             >> /etc/apt/sources.list
@@ -1154,9 +1713,9 @@ install_host() {
   cat /etc/apt/sources.list
 
   echo "Installing basic tools..."
-  apt-get update ${_NOISE}
-  apt-get upgrade -y ${_NOISE}
-  apt-get update ${_NOISE}
+  apt-get update -qq &> /dev/null
+  apt-get upgrade ${nrmUpArg}
+  apt-get update -qq
   ${_INSTAPP} locales
   ${_INSTAPP} lsb-release
   ${_INSTAPP} dnsutils
@@ -1207,7 +1766,7 @@ install_host() {
   invoke-rc.d cron restart
   invoke-rc.d lfd start
   invoke-rc.d csf start
-  rm -f -r /var/opt/csf*
+  rm -rf /var/opt/csf*
 
   if_firewall_update
 
@@ -1260,10 +1819,15 @@ install_host() {
       wget -q -U iCab http://repo.psand.net/pubkey.txt
       _KEYS_SERVER_TEST=$(grep GnuPG pubkey.txt 2>&1)
       sleep 2
+      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "1" ]; then
+        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+        echo "$(date 2>&1) Too many dirmngr processes killed" >> \
+          /var/xdrago/log/dirmngr-count.kill.log
+      fi
     done
     cat pubkey.txt | ${_GPG} --import &> /dev/null
     rm -f pubkey.txt*
-    apt-get update ${_NOISE}
+    apt-get update -qq &> /dev/null
     ${_INSTAPP} build-essential
     ${_INSTAPP} linux-headers-vserver-${_BENG_SERIES}-beng
     ${_INSTAPP} linux-image-vserver-${_BENG_SERIES}-beng
@@ -1272,8 +1836,10 @@ install_host() {
   fi
 
   if [ -x "/lib/systemd/systemd" ]; then
-    echo "Installing sysvinit-core on ${_OSV} ${_OSR}..."
-    if [ "${osx}" = "jessie" ] || [ "${osx}" = "stretch" ]; then
+    echo "Installing sysvinit-core on ${_THIS_OS} ${_OSR}..."
+    if [ "${osx}" = "jessie" ] \
+      || [ "${osx}" = "stretch" ] \
+      || [ "${osx}" = "buster" ]; then
       ${_INSTAPP} sysvinit-core
       ${_INSTAPP} sysvinit-utils
       if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -1326,9 +1892,17 @@ EOF
 
 upgrade_host() {
 
+  if [ "${mod}" = "upgrade" ]; then
+    thisMode="UPGRADE"
+  else
+    thisMode="UPDATE"
+  fi
+
   if [ -x "/lib/systemd/systemd" ]; then
-    echo "Removing systemd on ${_OSV} ${_OSR}..."
-    if [ "${osx}" = "jessie" ] || [ "${osx}" = "stretch" ]; then
+    echo "Removing systemd on ${_THIS_OS} ${_OSR}..."
+    if [ "${osx}" = "jessie" ] \
+      || [ "${osx}" = "stretch" ] \
+      || [ "${osx}" = "buster" ]; then
       ${_INSTAPP} sysvinit-core
       ${_INSTAPP} sysvinit-utils
       if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -1353,47 +1927,49 @@ upgrade_host() {
         cp -af /usr/share/sysvinit/inittab /etc/inittab
       fi
     fi
-    apt-get remove systemd -y ${_NOISE} --purge --auto-remove
+    apt-get remove systemd -y -qq --purge --auto-remove &> /dev/null
   fi
 
-  echo "Installing vserver tools dependencies..."
-  apt-get update ${_NOISE}
-  ${_INSTAPP} vlan
-  ${_INSTAPP} e2fslibs-dev
-  ${_INSTAPP} libnss3-dev
-  ${_INSTAPP} libvserver0-dev
-  ${_INSTAPP} libvserver0
-  ${_INSTAPP} debootstrap
-  if [ -e "/etc/cron.daily/mlocate" ]; then
-    mv -f /etc/cron.daily/mlocate /var/backups/
+  if [ "${thisMode}" = "UPGRADE" ]; then
+    echo "Installing vserver tools dependencies..."
+    apt-get update -qq &> /dev/null
+    ${_INSTAPP} vlan
+    ${_INSTAPP} e2fslibs-dev
+    ${_INSTAPP} libnss3-dev
+    ${_INSTAPP} libvserver0-dev
+    ${_INSTAPP} libvserver0
+    ${_INSTAPP} debootstrap
+    if [ -e "/etc/cron.daily/mlocate" ]; then
+      mv -f /etc/cron.daily/mlocate /var/backups/
+    fi
+
+    echo "Installing otherwise uninstalled stuff..."
+    ${_INSTAPP} irqbalance
+    ${_INSTAPP} libuuid-perl
+    ${_INSTAPP} linux-base
+    echo "OPTIONS=\"--hintpolicy=ignore\"" >> /etc/default/irqbalance
+    service irqbalance stop
+    service irqbalance start
+
+    echo "Installing vserver tools..."
+    apt-get remove util-vserver -y -qq
+    apt-get autoremove -y
+    cd /var/opt
+    rm -rf util-vserver*
+    wget -q -U iCab http://files.aegir.cc/dev/src/util-vserver-${_UTIL_VRN}.tar.gz
+    tar -xzf util-vserver-${_UTIL_VRN}.tar.gz
+    cd util-vserver-${_UTIL_VRN}
+    ./configure --prefix=/usr
+    make --quiet
+    make --quiet install
+    make --quiet install-distribution
+    cd
+    vserver --version
+
+    chmod 755 /vservers
+    setattr --barrier /vservers
+    echo "kernel.vshelper = /sbin/vshelper" >> /etc/sysctl.conf
   fi
-
-  echo "Installing otherwise uninstalled stuff..."
-  ${_INSTAPP} irqbalance
-  ${_INSTAPP} libuuid-perl
-  ${_INSTAPP} linux-base
-  echo "OPTIONS=\"--hintpolicy=ignore\"" >> /etc/default/irqbalance
-  service irqbalance stop
-  service irqbalance start
-
-  echo "Installing vserver tools..."
-  apt-get remove util-vserver -y ${_NOISE}
-  apt-get autoremove -y ${_NOISE}
-  cd /var/opt
-  rm -f -r util-vserver*
-  wget -q -U iCab http://files.aegir.cc/dev/src/util-vserver-${_UTIL_VRN}.tar.gz
-  tar -xzf util-vserver-${_UTIL_VRN}.tar.gz
-  cd util-vserver-${_UTIL_VRN}
-  ./configure --prefix=/usr
-  make --quiet
-  make --quiet install
-  make --quiet install-distribution
-  cd
-  vserver --version
-
-  chmod 755 /vservers
-  setattr --barrier /vservers
-  echo "kernel.vshelper = /sbin/vshelper" >> /etc/sysctl.conf
 
   cd
   cp -af /etc/sysctl.conf /etc/sysctl.conf.thrd.three
@@ -1405,29 +1981,31 @@ upgrade_host() {
   swapoff -a
   swapon -a
 
-  echo "Installing vserver initd scripts..."
-  cp -af /usr/etc/init.d/vservers-default /etc/init.d/
-  cp -af /usr/etc/init.d/vprocunhide /etc/init.d/
-  cp -af /usr/etc/init.d/util-vserver /etc/init.d/
-  update-rc.d util-vserver defaults
-  update-rc.d vprocunhide defaults
-  update-rc.d vservers-default defaults
-  service vprocunhide start
-  service util-vserver start
-  service vservers-default start
+  if [ "${thisMode}" = "UPGRADE" ]; then
+    echo "Installing vserver initd scripts..."
+    cp -af /usr/etc/init.d/vservers-default /etc/init.d/
+    cp -af /usr/etc/init.d/vprocunhide /etc/init.d/
+    cp -af /usr/etc/init.d/util-vserver /etc/init.d/
+    update-rc.d util-vserver defaults
+    update-rc.d vprocunhide defaults
+    update-rc.d vservers-default defaults
+    service vprocunhide start
+    service util-vserver start
+    service vservers-default start
 
-  echo "Updating vserver defaults..."
-  echo "none  /proc     proc    defaults        0 0" >/usr/share/util-vserver/defaults/fstab
-  echo "none  /dev/pts  devpts  gid=5,mode=620  0 0" >>/usr/share/util-vserver/defaults/fstab
+    echo "Updating vserver defaults..."
+    echo "none  /proc     proc    defaults        0 0" >/usr/share/util-vserver/defaults/fstab
+    echo "none  /dev/pts  devpts  gid=5,mode=620  0 0" >>/usr/share/util-vserver/defaults/fstab
 
-  if [ ! -e "/usr/etc/vservers/.defaults/apps/vunify/hash/root" ]; then
-    mkdir -p /usr/etc/vservers/.defaults/apps/vunify/hash /vservers/.hash
-    ln -s /vservers/.hash /usr/etc/vservers/.defaults/apps/vunify/hash/root
+    if [ ! -e "/usr/etc/vservers/.defaults/apps/vunify/hash/root" ]; then
+      mkdir -p /usr/etc/vservers/.defaults/apps/vunify/hash /vservers/.hash
+      ln -s /vservers/.hash /usr/etc/vservers/.defaults/apps/vunify/hash/root
+    fi
   fi
 
   echo "Installing vnstat..."
   cd /var/opt
-  rm -f -r vnstat*
+  rm -rf vnstat*
   wget -q -U iCab http://files.aegir.cc/dev/src/vnstat-${_VNSTAT_VRN}.tar.gz
   tar -xzf vnstat-${_VNSTAT_VRN}.tar.gz
   cd vnstat-${_VNSTAT_VRN}
@@ -1436,7 +2014,7 @@ upgrade_host() {
   make --quiet install
   for INF in `vnstat --iflist \
     | sed "s/Available interfaces//g; s/(1000 Mbit)//g; s/(100 Mbit)//g; s/ lo//g;" \
-    | cut -d: -f2` ;do vnstat -u -i ${IP}NF;done
+    | cut -d: -f2` ;do vnstat -i ${IP}NF;done
   cp -af /var/opt/vnstat-${_VNSTAT_VRN}/examples/init.d/debian/vnstat /etc/init.d/vnstat
   chmod 755 /etc/init.d/vnstat
   update-rc.d vnstat defaults
@@ -1450,30 +2028,39 @@ upgrade_host() {
   killall vnstatd
   service vnstat restart
 
-  echo "Installing vserver-autostart..."
-  cd /usr/local/sbin/
-  wget -q -U iCab http://files.aegir.cc/cluster/vserver-autostart
-  if [ -e "/usr/local/sbin/vserver-autostart" ]; then
-    cd;chmod u+x /usr/local/sbin/vserver-autostart
-  else
-    echo "ERROR: /usr/local/sbin/vserver-autostart not available!"
+  if [ ! -e "/usr/local/sbin/vserver-autostart" ] \
+    || [ "${thisMode}" = "UPGRADE" ]; then
+    echo "Installing vserver-autostart..."
+    rm -f /usr/local/sbin/vserver-autostart
+    cd /usr/local/sbin/
+    wget -q -U iCab http://files.aegir.cc/cluster/vserver-autostart
+    if [ -e "/usr/local/sbin/vserver-autostart" ]; then
+      cd;chmod u+x /usr/local/sbin/vserver-autostart
+    else
+      echo "ERROR: /usr/local/sbin/vserver-autostart not available!"
+    fi
   fi
 
   chmod 755 /vservers
 
-  echo "Installing Postfix locally..."
-  ${_INSTAPP} postfix
-  lSmtp="localhost:25      inet  n       -       -       -       -       smtpd"
-  sed -i "s/^smtp.*inet.*n.*smtpd/${lSmtp}/g" /etc/postfix/master.cf
-  apt-get remove exim -y
-  apt-get purge exim -y
-  apt-get autoremove -y
-  service postfix restart
+  if [ "${thisMode}" = "UPGRADE" ]; then
+    echo "Installing Postfix locally..."
+    ${_INSTAPP} postfix
+    lSmtp="localhost:25      inet  n       -       -       -       -       smtpd"
+    sed -i "s/^smtp.*inet.*n.*smtpd/${lSmtp}/g" /etc/postfix/master.cf
+    apt-get remove exim -y
+    apt-get purge exim -y
+    apt-get autoremove -y
+    service postfix restart
+  fi
 
   echo "Updating packages on this system..."
-  apt-get update -y ${_NOISE} \
-    && apt-get upgrade -y ${_NOISE} \
-    && apt-get dist-upgrade -y ${_NOISE} \
+  apt-get update -qq \
+    && apt-get install aptitude ${_APT_XTR} \
+    && aptitude full-upgrade -f -y -q \
+      -o Dpkg::Options::=--force-confdef \
+      -o Dpkg::Options::=--force-confold \
+    && apt-get dist-upgrade ${_APT_XTR} \
     && ${_INSTAPP} rkhunter
 
   if_firewall_update
@@ -1484,13 +2071,99 @@ upgrade_host() {
   exit 0
 }
 
+check_vsd() {
+  _VSD_TEST=$(grep "cluster" /etc/init.d/vservers-default 2>&1)
+  if [ -z "${_VSD_TEST}" ]; then
+    echo "##" >> /etc/init.d/vservers-default
+    echo "sleep 30" >> /etc/init.d/vservers-default
+    echo "exec \"/usr/local/bin/cluster re-dbs\"" >> /etc/init.d/vservers-default
+    echo "##" >> /etc/init.d/vservers-default
+  fi
+}
+
+check_heads() {
+  check_config_cluster
+  check_vsd
+  idn="${_CLUSTER_PREFIX}web"
+  for i in `dir -d /vservers/*` ; do
+    _THIS_VM=`echo $i | cut -d'/' -f3 | awk '{ print $1}'`
+    _VS_NAME=`echo ${_THIS_VM} | cut -d'/' -f3 | awk '{ print $1}'`
+    if [ -e "${i}${optBin}/boa" ]; then
+      rm -f ${i}${optBin}/boa
+    fi
+    mkdir -p ${i}${optBin}
+    curl ${crlGet} "${urlHmr}/${tBn}/boa" -o ${i}${optBin}/boa
+    chmod 700 ${i}${optBin}/boa
+    ls -la ${i}${optBin}/boa
+    if [[ ${_THIS_VM} =~ v168q ]]; then
+      echo Check Skipped for $i
+    else
+      if [ -e "/usr/var/run/vservers/${_THIS_VM}" ] \
+        && [ -e "${i}/var/run/crond.pid" ] ; then
+        _VS_HOSTNAME=`vserver ${_VS_NAME} exec hostname 2>&1`
+        _VS_OS=`vserver ${_VS_NAME} exec lsb_release -sc 2>&1`
+        echo "The ${_VS_HOSTNAME} ${_VS_NAME} VM is running ${_VS_OS}"
+        vserver ${_VS_NAME} exec ${optBin}/boa info ${mod} ${ext}
+      fi
+    fi
+  done
+}
+
+restart_db_cluster() {
+  check_config_cluster
+
+  inc="0"
+  for IP in "${_DB_NODE_IP[@]}"; do
+    idn="${_CLUSTER_PREFIX}db${inc}"
+    vserver ${idn} exec update-rc.d -f mysql remove
+    if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
+      echo "Running mycnfup stop on ${idn}/${IP}..."
+      ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup stop"
+    else
+      mkdir -p /vservers/${idn}/${optBin}
+      curl ${crlGet} "${urlHmr}/${tBn}/mycnfup" -o /vservers/${idn}${optBin}/mycnfup
+      ssh ${_NOSTRICT} root@${IP} "chmod 700 ${optBin}/mycnfup"
+      echo "Running mycnfup stop on ${idn}/${IP}..."
+      ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup stop"
+    fi
+    if [ "${IP}" = "${_DB_NODE_IP[1]}" ]; then
+      sed -i "s/^safe_to_bootstrap.*/safe_to_bootstrap: 1/g"  /vservers/${idn}/var/lib/mysql/grastate.dat
+    fi
+    inc=$((inc+1))
+    echo
+    echo "Testing ${idn} status..."
+    vserver-stat | grep ${idn}
+    echo
+  done
+
+  echo "Waiting for ${_DB_NODE_IP[1]} DB node bootstrap-pxc..."
+  echo "Running mycnfup init on ${_DB_NODE_IP[1]}..."
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "bash ${optBin}/mycnfup init"
+  ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep%';\""
+
+  for IP in "${_DB_NODE_IP[@]}"; do
+    if [ "${IP}" != "${_DB_NODE_IP[1]}" ]; then
+	  echo "Running mycnfup start on ${IP}..."
+      ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup start"
+      ssh ${_NOSTRICT} root@${IP} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep%';\""
+    fi
+  done
+  echo "All DB nodes started in cluster mode!"
+}
+
 case "$1" in
+  re-dbs)  cmd="$1"
+           hst="$2"
+           check_all
+           restart_db_cluster
+  ;;
   in-host) cmd="$1"
            hst="$2"
            check_all
            install_host
   ;;
   up-host) cmd="$1"
+           mod="$2"
            check_all
            upgrade_host
   ;;
@@ -1501,6 +2174,7 @@ case "$1" in
            osx="$5"
            ver="$6"
            eml="$7"
+           fce="$8"
            check_all
            install_vps
   ;;
@@ -1510,6 +2184,28 @@ case "$1" in
            check_all
            install_db_cluster
            install_web_node
+  ;;
+  in-dbs)  cmd="$1"
+           ver="$2"
+           xer="$2"
+           check_all
+           install_db_cluster
+  ;;
+  in-web)  cmd="$1"
+           ver="$2"
+           xer="$2"
+           check_all
+           install_web_node
+  ;;
+  up-dbs)  cmd="$1"
+           ver="$2"
+           check_all
+           upgrade_db_cluster
+  ;;
+  up-web)  cmd="$1"
+           ver="$2"
+           check_all
+           upgrade_web_node
   ;;
   up-all)  cmd="$1"
            ver="$2"
@@ -1530,16 +2226,29 @@ case "$1" in
   in-pxy)  cmd="$1"
            idn="$2"
            vip="$3"
+           fce="$4"
            check_all
-           install_pxy
+           re_install_pxy
+  ;;
+  check)   cmd="$1"
+           mod="$2"
+           ext="$3"
+           check_all
+           check_heads
   ;;
   *)       echo
-           echo "Usage: cluster {in-host|up-host} {fqdn}"
-           echo "Usage: cluster {in-vps} {id} {fqdn} {ip} {os} {stable|head|galera} {email}"
+           echo "Usage: cluster {in-host} {fqdn}"
+           echo "Usage: cluster {up-host} {update|upgrade}"
+           echo "Usage: cluster {in-vps} {id} {fqdn} {ip} {os} {stable|head|galera} {email} {force}"
            echo "Usage: cluster {in-all} {stable|head}"
+           echo "Usage: cluster {in-dbs} {stable|head}"
+           echo "Usage: cluster {in-web} {stable|head}"
+           echo "Usage: cluster {up-dbs} {stable|head}"
+           echo "Usage: cluster {up-web} {stable|head}"
            echo "Usage: cluster {up-all} {stable|head}"
            echo "Usage: cluster {in-oct} {email} {o2} {mini|max|none} {stable|head}"
-           echo "Usage: cluster {in-pxy} {id} {ip}"
+           echo "Usage: cluster {in-pxy} {id} {ip} force-reinstall"
+           echo "Usage: cluster {check} {more|report} {backups|octopus}"
            echo
            exit 1
   ;;

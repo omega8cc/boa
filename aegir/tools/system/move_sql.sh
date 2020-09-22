@@ -79,6 +79,9 @@ stop_sql() {
   echo "Nginx stopped"
 
   echo "Stopping all PHP-FPM instances now.."
+  if [ -e "/etc/init.d/php74-fpm" ]; then
+    service php74-fpm stop &> /dev/null
+  fi
   if [ -e "/etc/init.d/php73-fpm" ]; then
     service php73-fpm stop &> /dev/null
   fi
@@ -113,15 +116,18 @@ stop_sql() {
 
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
-    if [ "${_DB_SERIES}" = "10.3" ] \
+    if [ "${_DB_SERIES}" = "10.4" ] \
+      || [ "${_DB_SERIES}" = "10.3" ] \
       || [ "${_DB_SERIES}" = "10.2" ] \
-      || [ "${_DB_SERIES}" = "10.1" ] \
       || [ "${_DB_SERIES}" = "5.7" ]; then
       echo "Preparing MySQLD for quick shutdown.."
       mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-      mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
     fi
     echo "Stopping MySQLD now.."
     service mysql stop &> /dev/null
@@ -159,4 +165,4 @@ case "$1" in
   ;;
 esac
 
-###EOF2019###
+###EOF2020###

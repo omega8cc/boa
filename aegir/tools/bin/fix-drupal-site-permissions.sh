@@ -40,10 +40,18 @@ if [ -z "${site_path}" ] || [ ! -f "${site_path}/settings.php" ] ; then
   exit 1
 fi
 
-cd ${site_path}
+_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=${_TODAY//[^0-9]/}
 
-printf "Setting correct permissions on all files and directories inside "${site_path}"...\n"
+if [ -e "${site_path}/libraries/permissions-fixed.pid" ]; then
+  rm -f ${site_path}/libraries/permissions-fixed.pid
+fi
+cd ${site_path}
+printf "Setting correct permissions on key files and directories inside "${site_path}"...\n"
 ### directory and settings files - site level
+if [ -e "${site_path}/aegir.services.yml" ]; then
+  rm -f ${site_path}/aegir.services.yml
+fi
 find ${site_path}/*.php -type f -exec chmod 0440 {} \; &> /dev/null
 chmod 0640 ${site_path}/civicrm.settings.php &> /dev/null
 ### modules,themes,libraries - site level
@@ -51,14 +59,20 @@ find ${site_path}/{modules,themes,libraries} -type d -exec \
   chmod 02775 {} \; &> /dev/null
 find ${site_path}/{modules,themes,libraries} -type f -exec \
   chmod 0664 {} \; &> /dev/null
-### files - site level
-find ${site_path}/files/ -type d -exec chmod 02775 {} \; &> /dev/null
-find ${site_path}/files/ -type f -exec chmod 0664 {} \; &> /dev/null
-chmod 02775 ${site_path}/files &> /dev/null
-### private - site level
-find ${site_path}/private/ -type d -exec chmod 02775 {} \; &> /dev/null
-find ${site_path}/private/ -type f -exec chmod 0664 {} \; &> /dev/null
-### known exceptions
-chmod 0644 ${site_path}/files/.htaccess
+
+if [ ! -e "${site_path}/files/permissions-fixed-${_TODAY}.pid" ]; then
+  ### ctrl pid
+  rm -f ${site_path}/files/permissions-fixed*.pid
+  touch ${site_path}/files/permissions-fixed-${_TODAY}.pid
+  ### files - site level
+  find ${site_path}/files/ -type d -exec chmod 02775 {} \; &> /dev/null
+  find ${site_path}/files/ -type f -exec chmod 0664 {} \; &> /dev/null
+  chmod 02775 ${site_path}/files &> /dev/null
+  ### private - site level
+  find ${site_path}/private/ -type d -exec chmod 02775 {} \; &> /dev/null
+  find ${site_path}/private/ -type f -exec chmod 0664 {} \; &> /dev/null
+  ### known exceptions
+  chmod 0644 ${site_path}/files/.htaccess
+fi
 
 echo "Done setting proper permissions on site files and directories."

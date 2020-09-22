@@ -5,7 +5,7 @@
 ###
 ###  Barracuda Aegir Installer
 ###
-###  Copyright (C) 2010-2019 Omega8.cc
+###  Copyright (C) 2010-2020 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -82,7 +82,10 @@ done
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
   _THIS_DB_HOST=$(uname -n 2>&1)
 fi
-if [ "${_PHP_CLI_VERSION}" = "7.3" ] \
+if [ "${_PHP_CLI_VERSION}" = "7.4" ] \
+  && [ -x "/opt/php74/bin/php" ]; then
+  _T_CLI=/opt/php74/bin
+elif [ "${_PHP_CLI_VERSION}" = "7.3" ] \
   && [ -x "/opt/php73/bin/php" ]; then
   _T_CLI=/opt/php73/bin
 elif [ "${_PHP_CLI_VERSION}" = "7.2" ] \
@@ -98,7 +101,7 @@ elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
   && [ -x "/opt/php56/bin/php" ]; then
   _T_CLI=/opt/php56/bin
 fi
-_OSV=$(lsb_release -sc 2>&1)
+_OSR=$(lsb_release -sc 2>&1)
 _ROOT="${HOME}"
 if [ -e "/opt/tools/d7.ini" ] \
   && [ -e "/opt/tools/drush/7/drush/drush.php" ]; then
@@ -125,7 +128,11 @@ urlHmr="http://${_USE_MIR}/versions/master/aegir"
 # Update php-cli for Drush.
 update_php_cli_drush() {
   _DRUSH_FILE="${_ROOT}/drush/drush.php"
-  if [ "${_PHP_CLI_VERSION}" = "7.3" ] \
+  if [ "${_PHP_CLI_VERSION}" = "7.4" ] \
+    && [ -x "/opt/php74/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "7.3" ] \
     && [ -x "/opt/php73/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php73\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
@@ -252,7 +259,7 @@ _HM_ROOT="${_ROOT}/hostmaster-${_AEGIR_VERSION}"
 ${_DRUSHCMD} hostmaster-install \
   --aegir_host=${_AEGIR_HOST} \
   --aegir_db_user=${_AEGIR_DB_USER} \
-  --aegir_db_pass=${_ESC_APASS} \
+  --aegir_db_pass=${_ESC_PASS} \
   --aegir_root=${_ROOT} \
   --root=${_HM_ROOT} \
   --version=${_AEGIR_VERSION} $@
@@ -260,13 +267,13 @@ ${_DRUSHCMD} hostmaster-install \
 mkdir -p /var/aegir/backups/system
 chmod 700 /var/aegir/backups/system
 _L_SYS="/var/aegir/backups/system/.${_AEGIR_DB_USER}.pass.txt"
-echo "${_ESC_APASS}" > ${_L_SYS}
+echo "${_ESC_PASS}" > ${_L_SYS}
 chmod 0600 ${_L_SYS}
 
 ###----------------------------------------###
 ###
 ###  Barracuda Aegir Installer
-###  Copyright (C) 2010-2019 Omega8.cc
+###  Copyright (C) 2010-2020 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###

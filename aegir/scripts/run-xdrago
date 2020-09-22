@@ -7,6 +7,7 @@ _H_USER=EDIT_USER
 check_root() {
   if [ `whoami` = "root" ]; then
     ionice -c2 -n7 -p $$
+    renice 19 -p $$
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -62,7 +63,7 @@ load_control() {
   fi
   _O_LOAD=$(awk '{print $1*100}' /proc/loadavg 2>&1)
   _O_LOAD=$(( _O_LOAD / _CPU_NR ))
-  _O_LOAD_SPR=$(( 75 * _CPU_SPIDER_RATIO ))
+  _O_LOAD_SPR=$(( 99 * _CPU_SPIDER_RATIO ))
 }
 
 action() {

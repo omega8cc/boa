@@ -413,7 +413,7 @@ verify_package_pgp()
     log "\
 GPG signature verification failed for '$1' - '$3'! Try to install GPG v2 and then fetch the public key:
 
-    ${SUDO_USER:+sudo }${rvm_gpg_command##*/} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB
+    ${SUDO_USER:+sudo }${rvm_gpg_command##*/} --keyserver hkp://pool.sks-keyservers.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB
 
 or if it fails:
 
@@ -887,7 +887,7 @@ rvm_install_ruby_and_gems()
     __rvm_print_headline
 
     for _ruby in ${install_rubies[@]}
-    do command rvm "${forwarded_flags[@]}" install ${_ruby} -j 2
+    do command rvm "${forwarded_flags[@]}" install ${_ruby}
     done
     # set the first one as default, skip rest
     for _ruby in ${install_rubies[@]}

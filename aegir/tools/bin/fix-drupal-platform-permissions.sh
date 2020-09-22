@@ -43,10 +43,20 @@ if [ -z "${drupal_root}" ] \
     exit 1
 fi
 
+_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=${_TODAY//[^0-9]/}
+
+if [ -e "${drupal_root}/sites/all/libraries/permissions-fixed-${_TODAY}.pid" ]; then
+  exit 0
+fi
+
 cd ${drupal_root}
 
 printf "Setting main permissions inside "${drupal_root}"...\n"
 mkdir -p ${drupal_root}/sites/all/{modules,themes,libraries,drush}
+### ctrl pid
+rm -f ${drupal_root}/sites/all/libraries/permissions-fixed*.pid
+touch ${drupal_root}/sites/all/libraries/permissions-fixed-${_TODAY}.pid
 chmod 0644 ${drupal_root}/*.php
 chmod 0751 ${drupal_root}/sites
 chmod 0755 ${drupal_root}/sites/*
@@ -63,9 +73,11 @@ printf "Setting permissions of all codebase directories inside "${drupal_root}".
 find ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core,vendor} -type d -exec \
   chmod 02775 {} \;
 
-printf "Setting permissions of all codebase directories inside "${drupal_root}/../vendor"...\n"
-find ${drupal_root}/../vendor -type d -exec \
-  chmod 02775 {} \;
+if [[ "${drupal_root}" =~ "/static/" ]] && [ -e "${drupal_root}/core" ]; then
+  printf "Setting permissions of all codebase directories inside "${drupal_root}/../vendor"...\n"
+  find ${drupal_root}/../vendor -type d -exec \
+    chmod 02775 {} \;
+fi
 
 printf "Setting permissions of all codebase files inside "${drupal_root}/sites/all"...\n"
 find ${drupal_root}/sites/all/{modules,themes,libraries} -type f -exec \
@@ -75,9 +87,11 @@ printf "Setting permissions of all codebase files inside "${drupal_root}"...\n"
 find ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core,vendor} -type f -exec \
   chmod 0664 {} \;
 
-printf "Setting permissions of all codebase files inside "${drupal_root}/../vendor"...\n"
-find ${drupal_root}/../vendor -type f -exec \
-  chmod 0664 {} \;
+if [[ "${drupal_root}" =~ "/static/" ]] && [ -e "${drupal_root}/core" ]; then
+  printf "Setting permissions of all codebase files inside "${drupal_root}/../vendor"...\n"
+  find ${drupal_root}/../vendor -type f -exec \
+    chmod 0664 {} \;
+fi
 
 ### known exceptions
 chmod -R 775 ${drupal_root}/sites/all/libraries/tcpdf/cache &> /dev/null

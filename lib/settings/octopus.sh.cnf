@@ -8,13 +8,13 @@
 ### upgrade.
 ###
 ### Available options (if installed):
-### 7.3, 7.2, 7.1, 7.0, 5.6
+### 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
 ###
-### Note that 7.2 will be set automatically
+### Note that 7.3 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_FPM_VERSION=7.2
+_PHP_FPM_VERSION=7.3
 
 
 ###----------------------------------------###
@@ -26,13 +26,13 @@ _PHP_FPM_VERSION=7.2
 ### upgrade.
 ###
 ### Available options (if installed):
-### 7.3, 7.2, 7.1, 7.0, 5.6
+### 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
 ###
-### Note that 7.2 will be set automatically
+### Note that 7.3 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_CLI_VERSION=7.2
+_PHP_CLI_VERSION=7.3
 
 
 ###----------------------------------------###
@@ -54,9 +54,10 @@ _PHP_CLI_VERSION=7.2
 ### Drupal 8 based
 ###
 ### LHG ----------- Lightning
+### OPG ----------- Opigno LMS
+### SOC ----------- Social
 ### THR ----------- Thunder
 ### VBE ----------- Varbase
-### SOC ----------- Social
 ###
 ### Drupal 7 based
 ###
@@ -78,7 +79,7 @@ _PHP_CLI_VERSION=7.2
 ###
 ### Drupal 6 based
 ###
-### D6P D6S D6D --- Pressflow prod/stage/dev
+### D6P D6S D6D --- Pressflow (LTS) prod/stage/dev
 ### DCS ----------- Commons
 ### UCT ----------- Ubercart
 ###
@@ -87,7 +88,7 @@ _PHP_CLI_VERSION=7.2
 ### _PLATFORMS_LIST=ALL
 ### _PLATFORMS_LIST="LHG VBE D7P D7S D7D"
 ###
-_PLATFORMS_LIST="LHG VBE D7P D7S D7D"
+_PLATFORMS_LIST=
 
 
 ###----------------------------------------###
@@ -615,14 +616,17 @@ find_fast_mirror() {
   fi
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-    rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
     apt-get update -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
   if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors.txt"
+    ffList="/var/backups/boa-mirrors-2020-02.txt"
     mkdir -p /var/backups
     if [ ! -e "${ffList}" ]; then
       echo "jp.files.aegir.cc"  > ${ffList}
@@ -660,7 +664,6 @@ download_helpers_libs() {
   if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
     isGit=$(which git 2>&1)
     if [ ! -x "${isGit}" ] || [ -z "${isGit}" ]; then
-      rm -f /etc/apt/sources.list.d/openssl.list
       apt-get update -qq &> /dev/null
       apt-get install git -fuy --allow-unauthenticated --reinstall &> /dev/null
       apt-get install git-core -fuy --allow-unauthenticated --reinstall &> /dev/null

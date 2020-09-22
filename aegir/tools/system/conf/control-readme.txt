@@ -1,5 +1,53 @@
 
 ###
+### Super fast site cloning and migration
+###
+### It is now possible to enable blazing fast migrations and cloning even sites
+### with complex and giant databases with this empty control file:
+###
+### ~/static/control/MyQuick.info
+###
+### By the way, how fast is the super-fast? It's faster than you would expect!
+### We have seen it speeding up the clone and migrate tasks normally taking
+### 1-2 hours to... even 3-6 minutes! Yes, that's how fast it's!
+###
+### This file, if exists, will enable a super fast per table and parallel DB
+### dump and import, although without leaving a conventional complete database
+### dump file in the site archive normally created by Aegir when you run
+### not only the backup task, but also clone, migrate and delete tasks, hence
+### also restore task will not work anymore.
+###
+### We need to emphasise this again: with this control file present all normally
+### super slow tasks will become blazing fast, but at the cost of not keeping
+### an archived complete database dump file in the archive of the site directory
+### where it would be otherwise included.
+###
+### Of course the system still maintains nightly backups of all your sites
+### using the new split sql dump archives, but with this control file present
+### you won't be able to use restore task in Aegir, because the site archive
+### won't include the database dump -- you can still find that sql dump split
+### into per table files in the backups directory, though, in the subdirectory
+### with timestamp added, so you can still access it manually, if needed.
+###
+
+###
+### Let's Encrypt support for live certificates
+###
+### Your Aegir system by default comes with Let's Encrypt support in demo mode,
+### so you won't hit LE limits for real certificates just by playing around.
+### This means that unless you have already added the control file, Aegir will
+### create a "demo" or "fake" LE certificates. Once you are ready to go live,
+### simply add an empty control file and run Verify task on the site with
+### enabled Encryption. Once the tasks completes in all-green, you can edit
+### the site's node again to make the Encryption Required, if you prefer.
+###
+### ~/static/control/ssl-live-mode.info
+###
+### It is a one-time operation, so even if you will delete this control file
+### later, the system will not switch your instance back to LE demo mode.
+###
+
+###
 ### Support for PHP-FPM version switch per Octopus instance (also per site)
 ###
 ### ~/static/control/fpm.info
@@ -13,6 +61,7 @@
 ###
 ### Supported values for single PHP-FPM mode which can be written in this file:
 ###
+### 7.4
 ### 7.3
 ### 7.2
 ### 7.1
@@ -25,10 +74,10 @@
 ### NOTE: if the file doesn't exist, the system will create it and set to the
 ### lowest available PHP version installed, not to the system default version.
 ### This is to guarantee backward compatibility for instances installed
-### before upgrade to BOA-4.0.1, when the default PHP version was 5.6,
+### before upgrade to BOA-4.1.2, when the default PHP version was 5.6,
 ### as otherwise after the upgrade the system would automatically switch such
-### accounts to the new default PHP version which is 7.2, and this could break
-### most of the sites hosted, never before tested for PHP 7.2 compatibility.
+### accounts to the new default PHP version which is 7.3, and this could break
+### most of the sites hosted, never before tested for PHP 7.3 compatibility.
 ###
 
 ###
@@ -64,6 +113,7 @@
 ###
 ### Supported values which can be written in this file:
 ###
+### 7.4
 ### 7.3
 ### 7.2
 ### 7.1
@@ -76,16 +126,16 @@
 ### NOTE: if the file doesn't exist, the system will create it and set to the
 ### lowest available PHP version installed, not to the system default version.
 ### This is to guarantee backward compatibility for instances installed
-### before upgrade to BOA-4.0.1, when the default PHP version was 5.6,
+### before upgrade to BOA-4.1.2, when the default PHP version was 5.6,
 ### as otherwise after the upgrade the system would automatically switch such
-### accounts to the new default PHP version which is 7.2, and this could break
-### most of the sites hosted, never before tested for PHP 7.2 compatibility.
+### accounts to the new default PHP version which is 7.3, and this could break
+### most of the sites hosted, never before tested for PHP 7.3 compatibility.
 ###
 ### IMPORTANT: this file will affect only Drush on command line and Drush
 ### in Aegir backend, used for all tasks on hosted sites, but it will not
 ### affect PHP-CLI version used by Composer on command line, because Composer
 ### is installed globally and not per Octopus account, so it will use system
-### default PHP version, which is, since BOA-4.0.1, PHP 7.2 and can be
+### default PHP version, which is, since BOA-4.1.2, PHP 7.3 and can be
 ### changed only by changing system default _PHP_CLI_VERSION in the file
 ### /root/.barracuda.cnf and running barracuda upgrade.
 ###
@@ -164,9 +214,10 @@
 ### Drupal 8 based
 ###
 ### LHG ----------- Lightning
+### OPG ----------- Opigno LMS
+### SOC ----------- Social
 ### THR ----------- Thunder
 ### VBE ----------- Varbase
-### SOC ----------- Social
 ###
 ### Drupal 7 based
 ###
@@ -188,7 +239,7 @@
 ###
 ### Drupal 6 based
 ###
-### D6P D6S D6D --- Pressflow prod/stage/dev
+### D6P D6S D6D --- Pressflow (LTS) prod/stage/dev
 ### DCS ----------- Commons
 ### UCT ----------- Ubercart
 ###

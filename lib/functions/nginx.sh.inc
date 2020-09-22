@@ -67,7 +67,7 @@ force_advanced_nginx_config() {
   sed -i "s/ 90;/ 180;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
   wait
   if [ "${_NGINX_SPDY}" = "YES" ]; then
-    if [ "${_OSV}" = "none" ]; then
+    if [ "${_OSR}" = "none" ]; then
       sed -i "s/:443;/:443 ssl spdy;/g" ${mtrNgx}/pre.d/*.conf           &> /dev/null
       wait
       sed -i "s/:443;/:443 ssl spdy;/g" ${mtrNgx}/vhost.d/*              &> /dev/null
@@ -110,7 +110,7 @@ force_advanced_nginx_config() {
   if [ "${_PFS_READY}" = "YES" ] \
     && [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
     _ALLOW_NGINX_FORWARD_SECRECY=YES
-    _SSL_PROTOCOLS="TLSv1.1 TLSv1.2 TLSv1.3;"
+    _SSL_PROTOCOLS="TLSv1.2 TLSv1.3;"
     _SSL_CIPHERS="ECDHE-RSA-AES128-GCM-SHA256:  \
       ECDHE-ECDSA-AES128-GCM-SHA256:  \
       ECDHE-RSA-AES256-GCM-SHA384:    \
@@ -371,7 +371,7 @@ install_upgrade_nginx() {
       fi
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
-      if [ "${_OSV}" = "none" ]; then
+      if [ "${_OSR}" = "none" ]; then
         _NGINX_EXTRA="--with-http_spdy_module ${_NGINX_EXTRA}"
       else
         _NGINX_EXTRA="--with-http_v2_module ${_NGINX_EXTRA}"
@@ -411,8 +411,9 @@ install_upgrade_nginx() {
       --with-debug ${_NGINX_EXTRA}" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
+    mrun "ldconfig" 2> /dev/null
     if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-      && [ "${_LOC_OSV}" = "jessie" ]; then
+      && [ "${_LOC_OSR}" = "jessie" ]; then
       _DO_NOTHING=YES
     else
       mrun "service nginx stop" &> /dev/null
@@ -545,11 +546,6 @@ nginx_wildcard_ssl() {
 }
 
 fix_update_nginx_config() {
-  if [ "${_FORCE_REDIS_RESTART}" = "YES" ]; then
-    service redis-server stop &> /dev/null
-    killall -9 redis-server &> /dev/null
-    service redis-server start &> /dev/null
-  fi
   if [ "${_STATUS}" = "INIT" ]; then
     service cron start &> /dev/null
     if [ "${_EASY_SETUP}" = "NO" ]; then
@@ -572,21 +568,26 @@ fix_update_nginx_config() {
       wait
       sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
       wait
-      sed -i "s/.*listen .*:80;/  listen                       \*:80;/g" /var/aegir/config/server_*/nginx/vhost.d/*          &> /dev/null
+      sed -i "s/.*listen .*\*:80;/  listen                       \*:80;/g" /var/aegir/config/server_*/nginx/vhost.d/*          &> /dev/null
       wait
-      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/adminer.*  &> /dev/null
+      sed -i "s/.*listen .*\*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/adminer.*  &> /dev/null
       wait
-      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
+      sed -i "s/.*listen .*\*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/cgp.*      &> /dev/null
       wait
-      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/chive.*    &> /dev/null
+      sed -i "s/.*listen .*\*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/chive.*    &> /dev/null
       wait
-      sed -i "s/.*listen .*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
+      sed -i "s/.*listen .*\*:443/  listen                       \*:443/g" /var/aegir/config/server_*/nginx/vhost.d/sqlbuddy.* &> /dev/null
       wait
-      sed -i "s/SSLv3 TLSv1;/TLSv1.1 TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf             &> /dev/null
+      sed -i "s/SSLv3 TLSv1;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf             &> /dev/null
       wait
-      sed -i "s/SSLv3 TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.1 TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/SSLv3 TLSv1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
       wait
-      sed -i "s/TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.1 TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf   &> /dev/null
+      sed -i "s/TLSv1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf   &> /dev/null
+      wait
+      sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /data/disk/*/config/server_*/nginx/vhost.d/*
+      sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx.conf
+      sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf
+      sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/vhost.d/*
       wait
       sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/pre.d/*.conf                              &> /dev/null
       wait
@@ -636,7 +637,7 @@ fix_update_nginx_config() {
       wait
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
-      if [ "${_OSV}" = "none" ]; then
+      if [ "${_OSR}" = "none" ]; then
         sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf           &> /dev/null
         wait
         sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/vhost.d/*              &> /dev/null
@@ -677,7 +678,7 @@ fix_update_nginx_config() {
     if [ "${_PFS_READY}" = "YES" ] \
       && [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
       _ALLOW_NGINX_FORWARD_SECRECY=YES
-      _SSL_PROTOCOLS="TLSv1.1 TLSv1.2 TLSv1.3;"
+      _SSL_PROTOCOLS="TLSv1.2 TLSv1.3;"
       _SSL_CIPHERS="ECDHE-RSA-AES128-GCM-SHA256:  \
         ECDHE-ECDSA-AES128-GCM-SHA256:  \
         ECDHE-RSA-AES256-GCM-SHA384:    \
@@ -747,7 +748,7 @@ fix_update_nginx_config() {
       sed -i "s/.*listen.*127.0.0.1:80;.*//g" \
         /var/aegir/config/server_*/nginx.conf &> /dev/null
       wait
-      sed -i "s/listen .*/listen        \*:80;/g" \
+      sed -i "s/listen .*\*:80;/listen        \*:80;/g" \
         /var/aegir/config/server_*/nginx.conf &> /dev/null
       wait
     fi
@@ -755,17 +756,22 @@ fix_update_nginx_config() {
       sed -i "s/.*listen.*127.0.0.1:80;.*//g" \
         /data/disk/*/config/server_*/nginx.conf &> /dev/null
       wait
-      sed -i "s/listen .*/listen        \*:80;/g" \
+      sed -i "s/listen .*\*:80;/listen        \*:80;/g" \
         /data/disk/*/config/server_*/nginx.conf &> /dev/null
       wait
-      sed -i "s/.*listen .*:80;/  listen        \*:80;/g" \
+      sed -i "s/.*listen .*\*:80;/  listen        \*:80;/g" \
         /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
       wait
-      sed -i "s/.*listen .*:443/  listen        \*:443/g" \
+      sed -i "s/.*listen .*\*:443/  listen        \*:443/g" \
         /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
       wait
       sed -i "s/.*ssl .*on;//g" \
         /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
+      wait
+      sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /data/disk/*/config/server_*/nginx/vhost.d/*
+      sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx.conf
+      sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf
+      sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/vhost.d/*
       wait
     fi
 

@@ -120,13 +120,13 @@ check_dns_settings() {
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
   else
-    _REMOTE_DNS_TEST=$(host -a files.aegir.cc 1.1.1.1 -w 10 2>&1)
+    _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10 2>&1)
   fi
   if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
     || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.aegir.cc not found" ]] \
     || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
-    _CTRL_DNS_TEST=$(host -a files.aegir.cc 2>&1)
+    _CTRL_DNS_TEST=$(host files.aegir.cc 2>&1)
     if [[ ! "${_CTRL_DNS_TEST}" =~ "104.245.208.226" ]] \
       || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
       || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
@@ -212,11 +212,6 @@ find_correct_ip() {
   if [ -z "${_LOC_IP}" ]; then
     _LOC_IP=$(curl ${crlGet} http://ip4.icanhazip.com \
       | sed 's/[^0-9\.]//g' 2>&1)
-  fi
-  if [ -z "${_LOC_IP}" ]; then
-    _LOC_IP=$(echo $(getent ahostsv4 $_LOC_DOM) \
-      | cut -d: -f2 \
-      | awk '{ print $1}' 2>&1)
   fi
 }
 
@@ -367,7 +362,6 @@ install_pdnsd_cache() {
     echo "nameserver 1.1.1.1" > /etc/resolv.conf
     echo "nameserver 1.0.0.1" >> /etc/resolv.conf
   fi
-  rm -f /etc/apt/sources.list.d/openssl.list
   st_runner "apt-get update -qq" &> /dev/null
   st_runner "aptitude purge pdnsd -y" &> /dev/null
   st_runner "aptitude purge resolvconf -y" &> /dev/null
@@ -380,7 +374,8 @@ install_pdnsd_cache() {
     echo "nameserver 1.1.1.1" > /etc/resolv.conf
     echo "nameserver 1.0.0.1" >> /etc/resolv.conf
   fi
-  if [ "${_OSV}" = "stretch" ]; then
+  if [ "${_OSR}" = "buster" ] \
+    || [ "${_OSR}" = "stretch" ]; then
     st_runner "${_INSTALL} resolvconf" &> /dev/null
     msg "INFO: Building pdnsd ${_PDNSD_VRN} from sources, please wait..."
     cd /var/opt
@@ -390,9 +385,10 @@ install_pdnsd_cache() {
     st_runner "./configure --prefix=/usr" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
+    mrun "ldconfig" 2> /dev/null
     echo "START_DAEMON=yes" > /etc/default/pdnsd
     adduser --system --ingroup proxy --home /var/cache/pdnsd pdnsd &> /dev/null
-    usermod -aG proxy pdnsd &> /dev/null
+    usermod -aG proxy pdnsd
     cp -af ${locCnf}/pdnsd /etc/init.d/pdnsd
     cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
     ln -sf /etc/pdnsd.conf /usr/etc/pdnsd.conf

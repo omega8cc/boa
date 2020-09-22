@@ -5,7 +5,7 @@
 ###
 ###  Octopus Aegir Installer
 ###
-###  Copyright (C) 2010-2019 Omega8.cc
+###  Copyright (C) 2010-2020 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -51,16 +51,17 @@ export _USER="${_USER}"
 ###
 ### Variables
 ###
-_DRUSH_VERSION=8.2.3.1
-_NOW=$(date +%y%m%d-%H%M 2>&1)
+_DRUSH_VERSION=8.3.5.2
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
-_REDIS_E_VERSION=mod-05-02-2019
-_REDIS_M_VERSION=mod-30-12-2017
-_SMALLCORE6=6.49.1
-_SMALLCORE7=7.66.1
-_SMALLCORE8=8.7.0
+_REDIS_C_VERSION=mod-14-02-2020
+_REDIS_N_VERSION=mod-05-09-2019
+_REDIS_L_VERSION=mod-30-10-2019
+_SMALLCORE6=6.54.1
+_SMALLCORE7=7.72.1
+_SMALLCORE8=8.8
 _SPINNER=YES
 _T_BUILD=HEAD
 _TODAY=$(date +%y%m%d 2>&1)
@@ -108,36 +109,38 @@ _AGOV=3.12
 _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.3.7
 _COD=1.0-alpha5
-_COMMERCE1=1.58
-_COMMERCE2=2.61
+_COMMERCE1=1.60
+_COMMERCE2=2.64
 _COMMONS2=2.27
 _COMMONS3=3.50
 _DRUPAL7="drupal-${_SMALLCORE7}"
 _DRUPAL8="drupal-${_SMALLCORE8}"
 _ERPAL=2.3
-_GUARDR=2.49
-_LIGHTNING=3.3.0
+_GUARDR=2.52
+_LIGHTNING=4.103
 _OPENACADEMY=1.1
 _OPENAID=2.8
-_OPENATRIUM7=2.642
+_OPENATRIUM7=2.645
 _OPENBLOG=1.0-alpha3
 _OPENCHURCH1=1.17-beta2
 _OPENCHURCH2=2.2
 _OPENDEALS=1.35
 _OPENLUCIUS=1.7
-_OPENOUTREACH=1.55
-_OPENPUBLIC=1.29
+_OPENOUTREACH=1.59
+_OPENPUBLIC=1.30
 _OPENPUBLISH=1.0-beta7
 _OPENSCHOLAR=3.28.0
-_OPIGNOLMS=1.39
-_PANOPOLY=1.66
+_OPIGNOLMS7=1.44
+_OPIGNOLMS8=2.11
+_PANOPOLY=1.72
 _RECRUITER=1.7
 _RESTAURANT=1.15
-_THUNDER=8.2.39
+_THUNDER=4.5
 _UBERCART6=2.15
-_UBERCART7=3.12
-_VARBASE=8.6.8
-_SOCIAL=8.5.1
+_UBERCART7=3.13
+_VARBASE=8.4
+_SOCIAL=8.2
+_SOCIAL_CORE=8.8
 
 
 ###
@@ -248,7 +251,7 @@ exit 0
 ###----------------------------------------###
 ###
 ###  Octopus Aegir Installer
-###  Copyright (C) 2010-2019 Omega8.cc
+###  Copyright (C) 2010-2020 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###

@@ -1,5 +1,16 @@
 
 #
+# Find correct IP.
+find_correct_ip() {
+  _LOC_IP=$(curl ${crlGet} https://api.ipify.org \
+    | sed 's/[^0-9\.]//g' 2>&1)
+  if [ -z "${_LOC_IP}" ]; then
+    _LOC_IP=$(curl ${crlGet} http://ip4.icanhazip.com \
+      | sed 's/[^0-9\.]//g' 2>&1)
+  fi
+}
+
+#
 # Tune FPM workers.
 satellite_tune_fpm_workers() {
   _VM_TEST=$(uname -a 2>&1)
@@ -8,13 +19,7 @@ satellite_tune_fpm_workers() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+  if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
   if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
@@ -28,7 +33,7 @@ satellite_tune_fpm_workers() {
   _USE=$(( _RAM / 4 ))
   if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "1024" ]; then
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=24
+      _L_PHP_FPM_WORKERS=48
     else
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
@@ -50,21 +55,21 @@ satellite_tune_fpm_workers() {
         fi
       else
         if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=24
+          _L_PHP_FPM_WORKERS=48
         else
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
       fi
     else
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=24
+        _L_PHP_FPM_WORKERS=48
       else
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
     fi
   else
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=6
+      _L_PHP_FPM_WORKERS=12
     else
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
@@ -74,6 +79,7 @@ satellite_tune_fpm_workers() {
 #
 # Update web user.
 satellite_update_web_user() {
+  _X_SE="412prodQ1"
   isTest="${_WEB}"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ]; then
@@ -114,7 +120,10 @@ satellite_update_web_user() {
         cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
         ### msg "DEBUG: _T_PV is ${_T_PV} in satellite_update_web_user D"
       else
-        if [ -e "/opt/php73/etc/php73.ini" ]; then
+        if [ -e "/opt/php74/etc/php74.ini" ]; then
+          cp -af /opt/php74/etc/php74.ini ${_T_II}
+          _T_PV=74
+        elif [ -e "/opt/php73/etc/php73.ini" ]; then
           cp -af /opt/php73/etc/php73.ini ${_T_II}
           _T_PV=73
         elif [ -e "/opt/php72/etc/php72.ini" ]; then
@@ -142,6 +151,7 @@ satellite_update_web_user() {
           /opt/php71:     \
           /opt/php72:     \
           /opt/php73:     \
+          /opt/php74:     \
           /opt/tika:      \
           /opt/tika7:     \
           /opt/tika8:     \
@@ -149,6 +159,7 @@ satellite_update_web_user() {
           /dev/urandom:   \
           /srv:           \
           /usr/bin:       \
+          /usr/local/bin: \
           /var/second/${_USER}:    \
           ${_ROOT}/aegir:          \
           ${_ROOT}/backup-exports: \
@@ -173,7 +184,7 @@ satellite_update_web_user() {
         sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_T_II}
         wait
         rm -f ${_T_HD}/.ctrl.php*
-        echo > ${_T_HD}/.ctrl.php${_T_PV}.pid
+        echo > ${_T_HD}/.ctrl.php${_T_PV}.${_X_SE}.pid
       fi
       chmod 700 /home/${_WEB}/
       chown -R ${_WEB}:www-data /home/${_WEB}/
@@ -234,7 +245,8 @@ satellite_tune_fpm_config() {
   if [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
-    if [ "${_CLIENT_OPTION}" = "POWER" ]; then
+    if [ "${_CLIENT_OPTION}" = "POWER" ] \
+      || [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _LIM_FPM=32
         _PHP_FPM_WORKERS=64
@@ -278,7 +290,9 @@ satellite_tune_fpm_config() {
   if [ -z "${_PHP_SV}" ]; then
     _PHP_SV=56
   fi
-  if [ -e "/opt/php73/etc/pool.d/${_USER}.conf" ]; then
+  if [ -e "/opt/php74/etc/pool.d/${_USER}.conf" ]; then
+    _PHP_OLD_SV=74
+  elif [ -e "/opt/php73/etc/pool.d/${_USER}.conf" ]; then
     _PHP_OLD_SV=73
   elif [ -e "/opt/php72/etc/pool.d/${_USER}.conf" ]; then
     _PHP_OLD_SV=72
@@ -313,11 +327,11 @@ satellite_tune_fpm_config() {
       ### create or update special system user if needed
       if [ -e "/home/${_WEB}/.drush/php.ini" ]; then
         _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
-        _PHP_V="73 72 71 70 56"
+        _PHP_V="74 73 72 71 70 56"
         for e in ${_PHP_V}; do
           if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
             if [ "${e}" != "${_PHP_SV}" ] \
-              || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${_PHP_SV}.pid" ]; then
+              || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${_PHP_SV}.${_X_SE}.pid" ]; then
               satellite_update_web_user "${_PHP_SV}"
             fi
           fi
@@ -561,18 +575,36 @@ satellite_cnf() {
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       _LD_DOM=YES
+      if [ -e "/root/.debug-boa-installer.cnf" ]; then
+        _DEBUG_MODE=YES
+        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g" ${octCnf}
+      fi
     else
       _LD_DOM=NO
     fi
     if [ -e "${_ROOT}/static/control/fpm.info" ]; then
       _PHP_FPM_VERSION=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
       _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
-      if [ "${_PHP_FPM_VERSION}" = "7.3" ] \
+      if [ "${_PHP_FPM_VERSION}" = "7.4" ] \
+        || [ "${_PHP_FPM_VERSION}" = "7.3" ] \
         || [ "${_PHP_FPM_VERSION}" = "7.2" ] \
         || [ "${_PHP_FPM_VERSION}" = "7.1" ] \
         || [ "${_PHP_FPM_VERSION}" = "7.0" ] \
         || [ "${_PHP_FPM_VERSION}" = "5.6" ]; then
-        if [ "${_PHP_FPM_VERSION}" = "7.3" ] \
+        if [ "${_PHP_FPM_VERSION}" = "7.4" ] \
+          && [ ! -x "/opt/php74/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _PHP_FPM_VERSION=7.3
+          elif [ -x "/opt/php72/bin/php" ]; then
+            _PHP_FPM_VERSION=7.2
+          elif [ -x "/opt/php71/bin/php" ]; then
+            _PHP_FPM_VERSION=7.1
+          elif [ -x "/opt/php70/bin/php" ]; then
+            _PHP_FPM_VERSION=7.0
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _PHP_FPM_VERSION=5.6
+          fi
+        elif [ "${_PHP_FPM_VERSION}" = "7.3" ] \
           && [ ! -x "/opt/php73/bin/php" ]; then
           if [ -x "/opt/php72/bin/php" ]; then
             _PHP_FPM_VERSION=7.2
@@ -640,12 +672,26 @@ satellite_cnf() {
         && [ "${_LD_DOM}" = "YES" ]; then
         _PHP_FPM_VERSION=$(cat ${_ROOT}/log/fpm.txt 2>&1)
         _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
-        if [ "${_PHP_FPM_VERSION}" = "7.3" ] \
+        if [ "${_PHP_FPM_VERSION}" = "7.4" ] \
+          || [ "${_PHP_FPM_VERSION}" = "7.3" ] \
           || [ "${_PHP_FPM_VERSION}" = "7.2" ] \
           || [ "${_PHP_FPM_VERSION}" = "7.1" ] \
           || [ "${_PHP_FPM_VERSION}" = "7.0" ] \
           || [ "${_PHP_FPM_VERSION}" = "5.6" ]; then
-          if [ "${_PHP_FPM_VERSION}" = "7.3" ] \
+          if [ "${_PHP_FPM_VERSION}" = "7.4" ] \
+            && [ ! -x "/opt/php74/bin/php" ]; then
+            if [ -x "/opt/php73/bin/php" ]; then
+              _PHP_FPM_VERSION=7.3
+            elif [ -x "/opt/php72/bin/php" ]; then
+              _PHP_FPM_VERSION=7.2
+            elif [ -x "/opt/php71/bin/php" ]; then
+              _PHP_FPM_VERSION=7.1
+            elif [ -x "/opt/php70/bin/php" ]; then
+              _PHP_FPM_VERSION=7.0
+            elif [ -x "/opt/php56/bin/php" ]; then
+              _PHP_FPM_VERSION=5.6
+            fi
+          elif [ "${_PHP_FPM_VERSION}" = "7.3" ] \
             && [ ! -x "/opt/php73/bin/php" ]; then
             if [ -x "/opt/php72/bin/php" ]; then
               _PHP_FPM_VERSION=7.2
@@ -710,12 +756,26 @@ satellite_cnf() {
     if [ -e "${_ROOT}/static/control/cli.info" ]; then
       _PHP_CLI_VERSION=$(cat ${_ROOT}/static/control/cli.info 2>&1)
       _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d "\n" 2>&1)
-      if [ "${_PHP_CLI_VERSION}" = "7.3" ] \
+      if [ "${_PHP_CLI_VERSION}" = "7.4" ] \
+        || [ "${_PHP_CLI_VERSION}" = "7.3" ] \
         || [ "${_PHP_CLI_VERSION}" = "7.2" ] \
         || [ "${_PHP_CLI_VERSION}" = "7.1" ] \
         || [ "${_PHP_CLI_VERSION}" = "7.0" ] \
         || [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
-        if [ "${_PHP_CLI_VERSION}" = "7.3" ] \
+        if [ "${_PHP_CLI_VERSION}" = "7.4" ] \
+          && [ ! -x "/opt/php74/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _PHP_CLI_VERSION=7.3
+          elif [ -x "/opt/php72/bin/php" ]; then
+            _PHP_CLI_VERSION=7.2
+          elif [ -x "/opt/php71/bin/php" ]; then
+            _PHP_CLI_VERSION=7.1
+          elif [ -x "/opt/php70/bin/php" ]; then
+            _PHP_CLI_VERSION=7.0
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _PHP_CLI_VERSION=5.6
+          fi
+        elif [ "${_PHP_CLI_VERSION}" = "7.3" ] \
           && [ ! -x "/opt/php73/bin/php" ]; then
           if [ -x "/opt/php72/bin/php" ]; then
             _PHP_CLI_VERSION=7.2
@@ -783,12 +843,26 @@ satellite_cnf() {
         && [ "${_LD_DOM}" = "YES" ]; then
         _PHP_CLI_VERSION=$(cat ${_ROOT}/log/cli.txt 2>&1)
         _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d "\n" 2>&1)
-        if [ "${_PHP_CLI_VERSION}" = "7.3" ] \
+        if [ "${_PHP_CLI_VERSION}" = "7.4" ] \
+          || [ "${_PHP_CLI_VERSION}" = "7.3" ] \
           || [ "${_PHP_CLI_VERSION}" = "7.2" ] \
           || [ "${_PHP_CLI_VERSION}" = "7.1" ] \
           || [ "${_PHP_CLI_VERSION}" = "7.0" ] \
           || [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
-          if [ "${_PHP_CLI_VERSION}" = "7.3" ] \
+          if [ "${_PHP_CLI_VERSION}" = "7.4" ] \
+            && [ ! -x "/opt/php74/bin/php" ]; then
+            if [ -x "/opt/php73/bin/php" ]; then
+              _PHP_CLI_VERSION=7.3
+            elif [ -x "/opt/php72/bin/php" ]; then
+              _PHP_CLI_VERSION=7.2
+            elif [ -x "/opt/php71/bin/php" ]; then
+              _PHP_CLI_VERSION=7.1
+            elif [ -x "/opt/php70/bin/php" ]; then
+              _PHP_CLI_VERSION=7.0
+            elif [ -x "/opt/php56/bin/php" ]; then
+              _PHP_CLI_VERSION=5.6
+            fi
+          elif [ "${_PHP_CLI_VERSION}" = "7.3" ] \
             && [ ! -x "/opt/php73/bin/php" ]; then
             if [ -x "/opt/php72/bin/php" ]; then
               _PHP_CLI_VERSION=7.2
@@ -958,7 +1032,30 @@ satellite_cnf() {
         clean_pid_exit
       fi
     fi
-    if [ "${_PHP_FPM_VERSION}" = "7.3" ] \
+    if [ "${_PHP_FPM_VERSION}" = "7.4" ] \
+      || [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
+      if [ ! -x "/opt/php74/bin/php" ]; then
+        if [ -x "/opt/php73/bin/php" ]; then
+          _PHP_FPM_VERSION=7.3
+          _PHP_CLI_VERSION=7.3
+        elif [ -x "/opt/php72/bin/php" ]; then
+          _PHP_FPM_VERSION=7.2
+          _PHP_CLI_VERSION=7.2
+        elif [ -x "/opt/php71/bin/php" ]; then
+          _PHP_FPM_VERSION=7.1
+          _PHP_CLI_VERSION=7.1
+        elif [ -x "/opt/php70/bin/php" ]; then
+          _PHP_FPM_VERSION=7.0
+          _PHP_CLI_VERSION=7.0
+        elif [ -x "/opt/php56/bin/php" ]; then
+          _PHP_FPM_VERSION=5.6
+          _PHP_CLI_VERSION=5.6
+        else
+          _PHP_FPM_VERSION=
+          _PHP_CLI_VERSION=
+        fi
+      fi
+    elif [ "${_PHP_FPM_VERSION}" = "7.3" ] \
       || [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
       if [ ! -x "/opt/php73/bin/php" ]; then
         if [ -x "/opt/php72/bin/php" ]; then
@@ -1060,12 +1157,15 @@ satellite_cnf() {
       fi
     elif [ "${_PHP_FPM_VERSION}" = "5.2" ] \
       || [ "${_PHP_CLI_VERSION}" = "5.2" ]; then
-      if [ -x "/opt/php72/bin/php" ]; then
-        _PHP_FPM_VERSION=7.2
-        _PHP_CLI_VERSION=7.2
-      elif [ -x "/opt/php73/bin/php" ]; then
+      if [ -x "/opt/php73/bin/php" ]; then
         _PHP_FPM_VERSION=7.3
         _PHP_CLI_VERSION=7.3
+      elif [ -x "/opt/php74/bin/php" ]; then
+        _PHP_FPM_VERSION=7.4
+        _PHP_CLI_VERSION=7.4
+      elif [ -x "/opt/php72/bin/php" ]; then
+        _PHP_FPM_VERSION=7.2
+        _PHP_CLI_VERSION=7.2
       elif [ -x "/opt/php71/bin/php" ]; then
         _PHP_FPM_VERSION=7.1
         _PHP_CLI_VERSION=7.1
@@ -1203,16 +1303,16 @@ satellite_force_advanced_nginx_config() {
 #
 # Update local INI for PHP CLI on the Aegir Satellite Instance.
 satellite_child_b_update_ini_php_cli() {
-  _X_SE="401prodQ1"
+  _X_SE="412prodQ1"
   _U_HD="${_ROOT}/.drush"
   _U_TP="${_ROOT}/.tmp"
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="73 72 71 70 56"
+  _PHP_V="74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
-      && [ ! -e "${_U_HD}/.ctrl.php${e}.pid" ]; then
+      && [ ! -e "${_U_HD}/.ctrl.php${e}.${_X_SE}.pid" ]; then
       _PHP_CLI_UPDATE=YES
     fi
   done
@@ -1227,7 +1327,10 @@ satellite_child_b_update_ini_php_cli() {
     mkdir -p ${_U_HD}/{sys,xts,usr}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php73" ]]; then
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php74" ]]; then
+      cp -af /opt/php74/lib/php.ini ${_U_II}
+      _U_INI=74
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php73" ]]; then
       cp -af /opt/php73/lib/php.ini ${_U_II}
       _U_INI=73
     elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php72" ]]; then
@@ -1253,6 +1356,7 @@ satellite_child_b_update_ini_php_cli() {
         /opt/php71:          \
         /opt/php72:          \
         /opt/php73:          \
+        /opt/php74:          \
         /opt/tika:           \
         /opt/tika7:          \
         /opt/tika8:          \
@@ -1261,6 +1365,7 @@ satellite_child_b_update_ini_php_cli() {
         /opt/tmp/make_local: \
         /opt/tools/drush:    \
         ${_ROOT}:            \
+        /usr/local/bin:      \
         /usr/bin\""
       _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
       _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
@@ -1278,7 +1383,7 @@ satellite_child_b_update_ini_php_cli() {
       wait
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
       wait
-      echo > ${_U_HD}/.ctrl.php${_U_INI}.pid
+      echo > ${_U_HD}/.ctrl.php${_U_INI}.${_X_SE}.pid
       echo > ${_U_HD}/.ctrl.${_X_SE}.pid
     fi
   fi
@@ -1288,7 +1393,9 @@ satellite_child_b_update_ini_php_cli() {
 # Update php-cli for Drush.
 satellite_child_b_update_php_cli() {
   _DRUSH_FILE="${_ROOT}/tools/drush/drush.php"
-  if [ "${_PHP_CLI_VERSION}" = "7.3" ] && [ -x "/opt/php73/bin/php" ]; then
+  if [ "${_PHP_CLI_VERSION}" = "7.4" ] && [ -x "/opt/php74/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "7.3" ] && [ -x "/opt/php73/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php73\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "7.2" ] && [ -x "/opt/php72/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php72\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
@@ -1488,22 +1595,24 @@ satellite_o_contrib_seven_update_global() {
           rm -rf ${_D}/${i}/o_contrib_seven/$m
         fi
       done
-      _ADMINER_VRN=4.7.0
+      _ADMINER_VRN=4.7.7
       cd ${_D}/${i}/o_contrib_seven
-      if [ ! -d "${_D}/${i}/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}-mysql.php" ]; then
+      if [ ! -e "${_D}/${i}/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}-mysql.php" ]; then
         rm -rf ${_D}/${i}/o_contrib_seven/adminer
         get_dev_contrib "adminer_bundle-7.x-1.2.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/advagg" ]; then
-        get_dev_contrib "advagg-7.x-2.33.tar.gz"
+        get_dev_contrib "advagg-7.x-2.34.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/autoslave" ]; then
+      if [ ! -e "${_D}/${i}/o_contrib_seven/autoslave/patches/update-pdo-7.22.patch" ]; then
+        rm -rf ${_D}/${i}/o_contrib_seven/autoslave
         get_dev_contrib "autoslave-7.x-1.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/boost" ]; then
         get_dev_contrib "boost-7.x-1.2.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/cache_consistent" ]; then
+      if [ ! -e "${_D}/${i}/o_contrib_seven/cache_consistent/3010585-cache-consistent-php72-2.patch" ]; then
+        rm -rf ${_D}/${i}/o_contrib_seven/cache_consistent
         get_dev_contrib "cache_consistent-7.x-2.x-dev.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/cdn" ]; then
@@ -1531,7 +1640,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "httprl-7.x-1.14.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/js" ]; then
-        get_dev_contrib "js-7.x-2.4.tar.gz"
+        get_dev_contrib "js-7.x-2.5.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/panels_content_cache" ]; then
         get_dev_contrib "panels_content_cache-7.x-1.4.tar.gz"
@@ -1608,6 +1717,9 @@ satellite_o_contrib_eight_update_global() {
     elif [ -e "${_D}/${i}/o_contrib_eight" ] \
       && [ ! -L "${_D}/${i}/o_contrib_eight/redis_eight" ]; then
       _FORCE_UP_EIGHT=YES
+    elif [ -e "${_D}/${i}/o_contrib_eight" ] \
+      && [ ! -L "${_D}/${i}/o_contrib_eight/redis_compr" ]; then
+      _FORCE_UP_EIGHT=YES
     else
       _FORCE_UP_EIGHT=NO
     fi
@@ -1626,6 +1738,10 @@ satellite_o_contrib_eight_update_global() {
         && [ ! -L "${_D}/${i}/o_contrib_eight/redis_eight" ]; then
         ln -sf ${_D}/000/modules/redis_eight ${_D}/${i}/o_contrib_eight/redis_eight
       fi
+      if [ -e "${_D}/000/modules/redis_compr" ] \
+        && [ ! -L "${_D}/${i}/o_contrib_eight/redis_compr" ]; then
+        ln -sf ${_D}/000/modules/redis_compr ${_D}/${i}/o_contrib_eight/redis_compr
+      fi
       find ${_D}/${i}/o_contrib_eight -type d -exec chmod 0755 {} \; &> /dev/null
       find ${_D}/${i}/o_contrib_eight -type f -exec chmod 0644 {} \; &> /dev/null
       touch ${_D}/${i}/o_contrib_eight/update-${_X_VERSION}.info
@@ -1642,16 +1758,24 @@ satellite_download_o_contrib_eight() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_eight modules..."
   fi
-  get_dev_contrib "advagg-8.x-3.5.tar.gz"
-  get_dev_contrib "cdn-8.x-3.2.tar.gz"
-  get_dev_contrib "robotstxt-8.x-1.2.tar.gz"
-  if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_E_VERSION}.info" ]; then
+  get_dev_contrib "advagg-8.x-4.1.tar.gz"
+  get_dev_contrib "cdn-8.x-3.5.tar.gz"
+  get_dev_contrib "robotstxt-8.x-1.4.tar.gz"
+  if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_eight
-    get_dev_contrib "redis_eight-${_REDIS_E_VERSION}.tar.gz"
-    rm -f redis_eight/redis.info
-    echo update > redis_eight/${_REDIS_E_VERSION}.info
+    get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
+    rm -f ${_D}/000/modules/redis_eight/redis.info
+    echo update > ${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.info
+  fi
+  if [ ! -e "${_D}/000/modules/redis_compr/${_REDIS_C_VERSION}.info" ]; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -rf ${_D}/000/modules/redis_compr
+    get_dev_contrib "redis_compr-${_REDIS_C_VERSION}.tar.gz"
+    rm -f ${_D}/000/modules/redis_compr/redis.info
+    echo update > ${_D}/000/modules/redis_compr/${_REDIS_C_VERSION}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1675,7 +1799,7 @@ satellite_download_o_contrib_seven() {
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/edit-textarea.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/edit-textarea.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/version-noverify.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/version-noverify.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/frames.php"
-  get_dev_contrib "advagg-7.x-2.33.tar.gz"
+  get_dev_contrib "advagg-7.x-2.34.tar.gz"
   get_dev_contrib "autoslave-7.x-1.x-dev.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.1.tar.gz"
   get_dev_contrib "boost-7.x-1.2.tar.gz"
@@ -1692,13 +1816,13 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "force_password_change-7.x-2.2.tar.gz"
   get_dev_contrib "fpa-7.x-2.6.tar.gz"
   get_dev_contrib "httprl-7.x-1.14.tar.gz"
-  get_dev_contrib "js-7.x-2.4.tar.gz"
+  get_dev_contrib "js-7.x-2.5.tar.gz"
   get_dev_contrib "login_security-7.x-1.9.tar.gz"
   get_dev_contrib "nocurrent_pass-7.x-1.1.tar.gz"
   get_dev_contrib "panels_content_cache-7.x-1.4.tar.gz"
   get_dev_contrib "print-7.x-2.2.tar.gz"
   get_dev_contrib "readonlymode-7.x-1.2.tar.gz"
-  get_dev_contrib "reroute_email-7.x-1.3.tar.gz"
+  get_dev_contrib "reroute_email-7.x-1.4.tar.gz"
   get_dev_contrib "robotstxt-7.x-1.4.tar.gz"
   get_dev_contrib "securesite-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
@@ -1734,16 +1858,16 @@ satellite_download_o_contrib_seven() {
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis
     get_dev_contrib "redis-mod-26-06-2015.tar.gz"
-    rm -f redis/redis.info
-    echo update > redis/update-${_X_VERSION}.info
+    rm -f ${_D}/000/modules/redis/redis.info
+    echo update > ${_D}/000/modules/redis/update-${_X_VERSION}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_M_VERSION}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_edge
-    get_dev_contrib "redis_edge-${_REDIS_M_VERSION}.tar.gz"
-    rm -f redis_edge/redis.info
-    echo update > redis_edge/${_REDIS_M_VERSION}.info
+    get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
+    rm -f ${_D}/000/modules/redis_edge/redis.info
+    echo update > ${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1822,16 +1946,16 @@ satellite_download_o_contrib_six() {
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis
     get_dev_contrib "redis-mod-26-06-2015.tar.gz"
-    rm -f redis/redis.info
-    echo update > redis/update-${_X_VERSION}.info
+    rm -f ${_D}/000/modules/redis/redis.info
+    echo update > ${_D}/000/modules/redis/update-${_X_VERSION}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_M_VERSION}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_edge
-    get_dev_contrib "redis_edge-${_REDIS_M_VERSION}.tar.gz"
-    rm -f redis_edge/redis.info
-    echo update > redis_edge/${_REDIS_M_VERSION}.info
+    get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
+    rm -f ${_D}/000/modules/redis_edge/redis.info
+    echo update > ${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1882,24 +2006,32 @@ satellite_check_fix_o_contrib() {
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis
     get_dev_contrib "redis-mod-26-06-2015.tar.gz"
-    rm -f redis/redis.info
-    echo update > redis/update-${_X_VERSION}.info
+    rm -f ${_D}/000/modules/redis/redis.info
+    echo update > ${_D}/000/modules/redis/update-${_X_VERSION}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_M_VERSION}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_edge
-    get_dev_contrib "redis_edge-${_REDIS_M_VERSION}.tar.gz"
-    rm -f redis_edge/redis.info
-    echo update > redis_edge/${_REDIS_M_VERSION}.info
+    get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
+    rm -f ${_D}/000/modules/redis_edge/redis.info
+    echo update > ${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_E_VERSION}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_eight
-    get_dev_contrib "redis_eight-${_REDIS_E_VERSION}.tar.gz"
-    rm -f redis_eight/redis.info
-    echo update > redis_eight/${_REDIS_E_VERSION}.info
+    get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
+    rm -f ${_D}/000/modules/redis_eight/redis.info
+    echo update > ${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.info
+  fi
+  if [ ! -e "${_D}/000/modules/redis_compr/${_REDIS_C_VERSION}.info" ]; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -rf ${_D}/000/modules/redis_compr
+    get_dev_contrib "redis_compr-${_REDIS_C_VERSION}.tar.gz"
+    rm -f ${_D}/000/modules/redis_compr/redis.info
+    echo update > ${_D}/000/modules/redis_compr/${_REDIS_C_VERSION}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -2044,6 +2176,12 @@ satellite_prepare_child_scripts() {
 #
 # Generate provision backend db_passwd.
 provision_backend_dbpass_generate() {
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
+    _THIS_DB_PORT=6033
+  else
+    _THIS_DB_PORT=3306
+  fi
   _ESC_PASS=""
   _LEN_PASS=0
   if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
@@ -2071,7 +2209,7 @@ provision_backend_dbpass_generate() {
       if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
         _ESC_PASS="$(openssl rand -base64 32 2>&1)"
       else
-        _ESC_PASS=$(randpass "${_PWD_CHARS}" esc 2>&1)
+        _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
       fi
     else
       if [ -e "/root/.my.pass.txt" ]; then
@@ -2089,7 +2227,7 @@ provision_backend_dbpass_generate() {
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-      _ESC_PASS=$(pwgen -v -s -1 2>&1)
+      _ESC_PASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
       _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
     else
@@ -2102,12 +2240,25 @@ provision_backend_dbpass_generate() {
     _ENC_PASS="${_ESC_PASS}"
   fi
 
-  echo "${_ESC_PASS}" > ${_ROOT}/.${_USER}.pass.txt
-  chown ${_USER}:${_USRG} ${_ROOT}/.${_USER}.pass.txt
-  chmod 0600 ${_ROOT}/.${_USER}.pass.txt
+  _L_SYS="${_ROOT}/.${_USER}.pass.txt"
+  echo "${_ESC_PASS}" > ${_L_SYS}
+  chown ${_USER}:${_USRG} ${_L_SYS}
+  chmod 0600 ${_L_SYS}
+
+  _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
+  echo "<?php" > ${_L_SYS_PHP}
+  echo "\$oct_db_user = \"${_USER}\";" >> ${_L_SYS_PHP}
+  echo "\$oct_db_pass = \"${_ESC_PASS}\";" >> ${_L_SYS_PHP}
+  echo "\$oct_db_host = \"${_THIS_DB_HOST}\";" >> ${_L_SYS_PHP}
+  echo "\$oct_db_port = \"${_THIS_DB_PORT}\";" >> ${_L_SYS_PHP}
+  echo "\$oct_db_dirs = \"/data/disk/${_USER}/backups\";" >> ${_L_SYS_PHP}
+  chown ${_USER}:${_USRG} ${_L_SYS_PHP}
+  chmod 0600 ${_L_SYS_PHP}
 
   _ESC="*.*"
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
+  fi
 
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
     || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -2129,14 +2280,17 @@ provision_backend_dbpass_generate() {
     _USE_AEGIR_HOST=$(uname -n 2>&1)
     _SQL_CONNECT=localhost
   fi
-  _USE_RESOLVEIP=$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
-    | cut -d: -f2 | awk '{ print $1}' 2>&1)
-  if [ -z "${_USE_RESOLVEIP}" ]; then
-    msg "${_STATUS} A: FATAL ERROR: DNS looks broken for ${_USE_AEGIR_HOST}"
-    msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-    touch /opt/tmp/status-AegirSetupA-FAIL
-    exit 1
+  find_correct_ip
+  _USE_RESOLVEIP="${_LOC_IP}"
+
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
+    _THIS_DB_PORT=6033
+    mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  else
+    mysqladmin flush-privileges
   fi
+
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
     || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
     || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
@@ -2179,8 +2333,12 @@ PROXYSQL
       ###
       ###
       mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
+ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     else
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
@@ -2211,33 +2369,57 @@ PROXYSQL
         ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
         ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
         mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
+ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
       fi
     fi
   fi
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
+  fi
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
+    _THIS_DB_PORT=6033
+    mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  else
+    mysqladmin flush-privileges
+  fi
 }
 
 #
 # Sync provision backend db_passwd.
 provision_backend_dbpass_sync() {
+  find_correct_ip
+  _USE_RESOLVEIP="${_LOC_IP}"
+  _RESOLVEIP="${_LOC_IP}"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Syncing provision backend db_passwd..."
   fi
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
+    _THIS_DB_PORT=6033
+  else
+    _THIS_DB_PORT=3306
+  fi
   _L_SYS="${_ROOT}/.${_USER}.pass.txt"
   mv -f ${_L_SYS} ${_L_SYS}-pre-${_X_VERSION}-${_NOW} &> /dev/null
+  _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
+  mv -f ${_L_SYS_PHP} ${_L_SYS_PHP}-pre-${_X_VERSION}-${_NOW} &> /dev/null
   provision_backend_dbpass_generate
-  if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
+  if [ ! -z "${_ESC_PASS}" ] || [ ! -z "${_ENC_PASS}" ]; then
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
       WHERE db_user='${_USER}'\"" &> /dev/null
     _ESC="*.*"
     _USE_DB_USER="${_USER}"
     _USE_AEGIR_HOST="$(uname -n 2>&1)"
-    _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
-      | cut -d: -f2 | awk '{ print $1}' 2>&1)"
+    find_correct_ip
+    _USE_RESOLVEIP="${_LOC_IP}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL16 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
       _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
@@ -2262,15 +2444,30 @@ PROXYSQL
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
     mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
+ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     sed -i \
       "s/mysql:\/\/${_USER}:.*/mysql:\/\/${_USER}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
       ${_ROOT}/.drush/server_*.alias.drushrc.php &> /dev/null
     wait
+  else
+    msg "CRIT: _ESC_PASS empty or not generated"
   fi
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
+  fi
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
+    _THIS_DB_PORT=6033
+    mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  else
+    mysqladmin flush-privileges
+  fi
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush" &> /dev/null
   rm -rf ${_ROOT}/.tmp/cache
   if [ -e "${_ROOT}/.drush/server_localhost.alias.drushrc.php" ]; then
@@ -2281,19 +2478,7 @@ EOFMYSQL
       hosting-task @server_master verify --force" &> /dev/null
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "${_STATUS} A: Running hosting-dispatch (1/3)..."
-  fi
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} '@hostmaster' \
-    hosting-dispatch" &> /dev/null
-  mrun "sleep 5"
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "${_STATUS} A: Running hosting-dispatch (2/3)..."
-  fi
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} '@hostmaster' \
-    hosting-dispatch" &> /dev/null
-  mrun "sleep 5"
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "${_STATUS} A: Running hosting-dispatch (3/3)..."
+    msg "${_STATUS} A: Running hosting-dispatch..."
   fi
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} '@hostmaster' \
     hosting-dispatch" &> /dev/null
@@ -2304,6 +2489,12 @@ EOFMYSQL
 hostmaster_frontend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Syncing hostmaster frontend db_passwd..."
+  fi
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
+    _THIS_DB_PORT=6033
+  else
+    _THIS_DB_PORT=3306
   fi
   _THIS_HM_SPTH=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
     | grep "site_path'" \
@@ -2326,8 +2517,8 @@ hostmaster_frontend_dbpass_sync() {
     _ESC="*.*"
     _USE_DB_USER="${_THIS_HM_DBUR}"
     _USE_AEGIR_HOST="$(uname -n 2>&1)"
-    _USE_RESOLVEIP="$(echo $(getent ahostsv4 ${_USE_AEGIR_HOST}) \
-      | cut -d: -f2 | awk '{ print $1}' 2>&1)"
+    find_correct_ip
+    _USE_RESOLVEIP="${_LOC_IP}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL17 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
     if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
       _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
@@ -2352,16 +2543,47 @@ PROXYSQL
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
     mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
+CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
+ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
+ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
 EOFMYSQL
   fi
-  mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+    mkdir -p /etc/mysql/mariadb.conf.d/
+  fi
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
+    _THIS_DB_PORT=6033
+    mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+  else
+    mysqladmin flush-privileges
+  fi
 }
 
 satellite_run_pre_install() {
+  find_correct_ip
+  _USE_RESOLVEIP="${_LOC_IP}"
+  _RESOLVEIP="${_LOC_IP}"
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _SQL_CONNECT=127.0.0.1
+    _THIS_DB_PORT=6033
+  else
+    _THIS_DB_PORT=3306
+  fi
   if [ "${_STATUS}" = "INIT" ]; then
-    mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+    if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+      mkdir -p /etc/mysql/mariadb.conf.d/
+    fi
+    if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+      _SQL_CONNECT=127.0.0.1
+      _THIS_DB_PORT=6033
+      mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+    else
+      mysqladmin flush-hosts
+    fi
     provision_backend_dbpass_generate
     echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
@@ -2382,7 +2604,16 @@ satellite_run_pre_install() {
         chmod 0440 /etc/sudoers.d/${SCRIPT}
       fi
     done
-    mysqladmin -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+    if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
+      mkdir -p /etc/mysql/mariadb.conf.d/
+    fi
+    if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+      _SQL_CONNECT=127.0.0.1
+      _THIS_DB_PORT=6033
+      mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+    else
+      mysqladmin flush-hosts
+    fi
     _RST=$(syncpass fix ${_USER} 2>&1)
     provision_backend_dbpass_sync
   fi
@@ -2406,9 +2637,9 @@ satellite_download_for_local_build() {
     mv -f ${mL}/drupal-${_SMALLCORE7} ${mL}/drupal
     ### Aegir Core
     if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
-      ${gCb} feature/3.0.x-profile ${gitHub}/hostmaster.git    &> /dev/null
-      ${gCb} feature/3.0.x-hosting ${gitHub}/hosting.git       &> /dev/null
-      ${gCb} feature/3.0.x-eldir ${gitHub}/eldir.git           &> /dev/null
+      ${gCb} feature/3.1.x-profile ${gitHub}/hostmaster.git    &> /dev/null
+      ${gCb} feature/3.1.x-hosting ${gitHub}/hosting.git       &> /dev/null
+      ${gCb} feature/3.1.x-eldir ${gitHub}/eldir.git           &> /dev/null
     else
       get_dev_ext "hostmaster.tar.gz"
       get_dev_ext "hosting.tar.gz"
@@ -2450,15 +2681,15 @@ satellite_download_for_local_build() {
     get_dev_stc "tfa_basic-7.x-1.1.tar.gz"
     get_dev_stc "tfa-7.x-2.0.tar.gz"
     get_dev_stc "timeago-7.x-2.3.tar.gz"
-    get_dev_stc "views_bulk_operations-7.x-3.5.tar.gz"
-    get_dev_stc "views-7.x-3.22.tar.gz"
+    get_dev_stc "views_bulk_operations-7.x-3.6.tar.gz"
+    get_dev_stc "views-7.x-3.24.tar.gz"
     ### BOA Drupal Contrib
     get_dev_stc "features_extra-7.x-1.0.tar.gz"
     get_dev_stc "features-7.x-2.11.tar.gz"
     get_dev_stc "idna_convert-7.x-1.0.tar.gz"
-    get_dev_stc "revision_deletion-7.x-1.x-dev.tar.gz"
+    get_dev_stc "revision_deletion-7.x-1.3.tar.gz"
     get_dev_stc "strongarm-7.x-2.0.tar.gz"
-    get_dev_stc "userprotect-7.x-1.2.tar.gz"
+    get_dev_stc "userprotect-7.x-1.3.tar.gz"
   fi
   find ${mL} -type d -exec chmod 0755 {} \; &> /dev/null
   find ${mL} -type f -exec chmod 0644 {} \; &> /dev/null
@@ -2468,6 +2699,8 @@ satellite_download_for_local_build() {
 #
 # Run child B.
 satellite_run_child_b() {
+  find_correct_ip
+  _USE_RESOLVEIP="${_LOC_IP}"
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} A: Switching user and running AegirSetupB..."
@@ -2509,9 +2742,6 @@ satellite_run_child_b() {
         msg "${_STATUS} A: Switching user and running AegirSetupB..."
       fi
       rm -f /opt/tmp/testecho*
-      if [ ! -e "/root/.upstart.cnf" ]; then
-        service cron stop &> /dev/null
-      fi
       _THIS_HM_ROOT=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
         | grep "root'" \
         | cut -d: -f2 \
@@ -2670,9 +2900,6 @@ satellite_run_child_c() {
       if prompt_yes_no "Do you want to install some ready to use platforms?"; then
         true
         _DIST_INSTALL=YES
-        if [ ! -e "/root/.upstart.cnf" ]; then
-          service cron stop &> /dev/null
-        fi
         rm -f /opt/tmp/testecho*
         satellite_create_shared_dirs
         satellite_manage_o_contrib
@@ -2779,7 +3006,7 @@ satellite_if_add_ftps_lshell_access() {
         _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
       fi
       if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ]; then
-        _ESC_LUPASS=$(pwgen -v -s -1 2>&1)
+        _ESC_LUPASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
         _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
         _ESC_LUPASS=$(sanitize_string "${_ESC_LUPASS}" 2>&1)
       fi
@@ -2791,7 +3018,7 @@ satellite_if_add_ftps_lshell_access() {
       usermod -p $ph ${_USERFTP} &> /dev/null
       passwd -w 7 -x 90 ${_USERFTP} &> /dev/null
     fi
-    usermod -aG lshellg ${_USERFTP} &> /dev/null
+    usermod -aG lshellg ${_USERFTP}
     chsh -s ${_PATH_LSHELL} ${_USERFTP} &> /dev/null
     echo >> /etc/lshell.conf
     echo "[${_USERFTP}]" >> /etc/lshell.conf
@@ -2799,6 +3026,25 @@ satellite_if_add_ftps_lshell_access() {
       '${_ROOT}/backups', '${_ROOT}/clients']" \
       | fmt -su -w 2500 >> /etc/lshell.conf
   fi
+}
+
+satellite_if_add_to_rvm_group() {
+  ###---### Add to rvm group if needed.
+  #
+  _USERFTP="${_USER}.ftp"
+  _ID_SHELLS=$(id -nG ${_USERFTP} 2>&1)
+  if [[ ! "${_ID_SHELLS}" =~ "rvm" ]]; then
+    isRvm=$(which rvm 2>&1)
+    if [ -x "${isRvm}" ]; then
+      rvmPth="${isRvm}"
+    elif [ -x "/usr/local/rvm/bin/rvm" ]; then
+      rvmPth="/usr/local/rvm/bin/rvm"
+    fi
+    if [ -x "${rvmPth}" ]; then
+      usermod -aG rvm ${_USERFTP}
+    fi
+  fi
+  _ID_SHELLS=""
 }
 
 satellite_if_add_update_user_symlinks() {
@@ -3029,7 +3275,7 @@ satellite_if_read_create_pass_txt() {
         _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
       fi
       if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ]; then
-        _ESC_LUPASS=$(pwgen -v -s -1 2>&1)
+        _ESC_LUPASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
         _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
         _ESC_LUPASS=$(sanitize_string "${_ESC_LUPASS}" 2>&1)
       fi
@@ -3300,10 +3546,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7}/sites" ]; then
-      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7}" ]; then
-        _A="${_QR}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7}/sites"
-        _B="${_QH}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7}"
+    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7}/sites" ]; then
+      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7}" ]; then
+        _A="${_QR}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7}/sites"
+        _B="${_QH}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7}"
         ln -sf ${_A} ${_B}
       fi
     fi
@@ -3363,10 +3609,17 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/social-${_SOCIAL}-8.6.15/html/sites" ]; then
-      if [ ! -L "${_QH}/social-${_SOCIAL}-8.6.15" ]; then
-        _A="${_QR}/social-${_SOCIAL}-8.6.15/html/sites"
-        _B="${_QH}/social-${_SOCIAL}-8.6.15"
+    if [ -d "${_QR}/social-${_SOCIAL}-${_SOCIAL_CORE}/html/sites" ]; then
+      if [ ! -L "${_QH}/social-${_SOCIAL}-${_SOCIAL_CORE}" ]; then
+        _A="${_QR}/social-${_SOCIAL}-${_SOCIAL_CORE}/html/sites"
+        _B="${_QH}/social-${_SOCIAL}-${_SOCIAL_CORE}"
+        ln -sf ${_A} ${_B}
+      fi
+    fi
+    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS8}-${_SMALLCORE8}/web/sites" ]; then
+      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS8}-${_SMALLCORE8}" ]; then
+        _A="${_QR}/opigno_lms-${_OPIGNOLMS8}-${_SMALLCORE8}/web/sites"
+        _B="${_QH}/opigno_lms-${_OPIGNOLMS8}-${_SMALLCORE8}"
         ln -sf ${_A} ${_B}
       fi
     fi
@@ -3547,7 +3800,7 @@ satellite_send_welcome_email() {
         msg "${_STATUS} A: Resending setup email on upgrade..."
       fi
       TIME=$(date 2>&1)
-      _Q="[${_X_VERSION}] Drupal 8, PHP 7.3, Solr 7 and Let’s Encrypt [${_USER}]"
+      _Q="[${_X_VERSION}] Super fast site cloning and migration [${_USER}]"
       echo ${TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
       if [ -e "${_ROOT}/log/upgrademail.txt" ]; then
         if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
@@ -3590,7 +3843,7 @@ satellite_send_welcome_email() {
 # Satellite start.
 satellite_make() {
   export _THIS_OS=$(lsb_release -si 2>&1)
-  export _OSV=$(lsb_release -sc 2>&1)
+  export _OSR=$(lsb_release -sc 2>&1)
   if [ -d "/data/all/000" ]; then
     if [ ! -e "/data/all/000/core-v-${_SMALLCORE6}.txt" ] \
       || [ ! -e "/data/all/000/core-v-${_SMALLCORE7}.txt" ]; then
@@ -3661,8 +3914,9 @@ satellite_make() {
   echo "_OPENPUBLIC=\"${_OPENPUBLIC}\""               >> ${writeTo}
   echo "_OPENPUBLISH=\"${_OPENPUBLISH}\""             >> ${writeTo}
   echo "_OPENSCHOLAR=\"${_OPENSCHOLAR}\""             >> ${writeTo}
-  echo "_OPIGNOLMS=\"${_OPIGNOLMS}\""                 >> ${writeTo}
-  echo "_OSV=\"${_OSV}\""                             >> ${writeTo}
+  echo "_OPIGNOLMS7=\"${_OPIGNOLMS7}\""               >> ${writeTo}
+  echo "_OPIGNOLMS8=\"${_OPIGNOLMS8}\""               >> ${writeTo}
+  echo "_OSR=\"${_OSR}\""                             >> ${writeTo}
   echo "_PANOPOLY=\"${_PANOPOLY}\""                   >> ${writeTo}
   echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${writeTo}
   echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${writeTo}
@@ -3671,8 +3925,9 @@ satellite_make() {
   echo "_PURGE_FOR_SEVEN=\"${_PURGE_FOR_SEVEN}\""     >> ${writeTo}
   echo "_PURGE_MODE=\"${_PURGE_MODE}\""               >> ${writeTo}
   echo "_RECRUITER=\"${_RECRUITER}\""                 >> ${writeTo}
-  echo "_REDIS_E_VERSION=\"${_REDIS_E_VERSION}\""     >> ${writeTo}
-  echo "_REDIS_M_VERSION=\"${_REDIS_M_VERSION}\""     >> ${writeTo}
+  echo "_REDIS_C_VERSION=\"${_REDIS_C_VERSION}\""     >> ${writeTo}
+  echo "_REDIS_N_VERSION=\"${_REDIS_N_VERSION}\""     >> ${writeTo}
+  echo "_REDIS_L_VERSION=\"${_REDIS_L_VERSION}\""     >> ${writeTo}
   echo "_RESTAURANT=\"${_RESTAURANT}\""               >> ${writeTo}
   echo "_THUNDER=\"${_THUNDER}\""                     >> ${writeTo}
   echo "_SERIES_RESULT=\"${_SERIES_RESULT}\""         >> ${writeTo}
@@ -3695,6 +3950,7 @@ satellite_make() {
   echo "_USRG=\"${_USRG}\""                           >> ${writeTo}
   echo "_VARBASE=\"${_VARBASE}\""                     >> ${writeTo}
   echo "_SOCIAL=\"${_SOCIAL}\""                       >> ${writeTo}
+  echo "_SOCIAL_CORE=\"${_SOCIAL_CORE}\""             >> ${writeTo}
   echo "_WEBG=\"${_WEBG}\""                           >> ${writeTo}
   echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${writeTo}
 
@@ -3765,7 +4021,6 @@ satellite_make() {
   if [ ! -e "${_ROOT}/static/control" ]; then
     mkdir -p ${_ROOT}/static/control
     chmod 755 ${_ROOT}/static/control
-    chown -R ${_USER}.ftp:${_USRG} ${_ROOT}/static/control
   fi
   if [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
     echo ${_PHP_FPM_VERSION} > ${_ROOT}/static/control/fpm.info
@@ -3778,20 +4033,18 @@ satellite_make() {
     fi
   fi
 
-  _X_SE="401prodQ1"
+  _X_SE="412prodQ1"
   if [ ! -e "${_ROOT}/static/control/.ctrl.${_X_SE}.pid" ] \
     && [ -e "/home/${_USER}.ftp/users" ]; then
-    mkdir -p ${_ROOT}/static/control
-    chmod 755 ${_ROOT}/static/control
     if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
       cp -af /var/xdrago/conf/control-readme.txt \
         ${_ROOT}/static/control/README.txt &> /dev/null
       chmod 0644 ${_ROOT}/static/control/README.txt
     fi
-    chown -R ${_USER}.ftp:${_USRG} ${_ROOT}/static/control
     rm -f ${_ROOT}/static/control/.ctrl.*
     echo OK > ${_ROOT}/static/control/.ctrl.${_X_SE}.pid
   fi
+  chown -R ${_USER}.ftp:${_USRG} ${_ROOT}/static/control
 
   if [ -d "/data/all/000" ]; then
     if [ ! -e "/data/all/000/core-v-${_SMALLCORE6}.txt" ] \
@@ -3900,6 +4153,7 @@ satellite_if_running_as_root_octopus() {
 satellite_check_sanitize_user_name() {
   _USER=${_USER//[^a-zA-Z0-9-.]/}
   _USER=$(echo -n ${_USER} | tr A-Z a-z 2>&1)
+  _WEB="${_USER}.web"
   _ROOT="/data/disk/${_USER}"
   if [ -d "${_ROOT}" ]; then
     _STATUS=UPGRADE
@@ -3936,13 +4190,7 @@ satellite_check_sanitize_domain_name() {
 
 satellite_detect_vm_family() {
   _VM_TEST=$(uname -a 2>&1)
-  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+  if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   else
     _VMFAMILY="XEN"
@@ -3970,7 +4218,8 @@ satellite_check_php_compatibility() {
     _T_FPM_VRN=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
     _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
     _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-    if [ "${_T_FPM_VRN}" = "7.3" ] \
+    if [ "${_T_FPM_VRN}" = "7.4" ] \
+      || [ "${_T_FPM_VRN}" = "7.3" ] \
       || [ "${_T_FPM_VRN}" = "7.2" ] \
       || [ "${_T_FPM_VRN}" = "7.1" ] \
       || [ "${_T_FPM_VRN}" = "7.0" ] \
@@ -3986,7 +4235,8 @@ satellite_check_php_compatibility() {
     _T_CLI_VRN=$(cat ${_ROOT}/static/control/cli.info 2>&1)
     _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
     _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-    if [ "${_T_CLI_VRN}" = "7.3" ] \
+    if [ "${_T_CLI_VRN}" = "7.4" ] \
+      || [ "${_T_CLI_VRN}" = "7.3" ] \
       || [ "${_T_CLI_VRN}" = "7.2" ] \
       || [ "${_T_CLI_VRN}" = "7.1" ] \
       || [ "${_T_CLI_VRN}" = "7.0" ] \
@@ -4025,7 +4275,7 @@ satellite_check_octopus_versus_barracuda_version() {
   else
     _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
-      || [[ "${_VERSIONS_TEST}" =~ "BOA-4.0.1" ]]; then
+      || [[ "${_VERSIONS_TEST}" =~ "BOA-4.1.2" ]]; then
       _VERSIONS_TEST_RESULT=OK
     else
       msg "ERROR: This octopus installer can be used only when the same version"
@@ -4198,6 +4448,21 @@ satellite_if_init_or_upgrade() {
 
 satellite_if_major_upgrade() {
   if [ "${_CLIENT_OPTION}" = "POWER" ] \
+    && [ -e "${_ROOT}/log/octopus_log.txt" ]; then
+    _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
+    if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
+      || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
+      _IT_IS_OK=YES
+    else
+      if [ ! -e "${_ROOT}/log/satellite_major_upgrade_ok.txt" ]; then
+        msg "ERROR: Major version upgrade requires control file:"
+        msg "${_ROOT}/log/satellite_major_upgrade_ok.txt"
+        msg "Bye"
+        clean_pid_exit
+      fi
+    fi
+  fi
+  if [ "${_CLIENT_OPTION}" = "CLUSTER" ] \
     && [ -e "${_ROOT}/log/octopus_log.txt" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
     if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
@@ -4388,7 +4653,7 @@ satellite_letsencrypt_vhost_setup() {
   leKeyJ="${leRoot}/tools/le/private_key.json"
   leKeyP="${leRoot}/tools/le/private_key.pem"
   leCrtPath="${leRoot}/certs/${_DOMAIN}"
-  exeLe="${leRoot}/letsencrypt.sh"
+  exeLe="${leRoot}/dehydrated"
   Ssl="/var/aegir/config/server_master/nginx/pre.d/z_${_DOMAIN}_ssl_proxy.conf"
   if [ -e "${leRoot}/.ctrl/ssl-demo-mode.pid" ] \
     && [ -e "${leRoot}/config.sh" ]; then
@@ -4475,7 +4740,7 @@ satellite_log_update() {
     echo ${_F_TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
   fi
   _OCTOPUS_VERSION_INFO="${_F_TIME} / \
-    ${_THIS_OS}.${_OSV} $(uname -m 2>&1) \
+    ${_THIS_OS}.${_OSR} $(uname -m 2>&1) \
     / Aegir ${_AEGIR_VERSION} / Octopus ${_X_VERSION} \
     / FPM ${_PHP_FPM_VERSION} / CLI ${_PHP_CLI_VERSION}"
   echo "${_OCTOPUS_VERSION_INFO}" | fmt -su -w 2500 >> \
@@ -4582,7 +4847,7 @@ satellite_display_url_finalize() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _DO_NOTHING=YES
     else
-      _AEGIR_LOGIN_URL=$(grep --text "^http://${_DOMAIN}" ${_ROOT}/log/install.log 2>&1)
+      _AEGIR_LOGIN_URL=$(tail --lines=11 ${_ROOT}/log/install.log | grep --text "^http:" 2>&1)
       if [ ! -z "${_AEGIR_LOGIN_URL}" ]; then
         echo " "
         msg "INFO: Congratulations, Aegir have been installed successfully!"
@@ -4820,7 +5085,6 @@ satellite_child_b_aegir_build() {
     cd ${_ROOT}
     _AGRPXSWD=$(cat ${_ROOT}/.${_USER}.pass.txt 2>&1)
     _AGRPASWD=$(echo -n ${_AGRPXSWD} | tr -d "\n" 2>&1)
-
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
@@ -4844,6 +5108,15 @@ satellite_child_b_aegir_build() {
       _USE_AEGIR_HOST=$(uname -n 2>&1)
       _THIS_DB_HOST=$(uname -n 2>&1)
     fi
+    _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
+    echo "<?php" > ${_L_SYS_PHP}
+    echo "\$oct_db_user = \"${_USER}\";" >> ${_L_SYS_PHP}
+    echo "\$oct_db_pass = \"${_AGRPASWD}\";" >> ${_L_SYS_PHP}
+    echo "\$oct_db_port = \"${_THIS_DB_PORT}\";" >> ${_L_SYS_PHP}
+    echo "\$oct_db_host = \"${_THIS_DB_HOST}\";" >> ${_L_SYS_PHP}
+    echo "\$oct_db_dirs = \"/data/disk/${_USER}/backups\";" >> ${_L_SYS_PHP}
+    chown ${_USER}:${_USRG} ${_L_SYS_PHP}
+    chmod 0600 ${_L_SYS_PHP}
 
     msg "${_STATUS} B: Running hostmaster-install, please wait..."
     ${_DRUSHCMD} cc drush >${_ROOT}/log/install.log 2>&1
@@ -4890,17 +5163,7 @@ satellite_child_b_aegir_build() {
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "${_STATUS} B: Running hosting-dispatch (1/3)..."
-    fi
-    ${_DRUSHCMD} '@hostmaster' hosting-dispatch &> /dev/null
-    sleep 5
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "${_STATUS} B: Running hosting-dispatch (2/3)..."
-    fi
-    ${_DRUSHCMD} '@hostmaster' hosting-dispatch &> /dev/null
-    sleep 5
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "${_STATUS} B: Running hosting-dispatch (3/3)..."
+      msg "${_STATUS} B: Running hosting-dispatch..."
     fi
     ${_DRUSHCMD} '@hostmaster' hosting-dispatch &> /dev/null
   else
@@ -5009,7 +5272,7 @@ satellite_child_b_aegir_build() {
     #
     if [ -e "${_PREV_HM_ROOT}/${pthA}/${pthB}" ]; then
       msg "${_STATUS} B: Fixing broken Entity module..."
-      rm -f -r ${_PREV_HM_ROOT}/${pthA}
+      rm -rf ${_PREV_HM_ROOT}/${pthA}
       cd ${_PREV_HM_ROOT}/profiles/hostmaster/modules/contrib
       get_dev_stc "entity-7.x-1.9.tar.gz"
       ${_DRUSHCMD} @hostmaster en entity -y
@@ -5017,6 +5280,7 @@ satellite_child_b_aegir_build() {
       ${_DRUSHCMD} @hostmaster sqlq "INSERT INTO hosting_service (nid, vid, service, type, restart_cmd, port, available) VALUES ('2', '2', 'http', 'nginx_ssl', 'sudo /etc/init.d/nginx reload', '80', '1')"
       ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force
       ${_DRUSHCMD} @hostmaster hosting-dispatch
+      msg "${_STATUS} B: Waiting 15 seconds..."
       sleep 15
     fi
 
@@ -5051,6 +5315,9 @@ satellite_child_b_aegir_build() {
     rm -rf ${_ROOT}/.tmp/cache
 
     ${_DRUSHCMD} @hostmaster sqlc < ${bldPth}/aegir/helpers/hosting_cron.sql &> /dev/null
+    ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task_log \
+      WHERE timestamp < UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 6 MONTH))" &> /dev/null
+    ${_DRUSHCMD} @hostmaster sqlq "OPTIMIZE TABLE hosting_task_log" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
       WHERE task_type='delete' AND task_status='-1'" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_task \
@@ -5256,12 +5523,12 @@ satellite_child_b_letsencrypt() {
   leKeyJ="${leRoot}/tools/le/private_key.json"
   leKeyP="${leRoot}/tools/le/private_key.pem"
   leCrtPath="${leRoot}/certs/${_DOMAIN}"
-  exeLe="${leRoot}/letsencrypt.sh"
-  pthLe="${_ROOT}/backups/system/letsencrypt.sh"
+  exeLe="${leRoot}/dehydrated"
+  pthLe="${_ROOT}/backups/system/dehydrated"
   mkdir -p ${_ROOT}/backups/system
   chmod 700 ${_ROOT}/backups/system
   rm -f ${_ROOT}/backups/system/letsencrypt*
-  curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/letsencrypt.sh" -o ${pthLe}
+  curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/dehydrated" -o ${pthLe}
   if [ ! -e "${leRoot}" ]; then
     leSetup="YES"
   fi
@@ -5280,7 +5547,7 @@ satellite_child_b_letsencrypt() {
         || [ "${leSetup}" = "YES" ] \
         || [ -e "${leRoot}/.ctrl/ssl-demo-mode.pid" ]; then
         touch ${leRoot}/.ctrl/ssl-demo-mode.pid
-        echo -e 'CA="https://acme-staging.api.letsencrypt.org/directory"\n' > ${leRoot}/config.sh
+        echo -e 'CA="https://acme-staging-v02.api.letsencrypt.org/directory"\n' > ${leRoot}/config.sh
         cp -af ${leRoot}/config.sh ${leRoot}/config
         if [ -e "${leKeyJ}" ]; then
           mv -f ${leKeyJ} "${leKeyJ}-prev"
@@ -5325,10 +5592,12 @@ satellite_child_b_letsencrypt() {
       msg "${_STATUS} B: Creating Letsencrypt cert for Hostmaster..."
     fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
+      bash ${exeLe} --register --accept-terms
       bash ${exeLe} -c -d ${_DOMAIN}
     else
       mkdir -p ${_ROOT}/log
-      bash ${exeLe} -c -d ${_DOMAIN} >${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
+      bash ${exeLe} --register --accept-terms >${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
+      bash ${exeLe} -c -d ${_DOMAIN} >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
     fi
   else
     if [ -e "${leCrtPath}/fullchain.pem" ]; then
@@ -5344,13 +5613,7 @@ satellite_child_b_aegir_ui_enhance() {
   cd ${_HM_ROOT}/sites/${_DOMAIN}
   if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
     _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-      || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+    if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _VMFAMILY="VS"
     else
       _VMFAMILY="XEN"
@@ -5358,12 +5621,17 @@ satellite_child_b_aegir_ui_enhance() {
     cd ${_HM_ROOT}/sites/${_DOMAIN}
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache
+    ${_DRUSHCMD} @hostmaster en aegir_objects -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en fix_ownership -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en fix_permissions -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_civicrm -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_civicrm_cron -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_client -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_cron -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_deploy -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_platform_composer -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_platform_composer_git -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_platform_git -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_site_backup_manager -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_tasks_extra -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en libraries -y &> /dev/null
@@ -5397,9 +5665,11 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_ignore_default_profiles 0 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_queue_tasks_frequency 5 &> /dev/null
+      hosting_queue_tasks_frequency 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_queue_tasks_items 2 &> /dev/null
+      hosting_queue_tasks_items 1 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${vSet} \
+      hosting_delete_force 0 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
       hosting_alias_automatic_no_www 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
@@ -5418,6 +5688,24 @@ satellite_child_b_aegir_ui_enhance() {
       WHERE link_path='hosting/platforms'" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \
       WHERE link_path='hosting/sites'" &> /dev/null
+
+    ${_DRUSHCMD} @hostmaster vdel -y --exact hosting_task_logs_types_display &> /dev/null
+
+    ${_DRUSHCMD} @hostmaster ev 'variable_set("hosting_task_logs_types_display", array(
+      "error" => "error",
+      "info" => "info",
+      "message" => "message",
+      "notice" => "notice",
+      "ok" => "ok",
+      "status" => "status",
+      "success" => "success",
+      "warning" => "warning",
+      "backup" => "backup",
+      "bootstrap" => "bootstrap",
+      "command" => "command",
+      "debug" => "none",
+      "debugnotify" => "none",
+      "queue" => "queue"))'
 
     if [ "${_LOCAL_STATUS}" = "INIT" ]; then
       pBy="Octopus System powered by Barracuda"
@@ -5447,7 +5735,21 @@ satellite_child_b_aegir_ui_enhance() {
       fi
       rm -f make_client.php
     else
-      if [ "${_VMFAMILY}" = "VS" ]; then
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
+        SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%'"
+      _THIS_HM_PLR=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
+          | grep "root'" \
+          | cut -d: -f2 \
+          | awk '{ print $3}' \
+          | sed "s/[\,']//g" 2>&1)
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
+        SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'"
+      _CHECK_HOST=$(uname -n 2>&1)
+      if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        || [ "${_VMFAMILY}" = "VS" ] \
+        || [ -e "/root/.host8.cnf" ] \
+        || [ "${_AUTO_UP}" = "YES" ]; then
         pBy="Octopus System powered by Barracuda"
         ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}" &> /dev/null
         cp -af /opt/tmp/boa/aegir/helpers/make_home.php.txt ./
@@ -5532,15 +5834,15 @@ satellite_child_b_vhosts_hotfix() {
   rPth="${_ROOT}/config/server"
   sed -i "s/.*listen .*127.0.0.1:80;.*//g"             ${rPth}_*/nginx.conf
   wait
-  sed -i "s/listen .*:80;/listen        \*:80;/g"      ${rPth}_*/nginx.conf
+  sed -i "s/listen .*\*:80;/listen        \*:80;/g"      ${rPth}_*/nginx.conf
   wait
-  if [ -e "${_ROOT}/log/use_proxysql.txt" ]; then
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     sed -i "s/param db_port.*/param db_port   6033;/g" ${rPth}_*/nginx/vhost.d/*
   else
     sed -i "s/param db_port.*/param db_port   3306;/g" ${rPth}_*/nginx/vhost.d/*
   fi
   wait
-  sed -i "s/listen .*:80;/listen        \*:80;/g"      ${rPth}_*/nginx/vhost.d/*
+  sed -i "s/listen .*\*:80;/listen        \*:80;/g"      ${rPth}_*/nginx/vhost.d/*
   wait
 }
 

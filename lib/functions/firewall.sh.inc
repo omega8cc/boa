@@ -65,7 +65,7 @@ csf_install() {
   _IPSET_TEST=$(which ipset 2> /dev/null)
   if [ ! -x "${_IPSET_TEST}" ]; then
     apt-get clean -qq &> /dev/null
-    rm -f -r /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/*
     apt-get update -qq &> /dev/null
     apt-get install ipset ${forCer} &> /dev/null
   fi
@@ -115,6 +115,8 @@ csf_install() {
     sed -i "s/TCP_IN = \"20,21,22,/TCP_IN = \"20,21,${_SSH_PORT},/g" \
       /etc/csf/csf.conf &> /dev/null
     wait
+    sed -i "s/^CC_SRC .*/CC_SRC = \"2\"/g" /etc/csf/csf.conf &> /dev/null
+    wait
     chmod 600 /etc/csf/csf.conf &> /dev/null
     if [ -e "/etc/ssh/sshd_config" ]; then
       sed -i "s/^Port.*/Port ${_SSH_PORT}/g"  /etc/ssh/sshd_config
@@ -146,7 +148,7 @@ install_upgrade_csf_lfd() {
   _IPSET_TEST=$(which ipset 2> /dev/null)
   if [ ! -x "${_IPSET_TEST}" ]; then
     apt-get clean -qq &> /dev/null
-    rm -f -r /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/*
     apt-get update -qq &> /dev/null
     apt-get install ipset ${forCer} &> /dev/null
   fi
@@ -233,8 +235,20 @@ install_upgrade_csf_lfd() {
         mrun "csf -x" &> /dev/null
         mrun "csf -e" &> /dev/null
         mrun "csf -q" &> /dev/null
-        sleep 3
+        sleep 8
         service lfd start &> /dev/null
+        ### Linux kernel TCP SACK CVEs mitigation
+        ### CVE-2019-11477 SACK Panic
+        ### CVE-2019-11478 SACK Slowness
+        ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
+        if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+          _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+          if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
+            sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
+            iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+            ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+          fi
+        fi
       fi
     fi
   fi

@@ -5,7 +5,7 @@
 ###
 ###  Barracuda-Octopus-Nginx-Drupal Tuner
 ###
-###  Copyright (C) 2010-2019 Omega8.cc
+###  Copyright (C) 2010-2020 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -136,12 +136,12 @@ _TUNE_PHP_CLI_TIMEOUT=9999
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_AEGIR_VERSION="BOA-4.0.1"
+_AEGIR_VERSION="BOA-4.1.2"
 _BRANCH_BOA="4.x"
-_X_VERSION="BOA-4.0.1"
-_MYSQLTUNER_VRN=1.7.15
+_X_VERSION="BOA-4.1.2"
+_MYSQLTUNER_VRN=1.7.19
 
-_NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
 _THISHOST=$(uname -n 2>&1)
@@ -156,11 +156,13 @@ _PHP56_VRN=5.6.40
 _PHP70_API=20151012
 _PHP70_VRN=7.0.33
 _PHP71_API=20160303
-_PHP71_VRN=7.1.29
+_PHP71_VRN=7.1.33
 _PHP72_API=20170718
-_PHP72_VRN=7.2.18
+_PHP72_VRN=7.2.33
 _PHP73_API=20180731
-_PHP73_VRN=7.3.5
+_PHP73_VRN=7.3.21
+_PHP74_API=20190902
+_PHP74_VRN=7.4.9
 
 ###
 ### Helper variables
@@ -233,31 +235,15 @@ mrun() {
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-    rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
     apt-get update -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
-  ffMirr=$(which ffmirror 2>&1)
-  if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors.txt"
-    mkdir -p /var/backups
-    if [ ! -e "${ffList}" ]; then
-      echo "jp.files.aegir.cc"  > ${ffList}
-      echo "nl.files.aegir.cc" >> ${ffList}
-      echo "uk.files.aegir.cc" >> ${ffList}
-      echo "us.files.aegir.cc" >> ${ffList}
-    fi
-    if [ -e "${ffList}" ]; then
-      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
-      _USE_MIR="${_CHECK_MIRROR}"
-      [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
-    else
-      _USE_MIR="files.aegir.cc"
-    fi
-  else
-    _USE_MIR="files.aegir.cc"
-  fi
+  _USE_MIR="files.aegir.cc"
   if ! netcat -w 10 -z "${_USE_MIR}" 80; then
     echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
     _USE_MIR="104.245.208.226"
@@ -274,11 +260,6 @@ find_correct_ip() {
   if [ -z "${_LOC_IP}" ]; then
     _LOC_IP=$(curl ${crlGet} http://ip4.icanhazip.com \
       | sed 's/[^0-9\.]//g' 2>&1)
-  fi
-  if [ -z "${_LOC_IP}" ]; then
-    _LOC_IP=$(echo $(getent ahostsv4 $_LOC_DOM) \
-      | cut -d: -f2 \
-      | awk '{ print $1}' 2>&1)
   fi
 }
 #
@@ -394,7 +375,7 @@ fix_php_ini_newrelic_all() {
       _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
       _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
     fi
-    _PHP_V="73 72 71 70 56"
+    _PHP_V="74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       fix_php_ini_newrelic
@@ -416,7 +397,7 @@ fix_php_ini_opcache() {
       echo "zend_extension=\"$_OPCACHE_SO\""      >> ${_THIS_FILE}
       echo "opcache.enable=1"                     >> ${_THIS_FILE}
       echo "opcache.memory_consumption=181"       >> ${_THIS_FILE}
-      echo "opcache.revalidate_freq=0"            >> ${_THIS_FILE}
+      echo "opcache.revalidate_freq=300"          >> ${_THIS_FILE}
       echo ";"                                    >> ${_THIS_FILE}
     fi
   fi
@@ -424,9 +405,11 @@ fix_php_ini_opcache() {
 #
 # Fix all FMP php.ini files to add Zend OPcache
 fix_php_ini_opcache_all() {
-  _PHP_V="73 72 71 70 56"
+  _PHP_V="74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     case "${e}" in
+      74) _P_API="${_PHP74_API}" ;;
+      73) _P_API="${_PHP73_API}" ;;
       72) _P_API="${_PHP72_API}" ;;
       71) _P_API="${_PHP71_API}" ;;
       70) _P_API="${_PHP70_API}" ;;
@@ -456,12 +439,38 @@ fix_php_ini_tet() {
 # Fix all php.ini files to add php_tet.so
 fix_php_ini_tet_all() {
   if [ "${_PHP_TET}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "TET" ]]; then
-    _PHP_V="56 55"
+    _PHP_V="73 72 71 70 56"
     for e in ${_PHP_V}; do
-      _THIS_FILE=/opt/php${e}/etc/php${e}.ini
-      fix_php_ini_tet
-      _THIS_FILE=/opt/php${e}/lib/php.ini
-      fix_php_ini_tet
+      case "${e}" in
+        74) _P_API="${_PHP74_API}" ;;
+        73) _P_API="${_PHP73_API}" ;;
+        72) _P_API="${_PHP72_API}" ;;
+        71) _P_API="${_PHP71_API}" ;;
+        70) _P_API="${_PHP70_API}" ;;
+        56) _P_API="${_PHP56_API}" ;;
+        *)  msg "WARN: Unknown PHP API version for PHP ${e}"
+        ;;
+      esac
+      _TET_BASE="/opt/php${e}/lib/php/extensions/no-debug-non-zts"
+      _TET_SO="${_TET_BASE}-${_P_API}/php_tet.so"
+      if [ ! -e "${_TET_SO}" ]; then
+        _TET_VRN="5.2-Linux-x86_64-Perl-PHP-Python-Ruby"
+        if [ ! -e "/var/opt/TET-${_TET_VRN}/bind/php" ]; then
+          mkdir -p  /var/opt
+          cd /var/opt
+          get_dev_src "TET-${_TET_VRN}.tar.gz"
+        fi
+        if [ -e "/var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts" ]; then
+          cd /var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts/
+          cp -a php_tet.so ${_TET_SO}
+        fi
+      fi
+      if [ -e "${_TET_SO}" ]; then
+        _THIS_FILE=/opt/php${e}/etc/php${e}.ini
+        fix_php_ini_tet
+        _THIS_FILE=/opt/php${e}/lib/php.ini
+        fix_php_ini_tet
+      fi
     done
   fi
 }
@@ -551,11 +560,11 @@ update_php_conf() {
   wait
   sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
   wait
-  _PHP_V="73 72 71 70 56"
+  _PHP_V="74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
       adduser --system --group --home /var/www/www${e} www${e} &> /dev/null
-      usermod -aG www-data www${e} &> /dev/null
+      usermod -aG www-data www${e}
     fi
     if [ ! -e "/opt/php${e}/etc/php${e}.ini" ] \
       || [ ! -e "/opt/php${e}/etc/pool.d/www${e}.conf" ]; then
@@ -614,6 +623,8 @@ update_php_conf() {
 #
 restore_default_php() {
   msg "INFO: Restoring default PHP configuration"
+  cp -af ${locCnf}/php74-cli.ini /opt/php74/lib/php.ini &> /dev/null
+  cp -af ${locCnf}/php74.ini /opt/php74/etc/php74.ini   &> /dev/null
   cp -af ${locCnf}/php73-cli.ini /opt/php73/lib/php.ini &> /dev/null
   cp -af ${locCnf}/php73.ini /opt/php73/etc/php73.ini   &> /dev/null
   cp -af ${locCnf}/php72-cli.ini /opt/php72/lib/php.ini &> /dev/null
@@ -660,16 +671,21 @@ tune_php() {
 # Update innodb_log_file_size.
 update_innodb_log_file_size() {
   msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
-  if [ "${_DB_SERIES}" = "10.3" ] \
+  if [ "${_DB_SERIES}" = "10.4" ] \
+    || [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ] \
-    || [ "${_DB_SERIES}" = "10.1" ] \
     || [ "${_DB_SERIES}" = "5.7" ]; then
     mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   fi
   mrun "service mysql stop" &> /dev/null
+  echo "Waiting 15 seconds..."
   mrun "sleep 15"
   if [ ! -e "/var/run/mysqld/mysqld.sock" ] \
     && [ ! -e "/var/run/mysqld/mysqld.pid" ]; then
@@ -679,6 +695,7 @@ update_innodb_log_file_size() {
     mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
     wait
+    echo "Waiting 15 seconds..."
     mrun "sleep 15"
   fi
   if [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
@@ -713,14 +730,14 @@ restore_default_sql() {
           fi
         fi
       fi
-      sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf
       wait
-      sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf
       wait
-      sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf
       wait
       if [ ! -e "/etc/mysql/skip-name-resolve.txt" ]; then
-        sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf &> /dev/null
+        sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf
         wait
       fi
     fi
@@ -734,23 +751,31 @@ restore_default_sql() {
   wait
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     if [ "${_DB_BINARY_LOG}" = "NO" ]; then
+      sed -i "s/.*purge_binlogs.*//g" /var/spool/cron/crontabs/root
+      wait
+      sed -i "/^$/d" /var/spool/cron/crontabs/root
       bash /var/xdrago/purge_binlogs.sh                                  &> /dev/null
-      sed -i "s/.*purge_binlogs.*//g" /var/spool/cron/crontabs/root      &> /dev/null
       wait
-      sed -i "/^$/d" /var/spool/cron/crontabs/root                       &> /dev/null
+      sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf
       wait
-      sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^expire_logs_days/#expire_logs_days/g" /etc/mysql/my.cnf
       wait
-      sed -i "s/^expire_logs_days/#expire_logs_days/g" /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^max_binlog_size/#max_binlog_size/g"   /etc/mysql/my.cnf
       wait
-      sed -i "s/^max_binlog_size/#max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^binlog_row_image/#binlog_row_image/g" /etc/mysql/my.cnf
+      wait
+      sed -i "s/^binlog_format/#binlog_format/g"       /etc/mysql/my.cnf
       wait
     elif [ "${_DB_BINARY_LOG}" = "YES" ]; then
-      sed -i "s/.*log_bin/log_bin/g"                   /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/.*log_bin/log_bin/g"                   /etc/mysql/my.cnf
       wait
-      sed -i "s/.*expire_logs_days/expire_logs_days/g" /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/.*expire_logs_days/expire_logs_days/g" /etc/mysql/my.cnf
       wait
-      sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf
+      wait
+      sed -i "s/.*binlog_row_image/binlog_row_image/g" /etc/mysql/my.cnf
+      wait
+      sed -i "s/.*binlog_format/binlog_format/g"       /etc/mysql/my.cnf
       wait
     fi
     if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
@@ -819,6 +844,9 @@ tune_nginx() {
 #
 restart_services() {
   msg "INFO: Reloading services"
+  if [ -e "/etc/init.d/php74-fpm" ]; then
+    mrun "service php74-fpm reload" &> /dev/null
+  fi
   if [ -e "/etc/init.d/php73-fpm" ]; then
     mrun "service php73-fpm reload" &> /dev/null
   fi
@@ -836,9 +864,24 @@ restart_services() {
   fi
   mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
   mrun "service nginx reload" &> /dev/null
-  mrun "service redis-server restart" &> /dev/null
+  service redis-server stop &> /dev/null
+  killall -9 redis-server &> /dev/null
+  service redis-server start &> /dev/null
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     mrun "csf -q" &> /dev/null
+    sleep 8
+    ### Linux kernel TCP SACK CVEs mitigation
+    ### CVE-2019-11477 SACK Panic
+    ### CVE-2019-11478 SACK Slowness
+    ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
+    if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+      _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+      if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
+        sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
+        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+        ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+      fi
+    fi
   fi
 }
 #
@@ -862,7 +905,7 @@ tune_web_server_config() {
       _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
     fi
   fi
-  _PHP_V="73 72 71 70 56"
+  _PHP_V="74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     sed -i "s/process.max =.*/process.max = ${_PROCESS_MAX_FPM}/g" \
       /opt/php${e}/etc/php${e}-fpm.conf &> /dev/null
@@ -884,26 +927,31 @@ tune_web_server_config() {
   sed -i "s/^max_input_time =.*/max_input_time = 180/g" /opt/php*/etc/php*.ini                 &> /dev/null
   wait
   # PHP-CLI INI
-  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 9999/g" /opt/php*/lib/php.ini &> /dev/null
+  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 3600/g" /opt/php*/lib/php.ini &> /dev/null
   wait
-  sed -i "s/^max_execution_time =.*/max_execution_time = 9999/g" /opt/php*/lib/php.ini         &> /dev/null
+  sed -i "s/^max_execution_time =.*/max_execution_time = 3600/g" /opt/php*/lib/php.ini         &> /dev/null
   wait
-  sed -i "s/^max_input_time =.*/max_input_time = 9999/g" /opt/php*/lib/php.ini                 &> /dev/null
+  sed -i "s/^max_input_time =.*/max_input_time = 3600/g" /opt/php*/lib/php.ini                 &> /dev/null
   wait
   # Redis config should sync with PHP-CLI
-  sed -i "s/^timeout .*/timeout 9999/g" /etc/redis/redis.conf                                  &> /dev/null
+  sed -i "s/^timeout .*/timeout 3600/g" /etc/redis/redis.conf                                  &> /dev/null
   wait
-  if [ ! -z "${_L_NGX_WRKS}" ]; then
-    sed -i "s/worker_processes.*/worker_processes  ${_L_NGX_WRKS};/g" /etc/nginx/nginx.conf    &> /dev/null
-    wait
-  else
-    sed -i "s/worker_processes.*/worker_processes  4;/g" /etc/nginx/nginx.conf                 &> /dev/null
-    wait
-  fi
+}
+#
+#
+check_mysqld_running() {
+  until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
+    && [ -e "/var/run/mysqld/mysqld.sock" ]; do
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    msg "INFO: Waiting for MySQLD availability before tune_sql_memory_limits..."
+    sleep 5
+    service mysql start &> /dev/null
+  done
 }
 #
 # Tune memory limits for SQL server.
 tune_sql_memory_limits() {
+  check_mysqld_running
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
   pthTun="/var/opt/mysqltuner.pl"
   outTun="/var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt"
@@ -978,24 +1026,29 @@ tune_sql_memory_limits() {
     if [ ! -z "${_REC_INNODB_MEM}" ] && [ "${_MYSQLTUNER_TEST_RESULT}" = "OK" ]; then
       _RAW_INNODB_MEM=$(echo ${_REC_INNODB_MEM} | sed "s/[A-Z]//g" 2>&1)
       if [[ "${_REC_INNODB_MEM}" =~ "G" ]]; then
+        _RAW_INNODB_MEM=$(echo ${_RAW_INNODB_MEM} | awk '{print int($1+0.6)}' 2>&1)
         _RAW_INNODB_MEM=$(echo "${_RAW_INNODB_MEM} * 1024" | bc -l 2>&1)
+      elif [[ "${_REC_INNODB_MEM}" =~ "M" ]]; then
+        _RAW_INNODB_MEM=$(echo ${_RAW_INNODB_MEM} | awk '{print int($1+0.6)}' 2>&1)
+        _RAW_INNODB_MEM=$(echo "${_RAW_INNODB_MEM} * 1" | bc -l 2>&1)
       fi
       _RAW_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
-      if [ "${_RAW_INNODB_MEM}" -gt "${_USE_SQL}" ]; then
+      if [ "${_RAW_INNODB_MEM}" -gt "${_USE_SQL}" ] \
+        || [ -z "${_USE_INNODB_MEM}" ] \
+        || [ "${_RAW_INNODB_MEM}" -lt "512" ]; then
         _USE_INNODB_MEM="${_USE_SQL}"
       else
         _RAW_INNODB_MEM=$(echo "scale=2; (${_RAW_INNODB_MEM} * 1.1)" | bc 2>&1)
         _USE_INNODB_MEM=$(echo "(${_RAW_INNODB_MEM}+0.5)/1" | bc 2>&1)
       fi
-      _INNODB_BPI=$(echo "scale=0; ${_USE_INNODB_MEM}/1024" | bc 2>&1)
+      _INNODB_BPI=$(echo "scale=0; ${_USE_INNODB_MEM}/1024/2" | bc 2>&1)
       if [ "${_INNODB_BPI}" -lt "1" ] || [ -z "${_INNODB_BPI}" ]; then
         _INNODB_BPI="1"
       fi
-      sed -i "s/innodb_file_per_table   = 1/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
+      sed -i "s/^innodb_buffer_pool_instances.*/innodb_buffer_pool_instances = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
       wait
-      if [ "${_USE_INNODB_MEM}" -lt "256" ] || [ -z "${_USE_INNODB_MEM}" ]; then
-        _USE_INNODB_MEM="${_USE_SQL}"
-      fi
+      sed -i "s/^innodb_page_cleaners.*/innodb_page_cleaners = ${_INNODB_BPI}/g" /etc/mysql/my.cnf
+      wait
       _USE_INNODB_MEM="${_USE_INNODB_MEM}M"
       sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf
       wait
@@ -1018,7 +1071,7 @@ tune_sql_memory_limits() {
   fi
 }
 #
-# Tune memory limits for PHP, Nginx and MariaDB.
+# Tune memory limits for PHP, Nginx and Percona.
 tune_memory_limits() {
   msg "INFO: Default Memory Tuning"
   _VM_TEST=$(uname -a 2>&1)
@@ -1029,13 +1082,7 @@ tune_memory_limits() {
   else
     _VMFAMILY="XEN"
   fi
-  if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-    || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+  if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
   if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
@@ -1076,19 +1123,25 @@ tune_memory_limits() {
       _CPU_VS=8
     fi
   fi
+  PrTest=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+  if [[ "${PrTest}" =~ "CLUSTER" ]]; then
+    if [ "${_CPU_VS}" -lt "8" ]; then
+      _CPU_VS=8
+    fi
+  fi
   _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
   if [ "${_RESERVED_RAM}" -gt "0" ]; then
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
   _USE=$(( _RAM / 4 ))
   if [ "${_VMFAMILY}" = "VS" ] \
-    || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io" ]]; then
+    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+    || [[ "${_THISHOST}" =~ ".host8." ]]; then
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.tg.cnf" ]; then
-        _USE_SQL=$(( _RAM / 8 ))
+        _USE_SQL=$(( _RAM / 12 ))
       else
-        _USE_SQL=$(( _RAM / 18 ))
+        _USE_SQL=$(( _RAM / 24 ))
       fi
     else
       _USE_SQL=$(( _RAM / 8 ))
@@ -1105,18 +1158,16 @@ tune_memory_limits() {
   if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
     _USE_PHP=2048
     _USE_OPC=2048
+    _USE_CLI=2048
     _QCE_SQL=64M
     _RND_SQL=8M
     _JBF_SQL=4M
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=24
+      _L_PHP_FPM_WORKERS=48
     else
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
     _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
-    if [ "${_MXC_SQL}" -lt "96" ]; then
-      _MXC_SQL=96
-    fi
     if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
       _L_NGX_WRKS=${_CPU_MX}
     else
@@ -1124,8 +1175,9 @@ tune_memory_limits() {
     fi
   elif [ "${_USE}" -ge "2048" ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
-      _USE_PHP=2048
-      _USE_OPC=2048
+      _USE_PHP=4096
+      _USE_OPC=4096
+      _USE_CLI=4096
       _QCE_SQL=64M
       _RND_SQL=8M
       _JBF_SQL=4M
@@ -1135,9 +1187,6 @@ tune_memory_limits() {
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
       _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
-      if [ "${_MXC_SQL}" -lt "192" ]; then
-        _MXC_SQL=192
-      fi
       if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
         _L_NGX_WRKS=${_CPU_MX}
       else
@@ -1147,8 +1196,9 @@ tune_memory_limits() {
       if [ -e "/boot/grub/grub.cfg" ] \
         || [ -e "/boot/grub/menu.lst" ] \
         || [ -e "/root/.tg.cnf" ]; then
-        _USE_PHP=2048
+        _USE_PHP=4096
         _USE_OPC=4096
+        _USE_CLI=4096
         _QCE_SQL=64M
         _RND_SQL=8M
         _JBF_SQL=4M
@@ -1158,34 +1208,33 @@ tune_memory_limits() {
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
         _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
-        if [ "${_MXC_SQL}" -lt "192" ]; then
-          _MXC_SQL=192
+        if [ "${_MXC_SQL}" -lt "96" ]; then
+          _MXC_SQL=96
         fi
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
           _L_NGX_WRKS=${_CPU_TG}
         else
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
+        sed -i "s/64000/128000/g"  /opt/php74/etc/php74.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php73/etc/php73.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php72/etc/php72.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php71/etc/php71.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php70/etc/php70.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php56/etc/php56.ini &> /dev/null
       else
-        _USE_PHP=2048
-        _USE_OPC=2048
+        _USE_PHP=4096
+        _USE_OPC=4096
+        _USE_CLI=4096
         _QCE_SQL=64M
         _RND_SQL=2M
         _JBF_SQL=2M
         if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=24
+          _L_PHP_FPM_WORKERS=48
         else
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
         _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
-        if [ "${_MXC_SQL}" -lt "96" ]; then
-          _MXC_SQL=96
-        fi
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
           _L_NGX_WRKS=${_CPU_VS}
         else
@@ -1195,18 +1244,16 @@ tune_memory_limits() {
     else
       _USE_PHP=2048
       _USE_OPC=2048
-      _QCE_SQL=32M
+      _USE_CLI=2048
+      _QCE_SQL=64M
       _RND_SQL=2M
       _JBF_SQL=2M
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=24
+        _L_PHP_FPM_WORKERS=48
       else
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
       _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
-      if [ "${_MXC_SQL}" -lt "96" ]; then
-        _MXC_SQL=96
-      fi
       if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
         _L_NGX_WRKS=${_CPU_MX}
       else
@@ -1216,11 +1263,12 @@ tune_memory_limits() {
   else
     _USE_PHP="${_USE}"
     _USE_OPC="${_USE}"
-    _QCE_SQL=32M
+    _USE_CLI="${_USE}"
+    _QCE_SQL=64M
     _RND_SQL=1M
     _JBF_SQL=1M
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=6
+      _L_PHP_FPM_WORKERS=12
     else
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
@@ -1235,12 +1283,12 @@ tune_memory_limits() {
   if [ "${_VMFAMILY}" = "VZ" ]; then
     _USE_OPC=64
   fi
+  if [ "${_USE_PHP}" -lt "2048" ]; then
+    _USE_PHP=2048
+  fi
   _USE_FPM=$(( _USE_PHP / 2 ))
   if [ "${_USE_FPM}" -lt "256" ]; then
     _USE_FPM=256
-  fi
-  if [ "${_USE_PHP}" -lt "2048" ]; then
-    _USE_PHP=2048
   fi
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
     mkdir -p /var/xdrago/conf
@@ -1257,42 +1305,50 @@ tune_memory_limits() {
     sed -i "s/256/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
     wait
   fi
+  if [ -e "/opt/php74/etc/php74.ini" ]; then
+    sed -i "s/256/${_USE_FPM}/g" /opt/php74/etc/php74.ini &> /dev/null
+    wait
+    sed -i "s/181/${_USE_OPC}/g" /opt/php74/etc/php74.ini &> /dev/null
+    sed -i "s/256/${_USE_CLI}/g" /opt/php74/lib/php.ini   &> /dev/null
+  fi
   if [ -e "/opt/php73/etc/php73.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php73/etc/php73.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php73/etc/php73.ini &> /dev/null
-    sed -i "s/256/${_USE_PHP}/g" /opt/php73/lib/php.ini   &> /dev/null
+    sed -i "s/256/${_USE_CLI}/g" /opt/php73/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php72/etc/php72.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php72/etc/php72.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php72/etc/php72.ini &> /dev/null
-    sed -i "s/256/${_USE_PHP}/g" /opt/php72/lib/php.ini   &> /dev/null
+    sed -i "s/256/${_USE_CLI}/g" /opt/php72/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php71/etc/php71.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php71/etc/php71.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php71/etc/php71.ini &> /dev/null
-    sed -i "s/256/${_USE_PHP}/g" /opt/php71/lib/php.ini   &> /dev/null
+    sed -i "s/256/${_USE_CLI}/g" /opt/php71/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php70/etc/php70.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php70/etc/php70.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php70/etc/php70.ini &> /dev/null
-    sed -i "s/256/${_USE_PHP}/g" /opt/php70/lib/php.ini   &> /dev/null
+    sed -i "s/256/${_USE_CLI}/g" /opt/php70/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php56/etc/php56.ini" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/php56/etc/php56.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php56/etc/php56.ini &> /dev/null
-    sed -i "s/256/${_USE_PHP}/g" /opt/php56/lib/php.ini   &> /dev/null
+    sed -i "s/256/${_USE_CLI}/g" /opt/php56/lib/php.ini   &> /dev/null
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     tune_sql_memory_limits
-    if [[ "${PrTest}" =~ "POWER" ]]; then
+    if [[ "${PrTestPower}" =~ "POWER" ]] \
+      || [ -e "/root/.my.cluster_root_pwd.txt" ] \
+      || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
       _UXC_SQL="${_MXC_SQL}"
     else
-      _UXC_SQL=$(( _MXC_SQL / 2 ))
+      _UXC_SQL=$(echo "scale=0; ${_MXC_SQL}/2" | bc 2>&1)
     fi
     sed -i "s/= 191/= ${_UXC_SQL}/g"                                              /etc/mysql/my.cnf
     wait
@@ -1302,9 +1358,7 @@ tune_memory_limits() {
     wait
     sed -i "s/^max_heap_table_size.*/max_heap_table_size     = ${_TMP_SQL}/g"     /etc/mysql/my.cnf
     wait
-    # sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = ${_SRT_SQL}/g" /etc/mysql/my.cnf
-    # wait
-    sed -i "s/^query_cache_size.*/query_cache_size        = ${_QCE_SQL}/g"        /etc/mysql/my.cnf
+    sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = ${_SRT_SQL}/g" /etc/mysql/my.cnf
     wait
     sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = ${_RND_SQL}/g"    /etc/mysql/my.cnf
     wait
@@ -1316,6 +1370,7 @@ tune_memory_limits() {
   else
     _MAX_MEM_REDIS="${_USE_OPC}"
   fi
+  _MAX_MEM_REDIS=$(( _MAX_MEM_REDIS * 2 ))
   _MAX_MEM_REDIS="${_MAX_MEM_REDIS}MB"
   sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_REDIS}/g" \
     /etc/redis/redis.conf &> /dev/null
@@ -1540,7 +1595,7 @@ msg "BYE!"
 ###----------------------------------------###
 ###
 ###  Barracuda-Octopus-Nginx-Drupal Tuner
-###  Copyright (C) 2010-2019 Omega8.cc
+###  Copyright (C) 2010-2020 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###

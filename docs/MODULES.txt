@@ -42,7 +42,6 @@ as [D6] and/or [D7].
 Contrib [S]upported:
 
  ais ------------------------ [D7] ------ [S]
- backup_migrate ------------- [D6,D7] --- [S]
  ckeditor ------------------- [D6,D7] --- [S]
  fbconnect ------------------ [D6,D7] --- [S]
  fckeditor ------------------ [D6] ------ [S]
@@ -102,8 +101,18 @@ Contrib [F]orce[E]nabled
  entitycache ---------------- [D7] --------- [S] [B] [FE] unless entitycache_dont_enable = TRUE
  robotstxt ------------------ [D6,D7,D8] --- [S] [B] [FE] static file is generated in sites/foo.com/files/robots.txt
 
+Core [F]orce[D]isabled:
+
+ automated_cron ------------- [D8] -------------- [FD]
+ cookie_cache_bypass -------- [D6] -------------- [FD]
+ dblog ---------------------- [D6,D7,D8] -------- [FD]
+ simpletest ----------------- [D8] -------------- [FD]
+ syslog --------------------- [D6,D7,D8] -------- [FD]
+ update --------------------- [D6,D7,D8] -------- [FD]
+
 Contrib [F]orce[D]isabled
 
+ backup_migrate ------------- [D6,D7,D8] -------- [FD]
  coder ---------------------- [D6,D7] ----------- [FD]
  css_gzip ------------------- [D6] -------------- [FD]
  devel ---------------------- [D6,D7] ----------- [FD]
@@ -139,13 +148,6 @@ Core [F]orce[E]nabled:
 
  path_alias_cache ----------- [D6] -------------- [FE]
 
-Core [F]orce[D]isabled:
-
- cookie_cache_bypass -------- [D6] -------------- [FD]
- dblog ---------------------- [D6,D7,D8] -------- [FD]
- syslog --------------------- [D6,D7,D8] -------- [FD]
- update --------------------- [D6,D7,D8] -------- [FD]
-
 Drush [E]xtensions [M]aster [S]atellite:
 
  clean_missing_modules ------ [D6,D7] --- [S] [B] [EM,ES]
@@ -163,9 +165,10 @@ Provision [E]xtensions [M]aster [S]atellite:
 
 Hostmaster [E]xtensions [M]aster [S]atellite:
 
+ aegir_objects -------------- [D7] ------ [S] [B] [FE] [ES]
  hosting_civicrm ------------ [D7] ------ [S] [B] [FE] [ES]
  hosting_custom_settings ---- [D7] ------ [S] [B] [FE] [ES]
- hosting_deploy ------------- [D7] ------ [S] [B]      [ES]
+ hosting_deploy ------------- [D7] ------ [S] [B] [FE] [ES]
  hosting_git ---------------- [D7] ------ [S] [B]      [ES]
  hosting_le ----------------- [D7] ------ [S] [B] [FE] [ES]
  hosting_remote_import ------ [D7] ------ [S] [B]      [ES]

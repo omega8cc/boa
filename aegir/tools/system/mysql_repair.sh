@@ -40,8 +40,8 @@ sleep 8
 dir=/var/xdrago/log/mysql_optimize
 mkdir -p $dir
 /usr/bin/mysqlcheck -Aa >> $dir/all.a.`date +%y%m%d-%H%M%S`
-/usr/bin/mysqlcheck -Ar >> $dir/all.r.`date +%y%m%d-%H%M%S`
+/usr/bin/mysqlcheck -A --auto-repair >> $dir/all.r.`date +%y%m%d-%H%M%S`
 /usr/bin/mysqlcheck -Ao >> $dir/all.o.`date +%y%m%d-%H%M%S`
 rm -f /var/run/boa_wait.pid
 exit 0
-###EOF2019###
+###EOF2020###

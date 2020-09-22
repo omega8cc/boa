@@ -267,7 +267,7 @@ if_install_collectd() {
 
 if_install_hhvm() {
   if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_LOC_OSV}" = "jessie" ]; then
+    && [ "${_LOC_OSR}" = "jessie" ]; then
     _DO_FIX=YES
   fi
   if [[ "${_XTRAS_LIST}" =~ "HVM" ]]; then
@@ -276,9 +276,10 @@ if_install_hhvm() {
     else
       _GPG=gpg
     fi
-    if [ "${_OSV}" = "jessie" ] \
-      || [ "${_OSV}" = "stretch" ] \
-      || [ "${_OSV}" = "trusty" ] \
+    if [ "${_OSR}" = "buster" ] \
+      || [ "${_OSR}" = "stretch" ] \
+      || [ "${_OSR}" = "jessie" ] \
+      || [ "${_OSR}" = "trusty" ] \
       || [ "${_DO_FIX}" = "YES" ]; then
       if [ ! -x "/usr/bin/hhvm" ]; then
         echo " "
@@ -287,13 +288,16 @@ if_install_hhvm() {
           msg "INFO: Installing HHVM Engine..."
           cd /var/opt
           echo "## HHVM APT Repository" > ${aptLiSys}.d/hhvm.list
-          if [ "${_OSV}" = "jessie" ]; then
+          if [ "${_OSR}" = "jessie" ]; then
             echo "deb http://dl.hhvm.com/debian jessie main" >> \
               ${aptLiSys}.d/hhvm.list
-          elif [ "${_OSV}" = "stretch" ] || [ "${_DO_FIX}" = "YES" ]; then
+          elif [ "${_OSR}" = "stretch" ] || [ "${_DO_FIX}" = "YES" ]; then
             echo "deb http://dl.hhvm.com/debian stretch main" >> \
               ${aptLiSys}.d/hhvm.list
-          elif [ "${_OSV}" = "trusty" ]; then
+          elif [ "${_OSR}" = "buster" ] || [ "${_DO_FIX}" = "YES" ]; then
+            echo "deb http://dl.hhvm.com/debian buster main" >> \
+              ${aptLiSys}.d/hhvm.list
+          elif [ "${_OSR}" = "trusty" ]; then
             echo "deb http://dl.hhvm.com/ubuntu trusty main" >> \
               ${aptLiSys}.d/hhvm.list
           fi
@@ -306,7 +310,6 @@ if_install_hhvm() {
             sleep 2
           done
           cat /var/opt/hhvm.gpg.key | ${_GPG} --import &> /dev/null
-          rm -f /etc/apt/sources.list.d/openssl.list
           st_runner "apt-get update -qq" &> /dev/null
           st_runner "apt-get install hhvm ${forCer}" 2> /dev/null
           msg "INFO: HHVM Engine installed"
@@ -346,7 +349,6 @@ if_install_webmin() {
         cat jcameron-key.gpg | ${_GPG} --import &> /dev/null
         rm -f jcameron-key.gpg*
         touch ${pthLog}/webmin_update_apt_src.log
-        rm -f /etc/apt/sources.list.d/openssl.list
         st_runner "apt-get update -qq" &> /dev/null
         st_runner "${_INSTAPP} webmin \
                              libxml-simple-perl \
@@ -415,111 +417,159 @@ if_install_rvm() {
     if [ "${_STATUS}" = "INIT" ]; then
       _L_ST="install"
     else
-      _L_ST="upgrade"
+      _L_ST="install"
     fi
-    if [ ! -e "${pthLog}/compass-${_X_VERSION}-ruby-${_RUBY_VRN}-nodejs.log" ]; then
+    if [ ! -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
       echo " "
-      if prompt_yes_no "Do you want to ${_L_ST} Ruby with RVM for root?" ; then
+      if prompt_yes_no "Do you want to ${_L_ST} Ruby with RVM?" ; then
         true
         msg "INFO: Running Ruby with RVM ${_L_ST}..."
-        if [ ! -e "${pthLog}/ruby-root-clean-reload.log" ]; then
+        if [ ! -e "${pthLog}/ruby-sys-clean-reload.log" ]; then
           _RUBY_RELOAD=YES
           rm -rf /usr/local/rvm
-          touch ${pthLog}/ruby-root-clean-reload.log
+          touch ${pthLog}/ruby-sys-clean-reload.log
         fi
-        _KEYS_SIG="409B6B1796C275462A1703113804BB82D39DC0E3"
-        _KEYS_SERVER_TEST=FALSE
-        until [[ "${_KEYS_SERVER_TEST}" =~ "Michal Papis" ]]; do
-          echo "Retrieving ${_KEYS_SIG} key.."
-          ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
-          ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
-          _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
-          sleep 2
-        done
-        _KEYS_SIG="7D2BAF1CF37B13E2069D6956105BD0E739499BDB"
-        _KEYS_SERVER_TEST=FALSE
-        until [[ "${_KEYS_SERVER_TEST}" =~ "Piotr Kuczynski" ]]; do
-          echo "Retrieving ${_KEYS_SIG} key.."
-          ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
-          ${_GPG} --export "${_KEYS_SIG}" > /etc/apt/trusted.gpg.d/${_KEYS_SIG}.gpg &> /dev/null
-          _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
-          sleep 2
-        done
-        _KEYS_SIG=""
-        _KEYS_SERVER_TEST=FALSE
-        curl -sSL https://rvm.io/mpapis.asc | ${_GPG} --import - &> /dev/null
-        curl -sSL https://rvm.io/pkuczynski.asc | ${_GPG} --import - &> /dev/null
-        curl -sSL https://get.rvm.io | bash -s stable &> /dev/null
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          \curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import -
+          \curl -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import -
+          \curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable
+        else
+          \curl -sSL ${urlDev}/mpapis.asc | ${_GPG} --import - &> /dev/null
+          \curl -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import - &> /dev/null
+          \curl -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable &> /dev/null
+        fi
         echo rvm_autoupdate_flag=0 > ~/.rvmrc
         wait
         echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc
+        mrun "sleep 5"
         if [ -e "/etc/profile.d/rvm.sh" ]; then
           source /etc/profile.d/rvm.sh
         fi
-        if [ ! -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
-          _RUBY_UPGRADE=YES
-        fi
-        if [ "${_STATUS}" = "INIT" ] \
-          || [ "${_RUBY_UPGRADE}" = "YES" ] \
-          || [ "${_RUBY_RELOAD}" = "YES" ]; then
-          rm -f /etc/apt/sources.list.d/openssl.list
-          mrun "apt-get update -qq" &> /dev/null
-          mrun "apt-get remove rubygems \
-                               ruby1.9.1-dev \
-                               libruby1.9.1 \
-                               ruby1.9.1 \
-                               -y -qq" &> /dev/null
-          mrun "rvm install ${_RUBY_VRN}" &> /dev/null
-          mrun "rvm use ${_RUBY_VRN} --default" &> /dev/null
-          mrun "rvm get stable" 2> /dev/null
-          mrun "rvm @global do gem update -q" 2> /dev/null
-          curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
-          mrun "${_INSTALL} nodejs" 2> /dev/null
+        isRvm=$(which rvm 2>&1)
+        if [ -x "${isRvm}" ]; then
+          rvmPth="${isRvm}"
+        elif [ -x "/usr/local/rvm/bin/rvm" ]; then
+          rvmPth="/usr/local/rvm/bin/rvm"
         else
-          mrun "rvm get stable" 2> /dev/null
-          mrun "rvm @global do gem update -q" 2> /dev/null
-          curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
-          mrun "${_INSTALL} nodejs" 2> /dev/null
+          rvmPth=""
+          msg "WARN: RVM ${_L_ST} failed, so we can't install Ruby!"
         fi
-        _RBY_FILE="/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/ruby"
-        _RBY_PATH=${_RBY_FILE//\//\\\/}
-        _GEM_FILE="/usr/local/rvm/gems/ruby-${_RUBY_VRN}@global/bin/scout"
-        _GEM_PATH=${_GEM_FILE//\//\\\/}
-        _GEM_CRON="/etc/crontab"
-        _VAR_IF_PRESENT=$(grep "scout" ${_GEM_CRON} 2>&1)
-        if [[ "${_VAR_IF_PRESENT}" =~ "scout" ]]; then
-          if [ ! -e "$_GEM_FILE" ] && [ ! -z "${_SCOUT_KEY}" ]; then
-            mrun "rvm @global do gem install --conservative scout" 2> /dev/null
-            adduser --system --group --home /var/scout scout &> /dev/null
-            usermod -aG users scout &> /dev/null
-            sed -i "s/\* \* \* \* \* scout .*/* * * * * scout $_GEM_PATH ${_SCOUT_KEY}/g" ${_GEM_CRON} &> /dev/null
+        if [ -x "${rvmPth}" ]; then
+          usermod -aG rvm root
+          if [ ! -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
+            _RUBY_UPGRADE=YES
           fi
-          _VAR_IF_PRESENT=$(grep "scout ALL=NOPASSWD" /etc/sudoers 2>&1)
-          if [[ ! "${_VAR_IF_PRESENT}" =~ "scout ALL=NOPASSWD" ]]; then
-            echo "scout ALL=NOPASSWD: /usr/bin/mysql" >> /etc/sudoers
+          if [ -e "/etc/profile.d/rvm.sh" ]; then
+            source /etc/profile.d/rvm.sh
           fi
-        else
-          if [ ! -z "${_SCOUT_KEY}" ]; then
-            mrun "rvm @global do gem install --conservative scout" 2> /dev/null
-            adduser --system --group --home /var/scout scout &> /dev/null
-            usermod -aG users scout &> /dev/null
-            echo -e "* * * * * scout $_GEM_FILE ${_SCOUT_KEY}" \
-              | fmt -su -w 2500 | tee -a ${_GEM_CRON} >/dev/null 2>&1
+          if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
+            _WEB_SH=$(readlink -n /bin/sh 2>&1)
+            _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
+            if [ -x "/bin/dash" ]; then
+              if [ "${_WEB_SH}" != "/bin/dash" ]; then
+                rm -f /bin/sh
+                ln -s /bin/dash /bin/sh
+              fi
+            else
+              if [ "${_WEB_SH}" != "/bin/bash" ]; then
+                rm -f /bin/sh
+                ln -s /bin/bash /bin/sh
+              fi
+            fi
+          fi
+          touch /var/run/manage_rvm_users.pid
+          if [ "${_STATUS}" = "INIT" ] \
+            || [ "${_RUBY_UPGRADE}" = "YES" ] \
+            || [ "${_RUBY_RELOAD}" = "YES" ]; then
+            mrun "apt-get update -qq" &> /dev/null
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              ${rvmPth} get stable --auto-dotfiles
+              ${rvmPth} install ${_RUBY_VRN}
+              ${rvmPth} use ${_RUBY_VRN} --default
+              curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+              mrun "${_INSTALL} nodejs"
+            else
+              ${rvmPth} get stable --auto-dotfiles &> /dev/null
+              ${rvmPth} install ${_RUBY_VRN} &> /dev/null
+              ${rvmPth} use ${_RUBY_VRN} --default &> /dev/null
+              curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
+              mrun "${_INSTALL} nodejs" &> /dev/null
+            fi
+          else
+            mrun "apt-get update -qq" &> /dev/null
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              ${rvmPth} get stable --auto-dotfiles
+              ${rvmPth} install ${_RUBY_VRN}
+              ${rvmPth} use ${_RUBY_VRN} --default
+              curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+              mrun "${_INSTALL} nodejs"
+            else
+              ${rvmPth} get stable --auto-dotfiles &> /dev/null
+              ${rvmPth} install ${_RUBY_VRN} &> /dev/null
+              ${rvmPth} use ${_RUBY_VRN} --default &> /dev/null
+              curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash - &> /dev/null
+              mrun "${_INSTALL} nodejs" &> /dev/null
+            fi
+          fi
+          if [ ! -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
+            msg "WARN: Ruby ${_RUBY_VRN} install failed!"
+          fi
+          _RBY_FILE="/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/ruby"
+          _RBY_PATH=${_RBY_FILE//\//\\\/}
+          _GEM_FILE="/usr/local/rvm/gems/ruby-${_RUBY_VRN}@global/bin/scout"
+          _GEM_PATH=${_GEM_FILE//\//\\\/}
+          _GEM_CRON="/etc/crontab"
+          _VAR_IF_PRESENT=$(grep "scout" ${_GEM_CRON} 2>&1)
+          if [[ "${_VAR_IF_PRESENT}" =~ "scout" ]]; then
+            if [ ! -e "$_GEM_FILE" ] && [ ! -z "${_SCOUT_KEY}" ]; then
+              mrun "${rvmPth} @global do gem install --conservative scout" 2> /dev/null
+              adduser --system --group --home /var/scout scout &> /dev/null
+              usermod -aG users scout
+              sed -i "s/\* \* \* \* \* scout .*/* * * * * scout $_GEM_PATH ${_SCOUT_KEY}/g" ${_GEM_CRON} &> /dev/null
+            fi
             _VAR_IF_PRESENT=$(grep "scout ALL=NOPASSWD" /etc/sudoers 2>&1)
             if [[ ! "${_VAR_IF_PRESENT}" =~ "scout ALL=NOPASSWD" ]]; then
               echo "scout ALL=NOPASSWD: /usr/bin/mysql" >> /etc/sudoers
             fi
+          else
+            if [ ! -z "${_SCOUT_KEY}" ]; then
+              mrun "${rvmPth} @global do gem install --conservative scout" 2> /dev/null
+              adduser --system --group --home /var/scout scout &> /dev/null
+              usermod -aG users scout
+              echo -e "* * * * * scout $_GEM_FILE ${_SCOUT_KEY}" \
+                | fmt -su -w 2500 | tee -a ${_GEM_CRON} >/dev/null 2>&1
+              _VAR_IF_PRESENT=$(grep "scout ALL=NOPASSWD" /etc/sudoers 2>&1)
+              if [[ ! "${_VAR_IF_PRESENT}" =~ "scout ALL=NOPASSWD" ]]; then
+                echo "scout ALL=NOPASSWD: /usr/bin/mysql" >> /etc/sudoers
+              fi
+            fi
+          fi
+          if [ -e "$_GEM_FILE" ]; then
+            sed -i "s/^#\!\/.*/#\!$_RBY_PATH/g" $_GEM_FILE &> /dev/null
+          fi
+          PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin;export PATH
+          touch ${pthLog}/compass-${_X_VERSION}-ruby-${_RUBY_VRN}-nodejs.log
+          if [ -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
+            msg "INFO: Ruby with RVM ${_L_ST} completed"
+            rm -f /var/run/manage_rvm_users.pid
           fi
         fi
-        if [ -e "$_GEM_FILE" ]; then
-          sed -i "s/^#\!\/.*/#\!$_RBY_PATH/g" $_GEM_FILE &> /dev/null
-        fi
-        PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin;export PATH
-        touch ${pthLog}/compass-${_X_VERSION}-ruby-${_RUBY_VRN}-nodejs.log
-        msg "INFO: Ruby with RVM ${_L_ST} for root completed"
       else
-        msg "INFO: Ruby with RVM ${_L_ST} for root skipped"
+        msg "INFO: Ruby with RVM ${_L_ST} skipped"
       fi
+      _ID_SHELLS=$(id -nG root 2>&1)
+      if [[ ! "${_ID_SHELLS}" =~ "rvm" ]]; then
+        isRvm=$(which rvm 2>&1)
+        if [ -x "${isRvm}" ]; then
+          rvmPth="${isRvm}"
+        elif [ -x "/usr/local/rvm/bin/rvm" ]; then
+          rvmPth="/usr/local/rvm/bin/rvm"
+        fi
+        if [ -x "${rvmPth}" ]; then
+          usermod -aG rvm root
+        fi
+      fi
+      _ID_SHELLS=""
     fi
   fi
   if [ -e "/var/scout" ]; then
@@ -546,33 +596,38 @@ if_install_ffmpeg() {
         true
         msg "INFO: Installing FFmpeg..."
         cd /var/opt
-        if [ "${_OSV}" = "jessie" ] || [ "${_OSV}" = "stretch" ]; then
+        if [ "${_OSR}" = "buster" ] \
+          || [ "${_OSR}" = "stretch" ] \
+          || [ "${_OSR}" = "jessie" ]; then
           echo "## deb-multimedia APT Repository for FFmpeg" > ${aptLiSys}.d/ffmpeg.list
-          if [ "${_OSV}" = "jessie" ]; then
+          if [ "${_OSR}" = "jessie" ]; then
             echo "deb http://www.deb-multimedia.org jessie main non-free" >> ${aptLiSys}.d/ffmpeg.list
             echo "deb http://www.deb-multimedia.org jessie-backports main" >> ${aptLiSys}.d/ffmpeg.list
-          elif [ "${_OSV}" = "stretch" ]; then
+          elif [ "${_OSR}" = "stretch" ]; then
             echo "deb http://www.deb-multimedia.org stretch main non-free" >> ${aptLiSys}.d/ffmpeg.list
             echo "deb http://www.deb-multimedia.org stretch-backports main" >> ${aptLiSys}.d/ffmpeg.list
+          elif [ "${_OSR}" = "buster" ]; then
+            echo "deb http://www.deb-multimedia.org buster main non-free" >> ${aptLiSys}.d/ffmpeg.list
+            echo "deb http://www.deb-multimedia.org buster-backports main" >> ${aptLiSys}.d/ffmpeg.list
           fi
           st_runner "apt-get update -qq" &> /dev/null
           st_runner "apt-get install deb-multimedia-keyring ${forCer}" 2> /dev/null
           st_runner "apt-get update -qq" &> /dev/null
           st_runner "${_INSTAPP} ffmpeg" 2> /dev/null
-        elif [ "${_OSV}" = "trusty" ] || [ "${_OSV}" = "precise" ]; then
+        elif [ "${_OSR}" = "trusty" ] || [ "${_OSR}" = "precise" ]; then
           _X86_64_TEST=$(uname -m 2>&1)
           rm -rf ffmpeg*
           if [ "${_X86_64_TEST}" = "x86_64" ]; then
-            SYSTEMARCH="x86_64"
-            msg "INFO: Installing ffmpeg ${SYSTEMARCH}..."
+            SYSTEM_ARCH="x86_64"
+            msg "INFO: Installing ffmpeg ${SYSTEM_ARCH}..."
             curl ${crlGet} "http://johnvansickle.com/ffmpeg/releases/ffmpeg-release-64bit-static.tar.xz" -o "ffmpeg-release-64bit-static.tar.xz"
             unxz "ffmpeg-release-64bit-static.tar.xz"
             mkdir ffmpeg-release-64bit-static
             tar -xf ffmpeg-release-64bit-static.tar --strip-components 1 -C ffmpeg-release-64bit-static
             cd ffmpeg-release-64bit-static
           else
-            SYSTEMARCH="x86"
-            msg "INFO: Installing ffmpeg ${SYSTEMARCH}..."
+            SYSTEM_ARCH="x86"
+            msg "INFO: Installing ffmpeg ${SYSTEM_ARCH}..."
             curl ${crlGet} "http://johnvansickle.com/ffmpeg/releases/ffmpeg-release-32bit-static.tar.xz" -o "ffmpeg-release-32bit-static.tar.xz"
             unxz "ffmpeg-release-32bit-static.tar.xz"
             mkdir ffmpeg-release-32bit-static

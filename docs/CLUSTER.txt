@@ -67,6 +67,7 @@ http://galeracluster.com/documentation-webpages/arbitrator.html
 ### BOA Simple Cluster Installer Setup
 
    $ apt-get update -qq && apt-get install wget -y -qq
+   $ cd;rm -f cluster.sh
    $ cd;wget -q -U iCab http://files.aegir.cc/cluster/cluster.sh
    $ mv -f cluster.sh /usr/local/bin/cluster
    $ chmod 700 /usr/local/bin/cluster
@@ -79,7 +80,7 @@ http://galeracluster.com/documentation-webpages/arbitrator.html
 
    $ cluster in-host server.example.com
    $ reboot
-   $ cluster up-host
+   $ cluster up-host upgrade
    $ cluster in-vps v1 v1.example.com public.ip.address jessie head my@email
 
    #=> Example for installing complete BOA Simple Cluster
@@ -108,16 +109,38 @@ http://galeracluster.com/documentation-webpages/arbitrator.html
 
    $ cluster in-host server.example.com
    $ reboot
-   $ cluster up-host
+   $ cluster up-host upgrade
    $ cluster in-all head
    $ cluster in-oct em@il o2 mini head
 
+   #=> Example for upgrading BOA Simple Cluster
+
+   #1 Update the manager script
+   $ cd;rm -f cluster.sh
+   $ cd;wget -q -U iCab http://files.aegir.cc/cluster/cluster.sh
+   $ mv -f cluster.sh /usr/local/bin/cluster
+   $ chmod 700 /usr/local/bin/cluster
+
+   #2 Upgrade the host and all db and web heads
+   $ cluster up-host update
+   $ cluster up-dbs head
+   $ cluster up-web head
+
+   #3 Upgrade web head with master Aegir -- run again if upgrade fails
+   $ vserver c1rweb exec /opt/local/bin/barracuda up-head
+
+   #4 Upgrade all Octopus instances -- run again if upgrade fails
+   $ vserver c1rweb exec /opt/local/bin/octopus up-head all force
+
    #=> All usage options
 
-   Usage: cluster {in-host|up-host} {fqdn}
+   Usage: cluster {in-host} {fqdn}
+   Usage: cluster {up-host} {update|upgrade}
    Usage: cluster {in-vps} {id} {fqdn} {ip} {os} {stable|head|galera} {email}
    Usage: cluster {in-all} {stable|head}
+   Usage: cluster {up-dbs} {stable|head}
+   Usage: cluster {up-web} {stable|head}
    Usage: cluster {up-all} {stable|head}
    Usage: cluster {in-oct} {email} {o2} {mini|max|none} {stable|head}
-   Usage: cluster {in-pxy} {id} {ip}
-
+   Usage: cluster {in-pxy} {id} {ip} force-reinstall
+   Usage: cluster {check} {more|report} {backups|octopus}

@@ -3,11 +3,32 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
+csf_flood_guard() {
+  if [ `ps aux | grep -v "grep" | grep -v "null" | grep --count "csf"` -gt "4" ]; then
+    thisCountCsf=`ps aux | grep -v "grep" | grep -v "null" | grep --count "csf"`
+    echo "$(date 2>&1) Too many ${thisCountCsf} csf processes killed" >> \
+      /var/log/csf-count.kill.log
+    kill -9 $(ps aux | grep '[c]sf' | awk '{print $2}') &> /dev/null
+    csf -tf
+    csf -df
+  fi
+  if [ `ps aux | grep -v "grep" | grep -v "null" | grep --count "fire.sh"` -gt "6" ]; then
+    thisCountFire=`ps aux | grep -v "grep" | grep -v "null" | grep --count "guest-fire.sh"`
+    echo "$(date 2>&1) Too many ${thisCountFire} guest-fire.sh processes killed" >> \
+      /var/log/fire-count.kill.log
+    csf -tf
+    csf -df
+    kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
+  fi
+}
+[ ! -e "/var/run/water.pid" ] && csf_flood_guard
+
 guest_guard() {
 if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
   touch /var/run/fire.pid
   if [ -e "/var/xdrago/monitor/ssh.log" ]; then
     for _IP in `cat /var/xdrago/monitor/ssh.log | cut -d '#' -f1 | sort`; do
+      _FW_TEST=
       _FW_TEST=$(csf -g ${_IP} 2>&1)
       if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
         echo "${_IP} already denied or allowed on port 22"
@@ -22,6 +43,7 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
   fi
   if [ -e "/var/xdrago/monitor/web.log" ]; then
     for _IP in `cat /var/xdrago/monitor/web.log | cut -d '#' -f1 | sort`; do
+      _FW_TEST=
       _FW_TEST=$(csf -g ${_IP} 2>&1)
       if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
         echo "${_IP} already denied or allowed on port 80"
@@ -36,6 +58,7 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
   fi
   if [ -e "/var/xdrago/monitor/ftp.log" ]; then
     for _IP in `cat /var/xdrago/monitor/ftp.log | cut -d '#' -f1 | sort`; do
+      _FW_TEST=
       _FW_TEST=$(csf -g ${_IP} 2>&1)
       if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
         echo "${_IP} already denied or allowed on port 21"
@@ -81,4 +104,4 @@ if [ -e "/etc/csf/csf.deny" ] \
   rm -f /var/run/fire.pid
 fi
 exit 0
-###EOF2019###
+###EOF2020###

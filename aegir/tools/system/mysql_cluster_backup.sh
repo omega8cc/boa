@@ -5,6 +5,8 @@ SHELL=/bin/bash
 
 check_root() {
   if [ `whoami` = "root" ]; then
+    ionice -c2 -n7 -p $$
+    renice 19 -p $$
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -43,10 +45,10 @@ if [ -e "/root/.my.cluster_backup_proxysql.txt" ]; then
   _SQL_HOST="127.0.0.1"
 else
   _SQL_PORT="3306"
-if [ -e "/root/.my.cluster_write_node.txt" ]; then
-  _SQL_HOST=$(cat /root/.my.cluster_write_node.txt 2>&1)
-  _SQL_HOST=$(echo -n ${_SQL_HOST} | tr -d "\n" 2>&1)
-fi
+  if [ -e "/root/.my.cluster_write_node.txt" ]; then
+    _SQL_HOST=$(cat /root/.my.cluster_write_node.txt 2>&1)
+    _SQL_HOST=$(echo -n ${_SQL_HOST} | tr -d "\n" 2>&1)
+  fi
   [ -z ${_SQL_HOST} ] && _SQL_HOST="127.0.0.1" && _SQL_PORT="3306"
 fi
 
@@ -68,7 +70,7 @@ fi
 
 _BACKUPDIR=/data/disk/arch/cluster
 _CHECK_HOST=$(uname -n 2>&1)
-_DATE=$(date +%y%m%d-%H%M 2>&1)
+_DATE=$(date +%y%m%d-%H%M%S 2>&1)
 _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e 2>&1)
@@ -80,13 +82,7 @@ else
   _OPTIM=NO
 fi
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
@@ -94,13 +90,13 @@ fi
 touch /var/run/boa_sql_cluster_backup.pid
 
 create_locks() {
-  echo "Creating locks.."
+  echo "Creating locks for $1"
   #touch /var/run/boa_wait.pid
   touch /var/run/mysql_cluster_backup_running.pid
 }
 
 remove_locks() {
-  echo "Removing locks.."
+  echo "Removing locks for $1"
   #rm -f /var/run/boa_wait.pid
   rm -f /var/run/mysql_cluster_backup_running.pid
 }
@@ -160,7 +156,7 @@ EOFMYSQL
 
 repair_this_database() {
   check_running
-  mysqlcheck --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp --user=root --repair --silent ${_DB}
+  mysqlcheck --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp --user=root --auto-repair --silent ${_DB}
 }
 
 optimize_this_database() {
@@ -183,10 +179,27 @@ EOFMYSQL
   done
 }
 
-backup_this_database() {
-  n=$((RANDOM%15+5))
-  echo waiting ${n} sec
-  sleep ${n}
+backup_this_database_with_mydumper() {
+  check_running
+  if [ ! -d "${_SAVELOCATION}/${_DB}" ]; then
+    mkdir -p ${_SAVELOCATION}/${_DB}
+  fi
+  mydumper \
+    --database=${_DB} \
+    --host=${_SQL_HOST} \
+    --user=root \
+    --password=${_SQL_PSWD} \
+    --port=${_SQL_PORT} \
+    --outputdir=${_SAVELOCATION}/${_DB}/ \
+    --rows=50000 \
+    --build-empty-files \
+    --threads=4 \
+    --less-locking \
+    --long-query-guard=900 \
+    --verbose=1
+}
+
+backup_this_database_with_mysqldump() {
   check_running
   mysqldump \
     --user=root \
@@ -199,19 +212,69 @@ backup_this_database() {
     --no-autocommit \
     --skip-add-locks \
     --hex-blob ${_DB} \
-    | bzip2 -c > ${_SAVELOCATION}/${_DB}.sql.bz2
+    > ${_SAVELOCATION}/${_DB}.sql
+}
+
+compress_backup() {
+  if [ "${_MYQUICK_STATUS}" = "OK" ]; then
+    for DbPath in `find ${_SAVELOCATION}/ -maxdepth 1 -mindepth 1 | sort`; do
+      if [ -e "${DbPath}/metadata" ]; then
+        DbName=$(echo ${DbPath} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
+        cd ${_SAVELOCATION}
+        tar cvfj ${DbName}-${_DATE}.tar.bz2 ${DbName} &> /dev/null
+        rm -f -r ${DbName}
+      fi
+    done
+    chmod 600 ${_SAVELOCATION}/*
+    chmod 700 ${_SAVELOCATION}
+    chmod 700 /data/disk/arch
+    echo "Permissions fixed"
+  else
+    bzip2 ${_SAVELOCATION}/*.sql
+    chmod 600 ${_BACKUPDIR}/*/*
+    chmod 700 ${_BACKUPDIR}/*
+    chmod 700 ${_BACKUPDIR}
+    chmod 700 /data/disk/arch
+    echo "Permissions fixed"
+  fi
 }
 
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
-if [ "${_DB_SERIES}" = "10.3" ] \
+if [ "${_DB_SERIES}" = "10.4" ] \
+  || [ "${_DB_SERIES}" = "10.3" ] \
   || [ "${_DB_SERIES}" = "10.2" ] \
-  || [ "${_DB_SERIES}" = "10.1" ]; then
+  || [ "${_DB_SERIES}" = "5.7" ]; then
   check_running
   ${_C_SQL} -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+  ${_C_SQL} -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
   ${_C_SQL} -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-  ${_C_SQL} -e "SET GLOBAL innodb_io_capacity = 8000;" &> /dev/null
+  ${_C_SQL} -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
+  ${_C_SQL} -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
   ${_C_SQL} -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+  ${_C_SQL} -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+fi
+
+_MYQUICK_STATUS=
+if [ -x "/usr/local/bin/mydumper" ]; then
+  _DB_V=$(mysql -V 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f6 \
+    | awk '{ print $1}' \
+    | cut -d"-" -f1 \
+    | awk '{ print $1}' \
+    | sed "s/[\,']//g" 2>&1)
+  _MD_V=$(mydumper --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f6 \
+    | awk '{ print $1}' \
+    | cut -d"-" -f1 \
+    | awk '{ print $1}' \
+    | sed "s/[\,']//g" 2>&1)
+  if [ "${_DB_V}" = "${_MD_V}" ]; then
+    _MYQUICK_STATUS=OK
+    echo "INFO: Installed MyQuick for ${_MD_V} (${_DB_V}) looks fine"
+  fi
 fi
 
 for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
@@ -219,7 +282,7 @@ for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
     && [ "${_DB}" != "information_schema" ] \
     && [ "${_DB}" != "performance_schema" ]; then
     check_running
-    create_locks
+    create_locks ${_DB}
     if [ "${_DB}" != "mysql" ]; then
       _IS_GB=$(${_C_SQL} --skip-column-names --silent -e "SELECT table_name 'Table Name', round(((data_length + index_length)/1024/1024),0)
 'Table Size (MB)' FROM information_schema.TABLES WHERE table_schema = '${_DB}' AND table_name ='watchdog';" | cut -d'/' -f1 | awk '{ print $2}' | sed "s/[\/\s+]//g" | bc 2>&1)
@@ -262,30 +325,34 @@ for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
         echo "All cache tables in ${_DB} truncated"
       fi
     fi
-    backup_this_database &> /dev/null
-    remove_locks
+    if [ "${_MYQUICK_STATUS}" = "OK" ]; then
+      backup_this_database_with_mydumper &> /dev/null
+    else
+      backup_this_database_with_mysqldump &> /dev/null
+    fi
+    remove_locks ${_DB}
     echo "Backup completed for ${_DB}"
     echo " "
   fi
 done
 
+echo "MAIN TASKS COMPLETED"
+rm -f /var/run/boa_sql_cluster_backup.pid
+echo "CLEANUP"
 _DB_BACKUPS_TTL=${_DB_BACKUPS_TTL//[^0-9]/}
 if [ -z "${_DB_BACKUPS_TTL}" ]; then
   _DB_BACKUPS_TTL="30"
 fi
-
-ionice -c2 -n7 -p $$
 find ${_BACKUPDIR} -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
 echo "Backups older than ${_DB_BACKUPS_TTL} days deleted"
-
-chmod 600 ${_BACKUPDIR}/*/*
-chmod 700 ${_BACKUPDIR}/*
-chmod 700 ${_BACKUPDIR}
-chmod 700 /data/disk/arch
-echo "Permissions fixed"
-
-rm -f /var/run/boa_sql_cluster_backup.pid
+echo "Backups older than ${_DB_BACKUPS_TTL} days deleted"
+n=$((RANDOM%1800+8))
+echo "Waiting $n seconds on `date` before running compress..."
+sleep $n
+echo "Starting compress on `date`"
+echo "COMPRESS"
+compress_backup &> /dev/null
 touch /var/xdrago/log/last-run-cluster-backup
 echo "ALL TASKS COMPLETED"
 exit 0
-###EOF2019###
+###EOF2020###

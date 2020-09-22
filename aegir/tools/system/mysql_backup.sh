@@ -5,6 +5,8 @@ SHELL=/bin/bash
 
 check_root() {
   if [ `whoami` = "root" ]; then
+    ionice -c2 -n7 -p $$
+    renice 19 -p $$
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -33,6 +35,10 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
+if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
+  exit 0
+fi
+
 n=$((RANDOM%3600+8))
 echo "Waiting $n seconds 1/2 on `date` before running backup..."
 sleep $n
@@ -51,7 +57,7 @@ fi
 
 _BACKUPDIR=/data/disk/arch/sql
 _CHECK_HOST=$(uname -n 2>&1)
-_DATE=$(date +%y%m%d-%H%M 2>&1)
+_DATE=$(date +%y%m%d-%H%M%S 2>&1)
 _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
 _DOM=$(date +%e 2>&1)
@@ -63,13 +69,7 @@ else
   _OPTIM=NO
 fi
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
@@ -77,13 +77,13 @@ fi
 touch /var/run/boa_sql_backup.pid
 
 create_locks() {
-  echo "Creating locks.."
+  echo "Creating locks for $1"
   #touch /var/run/boa_wait.pid
   touch /var/run/mysql_backup_running.pid
 }
 
 remove_locks() {
-  echo "Removing locks.."
+  echo "Removing locks for $1"
   #rm -f /var/run/boa_wait.pid
   rm -f /var/run/mysql_backup_running.pid
 }
@@ -143,7 +143,7 @@ EOFMYSQL
 
 repair_this_database() {
   check_running
-  mysqlcheck --repair --silent ${_DB}
+  mysqlcheck --auto-repair --silent ${_DB}
 }
 
 optimize_this_database() {
@@ -166,7 +166,30 @@ EOFMYSQL
   done
 }
 
-backup_this_database() {
+backup_this_database_with_mydumper() {
+  n=$((RANDOM%15+5))
+  echo waiting ${n} sec
+  sleep ${n}
+  check_running
+  if [ ! -d "${_SAVELOCATION}/${_DB}" ]; then
+    mkdir -p ${_SAVELOCATION}/${_DB}
+  fi
+  mydumper \
+    --database=${_DB} \
+    --host=localhost \
+    --user=root \
+    --password=${_SQL_PSWD} \
+    --port=3306 \
+    --outputdir=${_SAVELOCATION}/${_DB}/ \
+    --rows=50000 \
+    --build-empty-files \
+    --threads=4 \
+    --less-locking \
+    --long-query-guard=900 \
+    --verbose=1
+}
+
+backup_this_database_with_mysqldump() {
   n=$((RANDOM%15+5))
   echo waiting ${n} sec
   sleep ${n}
@@ -177,20 +200,74 @@ backup_this_database() {
     --no-autocommit \
     --skip-add-locks \
     --hex-blob ${_DB} \
-    | bzip2 -c > ${_SAVELOCATION}/${_DB}.sql.bz2
+    > ${_SAVELOCATION}/${_DB}.sql
+}
+
+compress_backup() {
+  if [ "${_MYQUICK_STATUS}" = "OK" ]; then
+    for DbPath in `find ${_SAVELOCATION}/ -maxdepth 1 -mindepth 1 | sort`; do
+      if [ -e "${DbPath}/metadata" ]; then
+        DbName=$(echo ${DbPath} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
+        cd ${_SAVELOCATION}
+        tar cvfj ${DbName}-${_DATE}.tar.bz2 ${DbName} &> /dev/null
+        rm -f -r ${DbName}
+      fi
+    done
+    chmod 600 ${_SAVELOCATION}/*
+    chmod 700 ${_SAVELOCATION}
+    chmod 700 /data/disk/arch
+    echo "Permissions fixed"
+  else
+    bzip2 ${_SAVELOCATION}/*.sql
+    chmod 600 ${_BACKUPDIR}/*/*
+    chmod 700 ${_BACKUPDIR}/*
+    chmod 700 ${_BACKUPDIR}
+    chmod 700 /data/disk/arch
+    echo "Permissions fixed"
+  fi
 }
 
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
-if [ "${_DB_SERIES}" = "10.3" ] \
+if [ "${_DB_SERIES}" = "10.4" ] \
+  || [ "${_DB_SERIES}" = "10.3" ] \
   || [ "${_DB_SERIES}" = "10.2" ] \
-  || [ "${_DB_SERIES}" = "10.1" ] \
   || [ "${_DB_SERIES}" = "5.7" ]; then
   check_running
   mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+  mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
   mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-  mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;" &> /dev/null
+  mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
+  mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
   mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+  mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+fi
+
+_MYQUICK_STATUS=
+if [ -x "/usr/local/bin/mydumper" ]; then
+  _DB_V=$(mysql -V 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f6 \
+    | awk '{ print $1}' \
+    | cut -d"-" -f1 \
+    | awk '{ print $1}' \
+    | sed "s/[\,']//g" 2>&1)
+  _MD_V=$(mydumper --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f6 \
+    | awk '{ print $1}' \
+    | cut -d"-" -f1 \
+    | awk '{ print $1}' \
+    | sed "s/[\,']//g" 2>&1)
+  if [ "${_DB_V}" = "${_MD_V}" ]; then
+    _MYQUICK_STATUS=OK
+    echo "INFO: Installed MyQuick for ${_MD_V} (${_DB_V}) looks fine"
+  fi
+fi
+
+if [ -e "/root/.my.pass.txt" ]; then
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
 fi
 
 for _DB in `mysql -e "show databases" -s | uniq | sort`; do
@@ -198,13 +275,27 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     && [ "${_DB}" != "information_schema" ] \
     && [ "${_DB}" != "performance_schema" ]; then
     check_running
-    create_locks
+    create_locks ${_DB}
     if [ "${_DB}" != "mysql" ]; then
       if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>&1)
         if [[ "${_IS_GB}" =~ "watchdog" ]]; then
           truncate_watchdog_tables &> /dev/null
           echo "Truncated giant watchdog in ${_DB}"
+        fi
+      fi
+      if [ -e "/var/lib/mysql/${_DB}/queue.ibd" ]; then
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/queue.ibd | grep "G" 2>&1)
+        if [[ "${_IS_GB}" =~ "queue" ]]; then
+          truncate_queue_tables &> /dev/null
+          echo "Truncated giant queue in ${_DB}"
+        fi
+      fi
+      if [ -e "/var/lib/mysql/${_DB}/accesslog.ibd" ]; then
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/accesslog.ibd | grep "G" 2>&1)
+        if [[ "${_IS_GB}" =~ "accesslog" ]]; then
+          truncate_accesslog_tables &> /dev/null
+          echo "Truncated giant accesslog in ${_DB}"
         fi
       fi
       # truncate_accesslog_tables &> /dev/null
@@ -222,7 +313,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         _CACHE_CLEANUP=DONE
       fi
       if [ "${_OPTIM}" = "YES" ] \
-        && [ "${_DOW}" = "7" ] \
+        && [ "${_DOW}" = "8" ] \
         && [ "${_DOM}" -ge "24" ] \
         && [ "${_DOM}" -lt "31" ]; then
         repair_this_database &> /dev/null
@@ -238,50 +329,55 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         echo "All cache tables in ${_DB} truncated"
       fi
     fi
-    backup_this_database &> /dev/null
-    remove_locks
+    if [ "${_MYQUICK_STATUS}" = "OK" ]; then
+      backup_this_database_with_mydumper &> /dev/null
+    else
+      backup_this_database_with_mysqldump &> /dev/null
+    fi
+    remove_locks ${_DB}
     echo "Backup completed for ${_DB}"
     echo " "
   fi
 done
 
 if [ "${_OPTIM}" = "YES" ] \
-  && [ "${_DOW}" = "7" ] \
+  && [ "${_DOW}" = "8" ] \
   && [ "${_DOM}" -ge "24" ] \
   && [ "${_DOM}" -lt "31" ] \
   && [ -e "/root/.my.restart_after_optimize.cnf" ] \
   && [ ! -e "/var/run/boa_run.pid" ]; then
-  ionice -c2 -n2 -p $$
-  if [ "${_DB_SERIES}" = "10.3" ] \
+  if [ "${_DB_SERIES}" = "10.4" ] \
+    || [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ] \
-    || [ "${_DB_SERIES}" = "10.1" ] \
     || [ "${_DB_SERIES}" = "5.7" ]; then
     check_running
     mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_io_capacity = 8000;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
   fi
   bash /var/xdrago/move_sql.sh
 fi
 
+echo "MAIN TASKS COMPLETED"
+rm -f /var/run/boa_sql_backup.pid
+echo "CLEANUP"
 _DB_BACKUPS_TTL=${_DB_BACKUPS_TTL//[^0-9]/}
 if [ -z "${_DB_BACKUPS_TTL}" ]; then
   _DB_BACKUPS_TTL="7"
 fi
-
-ionice -c2 -n7 -p $$
 find ${_BACKUPDIR} -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
 echo "Backups older than ${_DB_BACKUPS_TTL} days deleted"
-
-chmod 600 ${_BACKUPDIR}/*/*
-chmod 700 ${_BACKUPDIR}/*
-chmod 700 ${_BACKUPDIR}
-chmod 700 /data/disk/arch
-echo "Permissions fixed"
-
-rm -f /var/run/boa_sql_backup.pid
+n=$((RANDOM%1800+8))
+echo "Waiting $n seconds on `date` before running compress..."
+sleep $n
+echo "Starting compress on `date`"
+echo "COMPRESS"
+compress_backup &> /dev/null
 touch /var/xdrago/log/last-run-backup
 echo "ALL TASKS COMPLETED"
 exit 0
-###EOF2019###
+###EOF2020###

@@ -35,6 +35,10 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
+if [ -e "/root/.pause_tasks_maint.cnf" ]; then
+  exit 0
+fi
+
 count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
@@ -66,7 +70,7 @@ load_control() {
   fi
   _O_LOAD=$(awk '{print $1*100}' /proc/loadavg 2>&1)
   _O_LOAD=$(( _O_LOAD / _CPU_NR ))
-  _O_LOAD_MAX=$(( 75 * _CPU_SPIDER_RATIO ))
+  _O_LOAD_MAX=$(( 99 * _CPU_SPIDER_RATIO ))
 }
 
 action() {
@@ -97,7 +101,8 @@ done
 ###-------------SYSTEM-----------------###
 
 if [ -e "/var/run/boa_wait.pid" ] \
-  || [ -e "/var/run/manage_rvm_users.pid" ]; then
+  || [ -e "/var/run/manage_rvm_users.pid" ] \
+  || [ -e "/var/run/boa_cron_wait.pid" ]; then
   touch /var/xdrago/log/wait-runner
   echo "Another BOA task is running, we will try again later.."
   exit 0
@@ -112,21 +117,38 @@ else
     echo "Aegir tasks ignored on this cluster node"
     exit 0
   fi
-  if [ -e "/root/.fast.cron.cnf" ]; then
+  if [ -e "/root/.slow.cron.cnf" ]; then
+    touch /var/run/boa_cron_wait.pid
+    sleep 15
     action
-    sleep 10
+    sleep 15
+    rm -f /var/run/boa_cron_wait.pid
+  elif [ -e "/root/.fast.cron.cnf" ]; then
+    rm -f /var/run/boa_cron_wait.pid
     action
-    sleep 10
+    sleep 5
     action
-    sleep 10
+    sleep 5
     action
-    sleep 10
+    sleep 5
     action
-    sleep 10
+    sleep 5
+    action
+    sleep 5
+    action
+    sleep 5
+    action
+    sleep 5
+    action
+    sleep 5
+    action
+    sleep 5
+    action
+    sleep 5
     action
   else
     action
   fi
   exit 0
 fi
-###EOF2019###
+###EOF2020###

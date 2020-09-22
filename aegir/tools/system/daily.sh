@@ -6,6 +6,7 @@ SHELL=/bin/bash
 check_root() {
   if [ `whoami` = "root" ]; then
     ionice -c2 -n7 -p $$
+    renice 19 -p $$
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -34,9 +35,13 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
-_X_SE="401prodQ1"
+if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
+  exit 0
+fi
+
+_X_SE="412prodQ1"
 _WEBG=www-data
-_OSV=$(lsb_release -sc 2>&1)
+_OSR=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
   | cut -d" " -f2 \
@@ -54,31 +59,15 @@ vSet="vset --always-set"
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-    rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
     apt-get update -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
-  ffMirr=$(which ffmirror 2>&1)
-  if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors.txt"
-    mkdir -p /var/backups
-    if [ ! -e "${ffList}" ]; then
-      echo "jp.files.aegir.cc"  > ${ffList}
-      echo "nl.files.aegir.cc" >> ${ffList}
-      echo "uk.files.aegir.cc" >> ${ffList}
-      echo "us.files.aegir.cc" >> ${ffList}
-    fi
-    if [ -e "${ffList}" ]; then
-      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
-      _USE_MIR="${_CHECK_MIRROR}"
-      [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
-    else
-      _USE_MIR="files.aegir.cc"
-    fi
-  else
-    _USE_MIR="files.aegir.cc"
-  fi
+  _USE_MIR="files.aegir.cc"
   if ! netcat -w 10 -z "${_USE_MIR}" 80; then
     echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
     _USE_MIR="104.245.208.226"
@@ -179,19 +168,59 @@ disable_chattr() {
 }
 
 run_drush8_cmd() {
-  su -s /bin/bash - ${_HM_U}.ftp -c "drush8 @${Dom} $1" &> /dev/null
+  if [ -e "/root/.debug_daily.info" ]; then
+    nOw=$(date +%y%m%d-%H%M%S 2>&1)
+    echo "${nOw} ${_HM_U} running drush8 @${Dom} $1"
+  fi
+  su -s /bin/bash - ${_HM_U} -c "drush8 @${Dom} $1" &> /dev/null
+}
+
+run_drush9_cmd() {
+  _S_X=
+  _S_N=${Dom}
+  _S_T=${_S_N%*.*}
+  _S_R=${_S_T//./-}
+  if [ -e "/root/.debug_daily.info" ]; then
+    nOw=$(date +%y%m%d-%H%M%S 2>&1)
+    echo "${nOw} ${_HM_U} running drush9 @${_S_R} $1"
+  fi
+  su -s /bin/bash - ${_HM_U} -c "drush9 @${_S_R} $1" &> /dev/null
 }
 
 run_drush8_hmr_cmd() {
+  if [ -e "/root/.debug_daily.info" ]; then
+    nOw=$(date +%y%m%d-%H%M%S 2>&1)
+    echo "${nOw} ${_HM_U} running drush8 @hostmaster $1"
+  fi
   su -s /bin/bash - ${_HM_U} -c "drush8 @hostmaster $1" &> /dev/null
 }
 
 run_drush8_hmr_master_cmd() {
+  if [ -e "/root/.debug_daily.info" ]; then
+    nOw=$(date +%y%m%d-%H%M%S 2>&1)
+    echo "${nOw} aegir running drush8 @hostmaster $1"
+  fi
   su -s /bin/bash - aegir -c "drush8 @hostmaster $1" &> /dev/null
 }
 
 run_drush8_nosilent_cmd() {
-  su -s /bin/bash - ${_HM_U}.ftp -c "drush8 @${Dom} $1"
+  if [ -e "/root/.debug_daily.info" ]; then
+    nOw=$(date +%y%m%d-%H%M%S 2>&1)
+    echo "${nOw} ${_HM_U} running drush8 @${Dom} $1"
+  fi
+  su -s /bin/bash - ${_HM_U} -c "drush8 @${Dom} $1"
+}
+
+run_drush9_nosilent_cmd() {
+  _S_X=
+  _S_N=${Dom}
+  _S_T=${_S_N%*.*}
+  _S_R=${_S_T//./-}
+  if [ -e "/root/.debug_daily.info" ]; then
+    nOw=$(date +%y%m%d-%H%M%S 2>&1)
+    echo "${nOw} ${_HM_U} running drush9 @${_S_R} $1"
+  fi
+  su -s /bin/bash - ${_HM_U} -c "drush9 @${_S_R} $1"
 }
 
 check_if_required() {
@@ -240,11 +269,19 @@ check_if_required() {
         "echo _REQ for $1 is ${_REQ} in ${Dom} == 7 == via ${_REW_TEST}"
       fi
     fi
-    Profile=$(run_drush8_nosilent_cmd "vget ^install_profile$" \
-      | cut -d: -f2 \
-      | awk '{ print $1}' \
-      | sed "s/['\"]//g" \
-      | tr -d "\n" 2>&1)
+    if [ -e "${Plr}/core" ]; then
+      Profile=$(run_drush8_nosilent_cmd "config-get core.extension profile" \
+        | cut -d: -f3 \
+        | awk '{ print $1}' \
+        | sed "s/['\"]//g" \
+        | tr -d "\n" 2>&1)
+    else
+      Profile=$(run_drush8_nosilent_cmd "vget ^install_profile$" \
+        | cut -d: -f2 \
+        | awk '{ print $1}' \
+        | sed "s/['\"]//g" \
+        | tr -d "\n" 2>&1)
+    fi
     Profile=${Profile//[^a-z_]/}
     echo "Profile is == ${Profile} =="
     if [ ! -z "${Profile}" ]; then
@@ -288,7 +325,7 @@ check_if_force() {
   done
 }
 
-uninstall_modules() {
+uninstall_modules_with_drush9() {
   for m in $1; do
     _SKIP=NO
     _FORCE=NO
@@ -299,20 +336,28 @@ uninstall_modules() {
       check_if_force "$m"
     fi
     if [ "${_SKIP}" = "NO" ]; then
-      _MODULE_T=$(run_drush8_nosilent_cmd "pml --status=enabled \
+      _MODULE_T=$(run_drush9_nosilent_cmd "pml --status=enabled \
         --type=module | grep \($m\)" 2>&1)
       if [[ "${_MODULE_T}" =~ "($m)" ]]; then
         if [ "${_FORCE}" = "NO" ]; then
-          check_if_required "$m"
+          echo "$m dependencies not possible to check in ${Dom} action not forced"
         else
-          echo "$m dependencies not checked in ${Dom}"
+          echo "$m dependencies not possible to check in ${Dom} action forced"
           _REQ=FCE
         fi
         if [ "${_REQ}" = "FCE" ]; then
-          run_drush8_cmd "pmu $m -y"
+          if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+            run_drush9_cmd "pmu $m -y"
+          else
+            run_drush8_cmd "pmu $m -y"
+          fi
           echo "$m FCE uninstalled in ${Dom}"
         elif [ "${_REQ}" = "NO" ]; then
-          run_drush8_cmd "pmu $m -y"
+          if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+            run_drush9_cmd "pmu $m -y"
+          else
+            run_drush8_cmd "pmu $m -y"
+          fi
           echo "$m uninstalled in ${Dom}"
         elif [ "${_REQ}" = "NULL" ]; then
           echo "$m is not used in ${Dom}"
@@ -324,7 +369,7 @@ uninstall_modules() {
   done
 }
 
-disable_modules() {
+disable_modules_with_drush8() {
   for m in $1; do
     _SKIP=NO
     _FORCE=NO
@@ -341,7 +386,7 @@ disable_modules() {
         if [ "${_FORCE}" = "NO" ]; then
           check_if_required "$m"
         else
-          echo "$m dependencies not checked in ${Dom}"
+          echo "$m dependencies not checked in ${Dom} action forced"
           _REQ=FCE
         fi
         if [ "${_REQ}" = "FCE" ]; then
@@ -360,7 +405,7 @@ disable_modules() {
   done
 }
 
-enable_modules() {
+enable_modules_with_drush8() {
   for m in $1; do
     _MODULE_T=$(run_drush8_nosilent_cmd "pml --status=enabled \
       --type=module | grep \($m\)" 2>&1)
@@ -368,6 +413,19 @@ enable_modules() {
       _DO_NOTHING=YES
     else
       run_drush8_cmd "en $m -y"
+      echo "$m enabled in ${Dom}"
+    fi
+  done
+}
+
+enable_modules_with_drush9() {
+  for m in $1; do
+    _MODULE_T=$(run_drush9_nosilent_cmd "pml --status=enabled \
+      --type=module | grep \($m\)" 2>&1)
+    if [[ "${_MODULE_T}" =~ "($m)" ]]; then
+      _DO_NOTHING=YES
+    else
+      run_drush9_cmd "en $m -y"
       echo "$m enabled in ${Dom}"
     fi
   done
@@ -395,7 +453,8 @@ fix_user_register_protection() {
     if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
-      if [ "${_CLIENT_OPTION}" = "POWER" ]; then
+      if [ "${_CLIENT_OPTION}" = "POWER" ] \
+        || [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
         _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
           ${_PLR_CTRL_F} 2>&1)
         if [[ "${_DIS_URP_T}" =~ "disable_user_register_protection = TRUE" ]]; then
@@ -444,7 +503,8 @@ fix_user_register_protection() {
     _DISABLE_USER_REGISTER_PROTECTION=NO
   fi
 
-  if [ "${_DISABLE_USER_REGISTER_PROTECTION}" = "NO" ]; then
+  if [ "${_DISABLE_USER_REGISTER_PROTECTION}" = "NO" ] \
+    && [ ! -e "${Plr}/core" ]; then
     Prm=$(run_drush8_nosilent_cmd "vget ^user_register$" \
       | cut -d: -f2 \
       | awk '{ print $1}' \
@@ -478,8 +538,7 @@ fix_user_register_protection() {
 fix_robots_txt() {
   find ${Dir}/files/robots.txt -mtime +6 -exec rm -f {} \; &> /dev/null
   if [ ! -e "${Dir}/files/robots.txt" ] \
-    && [ ! -e "${Plr}/profiles/hostmaster" ] \
-    && [ "${_STATUS}" = "OK" ]; then
+    && [ ! -e "${Plr}/profiles/hostmaster" ]; then
     curl -L --max-redirs 10 -k -s --retry 2 --retry-delay 5 \
       -A iCab "http://${Dom}/robots.txt?nocache=1&noredis=1" \
       -o ${Dir}/files/robots.txt
@@ -742,7 +801,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-4.0.1. As a bonus, you will be able to speed up your sites
+by BOA-4.1.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -796,7 +855,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-4.0.1. As a bonus, you will be able to speed up your sites
+by BOA-4.1.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -850,7 +909,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-4.0.1. As a bonus, you will be able to speed up your sites
+by BOA-4.1.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -941,7 +1000,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-4.0.1. As a bonus, you will be able to speed up your sites
+by BOA-4.1.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -1007,7 +1066,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-4.0.1. As a bonus, you will be able to speed up your sites
+by BOA-4.1.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -1073,7 +1132,7 @@ not secure codebase, even if it was not affected by Drupageddon bug
 directly.
 
 Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-4.0.1. As a bonus, you will be able to speed up your sites
+by BOA-4.1.2. As a bonus, you will be able to speed up your sites
 considerably by switching PHP-FPM to 7.0
 
 We recommend to follow this upgrade how-to:
@@ -1106,9 +1165,12 @@ check_site_status() {
     _SITE_TEST_RESULT=OK
   fi
   if [ "${_SITE_TEST_RESULT}" = "OK" ]; then
-    _STATUS_TEST=$(run_drush8_nosilent_cmd "status \
-      | grep 'Drupal bootstrap.*:.*Successful'" 2>&1)
-    if [[ "${_STATUS_TEST}" =~ "Successful" ]]; then
+    _STATUS_BOOTSTRAP=$(run_drush8_nosilent_cmd "status bootstrap \
+      | grep 'Drupal bootstrap.*:.*'" 2>&1)
+    _STATUS_STATUS=$(run_drush8_nosilent_cmd "status status \
+      | grep 'Database.*:.*'" 2>&1)
+    if [[ "${_STATUS_BOOTSTRAP}" =~ "Drupal bootstrap" ]] \
+      && [[ "${_STATUS_STATUS}" =~ "Database" ]]; then
       _STATUS=OK
       _RUN_DGN=NO
       if [ -e "${User}/static/control/drupalgeddon.info" ]; then
@@ -1336,7 +1398,8 @@ fix_modules() {
     fi
   fi
 
-  if [ -e "${Plr}/modules/o_contrib_seven" ]; then
+  if [ -e "${Plr}/modules/o_contrib_seven" ] \
+    && [ ! -e "${Plr}/core" ]; then
     _PRIV_TEST=$(run_drush8_nosilent_cmd "vget ^file_default_scheme$" 2>&1)
     if [[ "${_PRIV_TEST}" =~ "No matching variable" ]]; then
       _PRIV_TEST_RESULT=NONE
@@ -1738,12 +1801,12 @@ fix_modules() {
       echo "WARNING: THIS PLATFORM IS NOT A VALID PRESSFLOW PLATFORM! ${Plr}"
     elif [ -e "${Plr}/modules/path_alias_cache" ] \
       && [ -e "${Plr}/modules/user" ]; then
-      if [ ! -z "${_MODULES_OFF_SIX}" ]; then
-        disable_modules "${_MODULES_OFF_SIX}"
-      fi
-      if [ ! -z "${_MODULES_ON_SIX}" ]; then
-        enable_modules "${_MODULES_ON_SIX}"
-      fi
+      # if [ ! -z "${_MODULES_OFF_SIX}" ]; then
+      #   disable_modules_with_drush8 "${_MODULES_OFF_SIX}"
+      # fi
+      # if [ ! -z "${_MODULES_ON_SIX}" ]; then
+      #   enable_modules_with_drush8 "${_MODULES_ON_SIX}"
+      # fi
       run_drush8_cmd "sqlq \"UPDATE system SET weight = '-1' \
         WHERE type = 'module' AND name = 'path_alias_cache'\""
     fi
@@ -1753,15 +1816,16 @@ fix_modules() {
       || [ ! -e "${Plr}/profiles" ]; then
       echo "WARNING: THIS PLATFORM IS BROKEN! ${Plr}"
     else
-      if [ ! -z "${_MODULES_OFF_SEVEN}" ]; then
-        disable_modules "${_MODULES_OFF_SEVEN}"
-      fi
-      if [ "${_ENTITYCACHE_DONT_ENABLE}" = "NO" ]; then
-        enable_modules "entitycache"
-      fi
-      if [ ! -z "${_MODULES_ON_SEVEN}" ]; then
-        enable_modules "${_MODULES_ON_SEVEN}"
-      fi
+      _MODX=OFF
+      # if [ ! -z "${_MODULES_OFF_SEVEN}" ]; then
+      #   disable_modules_with_drush8 "${_MODULES_OFF_SEVEN}"
+      # fi
+      # if [ "${_ENTITYCACHE_DONT_ENABLE}" = "NO" ]; then
+      #   enable_modules_with_drush8 "entitycache"
+      # fi
+      # if [ ! -z "${_MODULES_ON_SEVEN}" ]; then
+      #   enable_modules_with_drush8 "${_MODULES_ON_SEVEN}"
+      # fi
     fi
   elif [ -e "${Plr}/modules/o_contrib_eight" ]; then
     if [ ! -e "${Plr}/core/modules/node" ] \
@@ -1769,66 +1833,74 @@ fix_modules() {
       || [ ! -e "${Plr}/profiles" ]; then
       echo "WARNING: THIS PLATFORM IS BROKEN! ${Plr}"
     else
-      if [ ! -z "${_MODULES_OFF_EIGHT}" ]; then
-        uninstall_modules "${_MODULES_OFF_EIGHT}"
-      fi
-      if [ ! -z "${_MODULES_ON_EIGHT}" ]; then
-        enable_modules "${_MODULES_ON_EIGHT}"
-      fi
-      enable_modules "redis"
+      _MODX=OFF
+      # if [ ! -z "${_MODULES_OFF_EIGHT}" ]; then
+      #   uninstall_modules_with_drush9 "${_MODULES_OFF_EIGHT}"
+      # fi
+      # if [ ! -z "${_MODULES_ON_EIGHT}" ]; then
+      #   if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+      #     enable_modules_with_drush9 "${_MODULES_ON_EIGHT}"
+      #   else
+      #     enable_modules_with_drush8 "${_MODULES_ON_EIGHT}"
+      #   fi
+      # fi
       if [ ! -e "${Dir}/.redisOn" ]; then
+        enable_modules_with_drush9 "redis"
+        run_drush8_cmd "cache-rebuild"
         mkdir ${Dir}/.redisOn
         chown -R ${_HM_U}:users ${Dir}/.redisOn &> /dev/null
         chmod 0755 ${Dir}/.redisOn &> /dev/null
-        run_drush8_cmd "cache-rebuild"
       fi
       if [ -d "${Dir}/.redisOff" ]; then
         rmdir ${Dir}/.redisOff
       fi
-    fi
-  fi
-  if [ -e "${Dir}/modules/commerce_ubercart_check.info" ]; then
-    touch ${User}/log/ctrl/site.${Dom}.cart-check.info
-    rm -f ${Dir}/modules/commerce_ubercart_check.info
-  fi
-  if [ ! -e "${User}/log/ctrl/site.${Dom}.cart-check.info" ]; then
-    _COMMERCE_TEST=$(run_drush8_nosilent_cmd "pml --status=enabled \
-      --no-core --type=module | grep \(commerce\)" 2>&1)
-    _UBERCART_TEST=$(run_drush8_nosilent_cmd "pml --status=enabled \
-      --no-core --type=module | grep \(uc_cart\)" 2>&1)
-    if [[ "${_COMMERCE_TEST}" =~ "Commerce" ]] \
-      || [[ "${_UBERCART_TEST}" =~ "Ubercart" ]]; then
-      disable_modules "views_cache_bully"
-    fi
-    touch ${User}/log/ctrl/site.${Dom}.cart-check.info
-  fi
-  if [ -e "${User}/static/control/enable_views_cache_bully.info" ] \
-    || [ -e "${User}/static/control/enable_views_content_cache.info" ]; then
-    _VIEWS_TEST=$(run_drush8_nosilent_cmd "pml --status=enabled \
-      --no-core --type=module | grep \(views\)" 2>&1)
-    if [ -e "${User}/static/control/enable_views_content_cache.info" ]; then
-      _CTOOLS_TEST=$(run_drush8_nosilent_cmd "pml --status=enabled \
-        --no-core --type=module | grep \(ctools\)" 2>&1)
-    fi
-    if [[ "${_VIEWS_TEST}" =~ "Views" ]] \
-      && [ ! -e "${Plr}/profiles/hostmaster" ]; then
-      if [ "${_VIEWS_CACHE_BULLY_DONT_ENABLE}" = "NO" ] \
-        && [ -e "${User}/static/control/enable_views_cache_bully.info" ]; then
-        if [ -e "${Plr}/modules/o_contrib_seven/views_cache_bully" ] \
-          || [ -e "${Plr}/modules/o_contrib/views_cache_bully" ]; then
-          enable_modules "views_cache_bully"
-        fi
-      fi
-      if [[ "${_CTOOLS_TEST}" =~ "Chaos" ]] \
-        && [ "${_VIEWS_CONTENT_CACHE_DONT_ENABLE}" = "NO" ] \
-        && [ -e "${User}/static/control/enable_views_content_cache.info" ]; then
-        if [ -e "${Plr}/modules/o_contrib_seven/views_content_cache" ] \
-          || [ -e "${Plr}/modules/o_contrib/views_content_cache" ]; then
-          enable_modules "views_content_cache"
-        fi
+      if [ -d "${Dir}/.redisLegacyOff" ]; then
+        rmdir ${Dir}/.redisLegacyOff
       fi
     fi
   fi
+  # if [ -e "${Dir}/modules/commerce_ubercart_check.info" ]; then
+  #   touch ${User}/log/ctrl/site.${Dom}.cart-check.info
+  #   rm -f ${Dir}/modules/commerce_ubercart_check.info
+  # fi
+  # if [ ! -e "${User}/log/ctrl/site.${Dom}.cart-check.info" ]; then
+  #   _COMMERCE_TEST=$(run_drush8_nosilent_cmd "pml --status=enabled \
+  #     --no-core --type=module | grep \(commerce\)" 2>&1)
+  #   _UBERCART_TEST=$(run_drush8_nosilent_cmd "pml --status=enabled \
+  #     --no-core --type=module | grep \(uc_cart\)" 2>&1)
+  #   if [[ "${_COMMERCE_TEST}" =~ "Commerce" ]] \
+  #     || [[ "${_UBERCART_TEST}" =~ "Ubercart" ]]; then
+  #     disable_modules_with_drush8 "views_cache_bully"
+  #   fi
+  #   touch ${User}/log/ctrl/site.${Dom}.cart-check.info
+  # fi
+  # if [ -e "${User}/static/control/enable_views_cache_bully.info" ] \
+  #   || [ -e "${User}/static/control/enable_views_content_cache.info" ]; then
+  #   _VIEWS_TEST=$(run_drush8_nosilent_cmd "pml --status=enabled \
+  #     --no-core --type=module | grep \(views\)" 2>&1)
+  #   if [ -e "${User}/static/control/enable_views_content_cache.info" ]; then
+  #     _CTOOLS_TEST=$(run_drush8_nosilent_cmd "pml --status=enabled \
+  #       --no-core --type=module | grep \(ctools\)" 2>&1)
+  #   fi
+  #   if [[ "${_VIEWS_TEST}" =~ "Views" ]] \
+  #     && [ ! -e "${Plr}/profiles/hostmaster" ]; then
+  #     if [ "${_VIEWS_CACHE_BULLY_DONT_ENABLE}" = "NO" ] \
+  #       && [ -e "${User}/static/control/enable_views_cache_bully.info" ]; then
+  #       if [ -e "${Plr}/modules/o_contrib_seven/views_cache_bully" ] \
+  #         || [ -e "${Plr}/modules/o_contrib/views_cache_bully" ]; then
+  #         enable_modules_with_drush8 "views_cache_bully"
+  #       fi
+  #     fi
+  #     if [[ "${_CTOOLS_TEST}" =~ "Chaos" ]] \
+  #       && [ "${_VIEWS_CONTENT_CACHE_DONT_ENABLE}" = "NO" ] \
+  #       && [ -e "${User}/static/control/enable_views_content_cache.info" ]; then
+  #       if [ -e "${Plr}/modules/o_contrib_seven/views_content_cache" ] \
+  #         || [ -e "${Plr}/modules/o_contrib/views_content_cache" ]; then
+  #         enable_modules_with_drush8 "views_content_cache"
+  #       fi
+  #     fi
+  #   fi
+  # fi
 }
 
 if_site_db_conversion() {
@@ -1881,7 +1953,7 @@ if_site_db_conversion() {
   fi
   if [ -z "${_DENY_SQL_CONVERT}" ] \
     && [ ! -z "${_SQL_CONVERT}" ] \
-    && [ "${_DOW}" = "7" ]; then
+    && [ "${_DOW}" = "8" ]; then
     if [ "${_SQL_CONVERT}" = "YES" ]; then
       _SQL_CONVERT=innodb
     elif [ "${_SQL_CONVERT}" = "NO" ]; then
@@ -1889,11 +1961,11 @@ if_site_db_conversion() {
     fi
     if [ "${_SQL_CONVERT}" = "myisam" ] \
       || [ "${_SQL_CONVERT}" = "innodb" ]; then
-      _TIMP=$(date +%y%m%d-%H%M 2>&1)
+      _TIMP=$(date +%y%m%d-%H%M%S 2>&1)
       echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
         for ${Dom} started"
       sql_convert
-      _TIMP=$(date +%y%m%d-%H%M 2>&1)
+      _TIMP=$(date +%y%m%d-%H%M%S 2>&1)
       echo "${_TIMP} sql conversion to-${_SQL_CONVERT} \
         for ${Dom} completed"
     fi
@@ -1903,9 +1975,11 @@ if_site_db_conversion() {
 cleanup_ghost_platforms() {
   if [ -e "${Plr}" ]; then
     if [ ! -e "${Plr}/index.php" ] || [ ! -e "${Plr}/profiles" ]; then
-      mkdir -p ${User}/undo
-      mv -f ${Plr} ${User}/undo/ &> /dev/null
-      echo "GHOST platform ${Plr} detected and moved to ${User}/undo/"
+      if [ ! -e "${Plr}/vendor" ]; then
+        mkdir -p ${User}/undo
+        mv -f ${Plr} ${User}/undo/ &> /dev/null
+        echo "GHOST platform ${Plr} detected and moved to ${User}/undo/"
+      fi
     fi
   fi
 }
@@ -1948,9 +2022,6 @@ fix_static_permissions() {
       fi
     fi
     if [ ! -f "${User}/log/ctrl/plr.${PlrID}.perm-fix-${_NOW}.info" ]; then
-      find ${Plr}/profiles -type f -name "*.info" -print0 | xargs -0 sed -i \
-        's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
-      wait
       find ${Plr} -type d -exec chmod 0775 {} \; &> /dev/null
       find ${Plr} -type f -exec chmod 0664 {} \; &> /dev/null
     fi
@@ -1985,10 +2056,6 @@ fix_permissions() {
   if [ ! -f "${User}/log/ctrl/plr.${PlrID}.perm-fix-${_NOW}.info" ] \
     && [ -e "${Plr}" ]; then
     mkdir -p ${Plr}/sites/all/{modules,themes,libraries,drush}
-    find ${Plr}/sites/all/modules -type f -name "*.info" -print0 \
-      | xargs -0 sed -i \
-      's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
-    wait
     find ${Plr}/sites/all/{modules,themes,libraries,drush}/*{.tar,.tar.gz,.zip} \
       -type f -exec rm -f {} \; &> /dev/null
     if [ ! -e "${User}/static/control/unlock.info" ] \
@@ -2034,9 +2101,14 @@ fix_permissions() {
   if [ -e "${Dir}" ] \
     && [ -e "${Dir}/drushrc.php" ] \
     && [ -e "${Dir}/files" ] \
-    && [ -e "${Dir}/private" ] \
-    && [ -e "${Dir}/modules" ]; then
+    && [ -e "${Dir}/private" ]; then
     ### directory and settings files - site level
+    if [ ! -e "${Dir}/modules" ]; then
+      mkdir ${Dir}/modules
+    fi
+    if [ -e "${Dir}/aegir.services.yml" ]; then
+      rm -f ${Dir}/aegir.services.yml
+    fi
     chown ${_HM_U}:users ${Dir} &> /dev/null
     chown ${_HM_U}:www-data \
       ${Dir}/{local.settings.php,settings.php,civicrm.settings.php,solr.php} &> /dev/null
@@ -2322,13 +2394,15 @@ cleanup_ghost_drushrc() {
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
-      if [ -d "$Plm" ]; then
-        if [ ! -e "$Plm/index.php" ] || [ ! -e "$Plm/profiles" ]; then
-          mkdir -p ${User}/undo
-          mv -f $Plm ${User}/undo/ &> /dev/null
-          echo "GHOST broken platform dir $Plm detected and moved to ${User}/undo/"
-          mv -f ${Alias} ${User}/undo/ &> /dev/null
-          echo "GHOST broken platform alias ${Alias} detected and moved to ${User}/undo/"
+      if [ -d "${Plm}" ]; then
+        if [ ! -e "${Plm}/index.php" ] || [ ! -e "${Plm}/profiles" ]; then
+          if [ ! -e "${Plm}/vendor" ]; then
+            mkdir -p ${User}/undo
+            mv -f ${Plm} ${User}/undo/ &> /dev/null
+            echo "GHOST broken platform dir ${Plm} detected and moved to ${User}/undo/"
+            mv -f ${Alias} ${User}/undo/ &> /dev/null
+            echo "GHOST broken platform alias ${Alias} detected and moved to ${User}/undo/"
+          fi
         fi
       else
         mkdir -p ${User}/undo
@@ -2353,8 +2427,10 @@ cleanup_ghost_drushrc() {
           | sed "s/[\,']//g" 2>&1)
         if [ -e "${_T_SITE_FDIR}/drushrc.php" ] \
           && [ -e "${_T_SITE_FDIR}/files" ] \
-          && [ -e "${_T_SITE_FDIR}/private" ] \
-          && [ -e "${_T_SITE_FDIR}/modules" ]; then
+          && [ -e "${_T_SITE_FDIR}/private" ]; then
+          if [ ! -e "${Dir}/modules" ]; then
+            mkdir ${Dir}/modules
+          fi
           _IS_SITE=YES
         else
           mkdir -p ${User}/undo
@@ -2378,10 +2454,14 @@ cleanup_ghost_drushrc() {
 }
 
 check_update_le_hm_ssl() {
-  exeLe="${User}/tools/le/letsencrypt.sh"
+  exeLe="${User}/tools/le/dehydrated"
   if [ -e "${User}/log/domain.txt" ]; then
     hmFront=$(cat ${User}/log/domain.txt 2>&1)
     hmFront=$(echo -n ${hmFront} | tr -d "\n" 2>&1)
+  fi
+  if [ -e "${User}/log/extra_domain.txt" ]; then
+    hmFrontExtra=$(cat ${User}/log/extra_domain.txt 2>&1)
+    hmFrontExtra=$(echo -n ${hmFrontExtra} | tr -d "\n" 2>&1)
   fi
   if [ -z "${hmFront}" ]; then
     if [ -e "${User}/.drush/hostmaster.alias.drushrc.php" ]; then
@@ -2395,19 +2475,106 @@ check_update_le_hm_ssl() {
   if [ -x "${exeLe}" ] \
     && [ ! -z "${hmFront}" ] \
     && [ -e "${User}/tools/le/certs/${hmFront}/fullchain.pem" ]; then
-    echo "Running LE cert check directly for hostmaster ${_HM_U}"
-    su -s /bin/bash - ${_HM_U} -c "${exeLe} -c -d ${hmFront}"
+    if [ ! -z "${hmFrontExtra}" ]; then
+      echo "Running LE cert check directly for hostmaster ${_HM_U} with ${hmFrontExtra}"
+      su -s /bin/bash - ${_HM_U} -c "${exeLe} --cron --ipv4 --domain ${hmFront} --domain ${hmFrontExtra}"
+    else
+      echo "Running LE cert check directly for hostmaster ${_HM_U}"
+      su -s /bin/bash - ${_HM_U} -c "${exeLe} --cron --ipv4 --domain ${hmFront}"
+    fi
     sleep 3
   fi
 }
 
 check_update_le_ssl() {
-  if [ ! -e "${User}/static/control/noverify.info" ]; then
-    if [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
-      echo "Running LE cert check via Verify task for ${Dom}"
-      run_drush8_hmr_cmd "hosting-task @${Dom} verify --force"
-      echo ${_MOMENT} >> /var/xdrago/log/le/${Dom}
-      sleep 3
+  exeLe="${User}/tools/le/dehydrated"
+  Vht="${User}/config/server_master/nginx/vhost.d/${Dom}"
+  if [ -x "${exeLe}" ] && [ -e "${Vht}" ]; then
+    _SSL_ON_TEST=$(cat ${Vht} | grep "443 ssl http2" 2>&1)
+    if [[ "${_SSL_ON_TEST}" =~ "443 ssl http2" ]]; then
+      if [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
+        echo "Running LE cert check directly for ${Dom}"
+        useAliases=""
+        siteAliases=`cat ${Vht} \
+          | grep "server_name" \
+          | sed "s/server_name//g; s/;//g" \
+          | sort | uniq \
+          | tr -d "\n" \
+          | sed "s/  / /g; s/  / /g; s/  / /g" \
+          | sort | uniq`
+        for alias in `echo "${siteAliases}"`; do
+          if [ -e "${User}/static/control/wildcard-enable-${Dom}.info" ]; then
+            Dom=$(echo ${Dom} | sed 's/^www.//g' 2>&1)
+            if [ -z "${useAliases}" ] \
+              && [ ! -z "${alias}" ] \
+              && [[ ! "${alias}" =~ ".nodns." ]] \
+              && [[ ! "${alias}" =~ "${Dom}" ]]; then
+              useAliases="--domain ${alias}"
+              echo "--domain ${alias}"
+            else
+              if [ ! -z "${alias}" ] \
+                && [[ ! "${alias}" =~ ".nodns." ]] \
+                && [[ ! "${alias}" =~ "${Dom}" ]]; then
+                useAliases="${useAliases} --domain ${alias}"
+                echo "--domain ${alias}"
+              fi
+            fi
+          else
+            if [[ ! "${alias}" =~ ".nodns." ]]; then
+              echo "--domain ${alias}"
+              if [ -z "${useAliases}" ] && [ ! -z "${alias}" ]; then
+                useAliases="--domain ${alias}"
+              else
+                if [ ! -z "${alias}" ]; then
+                  useAliases="${useAliases} --domain ${alias}"
+                fi
+              fi
+            else
+              echo "ignored alias ${alias}"
+            fi
+          fi
+        done
+        dhArgs="--domain ${Dom} ${useAliases}"
+        if [ -e "${User}/static/control/wildcard-enable-${Dom}.info" ]; then
+          Dom=$(echo ${Dom} | sed 's/^www.//g' 2>&1)
+          echo "--domain *.${Dom}"
+          if [ ! -e "${User}/tools/le/hooks/cloudflare/hook.py" ]; then
+            mkdir -p ${User}/tools/le/hooks
+            cd ${User}/tools/le
+            git clone https://github.com/kappataumu/letsencrypt-cloudflare-hook hooks/cloudflare
+            pip install -r hooks/cloudflare/requirements.txt
+          fi
+          if [ -e "${User}/tools/le/hooks/cloudflare/hook.py" ]; then
+            if [ -e "${User}/tools/le/config" ]; then
+              dhArgs="--alias ${Dom} --domain *.${Dom} --domain ${Dom} ${useAliases}"
+              dhArgs=" ${dhArgs} --challenge dns-01 --hook '${User}/tools/le/hooks/cloudflare/hook.py'"
+            fi
+          fi
+        fi
+        echo "dhArgs is ${dhArgs}"
+        su -s /bin/bash - ${_HM_U} -c "${exeLe} \
+          --cron \
+          --ipv4 \
+          ${dhArgs}"
+        if [ -e "${User}/static/control/wildcard-enable-${Dom}.info" ]; then
+          sleep 30
+        else
+          sleep 3
+        fi
+        echo ${_MOMENT} >> /var/xdrago/log/le/${Dom}
+      fi
+    fi
+  fi
+}
+
+if_gen_goaccess() {
+  PrTestPower=$(grep "POWER" /root/.${_HM_U}.octopus.cnf 2>&1)
+  PrTestCluster=$(grep "CLUSTER" /root/.${_HM_U}.octopus.cnf 2>&1)
+  if [[ "${PrTestPower}" =~ "POWER" ]] \
+    || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
+    isWblgx=$(which weblogx 2>&1)
+    if [ -x "${isWblgx}" ]; then
+      ${isWblgx} --site="${1}" --env="${_HM_U}"
     fi
   fi
 }
@@ -2417,7 +2584,7 @@ process() {
   cleanup_ghost_drushrc
   for Site in `find ${User}/config/server_master/nginx/vhost.d \
     -maxdepth 1 -mindepth 1 -type f | sort`; do
-    _MOMENT=$(date +%y%m%d-%H%M 2>&1)
+    _MOMENT=$(date +%y%m%d-%H%M%S 2>&1)
     echo ${_MOMENT} Start Counting Site $Site
     Dom=$(echo $Site | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
     Dan=
@@ -2457,10 +2624,11 @@ process() {
       _PLR_CTRL_F="${Plr}/sites/all/modules/boa_platform_control.ini"
       if [ -e "${Plr}" ]; then
         if [ "${_NEW_SSL}" = "YES" ] \
-          || [ "${_OSV}" = "jessie" ] \
-          || [ "${_OSV}" = "stretch" ] \
-          || [ "${_OSV}" = "trusty" ] \
-          || [ "${_OSV}" = "precise" ]; then
+          || [ "${_OSR}" = "buster" ] \
+          || [ "${_OSR}" = "stretch" ] \
+          || [ "${_OSR}" = "jessie" ] \
+          || [ "${_OSR}" = "trusty" ] \
+          || [ "${_OSR}" = "precise" ]; then
           PlrID=$(echo ${Plr} \
             | openssl md5 \
             | awk '{ print $2}' \
@@ -2483,12 +2651,13 @@ process() {
               touch ${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info
             fi
           else
-            check_site_status
+            _CHECK_IS=OFF
+            #check_site_status
           fi
-          if [ "${_STATUS}" = "OK" ] \
-            && [ ! -z "${Dan}" ] \
+          if [ ! -z "${Dan}" ] \
             && [ "${Dan}" != "hostmaster" ]; then
             if_site_db_conversion
+            if_gen_goaccess ${Dom}
             searchStringB=".dev."
             searchStringC=".devel."
             searchStringD=".temp."
@@ -2510,7 +2679,10 @@ process() {
               *"$searchStringJ"*) ;;
               *)
               if [ "${_MODULES_FIX}" = "YES" ]; then
-                fix_modules
+                _CHECK_IS=OFF
+                #if [ "${_STATUS}" = "OK" ]; then
+                  fix_modules
+                #fi
                 fix_robots_txt
               fi
               check_update_le_ssl
@@ -2521,6 +2693,12 @@ process() {
             fi
             fix_site_control_files
             fix_user_register_protection
+            if [ -e "${Plr}/modules/o_contrib_seven" ]; then
+              if [[ "${_X_SE}" =~ "OFF" ]]; then
+                run_drush8_cmd "advagg-force-new-aggregates"
+                run_drush8_cmd "cc all"
+              fi
+            fi
           fi
         fi
         ###
@@ -2558,7 +2736,7 @@ process() {
           fix_permissions
         fi
       fi
-     _MOMENT=$(date +%y%m%d-%H%M 2>&1)
+     _MOMENT=$(date +%y%m%d-%H%M%S 2>&1)
      echo ${_MOMENT} End Counting Site $Site
     fi
   done
@@ -2666,10 +2844,12 @@ check_old_empty_platforms() {
           | grep site_path 2>&1)
         if [ ! -e "${_T_PFM_ROOT}/sites/all" ] \
           || [ ! -e "${_T_PFM_ROOT}/index.php" ]; then
-          mkdir -p ${User}/undo
-          mv -f ${User}/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php \
-            ${User}/undo/ &> /dev/null
-          echo "GHOST platform ${_T_PFM_ROOT} detected and moved to ${User}/undo/"
+          if [ ! -e "${_T_PFM_ROOT}/vendor" ]; then
+            mkdir -p ${User}/undo
+            mv -f ${User}/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php \
+              ${User}/undo/ &> /dev/null
+            echo "GHOST platform ${_T_PFM_ROOT} detected and moved to ${User}/undo/"
+          fi
         fi
         if [[ "${_T_PFM_SITE}" =~ ".restore" ]]; then
           echo "WARNING: ghost site leftover found: ${_T_PFM_SITE}"
@@ -2773,6 +2953,7 @@ purge_cruft_machine() {
   find ${User}/tmp/* \
     -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
 
+  chown -R ${_HM_U}:users ${User}/tools/le
   mkdir -p ${User}/static/trash
   chown ${_HM_U}.ftp:users ${User}/static/trash &> /dev/null
   find ${User}/static/trash/* \
@@ -2806,11 +2987,12 @@ purge_cruft_machine() {
       if [ ! -d "${User}/distro/${i}/keys" ]; then
         mkdir -p ${User}/distro/${i}/keys
       fi
-      RevisionTest=$(ls ${User}/distro/$i | wc -l | tr -d "\n" 2>&1)
+      RevisionTest=$(ls ${User}/distro/${i} | wc -l 2>&1)
       if [ "${RevisionTest}" -lt "2" ] && [ ! -z "${RevisionTest}" ]; then
-        mkdir -p ${User}/undo
-        mv -f ${User}/distro/$i ${User}/undo/ &> /dev/null
-        echo "GHOST revision ${User}/distro/$i detected and moved to ${User}/undo/"
+        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        mkdir -p ${User}/undo/dist/${_NOW}
+        mv -f ${User}/distro/${i} ${User}/undo/dist/${_NOW}/ &> /dev/null
+        echo "GHOST revision ${User}/distro/${i} detected and moved to ${User}/undo/dist/${_NOW}/"
       fi
     fi
   done
@@ -2898,7 +3080,7 @@ shared_codebases_cleanup() {
           -type l -lname ${Codebase} | sort 2>&1)
         if [[ "${CodebaseTest}" =~ "No such file or directory" ]] \
           || [ -z "${CodebaseTest}" ]; then
-          mkdir -p ${_CLD}/$i
+          mkdir -p ${_CLD}/${i}
           echo "Moving no longer used ${CodebaseDir} to ${_CLD}/${i}/"
           mv -f ${CodebaseDir} ${_CLD}/${i}/
           sleep 1
@@ -2908,7 +3090,60 @@ shared_codebases_cleanup() {
   done
 }
 
+ghost_codebases_cleanup() {
+  _CLD="/var/backups/ghost-codebases-cleanup"
+  _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
+    016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
+    034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+  for i in ${_REVISIONS}; do
+    CodebaseTest=$(find /data/disk/*/distro/${i}/*/ -maxdepth 1 -mindepth 1 \
+      -type d -name vendor | sort 2>&1)
+    for vendor in ${CodebaseTest}; do
+      ParentDir=`echo ${vendor} | sed "s/\/vendor//g"`
+      if [ -d "${ParentDir}/docroot/sites/all" ] \
+        || [ -d "${ParentDir}/html/sites/all" ] \
+        || [ -d "${ParentDir}/web/sites/all" ]; then
+        _CLEAN_THIS=SKIP
+      else
+        _CLEAN_THIS="${ParentDir}"
+        _TSTAMP=`date +%y%m%d-%H%M%S`
+        mkdir -p ${_CLD}/${i}/${_TSTAMP}
+        echo "Moving ghost ${_CLEAN_THIS} to ${_CLD}/${i}/${_TSTAMP}/"
+        mv -f ${_CLEAN_THIS} ${_CLD}/${i}/${_TSTAMP}/
+        sleep 1
+      fi
+    done
+  done
+}
+
+prepare_weblogx() {
+  _ARCHLOGS=/var/www/adminer/access/archive
+  mkdir -p ${_ARCHLOGS}/unzip
+  echo "[+] SYNCING LOGS TO: ${_ARCHLOGS}"
+  rsync -rlvz --size-only --progress /var/log/nginx/access* ${_ARCHLOGS}/
+  echo "[+] COPYING LOGS TO: ${_ARCHLOGS}/unzip/"
+  cp -af ${_ARCHLOGS}/access* ${_ARCHLOGS}/unzip/
+  echo "[+] DECOMPRESSING GZ FILES"
+  find ${_ARCHLOGS}/unzip -name "*.gz" -exec gunzip -f {} \;
+  echo "[+] RENAMING RAW FILES"
+  for _log in `find ${_ARCHLOGS}/unzip \
+    -maxdepth 1 -mindepth 1 -type f | sort`; do
+    mv -f ${_log} ${_log}.txt;
+  done
+  rm -f ${_ARCHLOGS}/unzip/*.txt.txt*
+  touch ${_ARCHLOGS}/unzip/.global.pid
+}
+
+cleanup_weblogx() {
+  _ARCHLOGS=/var/www/adminer/access/archive
+  if [ -e "${_ARCHLOGS}/unzip" ]; then
+    rm -f ${_ARCHLOGS}/unzip/access*
+    rm -f ${_ARCHLOGS}/unzip/.global.pid
+  fi
+}
+
 action() {
+  prepare_weblogx
   for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     count_cpu
     load_control
@@ -2931,6 +3166,12 @@ action() {
         _SQL_CONVERT=NO
         _DEL_OLD_EMPTY_PLATFORMS="0"
         if [ -e "/root/.${_HM_U}.octopus.cnf" ]; then
+          if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+            su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/*.yml"
+            su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/.checksums/*.md5"
+            su -s /bin/bash - ${_HM_U} -c "drush9 core:init --yes" &> /dev/null
+            su -s /bin/bash - ${_HM_U} -c "drush9 site:alias-convert ~/.drush/sites --yes" &> /dev/null
+          fi
           source /root/.${_HM_U}.octopus.cnf
           _DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS//[^0-9]/}
           _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
@@ -2969,7 +3210,9 @@ action() {
             run_drush8_hmr_cmd "${vSet} hosting_cron_use_backend 0"
           fi
           run_drush8_hmr_cmd "${vSet} hosting_ignore_default_profiles 0"
-          run_drush8_hmr_cmd "${vSet} hosting_queue_tasks_items 2"
+          run_drush8_hmr_cmd "${vSet} hosting_queue_tasks_frequency 1"
+          run_drush8_hmr_cmd "${vSet} hosting_queue_tasks_items 1"
+          run_drush8_hmr_cmd "${vSet} hosting_delete_force 0"
           run_drush8_hmr_cmd "${vSet} aegir_backup_export_path ${User}/backup-exports"
           run_drush8_hmr_cmd "fr hosting_custom_settings -y"
           run_drush8_hmr_cmd "cc all"
@@ -2995,13 +3238,20 @@ action() {
           WHERE task_type='delete' AND task_status='-1'\""
         run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task \
           WHERE task_type='delete' AND task_status='0' AND executed='0'\""
-        run_drush8_hmr_cmd "${vSet} hosting_delete_force 1"
+        run_drush8_hmr_cmd "${vSet} hosting_delete_force 0"
         run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
           SET status=1 WHERE publish_path LIKE '%/aegir/distro/%'\""
         check_old_empty_platforms
         run_drush8_hmr_cmd "${vSet} hosting_delete_force 0"
-        #run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
-        #  SET status=-1 WHERE publish_path LIKE '%/aegir/distro/%'\""
+        run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
+          SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%'\""
+        _THIS_HM_PLR=$(cat ${User}/.drush/hostmaster.alias.drushrc.php \
+          | grep "root'" \
+          | cut -d: -f2 \
+          | awk '{ print $3}' \
+          | sed "s/[\,']//g" 2>&1)
+        run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
+          SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'\""
         purge_cruft_machine
         if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
           || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
@@ -3017,6 +3267,7 @@ action() {
           rm -f /home/${_HM_U}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
         fi
         check_update_le_hm_ssl ${_HM_U}
+        if_gen_goaccess "ALL"
         echo "Done for ${User}"
         enable_chattr ${_HM_U}.ftp
       else
@@ -3028,7 +3279,9 @@ action() {
     fi
   done
   shared_codebases_cleanup
+  ghost_codebases_cleanup
   check_old_empty_hostmaster_platforms
+  cleanup_weblogx
 }
 
 ###--------------------###
@@ -3038,19 +3291,13 @@ until [ ! -e "/var/run/boa_wait.pid" ]; do
   sleep 5
 done
 #
-_NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _DOW=$(date +%u 2>&1)
 _DOW=${_DOW//[^1-7]/}
 _CHECK_HOST=$(uname -n 2>&1)
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 else
   _VMFAMILY="XEN"
@@ -3063,80 +3310,58 @@ fi
 #
 if [ "${_VMFAMILY}" = "VS" ]; then
   _MODULES_FORCE="automated_cron \
+    backup_migrate \
     coder \
     cookie_cache_bypass \
-    css_gzip hacked \
-    javascript_aggregator \
-    memcache \
-    memcache_admin \
+    hacked \
     poormanscron \
-    search_krumo \
     security_review \
     site_audit \
-    stage_file_proxy \
-    syslog supercron \
-    varnish \
+    syslog \
     watchdog_live \
     xhprof"
 fi
 #
-if [ "${_DOW}" = "7" ]; then
+if [ "${_DOW}" = "8" ]; then
   _MODULES_ON_EIGHT="robotstxt"
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache \
     robotstxt"
-  _MODULES_OFF_EIGHT="automated_cron \
-    dblog \
+  _MODULES_OFF_EIGHT="dblog \
     syslog \
     simpletest \
     update"
-  _MODULES_OFF_SEVEN="coder \
-    dblog \
+  _MODULES_OFF_SEVEN="backup_migrate \
+    coder \
     devel \
     filefield_nginx_progress \
     hacked \
     l10n_update \
     linkchecker \
-    memcache \
-    memcache_admin \
     performance \
-    search_krumo \
     security_review \
     site_audit \
-    stage_file_proxy \
-    syslog update \
-    varnish \
     watchdog_live \
     xhprof"
-  _MODULES_OFF_SIX="coder \
-    cookie_cache_bypass \
-    css_gzip \
+  _MODULES_OFF_SIX="backup_migrate \
+    coder \
     dblog \
     devel \
     hacked \
-    javascript_aggregator \
     l10n_update \
     linkchecker \
-    memcache \
-    memcache_admin \
     performance \
-    poormanscron \
-    search_krumo \
     security_review \
-    stage_file_proxy \
     supercron \
-    syslog \
-    update \
-    varnish \
     watchdog_live \
     xhprof"
 else
   _MODULES_ON_EIGHT="robotstxt"
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
-  _MODULES_OFF_EIGHT="dblog syslog update"
-  _MODULES_OFF_SEVEN="dblog syslog update"
-  _MODULES_OFF_SIX="dblog syslog update"
+  _MODULES_OFF_EIGHT="dblog syslog update backup_migrate automated_cron"
+  _MODULES_OFF_SEVEN="dblog syslog update backup_migrate"
+  _MODULES_OFF_SIX="dblog syslog update backup_migrate"
 fi
 #
 _CTRL_TPL_FORCE_UPDATE=YES
@@ -3239,9 +3464,6 @@ else
     _CLEAR_BOOST=YES
   fi
   if [ -e "/data/all" ]; then
-    find /data/all -type f -name "*.info" -print0 | xargs -0 sed -i \
-      's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
-    wait
     if [ ! -e "/data/all/permissions-fix-post-up-${_X_SE}.info" ]; then
       rm -f /data/all/permissions-fix*
       find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} \
@@ -3251,9 +3473,6 @@ else
       echo fixed > /data/all/permissions-fix-post-up-${_X_SE}.info
     fi
   elif [ -e "/data/disk/all" ]; then
-    find /data/disk/all -type f -name "*.info" -print0 | xargs -0 sed -i \
-      's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
-    wait
     if [ ! -e "/data/disk/all/permissions-fix-post-up-${_X_SE}.info" ]; then
       rm -f /data/disk/all/permissions-fix*
       find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} \
@@ -3350,6 +3569,10 @@ else
     wait
     sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf                      &> /dev/null
     wait
+    sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /data/disk/*/config/server_*/nginx/vhost.d/*
+    sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx.conf
+    sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/vhost.d/*
+    sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf
     service nginx reload
   fi
 fi
@@ -3416,4 +3639,4 @@ find /var/run/*_backup.pid -mtime +1 -exec rm -rf {} \; &> /dev/null
 rm -f /var/run/daily-fix.pid
 echo "INFO: Daily maintenance complete"
 exit 0
-###EOF2019###
+###EOF2020###

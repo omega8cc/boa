@@ -4,15 +4,15 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 branch="4.x"
-cluster="BOA-4.0.1"
+cluster="BOA-4.1.2"
 hd="HEAD"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
 lgcD="BOA-3.2.2"
 master="master"
-nextv="BOA-4.0.2-dev"
-stbl="BOA-4.0.1"
+nextv="BOA-4.1.3-dev"
+stbl="BOA-4.1.2"
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -29,23 +29,15 @@ vBs="/var/backups"
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_NOW=$(date +%y%m%d-%H%M 2>&1)
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _CHECK_HOST=$(uname -n 2>&1)
 _LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
 _VMFAMILY=XEN
 _VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
-else
-  _VMFAMILY="XEN"
 fi
 
 clean_pid_exit() {
@@ -230,13 +222,13 @@ check_dns_settings() {
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
   else
-    _REMOTE_DNS_TEST=$(host -a files.aegir.cc 1.1.1.1 -w 10 2>&1)
+    _REMOTE_DNS_TEST=$(host files.aegir.cc 1.1.1.1 -w 10 2>&1)
   fi
   if [[ "${_REMOTE_DNS_TEST}" =~ "no servers could be reached" ]] \
     || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.aegir.cc not found" ]] \
     || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
-    _CTRL_DNS_TEST=$(host -a files.aegir.cc 2>&1)
+    _CTRL_DNS_TEST=$(host files.aegir.cc 2>&1)
     if [[ ! "${_CTRL_DNS_TEST}" =~ "104.245.208.226" ]] \
       || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
       || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
@@ -298,12 +290,12 @@ check_report() {
   _SEND_ALERT=NO
   _RESULT_TEST_OK=$(grep "INFO: Test OK" ${_UP_LOG} 2>&1)
   _RESULT_TEST_CARD=$(grep "CARD: Now charging" ${_UP_LOG} 2>&1)
-  if [[ "$_RESULT_TEST_OK" =~ "INFO: Test OK" ]] \
-    || [[ "$_RESULT_TEST_CARD" =~ "CARD: Now charging" ]]; then
+  if [[ "${_RESULT_TEST_OK}" =~ "INFO: Test OK" ]] \
+    || [[ "${_RESULT_TEST_CARD}" =~ "CARD: Now charging" ]]; then
     _DO_NOTHING=YES
   else
     if [ "${silent}" = "system" ]; then
-      if [[ ! "$_RESULT_TEST_CARD" =~ "CARD: Now charging" ]]; then
+      if [[ ! "${_RESULT_TEST_CARD}" =~ "CARD: Now charging" ]]; then
         _SEND_ALERT=YES
         _ALERT_MSG="ALERT: Failed Barracuda upgrade"
       fi
@@ -313,12 +305,12 @@ check_report() {
     fi
   fi
   _RESULT_APT_FAIL=$(grep "Displaying the last 15 lines" ${_UP_LOG} 2>&1)
-  if [[ "$_RESULT_APT_FAIL" =~ "Displaying the last 15 lines" ]]; then
+  if [[ "${_RESULT_APT_FAIL}" =~ "Displaying the last 15 lines" ]]; then
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed Barracuda upgrade"
   fi
   _RESULT_ENJOY=$(grep "Enjoy your Aegir Hosting System" ${_UP_LOG} 2>&1)
-  if [[ "$_RESULT_ENJOY" =~ "Enjoy your Aegir Hosting System" ]]; then
+  if [[ "${_RESULT_ENJOY}" =~ "Enjoy your Aegir Hosting System" ]]; then
     _DO_NOTHING=YES
   else
     _SEND_ALERT=YES
@@ -329,8 +321,8 @@ check_report() {
     _SEND_ALERT=YES
     _CHECK_KERNEL=$(grep "Your OS kernel has been upgraded" ${_UP_LOG} 2>&1)
     _CHECK_KSPLICE=$(grep "Ksplice rebootless kernel" ${_UP_LOG} 2>&1)
-    if [[ "$_CHECK_KERNEL" =~ "OS kernel" ]]; then
-      if [[ "$_CHECK_KSPLICE" =~ "rebootless" ]]; then
+    if [[ "${_CHECK_KERNEL}" =~ "OS kernel" ]]; then
+      if [[ "${_CHECK_KSPLICE}" =~ "rebootless" ]]; then
         _ALERT_MSG="REPORT: Your OS kernel has been upgraded"
       else
         _ALERT_MSG="REBOOT: Your OS kernel has been upgraded"
@@ -354,7 +346,9 @@ check_report() {
 check_php_cli() {
   _PHP_CHECK=$(readlink -n /usr/bin/php 2>&1)
   if [ ! -x "$_PHP_CHECK" ]; then
-    if [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
+    if [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
+      _PHP_CLI_PATH="/opt/php74/bin/php"
+    elif [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
       _PHP_CLI_PATH="/opt/php73/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "7.2" ]; then
       _PHP_CLI_PATH="/opt/php72/bin/php"
@@ -374,6 +368,8 @@ check_php_cli() {
         _USE_PHP_CLI_PATH="/opt/php72/bin/php"
       elif  [ -x "/opt/php73/bin/php" ]; then
         _USE_PHP_CLI_PATH="/opt/php73/bin/php"
+      elif  [ -x "/opt/php74/bin/php" ]; then
+        _USE_PHP_CLI_PATH="/opt/php74/bin/php"
       elif  [ -x "/opt/php71/bin/php" ]; then
         _USE_PHP_CLI_PATH="/opt/php71/bin/php"
       elif  [ -x "/opt/php70/bin/php" ]; then
@@ -397,7 +393,9 @@ check_php_cli() {
 up_action() {
   if [ -e "${vBs}/${barName}" ] && [ -e "${barCnf}" ]; then
     if [ ! -z "${rkey}" ]; then
-      if [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
+      if [ "${rkey}" = "php-74" ] || [ "${rkey}" = "php-7.4" ]; then
+        phpS="7.4"
+      elif [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
         phpS="7.3"
       elif [ "${rkey}" = "php-72" ] || [ "${rkey}" = "php-7.2" ]; then
         phpS="7.2"
@@ -438,7 +436,8 @@ up_action() {
 
     fi
     ### Make sure that _PHP_SINGLE_INSTALL is set in ${barCnf}
-    if [ "${phpS}" = "7.3" ] \
+    if [ "${phpS}" = "7.4" ] \
+      || [ "${phpS}" = "7.3" ] \
       || [ "${phpS}" = "7.2" ] \
       || [ "${phpS}" = "7.1" ] \
       || [ "${phpS}" = "7.0" ] \
@@ -453,7 +452,8 @@ up_action() {
     fi
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${phpS}" ]; then
-      if [ "${phpS}" = "7.3" ] \
+      if [ "${phpS}" = "7.4" ] \
+        || [ "${phpS}" = "7.3" ] \
         || [ "${phpS}" = "7.2" ] \
         || [ "${phpS}" = "7.1" ] \
         || [ "${phpS}" = "7.0" ] \
@@ -523,8 +523,8 @@ up_action() {
           done
         fi
       elif [ "${phpS}" = "ALL" ]; then
-        phpM="7.3 7.2 7.1 7.0 5.6"
-        phpS="7.2"
+        phpM="7.4 7.3 7.2 7.1 7.0 5.6"
+        phpS="7.3"
 
         ### Debugging
         if [ "$debug" = "debug" ]; then
@@ -613,6 +613,10 @@ up_action() {
       wait
       sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"          ${vBs}/${filIncB}
       wait
+      sed -i "s/^_REDIS_MAJOR_RELEASE=.*/_REDIS_MAJOR_RELEASE=6/g"     ${barCnf}
+      wait
+      sed -i "s/^_DB_SERIES=10.1/_DB_SERIES=10.2/g"                    ${barCnf}
+      wait
     else
       if [ -e "${vBs}/${filIncB}" ]; then
         sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncB}
@@ -697,16 +701,40 @@ up_action() {
     wait
     sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"          ${barCnf}
     wait
-    ### Force latest OpenSSH from sources on supported systems
-    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"           ${barCnf}
     ### Force Redis SOCKET mode if PORT was used before
     sed -i "s/^_REDIS_LISTEN_MODE=PORT/_REDIS_LISTEN_MODE=SOCKET/g"    ${barCnf}
     wait
+    if [ "${sql}" = "percona" ] \
+      || [ "${rkey}" = "percona" ] \
+      || [ "${debug}" = "percona" ]; then
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"               ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"           ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"                       ${barCnf}
+      wait
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"                   ${barCnf}
+      wait
+    elif [ "${sql}" = "mariadb" ] \
+      || [ "${rkey}" = "mariadb" ] \
+      || [ "${debug}" = "mariadb" ]; then
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g"              ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"           ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g"                      ${barCnf}
+      wait
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                   ${barCnf}
+      wait
+    fi
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
+      ### Force latest OpenSSH from sources on supported systems
+      sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"         ${barCnf}
+      wait
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
@@ -720,8 +748,6 @@ up_action() {
           sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"     ${barCnf}
           wait
           sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"       ${barCnf}
-          wait
-          sed -i "s/^_DB_SERIES=5.5/_DB_SERIES=10.1/g"                 ${barCnf}
           wait
           if [ -e "/root/.mstr.clstr.cnf" ] \
             || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -745,6 +771,9 @@ up_action() {
             # fi
             if [ -e "/etc/init.d/redis-server" ]; then
               sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"     ${barCnf}
+              if [[ "${_DB_SERVER}" =~ "Percona" ]]; then
+                mysql -u root -e "SET GLOBAL show_compatibility_56=ON;" &> /dev/null
+              fi
             else
               sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"      ${barCnf}
             fi
@@ -902,6 +931,8 @@ up_start() {
   else
     touch /var/run/boa_run.pid
     touch /var/run/boa_wait.pid
+    #kill -9 $(ps aux | grep '[d]aily.sh' | awk '{print $2}') &> /dev/null
+    #rm -f /run/*daily*.pid
     mkdir -p ${_LOG_DIR}
     cd ${vBs}
     rm -f ${vBs}/BARRACUDA.sh*
@@ -940,6 +971,12 @@ up_finish() {
   fi
   rm -rf /opt/tmp/*
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+    if [ ! -x "/etc/csf/csfpost.sh" ]; then
+      echo "" > /etc/csf/csfpost.sh
+      echo "iptables -t raw -A PREROUTING -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
+      echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
+      chmod 700 /etc/csf/csfpost.sh
+    fi
     service lfd stop &> /dev/null
     sleep 3
     rm -f /etc/csf/csf.error
@@ -947,8 +984,20 @@ up_finish() {
     csf -uf &> /dev/null
     csf -e  &> /dev/null
     csf -q  &> /dev/null
-    sleep 3
+    sleep 8
     service lfd start &> /dev/null
+    ### Linux kernel TCP SACK CVEs mitigation
+    ### CVE-2019-11477 SACK Panic
+    ### CVE-2019-11478 SACK Slowness
+    ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
+    if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+      _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+      if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
+        sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
+        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/sull
+        ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+      fi
+    fi
   fi
   if [ -e "/etc/init.d/postfix" ]; then
     service postfix restart &> /dev/null
@@ -981,14 +1030,17 @@ set_pin_priority() {
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-    rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
     apt-get update -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
   if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors.txt"
+    ffList="/var/backups/boa-mirrors-2020-02.txt"
     mkdir -p /var/backups
     if [ ! -e "${ffList}" ]; then
       echo "jp.files.aegir.cc"  > ${ffList}
@@ -1034,9 +1086,13 @@ check_dns_curl() {
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt-get clean -qq &> /dev/null
-    rm -f -r /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/*
     apt-get update -qq &> /dev/null
     apt-get install curl ${forCer} &> /dev/null
     touch /root/.use.curl.from.packages.cnf
@@ -1059,6 +1115,12 @@ check_dns_curl() {
 
 check_fix_csf() {
   if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
+    if [ ! -x "/etc/csf/csfpost.sh" ]; then
+      echo "" > /etc/csf/csfpost.sh
+      echo "iptables -t raw -A PREROUTING -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
+      echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
+      chmod 700 /etc/csf/csfpost.sh
+    fi
     csf -a 50.31.251.116 jp.files.aegir.cc   &> /dev/null
     csf -a 50.31.233.231 nl.files.aegir.cc   &> /dev/null
     csf -a 134.19.164.236 uk.files.aegir.cc  &> /dev/null
@@ -1071,6 +1133,18 @@ check_fix_csf() {
     csf -e  &> /dev/null
     sleep 3
     service lfd start &> /dev/null
+    ### Linux kernel TCP SACK CVEs mitigation
+    ### CVE-2019-11477 SACK Panic
+    ### CVE-2019-11478 SACK Slowness
+    ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
+    if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+      _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
+      if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
+        sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
+        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/sull
+        ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
+      fi
+    fi
   fi
 }
 
@@ -1091,6 +1165,10 @@ check_root() {
         rm -rf /dev/fd
         ln -s /proc/self/fd /dev/fd
       fi
+    fi
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
@@ -1161,7 +1239,9 @@ check_root() {
         fi
       done
       for s in cron dbus ssh; do
-        sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/$s > /etc/insserv/overrides/$s
+        if [ -e "/etc/init.d/${s}" ]; then
+          sed -rn -e 's/^(# Default-Stop:).*$/\1 0 1 6/' -e '/^### BEGIN INIT INFO/,/^### END INIT INFO/p' /etc/init.d/${s} > /etc/insserv/overrides/${s}
+        fi
       done
       /sbin/insserv -v -d &> /dev/null
     else
@@ -1177,7 +1257,10 @@ check_root() {
       echo "Required /dev/pts/ptmx does not exist! We will fix this now..."
       mkdir -p /dev/pts
       rm -rf /dev/pts/*
-      rm -f /etc/apt/sources.list.d/openssl.list
+      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+        && [ -e "/etc/apt/apt.conf.d" ]; then
+        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+      fi
       apt-get update -qq &> /dev/null
       apt-get install udev -y --allow-unauthenticated &> /dev/null
       echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
@@ -1189,17 +1272,8 @@ check_root() {
     wait
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
     wait
-    _GH_TEST=$(cat /etc/hosts | grep github 2>&1)
-    if [[ ! "${_GH_TEST}" =~ "github.com" ]]; then
-      echo "192.30.253.113 github.com" >> /etc/hosts
-      wait
-      echo "151.101.32.133 raw.githubusercontent.com" >> /etc/hosts
-      wait
-      echo >>/etc/hosts
-      wait
-      service pdnsd restart &> /dev/null
-      pdnsd-ctl empty-cache &> /dev/null
-    fi
+    sed -i "s/.*github.*//g" /etc/hosts
+    wait
     echo >>/etc/hosts
     sed -i "/^$/d" /etc/hosts
     wait
@@ -1270,7 +1344,7 @@ proceed() {
     _SCRIPT_URL="$rgUrl/${lgcA}/${barName}"
   else
     echo
-    echo "Usage: $(basename "$0") {up-stable|up-head|up-2.4|up-2.3|up-2.2} {system|log} {newrelickey|php-7.3|php-7.2|php-7.1|php-7.0|php-5.6|php-all|nodns}"
+    echo "Usage: $(basename "$0") {up-stable|up-head} {system|log} {newrelickey|php-7.4|php-7.3|php-7.2|php-all|nodns} {percona|mariadb}"
     echo
     echo "  Silent Mode Option: system == OS only upgrade"
     echo "  Silent Mode Option: log ===== OS and Aegir Master Instance upgrade"
@@ -1294,19 +1368,21 @@ cmmand="$1"
 silent="$2"
 rkey="$3"
 debug="$4"
+sql="$5"
 if [ ! -z "${silent}" ]; then
   if [ "${silent}" = "log" ] \
     || [ "${silent}" = "backdrop" ] \
     || [ "${silent}" = "cluster" ] \
     || [ "${silent}" = "drush" ] \
     || [ "${silent}" = "gravcms" ] \
-    || [ "${silent}" = "stretch" ] \
+    || [ "${silent}" = "buster" ] \
     || [ "${silent}" = "system" ]; then
     silent="$2"
   else
     silent=
     rkey="$2"
     debug="$3"
+    sql="$4"
   fi
 fi
 proceed

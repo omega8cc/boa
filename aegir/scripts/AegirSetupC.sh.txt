@@ -5,7 +5,7 @@
 ###
 ###  Octopus Aegir Installer
 ###
-###  Copyright (C) 2010-2019 Omega8.cc
+###  Copyright (C) 2010-2020 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
@@ -129,7 +129,10 @@ _PREV_HM_ROOT="${_ROOT}/aegir/distro/${_LAST_HMR}"
 _D="/data/all"
 _SRCDIR="/opt/tmp/files"
 _LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
-if [ "${_PHP_CLI_VERSION}" = "7.3" ] \
+if [ "${_PHP_CLI_VERSION}" = "7.4" ] \
+  && [ -x "/opt/php74/bin/php" ]; then
+  _T_CLI=/opt/php74/bin
+elif [ "${_PHP_CLI_VERSION}" = "7.3" ] \
   && [ -x "/opt/php73/bin/php" ]; then
   _T_CLI=/opt/php73/bin
 elif [ "${_PHP_CLI_VERSION}" = "7.2" ] \
@@ -152,7 +155,10 @@ else
   _DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
 fi
 #
-if [ "${_PHP_FPM_VERSION}" = "7.3" ] \
+if [ "${_PHP_FPM_VERSION}" = "7.4" ] \
+  && [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
+  _D_8_ALLOW=YES
+elif [ "${_PHP_FPM_VERSION}" = "7.3" ] \
   && [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
   _D_8_ALLOW=YES
 elif [ "${_PHP_FPM_VERSION}" = "7.2" ] \
@@ -696,16 +702,17 @@ _F_OPENOUTREACH="OpenOutreach ${_OPENOUTREACH} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENPUBLIC="OpenPublic ${_OPENPUBLIC} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENPUBLISH="OpenPublish 3.0-b7 ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_OPENSCHOLAR="OpenScholar ${_OPENSCHOLAR} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_OPIGNOLMS="Opigno LMS ${_OPIGNOLMS} ${_SMALLCORE7} [${_THIS_CORE}]"
+_F_OPIGNOLMS7="Opigno LMS ${_OPIGNOLMS7} ${_SMALLCORE7} [${_THIS_CORE}]"
+_F_OPIGNOLMS8="Opigno LMS ${_OPIGNOLMS8} ${_SMALLCORE8} [${_THIS_CORE}]"
 _F_PANOPOLY="Panopoly ${_PANOPOLY} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_RECRUITER="Recruiter ${_RECRUITER} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_RESTAURANT="Restaurant ${_RESTAURANT} ${_SMALLCORE7} [${_THIS_CORE}]"
+_F_SOCIAL="Social ${_SOCIAL} ${_SOCIAL_CORE} [${_THIS_CORE}]"
 _F_THUNDER="Thunder ${_THUNDER} ${_SMALLCORE8} [${_THIS_CORE}]"
 _F_UBER_CART_T="Ubercart ${_UBERCART7} [ud2] ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_UBERCART6="Ubercart ${_UBERCART6} ${_SMALLCORE6} [${_THIS_CORE}]"
 _F_UBERCART7="Ubercart ${_UBERCART7} [aq3] ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_VARBASE="Varbase ${_VARBASE} ${_SMALLCORE8} [${_THIS_CORE}]"
-_F_SOCIAL="Social ${_SOCIAL} 8.6.15 [${_THIS_CORE}]"
 #
 _F_DRUPAL6_D="Drupal ${_SMALLCORE6} D.${_THIS_CORE}"
 _F_DRUPAL6_S="Drupal ${_SMALLCORE6} S.${_THIS_CORE}"
@@ -728,13 +735,7 @@ if [ "${_CLIENT_CORES}" -lt "1" ]; then
   _ALLOW_ALL=NO
   _D_8_ALLOW=NO
 fi
-if [[ "${_VM_TEST}" =~ "3.8.6-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.5.2-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.8.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.5-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.7.4-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.6.15-beng" ]] \
-  || [[ "${_VM_TEST}" =~ "3.2.16-beng" ]]; then
+if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
   if [ ! -e "/data/conf/.d8allow.cnf" ]; then
     _D_8_ALLOW=NO
@@ -1030,7 +1031,7 @@ commons_7_install() {
 
 
 drupal6_install() {
-###---### Drupal 6 Pressflow
+###---### Drupal 6 Pressflow (LTS)
 #
   if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "D6D" ]] \
@@ -1290,7 +1291,7 @@ fserver_install() {
             echo "core = 6.x" >> fserver.make
             echo "projects[pressflow][type] = \"core\"" >> fserver.make
             echo "projects[pressflow][download][type] = \"get\"" >> fserver.make
-            echo "projects[pressflow][download][url] = \"http://${_USE_MIR}/core/pressflow-6.49.1.tar.gz\"" >> fserver.make
+            echo "projects[pressflow][download][url] = \"http://${_USE_MIR}/core/pressflow-6.54.1.tar.gz\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][type] = \"profile\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][download][type] = \"git\"" >> fserver.make
             echo "projects[${_REAL_PRNAME}][download][url] = \"https://github.com/omega8cc/${_REAL_PRNAME}.git\"" >> fserver.make
@@ -1925,11 +1926,43 @@ openscholar_install() {
 }
 
 
-opigno_lms_install() {
-###---### Opigno LMS
+opigno_lms8_install() {
+###---### Opigno LMS 8
 #
   _REAL_PRNAME="opigno_lms"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPIGNOLMS}-${_SMALLCORE7}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPIGNOLMS8}-${_SMALLCORE8}"
+  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
+  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/contrib/${_REAL_PRNAME}"
+  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/web"
+  if [ "${_ALLOW_ALL}" = "YES" ]; then
+    if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+      || [[ "${_PLATFORMS_LIST}" =~ "OPG" ]]; then
+      if [ ! -d "${_OCTO_PLPATH}" ]; then
+        if prompt_yes_no "$_F_OPIGNOLMS8 - http://opigno.org" ; then
+          true
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPIGNOLMS8 ${yOk}"
+          if [ ! -d "${_OCTO_PLPATH}" ]; then
+            cd ${_ROOT}/distro/${_THIS_CORE}
+            get_distro_ext "${_SHRD_PLNAME}.tar.gz"
+          fi
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            msg "DISTRO: $_F_OPIGNOLMS8 installed"
+            _RUN_VERIFY=YES
+          fi
+        else
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPIGNOLMS8 ${noT}"
+        fi
+      fi
+    fi
+  fi
+}
+
+
+opigno_lms7_install() {
+###---### Opigno LMS 7
+#
+  _REAL_PRNAME="opigno_lms"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPIGNOLMS7}-${_SMALLCORE7}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -1937,9 +1970,9 @@ opigno_lms_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "OPO" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_OPIGNOLMS - http://opigno.org" ; then
+        if prompt_yes_no "$_F_OPIGNOLMS7 - http://opigno.org" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPIGNOLMS ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPIGNOLMS7 ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_AEGIR_VERSION}" = "HEAD" ] \
@@ -1948,10 +1981,10 @@ opigno_lms_install() {
                 prepare_drupal7_core
               fi
               curl ${crlGet} \
-                "${urlDrp}/${_REAL_PRNAME}-7.x-${_OPIGNOLMS}-core.tar.gz" \
+                "${urlDrp}/${_REAL_PRNAME}-7.x-${_OPIGNOLMS7}-core.tar.gz" \
                 | tar -xzf -
-              if [ -d "${_CORE}/${_REAL_PRNAME}-7.x-${_OPIGNOLMS}" ]; then
-                mv ${_REAL_PRNAME}-7.x-${_OPIGNOLMS} ${_SHRD_PLNAME}
+              if [ -d "${_CORE}/${_REAL_PRNAME}-7.x-${_OPIGNOLMS7}" ]; then
+                mv ${_REAL_PRNAME}-7.x-${_OPIGNOLMS7} ${_SHRD_PLNAME}
               fi
               nocore_d7_dist_clean
               remove_default_core_seven_profiles
@@ -1969,10 +2002,10 @@ opigno_lms_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_OPIGNOLMS installed"
+          msg "DISTRO: $_F_OPIGNOLMS7 installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPIGNOLMS ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPIGNOLMS7 ${noT}"
         fi
       fi
     fi
@@ -2288,7 +2321,7 @@ ubercart7_install() {
               get_dev_contrib "rules-7.x-2.12.tar.gz"
               get_dev_contrib "token-7.x-1.7.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
-              get_dev_contrib "views-7.x-3.22.tar.gz"
+              get_dev_contrib "views-7.x-3.24.tar.gz"
               cd ${_SHRD_PRPATH}/modules/views
               # https://drupal.org/node/1766338#comment-6445882
               patch -p1 < \
@@ -2358,7 +2391,7 @@ ubercart7_testing_install() {
               get_dev_contrib "rules-7.x-2.12.tar.gz"
               get_dev_contrib "token-7.x-1.7.tar.gz"
               get_dev_contrib "ubercart-7.x-${_UBERCART7}.tar.gz"
-              get_dev_contrib "views-7.x-3.22.tar.gz"
+              get_dev_contrib "views-7.x-3.24.tar.gz"
               cd ${_SHRD_PRPATH}/modules/views
               # https://drupal.org/node/1766338#comment-6445882
               patch -p1 < \
@@ -2416,7 +2449,7 @@ social_install() {
 ###---### Social
 #
   _REAL_PRNAME="social"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_SOCIAL}-8.6.15"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_SOCIAL}-${_SOCIAL_CORE}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/html"
@@ -2657,10 +2690,10 @@ save_verify_platforms() {
         ${pthDst}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_OPIGNOLMS" opigno_lms \
-        ${pthDst}/opigno_lms-${_OPIGNOLMS}-${_SMALLCORE7} &> /dev/null
+  if [ -d "${pthDst}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7}" ]; then
+    if [ ! -e "${pthDst}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7}/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "$_F_OPIGNOLMS7" opigno_lms \
+        ${pthDst}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/panopoly-${_PANOPOLY}-${_SMALLCORE7}" ]; then
@@ -2711,10 +2744,16 @@ save_verify_platforms() {
         ${pthDst}/varbase-${_VARBASE}-${_SMALLCORE8}/docroot &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/social-${_SOCIAL}-8.6.15/html" ]; then
-    if [ ! -e "${pthDst}/social-${_SOCIAL}-8.6.15/html/$drhSrc" ]; then
+  if [ -d "${pthDst}/social-${_SOCIAL}-${_SOCIAL_CORE}/html" ]; then
+    if [ ! -e "${pthDst}/social-${_SOCIAL}-${_SOCIAL_CORE}/html/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_SOCIAL" social \
-        ${pthDst}/social-${_SOCIAL}-8.6.15/html &> /dev/null
+        ${pthDst}/social-${_SOCIAL}-${_SOCIAL_CORE}/html &> /dev/null
+    fi
+  fi
+  if [ -d "${pthDst}/opigno_lms-${_OPIGNOLMS8}-${_SMALLCORE8}/web" ]; then
+    if [ ! -e "${pthDst}/opigno_lms-${_OPIGNOLMS8}-${_SMALLCORE8}/web/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "$_F_OPIGNOLMS8" opigno_lms \
+        ${pthDst}/opigno_lms-${_OPIGNOLMS8}-${_SMALLCORE8}/web &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/pressflow-${_SMALLCORE6}-dev" ]; then
@@ -2797,7 +2836,7 @@ openpublic_install
 ### _USE_DISTRO_CORE=NO
 ### TMP OFF -- doesn't work with latest core and comes with too old core version
 
-opigno_lms_install
+opigno_lms7_install
 panopoly_install
 restaurant_install
 
@@ -2810,6 +2849,7 @@ ubercart7_install
 ubercart7_testing_install
 varbase_install
 social_install
+opigno_lms8_install
 
 ### openacademy_install
 ### openblog_install
@@ -2847,7 +2887,7 @@ touch /opt/tmp/status-AegirSetupC-OK
 ###----------------------------------------###
 ###
 ###  Octopus Aegir Installer
-###  Copyright (C) 2010-2019 Omega8.cc
+###  Copyright (C) 2010-2020 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###

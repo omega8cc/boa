@@ -10,10 +10,12 @@ $custom_da    = FALSE;
 $custom_fb    = FALSE;
 $da_inc       = FALSE;
 $deny_anon    = FALSE;
+$drupal_compr = FALSE;
 $drupal_eight = FALSE;
 $drupal_five  = FALSE;
 $drupal_seven = FALSE;
 $drupal_six   = FALSE;
+$hidden_uri   = FALSE;
 $high_traffic = FALSE;
 $ini_loc_src  = FALSE;
 $ini_plr_src  = FALSE;
@@ -22,6 +24,8 @@ $is_bot       = FALSE;
 $is_dev       = FALSE;
 $is_install   = FALSE;
 $is_tmp       = FALSE;
+$local_req    = FALSE;
+$no_dns       = FALSE;
 $raw_host     = FALSE;
 $redis_lock   = FALSE;
 $redis_path   = FALSE;
@@ -65,8 +69,8 @@ if (function_exists('drush_get_command')) {
  */
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
-      !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.16.0';
+      !preg_match("/ApacheSolarisNginxD9ce/i", $_SERVER['SERVER_SOFTWARE'])) {
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginxD9ce/1.19.2';
   }
 }
 
@@ -125,6 +129,92 @@ if (isset($_SERVER['HTTP_HOST']) &&
 
 
 /**
+ * Fix for Mollom, CloudFlare and others running via Proxy
+ */
+if (isset($_SERVER['REMOTE_ADDR'])) {
+  if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) &&
+      $_SERVER['HTTP_X_FORWARDED_FOR'] != "127.0.0.1") {
+    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_FORWARDED_FOR'];
+  }
+  if (isset($_SERVER['HTTP_X_REAL_IP']) &&
+      $_SERVER['HTTP_X_REAL_IP'] != "127.0.0.1") {
+    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_REAL_IP'];
+  }
+  if (isset($_SERVER['HTTP_CF_CONNECTING_IP']) &&
+      $_SERVER['HTTP_CF_CONNECTING_IP'] != "127.0.0.1") {
+    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
+  }
+}
+
+
+/**
+ * The nodns mode detection
+ */
+if (isset($_SERVER['HTTP_HOST']) &&
+    (preg_match("/(?:^nodns\.|\.nodns\.)/i", $_SERVER['HTTP_HOST']))) {
+  $no_dns = TRUE;
+}
+
+
+/**
+ * Local nodns request detection
+ */
+if (isset($_SERVER['REMOTE_ADDR']) &&
+    (preg_match("/(^127\.0\.0\.1)$/i", $_SERVER['REMOTE_ADDR']) ||
+     preg_match("/(^127\.0\.0\.1\, 127\.0\.0\.1)$/i", $_SERVER['REMOTE_ADDR']))) {
+  $local_req = TRUE;
+}
+
+
+/**
+ * Local path request check
+ */
+if (preg_match("/\/api\/hidden\//", $_SERVER['REQUEST_URI'])) {
+  $hidden_uri = TRUE;
+}
+
+
+/**
+ * The nodns protection
+ */
+if ($no_dns) {
+  if ($local_req) {
+    // Allow local requests
+    if (!$is_backend && isset($_SERVER['REMOTE_ADDR'])) {
+      header("X-Local-Y: " . $_SERVER['REMOTE_ADDR']);
+    }
+  }
+  else {
+    // Ignore remote requests
+    header('X-Accel-Expires: 60');
+    header('HTTP/1.0 404 Not Found');
+    header("Connection: close");
+    exit;
+  }
+}
+
+
+/**
+ * The hidden uri protection
+ */
+if ($hidden_uri) {
+  if ($local_req) {
+    // Allow local requests to hidden uri
+    if (!$is_backend && isset($_SERVER['REMOTE_ADDR'])) {
+      header("X-Local-URI-Y: " . $_SERVER['REMOTE_ADDR']);
+    }
+  }
+  else {
+    // Ignore remote requests
+    header('X-Accel-Expires: 60');
+    header('HTTP/1.0 404 Not Found');
+    header("Connection: close");
+    exit;
+  }
+}
+
+
+/**
  * Bots protection for all tmp/dev sites - works also for aliases
  */
 if ($is_bot) {
@@ -174,6 +264,12 @@ if (file_exists('web.config')) {
       if ($is_dev && !$is_backend) {
         header('X-Backend: A');
       }
+      if (file_exists('composer')) {
+        $drupal_compr = TRUE;
+        if ($is_dev && !$is_backend) {
+          header('X-Backend: A2');
+        }
+      }
     }
     else {
       $backdropcms = TRUE;
@@ -207,25 +303,6 @@ else {
   $drupal_unknown = TRUE;
   if ($is_dev && !$is_backend) {
     header('X-Backend: U');
-  }
-}
-
-
-/**
- * Fix for Mollom, CloudFlare and others running via Proxy
- */
-if (isset($_SERVER['REMOTE_ADDR'])) {
-  if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) &&
-      $_SERVER['HTTP_X_FORWARDED_FOR'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_FORWARDED_FOR'];
-  }
-  if (isset($_SERVER['HTTP_X_REAL_IP']) &&
-      $_SERVER['HTTP_X_REAL_IP'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_REAL_IP'];
-  }
-  if (isset($_SERVER['HTTP_CF_CONNECTING_IP']) &&
-      $_SERVER['HTTP_CF_CONNECTING_IP'] != "127.0.0.1") {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
   }
 }
 
@@ -289,7 +366,7 @@ else {
   $conf['webform_table'] = TRUE; // Workaround for SA-CONTRIB-2015-063 https://www.drupal.org/node/2445935
   $conf['features_rebuild_on_flush'] = FALSE; // https://michaelshadle.com/2015/04/21/speeding-up-drupal-cache-flushing
   $conf['entity_rebuild_on_flush'] = FALSE; // http://a-fro.com/speed-up-cache-clearing-on-drupal7
-  // $conf['redis_eval_enabled'] = TRUE;
+  $conf['redis_eval_enabled'] = TRUE;
   // Use EVAL commands to greatly speed up cache clearing
   // Enable when https://www.drupal.org/node/2487333 is fixed
 }
@@ -324,6 +401,9 @@ if (!$is_backend) {
     ini_set('display_errors', TRUE);
     ini_set('display_startup_errors', TRUE);
     ini_set('opcache.revalidate_freq', '0');
+    if (!$is_backend) {
+      header("X-Opcache-Revalidate-Freq: 0");
+    }
     if ($drupal_eight) {
       unset($config['system.logging']['error_level']);            // Stop hardcoding no errors on screen
       unset($config['system.performance']['cache.page.max_age']); // Stop hardcoding internal page cache
@@ -378,11 +458,24 @@ if (!$is_backend) {
   else {
     if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI'])) {
       // Set longer opcache TTL for web based cron
+      ini_set('opcache.revalidate_freq', '3600');
+      if (!$is_backend) {
+        header("X-Opcache-Revalidate-Freq: 3600");
+      }
+    }
+    elseif (preg_match("/^\/civicrm/", $_SERVER['REQUEST_URI'])) {
+      // Set longer opcache TTL for huge CiviCRM codebase
       ini_set('opcache.revalidate_freq', '300');
+      if (!$is_backend) {
+        header("X-Opcache-Revalidate-Freq: 300");
+      }
     }
     else {
       // Set sane default opcache TTL on non-dev sites
       ini_set('opcache.revalidate_freq', '60');
+      if (!$is_backend) {
+        header("X-Opcache-Revalidate-Freq: 60");
+      }
     }
   }
 }
@@ -758,7 +851,7 @@ if (!$is_dev) {
         $conf['httprl_server_addr'] = "-1";
         $conf['httprl_timeout'] = "10";
         $conf['httprl_ttfb_timeout'] = "5";
-        ### $conf['drupal_http_request_function'] = "httprl_override_core";
+        // $conf['drupal_http_request_function'] = "httprl_override_core";
       }
     }
   }
@@ -867,7 +960,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     header("X-Cookie-Domain: " . $cookie_domain);
   }
 
-  $this_prefix = preg_replace('`^www\.`', '', $_SERVER['SERVER_NAME']) . '_y_';
+  $this_prefix = preg_replace('`^www\.`', '', $_SERVER['SERVER_NAME']) . '_z_';
   if ($is_dev) {
     header("X-Redis-Prefix: " . $this_prefix);
   }
@@ -988,6 +1081,9 @@ if ($redis_up && $use_redis && !$custom_cache) {
   if ($all_ini['redis_use_modern']) {
     if ($drupal_eight) {
       $redis_dirname = 'redis_eight';
+      if ($drupal_compr) {
+        $redis_dirname = 'redis_compr';
+      }
     }
     else {
       $redis_dirname = 'redis_edge';
@@ -1025,16 +1121,16 @@ if ($redis_up && $use_redis && !$custom_cache) {
     }
   }
   if ($drupal_eight) {
-    if (file_exists('sites/' . $_SERVER['SERVER_NAME'] . '/.redisOff')) {
+    if (file_exists('sites/' . $_SERVER['SERVER_NAME'] . '/.redisLegacyOff')) {
       if ($is_dev && !$is_backend) {
-        header("X-Redis-Off-Ctrl-Exists: .redisOff");
+        header("X-Redis-Off-Ctrl-Exists: .redisLegacyOff");
       }
     }
     else {
-      if (file_exists('sites/' . $_SERVER['SERVER_NAME'] . '/.redisOn')) {
-        if ($is_dev && !$is_backend) {
-          header("X-Redis-On-Ctrl-Exists: .redisOn");
-        }
+      //if (file_exists('sites/' . $_SERVER['SERVER_NAME'] . '/.redisOn')) {
+      //  if ($is_dev && !$is_backend) {
+      //    header("X-Redis-On-Ctrl-Exists: .redisOn");
+      //  }
         if (is_readable('sites/' . $_SERVER['SERVER_NAME'] . '/files/development.services.yml')) {
           if ($is_dev && !$is_backend) {
             header("X-Dev-Services-Yml-Is-Readable: development.services.yml");
@@ -1043,14 +1139,21 @@ if ($redis_up && $use_redis && !$custom_cache) {
         else {
           if (is_readable('modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml')) {
             $cache_redis = TRUE;
-            $cache_services_path = 'modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml';
+            $example_services_path = 'modules/o_contrib_eight/' . $redis_dirname . '/example.services.yml';
             $cache_gzip_path = 'modules/o_contrib_eight/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
             if ($is_dev && !$is_backend) {
-              header("X-Redis-Services-Is-Readable: " . $cache_services_path);
+              header("X-Example-Services-Is-Readable: " . $example_services_path);
+            }
+          }
+          if (is_readable('modules/o_contrib_eight/' . $redis_dirname . '/redis.services.yml')) {
+            $cache_redis = TRUE;
+            $redis_services_path = 'modules/o_contrib_eight/' . $redis_dirname . '/redis.services.yml';
+            if ($is_dev && !$is_backend) {
+              header("X-Redis-Services-Is-Readable: " . $redis_services_path);
             }
           }
         }
-      }
+      //}
     }
   }
   elseif ($drupal_seven) {
@@ -1110,6 +1213,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
   }
   if ($cache_redis) {
     if ($drupal_eight) {
+      $class_loader->addPsr4('Drupal\\redis\\', 'modules/o_contrib_eight/' . $redis_dirname . '/src');
       $settings['redis.connection']['interface'] = 'PhpRedis';
       $settings['redis.connection']['host']      = '127.0.0.1';
       $settings['redis.connection']['port']      = '6379';
@@ -1117,11 +1221,37 @@ if ($redis_up && $use_redis && !$custom_cache) {
       $settings['redis.connection']['base']      = '8';
       $settings['cache_prefix']                  = $this_prefix;
       $settings['cache']['default']              = 'cache.backend.redis';
-      $settings['cache']['bins']['bootstrap']    = 'cache.backend.chainedfast';
-      $settings['cache']['bins']['discovery']    = 'cache.backend.chainedfast';
-      $settings['cache']['bins']['config']       = 'cache.backend.chainedfast';
-      $settings['container_yamls'][]             = $cache_services_path;
+      // $settings['cache']['bins']['bootstrap']    = 'cache.backend.chainedfast';
+      // $settings['cache']['bins']['discovery']    = 'cache.backend.chainedfast';
+      // $settings['cache']['bins']['config']       = 'cache.backend.chainedfast';
+      // $settings['cache']['bins']['cache_form']   = 'cache.backend.database';
+      $settings['container_yamls'][]             = $example_services_path;
+      $settings['container_yamls'][]             = $redis_services_path;
       $settings['queue_default']                 = 'queue.redis';
+      $settings['bootstrap_container_definition'] = [
+        'parameters' => [],
+        'services' => [
+          'redis.factory' => [
+            'class' => 'Drupal\redis\ClientFactory',
+          ],
+          'cache.backend.redis' => [
+            'class' => 'Drupal\redis\Cache\CacheBackendFactory',
+            'arguments' => ['@redis.factory', '@cache_tags_provider.container', '@serialization.phpserialize'],
+          ],
+          'cache.container' => [
+            'class' => '\Drupal\redis\Cache\PhpRedis',
+            'factory' => ['@cache.backend.redis', 'get'],
+            'arguments' => ['container'],
+          ],
+          'cache_tags_provider.container' => [
+            'class' => 'Drupal\redis\Cache\RedisCacheTagsChecksum',
+            'arguments' => ['@redis.factory'],
+          ],
+          'serialization.phpserialize' => [
+            'class' => 'Drupal\Component\Serialization\PhpSerialize',
+          ],
+        ],
+      ];
     }
     else {
       if ($cache_backport) {
@@ -1175,13 +1305,14 @@ if ($redis_up && $use_redis && !$custom_cache) {
       if ($use_cache_ct) {
         $conf['cache_backends'][]               = $cache_ct_path;
         $conf['cache_default_class']            = 'ConsistentCache';
-        $conf['cache_class_cache_form']         = 'DrupalDatabaseCache';
+        // $conf['cache_class_cache_form']         = 'DrupalDatabaseCache';
         $conf['consistent_cache_default_class'] = 'Redis_Cache';
         $conf['consistent_cache_default_safe']  = TRUE;
         $conf['consistent_cache_buffer_mechanism'] = 'ConsistentCacheBuffer';
         $conf['consistent_cache_default_strict'] = FALSE;
         $conf['consistent_cache_strict_cache_bootstrap'] = TRUE;
       }
+      // $conf['cache_class_cache_form']           = 'DrupalDatabaseCache';
       $conf['redis_client_interface']           = 'PhpRedis';
       $conf['redis_client_host']                = '127.0.0.1';
       $conf['redis_client_port']                = '6379';
