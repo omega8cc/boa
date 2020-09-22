@@ -1,4 +1,14 @@
 
+### Stable BOA-4.1.2 Release - Full Edition
+### Date: Tue Sep 22 05:30:08 CEST 2020
+### Milestone URL: https://github.com/omega8cc/boa/milestones/4.1.2
+
+# Release Notes:
+
+  This BOA release is a transitional release before switching to rolling
+  release policy. Detailed changelog will follow.
+
+
 ### Stable BOA-4.0.1 Release - Full Edition
 ### Date: Mon May  6 01:14:59 CEST 2019
 ### Milestone URL: https://github.com/omega8cc/boa/milestones/4.0.1

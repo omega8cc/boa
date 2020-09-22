@@ -85,7 +85,7 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### NOTE: if the file doesn't exist, the system will create it and set to the
 ### lowest available PHP version installed, not to the system default version.
 ### This is to guarantee backward compatibility for instances installed
-### before upgrade to BOA-4.0.1, when the default PHP version was 5.6,
+### before upgrade to BOA-4.1.2, when the default PHP version was 5.6,
 ### as otherwise after the upgrade the system would automatically switch such
 ### accounts to the new default PHP version which is 7.3, and this could break
 ### most of the sites hosted, never before tested for PHP 7.3 compatibility.
@@ -136,7 +136,7 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### NOTE: if the file doesn't exist, the system will create it and set to the
 ### lowest available PHP version installed, not to the system default version.
 ### This is to guarantee backward compatibility for instances installed
-### before upgrade to BOA-4.0.1, when the default PHP version was 5.6,
+### before upgrade to BOA-4.1.2, when the default PHP version was 5.6,
 ### as otherwise after the upgrade the system would automatically switch such
 ### accounts to the new default PHP version which is 7.3, and this could break
 ### most of the sites hosted, never before tested for PHP 7.3 compatibility.

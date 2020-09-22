@@ -11,13 +11,13 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
-_AEGIR_VERSION="BOA-4.0.1"
+_AEGIR_VERSION="BOA-4.1.2"
 _BRANCH_BOA="4.x"
-_X_VERSION="BOA-4.0.1"
+_X_VERSION="BOA-4.1.2"
 _MYSQLTUNER_VRN=1.7.19
 _PHP_FPM_WORKERS=AUTO
 _RESERVED_RAM=0
-_X_SE="411prodQ19"
+_X_SE="412prodQ1"
 
 ###
 ### Commands shortcuts
