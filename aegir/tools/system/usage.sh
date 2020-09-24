@@ -335,6 +335,7 @@ detect_vanilla_core() {
           && [ ! -e "${Plr}/modules/cookie_cache_bypass" ]; then
           if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
             || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+            || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
             || [ "${_VMFAMILY}" = "VS" ]; then
             echo Vanilla Drupal 5.x Platform detected in ${Plr}
             read_account_data
@@ -350,6 +351,7 @@ detect_vanilla_core() {
             && [ ! -e "/boot/grub/menu.lst" ]; then
             if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
               || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+              || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
               || [ "${_VMFAMILY}" = "VS" ]; then
               read_account_data
               send_notice_core
@@ -1053,6 +1055,7 @@ action() {
         echo SkipDt is ${SkipDt} or ${SkipDtH} MB
         if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
           || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+          || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
           || [ "${_VMFAMILY}" = "VS" ]; then
           check_limits
           if [ -e "${_THIS_HM_SITE}" ]; then

@@ -244,6 +244,7 @@ satellite_tune_fpm_config() {
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
   if [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+    || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
     if [ "${_CLIENT_OPTION}" = "POWER" ] \
       || [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
@@ -430,7 +431,7 @@ enable_chattr() {
   if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
     if [ -d "/home/$1/platforms/" ]; then
       chattr +i /home/$1/platforms/
-      chattr +i /home/$1/platforms/*
+      chattr +i /home/$1/platforms/* &> /dev/null
     fi
     if [ -d "/home/$1/.drush/" ]; then
       chattr +i /home/$1/.drush/
@@ -455,7 +456,7 @@ disable_chattr() {
   if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
     if [ -d "/home/$1/platforms/" ]; then
       chattr -i /home/$1/platforms/
-      chattr -i /home/$1/platforms/*
+      chattr -i /home/$1/platforms/* &> /dev/null
     fi
     if [ -d "/home/$1/.drush/" ]; then
       chattr -i /home/$1/.drush/
@@ -483,6 +484,7 @@ satellite_cnf() {
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
         _DO_NOTHING=YES
       else
@@ -573,6 +575,7 @@ satellite_cnf() {
     _CHECK_HOST=$(uname -n 2>&1)
     if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+      || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       _LD_DOM=YES
       if [ -e "/root/.debug-boa-installer.cnf" ]; then
@@ -1024,6 +1027,7 @@ satellite_cnf() {
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
         _DO_NOTHING=YES
       else
@@ -2781,6 +2785,8 @@ satellite_run_child_b() {
           ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
         mv -f ${_ROOT}/backups/*boa.io* \
           ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
+        mv -f ${_ROOT}/backups/*aegir.cc* \
+          ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
         chmod 600 ${_ROOT}/backups/system/old_hostmaster/* &> /dev/null
         hostmaster_frontend_dbpass_sync
       fi
@@ -4330,6 +4336,7 @@ satellite_if_init_or_upgrade() {
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
         if [ -e "${_ROOT}/log/amazing_upgrade.txt" ] \
           && [ ! -e "${_ROOT}/log/amazing_upgrade_complete.txt" ]; then
@@ -4381,6 +4388,7 @@ satellite_if_init_or_upgrade() {
           || [ -e "/root/.host8.cnf" ] \
           || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
           || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+          || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
           || [ "${_VMFAMILY}" = "VS" ]; then
           _DO_NOTHING=YES
         else
@@ -4816,6 +4824,7 @@ satellite_batch_cleanup() {
   rm -f /data/u/*host8* &> /dev/null
   rm -f /data/u/*o8.io* &> /dev/null
   rm -f /data/u/*boa.io* &> /dev/null
+  rm -f /data/u/*aegir.cc* &> /dev/null
   mv -f ${_ROOT}/backups/drupalgeddon-pre* ${_ROOT}/backups/system/ &> /dev/null
   mv -f ${_ROOT}/backups/drush_make-pre* ${_ROOT}/backups/system/ &> /dev/null
   mv -f ${_ROOT}/backups/drush-pre* ${_ROOT}/backups/system/ &> /dev/null
@@ -5750,6 +5759,7 @@ satellite_child_b_aegir_ui_enhance() {
       _CHECK_HOST=$(uname -n 2>&1)
       if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
         || [ "${_VMFAMILY}" = "VS" ] \
         || [ -e "/root/.host8.cnf" ] \
         || [ "${_AUTO_UP}" = "YES" ]; then

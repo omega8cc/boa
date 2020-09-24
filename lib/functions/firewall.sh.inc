@@ -81,6 +81,7 @@ csf_install() {
   cd /var/opt
   if [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+    || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
     _SSH_PORT=22
   fi
@@ -213,6 +214,7 @@ install_upgrade_csf_lfd() {
       if [ -e "/root/.host8.cnf" ] \
         || [ -e "/root/.auto.up.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]]; then
         sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"1\"/g" \
           /etc/csf/csf.conf &> /dev/null
