@@ -671,6 +671,7 @@ fi
 _D6_CORE_DIR="/data/all/000/core/pressflow-${_SMALLCORE6}"
 _D7_CORE_DIR="/data/all/000/core/drupal-${_SMALLCORE7}"
 _D8_CORE_DIR="/data/all/000/core/drupal-${_SMALLCORE8}"
+_D9_CORE_DIR="/data/all/000/core/drupal-${_SMALLCORE9}"
 
 
 ###---### Distributions full names.

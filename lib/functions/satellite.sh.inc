@@ -3888,6 +3888,7 @@ satellite_make() {
   echo "_DRUPAL7P=\"${_DRUPAL7}-prod\""               >> ${writeTo}
   echo "_DRUPAL7S=\"${_DRUPAL7}-stage\""              >> ${writeTo}
   echo "_DRUPAL8=\"${_DRUPAL8}\""                     >> ${writeTo}
+  echo "_DRUPAL9=\"${_DRUPAL9}\""                     >> ${writeTo}
   echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${writeTo}
   echo "_ERPAL=\"${_ERPAL}\""                         >> ${writeTo}
   echo "_F_TIME=\"${_F_TIME}\""                       >> ${writeTo}
@@ -3926,14 +3927,16 @@ satellite_make() {
   echo "_PURGE_MODE=\"${_PURGE_MODE}\""               >> ${writeTo}
   echo "_RECRUITER=\"${_RECRUITER}\""                 >> ${writeTo}
   echo "_REDIS_C_VERSION=\"${_REDIS_C_VERSION}\""     >> ${writeTo}
-  echo "_REDIS_N_VERSION=\"${_REDIS_N_VERSION}\""     >> ${writeTo}
   echo "_REDIS_L_VERSION=\"${_REDIS_L_VERSION}\""     >> ${writeTo}
+  echo "_REDIS_N_VERSION=\"${_REDIS_N_VERSION}\""     >> ${writeTo}
   echo "_RESTAURANT=\"${_RESTAURANT}\""               >> ${writeTo}
-  echo "_THUNDER=\"${_THUNDER}\""                     >> ${writeTo}
   echo "_SERIES_RESULT=\"${_SERIES_RESULT}\""         >> ${writeTo}
   echo "_SMALLCORE6=\"${_SMALLCORE6}\""               >> ${writeTo}
   echo "_SMALLCORE7=\"${_SMALLCORE7}\""               >> ${writeTo}
   echo "_SMALLCORE8=\"${_SMALLCORE8}\""               >> ${writeTo}
+  echo "_SMALLCORE9=\"${_SMALLCORE9}\""               >> ${writeTo}
+  echo "_SOCIAL_CORE=\"${_SOCIAL_CORE}\""             >> ${writeTo}
+  echo "_SOCIAL=\"${_SOCIAL}\""                       >> ${writeTo}
   echo "_SPINNER=\"${_SPINNER}\""                     >> ${writeTo}
   echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${writeTo}
   echo "_T_BUILD=\"${_T_BUILD}\""                     >> ${writeTo}
@@ -3941,6 +3944,8 @@ satellite_make() {
   echo "_THIS_DB_PORT=\"${_THIS_DB_PORT}\""           >> ${writeTo}
   echo "_THIS_OS=\"${_THIS_OS}\""                     >> ${writeTo}
   echo "_THISHTIP=\"${_THISHTIP}\""                   >> ${writeTo}
+  echo "_THUNDER_CORE=\"${_THUNDER_CORE}\""           >> ${writeTo}
+  echo "_THUNDER=\"${_THUNDER}\""                     >> ${writeTo}
   echo "_TODAY=\"${_TODAY}\""                         >> ${writeTo}
   echo "_UBERCART6=\"${_UBERCART6}\""                 >> ${writeTo}
   echo "_UBERCART7=\"${_UBERCART7}\""                 >> ${writeTo}
@@ -3949,8 +3954,6 @@ satellite_make() {
   echo "_USER=\"${_USER}\""                           >> ${writeTo}
   echo "_USRG=\"${_USRG}\""                           >> ${writeTo}
   echo "_VARBASE=\"${_VARBASE}\""                     >> ${writeTo}
-  echo "_SOCIAL=\"${_SOCIAL}\""                       >> ${writeTo}
-  echo "_SOCIAL_CORE=\"${_SOCIAL_CORE}\""             >> ${writeTo}
   echo "_WEBG=\"${_WEBG}\""                           >> ${writeTo}
   echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${writeTo}
 
