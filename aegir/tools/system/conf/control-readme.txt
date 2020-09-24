@@ -74,7 +74,7 @@
 ### NOTE: if the file doesn't exist, the system will create it and set to the
 ### lowest available PHP version installed, not to the system default version.
 ### This is to guarantee backward compatibility for instances installed
-### before upgrade to BOA-4.1.2, when the default PHP version was 5.6,
+### before upgrade to BOA-4.1.3, when the default PHP version was 5.6,
 ### as otherwise after the upgrade the system would automatically switch such
 ### accounts to the new default PHP version which is 7.3, and this could break
 ### most of the sites hosted, never before tested for PHP 7.3 compatibility.
@@ -126,7 +126,7 @@
 ### NOTE: if the file doesn't exist, the system will create it and set to the
 ### lowest available PHP version installed, not to the system default version.
 ### This is to guarantee backward compatibility for instances installed
-### before upgrade to BOA-4.1.2, when the default PHP version was 5.6,
+### before upgrade to BOA-4.1.3, when the default PHP version was 5.6,
 ### as otherwise after the upgrade the system would automatically switch such
 ### accounts to the new default PHP version which is 7.3, and this could break
 ### most of the sites hosted, never before tested for PHP 7.3 compatibility.
@@ -135,7 +135,7 @@
 ### in Aegir backend, used for all tasks on hosted sites, but it will not
 ### affect PHP-CLI version used by Composer on command line, because Composer
 ### is installed globally and not per Octopus account, so it will use system
-### default PHP version, which is, since BOA-4.1.2, PHP 7.3 and can be
+### default PHP version, which is, since BOA-4.1.3, PHP 7.3 and can be
 ### changed only by changing system default _PHP_CLI_VERSION in the file
 ### /root/.barracuda.cnf and running barracuda upgrade.
 ###
