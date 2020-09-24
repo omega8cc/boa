@@ -46,6 +46,7 @@
   you won't be able to use restore task in Aegir, because the site archive
   won't include the database dump -- you can still find that sql dump split
   into per table files in the backups directory, though, in the subdirectory
+  with timestamp added, so you can still access it manually, if needed.
 
 @=> Drupal platforms and Composer support
 
