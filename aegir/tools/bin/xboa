@@ -612,10 +612,43 @@ migrate_prepare() {
         --no-autocommit \
         --skip-add-locks \
         --hex-blob ${_HDB} \
+        comment \
+        date_format_locale \
+        date_format_type \
+        date_formats \
+        fe_block_boxes \
+        field_config \
+        field_config_instance \
         field_data_body \
         field_data_comment_body \
+        field_data_field_composer_git_docroot \
+        field_data_field_composer_git_path \
+        field_data_field_composer_git_project_url \
+        field_data_field_composer_git_version \
+        field_data_field_composer_project_docroot \
+        field_data_field_composer_project_package \
+        field_data_field_composer_project_path \
+        field_data_field_composer_project_version \
+        field_data_field_deployment_strategy \
+        field_data_field_git_docroot \
+        field_data_field_git_reference \
+        field_data_field_git_repository_path \
+        field_data_field_git_repository_url \
         field_revision_body \
         field_revision_comment_body \
+        field_revision_field_composer_git_docroot \
+        field_revision_field_composer_git_path \
+        field_revision_field_composer_git_project_url \
+        field_revision_field_composer_git_version \
+        field_revision_field_composer_project_docroot \
+        field_revision_field_composer_project_package \
+        field_revision_field_composer_project_path \
+        field_revision_field_composer_project_version \
+        field_revision_field_deployment_strategy \
+        field_revision_field_git_docroot \
+        field_revision_field_git_reference \
+        field_revision_field_git_repository_path \
+        field_revision_field_git_repository_url \
         filter \
         filter_format \
         history \
