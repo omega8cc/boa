@@ -216,6 +216,7 @@ send_report() {
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+      || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
@@ -236,6 +237,7 @@ send_alert() {
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+      || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
@@ -622,6 +624,7 @@ up_one() {
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+      || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES

@@ -710,6 +710,7 @@ restore_default_sql() {
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+    || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
     if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
       _DO_NOTHING=YES
@@ -891,6 +892,7 @@ tune_web_server_config() {
   if [ "${_LIM_FPM}" -lt "48" ]; then
     if [[ "${_THISHOST}" =~ ".host8." ]] \
       || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+      || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       _LIM_FPM=48
     fi
@@ -1136,6 +1138,7 @@ tune_memory_limits() {
   _USE=$(( _RAM / 4 ))
   if [ "${_VMFAMILY}" = "VS" ] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+    || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
     || [[ "${_THISHOST}" =~ ".host8." ]]; then
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.tg.cnf" ]; then

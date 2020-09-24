@@ -85,6 +85,7 @@ fi
 
 if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
   || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+  || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
   || [ "${_VMFAMILY}" = "VS" ]; then
   PrTest=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
   InTest=$(ls /data/disk/*/static/control/cli.info | wc -l 2>&1)

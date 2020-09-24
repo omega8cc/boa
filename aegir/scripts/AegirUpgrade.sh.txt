@@ -419,6 +419,8 @@ hostmaster_mi_up() {
     ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
   mv -f ${_ROOT}/backups/*boa.io* \
     ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
+  mv -f ${_ROOT}/backups/*aegir.cc* \
+    ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
   chmod 600 ${_ROOT}/backups/system/old_hostmaster/* &> /dev/null
 }
 

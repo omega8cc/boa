@@ -1014,6 +1014,7 @@ migrate_init() {
             ${ieni} \
             --exclude=host8.biz \
             --exclude=boa.io \
+            --exclude=aegir.cc \
             -e ssh ${_USR}/config/server_master/nginx/vhost.d/* \
             root@${tgt}:${_DST}/config/server_master/nginx/vhost.d/
 
