@@ -14,12 +14,15 @@
 ### control which platforms will be installed,
 ### using the symbols listed below.
 ###
+### Drupal 9 based
+###
+### THR ----------- Thunder
+###
 ### Drupal 8 based
 ###
 ### LHG ----------- Lightning
 ### OPG ----------- Opigno LMS
 ### SOC ----------- Social
-### THR ----------- Thunder
 ### VBE ----------- Varbase
 ###
 ### Drupal 7 based

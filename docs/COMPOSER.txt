@@ -5,13 +5,13 @@ The only documentation source for anything Aegir on BOA related is available at:
   https://learn.omega8.cc
   https://github.com/omega8cc/boa/issues?utf8=✓&q=is%3Aissue+composer
 
-Since BOA-4.1.2 new Drupal 8 based platforms are included:
+Since BOA-4.1.3 new Drupal 8 and Drupal 9 based platforms are supported:
 
- Lightning 4.103 -------------- https://drupal.org/project/lightning
- Opigno LMS 2.11 -------------- https://drupal.org/project/opigno_lms
- Social 8.2 ------------------- https://drupal.org/project/social
- Thunder 4.5 ------------------ https://drupal.org/project/thunder
- Varbase 8.4 ------------------ https://drupal.org/project/varbase
+ Thunder 4.5 D9 --------------- https://drupal.org/project/thunder
+ Lightning 5.0.1 D8 ----------- https://drupal.org/project/lightning
+ Opigno LMS 2.16 D8 ----------- https://drupal.org/project/opigno_lms
+ Social 9.2 D8 ---------------- https://drupal.org/project/social
+ Varbase 8.6 D8 --------------- https://drupal.org/project/varbase
 
 IMPORTANT: You must switch your ~/static/control/cli.info to 7.2 or newer
 PHP version (BOA hosted on Omega8.cc comes with 7.2, 7.3 and 7.4), because
@@ -58,7 +58,7 @@ hosted. Just use it to build new codebases and then add them as platforms
 when the build works without errors.
 
 Remember that Drush must be removed from the codebase, or it will take over
-Aegir tasks and they will fail, but since BOA-4.1.2 our modified Aegir
+Aegir tasks and they will fail, but since BOA-4.1.3 our modified Aegir
 backend will automatically check and remove drush from the vendor directory
 if found, on every Verify.
 

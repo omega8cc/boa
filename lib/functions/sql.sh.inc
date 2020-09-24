@@ -267,8 +267,11 @@ check_mysqld_running() {
 # Tune memory limits for SQL server.
 tune_sql_memory_limits() {
   check_mysqld_running
-  sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
+  if [ "${_DB_SERVER}" = "MariaDB" ]; then
+    sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" \
+      /etc/mysql/debian-start &> /dev/null
     wait
+  fi
   if [ ! -e "${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}" ]; then
     mkdir -p ${vBs}/dragon/t/
     if [ -e "/etc/mysql/my.cnf" ]; then
@@ -1681,9 +1684,11 @@ update_sql_root_credentials() {
           sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf &> /dev/null
             wait
         fi
-        sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" \
-          /etc/mysql/debian-start &> /dev/null
+        if [ "${_DB_SERVER}" = "MariaDB" ]; then
+          sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" \
+            /etc/mysql/debian-start &> /dev/null
           wait
+        fi
         mysqladmin flush-privileges
           wait
         mysqladmin flush-hosts
