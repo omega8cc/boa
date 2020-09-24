@@ -117,7 +117,7 @@ enable_chattr() {
     else
       if [ -d "/home/$1/platforms" ]; then
         chattr +i /home/$1/platforms
-        chattr +i /home/$1/platforms/*
+        chattr +i /home/$1/platforms/* &> /dev/null
       fi
     fi
     if [ -d "/home/$1/.drush" ]; then
@@ -142,7 +142,7 @@ disable_chattr() {
     else
       if [ -d "/home/$1/platforms" ]; then
         chattr -i /home/$1/platforms
-        chattr -i /home/$1/platforms/*
+        chattr -i /home/$1/platforms/* &> /dev/null
       fi
     fi
     if [ -d "/home/$1/.drush" ]; then
@@ -2975,7 +2975,7 @@ purge_cruft_machine() {
         && [ ! -z "${RevisionTest}" ]; then
         if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
           chattr -i /home/${_HM_U}.ftp/platforms
-          chattr -i /home/${_HM_U}.ftp/platforms/*
+          chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
         fi
         rm -rf /home/${_HM_U}.ftp/platforms/$i
       fi
@@ -3002,7 +3002,7 @@ purge_cruft_machine() {
       && [ ! -e "/home/${_HM_U}.ftp/platforms/$i" ]; then
       if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
         chattr -i /home/${_HM_U}.ftp/platforms
-        chattr -i /home/${_HM_U}.ftp/platforms/*
+        chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
       fi
       mkdir -p /home/${_HM_U}.ftp/platforms/$i
       mkdir -p ${User}/distro/${i}/keys

@@ -451,7 +451,7 @@ enable_chattr() {
     else
       if [ -d "/home/$1/platforms" ]; then
         chattr +i /home/$1/platforms
-        chattr +i /home/$1/platforms/*
+        chattr +i /home/$1/platforms/* &> /dev/null
       fi
     fi
     if [ -d "/home/$1/.drush" ]; then
@@ -481,7 +481,7 @@ disable_chattr() {
     else
       if [ -d "/home/$1/platforms" ]; then
         chattr -i /home/$1/platforms
-        chattr -i /home/$1/platforms/*
+        chattr -i /home/$1/platforms/* &> /dev/null
       fi
     fi
     if [ -d "/home/$1/.drush" ]; then
