@@ -211,12 +211,15 @@
 ### Supported values which can be written in this file, listed in a single line
 ### or one per line:
 ###
+### Drupal 9 based
+###
+### THR ----------- Thunder
+###
 ### Drupal 8 based
 ###
 ### LHG ----------- Lightning
 ### OPG ----------- Opigno LMS
 ### SOC ----------- Social
-### THR ----------- Thunder
 ### VBE ----------- Varbase
 ###
 ### Drupal 7 based
