@@ -656,8 +656,7 @@ up_one() {
           -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example)
       fi
       _F_SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
-      if [[ "${_F_SERIES_TEST}" =~ "${stbl}" ]] \
-        || [ -e "${User}/log/up-${_TODAY}" ]; then
+      if [[ "${_F_SERIES_TEST}" =~ "${stbl}" ]]; then
         _IGNORE_FORCE=YES
         mcmode=
         fmodey=
