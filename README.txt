@@ -153,30 +153,30 @@ Octopus can install and/or support the platforms listed below:
  @ Drupal 9
 
  Drupal 9.0.0 ----------------- https://drupal.org/project/drupal/releases/9.0.0
+ Thunder 4.5 ------------------ https://drupal.org/project/thunder
 
  @ Drupal 8
 
- Lightning 4.103 -------------- https://drupal.org/project/lightning
- Opigno LMS 2.11 -------------- https://drupal.org/project/opigno_lms
- Social 8.2 ------------------- https://drupal.org/project/social
- Thunder 4.5 ------------------ https://drupal.org/project/thunder
- Varbase 8.4 ------------------ https://drupal.org/project/varbase
+ Lightning 5.0.1 -------------- https://drupal.org/project/lightning
+ Opigno LMS 2.16 -------------- https://drupal.org/project/opigno_lms
+ Social 9.2 ------------------- https://drupal.org/project/social
+ Varbase 8.6 ------------------ https://drupal.org/project/varbase
 
  @ Drupal 7.73.1
 
  aGov 3.12 -------------------- https://drupal.org/project/agov
- Commerce 1.60 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.64 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 1.64 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 2.68 ---------------- https://drupal.org/project/commerce_kickstart
  Commons 3.50 ----------------- https://drupal.org/project/commons
  Drupal 7.73.1 ---------------- https://drupal.org/project/drupal/releases/7.73
- Guardr 2.52 ------------------ https://drupal.org/project/guardr
+ Guardr 2.55 ------------------ https://drupal.org/project/guardr
  OpenAid 2.8 ------------------ https://drupal.org/project/openaid
- OpenAtrium 2.645 ------------- https://drupal.org/project/openatrium
+ OpenAtrium 2.647 ------------- https://drupal.org/project/openatrium
  OpenLucius 1.7 --------------- https://drupal.org/project/openlucius
- OpenOutreach 1.59 ------------ https://drupal.org/project/openoutreach
+ OpenOutreach 1.62 ------------ https://drupal.org/project/openoutreach
  OpenPublic 1.30 -------------- https://drupal.org/project/openpublic
- Opigno LMS 1.44 -------------- https://drupal.org/project/opigno_lms
- Panopoly 1.72 ---------------- https://drupal.org/project/panopoly
+ Opigno LMS 1.47 -------------- https://drupal.org/project/opigno_lms
+ Panopoly 1.76 ---------------- https://drupal.org/project/panopoly
  Restaurant 1.15 -------------- https://drupal.org/project/restaurant
  Ubercart 3.13 ---------------- https://drupal.org/project/ubercart
 

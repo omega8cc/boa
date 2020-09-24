@@ -3574,10 +3574,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/thunder-${_THUNDER}-${_SMALLCORE8}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_SMALLCORE8}" ]; then
-        _A="${_QR}/thunder-${_THUNDER}-${_SMALLCORE8}/docroot/sites"
-        _B="${_QH}/thunder-${_THUNDER}-${_SMALLCORE8}"
+    if [ -d "${_QR}/thunder-${_THUNDER}-${_THUNDER_CORE}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_THUNDER_CORE}" ]; then
+        _A="${_QR}/thunder-${_THUNDER}-${_THUNDER_CORE}/docroot/sites"
+        _B="${_QH}/thunder-${_THUNDER}-${_THUNDER_CORE}"
         ln -sf ${_A} ${_B}
       fi
     fi
