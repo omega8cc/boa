@@ -679,6 +679,9 @@ update_agents() {
     for pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       tUsr=
       tUsr=$(echo ${pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+      if [ ! -e "${pthSysUsr}/static/control/MyQuick.info" ]; then
+        echo ON > ${pthSysUsr}/static/control/MyQuick.info
+      fi
       if [ -e "${pthSysUsr}/static/control/fpm.info" ] \
         && [ ! -e "${pthSysUsr}/static/control/cli.info" ]; then
         cp ${pthSysUsr}/static/control/fpm.info ${pthSysUsr}/static/control/cli.info
