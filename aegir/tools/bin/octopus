@@ -392,7 +392,7 @@ satellite_check_up_php() {
         fi
         chown -R ${octUsr}.ftp:users ${User}/static/control
       fi
-      if [[ "${_SERIES_TEST}" =~ "${stbl}" ]]; then
+      if [[ "${_SERIES_TEST}" =~ "${XstblX}" ]]; then
         if [ "${orgMcmode}" != "force" ]; then
           mcmode=
           fmodey=force
