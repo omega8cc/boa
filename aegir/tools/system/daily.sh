@@ -3064,6 +3064,9 @@ load_control() {
   if [ -z "${_CPU_MAX_RATIO}" ]; then
     _CPU_MAX_RATIO=6
   fi
+  if [ -e "/root/.force.sites.verify.cnf" ]; then
+    _CPU_MAX_RATIO=88
+  fi
   _O_LOAD=$(awk '{print $1*100}' /proc/loadavg 2>&1)
   _O_LOAD=$(( _O_LOAD / _CPU_NR ))
   _O_LOAD_MAX=$(( 100 * _CPU_MAX_RATIO ))
