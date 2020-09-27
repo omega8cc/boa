@@ -1044,9 +1044,13 @@ forced_mysql_root_password_update() {
       wait
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
       wait
+    mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'::1';"
+      wait
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_OWNIP}';"
       wait
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
+      wait
+    mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'::1' WITH GRANT OPTION;"
       wait
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_OWNIP}' WITH GRANT OPTION;"
       wait
@@ -1073,6 +1077,7 @@ forced_mysql_root_password_update() {
       msg "DAFT: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
+      mysql -u root -e "SHOW GRANTS FOR 'root'@'::1';"
       if [ "${_DB_SERIES}" = "10.3" ] \
         || [ "${_DB_SERIES}" = "10.2" ]; then
         mysql -u root -e "SELECT user,host,password FROM mysql.user;"
@@ -1566,9 +1571,13 @@ update_sql_root_credentials() {
           wait
         mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
           wait
+        mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'::1';"
+          wait
         mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_OWNIP}';"
           wait
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
+          wait
+        mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'::1' WITH GRANT OPTION;"
           wait
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_OWNIP}' WITH GRANT OPTION;"
           wait
