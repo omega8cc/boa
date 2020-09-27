@@ -1053,6 +1053,8 @@ forced_mysql_root_password_update() {
     if [ "${_DB_SERIES}" = "5.7" ]; then
       mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
         wait
+      mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
+        wait
       mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
         wait
     else
@@ -1572,6 +1574,8 @@ update_sql_root_credentials() {
           wait
         if [ "${_DB_SERIES}" = "5.7" ]; then
           mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
+            wait
+          mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
             wait
           mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
             wait
