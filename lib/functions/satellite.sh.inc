@@ -79,7 +79,7 @@ satellite_tune_fpm_workers() {
 #
 # Update web user.
 satellite_update_web_user() {
-  _X_SE="413prodQ1"
+  _X_SE="413prodQ3"
   isTest="${_WEB}"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ]; then
@@ -1307,7 +1307,7 @@ satellite_force_advanced_nginx_config() {
 #
 # Update local INI for PHP CLI on the Aegir Satellite Instance.
 satellite_child_b_update_ini_php_cli() {
-  _X_SE="413prodQ1"
+  _X_SE="413prodQ3"
   _U_HD="${_ROOT}/.drush"
   _U_TP="${_ROOT}/.tmp"
   _U_II="${_U_HD}/php.ini"
@@ -2969,69 +2969,69 @@ satellite_child_scripts_cleanup() {
 }
 
 satellite_if_add_ftps_lshell_access() {
-  if [ "${_LOCAL_STATUS}" = "INIT" ]; then
-    _USERFTP="${_USER}.ftp"
-    _USERFTP_ROOT="/home/${_USERFTP}"
-    if [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
-      _PATH_LSHELL="/usr/bin/mysecureshell"
-    else
-      _PATH_LSHELL="/usr/bin/lshell"
-    fi
-    if [ ! -d "${_USERFTP_ROOT}" ]; then
-      msg "${_STATUS} A: Adding ftps/lshell user"
-      # add user
-      find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
-      useradd -d /home/${_USERFTP} -s ${_PATH_LSHELL} -m -N -r ${_USERFTP} &> /dev/null
-      adduser ${_USERFTP} ${_WEBG} &> /dev/null
-      # Make sure new file which contains password is private
-      cd ${_ROOT}/log
-      touch ${_ROOT}/log/pass.txt
-      chmod 0600 ${_ROOT}/log/pass.txt
-      # generate a nice secure password and put it in a file
-      _ESC_LUPASS=""
-      _LEN_LUPASS=0
-      if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
-        _PWD_CHARS=32
-      elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
-        _PWD_CHARS=8
-      else
-        _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
-        if [ ! -z "${_STRONG_PASSWORDS}" ] \
-          && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
-          _PWD_CHARS="${_STRONG_PASSWORDS}"
-        else
-          _PWD_CHARS=8
-        fi
-        if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
-          _PWD_CHARS=128
-        fi
-      fi
-      if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ]; then
-        _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
-        _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
-        _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
-      fi
-      if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ]; then
-        _ESC_LUPASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
-        _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
-        _ESC_LUPASS=$(sanitize_string "${_ESC_LUPASS}" 2>&1)
-      fi
-      echo "${_ESC_LUPASS}" > ${_ROOT}/log/pass.txt
-      # get the password hash
-      ph=$(mkpasswd -m sha-512 "${_ESC_LUPASS}" $(openssl rand -base64 16 \
-        | tr -d '+=' | head -c 16))
-      # Set the password
-      usermod -p $ph ${_USERFTP} &> /dev/null
-      passwd -w 7 -x 90 ${_USERFTP} &> /dev/null
-    fi
-    usermod -aG lshellg ${_USERFTP}
-    chsh -s ${_PATH_LSHELL} ${_USERFTP} &> /dev/null
-    echo >> /etc/lshell.conf
-    echo "[${_USERFTP}]" >> /etc/lshell.conf
-    echo "path : ['${_ROOT}/distro', '${_ROOT}/static', \
-      '${_ROOT}/backups', '${_ROOT}/clients']" \
-      | fmt -su -w 2500 >> /etc/lshell.conf
+  _USERFTP="${_USER}.ftp"
+  _USERFTP_ROOT="/home/${_USERFTP}"
+  if [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
+    _PATH_LSHELL="/usr/bin/mysecureshell"
+  else
+    _PATH_LSHELL="/usr/bin/lshell"
   fi
+  _ID_SHELLS=$(id -nG ${_USERFTP} 2>&1)
+  if [[ ! "${_ID_SHELLS}" =~ "users" ]] \
+    || [ ! -d "${_USERFTP_ROOT}" ]; then
+    msg "${_STATUS} A: Adding ftps/lshell user"
+    # add user
+    find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
+    useradd -d /home/${_USERFTP} -s ${_PATH_LSHELL} -m -N -r ${_USERFTP} &> /dev/null
+    adduser ${_USERFTP} ${_WEBG} &> /dev/null
+    # Make sure new file which contains password is private
+    cd ${_ROOT}/log
+    touch ${_ROOT}/log/pass.txt
+    chmod 0600 ${_ROOT}/log/pass.txt
+    # generate a nice secure password and put it in a file
+    _ESC_LUPASS=""
+    _LEN_LUPASS=0
+    if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
+      _PWD_CHARS=32
+    elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
+      _PWD_CHARS=8
+    else
+      _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
+      if [ ! -z "${_STRONG_PASSWORDS}" ] \
+        && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
+        _PWD_CHARS="${_STRONG_PASSWORDS}"
+      else
+        _PWD_CHARS=8
+      fi
+      if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
+        _PWD_CHARS=128
+      fi
+    fi
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ]; then
+      _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+      _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
+      _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
+    fi
+    if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ]; then
+      _ESC_LUPASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
+      _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
+      _ESC_LUPASS=$(sanitize_string "${_ESC_LUPASS}" 2>&1)
+    fi
+    echo "${_ESC_LUPASS}" > ${_ROOT}/log/pass.txt
+    # get the password hash
+    ph=$(mkpasswd -m sha-512 "${_ESC_LUPASS}" $(openssl rand -base64 16 \
+      | tr -d '+=' | head -c 16))
+    # Set the password
+    usermod -p $ph ${_USERFTP} &> /dev/null
+    passwd -w 7 -x 90 ${_USERFTP} &> /dev/null
+  fi
+  usermod -aG lshellg ${_USERFTP}
+  chsh -s ${_PATH_LSHELL} ${_USERFTP} &> /dev/null
+  echo >> /etc/lshell.conf
+  echo "[${_USERFTP}]" >> /etc/lshell.conf
+  echo "path : ['${_ROOT}/distro', '${_ROOT}/static', \
+    '${_ROOT}/backups', '${_ROOT}/clients']" \
+    | fmt -su -w 2500 >> /etc/lshell.conf
 }
 
 satellite_if_add_to_rvm_group() {
@@ -4042,7 +4042,7 @@ satellite_make() {
     fi
   fi
 
-  _X_SE="413prodQ1"
+  _X_SE="413prodQ3"
   if [ ! -e "${_ROOT}/static/control/.ctrl.${_X_SE}.pid" ] \
     && [ -e "/home/${_USER}.ftp/users" ]; then
     if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
