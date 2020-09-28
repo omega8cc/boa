@@ -7,7 +7,7 @@
     Edition yet, don't use any partial upgrade modes explained further below.
     Once new BOA Stable is released, you must run *full* upgrades with commands:
 
-    $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
+    $ cd;wget -q -U iCab http://134.19.164.236/BOA.sh.txt;bash BOA.sh.txt
     $ barracuda up-stable
     $ barracuda up-stable system           (recommended on major upgrade)
     $ octopus up-stable all both
@@ -21,7 +21,7 @@
     will complete:
 
     $ screen
-    $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
+    $ cd;wget -q -U iCab http://134.19.164.236/BOA.sh.txt;bash BOA.sh.txt
     $ barracuda up-stable log
     $ octopus up-stable all both log
 
@@ -49,7 +49,7 @@
 
     Download and run (as root) BOA Meta Installer first:
 
-    $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
+    $ cd;wget -q -U iCab http://134.19.164.236/BOA.sh.txt;bash BOA.sh.txt
 
  => To upgrade system and Aegir Master Instance to Stable use:
 

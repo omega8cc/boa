@@ -402,22 +402,23 @@ check_root() {
 [ -e "/root/.proxy.cnf" ] && exit 0
 
 find_fast_mirror() {
-  echo "running ${tVr} `hostname` find_fast_mirror procedure.."
-  isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-      && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-    fi
-    apt-get update -qq &> /dev/null
-    apt-get install netcat ${forCer} &> /dev/null
-    sleep 3
-  fi
-  _USE_MIR="files.aegir.cc"
-  if ! netcat -w 10 -z "${_USE_MIR}" 80; then
-    echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
-    _USE_MIR="104.245.208.226"
-  fi
+  # echo "running ${tVr} `hostname` find_fast_mirror procedure.."
+  # isNetc=$(which netcat 2>&1)
+  # if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+  #   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+  #     && [ -e "/etc/apt/apt.conf.d" ]; then
+  #     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+  #   fi
+  #   apt-get update -qq &> /dev/null
+  #   apt-get install netcat ${forCer} &> /dev/null
+  #   sleep 3
+  # fi
+  # _USE_MIR="files.aegir.cc"
+  # if ! netcat -w 10 -z "${_USE_MIR}" 80; then
+  #   echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
+  #   _USE_MIR="134.19.164.236"
+  # fi
+  _USE_MIR="134.19.164.236"
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
 }
@@ -428,7 +429,7 @@ update_sysctl() {
     && [ ! -e "/var/backups/sysctl.conf-${_X_SE}.log" ]; then
     mkdir -p /var/backups
     cd /var/backups
-    curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/conf/sysctl.conf" -o sysctl.conf
+    curl -s -A iCab "http://134.19.164.236/versions/master/aegir/conf/sysctl.conf" -o sysctl.conf
     cp -af /var/backups/sysctl.conf /etc/sysctl.conf
     if [ -e "/etc/security/limits.conf" ]; then
       _IF_NF=$(grep '524288' /etc/security/limits.conf 2>&1)

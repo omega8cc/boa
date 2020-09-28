@@ -617,40 +617,41 @@ find_fast_mirror() {
     && [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
     pdnsd-ctl empty-cache &> /dev/null
   fi
-  isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-      && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-    fi
-    apt-get update -qq &> /dev/null
-    apt-get install netcat ${forCer} &> /dev/null
-    sleep 3
-  fi
-  ffMirr=$(which ffmirror 2>&1)
-  if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors-2020-02.txt"
-    mkdir -p /var/backups
-    if [ ! -e "${ffList}" ]; then
-      echo "jp.files.aegir.cc"  > ${ffList}
-      echo "nl.files.aegir.cc" >> ${ffList}
-      echo "uk.files.aegir.cc" >> ${ffList}
-      echo "us.files.aegir.cc" >> ${ffList}
-    fi
-    if [ -e "${ffList}" ]; then
-      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
-      _USE_MIR="${_CHECK_MIRROR}"
-      [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
-    else
-      _USE_MIR="files.aegir.cc"
-    fi
-  else
-    _USE_MIR="files.aegir.cc"
-  fi
-  if ! netcat -w 10 -z "${_USE_MIR}" 80; then
-    echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
-    _USE_MIR="104.245.208.226"
-  fi
+  # isNetc=$(which netcat 2>&1)
+  # if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+  #   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+  #     && [ -e "/etc/apt/apt.conf.d" ]; then
+  #     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+  #   fi
+  #   apt-get update -qq &> /dev/null
+  #   apt-get install netcat ${forCer} &> /dev/null
+  #   sleep 3
+  # fi
+  # ffMirr=$(which ffmirror 2>&1)
+  # if [ -x "${ffMirr}" ]; then
+  #   ffList="/var/backups/boa-mirrors-2020-02.txt"
+  #   mkdir -p /var/backups
+  #   if [ ! -e "${ffList}" ]; then
+  #     echo "jp.files.aegir.cc"  > ${ffList}
+  #     echo "nl.files.aegir.cc" >> ${ffList}
+  #     echo "uk.files.aegir.cc" >> ${ffList}
+  #     echo "us.files.aegir.cc" >> ${ffList}
+  #   fi
+  #   if [ -e "${ffList}" ]; then
+  #     _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+  #     _USE_MIR="${_CHECK_MIRROR}"
+  #     [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+  #   else
+  #     _USE_MIR="files.aegir.cc"
+  #   fi
+  # else
+  #   _USE_MIR="files.aegir.cc"
+  # fi
+  # if ! netcat -w 10 -z "${_USE_MIR}" 80; then
+  #   echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
+  #   _USE_MIR="134.19.164.236"
+  # fi
+  _USE_MIR="134.19.164.236"
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
 }
