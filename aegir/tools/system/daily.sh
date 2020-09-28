@@ -523,17 +523,17 @@ fix_user_register_protection() {
     fi
   fi
 
-  # if [ -e "${User}/log/imported.pid" ] \
-  #   || [ -e "${User}/log/exported.pid" ]; then
-  #   if [ -e "${Dir}/modules/readonlymode_fix.info" ]; then
-  #     touch ${User}/log/ctrl/site.${Dom}.rom-fix.info
-  #     rm -f ${Dir}/modules/readonlymode_fix.info
-  #   fi
-  #   if [ ! -e "${User}/log/ctrl/site.${Dom}.rom-fix.info" ]; then
-  #     run_drush8_cmd "${vSet} site_readonly 0"
-  #     touch ${User}/log/ctrl/site.${Dom}.rom-fix.info
-  #   fi
-  # fi
+  if [ -e "${User}/log/imported.pid" ] \
+    || [ -e "${User}/log/exported.pid" ]; then
+    if [ -e "${Dir}/modules/readonlymode_fix.info" ]; then
+      touch ${User}/log/ctrl/site.${Dom}.rom-fix.info
+      rm -f ${Dir}/modules/readonlymode_fix.info
+    fi
+    if [ ! -e "${User}/log/ctrl/site.${Dom}.rom-fix.info" ]; then
+      run_drush8_cmd "${vSet} site_readonly 0"
+      touch ${User}/log/ctrl/site.${Dom}.rom-fix.info
+    fi
+  fi
 }
 
 fix_robots_txt() {
@@ -3464,7 +3464,7 @@ else
     || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
-    n=$((RANDOM%900+80))
+    n=$((RANDOM%180+80))
     echo "waiting $n sec"
     sleep $n
   fi
