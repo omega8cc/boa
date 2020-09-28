@@ -46,22 +46,21 @@ touch /var/run/clear_m.pid
 #
 # Find the fastest mirror.
 find_fast_mirror() {
-  # isNetc=$(which netcat 2>&1)
-  # if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-  #   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-  #     && [ -e "/etc/apt/apt.conf.d" ]; then
-  #     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-  #   fi
-  #   apt-get update -qq &> /dev/null
-  #   apt-get install netcat ${forCer} &> /dev/null
-  #   sleep 3
-  # fi
-  # _USE_MIR="files.aegir.cc"
-  # if ! netcat -w 10 -z "${_USE_MIR}" 80; then
-  #   echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
-  #   _USE_MIR="134.19.164.236"
-  # fi
-  _USE_MIR="134.19.164.236"
+  isNetc=$(which netcat 2>&1)
+  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    apt-get update -qq &> /dev/null
+    apt-get install netcat ${forCer} &> /dev/null
+    sleep 3
+  fi
+  _USE_MIR="files.aegir.cc"
+  if ! netcat -w 10 -z "${_USE_MIR}" 80; then
+    echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
+    _USE_MIR="104.245.208.226"
+  fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
 }
@@ -108,7 +107,7 @@ if [[ "${checkVn}" =~ "===" ]] || [ -z "${checkVn}" ]; then
   fi
 fi
 crlHead="-I -k -s --retry 8 --retry-delay 8"
-urlBpth="http://134.19.164.236/versions/master/aegir/tools/bin"
+urlBpth="http://files.aegir.cc/versions/master/aegir/tools/bin"
 curl ${crlHead} -A "${checkVn}" "${urlBpth}/thinkdifferent" &> /dev/null
 
 renice ${_B_NICE} -p $$ &> /dev/null

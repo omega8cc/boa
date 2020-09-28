@@ -426,22 +426,21 @@ check_config_cluster() {
 }
 
 find_fast_mirror() {
-  # isNetc=$(which netcat 2>&1)
-  # if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-  #   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-  #     && [ -e "/etc/apt/apt.conf.d" ]; then
-  #     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-  #   fi
-  #   apt-get update -qq &> /dev/null
-  #   apt-get install netcat ${forCer} &> /dev/null
-  #   sleep 3
-  # fi
-  # _USE_MIR="files.aegir.cc"
-  # if ! netcat -w 10 -z "${_USE_MIR}" 80; then
-  #   echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
-  #   _USE_MIR="134.19.164.236"
-  # fi
-  _USE_MIR="134.19.164.236"
+  isNetc=$(which netcat 2>&1)
+  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    apt-get update -qq &> /dev/null
+    apt-get install netcat ${forCer} &> /dev/null
+    sleep 3
+  fi
+  _USE_MIR="files.aegir.cc"
+  if ! netcat -w 10 -z "${_USE_MIR}" 80; then
+    echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
+    _USE_MIR="104.245.208.226"
+  fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
 }
@@ -458,10 +457,10 @@ if_firewall_update() {
     cp -af /opt/fire.sh      ${_WFC}/fire.sh-pre
     cp -af /etc/csf/csf.conf ${_WFC}/csf.conf-pre
     cd ${_WFC}
-    curl -s -A iCab "http://134.19.164.236/versions/master/aegir/conf/sysctl.conf" -o sysctl.conf
-    curl -s -A iCab "http://134.19.164.236/versions/master/aegir/tools/host/host-water.sh" -o host-water.sh
-    curl -s -A iCab "http://134.19.164.236/versions/master/aegir/tools/host/host-fire.sh" -o host-fire.sh
-    curl -s -A iCab "http://134.19.164.236/cluster/csf.conf" -o csf.conf
+    curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/conf/sysctl.conf" -o sysctl.conf
+    curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/tools/host/host-water.sh" -o host-water.sh
+    curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/tools/host/host-fire.sh" -o host-fire.sh
+    curl -s -A iCab "http://files.aegir.cc/cluster/csf.conf" -o csf.conf
     cp -af ${_WFC}/sysctl.conf   /etc/sysctl.conf
     cp -af ${_WFC}/host-water.sh /opt/water.sh
     cp -af ${_WFC}/host-fire.sh  /opt/fire.sh
@@ -849,7 +848,7 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
     if [ -e "/vservers/${idn}/data/all" ] \
       && [ -e "/vservers/${idn}/var/lib/proxysql" ]; then
       echo "Installing galera_check for ProxySQL..."
-      curl -s -A iCab "http://134.19.164.236/cluster/galera_check.pl" \
+      curl -s -A iCab "http://files.aegir.cc/cluster/galera_check.pl" \
         -o /vservers/${idn}/var/lib/proxysql/galera_check.pl
       vserver ${idn} exec chmod 755 /var/lib/proxysql/galera_check.pl
       vserver ${idn} exec chown proxysql:proxysql /var/lib/proxysql/galera_check.pl
@@ -936,7 +935,7 @@ install_vps() {
   if [ "${ver}" != "galera" ]; then
     echo "Installing BOA ${ver} in vps ${idn}..."
     rm -f BOA.sh.txt*
-    wget -q -U iCab http://134.19.164.236/BOA.sh.txt
+    wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
     mv -f BOA.sh.txt /vservers/${idn}/root/
     vserver ${idn} exec bash /root/BOA.sh.txt
     vserver ${idn} exec /opt/local/bin/boa in-${ver} public ${hst} ${eml} o8 mini
@@ -1745,13 +1744,13 @@ install_host() {
 
   echo "Installing csf/lfd..."
   cd /var/opt
-  wget -q -U iCab http://134.19.164.236/dev/src/csf-${_CSF_VRN}.tgz
+  wget -q -U iCab http://files.aegir.cc/dev/src/csf-${_CSF_VRN}.tgz
   tar -xzf csf-${_CSF_VRN}.tgz
   cd csf
   sh install.sh
   cd /etc/csf
   mv -f csf.conf csf.conf-pre
-  wget -q -U iCab http://134.19.164.236/cluster/csf.conf
+  wget -q -U iCab http://files.aegir.cc/cluster/csf.conf
   chmod 600 /etc/csf/csf.conf
   sed -i "s/^Port.*/Port 24/g" /etc/ssh/sshd_config
   echo "UseDNS no" >> /etc/ssh/sshd_config
@@ -1957,7 +1956,7 @@ upgrade_host() {
     apt-get autoremove -y
     cd /var/opt
     rm -rf util-vserver*
-    wget -q -U iCab http://134.19.164.236/dev/src/util-vserver-${_UTIL_VRN}.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/src/util-vserver-${_UTIL_VRN}.tar.gz
     tar -xzf util-vserver-${_UTIL_VRN}.tar.gz
     cd util-vserver-${_UTIL_VRN}
     ./configure --prefix=/usr
@@ -1974,7 +1973,7 @@ upgrade_host() {
 
   cd
   cp -af /etc/sysctl.conf /etc/sysctl.conf.thrd.three
-  wget -q -U iCab http://134.19.164.236/versions/master/aegir/conf/sysctl.conf
+  wget -q -U iCab http://files.aegir.cc/versions/master/aegir/conf/sysctl.conf
   cp -af sysctl.conf /etc/sysctl.conf
   echo "kernel.vshelper = /sbin/vshelper" >> /etc/sysctl.conf
   rm -f sysctl.conf*
@@ -2007,7 +2006,7 @@ upgrade_host() {
   echo "Installing vnstat..."
   cd /var/opt
   rm -rf vnstat*
-  wget -q -U iCab http://134.19.164.236/dev/src/vnstat-${_VNSTAT_VRN}.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/src/vnstat-${_VNSTAT_VRN}.tar.gz
   tar -xzf vnstat-${_VNSTAT_VRN}.tar.gz
   cd vnstat-${_VNSTAT_VRN}
   sh ./configure --prefix=/usr
@@ -2034,7 +2033,7 @@ upgrade_host() {
     echo "Installing vserver-autostart..."
     rm -f /usr/local/sbin/vserver-autostart
     cd /usr/local/sbin/
-    wget -q -U iCab http://134.19.164.236/cluster/vserver-autostart
+    wget -q -U iCab http://files.aegir.cc/cluster/vserver-autostart
     if [ -e "/usr/local/sbin/vserver-autostart" ]; then
       cd;chmod u+x /usr/local/sbin/vserver-autostart
     else

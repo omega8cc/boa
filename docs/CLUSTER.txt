@@ -68,7 +68,7 @@ http://galeracluster.com/documentation-webpages/arbitrator.html
 
    $ apt-get update -qq && apt-get install wget -y -qq
    $ cd;rm -f cluster.sh
-   $ cd;wget -q -U iCab http://134.19.164.236/cluster/cluster.sh
+   $ cd;wget -q -U iCab http://files.aegir.cc/cluster/cluster.sh
    $ mv -f cluster.sh /usr/local/bin/cluster
    $ chmod 700 /usr/local/bin/cluster
 
@@ -117,7 +117,7 @@ http://galeracluster.com/documentation-webpages/arbitrator.html
 
    #1 Update the manager script
    $ cd;rm -f cluster.sh
-   $ cd;wget -q -U iCab http://134.19.164.236/cluster/cluster.sh
+   $ cd;wget -q -U iCab http://files.aegir.cc/cluster/cluster.sh
    $ mv -f cluster.sh /usr/local/bin/cluster
    $ chmod 700 /usr/local/bin/cluster
 
