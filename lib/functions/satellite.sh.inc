@@ -1670,6 +1670,10 @@ satellite_o_contrib_seven_update_global() {
       if [ ! -d "${_D}/${i}/o_contrib_seven/views_content_cache" ]; then
         get_dev_contrib "views_content_cache-7.x-3.0-alpha3.tar.gz"
       fi
+      if [ ! -e "${_D}/${i}/o_contrib_seven/entitycache/includes/entitycache.node.inc" ]; then
+        rm -rf ${_D}/${i}/o_contrib_seven/entitycache
+        get_dev_contrib "entitycache-7.x-1.5.tar.gz"
+      fi
       if [ "${_PURGE_MODE}" = "ON" ] && [ "${_PURGE_FOR_SEVEN}" = "YES" ]; then
         cd ${_D}/${i}/o_contrib_seven
         if [ ! -d "${_D}/${i}/o_contrib_seven/expire" ]; then
