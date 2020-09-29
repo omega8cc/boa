@@ -47,7 +47,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_SE="413prodQ6"
+_X_SE="413prodQ7"
 #
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
@@ -189,7 +189,7 @@ check_dns_settings() {
     || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
     _CTRL_DNS_TEST=$(host files.aegir.cc 2>&1)
-    if [[ ! "${_CTRL_DNS_TEST}" =~ "104.245.208.226" ]] \
+    if [[ ! "${_CTRL_DNS_TEST}" =~ "134.122.124.107" ]] \
       || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
       || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
       || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
@@ -1508,7 +1508,7 @@ find_fast_mirror() {
   _USE_MIR="files.aegir.cc"
   if ! netcat -w 10 -z "${_USE_MIR}" 80; then
     echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
-    _USE_MIR="104.245.208.226"
+    _USE_MIR="134.122.124.107"
   fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"

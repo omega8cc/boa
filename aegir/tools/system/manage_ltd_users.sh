@@ -39,7 +39,7 @@ if [ -e "/root/.pause_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-_X_SE="413prodQ6"
+_X_SE="413prodQ7"
 _CHECK_HOST=$(uname -n 2>&1)
 usrGroup=users
 _WEBG=www-data
@@ -83,7 +83,7 @@ find_fast_mirror() {
   _USE_MIR="files.aegir.cc"
   if ! netcat -w 10 -z "${_USE_MIR}" 80; then
     echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
-    _USE_MIR="104.245.208.226"
+    _USE_MIR="134.122.124.107"
   fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
