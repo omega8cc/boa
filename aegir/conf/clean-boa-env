@@ -60,6 +60,12 @@ case "$1" in
     else
       echo "$NAME 4 nothing to do."
     fi
+    if [ -e "/var/run/boa_cron_wait.pid" ]; then
+      rm -f /var/run/boa_cron_wait.pid
+      echo "$NAME 5 done."
+    else
+      echo "$NAME 5 nothing to do."
+    fi
   ;;
   stop)
     echo -n "Stopping $DESC: "
@@ -101,6 +107,12 @@ case "$1" in
       echo "$NAME 4 done."
     else
       echo "$NAME 4 nothing to do."
+    fi
+    if [ -e "/var/run/boa_cron_wait.pid" ]; then
+      rm -f /var/run/boa_cron_wait.pid
+      echo "$NAME 5 done."
+    else
+      echo "$NAME 5 nothing to do."
     fi
     rm -f $PIDFILE
   ;;
