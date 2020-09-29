@@ -448,9 +448,6 @@ tune_web_server_config() {
     _PHP_V="74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
-    sed -i "s/process.max =.*/process.max = ${_PROCESS_MAX_FPM}/g" \
-      /opt/php${e}/etc/php${e}-fpm.conf &> /dev/null
-    wait
     sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
       /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
     wait
