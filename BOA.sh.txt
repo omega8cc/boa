@@ -1303,6 +1303,13 @@ fix_ping_perms() {
   fi
 }
 
+fix_fpm_process_max() {
+  if [ ! -e "${pthLog}/process.max.ctrl.${_X_SE}.pid" ]; then
+    sed -i "s/process.max =.*/process.max = 0/g" /opt/php*/etc/php*-fpm.conf
+    touch ${pthLog}/process.max.ctrl.${_X_SE}.pid
+  fi
+}
+
 fix_lshell() {
   _LSHELL_VRN=0.9.18.9
   _PATH_LSHELL="${usrBin}/lshell"
@@ -1991,6 +1998,7 @@ if [ `whoami` = "root" ]; then
   setup
   if [ -e "/var/log/barracuda_log.txt" ]; then
     fix_ping_perms
+    fix_fpm_process_max
     fix_lshell
     fix_authorized_keys
     fix_tcp
