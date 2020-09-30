@@ -244,6 +244,7 @@ satellite_tune_fpm_config() {
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
   if [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+    || [[ "${_THISHOST}" =~ ".o8.io" ]] \
     || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
     if [ "${_CLIENT_OPTION}" = "POWER" ] \
@@ -484,6 +485,7 @@ satellite_cnf() {
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
         || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
         _DO_NOTHING=YES
@@ -575,6 +577,7 @@ satellite_cnf() {
     _CHECK_HOST=$(uname -n 2>&1)
     if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+      || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
       || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       _LD_DOM=YES
@@ -1027,6 +1030,7 @@ satellite_cnf() {
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
         || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
         _DO_NOTHING=YES
@@ -4340,6 +4344,7 @@ satellite_if_init_or_upgrade() {
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
         || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
         if [ -e "${_ROOT}/log/amazing_upgrade.txt" ] \
@@ -4392,6 +4397,7 @@ satellite_if_init_or_upgrade() {
           || [ -e "/root/.host8.cnf" ] \
           || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
           || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+          || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
           || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
           || [ "${_VMFAMILY}" = "VS" ]; then
           _DO_NOTHING=YES
@@ -5763,6 +5769,7 @@ satellite_child_b_aegir_ui_enhance() {
       _CHECK_HOST=$(uname -n 2>&1)
       if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
         || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
         || [ "${_VMFAMILY}" = "VS" ] \
         || [ -e "/root/.host8.cnf" ] \

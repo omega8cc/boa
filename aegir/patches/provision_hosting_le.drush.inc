@@ -124,11 +124,12 @@ function drush_provision_hosting_le_post_provision_verify() {
     }
 
     if ($is_boa) {
-      if (preg_match("/\.(?:host8|boa)\.(?:biz|io)$/", $main_name) ||
+      if (preg_match("/\.(?:host8|boa|aegir|o8)\.(?:biz|io|cc)$/", $main_name) ||
           preg_match("/\.(?:nodns)\./", $main_name) ||
           preg_match("/\.(?:temp|tmp|temporary)\./", $main_name) ||
           preg_match("/\.(?:test|testing)\./", $main_name) ||
-          preg_match("/\.(?:stage|staging)\./", $main_name)
+          preg_match("/\.(?:stage|staging)\./", $main_name) ||
+          preg_match("/\.(?:dev|devel)\./", $main_name)
          ) {
         drush_log('[hosting_le] Skipping LE setup for ' . $main_name, 'warning');
         return FALSE;
@@ -229,14 +230,14 @@ function drush_provision_hosting_le_post_provision_verify() {
         if (!empty(d()->aliases)) {
           foreach (d()->aliases as $alias) {
             if ($is_wildcard) {
-              if (!preg_match("/\.(?:host8|boa)\.(?:biz|io)$/", $alias) &&
+              if (!preg_match("/\.(?:host8|boa|aegir|o8)\.(?:biz|io|cc)$/", $alias) &&
                 !preg_match("/\.(?:nodns)\./", $alias) &&
                 !strpos($alias, $main_name)) {
                 $alt_names .= ' --domain ' . str_replace('/', '.', $alias);
               }
             }
             else {
-              if (!preg_match("/\.(?:host8|boa)\.(?:biz|io)$/", $alias) &&
+              if (!preg_match("/\.(?:host8|boa|aegir|o8)\.(?:biz|io|cc)$/", $alias) &&
                 !preg_match("/\.(?:nodns)\./", $alias)) {
                 $alt_names .= ' --domain ' . str_replace('/', '.', $alias);
               }

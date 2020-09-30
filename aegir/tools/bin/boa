@@ -414,6 +414,7 @@ octopus_install() {
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
         || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
         _DO_NOTHING=YES
@@ -516,6 +517,7 @@ octopus_install() {
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+      || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
       || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       if [ ! -e "/root/.debug.cnf" ] || [ -e "/root/.default.cnf" ]; then

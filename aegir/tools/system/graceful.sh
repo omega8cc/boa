@@ -86,6 +86,7 @@ action() {
   rm -f /opt/tmp/sess*
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
     || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+    || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
     || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ]; then

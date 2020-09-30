@@ -173,6 +173,7 @@ enable_chattr() {
     if [ ! -e "${_U_HD}/.ctrl.${_X_SE}.pid" ]; then
       if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
         || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
         rm -rf ${_U_HD}/*
@@ -1693,6 +1694,7 @@ switch_php() {
           _LIM_FPM="${_L_PHP_FPM_WORKERS}"
           if [[ "${_THISHOST}" =~ ".host8." ]] \
             || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+            || [[ "${_THISHOST}" =~ ".o8.io" ]] \
             || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
             || [ "${_VMFAMILY}" = "VS" ]; then
             if [ "${_CLIENT_OPTION}" = "POWER" ] \
@@ -1852,6 +1854,7 @@ switch_php() {
               else
                 if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
                   || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+                  || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
                   || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
                   || [ "${_VMFAMILY}" = "VS" ] \
                   || [ -e "/root/.host8.cnf" ]; then

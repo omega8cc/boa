@@ -247,6 +247,7 @@ send_report() {
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
+      || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
@@ -267,6 +268,7 @@ send_alert() {
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
+      || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
@@ -598,6 +600,7 @@ up_action() {
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+      || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
       || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       _DO_NOTHING=YES
@@ -734,6 +737,7 @@ up_action() {
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+      || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
       || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       ### Force latest OpenSSH from sources on supported systems
@@ -764,6 +768,7 @@ up_action() {
           fi
           if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
             || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+            || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
             || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
             || [ "${_VMFAMILY}" = "VS" ]; then
             # if [ "${_VMFAMILY}" = "VS" ]; then
@@ -970,6 +975,7 @@ up_finish() {
   fi
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
     || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+    || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
     || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
     service webmin stop &> /dev/null

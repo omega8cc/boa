@@ -425,6 +425,7 @@ tune_web_server_config() {
   if [ "${_LIM_FPM}" -lt "48" ]; then
     if [[ "${_THISHOST}" =~ ".host8." ]] \
       || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+      || [[ "${_THISHOST}" =~ ".o8.io" ]] \
       || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       _LIM_FPM=48

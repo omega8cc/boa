@@ -75,10 +75,12 @@ fix_redis_mode() {
   if [ "${_CUSTOM_CONFIG_REDIS}" = "NO" ] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+    || [[ "${_THISHOST}" =~ ".o8.io" ]] \
     || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
     || [ "${_VMFAMILY}" = "VS" ]; then
     if [[ "${_THISHOST}" =~ ".host8." ]] \
       || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+      || [[ "${_THISHOST}" =~ ".o8.io" ]] \
       || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
@@ -242,6 +244,7 @@ install_redis_src() {
     if [ "${_CUSTOM_CONFIG_REDIS}" = "NO" ] \
       || [[ "${_THISHOST}" =~ ".host8." ]] \
       || [[ "${_THISHOST}" =~ ".boa.io" ]] \
+      || [[ "${_THISHOST}" =~ ".o8.io" ]] \
       || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       if [ "${_CUSTOM_CONFIG_REDIS}" = "YES" ]; then
