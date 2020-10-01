@@ -739,7 +739,7 @@ barracuda_cnf() {
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
+        || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
         || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
         if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
@@ -890,7 +890,7 @@ barracuda_cnf() {
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
+      || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
       || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       ### Force latest OpenSSH from sources on supported systems
@@ -1151,7 +1151,7 @@ barracuda_cnf() {
     if [ -e "/root/.auto.up.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
+      || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
       || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
       || [ "${_VMFAMILY}" = "VS" ] \
       || [ -e "/root/.host8.cnf" ]; then
@@ -1181,7 +1181,7 @@ barracuda_cnf() {
       if [ -e "/root/.auto.up.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
+        || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
         || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
         || [ "${_VMFAMILY}" = "VS" ] \
         || [ -e "/root/.host8.cnf" ]; then
@@ -1534,7 +1534,7 @@ barracuda_cnf() {
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
       || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
+      || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
       || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
       ### Force latest OpenSSH from sources on supported systems
@@ -1655,7 +1655,7 @@ barracuda_cnf() {
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".om8.io" ]] \
+        || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
         || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
         if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
