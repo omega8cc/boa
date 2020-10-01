@@ -71,6 +71,17 @@ hLeShF="dehydrated"
 hLeShP="/var/xdrago/conf/${hLeShF}"
 legacyLeSh="/var/xdrago/conf/letsencrypt.sh"
 
+#
+# Find correct IP.
+find_correct_ip() {
+  _LOC_IP=$(curl ${crlGet} https://api.ipify.org \
+    | sed 's/[^0-9\.]//g' 2>&1)
+  if [ -z "${_LOC_IP}" ]; then
+    _LOC_IP=$(curl ${crlGet} http://ip4.icanhazip.com \
+      | sed 's/[^0-9\.]//g' 2>&1)
+  fi
+}
+
 fix_dns_settings() {
   dnsLi="/root/.local.dns.IP.list"
   mkdir -p ${vBs}
@@ -753,6 +764,8 @@ update_agents() {
         && [ -e "${pthSysUsr}/static/control/cli.info" ] \
         && [ ! -e "${pthSysUsr}/log/CANCELLED" ]; then
         tUsr=
+        validReg=
+        validIPr=
         tUsr=$(echo ${pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
         dscUsr="/data/disk/${tUsr}"
         hmPf=$(cat ${dscUsr}/.drush/hostmaster.alias.drushrc.php \
@@ -772,11 +785,52 @@ update_agents() {
           chown ${tUsr}:users ${locVhFile}
           chmod 0644 ${locVhFile}
         fi
-        locLeShFile="${dscUsr}/tools/le/${hLeShF}"
-        legacyLeShFile="${dscUsr}/tools/le/letsencrypt.sh"
-        lockLeFile="${dscUsr}/tools/le/lock"
+        leRoot="${dscUsr}/tools/le"
+        exeLe="${leRoot}/dehydrated"
+        locLeShFile="${leRoot}/${hLeShF}"
+        legacyLeShFile="${leRoot}/letsencrypt.sh"
+        lockLeFile="${leRoot}/lock"
+        configIni="${leRoot}/config"
+        acctsDir="${leRoot}/accounts"
+        demoPid="${leRoot}/.ctrl/ssl-demo-mode.pid"
+        normalRegPid="${leRoot}/.ctrl/normal-re2-register.pid"
+        forcedRegPid="${leRoot}/.ctrl/forced-re2-register.pid"
+        validReg=$(grep "valid" ${acctsDir}/*/registration_info.json 2>&1)
+        validIPr=$(grep "${_LOC_IP}" ${acctsDir}/*/registration_info.json 2>&1)
         if [ -e "${lockLeFile}" ]; then
           rm -f ${lockLeFile}
+          sleep 1
+        fi
+        if [ ! -e "${normalRegPid}" ]; then
+          su -s /bin/bash - ${tUsr} -c "bash ${locLeShFile} --register --accept-terms"
+          touch ${normalRegPid}
+          sleep 3
+        fi
+        if [ -e "${legacyLeShFile}" ] \
+          || [[ ! "${validReg}" =~ "valid" ]] \
+          || [[ ! "${validIPr}" =~ "${_LOC_IP}" ]] \
+          || [ ! -e "${forcedRegPid}" ]; then
+          rm -f ${legacyLeShFile}
+          rm -rf ${leRoot}/accounts-demo
+          rm -f ${leRoot}/.ctrl/.forced*
+          rm -f ${leRoot}/.ctrl/.normal*
+          rm -f ${leRoot}/.ctrl/forced*
+          rm -f ${leRoot}/.ctrl/normal*
+          touch ${demoPid}
+          echo -e 'CA="https://acme-staging-v02.api.letsencrypt.org/directory"\n' > ${leRoot}/config.sh
+          cp -af ${leRoot}/config.sh ${leRoot}/config
+          if [ -e "${exeLe}" ]; then
+            rm -rf ${acctsDir}/*
+            su -s /bin/bash - ${tUsr} -c "bash ${exeLe} --register --accept-terms"
+            touch ${forcedRegPid}
+            sleep 3
+            validReg=$(grep "valid" ${acctsDir}/*/registration_info.json 2>&1)
+            validIPr=$(grep "${_LOC_IP}" ${acctsDir}/*/registration_info.json 2>&1)
+            if [[ "${validReg}" =~ "valid" ]] \
+              && [[ "${validIPr}" =~ "${_LOC_IP}" ]]
+              rm ${demoPid}
+            fi
+          fi
         fi
         if [ -e "${hLeShP}" ]; then
           if [ -e "${locLeShFile}" ] || [ -e "${legacyLeShFile}" ]; then
