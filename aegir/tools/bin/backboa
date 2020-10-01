@@ -116,6 +116,10 @@ install() {
     echo "Installing duplicity dependencies..."
     cd
     find_fast_mirror
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
     apt-get clean -qq                    &> /dev/null
     rm -rf /var/lib/apt/lists/*
     apt-get update -qq                   &> /dev/null
@@ -202,19 +206,28 @@ if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
 
     Supported values to use as _AWS_REG (without the # comment):
 
-      us-east-1        # US East (N. Virginia)
       us-east-2        # US East (Ohio)
+      us-east-1        # US East (N. Virginia)
       us-west-1        # US West (N. California)
       us-west-2        # US West (Oregon)
-      ca-central-1     # Canada (Central)
+      af-south-1       # Africa (Cape Town)
+      ap-east-1        # Asia Pacific (Hong Kong)
       ap-south-1       # Asia Pacific (Mumbai)
+      ap-northeast-3   # Asia Pacific (Osaka-Local)
       ap-northeast-2   # Asia Pacific (Seoul)
       ap-southeast-1   # Asia Pacific (Singapore)
       ap-southeast-2   # Asia Pacific (Sydney)
       ap-northeast-1   # Asia Pacific (Tokyo)
+      ca-central-1     # Canada (Central)
+      cn-north-1       # China (Beijing)
+      cn-northwest-1   # China (Ningxia)
       eu-central-1     # EU (Frankfurt)
       eu-west-1        # EU (Ireland)
       eu-west-2        # EU (London)
+      eu-south-1       # Europe (Milan)
+      eu-west-3        # Europe (Paris)
+      eu-north-1       # Europe (Stockholm)
+      me-south-1       # Middle East (Bahrain)
       sa-east-1        # South America (São Paulo)
 
     Source: http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
@@ -238,25 +251,30 @@ if [ -z "${_AWS_REG}" ]; then
   _AWS_REG="us-east-1"
 fi
 
-if [ "${_AWS_REG}" = "us-east-1" ] \
-  || [ "${_AWS_REG}" = "us-east-2" ] \
+if [ "${_AWS_REG}" = "us-east-2" ] \
+  || [ "${_AWS_REG}" = "us-east-1" ] \
   || [ "${_AWS_REG}" = "us-west-1" ] \
   || [ "${_AWS_REG}" = "us-west-2" ] \
-  || [ "${_AWS_REG}" = "ca-central-1" ]; then
-  _GOOD_AWS_REG=YES
-elif [ "${_AWS_REG}" = "ap-south-1" ] \
+  || [ "${_AWS_REG}" = "af-south-1" ] \
+  || [ "${_AWS_REG}" = "ap-east-1" ] \
+  || [ "${_AWS_REG}" = "ap-south-1" ] \
+  || [ "${_AWS_REG}" = "ap-northeast-3" ] \
   || [ "${_AWS_REG}" = "ap-northeast-2" ] \
   || [ "${_AWS_REG}" = "ap-southeast-1" ] \
   || [ "${_AWS_REG}" = "ap-southeast-2" ] \
-  || [ "${_AWS_REG}" = "ap-northeast-1" ]; then
-  _GOOD_AWS_REG=YES
-elif [ "${_AWS_REG}" = "eu-central-1" ] \
+  || [ "${_AWS_REG}" = "ap-northeast-1" ] \
+  || [ "${_AWS_REG}" = "ca-central-1" ] \
+  || [ "${_AWS_REG}" = "cn-north-1" ] \
+  || [ "${_AWS_REG}" = "cn-northwest-1" ] \
+  || [ "${_AWS_REG}" = "eu-central-1" ] \
   || [ "${_AWS_REG}" = "eu-west-1" ] \
-  || [ "${_AWS_REG}" = "eu-west-2" ] \
+  || [ "${_AWS_REG}" = "eu-west-2 " ] \
+  || [ "${_AWS_REG}" = "eu-south-1 " ] \
+  || [ "${_AWS_REG}" = "eu-west-3" ] \
+  || [ "${_AWS_REG}" = "eu-north-1" ] \
+  || [ "${_AWS_REG}" = "me-south-1" ] \
   || [ "${_AWS_REG}" = "sa-east-1" ]; then
   _GOOD_AWS_REG=YES
-else
-  _AWS_REG="us-east-1"
 fi
 
 if [ "${_AWS_REG}" = "us-east-1" ]; then
@@ -320,12 +338,14 @@ if [ -e "${_LOGPTH}/${BUCKET_DOT}.archive.log" ]; then
   mv ${_LOGPTH}/${BUCKET_DOT}.archive.log /var/backups/${BUCKET_DOT}.archive.log
   cat ${_LOGPTH}/${BUCKET_DOT}.randomize.cleanup.log >> ${_LOGPTH}/${BUCKET}.randomize.cleanup.log
   mv ${_LOGPTH}/${BUCKET_DOT}.randomize.cleanup.log /var/backups/${BUCKET_DOT}.randomize.cleanup.log
-  apt-get clean -qq                    &> /dev/null
+  apt-get clean -qq &> /dev/null
   rm -rf /var/lib/apt/lists/*
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   fi
+  apt-get clean -qq                    &> /dev/null
+  rm -rf /var/lib/apt/lists/*
   apt-get update -qq                   &> /dev/null
   apt-get install python-pip -y        &> /dev/null
   pip install awscli                   &> /dev/null
