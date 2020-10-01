@@ -101,6 +101,10 @@ sub makeactions
           ### print "Not Counted Dynamic Request URI: $line\n";
           $skip_post = 1;
         }
+        elsif ($line =~ /files\.aegir\.cc/) {
+          ### print "Not Counted Static Request URI: $line\n";
+          $skip_post = 1;
+        }
         else {
           $li_cnt{$VISITOR}++;
         }
@@ -153,6 +157,10 @@ sub makeactions
         }
         elsif ($line =~ /POST \/.*/ && $line =~ /\/embed\/preview/) {
           ### print "Not Counted Dynamic Request URI: $line\n";
+          $skip_post = 1;
+        }
+        elsif ($line =~ /files\.aegir\.cc/) {
+          ### print "Not Counted Static Request URI: $line\n";
           $skip_post = 1;
         }
         else {
