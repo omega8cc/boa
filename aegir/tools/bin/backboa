@@ -392,7 +392,7 @@ monthly_cleanup() {
     && [ "${_DOM}" = "${_RCL}" ] \
     && [ "${_DO_CLEANUP}" = "YES" ]; then
     if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
-      n=$((RANDOM%7200+8))
+      n=$((RANDOM%300+8))
       echo "Waiting $n seconds on `date` before running cleanup --force" > ${LOGFILE}
       sleep $n
     fi
@@ -440,12 +440,12 @@ set_mode() {
 run_backup() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
     if [ ! -e "/root/tmp/home/" ]; then
-      n=$((RANDOM%7200+8))
+      n=$((RANDOM%300+8))
       echo "Waiting $n seconds on `date` before running restore home 7D tmp/home" >> ${LOGFILE}
       sleep $n
       restore home 7D tmp/home >> ${LOGFILE}
     fi
-    n=$((RANDOM%7200+8))
+    n=$((RANDOM%300+8))
     echo "Waiting $n seconds on `date` before running ${_MODE} backup" >> ${LOGFILE}
     sleep $n
   fi
@@ -459,7 +459,7 @@ run_backup() {
 
 remove_older_than() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
-    n=$((RANDOM%7200+8))
+    n=$((RANDOM%300+8))
     echo "Waiting $n seconds on `date` before running remove-older-than ${_AWS_TTL}" >> ${LOGFILE}
     sleep $n
   fi
@@ -470,7 +470,7 @@ remove_older_than() {
 
 collection_status() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
-    n=$((RANDOM%7200+8))
+    n=$((RANDOM%300+8))
     echo "Waiting $n seconds on `date` before running collection-status" >> ${LOGFILE}
     sleep $n
   fi

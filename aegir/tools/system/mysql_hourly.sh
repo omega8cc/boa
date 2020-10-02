@@ -182,7 +182,7 @@ if [ ! -e "${percList}" ] \
   apt-get install percona-xtrabackup-24 -y
 fi
 
-n=$((RANDOM%900+8))
+n=$((RANDOM%300+8))
 echo "Waiting $n seconds 1/2 on `date` before running backup..."
 sleep $n
 n=$((RANDOM%180+8))

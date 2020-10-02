@@ -830,7 +830,7 @@ up_action() {
           n=8
         fi
         if [ -e "/root/.dbhd.clstr.cnf" ]; then
-          n=$((RANDOM%900+80))
+          n=$((RANDOM%300+80))
         fi
         echo
         echo "Preparing the upgrade in silent mode..."

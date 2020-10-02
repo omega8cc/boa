@@ -55,7 +55,7 @@ fi
 _C_SQL="mysql --user=root --password=${_SQL_PSWD} --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp"
 
 echo "SQL --host=${_SQL_HOST} --port=${_SQL_PORT}"
-n=$((RANDOM%3600+8))
+n=$((RANDOM%600+8))
 echo "Waiting $n seconds on `date` before running backup..."
 sleep $n
 echo "Starting backup on `date`"
@@ -346,7 +346,7 @@ fi
 find ${_BACKUPDIR} -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
 echo "Backups older than ${_DB_BACKUPS_TTL} days deleted"
 echo "Backups older than ${_DB_BACKUPS_TTL} days deleted"
-n=$((RANDOM%1800+8))
+n=$((RANDOM%300+8))
 echo "Waiting $n seconds on `date` before running compress..."
 sleep $n
 echo "Starting compress on `date`"
