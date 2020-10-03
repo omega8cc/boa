@@ -259,32 +259,6 @@ get_dev_contrib() {
   fi
 }
 
-update_sysctl() {
-  if [ ! -e "/root/.no.sysctl.update.cnf" ] \
-    && [ ! -e "/var/backups/sysctl.conf-${_X_SE}.log" ]; then
-    mkdir -p /var/backups
-    cd /var/backups
-    curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/conf/sysctl.conf" -o sysctl.conf
-    cp -af /var/backups/sysctl.conf /etc/sysctl.conf
-    if [ -e "/etc/security/limits.conf" ]; then
-      _IF_NF=$(grep '524288' /etc/security/limits.conf 2>&1)
-      if [ -z "${_IF_NF}" ]; then
-        echo "*         hard    nofile      524288"  >> /etc/security/limits.conf
-        echo "*         soft    nofile      524288"  >> /etc/security/limits.conf
-        echo "root      hard    nofile      1048576" >> /etc/security/limits.conf
-        echo "root      soft    nofile      1048576" >> /etc/security/limits.conf
-      fi
-    fi
-    if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ]; then
-      echo never > /sys/kernel/mm/transparent_hugepage/enabled
-      sysctl -p /etc/sysctl.conf &> /dev/null
-    else
-      sysctl -p /etc/sysctl.conf &> /dev/null
-    fi
-    touch /var/backups/sysctl.conf-${_X_SE}.log
-  fi
-}
-
 update_agents() {
 
   [ -e "/root/.host8.cnf" ] && echo host8 > /root/.extended.firewall.exceptions.cnf
@@ -1979,7 +1953,6 @@ count_cpu() {
 ###--------------------###
 if [ `whoami` = "root" ]; then
 
-  update_sysctl
   ### Linux kernel TCP SACK CVEs mitigation
   ### CVE-2019-11477 SACK Panic
   ### CVE-2019-11478 SACK Slowness
