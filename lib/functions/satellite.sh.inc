@@ -1773,6 +1773,7 @@ satellite_download_o_contrib_eight() {
   get_dev_contrib "advagg-8.x-4.1.tar.gz"
   get_dev_contrib "cdn-8.x-3.5.tar.gz"
   get_dev_contrib "robotstxt-8.x-1.4.tar.gz"
+  get_dev_contrib "readonlymode-8.x-1.0.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules

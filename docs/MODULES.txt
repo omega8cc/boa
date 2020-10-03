@@ -82,7 +82,7 @@ Contrib [S]upported and [B]undled:
  print ---------------------- [D6,D7] ------ [S] [B]
  private_upload ------------- [D6] --------- [S] [B]
  purge ---------------------- [D6,D7] ------ [S] [B]
- readonlymode --------------- [D6,D7] ------ [S] [B]
+ readonlymode --------------- [D6,D7,D8] --- [S] [B]
  reroute_email -------------- [D6,D7] ------ [S] [B]
  securesite ----------------- [D6,D7] ------ [S] [B]
  session_expire ------------- [D6,D7] ------ [S] [B]
