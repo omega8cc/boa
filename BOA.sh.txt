@@ -801,6 +801,9 @@ update_agents() {
           rm -f ${lockLeFile}
           sleep 1
         fi
+        if [ -e "${demoPid}" ]; then
+          rm -f ${demoPid}
+        fi
         if [ ! -e "${normalRegPid}" ]; then
           su -s /bin/bash - ${tUsr} -c "bash ${locLeShFile} --register --accept-terms"
           touch ${normalRegPid}
