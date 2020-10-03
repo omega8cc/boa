@@ -254,8 +254,8 @@ whitelist_ip_site24x7() {
   fi
 
   _IPS=$(host site24x7.enduserexp.com 1.1.1.1  \
-    | grep 'IN.*A' \
-    | cut -d 'A' -f2 \
+    | grep 'has address' \
+    | cut -d ' ' -f4 \
     | sed 's/[^0-9\.]//g' \
     | sort \
     | uniq 2>&1)
