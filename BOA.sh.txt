@@ -831,7 +831,7 @@ update_agents() {
           rm -f ${demoPid}
         fi
         if [ ! -e "${normalRegPid}" ]; then
-          su -s /bin/bash - ${tUsr} -c "bash ${locLeShFile} --register --accept-terms"
+          su -s /bin/bash - ${tUsr} -c "bash ${exeLe} --register --accept-terms"
           touch ${normalRegPid}
           sleep 3
         fi
