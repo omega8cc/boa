@@ -846,7 +846,7 @@ migrate_prepare() {
       && [ ! -z "${_CLIENT_OPTION}" ] \
       && [ ! -z "${_CLIENT_SUBSCR}" ] \
       && [ ! -z "${_CLIENT_CORES}" ]; then
-      ssh root@${tgt} "/opt/local/bin/boa in-octopus ${_CLIENT_EMAIL} ${_TGT_HM_USER} none stable ${_CLIENT_SUBSCR} ${_CLIENT_CORES}"
+      ssh root@${tgt} "/opt/local/bin/boa in-octopus ${_CLIENT_EMAIL} ${_TGT_HM_USER} none ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES}"
       ssh root@${tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/.ctrl/ssl-demo-mode.pid"
       ssh root@${tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config"
       ssh root@${tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config.sh"
