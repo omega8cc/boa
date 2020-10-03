@@ -827,7 +827,7 @@ update_agents() {
             validReg=$(grep "valid" ${acctsDir}/*/registration_info.json 2>&1)
             validIPr=$(grep "${_LOC_IP}" ${acctsDir}/*/registration_info.json 2>&1)
             if [[ "${validReg}" =~ "valid" ]] \
-              && [[ "${validIPr}" =~ "${_LOC_IP}" ]]
+              && [[ "${validIPr}" =~ "${_LOC_IP}" ]]; then
               rm ${demoPid}
             fi
           fi
