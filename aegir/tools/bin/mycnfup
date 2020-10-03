@@ -440,7 +440,7 @@ update_sysctl() {
       fi
     fi
     if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ]; then
-      echo never > /sys/kernel/mm/transparent_hugepage/enabled
+      #echo never > /sys/kernel/mm/transparent_hugepage/enabled
       sysctl -p /etc/sysctl.conf &> /dev/null
       _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}' 2>&1)
       if [ -z "${_IF_CDP}" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then

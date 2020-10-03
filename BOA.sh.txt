@@ -276,7 +276,7 @@ update_sysctl() {
       fi
     fi
     if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ]; then
-      echo never > /sys/kernel/mm/transparent_hugepage/enabled
+      #echo never > /sys/kernel/mm/transparent_hugepage/enabled
       sysctl -p /etc/sysctl.conf &> /dev/null
     else
       sysctl -p /etc/sysctl.conf &> /dev/null
