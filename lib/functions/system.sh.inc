@@ -5581,7 +5581,9 @@ update_sysctl() {
     && [ ! -e "${pthLog}/sysctl.conf-${_X_VERSION}-${_NOW}.log" ]; then
     cp -af /etc/sysctl.conf \
       ${vBs}/dragon/t/sysctl.conf-pre-${_X_VERSION}-${_NOW} &> /dev/null
-    cp -af ${locCnf}/sysctl.conf /etc/sysctl.conf
+    if [ -e "${locCnf}/sysctl.conf" ]; then
+      cp -af ${locCnf}/sysctl.conf /etc/sysctl.conf
+    fi
     if [ -e "/etc/security/limits.conf" ]; then
       _IF_NF=$(grep '524288' /etc/security/limits.conf 2>&1)
       if [ -z "${_IF_NF}" ]; then
@@ -5593,15 +5595,13 @@ update_sysctl() {
     fi
     if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ]; then
       #echo never > /sys/kernel/mm/transparent_hugepage/enabled
-      sysctl -p /etc/sysctl.conf &> /dev/null
-      _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}' 2>&1)
-      if [ -z "${_IF_CDP}" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then
-        msg "INFO: Cleaning up system swap, it may take a moment..."
-        st_runner "swapoff -a" &> /dev/null
-        st_runner "swapon -a" &> /dev/null
+      if [ -e "/etc/sysctl.conf" ]; then
+        sysctl -p /etc/sysctl.conf &> /dev/null
       fi
     else
-      sysctl -p /etc/sysctl.conf &> /dev/null
+      if [ -e "/etc/sysctl.conf" ]; then
+        sysctl -p /etc/sysctl.conf &> /dev/null
+      fi
     fi
     touch ${pthLog}/sysctl.conf-${_X_VERSION}-${_NOW}.log
   fi
