@@ -2114,9 +2114,9 @@ if [ `whoami` = "root" ]; then
     #sleep 3
     #saCoreN="SA-CORE-2019-004"
     #fix_core_dgd
-    sleep 3
-    saCoreN="3143016-83"
-    fix_core_dgd
+    #sleep 3
+    #saCoreN="3143016-83"
+    #fix_core_dgd
   fi
   if [ ! -e "/etc/ssl/private/4096.dhp" ] && [ -d "/var/xdrago" ]; then
     echo "Generating 4096.dhp -- it may take a very long time..."
