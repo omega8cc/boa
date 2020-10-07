@@ -61,14 +61,14 @@ vBs="/var/backups"
 eldirF="0001-Print-site_footer-if-defined.patch"
 eldirP="/var/xdrago/conf/${eldirF}"
 #
-hLeF="provision_hosting_le.drush.inc"
-hLeP="/var/xdrago/conf/${hLeF}"
+provLeInc="provision_hosting_le.drush.inc"
+provLeIncFull="/var/xdrago/conf/${provLeInc}"
 #
-hLeVtF="hosting_le_vhost.drush.inc"
-hLeVtP="/var/xdrago/conf/${hLeVtF}"
+hoLeInc="hosting_le_vhost.drush.inc"
+hoLeIncFull="/var/xdrago/conf/${hoLeInc}"
 #
-hLeShF="dehydrated"
-hLeShP="/var/xdrago/conf/${hLeShF}"
+dehydName="dehydrated"
+dehydSrcPath="/var/xdrago/conf/${dehydName}"
 legacyLeSh="/var/xdrago/conf/letsencrypt.sh"
 
 #
@@ -751,14 +751,14 @@ update_agents() {
   fi
 
   if [ -e "/opt/tools/drush/8/drush/drush" ] \
-    && [ -e "${hLeP}" ] \
-    && [ -e "${hLeVtP}" ] \
+    && [ -e "${provLeIncFull}" ] \
+    && [ -e "${hoLeIncFull}" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/data/disk/arch/sql" ] \
     && [ ! -e "${pthLog}/hosting_le_vt.ctrl.${_X_SE}.pid" ]; then
     leBasePath="profiles/hostmaster/modules/aegir/hosting_le"
-    lePath="${leBasePath}/drush/${hLeF}"
-    leVhPath="${leBasePath}/hosting_le_vhost/drush/${hLeVtF}"
+    lePath="${leBasePath}/drush/${provLeInc}"
+    leVhPath="${leBasePath}/hosting_le_vhost/drush/${hoLeInc}"
     for pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       if [ -e "${pthSysUsr}/config/server_master/nginx/vhost.d" ] \
         && [ -e "${pthSysUsr}/static/control/cli.info" ] \
@@ -774,29 +774,39 @@ update_agents() {
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
         locFile="${hmPf}/${lePath}"
-        if [ -e "${locFile}" ] && [ -e "${hLeP}" ]; then
-          cp -af ${hLeP} ${locFile}
+        if [ -e "${locFile}" ] && [ -e "${provLeIncFull}" ]; then
+          cp -af ${provLeIncFull} ${locFile}
           chown ${tUsr}:users ${locFile}
           chmod 0644 ${locFile}
         fi
         locVhFile="${hmPf}/${leVhPath}"
-        if [ -e "${locVhFile}" ] && [ -e "${hLeVtP}" ]; then
-          cp -af ${hLeVtP} ${locVhFile}
+        if [ -e "${locVhFile}" ] && [ -e "${hoLeIncFull}" ]; then
+          cp -af ${hoLeIncFull} ${locVhFile}
           chown ${tUsr}:users ${locVhFile}
           chmod 0644 ${locVhFile}
         fi
         leRoot="${dscUsr}/tools/le"
         exeLe="${leRoot}/dehydrated"
-        locLeShFile="${leRoot}/${hLeShF}"
+        dehydFull="${leRoot}/${dehydName}"
         legacyLeShFile="${leRoot}/letsencrypt.sh"
         lockLeFile="${leRoot}/lock"
         configIni="${leRoot}/config"
         acctsDir="${leRoot}/accounts"
+        acctsDemoDir="${leRoot}/accounts-demo"
         demoPid="${leRoot}/.ctrl/ssl-demo-mode.pid"
-        normalRegPid="${leRoot}/.ctrl/normal-re2-register.pid"
-        forcedRegPid="${leRoot}/.ctrl/forced-re2-register.pid"
+        normalRegPid="${leRoot}/.ctrl/normal-re3-register.pid"
+        forcedRegPid="${leRoot}/.ctrl/forced-re3-register.pid"
+        validIdn=$(grep "letsencrypt" ${acctsDir}/*/account_id.json 2>&1)
         validReg=$(grep "valid" ${acctsDir}/*/registration_info.json 2>&1)
         validIPr=$(grep "${_LOC_IP}" ${acctsDir}/*/registration_info.json 2>&1)
+        if [ -e "${dehydSrcPath}" ]; then
+          if [ -e "${dehydFull}" ] || [ -e "${legacyLeShFile}" ]; then
+            cp -af ${dehydSrcPath} ${dehydFull}
+            chown ${tUsr}:users ${dehydFull}
+            chmod 0700 ${dehydFull}
+            su -s /bin/bash - ${tUsr} -c "bash ${exeLe} --register --accept-terms"
+          fi
+        fi
         if [ -e "${lockLeFile}" ]; then
           rm -f ${lockLeFile}
           sleep 1
@@ -804,44 +814,29 @@ update_agents() {
         if [ -e "${demoPid}" ]; then
           rm -f ${demoPid}
         fi
-        if [ ! -e "${normalRegPid}" ]; then
-          su -s /bin/bash - ${tUsr} -c "bash ${exeLe} --register --accept-terms"
-          touch ${normalRegPid}
-          sleep 3
-        fi
         if [ -e "${legacyLeShFile}" ] \
+          || [ -e "${acctsDemoDir}" ] \
+          || [[ "${validIdn}" =~ "letsencrypt" ]] \
           || [[ ! "${validReg}" =~ "valid" ]] \
           || [[ ! "${validIPr}" =~ "${_LOC_IP}" ]] \
           || [ ! -e "${forcedRegPid}" ]; then
           rm -f ${legacyLeShFile}
-          rm -rf ${leRoot}/accounts-demo
+          rm -rf ${acctsDemoDir}
+          rm -rf ${acctsDir}
           rm -f ${leRoot}/.ctrl/.forced*
           rm -f ${leRoot}/.ctrl/.normal*
           rm -f ${leRoot}/.ctrl/forced*
           rm -f ${leRoot}/.ctrl/normal*
-          touch ${demoPid}
-          echo -e 'CA="https://acme-staging-v02.api.letsencrypt.org/directory"\n' > ${leRoot}/config.sh
-          cp -af ${leRoot}/config.sh ${leRoot}/config
           if [ -e "${exeLe}" ]; then
-            rm -rf ${acctsDir}/*
             su -s /bin/bash - ${tUsr} -c "bash ${exeLe} --register --accept-terms"
             touch ${forcedRegPid}
-            sleep 3
-            validReg=$(grep "valid" ${acctsDir}/*/registration_info.json 2>&1)
-            validIPr=$(grep "${_LOC_IP}" ${acctsDir}/*/registration_info.json 2>&1)
-            if [[ "${validReg}" =~ "valid" ]] \
-              && [[ "${validIPr}" =~ "${_LOC_IP}" ]]; then
-              rm ${demoPid}
-            fi
+            touch ${normalRegPid}
           fi
         fi
-        if [ -e "${hLeShP}" ]; then
-          if [ -e "${locLeShFile}" ] || [ -e "${legacyLeShFile}" ]; then
-            cp -af ${hLeShP} ${locLeShFile}
-            chown ${tUsr}:users ${locLeShFile}
-            chmod 0700 ${locLeShFile}
-            su -s /bin/bash - ${tUsr} -c "bash ${locLeShFile} --register --accept-terms"
-          fi
+        if [ ! -e "${normalRegPid}" ]; then
+          su -s /bin/bash - ${tUsr} -c "bash ${exeLe} --register --accept-terms"
+          touch ${normalRegPid}
+          sleep 3
         fi
       fi
     done
@@ -1499,29 +1494,29 @@ fix_pure_ftpd() {
 
 fix_hosting_le() {
   if [ -d "/var/xdrago/conf" ]; then
-    if [ ! -e "${hLeVtP}.ctrl.${_X_SE}.pid" ] \
-      || [ -e "/var/xdrago/${hLeF}" ] \
-      || [ -e "/var/xdrago/${hLeVtF}" ] \
-      || [ -e "/var/xdrago/${hLeShF}" ] \
-      || [ -e "/root/${hLeF}" ] \
+    if [ ! -e "${hoLeIncFull}.ctrl.${_X_SE}.pid" ] \
+      || [ -e "/var/xdrago/${provLeInc}" ] \
+      || [ -e "/var/xdrago/${hoLeInc}" ] \
+      || [ -e "/var/xdrago/${dehydName}" ] \
+      || [ -e "/root/${provLeInc}" ] \
       || [ -e "/root/hosting_le_vhost.drush.inc.ctrl.${_X_SE}.pid" ] \
-      || [ -e "/root/${hLeVtF}" ] \
+      || [ -e "/root/${hoLeInc}" ] \
       || [ -e "${legacyLeSh}" ] \
-      || [ ! -e "${hLeShP}" ] \
-      || [ ! -e "${hLeP}.ctrl.${_X_SE}.pid" ]; then
+      || [ ! -e "${dehydSrcPath}" ] \
+      || [ ! -e "${provLeIncFull}.ctrl.${_X_SE}.pid" ]; then
       mkdir -p /var/xdrago/conf
       rm -f /var/xdrago/*.drush.inc*
       rm -f /root/*.drush.inc*
       rm -f ${legacyLeSh}
-      rm -f ${hLeShP}.ctrl.${_X_SE}.pid
-      rm -f ${hLeVtP}.ctrl.${_X_SE}.pid
-      rm -f ${hLeP}.ctrl.${_X_SE}.pid
-      curl ${crlGet} "${urlHmr}/helpers/${hLeShF}" -o ${hLeShP}.ctrl.${_X_SE}.pid
-      cp -af ${hLeShP}.ctrl.${_X_SE}.pid ${hLeShP}
-      curl ${crlGet} "${urlHmr}/patches/${hLeVtF}" -o ${hLeVtP}.ctrl.${_X_SE}.pid
-      cp -af ${hLeVtP}.ctrl.${_X_SE}.pid ${hLeVtP}
-      curl ${crlGet} "${urlHmr}/patches/${hLeF}" -o ${hLeP}.ctrl.${_X_SE}.pid
-      cp -af ${hLeP}.ctrl.${_X_SE}.pid ${hLeP}
+      rm -f ${dehydSrcPath}.ctrl.${_X_SE}.pid
+      rm -f ${hoLeIncFull}.ctrl.${_X_SE}.pid
+      rm -f ${provLeIncFull}.ctrl.${_X_SE}.pid
+      curl ${crlGet} "${urlHmr}/helpers/${dehydName}" -o ${dehydSrcPath}.ctrl.${_X_SE}.pid
+      cp -af ${dehydSrcPath}.ctrl.${_X_SE}.pid ${dehydSrcPath}
+      curl ${crlGet} "${urlHmr}/patches/${hoLeInc}" -o ${hoLeIncFull}.ctrl.${_X_SE}.pid
+      cp -af ${hoLeIncFull}.ctrl.${_X_SE}.pid ${hoLeIncFull}
+      curl ${crlGet} "${urlHmr}/patches/${provLeInc}" -o ${provLeIncFull}.ctrl.${_X_SE}.pid
+      cp -af ${provLeIncFull}.ctrl.${_X_SE}.pid ${provLeIncFull}
     fi
   fi
 }
