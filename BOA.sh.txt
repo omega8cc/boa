@@ -1980,7 +1980,6 @@ update_sysctl() {
 if [ `whoami` = "root" ]; then
 
   find_fast_mirror
-  update_sysctl
   ### Linux kernel TCP SACK CVEs mitigation
   ### CVE-2019-11477 SACK Panic
   ### CVE-2019-11478 SACK Slowness
@@ -2098,6 +2097,7 @@ if [ `whoami` = "root" ]; then
     fix_newrelic
     fix_leftovers
     update_agents
+    update_sysctl
     saCoreN="SA-CORE-2018-002"
     fix_core_dgd
     sleep 3
