@@ -5615,11 +5615,19 @@ satellite_child_b_letsencrypt() {
       msg "${_STATUS} B: Creating Letsencrypt cert for Hostmaster..."
     fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
+      rm -rf ${leRoot}/accounts*
       bash ${exeLe} --register --accept-terms
+      sleep 3
+      bash ${exeLe} --register --accept-terms
+      sleep 3
       bash ${exeLe} -c -d ${_DOMAIN}
     else
       mkdir -p ${_ROOT}/log
+      rm -rf ${leRoot}/accounts*
       bash ${exeLe} --register --accept-terms >${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
+      sleep 3
+      bash ${exeLe} --register --accept-terms >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
+      sleep 3
       bash ${exeLe} -c -d ${_DOMAIN} >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
     fi
   else
