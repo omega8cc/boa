@@ -182,15 +182,12 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_UP_DAY=21
     _AUTO_PHP="php-all"
     _AUTO_VER="stable"
-    if [ -e "/root/.restrict_this_vm.cnf" ] \
-      && [ ! -e "/root/.OFF.restrict_this_vm.cnf" ]; then
-      mv -f /root/.restrict_this_vm.cnf /root/.OFF.restrict_this_vm.cnf
-    fi
+    touch /root/.silent.update.cnf
+    touch /root/.silent.update.info
     rm -f /root/.pause_tasks_maint.cnf
     rm -f /root/.restrict_this_vm.cnf
     if [ -e "/var/run/boa_run.pid" ]; then
       touch /root/.pause_tasks_maint.cnf
-      touch /root/.restrict_this_vm.cnf
     else
       rm -f /root/.pause_tasks_maint.cnf
       rm -f /root/.restrict_this_vm.cnf
