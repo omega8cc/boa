@@ -5620,7 +5620,7 @@ satellite_child_b_letsencrypt() {
       sleep 3
       bash ${exeLe} --register --accept-terms
       sleep 3
-      bash ${exeLe} -c -d ${_DOMAIN}
+      bash ${exeLe} --cron --ipv4 --domain ${_DOMAIN} --force
     else
       mkdir -p ${_ROOT}/log
       rm -rf ${leRoot}/accounts*
@@ -5628,7 +5628,7 @@ satellite_child_b_letsencrypt() {
       sleep 3
       bash ${exeLe} --register --accept-terms >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
       sleep 3
-      bash ${exeLe} -c -d ${_DOMAIN} >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
+      bash ${exeLe} --cron --ipv4 --domain ${_DOMAIN} --force >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
     fi
   else
     if [ -e "${leCrtPath}/fullchain.pem" ]; then
