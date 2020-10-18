@@ -70,7 +70,7 @@ function drush_provision_hosting_le_post_provision_verify() {
     drush_log('[hosting_le] The optional demo flag is ' . $demo_mode_ctrl, 'info');
 
     // https://community.letsencrypt.org/t/revoking-certain-certificates-on-march-4/114864
-    $forced_renewal_ctrl = $le_ctrl . "/forced-renewal-01-" . $main_name . ".pid";
+    $forced_renewal_ctrl = $le_ctrl . "/forced-renewal-02-" . $main_name . ".pid";
 
     $site_mode_demo_ctrl = $le_ctrl . "/demo-" . $main_name . ".pid";
     $site_mode_live_ctrl = $le_ctrl . "/live-" . $main_name . ".pid";
