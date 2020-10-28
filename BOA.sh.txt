@@ -796,15 +796,24 @@ update_agents() {
         demoPid="${leRoot}/.ctrl/ssl-demo-mode.pid"
         normalRegPid="${leRoot}/.ctrl/normal-re3-register.pid"
         forcedRegPid="${leRoot}/.ctrl/forced-re3-register.pid"
+        onDemandRegPid="${leRoot}/.ctrl/onDemand-register.pid"
         validIdn=$(grep "letsencrypt" ${acctsDir}/*/account_id.json 2>&1)
         validReg=$(grep "valid" ${acctsDir}/*/registration_info.json 2>&1)
         validIPr=$(grep "${_LOC_IP}" ${acctsDir}/*/registration_info.json 2>&1)
+        _HOUR=$(date +%H 2>&1)
+        _HOUR=${_HOUR//[^0-9-]/}
         if [ -e "${dehydSrcPath}" ]; then
-          if [ -e "${dehydFull}" ] || [ -e "${legacyLeShFile}" ]; then
-            cp -af ${dehydSrcPath} ${dehydFull}
-            chown ${tUsr}:users ${dehydFull}
-            chmod 0700 ${dehydFull}
+          cp -af ${dehydSrcPath} ${dehydFull}
+          chown ${tUsr}:users ${dehydFull}
+          chmod 0700 ${dehydFull}
+        fi
+        if [ -e "${dehydFull}" ] \
+          && [ ! -e "${normalRegPid}" ]; then
+          if [ "${_HOUR}" = "5" ] \
+            || [ "${_HOUR}" = "17" ] \
+            || [ -e "${onDemandRegPid}" ]; then
             su -s /bin/bash - ${tUsr} -c "bash ${exeLe} --register --accept-terms"
+            touch ${normalRegPid}
           fi
         fi
         if [ -e "${lockLeFile}" ]; then
@@ -814,29 +823,28 @@ update_agents() {
         if [ -e "${demoPid}" ]; then
           rm -f ${demoPid}
         fi
-        if [ -e "${legacyLeShFile}" ] \
-          || [ -e "${acctsDemoDir}" ] \
-          || [[ "${validIdn}" =~ "letsencrypt" ]] \
-          || [[ ! "${validReg}" =~ "valid" ]] \
-          || [[ ! "${validIPr}" =~ "${_LOC_IP}" ]] \
-          || [ ! -e "${forcedRegPid}" ]; then
-          rm -f ${legacyLeShFile}
-          rm -rf ${acctsDemoDir}
-          rm -rf ${acctsDir}
-          rm -f ${leRoot}/.ctrl/.forced*
-          rm -f ${leRoot}/.ctrl/.normal*
-          rm -f ${leRoot}/.ctrl/forced*
-          rm -f ${leRoot}/.ctrl/normal*
-          if [ -e "${exeLe}" ]; then
-            su -s /bin/bash - ${tUsr} -c "bash ${exeLe} --register --accept-terms"
-            touch ${forcedRegPid}
-            touch ${normalRegPid}
+        if [ "${_HOUR}" = "11" ] \
+          || [ "${_HOUR}" = "23" ] \
+          || [ -e "${onDemandRegPid}" ]; then
+          if [ -e "${legacyLeShFile}" ] \
+            || [ -e "${acctsDemoDir}" ] \
+            || [[ "${validIdn}" =~ "letsencrypt" ]] \
+            || [[ ! "${validReg}" =~ "valid" ]] \
+            || [[ ! "${validIPr}" =~ "${_LOC_IP}" ]] \
+            || [ ! -e "${forcedRegPid}" ]; then
+            rm -f ${legacyLeShFile}
+            rm -rf ${acctsDemoDir}
+            rm -rf ${acctsDir}
+            rm -f ${leRoot}/.ctrl/.forced*
+            rm -f ${leRoot}/.ctrl/.normal*
+            rm -f ${leRoot}/.ctrl/forced*
+            rm -f ${leRoot}/.ctrl/normal*
+            if [ -e "${exeLe}" ]; then
+              su -s /bin/bash - ${tUsr} -c "bash ${exeLe} --register --accept-terms"
+              touch ${forcedRegPid}
+              touch ${normalRegPid}
+            fi
           fi
-        fi
-        if [ ! -e "${normalRegPid}" ]; then
-          su -s /bin/bash - ${tUsr} -c "bash ${exeLe} --register --accept-terms"
-          touch ${normalRegPid}
-          sleep 3
         fi
       fi
     done

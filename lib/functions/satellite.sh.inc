@@ -5614,21 +5614,36 @@ satellite_child_b_letsencrypt() {
     else
       msg "${_STATUS} B: Creating Letsencrypt cert for Hostmaster..."
     fi
+    onDemandRegPid="${leRoot}/.ctrl/onDemand-register.pid"
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      rm -rf ${leRoot}/accounts*
-      bash ${exeLe} --register --accept-terms
-      sleep 3
-      bash ${exeLe} --register --accept-terms
-      sleep 3
-      bash ${exeLe} --cron --ipv4 --domain ${_DOMAIN} --force
+      if [ -e "${onDemandRegPid}" ]; then
+        rm -rf ${leRoot}/accounts*
+        bash ${exeLe} --register --accept-terms
+        sleep 3
+        bash ${exeLe} --register --accept-terms
+        sleep 3
+        bash ${exeLe} --cron --ipv4 --domain ${_DOMAIN} --force
+        touch ${leRoot}/.ctrl/forced-${_DOMAIN}-mode.pid
+      else
+        bash ${exeLe} --register --accept-terms
+        sleep 3
+        bash ${exeLe} --cron --ipv4 --domain ${_DOMAIN}
+      fi
     else
       mkdir -p ${_ROOT}/log
-      rm -rf ${leRoot}/accounts*
-      bash ${exeLe} --register --accept-terms >${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
-      sleep 3
-      bash ${exeLe} --register --accept-terms >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
-      sleep 3
-      bash ${exeLe} --cron --ipv4 --domain ${_DOMAIN} --force >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
+      if [ -e "${onDemandRegPid}" ]; then
+        rm -rf ${leRoot}/accounts*
+        bash ${exeLe} --register --accept-terms >${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
+        sleep 3
+        bash ${exeLe} --register --accept-terms >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
+        sleep 3
+        bash ${exeLe} --cron --ipv4 --domain ${_DOMAIN} --force >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
+        touch ${leRoot}/.ctrl/forced-${_DOMAIN}-mode.pid
+      else
+        bash ${exeLe} --register --accept-terms >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
+        sleep 3
+        bash ${exeLe} --cron --ipv4 --domain ${_DOMAIN} >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
+      fi
     fi
   else
     if [ -e "${leCrtPath}/fullchain.pem" ]; then
