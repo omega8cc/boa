@@ -797,7 +797,6 @@ update_agents() {
         normalRegPid="${leRoot}/.ctrl/normal-re3-register.pid"
         forcedRegPid="${leRoot}/.ctrl/forced-re3-register.pid"
         onDemandRegPid="${leRoot}/.ctrl/onDemand-register.pid"
-        validIdn=$(grep "letsencrypt" ${acctsDir}/*/account_id.json 2>&1)
         validReg=$(grep "valid" ${acctsDir}/*/registration_info.json 2>&1)
         validIPr=$(grep "${_LOC_IP}" ${acctsDir}/*/registration_info.json 2>&1)
         _HOUR=$(date +%H 2>&1)
@@ -828,7 +827,6 @@ update_agents() {
           || [ -e "${onDemandRegPid}" ]; then
           if [ -e "${legacyLeShFile}" ] \
             || [ -e "${acctsDemoDir}" ] \
-            || [[ "${validIdn}" =~ "letsencrypt" ]] \
             || [[ ! "${validReg}" =~ "valid" ]] \
             || [[ ! "${validIPr}" =~ "${_LOC_IP}" ]] \
             || [ ! -e "${forcedRegPid}" ]; then
