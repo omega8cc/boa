@@ -244,7 +244,16 @@ update_solr() {
     fiLe="${Dir}/solr.php"
     echo "Info file for ${Dom} is ${fiLe}"
     echo "Info _SERV is ${_SERV}"
-    if [ ! -e "${fiLe}" ] || [ -e "${2}/conf/.just-updated.pid" ]; then
+    _SOLR_CONFIG_INFO_UPDATE=NO
+    if [ -e "${fiLe}" ]; then
+      _SOLR_CONFIG_INFO_TEST=$(grep "${SolrCoreID}" ${fiLe} 2>&1)
+      if [[ ! "${_SOLR_CONFIG_INFO_TEST}" =~ "${SolrCoreID}" ]]; then
+        _SOLR_CONFIG_INFO_UPDATE=YES
+      fi
+    fi
+    if [ ! -e "${fiLe}" ] \
+      || [ "${_SOLR_CONFIG_INFO_UPDATE}" = "YES" ] \
+      || [ -e "${2}/conf/.just-updated.pid" ]; then
       if [[ "${2}" =~ "/opt/solr4" ]] && [ ! -z "${_SERV}" ]; then
         write_solr_config ${1} ${fiLe} ${_SERV}
         echo "Updated ${fiLe} with ${2} details"
