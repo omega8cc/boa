@@ -2499,10 +2499,6 @@ check_update_le_hm_ssl() {
 check_update_le_ssl() {
   exeLe="${User}/tools/le/dehydrated"
   Vht="${User}/config/server_master/nginx/vhost.d/${Dom}"
-  VhtSsl="${User}/config/server_master/nginx/vhost.d/https.${Dom}"
-  if [ -e "${VhtSsl}" ]; then
-    Vht="${VhtSsl}"
-  fi
   if [ -x "${exeLe}" ] && [ -e "${Vht}" ]; then
     _SSL_ON_TEST=$(cat ${Vht} | grep "443 ssl http2" 2>&1)
     if [[ "${_SSL_ON_TEST}" =~ "443 ssl http2" ]]; then
