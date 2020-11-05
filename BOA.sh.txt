@@ -828,7 +828,7 @@ update_agents() {
           || [ -e "${onDemandRegPid}" ]; then
           if [ -e "${legacyLeShFile}" ] \
             || [ -e "${acctsDemoDir}" ] \
-            || [[ "${validIdn}" =~ "letsencrypt" ]] \
+            || [[ ! "${validIdn}" =~ "letsencrypt" ]] \
             || [[ ! "${validReg}" =~ "valid" ]] \
             || [[ ! "${validIPr}" =~ "${_LOC_IP}" ]] \
             || [ ! -e "${forcedRegPid}" ]; then
