@@ -355,7 +355,7 @@ load_config() {
   AUTO_CLEANUP="no"
   DEHYDRATED_USER=
   DEHYDRATED_GROUP=
-  API="auto"
+  API=2
 
   if [[ -z "${CONFIG:-}" ]]; then
     echo "#" >&2
