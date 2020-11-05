@@ -794,8 +794,8 @@ update_agents() {
         acctsDir="${leRoot}/accounts"
         acctsDemoDir="${leRoot}/accounts-demo"
         demoPid="${leRoot}/.ctrl/ssl-demo-mode.pid"
-        normalRegPid="${leRoot}/.ctrl/normal-re3-register.pid"
-        forcedRegPid="${leRoot}/.ctrl/forced-re3-register.pid"
+        normalRegPid="${leRoot}/.ctrl/normal-re5-register.pid"
+        forcedRegPid="${leRoot}/.ctrl/forced-re5-register.pid"
         onDemandRegPid="${leRoot}/.ctrl/onDemand-register.pid"
         validIdn=$(grep "letsencrypt" ${acctsDir}/*/account_id.json 2>&1)
         validReg=$(grep "valid" ${acctsDir}/*/registration_info.json 2>&1)
