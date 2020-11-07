@@ -217,7 +217,8 @@ EOF
 detect_deprecated_php() {
   _PHP_FPM_VERSION=
   if [ -e "${User}/static/control/fpm.info" ] \
-    && [ ! -e "${User}/log/CANCELLED" ]; then
+    && [ ! -e "${User}/log/CANCELLED" ] \
+    && [ ! -e "${User}/log/proxied.pid" ]; then
     _PHP_FPM_VERSION=$(cat ${User}/static/control/fpm.info 2>&1)
     _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
     if [ "${_PHP_FPM_VERSION}" = "5.5" ] \
@@ -909,12 +910,14 @@ check_limits() {
   echo _DSK_MIN_LIMIT is ${_DSK_MIN_LIMIT}
   echo _DSK_MAX_LIMIT is ${_DSK_MAX_LIMIT}
   if [ "${SumDatH}" -gt "${_SQL_MAX_LIMIT}" ]; then
-    if [ ! -e "${User}/log/CANCELLED" ]; then
+    if [ ! -e "${User}/log/CANCELLED" ] \
+      && [ ! -e "${User}/log/proxied.pid" ]; then
       send_notice_sql "LIVE"
     fi
     echo SQL Usage for ${_THIS_U} above limits
   elif [ "${SkipDtH}" -gt "${_SQL_DEV_LIMIT}" ]; then
-    if [ ! -e "${User}/log/CANCELLED" ]; then
+    if [ ! -e "${User}/log/CANCELLED" ] \
+      && [ ! -e "${User}/log/proxied.pid" ]; then
       send_notice_sql "DEV"
     fi
     echo SQL Usage for ${_THIS_U} above limits
@@ -922,7 +925,8 @@ check_limits() {
     echo SQL Usage for ${_THIS_U} below limits
   fi
   if [ "${HomSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
-    if [ ! -e "${User}/log/CANCELLED" ]; then
+    if [ ! -e "${User}/log/CANCELLED" ] \
+      && [ ! -e "${User}/log/proxied.pid" ]; then
       send_notice_disk
     fi
     echo Disk Usage for ${_THIS_U} above limits
@@ -930,7 +934,8 @@ check_limits() {
     echo Disk Usage for ${_THIS_U} below limits
   fi
   if [ ! -e "${User}/log/GDPRsent.log" ]; then
-    if [ ! -e "${User}/log/CANCELLED" ]; then
+    if [ ! -e "${User}/log/CANCELLED" ] \
+      && [ ! -e "${User}/log/proxied.pid" ]; then
       send_notice_gprd
       touch ${User}/log/GDPRsent.log
       echo GDPR info for ${_THIS_U} sent
@@ -1071,7 +1076,8 @@ action() {
               Aegir ${_CLIENT_OPTION} ${_ENGINE_NR} \
               | CLI <strong>${_CLIENT_CLI}</strong> \
               | FPM <strong>${_CLIENT_FPM}</strong>'" &> /dev/null
-            if [ ! -e "${User}/log/CANCELLED" ]; then
+            if [ ! -e "${User}/log/CANCELLED" ] \
+              && [ ! -e "${User}/log/proxied.pid" ]; then
               eMail=${_CLIENT_EMAIL//\\\@/\@}
               AegirUrl=$(cat ${User}/log/domain.txt 2>&1)
               if [ "${HomSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then

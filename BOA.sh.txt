@@ -698,6 +698,7 @@ update_agents() {
         cp ${pthSysUsr}/static/control/fpm.info ${pthSysUsr}/static/control/cli.info
       fi
       if [ -e "${pthSysUsr}/log/CANCELLED" ] \
+        || [ -e "${pthSysUsr}/log/proxied.pid" ] \
         || [ ! -e "${pthSysUsr}/static/control/cli.info" ]; then
         if [ -e "/var/xdrago/run-${tUsr}" ] \
           && [ -e "/data/disk/arch/sql" ]; then
@@ -762,6 +763,7 @@ update_agents() {
     for pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       if [ -e "${pthSysUsr}/config/server_master/nginx/vhost.d" ] \
         && [ -e "${pthSysUsr}/static/control/cli.info" ] \
+        && [ ! -e "${pthSysUsr}/log/proxied.pid" ] \
         && [ ! -e "${pthSysUsr}/log/CANCELLED" ]; then
         tUsr=
         validReg=

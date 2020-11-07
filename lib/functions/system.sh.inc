@@ -3808,6 +3808,7 @@ if_jessie_to_stretch() {
     done
     for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       if [ -e "${User}/config/server_master/nginx/vhost.d" ] \
+        && [ ! -e "${User}/log/proxied.pid" ] \
         && [ ! -e "${User}/log/CANCELLED" ]; then
         _HM_U=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
         _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD" /etc/sudoers 2>&1)

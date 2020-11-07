@@ -1990,6 +1990,7 @@ manage_user() {
   for pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     if [ -e "${pthParentUsr}/config/server_master/nginx/vhost.d" ] \
       && [ -e "${pthParentUsr}/log/fpm.txt" ] \
+      && [ ! -e "${pthParentUsr}/log/proxied.pid" ] \
       && [ ! -e "${pthParentUsr}/log/CANCELLED" ]; then
       _USER=""
       _USER=$(echo ${pthParentUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
