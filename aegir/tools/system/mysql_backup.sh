@@ -141,6 +141,17 @@ EOFMYSQL
   done
 }
 
+truncate_views_data_export() {
+  check_running
+  _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^views_data_export_index_ 2>&1)
+  for Q in ${_TABLES}; do
+mysql ${_DB}<<EOFMYSQL
+TRUNCATE ${Q};
+EOFMYSQL
+    sleep 1
+  done
+}
+
 repair_this_database() {
   check_running
   mysqlcheck --auto-repair --silent ${_DB}
@@ -298,6 +309,8 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
           echo "Truncated giant accesslog in ${_DB}"
         fi
       fi
+      truncate_views_data_export &> /dev/null
+      echo "Truncated not used views_data_export in ${_DB}"
       # truncate_accesslog_tables &> /dev/null
       # echo "Truncated not used accesslog in ${_DB}"
       # truncate_queue_tables &> /dev/null
