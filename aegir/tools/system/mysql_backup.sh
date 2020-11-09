@@ -146,7 +146,7 @@ truncate_views_data_export() {
   _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^views_data_export_index_ 2>&1)
   for Q in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
-TRUNCATE ${Q};
+DROP TABLE ${Q};
 EOFMYSQL
     sleep 1
   done
