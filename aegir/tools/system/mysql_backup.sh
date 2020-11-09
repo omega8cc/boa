@@ -150,6 +150,9 @@ DROP TABLE ${Q};
 EOFMYSQL
     sleep 1
   done
+mysql ${_DB}<<EOFMYSQL
+TRUNCATE views_data_export_object_cache;
+EOFMYSQL
 }
 
 repair_this_database() {
