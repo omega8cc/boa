@@ -63,6 +63,9 @@ function drush_provision_hosting_le_post_provision_verify() {
     $no_san_ctrl = d('@server_master')->aegir_root . "/static/control/ssl-no-san-" . $main_name . ".info";
     drush_log('[hosting_le] The optional no-SAN flag is ' . $no_san_ctrl, 'info');
 
+    $yes_dev_ctrl = d('@server_master')->aegir_root . "/static/control/ssl-yes-dev-" . $main_name . ".info";
+    drush_log('[hosting_le] The optional enable-DEV flag is ' . $yes_dev_ctrl, 'info');
+
     $immutable = $le_ctrl . "/dont-overwrite-" . $main_name . ".pid";
     drush_log('[hosting_le] The optional immutable flag is ' . $immutable, 'info');
 
@@ -123,16 +126,28 @@ function drush_provision_hosting_le_post_provision_verify() {
       return FALSE;
     }
 
+    $enable_dev_ctrl = FALSE;
+    if (provision_file()->exists($yes_dev_ctrl)->status()) {
+      $enable_dev_ctrl = TRUE;
+      drush_log('[hosting_le] SSL enable-DEV mode ctrl file detected for ' . $main_name, 'info');
+    }
+
     if ($is_boa) {
       if (preg_match("/\.(?:host8|boa|aegir|o8)\.(?:biz|io|cc)$/", $main_name) ||
-          preg_match("/\.(?:nodns)\./", $main_name) ||
-          preg_match("/\.(?:temp|tmp|temporary)\./", $main_name) ||
-          preg_match("/\.(?:test|testing)\./", $main_name) ||
-          preg_match("/\.(?:stage|staging)\./", $main_name) ||
-          preg_match("/\.(?:dev|devel)\./", $main_name)
+          preg_match("/\.(?:nodns)\./", $main_name)
          ) {
         drush_log('[hosting_le] Skipping LE setup for ' . $main_name, 'warning');
         return FALSE;
+      }
+      if (!$enable_dev_ctrl) {
+        if (preg_match("/\.(?:temp|tmp|temporary)\./", $main_name) ||
+          preg_match("/\.(?:test|testing)\./", $main_name) ||
+          preg_match("/\.(?:stage|staging)\./", $main_name) ||
+          preg_match("/\.(?:dev|devel)\./", $main_name)
+          ) {
+          drush_log('[hosting_le] Skipping LE setup for ' . $main_name, 'warning');
+          return FALSE;
+        }
       }
     }
 
