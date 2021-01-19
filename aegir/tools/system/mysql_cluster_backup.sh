@@ -356,4 +356,4 @@ compress_backup &> /dev/null
 touch /var/xdrago/log/last-run-cluster-backup
 echo "ALL TASKS COMPLETED"
 exit 0
-###EOF2020###
+###EOF2021###

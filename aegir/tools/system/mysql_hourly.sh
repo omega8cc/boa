@@ -255,4 +255,4 @@ rm -f /var/run/boa_live_sql_backup.pid
 touch /var/xdrago/log/last-run-live-mysql-backup
 echo "ALL TASKS COMPLETED"
 exit 0
-###EOF2020###
+###EOF2021###

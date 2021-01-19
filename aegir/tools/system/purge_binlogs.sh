@@ -94,4 +94,4 @@ else
   touch /var/xdrago/log/last-run-purge
   exit 0
 fi
-###EOF2020###
+###EOF2021###
