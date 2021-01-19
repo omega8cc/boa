@@ -140,6 +140,15 @@ by the BOA install and upgrade tools exclusively.
   for backward compatibility and configuration consistency -- by default
   BOA (since 2.4.4) doesn't change mysql root password.
 
+ @=> /root/.mysql.force.legacy.backup.cnf
+
+  This file, if exists, will ignore the default mysql backup mode with separate
+  SQL dump files per table, and will force the legacy single-file database
+  mysqldump mode for automatic daily backups of all databases, stored
+  in the /data/disk/arch/sql/ directory. It will not affect any Octopus
+  instance configuration with ~/static/control/MyQuick.info file present,
+  since it's used only by Aegir tasks.
+
  @=> /root/.redis.no.new.password.cnf
 
   This file, if exists, allows to skip the otherwise default procedure

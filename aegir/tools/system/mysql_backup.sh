@@ -273,7 +273,8 @@ if [ -x "/usr/local/bin/mydumper" ]; then
     | cut -d"-" -f1 \
     | awk '{ print $1}' \
     | sed "s/[\,']//g" 2>&1)
-  if [ "${_DB_V}" = "${_MD_V}" ]; then
+  if [ "${_DB_V}" = "${_MD_V}" ] \
+    && [ ! -e "/root/.mysql.force.legacy.backup.cnf" ]; then
     _MYQUICK_STATUS=OK
     echo "INFO: Installed MyQuick for ${_MD_V} (${_DB_V}) looks fine"
   fi
