@@ -177,16 +177,16 @@ if [ -e "/data/disk/arch/sql" ]; then
       mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
     fi
     sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"  ${barCnf}
-    _AUTO_UP_WEEKLY=5
+    _AUTO_UP_WEEKLY=7
     _AUTO_UP_MONTH=5
     _AUTO_UP_DAY=5
     _AUTO_PHP="php-all"
     _AUTO_VER="head"
-    touch /root/.force.sites.verify.cnf
     touch /root/.silent.update.cnf
     touch /root/.silent.update.info
     rm -f /root/.pause_tasks_maint.cnf
     rm -f /root/.restrict_this_vm.cnf
+    rm -f /root/.force.sites.verify.cnf
     if [ -e "/var/run/boa_run.pid" ]; then
       touch /root/.pause_tasks_maint.cnf
     else
