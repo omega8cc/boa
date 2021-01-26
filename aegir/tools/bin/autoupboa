@@ -182,8 +182,8 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_UP_DAY=5
     _AUTO_PHP="php-all"
     _AUTO_VER="head"
-    touch /root/.silent.update.cnf
-    touch /root/.silent.update.info
+    rm -f /root/.silent.update.cnf
+    rm -f /root/.silent.update.info
     rm -f /root/.pause_tasks_maint.cnf
     rm -f /root/.restrict_this_vm.cnf
     rm -f /root/.force.sites.verify.cnf
