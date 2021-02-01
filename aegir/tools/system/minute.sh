@@ -202,12 +202,12 @@ oom_restart() {
 
 sql_restart() {
   touch /var/run/boa_run.pid
-  echo "$(date 2>&1) LOW $1 detected"                               >> ${pthOml}
+  echo "$(date 2>&1) $1 incident detected"                          >> ${pthOml}
   sleep 5
-  echo "$(date 2>&1) LOW incident response started"                 >> ${pthOml}
+  echo "$(date 2>&1) $1 incident response started"                  >> ${pthOml}
   bash /var/xdrago/move_sql.sh
-  echo "$(date 2>&1) LOW mysql restarted"                           >> ${pthOml}
-  echo "$(date 2>&1) LOW incident response completed"               >> ${pthOml}
+  echo "$(date 2>&1) $1 incident mysql restarted"                   >> ${pthOml}
+  echo "$(date 2>&1) $1 incident response completed"                >> ${pthOml}
   echo                                                              >> ${pthOml}
   sleep 5
   rm -f /var/run/boa_run.pid
@@ -440,6 +440,10 @@ mysql_proc_kill() {
 }
 
 mysql_proc_control() {
+  _MYSQL_CONN_TEST=$(mysql -u root -e "status")
+  if [[ "${_MYSQL_CONN_TEST}" =~ "Too many connections" ]]; then
+    sql_restart "BUSY"
+  fi
   if [ ! -z "${_SQLMONITOR}" ] && [ "${_SQLMONITOR}" = "YES" ]; then
     echo "$(date 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
     echo "$(mysqladmin proc 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
