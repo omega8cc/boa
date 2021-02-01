@@ -3,6 +3,8 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
+pthOml="/var/xdrago/log/oom.incident.log"
+
 check_root() {
   if [ `whoami` = "root" ]; then
     if [ -e "/root/.barracuda.cnf" ]; then
@@ -25,6 +27,26 @@ check_root() {
   fi
 }
 check_root
+
+sql_restart() {
+  touch /var/run/boa_run.pid
+  echo "$(date 2>&1) $1 incident detected"                          >> ${pthOml}
+  sleep 5
+  echo "$(date 2>&1) $1 incident response started"                  >> ${pthOml}
+  bash /var/xdrago/move_sql.sh
+  echo "$(date 2>&1) $1 incident mysql restarted"                   >> ${pthOml}
+  echo "$(date 2>&1) $1 incident response completed"                >> ${pthOml}
+  echo                                                              >> ${pthOml}
+  sleep 5
+  rm -f /var/run/boa_run.pid
+  exit 0
+}
+
+_MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
+echo _MYSQL_CONN_TEST ${_MYSQL_CONN_TEST}
+if [[ "${_MYSQL_CONN_TEST}" =~ "many connections" ]]; then
+  sql_restart "BUSY"
+fi
 
 if [ -e "/etc/cron.daily/logrotate" ]; then
   _SYSLOG_SIZE_TEST=$(du -s -h /var/log/syslog)
@@ -171,8 +193,6 @@ if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]]; then
     /var/xdrago/log/php.giant.logs.incident.log
 fi
 
-pthOml="/var/xdrago/log/oom.incident.log"
-
 oom_restart() {
   touch /var/run/boa_run.pid
   echo "$(date 2>&1) OOM $1 detected"                               >> ${pthOml}
@@ -194,20 +214,6 @@ oom_restart() {
   bash /var/xdrago/move_sql.sh
   echo "$(date 2>&1) OOM mysql restarted"                           >> ${pthOml}
   echo "$(date 2>&1) OOM incident response completed"               >> ${pthOml}
-  echo                                                              >> ${pthOml}
-  sleep 5
-  rm -f /var/run/boa_run.pid
-  exit 0
-}
-
-sql_restart() {
-  touch /var/run/boa_run.pid
-  echo "$(date 2>&1) $1 incident detected"                          >> ${pthOml}
-  sleep 5
-  echo "$(date 2>&1) $1 incident response started"                  >> ${pthOml}
-  bash /var/xdrago/move_sql.sh
-  echo "$(date 2>&1) $1 incident mysql restarted"                   >> ${pthOml}
-  echo "$(date 2>&1) $1 incident response completed"                >> ${pthOml}
   echo                                                              >> ${pthOml}
   sleep 5
   rm -f /var/run/boa_run.pid
@@ -440,10 +446,6 @@ mysql_proc_kill() {
 }
 
 mysql_proc_control() {
-  _MYSQL_CONN_TEST=$(mysql -u root -e "status")
-  if [[ "${_MYSQL_CONN_TEST}" =~ "Too many connections" ]]; then
-    sql_restart "BUSY"
-  fi
   if [ ! -z "${_SQLMONITOR}" ] && [ "${_SQLMONITOR}" = "YES" ]; then
     echo "$(date 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
     echo "$(mysqladmin proc 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
