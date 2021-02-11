@@ -16,11 +16,11 @@ crontab_update() {
     wait
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
       echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
-      echo "01 6    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "01 5    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    echo "22 22   * * *   root    du -s /var/lib/mysql/* > /root/.du.local.sql" >> /etc/crontab
-    echo "44 22   * * *   root    bash /var/xdrago/usage.sh >/dev/null 2>&1" >> /etc/crontab
-    echo "*/5 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+    echo "01 22   * * *   root    du -s /var/lib/mysql/* > /root/.du.local.sql" >> /etc/crontab
+    echo "01 23   * * *   root    bash /var/xdrago/usage.sh >/dev/null 2>&1" >> /etc/crontab
+    echo "*/6 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     sed -i "/^$/d"                /etc/crontab &> /dev/null
     wait
     if [ -f "/root/.mstr.clstr.cnf" ] \
@@ -74,11 +74,11 @@ crontab_clean() {
     wait
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
       echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
-      echo "01 6    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "01 5    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    echo "22 22   * * *   root    du -s /var/lib/mysql/* > /root/.du.local.sql" >> /etc/crontab
-    echo "44 22   * * *   root    bash /var/xdrago/usage.sh >/dev/null 2>&1" >> /etc/crontab
-    echo "*/5 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+    echo "01 22   * * *   root    du -s /var/lib/mysql/* > /root/.du.local.sql" >> /etc/crontab
+    echo "01 23   * * *   root    bash /var/xdrago/usage.sh >/dev/null 2>&1" >> /etc/crontab
+    echo "*/6 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     sed -i "/^$/d"                /etc/crontab &> /dev/null
     wait
     echo Cron Cleanup Completed
