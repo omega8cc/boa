@@ -1779,7 +1779,11 @@ install_host() {
   sed -i "s/^ClientAliveInterval.*//g" /etc/ssh/sshd_config
   sed -i "s/^ClientAliveCountMax.*//g" /etc/ssh/sshd_config
   echo "IgnoreUserKnownHosts no" >> /etc/ssh/sshd_config
-  echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
+  if [ -e "/root/.ssh.auth.keys.only.cnf" ]; then
+    echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
+  else
+    echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
+  fi
   echo "UseDNS no" >> /etc/ssh/sshd_config
   echo "ClientAliveInterval 300" >> /etc/ssh/sshd_config
   echo "ClientAliveCountMax 3" >> /etc/ssh/sshd_config
