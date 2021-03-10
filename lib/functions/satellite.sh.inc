@@ -1610,7 +1610,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "adminer_bundle-7.x-1.2.tar.gz"
       fi
       if [ ! -d "${_D}/${i}/o_contrib_seven/advagg" ]; then
-        get_dev_contrib "advagg-7.x-2.34.tar.gz"
+        get_dev_contrib "advagg-7.x-2.35.tar.gz"
       fi
       if [ ! -e "${_D}/${i}/o_contrib_seven/autoslave/patches/update-pdo-7.22.patch" ]; then
         rm -rf ${_D}/${i}/o_contrib_seven/autoslave
@@ -1812,7 +1812,7 @@ satellite_download_o_contrib_seven() {
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/edit-textarea.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/edit-textarea.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/version-noverify.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/version-noverify.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/frames.php"
-  get_dev_contrib "advagg-7.x-2.34.tar.gz"
+  get_dev_contrib "advagg-7.x-2.35.tar.gz"
   get_dev_contrib "autoslave-7.x-1.x-dev.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.1.tar.gz"
   get_dev_contrib "boost-7.x-1.2.tar.gz"
@@ -2684,7 +2684,7 @@ satellite_download_for_local_build() {
     ### Aegir Drupal Contrib
     get_dev_stc "admin_menu-7.x-3.0-rc6.tar.gz"
     get_dev_stc "betterlogin-7.x-1.5.tar.gz"
-    get_dev_stc "ctools-7.x-1.15.tar.gz"
+    get_dev_stc "ctools-7.x-1.19.tar.gz"
     get_dev_stc "entity-7.x-1.9.tar.gz"
     get_dev_stc "libraries-7.x-2.5.tar.gz"
     get_dev_stc "module_filter-7.x-2.2.tar.gz"
@@ -2692,13 +2692,13 @@ satellite_download_for_local_build() {
     get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
     get_dev_stc "r4032login-7.x-1.8.tar.gz"
     get_dev_stc "tfa_basic-7.x-1.1.tar.gz"
-    get_dev_stc "tfa-7.x-2.0.tar.gz"
+    get_dev_stc "tfa-7.x-2.1.tar.gz"
     get_dev_stc "timeago-7.x-2.3.tar.gz"
     get_dev_stc "views_bulk_operations-7.x-3.6.tar.gz"
     get_dev_stc "views-7.x-3.24.tar.gz"
     ### BOA Drupal Contrib
     get_dev_stc "features_extra-7.x-1.0.tar.gz"
-    get_dev_stc "features-7.x-2.11.tar.gz"
+    get_dev_stc "features-7.x-2.13.tar.gz"
     get_dev_stc "idna_convert-7.x-1.0.tar.gz"
     get_dev_stc "revision_deletion-7.x-1.3.tar.gz"
     get_dev_stc "strongarm-7.x-2.0.tar.gz"
