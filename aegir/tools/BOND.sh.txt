@@ -397,7 +397,7 @@ fix_php_ini_opcache() {
       echo "zend_extension=\"$_OPCACHE_SO\""      >> ${_THIS_FILE}
       echo "opcache.enable=1"                     >> ${_THIS_FILE}
       echo "opcache.memory_consumption=181"       >> ${_THIS_FILE}
-      echo "opcache.revalidate_freq=300"          >> ${_THIS_FILE}
+      echo "opcache.revalidate_freq=10"           >> ${_THIS_FILE}
       echo ";"                                    >> ${_THIS_FILE}
     fi
   fi

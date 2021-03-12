@@ -458,23 +458,23 @@ if (!$is_backend) {
   else {
     if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI'])) {
       // Set longer opcache TTL for web based cron
-      ini_set('opcache.revalidate_freq', '3600');
-      if (!$is_backend) {
-        header("X-Opcache-Revalidate-Freq: 3600");
-      }
-    }
-    elseif (preg_match("/^\/civicrm/", $_SERVER['REQUEST_URI'])) {
-      // Set longer opcache TTL for huge CiviCRM codebase
       ini_set('opcache.revalidate_freq', '300');
       if (!$is_backend) {
         header("X-Opcache-Revalidate-Freq: 300");
       }
     }
+    elseif (preg_match("/^\/civicrm/", $_SERVER['REQUEST_URI'])) {
+      // Force minimal opcache TTL for CiviCRM codebase
+      ini_set('opcache.revalidate_freq', '1');
+      if (!$is_backend) {
+        header("X-Opcache-Revalidate-Freq: 1");
+      }
+    }
     else {
       // Set sane default opcache TTL on non-dev sites
-      ini_set('opcache.revalidate_freq', '60');
+      ini_set('opcache.revalidate_freq', '10');
       if (!$is_backend) {
-        header("X-Opcache-Revalidate-Freq: 60");
+        header("X-Opcache-Revalidate-Freq: 10");
       }
     }
   }
