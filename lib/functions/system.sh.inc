@@ -4636,11 +4636,11 @@ check_install_myquick() {
     msg "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V}), rebuild required"
     install_myquick_src
   fi
-  # if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN}" ]; then
-  #   _MYQUICK_INSTALL_REQUIRED=YES
-  #   msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
-  #   install_myquick_src
-  # fi
+  if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN}" ]; then
+    _MYQUICK_INSTALL_REQUIRED=YES
+    msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
+    install_myquick_src
+  fi
 }
 
 install_update_xdrago() {
