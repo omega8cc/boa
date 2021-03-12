@@ -339,17 +339,17 @@ update_agents() {
     rm -f /root/.debug.cnf
     sed -i "s/.*scout.*//g" /etc/crontab
     sed -i "s/_SCOUT_KEY=.*/_SCOUT_KEY=/g" /root/.barracuda.cnf
-    # if [ -e "/data/conf/override.global.inc" ] \
-    #   && [ ! -e "/data/conf/.prev2.override.global.inc.off" ]; then
-    #   mv -f /data/conf/override.global.inc /data/conf/.prev2.override.global.inc.off
-    # fi
-    if [ ! -e "/data/conf/override.global.inc" ]; then
-      echo "<?php" > /data/conf/override.global.inc.tmp
-      echo "" >> /data/conf/override.global.inc.tmp
-      echo "\$use_redis = TRUE;" >> /data/conf/override.global.inc.tmp
-      chmod 644 /data/conf/override.global.inc.tmp
-      mv -f /data/conf/override.global.inc.tmp /data/conf/override.global.inc
+    if [ -e "/data/conf/override.global.inc" ] \
+      && [ ! -e "/data/conf/.prev5.override.global.inc.off" ]; then
+      mv -f /data/conf/override.global.inc /data/conf/.prev5.override.global.inc.off
     fi
+#     if [ ! -e "/data/conf/override.global.inc" ]; then
+#       echo "<?php" > /data/conf/override.global.inc.tmp
+#       echo "" >> /data/conf/override.global.inc.tmp
+#       echo "\$use_redis = TRUE;" >> /data/conf/override.global.inc.tmp
+#       chmod 644 /data/conf/override.global.inc.tmp
+#       mv -f /data/conf/override.global.inc.tmp /data/conf/override.global.inc
+#     fi
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
