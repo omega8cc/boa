@@ -2993,8 +2993,11 @@ strict_bin_permissions() {
     fi
   done
 
-  chown root:root /usr/bin/mysecureshell &> /dev/null
-  chmod 4755 /usr/bin/mysecureshell &> /dev/null
+  chown root:root /usr/bin/mysecureshell
+  chmod 4755 /usr/bin/mysecureshell
+
+  chown root:root /usr/bin/redis-server
+  chmod 755 /usr/bin/redis-server
 
   if [ -e "/bin/ping" ]; then
     _PING_TEST=$(ls -la /bin/ping | grep rwsr-xr-x 2>&1)
