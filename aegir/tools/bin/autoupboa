@@ -4,6 +4,12 @@ PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
 barCnf="/root/.barracuda.cnf"
 
+_ADD_XTRA=YES
+_CRON_TEST=$(grep "usage.sh" /var/spool/cron/crontabs/root 2>&1)
+if [[ "${_CRON_TEST}" =~ "usage.sh" ]]; then
+  _ADD_XTRA=NO
+fi
+
 crontab_update() {
   if [ -e "/etc/crontab" ]; then
     sed -i "s/.*xdrago.*//gi"    /etc/crontab &> /dev/null
@@ -18,9 +24,11 @@ crontab_update() {
       echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
       echo "01 5    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    echo "01 22   * * *   root    du -s /var/lib/mysql/* > /root/.du.local.sql" >> /etc/crontab
-    echo "01 23   * * *   root    bash /var/xdrago/usage.sh >/dev/null 2>&1" >> /etc/crontab
-    echo "*/6 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+    if [ "${_ADD_XTRA}" = "YES" ]; then
+      echo "01 22   * * *   root    du -s /var/lib/mysql/* > /root/.du.local.sql" >> /etc/crontab
+      echo "01 23   * * *   root    bash /var/xdrago/usage.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "*/6 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+    fi
     sed -i "/^$/d"                /etc/crontab &> /dev/null
     wait
     if [ -f "/root/.mstr.clstr.cnf" ] \
@@ -76,9 +84,11 @@ crontab_clean() {
       echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
       echo "01 5    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    echo "01 22   * * *   root    du -s /var/lib/mysql/* > /root/.du.local.sql" >> /etc/crontab
-    echo "01 23   * * *   root    bash /var/xdrago/usage.sh >/dev/null 2>&1" >> /etc/crontab
-    echo "*/6 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+    if [ "${_ADD_XTRA}" = "YES" ]; then
+      echo "01 22   * * *   root    du -s /var/lib/mysql/* > /root/.du.local.sql" >> /etc/crontab
+      echo "01 23   * * *   root    bash /var/xdrago/usage.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "*/6 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+    fi
     sed -i "/^$/d"                /etc/crontab &> /dev/null
     wait
     echo Cron Cleanup Completed
@@ -187,6 +197,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     rm -f /root/.pause_tasks_maint.cnf
     rm -f /root/.restrict_this_vm.cnf
     rm -f /root/.force.sites.verify.cnf
+    rm -f /var/xdrago/weekly.sh
     if [ -e "/var/run/boa_run.pid" ]; then
       touch /root/.pause_tasks_maint.cnf
     else
