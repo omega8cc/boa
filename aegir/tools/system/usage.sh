@@ -46,6 +46,20 @@ fix_clear_cache() {
   fi
 }
 
+check_account_exceptions() {
+  _DEV_EXC=NO
+  chckStringB="omega8"
+  chckStringC="mixomax"
+  chckStringE="emaylx"
+  case ${_CLIENT_EMAIL} in
+    *"$chckStringB"*) _DEV_EXC=YES ;;
+    *"$chckStringC"*) _DEV_EXC=YES ;;
+    *"$chckStringE"*) _DEV_EXC=YES ;;
+    *)
+    ;;
+  esac
+}
+
 read_account_data() {
   _CLIENT_CORES=
   _EXTRA_ENGINE=
@@ -56,6 +70,7 @@ read_account_data() {
   if [ -e "/data/disk/${_THIS_U}/log/email.txt" ]; then
     _CLIENT_EMAIL=$(cat /data/disk/${_THIS_U}/log/email.txt 2>&1)
     _CLIENT_EMAIL=$(echo -n ${_CLIENT_EMAIL} | tr -d "\n" 2>&1)
+    check_account_exceptions
   fi
   if [ -e "/root/.debug.email.txt" ]; then
     _CLIENT_EMAIL="omega8cc@gmail.com"
@@ -1077,6 +1092,7 @@ action() {
               | CLI <strong>${_CLIENT_CLI}</strong> \
               | FPM <strong>${_CLIENT_FPM}</strong>'" &> /dev/null
             if [ ! -e "${User}/log/CANCELLED" ] \
+              && [ "${_DEV_EXC}" = "NO" ] \
               && [ ! -e "${User}/log/proxied.pid" ]; then
               eMail=${_CLIENT_EMAIL//\\\@/\@}
               AegirUrl=$(cat ${User}/log/domain.txt 2>&1)
