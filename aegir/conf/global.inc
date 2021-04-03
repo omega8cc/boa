@@ -1214,9 +1214,9 @@ if ($redis_up && $use_redis && !$custom_cache) {
       $settings['redis.connection']['base']      = '8';
       $settings['cache_prefix']                  = $this_prefix;
       $settings['cache']['default']              = 'cache.backend.redis';
-      // $settings['cache']['bins']['discovery']    = 'cache.backend.chainedfast';
-      // $settings['cache']['bins']['config']       = 'cache.backend.chainedfast';
       $settings['cache']['bins']['bootstrap']    = 'cache.backend.database';
+      $settings['cache']['bins']['discovery']    = 'cache.backend.database';
+      $settings['cache']['bins']['config']       = 'cache.backend.database';
       $settings['cache']['bins']['cache_form']   = 'cache.backend.database';
       $settings['container_yamls'][]             = $example_services_path;
       $settings['container_yamls'][]             = $redis_services_path;
