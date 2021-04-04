@@ -2004,44 +2004,16 @@ switch_php_cli() {
 }
 
 php_upgrade_all() {
-  if [ -x "/opt/php56/bin/php" ] \
-    && [ -z "$_FRESH_PHP56_BUILD" ]; then
-    _PHP_VERSION="${_PHP56_VRN}"
+  if [ -x "/opt/php73/bin/php" ] \
+    && [ -z "$_FRESH_PHP73_BUILD" ]; then
+    _PHP_VERSION="${_PHP73_VRN}"
     _PHP_BIN_BROKEN=NO
     _BROKEN_LIBCURL_TEST=""
-    switch_php_cli "56"
-    check_php_broken "56"
-    check_php_rebuild "56"
-    update_php_multi "56"
-    mrun "service php56-fpm restart" &> /dev/null
-    _PHP_VERSION=""
-    _T_PHP_VRN=""
-    _T_PHP_PTH=""
-  fi
-  if [ -x "/opt/php70/bin/php" ] \
-    && [ -z "$_FRESH_PHP70_BUILD" ]; then
-    _PHP_VERSION="${_PHP70_VRN}"
-    _PHP_BIN_BROKEN=NO
-    _BROKEN_LIBCURL_TEST=""
-    switch_php_cli "70"
-    check_php_broken "70"
-    check_php_rebuild "70"
-    update_php_multi "70"
-    mrun "service php70-fpm restart" &> /dev/null
-    _PHP_VERSION=""
-    _T_PHP_VRN=""
-    _T_PHP_PTH=""
-  fi
-  if [ -x "/opt/php71/bin/php" ] \
-    && [ -z "$_FRESH_PHP71_BUILD" ]; then
-    _PHP_VERSION="${_PHP71_VRN}"
-    _PHP_BIN_BROKEN=NO
-    _BROKEN_LIBCURL_TEST=""
-    switch_php_cli "71"
-    check_php_broken "71"
-    check_php_rebuild "71"
-    update_php_multi "71"
-    mrun "service php71-fpm restart" &> /dev/null
+    switch_php_cli "73"
+    check_php_broken "73"
+    check_php_rebuild "73"
+    update_php_multi "73"
+    mrun "service php73-fpm restart" &> /dev/null
     _PHP_VERSION=""
     _T_PHP_VRN=""
     _T_PHP_PTH=""
@@ -2060,16 +2032,16 @@ php_upgrade_all() {
     _T_PHP_VRN=""
     _T_PHP_PTH=""
   fi
-  if [ -x "/opt/php73/bin/php" ] \
-    && [ -z "$_FRESH_PHP73_BUILD" ]; then
-    _PHP_VERSION="${_PHP73_VRN}"
+  if [ -x "/opt/php56/bin/php" ] \
+    && [ -z "$_FRESH_PHP56_BUILD" ]; then
+    _PHP_VERSION="${_PHP56_VRN}"
     _PHP_BIN_BROKEN=NO
     _BROKEN_LIBCURL_TEST=""
-    switch_php_cli "73"
-    check_php_broken "73"
-    check_php_rebuild "73"
-    update_php_multi "73"
-    mrun "service php73-fpm restart" &> /dev/null
+    switch_php_cli "56"
+    check_php_broken "56"
+    check_php_rebuild "56"
+    update_php_multi "56"
+    mrun "service php56-fpm restart" &> /dev/null
     _PHP_VERSION=""
     _T_PHP_VRN=""
     _T_PHP_PTH=""
@@ -2084,6 +2056,34 @@ php_upgrade_all() {
     check_php_rebuild "74"
     update_php_multi "74"
     mrun "service php74-fpm restart" &> /dev/null
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+  fi
+  if [ -x "/opt/php71/bin/php" ] \
+    && [ -z "$_FRESH_PHP71_BUILD" ]; then
+    _PHP_VERSION="${_PHP71_VRN}"
+    _PHP_BIN_BROKEN=NO
+    _BROKEN_LIBCURL_TEST=""
+    switch_php_cli "71"
+    check_php_broken "71"
+    check_php_rebuild "71"
+    update_php_multi "71"
+    mrun "service php71-fpm restart" &> /dev/null
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+  fi
+  if [ -x "/opt/php70/bin/php" ] \
+    && [ -z "$_FRESH_PHP70_BUILD" ]; then
+    _PHP_VERSION="${_PHP70_VRN}"
+    _PHP_BIN_BROKEN=NO
+    _BROKEN_LIBCURL_TEST=""
+    switch_php_cli "70"
+    check_php_broken "70"
+    check_php_rebuild "70"
+    update_php_multi "70"
+    mrun "service php70-fpm restart" &> /dev/null
     _PHP_VERSION=""
     _T_PHP_VRN=""
     _T_PHP_PTH=""
@@ -2125,38 +2125,16 @@ install_update_php() {
     st_runner "${_RMAPP} php5-sasl php5-suhosin" &> /dev/null
     st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
   fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "5.6" ]] \
-    && [ ! -x "/opt/php56/bin/php" ]; then
-    _PHP_VERSION="${_PHP56_VRN}"
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.3" ]] \
+    && [ ! -x "/opt/php73/bin/php" ]; then
+    _PHP_VERSION="${_PHP73_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    install_php_multi "56"
-    switch_php_cli "56"
+    install_php_multi "73"
+    switch_php_cli "73"
     _PHP_VERSION=""
     _T_PHP_VRN=""
     _T_PHP_PTH=""
-    _FRESH_PHP56_BUILD=56
-  fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.0" ]] \
-    && [ ! -x "/opt/php70/bin/php" ]; then
-    _PHP_VERSION="${_PHP70_VRN}"
-    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    install_php_multi "70"
-    switch_php_cli "70"
-    _PHP_VERSION=""
-    _T_PHP_VRN=""
-    _T_PHP_PTH=""
-    _FRESH_PHP70_BUILD=70
-  fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.1" ]] \
-    && [ ! -x "/opt/php71/bin/php" ]; then
-    _PHP_VERSION="${_PHP71_VRN}"
-    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    install_php_multi "71"
-    switch_php_cli "71"
-    _PHP_VERSION=""
-    _T_PHP_VRN=""
-    _T_PHP_PTH=""
-    _FRESH_PHP71_BUILD=71
+    _FRESH_PHP73_BUILD=73
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "7.2" ]] \
     && [ ! -x "/opt/php72/bin/php" ]; then
@@ -2169,16 +2147,16 @@ install_update_php() {
     _T_PHP_PTH=""
     _FRESH_PHP72_BUILD=72
   fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.3" ]] \
-    && [ ! -x "/opt/php73/bin/php" ]; then
-    _PHP_VERSION="${_PHP73_VRN}"
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "5.6" ]] \
+    && [ ! -x "/opt/php56/bin/php" ]; then
+    _PHP_VERSION="${_PHP56_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    install_php_multi "73"
-    switch_php_cli "73"
+    install_php_multi "56"
+    switch_php_cli "56"
     _PHP_VERSION=""
     _T_PHP_VRN=""
     _T_PHP_PTH=""
-    _FRESH_PHP73_BUILD=73
+    _FRESH_PHP56_BUILD=56
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "7.4" ]] \
     && [ ! -x "/opt/php74/bin/php" ]; then
@@ -2190,6 +2168,28 @@ install_update_php() {
     _T_PHP_VRN=""
     _T_PHP_PTH=""
     _FRESH_PHP74_BUILD=74
+  fi
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.1" ]] \
+    && [ ! -x "/opt/php71/bin/php" ]; then
+    _PHP_VERSION="${_PHP71_VRN}"
+    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+    install_php_multi "71"
+    switch_php_cli "71"
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+    _FRESH_PHP71_BUILD=71
+  fi
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.0" ]] \
+    && [ ! -x "/opt/php70/bin/php" ]; then
+    _PHP_VERSION="${_PHP70_VRN}"
+    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+    install_php_multi "70"
+    switch_php_cli "70"
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+    _FRESH_PHP70_BUILD=70
   fi
 }
 
