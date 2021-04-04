@@ -48,10 +48,12 @@ fix_clear_cache() {
 
 check_account_exceptions() {
   _DEV_EXC=NO
-  chckStringB="omega8"
+  chckStringA="omega8.cc"
+  chckStringB="omega8cc"
   chckStringC="mixomax"
   chckStringE="emaylx"
   case ${_CLIENT_EMAIL} in
+    *"$chckStringA"*) _DEV_EXC=YES ;;
     *"$chckStringB"*) _DEV_EXC=YES ;;
     *"$chckStringC"*) _DEV_EXC=YES ;;
     *"$chckStringE"*) _DEV_EXC=YES ;;
