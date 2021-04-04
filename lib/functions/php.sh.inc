@@ -1468,6 +1468,9 @@ install_newrelic() {
 #
 # Check if the PHP rebuild is required.
 check_php_rebuild() {
+  if [ "${_JESSIE_TO_STRETCH}" = "YES" ]; then
+    _PHP_FORCE_REINSTALL=NO
+  fi
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
     _PHP_ITD=5.x
