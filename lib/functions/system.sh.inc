@@ -1914,7 +1914,7 @@ check_apt_updates() {
 # Install ICU from sources.
 install_icu() {
   ###--------------------###
-  if [ ! -d "/usr/local/lib/icu/67.1" ]; then
+  if [ ! -d "/usr/local/lib/icu/68.2" ]; then
     msg "INFO: Installing ICU libs version ${_ICU_VRN}..."
     if [ ! -e "/var/opt/icu/source" ]; then
       cd /var/opt
@@ -1940,7 +1940,9 @@ install_php_deps() {
   st_runner "${_INSTALL} libldap-dev" 2> /dev/null
   st_runner "${_INSTALL} libmagickwand-dev" 2> /dev/null
   st_runner "${_INSTALL} libxpm-dev" 2> /dev/null
-  #install_icu
+  if [ -e "/root/.use.icu.src.cnf" ]; then
+    install_icu
+  fi
   if [ -d "/usr/local/lib/icu/67.1" ]; then
     rm -rf /usr/local/lib/icu
     rm -f /usr/local/lib/libicu*
