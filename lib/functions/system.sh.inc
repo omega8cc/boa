@@ -3531,6 +3531,7 @@ if_jessie_to_stretch() {
   if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
     && [ "${_OSR}" = "jessie" ]; then
     _LOC_OSR=jessie
+    touch /root/.use.icu.src.cnf
   fi
   if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
     && [ "${_LOC_OSR}" = "jessie" ]; then
