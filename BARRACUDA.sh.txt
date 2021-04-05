@@ -348,13 +348,9 @@ install_vnstat
 install_update_xdrago
 install_curl_src
 check_install_myquick
-if [ "${_JESSIE_TO_STRETCH}" = "YES" ]; then
-  _SKIP_PHP_UPGRADE=YES
-else
-  install_update_php
-  php_upgrade_all
-  check_fix_php
-fi
+install_update_php
+php_upgrade_all
+check_fix_php
 check_fix_avatars
 check_fix_umask
 check_fix_bin_extra
