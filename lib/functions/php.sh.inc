@@ -1033,11 +1033,11 @@ install_php_multi() {
   ### patch -p1 < ${bldPth}/aegir/patches/fpm_main.c.patch &> /dev/null
   ### cd /var/opt/php-${_PHP_VERSION}
   msg "INFO: Building PHP ${_PHP_VERSION} part 2/3"
+  _PRE_SNFR=
   if [ -e "/usr/local/lib/icu/current" ] \
     && [ "$1" = "56" ]; then
     _PRE_SNFR="--with-icu-dir=/usr/local"
   fi
-  _PRE_SNFR=
   if [ -d "/usr/local/include/curl" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --with-curl=/usr/local"
   else
