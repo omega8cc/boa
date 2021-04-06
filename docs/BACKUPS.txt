@@ -31,7 +31,7 @@
     _AWS_SEC='Your AWS Secret Access Key' ### [R] From your AWS S3 settings
     _AWS_PWD='Your Secret Password'       ### [R] Generate with 'openssl rand -base64 32'
     _AWS_REG='Your AWS Region ID'         ### [R] By default 'us-east-1'
-    _AWS_TTL='Your Backup Rotation'       ### [O] By default '30D'
+    _AWS_TTL='Your Backup Rotation'       ### [O] By default '90D'
     _AWS_FLC='Your Backup Full Cycle'     ### [O] By default '7D'
     _AWS_VLV='Your Backup Log Verbosity'  ### [O] By default '1'
     _AWS_PRG='Your Backup Progress'       ### [O] By default 'NO' -- can be YES/NO
