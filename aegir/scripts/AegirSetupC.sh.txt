@@ -2806,7 +2806,7 @@ save_verify_platforms() {
 
 drupal6_install
 drupal7_install
-drupal8_install
+#drupal8_install
 
 agov_install
 commerce_7_1_install
