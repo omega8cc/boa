@@ -76,6 +76,9 @@ else
 fi
 touch /var/run/boa_sql_backup.pid
 
+_DOM=24
+_DOW=7
+
 create_locks() {
   echo "Creating locks for $1"
   #touch /var/run/boa_wait.pid
