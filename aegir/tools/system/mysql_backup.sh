@@ -330,7 +330,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         _CACHE_CLEANUP=DONE
       fi
       if [ "${_OPTIM}" = "YES" ] \
-        && [ "${_DOW}" = "8" ] \
+        && [ "${_DOW}" = "7" ] \
         && [ "${_DOM}" -ge "24" ] \
         && [ "${_DOM}" -lt "31" ]; then
         repair_this_database &> /dev/null
@@ -358,7 +358,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
 done
 
 if [ "${_OPTIM}" = "YES" ] \
-  && [ "${_DOW}" = "8" ] \
+  && [ "${_DOW}" = "7" ] \
   && [ "${_DOM}" -ge "24" ] \
   && [ "${_DOM}" -lt "31" ] \
   && [ -e "/root/.my.restart_after_optimize.cnf" ] \
