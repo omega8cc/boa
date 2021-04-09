@@ -1226,6 +1226,10 @@ if ($redis_up && $use_redis && !$custom_cache) {
       $settings['container_yamls'][]             = $example_services_path;
       $settings['container_yamls'][]             = $redis_services_path;
       $settings['queue_default']                 = 'queue.redis';
+      if ($drupal_compr) {
+        $settings['redis_compress_length']       = 100;
+        $settings['redis_compress_level']        = 5;
+      }
       $settings['bootstrap_container_definition'] = [
         'parameters' => [],
         'services' => [
