@@ -27,6 +27,7 @@ $is_tmp       = FALSE;
 $local_req    = FALSE;
 $no_dns       = FALSE;
 $raw_host     = FALSE;
+$redis_legacy = FALSE;
 $redis_lock   = FALSE;
 $redis_path   = FALSE;
 $redis_up     = FALSE;
@@ -252,6 +253,110 @@ if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
 
 
 /**
+ * BOA INI defaults
+ */
+$boa_ini = array(
+  'session_cookie_ttl' => '86400',
+  'session_gc_eol' => '86400',
+  'redis_use_modern' => TRUE,
+  'redis_flush_forced_mode' => TRUE,
+  'redis_lock_enable' => TRUE,
+  'redis_path_enable' => TRUE,
+  'redis_scan_enable' => FALSE,
+  'redis_cache_disable' => FALSE,
+  'redis_legacy_mode' => FALSE,
+  'autoslave_enable' => FALSE,
+  'cache_consistent_enable' => FALSE,
+  'redis_exclude_bins' => FALSE,
+  'speed_booster_anon_cache_ttl' => FALSE,
+  'allow_anon_node_add' => FALSE,
+  'disable_admin_dos_protection' => FALSE,
+  'allow_private_file_downloads' => FALSE,
+  'server_name_cookie_domain' => FALSE,
+  'auto_detect_facebook_integration' => TRUE,      // For backward compatibility until next release, then FALSE
+  'auto_detect_domain_access_integration' => TRUE, // For backward compatibility until next release, then FALSE
+  'advagg_auto_configuration' => FALSE,            // Will be set to TRUE in boa_site_control.ini if the module is enabled
+  'purge_expire_auto_configuration' => FALSE,      // Will be set to TRUE in boa_site_control.ini if the module is enabled
+  'disable_drupal_page_cache' => FALSE,            // FALSE for backward compatibility and max performance
+  'set_composer_manager_vendor_dir' => FALSE,      // FALSE by default to not break site installation depending on custom value
+);
+
+
+/**
+ * Optional system level early overrides
+ */
+if (is_readable('/data/conf/settings.global.inc')) {
+  require_once "/data/conf/settings.global.inc";
+}
+
+
+/**
+ * Optional site and platform level settings defined in the ini files
+ * Note: the site-level ini file takes precedence over platform level ini
+ */
+$all_ini = $boa_ini;
+if (is_readable('sites/all/modules/boa_platform_control.ini')) {
+  $ini_plr_src = 'sites/all/modules/boa_platform_control.ini';
+}
+if ($ini_plr_src) {
+  $usr_plr_ini = array();
+  $usr_plr_ini = parse_ini_file($ini_plr_src);
+}
+if (is_readable('sites/' . $_SERVER['SERVER_NAME'] . '/modules/boa_site_control.ini')) {
+  $ini_loc_src = 'sites/' . $_SERVER['SERVER_NAME'] . '/modules/boa_site_control.ini';
+}
+if ($ini_loc_src) {
+  $usr_loc_ini = array();
+  $usr_loc_ini = parse_ini_file($ini_loc_src);
+}
+if (is_array($usr_plr_ini) && $usr_plr_ini) {
+  $all_ini = array_merge($all_ini, $usr_plr_ini);
+}
+if (is_array($usr_loc_ini) && $usr_loc_ini) {
+  $all_ini = array_merge($all_ini, $usr_loc_ini);
+}
+if (is_array($all_ini) && $is_dev && !$is_backend) {
+  if ($ini_plr_src) {
+    header("X-Ini-Plr-Src: " . $ini_plr_src);
+  }
+  if ($ini_loc_src) {
+    header("X-Ini-Loc-Src: " . $ini_loc_src);
+  }
+  if (!$ini_plr_src && !$ini_loc_src) {
+    header("X-Ini-Src: BOA-Default");
+  }
+  header("X-Ini-Redis-Use-Modern: " . $all_ini['redis_use_modern']);
+  header("X-Ini-Redis-Flush-Forced-Mode: " . $all_ini['redis_flush_forced_mode']);
+  header("X-Ini-Redis-Lock-Enable: " . $all_ini['redis_lock_enable']);
+  header("X-Ini-Redis-Path-Enable: " . $all_ini['redis_path_enable']);
+  header("X-Ini-Redis-Scan-Enable: " . $all_ini['redis_scan_enable']);
+  header("X-Ini-Redis-Cache-Disable: " . $all_ini['redis_cache_disable']);
+  header("X-Ini-Redis-Exclude-Bins: " . $all_ini['redis_exclude_bins']);
+  header("X-Ini-Speed-Booster-Anon-Cache-Ttl: " . $all_ini['speed_booster_anon_cache_ttl']);
+  header("X-Ini-Allow-Anon-Node-Add: " . $all_ini['allow_anon_node_add']);
+  header("X-Ini-Disable-Admin-Dos-Protection: " . $all_ini['disable_admin_dos_protection']);
+  header("X-Ini-Allow-Private-File-Downloads: " . $all_ini['allow_private_file_downloads']);
+  header("X-Ini-Server-Name-Cookie-Domain: " . $all_ini['server_name_cookie_domain']);
+  header("X-Ini-Auto-Detect-Facebook-Integration: " . $all_ini['auto_detect_facebook_integration']);
+  header("X-Ini-Auto-Detect-Domain-Access-Integration: " . $all_ini['auto_detect_domain_access_integration']);
+  header("X-Ini-Advagg-Auto-Configuration: " . $all_ini['advagg_auto_configuration']);
+  header("X-Ini-Purge-Expire-Auto-Configuration: " . $all_ini['purge_expire_auto_configuration']);
+  header("X-Ini-Sql-Conversion-Mode: " . $all_ini['sql_conversion_mode']);
+  header("X-Ini-Enable-User-Register-Protection: " . $all_ini['enable_user_register_protection']);
+  header("X-Ini-Entitycache-Dont-Enable: " . $all_ini['entitycache_dont_enable']);
+  header("X-Ini-Views-Cache-Bully-Dont-Enable: " . $all_ini['views_cache_bully_dont_enable']);
+  header("X-Ini-Views-Content-Cache-Dont-Enable: " . $all_ini['views_content_cache_dont_enable']);
+  header("X-Ini-Disable-User-Register-Protection: " . $all_ini['disable_user_register_protection']);
+  header("X-Ini-Session-Cookie-Ttl: " . $all_ini['session_cookie_ttl']);
+  header("X-Ini-Session-Gc-Eol: " . $all_ini['session_gc_eol']);
+  header("X-Ini-Disable-Drupal-Page-Cache: " . $all_ini['disable_drupal_page_cache']);
+  header("X-Ini-Set-Composer-Manager-Vendor-Dir: " . $all_ini['set_composer_manager_vendor_dir']);
+  header("X-Ini-AutoSlave-Enable: " . $all_ini['autoslave_enable']);
+  header("X-Ini-CacheConsistent-Enable: " . $all_ini['cache_consistent_enable']);
+}
+
+
+/**
  * Core version detection
  */
 if (file_exists('web.config')) {
@@ -264,7 +369,7 @@ if (file_exists('web.config')) {
       if ($is_dev && !$is_backend) {
         header('X-Backend: A');
       }
-      if (file_exists('composer')) {
+      if (!$all_ini['redis_legacy_mode']) {
         $drupal_compr = TRUE;
         if ($is_dev && !$is_backend) {
           header('X-Backend: A2');
@@ -471,109 +576,6 @@ if (!$is_backend) {
       }
     }
   }
-}
-
-
-/**
- * BOA INI defaults
- */
-$boa_ini = array(
-  'session_cookie_ttl' => '86400',
-  'session_gc_eol' => '86400',
-  'redis_use_modern' => TRUE,
-  'redis_flush_forced_mode' => TRUE,
-  'redis_lock_enable' => TRUE,
-  'redis_path_enable' => TRUE,
-  'redis_scan_enable' => FALSE,
-  'redis_cache_disable' => FALSE,
-  'autoslave_enable' => FALSE,
-  'cache_consistent_enable' => FALSE,
-  'redis_exclude_bins' => FALSE,
-  'speed_booster_anon_cache_ttl' => FALSE,
-  'allow_anon_node_add' => FALSE,
-  'disable_admin_dos_protection' => FALSE,
-  'allow_private_file_downloads' => FALSE,
-  'server_name_cookie_domain' => FALSE,
-  'auto_detect_facebook_integration' => TRUE,      // For backward compatibility until next release, then FALSE
-  'auto_detect_domain_access_integration' => TRUE, // For backward compatibility until next release, then FALSE
-  'advagg_auto_configuration' => FALSE,            // Will be set to TRUE in boa_site_control.ini if the module is enabled
-  'purge_expire_auto_configuration' => FALSE,      // Will be set to TRUE in boa_site_control.ini if the module is enabled
-  'disable_drupal_page_cache' => FALSE,            // FALSE for backward compatibility and max performance
-  'set_composer_manager_vendor_dir' => FALSE,      // FALSE by default to not break site installation depending on custom value
-);
-
-
-/**
- * Optional system level early overrides
- */
-if (is_readable('/data/conf/settings.global.inc')) {
-  require_once "/data/conf/settings.global.inc";
-}
-
-
-/**
- * Optional site and platform level settings defined in the ini files
- * Note: the site-level ini file takes precedence over platform level ini
- */
-$all_ini = $boa_ini;
-if (is_readable('sites/all/modules/boa_platform_control.ini')) {
-  $ini_plr_src = 'sites/all/modules/boa_platform_control.ini';
-}
-if ($ini_plr_src) {
-  $usr_plr_ini = array();
-  $usr_plr_ini = parse_ini_file($ini_plr_src);
-}
-if (is_readable('sites/' . $_SERVER['SERVER_NAME'] . '/modules/boa_site_control.ini')) {
-  $ini_loc_src = 'sites/' . $_SERVER['SERVER_NAME'] . '/modules/boa_site_control.ini';
-}
-if ($ini_loc_src) {
-  $usr_loc_ini = array();
-  $usr_loc_ini = parse_ini_file($ini_loc_src);
-}
-if (is_array($usr_plr_ini) && $usr_plr_ini) {
-  $all_ini = array_merge($all_ini, $usr_plr_ini);
-}
-if (is_array($usr_loc_ini) && $usr_loc_ini) {
-  $all_ini = array_merge($all_ini, $usr_loc_ini);
-}
-if (is_array($all_ini) && $is_dev && !$is_backend) {
-  if ($ini_plr_src) {
-    header("X-Ini-Plr-Src: " . $ini_plr_src);
-  }
-  if ($ini_loc_src) {
-    header("X-Ini-Loc-Src: " . $ini_loc_src);
-  }
-  if (!$ini_plr_src && !$ini_loc_src) {
-    header("X-Ini-Src: BOA-Default");
-  }
-  header("X-Ini-Redis-Use-Modern: " . $all_ini['redis_use_modern']);
-  header("X-Ini-Redis-Flush-Forced-Mode: " . $all_ini['redis_flush_forced_mode']);
-  header("X-Ini-Redis-Lock-Enable: " . $all_ini['redis_lock_enable']);
-  header("X-Ini-Redis-Path-Enable: " . $all_ini['redis_path_enable']);
-  header("X-Ini-Redis-Scan-Enable: " . $all_ini['redis_scan_enable']);
-  header("X-Ini-Redis-Cache-Disable: " . $all_ini['redis_cache_disable']);
-  header("X-Ini-Redis-Exclude-Bins: " . $all_ini['redis_exclude_bins']);
-  header("X-Ini-Speed-Booster-Anon-Cache-Ttl: " . $all_ini['speed_booster_anon_cache_ttl']);
-  header("X-Ini-Allow-Anon-Node-Add: " . $all_ini['allow_anon_node_add']);
-  header("X-Ini-Disable-Admin-Dos-Protection: " . $all_ini['disable_admin_dos_protection']);
-  header("X-Ini-Allow-Private-File-Downloads: " . $all_ini['allow_private_file_downloads']);
-  header("X-Ini-Server-Name-Cookie-Domain: " . $all_ini['server_name_cookie_domain']);
-  header("X-Ini-Auto-Detect-Facebook-Integration: " . $all_ini['auto_detect_facebook_integration']);
-  header("X-Ini-Auto-Detect-Domain-Access-Integration: " . $all_ini['auto_detect_domain_access_integration']);
-  header("X-Ini-Advagg-Auto-Configuration: " . $all_ini['advagg_auto_configuration']);
-  header("X-Ini-Purge-Expire-Auto-Configuration: " . $all_ini['purge_expire_auto_configuration']);
-  header("X-Ini-Sql-Conversion-Mode: " . $all_ini['sql_conversion_mode']);
-  header("X-Ini-Enable-User-Register-Protection: " . $all_ini['enable_user_register_protection']);
-  header("X-Ini-Entitycache-Dont-Enable: " . $all_ini['entitycache_dont_enable']);
-  header("X-Ini-Views-Cache-Bully-Dont-Enable: " . $all_ini['views_cache_bully_dont_enable']);
-  header("X-Ini-Views-Content-Cache-Dont-Enable: " . $all_ini['views_content_cache_dont_enable']);
-  header("X-Ini-Disable-User-Register-Protection: " . $all_ini['disable_user_register_protection']);
-  header("X-Ini-Session-Cookie-Ttl: " . $all_ini['session_cookie_ttl']);
-  header("X-Ini-Session-Gc-Eol: " . $all_ini['session_gc_eol']);
-  header("X-Ini-Disable-Drupal-Page-Cache: " . $all_ini['disable_drupal_page_cache']);
-  header("X-Ini-Set-Composer-Manager-Vendor-Dir: " . $all_ini['set_composer_manager_vendor_dir']);
-  header("X-Ini-AutoSlave-Enable: " . $all_ini['autoslave_enable']);
-  header("X-Ini-CacheConsistent-Enable: " . $all_ini['cache_consistent_enable']);
 }
 
 
@@ -1071,6 +1073,7 @@ if (is_readable('/data/conf/override.global.inc')) {
 if ($redis_up && $use_redis && !$custom_cache) {
   $cache_backport = FALSE;
   $cache_redis = FALSE;
+  $all_ini['redis_use_modern'] = TRUE;
   if ($all_ini['redis_use_modern']) {
     if ($drupal_eight) {
       $redis_dirname = 'redis_eight';
@@ -1083,6 +1086,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
     }
     if ($is_dev && !$is_backend) {
       header("X-Redis-Version-Is: Modern");
+      header("X-Redis-Path-Is: " . $redis_dirname);
     }
     if ($all_ini['redis_flush_forced_mode']) {
       if ($drupal_eight) {
@@ -1111,6 +1115,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
     $redis_dirname = 'redis';
     if ($is_dev && !$is_backend) {
       header("X-Redis-Version-Is: Legacy");
+      header("X-Redis-Path-Is: " . $redis_dirname);
     }
   }
   if ($drupal_eight) {
