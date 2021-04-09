@@ -868,8 +868,10 @@ update_agents() {
 
   _Dir="/data/all/000/modules"
   _REDIS_C_VERSION=mod-14-02-2020
+  _REDIS_D_VERSION=boa-09-04-2021
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
-    if [ ! -e "${_Dir}/redis_compr/${_REDIS_C_VERSION}.info" ]; then
+    if [ ! -e "${_Dir}/redis_compr/${_REDIS_C_VERSION}.info" ] \
+      && [ ! -e "${_Dir}/redis_compr/${_REDIS_D_VERSION}.info" ]; then
       mkdir -p ${_Dir}
       cd ${_Dir}
       rm -rf ${_Dir}/redis_compr
