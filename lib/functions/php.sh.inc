@@ -509,8 +509,12 @@ install_ioncube() {
 # Install PHP extensions.
 install_php_extensions() {
   ###--------------------###
-  _USE_PHPREDIS="${_PHPREDIS_VRN}"
-  msg "INFO: Installing PhpRedis for PHP ${_T_PHP_VRN}..."
+  if [ "$1" = "56" ]; then
+    _USE_PHPREDIS="${_PHPREDIS_FOUR_VRN}"
+  else
+    _USE_PHPREDIS="${_PHPREDIS_FIVE_VRN}"
+  fi
+  msg "INFO: Installing PhpRedis ${_USE_PHPREDIS} for PHP ${_T_PHP_VRN}..."
   cd /var/opt
   rm -rf phpredis*
   get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
@@ -520,7 +524,7 @@ install_php_extensions() {
   mrun "make --quiet" 2> /dev/null
   mrun "make --quiet install" 2> /dev/null
   mrun "ldconfig" 2> /dev/null
-  touch ${pthLog}/phpredis-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
+  touch ${pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
   ###--------------------###
   if [ "$1" = "56" ]; then
     msg "INFO: Installing UploadProgress for PHP ${_T_PHP_VRN}..."
@@ -733,9 +737,13 @@ install_php_extensions() {
 # Update extensions for PHP built from sources.
 update_php_extensions() {
   ###--------------------###
-  _USE_PHPREDIS="${_PHPREDIS_VRN}"
-  if [ ! -e "${pthLog}/phpredis-${_USE_PHPREDIS}-${_T_PHP_VRN}.log" ]; then
-    msg "INFO: Installing PhpRedis upgrade for PHP ${_T_PHP_VRN}..."
+  if [ "$1" = "56" ]; then
+    _USE_PHPREDIS="${_PHPREDIS_FOUR_VRN}"
+  else
+    _USE_PHPREDIS="${_PHPREDIS_FIVE_VRN}"
+  fi
+  if [ ! -e "${pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log" ]; then
+    msg "INFO: Installing PhpRedis ${_USE_PHPREDIS} upgrade for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf phpredis*
     get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
@@ -745,7 +753,7 @@ update_php_extensions() {
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    touch ${pthLog}/phpredis-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
+    touch ${pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
   if [ "$1" = "56" ]; then
