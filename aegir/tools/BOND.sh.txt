@@ -345,6 +345,18 @@ fix_php_ini_redis() {
   fi
 }
 #
+# Fix php.ini files to add apcu.so
+fix_php_ini_apcu() {
+  if [ -e "${_THIS_FILE}" ]; then
+    _APCU_INI_TEST=$(grep "^extension=apcu.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_APCU_INI_TEST" =~ "extension=apcu.so" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=apcu.so" >> ${_THIS_FILE}
+    fi
+  fi
+}
+#
 # Fix php.ini file to add newrelic.ini
 fix_php_ini_newrelic() {
   _NR_TPL="${locCnf}/newrelic.ini"
@@ -580,6 +592,9 @@ update_php_conf() {
     cp -af ${locCnf}/php${e}-cli.ini /opt/php${e}/lib/php.ini
     cp -af ${locCnf}/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
+    if [ "${e}" != "56" ]; then
+      fix_php_ini_apcu
+    fi
     if [ "${e}" = "56" ]; then
       fix_php_ini_mailparse
       fix_php_ini_twig
