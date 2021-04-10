@@ -543,7 +543,7 @@ install_php_extensions() {
   touch ${pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
   ###--------------------###
   if [ "$1" != "56" ]; then
-    msg "INFO: Installing APCu for PHP ${_T_PHP_VRN}..."
+    msg "INFO: Installing APCu ${_PHP7_APCU} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf apcu*
     get_dev_src "apcu-${_PHP7_APCU}.tgz"
@@ -788,7 +788,7 @@ update_php_extensions() {
   ###--------------------###
   if [ "$1" != "56" ]; then
     if [ ! -e "${pthLog}/apcu-${_PHP7_APCU}-${_T_PHP_VRN}.log" ]; then
-      msg "INFO: Installing APCu for PHP ${_T_PHP_VRN}..."
+      msg "INFO: Installing APCu ${_PHP7_APCU} for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf apcu*
       get_dev_src "apcu-${_PHP7_APCU}.tgz"
