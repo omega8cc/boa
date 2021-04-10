@@ -703,11 +703,19 @@ if (!$is_bot && isset($_SERVER['REQUEST_URI']) &&
 if ($use_redis && !$is_install && !$custom_cache) {
   $redis = new Redis();
   $redis->connect('127.0.0.1', 6379);
-  if ($redis->IsConnected()) {
+  if ($redis->isConnected()) {
     $redis->auth('isfoobared');
-    $response = $redis->ping();
-    if (strpos($response, 'PONG')) {
+    $response = $redis->ping('PONG');
+    if ($is_dev && !$is_backend) {
+      header("X-Redis-Response: " . $response);
+    }
+    if (preg_match("/PONG/", $response)) {
       $redis_up = TRUE;
+    }
+    else {
+      if ($is_dev && !$is_backend) {
+        header("X-Redis-Up: " . $redis_up);
+      }
     }
     $redis->close();
   }
