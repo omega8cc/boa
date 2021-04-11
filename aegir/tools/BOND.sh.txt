@@ -345,6 +345,18 @@ fix_php_ini_redis() {
   fi
 }
 #
+# Fix php.ini files to add mcrypt.so
+fix_php_ini_mcrypt() {
+  if [ -e "${_THIS_FILE}" ]; then
+    _MCRYPT_INI_TEST=$(grep "^extension=mcrypt.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_MCRYPT_INI_TEST" =~ "extension=mcrypt.so" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=mcrypt.so" >> ${_THIS_FILE}
+    fi
+  fi
+}
+#
 # Fix php.ini files to add apcu.so
 fix_php_ini_apcu() {
   if [ -e "${_THIS_FILE}" ]; then
@@ -596,6 +608,9 @@ update_php_conf() {
     if [ "${e}" != "56" ]; then
       fix_php_ini_apcu
     fi
+    if [ "${e}" != "56" ] && [ "${e}" != "70" ] && [ "${e}" != "71" ]; then
+      fix_php_ini_mcrypt
+    fi
     if [ "${e}" = "56" ]; then
       fix_php_ini_mailparse
       fix_php_ini_twig
@@ -606,6 +621,9 @@ update_php_conf() {
     fix_php_ini_suhosin
     fix_php_ini_yaml
     _THIS_FILE=/opt/php${e}/lib/php.ini
+    if [ "${e}" != "56" ] && [ "${e}" != "70" ] && [ "${e}" != "71" ]; then
+      fix_php_ini_mcrypt
+    fi
     if [ "${e}" = "56" ]; then
       fix_php_ini_mailparse
       fix_php_ini_twig

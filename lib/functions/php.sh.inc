@@ -88,6 +88,19 @@ fix_php_ini_redis() {
 }
 
 #
+# Fix php.ini files to add mcrypt.so
+fix_php_ini_mcrypt() {
+  if [ -e "${_THIS_FILE}" ]; then
+    _MCRYPT_INI_TEST=$(grep "^extension=mcrypt.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_MCRYPT_INI_TEST" =~ "extension=mcrypt.so" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=mcrypt.so" >> ${_THIS_FILE}
+    fi
+  fi
+}
+
+#
 # Fix php.ini files to add apcu.so
 fix_php_ini_apcu() {
   if [ -e "${_THIS_FILE}" ]; then
@@ -557,6 +570,20 @@ install_php_extensions() {
     touch ${pthLog}/apcu-${_PHP7_APCU}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
+  if [ "$1" != "56" ] && [ "$1" != "70" ] && [ "$1" != "71" ]; then
+    msg "INFO: Installing MCRYPT ${_PHP7_MCRYPT} for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -rf mcrypt*
+    get_dev_src "mcrypt-${_PHP7_MCRYPT}.tgz"
+    cd /var/opt/mcrypt-${_PHP7_MCRYPT}
+    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    mrun "ldconfig" 2> /dev/null
+    touch ${pthLog}/mcrypt-${_PHP7_MCRYPT}-${_T_PHP_VRN}.log
+  fi
+  ###--------------------###
   if [ "$1" = "56" ]; then
     msg "INFO: Installing UploadProgress for PHP ${_T_PHP_VRN}..."
     cd /var/opt
@@ -800,6 +827,22 @@ update_php_extensions() {
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
       touch ${pthLog}/apcu-${_PHP7_APCU}-${_T_PHP_VRN}.log
+    fi
+  fi
+  ###--------------------###
+  if [ "$1" != "56" ] && [ "$1" != "70" ] && [ "$1" != "71" ]; then
+    if [ ! -e "${pthLog}/mcrypt-${_PHP7_MCRYPT}-${_T_PHP_VRN}.log" ]; then
+      msg "INFO: Installing MCRYPT ${_PHP7_MCRYPT} for PHP ${_T_PHP_VRN}..."
+      cd /var/opt
+      rm -rf mcrypt*
+      get_dev_src "mcrypt-${_PHP7_MCRYPT}.tgz"
+      cd /var/opt/mcrypt-${_PHP7_MCRYPT}
+      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
+      mrun "ldconfig" 2> /dev/null
+      touch ${pthLog}/mcrypt-${_PHP7_MCRYPT}-${_T_PHP_VRN}.log
     fi
   fi
   ###--------------------###
