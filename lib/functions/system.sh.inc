@@ -2579,7 +2579,8 @@ install_ssl_src() {
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
-  if [ "${_SSL_ITD}" = "${_OPENSSL_VRN}" ]; then
+  if [ "${_SSL_ITD}" = "${_OPENSSL_LEGACY_VRN}" ] \
+    || [ "${_SSL_ITD}" = "${_OPENSSL_CURRENT_VRN}" ]; then
     _SPDY_COMPATIBILITY_TEST=$(service nginx configtest 2>&1)
     if [[ "${_SPDY_COMPATIBILITY_TEST}" =~ "without OpenSSL ALPN or NPN" ]]; then
       _SSL_FORCE_REINSTALL=YES
@@ -2620,11 +2621,11 @@ install_ssl_src() {
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     ###--------------------###
-    msg "INFO: Building OpenSSL ${_OPENSSL_VRN} from sources, please wait..."
+    msg "INFO: Building OpenSSL ${_OPENSSL_LEGACY_VRN} from sources, please wait..."
     cd /var/opt
     rm -rf openssl*
-    get_dev_src "openssl-${_OPENSSL_VRN}.tar.gz"
-    cd /var/opt/openssl-${_OPENSSL_VRN}
+    get_dev_src "openssl-${_OPENSSL_LEGACY_VRN}.tar.gz"
+    cd /var/opt/openssl-${_OPENSSL_LEGACY_VRN}
     _X86_64_IF=$(uname -m 2>&1)
     if [ "${_X86_64_IF}" = "x86_64" ]; then
       mrun "sh ./config zlib-dynamic \

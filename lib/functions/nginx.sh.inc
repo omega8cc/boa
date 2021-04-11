@@ -100,7 +100,9 @@ force_advanced_nginx_config() {
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
-  if [ "${_SSL_ITD}" = "${_OPENSSL_VRN}" ] \
+  if [ "${_SSL_ITD}" = "${_OPENSSL_LEGACY_VRN}" ] \
+    || [ "${_SSL_ITD}" = "${_OPENSSL_CURRENT_VRN}" ] \
+    || [[ "${_SSL_ITD}" =~ "1.1.0" ]] \
     || [[ "${_SSL_ITD}" =~ "1.0.1" ]] \
     || [[ "${_SSL_ITD}" =~ "1.0.2" ]]; then
     _PFS_READY=YES
@@ -268,6 +270,12 @@ install_upgrade_nginx() {
         msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
         msg "INFO: Nginx forced rebuild to include pseudo-streaming support"
       fi
+      if [ "${_OSR}" = "buster" ] \
+        || [ "${_OSR}" = "stretch" ]; then
+        _OPENSSL_NGX_VRN=${_OPENSSL_CURRENT_VRN}
+      else
+        _OPENSSL_NGX_VRN=${_OPENSSL_LEGACY_VRN}
+      fi
       if [[ ! "${_NGINX_V_ITD}" =~ "openssl-${_OPENSSL_NGX_VRN}" ]]; then
         _NGINX_INSTALL_REQUIRED=YES
         msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
@@ -376,6 +384,12 @@ install_upgrade_nginx() {
       else
         _NGINX_EXTRA="--with-http_v2_module ${_NGINX_EXTRA}"
       fi
+    fi
+    if [ "${_OSR}" = "buster" ] \
+      || [ "${_OSR}" = "stretch" ]; then
+      _OPENSSL_NGX_VRN=${_OPENSSL_CURRENT_VRN}
+    else
+      _OPENSSL_NGX_VRN=${_OPENSSL_LEGACY_VRN}
     fi
     if [ ! -e "/var/opt/openssl-${_OPENSSL_NGX_VRN}" ]; then
       cd /var/opt
@@ -668,7 +682,9 @@ fix_update_nginx_config() {
     fi
     _SSL_ITD=$(openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}' 2>&1)
 
-    if [ "${_SSL_ITD}" = "${_OPENSSL_VRN}" ] \
+    if [ "${_SSL_ITD}" = "${_OPENSSL_LEGACY_VRN}" ] \
+      || [ "${_SSL_ITD}" = "${_OPENSSL_CURRENT_VRN}" ] \
+      || [[ "${_SSL_ITD}" =~ "1.1.0" ]] \
       || [[ "${_SSL_ITD}" =~ "1.0.1" ]] \
       || [[ "${_SSL_ITD}" =~ "1.0.2" ]]; then
       _PFS_READY=YES
