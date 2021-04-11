@@ -3423,18 +3423,18 @@ find_fast_mirror
 ###--------------------###
 if [ -z "${_SKYNET_MODE}" ] || [ "${_SKYNET_MODE}" = "ON" ]; then
   echo "INFO: Checking BARRACUDA version"
-  rm -f /opt/tmp/barracuda-version.txt*
+  rm -f /opt/tmp/barracuda-release.txt*
   curl -L -k -s \
     --max-redirs 10 \
     --retry 3 \
     --retry-delay 15 -A iCab \
-    "${urlHmr}/conf/barracuda-version.txt" \
-    -o /opt/tmp/barracuda-version.txt
+    "${urlHmr}/conf/barracuda-release.txt" \
+    -o /opt/tmp/barracuda-release.txt
 else
-  rm -f /opt/tmp/barracuda-version.txt*
+  rm -f /opt/tmp/barracuda-release.txt*
 fi
-if [ -e "/opt/tmp/barracuda-version.txt" ]; then
-  _X_VERSION=$(cat /opt/tmp/barracuda-version.txt 2>&1)
+if [ -e "/opt/tmp/barracuda-release.txt" ]; then
+  _X_VERSION=$(cat /opt/tmp/barracuda-release.txt 2>&1)
   _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
   if [ ! -z "${_X_VERSION}" ]; then
     _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
@@ -3445,10 +3445,10 @@ if [ -e "/opt/tmp/barracuda-version.txt" ]; then
       _VERSIONS_TEST_RESULT=OK
       echo "INFO: Version test result: OK"
     else
-      sT="Stable Edition available"
+      sT="Newer BOA available"
       cat <<EOF | mail -e -s "New ${_X_VERSION} ${sT}" ${_MY_EMAIL}
 
- There is new ${_X_VERSION} Stable Edition available.
+ There is new ${_X_VERSION} version available.
 
  Please review the changelog and upgrade as soon as possible
  to receive all security updates and new features.
@@ -3605,7 +3605,7 @@ fi
 
 if [ "${_PERMISSIONS_FIX}" = "YES" ] \
   && [ ! -z "${_X_VERSION}" ] \
-  && [ -e "/opt/tmp/barracuda-version.txt" ] \
+  && [ -e "/opt/tmp/barracuda-release.txt" ] \
   && [ ! -e "/data/all/permissions-fix-${_X_VERSION}-fixed-dz.info" ]; then
   echo "INFO: Fixing permissions in the /data/all tree..."
   find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
