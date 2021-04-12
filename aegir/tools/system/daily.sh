@@ -1609,6 +1609,12 @@ fix_modules() {
     else
       echo ";session_gc_eol = 86400" >> ${_PLR_CTRL_F}
     fi
+    _VAR_IF_PRESENT=$(grep "redis_legacy_mode" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_legacy_mode" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_legacy_mode = FALSE" >> ${_PLR_CTRL_F}
+    fi
     _VAR_IF_PRESENT=$(grep "redis_use_modern" ${_PLR_CTRL_F} 2>&1)
     if [[ "${_VAR_IF_PRESENT}" =~ "redis_use_modern" ]]; then
       _DO_NOTHING=YES
@@ -1700,6 +1706,12 @@ fix_modules() {
       _DO_NOTHING=YES
     else
       echo ";session_gc_eol = 86400" >> ${_DIR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_legacy_mode" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_legacy_mode" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_legacy_mode = FALSE" >> ${_DIR_CTRL_F}
     fi
     _VAR_IF_PRESENT=$(grep "redis_use_modern" ${_DIR_CTRL_F} 2>&1)
     if [[ "${_VAR_IF_PRESENT}" =~ "redis_use_modern" ]]; then
