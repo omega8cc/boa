@@ -276,6 +276,7 @@ $boa_ini = array(
   'speed_booster_anon_cache_ttl' => FALSE,
   'allow_anon_node_add' => FALSE,
   'disable_admin_dos_protection' => FALSE,
+  'disable_user_register_protection' => FALSE,
   'allow_private_file_downloads' => FALSE,
   'server_name_cookie_domain' => FALSE,
   'auto_detect_facebook_integration' => TRUE,      // For backward compatibility until next release, then FALSE
