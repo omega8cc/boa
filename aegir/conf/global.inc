@@ -1100,7 +1100,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
     }
     if ($is_dev && !$is_backend) {
       header("X-Redis-Version-Is: Modern");
-      header("X-Redis-Path-Is: " . $redis_dirname);
+      header("X-Redis-Dir-Is: " . $redis_dirname);
     }
     if ($all_ini['redis_flush_forced_mode']) {
       if ($drupal_eight) {
@@ -1129,7 +1129,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
     $redis_dirname = 'redis';
     if ($is_dev && !$is_backend) {
       header("X-Redis-Version-Is: Legacy");
-      header("X-Redis-Path-Is: " . $redis_dirname);
+      header("X-Redis-Dir-Is: " . $redis_dirname);
     }
   }
   if ($drupal_eight) {
