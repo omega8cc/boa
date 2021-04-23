@@ -1233,10 +1233,12 @@ if ($redis_up && $use_redis && !$custom_cache) {
       $settings['redis.connection']['base']      = '8';
       $settings['cache_prefix']                  = $this_prefix;
       $settings['cache']['default']              = 'cache.backend.redis';
-      $settings['cache']['bins']['bootstrap']    = 'cache.backend.database';
-      $settings['cache']['bins']['discovery']    = 'cache.backend.database';
-      $settings['cache']['bins']['config']       = 'cache.backend.database';
-      $settings['cache']['bins']['cache_form']   = 'cache.backend.database';
+      if (!is_readable('/data/conf/clstr.cnf')) {
+        $settings['cache']['bins']['bootstrap']  = 'cache.backend.database';
+        $settings['cache']['bins']['discovery']  = 'cache.backend.database';
+        $settings['cache']['bins']['config']     = 'cache.backend.database';
+        $settings['cache']['bins']['cache_form'] = 'cache.backend.database';
+      }
       $settings['container_yamls'][]             = $example_services_path;
       $settings['container_yamls'][]             = $redis_services_path;
       $settings['queue_default']                 = 'queue.redis';
@@ -1321,16 +1323,20 @@ if ($redis_up && $use_redis && !$custom_cache) {
       if ($use_cache_ct) {
         $conf['cache_backends'][]               = $cache_ct_path;
         $conf['cache_default_class']            = 'ConsistentCache';
-        $conf['cache_class_cache_form']         = 'DrupalDatabaseCache';
-        $conf['cache_class_cache_bootstrap']    = 'DrupalDatabaseCache';
+        if (!is_readable('/data/conf/clstr.cnf')) {
+          $conf['cache_class_cache_form']       = 'DrupalDatabaseCache';
+          $conf['cache_class_cache_bootstrap']  = 'DrupalDatabaseCache';
+        }
         $conf['consistent_cache_default_class'] = 'Redis_Cache';
         $conf['consistent_cache_default_safe']  = TRUE;
         $conf['consistent_cache_buffer_mechanism'] = 'ConsistentCacheBuffer';
         $conf['consistent_cache_default_strict'] = FALSE;
         $conf['consistent_cache_strict_cache_bootstrap'] = TRUE;
       }
-      $conf['cache_class_cache_form']           = 'DrupalDatabaseCache';
-      $conf['cache_class_cache_bootstrap']      = 'DrupalDatabaseCache';
+      if (!is_readable('/data/conf/clstr.cnf')) {
+        $conf['cache_class_cache_form']         = 'DrupalDatabaseCache';
+        $conf['cache_class_cache_bootstrap']    = 'DrupalDatabaseCache';
+      }
       $conf['redis_client_interface']           = 'PhpRedis';
       $conf['redis_client_host']                = '127.0.0.1';
       $conf['redis_client_port']                = '6379';
@@ -1344,7 +1350,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
       $conf['cache_lifetime']                   = 0;     // D7 == BOA uses Speed Booster / Nginx micro-caching instead
       $conf['page_cache_lifetime']              = 0;     // D6 == BOA uses Speed Booster / Nginx micro-caching instead
     }
-    if ($all_ini['redis_exclude_bins']) {
+    if ($all_ini['redis_exclude_bins'] && !is_readable('/data/conf/clstr.cnf')) {
       $excludes = array();
       $excludes = explode(",", $all_ini['redis_exclude_bins']);
       foreach ($excludes as $exclude) {
