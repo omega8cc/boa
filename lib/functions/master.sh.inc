@@ -980,6 +980,7 @@ EOFMYSQL
     cd /var/aegir
     rm -f /etc/nginx/sites-available/default
     rm -f /etc/nginx/sites-enabled/default
+    rm -f /etc/nginx/modules-enabled/*
     if [ -e "${locCnf}/nginx.conf" ]; then
       mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
       cp -af ${locCnf}/nginx.conf /etc/nginx/nginx.conf

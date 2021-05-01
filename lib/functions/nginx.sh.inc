@@ -511,6 +511,7 @@ fix_nginx_mime() {
     fi
     rm -f /etc/nginx/sites-available/default
     rm -f /etc/nginx/sites-enabled/default
+    rm -f /etc/nginx/modules-enabled/*
     if [ ! -e "/var/run/aegir_upgrade.pid" ]; then
       mrun "service nginx reload" &> /dev/null
     fi
