@@ -2042,8 +2042,9 @@ clean_drush_ten() {
   rm -f /usr/local/bin/robo
   rm -f /usr/local/bin/var-dump-server
   rm -f /usr/bin/drush10
-  ln -s /opt/tools/drush/10/drush/vendor/drush/drush/drush /usr/bin/drush10
-  ln -s /opt/tools/drush/10/drush/vendor/drush/drush/drush /usr/bin/drush9
+  rm -f /usr/bin/drush9
+  ln -sf /opt/tools/drush/10/drush/vendor/drush/drush/drush /usr/bin/drush10
+  ln -sf /opt/tools/drush/10/drush/vendor/drush/drush/drush /usr/bin/drush9
   msg "INFO: Drush ${_DRUSH_TEN_VRN} setup complete"
 }
 
@@ -2095,7 +2096,6 @@ get_drush_versions() {
   ###--------------------###
   if [ -e "/opt/tools/drush/9" ]; then
     rm -rf /opt/tools/drush/9
-    rm -f /usr/bin/drush9
   fi
   if [ -e "/opt/tools/drush/7" ]; then
     rm -rf /opt/tools/drush/7
