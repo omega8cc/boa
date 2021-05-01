@@ -162,13 +162,13 @@ Octopus can install and/or support the platforms listed below:
  Social 9.2 ------------------- https://drupal.org/project/social
  Varbase 8.6 ------------------ https://drupal.org/project/varbase
 
- @ Drupal 7.79.1
+ @ Drupal 7.80.1
 
  aGov 3.12 -------------------- https://drupal.org/project/agov
  Commerce 1.64 ---------------- https://drupal.org/project/commerce_kickstart
  Commerce 2.68 ---------------- https://drupal.org/project/commerce_kickstart
  Commons 3.50 ----------------- https://drupal.org/project/commons
- Drupal 7.79.1 ---------------- https://drupal.org/project/drupal/releases/7.79
+ Drupal 7.80.1 ---------------- https://drupal.org/project/drupal/releases/7.80
  Guardr 2.55 ------------------ https://drupal.org/project/guardr
  OpenAid 2.8 ------------------ https://drupal.org/project/openaid
  OpenAtrium 2.647 ------------- https://drupal.org/project/openatrium
@@ -186,7 +186,7 @@ Octopus can install and/or support the platforms listed below:
  Pressflow 6.57.1 ------------- http://pressflow.org
  Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.79.1 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.80.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
 * All D6 platforms have been enhanced using Pressflow (LTS) 6.57.1 +Extra core:
