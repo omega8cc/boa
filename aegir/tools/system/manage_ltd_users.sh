@@ -957,12 +957,7 @@ update_php_cli_drush() {
     _T_CLI=/foo/bar
   fi
   if [ -x "${_T_CLI}/php" ]; then
-    if [ -e "/opt/tools/d7.ini" ] \
-      && [ -e "/opt/tools/drush/7/drush/drush.php" ]; then
-      _DRUSHCMD="${_T_CLI}/php /opt/tools/drush/7/drush/drush.php"
-    else
-      _DRUSHCMD="${_T_CLI}/php ${dscUsr}/tools/drush/drush.php"
-    fi
+    _DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
     if [ -e "${dscUsr}/aegir.sh" ]; then
       rm -f ${dscUsr}/aegir.sh
     fi
@@ -1974,6 +1969,15 @@ manage_site_drush_alias_mirror() {
       fi
     fi
   done
+  if [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
+    if [ "${isAliasUpdate}" = "YES" ] \
+      || [ ! -e "/home/${_USER}.ftp/.drush/sites/.checksums" ]; then
+      su -s /bin/bash - ${_USER}.ftp -c "rm -f ~/.drush/sites/*.yml"
+      su -s /bin/bash - ${_USER}.ftp -c "rm -f ~/.drush/sites/.checksums/*.md5"
+      su -s /bin/bash - ${_USER}.ftp -c "drush10 core:init --yes" &> /dev/null
+      su -s /bin/bash - ${_USER}.ftp -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
+    fi
+  fi
   if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
     if [ "${isAliasUpdate}" = "YES" ] \
       || [ ! -e "/home/${_USER}.ftp/.drush/sites/.checksums" ]; then

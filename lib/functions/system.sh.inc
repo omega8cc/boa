@@ -2032,8 +2032,8 @@ install_wkhtmltox() {
 }
 
 #
-# Clean Drush 9.
-clean_drush_nine() {
+# Clean Drush 10.
+clean_drush_ten() {
   rm -f /usr/local/bin/dcg
   rm -f /usr/local/bin/drush
   rm -f /usr/local/bin/php-parse
@@ -2041,9 +2041,10 @@ clean_drush_nine() {
   rm -f /usr/local/bin/release
   rm -f /usr/local/bin/robo
   rm -f /usr/local/bin/var-dump-server
-  rm -f /usr/bin/drush9
-  ln -s /opt/tools/drush/9/drush/vendor/drush/drush/drush /usr/bin/drush9
-  msg "INFO: Drush ${_DRUSH9_VRN} setup complete"
+  rm -f /usr/bin/drush10
+  ln -s /opt/tools/drush/10/drush/vendor/drush/drush/drush /usr/bin/drush10
+  ln -s /opt/tools/drush/10/drush/vendor/drush/drush/drush /usr/bin/drush9
+  msg "INFO: Drush ${_DRUSH_TEN_VRN} setup complete"
 }
 
 #
@@ -2059,106 +2060,46 @@ set_drush_perm() {
   chmod 755 /opt/tools/drush/*/drush/examples/drush.wrapper
   chmod 755 /opt/tools/drush/*/drush/examples/git-bisect.example.sh
   chmod 755 /opt/tools/drush/*/drush/examples/helloworld.script
-  if [ -e "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
-    chmod 755 /opt/tools/drush/9/drush/vendor/drush/drush/drush
-    chmod 755 /opt/tools/drush/9/drush/vendor/drush/drush/drush.php
+  if [ -e "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
+    chmod 755 /opt/tools/drush/10/drush/vendor/drush/drush/drush
+    chmod 755 /opt/tools/drush/10/drush/vendor/drush/drush/drush.php
   fi
 }
 
 #
-# Install or update Drush 9.
-get_drush_nine() {
-  if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
-    if [ -x "/usr/local/bin/composer" ]; then
-      rm -rf /opt/tools/drush/9/*
-      mkdir -p /opt/tools/drush/9/drush/vendor
-      rm -rf /opt/tools/drush/*/drush/cache/*
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        COMPOSER_HOME=/opt/tools/drush/9/drush \
-        COMPOSER_BIN_DIR=/usr/local/bin \
-        COMPOSER_VENDOR_DIR=/opt/tools/drush/9/drush/vendor \
-        composer global require drush/drush:^9
-      else
-        COMPOSER_HOME=/opt/tools/drush/9/drush \
-        COMPOSER_BIN_DIR=/usr/local/bin \
-        COMPOSER_VENDOR_DIR=/opt/tools/drush/9/drush/vendor \
-        composer global require drush/drush:^9 &> /dev/null
-      fi
-      rm -rf /opt/tools/drush/*/drush/cache/*
-    fi
-  else
-    rm -rf /opt/tools/drush/9/*
-    cd /opt/tools/drush/9/
-    get_dev_ext "drush-${_DRUSH9_VRN}.tar.gz"
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Drush ${_DRUSH9_VRN} installation complete"
-    fi
+# Install or update Drush 10.
+get_drush_ten() {
+  rm -rf /opt/tools/drush/10/*
+  cd /opt/tools/drush/10/
+  get_dev_ext "drush-${_DRUSH_TEN_VRN}.tar.gz"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Drush ${_DRUSH_TEN_VRN} installation complete"
+  fi
+}
+
+#
+# Install or update Drush 8.
+get_drush_eight() {
+  rm -rf /opt/tools/drush/8/*
+  cd /opt/tools/drush/8/
+  get_dev_ext "drush-${_DRUSH_EIGHT_VRN}.tar.gz"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Drush ${_DRUSH_EIGHT_VRN} installation complete"
   fi
 }
 
 #
 # Install or update Drush versions.
 get_drush_versions() {
-  msg "INFO: Installing extra Drush versions..."
+  msg "INFO: Installing supported Drush versions..."
   ###--------------------###
-  mkdir -p /opt/tools/drush/{7,8,9}
-  chown -R root:root /opt/tools
-  rm -rf /opt/tools/drush/7/*
-  cd /opt/tools/drush/7/
-  get_dev_ext "drush-${_DRUSH7_VRN}.tar.gz"
-  cd /opt/tools/drush/7/drush/
-  rm -rf /opt/tools/drush/7/drush/vendor
-  get_dev_ext "vendor-${_DRUSH7_VRN}.tar.gz"
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Drush ${_DRUSH7_VRN} installation complete"
+  if [ -e "/opt/tools/drush/9" ]; then
+    rm -rf /opt/tools/drush/9
+    rm -f /usr/bin/drush9
   fi
-  rm -rf /opt/tools/drush/8/*
-  cd /opt/tools/drush/8/
-  get_dev_ext "drush-${_DRUSH8_VRN}.tar.gz"
-  cd /opt/tools/drush/8/drush/
-  rm -rf /opt/tools/drush/8/drush/vendor
-  get_dev_ext "vendor-${_DRUSH8_VRN}.tar.gz"
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Drush ${_DRUSH8_VRN} installation complete"
-  fi
-  if [ -x "/usr/local/bin/composer" ]; then
-    _DRUSH_ITD=$(drush9 --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f4 \
-      | awk '{ print $1}' 2>&1)
-    if [ "${_DRUSH_ITD}" != "${_DRUSH9_VRN}" ] \
-      || [ ! -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
-      msg "INFO: Drush ${_DRUSH9_VRN} re-installation required"
-      get_drush_nine
-    else
-      msg "INFO: Drush ${_DRUSH9_VRN} already installed"
-    fi
-  fi
-  set_drush_perm
-  if [ -x "/opt/tools/drush/7/drush/drush" ]; then
+  if [ -e "/opt/tools/drush/7" ]; then
+    rm -rf /opt/tools/drush/7
     rm -f /usr/bin/drush7
-    ln -s /opt/tools/drush/7/drush/drush /usr/bin/drush7
-  fi
-  if [ -x "/opt/tools/drush/8/drush/drush" ]; then
-    rm -f /usr/bin/drush8
-    rm -f /usr/bin/drush
-    ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush8
-    ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush
-  fi
-  if [ -x "/usr/local/bin/composer" ]; then
-    if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
-      clean_drush_nine
-    else
-      msg "FAIL: Drush ${_DRUSH9_VRN} installation failed! Trying again.."
-      sleep 15
-      get_drush_nine
-      set_drush_perm
-      if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
-        clean_drush_nine
-      else
-        msg "FAIL: Drush ${_DRUSH9_VRN} installation failed again! Oops.."
-      fi
-    fi
   fi
   if [ -e "/opt/tools/drush/6" ]; then
     rm -rf /opt/tools/drush/6
@@ -2171,6 +2112,48 @@ get_drush_versions() {
   if [ -e "/opt/tools/drush/4" ]; then
     rm -rf /opt/tools/drush/4
     rm -f /usr/bin/drush4
+  fi
+  mkdir -p /opt/tools/drush/{8,10}
+  chown -R root:root /opt/tools
+  if [ -e "/opt/tools/drush/8" ]; then
+    _DRUSH_ITD=$(drush8 --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f8 \
+      | awk '{ print $1}' 2>&1)
+    if [ "${_DRUSH_ITD}" != "${_DRUSH_EIGHT_VRN}" ] \
+      || [ ! -x "/opt/tools/drush/8/drush/drush" ]; then
+      msg "INFO: Drush ${_DRUSH_EIGHT_VRN} re-installation required"
+      get_drush_eight
+    else
+      msg "INFO: Drush ${_DRUSH_EIGHT_VRN} already installed"
+    fi
+  fi
+  if [ -e "/opt/tools/drush/10" ]; then
+    _DRUSH_ITD=$(drush10 --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f4 \
+      | awk '{ print $1}' 2>&1)
+    if [ "${_DRUSH_ITD}" != "${_DRUSH_TEN_VRN}" ] \
+      || [ ! -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
+      msg "INFO: Drush ${_DRUSH_TEN_VRN} re-installation required"
+      get_drush_ten
+    else
+      msg "INFO: Drush ${_DRUSH_TEN_VRN} already installed"
+    fi
+  fi
+  set_drush_perm
+  if [ -x "/opt/tools/drush/8/drush/drush" ]; then
+    rm -f /usr/bin/drush8
+    rm -f /usr/bin/drush
+    ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush8
+    ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush
+  else
+    msg "FAIL: Drush ${_DRUSH_EIGHT_VRN} installation failed!"
+  fi
+  if [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
+    clean_drush_ten
+  else
+    msg "FAIL: Drush ${_DRUSH_TEN_VRN} installation failed!"
   fi
   chown -R root:root /opt/tools/drush
   cd /opt/tmp

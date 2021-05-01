@@ -175,6 +175,18 @@ run_drush8_cmd() {
   su -s /bin/bash - ${_HM_U} -c "drush8 @${Dom} $1" &> /dev/null
 }
 
+run_drush10_cmd() {
+  _S_X=
+  _S_N=${Dom}
+  _S_T=${_S_N%*.*}
+  _S_R=${_S_T//./-}
+  if [ -e "/root/.debug_daily.info" ]; then
+    nOw=$(date +%y%m%d-%H%M%S 2>&1)
+    echo "${nOw} ${_HM_U} running drush10 @${_S_R} $1"
+  fi
+  su -s /bin/bash - ${_HM_U} -c "drush10 @${_S_R} $1" &> /dev/null
+}
+
 run_drush9_cmd() {
   _S_X=
   _S_N=${Dom}
@@ -209,6 +221,18 @@ run_drush8_nosilent_cmd() {
     echo "${nOw} ${_HM_U} running drush8 @${Dom} $1"
   fi
   su -s /bin/bash - ${_HM_U} -c "drush8 @${Dom} $1"
+}
+
+run_drush10_nosilent_cmd() {
+  _S_X=
+  _S_N=${Dom}
+  _S_T=${_S_N%*.*}
+  _S_R=${_S_T//./-}
+  if [ -e "/root/.debug_daily.info" ]; then
+    nOw=$(date +%y%m%d-%H%M%S 2>&1)
+    echo "${nOw} ${_HM_U} running drush10 @${_S_R} $1"
+  fi
+  su -s /bin/bash - ${_HM_U} -c "drush10 @${_S_R} $1"
 }
 
 run_drush9_nosilent_cmd() {
@@ -325,7 +349,7 @@ check_if_force() {
   done
 }
 
-uninstall_modules_with_drush9() {
+uninstall_modules_with_drush10() {
   for m in $1; do
     _SKIP=NO
     _FORCE=NO
@@ -336,8 +360,13 @@ uninstall_modules_with_drush9() {
       check_if_force "$m"
     fi
     if [ "${_SKIP}" = "NO" ]; then
-      _MODULE_T=$(run_drush9_nosilent_cmd "pml --status=enabled \
-        --type=module | grep \($m\)" 2>&1)
+      if [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
+        _MODULE_T=$(run_drush10_nosilent_cmd "pml --status=enabled \
+          --type=module | grep \($m\)" 2>&1)
+      elif [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+        _MODULE_T=$(run_drush9_nosilent_cmd "pml --status=enabled \
+          --type=module | grep \($m\)" 2>&1)
+      fi
       if [[ "${_MODULE_T}" =~ "($m)" ]]; then
         if [ "${_FORCE}" = "NO" ]; then
           echo "$m dependencies not possible to check in ${Dom} action not forced"
@@ -346,14 +375,18 @@ uninstall_modules_with_drush9() {
           _REQ=FCE
         fi
         if [ "${_REQ}" = "FCE" ]; then
-          if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+          if [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
+            run_drush10_cmd "pmu $m -y"
+          elif [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
             run_drush9_cmd "pmu $m -y"
           else
             run_drush8_cmd "pmu $m -y"
           fi
           echo "$m FCE uninstalled in ${Dom}"
         elif [ "${_REQ}" = "NO" ]; then
-          if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+          if [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
+            run_drush10_cmd "pmu $m -y"
+          elif [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
             run_drush9_cmd "pmu $m -y"
           else
             run_drush8_cmd "pmu $m -y"
@@ -426,6 +459,19 @@ enable_modules_with_drush9() {
       _DO_NOTHING=YES
     else
       run_drush9_cmd "en $m -y"
+      echo "$m enabled in ${Dom}"
+    fi
+  done
+}
+
+enable_modules_with_drush10() {
+  for m in $1; do
+    _MODULE_T=$(run_drush10_nosilent_cmd "pml --status=enabled \
+      --type=module | grep \($m\)" 2>&1)
+    if [[ "${_MODULE_T}" =~ "($m)" ]]; then
+      _DO_NOTHING=YES
+    else
+      run_drush10_cmd "en $m -y"
       echo "$m enabled in ${Dom}"
     fi
   done
@@ -1855,17 +1901,21 @@ fix_modules() {
     else
       _MODX=OFF
       # if [ ! -z "${_MODULES_OFF_EIGHT}" ]; then
-      #   uninstall_modules_with_drush9 "${_MODULES_OFF_EIGHT}"
+      #   uninstall_modules_with_drush10 "${_MODULES_OFF_EIGHT}"
       # fi
       # if [ ! -z "${_MODULES_ON_EIGHT}" ]; then
-      #   if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
-      #     enable_modules_with_drush9 "${_MODULES_ON_EIGHT}"
+      #   if [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
+      #     enable_modules_with_drush10 "${_MODULES_ON_EIGHT}"
       #   else
       #     enable_modules_with_drush8 "${_MODULES_ON_EIGHT}"
       #   fi
       # fi
       if [ ! -e "${Dir}/.redisOn" ]; then
-        enable_modules_with_drush9 "redis"
+        if [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
+          enable_modules_with_drush10 "redis"
+        elif [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
+          enable_modules_with_drush9 "redis"
+        fi
         run_drush8_cmd "cache-rebuild"
         mkdir ${Dir}/.redisOn
         chown -R ${_HM_U}:users ${Dir}/.redisOn &> /dev/null
@@ -3200,6 +3250,12 @@ action() {
         _SQL_CONVERT=NO
         _DEL_OLD_EMPTY_PLATFORMS="0"
         if [ -e "/root/.${_HM_U}.octopus.cnf" ]; then
+          if [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
+            su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/*.yml"
+            su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/.checksums/*.md5"
+            su -s /bin/bash - ${_HM_U} -c "drush10 core:init --yes" &> /dev/null
+            su -s /bin/bash - ${_HM_U} -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
+          fi
           if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
             su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/*.yml"
             su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/.checksums/*.md5"

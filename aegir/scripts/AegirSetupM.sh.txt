@@ -103,12 +103,7 @@ elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
 fi
 _OSR=$(lsb_release -sc 2>&1)
 _ROOT="${HOME}"
-if [ -e "/opt/tools/d7.ini" ] \
-  && [ -e "/opt/tools/drush/7/drush/drush.php" ]; then
-  _DRUSHCMD="${_T_CLI}/php /opt/tools/drush/7/drush/drush.php"
-else
-  _DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
-fi
+_DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
 #
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
@@ -174,8 +169,6 @@ msg "INFO: Installing drush in ${_ROOT}"
 cd ${_ROOT}
 get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
 cd ${_ROOT}/drush/
-rm -rf ${_ROOT}/drush/vendor
-get_dev_ext "vendor-${_DRUSH_VERSION}.tar.gz"
 find ${_ROOT}/drush -type d -exec chmod 0755 {} \; &> /dev/null
 find ${_ROOT}/drush -type f -exec chmod 0644 {} \; &> /dev/null
 chmod 755 ${_ROOT}/drush/drush

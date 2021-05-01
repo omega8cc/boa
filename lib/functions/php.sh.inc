@@ -2365,7 +2365,7 @@ check_fix_php() {
 
 install_update_composer() {
   if [ -x "/usr/local/bin/composer" ]; then
-    /usr/local/bin/composer self-update --2 &> /dev/null
+    /usr/local/bin/composer self-update --2 --no-plugins &> /dev/null
   fi
   if [ ! -x "/usr/local/bin/composer" ] || [ ! -L "/usr/bin/composer" ]; then
     rm -f /usr/local/bin/composer

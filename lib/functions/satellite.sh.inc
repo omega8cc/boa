@@ -4981,8 +4981,6 @@ satellite_child_b_install_drush() {
   msg "${_STATUS} B: Downloading drush ${_DRUSH_VERSION}..."
   get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
   cd ${_ROOT}/tools/drush/
-  rm -rf ${_ROOT}/tools/drush/vendor
-  get_dev_ext "vendor-${_DRUSH_VERSION}.tar.gz"
   find ${_ROOT}/tools/drush -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_ROOT}/tools/drush -type f -exec chmod 0644 {} \; &> /dev/null
   chmod 755 ${_ROOT}/tools/drush/drush

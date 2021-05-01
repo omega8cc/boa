@@ -490,8 +490,6 @@ upgrade_aegir_master() {
       cd /var/aegir
       get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
       cd /var/aegir/drush/
-      rm -rf /var/aegir/drush/vendor
-      get_dev_ext "vendor-${_DRUSH_VERSION}.tar.gz"
       find /var/aegir/drush -type d -exec chmod 0755 {} \; &> /dev/null
       find /var/aegir/drush -type f -exec chmod 0644 {} \; &> /dev/null
       chmod 755 /var/aegir/drush/drush
