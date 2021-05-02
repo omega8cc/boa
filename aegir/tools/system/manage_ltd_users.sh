@@ -968,6 +968,7 @@ update_php_cli_drush() {
     chown ${_USER}:${usrGroup} ${dscUsr}/aegir.sh &> /dev/null
     chmod 0700 ${dscUsr}/aegir.sh &> /dev/null
   fi
+  echo OK > ${dscUsr}/static/control/.ctrl.cli.${_X_SE}.pid
 }
 #
 # Tune FPM workers.
@@ -1431,7 +1432,8 @@ switch_php() {
             _T_CLI_VRN=5.6
           fi
         fi
-        if [ "${_T_CLI_VRN}" != "${_PHP_CLI_VERSION}" ]; then
+        if [ "${_T_CLI_VRN}" != "${_PHP_CLI_VERSION}" ] \
+          || [ ! -e "${dscUsr}/static/control/.ctrl.cli.${_X_SE}.pid" ]; then
           _PHP_CLI_UPDATE=YES
           update_php_cli_drush
           if [ -x "${_T_CLI}/php" ]; then
