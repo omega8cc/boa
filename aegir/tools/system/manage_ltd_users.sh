@@ -39,7 +39,7 @@ if [ -e "/root/.pause_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-_X_SE="413prodQ27"
+_X_SE="413prodQ28"
 _CHECK_HOST=$(uname -n 2>&1)
 usrGroup=users
 _WEBG=www-data
@@ -957,7 +957,7 @@ update_php_cli_drush() {
     _T_CLI=/foo/bar
   fi
   if [ -x "${_T_CLI}/php" ]; then
-    _DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
+    _DRUSHCMD="${_T_CLI}/php ${dscUsr}/tools/drush/drush.php"
     if [ -e "${dscUsr}/aegir.sh" ]; then
       rm -f ${dscUsr}/aegir.sh
     fi
