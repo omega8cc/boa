@@ -3526,10 +3526,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE7}/sites" ]; then
-      if [ ! -L "${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE7}" ]; then
-        _A="${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE7}/sites"
-        _B="${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE7}"
+    if [ -d "${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9}/web/sites" ]; then
+      if [ ! -L "${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9}" ]; then
+        _A="${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9}/web/sites"
+        _B="${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9}"
         ln -sf ${_A} ${_B}
       fi
     fi

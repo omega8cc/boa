@@ -169,6 +169,7 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### Drupal 9 based
 ###
 ### LHG ----------- Lightning
+### OLS ----------- OpenLucius
 ### THR ----------- Thunder
 ### VBE ----------- Varbase
 ###
@@ -184,7 +185,6 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### DCE ----------- Commerce v.1
 ### GDR ----------- Guardr
 ### OA7 ----------- OpenAtrium
-### OLS ----------- OpenLucius
 ### OOH ----------- OpenOutreach
 ### OPC ----------- OpenPublic
 ### OPO ----------- Opigno LMS

@@ -158,6 +158,7 @@ Octopus can install and/or support the platforms listed below:
  Drupal 9.0.x ----------------- https://drupal.org/project/drupal/releases?version=9.0
 
  Lightning 5.1.5 -------------- https://drupal.org/project/lightning
+ OpenLucius 2.0.0 ------------- https://drupal.org/project/openlucius
  Thunder 6.1.2 ---------------- https://drupal.org/project/thunder
  Varbase 9.0.0 ---------------- https://drupal.org/project/varbase
 
@@ -173,7 +174,6 @@ Octopus can install and/or support the platforms listed below:
  Drupal 7.80.1 ---------------- https://drupal.org/project/drupal/releases/7.80
  Guardr 2.55 ------------------ https://drupal.org/project/guardr
  OpenAtrium 2.649 ------------- https://drupal.org/project/openatrium
- OpenLucius 1.7 --------------- https://drupal.org/project/openlucius
  OpenOutreach 1.62 ------------ https://drupal.org/project/openoutreach
  OpenPublic 1.30 -------------- https://drupal.org/project/openpublic
  Opigno LMS 1.47 -------------- https://drupal.org/project/opigno_lms

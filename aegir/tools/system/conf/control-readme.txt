@@ -214,6 +214,7 @@
 ### Drupal 9 based
 ###
 ### LHG ----------- Lightning
+### OLS ----------- OpenLucius
 ### THR ----------- Thunder
 ### VBE ----------- Varbase
 ###
@@ -229,7 +230,6 @@
 ### DCE ----------- Commerce v.1
 ### GDR ----------- Guardr
 ### OA7 ----------- OpenAtrium
-### OLS ----------- OpenLucius
 ### OOH ----------- OpenOutreach
 ### OPC ----------- OpenPublic
 ### OPO ----------- Opigno LMS

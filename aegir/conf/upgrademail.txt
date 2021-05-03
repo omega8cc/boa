@@ -94,6 +94,7 @@ or one per line:
 Drupal 9 based
 
   LHG ----------- Lightning
+  OLS ----------- OpenLucius
   THR ----------- Thunder
   VBE ----------- Varbase
 
@@ -109,7 +110,6 @@ Drupal 7 based
   DCE ----------- Commerce v.1
   GDR ----------- Guardr
   OA7 ----------- OpenAtrium
-  OLS ----------- OpenLucius
   OOH ----------- OpenOutreach
   OPC ----------- OpenPublic
   OPO ----------- Opigno LMS

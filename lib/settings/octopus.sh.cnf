@@ -54,6 +54,7 @@ _PHP_CLI_VERSION=7.4
 ### Drupal 9 based
 ###
 ### LHG ----------- Lightning
+### OLS ----------- OpenLucius
 ### THR ----------- Thunder
 ### VBE ----------- Varbase
 ###
@@ -69,7 +70,6 @@ _PHP_CLI_VERSION=7.4
 ### DCE ----------- Commerce v.1
 ### GDR ----------- Guardr
 ### OA7 ----------- OpenAtrium
-### OLS ----------- OpenLucius
 ### OOH ----------- OpenOutreach
 ### OPC ----------- OpenPublic
 ### OPO ----------- Opigno LMS
