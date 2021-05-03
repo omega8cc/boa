@@ -109,7 +109,6 @@ Drupal 7 based
   DCE ----------- Commerce v.1
   GDR ----------- Guardr
   OA7 ----------- OpenAtrium
-  OAD ----------- OpenAid
   OLS ----------- OpenLucius
   OOH ----------- OpenOutreach
   OPC ----------- OpenPublic

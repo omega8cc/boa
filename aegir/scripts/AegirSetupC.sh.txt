@@ -2816,7 +2816,7 @@ commerce_7_2_install
 
 guardr_install
 lightning_install
-openaid_install
+#openaid_install
 
 _USE_DISTRO_CORE=YES
 openatrium7_install
