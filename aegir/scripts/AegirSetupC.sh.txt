@@ -2810,7 +2810,7 @@ _USE_DISTRO_CORE=NO
 ### openchurch2_install -- broken profile
 openlucius_install
 openoutreach_install
-openpublic_install
+#openpublic_install
 
 ### _USE_DISTRO_CORE=YES
 ### openscholar_install

@@ -231,7 +231,6 @@
 ### GDR ----------- Guardr
 ### OA7 ----------- OpenAtrium
 ### OOH ----------- OpenOutreach
-### OPC ----------- OpenPublic
 ### OPO ----------- Opigno LMS
 ### PPY ----------- Panopoly
 ### RST ----------- Restaurant
