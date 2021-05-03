@@ -233,7 +233,6 @@
 ### OOH ----------- OpenOutreach
 ### OPO ----------- Opigno LMS
 ### PPY ----------- Panopoly
-### RST ----------- Restaurant
 ### UC7 ----------- Ubercart
 ###
 ### Drupal 6 based

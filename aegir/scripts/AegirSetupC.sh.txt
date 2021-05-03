@@ -2819,7 +2819,7 @@ openoutreach_install
 
 opigno_lms7_install
 panopoly_install
-restaurant_install
+#restaurant_install
 
 ### recruiter_install
 ### TMP OFF -- version 1.7 has critical bugs and doesn't work properly
