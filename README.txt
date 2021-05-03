@@ -152,15 +152,19 @@ Octopus can install and/or support the platforms listed below:
 
  @ Drupal 9
 
- Drupal 9.0.0 ----------------- https://drupal.org/project/drupal/releases/9.0.0
- Thunder 4.5 ------------------ https://drupal.org/project/thunder
+ Drupal 9.3.x ----------------- https://drupal.org/project/drupal/releases?version=9.3
+ Drupal 9.2.x ----------------- https://drupal.org/project/drupal/releases?version=9.2
+ Drupal 9.1.x ----------------- https://drupal.org/project/drupal/releases?version=9.1
+ Drupal 9.0.x ----------------- https://drupal.org/project/drupal/releases?version=9.0
+
+ Lightning 5.1.5 -------------- https://drupal.org/project/lightning
+ Thunder 6.1.2 ---------------- https://drupal.org/project/thunder
+ Varbase 9.0.0 ---------------- https://drupal.org/project/varbase
 
  @ Drupal 8
 
- Lightning 5.0.1 -------------- https://drupal.org/project/lightning
- Opigno LMS 2.16 -------------- https://drupal.org/project/opigno_lms
- Social 9.2 ------------------- https://drupal.org/project/social
- Varbase 8.6 ------------------ https://drupal.org/project/varbase
+ Opigno LMS 2.20 -------------- https://drupal.org/project/opigno_lms
+ Social 10.1.0 ---------------- https://drupal.org/project/social
 
  @ Drupal 7.80.1
 

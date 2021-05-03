@@ -3470,10 +3470,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/lightning-${_LIGHTNING}-${_SMALLCORE8}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/lightning-${_LIGHTNING}-${_SMALLCORE8}" ]; then
-        _A="${_QR}/lightning-${_LIGHTNING}-${_SMALLCORE8}/docroot/sites"
-        _B="${_QH}/lightning-${_LIGHTNING}-${_SMALLCORE8}"
+    if [ -d "${_QR}/lightning-${_LIGHTNING}-${_SMALLCORE9}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/lightning-${_LIGHTNING}-${_SMALLCORE9}" ]; then
+        _A="${_QR}/lightning-${_LIGHTNING}-${_SMALLCORE9}/docroot/sites"
+        _B="${_QH}/lightning-${_LIGHTNING}-${_SMALLCORE9}"
         ln -sf ${_A} ${_B}
       fi
     fi
@@ -3589,10 +3589,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/thunder-${_THUNDER}-${_THUNDER_CORE}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_THUNDER_CORE}" ]; then
-        _A="${_QR}/thunder-${_THUNDER}-${_THUNDER_CORE}/docroot/sites"
-        _B="${_QH}/thunder-${_THUNDER}-${_THUNDER_CORE}"
+    if [ -d "${_QR}/thunder-${_THUNDER}-${_SMALLCORE9}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_SMALLCORE9}" ]; then
+        _A="${_QR}/thunder-${_THUNDER}-${_SMALLCORE9}/docroot/sites"
+        _B="${_QH}/thunder-${_THUNDER}-${_SMALLCORE9}"
         ln -sf ${_A} ${_B}
       fi
     fi
@@ -3617,17 +3617,17 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/varbase-${_VARBASE}-${_SMALLCORE8}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/varbase-${_VARBASE}-${_SMALLCORE8}" ]; then
-        _A="${_QR}/varbase-${_VARBASE}-${_SMALLCORE8}/docroot/sites"
-        _B="${_QH}/varbase-${_VARBASE}-${_SMALLCORE8}"
+    if [ -d "${_QR}/varbase-${_VARBASE}-${_SMALLCORE9}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/varbase-${_VARBASE}-${_SMALLCORE9}" ]; then
+        _A="${_QR}/varbase-${_VARBASE}-${_SMALLCORE9}/docroot/sites"
+        _B="${_QH}/varbase-${_VARBASE}-${_SMALLCORE9}"
         ln -sf ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/social-${_SOCIAL}-${_SOCIAL_CORE}/html/sites" ]; then
-      if [ ! -L "${_QH}/social-${_SOCIAL}-${_SOCIAL_CORE}" ]; then
-        _A="${_QR}/social-${_SOCIAL}-${_SOCIAL_CORE}/html/sites"
-        _B="${_QH}/social-${_SOCIAL}-${_SOCIAL_CORE}"
+    if [ -d "${_QR}/social-${_SOCIAL}-${_SMALLCORE8}/html/sites" ]; then
+      if [ ! -L "${_QH}/social-${_SOCIAL}-${_SMALLCORE8}" ]; then
+        _A="${_QR}/social-${_SOCIAL}-${_SMALLCORE8}/html/sites"
+        _B="${_QH}/social-${_SOCIAL}-${_SMALLCORE8}"
         ln -sf ${_A} ${_B}
       fi
     fi
@@ -3950,7 +3950,7 @@ satellite_make() {
   echo "_SMALLCORE7=\"${_SMALLCORE7}\""               >> ${writeTo}
   echo "_SMALLCORE8=\"${_SMALLCORE8}\""               >> ${writeTo}
   echo "_SMALLCORE9=\"${_SMALLCORE9}\""               >> ${writeTo}
-  echo "_SOCIAL_CORE=\"${_SOCIAL_CORE}\""             >> ${writeTo}
+  echo "_SOCIAL_CORE=\"${_SMALLCORE8}\""              >> ${writeTo}
   echo "_SOCIAL=\"${_SOCIAL}\""                       >> ${writeTo}
   echo "_SPINNER=\"${_SPINNER}\""                     >> ${writeTo}
   echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${writeTo}
@@ -3959,7 +3959,7 @@ satellite_make() {
   echo "_THIS_DB_PORT=\"${_THIS_DB_PORT}\""           >> ${writeTo}
   echo "_THIS_OS=\"${_THIS_OS}\""                     >> ${writeTo}
   echo "_THISHTIP=\"${_THISHTIP}\""                   >> ${writeTo}
-  echo "_THUNDER_CORE=\"${_THUNDER_CORE}\""           >> ${writeTo}
+  echo "_THUNDER_CORE=\"${_SMALLCORE9}\""             >> ${writeTo}
   echo "_THUNDER=\"${_THUNDER}\""                     >> ${writeTo}
   echo "_TODAY=\"${_TODAY}\""                         >> ${writeTo}
   echo "_UBERCART6=\"${_UBERCART6}\""                 >> ${writeTo}

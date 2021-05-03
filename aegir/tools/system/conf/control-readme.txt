@@ -213,14 +213,14 @@
 ###
 ### Drupal 9 based
 ###
+### LHG ----------- Lightning
 ### THR ----------- Thunder
+### VBE ----------- Varbase
 ###
 ### Drupal 8 based
 ###
-### LHG ----------- Lightning
 ### OPG ----------- Opigno LMS
 ### SOC ----------- Social
-### VBE ----------- Varbase
 ###
 ### Drupal 7 based
 ###
