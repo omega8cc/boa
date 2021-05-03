@@ -16,7 +16,13 @@ are installed by default anymore, unless their keywords are listed in the file:
 
   ~/static/control/platforms.info (please read further below for details)
 
+NEW! You can now launch Aegir upgrade to install supported Drupal platforms
+by creating temporary pid file:
+
+  ~/static/control/run-upgrade.pid (please read further below for details)
+
 TL;DR
+* Yes, you can launch Aegir upgrade to add supported platforms in minutes!
 * Yes, blazing fast site clone/migrate mode is available even for giant sites!
 * Yes, BOA still supports Pressflow 6 (LTS version only!)
 * No, we no longer install any supported Drupal distros as platforms by default.
@@ -69,12 +75,11 @@ Please read for more details:
   https://github.com/omega8cc/boa/blob/master/docs/SOLR.txt
 
 
-@=> Drupal platforms and Composer support
+@=> Drupal platforms
 
 We no longer install any supported Drupal distros as platforms by default, but
-you can customize Octopus platform list via control file, which will be used
-on the next Octopus upgrade (you can request it individually if you are on
-hosted Aegir service):
+you can customize Aegir platform list via control file, which will be used
+on the next Aegir upgrade, which can be launched easily on demand:
 
   ~/static/control/platforms.info
 
@@ -129,22 +134,38 @@ Examples:
   ALL
   LHG VBE D7P D7S D7D
 
+
+@=> Aegir upgrade on demand
+
+You can now launch Aegir upgrade to install platforms listed in the file
+~/static/control/platforms.info by creating empty pid file:
+
+  ~/static/control/run-upgrade.pid
+
+This file, if exists, will launch your Aegir upgrade in just a few minutes,
+and will be automatically deleted afterwards. This means that you can upgrade
+your Aegir instance easily to install or re-install supported platforms
+even if you don't have root access or are on hosted BOA system.
+
+
+@=> Composer 2 support
+
 Composer will now use PHP 7.3 by default, and you can find many useful hints at:
   https://github.com/omega8cc/boa/blob/master/docs/COMPOSER.txt
 
-IMPORTANT: You must switch your ~/static/control/cli.info to 7.2 or newer
+IMPORTANT: You must switch your ~/static/control/cli.info to 7.3 or newer
 PHP version (BOA hosted on Omega8.cc comes with 7.4, 7.3 and 7.2), because
-D8 based distros require at least PHP 7.2 -- this also means that to run
-the sites installed after switching cli.info to 7.2 or newer, you will also
-need to either switch your ~/static/control/fpm.info to 7.2 or newer, or
+D8 based distros require at least PHP 7.3 -- this also means that to run
+the sites installed after switching cli.info to 7.3 or newer, you will also
+need to either switch your ~/static/control/fpm.info to 7.3 or newer, or
 more probably, to not break any existing sites not compatible with PHP 7.2+
 you will need to list these D8 sites names in ~/static/control/multi-fpm.info
 
 Please check for more information:
   https://learn.omega8.cc/how-to-quickly-switch-php-to-newer-version-330
 
-BOA supports Drupal 8 codebases both with classic directory structure like
-in Drupal 7 and also Drupal 8 distros you can download from Drupal.org, but
+BOA supports Drupal 8/9 codebases both with classic directory structure like
+in Drupal 7 and also Drupal 8/9 distros you can download from Drupal.org, but
 if you use Composer based codebase with different structure, the platform path
 is not the codebase root directory, but the subdirectory where you see the
 Drupal own index.php and "core" subdirectory. It can be platform-name/web or
