@@ -93,19 +93,18 @@ or one per line:
 
 Drupal 9 based
 
+  LHG ----------- Lightning
   THR ----------- Thunder
+  VBE ----------- Varbase
 
 Drupal 8 based
 
-  LHG ----------- Lightning
   OPG ----------- Opigno LMS
   SOC ----------- Social
-  VBE ----------- Varbase
 
 Drupal 7 based
 
   D7P D7S D7D --- Drupal 7 prod/stage/dev
-  AGV ----------- aGov
   CME ----------- Commerce v.2
   CS7 ----------- Commons
   DCE ----------- Commerce v.1
