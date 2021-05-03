@@ -226,7 +226,6 @@
 ###
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### CME ----------- Commerce v.2
-### CS7 ----------- Commons
 ### DCE ----------- Commerce v.1
 ### GDR ----------- Guardr
 ### OA7 ----------- OpenAtrium
@@ -242,7 +241,6 @@
 ### Drupal 6 based
 ###
 ### D6P D6S D6D --- Pressflow (LTS) prod/stage/dev
-### DCS ----------- Commons
 ### UCT ----------- Ubercart
 ###
 ### You can also use special keyword 'ALL' instead of any other symbols to have

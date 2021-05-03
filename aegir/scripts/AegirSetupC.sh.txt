@@ -2806,8 +2806,8 @@ drupal7_install
 #agov_install
 commerce_7_1_install
 commerce_7_2_install
-commons_6_install
-commons_7_install
+#commons_6_install
+#commons_7_install
 
 ### _USE_DISTRO_CORE=YES
 ### erpal_install

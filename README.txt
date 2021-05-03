@@ -170,7 +170,6 @@ Octopus can install and/or support the platforms listed below:
 
  Commerce 1.66 ---------------- https://drupal.org/project/commerce_kickstart
  Commerce 2.70 ---------------- https://drupal.org/project/commerce_kickstart
- Commons 3.50 ----------------- https://drupal.org/project/commons
  Drupal 7.80.1 ---------------- https://drupal.org/project/drupal/releases/7.80
  Guardr 2.55 ------------------ https://drupal.org/project/guardr
  OpenAid 2.8 ------------------ https://drupal.org/project/openaid
@@ -185,7 +184,6 @@ Octopus can install and/or support the platforms listed below:
 
  @ Pressflow (D6 LTS included, thanks to myDropWizard) 6.57.1
 
- Commons 2.27 ----------------- https://drupal.org/project/commons
  Pressflow 6.57.1 ------------- http://pressflow.org
  Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
 
