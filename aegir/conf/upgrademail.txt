@@ -16,8 +16,8 @@ are installed by default anymore, unless their keywords are listed in the file:
 
   ~/static/control/platforms.info (please read further below for details)
 
-NEW! You can now launch Aegir upgrade to install supported Drupal platforms
-by creating temporary pid file:
+(NEW!) You can now launch Aegir upgrade and (re)install any supported
+Drupal platforms by creating temporary pid file:
 
   ~/static/control/run-upgrade.pid (please read further below for details)
 
@@ -135,7 +135,7 @@ Examples:
   LHG VBE D7P D7S D7D
 
 
-@=> Aegir upgrade on demand
+@=> Aegir self-upgrade in minutes (NEW!)
 
 You can now launch Aegir upgrade to install platforms listed in the file
 ~/static/control/platforms.info by creating empty pid file:
@@ -143,8 +143,8 @@ You can now launch Aegir upgrade to install platforms listed in the file
   ~/static/control/run-upgrade.pid
 
 This file, if exists, will launch your Aegir upgrade in just a few minutes,
-and will be automatically deleted afterwards. This means that you can upgrade
-your Aegir instance easily to install or re-install supported platforms
+and will be automatically deleted afterwards. This means that you can easily
+upgrade your Aegir instance easily to install/re-install supported platforms
 even if you don't have root access or are on hosted BOA system.
 
 
