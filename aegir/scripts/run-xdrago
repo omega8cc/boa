@@ -32,6 +32,37 @@ check_root() {
 }
 check_root
 
+cleanup() {
+  buildTest="1"
+  tpDir="/data/disk/${_H_USER}/.tmp"
+  ceDir="${tpDir}/cache"
+  dlDir="${ceDir}/download"
+  gtDir="${ceDir}/git"
+  clCtr="/data/disk/${_H_USER}/static/control/clear-drush-cache.info"
+  exCtr="/data/disk/${_H_USER}/backups/tmp_expim/metadata"
+  if [ -e "${tpDir}" ]; then
+    buildTest=$(ls ${tpDir} | grep "_tmp_" | wc -l | tr -d "\n" 2>&1)
+    buildTest=${buildTest//[^0-9]/}
+  fi
+  if [ -e "${clCtr}" ]; then
+    if [ -e "${exCtr}" ]; then
+      rm -f ${exCtr}
+      rm -f ${clCtr}
+      buildTest="0"
+    fi
+    if [ -e "${gtDir}" ] || [ "${buildTest}" -ge "1" ]; then
+      rm -rf ${tpDir}/*
+      rm -f ${clCtr}
+      buildTest="0"
+    fi
+  fi
+  if [ "${buildTest}" = "0" ] && [ -e "${gtDir}" ]; then
+    rm -rf ${gtDir}
+    rm -rf ${dlDir}
+  fi
+}
+cleanup
+
 count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
@@ -66,42 +97,6 @@ load_control() {
   _O_LOAD_SPR=$(( 99 * _CPU_SPIDER_RATIO ))
 }
 
-action() {
-  if [ "${_O_LOAD}" -lt "${_O_LOAD_SPR}" ]; then
-    ### echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_SPR}"
-    buildTest="1"
-    tpDir="/data/disk/${_H_USER}/.tmp"
-    ceDir="${tpDir}/cache"
-    dlDir="${ceDir}/download"
-    gtDir="${ceDir}/git"
-    clCtr="/data/disk/${_H_USER}/static/control/clear-drush-cache.info"
-    if [ -e "${tpDir}" ]; then
-      buildTest=$(ls ${tpDir} | grep "_tmp_" | wc -l | tr -d "\n" 2>&1)
-      buildTest=${buildTest//[^0-9]/}
-    fi
-    if [ -e "${clCtr}" ]; then
-      if [ -e "${gtDir}" ] || [ "${buildTest}" -ge "1" ]; then
-        rm -rf ${tpDir}/*
-        rm -f ${clCtr}
-        buildTest="0"
-      fi
-    fi
-    if [ "${buildTest}" = "0" ] && [ -e "${gtDir}" ]; then
-      rm -rf ${gtDir}
-      rm -rf ${dlDir}
-    fi
-    if [ "${buildTest}" = "0" ] \
-      || [ -z "${buildTest}" ] \
-      || [ ! -e "${ceDir}" ]; then
-      su -s /bin/bash - ${_H_USER} -c "drush8 cc drush" &> /dev/null
-      su -s /bin/bash - ${_H_USER} -c "bash /data/disk/${_H_USER}/aegir.sh"
-      touch /var/xdrago/log/last-run-${_H_USER}
-    else
-      touch /var/xdrago/log/skip-run-${_H_USER}
-    fi
-  fi
-}
-
 if_octopus_upgrade() {
   if [ "${_O_LOAD}" -lt "${_O_LOAD_SPR}" ]; then
     upCtr="/data/disk/${_H_USER}/static/control/run-upgrade.pid"
@@ -110,6 +105,20 @@ if_octopus_upgrade() {
       rm -f ${upCtr}
       rm -f /root/.silent.update.cnf
       bash /opt/local/bin/octopus up-head ${_H_USER} force log
+    fi
+  fi
+}
+
+action() {
+  if [ "${_O_LOAD}" -lt "${_O_LOAD_SPR}" ]; then
+    if [ "${buildTest}" = "0" ] \
+      || [ -z "${buildTest}" ] \
+      || [ ! -e "${ceDir}" ]; then
+      su -s /bin/bash - ${_H_USER} -c "drush8 cc drush" &> /dev/null
+      su -s /bin/bash - ${_H_USER} -c "bash /data/disk/${_H_USER}/aegir.sh"
+      touch /var/xdrago/log/last-run-${_H_USER}
+    else
+      touch /var/xdrago/log/skip-run-${_H_USER}
     fi
   fi
 }
