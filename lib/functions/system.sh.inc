@@ -4703,6 +4703,15 @@ install_update_xdrago() {
         wait
       fi
     fi
+    if [ ! -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
+      _NGINX_DONTCOUNT_KEYWORDS=${_NGINX_DONTCOUNT_KEYWORDS//[^a-zA-Z0-9|]/}
+      if [ ! -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
+        msg "INFO: Configured _NGINX_DONTCOUNT_KEYWORDS: ${_NGINX_DONTCOUNT_KEYWORDS}"
+        sed -i "s/dontcount/${_NGINX_DONTCOUNT_KEYWORDS}/g" \
+          /var/xdrago/monitor/check/scan_nginx &> /dev/null
+        wait
+      fi
+    fi
     mv -f /etc/cron.daily/mlocate ${vBs}/ &> /dev/null
     cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
     if [ -e "/var/xdrago/cron/custom.txt" ]; then
@@ -4785,6 +4794,15 @@ install_update_xdrago() {
       if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
         msg "INFO: Configured _NGINX_DOS_KEYWORDS: ${_NGINX_DOS_KEYWORDS}"
         sed -i "s/foobar/${_NGINX_DOS_KEYWORDS}/g" \
+          /var/xdrago/monitor/check/scan_nginx &> /dev/null
+        wait
+      fi
+    fi
+    if [ ! -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
+      _NGINX_DONTCOUNT_KEYWORDS=${_NGINX_DONTCOUNT_KEYWORDS//[^a-zA-Z0-9|]/}
+      if [ ! -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
+        msg "INFO: Configured _NGINX_DONTCOUNT_KEYWORDS: ${_NGINX_DONTCOUNT_KEYWORDS}"
+        sed -i "s/dontcount/${_NGINX_DONTCOUNT_KEYWORDS}/g" \
           /var/xdrago/monitor/check/scan_nginx &> /dev/null
         wait
       fi

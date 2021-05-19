@@ -105,6 +105,10 @@ sub makeactions
           ### print "Not Counted Static Request URI: $line\n";
           $skip_post = 1;
         }
+        elsif ($line =~ /dontcount/) {
+          ### print "Not Counted Static Request URI: $line\n";
+          $skip_post = 1;
+        }
         else {
           $li_cnt{$VISITOR}++;
         }
@@ -163,6 +167,10 @@ sub makeactions
           ### print "Not Counted Static Request URI: $line\n";
           $skip_post = 1;
         }
+        elsif ($line =~ /dontcount/) {
+          ### print "Not Counted Static Request URI: $line\n";
+          $skip_post = 1;
+        }
         else {
           $px_cnt{$PROXY}++;
         }
@@ -197,7 +205,6 @@ sub makeactions
       $critnumber = $critnumber - 50 if ($critnumber > 250);
       $critnumber = 8888 if ($isloggedin); ### don't block logged in users
       $critnumber = 8888 if ($VISITOR eq $myip); ### don't block own IP
-      $critnumber = 8888 if ($VISITOR eq "173.231.133.190"); ### don't block LGA8 IP
       print "===[$isloggedin] VISITOR li_cnt $VISITOR is logged in===\n" if ($isloggedin);
       print "===[$critnumber] VISITOR li_cnt critnumber for $VISITOR===\n" if ($VISITOR);
       local($blocked) = 0;
@@ -224,7 +231,6 @@ sub makeactions
       $critnumber = $critnumber - 50 if ($critnumber > 250);
       $critnumber = 7777 if ($isloggedin); ### don't block logged in users
       $critnumber = 7777 if ($PROXY eq $myip); ### don't block own IP
-      $critnumber = 7777 if ($PROXY eq "173.231.133.190"); ### don't block LGA8 IP
       print "===[$isloggedin] PROXY px_cnt $PROXY is logged in===\n" if ($isloggedin);
       print "===[$critnumber] PROXY px_cnt critnumber for $PROXY===\n" if ($PROXY);
       local($blocked) = 0;
@@ -251,7 +257,6 @@ sub makeactions
       $critnumber = $critnumber - 50 if ($critnumber > 250);
       $critnumber = 9999 if ($isloggedin); ### don't block logged in users
       $critnumber = 9999 if ($VISITOR eq $myip); ### don't block own IP
-      $critnumber = 9999 if ($VISITOR eq "173.231.133.190"); ### don't block LGA8 IP
       print "===[$isloggedin] VISITOR im_li_cnt $VISITOR is logged in===\n" if ($isloggedin);
       print "===[$critnumber] VISITOR im_li_cnt critnumber for $VISITOR===\n" if ($VISITOR);
       local($blocked) = 0;
@@ -278,7 +283,6 @@ sub makeactions
       $critnumber = $critnumber - 50 if ($critnumber > 250);
       $critnumber = 5555 if ($isloggedin); ### don't block logged in users
       $critnumber = 5555 if ($PROXY eq $myip); ### don't block own IP
-      $critnumber = 5555 if ($PROXY eq "173.231.133.190"); ### don't block LGA8 IP
       print "===[$isloggedin] PROXY im_px_cnt $PROXY is logged in===\n" if ($isloggedin);
       print "===[$critnumber] PROXY im_px_cnt critnumber for $PROXY===\n" if ($PROXY);
       local($blocked) = 0;
