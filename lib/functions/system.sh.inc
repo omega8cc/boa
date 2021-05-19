@@ -4695,7 +4695,7 @@ install_update_xdrago() {
       /var/xdrago/monitor/check/scan_nginx &> /dev/null
     wait
     if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
-      _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|]/}
+      _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|-]/}
       if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
         msg "INFO: Configured _NGINX_DOS_KEYWORDS: ${_NGINX_DOS_KEYWORDS}"
         sed -i "s/foobar/${_NGINX_DOS_KEYWORDS}/g" \
@@ -4704,7 +4704,7 @@ install_update_xdrago() {
       fi
     fi
     if [ ! -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
-      _NGINX_DONTCOUNT_KEYWORDS=${_NGINX_DONTCOUNT_KEYWORDS//[^a-zA-Z0-9|]/}
+      _NGINX_DONTCOUNT_KEYWORDS=${_NGINX_DONTCOUNT_KEYWORDS//[^a-zA-Z0-9|-]/}
       if [ ! -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
         msg "INFO: Configured _NGINX_DONTCOUNT_KEYWORDS: ${_NGINX_DONTCOUNT_KEYWORDS}"
         sed -i "s/dontcount/${_NGINX_DONTCOUNT_KEYWORDS}/g" \
@@ -4790,7 +4790,7 @@ install_update_xdrago() {
       /var/xdrago/monitor/check/scan_nginx &> /dev/null
     wait
     if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
-      _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|]/}
+      _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|-]/}
       if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
         msg "INFO: Configured _NGINX_DOS_KEYWORDS: ${_NGINX_DOS_KEYWORDS}"
         sed -i "s/foobar/${_NGINX_DOS_KEYWORDS}/g" \
@@ -4799,7 +4799,7 @@ install_update_xdrago() {
       fi
     fi
     if [ ! -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
-      _NGINX_DONTCOUNT_KEYWORDS=${_NGINX_DONTCOUNT_KEYWORDS//[^a-zA-Z0-9|]/}
+      _NGINX_DONTCOUNT_KEYWORDS=${_NGINX_DONTCOUNT_KEYWORDS//[^a-zA-Z0-9|-]/}
       if [ ! -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
         msg "INFO: Configured _NGINX_DONTCOUNT_KEYWORDS: ${_NGINX_DONTCOUNT_KEYWORDS}"
         sed -i "s/dontcount/${_NGINX_DONTCOUNT_KEYWORDS}/g" \
