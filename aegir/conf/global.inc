@@ -130,7 +130,7 @@ if (isset($_SERVER['HTTP_HOST']) &&
 
 
 /**
- * Fix for Mollom, CloudFlare and others running via Proxy
+ * Fix for Akamai, CloudFlare and others running via Proxy
  */
 if (isset($_SERVER['REMOTE_ADDR'])) {
   if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) &&
@@ -144,6 +144,10 @@ if (isset($_SERVER['REMOTE_ADDR'])) {
   if (isset($_SERVER['HTTP_CF_CONNECTING_IP']) &&
       $_SERVER['HTTP_CF_CONNECTING_IP'] != "127.0.0.1") {
     $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
+  }
+  if (isset($_SERVER['HTTP_TRUE_CLIENT_IP']) &&
+      $_SERVER['HTTP_TRUE_CLIENT_IP'] != "127.0.0.1") {
+    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_TRUE_CLIENT_IP'];
   }
 }
 
