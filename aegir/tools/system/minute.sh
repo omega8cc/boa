@@ -33,6 +33,9 @@ sql_restart() {
   echo "$(date 2>&1) $1 incident detected"                          >> ${pthOml}
   sleep 5
   echo "$(date 2>&1) $1 incident response started"                  >> ${pthOml}
+  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}')
+  killall sleep
+  killall php
   bash /var/xdrago/move_sql.sh
   echo "$(date 2>&1) $1 incident mysql restarted"                   >> ${pthOml}
   echo "$(date 2>&1) $1 incident response completed"                >> ${pthOml}
@@ -198,6 +201,9 @@ oom_restart() {
   echo "$(date 2>&1) OOM $1 detected"                               >> ${pthOml}
   sleep 5
   echo "$(date 2>&1) OOM incident response started"                 >> ${pthOml}
+  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}')
+  killall sleep
+  killall php
   mv -f /var/log/nginx/error.log /var/log/nginx/`date +%y%m%d-%H%M`-error.log
   kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}')
   echo "$(date 2>&1) OOM nginx stopped"                             >> ${pthOml}
