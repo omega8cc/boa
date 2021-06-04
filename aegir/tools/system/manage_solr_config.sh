@@ -82,7 +82,7 @@ write_solr_config() {
     && [ -e "${Dir}" ]; then
     if [ "${3}" = "solr7" ]; then
       _PRT="9077"
-      _VRS="7.6.0"
+      _VRS="7.7.3"
     else
       _PRT="8099"
       _VRS="4.9.1"

@@ -67,7 +67,7 @@
   * Your (optional) Chive Percona Manager will be available at https://chive.master.f-q-d-n
   * Your (optional) Collectd Graph Panel will be available at https://cgp.master.f-q-d-n
   * Your (optional) CSF/LFD Firewall will support integrated Nginx Abuse Guard.
-  * Your (optional) MultiCore Apache Solr 7.6.0 will listen on 127.0.0.1:9077
+  * Your (optional) MultiCore Apache Solr 7.7.3 will listen on 127.0.0.1:9077
   * Your (optional) MultiCore Apache Solr 4.9.1 with Jetty 9 will listen on 127.0.0.1:8099
   * Your (optional) MultiCore Apache Solr 3.6.2 with Jetty 8 will listen on 127.0.0.1:8088 (deprecated)
   * Your (optional) MultiCore Apache Solr 1.4.1 with Jetty 7 will listen on 127.0.0.1:8077 (deprecated)
