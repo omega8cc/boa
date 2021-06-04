@@ -2073,6 +2073,7 @@ get_drush_ten() {
   rm -rf /opt/tools/drush/10/*
   cd /opt/tools/drush/10/
   get_dev_ext "drush-${_DRUSH_TEN_VRN}.tar.gz"
+  touch /opt/tools/drush/10/.ctrl.${_X_SE}.pid
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH_TEN_VRN} installation complete"
   fi
@@ -2084,6 +2085,7 @@ get_drush_eight() {
   rm -rf /opt/tools/drush/8/*
   cd /opt/tools/drush/8/
   get_dev_ext "drush-${_DRUSH_EIGHT_VRN}.tar.gz"
+  touch /opt/tools/drush/8/.ctrl.${_X_SE}.pid
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH_EIGHT_VRN} installation complete"
   fi
@@ -2121,7 +2123,8 @@ get_drush_versions() {
       | cut -d" " -f8 \
       | awk '{ print $1}' 2>&1)
     if [ "${_DRUSH_ITD}" != "${_DRUSH_EIGHT_VRN}" ] \
-      || [ ! -x "/opt/tools/drush/8/drush/drush" ]; then
+      || [ ! -x "/opt/tools/drush/8/drush/drush" ] \
+      || [ ! -e "/opt/tools/drush/8/.ctrl.${_X_SE}.pid" ]; then
       msg "INFO: Drush ${_DRUSH_EIGHT_VRN} re-installation required"
       get_drush_eight
     else
@@ -2134,7 +2137,8 @@ get_drush_versions() {
       | cut -d" " -f4 \
       | awk '{ print $1}' 2>&1)
     if [ "${_DRUSH_ITD}" != "${_DRUSH_TEN_VRN}" ] \
-      || [ ! -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
+      || [ ! -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ] \
+      || [ ! -e "/opt/tools/drush/10/.ctrl.${_X_SE}.pid" ]; then
       msg "INFO: Drush ${_DRUSH_TEN_VRN} re-installation required"
       get_drush_ten
     else
