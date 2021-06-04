@@ -6,7 +6,7 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _CSF_VRN="14.08"
 _PROXYSQL_VRN="1.3.5-debian8_amd64"
 _UTIL_VRN="0.30.216-pre3126"
-_VNSTAT_VRN="2.2"
+_VNSTAT_VRN="2.7"
 _APT_XTR="-y --force-yes"
 _INST="/usr/bin/apt-get -y --allow-unauthenticated install"
 
