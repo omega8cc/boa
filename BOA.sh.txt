@@ -279,6 +279,7 @@ update_agents() {
       mysql -u root -e "SET GLOBAL max_connect_errors = 80;"
       mysql -u root -e "SET GLOBAL max_connections = 100;"
       mysql -u root -e "SET GLOBAL max_user_connections = 80;"
+      mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [ "${InTest}" -ge "9" ] && [ "${InTest}" -le "25" ]; then
       rm -f /root/.fast.cron.cnf
@@ -288,6 +289,7 @@ update_agents() {
       mysql -u root -e "SET GLOBAL max_connect_errors = 80;"
       mysql -u root -e "SET GLOBAL max_connections = 200;"
       mysql -u root -e "SET GLOBAL max_user_connections = 80;"
+      mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [ "${InTest}" -gt "25" ]; then
       rm -f /root/.fast.cron.cnf
@@ -297,6 +299,7 @@ update_agents() {
       mysql -u root -e "SET GLOBAL max_connect_errors = 80;"
       mysql -u root -e "SET GLOBAL max_connections = 200;"
       mysql -u root -e "SET GLOBAL max_user_connections = 80;"
+      mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [[ "${PrTestPower}" =~ "POWER" ]]; then
       echo ${InTest} > /root/.tg.cnf
@@ -306,6 +309,7 @@ update_agents() {
       mysql -u root -e "SET GLOBAL max_connect_errors = 150;"
       mysql -u root -e "SET GLOBAL max_connections = 200;"
       mysql -u root -e "SET GLOBAL max_user_connections = 150;"
+      mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
       echo ${InTest} > /root/.tg.cnf
@@ -315,6 +319,7 @@ update_agents() {
       mysql -u root -e "SET GLOBAL max_connect_errors = 150;"
       mysql -u root -e "SET GLOBAL max_connections = 200;"
       mysql -u root -e "SET GLOBAL max_user_connections = 150;"
+      mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     mysql -u root -e "SET GLOBAL optimizer_switch='derived_merge=off';"
     if [ -e "/root/.tg.cnf" ]; then
