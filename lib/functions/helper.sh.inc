@@ -64,7 +64,7 @@ not_supported_virt() {
   echo " * Linux VServer guest"
   echo " * Parallels guest"
   echo " * VirtualBox guest"
-  echo " * VMware ESXi guest"
+  echo " * VMware ESXi guest (but excluding vCloud Air)"
   echo " * Xen guest"
   echo
   echo "BOA is not designed to run directly on a bare metal."
