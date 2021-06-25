@@ -60,7 +60,9 @@ if (function_exists('drush_get_command')) {
     $is_backend = TRUE;
   }
   if (preg_match("/^(provision-install|provision-save|provision-backup|php-eval)/", $command[0])) {
-    $is_install = TRUE;
+    if (!is_readable('/data/conf/clstr.cnf')) {
+      $is_install = TRUE;
+    }
   }
 }
 
