@@ -134,6 +134,7 @@ install() {
     apt-get install python-dev -y        &> /dev/null
     apt-get install python-lockfile -y   &> /dev/null
     apt-get install python-setuptools -y &> /dev/null
+    apt-get install python-monotonic -y  &> /dev/null
     apt-get install s3cmd -y             &> /dev/null
     mkdir -p /var/opt
     rm -rf /var/opt/{fasteners*,boto*,duplicity*}
