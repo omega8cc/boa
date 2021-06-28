@@ -4216,6 +4216,7 @@ sys_packages_install() {
               libonig-dev \
               libpam-umask \
               libpq5 \
+              librsync-dev \
               libsasl2-modules \
               libsqlite3-dev \
               libssl-dev \
@@ -4246,13 +4247,16 @@ sys_packages_install() {
               postfix-pcre \
               pwgen \
               python-dev \
-              python-dev \
+              python-lockfile \
+              python-monotonic \
+              python-setuptools \
               python3-debian \
               python3-magic \
               re2c \
               rkhunter \
               rrdtool \
               rsync \
+              s3cmd \
               shtool \
               sipcalc \
               sqlite3 \
