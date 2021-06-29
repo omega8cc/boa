@@ -1446,8 +1446,6 @@ install_db_cluster() {
     echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /vservers/${idn}/etc/apt/preferences.d/00percona.pref
     _KEYS_SIG="8507EFA5"
     vserver ${idn} exec apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}"
-    vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}"
-    vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add -
   	vserver ${idn} exec apt-get update -qq
   	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57
   	vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24
@@ -1635,8 +1633,6 @@ upgrade_db_cluster() {
     until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
       echo "INFO: Retrieving ${_KEYS_SIG} key on ${idn}/${IP}..."
       vserver ${idn} exec apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}"
-      vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}"
-      vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add -
       _KEYS_SERVER_TEST=$(vserver ${idn} exec ${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
       sleep 2
       if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "1" ]; then
@@ -1646,8 +1642,6 @@ upgrade_db_cluster() {
       fi
     done
     vserver ${idn} exec apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}"
-    vserver ${idn} exec ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}"
-    vserver ${idn} exec ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add -
   	vserver ${idn} exec apt-get update -qq
   	vserver ${idn} exec ${_INSTAPP} bc
   	vserver ${idn} exec apt-get upgrade ${_APT_XTR}

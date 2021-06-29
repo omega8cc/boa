@@ -144,8 +144,6 @@ if [ ! -e "${percList}" ] \
   until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
     echo "Retrieving ${_KEYS_SIG} key.."
     apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}" &> /dev/null
-    ${_GPG} --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys "${_KEYS_SIG}" &> /dev/null
-    ${_GPG} --export --armor "${_KEYS_SIG}" | apt-key add - &> /dev/null
     _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
     sleep 2
     if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "1" ]; then
