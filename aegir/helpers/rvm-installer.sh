@@ -3,6 +3,7 @@
 shopt -s extglob
 set -o errtrace
 set -o errexit
+set -o pipefail
 
 rvm_install_initialize()
 {
@@ -26,7 +27,9 @@ rvm_install_initialize()
 
 log()  { printf "%b\n" "$*"; }
 debug(){ [[ ${rvm_debug_flag:-0} -eq 0 ]] || printf "%b\n" "$*" >&2; }
-fail() { log "\nERROR: $*\n" >&2 ; exit 1 ; }
+warn() { log "WARN: $*" >&2 ; }
+fail() { fail_with_code 1 "$*" ; }
+fail_with_code() { code="$1" ; shift ; log "\nERROR: $*\n" >&2 ; exit "$code" ; }
 
 rvm_install_commands_setup()
 {
@@ -256,9 +259,10 @@ fetch_version()
       return 0
     fi
   done
+  fail_with_code 4 "Exhausted all sources trying to fetch version '$version' of RVM!"
 }
 
-# Returns a sorted list of all version tags from a repository
+# Returns a sorted list of most recent tags from a repository
 fetch_versions()
 {
   typeset _account _domain _repo _url
@@ -267,7 +271,7 @@ fetch_versions()
   _repo=$3
   case ${_domain} in
     (bitbucket.org)
-      _url=https://${_domain}/api/1.0/repositories/${_account}/${_repo}/branches-tags
+      _url="https://api.${_domain}/2.0/repositories/${_account}/${_repo}/refs/tags?sort=-name&pagelen=20"
       ;;
     (github.com)
       _url=https://api.${_domain}/repos/${_account}/${_repo}/tags
@@ -277,8 +281,9 @@ fetch_versions()
       _url=https://${_domain}/api/v3/repos/${_account}/${_repo}/tags
       ;;
   esac
-  __rvm_curl -s ${_url} |
-    \awk -v RS=',' -v FS='"' '$2=="name"{print $4}' |
+
+  { __rvm_curl -sS "${_url}" || warn "...the preceeding error with code $? occurred while fetching $_url" ; } |
+    \awk -v RS=',|values":' -v FS='"' '$2=="name"&&$4!="rvm"{print $4}' |
     sort -t. -k 1,1n -k 2,2n -k 3,3n -k 4,4n -k 5,5n
 }
 
@@ -802,7 +807,7 @@ rvm_install_validate_volume_mount_mode()
         partition=`df -P $path | awk 'END{print $1}'`
 
         test_exec=$(mktemp $path/rvm-exec-test.XXXXXX)
-        echo '#!/bin/bash' > "$test_exec"
+        echo '#!/bin/sh' > "$test_exec"
         chmod +x "$test_exec"
 
         if ! "$test_exec"
@@ -826,7 +831,7 @@ and re-mount partition ${partition} without the noexec option."
 
 rvm_install_select_and_get_version()
 {
-  typeset _version_release
+  typeset dir _version_release _version
 
   for dir in "$rvm_src_path" "$rvm_archives_path"
   do
@@ -837,24 +842,27 @@ rvm_install_select_and_get_version()
   case "${version}" in
     (head)
       _version_release="${branch}"
-      install_head sources[@] ${branch:-master} || exit $?
+      install_head sources[@] ${branch:-master}
       ;;
 
     (latest)
-      install_release sources[@] $(fetch_version sources[@]) || exit $?
+      _version=$(fetch_version sources[@])
+      install_release sources[@] "$_version"
       ;;
 
     (latest-minor)
-      version="$(\cat "$rvm_path/VERSION")"
-      install_release sources[@] $(fetch_version sources[@] ${version%.*}) || exit $?
+      version="$(<"$rvm_path/VERSION")"
+      _version=$(fetch_version sources[@] ${version%.*})
+      install_release sources[@] "$_version"
       ;;
 
     (latest-*)
-      install_release sources[@] $(fetch_version sources[@] ${version#latest-}) || exit $?
+      _version=$(fetch_version sources[@] ${version#latest-})
+      install_release sources[@] "$_version"
       ;;
 
     (+([[:digit:]]).+([[:digit:]]).+([[:digit:]])) # x.y.z
-      install_release sources[@] ${version} || exit $?
+      install_release sources[@] ${version}
       ;;
 
     (*)
