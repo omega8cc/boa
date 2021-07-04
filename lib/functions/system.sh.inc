@@ -3042,7 +3042,8 @@ finale() {
       || [[ "${_T_SERIES_TEST}" =~ "BOA-2.3.8" ]]; then
       _DO_NOTHING=YES
     else
-      fix_core_dgd
+      _DO_NOTHING=YES
+      # fix_core_dgd
     fi
   fi
   mv -f /etc/motd ${vBs}/dragon/t/motd-pre-${_X_VERSION}-${_NOW} &> /dev/null
