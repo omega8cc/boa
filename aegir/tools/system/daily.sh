@@ -2720,6 +2720,7 @@ process() {
               run_drush8_hmr_cmd "dis update syslog dblog -y"
               run_drush8_hmr_cmd "cron"
               run_drush8_hmr_cmd "cc all"
+              run_drush8_hmr_cmd "utf8mb4-convert-databases -y"
               touch ${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info
             fi
           else
@@ -3580,6 +3581,7 @@ else
   su -s /bin/bash - aegir -c "drush @hostmaster dis update syslog dblog -y" &> /dev/null
   su -s /bin/bash - aegir -c "drush @hostmaster cron" &> /dev/null
   su -s /bin/bash - aegir -c "drush @hostmaster cc all" &> /dev/null
+  su -s /bin/bash - aegir -c "drush @hostmaster utf8mb4-convert-databases -y" &> /dev/null
 
   action >/var/xdrago/log/daily/daily-${_NOW}.log 2>&1
 
