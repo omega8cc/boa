@@ -115,7 +115,6 @@ max_allowed_packet      = 256M
 quote-names
 
 [mysql]
-character-set-client    = utf8mb4
 no-auto-rehash
 
 [myisamchk]
