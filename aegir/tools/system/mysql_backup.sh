@@ -213,6 +213,7 @@ backup_this_database_with_mysqldump() {
     --quick \
     --no-autocommit \
     --skip-add-locks \
+    --no-tablespaces \
     --hex-blob ${_DB} \
     > ${_SAVELOCATION}/${_DB}.sql
 }
