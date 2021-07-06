@@ -355,7 +355,7 @@ SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
             fi
             mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
-CREATE DATABASE ${_DBN} CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+CREATE DATABASE ${_DBN} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '${_DBN}'@'localhost';
 CREATE USER IF NOT EXISTS '${_DBN}'@'%';
 GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'localhost' WITH GRANT OPTION;

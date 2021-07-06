@@ -1252,7 +1252,7 @@ default_storage_engine  = InnoDB
 lc_messages_dir         = /usr/share/mysql
 lc_messages             = en_US
 character_set_server    = utf8mb4
-collation_server        = utf8mb4_general_ci
+collation_server        = utf8mb4_unicode_ci
 transaction-isolation   = READ-COMMITTED
 transaction-read-only   = OFF
 skip-external-locking
