@@ -89,6 +89,7 @@ _THIS_DB_PORT=3306
 octCnf="/root/.${_USER}.octopus.cnf"
 octInc="${_ROOT}/config/includes"
 octTpl="${_ROOT}/.drush/sys/provision/http/Provision/Config/Nginx"
+octSetTpl="${_ROOT}/.drush/sys/provision/Provision/Config/Drupal"
 
 
 ###
