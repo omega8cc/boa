@@ -1238,7 +1238,7 @@ wsrep_node_name=\"'${IP}'\"
 [client]
 port                    = 3306
 socket                  = /var/run/mysqld/mysqld.sock
-character-set-client    = utf8mb4
+default-character-set   = utf8mb4
 
 [mysqld]
 user                    = mysql
@@ -1349,7 +1349,6 @@ max_allowed_packet      = 256M
 quote-names
 
 [mysql]
-character-set-client    = utf8mb4
 no-auto-rehash
 
 [myisamchk]
