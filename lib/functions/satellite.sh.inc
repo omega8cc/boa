@@ -1270,6 +1270,9 @@ satellite_sub_satellite_force_advanced_nginx_config() {
       sed -i "s/set.*user_socket.*/set \$user_socket \"${_USER}\";/g" ${octTpl}/subdir.tpl.php            &> /dev/null
       sed -i "s/set.*user_socket.*/set \$user_socket \"${_USER}\";/g" ${octInc}/nginx_vhost_common.conf   &> /dev/null
     fi
+    if [ ! -z "${_CUSTOM_COLLATION_SQL}" ]; then
+      _SITES_COLLATION_SQL=${_CUSTOM_COLLATION_SQL}
+    fi
     if [ ! -z "${_SITES_COLLATION_SQL}" ]; then
       sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${octSetTpl}/provision_drupal_settings_9.tpl.php &> /dev/null
       sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${octSetTpl}/provision_drupal_settings_8.tpl.php &> /dev/null
