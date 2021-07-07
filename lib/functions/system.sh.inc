@@ -532,10 +532,10 @@ tune_memory_limits() {
     wait
     sed -i "s/^join_buffer_size.*/join_buffer_size        = ${_JBF_SQL}/g"        /etc/mysql/my.cnf &> /dev/null
     wait
-    if [ ! -z "${_CUSTOM_COLLATION_SQL}" ]; then
-      sed -i "s/utf8mb4_unicode_ci/${_CUSTOM_COLLATION_SQL}/g"                    /etc/mysql/my.cnf &> /dev/null
+    if [ ! -z "${_SYS_COLLATION_SQL}" ]; then
+      sed -i "s/utf8mb4_unicode_ci/${_SYS_COLLATION_SQL}/g"                       /etc/mysql/my.cnf &> /dev/null
       wait
-      sed -i "s/utf8mb4_general_ci/${_CUSTOM_COLLATION_SQL}/g"                    /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/utf8mb4_general_ci/${_SYS_COLLATION_SQL}/g"                       /etc/mysql/my.cnf &> /dev/null
     fi
   fi
   if [ "${_USE_OPC}" -gt "2048" ]; then

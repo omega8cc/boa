@@ -31,6 +31,7 @@ _PHP_FPM_DENY="" #-------------- Modify the disable_functions list per instance
 _STRONG_PASSWORDS=NO #---------- Configurable length: 8-128, YES (32), NO (8)
 _SQL_CONVERT=NO #--------------- DB conversion when innodb (or YES), or myisam
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
+_SITES_COLLATION_SQL= #--------- By default in sites hosted: utf8mb4_unicode_ci
 ###
 ### NOTE: the group of settings displayed below will be *overridden*
 ### by config files stored in the /data/disk/o1/log/ directory,
