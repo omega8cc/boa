@@ -5069,7 +5069,7 @@ satellite_child_b_drush_xts_install() {
     cd ${rD}/usr
     get_dev_ext "clean_missing_modules.tar.gz"
     get_dev_ext "mydropwizard-6.x-1.7.tar.gz"
-    get_dev_ext "utf8mb4_convert-7.x-1.1.tar.gz"
+    get_dev_ext "utf8mb4_convert-7.x-1.2.tar.gz"
   else
     msg "${_STATUS} B: Downloading Drush and Provision extensions..."
     cd ${_ROOT}/.drush/sys
@@ -5081,7 +5081,7 @@ satellite_child_b_drush_xts_install() {
     get_dev_ext "registry_rebuild.tar.gz"
     get_dev_ext "safe_cache_form_clear.tar.gz"
     get_dev_ext "mydropwizard-6.x-1.7.tar.gz"
-    get_dev_ext "utf8mb4_convert-7.x-1.1.tar.gz"
+    get_dev_ext "utf8mb4_convert-7.x-1.2.tar.gz"
     cd ${_ROOT}/.drush/xts
     get_dev_ext "provision_boost.tar.gz"
     get_dev_ext "security_review.tar.gz"
