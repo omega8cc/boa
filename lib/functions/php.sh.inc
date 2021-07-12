@@ -601,7 +601,7 @@ install_php_extensions() {
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    touch ${pthLog}/uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log
+    touch ${pthLog}/f_uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log
   else
     msg "INFO: Installing UploadProgress for PHP ${_T_PHP_VRN}..."
     cd /var/opt
@@ -613,7 +613,7 @@ install_php_extensions() {
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    touch ${pthLog}/uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log
+    touch ${pthLog}/f_uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
   msg "INFO: Installing JSMin for PHP ${_T_PHP_VRN}..."
@@ -853,7 +853,7 @@ update_php_extensions() {
   fi
   ###--------------------###
   if [ "$1" = "56" ]; then
-    if [ ! -e "${pthLog}/uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log" ]; then
+    if [ ! -e "${pthLog}/f_uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing UploadProgress upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf uploadprogress*
@@ -864,10 +864,10 @@ update_php_extensions() {
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
-      touch ${pthLog}/uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log
+      touch ${pthLog}/f_uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log
     fi
   else
-    if [ ! -e "${pthLog}/uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log" ]; then
+    if [ ! -e "${pthLog}/f_uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing UploadProgress upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf uploadprogress*
@@ -878,7 +878,7 @@ update_php_extensions() {
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
-      touch ${pthLog}/uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log
+      touch ${pthLog}/f_uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log
     fi
   fi
   ###--------------------###
