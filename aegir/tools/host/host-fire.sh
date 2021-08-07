@@ -12,7 +12,7 @@ csf_flood_guard() {
     csf -tf
     csf -df
   fi
-  if [ `ps aux | grep -v "grep" | grep -v "null" | grep --count "fire.sh"` -gt "6" ]; then
+  if [ `ps aux | grep -v "grep" | grep -v "null" | grep --count "fire.sh"` -gt "9" ]; then
     thisCountFire=`ps aux | grep -v "grep" | grep -v "null" | grep --count "fire.sh"`
     echo "$(date 2>&1) Too many ${thisCountFire} fire.sh processes killed" >> \
       /var/log/fire-count.kill.log
