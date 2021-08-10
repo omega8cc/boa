@@ -3,6 +3,9 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
+_USE_MIR="134.19.164.236"
+urlDev="http://${_USE_MIR}/dev"
+
 check_root() {
   if [ `whoami` = "root" ]; then
     ionice -c2 -n7 -p $$
@@ -143,15 +146,26 @@ if [ ! -e "${percList}" ] \
   _KEYS_SERVER_TEST=FALSE
   until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
     echo "Retrieving ${_KEYS_SIG} key.."
+    cd /var/opt
+    _KEYS_FILE_TEST=FALSE
+    until [[ "${_KEYS_FILE_TEST}" =~ "GnuPG" ]]; do
+      rm -f percona-key.gpg*
+      wget -q -U iCab ${urlDev}/percona-key.gpg
+      _KEYS_FILE_TEST=$(grep GnuPG percona-key.gpg 2>&1)
+      sleep 5
+    done
+    cat percona-key.gpg | ${_GPG} --import &> /dev/null
+    ${_GPG} --refresh-keys &> /dev/null
+    rm -f percona-key.gpg*
     apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}" &> /dev/null
     _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
     sleep 2
-    if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "1" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "3" ]; then
       kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
       echo "$(date 2>&1) Too many dirmngr processes killed" >> \
         /var/xdrago/log/dirmngr-count.kill.log
     fi
-    if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "1" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "2" ]; then
       kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
       echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
         /var/xdrago/log/gpg-agent-count.kill.log

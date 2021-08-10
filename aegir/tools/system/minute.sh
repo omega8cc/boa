@@ -417,13 +417,13 @@ if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt "6" 
     /var/xdrago/log/php-fpm-master-count.kill.log
 fi
 
-if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "1" ]; then
+if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "3" ]; then
   kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) Too many dirmngr processes killed" >> \
     /var/xdrago/log/dirmngr-count.kill.log
 fi
 
-if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "1" ]; then
+if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "2" ]; then
   kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
     /var/xdrago/log/gpg-agent-count.kill.log
