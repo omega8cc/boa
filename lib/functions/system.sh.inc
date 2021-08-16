@@ -2964,8 +2964,6 @@ strict_bin_permissions() {
                     barracuda \
                     boa \
                     clamconf \
-                    clamd \
-                    clamdscan \
                     fix-drupal-platform-ownership.sh \
                     fix-drupal-platform-permissions.sh \
                     fix-drupal-site-ownership.sh \
