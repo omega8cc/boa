@@ -10,6 +10,7 @@ csf_flood_guard() {
       /var/log/csf-count.kill.log
     kill -9 $(ps aux | grep '[c]sf' | awk '{print $2}') &> /dev/null
     csf -tf
+    csf -df
   fi
   thisCountFire=`ps aux | grep -v "grep" | grep -v "null" | grep --count "fire.sh"`
   if [ ${thisCountFire} -gt "9" ]; then
