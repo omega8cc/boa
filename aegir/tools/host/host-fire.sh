@@ -106,27 +106,13 @@ if [ -e "/vservers" ] \
   && [ ! -e "/var/run/water.pid" ] \
   && [ -e "/usr/sbin/csf" ]; then
   [ ! -e "/var/run/water.pid" ] && guest_guard
-  sleep 5
+  sleep 10
   [ ! -e "/var/run/water.pid" ] && guest_guard
-  sleep 5
+  sleep 10
   [ ! -e "/var/run/water.pid" ] && guest_guard
-  sleep 5
+  sleep 10
   [ ! -e "/var/run/water.pid" ] && guest_guard
-  sleep 5
-  [ ! -e "/var/run/water.pid" ] && guest_guard
-  sleep 5
-  [ ! -e "/var/run/water.pid" ] && guest_guard
-  sleep 5
-  [ ! -e "/var/run/water.pid" ] && guest_guard
-  sleep 5
-  [ ! -e "/var/run/water.pid" ] && guest_guard
-  sleep 5
-  [ ! -e "/var/run/water.pid" ] && guest_guard
-  sleep 5
-  [ ! -e "/var/run/water.pid" ] && guest_guard
-  sleep 5
-  [ ! -e "/var/run/water.pid" ] && guest_guard
-  sleep 5
+  sleep 10
   [ ! -e "/var/run/water.pid" ] && guest_guard
   rm -f /var/run/fire.pid
 fi
