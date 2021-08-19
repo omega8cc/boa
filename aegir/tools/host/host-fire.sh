@@ -4,15 +4,21 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 csf_flood_guard() {
-  if [ `ps aux | grep -v "grep" | grep -v "null" | grep --count "csf"` -gt "4" ]; then
-    thisCountCsf=`ps aux | grep -v "grep" | grep -v "null" | grep --count "csf"`
+  thisCountCsf=`ps aux | grep -v "grep" | grep -v "null" | grep --count "csf"`
+  if [ ${thisCountCsf} -gt "3" ]; then
     echo "$(date 2>&1) Too many ${thisCountCsf} csf processes killed" >> \
       /var/log/csf-count.kill.log
     kill -9 $(ps aux | grep '[c]sf' | awk '{print $2}') &> /dev/null
     csf -tf
   fi
-  if [ `ps aux | grep -v "grep" | grep -v "null" | grep --count "fire.sh"` -gt "9" ]; then
-    thisCountFire=`ps aux | grep -v "grep" | grep -v "null" | grep --count "fire.sh"`
+  thisCountFire=`ps aux | grep -v "grep" | grep -v "null" | grep --count "fire.sh"`
+  if [ ${thisCountFire} -gt "8" ]; then
+    echo "$(date 2>&1) Too many ${thisCountFire} fire.sh processes killed and rules purged" >> \
+      /var/log/fire-purge.kill.log
+    csf -tf
+    csf -df
+    kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
+  elif [ ${thisCountFire} -gt "6" ]; then
     echo "$(date 2>&1) Too many ${thisCountFire} fire.sh processes killed" >> \
       /var/log/fire-count.kill.log
     csf -tf
@@ -35,7 +41,7 @@ guest_proc_monitor() {
     fi
   done
 }
-guest_proc_monitor
+###guest_proc_monitor
 
 guest_guard() {
 if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
