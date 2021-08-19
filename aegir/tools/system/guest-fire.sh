@@ -3,6 +3,16 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
+second_flood_guard() {
+  thisCountSec=`ps aux | grep -v "grep" | grep -v "null" | grep --count "second.sh"`
+  if [ ${thisCountSec} -gt "2" ]; then
+    echo "$(date 2>&1) Too many ${thisCountSec} csf processes killed" >> \
+      /var/log/csf-count.kill.log
+    kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
+  fi
+}
+second_flood_guard
+
 csf_flood_guard() {
   thisCountCsf=`ps aux | grep -v "grep" | grep -v "null" | grep --count "csf"`
   if [ ${thisCountCsf} -gt "3" ]; then
