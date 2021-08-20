@@ -28,6 +28,9 @@ crontab_update() {
       echo "01 22   * * *   root    du -s /var/lib/mysql/* > /root/.du.local.sql" >> /etc/crontab
       echo "01 23   * * *   root    bash /var/xdrago/usage.sh >/dev/null 2>&1" >> /etc/crontab
       echo "*/6 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
+      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ssh.log >/dev/null 2>&1" >> /etc/crontab
+      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ftp.log >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d"                /etc/crontab &> /dev/null
     wait
@@ -88,6 +91,9 @@ crontab_clean() {
       echo "01 22   * * *   root    du -s /var/lib/mysql/* > /root/.du.local.sql" >> /etc/crontab
       echo "01 23   * * *   root    bash /var/xdrago/usage.sh >/dev/null 2>&1" >> /etc/crontab
       echo "*/6 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
+      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ssh.log >/dev/null 2>&1" >> /etc/crontab
+      echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ftp.log >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d"                /etc/crontab &> /dev/null
     wait
