@@ -129,7 +129,7 @@ if [[ "${checkVn}" =~ "===" ]] || [ -z "${checkVn}" ]; then
   fi
 fi
 crlHead="-I -k -s --retry 8 --retry-delay 8"
-urlBpth="http://files.aegir.cc/versions/master/aegir/tools/bin"
+urlBpth="http://${_USE_MIR}/versions/master/aegir/tools/bin"
 curl ${crlHead} -A "${checkVn}" "${urlBpth}/thinkdifferent" &> /dev/null
 
 renice ${_B_NICE} -p $$ &> /dev/null
