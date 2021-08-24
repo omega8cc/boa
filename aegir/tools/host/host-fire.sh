@@ -5,7 +5,7 @@ SHELL=/bin/bash
 
 csf_flood_guard() {
   thisCountCsf=`ps aux | grep -v "grep" | grep -v "null" | grep --count "csf"`
-  if [ ${thisCountCsf} -gt "3" ]; then
+  if [ ${thisCountCsf} -gt "4" ]; then
     echo "$(date 2>&1) Too many ${thisCountCsf} csf processes killed" >> \
       /var/log/csf-count.kill.log
     kill -9 $(ps aux | grep '[c]sf' | awk '{print $2}') &> /dev/null
