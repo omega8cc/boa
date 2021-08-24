@@ -56,7 +56,29 @@ find_fast_mirror() {
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
-  _USE_MIR="files.aegir.cc"
+  ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${ffMirr}" ]; then
+    ffList="/var/backups/boa-mirrors-2021-08.txt"
+    mkdir -p /var/backups
+    if [ ! -e "${ffList}" ]; then
+      echo "de.files.aegir.cc"  > ${ffList}
+      echo "nl.files.aegir.cc" >> ${ffList}
+      echo "uk.files.aegir.cc" >> ${ffList}
+      echo "ny.files.aegir.cc" >> ${ffList}
+      echo "sf.files.aegir.cc" >> ${ffList}
+      echo "sg.files.aegir.cc" >> ${ffList}
+      echo "au.files.aegir.cc" >> ${ffList}
+    fi
+    if [ -e "${ffList}" ]; then
+      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+      _USE_MIR="${_CHECK_MIRROR}"
+      [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+    else
+      _USE_MIR="files.aegir.cc"
+    fi
+  else
+    _USE_MIR="files.aegir.cc"
+  fi
   if ! netcat -w 10 -z "${_USE_MIR}" 80; then
     echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
     _USE_MIR="134.19.164.236"
