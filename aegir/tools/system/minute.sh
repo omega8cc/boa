@@ -196,27 +196,46 @@ if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]]; then
     /var/xdrago/log/php.giant.logs.incident.log
 fi
 
+almost_oom_kill() {
+  touch /var/run/boa_run.pid
+  echo "$(date 2>&1) Almost OOM $1 detected"                        >> ${pthOml}
+  sleep 5
+  echo "$(date 2>&1) Almost OOM incident response started"          >> ${pthOml}
+  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}')
+  echo "$(date 2>&1) Almost OOM wkhtmltopdf killed"                 >> ${pthOml}
+  killall sleep
+  killall php
+  echo "$(date 2>&1) Almost OOM php-cli killed"                     >> ${pthOml}
+  echo "$(date 2>&1) Almost OOM incident response completed"        >> ${pthOml}
+  echo                                                              >> ${pthOml}
+  sleep 5
+  rm -f /var/run/boa_run.pid
+  exit 0
+}
+
 oom_restart() {
   touch /var/run/boa_run.pid
   echo "$(date 2>&1) OOM $1 detected"                               >> ${pthOml}
   sleep 5
   echo "$(date 2>&1) OOM incident response started"                 >> ${pthOml}
   kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}')
+  echo "$(date 2>&1) OOM wkhtmltopdf killed"                        >> ${pthOml}
   killall sleep
   killall php
+  echo "$(date 2>&1) OOM php-cli killed"                            >> ${pthOml}
   mv -f /var/log/nginx/error.log /var/log/nginx/`date +%y%m%d-%H%M`-error.log
   kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}')
-  echo "$(date 2>&1) OOM nginx stopped"                             >> ${pthOml}
+  echo "$(date 2>&1) OOM nginx killed"                              >> ${pthOml}
   kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
-  echo "$(date 2>&1) OOM php-fpm stopped"                           >> ${pthOml}
+  echo "$(date 2>&1) OOM php-fpm killed"                            >> ${pthOml}
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')
-  echo "$(date 2>&1) OOM jetty stopped"                             >> ${pthOml}
+  echo "$(date 2>&1) OOM jetty killed"                              >> ${pthOml}
   kill -9 $(ps aux | grep '[j]ava-8-openjdk' | awk '{print $2}')
-  echo "$(date 2>&1) OOM solr stopped"                              >> ${pthOml}
+  echo "$(date 2>&1) OOM solr killed"                               >> ${pthOml}
   kill -9 $(ps aux | grep '[n]ewrelic-daemon' | awk '{print $2}')
-  echo "$(date 2>&1) OOM newrelic-daemon stopped"                   >> ${pthOml}
+  echo "$(date 2>&1) OOM newrelic-daemon killed"                    >> ${pthOml}
   kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}')
-  echo "$(date 2>&1) OOM redis-server stopped"                      >> ${pthOml}
+  echo "$(date 2>&1) OOM redis-server killed"                       >> ${pthOml}
   bash /var/xdrago/move_sql.sh
   echo "$(date 2>&1) OOM mysql restarted"                           >> ${pthOml}
   echo "$(date 2>&1) OOM incident response completed"               >> ${pthOml}
@@ -246,8 +265,10 @@ _RAM_PCT_FREE=${_RAM_PCT_FREE//[^0-9]/}
 echo _RAM_TOTAL is ${_RAM_TOTAL}
 echo _RAM_PCT_FREE is ${_RAM_PCT_FREE}
 
-if [ ! -z "${_RAM_PCT_FREE}" ] && [ "${_RAM_PCT_FREE}" -lt "10" ]; then
+if [ ! -z "${_RAM_PCT_FREE}" ] && [ "${_RAM_PCT_FREE}" -lt "11" ]; then
   oom_restart "RAM"
+elif [ "${_RAM_PCT_FREE}" -lt "21" ]; then
+  almost_oom_kill "RAM"
 fi
 
 redis_oom_check() {
