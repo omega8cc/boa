@@ -105,6 +105,13 @@ crontab_clean() {
   fi
 }
 
+if [ -e "/var/xdrago/log" ]; then
+  _BROKEN_UPDATE_TEST=$(grep "Under Construction" /var/xdrago/*.sh 2>&1)
+  if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then
+    rm -f /var/xdrago/log/*.pid
+  fi
+fi
+
 if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
   mkdir -p /etc/mysql/mariadb.conf.d
 fi
