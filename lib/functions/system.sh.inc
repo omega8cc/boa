@@ -2052,9 +2052,11 @@ clean_drush_ten() {
   rm -f /usr/bin/drush10
   rm -f /usr/bin/drush9
   rm -f /usr/bin/drush-launcher
+  rm -f /usr/bin/drush10-bin
   ln -sf /opt/tools/drush/launcher/drush.phar /usr/bin/drush10
-  ln -sf /opt/tools/drush/launcher/drush.phar /usr/bin/drush9
   ln -sf /opt/tools/drush/launcher/drush.phar /usr/bin/drush-launcher
+  ln -sf /opt/tools/drush/10/drush/vendor/drush/drush/drush /usr/bin/drush10-bin
+  ln -sf /opt/tools/drush/10/drush/vendor/drush/drush/drush /usr/bin/drush9
   msg "INFO: Drush ${_DRUSH_TEN_VRN} setup complete"
 }
 
@@ -2157,7 +2159,7 @@ get_drush_versions() {
     fi
   fi
   if [ -e "/opt/tools/drush/10" ]; then
-    _DRUSH_ITD=$(drush10 --version 2>&1 \
+    _DRUSH_ITD=$(drush10-bin --version 2>&1 \
       | tr -d "\n" \
       | cut -d" " -f4 \
       | awk '{ print $1}' 2>&1)

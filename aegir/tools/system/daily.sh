@@ -206,7 +206,11 @@ run_drush10_cmd() {
     nOw=$(date +%y%m%d-%H%M%S 2>&1)
     echo "${nOw} ${_HM_U} running drush10 @${_S_R} $1"
   fi
-  su -s /bin/bash - ${_HM_U} -c "drush10 @${_S_R} $1" &> /dev/null
+  if [ -x "/usr/bin/drush10-bin" ]; then
+    su -s /bin/bash - ${_HM_U} -c "drush10-bin @${_S_R} $1" &> /dev/null
+  elif [ -x "/usr/bin/drush9" ]; then
+    su -s /bin/bash - ${_HM_U} -c "drush9 @${_S_R} $1" &> /dev/null
+  fi
 }
 
 run_drush9_cmd() {
@@ -382,10 +386,10 @@ uninstall_modules_with_drush10() {
       check_if_force "$m"
     fi
     if [ "${_SKIP}" = "NO" ]; then
-      if [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
+      if [ -x "/usr/bin/drush10-bin" ]; then
         _MODULE_T=$(run_drush10_nosilent_cmd "pml --status=enabled \
           --type=module | grep \($m\)" 2>&1)
-      elif [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+      elif [ -x "/usr/bin/drush9" ]; then
         _MODULE_T=$(run_drush9_nosilent_cmd "pml --status=enabled \
           --type=module | grep \($m\)" 2>&1)
       fi
@@ -397,18 +401,18 @@ uninstall_modules_with_drush10() {
           _REQ=FCE
         fi
         if [ "${_REQ}" = "FCE" ]; then
-          if [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
+          if [ -x "/usr/bin/drush10-bin" ]; then
             run_drush10_cmd "pmu $m -y"
-          elif [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+          elif [ -x "/usr/bin/drush9" ]; then
             run_drush9_cmd "pmu $m -y"
           else
             run_drush8_cmd "pmu $m -y"
           fi
           echo "$m FCE uninstalled in ${Dom}"
         elif [ "${_REQ}" = "NO" ]; then
-          if [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
+          if [ -x "/usr/bin/drush10-bin" ]; then
             run_drush10_cmd "pmu $m -y"
-          elif [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+          elif [ -x "/usr/bin/drush9" ]; then
             run_drush9_cmd "pmu $m -y"
           else
             run_drush8_cmd "pmu $m -y"
@@ -1926,16 +1930,16 @@ fix_modules() {
       #   uninstall_modules_with_drush10 "${_MODULES_OFF_EIGHT}"
       # fi
       # if [ ! -z "${_MODULES_ON_EIGHT}" ]; then
-      #   if [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
+      #   if [ -x "/usr/bin/drush10-bin" ]; then
       #     enable_modules_with_drush10 "${_MODULES_ON_EIGHT}"
       #   else
       #     enable_modules_with_drush8 "${_MODULES_ON_EIGHT}"
       #   fi
       # fi
       if [ ! -e "${Dir}/.redisOn" ]; then
-        if [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
+        if [ -x "/usr/bin/drush10-bin" ]; then
           enable_modules_with_drush10 "redis"
-        elif [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
+        elif [ -x "/usr/bin/drush10-bin" ]; then
           enable_modules_with_drush9 "redis"
         fi
         run_drush8_cmd "cache-rebuild"
@@ -3273,13 +3277,12 @@ action() {
         _SQL_CONVERT=NO
         _DEL_OLD_EMPTY_PLATFORMS="0"
         if [ -e "/root/.${_HM_U}.octopus.cnf" ]; then
-          if [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
+          if [ -x "/usr/bin/drush10-bin" ]; then
             su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/*.yml"
             su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/.checksums/*.md5"
-            su -s /bin/bash - ${_HM_U} -c "drush10 core:init --yes" &> /dev/null
-            su -s /bin/bash - ${_HM_U} -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
-          fi
-          if [ -x "/opt/tools/drush/9/drush/vendor/drush/drush/drush" ]; then
+            su -s /bin/bash - ${_HM_U} -c "drush10-bin core:init --yes" &> /dev/null
+            su -s /bin/bash - ${_HM_U} -c "drush10-bin site:alias-convert ~/.drush/sites --yes" &> /dev/null
+          elif [ -x "/usr/bin/drush9" ]; then
             su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/*.yml"
             su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/.checksums/*.md5"
             su -s /bin/bash - ${_HM_U} -c "drush9 core:init --yes" &> /dev/null
