@@ -2051,8 +2051,10 @@ clean_drush_ten() {
   rm -f /usr/local/bin/var-dump-server
   rm -f /usr/bin/drush10
   rm -f /usr/bin/drush9
-  ln -sf /opt/tools/drush/10/drush/vendor/drush/drush/drush /usr/bin/drush10
-  ln -sf /opt/tools/drush/10/drush/vendor/drush/drush/drush /usr/bin/drush9
+  rm -f /usr/bin/drush-launcher
+  ln -sf /opt/tools/drush/launcher/drush.phar /usr/bin/drush10
+  ln -sf /opt/tools/drush/launcher/drush.phar /usr/bin/drush9
+  ln -sf /opt/tools/drush/launcher/drush.phar /usr/bin/drush-launcher
   msg "INFO: Drush ${_DRUSH_TEN_VRN} setup complete"
 }
 
@@ -2072,6 +2074,21 @@ set_drush_perm() {
   if [ -e "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
     chmod 755 /opt/tools/drush/10/drush/vendor/drush/drush/drush
     chmod 755 /opt/tools/drush/10/drush/vendor/drush/drush/drush.php
+  fi
+  if [ -e "/opt/tools/drush/launcher/drush.phar" ]; then
+    chmod 755 /opt/tools/drush/launcher/drush.phar
+  fi
+}
+
+#
+# Install or update Drush Launcher.
+get_drush_launcher() {
+  rm -rf /opt/tools/drush/launcher/*
+  cd /opt/tools/drush/launcher/
+  wget -q -U iCab https://github.com/drush-ops/drush-launcher/releases/latest/download/drush.phar
+  touch /opt/tools/drush/launcher/.ctrl.${_X_SE}.pid
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} installation complete"
   fi
 }
 
@@ -2123,7 +2140,7 @@ get_drush_versions() {
     rm -rf /opt/tools/drush/4
     rm -f /usr/bin/drush4
   fi
-  mkdir -p /opt/tools/drush/{8,10}
+  mkdir -p /opt/tools/drush/{8,10,launcher}
   chown -R root:root /opt/tools
   if [ -e "/opt/tools/drush/8" ]; then
     _DRUSH_ITD=$(drush8 --version 2>&1 \
@@ -2151,6 +2168,21 @@ get_drush_versions() {
       get_drush_ten
     else
       msg "INFO: Drush ${_DRUSH_TEN_VRN} already installed"
+    fi
+  fi
+  if [ -e "/opt/tools/drush/launcher" ]; then
+    _DRUSH_ITD=$(drush-launcher --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f4 \
+      | sed 's/The//g' \
+      | awk '{ print $1}' 2>&1)
+    if [ "${_DRUSH_ITD}" != "${_DRUSH_LAUNCHER_VRN}" ] \
+      || [ ! -x "/opt/tools/drush/launcher/drush.phar" ] \
+      || [ ! -e "/opt/tools/drush/launcher/.ctrl.${_X_SE}.pid" ]; then
+      msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} re-installation required"
+      get_drush_launcher
+    else
+      msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} already installed"
     fi
   fi
   set_drush_perm

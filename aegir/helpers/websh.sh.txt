@@ -1,6 +1,8 @@
 #!/bin/bash
 
 export PATH=$PATH:/opt/local/bin
+export DRUSH_LAUNCHER_FALLBACK=/opt/tools/drush/10/drush/vendor/drush/drush/drush
+
 _ALL="$@"
 ### echo _ALL is ${_ALL}
 _ARR=
