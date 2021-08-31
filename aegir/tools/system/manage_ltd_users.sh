@@ -449,8 +449,13 @@ enable_chattr() {
       if [ -d "/home/${UQ}/.rvm/log" ]; then
         rm -rf /home/${UQ}/.rvm/log/*
       fi
-      if [ ! -d "/home/${UQ}/.npm-packages" ]; then
+      if [ ! -d "/home/${UQ}/.npm-packages" ] || [ ! -d "/home/${UQ}/.npm" ]; then
+        su -s /bin/bash - ${UQ} -c "mkdir ~/.bundle"
+        su -s /bin/bash - ${UQ} -c "mkdir ~/.composer"
+        su -s /bin/bash - ${UQ} -c "mkdir ~/.config"
         su -s /bin/bash - ${UQ} -c "mkdir ~/.npm-packages"
+        su -s /bin/bash - ${UQ} -c "mkdir ~/.npm"
+        su -s /bin/bash - ${UQ} -c "mkdir ~/.sass-cache"
         su -s /bin/bash - ${UQ} -c "echo prefix = /home/${UQ}/.npm-packages > ~/.npmrc"
       fi
       rm -f /home/${UQ}/{.profile,.bash_logout,.bash_profile,.bashrc,.zlogin,.zshrc}
