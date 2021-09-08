@@ -389,7 +389,7 @@ check_dns_settings() {
     || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
     _CTRL_DNS_TEST=$(host files.aegir.cc 2>&1)
-    if [[ ! "${_CTRL_DNS_TEST}" =~ "134.122.124.107" ]] \
+    if [[ ! "${_CTRL_DNS_TEST}" =~ "134.19.164.236" ]] \
       || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
       || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
       || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
@@ -1373,11 +1373,14 @@ check_fix_csf() {
       echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
       chmod 700 /etc/csf/csfpost.sh
     fi
-    csf -a 167.172.111.219 de.files.aegir.cc  &> /dev/null
-    csf -a 94.237.108.28   nl.files.aegir.cc  &> /dev/null
-    csf -a 134.122.124.107 ny.files.aegir.cc  &> /dev/null
-    csf -a 167.71.146.185  sf.files.aegir.cc  &> /dev/null
-    csf -a 178.128.81.180  sg.files.aegir.cc  &> /dev/null
+    sed -i "s/.*aegir.*//g" /etc/csf/csf.allow
+    csf -a 94.237.26.49    de.files.aegir.cc  &> /dev/null
+    csf -a 94.237.42.15    nl.files.aegir.cc  &> /dev/null
+    csf -a 134.19.164.236  uk.files.aegir.cc  &> /dev/null
+    csf -a 209.151.150.175 ny.files.aegir.cc  &> /dev/null
+    csf -a 209.151.146.99  sf.files.aegir.cc  &> /dev/null
+    csf -a 95.111.194.246  sg.files.aegir.cc  &> /dev/null
+    csf -a 95.111.216.14   au.files.aegir.cc  &> /dev/null
     service lfd stop &> /dev/null
     sleep 3
     rm -f /etc/csf/csf.error

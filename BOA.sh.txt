@@ -200,7 +200,7 @@ check_dns_settings() {
     || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
     _CTRL_DNS_TEST=$(host files.aegir.cc 2>&1)
-    if [[ ! "${_CTRL_DNS_TEST}" =~ "134.122.124.107" ]] \
+    if [[ ! "${_CTRL_DNS_TEST}" =~ "134.19.164.236" ]] \
       || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
       || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
       || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
