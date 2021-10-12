@@ -167,11 +167,11 @@ Octopus can install and/or support the platforms listed below:
  Opigno LMS 2.20 -------------- https://drupal.org/project/opigno_lms
  Social 10.1.0 ---------------- https://drupal.org/project/social
 
- @ Drupal 7.82.1
+ @ Drupal 7.80.1
 
  Commerce 1.67 ---------------- https://drupal.org/project/commerce_kickstart
  Commerce 2.71 ---------------- https://drupal.org/project/commerce_kickstart
- Drupal 7.82.1 ---------------- https://drupal.org/project/drupal/releases/7.82
+ Drupal 7.80.1 ---------------- https://drupal.org/project/drupal/releases/7.80
  Guardr 2.55 ------------------ https://drupal.org/project/guardr
  OpenAtrium 2.651 ------------- https://drupal.org/project/openatrium
  OpenOutreach 1.68 ------------ https://drupal.org/project/openoutreach
@@ -184,7 +184,7 @@ Octopus can install and/or support the platforms listed below:
  Pressflow 6.57.1 ------------- http://pressflow.org
  Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.82.1 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.80.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
 * All D6 platforms have been enhanced using Pressflow (LTS) 6.57.1 +Extra core:
