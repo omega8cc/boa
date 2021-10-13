@@ -1142,6 +1142,11 @@ install_php_multi() {
     && [ "$1" = "56" ]; then
     _PRE_SNFR="--with-icu-dir=/usr/local"
   fi
+  if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ]; then
+    _PHP_EXTRA="${_PHP_EXTRA} --with-openssl=/usr/local/ssl"
+  else
+    _PHP_EXTRA="${_PHP_EXTRA} --with-openssl"
+  fi
   if [ -d "/usr/local/include/curl" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --with-curl=/usr/local"
   else
@@ -1206,7 +1211,6 @@ install_php_multi() {
                 --with-kerberos \
                 --with-mysql-sock=/var/run/mysqld/mysqld.sock \
                 --with-mysqli=mysqlnd \
-                --with-openssl \
                 --with-pdo-mysql=mysqlnd \
                 --with-pear \
                 --with-xmlrpc \
@@ -1242,7 +1246,6 @@ install_php_multi() {
                 --with-kerberos \
                 --with-mysql-sock=/var/run/mysqld/mysqld.sock \
                 --with-mysqli=mysqlnd \
-                --with-openssl \
                 --with-pdo-mysql=mysqlnd \
                 --with-pear \
                 --with-xmlrpc \
