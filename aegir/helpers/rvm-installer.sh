@@ -422,8 +422,8 @@ GPG signature verification failed for '$1' - '$3'! Try to install GPG v2 and the
 
 or if it fails:
 
-    command curl -sSL https://rvm.io/mpapis.asc | ${SUDO_USER:+sudo }${rvm_gpg_command##*/} --import -
-    command curl -sSL https://rvm.io/pkuczynski.asc | ${SUDO_USER:+sudo }${rvm_gpg_command##*/} --import -
+    command curl -k -sSL https://rvm.io/mpapis.asc | ${SUDO_USER:+sudo }${rvm_gpg_command##*/} --import -
+    command curl -k -sSL https://rvm.io/pkuczynski.asc | ${SUDO_USER:+sudo }${rvm_gpg_command##*/} --import -
 
 In case of further problems with validation please refer to https://rvm.io/rvm/security
 "
