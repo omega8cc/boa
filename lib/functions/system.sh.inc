@@ -2595,7 +2595,7 @@ install_curl_src() {
       cd /var/opt/curl-${_CURL_VRN}
       mrun "sh ./configure \
         --with-openssl=/var/opt/openssl-${_OPENSSL_NEW_VRN} \
-        --prefix=/usr/local" 2> /dev/null
+        --prefix=/usr" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
