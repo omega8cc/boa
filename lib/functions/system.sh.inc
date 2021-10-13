@@ -2615,6 +2615,10 @@ install_curl_src() {
         mrun "make --quiet" &> /dev/null
         mrun "make --quiet install" &> /dev/null
         mrun "ldconfig" &> /dev/null
+        if [ -x "/usr/local/bin/curl" ]; then
+          mv -f /usr/bin/curl /usr/bin/old_curl
+          ln -sf /usr/local/bin/curl /usr/bin/curl
+        fi
       fi
     fi
     _CURL_ALREADY_REBUILT=YES
