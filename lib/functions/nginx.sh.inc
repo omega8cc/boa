@@ -272,11 +272,11 @@ install_upgrade_nginx() {
       fi
       if [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "stretch" ]; then
-        _OPENSSL_NGX_VRN=${_OPENSSL_CURRENT_VRN}
+        _OPENSSL_NEW_VRN=${_OPENSSL_CURRENT_VRN}
       else
-        _OPENSSL_NGX_VRN=${_OPENSSL_LEGACY_VRN}
+        _OPENSSL_NEW_VRN=${_OPENSSL_LEGACY_VRN}
       fi
-      if [[ ! "${_NGINX_V_ITD}" =~ "openssl-${_OPENSSL_NGX_VRN}" ]]; then
+      if [[ ! "${_NGINX_V_ITD}" =~ "openssl-${_OPENSSL_NEW_VRN}" ]]; then
         _NGINX_INSTALL_REQUIRED=YES
         msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
         msg "INFO: Nginx forced rebuild to include latest OpenSSL version"
@@ -387,14 +387,14 @@ install_upgrade_nginx() {
     fi
     if [ "${_OSR}" = "buster" ] \
       || [ "${_OSR}" = "stretch" ]; then
-      _OPENSSL_NGX_VRN=${_OPENSSL_CURRENT_VRN}
+      _OPENSSL_NEW_VRN=${_OPENSSL_CURRENT_VRN}
     else
-      _OPENSSL_NGX_VRN=${_OPENSSL_LEGACY_VRN}
+      _OPENSSL_NEW_VRN=${_OPENSSL_LEGACY_VRN}
     fi
-    if [ ! -e "/var/opt/openssl-${_OPENSSL_NGX_VRN}" ]; then
+    if [ ! -e "/var/opt/openssl-${_OPENSSL_NEW_VRN}" ]; then
       cd /var/opt
       rm -rf openssl*
-      get_dev_src "openssl-${_OPENSSL_NGX_VRN}.tar.gz"
+      get_dev_src "openssl-${_OPENSSL_NEW_VRN}.tar.gz"
     fi
     cd /var/opt/nginx-${_NGINX_VRN}
     mrun "sh ./configure \
@@ -421,7 +421,7 @@ install_upgrade_nginx() {
       --without-http_uwsgi_module \
       --with-ipv6 \
       --with-http_geoip_module \
-      --with-openssl=/var/opt/openssl-${_OPENSSL_NGX_VRN} \
+      --with-openssl=/var/opt/openssl-${_OPENSSL_NEW_VRN} \
       --with-debug ${_NGINX_EXTRA}" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
