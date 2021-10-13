@@ -2511,7 +2511,6 @@ install_magick_src() {
 #
 # Install cURL from sources.
 install_curl_src() {
-  touch /root/.use.curl.from.packages.cnf
   if [ "${_OSR}" = "precise" ]; then
     touch /root/.use.curl.from.packages.cnf
     _CURL_VRN=7.79.1
