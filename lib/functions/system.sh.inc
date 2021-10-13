@@ -2598,21 +2598,24 @@ install_curl_src() {
         fi
       fi
       cd /var/opt/openssl-${_OPENSSL_NEW_VRN}
-      mrun "make clean" 2> /dev/null
-      mrun "bash ./config enable-shared no-zlib --prefix=/usr/local/ssl --openssldir=/usr/local/ssl" 2> /dev/null
-      mrun "make depend --quiet" 2> /dev/null
-      mrun "make --quiet" 2> /dev/null
-      mrun "make install --quiet" 2> /dev/null
-      cd /var/opt/curl-${_CURL_VRN}
-      LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig" ./configure \
-        --with-ssl \
-        --with-libssl-prefix=/usr/local/ssl \
-        --without-zlib \
-        --prefix=/usr/local 2> /dev/null
-      mrun "make --quiet" 2> /dev/null
-      mrun "make --quiet install" 2> /dev/null
+      bash ./config enable-shared no-zlib --prefix=/usr/local/ssl --openssldir=/usr/local/ssl &> /dev/null
+      mrun "make --quiet" &> /dev/null
+      mrun "make install --quiet" &> /dev/null
+      cp -af /usr/bin/openssl /usr/bin/old-openssl
+      ln -sf /usr/local/ssl/bin/openssl `which openssl`
       echo "/usr/local/ssl/lib" >> /etc/ld.so.conf.d/libc.conf
-      mrun "ldconfig" 2> /dev/null
+      mrun "ldconfig" &> /dev/null
+      if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ]; then
+        cd /var/opt/curl-${_CURL_VRN}
+        LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig" ./configure \
+          --with-ssl \
+          --with-libssl-prefix=/usr/local/ssl \
+          --without-zlib \
+          --prefix=/usr/local &> /dev/null
+        mrun "make --quiet" &> /dev/null
+        mrun "make --quiet install" &> /dev/null
+        mrun "ldconfig" &> /dev/null
+      fi
     fi
     _CURL_ALREADY_REBUILT=YES
   fi
