@@ -2585,12 +2585,17 @@ install_curl_src() {
       if [ -e "curl-${_CURL_VRN}.tar.gz" ]; then
         extract_archive "curl-${_CURL_VRN}.tar.gz"
       else
-        msg "OOPS: curl-${_CURL_VRN}.tar.gz failed download from ${urlDev}/src/curl-${_CURL_VRN}.tar.gz"
+        msg "OOPS: failed download from ${urlDev}/src/curl-${_CURL_VRN}.tar.gz"
       fi
       if [ ! -e "/var/opt/openssl-${_OPENSSL_NEW_VRN}" ]; then
         cd /var/opt
         rm -rf openssl*
-        get_dev_src "openssl-${_OPENSSL_NEW_VRN}.tar.gz"
+        wget -q -U iCab ${urlDev}/src/openssl-${_OPENSSL_NEW_VRN}.tar.gz
+        if [ -e "openssl-${_OPENSSL_NEW_VRN}.tar.gz" ]; then
+          extract_archive "openssl-${_OPENSSL_NEW_VRN}.tar.gz"
+        else
+          msg "OOPS: failed download from ${urlDev}/src/openssl-${_OPENSSL_NEW_VRN}.tar.gz"
+        fi
       fi
       cd /var/opt/curl-${_CURL_VRN}
       mrun "sh ./configure \
