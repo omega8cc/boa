@@ -397,7 +397,7 @@ install_upgrade_nginx() {
       get_dev_src "openssl-${_OPENSSL_NEW_VRN}.tar.gz"
     fi
     cd /var/opt/nginx-${_NGINX_VRN}
-    mrun "sh ./configure \
+    mrun "bash ./configure \
       --prefix=/usr \
       --sbin-path=/usr/sbin/nginx \
       --conf-path=/etc/nginx/nginx.conf \

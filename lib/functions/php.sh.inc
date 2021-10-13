@@ -556,7 +556,7 @@ install_php_extensions() {
   get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
   cd /var/opt/phpredis
   mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-  mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+  mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
   mrun "make --quiet" 2> /dev/null
   mrun "make --quiet install" 2> /dev/null
   mrun "ldconfig" 2> /dev/null
@@ -569,7 +569,7 @@ install_php_extensions() {
     get_dev_src "apcu-${_PHP7_APCU}.tgz"
     cd /var/opt/apcu-${_PHP7_APCU}
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
@@ -583,7 +583,7 @@ install_php_extensions() {
     get_dev_src "mcrypt-${_PHP7_MCRYPT}.tgz"
     cd /var/opt/mcrypt-${_PHP7_MCRYPT}
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
@@ -597,7 +597,7 @@ install_php_extensions() {
     get_dev_src "uploadprogress-${_UPROGRESS_LEGACY_VRN}.tgz"
     cd /var/opt/uploadprogress-${_UPROGRESS_LEGACY_VRN}
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
@@ -609,7 +609,7 @@ install_php_extensions() {
     get_dev_src "uploadprogress-${_UPROGRESS_SEVEN_VRN}.tar.gz"
     cd /var/opt/uploadprogress-${_UPROGRESS_SEVEN_VRN}
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
@@ -627,7 +627,7 @@ install_php_extensions() {
     cd /var/opt/pecl-jsmin-${_JSMIN_PHP7_VRN}
   fi
   mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-  mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+  mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
   mrun "make --quiet" 2> /dev/null
   mrun "make --quiet install" 2> /dev/null
   mrun "ldconfig" 2> /dev/null
@@ -644,7 +644,7 @@ install_php_extensions() {
     get_dev_src "twig-${_TWIGC_VRN}.tar.gz"
     cd /var/opt/twig-${_TWIGC_VRN}/ext/twig
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
@@ -677,7 +677,7 @@ install_php_extensions() {
           wait
         fi
       done
-      mrun "sh ./configure --enable-php" 2> /dev/null
+      mrun "bash ./configure --enable-php" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
@@ -693,7 +693,7 @@ install_php_extensions() {
       get_dev_src "mongo-${_MONGO_VRN}.tgz"
       cd /var/opt/mongo-${_MONGO_VRN}
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
@@ -705,7 +705,7 @@ install_php_extensions() {
       get_dev_src "mongodb-${_MONGODB_VRN}.tgz"
       cd /var/opt/mongodb-${_MONGODB_VRN}
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
@@ -723,7 +723,7 @@ install_php_extensions() {
   get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
   cd /var/opt/imagick-${_IMAGICK_VRN}
   mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-  mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+  mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
   mrun "make --quiet" 2> /dev/null
   mrun "make --quiet install" 2> /dev/null
   mrun "ldconfig" 2> /dev/null
@@ -736,7 +736,7 @@ install_php_extensions() {
     get_dev_src "mailparse-${_MAILPARSE_VRN}.tgz"
     cd /var/opt/mailparse-${_MAILPARSE_VRN}
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
@@ -752,7 +752,7 @@ install_php_extensions() {
     get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
     cd /var/opt/yaml-${_LIB_YAML_VRN}
     mrun "sh ./bootstrap" 2> /dev/null
-    mrun "sh ./configure --prefix=/usr" 2> /dev/null
+    mrun "bash ./configure --prefix=/usr" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
@@ -790,7 +790,7 @@ install_php_extensions() {
     cd /var/opt/yaml-${_YAML_PHP7_VRN}
   fi
   mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-  mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+  mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
   mrun "make --quiet" 2> /dev/null
   mrun "make --quiet install" 2> /dev/null
   mrun "ldconfig" 2> /dev/null
@@ -813,7 +813,7 @@ update_php_extensions() {
     get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
     cd /var/opt/phpredis
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
@@ -828,7 +828,7 @@ update_php_extensions() {
       get_dev_src "apcu-${_PHP7_APCU}.tgz"
       cd /var/opt/apcu-${_PHP7_APCU}
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
@@ -844,7 +844,7 @@ update_php_extensions() {
       get_dev_src "mcrypt-${_PHP7_MCRYPT}.tgz"
       cd /var/opt/mcrypt-${_PHP7_MCRYPT}
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
@@ -860,7 +860,7 @@ update_php_extensions() {
       get_dev_src "uploadprogress-${_UPROGRESS_LEGACY_VRN}.tgz"
       cd /var/opt/uploadprogress-${_UPROGRESS_LEGACY_VRN}
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
@@ -874,7 +874,7 @@ update_php_extensions() {
       get_dev_src "uploadprogress-${_UPROGRESS_SEVEN_VRN}.tar.gz"
       cd /var/opt/uploadprogress-${_UPROGRESS_SEVEN_VRN}
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
@@ -890,7 +890,7 @@ update_php_extensions() {
       get_dev_src "pecl-jsmin-${_JSMIN_VRN}.tar.gz"
       cd /var/opt/pecl-jsmin-${_JSMIN_VRN}
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
@@ -904,7 +904,7 @@ update_php_extensions() {
       get_dev_src "pecl-jsmin-${_JSMIN_PHP7_VRN}.tar.gz"
       cd /var/opt/pecl-jsmin-${_JSMIN_PHP7_VRN}
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
@@ -920,7 +920,7 @@ update_php_extensions() {
       get_dev_src "twig-${_TWIGC_VRN}.tar.gz"
       cd /var/opt/twig-${_TWIGC_VRN}/ext/twig
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
@@ -955,7 +955,7 @@ update_php_extensions() {
           wait
         fi
       done
-      mrun "sh ./configure --enable-php" 2> /dev/null
+      mrun "bash ./configure --enable-php" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
@@ -972,7 +972,7 @@ update_php_extensions() {
       get_dev_src "mongo-${_MONGO_VRN}.tgz"
       cd /var/opt/mongo-${_MONGO_VRN}
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
@@ -988,7 +988,7 @@ update_php_extensions() {
       get_dev_src "mongodb-${_MONGODB_VRN}.tgz"
       cd /var/opt/mongodb-${_MONGODB_VRN}
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
@@ -1007,7 +1007,7 @@ update_php_extensions() {
     get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
     cd /var/opt/imagick-${_IMAGICK_VRN}
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
@@ -1022,7 +1022,7 @@ update_php_extensions() {
       get_dev_src "mailparse-${_MAILPARSE_VRN}.tgz"
       cd /var/opt/mailparse-${_MAILPARSE_VRN}
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
@@ -1039,7 +1039,7 @@ update_php_extensions() {
     get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
     cd /var/opt/yaml-${_LIB_YAML_VRN}
     mrun "sh ./bootstrap" 2> /dev/null
-    mrun "sh ./configure --prefix=/usr" 2> /dev/null
+    mrun "bash ./configure --prefix=/usr" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
@@ -1076,7 +1076,7 @@ update_php_extensions() {
       cd /var/opt/yaml-${_YAML_PHP7_VRN}
     fi
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    mrun "sh ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
@@ -1186,7 +1186,7 @@ install_php_multi() {
     patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
   fi
   _PHP_EXTRA="${_PHP_EXTRA} --enable-opcache"
-  mrun "sh ./configure \
+  mrun "bash ./configure \
                 --quiet \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
@@ -1222,7 +1222,7 @@ install_php_multi() {
   else
     msg "INFO: Building PHP ${_PHP_VERSION} part 2/3 (again)"
     mrun "make --quiet clean" 2> /dev/null
-    mrun "sh ./configure \
+    mrun "bash ./configure \
                 --quiet \
                 --prefix=/opt/php$1 \
                 --enable-fpm \

@@ -1991,7 +1991,7 @@ upgrade_host() {
     wget -q -U iCab http://${_USE_MIR}/dev/src/util-vserver-${_UTIL_VRN}.tar.gz
     tar -xzf util-vserver-${_UTIL_VRN}.tar.gz
     cd util-vserver-${_UTIL_VRN}
-    ./configure --prefix=/usr
+    bash ./configure --prefix=/usr
     make --quiet
     make --quiet install
     make --quiet install-distribution
@@ -2041,7 +2041,7 @@ upgrade_host() {
   wget -q -U iCab http://${_USE_MIR}/dev/src/vnstat-${_VNSTAT_VRN}.tar.gz
   tar -xzf vnstat-${_VNSTAT_VRN}.tar.gz
   cd vnstat-${_VNSTAT_VRN}
-  sh ./configure --prefix=/usr
+  bash ./configure --prefix=/usr
   make --quiet
   make --quiet install
   for INF in `vnstat --iflist \

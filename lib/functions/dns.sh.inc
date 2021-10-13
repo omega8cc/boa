@@ -382,7 +382,7 @@ install_pdnsd_cache() {
     rm -rf pdnsd*
     get_dev_src "pdnsd-${_PDNSD_VRN}.tar.gz"
     cd /var/opt/pdnsd-${_PDNSD_VRN}
-    st_runner "./configure --prefix=/usr" 2> /dev/null
+    st_runner "bash ./configure --prefix=/usr" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null

@@ -134,7 +134,7 @@ fix_sftp_ftps_modern() {
     rm -rf mysecureshell*
     get_dev_src "mysecureshell-${_MSS_VRN}.tar.gz"
     cd /var/opt/mysecureshell
-    mrun "sh ./configure" 2> /dev/null
+    mrun "bash ./configure" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     st_runner "sh ./install.sh yesall" 2> /dev/null
     touch ${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log
@@ -1859,7 +1859,7 @@ do_install_latest_git() {
     get_dev_src "git-${_GIT_VRN}.tar.gz"
     cd /var/opt/git-${_GIT_VRN}
     mrun "make configure" 2> /dev/null
-    mrun "sh ./configure --without-tcltk --quiet" 2> /dev/null
+    mrun "bash ./configure --without-tcltk --quiet" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
@@ -1930,7 +1930,7 @@ install_icu() {
       get_dev_src "icu4c-${_ICU_VRN}-src.tgz"
     fi
     cd /var/opt/icu/source/
-    mrun "sh ./configure \
+    mrun "bash ./configure \
       --prefix=/usr/local" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
@@ -2433,7 +2433,7 @@ install_ssh_src() {
     rm -rf openssh*
     get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
     cd /var/opt/openssh-${_OPENSSH_VRN}
-    mrun "sh ./configure \
+    mrun "bash ./configure \
       --with-openssl \
       --without-openssl-header-check \
       --prefix=/usr \
@@ -2495,7 +2495,7 @@ install_magick_src() {
     rm -rf ImageMagick*
     get_dev_src "ImageMagick-${_IMAGE_MAGICK_VRN}.tar.gz"
     cd /var/opt/ImageMagick-${_IMAGE_MAGICK_VRN}
-    mrun "sh ./configure --prefix=/usr" 2> /dev/null
+    mrun "bash ./configure --prefix=/usr" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     if [ ! -e "/etc/.ImageMagick" ]; then
       cp -a /etc/ImageMagick /etc/.ImageMagick
@@ -2598,7 +2598,7 @@ install_curl_src() {
         fi
       fi
       cd /var/opt/curl-${_CURL_VRN}
-      mrun "sh ./configure \
+      mrun "bash ./configure \
         --with-openssl=/var/opt/openssl-${_OPENSSL_NEW_VRN} \
         --prefix=/usr" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
@@ -2654,7 +2654,7 @@ install_ssl_src() {
     rm -rf zlib*
     get_dev_src "zlib-${_ZLIB_VRN}.tar.gz"
     cd /var/opt/zlib-${_ZLIB_VRN}
-    st_runner "./configure --prefix=/usr" 2> /dev/null
+    st_runner "bash ./configure --prefix=/usr" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
@@ -4568,7 +4568,7 @@ install_vnstat() {
       rm -rf vnstat*
       get_dev_src "vnstat-${_VNSTAT_VRN}.tar.gz"
       cd vnstat-${_VNSTAT_VRN}
-      mrun "sh ./configure --prefix=/usr --sysconfdir=/etc" 2> /dev/null
+      mrun "bash ./configure --prefix=/usr --sysconfdir=/etc" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
@@ -5022,7 +5022,7 @@ if_install_ftpd() {
       mkdir -p /usr/local/etc
       get_dev_src "pure-ftpd-${_PURE_FTPD_VRN}.tar.gz"
       cd pure-ftpd-${_PURE_FTPD_VRN}
-      mrun "sh ./configure --with-everything --with-virtualchroot \
+      mrun "bash ./configure --with-everything --with-virtualchroot \
         --without-humor --with-tls --with-diraliases --with-pam \
         --with-certfile=/etc/ssl/private/pure-ftpd.pem" 2> /dev/null
       mrun "make install-strip" 2> /dev/null
