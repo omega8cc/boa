@@ -2597,12 +2597,21 @@ install_curl_src() {
           msg "OOPS: failed download from ${urlDev}/src/openssl-${_OPENSSL_NEW_VRN}.tar.gz"
         fi
       fi
+      cd /var/opt/openssl-${_OPENSSL_NEW_VRN}
+      mrun "make clean" 2> /dev/null
+      mrun "bash ./config enable-shared no-zlib --prefix=/usr/local/ssl --openssldir=/usr/local/ssl" 2> /dev/null
+      mrun "make depend --quiet" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make install --quiet" 2> /dev/null
       cd /var/opt/curl-${_CURL_VRN}
-      mrun "bash ./configure \
-        --with-openssl=/var/opt/openssl-${_OPENSSL_NEW_VRN} \
-        --prefix=/usr" 2> /dev/null
+      LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig" ./configure \
+        --with-ssl \
+        --with-libssl-prefix=/usr/local/ssl \
+        --without-zlib \
+        --prefix=/usr/local 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
+      echo "/usr/local/ssl/lib" >> /etc/ld.so.conf.d/libc.conf
       mrun "ldconfig" 2> /dev/null
     fi
     _CURL_ALREADY_REBUILT=YES
