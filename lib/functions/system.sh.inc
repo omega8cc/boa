@@ -2587,9 +2587,14 @@ install_curl_src() {
       else
         msg "OOPS: curl-${_CURL_VRN}.tar.gz failed download from ${urlDev}/src/curl-${_CURL_VRN}.tar.gz"
       fi
+      if [ ! -e "/var/opt/openssl-${_OPENSSL_NEW_VRN}" ]; then
+        cd /var/opt
+        rm -rf openssl*
+        get_dev_src "openssl-${_OPENSSL_NEW_VRN}.tar.gz"
+      fi
       cd /var/opt/curl-${_CURL_VRN}
       mrun "sh ./configure \
-        --with-ssl \
+        --with-openssl=/var/opt/openssl-${_OPENSSL_NEW_VRN} \
         --prefix=/usr/local" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
