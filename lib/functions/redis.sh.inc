@@ -64,6 +64,7 @@ forced_redis_password_update() {
   if [ "${_FORCE_REDIS_RESTART}" = "YES" ]; then
     service redis-server stop &> /dev/null
     killall -9 redis-server &> /dev/null
+    rm -f /var/lib/redis/*
     service redis-server start &> /dev/null
   fi
 }
@@ -135,6 +136,7 @@ fix_redis_mode() {
             wait
             service redis-server stop &> /dev/null
             killall -9 redis-server &> /dev/null
+            rm -f /var/lib/redis/*
             update-rc.d -f redis-server remove &> /dev/null
             service redis stop &> /dev/null
             killall -9 redis &> /dev/null
@@ -155,6 +157,7 @@ fix_redis_mode() {
           wait
           service redis-server stop &> /dev/null
           killall -9 redis-server &> /dev/null
+          rm -f /var/lib/redis/*
           update-rc.d -f redis-server remove &> /dev/null
           service redis stop &> /dev/null
           killall -9 redis &> /dev/null
@@ -223,6 +226,7 @@ install_redis_src() {
   if [ -e "/var/lib/redis" ]; then
     mrun "service redis-server stop" &> /dev/null
     killall -9 redis-server &> /dev/null
+    rm -f /var/lib/redis/*
   fi
   rm -f /usr/local/bin/redis*
   rm -f /usr/bin/redis*

@@ -278,6 +278,7 @@ redis_oom_check() {
     | grep --count "RedisException"` -gt "0" ]; then
     service redis-server stop &> /dev/null
     killall -9 redis-server &> /dev/null
+    rm -f /var/lib/redis/*
     service redis-server start &> /dev/null
     echo "$(date 2>&1) RedisException OOM detected"
     echo "$(date 2>&1) RedisException OOM detected" >> /var/xdrago/log/redis.watch.log
@@ -319,6 +320,7 @@ redis_slow_check() {
     sleep 8
     service redis-server stop &> /dev/null
     killall -9 redis-server &> /dev/null
+    rm -f /var/lib/redis/*
     service redis-server start &> /dev/null
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     _NOW=${_NOW//[^0-9-]/}

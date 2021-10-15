@@ -923,6 +923,7 @@ restart_services() {
   mrun "service nginx reload" &> /dev/null
   service redis-server stop &> /dev/null
   killall -9 redis-server &> /dev/null
+  rm -f /var/lib/redis/*
   service redis-server start &> /dev/null
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     mrun "csf -q" &> /dev/null

@@ -5525,6 +5525,7 @@ update_initd() {
       msg "INFO: Restarting Redis, PHP-FPM and Nginx..."
       mrun "service redis-server stop" &> /dev/null
       mrun "killall -9 redis-server" &> /dev/null
+      rm -f /var/lib/redis/*
       mrun "service redis-server start" &> /dev/null
       sleep 3
       mrun "service redis-server restart" &> /dev/null
