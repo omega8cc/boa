@@ -538,9 +538,9 @@ rvm_install_default_settings()
     if
       (( UID == 0 ))
     then
-      rvm_user_install_flag=0
-      rvm_prefix="/usr/local"
-      rvm_path="${rvm_prefix}/rvm"
+      rvm_user_install_flag=1
+      rvm_prefix="$HOME"
+      rvm_path="${rvm_prefix}/.rvm"
     else
       rvm_user_install_flag=1
       rvm_prefix="$HOME"
@@ -554,7 +554,6 @@ rvm_install_default_settings()
   # duplication marker kkdfkgnjfndgjkndfjkgnkfjdgn
   [[ -n "${rvm_user_install_flag:-}" ]] ||
   case "$rvm_path" in
-    (/usr/local/rvm)         rvm_user_install_flag=1 ;;
     ($HOME/*|/${USER// /_}*) rvm_user_install_flag=1 ;;
     (*)                      rvm_user_install_flag=1 ;;
   esac
