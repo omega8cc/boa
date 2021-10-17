@@ -434,11 +434,11 @@ if_install_rvm() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           \curl -k -sSL ${urlDev}/mpapis.asc | ${_GPG} --import -
           \curl -k -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import -
-          \curl -k -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable
+          \curl -k -sSL ${urlHmr}/helpers/rvm-installer-root.sh | bash -s stable
         else
           \curl -k -sSL ${urlDev}/mpapis.asc | ${_GPG} --import - &> /dev/null
           \curl -k -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import - &> /dev/null
-          \curl -k -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable &> /dev/null
+          \curl -k -sSL ${urlHmr}/helpers/rvm-installer-root.sh | bash -s stable &> /dev/null
         fi
         echo rvm_autoupdate_flag=0 > ~/.rvmrc
         wait

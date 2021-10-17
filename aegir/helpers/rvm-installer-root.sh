@@ -554,9 +554,9 @@ rvm_install_default_settings()
   # duplication marker kkdfkgnjfndgjkndfjkgnkfjdgn
   [[ -n "${rvm_user_install_flag:-}" ]] ||
   case "$rvm_path" in
-    (/usr/local/rvm)         rvm_user_install_flag=1 ;;
+    (/usr/local/rvm)         rvm_user_install_flag=0 ;;
     ($HOME/*|/${USER// /_}*) rvm_user_install_flag=1 ;;
-    (*)                      rvm_user_install_flag=1 ;;
+    (*)                      rvm_user_install_flag=0 ;;
   esac
 }
 
