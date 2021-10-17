@@ -371,19 +371,9 @@ enable_chattr() {
       fi
       if [ ! -x "/home/${UQ}/.rvm/bin/rvm" ]; then
         touch /var/run/manage_rvm_users.pid
-        su -s /bin/bash - ${UQ} -c "\curl -k -sSL ${urlDev}/mpapis.asc | ${_GPG} --import -"
-        su -s /bin/bash - ${UQ} -c "\curl -k -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import -"
-        su -s /bin/bash   ${UQ} -c "\curl -k -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable"
-        su -s /bin/bash - ${UQ} -c "rvm get stable --auto-dotfiles"
-        su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
-        wait
-        su -s /bin/bash - ${UQ} -c "echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc"
-        rm -f /var/run/manage_rvm_users.pid
-      fi
-      su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
-      wait
-      su -s /bin/bash - ${UQ} -c "echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc"
-      if [ ! -e "/home/${UQ}/.rvm/rubies/default" ]; then
+        if [ -d "/usr/local/rvm" ]; then
+          mv -f /usr/local/rvm /usr/local/.off_rvm
+        fi
         if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
           _WEB_SH=$(readlink -n /bin/sh 2>&1)
           _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
@@ -399,10 +389,34 @@ enable_chattr() {
             fi
           fi
         fi
+        su -s /bin/bash - ${UQ} -c "\curl -k -sSL ${urlDev}/mpapis.asc | ${_GPG} --import -"
+        su -s /bin/bash - ${UQ} -c "\curl -k -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import -"
+        su -s /bin/bash   ${UQ} -c "\curl -k -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable"
+        su -s /bin/bash - ${UQ} -c "rvm get stable --auto-dotfiles"
+        su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
+        wait
+        su -s /bin/bash - ${UQ} -c "echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc"
+        rm -f /var/run/manage_rvm_users.pid
+        if [ -d "/usr/local/.off_rvm" ]; then
+          mv -f /usr/local/.off_rvm /usr/local/rvm
+        fi
+        rm -f /bin/sh
+        ln -s /bin/websh /bin/sh
+      fi
+      su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
+      wait
+      su -s /bin/bash - ${UQ} -c "echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc"
+      if [ ! -e "/home/${UQ}/.rvm/rubies/default" ]; then
         touch /var/run/manage_rvm_users.pid
+        if [ -d "/usr/local/rvm" ]; then
+          mv -f /usr/local/rvm /usr/local/.off_rvm
+        fi
         su -s /bin/bash - ${UQ} -c "rvm install ${_RUBY_VRN}"
         su -s /bin/bash - ${UQ} -c "rvm use ${_RUBY_VRN} --default"
         rm -f /var/run/manage_rvm_users.pid
+        if [ -d "/usr/local/.off_rvm" ]; then
+          mv -f /usr/local/.off_rvm /usr/local/rvm
+        fi
         rm -f /bin/sh
         ln -s /bin/websh /bin/sh
       fi
@@ -424,6 +438,9 @@ enable_chattr() {
           fi
         fi
         touch /var/run/manage_rvm_users.pid
+        if [ -d "/usr/local/rvm" ]; then
+          mv -f /usr/local/rvm /usr/local/.off_rvm
+        fi
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative bluecloth"      &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative eventmachine"   &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.0.3 eventmachine"  &> /dev/null
@@ -437,6 +454,9 @@ enable_chattr() {
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative yajl-ruby"      &> /dev/null
         touch ${dscUsr}/log/.gems.build.d.${UQ}.txt
         rm -f /var/run/manage_rvm_users.pid
+        if [ -d "/usr/local/.off_rvm" ]; then
+          mv -f /usr/local/.off_rvm /usr/local/rvm
+        fi
         rm -f /bin/sh
         ln -s /bin/websh /bin/sh
       fi
