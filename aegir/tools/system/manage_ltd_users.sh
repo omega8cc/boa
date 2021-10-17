@@ -411,6 +411,21 @@ enable_chattr() {
         if [ -d "/usr/local/rvm" ]; then
           mv -f /usr/local/rvm /usr/local/.off_rvm
         fi
+        if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
+          _WEB_SH=$(readlink -n /bin/sh 2>&1)
+          _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
+          if [ -x "/bin/dash" ]; then
+            if [ "${_WEB_SH}" != "/bin/dash" ]; then
+              rm -f /bin/sh
+              ln -s /bin/dash /bin/sh
+            fi
+          else
+            if [ "${_WEB_SH}" != "/bin/bash" ]; then
+              rm -f /bin/sh
+              ln -s /bin/bash /bin/sh
+            fi
+          fi
+        fi
         su -s /bin/bash - ${UQ} -c "rvm install ${_RUBY_VRN}"
         su -s /bin/bash - ${UQ} -c "rvm use ${_RUBY_VRN} --default"
         rm -f /var/run/manage_rvm_users.pid
@@ -420,7 +435,7 @@ enable_chattr() {
         rm -f /bin/sh
         ln -s /bin/websh /bin/sh
       fi
-      if [ ! -f "${dscUsr}/log/.gems.build.d.${UQ}.txt" ]; then
+      if [ ! -f "${dscUsr}/log/.gems.build.d.${UQ}.${_X_SE}.txt" ]; then
         rm -f ${dscUsr}/log/eventmachine*
         if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
           _WEB_SH=$(readlink -n /bin/sh 2>&1)
@@ -452,7 +467,7 @@ enable_chattr() {
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative oily_png"       &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.1.1 oily_png"      &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative yajl-ruby"      &> /dev/null
-        touch ${dscUsr}/log/.gems.build.d.${UQ}.txt
+        touch ${dscUsr}/log/.gems.build.d.${UQ}.${_X_SE}.txt
         rm -f /var/run/manage_rvm_users.pid
         if [ -d "/usr/local/.off_rvm" ]; then
           mv -f /usr/local/.off_rvm /usr/local/rvm
