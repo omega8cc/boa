@@ -1981,7 +1981,7 @@ install_wkhtmltox() {
     if [[ "${_WOX_ITD}" =~ "0.12.5" ]]; then
       _WOX_IS=NEW
     fi
-  Fi
+  fi
   if [ "${_THIS_RV}" = "buster" ] \
     || [ "${_THIS_RV}" = "stretch" ] \
     || [ "${_THIS_RV}" = "jessie" ] \
