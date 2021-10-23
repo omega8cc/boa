@@ -1973,7 +1973,7 @@ install_wkhtmltox() {
     | cut -d" " -f2 \
     | awk '{ print $1}')
   if [ "${_THIS_RV}" = "buster" ] \
-    || [ "${_THIS_RV}" = "stretch" ] \
+    || [ "${_THIS_RV}" = "stretch" ]; then
     if [[ "${_WOX_ITD}" =~ "0.12.6" ]]; then
       _WOX_IS=NEW
     fi
