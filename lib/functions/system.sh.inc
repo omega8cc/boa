@@ -1972,9 +1972,16 @@ install_wkhtmltox() {
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}')
-  if [[ "${_WOX_ITD}" =~ "0.12.6" ]]; then
-    _WOX_IS=NEW
-  fi
+  if [ "${_THIS_RV}" = "buster" ] \
+    || [ "${_THIS_RV}" = "stretch" ] \
+    if [[ "${_WOX_ITD}" =~ "0.12.6" ]]; then
+      _WOX_IS=NEW
+    fi
+  else
+    if [[ "${_WOX_ITD}" =~ "0.12.5" ]]; then
+      _WOX_IS=NEW
+    fi
+  Fi
   if [ "${_THIS_RV}" = "buster" ] \
     || [ "${_THIS_RV}" = "stretch" ] \
     || [ "${_THIS_RV}" = "jessie" ] \
