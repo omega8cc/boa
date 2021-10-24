@@ -2573,12 +2573,26 @@ check_update_le_hm_ssl() {
   if [ -x "${exeLe}" ] \
     && [ ! -z "${hmFront}" ] \
     && [ -e "${User}/tools/le/certs/${hmFront}/fullchain.pem" ]; then
+    _DOM=$(date +%e 2>&1)
+    _DOM=${_DOM//[^0-9]/}
+    _RDM=$((RANDOM%25+6))
+    if [ "${_DOM}" = "${_RDM}" ] || [ -e "${User}/static/control/force-ssl-certs-rebuild.info" ]; then
+      if [ ! -e "${User}/log/ctrl/site.${hmFront}.cert-x1-rebuilt.info" ]; then
+        leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1' --force"
+        mkdir -p ${User}/log/ctrl
+        touch ${User}/log/ctrl/site.${hmFront}.cert-x1-rebuilt.info
+      else
+        leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
+      fi
+    else
+      leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
+    fi
     if [ ! -z "${hmFrontExtra}" ]; then
       echo "Running LE cert check directly for hostmaster ${_HM_U} with ${hmFrontExtra}"
-      su -s /bin/bash - ${_HM_U} -c "${exeLe} --cron --ipv4 --preferred-chain 'ISRG Root X1' --domain ${hmFront} --domain ${hmFrontExtra}"
+      su -s /bin/bash - ${_HM_U} -c "${exeLe} ${leParams} --domain ${hmFront} --domain ${hmFrontExtra}"
     else
       echo "Running LE cert check directly for hostmaster ${_HM_U}"
-      su -s /bin/bash - ${_HM_U} -c "${exeLe} --cron --ipv4 --preferred-chain 'ISRG Root X1' --domain ${hmFront}"
+      su -s /bin/bash - ${_HM_U} -c "${exeLe} ${leParams} --domain ${hmFront}"
     fi
     sleep 3
   fi
@@ -2632,6 +2646,20 @@ check_update_le_ssl() {
             fi
           fi
         done
+		_DOM=$(date +%e 2>&1)
+		_DOM=${_DOM//[^0-9]/}
+		_RDM=$((RANDOM%25+6))
+		if [ "${_DOM}" = "${_RDM}" ] || [ -e "${User}/static/control/force-ssl-certs-rebuild.info" ]; then
+		  if [ ! -e "${User}/log/ctrl/site.${Dom}.cert-x1-rebuilt.info" ]; then
+			leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1' --force"
+			mkdir -p ${User}/log/ctrl
+			touch ${User}/log/ctrl/site.${Dom}.cert-x1-rebuilt.info
+		  else
+			leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
+		  fi
+		else
+		  leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
+		fi
         dhArgs="--domain ${Dom} ${useAliases}"
         if [ -e "${User}/static/control/wildcard-enable-${Dom}.info" ]; then
           Dom=$(echo ${Dom} | sed 's/^www.//g' 2>&1)
@@ -2649,12 +2677,9 @@ check_update_le_ssl() {
             fi
           fi
         fi
+        echo "leParams is ${leParams}"
         echo "dhArgs is ${dhArgs}"
-        su -s /bin/bash - ${_HM_U} -c "${exeLe} \
-          --cron \
-          --ipv4 \
-          --preferred-chain 'ISRG Root X1' \
-          ${dhArgs}"
+        su -s /bin/bash - ${_HM_U} -c "${exeLe} ${leParams} ${dhArgs}"
         if [ -e "${User}/static/control/wildcard-enable-${Dom}.info" ]; then
           sleep 30
         else
