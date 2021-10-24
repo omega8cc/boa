@@ -5562,7 +5562,7 @@ satellite_child_b_letsencrypt() {
   mkdir -p ${_ROOT}/backups/system
   chmod 700 ${_ROOT}/backups/system
   rm -f ${_ROOT}/backups/system/letsencrypt*
-  curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/dehydrated" -o ${pthLe}
+  curl ${crlGet} "${urlHmr}/helpers/dehydrated" -o ${pthLe}
   if [ ! -e "${leRoot}" ]; then
     leSetup="YES"
   fi
