@@ -5553,6 +5553,7 @@ satellite_child_b_aegir_health_check() {
 }
 
 satellite_child_b_letsencrypt() {
+  leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
   leRoot="${_ROOT}/tools/le"
   leKeyJ="${leRoot}/tools/le/private_key.json"
   leKeyP="${leRoot}/tools/le/private_key.pem"
@@ -5633,12 +5634,12 @@ satellite_child_b_letsencrypt() {
         sleep 3
         bash ${exeLe} --register --accept-terms
         sleep 3
-        bash ${exeLe} --cron --ipv4 --preferred-chain "ISRG Root X1" --domain ${_DOMAIN} --force
+        bash ${exeLe} ${leParams} --domain ${_DOMAIN} --force
         touch ${leRoot}/.ctrl/forced-${_DOMAIN}-mode.pid
       else
         bash ${exeLe} --register --accept-terms
         sleep 3
-        bash ${exeLe} --cron --ipv4 --preferred-chain "ISRG Root X1" --domain ${_DOMAIN}
+        bash ${exeLe} ${leParams} --domain ${_DOMAIN}
       fi
     else
       mkdir -p ${_ROOT}/log
@@ -5648,12 +5649,12 @@ satellite_child_b_letsencrypt() {
         sleep 3
         bash ${exeLe} --register --accept-terms >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
         sleep 3
-        bash ${exeLe} --cron --ipv4 --preferred-chain "ISRG Root X1" --domain ${_DOMAIN} --force >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
+        bash ${exeLe} ${leParams} --domain ${_DOMAIN} --force >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
         touch ${leRoot}/.ctrl/forced-${_DOMAIN}-mode.pid
       else
         bash ${exeLe} --register --accept-terms >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
         sleep 3
-        bash ${exeLe} --cron --ipv4 --preferred-chain "ISRG Root X1" --domain ${_DOMAIN} >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
+        bash ${exeLe} ${leParams} --domain ${_DOMAIN} >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
       fi
     fi
   else

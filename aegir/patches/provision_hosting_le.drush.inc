@@ -324,7 +324,7 @@ function drush_provision_hosting_le_post_provision_verify() {
       $le_options = ' --cron --ipv4 --preferred-chain "ISRG Root X1"';
       $le_challenge = " --domain " . $real_name . " --challenge dns-01 --hook " . $cf_hook;
       if ($on_remote_server) {
-        $le_options .= " --ipv4 --hook " . $le_hook;
+        $le_options .= " --hook " . $le_hook;
       }
       if ($force_renew) {
         if ($no_alt_names || empty($alt_names)) {
