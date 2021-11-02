@@ -1458,119 +1458,115 @@ satellite_create_shared_dirs() {
 # Update o_contrib.
 satellite_o_contrib_update_global() {
 
-  _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 \
-    017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 \
-    035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
-
   _RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 \
     cookie_cache_bypass_adv module_supports imageinfo_cache"
 
-  for i in ${_REVISIONS}; do
-    if [ -e "${_D}/${i}/o_contrib" ] \
-      && [ ! -e "${_D}/${i}/o_contrib/update-${_X_VERSION}.info" ]; then
+  for i in `dir -d ${_D}/*`; do
+    if [ -e "${i}/o_contrib" ] \
+      && [ ! -e "${i}/o_contrib/update-${_X_VERSION}.info" ]; then
       _FORCE_UP_SIX=YES
-    elif [ -e "${_D}/${i}/o_contrib" ] \
+    elif [ -e "${i}/o_contrib" ] \
       && [ ! -e "${_D}/000/modules/redis_edge" ]; then
       _FORCE_UP_SIX=YES
-    elif [ -e "${_D}/${i}/o_contrib" ] \
-      && [ ! -L "${_D}/${i}/o_contrib/redis_edge" ]; then
+    elif [ -e "${i}/o_contrib" ] \
+      && [ ! -L "${i}/o_contrib/redis_edge" ]; then
       _FORCE_UP_SIX=YES
-    elif [ -e "${_D}/${i}/o_contrib" ] \
-      && [ ! -L "${_D}/${i}/o_contrib/redis" ]; then
+    elif [ -e "${i}/o_contrib" ] \
+      && [ ! -L "${i}/o_contrib/redis" ]; then
       _FORCE_UP_SIX=YES
-    elif [ -e "${_D}/${i}/o_contrib" ] \
-      && [ ! -d "${_D}/${i}/o_contrib/mydropwizard" ]; then
+    elif [ -e "${i}/o_contrib" ] \
+      && [ ! -d "${i}/o_contrib/mydropwizard" ]; then
       _FORCE_UP_SIX=YES
     else
       _FORCE_UP_SIX=NO
     fi
-    if [ "${_FORCE_UP_SIX}" = "YES" ] && [ -e "${_D}/${i}/o_contrib" ]; then
+    if [ "${_FORCE_UP_SIX}" = "YES" ] && [ -e "${i}/o_contrib" ]; then
       for m in ${_RMMODULES}; do
-        if [ -d "${_D}/${i}/o_contrib/$m" ]; then
-          rm -rf ${_D}/${i}/o_contrib/$m
+        if [ -d "${i}/o_contrib/$m" ]; then
+          rm -rf ${i}/o_contrib/$m
         fi
       done
-      cd ${_D}/${i}/o_contrib
-      if [ ! -d "${_D}/${i}/o_contrib/advagg" ]; then
+      cd ${i}/o_contrib
+      if [ ! -d "${i}/o_contrib/advagg" ]; then
         get_dev_contrib "advagg-6.x-1.11.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib/boost" ]; then
+      if [ ! -d "${i}/o_contrib/boost" ]; then
         get_dev_contrib "boost-6.x-1.22.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib/cdn" ]; then
+      if [ ! -d "${i}/o_contrib/cdn" ]; then
         get_dev_contrib "cdn-6.x-2.7.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib/force_password_change" ]; then
+      if [ ! -d "${i}/o_contrib/force_password_change" ]; then
         get_dev_contrib "force_password_change-6.x-3.4.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib/fpa" ]; then
+      if [ ! -d "${i}/o_contrib/fpa" ]; then
         get_dev_contrib "fpa-6.x-2.5.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib/httprl" ]; then
+      if [ ! -d "${i}/o_contrib/httprl" ]; then
         get_dev_contrib "httprl-6.x-1.14.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib/js" ]; then
+      if [ ! -d "${i}/o_contrib/js" ]; then
         get_dev_contrib "js-6.x-1.3.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib/mydropwizard" ]; then
+      if [ ! -d "${i}/o_contrib/mydropwizard" ]; then
         get_dev_contrib "mydropwizard-6.x-1.7.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib/panels_content_cache" ]; then
+      if [ ! -d "${i}/o_contrib/panels_content_cache" ]; then
         get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib/phpass" ]; then
+      if [ ! -d "${i}/o_contrib/phpass" ]; then
         get_dev_contrib "phpass-6.x-2.1.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib/print" ]; then
+      if [ ! -d "${i}/o_contrib/print" ]; then
         get_dev_contrib "print-6.x-1.19.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib/session_expire" ]; then
+      if [ ! -d "${i}/o_contrib/session_expire" ]; then
         get_dev_contrib "session_expire-6.x-1.x-dev.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib/taxonomy_edge" ]; then
+      if [ ! -d "${i}/o_contrib/taxonomy_edge" ]; then
         get_dev_contrib "taxonomy_edge-6.x-1.7.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib/views_cache_bully" ]; then
+      if [ ! -d "${i}/o_contrib/views_cache_bully" ]; then
         get_dev_contrib "views_cache_bully-6.x-3.1.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib/views_content_cache" ]; then
+      if [ ! -d "${i}/o_contrib/views_content_cache" ]; then
         get_dev_contrib "views_content_cache-6.x-2.x-dev.tar.gz"
       fi
       if [ "${_PURGE_MODE}" = "ON" ]; then
-        if [ ! -d "${_D}/${i}/o_contrib/expire" ]; then
+        if [ ! -d "${i}/o_contrib/expire" ]; then
           get_dev_contrib "expire-6.x-1.x-dev.tar.gz"
         fi
-        if [ ! -d "${_D}/${i}/o_contrib/purge" ]; then
+        if [ ! -d "${i}/o_contrib/purge" ]; then
           get_dev_contrib "purge-6.x-1.7.tar.gz"
         fi
       fi
-      if [ -d "${_D}/${i}/o_contrib/cache_backport" ]; then
-        rm -rf ${_D}/${i}/o_contrib/cache_backport
+      if [ -d "${i}/o_contrib/cache_backport" ]; then
+        rm -rf ${i}/o_contrib/cache_backport
       fi
-      if [ -d "${_D}/${i}/o_contrib/redis" ]; then
-        rm -rf ${_D}/${i}/o_contrib/redis
+      if [ -d "${i}/o_contrib/redis" ]; then
+        rm -rf ${i}/o_contrib/redis
       fi
-      if [ -d "${_D}/${i}/o_contrib/redis_edge" ]; then
-        rm -rf ${_D}/${i}/o_contrib/redis_edge
+      if [ -d "${i}/o_contrib/redis_edge" ]; then
+        rm -rf ${i}/o_contrib/redis_edge
       fi
       if [ -e "${_D}/000/modules/cache_backport" ] \
-        && [ ! -L "${_D}/${i}/o_contrib/cache_backport" ]; then
-        ln -sf ${_D}/000/modules/cache_backport ${_D}/${i}/o_contrib/cache_backport
+        && [ ! -L "${i}/o_contrib/cache_backport" ]; then
+        ln -sf ${_D}/000/modules/cache_backport ${i}/o_contrib/cache_backport
       fi
       if [ -e "${_D}/000/modules/redis" ] \
-        && [ ! -L "${_D}/${i}/o_contrib/redis" ]; then
-        ln -sf ${_D}/000/modules/redis ${_D}/${i}/o_contrib/redis
+        && [ ! -L "${i}/o_contrib/redis" ]; then
+        ln -sf ${_D}/000/modules/redis ${i}/o_contrib/redis
       fi
       if [ -e "${_D}/000/modules/redis_edge" ] \
-        && [ ! -L "${_D}/${i}/o_contrib/redis_edge" ]; then
-        ln -sf ${_D}/000/modules/redis_edge ${_D}/${i}/o_contrib/redis_edge
+        && [ ! -L "${i}/o_contrib/redis_edge" ]; then
+        ln -sf ${_D}/000/modules/redis_edge ${i}/o_contrib/redis_edge
       fi
-      touch ${_D}/${i}/o_contrib/update-${_X_VERSION}.info
-      find ${_D}/${i}/o_contrib -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_D}/${i}/o_contrib -type f -exec chmod 0644 {} \; &> /dev/null
+      touch ${i}/o_contrib/update-${_X_VERSION}.info
+      find ${i}/o_contrib -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${i}/o_contrib -type f -exec chmod 0644 {} \; &> /dev/null
     fi
     if [ -d "${_D}/$i" ]; then
-      for p in `find ${_D}/${i}/ -maxdepth 1 -mindepth 1 -type d | sort`; do
+      for p in `find ${i}/ -maxdepth 1 -mindepth 1 -type d | sort`; do
         if [ -d "$p/modules/cookie_cache_bypass" ]; then
           rm -rf $p/modules/cookie_cache_bypass
         fi
@@ -1584,139 +1580,135 @@ satellite_o_contrib_update_global() {
 # Update o_contrib_seven.
 satellite_o_contrib_seven_update_global() {
 
-  _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 \
-    017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 \
-    035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
-
   _RMMODULES="session443 cookie_cache_bypass_adv agrcache speedy"
 
-  for i in ${_REVISIONS}; do
-    if [ -e "${_D}/${i}/o_contrib_seven" ] \
-      && [ ! -e "${_D}/${i}/o_contrib_seven/update-${_X_VERSION}.info" ]; then
+  for i in `dir -d ${_D}/*`; do
+    if [ -e "${i}/o_contrib_seven" ] \
+      && [ ! -e "${i}/o_contrib_seven/update-${_X_VERSION}.info" ]; then
       _FORCE_UP_SEVEN=YES
-    elif [ -e "${_D}/${i}/o_contrib_seven" ] \
-      && [ ! -e "${_D}/${i}/o_contrib_seven/views_accelerator" ]; then
+    elif [ -e "${i}/o_contrib_seven" ] \
+      && [ ! -e "${i}/o_contrib_seven/views_accelerator" ]; then
       _FORCE_UP_SEVEN=YES
-    elif [ -e "${_D}/${i}/o_contrib_seven" ] \
+    elif [ -e "${i}/o_contrib_seven" ] \
       && [ ! -e "${_D}/000/modules/redis_edge" ]; then
       _FORCE_UP_SEVEN=YES
-    elif [ -e "${_D}/${i}/o_contrib_seven" ] \
-      && [ ! -L "${_D}/${i}/o_contrib_seven/redis_edge" ]; then
+    elif [ -e "${i}/o_contrib_seven" ] \
+      && [ ! -L "${i}/o_contrib_seven/redis_edge" ]; then
       _FORCE_UP_SEVEN=YES
-    elif [ -e "${_D}/${i}/o_contrib_seven" ] \
-      && [ ! -L "${_D}/${i}/o_contrib_seven/redis" ]; then
+    elif [ -e "${i}/o_contrib_seven" ] \
+      && [ ! -L "${i}/o_contrib_seven/redis" ]; then
       _FORCE_UP_SEVEN=YES
     else
       _FORCE_UP_SEVEN=NO
     fi
     if [ "${_FORCE_UP_SEVEN}" = "YES" ] \
-      && [ -e "${_D}/${i}/o_contrib_seven" ]; then
+      && [ -e "${i}/o_contrib_seven" ]; then
       for m in ${_RMMODULES}; do
-        if [ -d "${_D}/${i}/o_contrib_seven/$m" ]; then
-          rm -rf ${_D}/${i}/o_contrib_seven/$m
+        if [ -d "${i}/o_contrib_seven/$m" ]; then
+          rm -rf ${i}/o_contrib_seven/$m
         fi
       done
       _ADMINER_VRN=4.7.7
-      cd ${_D}/${i}/o_contrib_seven
-      if [ ! -e "${_D}/${i}/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}-mysql.php" ]; then
-        rm -rf ${_D}/${i}/o_contrib_seven/adminer
+      cd ${i}/o_contrib_seven
+      if [ ! -e "${i}/o_contrib_seven/adminer/adminer/adminer-${_ADMINER_VRN}-mysql.php" ]; then
+        rm -rf ${i}/o_contrib_seven/adminer
         get_dev_contrib "adminer_bundle-7.x-1.2.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/advagg" ]; then
+      if [ ! -d "${i}/o_contrib_seven/advagg" ]; then
         get_dev_contrib "advagg-7.x-2.35.tar.gz"
       fi
-      if [ ! -e "${_D}/${i}/o_contrib_seven/autoslave/patches/update-pdo-7.22.patch" ]; then
-        rm -rf ${_D}/${i}/o_contrib_seven/autoslave
+      if [ ! -e "${i}/o_contrib_seven/autoslave/patches/update-pdo-7.22.patch" ]; then
+        rm -rf ${i}/o_contrib_seven/autoslave
         get_dev_contrib "autoslave-7.x-1.x-dev.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/boost" ]; then
+      if [ ! -d "${i}/o_contrib_seven/boost" ]; then
         get_dev_contrib "boost-7.x-1.2.tar.gz"
       fi
-      if [ ! -e "${_D}/${i}/o_contrib_seven/cache_consistent/3010585-cache-consistent-php72-2.patch" ]; then
-        rm -rf ${_D}/${i}/o_contrib_seven/cache_consistent
+      if [ ! -e "${i}/o_contrib_seven/cache_consistent/3010585-cache-consistent-php72-2.patch" ]; then
+        rm -rf ${i}/o_contrib_seven/cache_consistent
         get_dev_contrib "cache_consistent-7.x-2.x-dev.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/cdn" ]; then
+      if [ ! -d "${i}/o_contrib_seven/cdn" ]; then
         get_dev_contrib "cdn-7.x-2.10.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/display_cache" ]; then
+      if [ ! -d "${i}/o_contrib_seven/display_cache" ]; then
         get_dev_contrib "display_cache-7.x-1.3.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/entitycache" ]; then
+      if [ ! -d "${i}/o_contrib_seven/entitycache" ]; then
         get_dev_contrib "entitycache-7.x-1.5.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/filefield_nginx_progress" ]; then
+      if [ ! -d "${i}/o_contrib_seven/filefield_nginx_progress" ]; then
         get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/file_resup" ]; then
+      if [ ! -d "${i}/o_contrib_seven/file_resup" ]; then
         get_dev_contrib "file_resup-7.x-1.5.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/force_password_change" ]; then
+      if [ ! -d "${i}/o_contrib_seven/force_password_change" ]; then
         get_dev_contrib "force_password_change-7.x-2.2.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/fpa" ]; then
+      if [ ! -d "${i}/o_contrib_seven/fpa" ]; then
         get_dev_contrib "fpa-7.x-2.6.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/httprl" ]; then
+      if [ ! -d "${i}/o_contrib_seven/httprl" ]; then
         get_dev_contrib "httprl-7.x-1.14.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/js" ]; then
+      if [ ! -d "${i}/o_contrib_seven/js" ]; then
         get_dev_contrib "js-7.x-2.5.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/panels_content_cache" ]; then
+      if [ ! -d "${i}/o_contrib_seven/panels_content_cache" ]; then
         get_dev_contrib "panels_content_cache-7.x-1.4.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/print" ]; then
+      if [ ! -d "${i}/o_contrib_seven/print" ]; then
         get_dev_contrib "print-7.x-2.2.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/session_expire" ]; then
+      if [ ! -d "${i}/o_contrib_seven/session_expire" ]; then
         get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/speedy" ]; then
+      if [ ! -d "${i}/o_contrib_seven/speedy" ]; then
         get_dev_contrib "speedy-7.x-1.34.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/taxonomy_edge" ]; then
+      if [ ! -d "${i}/o_contrib_seven/taxonomy_edge" ]; then
         get_dev_contrib "taxonomy_edge-7.x-1.9.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/views_accelerator" ]; then
+      if [ ! -d "${i}/o_contrib_seven/views_accelerator" ]; then
         get_dev_contrib "views_accelerator-7.x-1.0-beta1.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/views_cache_bully" ]; then
+      if [ ! -d "${i}/o_contrib_seven/views_cache_bully" ]; then
         get_dev_contrib "views_cache_bully-7.x-3.1.tar.gz"
       fi
-      if [ ! -d "${_D}/${i}/o_contrib_seven/views_content_cache" ]; then
+      if [ ! -d "${i}/o_contrib_seven/views_content_cache" ]; then
         get_dev_contrib "views_content_cache-7.x-3.0-alpha3.tar.gz"
       fi
-      if [ ! -e "${_D}/${i}/o_contrib_seven/entitycache/includes/entitycache.node.inc" ]; then
-        rm -rf ${_D}/${i}/o_contrib_seven/entitycache
+      if [ ! -e "${i}/o_contrib_seven/entitycache/includes/entitycache.node.inc" ]; then
+        rm -rf ${i}/o_contrib_seven/entitycache
         get_dev_contrib "entitycache-7.x-1.5.tar.gz"
       fi
       if [ "${_PURGE_MODE}" = "ON" ] && [ "${_PURGE_FOR_SEVEN}" = "YES" ]; then
-        cd ${_D}/${i}/o_contrib_seven
-        if [ ! -d "${_D}/${i}/o_contrib_seven/expire" ]; then
+        cd ${i}/o_contrib_seven
+        if [ ! -d "${i}/o_contrib_seven/expire" ]; then
           get_dev_contrib "expire-7.x-2.0-rc4.tar.gz"
         fi
-        if [ ! -d "${_D}/${i}/o_contrib_seven/purge" ]; then
+        if [ ! -d "${i}/o_contrib_seven/purge" ]; then
           get_dev_contrib "purge-7.x-1.7.tar.gz"
         fi
       fi
-      if [ -d "${_D}/${i}/o_contrib_seven/redis" ]; then
-        rm -rf ${_D}/${i}/o_contrib_seven/redis
+      if [ -d "${i}/o_contrib_seven/redis" ]; then
+        rm -rf ${i}/o_contrib_seven/redis
       fi
-      if [ -d "${_D}/${i}/o_contrib_seven/redis_edge" ]; then
-        rm -rf ${_D}/${i}/o_contrib_seven/redis_edge
+      if [ -d "${i}/o_contrib_seven/redis_edge" ]; then
+        rm -rf ${i}/o_contrib_seven/redis_edge
       fi
       if [ -e "${_D}/000/modules/redis" ] \
-        && [ ! -L "${_D}/${i}/o_contrib_seven/redis" ]; then
-        ln -sf ${_D}/000/modules/redis ${_D}/${i}/o_contrib_seven/redis
+        && [ ! -L "${i}/o_contrib_seven/redis" ]; then
+        ln -sf ${_D}/000/modules/redis ${i}/o_contrib_seven/redis
       fi
       if [ -e "${_D}/000/modules/redis_edge" ] \
-        && [ ! -L "${_D}/${i}/o_contrib_seven/redis_edge" ]; then
-        ln -sf ${_D}/000/modules/redis_edge ${_D}/${i}/o_contrib_seven/redis_edge
+        && [ ! -L "${i}/o_contrib_seven/redis_edge" ]; then
+        ln -sf ${_D}/000/modules/redis_edge ${i}/o_contrib_seven/redis_edge
       fi
-      find ${_D}/${i}/o_contrib_seven -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_D}/${i}/o_contrib_seven -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${_D}/${i}/o_contrib_seven/update-${_X_VERSION}.info
+      find ${i}/o_contrib_seven -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${i}/o_contrib_seven -type f -exec chmod 0644 {} \; &> /dev/null
+      touch ${i}/o_contrib_seven/update-${_X_VERSION}.info
     fi
   done
   cd
@@ -1726,50 +1718,46 @@ satellite_o_contrib_seven_update_global() {
 # Update o_contrib_eight.
 satellite_o_contrib_eight_update_global() {
 
-  _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 \
-    017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 \
-    035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
-
   _RMMODULES="some_foo_bar"
 
-  for i in ${_REVISIONS}; do
-    if [ -e "${_D}/${i}/o_contrib_eight" ] \
-      && [ ! -e "${_D}/${i}/o_contrib_eight/update-${_X_VERSION}.info" ]; then
+  for i in `dir -d ${_D}/*`; do
+    if [ -e "${i}/o_contrib_eight" ] \
+      && [ ! -e "${i}/o_contrib_eight/update-${_X_VERSION}.info" ]; then
       _FORCE_UP_EIGHT=YES
-    elif [ -e "${_D}/${i}/o_contrib_eight" ] \
+    elif [ -e "${i}/o_contrib_eight" ] \
       && [ ! -e "${_D}/000/modules/redis_eight" ]; then
       _FORCE_UP_EIGHT=YES
-    elif [ -e "${_D}/${i}/o_contrib_eight" ] \
-      && [ ! -L "${_D}/${i}/o_contrib_eight/redis_eight" ]; then
+    elif [ -e "${i}/o_contrib_eight" ] \
+      && [ ! -L "${i}/o_contrib_eight/redis_eight" ]; then
       _FORCE_UP_EIGHT=YES
-    elif [ -e "${_D}/${i}/o_contrib_eight" ] \
-      && [ ! -L "${_D}/${i}/o_contrib_eight/redis_compr" ]; then
+    elif [ -e "${i}/o_contrib_eight" ] \
+      && [ ! -L "${i}/o_contrib_eight/redis_compr" ]; then
       _FORCE_UP_EIGHT=YES
     else
       _FORCE_UP_EIGHT=NO
     fi
     if [ "${_FORCE_UP_EIGHT}" = "YES" ] \
-      && [ -e "${_D}/${i}/o_contrib_eight" ]; then
+      && [ -e "${i}/o_contrib_eight" ]; then
       for m in ${_RMMODULES}; do
-        if [ -d "${_D}/${i}/o_contrib_eight/$m" ]; then
-          rm -rf ${_D}/${i}/o_contrib_eight/$m
+        if [ -d "${i}/o_contrib_eight/$m" ]; then
+          rm -rf ${i}/o_contrib_eight/$m
         fi
       done
-      cd ${_D}/${i}/o_contrib_eight
-      if [ -d "${_D}/${i}/o_contrib_eight/redis_eight" ]; then
-        rm -rf ${_D}/${i}/o_contrib_eight/redis_eight
+      cd ${i}/o_contrib_eight
+      if [ -d "${i}/o_contrib_eight/redis_eight" ]; then
+        rm -rf ${i}/o_contrib_eight/redis_eight
       fi
       if [ -e "${_D}/000/modules/redis_eight" ] \
-        && [ ! -L "${_D}/${i}/o_contrib_eight/redis_eight" ]; then
-        ln -sf ${_D}/000/modules/redis_eight ${_D}/${i}/o_contrib_eight/redis_eight
+        && [ ! -L "${i}/o_contrib_eight/redis_eight" ]; then
+        ln -sf ${_D}/000/modules/redis_eight ${i}/o_contrib_eight/redis_eight
       fi
       if [ -e "${_D}/000/modules/redis_compr" ] \
-        && [ ! -L "${_D}/${i}/o_contrib_eight/redis_compr" ]; then
-        ln -sf ${_D}/000/modules/redis_compr ${_D}/${i}/o_contrib_eight/redis_compr
+        && [ ! -L "${i}/o_contrib_eight/redis_compr" ]; then
+        ln -sf ${_D}/000/modules/redis_compr ${i}/o_contrib_eight/redis_compr
       fi
-      find ${_D}/${i}/o_contrib_eight -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_D}/${i}/o_contrib_eight -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${_D}/${i}/o_contrib_eight/update-${_X_VERSION}.info
+      find ${i}/o_contrib_eight -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${i}/o_contrib_eight -type f -exec chmod 0644 {} \; &> /dev/null
+      touch ${i}/o_contrib_eight/update-${_X_VERSION}.info
     fi
   done
   cd
