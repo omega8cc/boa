@@ -1215,7 +1215,8 @@ barracuda_cnf() {
             fi
           else
             if [ ! -e "/root/.debug.cnf" ] || [ -e "/root/.default.cnf" ]; then
-              _PHP_MULTI_INSTALL="7.4 7.3 7.2 7.1 7.0 5.6"
+              ### _PHP_MULTI_INSTALL="7.4 7.3 7.2 7.1 7.0 5.6"
+              _DO_NOTHING=YES
             fi
           fi
         fi
