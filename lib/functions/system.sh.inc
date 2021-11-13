@@ -1182,17 +1182,10 @@ barracuda_cnf() {
       fi
     fi
 
-    if [[ "${_PHP_MULTI_INSTALL_TEST}" =~ "_PHP_MULTI_INSTALL" ]] \
-      && [ ! -z "${_PHP_MULTI_INSTALL}" ]; then
+    if [ -e "/root/.updated.multi.php.cnf" ]; then
       _DO_NOTHING=YES
     else
-      if [ -e "/root/.auto.up.cnf" ] \
-        || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-        || [ "${_VMFAMILY}" = "VS" ] \
-        || [ -e "/root/.host8.cnf" ]; then
+      if [ -e "/data/disk/arch/sql" ]; then
         if [ -e "/root/.mstr.clstr.cnf" ] \
           || [ -e "/root/.wbhd.clstr.cnf" ] \
           || [ -e "/root/.dbhd.clstr.cnf" ]; then
@@ -1214,9 +1207,104 @@ barracuda_cnf() {
               _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
             fi
           else
-            if [ ! -e "/root/.debug.cnf" ] || [ -e "/root/.default.cnf" ]; then
-              ### _PHP_MULTI_INSTALL="7.4 7.3 7.2 7.1 7.0 5.6"
-              _DO_NOTHING=YES
+            if [ -e "/data/disk/arch/sql" ]; then
+              _local_PHP_MULTI_INSTALL=
+
+              _is_PHP_multi_five_six=$(grep "5\.6" /data/disk/*/static/control/multi-fpm.info 2>&1)
+              _is_PHP_FPM_five_six=$(grep "5\.6" /data/disk/*/static/control/fpm.info 2>&1)
+              _is_PHP_CLI_five_six=$(grep "5\.6" /data/disk/*/static/control/cli.info 2>&1)
+              _is_PHP_five_six=
+              if [ "${_is_PHP_multi_five_six}" = "5.6" ] \
+                || [ "${_is_PHP_FPM_five_six}" = "5.6" ] \
+                || [ "${_is_PHP_CLI_five_six}" = "5.6" ]; then
+                _is_PHP_five_six=5.6
+                if [ "${_is_PHP_five_six}" != "${_PHP_FPM_VERSION}" ]; then
+                  _local_PHP_MULTI_INSTALL="${_PHP_FPM_VERSION} ${_is_PHP_five_six}"
+                fi
+              fi
+
+              _is_PHP_multi_seven_zero=$(grep "7\.0" /data/disk/*/static/control/multi-fpm.info 2>&1)
+              _is_PHP_FPM_seven_zero=$(grep "7\.0" /data/disk/*/static/control/fpm.info 2>&1)
+              _is_PHP_CLI_seven_zero=$(grep "7\.0" /data/disk/*/static/control/cli.info 2>&1)
+              _is_PHP_seven_zero=
+              if [ "${_is_PHP_multi_seven_zero}" = "7.0" ] \
+                || [ "${_is_PHP_FPM_seven_zero}" = "7.0" ] \
+                || [ "${_is_PHP_CLI_seven_zero}" = "7.0" ]; then
+                _is_PHP_seven_zero=7.0
+                if [ "${_is_PHP_seven_zero}" != "${_PHP_FPM_VERSION}" ]; then
+                  _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_zero}"
+                fi
+              fi
+
+              _is_PHP_multi_seven_one=$(grep "7\.1" /data/disk/*/static/control/multi-fpm.info 2>&1)
+              _is_PHP_FPM_seven_one=$(grep "7\.1" /data/disk/*/static/control/fpm.info 2>&1)
+              _is_PHP_CLI_seven_one=$(grep "7\.1" /data/disk/*/static/control/cli.info 2>&1)
+              _is_PHP_seven_one=
+              if [ "${_is_PHP_multi_seven_one}" = "7.1" ] \
+                || [ "${_is_PHP_FPM_seven_one}" = "7.1" ] \
+                || [ "${_is_PHP_CLI_seven_one}" = "7.1" ]; then
+                _is_PHP_seven_one=7.1
+                if [ "${_is_PHP_seven_one}" != "${_PHP_FPM_VERSION}" ]; then
+                  _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_one}"
+                fi
+              fi
+
+              _is_PHP_multi_seven_two=$(grep "7\.2" /data/disk/*/static/control/multi-fpm.info 2>&1)
+              _is_PHP_FPM_seven_two=$(grep "7\.2" /data/disk/*/static/control/fpm.info 2>&1)
+              _is_PHP_CLI_seven_two=$(grep "7\.2" /data/disk/*/static/control/cli.info 2>&1)
+              _is_PHP_seven_two=
+              if [ "${_is_PHP_multi_seven_two}" = "7.2" ] \
+                || [ "${_is_PHP_FPM_seven_two}" = "7.2" ] \
+                || [ "${_is_PHP_CLI_seven_two}" = "7.2" ]; then
+                _is_PHP_seven_two=7.2
+                if [ "${_is_PHP_seven_two}" != "${_PHP_FPM_VERSION}" ]; then
+                  _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_two}"
+                fi
+              fi
+
+              _is_PHP_multi_seven_three=$(grep "7\.3" /data/disk/*/static/control/multi-fpm.info 2>&1)
+              _is_PHP_FPM_seven_three=$(grep "7\.3" /data/disk/*/static/control/fpm.info 2>&1)
+              _is_PHP_CLI_seven_three=$(grep "7\.3" /data/disk/*/static/control/cli.info 2>&1)
+              _is_PHP_seven_three=
+              if [ "${_is_PHP_multi_seven_three}" = "7.3" ] \
+                || [ "${_is_PHP_FPM_seven_three}" = "7.3" ] \
+                || [ "${_is_PHP_CLI_seven_three}" = "7.3" ]; then
+                _is_PHP_seven_three=7.3
+                if [ "${_is_PHP_seven_three}" != "${_PHP_FPM_VERSION}" ]; then
+                  _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_three}"
+                fi
+              fi
+
+              _is_PHP_multi_seven_four=$(grep "7\.4" /data/disk/*/static/control/multi-fpm.info 2>&1)
+              _is_PHP_FPM_seven_four=$(grep "7\.4" /data/disk/*/static/control/fpm.info 2>&1)
+              _is_PHP_CLI_seven_four=$(grep "7\.4" /data/disk/*/static/control/cli.info 2>&1)
+              _is_PHP_seven_four=
+              if [ "${_is_PHP_multi_seven_four}" = "7.4" ] \
+                || [ "${_is_PHP_FPM_seven_four}" = "7.4" ] \
+                || [ "${_is_PHP_CLI_seven_four}" = "7.4" ]; then
+                _is_PHP_seven_four=7.4
+                if [ "${_is_PHP_seven_four}" != "${_PHP_FPM_VERSION}" ]; then
+                  _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_four}"
+                fi
+              fi
+
+              _is_PHP_multi_eight_zero=$(grep "8\.0" /data/disk/*/static/control/multi-fpm.info 2>&1)
+              _is_PHP_FPM_eight_zero=$(grep "8\.0" /data/disk/*/static/control/fpm.info 2>&1)
+              _is_PHP_CLI_eight_zero=$(grep "8\.0" /data/disk/*/static/control/cli.info 2>&1)
+              _is_PHP_eight_zero=
+              if [ "${_is_PHP_multi_eight_zero}" = "8.0" ] \
+                || [ "${_is_PHP_FPM_eight_zero}" = "8.0" ] \
+                || [ "${_is_PHP_CLI_eight_zero}" = "8.0" ]; then
+                _is_PHP_eight_zero=8.0
+                if [ "${_is_PHP_eight_zero}" != "${_PHP_FPM_VERSION}" ]; then
+                  _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_zero}"
+                fi
+              fi
+              _PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL}"
+              sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
+            else
+              _PHP_MULTI_INSTALL="7.4 7.3"
+              sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
             fi
           fi
         fi
