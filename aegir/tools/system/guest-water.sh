@@ -485,6 +485,27 @@ guard_stats() {
   fi
 }
 
+whitelist_ip_dns() {
+	sed -i "s/.*1.1.1.1.*//g"  /etc/csf/csf.allow
+	sed -i "s/.*1.1.1.1.*//g"  /etc/csf/csf.ignore
+	sed -i "s/.*1.0.0.1.*//g"  /etc/csf/csf.allow
+	sed -i "s/.*1.0.0.1.*//g"  /etc/csf/csf.ignore
+	echo "1.1.1.1 # Cloudflare DNS" >> /etc/csf/csf.allow
+	echo "1.1.1.1 # Cloudflare DNS" >> /etc/csf/csf.ignore
+	echo "1.0.0.1 # Cloudflare DNS" >> /etc/csf/csf.allow
+	echo "1.0.0.1 # Cloudflare DNS" >> /etc/csf/csf.ignore
+	sed -i "s/.*8.8.8.8.*//g"  /etc/csf/csf.allow
+	sed -i "s/.*8.8.8.8.*//g"  /etc/csf/csf.ignore
+	sed -i "s/.*8.8.4.4.*//g"  /etc/csf/csf.allow
+	sed -i "s/.*8.8.4.4.*//g"  /etc/csf/csf.ignore
+	echo "8.8.8.8 # Google DNS" >> /etc/csf/csf.allow
+	echo "8.8.8.8 # Google DNS" >> /etc/csf/csf.ignore
+	echo "8.8.4.4 # Google DNS" >> /etc/csf/csf.allow
+	echo "8.8.4.4 # Google DNS" >> /etc/csf/csf.ignore
+	sed -i "/^$/d" /etc/csf/csf.ignore
+	sed -i "/^$/d" /etc/csf/csf.allow
+}
+
 if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
   if [ -e "/root/.local.IP.list" ]; then
     echo local dr/tr start `date`
@@ -503,6 +524,7 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
   echo Waiting $n seconds...
   sleep $n
 
+  whitelist_ip_dns
   whitelist_ip_pingdom
   whitelist_ip_cloudflare
   whitelist_ip_googlebot
