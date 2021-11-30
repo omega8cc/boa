@@ -171,6 +171,11 @@ if [ -e "/data/disk/arch/sql" ]; then
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] \
     || [ "${_AUTO_UP}" = "YES" ]; then
+    if [ ! -e "/root/.fixed_php_seven_four_default.pid" ]; then
+      sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=7.4/g"  /root/.barracuda.cnf
+      sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=7.4/g"  /root/.barracuda.cnf
+      touch /root/.fixed_php_seven_four_default.pid
+    fi
     if [ ! -e "/root/.fixed_scan_dos_nginx.pid" ]; then
       sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=299/g"  /root/.barracuda.cnf
       sed -i "s/default_critnumber = 300/default_critnumber = 155/g" /var/xdrago/monitor/check/scan_nginx
