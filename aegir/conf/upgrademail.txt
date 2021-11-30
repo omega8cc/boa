@@ -1,13 +1,13 @@
 Hello,
 
-This email is very long this time, but it's *very* important that you read it
+This email is very long again, but it's *very* important that you read it
 and also check the links for more information, both to benefit from all new
 features and also to avoid known issues.
 
-Note that we list here changes which could be already installed
+Note that we list here some changes which could be already installed
 on some BOA instances before, because this information is still relevant
 and often overlooked, because who likes to read boring update emails..
-but, please, make exception now and read it in full -- you will learn
+but, please, make an exception now and read it in full -- you will learn
 about features you could be unaware of before. Enjoy!
 
 This BOA update provides latest PHP versions, system updates, including
@@ -26,6 +26,33 @@ TL;DR
 * Yes, blazing fast site clone/migrate mode is available even for giant sites!
 * Yes, BOA still supports Pressflow 6 (LTS version only!)
 * No, we no longer install any supported Drupal distros as platforms by default.
+* You should stop using PHP other than 7.4 because older versions are deprecated
+
+
+@=> PHP unsupported versions deprecation notice! Also, 8.0 and 8.1 is coming.
+
+While your BOA system will keep running PHP 5.6, 7.0, 7.1, 7.2 and 7.3 until
+any of them is used by any of the sites hosted on your system, none of them are
+not only actively maintained any longer, but even security updates have been
+dropped for all of them (PHP 7.3 security support ends on December 6, 2021).
+
+Next BOA upgrade, expected in a few days, will add support for PHP 8.0 and 8.1
+
+Please note that both Drupal 7 and our Pressflow 6 LTS version already support
+PHP 7.4, although you may not be able to use PHP 7.4 if you are running some
+no longer maintained contrib modules.
+
+It's very important that you upgrade all your hosted site to newest available
+Drupal core and contrib versions to avoid problems with too old PHP versions,
+since they are not only no longer secure, but also way slower than the currently
+supported PHP versions.
+
+For more information please check:
+
+  https://www.php.net/supported-versions.php
+  https://www.drupal.org/docs/system-requirements/php-requirements
+  https://learn.omega8.cc/how-to-quickly-switch-php-to-newer-version-330
+  https://learn.omega8.cc/your-drupal-site-upgrade-safe-workflow-298
 
 
 @=> Super fast site cloning and migration mode (NEW!)
@@ -150,7 +177,7 @@ even if you don't have root access or are on hosted BOA system.
 
 @=> Composer 2 support
 
-Composer will now use PHP 7.3 by default, and you can find many useful hints at:
+Composer will now use PHP 7.4 by default, and you can find many useful hints at:
   https://github.com/omega8cc/boa/blob/master/docs/COMPOSER.txt
 
 IMPORTANT: You must switch your ~/static/control/cli.info to 7.3 or newer
@@ -174,12 +201,12 @@ platform-name/docroot or something similar depending on the distro design.
 
 @=> Important PHP versions availability changes
 
-Still on PHP 5.6? You should switch to PHP 7.3 — It’s twice as fast as 5.6!
+Still on PHP 5.6? You should switch to PHP 7.4 — It’s twice as fast as 5.6!
 But don't switch blindly -- even sites already running on PHP 7.0 before
 are most probably not ready for PHP 7.4 or 7.3 without proper fixes.
 
-In addition to still supported, even if officially deprecated 5.6, 7.0, 7.1
-versions, this release supports PHP 7.4, 7.3 and 7.2
+In addition to still supported, even if officially deprecated 5.6, 7.0, 7.1, 7.2
+versions, this release supports PHP 7.4 and 7.3
 
 Please check the PHP officially supported versions list at:
   http://php.net/supported-versions.php
@@ -191,13 +218,13 @@ especially if you have not used PHP 7.x already.
 
 We recommend to test your sites clones with newer PHP versions using BOA
 multi-PHP-version support via ~/static/control/multi-fpm.info before
-switching your instance to use 7.3 or 7.2 by default.
+switching your instance to use 7.4 or 7.3 by default.
 
 Please check for more information:
   https://learn.omega8.cc/how-to-quickly-switch-php-to-newer-version-330
 
 We still include Pressflow 6 platforms, because in the meantime the LTS
-community support made the latest Pressflow 6 version compatible with PHP 7.2
+community support made the latest Pressflow 6 version compatible with PHP 7.3+
 
 If you still have a reason to use Drupal 6 core, we recommend to use
 our version: https://github.com/omega8cc/pressflow6/tree/pressflow-plus
