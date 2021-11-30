@@ -38,12 +38,12 @@
 ### Drupal 9 based
 ###
 ### OLS ----------- OpenLucius
+### OPG ----------- Opigno LMS
 ### THR ----------- Thunder
 ### VBE ----------- Varbase
 ###
 ### Drupal 8 based
 ###
-### OPG ----------- Opigno LMS
 ### SOC ----------- Social
 ###
 ### Drupal 7 based

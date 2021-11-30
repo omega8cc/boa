@@ -3639,6 +3639,13 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
+    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9}/web/sites" ]; then
+      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9}" ]; then
+        _A="${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9}/web/sites"
+        _B="${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9}"
+        ln -sf ${_A} ${_B}
+      fi
+    fi
   fi
 }
 
@@ -3933,6 +3940,7 @@ satellite_make() {
   echo "_OPENSCHOLAR=\"${_OPENSCHOLAR}\""             >> ${writeTo}
   echo "_OPIGNOLMS7=\"${_OPIGNOLMS7}\""               >> ${writeTo}
   echo "_OPIGNOLMS8=\"${_OPIGNOLMS8}\""               >> ${writeTo}
+  echo "_OPIGNOLMS9=\"${_OPIGNOLMS9}\""               >> ${writeTo}
   echo "_OSR=\"${_OSR}\""                             >> ${writeTo}
   echo "_PANOPOLY=\"${_PANOPOLY}\""                   >> ${writeTo}
   echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${writeTo}

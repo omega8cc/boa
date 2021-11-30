@@ -158,12 +158,12 @@ Octopus can install and/or support the platforms listed below:
  Drupal 9.0.x ----------------- https://drupal.org/project/drupal/releases?version=9.0
 
  OpenLucius 2.0.0 ------------- https://drupal.org/project/openlucius
+ Opigno LMS 3.0.0 ------------- https://drupal.org/project/opigno_lms
  Thunder 6.1.2 ---------------- https://drupal.org/project/thunder
  Varbase 9.0.0 ---------------- https://drupal.org/project/varbase
 
  @ Drupal 8
 
- Opigno LMS 2.20 -------------- https://drupal.org/project/opigno_lms
  Social 10.1.0 ---------------- https://drupal.org/project/social
 
  @ Drupal 7.82.3
