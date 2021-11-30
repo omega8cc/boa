@@ -2800,7 +2800,7 @@ commerce_7_2_install
 ### TMP OFF -- doesn't work with latest core and comes with too old core version
 
 guardr_install
-lightning_install
+#lightning_install
 #openaid_install
 
 _USE_DISTRO_CORE=YES

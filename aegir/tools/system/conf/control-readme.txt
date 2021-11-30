@@ -37,7 +37,6 @@
 ###
 ### Drupal 9 based
 ###
-### LHG ----------- Lightning
 ### OLS ----------- OpenLucius
 ### THR ----------- Thunder
 ### VBE ----------- Varbase
@@ -71,7 +70,7 @@
 ### Examples:
 ###
 ### ALL
-### LHG VBE D7P D7S D7D
+### VBE D7P D7S D7D
 ###
 
 

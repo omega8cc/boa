@@ -169,7 +169,6 @@ _CLIENT_CORES="8" #------------- Currently not used
 ###
 ### Drupal 9 based
 ###
-### LHG ----------- Lightning
 ### OLS ----------- OpenLucius
 ### THR ----------- Thunder
 ### VBE ----------- Varbase
@@ -203,5 +202,5 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### Examples:
 ###
 ### ALL
-### LHG VBE D7P D7S D7D
+### VBE D7P D7S D7D
 ###

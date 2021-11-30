@@ -157,7 +157,6 @@ Octopus can install and/or support the platforms listed below:
  Drupal 9.1.x ----------------- https://drupal.org/project/drupal/releases?version=9.1
  Drupal 9.0.x ----------------- https://drupal.org/project/drupal/releases?version=9.0
 
- Lightning 5.1.5 -------------- https://drupal.org/project/lightning
  OpenLucius 2.0.0 ------------- https://drupal.org/project/openlucius
  Thunder 6.1.2 ---------------- https://drupal.org/project/thunder
  Varbase 9.0.0 ---------------- https://drupal.org/project/varbase

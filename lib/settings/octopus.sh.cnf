@@ -53,7 +53,6 @@ _PHP_CLI_VERSION=7.4
 ###
 ### Drupal 9 based
 ###
-### LHG ----------- Lightning
 ### OLS ----------- OpenLucius
 ### THR ----------- Thunder
 ### VBE ----------- Varbase
@@ -83,7 +82,7 @@ _PHP_CLI_VERSION=7.4
 ### Examples:
 ###
 ### _PLATFORMS_LIST=ALL
-### _PLATFORMS_LIST="LHG VBE D7P D7S D7D"
+### _PLATFORMS_LIST="VBE D7P D7S D7D"
 ###
 _PLATFORMS_LIST=
 
