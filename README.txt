@@ -164,7 +164,7 @@ Octopus can install and/or support the platforms listed below:
 
  @ Drupal 8
 
- Social 10.1.0 ---------------- https://drupal.org/project/social
+ Social 10.3.2 ---------------- https://drupal.org/project/social
 
  @ Drupal 7.82.3
 
