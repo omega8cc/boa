@@ -378,10 +378,8 @@ if (file_exists('web.config')) {
       file_exists('core/vendor/symfony') ||
       file_exists('autoload.php')) {
       $drupal_eight = TRUE;
-      $o_contrib = "o_contrib_eight";
       if (file_exists('core/themes/stable9')) {
         $drupal_nine = TRUE;
-        $o_contrib = "o_contrib_nine";
       }
       $use_redis = TRUE;
       if ($is_dev && !$is_backend) {
@@ -403,7 +401,6 @@ if (file_exists('web.config')) {
   }
   else {
     $drupal_seven = TRUE;
-    $o_contrib = "o_contrib_seven";
     $use_redis = TRUE;
     if ($is_dev && !$is_backend) {
       header('X-Backend: C');
@@ -412,7 +409,6 @@ if (file_exists('web.config')) {
 }
 elseif (file_exists('modules/path_alias_cache')) {
   $drupal_six = TRUE;
-  $o_contrib = "o_contrib";
   $use_redis = TRUE;
   if ($is_dev && !$is_backend) {
     header('X-Backend: D');
@@ -1252,6 +1248,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
     if ($drupal_eight) {
       if (is_readable('modules/o_contrib_nine/' . $redis_dirname . '/redis.services.yml')) {
         $class_loader->addPsr4('Drupal\\redis\\', 'modules/o_contrib_nine/' . $redis_dirname . '/src');
+      }
       else {
         $class_loader->addPsr4('Drupal\\redis\\', 'modules/o_contrib_eight/' . $redis_dirname . '/src');
       }
