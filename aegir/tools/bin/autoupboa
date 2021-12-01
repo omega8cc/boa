@@ -210,7 +210,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     fi
     sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"  ${barCnf}
     _AUTO_UP_WEEKLY=7
-    _AUTO_UP_MONTH=1
+    _AUTO_UP_MONTH=12
     _AUTO_UP_DAY=1
     _AUTO_PHP="php-all"
     _AUTO_VER="head"
