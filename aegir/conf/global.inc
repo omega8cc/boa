@@ -379,7 +379,7 @@ if (file_exists('web.config')) {
       file_exists('autoload.php')) {
       $drupal_eight = TRUE;
       $o_contrib = "o_contrib_eight";
-      if (file_exists('core/themes/stable9') {
+      if (file_exists('core/themes/stable9')) {
         $drupal_nine = TRUE;
         $o_contrib = "o_contrib_nine";
       }
