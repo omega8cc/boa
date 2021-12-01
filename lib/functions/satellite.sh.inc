@@ -3752,7 +3752,9 @@ satellite_prepare_setup_email_tpl() {
     fi
     _AT_CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
     _MY_EMAIL=${_MY_EMAIL//\\\@/\@}
-    if [ -e "${_ROOT}/log/setupmail.txt" ]; then
+    if [ -e "${_ROOT}/log/setupmail.txt" ] \
+      || [ -e "${_ROOT}/log/legacy_setupmail.txt" ] \
+      || [ -e "${_ROOT}/log/latest_setupmail.txt" ]; then
       if [ "${_DIST_INSTALL}" = "YES" ]; then
         cd ${_ROOT}/log
         if [ -e "${_ROOT}/log/upgrademail.txt" ]; then
@@ -3801,7 +3803,9 @@ satellite_send_welcome_email() {
     TIME=$(date 2>&1)
     _Q="Your Aegir Install on ${TIME} [${_USER}]"
     echo ${TIME} > ${_ROOT}/log/date-init.txt
-    if [ -e "${_ROOT}/log/setupmail.txt" ]; then
+    if [ -e "${_ROOT}/log/setupmail.txt" ] \
+      || [ -e "${_ROOT}/log/legacy_setupmail.txt" ] \
+      || [ -e "${_ROOT}/log/latest_setupmail.txt" ]; then
       if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
         cat ${_ROOT}/log/setupmail.txt \
           | sed "s/[\~]//g" \

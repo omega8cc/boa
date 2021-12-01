@@ -617,7 +617,9 @@ create_drupal7_basic() {
 
 ###---### Checking status.
 #
-if [ -e "${_ROOT}/log/setupmail.txt" ]; then
+if [ -e "${_ROOT}/log/setupmail.txt" ] \
+  || [ -e "${_ROOT}/log/legacy_setupmail.txt" ] \
+  || [ -e "${_ROOT}/log/latest_setupmail.txt" ]; then
   _STATUS=UPGRADE
   cd ${_ROOT}
 fi
