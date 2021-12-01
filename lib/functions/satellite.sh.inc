@@ -5636,7 +5636,7 @@ satellite_child_b_aegir_health_check() {
 }
 
 satellite_child_b_letsencrypt() {
-  leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
+  leParams="--cron --ipv4"
   leRoot="${_ROOT}/tools/le"
   leKeyJ="${leRoot}/tools/le/private_key.json"
   leKeyP="${leRoot}/tools/le/private_key.pem"
