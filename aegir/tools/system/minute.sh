@@ -51,6 +51,17 @@ if [[ "${_MYSQL_CONN_TEST}" =~ "many connections" ]]; then
   sql_restart "BUSY"
 fi
 
+if [ -e "/var/lib/mysql/ibtmp1" ] && [ ! -e "/var/run/boa_run.pid" ]; then
+  _SQL_TEMP_SIZE_TEST=$(du -s -h /var/lib/mysql/ibtmp1)
+  if [[ "${_SQL_TEMP_SIZE_TEST}" =~ "G" ]]; then
+    echo ${_SQL_TEMP_SIZE_TEST} too big
+    echo SQL restart forced
+    echo "$(date 2>&1) ${_SQL_TEMP_SIZE_TEST} too big, SQL restart forced" >> \
+      /var/xdrago/log/giant.ibtmp1.incident.log
+    sql_restart "BIGTMP"
+  fi
+fi
+
 if [ -e "/etc/cron.daily/logrotate" ]; then
   _SYSLOG_SIZE_TEST=$(du -s -h /var/log/syslog)
   if [[ "${_SYSLOG_SIZE_TEST}" =~ "G" ]]; then
