@@ -570,6 +570,15 @@ octopus_install() {
         wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${dev}/g"          ${vBs}/${filIncO}
         wait
+      else
+        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"   ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"   ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"        ${vBs}/${filIncO}
+        wait
       fi
     else
       if [ -e "${vBs}/${filIncO}" ]; then
