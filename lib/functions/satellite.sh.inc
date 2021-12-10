@@ -2178,7 +2178,7 @@ satellite_version_check() {
   if [ -e "/opt/tmp/boa/aegir/conf/${_FILE_VERSION}" ]; then
     _VERSIONS_TEST=$(cat /opt/tmp/boa/aegir/conf/${_FILE_VERSION} 2>&1)
     if [[ "${_VERSIONS_TEST}" =~ "-dev" ]] \
-      || [[ "${_VERSIONS_TEST}" =~ "-prod" ]]; then
+      || [[ "${_VERSIONS_TEST}" =~ "-rel" ]]; then
       if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
         && [ "${_AEGIR_VERSION}" = "HEAD" ]; then
         _VERSIONS_TEST_RESULT=OK
@@ -4210,7 +4210,8 @@ satellite_if_head_github_connection_test() {
     fi
     rm -rf /opt/tmp/test-*
   fi
-  if [[ "${_X_VERSION}" =~ "-dev" ]]; then
+  if [[ "${_X_VERSION}" =~ "-dev" ]] \
+    || [[ "${_X_VERSION}" =~ "-rel" ]]; then
     rm -rf /opt/tmp/test-*
     _GITHUB_TEST=$(git clone ${gitHub}/boa.git \
       /opt/tmp/test-boa 2>&1)

@@ -5848,7 +5848,7 @@ update_apticron() {
         wait
       fi
     fi
-    if [[ "${_X_VERSION}" =~ "dev" ]] && [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+    if [[ "${_X_VERSION}" =~ "rel" ]] && [ "${_AEGIR_VERSION}" = "HEAD" ]; then
       sed -i "s/aptitude full-upgrade/barracuda up-head system/g" \
         /usr/sbin/apticron
       wait
@@ -5859,13 +5859,13 @@ update_apticron() {
         /usr/sbin/apticron
       wait
     else
-      sed -i "s/aptitude full-upgrade/barracuda up-stable system/g" \
+      sed -i "s/aptitude full-upgrade/barracuda up-head system/g" \
         /usr/sbin/apticron
       wait
-      sed -i "s/apt-get dist-upgrade/barracuda up-stable system/g" \
+      sed -i "s/apt-get dist-upgrade/barracuda up-head system/g" \
         /usr/sbin/apticron
       wait
-      sed -i "s/barracuda up-stable.*/barracuda up-stable system/g" \
+      sed -i "s/barracuda up-stable.*/barracuda up-head system/g" \
         /usr/sbin/apticron
       wait
     fi

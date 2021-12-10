@@ -3,14 +3,14 @@
 ### Important Notes - Read This First!
 ###
 
- => If you haven't run full barracuda+octopus upgrade to latest BOA Stable
+ => If you haven't run full barracuda+octopus upgrade to BOA Latest available
     Edition yet, don't use any partial upgrade modes explained further below.
-    Once new BOA Stable is released, you must run *full* upgrades with commands:
+    Once new BOA Latest is available, you must run *full* upgrades with commands:
 
     $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
-    $ barracuda up-stable
-    $ barracuda up-stable system           (recommended on major upgrade)
-    $ octopus up-stable all both
+    $ barracuda up-head
+    $ barracuda up-head system             (recommended on major upgrade)
+    $ octopus up-head all force
     $ bash /var/xdrago/manage_ltd_users.sh (recommended on major upgrade)
     $ bash /var/xdrago/daily.sh            (recommended on major upgrade)
 
@@ -22,17 +22,14 @@
 
     $ screen
     $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
-    $ barracuda up-stable log
-    $ octopus up-stable all both log
+    $ barracuda up-head log
+    $ octopus up-head all force log
 
     Note that the silent, non-interactive mode will automatically say Y/Yes
     to all prompts and is thus useful to run auto-upgrades scheduled in cron.
 
  => Don't run any installer via sudo.
     You must be logged in as root or `sudo -i` first.
-
- => Please never use HEAD version on any production server. Always use Stable.
-    The HEAD can be occasionally broken and should be used *only* for testing!
 
  => All commands will honor settings in their respective config files:
 
@@ -51,17 +48,17 @@
 
     $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
 
- => To upgrade system and Aegir Master Instance to Stable use:
+ => To upgrade system and Aegir Master Instance to Latest use:
 
-    $ barracuda up-stable
+    $ barracuda up-head
 
- => To upgrade selected Aegir Satellite Instance to Stable use:
+ => To upgrade selected Aegir Satellite Instance to Latest use:
 
-    $ octopus up-stable o1
+    $ octopus up-head o1 force
 
- => To upgrade *all* Aegir Satellite Instances to Stable use:
+ => To upgrade *all* Aegir Satellite Instances to Latest use:
 
-    $ octopus up-stable all
+    $ octopus up-head all force
 
 
 ###
@@ -76,8 +73,8 @@
 
     Examples:
 
-    $ barracuda up-stable log
-    $ octopus up-stable all log
+    $ barracuda up-head log
+    $ octopus up-head all force log
 
     Detailed backend log on barracuda upgrade is always stored in /var/backups/
 
@@ -89,7 +86,7 @@
 
     Example:
 
-    $ barracuda up-stable system
+    $ barracuda up-head system
 
     Note that while both "log" and "system" modes are "silent", because they
     don't display anything in your console, they will send the log via email
@@ -109,22 +106,22 @@
 
     Examples:
 
-    $ octopus up-stable o1 aegir
-    $ octopus up-stable o1 platforms log
-    $ octopus up-stable all aegir log
-    $ octopus up-stable all platforms
+    $ octopus up-head o1 aegir
+    $ octopus up-head o1 platforms log
+    $ octopus up-head all aegir log
+    $ octopus up-head all platforms
 
- => To keep Legacy version instead of Stable, use the same commands, but
-    replace "up-stable" with the legacy version you want to still use:
+ => To keep Legacy version instead of Latest, use the same commands, but
+    replace "up-head" with the legacy version you want to still use:
     "up-2.4", "up-2.3" or "up-2.2".
 
     The oldest Legacy version (up-2.2) is the last Edition in the 2.2.x series
     which still supported Drupal 5 and used Drush 4 with old Aegir version.
-    Note that once you have current stable or head installed, you can't
+    Note that once you have current Latest or DEV installed, you can't
     go back to any legacy version.
 
- => To use HEAD instead of Stable, use the same commands, but replace
-    "up-stable" with "up-head". Please never use HEAD version on any production
-    server. Always use Stable. The HEAD can be occasionally broken and should
+ => To use DEV instead of Latest, use the same commands, but replace
+    "up-head" with "up-dev". Please never use DEV version on any production
+    server. Always use Latest. The DEV can be occasionally broken and should
     be used *only* for testing!
 

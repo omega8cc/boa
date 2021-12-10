@@ -22,8 +22,8 @@
   existing Octopus Satellite Instance.
 
   Once BOA-2.4.0 is released, HHVM can be installed also with standard commands
-  recommended for production systems: 'barracuda up-stable' for Aegir Master,
-  followed by 'octopus up-stable all aegir' for Satellite Instances.
+  recommended for production systems: 'barracuda up-head' for Aegir Master,
+  followed by 'octopus up-head all aegir' for Satellite Instances.
 
   Please note that it is not enough to run 'barracuda up-head system', because
   you need to upgrade the system plus Aegir Master and all Satellite Instances.

@@ -501,7 +501,8 @@ check_github_for_aegir_head_mode() {
     fi
     rm -rf /opt/tmp/test-*
   fi
-  if [[ "${_X_VERSION}" =~ "-dev" ]]; then
+  if [[ "${_X_VERSION}" =~ "-dev" ]] \
+    || [[ "${_X_VERSION}" =~ "-rel" ]]; then
     rm -rf /opt/tmp/test-*
     _GITHUB_TEST=$(git clone ${gitHub}/boa.git \
       /opt/tmp/test-boa 2>&1)
