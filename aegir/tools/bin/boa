@@ -1008,7 +1008,11 @@ barracuda_install() {
       fi
     fi
 
-    if [ "${cmmand}" = "in-head" ]; then
+    if [ "${cmmand}" = "in-head" ] \
+      || [ "${cmmand}" = "in-stable" ] \
+      || [ "${cmmand}" = "in-octopus" ] \
+      || [ "${cmmand}" = "in-oct" ] \
+      || [ "${cmmand}" = "in-dev" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
       wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncB}
@@ -1062,17 +1066,19 @@ barracuda_install() {
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcD}/g"         ${vBs}/${filIncB}
         wait
       else
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncB}
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"   ${vBs}/${filIncB}
         wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${filIncB}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"   ${vBs}/${filIncB}
         wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncB}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"        ${vBs}/${filIncB}
         wait
       fi
     fi
 
     if [ "${cmmand}" = "in-head" ] \
       || [ "${cmmand}" = "in-stable" ] \
+      || [ "${cmmand}" = "in-octopus" ] \
+      || [ "${cmmand}" = "in-oct" ] \
       || [ "${cmmand}" = "in-dev" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${filIncB}
       wait
@@ -1222,8 +1228,8 @@ init_setup() {
   init_start
   set_pin_priority
   if [ "${cmmand}" = "in-head" ] \
-    || [ "${cmmand}" = "in-dev" ] \
-    || [ "${cmmand}" = "in-stable" ]; then
+    || [ "${cmmand}" = "in-stable" ] \
+    || [ "${cmmand}" = "in-dev" ]; then
     if [ ! -z "${silent}" ]; then
       curl ${crlGet} "${rgUrl}/feature/${silent}/${barName}" -o ${vBs}/${barName}
       curl ${crlGet} "${rgUrl}/feature/${silent}/${octName}" -o ${vBs}/${octName}
