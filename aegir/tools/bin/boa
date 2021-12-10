@@ -535,17 +535,24 @@ octopus_install() {
       fi
     fi
 
-    if [ "${cmmand}" = "in-head" ] || [ "${copt}" = "head" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncO}
-      wait
-      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncO}
-      wait
-      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"     ${vBs}/${filIncO}
-      wait
-      sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"          ${vBs}/${filIncO}
-      wait
-    else
-      if [ -e "${vBs}/${filIncO}" ]; then
+    if [ "${cmmand}" = "in-head" ] \
+      || [ "${cmmand}" = "in-octopus" ] \
+      || [ "${cmmand}" = "in-oct" ] \
+      || [ "${copt}" = "stable" ] \
+      || [ "${copt}" = "legacy" ] \
+      || [ "${copt}" = "dev" ] \
+      || [ "${copt}" = "head" ]; then
+      if [ "${copt}" = "head" ] \
+        || [ "${copt}" = "stable" ]; then
+        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"   ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"   ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"        ${vBs}/${filIncO}
+        wait
+      elif [ "${copt}" = "legacy" ]; then
         sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncO}
         wait
         sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncO}
@@ -553,6 +560,26 @@ octopus_install() {
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${filIncO}
         wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncO}
+        wait
+      elif [ "${copt}" = "dev" ]; then
+        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${dev}/g"  ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${dev}/g"  ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${dev}/g"          ${vBs}/${filIncO}
+        wait
+      fi
+    else
+      if [ -e "${vBs}/${filIncO}" ]; then
+        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"   ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"   ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"        ${vBs}/${filIncO}
         wait
       fi
       ### Legacy method
@@ -589,16 +616,22 @@ octopus_install() {
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcD}/g"         ${vBs}/${filIncO}
         wait
       else
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncO}
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"   ${vBs}/${filIncO}
         wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${filIncO}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"   ${vBs}/${filIncO}
         wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncO}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"        ${vBs}/${filIncO}
         wait
       fi
     fi
 
-    if [ "${cmmand}" = "in-head" ] || [ "${copt}" = "head" ]; then
+    if [ "${cmmand}" = "in-head" ] \
+      || [ "${cmmand}" = "in-octopus" ] \
+      || [ "${cmmand}" = "in-oct" ] \
+      || [ "${copt}" = "stable" ] \
+      || [ "${copt}" = "legacy" ] \
+      || [ "${copt}" = "dev" ] \
+      || [ "${copt}" = "head" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${filIncO}
       wait
     elif [ "${cmmand}" = "in-cluster" ]; then
@@ -1038,7 +1071,9 @@ barracuda_install() {
       fi
     fi
 
-    if [ "${cmmand}" = "in-head" ]; then
+    if [ "${cmmand}" = "in-head" ] \
+      || [ "${cmmand}" = "in-stable" ] \
+      || [ "${cmmand}" = "in-dev" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${filIncB}
       wait
     elif [ "${cmmand}" = "in-cluster" ]; then
