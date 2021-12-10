@@ -639,11 +639,11 @@ octopus_install() {
       wait
     else
       if [ -e "${vBs}/${filIncO}" ]; then
-        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${filIncO}
+        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"       ${vBs}/${filIncO}
         wait
       fi
       ### Legacy method
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${octName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${octName}
       wait
     fi
 
@@ -1087,11 +1087,11 @@ barracuda_install() {
       wait
     else
       if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${filIncB}
+        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"       ${vBs}/${filIncB}
         wait
       fi
       ### Legacy method
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${barName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${barName}
       wait
     fi
 
