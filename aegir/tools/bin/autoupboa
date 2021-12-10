@@ -248,7 +248,7 @@ if [ -e "/data/disk/arch/sql" ]; then
   if [ ! -e "/etc/init.d/ssh" ] \
     || [ ! -e "/etc/init.d/redis-server" ] \
     || [[ "${_CHECK_HOST}" =~ "v5.s8.lon." ]] \
-    || [[ "${_CHECK_HOST}" =~ "am16.eu." ]]; then
+    || [[ "${_CHECK_HOST}" =~ "ex11.eu." ]]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
@@ -262,7 +262,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_UP_DAY=
     _AUTO_PHP=
     _AUTO_VER="head"
-    sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"7.2 5.6\"/g" ${barCnf}
+    sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"7.3 5.6\"/g" ${barCnf}
     wait
     sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g" ${barCnf}
     wait
