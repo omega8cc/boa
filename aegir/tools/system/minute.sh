@@ -490,7 +490,7 @@ mysql_proc_kill() {
 mysql_proc_control() {
   if [ ! -z "${_SQLMONITOR}" ] && [ "${_SQLMONITOR}" = "YES" ]; then
     echo "$(date 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
-    echo "$(mysqladmin proc 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
+    echo "$(mysqladmin proc -v 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
     if [ ! -z "${_RAM_PCT_FREE}" ] && [ "${_RAM_PCT_FREE}" -lt "20" ]; then
       sql_restart "RAM"
     fi
