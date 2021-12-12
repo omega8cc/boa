@@ -290,21 +290,23 @@ whitelist_ip_site24x7() {
     fi
   done
 
-  for _IP in ${_IPS}; do
-    echo checking csf.ignore site24x7 ${_IP} now...
-    _IP_CHECK=$(cat /etc/csf/csf.ignore \
-      | cut -d '#' -f1 \
-      | sort \
-      | uniq \
-      | tr -d "\s" \
-      | grep "${_IP}" 2>&1)
-    if [ -z "${_IP_CHECK}" ]; then
-      echo "${_IP} not yet listed in /etc/csf/csf.ignore"
-      echo "${_IP} # site24x7 ips" >> /etc/csf/csf.ignore
-    else
-      echo "${_IP} already listed in /etc/csf/csf.ignore"
-    fi
-  done
+  if [ -e "/root/.ignore.site24x7.firewall.cnf" ]; then
+    for _IP in ${_IPS}; do
+      echo checking csf.ignore site24x7 ${_IP} now...
+      _IP_CHECK=$(cat /etc/csf/csf.ignore \
+        | cut -d '#' -f1 \
+        | sort \
+        | uniq \
+        | tr -d "\s" \
+        | grep "${_IP}" 2>&1)
+      if [ -z "${_IP_CHECK}" ]; then
+        echo "${_IP} not yet listed in /etc/csf/csf.ignore"
+        echo "${_IP} # site24x7 ips" >> /etc/csf/csf.ignore
+      else
+        echo "${_IP} already listed in /etc/csf/csf.ignore"
+      fi
+    done
+  fi
 
   if [ ! -e "/root/.whitelist.site24x7.cnf" ]; then
     csf -tf
@@ -494,18 +496,14 @@ whitelist_ip_dns() {
   sed -i "s/.*1.1.1.1.*//g"  /etc/csf/csf.ignore
   sed -i "s/.*1.0.0.1.*//g"  /etc/csf/csf.allow
   sed -i "s/.*1.0.0.1.*//g"  /etc/csf/csf.ignore
-  echo "1.1.1.1 # Cloudflare DNS" >> /etc/csf/csf.allow
-  echo "1.1.1.1 # Cloudflare DNS" >> /etc/csf/csf.ignore
-  echo "1.0.0.1 # Cloudflare DNS" >> /etc/csf/csf.allow
-  echo "1.0.0.1 # Cloudflare DNS" >> /etc/csf/csf.ignore
+  echo "tcp|in|d=53|s=1.1.1.1 # Cloudflare DNS" >> /etc/csf/csf.allow
+  echo "tcp|in|d=53|s=1.0.0.1 # Cloudflare DNS" >> /etc/csf/csf.allow
   sed -i "s/.*8.8.8.8.*//g"  /etc/csf/csf.allow
   sed -i "s/.*8.8.8.8.*//g"  /etc/csf/csf.ignore
   sed -i "s/.*8.8.4.4.*//g"  /etc/csf/csf.allow
   sed -i "s/.*8.8.4.4.*//g"  /etc/csf/csf.ignore
-  echo "8.8.8.8 # Google DNS" >> /etc/csf/csf.allow
-  echo "8.8.8.8 # Google DNS" >> /etc/csf/csf.ignore
-  echo "8.8.4.4 # Google DNS" >> /etc/csf/csf.allow
-  echo "8.8.4.4 # Google DNS" >> /etc/csf/csf.ignore
+  echo "tcp|in|d=53|s=8.8.8.8 # Google DNS" >> /etc/csf/csf.allow
+  echo "tcp|in|d=53|s=8.8.4.4 # Google DNS" >> /etc/csf/csf.allow
   sed -i "/^$/d" /etc/csf/csf.ignore
   sed -i "/^$/d" /etc/csf/csf.allow
 }
