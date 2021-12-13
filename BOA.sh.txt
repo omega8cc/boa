@@ -1411,6 +1411,54 @@ fix_lshell() {
   fi
 }
 
+fix_log4j() {
+  _LOG4J_VRN=2.15.0
+  if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
+    _DO_SOLR_RESTART=
+    cd /var/opt
+    rm -rf apache-log4j*
+    get_dev_src "apache-log4j-${_LOG4J_VRN}-bin.tar.gz"
+    cd /var/opt/apache-log4j-${_LOG4J_VRN}-bin
+    if [ -e "/opt/solr-7.7.3" ] \
+      && [ ! -e "/opt/solr-7.7.3/server/lib/ext/log4j-core-${_LOG4J_VRN}.jar" ]; then
+      mkdir -p /var/backups/log4j/solr-7.7.3/
+      mv -f /opt/solr-7.7.3/server/lib/ext/log4j* /var/backups/log4j/solr-7.7.3/
+      rm -f /opt/solr-7.7.3/contrib/prometheus-exporter/lib/log4j*
+      cp -af log4j-1.2-api-${_LOG4J_VRN}.jar    /opt/solr-7.7.3/server/lib/ext/
+      cp -af log4j-core-${_LOG4J_VRN}.jar       /opt/solr-7.7.3/server/lib/ext/
+      cp -af log4j-core-${_LOG4J_VRN}.jar       /opt/solr-7.7.3/contrib/prometheus-exporter/lib/
+      cp -af log4j-slf4j-impl-${_LOG4J_VRN}.jar /opt/solr-7.7.3/server/lib/ext/
+      cp -af log4j-slf4j-impl-${_LOG4J_VRN}.jar /opt/solr-7.7.3/contrib/prometheus-exporter/lib/
+      cp -af log4j-api-${_LOG4J_VRN}.jar        /opt/solr-7.7.3/server/lib/ext/
+      cp -af log4j-api-${_LOG4J_VRN}.jar        /opt/solr-7.7.3/contrib/prometheus-exporter/lib/
+      chown root:root /opt/solr-7.7.3/server/lib/ext/log4j*
+      chown root:root /opt/solr-7.7.3/contrib/prometheus-exporter/lib/log4j*
+      _DO_SOLR_RESTART=YES
+    fi
+    if [ -e "/opt/solr-7.6.0" ] \
+      && [ ! -e "/opt/solr-7.6.0/server/lib/ext/log4j-core-${_LOG4J_VRN}.jar" ]; then
+      mkdir -p /var/backups/log4j/solr-7.6.0/
+      mv -f /opt/solr-7.6.0/server/lib/ext/log4j* /var/backups/log4j/solr-7.6.0/
+      rm -f /opt/solr-7.6.0/contrib/prometheus-exporter/lib/log4j*
+      cp -af log4j-1.2-api-${_LOG4J_VRN}.jar    /opt/solr-7.6.0/server/lib/ext/
+      cp -af log4j-core-${_LOG4J_VRN}.jar       /opt/solr-7.6.0/server/lib/ext/
+      cp -af log4j-core-${_LOG4J_VRN}.jar       /opt/solr-7.6.0/contrib/prometheus-exporter/lib/
+      cp -af log4j-slf4j-impl-${_LOG4J_VRN}.jar /opt/solr-7.6.0/server/lib/ext/
+      cp -af log4j-slf4j-impl-${_LOG4J_VRN}.jar /opt/solr-7.6.0/contrib/prometheus-exporter/lib/
+      cp -af log4j-api-${_LOG4J_VRN}.jar        /opt/solr-7.6.0/server/lib/ext/
+      cp -af log4j-api-${_LOG4J_VRN}.jar        /opt/solr-7.6.0/contrib/prometheus-exporter/lib/
+      chown root:root /opt/solr-7.6.0/server/lib/ext/log4j*
+      chown root:root /opt/solr-7.6.0/contrib/prometheus-exporter/lib/log4j*
+      _DO_SOLR_RESTART=YES
+    fi
+    _RESULT_LOG4J=$(grep "LOG4J_FORMAT_MSG_NO_LOOKUPS=true" /etc/default/solr7.in.sh 2>&1)
+    if [[ ! "${_RESULT_LOG4J}" =~ "LOG4J" ]] || [ ! -z "${_DO_SOLR_RESTART}" ]; then
+      echo "LOG4J_FORMAT_MSG_NO_LOOKUPS=true" >> /etc/default/solr7.in.sh
+      service solr7 restart
+    fi
+  fi
+}
+
 fix_authorized_keys() {
   if [ ! -e "${pthLog}/fix_authorized_keys.ctrl.${_X_SE}.pid" ]; then
     chmod 0600 /home/*/.ssh/authorized_keys
@@ -2016,6 +2064,10 @@ update_sysctl() {
 if [ `whoami` = "root" ]; then
 
   find_fast_mirror
+
+  ### CVE-2021-44228 Log4j 2 Vulnerability
+  fix_log4j
+
   ### Linux kernel TCP SACK CVEs mitigation
   ### CVE-2019-11477 SACK Panic
   ### CVE-2019-11478 SACK Slowness
