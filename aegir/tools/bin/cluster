@@ -1471,8 +1471,9 @@ install_db_cluster() {
     _KEYS_SIG="8507EFA5"
     vserver ${idn} exec wget -q -U iCab ${urlDev}/percona-key.gpg -O /var/backups/percona-key.gpg
     vserver ${idn} exec cat /var/backups/percona-key.gpg | ${_GPG} --import &> /dev/null
-    vserver ${idn} exec ${_GPG} --refresh-keys &> /dev/null
-    vserver ${idn} exec apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}"
+    vserver ${idn} exec ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG}
+    vserver ${idn} exec ${_GPG} -a --export ${_KEYS_SIG} | apt-key add -
+    vserver ${idn} exec ${_GPG} --list-keys ${_KEYS_SIG}
   	vserver ${idn} exec apt-get update -qq
   	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57
   	vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24
@@ -1661,9 +1662,9 @@ upgrade_db_cluster() {
       echo "INFO: Retrieving ${_KEYS_SIG} key on ${idn}/${IP}..."
       vserver ${idn} exec wget -q -U iCab ${urlDev}/percona-key.gpg -O /var/backups/percona-key.gpg
       vserver ${idn} exec cat /var/backups/percona-key.gpg | ${_GPG} --import &> /dev/null
-      vserver ${idn} exec ${_GPG} --refresh-keys &> /dev/null
-      vserver ${idn} exec apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}"
-      _KEYS_SERVER_TEST=$(vserver ${idn} exec ${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
+      vserver ${idn} exec ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG}
+      vserver ${idn} exec ${_GPG} -a --export ${_KEYS_SIG} | apt-key add -
+      _KEYS_SERVER_TEST=$(vserver ${idn} exec ${_GPG} --list-keys ${_KEYS_SIG} 2>&1)
       sleep 2
       if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "3" ]; then
         kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
@@ -1673,8 +1674,9 @@ upgrade_db_cluster() {
     done
     vserver ${idn} exec wget -q -U iCab ${urlDev}/percona-key.gpg -O /var/backups/percona-key.gpg
     vserver ${idn} exec cat /var/backups/percona-key.gpg | ${_GPG} --import &> /dev/null
-    vserver ${idn} exec ${_GPG} --refresh-keys &> /dev/null
-    vserver ${idn} exec apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}"
+    vserver ${idn} exec ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG}
+    vserver ${idn} exec ${_GPG} -a --export ${_KEYS_SIG} | apt-key add -
+    vserver ${idn} exec ${_GPG} --list-keys ${_KEYS_SIG}
   	vserver ${idn} exec apt-get update -qq
   	vserver ${idn} exec ${_INSTAPP} bc
   	vserver ${idn} exec apt-get upgrade ${_APT_XTR}

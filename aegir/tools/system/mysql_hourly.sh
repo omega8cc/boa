@@ -195,10 +195,10 @@ if [ ! -e "${percList}" ] \
       sleep 5
     done
     cat percona-key.gpg | ${_GPG} --import &> /dev/null
-    ${_GPG} --refresh-keys &> /dev/null
     rm -f percona-key.gpg*
-    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${_KEYS_SIG}" &> /dev/null
-    _KEYS_SERVER_TEST=$(${_GPG} --list-keys "${_KEYS_SIG}" 2>&1)
+    ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG} &> /dev/null
+    ${_GPG} -a --export ${_KEYS_SIG} | apt-key add - &> /dev/null
+    _KEYS_SERVER_TEST=$(${_GPG} --list-keys ${_KEYS_SIG} 2>&1)
     sleep 2
     if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "3" ]; then
       kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
