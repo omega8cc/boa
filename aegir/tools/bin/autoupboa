@@ -171,6 +171,24 @@ if [ -e "/data/disk/arch/sql" ]; then
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] \
     || [ "${_AUTO_UP}" = "YES" ]; then
+	if [[ "${_CHECK_HOST}" =~ ^(sy1.ao.|ln5.uk.) ]]; then
+	  _DONT_TOUCH=OK
+	  rm -f /etc/csf/csf.conf-pre*
+	else
+	  sed -i "s/.*Legacy.*//g"   /etc/csf/csf.ignore
+	  sed -i "s/.*Legacy.*//g"   /etc/csf/csf.allow
+	  sed -i "s/.*Manually.*//g" /etc/csf/csf.ignore
+	  sed -i "s/.*Manually.*//g" /etc/csf/csf.allow
+	  sed -i "/^$/d" /etc/csf/csf.ignore
+	  sed -i "/^$/d" /etc/csf/csf.allow
+	  rm -f /etc/csf/csf.conf-pre*
+	fi
+	if [ ! -e "/root/.csf.was.tuned.txt" ]; then
+	  sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
+	  for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f12 | sort | uniq`;do echo "tcp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+	  csf -q
+	  touch /root/.csf.was.tuned.txt
+	fi
     if [ ! -e "/root/.fixed_php_seven_four_default.pid" ]; then
       sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=7.4/g"  /root/.barracuda.cnf
       sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=7.4/g"  /root/.barracuda.cnf
