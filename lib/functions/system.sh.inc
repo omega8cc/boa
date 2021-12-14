@@ -5764,6 +5764,7 @@ update_initd() {
         mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
         mysql -u root -e "SET GLOBAL show_compatibility_56=ON;" &> /dev/null
         mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
+        rm -f /etc/mysql/conf.d/mysqldump.cnf
       fi
     fi
   fi
