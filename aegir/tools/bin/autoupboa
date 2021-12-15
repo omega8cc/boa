@@ -175,19 +175,24 @@ if [ -e "/data/disk/arch/sql" ]; then
 	  _DONT_TOUCH=OK
 	  rm -f /etc/csf/csf.conf-pre*
 	else
-	  sed -i "s/.*Legacy.*//g"   /etc/csf/csf.ignore
-	  sed -i "s/.*Legacy.*//g"   /etc/csf/csf.allow
-	  sed -i "s/.*Manually.*//g" /etc/csf/csf.ignore
-	  sed -i "s/.*Manually.*//g" /etc/csf/csf.allow
-	  sed -i "/^$/d" /etc/csf/csf.ignore
-	  sed -i "/^$/d" /etc/csf/csf.allow
-	  rm -f /etc/csf/csf.conf-pre*
+	  if [ ! -e "/root/.csf_legacy_cleanup.pid" ]; then
+	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.ignore
+	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.allow
+	    sed -i "s/.*Manually.*//g"  /etc/csf/csf.ignore
+	    sed -i "s/.*Manually.*//g"  /etc/csf/csf.allow
+	    sed -i "s/.*Temporary.*//g" /etc/csf/csf.ignore
+	    sed -i "s/.*Temporary.*//g" /etc/csf/csf.allow
+	    sed -i "/^$/d" /etc/csf/csf.ignore
+	    sed -i "/^$/d" /etc/csf/csf.allow
+	    rm -f /etc/csf/csf.conf-pre*
+	    touch /root/.csf_legacy_cleanup.pid
+	  fi
 	fi
-	if [ ! -e "/root/.csf.was.tuned.txt" ]; then
+	if [ ! -e "/root/.csf_dhcp_cleanup.pid" ]; then
 	  sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
 	  for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f12 | sort | uniq`;do echo "tcp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
 	  csf -q
-	  touch /root/.csf.was.tuned.txt
+	  touch /root/.csf_dhcp_cleanup.pid
 	fi
     if [ ! -e "/root/.fixed_php_seven_four_default.pid" ]; then
       sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=7.4/g"  /root/.barracuda.cnf
@@ -202,43 +207,60 @@ if [ -e "/data/disk/arch/sql" ]; then
       sed -i "s/default_lines = 999/default_lines = 300/g" /var/xdrago/monitor/check/scan_nginx
       touch /root/.fixed_scan_dos_nginx.pid
     fi
-    if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"  ${barCnf}
-      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"  ${barCnf}
-    else
-      _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
-      if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
-        _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
-        echo _CHECK_REPAIR 1 ${_CHECK_REPAIR}
-        if [[ "${_CHECK_REPAIR}" =~ "corrupted" ]]; then
-          # mysqlcheck -A --auto-repair
-          mysql_upgrade --force
-          mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;"
-          mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;"
-          mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;"
-          mysql_upgrade --force
+    if [ ! -e "/root/.custom_percona_forced.pid" ]; then
+      if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"  ${barCnf}
+        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"  ${barCnf}
+      else
+        _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
+        if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
+          _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
+          echo _CHECK_REPAIR 1 ${_CHECK_REPAIR}
+          if [[ "${_CHECK_REPAIR}" =~ "corrupted" ]]; then
+            # mysqlcheck -A --auto-repair
+            mysql_upgrade --force
+            mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;"
+            mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;"
+            mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;"
+            mysql_upgrade --force
+          fi
+          _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
+          echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
         fi
-        _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
-        echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
+        mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
+        mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
+        mysql -u root -e "SET GLOBAL show_compatibility_56=ON;" &> /dev/null
+        mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
       fi
-      mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
-      mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
-      mysql -u root -e "SET GLOBAL show_compatibility_56=ON;" &> /dev/null
-      mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
+      sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"  ${barCnf}
       rm -f /etc/mysql/conf.d/mysqldump.cnf
+      touch /root/.custom_percona_forced.pid
     fi
-    sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"  ${barCnf}
     _AUTO_UP_WEEKLY=7
     _AUTO_UP_MONTH=12
     _AUTO_UP_DAY=1
     _AUTO_PHP="php-all"
     _AUTO_VER="head"
-    rm -f /root/.silent.update.cnf
-    rm -f /root/.silent.update.info
-    rm -f /root/.pause_tasks_maint.cnf
-    rm -f /root/.restrict_this_vm.cnf
-    rm -f /root/.force.sites.verify.cnf
-    rm -f /var/xdrago/weekly.sh
+    if [ ! -e "/root/.ignore.site24x7.firewall.cnf" ]; then
+      if [ -e "/usr/sbin/csf" ]; then
+        touch /root/.ignore.site24x7.firewall.cnf
+        bash /var/xdrago/guest-water.sh
+        wait
+        csf -df
+        csf -tf
+      fi
+    fi
+    if [ ! -e "/root/.restart_site24x7_agent.pid" ]; then
+      service site24x7monagent restart
+      wait
+      touch /root/.restart_site24x7_agent.pid
+    fi
+    [ -e "/root/.silent.update.cnf" ] && rm -f /root/.silent.update.cnf
+    [ -e "/root/.silent.update.info" ] && rm -f /root/.silent.update.info
+    [ -e "/root/.pause_tasks_maint.cnf" ] && rm -f /root/.pause_tasks_maint.cnf
+    [ -e "/root/.restrict_this_vm.cnf" ] && rm -f /root/.restrict_this_vm.cnf
+    [ -e "/root/.force.sites.verify.cnf" ] && rm -f /root/.force.sites.verify.cnf
+    [ -e "/var/xdrago/weekly.sh" ] && rm -f /var/xdrago/weekly.sh
     if [ -e "/var/run/boa_run.pid" ]; then
       touch /root/.pause_tasks_maint.cnf
     else
