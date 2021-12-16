@@ -538,7 +538,10 @@ up_one() {
     fi
     satellite_check_up_php
     ### satellite_check_switch_php
-    if [ "${cmmand}" = "up-head" ]; then
+    if [ "${cmmand}" = "up-head" ] \
+      || [ "${cmmand}" = "up-dev" ] \
+      || [ "${cmmand}" = "up-legacy" ] \
+      || [ "${cmmand}" = "up-stable" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${tocIncO}
       wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${tocIncO}
@@ -600,7 +603,10 @@ up_one() {
         wait
       fi
     fi
-    if [ "${cmmand}" = "up-head" ]; then
+    if [ "${cmmand}" = "up-head" ] \
+      || [ "${cmmand}" = "up-dev" ] \
+      || [ "${cmmand}" = "up-legacy" ] \
+      || [ "${cmmand}" = "up-stable" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${tocIncO}
       wait
     elif [ "${cmmand}" = "up-cluster" ]; then

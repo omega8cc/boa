@@ -610,7 +610,10 @@ up_action() {
         ${vBs}/old-firewall-monitor/${_NOW}/ &> /dev/null
       rm -f /var/xdrago/monitor/* &> /dev/null
     fi
-    if [ "${cmmand}" = "up-head" ]; then
+    if [ "${cmmand}" = "up-head" ] \
+      || [ "${cmmand}" = "up-dev" ] \
+      || [ "${cmmand}" = "up-legacy" ] \
+      || [ "${cmmand}" = "up-stable" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
       wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncB}
@@ -676,7 +679,10 @@ up_action() {
         wait
       fi
     fi
-    if [ "${cmmand}" = "up-head" ]; then
+    if [ "${cmmand}" = "up-head" ] \
+      || [ "${cmmand}" = "up-dev" ] \
+      || [ "${cmmand}" = "up-legacy" ] \
+      || [ "${cmmand}" = "up-stable" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${filIncB}
       wait
     elif [ "${cmmand}" = "up-cluster" ]; then
@@ -1327,8 +1333,9 @@ proceed() {
   set_pin_priority
   up_start
   if [ "${cmmand}" = "up-head" ] \
-    || [ "${cmmand}" = "up-stable" ] \
-    || [ "${cmmand}" = "up-dev" ]; then
+    || [ "${cmmand}" = "up-dev" ] \
+    || [ "${cmmand}" = "up-legacy" ] \
+    || [ "${cmmand}" = "up-stable" ]; then
     if [ "${silent}" = "backdrop" ] \
       || [ "${silent}" = "cluster" ] \
       || [ "${silent}" = "drush" ] \
