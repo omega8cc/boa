@@ -1413,47 +1413,57 @@ fix_lshell() {
 
 fix_log4j() {
   _LOG4J_VRN=2.17.0
+  _DO_SOLR_RESTART=
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
-    _DO_SOLR_RESTART=
-    cd /var/opt
-    rm -rf apache-log4j*
-    get_dev_src "apache-log4j-${_LOG4J_VRN}-bin.tar.gz"
-    cd /var/opt/apache-log4j-${_LOG4J_VRN}-bin
     if [ -e "/opt/solr-7.7.3" ] \
       && [ ! -e "/opt/solr-7.7.3/server/lib/ext/log4j-core-${_LOG4J_VRN}.jar" ]; then
-      mkdir -p /var/backups/log4j/solr-7.7.3/
-      mv -f /opt/solr-7.7.3/server/lib/ext/log4j* /var/backups/log4j/solr-7.7.3/
-      rm -f /opt/solr-7.7.3/contrib/prometheus-exporter/lib/log4j*
-      cp -af log4j-1.2-api-${_LOG4J_VRN}.jar    /opt/solr-7.7.3/server/lib/ext/
-      cp -af log4j-core-${_LOG4J_VRN}.jar       /opt/solr-7.7.3/server/lib/ext/
-      cp -af log4j-core-${_LOG4J_VRN}.jar       /opt/solr-7.7.3/contrib/prometheus-exporter/lib/
-      cp -af log4j-slf4j-impl-${_LOG4J_VRN}.jar /opt/solr-7.7.3/server/lib/ext/
-      cp -af log4j-slf4j-impl-${_LOG4J_VRN}.jar /opt/solr-7.7.3/contrib/prometheus-exporter/lib/
-      cp -af log4j-api-${_LOG4J_VRN}.jar        /opt/solr-7.7.3/server/lib/ext/
-      cp -af log4j-api-${_LOG4J_VRN}.jar        /opt/solr-7.7.3/contrib/prometheus-exporter/lib/
-      chown root:root /opt/solr-7.7.3/server/lib/ext/log4j*
-      chown root:root /opt/solr-7.7.3/contrib/prometheus-exporter/lib/log4j*
-      _DO_SOLR_RESTART=YES
+      cd /var/opt
+      rm -rf apache-log4j*
+      get_dev_src "apache-log4j-${_LOG4J_VRN}-bin.tar.gz"
+      if [ -e "/var/opt/apache-log4j-${_LOG4J_VRN}-bin/log4j-core-${_LOG4J_VRN}.jar" ]; then
+        cd /var/opt/apache-log4j-${_LOG4J_VRN}-bin
+        mkdir -p /var/backups/log4j/solr-7.7.3/
+        mv -f /opt/solr-7.7.3/server/lib/ext/log4j* /var/backups/log4j/solr-7.7.3/
+        rm -f /opt/solr-7.7.3/contrib/prometheus-exporter/lib/log4j*
+        cp -af log4j-1.2-api-${_LOG4J_VRN}.jar    /opt/solr-7.7.3/server/lib/ext/
+        cp -af log4j-core-${_LOG4J_VRN}.jar       /opt/solr-7.7.3/server/lib/ext/
+        cp -af log4j-core-${_LOG4J_VRN}.jar       /opt/solr-7.7.3/contrib/prometheus-exporter/lib/
+        cp -af log4j-slf4j-impl-${_LOG4J_VRN}.jar /opt/solr-7.7.3/server/lib/ext/
+        cp -af log4j-slf4j-impl-${_LOG4J_VRN}.jar /opt/solr-7.7.3/contrib/prometheus-exporter/lib/
+        cp -af log4j-api-${_LOG4J_VRN}.jar        /opt/solr-7.7.3/server/lib/ext/
+        cp -af log4j-api-${_LOG4J_VRN}.jar        /opt/solr-7.7.3/contrib/prometheus-exporter/lib/
+        chown root:root /opt/solr-7.7.3/server/lib/ext/log4j*
+        chown root:root /opt/solr-7.7.3/contrib/prometheus-exporter/lib/log4j*
+        _DO_SOLR_RESTART=YES
+      fi
     fi
     if [ -e "/opt/solr-7.6.0" ] \
       && [ ! -e "/opt/solr-7.6.0/server/lib/ext/log4j-core-${_LOG4J_VRN}.jar" ]; then
-      mkdir -p /var/backups/log4j/solr-7.6.0/
-      mv -f /opt/solr-7.6.0/server/lib/ext/log4j* /var/backups/log4j/solr-7.6.0/
-      rm -f /opt/solr-7.6.0/contrib/prometheus-exporter/lib/log4j*
-      cp -af log4j-1.2-api-${_LOG4J_VRN}.jar    /opt/solr-7.6.0/server/lib/ext/
-      cp -af log4j-core-${_LOG4J_VRN}.jar       /opt/solr-7.6.0/server/lib/ext/
-      cp -af log4j-core-${_LOG4J_VRN}.jar       /opt/solr-7.6.0/contrib/prometheus-exporter/lib/
-      cp -af log4j-slf4j-impl-${_LOG4J_VRN}.jar /opt/solr-7.6.0/server/lib/ext/
-      cp -af log4j-slf4j-impl-${_LOG4J_VRN}.jar /opt/solr-7.6.0/contrib/prometheus-exporter/lib/
-      cp -af log4j-api-${_LOG4J_VRN}.jar        /opt/solr-7.6.0/server/lib/ext/
-      cp -af log4j-api-${_LOG4J_VRN}.jar        /opt/solr-7.6.0/contrib/prometheus-exporter/lib/
-      chown root:root /opt/solr-7.6.0/server/lib/ext/log4j*
-      chown root:root /opt/solr-7.6.0/contrib/prometheus-exporter/lib/log4j*
-      _DO_SOLR_RESTART=YES
+      cd /var/opt
+      rm -rf apache-log4j*
+      get_dev_src "apache-log4j-${_LOG4J_VRN}-bin.tar.gz"
+      if [ -e "/var/opt/apache-log4j-${_LOG4J_VRN}-bin/log4j-core-${_LOG4J_VRN}.jar" ]; then
+        cd /var/opt/apache-log4j-${_LOG4J_VRN}-bin
+        mkdir -p /var/backups/log4j/solr-7.6.0/
+        mv -f /opt/solr-7.6.0/server/lib/ext/log4j* /var/backups/log4j/solr-7.6.0/
+        rm -f /opt/solr-7.6.0/contrib/prometheus-exporter/lib/log4j*
+        cp -af log4j-1.2-api-${_LOG4J_VRN}.jar    /opt/solr-7.6.0/server/lib/ext/
+        cp -af log4j-core-${_LOG4J_VRN}.jar       /opt/solr-7.6.0/server/lib/ext/
+        cp -af log4j-core-${_LOG4J_VRN}.jar       /opt/solr-7.6.0/contrib/prometheus-exporter/lib/
+        cp -af log4j-slf4j-impl-${_LOG4J_VRN}.jar /opt/solr-7.6.0/server/lib/ext/
+        cp -af log4j-slf4j-impl-${_LOG4J_VRN}.jar /opt/solr-7.6.0/contrib/prometheus-exporter/lib/
+        cp -af log4j-api-${_LOG4J_VRN}.jar        /opt/solr-7.6.0/server/lib/ext/
+        cp -af log4j-api-${_LOG4J_VRN}.jar        /opt/solr-7.6.0/contrib/prometheus-exporter/lib/
+        chown root:root /opt/solr-7.6.0/server/lib/ext/log4j*
+        chown root:root /opt/solr-7.6.0/contrib/prometheus-exporter/lib/log4j*
+        _DO_SOLR_RESTART=YES
+      fi
     fi
     _RESULT_LOG4J=$(grep "LOG4J_FORMAT_MSG_NO_LOOKUPS=true" /etc/default/solr7.in.sh 2>&1)
-    if [[ ! "${_RESULT_LOG4J}" =~ "LOG4J" ]] || [ ! -z "${_DO_SOLR_RESTART}" ]; then
+    if [[ ! "${_RESULT_LOG4J}" =~ "LOG4J" ]]; then
       echo "LOG4J_FORMAT_MSG_NO_LOOKUPS=true" >> /etc/default/solr7.in.sh
+    fi
+    if [[ ! "${_RESULT_LOG4J}" =~ "LOG4J" ]] || [ ! -z "${_DO_SOLR_RESTART}" ]; then
       service solr7 restart
     fi
   fi
