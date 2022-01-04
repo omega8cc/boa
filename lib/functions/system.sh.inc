@@ -2040,6 +2040,7 @@ install_php_deps() {
   st_runner "${_INSTALL} libldap-dev" 2> /dev/null
   st_runner "${_INSTALL} libmagickwand-dev" 2> /dev/null
   st_runner "${_INSTALL} libxpm-dev" 2> /dev/null
+  st_runner "${_INSTALL} libwebp-dev" 2> /dev/null
   if [ -e "/root/.use.icu.src.cnf" ]; then
     install_icu
   else
