@@ -4284,6 +4284,7 @@ sys_packages_install() {
                      libkrb5-dev \
                      libldap-dev \
                      libxpm-dev \
+                     libwebp-dev \
                      ${_EXTRA_PACKAGES}"
   else
     _EXTRA_PACKAGES="libgd2-xpm \
