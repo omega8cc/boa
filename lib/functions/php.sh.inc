@@ -591,7 +591,7 @@ install_php_extensions() {
   fi
   ###--------------------###
   if [ "$1" = "56" ]; then
-    msg "INFO: Installing UploadProgress for PHP ${_T_PHP_VRN}..."
+    msg "INFO: Installing UploadProgress ${_UPROGRESS_LEGACY_VRN} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf uploadprogress*
     get_dev_src "uploadprogress-${_UPROGRESS_LEGACY_VRN}.tgz"
@@ -603,7 +603,7 @@ install_php_extensions() {
     mrun "ldconfig" 2> /dev/null
     touch ${pthLog}/f_uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log
   else
-    msg "INFO: Installing UploadProgress for PHP ${_T_PHP_VRN}..."
+    msg "INFO: Installing UploadProgress ${_UPROGRESS_SEVEN_VRN} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf uploadprogress*
     get_dev_src "uploadprogress-${_UPROGRESS_SEVEN_VRN}.tar.gz"
@@ -616,7 +616,7 @@ install_php_extensions() {
     touch ${pthLog}/f_uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
-  msg "INFO: Installing JSMin for PHP ${_T_PHP_VRN}..."
+  msg "INFO: Installing JSMin ${_JSMIN_VRN} for PHP ${_T_PHP_VRN}..."
   cd /var/opt
   rm -rf pecl-jsmin*
   if [ "$1" = "56" ]; then
@@ -638,7 +638,7 @@ install_php_extensions() {
   fi
   ###--------------------###
   if [ "$1" = "56" ]; then
-    msg "INFO: Installing Twig C for PHP ${_T_PHP_VRN}..."
+    msg "INFO: Installing Twig C ${_TWIGC_VRN} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf twig*
     get_dev_src "twig-${_TWIGC_VRN}.tar.gz"
@@ -653,7 +653,7 @@ install_php_extensions() {
   ###--------------------###
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
     if [ "$1" = "56" ]; then
-      msg "INFO: Building GEOS extension for PHP ${_T_PHP_VRN} from sources..."
+      msg "INFO: Building GEOS extension ${_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
         st_runner "apt-get update -qq" &> /dev/null
         st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
@@ -687,7 +687,7 @@ install_php_extensions() {
   ###--------------------###
   if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
     if [ "$1" = "56" ]; then
-      msg "INFO: Installing MongoDB driver for PHP ${_T_PHP_VRN}..."
+      msg "INFO: Installing MongoDB driver ${_MONGO_VRN} for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf mongo*
       get_dev_src "mongo-${_MONGO_VRN}.tgz"
@@ -699,7 +699,7 @@ install_php_extensions() {
       mrun "ldconfig" 2> /dev/null
       touch ${pthLog}/php-mongo-${_MONGO_VRN}-${_T_PHP_VRN}.log
     else
-      msg "INFO: Installing MongoDB driver for PHP ${_T_PHP_VRN}..."
+      msg "INFO: Installing MongoDB driver ${_MONGODB_VRN} for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf mongodb*
       get_dev_src "mongodb-${_MONGODB_VRN}.tgz"
@@ -713,7 +713,7 @@ install_php_extensions() {
     fi
   fi
   ###--------------------###
-  msg "INFO: Installing Imagick for PHP ${_T_PHP_VRN}..."
+  msg "INFO: Installing Imagick ${_IMAGICK_VRN} for PHP ${_T_PHP_VRN}..."
   if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
     mrun "${_INSTALL} libmagickwand-dev" 2> /dev/null
     touch ${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
@@ -730,7 +730,7 @@ install_php_extensions() {
   touch ${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
   ###--------------------###
   if [ "$1" = "56" ]; then
-    msg "INFO: Installing MailParse for PHP ${_T_PHP_VRN}..."
+    msg "INFO: Installing MailParse ${_MAILPARSE_VRN} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf mailparse*
     get_dev_src "mailparse-${_MAILPARSE_VRN}.tgz"
@@ -746,7 +746,7 @@ install_php_extensions() {
   if [ ! -e "${pthLog}/libyaml-${_LIB_YAML_VRN}.log" ] \
     || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.2" ] \
     || [ -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.2" ]; then
-    msg "INFO: Installing LibYAML for PHP..."
+    msg "INFO: Installing LibYAML ${_LIB_YAML_VRN} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf yaml*
     get_dev_src "yaml-${_LIB_YAML_VRN}.tar.gz"
@@ -779,7 +779,7 @@ install_php_extensions() {
       fi
     fi
   fi
-  msg "INFO: Installing YAML for PHP ${_T_PHP_VRN}..."
+  msg "INFO: Installing YAML ${_YAML_VRN} for PHP ${_T_PHP_VRN}..."
   cd /var/opt
   rm -rf yaml*
   if [ "$1" = "56" ]; then
