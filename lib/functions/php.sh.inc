@@ -1157,6 +1157,7 @@ install_php_multi() {
              --with-jpeg-dir=/usr \
              --with-png-dir=/usr \
              --with-xpm-dir=/usr \
+             --with-webp-dir=/usr \
              --with-ldap \
              --with-gmp \
              ${_PRE_SNFR}"
@@ -1164,6 +1165,7 @@ install_php_multi() {
              --enable-gd \
              --with-jpeg \
              --with-xpm \
+             --with-webp \
              --with-freetype \
              --with-ldap \
              --with-gmp"
