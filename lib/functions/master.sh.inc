@@ -1074,7 +1074,7 @@ if_display_login_link() {
 #
 # Update local INI for PHP CLI on the Aegir Master Instance.
 update_php_cli_local_ini() {
-  _X_SE="414prodT02"
+  _X_SE="414prodT03"
   _U_HD="/var/aegir/.drush"
   _U_TP="/var/aegir/.tmp"
   _U_II="${_U_HD}/php.ini"
