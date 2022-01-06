@@ -593,7 +593,7 @@ if [ -e "/vservers" ] \
   service lfd restart
   sleep 8
   sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
-  for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f12 | sort | uniq`;do echo "tcp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+  for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq`;do echo "tcp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
   csf -e
   sleep 1
   csf -q
