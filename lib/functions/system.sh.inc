@@ -2040,6 +2040,7 @@ install_php_deps() {
   st_runner "${_INSTALL} libldap-dev" 2> /dev/null
   st_runner "${_INSTALL} libmagickwand-dev" 2> /dev/null
   st_runner "${_INSTALL} libxpm-dev" 2> /dev/null
+  st_runner "${_INSTALL} libwebp-dev" 2> /dev/null
   if [ -e "/root/.use.icu.src.cnf" ]; then
     install_icu
   else
@@ -2596,11 +2597,16 @@ install_magick_src() {
     cd /var/opt/ImageMagick-${_IMAGE_MAGICK_VRN}
     mrun "bash ./configure --prefix=/usr" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
-    if [ ! -e "/etc/.ImageMagick" ]; then
-      cp -a /etc/ImageMagick /etc/.ImageMagick
+    if [ ! -e "/etc/.ImageMagick-6" ] \
+      && [ -e "/etc/ImageMagick-6" ]; then
+        cp -a /etc/ImageMagick-6 /etc/.ImageMagick-6
     fi
-    mrun "apt-get remove imagemagick" 2> /dev/null
-    mrun "apt-get purge imagemagick" 2> /dev/null
+    if [ ! -e "/etc/.ImageMagick" ] \
+      && [ -e "/etc/ImageMagick" ]; then
+        cp -a /etc/ImageMagick /etc/.ImageMagick
+    fi
+    mrun "apt-get remove imagemagick -y -qq" 2> /dev/null
+    mrun "apt-get purge imagemagick -y -qq" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     msg "HINT: Please modify /usr/etc/ImageMagick-7/policy.xml file, if needed"
@@ -4284,6 +4290,7 @@ sys_packages_install() {
                      libkrb5-dev \
                      libldap-dev \
                      libxpm-dev \
+                     libwebp-dev \
                      ${_EXTRA_PACKAGES}"
   else
     _EXTRA_PACKAGES="libgd2-xpm \
