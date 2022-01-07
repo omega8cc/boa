@@ -2665,6 +2665,9 @@ install_curl_src() {
       mkdir -p /var/backups/libcurl
       mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
       mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
+      if [ -e "/usr/local/bin/curl" ]; then
+        mv -f /usr/local/bin/curl /usr/local/bin/curl-src-off
+      fi
       if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
         echo "curl install" | dpkg --set-selections &> /dev/null
         if [ -z "${_CURL_ALREADY_REBUILT}" ]; then
@@ -2684,7 +2687,6 @@ install_curl_src() {
       if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
         echo "curl hold" | dpkg --set-selections &> /dev/null
       fi
-      msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
       mrun "apt-get build-dep curl -y" 2> /dev/null
       mrun "${_INSTALL} libssl-dev" 2> /dev/null
       mrun "${_INSTALL} libc-client2007e-dev" 2> /dev/null
@@ -2759,6 +2761,7 @@ install_curl_src() {
         echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
       fi
       fix_libssl
+      msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
       if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ]; then
         cd /var/opt/curl-${_CURL_VRN}
         LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig" ./configure \
