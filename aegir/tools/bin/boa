@@ -1404,8 +1404,8 @@ check_dns_curl() {
     apt-get update -qq &> /dev/null
     apt-get install curl ${forCer} &> /dev/null
     mkdir -p /var/backups/libcurl
-    mv -f /usr/local/lib/libcurl* /var/backups/libcurl/
-    mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/
+    mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
+    mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
     touch /root/.use.curl.from.packages.cnf
   fi
   _CURL_TEST=$(curl -L -k -s \
@@ -1418,8 +1418,8 @@ check_dns_curl() {
       echo "curl install" | dpkg --set-selections &> /dev/null
       apt-get install curl ${forCer} &> /dev/null
       mkdir -p /var/backups/libcurl
-      mv -f /usr/local/lib/libcurl* /var/backups/libcurl/
-      mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/
+      mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
+      mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
       touch /root/.use.curl.from.packages.cnf
     fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"

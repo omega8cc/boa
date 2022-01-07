@@ -1661,8 +1661,8 @@ update_wrappers() {
     apt-get update -qq &> /dev/null
     apt-get install curl ${forCer} &> /dev/null
     mkdir -p /var/backups/libcurl
-    mv -f /usr/local/lib/libcurl* /var/backups/libcurl/
-    mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/
+    mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
+    mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
     touch /root/.use.curl.from.packages.cnf
   fi
   _CURL_TEST=$(curl -L -k -s \
@@ -1675,8 +1675,8 @@ update_wrappers() {
       echo "curl install" | dpkg --set-selections &> /dev/null
       apt-get install curl ${forCer} &> /dev/null
       mkdir -p /var/backups/libcurl
-      mv -f /usr/local/lib/libcurl* /var/backups/libcurl/
-      mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/
+      mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
+      mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
       touch /root/.use.curl.from.packages.cnf
     fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
@@ -1843,8 +1843,8 @@ setup() {
     apt-get update -qq &> /dev/null
     apt-get install curl ${forCer} &> /dev/null
     mkdir -p /var/backups/libcurl
-    mv -f /usr/local/lib/libcurl* /var/backups/libcurl/
-    mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/
+    mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
+    mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
     touch /root/.use.curl.from.packages.cnf
   fi
   _CURL_TEST=$(curl -L -k -s \
@@ -1857,8 +1857,8 @@ setup() {
       echo "curl install" | dpkg --set-selections &> /dev/null
       apt-get install curl ${forCer} &> /dev/null
       mkdir -p /var/backups/libcurl
-      mv -f /usr/local/lib/libcurl* /var/backups/libcurl/
-      mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/
+      mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
+      mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
       touch /root/.use.curl.from.packages.cnf
     fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
