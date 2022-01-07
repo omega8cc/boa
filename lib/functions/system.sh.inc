@@ -2661,6 +2661,9 @@ install_curl_src() {
   if [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
     if [ -e "/root/.use.curl.from.packages.cnf" ]; then
+      mkdir -p /var/backups/libcurl
+      mv -f /usr/local/lib/libcurl* /var/backups/libcurl/
+      mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/
       if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
         echo "curl install" | dpkg --set-selections &> /dev/null
         if [ -z "${_CURL_ALREADY_REBUILT}" ]; then

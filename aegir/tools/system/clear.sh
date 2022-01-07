@@ -102,6 +102,9 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
       rm -rf /var/lib/apt/lists/*
       apt-get update -qq &> /dev/null
       apt-get install curl ${forCer} &> /dev/null
+      mkdir -p /var/backups/libcurl
+      mv -f /usr/local/lib/libcurl* /var/backups/libcurl/
+      mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/
       touch /root/.use.curl.from.packages.cnf
     fi
   fi
