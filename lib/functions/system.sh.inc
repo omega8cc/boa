@@ -2649,6 +2649,7 @@ install_curl_src() {
   _BROKEN_CURL_TEST=$(curl --version 2>&1)
   if [[ "${_BROKEN_CURL_TEST}" =~ "libcurl.so.4" ]]; then
     _CURL_INSTALL_REQUIRED=YES
+    touch /root/.use.curl.from.packages.cnf
     msg "INFO: Installed libcurl is broken, cURL ${_CURL_ITD} upgrade required"
   fi
   if [ "${_PHP_BIN_BROKEN}" = "YES" ] && [ -z "${_CURL_ALREADY_REBUILT}" ]; then
