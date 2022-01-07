@@ -2308,6 +2308,14 @@ install_update_php() {
 
 check_fix_php() {
   check_php_cli
+  isWebP=
+  isWebP=$(php -i | grep with-webp 2>&1)
+  if [[ ! "${isWebP}" =~ "with-webp" ]] \
+    || [ -z "${isWebP}" ]; then
+    msg "INFO: PHP rebuild required to add WebP support..."
+    _PHP_FORCE_REINSTALL=YES
+    php_upgrade_all
+  fi
   isFreeType=
   isFreeType=$(php -i | grep with-freetype 2>&1)
   if [[ ! "${isFreeType}" =~ "with-freetype" ]] \
