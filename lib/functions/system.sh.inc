@@ -2612,7 +2612,7 @@ install_magick_src() {
 install_curl_src() {
   if [ "${_OSR}" = "precise" ]; then
     touch /root/.use.curl.from.packages.cnf
-    _CURL_VRN=7.79.1
+    _CURL_VRN=7.81.0
   fi
   _CURL_INSTALL_REQUIRED=NO
   _CURL_GET_DPKG=$(dpkg --get-selections | grep curl | grep 'hold$' 2>&1)
