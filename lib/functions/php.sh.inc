@@ -2322,7 +2322,7 @@ check_fix_php() {
       _CURLWRAPPERS_REBUILD=YES
     fi
   fi
-  if [ "$_CURLWRAPPERS_REBUILD" = "YES" ] \
+  if [ "${_CURLWRAPPERS_REBUILD}" = "YES" ] \
     && [[ ! "${_PHP_EXTRA_CONF}" =~ "with-curlwrappers" ]]; then
     msg "INFO: PHP rebuild required to remove --with-curlwrappers option..."
     _PHP_FORCE_REINSTALL=YES
@@ -2353,7 +2353,7 @@ check_fix_php() {
     php_upgrade_all
   fi
   _BROKEN_LIBCURL_TEST=$(php -v 2>&1)
-  if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]]; then
+  if [[ "${_BROKEN_LIBCURL_TEST}" =~ "libcurl.so.4" ]]; then
     msg "INFO: PHP rebuild required to fix broken libcurl..."
     install_curl_src
     php_upgrade_all
