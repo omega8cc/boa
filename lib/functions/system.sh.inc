@@ -2696,6 +2696,24 @@ install_curl_src() {
       else
         msg "OOPS: failed download from ${urlDev}/src/curl-${_CURL_VRN}.tar.gz"
       fi
+      if [ "${_OSR}" = "buster" ] \
+        || [ "${_OSR}" = "stretch" ]; then
+        _OPENSSL_NEW_VRN=${_OPENSSL_CURRENT_VRN}
+      else
+        _OPENSSL_NEW_VRN=${_OPENSSL_LEGACY_VRN}
+      fi
+      ###--------------------###
+      msg "INFO: Building zlib ${_ZLIB_VRN} from sources, please wait..."
+      cd /var/opt
+      rm -rf zlib*
+      get_dev_src "zlib-${_ZLIB_VRN}.tar.gz"
+      cd /var/opt/zlib-${_ZLIB_VRN}
+      st_runner "bash ./configure --prefix=/usr" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
+      mrun "ldconfig" 2> /dev/null
+      ###--------------------###
+      msg "INFO: Building OpenSSL ${_OPENSSL_NEW_VRN} from sources, please wait..."
       if [ ! -e "/var/opt/openssl-${_OPENSSL_NEW_VRN}" ]; then
         cd /var/opt
         rm -rf openssl*
@@ -2707,22 +2725,48 @@ install_curl_src() {
         fi
       fi
       cd /var/opt/openssl-${_OPENSSL_NEW_VRN}
-      bash ./config enable-shared no-zlib --prefix=/usr/local/ssl --openssldir=/usr/local/ssl &> /dev/null
-      mrun "make --quiet" &> /dev/null
-      mrun "make install --quiet" &> /dev/null
+      _X86_64_IF=$(uname -m 2>&1)
+      if [ "${_X86_64_IF}" = "x86_64" ]; then
+        mrun "sh ./config zlib-dynamic \
+          --prefix=/usr/local/ssl \
+          --openssldir=/usr/local/ssl \
+          shared enable-ec_nistp_64_gcc_128" 2> /dev/null
+      else
+        mrun "sh ./config zlib-dynamic \
+          --prefix=/usr/local/ssl \
+          --openssldir=/usr/local/ssl \
+          shared" 2> /dev/null
+      fi
+      mrun "make depend" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       cp -af /usr/bin/openssl /usr/bin/old-openssl
       ln -sf /usr/local/ssl/bin/openssl `which openssl`
       echo "/usr/local/ssl/lib" >> /etc/ld.so.conf.d/libc.conf
-      mrun "ldconfig" &> /dev/null
+      mrun "ldconfig" 2> /dev/null
+      _SSL_GET_DPKG=$(dpkg --get-selections \
+        | grep openssl \
+        | grep 'hold$' 2>&1)
+      _ZLB_GET_DPKG=$(dpkg --get-selections \
+        | grep zlibc \
+        | grep 'hold$' 2>&1)
+      if [[ ! "${_SSL_GET_DPKG}" =~ "hold" ]]; then
+        echo "openssl hold" | dpkg --set-selections &> /dev/null
+      fi
+      if [[ ! "${_ZLB_GET_DPKG}" =~ "hold" ]]; then
+        echo "zlibc hold" | dpkg --set-selections &> /dev/null
+        echo "zlib1g hold" | dpkg --set-selections &> /dev/null
+        echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
+      fi
+      fix_libssl
       if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ]; then
         cd /var/opt/curl-${_CURL_VRN}
         LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig" ./configure \
           --with-ssl \
           --with-libssl-prefix=/usr/local/ssl \
-          --without-zlib \
           --prefix=/usr/local &> /dev/null
-        mrun "make --quiet" &> /dev/null
-        mrun "make --quiet install" &> /dev/null
+        mrun "make --quiet" 2> /dev/null
+        mrun "make --quiet install" 2> /dev/null
         mrun "ldconfig" &> /dev/null
         if [ -x "/usr/local/bin/curl" ]; then
           mv -f /usr/bin/curl /usr/bin/old_curl
@@ -2773,6 +2817,12 @@ install_ssl_src() {
     msg "INFO: Installed OpenSSL version ${_SSL_ITD}, upgrade required"
   fi
   if [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
+    if [ "${_OSR}" = "buster" ] \
+      || [ "${_OSR}" = "stretch" ]; then
+      _OPENSSL_NEW_VRN=${_OPENSSL_CURRENT_VRN}
+    else
+      _OPENSSL_NEW_VRN=${_OPENSSL_LEGACY_VRN}
+    fi
     ###--------------------###
     msg "INFO: Building zlib ${_ZLIB_VRN} from sources, please wait..."
     cd /var/opt
@@ -2784,11 +2834,11 @@ install_ssl_src() {
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     ###--------------------###
-    msg "INFO: Building OpenSSL ${_OPENSSL_LEGACY_VRN} from sources, please wait..."
+    msg "INFO: Building OpenSSL ${_OPENSSL_NEW_VRN} from sources, please wait..."
     cd /var/opt
     rm -rf openssl*
-    get_dev_src "openssl-${_OPENSSL_LEGACY_VRN}.tar.gz"
-    cd /var/opt/openssl-${_OPENSSL_LEGACY_VRN}
+    get_dev_src "openssl-${_OPENSSL_NEW_VRN}.tar.gz"
+    cd /var/opt/openssl-${_OPENSSL_NEW_VRN}
     _X86_64_IF=$(uname -m 2>&1)
     if [ "${_X86_64_IF}" = "x86_64" ]; then
       mrun "sh ./config zlib-dynamic \
