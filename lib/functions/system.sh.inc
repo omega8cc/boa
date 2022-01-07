@@ -4376,6 +4376,7 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
+  _MAGICK_FROM_SOURCES=YES
   if [ "${_MAGICK_FROM_SOURCES}" = "NO" ] \
     || [ -z "${_MAGICK_FROM_SOURCES}" ]; then
     _EXTRA_PACKAGES="imagemagick \
