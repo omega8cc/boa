@@ -1760,11 +1760,12 @@ display_info() {
       | tr -d "\n" \
       | cut -d" " -f2 \
       | awk '{ print $1}' 2>&1)
-    _SSH=$(sshd -V 2>&1 \
+    _SHD=$(sshd -V 2>&1 \
       | tr -d "\n" \
       | tr -d "," \
       | cut -d"_" -f2 \
       | awk '{ print $1}' 2>&1)
+    _SSH=$(ssh -V 2>&1)
     _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
     clear
     echo
@@ -1818,6 +1819,7 @@ display_info() {
     [ ! -z "${_DBV}" ] && echo "  DBV ${_DBV}"
     [ ! -z "${_RDS}" ] && echo "  RDS ${_RDS}"
     [ ! -z "${_PXY}" ] && echo "  PXY ${_PXY}"
+    [ ! -z "${_SHD}" ] && echo "  SHD ${_SHD}"
     [ ! -z "${_SSH}" ] && echo "  SSH ${_SSH}"
     [ ! -z "${_SSL}" ] && echo "  SSL ${_SSL}"
     [ ! -z "${_CRL}" ] && echo "  CRL ${_CRL}"
