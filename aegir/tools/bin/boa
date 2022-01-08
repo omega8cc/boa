@@ -1770,23 +1770,33 @@ display_info() {
     echo
     thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
     if [ -e "/var/log/barracuda_log.txt" ]; then
-      _XTR=$(grep _XTRAS_LIST /root/.barracuda.cnf 2>&1)
-      _MFX=$(grep _MODULES_FIX /root/.barracuda.cnf 2>&1)
-      _PFX=$(grep _PERMISSIONS_FIX /root/.barracuda.cnf 2>&1)
+      _AUT=$(grep _AUTOPILOT /root/.barracuda.cnf 2>&1)
+      _BIL=$(grep _BACKEND_ITEMS_LIST /root/.barracuda.cnf 2>&1)
+      _CCC=$(grep _CUSTOM_CONFIG_CSF /root/.barracuda.cnf 2>&1)
+      _CCL=$(grep _CUSTOM_CONFIG_LSHELL /root/.barracuda.cnf 2>&1)
+      _CCR=$(grep _CUSTOM_CONFIG_REDIS /root/.barracuda.cnf 2>&1)
+      _CCS=$(grep _CUSTOM_CONFIG_SQL /root/.barracuda.cnf 2>&1)
+      _DBG=$(grep _DEBUG_MODE /root/.barracuda.cnf 2>&1)
       _DBS=$(grep _DB_SERIES /root/.barracuda.cnf 2>&1)
       _DNS=$(grep _DNS_SETUP_TEST /root/.barracuda.cnf 2>&1)
-      _PKG=$(grep _EXTRA_PACKAGES /root/.barracuda.cnf 2>&1)
-      _ARM=$(grep _SSH_ARMOUR /root/.barracuda.cnf 2>&1)
-      _STG=$(grep _STRONG_PASSWORDS /root/.barracuda.cnf 2>&1)
-      _CSF=$(grep _CUSTOM_CONFIG_CSF /root/.barracuda.cnf 2>&1)
-      _LSH=$(grep _CUSTOM_CONFIG_LSHELL /root/.barracuda.cnf 2>&1)
-      _RIS=$(grep _CUSTOM_CONFIG_REDIS /root/.barracuda.cnf 2>&1)
-      _SQL=$(grep _CUSTOM_CONFIG_SQL /root/.barracuda.cnf 2>&1)
-      _BIL=$(grep _BACKEND_ITEMS_LIST /root/.barracuda.cnf 2>&1)
+      _EXP=$(grep _EXTRA_PACKAGES /root/.barracuda.cnf 2>&1)
+      _MFS=$(grep _MAGICK_FROM_SOURCES /root/.barracuda.cnf 2>&1)
+      _MFX=$(grep _MODULES_FIX /root/.barracuda.cnf 2>&1)
+      _PCV=$(grep _PHP_CLI_VERSION /root/.barracuda.cnf 2>&1)
+      _PEC=$(grep _PHP_EXTRA_CONF /root/.barracuda.cnf 2>&1)
+      _PFD=$(grep _PHP_FPM_DENY /root/.barracuda.cnf 2>&1)
+      _PFV=$(grep _PHP_FPM_VERSION /root/.barracuda.cnf 2>&1)
+      _PFX=$(grep _PERMISSIONS_FIX /root/.barracuda.cnf 2>&1)
+      _PMI=$(grep _PHP_MULTI_INSTALL /root/.barracuda.cnf 2>&1)
+      _PSI=$(grep _PHP_SINGLE_INSTALL /root/.barracuda.cnf 2>&1)
+      _SAR=$(grep _SSH_ARMOUR /root/.barracuda.cnf 2>&1)
+      _SBP=$(grep _STRICT_BIN_PERMISSIONS /root/.barracuda.cnf 2>&1)
+      _SFS=$(grep _SSH_FROM_SOURCES /root/.barracuda.cnf 2>&1)
       _SKY=$(grep _SKYNET_MODE /root/.barracuda.cnf 2>&1)
-      _BIN=$(grep _STRICT_BIN_PERMISSIONS /root/.barracuda.cnf 2>&1)
-      _TUN=$(grep _USE_MYSQLTUNER /root/.barracuda.cnf 2>&1)
-      _CLI=$(grep _PHP_CLI_VERSION /root/.barracuda.cnf 2>&1)
+      _STP=$(grep _STRONG_PASSWORDS /root/.barracuda.cnf 2>&1)
+      _SUO=$(grep _SYSTEM_UPGRADE_ONLY /root/.barracuda.cnf 2>&1)
+      _UMY=$(grep _USE_MYSQLTUNER /root/.barracuda.cnf 2>&1)
+      _XTR=$(grep _XTRAS_LIST /root/.barracuda.cnf 2>&1)
       crlBoav=`tail --lines=1 /var/log/barracuda_log.txt \
         | cut -d '/' -f4 \
         | sed "s/ Barracuda //g"`
@@ -1802,29 +1812,13 @@ display_info() {
     echo "  DSK ${_DF_TEST}/100"
     echo "  CPU ${_CPU_NR}"
     echo "  RAM ${_RAM}"
+    [ ! -z "${_SKY}" ] && echo "  SKY ${_SKY}"
     [ ! -z "${_NGX}" ] && echo "  NGX ${_NGX}"
     [ ! -z "${_PHP}" ] && echo "  PHP ${_PHP}"
     [ ! -z "${_DBV}" ] && echo "  DBV ${_DBV}"
     [ ! -z "${_RDS}" ] && echo "  RDS ${_RDS}"
     [ ! -z "${_PXY}" ] && echo "  PXY ${_PXY}"
     [ ! -z "${_SSH}" ] && echo "  SSH ${_SSH}"
-    [ ! -z "${_SSL}" ] && echo "  SSL ${_SSL}"
-    [ "${mode}" != "report" ] && echo "  STG ${_STG}"
-    [ "${mode}" != "report" ] && echo "  CSF ${_CSF}"
-    [ "${mode}" != "report" ] && echo "  LSH ${_LSH}"
-    [ "${mode}" != "report" ] && echo "  RIS ${_RIS}"
-    [ "${mode}" != "report" ] && echo "  SQL ${_SQL}"
-    [ "${mode}" != "report" ] && echo "  XTR ${_XTR}"
-    [ "${mode}" != "report" ] && echo "  MFX ${_MFX}"
-    [ "${mode}" != "report" ] && echo "  PFX ${_PFX}"
-    [ "${mode}" != "report" ] && echo "  DNS ${_DNS}"
-    [ "${mode}" != "report" ] && echo "  PKG ${_PKG}"
-    [ "${mode}" != "report" ] && [ ! -z "${_CLI}" ] && echo "  CLI ${_CLI}"
-    [ "${mode}" != "report" ] && [ ! -z "${_DBS}" ] && echo "  DBS ${_DBS}"
-    [ "${mode}" != "report" ] && [ ! -z "${_TUN}" ] && echo "  TUN ${_TUN}"
-    [ "${mode}" != "report" ] && [ ! -z "${_BIL}" ] && echo "  BIL ${_BIL}"
-    [ "${mode}" != "report" ] && [ ! -z "${_BIN}" ] && echo "  BIN ${_BIN}"
-    [ "${mode}" != "report" ] && [ ! -z "${_ARM}" ] && echo "  ARM ${_ARM}"
     [ ! -z "${_SSL}" ] && echo "  SSL ${_SSL}"
     [ ! -z "${_CRL}" ] && echo "  CRL ${_CRL}"
     if [ -e "/root/.use.curl.from.packages.cnf" ]; then
@@ -1837,7 +1831,33 @@ display_info() {
     else
       echo "  CRL_Local_Bin NO"
     fi
-    [ ! -z "${_SKY}" ] && echo "  SKY ${_SKY}"
+    [ "${mode}" != "report" ] && [ ! -z "${_AUT}" ] && echo "  _AUT ${_AUT}"
+    [ "${mode}" != "report" ] && [ ! -z "${_BIL}" ] && echo "  _BIL ${_BIL}"
+    [ "${mode}" != "report" ] && [ ! -z "${_CCC}" ] && echo "  _CCC ${_CCC}"
+    [ "${mode}" != "report" ] && [ ! -z "${_CCL}" ] && echo "  _CCL ${_CCL}"
+    [ "${mode}" != "report" ] && [ ! -z "${_CCR}" ] && echo "  _CCR ${_CCR}"
+    [ "${mode}" != "report" ] && [ ! -z "${_CCS}" ] && echo "  _CCS ${_CCS}"
+    [ "${mode}" != "report" ] && [ ! -z "${_DBG}" ] && echo "  _DBG ${_DBG}"
+    [ "${mode}" != "report" ] && [ ! -z "${_DBS}" ] && echo "  _DBS ${_DBS}"
+    [ "${mode}" != "report" ] && [ ! -z "${_DNS}" ] && echo "  _DNS ${_DNS}"
+    [ "${mode}" != "report" ] && [ ! -z "${_EXP}" ] && echo "  _EXP ${_EXP}"
+    [ "${mode}" != "report" ] && [ ! -z "${_MFS}" ] && echo "  _MFS ${_MFS}"
+    [ "${mode}" != "report" ] && [ ! -z "${_MFX}" ] && echo "  _MFX ${_MFX}"
+    [ "${mode}" != "report" ] && [ ! -z "${_PCV}" ] && echo "  _PCV ${_PCV}"
+    [ "${mode}" != "report" ] && [ ! -z "${_PEC}" ] && echo "  _PEC ${_PEC}"
+    [ "${mode}" != "report" ] && [ ! -z "${_PFD}" ] && echo "  _PFD ${_PFD}"
+    [ "${mode}" != "report" ] && [ ! -z "${_PFV}" ] && echo "  _PFV ${_PFV}"
+    [ "${mode}" != "report" ] && [ ! -z "${_PFX}" ] && echo "  _PFX ${_PFX}"
+    [ "${mode}" != "report" ] && [ ! -z "${_PMI}" ] && echo "  _PMI ${_PMI}"
+    [ "${mode}" != "report" ] && [ ! -z "${_PSI}" ] && echo "  _PSI ${_PSI}"
+    [ "${mode}" != "report" ] && [ ! -z "${_SAR}" ] && echo "  _SAR ${_SAR}"
+    [ "${mode}" != "report" ] && [ ! -z "${_SBP}" ] && echo "  _SBP ${_SBP}"
+    [ "${mode}" != "report" ] && [ ! -z "${_SFS}" ] && echo "  _SFS ${_SFS}"
+    [ "${mode}" != "report" ] && [ ! -z "${_STP}" ] && echo "  _STP ${_STP}"
+    [ "${mode}" != "report" ] && [ ! -z "${_SUO}" ] && echo "  _SUO ${_SUO}"
+    [ "${mode}" != "report" ] && [ ! -z "${_UMY}" ] && echo "  _UMY ${_UMY}"
+    [ "${mode}" != "report" ] && [ ! -z "${_XTR}" ] && echo "  _XTR ${_XTR}"
+    [ "${mode}" != "report" ] && [ ! -z "${_AUT}" ] && echo "  _AUT ${_AUT}"
     echo
     if [ -e "/var/log/barracuda_log.txt" ]; then
       if [ "${mode}" = "report" ]; then
@@ -1846,8 +1866,6 @@ display_info() {
           grep _PHP_CLI_VERSION /root/.*.octopus.cnf
           echo
           grep _PHP_FPM_VERSION /root/.*.octopus.cnf
-          echo
-          grep _THIS_DB_PORT /root/.*.octopus.cnf
           echo
         fi
         if [ "${extra}" = "backups" ]; then
