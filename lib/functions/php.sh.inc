@@ -1173,30 +1173,17 @@ install_php_multi() {
     _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-freetype-dir=\/usr//g" 2>&1)
     _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-openssl=\/usr\/local\/ssl/--with-openssl/g" 2>&1)
     _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-curl=\/usr\/local\/ssl/--with-curl/g" 2>&1)
-    _PHP_EXTRA="${_PHP_EXTRA} \
-                ${_NEW_SNFR}"
+    _PHP_EXTRA="${_PHP_EXTRA} ${_NEW_SNFR}"
   elif [ "$1" = "73" ]; then
-    _PHP_EXTRA="${_PHP_EXTRA} \
-                ${_PRE_SNFR}"
+    _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR}"
   elif [ "$1" = "72" ]; then
-    _PHP_EXTRA="${_PHP_EXTRA} \
-                ${_PRE_SNFR}"
+    _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR}"
   elif [ "$1" = "71" ]; then
-    _PHP_EXTRA="${_PHP_EXTRA} \
-                ${_PRE_SNFR} \
-                --enable-gd-native-ttf \
-                --with-mcrypt"
+    _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR} --enable-gd-native-ttf --with-mcrypt"
   elif [ "$1" = "70" ]; then
-    _PHP_EXTRA="${_PHP_EXTRA} \
-                ${_PRE_SNFR} \
-                --enable-gd-native-ttf \
-                --with-mcrypt"
+    _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR} --enable-gd-native-ttf --with-mcrypt"
   elif [ "$1" = "56" ]; then
-    _PHP_EXTRA="${_PHP_EXTRA} \
-                ${_PRE_SNFR} \
-                --enable-gd-native-ttf \
-                --with-mcrypt \
-                --with-mysql=mysqlnd"
+    _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR} --enable-gd-native-ttf --with-mcrypt --with-mysql=mysqlnd"
     if [ "${_OSR}" = "buster" ] \
       || [ "${_OSR}" = "stretch" ]; then
       patchFile="PHP-5.6.31-OpenSSL-1.1.0-compatibility-20170801.patch"
@@ -1207,12 +1194,14 @@ install_php_multi() {
     patchFile="freetype.patch"
     patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
   fi
-  _PHP_EXTRA="${_PHP_EXTRA} \
-              --enable-opcache"
+  _PHP_EXTRA="${_PHP_EXTRA} --enable-opcache"
   if [ ! -z "${_PHP_EXTRA}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "${_PHP_EXTRA}" | fmt -su -w 2500 > /var/backups/php_extra_${_PHP_VERSION}.txt
+      _DISPLAY_PHP_EXTRA=$(cat /var/backups/php_extra_${_PHP_VERSION}.txt 2>&1)
+      _DISPLAY_PHP_EXTRA=$(echo -n ${_DISPLAY_PHP_EXTRA} | tr -d "\n" 2>&1)
       msg "INFO: This PHP ${_PHP_VERSION} is built with:"
-      msg "INFO: ${_PHP_EXTRA}"
+      msg "INFO: ${_DISPLAY_PHP_EXTRA}"
     fi
   fi
   mrun "bash ./configure \
