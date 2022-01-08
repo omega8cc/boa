@@ -1767,7 +1767,7 @@ display_info() {
       | awk '{ print $1}' 2>&1)
     _SSH=$(ssh -V 2>&1)
     _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
-    [ "${mode}" != "report" ] && clear
+    [ "${mode}" = "clear" ] && clear
     echo
     thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
     if [ -e "/var/log/barracuda_log.txt" ]; then
