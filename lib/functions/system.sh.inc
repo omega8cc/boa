@@ -2777,14 +2777,21 @@ install_curl_src() {
           ln -sf /usr/local/bin/curl /usr/bin/curl
         fi
       fi
-      if [ -e "/usr/local/lib/libcurl.so" ]; then
+      if [ -e "/usr/local/lib/libcurl.so" ] \
+        && [ -e "/usr/local/include/curl/curl.h" ]; then
         _X86_64_TEST=$(uname -m 2>&1)
         if [ "${_X86_64_TEST}" = "x86_64" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libcurl.so /usr/local/lib/libcurl.so
-          ln -sf /usr/include/x86_64-linux-gnu/curl /usr/local/include/curl
+          mkdir -p /var/backups/legacy-curl
+          mv -f /usr/include/x86_64-linux-gnu/curl /var/backups/legacy-curl/
+          mv -f /usr/lib/x86_64-linux-gnu/libcurl.so /var/backups/legacy-curl/
+          ln -sf /usr/local/lib/libcurl.so /usr/lib/x86_64-linux-gnu/libcurl.so
+          ln -sf /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl
         else
-          ln -sf /usr/lib/i386-linux-gnu/libcurl.so /usr/local/lib/libcurl.so
-          ln -sf /usr/lib/i386-linux-gnu/curl /usr/local/include/curl        
+          mkdir -p /var/backups/legacy-curl
+          mv -f /usr/lib/i386-linux-gnu/curl /var/backups/legacy-curl/
+          mv -f /usr/lib/i386-linux-gnu/libcurl.so /var/backups/legacy-curl/
+          ln -sf /usr/local/lib/libcurl.so /usr/lib/i386-linux-gnu/libcurl.so
+          ln -sf /usr/local/include/curl /usr/lib/i386-linux-gnu/curl
         fi
       fi
     fi
