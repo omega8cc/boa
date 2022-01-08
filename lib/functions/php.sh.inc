@@ -1620,6 +1620,12 @@ check_php_rebuild() {
         | cut -d: -f1 \
         | awk '{ print $2}' 2>&1)
     fi
+    if [ -z "${_PHP_ITD}" ]; then
+      _PHP_ITD=$(/opt/php$1/bin/php -v \
+        | grep 'PHP 8' \
+        | cut -d: -f1 \
+        | awk '{ print $2}' 2>&1)
+    fi
   fi
   if [ -x "/opt/php$1/bin/php" ]; then
     if [ "$1" = "56" ]; then

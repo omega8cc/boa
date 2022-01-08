@@ -1721,6 +1721,10 @@ display_info() {
         _PHP=$(/usr/bin/php-cli -v | grep 'PHP 5' \
           | cut -d: -f1 | awk '{ print $2}' 2>&1)
       fi
+      if [ -z "${_PHP}" ]; then
+        _PHP=$(/usr/bin/php-cli -v | grep 'PHP 8' \
+          | cut -d: -f1 | awk '{ print $2}' 2>&1)
+      fi
     fi
     _DBV=$(mysql -V 2>&1 \
       | tr -d "\n" \
