@@ -1805,7 +1805,6 @@ display_info() {
     [ ! -z "${_PXY}" ] && echo "  PXY ${_PXY}"
     [ ! -z "${_SSH}" ] && echo "  SSH ${_SSH}"
     [ ! -z "${_SSL}" ] && echo "  SSL ${_SSL}"
-    [ ! -z "${_CRL}" ] && echo "  CRL ${_CRL}"
     [ "${mode}" != "report" ] && echo "  STG ${_STG}"
     [ "${mode}" != "report" ] && echo "  CSF ${_CSF}"
     [ "${mode}" != "report" ] && echo "  LSH ${_LSH}"
@@ -1822,6 +1821,18 @@ display_info() {
     [ "${mode}" != "report" ] && [ ! -z "${_BIL}" ] && echo "  BIL ${_BIL}"
     [ "${mode}" != "report" ] && [ ! -z "${_BIN}" ] && echo "  BIN ${_BIN}"
     [ "${mode}" != "report" ] && [ ! -z "${_ARM}" ] && echo "  ARM ${_ARM}"
+    [ ! -z "${_SSL}" ] && echo "  SSL ${_SSL}"
+    [ ! -z "${_CRL}" ] && echo "  CRL ${_CRL}"
+    if [ -e "/root/.use.curl.from.packages.cnf" ]; then
+      echo "  CRL_From_Packages YES"
+    else
+      echo "  CRL_From_Packages NO"
+    fi
+    if [ -e "/usr/local/bin/curl" ]; then
+      echo "  CRL_Local_Bin YES"
+    else
+      echo "  CRL_Local_Bin NO"
+    fi
     [ ! -z "${_SKY}" ] && echo "  SKY ${_SKY}"
     echo
     if [ -e "/var/log/barracuda_log.txt" ]; then
