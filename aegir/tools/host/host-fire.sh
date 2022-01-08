@@ -4,7 +4,7 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 csf_flood_guard() {
-  thisCountCsf=`ps aux | grep -v "grep" | grep -v "null" | grep --count "csf"`
+  thisCountCsf=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/csf"`
   if [ ${thisCountCsf} -gt "4" ]; then
     echo "$(date 2>&1) Too many ${thisCountCsf} csf processes killed" >> \
       /var/log/csf-count.kill.log
@@ -12,7 +12,7 @@ csf_flood_guard() {
     csf -tf
     csf -df
   fi
-  thisCountFire=`ps aux | grep -v "grep" | grep -v "null" | grep --count "fire.sh"`
+  thisCountFire=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/fire.sh"`
   if [ ${thisCountFire} -gt "9" ]; then
     echo "$(date 2>&1) Too many ${thisCountFire} fire.sh processes killed and rules purged" >> \
       /var/log/fire-purge.kill.log

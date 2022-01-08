@@ -4,7 +4,7 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
 second_flood_guard() {
-  thisCountSec=`ps aux | grep -v "grep" | grep -v "null" | grep --count "second.sh"`
+  thisCountSec=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/second.sh"`
   if [ ${thisCountSec} -gt "4" ]; then
     echo "$(date 2>&1) Too many ${thisCountSec} second.sh processes killed" >> \
       /var/log/sec-count.kill.log
@@ -14,7 +14,7 @@ second_flood_guard() {
 [ ! -e "/var/run/boa_run.pid" ] && second_flood_guard
 
 csf_flood_guard() {
-  thisCountCsf=`ps aux | grep -v "grep" | grep -v "null" | grep --count "csf"`
+  thisCountCsf=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/csf"`
   if [ ! -e "/var/run/boa_run.pid" ] && [ ${thisCountCsf} -gt "4" ]; then
     echo "$(date 2>&1) Too many ${thisCountCsf} csf processes killed" >> \
       /var/log/csf-count.kill.log
@@ -22,7 +22,7 @@ csf_flood_guard() {
     csf -tf
     csf -df
   fi
-  thisCountFire=`ps aux | grep -v "grep" | grep -v "null" | grep --count "fire.sh"`
+  thisCountFire=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/fire.sh"`
   if [ ! -e "/var/run/boa_run.pid" ] && [ ${thisCountFire} -gt "9" ]; then
     echo "$(date 2>&1) Too many ${thisCountFire} fire.sh processes killed and rules purged" >> \
       /var/log/fire-purge.kill.log

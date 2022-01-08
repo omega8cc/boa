@@ -1927,11 +1927,11 @@ setup() {
            xboa"
   for cbn in ${boaBins}; do
     if [ -e "${optBin}/${cbn}" ]; then
-      if [ `ps aux | grep -v "grep" | grep --count "${cbn}"` -gt "0" ]; then
+      if [ `ps aux | grep -v "grep" | grep --count "/${cbn}"` -gt "0" ]; then
         echo "The ${cbn} is running!"
       else
         if [ "${cbn}" = "weblogx" ] \
-          && [ `ps aux | grep -v "grep" | grep --count "daily.sh"` -gt "0" ]; then
+          && [ `ps aux | grep -v "grep" | grep --count "/daily.sh"` -gt "0" ]; then
           echo "The ${cbn} and daily.sh is running!"
         else
           rm -f ${optBin}/${cbn}.new
