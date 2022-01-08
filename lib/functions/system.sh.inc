@@ -2766,6 +2766,7 @@ install_curl_src() {
         cd /var/opt/curl-${_CURL_VRN}
         LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig" ./configure \
           --with-ssl \
+          --with-zlib=/usr \
           --with-libssl-prefix=/usr/local/ssl \
           --prefix=/usr/local &> /dev/null
         mrun "make --quiet" 2> /dev/null
