@@ -2781,17 +2781,29 @@ install_curl_src() {
         && [ -e "/usr/local/include/curl/curl.h" ]; then
         _X86_64_TEST=$(uname -m 2>&1)
         if [ "${_X86_64_TEST}" = "x86_64" ]; then
-          mkdir -p /var/backups/legacy-curl
-          mv -f /usr/include/x86_64-linux-gnu/curl /var/backups/legacy-curl/
-          mv -f /usr/lib/x86_64-linux-gnu/libcurl.so /var/backups/legacy-curl/
-          ln -sf /usr/local/lib/libcurl.so /usr/lib/x86_64-linux-gnu/libcurl.so
-          ln -sf /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl
+          mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}
+          if [ -d "/usr/include/x86_64-linux-gnu/curl" ]; then
+            mv -f /usr/include/x86_64-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}/
+            mv -f /usr/lib/x86_64-linux-gnu/libcurl.so /var/backups/legacy-curl-pre-${_CURL_VRN}/
+          fi
+          if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so" ]; then
+            ln -sf /usr/local/lib/libcurl.so /usr/lib/x86_64-linux-gnu/libcurl.so
+          fi
+          if [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
+            ln -sf /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl
+          fi
         else
-          mkdir -p /var/backups/legacy-curl
-          mv -f /usr/lib/i386-linux-gnu/curl /var/backups/legacy-curl/
-          mv -f /usr/lib/i386-linux-gnu/libcurl.so /var/backups/legacy-curl/
-          ln -sf /usr/local/lib/libcurl.so /usr/lib/i386-linux-gnu/libcurl.so
-          ln -sf /usr/local/include/curl /usr/lib/i386-linux-gnu/curl
+          mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}
+          if [ -d "/usr/include/i386-linux-gnu/curl" ]; then
+            mv -f /usr/include/i386-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}/
+            mv -f /usr/lib/i386-linux-gnu/libcurl.so /var/backups/legacy-curl-pre-${_CURL_VRN}/
+          fi
+          if [ ! -L "/usr/lib/i386-linux-gnu/libcurl.so" ]; then
+            ln -sf /usr/local/lib/libcurl.so /usr/lib/i386-linux-gnu/libcurl.so
+          fi
+          if [ ! -L "/usr/include/i386-linux-gnu/curl" ]; then
+            ln -sf /usr/local/include/curl /usr/include/i386-linux-gnu/curl
+          fi
         fi
       fi
     fi
