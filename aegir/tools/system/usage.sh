@@ -108,11 +108,11 @@ read_account_data() {
     _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x POWER"
   fi
   if [ -e "/data/disk/${_THIS_U}/static/control/cli.info" ]; then
-    _CLIENT_CLI=$(cat //data/disk/${_THIS_U}/static/control/cli.info 2>&1)
+    _CLIENT_CLI=$(cat /data/disk/${_THIS_U}/static/control/cli.info 2>&1)
     _CLIENT_CLI=$(echo -n ${_CLIENT_CLI} | tr -d "\n" 2>&1)
   fi
   if [ -e "/data/disk/${_THIS_U}/static/control/fpm.info" ]; then
-    _CLIENT_FPM=$(cat //data/disk/${_THIS_U}/static/control/fpm.info 2>&1)
+    _CLIENT_FPM=$(cat /data/disk/${_THIS_U}/static/control/fpm.info 2>&1)
     _CLIENT_FPM=$(echo -n ${_CLIENT_FPM} | tr -d "\n" 2>&1)
   fi
 }
