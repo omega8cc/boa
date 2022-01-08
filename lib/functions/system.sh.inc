@@ -2777,6 +2777,16 @@ install_curl_src() {
           ln -sf /usr/local/bin/curl /usr/bin/curl
         fi
       fi
+      if [ -e "/usr/local/lib/libcurl.so" ]; then
+        _X86_64_TEST=$(uname -m 2>&1)
+        if [ "${_X86_64_TEST}" = "x86_64" ]; then
+          ln -sf /usr/lib/x86_64-linux-gnu/libcurl.so /usr/local/lib/libcurl.so
+          ln -sf /usr/include/x86_64-linux-gnu/curl /usr/local/include/curl
+        else
+          ln -sf /usr/lib/i386-linux-gnu/libcurl.so /usr/local/lib/libcurl.so
+          ln -sf /usr/lib/i386-linux-gnu/curl /usr/local/include/curl        
+        fi
+      fi
     fi
     _CURL_ALREADY_REBUILT=YES
   fi
