@@ -419,7 +419,6 @@ install_upgrade_nginx() {
       --without-mail_smtp_module \
       --without-http_scgi_module \
       --without-http_uwsgi_module \
-      --with-ipv6 \
       --with-http_geoip_module \
       --with-openssl=/var/opt/openssl-${_OPENSSL_NEW_VRN} \
       --with-debug ${_NGINX_EXTRA}" 2> /dev/null
