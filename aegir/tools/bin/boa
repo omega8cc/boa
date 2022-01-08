@@ -1874,6 +1874,14 @@ display_info() {
           tail --lines=19 /var/xdrago/log/*.archive.log
           echo
         fi
+        if [ "${extra}" = "both" ]; then
+          grep _PHP_CLI_VERSION /root/.*.octopus.cnf
+          echo
+          grep _PHP_FPM_VERSION /root/.*.octopus.cnf
+          echo
+          tail --lines=19 /var/xdrago/log/*.archive.log
+          echo
+        fi
       elif [ "${mode}" = "full" ] || [ "${mode}" = "more" ]; then
         display="default"
         cat /var/log/barracuda_log.txt | grep $(date +'%Y' -d 'last year')
@@ -2066,7 +2074,7 @@ case "$1" in
              echo "Usage: $(basename "$0") {version} {mode} {fqdn} {email} {user} {platforms} {extra} {mysql}"
              echo "Usage: $(basename "$0") version"
              echo "Usage: $(basename "$0") info {more}"
-             echo "Usage: $(basename "$0") info report {octopus|backups}"
+             echo "Usage: $(basename "$0") info report {octopus|backups|both}"
              echo
              cat <<EOF
 
