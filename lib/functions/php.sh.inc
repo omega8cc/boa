@@ -1172,7 +1172,7 @@ install_php_multi() {
   if [ "$1" = "74" ]; then
     _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-freetype-dir=\/usr//g" 2>&1)
     _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-openssl=\/usr\/local\/ssl/--with-openssl/g" 2>&1)
-    _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-curl=\/usr\/local\/ssl/--with-curl/g" 2>&1)
+    _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-curl=\/usr\/local/--with-curl/g" 2>&1)
     _PHP_EXTRA="${_PHP_EXTRA} ${_NEW_SNFR}"
   elif [ "$1" = "73" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR}"
