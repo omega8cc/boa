@@ -10,6 +10,38 @@ if [[ "${_CRON_TEST}" =~ "usage.sh" ]]; then
   _ADD_XTRA=NO
 fi
 
+ntpdate pool.ntp.org
+
+_CHECK_HOST=$(uname -n 2>&1)
+_TIME=$(date +%H 2>&1)
+_TIME=${_TIME//[^0-9-]/}
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=${_NOW//[^0-9-]/}
+
+send_report_host8() {
+  if [ -e "${barCnf}" ]; then
+    _RCPT_EMAIL=
+    _BCC_EMAIL=
+    repBodFile=/var/backups/hosted-boa-status.txt
+    if [ -e "/root/.host8.cnf" ]; then
+      _RCPT_EMAIL="systems@omega8.cc"
+      _BCC_EMAIL="notify@omega8.cc"
+    fi
+    if [ ! -z "${_RCPT_EMAIL}" ] && [ ! -z "${_RCPT_EMAIL}" ]; then
+      repSub="Hosted BOA Status on ${_CHECK_HOST}"
+      repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
+      boa info report both > ${repBodFile}
+      cat ${repBodFile} | mail -e -b ${_BCC_EMAIL} -s "${repSub} at ${_NOW}" ${_RCPT_EMAIL}
+      rm -f ${repBodFile}
+    fi
+  fi
+}
+
+if [ "${_TIME}" = "1200" ]; then
+  export TERM=vt100
+  send_report_host8
+fi
+
 crontab_update() {
   if [ -e "/etc/crontab" ]; then
     sed -i "s/.*xdrago.*//gi"    /etc/crontab &> /dev/null
@@ -137,7 +169,6 @@ if [ -e "/data/disk/arch/sql" ]; then
     sed -i "s/default_lines = 999/default_lines = 300/g" /var/xdrago/monitor/check/scan_nginx
     touch /root/.fixed_scan_nginx.pid
   fi
-  _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
   [ -z "${_AUTO_VER}" ] && _AUTO_VER="stable"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
@@ -157,11 +188,14 @@ if [ -e "/data/disk/arch/sql" ]; then
         _AUTO_UP=YES
       fi
     fi
-    if [ ! -e "/root/.auto.up.cnf" ] && [ "${_AUTO_UP}" = "YES" ]; then
-      touch /root/.auto.up.cnf
-    fi
     if [[ "${_MY_EMAIL}" =~ "omega8" ]]; then
       _AUTO_UP=YES
+    fi
+    if [ "${_AUTO_UP}" = "YES" ]; then
+      if [ ! -e "/root/.auto.up.cnf" ] || [ ! -e "/root/.host8.cnf" ]; then
+        touch /root/.auto.up.cnf
+        touch /root/.host8.cnf
+      fi
     fi
   fi
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
