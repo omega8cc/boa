@@ -9,13 +9,13 @@
 ### Extended by Barracuda Team for BOA project
 ###
 ### See also:
-### http://www.nongnu.org/duplicity/index.html
+### https://duplicity.gitlab.io/duplicity-web/
 ###
 
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-_DUPLICITY_VRN="0.7.18.2"
+_DUPLICITY_VRN="0.8.21"
 _BOTO_VRN="2.49.0"
 _FASTENERS_VRN="0.14.1"
 _LOGPTH="/var/xdrago/log"
@@ -142,22 +142,24 @@ install() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt-get clean -qq                    &> /dev/null
+    apt-get clean -qq &> /dev/null
     rm -rf /var/lib/apt/lists/*
-    apt-get update -qq                   &> /dev/null
-    aptitude purge duplicity -y          &> /dev/null
-    rm -rf /usr/local/lib/python2.7/dist-packages/fasteners*
-    rm -rf /usr/local/lib/python2.6/dist-packages/fasteners*
-    rm -rf /usr/local/lib/python2.7/dist-packages/boto*
-    rm -rf /usr/local/lib/python2.6/dist-packages/boto*
-    rm -rf /usr/local/lib/python2.7/dist-packages/duplicity*
-    rm -rf /usr/local/lib/python2.6/dist-packages/duplicity*
-    apt-get install librsync-dev -y      &> /dev/null
-    apt-get install python-dev -y        &> /dev/null
-    apt-get install python-lockfile -y   &> /dev/null
-    apt-get install python-setuptools -y &> /dev/null
-    apt-get install python-monotonic -y  &> /dev/null
-    apt-get install s3cmd -y             &> /dev/null
+    apt-get update -qq &> /dev/null
+    aptitude purge duplicity -y &> /dev/null
+    rm -rf /usr/local/lib/python*/dist-packages/{fasteners*,duplicity*,boto*}
+    apt-get install librsync-dev -y       &> /dev/null
+    apt-get install python3-certifi -y    &> /dev/null
+    apt-get install python3-dev -y        &> /dev/null
+    apt-get install python3-future -y     &> /dev/null
+    apt-get install python3-lockfile -y   &> /dev/null
+    apt-get install python3-monotonic -y  &> /dev/null
+    apt-get install python3-pip -y        &> /dev/null
+    apt-get install python3-setuptools -y &> /dev/null
+    apt-get install python3-venv -y       &> /dev/null
+    apt-get install python3-wheel -y      &> /dev/null
+    apt-get install s3cmd -y              &> /dev/null
+    python3 -m pip install --upgrade pip setuptools wheel &> /dev/null
+    python3 -m pip install awscli         &> /dev/null
     mkdir -p /var/opt
     rm -rf /var/opt/{fasteners*,boto*,duplicity*}
     cd /var/opt
@@ -165,27 +167,26 @@ install() {
     curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
     tar xzf ${fe} &> /dev/null
     cd /var/opt/fasteners-${_FASTENERS_VRN}
-    python setup.py build &> /dev/null
-    python setup.py install &> /dev/null
+    python3 setup.py build &> /dev/null
+    python3 setup.py install &> /dev/null
     echo ${_FASTENERS_VRN} > ${_LOGPTH}/fasteners-${_FASTENERS_VRN}.log
     cd /var/opt
     fe="boto-${_BOTO_VRN}.tar.gz"
     curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
     tar xzf ${fe} &> /dev/null
     cd /var/opt/boto-${_BOTO_VRN}
-    python setup.py build &> /dev/null
-    python setup.py install &> /dev/null
+    python3 setup.py build &> /dev/null
+    python3 setup.py install &> /dev/null
     echo ${_BOTO_VRN} > ${_LOGPTH}/boto-${_BOTO_VRN}.log
     echo "Building duplicity version ${_DUPLICITY_VRN} from sources..."
     cd /var/opt
     fe="duplicity-${_DUPLICITY_VRN}.tar.gz"
     curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
     tar xzf ${fe} &> /dev/null
-    rm -rf /usr/local/lib/python2.6/dist-packages/duplicity*
-    rm -rf /usr/local/lib/python2.7/dist-packages/duplicity*
+    rm -rf /usr/local/lib/python*/dist-packages/duplicity*
     cd /var/opt/duplicity-${_DUPLICITY_VRN}
-    python setup.py build &> /dev/null
-    python setup.py install &> /dev/null
+    python3 setup.py build &> /dev/null
+    python3 setup.py install &> /dev/null
     cd
     rm -rf /var/opt/{boto*,duplicity*}
     echo "Installation complete!"
@@ -367,11 +368,6 @@ if [ -e "${_LOGPTH}/${BUCKET_DOT}.archive.log" ]; then
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   fi
-  apt-get clean -qq                    &> /dev/null
-  rm -rf /var/lib/apt/lists/*
-  apt-get update -qq                   &> /dev/null
-  apt-get install python-pip -y        &> /dev/null
-  pip install awscli                   &> /dev/null
   aws s3 mb s3://${BUCKET} --region ${_AWS_REG}
   aws s3 sync s3://${BUCKET_DOT} s3://${BUCKET}
 fi
