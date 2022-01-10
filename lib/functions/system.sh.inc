@@ -2776,6 +2776,9 @@ install_curl_src() {
           mv -f /usr/bin/curl /usr/bin/old_curl
           ln -sf /usr/local/bin/curl /usr/bin/curl
         fi
+        if [ ! -e "/usr/local/ssl/certs/ca-certificates.crt" ]; then
+          cp -af /etc/ssl/certs/* /usr/local/ssl/certs/ &> /dev/null
+        fi
       fi
       if [ -e "/usr/local/lib/libcurl.so" ] \
         && [ -e "/usr/local/include/curl/curl.h" ]; then
