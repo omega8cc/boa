@@ -13,12 +13,14 @@ fi
 ntpdate pool.ntp.org
 
 _CHECK_HOST=$(uname -n 2>&1)
-_TIME=$(date +%H 2>&1)
+_TIME=$(date +%H%M 2>&1)
 _TIME=${_TIME//[^0-9-]/}
+_MINUTE=$(date +%M 2>&1)
+_MINUTE=${_MINUTE//[^0-9-]/}
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 
-send_report_host8() {
+send_boa_system_report() {
   if [ -e "${barCnf}" ]; then
     _RCPT_EMAIL=
     _BCC_EMAIL=
@@ -27,8 +29,10 @@ send_report_host8() {
       _RCPT_EMAIL="systems@omega8.cc"
       _BCC_EMAIL="notify@omega8.cc"
     fi
-    if [ ! -z "${_RCPT_EMAIL}" ] && [ ! -z "${_RCPT_EMAIL}" ]; then
-      repSub="Hosted BOA Status on ${_CHECK_HOST}"
+    if [ ! -z "${_RCPT_EMAIL}" ] \
+      && [ ! -z "${_RCPT_EMAIL}" ] \
+      && [ -e "/root/.run.example.report.cnf" ]; then
+      repSub="BOA Status on ${_CHECK_HOST}"
       repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
       boa info report both > ${repBodFile}
       cat ${repBodFile} | mail -e -b ${_BCC_EMAIL} -s "${repSub} at ${_NOW}" ${_RCPT_EMAIL}
@@ -37,9 +41,9 @@ send_report_host8() {
   fi
 }
 
-if [ "${_TIME}" = "1200" ]; then
+if [ "${_TIME}" = "1200" ] || [ "${_MINUTE}" = "00" ]; then
   export TERM=vt100
-  send_report_host8
+  send_boa_system_report
 fi
 
 crontab_update() {
@@ -294,6 +298,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     [ -e "/root/.pause_tasks_maint.cnf" ] && rm -f /root/.pause_tasks_maint.cnf
     [ -e "/root/.restrict_this_vm.cnf" ] && rm -f /root/.restrict_this_vm.cnf
     [ -e "/root/.force.sites.verify.cnf" ] && rm -f /root/.force.sites.verify.cnf
+    [ -e "/root/.run.example.report.cnf" ] && rm -f /root/.run.example.report.cnf
     [ -e "/var/xdrago/weekly.sh" ] && rm -f /var/xdrago/weekly.sh
     if [ -e "/var/run/boa_run.pid" ]; then
       touch /root/.pause_tasks_maint.cnf
