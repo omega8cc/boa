@@ -165,6 +165,8 @@ crontab_clean() {
   fi
 }
 
+[ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
+
 if [ -e "/var/xdrago/log" ]; then
   _BROKEN_UPDATE_TEST=$(grep "Under Construction" /var/xdrago/*.sh 2>&1)
   if [ ! -z "${_BROKEN_UPDATE_TEST}" ]; then

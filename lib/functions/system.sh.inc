@@ -2614,209 +2614,6 @@ install_magick_src() {
 }
 
 #
-# Install cURL from sources.
-install_curl_src() {
-  if [ "${_OSR}" = "precise" ]; then
-    touch /root/.use.curl.from.packages.cnf
-    _CURL_VRN=7.81.0
-  fi
-  _CURL_INSTALL_REQUIRED=NO
-  _CURL_GET_DPKG=$(dpkg --get-selections | grep curl | grep 'hold$' 2>&1)
-  _CURL_ITD=$(curl --version 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f2 \
-    | awk '{ print $1}' 2>&1)
-  _CURL_SSL_ITD=$(curl --version 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f5 \
-    | awk '{ print $1}' \
-    | cut -d"/" -f2 \
-    | awk '{ print $1}' 2>&1)
-  _CURL_LIB_ITD=$(curl --version 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f4 \
-    | awk '{ print $1}' \
-    | cut -d"/" -f2 \
-    | awk '{ print $1}' 2>&1)
-  if [ "${_CURL_ITD}" != "${_CURL_VRN}" ]; then
-    if [ "${_OSR}" = "none" ]; then
-      _CURL_INSTALL_REQUIRED=NO
-    else
-      _CURL_INSTALL_REQUIRED=YES
-      # msg "INFO: Installed cURL version ${_CURL_ITD}, upgrade required"
-    fi
-  fi
-  _BROKEN_CURL_TEST=$(curl --version 2>&1)
-  if [[ "${_BROKEN_CURL_TEST}" =~ "libcurl.so.4" ]]; then
-    _CURL_INSTALL_REQUIRED=YES
-    touch /root/.use.curl.from.packages.cnf
-    msg "INFO: Installed libcurl is broken, cURL ${_CURL_ITD} upgrade required"
-  fi
-  if [ "${_PHP_BIN_BROKEN}" = "YES" ] && [ -z "${_CURL_ALREADY_REBUILT}" ]; then
-    _CURL_INSTALL_REQUIRED=YES
-  fi
-  if [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-    _CURL_INSTALL_REQUIRED=YES
-    # msg "INFO: Installed cURL version ${_CURL_ITD}, rebuild forced"
-  fi
-  if [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
-    ###--------------------###
-    if [ -e "/root/.use.curl.from.packages.cnf" ]; then
-      mkdir -p /var/backups/libcurl
-      mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
-      mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
-      if [ -e "/usr/local/bin/curl" ]; then
-        mv -f /usr/local/bin/curl /usr/local/bin/curl-src-off
-      fi
-      if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
-        echo "curl install" | dpkg --set-selections &> /dev/null
-        if [ -z "${_CURL_ALREADY_REBUILT}" ]; then
-          echo "libcurl3 install" | dpkg --set-selections &> /dev/null
-          echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
-          echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
-          mrun "apt-get clean -qq" 2> /dev/null
-          rm -rf /var/lib/apt/lists/*
-          mrun "apt-get update -qq" 2> /dev/null
-          mrun "apt-get install libcurl3 ${forCer}" 2> /dev/null
-          mrun "apt-get install libcurl3-gnutls ${forCer}" 2> /dev/null
-          mrun "apt-get install libcurl4-openssl-dev ${forCer}" 2> /dev/null
-          mrun "apt-get install curl ${forCer}" 2> /dev/null
-        fi
-      fi
-    else
-      if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
-        echo "curl hold" | dpkg --set-selections &> /dev/null
-      fi
-      mrun "apt-get build-dep curl -y" 2> /dev/null
-      mrun "${_INSTALL} libssl-dev" 2> /dev/null
-      mrun "${_INSTALL} libc-client2007e-dev" 2> /dev/null
-      cd /var/opt
-      rm -rf curl*
-      wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
-      if [ -e "curl-${_CURL_VRN}.tar.gz" ]; then
-        extract_archive "curl-${_CURL_VRN}.tar.gz"
-      else
-        msg "OOPS: failed download from ${urlDev}/src/curl-${_CURL_VRN}.tar.gz"
-      fi
-      if [ "${_OSR}" = "buster" ] \
-        || [ "${_OSR}" = "stretch" ]; then
-        _OPENSSL_NEW_VRN=${_OPENSSL_CURRENT_VRN}
-      else
-        _OPENSSL_NEW_VRN=${_OPENSSL_LEGACY_VRN}
-      fi
-      ###--------------------###
-      msg "INFO: Building zlib ${_ZLIB_VRN} from sources, please wait..."
-      cd /var/opt
-      rm -rf zlib*
-      get_dev_src "zlib-${_ZLIB_VRN}.tar.gz"
-      cd /var/opt/zlib-${_ZLIB_VRN}
-      st_runner "bash ./configure --prefix=/usr" 2> /dev/null
-      mrun "make --quiet" 2> /dev/null
-      mrun "make --quiet install" 2> /dev/null
-      mrun "ldconfig" 2> /dev/null
-      ###--------------------###
-      msg "INFO: Building OpenSSL ${_OPENSSL_NEW_VRN} from sources, please wait..."
-      if [ ! -e "/var/opt/openssl-${_OPENSSL_NEW_VRN}" ]; then
-        cd /var/opt
-        rm -rf openssl*
-        wget -q -U iCab ${urlDev}/src/openssl-${_OPENSSL_NEW_VRN}.tar.gz
-        if [ -e "openssl-${_OPENSSL_NEW_VRN}.tar.gz" ]; then
-          extract_archive "openssl-${_OPENSSL_NEW_VRN}.tar.gz"
-        else
-          msg "OOPS: failed download from ${urlDev}/src/openssl-${_OPENSSL_NEW_VRN}.tar.gz"
-        fi
-      fi
-      cd /var/opt/openssl-${_OPENSSL_NEW_VRN}
-      _X86_64_IF=$(uname -m 2>&1)
-      if [ "${_X86_64_IF}" = "x86_64" ]; then
-        mrun "sh ./config zlib-dynamic \
-          --prefix=/usr/local/ssl \
-          --openssldir=/usr/local/ssl \
-          shared enable-ec_nistp_64_gcc_128" 2> /dev/null
-      else
-        mrun "sh ./config zlib-dynamic \
-          --prefix=/usr/local/ssl \
-          --openssldir=/usr/local/ssl \
-          shared" 2> /dev/null
-      fi
-      mrun "make depend" 2> /dev/null
-      mrun "make --quiet" 2> /dev/null
-      mrun "make --quiet install" 2> /dev/null
-      cp -af /usr/bin/openssl /usr/bin/old-openssl
-      ln -sf /usr/local/ssl/bin/openssl `which openssl`
-      echo "/usr/local/ssl/lib" >> /etc/ld.so.conf.d/libc.conf
-      mrun "ldconfig" 2> /dev/null
-      _SSL_GET_DPKG=$(dpkg --get-selections \
-        | grep openssl \
-        | grep 'hold$' 2>&1)
-      _ZLB_GET_DPKG=$(dpkg --get-selections \
-        | grep zlibc \
-        | grep 'hold$' 2>&1)
-      if [[ ! "${_SSL_GET_DPKG}" =~ "hold" ]]; then
-        echo "openssl hold" | dpkg --set-selections &> /dev/null
-      fi
-      if [[ ! "${_ZLB_GET_DPKG}" =~ "hold" ]]; then
-        echo "zlibc hold" | dpkg --set-selections &> /dev/null
-        echo "zlib1g hold" | dpkg --set-selections &> /dev/null
-        echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
-      fi
-      fix_libssl
-      msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
-      if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ]; then
-        cd /var/opt/curl-${_CURL_VRN}
-        LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig" ./configure \
-          --with-ssl \
-          --with-zlib=/usr \
-          --with-libssl-prefix=/usr/local/ssl \
-          --prefix=/usr/local &> /dev/null
-        mrun "make --quiet" 2> /dev/null
-        mrun "make --quiet install" 2> /dev/null
-        mrun "ldconfig" &> /dev/null
-        if [ -x "/usr/local/bin/curl" ]; then
-          mv -f /usr/bin/curl /usr/bin/old_curl
-          ln -sf /usr/local/bin/curl /usr/bin/curl
-        fi
-        if [ ! -e "/usr/local/ssl/certs/ca-certificates.crt" ]; then
-          cp -af /etc/ssl/certs/* /usr/local/ssl/certs/ &> /dev/null
-        fi
-      fi
-      if [ -e "/usr/local/lib/libcurl.so" ] \
-        && [ -e "/usr/local/include/curl/curl.h" ]; then
-        _X86_64_TEST=$(uname -m 2>&1)
-        if [ "${_X86_64_TEST}" = "x86_64" ]; then
-          mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}
-          if [ -e "/usr/include/x86_64-linux-gnu/curl" ] \
-            && [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
-            mv -f /usr/include/x86_64-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}/ &> /dev/null
-            mv -f /usr/lib/x86_64-linux-gnu/libcurl.so /var/backups/legacy-curl-pre-${_CURL_VRN}/ &> /dev/null
-          fi
-          if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so" ]; then
-            ln -sf /usr/local/lib/libcurl.so /usr/lib/x86_64-linux-gnu/libcurl.so &> /dev/null
-          fi
-          if [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
-            ln -sf /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl &> /dev/null
-          fi
-        else
-          mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}
-          if [ -e "/usr/include/i386-linux-gnu/curl" ] \
-            && [ ! -L "/usr/include/i386-linux-gnu/curl" ]; then
-            mv -f /usr/include/i386-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}/ &> /dev/null
-            mv -f /usr/lib/i386-linux-gnu/libcurl.so /var/backups/legacy-curl-pre-${_CURL_VRN}/ &> /dev/null
-          fi
-          if [ ! -L "/usr/lib/i386-linux-gnu/libcurl.so" ]; then
-            ln -sf /usr/local/lib/libcurl.so /usr/lib/i386-linux-gnu/libcurl.so &> /dev/null
-          fi
-          if [ ! -L "/usr/include/i386-linux-gnu/curl" ]; then
-            ln -sf /usr/local/include/curl /usr/include/i386-linux-gnu/curl &> /dev/null
-          fi
-        fi
-      fi
-    fi
-    _CURL_ALREADY_REBUILT=YES
-  fi
-}
-
-#
 # Install OpenSSL from sources.
 install_ssl_src() {
   _SSL_INSTALL_REQUIRED=NO
@@ -2862,7 +2659,7 @@ install_ssl_src() {
       _OPENSSL_NEW_VRN=${_OPENSSL_LEGACY_VRN}
     fi
     ###--------------------###
-    msg "INFO: Building zlib ${_ZLIB_VRN} from sources, please wait..."
+    msg "INFO: Building zlib ${_ZLIB_VRN} from sources first, please wait..."
     cd /var/opt
     rm -rf zlib*
     get_dev_src "zlib-${_ZLIB_VRN}.tar.gz"
@@ -2873,43 +2670,220 @@ install_ssl_src() {
     mrun "ldconfig" 2> /dev/null
     ###--------------------###
     msg "INFO: Building OpenSSL ${_OPENSSL_NEW_VRN} from sources, please wait..."
-    cd /var/opt
-    rm -rf openssl*
-    get_dev_src "openssl-${_OPENSSL_NEW_VRN}.tar.gz"
-    cd /var/opt/openssl-${_OPENSSL_NEW_VRN}
-    _X86_64_IF=$(uname -m 2>&1)
-    if [ "${_X86_64_IF}" = "x86_64" ]; then
-      mrun "sh ./config zlib-dynamic \
-        --prefix=/usr \
-        --openssldir=/usr \
-        shared enable-ec_nistp_64_gcc_128" 2> /dev/null
+    if [ ! -e "/var/opt/openssl-${_OPENSSL_NEW_VRN}" ]; then
+      cd /var/opt
+      rm -rf openssl*
+      wget -q -U iCab ${urlDev}/src/openssl-${_OPENSSL_NEW_VRN}.tar.gz
+      if [ -e "openssl-${_OPENSSL_NEW_VRN}.tar.gz" ]; then
+        extract_archive "openssl-${_OPENSSL_NEW_VRN}.tar.gz"
+      else
+        msg "OOPS: failed download from ${urlDev}/src/openssl-${_OPENSSL_NEW_VRN}.tar.gz"
+      fi
     else
-      mrun "sh ./config zlib-dynamic \
-        --prefix=/usr \
-        --openssldir=/usr \
-        shared" 2> /dev/null
+      cd /var/opt/openssl-${_OPENSSL_NEW_VRN}
+      _X86_64_IF=$(uname -m 2>&1)
+      if [ "${_X86_64_IF}" = "x86_64" ]; then
+        mrun "sh ./config zlib-dynamic \
+          --prefix=/usr/local/ssl \
+          --openssldir=/usr/local/ssl \
+          shared enable-ec_nistp_64_gcc_128" 2> /dev/null
+      else
+        mrun "sh ./config zlib-dynamic \
+          --prefix=/usr/local/ssl \
+          --openssldir=/usr/local/ssl \
+          shared" 2> /dev/null
+      fi
+      mrun "make depend" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
     fi
-    mrun "make depend" 2> /dev/null
-    mrun "make --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
-    ###--------------------###
-    _SSL_GET_DPKG=$(dpkg --get-selections \
-      | grep openssl \
-      | grep 'hold$' 2>&1)
-    _ZLB_GET_DPKG=$(dpkg --get-selections \
-      | grep zlibc \
-      | grep 'hold$' 2>&1)
-    if [[ ! "${_SSL_GET_DPKG}" =~ "hold" ]]; then
-      echo "openssl hold" | dpkg --set-selections &> /dev/null
-    fi
-    if [[ ! "${_ZLB_GET_DPKG}" =~ "hold" ]]; then
-      echo "zlibc hold" | dpkg --set-selections &> /dev/null
-      echo "zlib1g hold" | dpkg --set-selections &> /dev/null
-      echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
+    if [ -x "/usr/local/ssl/bin/openssl" ]; then
+      cp -af /usr/bin/openssl /usr/bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
+      ln -sf /usr/local/ssl/bin/openssl `which openssl`
+      echo "/usr/local/ssl/lib" >> /etc/ld.so.conf.d/libc.conf
+      mrun "ldconfig" 2> /dev/null
+      ###--------------------###
+      _SSL_GET_DPKG=$(dpkg --get-selections \
+        | grep openssl \
+        | grep 'hold$' 2>&1)
+      _ZLB_GET_DPKG=$(dpkg --get-selections \
+        | grep zlibc \
+        | grep 'hold$' 2>&1)
+      if [[ ! "${_SSL_GET_DPKG}" =~ "hold" ]]; then
+        echo "openssl hold" | dpkg --set-selections &> /dev/null
+      fi
+      if [[ ! "${_ZLB_GET_DPKG}" =~ "hold" ]]; then
+        echo "zlibc hold" | dpkg --set-selections &> /dev/null
+        echo "zlib1g hold" | dpkg --set-selections &> /dev/null
+        echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
+      fi
+      fix_libssl
+    else
+      msg "OOPS: OpenSSL version ${_OPENSSL_NEW_VRN} was not installed!"
+      _SSL_INSTALL_REQUIRED=
+      _SSH_FORCE_REINSTALL=
+      _NGX_FORCE_REINSTALL=
+      _PHP_FORCE_REINSTALL=
+      _GIT_FORCE_REINSTALL=
     fi
   fi
-  fix_libssl
+}
+
+#
+# Install cURL from sources.
+install_curl_src() {
+  if [ "${_OSR}" = "precise" ]; then
+    touch /root/.use.curl.from.packages.cnf
+    _CURL_VRN=7.81.0
+  fi
+  _CURL_INSTALL_REQUIRED=NO
+  _CURL_GET_DPKG=$(dpkg --get-selections | grep curl | grep 'hold$' 2>&1)
+  _CURL_ITD=$(curl --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f2 \
+    | awk '{ print $1}' 2>&1)
+  _CURL_SSL_ITD=$(curl --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f5 \
+    | awk '{ print $1}' \
+    | cut -d"/" -f2 \
+    | awk '{ print $1}' 2>&1)
+  _CURL_LIB_ITD=$(curl --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f4 \
+    | awk '{ print $1}' \
+    | cut -d"/" -f2 \
+    | awk '{ print $1}' 2>&1)
+  if [ "${_CURL_ITD}" != "${_CURL_VRN}" ]; then
+    if [ "${_OSR}" = "none" ]; then
+      _CURL_INSTALL_REQUIRED=NO
+    else
+      _CURL_INSTALL_REQUIRED=YES
+      msg "INFO: Installed cURL version ${_CURL_ITD}, upgrade required"
+    fi
+  fi
+  _BROKEN_CURL_TEST=$(curl --version 2>&1)
+  if [[ "${_BROKEN_CURL_TEST}" =~ "libcurl.so.4" ]]; then
+    _CURL_INSTALL_REQUIRED=YES
+    touch /root/.use.curl.from.packages.cnf
+    msg "INFO: libcurl is broken, cURL re-install from packages required"
+  fi
+  if [ "${_PHP_BIN_BROKEN}" = "YES" ] && [ -z "${_CURL_ALREADY_REBUILT}" ]; then
+    _CURL_INSTALL_REQUIRED=YES
+  fi
+  if [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+    _CURL_INSTALL_REQUIRED=YES
+    msg "INFO: Installed cURL version ${_CURL_ITD}, rebuild forced"
+  fi
+  if [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
+    ###--------------------###
+    if [ -e "/root/.use.curl.from.packages.cnf" ]; then
+      msg "INFO: cURL from packages is forced with /root/.use.curl.from.packages.cnf"
+      mkdir -p /var/backups/libcurl
+      mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
+      mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
+      if [ -e "/usr/local/bin/curl" ]; then
+        mv -f /usr/local/bin/curl /usr/local/bin/curl-src-off
+      fi
+      if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
+        echo "curl install" | dpkg --set-selections &> /dev/null
+        if [ -z "${_CURL_ALREADY_REBUILT}" ]; then
+          echo "libcurl3 install" | dpkg --set-selections &> /dev/null
+          echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
+          echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
+          mrun "apt-get clean -qq" 2> /dev/null
+          rm -rf /var/lib/apt/lists/*
+          mrun "apt-get update -qq" 2> /dev/null
+          mrun "apt-get install libcurl3 ${forCer}" 2> /dev/null
+          mrun "apt-get install libcurl3-gnutls ${forCer}" 2> /dev/null
+          mrun "apt-get install libcurl4-openssl-dev ${forCer}" 2> /dev/null
+          mrun "apt-get install curl ${forCer}" 2> /dev/null
+        fi
+      fi
+    else
+      if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
+        echo "curl hold" | dpkg --set-selections &> /dev/null
+      fi
+      mrun "apt-get build-dep curl -y" 2> /dev/null
+      mrun "${_INSTALL} libssl-dev" 2> /dev/null
+      mrun "${_INSTALL} libc-client2007e-dev" 2> /dev/null
+      cd /var/opt
+      rm -rf curl*
+      wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
+      if [ ! -e "curl-${_CURL_VRN}.tar.gz" ]; then
+        msg "OOPS: failed download from ${urlDev}/src/curl-${_CURL_VRN}.tar.gz"
+      else
+        extract_archive "curl-${_CURL_VRN}.tar.gz"
+      fi
+      if [ -e "/var/opt/curl-${_CURL_VRN}" ]; then
+        if [ "${_OSR}" = "buster" ] \
+          || [ "${_OSR}" = "stretch" ]; then
+          _OPENSSL_NEW_VRN=${_OPENSSL_CURRENT_VRN}
+        else
+          _OPENSSL_NEW_VRN=${_OPENSSL_LEGACY_VRN}
+        fi
+        ###--------------------###
+        _SSL_FORCE_REINSTALL=YES
+        install_ssl_src
+        ###--------------------###
+        msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
+        if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ]; then
+          cd /var/opt/curl-${_CURL_VRN}
+          LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig" ./configure \
+            --with-ssl \
+            --with-zlib=/usr \
+            --with-libssl-prefix=/usr/local/ssl \
+            --prefix=/usr/local &> /dev/null
+          mrun "make --quiet" 2> /dev/null
+          mrun "make --quiet install" 2> /dev/null
+          mrun "ldconfig" &> /dev/null
+          if [ -x "/usr/local/bin/curl" ]; then
+            mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S 2>&1)
+            ln -sf /usr/local/bin/curl /usr/bin/curl
+          fi
+          if [ ! -e "/usr/local/ssl/certs/ca-certificates.crt" ]; then
+            cp -af /etc/ssl/certs/* /usr/local/ssl/certs/ &> /dev/null
+          fi
+        else
+          msg "OOPS: Building OpenSSL ${_OPENSSL_NEW_VRN} from sources failed!"
+        fi
+      else
+        msg "OOPS: cURL ${_CURL_VRN} could not be extracted..."
+      fi
+      if [ -e "/usr/local/lib/libcurl.so" ] \
+        && [ -e "/usr/local/include/curl/curl.h" ]; then
+        _X86_64_TEST=$(uname -m 2>&1)
+        if [ "${_X86_64_TEST}" = "x86_64" ]; then
+          mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}
+          if [ -e "/usr/include/x86_64-linux-gnu/curl" ] \
+            && [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
+            mv -f /usr/include/x86_64-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}/ &> /dev/null
+            mv -f /usr/lib/x86_64-linux-gnu/libcurl.so /var/backups/legacy-curl-pre-${_CURL_VRN}/ &> /dev/null
+          fi
+          if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so" ]; then
+            ln -sf /usr/local/lib/libcurl.so /usr/lib/x86_64-linux-gnu/libcurl.so &> /dev/null
+          fi
+          if [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
+            ln -sf /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl &> /dev/null
+          fi
+        else
+          mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}
+          if [ -e "/usr/include/i386-linux-gnu/curl" ] \
+            && [ ! -L "/usr/include/i386-linux-gnu/curl" ]; then
+            mv -f /usr/include/i386-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}/ &> /dev/null
+            mv -f /usr/lib/i386-linux-gnu/libcurl.so /var/backups/legacy-curl-pre-${_CURL_VRN}/ &> /dev/null
+          fi
+          if [ ! -L "/usr/lib/i386-linux-gnu/libcurl.so" ]; then
+            ln -sf /usr/local/lib/libcurl.so /usr/lib/i386-linux-gnu/libcurl.so &> /dev/null
+          fi
+          if [ ! -L "/usr/include/i386-linux-gnu/curl" ]; then
+            ln -sf /usr/local/include/curl /usr/include/i386-linux-gnu/curl &> /dev/null
+          fi
+        fi
+      fi
+    fi
+    _CURL_ALREADY_REBUILT=YES
+  fi
 }
 
 #
