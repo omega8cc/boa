@@ -1412,7 +1412,7 @@ fix_lshell() {
 }
 
 fix_log4j() {
-  _LOG4J_VRN=2.17.0
+  _LOG4J_VRN=2.17.1
   _DO_SOLR_RESTART=
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
     if [ -e "/opt/solr-7.7.3" ] \
