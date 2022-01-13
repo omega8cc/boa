@@ -103,8 +103,8 @@ force_advanced_nginx_config() {
   if [ "${_SSL_ITD}" = "${_OPENSSL_LEGACY_VRN}" ] \
     || [ "${_SSL_ITD}" = "${_OPENSSL_CURRENT_VRN}" ] \
     || [[ "${_SSL_ITD}" =~ "1.1.0" ]] \
-    || [[ "${_SSL_ITD}" =~ "1.0.1" ]] \
-    || [[ "${_SSL_ITD}" =~ "1.0.2" ]]; then
+    || [[ "${_SSL_ITD}" =~ "1.0.2" ]] \
+    || [[ "${_SSL_ITD}" =~ "1.0.1" ]]; then
     _PFS_READY=YES
   else
     _PFS_READY=NO
@@ -685,8 +685,8 @@ fix_update_nginx_config() {
     if [ "${_SSL_ITD}" = "${_OPENSSL_LEGACY_VRN}" ] \
       || [ "${_SSL_ITD}" = "${_OPENSSL_CURRENT_VRN}" ] \
       || [[ "${_SSL_ITD}" =~ "1.1.0" ]] \
-      || [[ "${_SSL_ITD}" =~ "1.0.1" ]] \
-      || [[ "${_SSL_ITD}" =~ "1.0.2" ]]; then
+      || [[ "${_SSL_ITD}" =~ "1.0.2" ]] \
+      || [[ "${_SSL_ITD}" =~ "1.0.1" ]]; then
       _PFS_READY=YES
     else
       _PFS_READY=NO

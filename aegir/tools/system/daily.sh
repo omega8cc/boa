@@ -46,8 +46,10 @@ _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
   | cut -d" " -f2 \
   | awk '{ print $1}')
-if [[ "${_SSL_ITD}" =~ "1.0.1" ]] \
-  || [[ "${_SSL_ITD}" =~ "1.0.2" ]]; then
+if [[ "${_SSL_ITD}" =~ "1.1.1" ]] \
+  || [[ "${_SSL_ITD}" =~ "1.1.0" ]] \
+  || [[ "${_SSL_ITD}" =~ "1.0.2" ]] \
+  || [[ "${_SSL_ITD}" =~ "1.0.1" ]]; then
   _NEW_SSL=YES
 fi
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
