@@ -2679,7 +2679,8 @@ install_ssl_src() {
       else
         msg "OOPS: failed download from ${urlDev}/src/openssl-${_OPENSSL_NEW_VRN}.tar.gz"
       fi
-    else
+    fi
+    if [ -e "/var/opt/openssl-${_OPENSSL_NEW_VRN}" ]; then
       cd /var/opt/openssl-${_OPENSSL_NEW_VRN}
       _X86_64_IF=$(uname -m 2>&1)
       if [ "${_X86_64_IF}" = "x86_64" ]; then
