@@ -4,13 +4,37 @@ PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
 barCnf="/root/.barracuda.cnf"
 
+
+check_fix_system_hostname() {
+  if [ -e "${barCnf}" ]; then
+    source ${barCnf}
+    if [ ! -z "${_MY_HOSTN}" ]; then
+      diffHostTest=$(diff -w -B /etc/hostname /etc/mailname 2>&1)
+      if [ -z "${diffHostTest}" ]; then
+        hostUpdate=""
+        echo "INFO: hostname/mailname diff empty -- nothing to update"
+      else
+        hostUpdate=YES
+        diffHostTest=$(echo -n ${diffHostTest} | fmt -su -w 2500 2>&1)
+        echo "INFO: hostname/mailname diff ${diffHostTest}"
+      fi
+      if [ "${hostUpdate}" = "YES" ]; then
+        hostname -b ${_MY_HOSTN} ### force our custom FQDN/local hostname
+        echo "${_MY_HOSTN}" > /etc/hostname
+        echo "${_MY_HOSTN}" > /etc/mailname
+      fi
+    fi
+  fi
+}
+check_fix_system_hostname
+
+ntpdate pool.ntp.org
+
 _ADD_XTRA=YES
 _CRON_TEST=$(grep "usage.sh" /var/spool/cron/crontabs/root 2>&1)
 if [[ "${_CRON_TEST}" =~ "usage.sh" ]]; then
   _ADD_XTRA=NO
 fi
-
-ntpdate pool.ntp.org
 
 _CHECK_HOST=$(uname -n 2>&1)
 _TIME=$(date +%H%M 2>&1)
@@ -179,7 +203,6 @@ if [ -e "/data/disk/arch/sql" ]; then
     _VMFAMILY="VS"
   fi
   if [ -e "${barCnf}" ]; then
-    source ${barCnf}
     _AUTO_UP_WEEKLY=${_AUTO_UP_WEEKLY//[^0-9]/}
     _AUTO_UP_MONTH=${_AUTO_UP_MONTH//[^0-9]/}
     _AUTO_UP_DAY=${_AUTO_UP_DAY//[^0-9]/}
