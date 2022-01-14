@@ -2003,7 +2003,23 @@ php_upgrade_all() {
   _PHP_V="74 73 80 81 56 72 71 70"
   for e in ${_PHP_V}; do
     if [ -x "/opt/php${e}/bin/php" ]; then
-      _PHP_VERSION="${_PHP${e}_VRN}"
+      if [ "${e}" = "74" ]; then
+        _PHP_VERSION="${_PHP74_VRN}"
+      elif [ "${e}" = "73" ]; then
+        _PHP_VERSION="${_PHP73_VRN}"
+      elif [ "${e}" = "80" ]; then
+        _PHP_VERSION="${_PHP80_VRN}"
+      elif [ "${e}" = "81" ]; then
+        _PHP_VERSION="${_PHP81_VRN}"
+      elif [ "${e}" = "56" ]; then
+        _PHP_VERSION="${_PHP56_VRN}"
+      elif [ "${e}" = "72" ]; then
+        _PHP_VERSION="${_PHP72_VRN}"
+      elif [ "${e}" = "71" ]; then
+        _PHP_VERSION="${_PHP71_VRN}"
+      elif [ "${e}" = "70" ]; then
+        _PHP_VERSION="${_PHP70_VRN}"
+      fi
       _PHP_BIN_BROKEN=NO
       _BROKEN_LIBCURL_TEST=""
       switch_php_cli "${e}"
