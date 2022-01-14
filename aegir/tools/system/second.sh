@@ -13,33 +13,12 @@ hold() {
   killall -9 nginx &> /dev/null
   sleep 1
   killall -9 nginx &> /dev/null
-  if [ -e "/etc/init.d/php74-fpm" ]; then
-    service php74-fpm stop &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php73-fpm" ]; then
-    service php73-fpm stop &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php72-fpm" ]; then
-    service php72-fpm stop &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php71-fpm" ]; then
-    service php71-fpm stop &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php70-fpm" ]; then
-    service php70-fpm stop &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php56-fpm" ]; then
-    service php56-fpm stop &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php55-fpm" ]; then
-    service php55-fpm stop &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php54-fpm" ]; then
-    service php54-fpm stop &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php53-fpm" ]; then
-    service php53-fpm stop &> /dev/null
-  fi
+  _PHP_V="81 80 74 73 72 71 70 56 55 54 53"
+  for e in ${_PHP_V}; do
+    if [ -e "/etc/init.d/php${e}-fpm" ]; then
+      service php${e}-fpm stop &> /dev/null
+    fi
+  done
   killall -9 php-fpm php-cgi &> /dev/null
   echo "$(date 2>&1)" >> /var/xdrago/log/second.hold.log
   ### echo "load is ${_O_LOAD}:${_F_LOAD} while

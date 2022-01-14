@@ -109,24 +109,12 @@ if [ -e "/var/log/php" ]; then
     mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
     rm -f /var/run/*.fpm.socket
     renice ${_B_NICE} -p $$ &> /dev/null
-    if [ -e "/etc/init.d/php74-fpm" ]; then
-      service php74-fpm start
-    fi
-    if [ -e "/etc/init.d/php73-fpm" ]; then
-      service php73-fpm start
-    fi
-    if [ -e "/etc/init.d/php72-fpm" ]; then
-      service php72-fpm start
-    fi
-    if [ -e "/etc/init.d/php71-fpm" ]; then
-      service php71-fpm start
-    fi
-    if [ -e "/etc/init.d/php70-fpm" ]; then
-      service php70-fpm start
-    fi
-    if [ -e "/etc/init.d/php56-fpm" ]; then
-      service php56-fpm start
-    fi
+    _PHP_V="81 80 74 73 72 71 70 56"
+    for e in ${_PHP_V}; do
+      if [ -e "/etc/init.d/php${e}-fpm" ]; then
+        service php${e}-fpm start
+      fi
+    done
     sleep 8
     rm -f /var/run/fmp_wait.pid
     echo "$(date 2>&1) FPM instances conflict detected" >> \
@@ -143,24 +131,12 @@ if [ -e "/var/log/php" ]; then
     mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
     rm -f /var/run/*.fpm.socket
     renice ${_B_NICE} -p $$ &> /dev/null
-    if [ -e "/etc/init.d/php74-fpm" ]; then
-      service php74-fpm start
-    fi
-    if [ -e "/etc/init.d/php73-fpm" ]; then
-      service php73-fpm start
-    fi
-    if [ -e "/etc/init.d/php72-fpm" ]; then
-      service php72-fpm start
-    fi
-    if [ -e "/etc/init.d/php71-fpm" ]; then
-      service php71-fpm start
-    fi
-    if [ -e "/etc/init.d/php70-fpm" ]; then
-      service php70-fpm start
-    fi
-    if [ -e "/etc/init.d/php56-fpm" ]; then
-      service php56-fpm start
-    fi
+    _PHP_V="81 80 74 73 72 71 70 56"
+    for e in ${_PHP_V}; do
+      if [ -e "/etc/init.d/php${e}-fpm" ]; then
+        service php${e}-fpm start
+      fi
+    done
     sleep 8
     rm -f /var/run/fmp_wait.pid
     echo "$(date 2>&1) Too many running FPM childs detected" >> \
@@ -174,24 +150,12 @@ if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]]; then
   touch /var/run/fmp_wait.pid
   rm -f /var/log/php/*
   renice ${_B_NICE} -p $$ &> /dev/null
-  if [ -e "/etc/init.d/php74-fpm" ]; then
-    service php74-fpm reload
-  fi
-  if [ -e "/etc/init.d/php73-fpm" ]; then
-    service php73-fpm reload
-  fi
-  if [ -e "/etc/init.d/php72-fpm" ]; then
-    service php72-fpm reload
-  fi
-  if [ -e "/etc/init.d/php71-fpm" ]; then
-    service php71-fpm reload
-  fi
-  if [ -e "/etc/init.d/php70-fpm" ]; then
-    service php70-fpm reload
-  fi
-  if [ -e "/etc/init.d/php56-fpm" ]; then
-    service php56-fpm reload
-  fi
+  _PHP_V="81 80 74 73 72 71 70 56"
+  for e in ${_PHP_V}; do
+    if [ -e "/etc/init.d/php${e}-fpm" ]; then
+      service php${e}-fpm reload
+    fi
+  done
   if [ -e "/etc/init.d/php55-fpm" ]; then
     service php55-fpm stop
   fi
@@ -300,24 +264,12 @@ redis_oom_check() {
     mkdir -p /var/backups/php-logs/${_NOW}/
     mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
     renice ${_B_NICE} -p $$ &> /dev/null
-    if [ -e "/etc/init.d/php74-fpm" ]; then
-      service php74-fpm reload
-    fi
-    if [ -e "/etc/init.d/php73-fpm" ]; then
-      service php73-fpm reload
-    fi
-    if [ -e "/etc/init.d/php72-fpm" ]; then
-      service php72-fpm reload
-    fi
-    if [ -e "/etc/init.d/php71-fpm" ]; then
-      service php71-fpm reload
-    fi
-    if [ -e "/etc/init.d/php70-fpm" ]; then
-      service php70-fpm reload
-    fi
-    if [ -e "/etc/init.d/php56-fpm" ]; then
-      service php56-fpm reload
-    fi
+    _PHP_V="81 80 74 73 72 71 70 56"
+    for e in ${_PHP_V}; do
+      if [ -e "/etc/init.d/php${e}-fpm" ]; then
+        service php${e}-fpm reload
+      fi
+    done
     sleep 8
     rm -f /var/run/fmp_wait.pid
   fi
@@ -338,24 +290,12 @@ redis_slow_check() {
     mkdir -p /var/backups/php-logs/${_NOW}/
     mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
     renice ${_B_NICE} -p $$ &> /dev/null
-    if [ -e "/etc/init.d/php74-fpm" ]; then
-      service php74-fpm reload
-    fi
-    if [ -e "/etc/init.d/php73-fpm" ]; then
-      service php73-fpm reload
-    fi
-    if [ -e "/etc/init.d/php72-fpm" ]; then
-      service php72-fpm reload
-    fi
-    if [ -e "/etc/init.d/php71-fpm" ]; then
-      service php71-fpm reload
-    fi
-    if [ -e "/etc/init.d/php70-fpm" ]; then
-      service php70-fpm reload
-    fi
-    if [ -e "/etc/init.d/php56-fpm" ]; then
-      service php56-fpm reload
-    fi
+    _PHP_V="81 80 74 73 72 71 70 56"
+    for e in ${_PHP_V}; do
+      if [ -e "/etc/init.d/php${e}-fpm" ]; then
+        service php${e}-fpm reload
+      fi
+    done
     sleep 8
     rm -f /var/run/fmp_wait.pid
     echo "$(date 2>&1) Slow PhpRedis detected" >> \
@@ -375,24 +315,12 @@ fpm_sockets_healing() {
     mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
     renice ${_B_NICE} -p $$ &> /dev/null
-    if [ -e "/etc/init.d/php74-fpm" ]; then
-      service php74-fpm start
-    fi
-    if [ -e "/etc/init.d/php73-fpm" ]; then
-      service php73-fpm start
-    fi
-    if [ -e "/etc/init.d/php72-fpm" ]; then
-      service php72-fpm start
-    fi
-    if [ -e "/etc/init.d/php71-fpm" ]; then
-      service php71-fpm start
-    fi
-    if [ -e "/etc/init.d/php70-fpm" ]; then
-      service php70-fpm start
-    fi
-    if [ -e "/etc/init.d/php56-fpm" ]; then
-      service php56-fpm start
-    fi
+    _PHP_V="81 80 74 73 72 71 70 56"
+    for e in ${_PHP_V}; do
+      if [ -e "/etc/init.d/php${e}-fpm" ]; then
+        service php${e}-fpm start
+      fi
+    done
     sleep 8
     rm -f /var/run/fmp_wait.pid
     echo "$(date 2>&1) FPM Sockets conflict detected" >> \
@@ -447,7 +375,7 @@ if [ -e "/var/log/jetty7" ]; then
   fi
 fi
 
-if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt "6" ]; then
+if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt "8" ]; then
   kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) Too many PHP-FPM master processes killed" >> \
     /var/xdrago/log/php-fpm-master-count.kill.log

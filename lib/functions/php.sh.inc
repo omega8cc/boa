@@ -146,12 +146,12 @@ fix_php_ini_newrelic_all() {
       _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
       _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
     fi
-    _PHP_V="74 73 72 71 70 56"
+    _PHP_V="80 74 73 72 71 70 56"
     if [ "${_DB_SERIES}" = "10.4" ] \
       || [ "${_DB_SERIES}" = "10.3" ] \
       || [ "${_DB_SERIES}" = "10.2" ] \
       || [ "${_DB_SERIES}" = "5.7" ]; then
-      _PHP_V="74 73 72 71 70 56"
+      _PHP_V="80 74 73 72 71 70 56"
     fi
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
@@ -184,15 +184,17 @@ fix_php_ini_opcache() {
 #
 # Fix all FMP php.ini files to add Zend OPcache
 fix_php_ini_opcache_all() {
-  _PHP_V="74 73 72 71 70 56"
+  _PHP_V="81 80 74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ] \
     || [ "${_DB_SERIES}" = "5.7" ]; then
-    _PHP_V="74 73 72 71 70 56"
+    _PHP_V="81 80 74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
     case "${e}" in
+      81) _P_API="${_PHP81_API}" ;;
+      80) _P_API="${_PHP80_API}" ;;
       74) _P_API="${_PHP74_API}" ;;
       73) _P_API="${_PHP73_API}" ;;
       72) _P_API="${_PHP72_API}" ;;
@@ -232,12 +234,10 @@ fix_php_ini_tet() {
 # Fix all php.ini files to add php_tet.so
 fix_php_ini_tet_all() {
   if [ "${_PHP_TET}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "TET" ]]; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "PROC: fix_php_ini_tet_all"
-    fi
-    _PHP_V="73 72 71 70 56"
+    _PHP_V="80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       case "${e}" in
+        80) _P_API="${_PHP80_API}" ;;
         74) _P_API="${_PHP74_API}" ;;
         73) _P_API="${_PHP73_API}" ;;
         72) _P_API="${_PHP72_API}" ;;
@@ -250,16 +250,17 @@ fix_php_ini_tet_all() {
       _TET_BASE="/opt/php${e}/lib/php/extensions/no-debug-non-zts"
       _TET_SO="${_TET_BASE}-${_P_API}/php_tet.so"
       if [ ! -e "${_TET_SO}" ]; then
-        _TET_VRN="5.2-Linux-x86_64-Perl-PHP-Python-Ruby"
+        if [[ "${e}" =~ "80" ]] || [[ "${e}" =~ "74" ]] || [[ "${e}" =~ "73" ]]; then
+          _TET_VRN="5.3-Linux-x64-Perl-PHP-Python-Ruby"
+        else
+          _TET_VRN="5.2-Linux-x86_64-Perl-PHP-Python-Ruby"
+        fi
         if [ ! -e "/var/opt/TET-${_TET_VRN}/bind/php" ]; then
           mkdir -p  /var/opt
           cd /var/opt
           get_dev_src "TET-${_TET_VRN}.tar.gz"
         fi
         if [ -e "/var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts" ]; then
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "PROC: ${_TET_SO}"
-          fi
           cd /var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts/
           cp -a php_tet.so ${_TET_SO}
         fi
@@ -368,12 +369,12 @@ update_php_conf() {
   wait
   sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
   wait
-  _PHP_V="74 73 72 71 70 56"
+  _PHP_V="81 80 74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ] \
     || [ "${_DB_SERIES}" = "5.7" ]; then
-    _PHP_V="74 73 72 71 70 56"
+    _PHP_V="81 80 74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
@@ -477,12 +478,12 @@ tune_web_server_config() {
       _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
     fi
   fi
-  _PHP_V="74 73 72 71 70 56"
+  _PHP_V="81 80 74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ] \
     || [ "${_DB_SERIES}" = "5.7" ]; then
-    _PHP_V="74 73 72 71 70 56"
+    _PHP_V="81 80 74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
     sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
@@ -663,13 +664,7 @@ install_php_extensions() {
       rm -rf geos*
       get_dev_src "geos-${_GEOS_VRN}.tar.bz2"
       cd geos-${_GEOS_VRN}
-      _PHP_V="74 73 72 71 70 56"
-      if [ "${_DB_SERIES}" = "10.4" ] \
-        || [ "${_DB_SERIES}" = "10.3" ] \
-        || [ "${_DB_SERIES}" = "10.2" ] \
-        || [ "${_DB_SERIES}" = "5.7" ]; then
-        _PHP_V="74 73 72 71 70 56"
-      fi
+      _PHP_V="56"
       for e in ${_PHP_V}; do
         if [ "$1" = "${e}" ]; then
           find . -type f -print0 \
@@ -941,13 +936,7 @@ update_php_extensions() {
       rm -rf geos*
       get_dev_src "geos-${_GEOS_VRN}.tar.bz2"
       cd geos-${_GEOS_VRN}
-      _PHP_V="74 73 72 71 70 56"
-      if [ "${_DB_SERIES}" = "10.4" ] \
-        || [ "${_DB_SERIES}" = "10.3" ] \
-        || [ "${_DB_SERIES}" = "10.2" ] \
-        || [ "${_DB_SERIES}" = "5.7" ]; then
-        _PHP_V="74 73 72 71 70 56"
-      fi
+      _PHP_V="56"
       for e in ${_PHP_V}; do
         if [ "$1" = "${e}" ]; then
           find . -type f -print0 \
@@ -1160,6 +1149,7 @@ install_php_multi() {
              --with-webp-dir=/usr \
              --with-ldap \
              --with-gmp \
+             --with-xmlrpc \
              ${_PRE_SNFR}"
   _NEW_SNFR="--with-zip \
              --enable-gd \
@@ -1169,7 +1159,7 @@ install_php_multi() {
              --with-freetype \
              --with-ldap \
              --with-gmp"
-  if [ "$1" = "74" ]; then
+  if [ "$1" = "74" ] || [ "$1" = "80" ] || [ "$1" = "81" ]; then
     _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-freetype-dir=\/usr//g" 2>&1)
     _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-openssl=\/usr\/local\/ssl/--with-openssl/g" 2>&1)
     _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-curl=\/usr\/local/--with-curl/g" 2>&1)
@@ -1226,7 +1216,6 @@ install_php_multi() {
                 --with-mysqli=mysqlnd \
                 --with-pdo-mysql=mysqlnd \
                 --with-pear \
-                --with-xmlrpc \
                 --with-xsl \
                 --with-zlib \
                 ${_PHP_EXTRA}" 2> /dev/null
@@ -1261,7 +1250,6 @@ install_php_multi() {
                 --with-mysqli=mysqlnd \
                 --with-pdo-mysql=mysqlnd \
                 --with-pear \
-                --with-xmlrpc \
                 --with-xsl \
                 --with-zlib \
                 ${_PHP_EXTRA}" 2> /dev/null
@@ -1375,6 +1363,8 @@ update_newrelic() {
       mv -f /etc/newrelic \
         ${vBs}/nr/etc-newrelic-pre-${_X_VERSION}-${_NOW} &> /dev/null
       pthNrx="lib/php/extensions/no-debug-non-zts"
+      _PHP_EXT_DIR_81="/opt/php81/${pthNrx}-${_PHP81_API}"
+      _PHP_EXT_DIR_80="/opt/php80/${pthNrx}-${_PHP80_API}"
       _PHP_EXT_DIR_74="/opt/php74/${pthNrx}-${_PHP74_API}"
       _PHP_EXT_DIR_73="/opt/php73/${pthNrx}-${_PHP73_API}"
       _PHP_EXT_DIR_72="/opt/php72/${pthNrx}-${_PHP72_API}"
@@ -1388,7 +1378,7 @@ update_newrelic() {
       st_runner "apt-get update -qq" &> /dev/null
       st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
       st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null
-      NR_PHPLIST="/opt/php56/bin:/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin"
+      NR_PHPLIST="/opt/php56/bin:/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin"
       NR_SILENT="silent"
       export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
       export NR_INSTALL_SILENT="${NR_SILENT}"
@@ -1400,6 +1390,11 @@ update_newrelic() {
         _SYSTEM_ARCH="x32"
       fi
       pthNra="/usr/lib/newrelic-php5/agent"
+      if [ -e "$_PHP_EXT_DIR_80" ] && [ ! -e "$_PHP_EXT_DIR_80/newrelic.so" ] \
+        && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP80_API}.so" ]; then
+        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP80_API}.so \
+          $_PHP_EXT_DIR_80/newrelic.so
+      fi
       if [ -e "$_PHP_EXT_DIR_74" ] && [ ! -e "$_PHP_EXT_DIR_74/newrelic.so" ] \
         && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP74_API}.so" ]; then
         ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP74_API}.so \
@@ -1464,12 +1459,17 @@ install_newrelic() {
       _GPG=gpg
     fi
     _MULTI_NR=NO
+    _PHP_EXT_DIR_80="/opt/php80/lib/php/extensions/no-debug-non-zts-${_PHP80_API}"
     _PHP_EXT_DIR_74="/opt/php74/lib/php/extensions/no-debug-non-zts-${_PHP74_API}"
     _PHP_EXT_DIR_73="/opt/php73/lib/php/extensions/no-debug-non-zts-${_PHP73_API}"
     _PHP_EXT_DIR_72="/opt/php72/lib/php/extensions/no-debug-non-zts-${_PHP72_API}"
     _PHP_EXT_DIR_71="/opt/php71/lib/php/extensions/no-debug-non-zts-${_PHP71_API}"
     _PHP_EXT_DIR_70="/opt/php70/lib/php/extensions/no-debug-non-zts-${_PHP70_API}"
     _PHP_EXT_DIR_56="/opt/php56/lib/php/extensions/no-debug-non-zts-${_PHP56_API}"
+    if [ -e "$_PHP_EXT_DIR_80" ] \
+      && [ ! -e "$_PHP_EXT_DIR_80/newrelic.so" ]; then
+      _MULTI_NR=YES
+    fi
     if [ -e "$_PHP_EXT_DIR_74" ] \
       && [ ! -e "$_PHP_EXT_DIR_74/newrelic.so" ]; then
       _MULTI_NR=YES
@@ -1519,7 +1519,7 @@ install_newrelic() {
       st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null
       if [ "$_MULTI_NR" = "YES" ]; then
         msg "INFO: Installing latest version of New Relic Apps Monitor..."
-        NR_PHPLIST="/opt/php56/bin:/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin"
+        NR_PHPLIST="/opt/php56/bin:/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin"
         NR_SILENT="silent"
         export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
         export NR_INSTALL_SILENT="${NR_SILENT}"
@@ -1531,6 +1531,11 @@ install_newrelic() {
           _SYSTEM_ARCH="x32"
         fi
         pthNra="/usr/lib/newrelic-php5/agent"
+        if [ -e "$_PHP_EXT_DIR_80" ] && [ ! -e "$_PHP_EXT_DIR_80/newrelic.so" ] \
+          && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP80_API}.so" ]; then
+          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP80_API}.so \
+            $_PHP_EXT_DIR_80/newrelic.so
+        fi
         if [ -e "$_PHP_EXT_DIR_74" ] && [ ! -e "$_PHP_EXT_DIR_74/newrelic.so" ] \
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP74_API}.so" ]; then
           ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP74_API}.so \
@@ -1595,7 +1600,11 @@ check_php_rebuild() {
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
     _PHP_ITD=5.x
-    if [ "$1" = "74" ]; then
+    if [ "$1" = "81" ]; then
+      rm -f ${pthLog}/installed-8.1*
+    elif [ "$1" = "80" ]; then
+      rm -f ${pthLog}/installed-8.0*
+    elif [ "$1" = "74" ]; then
       rm -f ${pthLog}/installed-7.4*
     elif [ "$1" = "73" ]; then
       rm -f ${pthLog}/installed-7.3*
@@ -1765,282 +1774,127 @@ check_php_broken() {
 #
 # Fix init.d to disable deprecated PHP-FPM versions
 php_deprecated_cleanup() {
-  if [ -e "/opt/php55/bin/php" ]; then
-    mv -f /opt/php55/bin/php ${vBs}/bin-php55-cli
-  fi
-  if [ -e "/opt/php54/bin/php" ]; then
-    mv -f /opt/php54/bin/php ${vBs}/bin-php54-cli
-  fi
-  if [ -e "/opt/php53/bin/php" ]; then
-    mv -f /opt/php53/bin/php ${vBs}/bin-php53-cli
-  fi
-  if [ -e "/etc/init.d/php55-fpm" ]; then
-    service php55-fpm stop &> /dev/null
-    update-rc.d -f php55-fpm remove &> /dev/null
-    mv -f /etc/init.d/php55-fpm ${vBs}/initd-php55-fpm
-  fi
-  if [ -e "/etc/init.d/php54-fpm" ]; then
-    service php54-fpm stop &> /dev/null
-    update-rc.d -f php54-fpm remove &> /dev/null
-    mv -f /etc/init.d/php54-fpm ${vBs}/initd-php54-fpm
-  fi
-  if [ -e "/etc/init.d/php53-fpm" ]; then
-    service php53-fpm stop &> /dev/null
-    update-rc.d -f php53-fpm remove &> /dev/null
-    mv -f /etc/init.d/php53-fpm ${vBs}/initd-php53-fpm
-  fi
+  _PHP_V="55 54 53"
+  for e in ${_PHP_V}; do
+    if [ -e "/opt/php${e}/bin/php" ]; then
+      mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
+    fi
+    if [ -e "/etc/init.d/php${e}-fpm" ]; then
+      service php${e}-fpm stop &> /dev/null
+      update-rc.d -f php${e}-fpm remove &> /dev/null
+      mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
+    fi
+  done
 }
 
 #
 # Fix init.d to disable not used PHP-FPM versions
 php_single_initd_cleanup() {
   if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-    if [ "${_PHP_SINGLE_INSTALL}" = "7.4" ]; then
-      if [ -e "/opt/php73/bin/php" ]; then
-        mv -f /opt/php73/bin/php ${vBs}/bin-php73-cli
-      fi
-      if [ -e "/opt/php72/bin/php" ]; then
-        mv -f /opt/php72/bin/php ${vBs}/bin-php72-cli
-      fi
-      if [ -e "/opt/php71/bin/php" ]; then
-        mv -f /opt/php71/bin/php ${vBs}/bin-php71-cli
-      fi
-      if [ -e "/opt/php70/bin/php" ]; then
-        mv -f /opt/php70/bin/php ${vBs}/bin-php70-cli
-      fi
-      if [ -e "/opt/php56/bin/php" ]; then
-        mv -f /opt/php56/bin/php ${vBs}/bin-php56-cli
-      fi
-      if [ -e "/etc/init.d/php73-fpm" ]; then
-        update-rc.d -f php73-fpm remove &> /dev/null
-        mv -f /etc/init.d/php73-fpm ${vBs}/initd-php73-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php72-fpm" ]; then
-        update-rc.d -f php72-fpm remove &> /dev/null
-        mv -f /etc/init.d/php72-fpm ${vBs}/initd-php72-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php71-fpm" ]; then
-        update-rc.d -f php71-fpm remove &> /dev/null
-        mv -f /etc/init.d/php71-fpm ${vBs}/initd-php71-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php70-fpm" ]; then
-        update-rc.d -f php70-fpm remove &> /dev/null
-        mv -f /etc/init.d/php70-fpm ${vBs}/initd-php70-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php56-fpm" ]; then
-        update-rc.d -f php56-fpm remove &> /dev/null
-        mv -f /etc/init.d/php56-fpm ${vBs}/initd-php56-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
+    if [ "${_PHP_SINGLE_INSTALL}" = "8.1" ]; then
+      _PHP_V="80 74 73 72 71 70 56"
+      for e in ${_PHP_V}; do
+        if [ -e "/opt/php${e}/bin/php" ]; then
+          mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
+        fi
+        if [ -e "/etc/init.d/php${e}-fpm" ]; then
+          service php${e}-fpm stop &> /dev/null
+          update-rc.d -f php${e}-fpm remove &> /dev/null
+          mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
+          _FPM_INITD_CLEANUP=YES
+        fi
+      done
+    elif [ "${_PHP_SINGLE_INSTALL}" = "8.0" ]; then
+      _PHP_V="81 74 73 72 71 70 56"
+      for e in ${_PHP_V}; do
+        if [ -e "/opt/php${e}/bin/php" ]; then
+          mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
+        fi
+        if [ -e "/etc/init.d/php${e}-fpm" ]; then
+          service php${e}-fpm stop &> /dev/null
+          update-rc.d -f php${e}-fpm remove &> /dev/null
+          mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
+          _FPM_INITD_CLEANUP=YES
+        fi
+      done
+    elif [ "${_PHP_SINGLE_INSTALL}" = "7.4" ]; then
+      _PHP_V="81 80 73 72 71 70 56"
+      for e in ${_PHP_V}; do
+        if [ -e "/opt/php${e}/bin/php" ]; then
+          mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
+        fi
+        if [ -e "/etc/init.d/php${e}-fpm" ]; then
+          service php${e}-fpm stop &> /dev/null
+          update-rc.d -f php${e}-fpm remove &> /dev/null
+          mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
+          _FPM_INITD_CLEANUP=YES
+        fi
+      done
     elif [ "${_PHP_SINGLE_INSTALL}" = "7.3" ]; then
-      if [ -e "/opt/php74/bin/php" ]; then
-        mv -f /opt/php74/bin/php ${vBs}/bin-php74-cli
-      fi
-      if [ -e "/opt/php72/bin/php" ]; then
-        mv -f /opt/php72/bin/php ${vBs}/bin-php72-cli
-      fi
-      if [ -e "/opt/php71/bin/php" ]; then
-        mv -f /opt/php71/bin/php ${vBs}/bin-php71-cli
-      fi
-      if [ -e "/opt/php70/bin/php" ]; then
-        mv -f /opt/php70/bin/php ${vBs}/bin-php70-cli
-      fi
-      if [ -e "/opt/php56/bin/php" ]; then
-        mv -f /opt/php56/bin/php ${vBs}/bin-php56-cli
-      fi
-      if [ -e "/etc/init.d/php74-fpm" ]; then
-        update-rc.d -f php74-fpm remove &> /dev/null
-        mv -f /etc/init.d/php74-fpm ${vBs}/initd-php74-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php72-fpm" ]; then
-        update-rc.d -f php72-fpm remove &> /dev/null
-        mv -f /etc/init.d/php72-fpm ${vBs}/initd-php72-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php71-fpm" ]; then
-        update-rc.d -f php71-fpm remove &> /dev/null
-        mv -f /etc/init.d/php71-fpm ${vBs}/initd-php71-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php70-fpm" ]; then
-        update-rc.d -f php70-fpm remove &> /dev/null
-        mv -f /etc/init.d/php70-fpm ${vBs}/initd-php70-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php56-fpm" ]; then
-        update-rc.d -f php56-fpm remove &> /dev/null
-        mv -f /etc/init.d/php56-fpm ${vBs}/initd-php56-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
+      _PHP_V="81 80 74 72 71 70 56"
+      for e in ${_PHP_V}; do
+        if [ -e "/opt/php${e}/bin/php" ]; then
+          mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
+        fi
+        if [ -e "/etc/init.d/php${e}-fpm" ]; then
+          service php${e}-fpm stop &> /dev/null
+          update-rc.d -f php${e}-fpm remove &> /dev/null
+          mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
+          _FPM_INITD_CLEANUP=YES
+        fi
+      done
     elif [ "${_PHP_SINGLE_INSTALL}" = "7.2" ]; then
-      if [ -e "/opt/php74/bin/php" ]; then
-        mv -f /opt/php74/bin/php ${vBs}/bin-php74-cli
-      fi
-      if [ -e "/opt/php73/bin/php" ]; then
-        mv -f /opt/php73/bin/php ${vBs}/bin-php73-cli
-      fi
-      if [ -e "/opt/php71/bin/php" ]; then
-        mv -f /opt/php71/bin/php ${vBs}/bin-php71-cli
-      fi
-      if [ -e "/opt/php70/bin/php" ]; then
-        mv -f /opt/php70/bin/php ${vBs}/bin-php70-cli
-      fi
-      if [ -e "/opt/php56/bin/php" ]; then
-        mv -f /opt/php56/bin/php ${vBs}/bin-php56-cli
-      fi
-      if [ -e "/etc/init.d/php74-fpm" ]; then
-        update-rc.d -f php74-fpm remove &> /dev/null
-        mv -f /etc/init.d/php74-fpm ${vBs}/initd-php74-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php73-fpm" ]; then
-        update-rc.d -f php73-fpm remove &> /dev/null
-        mv -f /etc/init.d/php73-fpm ${vBs}/initd-php73-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php71-fpm" ]; then
-        update-rc.d -f php71-fpm remove &> /dev/null
-        mv -f /etc/init.d/php71-fpm ${vBs}/initd-php71-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php70-fpm" ]; then
-        update-rc.d -f php70-fpm remove &> /dev/null
-        mv -f /etc/init.d/php70-fpm ${vBs}/initd-php70-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php56-fpm" ]; then
-        update-rc.d -f php56-fpm remove &> /dev/null
-        mv -f /etc/init.d/php56-fpm ${vBs}/initd-php56-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
+      _PHP_V="81 80 74 73 71 70 56"
+      for e in ${_PHP_V}; do
+        if [ -e "/opt/php${e}/bin/php" ]; then
+          mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
+        fi
+        if [ -e "/etc/init.d/php${e}-fpm" ]; then
+          service php${e}-fpm stop &> /dev/null
+          update-rc.d -f php${e}-fpm remove &> /dev/null
+          mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
+          _FPM_INITD_CLEANUP=YES
+        fi
+      done
     elif [ "${_PHP_SINGLE_INSTALL}" = "7.1" ]; then
-      if [ -e "/opt/php74/bin/php" ]; then
-        mv -f /opt/php74/bin/php ${vBs}/bin-php74-cli
-      fi
-      if [ -e "/opt/php73/bin/php" ]; then
-        mv -f /opt/php73/bin/php ${vBs}/bin-php73-cli
-      fi
-      if [ -e "/opt/php72/bin/php" ]; then
-        mv -f /opt/php72/bin/php ${vBs}/bin-php72-cli
-      fi
-      if [ -e "/opt/php70/bin/php" ]; then
-        mv -f /opt/php70/bin/php ${vBs}/bin-php70-cli
-      fi
-      if [ -e "/opt/php56/bin/php" ]; then
-        mv -f /opt/php56/bin/php ${vBs}/bin-php56-cli
-      fi
-      if [ -e "/etc/init.d/php74-fpm" ]; then
-        update-rc.d -f php74-fpm remove &> /dev/null
-        mv -f /etc/init.d/php74-fpm ${vBs}/initd-php74-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php73-fpm" ]; then
-        update-rc.d -f php73-fpm remove &> /dev/null
-        mv -f /etc/init.d/php73-fpm ${vBs}/initd-php73-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php72-fpm" ]; then
-        update-rc.d -f php72-fpm remove &> /dev/null
-        mv -f /etc/init.d/php72-fpm ${vBs}/initd-php72-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php70-fpm" ]; then
-        update-rc.d -f php70-fpm remove &> /dev/null
-        mv -f /etc/init.d/php70-fpm ${vBs}/initd-php70-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php56-fpm" ]; then
-        update-rc.d -f php56-fpm remove &> /dev/null
-        mv -f /etc/init.d/php56-fpm ${vBs}/initd-php56-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
+      _PHP_V="81 80 74 73 72 70 56"
+      for e in ${_PHP_V}; do
+        if [ -e "/opt/php${e}/bin/php" ]; then
+          mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
+        fi
+        if [ -e "/etc/init.d/php${e}-fpm" ]; then
+          service php${e}-fpm stop &> /dev/null
+          update-rc.d -f php${e}-fpm remove &> /dev/null
+          mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
+          _FPM_INITD_CLEANUP=YES
+        fi
+      done
     elif [ "${_PHP_SINGLE_INSTALL}" = "7.0" ]; then
-      if [ -e "/opt/php74/bin/php" ]; then
-        mv -f /opt/php74/bin/php ${vBs}/bin-php74-cli
-      fi
-      if [ -e "/opt/php73/bin/php" ]; then
-        mv -f /opt/php73/bin/php ${vBs}/bin-php73-cli
-      fi
-      if [ -e "/opt/php72/bin/php" ]; then
-        mv -f /opt/php72/bin/php ${vBs}/bin-php72-cli
-      fi
-      if [ -e "/opt/php71/bin/php" ]; then
-        mv -f /opt/php71/bin/php ${vBs}/bin-php71-cli
-      fi
-      if [ -e "/opt/php56/bin/php" ]; then
-        mv -f /opt/php56/bin/php ${vBs}/bin-php56-cli
-      fi
-      if [ -e "/etc/init.d/php74-fpm" ]; then
-        update-rc.d -f php74-fpm remove &> /dev/null
-        mv -f /etc/init.d/php74-fpm ${vBs}/initd-php74-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php73-fpm" ]; then
-        update-rc.d -f php73-fpm remove &> /dev/null
-        mv -f /etc/init.d/php73-fpm ${vBs}/initd-php73-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php72-fpm" ]; then
-        update-rc.d -f php72-fpm remove &> /dev/null
-        mv -f /etc/init.d/php72-fpm ${vBs}/initd-php72-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php71-fpm" ]; then
-        update-rc.d -f php71-fpm remove &> /dev/null
-        mv -f /etc/init.d/php71-fpm ${vBs}/initd-php71-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php56-fpm" ]; then
-        update-rc.d -f php56-fpm remove &> /dev/null
-        mv -f /etc/init.d/php56-fpm ${vBs}/initd-php56-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
+      _PHP_V="81 80 74 73 72 71 56"
+      for e in ${_PHP_V}; do
+        if [ -e "/opt/php${e}/bin/php" ]; then
+          mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
+        fi
+        if [ -e "/etc/init.d/php${e}-fpm" ]; then
+          service php${e}-fpm stop &> /dev/null
+          update-rc.d -f php${e}-fpm remove &> /dev/null
+          mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
+          _FPM_INITD_CLEANUP=YES
+        fi
+      done
     elif [ "${_PHP_SINGLE_INSTALL}" = "5.6" ]; then
-      if [ -e "/opt/php74/bin/php" ]; then
-        mv -f /opt/php74/bin/php ${vBs}/bin-php74-cli
-      fi
-      if [ -e "/opt/php73/bin/php" ]; then
-        mv -f /opt/php73/bin/php ${vBs}/bin-php73-cli
-      fi
-      if [ -e "/opt/php72/bin/php" ]; then
-        mv -f /opt/php72/bin/php ${vBs}/bin-php72-cli
-      fi
-      if [ -e "/opt/php71/bin/php" ]; then
-        mv -f /opt/php71/bin/php ${vBs}/bin-php71-cli
-      fi
-      if [ -e "/opt/php70/bin/php" ]; then
-        mv -f /opt/php70/bin/php ${vBs}/bin-php70-cli
-      fi
-      if [ -e "/etc/init.d/php74-fpm" ]; then
-        update-rc.d -f php74-fpm remove &> /dev/null
-        mv -f /etc/init.d/php74-fpm ${vBs}/initd-php74-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php73-fpm" ]; then
-        update-rc.d -f php73-fpm remove &> /dev/null
-        mv -f /etc/init.d/php73-fpm ${vBs}/initd-php73-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php72-fpm" ]; then
-        update-rc.d -f php72-fpm remove &> /dev/null
-        mv -f /etc/init.d/php72-fpm ${vBs}/initd-php72-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php71-fpm" ]; then
-        update-rc.d -f php71-fpm remove &> /dev/null
-        mv -f /etc/init.d/php71-fpm ${vBs}/initd-php71-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
-      if [ -e "/etc/init.d/php70-fpm" ]; then
-        update-rc.d -f php70-fpm remove &> /dev/null
-        mv -f /etc/init.d/php70-fpm ${vBs}/initd-php70-fpm
-        _FPM_INITD_CLEANUP=YES
-      fi
+      _PHP_V="81 80 74 73 72 71 70"
+      for e in ${_PHP_V}; do
+        if [ -e "/opt/php${e}/bin/php" ]; then
+          mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
+        fi
+        if [ -e "/etc/init.d/php${e}-fpm" ]; then
+          service php${e}-fpm stop &> /dev/null
+          update-rc.d -f php${e}-fpm remove &> /dev/null
+          mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
+          _FPM_INITD_CLEANUP=YES
+        fi
+      done
     fi
     if [ "$_FPM_INITD_CLEANUP" = "YES" ]; then
       killall php-fpm &> /dev/null
@@ -2052,7 +1906,11 @@ php_single_initd_cleanup() {
 #
 # Re-set default PHP-CLI.
 re_set_default_php_cli() {
-  if [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
+  if [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
+    switch_php_cli "81"
+  elif [ "${_PHP_CLI_VERSION}" = "8.0" ]; then
+    switch_php_cli "80"
+  elif [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
     switch_php_cli "74"
   elif [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
     switch_php_cli "73"
@@ -2074,6 +1932,10 @@ check_php_cli() {
     _PHP_CLI_PATH="/opt/php74/bin/php"
   elif [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
     _PHP_CLI_PATH="/opt/php73/bin/php"
+  elif [ "${_PHP_CLI_VERSION}" = "8.0" ]; then
+    _PHP_CLI_PATH="/opt/php80/bin/php"
+  elif [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
+    _PHP_CLI_PATH="/opt/php81/bin/php"
   elif [ "${_PHP_CLI_VERSION}" = "7.2" ]; then
     _PHP_CLI_PATH="/opt/php72/bin/php"
   elif [ "${_PHP_CLI_VERSION}" = "7.1" ]; then
@@ -2088,12 +1950,16 @@ check_php_cli() {
   if [ -x "$_PHP_CLI_PATH" ]; then
     _USE_PHP_CLI_PATH=$_PHP_CLI_PATH
   else
-    if  [ -x "/opt/php72/bin/php" ]; then
-      _USE_PHP_CLI_PATH="/opt/php72/bin/php"
+    if  [ -x "/opt/php74/bin/php" ]; then
+      _USE_PHP_CLI_PATH="/opt/php74/bin/php"
     elif  [ -x "/opt/php73/bin/php" ]; then
       _USE_PHP_CLI_PATH="/opt/php73/bin/php"
-    elif  [ -x "/opt/php74/bin/php" ]; then
-      _USE_PHP_CLI_PATH="/opt/php74/bin/php"
+    elif  [ -x "/opt/php80/bin/php" ]; then
+      _USE_PHP_CLI_PATH="/opt/php80/bin/php"
+    elif  [ -x "/opt/php81/bin/php" ]; then
+      _USE_PHP_CLI_PATH="/opt/php81/bin/php"
+    elif  [ -x "/opt/php72/bin/php" ]; then
+      _USE_PHP_CLI_PATH="/opt/php72/bin/php"
     elif  [ -x "/opt/php71/bin/php" ]; then
       _USE_PHP_CLI_PATH="/opt/php71/bin/php"
     elif  [ -x "/opt/php70/bin/php" ]; then
@@ -2134,90 +2000,22 @@ switch_php_cli() {
 }
 
 php_upgrade_all() {
-  if [ -x "/opt/php73/bin/php" ] \
-    && [ -z "$_FRESH_PHP73_BUILD" ]; then
-    _PHP_VERSION="${_PHP73_VRN}"
-    _PHP_BIN_BROKEN=NO
-    _BROKEN_LIBCURL_TEST=""
-    switch_php_cli "73"
-    check_php_broken "73"
-    check_php_rebuild "73"
-    update_php_multi "73"
-    mrun "service php73-fpm restart" &> /dev/null
-    _PHP_VERSION=""
-    _T_PHP_VRN=""
-    _T_PHP_PTH=""
-  fi
-  if [ -x "/opt/php72/bin/php" ] \
-    && [ -z "$_FRESH_PHP72_BUILD" ]; then
-    _PHP_VERSION="${_PHP72_VRN}"
-    _PHP_BIN_BROKEN=NO
-    _BROKEN_LIBCURL_TEST=""
-    switch_php_cli "72"
-    check_php_broken "72"
-    check_php_rebuild "72"
-    update_php_multi "72"
-    mrun "service php72-fpm restart" &> /dev/null
-    _PHP_VERSION=""
-    _T_PHP_VRN=""
-    _T_PHP_PTH=""
-  fi
-  if [ -x "/opt/php56/bin/php" ] \
-    && [ -z "$_FRESH_PHP56_BUILD" ]; then
-    _PHP_VERSION="${_PHP56_VRN}"
-    _PHP_BIN_BROKEN=NO
-    _BROKEN_LIBCURL_TEST=""
-    switch_php_cli "56"
-    check_php_broken "56"
-    check_php_rebuild "56"
-    update_php_multi "56"
-    mrun "service php56-fpm restart" &> /dev/null
-    _PHP_VERSION=""
-    _T_PHP_VRN=""
-    _T_PHP_PTH=""
-  fi
-  if [ -x "/opt/php74/bin/php" ] \
-    && [ -z "$_FRESH_PHP74_BUILD" ]; then
-    _PHP_VERSION="${_PHP74_VRN}"
-    _PHP_BIN_BROKEN=NO
-    _BROKEN_LIBCURL_TEST=""
-    switch_php_cli "74"
-    check_php_broken "74"
-    check_php_rebuild "74"
-    update_php_multi "74"
-    mrun "service php74-fpm restart" &> /dev/null
-    _PHP_VERSION=""
-    _T_PHP_VRN=""
-    _T_PHP_PTH=""
-  fi
-  if [ -x "/opt/php71/bin/php" ] \
-    && [ -z "$_FRESH_PHP71_BUILD" ]; then
-    _PHP_VERSION="${_PHP71_VRN}"
-    _PHP_BIN_BROKEN=NO
-    _BROKEN_LIBCURL_TEST=""
-    switch_php_cli "71"
-    check_php_broken "71"
-    check_php_rebuild "71"
-    update_php_multi "71"
-    mrun "service php71-fpm restart" &> /dev/null
-    _PHP_VERSION=""
-    _T_PHP_VRN=""
-    _T_PHP_PTH=""
-  fi
-  if [ -x "/opt/php70/bin/php" ] \
-    && [ -z "$_FRESH_PHP70_BUILD" ]; then
-    _PHP_VERSION="${_PHP70_VRN}"
-    _PHP_BIN_BROKEN=NO
-    _BROKEN_LIBCURL_TEST=""
-    switch_php_cli "70"
-    check_php_broken "70"
-    check_php_rebuild "70"
-    update_php_multi "70"
-    mrun "service php70-fpm restart" &> /dev/null
-    _PHP_VERSION=""
-    _T_PHP_VRN=""
-    _T_PHP_PTH=""
-  fi
+  _PHP_V="74 73 80 81 56 72 71 70"
+  for e in ${_PHP_V}; do
+    if [ -x "/opt/php${e}/bin/php" ]; then
+      _PHP_VERSION="${_PHP${e}_VRN}"
+      _PHP_BIN_BROKEN=NO
+      _BROKEN_LIBCURL_TEST=""
+      switch_php_cli "${e}"
+      check_php_broken "${e}"
+      check_php_rebuild "${e}"
+      update_php_multi "${e}"
+      mrun "service php${e}-fpm restart" &> /dev/null
+      _PHP_VERSION=""
+      _T_PHP_VRN=""
+      _T_PHP_PTH=""
+    fi
+  done
 }
 
 get_php_conf_extra() {
@@ -2250,6 +2048,17 @@ install_update_php() {
     st_runner "${_RMAPP} php5-sasl php5-suhosin" &> /dev/null
     st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
   fi
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.4" ]] \
+    && [ ! -x "/opt/php74/bin/php" ]; then
+    _PHP_VERSION="${_PHP74_VRN}"
+    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+    install_php_multi "74"
+    switch_php_cli "74"
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+    _FRESH_PHP74_BUILD=74
+  fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "7.3" ]] \
     && [ ! -x "/opt/php73/bin/php" ]; then
     _PHP_VERSION="${_PHP73_VRN}"
@@ -2260,6 +2069,28 @@ install_update_php() {
     _T_PHP_VRN=""
     _T_PHP_PTH=""
     _FRESH_PHP73_BUILD=73
+  fi
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "8.0" ]] \
+    && [ ! -x "/opt/php80/bin/php" ]; then
+    _PHP_VERSION="${_PHP80_VRN}"
+    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+    install_php_multi "80"
+    switch_php_cli "80"
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+    _FRESH_PHP80_BUILD=80
+  fi
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "8.1" ]] \
+    && [ ! -x "/opt/php81/bin/php" ]; then
+    _PHP_VERSION="${_PHP81_VRN}"
+    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+    install_php_multi "81"
+    switch_php_cli "81"
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+    _FRESH_PHP81_BUILD=81
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "7.2" ]] \
     && [ ! -x "/opt/php72/bin/php" ]; then
@@ -2282,17 +2113,6 @@ install_update_php() {
     _T_PHP_VRN=""
     _T_PHP_PTH=""
     _FRESH_PHP56_BUILD=56
-  fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.4" ]] \
-    && [ ! -x "/opt/php74/bin/php" ]; then
-    _PHP_VERSION="${_PHP74_VRN}"
-    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    install_php_multi "74"
-    switch_php_cli "74"
-    _PHP_VERSION=""
-    _T_PHP_VRN=""
-    _T_PHP_PTH=""
-    _FRESH_PHP74_BUILD=74
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "7.1" ]] \
     && [ ! -x "/opt/php71/bin/php" ]; then

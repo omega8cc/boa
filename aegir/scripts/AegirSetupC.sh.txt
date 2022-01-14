@@ -129,7 +129,13 @@ _PREV_HM_ROOT="${_ROOT}/aegir/distro/${_LAST_HMR}"
 _D="/data/all"
 _SRCDIR="/opt/tmp/files"
 _LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
-if [ "${_PHP_CLI_VERSION}" = "7.4" ] \
+if [ "${_PHP_CLI_VERSION}" = "8.1" ] \
+  && [ -x "/opt/php81/bin/php" ]; then
+  _T_CLI=/opt/php81/bin
+elif [ "${_PHP_CLI_VERSION}" = "8.0" ] \
+  && [ -x "/opt/php80/bin/php" ]; then
+  _T_CLI=/opt/php80/bin
+elif [ "${_PHP_CLI_VERSION}" = "7.4" ] \
   && [ -x "/opt/php74/bin/php" ]; then
   _T_CLI=/opt/php74/bin
 elif [ "${_PHP_CLI_VERSION}" = "7.3" ] \
@@ -149,28 +155,6 @@ elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
   _T_CLI=/opt/php56/bin
 fi
 _DRUSHCMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php"
-#
-if [ "${_PHP_FPM_VERSION}" = "7.4" ] \
-  && [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
-  _D_8_ALLOW=YES
-elif [ "${_PHP_FPM_VERSION}" = "7.3" ] \
-  && [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
-  _D_8_ALLOW=YES
-elif [ "${_PHP_FPM_VERSION}" = "7.2" ] \
-  && [ "${_PHP_CLI_VERSION}" = "7.2" ]; then
-  _D_8_ALLOW=YES
-elif [ "${_PHP_FPM_VERSION}" = "7.1" ] \
-  && [ "${_PHP_CLI_VERSION}" = "7.1" ]; then
-  _D_8_ALLOW=YES
-elif [ "${_PHP_FPM_VERSION}" = "7.0" ] \
-  && [ "${_PHP_CLI_VERSION}" = "7.0" ]; then
-  _D_8_ALLOW=YES
-elif [ "${_PHP_FPM_VERSION}" = "5.6" ] \
-  && [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
-  _D_8_ALLOW=YES
-else
-  _D_8_ALLOW=NO
-fi
 #
 PATH=${_T_CLI}:/usr/local/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
@@ -1174,38 +1158,6 @@ drupal7_install() {
         fi
       else
         [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL7 ${noT}"
-      fi
-    fi
-  fi
-}
-
-
-drupal8_install() {
-###---### Drupal 8
-#
-  _REAL_PRNAME="standard"
-  _SHRD_PLNAME="drupal-${_SMALLCORE8}"
-  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
-  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
-  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
-  if [ "${_D_8_ALLOW}" = "YES" ]; then
-    if [[ "${_PLATFORMS_LIST}" =~ "D8R" ]]; then
-      if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_DRUPAL8 - http://drupal.org" ; then
-          true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL8 ${yOk}"
-          if [ ! -d "${_SHRD_PLPATH}" ]; then
-            cd ${_CORE}
-            if [ ! -e "${_D8_CORE_DIR}" ]; then
-              prepare_drupal8_core
-            fi
-          fi
-          init_this_distro_root
-          msg "DISTRO: $_F_DRUPAL8 installed"
-          _RUN_VERIFY=YES
-        else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL8 ${noT}"
-        fi
       fi
     fi
   fi
@@ -2827,7 +2779,6 @@ save_verify_platforms() {
 
 drupal6_install
 drupal7_install
-#drupal8_install
 
 #agov_install
 commerce_7_1_install

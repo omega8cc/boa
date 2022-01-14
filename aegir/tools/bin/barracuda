@@ -350,7 +350,11 @@ check_report() {
 check_php_cli() {
   _PHP_CHECK=$(readlink -n /usr/bin/php 2>&1)
   if [ ! -x "$_PHP_CHECK" ]; then
-    if [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
+    if [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
+      _PHP_CLI_PATH="/opt/php81/bin/php"
+    elif [ "${_PHP_CLI_VERSION}" = "8.0" ]; then
+      _PHP_CLI_PATH="/opt/php80/bin/php"
+    elif [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
       _PHP_CLI_PATH="/opt/php74/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
       _PHP_CLI_PATH="/opt/php73/bin/php"
@@ -368,16 +372,16 @@ check_php_cli() {
     if [ -x "${_PHP_CLI_PATH}" ]; then
       _USE_PHP_CLI_PATH="${_PHP_CLI_PATH}"
     else
-      if  [ -x "/opt/php72/bin/php" ]; then
-        _USE_PHP_CLI_PATH="/opt/php72/bin/php"
-      elif  [ -x "/opt/php73/bin/php" ]; then
-        _USE_PHP_CLI_PATH="/opt/php73/bin/php"
+      if  [ -x "/opt/php81/bin/php" ]; then
+        _USE_PHP_CLI_PATH="/opt/php81/bin/php"
+      elif  [ -x "/opt/php80/bin/php" ]; then
+        _USE_PHP_CLI_PATH="/opt/php80/bin/php"
       elif  [ -x "/opt/php74/bin/php" ]; then
         _USE_PHP_CLI_PATH="/opt/php74/bin/php"
-      elif  [ -x "/opt/php71/bin/php" ]; then
-        _USE_PHP_CLI_PATH="/opt/php71/bin/php"
-      elif  [ -x "/opt/php70/bin/php" ]; then
-        _USE_PHP_CLI_PATH="/opt/php70/bin/php"
+      elif  [ -x "/opt/php73/bin/php" ]; then
+        _USE_PHP_CLI_PATH="/opt/php73/bin/php"
+      elif  [ -x "/opt/php72/bin/php" ]; then
+        _USE_PHP_CLI_PATH="/opt/php72/bin/php"
       elif [ -x "/opt/php56/bin/php" ]; then
         _USE_PHP_CLI_PATH="/opt/php56/bin/php"
       fi
@@ -397,7 +401,11 @@ check_php_cli() {
 up_action() {
   if [ -e "${vBs}/${barName}" ] && [ -e "${barCnf}" ]; then
     if [ ! -z "${rkey}" ]; then
-      if [ "${rkey}" = "php-74" ] || [ "${rkey}" = "php-7.4" ]; then
+      if [ "${rkey}" = "php-81" ] || [ "${rkey}" = "php-8.1" ]; then
+        phpS="8.1"
+      elif [ "${rkey}" = "php-80" ] || [ "${rkey}" = "php-8.0" ]; then
+        phpS="8.0"
+      elif [ "${rkey}" = "php-74" ] || [ "${rkey}" = "php-7.4" ]; then
         phpS="7.4"
       elif [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
         phpS="7.3"

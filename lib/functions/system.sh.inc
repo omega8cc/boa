@@ -384,6 +384,8 @@ tune_memory_limits() {
         else
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
+        sed -i "s/64000/128000/g"  /opt/php81/etc/php81.ini &> /dev/null
+        sed -i "s/64000/128000/g"  /opt/php80/etc/php80.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php74/etc/php74.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php73/etc/php73.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php72/etc/php72.ini &> /dev/null
@@ -472,42 +474,15 @@ tune_memory_limits() {
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/256/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   fi
-  if [ -e "/opt/php74/etc/php74.ini" ]; then
-    sed -i "s/256/${_USE_FPM}/g" /opt/php74/etc/php74.ini &> /dev/null
-    wait
-    sed -i "s/181/${_USE_OPC}/g" /opt/php74/etc/php74.ini &> /dev/null
-    sed -i "s/256/${_USE_CLI}/g" /opt/php74/lib/php.ini   &> /dev/null
-  fi
-  if [ -e "/opt/php73/etc/php73.ini" ]; then
-    sed -i "s/256/${_USE_FPM}/g" /opt/php73/etc/php73.ini &> /dev/null
-    wait
-    sed -i "s/181/${_USE_OPC}/g" /opt/php73/etc/php73.ini &> /dev/null
-    sed -i "s/256/${_USE_CLI}/g" /opt/php73/lib/php.ini   &> /dev/null
-  fi
-  if [ -e "/opt/php72/etc/php72.ini" ]; then
-    sed -i "s/256/${_USE_FPM}/g" /opt/php72/etc/php72.ini &> /dev/null
-    wait
-    sed -i "s/181/${_USE_OPC}/g" /opt/php72/etc/php72.ini &> /dev/null
-    sed -i "s/256/${_USE_CLI}/g" /opt/php72/lib/php.ini   &> /dev/null
-  fi
-  if [ -e "/opt/php71/etc/php71.ini" ]; then
-    sed -i "s/256/${_USE_FPM}/g" /opt/php71/etc/php71.ini &> /dev/null
-    wait
-    sed -i "s/181/${_USE_OPC}/g" /opt/php71/etc/php71.ini &> /dev/null
-    sed -i "s/256/${_USE_CLI}/g" /opt/php71/lib/php.ini   &> /dev/null
-  fi
-  if [ -e "/opt/php70/etc/php70.ini" ]; then
-    sed -i "s/256/${_USE_FPM}/g" /opt/php70/etc/php70.ini &> /dev/null
-    wait
-    sed -i "s/181/${_USE_OPC}/g" /opt/php70/etc/php70.ini &> /dev/null
-    sed -i "s/256/${_USE_CLI}/g" /opt/php70/lib/php.ini   &> /dev/null
-  fi
-  if [ -e "/opt/php56/etc/php56.ini" ]; then
-    sed -i "s/256/${_USE_FPM}/g" /opt/php56/etc/php56.ini &> /dev/null
-    wait
-    sed -i "s/181/${_USE_OPC}/g" /opt/php56/etc/php56.ini &> /dev/null
-    sed -i "s/256/${_USE_CLI}/g" /opt/php56/lib/php.ini   &> /dev/null
-  fi
+  _PHP_V="81 80 74 73 72 71 70 56"
+  for e in ${_PHP_V}; do
+    if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
+      sed -i "s/256/${_USE_FPM}/g" /opt/php${e}/etc/php${e}.ini &> /dev/null
+      wait
+      sed -i "s/181/${_USE_OPC}/g" /opt/php${e}/etc/php${e}.ini &> /dev/null
+      sed -i "s/256/${_USE_CLI}/g" /opt/php${e}/lib/php.ini     &> /dev/null
+    fi
+  done
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     tune_sql_memory_limits
     update_sql_conf
@@ -2928,6 +2903,8 @@ switch_to_dash() {
                   /opt/php72/bin \
                   /opt/php73/bin \
                   /opt/php74/bin \
+                  /opt/php80/bin \
+                  /opt/php81/bin \
                   /sbin \
                   /usr/bin \
                   /usr/lib/ConsoleKit/run-session.d \
@@ -2985,6 +2962,8 @@ switch_to_bash() {
                   /opt/php72/bin \
                   /opt/php73/bin \
                   /opt/php74/bin \
+                  /opt/php80/bin \
+                  /opt/php81/bin \
                   /sbin \
                   /usr/bin \
                   /usr/lib/ConsoleKit/run-session.d \
@@ -3031,6 +3010,8 @@ strict_bin_permissions() {
               /opt/php72/bin \
               /opt/php73/bin \
               /opt/php74/bin \
+              /opt/php80/bin \
+              /opt/php81/bin \
               /sbin \
               /usr/bin \
               /usr/local/bin \
@@ -5563,30 +5544,13 @@ update_initd() {
       killall -9 nginx php-cgi php-fpm &> /dev/null
       mrun "update-rc.d -f php5-fpm remove" &> /dev/null
       mrun "update-rc.d cron defaults" &> /dev/null
-      if [ -e "/etc/init.d/php74-fpm" ]; then
-        mrun "update-rc.d php74-fpm defaults" &> /dev/null
-        mrun "service php74-fpm start" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php73-fpm" ]; then
-        mrun "update-rc.d php73-fpm defaults" &> /dev/null
-        mrun "service php73-fpm start" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php72-fpm" ]; then
-        mrun "update-rc.d php72-fpm defaults" &> /dev/null
-        mrun "service php72-fpm start" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php71-fpm" ]; then
-        mrun "update-rc.d php71-fpm defaults" &> /dev/null
-        mrun "service php71-fpm start" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php70-fpm" ]; then
-        mrun "update-rc.d php70-fpm defaults" &> /dev/null
-        mrun "service php70-fpm start" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php56-fpm" ]; then
-        mrun "update-rc.d php56-fpm defaults" &> /dev/null
-        mrun "service php56-fpm start" &> /dev/null
-      fi
+      _PHP_V="81 80 74 73 72 71 70 56"
+      for e in ${_PHP_V}; do
+        if [ -e "/etc/init.d/php${e}-fpm" ]; then
+          mrun "update-rc.d php${e}-fpm defaults" &> /dev/null
+          mrun "service php${e}-fpm start" &> /dev/null
+        fi
+      done
       mrun "update-rc.d nginx defaults" &> /dev/null
       mrun "service nginx start" &> /dev/null
     fi
@@ -5705,51 +5669,22 @@ update_initd() {
       mrun "service redis-server restart" &> /dev/null
       mrun "update-rc.d -f php5-fpm remove" &> /dev/null
       mrun "service nginx stop" &> /dev/null
-      if [ -e "/etc/init.d/php74-fpm" ]; then
-        mrun "update-rc.d php74-fpm defaults" &> /dev/null
-        mrun "service php74-fpm stop" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php73-fpm" ]; then
-        mrun "update-rc.d php73-fpm defaults" &> /dev/null
-        mrun "service php73-fpm stop" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php72-fpm" ]; then
-        mrun "update-rc.d php72-fpm defaults" &> /dev/null
-        mrun "service php72-fpm stop" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php71-fpm" ]; then
-        mrun "update-rc.d php71-fpm defaults" &> /dev/null
-        mrun "service php71-fpm stop" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php70-fpm" ]; then
-        mrun "update-rc.d php70-fpm defaults" &> /dev/null
-        mrun "service php70-fpm stop" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php56-fpm" ]; then
-        mrun "update-rc.d php56-fpm defaults" &> /dev/null
-        mrun "service php56-fpm stop" &> /dev/null
-      fi
+      _PHP_V="81 80 74 73 72 71 70 56"
+      for e in ${_PHP_V}; do
+        if [ -e "/etc/init.d/php${e}-fpm" ]; then
+          mrun "update-rc.d php${e}-fpm defaults" &> /dev/null
+          mrun "service php${e}-fpm stop" &> /dev/null
+        fi
+      done
       killall -9 php-fpm &> /dev/null
       killall -9 php-cgi &> /dev/null
       killall -9 pure-ftpd &> /dev/null
-      if [ -e "/etc/init.d/php74-fpm" ]; then
-        mrun "service php74-fpm start" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php73-fpm" ]; then
-        mrun "service php73-fpm start" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php72-fpm" ]; then
-        mrun "service php72-fpm start" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php71-fpm" ]; then
-        mrun "service php71-fpm start" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php70-fpm" ]; then
-        mrun "service php70-fpm start" &> /dev/null
-      fi
-      if [ -e "/etc/init.d/php56-fpm" ]; then
-        mrun "service php56-fpm start" &> /dev/null
-      fi
+      _PHP_V="81 80 74 73 72 71 70 56"
+      for e in ${_PHP_V}; do
+        if [ -e "/etc/init.d/php${e}-fpm" ]; then
+          mrun "service php${e}-fpm start" &> /dev/null
+        fi
+      done
       mrun "service nginx start" &> /dev/null
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
         msg "INFO: Running ${_DB_SERVER} system tables (2) upgrade..."

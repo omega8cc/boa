@@ -256,7 +256,7 @@ enable_chattr() {
 
     _CHECK_USE_PHP_CLI=$(grep "/opt/php" \
       ${dscUsr}/tools/drush/drush.php 2>&1)
-    _PHP_V="74 73 72 71 70 56"
+    _PHP_V="81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
         && [ ! -e "${_U_HD}/.ctrl.php${e}.${_X_SE}.pid" ]; then
@@ -279,7 +279,11 @@ enable_chattr() {
         _CHECK_USE_PHP_CLI=$(grep "/opt/php" \
           ${dscUsr}/tools/drush/drush.php 2>&1)
         echo "_CHECK_USE_PHP_CLI is ${_CHECK_USE_PHP_CLI} for $1 at ${_USER}"
-        if [[ "${_CHECK_USE_PHP_CLI}" =~ "php74" ]]; then
+        if [[ "${_CHECK_USE_PHP_CLI}" =~ "php81" ]]; then
+          _USE_PHP_CLI=8.1
+        elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php80" ]]; then
+          _USE_PHP_CLI=8.0
+        elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php74" ]]; then
           _USE_PHP_CLI=7.4
         elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php73" ]]; then
           _USE_PHP_CLI=7.3
@@ -294,7 +298,13 @@ enable_chattr() {
         fi
       fi
       echo _USE_PHP_CLI is ${_USE_PHP_CLI} for $1
-      if [ "${_USE_PHP_CLI}" = "7.4" ]; then
+      if [ "${_USE_PHP_CLI}" = "8.1" ]; then
+        cp -af /opt/php81/lib/php.ini ${_U_II}
+        _U_INI=81
+      elif [ "${_USE_PHP_CLI}" = "8.0" ]; then
+        cp -af /opt/php80/lib/php.ini ${_U_II}
+        _U_INI=80
+      elif [ "${_USE_PHP_CLI}" = "7.4" ]; then
         cp -af /opt/php74/lib/php.ini ${_U_II}
         _U_INI=74
       elif [ "${_USE_PHP_CLI}" = "7.3" ]; then
@@ -325,6 +335,8 @@ enable_chattr() {
           /opt/php72:       \
           /opt/php73:       \
           /opt/php74:       \
+          /opt/php80:       \
+          /opt/php81:       \
           /opt/tika:        \
           /opt/tika7:       \
           /opt/tika8:       \
@@ -909,7 +921,7 @@ update_php_cli_local_ini() {
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="74 73 72 71 70 56"
+  _PHP_V="81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
       && [ ! -e "${_U_HD}/.ctrl.php${e}.${_X_SE}.pid" ]; then
@@ -931,7 +943,13 @@ update_php_cli_local_ini() {
     chattr -i ${_U_II}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php74" ]]; then
+    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php81" ]]; then
+      cp -af /opt/php81/lib/php.ini ${_U_II}
+      _U_INI=81
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php80" ]]; then
+      cp -af /opt/php80/lib/php.ini ${_U_II}
+      _U_INI=80
+    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php74" ]]; then
       cp -af /opt/php74/lib/php.ini ${_U_II}
       _U_INI=74
     elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php73" ]]; then
@@ -961,6 +979,8 @@ update_php_cli_local_ini() {
         /opt/php72:          \
         /opt/php73:          \
         /opt/php74:          \
+        /opt/php80:          \
+        /opt/php81:          \
         /opt/tika:           \
         /opt/tika7:          \
         /opt/tika8:          \
@@ -997,7 +1017,13 @@ update_php_cli_local_ini() {
 # Update PHP-CLI for Drush.
 update_php_cli_drush() {
   _DRUSH_FILE="${dscUsr}/tools/drush/drush.php"
-  if [ "${_T_CLI_VRN}" = "7.4" ] && [ -x "/opt/php74/bin/php" ]; then
+  if [ "${_T_CLI_VRN}" = "8.1" ] && [ -x "/opt/php81/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php81\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    _T_CLI=/opt/php81/bin
+  elif [ "${_T_CLI_VRN}" = "8.0" ] && [ -x "/opt/php80/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php80\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    _T_CLI=/opt/php80/bin
+  elif [ "${_T_CLI_VRN}" = "7.4" ] && [ -x "/opt/php74/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
     _T_CLI=/opt/php74/bin
   elif [ "${_T_CLI_VRN}" = "7.3" ] && [ -x "/opt/php73/bin/php" ]; then
@@ -1203,7 +1229,13 @@ satellite_update_web_user() {
       if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
         cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
       else
-        if [ -e "/opt/php74/etc/php74.ini" ]; then
+        if [ -e "/opt/php81/etc/php81.ini" ]; then
+          cp -af /opt/php81/etc/php81.ini ${_T_II}
+          _T_PV=81
+        elif [ -e "/opt/php80/etc/php80.ini" ]; then
+          cp -af /opt/php80/etc/php80.ini ${_T_II}
+          _T_PV=80
+        elif [ -e "/opt/php74/etc/php74.ini" ]; then
           cp -af /opt/php74/etc/php74.ini ${_T_II}
           _T_PV=74
         elif [ -e "/opt/php73/etc/php73.ini" ]; then
@@ -1235,6 +1267,8 @@ satellite_update_web_user() {
           /opt/php72:     \
           /opt/php73:     \
           /opt/php74:     \
+          /opt/php80:     \
+          /opt/php81:     \
           /opt/tika:      \
           /opt/tika7:     \
           /opt/tika8:     \
@@ -1404,95 +1438,60 @@ switch_php() {
       _T_CLI_VRN=$(cat ${dscUsr}/static/control/cli.info 2>&1)
       _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
       _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-      if [ "${_T_CLI_VRN}" = "7.4" ] \
+      if [ "${_T_CLI_VRN}" = "8.1" ] \
+        || [ "${_T_CLI_VRN}" = "8.0" ] \
+        || [ "${_T_CLI_VRN}" = "7.4" ] \
         || [ "${_T_CLI_VRN}" = "7.3" ] \
         || [ "${_T_CLI_VRN}" = "7.2" ] \
         || [ "${_T_CLI_VRN}" = "7.1" ] \
         || [ "${_T_CLI_VRN}" = "7.0" ] \
         || [ "${_T_CLI_VRN}" = "5.6" ] \
         || [ "${_T_CLI_VRN}" = "5.2" ]; then
-        if [ "${_T_CLI_VRN}" = "7.4" ] \
+        if [ "${_T_CLI_VRN}" = "8.1" ] \
+          && [ ! -x "/opt/php81/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _T_CLI_VRN=7.3
+          elif [ -x "/opt/php74/bin/php" ]; then
+            _T_CLI_VRN=7.4
+          elif [ -x "/opt/php80/bin/php" ]; then
+            _T_CLI_VRN=8.0
+          fi
+        elif [ "${_T_CLI_VRN}" = "8.0" ] \
+          && [ ! -x "/opt/php80/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _T_CLI_VRN=7.3
+          elif [ -x "/opt/php74/bin/php" ]; then
+            _T_CLI_VRN=7.4
+          elif [ -x "/opt/php81/bin/php" ]; then
+            _T_CLI_VRN=8.1
+          fi
+        elif [ "${_T_CLI_VRN}" = "7.4" ] \
           && [ ! -x "/opt/php74/bin/php" ]; then
           if [ -x "/opt/php73/bin/php" ]; then
             _T_CLI_VRN=7.3
-          elif [ -x "/opt/php72/bin/php" ]; then
-            _T_CLI_VRN=7.2
-          elif [ -x "/opt/php71/bin/php" ]; then
-            _T_CLI_VRN=7.1
-          elif [ -x "/opt/php70/bin/php" ]; then
-            _T_CLI_VRN=7.0
-          elif [ -x "/opt/php56/bin/php" ]; then
-            _T_CLI_VRN=5.6
+          elif [ -x "/opt/php80/bin/php" ]; then
+            _T_CLI_VRN=8.0
+          elif [ -x "/opt/php81/bin/php" ]; then
+            _T_CLI_VRN=8.1
           fi
         elif [ "${_T_CLI_VRN}" = "7.3" ] \
           && [ ! -x "/opt/php73/bin/php" ]; then
-          if [ -x "/opt/php72/bin/php" ]; then
-            _T_CLI_VRN=7.2
-          elif [ -x "/opt/php71/bin/php" ]; then
-            _T_CLI_VRN=7.1
-          elif [ -x "/opt/php70/bin/php" ]; then
-            _T_CLI_VRN=7.0
-          elif [ -x "/opt/php56/bin/php" ]; then
-            _T_CLI_VRN=5.6
-          fi
-        elif [ "${_T_CLI_VRN}" = "7.2" ] \
-          && [ ! -x "/opt/php72/bin/php" ]; then
-          if [ -x "/opt/php73/bin/php" ]; then
-            _T_CLI_VRN=7.3
-          elif [ -x "/opt/php71/bin/php" ]; then
-            _T_CLI_VRN=7.1
-          elif [ -x "/opt/php70/bin/php" ]; then
-            _T_CLI_VRN=7.0
-          elif [ -x "/opt/php56/bin/php" ]; then
-            _T_CLI_VRN=5.6
-          fi
-        elif [ "${_T_CLI_VRN}" = "7.1" ] \
-          && [ ! -x "/opt/php71/bin/php" ]; then
-          if [ -x "/opt/php73/bin/php" ]; then
-            _T_CLI_VRN=7.3
-          elif [ -x "/opt/php72/bin/php" ]; then
-            _T_CLI_VRN=7.2
-          elif [ -x "/opt/php70/bin/php" ]; then
-            _T_CLI_VRN=7.0
-          elif [ -x "/opt/php56/bin/php" ]; then
-            _T_CLI_VRN=5.6
-          fi
-        elif [ "${_T_CLI_VRN}" = "7.0" ] \
-          && [ ! -x "/opt/php70/bin/php" ]; then
-          if [ -x "/opt/php73/bin/php" ]; then
-            _T_CLI_VRN=7.3
-          elif [ -x "/opt/php72/bin/php" ]; then
-            _T_CLI_VRN=7.2
-          elif [ -x "/opt/php71/bin/php" ]; then
-            _T_CLI_VRN=7.1
-          elif [ -x "/opt/php56/bin/php" ]; then
-            _T_CLI_VRN=5.6
-          fi
-        elif [ "${_T_CLI_VRN}" = "5.6" ] \
-          && [ ! -x "/opt/php56/bin/php" ]; then
-          if [ -x "/opt/php73/bin/php" ]; then
-            _T_CLI_VRN=7.3
-          elif [ -x "/opt/php72/bin/php" ]; then
-            _T_CLI_VRN=7.2
-          elif [ -x "/opt/php71/bin/php" ]; then
-            _T_CLI_VRN=7.1
-          elif [ -x "/opt/php70/bin/php" ]; then
-            _T_CLI_VRN=7.0
-          fi
-        elif [ "${_T_CLI_VRN}" = "5.2" ]; then
           if [ -x "/opt/php74/bin/php" ]; then
             _T_CLI_VRN=7.4
-          elif [ -x "/opt/php73/bin/php" ]; then
-            _T_CLI_VRN=7.3
-          elif [ -x "/opt/php72/bin/php" ]; then
-            _T_CLI_VRN=7.2
-          elif [ -x "/opt/php71/bin/php" ]; then
-            _T_CLI_VRN=7.1
-          elif [ -x "/opt/php70/bin/php" ]; then
-            _T_CLI_VRN=7.0
-          elif [ -x "/opt/php56/bin/php" ]; then
-            _T_CLI_VRN=5.6
+          elif [ -x "/opt/php80/bin/php" ]; then
+            _T_CLI_VRN=8.0
+          elif [ -x "/opt/php81/bin/php" ]; then
+            _T_CLI_VRN=8.1
           fi
+        elif [ "${_T_CLI_VRN}" = "5.2" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _T_CLI_VRN=7.3
+          elif [ -x "/opt/php74/bin/php" ]; then
+            _T_CLI_VRN=7.4
+          elif [ -x "/opt/php80/bin/php" ]; then
+            _T_CLI_VRN=8.0
+          elif [ -x "/opt/php81/bin/php" ]; then
+            _T_CLI_VRN=8.1
         fi
         if [ "${_T_CLI_VRN}" != "${_PHP_CLI_VERSION}" ] \
           || [ ! -e "${dscUsr}/static/control/.ctrl.cli.${_X_SE}.pid" ]; then
@@ -1608,7 +1607,11 @@ switch_php() {
       _T_FPM_VRN=$(cat ${dscUsr}/static/control/fpm.info 2>&1)
       _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
       _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-      if [ "${_T_FPM_VRN}" = "74" ]; then
+      if [ "${_T_FPM_VRN}" = "81" ]; then
+        _T_FPM_VRN=8.1
+      elif [ "${_T_FPM_VRN}" = "80" ]; then
+        _T_FPM_VRN=8.0
+      elif [ "${_T_FPM_VRN}" = "74" ]; then
         _T_FPM_VRN=7.4
       elif [ "${_T_FPM_VRN}" = "73" ]; then
         _T_FPM_VRN=7.3
@@ -1623,95 +1626,60 @@ switch_php() {
       elif [ "${_T_FPM_VRN}" = "52" ]; then
         _T_FPM_VRN=5.2
       fi
-      if [ "${_T_FPM_VRN}" = "7.4" ] \
+      if [ "${_T_FPM_VRN}" = "8.1" ] \
+        || [ "${_T_FPM_VRN}" = "8.0" ] \
+        || [ "${_T_FPM_VRN}" = "7.4" ] \
         || [ "${_T_FPM_VRN}" = "7.3" ] \
         || [ "${_T_FPM_VRN}" = "7.2" ] \
         || [ "${_T_FPM_VRN}" = "7.1" ] \
         || [ "${_T_FPM_VRN}" = "7.0" ] \
         || [ "${_T_FPM_VRN}" = "5.6" ] \
         || [ "${_T_FPM_VRN}" = "5.2" ]; then
-        if [ "${_T_FPM_VRN}" = "7.4" ] \
+        if [ "${_T_FPM_VRN}" = "8.1" ] \
+          && [ ! -x "/opt/php81/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _T_FPM_VRN=7.3
+          elif [ -x "/opt/php74/bin/php" ]; then
+            _T_FPM_VRN=7.4
+          elif [ -x "/opt/php80/bin/php" ]; then
+            _T_FPM_VRN=8.0
+          fi
+        elif [ "${_T_FPM_VRN}" = "8.0" ] \
+          && [ ! -x "/opt/php80/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _T_FPM_VRN=7.3
+          elif [ -x "/opt/php74/bin/php" ]; then
+            _T_FPM_VRN=7.4
+          elif [ -x "/opt/php81/bin/php" ]; then
+            _T_FPM_VRN=8.1
+          fi
+        elif [ "${_T_FPM_VRN}" = "7.4" ] \
           && [ ! -x "/opt/php74/bin/php" ]; then
           if [ -x "/opt/php73/bin/php" ]; then
             _T_FPM_VRN=7.3
-          elif [ -x "/opt/php72/bin/php" ]; then
-            _T_FPM_VRN=7.2
-          elif [ -x "/opt/php71/bin/php" ]; then
-            _T_FPM_VRN=7.1
-          elif [ -x "/opt/php70/bin/php" ]; then
-            _T_FPM_VRN=7.0
-          elif [ -x "/opt/php56/bin/php" ]; then
-            _T_FPM_VRN=5.6
+          elif [ -x "/opt/php80/bin/php" ]; then
+            _T_FPM_VRN=8.0
+          elif [ -x "/opt/php81/bin/php" ]; then
+            _T_FPM_VRN=8.1
           fi
         elif [ "${_T_FPM_VRN}" = "7.3" ] \
           && [ ! -x "/opt/php73/bin/php" ]; then
-          if [ -x "/opt/php72/bin/php" ]; then
-            _T_FPM_VRN=7.2
-          elif [ -x "/opt/php71/bin/php" ]; then
-            _T_FPM_VRN=7.1
-          elif [ -x "/opt/php70/bin/php" ]; then
-            _T_FPM_VRN=7.0
-          elif [ -x "/opt/php56/bin/php" ]; then
-            _T_FPM_VRN=5.6
-          fi
-        elif [ "${_T_FPM_VRN}" = "7.2" ] \
-          && [ ! -x "/opt/php72/bin/php" ]; then
-          if [ -x "/opt/php73/bin/php" ]; then
-            _T_FPM_VRN=7.3
-          elif [ -x "/opt/php71/bin/php" ]; then
-            _T_FPM_VRN=7.1
-          elif [ -x "/opt/php70/bin/php" ]; then
-            _T_FPM_VRN=7.0
-          elif [ -x "/opt/php56/bin/php" ]; then
-            _T_FPM_VRN=5.6
-          fi
-        elif [ "${_T_FPM_VRN}" = "7.1" ] \
-          && [ ! -x "/opt/php71/bin/php" ]; then
-          if [ -x "/opt/php73/bin/php" ]; then
-            _T_FPM_VRN=7.3
-          elif [ -x "/opt/php72/bin/php" ]; then
-            _T_FPM_VRN=7.2
-          elif [ -x "/opt/php70/bin/php" ]; then
-            _T_FPM_VRN=7.0
-          elif [ -x "/opt/php56/bin/php" ]; then
-            _T_FPM_VRN=5.6
-          fi
-        elif [ "${_T_FPM_VRN}" = "7.0" ] \
-          && [ ! -x "/opt/php70/bin/php" ]; then
-          if [ -x "/opt/php73/bin/php" ]; then
-            _T_FPM_VRN=7.3
-          elif [ -x "/opt/php72/bin/php" ]; then
-            _T_FPM_VRN=7.2
-          elif [ -x "/opt/php71/bin/php" ]; then
-            _T_FPM_VRN=7.1
-          elif [ -x "/opt/php56/bin/php" ]; then
-            _T_FPM_VRN=5.6
-          fi
-        elif [ "${_T_FPM_VRN}" = "5.6" ] \
-          && [ ! -x "/opt/php56/bin/php" ]; then
-          if [ -x "/opt/php73/bin/php" ]; then
-            _T_FPM_VRN=7.3
-          elif [ -x "/opt/php72/bin/php" ]; then
-            _T_FPM_VRN=7.2
-          elif [ -x "/opt/php71/bin/php" ]; then
-            _T_FPM_VRN=7.1
-          elif [ -x "/opt/php70/bin/php" ]; then
-            _T_FPM_VRN=7.0
-          fi
-        elif [ "${_T_FPM_VRN}" = "5.2" ]; then
           if [ -x "/opt/php74/bin/php" ]; then
             _T_FPM_VRN=7.4
-          elif [ -x "/opt/php73/bin/php" ]; then
-            _T_FPM_VRN=7.3
-          elif [ -x "/opt/php72/bin/php" ]; then
-            _T_FPM_VRN=7.2
-          elif [ -x "/opt/php71/bin/php" ]; then
-            _T_FPM_VRN=7.1
-          elif [ -x "/opt/php70/bin/php" ]; then
-            _T_FPM_VRN=7.0
-          elif [ -x "/opt/php56/bin/php" ]; then
-            _T_FPM_VRN=5.6
+          elif [ -x "/opt/php80/bin/php" ]; then
+            _T_FPM_VRN=8.0
+          elif [ -x "/opt/php81/bin/php" ]; then
+            _T_FPM_VRN=8.1
           fi
+        else
+          if [ -x "/opt/php73/bin/php" ]; then
+            _T_FPM_VRN=7.3
+          elif [ -x "/opt/php74/bin/php" ]; then
+            _T_FPM_VRN=7.4
+          elif [ -x "/opt/php80/bin/php" ]; then
+            _T_FPM_VRN=8.0
+          elif [ -x "/opt/php81/bin/php" ]; then
+            _T_FPM_VRN=8.1
         fi
         if [ "${_T_FPM_VRN}" != "${_PHP_FPM_VERSION}" ] \
           || [ "${_FORCE_FPM_SETUP}" = "YES" ]; then
@@ -1725,7 +1693,7 @@ switch_php() {
         _FMP_D_INC="${dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
         if [ "${_PHP_FPM_MULTI}" = "YES" ] \
           && [ -d "${dscUsr}/tools/le" ]; then
-          _PHP_M_V="74 73 72 71 70 56"
+          _PHP_M_V="81 80 74 73 72 71 70 56"
           _D_POOL="${_USER}.${_PHP_SV}"
           if [ ! -e "${_FMP_D_INC}" ]; then
             echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
@@ -1814,7 +1782,7 @@ switch_php() {
           _FMP_D_INC="${dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
           if [ "${_PHP_FPM_MULTI}" = "YES" ] \
             && [ -d "${dscUsr}/tools/le" ]; then
-            _PHP_M_V="74 73 72 71 70 56"
+            _PHP_M_V="81 80 74 73 72 71 70 56"
             _D_POOL="${_USER}.${_PHP_SV}"
             if [ ! -e "${_FMP_D_INC}" ]; then
               echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
@@ -1846,7 +1814,7 @@ switch_php() {
               fi
               if [ -e "/home/${_WEB}/.drush/php.ini" ]; then
                 _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
-                _PHP_V="74 73 72 71 70 56"
+                _PHP_V="81 80 74 73 72 71 70 56"
                 for e in ${_PHP_V}; do
                   if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
                     if [ "${e}" != "${m}" ] \
@@ -1866,7 +1834,7 @@ switch_php() {
           ### create or update special system user if needed
           if [ "${_PHP_FPM_MULTI}" = "YES" ] \
             && [ -d "${dscUsr}/tools/le" ]; then
-            _PHP_M_V="74 73 72 71 70 56"
+            _PHP_M_V="81 80 74 73 72 71 70 56"
             rm -f /opt/php*/etc/pool.d/${_USER}.conf
           else
             _PHP_M_V="${_PHP_SV}"
@@ -2134,7 +2102,7 @@ manage_user() {
           fi
         fi
         if [ -f "${dscUsr}/static/control/multi-fpm.info" ]; then
-          _PHP_M_V="74 73 72 71 70 56"
+          _PHP_M_V="81 80 74 73 72 71 70 56"
           for m in ${_PHP_M_V}; do
             if [ -x "/opt/php${m}/bin/php" ] \
               && [ -e "/opt/php${m}/etc/pool.d/${_USER}.${m}.conf" ]; then

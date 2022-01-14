@@ -82,7 +82,13 @@ done
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
   _THIS_DB_HOST=$(uname -n 2>&1)
 fi
-if [ "${_PHP_CLI_VERSION}" = "7.4" ] \
+if [ "${_PHP_CLI_VERSION}" = "8.1" ] \
+  && [ -x "/opt/php81/bin/php" ]; then
+  _T_CLI=/opt/php81/bin
+elif [ "${_PHP_CLI_VERSION}" = "8.0" ] \
+  && [ -x "/opt/php80/bin/php" ]; then
+  _T_CLI=/opt/php80/bin
+elif [ "${_PHP_CLI_VERSION}" = "7.4" ] \
   && [ -x "/opt/php74/bin/php" ]; then
   _T_CLI=/opt/php74/bin
 elif [ "${_PHP_CLI_VERSION}" = "7.3" ] \

@@ -534,33 +534,18 @@ update_agents() {
     && [ -e "/data/disk/arch/sql" ] \
     && [ ! -e "${pthLog}/fast_shutdown.ctrl.${_X_SE}.pid" ]; then
     sed -i "s/.*opcache.fast_shutdown.*//g" /opt/etc/fpm/fpm-pool-common.conf
-    if [ -e "/etc/init.d/php74-fpm" ]; then
-      service php74-fpm reload &> /dev/null
-    fi
-    if [ -e "/etc/init.d/php73-fpm" ]; then
-      service php73-fpm reload &> /dev/null
-    fi
-    if [ -e "/etc/init.d/php72-fpm" ]; then
-      service php72-fpm reload &> /dev/null
-    fi
-    if [ -e "/etc/init.d/php71-fpm" ]; then
-      service php71-fpm reload &> /dev/null
-    fi
-    if [ -e "/etc/init.d/php70-fpm" ]; then
-      service php70-fpm reload &> /dev/null
-    fi
-    if [ -e "/etc/init.d/php56-fpm" ]; then
-      service php56-fpm reload &> /dev/null
-    fi
-    if [ -e "/etc/init.d/php55-fpm" ]; then
-      service php55-fpm reload &> /dev/null
-    fi
-    if [ -e "/etc/init.d/php54-fpm" ]; then
-      service php54-fpm reload &> /dev/null
-    fi
-    if [ -e "/etc/init.d/php53-fpm" ]; then
-      service php53-fpm reload &> /dev/null
-    fi
+    _PHP_V="81 80 74 73 72 71 70 56"
+    for e in ${_PHP_V}; do
+      if [ -e "/etc/init.d/php${e}-fpm" ]; then
+        service php${e}-fpm reload &> /dev/null
+      fi
+    done
+    _PHP_V="55 54 53"
+    for e in ${_PHP_V}; do
+      if [ -e "/etc/init.d/php${e}-fpm" ]; then
+        service php${e}-fpm stop &> /dev/null
+      fi
+    done
     touch ${pthLog}/fast_shutdown.ctrl.${_X_SE}.pid
   fi
 
