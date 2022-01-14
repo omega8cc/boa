@@ -1171,7 +1171,9 @@ barracuda_cnf() {
           fi
         else
           if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-            if [ "${_PHP_SINGLE_INSTALL}" = "7.4" ] \
+            if [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
+              || [ "${_PHP_SINGLE_INSTALL}" = "8.0" ] \
+              || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ] \
               || [ "${_PHP_SINGLE_INSTALL}" = "7.3" ] \
               || [ "${_PHP_SINGLE_INSTALL}" = "7.2" ] \
               || [ "${_PHP_SINGLE_INSTALL}" = "7.1" ] \
@@ -1275,9 +1277,23 @@ barracuda_cnf() {
                   _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_zero}"
                 fi
               fi
+
+              _is_PHP_multi_eight_one=$(grep "8\.1" /data/disk/*/static/control/multi-fpm.info 2>&1)
+              _is_PHP_FPM_eight_one=$(grep "8\.1" /data/disk/*/static/control/fpm.info 2>&1)
+              _is_PHP_CLI_eight_one=$(grep "8\.1" /data/disk/*/static/control/cli.info 2>&1)
+              _is_PHP_eight_one=
+              if [[ "${_is_PHP_multi_eight_one}" =~ "8.1" ]] \
+                || [[ "${_is_PHP_FPM_eight_one}" =~ "8.1" ]] \
+                || [[ "${_is_PHP_CLI_eight_one}" =~ "8.1" ]]; then
+                _is_PHP_eight_one=8.1
+                if [ "${_is_PHP_eight_one}" != "${_PHP_FPM_VERSION}" ]; then
+                  _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_one}"
+                fi
+              fi
+
               _PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL}"
               if [ -z "${_PHP_MULTI_INSTALL}" ]; then
-                _PHP_MULTI_INSTALL="7.4 7.3 7.2 5.6"
+                _PHP_MULTI_INSTALL="7.4 7.3 8.0 8.1"
               fi
               sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
             else
@@ -1288,18 +1304,29 @@ barracuda_cnf() {
         fi
       fi
       if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-        if [ "${_PHP_SINGLE_INSTALL}" = "7.4" ] \
+        if [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
+          || [ "${_PHP_SINGLE_INSTALL}" = "8.0" ] \
+          || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ] \
           || [ "${_PHP_SINGLE_INSTALL}" = "7.3" ] \
           || [ "${_PHP_SINGLE_INSTALL}" = "7.2" ] \
           || [ "${_PHP_SINGLE_INSTALL}" = "7.1" ] \
           || [ "${_PHP_SINGLE_INSTALL}" = "7.0" ] \
           || [ "${_PHP_SINGLE_INSTALL}" = "5.6" ]; then
-          _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
           _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
           _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
         fi
       fi
-      echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
+      if [ ! -z "${_PHP_MULTI_INSTALL}" ]; then
+        _PHP_SINGLE_INSTALL=
+        _PHP_MULTI_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
+        if [[ "${_PHP_MULTI_TEST}" =~ "_PHP_MULTI_INSTALL" ]]; then
+          sed -i "s/^_PHP_MULTI_INSTALL.*//g" ${barCnf}
+          wait
+          sed -i "/^$/d" ${barCnf}
+          echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
+        fi
+      fi
+      touch /root/.updated.multi.php.cnf
     fi
 
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION ${barCnf} 2>&1)
