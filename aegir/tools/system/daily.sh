@@ -661,11 +661,21 @@ fix_o_contrib_symlink() {
       if [ ! -e "${Plr}/modules/o_contrib_seven" ]; then
         ln -sf ${_O_CONTRIB_SEVEN} ${Plr}/modules/o_contrib_seven &> /dev/null
       fi
-    elif [ -e "${Plr}/web.config" ] \
-      && [ -e "${Plr}/core" ] \
+    elif [ -e "${Plr}/core" ] \
+      && [ ! -e "${Plr}/core/themes/stable9" ] \
       && [ -e "${_O_CONTRIB_EIGHT}" ]; then
       if [ ! -e "${Plr}/modules/o_contrib_eight" ]; then
         ln -sf ${_O_CONTRIB_EIGHT} ${Plr}/modules/o_contrib_eight &> /dev/null
+      fi
+    elif [ -e "${Plr}/core/themes/stable9" ] \
+      && [ -e "${_O_CONTRIB_NINE}" ]; then
+      if [ -e "${Plr}/modules/o_contrib_eight" ] \
+        || [ -e "${Plr}/modules/.o_contrib_eight_dont_use" ]; then
+        rm -f ${Plr}/modules/o_contrib_eight
+        rm -f ${Plr}/modules/.o_contrib_eight_dont_use
+      fi
+      if [ ! -e "${Plr}/modules/o_contrib_nine" ]; then
+        ln -sf ${_O_CONTRIB_NINE} ${Plr}/modules/o_contrib_nine &> /dev/null
       fi
     else
       if [ -e "${Plr}/modules/watchdog" ]; then
@@ -3520,6 +3530,7 @@ if [ -e "/data/all" ]; then
   _O_CONTRIB="/data/all/${_LAST_ALL}/o_contrib"
   _O_CONTRIB_SEVEN="/data/all/${_LAST_ALL}/o_contrib_seven"
   _O_CONTRIB_EIGHT="/data/all/${_LAST_ALL}/o_contrib_eight"
+  _O_CONTRIB_NINE="/data/all/${_LAST_ALL}/o_contrib_nine"
 elif [ -e "/data/disk/all" ]; then
   cd /data/disk/all
   listl=([0-9]*)
@@ -3527,10 +3538,12 @@ elif [ -e "/data/disk/all" ]; then
   _O_CONTRIB="/data/disk/all/${_LAST_ALL}/o_contrib"
   _O_CONTRIB_SEVEN="/data/disk/all/${_LAST_ALL}/o_contrib_seven"
   _O_CONTRIB_EIGHT="/data/disk/all/${_LAST_ALL}/o_contrib_eight"
+  _O_CONTRIB_NINE="/data/disk/all/${_LAST_ALL}/o_contrib_nine"
 else
   _O_CONTRIB=NO
   _O_CONTRIB_SEVEN=NO
   _O_CONTRIB_EIGHT=NO
+  _O_CONTRIB_NINE=NO
 fi
 #
 mkdir -p /var/xdrago/log/daily
