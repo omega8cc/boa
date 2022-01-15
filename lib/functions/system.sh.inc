@@ -1157,7 +1157,7 @@ barracuda_cnf() {
       fi
     fi
 
-    if [ -e "/root/.updated.multi.php.cnf" ]; then
+    if [ -e "/root/.fixed.multi.php.cnf" ]; then
       _DO_NOTHING=YES
     else
       if [ -e "/data/disk/arch/sql" ]; then
@@ -1324,12 +1324,17 @@ barracuda_cnf() {
         _PHP_MULTI_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
         if [[ "${_PHP_MULTI_TEST}" =~ "_PHP_MULTI_INSTALL" ]]; then
           sed -i "s/^_PHP_MULTI_INSTALL.*//g" ${barCnf}
-          wait
           sed -i "/^$/d" ${barCnf}
-          echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
         fi
+        echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
       fi
-      touch /root/.updated.multi.php.cnf
+      _PHP_MULTI_INSTALL_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
+      if [ -z "${_PHP_MULTI_INSTALL_TEST}" ]; then
+        sed -i "/^$/d" ${barCnf}
+        echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
+      fi
+      touch /root/.fixed.multi.php.cnf
+      rm -f /root/.updated.multi.php.cnf
     fi
 
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION ${barCnf} 2>&1)
@@ -1777,12 +1782,10 @@ barracuda_cnf() {
 
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-      if [ "${_PHP_SINGLE_INSTALL}" = "7.4" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "7.3" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "7.2" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "7.1" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "7.0" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "5.6" ]; then
+      if [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "8.0" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "7.3" ]; then
         _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
         _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
         _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
