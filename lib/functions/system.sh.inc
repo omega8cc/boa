@@ -2764,8 +2764,9 @@ install_ssl_src() {
 #
 # Install cURL from sources.
 install_curl_src() {
-  if [ "${_OSR}" = "precise" ]; then
+  if [ "${_OSR}" = "precise" ] || [ "${_OSR}" = "jessie" ]; then
     touch /root/.use.curl.from.packages.cnf
+    chattr +i /root/.use.curl.from.packages.cnf
     _CURL_VRN=7.81.0
   fi
   _CURL_INSTALL_REQUIRED=NO
@@ -2798,6 +2799,11 @@ install_curl_src() {
   if [[ "${_BROKEN_CURL_TEST}" =~ "libcurl.so.4" ]]; then
     _CURL_INSTALL_REQUIRED=YES
     touch /root/.use.curl.from.packages.cnf
+    chattr +i /root/.use.curl.from.packages.cnf
+    sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
+    grep lib /etc/ld.so.conf.d/libc.conf
+    mrun "ldconfig" &> /dev/null
+    rm -f /root/.fixed.multi.php.cnf
     msg "INFO: libcurl is broken, cURL re-install from packages required"
   fi
   if [ "${_PHP_BIN_BROKEN}" = "YES" ] && [ -z "${_CURL_ALREADY_REBUILT}" ]; then
@@ -2811,11 +2817,12 @@ install_curl_src() {
     ###--------------------###
     if [ -e "/root/.use.curl.from.packages.cnf" ]; then
       msg "INFO: cURL from packages is forced with /root/.use.curl.from.packages.cnf"
+      rm -f /root/.fixed.multi.php.cnf
       mkdir -p /var/backups/libcurl
       mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
       mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
       if [ -e "/usr/local/bin/curl" ]; then
-        mv -f /usr/local/bin/curl /usr/local/bin/curl-src-off
+        mv -f /usr/local/bin/curl /usr/local/bin/curl-src-off-$(date +%y%m%d-%H%M%S 2>&1)
       fi
       if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
         echo "curl install" | dpkg --set-selections &> /dev/null
