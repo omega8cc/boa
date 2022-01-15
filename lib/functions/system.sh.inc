@@ -1178,15 +1178,12 @@ barracuda_cnf() {
             _PHP_MULTI_INSTALL="7.2"
           fi
         else
+          ### Make sure that _PHP_SINGLE_INSTALL takes precedence
           if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
             if [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
               || [ "${_PHP_SINGLE_INSTALL}" = "8.0" ] \
               || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ] \
-              || [ "${_PHP_SINGLE_INSTALL}" = "7.3" ] \
-              || [ "${_PHP_SINGLE_INSTALL}" = "7.2" ] \
-              || [ "${_PHP_SINGLE_INSTALL}" = "7.1" ] \
-              || [ "${_PHP_SINGLE_INSTALL}" = "7.0" ] \
-              || [ "${_PHP_SINGLE_INSTALL}" = "5.6" ]; then
+              || [ "${_PHP_SINGLE_INSTALL}" = "7.3" ]; then
               _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
               _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
               _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
@@ -1311,24 +1308,41 @@ barracuda_cnf() {
           fi
         fi
       fi
+      ### Make sure that _PHP_SINGLE_INSTALL takes precedence
       if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
         if [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
           || [ "${_PHP_SINGLE_INSTALL}" = "8.0" ] \
           || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ] \
-          || [ "${_PHP_SINGLE_INSTALL}" = "7.3" ] \
-          || [ "${_PHP_SINGLE_INSTALL}" = "7.2" ] \
-          || [ "${_PHP_SINGLE_INSTALL}" = "7.1" ] \
-          || [ "${_PHP_SINGLE_INSTALL}" = "7.0" ] \
-          || [ "${_PHP_SINGLE_INSTALL}" = "5.6" ]; then
+          || [ "${_PHP_SINGLE_INSTALL}" = "7.3" ]; then
+          _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
           _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
           _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
         fi
-      fi
-      if [ -e "/root/.host8.cnf" ]; then
-        _PHP_MULTI_INSTALL="${_PHP_MULTI_INSTALL} 8.0 8.1"
+      else
+        _PHP_MULTI_INSTALL_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
+        if [[ ! "${_PHP_MULTI_INSTALL_TEST}" =~ "7.3" ]]; then
+          if [ -z "${_PHP_MULTI_INSTALL}" ]; then
+            _PHP_MULTI_INSTALL="7.3"
+          else
+            _PHP_MULTI_INSTALL="7.3 ${_PHP_MULTI_INSTALL}"
+          fi
+        fi
+        if [[ ! "${_PHP_MULTI_INSTALL_TEST}" =~ "7.4" ]]; then
+          if [ -z "${_PHP_MULTI_INSTALL}" ]; then
+            _PHP_MULTI_INSTALL="7.4"
+          else
+            _PHP_MULTI_INSTALL="7.4 ${_PHP_MULTI_INSTALL}"
+          fi
+        fi
+        if [ -e "/root/.host8.cnf" ]; then
+          if [ -z "${_PHP_MULTI_INSTALL}" ]; then
+            _PHP_MULTI_INSTALL="8.0 8.1"
+          else
+            _PHP_MULTI_INSTALL="8.0 8.1 ${_PHP_MULTI_INSTALL}"
+          fi
+        fi
       fi
       if [ ! -z "${_PHP_MULTI_INSTALL}" ]; then
-        _PHP_SINGLE_INSTALL=
         _PHP_MULTI_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
         if [[ "${_PHP_MULTI_TEST}" =~ "_PHP_MULTI_INSTALL" ]]; then
           sed -i "s/^_PHP_MULTI_INSTALL.*//g" ${barCnf}
@@ -1337,7 +1351,8 @@ barracuda_cnf() {
         echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
       fi
       _PHP_MULTI_INSTALL_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
-      if [ -z "${_PHP_MULTI_INSTALL_TEST}" ]; then
+      if [ -z "${_PHP_MULTI_INSTALL_TEST}" ] \
+        && [ ! -z "${_PHP_MULTI_INSTALL}" ]; then
         sed -i "/^$/d" ${barCnf}
         echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
       fi
