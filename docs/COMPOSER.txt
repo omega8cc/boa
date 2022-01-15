@@ -12,7 +12,7 @@ Since BOA-4.1.3 new Drupal 9 based platforms are supported:
  Varbase ---------------------- https://drupal.org/project/varbase
 
 IMPORTANT: You must switch your ~/static/control/cli.info to 7.3 or newer
-PHP version (BOA hosted on Omega8.cc comes with 7.4, 7.3 and 7.2), because
+PHP version (BOA hosted on Omega8.cc comes with 8.1, 8.0, 7.4 and 7.3), because
 D8 based distros require at least PHP 7.3 -- this also means that to run
 the sites installed after switching cli.info to 7.3 or newer, you will also
 need to either switch your ~/static/control/fpm.info to 7.3 or newer, or

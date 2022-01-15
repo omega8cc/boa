@@ -124,27 +124,27 @@ send_notice_php() {
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
   cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
-    -s "URGENT: Please switch your Aegir instance to PHP 5.6 [${_THIS_U}]" ${_CLIENT_EMAIL}
+    -s "URGENT: Please switch your Aegir instance to PHP 7.4 [${_THIS_U}]" ${_CLIENT_EMAIL}
 Hello,
 
 Our monitoring detected that you are still using deprecated
 and no longer supported PHP version: $1
 
-We have provided over a year of extended support for
+We have provided a few years of extended support for
 this PHP version, but now we can't extend it any further,
-because your system has to be upgraded to Debian Stretch,
-which doesn't support deprecated PHP versions.
+because your system has to be upgraded to newest Debian version,
+which doesn't support many deprecated PHP versions.
 
-The upgrade will happen in the first week of December, 2016,
+The upgrade will happen in the first week of May, 2022,
 and there are no exceptions possible to avoid it.
 
 This means that all Aegir instances still running PHP $1
 will stop working if not switched to one of currently
-supported versions: 7.4, 7.3, 7.2, 7.1, 7.0 or 5.6
+supported versions: 8.1, 8.0, 7.4, 7.3
 
 To switch PHP-FPM version on command line, please type:
 
-  echo 7.3 > ~/static/control/fpm.info
+  echo 7.4 > ~/static/control/fpm.info
 
 You can find more details at: https://learn.omega8.cc/node/330
 
@@ -159,7 +159,7 @@ This email has been sent by your Aegir system monitor
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
   cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
-    -s "URGENT: Please switch your Aegir instance to PHP 5.6 [${_THIS_U}]" ${_CLIENT_EMAIL}
+    -s "URGENT: Please switch your Aegir instance to PHP 7.4 [${_THIS_U}]" ${_CLIENT_EMAIL}
 Hello,
 
 Our monitoring detected that you are still using deprecated
@@ -167,19 +167,19 @@ and no longer supported PHP version: $1
 
 We have provided over a year of extended support for
 this PHP version, but now we can't extend it any further,
-because your system has to be upgraded to Debian Stretch,
+because your system has to be upgraded to newest Debian version,
 which doesn't support deprecated PHP versions.
 
-The upgrade will happen in the first week of December, 2016,
+The upgrade will happen in the first week of May, 2022,
 and there are no exceptions possible to avoid it.
 
 This means that all Aegir instances still running PHP $1
 will stop working if not switched to one of currently
-supported versions: 7.4, 7.3, 7.2, 7.1, 7.0 or 5.6
+supported versions: 8.1, 8.0, 7.4, 7.3
 
 To switch PHP-FPM version on command line, please type:
 
-  echo 7.3 > ~/static/control/fpm.info
+  echo 7.4 > ~/static/control/fpm.info
 
 You can find more details at: https://learn.omega8.cc/node/330
 
@@ -194,7 +194,7 @@ This email has been sent by your Aegir system monitor
 EOF
   else
   cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
-    -s "URGENT: Please switch your Aegir instance to PHP 5.6 [${_THIS_U}]" ${_CLIENT_EMAIL}
+    -s "URGENT: Please switch your Aegir instance to PHP 7.4 [${_THIS_U}]" ${_CLIENT_EMAIL}
 Hello,
 
 Our monitoring detected that you are still using deprecated
@@ -202,19 +202,19 @@ and no longer supported PHP version: $1
 
 We have provided over a year of extended support for
 this PHP version, but now we can't extend it any further,
-because your system has to be upgraded to Debian Stretch,
+because your system has to be upgraded to newest Debian version,
 which doesn't support deprecated PHP versions.
 
-The upgrade will happen in the first week of December, 2016,
+The upgrade will happen in the first week of May, 2022,
 and there are no exceptions possible to avoid it.
 
 This means that all Aegir instances still running PHP $1
 will stop working if not switched to one of currently
-supported versions: 7.4, 7.3, 7.2, 7.1, 7.0 or 5.6
+supported versions: 8.1, 8.0, 7.4, 7.3
 
 To switch PHP-FPM version on command line, please type:
 
-  echo 7.3 > ~/static/control/fpm.info
+  echo 7.4 > ~/static/control/fpm.info
 
 You can find more details at: https://learn.omega8.cc/node/330
 
@@ -240,7 +240,8 @@ detect_deprecated_php() {
     _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
     if [ "${_PHP_FPM_VERSION}" = "5.5" ] \
       || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
-      || [ "${_PHP_FPM_VERSION}" = "5.3" ]; then
+      || [ "${_PHP_FPM_VERSION}" = "5.3" ] \
+      || [ "${_PHP_FPM_VERSION}" = "5.2" ]; then
       echo Deprecated PHP-FPM ${_PHP_FPM_VERSION} detected in ${_THIS_U}
       read_account_data
       send_notice_php ${_PHP_FPM_VERSION}

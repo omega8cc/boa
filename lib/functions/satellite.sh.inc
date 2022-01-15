@@ -867,6 +867,9 @@ satellite_cnf() {
         elif [ -x "/opt/php73/bin/php" ]; then
           _PHP_FPM_VERSION=7.3
           _PHP_CLI_VERSION=7.3
+        elif [ -x "/opt/php81/bin/php" ]; then
+          _PHP_FPM_VERSION=8.1
+          _PHP_CLI_VERSION=8.1
         else
           _PHP_FPM_VERSION=
           _PHP_CLI_VERSION=
@@ -4056,7 +4059,9 @@ satellite_check_php_compatibility() {
     _T_FPM_VRN=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
     _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
     _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-    if [ "${_T_FPM_VRN}" = "7.4" ] \
+    if [ "${_T_FPM_VRN}" = "8.1" ] \
+      || [ "${_T_FPM_VRN}" = "8.0" ] \
+      || [ "${_T_FPM_VRN}" = "7.4" ] \
       || [ "${_T_FPM_VRN}" = "7.3" ] \
       || [ "${_T_FPM_VRN}" = "7.2" ] \
       || [ "${_T_FPM_VRN}" = "7.1" ] \
@@ -4073,7 +4078,9 @@ satellite_check_php_compatibility() {
     _T_CLI_VRN=$(cat ${_ROOT}/static/control/cli.info 2>&1)
     _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
     _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-    if [ "${_T_CLI_VRN}" = "7.4" ] \
+    if [ "${_T_CLI_VRN}" = "8.1" ] \
+      || [ "${_T_CLI_VRN}" = "8.0" ] \
+      || [ "${_T_CLI_VRN}" = "7.4" ] \
       || [ "${_T_CLI_VRN}" = "7.3" ] \
       || [ "${_T_CLI_VRN}" = "7.2" ] \
       || [ "${_T_CLI_VRN}" = "7.1" ] \

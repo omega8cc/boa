@@ -358,14 +358,6 @@ check_php_cli() {
       _PHP_CLI_PATH="/opt/php74/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
       _PHP_CLI_PATH="/opt/php73/bin/php"
-    elif [ "${_PHP_CLI_VERSION}" = "7.2" ]; then
-      _PHP_CLI_PATH="/opt/php72/bin/php"
-    elif [ "${_PHP_CLI_VERSION}" = "7.1" ]; then
-      _PHP_CLI_PATH="/opt/php71/bin/php"
-    elif [ "${_PHP_CLI_VERSION}" = "7.0" ]; then
-      _PHP_CLI_PATH="/opt/php70/bin/php"
-    elif [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
-      _PHP_CLI_PATH="/opt/php56/bin/php"
     else
       _PHP_CLI_PATH=""
     fi
@@ -380,10 +372,6 @@ check_php_cli() {
         _USE_PHP_CLI_PATH="/opt/php74/bin/php"
       elif  [ -x "/opt/php73/bin/php" ]; then
         _USE_PHP_CLI_PATH="/opt/php73/bin/php"
-      elif  [ -x "/opt/php72/bin/php" ]; then
-        _USE_PHP_CLI_PATH="/opt/php72/bin/php"
-      elif [ -x "/opt/php56/bin/php" ]; then
-        _USE_PHP_CLI_PATH="/opt/php56/bin/php"
       fi
     fi
     if [ -x "${_USE_PHP_CLI_PATH}" ]; then
@@ -409,14 +397,6 @@ up_action() {
         phpS="7.4"
       elif [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
         phpS="7.3"
-      elif [ "${rkey}" = "php-72" ] || [ "${rkey}" = "php-7.2" ]; then
-        phpS="7.2"
-      elif [ "${rkey}" = "php-71" ] || [ "${rkey}" = "php-7.1" ]; then
-        phpS="7.1"
-      elif [ "${rkey}" = "php-70" ] || [ "${rkey}" = "php-7.0" ]; then
-        phpS="7.0"
-      elif [ "${rkey}" = "php-56" ] || [ "${rkey}" = "php-5.6" ]; then
-        phpS="5.6"
       elif [ "${rkey}" = "php-all" ]; then
         phpS="ALL"
       elif [ "${rkey}" = "nodns" ]; then
@@ -448,12 +428,10 @@ up_action() {
 
     fi
     ### Make sure that _PHP_SINGLE_INSTALL is set in ${barCnf}
-    if [ "${phpS}" = "7.4" ] \
-      || [ "${phpS}" = "7.3" ] \
-      || [ "${phpS}" = "7.2" ] \
-      || [ "${phpS}" = "7.1" ] \
-      || [ "${phpS}" = "7.0" ] \
-      || [ "${phpS}" = "5.6" ]; then
+    if [ "${phpS}" = "8.1" ] \
+      || [ "${phpS}" = "8.0" ] \
+      || [ "${phpS}" = "7.4" ] \
+      || [ "${phpS}" = "7.3" ]; then
       _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL ${barCnf} 2>&1)
       if [[ "${_PHP_SINGLE_INSTALL_TEST}" =~ "_PHP_SINGLE_INSTALL" ]]; then
         sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=${phpS}/g" ${barCnf}
@@ -464,12 +442,10 @@ up_action() {
     fi
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${phpS}" ]; then
-      if [ "${phpS}" = "7.4" ] \
-        || [ "${phpS}" = "7.3" ] \
-        || [ "${phpS}" = "7.2" ] \
-        || [ "${phpS}" = "7.1" ] \
-        || [ "${phpS}" = "7.0" ] \
-        || [ "${phpS}" = "5.6" ]; then
+      if [ "${phpS}" = "8.1" ] \
+        || [ "${phpS}" = "8.0" ] \
+        || [ "${phpS}" = "7.4" ] \
+        || [ "${phpS}" = "7.3" ]; then
 
         ### Debugging
         if [ "$debug" = "debug" ]; then

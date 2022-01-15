@@ -29,14 +29,14 @@ TL;DR
 * You should stop using PHP other than 7.4 because older versions are deprecated
 
 
-@=> PHP unsupported versions deprecation notice! Also, 8.0 and 8.1 is coming.
+@=> PHP unsupported versions deprecation notice! Also, 8.0 and 8.1 is here!
 
 While your BOA system will keep running PHP 5.6, 7.0, 7.1, 7.2 and 7.3 until
 any of them is used by any of the sites hosted on your system, none of them are
 not only actively maintained any longer, but even security updates have been
-dropped for all of them (PHP 7.3 security support ends on December 6, 2021).
+dropped for all of them (PHP 7.3 security support ended on December 6, 2021).
 
-Next BOA upgrade, expected in a few days, will add support for PHP 8.0 and 8.1
+This BOA upgrade added support for latest PHP 8.0 and 8.1 versions.
 
 Please note that both Drupal 7 and our Pressflow 6 LTS version already support
 PHP 7.4, although you may not be able to use PHP 7.4 if you are running some
@@ -180,11 +180,11 @@ Composer will now use PHP 7.4 by default, and you can find many useful hints at:
   https://github.com/omega8cc/boa/blob/master/docs/COMPOSER.txt
 
 IMPORTANT: You must switch your ~/static/control/cli.info to 7.3 or newer
-PHP version (BOA hosted on Omega8.cc comes with 7.4, 7.3 and 7.2), because
+PHP version (BOA hosted on Omega8.cc comes with 8.1, 8.0, 7.4 and 7.3), because
 D8 based distros require at least PHP 7.3 -- this also means that to run
 the sites installed after switching cli.info to 7.3 or newer, you will also
 need to either switch your ~/static/control/fpm.info to 7.3 or newer, or
-more probably, to not break any existing sites not compatible with PHP 7.2+
+more probably, to not break any existing sites not compatible with PHP 7.3+
 you will need to list these D8 sites names in ~/static/control/multi-fpm.info
 
 Please check for more information:
@@ -205,7 +205,7 @@ But don't switch blindly -- even sites already running on PHP 7.0 before
 are most probably not ready for PHP 7.4 or 7.3 without proper fixes.
 
 In addition to still supported, even if officially deprecated 5.6, 7.0, 7.1, 7.2
-versions, this release supports PHP 7.4 and 7.3
+versions, this release supports PHP 8.1, 8.0, 7.4 and 7.3
 
 Please check the PHP officially supported versions list at:
   http://php.net/supported-versions.php

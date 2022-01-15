@@ -162,6 +162,8 @@
 ###
 ### Supported values for single PHP-FPM mode which can be written in this file:
 ###
+### 8.1
+### 8.0
 ### 7.4
 ### 7.3
 ### 7.2
@@ -169,7 +171,7 @@
 ### 7.0
 ### 5.6
 ###
-### NOTE: There must be only one line and one value (like: 7.3) in this file.
+### NOTE: There must be only one line and one value (like: 7.4) in this file.
 ### Otherwise it will be ignored.
 ###
 ### NOTE: if the file doesn't exist, the system will create it and set to the
@@ -177,8 +179,8 @@
 ### This is to guarantee backward compatibility for instances installed
 ### before upgrade to BOA-4.1.3, when the default PHP version was 5.6,
 ### as otherwise after the upgrade the system would automatically switch such
-### accounts to the new default PHP version which is 7.3, and this could break
-### most of the sites hosted, never before tested for PHP 7.3 compatibility.
+### accounts to the new default PHP version which is 7.4, and this could break
+### most of the sites hosted, never before tested for PHP 7.4 compatibility.
 ###
 
 
@@ -194,8 +196,8 @@
 ### other sites not listed in multi-fpm.info will continue to use PHP-FPM
 ### version defined in fpm.info instead, which can be modified independently.
 ###
-### foo.com 7.3
-### bar.com 7.2
+### foo.com 8.0
+### bar.com 7.4
 ### old.com 5.6
 ###
 ### NOTE: Each line in the multi-fpm.info file must start with main site name,
@@ -216,6 +218,8 @@
 ###
 ### Supported values which can be written in this file:
 ###
+### 8.1
+### 8.0
 ### 7.4
 ### 7.3
 ### 7.2
@@ -223,7 +227,7 @@
 ### 7.0
 ### 5.6
 ###
-### There must be only one line and one value (like: 7.2) in this control file.
+### There must be only one line and one value (like: 7.4) in this control file.
 ### Otherwise it will be ignored.
 ###
 ### NOTE: if the file doesn't exist, the system will create it and set to the
@@ -231,14 +235,14 @@
 ### This is to guarantee backward compatibility for instances installed
 ### before upgrade to BOA-4.1.3, when the default PHP version was 5.6,
 ### as otherwise after the upgrade the system would automatically switch such
-### accounts to the new default PHP version which is 7.3, and this could break
-### most of the sites hosted, never before tested for PHP 7.3 compatibility.
+### accounts to the new default PHP version which is 7.4, and this could break
+### most of the sites hosted, never before tested for PHP 7.4 compatibility.
 ###
 ### IMPORTANT: this file will affect only Drush on command line and Drush
 ### in Aegir backend, used for all tasks on hosted sites, but it will not
 ### affect PHP-CLI version used by Composer on command line, because Composer
 ### is installed globally and not per Octopus account, so it will use system
-### default PHP version, which is, since BOA-4.1.3, PHP 7.3 and can be
+### default PHP version, which is, since BOA-4.1.4-rel, PHP 7.4 and can be
 ### changed only by changing system default _PHP_CLI_VERSION in the file
 ### /root/.barracuda.cnf and running barracuda upgrade.
 ###

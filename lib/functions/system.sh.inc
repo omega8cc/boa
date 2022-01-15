@@ -911,13 +911,21 @@ barracuda_cnf() {
           wait
         fi
         if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
-          sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=7.3/g"                  ${barCnf}
+          sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=7.4/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=7.3/g"                  ${barCnf}
+          sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=7.4/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=7.3/g"                  ${barCnf}
+          sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=7.4/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=7.3/g"                  ${barCnf}
+          sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=7.4/g"                  ${barCnf}
+          wait
+          sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=7.4/g"                  ${barCnf}
+          wait
+          sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=7.4/g"                  ${barCnf}
+          wait
+          sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=7.4/g"                  ${barCnf}
+          wait
+          sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=7.4/g"                  ${barCnf}
           wait
         fi
         # if [[ "${_CHECK_HOST}" =~ ".host8." ]] \

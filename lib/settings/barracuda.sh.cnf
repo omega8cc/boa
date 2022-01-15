@@ -61,9 +61,11 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### and _PHP_CLI_VERSION.
 ###
 ### Available options:
-### 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
+### 8.1, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
 ###
-### Example: _PHP_MULTI_INSTALL="7.4 7.3 7.2"
+### NOTE: 7.4 or 7.3 are required
+###
+### Example: _PHP_MULTI_INSTALL="8.0 7.4 5.6"
 ###
 ### Note that removing any version from this
 ### list once it is already installed, will
@@ -89,9 +91,9 @@ _PHP_MULTI_INSTALL="7.4 7.3"
 ### _PHP_MULTI_INSTALL
 ###
 ### Available options:
-### 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
+### 8.1, 8.0, 7.4, 7.3
 ###
-### Example: _PHP_SINGLE_INSTALL=7.2
+### Example: _PHP_SINGLE_INSTALL=7.4
 ###
 _PHP_SINGLE_INSTALL=
 
@@ -105,7 +107,7 @@ _PHP_SINGLE_INSTALL=
 ### install and upgrade.
 ###
 ### Available options (if installed):
-### 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
+### 8.1, 8.0, 7.4, 7.3
 ###
 ### Note that 7.4 will be set automatically
 ### if you specify any other, not installed
@@ -123,7 +125,7 @@ _PHP_FPM_VERSION=7.4
 ### install and upgrade.
 ###
 ### Available options (if installed):
-### 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
+### 8.1, 8.0, 7.4, 7.3
 ###
 ### Note that 7.4 will be set automatically
 ### if you specify any other, not installed

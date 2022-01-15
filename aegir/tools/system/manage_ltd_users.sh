@@ -1483,7 +1483,7 @@ switch_php() {
           elif [ -x "/opt/php81/bin/php" ]; then
             _T_CLI_VRN=8.1
           fi
-        elif [ "${_T_CLI_VRN}" = "5.2" ]; then
+        else
           if [ -x "/opt/php73/bin/php" ]; then
             _T_CLI_VRN=7.3
           elif [ -x "/opt/php74/bin/php" ]; then

@@ -1844,58 +1844,6 @@ php_single_initd_cleanup() {
           _FPM_INITD_CLEANUP=YES
         fi
       done
-    elif [ "${_PHP_SINGLE_INSTALL}" = "7.2" ]; then
-      _PHP_V="81 80 74 73 71 70 56"
-      for e in ${_PHP_V}; do
-        if [ -e "/opt/php${e}/bin/php" ]; then
-          mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
-        fi
-        if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          service php${e}-fpm stop &> /dev/null
-          update-rc.d -f php${e}-fpm remove &> /dev/null
-          mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
-          _FPM_INITD_CLEANUP=YES
-        fi
-      done
-    elif [ "${_PHP_SINGLE_INSTALL}" = "7.1" ]; then
-      _PHP_V="81 80 74 73 72 70 56"
-      for e in ${_PHP_V}; do
-        if [ -e "/opt/php${e}/bin/php" ]; then
-          mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
-        fi
-        if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          service php${e}-fpm stop &> /dev/null
-          update-rc.d -f php${e}-fpm remove &> /dev/null
-          mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
-          _FPM_INITD_CLEANUP=YES
-        fi
-      done
-    elif [ "${_PHP_SINGLE_INSTALL}" = "7.0" ]; then
-      _PHP_V="81 80 74 73 72 71 56"
-      for e in ${_PHP_V}; do
-        if [ -e "/opt/php${e}/bin/php" ]; then
-          mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
-        fi
-        if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          service php${e}-fpm stop &> /dev/null
-          update-rc.d -f php${e}-fpm remove &> /dev/null
-          mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
-          _FPM_INITD_CLEANUP=YES
-        fi
-      done
-    elif [ "${_PHP_SINGLE_INSTALL}" = "5.6" ]; then
-      _PHP_V="81 80 74 73 72 71 70"
-      for e in ${_PHP_V}; do
-        if [ -e "/opt/php${e}/bin/php" ]; then
-          mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
-        fi
-        if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          service php${e}-fpm stop &> /dev/null
-          update-rc.d -f php${e}-fpm remove &> /dev/null
-          mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
-          _FPM_INITD_CLEANUP=YES
-        fi
-      done
     fi
     if [ "$_FPM_INITD_CLEANUP" = "YES" ]; then
       killall php-fpm &> /dev/null
@@ -1915,14 +1863,6 @@ re_set_default_php_cli() {
     switch_php_cli "74"
   elif [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
     switch_php_cli "73"
-  elif [ "${_PHP_CLI_VERSION}" = "7.2" ]; then
-    switch_php_cli "72"
-  elif [ "${_PHP_CLI_VERSION}" = "7.1" ]; then
-    switch_php_cli "71"
-  elif [ "${_PHP_CLI_VERSION}" = "7.0" ]; then
-    switch_php_cli "70"
-  elif [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
-    switch_php_cli "56"
   fi
 }
 
@@ -1937,14 +1877,6 @@ check_php_cli() {
     _PHP_CLI_PATH="/opt/php80/bin/php"
   elif [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
     _PHP_CLI_PATH="/opt/php81/bin/php"
-  elif [ "${_PHP_CLI_VERSION}" = "7.2" ]; then
-    _PHP_CLI_PATH="/opt/php72/bin/php"
-  elif [ "${_PHP_CLI_VERSION}" = "7.1" ]; then
-    _PHP_CLI_PATH="/opt/php71/bin/php"
-  elif [ "${_PHP_CLI_VERSION}" = "7.0" ]; then
-    _PHP_CLI_PATH="/opt/php70/bin/php"
-  elif [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
-    _PHP_CLI_PATH="/opt/php56/bin/php"
   else
     _PHP_CLI_PATH=""
   fi
@@ -1959,14 +1891,6 @@ check_php_cli() {
       _USE_PHP_CLI_PATH="/opt/php80/bin/php"
     elif  [ -x "/opt/php81/bin/php" ]; then
       _USE_PHP_CLI_PATH="/opt/php81/bin/php"
-    elif  [ -x "/opt/php72/bin/php" ]; then
-      _USE_PHP_CLI_PATH="/opt/php72/bin/php"
-    elif  [ -x "/opt/php71/bin/php" ]; then
-      _USE_PHP_CLI_PATH="/opt/php71/bin/php"
-    elif  [ -x "/opt/php70/bin/php" ]; then
-      _USE_PHP_CLI_PATH="/opt/php70/bin/php"
-    elif [ -x "/opt/php56/bin/php" ]; then
-      _USE_PHP_CLI_PATH="/opt/php56/bin/php"
     fi
   fi
   if [ -x "${_USE_PHP_CLI_PATH}" ]; then
