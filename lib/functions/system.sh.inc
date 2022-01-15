@@ -2833,7 +2833,8 @@ install_curl_src() {
         install_ssl_src
         ###--------------------###
         msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
-        if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ]; then
+        if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ] \
+          || [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ]; then
           cd /var/opt/curl-${_CURL_VRN}
           LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig" ./configure \
             --with-ssl \
