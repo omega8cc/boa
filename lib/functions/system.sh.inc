@@ -1316,6 +1316,9 @@ barracuda_cnf() {
           _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
         fi
       fi
+      if [ -e "/root/.host8.cnf" ]; then
+        _PHP_MULTI_INSTALL="${_PHP_MULTI_INSTALL} 8.0 8.1"
+      fi
       if [ ! -z "${_PHP_MULTI_INSTALL}" ]; then
         _PHP_SINGLE_INSTALL=
         _PHP_MULTI_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
