@@ -518,7 +518,7 @@ tune_web_server_config() {
 # Install IonCube.
 install_ioncube() {
   ###--------------------###
-  if [ ! -e "${pthLog}/ioncube-${_IONCUBE_VRN}.log" ] \
+  if [ ! -e "${pthLog}/ioncube-update-${_IONCUBE_VRN}.log" ] \
     || [ ! -e "/usr/local/ioncube" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     mkdir -p /usr/local/ioncube
@@ -538,7 +538,7 @@ install_ioncube() {
     fi
     rm -f /usr/local/ioncube/*
     cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
-    touch ${pthLog}/ioncube-${_IONCUBE_VRN}.log
+    touch ${pthLog}/ioncube-update-${_IONCUBE_VRN}.log
   fi
 }
 
@@ -2141,7 +2141,7 @@ check_fix_php() {
   fi
   install_newrelic
   if [ "${_PHP_IONCUBE}" = "YES" ]; then
-    if [ ! -e "${pthLog}/ioncube-${_IONCUBE_VRN}.log" ] \
+    if [ ! -e "${pthLog}/ioncube-update-${_IONCUBE_VRN}.log" ] \
       || [ "${_PHP_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       install_ioncube
