@@ -717,6 +717,7 @@ satellite_cnf() {
             _PHP_CLI_VERSION=8.0
           elif [ -x "/opt/php81/bin/php" ]; then
             _PHP_CLI_VERSION=8.1
+          fi
         fi
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_CLI_VERSION}/g" \
           ${octCnf} &> /dev/null
