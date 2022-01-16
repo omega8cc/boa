@@ -708,6 +708,28 @@ EOF
 }
 
 #
+# Sort and de-duplicate versions in _PHP_MULTI_INSTALL.
+php_multi_uniq() {
+  _uniqPHPv=
+  rm -f /var/backups/_vPHP.txt
+  for _vPHP in `echo ${_PHP_MULTI_INSTALL} \
+    | sort \
+    | uniq`; do
+    echo "${_vPHP}" >> /var/backups/_vPHP.txt
+  done
+  for _vPHP in `cat /var/backups/_vPHP.txt \
+    | sort \
+    | uniq`; do
+    if [ -z "${_uniqPHPv}" ]; then
+      _uniqPHPv="${_vPHP}"
+    else
+      _uniqPHPv="${_uniqPHPv} ${_vPHP}"
+    fi
+  done
+  _PHP_MULTI_INSTALL="${_uniqPHPv}"
+}
+
+#
 # Read or create Barracuda cnf file.
 barracuda_cnf() {
   _CHECK_HOST=$(uname -n 2>&1)
@@ -772,6 +794,9 @@ barracuda_cnf() {
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g" ${barCnf}
       fi
     fi
+
+    php_multi_uniq
+
     msg "INFO: Creating your ${barCnf} config file"
     sleep 1
     echo "###"                                                 > ${barCnf}
@@ -1165,6 +1190,12 @@ barracuda_cnf() {
       fi
     fi
 
+
+    _PHP_MULTI_INSTALL_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
+    if [ -z "${_PHP_MULTI_INSTALL_TEST}" ]; then
+      rm -f /root/.fixed.multi.php.cnf
+    fi
+
     if [ -e "/root/.fixed.multi.php.cnf" ]; then
       _DO_NOTHING=YES
     else
@@ -1342,6 +1373,9 @@ barracuda_cnf() {
           fi
         fi
       fi
+
+      php_multi_uniq
+
       if [ ! -z "${_PHP_MULTI_INSTALL}" ]; then
         _PHP_MULTI_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
         if [[ "${_PHP_MULTI_TEST}" =~ "_PHP_MULTI_INSTALL" ]]; then
