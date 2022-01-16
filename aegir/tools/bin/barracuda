@@ -511,7 +511,7 @@ up_action() {
           done
         fi
       elif [ "${phpS}" = "ALL" ]; then
-        phpM="7.4 7.3 8.0 8.1"
+        phpM="7.3 7.4 8.0 8.1"
         phpS="7.4"
 
         ### Debugging
