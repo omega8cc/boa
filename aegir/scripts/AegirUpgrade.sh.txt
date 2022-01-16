@@ -432,7 +432,9 @@ _PREV_HM_ROOT=$(find ${_ROOT} -maxdepth 1 -type d | grep hostmaster 2>&1)
 if [ -d "${_ROOT}/host_master" ]; then
   if [ ! -d "${_ROOT}/host_master/000" ]; then
     mkdir -p ${_ROOT}/host_master/000
-    touch ${_ROOT}/host_master/000/placeholder_dont_remove.txt
+    if [ ! -e "${_ROOT}/host_master/000/placeholder_dont_remove.txt" ]; then
+      touch ${_ROOT}/host_master/000/placeholder_dont_remove.txt
+    fi
   fi
 fi
 

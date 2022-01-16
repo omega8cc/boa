@@ -1190,16 +1190,15 @@ barracuda_cnf() {
       fi
     fi
 
-
     _PHP_MULTI_INSTALL_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
     if [ -z "${_PHP_MULTI_INSTALL_TEST}" ]; then
-      rm -f /root/.fixed.multi.php.cnf
+      rm -f /root/.sorted.multi.php.cnf
     fi
 
-    if [ -e "/root/.fixed.multi.php.cnf" ]; then
+    if [ -e "/root/.sorted.multi.php.cnf" ]; then
       _DO_NOTHING=YES
     else
-      if [ -e "/data/disk/arch/sql" ]; then
+      if [ -e "/var/aegir/host_master/000/placeholder_dont_remove.txt" ]; then
         if [ -e "/root/.mstr.clstr.cnf" ] \
           || [ -e "/root/.wbhd.clstr.cnf" ] \
           || [ -e "/root/.dbhd.clstr.cnf" ]; then
@@ -1329,12 +1328,8 @@ barracuda_cnf() {
 
               _PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL}"
               if [ -z "${_PHP_MULTI_INSTALL}" ]; then
-                _PHP_MULTI_INSTALL="7.4 7.3 8.0 8.1"
+                _PHP_MULTI_INSTALL="7.4 7.3"
               fi
-              sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
-            else
-              _PHP_MULTI_INSTALL="7.4 7.3"
-              sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
             fi
           fi
         fi
@@ -1366,9 +1361,8 @@ barracuda_cnf() {
           fi
         fi
         if [ -e "/root/.host8.cnf" ]; then
-          if [ -z "${_PHP_MULTI_INSTALL}" ]; then
-            _PHP_MULTI_INSTALL="8.0 8.1"
-          else
+          if [[ ! "${_PHP_MULTI_INSTALL_TEST}" =~ "8.0" ]] \
+            || [[ ! "${_PHP_MULTI_INSTALL_TEST}" =~ "8.1" ]]; then
             _PHP_MULTI_INSTALL="8.0 8.1 ${_PHP_MULTI_INSTALL}"
           fi
         fi
@@ -1384,14 +1378,9 @@ barracuda_cnf() {
         fi
         echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
       fi
-      _PHP_MULTI_INSTALL_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
-      if [ -z "${_PHP_MULTI_INSTALL_TEST}" ] \
-        && [ ! -z "${_PHP_MULTI_INSTALL}" ]; then
-        sed -i "/^$/d" ${barCnf}
-        echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
-      fi
-      touch /root/.fixed.multi.php.cnf
+      touch /root/.sorted.multi.php.cnf
       rm -f /root/.updated.multi.php.cnf
+      rm -f /root/.fixed.multi.php.cnf
     fi
 
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION ${barCnf} 2>&1)
@@ -2837,7 +2826,7 @@ install_curl_src() {
     sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
     grep lib /etc/ld.so.conf.d/libc.conf
     mrun "ldconfig" &> /dev/null
-    rm -f /root/.fixed.multi.php.cnf
+    rm -f /root/.sorted.multi.php.cnf
     msg "INFO: libcurl is broken, cURL re-install from packages required"
   fi
   if [ "${_PHP_BIN_BROKEN}" = "YES" ] && [ -z "${_CURL_ALREADY_REBUILT}" ]; then
@@ -2851,7 +2840,7 @@ install_curl_src() {
     ###--------------------###
     if [ -e "/root/.use.curl.from.packages.cnf" ]; then
       msg "INFO: cURL from packages is forced with /root/.use.curl.from.packages.cnf"
-      rm -f /root/.fixed.multi.php.cnf
+      rm -f /root/.sorted.multi.php.cnf
       mkdir -p /var/backups/libcurl
       mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
       mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
