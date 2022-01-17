@@ -1429,6 +1429,14 @@ switch_php() {
     || [ -e "${dscUsr}/static/control/cli.info" ] \
     || [ -e "${dscUsr}/static/control/hhvm.info" ]; then
     echo "Custom FPM, HHVM or CLI settings for ${_USER} exist, running switch_php checks"
+    if [ ! -e "${dscUsr}/log/un-chattr-ctrl.info" ]; then
+      chattr -i ${dscUsr}/static/control/fpm.info &> /dev/null
+      chattr -i ${dscUsr}/static/control/cli.info &> /dev/null
+      chattr -i ${dscUsr}/log/fpm.txt &> /dev/null
+      chattr -i ${dscUsr}/log/cli.txt &> /dev/null
+      chattr -i ${dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc &> /dev/null
+      touch ${dscUsr}/log/un-chattr-ctrl.info
+    fi
     if [ ! -e "${dscUsr}/static/control/.single-fpm.${_X_SE}.pid" ]; then
       rm -f ${dscUsr}/static/control/.single-fpm*.pid
       echo OK > ${dscUsr}/static/control/.single-fpm.${_X_SE}.pid
@@ -1492,6 +1500,24 @@ switch_php() {
           elif [ -x "/opt/php56/bin/php" ]; then
             _T_CLI_VRN=5.6
           fi
+        elif [ "${_T_CLI_VRN}" = "7.1" ] \
+          && [ ! -x "/opt/php71/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _T_CLI_VRN=7.3
+          elif [ -x "/opt/php74/bin/php" ]; then
+            _T_CLI_VRN=7.4
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _T_CLI_VRN=5.6
+          fi
+        elif [ "${_T_CLI_VRN}" = "7.0" ] \
+          && [ ! -x "/opt/php70/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _T_CLI_VRN=7.3
+          elif [ -x "/opt/php74/bin/php" ]; then
+            _T_CLI_VRN=7.4
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _T_CLI_VRN=5.6
+          fi
         elif [ "${_T_CLI_VRN}" = "5.6" ] \
           && [ ! -x "/opt/php56/bin/php" ]; then
           if [ -x "/opt/php72/bin/php" ]; then
@@ -1500,12 +1526,6 @@ switch_php() {
             _T_CLI_VRN=7.3
           elif [ -x "/opt/php74/bin/php" ]; then
             _T_CLI_VRN=7.4
-          fi
-        else
-          if [ -x "/opt/php74/bin/php" ]; then
-            _T_CLI_VRN=7.4
-          elif [ -x "/opt/php73/bin/php" ]; then
-            _T_CLI_VRN=7.3
           fi
         fi
         if [ "${_T_CLI_VRN}" != "${_PHP_CLI_VERSION}" ] \
@@ -1695,6 +1715,24 @@ switch_php() {
           elif [ -x "/opt/php56/bin/php" ]; then
             _T_FPM_VRN=5.6
           fi
+        elif [ "${_T_FPM_VRN}" = "7.1" ] \
+          && [ ! -x "/opt/php71/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _T_FPM_VRN=7.3
+          elif [ -x "/opt/php74/bin/php" ]; then
+            _T_FPM_VRN=7.4
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _T_FPM_VRN=5.6
+          fi
+        elif [ "${_T_FPM_VRN}" = "7.0" ] \
+          && [ ! -x "/opt/php70/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _T_FPM_VRN=7.3
+          elif [ -x "/opt/php74/bin/php" ]; then
+            _T_FPM_VRN=7.4
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _T_FPM_VRN=5.6
+          fi
         elif [ "${_T_FPM_VRN}" = "5.6" ] \
           && [ ! -x "/opt/php56/bin/php" ]; then
           if [ -x "/opt/php72/bin/php" ]; then
@@ -1703,12 +1741,6 @@ switch_php() {
             _T_FPM_VRN=7.3
           elif [ -x "/opt/php74/bin/php" ]; then
             _T_FPM_VRN=7.4
-          fi
-        else
-          if [ -x "/opt/php74/bin/php" ]; then
-            _T_FPM_VRN=7.4
-          elif [ -x "/opt/php73/bin/php" ]; then
-            _T_FPM_VRN=7.3
           fi
         fi
         if [ "${_T_FPM_VRN}" != "${_PHP_FPM_VERSION}" ] \
