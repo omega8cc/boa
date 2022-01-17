@@ -1492,6 +1492,7 @@ switch_php() {
             _T_CLI_VRN=8.0
           elif [ -x "/opt/php81/bin/php" ]; then
             _T_CLI_VRN=8.1
+          fi
         fi
         if [ "${_T_CLI_VRN}" != "${_PHP_CLI_VERSION}" ] \
           || [ ! -e "${dscUsr}/static/control/.ctrl.cli.${_X_SE}.pid" ]; then
@@ -1680,6 +1681,7 @@ switch_php() {
             _T_FPM_VRN=8.0
           elif [ -x "/opt/php81/bin/php" ]; then
             _T_FPM_VRN=8.1
+          fi
         fi
         if [ "${_T_FPM_VRN}" != "${_PHP_FPM_VERSION}" ] \
           || [ "${_FORCE_FPM_SETUP}" = "YES" ]; then
