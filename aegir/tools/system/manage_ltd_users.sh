@@ -1483,15 +1483,29 @@ switch_php() {
           elif [ -x "/opt/php81/bin/php" ]; then
             _T_CLI_VRN=8.1
           fi
-        else
+        elif [ "${_T_CLI_VRN}" = "7.2" ] \
+          && [ ! -x "/opt/php72/bin/php" ]; then
           if [ -x "/opt/php73/bin/php" ]; then
             _T_CLI_VRN=7.3
           elif [ -x "/opt/php74/bin/php" ]; then
             _T_CLI_VRN=7.4
-          elif [ -x "/opt/php80/bin/php" ]; then
-            _T_CLI_VRN=8.0
-          elif [ -x "/opt/php81/bin/php" ]; then
-            _T_CLI_VRN=8.1
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _T_CLI_VRN=5.6
+          fi
+        elif [ "${_T_CLI_VRN}" = "5.6" ] \
+          && [ ! -x "/opt/php56/bin/php" ]; then
+          if [ -x "/opt/php72/bin/php" ]; then
+            _T_CLI_VRN=7.2
+          elif [ -x "/opt/php73/bin/php" ]; then
+            _T_CLI_VRN=7.3
+          elif [ -x "/opt/php74/bin/php" ]; then
+            _T_CLI_VRN=7.4
+          fi
+        else
+          if [ -x "/opt/php74/bin/php" ]; then
+            _T_CLI_VRN=7.4
+          elif [ -x "/opt/php73/bin/php" ]; then
+            _T_CLI_VRN=7.3
           fi
         fi
         if [ "${_T_CLI_VRN}" != "${_PHP_CLI_VERSION}" ] \
@@ -1672,15 +1686,29 @@ switch_php() {
           elif [ -x "/opt/php81/bin/php" ]; then
             _T_FPM_VRN=8.1
           fi
-        else
+        elif [ "${_T_FPM_VRN}" = "7.2" ] \
+          && [ ! -x "/opt/php72/bin/php" ]; then
           if [ -x "/opt/php73/bin/php" ]; then
             _T_FPM_VRN=7.3
           elif [ -x "/opt/php74/bin/php" ]; then
             _T_FPM_VRN=7.4
-          elif [ -x "/opt/php80/bin/php" ]; then
-            _T_FPM_VRN=8.0
-          elif [ -x "/opt/php81/bin/php" ]; then
-            _T_FPM_VRN=8.1
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _T_FPM_VRN=5.6
+          fi
+        elif [ "${_T_FPM_VRN}" = "5.6" ] \
+          && [ ! -x "/opt/php56/bin/php" ]; then
+          if [ -x "/opt/php72/bin/php" ]; then
+            _T_FPM_VRN=7.2
+          elif [ -x "/opt/php73/bin/php" ]; then
+            _T_FPM_VRN=7.3
+          elif [ -x "/opt/php74/bin/php" ]; then
+            _T_FPM_VRN=7.4
+          fi
+        else
+          if [ -x "/opt/php74/bin/php" ]; then
+            _T_FPM_VRN=7.4
+          elif [ -x "/opt/php73/bin/php" ]; then
+            _T_FPM_VRN=7.3
           fi
         fi
         if [ "${_T_FPM_VRN}" != "${_PHP_FPM_VERSION}" ] \
