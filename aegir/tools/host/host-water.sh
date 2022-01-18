@@ -501,14 +501,14 @@ whitelist_ip_dns() {
   sed -i "s/.*1.1.1.1.*//g"  /etc/csf/csf.ignore
   sed -i "s/.*1.0.0.1.*//g"  /etc/csf/csf.allow
   sed -i "s/.*1.0.0.1.*//g"  /etc/csf/csf.ignore
-  echo "tcp|in|d=53|s=1.1.1.1 # Cloudflare DNS" >> /etc/csf/csf.allow
-  echo "tcp|in|d=53|s=1.0.0.1 # Cloudflare DNS" >> /etc/csf/csf.allow
+  echo "tcp|out|d=53|d=1.1.1.1 # Cloudflare DNS" >> /etc/csf/csf.allow
+  echo "tcp|out|d=53|d=1.0.0.1 # Cloudflare DNS" >> /etc/csf/csf.allow
   sed -i "s/.*8.8.8.8.*//g"  /etc/csf/csf.allow
   sed -i "s/.*8.8.8.8.*//g"  /etc/csf/csf.ignore
   sed -i "s/.*8.8.4.4.*//g"  /etc/csf/csf.allow
   sed -i "s/.*8.8.4.4.*//g"  /etc/csf/csf.ignore
-  echo "tcp|in|d=53|s=8.8.8.8 # Google DNS" >> /etc/csf/csf.allow
-  echo "tcp|in|d=53|s=8.8.4.4 # Google DNS" >> /etc/csf/csf.allow
+  echo "tcp|out|d=53|d=8.8.8.8 # Google DNS" >> /etc/csf/csf.allow
+  echo "tcp|out|d=53|d=8.8.4.4 # Google DNS" >> /etc/csf/csf.allow
   sed -i "/^$/d" /etc/csf/csf.ignore
   sed -i "/^$/d" /etc/csf/csf.allow
 }
