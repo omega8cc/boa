@@ -165,6 +165,7 @@ production settings.
 * HHVM support - see docs/HHVM.txt for details (deprecated)
 * Webmin Control Panel (deprecated)
 
+
 ### OCTOPUS PLATFORMS
 
 Octopus can install and/or support the platforms listed below:
@@ -228,7 +229,7 @@ to the Universe, please donate to the Aegir project. BOA devs participated
 in Aegir core development for years, and BOA project, which is maintained
 by Omega8.cc exists only thanks to Aegir project continued development.
 
-You can donate using PayPal, Liberapay, Bitcoin or trough Open Collective at:
+You can donate using PayPal, Liberapay, Bitcoin or through Open Collective at:
 
   https://www.aegirproject.org/#donate
 
