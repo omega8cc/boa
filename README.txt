@@ -10,33 +10,38 @@ PHP-FPM, Zend OPcache, Percona and Redis.
 
 ###--------------------------------------------------------------------------###
 ###
-### Installation instructions .........: docs/INSTALL.txt
-### Other related information .........: docs/NOTES.txt
-### Upgrade instructions ..............: docs/UPGRADE.txt
-### Bug reporting .....................: CONTRIBUTING.txt <----- Read This First
+### Installation Instructions .........: docs/INSTALL.txt
+### Other Related Information .........: docs/NOTES.txt
+### Upgrade Instructions ..............: docs/UPGRADE.txt
+### Bug Reporting .....................: CONTRIBUTING.txt <----- Read This First
 ###
-### Barracuda configuration template ..: docs/cnf/barracuda.cnf
-### Octopus configuration template ....: docs/cnf/octopus.cnf
-### System control files index ........: docs/ctrl/system.ctrl
+### Barracuda Configuration Template ..: docs/cnf/barracuda.cnf
+### Octopus Configuration Template ....: docs/cnf/octopus.cnf
+### System Control Files Index ........: docs/ctrl/system.ctrl
 ###
-### Platform and site level INI templates:
+### Platform and Site Level INI Templates:
 ###
 ###   aegir/conf/default.boa_platform_control.ini
 ###   aegir/conf/default.boa_site_control.ini
 ###
-### Advanced password encryption ......: docs/BLOWFISH.txt
-### Custom Nginx rewrites .............: docs/HINTS.txt
-### HHVM support ......................: docs/HHVM.txt
-### Modules enabled or disabled .......: docs/MODULES.txt
-### MultiCore Solr Jetty ..............: docs/SOLR.txt
-### Octopus batch migration ...........: docs/MIGRATE.txt
-### Platforms configuration symbols ...: docs/PLATFORMS.txt
-### Remote S3 backups .................: docs/BACKUPS.txt
+### Advanced Password Encryption ......: docs/BLOWFISH.txt
+### Cluster and Linux VServer How-To ..: docs/CLUSTER.txt
+### Composer How-To ...................: docs/COMPOSER.txt
+### Dev-Mode Notes ....................: docs/DEVELOPMENT.txt
+### Frequently Asked Questions ........: docs/FAQ.txt
+### HHVM Support ......................: docs/HHVM.txt
+### Let's Encrypt Support .............: docs/SSL.txt
+### Migration - Octopus Instance ......: docs/MIGRATE.txt
+### Migration - Single Site ...........: docs/REMOTE.txt
+### Modules Enabled or Disabled .......: docs/MODULES.txt
+### New Relic How-To ..................: docs/NEWRELIC.txt
+### Platforms Configuration Symbols ...: docs/PLATFORMS.txt
+### Remote S3 Backups .................: docs/BACKUPS.txt
+### Rewrites in Nginx .................: docs/REWRITES.txt
 ### RVM, Compass Tools, and NPM .......: docs/RVM.txt
-### Security related settings .........: docs/SECURITY.txt
-### Single site migration .............: docs/REMOTE.txt
-### SSL with single or extra IP .......: docs/SSL.txt
-### FAQ ...............................: docs/FAQ.txt
+### Security Related Settings .........: docs/SECURITY.txt
+### Solr How-To .......................: docs/SOLR.txt
+### Some Extra Comments ...............: docs/CAVEATS.txt
 ###
 ###--------------------------------------------------------------------------###
 
@@ -62,7 +67,8 @@ only 35 MB, while most of the code, which is over 1400 MB in total, is shared.
 
 Sharing the code between instances is of critical importance, because it allows
 you to dramatically lower RAM and CPU usage, because most of the actively used
-code is opcode cached.
+code is opcode cached. Note that shared codebase is used only in Drupal 7 and
+Pressflow 6 distros, since Drupal 8 and newer don't support codebase symlinking.
 
 With multi-install system you have to remember that all of them will use the
 same Nginx server, so you could break the system trying to install site with
@@ -85,23 +91,36 @@ production settings.
 * Xen guest
 
 
-### SUPPORTED LTS OS {c} please read also: docs/CAVEATS.txt
+### DEBIAN & UBUNTU LTS SUPPORT {c} please read also: docs/CAVEATS.txt
 
-* Debian 9 Stretch (recommended)
+=== Debian @ https://wiki.debian.org/LTS
+
+* Debian 13 Trixie (work in progress)
+* Debian 12 Bookworm (work in progress)
+* Debian 11 Bullseye (work in progress)
+* Debian 10 Buster (work in progress)
+* Debian 9 Stretch (recommended currently)
 * Debian 8 Jessie (upgrade to Stretch with _JESSIE_TO_STRETCH=YES)
-* Ubuntu Trusty 14.04 (limited support)
-* Ubuntu Precise 12.04 (limited support)
+
+=== Ubuntu @ https://ubuntu.com/about/release-cycle
+
+* Ubuntu Jammy Jellyfish 22.04 LTS (work in progress)
+* Ubuntu Focal Fossa 20.04 LTS (work in progress)
+* Ubuntu Bionic Beaver 18.04 LTS (work in progress)
+* Ubuntu Xenial Xerus 16.04 LTS (work in progress)
+* Ubuntu Trusty Tahr 14.04 LTS (limited support)
+* Ubuntu Precise Pangolin 12.04.3 LTS (limited support)
 
 
 ### OTHER REQUIREMENTS
 
+* Basic sysadmin skills and experience.
+* Willingness to accept BOA PI (paranoid idiosyncrasies).
+* Minimum 4 GB RAM and 2 CPU (with Solr minimum 8 GB RAM and 4+ CPU).
 * SSH (RSA) keys for root are required by newer OpenSSH versions used in BOA.
 * Wget must be installed.
 * The outgoing TCP connections via ports: 25, 53, 80 and 443 must be open.
-* Minimum 4 GB RAM and 2 CPU (with Solr minimum 8 GB RAM and 4+ CPU recommended)
 * Locales with UTF-8 support, otherwise en_US.UTF-8 (default) is forced.
-* Basic sysadmin skills and experience.
-* Willingness to accept BOA PI (paranoid idiosyncrasies).
 
 
 ### PROVIDES
