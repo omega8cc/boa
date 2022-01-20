@@ -30,7 +30,7 @@ TL;DR
 * You should stop using PHP other than 7.4 because older versions are deprecated
 
 
-@=> Affiliate Program available for all paying Omega8.cc Customers is here!
+@=> Affiliate Program available for all paying Omega8.cc Clients is here!
 
 We pay permanent 10% commissions for every order placed using your custom
 affiliate link by tracking visitors you refer to us using a cookie.
@@ -47,9 +47,14 @@ after payment a referral matures and becomes available for payout.
 The cookie will last up to 180 days following the initial visit, so you will
 get a commission for the referral even if they do not sign up immediately.
 
-If you have any questions, please contact us via https://omega8.cc/contact or
-join Affiliate Program via your account in our Billing Portal at:
+If you are interested, please contact us via https://omega8.cc/contact or
+join Affiliate Program now via your account in the Billing Portal at:
 https://pay.omega8.cc/client/login/
+
+If you are an existing Client but never logged in the Billing Portal yet,
+you will need to request new password via the form linked below, using as
+your username the email address where you are receiving Invoices and payment
+receipts: https://pay.omega8.cc/client/login/reset/
 
 
 @=> PHP unsupported versions deprecation notice! Also, 8.0 and 8.1 is here!

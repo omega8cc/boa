@@ -246,8 +246,8 @@ You can also support BOA development by using Omega8.cc hosted service:
   https://omega8.cc/pricing
   https://omega8.cc/clusterpro
 
-There is very attractive Affiliate Program available for all paying Customers:
+There is very attractive Affiliate Program available for all paying Clients:
 
-  https://pay.omega8.cc/order/affiliates/signup/
+  https://omega8.cc/affiliates
 
 Thank you for your support!
