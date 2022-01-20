@@ -25,9 +25,12 @@ PHP-FPM, Zend OPcache, Percona and Redis.
 ###   aegir/conf/default.boa_site_control.ini
 ###
 ### Advanced Password Encryption ......: docs/BLOWFISH.txt
+### BOA Self-Upgrade How-To ...........: docs/SELFUPGRADE.txt
 ### Cluster and Linux VServer How-To ..: docs/CLUSTER.txt
 ### Composer How-To ...................: docs/COMPOSER.txt
 ### Dev-Mode Notes ....................: docs/DEVELOPMENT.txt
+### Drupalgeddon How-To ...............: docs/DRUPALGEDDON.txt
+### FAST DB Operations How-To .........: docs/MYQUICK.txt
 ### Frequently Asked Questions ........: docs/FAQ.txt
 ### HHVM Support ......................: docs/HHVM.txt
 ### Let's Encrypt Support .............: docs/SSL.txt
@@ -35,6 +38,7 @@ PHP-FPM, Zend OPcache, Percona and Redis.
 ### Migration - Single Site ...........: docs/REMOTE.txt
 ### Modules Enabled or Disabled .......: docs/MODULES.txt
 ### New Relic How-To ..................: docs/NEWRELIC.txt
+### PHP Configuration How-To ..........: docs/PHP.txt
 ### Platforms Configuration Symbols ...: docs/PLATFORMS.txt
 ### Remote S3 Backups .................: docs/BACKUPS.txt
 ### Rewrites in Nginx .................: docs/REWRITES.txt

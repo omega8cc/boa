@@ -200,7 +200,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     touch /root/.fixed_scan_nginx.pid
   fi
   _VM_TEST=$(uname -a 2>&1)
-  [ -z "${_AUTO_VER}" ] && _AUTO_VER="stable"
+  [ -z "${_AUTO_VER}" ] && _AUTO_VER="head"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
