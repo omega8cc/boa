@@ -223,7 +223,7 @@ BOA development is maintained and sponsored by Omega8.cc
 
 * Aegir project --------------- http://www.aegirproject.org
 * Brian Mercer ---------------- https://drupal.org/node/244072#comment-1747170
-* Nice people who are submitting bugs and problems in the BOA issue queue.
+* Nice people who are submitting patches and reporting bugs.
 
 
 ### DONATIONS
@@ -237,4 +237,17 @@ You can donate using PayPal, Liberapay, Bitcoin or through Open Collective at:
 
   https://www.aegirproject.org/#donate
 
-Thank you!
+
+### HOSTED BOA & AFFILIATE PROGRAM with permanent 10% commissions
+
+You can also support BOA development by using Omega8.cc hosted service:
+
+  https://omega8.cc/compare
+  https://omega8.cc/pricing
+  https://omega8.cc/clusterpro
+
+There is very attractive Affiliate Program available for all paying Customers:
+
+  https://pay.omega8.cc/order/affiliates/signup/
+
+Thank you for your support!
