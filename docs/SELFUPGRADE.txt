@@ -13,7 +13,7 @@
 ### even if you don't have root access or are on hosted BOA system.
 ###
 ### Note that this pid file will be ignored if there will be no platforms.info
-### file, as explained further below.
+### file, as explained in docs/PLATFORMS.txt.
 ###
 
 
