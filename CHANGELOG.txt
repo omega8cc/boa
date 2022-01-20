@@ -1065,7 +1065,7 @@
 # Fixes:
 
   * Add compatibility with magick src
-  * Add ToC (Table of Contents) for the Let’s Encrypt section in docs/SSL.txt
+  * Add ToC (Table of Contents) for the Let's Encrypt section in docs/SSL.txt
   * Downgrade JSmin from 2.0.1 to 2.0.0 -- fixes #993
   * Fix for legacy cluster support
   * Fix for virtualbox detection -- see #972
@@ -1099,7 +1099,7 @@
   and bug fixes, with most notable features and changes listed below.
   All supported Drupal platforms have been updated to latest versions.
 
-  @=> Let’s Encrypt free SSL certificates are supported directly in Aegir
+  @=> Let's Encrypt free SSL certificates are supported directly in Aegir
   @=> PHP-FPM version can be switched per site hosted on the same instance
   @=> Both Aegir control panel and its backend are compatible with PHP 7.0.7
   @=> Support for forced Drush cache clear in the Aegir backend
@@ -1109,10 +1109,10 @@
 
 
   ###
-#-### Let’s Encrypt free SSL certificates are supported directly in Aegir
+#-### Let's Encrypt free SSL certificates are supported directly in Aegir
   ###
 
-  You can find these important Let’s Encrypt topics discussed below:
+  You can find these important Let's Encrypt topics discussed below:
 
   # Introduction
   # How it works?
@@ -1169,7 +1169,7 @@
     !!! ###===>>> Don't enable SSL option for the Hostmaster site in Aegir
     !!! WARNING
 
-    Let’s Encrypt SSL for Aegir control panel is handled in BOA outside of
+    Let's Encrypt SSL for Aegir control panel is handled in BOA outside of
     the control panel, and you should never enable it within control panel.
 
     During octopus upgrade you will see this message, explaining what to do:
@@ -1186,7 +1186,7 @@
     certificate on the fly, to match current settings and aliases to list.
 
     BOA runs auto-renewal checks for you weekly, and forces renewal if there is
-    less than 30 days to the certificate expiration date (Let’s Encrypt certs
+    less than 30 days to the certificate expiration date (Let's Encrypt certs
     are valid for up to 90 days before they have to be renewed).
 
     Also every Verify task against SSL enabled site runs this check on the fly.

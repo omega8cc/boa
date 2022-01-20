@@ -231,13 +231,13 @@ our version: https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
 @=> Let's Encrypt certificates
 
-If you are still running any Drupal site without Let’s Encrypt Free SSL
+If you are still running any Drupal site without Let's Encrypt Free SSL
 enabled in your Aegir control panel, you may want to read two articles:
 
   HTTPS' massive speed advantage: http://bit.ly/2b42lqV
   HTTP/2 makes media loading 3–15 times faster: http://bit.ly/2aW1u9V
 
-The Let’s Encrypt certs are free, and very easy to use! Just follow the docs:
+The Let's Encrypt certs are free, and very easy to use! Just follow the docs:
 
   https://github.com/omega8cc/boa/blob/master/docs/SSL.txt
 
@@ -249,7 +249,7 @@ In short, here is all you need to do:
 
 Congrats!
 
-Now enjoy HTTPS with free Let’s Encrypt certs for all hosted sites, with
+Now enjoy HTTPS with free Let's Encrypt certs for all hosted sites, with
 HTTP/2 for speed, and Perfect Forward Secrecy for security, auto-enabled!
 
 Note: If you have used SSL add-on with dedicated IP address before,
