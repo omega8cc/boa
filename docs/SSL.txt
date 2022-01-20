@@ -1,9 +1,9 @@
 
   ###
-#-### Let’s Encrypt free SSL certificates are supported directly in Aegir
+#-### Let's Encrypt free SSL certificates are supported directly in Aegir
   ###
 
-  You can find these important Let’s Encrypt topics discussed below:
+  You can find these important Let's Encrypt topics discussed below:
 
   # Introduction
   # Before we begin... what is the most common mistake and how to avoid it?
@@ -61,7 +61,7 @@ as explained in this document further below.
   !!! ###===>>> Don't enable SSL option for the Hostmaster site in Aegir
   !!! WARNING
 
-  Let’s Encrypt SSL for Aegir control panel is handled in BOA outside of
+  Let's Encrypt SSL for Aegir control panel is handled in BOA outside of
   the control panel, and you should never enable it within control panel.
 
   During octopus upgrade you will see this message, explaining what to do:
@@ -78,7 +78,7 @@ as explained in this document further below.
   certificate on the fly, to match current settings and aliases to list.
 
   BOA runs auto-renewal checks for you weekly, and forces renewal if there is
-  less than 30 days to the certificate expiration date (Let’s Encrypt certs
+  less than 30 days to the certificate expiration date (Let's Encrypt certs
   are valid for up to 90 days before they have to be renewed).
 
   Also every Verify task against SSL enabled site runs this check on the fly.
