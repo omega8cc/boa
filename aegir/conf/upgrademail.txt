@@ -22,11 +22,34 @@ Drupal platforms by creating temporary pid file:
   ~/static/control/run-upgrade.pid (please read further below for details)
 
 TL;DR
+* Yes, with little effort you can turn your subscription free of charge!
 * Yes, you can launch Aegir upgrade to add supported platforms in minutes!
 * Yes, blazing fast site clone/migrate mode is available even for giant sites!
 * Yes, BOA still supports Pressflow 6 (LTS version only!)
 * No, we no longer install any supported Drupal distros as platforms by default.
 * You should stop using PHP other than 7.4 because older versions are deprecated
+
+
+@=> Affiliate Program available for all paying Omega8.cc Customers is here!
+
+We pay permanent 10% commissions for every order placed using your custom
+affiliate link by tracking visitors you refer to us using a cookie.
+
+The commissions are permanent, because you will earn them for as long as
+the purchased subscription is renewed! This means that with little promoting
+effort you could, depending on the number of referrals and their subscriptions
+level, not only cover your own subscription cost, but also earn extra income,
+which can be paid via Account Credit, Transfer Wise, Revolut or PayPal F&F.
+
+Commissions are subject to 90 days maturity policy – It's the number of days
+after payment a referral matures and becomes available for payout.
+
+The cookie will last up to 180 days following the initial visit, so you will
+get a commission for the referral even if they do not sign up immediately.
+
+If you have any questions, please contact us via https://omega8.cc/contact or
+join Affiliate Program via your account in our Billing Portal at:
+https://pay.omega8.cc/client/login/
 
 
 @=> PHP unsupported versions deprecation notice! Also, 8.0 and 8.1 is here!
