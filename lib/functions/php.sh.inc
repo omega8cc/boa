@@ -1203,6 +1203,7 @@ install_php_multi() {
              --with-webp \
              --with-freetype \
              --with-ldap \
+             --with-sodium \
              --with-gmp"
   if [ "$1" = "74" ] || [ "$1" = "80" ] || [ "$1" = "81" ]; then
     _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-freetype-dir=\/usr//g" 2>&1)
@@ -1969,7 +1970,11 @@ switch_php_cli() {
 }
 
 php_upgrade_all() {
-  _PHP_V="74 73 80 81 56 72 71 70"
+  if [ ! -z "${1}" ] ; then
+    _PHP_V="${1}"
+  else
+    _PHP_V="74 73 80 81 56 72 71 70"
+  fi
   for e in ${_PHP_V}; do
     if [ -x "/opt/php${e}/bin/php" ]; then
       if [ "${e}" = "74" ]; then
@@ -2125,6 +2130,14 @@ install_update_php() {
 
 check_fix_php() {
   check_php_cli
+  isSodium=
+  isSodium=$(/opt/php74/bin/php -i | grep with-sodium 2>&1)
+  if [[ ! "${isSodium}" =~ "with-sodium" ]] \
+    || [ -z "${isSodium}" ]; then
+    msg "INFO: PHP rebuild required to add Sodium support..."
+    _PHP_FORCE_REINSTALL=YES
+    php_upgrade_all "74 80 81"
+  fi
   isWebP=
   isWebP=$(php -i | grep with-webp 2>&1)
   if [[ ! "${isWebP}" =~ "with-webp" ]] \
