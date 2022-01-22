@@ -793,7 +793,7 @@ install_php_extensions() {
   msg "INFO: Installing YAML ${_YAML_VRN} for PHP ${_T_PHP_VRN}..."
   cd /var/opt
   rm -rf yaml*
-  if [ "$1" = "56" ]; then
+  if [ "$1" = "56" ] || [ "$1" = "70" ]; then
     get_dev_src "yaml-${_YAML_VRN}.tgz"
     cd /var/opt/yaml-${_YAML_VRN}
   else
@@ -1087,7 +1087,7 @@ update_php_extensions() {
     msg "INFO: Installing YAML upgrade for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf yaml*
-    if [ "$1" = "56" ]; then
+    if [ "$1" = "56" ] || [ "$1" = "70" ]; then
       get_dev_src "yaml-${_YAML_VRN}.tgz"
       cd /var/opt/yaml-${_YAML_VRN}
     else
