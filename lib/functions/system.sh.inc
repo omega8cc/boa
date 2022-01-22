@@ -4526,6 +4526,7 @@ sys_packages_install() {
               libpq5 \
               librsync-dev \
               libsasl2-modules \
+              libsodium-dev \
               libsqlite3-dev \
               libssl-dev \
               libterm-readkey-perl \
