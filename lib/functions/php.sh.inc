@@ -777,7 +777,10 @@ install_php_extensions() {
         mkdir -p /var/backups/libyaml
         mkdir -p /usr/lib/x86_64-linux-gnu
         cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/ &> /dev/null
-        rm -f /usr/lib/x86_64-linux-gnu/libyaml*
+        if [ -e "/usr/lib/libyaml-0.so.2.0.9" ]; then
+          rm -f /usr/lib/x86_64-linux-gnu/libyaml*
+          rm -f /usr/lib/libyaml-0.so.2.0.4
+        fi
         cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/ &> /dev/null
       fi
     else
@@ -786,7 +789,10 @@ install_php_extensions() {
         mkdir -p /var/backups/libyaml
         mkdir -p /usr/lib/i386-linux-gnu
         cp -af /usr/lib/i386-linux-gnu/libyaml* /var/backups/libyaml/ &> /dev/null
-        rm -f /usr/lib/i386-linux-gnu/libyaml*
+        if [ -e "/usr/lib/libyaml-0.so.2.0.9" ]; then
+          rm -f /usr/lib/i386-linux-gnu/libyaml*
+          rm -f /usr/lib/libyaml-0.so.2.0.4
+        fi
         cp -af /usr/lib/libyaml* /usr/lib/i386-linux-gnu/ &> /dev/null
       fi
     fi
@@ -1072,7 +1078,10 @@ update_php_extensions() {
         || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ]; then
         mkdir -p /var/backups/libyaml
         cp -af /usr/lib/x86_64-linux-gnu/libyaml* /var/backups/libyaml/ &> /dev/null
-        rm -f /usr/lib/x86_64-linux-gnu/libyaml*
+        if [ -e "/usr/lib/libyaml-0.so.2.0.9" ]; then
+          rm -f /usr/lib/x86_64-linux-gnu/libyaml*
+          rm -f /usr/lib/libyaml-0.so.2.0.4
+        fi
         cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/
       fi
     else
@@ -1080,7 +1089,10 @@ update_php_extensions() {
         || [ -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.4" ]; then
         mkdir -p /var/backups/libyaml
         cp -af /usr/lib/i386-linux-gnu/libyaml* /var/backups/libyaml/
-        rm -f /usr/lib/i386-linux-gnu/libyaml*
+        if [ -e "/usr/lib/libyaml-0.so.2.0.9" ]; then
+          rm -f /usr/lib/i386-linux-gnu/libyaml*
+          rm -f /usr/lib/libyaml-0.so.2.0.4
+        fi
         cp -af /usr/lib/libyaml* /usr/lib/i386-linux-gnu/
       fi
     fi
