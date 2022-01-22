@@ -605,6 +605,18 @@ install_php_extensions() {
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     touch ${pthLog}/f_uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log
+  elif [ "$1" = "72" ] || [ "$1" = "73" ] || [ "$1" = "74" ] || [ "$1" = "80" ] || [ "$1" = "81" ]; then
+    msg "INFO: Installing UploadProgress ${_UPROGRESS_EIGHT_VRN} for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -rf uploadprogress*
+    get_dev_src "uploadprogress-${_UPROGRESS_EIGHT_VRN}.tgz"
+    cd /var/opt/uploadprogress-${_UPROGRESS_EIGHT_VRN}
+    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+    mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    mrun "ldconfig" 2> /dev/null
+    touch ${pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log
   else
     msg "INFO: Installing UploadProgress ${_UPROGRESS_SEVEN_VRN} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
@@ -619,25 +631,27 @@ install_php_extensions() {
     touch ${pthLog}/f_uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
-  msg "INFO: Installing JSMin ${_JSMIN_VRN} for PHP ${_T_PHP_VRN}..."
-  cd /var/opt
-  rm -rf pecl-jsmin*
-  if [ "$1" = "56" ]; then
-    get_dev_src "pecl-jsmin-${_JSMIN_VRN}.tar.gz"
-    cd /var/opt/pecl-jsmin-${_JSMIN_VRN}
-  else
-    get_dev_src "pecl-jsmin-${_JSMIN_PHP7_VRN}.tar.gz"
-    cd /var/opt/pecl-jsmin-${_JSMIN_PHP7_VRN}
-  fi
-  mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-  mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-  mrun "make --quiet" 2> /dev/null
-  mrun "make --quiet install" 2> /dev/null
-  mrun "ldconfig" 2> /dev/null
-  if [ "$1" = "56" ]; then
-    touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
-  else
-    touch ${pthLog}/php-pecl-jsmin-${_JSMIN_PHP7_VRN}-${_T_PHP_VRN}.log
+  if [ "$1" != "80" ] && [ "$1" != "81" ]; then
+    msg "INFO: Installing JSMin ${_JSMIN_VRN} for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -rf pecl-jsmin*
+    if [ "$1" = "56" ]; then
+      get_dev_src "pecl-jsmin-${_JSMIN_VRN}.tar.gz"
+      cd /var/opt/pecl-jsmin-${_JSMIN_VRN}
+    else
+      get_dev_src "pecl-jsmin-${_JSMIN_PHP7_VRN}.tar.gz"
+      cd /var/opt/pecl-jsmin-${_JSMIN_PHP7_VRN}
+    fi
+    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+    mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    mrun "ldconfig" 2> /dev/null
+    if [ "$1" = "56" ]; then
+      touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
+    else
+      touch ${pthLog}/php-pecl-jsmin-${_JSMIN_PHP7_VRN}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
   if [ "$1" = "56" ]; then
@@ -863,6 +877,20 @@ update_php_extensions() {
       mrun "ldconfig" 2> /dev/null
       touch ${pthLog}/f_uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log
     fi
+  elif [ "$1" = "72" ] || [ "$1" = "73" ] || [ "$1" = "74" ] || [ "$1" = "80" ] || [ "$1" = "81" ]; then
+    if [ ! -e "${pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log" ]; then
+      msg "INFO: Installing UploadProgress upgrade for PHP ${_T_PHP_VRN}..."
+      cd /var/opt
+      rm -rf uploadprogress*
+      get_dev_src "uploadprogress-${_UPROGRESS_EIGHT_VRN}.tgz"
+      cd /var/opt/uploadprogress-${_UPROGRESS_EIGHT_VRN}
+      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+      mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
+      mrun "ldconfig" 2> /dev/null
+      touch ${pthLog}/f_uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log
+    fi
   else
     if [ ! -e "${pthLog}/f_uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing UploadProgress upgrade for PHP ${_T_PHP_VRN}..."
@@ -893,7 +921,7 @@ update_php_extensions() {
       mrun "ldconfig" 2> /dev/null
       touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
     fi
-  else
+  elif [ "$1" = "70" ] || [ "$1" = "71" ] || [ "$1" = "72" ] || [ "$1" = "73" ] || [ "$1" = "74" ]; then
     if [ ! -e "${pthLog}/php-pecl-jsmin-${_JSMIN_PHP7_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing JSMin for PHP ${_T_PHP_VRN}..."
       cd /var/opt
