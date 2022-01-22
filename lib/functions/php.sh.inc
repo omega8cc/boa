@@ -405,7 +405,9 @@ update_php_conf() {
       fix_php_ini_mailparse
       fix_php_ini_twig
     fi
-    fix_php_ini_jsmin
+    if [ "${e}" != "80" ] && [ "${e}" != "81" ]; then
+      fix_php_ini_jsmin
+    fi
     fix_php_ini_redis
     fix_php_ini_ioncube
     fix_php_ini_suhosin
