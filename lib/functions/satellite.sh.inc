@@ -630,15 +630,50 @@ satellite_cnf() {
           elif [ -x "/opt/php81/bin/php" ]; then
             _PHP_FPM_VERSION=8.1
           fi
-        else
+        elif [ "${_PHP_FPM_VERSION}" = "7.2" ] \
+          && [ ! -x "/opt/php72/bin/php" ]; then
           if [ -x "/opt/php73/bin/php" ]; then
             _PHP_FPM_VERSION=7.3
           elif [ -x "/opt/php74/bin/php" ]; then
             _PHP_FPM_VERSION=7.4
-          elif [ -x "/opt/php80/bin/php" ]; then
-            _PHP_FPM_VERSION=8.0
-          elif [ -x "/opt/php81/bin/php" ]; then
-            _PHP_FPM_VERSION=8.1
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _PHP_FPM_VERSION=5.6
+          fi
+        elif [ "${_PHP_FPM_VERSION}" = "7.1" ] \
+          && [ ! -x "/opt/php71/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _PHP_FPM_VERSION=7.3
+          elif [ -x "/opt/php74/bin/php" ]; then
+            _PHP_FPM_VERSION=7.4
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _PHP_FPM_VERSION=5.6
+          fi
+        elif [ "${_PHP_FPM_VERSION}" = "7.0" ] \
+          && [ ! -x "/opt/php70/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _PHP_FPM_VERSION=7.3
+          elif [ -x "/opt/php74/bin/php" ]; then
+            _PHP_FPM_VERSION=7.4
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _PHP_FPM_VERSION=5.6
+          fi
+        elif [ "${_PHP_FPM_VERSION}" = "5.6" ] \
+          && [ ! -x "/opt/php56/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _PHP_FPM_VERSION=7.3
+          elif [ -x "/opt/php74/bin/php" ]; then
+            _PHP_FPM_VERSION=7.4
+          elif [ -x "/opt/php72/bin/php" ]; then
+            _PHP_FPM_VERSION=7.2
+          fi
+        elif [ "${_PHP_FPM_VERSION}" = "5.2" ] \
+          && [ ! -x "/opt/php52/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _PHP_FPM_VERSION=7.3
+          elif [ -x "/opt/php74/bin/php" ]; then
+            _PHP_FPM_VERSION=7.4
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _PHP_FPM_VERSION=5.6
           fi
         fi
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_FPM_VERSION}/g" \
@@ -709,15 +744,50 @@ satellite_cnf() {
           elif [ -x "/opt/php81/bin/php" ]; then
             _PHP_CLI_VERSION=8.1
           fi
-        else
+        elif [ "${_PHP_CLI_VERSION}" = "7.2" ] \
+          && [ ! -x "/opt/php72/bin/php" ]; then
           if [ -x "/opt/php73/bin/php" ]; then
             _PHP_CLI_VERSION=7.3
           elif [ -x "/opt/php74/bin/php" ]; then
             _PHP_CLI_VERSION=7.4
-          elif [ -x "/opt/php80/bin/php" ]; then
-            _PHP_CLI_VERSION=8.0
-          elif [ -x "/opt/php81/bin/php" ]; then
-            _PHP_CLI_VERSION=8.1
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _PHP_CLI_VERSION=5.6
+          fi
+        elif [ "${_PHP_CLI_VERSION}" = "7.1" ] \
+          && [ ! -x "/opt/php71/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _PHP_CLI_VERSION=7.3
+          elif [ -x "/opt/php74/bin/php" ]; then
+            _PHP_CLI_VERSION=7.4
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _PHP_CLI_VERSION=5.6
+          fi
+        elif [ "${_PHP_CLI_VERSION}" = "7.0" ] \
+          && [ ! -x "/opt/php70/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _PHP_CLI_VERSION=7.3
+          elif [ -x "/opt/php74/bin/php" ]; then
+            _PHP_CLI_VERSION=7.4
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _PHP_CLI_VERSION=5.6
+          fi
+        elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
+          && [ ! -x "/opt/php56/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _PHP_CLI_VERSION=7.3
+          elif [ -x "/opt/php74/bin/php" ]; then
+            _PHP_CLI_VERSION=7.4
+          elif [ -x "/opt/php72/bin/php" ]; then
+            _PHP_CLI_VERSION=7.2
+          fi
+        elif [ "${_PHP_CLI_VERSION}" = "5.2" ] \
+          && [ ! -x "/opt/php52/bin/php" ]; then
+          if [ -x "/opt/php73/bin/php" ]; then
+            _PHP_CLI_VERSION=7.3
+          elif [ -x "/opt/php74/bin/php" ]; then
+            _PHP_CLI_VERSION=7.4
+          elif [ -x "/opt/php56/bin/php" ]; then
+            _PHP_CLI_VERSION=5.6
           fi
         fi
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_CLI_VERSION}/g" \
@@ -844,6 +914,9 @@ satellite_cnf() {
         if [ -x "/opt/php73/bin/php" ]; then
           _PHP_FPM_VERSION=7.3
           _PHP_CLI_VERSION=7.3
+        elif [ -x "/opt/php72/bin/php" ]; then
+          _PHP_FPM_VERSION=7.2
+          _PHP_CLI_VERSION=7.2
         else
           _PHP_FPM_VERSION=
           _PHP_CLI_VERSION=
@@ -855,6 +928,51 @@ satellite_cnf() {
         if [ -x "/opt/php74/bin/php" ]; then
           _PHP_FPM_VERSION=7.4
           _PHP_CLI_VERSION=7.4
+        elif [ -x "/opt/php72/bin/php" ]; then
+          _PHP_FPM_VERSION=7.2
+          _PHP_CLI_VERSION=7.2
+        else
+          _PHP_FPM_VERSION=
+          _PHP_CLI_VERSION=
+        fi
+      fi
+    elif [ "${_PHP_FPM_VERSION}" = "7.2" ] \
+      || [ "${_PHP_CLI_VERSION}" = "7.2" ]; then
+      if [ ! -x "/opt/php72/bin/php" ]; then
+        if [ -x "/opt/php74/bin/php" ]; then
+          _PHP_FPM_VERSION=7.4
+          _PHP_CLI_VERSION=7.4
+        elif [ -x "/opt/php73/bin/php" ]; then
+          _PHP_FPM_VERSION=7.3
+          _PHP_CLI_VERSION=7.3
+        else
+          _PHP_FPM_VERSION=
+          _PHP_CLI_VERSION=
+        fi
+      fi
+    elif [ "${_PHP_FPM_VERSION}" = "7.1" ] \
+      || [ "${_PHP_CLI_VERSION}" = "7.1" ]; then
+      if [ ! -x "/opt/php71/bin/php" ]; then
+        if [ -x "/opt/php74/bin/php" ]; then
+          _PHP_FPM_VERSION=7.4
+          _PHP_CLI_VERSION=7.4
+        elif [ -x "/opt/php73/bin/php" ]; then
+          _PHP_FPM_VERSION=7.3
+          _PHP_CLI_VERSION=7.3
+        else
+          _PHP_FPM_VERSION=
+          _PHP_CLI_VERSION=
+        fi
+      fi
+    elif [ "${_PHP_FPM_VERSION}" = "7.0" ] \
+      || [ "${_PHP_CLI_VERSION}" = "7.0" ]; then
+      if [ ! -x "/opt/php70/bin/php" ]; then
+        if [ -x "/opt/php74/bin/php" ]; then
+          _PHP_FPM_VERSION=7.4
+          _PHP_CLI_VERSION=7.4
+        elif [ -x "/opt/php73/bin/php" ]; then
+          _PHP_FPM_VERSION=7.3
+          _PHP_CLI_VERSION=7.3
         else
           _PHP_FPM_VERSION=
           _PHP_CLI_VERSION=

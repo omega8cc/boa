@@ -1446,6 +1446,25 @@ switch_php() {
       _T_CLI_VRN=$(cat ${dscUsr}/static/control/cli.info 2>&1)
       _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
       _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
+      if [ "${_T_CLI_VRN}" = "81" ]; then
+        _T_CLI_VRN=8.1
+      elif [ "${_T_CLI_VRN}" = "80" ]; then
+        _T_CLI_VRN=8.0
+      elif [ "${_T_CLI_VRN}" = "74" ]; then
+        _T_CLI_VRN=7.4
+      elif [ "${_T_CLI_VRN}" = "73" ]; then
+        _T_CLI_VRN=7.3
+      elif [ "${_T_CLI_VRN}" = "72" ]; then
+        _T_CLI_VRN=7.2
+      elif [ "${_T_CLI_VRN}" = "71" ]; then
+        _T_CLI_VRN=7.1
+      elif [ "${_T_CLI_VRN}" = "70" ]; then
+        _T_CLI_VRN=7.0
+      elif [ "${_T_CLI_VRN}" = "56" ]; then
+        _T_CLI_VRN=5.6
+      elif [ "${_T_CLI_VRN}" = "52" ]; then
+        _T_CLI_VRN=5.2
+      fi
       if [ "${_T_CLI_VRN}" = "8.1" ] \
         || [ "${_T_CLI_VRN}" = "8.0" ] \
         || [ "${_T_CLI_VRN}" = "7.4" ] \

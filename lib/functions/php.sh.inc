@@ -1837,6 +1837,7 @@ php_deprecated_cleanup() {
 # Fix init.d to disable not used PHP-FPM versions
 php_single_initd_cleanup() {
   if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
+    _FPM_INITD_CLEANUP=
     if [ "${_PHP_SINGLE_INSTALL}" = "8.1" ]; then
       _PHP_V="80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
@@ -1890,7 +1891,7 @@ php_single_initd_cleanup() {
         fi
       done
     fi
-    if [ "$_FPM_INITD_CLEANUP" = "YES" ]; then
+    if [ "${_FPM_INITD_CLEANUP}" = "YES" ]; then
       killall php-fpm &> /dev/null
     fi
     rm -f /opt/local/bin/php
@@ -1925,8 +1926,8 @@ check_php_cli() {
   else
     _PHP_CLI_PATH=""
   fi
-  if [ -x "$_PHP_CLI_PATH" ]; then
-    _USE_PHP_CLI_PATH=$_PHP_CLI_PATH
+  if [ -x "${_PHP_CLI_PATH}" ]; then
+    _USE_PHP_CLI_PATH=${_PHP_CLI_PATH}
   else
     if  [ -x "/opt/php74/bin/php" ]; then
       _USE_PHP_CLI_PATH="/opt/php74/bin/php"

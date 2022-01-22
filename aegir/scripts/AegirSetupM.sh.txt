@@ -117,29 +117,21 @@ urlHmr="http://${_USE_MIR}/versions/master/aegir"
 # Update php-cli for Drush.
 update_php_cli_drush() {
   _DRUSH_FILE="${_ROOT}/drush/drush.php"
-  if [ "${_PHP_CLI_VERSION}" = "7.4" ] \
+  if [ "${_PHP_CLI_VERSION}" = "8.1" ] \
+    && [ -x "/opt/php81/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php81\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "8.0" ] \
+    && [ -x "/opt/php80/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php80\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "7.4" ] \
     && [ -x "/opt/php74/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "7.3" ] \
     && [ -x "/opt/php73/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php73\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "7.2" ] \
-    && [ -x "/opt/php72/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php72\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "7.1" ] \
-    && [ -x "/opt/php71/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php71\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "7.0" ] \
-    && [ -x "/opt/php70/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php70\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
-    && [ -x "/opt/php56/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
   else
     msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported values"

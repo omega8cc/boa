@@ -134,7 +134,15 @@ fi
 # Update php-cli for Drush.
 update_php_cli_drush() {
   _DRUSH_FILE="${_ROOT}/drush/drush.php"
-  if [ "${_PHP_CLI_VERSION}" = "7.4" ] \
+  if [ "${_PHP_CLI_VERSION}" = "8.1" ] \
+    && [ -x "/opt/php81/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php81\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "8.0" ] \
+    && [ -x "/opt/php80/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php80\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "7.4" ] \
     && [ -x "/opt/php74/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
