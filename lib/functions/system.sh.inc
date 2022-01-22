@@ -2303,7 +2303,7 @@ get_drush_versions() {
       | tr -d "\n" \
       | cut -d" " -f8 \
       | awk '{ print $1}' 2>&1)
-    if [ "${_DRUSH_ITD}" != "${_DRUSH_EIGHT_VRN}" ] \
+    if [ "${_DRUSH_ITD}" != "${_DRUSH_EIGHT_TEST_VRN}" ] \
       || [ ! -x "/opt/tools/drush/8/drush/drush" ] \
       || [ ! -e "/opt/tools/drush/8/.ctrl.${_X_SE}.pid" ]; then
       msg "INFO: Drush ${_DRUSH_EIGHT_VRN} re-installation required"
