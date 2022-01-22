@@ -3400,10 +3400,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/lightning-${_LIGHTNING}-${_SMALLCORE9}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/lightning-${_LIGHTNING}-${_SMALLCORE9}" ]; then
-        _A="${_QR}/lightning-${_LIGHTNING}-${_SMALLCORE9}/docroot/sites"
-        _B="${_QH}/lightning-${_LIGHTNING}-${_SMALLCORE9}"
+    if [ -d "${_QR}/lightning-${_LIGHTNING}-${_SMALLCORE93}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/lightning-${_LIGHTNING}-${_SMALLCORE93}" ]; then
+        _A="${_QR}/lightning-${_LIGHTNING}-${_SMALLCORE93}/docroot/sites"
+        _B="${_QH}/lightning-${_LIGHTNING}-${_SMALLCORE93}"
         ln -sf ${_A} ${_B}
       fi
     fi
@@ -3456,10 +3456,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9}/web/sites" ]; then
-      if [ ! -L "${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9}" ]; then
-        _A="${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9}/web/sites"
-        _B="${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9}"
+    if [ -d "${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE93}/web/sites" ]; then
+      if [ ! -L "${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE93}" ]; then
+        _A="${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE93}/web/sites"
+        _B="${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE93}"
         ln -sf ${_A} ${_B}
       fi
     fi
@@ -3519,10 +3519,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/thunder-${_THUNDER}-${_SMALLCORE9}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_SMALLCORE9}" ]; then
-        _A="${_QR}/thunder-${_THUNDER}-${_SMALLCORE9}/docroot/sites"
-        _B="${_QH}/thunder-${_THUNDER}-${_SMALLCORE9}"
+    if [ -d "${_QR}/thunder-${_THUNDER}-${_SMALLCORE93}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_SMALLCORE93}" ]; then
+        _A="${_QR}/thunder-${_THUNDER}-${_SMALLCORE93}/docroot/sites"
+        _B="${_QH}/thunder-${_THUNDER}-${_SMALLCORE93}"
         ln -sf ${_A} ${_B}
       fi
     fi
@@ -3547,10 +3547,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/varbase-${_VARBASE}-${_SMALLCORE9}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/varbase-${_VARBASE}-${_SMALLCORE9}" ]; then
-        _A="${_QR}/varbase-${_VARBASE}-${_SMALLCORE9}/docroot/sites"
-        _B="${_QH}/varbase-${_VARBASE}-${_SMALLCORE9}"
+    if [ -d "${_QR}/varbase-${_VARBASE}-${_SMALLCORE93}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/varbase-${_VARBASE}-${_SMALLCORE93}" ]; then
+        _A="${_QR}/varbase-${_VARBASE}-${_SMALLCORE93}/docroot/sites"
+        _B="${_QH}/varbase-${_VARBASE}-${_SMALLCORE93}"
         ln -sf ${_A} ${_B}
       fi
     fi
@@ -3568,10 +3568,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9}/web/sites" ]; then
-      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9}" ]; then
-        _A="${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9}/web/sites"
-        _B="${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9}"
+    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE92}/web/sites" ]; then
+      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE92}" ]; then
+        _A="${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE92}/web/sites"
+        _B="${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE92}"
         ln -sf ${_A} ${_B}
       fi
     fi
@@ -3891,8 +3891,8 @@ satellite_make() {
   echo "_SMALLCORE6=\"${_SMALLCORE6}\""               >> ${writeTo}
   echo "_SMALLCORE7=\"${_SMALLCORE7}\""               >> ${writeTo}
   echo "_SMALLCORE8=\"${_SMALLCORE8}\""               >> ${writeTo}
-  echo "_SMALLCORE9=\"${_SMALLCORE9}\""               >> ${writeTo}
-  echo "_SOCIAL_CORE=\"${_SMALLCORE8}\""              >> ${writeTo}
+  echo "_SMALLCORE92=\"${_SMALLCORE92}\""             >> ${writeTo}
+  echo "_SMALLCORE93=\"${_SMALLCORE93}\""             >> ${writeTo}
   echo "_SOCIAL=\"${_SOCIAL}\""                       >> ${writeTo}
   echo "_SPINNER=\"${_SPINNER}\""                     >> ${writeTo}
   echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${writeTo}
@@ -3901,7 +3901,6 @@ satellite_make() {
   echo "_THIS_DB_PORT=\"${_THIS_DB_PORT}\""           >> ${writeTo}
   echo "_THIS_OS=\"${_THIS_OS}\""                     >> ${writeTo}
   echo "_THISHTIP=\"${_THISHTIP}\""                   >> ${writeTo}
-  echo "_THUNDER_CORE=\"${_SMALLCORE9}\""             >> ${writeTo}
   echo "_THUNDER=\"${_THUNDER}\""                     >> ${writeTo}
   echo "_TODAY=\"${_TODAY}\""                         >> ${writeTo}
   echo "_UBERCART6=\"${_UBERCART6}\""                 >> ${writeTo}
