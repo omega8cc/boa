@@ -148,6 +148,17 @@
 ###
 
 
+!!! >>> PHP CAVEATS:
+
+  => PHP 8.0 is only supported by Drupal 9.1.0 or newer
+  => PHP 8.1 is only supported by Drupal 9.3.0 or newer
+  => Use 8.x only for specified sites in the ~/static/control/multi-fpm.info
+  => Do NOT use 8.0 nor 8.1 in the default Aegir PHP configuration files:
+     ~/static/control/cli.info nor ~/static/control/fpm.info
+
+Check also: https://www.drupal.org/docs/system-requirements/php-requirements
+
+
 ###
 ### Support for PHP-FPM version switch per Octopus instance (also per site)
 ###
@@ -162,8 +173,6 @@
 ###
 ### Supported values for single PHP-FPM mode which can be written in this file:
 ###
-### 8.1
-### 8.0
 ### 7.4
 ### 7.3
 ### 7.2
@@ -218,8 +227,6 @@
 ###
 ### Supported values which can be written in this file:
 ###
-### 8.1
-### 8.0
 ### 7.4
 ### 7.3
 ### 7.2
@@ -302,4 +309,3 @@
 ###
 ### Details: https://github.com/omega8cc/boa/blob/master/docs/RVM.txt
 ###
-
