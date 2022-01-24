@@ -3479,7 +3479,7 @@ if [ "${_VMFAMILY}" = "VS" ]; then
     xhprof"
 fi
 #
-if [ "${_DOW}" = "8" ]; then
+if [ "${_DOW}" = "2" ]; then
   _MODULES_ON_EIGHT="robotstxt"
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache \
