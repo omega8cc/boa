@@ -1905,12 +1905,13 @@ fix_modules() {
       echo "WARNING: THIS PLATFORM IS NOT A VALID PRESSFLOW PLATFORM! ${Plr}"
     elif [ -e "${Plr}/modules/path_alias_cache" ] \
       && [ -e "${Plr}/modules/user" ]; then
-      # if [ ! -z "${_MODULES_OFF_SIX}" ]; then
-      #   disable_modules_with_drush8 "${_MODULES_OFF_SIX}"
-      # fi
-      # if [ ! -z "${_MODULES_ON_SIX}" ]; then
-      #   enable_modules_with_drush8 "${_MODULES_ON_SIX}"
-      # fi
+      _MODX=ON
+      if [ ! -z "${_MODULES_OFF_SIX}" ]; then
+        disable_modules_with_drush8 "${_MODULES_OFF_SIX}"
+      fi
+      if [ ! -z "${_MODULES_ON_SIX}" ]; then
+        enable_modules_with_drush8 "${_MODULES_ON_SIX}"
+      fi
       run_drush8_cmd "sqlq \"UPDATE system SET weight = '-1' \
         WHERE type = 'module' AND name = 'path_alias_cache'\""
     fi
@@ -1920,16 +1921,16 @@ fix_modules() {
       || [ ! -e "${Plr}/profiles" ]; then
       echo "WARNING: THIS PLATFORM IS BROKEN! ${Plr}"
     else
-      _MODX=OFF
-      # if [ ! -z "${_MODULES_OFF_SEVEN}" ]; then
-      #   disable_modules_with_drush8 "${_MODULES_OFF_SEVEN}"
-      # fi
-      # if [ "${_ENTITYCACHE_DONT_ENABLE}" = "NO" ]; then
-      #   enable_modules_with_drush8 "entitycache"
-      # fi
-      # if [ ! -z "${_MODULES_ON_SEVEN}" ]; then
-      #   enable_modules_with_drush8 "${_MODULES_ON_SEVEN}"
-      # fi
+      _MODX=ON
+      if [ ! -z "${_MODULES_OFF_SEVEN}" ]; then
+        disable_modules_with_drush8 "${_MODULES_OFF_SEVEN}"
+      fi
+      if [ "${_ENTITYCACHE_DONT_ENABLE}" = "NO" ]; then
+        enable_modules_with_drush8 "entitycache"
+      fi
+      if [ ! -z "${_MODULES_ON_SEVEN}" ]; then
+        enable_modules_with_drush8 "${_MODULES_ON_SEVEN}"
+      fi
     fi
   elif [ -e "${Plr}/modules/o_contrib_eight" ]; then
     if [ ! -e "${Plr}/core/modules/node" ] \
@@ -1937,17 +1938,17 @@ fix_modules() {
       || [ ! -e "${Plr}/profiles" ]; then
       echo "WARNING: THIS PLATFORM IS BROKEN! ${Plr}"
     else
-      _MODX=OFF
-      # if [ ! -z "${_MODULES_OFF_EIGHT}" ]; then
-      #   uninstall_modules_with_drush10 "${_MODULES_OFF_EIGHT}"
-      # fi
-      # if [ ! -z "${_MODULES_ON_EIGHT}" ]; then
-      #   if [ -x "/usr/bin/drush10-bin" ]; then
-      #     enable_modules_with_drush10 "${_MODULES_ON_EIGHT}"
-      #   else
-      #     enable_modules_with_drush8 "${_MODULES_ON_EIGHT}"
-      #   fi
-      # fi
+      _MODX=ON
+      if [ ! -z "${_MODULES_OFF_EIGHT}" ]; then
+        uninstall_modules_with_drush10 "${_MODULES_OFF_EIGHT}"
+      fi
+      if [ ! -z "${_MODULES_ON_EIGHT}" ]; then
+        if [ -x "/usr/bin/drush10-bin" ]; then
+          enable_modules_with_drush10 "${_MODULES_ON_EIGHT}"
+        else
+          enable_modules_with_drush8 "${_MODULES_ON_EIGHT}"
+        fi
+      fi
       if [ ! -e "${Dir}/.redisOn" ]; then
         if [ -x "/usr/bin/drush10-bin" ]; then
           enable_modules_with_drush10 "redis"
@@ -2063,7 +2064,7 @@ if_site_db_conversion() {
   fi
   if [ -z "${_DENY_SQL_CONVERT}" ] \
     && [ ! -z "${_SQL_CONVERT}" ] \
-    && [ "${_DOW}" = "8" ]; then
+    && [ "${_DOW}" = "2" ]; then
     if [ "${_SQL_CONVERT}" = "YES" ]; then
       _SQL_CONVERT=innodb
     elif [ "${_SQL_CONVERT}" = "NO" ]; then
@@ -3485,8 +3486,7 @@ if [ "${_DOW}" = "8" ]; then
     robotstxt"
   _MODULES_OFF_EIGHT="dblog \
     syslog \
-    simpletest \
-    update"
+    simpletest"
   _MODULES_OFF_SEVEN="backup_migrate \
     coder \
     devel \
@@ -3515,9 +3515,9 @@ else
   _MODULES_ON_EIGHT="robotstxt"
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
-  _MODULES_OFF_EIGHT="dblog syslog update backup_migrate automated_cron"
-  _MODULES_OFF_SEVEN="dblog syslog update backup_migrate"
-  _MODULES_OFF_SIX="dblog syslog update backup_migrate"
+  _MODULES_OFF_EIGHT="dblog syslog backup_migrate automated_cron"
+  _MODULES_OFF_SEVEN="dblog syslog backup_migrate"
+  _MODULES_OFF_SIX="dblog syslog backup_migrate"
 fi
 #
 _CTRL_TPL_FORCE_UPDATE=YES

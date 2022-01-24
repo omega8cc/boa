@@ -108,7 +108,6 @@ Core [F]orce[D]isabled:
  dblog ---------------------- [D6,D7,D8] -------- [FD]
  simpletest ----------------- [D8] -------------- [FD]
  syslog --------------------- [D6,D7,D8] -------- [FD]
- update --------------------- [D6,D7,D8] -------- [FD]
 
 Contrib [F]orce[D]isabled
 
