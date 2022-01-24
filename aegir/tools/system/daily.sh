@@ -3027,9 +3027,8 @@ purge_cruft_machine() {
     || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ]; then
-    _PURGE_BACKUPS="8"
+    _PURGE_BACKUPS="3"
     _PURGE_TMP="0"
-    _LOW_NR="8"
   fi
 
   find ${User}/backups/* -mtime +${_PURGE_BACKUPS} -exec \
@@ -3108,13 +3107,9 @@ purge_cruft_machine() {
   find ${User}/log/ctrl/* \
     -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 
-  _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
-    016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
-    034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
-
-  for i in ${_REVISIONS}; do
-    if [ -e "/home/${_HM_U}.ftp/platforms/$i" ]; then
-      RevisionTest=$(ls /home/${_HM_U}.ftp/platforms/$i \
+  for i in `dir -d /home/${_HM_U}.ftp/platforms/*`; do
+    if [ -e "${i}" ]; then
+      RevisionTest=$(ls ${i} \
         | wc -l \
         | tr -d "\n" 2>&1)
       if [ "${RevisionTest}" -lt "${_LOW_NR}" ] \
@@ -3123,34 +3118,41 @@ purge_cruft_machine() {
           chattr -i /home/${_HM_U}.ftp/platforms
           chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
         fi
-        rm -rf /home/${_HM_U}.ftp/platforms/$i
+        rm -rf ${i}
       fi
     fi
   done
 
-  for i in ${_REVISIONS}; do
-    if [ -d "${User}/distro/$i" ]; then
-      if [ ! -d "${User}/distro/${i}/keys" ]; then
-        mkdir -p ${User}/distro/${i}/keys
+  for i in `dir -d ${User}/distro/*`; do
+    if [ -d "${i}" ]; then
+      if [ ! -d "${i}/keys" ]; then
+        mkdir -p ${i}/keys
       fi
-      RevisionTest=$(ls ${User}/distro/${i} | wc -l 2>&1)
+      RevisionTest=$(ls ${i} | wc -l 2>&1)
       if [ "${RevisionTest}" -lt "2" ] && [ ! -z "${RevisionTest}" ]; then
         _NOW=$(date +%y%m%d-%H%M%S 2>&1)
         mkdir -p ${User}/undo/dist/${_NOW}
-        mv -f ${User}/distro/${i} ${User}/undo/dist/${_NOW}/ &> /dev/null
-        echo "GHOST revision ${User}/distro/${i} detected and moved to ${User}/undo/dist/${_NOW}/"
+        mv -f ${i} ${User}/undo/dist/${_NOW}/ &> /dev/null
+        echo "GHOST revision ${i} detected and moved to ${User}/undo/dist/${_NOW}/"
       fi
     fi
   done
 
+  _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
+    016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
+    034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050 051 \
+    052 053 054 055 056 057 058 059 060 061 062 063 064 065 066 067 068 069 \
+    070 071 072 073 074 075 076 077 078 079 080 081 082 083 084 085 086 087 \
+    088 089 090 091 092 093 094 095 096 097 098 099 100 101 102 103 104 105"
+
   for i in ${_REVISIONS}; do
-    if [ -e "${User}/distro/$i" ] \
-      && [ ! -e "/home/${_HM_U}.ftp/platforms/$i" ]; then
+    if [ -e "${User}/distro/${i}" ] \
+      && [ ! -e "/home/${_HM_U}.ftp/platforms/${i}" ]; then
       if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
         chattr -i /home/${_HM_U}.ftp/platforms
         chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
       fi
-      mkdir -p /home/${_HM_U}.ftp/platforms/$i
+      mkdir -p /home/${_HM_U}.ftp/platforms/${i}
       mkdir -p ${User}/distro/${i}/keys
       chown ${_HM_U}.ftp:${_WEBG} ${User}/distro/${i}/keys &> /dev/null
       chmod 02775 ${User}/distro/${i}/keys &> /dev/null
@@ -3217,7 +3219,10 @@ shared_codebases_cleanup() {
   fi
   _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
     016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
-    034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+    034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050 051 \
+    052 053 054 055 056 057 058 059 060 061 062 063 064 065 066 067 068 069 \
+    070 071 072 073 074 075 076 077 078 079 080 081 082 083 084 085 086 087 \
+    088 089 090 091 092 093 094 095 096 097 098 099 100 101 102 103 104 105"
   for i in ${_REVISIONS}; do
     if [ -d "/data/all/${i}/o_contrib" ]; then
       for Codebase in `find /data/all/${i}/* -maxdepth 1 -mindepth 1 -type d \
@@ -3243,7 +3248,10 @@ ghost_codebases_cleanup() {
   _CLD="/var/backups/ghost-codebases-cleanup"
   _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
     016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
-    034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+    034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050 051 \
+    052 053 054 055 056 057 058 059 060 061 062 063 064 065 066 067 068 069 \
+    070 071 072 073 074 075 076 077 078 079 080 081 082 083 084 085 086 087 \
+    088 089 090 091 092 093 094 095 096 097 098 099 100 101 102 103 104 105"
   for i in ${_REVISIONS}; do
     CodebaseTest=$(find /data/disk/*/distro/${i}/*/ -maxdepth 1 -mindepth 1 \
       -type d -name vendor | sort 2>&1)
