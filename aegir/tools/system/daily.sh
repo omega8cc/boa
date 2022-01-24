@@ -3032,7 +3032,7 @@ purge_cruft_machine() {
     _LOW_NR="8"
   fi
 
-  find ${User}/backups/* -mtime +${_PURGE_BACKUPS} -type f -exec \
+  find ${User}/backups/* -mtime +${_PURGE_BACKUPS} -exec \
     rm -rf {} \; &> /dev/null
 
   find ${User}/backup-exports/* -mtime +${_PURGE_TMP} -type f -exec \
