@@ -1932,39 +1932,38 @@ fix_modules() {
         enable_modules_with_drush8 "${_MODULES_ON_SEVEN}"
       fi
     fi
-  elif [ -e "${Plr}/modules/o_contrib_eight" ]; then
+  elif [ -e "${Plr}/modules/o_contrib_nine/redis_compr" ] \
+    || [ -e "${Plr}/modules/o_contrib_eight/redis_compr" ]
+    || [ -e "${Plr}/modules/o_contrib_eight/redis_eight" ]; then
     if [ ! -e "${Plr}/core/modules/node" ] \
-      || [ ! -e "${Plr}/sites/all/drush" ] \
+      || [ ! -e "${Plr}/sites/all/drush/drushrc.php" ] \
       || [ ! -e "${Plr}/profiles" ]; then
       echo "WARNING: THIS PLATFORM IS BROKEN! ${Plr}"
     else
-      _MODX=ON
-      if [ ! -z "${_MODULES_OFF_EIGHT}" ]; then
-        uninstall_modules_with_drush10 "${_MODULES_OFF_EIGHT}"
-      fi
-      if [ ! -z "${_MODULES_ON_EIGHT}" ]; then
-        if [ -x "/usr/bin/drush10-bin" ]; then
-          enable_modules_with_drush10 "${_MODULES_ON_EIGHT}"
-        else
-          enable_modules_with_drush8 "${_MODULES_ON_EIGHT}"
-        fi
-      fi
+      _MODX=PARTIAL
+      # if [ ! -z "${_MODULES_OFF_EIGHT}" ]; then
+      #   uninstall_modules_with_drush10 "${_MODULES_OFF_EIGHT}"
+      # fi
+      # if [ ! -z "${_MODULES_ON_EIGHT}" ]; then
+      #   if [ -x "/usr/bin/drush10-bin" ]; then
+      #     enable_modules_with_drush10 "${_MODULES_ON_EIGHT}"
+      #   else
+      #     enable_modules_with_drush8 "${_MODULES_ON_EIGHT}"
+      #   fi
+      # fi
       if [ ! -e "${Dir}/.redisOn" ]; then
         if [ -x "/usr/bin/drush10-bin" ]; then
           enable_modules_with_drush10 "redis"
-        elif [ -x "/usr/bin/drush10-bin" ]; then
-          enable_modules_with_drush9 "redis"
+          mkdir ${Dir}/.redisOn
+          chown -R ${_HM_U}:users ${Dir}/.redisOn &> /dev/null
+          chmod 0755 ${Dir}/.redisOn &> /dev/null
+          if [ -d "${Dir}/.redisOff" ]; then
+            rmdir ${Dir}/.redisOff
+          fi
+          if [ -d "${Dir}/.redisLegacyOff" ]; then
+            rmdir ${Dir}/.redisLegacyOff
+          fi
         fi
-        run_drush8_cmd "cache-rebuild"
-        mkdir ${Dir}/.redisOn
-        chown -R ${_HM_U}:users ${Dir}/.redisOn &> /dev/null
-        chmod 0755 ${Dir}/.redisOn &> /dev/null
-      fi
-      if [ -d "${Dir}/.redisOff" ]; then
-        rmdir ${Dir}/.redisOff
-      fi
-      if [ -d "${Dir}/.redisLegacyOff" ]; then
-        rmdir ${Dir}/.redisLegacyOff
       fi
     fi
   fi
