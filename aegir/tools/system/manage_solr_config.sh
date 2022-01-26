@@ -196,8 +196,7 @@ update_solr() {
     elif [ "${1}" = "search_api_solr" ] \
       && [ -e "${Plr}/sites/${Dom}/files/solr/schema.xml" ] \
       && [ -e "${Plr}/sites/${Dom}/files/solr/solrconfig.xml" ] \
-      && [ -e "${Plr}/sites/${Dom}/files/solr/solrcore.properties" ] \
-      && [ -e "${Plr}/modules/o_contrib_eight" ]; then
+      && [ -e "${Plr}/sites/${Dom}/files/solr/solrcore.properties" ]; then
       if [ ! -e "${2}/conf/.protected.conf" ] && [ -e "${2}/conf" ]; then
         check_config_diff "${Plr}/sites/${Dom}/files/solr/schema.xml" "${2}/conf/schema.xml"
         if [ ! -z "${slrCnfUpdate}" ]; then
@@ -214,8 +213,7 @@ update_solr() {
         fi
       fi
     elif [ "${1}" = "search_api_solr" ] \
-      && [ ! -e "${Plr}/sites/${Dom}/files/solr/schema.xml" ] \
-      && [ -e "${Plr}/modules/o_contrib_eight" ]; then
+      && [ ! -e "${Plr}/sites/${Dom}/files/solr/schema.xml" ]; then
       if [ ! -e "${2}/conf/.protected.conf" ] \
         && [ ! -e "${2}/conf/.yes-custom.txt" ] \
         && [ -e "${2}/conf" ]; then
@@ -276,11 +274,7 @@ add_solr() {
   # ${2} is solr core path
   if [ "${1}" = "apachesolr" ]; then
     _SOLR_BASE="/opt/solr4"
-  elif [ "${1}" = "search_api_solr" ] \
-    && [ -e "${Plr}/modules/o_contrib_seven" ]; then
-    _SOLR_BASE="/var/solr7/data"
-  elif [ "${1}" = "search_api_solr" ] \
-    && [ -e "${Plr}/modules/o_contrib_eight" ]; then
+  elif [ "${1}" = "search_api_solr" ]; then
     _SOLR_BASE="/var/solr7/data"
   fi
   if [ ! -z "${1}" ] && [ ! -z "${2}" ] && [ -e "/data/conf/solr" ]; then
@@ -288,10 +282,13 @@ add_solr() {
       if [ "${_SOLR_BASE}" = "/var/solr7/data" ] \
         && [ -x "/opt/solr7/bin/solr" ] \
         && [ -e "/var/solr7/data/solr.xml" ]; then
-        if [ -e "${Plr}/modules/o_contrib_eight" ]; then
+        if [ -e "${Plr}/modules/o_contrib_eight" ] \
+          || [ -e "${Plr}/modules/o_contrib_nine" ]; then
           su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr create_core -p 9077 -c ${SolrCoreID} -d /data/conf/solr/search_api_solr/8"
         elif [ -e "${Plr}/modules/o_contrib_seven" ]; then
           su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr create_core -p 9077 -c ${SolrCoreID} -d /data/conf/solr/search_api_solr/7"
+        else
+          echo "The search_api_solr is supported only for Drupal 7 and newer!"
         fi
       else
         rm -rf ${_SOLR_BASE}/core0/data/*
@@ -334,6 +331,7 @@ delete_solr() {
         su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr delete -p 9077 -c ${LegacySolrCoreID}"
         sleep 3
       fi
+      rm -f ${Dir}/solr.php
     else
       sed -i "s/.*instanceDir=\"${SolrCoreID}\".*//g" ${_SOLR_BASE}/solr.xml
       wait
@@ -398,16 +396,11 @@ setup_solr() {
     if [ "${_SOLR_MODULE}" = "apachesolr" ]; then
       _SOLR_BASE="/opt/solr4"
     elif [ "${_SOLR_MODULE}" = "search_api_solr" ]; then
-      if [ -e "${Plr}/modules/o_contrib_seven" ] \
-        && [ ! -e "${Plr}/core" ]; then
-        _SOLR_BASE="/var/solr7/data"
-      elif [ -e "${Plr}/modules/o_contrib_eight" ] \
-        || [ -e "${Plr}/core" ]; then
-        _SOLR_BASE="/var/solr7/data"
-      fi
+      _SOLR_BASE="/var/solr7/data"
     fi
     _SOLR_DIR="${_SOLR_BASE}/${SolrCoreID}"
-    if [ "${_SOLR_MODULE}" = "search_api_solr" ] || [ "${_SOLR_MODULE}" = "apachesolr" ]; then
+    if [ "${_SOLR_MODULE}" = "search_api_solr" ] \
+      || [ "${_SOLR_MODULE}" = "apachesolr" ]; then
       check_solr "${_SOLR_MODULE}" "${_SOLR_DIR}"
     else
       _SOLR_DIR_DEL="/opt/solr4/${SolrCoreID}"
