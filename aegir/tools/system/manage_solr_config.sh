@@ -91,7 +91,7 @@ write_solr_config() {
     fi
     echo "Your SOLR core access details for ${Dom} site are as follows:"  > ${2}
     echo                                                                 >> ${2}
-    echo "  Drupal 8:"                                                   >> ${2}
+    echo "  Drupal 8 and newer"                                          >> ${2}
     echo "  Solr version .....: ${_VRS}"                                 >> ${2}
     echo "  Solr host ........: 127.0.0.1"                               >> ${2}
     echo "  Solr port ........: ${_PRT}"                                 >> ${2}
