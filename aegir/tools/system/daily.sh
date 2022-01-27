@@ -2684,8 +2684,8 @@ process() {
               rm -rf ${User}/.tmp/cache
               run_drush8_hmr_cmd "dis update syslog dblog -y"
               run_drush8_hmr_cmd "cron"
-              run_drush8_hmr_cmd "cc all"
-              run_drush8_hmr_cmd "cc all"
+              run_drush8_hmr_cmd "cache-clear all"
+              run_drush8_hmr_cmd "cache-clear all"
               run_drush8_hmr_cmd "utf8mb4-convert-databases -y"
               touch ${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info
             fi
@@ -2735,8 +2735,8 @@ process() {
               fix_user_register_protection_with_drush8
               if [[ "${_X_SE}" =~ "OFF" ]]; then
                 run_drush8_cmd "advagg-force-new-aggregates"
-                run_drush8_cmd "cc all"
-                run_drush8_cmd "cc all"
+                run_drush8_cmd "cache-clear all"
+                run_drush8_cmd "cache-clear all"
               fi
             fi
           fi
@@ -3280,8 +3280,8 @@ action() {
           run_drush8_hmr_cmd "${vSet} hosting_delete_force 0"
           run_drush8_hmr_cmd "${vSet} aegir_backup_export_path ${User}/backup-exports"
           run_drush8_hmr_cmd "fr hosting_custom_settings -y"
-          run_drush8_hmr_cmd "cc all"
-          run_drush8_hmr_cmd "cc all"
+          run_drush8_hmr_cmd "cache-clear all"
+          run_drush8_hmr_cmd "cache-clear all"
           if [ -e "${User}/log/imported.pid" ] \
             || [ -e "${User}/log/exported.pid" ]; then
             if [ ! -e "${User}/log/hosting_context.pid" ]; then
@@ -3555,8 +3555,8 @@ else
   rm -rf /var/aegir/.tmp/cache
   su -s /bin/bash - aegir -c "drush8 @hostmaster dis update syslog dblog -y" &> /dev/null
   su -s /bin/bash - aegir -c "drush8 @hostmaster cron" &> /dev/null
-  su -s /bin/bash - aegir -c "drush8 @hostmaster cc all" &> /dev/null
-  su -s /bin/bash - aegir -c "drush8 @hostmaster cc all" &> /dev/null
+  su -s /bin/bash - aegir -c "drush8 @hostmaster cache-clear all" &> /dev/null
+  su -s /bin/bash - aegir -c "drush8 @hostmaster cache-clear all" &> /dev/null
   su -s /bin/bash - aegir -c "drush8 @hostmaster utf8mb4-convert-databases -y" &> /dev/null
 
   action >/var/xdrago/log/daily/daily-${_NOW}.log 2>&1
