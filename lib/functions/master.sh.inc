@@ -230,7 +230,7 @@ provision_backend_dbpass_sync() {
   mv -f ${_L_SYS} ${_L_SYS}-pre-${_X_VERSION}-${_NOW} &> /dev/null
   provision_backend_dbpass_generate
   if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
-    su -s /bin/bash - aegir -c "drush @hostmaster \
+    su -s /bin/bash - aegir -c "drush8 @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
       WHERE db_user='${_ADBU}'\"" &> /dev/null
     _SQL_CONNECT=localhost
@@ -283,16 +283,16 @@ EOFMYSQL
   su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
   rm -rf /var/aegir/.tmp/cache
   if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ]; then
-    su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_localhost \
+    su -s /bin/bash aegir -c "drush8 @hostmaster hosting-task @server_localhost \
       verify --force" &> /dev/null
   else
-    su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_master \
+    su -s /bin/bash aegir -c "drush8 @hostmaster hosting-task @server_master \
       verify --force" &> /dev/null
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Running hosting-dispatch..."
   fi
-  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
+  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-dispatch" &> /dev/null
 }
 
 #
@@ -918,7 +918,7 @@ EOFMYSQL
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Running hosting-dispatch..."
     fi
-    su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch" &> /dev/null
+    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-dispatch" &> /dev/null
     if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
       _THIS_HM_ROOT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
         | grep "root'" \

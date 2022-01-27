@@ -96,7 +96,7 @@ do_syncpass() {
       chown ${uname}:${uname} ${_L_SYS} &> /dev/null
       if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
         mysqladmin flush-hosts
-        su -s /bin/bash - ${uname} -c "drush @hostmaster \
+        su -s /bin/bash - ${uname} -c "drush8 @hostmaster \
           sqlq \"UPDATE hosting_db_server \
           SET db_passwd='${_ESC_PASS}' \
           WHERE db_user='aegir_root'\"" &> /dev/null
@@ -165,7 +165,7 @@ EOFMYSQL
           else
             mysqladmin flush-hosts
           fi
-          su -s /bin/bash - ${uname} -c "drush @hostmaster \
+          su -s /bin/bash - ${uname} -c "drush8 @hostmaster \
             sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
             WHERE db_user='${uname}'\"" &> /dev/null
           _ESC="*.*"

@@ -2729,7 +2729,7 @@ satellite_run_child_b() {
         chmod 600 ${_ROOT}/backups/system/old_hostmaster/* &> /dev/null
         hostmaster_frontend_dbpass_sync
       fi
-      su -s /bin/bash - ${_USER} -c "drush @hm rr" &> /dev/null
+      su -s /bin/bash - ${_USER} -c "drush8 @hm rr" &> /dev/null
       chmod 0700 /data/u &> /dev/null
       chown root:root /data/u &> /dev/null
       msg "${_STATUS} A: Aegir Satellite Instance upgrade completed"
