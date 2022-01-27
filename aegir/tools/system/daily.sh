@@ -199,34 +199,6 @@ run_drush8_cmd() {
   su -s /bin/bash - ${_HM_U} -c "drush8 @${Dom} $1" &> /dev/null
 }
 
-run_drush10_cmd() {
-  _S_X=
-  _S_N=${Dom}
-  _S_T=${_S_N%*.*}
-  _S_R=${_S_T//./-}
-  if [ -e "/root/.debug_daily.info" ]; then
-    nOw=$(date +%y%m%d-%H%M%S 2>&1)
-    echo "${nOw} ${_HM_U} running drush10 @${_S_R} $1"
-  fi
-  if [ -x "/usr/bin/drush10-bin" ]; then
-    su -s /bin/bash - ${_HM_U} -c "drush10-bin @${_S_R} $1" &> /dev/null
-  elif [ -x "/usr/bin/drush9" ]; then
-    su -s /bin/bash - ${_HM_U} -c "drush9 @${_S_R} $1" &> /dev/null
-  fi
-}
-
-run_drush9_cmd() {
-  _S_X=
-  _S_N=${Dom}
-  _S_T=${_S_N%*.*}
-  _S_R=${_S_T//./-}
-  if [ -e "/root/.debug_daily.info" ]; then
-    nOw=$(date +%y%m%d-%H%M%S 2>&1)
-    echo "${nOw} ${_HM_U} running drush9 @${_S_R} $1"
-  fi
-  su -s /bin/bash - ${_HM_U} -c "drush9 @${_S_R} $1" &> /dev/null
-}
-
 run_drush8_hmr_cmd() {
   if [ -e "/root/.debug_daily.info" ]; then
     nOw=$(date +%y%m%d-%H%M%S 2>&1)
@@ -251,31 +223,7 @@ run_drush8_nosilent_cmd() {
   su -s /bin/bash - ${_HM_U} -c "drush8 @${Dom} $1"
 }
 
-run_drush10_nosilent_cmd() {
-  _S_X=
-  _S_N=${Dom}
-  _S_T=${_S_N%*.*}
-  _S_R=${_S_T//./-}
-  if [ -e "/root/.debug_daily.info" ]; then
-    nOw=$(date +%y%m%d-%H%M%S 2>&1)
-    echo "${nOw} ${_HM_U} running drush10 @${_S_R} $1"
-  fi
-  su -s /bin/bash - ${_HM_U} -c "drush10 @${_S_R} $1"
-}
-
-run_drush9_nosilent_cmd() {
-  _S_X=
-  _S_N=${Dom}
-  _S_T=${_S_N%*.*}
-  _S_R=${_S_T//./-}
-  if [ -e "/root/.debug_daily.info" ]; then
-    nOw=$(date +%y%m%d-%H%M%S 2>&1)
-    echo "${nOw} ${_HM_U} running drush9 @${_S_R} $1"
-  fi
-  su -s /bin/bash - ${_HM_U} -c "drush9 @${_S_R} $1"
-}
-
-check_if_required() {
+check_if_required_with_drush8() {
   _REQ=YES
   _REI_TEST=$(run_drush8_nosilent_cmd "pmi $1 --fields=required_by" 2>&1)
   _REL_TEST=$(echo "${_REI_TEST}" | grep "Required by" 2>&1)
@@ -377,7 +325,7 @@ check_if_force() {
   done
 }
 
-uninstall_modules_with_drush10() {
+uninstall_modules_with_drush8() {
   for m in $1; do
     _SKIP=NO
     _FORCE=NO
@@ -388,13 +336,8 @@ uninstall_modules_with_drush10() {
       check_if_force "$m"
     fi
     if [ "${_SKIP}" = "NO" ]; then
-      if [ -x "/usr/bin/drush10-bin" ]; then
-        _MODULE_T=$(run_drush10_nosilent_cmd "pml --status=enabled \
-          --type=module | grep \($m\)" 2>&1)
-      elif [ -x "/usr/bin/drush9" ]; then
-        _MODULE_T=$(run_drush9_nosilent_cmd "pml --status=enabled \
-          --type=module | grep \($m\)" 2>&1)
-      fi
+      _MODULE_T=$(run_drush8_nosilent_cmd "pml --status=enabled \
+        --type=module | grep \($m\)" 2>&1)
       if [[ "${_MODULE_T}" =~ "($m)" ]]; then
         if [ "${_FORCE}" = "NO" ]; then
           echo "$m dependencies not possible to check in ${Dom} action not forced"
@@ -403,22 +346,10 @@ uninstall_modules_with_drush10() {
           _REQ=FCE
         fi
         if [ "${_REQ}" = "FCE" ]; then
-          if [ -x "/usr/bin/drush10-bin" ]; then
-            run_drush10_cmd "pmu $m -y"
-          elif [ -x "/usr/bin/drush9" ]; then
-            run_drush9_cmd "pmu $m -y"
-          else
-            run_drush8_cmd "pmu $m -y"
-          fi
+          run_drush8_cmd "pmu $m -y"
           echo "$m FCE uninstalled in ${Dom}"
         elif [ "${_REQ}" = "NO" ]; then
-          if [ -x "/usr/bin/drush10-bin" ]; then
-            run_drush10_cmd "pmu $m -y"
-          elif [ -x "/usr/bin/drush9" ]; then
-            run_drush9_cmd "pmu $m -y"
-          else
-            run_drush8_cmd "pmu $m -y"
-          fi
+          run_drush8_cmd "pmu $m -y"
           echo "$m uninstalled in ${Dom}"
         elif [ "${_REQ}" = "NULL" ]; then
           echo "$m is not used in ${Dom}"
@@ -445,7 +376,7 @@ disable_modules_with_drush8() {
         --type=module | grep \($m\)" 2>&1)
       if [[ "${_MODULE_T}" =~ "($m)" ]]; then
         if [ "${_FORCE}" = "NO" ]; then
-          check_if_required "$m"
+          check_if_required_with_drush8 "$m"
         else
           echo "$m dependencies not checked in ${Dom} action forced"
           _REQ=FCE
@@ -479,33 +410,7 @@ enable_modules_with_drush8() {
   done
 }
 
-enable_modules_with_drush9() {
-  for m in $1; do
-    _MODULE_T=$(run_drush9_nosilent_cmd "pml --status=enabled \
-      --type=module | grep \($m\)" 2>&1)
-    if [[ "${_MODULE_T}" =~ "($m)" ]]; then
-      _DO_NOTHING=YES
-    else
-      run_drush9_cmd "en $m -y"
-      echo "$m enabled in ${Dom}"
-    fi
-  done
-}
-
-enable_modules_with_drush10() {
-  for m in $1; do
-    _MODULE_T=$(run_drush10_nosilent_cmd "pml --status=enabled \
-      --type=module | grep \($m\)" 2>&1)
-    if [[ "${_MODULE_T}" =~ "($m)" ]]; then
-      _DO_NOTHING=YES
-    else
-      run_drush10_cmd "en $m -y"
-      echo "$m enabled in ${Dom}"
-    fi
-  done
-}
-
-fix_user_register_protection() {
+fix_user_register_protection_with_drush8() {
 
   if [ -e "${User}/static/control/enable_user_register_protection.info" ] \
     && [ -e "/data/conf/default.boa_platform_control.ini" ] \
@@ -1248,7 +1153,7 @@ EOF
   echo "ALERT: Core notice sent to ${_CLIENT_EMAIL} [${_HM_U}]: OK"
 }
 
-check_site_status() {
+check_site_status_with_drush8() {
   _SITE_TEST=$(run_drush8_nosilent_cmd "status" 2>&1)
   if [[ "${_SITE_TEST}" =~ "Error:" ]] \
     || [[ "${_SITE_TEST}" =~ "Drush was attempting to connect" ]]; then
@@ -1366,7 +1271,8 @@ fix_modules() {
   if [ -e "${Plr}/sites/all/modules/advagg" ] \
     || [ -e "${Plr}/modules/o_contrib/advagg" ] \
     || [ -e "${Plr}/modules/o_contrib_seven/advagg" ] \
-    || [ -e "${Plr}/modules/o_contrib_eight/advagg" ]; then
+    || [ -e "${Plr}/modules/o_contrib_eight/advagg" ] \
+    || [ -e "${Plr}/modules/o_contrib_nine/advagg" ]; then
     _MODULE_T=$(run_drush8_nosilent_cmd "pml --status=enabled \
       --type=module | grep \(advagg\)" 2>&1)
     if [[ "${_MODULE_T}" =~ "(advagg)" ]]; then
@@ -1940,29 +1846,23 @@ fix_modules() {
       || [ ! -e "${Plr}/profiles" ]; then
       echo "WARNING: THIS PLATFORM IS BROKEN! ${Plr}"
     else
-      _MODX=PARTIAL
-      # if [ ! -z "${_MODULES_OFF_EIGHT}" ]; then
-      #   uninstall_modules_with_drush10 "${_MODULES_OFF_EIGHT}"
-      # fi
-      # if [ ! -z "${_MODULES_ON_EIGHT}" ]; then
-      #   if [ -x "/usr/bin/drush10-bin" ]; then
-      #     enable_modules_with_drush10 "${_MODULES_ON_EIGHT}"
-      #   else
-      #     enable_modules_with_drush8 "${_MODULES_ON_EIGHT}"
-      #   fi
-      # fi
+      _MODX=ON
+      if [ ! -z "${_MODULES_OFF_EIGHT}" ]; then
+        uninstall_modules_with_drush8 "${_MODULES_OFF_EIGHT}"
+      fi
+      if [ ! -z "${_MODULES_ON_EIGHT}" ]; then
+        enable_modules_with_drush8 "${_MODULES_ON_EIGHT}"
+      fi
       if [ ! -e "${Dir}/.redisOn" ]; then
-        if [ -x "/usr/bin/drush10-bin" ]; then
-          enable_modules_with_drush10 "redis"
-          mkdir ${Dir}/.redisOn
-          chown -R ${_HM_U}:users ${Dir}/.redisOn &> /dev/null
-          chmod 0755 ${Dir}/.redisOn &> /dev/null
-          if [ -d "${Dir}/.redisOff" ]; then
-            rmdir ${Dir}/.redisOff
-          fi
-          if [ -d "${Dir}/.redisLegacyOff" ]; then
-            rmdir ${Dir}/.redisLegacyOff
-          fi
+        enable_modules_with_drush8 "redis"
+        mkdir ${Dir}/.redisOn
+        chown -R ${_HM_U}:users ${Dir}/.redisOn &> /dev/null
+        chmod 0755 ${Dir}/.redisOn &> /dev/null
+        if [ -d "${Dir}/.redisOff" ]; then
+          rmdir ${Dir}/.redisOff
+        fi
+        if [ -d "${Dir}/.redisLegacyOff" ]; then
+          rmdir ${Dir}/.redisLegacyOff
         fi
       fi
     fi
@@ -2781,15 +2681,17 @@ process() {
           if [ "${Dan}" = "hostmaster" ]; then
             _STATUS=OK
             if [ ! -f "${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info" ]; then
+              su -s /bin/bash - ${_HM_U} -c "drush8 cc drush" &> /dev/null
+              rm -rf ${User}/.tmp/cache
               run_drush8_hmr_cmd "dis update syslog dblog -y"
               run_drush8_hmr_cmd "cron"
+              run_drush8_hmr_cmd "cc all"
               run_drush8_hmr_cmd "cc all"
               run_drush8_hmr_cmd "utf8mb4-convert-databases -y"
               touch ${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info
             fi
           else
-            _CHECK_IS=OFF
-            #check_site_status
+            check_site_status_with_drush8
           fi
           if [ ! -z "${Dan}" ] \
             && [ "${Dan}" != "hostmaster" ]; then
@@ -2825,14 +2727,16 @@ process() {
               check_update_le_ssl
               ;;
             esac
-            if [ "${_CLEAR_BOOST}" = "YES" ]; then
-              fix_boost_cache
-            fi
             fix_site_control_files
-            fix_user_register_protection
-            if [ -e "${Plr}/modules/o_contrib_seven" ]; then
+            if [ -e "${Plr}/modules/o_contrib_seven" ] \
+              || [ -e "${Plr}/modules/o_contrib" ]; then
+              if [ "${_CLEAR_BOOST}" = "YES" ]; then
+                fix_boost_cache
+              fi
+              fix_user_register_protection_with_drush8
               if [[ "${_X_SE}" =~ "OFF" ]]; then
                 run_drush8_cmd "advagg-force-new-aggregates"
+                run_drush8_cmd "cc all"
                 run_drush8_cmd "cc all"
               fi
             fi
@@ -3378,6 +3282,7 @@ action() {
           run_drush8_hmr_cmd "${vSet} aegir_backup_export_path ${User}/backup-exports"
           run_drush8_hmr_cmd "fr hosting_custom_settings -y"
           run_drush8_hmr_cmd "cc all"
+          run_drush8_hmr_cmd "cc all"
           if [ -e "${User}/log/imported.pid" ] \
             || [ -e "${User}/log/exported.pid" ]; then
             if [ ! -e "${User}/log/hosting_context.pid" ]; then
@@ -3487,15 +3392,11 @@ if [ "${_VMFAMILY}" = "VS" ]; then
 fi
 #
 if [ "${_DOW}" = "2" ]; then
-  _MODULES_ON_EIGHT="robotstxt"
-  _MODULES_ON_SEVEN="robotstxt"
-  _MODULES_ON_SIX="path_alias_cache \
-    robotstxt"
-  _MODULES_OFF_EIGHT="dblog \
-    syslog \
-    simpletest"
-  _MODULES_OFF_SEVEN="backup_migrate \
-    coder \
+  _MODULES_ON_EIGHT="redis"
+  _MODULES_ON_SEVEN="redis"
+  _MODULES_ON_SIX="redis"
+  _MODULES_OFF_EIGHT="simpletest"
+  _MODULES_OFF_SEVEN="coder \
     devel \
     filefield_nginx_progress \
     hacked \
@@ -3506,22 +3407,22 @@ if [ "${_DOW}" = "2" ]; then
     site_audit \
     watchdog_live \
     xhprof"
-  _MODULES_OFF_SIX="backup_migrate \
-    coder \
-    dblog \
+  _MODULES_OFF_SIX="coder \
+    cookie_cache_bypass \
     devel \
     hacked \
     l10n_update \
     linkchecker \
     performance \
+    poormanscron \
     security_review \
     supercron \
     watchdog_live \
     xhprof"
 else
-  _MODULES_ON_EIGHT="robotstxt"
-  _MODULES_ON_SEVEN="robotstxt"
-  _MODULES_ON_SIX="path_alias_cache robotstxt"
+  _MODULES_ON_EIGHT="robotstxt redis"
+  _MODULES_ON_SEVEN="robotstxt redis"
+  _MODULES_ON_SIX="path_alias_cache robotstxt redis"
   _MODULES_OFF_EIGHT="dblog syslog backup_migrate automated_cron"
   _MODULES_OFF_SEVEN="dblog syslog backup_migrate"
   _MODULES_OFF_SIX="dblog syslog backup_migrate"
@@ -3651,10 +3552,13 @@ else
     fi
   fi
 
-  su -s /bin/bash - aegir -c "drush @hostmaster dis update syslog dblog -y" &> /dev/null
-  su -s /bin/bash - aegir -c "drush @hostmaster cron" &> /dev/null
-  su -s /bin/bash - aegir -c "drush @hostmaster cc all" &> /dev/null
-  su -s /bin/bash - aegir -c "drush @hostmaster utf8mb4-convert-databases -y" &> /dev/null
+  su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
+  rm -rf /var/aegir/.tmp/cache
+  su -s /bin/bash - aegir -c "drush8 @hostmaster dis update syslog dblog -y" &> /dev/null
+  su -s /bin/bash - aegir -c "drush8 @hostmaster cron" &> /dev/null
+  su -s /bin/bash - aegir -c "drush8 @hostmaster cc all" &> /dev/null
+  su -s /bin/bash - aegir -c "drush8 @hostmaster cc all" &> /dev/null
+  su -s /bin/bash - aegir -c "drush8 @hostmaster utf8mb4-convert-databases -y" &> /dev/null
 
   action >/var/xdrago/log/daily/daily-${_NOW}.log 2>&1
 
