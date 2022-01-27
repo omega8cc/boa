@@ -47,7 +47,7 @@ gitLab="https://gitlab.com/omega8cc"
 libFnc="${bldPth}/lib/functions"
 tocIncO="${filIncO}.$1"
 vBs="/var/backups"
-vSet="vset --always-set"
+vSet="variable-set --always-set"
 
 
 ###

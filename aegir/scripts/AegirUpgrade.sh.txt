@@ -406,12 +406,12 @@ hostmaster_mi_up() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     ${_DRUSHCMD} @hostmaster registry-rebuild
     ${_DRUSHCMD} @hostmaster en hosting_cron -y
-    ${_DRUSHCMD} @hostmaster cc all
+    ${_DRUSHCMD} @hostmaster cache-clear all
     ${_DRUSHCMD} @hostmaster updb -y
   else
     ${_DRUSHCMD} @hostmaster registry-rebuild &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_cron -y &> /dev/null
-    ${_DRUSHCMD} @hostmaster cc all &> /dev/null
+    ${_DRUSHCMD} @hostmaster cache-clear all &> /dev/null
     ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
   fi
   export DEBIAN_FRONTEND=text

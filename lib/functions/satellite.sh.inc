@@ -5764,7 +5764,7 @@ satellite_child_b_aegir_ui_enhance() {
       ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y
       ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
       ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
-      ${_DRUSHCMD} @hostmaster cc all
+      ${_DRUSHCMD} @hostmaster cache-clear all
       ${_DRUSHCMD} @hostmaster updb -y
     else
       ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"  &> /dev/null
@@ -5774,7 +5774,7 @@ satellite_child_b_aegir_ui_enhance() {
       ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y &> /dev/null
       ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y  &> /dev/null
       ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y  &> /dev/null
-      ${_DRUSHCMD} @hostmaster cc all &> /dev/null
+      ${_DRUSHCMD} @hostmaster cache-clear all &> /dev/null
       ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
     fi
 
@@ -5858,11 +5858,11 @@ satellite_child_b_redis_enable_finalize() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
     ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
-    ${_DRUSHCMD} @hostmaster cc all
+    ${_DRUSHCMD} @hostmaster cache-clear all
   else
     ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y &> /dev/null
     ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y &> /dev/null
-    ${_DRUSHCMD} @hostmaster cc all &> /dev/null
+    ${_DRUSHCMD} @hostmaster cache-clear all &> /dev/null
   fi
   touch /opt/tmp/status-AegirSetupB-OK
 }

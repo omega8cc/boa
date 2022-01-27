@@ -50,7 +50,7 @@ if [[ "${_SSL_ITD}" =~ "1.1.1" ]] \
 fi
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 forCer="-fuy --allow-unauthenticated --reinstall"
-vSet="vset --always-set"
+vSet="variable-set --always-set"
 
 ###-------------SYSTEM-----------------###
 

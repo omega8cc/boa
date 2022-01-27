@@ -47,6 +47,6 @@ parameters:
 ### You can configure it using one of the methods below.
 ###
 ### Drush:
-drush vset theme_debug 1
+drush variable-set theme_debug 1
 ### Conf (local.settings.php):
 $conf['theme_debug'] = TRUE;

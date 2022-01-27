@@ -419,7 +419,7 @@ EOFMYSQL
             ###
             ### Activate readonly on source via global.inc and not via drush
             ###
-            ### run_drush8_nosilent_cmd "vset --always-set site_readonly 0"
+            ### run_drush8_nosilent_cmd "variable-set --always-set site_readonly 0"
             ### run_drush8_nosilent_cmd "dis readonlymode -y"
             ### echo "INFO: site ${Dom} readonlymode on ${oct} disabled"
             ###
@@ -440,7 +440,7 @@ EOFMYSQL
         ###
         ### Activate readonly on source via global.inc and not via drush
         ###
-        ### run_drush8_nosilent_cmd "vset --always-set site_readonly 1"
+        ### run_drush8_nosilent_cmd "variable-set --always-set site_readonly 1"
         ###
         echo "INFO: site ${Dom} readonlymode module on ${oct} enabled"
         _MYQUICK_STATUS=
@@ -684,7 +684,7 @@ migrate_prepare() {
         users \
         users_roles \
         > ${_USR}/src/prev_hostmaster.sql
-    run_drush8_hmr_cmd "vset --always-set maintenance_mode 1"
+    run_drush8_hmr_cmd "variable-set --always-set maintenance_mode 1"
     if [ -e "${_USR}/src/prev_hostmaster.sql" ]; then
       echo "INFO: hostmaster ${oct} db export complete"
       touch ${_USR}/log/exported.pid
@@ -702,13 +702,13 @@ migrate_prepare() {
       if [ "${oct}" = "${dst}" ]; then
         [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL5 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
         mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
-        run_drush8_hmr_cmd "vset --always-set site_frontpage 'hosting/sites'"
+        run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
         touch ${_USR}/log/imported.pid
       fi
     else
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL6 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
       mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
-      run_drush8_hmr_cmd "vset --always-set site_frontpage 'hosting/sites'"
+      run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
       touch ${_USR}/log/imported.pid
     fi
 

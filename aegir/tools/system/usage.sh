@@ -42,7 +42,7 @@ fi
 ###-------------SYSTEM-----------------###
 fix_clear_cache() {
   if [ -e "${Plr}/profiles/hostmaster" ]; then
-    su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster cc all" &> /dev/null
+    su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster cache-clear all" &> /dev/null
   fi
 }
 
@@ -1086,7 +1086,7 @@ action() {
           check_limits
           if [ -e "${_THIS_HM_SITE}" ]; then
             su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster \
-              vset --always-set site_footer 'Usage on ${_DATE} \
+              variable-set --always-set site_footer 'Usage on ${_DATE} \
               | ALL Files <strong>${HomSizH}</strong> MB \
               | LIVE Dbs <strong>${SumDatH}</strong> MB \
               | DEV Dbs <strong>${SkipDtH}</strong> MB \
@@ -1129,15 +1129,15 @@ action() {
               fi
             fi
             su -s /bin/bash - ${_THIS_U} \
-              -c "drush8 @hostmaster cc all" &> /dev/null
+              -c "drush8 @hostmaster cache-clear all" &> /dev/null
           fi
         else
           if [ -e "${_THIS_HM_SITE}" ]; then
             su -s /bin/bash - ${_THIS_U} \
-              -c "drush8 @hostmaster vset \
+              -c "drush8 @hostmaster variable-set \
               --always-set site_footer ''" &> /dev/null
             su -s /bin/bash - ${_THIS_U} \
-              -c "drush8 @hostmaster cc all" &> /dev/null
+              -c "drush8 @hostmaster cache-clear all" &> /dev/null
           fi
         fi
         echo "Done for ${User}"
