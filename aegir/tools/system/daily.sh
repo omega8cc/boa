@@ -339,9 +339,9 @@ uninstall_modules_with_drush8() {
         --type=module | grep \($m\)" 2>&1)
       if [[ "${_MODULE_T}" =~ "($m)" ]]; then
         if [ "${_FORCE}" = "NO" ]; then
-          echo "$m dependencies not possible to check in ${Dom} action not forced"
+          check_if_required_with_drush8 "$m"
         else
-          echo "$m dependencies not possible to check in ${Dom} action forced"
+          echo "$m dependencies not checked in ${Dom} action forced"
           _REQ=FCE
         fi
         if [ "${_REQ}" = "FCE" ]; then
