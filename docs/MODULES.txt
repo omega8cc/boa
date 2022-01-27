@@ -56,8 +56,8 @@ Contrib [S]upported:
 Contrib [S]upported and [B]undled:
 
  adminer -------------------- [D7] --------- [S] [B]
- autoslave ------------------ [D7] --------- [S] [B]
  advagg --------------------- [D6,D7,D8] --- [S] [B]
+ autoslave ------------------ [D7] --------- [S] [B]
  blockcache_alter ----------- [D6,D7] ------ [S] [B]
  boost ---------------------- [D6,D7] ------ [S] [B]
  cache_consistent ----------- [D7] --------- [S] [B]
@@ -66,6 +66,7 @@ Contrib [S]upported and [B]undled:
  css_emimage ---------------- [D6,D7] ------ [S] [B]
  dbtuner -------------------- [D6] --------- [S] [B]
  display_cache -------------- [D7] --------- [S] [B]
+ entity_print --------------- [D7] --------- [S] [B]
  esi ------------------------ [D6,D7] ------ [S] [B]
  expire --------------------- [D6,D7] ------ [S] [B]
  file_resup ----------------- [D7] --------- [S] [B]

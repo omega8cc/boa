@@ -1478,6 +1478,9 @@ satellite_o_contrib_seven_update_global() {
       if [ ! -d "${i}/o_contrib_seven/display_cache" ]; then
         get_dev_contrib "display_cache-7.x-1.3.tar.gz"
       fi
+      if [ ! -d "${i}/o_contrib_seven/entity_print" ]; then
+        get_dev_contrib "entity_print-7.x-1.5.tar.gz"
+      fi
       if [ ! -d "${i}/o_contrib_seven/entitycache" ]; then
         get_dev_contrib "entitycache-7.x-1.5.tar.gz"
       fi
@@ -1727,10 +1730,11 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "config_perms-7.x-2.2.tar.gz"
   get_dev_contrib "css_emimage-7.x-1.x-dev.tar.gz"
   get_dev_contrib "display_cache-7.x-1.3.tar.gz"
+  get_dev_contrib "entity_print-7.x-1.5.tar.gz"
   get_dev_contrib "entitycache-7.x-1.5.tar.gz"
   get_dev_contrib "esi-7.x-3.x-dev.tar.gz"
-  get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
   get_dev_contrib "file_resup-7.x-1.5.tar.gz"
+  get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
   get_dev_contrib "flood_control-7.x-1.x-dev.tar.gz"
   get_dev_contrib "force_password_change-7.x-2.2.tar.gz"
   get_dev_contrib "fpa-7.x-2.6.tar.gz"
