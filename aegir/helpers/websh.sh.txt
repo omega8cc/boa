@@ -208,19 +208,16 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         # echo 1 DRUSH_PHP is ${DRUSH_PHP}
         # echo 1 PHP_INI is ${PHP_INI}
         if [[ "${_ALL}" =~ "drush make" ]] \
-          || [[ "${_ALL}" =~ "drush7 make" ]] \
           || [[ "${_ALL}" =~ "drush8 make" ]] \
           || [[ "${_ALL}" =~ "drush cc drush" ]] \
-          || [[ "${_ALL}" =~ "drush7 cc drush" ]] \
           || [[ "${_ALL}" =~ "drush8 cc drush" ]] \
           || [[ "${_ALL}" =~ "drush9 cc drush" ]] \
-          || [[ "${_ALL}" =~ "drush10 cc drush" ]]; then
+          || [[ "${_ALL}" =~ "drush-launcher cc drush" ]]; then
           if [[ "${_PWD}" =~ "/static" ]] \
             || [[ "${_ALL}" =~ "drush cc drush" ]] \
-            || [[ "${_ALL}" =~ "drush7 cc drush" ]] \
             || [[ "${_ALL}" =~ "drush8 cc drush" ]] \
             || [[ "${_ALL}" =~ "drush9 cc drush" ]] \
-            || [[ "${_ALL}" =~ "drush10 cc drush" ]]; then
+            || [[ "${_ALL}" =~ "drush-launcher cc drush" ]]; then
             _CORRECT=YES
           else
             if [[ "${_ALL}" =~ "make-generate" ]] \
@@ -242,10 +239,9 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           fi
         else
           if [[ "${_ALL}" =~ "drush @" ]] \
-            || [[ "${_ALL}" =~ "drush7 @" ]] \
             || [[ "${_ALL}" =~ "drush8 @" ]] \
             || [[ "${_ALL}" =~ "drush9 @" ]] \
-            || [[ "${_ALL}" =~ "drush10 @" ]]; then
+            || [[ "${_ALL}" =~ "drush-launcher @" ]]; then
             if [[ "$3" =~ "restore"($) ]] \
               || [[ "$3" =~ "arr"($) ]] \
               || [[ "$3" =~ "cli"($) ]] \
@@ -274,12 +270,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
               _CORRECT=YES
             fi
           elif [[ "${_ALL}" =~ "cc drush" ]] \
-            || [[ "${_ALL}" =~ "drush7 site-alias" ]] \
-            || [[ "${_ALL}" =~ "-c set -m; drush7 --version" ]] \
-            || [[ "${_ALL}" =~ "-c set -m; drush7 help" ]] \
-            || [[ "${_ALL}" =~ "drush7 dl" ]] \
-            || [[ "${_ALL}" =~ "drush7 pm-download" ]] \
-            || [[ "${_ALL}" =~ "drush7 sa" ]] \
             || [[ "${_ALL}" =~ "drush8 site-alias" ]] \
             || [[ "${_ALL}" =~ "-c set -m; drush8 --version" ]] \
             || [[ "${_ALL}" =~ "-c set -m; drush8 help" ]] \
@@ -292,12 +282,12 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             || [[ "${_ALL}" =~ "drush9 dl" ]] \
             || [[ "${_ALL}" =~ "drush9 pm-download" ]] \
             || [[ "${_ALL}" =~ "drush9 sa" ]] \
-            || [[ "${_ALL}" =~ "drush10 site-alias" ]] \
-            || [[ "${_ALL}" =~ "-c set -m; drush10 --version" ]] \
-            || [[ "${_ALL}" =~ "-c set -m; drush10 help" ]] \
-            || [[ "${_ALL}" =~ "drush10 dl" ]] \
-            || [[ "${_ALL}" =~ "drush10 pm-download" ]] \
-            || [[ "${_ALL}" =~ "drush10 sa" ]] \
+            || [[ "${_ALL}" =~ "drush-launcher site-alias" ]] \
+            || [[ "${_ALL}" =~ "-c set -m; drush-launcher --version" ]] \
+            || [[ "${_ALL}" =~ "-c set -m; drush-launcher help" ]] \
+            || [[ "${_ALL}" =~ "drush-launcher dl" ]] \
+            || [[ "${_ALL}" =~ "drush-launcher pm-download" ]] \
+            || [[ "${_ALL}" =~ "drush-launcher sa" ]] \
             || [[ "${_ALL}" =~ "drush site-alias" ]] \
             || [[ "${_ALL}" =~ "-c set -m; drush --version" ]] \
             || [[ "${_ALL}" =~ "-c set -m; drush help" ]] \
@@ -323,10 +313,9 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       fi
     else
       if [[ "${_ALL}" =~ "drush @" ]] \
-        || [[ "${_ALL}" =~ "drush7 @" ]] \
         || [[ "${_ALL}" =~ "drush8 @" ]] \
         || [[ "${_ALL}" =~ "drush9 @" ]] \
-        || [[ "${_ALL}" =~ "drush10 @" ]]; then
+        || [[ "${_ALL}" =~ "drush-launcher @" ]]; then
         if [[ "$3" =~ "restore"($) ]] \
           || [[ "$3" =~ "arr"($) ]] \
           || [[ "$3" =~ "cli"($) ]] \
@@ -401,10 +390,9 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     fi
   else
     if [[ "${_ALL}" =~ "drush @" ]] \
-      || [[ "${_ALL}" =~ "drush7 @" ]] \
       || [[ "${_ALL}" =~ "drush8 @" ]] \
       || [[ "${_ALL}" =~ "drush9 @" ]] \
-      || [[ "${_ALL}" =~ "drush10 @" ]]; then
+      || [[ "${_ALL}" =~ "drush-launcher @" ]]; then
       if [[ "$3" =~ "restore"($) ]] \
         || [[ "$3" =~ "arr"($) ]] \
         || [[ "$3" =~ "cli"($) ]] \

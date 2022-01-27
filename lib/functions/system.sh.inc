@@ -2196,6 +2196,9 @@ install_wkhtmltox() {
 #
 # Clean Drush 10.
 clean_drush_ten() {
+  rm -f /usr/bin/drush-launcher
+  rm -f /usr/bin/drush10*
+  rm -f /usr/bin/drush9
   rm -f /usr/local/bin/dcg
   rm -f /usr/local/bin/drush
   rm -f /usr/local/bin/php-parse
@@ -2203,11 +2206,6 @@ clean_drush_ten() {
   rm -f /usr/local/bin/release
   rm -f /usr/local/bin/robo
   rm -f /usr/local/bin/var-dump-server
-  rm -f /usr/bin/drush10
-  rm -f /usr/bin/drush9
-  rm -f /usr/bin/drush-launcher
-  rm -f /usr/bin/drush10-bin
-  ln -sf /opt/tools/drush/launcher/drush.phar /usr/bin/drush10
   ln -sf /opt/tools/drush/launcher/drush.phar /usr/bin/drush-launcher
   ln -sf /opt/tools/drush/10/drush/vendor/drush/drush/drush /usr/bin/drush10-bin
   ln -sf /opt/tools/drush/10/drush/vendor/drush/drush/drush /usr/bin/drush9
