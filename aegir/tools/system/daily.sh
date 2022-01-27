@@ -1839,7 +1839,7 @@ fix_modules() {
       fi
     fi
   elif [ -e "${Plr}/modules/o_contrib_nine/redis_compr" ] \
-    || [ -e "${Plr}/modules/o_contrib_eight/redis_compr" ]
+    || [ -e "${Plr}/modules/o_contrib_eight/redis_compr" ] \
     || [ -e "${Plr}/modules/o_contrib_eight/redis_eight" ]; then
     if [ ! -e "${Plr}/core/modules/node" ] \
       || [ ! -e "${Plr}/sites/all/drush/drushrc.php" ] \
