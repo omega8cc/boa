@@ -229,13 +229,13 @@ check_if_required_with_drush8() {
   _REL_TEST=$(echo "${_REI_TEST}" | grep "Required by" 2>&1)
   if [[ "${_REL_TEST}" =~ "was not found" ]]; then
     _REQ=NULL
-    echo "_REQ for $1 is ${_REQ} in ${Dom} == 0 == via ${_REL_TEST}"
+    echo "_REQ for $1 is ${_REQ} in ${Dom} == null == via ${_REL_TEST}"
   else
-    echo "CTRL _REL_TEST _REQ for $1 is ${_REQ} in ${Dom} == 0 == via ${_REL_TEST}"
+    echo "CTRL _REL_TEST _REQ for $1 is ${_REQ} in ${Dom} == init == via ${_REL_TEST}"
     _REN_TEST=$(echo "${_REI_TEST}" | grep "Required by.*:.*none" 2>&1)
     if [[ "${_REN_TEST}" =~ "Required by" ]]; then
       _REQ=NO
-      echo "_REQ for $1 is ${_REQ} in ${Dom} == 1 == via ${_REN_TEST}"
+      echo "_REQ for $1 is ${_REQ} in ${Dom} == 0 == via ${_REN_TEST}"
     else
       echo "CTRL _REN_TEST _REQ for $1 is ${_REQ} in ${Dom} == 1 == via ${_REN_TEST}"
       _REM_TEST=$(echo "${_REI_TEST}" | grep "Required by.*minimal" 2>&1)
@@ -288,21 +288,20 @@ check_if_required_with_drush8() {
       _REP_TEST=$(echo "${_REI_TEST}" | grep "Required by.*:.*${Profile}" 2>&1)
       if [[ "${_REP_TEST}" =~ "Required by" ]]; then
         _REQ=NO
-        echo "_REQ for $1 is ${_REQ} in ${Dom} == 7 == via ${_REP_TEST}"
+        echo "_REQ for $1 is ${_REQ} in ${Dom} == 8 == via ${_REP_TEST}"
       else
-        echo "CTRL _REP_TEST _REQ for $1 is ${_REQ} \
-          in ${Dom} == 7 == via ${_REP_TEST}"
+        echo "CTRL _REP_TEST _REQ for $1 is ${_REQ} in ${Dom} == 9 == via ${_REP_TEST}"
       fi
     fi
     _REA_TEST=$(echo "${_REI_TEST}" | grep "Required by.*apps" 2>&1)
     if [[ "${_REA_TEST}" =~ "Required by" ]]; then
       _REQ=YES
-      echo "_REQ for $1 is ${_REQ} in ${Dom} == 8 == via ${_REA_TEST}"
+      echo "_REQ for $1 is ${_REQ} in ${Dom} == 10 == via ${_REA_TEST}"
     fi
     _REF_TEST=$(echo "${_REI_TEST}" | grep "Required by.*features" 2>&1)
     if [[ "${_REF_TEST}" =~ "Required by" ]]; then
       _REQ=YES
-      echo "_REQ for $1 is ${_REQ} in ${Dom} == 9 == via ${_REF_TEST}"
+      echo "_REQ for $1 is ${_REQ} in ${Dom} == 11 == via ${_REF_TEST}"
     fi
   fi
 }
