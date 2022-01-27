@@ -79,7 +79,6 @@ Contrib [S]upported and [B]undled:
  nocurrent_pass ------------- [D7] --------- [S] [B]
  panels_content_cache ------- [D6,D7] ------ [S] [B]
  phpass --------------------- [D6] --------- [S] [B]
- print ---------------------- [D6,D7] ------ [S] [B]
  private_upload ------------- [D6] --------- [S] [B]
  purge ---------------------- [D6,D7] ------ [S] [B]
  readonlymode --------------- [D6,D7,D8] --- [S] [B]
