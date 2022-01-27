@@ -54,7 +54,10 @@ if [[ "${_SSL_ITD}" =~ "1.1.1" ]] \
 fi
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 forCer="-fuy --allow-unauthenticated --reinstall"
-vSet="vset --always-set"
+cGet="config-get user.settings"
+cSet="config-set user.settings"
+vGet="variable-get"
+vSet="variable-set --always-set"
 
 ###-------------SYSTEM-----------------###
 
@@ -276,7 +279,7 @@ check_if_required_with_drush8() {
         | sed "s/['\"]//g" \
         | tr -d "\n" 2>&1)
     else
-      Profile=$(run_drush8_nosilent_cmd "vget ^install_profile$" \
+      Profile=$(run_drush8_nosilent_cmd "${vGet} ^install_profile$" \
         | cut -d: -f2 \
         | awk '{ print $1}' \
         | sed "s/['\"]//g" \
@@ -409,8 +412,7 @@ enable_modules_with_drush8() {
   done
 }
 
-fix_user_register_protection_with_drush8() {
-
+sync_user_register_protection_ini_vars() {
   if [ -e "${User}/static/control/enable_user_register_protection.info" ] \
     && [ -e "/data/conf/default.boa_platform_control.ini" ] \
     && [ ! -e "${_PLR_CTRL_F}" ]; then
@@ -419,7 +421,6 @@ fix_user_register_protection_with_drush8() {
     chown ${_HM_U}:users ${_PLR_CTRL_F} &> /dev/null
     chmod 0664 ${_PLR_CTRL_F} &> /dev/null
   fi
-
   if [ -e "${_PLR_CTRL_F}" ]; then
     _EN_URP_T=$(grep "^enable_user_register_protection = TRUE" \
       ${_PLR_CTRL_F} 2>&1)
@@ -455,7 +456,6 @@ fix_user_register_protection_with_drush8() {
   else
     _ENABLE_USER_REGISTER_PROTECTION=NO
   fi
-
   if [ "${_ENABLE_USER_REGISTER_PROTECTION}" = "NO" ] \
     && [ -e "${User}/static/control/enable_user_register_protection.info" ]; then
     sed -i "s/.*enable_user_register_protection.*/enable_user_register_protection = TRUE/g" \
@@ -463,14 +463,12 @@ fix_user_register_protection_with_drush8() {
     wait
     _ENABLE_USER_REGISTER_PROTECTION=YES
   fi
-
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
     && [ ! -e "${_DIR_CTRL_F}" ]; then
     cp -af /data/conf/default.boa_site_control.ini ${_DIR_CTRL_F} &> /dev/null
     chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
     chmod 0664 ${_DIR_CTRL_F} &> /dev/null
   fi
-
   if [ -e "${_DIR_CTRL_F}" ]; then
     _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
       ${_DIR_CTRL_F} 2>&1)
@@ -482,26 +480,9 @@ fix_user_register_protection_with_drush8() {
   else
     _DISABLE_USER_REGISTER_PROTECTION=NO
   fi
+}
 
-  if [ "${_DISABLE_USER_REGISTER_PROTECTION}" = "NO" ] \
-    && [ ! -e "${Plr}/core" ]; then
-    Prm=$(run_drush8_nosilent_cmd "vget ^user_register$" \
-      | cut -d: -f2 \
-      | awk '{ print $1}' \
-      | sed "s/['\"]//g" \
-      | tr -d "\n" 2>&1)
-    Prm=${Prm//[^0-2]/}
-    echo "Prm user_register for ${Dom} is ${Prm}"
-    if [ "${_ENABLE_USER_REGISTER_PROTECTION}" = "YES" ]; then
-      run_drush8_cmd "${vSet} user_register 0"
-    else
-      if [ "${Prm}" = "1" ] || [ -z "${Prm}" ]; then
-        run_drush8_cmd "${vSet} user_register 2"
-      fi
-      run_drush8_cmd "${vSet} user_email_verification 1"
-    fi
-  fi
-
+fix_site_readonlymode() {
   if [ -e "${User}/log/imported.pid" ] \
     || [ -e "${User}/log/exported.pid" ]; then
     if [ -e "${Dir}/modules/readonlymode_fix.info" ]; then
@@ -513,6 +494,57 @@ fix_user_register_protection_with_drush8() {
       touch ${User}/log/ctrl/site.${Dom}.rom-fix.info
     fi
   fi
+}
+
+fix_user_register_protection_with_cSet() {
+  sync_user_register_protection_ini_vars
+  if [ "${_DISABLE_USER_REGISTER_PROTECTION}" = "NO" ] \
+    && [ -e "${Plr}/core" ]; then
+    Prm=$(run_drush8_nosilent_cmd "${cGet} register" \
+      | cut -d: -f3 \
+      | awk '{ print $1}' \
+      | tr -d \"\\n\" 2>&1)
+    Prm=${Prm//[^a-z_]/}
+    echo "Prm user.settings:register for ${Dom} is ${Prm}"
+    if [ "${_ENABLE_USER_REGISTER_PROTECTION}" = "YES" ]; then
+      run_drush8_cmd "${cSet} register admin_only -y"
+      echo "Prm user.settings:register for ${Dom} set to admin_only"
+    else
+      if [ "${Prm}" = "visitors" ] || [ -z "${Prm}" ]; then
+        run_drush8_cmd "${cSet} register visitors_admin_approval -y"
+        echo "Prm user.settings:register for ${Dom} set to visitors_admin_approval"
+      fi
+      run_drush8_cmd "${cSet} verify_mail true -y"
+      echo "Prm user.settings:verify_mail for ${Dom} set to true"
+    fi
+  fi
+  fix_site_readonlymode
+}
+
+fix_user_register_protection_with_vSet() {
+  sync_user_register_protection_ini_vars
+  if [ "${_DISABLE_USER_REGISTER_PROTECTION}" = "NO" ] \
+    && [ ! -e "${Plr}/core" ]; then
+    Prm=$(run_drush8_nosilent_cmd "${vGet} ^user_register$" \
+      | cut -d: -f2 \
+      | awk '{ print $1}' \
+      | sed "s/['\"]//g" \
+      | tr -d "\n" 2>&1)
+    Prm=${Prm//[^0-2]/}
+    echo "Prm user_register for ${Dom} is ${Prm}"
+    if [ "${_ENABLE_USER_REGISTER_PROTECTION}" = "YES" ]; then
+      run_drush8_cmd "${vSet} user_register 0"
+      echo "Prm user_register for ${Dom} set to 0"
+    else
+      if [ "${Prm}" = "1" ] || [ -z "${Prm}" ]; then
+        run_drush8_cmd "${vSet} user_register 2"
+        echo "Prm user_register for ${Dom} set to 2"
+      fi
+      run_drush8_cmd "${vSet} user_email_verification 1"
+      echo "Prm user_email_verification for ${Dom} set to 1"
+    fi
+  fi
+  fix_site_readonlymode
 }
 
 fix_robots_txt() {
@@ -1397,7 +1429,7 @@ fix_modules() {
 
   if [ -e "${Plr}/modules/o_contrib_seven" ] \
     && [ ! -e "${Plr}/core" ]; then
-    _PRIV_TEST=$(run_drush8_nosilent_cmd "vget ^file_default_scheme$" 2>&1)
+    _PRIV_TEST=$(run_drush8_nosilent_cmd "${vGet} ^file_default_scheme$" 2>&1)
     if [[ "${_PRIV_TEST}" =~ "No matching variable" ]]; then
       _PRIV_TEST_RESULT=NONE
     else
@@ -1405,7 +1437,7 @@ fix_modules() {
     fi
     _AUTO_CNF_PF_DL=NO
     if [ "${_PRIV_TEST_RESULT}" = "OK" ]; then
-      Pri=$(run_drush8_nosilent_cmd "vget ^file_default_scheme$" \
+      Pri=$(run_drush8_nosilent_cmd "${vGet} ^file_default_scheme$" \
         | cut -d: -f2 \
         | awk '{ print $1}' \
         | sed "s/['\"]//g" \
@@ -2727,12 +2759,20 @@ process() {
               ;;
             esac
             fix_site_control_files
-            if [ -e "${Plr}/modules/o_contrib_seven" ] \
+            if [ -e "${Plr}/modules/o_contrib_eight" ] \
+              || [ -e "${Plr}/modules/o_contrib_nine" ]; then
+              fix_user_register_protection_with_cSet
+              if [[ "${_X_SE}" =~ "OFF" ]]; then
+                run_drush8_cmd "advagg-force-new-aggregates"
+                run_drush8_cmd "cache-rebuild"
+                run_drush8_cmd "cache-rebuild"
+              fi
+            elif [ -e "${Plr}/modules/o_contrib_seven" ] \
               || [ -e "${Plr}/modules/o_contrib" ]; then
               if [ "${_CLEAR_BOOST}" = "YES" ]; then
                 fix_boost_cache
               fi
-              fix_user_register_protection_with_drush8
+              fix_user_register_protection_with_vSet
               if [[ "${_X_SE}" =~ "OFF" ]]; then
                 run_drush8_cmd "advagg-force-new-aggregates"
                 run_drush8_cmd "cache-clear all"
