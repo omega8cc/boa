@@ -3429,7 +3429,7 @@ if [ "${_DOW}" = "2" ]; then
   _MODULES_ON_EIGHT="redis"
   _MODULES_ON_SEVEN="redis"
   _MODULES_ON_SIX="redis"
-  _MODULES_OFF_EIGHT="simpletest"
+  _MODULES_OFF_EIGHT=
   _MODULES_OFF_SEVEN="coder \
     devel \
     filefield_nginx_progress \
@@ -3457,7 +3457,7 @@ else
   _MODULES_ON_EIGHT="robotstxt redis"
   _MODULES_ON_SEVEN="robotstxt redis"
   _MODULES_ON_SIX="path_alias_cache robotstxt redis"
-  _MODULES_OFF_EIGHT="dblog syslog backup_migrate automated_cron"
+  _MODULES_OFF_EIGHT=
   _MODULES_OFF_SEVEN="dblog syslog backup_migrate"
   _MODULES_OFF_SIX="dblog syslog backup_migrate"
 fi

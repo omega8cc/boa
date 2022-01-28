@@ -56,7 +56,7 @@ Contrib [S]upported:
 Contrib [S]upported and [B]undled:
 
  adminer -------------------- [D7] --------- [S] [B]
- advagg --------------------- [D6,D7,D8] --- [S] [B]
+ advagg --------------------- [D6-D9] ------ [S] [B]
  autoslave ------------------ [D7] --------- [S] [B]
  blockcache_alter ----------- [D6,D7] ------ [S] [B]
  boost ---------------------- [D6,D7] ------ [S] [B]
@@ -82,7 +82,7 @@ Contrib [S]upported and [B]undled:
  phpass --------------------- [D6] --------- [S] [B]
  private_upload ------------- [D6] --------- [S] [B]
  purge ---------------------- [D6,D7] ------ [S] [B]
- readonlymode --------------- [D6,D7,D8] --- [S] [B]
+ readonlymode --------------- [D6-D9] ------ [S] [B]
  reroute_email -------------- [D6,D7] ------ [S] [B]
  securesite ----------------- [D6,D7] ------ [S] [B]
  session_expire ------------- [D6,D7] ------ [S] [B]
@@ -99,19 +99,17 @@ Contrib [S]upported and [B]undled:
 Contrib [F]orce[E]nabled
 
  entitycache ---------------- [D7] --------- [S] [B] [FE] unless entitycache_dont_enable = TRUE
- robotstxt ------------------ [D6,D7,D8] --- [S] [B] [FE] static file is generated in sites/foo.com/files/robots.txt
+ robotstxt ------------------ [D6-D9] ------ [S] [B] [FE] static file is generated in sites/foo.com/files/robots.txt
 
 Core [F]orce[D]isabled:
 
- automated_cron ------------- [D8] -------------- [FD]
  cookie_cache_bypass -------- [D6] -------------- [FD]
- dblog ---------------------- [D6,D7,D8] -------- [FD]
- simpletest ----------------- [D8] -------------- [FD]
- syslog --------------------- [D6,D7,D8] -------- [FD]
+ dblog ---------------------- [D6,D7] ----------- [FD]
+ syslog --------------------- [D6,D7] ----------- [FD]
 
 Contrib [F]orce[D]isabled
 
- backup_migrate ------------- [D6,D7,D8] -------- [FD]
+ backup_migrate ------------- [D6,D7] ----------- [FD]
  coder ---------------------- [D6,D7] ----------- [FD]
  css_gzip ------------------- [D6] -------------- [FD]
  devel ---------------------- [D6,D7] ----------- [FD]
@@ -136,7 +134,7 @@ Contrib [F]orce[D]isabled
 Contrib [NA]:
 
  cache_backport ------------- [D6] --------- [S] [B] [NA]
- redis ---------------------- [D6,D7,D8] --- [S] [B] [NA]
+ redis ---------------------- [D6-D9] ------ [S] [B] [NA]
 
 Contrib [S]oft[E]nabled:
 
