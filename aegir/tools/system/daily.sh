@@ -3271,11 +3271,6 @@ action() {
             su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/.checksums/*.md5"
             su -s /bin/bash - ${_HM_U} -c "drush10-bin core:init --yes" &> /dev/null
             su -s /bin/bash - ${_HM_U} -c "drush10-bin site:alias-convert ~/.drush/sites --yes" &> /dev/null
-          elif [ -x "/usr/bin/drush9" ]; then
-            su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/*.yml"
-            su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/.checksums/*.md5"
-            su -s /bin/bash - ${_HM_U} -c "drush9 core:init --yes" &> /dev/null
-            su -s /bin/bash - ${_HM_U} -c "drush9 site:alias-convert ~/.drush/sites --yes" &> /dev/null
           fi
           source /root/.${_HM_U}.octopus.cnf
           _DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS//[^0-9]/}

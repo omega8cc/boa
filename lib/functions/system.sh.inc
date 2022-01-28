@@ -2194,9 +2194,18 @@ install_wkhtmltox() {
 }
 
 #
+# Clean Drush 11.
+clean_drush_eleven() {
+  rm -f /usr/bin/drush11*
+  ln -sf /opt/tools/drush/11/drush/vendor/drush/drush/drush /usr/bin/drush11-bin
+  msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} setup complete"
+}
+
+#
 # Clean Drush 10.
 clean_drush_ten() {
   rm -f /usr/bin/drush-launcher
+  rm -f /usr/bin/drushlr
   rm -f /usr/bin/drush10*
   rm -f /usr/bin/drush9
   rm -f /usr/local/bin/dcg
@@ -2207,8 +2216,8 @@ clean_drush_ten() {
   rm -f /usr/local/bin/robo
   rm -f /usr/local/bin/var-dump-server
   ln -sf /opt/tools/drush/launcher/drush.phar /usr/bin/drush-launcher
+  ln -sf /opt/tools/drush/launcher/drush.phar /usr/bin/drushlr
   ln -sf /opt/tools/drush/10/drush/vendor/drush/drush/drush /usr/bin/drush10-bin
-  ln -sf /opt/tools/drush/10/drush/vendor/drush/drush/drush /usr/bin/drush9
   msg "INFO: Drush ${_DRUSH_TEN_VRN} setup complete"
 }
 
@@ -2229,6 +2238,10 @@ set_drush_perm() {
     chmod 755 /opt/tools/drush/10/drush/vendor/drush/drush/drush
     chmod 755 /opt/tools/drush/10/drush/vendor/drush/drush/drush.php
   fi
+  if [ -e "/opt/tools/drush/11/drush/vendor/drush/drush/drush" ]; then
+    chmod 755 /opt/tools/drush/11/drush/vendor/drush/drush/drush
+    chmod 755 /opt/tools/drush/11/drush/vendor/drush/drush/drush.php
+  fi
   if [ -e "/opt/tools/drush/launcher/drush.phar" ]; then
     chmod 755 /opt/tools/drush/launcher/drush.phar
   fi
@@ -2243,6 +2256,18 @@ get_drush_launcher() {
   touch /opt/tools/drush/launcher/.ctrl.${_X_SE}.pid
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} installation complete"
+  fi
+}
+
+#
+# Install or update Drush 11.
+get_drush_eleven() {
+  rm -rf /opt/tools/drush/11/*
+  cd /opt/tools/drush/11/
+  get_dev_ext "drush-${_DRUSH_ELEVEN_VRN}.tar.gz"
+  touch /opt/tools/drush/11/.ctrl.${_X_SE}.pid
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} installation complete"
   fi
 }
 
@@ -2324,6 +2349,20 @@ get_drush_versions() {
       msg "INFO: Drush ${_DRUSH_TEN_VRN} already installed"
     fi
   fi
+  if [ -e "/opt/tools/drush/11" ]; then
+    _DRUSH_ITD=$(drush11-bin --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f4 \
+      | awk '{ print $1}' 2>&1)
+    if [ "${_DRUSH_ITD}" != "${_DRUSH_ELEVEN_VRN}" ] \
+      || [ ! -x "/opt/tools/drush/11/drush/vendor/drush/drush/drush" ] \
+      || [ ! -e "/opt/tools/drush/11/.ctrl.${_X_SE}.pid" ]; then
+      msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} re-installation required"
+      get_drush_eleven
+    else
+      msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} already installed"
+    fi
+  fi
   if [ -e "/opt/tools/drush/launcher" ]; then
     _DRUSH_ITD=$(drush-launcher --version 2>&1 \
       | tr -d "\n" \
@@ -2352,6 +2391,11 @@ get_drush_versions() {
     clean_drush_ten
   else
     msg "FAIL: Drush ${_DRUSH_TEN_VRN} installation failed!"
+  fi
+  if [ -x "/opt/tools/drush/11/drush/vendor/drush/drush/drush" ]; then
+    clean_drush_eleven
+  else
+    msg "FAIL: Drush ${_DRUSH_ELEVEN_VRN} installation failed!"
   fi
   chown -R root:root /opt/tools/drush
   cd /opt/tmp

@@ -2090,14 +2090,6 @@ manage_site_drush_alias_mirror() {
       su -s /bin/bash - ${_USER}.ftp -c "drush10-bin core:init --yes" &> /dev/null
       su -s /bin/bash - ${_USER}.ftp -c "drush10-bin site:alias-convert ~/.drush/sites --yes" &> /dev/null
     fi
-  elif [ -x "/usr/bin/drush9" ]; then
-    if [ "${isAliasUpdate}" = "YES" ] \
-      || [ ! -e "/home/${_USER}.ftp/.drush/sites/.checksums" ]; then
-      su -s /bin/bash - ${_USER}.ftp -c "rm -f ~/.drush/sites/*.yml"
-      su -s /bin/bash - ${_USER}.ftp -c "rm -f ~/.drush/sites/.checksums/*.md5"
-      su -s /bin/bash - ${_USER}.ftp -c "drush9 core:init --yes" &> /dev/null
-      su -s /bin/bash - ${_USER}.ftp -c "drush9 site:alias-convert ~/.drush/sites --yes" &> /dev/null
-    fi
   fi
 }
 #
