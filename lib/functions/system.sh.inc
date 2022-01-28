@@ -2204,10 +2204,7 @@ clean_drush_eleven() {
 #
 # Clean Drush 10.
 clean_drush_ten() {
-  rm -f /usr/bin/drush-launcher
-  rm -f /usr/bin/drushlr
   rm -f /usr/bin/drush10*
-  rm -f /usr/bin/drush9
   rm -f /usr/local/bin/dcg
   rm -f /usr/local/bin/drush
   rm -f /usr/local/bin/php-parse
@@ -2215,8 +2212,6 @@ clean_drush_ten() {
   rm -f /usr/local/bin/release
   rm -f /usr/local/bin/robo
   rm -f /usr/local/bin/var-dump-server
-  ln -sf /opt/tools/drush/launcher/drush.phar /usr/bin/drush-launcher
-  ln -sf /opt/tools/drush/launcher/drush.phar /usr/bin/drushlr
   ln -sf /opt/tools/drush/10/drush/vendor/drush/drush/drush /usr/bin/drush10-bin
   msg "INFO: Drush ${_DRUSH_TEN_VRN} setup complete"
 }
@@ -2254,6 +2249,10 @@ get_drush_launcher() {
   cd /opt/tools/drush/launcher/
   wget -q -U iCab https://github.com/drush-ops/drush-launcher/releases/latest/download/drush.phar
   touch /opt/tools/drush/launcher/.ctrl.${_X_SE}.pid
+  rm -f /usr/bin/drush-launcher
+  rm -f /usr/bin/drushlr
+  ln -sf /opt/tools/drush/launcher/drush.phar /usr/bin/drush-launcher
+  ln -sf /opt/tools/drush/launcher/drush.phar /usr/bin/drushlr
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} installation complete"
   fi
@@ -2299,9 +2298,11 @@ get_drush_eight() {
 # Install or update Drush versions.
 get_drush_versions() {
   msg "INFO: Installing supported Drush versions..."
+  _X_SE="414prodT17"
   ###--------------------###
   if [ -e "/opt/tools/drush/9" ]; then
     rm -rf /opt/tools/drush/9
+    rm -f /usr/bin/drush9
   fi
   if [ -e "/opt/tools/drush/7" ]; then
     rm -rf /opt/tools/drush/7
@@ -2319,7 +2320,7 @@ get_drush_versions() {
     rm -rf /opt/tools/drush/4
     rm -f /usr/bin/drush4
   fi
-  mkdir -p /opt/tools/drush/{8,10,launcher}
+  mkdir -p /opt/tools/drush/{8,10,11,launcher}
   chown -R root:root /opt/tools
   if [ -e "/opt/tools/drush/8" ]; then
     _DRUSH_ITD=$(drush8 --version 2>&1 \
