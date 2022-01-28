@@ -2795,9 +2795,9 @@ guardr_install
 #lightning_install
 #openaid_install
 
-_USE_DISTRO_CORE=YES
+### _USE_DISTRO_CORE=YES
 openatrium7_install
-_USE_DISTRO_CORE=NO
+### _USE_DISTRO_CORE=NO
 
 ### openchurch2_install -- broken profile
 openlucius_install
