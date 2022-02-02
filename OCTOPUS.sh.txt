@@ -147,6 +147,14 @@ _VARBASE=9.0.4
 _SOCIAL=10.3.7
 
 
+###
+### Avoid too many questions
+###
+export DEBIAN_FRONTEND=noninteractive
+if [ -z "${TERM+x}" ]; then
+  export TERM=vt100
+fi
+
 
 ###
 ### Clean pid files on exit

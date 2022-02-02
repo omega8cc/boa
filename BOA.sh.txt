@@ -43,7 +43,14 @@
 
 export PATH=$PATH:/opt/local/bin
 SHELL=/bin/bash
+
+###
+### Avoid too many questions
+###
 export DEBIAN_FRONTEND=noninteractive
+if [ -z "${TERM+x}" ]; then
+  export TERM=vt100
+fi
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}

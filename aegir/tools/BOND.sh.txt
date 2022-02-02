@@ -181,6 +181,14 @@ libFnc="${bldPth}/lib/functions"
 locCnf="${bldPth}/aegir/conf"
 vBs="/var/backups"
 
+###
+### Avoid too many questions
+###
+export DEBIAN_FRONTEND=noninteractive
+if [ -z "${TERM+x}" ]; then
+  export TERM=vt100
+fi
+
 ###---### Functions
 #
 # Clean pid files on exit.
