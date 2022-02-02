@@ -58,6 +58,7 @@ mkdir -p ${drupal_root}/sites/all/{modules,themes,libraries,drush}
 rm -f ${drupal_root}/sites/all/libraries/permissions-fixed*.pid
 touch ${drupal_root}/sites/all/libraries/permissions-fixed-${_TODAY}.pid
 chmod 0644 ${drupal_root}/*.php
+chmod 0664 ${drupal_root}/autoload.php
 chmod 0751 ${drupal_root}/sites
 chmod 0755 ${drupal_root}/sites/*
 chmod 0644 ${drupal_root}/sites/*.php
