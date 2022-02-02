@@ -39,7 +39,7 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-_X_SE="414prodT18"
+_X_SE="414prodT19"
 _WEBG=www-data
 _OSR=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
@@ -2124,6 +2124,7 @@ fix_permissions() {
     chmod 0751 ${Plr}/sites &> /dev/null
     chmod 0755 ${Plr}/sites/* &> /dev/null
     chmod 0644 ${Plr}/sites/*.php &> /dev/null
+    chmod 0664 ${Plr}/autoload.php &> /dev/null
     chmod 0644 ${Plr}/sites/*.txt &> /dev/null
     chmod 0644 ${Plr}/sites/*.yml &> /dev/null
     chmod 0755 ${Plr}/sites/all/drush &> /dev/null
