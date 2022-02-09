@@ -385,6 +385,7 @@ guard_stats() {
   fi
   if [ -e "${_HA}" ]; then
     for _IP in `cat ${_HA} | cut -d '#' -f1 | sort | uniq`; do
+      _IP_RV=
       _NR_TEST="0"
       _NR_TEST=$(tr -s ' ' '\n' < ${_HA} | grep -c ${_IP} 2>&1)
       if [ -e "/root/.local.IP.list" ]; then
@@ -406,12 +407,13 @@ guard_stats() {
         if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
           echo "${_IP} already denied or allowed on port 22"
         else
+          _IP_RV=$(host -s ${_IP} 2>&1)
           if [ "${_NR_TEST}" -ge "64" ]; then
-            echo "Deny ${_IP} permanently ${_NR_TEST}"
-            csf -d ${_IP} do not delete Brute force SSH Server ${_NR_TEST} attacks
+            echo "Deny ${_IP} permanently ${_NR_TEST} ${_IP_RV}"
+            csf -d ${_IP} do not delete Brute force SSH Server ${_NR_TEST} attacks ${_IP_RV}
           else
-            echo "Deny ${_IP} until limits rotation ${_NR_TEST}"
-            csf -d ${_IP} Brute force SSH Server ${_NR_TEST} attacks
+            echo "Deny ${_IP} until limits rotation ${_NR_TEST} ${_IP_RV}"
+            csf -d ${_IP} Brute force SSH Server ${_NR_TEST} attacks ${_IP_RV}
           fi
         fi
       fi
@@ -419,6 +421,7 @@ guard_stats() {
   fi
   if [ -e "${_WA}" ]; then
     for _IP in `cat ${_WA} | cut -d '#' -f1 | sort | uniq`; do
+      _IP_RV=
       _NR_TEST="0"
       _NR_TEST=$(tr -s ' ' '\n' < ${_WA} | grep -c ${_IP} 2>&1)
       if [ -e "/root/.local.IP.list" ]; then
@@ -440,21 +443,23 @@ guard_stats() {
         if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
           echo "${_IP} already denied or allowed on port 80"
         else
+          _IP_RV=$(host -s ${_IP} 2>&1)
           if [ "${_NR_TEST}" -ge "64" ]; then
-            echo "Deny ${_IP} permanently ${_NR_TEST}"
-            csf -d ${_IP} do not delete Brute force Web Server ${_NR_TEST} attacks
+            echo "Deny ${_IP} permanently ${_NR_TEST} ${_IP_RV}"
+            csf -d ${_IP} do not delete Brute force Web Server ${_NR_TEST} attacks ${_IP_RV}
           else
-            echo "Deny ${_IP} until limits rotation ${_NR_TEST}"
-            csf -d ${_IP} Brute force Web Server ${_NR_TEST} attacks
+            echo "Deny ${_IP} until limits rotation ${_NR_TEST} ${_IP_RV}"
+            csf -d ${_IP} Brute force Web Server ${_NR_TEST} attacks ${_IP_RV}
           fi
         fi
       fi
     done
   fi
-  if [ -e "$_FA" ]; then
-    for _IP in `cat $_FA | cut -d '#' -f1 | sort | uniq`; do
+  if [ -e "${_FA}" ]; then
+    for _IP in `cat ${_FA} | cut -d '#' -f1 | sort | uniq`; do
+      _IP_RV=
       _NR_TEST="0"
-      _NR_TEST=$(tr -s ' ' '\n' < $_FA | grep -c ${_IP} 2>&1)
+      _NR_TEST=$(tr -s ' ' '\n' < ${_FA} | grep -c ${_IP} 2>&1)
       if [ -e "/root/.local.IP.list" ]; then
         _IP_CHECK=$(cat /root/.local.IP.list \
           | cut -d '#' -f1 \
@@ -464,7 +469,7 @@ guard_stats() {
           | grep ${_IP} 2>&1)
         if [ ! -z "${_IP_CHECK}" ]; then
           _NR_TEST="0"
-          echo "${_IP} is a local IP address, ignoring $_FA"
+          echo "${_IP} is a local IP address, ignoring ${_FA}"
         fi
       fi
       if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "24" ]; then
@@ -474,12 +479,13 @@ guard_stats() {
         if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
           echo "${_IP} already denied or allowed on port 21"
         else
+          _IP_RV=$(host -s ${_IP} 2>&1)
           if [ "${_NR_TEST}" -ge "64" ]; then
-            echo "Deny ${_IP} permanently ${_NR_TEST}"
-            csf -d ${_IP} do not delete Brute force FTP Server ${_NR_TEST} attacks
+            echo "Deny ${_IP} permanently ${_NR_TEST} ${_IP_RV}"
+            csf -d ${_IP} do not delete Brute force FTP Server ${_NR_TEST} attacks ${_IP_RV}
           else
-            echo "Deny ${_IP} until limits rotation ${_NR_TEST}"
-            csf -d ${_IP} Brute force FTP Server ${_NR_TEST} attacks
+            echo "Deny ${_IP} until limits rotation ${_NR_TEST} ${_IP_RV}"
+            csf -d ${_IP} Brute force FTP Server ${_NR_TEST} attacks ${_IP_RV}
           fi
         fi
       fi
