@@ -523,6 +523,8 @@ if_firewall_update() {
     cd
     service lfd stop
     sleep 3
+    kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+    killall sleep
     rm -f /etc/csf/csf.error
     csf -q
     sleep 8
@@ -1419,6 +1421,8 @@ install_db_cluster() {
   fi
   service lfd stop
   sleep 3
+  kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+  killall sleep
   rm -f /etc/csf/csf.error
   csf -q
   sleep 8

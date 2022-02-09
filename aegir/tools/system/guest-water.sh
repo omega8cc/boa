@@ -541,6 +541,8 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
     sed -i "/^$/d" /etc/csf/csf.deny
   fi
 
+  kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+  killall sleep
   rm -f /etc/csf/csf.error
   service lfd restart
   echo "Waiting 8 seconds for firewall clean start..."
@@ -581,6 +583,8 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
   rm -f /var/xdrago/monitor/web.log
   rm -f /var/xdrago/monitor/ftp.log
 
+  kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+  killall sleep
   rm -f /etc/csf/csf.error
   service lfd restart
   sleep 8

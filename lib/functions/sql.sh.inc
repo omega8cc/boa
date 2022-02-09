@@ -1119,6 +1119,8 @@ install_db_server() {
       && [ -e "/etc/csf/csf.deny" ]; then
       service lfd stop &> /dev/null
       sleep 3
+      kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+      killall sleep
       rm -f /etc/csf/csf.error
       csf -x &> /dev/null
     fi
@@ -1196,6 +1198,8 @@ install_db_server() {
         && [ -e "/etc/csf/csf.deny" ]; then
         service lfd stop &> /dev/null
         sleep 3
+        kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+        killall sleep
         rm -f /etc/csf/csf.error
         csf -x &> /dev/null
       fi

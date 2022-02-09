@@ -1409,6 +1409,8 @@ check_fix_csf() {
     csf -a 95.111.216.14   au.files.aegir.cc  &> /dev/null
     service lfd stop &> /dev/null
     sleep 3
+    kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
+    killall sleep
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
     csf -uf &> /dev/null
