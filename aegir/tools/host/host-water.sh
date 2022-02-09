@@ -74,26 +74,26 @@ whitelist_ip_cloudflare() {
   done
 }
 
-whitelist_ip_incapsula() {
+whitelist_ip_imperva() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
-    echo removing incapsula ips from csf.allow
-    sed -i "s/.*incapsula.*//g" /etc/csf/csf.allow
+    echo removing imperva ips from csf.allow
+    sed -i "s/.*imperva.*//g" /etc/csf/csf.allow
     wait
     sed -i "/^$/d" /etc/csf/csf.allow
     wait
   fi
 
-  _IPS=$(curl -k -s --data "resp_format=text" https://my.incapsula.com/api/integration/v1/ips \
+  _IPS=$(curl -k -s --data "resp_format=text" https://my.imperva.com/api/integration/v1/ips \
     | sed 's/.*::.*//g' \
     | sed 's/[^0-9\.\/]//g' \
     | sort \
     | uniq 2>&1)
 
-  echo _IPS incapsula list..
+  echo _IPS imperva list..
   echo ${_IPS}
 
   for _IP in ${_IPS}; do
-    echo checking csf.allow incapsula ${_IP} now...
+    echo checking csf.allow imperva ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.allow \
       | cut -d '#' -f1 \
       | sort \
@@ -102,7 +102,7 @@ whitelist_ip_incapsula() {
       | grep "${_IP}" 2>&1)
     if [ -z "${_IP_CHECK}" ]; then
       echo "${_IP} not yet listed in /etc/csf/csf.allow"
-      echo "tcp|in|d=80|s=${_IP} # incapsula ips" >> /etc/csf/csf.allow
+      echo "tcp|in|d=80|s=${_IP} # imperva ips" >> /etc/csf/csf.allow
     else
       echo "${_IP} already listed in /etc/csf/csf.allow"
     fi
@@ -538,7 +538,7 @@ if [ -e "/vservers" ] \
   whitelist_ip_cloudflare
   whitelist_ip_googlebot
   whitelist_ip_microsoft
-  [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_incapsula
+  [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_imperva
   [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_sucuri
   [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_authzero
   [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_site24x7
