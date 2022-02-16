@@ -52,6 +52,26 @@ sub makeactions
   foreach $line (@MYARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
     local($VISITOR, $PROXY, $XREAL, $YREAL, $ZREAL, $RESTX) = split(/\s+/,$line);
+
+    if ($VISITOR =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
+      print "VISITOR: $VISITOR\n";
+    }
+    if ($PROXY =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
+      print "PROXY: $PROXY\n";
+    }
+    if ($XREAL =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
+      print "XREAL: $XREAL\n";
+    }
+    if ($YREAL =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
+      print "YREAL: $YREAL\n";
+    }
+    if ($ZREAL =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
+      print "ZREAL: $ZREAL\n";
+    }
+    if ($RESTX =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
+      print "RESTX: $RESTX\n";
+    }
+
     if ($VISITOR =~ /^((192\.168\.)|(172\.16\.)|(unknown)|(10\.)|(127\.0\.))/)
     {
       $VISITOR = $PROXY;
