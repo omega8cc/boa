@@ -11,8 +11,20 @@ fix_php_ini_ioncube() {
 }
 
 #
+# Fix php.ini files to remove jsmin.so
+remove_php_ini_jsmin() {
+  if [ -e "${_THIS_FILE}" ]; then
+    _JSMIN_INI_TEST=$(grep "^extension=jsmin.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_JSMIN_INI_TEST" =~ "extension=jsmin.so" ]]; then
+      sed -i "s/.*jsmin.*//g" ${_THIS_FILE} &> /dev/null
+      wait
+    fi
+  fi
+}
+
+#
 # Fix php.ini files to remove suhosin.so
-fix_php_ini_suhosin() {
+remove_php_ini_suhosin() {
   if [ -e "${_THIS_FILE}" ]; then
     _SUHOSIN_INI_TEST=$(grep "^extension=suhosin.so" ${_THIS_FILE} 2>&1)
     if [[ "$_SUHOSIN_INI_TEST" =~ "extension=suhosin.so" ]]; then
@@ -50,7 +62,7 @@ fix_php_ini_yaml() {
 
 #
 # Fix php.ini files to add jsmin.so
-fix_php_ini_jsmin() {
+add_php_ini_jsmin() {
   if [ -e "${_THIS_FILE}" ]; then
     _JSMIN_INI_TEST=$(grep "^extension=jsmin.so" ${_THIS_FILE} 2>&1)
     if [[ "$_JSMIN_INI_TEST" =~ "extension=jsmin.so" ]]; then
@@ -394,6 +406,7 @@ update_php_conf() {
     cp -af ${locCnf}/php${e}.ini /opt/php${e}/etc/php${e}.ini
     cp -af ${locCnf}/php${e}-cli.ini /opt/php${e}/lib/php.ini
     cp -af ${locCnf}/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
+
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     if [ "${e}" != "56" ]; then
       fix_php_ini_apcu
@@ -406,12 +419,16 @@ update_php_conf() {
       fix_php_ini_twig
     fi
     if [ "${e}" != "80" ] && [ "${e}" != "81" ]; then
-      fix_php_ini_jsmin
+      add_php_ini_jsmin
+    fi
+    if [ "${e}" = "80" ] || [ "${e}" = "81" ]; then
+      remove_php_ini_jsmin
     fi
     fix_php_ini_redis
     fix_php_ini_ioncube
-    fix_php_ini_suhosin
+    remove_php_ini_suhosin
     fix_php_ini_yaml
+
     _THIS_FILE=/opt/php${e}/lib/php.ini
     if [ "${e}" != "56" ] && [ "${e}" != "70" ] && [ "${e}" != "71" ]; then
       fix_php_ini_mcrypt
@@ -420,11 +437,17 @@ update_php_conf() {
       fix_php_ini_mailparse
       fix_php_ini_twig
     fi
-    fix_php_ini_jsmin
+    if [ "${e}" != "80" ] && [ "${e}" != "81" ]; then
+      add_php_ini_jsmin
+    fi
+    if [ "${e}" = "80" ] || [ "${e}" = "81" ]; then
+      remove_php_ini_jsmin
+    fi
     fix_php_ini_redis
     fix_php_ini_ioncube
-    fix_php_ini_suhosin
+    remove_php_ini_suhosin
     fix_php_ini_yaml
+
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
       sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g"       /opt/php${e}/etc/php${e}.ini
       wait
