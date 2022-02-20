@@ -349,7 +349,6 @@ install_upgrade_nginx
 kill_nash
 fix_sftp_ftps_modern
 disable_old_purge_cruft_machine
-enable_weekly_usage_monitor
 install_wkhtmltox
 fix_libs_php
 fix_libssl

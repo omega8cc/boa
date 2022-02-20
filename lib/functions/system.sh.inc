@@ -183,22 +183,6 @@ disable_old_purge_cruft_machine() {
 }
 
 #
-# Enable Weekly Usage Monitor (Monday).
-enable_weekly_usage_monitor() {
-  if [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
-    || [ "${_VMFAMILY}" = "VS" ]; then
-    sed -i "s/.*usage.sh.*//g" /etc/crontab &> /dev/null
-    wait
-    sed -i "/^$/d" /etc/crontab &> /dev/null
-    wait
-    echo "44 22   * * *   root    bash /var/xdrago/usage.sh >/dev/null 2>&1" >> /etc/crontab
-  fi
-}
-
-#
 # Update INI templates.
 update_ini_tpl() {
   mkdir -p /data/conf
@@ -235,7 +219,6 @@ fix_on_upgrade() {
   fix_sftp_ftps_modern
   fix_ftps_pam
   disable_old_purge_cruft_machine
-  enable_weekly_usage_monitor
   update_php_conf
   update_ini_tpl
   update_nginx_conf
