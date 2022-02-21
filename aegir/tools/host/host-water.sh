@@ -555,7 +555,7 @@ if [ -e "/vservers" ] \
   fi
 
   kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
-  killall sleep
+  killall sleep &> /dev/null
   rm -f /etc/csf/csf.error
   service lfd restart
   echo "Waiting 8 seconds for firewall clean start..."
@@ -598,7 +598,7 @@ if [ -e "/vservers" ] \
   rm -f /vservers/*/var/xdrago/monitor/ftp.log
 
   kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
-  killall sleep
+  killall sleep &> /dev/null
   rm -f /etc/csf/csf.error
   service lfd restart
   sleep 8

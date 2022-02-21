@@ -34,7 +34,7 @@ sql_restart() {
   sleep 5
   echo "$(date 2>&1) $1 incident response started"                  >> ${pthOml}
   kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}')
-  killall sleep
+  killall sleep &> /dev/null
   killall php
   bash /var/xdrago/move_sql.sh
   echo "$(date 2>&1) $1 incident mysql restarted"                   >> ${pthOml}
@@ -178,7 +178,7 @@ almost_oom_kill() {
   echo "$(date 2>&1) Almost OOM incident response started"          >> ${pthOml}
   kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}')
   echo "$(date 2>&1) Almost OOM wkhtmltopdf killed"                 >> ${pthOml}
-  killall sleep
+  killall sleep &> /dev/null
   killall php
   echo "$(date 2>&1) Almost OOM php-cli killed"                     >> ${pthOml}
   echo "$(date 2>&1) Almost OOM incident response completed"        >> ${pthOml}
@@ -195,7 +195,7 @@ oom_restart() {
   echo "$(date 2>&1) OOM incident response started"                 >> ${pthOml}
   kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}')
   echo "$(date 2>&1) OOM wkhtmltopdf killed"                        >> ${pthOml}
-  killall sleep
+  killall sleep &> /dev/null
   killall php
   echo "$(date 2>&1) OOM php-cli killed"                            >> ${pthOml}
   mv -f /var/log/nginx/error.log /var/log/nginx/`date +%y%m%d-%H%M`-error.log

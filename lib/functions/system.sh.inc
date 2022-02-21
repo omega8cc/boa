@@ -3495,7 +3495,7 @@ finale() {
     service lfd stop &> /dev/null
     sleep 3
     kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
-    killall sleep
+    killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
     csf -uf &> /dev/null
@@ -4274,7 +4274,7 @@ sys_packages_update() {
       service lfd stop &> /dev/null
       sleep 3
       kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
-      killall sleep
+      killall sleep &> /dev/null
       rm -f /etc/csf/csf.error
       csf -x &> /dev/null
     fi

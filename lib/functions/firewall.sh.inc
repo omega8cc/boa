@@ -198,7 +198,7 @@ install_upgrade_csf_lfd() {
       service lfd stop &> /dev/null
       sleep 3
       kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
-      killall sleep
+      killall sleep &> /dev/null
       rm -f /etc/csf/csf.error
       csf -x &> /dev/null
       update-rc.d -f csf remove &> /dev/null
@@ -238,7 +238,7 @@ install_upgrade_csf_lfd() {
         service lfd stop &> /dev/null
         sleep 3
         kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
-        killall sleep
+        killall sleep &> /dev/null
         rm -f /etc/csf/csf.error
         mrun "csf -x" &> /dev/null
         mrun "csf -e" &> /dev/null
