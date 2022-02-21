@@ -79,7 +79,7 @@ satellite_tune_fpm_workers() {
 #
 # Update web user.
 satellite_update_web_user() {
-  _X_SE="414prodT21"
+  _X_SE="414prodT22"
   isTest="${_WEB}"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ]; then
@@ -1175,7 +1175,7 @@ satellite_force_advanced_nginx_config() {
 #
 # Update local INI for PHP CLI on the Aegir Satellite Instance.
 satellite_child_b_update_ini_php_cli() {
-  _X_SE="414prodT21"
+  _X_SE="414prodT22"
   _U_HD="${_ROOT}/.drush"
   _U_TP="${_ROOT}/.tmp"
   _U_II="${_U_HD}/php.ini"
@@ -1704,7 +1704,7 @@ satellite_download_o_contrib_eight() {
 #
 # Download o_contrib_seven.
 satellite_download_o_contrib_seven() {
-  _X_SE="414prodT21"
+  _X_SE="414prodT22"
   touch update-${_X_VERSION}.info
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_seven modules..."
@@ -1794,7 +1794,7 @@ satellite_download_o_contrib_seven() {
 #
 # Download o_contrib_six.
 satellite_download_o_contrib_six() {
-  _X_SE="414prodT21"
+  _X_SE="414prodT22"
   touch update-${_X_VERSION}.info
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib modules..."
@@ -1880,7 +1880,7 @@ satellite_download_o_contrib_six() {
 #
 # Upgrade o_contrib.
 satellite_check_fix_o_contrib() {
-  _X_SE="414prodT21"
+  _X_SE="414prodT22"
   if [ -e "${_CORE}/o_contrib_nine" ]; then
     if [ ! -d "${_CORE}/o_contrib_nine/redis_compr" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
@@ -3980,7 +3980,7 @@ satellite_make() {
     fi
   fi
 
-  _X_SE="414prodT21"
+  _X_SE="414prodT22"
   if [ ! -e "${_ROOT}/static/control/.ctrl.${_X_SE}.pid" ] \
     && [ -e "/home/${_USER}.ftp/users" ]; then
     if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
