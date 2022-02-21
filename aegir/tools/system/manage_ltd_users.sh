@@ -69,6 +69,27 @@ forCer="-fuy --allow-unauthenticated --reinstall"
 
 ###-------------SYSTEM-----------------###
 
+count_cpu() {
+  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+  _CPU_INFO=${_CPU_INFO//[^0-9]/}
+  _NPROC_TEST=$(which nproc 2>&1)
+  if [ -z "${_NPROC_TEST}" ]; then
+    _CPU_NR="${_CPU_INFO}"
+  else
+    _CPU_NR=$(nproc 2>&1)
+  fi
+  _CPU_NR=${_CPU_NR//[^0-9]/}
+  if [ ! -z "${_CPU_NR}" ] \
+    && [ ! -z "${_CPU_INFO}" ] \
+    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
+    && [ "${_CPU_INFO}" -gt "0" ]; then
+    _CPU_NR="${_CPU_INFO}"
+  fi
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+    _CPU_NR=1
+  fi
+}
+
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
@@ -1083,14 +1104,14 @@ satellite_tune_fpm_workers() {
   _USE=$(( _RAM / 4 ))
   if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=48
+      _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
     else
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
   elif [ "${_USE}" -ge "2048" ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=48
+        _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
       else
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
@@ -1099,27 +1120,27 @@ satellite_tune_fpm_workers() {
         || [ -e "/boot/grub/menu.lst" ] \
         || [ -e "/root/.tg.cnf" ]; then
         if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=48
+          _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
         else
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
       else
         if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=48
+          _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
         else
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
       fi
     else
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=48
+        _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
       else
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
     fi
   else
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=12
+      _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
     else
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
@@ -2311,6 +2332,7 @@ elif [ ! -e "/var/xdrago/conf/lshell.conf" ]; then
   exit 0
 else
   touch /var/run/manage_ltd_users.pid
+  count_cpu
   find_fast_mirror
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   cat /var/xdrago/conf/lshell.conf > ${_THIS_LTD_CONF}

@@ -1,4 +1,25 @@
 
+count_cpu() {
+  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+  _CPU_INFO=${_CPU_INFO//[^0-9]/}
+  _NPROC_TEST=$(which nproc 2>&1)
+  if [ -z "${_NPROC_TEST}" ]; then
+    _CPU_NR="${_CPU_INFO}"
+  else
+    _CPU_NR=$(nproc 2>&1)
+  fi
+  _CPU_NR=${_CPU_NR//[^0-9]/}
+  if [ ! -z "${_CPU_NR}" ] \
+    && [ ! -z "${_CPU_INFO}" ] \
+    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
+    && [ "${_CPU_INFO}" -gt "0" ]; then
+    _CPU_NR="${_CPU_INFO}"
+  fi
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+    _CPU_NR=1
+  fi
+}
+
 if_running_as_root_barracuda() {
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
@@ -229,6 +250,7 @@ fix_on_upgrade() {
 #
 # Tune memory limits for PHP, Nginx and MariaDB or Percona.
 tune_memory_limits() {
+  count_cpu
   _VM_TEST=$(uname -a 2>&1)
   if [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
@@ -241,22 +263,6 @@ tune_memory_limits() {
   if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
     || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
     _VMFAMILY="AWS"
-  fi
-  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
-  _CPU_INFO=${_CPU_INFO//[^0-9]/}
-  _NPROC_TEST=$(which nproc 2>&1)
-  if [ -z "${_NPROC_TEST}" ]; then
-    _CPU_NR="${_CPU_INFO}"
-  else
-    _CPU_NR=$(nproc 2>&1)
-  fi
-  _CPU_NR=${_CPU_NR//[^0-9]/}
-  if [ ! -z "${_CPU_NR}" ] && [ ! -z "${_CPU_INFO}" ] \
-    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] && [ "${_CPU_INFO}" -gt "0" ]; then
-    _CPU_NR="${_CPU_INFO}"
-  fi
-  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
-    _CPU_NR=1
   fi
   _CPU_MX=$(( _CPU_NR * 2 ))
   if [ "${_CPU_MX}" -lt "4" ]; then
@@ -300,21 +306,21 @@ tune_memory_limits() {
   else
     _USE_SQL=$(( _RAM / 8 ))
   fi
-  if [ "${_USE_SQL}" -lt "512" ]; then
-    _USE_SQL=512
+  if [ "${_USE_SQL}" -lt "64" ]; then
+    _USE_SQL=64
   fi
   _TMP_SQL="${_USE_SQL}M"
   _SRT_SQL=$(( _USE_SQL * 2 ))
   _SRT_SQL="${_SRT_SQL}K"
   if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
-    _USE_PHP=2048
-    _USE_OPC=2048
-    _USE_CLI=2048
+    _USE_PHP=1024
+    _USE_OPC=1024
+    _USE_CLI=1024
     _QCE_SQL=64M
     _RND_SQL=8M
     _JBF_SQL=4M
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=48
+      _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
     else
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
@@ -326,14 +332,14 @@ tune_memory_limits() {
     fi
   elif [ "${_USE}" -ge "2048" ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
-      _USE_PHP=4096
-      _USE_OPC=4096
-      _USE_CLI=4096
+      _USE_PHP=1024
+      _USE_OPC=1024
+      _USE_CLI=1024
       _QCE_SQL=64M
       _RND_SQL=8M
       _JBF_SQL=4M
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=48
+        _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
       else
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
@@ -347,20 +353,20 @@ tune_memory_limits() {
       if [ -e "/boot/grub/grub.cfg" ] \
         || [ -e "/boot/grub/menu.lst" ] \
         || [ -e "/root/.tg.cnf" ]; then
-        _USE_PHP=4096
-        _USE_OPC=4096
-        _USE_CLI=4096
+        _USE_PHP=1024
+        _USE_OPC=1024
+        _USE_CLI=1024
         _QCE_SQL=64M
         _RND_SQL=8M
         _JBF_SQL=4M
         if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=48
+          _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
         else
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
         _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
-        if [ "${_MXC_SQL}" -lt "96" ]; then
-          _MXC_SQL=96
+        if [ "${_MXC_SQL}" -lt "32" ]; then
+          _MXC_SQL=32
         fi
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
           _L_NGX_WRKS=${_CPU_TG}
@@ -376,14 +382,14 @@ tune_memory_limits() {
         sed -i "s/64000/128000/g"  /opt/php70/etc/php70.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php56/etc/php56.ini &> /dev/null
       else
-        _USE_PHP=4096
-        _USE_OPC=4096
-        _USE_CLI=4096
+        _USE_PHP=1024
+        _USE_OPC=1024
+        _USE_CLI=1024
         _QCE_SQL=64M
         _RND_SQL=2M
         _JBF_SQL=2M
         if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=48
+          _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
         else
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
@@ -395,14 +401,14 @@ tune_memory_limits() {
         fi
       fi
     else
-      _USE_PHP=2048
-      _USE_OPC=2048
-      _USE_CLI=2048
-      _QCE_SQL=64M
+      _USE_PHP=512
+      _USE_OPC=512
+      _USE_CLI=512
+      _QCE_SQL=32M
       _RND_SQL=2M
       _JBF_SQL=2M
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=48
+        _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
       else
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
@@ -417,11 +423,11 @@ tune_memory_limits() {
     _USE_PHP="${_USE}"
     _USE_OPC="${_USE}"
     _USE_CLI="${_USE}"
-    _QCE_SQL=64M
+    _QCE_SQL=32M
     _RND_SQL=1M
     _JBF_SQL=1M
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=12
+      _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
     else
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
@@ -436,8 +442,8 @@ tune_memory_limits() {
   if [ "${_VMFAMILY}" = "VZ" ]; then
     _USE_OPC=64
   fi
-  if [ "${_USE_PHP}" -lt "2048" ]; then
-    _USE_PHP=2048
+  if [ "${_USE_PHP}" -lt "512" ]; then
+    _USE_PHP=512
   fi
   _USE_FPM=$(( _USE_PHP / 2 ))
   if [ "${_USE_FPM}" -lt "256" ]; then

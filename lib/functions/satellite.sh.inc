@@ -1,5 +1,28 @@
 
 #
+# Count system CPUs.
+count_cpu() {
+  _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
+  _CPU_INFO=${_CPU_INFO//[^0-9]/}
+  _NPROC_TEST=$(which nproc 2>&1)
+  if [ -z "${_NPROC_TEST}" ]; then
+    _CPU_NR="${_CPU_INFO}"
+  else
+    _CPU_NR=$(nproc 2>&1)
+  fi
+  _CPU_NR=${_CPU_NR//[^0-9]/}
+  if [ ! -z "${_CPU_NR}" ] \
+    && [ ! -z "${_CPU_INFO}" ] \
+    && [ "${_CPU_NR}" -gt "${_CPU_INFO}" ] \
+    && [ "${_CPU_INFO}" -gt "0" ]; then
+    _CPU_NR="${_CPU_INFO}"
+  fi
+  if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
+    _CPU_NR=1
+  fi
+}
+
+#
 # Find correct IP.
 find_correct_ip() {
   _LOC_IP=$(curl ${crlGet} https://api.ipify.org \
@@ -13,6 +36,7 @@ find_correct_ip() {
 #
 # Tune FPM workers.
 satellite_tune_fpm_workers() {
+  count_cpu
   _VM_TEST=$(uname -a 2>&1)
   if [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
@@ -31,16 +55,16 @@ satellite_tune_fpm_workers() {
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
   _USE=$(( _RAM / 4 ))
-  if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "1024" ]; then
+  if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=48
+      _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
     else
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
   elif [ "${_USE}" -ge "1024" ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=48
+        _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
       else
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
@@ -49,27 +73,27 @@ satellite_tune_fpm_workers() {
         || [ -e "/boot/grub/menu.lst" ] \
         || [ -e "/root/.tg.cnf" ]; then
         if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=48
+          _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
         else
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
       else
         if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=48
+          _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
         else
           _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
         fi
       fi
     else
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=48
+        _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
       else
         _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
       fi
     fi
   else
     if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=12
+      _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
     else
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi

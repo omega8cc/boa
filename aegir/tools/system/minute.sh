@@ -240,9 +240,9 @@ _RAM_PCT_FREE=${_RAM_PCT_FREE//[^0-9]/}
 echo _RAM_TOTAL is ${_RAM_TOTAL}
 echo _RAM_PCT_FREE is ${_RAM_PCT_FREE}
 
-if [ ! -z "${_RAM_PCT_FREE}" ] && [ "${_RAM_PCT_FREE}" -le "10" ]; then
+if [ ! -z "${_RAM_PCT_FREE}" ] && [ "${_RAM_PCT_FREE}" -le "15" ]; then
   oom_restart "RAM"
-elif [ "${_RAM_PCT_FREE}" -le "15" ]; then
+elif [ "${_RAM_PCT_FREE}" -le "20" ]; then
   if [ `ps aux | grep -v "grep" | grep --count "wkhtmltopdf"` -gt "2" ]; then
     almost_oom_kill "RAM"
   fi
