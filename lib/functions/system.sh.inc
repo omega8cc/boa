@@ -1830,9 +1830,9 @@ barracuda_cnf() {
         wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g"     ${barCnf}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.2/g" /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}/g" /root/.*.octopus.cnf &> /dev/null
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.2/g" /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g" /root/.*.octopus.cnf &> /dev/null
         wait
         if [ -e "/data/disk" ] && [ -e "/data/conf/global.inc" ]; then
           for Ctrl in `find /data/disk/*/log -maxdepth 0 -mindepth 0 | sort`; do
@@ -1842,8 +1842,8 @@ barracuda_cnf() {
           done
           for Ctrl in `find /data/disk/*/static/control \
             -maxdepth 0 -mindepth 0 | sort`; do
-            echo 5.2 > $Ctrl/fpm.info
-            echo 5.2 > $Ctrl/cli.info
+            echo ${_PHP_SINGLE_INSTALL} > $Ctrl/fpm.info
+            echo ${_PHP_SINGLE_INSTALL} > $Ctrl/cli.info
             ### msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in $Ctrl"
           done
           for Ctrl in `find /data/disk/*/.drush \
