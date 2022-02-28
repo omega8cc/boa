@@ -236,7 +236,7 @@ if_install_jetty() {
         echo "JETTY_LOGS=/var/log/jetty9 # Logs directory" >> /etc/default/jetty9
         echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty9
         echo "JETTY_PID=\$JETTY_RUN/jetty9.pid # Pid file" >> /etc/default/jetty9
-        echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m -Djava.awt.headless=true \
+        echo "JAVA_OPTIONS=\"-Xms64m -Xmx128m -Djava.awt.headless=true \
           -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" \
           # Options" | fmt -su -w 2500 >> /etc/default/jetty9
         if [ "${_OSR}" = "buster" ] \
@@ -308,7 +308,7 @@ if_install_jetty() {
       echo "JETTY_LOGS=/var/log/jetty9 # Logs directory" >> /etc/default/jetty9
       echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty9
       echo "JETTY_PID=\$JETTY_RUN/jetty9.pid # Pid file" >> /etc/default/jetty9
-      echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m \
+      echo "JAVA_OPTIONS=\"-Xms64m -Xmx128m \
         -Djava.awt.headless=true \
         -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" \
         # Options" | fmt -su -w 2500 >> /etc/default/jetty9
@@ -458,7 +458,7 @@ if_install_jetty() {
         echo "JETTY_LOGS=/var/log/jetty8 # Logs directory" >> /etc/default/jetty8
         echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty8
         echo "JETTY_PID=\$JETTY_RUN/jetty8.pid # Pid file" >> /etc/default/jetty8
-        echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m \
+        echo "JAVA_OPTIONS=\"-Xms64m -Xmx128m \
           -Djava.awt.headless=true \
           -Dsolr.solr.home=/opt/solr3 \$JAVA_OPTIONS\" \
           # Options" | fmt -su -w 2500 >> /etc/default/jetty8
@@ -589,7 +589,7 @@ if_install_jetty() {
         echo "JETTY_LOGS=/var/log/jetty7 # Logs directory" >> /etc/default/jetty7
         echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty7
         echo "JETTY_PID=\$JETTY_RUN/jetty7.pid # Pid file" >> /etc/default/jetty7
-        echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m \
+        echo "JAVA_OPTIONS=\"-Xms64m -Xmx128m \
           -Djava.awt.headless=true \
           -Dsolr.solr.home=/opt/solr1 \$JAVA_OPTIONS\" \
           # Options" | fmt -su -w 2500 >> /etc/default/jetty7

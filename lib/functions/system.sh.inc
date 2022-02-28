@@ -438,7 +438,6 @@ tune_memory_limits() {
       _L_NGX_WRKS=${_NGINX_WORKERS}
     fi
   fi
-  _USE_JETTY="-Xmx${_USE_OPC}m"
   if [ "${_VMFAMILY}" = "VZ" ]; then
     _USE_OPC=64
   fi
@@ -505,32 +504,31 @@ tune_memory_limits() {
       sed -i "s/utf8mb4_general_ci/${_SYS_COLLATION_SQL}/g"                       /etc/mysql/my.cnf &> /dev/null
     fi
   fi
-  if [ "${_USE_OPC}" -gt "2048" ]; then
-    _MAX_MEM_REDIS=2048
-  else
-    _MAX_MEM_REDIS="${_USE_OPC}"
-  fi
-  _MAX_MEM_REDIS="${_MAX_MEM_REDIS}MB"
-  sed -i "s/^maxmemory .*/maxmemory ${_MAX_MEM_REDIS}/g" \
-    /etc/redis/redis.conf &> /dev/null
+
+  _MAX_MEM_REDIS=$(( _RAM / 8 ))
+  _MAX_REDIS="${_MAX_MEM_REDIS}MB"
+  sed -i "s/^maxmemory .*/maxmemory ${_MAX_REDIS}/g" /etc/redis/redis.conf &> /dev/null
+
+  _USE_JETTY_MEM=$(( _RAM / 8 ))
+  _USE_JETTY="-Xmx${_USE_JETTY_MEM}m"
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ]; then
-    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9
+    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms64m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9
   fi
   if [ -e "/etc/default/jetty8" ] && [ -e "/opt/solr3" ]; then
-    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr3 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty8
+    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms64m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr3 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty8
   fi
   if [ -e "/etc/default/jetty7" ] && [ -e "/opt/solr1" ]; then
-    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr1 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty7
+    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms64m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr1 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty7
   fi
+
+  _USE_SOLR_MEM=$(( _RAM / 8 ))
+  _USE_SOLR="-Xmx${_USE_SOLR_MEM}m"
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
-    sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" \
-      /etc/default/solr7.in.sh &> /dev/null
+    sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr7.in.sh &> /dev/null
     wait
-    sed -i "s/^#SOLR_JAVA_MEM/SOLR_JAVA_MEM/g" \
-      /etc/default/solr7.in.sh &> /dev/null
+    sed -i "s/^#SOLR_JAVA_MEM/SOLR_JAVA_MEM/g" /etc/default/solr7.in.sh &> /dev/null
     wait
-    sed -i "s/^SOLR_JAVA_MEM=.*/SOLR_JAVA_MEM=\"-Xms8m -Xmx${_USE_OPC}m\"/g" \
-      /etc/default/solr7.in.sh
+    sed -i "s/^SOLR_JAVA_MEM=.*/SOLR_JAVA_MEM=\"-Xms64m ${_USE_SOLR}\"/g" /etc/default/solr7.in.sh
     wait
   fi
   tune_web_server_config
