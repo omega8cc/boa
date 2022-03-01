@@ -126,9 +126,7 @@ check_dns_settings() {
     || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.aegir.cc not found" ]] \
     || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
-    _CTRL_DNS_TEST=$(host -s files.aegir.cc 2>&1)
-    if [[ ! "${_CTRL_DNS_TEST}" =~ "134.19.164.236" ]] \
-      || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
+    if [ "${_USE_DEFAULT_DNS}" = "YES" ] \
       || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
       || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
       fix_dns_settings

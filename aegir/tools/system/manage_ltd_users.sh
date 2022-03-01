@@ -124,10 +124,6 @@ find_fast_mirror() {
   else
     _USE_MIR="files.aegir.cc"
   fi
-  if ! netcat -w 10 -z "${_USE_MIR}" 80; then
-    echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
-    _USE_MIR="134.19.164.236"
-  fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
 }

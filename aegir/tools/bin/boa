@@ -396,9 +396,7 @@ check_dns_settings() {
     || [[ "${_REMOTE_DNS_TEST}" =~ "Host files.aegir.cc not found" ]] \
     || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
     || [ "${_USE_PROVIDER_DNS}" = "YES" ]; then
-    _CTRL_DNS_TEST=$(host files.aegir.cc 2>&1)
-    if [[ ! "${_CTRL_DNS_TEST}" =~ "134.19.164.236" ]] \
-      || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
+    if [ "${_USE_DEFAULT_DNS}" = "YES" ] \
       || [ "${_USE_PROVIDER_DNS}" = "YES" ] \
       || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
       fix_dns_settings
@@ -1330,10 +1328,6 @@ find_fast_mirror() {
   else
     _USE_MIR="files.aegir.cc"
   fi
-  if ! netcat -w 10 -z "${_USE_MIR}" 80; then
-    echo "INFO: The mirror ${_USE_MIR} doesn't respond, let's try default"
-    _USE_MIR="134.19.164.236"
-  fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
 }
@@ -1402,7 +1396,6 @@ check_fix_csf() {
     sed -i "s/.*aegir.*//g" /etc/csf/csf.allow
     csf -a 94.237.26.49    de.files.aegir.cc  &> /dev/null
     csf -a 94.237.42.15    nl.files.aegir.cc  &> /dev/null
-    csf -a 134.19.164.236  uk.files.aegir.cc  &> /dev/null
     csf -a 209.151.150.175 ny.files.aegir.cc  &> /dev/null
     csf -a 209.151.146.99  sf.files.aegir.cc  &> /dev/null
     csf -a 95.111.194.246  sg.files.aegir.cc  &> /dev/null
