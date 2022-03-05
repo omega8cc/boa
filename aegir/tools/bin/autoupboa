@@ -307,8 +307,8 @@ if [ -e "/data/disk/arch/sql" ]; then
       touch /root/.custom_percona_forced.pid
     fi
     _AUTO_UP_WEEKLY=7
-    _AUTO_UP_MONTH=12
-    _AUTO_UP_DAY=1
+    _AUTO_UP_MONTH=3
+    _AUTO_UP_DAY=6
     _AUTO_PHP="php-all"
     _AUTO_VER="head"
     if [ ! -e "/root/.ignore.site24x7.firewall.cnf" ]; then
