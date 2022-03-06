@@ -328,7 +328,10 @@ update_agents() {
     fi
     mysql -u root -e "SET GLOBAL optimizer_switch='derived_merge=off';"
     if [ -e "/root/.tg.cnf" ]; then
-      sed -i "s/^_PHP_FPM_WORKERS=.*/_PHP_FPM_WORKERS=100/g" /root/.barracuda.cnf
+      if [ ! -e "/root/.fixed_fpm_workers.pid" ]; then
+        sed -i "s/^_PHP_FPM_WORKERS=.*/_PHP_FPM_WORKERS=100/g" ${barCnf}
+        touch /root/.fixed_fpm_workers.pid
+      fi
     fi
     echo ${InTest} > /root/.high_traffic.cnf
     echo ${InTest} > /root/.my.optimize.cnf
@@ -347,8 +350,11 @@ update_agents() {
     rm -f /root/.giant_traffic.cnf
     rm -f /root/.default.cnf
     rm -f /root/.debug.cnf
-    sed -i "s/.*scout.*//g" /etc/crontab
-    sed -i "s/_SCOUT_KEY=.*/_SCOUT_KEY=/g" /root/.barracuda.cnf
+    if [ ! -e "/root/.fixed_scout.pid" ]; then
+      sed -i "s/_SCOUT_KEY=.*/_SCOUT_KEY=/g" ${barCnf}
+      sed -i "s/.*scout.*//g" /etc/crontab
+      touch /root/.fixed_scout.pid
+    fi
     if [ -e "/data/conf/override.global.inc" ] \
       && [ ! -e "/data/conf/.prev5.override.global.inc.off" ]; then
       mv -f /data/conf/override.global.inc /data/conf/.prev5.override.global.inc.off
@@ -908,7 +914,7 @@ update_agents() {
 }
 
 fix_core_dgd() {
-  # sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf
+  # sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" ${barCnf}
 
   saCoreS="${saCoreN}-D7"
   saIncDb="includes/database/database.inc"

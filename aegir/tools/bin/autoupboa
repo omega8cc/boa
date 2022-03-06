@@ -4,6 +4,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
 barCnf="/root/.barracuda.cnf"
 
+_X_SE="414prodT24"
 
 check_fix_system_hostname() {
   if [ -e "${barCnf}" ]; then
@@ -137,7 +138,7 @@ crontab_update() {
   fi
 }
 
-crontab_clean() {
+crontab_cleanup() {
   if [ -e "/etc/crontab" ]; then
     sed -i "s/.*xdrago.*//gi"    /etc/crontab &> /dev/null
     wait
@@ -195,7 +196,7 @@ fi
 
 if [ -e "/data/disk/arch/sql" ]; then
   if [ ! -e "/root/.fixed_scan_nginx.pid" ]; then
-    sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=299/g"  /root/.barracuda.cnf
+    sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=299/g"  ${barCnf}
     sed -i "s/default_critnumber = 300/default_critnumber = 250/g" /var/xdrago/monitor/check/scan_nginx
     sed -i "s/default_critnumber = 155/default_critnumber = 250/g" /var/xdrago/monitor/check/scan_nginx
     sed -i "s/default_lines = 999/default_lines = 300/g" /var/xdrago/monitor/check/scan_nginx
@@ -236,7 +237,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     || [ "${_VMFAMILY}" = "VS" ] \
     || [ -e "/root/.host8.cnf" ] \
     || [ "${_AUTO_UP}" = "YES" ]; then
-	if [[ "${_CHECK_HOST}" =~ ^(sy1.ao.|ln5.uk.) ]]; then
+	if [[ "${_CHECK_HOST}" =~ ^(lcy1.ao.|lcy15.uk.) ]]; then
 	  _DONT_TOUCH=OK
 	  rm -f /etc/csf/csf.conf-pre*
 	else
@@ -253,6 +254,11 @@ if [ -e "/data/disk/arch/sql" ]; then
 	    touch /root/.csf_legacy_cleanup.pid
 	  fi
 	fi
+	if [ ! -e "/root/.xdrago_off_cleanup.pid" ]; then
+	  rm -f /var/xdrago/.*.off
+	  rm -f /var/xdrago/.*.old
+	  touch /root/.xdrago_off_cleanup.pid
+	fi
 	if [ ! -e "/root/.csf_dhcp_cleanup.pid" ]; then
       sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
       wait
@@ -267,16 +273,16 @@ if [ -e "/data/disk/arch/sql" ]; then
 	  touch /root/.csf_dhcp_cleanup.pid
 	fi
     if [ ! -e "/root/.fixed_php_seven_four_default.pid" ]; then
-      sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=7.4/g"  /root/.barracuda.cnf
-      sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=7.4/g"  /root/.barracuda.cnf
+      sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=7.4/g"  ${barCnf}
+      sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=7.4/g"  ${barCnf}
       touch /root/.fixed_php_seven_four_default.pid
     fi
     if [ ! -e "/root/.disabled_modules_fix.pid" ]; then
-      sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=NO/g"  /root/.barracuda.cnf
+      sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=NO/g"  ${barCnf}
       touch /root/.disabled_modules_fix.pid
     fi
     if [ ! -e "/root/.fixed_scan_dos_nginx.pid" ]; then
-      sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=299/g"  /root/.barracuda.cnf
+      sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=299/g"  ${barCnf}
       sed -i "s/default_critnumber = 300/default_critnumber = 155/g" /var/xdrago/monitor/check/scan_nginx
       sed -i "s/default_critnumber = 250/default_critnumber = 155/g" /var/xdrago/monitor/check/scan_nginx
       sed -i "s/default_critnumber = 249/default_critnumber = 155/g" /var/xdrago/monitor/check/scan_nginx
@@ -312,7 +318,7 @@ if [ -e "/data/disk/arch/sql" ]; then
       rm -f /etc/mysql/conf.d/mysqldump.cnf
       touch /root/.custom_percona_forced.pid
     fi
-    _AUTO_UP_WEEKLY=7
+    _AUTO_UP_WEEKLY=6
     _AUTO_UP_MONTH=3
     _AUTO_UP_DAY=6
     _AUTO_PHP="php-all"
@@ -365,7 +371,7 @@ if [ -e "/data/disk/arch/sql" ]; then
   fi
   if [ ! -e "/etc/init.d/ssh" ] \
     || [ ! -e "/etc/init.d/redis-server" ] \
-    || [[ "${_CHECK_HOST}" =~ "v5.s8.lon." ]] \
+    || [[ "${_CHECK_HOST}" =~ "ex9.lon." ]] \
     || [[ "${_CHECK_HOST}" =~ "ex11.eu." ]]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
@@ -380,22 +386,28 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_UP_DAY=
     _AUTO_PHP=
     _AUTO_VER="head"
-    sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"7.3 5.6\"/g" ${barCnf}
-    wait
-    sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g" ${barCnf}
-    wait
+    if [ ! -e "/root/.fixed_clstr_fpm.pid" ]; then
+      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"7.4 7.3 5.6\"/g" ${barCnf}
+      wait
+      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g" ${barCnf}
+      touch /root/.fixed_clstr_fpm.pid
+    fi
   fi
   if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
   fi
-  if [ ! -z "${_AUTO_UP_WEEKLY}" ] \
-    && [ ! -z "${_AUTO_UP_MONTH}" ] \
-    && [ ! -z "${_AUTO_UP_DAY}" ]; then
-    crontab_update
-  else
-    crontab_clean
+  if [ ! -e "/root/.etc_crontab_update_ctrl.${_X_SE}.pid" ]; then
+    rm -f /root/.*_crontab_*
+    if [ ! -z "${_AUTO_UP_WEEKLY}" ] \
+      && [ ! -z "${_AUTO_UP_MONTH}" ] \
+      && [ ! -z "${_AUTO_UP_DAY}" ]; then
+      crontab_update
+    else
+      crontab_cleanup
+    fi
+    touch /root/.etc_crontab_update_ctrl.${_X_SE}.pid
   fi
 fi
 ###EOF2022###
