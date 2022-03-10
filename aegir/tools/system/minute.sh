@@ -459,7 +459,7 @@ mysql_proc_control() {
               echo "xuser is ${xuser}"
               if [ "$xuser" = "${_XQ}" ]; then
                 echo "checking via mysql_proc_kill ${_XQ} [xt:$xtime] [ea:$each] to avoid issues"
-                limit=30
+                limit=10
                 mysql_proc_kill
               fi
             done
