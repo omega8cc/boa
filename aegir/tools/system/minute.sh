@@ -423,12 +423,13 @@ mysql_proc_control() {
       sql_restart "RAM"
     fi
   fi
-  limit=3600
+  limit=300
   xkill=null
   for each in `mysqladmin proc \
     | awk '{print $2, $4, $8, $12}' \
     | awk '{print $1}'`; do
     each=${each//[^0-9]/}
+    [ ! -z "$each" ] && echo "each is $each"
     if [ ! -z "$each" ]; then
       if [ "$each" -gt "5" ] \
         && [ ! -z "$each" ]; then
@@ -437,30 +438,33 @@ mysql_proc_control() {
           | grep $each \
           | awk '{print $4}' 2>&1)
         xtime=${xtime//[^0-9]/}
+        [ ! -z "$xtime" ] && echo "xtime is $xtime [ea:$each]"
         xuser=$(mysqladmin proc \
           | awk '{print $2, $4, $8, $12}' \
           | grep $each \
           | awk '{print $2}' 2>&1)
         xuser=${xuser//[^0-9a-z_]/}
+        [ ! -z "$xuser" ] && echo "xuser is $xuser [xt:$xtime] [ea:$each]"
         if [ ! -z "$xtime" ]; then
           if [ -e "/root/.sql.blacklist.cnf" ]; then
-            ## cat /root/.sql.blacklist.cnf
+            # cat /root/.sql.blacklist.cnf
             # xsqlfoo # db name/user causing problems, w/o # in front
             # xsqlbar # db name/user causing problems, w/o # in front
             # xsqlnew # db name/user causing problems, w/o # in front
             for _XQ in `cat /root/.sql.blacklist.cnf \
               | cut -d '#' -f1 \
               | sort \
-              | uniq \
-              | tr -d "\s"`; do
+              | uniq`; do
+              echo "ABUSE is ${_XQ}"
+              echo "xuser is ${xuser}"
               if [ "$xuser" = "${_XQ}" ]; then
-                echo killing ${_XQ} to avoid issues
+                echo "checking via mysql_proc_kill ${_XQ} [xt:$xtime] [ea:$each] to avoid issues"
                 limit=30
                 mysql_proc_kill
               fi
             done
           else
-            limit=3600
+            limit=300
             mysql_proc_kill
           fi
         fi
@@ -521,39 +525,39 @@ lsyncd_proc_control
 mysql_proc_control
 sleep 5
 mysql_proc_control
-perl /var/xdrago/monitor/check/scan_nginx
+perl /var/xdrago/monitor/check/scan_nginx &> /dev/null
 sleep 5
 mysql_proc_control
 sleep 5
 mysql_proc_control
-perl /var/xdrago/monitor/check/scan_nginx
+perl /var/xdrago/monitor/check/scan_nginx &> /dev/null
 sleep 5
 mysql_proc_control
 sleep 5
 mysql_proc_control
-perl /var/xdrago/monitor/check/scan_nginx
+perl /var/xdrago/monitor/check/scan_nginx &> /dev/null
 sleep 5
 mysql_proc_control
 sleep 5
 mysql_proc_control
-perl /var/xdrago/monitor/check/scan_nginx
+perl /var/xdrago/monitor/check/scan_nginx &> /dev/null
 sleep 5
 mysql_proc_control
 sleep 5
 mysql_proc_control
-perl /var/xdrago/monitor/check/scan_nginx
+perl /var/xdrago/monitor/check/scan_nginx &> /dev/null
 sleep 5
 mysql_proc_control
 sleep 5
-perl /var/xdrago/monitor/check/escapecheck
-perl /var/xdrago/monitor/check/hackcheck
-perl /var/xdrago/monitor/check/hackftp
-perl /var/xdrago/monitor/check/scan_nginx
+perl /var/xdrago/monitor/check/escapecheck &> /dev/null
+perl /var/xdrago/monitor/check/hackcheck &> /dev/null
+perl /var/xdrago/monitor/check/hackftp &> /dev/null
+perl /var/xdrago/monitor/check/scan_nginx &> /dev/null
 if [ ! -e "/root/.high_traffic.cnf" ] \
   && [ ! -e "/root/.giant_traffic.cnf" ]; then
-  perl /var/xdrago/monitor/check/locked
+  perl /var/xdrago/monitor/check/locked &> /dev/null
 fi
-perl /var/xdrago/monitor/check/sqlcheck
+perl /var/xdrago/monitor/check/sqlcheck &> /dev/null
 echo DONE!
 exit 0
 ###EOF2022###

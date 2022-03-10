@@ -254,6 +254,7 @@ if [ -e "/data/disk/arch/sql" ]; then
 	    touch /root/.csf_legacy_cleanup.pid
 	  fi
 	fi
+	rm -f /root/.xdrago_off_cleanup.pid
 	if [ ! -e "/root/.xdrago_off_cleanup.pid" ]; then
 	  rm -f /var/xdrago/.*.off
 	  rm -f /var/xdrago/*.old
