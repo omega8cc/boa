@@ -15,7 +15,7 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-_DUPLICITY_VRN="0.7.18.2"
+_DUPLICITY_VRN="0.7.19"
 _BOTO_VRN="2.49.0"
 _FASTENERS_VRN="0.14.1"
 _LOGPTH="/var/xdrago/log"
@@ -91,8 +91,8 @@ find_fast_mirror() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt-get update -qq &> /dev/null
-    apt-get install netcat ${forCer} &> /dev/null
+    apt-get update -qq
+    apt-get install netcat ${forCer}
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -138,50 +138,46 @@ install() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt-get clean -qq                    &> /dev/null
+    apt-get clean -qq
     rm -rf /var/lib/apt/lists/*
-    apt-get update -qq                   &> /dev/null
-    aptitude purge duplicity -y          &> /dev/null
-    rm -rf /usr/local/lib/python2.7/dist-packages/fasteners*
-    rm -rf /usr/local/lib/python2.6/dist-packages/fasteners*
-    rm -rf /usr/local/lib/python2.7/dist-packages/boto*
-    rm -rf /usr/local/lib/python2.6/dist-packages/boto*
-    rm -rf /usr/local/lib/python2.7/dist-packages/duplicity*
-    rm -rf /usr/local/lib/python2.6/dist-packages/duplicity*
-    apt-get install librsync-dev -y      &> /dev/null
-    apt-get install python-dev -y        &> /dev/null
-    apt-get install python-lockfile -y   &> /dev/null
-    apt-get install python-setuptools -y &> /dev/null
-    apt-get install python-monotonic -y  &> /dev/null
-    apt-get install s3cmd -y             &> /dev/null
+    apt-get update -qq
+    aptitude purge duplicity -y
+    rm -rf /usr/local/lib/python*/dist-packages/*
+    mkdir -p /usr/local/lib/python2.7/dist-packages/
+    rm -f /usr/local/bin/duplicity
+    apt-get install librsync-dev -y
+    apt-get install python-dev -y
+    apt-get install python-lockfile -y
+    apt-get install python-setuptools -y
+    apt-get install python-monotonic -y
+    apt-get install s3cmd -y
     mkdir -p /var/opt
     rm -rf /var/opt/{fasteners*,boto*,duplicity*}
     cd /var/opt
     fe="fasteners-${_FASTENERS_VRN}.tar.gz"
     curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
-    tar xzf ${fe} &> /dev/null
+    tar xzf ${fe}
     cd /var/opt/fasteners-${_FASTENERS_VRN}
-    python setup.py build &> /dev/null
-    python setup.py install &> /dev/null
+    python setup.py build
+    python setup.py install
     echo ${_FASTENERS_VRN} > ${_LOGPTH}/fasteners-${_FASTENERS_VRN}.log
     cd /var/opt
     fe="boto-${_BOTO_VRN}.tar.gz"
     curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
-    tar xzf ${fe} &> /dev/null
+    tar xzf ${fe}
     cd /var/opt/boto-${_BOTO_VRN}
-    python setup.py build &> /dev/null
-    python setup.py install &> /dev/null
+    python setup.py build
+    python setup.py install
     echo ${_BOTO_VRN} > ${_LOGPTH}/boto-${_BOTO_VRN}.log
     echo "Building duplicity version ${_DUPLICITY_VRN} from sources..."
     cd /var/opt
     fe="duplicity-${_DUPLICITY_VRN}.tar.gz"
     curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
-    tar xzf ${fe} &> /dev/null
-    rm -rf /usr/local/lib/python2.6/dist-packages/duplicity*
-    rm -rf /usr/local/lib/python2.7/dist-packages/duplicity*
+    tar xzf ${fe}
+    rm -rf /usr/local/lib/python*/dist-packages/duplicity*
     cd /var/opt/duplicity-${_DUPLICITY_VRN}
-    python setup.py build &> /dev/null
-    python setup.py install &> /dev/null
+    python setup.py build
+    python setup.py install
     cd
     rm -rf /var/opt/{boto*,duplicity*}
     echo "Installation complete!"
@@ -357,17 +353,17 @@ if [ -e "${_LOGPTH}/${BUCKET_DOT}.archive.log" ]; then
   mv ${_LOGPTH}/${BUCKET_DOT}.archive.log /var/backups/${BUCKET_DOT}.archive.log
   cat ${_LOGPTH}/${BUCKET_DOT}.randomize.cleanup.log >> ${_LOGPTH}/${BUCKET}.randomize.cleanup.log
   mv ${_LOGPTH}/${BUCKET_DOT}.randomize.cleanup.log /var/backups/${BUCKET_DOT}.randomize.cleanup.log
-  apt-get clean -qq &> /dev/null
+  apt-get clean -qq
   rm -rf /var/lib/apt/lists/*
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   fi
-  apt-get clean -qq                    &> /dev/null
+  apt-get clean -qq
   rm -rf /var/lib/apt/lists/*
-  apt-get update -qq                   &> /dev/null
-  apt-get install python-pip -y        &> /dev/null
-  pip install awscli                   &> /dev/null
+  apt-get update -qq
+  apt-get install python-pip -y
+  pip install awscli
   aws s3 mb s3://${BUCKET} --region ${_AWS_REG}
   aws s3 sync s3://${BUCKET_DOT} s3://${BUCKET}
 fi
