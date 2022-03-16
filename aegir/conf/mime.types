@@ -65,6 +65,7 @@ types {
   application/x-chrome-extension        crx;
   application/x-cocoa                   cco;
   application/x-font-ttf                ttc ttf;
+  application/x-h5p                     h5p;
   application/x-java-archive-diff       jardiff;
   application/x-java-jnlp-file          jnlp;
   application/x-makeself                run;
