@@ -518,36 +518,45 @@ lsyncd_proc_control() {
   fi
 }
 
+if [ -e "/var/run/boa_sql_backup.pid" ] \
+  || [ -e "/var/run/boa_sql_cluster_backup.pid" ] \
+  || [ -e "/var/run/boa_run.pid" ] \
+  || [ -e "/var/run/mysql_restart_running.pid" ]; then
+  _SQL_CTRL=NO
+else
+  _SQL_CTRL=YES
+fi
+
 if [ -e "/root/.mysqladmin.monitor.cnf" ]; then
   _SQLMONITOR=YES
 fi
 lsyncd_proc_control
-mysql_proc_control
+[ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control
 sleep 5
-mysql_proc_control
+[ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control
 perl /var/xdrago/monitor/check/scan_nginx &> /dev/null
 sleep 5
-mysql_proc_control
+[ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control
 sleep 5
-mysql_proc_control
+[ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control
 perl /var/xdrago/monitor/check/scan_nginx &> /dev/null
 sleep 5
-mysql_proc_control
+[ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control
 sleep 5
-mysql_proc_control
+[ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control
 perl /var/xdrago/monitor/check/scan_nginx &> /dev/null
 sleep 5
-mysql_proc_control
+[ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control
 sleep 5
-mysql_proc_control
+[ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control
 perl /var/xdrago/monitor/check/scan_nginx &> /dev/null
 sleep 5
-mysql_proc_control
+[ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control
 sleep 5
-mysql_proc_control
+[ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control
 perl /var/xdrago/monitor/check/scan_nginx &> /dev/null
 sleep 5
-mysql_proc_control
+[ "${_SQL_CTRL}" = "YES" ] && mysql_proc_control
 sleep 5
 perl /var/xdrago/monitor/check/escapecheck &> /dev/null
 perl /var/xdrago/monitor/check/hackcheck &> /dev/null
