@@ -142,7 +142,8 @@ install() {
     rm -rf /var/lib/apt/lists/*
     apt-get update -qq
     aptitude purge duplicity -y
-    rm -rf /usr/local/lib/python*/dist-packages/*
+    rm -rf /usr/local/lib/python3.5/dist-packages/*
+    rm -rf /usr/local/lib/python*/dist-packages/{fasteners*,duplicity*,boto*}
     mkdir -p /usr/local/lib/python2.7/dist-packages/
     rm -f /usr/local/bin/duplicity
     apt-get install librsync-dev -y
