@@ -214,7 +214,6 @@ if [ -e "/data/disk/arch/sql" ]; then
     if [ -e "/etc/apticron/apticron.conf" ]; then
       sed -i "s/^# be something like.*/# be something like ${_MY_EMAIL}/g" \
         /etc/apticron/apticron.conf
-      [ -r "/root/.auto.up.cnf" ] && rm -f /root/.auto.up.cnf
       _APTICRON_TEST=$(grep "omega8" /etc/apticron/apticron.conf 2>&1)
       if [[ "${_APTICRON_TEST}" =~ "omega8" ]]; then
         _AUTO_UP=YES
@@ -228,6 +227,8 @@ if [ -e "/data/disk/arch/sql" ]; then
         touch /root/.auto.up.cnf
         touch /root/.host8.cnf
       fi
+    else
+      [ -r "/root/.auto.up.cnf" ] && rm -f /root/.auto.up.cnf
     fi
   fi
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -254,7 +255,6 @@ if [ -e "/data/disk/arch/sql" ]; then
 	    touch /root/.csf_legacy_cleanup.pid
 	  fi
 	fi
-	rm -f /root/.xdrago_off_cleanup.pid
 	if [ ! -e "/root/.xdrago_off_cleanup.pid" ]; then
 	  rm -f /var/xdrago/.*.off
 	  rm -f /var/xdrago/*.old

@@ -266,7 +266,9 @@ get_dev_contrib() {
 
 update_agents() {
 
-  [ -e "/root/.host8.cnf" ] && echo host8 > /root/.extended.firewall.exceptions.cnf
+  if [ -e "/root/.host8.cnf" ] && [ ! -e "/root/.extended.firewall.exceptions.cnf" ]; then
+    echo host8 > /root/.extended.firewall.exceptions.cnf
+  fi
 
   if [ "${_BENG_VS}" = "YES" ] \
     && [ -e "/data/disk/arch/sql" ] \
@@ -333,10 +335,12 @@ update_agents() {
         touch /root/.fixed_fpm_workers.pid
       fi
     fi
-    echo ${InTest} > /root/.high_traffic.cnf
-    echo ${InTest} > /root/.my.optimize.cnf
-    echo ${InTest} > /root/.no.swap.clear.cnf
-    if [ "${_RANDOMIZE}" = "YES" ]; then
+    if [ ! -e "/root/.high_traffic.cnf" ]; then
+      echo ${InTest} > /root/.high_traffic.cnf
+      echo ${InTest} > /root/.my.optimize.cnf
+      echo ${InTest} > /root/.no.swap.clear.cnf
+    fi
+    if [ "${_RANDOMIZE}" = "YES" ] && [ ! -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
       echo ${InTest} > /root/.randomize_duplicity_full_backup_day.cnf
       echo ${InTest} > /root/.skip_duplicity_monthly_cleanup.cnf
     else
