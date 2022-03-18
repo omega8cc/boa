@@ -1950,13 +1950,10 @@ setup() {
   echo "### ${_TODAY} ###" >> ${optBin}/boa
   echo "### ${_TODAY} ###" >> ${optBin}/barracuda
   echo "### ${_TODAY} ###" >> ${optBin}/octopus
-  touch /root/.backboa.autoupdate
+  rm -f /root/.backboa.autoupdate
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
     echo "The duplicity backup is running!"
-  elif [ ! -e "/root/.backboa.autoupdate" ]; then
-    echo "The duplicity auto-update is disabled temporarily."
-    echo "To enable, create /root/.backboa.autoupdate file."
-  elif [ -e "/root/.backboa.autoupdate" ]; then
+  else
     rm -f ${optBin}/{backboa,duobackboa}
     curl ${crlGet} "${urlHmr}/${tBn}/backboa"      -o ${optBin}/backboa
     curl ${crlGet} "${urlHmr}/${tBn}/duobackboa"   -o ${optBin}/duobackboa
@@ -1967,6 +1964,7 @@ setup() {
       && [ -e "/var/xdrago" ]; then
       backboa install
       touch ${pthLog}/duplicity.ctrl.${_X_SE}.pid
+      touch /root/.backboa.autoupdate
     fi
   fi
   chmod 700 ${optBin}/{autoupboa,backboa,barracuda,boa,duobackboa}
