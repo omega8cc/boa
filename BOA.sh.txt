@@ -300,16 +300,16 @@ update_agents() {
     fi
     if [ "${InTest}" -gt "50" ]; then
       rm -f /root/.fast.cron.cnf
-      echo ${InTest} > /root/.tg.cnf
-      echo ${InTest} > /root/.hr.monitor.cnf
-      echo ${InTest} > /root/.slow.cron.cnf
+      [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
+      [ ! -e "/root/.hr.monitor.cnf" ] && echo ${InTest} > /root/.hr.monitor.cnf
+      [ ! -e "/root/.slow.cron.cnf" ] && echo ${InTest} > /root/.slow.cron.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 80;"
       mysql -u root -e "SET GLOBAL max_connections = 200;"
       mysql -u root -e "SET GLOBAL max_user_connections = 80;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [[ "${PrTestPower}" =~ "POWER" ]]; then
-      echo ${InTest} > /root/.tg.cnf
+      [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
       rm -f /root/.fast.cron.cnf
       rm -f /root/.hr.monitor.cnf
       rm -f /root/.slow.cron.cnf
@@ -319,7 +319,7 @@ update_agents() {
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
-      echo ${InTest} > /root/.tg.cnf
+      [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
       rm -f /root/.fast.cron.cnf
       rm -f /root/.hr.monitor.cnf
       rm -f /root/.slow.cron.cnf
