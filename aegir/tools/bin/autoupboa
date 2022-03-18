@@ -196,10 +196,10 @@ fi
 
 if [ -e "/data/disk/arch/sql" ]; then
   if [ ! -e "/root/.fixed_scan_nginx.pid" ]; then
-    sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=299/g"  ${barCnf}
-    sed -i "s/default_critnumber = 300/default_critnumber = 250/g" /var/xdrago/monitor/check/scan_nginx
-    sed -i "s/default_critnumber = 155/default_critnumber = 250/g" /var/xdrago/monitor/check/scan_nginx
-    sed -i "s/default_lines = 999/default_lines = 300/g" /var/xdrago/monitor/check/scan_nginx
+    sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=199/g"  ${barCnf}
+    sed -i "s/default_critnumber =.*/default_critnumber = 199/g" /var/xdrago/monitor/check/scan_nginx
+    wait
+    sed -i "s/default_lines =.*/default_lines = 599/g" /var/xdrago/monitor/check/scan_nginx
     touch /root/.fixed_scan_nginx.pid
   fi
   _VM_TEST=$(uname -a 2>&1)
@@ -282,13 +282,12 @@ if [ -e "/data/disk/arch/sql" ]; then
       sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=NO/g"  ${barCnf}
       touch /root/.disabled_modules_fix.pid
     fi
-    if [ ! -e "/root/.fixed_scan_dos_nginx.pid" ]; then
-      sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=299/g"  ${barCnf}
-      sed -i "s/default_critnumber = 300/default_critnumber = 155/g" /var/xdrago/monitor/check/scan_nginx
-      sed -i "s/default_critnumber = 250/default_critnumber = 155/g" /var/xdrago/monitor/check/scan_nginx
-      sed -i "s/default_critnumber = 249/default_critnumber = 155/g" /var/xdrago/monitor/check/scan_nginx
-      sed -i "s/default_lines = 999/default_lines = 300/g" /var/xdrago/monitor/check/scan_nginx
-      touch /root/.fixed_scan_dos_nginx.pid
+    if [ ! -e "/root/.fix99_scan_dos_nginx.pid" ]; then
+      sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=99/g"  ${barCnf}
+      sed -i "s/default_critnumber =.*/default_critnumber = 99/g" /var/xdrago/monitor/check/scan_nginx
+      wait
+      sed -i "s/default_lines =.*/default_lines = 599/g" /var/xdrago/monitor/check/scan_nginx
+      touch /root/.fix99_scan_dos_nginx.pid
     fi
     if [ ! -e "/root/.custom_percona_forced.pid" ]; then
       if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then

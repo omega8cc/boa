@@ -5030,20 +5030,16 @@ install_update_xdrago() {
         _NGINX_DOS_LIMIT=888
       else
         if [ -z "${_NGINX_DOS_LIMIT}" ] \
+          || [ "${_NGINX_DOS_LIMIT}" = "199" ] \
           || [ "${_NGINX_DOS_LIMIT}" = "299" ]; then
-          if [ "${_VMFAMILY}" = "VS" ]; then
-            _NGINX_DOS_LIMIT=255
-          else
-            _NGINX_DOS_LIMIT=266
-          fi
+          _NGINX_DOS_LIMIT=99
         fi
       fi
     fi
-    sed -i "s/= 150/= ${_NGINX_DOS_LIMIT}/g" \
-      /var/xdrago/monitor/check/scan_nginx &> /dev/null
+    sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}/g"  ${barCnf}
+    sed -i "s/default_critnumber =.*/default_critnumber = ${_NGINX_DOS_LIMIT}/g" /var/xdrago/monitor/check/scan_nginx
     wait
-    sed -i "s/= 200/= ${_NGINX_DOS_LIMIT}/g" \
-      /var/xdrago/monitor/check/scan_nginx &> /dev/null
+    sed -i "s/default_lines =.*/default_lines = 599/g" /var/xdrago/monitor/check/scan_nginx
     wait
     if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
       _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|-]/}
@@ -5125,20 +5121,16 @@ install_update_xdrago() {
         _NGINX_DOS_LIMIT=888
       else
         if [ -z "${_NGINX_DOS_LIMIT}" ] \
+          || [ "${_NGINX_DOS_LIMIT}" = "199" ] \
           || [ "${_NGINX_DOS_LIMIT}" = "299" ]; then
-          if [ "${_VMFAMILY}" = "VS" ]; then
-            _NGINX_DOS_LIMIT=155
-          else
-            _NGINX_DOS_LIMIT=250
-          fi
+          _NGINX_DOS_LIMIT=99
         fi
       fi
     fi
-    sed -i "s/= 150/= ${_NGINX_DOS_LIMIT}/g" \
-      /var/xdrago/monitor/check/scan_nginx &> /dev/null
+    sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=${_NGINX_DOS_LIMIT}/g"  ${barCnf}
+    sed -i "s/default_critnumber =.*/default_critnumber = ${_NGINX_DOS_LIMIT}/g" /var/xdrago/monitor/check/scan_nginx
     wait
-    sed -i "s/= 200/= ${_NGINX_DOS_LIMIT}/g" \
-      /var/xdrago/monitor/check/scan_nginx &> /dev/null
+    sed -i "s/default_lines =.*/default_lines = 599/g" /var/xdrago/monitor/check/scan_nginx
     wait
     if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
       _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|-]/}
