@@ -67,19 +67,17 @@ fi
 
 check_vps() {
   _BENG_VS=NO
+  _VMFAMILY=NO
   _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
-    _VMFAMILY="VS"
-  else
-    _VMFAMILY="ALIEN"
+    _BENG_VS=YES
   fi
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
     || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-    || [ "${_VMFAMILY}" = "VS" ]; then
-    _BENG_VS=YES
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]]; then
+    _VMFAMILY=HOSTED
   fi
 }
 check_vps
@@ -311,7 +309,7 @@ fi
 
 if [ "${_BENG_VS}" = "YES" ] \
   && [ -e "/var/xdrago" ]; then
-  _AWS_FLC="21D"
+  _AWS_FLC="14D"
 fi
 
 _AWS_VLV=${_AWS_VLV//[^0-9]/}

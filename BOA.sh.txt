@@ -270,7 +270,7 @@ update_agents() {
     echo host8 > /root/.extended.firewall.exceptions.cnf
   fi
 
-  if [ "${_BENG_VS}" = "YES" ] \
+  if [ "${_VMFAMILY}" = "HOSTED" ] \
     && [ -e "/data/disk/arch/sql" ] \
     && [ -e "/var/xdrago" ]; then
     PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
@@ -340,9 +340,13 @@ update_agents() {
       echo ${InTest} > /root/.my.optimize.cnf
       echo ${InTest} > /root/.no.swap.clear.cnf
     fi
-    if [ "${_RANDOMIZE}" = "YES" ] && [ ! -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
-      echo ${InTest} > /root/.randomize_duplicity_full_backup_day.cnf
-      echo ${InTest} > /root/.skip_duplicity_monthly_cleanup.cnf
+    if [ "${_RANDOMIZE}" = "YES" ]; then
+      if [ ! -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
+        echo ${InTest} > /root/.randomize_duplicity_full_backup_day.cnf
+      fi
+      if [ ! -e "/root/.skip_duplicity_monthly_cleanup.cnf" ]; then
+        echo ${InTest} > /root/.skip_duplicity_monthly_cleanup.cnf
+      fi
     else
       rm -f /root/.randomize_duplicity_full_backup_day.cnf
       rm -f /root/.skip_duplicity_monthly_cleanup.cnf
@@ -1780,31 +1784,26 @@ update_wrappers() {
 
 setup() {
   _BENG_VS=NO
+  _VMFAMILY=NO
   _CHECK_HOST=$(uname -n 2>&1)
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
-    _VMFAMILY="VS"
+    _BENG_VS=YES
+  fi
+  if [ "${_BENG_VS}" = "YES" ]; then
+    _RANDOMIZE=YES
   else
-    _VMFAMILY="XEN"
+    _RANDOMIZE=NO
   fi
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
     || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
     || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-    || [ "${_VMFAMILY}" = "VS" ]; then
-    _BENG_VS=YES
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]]; then
+    _VMFAMILY=HOSTED
   fi
-  if [[ "${_CHECK_HOST}" =~ ".s8." ]] \
-    && [ "${_BENG_VS}" = "YES" ]; then
-    _RANDOMIZE=YES
-  else
-    _RANDOMIZE=YES
-  fi
-
   if [ "${_BENG_VS}" != "YES" ]; then
     ntpdate pool.ntp.org &> /dev/null
   fi
-
   sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
   wait
   sed -i "s/.*github.*//g" /etc/hosts
