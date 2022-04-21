@@ -403,9 +403,15 @@ guard_stats() {
       if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "24" ]; then
         echo ${_IP} ${_NR_TEST}
         _FW_TEST=
+        _FF_TEST=
         _FW_TEST=$(csf -g ${_IP} 2>&1)
-        if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
+        _FF_TEST=$(grep "=${_IP} " /etc/csf/csf.allow 2>&1)
+        if [[ "${_FF_TEST}" =~ "${_IP}" ]] || [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
           echo "${_IP} already denied or allowed on port 22"
+          if [[ "${_FF_TEST}" =~ "${_IP}" ]]; then
+            csf -dr ${_IP}
+            csf -tr ${_IP}
+          fi
         else
           _IP_RV=$(host -s ${_IP} 2>&1)
           if [ "${_NR_TEST}" -ge "64" ]; then
@@ -439,9 +445,15 @@ guard_stats() {
       if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "24" ]; then
         echo ${_IP} ${_NR_TEST}
         _FW_TEST=
+        _FF_TEST=
         _FW_TEST=$(csf -g ${_IP} 2>&1)
-        if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
+        _FF_TEST=$(grep "=${_IP} " /etc/csf/csf.allow 2>&1)
+        if [[ "${_FF_TEST}" =~ "${_IP}" ]] || [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
           echo "${_IP} already denied or allowed on port 80"
+          if [[ "${_FF_TEST}" =~ "${_IP}" ]]; then
+            csf -dr ${_IP}
+            csf -tr ${_IP}
+          fi
         else
           _IP_RV=$(host -s ${_IP} 2>&1)
           if [ "${_NR_TEST}" -ge "64" ]; then
@@ -475,9 +487,15 @@ guard_stats() {
       if [ ! -z "${_NR_TEST}" ] && [ "${_NR_TEST}" -ge "24" ]; then
         echo ${_IP} ${_NR_TEST}
         _FW_TEST=
+        _FF_TEST=
         _FW_TEST=$(csf -g ${_IP} 2>&1)
-        if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
+        _FF_TEST=$(grep "=${_IP} " /etc/csf/csf.allow 2>&1)
+        if [[ "${_FF_TEST}" =~ "${_IP}" ]] || [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
           echo "${_IP} already denied or allowed on port 21"
+          if [[ "${_FF_TEST}" =~ "${_IP}" ]]; then
+            csf -dr ${_IP}
+            csf -tr ${_IP}
+          fi
         else
           _IP_RV=$(host -s ${_IP} 2>&1)
           if [ "${_NR_TEST}" -ge "64" ]; then

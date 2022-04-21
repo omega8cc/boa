@@ -44,9 +44,15 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
   if [ -e "/var/xdrago/monitor/ssh.log" ]; then
     for _IP in `cat /var/xdrago/monitor/ssh.log | cut -d '#' -f1 | sort`; do
       _FW_TEST=
+      _FF_TEST=
       _FW_TEST=$(csf -g ${_IP} 2>&1)
-      if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
+      _FF_TEST=$(grep "=${_IP} " /etc/csf/csf.allow 2>&1)
+      if [[ "${_FF_TEST}" =~ "${_IP}" ]] || [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
         echo "${_IP} already denied or allowed on port 22"
+        if [[ "${_FF_TEST}" =~ "${_IP}" ]]; then
+          csf -dr ${_IP}
+          csf -tr ${_IP}
+        fi
       else
         echo "Deny ${_IP} on ports 21,22,443,80 in the next 1h"
         csf -td ${_IP} 3600 -p 21
@@ -59,9 +65,15 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
   if [ -e "/var/xdrago/monitor/web.log" ]; then
     for _IP in `cat /var/xdrago/monitor/web.log | cut -d '#' -f1 | sort`; do
       _FW_TEST=
+      _FF_TEST=
       _FW_TEST=$(csf -g ${_IP} 2>&1)
-      if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
+      _FF_TEST=$(grep "=${_IP} " /etc/csf/csf.allow 2>&1)
+      if [[ "${_FF_TEST}" =~ "${_IP}" ]] || [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
         echo "${_IP} already denied or allowed on port 80"
+        if [[ "${_FF_TEST}" =~ "${_IP}" ]]; then
+          csf -dr ${_IP}
+          csf -tr ${_IP}
+        fi
       else
         echo "Deny ${_IP} on ports 21,22,443,80 in the next 1h"
         csf -td ${_IP} 3600 -p 21
@@ -74,9 +86,15 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
   if [ -e "/var/xdrago/monitor/ftp.log" ]; then
     for _IP in `cat /var/xdrago/monitor/ftp.log | cut -d '#' -f1 | sort`; do
       _FW_TEST=
+      _FF_TEST=
       _FW_TEST=$(csf -g ${_IP} 2>&1)
-      if [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
+      _FF_TEST=$(grep "=${_IP} " /etc/csf/csf.allow 2>&1)
+      if [[ "${_FF_TEST}" =~ "${_IP}" ]] || [[ "${_FW_TEST}" =~ "DENY" ]] || [[ "${_FW_TEST}" =~ "ALLOW" ]]; then
         echo "${_IP} already denied or allowed on port 21"
+        if [[ "${_FF_TEST}" =~ "${_IP}" ]]; then
+          csf -dr ${_IP}
+          csf -tr ${_IP}
+        fi
       else
         echo "Deny ${_IP} on ports 21,22,443,80 in the next 1h"
         csf -td ${_IP} 3600 -p 21
