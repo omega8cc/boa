@@ -275,7 +275,11 @@ install_redis_src() {
 }
 
 install_update_redis() {
-  if [ "${_REDIS_MAJOR_RELEASE}" = "6" ] \
+  if [ "${_REDIS_MAJOR_RELEASE}" = "7" ] \
+    && [ ! -z "${_REDIS_SEVEN_VRN}" ]; then
+    _REDIS_VRN=${_REDIS_SEVEN_VRN}
+    redisCnfTpl="redis7.conf"
+  elif [ "${_REDIS_MAJOR_RELEASE}" = "6" ] \
     && [ ! -z "${_REDIS_SIX_VRN}" ]; then
     _REDIS_VRN=${_REDIS_SIX_VRN}
     redisCnfTpl="redis6.conf"
