@@ -741,7 +741,7 @@ update_agents() {
           fi
         fi
         if [ ! -e "${dscUsr}/static/control/.ctrl.${_X_SE}.pid" ] \
-          && [ -e "/home/${tUsr}.ftp/users" ]; then
+          && [ -e "/home/${tUsr}.ftp/clients" ]; then
           mkdir -p ${dscUsr}/static/control
           chmod 755 ${dscUsr}/static/control
           if [ -e "/var/xdrago/conf/control-readme.txt" ]; then

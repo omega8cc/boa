@@ -2149,7 +2149,7 @@ manage_user() {
         echo OK > ${dscUsr}/.tmp/.ctrl.${_X_SE}.pid
       fi
       if [ ! -e "${dscUsr}/static/control/.ctrl.${_X_SE}.pid" ] \
-        && [ -e "/home/${_USER}.ftp/users" ]; then
+        && [ -e "/home/${_USER}.ftp/clients" ]; then
         mkdir -p ${dscUsr}/static/control
         chmod 755 ${dscUsr}/static/control
         if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
@@ -2226,7 +2226,7 @@ manage_user() {
                         | fmt -su -w 2500 >> ${_THIS_LTD_CONF}
           manage_site_drush_alias_mirror
           manage_sec
-          if [ -d "/home/${_USER}.ftp/users" ]; then
+          if [ -d "/home/${_USER}.ftp/clients" ]; then
             chown -R ${_USER}.ftp:${usrGroup} /home/${_USER}.ftp/users
             chmod 700 /home/${_USER}.ftp/users
             chmod 600 /home/${_USER}.ftp/users/*

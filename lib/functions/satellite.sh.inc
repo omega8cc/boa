@@ -4006,7 +4006,7 @@ satellite_make() {
 
   _X_SE="414prodT27"
   if [ ! -e "${_ROOT}/static/control/.ctrl.${_X_SE}.pid" ] \
-    && [ -e "/home/${_USER}.ftp/users" ]; then
+    && [ -e "/home/${_USER}.ftp/clients" ]; then
     if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
       cp -af /var/xdrago/conf/control-readme.txt \
         ${_ROOT}/static/control/README.txt &> /dev/null
