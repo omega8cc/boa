@@ -4641,7 +4641,7 @@ fix_postfix() {
     st_runner "${_RMAPP} exim4 exim4-base exim4-config sendmail \
                sendmail-base sendmail-cf sendmail-bin" &> /dev/null
     st_runner "apt-get purge exim4 exim4-base exim4-config sendmail \
-               sendmail-base sendmail-cf sendmail-bin" &> /dev/null
+               sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
     rm -f /etc/aliases
     rm -rf /etc/mail
     killall -9 sendmail &> /dev/null
