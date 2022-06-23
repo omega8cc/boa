@@ -301,6 +301,10 @@ add_solr() {
         wait
         sed -i "/^$/d" ${_SOLR_BASE}/solr.xml &> /dev/null
         wait
+        if [[ "${_SOLR_BASE}" =~ "/opt/solr4" ]]; then
+          kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
+          service jetty9 start &> /dev/null
+        fi
       fi
       echo "New Solr with ${1} for ${2} added"
     fi
@@ -344,7 +348,7 @@ delete_solr() {
       rm -rf ${1}
       rm -f ${Dir}/solr.php
       if [[ "${_SOLR_BASE}" =~ "/opt/solr4" ]]; then
-        kill -9 $(ps aux | grep '[j]${etty9}' | awk '{print $2}') &> /dev/null
+        kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
         service jetty9 start &> /dev/null
       fi
     fi
