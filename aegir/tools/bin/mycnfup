@@ -17,7 +17,7 @@ _X_VERSION="BOA-4.1.3"
 _MYSQLTUNER_VRN=1.9.4
 _PHP_FPM_WORKERS=AUTO
 _RESERVED_RAM=0
-_X_SE="414prodT29"
+_X_SE="414prodT30"
 
 ###
 ### Commands shortcuts
