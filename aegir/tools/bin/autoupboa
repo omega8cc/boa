@@ -396,16 +396,26 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
   fi
-  if [ ! -e "/root/.etc_crontab_update_ctrl.${_X_SE}.pid" ]; then
+  rm -f /root/.legacy_system_prepare_for_ugrade_ctrl.${_X_SE}.pid
+  _DSU=$(date +%e 2>&1)
+  _DSU=${_DSU//[^0-9]/}
+  _DAY_SYSTEM_UP=$(( _DSU + 1 ))
+  if [ ! -e "/root/.legacy_system_prepare_for_ugrade_ctrl.${_DAY_SYSTEM_UP}.pid" ]; then
+    _AUTO_UP_WEEKLY=
+    _AUTO_UP_MONTH=6
+    _AUTO_UP_DAY=${_DAY_SYSTEM_UP}
+    _AUTO_VER="head"
+    touch /root/.legacy_system_prepare_for_ugrade_ctrl.${_DAY_SYSTEM_UP}.pid
+  fi
+  if [ ! -e "/root/.etc_crontab_update_ctrl.${_X_SE}-${_DAY_SYSTEM_UP}.pid" ]; then
     rm -f /root/.*_crontab_*
-    if [ ! -z "${_AUTO_UP_WEEKLY}" ] \
-      && [ ! -z "${_AUTO_UP_MONTH}" ] \
+    if [ ! -z "${_AUTO_UP_MONTH}" ] \
       && [ ! -z "${_AUTO_UP_DAY}" ]; then
       crontab_update
     else
       crontab_cleanup
     fi
-    touch /root/.etc_crontab_update_ctrl.${_X_SE}.pid
+    touch /root/.etc_crontab_update_ctrl.${_X_SE}-${_DAY_SYSTEM_UP}.pid
   fi
 fi
 ###EOF2022###
