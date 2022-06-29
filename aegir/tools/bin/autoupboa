@@ -402,14 +402,15 @@ if [ -e "/data/disk/arch/sql" ]; then
   _DSU=${_DSU//[^0-9]/}
   _DAY_SYSTEM_UP=$(( _DSU + 1 ))
   rm -f /root/.legacy_system_prepare*
-  if [ ! -e "/root/.legacy_sys_prep_for_ugrade_ctrl.pid" ]; then
+  rm -f /root/.legacy_sys_prep_for_ugrade_ctrl.pid
+  if [ ! -e "/root/.legacy_sys_prep_for_ugrade_ctrl.cnf" ]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=6
     _AUTO_UP_DAY=${_DAY_SYSTEM_UP}
     _AUTO_VER="head"
     crontab_update
     wait
-    touch /root/.legacy_sys_prep_for_ugrade_ctrl.pid
+    touch /root/.legacy_sys_prep_for_ugrade_ctrl.cnf
   fi
   if [ ! -e "/root/.etc_crontab_update_ctrl.${_X_SE}.pid" ]; then
     rm -f /root/.*_crontab_*
