@@ -119,9 +119,11 @@ crontab_update() {
       fi
       _OCTO_FULL="up-${_AUTO_VER} all force log"
     fi
-    echo "# Barracuda weekly system only upgrade" >> /etc/crontab
-    echo "11 0    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
-    echo "14 0    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
+    if [ ! -z "${_AUTO_UP_WEEKLY}" ]; then
+      echo "# Barracuda weekly system only upgrade" >> /etc/crontab
+      echo "11 0    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
+      echo "14 0    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
+    fi
     echo "# Barracuda ${_AUTO_VER} full upgrade" >> /etc/crontab
     echo "05 0  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
     echo "08 0  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
@@ -417,6 +419,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     else
       crontab_cleanup
     fi
+    service cron restart
     touch /root/.etc_crontab_update_ctrl.${_X_SE}.pid
   fi
 fi
