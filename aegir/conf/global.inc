@@ -260,6 +260,17 @@ if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
 
 
 /**
+ * Support files/styles with short URIs also for files not generated yet
+ */
+if (preg_match("/^\/files\/styles\//", $_SERVER['REQUEST_URI'])) {
+  header("HTTP/1.1 301 Moved Permanently");
+  header("Location: http://" . $_SERVER['HTTP_HOST'] . '/sites/' . $_SERVER['SERVER_NAME'] . $_SERVER['REQUEST_URI']);
+  header("Connection: close");
+  exit;
+}
+
+
+/**
  * BOA INI defaults
  */
 $boa_ini = array(
