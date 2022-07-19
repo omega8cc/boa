@@ -45,6 +45,23 @@ _MINUTE=${_MINUTE//[^0-9-]/}
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 
+_DSU=$(date +%e 2>&1)
+_DSU=${_DSU//[^0-9]/}
+_DAY_SYSTEM_UP=$(( _DSU + 1 ))
+
+if [ "${_DAY_SYSTEM_UP}" = "31" ]; then
+  _DAY_SYSTEM_UP=30
+  _HOUR_OCTOPUS_UP=6
+  _HOUR_SYSTEM_UP=4
+  _MINUTE_OCTOPUS_UP="05"
+  _MINUTE_SYSTEM_UP=30
+else
+  _HOUR_OCTOPUS_UP=2
+  _HOUR_SYSTEM_UP="0"
+  _MINUTE_OCTOPUS_UP="05"
+  _MINUTE_SYSTEM_UP="05"
+fi
+
 send_boa_system_report() {
   if [ -e "${barCnf}" ]; then
     _RCPT_EMAIL=
@@ -125,15 +142,14 @@ crontab_update() {
       echo "14 0    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
     fi
     echo "# Barracuda ${_AUTO_VER} full upgrade" >> /etc/crontab
-    echo "05 0  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
-    echo "08 0  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
+    echo "${_MINUTE_SYSTEM_UP} ${_HOUR_SYSTEM_UP}  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
     if [ ! -e "/root/.wbhd.clstr.cnf" ] && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
       if [ ! -z "${_OCTO_FULL}" ]; then
         echo "# Octopus ${_AUTO_VER} full upgrade" >> /etc/crontab
-        echo "05 1  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
-        echo "05 2  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
-        echo "35 2  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
-        echo "55 2  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
+        echo "${_MINUTE_OCTOPUS_UP} ${_HOUR_OCTOPUS_UP}  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
+        echo "05 6  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
+        echo "35 6  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
+        echo "55 6  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
       fi
     fi
     echo Cron Update Completed
@@ -398,19 +414,17 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
   fi
-  _DSU=$(date +%e 2>&1)
-  _DSU=${_DSU//[^0-9]/}
-  _DAY_SYSTEM_UP=$(( _DSU + 1 ))
   rm -f /root/.legacy_system_prepare*
   rm -f /root/.legacy_sys_prep_for_ugrade_ctrl.pid
-  if [ ! -e "/root/.legacy_sys_prep_for_ugrade_ctrl.cnf" ]; then
+  rm -f /root/.legacy_sys_prep_for_ugrade_ctrl.cnf
+  if [ ! -e "/root/.legacy_sys_prep_ugrade_ctrl.cnf" ]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=6
     _AUTO_UP_DAY=${_DAY_SYSTEM_UP}
     _AUTO_VER="head"
     crontab_update
     wait
-    touch /root/.legacy_sys_prep_for_ugrade_ctrl.cnf
+    touch /root/.legacy_sys_prep_ugrade_ctrl.cnf
   fi
   if [ ! -e "/root/.etc_crontab_update_ctrl.${_X_SE}.pid" ]; then
     rm -f /root/.*_crontab_*
