@@ -64,6 +64,15 @@ fi
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
 
+if [ -e "${site_path}/../sites/default/default.services.yml" ]; then
+  if [ ! -e "${site_path}/modules/default.services.yml" ] ; then
+    cp -a ${site_path}/../sites/default/default.services.yml ${site_path}/modules/
+  fi
+fi
+if [ -e "${site_path}/modules/services.yml" ] && [ ! -e "${site_path}/services.yml" ]; then
+  ln -s ${site_path}/modules/services.yml ${site_path}/services.yml
+fi
+
 cd ${site_path}
 printf "Setting ownership of key files and directories inside "${site_path}" to: user => "${script_user}"\n"
 if [ ! -e "${site_path}/libraries" ]; then
@@ -78,6 +87,7 @@ chown -R ${script_user}:users \
   ${site_path}/{modules,themes,libraries}/* &> /dev/null
 chown ${script_user}:users \
   ${site_path}/drushrc.php \
+  ${site_path}/modules/*.yml \
   ${site_path}/{modules,themes,libraries} &> /dev/null
 
 if [ ! -e "${site_path}/files/ownership-fixed-${_TODAY}.pid" ]; then
