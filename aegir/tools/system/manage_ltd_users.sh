@@ -49,7 +49,7 @@ if [ "${_THIS_RV}" = "buster" ] \
   || [ "${_THIS_RV}" = "jessie" ] \
   || [ "${_THIS_RV}" = "trusty" ] \
   || [ "${_THIS_RV}" = "precise" ]; then
-  _RUBY_VRN=3.0.2
+  _RUBY_VRN=3.1.2
 else
   _RUBY_VRN=2.0.0
 fi
