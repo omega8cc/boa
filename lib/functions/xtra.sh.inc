@@ -488,13 +488,13 @@ if_install_rvm() {
               ${rvmPth} get stable --auto-dotfiles
               ${rvmPth} install ${_RUBY_VRN}
               ${rvmPth} use ${_RUBY_VRN} --default
-              curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash -
+              curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
               mrun "${_INSTALL} nodejs"
             else
               ${rvmPth} get stable --auto-dotfiles &> /dev/null
               ${rvmPth} install ${_RUBY_VRN} &> /dev/null
               ${rvmPth} use ${_RUBY_VRN} --default &> /dev/null
-              curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash - &> /dev/null
+              curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash - &> /dev/null
               mrun "${_INSTALL} nodejs" &> /dev/null
             fi
           else
@@ -503,13 +503,13 @@ if_install_rvm() {
               ${rvmPth} get stable --auto-dotfiles
               ${rvmPth} install ${_RUBY_VRN}
               ${rvmPth} use ${_RUBY_VRN} --default
-              curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash -
+              curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
               mrun "${_INSTALL} nodejs"
             else
               ${rvmPth} get stable --auto-dotfiles &> /dev/null
               ${rvmPth} install ${_RUBY_VRN} &> /dev/null
               ${rvmPth} use ${_RUBY_VRN} --default &> /dev/null
-              curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash - &> /dev/null
+              curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash - &> /dev/null
               mrun "${_INSTALL} nodejs" &> /dev/null
             fi
           fi
