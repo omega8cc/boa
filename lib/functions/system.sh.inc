@@ -3260,6 +3260,7 @@ strict_bin_permissions() {
                   newrelic-daemon \
                   node \
                   npm \
+                  npx \
                   nrsysmond \
                   optipng \
                   pngcrush \
