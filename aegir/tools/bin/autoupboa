@@ -213,12 +213,12 @@ if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
 fi
 
 if [ -e "/data/disk/arch/sql" ]; then
-  if [ ! -e "/root/.sync2_scan_nginx.pid" ]; then
-    sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=199/g"  ${barCnf}
-    sed -i "s/default_critnumber =.*/default_critnumber = 199;/g" /var/xdrago/monitor/check/scan_nginx
+  if [ ! -e "/root/.sync3_scan_nginx.pid" ]; then
+    sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=399/g"  ${barCnf}
+    sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx
     wait
     sed -i "s/default_lines =.*/default_lines = 599;/g" /var/xdrago/monitor/check/scan_nginx
-    touch /root/.sync2_scan_nginx.pid
+    touch /root/.sync3_scan_nginx.pid
   fi
   _VM_TEST=$(uname -a 2>&1)
   [ -z "${_AUTO_VER}" ] && _AUTO_VER="head"
@@ -298,12 +298,12 @@ if [ -e "/data/disk/arch/sql" ]; then
       sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=NO/g"  ${barCnf}
       touch /root/.disabled_modules_fix.pid
     fi
-    if [ ! -e "/root/.sync199_scan_nginx.pid" ]; then
-      sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=199/g"  ${barCnf}
-      sed -i "s/default_critnumber =.*/default_critnumber = 199;/g" /var/xdrago/monitor/check/scan_nginx
+    if [ ! -e "/root/.sync399_scan_nginx.pid" ]; then
+      sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=399/g"  ${barCnf}
+      sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx
       wait
       sed -i "s/default_lines =.*/default_lines = 599;/g" /var/xdrago/monitor/check/scan_nginx
-      touch /root/.sync199_scan_nginx.pid
+      touch /root/.sync399_scan_nginx.pid
     fi
     if [ ! -e "/root/.custom_percona_forced.pid" ]; then
       if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then

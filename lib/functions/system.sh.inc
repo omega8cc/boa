@@ -5033,7 +5033,7 @@ install_update_xdrago() {
         if [ -z "${_NGINX_DOS_LIMIT}" ] \
           || [ "${_NGINX_DOS_LIMIT}" = "199" ] \
           || [ "${_NGINX_DOS_LIMIT}" = "299" ]; then
-          _NGINX_DOS_LIMIT=199
+          _NGINX_DOS_LIMIT=399
         fi
       fi
     fi
@@ -5124,7 +5124,7 @@ install_update_xdrago() {
         if [ -z "${_NGINX_DOS_LIMIT}" ] \
           || [ "${_NGINX_DOS_LIMIT}" = "199" ] \
           || [ "${_NGINX_DOS_LIMIT}" = "299" ]; then
-          _NGINX_DOS_LIMIT=199
+          _NGINX_DOS_LIMIT=399
         fi
       fi
     fi

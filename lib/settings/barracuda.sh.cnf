@@ -894,7 +894,7 @@ _CPU_CRIT_RATIO=9
 ### the access completely for 1 hour on the
 ### firewall level in /etc/csf/csf.deny
 ###
-_NGINX_DOS_LIMIT=199
+_NGINX_DOS_LIMIT=399
 
 ###
 ### Nginx Headers More support is available
