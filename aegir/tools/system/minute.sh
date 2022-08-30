@@ -527,6 +527,24 @@ else
   _SQL_CTRL=YES
 fi
 
+if_redis_restart() {
+  PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+  PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+  ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
+  if [[ "${PrTestPower}" =~ "POWER" ]] \
+    || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
+      if [ "${ReTest}" -ge "1" ]; then
+        service redis-server restart
+        wait
+        rm -f /data/disk/*/static/control/run-redis-restart.pid
+        echo "$(date 2>&1) Redis Server restart forced" >> \
+          /var/xdrago/log/redis-server-restart.event.log
+      fi
+    fi
+  fi
+}
+if_redis_restart
+
 if [ -e "/root/.mysqladmin.monitor.cnf" ]; then
   _SQLMONITOR=YES
 fi
