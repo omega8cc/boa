@@ -100,9 +100,9 @@ sub makeactions
           ### print "Not Counted Dynamic Request URI: $line\n";
           $skip_post = 1;
         }
-        elsif ($line =~ /files\/(imagecache|styles|media)/ && $line !~ /GET \/system\//) {
-          ### print "Monitored Dynamic Request URI: $line\n";
-          $im_li_cnt{$VISITOR}++;
+        elsif ($line =~ /files\/(imagecache|styles|media)/) {
+          ### print "Monitored Not Counted Dynamic Request URI: $line\n";
+          ### $im_li_cnt{$VISITOR}++;
           $skip_post = 1;
         }
         elsif ($line =~ /GET \/.*\.(mp4|m4a|flv|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe|apk|pxl|ipa)\"/) {
@@ -162,9 +162,9 @@ sub makeactions
           ### print "Not Counted Dynamic Request URI: $line\n";
           $skip_post = 1;
         }
-        elsif ($line =~ /files\/(imagecache|styles|media)/ && $line !~ /GET \/system\//) {
-          ### print "Monitored Dynamic Request URI: $line\n";
-          $im_px_cnt{$PROXY}++;
+        elsif ($line =~ /files\/(imagecache|styles|media)/) {
+          ### print "Monitored Not Counted Dynamic Request URI: $line\n";
+          ### $im_px_cnt{$PROXY}++;
           $skip_post = 1;
         }
         elsif ($line =~ /GET \/.*\.(mp4|m4a|flv|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe|apk|pxl|ipa)\"/) {
