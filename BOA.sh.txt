@@ -631,8 +631,11 @@ update_agents() {
       chown root:root /var/xdrago/monitor/check/scan_nginx
       touch ${pthLog}/scan_nginx.ctrl.${_X_SE}.pid
       if [ ! -e "/var/xdrago/monitor/.scan_nginx_arch.${_X_SE}.pid" ]; then
-        mv -f /var/xdrago/monitor/scan_nginx.archive.log /var/xdrago/monitor/scan_nginx.archive.${_X_SE}.log
+        if [ -e "/var/xdrago/monitor/scan_nginx.archive.log" ]; then
+          mv -f /var/xdrago/monitor/scan_nginx.archive.log /var/xdrago/monitor/scan_nginx.archive.${_X_SE}.log
+        fi
         touch /var/xdrago/monitor/.scan_nginx_arch.${_X_SE}.pid
+        csf -df
       fi
     else
       mv -f /var/xdrago/monitor/check/scan_nginx.old /var/xdrago/monitor/check/scan_nginx
