@@ -222,7 +222,7 @@ sub makeactions
     if ($thissumar > $mininumber) {
       local($isloggedin) = 0;
       &check_who($VISITOR);
-      $critnumber = $critnumber - 50 if ($critnumber > 250);
+      $critnumber = $critnumber - 50 if ($critnumber > 450);
       $critnumber = 8888 if ($isloggedin); ### don't block logged in users
       $critnumber = 8888 if ($VISITOR eq $myip); ### don't block own IP
       print "===[$isloggedin] VISITOR li_cnt $VISITOR is logged in===\n" if ($isloggedin);
@@ -248,7 +248,7 @@ sub makeactions
     if ($thissumarpx > $mininumber) {
       local($isloggedin) = 0;
       &check_who($PROXY);
-      $critnumber = $critnumber - 50 if ($critnumber > 250);
+      $critnumber = $critnumber - 50 if ($critnumber > 450);
       $critnumber = 7777 if ($isloggedin); ### don't block logged in users
       $critnumber = 7777 if ($PROXY eq $myip); ### don't block own IP
       print "===[$isloggedin] PROXY px_cnt $PROXY is logged in===\n" if ($isloggedin);
@@ -274,7 +274,7 @@ sub makeactions
     if ($thisim_sumar > $mininumber) {
       local($isloggedin) = 0;
       &check_who($VISITOR);
-      $critnumber = $critnumber - 50 if ($critnumber > 250);
+      $critnumber = $critnumber - 50 if ($critnumber > 450);
       $critnumber = 9999 if ($isloggedin); ### don't block logged in users
       $critnumber = 9999 if ($VISITOR eq $myip); ### don't block own IP
       print "===[$isloggedin] VISITOR im_li_cnt $VISITOR is logged in===\n" if ($isloggedin);
@@ -300,7 +300,7 @@ sub makeactions
     if ($thisim_sumarpx > $mininumber) {
       local($isloggedin) = 0;
       &check_who($PROXY);
-      $critnumber = $critnumber - 50 if ($critnumber > 250);
+      $critnumber = $critnumber - 50 if ($critnumber > 450);
       $critnumber = 5555 if ($isloggedin); ### don't block logged in users
       $critnumber = 5555 if ($PROXY eq $myip); ### don't block own IP
       print "===[$isloggedin] PROXY im_px_cnt $PROXY is logged in===\n" if ($isloggedin);
