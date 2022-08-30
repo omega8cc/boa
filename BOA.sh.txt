@@ -618,6 +618,23 @@ update_agents() {
     fi
   fi
 
+  if [ -e "/var/xdrago/manage_solr_config.sh" ] \
+    && [ -e "/data/disk/arch/sql" ] \
+    && [ ! -e "${pthLog}/scan_nginx.ctrl.${_X_SE}.pid" ]; then
+    mv -f /var/xdrago/monitor/check/scan_nginx /var/xdrago/monitor/check/scan_nginx.old
+    curl ${crlGet} "${urlHmr}/tools/system/monitor/check/scan_nginx" \
+      -o /var/xdrago/monitor/check/scan_nginx
+    if [ -e "/var/xdrago/monitor/check/scan_nginx" ]; then
+      sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx
+      sed -i "s/default_lines =.*/default_lines = 599;/g" /var/xdrago/monitor/check/scan_nginx
+      chmod 700 /var/xdrago/monitor/check/scan_nginx
+      chown root:root /var/xdrago/monitor/check/scan_nginx
+      touch ${pthLog}/scan_nginx.ctrl.${_X_SE}.pid
+    else
+      mv -f /var/xdrago/monitor/check/scan_nginx.old /var/xdrago/monitor/check/scan_nginx
+    fi
+  fi
+
   if [ -e "/opt/tools/drush/8/drush/drush" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/data/disk/arch/sql" ] \
