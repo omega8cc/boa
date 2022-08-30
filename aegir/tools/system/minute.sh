@@ -533,13 +533,12 @@ if_redis_restart() {
   ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
   if [[ "${PrTestPower}" =~ "POWER" ]] \
     || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
-      if [ "${ReTest}" -ge "1" ]; then
-        service redis-server restart
-        wait
-        rm -f /data/disk/*/static/control/run-redis-restart.pid
-        echo "$(date 2>&1) Redis Server restart forced" >> \
-          /var/xdrago/log/redis-server-restart.event.log
-      fi
+    if [ "${ReTest}" -ge "1" ]; then
+      service redis-server restart
+      wait
+      rm -f /data/disk/*/static/control/run-redis-restart.pid
+      echo "$(date 2>&1) Redis Server restart forced" >> \
+        /var/xdrago/log/redis-server-restart.event.log
     fi
   fi
 }
