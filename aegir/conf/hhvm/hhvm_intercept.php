@@ -32,7 +32,6 @@ fb_intercept('posix_setsid', '__forbidden_function');
 fb_intercept('posix_setuid', '__forbidden_function');
 fb_intercept('posix_ttyname', '__forbidden_function');
 fb_intercept('posix_uname', '__forbidden_function');
-fb_intercept('proc_get_status', '__forbidden_function');
 fb_intercept('proc_nice', '__forbidden_function');
 fb_intercept('proc_terminate', '__forbidden_function');
 fb_intercept('show_source', '__forbidden_function');
