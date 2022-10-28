@@ -436,7 +436,7 @@ satellite_check_id() {
 enable_chattr() {
   isTest="$1"
   isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
+  if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
     if [ -d "/home/$1/platforms/" ]; then
       chattr +i /home/$1/platforms/
       chattr +i /home/$1/platforms/* &> /dev/null

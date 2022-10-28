@@ -183,7 +183,7 @@ add_ltd_group_if_not_exists() {
 if_add_to_rvm_group() {
   isTest="$1"
   isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
+  if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
     _ID_SHELLS=$(id -nG $1 2>&1)
     if [[ ! "${_ID_SHELLS}" =~ "rvm" ]]; then
       isRvm=$(which rvm 2>&1)
@@ -204,7 +204,7 @@ if_add_to_rvm_group() {
 enable_chattr() {
   isTest="$1"
   isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
+  if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
     if_add_to_rvm_group $1
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
@@ -537,26 +537,26 @@ enable_chattr() {
     fi
 
     if [ "$1" != "${_USER}.ftp" ]; then
-      if [ -d "/home/$1" ]; then
-        chattr +i /home/$1
+      if [ -d "/home/$1/" ]; then
+        chattr +i /home/$1/
       fi
     else
-      if [ -d "/home/$1/platforms" ]; then
-        chattr +i /home/$1/platforms
+      if [ -d "/home/$1/platforms/" ]; then
+        chattr +i /home/$1/platforms/
         chattr +i /home/$1/platforms/* &> /dev/null
       fi
     fi
-    if [ -d "/home/$1/.drush" ]; then
-      chattr +i /home/$1/.drush
+    if [ -d "/home/$1/.drush/" ]; then
+      chattr +i /home/$1/.drush/
     fi
-    if [ -d "/home/$1/.drush/usr" ]; then
-      chattr +i /home/$1/.drush/usr
+    if [ -d "/home/$1/.drush/usr/" ]; then
+      chattr +i /home/$1/.drush/usr/
     fi
     if [ -f "/home/$1/.drush/php.ini" ]; then
       chattr +i /home/$1/.drush/*.ini
     fi
-    if [ -d "/home/$1/.bazaar" ]; then
-      chattr +i /home/$1/.bazaar
+    if [ -d "/home/$1/.bazaar/" ]; then
+      chattr +i /home/$1/.bazaar/
     fi
   fi
 }
@@ -565,39 +565,28 @@ enable_chattr() {
 disable_chattr() {
   isTest="$1"
   isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
+  if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
     if [ "$1" != "${_USER}.ftp" ]; then
-      if [ -d "/home/$1" ]; then
-        chattr -i /home/$1
+      if [ -d "/home/$1/" ]; then
+        chattr -i /home/$1/
       fi
     else
-      if [ -d "/home/$1/platforms" ]; then
-        chattr -i /home/$1/platforms
+      if [ -d "/home/$1/platforms/" ]; then
+        chattr -i /home/$1/platforms/
         chattr -i /home/$1/platforms/* &> /dev/null
       fi
     fi
-    if [ -d "/home/$1/.drush" ]; then
-      chattr -i /home/$1/.drush
+    if [ -d "/home/$1/.drush/" ]; then
+      chattr -i /home/$1/.drush/
     fi
-    if [ -d "/home/$1/.drush/usr" ]; then
-      chattr -i /home/$1/.drush/usr
+    if [ -d "/home/$1/.drush/usr/" ]; then
+      chattr -i /home/$1/.drush/usr/
     fi
     if [ -f "/home/$1/.drush/php.ini" ]; then
       chattr -i /home/$1/.drush/*.ini
     fi
-    if [ -d "/home/$1/.bazaar" ]; then
-      chattr -i /home/$1/.bazaar
-    fi
-    usrTgt="/home/$1/.drush/usr"
-    if [ "$1" != "${_USER}.ftp" ]; then
-      if [ ! -L "${usrTgt}/drupalgeddon" ] && [ -d "${usrDgn}" ]; then
-        ln -sf ${usrDgn} ${usrTgt}/drupalgeddon
-      fi
-    else
-      if [ ! -L "${usrTgt}/drupalgeddon" ] && [ -d "${usrDgn}" ]; then
-        rm -rf ${usrTgt}/drupalgeddon
-        ln -sf ${usrDgn} ${usrTgt}/drupalgeddon
-      fi
+    if [ -d "/home/$1/.bazaar/" ]; then
+      chattr -i /home/$1/.bazaar/
     fi
   fi
 }
@@ -708,17 +697,17 @@ fix_dot_dirs() {
 #
 # Manage Drush Aliases.
 manage_sec_user_drush_aliases() {
-  if [ -e "$Client" ]; then
+  if [ -e "${Client}" ]; then
     if [ -L "${usrLtdRoot}/sites" ]; then
       symTgt=$(readlink -n ${usrLtdRoot}/sites 2>&1)
       symTgt=$(echo -n ${symTgt} | tr -d "\n" 2>&1)
     else
       rm -f ${usrLtdRoot}/sites
     fi
-    if [ "${symTgt}" != "$Client" ] \
+    if [ "${symTgt}" != "${Client}" ] \
       || [ ! -e "${usrLtdRoot}/sites" ]; then
       rm -f ${usrLtdRoot}/sites
-      ln -sf $Client ${usrLtdRoot}/sites
+      ln -sf ${Client} ${usrLtdRoot}/sites
     fi
   fi
   if [ ! -e "${usrLtdRoot}/.drush" ]; then
@@ -891,22 +880,22 @@ add_user_if_not_exists() {
 #
 # Manage Access Paths.
 manage_sec_access_paths() {
-#for Domain in `find $Client/ -maxdepth 1 -mindepth 1 -type l -printf %P\\n | sort`
-for Domain in `find $Client/ -maxdepth 1 -mindepth 1 -type l | sort`; do
+#for Domain in `find ${Client}/ -maxdepth 1 -mindepth 1 -type l -printf %P\\n | sort`
+for Domain in `find ${Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   _PATH_DOM=$(readlink -n ${Domain} 2>&1)
   _PATH_DOM=$(echo -n ${_PATH_DOM} | tr -d "\n" 2>&1)
   _ALLD_DIR="${_ALLD_DIR}, '${_PATH_DOM}'"
   if [ -e "${_PATH_DOM}" ]; then
     _ALLD_NUM=$(( _ALLD_NUM += 1 ))
   fi
-  echo Done for ${Domain} at $Client
+  echo Done for ${Domain} at ${Client}
 done
 }
 #
 # Manage Secondary Users.
 manage_sec() {
 for Client in `find ${pthParentUsr}/clients/ -maxdepth 1 -mindepth 1 -type d | sort`; do
-  usrLtd=$(echo $Client | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
+  usrLtd=$(echo ${Client} | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
   usrLtd=${usrLtd//[^a-zA-Z0-9]/}
   usrLtd=$(echo -n ${usrLtd} | tr A-Z a-z 2>&1)
   if [ ! -z "${usrLtd}" ]; then
@@ -914,17 +903,17 @@ for Client in `find ${pthParentUsr}/clients/ -maxdepth 1 -mindepth 1 -type d | s
     echo "usrLtd is == ${usrLtd} == at manage_sec"
     _ALLD_NUM="0"
     _ALLD_CTL="1"
-    _ALLD_DIR="'$Client'"
-    cd $Client
+    _ALLD_DIR="'${Client}'"
+    cd ${Client}
     manage_sec_access_paths
     #_ALLD_DIR="${_ALLD_DIR}, '/home/${usrLtd}'"
     if [ "${_ALLD_NUM}" -ge "${_ALLD_CTL}" ]; then
       add_user_if_not_exists
-      echo Done for $Client at ${pthParentUsr}
+      echo Done for ${Client} at ${pthParentUsr}
     else
-      echo Empty $Client at ${pthParentUsr} - deleting now
-      if [ -e "$Client" ]; then
-        rmdir $Client
+      echo Empty ${Client} at ${pthParentUsr} - deleting now
+      if [ -e "${Client}" ]; then
+        rmdir ${Client}
       fi
     fi
   fi
@@ -1349,16 +1338,17 @@ satellite_remove_web_user() {
   isTest="${_WEB}"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [[ ! "${_WEB}" =~ ".ftp"($) ]]; then
-    if [ -d "/home/${_WEB}" ] || [ "$1" = "clean" ]; then
-      chattr -i /home/${_WEB}
-      if [ -d "/home/${_WEB}/.drush" ]; then
-        chattr -i /home/${_WEB}/.drush
+    if [ -d "/home/${_WEB}/" ] || [ "$1" = "clean" ]; then
+      chattr -i /home/${_WEB}/
+      if [ -d "/home/${_WEB}/.drush/" ]; then
+        chattr -i /home/${_WEB}/.drush/
       fi
+      kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
       deluser \
         --remove-home \
         --backup-to /var/backups/zombie/deleted ${_WEB} &> /dev/null
-      if [ -d "/home/${_WEB}" ]; then
-        rm -rf /home/${_WEB} &> /dev/null
+      if [ -d "/home/${_WEB}/" ]; then
+        rm -rf /home/${_WEB}/ &> /dev/null
       fi
     fi
   fi

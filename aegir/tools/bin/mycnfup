@@ -283,7 +283,7 @@ check_root() {
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ ! -x "${_LSB_TEST}" ]; then
       apt-get clean -qq
-      rm -rf /var/lib/apt/lists/**
+      rm -rf /var/lib/apt/lists/*
       apt-get update -qq
       apt-get install lsb-release ${forCer}
     fi

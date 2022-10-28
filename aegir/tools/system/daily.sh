@@ -134,58 +134,55 @@ get_dev_ext() {
 enable_chattr() {
   isTest="$1"
   isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [ -d "/home/$1" ]; then
+  if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
     if [ "$1" != "${_HM_U}.ftp" ]; then
-      chattr +i /home/$1
+      chattr +i /home/$1/
     else
-      if [ -d "/home/$1/platforms" ]; then
-        chattr +i /home/$1/platforms
+      if [ -d "/home/$1/platforms/" ]; then
+        chattr +i /home/$1/platforms/
         chattr +i /home/$1/platforms/* &> /dev/null
       fi
     fi
-    if [ -d "/home/$1/.drush" ]; then
-      chattr +i /home/$1/.drush
+    if [ -d "/home/$1/.drush/" ]; then
+      chattr +i /home/$1/.drush/
     fi
-    if [ -d "/home/$1/.drush/usr" ]; then
-      chattr +i /home/$1/.drush/usr
+    if [ -d "/home/$1/.drush/usr/" ]; then
+      chattr +i /home/$1/.drush/usr/
     fi
     if [ -f "/home/$1/.drush/php.ini" ]; then
       chattr +i /home/$1/.drush/*.ini
     fi
-    if [ -d "/home/$1/.bazaar" ]; then
-      chattr +i /home/$1/.bazaar
+    if [ -d "/home/$1/.bazaar/" ]; then
+      chattr +i /home/$1/.bazaar/
     fi
   fi
 }
 
 disable_chattr() {
-  if [ ! -z "$1" ] && [ -d "/home/$1" ]; then
+  isTest="$1"
+  isTest=${isTest//[^a-z0-9]/}
+  if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
     if [ "$1" != "${_HM_U}.ftp" ]; then
-      chattr -i /home/$1
+      if [ -d "/home/$1/" ]; then
+        chattr -i /home/$1/
+      fi
     else
-      if [ -d "/home/$1/platforms" ]; then
-        chattr -i /home/$1/platforms
+      if [ -d "/home/$1/platforms/" ]; then
+        chattr -i /home/$1/platforms/
         chattr -i /home/$1/platforms/* &> /dev/null
       fi
     fi
-    if [ -d "/home/$1/.drush" ]; then
-      chattr -i /home/$1/.drush
+    if [ -d "/home/$1/.drush/" ]; then
+      chattr -i /home/$1/.drush/
     fi
-    if [ -d "/home/$1/.drush/usr" ]; then
-      chattr -i /home/$1/.drush/usr
+    if [ -d "/home/$1/.drush/usr/" ]; then
+      chattr -i /home/$1/.drush/usr/
     fi
     if [ -f "/home/$1/.drush/php.ini" ]; then
       chattr -i /home/$1/.drush/*.ini
     fi
-    if [ -d "/home/$1/.bazaar" ]; then
-      chattr -i /home/$1/.bazaar
-    fi
-    usrSrc="${User}/.drush/usr"
-    usrTgt="/home/$1/.drush/usr"
-    if [ ! -L "${usrTgt}/drupalgeddon" ] \
-      && [ -d "${usrSrc}/drupalgeddon" ]; then
-      rm -rf ${usrTgt}/drupalgeddon
-      ln -sf ${usrSrc}/drupalgeddon ${usrTgt}/drupalgeddon
+    if [ -d "/home/$1/.bazaar/" ]; then
+      chattr -i /home/$1/.bazaar/
     fi
   fi
 }
