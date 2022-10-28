@@ -215,8 +215,7 @@ enable_chattr() {
         || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
         || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
         || [ "${_VMFAMILY}" = "VS" ]; then
-        rm -rf ${_U_HD}/*
-        rm -rf ${_U_HD}/.*
+        rm -rf ${_U_HD}/
       else
         rm -f ${_U_HD}/{drush_make,registry_rebuild,clean_missing_modules}
         rm -f ${_U_HD}/{drupalgeddon,drush_ecl,make_local,safe_cache_form*}
