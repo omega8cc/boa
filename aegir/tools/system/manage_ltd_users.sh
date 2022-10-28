@@ -621,6 +621,7 @@ kill_zombies() {
         if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] \
           || [ ! -e "/home/${usrParent}.ftp/users/${Existing}" ]; then
           mkdir -p /var/backups/zombie/deleted/${_NOW}
+          kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
           disable_chattr ${Existing}
           deluser \
             --remove-home \

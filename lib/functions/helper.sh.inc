@@ -288,6 +288,7 @@ mode_detection() {
     mv -f /root/.my.pass.txt $_ZOMBIE_HOME/ &> /dev/null
     cp -af /etc/sudoers $_ZOMBIE_HOME/ &> /dev/null
     sed -i "s/^aegir.*//g" /etc/sudoers &> /dev/null
+    kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
     deluser aegir &> /dev/null
     rm -f /usr/bin/drush
     if [ ! -z "${_EASY_SETUP}" ] && [[ ! "${_EASY_SETUP}" =~ "NO" ]]; then
