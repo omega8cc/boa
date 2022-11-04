@@ -32,6 +32,7 @@ find /var/run/boa*.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/run/manage*users.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/run/daily-fix.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/run/clear_m.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
+kill -9 $(ps aux | grep '[f]fmirror' | awk '{print $2}') &> /dev/null
 
 if [ -e "/root/.proxy.cnf" ]; then
   exit 0
@@ -46,6 +47,11 @@ touch /var/run/clear_m.pid
 #
 # Find the fastest mirror.
 find_fast_mirror() {
+  kill -9 $(ps aux | grep '[f]fmirror' | awk '{print $2}') &> /dev/null
+  if [ -d "/var/cache/pdnsd" ] \
+    && [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+    pdnsd-ctl empty-cache &> /dev/null
+  fi
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
