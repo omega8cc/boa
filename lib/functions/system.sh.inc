@@ -2285,7 +2285,7 @@ get_drush_eight() {
 # Install or update Drush versions.
 get_drush_versions() {
   msg "INFO: Installing supported Drush versions..."
-  _X_SE="414prodT38"
+  _X_SE="414prodT39"
   ###--------------------###
   if [ -e "/opt/tools/drush/9" ]; then
     rm -rf /opt/tools/drush/9
