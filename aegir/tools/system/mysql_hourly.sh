@@ -49,11 +49,6 @@ else
 fi
 
 find_fast_mirror() {
-  kill -9 $(ps aux | grep '[f]fmirror' | awk '{print $2}') &> /dev/null
-  if [ -d "/var/cache/pdnsd" ] \
-    && [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
-    pdnsd-ctl empty-cache &> /dev/null
-  fi
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
