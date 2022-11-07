@@ -617,9 +617,9 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ]; then
   sed -i "/^$/d" /etc/csf/csf.allow
   _DHCP_TEST=$(grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq 2>&1)
   if [[ "${_DHCP_TEST}" =~ "port" ]]; then
-    for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f12 | sort | uniq`;do echo "tcp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+    for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
   else
-    for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq`;do echo "tcp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+    for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
   fi
   csf -e
   sleep 1

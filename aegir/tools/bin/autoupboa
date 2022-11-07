@@ -276,18 +276,19 @@ if [ -e "/data/disk/arch/sql" ]; then
 	rm -f /var/xdrago/*.old
 	rm -f /var/xdrago/.*.off
 	rm -f /root/.xdrago_off_cleanup.pid
-	if [ ! -e "/root/.csf_dhcp_cleanup.pid" ]; then
+	if [ ! -e "/root/.csf_dhcp_udp_cleanup.pid" ]; then
+	  rm -f /root/.csf_dhcp_cleanup.pid
       sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
       wait
       sed -i "/^$/d" /etc/csf/csf.allow
       _DHCP_TEST=$(grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq 2>&1)
       if [[ "${_DHCP_TEST}" =~ "port" ]]; then
-	    for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f12 | sort | uniq`;do echo "tcp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+	    for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
       else
-        for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq`;do echo "tcp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+        for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
       fi
 	  csf -q
-	  touch /root/.csf_dhcp_cleanup.pid
+	  touch /root/.csf_dhcp_udp_cleanup.pid
 	fi
     if [ ! -e "/root/.fixed_php_seven_four_default.pid" ]; then
       sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=7.4/g"  ${barCnf}
