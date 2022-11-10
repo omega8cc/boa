@@ -239,6 +239,48 @@ whitelist_ip_authzero() {
   done
 }
 
+whitelist_ip_site24x7_extra() {
+
+  _IPS="87.252.213.0/24 89.36.170.0/24 185.172.199.128/26 185.230.214.0/23 185.172.199.0/27"
+
+  echo _IPS site24x7_extra list..
+  echo ${_IPS}
+
+  for _IP in ${_IPS}; do
+    echo checking csf.allow site24x7_extra ${_IP} now...
+    _IP_CHECK=$(cat /etc/csf/csf.allow \
+      | cut -d '#' -f1 \
+      | sort \
+      | uniq \
+      | tr -d "\s" \
+      | grep "${_IP}" 2>&1)
+    if [ -z "${_IP_CHECK}" ]; then
+      echo "${_IP} not yet listed in /etc/csf/csf.allow"
+      echo "tcp|in|d=80|s=${_IP} # site24x7_extra ips" >> /etc/csf/csf.allow
+    else
+      echo "${_IP} already listed in /etc/csf/csf.allow"
+    fi
+  done
+
+  if [ -e "/root/.ignore.site24x7.firewall.cnf" ]; then
+    for _IP in ${_IPS}; do
+      echo checking csf.ignore site24x7_extra ${_IP} now...
+      _IP_CHECK=$(cat /etc/csf/csf.ignore \
+        | cut -d '#' -f1 \
+        | sort \
+        | uniq \
+        | tr -d "\s" \
+        | grep "${_IP}" 2>&1)
+      if [ -z "${_IP_CHECK}" ]; then
+        echo "${_IP} not yet listed in /etc/csf/csf.ignore"
+        echo "${_IP} # site24x7_extra ips" >> /etc/csf/csf.ignore
+      else
+        echo "${_IP} already listed in /etc/csf/csf.ignore"
+      fi
+    done
+  fi
+}
+
 whitelist_ip_site24x7() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing site24x7 ips from csf.allow
@@ -565,6 +607,7 @@ if [ -e "/vservers" ] \
   [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_imperva
   [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_sucuri
   [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_authzero
+  [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_site24x7_extra
   [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_site24x7
 
   if [ -e "/root/.full.csf.cleanup.cnf" ]; then
