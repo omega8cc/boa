@@ -445,8 +445,8 @@ tune_memory_limits() {
     _USE_PHP=512
   fi
   _USE_FPM=$(( _USE_PHP / 2 ))
-  if [ "${_USE_FPM}" -lt "256" ]; then
-    _USE_FPM=256
+  if [ "${_USE_FPM}" -lt "395" ]; then
+    _USE_FPM=395
   fi
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
     mkdir -p /var/xdrago/conf
@@ -460,15 +460,15 @@ tune_memory_limits() {
   cp -af ${locCnf}/hhvm/hhvm_intercept.php /data/conf/hhvm_intercept.php
   chmod 644 /data/conf/hhvm_intercept.php
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
-    sed -i "s/256/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   fi
   _PHP_V="81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
-      sed -i "s/256/${_USE_FPM}/g" /opt/php${e}/etc/php${e}.ini &> /dev/null
+      sed -i "s/395/${_USE_FPM}/g" /opt/php${e}/etc/php${e}.ini &> /dev/null
       wait
       sed -i "s/181/${_USE_OPC}/g" /opt/php${e}/etc/php${e}.ini &> /dev/null
-      sed -i "s/256/${_USE_CLI}/g" /opt/php${e}/lib/php.ini     &> /dev/null
+      sed -i "s/395/${_USE_CLI}/g" /opt/php${e}/lib/php.ini     &> /dev/null
     fi
   done
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then

@@ -121,7 +121,7 @@ fix_php_ini_apcu() {
       _DO_NOTHING=YES
     else
       echo "extension=apcu.so" >> ${_THIS_FILE}
-      echo "apc.shm_size=256M" >> ${_THIS_FILE}
+      echo "apc.shm_size=395M" >> ${_THIS_FILE}
     fi
   fi
 }

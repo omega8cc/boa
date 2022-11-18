@@ -423,7 +423,7 @@ fix_php_ini_apcu() {
       _DO_NOTHING=YES
     else
       echo "extension=apcu.so" >> ${_THIS_FILE}
-      echo "apc.shm_size=256M" >> ${_THIS_FILE}
+      echo "apc.shm_size=395M" >> ${_THIS_FILE}
     fi
   fi
 }
@@ -1429,56 +1429,56 @@ tune_memory_limits() {
   cp -af ${locCnf}/hhvm/hhvm_intercept.php /data/conf/hhvm_intercept.php
   chmod 644 /data/conf/hhvm_intercept.php
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
-    sed -i "s/256/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
     wait
   fi
   if [ -e "/opt/php81/etc/php81.ini" ]; then
-    sed -i "s/256/${_USE_FPM}/g" /opt/php81/etc/php81.ini &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/php81/etc/php81.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php81/etc/php81.ini &> /dev/null
-    sed -i "s/256/${_USE_CLI}/g" /opt/php81/lib/php.ini   &> /dev/null
+    sed -i "s/395/${_USE_CLI}/g" /opt/php81/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php80/etc/php80.ini" ]; then
-    sed -i "s/256/${_USE_FPM}/g" /opt/php80/etc/php80.ini &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/php80/etc/php80.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php80/etc/php80.ini &> /dev/null
-    sed -i "s/256/${_USE_CLI}/g" /opt/php80/lib/php.ini   &> /dev/null
+    sed -i "s/395/${_USE_CLI}/g" /opt/php80/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php74/etc/php74.ini" ]; then
-    sed -i "s/256/${_USE_FPM}/g" /opt/php74/etc/php74.ini &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/php74/etc/php74.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php74/etc/php74.ini &> /dev/null
-    sed -i "s/256/${_USE_CLI}/g" /opt/php74/lib/php.ini   &> /dev/null
+    sed -i "s/395/${_USE_CLI}/g" /opt/php74/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php73/etc/php73.ini" ]; then
-    sed -i "s/256/${_USE_FPM}/g" /opt/php73/etc/php73.ini &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/php73/etc/php73.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php73/etc/php73.ini &> /dev/null
-    sed -i "s/256/${_USE_CLI}/g" /opt/php73/lib/php.ini   &> /dev/null
+    sed -i "s/395/${_USE_CLI}/g" /opt/php73/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php72/etc/php72.ini" ]; then
-    sed -i "s/256/${_USE_FPM}/g" /opt/php72/etc/php72.ini &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/php72/etc/php72.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php72/etc/php72.ini &> /dev/null
-    sed -i "s/256/${_USE_CLI}/g" /opt/php72/lib/php.ini   &> /dev/null
+    sed -i "s/395/${_USE_CLI}/g" /opt/php72/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php71/etc/php71.ini" ]; then
-    sed -i "s/256/${_USE_FPM}/g" /opt/php71/etc/php71.ini &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/php71/etc/php71.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php71/etc/php71.ini &> /dev/null
-    sed -i "s/256/${_USE_CLI}/g" /opt/php71/lib/php.ini   &> /dev/null
+    sed -i "s/395/${_USE_CLI}/g" /opt/php71/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php70/etc/php70.ini" ]; then
-    sed -i "s/256/${_USE_FPM}/g" /opt/php70/etc/php70.ini &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/php70/etc/php70.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php70/etc/php70.ini &> /dev/null
-    sed -i "s/256/${_USE_CLI}/g" /opt/php70/lib/php.ini   &> /dev/null
+    sed -i "s/395/${_USE_CLI}/g" /opt/php70/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php56/etc/php56.ini" ]; then
-    sed -i "s/256/${_USE_FPM}/g" /opt/php56/etc/php56.ini &> /dev/null
+    sed -i "s/395/${_USE_FPM}/g" /opt/php56/etc/php56.ini &> /dev/null
     wait
     sed -i "s/181/${_USE_OPC}/g" /opt/php56/etc/php56.ini &> /dev/null
-    sed -i "s/256/${_USE_CLI}/g" /opt/php56/lib/php.ini   &> /dev/null
+    sed -i "s/395/${_USE_CLI}/g" /opt/php56/lib/php.ini   &> /dev/null
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     tune_sql_memory_limits
