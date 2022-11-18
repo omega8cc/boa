@@ -2725,8 +2725,6 @@ process() {
             searchStringF=".temporary."
             searchStringG=".test."
             searchStringH=".testing."
-            searchStringI=".stage."
-            searchStringJ=".staging."
             case ${Dom} in
               *"$searchStringB"*) ;;
               *"$searchStringC"*) ;;
@@ -2735,8 +2733,6 @@ process() {
               *"$searchStringF"*) ;;
               *"$searchStringG"*) ;;
               *"$searchStringH"*) ;;
-              *"$searchStringI"*) ;;
-              *"$searchStringJ"*) ;;
               *)
               if [ "${_MODULES_FIX}" = "YES" ]; then
                 _CHECK_IS=OFF

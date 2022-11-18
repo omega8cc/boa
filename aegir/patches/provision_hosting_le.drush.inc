@@ -142,7 +142,6 @@ function drush_provision_hosting_le_post_provision_verify() {
       if (!$enable_dev_ctrl) {
         if (preg_match("/\.(?:temp|tmp|temporary)\./", $main_name) ||
           preg_match("/\.(?:test|testing)\./", $main_name) ||
-          preg_match("/\.(?:stage|staging)\./", $main_name) ||
           preg_match("/\.(?:dev|devel)\./", $main_name)
           ) {
           drush_log('[hosting_le] Skipping LE setup for ' . $main_name, 'warning');
