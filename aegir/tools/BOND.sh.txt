@@ -428,6 +428,18 @@ fix_php_ini_apcu() {
   fi
 }
 #
+# Fix php.ini files to add igbinary.so
+fix_php_ini_igbinary() {
+  if [ -e "${_THIS_FILE}" ]; then
+    _IGBINARY_INI_TEST=$(grep "^extension=igbinary.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_IGBINARY_INI_TEST" =~ "extension=igbinary.so" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=igbinary.so" >> ${_THIS_FILE}
+    fi
+  fi
+}
+#
 # Fix php.ini file to add newrelic.ini
 fix_php_ini_newrelic() {
   _NR_TPL="${locCnf}/newrelic.ini"
@@ -673,6 +685,7 @@ update_php_conf() {
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     if [ "${e}" != "56" ]; then
       fix_php_ini_apcu
+      fix_php_ini_igbinary
     fi
     if [ "${e}" != "56" ] && [ "${e}" != "70" ] && [ "${e}" != "71" ]; then
       fix_php_ini_mcrypt

@@ -127,6 +127,19 @@ fix_php_ini_apcu() {
 }
 
 #
+# Fix php.ini files to add igbinary.so
+fix_php_ini_igbinary() {
+  if [ -e "${_THIS_FILE}" ]; then
+    _IGBINARY_INI_TEST=$(grep "^extension=igbinary.so" ${_THIS_FILE} 2>&1)
+    if [[ "$_IGBINARY_INI_TEST" =~ "extension=igbinary.so" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=igbinary.so" >> ${_THIS_FILE}
+    fi
+  fi
+}
+
+#
 # Fix php.ini file to add newrelic.ini
 fix_php_ini_newrelic() {
   _NR_TPL="${locCnf}/newrelic.ini"
@@ -410,6 +423,7 @@ update_php_conf() {
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     if [ "${e}" != "56" ]; then
       fix_php_ini_apcu
+      fix_php_ini_igbinary
     fi
     if [ "${e}" != "56" ] && [ "${e}" != "70" ] && [ "${e}" != "71" ]; then
       fix_php_ini_mcrypt
@@ -589,31 +603,45 @@ install_php_extensions() {
   touch ${pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
   ###--------------------###
   if [ "$1" != "56" ]; then
-    msg "INFO: Installing APCu ${_PHP7_APCU} for PHP ${_T_PHP_VRN}..."
+    msg "INFO: Installing APCu ${_PHP_APCU} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf apcu*
-    get_dev_src "apcu-${_PHP7_APCU}.tgz"
-    cd /var/opt/apcu-${_PHP7_APCU}
+    get_dev_src "apcu-${_PHP_APCU}.tgz"
+    cd /var/opt/apcu-${_PHP_APCU}
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
     mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    touch ${pthLog}/apcu-${_PHP7_APCU}-${_T_PHP_VRN}.log
+    touch ${pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log
+  fi
+  ###--------------------###
+  if [ "$1" != "56" ]; then
+    msg "INFO: Installing igbinary ${_PHP_IGBINARY} for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -rf igbinary*
+    get_dev_src "igbinary-${_PHP_IGBINARY}.tgz"
+    cd /var/opt/igbinary-${_PHP_IGBINARY}
+    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+    mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "make --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    mrun "ldconfig" 2> /dev/null
+    touch ${pthLog}/igbinary-${_PHP_IGBINARY}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
   if [ "$1" != "56" ] && [ "$1" != "70" ] && [ "$1" != "71" ]; then
-    msg "INFO: Installing MCRYPT ${_PHP7_MCRYPT} for PHP ${_T_PHP_VRN}..."
+    msg "INFO: Installing MCRYPT ${_PHP_MCRYPT} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf mcrypt*
-    get_dev_src "mcrypt-${_PHP7_MCRYPT}.tgz"
-    cd /var/opt/mcrypt-${_PHP7_MCRYPT}
+    get_dev_src "mcrypt-${_PHP_MCRYPT}.tgz"
+    cd /var/opt/mcrypt-${_PHP_MCRYPT}
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
     mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    touch ${pthLog}/mcrypt-${_PHP7_MCRYPT}-${_T_PHP_VRN}.log
+    touch ${pthLog}/mcrypt-${_PHP_MCRYPT}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
   if [ "$1" = "56" ]; then
@@ -854,7 +882,7 @@ update_php_extensions() {
     get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
     cd /var/opt/phpredis
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "bash ./configure --enable-redis-igbinary --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
@@ -862,34 +890,50 @@ update_php_extensions() {
   fi
   ###--------------------###
   if [ "$1" != "56" ]; then
-    if [ ! -e "${pthLog}/apcu-${_PHP7_APCU}-${_T_PHP_VRN}.log" ]; then
-      msg "INFO: Installing APCu ${_PHP7_APCU} for PHP ${_T_PHP_VRN}..."
+    if [ ! -e "${pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log" ]; then
+      msg "INFO: Installing APCu ${_PHP_APCU} for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf apcu*
-      get_dev_src "apcu-${_PHP7_APCU}.tgz"
-      cd /var/opt/apcu-${_PHP7_APCU}
+      get_dev_src "apcu-${_PHP_APCU}.tgz"
+      cd /var/opt/apcu-${_PHP_APCU}
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
       mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
-      touch ${pthLog}/apcu-${_PHP7_APCU}-${_T_PHP_VRN}.log
+      touch ${pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log
+    fi
+  fi
+  ###--------------------###
+  if [ "$1" != "56" ]; then
+    if [ ! -e "${pthLog}/igbinary-${_PHP_IGBINARY}-${_T_PHP_VRN}.log" ]; then
+      msg "INFO: Installing igbinary ${_PHP_IGBINARY} for PHP ${_T_PHP_VRN}..."
+      cd /var/opt
+      rm -rf igbinary*
+      get_dev_src "igbinary-${_PHP_IGBINARY}.tgz"
+      cd /var/opt/igbinary-${_PHP_IGBINARY}
+      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+      mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
+      mrun "ldconfig" 2> /dev/null
+      touch ${pthLog}/igbinary-${_PHP_IGBINARY}-${_T_PHP_VRN}.log
     fi
   fi
   ###--------------------###
   if [ "$1" != "56" ] && [ "$1" != "70" ] && [ "$1" != "71" ]; then
-    if [ ! -e "${pthLog}/mcrypt-${_PHP7_MCRYPT}-${_T_PHP_VRN}.log" ]; then
-      msg "INFO: Installing MCRYPT ${_PHP7_MCRYPT} for PHP ${_T_PHP_VRN}..."
+    if [ ! -e "${pthLog}/mcrypt-${_PHP_MCRYPT}-${_T_PHP_VRN}.log" ]; then
+      msg "INFO: Installing MCRYPT ${_PHP_MCRYPT} for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf mcrypt*
-      get_dev_src "mcrypt-${_PHP7_MCRYPT}.tgz"
-      cd /var/opt/mcrypt-${_PHP7_MCRYPT}
+      get_dev_src "mcrypt-${_PHP_MCRYPT}.tgz"
+      cd /var/opt/mcrypt-${_PHP_MCRYPT}
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
       mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
-      touch ${pthLog}/mcrypt-${_PHP7_MCRYPT}-${_T_PHP_VRN}.log
+      touch ${pthLog}/mcrypt-${_PHP_MCRYPT}-${_T_PHP_VRN}.log
     fi
   fi
   ###--------------------###

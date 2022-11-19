@@ -916,21 +916,6 @@ update_agents() {
   fi
 
   _Dir="/data/all/000/modules"
-  _REDIS_N_VERSION=com-19-04-2021
-  if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
-    if [ ! -e "${_Dir}/redis_eight/${_REDIS_N_VERSION}.${_X_SE}.info" ]; then
-      mkdir -p ${_Dir}
-      cd ${_Dir}
-      rm -rf ${_Dir}/redis_eight
-      get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
-      echo update > ${_Dir}/redis_eight/${_REDIS_N_VERSION}.${_X_SE}.info
-      find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${pthLog}/redis_eight.ctrl.${_X_SE}.pid
-    fi
-  fi
-
-  _Dir="/data/all/000/modules"
   _REDIS_L_VERSION=com-19-04-2021
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
     if [ ! -e "${_Dir}/redis_edge/${_REDIS_L_VERSION}.${_X_SE}.info" ]; then
@@ -942,6 +927,21 @@ update_agents() {
       find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
       find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
       touch ${pthLog}/redis_edge.ctrl.${_X_SE}.pid
+    fi
+  fi
+
+  _Dir="/data/all/000/modules"
+  _REDIS_N_VERSION=com-19-04-2021
+  if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
+    if [ ! -e "${_Dir}/redis_eight/${_REDIS_N_VERSION}.${_X_SE}.info" ]; then
+      mkdir -p ${_Dir}
+      cd ${_Dir}
+      rm -rf ${_Dir}/redis_eight
+      get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
+      echo update > ${_Dir}/redis_eight/${_REDIS_N_VERSION}.${_X_SE}.info
+      find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
+      find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
+      touch ${pthLog}/redis_eight.ctrl.${_X_SE}.pid
     fi
   fi
 }
