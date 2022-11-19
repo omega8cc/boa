@@ -289,7 +289,6 @@ $boa_ini = array(
   'auto_detect_facebook_integration' => TRUE,      // For backward compatibility until next release, then FALSE
   'auto_detect_domain_access_integration' => TRUE, // For backward compatibility until next release, then FALSE
   'advagg_auto_configuration' => FALSE,            // Will be set to TRUE in boa_site_control.ini if the module is enabled
-  'purge_expire_auto_configuration' => FALSE,      // Will be set to TRUE in boa_site_control.ini if the module is enabled
   'disable_drupal_page_cache' => FALSE,            // FALSE for backward compatibility and max performance
   'set_composer_manager_vendor_dir' => FALSE,      // FALSE by default to not break site installation depending on custom value
 );
@@ -353,7 +352,6 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Auto-Detect-Facebook-Integration: " . $all_ini['auto_detect_facebook_integration']);
   header("X-Ini-Auto-Detect-Domain-Access-Integration: " . $all_ini['auto_detect_domain_access_integration']);
   header("X-Ini-Advagg-Auto-Configuration: " . $all_ini['advagg_auto_configuration']);
-  header("X-Ini-Purge-Expire-Auto-Configuration: " . $all_ini['purge_expire_auto_configuration']);
   header("X-Ini-Sql-Conversion-Mode: " . $all_ini['sql_conversion_mode']);
   header("X-Ini-Enable-User-Register-Protection: " . $all_ini['enable_user_register_protection']);
   header("X-Ini-Entitycache-Dont-Enable: " . $all_ini['entitycache_dont_enable']);
@@ -873,43 +871,6 @@ if (!$is_dev) {
         $conf['httprl_ttfb_timeout'] = "5";
         // $conf['drupal_http_request_function'] = "httprl_override_core";
       }
-    }
-  }
-}
-
-if ($drupal_six || $drupal_seven) {
-  if ($all_ini['purge_expire_auto_configuration']) {
-    if ($drupal_six) {
-      if (is_readable('modules/o_contrib/purge/purge.inc')) {
-        $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
-        if ($is_dev && !$is_backend) {
-          header('X-Purge-Level: 6');
-        }
-      }
-      else {
-        if ($is_dev && !$is_backend) {
-          header('X-Purge-Level: none');
-        }
-      }
-    }
-    if ($drupal_seven) {
-      if (is_readable('modules/o_contrib_seven/purge/purge.inc')) {
-        $conf['expire_flush_node_terms'] = 0; // Disable this to avoid WSOD - see https://drupal.org/node/1151686#comment-5556544
-        $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
-        if ($is_dev && !$is_backend) {
-          header('X-Purge-Level: 7');
-        }
-      }
-      else {
-        if ($is_dev && !$is_backend) {
-          header('X-Purge-Level: none');
-        }
-      }
-    }
-  }
-  else {
-    if ($is_dev && !$is_backend) {
-      header('X-Purge-Level: none');
     }
   }
 }

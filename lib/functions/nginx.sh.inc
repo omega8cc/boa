@@ -15,9 +15,8 @@ update_nginx_conf() {
       touch ${pthLog}/nginx-config-params-fixed-${_X_VERSION}
     fi
   fi
-  if [ -e "${mtrNgx}/pre.d" ] \
-    && [ "${_PURGE_MODE}" = "ON" ]; then
-    cp -af ${locCnf}/nginx_speed_purge.conf ${mtrNgx}/pre.d/nginx_speed_purge.conf
+  if [ -e "${mtrNgx}/pre.d/nginx_speed_purge.conf" ]; then
+    rm -f ${mtrNgx}/pre.d/nginx_speed_purge.conf
   fi
 }
 
@@ -334,25 +333,14 @@ install_upgrade_nginx() {
       msg "INFO: Installing Nginx..."
     fi
     cd /var/opt; rm -rf nginx*
-    get_dev_src "nginx-upload-progress-module.tar.gz"
-    if [ "${_PURGE_MODE}" = "ON" ]; then
-      get_dev_src "ngx-cache-purge.tar.gz"
-    fi
     get_dev_src "nginx-${_NGINX_VRN}.tar.gz"
     sed -i "s/nginx/${_CUSTOM_NAME}/g" \
       /var/opt/nginx-${_NGINX_VRN}/src/core/nginx.h &> /dev/null
     wait
-    if [ "${_PURGE_MODE}" = "ON" ] && [ -z "${_NGINX_EXTRA_CONF}" ]; then
-      _NGINX_EXTRA="--add-module=/var/opt/ngx-cache-purge/"
-    elif [ ! -z "${_NGINX_EXTRA_CONF}" ] && [ "${_PURGE_MODE}" = "OFF" ]; then
+    if [ ! -z "${_NGINX_EXTRA_CONF}" ]; then
       _NGINX_EXTRA="${_NGINX_EXTRA_CONF}"
-    elif [ ! -z "${_NGINX_EXTRA_CONF}" ] && [ "${_PURGE_MODE}" = "ON" ]; then
-      _NGINX_EXTRA="--add-module=/var/opt/ngx-cache-purge/ ${_NGINX_EXTRA_CONF}"
     else
       _NGINX_EXTRA=""
-    fi
-    if [ -e "/var/opt/nginx-upload-progress-module" ]; then
-      _NGINX_EXTRA="--add-module=/var/opt/nginx-upload-progress-module/ ${_NGINX_EXTRA}"
     fi
     if [ "${_NGINX_HEADERS}" = "YES" ]; then
       cd /var/opt

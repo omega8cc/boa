@@ -1346,9 +1346,6 @@ satellite_o_contrib_update_global() {
     elif [ -e "${i}/o_contrib" ] \
       && [ ! -L "${i}/o_contrib/redis" ]; then
       _FORCE_UP_SIX=YES
-    elif [ -e "${i}/o_contrib" ] \
-      && [ ! -d "${i}/o_contrib/mydropwizard" ]; then
-      _FORCE_UP_SIX=YES
     else
       _FORCE_UP_SIX=NO
     fi
@@ -1380,9 +1377,6 @@ satellite_o_contrib_update_global() {
       if [ ! -d "${i}/o_contrib/js" ]; then
         get_dev_contrib "js-6.x-1.3.tar.gz"
       fi
-      if [ ! -d "${i}/o_contrib/mydropwizard" ]; then
-        get_dev_contrib "mydropwizard-6.x-1.9.tar.gz"
-      fi
       if [ ! -d "${i}/o_contrib/panels_content_cache" ]; then
         get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
       fi
@@ -1401,13 +1395,11 @@ satellite_o_contrib_update_global() {
       if [ ! -d "${i}/o_contrib/views_content_cache" ]; then
         get_dev_contrib "views_content_cache-6.x-2.x-dev.tar.gz"
       fi
-      if [ "${_PURGE_MODE}" = "ON" ]; then
-        if [ ! -d "${i}/o_contrib/expire" ]; then
-          get_dev_contrib "expire-6.x-1.x-dev.tar.gz"
-        fi
-        if [ ! -d "${i}/o_contrib/purge" ]; then
-          get_dev_contrib "purge-6.x-1.7.tar.gz"
-        fi
+      if [ -d "${i}/o_contrib/expire" ]; then
+        rm -rf ${i}/o_contrib/expire
+      fi
+      if [ -d "${i}/o_contrib/purge" ]; then
+        rm -rf ${i}/o_contrib/purge
       fi
       if [ -d "${i}/o_contrib/cache_backport" ]; then
         rm -rf ${i}/o_contrib/cache_backport
@@ -1552,14 +1544,10 @@ satellite_o_contrib_seven_update_global() {
         rm -rf ${i}/o_contrib_seven/entitycache
         get_dev_contrib "entitycache-7.x-1.5.tar.gz"
       fi
-      if [ "${_PURGE_MODE}" = "ON" ] && [ "${_PURGE_FOR_SEVEN}" = "YES" ]; then
-        cd ${i}/o_contrib_seven
-        if [ ! -d "${i}/o_contrib_seven/expire" ]; then
-          get_dev_contrib "expire-7.x-2.0-rc4.tar.gz"
-        fi
-        if [ ! -d "${i}/o_contrib_seven/purge" ]; then
-          get_dev_contrib "purge-7.x-1.7.tar.gz"
-        fi
+      if [ -d "${i}/o_contrib_seven/expire" ] \
+        || [ -d "${i}/o_contrib_seven/purge" ]; then
+        rm -rf ${i}/o_contrib_seven/expire
+        rm -rf ${i}/o_contrib_seven/purge
       fi
       if [ -d "${i}/o_contrib_seven/redis" ]; then
         rm -rf ${i}/o_contrib_seven/redis
@@ -1779,16 +1767,9 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "views_cache_bully-7.x-3.1.tar.gz"
   get_dev_contrib "views_content_cache-7.x-3.0-alpha3.tar.gz"
   get_dev_contrib "views404-7.x-1.0-beta1.tar.gz"
-  if [ "${_PURGE_MODE}" = "ON" ] && [ "${_PURGE_FOR_SEVEN}" = "YES" ]; then
-    rm -rf expire*
-    rm -rf purge*
-    get_dev_contrib "expire-7.x-2.0-rc4.tar.gz"
-    get_dev_contrib "purge-7.x-1.7.tar.gz"
-  else
-    rm -rf nginx_accel_redirect*
-    rm -rf purge*
-    rm -rf expire*
-  fi
+  rm -rf nginx_accel_redirect*
+  rm -rf purge*
+  rm -rf expire*
   find ./ -type d -exec chmod 0755 {} \; &> /dev/null
   find ./ -type f -exec chmod 0644 {} \; &> /dev/null
   touch ctrl-${_X_VERSION}
@@ -1840,7 +1821,6 @@ satellite_download_o_contrib_six() {
   get_dev_contrib "image-6.x-1.2.tar.gz"
   get_dev_contrib "js-6.x-1.3.tar.gz"
   get_dev_contrib "login_security-6.x-1.4.tar.gz"
-  get_dev_contrib "mydropwizard-6.x-1.9.tar.gz"
   get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
   get_dev_contrib "phpass-6.x-2.1.tar.gz"
   get_dev_contrib "private_upload-6.x-1.x-dev.tar.gz"
@@ -1855,16 +1835,9 @@ satellite_download_o_contrib_six() {
   get_dev_contrib "views_cache_bully-6.x-3.1.tar.gz"
   get_dev_contrib "views_content_cache-6.x-2.x-dev.tar.gz"
   get_dev_contrib "views404-6.x-1.x-dev.tar.gz"
-  if [ "${_PURGE_MODE}" = "ON" ]; then
-    rm -rf purge*
-    rm -rf expire*
-    get_dev_contrib "purge-6.x-1.7.tar.gz"
-    get_dev_contrib "expire-6.x-1.x-dev.tar.gz"
-  else
-    rm -rf nginx_accel_redirect*
-    rm -rf purge*
-    rm -rf expire*
-  fi
+  rm -rf nginx_accel_redirect*
+  rm -rf purge*
+  rm -rf expire*
   find ./ -type d -exec chmod 0755 {} \; &> /dev/null
   find ./ -type f -exec chmod 0644 {} \; &> /dev/null
   touch ctrl-${_X_VERSION}
@@ -3107,19 +3080,6 @@ satellite_if_add_update_user_symlinks() {
     chmod 700 ${_USER_DS}
     ln -sf ${_ROOT}/.drush/usr/safe_cache_form_clear \
       ${_USER_DS}/usr/safe_cache_form_clear
-  fi
-
-  ###---### Add symlink to the system mydropwizard.
-  #
-  if [ ! -L "${_USER_DS}/usr/mydropwizard" ] \
-    && [ -e "${_ROOT}/.drush/usr/mydropwizard" ]; then
-    msg "${_STATUS} A: Adding symlink to the system mydropwizard"
-    mkdir -p ${_USER_DS}/usr
-    chown ${_USERFTP}:${_USRG} ${_USER_DS}
-    chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
-    chmod 700 ${_USER_DS}
-    ln -sf ${_ROOT}/.drush/usr/mydropwizard \
-      ${_USER_DS}/usr/mydropwizard
   fi
 
   ###---### Add symlink to the system utf8mb4_convert.
@@ -4552,9 +4512,7 @@ EOF
   ### _CLIENT_EMAIL=${_CLIENT_EMAIL//\@/\\\@}
 
   if [ -f "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ]; then
-    _PURGE_MODE=ON
-  else
-    _PURGE_MODE=OFF
+    rm -f /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
   fi
 
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5018,7 +4976,6 @@ satellite_child_b_drush_xts_install() {
     rm -rf ${rD}/*/*/.git
     cd ${rD}/usr
     get_dev_ext "clean_missing_modules.tar.gz"
-    get_dev_ext "mydropwizard-6.x-1.9.tar.gz"
     get_dev_ext "utf8mb4_convert-7.x-1.3.tar.gz"
   else
     msg "${_STATUS} B: Downloading Drush and Provision extensions..."
@@ -5030,7 +4987,6 @@ satellite_child_b_drush_xts_install() {
     get_dev_ext "drush_ecl.tar.gz"
     get_dev_ext "registry_rebuild.tar.gz"
     get_dev_ext "safe_cache_form_clear.tar.gz"
-    get_dev_ext "mydropwizard-6.x-1.9.tar.gz"
     get_dev_ext "utf8mb4_convert-7.x-1.3.tar.gz"
     cd ${_ROOT}/.drush/xts
     get_dev_ext "provision_boost.tar.gz"

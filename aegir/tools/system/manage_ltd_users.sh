@@ -254,11 +254,6 @@ enable_chattr() {
         ln -sf ${dscUsr}/.drush/usr/safe_cache_form_clear \
           ${_U_HD}/usr/safe_cache_form_clear
       fi
-      if [ ! -L "${_U_HD}/usr/mydropwizard" ] \
-        && [ -e "${dscUsr}/.drush/usr/mydropwizard" ]; then
-        ln -sf ${dscUsr}/.drush/usr/mydropwizard \
-          ${_U_HD}/usr/mydropwizard
-      fi
       if [ ! -L "${_U_HD}/usr/utf8mb4_convert" ] \
         && [ -e "${dscUsr}/.drush/usr/utf8mb4_convert" ]; then
         ln -sf ${dscUsr}/.drush/usr/utf8mb4_convert \

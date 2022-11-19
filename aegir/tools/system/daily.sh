@@ -827,11 +827,6 @@ The how-to for PHP-FPM version switch can be found at:
 
   https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
 
-Note: while we don't provide Drupal sites upgrade service, we can
-recommend myDropWizard, if you need to outsource this task:
-
-  https://www.mydropwizard.com
-
 --
 This email has been sent by your Aegir automatic system monitor.
 
@@ -881,11 +876,6 @@ The how-to for PHP-FPM version switch can be found at:
 
   https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
 
-Note: while we don't provide Drupal sites upgrade service, we can
-recommend myDropWizard, if you need to outsource this task:
-
-  https://www.mydropwizard.com
-
 --
 This email has been sent by your Aegir automatic system monitor.
 
@@ -934,11 +924,6 @@ We recommend to follow this upgrade how-to:
 The how-to for PHP-FPM version switch can be found at:
 
   https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
-
-Note: while we don't provide Drupal sites upgrade service, we can
-recommend myDropWizard, if you need to outsource this task:
-
-  https://www.mydropwizard.com
 
 --
 This email has been sent by your Aegir automatic system monitor.
@@ -1028,11 +1013,6 @@ The how-to for PHP-FPM version switch can be found at:
 
   https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
 
-Note: while we don't provide Drupal sites upgrade service, we can
-recommend myDropWizard, if you need to outsource this task:
-
-  https://www.mydropwizard.com
-
 --
 This email has been sent by your Aegir automatic system monitor.
 
@@ -1094,11 +1074,6 @@ The how-to for PHP-FPM version switch can be found at:
 
   https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
 
-Note: while we don't provide Drupal sites upgrade service, we can
-recommend myDropWizard, if you need to outsource this task:
-
-  https://www.mydropwizard.com
-
 --
 This email has been sent by your Aegir automatic system monitor.
 
@@ -1159,11 +1134,6 @@ We recommend to follow this upgrade how-to:
 The how-to for PHP-FPM version switch can be found at:
 
   https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
-
-Note: while we don't provide Drupal sites upgrade service, we can
-recommend myDropWizard, if you need to outsource this task:
-
-  https://www.mydropwizard.com
 
 --
 This email has been sent by your Aegir automatic system monitor.
@@ -1346,71 +1316,6 @@ fix_modules() {
           wait
         else
           echo ";advagg_auto_configuration = FALSE" >> ${_DIR_CTRL_F}
-        fi
-      fi
-    fi
-  fi
-
-  _AUTO_CONFIG_PURGE_EXPIRE=NO
-  if [ -e "${Plr}/modules/o_contrib/purge" ] \
-    || [ -e "${Plr}/modules/o_contrib_seven/purge" ]; then
-    _MODULE_T=$(run_drush8_nosilent_cmd "pml --status=enabled \
-      --type=module | grep \(purge\)" 2>&1)
-    if [[ "${_MODULE_T}" =~ "(purge)" ]]; then
-      _AUTO_CONFIG_PURGE_EXPIRE=YES
-    fi
-  fi
-  if [ "${_AUTO_CONFIG_PURGE_EXPIRE}" = "YES" ]; then
-    if [ -e "/data/conf/default.boa_site_control.ini" ] \
-      && [ ! -e "${_DIR_CTRL_F}" ]; then
-      cp -af /data/conf/default.boa_site_control.ini \
-        ${_DIR_CTRL_F} &> /dev/null
-      chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
-      chmod 0664 ${_DIR_CTRL_F} &> /dev/null
-    fi
-    if [ -e "${_DIR_CTRL_F}" ]; then
-      _AC_PE_P=$(grep "purge_expire_auto_configuration" \
-        ${_DIR_CTRL_F} 2>&1)
-      _AC_PE_T=$(grep "^purge_expire_auto_configuration = TRUE" \
-        ${_DIR_CTRL_F} 2>&1)
-      if [[ "${_AC_PE_T}" =~ "purge_expire_auto_configuration = TRUE" ]]; then
-        _DO_NOTHING=YES
-      else
-        ###
-        ### Do this only for the site level ini file.
-        ###
-        if [[ "${_AC_PE_P}" =~ "purge_expire_auto_configuration" ]]; then
-          sed -i "s/.*purge_expire_a.*/purge_expire_auto_configuration = TRUE/g" \
-      ${_DIR_CTRL_F} &> /dev/null
-          wait
-        else
-          echo "purge_expire_auto_configuration = TRUE" >> ${_DIR_CTRL_F}
-        fi
-      fi
-    fi
-  else
-    if [ -e "/data/conf/default.boa_site_control.ini" ] \
-      && [ ! -e "${_DIR_CTRL_F}" ]; then
-      cp -af /data/conf/default.boa_site_control.ini \
-        ${_DIR_CTRL_F} &> /dev/null
-      chown ${_HM_U}:users ${_DIR_CTRL_F} &> /dev/null
-      chmod 0664 ${_DIR_CTRL_F} &> /dev/null
-    fi
-    if [ -e "${_DIR_CTRL_F}" ]; then
-      _AC_PE_P=$(grep "purge_expire_auto_configuration" \
-        ${_DIR_CTRL_F} 2>&1)
-      _AC_PE_T=$(grep "^purge_expire_auto_configuration = FALSE" \
-        ${_DIR_CTRL_F} 2>&1)
-      if [[ "${_AC_PE_T}" =~ "purge_expire_auto_configuration = FALSE" ]]; then
-        _DO_NOTHING=YES
-      else
-        if [[ "${_AC_PE_P}" =~ "purge_expire_auto_configuration" ]]; then
-          sed -i "s/.*purge_expire_a.*/purge_expire_auto_configuration = FALSE/g" \
-      ${_DIR_CTRL_F} &> /dev/null
-          wait
-        else
-          echo ";purge_expire_auto_configuration = FALSE" >> \
-      ${_DIR_CTRL_F}
         fi
       fi
     fi
