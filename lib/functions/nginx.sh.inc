@@ -220,6 +220,19 @@ detect_cdorked_malware() {
 }
 
 #
+# Purge legacy Nginx config.
+nginx_clean_legacy_config() {
+  _R_TEST=CHECK
+  if [ -e "/var/aegir/config/nginx.conf" ]; then
+    _R_TEST=$(grep "upload_progress" /var/aegir/config/nginx.conf 2>&1)
+  fi
+  if [[ "${_R_TEST}" =~ "upload_progress" ]]; then
+    sed -i "s/.*upload_progress.*//g" /var/aegir/config/nginx.conf
+    service nginx reload
+  fi
+}
+
+#
 # Install or upgrade Nginx.
 install_upgrade_nginx() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -417,6 +430,7 @@ install_upgrade_nginx() {
       && [ "${_LOC_OSR}" = "jessie" ]; then
       _DO_NOTHING=YES
     else
+      nginx_clean_legacy_config
       mrun "service nginx stop" &> /dev/null
       killall -9 nginx &> /dev/null
       mrun "service nginx start" &> /dev/null
