@@ -4011,7 +4011,6 @@ if_jessie_to_stretch() {
     mrun "apt-get install apt dpkg aptitude util-linux ${dstUpArg}" 2> /dev/null
     mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
     mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
-    touch ${mtrNgx}/pre.d/nginx_speed_purge.conf
     install_upgrade_nginx
     if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
       ln -sf /etc/init.d/bind9 /etc/init.d/bind

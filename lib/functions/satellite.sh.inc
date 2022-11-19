@@ -4511,10 +4511,6 @@ EOF
   ### _MY_EMAIL=${_MY_EMAIL//\@/\\\@}
   ### _CLIENT_EMAIL=${_CLIENT_EMAIL//\@/\\\@}
 
-  if [ -f "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ]; then
-    rm -f /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
-  fi
-
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "8s before we will continue..."
     export _DEBUG_MODE="${_DEBUG_MODE}"

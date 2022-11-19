@@ -487,13 +487,6 @@ d;};' ${mtrTpl}/subdir.tpl.php
   sed -i '/deny         all;/ {r /root/.local.IP.list.allow
 d;};' ${mtrInc}/nginx_vhost_common.conf
   wait
-
-  sed -i "s/allow .*;//g; s/ *$//g; /^$/d" \
-    ${mtrNgx}/pre.d/nginx_speed_purge.conf
-  wait
-  sed -i '/deny         all;/ {r /root/.local.IP.list.allow
-d;};' ${mtrNgx}/pre.d/nginx_speed_purge.conf
-  wait
 }
 
 check_nginx_initd() {
