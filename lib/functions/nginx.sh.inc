@@ -222,13 +222,15 @@ detect_cdorked_malware() {
 #
 # Purge legacy Nginx config.
 nginx_clean_legacy_config() {
-  _R_TEST=CHECK
   if [ -e "/var/aegir/config/nginx.conf" ]; then
     _R_TEST=$(grep "upload_progress" /var/aegir/config/nginx.conf 2>&1)
   fi
   if [[ "${_R_TEST}" =~ "upload_progress" ]]; then
     sed -i "s/.*upload_progress.*//g" /var/aegir/config/nginx.conf
     service nginx reload
+  fi
+  if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ]; then
+    rm -f /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
   fi
 }
 
