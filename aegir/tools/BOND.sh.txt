@@ -707,6 +707,7 @@ update_php_conf() {
 
     _THIS_FILE=/opt/php${e}/lib/php.ini
     if [ "${e}" != "56" ]; then
+      fix_php_ini_apcu
       fix_php_ini_igbinary
     fi
     if [ "${e}" != "56" ] && [ "${e}" != "70" ] && [ "${e}" != "71" ]; then
@@ -726,6 +727,7 @@ update_php_conf() {
     fix_php_ini_ioncube
     remove_php_ini_suhosin
     fix_php_ini_yaml
+
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
       sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g"       /opt/php${e}/etc/php${e}.ini
       wait

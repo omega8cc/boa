@@ -445,6 +445,7 @@ update_php_conf() {
 
     _THIS_FILE=/opt/php${e}/lib/php.ini
     if [ "${e}" != "56" ]; then
+      fix_php_ini_apcu
       fix_php_ini_igbinary
     fi
     if [ "${e}" != "56" ] && [ "${e}" != "70" ] && [ "${e}" != "71" ]; then
