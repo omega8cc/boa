@@ -897,7 +897,7 @@ update_php_extensions() {
   ###--------------------###
   if [ "$1" != "56" ]; then
     if [ ! -e "${pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log" ]; then
-      msg "INFO: Installing APCu ${_PHP_APCU} for PHP ${_T_PHP_VRN}..."
+      msg "INFO: Installing APCu ${_PHP_APCU} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf apcu*
       get_dev_src "apcu-${_PHP_APCU}.tgz"
@@ -913,7 +913,7 @@ update_php_extensions() {
   ###--------------------###
   if [ "$1" != "56" ]; then
     if [ ! -e "${pthLog}/igbinary-${_PHP_IGBINARY}-${_T_PHP_VRN}.log" ]; then
-      msg "INFO: Installing igbinary ${_PHP_IGBINARY} for PHP ${_T_PHP_VRN}..."
+      msg "INFO: Installing igbinary ${_PHP_IGBINARY} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf igbinary*
       get_dev_src "igbinary-${_PHP_IGBINARY}.tgz"
@@ -931,7 +931,7 @@ update_php_extensions() {
   ###--------------------###
   if [ "$1" != "56" ] && [ "$1" != "70" ] && [ "$1" != "71" ]; then
     if [ ! -e "${pthLog}/mcrypt-${_PHP_MCRYPT}-${_T_PHP_VRN}.log" ]; then
-      msg "INFO: Installing MCRYPT ${_PHP_MCRYPT} for PHP ${_T_PHP_VRN}..."
+      msg "INFO: Installing MCRYPT ${_PHP_MCRYPT} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf mcrypt*
       get_dev_src "mcrypt-${_PHP_MCRYPT}.tgz"
@@ -947,7 +947,7 @@ update_php_extensions() {
   ###--------------------###
   if [ "$1" = "56" ]; then
     if [ ! -e "${pthLog}/f_uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log" ]; then
-      msg "INFO: Installing UploadProgress upgrade for PHP ${_T_PHP_VRN}..."
+      msg "INFO: Installing UploadProgress ${_UPROGRESS_LEGACY_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf uploadprogress*
       get_dev_src "uploadprogress-${_UPROGRESS_LEGACY_VRN}.tgz"
@@ -961,7 +961,7 @@ update_php_extensions() {
     fi
   elif [ "$1" = "72" ] || [ "$1" = "73" ] || [ "$1" = "74" ] || [ "$1" = "80" ] || [ "$1" = "81" ]; then
     if [ ! -e "${pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log" ]; then
-      msg "INFO: Installing UploadProgress upgrade for PHP ${_T_PHP_VRN}..."
+      msg "INFO: Installing UploadProgress ${_UPROGRESS_EIGHT_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf uploadprogress*
       get_dev_src "uploadprogress-${_UPROGRESS_EIGHT_VRN}.tgz"
@@ -975,7 +975,7 @@ update_php_extensions() {
     fi
   else
     if [ ! -e "${pthLog}/f_uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log" ]; then
-      msg "INFO: Installing UploadProgress upgrade for PHP ${_T_PHP_VRN}..."
+      msg "INFO: Installing UploadProgress ${_UPROGRESS_SEVEN_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf uploadprogress*
       get_dev_src "uploadprogress-${_UPROGRESS_SEVEN_VRN}.tar.gz"
@@ -991,7 +991,7 @@ update_php_extensions() {
   ###--------------------###
   if [ "$1" = "56" ]; then
     if [ ! -e "${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log" ]; then
-      msg "INFO: Installing JSMin for PHP ${_T_PHP_VRN}..."
+      msg "INFO: Installing JSMin ${_JSMIN_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf pecl-jsmin*
       get_dev_src "pecl-jsmin-${_JSMIN_VRN}.tar.gz"
@@ -1005,7 +1005,7 @@ update_php_extensions() {
     fi
   elif [ "$1" = "70" ] || [ "$1" = "71" ] || [ "$1" = "72" ] || [ "$1" = "73" ] || [ "$1" = "74" ]; then
     if [ ! -e "${pthLog}/php-pecl-jsmin-${_JSMIN_PHP7_VRN}-${_T_PHP_VRN}.log" ]; then
-      msg "INFO: Installing JSMin for PHP ${_T_PHP_VRN}..."
+      msg "INFO: Installing JSMin ${_JSMIN_PHP7_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf pecl-jsmin*
       get_dev_src "pecl-jsmin-${_JSMIN_PHP7_VRN}.tar.gz"
@@ -1021,7 +1021,7 @@ update_php_extensions() {
   ###--------------------###
   if [ "$1" = "56" ]; then
     if [ ! -e "${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log" ]; then
-      msg "INFO: Installing Twig C upgrade for PHP ${_T_PHP_VRN}..."
+      msg "INFO: Installing Twig C ${_TWIGC_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf twig*
       get_dev_src "twig-${_TWIGC_VRN}.tar.gz"
@@ -1038,7 +1038,7 @@ update_php_extensions() {
   if [ "$1" = "56" ] \
     && [ ! -e "${pthLog}/php-geos-${_GEOS_VRN}-${_T_PHP_VRN}.log" ]; then
     if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
-      msg "INFO: Building GEOS upgrade for PHP ${_T_PHP_VRN} from sources..."
+      msg "INFO: Building GEOS ${_GEOS_VRN} upgrade for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
         st_runner "apt-get update -qq" &> /dev/null
         st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
@@ -1067,7 +1067,7 @@ update_php_extensions() {
   if [ "$1" = "56" ] \
     && [ ! -e "${pthLog}/php-mongo-${_MONGO_VRN}-${_T_PHP_VRN}.log" ]; then
     if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
-      msg "INFO: Installing MongoDB PHP driver upgrade for PHP ${_T_PHP_VRN}..."
+      msg "INFO: Installing MongoDB ${_MONGO_VRN} PHP driver upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf mongo*
       get_dev_src "mongo-${_MONGO_VRN}.tgz"
@@ -1083,7 +1083,7 @@ update_php_extensions() {
   if [ "$1" != "56" ] \
     && [ ! -e "${pthLog}/php-mongodb-${_MONGODB_VRN}-${_T_PHP_VRN}.log" ]; then
     if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
-      msg "INFO: Installing MongoDB PHP driver upgrade for PHP ${_T_PHP_VRN}..."
+      msg "INFO: Installing MongoDB ${_MONGO_VRN} PHP driver upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf mongodb*
       get_dev_src "mongodb-${_MONGODB_VRN}.tgz"
@@ -1098,7 +1098,7 @@ update_php_extensions() {
   fi
   ###--------------------###
   if [ ! -e "${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
-    msg "INFO: Installing Imagick upgrade for PHP ${_T_PHP_VRN}..."
+    msg "INFO: Installing Imagick {_IMAGICK_VRN} upgrade for PHP ${_T_PHP_VRN}..."
     if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
       mrun "${_INSTALL} libmagickwand-dev" 2> /dev/null
       touch ${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
@@ -1117,7 +1117,7 @@ update_php_extensions() {
   ###--------------------###
   if [ "$1" = "56" ]; then
     if [ ! -e "${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log" ]; then
-      msg "INFO: Installing MailParse upgrade for PHP ${_T_PHP_VRN}..."
+      msg "INFO: Installing MailParse ${_MAILPARSE_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf mailparse*
       get_dev_src "mailparse-${_MAILPARSE_VRN}.tgz"
@@ -1173,7 +1173,7 @@ update_php_extensions() {
     fi
   fi
   if [ ! -e "${pthLog}/f_yaml-${_YAML_VRN}-${_T_PHP_VRN}.log" ]; then
-    msg "INFO: Installing YAML upgrade for PHP ${_T_PHP_VRN}..."
+    msg "INFO: Installing YAML ${_YAML_VRN} upgrade for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf yaml*
     if [ "$1" = "56" ] || [ "$1" = "70" ]; then
