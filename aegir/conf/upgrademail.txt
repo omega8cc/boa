@@ -64,17 +64,14 @@ any of them is used by any of the sites hosted on your system, none of them are
 not only actively maintained any longer, but even security updates have been
 dropped for all of them (PHP 7.3 security support ended on December 6, 2021).
 
-This BOA upgrade added support for latest PHP 8.0 and 8.1 versions.
+This BOA upgrade makes Aegir itself fully compatible with PHP 8.0 and 8.1,
+so both can be used as default versions in the Aegir PHP configuration files:
+~/static/control/cli.info and ~/static/control/fpm.info
 
-!!! >>> PHP CAVEATS:
+!!! >>> PHP CAVEATS for Drupal core 7-10 versions:
 
-  => PHP 8.0 is only supported by Drupal 9.1.0 or newer
-  => PHP 8.1 is only supported by Drupal 9.3.0 or newer
-  => Use 8.x only for specified sites in the ~/static/control/multi-fpm.info
-  => Do NOT use 8.0 nor 8.1 in the default Aegir PHP configuration files:
-     ~/static/control/cli.info nor ~/static/control/fpm.info
-
-Check also: https://www.drupal.org/docs/system-requirements/php-requirements
+  => https://www.drupal.org/docs/7/system-requirements/php-requirements
+  => https://www.drupal.org/docs/system-requirements/php-requirements
 
 Please note that both Drupal 7 and our Pressflow 6 LTS version already support
 PHP 7.4, although you may not be able to use PHP 7.4 if you are running some

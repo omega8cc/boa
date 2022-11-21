@@ -58,15 +58,14 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### /root/.${_USER}.octopus.cnf file without system admin (root) assistance.
 ###
 
-!!! >>> PHP CAVEATS:
+Aegir version provided by BOA is now fully compatible with PHP 8.0 and 8.1,
+so both can be used as default versions in the Aegir PHP configuration files:
+~/static/control/cli.info and ~/static/control/fpm.info
 
-  => PHP 8.0 is only supported by Drupal 9.1.0 or newer
-  => PHP 8.1 is only supported by Drupal 9.3.0 or newer
-  => Use 8.x only for specified sites in the ~/static/control/multi-fpm.info
-  => Do NOT use 8.0 nor 8.1 in the default Aegir PHP configuration files:
-     ~/static/control/cli.info nor ~/static/control/fpm.info
+!!! >>> PHP CAVEATS for Drupal core 7-10 versions:
 
-Check also: https://www.drupal.org/docs/system-requirements/php-requirements
+  => https://www.drupal.org/docs/7/system-requirements/php-requirements
+  => https://www.drupal.org/docs/system-requirements/php-requirements
 
 ###
 ### /data/disk/${_USER}/static/control/fpm.info
@@ -83,6 +82,8 @@ Check also: https://www.drupal.org/docs/system-requirements/php-requirements
 ###
 ### Supported values for single PHP-FPM mode which can be written in this file:
 ###
+### 8.1
+### 8.0
 ### 7.4
 ### 7.3
 ### 7.2
@@ -134,6 +135,8 @@ Check also: https://www.drupal.org/docs/system-requirements/php-requirements
 ###
 ### Supported values which can be written in this file:
 ###
+### 8.1
+### 8.0
 ### 7.4
 ### 7.3
 ### 7.2
