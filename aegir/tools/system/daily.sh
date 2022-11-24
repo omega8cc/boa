@@ -2622,7 +2622,6 @@ process() {
           if [ ! -z "${Dan}" ] \
             && [ "${Dan}" != "hostmaster" ]; then
             if_site_db_conversion
-            if_gen_goaccess ${Dom}
             searchStringB=".dev."
             searchStringC=".devel."
             searchStringD=".temp."
@@ -2647,6 +2646,7 @@ process() {
                 fix_robots_txt
               fi
               check_update_le_ssl
+              if_gen_goaccess ${Dom}
               ;;
             esac
             fix_site_control_files

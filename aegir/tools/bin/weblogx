@@ -5,10 +5,9 @@ SHELL=/bin/bash
 
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 _USE_GITHUB=/root/.goaccess.use.github.txt
-_GOACCESS_VRN=1.5.3
-_TOKYOCABINET_VRN=1.4.48
+_GOACCESS_VRN=1.6.5
 sPmrs="https://raw.githubusercontent.com/matomo-org/referrer-spam-blacklist/master/spammers.txt"
-touch /root/.goaccess.use.github.txt
+rm -f /root/.goaccess.use.github.txt
 
 check_root() {
   if [ `whoami` = "root" ]; then
@@ -130,14 +129,6 @@ install_goaccess() {
   mkdir -p /var/opt
   cd /var/opt
   rm -rf /var/opt/goaccess*
-  rm -rf /var/opt/tokyocabinet*
-  echo "Downloading from ${urlDev}/src/tokyocabinet-${_TOKYOCABINET_VRN}.tar.gz"
-  curl -I ${urlDev}/src/tokyocabinet-${_TOKYOCABINET_VRN}.tar.gz
-  curl ${crlGet} "${urlDev}/src/tokyocabinet-${_TOKYOCABINET_VRN}.tar.gz" | tar -xzf -
-  cd /var/opt/tokyocabinet-${_TOKYOCABINET_VRN}
-  bash ./configure --prefix=/usr --enable-off64 --enable-fastest
-  make --quiet
-  make --quiet install
   if [ -e "${_USE_GITHUB}" ]; then
     echo "Downloading from https://github.com/allinurl/goaccess.git"
     git clone https://github.com/allinurl/goaccess.git
@@ -149,11 +140,10 @@ install_goaccess() {
     curl ${crlGet} "${urlDev}/src/goaccess-${_GOACCESS_VRN}.tar.gz" | tar -xzf -
     cd /var/opt/goaccess-${_GOACCESS_VRN}
   fi
-  bash ./configure --prefix=/usr --enable-utf8 --enable-geoip=mmdb
+  bash ./configure --prefix=/usr --enable-utf8 --enable-geoip=legacy --with-getline
   make --quiet
   make --quiet install
   rm -rf /var/opt/goaccess*
-  rm -rf /var/opt/tokyocabinet*
   cd
 }
 
@@ -176,7 +166,7 @@ if_install() {
     fi
   fi
   if [ -e "/usr/etc/goaccess/goaccess.conf" ]; then
-    if [ ! -e "/root/.goaccessrc" ] || [ ! -e "/root/.goaccessrc.fix14" ]; then
+    if [ ! -e "/root/.goaccessrc" ] || [ ! -e "/root/.goaccessrc.fix18" ]; then
       echo 'date-format %d/%b/%Y' > /root/.goaccessrc
       echo 'time-format %H:%M:%S' >> /root/.goaccessrc
       echo 'log-format ~h{, "} %v [%d:%t %^] "%r" %s %^ %^ %b "%R" "%u" %T "%^"' >> /root/.goaccessrc
@@ -230,7 +220,7 @@ if_install() {
       fi
       echo 'html-prefs {"theme":"darkBlue","perPage":10,"visitors":{"plot":{"chartType":"bar"}},"visit_time":{"plot":{"chartType":"bar"}}}' >> /root/.goaccessrc
       rm -f /root/.goaccessrc.fix*
-      touch /root/.goaccessrc.fix14
+      touch /root/.goaccessrc.fix18
       sleep 1
     fi
   else
@@ -252,7 +242,7 @@ for i in "$@"; do
     ;;
     -u=*|--url=*)
         _URL="${i#*=}"
-        shift # --url=https://site-d8.foo.bar.boa.io/
+        shift # --url=https://site-d9.foo.bar.aegir.cc/
     ;;
     -d=*|--dir=*)
         _DIR="${i#*=}"
@@ -274,8 +264,8 @@ if [ -z "${_URL}" ]; then
     exit 1;
   fi
 else
-  _SITE=${_URL%.boa.io}
-  _SITE=${_SITE%.boa.io}
+  _SITE=${_URL%.aegir.cc}
+  _SITE=${_SITE%.aegir.cc}
   _SITE=${_SITE#dev-}
   _SITE=${_SITE#stage-}
   _SITE=${_SITE#prod-}
@@ -336,9 +326,9 @@ _GOVER=$(goaccess -V | awk 'NR == 1 { print substr ($3,0,1)}')
 
 [[ ${_GACONF} ]] && conf=(-p "${_GACONF}")
 if [[ ${_GOVER} = 1 ]]; then
-  goaccess -p /root/.goaccessrc --no-global-config --no-query-string -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" -a -o "${_TARGET}/index.html"
+  goaccess -p /root/.goaccessrc --no-global-config --persist --no-query-string -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" -a -o "${_TARGET}/index.html"
 else
-  goaccess -p /root/.goaccessrc --no-global-config --no-query-string -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" > "${_TARGET}/index.html"
+  goaccess -p /root/.goaccessrc --no-global-config --persist --no-query-string -f "${_TARGET}/mrgd_nginx.log" "${conf[@]}" > "${_TARGET}/index.html"
 fi
 
 if [ -e "${_TARGET}/mrgd_nginx.log" ]; then
