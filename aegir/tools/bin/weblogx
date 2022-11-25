@@ -198,7 +198,7 @@ if_install() {
         curl -s -A iCab "${sPmrs}" -o /usr/etc/goaccess/spammers.txt
       fi
       if [ -e "/usr/etc/goaccess/spammers.txt" ]; then
-        echo 'ignore-referer /usr/etc/goaccess/spammers.txt' >> /root/.goaccessrc
+        echo 'ignore-referrer /usr/etc/goaccess/spammers.txt' >> /root/.goaccessrc
       fi
       echo 'ignore-statics req' >> /root/.goaccessrc
       echo 'ignore-status 301' >> /root/.goaccessrc
