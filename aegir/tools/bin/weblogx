@@ -315,9 +315,9 @@ if [ -e "${_TARGET}/mrgd_nginx.log" ]; then
 fi
 
 if [[ "${_SITE}" =~ "ALL" ]]; then
-  _SITE_REGEX="/"
+  _SITE_REGEX=" /"
 else
-  _SITE_REGEX="${_SITE}"
+  _SITE_REGEX=" ${_SITE} "
 fi
 
 find ${_ARCHLOGS}/unzip -name "access*" -exec cat {} \; | grep "${_SITE_REGEX}" >> ${_TARGET}/mrgd_nginx.log
