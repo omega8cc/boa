@@ -169,7 +169,7 @@ if_install() {
     if [ ! -e "/root/.goaccessrc" ] || [ ! -e "/root/.goaccessrc.fix18" ]; then
       echo 'date-format %d/%b/%Y' > /root/.goaccessrc
       echo 'time-format %H:%M:%S' >> /root/.goaccessrc
-      echo 'log-format ~h{, "} %v [%d:%t %^] "%r" %s %^ %^ %b "%R" "%u" %T "%^"' >> /root/.goaccessrc
+      echo 'log-format "~h{, }" %v [%d:%t %^] "%r" %s %^ %^ %b "%R" "%u" %T "%^"' >> /root/.goaccessrc
       echo '444-as-404 true' >> /root/.goaccessrc
       echo '4xx-to-unique-count false' >> /root/.goaccessrc
       echo 'agent-list false' >> /root/.goaccessrc
