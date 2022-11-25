@@ -166,7 +166,7 @@ if_install() {
     fi
   fi
   if [ -e "/usr/etc/goaccess/goaccess.conf" ]; then
-    if [ ! -e "/root/.goaccessrc" ] || [ ! -e "/root/.goaccessrc.fix18" ]; then
+    if [ ! -e "/root/.goaccessrc" ] || [ ! -e "/root/.goaccessrc.fix.019.pid" ]; then
       echo 'date-format %d/%b/%Y' > /root/.goaccessrc
       echo 'time-format %H:%M:%S' >> /root/.goaccessrc
       echo 'log-format "~h{, }" %v [%d:%t %^] "%r" %s %^ %^ %b "%R" "%u" %T "%^"' >> /root/.goaccessrc
@@ -221,7 +221,7 @@ if_install() {
       fi
       echo 'html-prefs {"theme":"darkBlue","perPage":10,"visitors":{"plot":{"chartType":"bar"}},"visit_time":{"plot":{"chartType":"bar"}}}' >> /root/.goaccessrc
       rm -f /root/.goaccessrc.fix*
-      touch /root/.goaccessrc.fix18
+      touch /root/.goaccessrc.fix.019.pid
       sleep 1
     fi
   else
