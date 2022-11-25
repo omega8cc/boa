@@ -2873,6 +2873,17 @@ purge_cruft_machine() {
     _PURGE_TMP="0"
   fi
 
+  _PURGE_CTRL="14"
+
+  find ${User}/log/ctrl/*cert-x1-rebuilt.info \
+    -mtime +${_PURGE_CTRL} -type f -exec rm -rf {} \; &> /dev/null
+
+  find ${User}/log/ctrl/plr* \
+    -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+
+  find ${User}/log/ctrl/*rom-fix.info \
+    -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+
   find ${User}/backups/* -mtime +${_PURGE_BACKUPS} -exec \
     rm -rf {} \; &> /dev/null
 
@@ -2945,9 +2956,6 @@ purge_cruft_machine() {
   chown ${_HM_U}.ftp:users ${User}/static/trash &> /dev/null
   find ${User}/static/trash/* \
     -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
-
-  find ${User}/log/ctrl/* \
-    -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 
   for i in `dir -d /home/${_HM_U}.ftp/platforms/*`; do
     if [ -e "${i}" ]; then
