@@ -195,7 +195,8 @@ if_install() {
       echo 'exclude-ip 127.0.0.1' >> /root/.goaccessrc
       echo 'ignore-crawlers true' >> /root/.goaccessrc
       if [ ! -e "/usr/etc/goaccess/spammers.txt" ]; then
-        curl -s -A iCab "${sPmrs}" -o /usr/etc/goaccess/spammers.txt
+        ### curl ${crlGet} "${sPmrs}" -o /usr/etc/goaccess/spammers.txt
+        curl ${crlGet} "${urlDev}/src/spammers.txt" -o /usr/etc/goaccess/spammers.txt
       fi
       if [ -e "/usr/etc/goaccess/spammers.txt" ]; then
         echo 'ignore-referrer /usr/etc/goaccess/spammers.txt' >> /root/.goaccessrc
