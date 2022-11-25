@@ -2537,6 +2537,15 @@ if_gen_goaccess() {
     isWblgx=$(which weblogx 2>&1)
     if [ -x "${isWblgx}" ]; then
       ${isWblgx} --site="${1}" --env="${_HM_U}"
+      wait
+      if [ ! -e "/data/disk/${_HM_U}/static/goaccess" ]; then
+        mkdir -p /data/disk/${_HM_U}/static/goaccess
+      fi
+      if [ -e "/var/www/adminer/access/${_HM_U}/${1}/index.html" ]; then
+        cp -af /var/www/adminer/access/${_HM_U}/${1} /data/disk/${_HM_U}/static/goaccess/
+      else
+        rm -rf /var/www/adminer/access/${_HM_U}/${1}
+      fi
     fi
   fi
 }
