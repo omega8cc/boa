@@ -3270,7 +3270,7 @@ action() {
           rm -f /home/${_HM_U}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
         fi
         check_update_le_hm_ssl ${_HM_U}
-        if_gen_goaccess "ALL"
+        ### if_gen_goaccess "ALL"
         echo "Done for ${User}"
         enable_chattr ${_HM_U}.ftp
       else
