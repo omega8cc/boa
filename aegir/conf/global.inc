@@ -282,6 +282,7 @@ $boa_ini = array(
   'redis_exclude_bins' => FALSE,
   'speed_booster_anon_cache_ttl' => FALSE,
   'allow_anon_node_add' => FALSE,
+  'enable_newrelic_integration' => FALSE,
   'disable_admin_dos_protection' => FALSE,
   'disable_user_register_protection' => FALSE,
   'allow_private_file_downloads' => FALSE,
@@ -346,6 +347,7 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Redis-Exclude-Bins: " . $all_ini['redis_exclude_bins']);
   header("X-Ini-Speed-Booster-Anon-Cache-Ttl: " . $all_ini['speed_booster_anon_cache_ttl']);
   header("X-Ini-Allow-Anon-Node-Add: " . $all_ini['allow_anon_node_add']);
+  header("X-Ini-Enable-NewRelic-Integration: " . $all_ini['enable_newrelic_integration']);
   header("X-Ini-Disable-Admin-Dos-Protection: " . $all_ini['disable_admin_dos_protection']);
   header("X-Ini-Allow-Private-File-Downloads: " . $all_ini['allow_private_file_downloads']);
   header("X-Ini-Server-Name-Cookie-Domain: " . $all_ini['server_name_cookie_domain']);
@@ -1417,7 +1419,7 @@ if (!$custom_da) {
  * New Relic - see: https://newrelic.com/docs/php/per-directory-settings#perdir-rollup
  * Support for background job borrowed from https://drupal.org/project/newrelic_drush_plugin
  */
-if (extension_loaded('newrelic')) {
+if (extension_loaded('newrelic') && $all_ini['enable_newrelic_integration']) {
   ini_set('newrelic.framework', 'drupal');
   $this_instance = FALSE;
   if ($is_backend) {
