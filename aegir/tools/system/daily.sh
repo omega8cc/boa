@@ -588,6 +588,7 @@ fix_o_contrib_symlink() {
       fi
     elif [ -e "${Plr}/core" ] \
       && [ ! -e "${Plr}/core/themes/stable9" ] \
+      && [ ! -e "${Plr}/core/themes/olivero" ] \
       && [ -e "${_O_CONTRIB_EIGHT}" ]; then
       if [ ! -e "${Plr}/modules/o_contrib_eight" ]; then
         ln -sf ${_O_CONTRIB_EIGHT} ${Plr}/modules/o_contrib_eight &> /dev/null
@@ -601,6 +602,11 @@ fix_o_contrib_symlink() {
       fi
       if [ ! -e "${Plr}/modules/o_contrib_nine" ]; then
         ln -sf ${_O_CONTRIB_NINE} ${Plr}/modules/o_contrib_nine &> /dev/null
+      fi
+    elif [ -e "${Plr}/core/themes/olivero" ] \
+      && [ -e "${_O_CONTRIB_TEN}" ]; then
+      if [ ! -e "${Plr}/modules/o_contrib_ten" ]; then
+        ln -sf ${_O_CONTRIB_TEN} ${Plr}/modules/o_contrib_ten &> /dev/null
       fi
     else
       if [ -e "${Plr}/modules/watchdog" ]; then
@@ -1262,7 +1268,8 @@ fix_modules() {
     || [ -e "${Plr}/modules/o_contrib/advagg" ] \
     || [ -e "${Plr}/modules/o_contrib_seven/advagg" ] \
     || [ -e "${Plr}/modules/o_contrib_eight/advagg" ] \
-    || [ -e "${Plr}/modules/o_contrib_nine/advagg" ]; then
+    || [ -e "${Plr}/modules/o_contrib_nine/advagg" ] \
+    || [ -e "${Plr}/modules/o_contrib_ten/advagg" ]; then
     _MODULE_T=$(run_drush8_nosilent_cmd "pml --status=enabled \
       --type=module | grep \(advagg\)" 2>&1)
     if [[ "${_MODULE_T}" =~ "(advagg)" ]]; then
@@ -1524,11 +1531,23 @@ fix_modules() {
     else
       echo ";session_gc_eol = 86400" >> ${_PLR_CTRL_F}
     fi
-    _VAR_IF_PRESENT=$(grep "redis_legacy_mode" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_legacy_mode" ]]; then
+    _VAR_IF_PRESENT=$(grep "enable_newrelic_integration" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "enable_newrelic_integration" ]]; then
       _DO_NOTHING=YES
     else
-      echo ";redis_legacy_mode = FALSE" >> ${_PLR_CTRL_F}
+      echo ";enable_newrelic_integration = FALSE" >> ${_PLR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_old_nine_mode" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_old_nine_mode" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_old_nine_mode = FALSE" >> ${_PLR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_old_eight_mode" ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_old_eight_mode" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_old_eight_mode = FALSE" >> ${_PLR_CTRL_F}
     fi
     _VAR_IF_PRESENT=$(grep "redis_use_modern" ${_PLR_CTRL_F} 2>&1)
     if [[ "${_VAR_IF_PRESENT}" =~ "redis_use_modern" ]]; then
@@ -1622,11 +1641,23 @@ fix_modules() {
     else
       echo ";session_gc_eol = 86400" >> ${_DIR_CTRL_F}
     fi
-    _VAR_IF_PRESENT=$(grep "redis_legacy_mode" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_legacy_mode" ]]; then
+    _VAR_IF_PRESENT=$(grep "enable_newrelic_integration" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "enable_newrelic_integration" ]]; then
       _DO_NOTHING=YES
     else
-      echo ";redis_legacy_mode = FALSE" >> ${_DIR_CTRL_F}
+      echo ";enable_newrelic_integration = FALSE" >> ${_DIR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_old_nine_mode" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_old_nine_mode" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_old_nine_mode = FALSE" >> ${_DIR_CTRL_F}
+    fi
+    _VAR_IF_PRESENT=$(grep "redis_old_eight_mode" ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_VAR_IF_PRESENT}" =~ "redis_old_eight_mode" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo ";redis_old_eight_mode = FALSE" >> ${_DIR_CTRL_F}
     fi
     _VAR_IF_PRESENT=$(grep "redis_use_modern" ${_DIR_CTRL_F} 2>&1)
     if [[ "${_VAR_IF_PRESENT}" =~ "redis_use_modern" ]]; then
@@ -1763,7 +1794,9 @@ fix_modules() {
         enable_modules_with_drush8 "${_MODULES_ON_SEVEN}"
       fi
     fi
-  elif [ -e "${Plr}/modules/o_contrib_nine/redis_compr" ] \
+  elif [ -e "${Plr}/modules/o_contrib_ten/redis_nine_ten" ] \
+    || [ -e "${Plr}/modules/o_contrib_nine/redis_nine_ten" ] \
+    || [ -e "${Plr}/modules/o_contrib_nine/redis_compr" ] \
     || [ -e "${Plr}/modules/o_contrib_eight/redis_compr" ] \
     || [ -e "${Plr}/modules/o_contrib_eight/redis_eight" ]; then
     if [ ! -e "${Plr}/core/modules/node" ] \
@@ -2660,7 +2693,8 @@ process() {
             esac
             fix_site_control_files
             if [ -e "${Plr}/modules/o_contrib_eight" ] \
-              || [ -e "${Plr}/modules/o_contrib_nine" ]; then
+              || [ -e "${Plr}/modules/o_contrib_nine" ] \
+              || [ -e "${Plr}/modules/o_contrib_ten" ]; then
               fix_user_register_protection_with_cSet
               if [[ "${_X_SE}" =~ "OFF" ]]; then
                 run_drush8_cmd "advagg-force-new-aggregates"
@@ -3381,6 +3415,7 @@ if [ -e "/data/all" ]; then
   _O_CONTRIB_SEVEN="/data/all/${_LAST_ALL}/o_contrib_seven"
   _O_CONTRIB_EIGHT="/data/all/${_LAST_ALL}/o_contrib_eight"
   _O_CONTRIB_NINE="/data/all/${_LAST_ALL}/o_contrib_nine"
+  _O_CONTRIB_TEN="/data/all/${_LAST_ALL}/o_contrib_ten"
 elif [ -e "/data/disk/all" ]; then
   cd /data/disk/all
   listl=([0-9]*)
@@ -3389,11 +3424,13 @@ elif [ -e "/data/disk/all" ]; then
   _O_CONTRIB_SEVEN="/data/disk/all/${_LAST_ALL}/o_contrib_seven"
   _O_CONTRIB_EIGHT="/data/disk/all/${_LAST_ALL}/o_contrib_eight"
   _O_CONTRIB_NINE="/data/disk/all/${_LAST_ALL}/o_contrib_nine"
+  _O_CONTRIB_TEN="/data/disk/all/${_LAST_ALL}/o_contrib_ten"
 else
   _O_CONTRIB=NO
   _O_CONTRIB_SEVEN=NO
   _O_CONTRIB_EIGHT=NO
   _O_CONTRIB_NINE=NO
+  _O_CONTRIB_TEN=NO
 fi
 #
 mkdir -p /var/xdrago/log/daily
