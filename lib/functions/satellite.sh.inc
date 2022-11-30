@@ -2041,6 +2041,13 @@ satellite_check_fix_o_contrib() {
     get_dev_contrib "redis_compr-${_REDIS_C_VERSION}.tar.gz"
     echo update > ${_D}/000/modules/redis_compr/${_REDIS_C_VERSION}.${_X_SE}.info
   fi
+  if [ ! -e "${_D}/000/modules/redis_nine_ten/${_REDIS_T_VERSION}.${_X_SE}.info" ]; then
+    mkdir -p ${_D}/000/modules
+    cd ${_D}/000/modules
+    rm -rf ${_D}/000/modules/redis_nine_ten
+    get_dev_contrib "redis_nine_ten-${_REDIS_T_VERSION}.tar.gz"
+    echo update > ${_D}/000/modules/redis_nine_ten/${_REDIS_T_VERSION}.${_X_SE}.info
+  fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
 }
