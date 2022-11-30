@@ -542,6 +542,7 @@ upgrade_aegir_master() {
     echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${vBs}/${filIncB}
     echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${vBs}/${filIncB}
     echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${vBs}/${filIncB}
+    echo "_X_SE=\"${_X_SE}\""                           >> ${vBs}/${filIncB}
     echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${vBs}/${filIncB}
 
     if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
@@ -864,7 +865,7 @@ EOFMYSQL
     echo "_DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${vBs}/${filIncB}
     echo "_DOMAIN=\"${_THIS_FRONT}\""                   >> ${vBs}/${filIncB}
     echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${vBs}/${filIncB}
-    echo "_ESC_PASS=\"${_ESC_PASS}\""                 >> ${vBs}/${filIncB}
+    echo "_ESC_PASS=\"${_ESC_PASS}\""                   >> ${vBs}/${filIncB}
     echo "_LOCAL_NETWORK_IP=\"${_LOCAL_NETWORK_IP}\""   >> ${vBs}/${filIncB}
     echo "_MY_OWNIP=\"${_MY_OWNIP}\""                   >> ${vBs}/${filIncB}
     echo "_NOW=\"${_NOW}\""                             >> ${vBs}/${filIncB}
@@ -873,6 +874,7 @@ EOFMYSQL
     echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${vBs}/${filIncB}
     echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${vBs}/${filIncB}
     echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${vBs}/${filIncB}
+    echo "_X_SE=\"${_X_SE}\""                           >> ${vBs}/${filIncB}
 
     master_download_for_local_build
 

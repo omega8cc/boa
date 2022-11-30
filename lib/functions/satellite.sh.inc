@@ -1957,7 +1957,7 @@ satellite_download_o_contrib_six() {
 satellite_check_fix_o_contrib() {
   _X_SE="414prodT43"
   if [ -e "${_CORE}/o_contrib_ten" ]; then
-    if [ ! -d "${_CORE}/o_contrib_ten/redis_compr" ] \
+    if [ ! -d "${_CORE}/o_contrib_ten/redis_nine_ten" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       msg "${_STATUS} A: Running o_contrib_ten forced upgrade..."
       cd ${_CORE}/o_contrib_ten
@@ -1967,7 +1967,7 @@ satellite_check_fix_o_contrib() {
     fi
   fi
   if [ -e "${_CORE}/o_contrib_nine" ]; then
-    if [ ! -d "${_CORE}/o_contrib_nine/redis_compr" ] \
+    if [ ! -d "${_CORE}/o_contrib_nine/redis_nine_ten" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       msg "${_STATUS} A: Running o_contrib_nine forced upgrade..."
       cd ${_CORE}/o_contrib_nine
@@ -1977,7 +1977,7 @@ satellite_check_fix_o_contrib() {
     fi
   fi
   if [ -e "${_CORE}/o_contrib_eight" ]; then
-    if [ ! -d "${_CORE}/o_contrib_eight/redis_eight" ] \
+    if [ ! -d "${_CORE}/o_contrib_eight/redis_compr" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       msg "${_STATUS} A: Running o_contrib_eight forced upgrade..."
       cd ${_CORE}/o_contrib_eight
@@ -3961,6 +3961,7 @@ satellite_make() {
   echo "_REDIS_C_VERSION=\"${_REDIS_C_VERSION}\""     >> ${writeTo}
   echo "_REDIS_L_VERSION=\"${_REDIS_L_VERSION}\""     >> ${writeTo}
   echo "_REDIS_N_VERSION=\"${_REDIS_N_VERSION}\""     >> ${writeTo}
+  echo "_REDIS_T_VERSION=\"${_REDIS_T_VERSION}\""     >> ${writeTo}
   echo "_RESTAURANT=\"${_RESTAURANT}\""               >> ${writeTo}
   echo "_SERIES_RESULT=\"${_SERIES_RESULT}\""         >> ${writeTo}
   echo "_SMALLCORE6=\"${_SMALLCORE6}\""               >> ${writeTo}
@@ -3986,11 +3987,8 @@ satellite_make() {
   echo "_USRG=\"${_USRG}\""                           >> ${writeTo}
   echo "_VARBASE=\"${_VARBASE}\""                     >> ${writeTo}
   echo "_WEBG=\"${_WEBG}\""                           >> ${writeTo}
+  echo "_X_SE=\"${_X_SE}\""                           >> ${writeTo}
   echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${writeTo}
-  echo "_REDIS_C_VERSION=\"${_REDIS_C_VERSION}\""     >> ${writeTo}
-  echo "_REDIS_L_VERSION=\"${_REDIS_L_VERSION}\""     >> ${writeTo}
-  echo "_REDIS_N_VERSION=\"${_REDIS_N_VERSION}\""     >> ${writeTo}
-  echo "_REDIS_T_VERSION=\"${_REDIS_T_VERSION}\""     >> ${writeTo}
 
   _THISHOST=$(cat /etc/hostname 2>&1)
   _THISHOST=$(echo -n ${_THISHOST} | tr -d "\n" 2>&1)
