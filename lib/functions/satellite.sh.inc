@@ -3987,6 +3987,10 @@ satellite_make() {
   echo "_VARBASE=\"${_VARBASE}\""                     >> ${writeTo}
   echo "_WEBG=\"${_WEBG}\""                           >> ${writeTo}
   echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${writeTo}
+  echo "_REDIS_C_VERSION=\"${_REDIS_C_VERSION}\""     >> ${writeTo}
+  echo "_REDIS_L_VERSION=\"${_REDIS_L_VERSION}\""     >> ${writeTo}
+  echo "_REDIS_N_VERSION=\"${_REDIS_N_VERSION}\""     >> ${writeTo}
+  echo "_REDIS_T_VERSION=\"${_REDIS_T_VERSION}\""     >> ${writeTo}
 
   _THISHOST=$(cat /etc/hostname 2>&1)
   _THISHOST=$(echo -n ${_THISHOST} | tr -d "\n" 2>&1)
