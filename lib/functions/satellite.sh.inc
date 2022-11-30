@@ -1719,12 +1719,12 @@ satellite_download_o_contrib_ten() {
   get_dev_contrib "cdn-8.x-3.5.tar.gz"
   get_dev_contrib "robotstxt-8.x-1.4.tar.gz"
   get_dev_contrib "readonlymode-8.x-1.1.tar.gz"
-  if [ ! -e "${_D}/000/modules/redis_nine_ten/${_REDIS_T_VERSION}.${_X_SE}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_nine_ten
     get_dev_contrib "redis_nine_ten-${_REDIS_T_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_nine_ten/${_REDIS_T_VERSION}.${_X_SE}.info
+    echo update > ${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_X_SE}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1742,19 +1742,19 @@ satellite_download_o_contrib_nine() {
   get_dev_contrib "cdn-8.x-3.5.tar.gz"
   get_dev_contrib "robotstxt-8.x-1.4.tar.gz"
   get_dev_contrib "readonlymode-8.x-1.1.tar.gz"
-  if [ ! -e "${_D}/000/modules/redis_nine_ten/${_REDIS_T_VERSION}.${_X_SE}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_nine_ten
     get_dev_contrib "redis_nine_ten-${_REDIS_T_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_nine_ten/${_REDIS_T_VERSION}.${_X_SE}.info
+    echo update > ${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_X_SE}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis_compr/${_REDIS_C_VERSION}.${_X_SE}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_compr/ver-${_REDIS_C_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_compr
     get_dev_contrib "redis_compr-${_REDIS_C_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_compr/${_REDIS_C_VERSION}.${_X_SE}.info
+    echo update > ${_D}/000/modules/redis_compr/ver-${_REDIS_C_VERSION}.${_X_SE}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1772,19 +1772,19 @@ satellite_download_o_contrib_eight() {
   get_dev_contrib "cdn-8.x-3.5.tar.gz"
   get_dev_contrib "robotstxt-8.x-1.4.tar.gz"
   get_dev_contrib "readonlymode-8.x-1.1.tar.gz"
-  if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.${_X_SE}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_eight/ver-${_REDIS_N_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_eight
     get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.${_X_SE}.info
+    echo update > ${_D}/000/modules/redis_eight/ver-${_REDIS_N_VERSION}.${_X_SE}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis_compr/${_REDIS_C_VERSION}.${_X_SE}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_compr/ver-${_REDIS_C_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_compr
     get_dev_contrib "redis_compr-${_REDIS_C_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_compr/${_REDIS_C_VERSION}.${_X_SE}.info
+    echo update > ${_D}/000/modules/redis_compr/ver-${_REDIS_C_VERSION}.${_X_SE}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1863,12 +1863,12 @@ satellite_download_o_contrib_seven() {
     get_dev_contrib "redis-mod-26-06-2015.tar.gz"
     echo update > ${_D}/000/modules/redis/update-${_X_VERSION}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.${_X_SE}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_edge
     get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.${_X_SE}.info
+    echo update > ${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_X_SE}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1941,12 +1941,12 @@ satellite_download_o_contrib_six() {
     get_dev_contrib "redis-mod-26-06-2015.tar.gz"
     echo update > ${_D}/000/modules/redis/update-${_X_VERSION}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.${_X_SE}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_edge
     get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.${_X_SE}.info
+    echo update > ${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_X_SE}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -2020,33 +2020,33 @@ satellite_check_fix_o_contrib() {
     get_dev_contrib "redis-mod-26-06-2015.tar.gz"
     echo update > ${_D}/000/modules/redis/update-${_X_VERSION}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.${_X_SE}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_edge
     get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_edge/${_REDIS_L_VERSION}.${_X_SE}.info
+    echo update > ${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_X_SE}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.${_X_SE}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_eight/ver-${_REDIS_N_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_eight
     get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_eight/${_REDIS_N_VERSION}.${_X_SE}.info
+    echo update > ${_D}/000/modules/redis_eight/ver-${_REDIS_N_VERSION}.${_X_SE}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis_compr/${_REDIS_C_VERSION}.${_X_SE}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_compr/ver-${_REDIS_C_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_compr
     get_dev_contrib "redis_compr-${_REDIS_C_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_compr/${_REDIS_C_VERSION}.${_X_SE}.info
+    echo update > ${_D}/000/modules/redis_compr/ver-${_REDIS_C_VERSION}.${_X_SE}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis_nine_ten/${_REDIS_T_VERSION}.${_X_SE}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_nine_ten
     get_dev_contrib "redis_nine_ten-${_REDIS_T_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_nine_ten/${_REDIS_T_VERSION}.${_X_SE}.info
+    echo update > ${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_X_SE}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
