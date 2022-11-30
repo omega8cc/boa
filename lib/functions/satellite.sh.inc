@@ -1649,8 +1649,8 @@ satellite_o_contrib_nine_update_global() {
         rm -rf ${i}/o_contrib_nine/redis_eight
       fi
       if [ -e "${_D}/000/modules/redis_nine_ten" ] \
-        && [ ! -L "${i}/o_contrib_ten/redis_nine_ten" ]; then
-        ln -sf ${_D}/000/modules/redis_nine_ten ${i}/o_contrib_ten/redis_nine_ten
+        && [ ! -L "${i}/o_contrib_nine/redis_nine_ten" ]; then
+        ln -sf ${_D}/000/modules/redis_nine_ten ${i}/o_contrib_nine/redis_nine_ten
       fi
       if [ -e "${_D}/000/modules/redis_compr" ] \
         && [ ! -L "${i}/o_contrib_nine/redis_compr" ]; then
