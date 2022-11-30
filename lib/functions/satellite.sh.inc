@@ -1335,7 +1335,7 @@ satellite_o_contrib_update_global() {
 
   for i in `dir -d ${_D}/*`; do
     if [ -e "${i}/o_contrib" ] \
-      && [ ! -e "${i}/o_contrib/update-${_X_VERSION}.info" ]; then
+      && [ ! -e "${i}/o_contrib/update-${_X_SE}-${_X_VERSION}.info" ]; then
       _FORCE_UP_SIX=YES
     elif [ -e "${i}/o_contrib" ] \
       && [ ! -e "${_D}/000/modules/redis_edge" ]; then
@@ -1422,7 +1422,7 @@ satellite_o_contrib_update_global() {
         && [ ! -L "${i}/o_contrib/redis_edge" ]; then
         ln -sf ${_D}/000/modules/redis_edge ${i}/o_contrib/redis_edge
       fi
-      touch ${i}/o_contrib/update-${_X_VERSION}.info
+      touch ${i}/o_contrib/update-${_X_SE}-${_X_VERSION}.info
       find ${i}/o_contrib -type d -exec chmod 0755 {} \; &> /dev/null
       find ${i}/o_contrib -type f -exec chmod 0644 {} \; &> /dev/null
     fi
@@ -1445,7 +1445,7 @@ satellite_o_contrib_seven_update_global() {
 
   for i in `dir -d ${_D}/*`; do
     if [ -e "${i}/o_contrib_seven" ] \
-      && [ ! -e "${i}/o_contrib_seven/update-${_X_VERSION}.info" ]; then
+      && [ ! -e "${i}/o_contrib_seven/update-${_X_SE}-${_X_VERSION}.info" ]; then
       _FORCE_UP_SEVEN=YES
     elif [ -e "${i}/o_contrib_seven" ] \
       && [ ! -e "${i}/o_contrib_seven/views_accelerator" ]; then
@@ -1565,7 +1565,7 @@ satellite_o_contrib_seven_update_global() {
       fi
       find ${i}/o_contrib_seven -type d -exec chmod 0755 {} \; &> /dev/null
       find ${i}/o_contrib_seven -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${i}/o_contrib_seven/update-${_X_VERSION}.info
+      touch ${i}/o_contrib_seven/update-${_X_SE}-${_X_VERSION}.info
     fi
   done
   cd
@@ -1579,7 +1579,7 @@ satellite_o_contrib_eight_update_global() {
 
   for i in `dir -d ${_D}/*`; do
     if [ -e "${i}/o_contrib_eight" ] \
-      && [ ! -e "${i}/o_contrib_eight/update-${_X_VERSION}.info" ]; then
+      && [ ! -e "${i}/o_contrib_eight/update-${_X_SE}-${_X_VERSION}.info" ]; then
       _FORCE_UP_EIGHT=YES
     elif [ -e "${i}/o_contrib_eight" ] \
       && [ ! -e "${_D}/000/modules/redis_eight" ]; then
@@ -1614,7 +1614,7 @@ satellite_o_contrib_eight_update_global() {
       fi
       find ${i}/o_contrib_eight -type d -exec chmod 0755 {} \; &> /dev/null
       find ${i}/o_contrib_eight -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${i}/o_contrib_eight/update-${_X_VERSION}.info
+      touch ${i}/o_contrib_eight/update-${_X_SE}-${_X_VERSION}.info
     fi
   done
   cd
@@ -1629,7 +1629,7 @@ satellite_o_contrib_nine_update_global() {
 
   for i in `dir -d ${_D}/*`; do
     if [ -e "${i}/o_contrib_nine" ] \
-      && [ ! -e "${i}/o_contrib_nine/update-${_X_VERSION}.info" ]; then
+      && [ ! -e "${i}/o_contrib_nine/update-${_X_SE}-${_X_VERSION}.info" ]; then
       _FORCE_UP_NINE=YES
     elif [ -e "${i}/o_contrib_nine" ] \
       && [ ! -L "${i}/o_contrib_nine/redis_nine_ten" ]; then
@@ -1658,7 +1658,7 @@ satellite_o_contrib_nine_update_global() {
       fi
       find ${i}/o_contrib_nine -type d -exec chmod 0755 {} \; &> /dev/null
       find ${i}/o_contrib_nine -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${i}/o_contrib_nine/update-${_X_VERSION}.info
+      touch ${i}/o_contrib_nine/update-${_X_SE}-${_X_VERSION}.info
     fi
   done
   cd
@@ -1673,7 +1673,7 @@ satellite_o_contrib_ten_update_global() {
 
   for i in `dir -d ${_D}/*`; do
     if [ -e "${i}/o_contrib_ten" ] \
-      && [ ! -e "${i}/o_contrib_ten/update-${_X_VERSION}.info" ]; then
+      && [ ! -e "${i}/o_contrib_ten/update-${_X_SE}-${_X_VERSION}.info" ]; then
       _FORCE_UP_TEN=YES
     elif [ -e "${i}/o_contrib_ten" ] \
       && [ ! -L "${i}/o_contrib_ten/redis_nine_ten" ]; then
@@ -1701,7 +1701,7 @@ satellite_o_contrib_ten_update_global() {
       fi
       find ${i}/o_contrib_ten -type d -exec chmod 0755 {} \; &> /dev/null
       find ${i}/o_contrib_ten -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${i}/o_contrib_ten/update-${_X_VERSION}.info
+      touch ${i}/o_contrib_ten/update-${_X_SE}-${_X_VERSION}.info
     fi
   done
   cd
@@ -1711,7 +1711,7 @@ satellite_o_contrib_ten_update_global() {
 #
 # Download o_contrib_ten.
 satellite_download_o_contrib_ten() {
-  touch update-${_X_VERSION}.info
+  touch update-${_X_SE}-${_X_VERSION}.info
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_ten modules..."
   fi
@@ -1734,7 +1734,7 @@ satellite_download_o_contrib_ten() {
 #
 # Download o_contrib_nine.
 satellite_download_o_contrib_nine() {
-  touch update-${_X_VERSION}.info
+  touch update-${_X_SE}-${_X_VERSION}.info
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_nine modules..."
   fi
@@ -1764,7 +1764,7 @@ satellite_download_o_contrib_nine() {
 #
 # Download o_contrib_eight.
 satellite_download_o_contrib_eight() {
-  touch update-${_X_VERSION}.info
+  touch update-${_X_SE}-${_X_VERSION}.info
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_eight modules..."
   fi
@@ -1795,7 +1795,7 @@ satellite_download_o_contrib_eight() {
 # Download o_contrib_seven.
 satellite_download_o_contrib_seven() {
   _X_SE="414prodT43"
-  touch update-${_X_VERSION}.info
+  touch update-${_X_SE}-${_X_VERSION}.info
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_seven modules..."
   fi
@@ -1856,12 +1856,12 @@ satellite_download_o_contrib_seven() {
   if [ ! -L "./redis_edge" ]; then
     ln -sf ${_D}/000/modules/redis_edge redis_edge
   fi
-  if [ ! -e "${_D}/000/modules/redis/update-${_X_VERSION}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis/update-${_X_SE}-${_X_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis
     get_dev_contrib "redis-mod-26-06-2015.tar.gz"
-    echo update > ${_D}/000/modules/redis/update-${_X_VERSION}.info
+    echo update > ${_D}/000/modules/redis/update-${_X_SE}-${_X_VERSION}.info
   fi
   if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
@@ -1878,7 +1878,7 @@ satellite_download_o_contrib_seven() {
 # Download o_contrib_six.
 satellite_download_o_contrib_six() {
   _X_SE="414prodT43"
-  touch update-${_X_VERSION}.info
+  touch update-${_X_SE}-${_X_VERSION}.info
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib modules..."
   fi
@@ -1927,19 +1927,19 @@ satellite_download_o_contrib_six() {
   if [ ! -L "./cache_backport" ]; then
     ln -sf ${_D}/000/modules/cache_backport cache_backport
   fi
-  if [ ! -e "${_D}/000/modules/cache_backport/update-${_X_VERSION}.info" ]; then
+  if [ ! -e "${_D}/000/modules/cache_backport/update-${_X_SE}-${_X_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/cache_backport
     get_dev_contrib "cache_backport-6.x-1.0-rc4.tar.gz"
-    echo update > cache_backport/update-${_X_VERSION}.info
+    echo update > cache_backport/update-${_X_SE}-${_X_VERSION}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis/update-${_X_VERSION}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis/update-${_X_SE}-${_X_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis
     get_dev_contrib "redis-mod-26-06-2015.tar.gz"
-    echo update > ${_D}/000/modules/redis/update-${_X_VERSION}.info
+    echo update > ${_D}/000/modules/redis/update-${_X_SE}-${_X_VERSION}.info
   fi
   if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
@@ -2006,19 +2006,19 @@ satellite_check_fix_o_contrib() {
       cd ${_CORE}/o_contrib
     fi
   fi
-  if [ ! -e "${_D}/000/modules/cache_backport/update-${_X_VERSION}.info" ]; then
+  if [ ! -e "${_D}/000/modules/cache_backport/update-${_X_SE}-${_X_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/cache_backport
     get_dev_contrib "cache_backport-6.x-1.0-rc4.tar.gz"
-    echo update > cache_backport/update-${_X_VERSION}.info
+    echo update > cache_backport/update-${_X_SE}-${_X_VERSION}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis/update-${_X_VERSION}.info" ]; then
+  if [ ! -e "${_D}/000/modules/redis/update-${_X_SE}-${_X_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis
     get_dev_contrib "redis-mod-26-06-2015.tar.gz"
-    echo update > ${_D}/000/modules/redis/update-${_X_VERSION}.info
+    echo update > ${_D}/000/modules/redis/update-${_X_SE}-${_X_VERSION}.info
   fi
   if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
