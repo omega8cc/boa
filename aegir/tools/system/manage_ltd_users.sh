@@ -1127,12 +1127,12 @@ satellite_tune_fpm_workers() {
 disable_newrelic() {
   _THIS_POOL_TPL="/opt/php$1/etc/pool.d/$2.conf"
   if [ -e "${_THIS_POOL_TPL}" ]; then
-    _CHECK_NEW_RELIC_KEY=$(grep "newrelic.enabled.*true" ${_THIS_POOL_TPL} 2>&1)
-    if [[ "${_CHECK_NEW_RELIC_KEY}" =~ "newrelic.enabled" ]]; then
+    _CHECK_NEW_RELIC_KEY=$(grep "newrelic.license" ${_THIS_POOL_TPL} 2>&1)
+    if [[ "${_CHECK_NEW_RELIC_KEY}" =~ "newrelic.license" ]]; then
       echo "New Relic for $2 will be disabled because newrelic.info does not exist"
       sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"\"/g" ${_THIS_POOL_TPL}
       wait
-      sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"false\"/g" ${_THIS_POOL_TPL}
+      sed -i "s/^php_admin_value\[newrelic.enabled\].*//g" ${_THIS_POOL_TPL}
       wait
       if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
         service php$1-fpm reload &> /dev/null
@@ -1160,12 +1160,11 @@ enable_newrelic() {
           echo "New Relic for $2 update with key ${_LOC_NEW_RELIC_KEY} in php$1"
           sed -i "s/^php_admin_value\[newrelic.license\].*/php_admin_value\[newrelic.license\] = \"${_LOC_NEW_RELIC_KEY}\"/g" ${_THIS_POOL_TPL}
           wait
-          sed -i "s/^php_admin_value\[newrelic.enabled\].*/php_admin_value\[newrelic.enabled\] = \"true\"/g" ${_THIS_POOL_TPL}
+          sed -i "s/^php_admin_value\[newrelic.enabled\].*//g" ${_THIS_POOL_TPL}
           wait
         else
           echo "New Relic for $2 setup with key ${_LOC_NEW_RELIC_KEY} in php$1"
           echo "php_admin_value[newrelic.license] = \"${_LOC_NEW_RELIC_KEY}\"" >> ${_THIS_POOL_TPL}
-          echo "php_admin_value[newrelic.enabled] = \"true\"" >> ${_THIS_POOL_TPL}
         fi
         if [ "$3" = "1" ] && [ -e "/etc/init.d/php$1-fpm" ]; then
           service php$1-fpm reload &> /dev/null
