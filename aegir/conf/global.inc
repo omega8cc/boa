@@ -1450,7 +1450,6 @@ if (!$custom_da) {
  * Support for background job borrowed from https://drupal.org/project/newrelic_drush_plugin
  */
 if (extension_loaded('newrelic') && $all_ini['enable_newrelic_integration']) {
-  ini_set('newrelic.enabled', 'true');
   ini_set('newrelic.framework', 'drupal');
   $this_instance = FALSE;
   if ($is_backend) {
@@ -1505,9 +1504,6 @@ if (extension_loaded('newrelic') && $all_ini['enable_newrelic_integration']) {
     ini_set('newrelic.appname', $this_instance);
     newrelic_set_appname($this_instance);
   }
-}
-else {
-  ini_set('newrelic.enabled', 'false');
 }
 
 
