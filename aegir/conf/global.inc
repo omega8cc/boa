@@ -1504,6 +1504,11 @@ if (extension_loaded('newrelic') && $all_ini['enable_newrelic_integration']) {
     newrelic_set_appname($this_instance);
   }
 }
+elseif (extension_loaded('newrelic') && !$all_ini['enable_newrelic_integration']) {
+  newrelic_disable_autorum();
+  newrelic_ignore_apdex();
+  newrelic_ignore_transaction();
+}
 
 
 /**
