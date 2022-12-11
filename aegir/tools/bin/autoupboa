@@ -428,7 +428,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     wait
     touch /root/.legacy_sys_prep_ugrade_ctrl.cnf
   fi
-  if [ ! -e "/root/.etc_crontab_update_ctrl.delayed.pid" ]; then
+  if [ ! -e "/root/.etc_crontab_update_ctrl.${_X_SE}.pid" ]; then
     rm -f /root/.*_crontab_*
     if [ ! -z "${_AUTO_UP_MONTH}" ] \
       && [ ! -z "${_AUTO_UP_DAY}" ]; then
@@ -437,7 +437,7 @@ if [ -e "/data/disk/arch/sql" ]; then
       crontab_cleanup
     fi
     service cron restart
-    touch /root/.etc_crontab_update_ctrl.delayed.pid
+    touch /root/.etc_crontab_update_ctrl.${_X_SE}.pid
   fi
 fi
 ###EOF2022###
