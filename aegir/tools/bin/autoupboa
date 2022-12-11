@@ -354,8 +354,9 @@ if [ -e "/data/disk/arch/sql" ]; then
       wait
       touch /root/.restart_site24x7_agent.pid
     fi
-    [ -e "/root/.silent.update.cnf" ] && rm -f /root/.silent.update.cnf
-    [ -e "/root/.silent.update.info" ] && rm -f /root/.silent.update.info
+    if [ ! -e "/root/.silent.update.cnf" ]; then
+      touch /root/.silent.update.cnf
+    fi
     [ -e "/root/.pause_tasks_maint.cnf" ] && rm -f /root/.pause_tasks_maint.cnf
     [ -e "/root/.restrict_this_vm.cnf" ] && rm -f /root/.restrict_this_vm.cnf
     [ -e "/root/.force.sites.verify.cnf" ] && rm -f /root/.force.sites.verify.cnf
