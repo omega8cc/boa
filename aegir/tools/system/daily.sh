@@ -587,24 +587,51 @@ fix_o_contrib_symlink() {
         ln -sf ${_O_CONTRIB_SEVEN} ${Plr}/modules/o_contrib_seven &> /dev/null
       fi
     elif [ -e "${Plr}/core" ] \
-      && [ ! -e "${Plr}/core/themes/stable9" ] \
       && [ ! -e "${Plr}/core/themes/olivero" ] \
+      && [ ! -e "${Plr}/core/themes/stable9" ] \
       && [ -e "${_O_CONTRIB_EIGHT}" ]; then
+      if [ -e "${Plr}/modules/o_contrib_nine" ] \
+        || [ -e "${Plr}/modules/.o_contrib_nine_dont_use" ]; then
+        rm -f ${Plr}/modules/o_contrib_nine
+        rm -f ${Plr}/modules/.o_contrib_nine_dont_use
+      fi
+      if [ -e "${Plr}/modules/o_contrib_ten" ] \
+        || [ -e "${Plr}/modules/.o_contrib_ten_dont_use" ]; then
+        rm -f ${Plr}/modules/o_contrib_ten
+        rm -f ${Plr}/modules/.o_contrib_ten_dont_use
+      fi
       if [ ! -e "${Plr}/modules/o_contrib_eight" ]; then
         ln -sf ${_O_CONTRIB_EIGHT} ${Plr}/modules/o_contrib_eight &> /dev/null
       fi
-    elif [ -e "${Plr}/core/themes/stable9" ] \
+    elif [ -e "${Plr}/core/themes/olivero" ] \
+      && [ -e "${Plr}/core/themes/classy" ] \
       && [ -e "${_O_CONTRIB_NINE}" ]; then
       if [ -e "${Plr}/modules/o_contrib_eight" ] \
         || [ -e "${Plr}/modules/.o_contrib_eight_dont_use" ]; then
         rm -f ${Plr}/modules/o_contrib_eight
         rm -f ${Plr}/modules/.o_contrib_eight_dont_use
       fi
+      if [ -e "${Plr}/modules/o_contrib_ten" ] \
+        || [ -e "${Plr}/modules/.o_contrib_ten_dont_use" ]; then
+        rm -f ${Plr}/modules/o_contrib_ten
+        rm -f ${Plr}/modules/.o_contrib_ten_dont_use
+      fi
       if [ ! -e "${Plr}/modules/o_contrib_nine" ]; then
         ln -sf ${_O_CONTRIB_NINE} ${Plr}/modules/o_contrib_nine &> /dev/null
       fi
     elif [ -e "${Plr}/core/themes/olivero" ] \
+      && [ ! -e "${Plr}/core/themes/classy" ] \
       && [ -e "${_O_CONTRIB_TEN}" ]; then
+      if [ -e "${Plr}/modules/o_contrib_eight" ] \
+        || [ -e "${Plr}/modules/.o_contrib_eight_dont_use" ]; then
+        rm -f ${Plr}/modules/o_contrib_eight
+        rm -f ${Plr}/modules/.o_contrib_eight_dont_use
+      fi
+      if [ -e "${Plr}/modules/o_contrib_nine" ] \
+        || [ -e "${Plr}/modules/.o_contrib_nine_dont_use" ]; then
+        rm -f ${Plr}/modules/o_contrib_nine
+        rm -f ${Plr}/modules/.o_contrib_nine_dont_use
+      fi
       if [ ! -e "${Plr}/modules/o_contrib_ten" ]; then
         ln -sf ${_O_CONTRIB_TEN} ${Plr}/modules/o_contrib_ten &> /dev/null
       fi

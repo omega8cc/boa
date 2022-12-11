@@ -382,11 +382,11 @@ if (file_exists('web.config')) {
       file_exists('autoload.php')) {
       $drupal_eight = TRUE;
       $drupal_id = 'A1';
-      if (file_exists('core/themes/stable9')) {
+      if (file_exists('core/themes/olivero') && file_exists('core/themes/classy')) {
         $drupal_nine = TRUE;
         $drupal_id = 'A2';
       }
-      if (file_exists('core/themes/olivero')) {
+      if (file_exists('core/themes/olivero') && !file_exists('core/themes/classy')) {
         $drupal_ten = TRUE;
         $drupal_id = 'A3';
       }
