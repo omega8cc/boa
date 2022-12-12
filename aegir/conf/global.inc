@@ -56,7 +56,7 @@ if (isset($_SERVER['RAW_HOST'])) {
  */
 if (function_exists('drush_get_command')) {
   $command = drush_get_command();
-  $command = explode(" ", $command['command'] ?? "");
+  $command = explode(" ", $command['command']);
   if ($command && !preg_match("/^help/", $command[0])) {
     $is_backend = TRUE;
   }
