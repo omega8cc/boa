@@ -56,8 +56,8 @@ if [ "${_DAY_SYSTEM_UP}" = "31" ]; then
   _MINUTE_OCTOPUS_UP="05"
   _MINUTE_SYSTEM_UP=30
 else
-  _HOUR_OCTOPUS_UP=4
-  _HOUR_SYSTEM_UP=1
+  _HOUR_OCTOPUS_UP=1
+  _HOUR_SYSTEM_UP=0
   _MINUTE_OCTOPUS_UP="05"
   _MINUTE_SYSTEM_UP="05"
 fi
@@ -337,7 +337,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     fi
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=12
-    _AUTO_UP_DAY=12
+    _AUTO_UP_DAY=13
     _AUTO_PHP="php-all"
     _AUTO_VER="head"
     if [ ! -e "/root/.ignore.site24x7.firewall.cnf" ]; then
