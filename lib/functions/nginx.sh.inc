@@ -232,12 +232,15 @@ nginx_clean_legacy_config() {
   _R_TEST=$(grep "upload_progress_json_output" /data/disk/*/config/includes/nginx_vhost_common.conf 2>&1)
   if [[ "${_R_TEST}" =~ "upload_progress_json_output" ]]; then
     sed -i "s/.*upload_progress_json_output.*//g" /data/disk/*/config/includes/nginx_vhost_common.conf
+    sed -i "s/.*upload_progress_json_output.*//g" /data/disk/*/config/server_master/nginx/subdir.d/*/*.conf
     sed -i "s/.*upload_progress_json_output.*//g" /var/aegir/config/includes/nginx_vhost_common.conf
     wait
     sed -i "s/.*report_uploads.*//g" /data/disk/*/config/includes/nginx_vhost_common.conf
+    sed -i "s/.*report_uploads.*//g" /data/disk/*/config/server_master/nginx/subdir.d/*/*.conf
     sed -i "s/.*report_uploads.*//g" /var/aegir/config/includes/nginx_vhost_common.conf
     wait
     sed -i "s/.*track_uploads.*//g" /data/disk/*/config/includes/nginx_vhost_common.conf
+    sed -i "s/.*track_uploads.*//g" /data/disk/*/config/server_master/nginx/subdir.d/*/*.conf
     sed -i "s/.*track_uploads.*//g" /var/aegir/config/includes/nginx_vhost_common.conf
     wait
   fi
