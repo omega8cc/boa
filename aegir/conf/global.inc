@@ -56,13 +56,7 @@ if (isset($_SERVER['RAW_HOST'])) {
  */
 if (function_exists('drush_get_command')) {
   $command = drush_get_command();
-  $php_version = phpversion();
-  if ($php_version && preg_match("/(5\.6\.40)/", $php_version)) {
-    $command = explode(" ", $command['command']);
-  }
-  else {
-    $command = explode(" ", $command['command'] ?? "");
-  }
+  $command = explode(" ", $command['command'] ?? "");
   if ($command && !preg_match("/^help/", $command[0])) {
     $is_backend = TRUE;
   }
