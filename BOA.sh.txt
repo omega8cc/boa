@@ -364,8 +364,8 @@ update_agents() {
       touch /root/.fixed_scout.pid
     fi
     if [ -e "/data/conf/override.global.inc" ] \
-      && [ ! -e "/data/conf/.prev5.override.global.inc.off" ]; then
-      mv -f /data/conf/override.global.inc /data/conf/.prev5.override.global.inc.off
+      && [ ! -e "/data/conf/.prev6.override.global.inc.off" ]; then
+      mv -f /data/conf/override.global.inc /data/conf/.prev6.override.global.inc.off
     fi
 #     if [ ! -e "/data/conf/override.global.inc" ]; then
 #       echo "<?php" > /data/conf/override.global.inc.tmp
