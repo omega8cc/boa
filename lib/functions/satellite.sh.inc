@@ -1715,8 +1715,6 @@ satellite_download_o_contrib_ten() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_ten modules..."
   fi
-  get_dev_contrib "advagg-5.0.0.tar.gz"
-  get_dev_contrib "cdn-8.x-3.5.tar.gz"
   get_dev_contrib "robotstxt-8.x-1.4.tar.gz"
   get_dev_contrib "readonlymode-8.x-1.1.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_X_SE}.info" ]; then
@@ -1738,8 +1736,6 @@ satellite_download_o_contrib_nine() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_nine modules..."
   fi
-  get_dev_contrib "advagg-5.0.0.tar.gz"
-  get_dev_contrib "cdn-8.x-3.5.tar.gz"
   get_dev_contrib "robotstxt-8.x-1.4.tar.gz"
   get_dev_contrib "readonlymode-8.x-1.1.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_X_SE}.info" ]; then
