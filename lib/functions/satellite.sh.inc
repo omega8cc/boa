@@ -1954,6 +1954,7 @@ satellite_check_fix_o_contrib() {
   _X_SE="414prodT46"
   if [ -e "${_CORE}/o_contrib_ten" ]; then
     if [ ! -d "${_CORE}/o_contrib_ten/redis_nine_ten" ] \
+      || [ -e "${_CORE}/o_contrib_ten/advagg" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       msg "${_STATUS} A: Running o_contrib_ten forced upgrade..."
       cd ${_CORE}/o_contrib_ten
@@ -1964,6 +1965,7 @@ satellite_check_fix_o_contrib() {
   fi
   if [ -e "${_CORE}/o_contrib_nine" ]; then
     if [ ! -d "${_CORE}/o_contrib_nine/redis_nine_ten" ] \
+      || [ -e "${_CORE}/o_contrib_nine/advagg" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       msg "${_STATUS} A: Running o_contrib_nine forced upgrade..."
       cd ${_CORE}/o_contrib_nine
