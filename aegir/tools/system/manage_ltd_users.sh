@@ -39,7 +39,7 @@ if [ -e "/root/.pause_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-_X_SE="414prodT47"
+_X_SE="414prodT48"
 _CHECK_HOST=$(uname -n 2>&1)
 usrGroup=users
 _WEBG=www-data
@@ -1413,6 +1413,7 @@ site_socket_inc_gen() {
   fi
 
   if [ -f "${mltFpm}" ]; then
+    chown ${_USER}.ftp:${usrGroup} ${dscUsr}/static/control/*.info
     mltFpmUpdate=NO
     if [ ! -f "${preFpm}" ]; then
       rm -rf ${preFpm}
