@@ -1365,10 +1365,53 @@ satellite_create_web_user() {
 #
 # Add site specific socket config include.
 site_socket_inc_gen() {
+  unlAeg="${dscUsr}/static/control/unlock-aegir-php.info"
   mltFpm="${dscUsr}/static/control/multi-fpm.info"
   preFpm="${dscUsr}/static/control/.prev-multi-fpm.info"
   mltNgx="${dscUsr}/static/control/.multi-nginx-fpm.pid"
   fpmPth="${dscUsr}/config/server_master/nginx/post.d"
+
+  hmFront=$(cat ${dscUsr}/log/domain.txt 2>&1)
+  hmFront=$(echo -n ${hmFront} | tr -d "\n" 2>&1)
+  hmstAls="${dscUsr}/.drush/${hmFront}.alias.drushrc.php"
+
+  if [ -x "/opt/php74/bin/php" ] && [ -e "${dscUsr}/log/domain.txt" ]; then
+    if [ ! -e "${unlAeg}" ]; then
+      if [ ! -e "${dscUsr}/log/lock-aegir-php.txt" ]; then
+        echo "${hmFront} 7.4" >> ${mltFpm}
+        if [ ! -e "${hmstAls}" ]; then
+          ln -s ${dscUsr}/.drush/hostmaster.alias.drushrc.php ${hmstAls}
+        fi
+        wait
+        sed -i "s/^place.holder.dont.remove 7.4//g" ${mltFpm}
+        wait
+        echo "place.holder.dont.remove 7.4" >> ${mltFpm}
+        sed -i "s/ *$//g; /^$/d" ${mltFpm}
+        wait
+        echo "7.4" > ${dscUsr}/static/control/cli.info
+        rm -f ${dscUsr}/log/unlock-aegir-php.txt
+        echo "7.4" > ${dscUsr}/log/lock-aegir-php.txt
+      fi
+      if [ ! -e "${fpmPth}/fpm_include_site_${hmFront}.inc" ]; then
+        mltFpmUpdateForce=YES
+      fi
+    else
+      if [ ! -e "${dscUsr}/log/unlock-aegir-php.txt" ]; then
+        if [ -e "${mltFpm}" ]; then
+          sed -i "s/^${hmFront} 7.4//g" ${mltFpm}
+          wait
+          sed -i "s/^place.holder.dont.remove 7.4//g" ${mltFpm}
+          wait
+          echo "place.holder.dont.remove 7.4" >> ${mltFpm}
+          sed -i "s/ *$//g; /^$/d" ${mltFpm}
+          wait
+        fi
+        rm -f ${dscUsr}/log/lock-aegir-php.txt
+        touch ${dscUsr}/log/unlock-aegir-php.txt
+      fi
+    fi
+  fi
+
   if [ -f "${mltFpm}" ]; then
     mltFpmUpdate=NO
     if [ ! -f "${preFpm}" ]; then
@@ -1379,7 +1422,9 @@ site_socket_inc_gen() {
     if [ ! -z "${diffFpmTest}" ]; then
       mltFpmUpdate=YES
     fi
-    if [ ! -f "${mltNgx}" ] || [ "${mltFpmUpdate}" = "YES" ]; then
+    if [ ! -f "${mltNgx}" ] \
+      || [ "${mltFpmUpdate}" = "YES" ] \
+      || [ "${mltFpmUpdateForce}" = "YES" ]; then
       rm -f ${fpmPth}/fpm_include_site_*
       IFS=$'\12'
       for p in `cat ${mltFpm}`;do
