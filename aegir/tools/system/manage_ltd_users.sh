@@ -1392,14 +1392,14 @@ site_socket_inc_gen() {
         sed -i "s/ *$//g; /^$/d" ${mltFpm}
         wait
         echo "7.4" > ${dscUsr}/static/control/cli.info
-        rm -f ${dscUsr}/log/unlock-aegir-php.txt
+        rm -f ${dscUsr}/log/unlocked-aegir-php.txt
         echo "7.4" > ${dscUsr}/log/lock-aegir-php.txt
       fi
       if [ ! -e "${fpmPth}/fpm_include_site_${hmFront}.inc" ]; then
         mltFpmUpdateForce=YES
       fi
     else
-      if [ ! -e "${dscUsr}/log/unlock-aegir-php.txt" ]; then
+      if [ ! -e "${dscUsr}/log/unlocked-aegir-php.txt" ]; then
         if [ -e "${mltFpm}" ]; then
           sed -i "s/^${hmFront} 7.4//g" ${mltFpm}
           wait
@@ -1412,8 +1412,9 @@ site_socket_inc_gen() {
           sed -i "s/ *$//g; /^$/d" ${mltFpm}
           wait
         fi
+        mltFpmUpdateForce=YES
         rm -f ${dscUsr}/log/lock-aegir-php.txt
-        touch ${dscUsr}/log/unlock-aegir-php.txt
+        touch ${dscUsr}/log/unlocked-aegir-php.txt
       fi
     fi
   fi
