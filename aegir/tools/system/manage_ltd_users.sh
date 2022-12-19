@@ -1419,6 +1419,11 @@ site_socket_inc_gen() {
     fi
   fi
 
+  if [ -x "/opt/php74/bin/php" ] && [ ! -e "/home/${_USER}.74.web" ]; then
+    rm -f /data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_default.inc
+    mltFpmUpdateForce=YES
+  fi
+
   if [ -f "${mltFpm}" ]; then
     chown ${_USER}.ftp:${usrGroup} ${dscUsr}/static/control/*.info
     mltFpmUpdate=NO
