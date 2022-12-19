@@ -1377,7 +1377,7 @@ site_socket_inc_gen() {
 
   if [ -x "/opt/php74/bin/php" ] && [ -e "${dscUsr}/log/domain.txt" ]; then
     if [ ! -e "${unlAeg}" ]; then
-      if [ ! -e "${dscUsr}/log/lock-aegir-php.txt" ]; then
+      if [ ! -e "${dscUsr}/log/locked-aegir-php.txt" ]; then
         echo "${hmFront} 7.4" >> ${mltFpm}
         if [ ! -e "${hmstAls}" ]; then
           ln -s ${dscUsr}/.drush/hostmaster.alias.drushrc.php ${hmstAls}
@@ -1393,7 +1393,7 @@ site_socket_inc_gen() {
         wait
         echo "7.4" > ${dscUsr}/static/control/cli.info
         rm -f ${dscUsr}/log/unlocked-aegir-php.txt
-        echo "7.4" > ${dscUsr}/log/lock-aegir-php.txt
+        echo "7.4" > ${dscUsr}/log/locked-aegir-php.txt
       fi
       if [ ! -e "${fpmPth}/fpm_include_site_${hmFront}.inc" ]; then
         mltFpmUpdateForce=YES
@@ -1413,7 +1413,7 @@ site_socket_inc_gen() {
           wait
         fi
         mltFpmUpdateForce=YES
-        rm -f ${dscUsr}/log/lock-aegir-php.txt
+        rm -f ${dscUsr}/log/locked-aegir-php.txt
         touch ${dscUsr}/log/unlocked-aegir-php.txt
       fi
     fi
