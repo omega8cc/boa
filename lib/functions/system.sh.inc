@@ -333,8 +333,8 @@ tune_memory_limits() {
   elif [ "${_USE}" -ge "2048" ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
       _USE_PHP=1024
-      _USE_OPC=1024
-      _USE_CLI=1024
+      _USE_OPC=2048
+      _USE_CLI=4096
       _QCE_SQL=64M
       _RND_SQL=8M
       _JBF_SQL=4M
@@ -354,8 +354,8 @@ tune_memory_limits() {
         || [ -e "/boot/grub/menu.lst" ] \
         || [ -e "/root/.tg.cnf" ]; then
         _USE_PHP=1024
-        _USE_OPC=1024
-        _USE_CLI=1024
+        _USE_OPC=2048
+        _USE_CLI=4096
         _QCE_SQL=64M
         _RND_SQL=8M
         _JBF_SQL=4M
@@ -384,7 +384,7 @@ tune_memory_limits() {
       else
         _USE_PHP=1024
         _USE_OPC=1024
-        _USE_CLI=1024
+        _USE_CLI=2048
         _QCE_SQL=64M
         _RND_SQL=2M
         _JBF_SQL=2M
