@@ -1383,9 +1383,12 @@ site_socket_inc_gen() {
           ln -s ${dscUsr}/.drush/hostmaster.alias.drushrc.php ${hmstAls}
         fi
         wait
+        sed -i "s/^place.holder.dont.remove 5.6//g" ${mltFpm}
+        wait
         sed -i "s/^place.holder.dont.remove 7.4//g" ${mltFpm}
         wait
-        echo "place.holder.dont.remove 7.4" >> ${mltFpm}
+        echo "place.holder.dont.remove 5.6" >> ${mltFpm}
+        wait
         sed -i "s/ *$//g; /^$/d" ${mltFpm}
         wait
         echo "7.4" > ${dscUsr}/static/control/cli.info
@@ -1400,9 +1403,12 @@ site_socket_inc_gen() {
         if [ -e "${mltFpm}" ]; then
           sed -i "s/^${hmFront} 7.4//g" ${mltFpm}
           wait
+          sed -i "s/^place.holder.dont.remove 5.6//g" ${mltFpm}
+          wait
           sed -i "s/^place.holder.dont.remove 7.4//g" ${mltFpm}
           wait
-          echo "place.holder.dont.remove 7.4" >> ${mltFpm}
+          echo "place.holder.dont.remove 5.6" >> ${mltFpm}
+          wait
           sed -i "s/ *$//g; /^$/d" ${mltFpm}
           wait
         fi
