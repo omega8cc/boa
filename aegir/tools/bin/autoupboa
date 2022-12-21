@@ -4,7 +4,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
 barCnf="/root/.barracuda.cnf"
 
-_X_SE="414prodT51"
+_X_SE="414prodT52"
 
 check_fix_system_hostname() {
   if [ -e "${barCnf}" ]; then
