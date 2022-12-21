@@ -1085,7 +1085,19 @@ action() {
         count
         if [ -d "/home/${_THIS_U}.ftp" ]; then
           for uH in `find /home/${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
-            sub_count_usr_home ${uH}
+            if [ -d "${uH}" ]; then
+              sub_count_usr_home ${uH}
+            fi
+          done
+          for uR in `find /var/solr7/data/oct.${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
+            if [ -d "${uR}" ]; then
+              sub_count_usr_home ${uR}
+            fi
+          done
+          for uO in `find /opt/solr4/${_THIS_U}.* -maxdepth 0 -mindepth 0 | sort`; do
+            if [ -d "${uO}" ]; then
+              sub_count_usr_home ${uO}
+            fi
           done
         fi
         if [ -L "${User}" ]; then
