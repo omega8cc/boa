@@ -1039,7 +1039,6 @@ tune_web_server_config() {
       _LIM_FPM=48
     fi
   fi
-  _PROCESS_MAX_FPM=$(( _LIM_FPM * 5 ))
   _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
   if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
     _DO_NOTHING=YES
