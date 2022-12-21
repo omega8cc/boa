@@ -1861,16 +1861,40 @@ switch_php() {
             || [[ "${_THISHOST}" =~ ".o8.io" ]] \
             || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
             || [ "${_VMFAMILY}" = "VS" ]; then
-            if [ "${_CLIENT_OPTION}" = "POWER" ] \
-              || [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
+            if [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
               if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-                _LIM_FPM=32
-                _PHP_FPM_WORKERS=64
+                _LIM_FPM=96
+                _PHP_FPM_WORKERS=192
               fi
-            elif [ "${_CLIENT_OPTION}" = "SSD" ] \
-              || [ "${_CLIENT_OPTION}" = "EDGE" ]; then
-              _LIM_FPM=4
-              _PHP_FPM_WORKERS=8
+            elif [ "${_CLIENT_OPTION}" = "LITE" ]; then
+              if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+                  _LIM_FPM=32
+                  _PHP_FPM_WORKERS=64
+              fi
+            elif [ "${_CLIENT_OPTION}" = "PHANTOM" ]; then
+              if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+                _LIM_FPM=16
+                _PHP_FPM_WORKERS=32
+              fi
+            elif [ "${_CLIENT_OPTION}" = "POWER" ] \
+              || [ "${_CLIENT_OPTION}" = "BUS" ]; then
+              if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+                _LIM_FPM=8
+                _PHP_FPM_WORKERS=16
+              fi
+            elif [ "${_CLIENT_OPTION}" = "EDGE" ] \
+              || [ "${_CLIENT_OPTION}" = "SSD" ] \
+              || [ "${_CLIENT_OPTION}" = "CLASSIC" ]; then
+              if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+                _LIM_FPM=2
+                _PHP_FPM_WORKERS=4
+              fi
+            elif [ "${_CLIENT_OPTION}" = "MINI" ] \
+              || [ "${_CLIENT_OPTION}" = "MICRO" ]; then
+              if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+                _LIM_FPM=1
+                _PHP_FPM_WORKERS=2
+              fi
             else
               _LIM_FPM=2
               _PHP_FPM_WORKERS=4

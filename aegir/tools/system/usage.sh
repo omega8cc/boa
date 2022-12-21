@@ -867,27 +867,50 @@ check_limits() {
     _DSK_MIN_LIMIT=102400
     _DSK_MAX_LIMIT=107520
     _SQL_DEV_EXTRA=2
-    _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 1024 ))
+    _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 2048 ))
     _DSK_MIN_LIMIT=$(( _DSK_MIN_LIMIT *= _DSK_CLU_LIMIT ))
     _DSK_MAX_LIMIT=$(( _DSK_MAX_LIMIT *= _DSK_CLU_LIMIT ))
   elif [ "${_CLIENT_OPTION}" = "LITE" ]; then
+    if [ -z "${_DSK_CLU_LIMIT}" ]; then
+      _DSK_CLU_LIMIT=1
+    fi
     _SQL_MIN_LIMIT=5120
     _DSK_MIN_LIMIT=51200
+    _DSK_MAX_LIMIT=53760
     _SQL_DEV_EXTRA=3
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 1024 ))
-    _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 2560 ))
+    _DSK_MIN_LIMIT=$(( _DSK_MIN_LIMIT *= _DSK_CLU_LIMIT ))
+    _DSK_MAX_LIMIT=$(( _DSK_MAX_LIMIT *= _DSK_CLU_LIMIT ))
+  elif [ "${_CLIENT_OPTION}" = "PHANTOM" ]; then
+    if [ -z "${_DSK_CLU_LIMIT}" ]; then
+      _DSK_CLU_LIMIT=1
+    fi
+    _SQL_MIN_LIMIT=10240
+    _DSK_MIN_LIMIT=102400
+    _DSK_MAX_LIMIT=107520
+    _SQL_DEV_EXTRA=2
+    _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 2048 ))
+    _DSK_MIN_LIMIT=$(( _DSK_MIN_LIMIT *= _DSK_CLU_LIMIT ))
+    _DSK_MAX_LIMIT=$(( _DSK_MAX_LIMIT *= _DSK_CLU_LIMIT ))
   elif [ "${_CLIENT_OPTION}" = "POWER" ]; then
     _SQL_MIN_LIMIT=5120
     _DSK_MIN_LIMIT=51200
     _SQL_DEV_EXTRA=3
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 1024 ))
     _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 2560 ))
-  elif [ "${_CLIENT_OPTION}" = "SSD" ] \
-    || [ "${_CLIENT_OPTION}" = "EDGE" ]; then
+  elif [ "${_CLIENT_OPTION}" = "EDGE" ] \
+    || [ "${_CLIENT_OPTION}" = "SSD" ] \
+    || [ "${_CLIENT_OPTION}" = "CLASSIC" ]; then
     _CLIENT_OPTION=EDGE
     _SQL_MIN_LIMIT=1024
     _DSK_MIN_LIMIT=15360
-    _SQL_DEV_EXTRA=3
+    _SQL_DEV_EXTRA=2
+    _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 512 ))
+    _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 1280 ))
+  elif [ "${_CLIENT_OPTION}" = "MINI" ]; then
+    _SQL_MIN_LIMIT=1024
+    _DSK_MIN_LIMIT=15360
+    _SQL_DEV_EXTRA=1
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 512 ))
     _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 1280 ))
   elif [ "${_CLIENT_OPTION}" = "MICRO" ]; then
@@ -911,8 +934,13 @@ check_limits() {
   _SQL_DEV_LIMIT=$(( _SQL_DEV_LIMIT *= _CLIENT_CORES ))
   _SQL_DEV_LIMIT=$(( _SQL_DEV_LIMIT *= _SQL_DEV_EXTRA ))
   if [ ! -z "${_EXTRA_ENGINE}" ]; then
-    _SQL_ADD_LIMIT=1024
-    _DSK_ADD_LIMIT=15360
+    if [ -e "/data/disk/${_THIS_U}/log/extra_edge.txt" ]; then
+      _SQL_ADD_LIMIT=1024
+      _DSK_ADD_LIMIT=15360
+    elif [ -e "/data/disk/${_THIS_U}/log/extra_power.txt" ]; then
+      _SQL_ADD_LIMIT=5120
+      _DSK_ADD_LIMIT=51200
+    fi
     _SQL_ADD_LIMIT=$(( _SQL_ADD_LIMIT *= _EXTRA_ENGINE ))
     _DSK_ADD_LIMIT=$(( _DSK_ADD_LIMIT *= _EXTRA_ENGINE ))
     _SQL_MIN_LIMIT=$(( _SQL_MIN_LIMIT + _SQL_ADD_LIMIT ))
