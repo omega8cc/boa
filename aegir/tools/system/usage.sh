@@ -915,7 +915,7 @@ check_limits() {
     _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 1280 ))
   elif [ "${_CLIENT_OPTION}" = "MICRO" ]; then
     _SQL_MIN_LIMIT=512
-    _DSK_MIN_LIMIT=4096
+    _DSK_MIN_LIMIT=5120
     _SQL_DEV_EXTRA=1
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 256 ))
     _DSK_MAX_LIMIT=$(( _DSK_MIN_LIMIT + 640 ))
