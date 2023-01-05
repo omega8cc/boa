@@ -626,7 +626,21 @@ update_agents() {
       -o /var/xdrago/monitor/check/scan_nginx
     if [ -e "/var/xdrago/monitor/check/scan_nginx" ]; then
       sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx
+      wait
       sed -i "s/default_lines =.*/default_lines = 599;/g" /var/xdrago/monitor/check/scan_nginx
+      wait
+      if [ ! -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
+        _NGINX_DONTCOUNT_KEYWORDS=${_NGINX_DONTCOUNT_KEYWORDS//[^a-zA-Z0-9|-]/}
+        sed -i "s/dontcount/${_NGINX_DONTCOUNT_KEYWORDS}/g" /var/xdrago/monitor/check/scan_nginx
+        wait
+      fi
+      if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
+        _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|-]/}
+        if [ ! -z "${_NGINX_DOS_KEYWORDS}" ]; then
+          sed -i "s/foobar/${_NGINX_DOS_KEYWORDS}/g" /var/xdrago/monitor/check/scan_nginx
+          wait
+        fi
+      fi
       chmod 700 /var/xdrago/monitor/check/scan_nginx
       chown root:root /var/xdrago/monitor/check/scan_nginx
       touch ${pthLog}/scan_nginx.ctrl.${_X_SE}.pid
