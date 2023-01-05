@@ -629,6 +629,9 @@ update_agents() {
       wait
       sed -i "s/default_lines =.*/default_lines = 599;/g" /var/xdrago/monitor/check/scan_nginx
       wait
+      if [ -e "/root/.host8.cnf" ] && [ -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
+        _NGINX_DONTCOUNT_KEYWORDS="doccomment"
+      fi
       if [ ! -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
         _NGINX_DONTCOUNT_KEYWORDS=${_NGINX_DONTCOUNT_KEYWORDS//[^a-zA-Z0-9|-]/}
         sed -i "s/dontcount/${_NGINX_DONTCOUNT_KEYWORDS}/g" /var/xdrago/monitor/check/scan_nginx
