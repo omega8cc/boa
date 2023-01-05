@@ -58,7 +58,7 @@ find_fast_mirror() {
   fi
   ffMirr=$(which ffmirror 2>&1)
   if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors-2022-11.txt"
+    ffList="/var/backups/boa-mirrors-2023-01.txt"
     mkdir -p /var/backups
     if [ ! -e "${ffList}" ]; then
       echo "de.files.aegir.cc"  > ${ffList}
@@ -132,4 +132,4 @@ service ssh restart &> /dev/null
 touch /var/xdrago/log/clear.done
 rm -f /var/run/clear_m.pid
 exit 0
-###EOF2022###
+###EOF2023###

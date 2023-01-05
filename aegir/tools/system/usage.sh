@@ -135,7 +135,7 @@ this PHP version, but now we can't extend it any further,
 because your system has to be upgraded to newest Debian version,
 which doesn't support many deprecated PHP versions.
 
-The upgrade will happen in the first week of May, 2022,
+The upgrade will happen in the first week of May, 2023,
 and there are no exceptions possible to avoid it.
 
 This means that all Aegir instances still running PHP $1
@@ -170,7 +170,7 @@ this PHP version, but now we can't extend it any further,
 because your system has to be upgraded to newest Debian version,
 which doesn't support deprecated PHP versions.
 
-The upgrade will happen in the first week of May, 2022,
+The upgrade will happen in the first week of May, 2023,
 and there are no exceptions possible to avoid it.
 
 This means that all Aegir instances still running PHP $1
@@ -205,7 +205,7 @@ this PHP version, but now we can't extend it any further,
 because your system has to be upgraded to newest Debian version,
 which doesn't support deprecated PHP versions.
 
-The upgrade will happen in the first week of May, 2022,
+The upgrade will happen in the first week of May, 2023,
 and there are no exceptions possible to avoid it.
 
 This means that all Aegir instances still running PHP $1
@@ -1207,4 +1207,4 @@ mkdir -p /var/xdrago/log/usage
 action >/var/xdrago/log/usage/usage-${_NOW}.log 2>&1
 echo "INFO: Daily maintenance complete"
 exit 0
-###EOF2022###
+###EOF2023###
