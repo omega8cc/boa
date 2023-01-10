@@ -329,6 +329,7 @@ update_agents() {
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     mysql -u root -e "SET GLOBAL optimizer_switch='derived_merge=off';"
+    mysql -u root -e "SET GLOBAL sort_buffer_size = 262144;"
     if [ -e "/root/.tg.cnf" ]; then
       if [ ! -e "/root/.fixed_fpm_workers.pid" ]; then
         sed -i "s/^_PHP_FPM_WORKERS=.*/_PHP_FPM_WORKERS=100/g" ${barCnf}

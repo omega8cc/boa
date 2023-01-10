@@ -31,14 +31,14 @@ max_allowed_packet      = 256M
 max_connect_errors      = 191
 max_connections         = 292
 max_user_connections    = 191
-myisam_sort_buffer_size = 128K
-query_cache_limit       = 128K
+myisam_sort_buffer_size = 256K
+query_cache_limit       = 256K
 query_cache_size        = 0
 query_cache_type        = 0
 read_buffer_size        = 8M
 read_rnd_buffer_size    = 4M
-sort_buffer_size        = 128K
-bulk_insert_buffer_size = 128K
+sort_buffer_size        = 256K
+bulk_insert_buffer_size = 256K
 table_open_cache        = 2048
 table_definition_cache  = 512
 thread_stack            = 256K
@@ -121,13 +121,13 @@ no-auto-rehash
 
 [myisamchk]
 key_buffer              = 1M
-sort_buffer_size        = 64K
+sort_buffer_size        = 256K
 read_buffer             = 4M
 write_buffer            = 4M
 
 [isamchk]
 key_buffer              = 1M
-sort_buffer_size        = 64K
+sort_buffer_size        = 256K
 read_buffer             = 4M
 write_buffer            = 4M
 
