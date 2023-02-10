@@ -2282,22 +2282,22 @@ check_fix_php() {
 }
 
 install_update_composer() {
-  composer self-update 2> /dev/null
   _COMPOSER_IS=$(composer --no-interaction --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f36 \
     | awk '{ print $1}' 2>&1)
   if [ "${_COMPOSER_IS}" != "${_COMPOSER_VRN}" ]; then
     msg "INFO: Installed Composer version ${_COMPOSER_IS}, update required"
-    cd /var/opt
-    rm -rf composer*
-    get_dev_src "composer-${_COMPOSER_VRN}.phar.gz"
-    if [ -e "/var/opt/composer-${_COMPOSER_VRN}.phar" ]; then
-      mv -f composer-${_COMPOSER_VRN}.phar /usr/local/bin/composer
-      chmod 755 /usr/local/bin/composer
-      ln -sf /usr/local/bin/composer /usr/bin/composer
-      msg "INFO: Composer updated to version ${_COMPOSER_VRN}"
-    fi
+    composer self-update 2> /dev/null
+    # cd /var/opt
+    # rm -rf composer*
+    # get_dev_src "composer-${_COMPOSER_VRN}.phar.gz"
+    # if [ -e "/var/opt/composer-${_COMPOSER_VRN}.phar" ]; then
+    #   mv -f composer-${_COMPOSER_VRN}.phar /usr/local/bin/composer
+    chmod 755 /usr/local/bin/composer
+    ln -sf /usr/local/bin/composer /usr/bin/composer
+    msg "INFO: Composer updated to version ${_COMPOSER_VRN}"
+    # fi
   else
     msg "INFO: Installed Composer version ${_COMPOSER_VRN}, no action needed"
   fi
