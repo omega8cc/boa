@@ -1233,8 +1233,7 @@ check_site_status_with_drush8() {
                 || [[ "${_DGDD_T}" =~ "User \"configure\" discovered" ]] \
                 || [[ "${_DGDD_T}" =~ "User \"drplsys\" discovered" ]]; then
                 if [ -e "${User}/config/server_master/nginx/vhost.d/${Dom}" ]; then
-                  mv -f ${User}/config/server_master/nginx/vhost.d/${Dom} \
-                    ${User}/config/server_master/nginx/vhost.d/.${Dom}
+                  ### mv -f ${User}/config/server_master/nginx/vhost.d/${Dom} ${User}/config/server_master/nginx/vhost.d/.${Dom}
                   send_shutdown_notice
                 fi
               else
@@ -1972,7 +1971,7 @@ cleanup_ghost_platforms() {
     if [ ! -e "${Plr}/index.php" ] || [ ! -e "${Plr}/profiles" ]; then
       if [ ! -e "${Plr}/vendor" ]; then
         mkdir -p ${User}/undo
-        mv -f ${Plr} ${User}/undo/ &> /dev/null
+        ### mv -f ${Plr} ${User}/undo/ &> /dev/null
         echo "GHOST platform ${Plr} detected and moved to ${User}/undo/"
       fi
     fi
@@ -2348,9 +2347,8 @@ cleanup_ghost_vhosts() {
     Dom=$(echo $Site | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
     if [[ "${Dom}" =~ ".restore"($) ]]; then
       mkdir -p ${User}/undo
-      mv -f ${User}/.drush/${Dom}.alias.drushrc.php ${User}/undo/ &> /dev/null
-      mv -f ${User}/config/server_master/nginx/vhost.d/${Dom} \
-        ${User}/undo/ &> /dev/null
+      ### mv -f ${User}/.drush/${Dom}.alias.drushrc.php ${User}/undo/ &> /dev/null
+      ### mv -f ${User}/config/server_master/nginx/vhost.d/${Dom} ${User}/undo/ &> /dev/null
       echo "GHOST vhost for ${Dom} detected and moved to ${User}/undo/"
     fi
     if [ -e "${User}/config/server_master/nginx/vhost.d/${Dom}" ]; then
@@ -2366,7 +2364,7 @@ cleanup_ghost_vhosts() {
       else
         if [ ! -e "${User}/.drush/${Dom}.alias.drushrc.php" ]; then
           mkdir -p ${User}/undo
-          mv -f $Site ${User}/undo/ &> /dev/null
+          ### mv -f $Site ${User}/undo/ &> /dev/null
           echo "GHOST vhost for ${Dom} with no drushrc detected and moved to ${User}/undo/"
         fi
       fi
@@ -2394,15 +2392,15 @@ cleanup_ghost_drushrc() {
         if [ ! -e "${Plm}/index.php" ] || [ ! -e "${Plm}/profiles" ]; then
           if [ ! -e "${Plm}/vendor" ]; then
             mkdir -p ${User}/undo
-            mv -f ${Plm} ${User}/undo/ &> /dev/null
+            ### mv -f ${Plm} ${User}/undo/ &> /dev/null
             echo "GHOST broken platform dir ${Plm} detected and moved to ${User}/undo/"
-            mv -f ${Alias} ${User}/undo/ &> /dev/null
+            ### mv -f ${Alias} ${User}/undo/ &> /dev/null
             echo "GHOST broken platform alias ${Alias} detected and moved to ${User}/undo/"
           fi
         fi
       else
         mkdir -p ${User}/undo
-        mv -f ${Alias} ${User}/undo/ &> /dev/null
+        ### mv -f ${Alias} ${User}/undo/ &> /dev/null
         echo "GHOST nodir platform alias ${Alias} detected and moved to ${User}/undo/"
       fi
     else
@@ -2410,10 +2408,8 @@ cleanup_ghost_drushrc() {
       if [[ "${_T_SITE_NAME}" =~ ".restore"($) ]]; then
         _IS_SITE=NO
         mkdir -p ${User}/undo
-        mv -f ${User}/.drush/${_T_SITE_NAME}.alias.drushrc.php \
-          ${User}/undo/ &> /dev/null
-        mv -f ${User}/config/server_master/nginx/vhost.d/${_T_SITE_NAME} \
-          ${User}/undo/ &> /dev/null
+        ### mv -f ${User}/.drush/${_T_SITE_NAME}.alias.drushrc.php ${User}/undo/ &> /dev/null
+        ### mv -f ${User}/config/server_master/nginx/vhost.d/${_T_SITE_NAME} ${User}/undo/ &> /dev/null
         echo "GHOST drushrc and vhost for ${_T_SITE_NAME} detected and moved to ${User}/undo/"
       else
         _T_SITE_FDIR=$(cat ${Alias} \
@@ -2430,17 +2426,14 @@ cleanup_ghost_drushrc() {
           _IS_SITE=YES
         else
           mkdir -p ${User}/undo
-          mv -f ${User}/.drush/${_T_SITE_NAME}.alias.drushrc.php \
-            ${User}/undo/ &> /dev/null
+          ### mv -f ${User}/.drush/${_T_SITE_NAME}.alias.drushrc.php ${User}/undo/ &> /dev/null
           echo "GHOST drushrc for ${_T_SITE_NAME} detected and moved to ${User}/undo/"
           if [[ ! "${_T_SITE_FDIR}" =~ "aegir/distro" ]]; then
-            mv -f ${User}/config/server_master/nginx/vhost.d/${_T_SITE_NAME} \
-              ${User}/undo/ghost-vhost-${_T_SITE_NAME} &> /dev/null
+            ### mv -f ${User}/config/server_master/nginx/vhost.d/${_T_SITE_NAME} ${User}/undo/ghost-vhost-${_T_SITE_NAME} &> /dev/null
             echo "GHOST vhost for ${_T_SITE_NAME} detected and moved to ${User}/undo/"
           fi
           if [ -d "${_T_SITE_FDIR}" ]; then
-            mv -f ${_T_SITE_FDIR} \
-              ${User}/undo/ghost-site-${_T_SITE_NAME} &> /dev/null
+            ### mv -f ${_T_SITE_FDIR} ${User}/undo/ghost-site-${_T_SITE_NAME} &> /dev/null
             echo "GHOST site dir for ${_T_SITE_NAME} detected and moved from ${_T_SITE_FDIR} to ${User}/undo/"
           fi
         fi
@@ -2823,8 +2816,7 @@ check_old_empty_hostmaster_platforms() {
         if [ ! -e "${_T_PFM_ROOT}/sites/all" ] \
           || [ ! -e "${_T_PFM_ROOT}/index.php" ]; then
           mkdir -p /var/aegir/undo
-          mv -f /var/aegir/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php \
-            /var/aegir/undo/ &> /dev/null
+          ### mv -f /var/aegir/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php /var/aegir/undo/ &> /dev/null
           echo "GHOST platform ${_T_PFM_ROOT} detected and moved to /var/aegir/undo/"
         fi
         if [[ "${_T_PFM_SITE}" =~ ".restore" ]]; then
@@ -2893,8 +2885,7 @@ check_old_empty_platforms() {
           || [ ! -e "${_T_PFM_ROOT}/index.php" ]; then
           if [ ! -e "${_T_PFM_ROOT}/vendor" ]; then
             mkdir -p ${User}/undo
-            mv -f ${User}/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php \
-              ${User}/undo/ &> /dev/null
+            ### mv -f ${User}/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php ${User}/undo/ &> /dev/null
             echo "GHOST platform ${_T_PFM_ROOT} detected and moved to ${User}/undo/"
           fi
         fi
@@ -3043,7 +3034,7 @@ purge_cruft_machine() {
       if [ "${RevisionTest}" -lt "2" ] && [ ! -z "${RevisionTest}" ]; then
         _NOW=$(date +%y%m%d-%H%M%S 2>&1)
         mkdir -p ${User}/undo/dist/${_NOW}
-        mv -f ${i} ${User}/undo/dist/${_NOW}/ &> /dev/null
+        ### mv -f ${i} ${User}/undo/dist/${_NOW}/ &> /dev/null
         echo "GHOST revision ${i} detected and moved to ${User}/undo/dist/${_NOW}/"
       fi
     fi
@@ -3147,7 +3138,7 @@ shared_codebases_cleanup() {
           || [ -z "${CodebaseTest}" ]; then
           mkdir -p ${_CLD}/${i}
           echo "Moving no longer used ${CodebaseDir} to ${_CLD}/${i}/"
-          mv -f ${CodebaseDir} ${_CLD}/${i}/
+          ### mv -f ${CodebaseDir} ${_CLD}/${i}/
           sleep 1
         fi
       done
@@ -3177,7 +3168,7 @@ ghost_codebases_cleanup() {
         _TSTAMP=`date +%y%m%d-%H%M%S`
         mkdir -p ${_CLD}/${i}/${_TSTAMP}
         echo "Moving ghost ${_CLEAN_THIS} to ${_CLD}/${i}/${_TSTAMP}/"
-        mv -f ${_CLEAN_THIS} ${_CLD}/${i}/${_TSTAMP}/
+        ### mv -f ${_CLEAN_THIS} ${_CLD}/${i}/${_TSTAMP}/
         sleep 1
       fi
     done
