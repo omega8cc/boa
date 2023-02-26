@@ -2282,7 +2282,7 @@ check_fix_php() {
 }
 
 install_update_composer() {
-  composer self-update 2> /dev/null
+  ### composer self-update 2> /dev/null
   _COMPOSER_IS=$(composer --no-interaction --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f36 \
