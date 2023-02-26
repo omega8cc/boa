@@ -631,7 +631,7 @@ install_php_extensions() {
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     touch ${pthLog}/igbinary-${_PHP_IGBINARY}-${_T_PHP_VRN}.log
-    _X_SE="414prodT55"
+    _X_SE="414prodT56"
     rm -f /data/disk/*/static/control/.*${_X_SE}.pid
   fi
   ###--------------------###
@@ -923,7 +923,7 @@ update_php_extensions() {
       mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
       touch ${pthLog}/igbinary-${_PHP_IGBINARY}-${_T_PHP_VRN}.log
-      _X_SE="414prodT55"
+      _X_SE="414prodT56"
       rm -f /data/disk/*/static/control/.*${_X_SE}.pid
     fi
   fi
