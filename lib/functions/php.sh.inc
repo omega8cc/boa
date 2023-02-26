@@ -2282,10 +2282,9 @@ check_fix_php() {
 }
 
 install_update_composer() {
-  composer self-update 2> /dev/null
   _COMPOSER_IS=$(composer --no-interaction --version 2>&1 \
     | tr -d "\n" \
-    | cut -d" " -f36 \
+    | cut -d" " -f13 \
     | awk '{ print $1}' 2>&1)
   if [ "${_COMPOSER_IS}" != "${_COMPOSER_VRN}" ]; then
     msg "INFO: Installed Composer version ${_COMPOSER_IS}, update required"
