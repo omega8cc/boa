@@ -445,5 +445,11 @@ if [ -e "/data/disk/arch/sql" ]; then
     service cron restart
     touch /root/.etc_crontab_update_ctrl.${_X_SE}.pid
   fi
+  if [ ! -e "/root/.etc_csf_allow_bak.${_X_SE}.pid" ]; then
+    mkdir -p /var/backups/csf
+    cp -a /etc/csf/csf.ignore /var/backups/csf/csf.ignore.${_X_SE}.txt
+    cp -a /etc/csf/csf.allow /var/backups/csf/csf.allow.${_X_SE}.txt
+    touch /root/.etc_csf_allow_ctrl.${_X_SE}.pid
+  fi
 fi
 ###EOF2023###
