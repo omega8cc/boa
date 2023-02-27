@@ -262,11 +262,17 @@ if [ -e "/data/disk/arch/sql" ]; then
 	else
 	  if [ ! -e "/root/.csf_legacy_cleanup.pid" ]; then
 	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.ignore
+	    wait
 	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.allow
+	    wait
 	    sed -i "s/.*Manually.*//g"  /etc/csf/csf.ignore
+	    wait
 	    sed -i "s/.*Manually.*//g"  /etc/csf/csf.allow
+	    wait
 	    sed -i "s/.*Temporary.*//g" /etc/csf/csf.ignore
+	    wait
 	    sed -i "s/.*Temporary.*//g" /etc/csf/csf.allow
+	    wait
 	    sed -i "/^$/d" /etc/csf/csf.ignore
 	    sed -i "/^$/d" /etc/csf/csf.allow
 	    rm -f /etc/csf/csf.conf-pre*
