@@ -261,19 +261,11 @@ check_if_required_with_drush8() {
         "echo _REQ for $1 is ${_REQ} in ${Dom} == 7 == via ${_REW_TEST}"
       fi
     fi
-    if [ -e "${Plr}/core" ]; then
-      Profile=$(run_drush8_nosilent_cmd "config-get core.extension profile" \
-        | cut -d: -f3 \
-        | awk '{ print $1}' \
-        | sed "s/['\"]//g" \
-        | tr -d "\n" 2>&1)
-    else
-      Profile=$(run_drush8_nosilent_cmd "${vGet} ^install_profile$" \
-        | cut -d: -f2 \
-        | awk '{ print $1}' \
-        | sed "s/['\"]//g" \
-        | tr -d "\n" 2>&1)
-    fi
+    Profile=$(run_drush8_nosilent_cmd "${vGet} ^install_profile$" \
+      | cut -d: -f2 \
+      | awk '{ print $1}' \
+      | sed "s/['\"]//g" \
+      | tr -d "\n" 2>&1)
     Profile=${Profile//[^a-z_]/}
     echo "Profile is == ${Profile} =="
     if [ ! -z "${Profile}" ]; then
@@ -312,42 +304,6 @@ check_if_force() {
     if [ ! -z "$1" ] && [ "$s" = "$1" ]; then
       _FORCE=YES
       echo $1 is blacklisted and will be forcefully disabled in ${Dom}
-    fi
-  done
-}
-
-uninstall_modules_with_drush8() {
-  for m in $1; do
-    _SKIP=NO
-    _FORCE=NO
-    if [ ! -z "${_MODULES_SKIP}" ]; then
-      check_if_skip "$m"
-    fi
-    if [ ! -z "${_MODULES_FORCE}" ]; then
-      check_if_force "$m"
-    fi
-    if [ "${_SKIP}" = "NO" ]; then
-      _MODULE_T=$(run_drush8_nosilent_cmd "pml --status=enabled \
-        --type=module | grep \($m\)" 2>&1)
-      if [[ "${_MODULE_T}" =~ "($m)" ]]; then
-        if [ "${_FORCE}" = "NO" ]; then
-          check_if_required_with_drush8 "$m"
-        else
-          echo "$m dependencies not checked in ${Dom} action forced"
-          _REQ=FCE
-        fi
-        if [ "${_REQ}" = "FCE" ]; then
-          run_drush8_cmd "pmu $m -y"
-          echo "$m FCE uninstalled in ${Dom}"
-        elif [ "${_REQ}" = "NO" ]; then
-          run_drush8_cmd "pmu $m -y"
-          echo "$m uninstalled in ${Dom}"
-        elif [ "${_REQ}" = "NULL" ]; then
-          echo "$m is not used in ${Dom}"
-        else
-          echo "$m is required and can not be uninstalled in ${Dom}"
-        fi
-      fi
     fi
   done
 }
@@ -483,31 +439,6 @@ fix_site_readonlymode() {
       touch ${User}/log/ctrl/site.${Dom}.rom-fix.info
     fi
   fi
-}
-
-fix_user_register_protection_with_cSet() {
-  sync_user_register_protection_ini_vars
-  if [ "${_DISABLE_USER_REGISTER_PROTECTION}" = "NO" ] \
-    && [ -e "${Plr}/core" ]; then
-    Prm=$(run_drush8_nosilent_cmd "${cGet} register" \
-      | cut -d: -f3 \
-      | awk '{ print $1}' \
-      | tr -d \"\\n\" 2>&1)
-    Prm=${Prm//[^a-z_]/}
-    echo "Prm user.settings:register for ${Dom} is ${Prm}"
-    if [ "${_ENABLE_USER_REGISTER_PROTECTION}" = "YES" ]; then
-      run_drush8_cmd "${cSet} register admin_only -y"
-      echo "Prm user.settings:register for ${Dom} set to admin_only"
-    else
-      if [ "${Prm}" = "visitors" ] || [ -z "${Prm}" ]; then
-        run_drush8_cmd "${cSet} register visitors_admin_approval -y"
-        echo "Prm user.settings:register for ${Dom} set to visitors_admin_approval"
-      fi
-      run_drush8_cmd "${cSet} verify_mail true -y"
-      echo "Prm user.settings:verify_mail for ${Dom} set to true"
-    fi
-  fi
-  fix_site_readonlymode
 }
 
 fix_user_register_protection_with_vSet() {
@@ -1290,12 +1221,8 @@ check_file_with_wildcard_path() {
 
 fix_modules() {
   _AUTO_CONFIG_ADVAGG=NO
-  if [ -e "${Plr}/sites/all/modules/advagg" ] \
-    || [ -e "${Plr}/modules/o_contrib/advagg" ] \
-    || [ -e "${Plr}/modules/o_contrib_seven/advagg" ] \
-    || [ -e "${Plr}/modules/o_contrib_eight/advagg" ] \
-    || [ -e "${Plr}/modules/o_contrib_nine/advagg" ] \
-    || [ -e "${Plr}/modules/o_contrib_ten/advagg" ]; then
+  if [ -e "${Plr}/modules/o_contrib/advagg" ] \
+    || [ -e "${Plr}/modules/o_contrib_seven/advagg" ]; then
     _MODULE_T=$(run_drush8_nosilent_cmd "pml --status=enabled \
       --type=module | grep \(advagg\)" 2>&1)
     if [[ "${_MODULE_T}" =~ "(advagg)" ]]; then
@@ -1820,79 +1747,7 @@ fix_modules() {
         enable_modules_with_drush8 "${_MODULES_ON_SEVEN}"
       fi
     fi
-  elif [ -e "${Plr}/modules/o_contrib_ten/redis_nine_ten" ] \
-    || [ -e "${Plr}/modules/o_contrib_nine/redis_nine_ten" ] \
-    || [ -e "${Plr}/modules/o_contrib_nine/redis_compr" ] \
-    || [ -e "${Plr}/modules/o_contrib_eight/redis_compr" ] \
-    || [ -e "${Plr}/modules/o_contrib_eight/redis_eight" ]; then
-    if [ ! -e "${Plr}/core/modules/node" ] \
-      || [ ! -e "${Plr}/sites/all/drush/drushrc.php" ] \
-      || [ ! -e "${Plr}/profiles" ]; then
-      echo "WARNING: THIS PLATFORM IS BROKEN! ${Plr}"
-    else
-      _MODX=ON
-      if [ ! -z "${_MODULES_OFF_EIGHT}" ]; then
-        uninstall_modules_with_drush8 "${_MODULES_OFF_EIGHT}"
-      fi
-      if [ ! -z "${_MODULES_ON_EIGHT}" ]; then
-        enable_modules_with_drush8 "${_MODULES_ON_EIGHT}"
-      fi
-      if [ ! -e "${Dir}/.redisOn" ]; then
-        enable_modules_with_drush8 "redis"
-        mkdir ${Dir}/.redisOn
-        chown -R ${_HM_U}:users ${Dir}/.redisOn &> /dev/null
-        chmod 0755 ${Dir}/.redisOn &> /dev/null
-        if [ -d "${Dir}/.redisOff" ]; then
-          rmdir ${Dir}/.redisOff
-        fi
-        if [ -d "${Dir}/.redisLegacyOff" ]; then
-          rmdir ${Dir}/.redisLegacyOff
-        fi
-      fi
-    fi
   fi
-  # if [ -e "${Dir}/modules/commerce_ubercart_check.info" ]; then
-  #   touch ${User}/log/ctrl/site.${Dom}.cart-check.info
-  #   rm -f ${Dir}/modules/commerce_ubercart_check.info
-  # fi
-  # if [ ! -e "${User}/log/ctrl/site.${Dom}.cart-check.info" ]; then
-  #   _COMMERCE_TEST=$(run_drush8_nosilent_cmd "pml --status=enabled \
-  #     --no-core --type=module | grep \(commerce\)" 2>&1)
-  #   _UBERCART_TEST=$(run_drush8_nosilent_cmd "pml --status=enabled \
-  #     --no-core --type=module | grep \(uc_cart\)" 2>&1)
-  #   if [[ "${_COMMERCE_TEST}" =~ "Commerce" ]] \
-  #     || [[ "${_UBERCART_TEST}" =~ "Ubercart" ]]; then
-  #     disable_modules_with_drush8 "views_cache_bully"
-  #   fi
-  #   touch ${User}/log/ctrl/site.${Dom}.cart-check.info
-  # fi
-  # if [ -e "${User}/static/control/enable_views_cache_bully.info" ] \
-  #   || [ -e "${User}/static/control/enable_views_content_cache.info" ]; then
-  #   _VIEWS_TEST=$(run_drush8_nosilent_cmd "pml --status=enabled \
-  #     --no-core --type=module | grep \(views\)" 2>&1)
-  #   if [ -e "${User}/static/control/enable_views_content_cache.info" ]; then
-  #     _CTOOLS_TEST=$(run_drush8_nosilent_cmd "pml --status=enabled \
-  #       --no-core --type=module | grep \(ctools\)" 2>&1)
-  #   fi
-  #   if [[ "${_VIEWS_TEST}" =~ "Views" ]] \
-  #     && [ ! -e "${Plr}/profiles/hostmaster" ]; then
-  #     if [ "${_VIEWS_CACHE_BULLY_DONT_ENABLE}" = "NO" ] \
-  #       && [ -e "${User}/static/control/enable_views_cache_bully.info" ]; then
-  #       if [ -e "${Plr}/modules/o_contrib_seven/views_cache_bully" ] \
-  #         || [ -e "${Plr}/modules/o_contrib/views_cache_bully" ]; then
-  #         enable_modules_with_drush8 "views_cache_bully"
-  #       fi
-  #     fi
-  #     if [[ "${_CTOOLS_TEST}" =~ "Chaos" ]] \
-  #       && [ "${_VIEWS_CONTENT_CACHE_DONT_ENABLE}" = "NO" ] \
-  #       && [ -e "${User}/static/control/enable_views_content_cache.info" ]; then
-  #       if [ -e "${Plr}/modules/o_contrib_seven/views_content_cache" ] \
-  #         || [ -e "${Plr}/modules/o_contrib/views_content_cache" ]; then
-  #         enable_modules_with_drush8 "views_content_cache"
-  #       fi
-  #     fi
-  #   fi
-  # fi
 }
 
 if_site_db_conversion() {
@@ -2679,7 +2534,10 @@ process() {
               touch ${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info
             fi
           else
-            check_site_status_with_drush8
+            if [ -e "${Plr}/modules/o_contrib_seven" ] \
+              || [ -e "${Plr}/modules/o_contrib" ]; then
+              check_site_status_with_drush8
+            fi
           fi
           if [ ! -z "${Dan}" ] \
             && [ "${Dan}" != "hostmaster" ]; then
@@ -2712,16 +2570,7 @@ process() {
               ;;
             esac
             fix_site_control_files
-            if [ -e "${Plr}/modules/o_contrib_eight" ] \
-              || [ -e "${Plr}/modules/o_contrib_nine" ] \
-              || [ -e "${Plr}/modules/o_contrib_ten" ]; then
-              fix_user_register_protection_with_cSet
-              if [[ "${_X_SE}" =~ "OFF" ]]; then
-                run_drush8_cmd "advagg-force-new-aggregates"
-                run_drush8_cmd "cache-rebuild"
-                run_drush8_cmd "cache-rebuild"
-              fi
-            elif [ -e "${Plr}/modules/o_contrib_seven" ] \
+            if [ -e "${Plr}/modules/o_contrib_seven" ] \
               || [ -e "${Plr}/modules/o_contrib" ]; then
               if [ "${_CLEAR_BOOST}" = "YES" ]; then
                 fix_boost_cache
