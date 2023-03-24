@@ -5071,31 +5071,28 @@ install_update_xdrago() {
       || [[ "${_THISHOST}" =~ ".o8.io" ]] \
       || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
       || [ "${_VMFAMILY}" = "VS" ]; then
-      if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
+      sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
+      wait
+      sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
+      wait
+      sed -i "s/INTERVAL 1 HOUR/INTERVAL 15 MINUTE/g" \
+        /var/xdrago/purge_binlogs.sh &> /dev/null
+      wait
+    fi
+    if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
+      _DO_NOTHING=YES
+    else
+      if [ -e "/root/.high_load.cnf" ] \
+        && [ ! -e "/root/.big_db.cnf" ] \
+        && [ ! -e "/root/.tg.cnf" ]; then
+        sed -i "s/3600/300/g" /var/xdrago/minute.sh &> /dev/null
+        wait
+      elif [ -e "/root/.big_db.cnf" ] || [ -e "/root/.tg.cnf" ]; then
         _DO_NOTHING=YES
       else
-        if [ -e "/root/.high_load.cnf" ] \
-          && [ ! -e "/root/.big_db.cnf" ] \
-          && [ ! -e "/root/.tg.cnf" ]; then
-          sed -i "s/3600/180/g" /var/xdrago/minute.sh &> /dev/null
-          wait
-        elif [ -e "/root/.big_db.cnf" ] || [ -e "/root/.tg.cnf" ]; then
-          _DO_NOTHING=YES
-        else
-          sed -i "s/3600/1800/g" /var/xdrago/minute.sh &> /dev/null
-          wait
-        fi
-        sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
-        wait
-        sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
-        wait
-        sed -i "s/INTERVAL 1 HOUR/INTERVAL 15 MINUTE/g" \
-          /var/xdrago/purge_binlogs.sh &> /dev/null
+        sed -i "s/3600/1800/g" /var/xdrago/minute.sh &> /dev/null
         wait
       fi
-    else
-      rm -f /etc/logrotate.d/lshell
-      wait
     fi
   fi
   if [ "${_STATUS}" = "INIT" ]; then

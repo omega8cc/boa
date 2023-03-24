@@ -464,7 +464,7 @@ mysql_proc_control() {
               fi
             done
           else
-            limit=300
+            limit=3600
             mysql_proc_kill
           fi
         fi

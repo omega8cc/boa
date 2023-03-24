@@ -439,6 +439,19 @@ update_agents() {
     mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
     if [ -e "/var/xdrago/minute.sh" ]; then
+      if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
+        _DO_NOTHING=YES
+      else
+        if [ -e "/root/.high_load.cnf" ] \
+          && [ ! -e "/root/.big_db.cnf" ] \
+          && [ ! -e "/root/.tg.cnf" ]; then
+          sed -i "s/3600/300/g" /var/xdrago/minute.sh
+        elif [ -e "/root/.big_db.cnf" ] || [ -e "/root/.tg.cnf" ]; then
+          _DO_NOTHING=YES
+        else
+          sed -i "s/3600/1800/g" /var/xdrago/minute.sh
+        fi
+      fi
       chmod 700 /var/xdrago/minute.sh
       chown root:root /var/xdrago/minute.sh
       touch ${pthLog}/minute.ctrl.${_X_SE}.pid
