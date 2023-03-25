@@ -95,7 +95,7 @@ production settings.
 * Xen guest
 
 
-### DEVUAN, DEBIAN & UBUNTU SUPPORT {c} please read also: docs/CAVEATS.txt
+### DEVUAN & DEBIAN {c} please read also: docs/CAVEATS.txt
 
 === Devuan @ https://www.devuan.org/os/releases
 
