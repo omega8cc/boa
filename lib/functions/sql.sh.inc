@@ -522,7 +522,10 @@ prep_for_install_db_sql() {
     _GPG=gpg
   fi
   cd /var/opt
-  if [ "${_OSR}" = "buster" ] \
+  if [ "${_OSR}" = "chimaera" ] \
+    || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bullseye" ] \
+    || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ] \
     || [ "${_OSR}" = "jessie" ] \
     || [ "${_OSR}" = "trusty" ]; then
@@ -588,7 +591,10 @@ prep_for_install_db_sql() {
   elif [ "${_THIS_OS}" = "Ubuntu" ]; then
     _OSN=ubuntu
   fi
-  if [ "${_OSR}" = "buster" ] \
+  if [ "${_OSR}" = "chimaera" ] \
+    || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bullseye" ] \
+    || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ] \
     || [ "${_OSR}" = "jessie" ] \
     || [ "${_OSR}" = "trusty" ]; then
@@ -886,7 +892,10 @@ prep_for_install_db_sql() {
 }
 
 install_with_aptitude_sql() {
-  if [ "${_OSR}" = "buster" ] \
+  if [ "${_OSR}" = "chimaera" ] \
+    || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bullseye" ] \
+    || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ] \
     || [ "${_OSR}" = "jessie" ] \
     || [ "${_OSR}" = "trusty" ] \

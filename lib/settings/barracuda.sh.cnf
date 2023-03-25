@@ -263,6 +263,36 @@ _FULL_FORCE_REINSTALL=NO
 _JESSIE_TO_STRETCH=NO
 
 ###
+### Use YES to run major system upgrade
+### from Debian Jessie to Devuan Beowulf.
+###
+_JESSIE_TO_BEOWULF=NO
+
+###
+### Use YES to run major system upgrade
+### from Debian Stretch to Devuan Beowulf.
+###
+_STRETCH_TO_BEOWULF=NO
+
+###
+### Use YES to run major system upgrade
+### from Debian Buster to Devuan Beowulf.
+###
+_BUSTER_TO_BEOWULF=NO
+
+###
+### Use YES to run major system upgrade
+### from Devuan Beowulf to Devuan Chimaera.
+###
+_BEOWULF_TO_CHIMAERA=NO
+
+###
+### Use YES to run major system upgrade
+### from Debian Bullseye to Devuan Chimaera.
+###
+_BULLSEYE_TO_CHIMAERA=NO
+
+###
 ### Use YES to run migration from Tomcat 6
 ### to Jetty 7 with Apache Solr 1.4.1
 ###

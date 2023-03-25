@@ -85,12 +85,12 @@ not_supported_os() {
   echo
   echo "=== OOPS! ==="
   echo
-  echo "It is not any supported Debian or Ubuntu version."
+  echo "It is not any supported Devuan, Debian or Ubuntu version."
   echo
-  echo "You need Debian Stretch (recommended) or Jessie."
+  echo "You need Devuan Beowulf (recommended) or Debian Buster first."
   echo
   echo "Also Ubuntu (Trusty or Precise) should work fine,"
-  echo "although BOA developers use and test only Debian."
+  echo "although BOA developers test only Devuan and Debian."
   echo
   echo "Bye"
   echo
@@ -544,7 +544,12 @@ os_detection() {
       not_supported_os
     fi
   elif [ "${_THIS_OS}" = "Debian" ]; then
-    if [ "${_THIS_RV}" = "buster" ]; then
+    if [ "${_THIS_RV}" = "bullseye" ]; then
+      _OSR="bullseye"
+      _DB_SERVER=Percona
+      _DB_SERIES=5.7
+      _DBS_VRN="${_PERCONA_5_7_VRN}"
+    elif [ "${_THIS_RV}" = "buster" ]; then
       _OSR="buster"
       _DB_SERVER=Percona
       _DB_SERIES=5.7
@@ -553,6 +558,41 @@ os_detection() {
       _OSR="stretch"
     elif [ "${_THIS_RV}" = "jessie" ]; then
       _OSR="jessie"
+    else
+      not_supported_os
+    fi
+    _NGINX_FORWARD_SECRECY=YES
+    _NGINX_SPDY=YES
+    if [ "${_DB_SERIES}" = "10.4" ]; then
+      _DB_SERVER=MariaDB
+      _DBS_VRN="${_MARIADB_10_4_VRN}"
+    elif [ "${_DB_SERIES}" = "10.3" ]; then
+      _DB_SERVER=MariaDB
+      _DBS_VRN="${_MARIADB_10_3_VRN}"
+    elif [ "${_DB_SERIES}" = "10.2" ]; then
+      _DB_SERVER=MariaDB
+      _DBS_VRN="${_MARIADB_10_2_VRN}"
+    elif [ "${_DB_SERIES}" = "5.7" ]; then
+      _DB_SERVER=Percona
+      _DBS_VRN="${_PERCONA_5_7_VRN}"
+    else
+      _DB_SERVER=Percona
+      _DB_SERIES=5.7
+      _DBS_VRN="${_PERCONA_5_7_VRN}"
+    fi
+    _SPINNER=NO
+    _SKIP_LEGACY_PHP=YES
+  elif [ "${_THIS_OS}" = "Devuan" ]; then
+    if [ "${_THIS_RV}" = "beowulf" ]; then
+      _OSR="beowulf"
+      _DB_SERVER=Percona
+      _DB_SERIES=5.7
+      _DBS_VRN="${_PERCONA_5_7_VRN}"
+    elif [ "${_THIS_RV}" = "chimaera" ]; then
+      _OSR="chimaera"
+      _DB_SERVER=Percona
+      _DB_SERIES=5.7
+      _DBS_VRN="${_PERCONA_5_7_VRN}"
     else
       not_supported_os
     fi

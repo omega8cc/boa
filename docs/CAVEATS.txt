@@ -1,7 +1,7 @@
 
-NOTE: BOA maintainers currently use only Debian based 64bit systems/servers.
-      We don't use and rarely test Ubuntu, so for best results please use
-      Debian 9 Stretch 64bit.
+NOTE: BOA maintainers currently use only Devuan based 64bit systems/servers.
+      We no longer use Ubuntu, while Debian is pnly supported as a starting
+      point before migration to its systemd-free alternative -- Devuan.
 
 NOTE: BOA maintainers use only server (public) install mode and rarely test
       localhost (local) mode, which is considered highly experimental,

@@ -297,7 +297,10 @@ install_upgrade_nginx() {
         msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
         msg "INFO: Nginx forced rebuild to include pseudo-streaming support"
       fi
-      if [ "${_OSR}" = "buster" ] \
+      if [ "${_OSR}" = "chimaera" ] \
+        || [ "${_OSR}" = "beowulf" ] \
+        || [ "${_OSR}" = "bullseye" ] \
+        || [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "stretch" ]; then
         _OPENSSL_NEW_VRN=${_OPENSSL_CURRENT_VRN}
       else
@@ -401,7 +404,10 @@ install_upgrade_nginx() {
         _NGINX_EXTRA="--with-http_v2_module ${_NGINX_EXTRA}"
       fi
     fi
-    if [ "${_OSR}" = "buster" ] \
+    if [ "${_OSR}" = "chimaera" ] \
+      || [ "${_OSR}" = "beowulf" ] \
+      || [ "${_OSR}" = "bullseye" ] \
+      || [ "${_OSR}" = "buster" ] \
       || [ "${_OSR}" = "stretch" ]; then
       _OPENSSL_NEW_VRN=${_OPENSSL_CURRENT_VRN}
     else

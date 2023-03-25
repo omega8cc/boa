@@ -43,6 +43,7 @@ _USE_MYSQLTUNER=YES #----------- Use MySQLTuner to configure SQL limits when YES
 _DNS_SETUP_TEST=YES #----------- Allows to skip DNS testing when NO
 _EXTRA_PACKAGES="" #------------ Installs listed extra packages with apt-get
 _FORCE_GIT_MIRROR="" #---------- Allows to use different mirror (deprecated)
+_LOCAL_DEVUAN_MIRROR= #--------- Allows to force non-default Devuan mirror
 _LOCAL_DEBIAN_MIRROR= #--------- Allows to force non-default Debian mirror
 _LOCAL_UBUNTU_MIRROR= #--------- Allows to force non-default Ubuntu mirror
 _NEWRELIC_KEY= #---------------- Installs New Relic when license key is set
@@ -223,6 +224,36 @@ _FULL_FORCE_REINSTALL=NO
 ### from Debian Jessie to Debian Stretch.
 ###
 _JESSIE_TO_STRETCH=NO
+
+###
+### Use YES to run major system upgrade
+### from Debian Jessie to Devuan Beowulf.
+###
+_JESSIE_TO_BEOWULF=NO
+
+###
+### Use YES to run major system upgrade
+### from Debian Stretch to Devuan Beowulf.
+###
+_STRETCH_TO_BEOWULF=NO
+
+###
+### Use YES to run major system upgrade
+### from Debian Buster to Devuan Beowulf.
+###
+_BUSTER_TO_BEOWULF=NO
+
+###
+### Use YES to run major system upgrade
+### from Devuan Beowulf to Devuan Chimaera.
+###
+_BEOWULF_TO_CHIMAERA=NO
+
+###
+### Use YES to run major system upgrade
+### from Debian Bullseye to Devuan Chimaera.
+###
+_BULLSEYE_TO_CHIMAERA=NO
 
 ###
 ### Use YES to run migration from Tomcat 6

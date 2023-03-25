@@ -1387,11 +1387,7 @@ debug="$4"
 sql="$5"
 if [ ! -z "${silent}" ]; then
   if [ "${silent}" = "log" ] \
-    || [ "${silent}" = "backdrop" ] \
     || [ "${silent}" = "cluster" ] \
-    || [ "${silent}" = "drush" ] \
-    || [ "${silent}" = "gravcms" ] \
-    || [ "${silent}" = "buster" ] \
     || [ "${silent}" = "system" ]; then
     silent="$2"
   else

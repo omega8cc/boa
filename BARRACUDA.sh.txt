@@ -280,6 +280,11 @@ check_prepare_dirs_permissions
 ### Optional major system upgrades
 ###
 if_jessie_to_stretch
+if_jessie_to_beowulf
+if_stretch_to_beowulf
+if_buster_to_beowulf
+if_beowulf_to_chimaera
+if_bullseye_to_chimaera
 
 
 ###

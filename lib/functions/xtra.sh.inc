@@ -599,17 +599,23 @@ if_install_ffmpeg() {
         true
         msg "INFO: Installing FFmpeg..."
         cd /var/opt
-        if [ "${_OSR}" = "buster" ] \
+        if [ "${_OSR}" = "chimaera" ] \
+          || [ "${_OSR}" = "beowulf" ] \
+          || [ "${_OSR}" = "bullseye" ] \
+          || [ "${_OSR}" = "buster" ] \
           || [ "${_OSR}" = "stretch" ] \
           || [ "${_OSR}" = "jessie" ]; then
           echo "## deb-multimedia APT Repository for FFmpeg" > ${aptLiSys}.d/ffmpeg.list
-          if [ "${_OSR}" = "jessie" ]; then
-            echo "deb http://www.deb-multimedia.org jessie main non-free" >> ${aptLiSys}.d/ffmpeg.list
-            echo "deb http://www.deb-multimedia.org jessie-backports main" >> ${aptLiSys}.d/ffmpeg.list
-          elif [ "${_OSR}" = "stretch" ]; then
-            echo "deb http://www.deb-multimedia.org stretch main non-free" >> ${aptLiSys}.d/ffmpeg.list
-            echo "deb http://www.deb-multimedia.org stretch-backports main" >> ${aptLiSys}.d/ffmpeg.list
-          elif [ "${_OSR}" = "buster" ]; then
+          if [ "${_OSR}" = "bullseye" ] \
+            || [ "${_OSR}" = "buster" ] \
+            || [ "${_OSR}" = "stretch" ] \
+            || [ "${_OSR}" = "jessie" ]; then
+            echo "deb http://www.deb-multimedia.org ${_OSR} main non-free" >> ${aptLiSys}.d/ffmpeg.list
+            echo "deb http://www.deb-multimedia.org ${_OSR}-backports main" >> ${aptLiSys}.d/ffmpeg.list
+          elif [ "${_OSR}" = "chimaera" ]; then
+            echo "deb http://www.deb-multimedia.org bullseye main non-free" >> ${aptLiSys}.d/ffmpeg.list
+            echo "deb http://www.deb-multimedia.org bullseye-backports main" >> ${aptLiSys}.d/ffmpeg.list
+          elif [ "${_OSR}" = "beowulf" ]; then
             echo "deb http://www.deb-multimedia.org buster main non-free" >> ${aptLiSys}.d/ffmpeg.list
             echo "deb http://www.deb-multimedia.org buster-backports main" >> ${aptLiSys}.d/ffmpeg.list
           fi

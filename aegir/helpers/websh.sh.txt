@@ -537,7 +537,10 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     fi
     if [ "${_RUBY_ALLOW}" = "YES" ]; then
       _THIS_RV=$(lsb_release -sc 2>&1)
-      if [ "${_THIS_RV}" = "buster" ] \
+      if [ "${_THIS_RV}" = "chimaera" ] \
+        || [ "${_THIS_RV}" = "beowulf" ] \
+        || [ "${_THIS_RV}" = "bullseye" ] \
+        || [ "${_THIS_RV}" = "buster" ] \
         || [ "${_THIS_RV}" = "stretch" ] \
         || [ "${_THIS_RV}" = "jessie" ] \
         || [ "${_THIS_RV}" = "trusty" ] \

@@ -2106,7 +2106,10 @@ install_wkhtmltox() {
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}')
-  if [ "${_THIS_RV}" = "buster" ] \
+  if [ "${_OSR}" = "chimaera" ] \
+    || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bullseye" ] \
+    || [ "${_OSR}" = "buster" ] \
     || [ "${_THIS_RV}" = "stretch" ]; then
     if [[ "${_WOX_ITD}" =~ "0.12.6" ]]; then
       _WOX_IS=NEW
@@ -2116,7 +2119,10 @@ install_wkhtmltox() {
       _WOX_IS=NEW
     fi
   fi
-  if [ "${_THIS_RV}" = "buster" ] \
+  if [ "${_OSR}" = "chimaera" ] \
+    || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bullseye" ] \
+    || [ "${_OSR}" = "buster" ] \
     || [ "${_THIS_RV}" = "stretch" ] \
     || [ "${_THIS_RV}" = "jessie" ] \
     || [ "${_THIS_RV}" = "trusty" ]; then
@@ -2534,7 +2540,10 @@ update_sources_list() {
       echo "deb-src http://${_MIRROR}/debian/ ${_OSR} main contrib non-free" \
         >> ${aptLiSys}
       echo "" >> ${aptLiSys}
-      if [ "${_OSR}" = "buster" ] \
+      if [ "${_OSR}" = "chimaera" ] \
+        || [ "${_OSR}" = "beowulf" ] \
+        || [ "${_OSR}" = "bullseye" ] \
+        || [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "stretch" ]; then
         echo "## MAJOR BUG FIX UPDATES produced after the final release" \
         >> ${aptLiSys}
@@ -2589,7 +2598,10 @@ update_sources_list() {
 #
 # Install OpenSSH from sources.
 install_ssh_src() {
-  if [ "${_OSR}" = "buster" ] \
+  if [ "${_OSR}" = "chimaera" ] \
+    || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bullseye" ] \
+    || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ] \
     || [ "${_OSR}" = "jessie" ]; then
     _SSH_GET_DPKG=$(dpkg --get-selections | grep openssh-sftp-server | grep 'hold$' 2>&1)
@@ -2633,7 +2645,10 @@ install_ssh_src() {
       echo "openssh-client hold" | dpkg --set-selections &> /dev/null
       echo "openssh-server hold" | dpkg --set-selections &> /dev/null
       echo "ssh hold" | dpkg --set-selections &> /dev/null
-      if [ "${_OSR}" = "buster" ] \
+      if [ "${_OSR}" = "chimaera" ] \
+        || [ "${_OSR}" = "beowulf" ] \
+        || [ "${_OSR}" = "bullseye" ] \
+        || [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "stretch" ] \
         || [ "${_OSR}" = "jessie" ]; then
         echo "openssh-sftp-server hold" | dpkg --set-selections &> /dev/null
@@ -2647,7 +2662,10 @@ install_ssh_src() {
       echo "openssh-client hold" | dpkg --set-selections &> /dev/null
       echo "openssh-server hold" | dpkg --set-selections &> /dev/null
       echo "ssh hold" | dpkg --set-selections &> /dev/null
-      if [ "${_OSR}" = "buster" ] \
+      if [ "${_OSR}" = "chimaera" ] \
+        || [ "${_OSR}" = "beowulf" ] \
+        || [ "${_OSR}" = "bullseye" ] \
+        || [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "stretch" ] \
         || [ "${_OSR}" = "jessie" ]; then
         echo "openssh-sftp-server hold" | dpkg --set-selections &> /dev/null
@@ -2736,7 +2754,10 @@ install_ssl_src() {
     msg "INFO: Installed OpenSSL version ${_SSL_ITD}, upgrade required"
   fi
   if [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
-    if [ "${_OSR}" = "buster" ] \
+    if [ "${_OSR}" = "chimaera" ] \
+      || [ "${_OSR}" = "beowulf" ] \
+      || [ "${_OSR}" = "bullseye" ] \
+      || [ "${_OSR}" = "buster" ] \
       || [ "${_OSR}" = "stretch" ]; then
       _OPENSSL_NEW_VRN=${_OPENSSL_CURRENT_VRN}
     else
@@ -2908,7 +2929,10 @@ install_curl_src() {
         extract_archive "curl-${_CURL_VRN}.tar.gz"
       fi
       if [ -e "/var/opt/curl-${_CURL_VRN}" ]; then
-        if [ "${_OSR}" = "buster" ] \
+        if [ "${_OSR}" = "chimaera" ] \
+          || [ "${_OSR}" = "beowulf" ] \
+          || [ "${_OSR}" = "bullseye" ] \
+          || [ "${_OSR}" = "buster" ] \
           || [ "${_OSR}" = "stretch" ]; then
           _OPENSSL_NEW_VRN=${_OPENSSL_CURRENT_VRN}
         else
@@ -3549,8 +3573,11 @@ install_with_aptitude_deps() {
 basic_packages_install_on_init() {
   apt-get remove --purge unscd -y &> /dev/null
   userdel -r debian &> /dev/null
-  if [ "${_THIS_RV}" = "buster" ] \
-    || [ "${_THIS_RV}" = "stretch" ]; then
+  if [ "${_OSR}" = "chimaera" ] \
+    || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bullseye" ] \
+    || [ "${_OSR}" = "buster" ] \
+    || [ "${_OSR}" = "stretch" ]; then
     _APT_SHELLS=$(id -nG _apt 2>&1)
     if [[ "${_APT_SHELLS}" =~ "nogroup" ]]; then
       usermod -aG users _apt
@@ -3570,7 +3597,10 @@ basic_packages_install_on_init() {
     echo "APT::Get::AllowUnauthenticated \"true\";"     >> /etc/apt/apt.conf.d/99ignorestrict
     echo "Aptitude::CmdLine::Fix-Broken \"true\";"      >> /etc/apt/apt.conf.d/99ignorestrict
   fi
-  if [ "${_OSR}" = "buster" ] \
+  if [ "${_OSR}" = "chimaera" ] \
+    || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bullseye" ] \
+    || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ] \
     || [ "${_OSR}" = "jessie" ]; then
     _GRUB_TEST=$(grep systemd /etc/default/grub 2>&1)
@@ -3603,7 +3633,10 @@ basic_packages_install_on_init() {
     ${_INITINS} wget &> /dev/null
     if [ -x "/lib/systemd/systemd" ]; then
       msg "INFO: Installing sysvinit-core on ${_THIS_OS} ${_OSR}..."
-      if [ "${_OSR}" = "buster" ] \
+      if [ "${_OSR}" = "chimaera" ] \
+        || [ "${_OSR}" = "beowulf" ] \
+        || [ "${_OSR}" = "bullseye" ] \
+        || [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "stretch" ] \
         || [ "${_OSR}" = "jessie" ]; then
         ${_INITINS} sysvinit-core &> /dev/null
@@ -3640,7 +3673,10 @@ basic_packages_install_on_init() {
   else
     if [ -x "/lib/systemd/systemd" ]; then
       msg "INFO: Removing systemd on ${_THIS_OS} ${_OSR}..."
-      if [ "${_OSR}" = "buster" ] \
+      if [ "${_OSR}" = "chimaera" ] \
+        || [ "${_OSR}" = "beowulf" ] \
+        || [ "${_OSR}" = "bullseye" ] \
+        || [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "stretch" ] \
         || [ "${_OSR}" = "jessie" ]; then
         ${_INITINS} sysvinit-core &> /dev/null
@@ -4032,7 +4068,10 @@ if_jessie_to_stretch() {
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     if [ -x "/lib/systemd/systemd" ]; then
       msg "INFO: Removing systemd on ${_THIS_OS} ${_OSR}..."
-      if [ "${_OSR}" = "buster" ] \
+      if [ "${_OSR}" = "chimaera" ] \
+        || [ "${_OSR}" = "beowulf" ] \
+        || [ "${_OSR}" = "bullseye" ] \
+        || [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "stretch" ] \
         || [ "${_OSR}" = "jessie" ]; then
         ${_INITINS} sysvinit-core &> /dev/null
@@ -4316,6 +4355,12 @@ sys_packages_install() {
         _APT_XTRA="openjdk-8-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "buster" ]; then
         _APT_XTRA="openjdk-8-jre-headless ca-certificates-java nginx"
+      elif [ "${_OSR}" = "bullseye" ]; then
+        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java nginx"
+      elif [ "${_OSR}" = "beowulf" ]; then
+        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java nginx"
+      elif [ "${_OSR}" = "chimaera" ]; then
+        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java nginx"
       fi
     else
       _APT_XTRA="nginx"
@@ -4347,6 +4392,12 @@ sys_packages_install() {
       elif [ "${_OSR}" = "stretch" ]; then
         _APT_XTRA="openjdk-8-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "buster" ]; then
+        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java"
+      elif [ "${_OSR}" = "bullseye" ]; then
+        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java"
+      elif [ "${_OSR}" = "beowulf" ]; then
+        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java"
+      elif [ "${_OSR}" = "chimaera" ]; then
         _APT_XTRA="openjdk-8-jre-headless ca-certificates-java"
       fi
     else
@@ -4400,7 +4451,49 @@ sys_packages_install() {
     _SYSLOGD=rsyslog
   fi
 
-  if [ "${_OSR}" = "buster" ]; then
+  if [ "${_OSR}" = "chimaera" ]; then
+    _EXTRA_PACKAGES="autoconf2.64 \
+                     libpcre2-dev \
+                     libpcre3 \
+                     libpcre3-dev \
+                     libpng-dev \
+                     libpng16-16 \
+                     gnupg1-curl \
+                     software-properties-common \
+                     libpcre2-posix0 \
+                     automake1.11 \
+                     libcurl4 \
+                     libcurl4-gnutls-dev \
+                     ${_EXTRA_PACKAGES}"
+  elif [ "${_OSR}" = "beowulf" ]; then
+    _EXTRA_PACKAGES="autoconf2.64 \
+                     libpcre2-dev \
+                     libpcre3 \
+                     libpcre3-dev \
+                     libpng-dev \
+                     libpng16-16 \
+                     gnupg1-curl \
+                     software-properties-common \
+                     libpcre2-posix0 \
+                     automake1.11 \
+                     libcurl4 \
+                     libcurl4-gnutls-dev \
+                     ${_EXTRA_PACKAGES}"
+  elif [ "${_OSR}" = "bullseye" ]; then
+    _EXTRA_PACKAGES="autoconf2.64 \
+                     libpcre2-dev \
+                     libpcre3 \
+                     libpcre3-dev \
+                     libpng-dev \
+                     libpng16-16 \
+                     gnupg1-curl \
+                     software-properties-common \
+                     libpcre2-posix0 \
+                     automake1.11 \
+                     libcurl4 \
+                     libcurl4-gnutls-dev \
+                     ${_EXTRA_PACKAGES}"
+  elif [ "${_OSR}" = "buster" ]; then
     _EXTRA_PACKAGES="autoconf2.64 \
                      libpcre2-dev \
                      libpcre3 \
@@ -4448,7 +4541,10 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  if [ "${_OSR}" = "buster" ] \
+  if [ "${_OSR}" = "chimaera" ] \
+    || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bullseye" ] \
+    || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ] \
     || [ "${_OSR}" = "jessie" ] \
     || [ "${_OSR}" = "trusty" ]; then
@@ -4495,7 +4591,10 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  if [ "${_OSR}" = "buster" ] \
+  if [ "${_OSR}" = "chimaera" ] \
+    || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bullseye" ] \
+    || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ] \
     || [ "${_OSR}" = "jessie" ] \
     || [ "${_OSR}" = "trusty" ] \
@@ -4678,7 +4777,10 @@ fix_libs_php() {
     && [ "${_LOC_OSR}" = "jessie" ]; then
     _DO_FIX=YES
   fi
-  if [ "${_OSR}" = "buster" ] \
+  if [ "${_OSR}" = "chimaera" ] \
+    || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bullseye" ] \
+    || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ] \
     || [ "${_OSR}" = "jessie" ] \
     || [ "${_DO_FIX}" = "YES" ] \
@@ -4746,7 +4848,10 @@ fix_libssl() {
     && [ "${_LOC_OSR}" = "jessie" ]; then
     _DO_FIX=YES
   fi
-  if [ "${_OSR}" = "buster" ] \
+  if [ "${_OSR}" = "chimaera" ] \
+    || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bullseye" ] \
+    || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ] \
     || [ "${_OSR}" = "jessie" ] \
     || [ "${_DO_FIX}" = "YES" ] \
@@ -4755,7 +4860,10 @@ fix_libssl() {
     _SSL_FIX_REQUIRED=YES
     if [ "${_NGINX_SPDY}" = "YES" ] \
       || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
-      if [ "${_OSR}" = "buster" ] \
+      if [ "${_OSR}" = "chimaera" ] \
+        || [ "${_OSR}" = "beowulf" ] \
+        || [ "${_OSR}" = "bullseye" ] \
+        || [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "stretch" ] \
         || [ "${_OSR}" = "jessie" ] \
         || [ "${_DO_FIX}" = "YES" ] \
@@ -6007,8 +6115,11 @@ complete() {
     usermod -aG users aegir
     usermod -aG users man
     usermod -aG users mysql
-    if [ "${_THIS_RV}" = "buster" ] \
-      || [ "${_THIS_RV}" = "stretch" ]; then
+    if [ "${_OSR}" = "chimaera" ] \
+      || [ "${_OSR}" = "beowulf" ] \
+      || [ "${_OSR}" = "bullseye" ] \
+      || [ "${_OSR}" = "buster" ] \
+      || [ "${_OSR}" = "stretch" ]; then
       usermod -aG users _apt
     fi
     if [ -x "/bin/bash" ]; then

@@ -82,7 +82,8 @@ check_root() {
       echo "deb-src http://http.debian.net/debian/ ${_OSR} main contrib non-free"      >> /etc/apt/sources.list
       echo ""                                                                          >> /etc/apt/sources.list
       if [ "${_OSR}" = "stretch" ] \
-        || [ "${_OSR}" = "buster" ]; then
+        || [ "${_OSR}" = "buster" ] \
+        || [ "${_OSR}" = "bullseye" ]; then
         echo "## MAJOR BUG FIX UPDATES produced after the final release"               >> /etc/apt/sources.list
         echo "deb http://http.debian.net/debian/ ${_OSR}-updates main"                 >> /etc/apt/sources.list
         echo "deb-src http://http.debian.net/debian/ ${_OSR}-updates main"             >> /etc/apt/sources.list
@@ -112,6 +113,9 @@ check_root() {
       _BENG_SERIES="4.9"
       _BNG_VERSION="4.9.202-vs2.3.9.9"
     elif [ "${_OSR}" = "buster" ]; then
+      _BENG_SERIES="4.9"
+      _BNG_VERSION="4.9.202-vs2.3.9.9"
+    elif [ "${_OSR}" = "bullseye" ]; then
       _BENG_SERIES="4.9"
       _BNG_VERSION="4.9.202-vs2.3.9.9"
     else
@@ -1044,7 +1048,8 @@ install_vps() {
       echo "Removing systemd on ${osx}..."
       if [ "${osx}" = "jessie" ] \
         || [ "${osx}" = "stretch" ] \
-        || [ "${osx}" = "buster" ]; then
+        || [ "${osx}" = "buster" ] \
+        || [ "${osx}" = "bullseye" ]; then
         vserver ${idn} exec ${_INSTAPP} sysvinit-core
         vserver ${idn} exec ${_INSTAPP} sysvinit-utils
         if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
@@ -1724,7 +1729,8 @@ install_host() {
   echo "deb-src http://http.debian.net/debian/ ${_OSR} main contrib non-free"      >> /etc/apt/sources.list
   echo ""                                                                          >> /etc/apt/sources.list
   if [ "${_OSR}" = "stretch" ] \
-    || [ "${_OSR}" = "buster" ]; then
+    || [ "${_OSR}" = "buster" ] \
+    || [ "${_OSR}" = "bullseye" ]; then
     echo "## MAJOR BUG FIX UPDATES produced after the final release"               >> /etc/apt/sources.list
     echo "deb http://http.debian.net/debian/ ${_OSR}-updates main"                 >> /etc/apt/sources.list
     echo "deb-src http://http.debian.net/debian/ ${_OSR}-updates main"             >> /etc/apt/sources.list
@@ -1870,7 +1876,8 @@ install_host() {
     echo "Installing sysvinit-core on ${_THIS_OS} ${_OSR}..."
     if [ "${osx}" = "jessie" ] \
       || [ "${osx}" = "stretch" ] \
-      || [ "${osx}" = "buster" ]; then
+      || [ "${osx}" = "buster" ] \
+      || [ "${osx}" = "bullseye" ]; then
       ${_INSTAPP} sysvinit-core
       ${_INSTAPP} sysvinit-utils
       if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -1933,7 +1940,8 @@ upgrade_host() {
     echo "Removing systemd on ${_THIS_OS} ${_OSR}..."
     if [ "${osx}" = "jessie" ] \
       || [ "${osx}" = "stretch" ] \
-      || [ "${osx}" = "buster" ]; then
+      || [ "${osx}" = "buster" ] \
+      || [ "${osx}" = "bullseye" ]; then
       ${_INSTAPP} sysvinit-core
       ${_INSTAPP} sysvinit-utils
       if [ -e "/usr/share/sysvinit/inittab" ]; then

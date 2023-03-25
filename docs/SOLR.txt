@@ -123,7 +123,7 @@ level via INI files, check our docs at https://omega8.cc/node/293
 
         $conf['apachesolr_attachments_java'] = '/usr/bin/java7 -Xms32m -Xmx64m';
 
-        On Debian Stretch the line should be modified:
+        On Debian Stretch or newer the line should be modified:
 
         $conf['apachesolr_attachments_java'] = '/usr/bin/java8 -Xms32m -Xmx64m';
 

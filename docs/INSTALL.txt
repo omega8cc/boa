@@ -4,8 +4,10 @@
 * After initial installation please reboot your system and then run
   the `barracuda up-head` upgrade to complete all tasks and prepare
   the system for production use -- it is very important especially on
-  newer systems like Debian Stretch. Once the barracuda upgrade is complete,
-  please reboot the server *again* to make the systemd cleanup complete.
+  systems running systemd like Debian Stretch.
+
+  Once the barracuda upgrade is complete, please reboot the server *again*
+  to make the systemd cleanup complete.
 
 * BOA requires minimal, supported OS, with no services installed.
   The only acceptable exceptions are: sshd and mail servers.

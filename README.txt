@@ -95,25 +95,24 @@ production settings.
 * Xen guest
 
 
-### DEBIAN & UBUNTU LTS SUPPORT {c} please read also: docs/CAVEATS.txt
+### DEVUAN, DEBIAN & UBUNTU SUPPORT {c} please read also: docs/CAVEATS.txt
+
+=== Devuan @ https://www.devuan.org/os/releases
+
+* Devuan Chimaera (work in progress)
+* Devuan Beowulf (work in progress)
 
 === Debian @ https://wiki.debian.org/LTS
 
-* Debian 13 Trixie (work in progress)
-* Debian 12 Bookworm (work in progress)
-* Debian 11 Bullseye (work in progress)
-* Debian 10 Buster (work in progress)
-* Debian 9 Stretch (recommended currently)
-* Debian 8 Jessie (upgrade to Stretch with _JESSIE_TO_STRETCH=YES)
+* Debian 11 Bullseye => upgrade to Chimaera _BULLSEYE_TO_CHIMAERA=YES
+* Debian 10 Buster   => upgrade to Beowulf  _BUSTER_TO_BEOWULF=YES
+* Debian 9 Stretch   => upgrade to Beowulf  _STRETCH_TO_BEOWULF=YES
+* Debian 8 Jessie    => upgrade to Beowulf  _JESSIE_TO_BEOWULF=YES
 
 === Ubuntu @ https://ubuntu.com/about/release-cycle
 
-* Ubuntu Jammy Jellyfish 22.04 LTS (work in progress)
-* Ubuntu Focal Fossa 20.04 LTS (work in progress)
-* Ubuntu Bionic Beaver 18.04 LTS (work in progress)
-* Ubuntu Xenial Xerus 16.04 LTS (work in progress)
-* Ubuntu Trusty Tahr 14.04 LTS (limited support)
-* Ubuntu Precise Pangolin 12.04.3 LTS (limited support)
+* Ubuntu Trusty Tahr 14.04 LTS (deprecated)
+* Ubuntu Precise Pangolin 12.04.3 LTS (deprecated)
 
 
 ### OTHER REQUIREMENTS

@@ -2503,6 +2503,9 @@ process() {
       _PLR_CTRL_F="${Plr}/sites/all/modules/boa_platform_control.ini"
       if [ -e "${Plr}" ]; then
         if [ "${_NEW_SSL}" = "YES" ] \
+          || [ "${_OSR}" = "chimaera" ] \
+          || [ "${_OSR}" = "beowulf" ] \
+          || [ "${_OSR}" = "bullseye" ] \
           || [ "${_OSR}" = "buster" ] \
           || [ "${_OSR}" = "stretch" ] \
           || [ "${_OSR}" = "jessie" ] \

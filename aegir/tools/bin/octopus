@@ -943,11 +943,8 @@ up_finish() {
 
 up_head() {
   up_start
-  if [ "${silent}" = "backdrop" ] \
-    || [ "${silent}" = "cluster" ] \
-    || [ "${silent}" = "drush" ] \
-    || [ "${silent}" = "gravcms" ] \
-    || [ "${silent}" = "buster" ]; then
+  if [ "${silent}" = "cluster" ] \
+    || [ "${silent}" = "gravcms" ]; then
     echo "FEATURE MODE: ${silent}"
     master="feature/${silent}"
     branch="feature/${silent}"

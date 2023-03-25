@@ -1231,7 +1231,10 @@ install_php_multi() {
   msg "INFO: Building PHP ${_PHP_VERSION} part 1/3"
   cd /var/opt/php-${_PHP_VERSION}
   mrun "sh ./buildconf --force" 2> /dev/null
-  if [ "${_OSR}" = "buster" ] \
+  if [ "${_OSR}" = "chimaera" ] \
+    || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bullseye" ] \
+    || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ] \
     || [ "${_OSR}" = "jessie" ] \
     || [ "${_DO_FIX}" = "YES" ] \
@@ -1294,13 +1297,19 @@ install_php_multi() {
     _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR} --enable-gd-native-ttf --with-mcrypt"
   elif [ "$1" = "56" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR} --enable-gd-native-ttf --with-mcrypt --with-mysql=mysqlnd"
-    if [ "${_OSR}" = "buster" ] \
+    if [ "${_OSR}" = "chimaera" ] \
+      || [ "${_OSR}" = "beowulf" ] \
+      || [ "${_OSR}" = "bullseye" ] \
+      || [ "${_OSR}" = "buster" ] \
       || [ "${_OSR}" = "stretch" ]; then
       patchFile="PHP-5.6.31-OpenSSL-1.1.0-compatibility-20170801.patch"
       patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
     fi
   fi
-  if [ "${_OSR}" = "buster" ]; then
+  if [ "${_OSR}" = "chimaera" ] \
+    || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bullseye" ] \
+    || [ "${_OSR}" = "buster" ] \
     patchFile="freetype.patch"
     patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
   fi
