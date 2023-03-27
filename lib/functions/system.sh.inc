@@ -4069,6 +4069,11 @@ if_major_os_upgrade() {
       mrun "apt-get install default-jre ${forCer}" 2> /dev/null
     fi
     ###
+    ### Make sure that udev is installed first, if needed.
+    if [ "${_VMFAMILY}" != "VS" ]; then
+      mrun "apt-get install udev ${dstUpArg}" 2> /dev/null
+    fi
+    ###
     ### Run pre-migration upgrade in the current OS version.
     mrun "apt-get upgrade ${nrmUpArg}" 2> /dev/null
     mrun "apt-get dist-upgrade ${nrmUpArg}" 2> /dev/null
@@ -4129,11 +4134,6 @@ if_major_os_upgrade() {
     ### Note that this upgrade does not complete the migration yet.
     mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
     mrun "apt-get install apt dpkg aptitude util-linux ${dstUpArg}" 2> /dev/null
-    ###
-    ### Make sure that udev is installed first, if needed.
-    if [ "${_VMFAMILY}" != "VS" ]; then
-      mrun "apt-get install udev ${dstUpArg}" 2> /dev/null
-    fi
     ###
     ### Back to BOA stuff re-install as needed.
     install_upgrade_nginx
