@@ -258,12 +258,6 @@ _FULL_FORCE_REINSTALL=NO
 
 ###
 ### Use YES to run major system upgrade
-### from Debian Jessie to Debian Stretch.
-###
-_JESSIE_TO_STRETCH=NO
-
-###
-### Use YES to run major system upgrade
 ### from Debian Jessie to Devuan Beowulf.
 ###
 _JESSIE_TO_BEOWULF=NO
@@ -382,19 +376,21 @@ _SSH_PORT=22
 
 
 ###----------------------------------------###
-### LOCAL DEBIAN OR UBUNTU MIRROR          ###
+### LOCAL DEVUAN, DEBIAN OR UBUNTU MIRROR  ###
 ###----------------------------------------###
 ###
 ### Modify this if you prefer to use some
 ### mirror you know is the best / the fastest
 ### in your server location. For example:
 ###
+### _LOCAL_DEVUAN_MIRROR=devuan.keff.org
 ### _LOCAL_DEBIAN_MIRROR=ftp.au.debian.org
 ### _LOCAL_UBUNTU_MIRROR=au.archive.ubuntu.com
 ###
 ### To search for the fastest mirror around
 ### the globe, use empty variables:
 ###
+### _LOCAL_DEVUAN_MIRROR=""
 ### _LOCAL_DEBIAN_MIRROR=""
 ### _LOCAL_UBUNTU_MIRROR=""
 ###
@@ -408,7 +404,8 @@ _SSH_PORT=22
 ### to use reliable mirrors you know,
 ### or leave default values.
 ###
-_LOCAL_DEBIAN_MIRROR=httpredir.debian.org
+_LOCAL_DEVUAN_MIRROR=deb.devuan.org
+_LOCAL_DEBIAN_MIRROR=deb.debian.org
 _LOCAL_UBUNTU_MIRROR=archive.ubuntu.com
 
 

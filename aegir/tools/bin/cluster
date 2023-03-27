@@ -257,7 +257,7 @@ fix_locales() {
 
 EOF
     sleep 5
-    if [ "${_THIS_OS}" = "Debian" ]; then
+    if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
       _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
       if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
@@ -300,7 +300,7 @@ EOF
     export LC_IDENTIFICATION=en_US.UTF-8
     export LC_ALL=
   else
-    if [ "${_THIS_OS}" = "Debian" ]; then
+    if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
       _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
       if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
@@ -1056,6 +1056,7 @@ install_vps() {
           cp -af /vservers/${idn}/usr/share/sysvinit/inittab /vservers/${idn}/etc/inittab
         fi
         vserver ${idn} exec apt-get remove systemd -y -qq --purge --auto-remove
+        vserver ${idn} exec apt-get remove libnss-systemd -y -qq --purge --auto-remove
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /vservers/${idn}/etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /vservers/${idn}/etc/apt/preferences.d/systemd
         vserver ${idn} exec ${_INSTAPP} sysvinit-core
@@ -1076,6 +1077,7 @@ install_vps() {
           cp -af /vservers/${idn}/usr/share/sysvinit/inittab /vservers/${idn}/etc/inittab
         fi
         vserver ${idn} exec apt-get remove systemd -y -qq --purge --auto-remove
+        vserver ${idn} exec apt-get remove libnss-systemd -y -qq --purge --auto-remove
       fi
     fi
   else

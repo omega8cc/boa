@@ -4177,18 +4177,11 @@ satellite_if_sql_exception_test() {
   ###--------------------###
   if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
     || [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
-    _DB_SERVER_TEST=$(mysql -V 2>&1)
-    if [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
-      _DB_SERVER=MariaDB
-      msg "ALRT! ${_DB_SERVER} server not running properly!"
-      msg "EXIT: We can't proceed and will exit now"
-      msg "HINT: Please (re)start ${_DB_SERVER} server and then run installer again"
-      msg "Bye"
-    else
-      msg "ALRT! ${_DB_SERVER} server not installed properly!"
-      msg "EXIT: We can't proceed and will exit now"
-      msg "Bye"
-    fi
+    msg "ALRT! ${_DB_SERVER} server not running properly!"
+    msg "EXIT: We can't proceed and will exit now"
+    msg "HINT: Please check ${_LOG} for more information,"
+    msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
+    msg "Bye"
     clean_pid_exit
   fi
 }

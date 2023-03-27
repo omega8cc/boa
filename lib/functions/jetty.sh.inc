@@ -1,9 +1,7 @@
 
+
 if_install_jetty() {
-  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_LOC_OSR}" = "jessie" ]; then
-    _DO_FIX=YES
-  fi
+  if_to_do_fix
   if [[ "${_XTRAS_LIST}" =~ "SR7" ]] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \

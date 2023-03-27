@@ -447,8 +447,8 @@ install_upgrade_nginx() {
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-      && [ "${_LOC_OSR}" = "jessie" ]; then
+    if_to_do_fix
+    if [ "${_DO_FIX}" = "YES" ]; then
       _DO_NOTHING=YES
     else
       nginx_clean_legacy_config

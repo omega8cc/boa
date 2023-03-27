@@ -1194,10 +1194,7 @@ update_php_extensions() {
 #
 # Install modern PHP version
 install_php_multi() {
-  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_LOC_OSR}" = "jessie" ]; then
-    _DO_FIX=YES
-  fi
+  if_to_do_fix
   get_php_conf_extra
   _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-curlwrappers//g" 2>&1)
   ###--------------------###
@@ -1723,7 +1720,8 @@ install_newrelic() {
 #
 # Check if the PHP rebuild is required.
 check_php_rebuild() {
-  if [ "${_JESSIE_TO_STRETCH}" = "YES" ]; then
+  if_to_do_fix
+  if [ "${_DO_FIX}" = "YES" ]; then
     _PHP_FORCE_REINSTALL=NO
   fi
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
@@ -1881,8 +1879,8 @@ check_php_broken_gd() {
 #
 # Check if the PHP build is broken.
 check_php_broken() {
-  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_LOC_OSR}" = "jessie" ]; then
+  if_to_do_fix
+  if [ "${_DO_FIX}" = "YES" ]; then
     _DO_NOTHING=YES
   else
     _BROKEN_LIBCURL_TEST=$(/opt/php$1/bin/php -v 2>&1)
@@ -2106,15 +2104,7 @@ get_php_conf_extra() {
 }
 
 install_update_php() {
-  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_LOC_OSR}" = "jessie" ]; then
-    _DO_FIX=YES
-  fi
-  # if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-  #   && [ "${_LOC_OSR}" = "jessie" ]; then
-  #   mrun "service nginx stop" &> /dev/null
-  #   killall -9 nginx &> /dev/null
-  # fi
+  if_to_do_fix
   if [ "${_STATUS}" = "UPGRADE" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Checking if PHP upgrade is available"

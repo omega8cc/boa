@@ -40,7 +40,7 @@ _CHIVE_VRN=1.3
 _COMPOSER_VRN=2.0.14
 _CSF_VRN=14.17
 _CURL_VRN=7.87.0
-_DB_SRC=ftp.osuosl.org
+_DB_SRC=repo.percona.com
 _DRUSH_EIGHT_TEST_VRN=8.4.12-force
 _DRUSH_EIGHT_VRN=8.4.12.4
 _DRUSH_ELEVEN_VRN=11.3.2
@@ -279,12 +279,8 @@ check_prepare_dirs_permissions
 ###
 ### Optional major system upgrades
 ###
-if_jessie_to_stretch
-if_jessie_to_beowulf
-if_stretch_to_beowulf
-if_buster_to_beowulf
-if_beowulf_to_chimaera
-if_bullseye_to_chimaera
+if_major_os_upgrade
+if_post_major_os_upgrade
 
 
 ###
@@ -324,7 +320,7 @@ fi
 ### Install OpenSSH from sources if needed
 ###
 if [ "${_SSH_FROM_SOURCES}" = "YES" ]; then
-  if [ "${_THIS_OS}" = "Debian" ]; then
+  if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
     install_ssh_src
   fi
 fi

@@ -1,4 +1,68 @@
 
+define_loc_osr() {
+  _LOC_OSR=
+  _MSG_LOC=
+  if [ "${_JESSIE_TO_BEOWULF}" = "YES" ] \
+    && [ "${_OSR}" = "jessie" ]; then
+    _LOC_OSR=jessie
+    _NEW_OSR=beowulf
+    _MSG_LOC="Debian Jessie to Devuan Beowulf"
+    touch /root/.use.icu.src.cnf
+  fi
+  if [ "${_STRETCH_TO_BEOWULF}" = "YES" ] \
+    && [ "${_OSR}" = "stretch" ]; then
+    _LOC_OSR=stretch
+    _NEW_OSR=beowulf
+    _MSG_LOC="Debian Stretch to Devuan Beowulf"
+    touch /root/.use.icu.src.cnf
+  fi
+  if [ "${_BUSTER_TO_BEOWULF}" = "YES" ] \
+    && [ "${_OSR}" = "buster" ]; then
+    _LOC_OSR=buster
+    _NEW_OSR=beowulf
+    _MSG_LOC="Debian Buster to Devuan Beowulf"
+    touch /root/.use.icu.src.cnf
+  fi
+  if [ "${_BEOWULF_TO_CHIMAERA}" = "YES" ] \
+    && [ "${_OSR}" = "beowulf" ]; then
+    _LOC_OSR=beowulf
+    _NEW_OSR=chimaera
+    _MSG_LOC="Devuan Beowulf to Devuan Chimaera"
+    touch /root/.use.icu.src.cnf
+  fi
+  if [ "${_BULLSEYE_TO_CHIMAERA}" = "YES" ] \
+    && [ "${_OSR}" = "bullseye" ]; then
+    _LOC_OSR=bullseye
+    _NEW_OSR=chimaera
+    _MSG_LOC="Debian Bullseye to Devuan Chimaera"
+    touch /root/.use.icu.src.cnf
+  fi
+}
+
+if_to_do_fix() {
+  _DO_FIX=
+  if [ "${_JESSIE_TO_BEOWULF}" = "YES" ] \
+    && [ "${_LOC_OSR}" = "jessie" ]; then
+    _DO_FIX=YES
+  fi
+  if [ "${_STRETCH_TO_BEOWULF}" = "YES" ] \
+    && [ "${_LOC_OSR}" = "stretch" ]; then
+    _DO_FIX=YES
+  fi
+  if [ "${_BUSTER_TO_BEOWULF}" = "YES" ] \
+    && [ "${_LOC_OSR}" = "buster" ]; then
+    _DO_FIX=YES
+  fi
+  if [ "${_BEOWULF_TO_CHIMAERA}" = "YES" ] \
+    && [ "${_LOC_OSR}" = "beowulf" ]; then
+    _DO_FIX=YES
+  fi
+  if [ "${_BULLSEYE_TO_CHIMAERA}" = "YES" ] \
+    && [ "${_LOC_OSR}" = "bullseye" ]; then
+    _DO_FIX=YES
+  fi
+}
+
 count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
@@ -592,7 +656,7 @@ fix_locales() {
 
 EOF
     sleep 5
-    if [ "${_THIS_OS}" = "Debian" ]; then
+    if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
       _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
       if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
@@ -645,7 +709,7 @@ EOF
       cp -af ${locCnf}/boa.bashrc.txt /root/.bashrc
       set_xterm
     fi
-    if [ "${_THIS_OS}" = "Debian" ]; then
+    if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
       _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
       if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
@@ -894,10 +958,13 @@ barracuda_cnf() {
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
-        debM="httpredir.debian.org"
+        devM=""
+        debM="deb.debian.org"
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
         wait
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  ${barCnf}
+        wait
+        sed -i "s/^_LOCAL_DEVUAN_MIRROR=.*/_LOCAL_DEVUAN_MIRROR=${devM}/g"         ${barCnf}
         wait
         sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=${debM}/g"         ${barCnf}
         wait
@@ -956,8 +1023,8 @@ barracuda_cnf() {
     fi
     if [ "${_LOCAL_DEBIAN_MIRROR}" = "http.debian.net" ] \
       || [ "${_LOCAL_DEBIAN_MIRROR}" = "ftp.debian.org" ]; then
-      _LOCAL_DEBIAN_MIRROR="httpredir.debian.org"
-      sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=httpredir.debian.org/g"     ${barCnf}
+      _LOCAL_DEBIAN_MIRROR="deb.debian.org"
+      sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=deb.debian.org/g"     ${barCnf}
       wait
     fi
   else
@@ -1686,7 +1753,7 @@ barracuda_cnf() {
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
-        debM="httpredir.debian.org"
+        debM="deb.debian.org"
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
         wait
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  ${barCnf}
@@ -1752,8 +1819,8 @@ barracuda_cnf() {
     fi
     if [ "${_LOCAL_DEBIAN_MIRROR}" = "http.debian.net" ] \
       || [ "${_LOCAL_DEBIAN_MIRROR}" = "ftp.debian.org" ]; then
-      _LOCAL_DEBIAN_MIRROR="httpredir.debian.org"
-      sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=httpredir.debian.org/g"     ${barCnf}
+      _LOCAL_DEBIAN_MIRROR="deb.debian.org"
+      sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=deb.debian.org/g"     ${barCnf}
       wait
     fi
     if [ "${_DB_SERIES}" = "10.4" ] \
@@ -1898,9 +1965,29 @@ barracuda_cnf() {
         wait
       fi
     fi
-    _JESSIE_TO_STRETCH_TEST=$(grep _JESSIE_TO_STRETCH ${barCnf} 2>&1)
-    if [[ "${_JESSIE_TO_STRETCH_TEST}" =~ "_JESSIE_TO_STRETCH" ]]; then
-      sed -i "s/^_JESSIE_TO_STRETCH.*//g" ${barCnf}
+    _BULLSEYE_TO_CHIMAERA_TEST=$(grep _BULLSEYE_TO_CHIMAERA ${barCnf} 2>&1)
+    if [[ "${_BULLSEYE_TO_CHIMAERA_TEST}" =~ "_BULLSEYE_TO_CHIMAERA" ]]; then
+      sed -i "s/^_BULLSEYE_TO_CHIMAERA.*//g" ${barCnf}
+      wait
+    fi
+    _BEOWULF_TO_CHIMAERA_TEST=$(grep _BEOWULF_TO_CHIMAERA ${barCnf} 2>&1)
+    if [[ "${_BEOWULF_TO_CHIMAERA_TEST}" =~ "_BEOWULF_TO_CHIMAERA" ]]; then
+      sed -i "s/^_BEOWULF_TO_CHIMAERA.*//g" ${barCnf}
+      wait
+    fi
+    _BUSTER_TO_BEOWULF_TEST=$(grep _BUSTER_TO_BEOWULF ${barCnf} 2>&1)
+    if [[ "${_BUSTER_TO_BEOWULF_TEST}" =~ "_BUSTER_TO_BEOWULF" ]]; then
+      sed -i "s/^_BUSTER_TO_BEOWULF.*//g" ${barCnf}
+      wait
+    fi
+    _STRETCH_TO_BEOWULF_TEST=$(grep _STRETCH_TO_BEOWULF ${barCnf} 2>&1)
+    if [[ "${_STRETCH_TO_BEOWULF_TEST}" =~ "_STRETCH_TO_BEOWULF" ]]; then
+      sed -i "s/^_STRETCH_TO_BEOWULF.*//g" ${barCnf}
+      wait
+    fi
+    _JESSIE_TO_BEOWULF_TEST=$(grep _JESSIE_TO_BEOWULF ${barCnf} 2>&1)
+    if [[ "${_JESSIE_TO_BEOWULF_TEST}" =~ "_JESSIE_TO_BEOWULF" ]]; then
+      sed -i "s/^_JESSIE_TO_BEOWULF.*//g" ${barCnf}
       wait
     fi
     _WHEEZY_TO_JESSIE_TEST=$(grep _WHEEZY_TO_JESSIE ${barCnf} 2>&1)
@@ -1947,17 +2034,6 @@ barracuda_cnf() {
 # Running aptitude full-upgrade.
 run_aptitude_full_upgrade() {
   msg "INFO: Running aptitude full-upgrade..."
-  # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-  # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
-  #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
-  #   msg "WARN: Installed keyring is broken, forced reinstall required"
-  #   if [ "${_THIS_OS}" = "Debian" ]; then
-  #     st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
-  #     st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
-  #   else
-  #     st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
-  #   fi
-  # fi
   st_runner "dpkg --configure --force-all -a" &> /dev/null
   st_runner "apt-get update -qq" &> /dev/null
   if [ -e "/usr/bin/mytop" ]; then
@@ -2403,9 +2479,12 @@ update_sources_list() {
   apt-get clean -qq &> /dev/null
   rm -rf /var/lib/apt/lists/*
   ###--------------------###
-  if [ -e "${pthLog}/apt-updates-stretch.txt" ] \
-    || [ -e "/var/log/apt-updates-stretch.txt" ]; then
+  if [ -e "${pthLog}/apt-updates-beowulf.txt" ] \
+    || [ -e "/var/log/apt-updates-beowulf.txt" ]; then
     _APT_SOURCES_REWRITE=NO
+    if [ ! -z "${_LOCAL_DEVUAN_MIRROR}" ]; then
+      _APT_SOURCES_REWRITE=YES
+    fi
     if [ ! -z "${_LOCAL_DEBIAN_MIRROR}" ]; then
       _APT_SOURCES_REWRITE=YES
     fi
@@ -2421,7 +2500,85 @@ update_sources_list() {
     fi
     mv -f ${aptLiSys} \
       ${vBs}/sources.list-pre-${_X_VERSION}-${_NOW} &> /dev/null
-    if [ "${_THIS_OS}" = "Ubuntu" ]; then
+    if [ "${_THIS_OS}" = "Devuan" ]; then
+	  if [ -z "${_LOCAL_DEVUAN_MIRROR}" ]; then
+		_MIRROR=deb.devuan.org
+	  else
+		_MIRROR=${_LOCAL_DEVUAN_MIRROR}
+	  fi
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: We will use ${_THIS_OS} mirror ${_MIRROR}"
+      fi
+      cd /var/opt
+      echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
+      echo "deb http://${_MIRROR}/merged/ ${_OSR} main" >> ${aptLiSys}
+      echo "" >> ${aptLiSys}
+	  echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
+	  echo "deb http://${_MIRROR}/merged/ ${_OSR}-updates main" | fmt -su -w 2500 >> ${aptLiSys}
+	  echo "" >> ${aptLiSys}
+      echo "## DEVUAN SECURITY UPDATES" >> ${aptLiSys}
+      echo "deb http://${_MIRROR}/merged/ ${_OSR}-security main" | fmt -su -w 2500 >> ${aptLiSys}
+    elif [ "${_THIS_OS}" = "Debian" ]; then
+      _MIRROR_CHECK=NO
+      if [ "${_OSR}" = "deprecated" ]; then
+        _MIRROR=archive.debian.org
+      else
+        if [ "${_AUTOPILOT}" = "YES" ]; then
+          if [ -z "${_LOCAL_DEBIAN_MIRROR}" ]; then
+            _MIRROR=deb.debian.org
+          else
+            _MIRROR=${_LOCAL_DEBIAN_MIRROR}
+          fi
+        else
+          _MIRROR_CHECK=YES
+        fi
+      fi
+      if [ "${_MIRROR_CHECK}" = "YES" ]; then
+        if [ -z "${_LOCAL_DEBIAN_MIRROR}" ]; then
+          msg "INFO: Now looking for the best/fastest ${_THIS_OS} mirror"
+          msg "INFO: This may take a while, please wait..."
+          hlpPth="/opt/tmp/boa/aegir/helpers"
+          ffMirr=$(which ffmirror 2>&1)
+          ffList="${hlpPth}/apt-list-debian.txt"
+          if [ -e "${ffMirr}" ] && [ -e "${ffList}" ]; then
+            _MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+            _MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+            echo " "
+            askThis="Enter your own mirror to use or press enter"
+            askThis="${askThis} to use the fastest found mirror"
+            prompt_confirm_choice "${askThis}" ${_MIRROR}
+            echo " "
+            _MIRROR=${_CONFIRMED_ANSWER}
+          else
+            _MIRROR=${_LOCAL_DEBIAN_MIRROR}
+          fi
+        else
+          _MIRROR=${_LOCAL_DEBIAN_MIRROR}
+        fi
+        if ! netcat -w 5 -z ${_MIRROR} 80 ; then
+          msg "INFO: The mirror ${_MIRROR} doesn't respond, let's try default"
+          _MIRROR=deb.debian.org
+        fi
+      fi
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: We will use ${_THIS_OS} mirror ${_MIRROR}"
+      fi
+      cd /var/opt
+      echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
+      echo "deb http://${_MIRROR}/debian/ ${_OSR} main contrib non-free" >> ${aptLiSys}
+      echo "deb-src http://${_MIRROR}/debian/ ${_OSR} main contrib non-free" >> ${aptLiSys}
+      echo "" >> ${aptLiSys}
+      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
+      echo "deb http://${_MIRROR}/debian/ ${_OSR}-updates main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb-src http://${_MIRROR}/debian/ ${_OSR}-updates main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "" >> ${aptLiSys}
+      echo "## DEBIAN PROPOSED UPDATES" >> ${aptLiSys}
+      echo "deb http://${_MIRROR}/debian/ ${_OSR}-proposed-updates main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "" >> ${aptLiSys}
+      echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
+      echo "deb http://security.debian.org/ ${_OSR}/updates main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb-src http://security.debian.org/ ${_OSR}/updates main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+    elif [ "${_THIS_OS}" = "Ubuntu" ]; then
       if [ "${_AUTOPILOT}" = "YES" ]; then
         if [ -z "${_LOCAL_UBUNTU_MIRROR}" ]; then
           _MIRROR=archive.ubuntu.com
@@ -2482,113 +2639,10 @@ update_sources_list() {
         main restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
       echo "deb-src http://security.ubuntu.com/ubuntu ${_OSR}-security \
         main restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
-      if [ -e "${locCnf}/etc-apt-preferences-ubuntu.txt" ]; then
-        cp -af ${locCnf}/etc-apt-preferences-ubuntu.txt /etc/apt/preferences
-      else
-        curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" \
-          -o /etc/apt/preferences
-      fi
-    elif [ "${_THIS_OS}" = "Debian" ]; then
-      _MIRROR_CHECK=NO
-      if [ "${_OSR}" = "deprecated" ]; then
-        _MIRROR=archive.debian.org
-      else
-        if [ "${_AUTOPILOT}" = "YES" ]; then
-          if [ -z "${_LOCAL_DEBIAN_MIRROR}" ]; then
-            _MIRROR=httpredir.debian.org
-          else
-            _MIRROR=${_LOCAL_DEBIAN_MIRROR}
-          fi
-        else
-          _MIRROR_CHECK=YES
-        fi
-      fi
-      if [ "${_MIRROR_CHECK}" = "YES" ]; then
-        if [ -z "${_LOCAL_DEBIAN_MIRROR}" ]; then
-          msg "INFO: Now looking for the best/fastest ${_THIS_OS} mirror"
-          msg "INFO: This may take a while, please wait..."
-          hlpPth="/opt/tmp/boa/aegir/helpers"
-          ffMirr=$(which ffmirror 2>&1)
-          ffList="${hlpPth}/apt-list-debian.txt"
-          if [ -e "${ffMirr}" ] && [ -e "${ffList}" ]; then
-            _MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
-            _MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
-            echo " "
-            askThis="Enter your own mirror to use or press enter"
-            askThis="${askThis} to use the fastest found mirror"
-            prompt_confirm_choice "${askThis}" ${_MIRROR}
-            echo " "
-            _MIRROR=${_CONFIRMED_ANSWER}
-          else
-            _MIRROR=${_LOCAL_DEBIAN_MIRROR}
-          fi
-        else
-          _MIRROR=${_LOCAL_DEBIAN_MIRROR}
-        fi
-        if ! netcat -w 5 -z ${_MIRROR} 80 ; then
-          msg "INFO: The mirror ${_MIRROR} doesn't respond, let's try default"
-          _MIRROR=httpredir.debian.org
-        fi
-      fi
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: We will use ${_THIS_OS} mirror ${_MIRROR}"
-      fi
-      cd /var/opt
-      echo "## MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_MIRROR}/debian/ ${_OSR} main contrib non-free" \
-        >> ${aptLiSys}
-      echo "deb-src http://${_MIRROR}/debian/ ${_OSR} main contrib non-free" \
-        >> ${aptLiSys}
-      echo "" >> ${aptLiSys}
-      if [ "${_OSR}" = "chimaera" ] \
-        || [ "${_OSR}" = "beowulf" ] \
-        || [ "${_OSR}" = "bullseye" ] \
-        || [ "${_OSR}" = "buster" ] \
-        || [ "${_OSR}" = "stretch" ]; then
-        echo "## MAJOR BUG FIX UPDATES produced after the final release" \
-        >> ${aptLiSys}
-        echo "deb http://${_MIRROR}/debian/ ${_OSR}-updates main \
-          contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-        echo "deb-src http://${_MIRROR}/debian/ ${_OSR}-updates main \
-          contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-        echo "" >> ${aptLiSys}
-        echo "" >> ${aptLiSys}
-        echo "## DEBIAN PROPOSED UPDATES" >> ${aptLiSys}
-        echo "deb http://${_MIRROR}/debian/ ${_OSR}-proposed-updates main \
-          contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-      fi
-      echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://security.debian.org/ ${_OSR}/updates main \
-        contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-      echo "deb-src http://security.debian.org/ ${_OSR}/updates main \
-        contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-      if [ -e "${locCnf}/etc-apt-preferences-debian.txt" ]; then
-        cp -af ${locCnf}/etc-apt-preferences-debian.txt /etc/apt/preferences
-      else
-        curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-debian.txt" \
-          -o /etc/apt/preferences
-      fi
     fi
     mkdir -p ${pthLog}
-    touch ${pthLog}/apt-updates-stretch.txt
+    touch ${pthLog}/apt-updates-beowulf.txt
     cd /var/opt
-  fi
-  if [ ! -e "/etc/apt/preferences" ]; then
-    if [ "${_THIS_OS}" = "Ubuntu" ]; then
-      if [ -e "${locCnf}/etc-apt-preferences-ubuntu.txt" ]; then
-        cp -af ${locCnf}/etc-apt-preferences-ubuntu.txt /etc/apt/preferences
-      else
-        curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-ubuntu.txt" \
-          -o /etc/apt/preferences
-      fi
-    else
-      if [ -e "${locCnf}/etc-apt-preferences-debian.txt" ]; then
-        cp -af ${locCnf}/etc-apt-preferences-debian.txt /etc/apt/preferences
-      else
-        curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-debian.txt" \
-          -o /etc/apt/preferences
-      fi
-    fi
   fi
   ###--------------------###
   apt-get update -qq &> /dev/null
@@ -3547,13 +3601,12 @@ finale() {
 }
 
 install_with_aptitude_deps() {
-  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_LOC_OSR}" = "jessie" ]; then
-    _DO_FIX=YES
-  fi
-  if [ "${_THIS_OS}" = "Debian" ]; then
+  if_to_do_fix
+  if [ "${_THIS_OS}" = "Devuan" ]; then
+    ${_INITINS} devuan-keyring --allow-unauthenticated &> /dev/null
+  elif [ "${_THIS_OS}" = "Debian" ]; then
     ${_INITINS} debian-keyring debian-archive-keyring &> /dev/null
-  else
+  elif [ "${_THIS_OS}" = "Ubuntu" ]; then
     ${_INITINS} ubuntu-keyring &> /dev/null
   fi
   st_runner "${_INSTAPP} ${_DEBDEPS}" 2> /dev/null
@@ -3610,17 +3663,6 @@ basic_packages_install_on_init() {
   fi
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Installing some basic tools now, please wait..."
-    # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-    # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
-    #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
-    #   msg "WARN: Installed keyring is broken, forced reinstall required"
-    #   if [ "${_THIS_OS}" = "Debian" ]; then
-    #     apt-get install debian-keyring ${forCer} &> /dev/null
-    #     apt-get install debian-archive-keyring ${forCer} &> /dev/null
-    #   else
-    #     apt-get install ubuntu-keyring ${forCer} &> /dev/null
-    #   fi
-    # fi
     apt-get clean -qq &> /dev/null
     rm -rf /var/lib/apt/lists/*
     apt-get update -qq &> /dev/null
@@ -3633,21 +3675,19 @@ basic_packages_install_on_init() {
     ${_INITINS} wget &> /dev/null
     if [ -x "/lib/systemd/systemd" ]; then
       msg "INFO: Installing sysvinit-core on ${_THIS_OS} ${_OSR}..."
-      if [ "${_OSR}" = "chimaera" ] \
-        || [ "${_OSR}" = "beowulf" ] \
-        || [ "${_OSR}" = "bullseye" ] \
+      if [ "${_OSR}" = "bullseye" ] \
         || [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "stretch" ] \
         || [ "${_OSR}" = "jessie" ]; then
-        ${_INITINS} sysvinit-core &> /dev/null
-        ${_INITINS} sysvinit-utils &> /dev/null
+        mrun "${_INITINS} sysvinit-core" 2> /dev/null
+        mrun "${_INITINS} sysvinit-utils" 2> /dev/null
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-        ${_INITINS} sysvinit-core &> /dev/null
-        ${_INITINS} sysvinit-utils &> /dev/null
+        mrun "${_INITINS} sysvinit-core" 2> /dev/null
+        mrun "${_INITINS} sysvinit-utils" 2> /dev/null
         rm -f /etc/apt/sources.list.d/nosystemd.list
         rm -f /etc/apt/preferences.d/nosystemd
       elif [ "${altnos}" = "angband" ]; then
@@ -3656,38 +3696,41 @@ basic_packages_install_on_init() {
         echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
         echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /etc/apt/preferences.d/nosystemd
         wget -qO - http://angband.pl/deb/archive.html | ${_GPG} --import
-        ${_INITINS} kilobyte-archive-keyring &> /dev/null
-        ${_INITINS} sysvinit-core &> /dev/null
-        ${_INITINS} sysvinit-utils &> /dev/null
+        mrun "${_INITINS} kilobyte-archive-keyring" 2> /dev/null
+        mrun "${_INITINS} sysvinit-core" 2> /dev/null
+        mrun "${_INITINS} sysvinit-utils" 2> /dev/null
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
       fi
       echo
-      msg "NOTE: Please reboot and run 'barracuda up-head system'"
-      msg "NOTE: after boa completes initial installation"
-      msg "NOTE: in order to remove unused systemd packages!"
+      if [ "${_OSR}" = "bullseye" ] \
+        || [ "${_OSR}" = "buster" ] \
+        || [ "${_OSR}" = "stretch" ] \
+        || [ "${_OSR}" = "jessie" ]; then
+        msg "NOTE: Please reboot and run 'barracuda up-head system'"
+        msg "NOTE: after boa completes initial installation"
+        msg "NOTE: in order to remove unused systemd packages!"
+      fi
       echo
       mrun "sleep 8"
     fi
   else
     if [ -x "/lib/systemd/systemd" ]; then
       msg "INFO: Removing systemd on ${_THIS_OS} ${_OSR}..."
-      if [ "${_OSR}" = "chimaera" ] \
-        || [ "${_OSR}" = "beowulf" ] \
-        || [ "${_OSR}" = "bullseye" ] \
+      if [ "${_OSR}" = "bullseye" ] \
         || [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "stretch" ] \
         || [ "${_OSR}" = "jessie" ]; then
-        ${_INITINS} sysvinit-core &> /dev/null
-        ${_INITINS} sysvinit-utils &> /dev/null
+        mrun "${_INITINS} sysvinit-core" 2> /dev/null
+        mrun "${_INITINS} sysvinit-utils" 2> /dev/null
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-        ${_INITINS} sysvinit-core &> /dev/null
-        ${_INITINS} sysvinit-utils &> /dev/null
+        mrun "${_INITINS} sysvinit-core" 2> /dev/null
+        mrun "${_INITINS} sysvinit-utils" 2> /dev/null
         rm -f /etc/apt/sources.list.d/nosystemd.list
         rm -f /etc/apt/preferences.d/nosystemd
       elif [ "${altnos}" = "angband" ]; then
@@ -3696,14 +3739,15 @@ basic_packages_install_on_init() {
         echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
         echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /etc/apt/preferences.d/nosystemd
         wget -qO - http://angband.pl/deb/archive.html | ${_GPG} --import
-        ${_INITINS} kilobyte-archive-keyring &> /dev/null
-        ${_INITINS} sysvinit-core &> /dev/null
-        ${_INITINS} sysvinit-utils &> /dev/null
+        mrun "${_INITINS} kilobyte-archive-keyring" 2> /dev/null
+        mrun "${_INITINS} sysvinit-core" 2> /dev/null
+        mrun "${_INITINS} sysvinit-utils" 2> /dev/null
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
       fi
-      apt-get remove systemd -y -qq --purge --auto-remove &> /dev/null
+      mrun "apt-get remove systemd -y -qq --purge --auto-remove" 2> /dev/null
+      mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove" 2> /dev/null
     fi
   fi
 }
@@ -3890,15 +3934,30 @@ if_proxysql_update() {
   fi
 }
 
-if_jessie_to_stretch() {
-  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_OSR}" = "jessie" ]; then
-    _LOC_OSR=jessie
-    touch /root/.use.icu.src.cnf
+if_post_major_os_upgrade() {
+  if [ -e "/root/run_post_major_os_upgrade.info" ]; then
+    msg "INFO: Running dist-upgrade to complete the major system upgrade.."
+    mrun "apt-get update --allow-insecure-repositories -qq" 2> /dev/null
+    mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
+    mrun "apt-get ${dstUpArg} install" 2> /dev/null
+    msg "INFO: Cleaning up any systemd remnants.."
+    mrun "apt-get remove systemd -y -qq --purge --auto-remove" 2> /dev/null
+    mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove" 2> /dev/null
+    msg "INFO: Removing any packages orphaned by the migration process.."
+    mrun "apt-get autoremove --purge -y -qq" 2> /dev/null
+    mrun "apt-get autoclean -y -qq" 2> /dev/null
+    rm -f /root/run_post_major_os_upgrade.info
+    msg "INFO: The post_major_os_upgrade procedure is complete."
   fi
-  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_LOC_OSR}" = "jessie" ]; then
-    msg "WARN: Jessie to Stretch upgrade will start in 60 seconds..."
+}
+
+if_major_os_upgrade() {
+  if [ -e "/root/run_post_major_os_upgrade.info" ]; then
+    rm -f /root/run_post_major_os_upgrade.info
+  fi
+  define_loc_osr
+  if [ ! -z "${_MSG_LOC}" = "YES" ]; then
+    msg "WARN: ${_MSG_LOC} upgrade will start in 60 seconds..."
     msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
     if [ ! -e "/root/.upstart.cnf" ]; then
       service cron stop &> /dev/null
@@ -3918,7 +3977,7 @@ if_jessie_to_stretch() {
     fi
     rm -f ${pthLog}/ruby-sys-clean-reload.log
     mv -f /var/xdrago /var/xdrago_wait &> /dev/null
-    msg "WARN: Too late! Jessie to Stretch upgrade in progress..."
+    msg "WARN: Too late! ${_MSG_LOC} upgrade in progress..."
     msg "HINT: Run tail -f ${_LOG}"
     msg "HINT: in another terminal window to watch details"
     _FULL_FORCE_REINSTALL=YES
@@ -3966,6 +4025,10 @@ if_jessie_to_stretch() {
     mrun "apt-get remove php5-common   -y -qq" 2> /dev/null
     mrun "apt-get remove php5-apc      -y -qq" 2> /dev/null
     mrun "apt-get remove php-apc       -y -qq" 2> /dev/null
+    if [ "${_LOC_OSR}" = "stretch" ]; then
+      mrun "apt-get purge libpam-systemd -y -qq" 2> /dev/null
+    fi
+    mrun "apt-get purge gnome-tweak-tool -y -qq" 2> /dev/null
     echo "curl install"           | dpkg --set-selections &> /dev/null
     echo "git install"            | dpkg --set-selections &> /dev/null
     echo "git-core install"       | dpkg --set-selections &> /dev/null
@@ -3995,12 +4058,16 @@ if_jessie_to_stretch() {
     mrun "apt-get install ssh ${forCer}"            2> /dev/null
     if [ -e "/usr/bin/java" ] \
       || [ -e "/usr/bin/java7" ] \
-      || [ -e "/usr/bin/java8" ]; then
-      mrun "apt-get install default-jre ${forCer}"  2> /dev/null
+      || [ -e "/usr/bin/java8" ] \
+      || [ -e "/usr/bin/java11" ]; then
+      mrun "apt-get install default-jre ${forCer}" 2> /dev/null
     fi
-    mrun "apt-get upgrade ${nrmUpArg}"              2> /dev/null
-    mrun "apt-get dist-upgrade ${nrmUpArg}"         2> /dev/null
-    ### Check if we can continue
+    ###
+    ### Run pre-migration upgrade in the current OS version.
+    mrun "apt-get upgrade ${nrmUpArg}" 2> /dev/null
+    mrun "apt-get dist-upgrade ${nrmUpArg}" 2> /dev/null
+    ###
+    ### Check if we can continue.
     _AUDIT_DPKG=$(dpkg --audit 2>&1)
     if [ ! -z "${_AUDIT_DPKG}" ]; then
       msg "ALRT! I can not continue until dpkg --audit is clean"
@@ -4022,31 +4089,47 @@ if_jessie_to_stretch() {
       msg "ALRT! Aborting installer NOW!"
       clean_pid_exit
     fi
-    ### Switching gears on the fly
-    sed -i "s/.*DEBIAN LTS.*//g" /etc/apt/sources.list
-    wait
-    sed -i "s/.*jessie-lts.*//g" /etc/apt/sources.list
-    wait
-    sed -i "s/.*PROPOSED.*//g"   /etc/apt/sources.list
-    wait
-    sed -i "s/.*proposed.*//g"   /etc/apt/sources.list
-    wait
-    sed -i "s/jessie/stretch/g"   /etc/apt/sources.list
-    wait
-    sed -i "s/jessie/stretch/g"   /etc/apt/sources.list.d/*
-    wait
+    ###
+    ### Switching gears on the fly.
+    echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
+    echo "deb http://${_MIRROR}/merged/ ${_NEW_OSR} main" >> ${aptLiSys}
+    echo "" >> ${aptLiSys}
+    echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
+    echo "deb http://${_MIRROR}/merged/ ${_NEW_OSR}-updates main" | fmt -su -w 2500 >> ${aptLiSys}
+    echo "" >> ${aptLiSys}
+    echo "## DEVUAN SECURITY UPDATES" >> ${aptLiSys}
+    echo "deb http://${_MIRROR}/merged/ ${_NEW_OSR}-security main" | fmt -su -w 2500 >> ${aptLiSys}
     if [ -e "/etc/apt/apt.conf" ]; then
-      sed -i "s/APT::Default-Release.*/APT::Default-Release \"stretch\";/g" \
+      sed -i "s/APT::Default-Release.*/APT::Default-Release \"${_NEW_OSR}\";/g" \
         /etc/apt/apt.conf &> /dev/null
       wait
     fi
-    mrun "apt-get update -qq" 2> /dev/null
-    ### Two step upgrade with apt-get only
-    mrun "apt-get install apt -t stretch ${dstUpArg}" 2> /dev/null
+    ###
+    ### Add devuan-keyring first.
+    mrun "apt-get update --allow-insecure-repositories -qq" 2> /dev/null
+    mrun "${_INITINS} devuan-keyring --allow-unauthenticated" 2> /dev/null
+    mrun "apt-get update --allow-insecure-repositories -qq" 2> /dev/null
+    ###
+    ### Two step upgrade with apt-get only.
+    mrun "apt-get install apt -t ${_NEW_OSR} ${dstUpArg}" 2> /dev/null
+    mrun "apt-get update --allow-insecure-repositories -qq" 2> /dev/null
+    ###
+    ### Requirement for Debian Stretch to Devuan Beowulf migration.
+    ### The libtinfo package needs to be upgraded to prevent breaks.
+    if [ "${_LOC_OSR}" = "stretch" ]; then
+      mrun "apt-get install libtinfo6 ${dstUpArg}" 2> /dev/null
+    fi
+    ###
+    ### Note that this upgrade does not complete the migration yet.
     mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
     mrun "apt-get install apt dpkg aptitude util-linux ${dstUpArg}" 2> /dev/null
-    mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
-    mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
+    ###
+    ### Make sure that udev is installed first, if needed.
+    if [ "${_VMFAMILY}" != "VS" ]; then
+      mrun "apt-get install udev ${dstUpArg}" 2> /dev/null
+    fi
+    ###
+    ### Back to BOA stuff re-install as needed.
     install_upgrade_nginx
     if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
       ln -sf /etc/init.d/bind9 /etc/init.d/bind
@@ -4057,32 +4140,71 @@ if_jessie_to_stretch() {
         cp -af /etc/init.d/networking.dpkg-dist /etc/init.d/networking
         chmod 755 /etc/init.d/networking
       fi
+      ll /etc/init.d/networking
     fi
     if [ -d "/var/www/cgp" ]; then
       mrun "apt-get install collectd ${dstUpArg}" 2> /dev/null
     fi
-    if [ "${_VMFAMILY}" != "VS" ]; then
-      mrun "apt-get install udev ${dstUpArg}" 2> /dev/null
-    fi
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
+    ###
+    ### Make sure that sysvinit-core is installed.
+    mrun "${_INITINS} sysvinit-core" 2> /dev/null
+    mrun "${_INITINS} sysvinit-utils" 2> /dev/null
+    ###
+    ### The last step before migration to Beowulf is to switch to eudev.
+    if [ "${_LOC_OSR}" != "jessie" ]; then
+      mrun "apt-get install eudev ${dstUpArg}" 2> /dev/null
+    fi
+    ###
+    ### Upgrade all packages so that you have the latest versions.
+    if [ "${_LOC_OSR}" = "stretch" ]; then
+      mrun "apt-get full-upgrade ${dstUpArg}" 2> /dev/null
+    else
+      mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
+    fi
+    ###
+    ### Force install/upgrade to give it another chance to complete.
+    mrun "apt-get ${dstUpArg} install" 2> /dev/null
+    ###
+    ### Upgrade again all packages so that you have the latest versions.
+    if [ "${_LOC_OSR}" = "stretch" ]; then
+      mrun "apt-get full-upgrade ${dstUpArg}" 2> /dev/null
+    else
+      mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
+    fi
+    ###
+    ### Finally, the proper dist-upgrade time.
+    ### Note that Debian Bullseye to Devuan Chimaera migration
+    ### requires the dist-upgrade step to be run AFTER reboot!
+    if [ "${_LOC_OSR}" = "bullseye" ]; then
+      msg "ATTN: NOTE! Debian Bullseye to Devuan Chimaera migration"
+      msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
+      msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot."
+    else
+      mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
+    fi
+    ###
+    ### Time for systemd removal, if needed.
     if [ -x "/lib/systemd/systemd" ]; then
       msg "INFO: Removing systemd on ${_THIS_OS} ${_OSR}..."
-      if [ "${_OSR}" = "chimaera" ] \
-        || [ "${_OSR}" = "beowulf" ] \
-        || [ "${_OSR}" = "bullseye" ] \
+      if [ "${_OSR}" = "bullseye" ] \
         || [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "stretch" ] \
         || [ "${_OSR}" = "jessie" ]; then
-        ${_INITINS} sysvinit-core &> /dev/null
-        ${_INITINS} sysvinit-utils &> /dev/null
+        ###
+        ### Make sure that sysvinit-core is still installed.
+        mrun "${_INITINS} sysvinit-core" 2> /dev/null
+        mrun "${_INITINS} sysvinit-utils" 2> /dev/null
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-        ${_INITINS} sysvinit-core &> /dev/null
-        ${_INITINS} sysvinit-utils &> /dev/null
+        ###
+        ### Make sure again that sysvinit-core is still installed.
+        mrun "${_INITINS} sysvinit-core" 2> /dev/null
+        mrun "${_INITINS} sysvinit-utils" 2> /dev/null
         rm -f /etc/apt/sources.list.d/nosystemd.list
         rm -f /etc/apt/preferences.d/nosystemd
       elif [ "${altnos}" = "angband" ]; then
@@ -4091,15 +4213,18 @@ if_jessie_to_stretch() {
         echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
         echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /etc/apt/preferences.d/nosystemd
         wget -qO - http://angband.pl/deb/archive.html | ${_GPG} --import
-        ${_INITINS} kilobyte-archive-keyring &> /dev/null
-        ${_INITINS} sysvinit-core &> /dev/null
-        ${_INITINS} sysvinit-utils &> /dev/null
+        mrun "${_INITINS} kilobyte-archive-keyring" 2> /dev/null
+        mrun "${_INITINS} sysvinit-core" 2> /dev/null
+        mrun "${_INITINS} sysvinit-utils" 2> /dev/null
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
       fi
-      apt-get remove systemd -y -qq --purge --auto-remove &> /dev/null
+      mrun "apt-get remove systemd -y -qq --purge --auto-remove" 2> /dev/null
+      mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove" 2> /dev/null
     fi
+    ###
+    ### Time for init scripts cleanup for VM running beng kernel.
     _VM_TEST=$(uname -a 2>&1)
     if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _PTMX=OK
@@ -4149,6 +4274,8 @@ if_jessie_to_stretch() {
     else
       _PTMX=CHECK
     fi
+    ###
+    ### For extra debugging only.
     if [ -e "/root/.debug.cnf" ]; then
       _PTS_TEST=$(cat /proc/mounts | grep devpts 2>&1)
       if [[ ! "${_PTS_TEST}" =~ "devpts" ]] && [ ! -e "/dev/pts/ptmx" ]; then
@@ -4166,10 +4293,14 @@ if_jessie_to_stretch() {
         mount -t devpts devpts /dev/pts &> /dev/null
       fi
     fi
+    ###
+    ### Make sure that Aegir Master system user is added to sudo.
     _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD" /etc/sudoers 2>&1)
     if [[ ! "${_VAR_IF_PRESENT}" =~ "aegir ALL=NOPASSWD" ]]; then
       echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     fi
+    ###
+    ### Make sure that Aegir special system-wide scripts are added to sudo.
     SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
     for SCRIPT in ${SCRIPTS[@]}; do
       _VAR_IF_PRESENT=$(grep "aegir ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
@@ -4178,6 +4309,8 @@ if_jessie_to_stretch() {
         chmod 0440 /etc/sudoers.d/${SCRIPT}
       fi
     done
+    ###
+    ### Make sure that Aegir Octopus system users are added to sudo.
     for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       if [ -e "${User}/config/server_master/nginx/vhost.d" ] \
         && [ ! -e "${User}/log/proxied.pid" ] \
@@ -4197,12 +4330,18 @@ if_jessie_to_stretch() {
 		done
       fi
     done
+    ###
+    ### Final cleanup.
     echo rotate > /var/log/syslog
     rm -f /var/xdrago/log/*.log
     mv -f /var/xdrago_wait /var/xdrago &> /dev/null
+    ###
+    ### Add ctrl file to trigger if_post_major_os_upgrade() after reboot.
+    touch /root/run_post_major_os_upgrade.info
     echo " "
-    msg "INFO: No errors? Then Jessie to Stretch upgrade was successful :)"
-    msg "INFO: REBOOT your system once Barracuda will complete all upgrades!"
+    msg "INFO: No errors? Then ${_MSG_LOC} upgrade was successful :)"
+    msg "INFO: REBOOT your system once Barracuda completes THIS run AND.."
+    msg "INFO: THEN remember to RUN ANOTHER Barracuda upgrade"
     echo " "
   fi
 }
@@ -4249,17 +4388,6 @@ sys_packages_update() {
   fi
   update_webmin_apt
   st_runner "dpkg --configure --force-all -a" &> /dev/null
-  # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-  # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
-  #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
-  #   msg "WARN: Installed keyring is broken, forced reinstall required"
-  #   if [ "${_THIS_OS}" = "Debian" ]; then
-  #     st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
-  #     st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
-  #   else
-  #     st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
-  #   fi
-  # fi
   st_runner "apt-get update -qq" &> /dev/null
   _DB_SERVER_TEST=$(mysql -V 2>&1)
   if [ "${_STATUS}" = "INIT" ]; then
@@ -4326,10 +4454,7 @@ sys_packages_update() {
 }
 
 sys_packages_install() {
-  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_LOC_OSR}" = "jessie" ]; then
-    _DO_FIX=YES
-  fi
+  if_to_do_fix
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Installing required libraries and tools, please wait..."
   else
@@ -4354,13 +4479,13 @@ sys_packages_install() {
       elif [ "${_OSR}" = "stretch" ]; then
         _APT_XTRA="openjdk-8-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "buster" ]; then
-        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-11-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "bullseye" ]; then
-        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-11-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "beowulf" ]; then
-        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-11-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "chimaera" ]; then
-        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-11-jre-headless ca-certificates-java nginx"
       fi
     else
       _APT_XTRA="nginx"
@@ -4392,29 +4517,18 @@ sys_packages_install() {
       elif [ "${_OSR}" = "stretch" ]; then
         _APT_XTRA="openjdk-8-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "buster" ]; then
-        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java"
+        _APT_XTRA="openjdk-11-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "bullseye" ]; then
-        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java"
+        _APT_XTRA="openjdk-11-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "beowulf" ]; then
-        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java"
+        _APT_XTRA="openjdk-11-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "chimaera" ]; then
-        _APT_XTRA="openjdk-8-jre-headless ca-certificates-java"
+        _APT_XTRA="openjdk-11-jre-headless ca-certificates-java"
       fi
     else
       _APT_XTRA=""
     fi
     _APT_ELSE="netcat"
-    # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-    # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
-    #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
-    #   msg "WARN: Installed keyring is broken, forced reinstall required"
-    #   if [ "${_THIS_OS}" = "Debian" ]; then
-    #     st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
-    #     st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
-    #   else
-    #     st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
-    #   fi
-    # fi
     mrun "apt-get -f install -qq"             &> /dev/null
     mrun "service nginx start"                &> /dev/null
     mrun "apt-get remove nginx-extras -y -qq" &> /dev/null
@@ -4747,17 +4861,6 @@ fix_postfix() {
   else
     _POSTFIX_TEST=$(grep "fatal: open lock file" /var/log/mail.log 2>&1)
     if [[ "${_POSTFIX_TEST}" =~ "fatal: open lock file" ]]; then
-      # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-      # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
-      #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
-      #   msg "WARN: Installed keyring is broken, forced reinstall required"
-      #   if [ "${_THIS_OS}" = "Debian" ]; then
-      #     mrun "apt-get install debian-keyring ${forCer}" 2> /dev/null
-      #     mrun "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
-      #   else
-      #     mrun "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
-      #   fi
-      # fi
       mrun "dpkg --configure -a"      &> /dev/null
       mrun "apt-get clean -qq"        &> /dev/null
       rm -rf /var/lib/apt/lists/*
@@ -4773,10 +4876,7 @@ fix_postfix() {
 }
 
 fix_libs_php() {
-  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_LOC_OSR}" = "jessie" ]; then
-    _DO_FIX=YES
-  fi
+  if_to_do_fix
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
     || [ "${_OSR}" = "bullseye" ] \
@@ -4844,10 +4944,7 @@ fix_libs_php() {
 }
 
 fix_libssl() {
-  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_LOC_OSR}" = "jessie" ]; then
-    _DO_FIX=YES
-  fi
+  if_to_do_fix
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
     || [ "${_OSR}" = "bullseye" ] \

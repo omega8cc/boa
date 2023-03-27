@@ -586,7 +586,7 @@ prep_for_install_db_sql() {
   fi
   _KEYS_SIG=""
   _KEYS_SERVER_TEST=FALSE
-  if [ "${_THIS_OS}" = "Debian" ]; then
+  if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
     _OSN=debian
   elif [ "${_THIS_OS}" = "Ubuntu" ]; then
     _OSN=ubuntu
@@ -704,17 +704,6 @@ prep_for_install_db_sql() {
   echo "## Percona APT Repository" > ${percList}
   echo "deb http://${percRepo} ${_OSR} main" >> ${percList}
   echo "deb-src http://${percRepo} ${_OSR} main" >> ${percList}
-  # _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
-  # if [[ "${_BROKEN_KEYRING_TEST}" =~ "signatures were invalid" ]] \
-  #   || [[ "${_BROKEN_KEYRING_TEST}" =~ "GPG error" ]]; then
-  #   msg "WARN: Installed keyring is broken, forced reinstall required"
-  #   if [ "${_THIS_OS}" = "Debian" ]; then
-  #     st_runner "apt-get install debian-keyring ${forCer}" 2> /dev/null
-  #     st_runner "apt-get install debian-archive-keyring ${forCer}" 2> /dev/null
-  #   else
-  #     st_runner "apt-get install ubuntu-keyring ${forCer}" 2> /dev/null
-  #   fi
-  # fi
   if [ -e "/usr/bin/mytop" ]; then
     st_runner "${_RMAPP} mytop" &> /dev/null
     st_runner "apt-get purge mytop -y" &> /dev/null
@@ -1142,17 +1131,18 @@ install_db_server() {
     ### Only supported upgrade path allowed
     sql_strict_upgrade_path
 
-    if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-      && [ "${_LOC_OSR}" = "jessie" ]; then
+    if_to_do_fix
+    if [ "${_DO_FIX}" = "YES" ]; then
       _SQL_UPGRADE=NO
     fi
     if [ "${_DB_SERVER}" = "MariaDB" ]; then
+      _DB_SRC="ftp.osuosl.org"
       _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
         ${aptLiSys}.d/mariadb.list 2>&1)
       _SQL_DEB_SRC_TEST_B=$(grep ${_OSR} \
         ${aptLiSys}.d/mariadb.list 2>&1)
     else
-      _DB_SRC="percona"
+      _DB_SRC="repo.percona.com"
       _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
         ${aptLiSys}.d/percona-release.list 2>&1)
       _SQL_DEB_SRC_TEST_B=$(grep ${_OSR} \
@@ -1162,7 +1152,7 @@ install_db_server() {
       && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_OSR}" ]]; then
       _SQL_DEB_SRC_UPDATE=NO
     else
-      if [ "${_THIS_OS}" = "Debian" ]; then
+      if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
         _OSN=debian
       elif [ "${_THIS_OS}" = "Ubuntu" ]; then
         _OSN=ubuntu
@@ -1282,7 +1272,7 @@ install_db_server() {
       fi
       _KEYS_SIG=""
       _KEYS_SERVER_TEST=FALSE
-      if [ "${_THIS_OS}" = "Debian" ]; then
+      if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
         _OSN=debian
       elif [ "${_THIS_OS}" = "Ubuntu" ]; then
         _OSN=ubuntu

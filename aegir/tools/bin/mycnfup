@@ -111,7 +111,7 @@ fix_locales() {
 
 EOF
     sleep 5
-    if [ "${_THIS_OS}" = "Debian" ]; then
+    if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
       _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
       if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
@@ -154,7 +154,7 @@ EOF
     export LC_IDENTIFICATION=en_US.UTF-8
     export LC_ALL=
   else
-    if [ "${_THIS_OS}" = "Debian" ]; then
+    if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
       _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
       if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
@@ -214,6 +214,7 @@ remove_systemd() {
       cp -af /usr/share/sysvinit/inittab /etc/inittab
     fi
     apt-get remove systemd -y --force-yes -qq --purge --auto-remove
+    apt-get remove libnss-systemd -y --force-yes -qq --purge --auto-remove
     echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
     echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
     ${_INSTALL} sysvinit-core &> /dev/null
@@ -1334,6 +1335,7 @@ db_head_to_stretch_first()
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
         apt-get remove systemd -y --force-yes -qq --purge --auto-remove
+        apt-get remove libnss-systemd -y --force-yes -qq --purge --auto-remove
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
         ${_INSTALL} sysvinit-core &> /dev/null
@@ -1362,6 +1364,7 @@ db_head_to_stretch_second()
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
         apt-get remove systemd -y --force-yes -qq --purge --auto-remove
+        apt-get remove libnss-systemd -y --force-yes -qq --purge --auto-remove
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
         ${_INSTALL} sysvinit-core &> /dev/null

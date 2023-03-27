@@ -944,7 +944,7 @@ up_finish() {
 up_head() {
   up_start
   if [ "${silent}" = "cluster" ] \
-    || [ "${silent}" = "gravcms" ]; then
+    || [ "${silent}" = "foobar" ]; then
     echo "FEATURE MODE: ${silent}"
     master="feature/${silent}"
     branch="feature/${silent}"

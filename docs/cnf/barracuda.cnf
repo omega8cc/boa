@@ -221,12 +221,6 @@ _FULL_FORCE_REINSTALL=NO
 
 ###
 ### Use YES to run major system upgrade
-### from Debian Jessie to Debian Stretch.
-###
-_JESSIE_TO_STRETCH=NO
-
-###
-### Use YES to run major system upgrade
 ### from Debian Jessie to Devuan Beowulf.
 ###
 _JESSIE_TO_BEOWULF=NO

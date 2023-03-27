@@ -655,19 +655,11 @@ install_upgrade_aegir_master() {
   ###--------------------###
     if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
       || [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
-      _DB_SERVER_TEST=$(mysql -V 2>&1)
-      if [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
-        _DB_SERVER=MariaDB
-        msg "ALRT! ${_DB_SERVER} server not running properly!"
-        msg "EXIT: We can't proceed with installation and will exit now"
-        msg "HINT: Please check ${_LOG} for more information,"
-        msg "HINT: (re)start ${_DB_SERVER} server and then run installer again"
-        msg "Bye"
-      else
-        msg "ALRT! ${_DB_SERVER} server not installed properly!"
-        msg "EXIT: We can't proceed and will exit now"
-        msg "Bye"
-      fi
+      msg "ALRT! ${_DB_SERVER} server not running properly!"
+      msg "EXIT: We can't proceed and will exit now"
+      msg "HINT: Please check ${_LOG} for more information,"
+      msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
+      msg "Bye"
       rm -f /root/.my.pass.txt
       mkdir -p /var/aegir
       clean_pid_exit
@@ -985,8 +977,8 @@ EOFMYSQL
     msg "INFO: Aegir Master Instance installed"
   else
     echo " "
-    if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-      && [ "${_LOC_OSR}" = "jessie" ]; then
+    if_to_do_fix
+    if [ "${_DO_FIX}" = "YES" ]; then
       msg "INFO: Aegir Master Instance upgrade skipped!"
       echo " "
       msg "NOTE! You must reboot the server and run barracuda upgrade"
@@ -998,19 +990,11 @@ EOFMYSQL
     else
       if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
         || [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
-        _DB_SERVER_TEST=$(mysql -V 2>&1)
-        if [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]]; then
-          _DB_SERVER=MariaDB
-          msg "ALRT! ${_DB_SERVER} server not running properly!"
-          msg "EXIT: We can't proceed with upgrade and will exit now"
-          msg "HINT: Please check ${_LOG} for more information,"
-          msg "HINT: (re)start ${_DB_SERVER} server and then run installer again"
-          msg "Bye"
-        else
-          msg "ALRT! ${_DB_SERVER} server not installed properly!"
-          msg "EXIT: We can't proceed and will exit now"
-          msg "Bye"
-        fi
+        msg "ALRT! ${_DB_SERVER} server not running properly!"
+        msg "EXIT: We can't proceed and will exit now"
+        msg "HINT: Please check ${_LOG} for more information,"
+        msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
+        msg "Bye"
         clean_pid_exit
       fi
       if [ -e "/root/.mstr.clstr.cnf" ] \

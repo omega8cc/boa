@@ -1101,13 +1101,20 @@ init_start() {
 
 set_pin_priority() {
   if [ ! -e "/etc/apt/preferences" ] && [ -e "/etc/issue.net" ]; then
-    _THIS_OS=$(grep "Debian" /etc/issue.net 2>&1)
-    if [[ "${_THIS_OS}" =~ "Debian" ]]; then
+    _IS_DEVUAN=$(grep "Devuan" /etc/issue.net 2>&1)
+    _IS_DEBIAN=$(grep "Debian" /etc/issue.net 2>&1)
+    _IS_UBUNTU=$(grep "Ubuntu" /etc/issue.net 2>&1)
+    if [[ "${_IS_DEVUAN}" =~ "Devuan" ]]; then
+      _THIS_OS=Devuan
+    elif [[ "${_IS_DEBIAN}" =~ "Debian" ]]; then
       _THIS_OS=Debian
-    else
+    elif [[ "${_IS_UBUNTU}" =~ "Ubuntu" ]]; then
       _THIS_OS=Ubuntu
     fi
-    if [ "${_THIS_OS}" = "Debian" ]; then
+    if [ "${_THIS_OS}" = "Devuan" ]; then
+      curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-devuan.txt" \
+        -o /etc/apt/preferences
+    elif [ "${_THIS_OS}" = "Debian" ]; then
       curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-debian.txt" \
         -o /etc/apt/preferences
     elif [ "${_THIS_OS}" = "Ubuntu" ]; then
