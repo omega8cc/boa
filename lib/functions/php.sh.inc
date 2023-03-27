@@ -1306,7 +1306,7 @@ install_php_multi() {
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
     || [ "${_OSR}" = "bullseye" ] \
-    || [ "${_OSR}" = "buster" ] \
+    || [ "${_OSR}" = "buster" ]; then
     patchFile="freetype.patch"
     patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
   fi
