@@ -3960,7 +3960,7 @@ if_major_os_upgrade() {
     rm -f /root/run_post_major_os_upgrade.info
   fi
   define_loc_osr
-  if [ ! -z "${_MSG_LOC}" = "YES" ]; then
+  if [ ! -z "${_MSG_LOC}" ]; then
     msg "WARN: ${_MSG_LOC} upgrade will start in 60 seconds..."
     msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
     if [ ! -e "/root/.upstart.cnf" ]; then
