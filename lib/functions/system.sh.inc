@@ -1023,6 +1023,7 @@ barracuda_cnf() {
       fi
     fi
     if [ "${_LOCAL_DEBIAN_MIRROR}" = "http.debian.net" ] \
+      || [ "${_LOCAL_DEBIAN_MIRROR}" = "httpredir.debian.org" ] \
       || [ "${_LOCAL_DEBIAN_MIRROR}" = "ftp.debian.org" ]; then
       _LOCAL_DEBIAN_MIRROR="deb.debian.org"
       sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=deb.debian.org/g"     ${barCnf}
@@ -1822,6 +1823,7 @@ barracuda_cnf() {
       source ${barCnf}
     fi
     if [ "${_LOCAL_DEBIAN_MIRROR}" = "http.debian.net" ] \
+      || [ "${_LOCAL_DEBIAN_MIRROR}" = "httpredir.debian.org" ] \
       || [ "${_LOCAL_DEBIAN_MIRROR}" = "ftp.debian.org" ]; then
       _LOCAL_DEBIAN_MIRROR="deb.debian.org"
       sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=deb.debian.org/g"     ${barCnf}
