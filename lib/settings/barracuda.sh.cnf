@@ -318,7 +318,7 @@ _DEBUG_MODE=NO
 ###
 ### Percona or MariaDB.
 ###
-_DB_SERVER=MariaDB
+_DB_SERVER=Percona
 
 
 ###----------------------------------------###

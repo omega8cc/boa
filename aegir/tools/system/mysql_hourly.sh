@@ -161,7 +161,7 @@ if [ ! -e "${percList}" ] \
   fi
   isPercRel=$(which percona-release 2>&1)
   if [ ! -x "${isPercRel}" ] || [ -z "${isPercRel}" ]; then
-    mrun "${_INSTALL} percona-release"
+    apt-get -y --allow-unauthenticated install percona-release
   fi
   if [ -e "/etc/apt/sources.list.d/percona-original-release.list" ]; then
     rm -f /etc/apt/sources.list.d/percona-.*
