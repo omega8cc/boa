@@ -153,10 +153,17 @@ if [ ! -e "${percList}" ] \
   aptLiSys="/etc/apt/sources.list"
   percList="${aptLiSys}.d/percona-release.list"
   percRepo="repo.percona.com/percona/apt"
+  if [ "${_OSR}" = "chimaera" ]; then
+    _SQL_OSR=bullseye
+  elif [ "${_OSR}" = "beowulf" ]; then
+    _SQL_OSR=buster
+  else
+    SQL_OSR="${_OSR}"
+  fi
   if [ ! -e "${percList}" ]; then
     echo "## Percona APT Repository" > ${percList}
-    echo "deb http://${percRepo} ${_OSR} main" >> ${percList}
-    echo "deb-src http://${percRepo} ${_OSR} main" >> ${percList}
+    echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+    echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
     apt-get update -qq &> /dev/null
   fi
   isPercRel=$(which percona-release 2>&1)

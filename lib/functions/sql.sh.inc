@@ -496,6 +496,13 @@ tune_sql_memory_limits() {
 }
 
 prep_for_install_db_sql() {
+  if [ "${_OSR}" = "chimaera" ]; then
+    _SQL_OSR=bullseye
+  elif [ "${_OSR}" = "beowulf" ]; then
+    _SQL_OSR=buster
+  else
+    SQL_OSR="${_OSR}"
+  fi
   _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
     _NOW_DB_V=$(mysql -V 2>&1 \
@@ -627,8 +634,8 @@ prep_for_install_db_sql() {
         percRepo="repo.percona.com/percona/apt"
         if [ ! -e "${percList}" ]; then
           echo "## Percona APT Repository" > ${percList}
-          echo "deb http://${percRepo} ${_OSR} main" >> ${percList}
-          echo "deb-src http://${percRepo} ${_OSR} main" >> ${percList}
+          echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+          echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
           apt-get update -qq &> /dev/null
         fi
         isPercRel=$(which percona-release 2>&1)
@@ -654,8 +661,8 @@ prep_for_install_db_sql() {
         percRepo="repo.percona.com/percona/apt"
         if [ ! -e "${percList}" ]; then
           echo "## Percona APT Repository" > ${percList}
-          echo "deb http://${percRepo} ${_OSR} main" >> ${percList}
-          echo "deb-src http://${percRepo} ${_OSR} main" >> ${percList}
+          echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+          echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
           apt-get update -qq &> /dev/null
         fi
         isPercRel=$(which percona-release 2>&1)
@@ -702,8 +709,8 @@ prep_for_install_db_sql() {
   percRepo="repo.percona.com/percona/apt"
   percList="${aptLiSys}.d/percona-release.list"
   echo "## Percona APT Repository" > ${percList}
-  echo "deb http://${percRepo} ${_OSR} main" >> ${percList}
-  echo "deb-src http://${percRepo} ${_OSR} main" >> ${percList}
+  echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+  echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
   if [ -e "/usr/bin/mytop" ]; then
     st_runner "${_RMAPP} mytop" &> /dev/null
     st_runner "apt-get purge mytop -y" &> /dev/null
@@ -1106,6 +1113,13 @@ forced_mysql_root_password_update() {
 }
 
 install_db_server() {
+  if [ "${_OSR}" = "chimaera" ]; then
+    _SQL_OSR=bullseye
+  elif [ "${_OSR}" = "beowulf" ]; then
+    _SQL_OSR=buster
+  else
+    SQL_OSR="${_OSR}"
+  fi
   _THIS_DB_PORT=3306
   if [ -x "/usr/bin/gpg2" ]; then
     _GPG=gpg2
@@ -1178,8 +1192,8 @@ install_db_server() {
         percRepo="repo.percona.com/percona/apt"
         if [ ! -e "${percList}" ]; then
           echo "## Percona APT Repository" > ${percList}
-          echo "deb http://${percRepo} ${_OSR} main" >> ${percList}
-          echo "deb-src http://${percRepo} ${_OSR} main" >> ${percList}
+          echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+          echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
           st_runner "apt-get update -qq" &> /dev/null
         fi
         isPercRel=$(which percona-release 2>&1)
