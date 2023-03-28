@@ -3709,17 +3709,6 @@ basic_packages_install_on_init() {
     echo "APT::Get::AllowUnauthenticated \"true\";"     >> /etc/apt/apt.conf.d/99ignorestrict
     echo "Aptitude::CmdLine::Fix-Broken \"true\";"      >> /etc/apt/apt.conf.d/99ignorestrict
   fi
-  if [ "${_OSR}" = "chimaera" ] \
-    || [ "${_OSR}" = "beowulf" ] \
-    || [ "${_OSR}" = "bullseye" ] \
-    || [ "${_OSR}" = "buster" ] \
-    || [ "${_OSR}" = "stretch" ] \
-    || [ "${_OSR}" = "jessie" ]; then
-    _GRUB_TEST=$(grep systemd /etc/default/grub 2>&1)
-    if [[ "${_GRUB_TEST}" =~ "systemd" ]]; then
-      _GRUB_FIX=YES
-    fi
-  fi
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Installing some basic tools now, please wait..."
     apt-get clean -qq &> /dev/null
