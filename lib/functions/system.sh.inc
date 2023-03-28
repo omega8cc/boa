@@ -2578,9 +2578,6 @@ update_sources_list() {
       echo "deb http://${_MIRROR}/debian/ ${_OSR}-updates main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       echo "deb-src http://${_MIRROR}/debian/ ${_OSR}-updates main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       echo "" >> ${aptLiSys}
-      echo "## DEBIAN PROPOSED UPDATES" >> ${aptLiSys}
-      echo "deb http://${_MIRROR}/debian/ ${_OSR}-proposed-updates main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-      echo "" >> ${aptLiSys}
       echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
       echo "deb http://security.debian.org/ ${_OSR}/updates main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       echo "deb-src http://security.debian.org/ ${_OSR}/updates main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}

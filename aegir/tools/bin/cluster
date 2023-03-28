@@ -90,9 +90,6 @@ check_root() {
         echo "deb http://http.debian.net/debian/ ${_OSR}-updates main"                 >> /etc/apt/sources.list
         echo "deb-src http://http.debian.net/debian/ ${_OSR}-updates main"             >> /etc/apt/sources.list
         echo ""                                                                        >> /etc/apt/sources.list
-        echo "## DEBIAN PROPOSED UPDATES"                                              >> /etc/apt/sources.list
-        echo "deb http://http.debian.net/debian/ ${_OSR}-proposed-updates main"        >> /etc/apt/sources.list
-        echo ""                                                                        >> /etc/apt/sources.list
       fi
       echo "## DEBIAN SECURITY UPDATES"                                                >> /etc/apt/sources.list
       echo "deb http://security.debian.org/ ${_OSR}/updates main contrib non-free"     >> /etc/apt/sources.list
@@ -1748,9 +1745,6 @@ install_host() {
     echo "## MAJOR BUG FIX UPDATES produced after the final release"               >> /etc/apt/sources.list
     echo "deb http://http.debian.net/debian/ ${_OSR}-updates main"                 >> /etc/apt/sources.list
     echo "deb-src http://http.debian.net/debian/ ${_OSR}-updates main"             >> /etc/apt/sources.list
-    echo ""                                                                        >> /etc/apt/sources.list
-    echo "## DEBIAN PROPOSED UPDATES"                                              >> /etc/apt/sources.list
-    echo "deb http://http.debian.net/debian/ ${_OSR}-proposed-updates main"        >> /etc/apt/sources.list
     echo ""                                                                        >> /etc/apt/sources.list
   fi
   echo "## DEBIAN SECURITY UPDATES"                                                >> /etc/apt/sources.list
