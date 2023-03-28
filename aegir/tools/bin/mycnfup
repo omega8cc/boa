@@ -310,8 +310,8 @@ check_root() {
         echo ""                                                                        >> /etc/apt/sources.list
       fi
       echo "## DEBIAN SECURITY UPDATES"                                                >> /etc/apt/sources.list
-      echo "deb http://security.debian.org/ ${_OSR}/updates main contrib non-free"     >> /etc/apt/sources.list
-      echo "deb-src http://security.debian.org/ ${_OSR}/updates main contrib non-free" >> /etc/apt/sources.list
+      echo "deb http://security.debian.org/debian-security ${_OSR}-security main contrib non-free"     >> /etc/apt/sources.list
+      echo "deb-src http://security.debian.org/debian-security ${_OSR}-security main contrib non-free" >> /etc/apt/sources.list
       echo
       apt-get clean -qq &> /dev/null
       rm -rf /var/lib/apt/lists/*

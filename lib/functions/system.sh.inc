@@ -2579,8 +2579,8 @@ update_sources_list() {
       echo "deb-src http://${_MIRROR}/debian/ ${_OSR}-updates main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://security.debian.org/ ${_OSR}/updates main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-      echo "deb-src http://security.debian.org/ ${_OSR}/updates main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb http://security.debian.org/debian-security ${_OSR}-security main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb-src http://security.debian.org/debian-security ${_OSR}-security main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
     elif [ "${_THIS_OS}" = "Ubuntu" ]; then
       if [ "${_AUTOPILOT}" = "YES" ]; then
         if [ -z "${_LOCAL_UBUNTU_MIRROR}" ]; then
