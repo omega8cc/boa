@@ -104,10 +104,18 @@ production settings.
 
 === Debian @ https://wiki.debian.org/LTS
 
+Debian to Devuan major OS upgrades are recommended
+
 * Debian 11 Bullseye => upgrade to Chimaera _BULLSEYE_TO_CHIMAERA=YES
 * Debian 10 Buster   => upgrade to Beowulf  _BUSTER_TO_BEOWULF=YES
 * Debian 9 Stretch   => upgrade to Beowulf  _STRETCH_TO_BEOWULF=YES
 * Debian 8 Jessie    => upgrade to Beowulf  _JESSIE_TO_BEOWULF=YES
+
+Debian to Debian major OS upgrades are also supported
+
+* Debian 10 Buster   => upgrade to Bullseye _BUSTER_TO_BULLSEYE=YES
+* Debian 9 Stretch   => upgrade to Buster   _STRETCH_TO_BUSTER=YES
+* Debian 8 Jessie    => upgrade to Stretch  _JESSIE_TO_STRETCH=YES
 
 === Ubuntu @ https://ubuntu.com/about/release-cycle
 

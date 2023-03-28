@@ -221,6 +221,24 @@ _FULL_FORCE_REINSTALL=NO
 
 ###
 ### Use YES to run major system upgrade
+### from Debian Jessie to Debian Stretch.
+###
+_JESSIE_TO_STRETCH=NO
+
+###
+### Use YES to run major system upgrade
+### from Debian Stretch to Debian Buster.
+###
+_STRETCH_TO_BUSTER=NO
+
+###
+### Use YES to run major system upgrade
+### from Debian Buster to Debian Bullseye.
+###
+_BUSTER_TO_BULLSEYE=NO
+
+###
+### Use YES to run major system upgrade
 ### from Debian Jessie to Devuan Beowulf.
 ###
 _JESSIE_TO_BEOWULF=NO

@@ -6,6 +6,7 @@ define_loc_osr() {
     && [ "${_OSR}" = "jessie" ]; then
     _LOC_OSR=jessie
     _NEW_OSR=beowulf
+    _TGT_OSN=Devuan
     _MSG_LOC="Debian Jessie to Devuan Beowulf"
     touch /root/.use.icu.src.cnf
   fi
@@ -13,6 +14,7 @@ define_loc_osr() {
     && [ "${_OSR}" = "stretch" ]; then
     _LOC_OSR=stretch
     _NEW_OSR=beowulf
+    _TGT_OSN=Devuan
     _MSG_LOC="Debian Stretch to Devuan Beowulf"
     touch /root/.use.icu.src.cnf
   fi
@@ -20,6 +22,7 @@ define_loc_osr() {
     && [ "${_OSR}" = "buster" ]; then
     _LOC_OSR=buster
     _NEW_OSR=beowulf
+    _TGT_OSN=Devuan
     _MSG_LOC="Debian Buster to Devuan Beowulf"
     touch /root/.use.icu.src.cnf
   fi
@@ -27,6 +30,7 @@ define_loc_osr() {
     && [ "${_OSR}" = "beowulf" ]; then
     _LOC_OSR=beowulf
     _NEW_OSR=chimaera
+    _TGT_OSN=Devuan
     _MSG_LOC="Devuan Beowulf to Devuan Chimaera"
     touch /root/.use.icu.src.cnf
   fi
@@ -34,7 +38,32 @@ define_loc_osr() {
     && [ "${_OSR}" = "bullseye" ]; then
     _LOC_OSR=bullseye
     _NEW_OSR=chimaera
+    _TGT_OSN=Devuan
     _MSG_LOC="Debian Bullseye to Devuan Chimaera"
+    touch /root/.use.icu.src.cnf
+  fi
+  if [ "${_BUSTER_TO_BULLSEYE}" = "YES" ] \
+    && [ "${_OSR}" = "buster" ]; then
+    _LOC_OSR=buster
+    _NEW_OSR=bullseye
+    _TGT_OSN=Debian
+    _MSG_LOC="Debian Buster to Debian Bullseye"
+    touch /root/.use.icu.src.cnf
+  fi
+  if [ "${_STRETCH_TO_BUSTER}" = "YES" ] \
+    && [ "${_OSR}" = "stretch" ]; then
+    _LOC_OSR=stretch
+    _NEW_OSR=buster
+    _TGT_OSN=Debian
+    _MSG_LOC="Debian Stretch to Debian Buster"
+    touch /root/.use.icu.src.cnf
+  fi
+  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
+    && [ "${_OSR}" = "jessie" ]; then
+    _LOC_OSR=jessie
+    _NEW_OSR=stretch
+    _TGT_OSN=Debian
+    _MSG_LOC="Debian Jessie to Debian Stretch"
     touch /root/.use.icu.src.cnf
   fi
 }
@@ -59,6 +88,18 @@ if_to_do_fix() {
   fi
   if [ "${_BULLSEYE_TO_CHIMAERA}" = "YES" ] \
     && [ "${_LOC_OSR}" = "bullseye" ]; then
+    _DO_FIX=YES
+  fi
+  if [ "${_BUSTER_TO_BULLSEYE}" = "YES" ] \
+    && [ "${_LOC_OSR}" = "buster" ]; then
+    _DO_FIX=YES
+  fi
+  if [ "${_STRETCH_TO_BUSTER}" = "YES" ] \
+    && [ "${_LOC_OSR}" = "stretch" ]; then
+    _DO_FIX=YES
+  fi
+  if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
+    && [ "${_LOC_OSR}" = "jessie" ]; then
     _DO_FIX=YES
   fi
 }
@@ -1994,6 +2035,21 @@ barracuda_cnf() {
     _JESSIE_TO_BEOWULF_TEST=$(grep _JESSIE_TO_BEOWULF ${barCnf} 2>&1)
     if [[ "${_JESSIE_TO_BEOWULF_TEST}" =~ "_JESSIE_TO_BEOWULF" ]]; then
       sed -i "s/^_JESSIE_TO_BEOWULF.*//g" ${barCnf}
+      wait
+    fi
+    _BUSTER_TO_BULLSEYE_TEST=$(grep _BUSTER_TO_BULLSEYE ${barCnf} 2>&1)
+    if [[ "${_BUSTER_TO_BULLSEYE_TEST}" =~ "_BUSTER_TO_BULLSEYE" ]]; then
+      sed -i "s/^_BUSTER_TO_BULLSEYE.*//g" ${barCnf}
+      wait
+    fi
+    _STRETCH_TO_BUSTER_TEST=$(grep _STRETCH_TO_BUSTER ${barCnf} 2>&1)
+    if [[ "${_STRETCH_TO_BUSTER_TEST}" =~ "_STRETCH_TO_BUSTER" ]]; then
+      sed -i "s/^_STRETCH_TO_BUSTER.*//g" ${barCnf}
+      wait
+    fi
+    _JESSIE_TO_STRETCH_TEST=$(grep _JESSIE_TO_STRETCH ${barCnf} 2>&1)
+    if [[ "${_JESSIE_TO_STRETCH_TEST}" =~ "_JESSIE_TO_STRETCH" ]]; then
+      sed -i "s/^_JESSIE_TO_STRETCH.*//g" ${barCnf}
       wait
     fi
     _WHEEZY_TO_JESSIE_TEST=$(grep _WHEEZY_TO_JESSIE ${barCnf} 2>&1)
@@ -4028,10 +4084,12 @@ if_major_os_upgrade() {
     mrun "apt-get remove php5-common   -y -qq" 2> /dev/null
     mrun "apt-get remove php5-apc      -y -qq" 2> /dev/null
     mrun "apt-get remove php-apc       -y -qq" 2> /dev/null
+    if [ "${_LOC_OSR}" = "jessie" ]; then
+      mrun "apt-get purge gnome-tweak-tool -y -qq" 2> /dev/null
+    fi
     if [ "${_LOC_OSR}" = "stretch" ]; then
       mrun "apt-get purge libpam-systemd -y -qq" 2> /dev/null
     fi
-    mrun "apt-get purge gnome-tweak-tool -y -qq" 2> /dev/null
     echo "curl install"           | dpkg --set-selections &> /dev/null
     echo "git install"            | dpkg --set-selections &> /dev/null
     echo "git-core install"       | dpkg --set-selections &> /dev/null
@@ -4099,23 +4157,44 @@ if_major_os_upgrade() {
     fi
     ###
     ### Switching gears on the fly.
-    echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
-    echo "deb http://${_MIRROR}/merged/ ${_NEW_OSR} main" >> ${aptLiSys}
-    echo "" >> ${aptLiSys}
-    echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-    echo "deb http://${_MIRROR}/merged/ ${_NEW_OSR}-updates main" | fmt -su -w 2500 >> ${aptLiSys}
-    echo "" >> ${aptLiSys}
-    echo "## DEVUAN SECURITY UPDATES" >> ${aptLiSys}
-    echo "deb http://${_MIRROR}/merged/ ${_NEW_OSR}-security main" | fmt -su -w 2500 >> ${aptLiSys}
-    if [ -e "/etc/apt/apt.conf" ]; then
-      sed -i "s/APT::Default-Release.*/APT::Default-Release \"${_NEW_OSR}\";/g" \
-        /etc/apt/apt.conf &> /dev/null
-      wait
+    if [ "${_TGT_OSN}" = "Devuan" ]; then
+      echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
+      echo "deb http://${_MIRROR}/merged/ ${_NEW_OSR} main" >> ${aptLiSys}
+      echo "" >> ${aptLiSys}
+      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
+      echo "deb http://${_MIRROR}/merged/ ${_NEW_OSR}-updates main" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "" >> ${aptLiSys}
+      echo "## DEVUAN SECURITY UPDATES" >> ${aptLiSys}
+      echo "deb http://${_MIRROR}/merged/ ${_NEW_OSR}-security main" | fmt -su -w 2500 >> ${aptLiSys}
+      if [ -e "/etc/apt/apt.conf" ]; then
+        sed -i "s/APT::Default-Release.*/APT::Default-Release \"${_NEW_OSR}\";/g" \
+          /etc/apt/apt.conf &> /dev/null
+        wait
+      fi
+      ###
+      ### Add devuan-keyring first.
+      mrun "apt-get update --allow-insecure-repositories -qq" 2> /dev/null
+      mrun "${_INITINS} devuan-keyring --allow-unauthenticated" 2> /dev/null
+    else
+      echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
+      echo "deb http://${_MIRROR}/debian/ ${_OSR} main contrib non-free" >> ${aptLiSys}
+      echo "deb-src http://${_MIRROR}/debian/ ${_OSR} main contrib non-free" >> ${aptLiSys}
+      echo "" >> ${aptLiSys}
+      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
+      echo "deb http://${_MIRROR}/debian/ ${_OSR}-updates main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb-src http://${_MIRROR}/debian/ ${_OSR}-updates main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "" >> ${aptLiSys}
+      echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
+      echo "deb http://security.debian.org/debian-security ${_OSR}-security main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb-src http://security.debian.org/debian-security ${_OSR}-security main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      if [ -e "/etc/apt/apt.conf" ]; then
+        sed -i "s/APT::Default-Release.*/APT::Default-Release \"${_NEW_OSR}\";/g" \
+          /etc/apt/apt.conf &> /dev/null
+        wait
+      fi
     fi
     ###
-    ### Add devuan-keyring first.
-    mrun "apt-get update --allow-insecure-repositories -qq" 2> /dev/null
-    mrun "${_INITINS} devuan-keyring --allow-unauthenticated" 2> /dev/null
+    ### Update packages registry.
     mrun "apt-get update --allow-insecure-repositories -qq" 2> /dev/null
     ###
     ### Two step upgrade with apt-get only.
@@ -4154,10 +4233,13 @@ if_major_os_upgrade() {
     ### Make sure that sysvinit-core is installed.
     mrun "${_INITINS} sysvinit-core" 2> /dev/null
     mrun "${_INITINS} sysvinit-utils" 2> /dev/null
-    ###
-    ### The last step before migration to Beowulf is to switch to eudev.
-    if [ "${_LOC_OSR}" != "jessie" ]; then
-      mrun "apt-get install eudev ${dstUpArg}" 2> /dev/null
+    if [ "${_TGT_OSN}" = "Devuan" ]; then
+      ###
+      ### The last step before migration to Devuan is to switch to eudev.
+      ### Jessie exception needs testing, though.
+      if [ "${_LOC_OSR}" != "jessie" ]; then
+        mrun "apt-get install eudev ${dstUpArg}" 2> /dev/null
+      fi
     fi
     ###
     ### Upgrade all packages so that you have the latest versions.
@@ -4180,7 +4262,7 @@ if_major_os_upgrade() {
     ### Finally, the proper dist-upgrade time.
     ### Note that Debian Bullseye to Devuan Chimaera migration
     ### requires the dist-upgrade step to be run AFTER reboot!
-    if [ "${_LOC_OSR}" = "bullseye" ]; then
+    if [ "${_LOC_OSR}" = "bullseye" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
       msg "ATTN: NOTE! Debian Bullseye to Devuan Chimaera migration"
       msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
       msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot."
@@ -4323,14 +4405,14 @@ if_major_os_upgrade() {
         if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
           echo "${_HM_U} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
         fi
-		SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
-		for SCRIPT in ${SCRIPTS[@]}; do
-		  _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
-		  if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
-			echo "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
-			chmod 0440 /etc/sudoers.d/${SCRIPT}
-		  fi
-		done
+		    SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
+    		for SCRIPT in ${SCRIPTS[@]}; do
+    		  _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
+    		  if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
+    			  echo "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
+    			  chmod 0440 /etc/sudoers.d/${SCRIPT}
+    		  fi
+    		done
       fi
     done
     ###
