@@ -178,6 +178,7 @@ saPatch="/var/xdrago/conf/${saCoreS}.patch"
 ### Avoid too many questions
 ###
 export DEBIAN_FRONTEND=noninteractive
+export APT_LISTCHANGES_FRONTEND=none
 if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi

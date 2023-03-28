@@ -21,6 +21,7 @@ _NOSTRICT="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 ### Avoid too many questions
 ###
 export DEBIAN_FRONTEND=noninteractive
+export APT_LISTCHANGES_FRONTEND=none
 if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi

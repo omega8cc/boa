@@ -5313,6 +5313,7 @@ satellite_child_b_aegir_build() {
     mv -f ${_ROOT}/.drush/xts/security_review/security_review.drush.inc \
       ${_ROOT}/.drush/xts/security_review/foo.txt  &> /dev/null
     export DEBIAN_FRONTEND=noninteractive
+    export APT_LISTCHANGES_FRONTEND=none
     if [ -z "${TERM+x}" ]; then
       export TERM=vt100
     fi
