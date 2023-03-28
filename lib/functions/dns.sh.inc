@@ -372,7 +372,9 @@ install_pdnsd_cache() {
     echo "nameserver 1.1.1.1" > /etc/resolv.conf
     echo "nameserver 1.0.0.1" >> /etc/resolv.conf
   fi
-  if [ "${_OSR}" = "bullseye" ] \
+  if [ "${_OSR}" = "chimaera" ] \
+    || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bullseye" ] \
     || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ]; then
     st_runner "${_INSTALL} resolvconf" &> /dev/null
