@@ -56,6 +56,25 @@ clean_pid_exit() {
   exit 1
 }
 
+check_ifnames() {
+  _SYS_IFNAMES=$(grep GRUB_CMDLINE_LINUX= /etc/default/grub | grep "net.ifnames=0" 2>&1)
+  if [ -e "/etc/default/grub" ] && [[ ! "${_SYS_IFNAMES}" =~ "net.ifnames=0" ]]; then
+    echo
+    echo "ERROR: BOA requires the classic network interface naming convention"
+    echo "ERROR: Typically it should be eth0 and not ens3 systemd convention"
+    echo
+    echo "HINTS: Add these two required parameters to GRUB_CMDLINE_LINUX variable"
+    echo "HINTS:   net.ifnames=0 biosdevname=0"
+    echo "HINTS: in your /etc/default/grub configuration and then activate with"
+    echo "HINTS:   grub-mkconfig -o /boot/grub/grub.cfg"
+    echo "HINTS: Once this is done, reboot your system and run this installer again"
+    echo
+    echo "Bye"
+    echo
+    clean_pid_exit
+  fi
+}
+
 check_root_direct() {
   _U_TEST=DENY
   [ "${SUDO_USER}" ] && _U_TEST_SDO=${SUDO_USER} || _U_TEST_SDO=`whoami`
@@ -85,6 +104,7 @@ check_root_direct() {
     echo "Bye"
     clean_pid_exit
   fi
+  check_ifnames
 }
 
 check_root_keys_pwd() {
