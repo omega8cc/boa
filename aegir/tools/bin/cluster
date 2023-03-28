@@ -72,7 +72,9 @@ check_root() {
     if [ -x "${_LSB_TEST}" ]; then
       _THIS_OS=$(lsb_release -si 2>&1)
       _OSR=$(lsb_release -sc 2>&1)
-      if [ "${_THIS_OS}" != "Debian" ]; then
+      if [ "${_THIS_OS}" = "Devuan" ] || [ "${_THIS_OS}" = "Debian" ]; then
+        _SUPPORTED_OS=YES
+      else
         echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
         exit 1
       fi
@@ -102,7 +104,9 @@ check_root() {
     fi
     _THIS_OS=$(lsb_release -si 2>&1)
     _OSR=$(lsb_release -sc 2>&1)
-    if [ "${_THIS_OS}" != "Debian" ]; then
+    if [ "${_THIS_OS}" = "Devuan" ] || [ "${_THIS_OS}" = "Debian" ]; then
+      _SUPPORTED_OS=YES
+    else
       echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
       exit 1
     fi
@@ -1398,6 +1402,14 @@ interactive-timeout
 install_db_cluster() {
   check_config_cluster
 
+  if [ "${_OSR}" = "chimaera" ]; then
+    _SQL_OSR=bullseye
+  elif [ "${_OSR}" = "beowulf" ]; then
+    _SQL_OSR=buster
+  else
+    SQL_OSR="${_OSR}"
+  fi
+
   _CLUSTER_NAME="${_CLUSTER_PREFIX}_galera"
   _MAINT_USER_PWD="$(openssl rand -base64 32 2>&1)"
   _ROOT_SQL_PASWD="$(openssl rand -base64 32 2>&1)"
@@ -1468,8 +1480,8 @@ install_db_cluster() {
     rm -f /vservers/${idn}/etc/apt/sources.list.d/percona-.*
     rm -f /vservers/${idn}/etc/apt/sources.list.d/xtrabackup.*
     echo "## Percona Cluster APT Repository" > /vservers/${idn}${percList}
-    echo "deb http://${percRepo} ${_OSR} main" >> /vservers/${idn}${percList}
-    echo "deb-src http://${percRepo} ${_OSR} main" >> /vservers/${idn}${percList}
+    echo "deb http://${percRepo} ${_SQL_OSR} main" >> /vservers/${idn}${percList}
+    echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> /vservers/${idn}${percList}
     echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /vservers/${idn}/etc/apt/preferences.d/00percona.pref
     _KEYS_SIG="8507EFA5"
     vserver ${idn} exec wget -q -U iCab ${urlDev}/percona-key.gpg -O /var/backups/percona-key.gpg
