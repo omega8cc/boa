@@ -3666,6 +3666,8 @@ install_with_aptitude_deps() {
   elif [ "${_THIS_OS}" = "Ubuntu" ]; then
     ${_INITINS} ubuntu-keyring &> /dev/null
   fi
+  st_runner "${_INSTAPP} libcurl4" 2> /dev/null
+  st_runner "${_INSTAPP} libcurl4-gnutls-dev" 2> /dev/null
   st_runner "${_INSTAPP} ${_DEBDEPS}" 2> /dev/null
   if [ -x "/usr/bin/gpg2" ]; then
     _GPG=gpg2
@@ -4616,8 +4618,6 @@ sys_packages_install() {
                      automake1.11 \
                      automake-1.16 \
                      gnupg1-curl \
-                     libcurl4 \
-                     libcurl4-gnutls-dev \
                      libpcre2-dev \
                      libpcre2-posix2 \
                      libpcre3 \
@@ -4633,8 +4633,6 @@ sys_packages_install() {
                      automake-1.15 \
                      automake-1.16 \
                      gnupg1-curl \
-                     libcurl4 \
-                     libcurl4-gnutls-dev \
                      libpcre2-dev \
                      libpcre2-posix0 \
                      libpcre3 \
@@ -4652,8 +4650,6 @@ sys_packages_install() {
                      automake1.11 \
                      automake-1.16 \
                      gnupg1-curl \
-                     libcurl4 \
-                     libcurl4-gnutls-dev \
                      libpcre2-dev \
                      libpcre2-posix2 \
                      libpcre3 \
@@ -4669,8 +4665,6 @@ sys_packages_install() {
                      automake-1.15 \
                      automake-1.16 \
                      gnupg1-curl \
-                     libcurl4 \
-                     libcurl4-gnutls-dev \
                      libpcre2-dev \
                      libpcre2-posix0 \
                      libpcre3 \
@@ -4688,8 +4682,6 @@ sys_packages_install() {
                      automake1.11 \
                      automake-1.15 \
                      gnupg1-curl \
-                     libcurl4 \
-                     libcurl4-gnutls-dev \
                      libpcre2-dev \
                      libpcre2-posix0 \
                      libpcre3 \
@@ -4706,8 +4698,6 @@ sys_packages_install() {
                      automake1.4 \
                      defoma \
                      gnupg-curl \
-                     libcurl4 \
-                     libcurl4-gnutls-dev \
                      libpcre3 \
                      libpcre3-dev \
                      libpng12-0 \
