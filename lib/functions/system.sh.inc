@@ -3014,11 +3014,13 @@ install_curl_src() {
       if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
         echo "curl install" | dpkg --set-selections &> /dev/null
         if [ -z "${_CURL_ALREADY_REBUILT}" ]; then
-          echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
+          echo "libcurl4 install" | dpkg --set-selections &> /dev/null
+          echo "libcurl4-gnutls-dev install" | dpkg --set-selections &> /dev/null
           mrun "apt-get clean -qq" 2> /dev/null
           rm -rf /var/lib/apt/lists/*
           mrun "apt-get update -qq" 2> /dev/null
-          mrun "apt-get install libcurl4-openssl-dev ${forCer}" 2> /dev/null
+          mrun "apt-get install libcurl4 ${forCer}" 2> /dev/null
+          mrun "apt-get install libcurl4-gnutls-dev ${forCer}" 2> /dev/null
           mrun "apt-get install curl ${forCer}" 2> /dev/null
         fi
       fi
@@ -4614,7 +4616,8 @@ sys_packages_install() {
                      automake1.11 \
                      automake-1.16 \
                      gnupg1-curl \
-                     libcurl4-openssl-dev \
+                     libcurl4 \
+                     libcurl4-gnutls-dev \
                      libpcre2-dev \
                      libpcre2-posix2 \
                      libpcre3 \
@@ -4630,7 +4633,8 @@ sys_packages_install() {
                      automake-1.15 \
                      automake-1.16 \
                      gnupg1-curl \
-                     libcurl4-openssl-dev \
+                     libcurl4 \
+                     libcurl4-gnutls-dev \
                      libpcre2-dev \
                      libpcre2-posix0 \
                      libpcre3 \
@@ -4648,7 +4652,8 @@ sys_packages_install() {
                      automake1.11 \
                      automake-1.16 \
                      gnupg1-curl \
-                     libcurl4-openssl-dev \
+                     libcurl4 \
+                     libcurl4-gnutls-dev \
                      libpcre2-dev \
                      libpcre2-posix2 \
                      libpcre3 \
@@ -4664,7 +4669,8 @@ sys_packages_install() {
                      automake-1.15 \
                      automake-1.16 \
                      gnupg1-curl \
-                     libcurl4-openssl-dev \
+                     libcurl4 \
+                     libcurl4-gnutls-dev \
                      libpcre2-dev \
                      libpcre2-posix0 \
                      libpcre3 \
@@ -4682,7 +4688,8 @@ sys_packages_install() {
                      automake1.11 \
                      automake-1.15 \
                      gnupg1-curl \
-                     libcurl4-openssl-dev \
+                     libcurl4 \
+                     libcurl4-gnutls-dev \
                      libpcre2-dev \
                      libpcre2-posix0 \
                      libpcre3 \
@@ -4699,7 +4706,8 @@ sys_packages_install() {
                      automake1.4 \
                      defoma \
                      gnupg-curl \
-                     libcurl4-openssl-dev \
+                     libcurl4 \
+                     libcurl4-gnutls-dev \
                      libpcre3 \
                      libpcre3-dev \
                      libpng12-0 \
