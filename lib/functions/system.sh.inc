@@ -4892,7 +4892,6 @@ sys_packages_install() {
               p7zip-full \
               patchutils \
               pdftk \
-              percona-xtrabackup-24 \
               postfix \
               postfix-pcre \
               pwgen \
