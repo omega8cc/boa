@@ -1077,9 +1077,6 @@ install_vps() {
         || [ "${osx}" = "stretch" ] \
         || [ "${osx}" = "buster" ] \
         || [ "${osx}" = "bullseye" ]; then
-        vserver ${idn} exec apt-get remove systemd-sysv -y -qq --auto-remove
-        vserver ${idn} exec apt-get remove systemd -y -qq --purge --auto-remove
-        vserver ${idn} exec apt-get remove libnss-systemd -y -qq --purge --auto-remove
         vserver ${idn} exec ${_INSTAPP} sysvinit-core
         vserver ${idn} exec ${_INSTAPP} sysvinit-utils
         vserver ${idn} exec apt --fix-broken install -y
@@ -1900,9 +1897,6 @@ install_host() {
       || [ "${osx}" = "stretch" ] \
       || [ "${osx}" = "buster" ] \
       || [ "${osx}" = "bullseye" ]; then
-      apt-get remove systemd-sysv -y -qq --auto-remove
-      apt-get remove systemd -y -qq --auto-remove
-      apt-get remove libnss-systemd -y -qq --auto-remove
       ${_INSTAPP} sysvinit-core
       ${_INSTAPP} sysvinit-utils
       apt --fix-broken install -y
@@ -1957,9 +1951,6 @@ upgrade_host() {
       || [ "${osx}" = "stretch" ] \
       || [ "${osx}" = "buster" ] \
       || [ "${osx}" = "bullseye" ]; then
-      apt-get remove systemd-sysv -y -qq --auto-remove
-      apt-get remove systemd -y -qq --auto-remove
-      apt-get remove libnss-systemd -y -qq --auto-remove
       ${_INSTAPP} sysvinit-core
       ${_INSTAPP} sysvinit-utils
       apt --fix-broken install -y
@@ -1974,7 +1965,11 @@ upgrade_host() {
       rm -f /etc/apt/sources.list.d/nosystemd.list
       rm -f /etc/apt/preferences.d/nosystemd
     fi
+    apt-get remove systemd-sysv -y -qq --purge --auto-remove &> /dev/null
     apt-get remove systemd -y -qq --purge --auto-remove &> /dev/null
+    apt-get remove libnss-systemd -y -qq --purge --auto-remove &> /dev/null
+    apt-get autoremove --purge -y -qq &> /dev/null
+    apt-get autoclean -y -qq &> /dev/null
   fi
 
   if [ "${thisMode}" = "UPGRADE" ]; then

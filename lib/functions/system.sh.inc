@@ -3727,9 +3727,6 @@ basic_packages_install_on_init() {
         || [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "stretch" ] \
         || [ "${_OSR}" = "jessie" ]; then
-        mrun "apt-get remove systemd-sysv -y -qq --auto-remove" 2> /dev/null
-        mrun "apt-get remove systemd -y -qq --auto-remove" 2> /dev/null
-        mrun "apt-get remove libnss-systemd -y -qq --auto-remove" 2> /dev/null
         mrun "${_INITINS} sysvinit-core" 2> /dev/null
         mrun "${_INITINS} sysvinit-utils" 2> /dev/null
         mrun "apt --fix-broken install -y" 2> /dev/null
@@ -4254,9 +4251,6 @@ if_major_os_upgrade() {
         || [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "stretch" ] \
         || [ "${_OSR}" = "jessie" ]; then
-        mrun "apt-get remove systemd-sysv -y -qq --auto-remove" 2> /dev/null
-        mrun "apt-get remove systemd -y -qq --auto-remove" 2> /dev/null
-        mrun "apt-get remove libnss-systemd -y -qq --auto-remove" 2> /dev/null
         ###
         ### Make sure that sysvinit-core is still installed.
         mrun "${_INITINS} sysvinit-core" 2> /dev/null
@@ -4275,9 +4269,6 @@ if_major_os_upgrade() {
         rm -f /etc/apt/sources.list.d/nosystemd.list
         rm -f /etc/apt/preferences.d/nosystemd
       fi
-      mrun "apt-get remove systemd-sysv -y -qq --purge --auto-remove" 2> /dev/null
-      mrun "apt-get remove systemd -y -qq --purge --auto-remove" 2> /dev/null
-      mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove" 2> /dev/null
       mrun "apt --fix-broken install -y" 2> /dev/null
     fi
     ###
