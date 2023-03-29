@@ -158,7 +158,7 @@ if [ ! -e "${percList}" ] \
   elif [ "${_OSR}" = "beowulf" ]; then
     _SQL_OSR=buster
   else
-    SQL_OSR="${_OSR}"
+    _SQL_OSR="${_OSR}"
   fi
   rm -f /etc/apt/sources.list.d/percona-original-release.list
   rm -f /etc/apt/sources.list.d/percona-prel-release.list

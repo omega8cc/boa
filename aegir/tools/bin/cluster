@@ -1418,7 +1418,7 @@ install_db_cluster() {
   elif [ "${_OSR}" = "beowulf" ]; then
     _SQL_OSR=buster
   else
-    SQL_OSR="${_OSR}"
+    _SQL_OSR="${_OSR}"
   fi
 
   _CLUSTER_NAME="${_CLUSTER_PREFIX}_galera"

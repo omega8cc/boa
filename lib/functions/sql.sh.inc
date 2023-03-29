@@ -501,7 +501,7 @@ prep_for_install_db_sql() {
   elif [ "${_OSR}" = "beowulf" ]; then
     _SQL_OSR=buster
   else
-    SQL_OSR="${_OSR}"
+    _SQL_OSR="${_OSR}"
   fi
   _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
@@ -1111,7 +1111,7 @@ install_db_server() {
   elif [ "${_OSR}" = "beowulf" ]; then
     _SQL_OSR=buster
   else
-    SQL_OSR="${_OSR}"
+    _SQL_OSR="${_OSR}"
   fi
   _THIS_DB_PORT=3306
   if [ -x "/usr/bin/gpg2" ]; then
