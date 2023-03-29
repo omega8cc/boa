@@ -632,18 +632,13 @@ prep_for_install_db_sql() {
         aptLiSys="/etc/apt/sources.list"
         percList="${aptLiSys}.d/percona-release.list"
         percRepo="repo.percona.com/percona/apt"
+        rm -f /etc/apt/sources.list.d/percona-original-release.list
+        rm -f /etc/apt/sources.list.d/percona-prel-release.list
+        rm -f /etc/apt/sources.list.d/percona-release.list.bak
         if [ ! -e "${percList}" ]; then
           echo "## Percona APT Repository" > ${percList}
           echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
           echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-          apt-get update -qq &> /dev/null
-        fi
-        isPercRel=$(which percona-release 2>&1)
-        if [ ! -x "${isPercRel}" ] || [ -z "${isPercRel}" ]; then
-          mrun "${_INSTALL} percona-release"
-        fi
-        if [ -e "/etc/apt/sources.list.d/percona-original-release.list" ]; then
-          rm -f /etc/apt/sources.list.d/percona-.*
           apt-get update -qq &> /dev/null
         fi
       else
@@ -659,18 +654,13 @@ prep_for_install_db_sql() {
         aptLiSys="/etc/apt/sources.list"
         percList="${aptLiSys}.d/percona-release.list"
         percRepo="repo.percona.com/percona/apt"
+        rm -f /etc/apt/sources.list.d/percona-original-release.list
+        rm -f /etc/apt/sources.list.d/percona-prel-release.list
+        rm -f /etc/apt/sources.list.d/percona-release.list.bak
         if [ ! -e "${percList}" ]; then
           echo "## Percona APT Repository" > ${percList}
           echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
           echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-          apt-get update -qq &> /dev/null
-        fi
-        isPercRel=$(which percona-release 2>&1)
-        if [ ! -x "${isPercRel}" ] || [ -z "${isPercRel}" ]; then
-          mrun "${_INSTALL} percona-release"
-        fi
-        if [ -e "/etc/apt/sources.list.d/percona-original-release.list" ]; then
-          rm -f /etc/apt/sources.list.d/percona-.*
           apt-get update -qq &> /dev/null
         fi
       fi
@@ -706,6 +696,9 @@ prep_for_install_db_sql() {
     echo "deb [arch=amd64,i386] http://${aptRepo}/${_OSN} ${_OSR} main" >> ${aptLiDb}
     echo "deb-src http://${aptRepo}/${_OSN} ${_OSR} main" >> ${aptLiDb}
   fi
+  rm -f /etc/apt/sources.list.d/percona-original-release.list
+  rm -f /etc/apt/sources.list.d/percona-prel-release.list
+  rm -f /etc/apt/sources.list.d/percona-release.list.bak
   percRepo="repo.percona.com/percona/apt"
   percList="${aptLiSys}.d/percona-release.list"
   echo "## Percona APT Repository" > ${percList}
@@ -1190,18 +1183,14 @@ install_db_server() {
         aptLiSys="/etc/apt/sources.list"
         percList="${aptLiSys}.d/percona-release.list"
         percRepo="repo.percona.com/percona/apt"
+        rm -f /etc/apt/sources.list.d/percona-original-release.list
+        rm -f /etc/apt/sources.list.d/percona-prel-release.list
+        rm -f /etc/apt/sources.list.d/percona-release.list.bak
         if [ ! -e "${percList}" ]; then
           echo "## Percona APT Repository" > ${percList}
           echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
           echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
           st_runner "apt-get update -qq" &> /dev/null
-        fi
-        isPercRel=$(which percona-release 2>&1)
-        if [ ! -x "${isPercRel}" ] || [ -z "${isPercRel}" ]; then
-          mrun "${_INSTALL} percona-release"
-        fi
-        if [ -e "/etc/apt/sources.list.d/percona-original-release.list" ]; then
-          rm -f /etc/apt/sources.list.d/percona-.*
         fi
       fi
       st_runner "apt-get update -qq" &> /dev/null

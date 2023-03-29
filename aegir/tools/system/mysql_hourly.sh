@@ -160,18 +160,13 @@ if [ ! -e "${percList}" ] \
   else
     SQL_OSR="${_OSR}"
   fi
+  rm -f /etc/apt/sources.list.d/percona-original-release.list
+  rm -f /etc/apt/sources.list.d/percona-prel-release.list
+  rm -f /etc/apt/sources.list.d/percona-release.list.bak
   if [ ! -e "${percList}" ]; then
     echo "## Percona APT Repository" > ${percList}
     echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
     echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-    apt-get update -qq &> /dev/null
-  fi
-  isPercRel=$(which percona-release 2>&1)
-  if [ ! -x "${isPercRel}" ] || [ -z "${isPercRel}" ]; then
-    apt-get -y --allow-unauthenticated install percona-release
-  fi
-  if [ -e "/etc/apt/sources.list.d/percona-original-release.list" ]; then
-    rm -f /etc/apt/sources.list.d/percona-.*
     apt-get update -qq &> /dev/null
   fi
   if [ -e "/usr/sbin/csf" ] \
