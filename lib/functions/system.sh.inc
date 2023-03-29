@@ -3727,8 +3727,12 @@ basic_packages_install_on_init() {
         || [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "stretch" ] \
         || [ "${_OSR}" = "jessie" ]; then
+        mrun "apt-get remove systemd-sysv -y -qq --auto-remove" 2> /dev/null
+        mrun "apt-get remove systemd -y -qq --auto-remove" 2> /dev/null
+        mrun "apt-get remove libnss-systemd -y -qq --auto-remove" 2> /dev/null
         mrun "${_INITINS} sysvinit-core" 2> /dev/null
         mrun "${_INITINS} sysvinit-utils" 2> /dev/null
+        mrun "apt --fix-broken install -y" 2> /dev/null
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
@@ -3736,20 +3740,9 @@ basic_packages_install_on_init() {
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
         mrun "${_INITINS} sysvinit-core" 2> /dev/null
         mrun "${_INITINS} sysvinit-utils" 2> /dev/null
+        mrun "apt --fix-broken install -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/nosystemd.list
         rm -f /etc/apt/preferences.d/nosystemd
-      elif [ "${altnos}" = "angband" ]; then
-        echo -e 'deb http://angband.pl/debian/ nosystemd-stretch main' > /etc/apt/sources.list.d/nosystemd.list
-        echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /etc/apt/preferences.d/nosystemd
-        echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
-        echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /etc/apt/preferences.d/nosystemd
-        wget -qO - http://angband.pl/deb/archive.html | ${_GPG} --import
-        mrun "${_INITINS} kilobyte-archive-keyring" 2> /dev/null
-        mrun "${_INITINS} sysvinit-core" 2> /dev/null
-        mrun "${_INITINS} sysvinit-utils" 2> /dev/null
-        if [ -e "/usr/share/sysvinit/inittab" ]; then
-          cp -af /usr/share/sysvinit/inittab /etc/inittab
-        fi
       fi
       echo
       if [ "${_OSR}" = "bullseye" ] \
@@ -3772,6 +3765,7 @@ basic_packages_install_on_init() {
         || [ "${_OSR}" = "jessie" ]; then
         mrun "${_INITINS} sysvinit-core" 2> /dev/null
         mrun "${_INITINS} sysvinit-utils" 2> /dev/null
+        mrun "apt --fix-broken install -y" 2> /dev/null
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
@@ -3779,23 +3773,14 @@ basic_packages_install_on_init() {
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
         mrun "${_INITINS} sysvinit-core" 2> /dev/null
         mrun "${_INITINS} sysvinit-utils" 2> /dev/null
+        mrun "apt --fix-broken install -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/nosystemd.list
         rm -f /etc/apt/preferences.d/nosystemd
-      elif [ "${altnos}" = "angband" ]; then
-        echo -e 'deb http://angband.pl/debian/ nosystemd-stretch main' > /etc/apt/sources.list.d/nosystemd.list
-        echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /etc/apt/preferences.d/nosystemd
-        echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
-        echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /etc/apt/preferences.d/nosystemd
-        wget -qO - http://angband.pl/deb/archive.html | ${_GPG} --import
-        mrun "${_INITINS} kilobyte-archive-keyring" 2> /dev/null
-        mrun "${_INITINS} sysvinit-core" 2> /dev/null
-        mrun "${_INITINS} sysvinit-utils" 2> /dev/null
-        if [ -e "/usr/share/sysvinit/inittab" ]; then
-          cp -af /usr/share/sysvinit/inittab /etc/inittab
-        fi
       fi
+      mrun "apt-get remove systemd-sysv -y -qq --purge --auto-remove" 2> /dev/null
       mrun "apt-get remove systemd -y -qq --purge --auto-remove" 2> /dev/null
       mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove" 2> /dev/null
+      mrun "apt --fix-broken install -y" 2> /dev/null
     fi
   fi
 }
@@ -3989,8 +3974,10 @@ if_post_major_os_upgrade() {
     mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
     msg "INFO: Cleaning up any systemd remnants.."
+    mrun "apt-get remove systemd-sysv -y -qq --purge --auto-remove" 2> /dev/null
     mrun "apt-get remove systemd -y -qq --purge --auto-remove" 2> /dev/null
     mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove" 2> /dev/null
+    mrun "apt --fix-broken install -y" 2> /dev/null
     msg "INFO: Removing any packages orphaned by the migration process.."
     mrun "apt-get autoremove --purge -y -qq" 2> /dev/null
     mrun "apt-get autoclean -y -qq" 2> /dev/null
@@ -4222,6 +4209,7 @@ if_major_os_upgrade() {
     ### Make sure that sysvinit-core is installed.
     mrun "${_INITINS} sysvinit-core" 2> /dev/null
     mrun "${_INITINS} sysvinit-utils" 2> /dev/null
+    mrun "apt --fix-broken install -y" 2> /dev/null
     if [ "${_TGT_OSN}" = "Devuan" ]; then
       ###
       ### The last step before migration to Devuan is to switch to eudev.
@@ -4266,10 +4254,14 @@ if_major_os_upgrade() {
         || [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "stretch" ] \
         || [ "${_OSR}" = "jessie" ]; then
+        mrun "apt-get remove systemd-sysv -y -qq --auto-remove" 2> /dev/null
+        mrun "apt-get remove systemd -y -qq --auto-remove" 2> /dev/null
+        mrun "apt-get remove libnss-systemd -y -qq --auto-remove" 2> /dev/null
         ###
         ### Make sure that sysvinit-core is still installed.
         mrun "${_INITINS} sysvinit-core" 2> /dev/null
         mrun "${_INITINS} sysvinit-utils" 2> /dev/null
+        mrun "apt --fix-broken install -y" 2> /dev/null
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
@@ -4279,23 +4271,14 @@ if_major_os_upgrade() {
         ### Make sure again that sysvinit-core is still installed.
         mrun "${_INITINS} sysvinit-core" 2> /dev/null
         mrun "${_INITINS} sysvinit-utils" 2> /dev/null
+        mrun "apt --fix-broken install -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/nosystemd.list
         rm -f /etc/apt/preferences.d/nosystemd
-      elif [ "${altnos}" = "angband" ]; then
-        echo -e 'deb http://angband.pl/debian/ nosystemd-stretch main' > /etc/apt/sources.list.d/nosystemd.list
-        echo -e 'Package: *\nPin: origin angband.pl\nPin-Priority: 1100\n' > /etc/apt/preferences.d/nosystemd
-        echo -e 'Package: libsystemd0\nPin: version *\nPin-Priority: 500\n' >> /etc/apt/preferences.d/nosystemd
-        echo -e 'Package: *systemd*\nPin: release *\nPin-Priority: -1\n' >> /etc/apt/preferences.d/nosystemd
-        wget -qO - http://angband.pl/deb/archive.html | ${_GPG} --import
-        mrun "${_INITINS} kilobyte-archive-keyring" 2> /dev/null
-        mrun "${_INITINS} sysvinit-core" 2> /dev/null
-        mrun "${_INITINS} sysvinit-utils" 2> /dev/null
-        if [ -e "/usr/share/sysvinit/inittab" ]; then
-          cp -af /usr/share/sysvinit/inittab /etc/inittab
-        fi
       fi
+      mrun "apt-get remove systemd-sysv -y -qq --purge --auto-remove" 2> /dev/null
       mrun "apt-get remove systemd -y -qq --purge --auto-remove" 2> /dev/null
       mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove" 2> /dev/null
+      mrun "apt --fix-broken install -y" 2> /dev/null
     fi
     ###
     ### Time for init scripts cleanup for VM running beng kernel.
@@ -4916,8 +4899,6 @@ sys_packages_install() {
               sudo \
               symlinks \
               sysstat \
-              sysvinit-core \
-              sysvinit-utils \
               telnet \
               time \
               unrtf \

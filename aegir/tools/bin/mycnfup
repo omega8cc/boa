@@ -207,19 +207,25 @@ EOF
 remove_systemd() {
   if [ -x "/lib/systemd/systemd" ]; then
     ls -la /lib/systemd/systemd
+    apt-get remove systemd-sysv -y -qq --auto-remove
+    apt-get remove systemd -y -qq --auto-remove
+    apt-get remove libnss-systemd -y -qq --auto-remove
     ${_INSTALL} sysvinit
     ${_INSTALL} sysvinit-core
     ${_INSTALL} sysvinit-utils
+    apt --fix-broken install -y
     ls -la /usr/share/sysvinit/inittab
     if [ -e "/usr/share/sysvinit/inittab" ]; then
       cp -af /usr/share/sysvinit/inittab /etc/inittab
     fi
+    apt-get remove systemd-sysv -y --force-yes -qq --purge --auto-remove
     apt-get remove systemd -y --force-yes -qq --purge --auto-remove
     apt-get remove libnss-systemd -y --force-yes -qq --purge --auto-remove
     echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
     echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
     ${_INSTALL} sysvinit-core &> /dev/null
     ${_INSTALL} sysvinit-utils &> /dev/null
+    apt --fix-broken install -y
   fi
 }
 
@@ -1325,19 +1331,25 @@ db_head_to_stretch_first()
   	  apt-get install lsb-release ${dstUpArg}
   	  if [ -x "/lib/systemd/systemd" ]; then
         ls -la /lib/systemd/systemd
+        apt-get remove systemd-sysv -y -qq --auto-remove
+        apt-get remove systemd -y -qq --auto-remove
+        apt-get remove libnss-systemd -y -qq --auto-remove
         ${_INSTALL} sysvinit
         ${_INSTALL} sysvinit-core
         ${_INSTALL} sysvinit-utils
+        apt --fix-broken install -y
         ls -la /usr/share/sysvinit/inittab
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
+        apt-get remove systemd-sysv -y --force-yes -qq --purge --auto-remove
         apt-get remove systemd -y --force-yes -qq --purge --auto-remove
         apt-get remove libnss-systemd -y --force-yes -qq --purge --auto-remove
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
         ${_INSTALL} sysvinit-core &> /dev/null
         ${_INSTALL} sysvinit-utils &> /dev/null
+        apt --fix-broken install -y
   	  fi
       echo "Upgrade OS to Stretch 1st stage complete!"
       echo "Bye!"
@@ -1354,19 +1366,25 @@ db_head_to_stretch_second()
 	    apt-get update -qq &> /dev/null
   	  if [ -x "/lib/systemd/systemd" ]; then
         ls -la /lib/systemd/systemd
+        apt-get remove systemd-sysv -y -qq --auto-remove
+        apt-get remove systemd -y -qq --auto-remove
+        apt-get remove libnss-systemd -y -qq --auto-remove
         ${_INSTALL} sysvinit
         ${_INSTALL} sysvinit-core
         ${_INSTALL} sysvinit-utils
+        apt --fix-broken install -y
         ls -la /usr/share/sysvinit/inittab
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
+        apt-get remove systemd-sysv -y --force-yes -qq --purge --auto-remove
         apt-get remove systemd -y --force-yes -qq --purge --auto-remove
         apt-get remove libnss-systemd -y --force-yes -qq --purge --auto-remove
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
         ${_INSTALL} sysvinit-core &> /dev/null
         ${_INSTALL} sysvinit-utils &> /dev/null
+        apt --fix-broken install -y
   	  fi
   	  apt-get upgrade ${nrmUpArg}
   	  apt-get dist-upgrade ${nrmUpArg}
