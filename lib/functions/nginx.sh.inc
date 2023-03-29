@@ -244,7 +244,7 @@ nginx_clean_legacy_config() {
     sed -i "s/.*track_uploads.*//g" /var/aegir/config/includes/nginx_vhost_common.conf
     wait
   fi
-  service nginx reload
+  mrun "service nginx reload" &> /dev/null
 }
 
 #
