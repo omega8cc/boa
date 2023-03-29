@@ -635,12 +635,10 @@ prep_for_install_db_sql() {
         rm -f /etc/apt/sources.list.d/percona-original-release.list
         rm -f /etc/apt/sources.list.d/percona-prel-release.list
         rm -f /etc/apt/sources.list.d/percona-release.list.bak
-        if [ ! -e "${percList}" ]; then
-          echo "## Percona APT Repository" > ${percList}
-          echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-          echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-          apt-get update -qq &> /dev/null
-        fi
+        echo "## Percona APT Repository" > ${percList}
+        echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+        echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+        apt-get update -qq &> /dev/null
       else
         _DB_SERVER=Percona
         _DB_SERIES=5.7
@@ -657,12 +655,10 @@ prep_for_install_db_sql() {
         rm -f /etc/apt/sources.list.d/percona-original-release.list
         rm -f /etc/apt/sources.list.d/percona-prel-release.list
         rm -f /etc/apt/sources.list.d/percona-release.list.bak
-        if [ ! -e "${percList}" ]; then
-          echo "## Percona APT Repository" > ${percList}
-          echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-          echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-          apt-get update -qq &> /dev/null
-        fi
+        echo "## Percona APT Repository" > ${percList}
+        echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+        echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+        apt-get update -qq &> /dev/null
       fi
     fi
     msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSR}"
@@ -1186,12 +1182,10 @@ install_db_server() {
         rm -f /etc/apt/sources.list.d/percona-original-release.list
         rm -f /etc/apt/sources.list.d/percona-prel-release.list
         rm -f /etc/apt/sources.list.d/percona-release.list.bak
-        if [ ! -e "${percList}" ]; then
-          echo "## Percona APT Repository" > ${percList}
-          echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-          echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-          st_runner "apt-get update -qq" &> /dev/null
-        fi
+        echo "## Percona APT Repository" > ${percList}
+        echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+        echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+        st_runner "apt-get update -qq" &> /dev/null
       fi
       st_runner "apt-get update -qq" &> /dev/null
     fi

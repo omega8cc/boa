@@ -163,12 +163,10 @@ if [ ! -e "${percList}" ] \
   rm -f /etc/apt/sources.list.d/percona-original-release.list
   rm -f /etc/apt/sources.list.d/percona-prel-release.list
   rm -f /etc/apt/sources.list.d/percona-release.list.bak
-  if [ ! -e "${percList}" ]; then
-    echo "## Percona APT Repository" > ${percList}
-    echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-    echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-    apt-get update -qq &> /dev/null
-  fi
+  echo "## Percona APT Repository" > ${percList}
+  echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+  echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+  apt-get update -qq &> /dev/null
   if [ -e "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
     service lfd stop &> /dev/null
