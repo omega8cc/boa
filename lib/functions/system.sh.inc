@@ -4555,11 +4555,11 @@ sys_packages_install() {
       elif [ "${_OSR}" = "buster" ]; then
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "bullseye" ]; then
-        _APT_XTRA="openjdk-11-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "beowulf" ]; then
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "chimaera" ]; then
-        _APT_XTRA="openjdk-11-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
       fi
     else
       _APT_XTRA="nginx"
@@ -4593,11 +4593,11 @@ sys_packages_install() {
       elif [ "${_OSR}" = "buster" ]; then
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "bullseye" ]; then
-        _APT_XTRA="openjdk-11-jre-headless ca-certificates-java"
+        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "beowulf" ]; then
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "chimaera" ]; then
-        _APT_XTRA="openjdk-11-jre-headless ca-certificates-java"
+        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java"
       fi
     else
       _APT_XTRA=""
@@ -4640,92 +4640,115 @@ sys_packages_install() {
   fi
 
   if [ "${_OSR}" = "chimaera" ]; then
-    _EXTRA_PACKAGES="autoconf2.64 \
+    _EXTRA_PACKAGES="autoconf2.69 \
+                     automake1.11 \
+                     automake-1.16 \
+                     gnupg1-curl \
+                     libcurl4 \
+                     libcurl4-gnutls-dev \
                      libpcre2-dev \
+                     libpcre2-posix2 \
                      libpcre3 \
                      libpcre3-dev \
                      libpng-dev \
                      libpng16-16 \
-                     gnupg1-curl \
+                     libtinfo6 \
                      software-properties-common \
-                     libpcre2-posix0 \
-                     automake1.11 \
-                     libcurl4 \
-                     libcurl4-gnutls-dev \
                      ${_EXTRA_PACKAGES}"
   elif [ "${_OSR}" = "beowulf" ]; then
     _EXTRA_PACKAGES="autoconf2.64 \
+                     automake1.11 \
+                     automake-1.15 \
+                     automake-1.16 \
+                     gnupg1-curl \
+                     libcurl4 \
+                     libcurl4-gnutls-dev \
                      libpcre2-dev \
+                     libpcre2-posix0 \
                      libpcre3 \
                      libpcre3-dev \
                      libpng-dev \
                      libpng16-16 \
-                     gnupg1-curl \
+                     libtinfo6 \
                      software-properties-common \
-                     libpcre2-posix0 \
-                     automake1.11 \
-                     libcurl4 \
-                     libcurl4-gnutls-dev \
+                     ttf-dejavu \
+                     ttf-dejavu-core \
+                     ttf-dejavu-extra \
                      ${_EXTRA_PACKAGES}"
   elif [ "${_OSR}" = "bullseye" ]; then
-    _EXTRA_PACKAGES="autoconf2.64 \
+    _EXTRA_PACKAGES="autoconf2.69 \
+                     automake1.11 \
+                     automake-1.16 \
+                     gnupg1-curl \
+                     libcurl4 \
+                     libcurl4-gnutls-dev \
                      libpcre2-dev \
+                     libpcre2-posix2 \
                      libpcre3 \
                      libpcre3-dev \
                      libpng-dev \
                      libpng16-16 \
-                     gnupg1-curl \
+                     libtinfo6 \
                      software-properties-common \
-                     libpcre2-posix0 \
-                     automake1.11 \
-                     libcurl4 \
-                     libcurl4-gnutls-dev \
                      ${_EXTRA_PACKAGES}"
   elif [ "${_OSR}" = "buster" ]; then
     _EXTRA_PACKAGES="autoconf2.64 \
-                     libpcre2-dev \
-                     libpcre3 \
-                     libpcre3-dev \
-                     libpng-dev \
-                     libpng16-16 \
-                     gnupg1-curl \
-                     software-properties-common \
-                     libpcre2-posix0 \
                      automake1.11 \
+                     automake-1.15 \
+                     automake-1.16 \
+                     gnupg1-curl \
                      libcurl4 \
                      libcurl4-gnutls-dev \
-                     ${_EXTRA_PACKAGES}"
-  elif [ "${_OSR}" = "stretch" ]; then
-    _EXTRA_PACKAGES="autoconf2.59 \
                      libpcre2-dev \
+                     libpcre2-posix0 \
                      libpcre3 \
                      libpcre3-dev \
                      libpng-dev \
                      libpng16-16 \
+                     libtinfo6 \
+                     software-properties-common \
+                     ttf-dejavu \
+                     ttf-dejavu-core \
+                     ttf-dejavu-extra \
+                     ${_EXTRA_PACKAGES}"
+  elif [ "${_OSR}" = "stretch" ]; then
+    _EXTRA_PACKAGES="autoconf2.64 \
+                     automake1.11 \
+                     automake-1.15 \
                      gnupg1-curl \
                      libcurl3 \
                      libcurl3-gnutls \
                      libcurl4-openssl-dev \
-                     software-properties-common \
+                     libpcre2-dev \
                      libpcre2-posix0 \
-                     automake1.11 \
+                     libpcre3 \
+                     libpcre3-dev \
+                     libpng-dev \
+                     libpng16-16 \
+                     software-properties-common \
+                     ttf-dejavu \
+                     ttf-dejavu-core \
+                     ttf-dejavu-extra \
                      ${_EXTRA_PACKAGES}"
   else
     _EXTRA_PACKAGES="autoconf2.13 \
                      automake1.4 \
-                     libpcre3 \
-                     t1lib-bin \
+                     defoma \
                      gnupg-curl \
                      libcurl3 \
                      libcurl3-gnutls \
                      libcurl4-openssl-dev \
-                     libt1-5 \
+                     libpcre3 \
+                     libpcre3-dev \
                      libpng12-0 \
                      libpng12-dev \
+                     libt1-5 \
                      libt1-dev \
-                     defoma \
                      python-software-properties \
-                     libpcre3-dev \
+                     t1lib-bin \
+                     ttf-dejavu \
+                     ttf-dejavu-core \
+                     ttf-dejavu-extra \
                      ${_EXTRA_PACKAGES}"
   fi
 
@@ -4736,10 +4759,7 @@ sys_packages_install() {
     || [ "${_OSR}" = "stretch" ] \
     || [ "${_OSR}" = "jessie" ] \
     || [ "${_OSR}" = "trusty" ]; then
-    _EXTRA_PACKAGES="libgd2-noxpm-dev \
-                     libgd2-xpm-dev \
-                     libgd2-dev \
-                     libgd3 \
+    _EXTRA_PACKAGES="libgd3 \
                      libkrb5-dev \
                      libldap-dev \
                      libxpm-dev \
@@ -4766,9 +4786,8 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  if [ "${_VMFAMILY}" != "VS" ]; then
+  if [ "${_VMFAMILY}" != "VS" ] && [ "${_THIS_OS}" != "Devuan" ]; then
     _EXTRA_PACKAGES="udev \
-                     auditd \
                      ${_EXTRA_PACKAGES}"
   fi
 
@@ -4789,6 +4808,7 @@ sys_packages_install() {
     || [ "${_OSR}" = "precise" ]; then
     _DEBDEPS="apticron \
               aptitude \
+              auditd \
               m4 \
               apt-listchanges \
               at \
@@ -4901,9 +4921,6 @@ sys_packages_install() {
               sysvinit-utils \
               telnet \
               time \
-              ttf-dejavu \
-              ttf-dejavu-core \
-              ttf-dejavu-extra \
               unrtf \
               unzip \
               unzip \
@@ -5685,6 +5702,11 @@ check_fix_java() {
     rm -f /usr/lib/jvm/default-java
     ln -sf /usr/lib/jvm/java-1.7.0-openjdk-amd64 /usr/lib/jvm/default-java
   fi
+  if [ -x "/usr/lib/jvm/java-7-openjdk/jre/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-7-openjdk/jre/bin/java /etc/alternatives/java
+    ln -sf /etc/alternatives/java /usr/bin/java
+  fi
+
   if [ ! -e "/usr/lib/jvm/java-8-openjdk" ] \
     && [ -d "/usr/lib/jvm/java-8-openjdk-amd64" ]; then
     ln -sf /usr/lib/jvm/java-8-openjdk-amd64 /usr/lib/jvm/java-8-openjdk
@@ -5709,12 +5731,66 @@ check_fix_java() {
     rm -f /usr/lib/jvm/default-java
     ln -sf /usr/lib/jvm/java-1.8.0-openjdk-amd64 /usr/lib/jvm/default-java
   fi
-  if [ -x "/usr/lib/jvm/java-7-openjdk/jre/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-7-openjdk/jre/bin/java /etc/alternatives/java
-    ln -sf /etc/alternatives/java /usr/bin/java
-  fi
   if [ -x "/usr/lib/jvm/java-8-openjdk/jre/bin/java" ]; then
     ln -sf /usr/lib/jvm/java-8-openjdk/jre/bin/java /etc/alternatives/java
+    ln -sf /etc/alternatives/java /usr/bin/java
+  fi
+
+  if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \
+    && [ -d "/usr/lib/jvm/java-11-openjdk-amd64" ]; then
+    ln -sf /usr/lib/jvm/java-11-openjdk-amd64 /usr/lib/jvm/java-11-openjdk
+  fi
+  if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \
+    && [ -d "/usr/lib/jvm/java-11-openjdk-i386" ]; then
+    ln -sf /usr/lib/jvm/java-11-openjdk-i386 /usr/lib/jvm/java-11-openjdk
+  fi
+  if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-i386" ]; then
+    rm -f /usr/lib/jvm/default-java
+    ln -sf /usr/lib/jvm/java-1.11.0-openjdk-i386 /usr/lib/jvm/default-java
+  fi
+  if [ ! -e "/usr/bin/java11" ] \
+    && [ -e "/usr/lib/jvm/java-11-openjdk-amd64/jre/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-11-openjdk-amd64/jre/bin/java /usr/bin/java11
+  fi
+  if [ ! -e "/usr/bin/java11" ] \
+    && [ -e "/usr/lib/jvm/java-11-openjdk-i386/jre/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-11-openjdk-i386/jre/bin/java /usr/bin/java11
+  fi
+  if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-amd64" ]; then
+    rm -f /usr/lib/jvm/default-java
+    ln -sf /usr/lib/jvm/java-1.11.0-openjdk-amd64 /usr/lib/jvm/default-java
+  fi
+  if [ -x "/usr/lib/jvm/java-11-openjdk/jre/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-11-openjdk/jre/bin/java /etc/alternatives/java
+    ln -sf /etc/alternatives/java /usr/bin/java
+  fi
+
+  if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
+    && [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
+    ln -sf /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
+  fi
+  if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
+    && [ -d "/usr/lib/jvm/java-17-openjdk-i386" ]; then
+    ln -sf /usr/lib/jvm/java-17-openjdk-i386 /usr/lib/jvm/java-17-openjdk
+  fi
+  if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-i386" ]; then
+    rm -f /usr/lib/jvm/default-java
+    ln -sf /usr/lib/jvm/java-1.17.0-openjdk-i386 /usr/lib/jvm/default-java
+  fi
+  if [ ! -e "/usr/bin/java17" ] \
+    && [ -e "/usr/lib/jvm/java-17-openjdk-amd64/jre/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-17-openjdk-amd64/jre/bin/java /usr/bin/java17
+  fi
+  if [ ! -e "/usr/bin/java17" ] \
+    && [ -e "/usr/lib/jvm/java-17-openjdk-i386/jre/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-17-openjdk-i386/jre/bin/java /usr/bin/java17
+  fi
+  if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-amd64" ]; then
+    rm -f /usr/lib/jvm/default-java
+    ln -sf /usr/lib/jvm/java-1.17.0-openjdk-amd64 /usr/lib/jvm/default-java
+  fi
+  if [ -x "/usr/lib/jvm/java-17-openjdk/jre/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-17-openjdk/jre/bin/java /etc/alternatives/java
     ln -sf /etc/alternatives/java /usr/bin/java
   fi
 }
