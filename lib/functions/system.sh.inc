@@ -3666,9 +3666,21 @@ install_with_aptitude_deps() {
   elif [ "${_THIS_OS}" = "Ubuntu" ]; then
     ${_INITINS} ubuntu-keyring &> /dev/null
   fi
-  st_runner "${_INSTAPP} libcurl4" 2> /dev/null
-  st_runner "${_INSTAPP} libcurl4-gnutls-dev" 2> /dev/null
+  mrun "${_INSTAPP} dnsutils sudo symlinks iptables" 2> /dev/null
+  mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
+  mrun "${_INSTAPP} zlibc time vim cvs makepasswd" 2> /dev/null
+  mrun "${_INSTAPP} unzip unrtf wdiff pwgen" 2> /dev/null
+  mrun "${_INSTAPP} rsync strace ntpdate" 2> /dev/null
+  mrun "${_INSTAPP} mc whois zlib1g-dev" 2> /dev/null
+  mrun "${_INSTAPP} mcrypt curl libcurl4" 2> /dev/null
+  mrun "${_INSTAPP} libcurl4-gnutls-dev" 2> /dev/null
+  mrun "apt --fix-broken install -y" 2> /dev/null
   st_runner "${_INSTAPP} ${_DEBDEPS}" 2> /dev/null
+  st_runner "${_INSTAPP} ${_APT_XTRA}" 2> /dev/null
+  st_runner "${_INSTAPP} ${_EXTRA_LIB_APT}" 2> /dev/null
+  st_runner "${_INSTAPP} ${_EXTRA_PACKAGES}" 2> /dev/null
+  st_runner "${_INSTAPP} ${_SYSLOGD}" 2> /dev/null
+  mrun "apt --fix-broken install -y" 2> /dev/null
   if [ -x "/usr/bin/gpg2" ]; then
     _GPG=gpg2
   else
@@ -4783,24 +4795,17 @@ sys_packages_install() {
               clamav-base \
               clamav-daemon \
               clamdscan \
-              cron \
-              curl \
-              cvs \
               cython \
               devscripts \
-              dnsutils \
               dstat \
               flex \
               fontconfig-config \
               geoip-database \
               gettext \
               ghostscript \
-              gnupg \
-              gnupg2 \
               htop \
               icu-devtools \
               ipset \
-              iptables \
               ldap-utils \
               lemon \
               lftp \
@@ -4840,21 +4845,16 @@ sys_packages_install() {
               libxslt1-dev \
               libxslt1.1 \
               libzip-dev \
-              makepasswd \
               man-db \
-              mc \
-              mcrypt \
               nano \
               ncurses-dev \
               ncurses-term \
               netcat \
-              ntpdate \
               p7zip-full \
               patchutils \
               pdftk \
               postfix \
               postfix-pcre \
-              pwgen \
               python-dev \
               python-lockfile \
               python-monotonic \
@@ -4864,36 +4864,16 @@ sys_packages_install() {
               re2c \
               rkhunter \
               rrdtool \
-              rsync \
               s3cmd \
               shtool \
               sipcalc \
               sqlite3 \
               ssh \
               ssl-cert \
-              strace \
               subversion \
-              sudo \
-              symlinks \
-              sysstat \
-              telnet \
-              time \
-              unrtf \
-              unzip \
-              unzip \
-              vim \
-              wdiff \
-              whois \
               xml-core \
               xml2 \
-              xpdf \
-              zip \
-              zlib1g-dev \
-              zlibc \
-              ${_APT_XTRA} \
-              ${_EXTRA_LIB_APT} \
-              ${_EXTRA_PACKAGES} \
-              ${_SYSLOGD}"
+              xpdf"
   fi
 }
 
