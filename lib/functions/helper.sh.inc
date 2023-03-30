@@ -268,8 +268,8 @@ mode_detection() {
     msg "MODE: UPGRADE"
     barracuda_cnf
     touch /var/run/boa_wait.pid
-    chattr -i /root/.use.curl.from.packages.cnf
-    rm -f /root/.use.curl.from.packages.cnf
+    [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
+    [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
       _XTRAS_LIST="ADM CSF FTP CSS DCS"
@@ -281,8 +281,8 @@ mode_detection() {
     touch /var/run/boa_wait.pid
   else
     _STATUS=INIT
-    chattr -i /root/.use.curl.from.packages.cnf
-    rm -f /root/.use.curl.from.packages.cnf
+    [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
+    [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
     if [ -d "/var/aegir" ]; then
       msg "MODE: FORCED INIT"
       _FULL_FORCE_REINSTALL=YES
@@ -382,8 +382,8 @@ mode_detection() {
       fi
     fi
     if [ "${_STATUS}" != "SYSTEMD" ]; then
-      chattr -i /root/.use.curl.from.packages.cnf
-      rm -f /root/.use.curl.from.packages.cnf
+      [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
+      [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
       kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}') &> /dev/null
       barracuda_cnf
     fi
