@@ -3664,29 +3664,25 @@ install_with_aptitude_deps() {
   elif [ "${_THIS_OS}" = "Ubuntu" ]; then
     ${_INITINS} ubuntu-keyring &> /dev/null
   fi
-  mrun "${_INSTAPP} build-essential devscripts dstat flex " 2> /dev/null
-  mrun "${_INSTAPP} man-db at dnsutils sudo symlinks iptables" 2> /dev/null
+  mrun "${_INSTAPP} build-essential libsasl2-modules" 2> /dev/null
+  mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables" 2> /dev/null
   mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc" 2> /dev/null
   mrun "${_INSTAPP} apticron aptitude auditd apt-listchanges" 2> /dev/null
   mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
   mrun "${_INSTAPP} zlibc time vim cvs makepasswd" 2> /dev/null
-  mrun "${_INSTAPP} unzip unrtf wdiff pwgen re2c" 2> /dev/null
+  mrun "${_INSTAPP} unzip unrtf wdiff pwgen" 2> /dev/null
   mrun "${_INSTAPP} rsync strace ntpdate python-dev" 2> /dev/null
   mrun "${_INSTAPP} mc whois zlib1g zlib1g-dev librsync-dev" 2> /dev/null
   mrun "${_INSTAPP} mcrypt curl libcurl4 libssl-dev" 2> /dev/null
   mrun "${_INSTAPP} libcurl4-gnutls-dev" 2> /dev/null
-  mrun "${_INSTAPP} libterm-readkey-perl libwww-perl" 2> /dev/null
-  mrun "${_INSTAPP} libtext-template-perl libsodium-dev " 2> /dev/null
-  mrun "${_INSTAPP} libsodium-dev libsasl2-modules" 2> /dev/null
-  mrun "${_INSTAPP} sqlite3 libsqlite3-dev s4cmd " 2> /dev/null
+  mrun "${_INSTAPP} sqlite3 libsqlite3-dev s4cmd" 2> /dev/null
   mrun "${_INSTAPP} ssh ssl-cert libpam-umask shtool" 2> /dev/null
   mrun "${_INSTAPP} xml-core xml2 xpdf libtool rrdtool" 2> /dev/null
   mrun "${_INSTAPP} ncurses-dev ncurses-term sipcalc" 2> /dev/null
-  mrun "${_INSTAPP} netcat libzip-dev libhtml-template-perl" 2> /dev/null
+  mrun "${_INSTAPP} netcat libzip-dev libwww-perl" 2> /dev/null
   mrun "${_INSTAPP} libfontconfig1 libfreetype6 libfreetype6-dev" 2> /dev/null
   mrun "${_INSTAPP} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev" 2> /dev/null
   mrun "${_INSTAPP} libicu-dev libjpeg-dev libjpeg62" 2> /dev/null
-  mrun "${_INSTAPP} libnet-daemon-perl libfilesys-diskspace-perl " 2> /dev/null
   mrun "${_INSTAPP} libonig-dev libpq5 libxml2-dev libxpm4" 2> /dev/null
   mrun "${_INSTAPP} libxslt-dev libxslt1-dev libxslt1.1 subversion" 2> /dev/null
   mrun "${_INSTAPP} libaprutil1 libapr1 ldap-utils ipset" 2> /dev/null
