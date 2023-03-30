@@ -1347,7 +1347,7 @@ install_php_multi() {
                 ${_PHP_EXTRA}" 2> /dev/null
   msg "INFO: Building PHP ${_PHP_VERSION} part 3/3"
   if [ -f "/var/opt/php-${_PHP_VERSION}/Makefile" ]; then
-    sed -i "s/^EXTRA_LIBS = -lcrypt/EXTRA_LIBS = -llber -lcrypt/g" /var/opt/php-${_PHP_VERSION}/Makefile
+    sed -i "s/^EXTRA_LIBS = \-lcrypt/EXTRA_LIBS = \-llber \-lcrypt/g" /var/opt/php-${_PHP_VERSION}/Makefile
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
@@ -1379,7 +1379,7 @@ install_php_multi() {
                 --with-xsl \
                 --with-zlib \
                 ${_PHP_EXTRA}" 2> /dev/null
-    sed -i "s/^EXTRA_LIBS = -lcrypt/EXTRA_LIBS = -llber -lcrypt/g" /var/opt/php-${_PHP_VERSION}/Makefile
+    sed -i "s/^EXTRA_LIBS = \-lcrypt/EXTRA_LIBS = \-llber \-lcrypt/g" /var/opt/php-${_PHP_VERSION}/Makefile
     msg "INFO: Building PHP ${_PHP_VERSION} part 3/3 (again)"
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
