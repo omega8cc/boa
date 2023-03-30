@@ -1321,7 +1321,6 @@ install_php_multi() {
     fi
   fi
   mrun "bash ./configure \
-                --quiet \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
                 --enable-bcmath \
@@ -1345,17 +1344,19 @@ install_php_multi() {
                 --with-xsl \
                 --with-zlib \
                 ${_PHP_EXTRA}" 2> /dev/null
-  msg "INFO: Building PHP ${_PHP_VERSION} part 3/3"
-  if [ -f "/var/opt/php-${_PHP_VERSION}/Makefile" ]; then
+  if [ -e "/var/opt/php-${_PHP_VERSION}/Makefile" ]; then
+    msg "INFO: Building PHP ${_PHP_VERSION} part 3/3"
     sed -i "s/^EXTRA_LIBS = \-lcrypt/EXTRA_LIBS = \-llber \-lcrypt/g" /var/opt/php-${_PHP_VERSION}/Makefile
-    mrun "make --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
+    mrun "make" 2> /dev/null
+    mrun "make install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
   else
+    msg "WARN: No Makefile, configure for PHP ${_PHP_VERSION} failed"
+    msg "INFO: Waiting 3 minutes before trying again..."
+    sleep 180
     msg "INFO: Building PHP ${_PHP_VERSION} part 2/3 (again)"
-    mrun "make --quiet clean" 2> /dev/null
+    mrun "make clean" 2> /dev/null
     mrun "bash ./configure \
-                --quiet \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
                 --enable-bcmath \
@@ -1379,11 +1380,18 @@ install_php_multi() {
                 --with-xsl \
                 --with-zlib \
                 ${_PHP_EXTRA}" 2> /dev/null
-    sed -i "s/^EXTRA_LIBS = \-lcrypt/EXTRA_LIBS = \-llber \-lcrypt/g" /var/opt/php-${_PHP_VERSION}/Makefile
-    msg "INFO: Building PHP ${_PHP_VERSION} part 3/3 (again)"
-    mrun "make --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    if [ -f "/var/opt/php-${_PHP_VERSION}/Makefile" ]; then
+      sed -i "s/^EXTRA_LIBS = \-lcrypt/EXTRA_LIBS = \-llber \-lcrypt/g" /var/opt/php-${_PHP_VERSION}/Makefile
+      msg "INFO: Building PHP ${_PHP_VERSION} part 3/3 (again)"
+      mrun "make" 2> /dev/null
+      mrun "make install" 2> /dev/null
+      mrun "ldconfig" 2> /dev/null
+    else
+      msg "ALRT: No Makefile, building PHP ${_PHP_VERSION} failed again!"
+      msg "INFO: Waiting 3 minutes for your input or ctrl-c..."
+      sleep 180
+      msg "INFO: Moving on..."
+    fi
   fi
   if [ -x "/opt/php$1/bin/php" ]; then
     rm -f /usr/bin/php
