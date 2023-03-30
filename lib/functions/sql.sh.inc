@@ -731,24 +731,6 @@ prep_for_install_db_sql() {
       st_runner "${_RMAPP} mariadb-server-10.3" &> /dev/null
       st_runner "${_RMAPP} mariadb-client-10.3" &> /dev/null
       st_runner "${_RMAPP} mariadb-server" &> /dev/null
-      st_runner "${_RMAPP} mariadb-common" &> /dev/null
-      st_runner "apt-get purge mysql-common -y" &> /dev/null
-      if [ "${_SQL_MAJOR_UP_ALLOW}" = "YES" ]; then
-        st_runner "${_RMAPP} libmariadb-dev" &> /dev/null
-        st_runner "${_RMAPP} libmariadb3" &> /dev/null
-        st_runner "${_RMAPP} libmariadbclient-dev" &> /dev/null
-        st_runner "${_RMAPP} libmariadbclient18" &> /dev/null
-        st_runner "${_RMAPP} libmariadbd-dev" &> /dev/null
-        st_runner "${_RMAPP} libmysqlclient18.1" &> /dev/null
-        st_runner "${_RMAPP} libmysqlclient18" &> /dev/null
-        st_runner "apt-get purge libmariadb-dev -y" &> /dev/null
-        st_runner "apt-get purge libmariadb3 -y" &> /dev/null
-        st_runner "apt-get purge libmariadbclient-dev -y" &> /dev/null
-        st_runner "apt-get purge libmariadbclient18 -y" &> /dev/null
-        st_runner "apt-get purge libmariadbd-dev -y" &> /dev/null
-        st_runner "apt-get purge libmysqlclient18 -y" &> /dev/null
-        st_runner "apt-get purge libmysqlclient18.1 -y" &> /dev/null
-      fi
     fi
     SQLDEB="mariadb-server"
   elif [ "${_DB_SERIES}" = "10.3" ]; then
@@ -763,24 +745,6 @@ prep_for_install_db_sql() {
       st_runner "${_RMAPP} mariadb-server-10.4" &> /dev/null
       st_runner "${_RMAPP} mariadb-client-10.4" &> /dev/null
       st_runner "${_RMAPP} mariadb-server" &> /dev/null
-      st_runner "${_RMAPP} mariadb-common" &> /dev/null
-      st_runner "apt-get purge mysql-common -y" &> /dev/null
-      if [ "${_SQL_MAJOR_UP_ALLOW}" = "YES" ]; then
-        st_runner "${_RMAPP} libmariadb-dev" &> /dev/null
-        st_runner "${_RMAPP} libmariadb3" &> /dev/null
-        st_runner "${_RMAPP} libmariadbclient-dev" &> /dev/null
-        st_runner "${_RMAPP} libmariadbclient18" &> /dev/null
-        st_runner "${_RMAPP} libmariadbd-dev" &> /dev/null
-        st_runner "${_RMAPP} libmysqlclient18.1" &> /dev/null
-        st_runner "${_RMAPP} libmysqlclient18" &> /dev/null
-        st_runner "apt-get purge libmariadb-dev -y" &> /dev/null
-        st_runner "apt-get purge libmariadb3 -y" &> /dev/null
-        st_runner "apt-get purge libmariadbclient-dev -y" &> /dev/null
-        st_runner "apt-get purge libmariadbclient18 -y" &> /dev/null
-        st_runner "apt-get purge libmariadbd-dev -y" &> /dev/null
-        st_runner "apt-get purge libmysqlclient18 -y" &> /dev/null
-        st_runner "apt-get purge libmysqlclient18.1 -y" &> /dev/null
-      fi
     fi
     SQLDEB="mariadb-server"
   elif [ "${_DB_SERIES}" = "10.2" ]; then
@@ -795,24 +759,6 @@ prep_for_install_db_sql() {
       st_runner "${_RMAPP} mariadb-server-10.4" &> /dev/null
       st_runner "${_RMAPP} mariadb-client-10.4" &> /dev/null
       st_runner "${_RMAPP} mariadb-server" &> /dev/null
-      st_runner "${_RMAPP} mariadb-common" &> /dev/null
-      st_runner "apt-get purge mysql-common -y" &> /dev/null
-      if [ "${_SQL_MAJOR_UP_ALLOW}" = "YES" ]; then
-        st_runner "${_RMAPP} libmariadb-dev" &> /dev/null
-        st_runner "${_RMAPP} libmariadb3" &> /dev/null
-        st_runner "${_RMAPP} libmariadbclient-dev" &> /dev/null
-        st_runner "${_RMAPP} libmariadbclient18" &> /dev/null
-        st_runner "${_RMAPP} libmariadbd-dev" &> /dev/null
-        st_runner "${_RMAPP} libmysqlclient18.1" &> /dev/null
-        st_runner "${_RMAPP} libmysqlclient18" &> /dev/null
-        st_runner "apt-get purge libmariadb-dev -y" &> /dev/null
-        st_runner "apt-get purge libmariadb3 -y" &> /dev/null
-        st_runner "apt-get purge libmariadbclient-dev -y" &> /dev/null
-        st_runner "apt-get purge libmariadbclient18 -y" &> /dev/null
-        st_runner "apt-get purge libmariadbd-dev -y" &> /dev/null
-        st_runner "apt-get purge libmysqlclient18 -y" &> /dev/null
-        st_runner "apt-get purge libmysqlclient18.1 -y" &> /dev/null
-      fi
     fi
     SQLDEB="mariadb-server"
   elif [ "${_DB_SERIES}" = "5.7" ]; then
@@ -827,25 +773,9 @@ prep_for_install_db_sql() {
       st_runner "${_RMAPP} mariadb-server-10.3" &> /dev/null
       st_runner "${_RMAPP} mariadb-client-10.3" &> /dev/null
       st_runner "${_RMAPP} mariadb-server" &> /dev/null
-      st_runner "${_RMAPP} mariadb-common" &> /dev/null
-      st_runner "${_RMAPP} libmariadb-dev" &> /dev/null
-      st_runner "${_RMAPP} libmariadb3" &> /dev/null
-      st_runner "${_RMAPP} libmariadbclient-dev" &> /dev/null
-      st_runner "${_RMAPP} libmariadbd-dev" &> /dev/null
-      st_runner "${_RMAPP} libmysqlclient18.1" &> /dev/null
-      st_runner "${_RMAPP} libmysqlclient18" &> /dev/null
-      st_runner "apt-get purge libmariadb-dev -y" &> /dev/null
-      st_runner "apt-get purge libmariadb3 -y" &> /dev/null
-      st_runner "apt-get purge libmariadbclient-dev -y" &> /dev/null
-      st_runner "apt-get purge libmariadbd-dev -y" &> /dev/null
-      st_runner "apt-get purge libmysqlclient18 -y" &> /dev/null
-      st_runner "apt-get purge libmysqlclient18.1 -y" &> /dev/null
-      st_runner "apt-get purge mysql-common -y" &> /dev/null
     fi
     SQLDEB="percona-server-server-${_DB_SERIES}"
   else
-    st_runner "${_RMAPP} mysql-common" &> /dev/null
-    st_runner "apt-get purge mysql-common -y" &> /dev/null
     SQLDEB="mariadb-server"
   fi
   if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
