@@ -5087,20 +5087,6 @@ install_myquick_src() {
     else
       mrun "${_INSTALL} libmariadb-dev" 2> /dev/null
     fi
-    # if [ "${_DB_SERIES}" = "10.3" ] || [ "${_DB_SERIES}" = "10.4" ]; then
-    #   if [ ! -e "/usr/include/mysql" ] \
-    #     && [ -d "/usr/include/mariadb" ]; then
-    #     ln -sf /usr/include/mariadb /usr/include/mysql
-    #   fi
-    #   if [ ! -e "/usr/bin/mysql_config" ] \
-    #     && [ -e "/usr/bin/mariadb_config" ]; then
-    #     ln -sf /usr/bin/mariadb_config /usr/bin/mysql_config
-    #   fi
-    #   if [ ! -e "/usr/bin/mysql-service-convert" ] \
-    #     && [ -e "/usr/bin/mariadb-service-convert" ]; then
-    #     ln -sf /usr/bin/mariadb-service-convert /usr/bin/mysql-service-convert
-    #   fi
-    # fi
     cd /var/opt
     rm -rf mydumper*
     get_dev_src "mydumper-${_MYQUICK_VRN}.tar.gz"
