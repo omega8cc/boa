@@ -265,7 +265,7 @@ mode_detection() {
   if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
     && [ ! -e "/lib/systemd/systemd" ]; then
     _STATUS=UPGRADE
-    msg "INFO: UPGRADE"
+    msg "MODE: UPGRADE"
     barracuda_cnf
     touch /var/run/boa_wait.pid
     if [ -e "/root/.auto.up.cnf" ] \
@@ -275,16 +275,16 @@ mode_detection() {
   elif [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
     && [ -e "/lib/systemd/systemd" ]; then
     _STATUS=SYSTEMD
-    msg "INFO: SYSTEMD"
+    msg "MODE: SYSTEMD"
     barracuda_cnf
     touch /var/run/boa_wait.pid
   else
     _STATUS=INIT
     if [ -d "/var/aegir" ]; then
-      msg "INFO: FORCED INIT"
+      msg "MODE: FORCED INIT"
       _FULL_FORCE_REINSTALL=YES
     else
-      msg "INFO: NORMAL INIT"
+      msg "MODE: NORMAL INIT"
     fi
     _ZOMBIE_HOME="${vBs}/zombie/${_X_VERSION}-${_NOW}"
     mkdir -p $_ZOMBIE_HOME
