@@ -704,9 +704,8 @@ EOF
       fi
       sed -i "/^$/d" /etc/locale.gen
       locale-gen &> /dev/null
-    else
-      locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
     fi
+    locale-gen en_US.UTF-8 &> /dev/null
     # Explicitly enforce all locale settings
     update-locale \
       LANG=en_US.UTF-8 \
@@ -730,20 +729,20 @@ EOF
     fi
     # Define all locale settings on the fly to prevent unnecessary
     # warnings during installation of packages.
-    export LANG=en_US.UTF-8
-    export LC_CTYPE=en_US.UTF-8
-    export LC_COLLATE=POSIX
-    export LC_NUMERIC=POSIX
-    export LC_TIME=en_US.UTF-8
-    export LC_MONETARY=en_US.UTF-8
-    export LC_MESSAGES=en_US.UTF-8
-    export LC_PAPER=en_US.UTF-8
-    export LC_NAME=en_US.UTF-8
-    export LC_ADDRESS=en_US.UTF-8
-    export LC_TELEPHONE=en_US.UTF-8
-    export LC_MEASUREMENT=en_US.UTF-8
-    export LC_IDENTIFICATION=en_US.UTF-8
-    export LC_ALL=
+    export LANG=en_US.UTF-8 &> /dev/null
+    export LC_CTYPE=en_US.UTF-8 &> /dev/null
+    export LC_COLLATE=POSIX &> /dev/null
+    export LC_NUMERIC=POSIX &> /dev/null
+    export LC_TIME=en_US.UTF-8 &> /dev/null
+    export LC_MONETARY=en_US.UTF-8 &> /dev/null
+    export LC_MESSAGES=en_US.UTF-8 &> /dev/null
+    export LC_PAPER=en_US.UTF-8 &> /dev/null
+    export LC_NAME=en_US.UTF-8 &> /dev/null
+    export LC_ADDRESS=en_US.UTF-8 &> /dev/null
+    export LC_TELEPHONE=en_US.UTF-8 &> /dev/null
+    export LC_MEASUREMENT=en_US.UTF-8 &> /dev/null
+    export LC_IDENTIFICATION=en_US.UTF-8 &> /dev/null
+    export LC_ALL= &> /dev/null
   else
     if [ -e "${locCnf}/boa.bashrc.txt" ]; then
       cp -af /root/.bashrc /root/.bashrc.bak.${_NOW}
@@ -757,9 +756,8 @@ EOF
       fi
       sed -i "/^$/d" /etc/locale.gen
       locale-gen &> /dev/null
-    else
-      locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
     fi
+    locale-gen en_US.UTF-8 &> /dev/null
     # Explicitly enforce locale settings required for consistency
     update-locale \
       LANG=en_US.UTF-8 \
@@ -772,11 +770,11 @@ EOF
       # On initial install it usually causes a warning:
       # setlocale: LC_CTYPE: cannot change locale (en_US.UTF-8):
       # No such file or directory
-      export LC_CTYPE=en_US.UTF-8
+      export LC_CTYPE=en_US.UTF-8 &> /dev/null
     fi
-    export LC_COLLATE=POSIX
-    export LC_NUMERIC=POSIX
-    export LC_ALL=
+    export LC_COLLATE=POSIX &> /dev/null
+    export LC_NUMERIC=POSIX &> /dev/null
+    export LC_ALL= &> /dev/null
   fi
   _LOCALES_BASHRC_TEST=$(grep LC_COLLATE /root/.bashrc 2>&1)
   if [[ ! "${_LOCALES_BASHRC_TEST}" =~ "LC_COLLATE" ]]; then
