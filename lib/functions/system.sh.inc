@@ -3820,6 +3820,15 @@ basic_packages_install_on_init() {
         msg "ALRT: Please check details in the logs located in /var/backups/"
       fi
       echo
+      msg "INFO: One more check to make sure that it works..."
+      _CHECK_CRON=$(service cron status 2>&1)
+      if [[ "${_CHECK_CRON}" =~ "running" ]]; then
+        msg "INFO: OK, it works! ${_CHECK_CRON}"
+      else
+        msg "ALRT: Ouch! cron does not work ${_CHECK_CRON}"
+        msg "ALRT: Please do not reboot until you manage to fix this!"
+      fi
+      echo
       mrun "sleep 8"
       echo "Bye"
       clean_pid_exit
