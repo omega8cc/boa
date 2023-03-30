@@ -384,6 +384,7 @@ mode_detection() {
     if [ "${_STATUS}" != "SYSTEMD" ]; then
       chattr -i /root/.use.curl.from.packages.cnf
       rm -f /root/.use.curl.from.packages.cnf
+      kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}') &> /dev/null
       barracuda_cnf
     fi
   fi
