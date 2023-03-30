@@ -6178,7 +6178,7 @@ update_apticron() {
       else
         mrun "apt-get remove apticron -y -qq" &> /dev/null
         mrun "apt-get purge apticron -y -qq"  &> /dev/null
-        mrun "apt-get install apticron -y"                &> /dev/null
+        mrun "apt-get install apticron -y"    &> /dev/null
         sed -i "s/^# NOTIFY_HOLDS=\"0\"/NOTIFY_HOLDS=\"0\"/g" \
           /etc/apticron/apticron.conf
         wait
