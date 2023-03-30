@@ -5080,6 +5080,7 @@ install_vnstat() {
 install_myquick_src() {
   if [ "${_MYQUICK_INSTALL_REQUIRED}" = "YES" ]; then
     msg "INFO: Building MyQuick ${_MYQUICK_VRN} from sources, please wait..."
+    mrun "apt-get update -qq" &> /dev/null
     mrun "${_INSTALL} cmake" 2> /dev/null
     if [ "${_DB_SERVER}" = "Percona" ] || [ "${_DB_SERIES}" = "5.7" ]; then
       mrun "${_INSTALL} libperconaserverclient20-dev" 2> /dev/null
