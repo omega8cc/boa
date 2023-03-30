@@ -268,6 +268,8 @@ mode_detection() {
     msg "MODE: UPGRADE"
     barracuda_cnf
     touch /var/run/boa_wait.pid
+    chattr -i /root/.use.curl.from.packages.cnf
+    rm -f /root/.use.curl.from.packages.cnf
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
       _XTRAS_LIST="ADM CSF FTP CSS DCS"
@@ -279,6 +281,8 @@ mode_detection() {
     touch /var/run/boa_wait.pid
   else
     _STATUS=INIT
+    chattr -i /root/.use.curl.from.packages.cnf
+    rm -f /root/.use.curl.from.packages.cnf
     if [ -d "/var/aegir" ]; then
       msg "MODE: FORCED INIT"
       _FULL_FORCE_REINSTALL=YES
@@ -378,6 +382,8 @@ mode_detection() {
       fi
     fi
     if [ "${_STATUS}" != "SYSTEMD" ]; then
+      chattr -i /root/.use.curl.from.packages.cnf
+      rm -f /root/.use.curl.from.packages.cnf
       barracuda_cnf
     fi
   fi
