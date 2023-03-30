@@ -1,13 +1,8 @@
 
 ### IMPORTANT!
 
-* After initial installation please reboot your system and then run
-  the `barracuda up-head` upgrade to complete all tasks and prepare
-  the system for production use -- it is very important especially on
-  systems running systemd like Debian Stretch.
-
-  Once the barracuda upgrade is complete, please reboot the server *again*
-  to make the systemd cleanup complete.
+* Since Debian is running systemd, it should be removed before installing BOA,
+  which involves procedure in five steps, as outlined further below.
 
 * BOA requires minimal, supported OS, with no services installed.
   The only acceptable exceptions are: sshd and mail servers.
@@ -40,7 +35,15 @@
 
    $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
 
-4. Install Barracuda and Octopus.
+4. Remove systemd in five steps:
+
+   S1. Run 'boa init' command -- it will install sysvinit.
+   S2. Reboot the server.
+   S3. Run 'boa init' again so it can remove systemd.
+   S4. Reboot the server again.
+   S5. Run boa standard install command, as outlined below.
+
+5. Install Barracuda and Octopus.
 
    You must specify the kind of install with {in-head|in-dev} or for
    legacy versions with {in-3.2|in-2.4}, location with {local|public},

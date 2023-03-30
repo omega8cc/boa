@@ -1345,10 +1345,19 @@ check_root() {
   fi
 }
 
+check_no_systemd() {
+  if [ -e "/lib/systemd/systemd" ]; then
+    echo "ERROR: This script can not be used with systemd"
+    echo "ERROR: Please run 'boa init' first"
+    clean_pid_exit
+  fi
+}
+
 proceed() {
   check_root_direct
   check_root_keys_pwd
   check_root
+  check_no_systemd
   check_dns_curl
   check_php_cli
   set_pin_priority

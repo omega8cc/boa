@@ -3721,63 +3721,75 @@ basic_packages_install_on_init() {
     echo "APT::Get::AllowUnauthenticated \"true\";"     >> /etc/apt/apt.conf.d/99ignorestrict
     echo "Aptitude::CmdLine::Fix-Broken \"true\";"      >> /etc/apt/apt.conf.d/99ignorestrict
   fi
-  if [ "${_STATUS}" = "INIT" ]; then
-    msg "INFO: Installing some basic tools now, please wait..."
-    apt-get clean -qq &> /dev/null
-    rm -rf /var/lib/apt/lists/*
-    apt-get update -qq &> /dev/null
-    ${_INITINS} locales &> /dev/null
-    fix_locales
-    ${_INITINS} lsb-release &> /dev/null
-    ${_INITINS} dnsutils &> /dev/null
-    ${_INITINS} netcat &> /dev/null
-    ${_INITINS} curl &> /dev/null
-    ${_INITINS} wget &> /dev/null
-    if [ -x "/lib/systemd/systemd" ]; then
-      msg "INFO: Installing sysvinit-core on ${_THIS_OS} ${_OSR}..."
-      if [ "${_OSR}" = "bullseye" ] \
-        || [ "${_OSR}" = "buster" ] \
-        || [ "${_OSR}" = "stretch" ] \
-        || [ "${_OSR}" = "jessie" ]; then
-        mrun "${_INITINS} sysvinit-core" 2> /dev/null
-        mrun "${_INITINS} sysvinit-utils" 2> /dev/null
-        mrun "apt --fix-broken install -y" 2> /dev/null
-        if [ -e "/usr/share/sysvinit/inittab" ]; then
-          cp -af /usr/share/sysvinit/inittab /etc/inittab
-        fi
+  if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "SYSTEMD" ]; then
+    if [ ! -e "/root/.step.init.basic.cnf" ]; then
+      msg "INFO: Installing some basic tools, please wait..."
+      apt-get clean -qq &> /dev/null
+      rm -rf /var/lib/apt/lists/*
+      apt-get update -qq &> /dev/null
+      ${_INITINS} locales &> /dev/null
+      fix_locales
+      ${_INITINS} lsb-release &> /dev/null
+      ${_INITINS} dnsutils &> /dev/null
+      ${_INITINS} netcat &> /dev/null
+      ${_INITINS} curl &> /dev/null
+      ${_INITINS} wget &> /dev/null
+      touch /root/.step.init.basic.cnf
+    fi
+  fi
+  if [ "${_STATUS}" = "SYSTEMD" ]; then
+    if [ ! -e "/root/.step.init.systemd.one.cnf" ]; then
+      msg "INFO: This server is running systemd, which should be"
+      msg "INFO: removed before installing BOA which involves"
+      msg "INFO: procedure in five steps, as outlined below:"
+      echo
+      msg "STEP: 1. The 'boa init' command will install sysvinit"
+      msg "STEP: 2. You will reboot the server"
+      msg "STEP: 3. Run 'boa init' again so it can remove systemd"
+      msg "STEP: 4. You will reboot the server again"
+      msg "STEP: 5. Run boa standard install command"
+      echo
+      msg "STEP: Let's begin with STEP 1..."
+      msg "INFO: Installing sysvinit on ${_THIS_OS} ${_OSR}..."
+      mrun "apt-get update -qq" &> /dev/null
+      mrun "${_INITINS} sysvinit-core" 2> /dev/null
+      mrun "${_INITINS} sysvinit-utils" 2> /dev/null
+      mrun "apt --fix-broken install -y" 2> /dev/null
+      if [ -e "/usr/share/sysvinit/inittab" ]; then
+        cp -af /usr/share/sysvinit/inittab /etc/inittab
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+        mrun "apt-get update -qq" &> /dev/null
         mrun "${_INITINS} sysvinit-core" 2> /dev/null
         mrun "${_INITINS} sysvinit-utils" 2> /dev/null
         mrun "apt --fix-broken install -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/nosystemd.list
         rm -f /etc/apt/preferences.d/nosystemd
-      fi
-      echo
-      if [ "${_OSR}" = "bullseye" ] \
-        || [ "${_OSR}" = "buster" ] \
-        || [ "${_OSR}" = "stretch" ] \
-        || [ "${_OSR}" = "jessie" ]; then
-        msg "NOTE: Please reboot and run 'barracuda up-head system'"
-        msg "NOTE: after boa completes initial installation"
-        msg "NOTE: in order to remove unused systemd packages!"
+        msg "INFO: The sysvinit-core installed on ${_THIS_OS} ${_OSR}..."
+        echo
+        msg "STEP: Let's continue to STEP 2... Please reboot this server"
+        msg "STEP: Once the system is up, run 'boa init' command again"
+        touch /root/.step.init.systemd.one.cnf
+      else
+        echo
+        msg "ALRT: The sysvinit has NOT been installed on ${_THIS_OS} ${_OSR}"
+        msg "ALRT: Please check details in the logs located in /var/backups/"
       fi
       echo
       mrun "sleep 8"
+      echo "Bye"
+      clean_pid_exit
     fi
-  else
-    if [ -x "/lib/systemd/systemd" ]; then
+    if [ ! -e "/root/.step.init.systemd.two.cnf" ] \
+      && [ -e "/root/.step.init.systemd.one.cnf" ]; then
+      echo
+      msg "STEP: Let's continue to STEP 3..."
       msg "INFO: Removing systemd on ${_THIS_OS} ${_OSR}..."
-      if [ "${_OSR}" = "bullseye" ] \
-        || [ "${_OSR}" = "buster" ] \
-        || [ "${_OSR}" = "stretch" ] \
-        || [ "${_OSR}" = "jessie" ]; then
-        mrun "${_INITINS} sysvinit-core" 2> /dev/null
-        mrun "${_INITINS} sysvinit-utils" 2> /dev/null
-        mrun "apt --fix-broken install -y" 2> /dev/null
-        if [ -e "/usr/share/sysvinit/inittab" ]; then
-          cp -af /usr/share/sysvinit/inittab /etc/inittab
-        fi
+      mrun "${_INITINS} sysvinit-core" 2> /dev/null
+      mrun "${_INITINS} sysvinit-utils" 2> /dev/null
+      mrun "apt --fix-broken install -y" 2> /dev/null
+      if [ -e "/usr/share/sysvinit/inittab" ]; then
+        cp -af /usr/share/sysvinit/inittab /etc/inittab
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
         mrun "${_INITINS} sysvinit-core" 2> /dev/null
@@ -3785,11 +3797,34 @@ basic_packages_install_on_init() {
         mrun "apt --fix-broken install -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/nosystemd.list
         rm -f /etc/apt/preferences.d/nosystemd
+        mrun "apt-get remove systemd-sysv -y -qq --purge --auto-remove" 2> /dev/null
+        mrun "apt-get remove systemd -y -qq --purge --auto-remove" 2> /dev/null
+        mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove" 2> /dev/null
+        mrun "apt --fix-broken install -y" 2> /dev/null
+      else
+        echo
+        msg "ALRT: The sysvinit has NOT been installed on ${_THIS_OS} ${_OSR}"
+        msg "ALRT: Please check details in the logs located in /var/backups/"
+        echo
+        mrun "sleep 8"
+        echo "Bye"
+        clean_pid_exit
       fi
-      mrun "apt-get remove systemd-sysv -y -qq --purge --auto-remove" 2> /dev/null
-      mrun "apt-get remove systemd -y -qq --purge --auto-remove" 2> /dev/null
-      mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove" 2> /dev/null
-      mrun "apt --fix-broken install -y" 2> /dev/null
+      if [ ! -e "/lib/systemd/systemd" ]; then
+        msg "INFO: The systemd has been removed on ${_THIS_OS} ${_OSR}"
+        echo
+        msg "STEP: Let's continue to STEP 4... Please reboot this server again"
+        msg "STEP: Once the system is up, run standard boa install command"
+        touch /root/.step.init.systemd.two.cnf
+      else
+        echo
+        msg "ALRT: The systemd has NOT been removed on ${_THIS_OS} ${_OSR}"
+        msg "ALRT: Please check details in the logs located in /var/backups/"
+      fi
+      echo
+      mrun "sleep 8"
+      echo "Bye"
+      clean_pid_exit
     fi
   fi
 }
@@ -4256,34 +4291,6 @@ if_major_os_upgrade() {
       mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
     fi
     ###
-    ### Time for systemd removal, if needed.
-    if [ -x "/lib/systemd/systemd" ]; then
-      msg "INFO: Removing systemd on ${_THIS_OS} ${_OSR}..."
-      if [ "${_OSR}" = "bullseye" ] \
-        || [ "${_OSR}" = "buster" ] \
-        || [ "${_OSR}" = "stretch" ] \
-        || [ "${_OSR}" = "jessie" ]; then
-        ###
-        ### Make sure that sysvinit-core is still installed.
-        mrun "${_INITINS} sysvinit-core" 2> /dev/null
-        mrun "${_INITINS} sysvinit-utils" 2> /dev/null
-        mrun "apt --fix-broken install -y" 2> /dev/null
-        if [ -e "/usr/share/sysvinit/inittab" ]; then
-          cp -af /usr/share/sysvinit/inittab /etc/inittab
-        fi
-        echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-        echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-        ###
-        ### Make sure again that sysvinit-core is still installed.
-        mrun "${_INITINS} sysvinit-core" 2> /dev/null
-        mrun "${_INITINS} sysvinit-utils" 2> /dev/null
-        mrun "apt --fix-broken install -y" 2> /dev/null
-        rm -f /etc/apt/sources.list.d/nosystemd.list
-        rm -f /etc/apt/preferences.d/nosystemd
-      fi
-      mrun "apt --fix-broken install -y" 2> /dev/null
-    fi
-    ###
     ### Time for init scripts cleanup for VM running beng kernel.
     _VM_TEST=$(uname -a 2>&1)
     if [[ "${_VM_TEST}" =~ "-beng" ]]; then
@@ -4380,14 +4387,14 @@ if_major_os_upgrade() {
         if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
           echo "${_HM_U} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
         fi
-		    SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
-    		for SCRIPT in ${SCRIPTS[@]}; do
-    		  _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
-    		  if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
-    			  echo "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
-    			  chmod 0440 /etc/sudoers.d/${SCRIPT}
-    		  fi
-    		done
+        SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
+        for SCRIPT in ${SCRIPTS[@]}; do
+          _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
+          if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
+            echo "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
+            chmod 0440 /etc/sudoers.d/${SCRIPT}
+          fi
+        done
       fi
     done
     ###
@@ -4401,7 +4408,7 @@ if_major_os_upgrade() {
     echo " "
     msg "INFO: No errors? Then ${_MSG_LOC} upgrade was successful :)"
     msg "INFO: REBOOT your system once Barracuda completes THIS run AND.."
-    msg "INFO: THEN remember to RUN ANOTHER Barracuda upgrade"
+    msg "INFO: THEN remember to RUN ANOTHER Barracuda full upgrade"
     echo " "
   fi
 }

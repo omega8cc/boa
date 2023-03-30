@@ -262,7 +262,8 @@ normalize_ip_name_variables() {
 }
 
 mode_detection() {
-  if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
+  if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
+    && [ ! -e "/lib/systemd/systemd" ]; then
     _STATUS=UPGRADE
     msg "INFO: UPGRADE"
     barracuda_cnf
@@ -271,6 +272,12 @@ mode_detection() {
       || [ -e "/root/.host8.cnf" ]; then
       _XTRAS_LIST="ADM CSF FTP CSS DCS"
     fi
+  elif [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
+    && [ -e "/lib/systemd/systemd" ]; then
+    _STATUS=SYSTEMD
+    msg "INFO: SYSTEMD"
+    barracuda_cnf
+    touch /var/run/boa_wait.pid
   else
     _STATUS=INIT
     if [ -d "/var/aegir" ]; then

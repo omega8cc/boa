@@ -570,11 +570,13 @@ octopus_install() {
     if [ "${cmmand}" = "in-head" ] \
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
+      || [ "${cmmand}" = "init" ] \
       || [ "${copt}" = "stable" ] \
       || [ "${copt}" = "legacy" ] \
       || [ "${copt}" = "dev" ] \
       || [ "${copt}" = "head" ]; then
       if [ "${copt}" = "head" ] \
+        || [ "${cmmand}" = "init" ] \
         || [ "${copt}" = "stable" ]; then
         sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncO}
         wait
@@ -669,6 +671,7 @@ octopus_install() {
     if [ "${cmmand}" = "in-head" ] \
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
+      || [ "${cmmand}" = "init" ] \
       || [ "${copt}" = "stable" ] \
       || [ "${copt}" = "legacy" ] \
       || [ "${copt}" = "dev" ] \
@@ -1009,6 +1012,7 @@ barracuda_install() {
       || [ "${cmmand}" = "in-stable" ] \
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
+      || [ "${cmmand}" = "init" ] \
       || [ "${cmmand}" = "in-dev" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
       wait
@@ -1076,6 +1080,7 @@ barracuda_install() {
       || [ "${cmmand}" = "in-stable" ] \
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
+      || [ "${cmmand}" = "init" ] \
       || [ "${cmmand}" = "in-dev" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${filIncB}
       wait
@@ -1233,6 +1238,7 @@ init_setup() {
   set_pin_priority
   if [ "${cmmand}" = "in-head" ] \
     || [ "${cmmand}" = "in-stable" ] \
+    || [ "${cmmand}" = "init" ] \
     || [ "${cmmand}" = "in-dev" ]; then
     if [ ! -z "${silent}" ]; then
       curl ${crlGet} "${rgUrl}/feature/${silent}/${barName}" -o ${vBs}/${barName}
@@ -1904,6 +1910,13 @@ case "$1" in
   version)   cmmand="$1"
              kind="$2"
              display_version
+  ;;
+  init)      cmmand="$1"
+             check_root
+             check_root_keys_pwd
+             check_virt
+             check_dns_curl
+             init_setup
   ;;
   in-head)   cmmand="$1"
              kind="$2"
