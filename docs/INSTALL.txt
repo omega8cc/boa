@@ -45,6 +45,10 @@
 
 5. Install Barracuda and Octopus.
 
+   NOTE: always start with screen session!
+
+   $ screen
+
    You must specify the kind of install with {in-head|in-dev} or for
    legacy versions with {in-3.2|in-2.4}, location with {local|public},
    your hostname and email address, as shown further below.
