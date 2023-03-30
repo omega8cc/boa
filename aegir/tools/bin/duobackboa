@@ -145,7 +145,7 @@ install() {
     apt-get install python-lockfile -y
     apt-get install python-setuptools -y
     apt-get install python-monotonic -y
-    apt-get install s3cmd -y
+    apt-get install s4cmd -y
     mkdir -p /var/opt
     rm -rf /var/opt/{fasteners*,boto*,duplicity*}
     cd /var/opt
