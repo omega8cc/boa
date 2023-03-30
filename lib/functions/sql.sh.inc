@@ -896,7 +896,6 @@ install_with_aptitude_sql() {
   fi
   prep_for_install_db_sql
   st_runner "${_INSTAPP} ${SQLDEB}" 2> /dev/null
-  st_runner "${_INSTAPP} ${SQLADD}" 2> /dev/null
   st_runner "${_INSTAPP} ${SQLDEB}" 2> /dev/null
   if [ ! -e "/usr/local/bin/mytop" ] && [ -e "/usr/bin/mysql" ]; then
     msg "INFO: Building MyTop from sources, please wait..."
