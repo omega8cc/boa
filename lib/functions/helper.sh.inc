@@ -276,7 +276,6 @@ mode_detection() {
     && [ -e "/lib/systemd/systemd" ]; then
     _STATUS=SYSTEMD
     msg "MODE: SYSTEMD"
-    barracuda_cnf
     touch /var/run/boa_wait.pid
   else
     _STATUS=INIT
@@ -378,7 +377,9 @@ mode_detection() {
         touch /root/.dbhd.clstr.cnf
       fi
     fi
-    barracuda_cnf
+    if [ "${_STATUS}" != "SYSTEMD" ]; then
+      barracuda_cnf
+    fi
   fi
   if [ "${_AEGIR_VERSION}" = "HEAD" ] && [ ! -z "${_FORCE_GIT_MIRROR}" ]; then
     if [ "${_FORCE_GIT_MIRROR}" = "gitlab" ]; then
