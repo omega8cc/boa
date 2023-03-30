@@ -3664,16 +3664,40 @@ install_with_aptitude_deps() {
   elif [ "${_THIS_OS}" = "Ubuntu" ]; then
     ${_INITINS} ubuntu-keyring &> /dev/null
   fi
-  mrun "${_INSTAPP} dnsutils sudo symlinks iptables" 2> /dev/null
+  mrun "${_INSTAPP} build-essential devscripts dstat flex " 2> /dev/null
+  mrun "${_INSTAPP} man-db at dnsutils sudo symlinks iptables" 2> /dev/null
+  mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc" 2> /dev/null
+  mrun "${_INSTAPP} apticron aptitude auditd apt-listchanges" 2> /dev/null
   mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
   mrun "${_INSTAPP} zlibc time vim cvs makepasswd" 2> /dev/null
-  mrun "${_INSTAPP} unzip unrtf wdiff pwgen" 2> /dev/null
-  mrun "${_INSTAPP} rsync strace ntpdate" 2> /dev/null
-  mrun "${_INSTAPP} mc whois zlib1g-dev" 2> /dev/null
-  mrun "${_INSTAPP} mcrypt curl libcurl4" 2> /dev/null
+  mrun "${_INSTAPP} unzip unrtf wdiff pwgen re2c rkhunter" 2> /dev/null
+  mrun "${_INSTAPP} rsync strace ntpdate python-dev" 2> /dev/null
+  mrun "${_INSTAPP} mc whois zlib1g zlib1g-dev librsync-dev" 2> /dev/null
+  mrun "${_INSTAPP} mcrypt curl libcurl4 libssl-dev" 2> /dev/null
   mrun "${_INSTAPP} libcurl4-gnutls-dev" 2> /dev/null
+  mrun "${_INSTAPP} libterm-readkey-perl libwww-perl" 2> /dev/null
+  mrun "${_INSTAPP} libtext-template-perl libsodium-dev " 2> /dev/null
+  mrun "${_INSTAPP} libsodium-dev libsasl2-modules" 2> /dev/null
+  mrun "${_INSTAPP} sqlite3 libsqlite3-dev s4cmd " 2> /dev/null
+  mrun "${_INSTAPP} ssh ssl-cert libpam-umask shtool" 2> /dev/null
+  mrun "${_INSTAPP} xml-core xml2 xpdf libtool rrdtool" 2> /dev/null
+  mrun "${_INSTAPP} ncurses-dev ncurses-term sipcalc" 2> /dev/null
+  mrun "${_INSTAPP} netcat libzip-dev libhtml-template-perl" 2> /dev/null
+  mrun "${_INSTAPP} libfontconfig1 libfreetype6 libfreetype6-dev" 2> /dev/null
+  mrun "${_INSTAPP} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev" 2> /dev/null
+  mrun "${_INSTAPP} libicu-dev libjpeg-dev libjpeg62" 2> /dev/null
+  mrun "${_INSTAPP} libnet-daemon-perl libfilesys-diskspace-perl " 2> /dev/null
+  mrun "${_INSTAPP} libonig-dev libpq5 libxml2-dev libxpm4" 2> /dev/null
+  mrun "${_INSTAPP} libxslt-dev libxslt1-dev libxslt1.1 subversion" 2> /dev/null
+  mrun "${_INSTAPP} libaprutil1 libapr1 ldap-utils ipset" 2> /dev/null
+  mrun "${_INSTAPP} libc-client-dev libc-client2007e libc-client2007e-dev" 2> /dev/null
+  mrun "${_INSTAPP} pdftk patchutils p7zip-full fontconfig-config" 2> /dev/null
+  mrun "${_INSTAPP} bison catdoc cython3 geoip-database gettext" 2> /dev/null
+  mrun "${_INSTAPP} clamav clamav-base clamav-daemon clamdscan" 2> /dev/null
+  mrun "${_INSTAPP} ghostscript htop icu-devtools lemon lftp nano" 2> /dev/null
+  mrun "${_INSTAPP} python3-dev python3-debian python3-magic" 2> /dev/null
   mrun "apt --fix-broken install -y" 2> /dev/null
-  st_runner "${_INSTAPP} ${_DEBDEPS}" 2> /dev/null
+  st_runner "${_INSTAPP} ${_MAILSERV}" 2> /dev/null
   st_runner "${_INSTAPP} ${_APT_XTRA}" 2> /dev/null
   st_runner "${_INSTAPP} ${_EXTRA_LIB_APT}" 2> /dev/null
   st_runner "${_INSTAPP} ${_EXTRA_PACKAGES}" 2> /dev/null
@@ -3824,6 +3848,7 @@ basic_packages_install_on_init() {
       _CHECK_CRON=$(service cron status 2>&1)
       if [[ "${_CHECK_CRON}" =~ "running" ]]; then
         msg "INFO: OK, it works! ${_CHECK_CRON}"
+        kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}') &> /dev/null
       else
         msg "ALRT: Ouch! cron does not work ${_CHECK_CRON}"
         msg "ALRT: Please do not reboot until you manage to fix this!"
@@ -4792,102 +4817,7 @@ sys_packages_install() {
     || [ "${_OSR}" = "jessie" ] \
     || [ "${_OSR}" = "trusty" ] \
     || [ "${_OSR}" = "precise" ]; then
-    _DEBDEPS="apticron \
-              aptitude \
-              auditd \
-              m4 \
-              apt-listchanges \
-              at \
-              autoconf \
-              automake \
-              autotools-dev \
-              bc \
-              bison \
-              build-essential \
-              catdoc \
-              clamav \
-              clamav-base \
-              clamav-daemon \
-              clamdscan \
-              cython \
-              devscripts \
-              dstat \
-              flex \
-              fontconfig-config \
-              geoip-database \
-              gettext \
-              ghostscript \
-              htop \
-              icu-devtools \
-              ipset \
-              ldap-utils \
-              lemon \
-              lftp \
-              libapr1 \
-              libaprutil1 \
-              libc-client-dev \
-              libc-client2007e \
-              libc-client2007e-dev \
-              libfilesys-diskspace-perl \
-              libfontconfig1 \
-              libfreetype6 \
-              libfreetype6-dev \
-              libfribidi0 \
-              libgeoip-dev \
-              libgeoip1 \
-              libgmp3-dev \
-              libhtml-template-perl \
-              libicu-dev \
-              libjpeg-dev \
-              libjpeg62 \
-              libnet-daemon-perl \
-              libonig-dev \
-              libpam-umask \
-              libpq5 \
-              librsync-dev \
-              libsasl2-modules \
-              libsodium-dev \
-              libsqlite3-dev \
-              libssl-dev \
-              libterm-readkey-perl \
-              libtext-template-perl \
-              libtool \
-              libwww-perl \
-              libxml2-dev \
-              libxpm4 \
-              libxslt-dev \
-              libxslt1-dev \
-              libxslt1.1 \
-              libzip-dev \
-              man-db \
-              nano \
-              ncurses-dev \
-              ncurses-term \
-              netcat \
-              p7zip-full \
-              patchutils \
-              pdftk \
-              postfix \
-              postfix-pcre \
-              python-dev \
-              python-lockfile \
-              python-monotonic \
-              python-setuptools \
-              python3-debian \
-              python3-magic \
-              re2c \
-              rkhunter \
-              rrdtool \
-              s3cmd \
-              shtool \
-              sipcalc \
-              sqlite3 \
-              ssh \
-              ssl-cert \
-              subversion \
-              xml-core \
-              xml2 \
-              xpdf"
+    _MAILSERV="postfix postfix-pcre"
   fi
 }
 
