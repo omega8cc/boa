@@ -10,7 +10,7 @@ $| = 1;
 $this_filename = "scan_nginx";
 $times=`date +%y%m%d-%H%M%S`;
 chomp($times);
-$llip=`curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 3 -A iCab https://api64.ipify.org`;
+$llip=`curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 3 -A iCab https://api.ipify.org`;
 local($myip, $rest) = split(/\s+/,$llip);
 print "myip is $myip";
 chomp($myip);
