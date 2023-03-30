@@ -2112,8 +2112,7 @@ upgrade_host() {
     && aptitude full-upgrade -f -y -q \
       -o Dpkg::Options::=--force-confdef \
       -o Dpkg::Options::=--force-confold \
-    && apt-get dist-upgrade ${_APT_XTR} \
-    && ${_INSTAPP} rkhunter
+    && apt-get dist-upgrade ${_APT_XTR}
 
   if_firewall_update
 

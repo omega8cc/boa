@@ -3670,7 +3670,7 @@ install_with_aptitude_deps() {
   mrun "${_INSTAPP} apticron aptitude auditd apt-listchanges" 2> /dev/null
   mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
   mrun "${_INSTAPP} zlibc time vim cvs makepasswd" 2> /dev/null
-  mrun "${_INSTAPP} unzip unrtf wdiff pwgen re2c rkhunter" 2> /dev/null
+  mrun "${_INSTAPP} unzip unrtf wdiff pwgen re2c" 2> /dev/null
   mrun "${_INSTAPP} rsync strace ntpdate python-dev" 2> /dev/null
   mrun "${_INSTAPP} mc whois zlib1g zlib1g-dev librsync-dev" 2> /dev/null
   mrun "${_INSTAPP} mcrypt curl libcurl4 libssl-dev" 2> /dev/null
