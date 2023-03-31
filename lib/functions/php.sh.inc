@@ -1852,9 +1852,13 @@ check_php_broken_freetype() {
   isFreeType=$(/opt/php$1/bin/php -i | grep with-freetype 2>&1)
   if [[ ! "${isFreeType}" =~ "with-freetype" ]] \
     || [ -z "${isFreeType}" ]; then
-    msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix freetype support..."
-    install_php_multi "$1"
-    _PHP_ALREADY_REBUILT=$1
+    if [ -x "/usr/bin/freetype-config" ]; then
+      msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix freetype support..."
+      install_php_multi "$1"
+      _PHP_ALREADY_REBUILT=$1
+    else
+      msg "NOTE: PHP ${_PHP_VERSION} was built without freetype support"
+    fi
   else
     _PHP_ALREADY_REBUILT=
   fi
@@ -2220,9 +2224,13 @@ check_fix_php() {
   isFreeType=$(php -i | grep with-freetype 2>&1)
   if [[ ! "${isFreeType}" =~ "with-freetype" ]] \
     || [ -z "${isFreeType}" ]; then
-    msg "INFO: PHP rebuild required to fix freetype support..."
-    _PHP_FORCE_REINSTALL=YES
-    php_upgrade_all
+    if [ -x "/usr/bin/freetype-config" ]; then
+      msg "INFO: PHP rebuild required to fix freetype support..."
+      _PHP_FORCE_REINSTALL=YES
+      php_upgrade_all
+    else
+      msg "NOTE: Default PHP was built without freetype support"
+    fi
   fi
   if [ -x "/opt/php56/bin/php" ]; then
     _CURLWRAPPERS_TEST=$(/opt/php56/bin/php -i | grep "with-curlwrappers" 2>&1)
