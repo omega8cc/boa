@@ -2091,12 +2091,7 @@ php_upgrade_all() {
 
 get_php_conf_extra() {
   _PHP_EXTRA=""
-  if [ "${_OSR}" = "stretch" ] \
-    || [ "${_OSR}" = "jessie" ] \
-    || [ "${_OSR}" = "trusty" ] \
-    || [ "${_OSR}" = "precise" ]; then
-    _PHP_EXTRA="--with-freetype-dir=/usr"
-  fi
+  _PHP_EXTRA="--with-freetype-dir=/usr"
   if [ ! -z "${_PHP_EXTRA_CONF}" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} ${_PHP_EXTRA_CONF}"
   fi
