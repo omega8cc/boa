@@ -4,6 +4,10 @@
 * Since Debian is running systemd, it should be removed before installing BOA,
   which involves procedure in five steps, as outlined further below.
 
+* Once BOA is fully installed, you have to reboot again and run barracuda
+  system upgrade to make sure that the system is ready for production and
+  to generate valid SSL/LE/HTTPS certificate for the Aegir control panel.
+
 * BOA requires minimal, supported OS, with no services installed.
   The only acceptable exceptions are: sshd and mail servers.
 
