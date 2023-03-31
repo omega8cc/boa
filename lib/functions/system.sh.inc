@@ -3829,7 +3829,6 @@ basic_packages_install_on_init() {
     fi
     if [ ! -e "/root/.step.init.systemd.two.cnf" ] \
       && [ -e "/root/.step.init.systemd.one.cnf" ]; then
-      echo
       msg "STEP: Let's continue to STEP 3..."
       msg "INFO: Removing systemd on ${_THIS_OS} ${_OSR}..."
       mrun "${_INITINS} sysvinit-core" 2> /dev/null
