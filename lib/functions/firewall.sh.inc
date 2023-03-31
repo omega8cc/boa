@@ -220,7 +220,7 @@ install_upgrade_csf_lfd() {
         || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
         || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]]; then
-        sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"1\"/g" \
+        sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"0\"/g" \
           /etc/csf/csf.conf &> /dev/null
         wait
       fi
