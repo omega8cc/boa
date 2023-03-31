@@ -134,8 +134,8 @@ st_runner() {
     echo "  ${_LOG}"
     echo "to help troubleshoot this problem"
     echo " "
-    echo "If you see any error with advice to run 'dpkg --configure -a', run this"
-    echo "command first and choose default answer, then run this installer again"
+    echo "If you see any error with advice to run 'dpkg --configure --force-all -a'"
+    echo "run this command with default answer, then run this installer again"
     echo " "
     tail -15 ${_LOG}
     return 1

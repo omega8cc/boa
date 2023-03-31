@@ -174,12 +174,13 @@ if_running_as_root_barracuda() {
         mrun "apt-get purge auditd -y -qq" &> /dev/null
       fi
       if [ -d "/etc/webmin" ]; then
-        mrun "dpkg --configure -a" &> /dev/null
-        mrun "apt-get clean -qq"   &> /dev/null
+        mrun "apt --fix-broken install -y" 2> /dev/null
+        mrun "dpkg --configure --force-all -a" 2> /dev/null
+        mrun "apt-get clean -qq" &> /dev/null
         rm -rf /var/lib/apt/lists/*
-        mrun "apt-get update -qq"  &> /dev/null
+        mrun "apt-get update -qq" &> /dev/null
         mrun "apt-get remove webmin -y -qq" &> /dev/null
-        mrun "apt-get purge webmin -y -qq"  &> /dev/null
+        mrun "apt-get purge webmin -y -qq" &> /dev/null
         rm -rf /usr/share/webmin
       fi
       rm -f ${aptLiSys}.d/ksplice.list
@@ -240,10 +241,11 @@ fix_postfix() {
   else
     _POSTFIX_TEST=$(grep "fatal: open lock file" /var/log/mail.log 2>&1)
     if [[ "${_POSTFIX_TEST}" =~ "fatal: open lock file" ]]; then
-      mrun "dpkg --configure -a"      &> /dev/null
-      mrun "apt-get clean -qq"        &> /dev/null
+      mrun "apt --fix-broken install -y" 2> /dev/null
+      mrun "dpkg --configure --force-all -a" 2> /dev/null
+      mrun "apt-get clean -qq" &> /dev/null
       rm -rf /var/lib/apt/lists/*
-      mrun "apt-get update -qq"       &> /dev/null
+      mrun "apt-get update -qq" &> /dev/null
       mrun "apt-get purge postfix -y" &> /dev/null
       echo > /var/log/mail.log
     fi
@@ -2116,7 +2118,8 @@ barracuda_cnf() {
 # Running aptitude full-upgrade.
 run_aptitude_full_upgrade() {
   msg "INFO: Running aptitude full-upgrade..."
-  st_runner "dpkg --configure --force-all -a" &> /dev/null
+  st_runner "apt --fix-broken install -y" 2> /dev/null
+  st_runner "dpkg --configure --force-all -a" 2> /dev/null
   st_runner "apt-get update -qq" &> /dev/null
   if [ -e "/usr/bin/mytop" ]; then
     st_runner "${_RMAPP} mytop" &> /dev/null
@@ -2199,7 +2202,6 @@ check_apt_updates() {
       *libmysql*)   _UP_SQL=YES ;;
       *libssl*)     _UP_PHP=YES ;;
       *linux-*)     _UP_LNX=YES ;;
-      *mariadb*)    _UP_SQL=YES ;;
       *newrelic*)   _UP_NRC=YES ;;
       *openjdk*)    _UP_JDK=YES ;;
       *openssl*)    _UP_PHP=YES ;;
@@ -4500,8 +4502,17 @@ sys_packages_update() {
     echo "zlibc install"          | dpkg --set-selections &> /dev/null
   fi
   update_webmin_apt
-  st_runner "dpkg --configure --force-all -a" &> /dev/null
+  st_runner "apt --fix-broken install -y" 2> /dev/null
+  st_runner "dpkg --configure --force-all -a" 2> /dev/null
   st_runner "apt-get update -qq" &> /dev/null
+  st_runner "apt-get upgrade ${nrmUpArg}" 2> /dev/null
+  if [ "${_LOC_OSR}" = "bullseye" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
+    _SAFE_TO_DIST=NO
+  else
+    st_runner "apt-get dist-upgrade ${nrmUpArg}" 2> /dev/null
+  fi
+  st_runner "apt --fix-broken install -y" 2> /dev/null
+  st_runner "dpkg --configure --force-all -a" 2> /dev/null
   _DB_SERVER_TEST=$(mysql -V 2>&1)
   if [ "${_STATUS}" = "INIT" ]; then
     st_runner "aptitude full-upgrade -f -y -q \
