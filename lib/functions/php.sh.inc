@@ -1227,11 +1227,11 @@ install_php_multi() {
   get_dev_src "php-${_PHP_VERSION}.tar.bz2"
   msg "INFO: Building PHP ${_PHP_VERSION} part 1/3"
   cd /var/opt/php-${_PHP_VERSION}
-  mrun "bash ./buildconf --force" 2> /dev/null
   if [ "${_OSR}" = "stretch" ] \
     || [ "${_OSR}" = "jessie" ] \
     || [ "${_OSR}" = "trusty" ] \
     || [ "${_OSR}" = "precise" ]; then
+    mrun "sh ./buildconf --force" 2> /dev/null
     patchFile="disable_SSLv2_for_openssl_1_0_0.patch"
     patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
   fi
