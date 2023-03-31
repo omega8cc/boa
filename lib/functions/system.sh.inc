@@ -3707,7 +3707,7 @@ install_with_aptitude_deps() {
   mrun "${_INSTAPP} ssh ssl-cert libpam-umask shtool" 2> /dev/null
   mrun "${_INSTAPP} xml-core xml2 xpdf libtool rrdtool" 2> /dev/null
   mrun "${_INSTAPP} ncurses-dev ncurses-term sipcalc" 2> /dev/null
-  mrun "${_INSTAPP} netcat libzip-dev libwww-perl" 2> /dev/null
+  mrun "${_INSTAPP} netcat libzip-dev libwww-perl libsodium-dev" 2> /dev/null
   mrun "${_INSTAPP} libfontconfig1 libfreetype6 libfreetype6-dev" 2> /dev/null
   mrun "${_INSTAPP} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev" 2> /dev/null
   mrun "${_INSTAPP} libicu-dev libjpeg-dev libjpeg62" 2> /dev/null
