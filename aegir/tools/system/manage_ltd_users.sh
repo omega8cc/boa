@@ -403,11 +403,19 @@ enable_chattr() {
             if [ "${_WEB_SH}" != "/bin/dash" ]; then
               rm -f /bin/sh
               ln -s /bin/dash /bin/sh
+              if [ -e "/usr/bin/sh" ]; then
+                rm -f /usr/bin/sh
+                ln -s /bin/dash /usr/bin/sh
+              fi
             fi
           else
             if [ "${_WEB_SH}" != "/bin/bash" ]; then
               rm -f /bin/sh
               ln -s /bin/bash /bin/sh
+              if [ -e "/usr/bin/sh" ]; then
+                rm -f /usr/bin/sh
+                ln -s /bin/bash /usr/bin/sh
+              fi
             fi
           fi
         fi
@@ -424,6 +432,8 @@ enable_chattr() {
         fi
         rm -f /bin/sh
         ln -s /bin/websh /bin/sh
+        rm -f /usr/bin/sh
+        ln -s /bin/websh /usr/bin/sh
       fi
       su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
       wait
@@ -440,6 +450,10 @@ enable_chattr() {
             if [ "${_WEB_SH}" != "/bin/dash" ]; then
               rm -f /bin/sh
               ln -s /bin/dash /bin/sh
+              if [ -e "/usr/bin/sh" ]; then
+                rm -f /usr/bin/sh
+                ln -s /bin/dash /usr/bin/sh
+              fi
             fi
           else
             if [ "${_WEB_SH}" != "/bin/bash" ]; then
@@ -456,6 +470,8 @@ enable_chattr() {
         fi
         rm -f /bin/sh
         ln -s /bin/websh /bin/sh
+        rm -f /usr/bin/sh
+        ln -s /bin/websh /usr/bin/sh
       fi
       if [ ! -f "${dscUsr}/log/.gems.build.d.${UQ}.${_X_SE}.txt" ]; then
         rm -f ${dscUsr}/log/eventmachine*
@@ -466,6 +482,10 @@ enable_chattr() {
             if [ "${_WEB_SH}" != "/bin/dash" ]; then
               rm -f /bin/sh
               ln -s /bin/dash /bin/sh
+              if [ -e "/usr/bin/sh" ]; then
+                rm -f /usr/bin/sh
+                ln -s /bin/dash /usr/bin/sh
+              fi
             fi
           else
             if [ "${_WEB_SH}" != "/bin/bash" ]; then
@@ -496,6 +516,8 @@ enable_chattr() {
         fi
         rm -f /bin/sh
         ln -s /bin/websh /bin/sh
+        rm -f /usr/bin/sh
+        ln -s /bin/websh /usr/bin/sh
       fi
       if [ -d "/home/${UQ}/.rvm/src" ]; then
         rm -rf /home/${UQ}/.rvm/src/*
@@ -2429,17 +2451,25 @@ else
         && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
         rm -f /bin/sh
         ln -s /bin/websh /bin/sh
+        rm -f /usr/bin/sh
+        ln -s /bin/websh /usr/bin/sh
       fi
     else
       if [ -x "/bin/dash" ]; then
         if [ "${_WEB_SH}" != "/bin/dash" ]; then
           rm -f /bin/sh
           ln -s /bin/dash /bin/sh
+          if [ -e "/usr/bin/sh" ]; then
+            rm -f /usr/bin/sh
+            ln -s /bin/dash /usr/bin/sh
+          fi
         fi
       else
         if [ "${_WEB_SH}" != "/bin/bash" ]; then
           rm -f /bin/sh
           ln -s /bin/bash /bin/sh
+          rm -f /usr/bin/sh
+          ln -s /bin/bash /usr/bin/sh
         fi
       fi
       curl -s -A iCab "${urlHmr}/helpers/websh.sh.txt" -o /bin/websh

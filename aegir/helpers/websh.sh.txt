@@ -160,7 +160,11 @@ if [ "${_LTD_GID}" = "www-data users" ] \
   || [[ "${_LTD_GID}" =~ (^)"users www-data"($) ]] \
   || [[ "${_LTD_GID}" =~ (^)"aegir www-data users"($) ]]; then
   if [ "$1" = "-c" ]; then
-    if [[ "$2" =~ "set -m;" ]] && [ "$0" = "/bin/sh" ]; then
+    _IS_SH_PATH=NO
+    if [ "$0" = "/bin/sh" ] || [ "$0" = "/usr/bin/sh" ]; then
+      _IS_SH_PATH=YES
+    fi
+    if [[ "$2" =~ "set -m;" ]] && [ "$_IS_SH_PATH" = "YES" ]; then
       _IN_PATH=YES
       _INTERNAL=YES
       if [[ "${_ALL}" =~ "drush" ]]; then
@@ -596,7 +600,9 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       export PATH="${NPM_PACKAGES}/bin:${PATH}"
       export NODE_PATH="${NPM_PACKAGES}/lib/node_modules:${NODE_PATH}"
     fi
-    if [ "$0" = "/bin/sh" ] || [ "$0" = "/bin/websh" ]; then
+    if [ "$0" = "/bin/sh" ] \
+      || [ "$0" = "/usr/bin/sh" ] \
+      || [ "$0" = "/bin/websh" ]; then
       if [ -x "/bin/dash" ]; then
         if [ ! -z "${_ARR}" ]; then
           export DRUSH_PHP;export PHP_INI;exec drush ${_ARR}
@@ -654,7 +660,9 @@ else
   fi
   # echo 4 DRUSH_PHP is ${DRUSH_PHP}
   # echo 4 PHP_INI is ${PHP_INI}
-  if [ "$0" = "/bin/sh" ] || [ "$0" = "/bin/websh" ]; then
+  if [ "$0" = "/bin/sh" ] \
+    || [ "$0" = "/usr/bin/sh" ] \
+    || [ "$0" = "/bin/websh" ]; then
     if [ -x "/bin/dash" ]; then
       export DRUSH_PHP;export PHP_INI;exec /bin/dash "$@"
     else

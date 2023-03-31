@@ -468,11 +468,19 @@ if_install_rvm() {
               if [ "${_WEB_SH}" != "/bin/dash" ]; then
                 rm -f /bin/sh
                 ln -s /bin/dash /bin/sh
+                if [ -e "/usr/bin/sh" ]; then
+                  rm -f /usr/bin/sh
+                  ln -s /bin/dash /usr/bin/sh
+                fi
               fi
             else
               if [ "${_WEB_SH}" != "/bin/bash" ]; then
                 rm -f /bin/sh
                 ln -s /bin/bash /bin/sh
+                if [ -e "/usr/bin/sh" ]; then
+                  rm -f /usr/bin/sh
+                  ln -s /bin/bash /usr/bin/sh
+                fi
               fi
             fi
           fi

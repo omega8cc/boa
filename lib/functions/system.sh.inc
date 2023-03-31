@@ -3138,6 +3138,10 @@ symlink_to_dash() {
   if [ -x "/bin/dash" ]; then
     rm -f /bin/sh
     ln -s /bin/dash /bin/sh
+    if [ -e "/usr/bin/sh" ]; then
+      rm -f /usr/bin/sh
+      ln -s /bin/dash /usr/bin/sh
+    fi
   fi
 }
 
@@ -3147,6 +3151,10 @@ symlink_to_bash() {
   if [ -x "/bin/bash" ]; then
     rm -f /bin/sh
     ln -s /bin/bash /bin/sh
+    if [ -e "/usr/bin/sh" ]; then
+      rm -f /usr/bin/sh
+      ln -s /bin/bash /usr/bin/sh
+    fi
   fi
 }
 
@@ -3200,6 +3208,15 @@ switch_to_dash() {
               sed -i "s/^#\! \/.*/#\!\/bin\/dash/g" $f &> /dev/null
               wait
               sed -i "s/\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
+              wait
+            fi
+            _SHELL_TEST=$(grep -I -o "/usr/bin/sh" $f 2>&1)
+            if [ ! -z "${_SHELL_TEST}" ] \
+              && [ "$f" != "/etc/init.d/clean-boa-env" ] \
+              && [ "$f" != "/bin/websh" ]; then
+              sed -i "s/^#\! \/.*/#\!\/bin\/dash/g" $f &> /dev/null
+              wait
+              sed -i "s/\/usr\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
               wait
             fi
           fi
@@ -3259,6 +3276,15 @@ switch_to_bash() {
               sed -i "s/^#\! \/.*/#\!\/bin\/bash/g" $f &> /dev/null
               wait
               sed -i "s/\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
+              wait
+            fi
+            _SHELL_TEST=$(grep -I -o "/usr/bin/sh" $f 2>&1)
+            if [ ! -z "${_SHELL_TEST}" ] \
+              && [ "$f" != "/etc/init.d/clean-boa-env" ] \
+              && [ "$f" != "/bin/websh" ]; then
+              sed -i "s/^#\! \/.*/#\!\/bin\/bash/g" $f &> /dev/null
+              wait
+              sed -i "s/\/usr\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
               wait
             fi
           fi

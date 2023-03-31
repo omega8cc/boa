@@ -87,6 +87,7 @@
 
 @=> On the target-host
   ln -sf /bin/websh /bin/sh
+  ln -sf /bin/websh /usr/bin/sh
   ls -la /bin/sh
   xboa import o1 target-ip
   service nginx reload
