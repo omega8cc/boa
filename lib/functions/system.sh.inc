@@ -2592,13 +2592,13 @@ update_sources_list() {
       fi
       cd /var/opt
       echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_MIRROR}/merged/ ${_OSR} main" >> ${aptLiSys}
+      echo "deb http://${_MIRROR}/merged ${_OSR} main" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
 	  echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-	  echo "deb http://${_MIRROR}/merged/ ${_OSR}-updates main" | fmt -su -w 2500 >> ${aptLiSys}
+	  echo "deb http://${_MIRROR}/merged ${_OSR}-updates main" >> ${aptLiSys}
 	  echo "" >> ${aptLiSys}
       echo "## DEVUAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://${_MIRROR}/merged/ ${_OSR}-security main" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb http://${_MIRROR}/merged ${_OSR}-security main" >> ${aptLiSys}
     elif [ "${_THIS_OS}" = "Debian" ]; then
       _MIRROR_CHECK=NO
       if [ "${_OSR}" = "deprecated" ]; then
@@ -4243,13 +4243,13 @@ if_major_os_upgrade() {
     ### Switching gears on the fly.
     if [ "${_TGT_OSN}" = "Devuan" ]; then
       echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_MIRROR}/merged/ ${_NEW_OSR} main" >> ${aptLiSys}
+      echo "deb http://${_MIRROR}/merged ${_NEW_OSR} main" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-      echo "deb http://${_MIRROR}/merged/ ${_NEW_OSR}-updates main" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb http://${_MIRROR}/merged ${_NEW_OSR}-updates main" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## DEVUAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://${_MIRROR}/merged/ ${_NEW_OSR}-security main" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb http://${_MIRROR}/merged ${_NEW_OSR}-security main" >> ${aptLiSys}
       if [ -e "/etc/apt/apt.conf" ]; then
         sed -i "s/APT::Default-Release.*/APT::Default-Release \"${_NEW_OSR}\";/g" \
           /etc/apt/apt.conf &> /dev/null
