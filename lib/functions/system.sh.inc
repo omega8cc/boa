@@ -3676,6 +3676,8 @@ finale() {
     killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
+    service clean-boa-env stop &> /dev/null
+    wait
     csf -uf &> /dev/null
     csf -e  &> /dev/null
     csf -q  &> /dev/null

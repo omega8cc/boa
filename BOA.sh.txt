@@ -1804,6 +1804,8 @@ update_wrappers() {
     ln -sf /sbin/ipset /usr/sbin/ipset
     _CSF_TEST=$(which csf 2> /dev/null)
     if [ -x "${_CSF_TEST}" ]; then
+      service clean-boa-env stop &> /dev/null
+      wait
       csf -uf
       csf -q
       sleep 8
@@ -1826,6 +1828,8 @@ update_wrappers() {
     echo _CC_SRC_TEST 1 is ${_CC_SRC_TEST}
     if [[ ! "${_CC_SRC_TEST}" =~ "CC_SRC =.*2" ]]; then
       echo _CC_SRC_TEST 2 is ${_CC_SRC_TEST}
+      service clean-boa-env stop &> /dev/null
+      wait
       csf -uf
       sleep 8
       sed -i "s/^CC_SRC .*/CC_SRC = \"2\"/g" /etc/csf/csf.conf
