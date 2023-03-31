@@ -8,7 +8,6 @@ define_loc_osr() {
     _NEW_OSR=beowulf
     _TGT_OSN=Devuan
     _MSG_LOC="Debian Jessie to Devuan Beowulf"
-    touch /root/.use.icu.src.cnf
   fi
   if [ "${_STRETCH_TO_BEOWULF}" = "YES" ] \
     && [ "${_OSR}" = "stretch" ]; then
@@ -16,7 +15,6 @@ define_loc_osr() {
     _NEW_OSR=beowulf
     _TGT_OSN=Devuan
     _MSG_LOC="Debian Stretch to Devuan Beowulf"
-    touch /root/.use.icu.src.cnf
   fi
   if [ "${_BUSTER_TO_BEOWULF}" = "YES" ] \
     && [ "${_OSR}" = "buster" ]; then
@@ -24,7 +22,6 @@ define_loc_osr() {
     _NEW_OSR=beowulf
     _TGT_OSN=Devuan
     _MSG_LOC="Debian Buster to Devuan Beowulf"
-    touch /root/.use.icu.src.cnf
   fi
   if [ "${_BEOWULF_TO_CHIMAERA}" = "YES" ] \
     && [ "${_OSR}" = "beowulf" ]; then
@@ -32,7 +29,6 @@ define_loc_osr() {
     _NEW_OSR=chimaera
     _TGT_OSN=Devuan
     _MSG_LOC="Devuan Beowulf to Devuan Chimaera"
-    touch /root/.use.icu.src.cnf
   fi
   if [ "${_BULLSEYE_TO_CHIMAERA}" = "YES" ] \
     && [ "${_OSR}" = "bullseye" ]; then
@@ -40,7 +36,6 @@ define_loc_osr() {
     _NEW_OSR=chimaera
     _TGT_OSN=Devuan
     _MSG_LOC="Debian Bullseye to Devuan Chimaera"
-    touch /root/.use.icu.src.cnf
   fi
   if [ "${_BUSTER_TO_BULLSEYE}" = "YES" ] \
     && [ "${_OSR}" = "buster" ]; then
@@ -48,7 +43,6 @@ define_loc_osr() {
     _NEW_OSR=bullseye
     _TGT_OSN=Debian
     _MSG_LOC="Debian Buster to Debian Bullseye"
-    touch /root/.use.icu.src.cnf
   fi
   if [ "${_STRETCH_TO_BUSTER}" = "YES" ] \
     && [ "${_OSR}" = "stretch" ]; then
@@ -56,7 +50,6 @@ define_loc_osr() {
     _NEW_OSR=buster
     _TGT_OSN=Debian
     _MSG_LOC="Debian Stretch to Debian Buster"
-    touch /root/.use.icu.src.cnf
   fi
   if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
     && [ "${_OSR}" = "jessie" ]; then
@@ -64,7 +57,6 @@ define_loc_osr() {
     _NEW_OSR=stretch
     _TGT_OSN=Debian
     _MSG_LOC="Debian Jessie to Debian Stretch"
-    touch /root/.use.icu.src.cnf
   fi
 }
 
@@ -2218,7 +2210,7 @@ check_apt_updates() {
 }
 
 #
-# Install ICU from sources.
+# Install ICU from sources for Jessie.
 install_icu() {
   ###--------------------###
   if [ ! -e "/usr/local/lib/icu/current" ]; then
@@ -2248,15 +2240,11 @@ install_php_deps() {
   st_runner "${_INSTALL} libmagickwand-dev" 2> /dev/null
   st_runner "${_INSTALL} libxpm-dev" 2> /dev/null
   st_runner "${_INSTALL} libwebp-dev" 2> /dev/null
-  if [ -e "/root/.use.icu.src.cnf" ]; then
+  st_runner "${_INSTALL} libsodium-dev" 2> /dev/null
+  if [ "${_OSR}" = "jessie" ]; then
     install_icu
   else
-    if [ -e "/usr/local/lib/icu/current" ]; then
-      rm -rf /usr/local/lib/icu
-      rm -f /usr/local/lib/libicu*
-      mrun "ldconfig" 2> /dev/null
-      _PHP_FORCE_REINSTALL=YES
-    fi
+    st_runner "${_INSTALL} libicu-dev" 2> /dev/null
   fi
 }
 
