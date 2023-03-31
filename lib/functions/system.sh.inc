@@ -2970,7 +2970,7 @@ install_curl_src() {
   if [ "${_OSR}" = "precise" ] || [ "${_OSR}" = "jessie" ]; then
     touch /root/.use.curl.from.packages.cnf
     chattr +i /root/.use.curl.from.packages.cnf
-    _CURL_VRN=7.87.0
+    _CURL_VRN=8.0.1
   fi
   _CURL_INSTALL_REQUIRED=NO
   _CURL_GET_DPKG=$(dpkg --get-selections | grep curl | grep 'hold$' 2>&1)
