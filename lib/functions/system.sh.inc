@@ -3853,9 +3853,7 @@ basic_packages_install_on_init() {
         mrun "apt --fix-broken install -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/nosystemd.list
         rm -f /etc/apt/preferences.d/nosystemd
-        mrun "apt-get remove systemd-sysv -y -qq --purge --auto-remove" 2> /dev/null
         mrun "apt-get remove systemd -y -qq --purge --auto-remove" 2> /dev/null
-        mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove" 2> /dev/null
         mrun "apt --fix-broken install -y" 2> /dev/null
       else
         echo
@@ -3882,7 +3880,6 @@ basic_packages_install_on_init() {
       _CHECK_CRON=$(service cron status 2>&1)
       if [[ "${_CHECK_CRON}" =~ "running" ]]; then
         msg "INFO: OK, it works! ${_CHECK_CRON}"
-        kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}') &> /dev/null
       else
         msg "ALRT: Ouch! cron does not work ${_CHECK_CRON}"
         msg "ALRT: Please do not reboot until you manage to fix this!"
@@ -4084,9 +4081,10 @@ if_post_major_os_upgrade() {
     mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
     msg "INFO: Cleaning up any systemd remnants.."
-    mrun "apt-get remove systemd-sysv -y -qq --purge --auto-remove" 2> /dev/null
     mrun "apt-get remove systemd -y -qq --purge --auto-remove" 2> /dev/null
-    mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove" 2> /dev/null
+    if [ "${_THIS_OS}" = "Devuan" ]; then
+      mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove" 2> /dev/null
+    fi
     mrun "apt --fix-broken install -y" 2> /dev/null
     msg "INFO: Removing any packages orphaned by the migration process.."
     mrun "apt-get autoremove --purge -y -qq" 2> /dev/null

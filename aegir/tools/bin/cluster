@@ -1968,9 +1968,7 @@ upgrade_host() {
       rm -f /etc/apt/sources.list.d/nosystemd.list
       rm -f /etc/apt/preferences.d/nosystemd
     fi
-    apt-get remove systemd-sysv -y -qq --purge --auto-remove &> /dev/null
     apt-get remove systemd -y -qq --purge --auto-remove &> /dev/null
-    apt-get remove libnss-systemd -y -qq --purge --auto-remove &> /dev/null
     apt-get autoremove --purge -y -qq &> /dev/null
     apt-get autoclean -y -qq &> /dev/null
   fi
