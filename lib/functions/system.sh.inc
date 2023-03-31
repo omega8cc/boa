@@ -233,6 +233,34 @@ kill_nash() {
 }
 
 #
+# Cleanup for Postfix.
+fix_postfix() {
+  if [ "${_STATUS}" = "INIT" ]; then
+    st_runner "${_RMAPP} exim4 exim4-base exim4-config sendmail \
+               sendmail-base sendmail-cf sendmail-bin" &> /dev/null
+    st_runner "apt-get purge exim4 exim4-base exim4-config sendmail \
+               sendmail-base sendmail-cf sendmail-bin" &> /dev/null
+    rm -f /etc/aliases
+    rm -rf /etc/mail
+    killall -9 sendmail &> /dev/null
+  else
+    _POSTFIX_TEST=$(grep "fatal: open lock file" /var/log/mail.log 2>&1)
+    if [[ "${_POSTFIX_TEST}" =~ "fatal: open lock file" ]]; then
+      mrun "dpkg --configure -a"      &> /dev/null
+      mrun "apt-get clean -qq"        &> /dev/null
+      rm -rf /var/lib/apt/lists/*
+      mrun "apt-get update -qq"       &> /dev/null
+      mrun "apt-get purge postfix -y" &> /dev/null
+      echo > /var/log/mail.log
+    fi
+  fi
+  if [ ! -e "/etc/aliases" ]; then
+    echo "postmaster:    root" > /etc/aliases
+    newaliases &> /dev/null
+  fi
+}
+
+#
 # Fix FTPS PAM where required.
 fix_ftps_pam() {
   if [ ! -e "/etc/ftpusers" ]; then
@@ -3693,6 +3721,7 @@ install_with_aptitude_deps() {
   mrun "${_INSTAPP} ghostscript htop icu-devtools lemon lftp nano" 2> /dev/null
   mrun "${_INSTAPP} python3-dev python3-debian python3-magic" 2> /dev/null
   mrun "apt --fix-broken install -y" 2> /dev/null
+  fix_postfix
   st_runner "${_INSTAPP} ${_MAILSERV}" 2> /dev/null
   st_runner "${_INSTAPP} ${_APT_XTRA}" 2> /dev/null
   st_runner "${_INSTAPP} ${_EXTRA_LIB_APT}" 2> /dev/null
@@ -4814,32 +4843,6 @@ sys_packages_install() {
     || [ "${_OSR}" = "trusty" ] \
     || [ "${_OSR}" = "precise" ]; then
     _MAILSERV="postfix postfix-pcre"
-  fi
-}
-
-fix_postfix() {
-  if [ "${_STATUS}" = "INIT" ]; then
-    st_runner "${_RMAPP} exim4 exim4-base exim4-config sendmail \
-               sendmail-base sendmail-cf sendmail-bin" &> /dev/null
-    st_runner "apt-get purge exim4 exim4-base exim4-config sendmail \
-               sendmail-base sendmail-cf sendmail-bin" &> /dev/null
-    rm -f /etc/aliases
-    rm -rf /etc/mail
-    killall -9 sendmail &> /dev/null
-  else
-    _POSTFIX_TEST=$(grep "fatal: open lock file" /var/log/mail.log 2>&1)
-    if [[ "${_POSTFIX_TEST}" =~ "fatal: open lock file" ]]; then
-      mrun "dpkg --configure -a"      &> /dev/null
-      mrun "apt-get clean -qq"        &> /dev/null
-      rm -rf /var/lib/apt/lists/*
-      mrun "apt-get update -qq"       &> /dev/null
-      mrun "apt-get purge postfix -y" &> /dev/null
-      echo > /var/log/mail.log
-    fi
-  fi
-  if [ ! -e "/etc/aliases" ]; then
-    echo "postmaster:    root" > /etc/aliases
-    newaliases &> /dev/null
   fi
 }
 

@@ -303,7 +303,6 @@ sys_packages_update
 if_proxysql_update
 sys_packages_install
 check_fix_java
-fix_postfix
 install_with_aptitude_deps
 fix_locales
 install_with_aptitude_deps
