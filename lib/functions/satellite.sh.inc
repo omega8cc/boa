@@ -2735,7 +2735,7 @@ satellite_download_for_local_build() {
     get_dev_stc "tfa-7.x-2.1.tar.gz"
     get_dev_stc "timeago-7.x-2.3.tar.gz"
     get_dev_stc "views_bulk_operations-7.x-3.7.tar.gz"
-    get_dev_stc "views-7.x-3.27.tar.gz"
+    get_dev_stc "views-7.x-3.29.tar.gz"
     ### BOA Drupal Contrib
     get_dev_stc "features_extra-7.x-1.0.tar.gz"
     get_dev_stc "features-7.x-2.14.tar.gz"
