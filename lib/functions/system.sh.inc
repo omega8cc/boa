@@ -236,10 +236,12 @@ kill_nash() {
 # Cleanup for Postfix.
 fix_postfix() {
   if [ "${_STATUS}" = "INIT" ]; then
-    st_runner "${_RMAPP} exim4 exim4-base exim4-config sendmail \
+    st_runner "${_RMAPP} exim4 exim4-base exim4-config" &> /dev/null
+    st_runner "${_RMAPP} sendmail \
                sendmail-base sendmail-cf sendmail-bin" &> /dev/null
-    st_runner "apt-get purge exim4 exim4-base exim4-config sendmail \
-               sendmail-base sendmail-cf sendmail-bin" &> /dev/null
+    st_runner "apt-get purge exim4 exim4-base exim4-config -y" &> /dev/null
+    st_runner "apt-get purge sendmail \
+               sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
     rm -f /etc/aliases
     rm -rf /etc/mail
     killall -9 sendmail &> /dev/null
