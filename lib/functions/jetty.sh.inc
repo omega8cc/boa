@@ -18,9 +18,8 @@ if_install_jetty() {
         rm -f /etc/apt/sources.list.d/java8.list
       fi
       echo "deb http://archive.debian.org/debian jessie-backports main" > /etc/apt/sources.list.d/backports.list
-      echo "deb-src http://archive.debian.org/debian jessie-backports main" >> /etc/apt/sources.list.d/backports.list
       echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
-      st_runner "apt-get update -qq" &> /dev/null
+      st_runner "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
       st_runner "${_INSTAPP} -t jessie-backports openjdk-8-jre-headless ca-certificates-java" 2> /dev/null
       check_fix_java
     fi

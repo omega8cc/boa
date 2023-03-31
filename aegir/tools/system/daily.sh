@@ -68,7 +68,7 @@ find_fast_mirror() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt-get update -qq &> /dev/null
+    apt-get update --allow-releaseinfo-change -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi

@@ -568,7 +568,7 @@ prep_for_install_db_sql() {
           /var/xdrago/log/gpg-agent-count.kill.log
       fi
     done
-    apt-get update -qq &> /dev/null
+    apt-get update --allow-releaseinfo-change -qq &> /dev/null
   else
     _KEYS_SIG="C74CD1D8"
     _KEYS_SERVER_TEST=FALSE
@@ -589,7 +589,7 @@ prep_for_install_db_sql() {
           /var/xdrago/log/gpg-agent-count.kill.log
       fi
     done
-    apt-get update -qq &> /dev/null
+    apt-get update --allow-releaseinfo-change -qq &> /dev/null
   fi
   _KEYS_SIG=""
   _KEYS_SERVER_TEST=FALSE
@@ -637,8 +637,7 @@ prep_for_install_db_sql() {
         rm -f /etc/apt/sources.list.d/percona-release.list.bak
         echo "## Percona APT Repository" > ${percList}
         echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-        echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-        apt-get update -qq &> /dev/null
+        apt-get update --allow-releaseinfo-change -qq &> /dev/null
       else
         _DB_SERVER=Percona
         _DB_SERIES=5.7
@@ -657,8 +656,7 @@ prep_for_install_db_sql() {
         rm -f /etc/apt/sources.list.d/percona-release.list.bak
         echo "## Percona APT Repository" > ${percList}
         echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-        echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-        apt-get update -qq &> /dev/null
+        apt-get update --allow-releaseinfo-change -qq &> /dev/null
       fi
     fi
     msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSR}"
@@ -690,7 +688,6 @@ prep_for_install_db_sql() {
     aptLiDb="${aptLiSys}.d/mariadb.list"
     echo "## MariaDB APT Repository" > ${aptLiDb}
     echo "deb [arch=amd64,i386] http://${aptRepo}/${_OSN} ${_OSR} main" >> ${aptLiDb}
-    echo "deb-src http://${aptRepo}/${_OSN} ${_OSR} main" >> ${aptLiDb}
   fi
   rm -f /etc/apt/sources.list.d/percona-original-release.list
   rm -f /etc/apt/sources.list.d/percona-prel-release.list
@@ -699,13 +696,12 @@ prep_for_install_db_sql() {
   percList="${aptLiSys}.d/percona-release.list"
   echo "## Percona APT Repository" > ${percList}
   echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-  echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
   if [ -e "/usr/bin/mytop" ]; then
     st_runner "${_RMAPP} mytop" &> /dev/null
     st_runner "apt-get purge mytop -y" &> /dev/null
     rm -f /usr/bin/mytop
   fi
-  st_runner "apt-get update -qq" &> /dev/null
+  st_runner "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
   if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     sed -i "s/.*innodb_force_recovery.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf &> /dev/null
@@ -1079,7 +1075,6 @@ install_db_server() {
         aptLiDb="${aptLiSys}.d/mariadb.list"
         echo "## MariaDB APT Repository" > ${aptLiDb}
         echo "deb [arch=amd64,i386] http://${aptRepo}/${_OSN} ${_OSR} main" >> ${aptLiDb}
-        echo "deb-src http://${aptRepo}/${_OSN} ${_OSR} main" >> ${aptLiDb}
         rm -f /etc/apt/sources.list.d/percona-release.*
         rm -f /etc/apt/sources.list.d/xtrabackup.*
         rm -f /etc/apt/preferences.d/00percona.pref
@@ -1098,10 +1093,9 @@ install_db_server() {
         rm -f /etc/apt/sources.list.d/percona-release.list.bak
         echo "## Percona APT Repository" > ${percList}
         echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-        echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-        st_runner "apt-get update -qq" &> /dev/null
+        st_runner "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
       fi
-      st_runner "apt-get update -qq" &> /dev/null
+      st_runner "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
     fi
     if [ "${_SQL_UPGRADE}" = "YES" ]; then
       if [ -e "/usr/sbin/csf" ] \
@@ -1158,7 +1152,7 @@ install_db_server() {
               /var/xdrago/log/gpg-agent-count.kill.log
           fi
         done
-        apt-get update -qq &> /dev/null
+        apt-get update --allow-releaseinfo-change -qq &> /dev/null
       else
         _KEYS_SIG="C74CD1D8"
         _KEYS_SERVER_TEST=FALSE
@@ -1179,7 +1173,7 @@ install_db_server() {
               /var/xdrago/log/gpg-agent-count.kill.log
           fi
         done
-        apt-get update -qq &> /dev/null
+        apt-get update --allow-releaseinfo-change -qq &> /dev/null
       fi
       _KEYS_SIG=""
       _KEYS_SERVER_TEST=FALSE
@@ -1191,7 +1185,7 @@ install_db_server() {
       st_runner "aptitude autoclean -y" &> /dev/null
       st_runner "apt-get clean -qq" &> /dev/null
       rm -rf /var/lib/apt/lists/*
-      st_runner "apt-get update -qq" &> /dev/null
+      st_runner "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
       if [ "${_DB_SERVER}" = "MariaDB" ]; then
         cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
       fi

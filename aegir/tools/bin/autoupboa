@@ -209,7 +209,7 @@ if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
   echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   rm -f /etc/apt/apt.conf.d/00sandboxtmp
   rm -f /etc/apt/apt.conf.d/00temp
-  apt-get update -qq &> /dev/null
+  apt-get update --allow-releaseinfo-change -qq &> /dev/null
 fi
 
 if [ -e "/data/disk/arch/sql" ]; then

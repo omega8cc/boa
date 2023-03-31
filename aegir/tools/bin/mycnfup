@@ -292,7 +292,7 @@ check_root() {
     if [ ! -x "${_LSB_TEST}" ]; then
       apt-get clean -qq
       rm -rf /var/lib/apt/lists/*
-      apt-get update -qq
+      apt-get update --allow-releaseinfo-change -qq
       apt-get install lsb-release ${forCer}
     fi
     _LSB_TEST=$(which lsb_release 2> /dev/null)
@@ -306,23 +306,20 @@ check_root() {
       echo
       echo "## MAIN REPOSITORIES"                                                       > /etc/apt/sources.list
       echo "deb http://http.debian.net/debian/ ${_OSR} main contrib non-free"          >> /etc/apt/sources.list
-      echo "deb-src http://http.debian.net/debian/ ${_OSR} main contrib non-free"      >> /etc/apt/sources.list
       echo ""                                                                          >> /etc/apt/sources.list
       if [ "${_OSR}" = "stretch" ] \
         || [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "bullseye" ]; then
         echo "## MAJOR BUG FIX UPDATES produced after the final release"               >> /etc/apt/sources.list
-        echo "deb http://http.debian.net/debian/ ${_OSR}-updates main"                 >> /etc/apt/sources.list
-        echo "deb-src http://http.debian.net/debian/ ${_OSR}-updates main"             >> /etc/apt/sources.list
+        echo "deb http://http.debian.net/debian/ ${_OSR}/updates main"                 >> /etc/apt/sources.list
         echo ""                                                                        >> /etc/apt/sources.list
       fi
       echo "## DEBIAN SECURITY UPDATES"                                                >> /etc/apt/sources.list
-      echo "deb http://security.debian.org/debian-security ${_OSR}-security main contrib non-free"     >> /etc/apt/sources.list
-      echo "deb-src http://security.debian.org/debian-security ${_OSR}-security main contrib non-free" >> /etc/apt/sources.list
+      echo "deb http://security.debian.org/debian-security ${_OSR}/updates main contrib non-free" >> /etc/apt/sources.list
       echo
       apt-get clean -qq &> /dev/null
       rm -rf /var/lib/apt/lists/*
-      apt-get update -qq &> /dev/null
+      apt-get update --allow-releaseinfo-change -qq &> /dev/null
     fi
     _THIS_OS=$(lsb_release -si 2>&1)
     _OSR=$(lsb_release -sc 2>&1)
@@ -334,17 +331,17 @@ check_root() {
       if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: fuse\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
-        apt-get update -qq &> /dev/null
+        apt-get update --allow-releaseinfo-change -qq &> /dev/null
       fi
       if [ ! -e "/etc/apt/preferences.d/udev" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
-        apt-get update -qq &> /dev/null
+        apt-get update --allow-releaseinfo-change -qq &> /dev/null
       fi
       if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
-        apt-get update -qq &> /dev/null
+        apt-get update --allow-releaseinfo-change -qq &> /dev/null
       fi
       apt-get remove fuse -y -qq &> /dev/null
       apt-get purge fuse -y -qq &> /dev/null
@@ -436,7 +433,7 @@ find_fast_mirror() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt-get update -qq &> /dev/null
+    apt-get update --allow-releaseinfo-change -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
@@ -1257,7 +1254,7 @@ db_head_to_stretch_first()
   	  echo "nameserver 8.8.8.8" >/etc/resolv.conf
   	  echo "nameserver 8.8.4.4" >>/etc/resolv.conf
   	  cat /etc/resolv.conf
-  	  apt-get update -qq &> /dev/null
+  	  apt-get update --allow-releaseinfo-change -qq &> /dev/null
   	  echo "curl install"           | dpkg --set-selections
   	  echo "git install"            | dpkg --set-selections
   	  echo "git-core install"       | dpkg --set-selections
@@ -1322,7 +1319,7 @@ db_head_to_stretch_first()
         wait
       fi
   	  cat /etc/apt/sources.list
-  	  apt-get update -qq &> /dev/null
+  	  apt-get update --allow-releaseinfo-change -qq &> /dev/null
   	  apt-get install apt -t stretch ${dstUpArg}
   	  apt-get upgrade ${dstUpArg}
   	  apt-get install apt dpkg aptitude util-linux ${dstUpArg}
@@ -1357,7 +1354,7 @@ db_head_to_stretch_second()
     _HOST_HOSTNAME=`hostname 2>&1`
     _HOST_OSR=$(lsb_release -sc 2>&1)
     if [[ "${_HOST_OSR}" =~ "stretch" ]]; then
-	    apt-get update -qq &> /dev/null
+	    apt-get update --allow-releaseinfo-change -qq &> /dev/null
   	  if [ -x "/lib/systemd/systemd" ]; then
         ls -la /lib/systemd/systemd
         ${_INSTALL} sysvinit

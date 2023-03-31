@@ -89,7 +89,7 @@ find_fast_mirror() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt-get update -qq
+    apt-get update --allow-releaseinfo-change -qq
     apt-get install netcat ${forCer}
     sleep 3
   fi
@@ -134,7 +134,7 @@ install() {
     fi
     apt-get clean -qq
     rm -rf /var/lib/apt/lists/*
-    apt-get update -qq
+    apt-get update --allow-releaseinfo-change -qq
     aptitude purge duplicity -y
     rm -rf /usr/local/lib/python3.5/dist-packages/*
     rm -rf /usr/local/lib/python*/dist-packages/{fasteners*,duplicity*,boto*}
@@ -356,7 +356,7 @@ if [ -e "${_LOGPTH}/${BUCKET_DOT}.archive.log" ]; then
   fi
   apt-get clean -qq
   rm -rf /var/lib/apt/lists/*
-  apt-get update -qq
+  apt-get update --allow-releaseinfo-change -qq
   apt-get install python-pip -y
   pip install awscli
   aws s3 mb s3://${BUCKET} --region ${_AWS_REG}

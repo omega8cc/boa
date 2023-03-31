@@ -55,7 +55,7 @@ find_fast_mirror() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt-get update -qq &> /dev/null
+    apt-get update --allow-releaseinfo-change -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
@@ -165,8 +165,7 @@ if [ ! -e "${percList}" ] \
   rm -f /etc/apt/sources.list.d/percona-release.list.bak
   echo "## Percona APT Repository" > ${percList}
   echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-  echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-  apt-get update -qq &> /dev/null
+  apt-get update --allow-releaseinfo-change -qq &> /dev/null
   if [ -e "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
     service lfd stop &> /dev/null
@@ -205,7 +204,7 @@ if [ ! -e "${percList}" ] \
         /var/xdrago/log/gpg-agent-count.kill.log
     fi
   done
-  apt-get update -qq &> /dev/null
+  apt-get update --allow-releaseinfo-change -qq &> /dev/null
   if [ -e "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
     csf -e &> /dev/null
@@ -224,7 +223,7 @@ if [ ! -e "${percList}" ] \
       fi
     fi
   fi
-  apt-get update -qq
+  apt-get update --allow-releaseinfo-change -qq
   apt-get install percona-xtrabackup-24 -y
 fi
 

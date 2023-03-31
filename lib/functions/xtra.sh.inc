@@ -307,7 +307,7 @@ if_install_hhvm() {
             sleep 2
           done
           cat /var/opt/hhvm.gpg.key | ${_GPG} --import &> /dev/null
-          st_runner "apt-get update -qq" &> /dev/null
+          st_runner "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
           st_runner "apt-get install hhvm ${forCer}" 2> /dev/null
           msg "INFO: HHVM Engine installed"
         else
@@ -346,7 +346,7 @@ if_install_webmin() {
         cat jcameron-key.gpg | ${_GPG} --import &> /dev/null
         rm -f jcameron-key.gpg*
         touch ${pthLog}/webmin_update_apt_src.log
-        st_runner "apt-get update -qq" &> /dev/null
+        st_runner "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
         st_runner "${_INSTAPP} webmin \
                              libxml-simple-perl \
                              libcrypt-ssleay-perl" 2> /dev/null
@@ -488,7 +488,7 @@ if_install_rvm() {
           if [ "${_STATUS}" = "INIT" ] \
             || [ "${_RUBY_UPGRADE}" = "YES" ] \
             || [ "${_RUBY_RELOAD}" = "YES" ]; then
-            mrun "apt-get update -qq" &> /dev/null
+            mrun "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
             if [ "${_DEBUG_MODE}" = "YES" ]; then
               ${rvmPth} get stable --auto-dotfiles
               ${rvmPth} install ${_RUBY_VRN}
@@ -503,7 +503,7 @@ if_install_rvm() {
               mrun "${_INSTALL} nodejs" &> /dev/null
             fi
           else
-            mrun "apt-get update -qq" &> /dev/null
+            mrun "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
             if [ "${_DEBUG_MODE}" = "YES" ]; then
               ${rvmPth} get stable --auto-dotfiles
               ${rvmPth} install ${_RUBY_VRN}
@@ -624,9 +624,9 @@ if_install_ffmpeg() {
             echo "deb http://www.deb-multimedia.org buster main non-free" >> ${aptLiSys}.d/ffmpeg.list
             echo "deb http://www.deb-multimedia.org buster-backports main" >> ${aptLiSys}.d/ffmpeg.list
           fi
-          st_runner "apt-get update -qq" &> /dev/null
+          st_runner "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
           st_runner "apt-get install deb-multimedia-keyring ${forCer}" 2> /dev/null
-          st_runner "apt-get update -qq" &> /dev/null
+          st_runner "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
           st_runner "${_INSTAPP} ffmpeg" 2> /dev/null
         elif [ "${_OSR}" = "trusty" ] || [ "${_OSR}" = "precise" ]; then
           _X86_64_TEST=$(uname -m 2>&1)
