@@ -340,7 +340,7 @@ update_sql_root_credentials
 
 
 ###
-### Install other services and apply fixes
+### Install other services
 ###
 run_aptitude_full_upgrade
 install_with_aptitude_deps
@@ -359,24 +359,36 @@ check_nginx_initd
 install_vnstat
 install_update_xdrago
 install_curl_src
+install_update_lshell
+install_update_redis
 check_install_myquick
 if_install_magick
 install_update_php
 php_upgrade_all
-check_fix_php
-check_fix_avatars
-check_fix_umask
-check_fix_bin_extra
-install_update_lshell
-install_update_redis
-check_fix_newrelic
-check_fix_java
+
+
+###
+### Allow PHP forced rebuilds only on upgrade
+###
+if [ "${_STATUS}" = "UPGRADE" ]; then
+  check_fix_php
+fi
 
 
 ###
 ### PHP config update
 ###
 check_update_php_config
+
+
+###
+### Apply other fixes
+###
+check_fix_avatars
+check_fix_umask
+check_fix_bin_extra
+check_fix_newrelic
+check_fix_java
 
 
 ###

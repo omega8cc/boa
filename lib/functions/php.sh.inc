@@ -1720,47 +1720,48 @@ install_newrelic() {
 # Check if the PHP rebuild is required.
 check_php_rebuild() {
   if_to_do_fix
-  if [ "${_DO_FIX}" = "YES" ]; then
+  if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
     _PHP_FORCE_REINSTALL=NO
   fi
-  if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
-    || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
-    _PHP_ITD=5.x
-    if [ "$1" = "81" ]; then
-      rm -f ${pthLog}/installed-8.1*
-    elif [ "$1" = "80" ]; then
-      rm -f ${pthLog}/installed-8.0*
-    elif [ "$1" = "74" ]; then
-      rm -f ${pthLog}/installed-7.4*
-    elif [ "$1" = "73" ]; then
-      rm -f ${pthLog}/installed-7.3*
-    elif [ "$1" = "72" ]; then
-      rm -f ${pthLog}/installed-7.2*
-    elif [ "$1" = "71" ]; then
-      rm -f ${pthLog}/installed-7.1*
-    elif [ "$1" = "70" ]; then
-      rm -f ${pthLog}/installed-7.0*
-    elif [ "$1" = "56" ]; then
-      rm -f ${pthLog}/installed-5.6*
+  if [ "${_STATUS}" = "UPGRADE" ]; then
+    if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
+      || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
+      _PHP_ITD=5.x
+      if [ "$1" = "81" ]; then
+        rm -f ${pthLog}/installed-8.1*
+      elif [ "$1" = "80" ]; then
+        rm -f ${pthLog}/installed-8.0*
+      elif [ "$1" = "74" ]; then
+        rm -f ${pthLog}/installed-7.4*
+      elif [ "$1" = "73" ]; then
+        rm -f ${pthLog}/installed-7.3*
+      elif [ "$1" = "72" ]; then
+        rm -f ${pthLog}/installed-7.2*
+      elif [ "$1" = "71" ]; then
+        rm -f ${pthLog}/installed-7.1*
+      elif [ "$1" = "70" ]; then
+        rm -f ${pthLog}/installed-7.0*
+      elif [ "$1" = "56" ]; then
+        rm -f ${pthLog}/installed-5.6*
+      fi
+      msg "INFO: PHP to ${_PHP_VERSION} rebuild forced"
     fi
-    msg "INFO: PHP to ${_PHP_VERSION} rebuild forced"
-  else
+  fi
+  _PHP_ITD=$(/opt/php$1/bin/php -v \
+    | grep 'PHP 7' \
+    | cut -d: -f1 \
+    | awk '{ print $2}' 2>&1)
+  if [ -z "${_PHP_ITD}" ]; then
     _PHP_ITD=$(/opt/php$1/bin/php -v \
-      | grep 'PHP 7' \
+      | grep 'PHP 5' \
       | cut -d: -f1 \
       | awk '{ print $2}' 2>&1)
-    if [ -z "${_PHP_ITD}" ]; then
-      _PHP_ITD=$(/opt/php$1/bin/php -v \
-        | grep 'PHP 5' \
-        | cut -d: -f1 \
-        | awk '{ print $2}' 2>&1)
-    fi
-    if [ -z "${_PHP_ITD}" ]; then
-      _PHP_ITD=$(/opt/php$1/bin/php -v \
-        | grep 'PHP 8' \
-        | cut -d: -f1 \
-        | awk '{ print $2}' 2>&1)
-    fi
+  fi
+  if [ -z "${_PHP_ITD}" ]; then
+    _PHP_ITD=$(/opt/php$1/bin/php -v \
+      | grep 'PHP 8' \
+      | cut -d: -f1 \
+      | awk '{ print $2}' 2>&1)
   fi
   if [ -x "/opt/php$1/bin/php" ]; then
     if [ "$1" = "56" ]; then
@@ -2204,13 +2205,15 @@ install_update_php() {
 
 check_fix_php() {
   check_php_cli
-  isSodium=
-  isSodium=$(/opt/php74/bin/php -i | grep with-sodium 2>&1)
-  if [[ ! "${isSodium}" =~ "with-sodium" ]] \
-    || [ -z "${isSodium}" ]; then
-    msg "INFO: PHP rebuild required to add Sodium support..."
-    _PHP_FORCE_REINSTALL=YES
-    php_upgrade_all "74 80 81"
+  if [ -x "/opt/php74/bin/php" ]; then
+    isSodium=
+    isSodium=$(/opt/php74/bin/php -i | grep with-sodium 2>&1)
+    if [[ ! "${isSodium}" =~ "with-sodium" ]] \
+      || [ -z "${isSodium}" ]; then
+      msg "INFO: PHP rebuild required to add Sodium support..."
+      _PHP_FORCE_REINSTALL=YES
+      php_upgrade_all "74 80 81"
+    fi
   fi
   isWebP=
   isWebP=$(php -i | grep with-webp 2>&1)
