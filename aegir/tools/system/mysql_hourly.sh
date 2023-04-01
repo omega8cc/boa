@@ -152,6 +152,10 @@ fi
 aptLiSys="/etc/apt/sources.list"
 percList="${aptLiSys}.d/percona-release.list"
 
+if [ ! -e "/usr/bin/innobackupex" ]; then
+  touch /usr/bin/innobackupex
+fi
+
 if [ ! -e "${percList}" ] \
   || [ ! -e "/usr/bin/innobackupex" ]; then
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \

@@ -1521,7 +1521,7 @@ install_db_cluster() {
     vserver ${idn} exec ${_GPG} --list-keys ${_KEYS_SIG}
   	vserver ${idn} exec ${_APT_UPDATE} -qq
   	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57
-  	vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24
+  	##vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24
     echo "[client]" > /vservers/${idn}/root/.my.cnf
     echo "user=root" >> /vservers/${idn}/root/.my.cnf
     echo "password=${_ROOT_SQL_PASWD}" >> /vservers/${idn}/root/.my.cnf
