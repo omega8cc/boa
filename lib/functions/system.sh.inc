@@ -1,12 +1,16 @@
 
 define_loc_osr() {
   _LOC_OSR=
+  _NEW_OSR=
+  _TGT_OSN=
+  _TGT_MRR=
   _MSG_LOC=
   if [ "${_JESSIE_TO_BEOWULF}" = "YES" ] \
     && [ "${_OSR}" = "jessie" ]; then
     _LOC_OSR=jessie
     _NEW_OSR=beowulf
     _TGT_OSN=Devuan
+    _TGT_MRR="deb.devuan.org/merged"
     _MSG_LOC="Debian Jessie to Devuan Beowulf"
   fi
   if [ "${_STRETCH_TO_BEOWULF}" = "YES" ] \
@@ -14,6 +18,7 @@ define_loc_osr() {
     _LOC_OSR=stretch
     _NEW_OSR=beowulf
     _TGT_OSN=Devuan
+    _TGT_MRR="deb.devuan.org/merged"
     _MSG_LOC="Debian Stretch to Devuan Beowulf"
   fi
   if [ "${_BUSTER_TO_BEOWULF}" = "YES" ] \
@@ -21,6 +26,7 @@ define_loc_osr() {
     _LOC_OSR=buster
     _NEW_OSR=beowulf
     _TGT_OSN=Devuan
+    _TGT_MRR="deb.devuan.org/merged"
     _MSG_LOC="Debian Buster to Devuan Beowulf"
   fi
   if [ "${_BEOWULF_TO_CHIMAERA}" = "YES" ] \
@@ -28,6 +34,7 @@ define_loc_osr() {
     _LOC_OSR=beowulf
     _NEW_OSR=chimaera
     _TGT_OSN=Devuan
+    _TGT_MRR="deb.devuan.org/merged"
     _MSG_LOC="Devuan Beowulf to Devuan Chimaera"
   fi
   if [ "${_BULLSEYE_TO_CHIMAERA}" = "YES" ] \
@@ -35,6 +42,7 @@ define_loc_osr() {
     _LOC_OSR=bullseye
     _NEW_OSR=chimaera
     _TGT_OSN=Devuan
+    _TGT_MRR="deb.devuan.org/merged"
     _MSG_LOC="Debian Bullseye to Devuan Chimaera"
   fi
   if [ "${_BUSTER_TO_BULLSEYE}" = "YES" ] \
@@ -2645,14 +2653,30 @@ update_sources_list() {
         msg "INFO: We will use ${_THIS_OS} mirror ${_MIRROR}"
       fi
       cd /var/opt
+      if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
+        _APT_MIRROR="archive.debian.org/debian"
+        _APT_UPDATE="${_OSR}-backports"
+        _SEC_MIRROR="archive.debian.org/debian-security"
+        _SEC_UPDATE="${_OSR}/updates"
+      elif [ "${_OSR}" = "buster" ]; then
+        _APT_MIRROR="${_MIRROR}/debian"
+        _APT_UPDATE="${_OSR}-updates"
+        _SEC_MIRROR="security.debian.org"
+        _SEC_UPDATE="${_OSR}/updates"
+      elif [ "${_OSR}" = "bullseye" ]; then
+        _APT_MIRROR="${_MIRROR}/debian"
+        _APT_UPDATE="${_OSR}-updates"
+        _SEC_MIRROR="security.debian.org/debian-security"
+        _SEC_UPDATE="${_OSR}-security"
+      fi
       echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_MIRROR}/debian ${_OSR} main contrib non-free" >> ${aptLiSys}
+      echo "deb http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-      echo "deb http://${_MIRROR}/debian ${_OSR}-updates main contrib non-free" >> ${aptLiSys}
+      echo "deb http://${_APT_MIRROR} ${_APT_UPDATE} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://security.debian.org/debian-security/ ${_OSR}-security main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb http://${_SEC_MIRROR} ${_SEC_UPDATE} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
     elif [ "${_THIS_OS}" = "Ubuntu" ]; then
       if [ "${_AUTOPILOT}" = "YES" ]; then
         if [ -z "${_LOCAL_UBUNTU_MIRROR}" ]; then
@@ -4240,13 +4264,13 @@ if_major_os_upgrade() {
     ### Switching gears on the fly.
     if [ "${_TGT_OSN}" = "Devuan" ]; then
       echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_MIRROR}/merged ${_NEW_OSR} main" >> ${aptLiSys}
+      echo "deb http://${_TGT_MRR} ${_NEW_OSR} main" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-      echo "deb http://${_MIRROR}/merged ${_NEW_OSR}-updates main" >> ${aptLiSys}
+      echo "deb http://${_TGT_MRR} ${_NEW_OSR}-updates main" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## DEVUAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://${_MIRROR}/merged ${_NEW_OSR}-security main" >> ${aptLiSys}
+      echo "deb http://${_TGT_MRR} ${_NEW_OSR}-security main" >> ${aptLiSys}
       if [ -e "/etc/apt/apt.conf" ]; then
         sed -i "s/APT::Default-Release.*/APT::Default-Release \"${_NEW_OSR}\";/g" \
           /etc/apt/apt.conf &> /dev/null
@@ -4257,14 +4281,30 @@ if_major_os_upgrade() {
       mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
       mrun "${_INITINS} devuan-keyring --allow-unauthenticated" 2> /dev/null
     else
+      if [ "${_NEW_OSR}" = "stretch" ]; then
+        _NEW_APT_MIRROR="archive.debian.org/debian"
+        _NEW_APT_UPDATE="${_NEW_OSR}-backports"
+        _NEW_SEC_MIRROR="archive.debian.org/debian-security"
+        _NEW_SEC_UPDATE="${_NEW_OSR}/updates"
+      elif [ "${_NEW_OSR}" = "buster" ]; then
+        _NEW_APT_MIRROR="deb.debian.org/debian"
+        _NEW_APT_UPDATE="${_NEW_OSR}-updates"
+        _NEW_SEC_MIRROR="security.debian.org"
+        _NEW_SEC_UPDATE="${_NEW_OSR}/updates"
+      elif [ "${_NEW_OSR}" = "bullseye" ]; then
+        _NEW_APT_MIRROR="deb.debian.org/debian"
+        _NEW_APT_UPDATE="${_NEW_OSR}-updates"
+        _NEW_SEC_MIRROR="security.debian.org/debian-security"
+        _NEW_SEC_UPDATE="${_NEW_OSR}-security"
+      fi
       echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_MIRROR}/debian ${_OSR} main contrib non-free" >> ${aptLiSys}
+      echo "deb http://${_NEW_APT_MIRROR} ${_NEW_OSR} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-      echo "deb http://${_MIRROR}/debian ${_OSR}-updates main contrib non-free" >> ${aptLiSys}
+      echo "deb http://${_NEW_APT_MIRROR} ${_NEW_APT_UPDATE} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://security.debian.org/debian-security/ ${_OSR}-security main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb http://${_NEW_SEC_MIRROR} ${_NEW_SEC_UPDATE} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       if [ -e "/etc/apt/apt.conf" ]; then
         sed -i "s/APT::Default-Release.*/APT::Default-Release \"${_NEW_OSR}\";/g" \
           /etc/apt/apt.conf &> /dev/null

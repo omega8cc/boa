@@ -31,6 +31,8 @@ forCer="-fuy --allow-unauthenticated --reinstall"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 vBs="/var/backups"
 tVr="0.7"
+_THIS_OS=$(lsb_release -si 2>&1)
+_OSR=$(lsb_release -sc 2>&1)
 
 
 ###-------------SYSTEM-----------------###
@@ -284,18 +286,18 @@ check_root() {
     if [ ! -e "/opt/apt/apt.conf.noi.dist" ] \
       || [ ! -e "/opt/apt/apt.conf.noi.nrml" ]; then
       mkdir -p /opt/apt
-      echo "APT::Get::Assume-Yes \"true\";"                                    > /opt/apt/apt.conf.noi.dist
-      echo "APT::Get::Show-Upgraded \"true\";"                                >> /opt/apt/apt.conf.noi.dist
-      echo "APT::Quiet \"true\";"                                             >> /opt/apt/apt.conf.noi.dist
-      echo "DPkg::Options {\"--force-confnew\";\"--force-confmiss\";};"       >> /opt/apt/apt.conf.noi.dist
+      echo "APT::Get::Assume-Yes \"true\";" > /opt/apt/apt.conf.noi.dist
+      echo "APT::Get::Show-Upgraded \"true\";" >> /opt/apt/apt.conf.noi.dist
+      echo "APT::Quiet \"true\";" >> /opt/apt/apt.conf.noi.dist
+      echo "DPkg::Options {\"--force-confnew\";\"--force-confmiss\";};" >> /opt/apt/apt.conf.noi.dist
       echo "DPkg::Pre-Install-Pkgs {\"/usr/sbin/dpkg-preconfigure --apt\";};" >> /opt/apt/apt.conf.noi.dist
-      echo "Dir::Etc::SourceList \"/etc/apt/sources.list\";"                  >> /opt/apt/apt.conf.noi.dist
-      echo "APT::Get::Assume-Yes \"true\";"                                                 > /opt/apt/apt.conf.noi.nrml
-      echo "APT::Get::Show-Upgraded \"true\";"                                             >> /opt/apt/apt.conf.noi.nrml
-      echo "APT::Quiet \"true\";"                                                          >> /opt/apt/apt.conf.noi.nrml
+      echo "Dir::Etc::SourceList \"/etc/apt/sources.list\";" >> /opt/apt/apt.conf.noi.dist
+      echo "APT::Get::Assume-Yes \"true\";" > /opt/apt/apt.conf.noi.nrml
+      echo "APT::Get::Show-Upgraded \"true\";" >> /opt/apt/apt.conf.noi.nrml
+      echo "APT::Quiet \"true\";" >> /opt/apt/apt.conf.noi.nrml
       echo "DPkg::Options {\"--force-confdef\";\"--force-confmiss\";\"--force-confold\"};" >> /opt/apt/apt.conf.noi.nrml
-      echo "DPkg::Pre-Install-Pkgs {\"/usr/sbin/dpkg-preconfigure --apt\";};"              >> /opt/apt/apt.conf.noi.nrml
-      echo "Dir::Etc::SourceList \"/etc/apt/sources.list\";"                               >> /opt/apt/apt.conf.noi.nrml
+      echo "DPkg::Pre-Install-Pkgs {\"/usr/sbin/dpkg-preconfigure --apt\";};" >> /opt/apt/apt.conf.noi.nrml
+      echo "Dir::Etc::SourceList \"/etc/apt/sources.list\";" >> /opt/apt/apt.conf.noi.nrml
     fi
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ ! -x "${_LSB_TEST}" ]; then
@@ -306,28 +308,40 @@ check_root() {
     fi
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ -x "${_LSB_TEST}" ]; then
-      _THIS_OS=$(lsb_release -si 2>&1)
-      _OSR=$(lsb_release -sc 2>&1)
       if [ "${_THIS_OS}" != "Debian" ]; then
         echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
         exit 1
       fi
       echo
-      echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
-      echo "deb http://deb.debian.org/debian ${_OSR} main contrib non-free" >> /etc/apt/sources.list
-      echo "" >> /etc/apt/sources.list
-      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list
-      echo "deb http://deb.debian.org/debian ${_OSR}-updates main contrib non-free" >> /etc/apt/sources.list
-      echo "" >> /etc/apt/sources.list
-      echo "## DEBIAN SECURITY UPDATES" >> /etc/apt/sources.list
-      echo "deb http://security.debian.org/debian-security/ ${_OSR}-security main contrib non-free" | fmt -su -w 2500 >> /etc/apt/sources.list
+      if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
+        _APT_MIRROR="archive.debian.org/debian"
+        _APT_UPDATE="${_OSR}-backports"
+        _SEC_MIRROR="archive.debian.org/debian-security"
+        _SEC_UPDATE="${_OSR}/updates"
+      elif [ "${_OSR}" = "buster" ]; then
+        _APT_MIRROR="${_MIRROR}/debian"
+        _APT_UPDATE="${_OSR}-updates"
+        _SEC_MIRROR="security.debian.org"
+        _SEC_UPDATE="${_OSR}/updates"
+      elif [ "${_OSR}" = "bullseye" ]; then
+        _APT_MIRROR="${_MIRROR}/debian"
+        _APT_UPDATE="${_OSR}-updates"
+        _SEC_MIRROR="security.debian.org/debian-security"
+        _SEC_UPDATE="${_OSR}-security"
+      fi
+      echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
+      echo "deb http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
+      echo "" >> ${aptLiSys}
+      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
+      echo "deb http://${_APT_MIRROR} ${_APT_UPDATE} main contrib non-free" >> ${aptLiSys}
+      echo "" >> ${aptLiSys}
+      echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
+      echo "deb http://${_SEC_MIRROR} ${_SEC_UPDATE} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       echo
       apt-get clean -qq &> /dev/null
       rm -rf /var/lib/apt/lists/*
       ${_APT_UPDATE} -qq &> /dev/null
     fi
-    _THIS_OS=$(lsb_release -si 2>&1)
-    _OSR=$(lsb_release -sc 2>&1)
     if [ "${_THIS_OS}" != "Debian" ]; then
       echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
       exit 1
@@ -839,15 +853,15 @@ update_sql_conf() {
         fi
       fi
     fi
-    sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf
+    sed -i "s/.*slow_query_log/#slow_query_log/g" /etc/mysql/my.cnf
     wait
-    sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf
+    sed -i "s/.*long_query_time/#long_query_time/g" /etc/mysql/my.cnf
     wait
     sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf
     wait
     echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
     if [ ! -e "/etc/mysql/skip-name-resolve.txt" ]; then
-      sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf
+      sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf
       wait
     fi
   fi
@@ -1250,10 +1264,9 @@ db_head_to_stretch_first()
 {
   if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ] ; then
     _HOST_HOSTNAME=`hostname 2>&1`
-    _HOST_OSR=$(lsb_release -sc 2>&1)
-    if [[ "${_HOST_OSR}" =~ "stretch" ]]; then
+    if [[ "${_OSR}" =~ "stretch" ]]; then
       echo "The ${_HOST_HOSTNAME} is already running Stretch"
-    elif [[ "${_HOST_OSR}" =~ "jessie" ]]; then
+    elif [[ "${_OSR}" =~ "jessie" ]]; then
   	  cat /etc/resolv.conf > /var/backups/resolv.conf.pre-dist-upgrade
   	  rm -f /etc/resolv.conf
   	  echo "nameserver 8.8.8.8" >/etc/resolv.conf
@@ -1357,8 +1370,7 @@ db_head_to_stretch_second()
 {
   if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ] ; then
     _HOST_HOSTNAME=`hostname 2>&1`
-    _HOST_OSR=$(lsb_release -sc 2>&1)
-    if [[ "${_HOST_OSR}" =~ "stretch" ]]; then
+    if [[ "${_OSR}" =~ "stretch" ]]; then
 	    ${_APT_UPDATE} -qq &> /dev/null
   	  if [ -x "/lib/systemd/systemd" ]; then
         ls -la /lib/systemd/systemd

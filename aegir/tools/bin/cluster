@@ -9,6 +9,9 @@ _UTIL_VRN="0.30.216-pre3126"
 _VNSTAT_VRN="2.7"
 _APT_XTR="-y"
 _INST="/usr/bin/apt-get -y --allow-unauthenticated install"
+_THIS_OS=$(lsb_release -si 2>&1)
+_OSR=$(lsb_release -sc 2>&1)
+aptLiSys="/etc/apt/sources.list"
 
 _INSTAPP="/usr/bin/aptitude -f -y -q \
   --allow-untrusted \
@@ -83,8 +86,6 @@ check_root() {
     fi
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ -x "${_LSB_TEST}" ]; then
-      _THIS_OS=$(lsb_release -si 2>&1)
-      _OSR=$(lsb_release -sc 2>&1)
       if [ "${_THIS_OS}" = "Devuan" ] || [ "${_THIS_OS}" = "Debian" ]; then
         _SUPPORTED_OS=YES
       else
@@ -92,21 +93,35 @@ check_root() {
         exit 1
       fi
       echo
-      echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
-      echo "deb http://deb.debian.org/debian ${_OSR} main contrib non-free" >> /etc/apt/sources.list
-      echo "" >> /etc/apt/sources.list
-      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list
-      echo "deb http://deb.debian.org/debian ${_OSR}-updates main contrib non-free" >> /etc/apt/sources.list
-      echo "" >> /etc/apt/sources.list
-      echo "## DEBIAN SECURITY UPDATES" >> /etc/apt/sources.list
-      echo "deb http://security.debian.org/debian-security/ ${_OSR}-security main contrib non-free" | fmt -su -w 2500 >> /etc/apt/sources.list
+      if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
+        _APT_MIRROR="archive.debian.org/debian"
+        _APT_UPDATE="${_OSR}-backports"
+        _SEC_MIRROR="archive.debian.org/debian-security"
+        _SEC_UPDATE="${_OSR}/updates"
+      elif [ "${_OSR}" = "buster" ]; then
+        _APT_MIRROR="${_MIRROR}/debian"
+        _APT_UPDATE="${_OSR}-updates"
+        _SEC_MIRROR="security.debian.org"
+        _SEC_UPDATE="${_OSR}/updates"
+      elif [ "${_OSR}" = "bullseye" ]; then
+        _APT_MIRROR="${_MIRROR}/debian"
+        _APT_UPDATE="${_OSR}-updates"
+        _SEC_MIRROR="security.debian.org/debian-security"
+        _SEC_UPDATE="${_OSR}-security"
+      fi
+      echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
+      echo "deb http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
+      echo "" >> ${aptLiSys}
+      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
+      echo "deb http://${_APT_MIRROR} ${_APT_UPDATE} main contrib non-free" >> ${aptLiSys}
+      echo "" >> ${aptLiSys}
+      echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
+      echo "deb http://${_SEC_MIRROR} ${_SEC_UPDATE} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       echo
       apt-get clean -qq &> /dev/null
       rm -rf /var/lib/apt/lists/*
       ${_APT_UPDATE} -qq &> /dev/null
     fi
-    _THIS_OS=$(lsb_release -si 2>&1)
-    _OSR=$(lsb_release -sc 2>&1)
     if [ "${_THIS_OS}" = "Devuan" ] || [ "${_THIS_OS}" = "Debian" ]; then
       _SUPPORTED_OS=YES
     else
@@ -297,16 +312,13 @@ fix_locales() {
 
 EOF
     sleep 5
-    if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
-      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
-      if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
-        echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
-      fi
-      sed -i "/^$/d" /etc/locale.gen
-      locale-gen &> /dev/null
-    else
-      locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
+    _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
+    if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
+      echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
     fi
+    sed -i "/^$/d" /etc/locale.gen
+    locale-gen &> /dev/null
+    locale-gen en_US.UTF-8 &> /dev/null
     # Explicitly enforce all locale settings
     update-locale \
       LANG=en_US.UTF-8 \
@@ -340,16 +352,13 @@ EOF
     export LC_IDENTIFICATION=en_US.UTF-8
     export LC_ALL=
   else
-    if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
-      _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
-      if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
-        echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
-      fi
-      sed -i "/^$/d" /etc/locale.gen
-      locale-gen &> /dev/null
-    else
-      locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
+    _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
+    if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
+      echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
     fi
+    sed -i "/^$/d" /etc/locale.gen
+    locale-gen &> /dev/null
+    locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
     # Explicitly enforce locale settings required for consistency
     update-locale \
       LANG=en_US.UTF-8 \
@@ -1441,7 +1450,6 @@ install_db_cluster() {
   _CLUSTER_STRING="gcomm://"$(IFS=, ; echo "${_DB_NODE_IP[*]}")
   inc="0"
 
-  aptLiSys="/etc/apt/sources.list"
   percList="${aptLiSys}.d/percona-release.list"
   percRepo="repo.percona.com/percona/apt"
 
@@ -1761,14 +1769,30 @@ install_host() {
 
   cat /etc/apt/sources.list
   echo
-  echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
-  echo "deb http://deb.debian.org/debian ${_OSR} main contrib non-free" >> /etc/apt/sources.list
-  echo "" >> /etc/apt/sources.list
-  echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list
-  echo "deb http://deb.debian.org/debian ${_OSR}-updates main contrib non-free" >> /etc/apt/sources.list
-  echo "" >> /etc/apt/sources.list
-  echo "## DEBIAN SECURITY UPDATES" >> /etc/apt/sources.list
-  echo "deb http://security.debian.org/debian-security/ ${_OSR}-security main contrib non-free" | fmt -su -w 2500 >> /etc/apt/sources.list
+  if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
+    _APT_MIRROR="archive.debian.org/debian"
+    _APT_UPDATE="${_OSR}-backports"
+    _SEC_MIRROR="archive.debian.org/debian-security"
+    _SEC_UPDATE="${_OSR}/updates"
+  elif [ "${_OSR}" = "buster" ]; then
+    _APT_MIRROR="${_MIRROR}/debian"
+    _APT_UPDATE="${_OSR}-updates"
+    _SEC_MIRROR="security.debian.org"
+    _SEC_UPDATE="${_OSR}/updates"
+  elif [ "${_OSR}" = "bullseye" ]; then
+    _APT_MIRROR="${_MIRROR}/debian"
+    _APT_UPDATE="${_OSR}-updates"
+    _SEC_MIRROR="security.debian.org/debian-security"
+    _SEC_UPDATE="${_OSR}-security"
+  fi
+  echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
+  echo "deb http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
+  echo "" >> ${aptLiSys}
+  echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
+  echo "deb http://${_APT_MIRROR} ${_APT_UPDATE} main contrib non-free" >> ${aptLiSys}
+  echo "" >> ${aptLiSys}
+  echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
+  echo "deb http://${_SEC_MIRROR} ${_SEC_UPDATE} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
   echo
   cat /etc/apt/sources.list
 
