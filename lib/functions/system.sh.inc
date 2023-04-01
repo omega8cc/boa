@@ -3705,6 +3705,7 @@ install_with_aptitude_deps() {
   mrun "${_INSTAPP} build-essential libsasl2-modules" 2> /dev/null
   mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables" 2> /dev/null
   mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc" 2> /dev/null
+  mrun "${_INSTAPP} libcurl4-gnutls-dev" 2> /dev/null
   mrun "${_INSTAPP} apticron aptitude auditd apt-listchanges" 2> /dev/null
   mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
   mrun "${_INSTAPP} zlibc time vim cvs makepasswd" 2> /dev/null
@@ -3712,7 +3713,6 @@ install_with_aptitude_deps() {
   mrun "${_INSTAPP} rsync strace ntpdate python-dev" 2> /dev/null
   mrun "${_INSTAPP} mc whois zlib1g zlib1g-dev librsync-dev" 2> /dev/null
   mrun "${_INSTAPP} mcrypt curl libcurl4 libssl-dev" 2> /dev/null
-  mrun "${_INSTAPP} libcurl4-gnutls-dev" 2> /dev/null
   mrun "${_INSTAPP} sqlite3 libsqlite3-dev s4cmd" 2> /dev/null
   mrun "${_INSTAPP} ssh ssl-cert libpam-umask shtool" 2> /dev/null
   mrun "${_INSTAPP} xml-core xml2 xpdf libtool rrdtool" 2> /dev/null
