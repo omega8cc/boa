@@ -255,6 +255,7 @@ mode_detection
 check_exception_mycnf
 virt_detection
 os_detection
+os_detection_minimal
 
 
 ###

@@ -42,6 +42,19 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
+os_detection_minimal() {
+  _THIS_RV=$(lsb_release -sc 2>&1)
+  if [ "${_THIS_RV}" = "chimaera" ] \
+    || [ "${_THIS_RV}" = "beowulf" ] \
+    || [ "${_THIS_RV}" = "bullseye" ] \
+    || [ "${_THIS_RV}" = "buster" ]; then
+    _APT_UPDATE="apt-get update --allow-releaseinfo-change"
+  else
+    _APT_UPDATE="apt-get update"
+  fi
+}
+os_detection_minimal
+
 if [ -x "/usr/bin/gpg2" ]; then
   _GPG=gpg2
 else
@@ -55,7 +68,7 @@ find_fast_mirror() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt-get update --allow-releaseinfo-change -qq &> /dev/null
+    ${_APT_UPDATE} -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
@@ -165,7 +178,7 @@ if [ ! -e "${percList}" ] \
   rm -f /etc/apt/sources.list.d/percona-release.list.bak
   echo "## Percona APT Repository" > ${percList}
   echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-  apt-get update --allow-releaseinfo-change -qq &> /dev/null
+  ${_APT_UPDATE} -qq &> /dev/null
   if [ -e "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
     service lfd stop &> /dev/null
@@ -204,7 +217,7 @@ if [ ! -e "${percList}" ] \
         /var/xdrago/log/gpg-agent-count.kill.log
     fi
   done
-  apt-get update --allow-releaseinfo-change -qq &> /dev/null
+  ${_APT_UPDATE} -qq &> /dev/null
   if [ -e "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
     csf -e &> /dev/null
@@ -223,7 +236,7 @@ if [ ! -e "${percList}" ] \
       fi
     fi
   fi
-  apt-get update --allow-releaseinfo-change -qq
+  ${_APT_UPDATE} -qq
   apt-get install percona-xtrabackup-24 -y
 fi
 

@@ -525,6 +525,18 @@ virt_detection() {
   fi
 }
 
+os_detection_minimal() {
+  _THIS_RV=$(lsb_release -sc 2>&1)
+  if [ "${_THIS_RV}" = "chimaera" ] \
+    || [ "${_THIS_RV}" = "beowulf" ] \
+    || [ "${_THIS_RV}" = "bullseye" ] \
+    || [ "${_THIS_RV}" = "buster" ]; then
+    _APT_UPDATE="apt-get update --allow-releaseinfo-change"
+  else
+    _APT_UPDATE="apt-get update"
+  fi
+}
+
 os_detection() {
   _THIS_OS=$(lsb_release -si 2>&1)
   _THIS_RV=$(lsb_release -sc 2>&1)

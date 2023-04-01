@@ -48,6 +48,18 @@ clean_pid_exit() {
   exit 1
 }
 
+os_detection_minimal() {
+  _THIS_RV=$(lsb_release -sc 2>&1)
+  if [ "${_THIS_RV}" = "chimaera" ] \
+    || [ "${_THIS_RV}" = "beowulf" ] \
+    || [ "${_THIS_RV}" = "bullseye" ] \
+    || [ "${_THIS_RV}" = "buster" ]; then
+    _APT_UPDATE="apt-get update --allow-releaseinfo-change"
+  else
+    _APT_UPDATE="apt-get update"
+  fi
+}
+
 check_root() {
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
@@ -66,7 +78,7 @@ check_root() {
     if [ ! -x "${_LSB_TEST}" ]; then
       apt-get clean -qq
       rm -rf /var/lib/apt/lists/*
-      apt-get update --allow-releaseinfo-change -qq
+      ${_APT_UPDATE} -qq
       apt-get install lsb-release ${forCer}
     fi
     _LSB_TEST=$(which lsb_release 2> /dev/null)
@@ -80,22 +92,18 @@ check_root() {
         exit 1
       fi
       echo
-      echo "## MAIN REPOSITORIES"                                                       > /etc/apt/sources.list
-      echo "deb http://http.debian.net/debian/ ${_OSR} main contrib non-free"          >> /etc/apt/sources.list
-      echo ""                                                                          >> /etc/apt/sources.list
-      if [ "${_OSR}" = "stretch" ] \
-        || [ "${_OSR}" = "buster" ] \
-        || [ "${_OSR}" = "bullseye" ]; then
-        echo "## MAJOR BUG FIX UPDATES produced after the final release"               >> /etc/apt/sources.list
-        echo "deb http://http.debian.net/debian/ ${_OSR}/updates main"                 >> /etc/apt/sources.list
-        echo ""                                                                        >> /etc/apt/sources.list
-      fi
-      echo "## DEBIAN SECURITY UPDATES"                                                >> /etc/apt/sources.list
-      echo "deb http://security.debian.org/debian-security ${_OSR}/updates main contrib non-free" >> /etc/apt/sources.list
+      echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
+      echo "deb http://deb.debian.org/debian ${_OSR} main contrib non-free" >> /etc/apt/sources.list
+      echo "" >> /etc/apt/sources.list
+      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list
+      echo "deb http://deb.debian.org/debian ${_OSR}-updates main contrib non-free" >> /etc/apt/sources.list
+      echo "" >> /etc/apt/sources.list
+      echo "## DEBIAN SECURITY UPDATES" >> /etc/apt/sources.list
+      echo "deb http://security.debian.org/debian-security/ ${_OSR}-security main contrib non-free" | fmt -su -w 2500 >> /etc/apt/sources.list
       echo
       apt-get clean -qq &> /dev/null
       rm -rf /var/lib/apt/lists/*
-      apt-get update --allow-releaseinfo-change -qq &> /dev/null
+      ${_APT_UPDATE} -qq &> /dev/null
     fi
     _THIS_OS=$(lsb_release -si 2>&1)
     _OSR=$(lsb_release -sc 2>&1)
@@ -386,6 +394,7 @@ check_all() {
   check_root_direct
   check_root_keys_pwd
   check_no_systemd
+  os_detection_minimal
   system_check_clean
   fix_locales
 }
@@ -470,7 +479,7 @@ find_fast_mirror() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt-get update --allow-releaseinfo-change -qq &> /dev/null
+    ${_APT_UPDATE} -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
@@ -607,7 +616,7 @@ install_proxysql() {
       cp -af /vservers/${idn}/var/lib/proxysql/* ${_XPSQL}/
       vserver ${idn} exec service proxysql stop
       vserver ${idn} exec apt-get clean
-      vserver ${idn} exec apt-get update --allow-releaseinfo-change
+      vserver ${idn} exec ${_APT_UPDATE}
       vserver ${idn} exec apt-get remove proxysql -y -qq
       vserver ${idn} exec apt-get purge proxysql -y -qq
       rm -rf /vservers/${idn}/var/lib/proxysql
@@ -650,7 +659,7 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
 ' > /vservers/${idn}/opt/tmp/apt.conf.noi.nrml
     nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/tmp/apt.conf.noi.nrml"
     vserver ${idn} exec apt-get clean
-    vserver ${idn} exec apt-get update --allow-releaseinfo-change -qq
+    vserver ${idn} exec ${_APT_UPDATE} -qq
     vserver ${idn} exec ${_INSTAPP} sysbench
     vserver ${idn} exec ${_INSTAPP} debconf-utils
     vserver ${idn} exec ${_INSTAPP} proxysql
@@ -1485,7 +1494,7 @@ install_db_cluster() {
     inc=$((inc+1))
     echo "${_MAINT_USER_PWD}" > /vservers/${idn}/root/.my.cluster_maint_pwd.txt
     echo "${_ROOT_SQL_PASWD}" > /vservers/${idn}/root/.my.cluster_root_pwd.txt
-  	vserver ${idn} exec apt-get update --allow-releaseinfo-change -qq
+  	vserver ${idn} exec ${_APT_UPDATE} -qq
     vserver ${idn} exec ${_INSTAPP} debian-keyring
     vserver ${idn} exec ${_INSTAPP} debian-archive-keyring
   	vserver ${idn} exec apt-get upgrade -y -qq
@@ -1502,7 +1511,7 @@ install_db_cluster() {
     vserver ${idn} exec ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG}
     vserver ${idn} exec ${_GPG} -a --export ${_KEYS_SIG} | apt-key add -
     vserver ${idn} exec ${_GPG} --list-keys ${_KEYS_SIG}
-  	vserver ${idn} exec apt-get update --allow-releaseinfo-change -qq
+  	vserver ${idn} exec ${_APT_UPDATE} -qq
   	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57
   	vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24
     echo "[client]" > /vservers/${idn}/root/.my.cnf
@@ -1705,7 +1714,7 @@ upgrade_db_cluster() {
     vserver ${idn} exec ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG}
     vserver ${idn} exec ${_GPG} -a --export ${_KEYS_SIG} | apt-key add -
     vserver ${idn} exec ${_GPG} --list-keys ${_KEYS_SIG}
-  	vserver ${idn} exec apt-get update --allow-releaseinfo-change -qq
+  	vserver ${idn} exec ${_APT_UPDATE} -qq
   	vserver ${idn} exec ${_INSTAPP} bc
   	vserver ${idn} exec apt-get upgrade ${_APT_XTR}
   	vserver ${idn} exec apt-get dist-upgrade ${_APT_XTR}
@@ -1752,25 +1761,21 @@ install_host() {
 
   cat /etc/apt/sources.list
   echo
-  echo "## MAIN REPOSITORIES"                                                       > /etc/apt/sources.list
-  echo "deb http://http.debian.net/debian/ ${_OSR} main contrib non-free"          >> /etc/apt/sources.list
-  echo ""                                                                          >> /etc/apt/sources.list
-  if [ "${_OSR}" = "stretch" ] \
-    || [ "${_OSR}" = "buster" ] \
-    || [ "${_OSR}" = "bullseye" ]; then
-    echo "## MAJOR BUG FIX UPDATES produced after the final release"               >> /etc/apt/sources.list
-    echo "deb http://http.debian.net/debian/ ${_OSR}/updates main"                 >> /etc/apt/sources.list
-    echo ""                                                                        >> /etc/apt/sources.list
-  fi
-  echo "## DEBIAN SECURITY UPDATES"                                                >> /etc/apt/sources.list
-  echo "deb http://security.debian.org/debian-security ${_OSR}/updates main contrib non-free" >> /etc/apt/sources.list
+  echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
+  echo "deb http://deb.debian.org/debian ${_OSR} main contrib non-free" >> /etc/apt/sources.list
+  echo "" >> /etc/apt/sources.list
+  echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list
+  echo "deb http://deb.debian.org/debian ${_OSR}-updates main contrib non-free" >> /etc/apt/sources.list
+  echo "" >> /etc/apt/sources.list
+  echo "## DEBIAN SECURITY UPDATES" >> /etc/apt/sources.list
+  echo "deb http://security.debian.org/debian-security/ ${_OSR}-security main contrib non-free" | fmt -su -w 2500 >> /etc/apt/sources.list
   echo
   cat /etc/apt/sources.list
 
   echo "Installing basic tools..."
-  apt-get update --allow-releaseinfo-change -qq &> /dev/null
+  ${_APT_UPDATE} -qq &> /dev/null
   apt-get upgrade ${nrmUpArg}
-  apt-get update --allow-releaseinfo-change -qq
+  ${_APT_UPDATE} -qq
   ${_INSTAPP} locales
   ${_INSTAPP} lsb-release
   ${_INSTAPP} dnsutils
@@ -1886,7 +1891,7 @@ install_host() {
     done
     cat pubkey.txt | ${_GPG} --import &> /dev/null
     rm -f pubkey.txt*
-    apt-get update --allow-releaseinfo-change -qq &> /dev/null
+    ${_APT_UPDATE} -qq &> /dev/null
     ${_INSTAPP} build-essential
     ${_INSTAPP} linux-headers-vserver-${_BENG_SERIES}-beng
     ${_INSTAPP} linux-image-vserver-${_BENG_SERIES}-beng
@@ -1975,7 +1980,7 @@ upgrade_host() {
 
   if [ "${thisMode}" = "UPGRADE" ]; then
     echo "Installing vserver tools dependencies..."
-    apt-get update --allow-releaseinfo-change -qq &> /dev/null
+    ${_APT_UPDATE} -qq &> /dev/null
     ${_INSTAPP} vlan
     ${_INSTAPP} e2fslibs-dev
     ${_INSTAPP} libnss3-dev
@@ -2098,7 +2103,7 @@ upgrade_host() {
   fi
 
   echo "Updating packages on this system..."
-  apt-get update --allow-releaseinfo-change -qq \
+  ${_APT_UPDATE} -qq \
     && apt-get install aptitude ${_APT_XTR} \
     && aptitude full-upgrade -f -y -q \
       -o Dpkg::Options::=--force-confdef \

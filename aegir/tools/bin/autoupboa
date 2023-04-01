@@ -6,6 +6,19 @@ barCnf="/root/.barracuda.cnf"
 
 _X_SE="414prodT58"
 
+os_detection_minimal() {
+  _THIS_RV=$(lsb_release -sc 2>&1)
+  if [ "${_THIS_RV}" = "chimaera" ] \
+    || [ "${_THIS_RV}" = "beowulf" ] \
+    || [ "${_THIS_RV}" = "bullseye" ] \
+    || [ "${_THIS_RV}" = "buster" ]; then
+    _APT_UPDATE="apt-get update --allow-releaseinfo-change"
+  else
+    _APT_UPDATE="apt-get update"
+  fi
+}
+os_detection_minimal
+
 check_fix_system_hostname() {
   if [ -e "${barCnf}" ]; then
     source ${barCnf}
@@ -209,7 +222,7 @@ if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
   echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   rm -f /etc/apt/apt.conf.d/00sandboxtmp
   rm -f /etc/apt/apt.conf.d/00temp
-  apt-get update --allow-releaseinfo-change -qq &> /dev/null
+  ${_APT_UPDATE} -qq &> /dev/null
 fi
 
 if [ -e "/data/disk/arch/sql" ]; then

@@ -147,17 +147,17 @@ if_running_as_root_barracuda() {
       if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: fuse\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
-        apt-get update --allow-releaseinfo-change -qq &> /dev/null
+        ${_APT_UPDATE} -qq &> /dev/null
       fi
       if [ ! -e "/etc/apt/preferences.d/udev" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
-        apt-get update --allow-releaseinfo-change -qq &> /dev/null
+        ${_APT_UPDATE} -qq &> /dev/null
       fi
       if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
-        apt-get update --allow-releaseinfo-change -qq &> /dev/null
+        ${_APT_UPDATE} -qq &> /dev/null
       fi
       apt-get remove fuse -y -qq &> /dev/null
       apt-get purge fuse -y -qq &> /dev/null
@@ -178,7 +178,7 @@ if_running_as_root_barracuda() {
         mrun "dpkg --configure --force-all -a" 2> /dev/null
         mrun "apt-get clean -qq" &> /dev/null
         rm -rf /var/lib/apt/lists/*
-        mrun "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
+        mrun "${_APT_UPDATE} -qq" &> /dev/null
         mrun "apt-get remove webmin -y -qq" &> /dev/null
         mrun "apt-get purge webmin -y -qq" &> /dev/null
         rm -rf /usr/share/webmin
@@ -245,7 +245,7 @@ fix_postfix() {
       mrun "dpkg --configure --force-all -a" 2> /dev/null
       mrun "apt-get clean -qq" &> /dev/null
       rm -rf /var/lib/apt/lists/*
-      mrun "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
+      mrun "${_APT_UPDATE} -qq" &> /dev/null
       mrun "apt-get purge postfix -y" &> /dev/null
       echo > /var/log/mail.log
     fi
@@ -1085,7 +1085,7 @@ barracuda_cnf() {
         # fi
       fi
     fi
-    if [ "${_LOCAL_DEBIAN_MIRROR}" = "http.debian.net" ] \
+    if [ "${_LOCAL_DEBIAN_MIRROR}" = "deb.debian.org" ] \
       || [ "${_LOCAL_DEBIAN_MIRROR}" = "httpredir.debian.org" ] \
       || [ "${_LOCAL_DEBIAN_MIRROR}" = "ftp.debian.org" ]; then
       _LOCAL_DEBIAN_MIRROR="deb.debian.org"
@@ -1885,7 +1885,7 @@ barracuda_cnf() {
     if [ -e "${barCnf}" ]; then
       source ${barCnf}
     fi
-    if [ "${_LOCAL_DEBIAN_MIRROR}" = "http.debian.net" ] \
+    if [ "${_LOCAL_DEBIAN_MIRROR}" = "deb.debian.org" ] \
       || [ "${_LOCAL_DEBIAN_MIRROR}" = "httpredir.debian.org" ] \
       || [ "${_LOCAL_DEBIAN_MIRROR}" = "ftp.debian.org" ]; then
       _LOCAL_DEBIAN_MIRROR="deb.debian.org"
@@ -2120,7 +2120,7 @@ run_aptitude_full_upgrade() {
   msg "INFO: Running aptitude full-upgrade..."
   st_runner "apt --fix-broken install -y" 2> /dev/null
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
-  st_runner "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
+  st_runner "${_APT_UPDATE} -qq" &> /dev/null
   if [ -e "/usr/bin/mytop" ]; then
     st_runner "${_RMAPP} mytop" &> /dev/null
     st_runner "apt-get purge mytop -y -qq" &> /dev/null
@@ -2646,13 +2646,13 @@ update_sources_list() {
       fi
       cd /var/opt
       echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_MIRROR}/debian/ ${_OSR} main contrib non-free" >> ${aptLiSys}
+      echo "deb http://${_MIRROR}/debian ${_OSR} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-      echo "deb http://${_MIRROR}/debian/ ${_OSR}/updates main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb http://${_MIRROR}/debian ${_OSR}-updates main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://security.debian.org/debian-security ${_OSR}/updates main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb http://security.debian.org/debian-security/ ${_OSR}-security main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
     elif [ "${_THIS_OS}" = "Ubuntu" ]; then
       if [ "${_AUTOPILOT}" = "YES" ]; then
         if [ -z "${_LOCAL_UBUNTU_MIRROR}" ]; then
@@ -2712,7 +2712,7 @@ update_sources_list() {
     cd /var/opt
   fi
   ###--------------------###
-  apt-get update --allow-releaseinfo-change -qq &> /dev/null
+  ${_APT_UPDATE} -qq &> /dev/null
   ###--------------------###
 }
 
@@ -3022,13 +3022,9 @@ install_curl_src() {
       if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
         echo "curl install" | dpkg --set-selections &> /dev/null
         if [ -z "${_CURL_ALREADY_REBUILT}" ]; then
-          echo "libcurl4 install" | dpkg --set-selections &> /dev/null
-          echo "libcurl4-gnutls-dev install" | dpkg --set-selections &> /dev/null
           mrun "apt-get clean -qq" 2> /dev/null
           rm -rf /var/lib/apt/lists/*
-          mrun "apt-get update --allow-releaseinfo-change -qq" 2> /dev/null
-          mrun "apt-get install libcurl4 ${forCer}" 2> /dev/null
-          mrun "apt-get install libcurl4-gnutls-dev ${forCer}" 2> /dev/null
+          mrun "${_APT_UPDATE} -qq" &> /dev/null
           mrun "apt-get install curl ${forCer}" 2> /dev/null
         fi
       fi
@@ -3702,6 +3698,7 @@ install_with_aptitude_deps() {
   elif [ "${_THIS_OS}" = "Ubuntu" ]; then
     ${_INITINS} ubuntu-keyring &> /dev/null
   fi
+  mrun "${_APT_UPDATE} -qq" &> /dev/null
   mrun "${_INSTAPP} build-essential libsasl2-modules" 2> /dev/null
   mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables" 2> /dev/null
   mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc" 2> /dev/null
@@ -3783,7 +3780,7 @@ basic_packages_install_on_init() {
       msg "INFO: Installing some basic tools, please wait..."
       apt-get clean -qq &> /dev/null
       rm -rf /var/lib/apt/lists/*
-      apt-get update --allow-releaseinfo-change -qq &> /dev/null
+      ${_APT_UPDATE} -qq &> /dev/null
       ${_INITINS} locales &> /dev/null
       fix_locales
       ${_INITINS} lsb-release &> /dev/null
@@ -3808,7 +3805,7 @@ basic_packages_install_on_init() {
       echo
       msg "STEP: Let's begin with STEP 1..."
       msg "INFO: Installing sysvinit on ${_THIS_OS} ${_OSR}..."
-      mrun "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
+      mrun "${_APT_UPDATE} -qq" &> /dev/null
       mrun "${_INITINS} sysvinit-core" 2> /dev/null
       mrun "${_INITINS} sysvinit-utils" 2> /dev/null
       mrun "apt --fix-broken install -y" 2> /dev/null
@@ -3816,7 +3813,7 @@ basic_packages_install_on_init() {
         cp -af /usr/share/sysvinit/inittab /etc/inittab
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-        mrun "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
+        mrun "${_APT_UPDATE} -qq" &> /dev/null
         mrun "${_INITINS} sysvinit-core" 2> /dev/null
         mrun "${_INITINS} sysvinit-utils" 2> /dev/null
         mrun "apt --fix-broken install -y" 2> /dev/null
@@ -3908,7 +3905,7 @@ more_packages_install_on_init() {
         wait
       fi
     fi
-    apt-get update --allow-releaseinfo-change -qq &> /dev/null
+    ${_APT_UPDATE} -qq &> /dev/null
     ${_INITINS} locales &> /dev/null
     fix_locales
     ${_INITINS} git &> /dev/null
@@ -3964,18 +3961,18 @@ if_proxysql_update() {
       else
         msg "INFO: Running ProxySQL re-install to ${_PXC_VRN}..."
         mrun "apt-get clean" 2> /dev/null
-        mrun "apt-get update --allow-releaseinfo-change -qq" 2> /dev/null
+        mrun "${_APT_UPDATE} -qq" &> /dev/null
         mrun "${_INSTALL} sysbench" 2> /dev/null
         mrun "${_INSTALL} debconf-utils" 2> /dev/null
         mrun "apt-get remove proxysql -y" 2> /dev/null
         mrun "apt-get clean" 2> /dev/null
-        mrun "apt-get update --allow-releaseinfo-change -qq" 2> /dev/null
+        mrun "${_APT_UPDATE} -qq" &> /dev/null
         mrun "${_INSTALL} proxysql" 2> /dev/null
       fi
       isPxy=$(which proxysql 2>&1)
       if [ ! -x "${isPxy}" ]; then
         mrun "apt-get clean" 2> /dev/null
-        mrun "apt-get update --allow-releaseinfo-change -qq" 2> /dev/null
+        mrun "${_APT_UPDATE} -qq" &> /dev/null
         mrun "${_INSTALL} sysbench" 2> /dev/null
         mrun "${_INSTALL} debconf-utils" 2> /dev/null
         mrun "${_INSTALL} proxysql" 2> /dev/null
@@ -4077,7 +4074,7 @@ if_proxysql_update() {
 if_post_major_os_upgrade() {
   if [ -e "/root/run_post_major_os_upgrade.info" ]; then
     msg "INFO: Running dist-upgrade to complete the major system upgrade.."
-    mrun "apt-get update --allow-releaseinfo-change --allow-insecure-repositories -qq" 2> /dev/null
+    mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
     mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
     msg "INFO: Cleaning up any systemd remnants.."
@@ -4134,7 +4131,7 @@ if_major_os_upgrade() {
       mv /etc/init.d/tomcat /etc/init.d/offtomcat
       kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
     fi
-    mrun "apt-get update --allow-releaseinfo-change -qq" 2> /dev/null
+    mrun "${_APT_UPDATE} -qq" &> /dev/null
     mrun "apt-get remove collectd      -y -qq" 2> /dev/null
     mrun "apt-get remove libc-client2007b-dev -y -qq" 2> /dev/null
     mrun "apt-get remove nginx-extras  -y -qq" 2> /dev/null
@@ -4257,17 +4254,17 @@ if_major_os_upgrade() {
       fi
       ###
       ### Add devuan-keyring first.
-      mrun "apt-get update --allow-releaseinfo-change --allow-insecure-repositories -qq" 2> /dev/null
+      mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
       mrun "${_INITINS} devuan-keyring --allow-unauthenticated" 2> /dev/null
     else
       echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_MIRROR}/debian/ ${_OSR} main contrib non-free" >> ${aptLiSys}
+      echo "deb http://${_MIRROR}/debian ${_OSR} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-      echo "deb http://${_MIRROR}/debian/ ${_OSR}/updates main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb http://${_MIRROR}/debian ${_OSR}-updates main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://security.debian.org/debian-security ${_OSR}/updates main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb http://security.debian.org/debian-security/ ${_OSR}-security main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       if [ -e "/etc/apt/apt.conf" ]; then
         sed -i "s/APT::Default-Release.*/APT::Default-Release \"${_NEW_OSR}\";/g" \
           /etc/apt/apt.conf &> /dev/null
@@ -4276,11 +4273,11 @@ if_major_os_upgrade() {
     fi
     ###
     ### Update packages registry.
-    mrun "apt-get update --allow-releaseinfo-change --allow-insecure-repositories -qq" 2> /dev/null
+    mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
     ###
     ### Two step upgrade with apt-get only.
     mrun "apt-get install apt -t ${_NEW_OSR} ${dstUpArg}" 2> /dev/null
-    mrun "apt-get update --allow-releaseinfo-change --allow-insecure-repositories -qq" 2> /dev/null
+    mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
     ###
     ### Requirement for Debian Stretch to Devuan Beowulf migration.
     ### The libtinfo package needs to be upgraded to prevent breaks.
@@ -4415,7 +4412,7 @@ if_major_os_upgrade() {
         msg "WARN: Required /dev/pts/ptmx does not exist! We will fix this now..."
         mkdir -p /dev/pts
         rm -rf /dev/pts/*
-        apt-get update --allow-releaseinfo-change -qq &> /dev/null
+        ${_APT_UPDATE} -qq &> /dev/null
         apt-get install udev -y --allow-unauthenticated &> /dev/null
         echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
         mount -t devpts devpts /dev/pts &> /dev/null
@@ -4517,7 +4514,7 @@ sys_packages_update() {
   update_webmin_apt
   st_runner "apt --fix-broken install -y" 2> /dev/null
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
-  st_runner "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
+  st_runner "${_APT_UPDATE} -qq" &> /dev/null
   st_runner "apt-get upgrade ${nrmUpArg}" 2> /dev/null
   if [ "${_LOC_OSR}" = "bullseye" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
     _SAFE_TO_DIST=NO
@@ -4532,7 +4529,7 @@ sys_packages_update() {
       --allow-untrusted \
       -o Dpkg::Options::=--force-confdef \
       -o Dpkg::Options::=--force-confold" &> /dev/null
-    st_runner "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
+    st_runner "${_APT_UPDATE} -qq" &> /dev/null
     st_runner "aptitude full-upgrade -f -y -q \
       --allow-untrusted \
       -o Dpkg::Options::=--force-confdef \
@@ -4666,14 +4663,15 @@ sys_packages_install() {
       _APT_XTRA=""
     fi
     _APT_ELSE="netcat"
+    mrun "${_APT_UPDATE} -qq" &> /dev/null
     mrun "apt-get -f install -qq"             &> /dev/null
+    mrun "apt --fix-broken install -y"        &> /dev/null
     mrun "service nginx start"                &> /dev/null
     mrun "apt-get remove nginx-extras -y -qq" &> /dev/null
     mrun "apt-get remove nginx -y -qq"        &> /dev/null
     mrun "apt-get remove nginx-common -y -qq" &> /dev/null
     mrun "apt-get remove nginx-full -y -qq"   &> /dev/null
     mrun "apt-get remove redis-server -y -qq" &> /dev/null
-    st_runner "apt-get update --allow-releaseinfo-change -qq"            &> /dev/null
   fi
   _EXTRA_LIB_APT="libmcrypt-dev"
   if [ ! -z "${_EXTRA_PACKAGES}" ]; then
@@ -5092,7 +5090,7 @@ install_vnstat() {
 install_myquick_src() {
   if [ "${_MYQUICK_INSTALL_REQUIRED}" = "YES" ]; then
     msg "INFO: Building MyQuick ${_MYQUICK_VRN} from sources, please wait..."
-    mrun "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
+    mrun "${_APT_UPDATE} -qq" &> /dev/null
     mrun "${_INSTALL} cmake" 2> /dev/null
     if [ "${_DB_SERVER}" = "Percona" ] || [ "${_DB_SERIES}" = "5.7" ]; then
       mrun "${_INSTALL} libperconaserverclient20-dev" 2> /dev/null

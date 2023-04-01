@@ -41,6 +41,19 @@ if [ -e "/root/.pause_tasks_maint.cnf" ]; then
   exit 0
 fi
 
+os_detection_minimal() {
+  _THIS_RV=$(lsb_release -sc 2>&1)
+  if [ "${_THIS_RV}" = "chimaera" ] \
+    || [ "${_THIS_RV}" = "beowulf" ] \
+    || [ "${_THIS_RV}" = "bullseye" ] \
+    || [ "${_THIS_RV}" = "buster" ]; then
+    _APT_UPDATE="apt-get update --allow-releaseinfo-change"
+  else
+    _APT_UPDATE="apt-get update"
+  fi
+}
+os_detection_minimal
+
 if [ -e "/root/.barracuda.cnf" ]; then
   source /root/.barracuda.cnf
 fi
@@ -60,7 +73,7 @@ find_fast_mirror() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt-get update --allow-releaseinfo-change -qq &> /dev/null
+    ${_APT_UPDATE} -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
@@ -119,7 +132,7 @@ install_goaccess() {
   fi
   apt-get clean -qq
   rm -rf /var/lib/apt/lists/*
-  apt-get update --allow-releaseinfo-change -qq
+  ${_APT_UPDATE} -qq
   aptitude purge goaccess -y
   apt-get install libmaxminddb-dev -y
   apt-get install libncurses5-dev -y

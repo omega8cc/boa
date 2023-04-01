@@ -65,6 +65,19 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
+os_detection_minimal() {
+  _THIS_RV=$(lsb_release -sc 2>&1)
+  if [ "${_THIS_RV}" = "chimaera" ] \
+    || [ "${_THIS_RV}" = "beowulf" ] \
+    || [ "${_THIS_RV}" = "bullseye" ] \
+    || [ "${_THIS_RV}" = "buster" ]; then
+    _APT_UPDATE="apt-get update --allow-releaseinfo-change"
+  else
+    _APT_UPDATE="apt-get update"
+  fi
+}
+os_detection_minimal
+
 check_vps() {
   _BENG_VS=NO
   _VMFAMILY=NO
@@ -89,7 +102,7 @@ find_fast_mirror() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt-get update --allow-releaseinfo-change -qq
+    ${_APT_UPDATE} -qq
     apt-get install netcat ${forCer}
     sleep 3
   fi
@@ -134,7 +147,7 @@ install() {
     fi
     apt-get clean -qq
     rm -rf /var/lib/apt/lists/*
-    apt-get update --allow-releaseinfo-change -qq
+    ${_APT_UPDATE} -qq
     aptitude purge duplicity -y
     rm -rf /usr/local/lib/python3.5/dist-packages/*
     rm -rf /usr/local/lib/python*/dist-packages/{fasteners*,duplicity*,boto*}
@@ -356,7 +369,7 @@ if [ -e "${_LOGPTH}/${BUCKET_DOT}.archive.log" ]; then
   fi
   apt-get clean -qq
   rm -rf /var/lib/apt/lists/*
-  apt-get update --allow-releaseinfo-change -qq
+  ${_APT_UPDATE} -qq
   apt-get install python-pip -y
   pip install awscli
   aws s3 mb s3://${BUCKET} --region ${_AWS_REG}

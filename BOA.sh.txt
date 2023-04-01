@@ -79,6 +79,18 @@ dehydName="dehydrated"
 dehydSrcPath="/var/xdrago/conf/${dehydName}"
 legacyLeSh="/var/xdrago/conf/letsencrypt.sh"
 
+os_detection_minimal() {
+  _THIS_RV=$(lsb_release -sc 2>&1)
+  if [ "${_THIS_RV}" = "chimaera" ] \
+    || [ "${_THIS_RV}" = "beowulf" ] \
+    || [ "${_THIS_RV}" = "bullseye" ] \
+    || [ "${_THIS_RV}" = "buster" ]; then
+    _APT_UPDATE="apt-get update --allow-releaseinfo-change"
+  else
+    _APT_UPDATE="apt-get update"
+  fi
+}
+
 #
 # Find correct IP.
 find_correct_ip() {
@@ -1745,7 +1757,7 @@ update_wrappers() {
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt-get clean -qq &> /dev/null
     rm -rf /var/lib/apt/lists/*
-    apt-get update --allow-releaseinfo-change -qq &> /dev/null
+    ${_APT_UPDATE} -qq &> /dev/null
     apt-get install curl ${forCer} &> /dev/null
     mkdir -p /var/backups/libcurl
     mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -1779,7 +1791,7 @@ update_wrappers() {
     fi
     apt-get clean -qq &> /dev/null
     rm -rf /var/lib/apt/lists/*
-    apt-get update --allow-releaseinfo-change -qq &> /dev/null
+    ${_APT_UPDATE} -qq &> /dev/null
     apt-get install lsb-release ${forCer} &> /dev/null
   fi
   _IPSET_TEST=$(which ipset 2> /dev/null)
@@ -1790,7 +1802,7 @@ update_wrappers() {
     fi
     apt-get clean -qq &> /dev/null
     rm -rf /var/lib/apt/lists/*
-    apt-get update --allow-releaseinfo-change -qq &> /dev/null
+    ${_APT_UPDATE} -qq &> /dev/null
     apt-get install ipset ${forCer} &> /dev/null
   fi
   if [ -x "/sbin/ipset" ] && [ ! -L "/usr/sbin/ipset" ]; then
@@ -1926,7 +1938,7 @@ setup() {
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt-get clean -qq &> /dev/null
     rm -rf /var/lib/apt/lists/*
-    apt-get update --allow-releaseinfo-change -qq &> /dev/null
+    ${_APT_UPDATE} -qq &> /dev/null
     apt-get install curl ${forCer} &> /dev/null
     mkdir -p /var/backups/libcurl
     mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -1960,7 +1972,7 @@ setup() {
     fi
     apt-get clean -qq &> /dev/null
     rm -rf /var/lib/apt/lists/*
-    apt-get update --allow-releaseinfo-change -qq &> /dev/null
+    ${_APT_UPDATE} -qq &> /dev/null
     apt-get install virt-what ${forCer} &> /dev/null
   fi
   _LSB_TEST=$(which lsb_release 2> /dev/null)
@@ -1971,7 +1983,7 @@ setup() {
     fi
     apt-get clean -qq &> /dev/null
     rm -rf /var/lib/apt/lists/*
-    apt-get update --allow-releaseinfo-change -qq &> /dev/null
+    ${_APT_UPDATE} -qq &> /dev/null
     apt-get install lsb-release ${forCer} &> /dev/null
   fi
   mkdir -p ${usrBin}
@@ -2098,7 +2110,7 @@ find_fast_mirror() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt-get update --allow-releaseinfo-change -qq &> /dev/null
+    ${_APT_UPDATE} -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
@@ -2161,6 +2173,7 @@ update_sysctl() {
 ###--------------------###
 if [ `whoami` = "root" ]; then
 
+  os_detection_minimal
   find_fast_mirror
 
   ### CVE-2021-44228 Log4j 2 Vulnerability
@@ -2326,7 +2339,7 @@ if [ `whoami` = "root" ]; then
     fi
     apt-get clean -qq &> /dev/null
     rm -rf /var/lib/apt/lists/*
-    apt-get update --allow-releaseinfo-change -qq &> /dev/null
+    ${_APT_UPDATE} -qq &> /dev/null
     apt-get install screen -y &> /dev/null
     apt-get install net-tools -y &> /dev/null
     apt-get install hostname -y &> /dev/null

@@ -28,6 +28,19 @@ check_root() {
 }
 check_root
 
+os_detection_minimal() {
+  _THIS_RV=$(lsb_release -sc 2>&1)
+  if [ "${_THIS_RV}" = "chimaera" ] \
+    || [ "${_THIS_RV}" = "beowulf" ] \
+    || [ "${_THIS_RV}" = "bullseye" ] \
+    || [ "${_THIS_RV}" = "buster" ]; then
+    _APT_UPDATE="apt-get update --allow-releaseinfo-change"
+  else
+    _APT_UPDATE="apt-get update"
+  fi
+}
+os_detection_minimal
+
 find /var/run/boa*.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/run/manage*users.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/run/daily-fix.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -52,7 +65,7 @@ find_fast_mirror() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt-get update --allow-releaseinfo-change -qq &> /dev/null
+    ${_APT_UPDATE} -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
@@ -92,7 +105,7 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
       echo "curl install" | dpkg --set-selections &> /dev/null
       apt-get clean -qq &> /dev/null
       rm -rf /var/lib/apt/lists/*
-      apt-get update --allow-releaseinfo-change -qq &> /dev/null
+      ${_APT_UPDATE} -qq &> /dev/null
       apt-get install curl ${forCer} &> /dev/null
       mkdir -p /var/backups/libcurl
       mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null

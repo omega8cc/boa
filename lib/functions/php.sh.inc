@@ -728,7 +728,7 @@ install_php_extensions() {
     if [ "$1" = "56" ]; then
       msg "INFO: Building GEOS extension ${_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
-        st_runner "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
+        st_runner "${_APT_UPDATE} -qq" &> /dev/null
         st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
         touch ${pthLog}/geos-${_X_VERSION}.log
       fi
@@ -1039,7 +1039,7 @@ update_php_extensions() {
     if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
       msg "INFO: Building GEOS ${_GEOS_VRN} upgrade for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
-        st_runner "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
+        st_runner "${_APT_UPDATE} -qq" &> /dev/null
         st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
         touch ${pthLog}/geos-${_X_VERSION}.log
       fi
@@ -1500,7 +1500,7 @@ update_newrelic() {
       echo "## New Relic APT Repository" > ${aptLiSys}.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
         >> ${aptLiSys}.d/newrelic.list
-      st_runner "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
+      st_runner "${_APT_UPDATE} -qq" &> /dev/null
       st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
       st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null
       NR_PHPLIST="/opt/php56/bin:/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin"
@@ -1639,7 +1639,7 @@ install_newrelic() {
         ${aptLiSys}.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
         >> ${aptLiSys}.d/newrelic.list
-      st_runner "apt-get update --allow-releaseinfo-change -qq" &> /dev/null
+      st_runner "${_APT_UPDATE} -qq" &> /dev/null
       st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
       st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null
       if [ "$_MULTI_NR" = "YES" ]; then

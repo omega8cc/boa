@@ -56,6 +56,18 @@ clean_pid_exit() {
   exit 1
 }
 
+os_detection_minimal() {
+  _THIS_RV=$(lsb_release -sc 2>&1)
+  if [ "${_THIS_RV}" = "chimaera" ] \
+    || [ "${_THIS_RV}" = "beowulf" ] \
+    || [ "${_THIS_RV}" = "bullseye" ] \
+    || [ "${_THIS_RV}" = "buster" ]; then
+    _APT_UPDATE="apt-get update --allow-releaseinfo-change"
+  else
+    _APT_UPDATE="apt-get update"
+  fi
+}
+
 check_ifnames() {
   _SYS_IFNAMES=$(grep GRUB_CMDLINE_LINUX= /etc/default/grub | grep "net.ifnames=0" 2>&1)
   if [ -e "/etc/default/grub" ] && [[ ! "${_SYS_IFNAMES}" =~ "net.ifnames=0" ]]; then
@@ -1079,7 +1091,7 @@ find_fast_mirror() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt-get update --allow-releaseinfo-change -qq &> /dev/null
+    ${_APT_UPDATE} -qq &> /dev/null
     apt-get install netcat ${forCer} &> /dev/null
     sleep 3
   fi
@@ -1133,7 +1145,7 @@ check_dns_curl() {
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt-get clean -qq &> /dev/null
     rm -rf /var/lib/apt/lists/*
-    apt-get update --allow-releaseinfo-change -qq &> /dev/null
+    ${_APT_UPDATE} -qq &> /dev/null
     apt-get install curl ${forCer} &> /dev/null
     mkdir -p /var/backups/libcurl
     mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -1224,17 +1236,17 @@ check_root() {
       if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: fuse\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
-        apt-get update --allow-releaseinfo-change -qq &> /dev/null
+        ${_APT_UPDATE} -qq &> /dev/null
       fi
       if [ ! -e "/etc/apt/preferences.d/udev" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
-        apt-get update --allow-releaseinfo-change -qq &> /dev/null
+        ${_APT_UPDATE} -qq &> /dev/null
       fi
       if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
-        apt-get update --allow-releaseinfo-change -qq &> /dev/null
+        ${_APT_UPDATE} -qq &> /dev/null
       fi
       apt-get remove fuse -y -qq &> /dev/null
       apt-get purge fuse -y -qq &> /dev/null
@@ -1311,7 +1323,7 @@ check_root() {
         && [ -e "/etc/apt/apt.conf.d" ]; then
         echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
       fi
-      apt-get update --allow-releaseinfo-change -qq &> /dev/null
+      ${_APT_UPDATE} -qq &> /dev/null
       apt-get install udev -y --allow-unauthenticated &> /dev/null
       echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
       mount -t devpts devpts /dev/pts &> /dev/null
@@ -1362,6 +1374,7 @@ proceed() {
   check_root_keys_pwd
   check_root
   check_no_systemd
+  os_detection_minimal
   check_dns_curl
   check_php_cli
   set_pin_priority
