@@ -1723,30 +1723,6 @@ check_php_rebuild() {
   if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
     _PHP_FORCE_REINSTALL=NO
   fi
-  if [ "${_STATUS}" = "UPGRADE" ]; then
-    if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
-      || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
-      _PHP_ITD=5.x
-      if [ "$1" = "81" ]; then
-        rm -f ${pthLog}/installed-8.1*
-      elif [ "$1" = "80" ]; then
-        rm -f ${pthLog}/installed-8.0*
-      elif [ "$1" = "74" ]; then
-        rm -f ${pthLog}/installed-7.4*
-      elif [ "$1" = "73" ]; then
-        rm -f ${pthLog}/installed-7.3*
-      elif [ "$1" = "72" ]; then
-        rm -f ${pthLog}/installed-7.2*
-      elif [ "$1" = "71" ]; then
-        rm -f ${pthLog}/installed-7.1*
-      elif [ "$1" = "70" ]; then
-        rm -f ${pthLog}/installed-7.0*
-      elif [ "$1" = "56" ]; then
-        rm -f ${pthLog}/installed-5.6*
-      fi
-      msg "INFO: PHP to ${_PHP_VERSION} rebuild forced"
-    fi
-  fi
   _PHP_ITD=$(/opt/php$1/bin/php -v \
     | grep 'PHP 7' \
     | cut -d: -f1 \
@@ -1840,10 +1816,6 @@ check_php_rebuild() {
       sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g" ${barCnf}
     fi
   fi
-  # if [ ! -e "${pthLog}/installed-${_PHP_VERSION}-${_T_DBS_VRN}-${_DB_SERVER}.log" ]; then
-  #   msg "INFO: PHP ${_PHP_VERSION} rebuild required for ${_DB_SERVER} ${_T_DBS_VRN}"
-  #   install_php_multi "$1"
-  # fi
 }
 
 #
