@@ -3,14 +3,12 @@ define_loc_osr() {
   _LOC_OSR=
   _NEW_OSR=
   _TGT_OSN=
-  _TGT_MRR=
   _MSG_LOC=
   if [ "${_JESSIE_TO_BEOWULF}" = "YES" ] \
     && [ "${_OSR}" = "jessie" ]; then
     _LOC_OSR=jessie
     _NEW_OSR=beowulf
     _TGT_OSN=Devuan
-    _TGT_MRR="deb.devuan.org/merged"
     _MSG_LOC="Debian Jessie to Devuan Beowulf"
   fi
   if [ "${_STRETCH_TO_BEOWULF}" = "YES" ] \
@@ -18,7 +16,6 @@ define_loc_osr() {
     _LOC_OSR=stretch
     _NEW_OSR=beowulf
     _TGT_OSN=Devuan
-    _TGT_MRR="deb.devuan.org/merged"
     _MSG_LOC="Debian Stretch to Devuan Beowulf"
   fi
   if [ "${_BUSTER_TO_BEOWULF}" = "YES" ] \
@@ -26,7 +23,6 @@ define_loc_osr() {
     _LOC_OSR=buster
     _NEW_OSR=beowulf
     _TGT_OSN=Devuan
-    _TGT_MRR="deb.devuan.org/merged"
     _MSG_LOC="Debian Buster to Devuan Beowulf"
   fi
   if [ "${_BEOWULF_TO_CHIMAERA}" = "YES" ] \
@@ -34,7 +30,6 @@ define_loc_osr() {
     _LOC_OSR=beowulf
     _NEW_OSR=chimaera
     _TGT_OSN=Devuan
-    _TGT_MRR="deb.devuan.org/merged"
     _MSG_LOC="Devuan Beowulf to Devuan Chimaera"
   fi
   if [ "${_BULLSEYE_TO_CHIMAERA}" = "YES" ] \
@@ -42,7 +37,6 @@ define_loc_osr() {
     _LOC_OSR=bullseye
     _NEW_OSR=chimaera
     _TGT_OSN=Devuan
-    _TGT_MRR="deb.devuan.org/merged"
     _MSG_LOC="Debian Bullseye to Devuan Chimaera"
   fi
   if [ "${_BUSTER_TO_BULLSEYE}" = "YES" ] \
@@ -4268,6 +4262,7 @@ if_major_os_upgrade() {
     ###
     ### Switching gears on the fly.
     if [ "${_TGT_OSN}" = "Devuan" ]; then
+      _TGT_MRR="deb.devuan.org/merged"
       echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
       echo "deb http://${_TGT_MRR} ${_NEW_OSR} main" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
