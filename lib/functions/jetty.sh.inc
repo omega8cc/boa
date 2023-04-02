@@ -55,33 +55,29 @@ if_install_jetty() {
       fi
     fi
   fi
-  if [ "$_UP_JDK" = "YES" ] && [ -e "/etc/init.d/${_N_SOLR}" ]; then
-    msg "INFO: Solr 7 restart in progress - required after java upgrade"
-    mrun "service ${_N_SOLR} restart" &> /dev/null
-    msg "INFO: Solr 7 restart completed"
-  fi
+  _X_SE="414prodT58"
   if [ -e "/etc/default/${_N_SOLR}.in.sh" ]; then
-    _SOLR7_JAVA_TEST=$(grep "BOA Path to Java" /etc/default/${_N_SOLR}.in.sh 2>&1)
-    if [[ "$_SOLR7_JAVA_TEST" =~ "BOA Path to Java" ]]; then
+    _SOLR7_JAVA_TEST=$(grep "BOA ${_X_SE} Path to Java" /etc/default/${_N_SOLR}.in.sh 2>&1)
+    if [[ "$_SOLR7_JAVA_TEST" =~ "BOA ${_X_SE} Path to Java" ]]; then
       _DO_NOTHING=YES
     else
       if [ "${_OSR}" = "jessie" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # BOA Path to Java 8" >> \
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # BOA ${_X_SE} Path to Java 8" >> \
           /etc/default/${_N_SOLR}.in.sh
       elif [ "${_OSR}" = "stretch" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # BOA Path to Java 8" >> \
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # BOA ${_X_SE} Path to Java 8" >> \
           /etc/default/${_N_SOLR}.in.sh
       elif [ "${_OSR}" = "buster" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk/jre\" # BOA Path to Java 11" >> \
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk/jre\" # BOA ${_X_SE} Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
       elif [ "${_OSR}" = "bullseye" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk/jre\" # BOA Path to Java 17" >> \
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk/jre\" # BOA ${_X_SE} Path to Java 17" >> \
           /etc/default/${_N_SOLR}.in.sh
       elif [ "${_OSR}" = "beowulf" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk/jre\" # BOA Path to Java 11" >> \
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk/jre\" # BOA ${_X_SE} Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
       elif [ "${_OSR}" = "chimaera" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk/jre\" # BOA Path to Java 17" >> \
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk/jre\" # BOA ${_X_SE} Path to Java 17" >> \
           /etc/default/${_N_SOLR}.in.sh
       fi
     fi
@@ -95,6 +91,11 @@ if_install_jetty() {
       echo ${_SOLR_7_VRN} > ${_SOLR_CTRL}
       msg "INFO: MultiCore Apache Solr ${_R_SOLR} upgrade completed"
     fi
+  fi
+  if [ "$_UP_JDK" = "YES" ] && [ -e "/etc/init.d/${_N_SOLR}" ]; then
+    msg "INFO: Solr 7 restart in progress - required after java upgrade"
+    mrun "service ${_N_SOLR} restart" &> /dev/null
+    msg "INFO: Solr 7 restart completed"
   fi
 
   ###--------------------###
