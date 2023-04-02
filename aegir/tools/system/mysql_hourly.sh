@@ -183,7 +183,7 @@ if [ ! -e "${percList}" ] \
   echo "## Percona APT Repository" > ${percList}
   echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
   ${_APT_UPDATE} -qq &> /dev/null
-  if [ -e "/usr/sbin/csf" ] \
+  if [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
     service lfd stop &> /dev/null
     sleep 3
@@ -222,7 +222,7 @@ if [ ! -e "${percList}" ] \
     fi
   done
   ${_APT_UPDATE} -qq &> /dev/null
-  if [ -e "/usr/sbin/csf" ] \
+  if [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
     csf -e &> /dev/null
     sleep 3
@@ -231,7 +231,7 @@ if [ ! -e "${percList}" ] \
     ### CVE-2019-11477 SACK Panic
     ### CVE-2019-11478 SACK Slowness
     ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
-    if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+    if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null

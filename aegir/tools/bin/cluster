@@ -580,7 +580,7 @@ if_firewall_update() {
     ### CVE-2019-11477 SACK Panic
     ### CVE-2019-11478 SACK Slowness
     ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
-    if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+    if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
@@ -1473,7 +1473,7 @@ install_db_cluster() {
   ### CVE-2019-11477 SACK Panic
   ### CVE-2019-11478 SACK Slowness
   ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
-  if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+  if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
     if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
       sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
@@ -1817,9 +1817,11 @@ install_host() {
   ${_INSTAPP} iptables
   ${_INSTAPP} ipset
 
-  if [ -x "/sbin/ipset" ] && [ ! -L "/usr/sbin/ipset" ]; then
-    rm -f /usr/sbin/ipset
-    ln -sf /sbin/ipset /usr/sbin/ipset
+  if [ -x "/sbin/ipset" ] && [ ! -e "/usr/sbin/ipset" ]; then
+    ln -s /sbin/ipset /usr/sbin/ipset
+  fi
+  if [ -x "/usr/sbin/ipset" ] && [ ! -e "/sbin/ipset" ]; then
+    ln -s /usr/sbin/ipset /sbin/ipset
   fi
 
   echo "Setting hostname to ${hst}"

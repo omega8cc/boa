@@ -3623,7 +3623,7 @@ finale() {
       /etc/init.d/buagent &> /dev/null
   fi
   if [ -e "/etc/csf/csf.deny" ] \
-    && [ -e "/usr/sbin/csf" ] \
+    && [ -x "/usr/sbin/csf" ] \
     && [ -e "/var/xdrago/guest-fire.sh" ] \
     && [ -e "/var/xdrago/guest-water.sh" ]; then
     sed -i "s/.*fire.*//g" /etc/crontab &> /dev/null
@@ -3667,13 +3667,13 @@ finale() {
   if [ ! -e "/root/.upstart.cnf" ]; then
     service cron start     &> /dev/null
   fi
-  if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-    if [ ! -x "/etc/csf/csfpost.sh" ]; then
-      echo "" > /etc/csf/csfpost.sh
-      echo "iptables -t raw -A PREROUTING -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
-      echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
-      chmod 700 /etc/csf/csfpost.sh
-    fi
+  if [ -x "/usr/sbin/csf" ] \
+    && [ -e "/etc/csf/csf.deny" ] \
+    && [ ! -x "/etc/csf/csfpost.sh" ]; then
+    echo "" > /etc/csf/csfpost.sh
+    echo "iptables -t raw -A PREROUTING -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
+    echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
+    chmod 700 /etc/csf/csfpost.sh
     service lfd stop &> /dev/null
     sleep 3
     kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
@@ -3691,7 +3691,7 @@ finale() {
     ### CVE-2019-11477 SACK Panic
     ### CVE-2019-11478 SACK Slowness
     ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
-    if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+    if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
@@ -4609,7 +4609,7 @@ sys_packages_update() {
       rm -f /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
     rm -f /var/lib/mysql/debian-*.flag &> /dev/null
-    if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+    if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       service lfd stop &> /dev/null
       sleep 3
       kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null

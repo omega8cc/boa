@@ -1026,7 +1026,7 @@ install_db_server() {
     _GPG=gpg
   fi
   if [ "${_STATUS}" = "INIT" ]; then
-    if [ -e "/usr/sbin/csf" ] \
+    if [ -x "/usr/sbin/csf" ] \
       && [ -e "/etc/csf/csf.deny" ]; then
       service lfd stop &> /dev/null
       sleep 3
@@ -1098,7 +1098,7 @@ install_db_server() {
       st_runner "${_APT_UPDATE} -qq" &> /dev/null
     fi
     if [ "${_SQL_UPGRADE}" = "YES" ]; then
-      if [ -e "/usr/sbin/csf" ] \
+      if [ -x "/usr/sbin/csf" ] \
         && [ -e "/etc/csf/csf.deny" ]; then
         service lfd stop &> /dev/null
         sleep 3
@@ -1305,7 +1305,7 @@ install_db_server() {
         mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
         rm -f /etc/mysql/conf.d/mysqldump.cnf
       fi
-      if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+      if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
         mrun "csf -e" &> /dev/null
         sleep 3
         service lfd start &> /dev/null
@@ -1313,7 +1313,7 @@ install_db_server() {
         ### CVE-2019-11477 SACK Panic
         ### CVE-2019-11478 SACK Slowness
         ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
-        if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+        if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
           _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
           if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
             sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null

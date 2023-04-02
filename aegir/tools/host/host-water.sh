@@ -581,7 +581,7 @@ whitelist_ip_dns() {
 
 if [ -e "/vservers" ] \
   && [ -e "/etc/csf/csf.deny" ] \
-  && [ -e "/usr/sbin/csf" ]; then
+  && [ -x "/usr/sbin/csf" ]; then
   if [ -e "/root/.local.IP.list" ]; then
     echo local dr/tr start `date`
     for _IP in `cat /root/.local.IP.list \
@@ -632,7 +632,7 @@ if [ -e "/vservers" ] \
   ### CVE-2019-11477 SACK Panic
   ### CVE-2019-11478 SACK Slowness
   ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
-  if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+  if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
     if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
       sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
@@ -680,7 +680,7 @@ if [ -e "/vservers" ] \
   ### CVE-2019-11477 SACK Panic
   ### CVE-2019-11478 SACK Slowness
   ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
-  if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+  if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
     if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
       sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null

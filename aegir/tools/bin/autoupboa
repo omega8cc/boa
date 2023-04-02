@@ -360,7 +360,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_PHP="php-all"
     _AUTO_VER="head"
     if [ ! -e "/root/.ignore.site24x7.firewall.cnf" ]; then
-      if [ -e "/usr/sbin/csf" ]; then
+      if [ -x "/usr/sbin/csf" ]; then
         touch /root/.ignore.site24x7.firewall.cnf
         bash /var/xdrago/guest-water.sh
         wait

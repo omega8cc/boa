@@ -597,7 +597,7 @@ update_agents() {
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/data/disk/arch/sql" ] \
-    && [ -e "/usr/sbin/csf" ] \
+    && [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
     && [ ! -e "${pthLog}/guest-fire-sh2.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/guest-fire.sh /var/xdrago/guest-fire.sh.old
@@ -615,7 +615,7 @@ update_agents() {
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/data/disk/arch/sql" ] \
-    && [ -e "/usr/sbin/csf" ] \
+    && [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
     && [ ! -e "${pthLog}/guest-water-sh2.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/guest-water.sh /var/xdrago/guest-water.sh.old
@@ -1803,17 +1803,27 @@ update_wrappers() {
     apt-get clean -qq &> /dev/null
     rm -rf /var/lib/apt/lists/*
     ${_APT_UPDATE} -qq &> /dev/null
+    if [ -L "/sbin/ipset" ]; then
+      rm -f /sbin/ipset
+    fi
+    if [ -L "/usr/sbin/ipset" ]; then
+      rm -f /usr/sbin/ipset
+    fi
     apt-get install ipset ${forCer} &> /dev/null
   fi
-  if [ -x "/sbin/ipset" ] && [ ! -L "/usr/sbin/ipset" ]; then
-    if [ ! -x "/etc/csf/csfpost.sh" ]; then
-      echo "" > /etc/csf/csfpost.sh
-      echo "iptables -t raw -A PREROUTING -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
-      echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
-      chmod 700 /etc/csf/csfpost.sh
-    fi
-    rm -f /usr/sbin/ipset
-    ln -sf /sbin/ipset /usr/sbin/ipset
+  if [ -x "/sbin/ipset" ] && [ ! -e "/usr/sbin/ipset" ]; then
+    ln -s /sbin/ipset /usr/sbin/ipset
+  fi
+  if [ -x "/usr/sbin/ipset" ] && [ ! -e "/sbin/ipset" ]; then
+    ln -s /usr/sbin/ipset /sbin/ipset
+  fi
+  if [ -x "/usr/sbin/csf" ] \
+    && [ -e "/etc/csf/csf.deny" ] \
+    && [ ! -x "/etc/csf/csfpost.sh" ]; then
+    echo "" > /etc/csf/csfpost.sh
+    echo "iptables -t raw -A PREROUTING -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
+    echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
+    chmod 700 /etc/csf/csfpost.sh
     _CSF_TEST=$(which csf 2> /dev/null)
     if [ -x "${_CSF_TEST}" ]; then
       service clean-boa-env stop &> /dev/null
@@ -1825,7 +1835,7 @@ update_wrappers() {
       ### CVE-2019-11477 SACK Panic
       ### CVE-2019-11478 SACK Slowness
       ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
-      if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+      if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
         _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
         if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
           sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
@@ -1835,7 +1845,7 @@ update_wrappers() {
       fi
     fi
   fi
-  if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.conf" ]; then
+  if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.conf" ]; then
     _CC_SRC_TEST=$(grep CC_SRC /etc/csf/csf.conf 2>&1)
     echo _CC_SRC_TEST 1 is ${_CC_SRC_TEST}
     if [[ ! "${_CC_SRC_TEST}" =~ "CC_SRC =.*2" ]]; then
@@ -2185,7 +2195,7 @@ if [ `whoami` = "root" ]; then
   ### CVE-2019-11477 SACK Panic
   ### CVE-2019-11478 SACK Slowness
   ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
-  if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+  if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
     if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
       sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null

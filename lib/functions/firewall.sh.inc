@@ -67,11 +67,19 @@ csf_install() {
     apt-get clean -qq &> /dev/null
     rm -rf /var/lib/apt/lists/*
     ${_APT_UPDATE} -qq &> /dev/null
+    if [ -L "/sbin/ipset" ]; then
+      rm -f /sbin/ipset
+    fi
+    if [ -L "/usr/sbin/ipset" ]; then
+      rm -f /usr/sbin/ipset
+    fi
     apt-get install ipset ${forCer} &> /dev/null
   fi
-  if [ -x "/sbin/ipset" ] && [ ! -L "/usr/sbin/ipset" ]; then
-    rm -f /usr/sbin/ipset
-    ln -sf /sbin/ipset /usr/sbin/ipset
+  if [ -x "/sbin/ipset" ] && [ ! -e "/usr/sbin/ipset" ]; then
+    ln -s /sbin/ipset /usr/sbin/ipset
+  fi
+  if [ -x "/usr/sbin/ipset" ] && [ ! -e "/sbin/ipset" ]; then
+    ln -s /usr/sbin/ipset /sbin/ipset
   fi
   rm -f ${pthLog}/lastFire
   ### from https://download.configserver.com/csf.tgz
@@ -156,11 +164,19 @@ install_upgrade_csf_lfd() {
     apt-get clean -qq &> /dev/null
     rm -rf /var/lib/apt/lists/*
     ${_APT_UPDATE} -qq &> /dev/null
+    if [ -L "/sbin/ipset" ]; then
+      rm -f /sbin/ipset
+    fi
+    if [ -L "/usr/sbin/ipset" ]; then
+      rm -f /usr/sbin/ipset
+    fi
     apt-get install ipset ${forCer} &> /dev/null
   fi
-  if [ -x "/sbin/ipset" ] && [ ! -L "/usr/sbin/ipset" ]; then
-    rm -f /usr/sbin/ipset
-    ln -sf /sbin/ipset /usr/sbin/ipset
+  if [ -x "/sbin/ipset" ] && [ ! -e "/usr/sbin/ipset" ]; then
+    ln -s /sbin/ipset /usr/sbin/ipset
+  fi
+  if [ -x "/usr/sbin/ipset" ] && [ ! -e "/sbin/ipset" ]; then
+    ln -s /usr/sbin/ipset /sbin/ipset
   fi
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -187,7 +203,7 @@ install_upgrade_csf_lfd() {
       fi
     fi
   fi
-  if [ -e "/usr/sbin/csf" ] \
+  if [ -x "/usr/sbin/csf" ] \
     || [ -e "/usr/sbin/lfd" ] \
     || [ -e "/etc/cron.d/lfd" ]; then
     if [ "$_CSF_COMPATIBILITY" = "NO" ] \
@@ -253,7 +269,7 @@ install_upgrade_csf_lfd() {
         ### CVE-2019-11477 SACK Panic
         ### CVE-2019-11478 SACK Slowness
         ### CVE-2019-11479 Excess Resource Consumption Due to Low MSS Values
-        if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
+        if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
           _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
           if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
             sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null

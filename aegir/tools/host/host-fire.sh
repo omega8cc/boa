@@ -122,7 +122,7 @@ fi
 if [ -e "/vservers" ] \
   && [ -e "/etc/csf/csf.deny" ] \
   && [ ! -e "/var/run/water.pid" ] \
-  && [ -e "/usr/sbin/csf" ]; then
+  && [ -x "/usr/sbin/csf" ]; then
   [ ! -e "/var/run/water.pid" ] && guest_guard
   sleep 10
   [ ! -e "/var/run/water.pid" ] && guest_guard
