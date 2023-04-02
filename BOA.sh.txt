@@ -2269,7 +2269,10 @@ if [ `whoami` = "root" ]; then
       fi
     fi
   else
-    _SCREEN_INIT=YES
+    if [ -e "/root/.step.init.systemd.two.cnf" ] \
+      && [ -e "/root/.step.init.systemd.one.cnf" ]; then
+      _SCREEN_INIT=YES
+    fi
   fi
   if [ -d "/.newrelic" ]; then
     rm -rf /.newrelic
