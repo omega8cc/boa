@@ -1941,6 +1941,31 @@ setup() {
     && [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
     pdnsd-ctl empty-cache &> /dev/null
   fi
+
+  isScreen=$(screen --version 2>&1)
+  if [[ ! "${isScreen}" =~ "GNU" ]] || [ -z "${isScreen}" ]; then
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    if [ ! -e "/etc/apt/apt.conf.d/99ignorestrict" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Get::AllowInsecureRepositories \"true\";" > /etc/apt/apt.conf.d/99ignorestrict
+      echo "APT::Get::AllowUnauthenticated \"true\";"     >> /etc/apt/apt.conf.d/99ignorestrict
+      echo "Aptitude::CmdLine::Fix-Broken \"true\";"      >> /etc/apt/apt.conf.d/99ignorestrict
+    fi
+    apt-get clean -qq &> /dev/null
+    rm -rf /var/lib/apt/lists/*
+    ${_APT_UPDATE} -qq &> /dev/null
+    apt-get install screen -y &> /dev/null
+    apt-get install net-tools -y &> /dev/null
+    apt-get install hostname -y &> /dev/null
+    apt-get remove --purge unscd -y &> /dev/null
+    apt-get remove --purge dbus -y &> /dev/null
+    userdel -r debian &> /dev/null
+    sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc &> /dev/null
+  fi
+
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
     rm -f /etc/apt/sources.list.d/openssl.list
@@ -2346,26 +2371,6 @@ if [ `whoami` = "root" ]; then
     service cron reload &> /dev/null
   fi
   if [ "${_SCREEN_INIT}" = "YES" ]; then
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-      && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-    fi
-    if [ ! -e "/etc/apt/apt.conf.d/99ignorestrict" ] \
-      && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Get::AllowInsecureRepositories \"true\";" > /etc/apt/apt.conf.d/99ignorestrict
-      echo "APT::Get::AllowUnauthenticated \"true\";"     >> /etc/apt/apt.conf.d/99ignorestrict
-      echo "Aptitude::CmdLine::Fix-Broken \"true\";"      >> /etc/apt/apt.conf.d/99ignorestrict
-    fi
-    apt-get clean -qq &> /dev/null
-    rm -rf /var/lib/apt/lists/*
-    ${_APT_UPDATE} -qq &> /dev/null
-    apt-get install screen -y &> /dev/null
-    apt-get install net-tools -y &> /dev/null
-    apt-get install hostname -y &> /dev/null
-    apt-get remove --purge unscd -y &> /dev/null
-    apt-get remove --purge dbus -y &> /dev/null
-    userdel -r debian &> /dev/null
-    sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc &> /dev/null
     clear
     echo
     echo "The system is ready for BOA installation!"
