@@ -7,6 +7,8 @@
 * Once BOA is fully installed, you have to reboot again and run barracuda
   system upgrade to make sure that the system is ready for production and
   to generate valid SSL/LE/HTTPS certificate for the Aegir control panel.
+  Otherwise there will be incomplete web server, dns etc. setup, which will
+  cause unexpected problems until you will run barracuda upgrade - after reboot.
 
 * BOA requires minimal, supported OS, with no services installed.
   The only acceptable exceptions are: sshd and mail servers.
