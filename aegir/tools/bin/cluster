@@ -1869,7 +1869,8 @@ install_host() {
   fi
   echo "UseDNS no" >> /etc/ssh/sshd_config
   echo "ClientAliveInterval 300" >> /etc/ssh/sshd_config
-  echo "ClientAliveCountMax 3" >> /etc/ssh/sshd_config
+  echo "ClientAliveCountMax 10000" >> /etc/ssh/sshd_config
+  echo "TCPKeepAlive yes" >> /etc/ssh/sshd_config
 
   echo "Restarting sshd..."
   service ssh restart

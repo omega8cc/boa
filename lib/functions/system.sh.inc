@@ -5973,7 +5973,8 @@ update_initd() {
       echo "UseDNS no" >> /etc/ssh/sshd_config
       echo "UsePAM no" >> /etc/ssh/sshd_config
       echo "ClientAliveInterval 300" >> /etc/ssh/sshd_config
-      echo "ClientAliveCountMax 3" >> /etc/ssh/sshd_config
+      echo "ClientAliveCountMax 10000" >> /etc/ssh/sshd_config
+      echo "TCPKeepAlive yes" >> /etc/ssh/sshd_config
       sed -i "/^$/d" /etc/ssh/sshd_config &> /dev/null
       wait
       if [ -e "/usr/etc/sshd_config" ]; then
@@ -6005,7 +6006,8 @@ update_initd() {
         echo "UseDNS no" >> /usr/etc/sshd_config
         echo "UsePAM no" >> /usr/etc/sshd_config
         echo "ClientAliveInterval 300" >> /usr/etc/sshd_config
-        echo "ClientAliveCountMax 3" >> /usr/etc/sshd_config
+        echo "ClientAliveCountMax 10000" >> /usr/etc/sshd_config
+        echo "TCPKeepAlive yes" >> /usr/etc/sshd_config
         sed -i "/^$/d" /usr/etc/sshd_config &> /dev/null
         wait
       fi

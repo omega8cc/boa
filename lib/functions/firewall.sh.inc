@@ -133,6 +133,10 @@ csf_install() {
       wait
       sed -i "s/^UsePrivilegeSeparation.*//g" /usr/etc/sshd_config
       wait
+      sed -i "s/^ClientAliveCountMax.*/ClientAliveCountMax 10000/g" /usr/etc/sshd_config
+      wait
+      sed -i "s/^#TCPKeepAlive.*/TCPKeepAlive yes/g" /usr/etc/sshd_config
+      wait
     fi
     mrun "service ssh restart" &> /dev/null
     if [ "$_CSF_MODE" = "install" ]; then
