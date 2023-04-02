@@ -61,27 +61,27 @@ if_install_jetty() {
     msg "INFO: Solr 7 restart completed"
   fi
   if [ -e "/etc/default/${_N_SOLR}.in.sh" ]; then
-    _SOLR7_JAVA_TEST=$(grep "Path to Java 1.8" /etc/default/${_N_SOLR}.in.sh 2>&1)
-    if [[ "$_SOLR7_JAVA_TEST" =~ "Path to Java 1.8" ]]; then
+    _SOLR7_JAVA_TEST=$(grep "BOA Path to Java" /etc/default/${_N_SOLR}.in.sh 2>&1)
+    if [[ "$_SOLR7_JAVA_TEST" =~ "BOA Path to Java" ]]; then
       _DO_NOTHING=YES
     else
       if [ "${_OSR}" = "jessie" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # Path to Java 1.8" >> \
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # BOA Path to Java 8" >> \
           /etc/default/${_N_SOLR}.in.sh
       elif [ "${_OSR}" = "stretch" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # Path to Java 1.8" >> \
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # BOA Path to Java 8" >> \
           /etc/default/${_N_SOLR}.in.sh
       elif [ "${_OSR}" = "buster" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # Path to Java 1.8" >> \
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk/jre\" # BOA Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
       elif [ "${_OSR}" = "bullseye" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # Path to Java 1.8" >> \
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk/jre\" # BOA Path to Java 17" >> \
           /etc/default/${_N_SOLR}.in.sh
       elif [ "${_OSR}" = "beowulf" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # Path to Java 1.8" >> \
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk/jre\" # BOA Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
       elif [ "${_OSR}" = "chimaera" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # Path to Java 1.8" >> \
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk/jre\" # BOA Path to Java 17" >> \
           /etc/default/${_N_SOLR}.in.sh
       fi
     fi
