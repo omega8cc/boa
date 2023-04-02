@@ -3778,6 +3778,7 @@ install_with_aptitude_deps() {
 
 basic_packages_install_on_init() {
   apt-get remove --purge unscd -y &> /dev/null
+  apt-get remove --purge dbus -y &> /dev/null
   userdel -r debian &> /dev/null
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \

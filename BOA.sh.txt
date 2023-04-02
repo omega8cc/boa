@@ -2347,6 +2347,7 @@ if [ `whoami` = "root" ]; then
     apt-get install net-tools -y &> /dev/null
     apt-get install hostname -y &> /dev/null
     apt-get remove --purge unscd -y &> /dev/null
+    apt-get remove --purge dbus -y &> /dev/null
     userdel -r debian &> /dev/null
     sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc &> /dev/null
     clear
