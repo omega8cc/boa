@@ -2655,28 +2655,28 @@ update_sources_list() {
       cd /var/opt
       if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
         _APT_MIRROR="archive.debian.org/debian"
-        _APT_UPDATE="${_OSR}-backports"
+        _APT_REPSRC="${_OSR}-backports"
         _SEC_MIRROR="archive.debian.org/debian-security"
-        _SEC_UPDATE="${_OSR}/updates"
+        _SEC_REPSRC="${_OSR}/updates"
       elif [ "${_OSR}" = "buster" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
-        _APT_UPDATE="${_OSR}-updates"
+        _APT_REPSRC="${_OSR}-updates"
         _SEC_MIRROR="security.debian.org"
-        _SEC_UPDATE="${_OSR}/updates"
+        _SEC_REPSRC="${_OSR}/updates"
       elif [ "${_OSR}" = "bullseye" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
-        _APT_UPDATE="${_OSR}-updates"
+        _APT_REPSRC="${_OSR}-updates"
         _SEC_MIRROR="security.debian.org/debian-security"
-        _SEC_UPDATE="${_OSR}-security"
+        _SEC_REPSRC="${_OSR}-security"
       fi
       echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
       echo "deb http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-      echo "deb http://${_APT_MIRROR} ${_APT_UPDATE} main contrib non-free" >> ${aptLiSys}
+      echo "deb http://${_APT_MIRROR} ${APT_REPSRC} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://${_SEC_MIRROR} ${_SEC_UPDATE} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
     elif [ "${_THIS_OS}" = "Ubuntu" ]; then
       if [ "${_AUTOPILOT}" = "YES" ]; then
         if [ -z "${_LOCAL_UBUNTU_MIRROR}" ]; then
@@ -2732,7 +2732,7 @@ update_sources_list() {
         main restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
     fi
     mkdir -p ${pthLog}
-    touch ${pthLog}/apt-updates-beowulf.txt
+    touch ${pthLog}/apt-updates-${_X_SE}.txt
     cd /var/opt
   fi
   ###--------------------###
@@ -4288,28 +4288,28 @@ if_major_os_upgrade() {
     else
       if [ "${_NEW_OSR}" = "stretch" ]; then
         _NEW_APT_MIRROR="archive.debian.org/debian"
-        _NEW_APT_UPDATE="${_NEW_OSR}-backports"
+        _NEW_APT_REPSRC="${_NEW_OSR}-backports"
         _NEW_SEC_MIRROR="archive.debian.org/debian-security"
-        _NEW_SEC_UPDATE="${_NEW_OSR}/updates"
+        _NEW_SEC_REPSRC="${_NEW_OSR}/updates"
       elif [ "${_NEW_OSR}" = "buster" ]; then
         _NEW_APT_MIRROR="deb.debian.org/debian"
-        _NEW_APT_UPDATE="${_NEW_OSR}-updates"
+        _NEW_APT_REPSRC="${_NEW_OSR}-updates"
         _NEW_SEC_MIRROR="security.debian.org"
-        _NEW_SEC_UPDATE="${_NEW_OSR}/updates"
+        _NEW_SEC_REPSRC="${_NEW_OSR}/updates"
       elif [ "${_NEW_OSR}" = "bullseye" ]; then
         _NEW_APT_MIRROR="deb.debian.org/debian"
-        _NEW_APT_UPDATE="${_NEW_OSR}-updates"
+        _NEW_APT_REPSRC="${_NEW_OSR}-updates"
         _NEW_SEC_MIRROR="security.debian.org/debian-security"
-        _NEW_SEC_UPDATE="${_NEW_OSR}-security"
+        _NEW_SEC_REPSRC="${_NEW_OSR}-security"
       fi
       echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
       echo "deb http://${_NEW_APT_MIRROR} ${_NEW_OSR} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-      echo "deb http://${_NEW_APT_MIRROR} ${_NEW_APT_UPDATE} main contrib non-free" >> ${aptLiSys}
+      echo "deb http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://${_NEW_SEC_MIRROR} ${_NEW_SEC_UPDATE} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       if [ -e "/etc/apt/apt.conf" ]; then
         sed -i "s/APT::Default-Release.*/APT::Default-Release \"${_NEW_OSR}\";/g" \
           /etc/apt/apt.conf &> /dev/null

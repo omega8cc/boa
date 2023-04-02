@@ -95,28 +95,28 @@ check_root() {
       echo
       if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
         _APT_MIRROR="archive.debian.org/debian"
-        _APT_UPDATE="${_OSR}-backports"
+        _APT_REPSRC="${_OSR}-backports"
         _SEC_MIRROR="archive.debian.org/debian-security"
-        _SEC_UPDATE="${_OSR}/updates"
+        _SEC_REPSRC="${_OSR}/updates"
       elif [ "${_OSR}" = "buster" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
-        _APT_UPDATE="${_OSR}-updates"
+        _APT_REPSRC="${_OSR}-updates"
         _SEC_MIRROR="security.debian.org"
-        _SEC_UPDATE="${_OSR}/updates"
+        _SEC_REPSRC="${_OSR}/updates"
       elif [ "${_OSR}" = "bullseye" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
-        _APT_UPDATE="${_OSR}-updates"
+        _APT_REPSRC="${_OSR}-updates"
         _SEC_MIRROR="security.debian.org/debian-security"
-        _SEC_UPDATE="${_OSR}-security"
+        _SEC_REPSRC="${_OSR}-security"
       fi
       echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
       echo "deb http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-      echo "deb http://${_APT_MIRROR} ${_APT_UPDATE} main contrib non-free" >> ${aptLiSys}
+      echo "deb http://${_APT_MIRROR} ${APT_REPSRC} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://${_SEC_MIRROR} ${_SEC_UPDATE} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       echo
       apt-get clean -qq &> /dev/null
       rm -rf /var/lib/apt/lists/*
@@ -1771,28 +1771,28 @@ install_host() {
   echo
   if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
     _APT_MIRROR="archive.debian.org/debian"
-    _APT_UPDATE="${_OSR}-backports"
+    _APT_REPSRC="${_OSR}-backports"
     _SEC_MIRROR="archive.debian.org/debian-security"
-    _SEC_UPDATE="${_OSR}/updates"
+    _SEC_REPSRC="${_OSR}/updates"
   elif [ "${_OSR}" = "buster" ]; then
     _APT_MIRROR="${_MIRROR}/debian"
-    _APT_UPDATE="${_OSR}-updates"
+    _APT_REPSRC="${_OSR}-updates"
     _SEC_MIRROR="security.debian.org"
-    _SEC_UPDATE="${_OSR}/updates"
+    _SEC_REPSRC="${_OSR}/updates"
   elif [ "${_OSR}" = "bullseye" ]; then
     _APT_MIRROR="${_MIRROR}/debian"
-    _APT_UPDATE="${_OSR}-updates"
+    _APT_REPSRC="${_OSR}-updates"
     _SEC_MIRROR="security.debian.org/debian-security"
-    _SEC_UPDATE="${_OSR}-security"
+    _SEC_REPSRC="${_OSR}-security"
   fi
   echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
   echo "deb http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
   echo "" >> ${aptLiSys}
   echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-  echo "deb http://${_APT_MIRROR} ${_APT_UPDATE} main contrib non-free" >> ${aptLiSys}
+  echo "deb http://${_APT_MIRROR} ${APT_REPSRC} main contrib non-free" >> ${aptLiSys}
   echo "" >> ${aptLiSys}
   echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
-  echo "deb http://${_SEC_MIRROR} ${_SEC_UPDATE} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+  echo "deb http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
   echo
   cat /etc/apt/sources.list
 
