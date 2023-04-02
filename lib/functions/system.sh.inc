@@ -2667,7 +2667,7 @@ update_sources_list() {
       echo "deb http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-      echo "deb http://${_APT_MIRROR} ${APT_REPSRC} main contrib non-free" >> ${aptLiSys}
+      echo "deb http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
       echo "deb http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
