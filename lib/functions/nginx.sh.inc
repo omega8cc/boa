@@ -99,8 +99,9 @@ force_advanced_nginx_config() {
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
-  if [ "${_SSL_ITD}" = "${_OPENSSL_LEGACY_VRN}" ] \
-    || [ "${_SSL_ITD}" = "${_OPENSSL_CURRENT_VRN}" ] \
+  if [ "${_SSL_ITD}" = "${_OPENSSL_MODERN_VRN}" ] \
+    || [ "${_SSL_ITD}" = "${_OPENSSL_EOL_VRN}" ] \
+    || [ "${_SSL_ITD}" = "${_OPENSSL_LEGACY_VRN}" ] \
     || [[ "${_SSL_ITD}" =~ "1.1.0" ]] \
     || [[ "${_SSL_ITD}" =~ "1.0.2" ]] \
     || [[ "${_SSL_ITD}" =~ "1.0.1" ]]; then
@@ -302,7 +303,10 @@ install_upgrade_nginx() {
         || [ "${_OSR}" = "bullseye" ] \
         || [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "stretch" ]; then
-        _OPENSSL_NEW_VRN=${_OPENSSL_CURRENT_VRN}
+        _OPENSSL_NEW_VRN=${_OPENSSL_EOL_VRN}
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
+        fi
       else
         _OPENSSL_NEW_VRN=${_OPENSSL_LEGACY_VRN}
       fi
@@ -409,7 +413,10 @@ install_upgrade_nginx() {
       || [ "${_OSR}" = "bullseye" ] \
       || [ "${_OSR}" = "buster" ] \
       || [ "${_OSR}" = "stretch" ]; then
-      _OPENSSL_NEW_VRN=${_OPENSSL_CURRENT_VRN}
+      _OPENSSL_NEW_VRN=${_OPENSSL_EOL_VRN}
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
+      fi
     else
       _OPENSSL_NEW_VRN=${_OPENSSL_LEGACY_VRN}
     fi
@@ -697,9 +704,9 @@ fix_update_nginx_config() {
       wait
     fi
     _SSL_ITD=$(openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}' 2>&1)
-
-    if [ "${_SSL_ITD}" = "${_OPENSSL_LEGACY_VRN}" ] \
-      || [ "${_SSL_ITD}" = "${_OPENSSL_CURRENT_VRN}" ] \
+    if [ "${_SSL_ITD}" = "${_OPENSSL_MODERN_VRN}" ] \
+      || [ "${_SSL_ITD}" = "${_OPENSSL_EOL_VRN}" ] \
+      || [ "${_SSL_ITD}" = "${_OPENSSL_LEGACY_VRN}" ] \
       || [[ "${_SSL_ITD}" =~ "1.1.0" ]] \
       || [[ "${_SSL_ITD}" =~ "1.0.2" ]] \
       || [[ "${_SSL_ITD}" =~ "1.0.1" ]]; then

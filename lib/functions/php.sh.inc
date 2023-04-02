@@ -1244,7 +1244,8 @@ install_php_multi() {
     && [ "$1" = "56" ]; then
     _PRE_SNFR="--with-icu-dir=/usr/local"
   fi
-  if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ] \
+  if [ -e "/usr/local/ssl/lib/libssl.so.3" ] \
+    || [ -e "/usr/local/ssl/lib/libssl.so.1.1" ] \
     || [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --with-openssl=/usr/local/ssl"
   else

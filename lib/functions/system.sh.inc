@@ -2862,8 +2862,9 @@ install_ssl_src() {
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
-  if [ "${_SSL_ITD}" = "${_OPENSSL_LEGACY_VRN}" ] \
-    || [ "${_SSL_ITD}" = "${_OPENSSL_CURRENT_VRN}" ]; then
+  if [ "${_SSL_ITD}" = "${_OPENSSL_MODERN_VRN}" ] \
+    || [ "${_SSL_ITD}" = "${_OPENSSL_EOL_VRN}" ] \
+    || [ "${_SSL_ITD}" = "${_OPENSSL_LEGACY_VRN}" ]; then
     _SPDY_COMPATIBILITY_TEST=$(service nginx configtest 2>&1)
     if [[ "${_SPDY_COMPATIBILITY_TEST}" =~ "without OpenSSL ALPN or NPN" ]]; then
       _SSL_FORCE_REINSTALL=YES
@@ -2898,7 +2899,10 @@ install_ssl_src() {
       || [ "${_OSR}" = "bullseye" ] \
       || [ "${_OSR}" = "buster" ] \
       || [ "${_OSR}" = "stretch" ]; then
-      _OPENSSL_NEW_VRN=${_OPENSSL_CURRENT_VRN}
+      _OPENSSL_NEW_VRN=${_OPENSSL_EOL_VRN}
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
+      fi
     else
       _OPENSSL_NEW_VRN=${_OPENSSL_LEGACY_VRN}
     fi
@@ -3067,7 +3071,10 @@ install_curl_src() {
           || [ "${_OSR}" = "bullseye" ] \
           || [ "${_OSR}" = "buster" ] \
           || [ "${_OSR}" = "stretch" ]; then
-          _OPENSSL_NEW_VRN=${_OPENSSL_CURRENT_VRN}
+          _OPENSSL_NEW_VRN=${_OPENSSL_EOL_VRN}
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
+          fi
         else
           _OPENSSL_NEW_VRN=${_OPENSSL_LEGACY_VRN}
         fi
@@ -3076,7 +3083,8 @@ install_curl_src() {
         install_ssl_src
         ###--------------------###
         msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
-        if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ] \
+        if [ -e "/usr/local/ssl/lib/libssl.so.3" ] \
+          || [ -e "/usr/local/ssl/lib/libssl.so.1.1" ] \
           || [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ]; then
           cd /var/opt/curl-${_CURL_VRN}
           LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig" ./configure \
