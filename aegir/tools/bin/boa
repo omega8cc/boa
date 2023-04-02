@@ -480,7 +480,7 @@ octopus_install() {
           fi
         fi
       fi
-      sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"                   ${vBs}/${octName}
+      ##sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"                   ${vBs}/${octName}
       wait
       if [ ! -z "${pxyc}" ] && [ ! -z "${pxyi}" ]; then
         sed -i "s/^_THIS_DB_PORT=.*/_THIS_DB_PORT=${pxyc}/g"   ${vBs}/${octName}

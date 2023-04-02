@@ -608,7 +608,7 @@ os_detection() {
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
     fi
-    _SPINNER=NO
+    ##_SPINNER=NO
     _SKIP_LEGACY_PHP=YES
   elif [ "${_THIS_OS}" = "Devuan" ]; then
     if [ "${_THIS_RV}" = "beowulf" ]; then
@@ -643,7 +643,7 @@ os_detection() {
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
     fi
-    _SPINNER=NO
+    ##_SPINNER=NO
     _SKIP_LEGACY_PHP=YES
   else
     not_supported_os
