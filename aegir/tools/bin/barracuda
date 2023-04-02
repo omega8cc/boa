@@ -1160,6 +1160,9 @@ check_dns_curl() {
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "curl install" | dpkg --set-selections &> /dev/null
+      apt-get clean -qq &> /dev/null
+      rm -rf /var/lib/apt/lists/*
+      ${_APT_UPDATE} -qq &> /dev/null
       apt-get install curl ${forCer} &> /dev/null
       mkdir -p /var/backups/libcurl
       mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
