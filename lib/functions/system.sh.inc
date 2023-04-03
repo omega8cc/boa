@@ -4133,18 +4133,18 @@ if_proxysql_update() {
 
 if_post_major_os_upgrade() {
   if [ -e "/root/run_post_major_os_upgrade.info" ]; then
-    msg "INFO: Running dist-upgrade to complete the major system upgrade.."
+    msg "INFO: Running dist-upgrade to complete the major system upgrade..."
     msg "INFO: It may take several minutes depending on your system CPU..."
     mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
     mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
-    msg "INFO: Cleaning up any systemd remnants.."
+    msg "INFO: Cleaning up any systemd remnants..."
     mrun "apt-get remove systemd -y -qq --purge --auto-remove" 2> /dev/null
     if [ "${_THIS_OS}" = "Devuan" ]; then
       mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove" 2> /dev/null
     fi
     mrun "apt --fix-broken install -y" 2> /dev/null
-    msg "INFO: Removing any packages orphaned by the migration process.."
+    msg "INFO: Removing any packages orphaned by the migration process..."
     mrun "apt-get autoremove --purge -y -qq" 2> /dev/null
     mrun "apt-get autoclean -y -qq" 2> /dev/null
     rm -f /root/run_post_major_os_upgrade.info
@@ -4543,7 +4543,7 @@ if_major_os_upgrade() {
     touch /root/run_post_major_os_upgrade.info
     echo " "
     msg "INFO: No errors? Then ${_MSG_LOC} upgrade was successful :)"
-    msg "INFO: REBOOT your system once Barracuda completes THIS run AND.."
+    msg "INFO: REBOOT your system once Barracuda completes THIS run AND..."
     msg "INFO: THEN remember to RUN ANOTHER Barracuda full upgrade"
     echo " "
   fi

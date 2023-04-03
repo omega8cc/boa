@@ -238,7 +238,7 @@ if_install() {
       sleep 1
     fi
   else
-    echo "ERROR: GoAccess was not found.."
+    echo "ERROR: GoAccess was not found..."
     exit 1
   fi
 }

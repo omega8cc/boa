@@ -16,14 +16,14 @@ if [ -z "${_B_NICE}" ]; then
 fi
 
 create_locks() {
-  echo "Creating locks.."
+  echo "Creating locks..."
   touch /var/run/boa_wait.pid
   touch /var/run/fmp_wait.pid
   touch /var/run/mysql_restart_running.pid
 }
 
 remove_locks() {
-  echo "Removing locks.."
+  echo "Removing locks..."
   rm -f /var/run/boa_wait.pid
   rm -f /var/run/fmp_wait.pid
   rm -f /var/run/mysql_restart_running.pid
@@ -49,13 +49,13 @@ start_sql() {
     [ "$1" != "chain" ] && exit 1
   fi
 
-  echo "Starting MySQLD again.."
+  echo "Starting MySQLD again..."
   renice ${_B_NICE} -p $$ &> /dev/null
   service mysql start &> /dev/null
   until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
     && [ -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
-    echo "Waiting for MySQLD graceful start.."
+    echo "Waiting for MySQLD graceful start..."
     sleep 3
   done
   echo "MySQLD started"
@@ -69,16 +69,16 @@ stop_sql() {
   check_running
   create_locks
 
-  echo "Stopping Nginx now.."
+  echo "Stopping Nginx now..."
   service nginx stop &> /dev/null
   until [ -z "${_IS_NGINX_RUNNING}" ]; do
     _IS_NGINX_RUNNING=$(ps aux | grep '[n]ginx' | awk '{print $2}' 2>&1)
-    echo "Waiting for Nginx graceful shutdown.."
+    echo "Waiting for Nginx graceful shutdown..."
     sleep 3
   done
   echo "Nginx stopped"
 
-  echo "Stopping all PHP-FPM instances now.."
+  echo "Stopping all PHP-FPM instances now..."
   _PHP_V="81 80 74 73 72 71 70 56 55 54 53"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ]; then
@@ -88,7 +88,7 @@ stop_sql() {
   # kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
   until [ -z "${_IS_FPM_RUNNING}" ]; do
     _IS_FPM_RUNNING=$(ps aux | grep '[p]hp-fpm' | awk '{print $2}' 2>&1)
-    echo "Waiting for PHP-FPM graceful shutdown.."
+    echo "Waiting for PHP-FPM graceful shutdown..."
     sleep 3
   done
   echo "PHP-FPM stopped"
@@ -99,7 +99,7 @@ stop_sql() {
       || [ "${_DB_SERIES}" = "10.3" ] \
       || [ "${_DB_SERIES}" = "10.2" ] \
       || [ "${_DB_SERIES}" = "5.7" ]; then
-      echo "Preparing MySQLD for quick shutdown.."
+      echo "Preparing MySQLD for quick shutdown..."
       mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
@@ -108,7 +108,7 @@ stop_sql() {
       mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
       mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
     fi
-    echo "Stopping MySQLD now.."
+    echo "Stopping MySQLD now..."
     service mysql stop &> /dev/null
   else
     echo "MySQLD already stopped?"
@@ -119,7 +119,7 @@ stop_sql() {
 
   until [ -z "${_IS_MYSQLD_RUNNING}" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
-    echo "Waiting for MySQLD graceful shutdown.."
+    echo "Waiting for MySQLD graceful shutdown..."
     sleep 3
   done
   echo "MySQLD stopped"

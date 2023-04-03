@@ -240,7 +240,7 @@ os_detection_minimal() {
 }
 
 check_root() {
-  echo "running ${tVr} `hostname` check_root procedure.."
+  echo "running ${tVr} `hostname` check_root procedure..."
   if [ `whoami` = "root" ]; then
     fix_locales
     os_detection_minimal
@@ -550,23 +550,23 @@ _LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
 
 create_locks() {
-  echo "running ${tVr} `hostname` create_locks procedure.."
+  echo "running ${tVr} `hostname` create_locks procedure..."
   if [ ! -e "/var/run/mysql_restart_running.pid" ]; then
-    echo "Creating locks.."
+    echo "Creating locks..."
     touch /var/run/mysql_restart_running.pid
   fi
 }
 
 remove_locks() {
-  echo "running ${tVr} `hostname` remove_locks procedure.."
+  echo "running ${tVr} `hostname` remove_locks procedure..."
   if [ -e "/var/run/mysql_restart_running.pid" ]; then
-    echo "Removing locks.."
+    echo "Removing locks..."
     rm -f /var/run/mysql_restart_running.pid
   fi
 }
 
 check_restart_if_running() {
-  echo "running ${tVr} `hostname` check_restart_if_running procedure.."
+  echo "running ${tVr} `hostname` check_restart_if_running procedure..."
   if [ -e "/var/run/mysql_restart_running.pid" ]; then
     echo "MySQLD restart procedure in progress?"
     echo "Nothing to do, let's quit now. Bye!"
@@ -575,7 +575,7 @@ check_restart_if_running() {
 }
 
 start_sql() {
-  echo "running ${tVr} `hostname` start_sql procedure.."
+  echo "running ${tVr} `hostname` start_sql procedure..."
   check_restart_if_running
   create_locks
 
@@ -587,7 +587,7 @@ start_sql() {
     [ "$1" != "chain" ] && exit 1
   fi
 
-  echo "Starting MySQLD again.."
+  echo "Starting MySQLD again..."
   renice ${_B_NICE} -p $$ &> /dev/null
   update-rc.d -f mysql remove &> /dev/null
   if [ "$1" = "init" ]; then
@@ -601,7 +601,7 @@ start_sql() {
   until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
     && [ -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
-    echo "Waiting for MySQLD graceful start.."
+    echo "Waiting for MySQLD graceful start..."
     sleep 3
   done
   echo "MySQLD started"
@@ -613,13 +613,13 @@ start_sql() {
 }
 
 stop_sql() {
-  echo "running ${tVr} `hostname` stop_sql procedure.."
+  echo "running ${tVr} `hostname` stop_sql procedure..."
   check_restart_if_running
   create_locks
 
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
-    echo "Preparing MySQLD for quick shutdown.."
+    echo "Preparing MySQLD for quick shutdown..."
     mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
@@ -627,7 +627,7 @@ stop_sql() {
     mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
-    echo "Stopping MySQLD now.."
+    echo "Stopping MySQLD now..."
     update-rc.d -f mysql remove &> /dev/null
     service mysql stop
   else
@@ -639,7 +639,7 @@ stop_sql() {
 
   until [ -z "${_IS_MYSQLD_RUNNING}" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
-    echo "Waiting for MySQLD graceful shutdown.."
+    echo "Waiting for MySQLD graceful shutdown..."
     sleep 3
   done
   echo "MySQLD stopped"
@@ -650,14 +650,14 @@ stop_sql() {
 }
 
 restart_sql() {
-  echo "running ${tVr} `hostname` restart_sql procedure.."
+  echo "running ${tVr} `hostname` restart_sql procedure..."
   stop_sql "chain"
   start_sql "chain"
   exit 0
 }
 
 if_restart_sql() {
-  echo "running ${tVr} `hostname` if_restart_sql procedure.."
+  echo "running ${tVr} `hostname` if_restart_sql procedure..."
   _DB_SERVER=Percona
   myCnf="/etc/mysql/my.cnf"
   preCnf="${vBs}/dragon/t/my.cnf-pre-${_NOW}"
@@ -704,18 +704,18 @@ if_restart_sql() {
 }
 
 check_mysql_up() {
-  echo "running ${tVr} `hostname` check_mysql_up procedure.."
+  echo "running ${tVr} `hostname` check_mysql_up procedure..."
   until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
     && [ -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
-    echo "Waiting for MySQLD availability.."
+    echo "Waiting for MySQLD availability..."
     sleep 15
     start_sql "chain"
   done
 }
 
 truncate_cache_tables() {
-  echo "running ${tVr} `hostname` truncate_cache_tables procedure.."
+  echo "running ${tVr} `hostname` truncate_cache_tables procedure..."
   check_mysql_up
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^cache | uniq | sort 2>&1)
   for C in ${_TABLES}; do
@@ -727,7 +727,7 @@ EOFMYSQL
 }
 
 truncate_watchdog_tables() {
-  echo "running ${tVr} `hostname` truncate_watchdog_tables procedure.."
+  echo "running ${tVr} `hostname` truncate_watchdog_tables procedure..."
   check_mysql_up
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^watchdog$ 2>&1)
   for A in ${_TABLES}; do
@@ -739,7 +739,7 @@ EOFMYSQL
 }
 
 truncate_accesslog_tables() {
-  echo "running ${tVr} `hostname` truncate_accesslog_tables procedure.."
+  echo "running ${tVr} `hostname` truncate_accesslog_tables procedure..."
   check_mysql_up
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^accesslog$ 2>&1)
   for A in ${_TABLES}; do
@@ -751,7 +751,7 @@ EOFMYSQL
 }
 
 truncate_queue_tables() {
-  echo "running ${tVr} `hostname` truncate_queue_tables procedure.."
+  echo "running ${tVr} `hostname` truncate_queue_tables procedure..."
   check_mysql_up
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^queue$ 2>&1)
   for Q in ${_TABLES}; do
@@ -763,13 +763,13 @@ EOFMYSQL
 }
 
 repair_this_database() {
-  echo "running ${tVr} `hostname` repair_this_database procedure.."
+  echo "running ${tVr} `hostname` repair_this_database procedure..."
   check_mysql_up
   mysqlcheck --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp --user=root --auto-repair --silent ${_DB}
 }
 
 optimize_this_database() {
-  echo "running ${tVr} `hostname` optimize_this_database procedure.."
+  echo "running ${tVr} `hostname` optimize_this_database procedure..."
   check_mysql_up
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | uniq | sort 2>&1)
   for T in ${_TABLES}; do
@@ -780,7 +780,7 @@ EOFMYSQL
 }
 
 convert_to_innodb() {
-  echo "running ${tVr} `hostname` convert_to_innodb procedure.."
+  echo "running ${tVr} `hostname` convert_to_innodb procedure..."
   check_mysql_up
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | uniq | sort 2>&1)
   for T in ${_TABLES}; do
@@ -793,7 +793,7 @@ EOFMYSQL
 #
 # Update innodb_log_file_size.
 update_innodb_log_file_size() {
-  echo "running ${tVr} `hostname` update_innodb_log_file_size procedure.."
+  echo "running ${tVr} `hostname` update_innodb_log_file_size procedure..."
   echo "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   stop_sql "chain"
@@ -831,7 +831,7 @@ update_innodb_log_file_size() {
 #
 # Update SQL Config.
 update_sql_conf() {
-  echo "running ${tVr} `hostname` update_sql_conf procedure.."
+  echo "running ${tVr} `hostname` update_sql_conf procedure..."
   sed -i "s/.*innodb_force_recovery/#innodb_force_recovery/g" /etc/mysql/my.cnf
   wait
   sed -i "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" /etc/mysql/my.cnf
@@ -898,7 +898,7 @@ update_sql_conf() {
 # Tune memory limits for SQL server.
 tune_sql_memory_limits() {
   check_mysql_up
-  echo "running ${tVr} `hostname` tune_sql_memory_limits procedure.."
+  echo "running ${tVr} `hostname` tune_sql_memory_limits procedure..."
   if [ ! -e "${vBs}/dragon/t/my.cnf-pre-${_NOW}" ]; then
     mkdir -p ${vBs}/dragon/t/
     if [ -e "/etc/mysql/my.cnf" ]; then
@@ -1104,7 +1104,7 @@ tune_sql_memory_limits() {
 #
 # Tune memory limits for Percona.
 tune_memory_limits() {
-  echo "running ${tVr} `hostname` tune_memory_limits procedure.."
+  echo "running ${tVr} `hostname` tune_memory_limits procedure..."
   _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
   if [ "${_RESERVED_RAM}" -gt "0" ]; then
     _RAM=$(( _RAM - _RESERVED_RAM ))
@@ -1252,7 +1252,7 @@ tune_memory_limits() {
 }
 
 tune_sql() {
-  echo "running ${tVr} `hostname` tune_sql procedure.."
+  echo "running ${tVr} `hostname` tune_sql procedure..."
   rm -f /var/run/mysql_restart_running.pid
   check_mysql_up
   tune_memory_limits

@@ -48,7 +48,7 @@ wait_for_pid() {
 
 case "$1" in
 	start)
-		echo -n "Starting php80-fpm.."
+		echo -n "Starting php80-fpm..."
 
 		$php_fpm_BIN --daemonize $php_opts
 
@@ -68,7 +68,7 @@ case "$1" in
 	;;
 
 	stop)
-		echo -n "Gracefully shutting down php80-fpm.."
+		echo -n "Gracefully shutting down php80-fpm..."
 
 		if [ ! -r $php_fpm_PID ]; then
 			echo "warning, no pid file found - php80-fpm is not running ?"
@@ -102,7 +102,7 @@ case "$1" in
 	;;
 
 	force-quit)
-		echo -n "Terminating php80-fpm.."
+		echo -n "Terminating php80-fpm..."
 
 		if [ ! -r $php_fpm_PID ]; then
 			echo "warning, no pid file found - php80-fpm is not running ?"
@@ -128,7 +128,7 @@ case "$1" in
 
 	reload)
 
-		echo -n "Reloading service php80-fpm.."
+		echo -n "Reloading service php80-fpm..."
 
 		if [ ! -r $php_fpm_PID ]; then
 			echo "warning, no pid file found - php80-fpm is not running ?"

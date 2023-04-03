@@ -542,7 +542,7 @@ prep_for_install_db_sql() {
     _KEYS_SIG="8507EFA5"
     _KEYS_SERVER_TEST=FALSE
     until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
-      msg "INFO: Retrieving ${_KEYS_SIG} key.."
+      msg "INFO: Retrieving ${_KEYS_SIG} key..."
       cd /var/opt
       _KEYS_FILE_TEST=FALSE
       until [[ "${_KEYS_FILE_TEST}" =~ "GnuPG" ]]; do
@@ -573,7 +573,7 @@ prep_for_install_db_sql() {
     _KEYS_SIG="C74CD1D8"
     _KEYS_SERVER_TEST=FALSE
     until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
-      msg "INFO: Retrieving ${_KEYS_SIG} key.."
+      msg "INFO: Retrieving ${_KEYS_SIG} key..."
       ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG} &> /dev/null
       ${_GPG} -a --export ${_KEYS_SIG} | apt-key add - &> /dev/null
       _KEYS_SERVER_TEST=$(${_GPG} --list-keys ${_KEYS_SIG} 2>&1)
@@ -1126,7 +1126,7 @@ install_db_server() {
         _KEYS_SIG="8507EFA5"
         _KEYS_SERVER_TEST=FALSE
         until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
-          msg "INFO: Retrieving ${_KEYS_SIG} key.."
+          msg "INFO: Retrieving ${_KEYS_SIG} key..."
           cd /var/opt
           _KEYS_FILE_TEST=FALSE
           until [[ "${_KEYS_FILE_TEST}" =~ "GnuPG" ]]; do
@@ -1157,7 +1157,7 @@ install_db_server() {
         _KEYS_SIG="C74CD1D8"
         _KEYS_SERVER_TEST=FALSE
         until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
-          msg "INFO: Retrieving ${_KEYS_SIG} key.."
+          msg "INFO: Retrieving ${_KEYS_SIG} key..."
           ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG} &> /dev/null
           ${_GPG} -a --export ${_KEYS_SIG} | apt-key add - &> /dev/null
           _KEYS_SERVER_TEST=$(${_GPG} --list-keys ${_KEYS_SIG} 2>&1)

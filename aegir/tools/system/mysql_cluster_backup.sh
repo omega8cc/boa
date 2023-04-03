@@ -105,7 +105,7 @@ check_running() {
   until [ ! -z "${_IS_PROXYSQL_RUNNING}" ] \
     && [ -e "/var/lib/proxysql/proxysql.pid" ]; do
     _IS_PROXYSQL_RUNNING=$(ps aux | grep '[p]roxysql' | awk '{print $2}' 2>&1)
-    echo "Waiting for ProxySQL availability.."
+    echo "Waiting for ProxySQL availability..."
     sleep 3
   done
 }
