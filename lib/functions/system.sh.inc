@@ -4574,6 +4574,7 @@ update_webmin_apt() {
 
 sys_packages_update() {
   msg "INFO: Running system packages update..."
+  msg "INFO: It may take several minutes depending on your system CPU..."
   if [ -e "/var/aegir" ]; then
     echo "curl install"           | dpkg --set-selections &> /dev/null
     echo "git install"            | dpkg --set-selections &> /dev/null

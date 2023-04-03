@@ -1108,6 +1108,7 @@ install_db_server() {
         csf -x &> /dev/null
       fi
       msg "INFO: Running ${_DB_SERVER} upgrade..."
+      msg "INFO: It may take several minutes depending on your system CPU..."
       if [ ! -e "/root/.proxy.cnf" ]; then
         mrun "sleep 120"
         mrun "service nginx stop" &> /dev/null
