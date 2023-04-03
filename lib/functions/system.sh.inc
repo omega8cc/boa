@@ -2939,10 +2939,13 @@ install_ssl_src() {
         mrun "sh ./config zlib-dynamic \
           --prefix=/usr/local/ssl \
           --openssldir=/usr/local/ssl \
-          shared enable-ec_nistp_64_gcc_128" 2> /dev/null
+          --libdir=lib \
+          enable-ec_nistp_64_gcc_128 \
+          shared" 2> /dev/null
       else
         mrun "sh ./config zlib-dynamic \
           --prefix=/usr/local/ssl \
+          --libdir=lib \
           --openssldir=/usr/local/ssl \
           shared" 2> /dev/null
       fi
