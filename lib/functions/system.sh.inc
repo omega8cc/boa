@@ -2267,26 +2267,25 @@ install_wkhtmltox() {
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}')
-  if [ "${_OSR}" = "chimaera" ] \
-    || [ "${_OSR}" = "beowulf" ] \
-    || [ "${_OSR}" = "bullseye" ] \
-    || [ "${_OSR}" = "buster" ] \
-    || [ "${_THIS_RV}" = "stretch" ]; then
-    if [[ "${_WOX_ITD}" =~ "0.12.6" ]]; then
+  if [[ "${_WOX_ITD}" =~ "0.12.6" ]]; then
+    if [ "${_OSR}" = "chimaera" ] \
+      || [ "${_OSR}" = "bullseye" ] \
+      || [ "${_OSR}" = "beowulf" ] \
+      || [ "${_OSR}" = "buster" ] \
+      || [ "${_OSR}" = "stretch" ]; then
       _WOX_IS=NEW
+      _WKHTMLTOX_VRN="12.6-1"
     fi
-  else
-    if [[ "${_WOX_ITD}" =~ "0.12.5" ]]; then
+  fi
+  if [[ "${_WOX_ITD}" =~ "0.12.5" ]]; then
+    if [ "${_OSR}" = "jessie" ] \
+      || [ "${_OSR}" = "trusty" ]; then
       _WOX_IS=NEW
+      _WKHTMLTOX_VRN="12.5-1"
     fi
   fi
   if [ "${_OSR}" = "chimaera" ] \
-    || [ "${_OSR}" = "beowulf" ] \
-    || [ "${_OSR}" = "bullseye" ] \
-    || [ "${_OSR}" = "buster" ] \
-    || [ "${_THIS_RV}" = "stretch" ] \
-    || [ "${_THIS_RV}" = "jessie" ] \
-    || [ "${_THIS_RV}" = "trusty" ]; then
+    || [ "${_OSR}" = "bullseye" ]; then
     if [ "${_WOX_IS}" = "OLD" ] \
       || [ ! -x "/usr/local/bin/wkhtmltopdf" ] \
       || [ ! -x "/usr/local/bin/wkhtmltoimage" ] \
@@ -2295,6 +2294,25 @@ install_wkhtmltox() {
       || [ -L "/usr/bin/wkhtmltopdf" ] \
       || [ -L "/usr/bin/wkhtmltoimage" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
+      mrun "${_APT_UPDATE} -qq" &> /dev/null
+      mrun "${_INSTALL} xfonts-75dpi xfonts-base" 2> /dev/null
+      mrun "${_INSTALL} wkhtmltopdf" 2> /dev/null
+    fi
+  else
+    if [ "${_WOX_IS}" = "OLD" ] \
+      || [ ! -x "/usr/local/bin/wkhtmltopdf" ] \
+      || [ ! -x "/usr/local/bin/wkhtmltoimage" ] \
+      || [ ! -f "/usr/bin/wkhtmltopdf" ] \
+      || [ ! -f "/usr/bin/wkhtmltoimage" ] \
+      || [ -L "/usr/bin/wkhtmltopdf" ] \
+      || [ -L "/usr/bin/wkhtmltoimage" ] \
+      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      if [ "${_OSR}" = "beowulf" ]; then
+        _WKHTML_SYS_RV="buster"
+      else
+        _WKHTML_SYS_RV="${_OSR}"
+      fi
       if [ "${_X86_64_TEST}" = "x86_64" ]; then
         SYSTEM_ARCH="x86_64"
         msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
@@ -2303,13 +2321,13 @@ install_wkhtmltox() {
         mkdir -p /var/opt/wkhtmltox
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           mrun "${_INSTALL} xfonts-75dpi xfonts-base"
-          get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb.gz"
-          dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb"
+          get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz"
+          dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb"
           apt-get install -f -y
         else
           mrun "${_INSTALL} xfonts-75dpi xfonts-base" &> /dev/null
-          get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb.gz" &> /dev/null
-          dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_amd64.deb" &> /dev/null
+          get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz" &> /dev/null
+          dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb" &> /dev/null
           apt-get install -f -y &> /dev/null
         fi
       else
@@ -2319,8 +2337,8 @@ install_wkhtmltox() {
         cd /var/opt
         rm -rf wkhtmltox*
         mkdir -p /var/opt/wkhtmltox
-        get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_i386.deb.gz" &> /dev/null
-        dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_THIS_RV}_i386.deb" &> /dev/null
+        get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_i386.deb.gz" &> /dev/null
+        dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_i386.deb" &> /dev/null
         apt-get install -f -y &> /dev/null
       fi
       if [ -x "/usr/local/bin/wkhtmltopdf" ]; then
