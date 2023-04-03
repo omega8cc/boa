@@ -2975,6 +2975,8 @@ install_ssl_src() {
       _PHP_FORCE_REINSTALL=
       _GIT_FORCE_REINSTALL=
     fi
+  else
+    msg "INFO: OpenSSL version detected ${_SSL_ITD}, no upgrade required"
   fi
 }
 
@@ -3028,7 +3030,25 @@ install_curl_src() {
   fi
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     _CURL_INSTALL_REQUIRED=YES
-    msg "INFO: Installed cURL version ${_CURL_ITD}, rebuild forced"
+    msg "INFO: Installed cURL version ${_CURL_ITD} but re-install forced"
+  fi
+  if [ ! -e "/root/.use.curl.from.packages.cnf" ]; then
+    if [ "${_OSR}" = "chimaera" ] \
+      || [ "${_OSR}" = "beowulf" ] \
+      || [ "${_OSR}" = "bullseye" ] \
+      || [ "${_OSR}" = "buster" ] \
+      || [ "${_OSR}" = "stretch" ]; then
+      _OPENSSL_NEW_VRN=${_OPENSSL_EOL_VRN}
+      if [ -e "/root/.install.modern.openssl.cnf" ]; then
+        _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
+      fi
+    else
+      _OPENSSL_NEW_VRN=${_OPENSSL_LEGACY_VRN}
+    fi
+    if [ "${_CURL_SSL_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
+      _CURL_INSTALL_REQUIRED=YES
+      msg "INFO: cURL ${_CURL_ITD} with OpenSSL ${_CURL_SSL_ITD}, rebuild forced"
+    fi
   fi
   if [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
@@ -3066,22 +3086,6 @@ install_curl_src() {
         extract_archive "curl-${_CURL_VRN}.tar.gz"
       fi
       if [ -e "/var/opt/curl-${_CURL_VRN}" ]; then
-        if [ "${_OSR}" = "chimaera" ] \
-          || [ "${_OSR}" = "beowulf" ] \
-          || [ "${_OSR}" = "bullseye" ] \
-          || [ "${_OSR}" = "buster" ] \
-          || [ "${_OSR}" = "stretch" ]; then
-          _OPENSSL_NEW_VRN=${_OPENSSL_EOL_VRN}
-          if [ -e "/root/.install.modern.openssl.cnf" ]; then
-            _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
-          fi
-        else
-          _OPENSSL_NEW_VRN=${_OPENSSL_LEGACY_VRN}
-        fi
-        ###--------------------###
-        _SSL_FORCE_REINSTALL=YES
-        install_ssl_src
-        ###--------------------###
         msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
         if [ -e "/usr/local/ssl/lib/libssl.so.3" ] \
           || [ -e "/usr/local/ssl/lib/libssl.so.1.1" ] \
@@ -3141,6 +3145,8 @@ install_curl_src() {
       fi
     fi
     _CURL_ALREADY_REBUILT=YES
+  else
+    msg "INFO: cURL version detected ${_CURL_ITD}, no upgrade required"
   fi
 }
 

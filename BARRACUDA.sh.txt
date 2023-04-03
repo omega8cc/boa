@@ -360,6 +360,7 @@ check_smtp
 check_nginx_initd
 install_vnstat
 install_update_xdrago
+install_ssl_src
 install_curl_src
 install_update_lshell
 install_update_redis
