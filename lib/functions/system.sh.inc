@@ -3968,7 +3968,8 @@ basic_packages_install_on_init() {
       msg "INFO: One more check to make sure that it works..."
       _CHECK_CRON=$(service cron status 2>&1)
       if [[ "${_CHECK_CRON}" =~ "running" ]]; then
-        msg "INFO: OK, it works! ${_CHECK_CRON}"
+        msg "INFO: OK, it works! ${_CHECK_CRON} so you can reboot again!"
+        msg "STEP: Once the system is up, run standard boa install command"
       else
         msg "ALRT: Ouch! cron does not work ${_CHECK_CRON}"
         msg "ALRT: Please do not reboot until you manage to fix this!"
