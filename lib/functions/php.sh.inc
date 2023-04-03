@@ -1805,7 +1805,7 @@ check_php_rebuild() {
     else
       if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
         || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
-        _DO_NOTHING=YES
+        msg "INFO: Installed PHP version ${_PHP_ITD}, rebuild forced"
       else
         msg "INFO: Installed PHP version ${_PHP_ITD}, upgrade required"
       fi
