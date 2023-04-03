@@ -2894,7 +2894,7 @@ install_ssl_src() {
   fi
   _PHP_COMPATIBILITY_TEST=$(php -i | grep "SSL Version" 2>&1)
   if [[ ! "${_PHP_COMPATIBILITY_TEST}" =~ "${_OPENSSL_NEW_VRN}" ]]; then
-    msg "INFO: PHP ${_PHP_COMPATIBILITY_TEST}, rebuild of PHP forced"
+    msg "INFO: PHP ${_PHP_COMPATIBILITY_TEST}, rebuild forced later"
     _PHP_FORCE_REINSTALL=YES
   fi
   _SPDY_COMPATIBILITY_TEST=$(service nginx configtest 2>&1)
