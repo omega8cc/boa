@@ -2862,27 +2862,43 @@ install_ssl_src() {
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
-  if [ "${_SSL_ITD}" = "${_OPENSSL_MODERN_VRN}" ] \
-    || [ "${_SSL_ITD}" = "${_OPENSSL_EOL_VRN}" ] \
-    || [ "${_SSL_ITD}" = "${_OPENSSL_LEGACY_VRN}" ]; then
-    _SPDY_COMPATIBILITY_TEST=$(service nginx configtest 2>&1)
-    if [[ "${_SPDY_COMPATIBILITY_TEST}" =~ "without OpenSSL ALPN or NPN" ]]; then
-      _SSL_FORCE_REINSTALL=YES
+  if [ "${_OSR}" = "chimaera" ] \
+    || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bullseye" ] \
+    || [ "${_OSR}" = "buster" ] \
+    || [ "${_OSR}" = "stretch" ]; then
+    _OPENSSL_NEW_VRN=${_OPENSSL_EOL_VRN}
+    if [ -e "/root/.install.modern.openssl.cnf" ]; then
+      _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
     fi
-    if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
-      || [ "${_SSL_FORCE_REINSTALL}" = "YES" ]; then
-      _SSL_INSTALL_REQUIRED=YES
-      _SSH_FORCE_REINSTALL=YES
-      _NGX_FORCE_REINSTALL=YES
-      _PHP_FORCE_REINSTALL=YES
-      _GIT_FORCE_REINSTALL=YES
-      rm -f ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_VERSION}.log
-      rm -f ${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log
-      msg "INFO: Installed OpenSSL version ${_SSL_ITD}, rebuild forced"
-    else
-      _DO_NOTHING=YES
-      _SSH_FORCE_REINSTALL=NO
-    fi
+  else
+    _OPENSSL_NEW_VRN=${_OPENSSL_LEGACY_VRN}
+  fi
+  if [ "${_SSL_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
+    msg "INFO: OpenSSL is ${_SSL_ITD}, upgrade to ${_OPENSSL_NEW_VRN} required"
+    _SSL_INSTALL_REQUIRED=YES
+  fi
+  _PHP_COMPATIBILITY_TEST=$(php -i | grep "SSL Version" 2>&1)
+  if [[ ! "${_PHP_COMPATIBILITY_TEST}" =~ "${_OPENSSL_NEW_VRN}" ]]; then
+    msg "INFO: PHP ${_PHP_COMPATIBILITY_TEST}, rebuild of PHP forced"
+    _PHP_FORCE_REINSTALL=YES
+  fi
+  _SPDY_COMPATIBILITY_TEST=$(service nginx configtest 2>&1)
+  if [[ "${_SPDY_COMPATIBILITY_TEST}" =~ "without OpenSSL ALPN or NPN" ]]; then
+    msg "INFO: OpenSSL is ${_SSL_ITD}, rebuild for Nginx forced"
+    _SSL_FORCE_REINSTALL=YES
+    _NGX_FORCE_REINSTALL=YES
+  fi
+  if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
+    || [ "${_SSL_FORCE_REINSTALL}" = "YES" ]; then
+    _SSL_INSTALL_REQUIRED=YES
+    _SSH_FORCE_REINSTALL=YES
+    _NGX_FORCE_REINSTALL=YES
+    _PHP_FORCE_REINSTALL=YES
+    _GIT_FORCE_REINSTALL=YES
+    rm -f ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_VERSION}.log
+    rm -f ${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log
+    msg "INFO: Installed OpenSSL version ${_SSL_ITD}, rebuild forced"
   else
     _SSL_INSTALL_REQUIRED=YES
     _SSH_FORCE_REINSTALL=YES
@@ -2894,18 +2910,6 @@ install_ssl_src() {
     msg "INFO: Installed OpenSSL version ${_SSL_ITD}, upgrade required"
   fi
   if [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
-    if [ "${_OSR}" = "chimaera" ] \
-      || [ "${_OSR}" = "beowulf" ] \
-      || [ "${_OSR}" = "bullseye" ] \
-      || [ "${_OSR}" = "buster" ] \
-      || [ "${_OSR}" = "stretch" ]; then
-      _OPENSSL_NEW_VRN=${_OPENSSL_EOL_VRN}
-      if [ -e "/root/.install.modern.openssl.cnf" ]; then
-        _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
-      fi
-    else
-      _OPENSSL_NEW_VRN=${_OPENSSL_LEGACY_VRN}
-    fi
     ###--------------------###
     msg "INFO: Building zlib ${_ZLIB_VRN} from sources first, please wait..."
     cd /var/opt
