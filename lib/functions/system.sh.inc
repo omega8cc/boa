@@ -2900,7 +2900,7 @@ install_ssl_src() {
   _SPDY_COMPATIBILITY_TEST=$(service nginx configtest 2>&1)
   if [[ "${_SPDY_COMPATIBILITY_TEST}" =~ "without OpenSSL ALPN or NPN" ]]; then
     msg "INFO: OpenSSL is ${_SSL_ITD}, rebuild for Nginx forced"
-    _SSL_FORCE_REINSTALL=YES
+    _SSL_INSTALL_REQUIRED=YES
     _NGX_FORCE_REINSTALL=YES
   fi
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
@@ -2913,15 +2913,6 @@ install_ssl_src() {
     rm -f ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_VERSION}.log
     rm -f ${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log
     msg "INFO: Installed OpenSSL version ${_SSL_ITD}, rebuild forced"
-  else
-    _SSL_INSTALL_REQUIRED=YES
-    _SSH_FORCE_REINSTALL=YES
-    _NGX_FORCE_REINSTALL=YES
-    _PHP_FORCE_REINSTALL=YES
-    _GIT_FORCE_REINSTALL=YES
-    rm -f ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_VERSION}.log
-    rm -f ${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log
-    msg "INFO: Installed OpenSSL version ${_SSL_ITD}, upgrade required"
   fi
   if [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
