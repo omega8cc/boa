@@ -71,13 +71,13 @@ if_install_jetty() {
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_X_SE} Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
       elif [ "${_OSR}" = "bullseye" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk\" # BOA ${_X_SE} Path to Java 17" >> \
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_X_SE} Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
       elif [ "${_OSR}" = "beowulf" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_X_SE} Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
       elif [ "${_OSR}" = "chimaera" ]; then
-        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk\" # BOA ${_X_SE} Path to Java 17" >> \
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_X_SE} Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
       fi
     fi

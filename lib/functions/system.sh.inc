@@ -5621,61 +5621,32 @@ check_fix_newrelic() {
 }
 
 check_fix_java() {
-  if [ ! -e "/usr/lib/jvm/java-7-openjdk" ] \
-    && [ -d "/usr/lib/jvm/java-7-openjdk-amd64" ]; then
-    ln -sf /usr/lib/jvm/java-7-openjdk-amd64 /usr/lib/jvm/java-7-openjdk
+  if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
+    && [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
+    ln -sf /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
   fi
-  if [ ! -e "/usr/lib/jvm/java-7-openjdk" ] \
-    && [ -d "/usr/lib/jvm/java-7-openjdk-i386" ]; then
-    ln -sf /usr/lib/jvm/java-7-openjdk-i386 /usr/lib/jvm/java-7-openjdk
+  if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
+    && [ -d "/usr/lib/jvm/java-17-openjdk-i386" ]; then
+    ln -sf /usr/lib/jvm/java-17-openjdk-i386 /usr/lib/jvm/java-17-openjdk
   fi
-  if [ -e "/usr/lib/jvm/java-1.7.0-openjdk-i386" ]; then
+  if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-i386" ]; then
     rm -f /usr/lib/jvm/default-java
-    ln -s /usr/lib/jvm/java-1.7.0-openjdk-i386 /usr/lib/jvm/default-java
+    ln -sf /usr/lib/jvm/java-1.17.0-openjdk-i386 /usr/lib/jvm/default-java
   fi
-  if [ ! -e "/usr/bin/java7" ] \
-    && [ -e "/usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java /usr/bin/java7
+  if [ ! -e "/usr/bin/java17" ] \
+    && [ -e "/usr/lib/jvm/java-17-openjdk-amd64/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-17-openjdk-amd64/bin/java /usr/bin/java17
   fi
-  if [ ! -e "/usr/bin/java7" ] \
-    && [ -e "/usr/lib/jvm/java-7-openjdk-i386/jre/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-7-openjdk-i386/jre/bin/java /usr/bin/java7
+  if [ ! -e "/usr/bin/java17" ] \
+    && [ -e "/usr/lib/jvm/java-17-openjdk-i386/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-17-openjdk-i386/bin/java /usr/bin/java17
   fi
-  if [ -e "/usr/lib/jvm/java-1.7.0-openjdk-amd64" ]; then
+  if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-amd64" ]; then
     rm -f /usr/lib/jvm/default-java
-    ln -sf /usr/lib/jvm/java-1.7.0-openjdk-amd64 /usr/lib/jvm/default-java
+    ln -sf /usr/lib/jvm/java-1.17.0-openjdk-amd64 /usr/lib/jvm/default-java
   fi
-  if [ -x "/usr/lib/jvm/java-7-openjdk/jre/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-7-openjdk/jre/bin/java /etc/alternatives/java
-    ln -sf /etc/alternatives/java /usr/bin/java
-  fi
-
-  if [ ! -e "/usr/lib/jvm/java-8-openjdk" ] \
-    && [ -d "/usr/lib/jvm/java-8-openjdk-amd64" ]; then
-    ln -sf /usr/lib/jvm/java-8-openjdk-amd64 /usr/lib/jvm/java-8-openjdk
-  fi
-  if [ ! -e "/usr/lib/jvm/java-8-openjdk" ] \
-    && [ -d "/usr/lib/jvm/java-8-openjdk-i386" ]; then
-    ln -sf /usr/lib/jvm/java-8-openjdk-i386 /usr/lib/jvm/java-8-openjdk
-  fi
-  if [ -e "/usr/lib/jvm/java-1.8.0-openjdk-i386" ]; then
-    rm -f /usr/lib/jvm/default-java
-    ln -sf /usr/lib/jvm/java-1.8.0-openjdk-i386 /usr/lib/jvm/default-java
-  fi
-  if [ ! -e "/usr/bin/java8" ] \
-    && [ -e "/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java /usr/bin/java8
-  fi
-  if [ ! -e "/usr/bin/java8" ] \
-    && [ -e "/usr/lib/jvm/java-8-openjdk-i386/jre/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-8-openjdk-i386/jre/bin/java /usr/bin/java8
-  fi
-  if [ -e "/usr/lib/jvm/java-1.8.0-openjdk-amd64" ]; then
-    rm -f /usr/lib/jvm/default-java
-    ln -sf /usr/lib/jvm/java-1.8.0-openjdk-amd64 /usr/lib/jvm/default-java
-  fi
-  if [ -x "/usr/lib/jvm/java-8-openjdk/jre/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-8-openjdk/jre/bin/java /etc/alternatives/java
+  if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
     ln -sf /etc/alternatives/java /usr/bin/java
   fi
 
@@ -5708,32 +5679,61 @@ check_fix_java() {
     ln -sf /etc/alternatives/java /usr/bin/java
   fi
 
-  if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
-    && [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
-    ln -sf /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
+  if [ ! -e "/usr/lib/jvm/java-8-openjdk" ] \
+    && [ -d "/usr/lib/jvm/java-8-openjdk-amd64" ]; then
+    ln -sf /usr/lib/jvm/java-8-openjdk-amd64 /usr/lib/jvm/java-8-openjdk
   fi
-  if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
-    && [ -d "/usr/lib/jvm/java-17-openjdk-i386" ]; then
-    ln -sf /usr/lib/jvm/java-17-openjdk-i386 /usr/lib/jvm/java-17-openjdk
+  if [ ! -e "/usr/lib/jvm/java-8-openjdk" ] \
+    && [ -d "/usr/lib/jvm/java-8-openjdk-i386" ]; then
+    ln -sf /usr/lib/jvm/java-8-openjdk-i386 /usr/lib/jvm/java-8-openjdk
   fi
-  if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-i386" ]; then
+  if [ -e "/usr/lib/jvm/java-1.8.0-openjdk-i386" ]; then
     rm -f /usr/lib/jvm/default-java
-    ln -sf /usr/lib/jvm/java-1.17.0-openjdk-i386 /usr/lib/jvm/default-java
+    ln -sf /usr/lib/jvm/java-1.8.0-openjdk-i386 /usr/lib/jvm/default-java
   fi
-  if [ ! -e "/usr/bin/java17" ] \
-    && [ -e "/usr/lib/jvm/java-17-openjdk-amd64/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-17-openjdk-amd64/bin/java /usr/bin/java17
+  if [ ! -e "/usr/bin/java8" ] \
+    && [ -e "/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java /usr/bin/java8
   fi
-  if [ ! -e "/usr/bin/java17" ] \
-    && [ -e "/usr/lib/jvm/java-17-openjdk-i386/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-17-openjdk-i386/bin/java /usr/bin/java17
+  if [ ! -e "/usr/bin/java8" ] \
+    && [ -e "/usr/lib/jvm/java-8-openjdk-i386/jre/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-8-openjdk-i386/jre/bin/java /usr/bin/java8
   fi
-  if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-amd64" ]; then
+  if [ -e "/usr/lib/jvm/java-1.8.0-openjdk-amd64" ]; then
     rm -f /usr/lib/jvm/default-java
-    ln -sf /usr/lib/jvm/java-1.17.0-openjdk-amd64 /usr/lib/jvm/default-java
+    ln -sf /usr/lib/jvm/java-1.8.0-openjdk-amd64 /usr/lib/jvm/default-java
   fi
-  if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
+  if [ -x "/usr/lib/jvm/java-8-openjdk/jre/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-8-openjdk/jre/bin/java /etc/alternatives/java
+    ln -sf /etc/alternatives/java /usr/bin/java
+  fi
+
+  if [ ! -e "/usr/lib/jvm/java-7-openjdk" ] \
+    && [ -d "/usr/lib/jvm/java-7-openjdk-amd64" ]; then
+    ln -sf /usr/lib/jvm/java-7-openjdk-amd64 /usr/lib/jvm/java-7-openjdk
+  fi
+  if [ ! -e "/usr/lib/jvm/java-7-openjdk" ] \
+    && [ -d "/usr/lib/jvm/java-7-openjdk-i386" ]; then
+    ln -sf /usr/lib/jvm/java-7-openjdk-i386 /usr/lib/jvm/java-7-openjdk
+  fi
+  if [ -e "/usr/lib/jvm/java-1.7.0-openjdk-i386" ]; then
+    rm -f /usr/lib/jvm/default-java
+    ln -s /usr/lib/jvm/java-1.7.0-openjdk-i386 /usr/lib/jvm/default-java
+  fi
+  if [ ! -e "/usr/bin/java7" ] \
+    && [ -e "/usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java /usr/bin/java7
+  fi
+  if [ ! -e "/usr/bin/java7" ] \
+    && [ -e "/usr/lib/jvm/java-7-openjdk-i386/jre/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-7-openjdk-i386/jre/bin/java /usr/bin/java7
+  fi
+  if [ -e "/usr/lib/jvm/java-1.7.0-openjdk-amd64" ]; then
+    rm -f /usr/lib/jvm/default-java
+    ln -sf /usr/lib/jvm/java-1.7.0-openjdk-amd64 /usr/lib/jvm/default-java
+  fi
+  if [ -x "/usr/lib/jvm/java-7-openjdk/jre/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-7-openjdk/jre/bin/java /etc/alternatives/java
     ln -sf /etc/alternatives/java /usr/bin/java
   fi
 }
@@ -5930,6 +5930,8 @@ update_initd() {
       msg "INFO: Restarting Solr 7"
       mrun "service solr7 stop" &> /dev/null
       #kill -9 $(ps aux | grep '[j]ava-8-openjdk' | awk '{print $2}') &> /dev/null
+      #kill -9 $(ps aux | grep '[j]ava-11-openjdk' | awk '{print $2}') &> /dev/null
+      #kill -9 $(ps aux | grep '[j]ava-17-openjdk' | awk '{print $2}') &> /dev/null
       mrun "service solr7 start" &> /dev/null
     fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
@@ -6054,6 +6056,8 @@ update_initd() {
       msg "INFO: Restarting Solr 7"
       mrun "service solr7 stop" &> /dev/null
       #kill -9 $(ps aux | grep '[j]ava-8-openjdk' | awk '{print $2}') &> /dev/null
+      #kill -9 $(ps aux | grep '[j]ava-11-openjdk' | awk '{print $2}') &> /dev/null
+      #kill -9 $(ps aux | grep '[j]ava-17-openjdk' | awk '{print $2}') &> /dev/null
       mrun "service solr7 start" &> /dev/null
     fi
     kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
