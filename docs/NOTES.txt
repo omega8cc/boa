@@ -7,11 +7,12 @@
     ### Xtras included with "ALL" wildcard:
     ###
     ### ADM --- Adminer DB Manager
-    ### CGP --- Collectd Graph Panel
     ### CSF --- Firewall
     ### CSS --- RVM for Compass + NPM for Gulp/Bower
+    ### DCS --- Local DNS Cache Server pdnsd
     ### FTP --- Pure-FTPd server with forced FTPS
-    ### WMN --- Webmin Control Panel
+    ### IMG --- Image Optimize binaries: advdef advpng jpegoptim jpegtran optipng pngcrush pngquant
+    ### SR7 --- Apache Solr 7
     ###
     ### Xtras which need to be listed explicitly:
     ###
@@ -20,23 +21,22 @@
     ###
     ### BDD --- SQL Buddy DB Manager
     ### BND --- Bind9 DNS Server (available on Debian only)
-    ### DCS --- Local DNS Cache Server pdnsd (not supported on Linode)
     ### BZR --- Bazaar
+    ### CGP --- Collectd Graph Panel
     ### CHV --- Chive DB Manager
     ### FMG --- FFmpeg support
     ### GIT --- Latest Git from sources
-    ### IMG --- Image Optimize binaries: advdef advpng jpegoptim jpegtran optipng pngcrush pngquant
     ### SR1 --- Apache Solr 1 with Jetty 7 (deprecated)
     ### SR3 --- Apache Solr 3 with Jetty 8 (deprecated)
     ### SR4 --- Apache Solr 4 with Jetty 9
-    ### SR7 --- Apache Solr 7
+    ### WMN --- Webmin Control Panel
     ###
     ### Examples:
     ###
     ### _XTRAS_LIST=""
     ### _XTRAS_LIST="ALL"
     ### _XTRAS_LIST="ALL GIT SR7"
-    ### _XTRAS_LIST="ADM CSF CGP CHV FTP"
+    ### _XTRAS_LIST="ADM CSF CGP CHV FTP DCS"
     ###
 
   * Configuration file template: docs/cnf/barracuda.cnf
