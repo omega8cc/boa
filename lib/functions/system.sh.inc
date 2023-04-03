@@ -2351,7 +2351,9 @@ install_wkhtmltox() {
 clean_drush_eleven() {
   rm -f /usr/bin/drush11*
   ln -sf /opt/tools/drush/11/drush/vendor/drush/drush/drush /usr/bin/drush11-bin
-  msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} setup complete"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} setup complete"
+  fi
 }
 
 #
@@ -2366,7 +2368,9 @@ clean_drush_ten() {
   rm -f /usr/local/bin/robo
   rm -f /usr/local/bin/var-dump-server
   ln -sf /opt/tools/drush/10/drush/vendor/drush/drush/drush /usr/bin/drush10-bin
-  msg "INFO: Drush ${_DRUSH_TEN_VRN} setup complete"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Drush ${_DRUSH_TEN_VRN} setup complete"
+  fi
 }
 
 #
@@ -2483,10 +2487,14 @@ get_drush_versions() {
     if [ "${_DRUSH_ITD}" != "${_DRUSH_EIGHT_TEST_VRN}" ] \
       || [ ! -x "/opt/tools/drush/8/drush/drush" ] \
       || [ ! -e "/opt/tools/drush/8/.ctrl.${_X_SE}.pid" ]; then
-      msg "INFO: Drush ${_DRUSH_EIGHT_VRN} re-installation required"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Drush ${_DRUSH_EIGHT_VRN} re-installation required"
+      fi
       get_drush_eight
     else
-      msg "INFO: Drush ${_DRUSH_EIGHT_VRN} already installed"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Drush ${_DRUSH_EIGHT_VRN} already installed"
+      fi
     fi
   fi
   if [ -e "/opt/tools/drush/10" ]; then
@@ -2497,10 +2505,14 @@ get_drush_versions() {
     if [ "${_DRUSH_ITD}" != "${_DRUSH_TEN_VRN}" ] \
       || [ ! -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ] \
       || [ ! -e "/opt/tools/drush/10/.ctrl.${_X_SE}.pid" ]; then
-      msg "INFO: Drush ${_DRUSH_TEN_VRN} re-installation required"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Drush ${_DRUSH_TEN_VRN} re-installation required"
+      fi
       get_drush_ten
     else
-      msg "INFO: Drush ${_DRUSH_TEN_VRN} already installed"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Drush ${_DRUSH_TEN_VRN} already installed"
+      fi
     fi
   fi
   if [ -e "/opt/tools/drush/11" ]; then
@@ -2511,10 +2523,14 @@ get_drush_versions() {
     if [ "${_DRUSH_ITD}" != "${_DRUSH_ELEVEN_VRN}" ] \
       || [ ! -x "/opt/tools/drush/11/drush/vendor/drush/drush/drush" ] \
       || [ ! -e "/opt/tools/drush/11/.ctrl.${_X_SE}.pid" ]; then
-      msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} re-installation required"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} re-installation required"
+      fi
       get_drush_eleven
     else
-      msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} already installed"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} already installed"
+      fi
     fi
   fi
   if [ -e "/opt/tools/drush/launcher" ]; then
@@ -2526,10 +2542,14 @@ get_drush_versions() {
     if [ "${_DRUSH_ITD}" != "${_DRUSH_LAUNCHER_VRN}" ] \
       || [ ! -x "/opt/tools/drush/launcher/drush.phar" ] \
       || [ ! -e "/opt/tools/drush/launcher/.ctrl.${_X_SE}.pid" ]; then
-      msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} re-installation required"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} re-installation required"
+      fi
       get_drush_launcher
     else
-      msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} already installed"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} already installed"
+      fi
     fi
   fi
   set_drush_perm
