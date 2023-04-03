@@ -2900,7 +2900,7 @@ install_ssl_src() {
       || [ "${_OSR}" = "buster" ] \
       || [ "${_OSR}" = "stretch" ]; then
       _OPENSSL_NEW_VRN=${_OPENSSL_EOL_VRN}
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
+      if [ -e "/root/.install.modern.openssl.cnf" ]; then
         _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
       fi
     else
@@ -3072,7 +3072,7 @@ install_curl_src() {
           || [ "${_OSR}" = "buster" ] \
           || [ "${_OSR}" = "stretch" ]; then
           _OPENSSL_NEW_VRN=${_OPENSSL_EOL_VRN}
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
+          if [ -e "/root/.install.modern.openssl.cnf" ]; then
             _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
           fi
         else
