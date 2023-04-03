@@ -529,9 +529,11 @@ fi
 
 if_redis_restart() {
   PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+  PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
   PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
   ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
   if [[ "${PrTestPower}" =~ "POWER" ]] \
+    || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${PrTestCluster}" =~ "CLUSTER" ]] \
     || [ -e "/root/.allow.redis.restart.cnf" ]; then
     if [ "${ReTest}" -ge "1" ]; then

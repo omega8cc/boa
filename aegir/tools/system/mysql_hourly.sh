@@ -136,11 +136,15 @@ if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
   || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
   || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
   || [ "${_VMFAMILY}" = "VS" ]; then
-  PrTest=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+  PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+  PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
   InTest=$(ls /data/disk/*/static/control/cli.info | wc -l 2>&1)
-  #if [ "${InTest}" -le "5" ] && [[ "${PrTest}" =~ "POWER" ]]; then
-  #  _HOURLY_DB_BACKUPS="YES"
-  #fi
+  if [ "${InTest}" -le "5" ]; then
+    if [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
+      || [[ "${PrTestCluster}" =~ "PHANTOM" ]]; then
+      _HOURLY_DB_BACKUPS="YES"
+    fi
+  fi
 fi
 
 if [ -z "${_HOURLY_DB_BACKUPS}" ] \

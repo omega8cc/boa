@@ -39,9 +39,9 @@ _SITES_COLLATION_SQL= #--------- By default in sites hosted: utf8mb4_unicode_ci
 ###
 _DOMAIN="o1.f-q-d-n" #---------- URL of the Aegir control panel
 _CLIENT_EMAIL= #---------------- Create client user if different than _MY_EMAIL
-_CLIENT_OPTION="SSD" #---------- Currently not used
-_CLIENT_SUBSCR="Y" #------------ Currently not used
-_CLIENT_CORES="8" #------------- Currently not used
+_CLIENT_OPTION="POWER" #-------- Currently not used
+_CLIENT_SUBSCR="M" #------------ Currently not used
+_CLIENT_CORES="1" #------------- Currently not used
 ###
 ### Octopus
 ###
