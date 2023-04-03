@@ -1721,6 +1721,28 @@ install_newrelic() {
 # Check if the PHP rebuild is required.
 check_php_rebuild() {
   if_to_do_fix
+  if [ "${_OSR}" = "chimaera" ] \
+    || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bullseye" ] \
+    || [ "${_OSR}" = "buster" ] \
+    || [ "${_OSR}" = "stretch" ]; then
+    _OPENSSL_USE_VRN=${_OPENSSL_EOL_VRN}
+    if [ -e "/root/.install.modern.openssl.cnf" ]; then
+      _OPENSSL_USE_VRN="${_OPENSSL_MODERN_VRN}"
+    fi
+  else
+    _OPENSSL_USE_VRN=${_OPENSSL_LEGACY_VRN}
+  fi
+  _PHP_SSL_TEST=$(/opt/php$1/bin/php -i | grep "SSL Version" 2>&1)
+  if [[ ! "${_PHP_SSL_TEST}" =~ "${_OPENSSL_USE_VRN}" ]]; then
+    if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
+      msg "INFO: PHP $1 ${_PHP_SSL_TEST}, but no rebuild forced yet"
+      _PHP_FORCE_REINSTALL=NO
+    else
+      msg "INFO: PHP $1 ${_PHP_SSL_TEST}, thus rebuild of PHP forced"
+      _PHP_FORCE_REINSTALL=YES
+    fi
+  fi
   if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
     _PHP_FORCE_REINSTALL=NO
   fi
