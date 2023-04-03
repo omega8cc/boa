@@ -4565,7 +4565,6 @@ update_webmin_apt() {
 
 sys_packages_update() {
   msg "INFO: Running system packages update..."
-  msg "HINT: It may take several minutes depending on your system CPU..."
   if [ -e "/var/aegir" ]; then
     echo "curl install"           | dpkg --set-selections &> /dev/null
     echo "git install"            | dpkg --set-selections &> /dev/null
@@ -4667,6 +4666,7 @@ sys_packages_install() {
       cp -af ${locCnf}/php5-fpm-init-vanilla /etc/init.d/php5-fpm
     fi
   fi
+  msg "HINT: It may take several minutes depending on your system CPU..."
   if [ "${_STATUS}" = "INIT" ]; then
     if [[ "${_XTRAS_LIST}" =~ "SR" ]] \
       || [[ "${_THISHOST}" =~ ".host8." ]] \
