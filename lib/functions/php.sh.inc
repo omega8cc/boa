@@ -1733,18 +1733,18 @@ check_php_rebuild() {
   else
     _OPENSSL_USE_VRN=${_OPENSSL_LEGACY_VRN}
   fi
+  if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
+    _PHP_FORCE_REINSTALL=NO
+  fi
   _PHP_SSL_TEST=$(/opt/php$1/bin/php -i | grep "SSL Version" 2>&1)
   if [[ ! "${_PHP_SSL_TEST}" =~ "${_OPENSSL_USE_VRN}" ]]; then
     if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
       msg "INFO: PHP $1 ${_PHP_SSL_TEST}, but no rebuild forced yet"
       _PHP_FORCE_REINSTALL=NO
     else
-      msg "INFO: PHP $1 ${_PHP_SSL_TEST}, thus rebuild of PHP forced"
+      msg "INFO: PHP $1 ${_PHP_SSL_TEST}, thus rebuild forced"
       _PHP_FORCE_REINSTALL=YES
     fi
-  fi
-  if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-    _PHP_FORCE_REINSTALL=NO
   fi
   _PHP_ITD=$(/opt/php$1/bin/php -v \
     | grep 'PHP 7' \
