@@ -2753,12 +2753,22 @@ install_ssh_src() {
     | tr -d "," \
     | cut -d"_" -f2 \
     | awk '{ print $1}' 2>&1)
+  _SSL_ITD=$(openssl version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f2 \
+    | awk '{ print $1}' 2>&1)
+  _SSH_SSL_ITD=$(ssh -V 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f3 \
+    | awk '{ print $1}' 2>&1)
+  if [ "${_SSH_SSL_ITD}" != "${_SSL_ITD}" ]; then
+    msg "INFO: OpenSSL in SSH is ${_SSH_SSL_ITD}, rebuild to ${_SSL_ITD} required"
+    _SSH_INSTALL_REQUIRED=YES
+  fi
   if [ "${_SSH_FORCE_REINSTALL}" = "YES" ]; then
     _SSH_INSTALL_REQUIRED=YES
     msg "INFO: OpenSSH ${_SSH_ITD}, rebuild forced"
-  elif [ "${_SSH_ITD}" = "${_OPENSSH_VRN}" ]; then
-    _DO_NOTHING=YES
-  else
+  elif [ "${_SSH_ITD}" != "${_OPENSSH_VRN}" ]; then
     _SSH_INSTALL_REQUIRED=YES
     msg "INFO: Installed OpenSSH version ${_SSH_ITD}, upgrade required"
   fi

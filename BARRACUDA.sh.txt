@@ -319,16 +319,6 @@ fi
 
 
 ###
-### Install OpenSSH from sources if needed
-###
-if [ "${_SSH_FROM_SOURCES}" = "YES" ]; then
-  if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
-    install_ssh_src
-  fi
-fi
-
-
-###
 ### Install Percona server
 ###
 install_db_server
@@ -368,6 +358,16 @@ check_install_myquick
 if_install_magick
 install_update_php
 php_upgrade_all
+
+
+###
+### Install OpenSSH from sources if needed
+###
+if [ "${_SSH_FROM_SOURCES}" = "YES" ]; then
+  if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
+    install_ssh_src
+  fi
+fi
 
 
 ###
