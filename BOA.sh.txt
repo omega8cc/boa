@@ -1461,6 +1461,22 @@ fix_fpm_process_max() {
   fi
 }
 
+if_node_lshell() {
+  PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+  PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+  PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+  ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
+  if [[ "${PrTestPower}" =~ "POWER" ]] \
+    || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
+    || [[ "${PrTestCluster}" =~ "CLUSTER" ]] \
+    || [ -e "/root/.allow.node.lshell.cnf" ]; then
+    _ALLOW_NODE=YES
+  else
+    _ALLOW_NODE=NO
+    sed -i "s/, 'node',/,/g" /etc/lshell.conf
+  fi
+}
+
 fix_lshell() {
   _LSHELL_VRN=0.9.18.9
   _PATH_LSHELL="${usrBin}/lshell"
@@ -1481,6 +1497,7 @@ fix_lshell() {
     rm -rf /usr/local/lib/python2.7/dist-packages/lshell*
     python setup.py install --no-compile 2> /dev/null
     cp -af /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5 /etc/lshell.conf
+    if_node_lshell
     rm -f /etc/logrotate.d/lshell
     addgroup --system lshellg &> /dev/null
     mkdir -p /var/log/lsh

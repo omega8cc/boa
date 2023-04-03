@@ -5442,6 +5442,22 @@ check_fix_umask() {
   fi
 }
 
+if_node_lshell() {
+  PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+  PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+  PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+  ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
+  if [[ "${PrTestPower}" =~ "POWER" ]] \
+    || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
+    || [[ "${PrTestCluster}" =~ "CLUSTER" ]] \
+    || [ -e "/root/.allow.node.lshell.cnf" ]; then
+    _ALLOW_NODE=YES
+  else
+    _ALLOW_NODE=NO
+    sed -i "s/, 'node',/,/g" /etc/lshell.conf
+  fi
+}
+
 install_update_lshell() {
   _PATH_LSHELL="/usr/local/bin/lshell"
   if [ ! -e "${_PATH_LSHELL}" ] \
@@ -5471,6 +5487,7 @@ install_update_lshell() {
       cp -af /etc/lshell.conf-bak-${_NOW} /etc/lshell.conf &> /dev/null
     else
       cp -af ${bldPth}/aegir/tools/system/conf/lshell.conf /etc/lshell.conf
+      if_node_lshell
       echo "${_PATH_LSHELL}" >> /etc/shells
     fi
     rm -f /etc/logrotate.d/lshell

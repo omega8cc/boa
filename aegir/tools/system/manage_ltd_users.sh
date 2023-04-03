@@ -2373,6 +2373,24 @@ find_correct_ip() {
   fi
 }
 
+#
+# Restrict node if needed.
+if_node_lshell() {
+  PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+  PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+  PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+  ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
+  if [[ "${PrTestPower}" =~ "POWER" ]] \
+    || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
+    || [[ "${PrTestCluster}" =~ "CLUSTER" ]] \
+    || [ -e "/root/.allow.node.lshell.cnf" ]; then
+    _ALLOW_NODE=YES
+  else
+    _ALLOW_NODE=NO
+    sed -i "s/, 'node',/,/g" /etc/lshell.conf
+  fi
+}
+
 ###-------------SYSTEM-----------------###
 
 if [ ! -e "/home/.ctrl.${_X_SE}.pid" ]; then
@@ -2452,6 +2470,7 @@ else
     if [ ! -z "${_DIFF_T}" ]; then
       cp -af /etc/lshell.conf /var/backups/ltd/old/lshell.conf-before-${_NOW}
       cp -af ${_THIS_LTD_CONF} /etc/lshell.conf
+      if_node_lshell
     else
       rm -f ${_THIS_LTD_CONF}
     fi
