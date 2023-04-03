@@ -1608,16 +1608,16 @@ fix_alt() {
       echo fixed java symlinks
     fi
   fi
-  if [ -x "/usr/lib/jvm/java-11-openjdk/jre/bin/java" ]; then
+  if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
     if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
-      ln -sf /usr/lib/jvm/java-11-openjdk/jre/bin/java /etc/alternatives/java
+      ln -sf /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
       ln -sf /etc/alternatives/java /usr/bin/java
       echo fixed java symlinks
     fi
   fi
-  if [ -x "/usr/lib/jvm/java-17-openjdk/jre/bin/java" ]; then
+  if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ]; then
     if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
-      ln -sf /usr/lib/jvm/java-17-openjdk/jre/bin/java /etc/alternatives/java
+      ln -sf /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
       ln -sf /etc/alternatives/java /usr/bin/java
       echo fixed java symlinks
     fi

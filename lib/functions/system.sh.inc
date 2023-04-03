@@ -5692,19 +5692,19 @@ check_fix_java() {
     ln -sf /usr/lib/jvm/java-1.11.0-openjdk-i386 /usr/lib/jvm/default-java
   fi
   if [ ! -e "/usr/bin/java11" ] \
-    && [ -e "/usr/lib/jvm/java-11-openjdk-amd64/jre/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-11-openjdk-amd64/jre/bin/java /usr/bin/java11
+    && [ -e "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-11-openjdk-amd64/bin/java /usr/bin/java11
   fi
   if [ ! -e "/usr/bin/java11" ] \
-    && [ -e "/usr/lib/jvm/java-11-openjdk-i386/jre/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-11-openjdk-i386/jre/bin/java /usr/bin/java11
+    && [ -e "/usr/lib/jvm/java-11-openjdk-i386/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-11-openjdk-i386/bin/java /usr/bin/java11
   fi
   if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-amd64" ]; then
     rm -f /usr/lib/jvm/default-java
     ln -sf /usr/lib/jvm/java-1.11.0-openjdk-amd64 /usr/lib/jvm/default-java
   fi
-  if [ -x "/usr/lib/jvm/java-11-openjdk/jre/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-11-openjdk/jre/bin/java /etc/alternatives/java
+  if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
     ln -sf /etc/alternatives/java /usr/bin/java
   fi
 
@@ -5721,19 +5721,19 @@ check_fix_java() {
     ln -sf /usr/lib/jvm/java-1.17.0-openjdk-i386 /usr/lib/jvm/default-java
   fi
   if [ ! -e "/usr/bin/java17" ] \
-    && [ -e "/usr/lib/jvm/java-17-openjdk-amd64/jre/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-17-openjdk-amd64/jre/bin/java /usr/bin/java17
+    && [ -e "/usr/lib/jvm/java-17-openjdk-amd64/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-17-openjdk-amd64/bin/java /usr/bin/java17
   fi
   if [ ! -e "/usr/bin/java17" ] \
-    && [ -e "/usr/lib/jvm/java-17-openjdk-i386/jre/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-17-openjdk-i386/jre/bin/java /usr/bin/java17
+    && [ -e "/usr/lib/jvm/java-17-openjdk-i386/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-17-openjdk-i386/bin/java /usr/bin/java17
   fi
   if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-amd64" ]; then
     rm -f /usr/lib/jvm/default-java
     ln -sf /usr/lib/jvm/java-1.17.0-openjdk-amd64 /usr/lib/jvm/default-java
   fi
-  if [ -x "/usr/lib/jvm/java-17-openjdk/jre/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-17-openjdk/jre/bin/java /etc/alternatives/java
+  if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ]; then
+    ln -sf /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
     ln -sf /etc/alternatives/java /usr/bin/java
   fi
 }
