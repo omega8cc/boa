@@ -3791,6 +3791,7 @@ install_with_aptitude_deps() {
   mrun "apt-get remove libcurl4-openssl-dev -y -qq" 2> /dev/null
   mrun "apt autoremove -y -qq" 2> /dev/null
   mrun "apt --fix-broken install -y" 2> /dev/null
+  mrun "${_INSTAPP} libcurl4-gnutls-dev" 2> /dev/null
   mrun "${_INSTAPP} build-essential libsasl2-modules" 2> /dev/null
   mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables" 2> /dev/null
   mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc" 2> /dev/null
