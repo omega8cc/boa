@@ -1199,6 +1199,7 @@ install_php_multi() {
   _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-curlwrappers//g" 2>&1)
   ###--------------------###
   msg "INFO: Building PHP ${_PHP_VERSION} from sources, please wait..."
+  msg "INFO: It may take several minutes depending on your system CPU..."
   mrun "${_INSTALL} libonig-dev" 2> /dev/null
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
     && [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
