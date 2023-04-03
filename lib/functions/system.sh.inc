@@ -2120,6 +2120,7 @@ barracuda_cnf() {
 # Running aptitude full-upgrade.
 run_aptitude_full_upgrade() {
   msg "INFO: Running aptitude full-upgrade..."
+  msg "INFO: It may take several minutes depending on your system CPU..."
   st_runner "apt --fix-broken install -y" 2> /dev/null
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
   st_runner "${_APT_UPDATE} -qq" &> /dev/null
@@ -4133,6 +4134,7 @@ if_proxysql_update() {
 if_post_major_os_upgrade() {
   if [ -e "/root/run_post_major_os_upgrade.info" ]; then
     msg "INFO: Running dist-upgrade to complete the major system upgrade.."
+    msg "INFO: It may take several minutes depending on your system CPU..."
     mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
     mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
