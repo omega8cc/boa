@@ -4942,7 +4942,7 @@ fix_libs_php() {
       || [ ! -e "/usr/lib/libgmp.so.3" ] \
       || [ ! -e "/usr/lib/libcurl.so" ] \
       || [ ! -e "/usr/include/gmp.h" ]; then
-      msg "INFO: Fix #1 for libs in ${_THIS_OS} ${_OSR}"
+      msg "INFO: Fix #1 for PHP libs in ${_THIS_OS} ${_OSR}"
       _X86_64_TEST=$(uname -m 2>&1)
       if [ "${_X86_64_TEST}" = "x86_64" ]; then
         ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
@@ -4996,78 +4996,54 @@ fix_libs_php() {
 }
 
 fix_libssl() {
-  if_to_do_fix
-  if [ "${_OSR}" = "chimaera" ] \
-    || [ "${_OSR}" = "beowulf" ] \
-    || [ "${_OSR}" = "bullseye" ] \
-    || [ "${_OSR}" = "buster" ] \
-    || [ "${_OSR}" = "stretch" ] \
-    || [ "${_OSR}" = "jessie" ] \
-    || [ "${_DO_FIX}" = "YES" ] \
-    || [ "${_OSR}" = "trusty" ] \
-    || [ "${_OSR}" = "precise" ]; then
-    _SSL_FIX_REQUIRED=YES
-    if [ "${_NGINX_SPDY}" = "YES" ] \
-      || [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
-      if [ "${_OSR}" = "chimaera" ] \
-        || [ "${_OSR}" = "beowulf" ] \
-        || [ "${_OSR}" = "bullseye" ] \
-        || [ "${_OSR}" = "buster" ] \
-        || [ "${_OSR}" = "stretch" ] \
-        || [ "${_OSR}" = "jessie" ] \
-        || [ "${_DO_FIX}" = "YES" ] \
-        || [ "${_OSR}" = "trusty" ] \
-        || [ "${_OSR}" = "precise" ]; then
-        _SSL_FIX_REQUIRED=YES
-      else
-        _SSL_FIX_REQUIRED=NO
+  if [ ! -e "/usr/lib/libssl.so" ] || [ ! -e "/usr/lib/libcrypto.so" ]; then
+    msg "INFO: Fix #2 for SSL libssl/libcrypto in ${_THIS_OS} ${_OSR}"
+    _X86_64_TEST=$(uname -m 2>&1)
+    if [ "${_X86_64_TEST}" = "x86_64" ]; then
+      if [ -e "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
+        && [ ! -e "/usr/lib/libssl.so" ]; then
+        ln -s /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
+      elif [ -e "/lib/x86_64-linux-gnu/libssl.so" ] \
+        && [ ! -e "/usr/lib/libssl.so" ]; then
+        ln -s /lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
       fi
-    fi
-    if [ ! -e "/usr/lib/libssl.so" ] \
-      && [ "${_SSL_FIX_REQUIRED}" = "YES" ]; then
-      msg "INFO: Fix #2 for libs in ${_THIS_OS} ${_OSR}"
-      _X86_64_TEST=$(uname -m 2>&1)
-      if [ "${_X86_64_TEST}" = "x86_64" ]; then
-        if [ -e "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
-          && [ ! -e "/usr/lib/libssl.so" ]; then
-          ln -s /usr/lib/x86_64-linux-gnu/libssl.so  \
-            /usr/lib/libssl.so
-        elif [ -e "/lib/x86_64-linux-gnu/libssl.so" ] \
-          && [ ! -e "/usr/lib/libssl.so" ]; then
-          ln -s /lib/x86_64-linux-gnu/libssl.so  \
-            /usr/lib/libssl.so
-        fi
-        if [ -e "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
-          && [ ! -e "/usr/lib/libcrypto.so" ]; then
-          ln -s /usr/lib/x86_64-linux-gnu/libcrypto.so \
-            /usr/lib/libcrypto.so
-        elif [ -e "/lib/x86_64-linux-gnu/libcrypto.so" ] \
-          && [ ! -e "/usr/lib/libcrypto.so" ]; then
-          ln -s /lib/x86_64-linux-gnu/libcrypto.so \
-            /usr/lib/libcrypto.so
-        fi
-      else
-        if [ -e "/usr/lib/i386-linux-gnu/libssl.so" ] \
-          && [ ! -e "/usr/lib/libssl.so" ]; then
-          ln -s /usr/lib/i386-linux-gnu/libssl.so  \
-            /usr/lib/libssl.so
-        elif [ -e "/lib/i386-linux-gnu/libssl.so" ] \
-          && [ ! -e "/usr/lib/libssl.so" ]; then
-          ln -s /lib/i386-linux-gnu/libssl.so  \
-            /usr/lib/libssl.so
-        fi
-        if [ -e "/usr/lib/i386-linux-gnu/libcrypto.so" ] \
-          && [ ! -e "/usr/lib/libcrypto.so" ]; then
-          ln -s /usr/lib/i386-linux-gnu/libcrypto.so \
-            /usr/lib/libcrypto.so
-        elif [ -e "/lib/i386-linux-gnu/libcrypto.so" ] \
-          && [ ! -e "/usr/lib/libcrypto.so" ]; then
-          ln -s /lib/i386-linux-gnu/libcrypto.so \
-            /usr/lib/libcrypto.so
-        fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
+        && [ ! -e "/usr/lib/libcrypto.so" ]; then
+        ln -s /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+      elif [ -e "/lib/x86_64-linux-gnu/libcrypto.so" ] \
+        && [ ! -e "/usr/lib/libcrypto.so" ]; then
+        ln -s /lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+      fi
+    else
+      if [ -e "/usr/lib/i386-linux-gnu/libssl.so" ] \
+        && [ ! -e "/usr/lib/libssl.so" ]; then
+        ln -s /usr/lib/i386-linux-gnu/libssl.so /usr/lib/libssl.so
+      elif [ -e "/lib/i386-linux-gnu/libssl.so" ] \
+        && [ ! -e "/usr/lib/libssl.so" ]; then
+        ln -s /lib/i386-linux-gnu/libssl.so /usr/lib/libssl.so
+      fi
+      if [ -e "/usr/lib/i386-linux-gnu/libcrypto.so" ] \
+        && [ ! -e "/usr/lib/libcrypto.so" ]; then
+        ln -s /usr/lib/i386-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+      elif [ -e "/lib/i386-linux-gnu/libcrypto.so" ] \
+        && [ ! -e "/usr/lib/libcrypto.so" ]; then
+        ln -s /lib/i386-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
       fi
     fi
   fi
+  if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
+    && [ -f "/usr/lib/x86_64-linux-gnu/libssl3.so" ]; then
+    rm -f /usr/lib/x86_64-linux-gnu/libssl.so
+    ln -sf /usr/lib/x86_64-linux-gnu/libssl3.so /usr/lib/x86_64-linux-gnu/libssl.so
+    ln -sf /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
+  fi
+  if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
+    && [ -f "/usr/local/ssl/lib/libcrypto.so.3" ]; then
+    rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
+    ln -sf /usr/local/ssl/lib/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so
+    ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+  fi
+  mrun "ldconfig" 2> /dev/null
 }
 
 check_smtp() {
