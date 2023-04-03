@@ -2920,12 +2920,12 @@ install_ssl_src() {
     || [ "${_OSR}" = "bullseye" ] \
     || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ]; then
-    _OPENSSL_NEW_VRN=${_OPENSSL_EOL_VRN}
+    _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
     if [ -e "/root/.install.modern.openssl.cnf" ]; then
       _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
     fi
   else
-    _OPENSSL_NEW_VRN=${_OPENSSL_LEGACY_VRN}
+    _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
   fi
   if [ "${_SSL_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
     msg "INFO: OpenSSL is ${_SSL_ITD}, upgrade to ${_OPENSSL_NEW_VRN} required"
@@ -3090,12 +3090,12 @@ install_curl_src() {
       || [ "${_OSR}" = "bullseye" ] \
       || [ "${_OSR}" = "buster" ] \
       || [ "${_OSR}" = "stretch" ]; then
-      _OPENSSL_NEW_VRN=${_OPENSSL_EOL_VRN}
+      _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
       if [ -e "/root/.install.modern.openssl.cnf" ]; then
         _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
       fi
     else
-      _OPENSSL_NEW_VRN=${_OPENSSL_LEGACY_VRN}
+      _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
     fi
     if [ "${_CURL_SSL_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
       _CURL_INSTALL_REQUIRED=YES

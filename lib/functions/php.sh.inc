@@ -1731,12 +1731,12 @@ check_php_rebuild() {
     || [ "${_OSR}" = "bullseye" ] \
     || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ]; then
-    _OPENSSL_USE_VRN=${_OPENSSL_EOL_VRN}
+    _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"
     if [ -e "/root/.install.modern.openssl.cnf" ]; then
       _OPENSSL_USE_VRN="${_OPENSSL_MODERN_VRN}"
     fi
   else
-    _OPENSSL_USE_VRN=${_OPENSSL_LEGACY_VRN}
+    _OPENSSL_USE_VRN="${_OPENSSL_LEGACY_VRN}"
   fi
   if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
     _PHP_FORCE_REINSTALL=NO
