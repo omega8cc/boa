@@ -782,6 +782,7 @@ install_php_extensions() {
   ###--------------------###
   msg "INFO: Installing Imagick ${_IMAGICK_VRN} for PHP ${_T_PHP_VRN}..."
   if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
+    mrun "${_APT_UPDATE} -qq" &> /dev/null
     mrun "${_INSTALL} libmagickwand-dev" 2> /dev/null
     touch ${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
   fi
@@ -1099,6 +1100,7 @@ update_php_extensions() {
   if [ ! -e "${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
     msg "INFO: Installing Imagick {_IMAGICK_VRN} upgrade for PHP ${_T_PHP_VRN}..."
     if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
+      mrun "${_APT_UPDATE} -qq" &> /dev/null
       mrun "${_INSTALL} libmagickwand-dev" 2> /dev/null
       touch ${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
     fi
@@ -1200,6 +1202,7 @@ install_php_multi() {
   ###--------------------###
   msg "INFO: Building PHP ${_PHP_VERSION} from sources, please wait..."
   msg "HINT: It may take several minutes depending on your system CPU..."
+  mrun "${_APT_UPDATE} -qq" &> /dev/null
   mrun "${_INSTALL} libonig-dev" 2> /dev/null
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
     && [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
@@ -1210,6 +1213,7 @@ install_php_multi() {
     fi
     cd /var/opt
     rm -rf tidy*
+    mrun "${_APT_UPDATE} -qq" &> /dev/null
     mrun "${_INSTALL} cmake" 2> /dev/null
     get_dev_src "tidy-html5-${_LIB_TIDY_VRN}.tar.gz"
     cd tidy-html5-${_LIB_TIDY_VRN}/build/cmake
@@ -2252,6 +2256,7 @@ check_fix_php() {
     fi
     cd /var/opt
     rm -rf tidy*
+    mrun "${_APT_UPDATE} -qq" &> /dev/null
     mrun "${_INSTALL} cmake" 2> /dev/null
     get_dev_src "tidy-html5-${_LIB_TIDY_VRN}.tar.gz"
     cd tidy-html5-${_LIB_TIDY_VRN}/build/cmake

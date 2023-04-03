@@ -2258,6 +2258,7 @@ install_php_deps() {
 # Install wkhtmltopdf and wkhtmltoimage.
 install_wkhtmltox() {
   ###--------------------###
+  mrun "${_APT_UPDATE} -qq" &> /dev/null
   mrun "${_INSTALL} fonts-thai-tlwg" 2> /dev/null
   _THIS_RV=$(lsb_release -sc 2>&1)
   _X86_64_TEST=$(uname -m 2>&1)
