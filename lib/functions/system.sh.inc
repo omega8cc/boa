@@ -2120,7 +2120,7 @@ barracuda_cnf() {
 # Running aptitude full-upgrade.
 run_aptitude_full_upgrade() {
   msg "INFO: Running aptitude full-upgrade..."
-  msg "INFO: It may take several minutes depending on your system CPU..."
+  msg "HINT: It may take several minutes depending on your system CPU..."
   st_runner "apt --fix-broken install -y" 2> /dev/null
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
   st_runner "${_APT_UPDATE} -qq" &> /dev/null
@@ -2151,7 +2151,7 @@ run_aptitude_full_upgrade() {
 do_install_latest_git() {
   if [ ! -e "${pthLog}/git-${_GIT_VRN}-${_X_VERSION}-${_NOW}.log" ]; then
     msg "INFO: Building Git ${_GIT_VRN} from sources, please wait..."
-    msg "INFO: It may take several minutes depending on your system CPU..."
+    msg "HINT: It may take several minutes depending on your system CPU..."
     cd /var/opt
     rm -rf git*
     get_dev_src "git-${_GIT_VRN}.tar.gz"
@@ -2776,7 +2776,7 @@ install_ssh_src() {
   fi
   if [ "${_SSH_INSTALL_REQUIRED}" = "YES" ]; then
     msg "INFO: Building OpenSSH ${_OPENSSH_VRN} from sources, please wait..."
-    msg "INFO: It may take several minutes depending on your system CPU..."
+    msg "HINT: It may take several minutes depending on your system CPU..."
     cd /var/opt
     rm -rf openssh*
     get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
@@ -2845,7 +2845,7 @@ install_magick_src() {
   fi
   if [ "${_MAGICK_INSTALL_REQUIRED}" = "YES" ]; then
     msg "INFO: Building ImageMagick ${_IMAGE_MAGICK_VRN} from sources, please wait..."
-    msg "INFO: It may take several minutes depending on your system CPU..."
+    msg "HINT: It may take several minutes depending on your system CPU..."
     cd /var/opt
     rm -rf ImageMagick*
     get_dev_src "ImageMagick-${_IMAGE_MAGICK_VRN}.tar.gz"
@@ -2936,7 +2936,7 @@ install_ssl_src() {
     mrun "ldconfig" 2> /dev/null
     ###--------------------###
     msg "INFO: Building OpenSSL ${_OPENSSL_NEW_VRN} from sources, please wait..."
-    msg "INFO: It may take several minutes depending on your system CPU..."
+    msg "HINT: It may take several minutes depending on your system CPU..."
     if [ ! -e "/var/opt/openssl-${_OPENSSL_NEW_VRN}" ]; then
       cd /var/opt
       rm -rf openssl*
@@ -3109,7 +3109,7 @@ install_curl_src() {
       fi
       if [ -e "/var/opt/curl-${_CURL_VRN}" ]; then
         msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
-        msg "INFO: It may take several minutes depending on your system CPU..."
+        msg "HINT: It may take several minutes depending on your system CPU..."
         if [ -e "/usr/local/ssl/lib/libssl.so.3" ] \
           || [ -e "/usr/local/ssl/lib/libssl.so.1.1" ] \
           || [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ]; then
@@ -4134,7 +4134,7 @@ if_proxysql_update() {
 if_post_major_os_upgrade() {
   if [ -e "/root/run_post_major_os_upgrade.info" ]; then
     msg "INFO: Running dist-upgrade to complete the major system upgrade..."
-    msg "INFO: It may take several minutes depending on your system CPU..."
+    msg "HINT: It may take several minutes depending on your system CPU..."
     mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
     mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
@@ -4574,7 +4574,7 @@ update_webmin_apt() {
 
 sys_packages_update() {
   msg "INFO: Running system packages update..."
-  msg "INFO: It may take several minutes depending on your system CPU..."
+  msg "HINT: It may take several minutes depending on your system CPU..."
   if [ -e "/var/aegir" ]; then
     echo "curl install"           | dpkg --set-selections &> /dev/null
     echo "git install"            | dpkg --set-selections &> /dev/null
