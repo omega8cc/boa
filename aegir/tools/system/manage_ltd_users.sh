@@ -2376,18 +2376,23 @@ find_correct_ip() {
 #
 # Restrict node if needed.
 if_node_lshell() {
-  PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
-  PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
-  PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-  ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
-  if [[ "${PrTestPower}" =~ "POWER" ]] \
-    || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
-    || [[ "${PrTestCluster}" =~ "CLUSTER" ]] \
-    || [ -e "/root/.allow.node.lshell.cnf" ]; then
-    _ALLOW_NODE=YES
-  else
-    _ALLOW_NODE=NO
-    sed -i "s/, 'node',/,/g" /etc/lshell.conf
+  pthLog="/var/xdrago/log"
+  if [ ! -e "${pthLog}/node.lshell.ctrl.${_X_SE}.pid" ] \
+    && [ -e "/etc/lshell.conf" ]; then
+    PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+    PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+    PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+    ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
+    if [[ "${PrTestPower}" =~ "POWER" ]] \
+      || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
+      || [[ "${PrTestCluster}" =~ "CLUSTER" ]] \
+      || [ -e "/root/.allow.node.lshell.cnf" ]; then
+      _ALLOW_NODE=YES
+    else
+      _ALLOW_NODE=NO
+      sed -i "s/, 'node',/,/g" /etc/lshell.conf
+    fi
+    touch ${pthLog}/node.lshell.ctrl.${_X_SE}.pid
   fi
 }
 

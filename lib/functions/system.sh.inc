@@ -2931,16 +2931,18 @@ install_ssl_src() {
     msg "INFO: OpenSSL is ${_SSL_ITD}, upgrade to ${_OPENSSL_NEW_VRN} required"
     _SSL_INSTALL_REQUIRED=YES
   fi
-  _PHP_COMPATIBILITY_TEST=$(php -i | grep "SSL Version" 2>&1)
-  if [[ ! "${_PHP_COMPATIBILITY_TEST}" =~ "${_OPENSSL_NEW_VRN}" ]]; then
-    msg "INFO: PHP ${_PHP_COMPATIBILITY_TEST}, rebuild forced later"
-    _PHP_FORCE_REINSTALL=YES
-  fi
-  _SPDY_COMPATIBILITY_TEST=$(service nginx configtest 2>&1)
-  if [[ "${_SPDY_COMPATIBILITY_TEST}" =~ "without OpenSSL ALPN or NPN" ]]; then
-    msg "INFO: OpenSSL is ${_SSL_ITD}, rebuild for Nginx forced"
-    _SSL_INSTALL_REQUIRED=YES
-    _NGX_FORCE_REINSTALL=YES
+  if [ "${_STATUS}" = "UPGRADE" ]; then
+    _PHP_COMPATIBILITY_TEST=$(php -i | grep "SSL Version" 2>&1)
+    if [[ ! "${_PHP_COMPATIBILITY_TEST}" =~ "${_OPENSSL_NEW_VRN}" ]]; then
+      msg "INFO: PHP ${_PHP_COMPATIBILITY_TEST}, rebuild forced later"
+      _PHP_FORCE_REINSTALL=YES
+    fi
+    _SPDY_COMPATIBILITY_TEST=$(service nginx configtest 2>&1)
+    if [[ "${_SPDY_COMPATIBILITY_TEST}" =~ "without OpenSSL ALPN or NPN" ]]; then
+      msg "INFO: OpenSSL is ${_SSL_ITD}, rebuild for Nginx forced"
+      _SSL_INSTALL_REQUIRED=YES
+      _NGX_FORCE_REINSTALL=YES
+    fi
   fi
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_SSL_FORCE_REINSTALL}" = "YES" ]; then
@@ -5480,18 +5482,20 @@ check_fix_umask() {
 }
 
 if_node_lshell() {
-  PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
-  PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
-  PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-  ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
-  if [[ "${PrTestPower}" =~ "POWER" ]] \
-    || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
-    || [[ "${PrTestCluster}" =~ "CLUSTER" ]] \
-    || [ -e "/root/.allow.node.lshell.cnf" ]; then
-    _ALLOW_NODE=YES
-  else
-    _ALLOW_NODE=NO
-    sed -i "s/, 'node',/,/g" /etc/lshell.conf
+  if [ "${_STATUS}" = "UPGRADE" ] && [ -e "/etc/lshell.conf" ]; then
+    PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+    PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+    PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+    ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
+    if [[ "${PrTestPower}" =~ "POWER" ]] \
+      || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
+      || [[ "${PrTestCluster}" =~ "CLUSTER" ]] \
+      || [ -e "/root/.allow.node.lshell.cnf" ]; then
+      _ALLOW_NODE=YES
+    else
+      _ALLOW_NODE=NO
+      sed -i "s/, 'node',/,/g" /etc/lshell.conf
+    fi
   fi
 }
 
