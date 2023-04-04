@@ -3925,9 +3925,10 @@ basic_packages_install_on_init() {
         echo
         msg "ALRT: The sysvinit has NOT been installed on ${_THIS_OS} ${_OSR}"
         msg "ALRT: Please check details in the logs located in /var/backups/"
+        msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
       fi
       echo
-      mrun "sleep 8"
+      mrun "sleep 3"
       echo "Bye"
       clean_pid_exit
     fi
@@ -3953,34 +3954,34 @@ basic_packages_install_on_init() {
         echo
         msg "ALRT: The sysvinit has NOT been installed on ${_THIS_OS} ${_OSR}"
         msg "ALRT: Please check details in the logs located in /var/backups/"
+        msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
         echo
-        mrun "sleep 8"
+        mrun "sleep 3"
         echo "Bye"
         clean_pid_exit
       fi
       if [ ! -e "/lib/systemd/systemd" ]; then
         msg "INFO: The systemd has been removed on ${_THIS_OS} ${_OSR}"
-        echo
-        msg "STEP: Let's continue to STEP 4... Please reboot this server again"
-        msg "STEP: Once the system is up, run standard boa install command"
-        touch /root/.step.init.systemd.two.cnf
+        msg "INFO: One more check to make sure that everything works..."
+        _CHECK_CRON=$(service cron status 2>&1)
+        if [[ "${_CHECK_CRON}" =~ "running" ]]; then
+          msg "INFO: OK, it works! ${_CHECK_CRON}"
+          msg "STEP: Let's continue to STEP 4... Please reboot this server again"
+          msg "STEP: Once the system is up, run standard boa install command"
+          touch /root/.step.init.systemd.two.cnf
+        else
+          msg "ALRT: Ouch! cron does not work ${_CHECK_CRON}"
+          msg "ALRT: Please check details in the logs located in /var/backups/"
+          msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
+        fi
       else
         echo
         msg "ALRT: The systemd has NOT been removed on ${_THIS_OS} ${_OSR}"
         msg "ALRT: Please check details in the logs located in /var/backups/"
+        msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
       fi
       echo
-      msg "INFO: One more check to make sure that it works..."
-      _CHECK_CRON=$(service cron status 2>&1)
-      if [[ "${_CHECK_CRON}" =~ "running" ]]; then
-        msg "INFO: OK, it works! ${_CHECK_CRON} so you can reboot again!"
-        msg "STEP: Once the system is up, run standard boa install command"
-      else
-        msg "ALRT: Ouch! cron does not work ${_CHECK_CRON}"
-        msg "ALRT: Please do not reboot until you manage to fix this!"
-      fi
-      echo
-      mrun "sleep 8"
+      mrun "sleep 3"
       echo "Bye"
       clean_pid_exit
     fi
