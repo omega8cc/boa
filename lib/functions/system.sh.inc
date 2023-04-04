@@ -2986,18 +2986,21 @@ ssl_install_src() {
     if [ -e "/var/opt/openssl-${_OPENSSL_NEW_VRN}" ]; then
       cd /var/opt/openssl-${_OPENSSL_NEW_VRN}
       _X86_64_IF=$(uname -m 2>&1)
+      if [ -e "/root/.install.modern.openssl.cnf" ]; then
+        _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
+          --openssldir=/usr/local/ssl \
+          --libdir=lib"
+      else
+        _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
+          --openssldir=/usr/local/ssl"
+      fi
       if [ "${_X86_64_IF}" = "x86_64" ]; then
         mrun "sh ./config zlib-dynamic \
-          --prefix=/usr/local/ssl \
-          --openssldir=/usr/local/ssl \
-          --libdir=lib \
-          enable-ec_nistp_64_gcc_128 \
-          shared" 2> /dev/null
+          ${_SSL_BUILD_ARGS} \
+          shared enable-ec_nistp_64_gcc_128" 2> /dev/null
       else
         mrun "sh ./config zlib-dynamic \
-          --prefix=/usr/local/ssl \
-          --libdir=lib \
-          --openssldir=/usr/local/ssl \
+          ${_SSL_BUILD_ARGS} \
           shared" 2> /dev/null
       fi
       mrun "make depend" 2> /dev/null
