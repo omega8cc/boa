@@ -3001,8 +3001,8 @@ ssl_install_src() {
           shared" 2> /dev/null
       fi
       mrun "make depend" 2> /dev/null
-      mrun "make --quiet" 2> /dev/null
-      mrun "make --quiet install" 2> /dev/null
+      mrun "make" 2> /dev/null
+      mrun "make install" 2> /dev/null
     fi
     if [ -x "/usr/local/ssl/bin/openssl" ]; then
       cp -af /usr/bin/openssl /usr/bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
