@@ -1328,7 +1328,6 @@ install_php_multi() {
                 --enable-ftp \
                 --enable-intl \
                 --enable-mbstring \
-                --enable-opcache \
                 --enable-pcntl \
                 --enable-soap \
                 --with-fpm-group=www-data \
@@ -1364,7 +1363,6 @@ install_php_multi() {
                 --enable-ftp \
                 --enable-intl \
                 --enable-mbstring \
-                --enable-opcache \
                 --enable-pcntl \
                 --enable-soap \
                 --with-fpm-group=www-data \
