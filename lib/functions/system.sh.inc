@@ -272,7 +272,7 @@ fix_ftps_pam() {
 
 #
 # Fix FTPS and SFTP access on modern systems.
-fix_sftp_ftps_modern() {
+sftp_ftps_modern_fix() {
   _LSHELL_PATH_TEST=$(grep "/usr/bin/lshell" /etc/shells 2>&1)
   if [[ ! "${_LSHELL_PATH_TEST}" =~ "/usr/bin/lshell" ]]; then
     echo "/usr/bin/lshell" >> /etc/shells
@@ -336,7 +336,7 @@ disable_old_purge_cruft_machine() {
 
 #
 # Update INI templates.
-update_ini_tpl() {
+ini_tpl_update() {
   mkdir -p /data/conf
   if [ -e "${locCnf}/default.boa_platform_control.ini" ]; then
     cp -af ${locCnf}/default.boa_platform_control.ini /data/conf/default.boa_platform_control.ini
@@ -350,7 +350,7 @@ update_ini_tpl() {
 
 #
 # Update global.inc Config.
-update_global_inc_conf() {
+global_inc_conf_update() {
   if [ -e "/data/conf/global.inc" ]; then
     mv -f /data/conf/global.inc /data/conf/global.inc-pre-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${locCnf}/global.inc /data/conf/global.inc
@@ -368,14 +368,14 @@ fix_on_upgrade() {
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
   mrun "update-rc.d clean-boa-env defaults" &> /dev/null
   kill_nash
-  fix_sftp_ftps_modern
+  sftp_ftps_modern_fix
   fix_ftps_pam
   disable_old_purge_cruft_machine
-  update_php_conf
-  update_ini_tpl
-  update_nginx_conf
-  update_global_inc_conf
-  update_redis_password
+  php_conf_update
+  ini_tpl_update
+  nginx_conf_update
+  global_inc_conf_update
+  redis_password_update
 }
 
 #
@@ -604,7 +604,7 @@ tune_memory_limits() {
   done
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     tune_sql_memory_limits
-    update_sql_conf
+    sql_conf_update
     if [[ "${PrTestPower}" =~ "POWER" ]] \
       || [ -e "/root/.my.cluster_root_pwd.txt" ] \
       || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
@@ -667,7 +667,7 @@ tune_memory_limits() {
 
 #
 # Fix locales.
-fix_locales() {
+locales_check_fix() {
   ${_INITINS} locales &> /dev/null
   if [ -e "/etc/ssh/sshd_config" ]; then
     _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /etc/ssh/sshd_config 2>&1)
@@ -2177,7 +2177,7 @@ do_install_latest_git() {
 
 #
 # Check if latest Git should be installed.
-check_install_latest_git() {
+git_check_install_src() {
   _GIT_ITD=$(git --version 2>&1)
   if [[ "${_GIT_ITD}" =~ "git version 1.9.1" ]]; then
     _GIT_FORCE_REINSTALL=YES
@@ -2237,16 +2237,20 @@ install_icu() {
 
 #
 # Install PHP deps.
-install_php_deps() {
+php_install_deps() {
   ###--------------------###
-  st_runner "${_INSTALL} libgd-dev" 2> /dev/null
-  st_runner "${_INSTALL} libgd3" 2> /dev/null
-  st_runner "${_INSTALL} libkrb5-dev" 2> /dev/null
-  st_runner "${_INSTALL} libldap-dev" 2> /dev/null
-  st_runner "${_INSTALL} libmagickwand-dev" 2> /dev/null
-  st_runner "${_INSTALL} libxpm-dev" 2> /dev/null
-  st_runner "${_INSTALL} libwebp-dev" 2> /dev/null
-  st_runner "${_INSTALL} libsodium-dev" 2> /dev/null
+  mrun "${_APT_UPDATE} -qq" &> /dev/null
+  mrun "${_INSTALL} cmake" 2> /dev/null
+  mrun "${_INSTALL} devscripts" 2> /dev/null
+  mrun "${_INSTALL} libgd-dev" 2> /dev/null
+  mrun "${_INSTALL} libgd3" 2> /dev/null
+  mrun "${_INSTALL} libkrb5-dev" 2> /dev/null
+  mrun "${_INSTALL} libldap-dev" 2> /dev/null
+  mrun "${_INSTALL} libmagickwand-dev" 2> /dev/null
+  mrun "${_INSTALL} libonig-dev" 2> /dev/null
+  mrun "${_INSTALL} libsodium-dev" 2> /dev/null
+  mrun "${_INSTALL} libwebp-dev" 2> /dev/null
+  mrun "${_INSTALL} libxpm-dev" 2> /dev/null
   if [ "${_OSR}" = "jessie" ]; then
     install_icu
   else
@@ -2256,7 +2260,7 @@ install_php_deps() {
 
 #
 # Install wkhtmltopdf and wkhtmltoimage.
-install_wkhtmltox() {
+wkhtmltox_install() {
   ###--------------------###
   mrun "${_APT_UPDATE} -qq" &> /dev/null
   mrun "${_INSTALL} fonts-thai-tlwg" 2> /dev/null
@@ -2596,7 +2600,7 @@ get_drush_versions() {
 
 #
 # Update packages sources list.
-update_sources_list() {
+sources_list_update() {
   ###--------------------###
   aptitude autoclean -y &> /dev/null
   apt-get clean -qq &> /dev/null
@@ -2909,7 +2913,7 @@ install_magick_src() {
 
 #
 # Install OpenSSL from sources.
-install_ssl_src() {
+ssl_install_src() {
   _SSL_INSTALL_REQUIRED=NO
   _SSL_ITD=$(openssl version 2>&1 \
     | tr -d "\n" \
@@ -3020,7 +3024,7 @@ install_ssl_src() {
         echo "zlib1g hold" | dpkg --set-selections &> /dev/null
         echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
       fi
-      fix_libssl
+      ssl_crypto_lib_fix
     else
       msg "OOPS: OpenSSL version ${_OPENSSL_NEW_VRN} was not installed!"
       _SSL_INSTALL_REQUIRED=
@@ -3036,7 +3040,7 @@ install_ssl_src() {
 
 #
 # Install cURL from sources.
-install_curl_src() {
+curl_install_src() {
   if [ "${_OSR}" = "precise" ] || [ "${_OSR}" = "jessie" ]; then
     touch /root/.use.curl.from.packages.cnf
     chattr +i /root/.use.curl.from.packages.cnf
@@ -3776,7 +3780,7 @@ finale() {
   msg "BYE!"
 }
 
-install_with_aptitude_deps() {
+run_aptitude_deps_install() {
   if_to_do_fix
   if [ "${_THIS_OS}" = "Devuan" ]; then
     ${_INITINS} devuan-keyring --allow-unauthenticated &> /dev/null
@@ -3792,13 +3796,13 @@ install_with_aptitude_deps() {
   mrun "apt autoremove -y -qq" 2> /dev/null
   mrun "apt --fix-broken install -y" 2> /dev/null
   mrun "${_INSTAPP} libcurl4-gnutls-dev" 2> /dev/null
-  mrun "${_INSTAPP} build-essential libsasl2-modules" 2> /dev/null
+  mrun "${_INSTAPP} build-essential devscripts libsasl2-modules" 2> /dev/null
   mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables" 2> /dev/null
   mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc" 2> /dev/null
   mrun "${_INSTAPP} apticron aptitude auditd apt-listchanges" 2> /dev/null
   mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
   mrun "${_INSTAPP} zlibc time vim cvs makepasswd" 2> /dev/null
-  mrun "${_INSTAPP} unzip unrtf wdiff pwgen" 2> /dev/null
+  mrun "${_INSTAPP} unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
   mrun "${_INSTAPP} rsync strace ntpdate python-dev" 2> /dev/null
   mrun "${_INSTAPP} mc whois zlib1g zlib1g-dev librsync-dev" 2> /dev/null
   mrun "${_INSTAPP} mcrypt curl libssl-dev" 2> /dev/null
@@ -3875,7 +3879,7 @@ basic_packages_install_on_init() {
       rm -rf /var/lib/apt/lists/*
       ${_APT_UPDATE} -qq &> /dev/null
       ${_INITINS} locales &> /dev/null
-      fix_locales
+      locales_check_fix
       ${_INITINS} lsb-release &> /dev/null
       ${_INITINS} dnsutils &> /dev/null
       ${_INITINS} netcat &> /dev/null
@@ -4001,7 +4005,7 @@ more_packages_install_on_init() {
     fi
     ${_APT_UPDATE} -qq &> /dev/null
     ${_INITINS} locales &> /dev/null
-    fix_locales
+    locales_check_fix
     ${_INITINS} git &> /dev/null
     ${_INITINS} git-core &> /dev/null
     ${_INITINS} git-man &> /dev/null
@@ -4402,7 +4406,7 @@ if_major_os_upgrade() {
     mrun "apt-get install apt dpkg aptitude util-linux ${dstUpArg}" 2> /dev/null
     ###
     ### Back to BOA stuff re-install as needed.
-    install_upgrade_nginx
+    nginx_install_upgrade
     if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
       ln -sf /etc/init.d/bind9 /etc/init.d/bind
     fi
@@ -4583,7 +4587,7 @@ if_major_os_upgrade() {
   fi
 }
 
-update_webmin_apt() {
+webmin_apt_update() {
   if [ -d "/etc/webmin" ]; then
     if [ ! -e "${pthLog}/webmin_update_apt_src.log" ]; then
       cd /var/opt
@@ -4623,7 +4627,7 @@ sys_packages_update() {
     echo "zlib1g-dev install"     | dpkg --set-selections &> /dev/null
     echo "zlibc install"          | dpkg --set-selections &> /dev/null
   fi
-  update_webmin_apt
+  webmin_apt_update
   st_runner "apt --fix-broken install -y" 2> /dev/null
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
   st_runner "${_APT_UPDATE} -qq" &> /dev/null
@@ -4766,11 +4770,11 @@ sys_packages_install() {
       elif [ "${_OSR}" = "buster" ]; then
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "bullseye" ]; then
-        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java"
+        _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "beowulf" ]; then
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "chimaera" ]; then
-        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java"
+        _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
       fi
     else
       _APT_XTRA=""
@@ -4970,7 +4974,7 @@ sys_packages_install() {
   fi
 }
 
-fix_libs_php() {
+php_libs_fix() {
   if_to_do_fix
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
@@ -5036,9 +5040,10 @@ fix_libs_php() {
       fi
     fi
   fi
+  mrun "ldconfig" 2> /dev/null
 }
 
-fix_libssl() {
+ssl_crypto_lib_fix() {
   if [ ! -e "/usr/lib/libssl.so" ] || [ ! -e "/usr/lib/libcrypto.so" ]; then
     msg "INFO: Fix #2 for SSL libssl/libcrypto in ${_THIS_OS} ${_OSR}"
     _X86_64_TEST=$(uname -m 2>&1)
@@ -5089,7 +5094,7 @@ fix_libssl() {
   mrun "ldconfig" 2> /dev/null
 }
 
-check_smtp() {
+smtp_check() {
   if [ -z "${_SMTP_RELAY_HOST}" ] && [ "${_SMTP_RELAY_TEST}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Checking SMTP connections..."
@@ -5127,7 +5132,7 @@ EOF
   fi
 }
 
-install_vnstat() {
+vnstat_install() {
   if [ ! -e "/var/run/cloud_vhost.pid" ]; then
     if [ ! -e "${pthLog}/vnstat-${_VNSTAT_VRN}.log" ] \
       || [ ! -e "/usr/bin/vnstat" ] \
@@ -5197,7 +5202,7 @@ install_myquick_src() {
   fi
 }
 
-check_install_myquick() {
+myquick_install_update() {
   if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
     mkdir -p /etc/mysql/mariadb.conf.d/
   fi
@@ -5245,7 +5250,7 @@ check_install_myquick() {
   fi
 }
 
-install_update_xdrago() {
+xdrago_install_update() {
   cd /var
   if [ -d "/var/xdrago/conf" ] \
     && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
@@ -5444,7 +5449,7 @@ install_update_xdrago() {
   chmod 700 /var/xdrago &> /dev/null
 }
 
-check_fix_umask() {
+umask_check_fix() {
   if [ ! -e "${pthLog}/umask_fixed_new.log" ]; then
     mkdir -p /var/www/nginx-default
     sed -i "s/^UMASK.*//g" /etc/default/login &> /dev/null
@@ -5498,7 +5503,7 @@ if_node_lshell() {
   fi
 }
 
-install_update_lshell() {
+lshell_install_update() {
   _PATH_LSHELL="/usr/local/bin/lshell"
   if [ ! -e "${_PATH_LSHELL}" ] \
     || [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}" ] \
@@ -5605,7 +5610,7 @@ if_install_ftpd() {
   fi
 }
 
-check_fix_newrelic() {
+newrelic_check_fix() {
   _NEWRELIC_APP_CFG="/etc/newrelic/newrelic.cfg"
   if [ -e "${_NEWRELIC_APP_CFG}" ]; then
     _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" ${_NEWRELIC_APP_CFG} 2>&1)
@@ -5660,7 +5665,7 @@ check_fix_newrelic() {
   fi
 }
 
-check_fix_java() {
+java_check_fix() {
   if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
     && [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
     ln -sf /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
@@ -5925,7 +5930,7 @@ sshd_armour() {
   fi
 }
 
-update_initd() {
+initd_update() {
   _THIS_DB_PORT=3306
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Updating init scripts"
@@ -6235,7 +6240,7 @@ update_initd() {
   fi
 }
 
-update_sysctl() {
+sysctl_update() {
   if [ ! -e "/root/.no.sysctl.update.cnf" ] \
     && [ ! -e "${pthLog}/sysctl.conf-${_X_VERSION}-${_NOW}.log" ]; then
     cp -af /etc/sysctl.conf \
@@ -6266,7 +6271,7 @@ update_sysctl() {
   fi
 }
 
-update_apticron() {
+apticron_update() {
   XPTEMAIL=${_MY_EMAIL//\@/\\\\\@}
   sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g"  \
     /etc/csf/csf.conf &> /dev/null
@@ -6343,7 +6348,7 @@ complete() {
   fix_lfd_uidignore
   fix_cnf_postfix
   re_set_default_php_cli
-  install_update_composer
+  composer_install_update
   if [ "${_STATUS}" = "INIT" ]; then
     _STRICT_BIN_PERMISSIONS=NO
   fi

@@ -2310,7 +2310,7 @@ cleanup_ghost_drushrc() {
   done
 }
 
-check_update_le_hm_ssl() {
+le_hm_ssl_check_update() {
   exeLe="${User}/tools/le/dehydrated"
   if [ -e "${User}/log/domain.txt" ]; then
     hmFront=$(cat ${User}/log/domain.txt 2>&1)
@@ -2357,7 +2357,7 @@ check_update_le_hm_ssl() {
   fi
 }
 
-check_update_le_ssl() {
+le_ssl_check_update() {
   exeLe="${User}/tools/le/dehydrated"
   Vht="${User}/config/server_master/nginx/vhost.d/${Dom}"
   if [ -x "${exeLe}" ] && [ -e "${Vht}" ]; then
@@ -2581,7 +2581,7 @@ process() {
                 #fi
                 fix_robots_txt
               fi
-              check_update_le_ssl
+              le_ssl_check_update
               if_gen_goaccess ${Dom}
               ;;
             esac
@@ -3194,7 +3194,7 @@ action() {
           symlinks -dr /home/${_HM_U}.ftp &> /dev/null
           rm -f /home/${_HM_U}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
         fi
-        check_update_le_hm_ssl ${_HM_U}
+        le_hm_ssl_check_update ${_HM_U}
         ### if_gen_goaccess "ALL"
         echo "Done for ${User}"
         enable_chattr ${_HM_U}.ftp

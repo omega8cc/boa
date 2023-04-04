@@ -115,7 +115,7 @@ urlHmr="http://${_USE_MIR}/versions/master/aegir"
 #
 #
 # Update php-cli for Drush.
-update_php_cli_drush() {
+php_cli_drush_update() {
   _DRUSH_FILE="${_ROOT}/drush/drush.php"
   if [ "${_PHP_CLI_VERSION}" = "8.1" ] \
     && [ -x "/opt/php81/bin/php" ]; then
@@ -166,8 +166,8 @@ chmod 755 ${_ROOT}/drush/examples/drush.wrapper
 chmod 755 ${_ROOT}/drush/examples/git-bisect.example.sh
 chmod 755 ${_ROOT}/drush/examples/helloworld.script
 
-update_php_cli_drush
-update_php_cli_local_ini
+php_cli_drush_update
+php_cli_local_ini_update
 
 msg "INFO: Installing Aegir Provision backend..."
 mkdir -p ${_ROOT}/.drush/{sys,xts,usr}

@@ -256,7 +256,7 @@ system_check_clean() {
 
 #
 # Fix locales.
-fix_locales() {
+locales_check_fix() {
   ${_INST} locales &> /dev/null
   if [ -e "/etc/ssh/sshd_config" ]; then
     _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /etc/ssh/sshd_config 2>&1)
@@ -405,7 +405,7 @@ check_all() {
   check_no_systemd
   os_detection_minimal
   system_check_clean
-  fix_locales
+  locales_check_fix
 }
 
 check_config_cluster() {

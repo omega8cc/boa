@@ -21,7 +21,7 @@ if_install_jetty() {
       echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
       st_runner "${_APT_UPDATE} -qq" &> /dev/null
       st_runner "${_INSTAPP} -t jessie-backports openjdk-8-jre-headless ca-certificates-java" 2> /dev/null
-      check_fix_java
+      java_check_fix
     fi
   fi
   if [[ "${_XTRAS_LIST}" =~ "SR7" ]] \

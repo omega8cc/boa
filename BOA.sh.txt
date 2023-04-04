@@ -2199,7 +2199,7 @@ find_fast_mirror() {
   urlHmr="http://${_USE_MIR}/versions/master/aegir"
 }
 
-update_sysctl() {
+sysctl_update() {
   if [ ! -e "/root/.no.sysctl.update.cnf" ] \
     && [ ! -e "/var/backups/sysctl.conf-${_X_SE}.log" ]; then
     mkdir -p /var/backups
@@ -2363,7 +2363,7 @@ if [ `whoami` = "root" ]; then
     fix_newrelic
     fix_leftovers
     update_agents
-    update_sysctl
+    sysctl_update
     # saCoreN="SA-CORE-2018-002"
     # fix_core_dgd
     # sleep 3

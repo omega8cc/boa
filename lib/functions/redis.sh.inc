@@ -178,7 +178,7 @@ fix_redis_mode() {
 }
 #
 # Set or update Redis password.
-update_redis_password() {
+redis_password_update() {
   if [ -e "/etc/redis/redis.conf" ]; then
     if [ ! -e "${pthLog}/sec-redis-pass-${_X_VERSION}-${_NOW}.log" ]; then
       if [ ! -e "/root/.redis.no.new.password.cnf" ] \
@@ -267,14 +267,14 @@ install_redis_src() {
       cp -af ${locCnf}/${redisCnfTpl} /etc/redis/redis.conf
     fi
   fi
-  update_redis_password
+  redis_password_update
   touch ${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log
   mrun "service redis-server start" &> /dev/null
   sleep 3
   mrun "service redis-server restart" &> /dev/null
 }
 
-install_update_redis() {
+redis_install_update() {
   if [ "${_REDIS_MAJOR_RELEASE}" = "7" ] \
     && [ ! -z "${_REDIS_SEVEN_VRN}" ]; then
     _REDIS_VRN=${_REDIS_SEVEN_VRN}

@@ -71,7 +71,7 @@ check_vhost_health() {
   fi
 }
 
-update_ip_auth_access() {
+ip_auth_access_update() {
   touch /var/run/.auth.IP.list.pid
   if [ -e "/var/backups/.auth.IP.list.tmp" ]; then
     if [ -e "${pthVhstd}/adminer."* ]; then
@@ -228,13 +228,13 @@ manage_ip_auth_access() {
   fi
   if [ ! -e "/var/run/.auth.IP.list.pid" ]; then
     if [ ! -e "/var/backups/.auth.IP.list" ]; then
-      update_ip_auth_access
+      ip_auth_access_update
     else
       if [ -e "/var/backups/.auth.IP.list.tmp" ]; then
         diffTestIf=$(diff -w -B /var/backups/.auth.IP.list.tmp \
           /var/backups/.auth.IP.list 2>&1)
         if [ ! -z "${diffTestIf}" ]; then
-          update_ip_auth_access
+          ip_auth_access_update
         fi
       fi
     fi
@@ -292,7 +292,7 @@ manage_ip_auth_access() {
       || [ "${vhostStatusChive}" = "FALSE" ] \
       || [ "${vhostStatusCgp}" = "FALSE" ] \
       || [ "${vhostStatusBuddy}" = "FALSE" ]; then
-      update_ip_auth_access
+      ip_auth_access_update
     fi
   fi
   rm -f /var/backups/.auth.IP.list.tmp

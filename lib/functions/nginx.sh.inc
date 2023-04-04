@@ -1,6 +1,6 @@
 #
 # Update Nginx Config.
-update_nginx_conf() {
+nginx_conf_update() {
   if [ ! -e "${pthLog}/nginx-config-params-fixed-${_X_VERSION}" ] \
     && [ -d "/var/aegir" ]; then
     if [ -e "${locCnf}/nginx.conf" ] \
@@ -250,7 +250,7 @@ nginx_clean_legacy_config() {
 
 #
 # Install or upgrade Nginx.
-install_upgrade_nginx() {
+nginx_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Testing Nginx version..."
   fi
@@ -505,7 +505,7 @@ d;};' ${mtrInc}/nginx_vhost_common.conf
   wait
 }
 
-check_nginx_initd() {
+nginx_initd_check() {
   _X_INIT_TEST=$(cat /etc/init.d/nginx 2>&1)
   if [[ "$_X_INIT_TEST" =~ "github" ]]; then
     _DO_NOTHING=YES
@@ -517,7 +517,7 @@ check_nginx_initd() {
   fi
 }
 
-fix_nginx_mime() {
+nginx_mime_check_fix() {
   if [ -e "${locCnf}/mime.types" ]; then
     mv -f /etc/nginx/mime.types \
       /etc/nginx/mime.types-pre-${_X_VERSION}-${_NOW} &> /dev/null
@@ -540,7 +540,7 @@ fix_nginx_mime() {
   fi
 }
 
-nginx_wildcard_ssl() {
+nginx_wildcard_ssl_install() {
   _WILD_SSL_VHOST="${mtrNgx}/pre.d/nginx_wild_ssl.conf"
   if [ ! -e "${_WILD_SSL_VHOST}" ]; then
     msg "INFO: Installing default SSL Wildcard Nginx Proxy..."
@@ -564,7 +564,7 @@ nginx_wildcard_ssl() {
       ln -sf /data/conf/global.inc ${mtrInc}/global.inc
     fi
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
-    update_redis_password
+    redis_password_update
     killall -9 nginx &> /dev/null
     mrun "service nginx start" &> /dev/null
   else
@@ -582,7 +582,7 @@ nginx_wildcard_ssl() {
   fi
 }
 
-fix_update_nginx_config() {
+nginx_config_update_fix() {
   if [ "${_STATUS}" = "INIT" ]; then
     service cron start &> /dev/null
     if [ "${_EASY_SETUP}" = "NO" ]; then

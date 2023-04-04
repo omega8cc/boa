@@ -102,7 +102,7 @@ satellite_tune_fpm_workers() {
 
 #
 # Update web user.
-satellite_update_web_user() {
+satellite_web_user_update() {
   _X_SE="414prodT58"
   isTest="${_WEB}"
   isTest=${isTest//[^a-z0-9]/}
@@ -111,7 +111,7 @@ satellite_update_web_user() {
     _T_TP="/home/${_WEB}/.tmp"
     _T_TS="/home/${_WEB}/.aws"
     _T_II="${_T_HD}/php.ini"
-    ### msg "DEBUG: ${_WEB} in satellite_update_web_user A"
+    ### msg "DEBUG: ${_WEB} in satellite_web_user_update A"
     if [ -d "/home/${_WEB}/" ] && [ ! -e "/home/${_WEB}/.lock" ]; then
       if [ -d "/home/${_WEB}/" ]; then
         chattr -i -R /home/${_WEB}/ &> /dev/null
@@ -124,8 +124,8 @@ satellite_update_web_user() {
       fi
       mkdir -p /home/${_WEB}/.{tmp,drush,aws}
       touch /home/${_WEB}/.lock
-      ### msg "DEBUG: ${_WEB} in satellite_update_web_user B"
-      ### msg "DEBUG: ARG1 is $1 in satellite_update_web_user B"
+      ### msg "DEBUG: ${_WEB} in satellite_web_user_update B"
+      ### msg "DEBUG: ARG1 is $1 in satellite_web_user_update B"
       isTest="$1"
       isTest=${isTest//[^a-z0-9]/}
       if [ ! -z "${isTest}" ]; then
@@ -137,12 +137,12 @@ satellite_update_web_user() {
           fi
         else
           _T_PV=$1
-          ### msg "DEBUG: _T_PV is ${_T_PV} in satellite_update_web_user C"
+          ### msg "DEBUG: _T_PV is ${_T_PV} in satellite_web_user_update C"
         fi
       fi
       if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
         cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
-        ### msg "DEBUG: _T_PV is ${_T_PV} in satellite_update_web_user D"
+        ### msg "DEBUG: _T_PV is ${_T_PV} in satellite_web_user_update D"
       else
         _PHP_V="81 80 74 73 72 71 70 56"
         for e in ${_PHP_V}; do
@@ -243,12 +243,12 @@ satellite_create_web_user() {
   _T_ID_EXISTS=$(getent passwd ${_WEB} 2>&1)
   if [ ! -z "${_T_ID_EXISTS}" ] && [ -e "${_T_II}" ]; then
     ### msg "DEBUG: ARG1 is $1 in satellite_create_web_user B"
-    satellite_update_web_user "$1"
+    satellite_web_user_update "$1"
   elif [ -z "${_T_ID_EXISTS}" ] || [ ! -e "${_T_II}" ]; then
     ### msg "DEBUG: ARG1 is $1 in satellite_create_web_user C"
     satellite_remove_web_user "clean"
     adduser --force-badname --system --ingroup www-data ${_WEB} &> /dev/null
-    satellite_update_web_user "$1"
+    satellite_web_user_update "$1"
   fi
 }
 
@@ -365,7 +365,7 @@ satellite_tune_fpm_config() {
           if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
             if [ "${e}" != "${_PHP_SV}" ] \
               || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${_PHP_SV}.${_X_SE}.pid" ]; then
-              satellite_update_web_user "${_PHP_SV}"
+              satellite_web_user_update "${_PHP_SV}"
             fi
           fi
         done

@@ -19,7 +19,7 @@ os_detection_minimal() {
 }
 os_detection_minimal
 
-check_fix_system_hostname() {
+system_hostname_check_fix() {
   if [ -e "${barCnf}" ]; then
     source ${barCnf}
     if [ ! -z "${_MY_HOSTN}" ]; then
@@ -40,7 +40,7 @@ check_fix_system_hostname() {
     fi
   fi
 }
-check_fix_system_hostname
+system_hostname_check_fix
 
 ntpdate pool.ntp.org
 

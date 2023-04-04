@@ -58,7 +58,7 @@ count_cpu() {
   fi
 }
 
-fix_locales() {
+locales_check_fix() {
   ${_INITINS} locales &> /dev/null
   if [ -e "/etc/ssh/sshd_config" ]; then
     _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /etc/ssh/sshd_config 2>&1)
@@ -242,7 +242,7 @@ os_detection_minimal() {
 check_root() {
   echo "running ${tVr} `hostname` check_root procedure..."
   if [ `whoami` = "root" ]; then
-    fix_locales
+    locales_check_fix
     os_detection_minimal
     remove_systemd
     sed -i "s/.*du.sql.*//gi"  /etc/crontab
@@ -480,7 +480,7 @@ find_fast_mirror() {
 }
 find_fast_mirror
 
-update_sysctl() {
+sysctl_update() {
   if [ ! -e "/root/.no.sysctl.update.cnf" ] \
     && [ ! -e "/var/backups/sysctl.conf-${_X_SE}.log" ]; then
     find_fast_mirror
@@ -513,7 +513,7 @@ update_sysctl() {
     touch /var/backups/sysctl.conf-${_X_SE}.log
   fi
 }
-update_sysctl
+sysctl_update
 
 if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
   _SQL_PSWD=$(cat /root/.my.cluster_root_pwd.txt 2>&1)
@@ -792,8 +792,8 @@ EOFMYSQL
 
 #
 # Update innodb_log_file_size.
-update_innodb_log_file_size() {
-  echo "running ${tVr} `hostname` update_innodb_log_file_size procedure..."
+innodb_log_file_size_update() {
+  echo "running ${tVr} `hostname` innodb_log_file_size_update procedure..."
   echo "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   stop_sql "chain"
@@ -830,8 +830,8 @@ update_innodb_log_file_size() {
 
 #
 # Update SQL Config.
-update_sql_conf() {
-  echo "running ${tVr} `hostname` update_sql_conf procedure..."
+sql_conf_update() {
+  echo "running ${tVr} `hostname` sql_conf_update procedure..."
   sed -i "s/.*innodb_force_recovery/#innodb_force_recovery/g" /etc/mysql/my.cnf
   wait
   sed -i "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" /etc/mysql/my.cnf
@@ -887,7 +887,7 @@ update_sql_conf() {
         else
           echo "Changes required on `hostname` for ${_INNODB_LOG_FILE_SIZE_MB}"
           echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
-          update_innodb_log_file_size
+          innodb_log_file_size_update
         fi
       fi
     fi
@@ -1214,7 +1214,7 @@ tune_memory_limits() {
     _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
   fi
   tune_sql_memory_limits
-  update_sql_conf
+  sql_conf_update
   if [[ "${PrTestPower}" =~ "POWER" ]] \
     || [ -e "/root/.my.cluster_root_pwd.txt" ] \
     || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then

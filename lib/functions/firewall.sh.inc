@@ -158,7 +158,7 @@ csf_install() {
   fi
 }
 
-install_upgrade_csf_lfd() {
+csf_lfd_install_upgrade() {
   _IPSET_TEST=$(which ipset 2> /dev/null)
   if [ ! -x "${_IPSET_TEST}" ]; then
     apt-get clean -qq &> /dev/null

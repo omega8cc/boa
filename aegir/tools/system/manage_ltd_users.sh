@@ -950,7 +950,7 @@ done
 }
 #
 # Update local INI for PHP CLI on the Aegir Satellite Instance.
-update_php_cli_local_ini() {
+php_cli_local_ini_update() {
   _U_HD="${dscUsr}/.drush"
   _U_TP="${dscUsr}/.tmp"
   _U_II="${_U_HD}/php.ini"
@@ -1050,7 +1050,7 @@ update_php_cli_local_ini() {
 }
 #
 # Update PHP-CLI for Drush.
-update_php_cli_drush() {
+php_cli_drush_update() {
   _DRUSH_FILE="${dscUsr}/tools/drush/drush.php"
   if [ "${_T_CLI_VRN}" = "8.1" ] && [ -x "/opt/php81/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php81\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
@@ -1231,7 +1231,7 @@ switch_newrelic() {
 }
 #
 # Update web user.
-satellite_update_web_user() {
+satellite_web_user_update() {
   isTest="${_WEB}"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [[ ! "${_WEB}" =~ ".ftp"($) ]]; then
@@ -1392,11 +1392,11 @@ satellite_create_web_user() {
     _T_II="${_T_HD}/php.ini"
     _T_ID_EXISTS=$(getent passwd ${_WEB} 2>&1)
     if [ ! -z "${_T_ID_EXISTS}" ] && [ -e "${_T_II}" ]; then
-      satellite_update_web_user "$1"
+      satellite_web_user_update "$1"
     elif [ -z "${_T_ID_EXISTS}" ] || [ ! -e "${_T_II}" ]; then
       satellite_remove_web_user "clean"
       adduser --force-badname --system --ingroup www-data ${_WEB} &> /dev/null
-      satellite_update_web_user "$1"
+      satellite_web_user_update "$1"
     fi
   fi
 }
@@ -1644,9 +1644,9 @@ switch_php() {
         if [ "${_T_CLI_VRN}" != "${_PHP_CLI_VERSION}" ] \
           || [ ! -e "${dscUsr}/static/control/.ctrl.cli.${_X_SE}.pid" ]; then
           _PHP_CLI_UPDATE=YES
-          update_php_cli_drush
+          php_cli_drush_update
           if [ -x "${_T_CLI}/php" ]; then
-            update_php_cli_local_ini
+            php_cli_local_ini_update
             sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_T_CLI_VRN}/g" \
               /root/.${_USER}.octopus.cnf &> /dev/null
             wait
@@ -2020,7 +2020,7 @@ switch_php() {
                       || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${m}.${_X_SE}.pid" ]; then
                       echo _OLD_PHP_IN_USE is ${_OLD_PHP_IN_USE} for ${_WEB} update
                       echo _NEW_PHP_TO_USE is ${m} for ${_WEB} update
-                      satellite_update_web_user "${m}"
+                      satellite_web_user_update "${m}"
                     fi
                   fi
                 done

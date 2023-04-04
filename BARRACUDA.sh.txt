@@ -263,7 +263,7 @@ os_detection_minimal
 ### Basic packages check and update
 ###
 basic_packages_install_on_init
-update_sources_list
+sources_list_update
 more_packages_install_on_init
 
 
@@ -304,10 +304,8 @@ if_upgrade_only_aegir_master
 sys_packages_update
 if_proxysql_update
 sys_packages_install
-check_fix_java
-install_with_aptitude_deps
-fix_locales
-install_with_aptitude_deps
+java_check_fix
+locales_check_fix
 
 
 ###
@@ -321,43 +319,59 @@ fi
 ###
 ### Install Percona server
 ###
-install_db_server
+db_server_install
 
 
 ###
 ### Finalize initial Percona server setup
 ###
 init_sql_root_credentials
-update_sql_root_credentials
+sql_root_credentials_update
 
 
 ###
 ### Install other services
 ###
 run_aptitude_full_upgrade
-install_with_aptitude_deps
-install_php_deps
+run_aptitude_deps_install
 if_install_bind
-check_install_latest_git
-install_upgrade_nginx
+git_check_install_src
+nginx_install_upgrade
 kill_nash
-fix_sftp_ftps_modern
+sftp_ftps_modern_fix
 disable_old_purge_cruft_machine
-install_wkhtmltox
-fix_libs_php
-fix_libssl
-check_smtp
-check_nginx_initd
-install_vnstat
-install_update_xdrago
-install_ssl_src
-install_curl_src
-install_update_lshell
-install_update_redis
-check_install_myquick
+wkhtmltox_install
+smtp_check
+nginx_initd_check
+vnstat_install
+xdrago_install_update
+ssl_install_src
+ssl_crypto_lib_fix
+curl_install_src
+lshell_install_update
+redis_install_update
+myquick_install_update
 if_install_magick
-install_update_php
+php_install_deps
+php_libs_fix
+php_install_update
+if_install_php_ioncube
+if_install_php_newrelic
 php_upgrade_all
+
+
+###
+### Allow PHP forced rebuilds only on upgrade
+###
+if [ "${_STATUS}" = "UPGRADE" ]; then
+  php_check_fix
+fi
+
+
+###
+### PHP config update
+###
+php_config_check_update
 
 
 ###
@@ -371,35 +385,21 @@ fi
 
 
 ###
-### Allow PHP forced rebuilds only on upgrade
-###
-if [ "${_STATUS}" = "UPGRADE" ]; then
-  check_fix_php
-fi
-
-
-###
-### PHP config update
-###
-check_update_php_config
-
-
-###
 ### Apply other fixes
 ###
-check_fix_avatars
-check_fix_umask
-check_fix_bin_extra
-check_fix_newrelic
-check_fix_java
+avatars_check_fix
+umask_check_fix
+bin_extra_check_fix
+newrelic_check_fix
+java_check_fix
 
 
 ###
 ### Install or upgrade Aegir Master Instance
 ###
-install_upgrade_aegir_master
-fix_nginx_mime
-nginx_wildcard_ssl
+aegir_master_install_upgrade
+nginx_mime_check_fix
+nginx_wildcard_ssl_install
 
 
 ###
@@ -422,7 +422,7 @@ if_install_rvm
 ###
 ### Update initd scripts
 ###
-update_initd
+initd_update
 
 
 ###
@@ -434,17 +434,17 @@ sshd_armour
 ###
 ### Update barracuda log and system settings
 ###
-update_barracuda_log
-update_sysctl
-update_apticron
+barracuda_log_update
+sysctl_update
+apticron_update
 if_display_login_link
-fix_update_nginx_config
+nginx_config_update_fix
 
 
 ###
 ### Install or upgrade csf/lfd monitoring
 ###
-install_upgrade_csf_lfd
+csf_lfd_install_upgrade
 
 
 ###

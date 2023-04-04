@@ -449,7 +449,7 @@ master_download_for_local_build() {
 
 #
 # Upgrade Aegir Master Instance.
-upgrade_aegir_master() {
+aegir_master_upgrade() {
   if prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
     true
     msg "INFO: Running Aegir Master Instance upgrade"
@@ -582,7 +582,7 @@ upgrade_aegir_master() {
       && [ -e "/data/conf/global.inc" ]; then
       ln -sf /data/conf/global.inc ${mtrInc}/global.inc
     fi
-    update_redis_password
+    redis_password_update
     force_advanced_nginx_config
     cd /var/aegir
     if [ -d "${mtrNgx}/conf.d" ]; then
@@ -614,7 +614,7 @@ upgrade_aegir_master() {
 
 #
 # Update php-cli in the cron entry.
-update_php_cli_cron() {
+php_cli_cron_update() {
   rm -f /var/spool/cron/crontabs/aegir
   if [ ! -e "/root/.mstr.clstr.cnf" ] \
     && [ ! -e "/root/.wbhd.clstr.cnf" ] \
@@ -649,7 +649,7 @@ update_php_cli_cron() {
   fi
 }
 
-install_upgrade_aegir_master() {
+aegir_master_install_upgrade() {
   if [ "${_STATUS}" = "INIT" ]; then
 
   ###--------------------###
@@ -677,7 +677,7 @@ install_upgrade_aegir_master() {
     usermod -aG users aegir
     echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
     ln -sf /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf &> /dev/null
-    update_nginx_conf
+    nginx_conf_update
 
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -952,7 +952,7 @@ EOFMYSQL
       && [ -e "/data/conf/global.inc" ]; then
       ln -sf /data/conf/global.inc ${mtrInc}/global.inc
     fi
-    update_redis_password
+    redis_password_update
     force_advanced_nginx_config
     chmod 0711 ${mtrInc} &> /dev/null
     chmod 0711 /var/aegir/config &> /dev/null
@@ -1002,9 +1002,9 @@ EOFMYSQL
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
         touch /data/conf/clstr.cnf &> /dev/null
       fi
-      update_php_cli_cron
-      upgrade_aegir_master
-      update_php_cli_cron
+      php_cli_cron_update
+      aegir_master_upgrade
+      php_cli_cron_update
     fi
   fi
 }
@@ -1013,9 +1013,9 @@ if_upgrade_only_aegir_master() {
   if [ "${_STATUS}" = "UPGRADE" ]; then
     if [ "${_AEGIR_UPGRADE_ONLY}" = "YES" ] \
       && [ "${_SYSTEM_UPGRADE_ONLY}" = "NO" ]; then
-      update_php_cli_cron
-      upgrade_aegir_master
-      update_php_cli_cron
+      php_cli_cron_update
+      aegir_master_upgrade
+      php_cli_cron_update
       mrun "sleep 8"
       mrun "service nginx reload" &> /dev/null
       finale
@@ -1053,7 +1053,7 @@ if_display_login_link() {
 
 #
 # Update local INI for PHP CLI on the Aegir Master Instance.
-update_php_cli_local_ini() {
+php_cli_local_ini_update() {
   _X_SE="414prodT58"
   _U_HD="/var/aegir/.drush"
   _U_TP="/var/aegir/.tmp"

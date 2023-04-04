@@ -770,7 +770,7 @@ check_prepare_dirs_permissions() {
   fi
 }
 
-check_fix_avatars() {
+avatars_check_fix() {
   if [ ! -e "/var/www/nginx-default/profiles/commons/images/avatars" ]; then
     if [ -e "${bldPth}/aegir/var/commons/images" ]; then
       mkdir -p /var/www/nginx-default/profiles/commons
@@ -783,7 +783,7 @@ check_fix_avatars() {
   fi
 }
 
-check_fix_bin_extra() {
+bin_extra_check_fix() {
   SDIR="${bldPth}/aegir/tools/bin"
   SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
   if [ ! -x "/usr/local/bin/fix-drupal-site-permissions.sh" ] \
@@ -799,7 +799,7 @@ check_fix_bin_extra() {
   fi
 }
 
-update_barracuda_log() {
+barracuda_log_update() {
   if [ -L "${mtrInc}/barracuda_log.txt" ]; then
     rm -f ${mtrInc}/barracuda_log.txt
   fi

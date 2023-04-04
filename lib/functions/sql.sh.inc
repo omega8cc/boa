@@ -103,7 +103,7 @@ sql_strict_upgrade_path() {
 
 #
 # Update innodb_log_file_size.
-update_innodb_log_file_size() {
+innodb_log_file_size_update() {
   msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
     sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf &> /dev/null
@@ -142,7 +142,7 @@ update_innodb_log_file_size() {
 
 #
 # Update SQL Config.
-update_sql_conf() {
+sql_conf_update() {
   sed -i "s/.*innodb_force_recovery/#innodb_force_recovery/g" /etc/mysql/my.cnf &> /dev/null
     wait
   if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
@@ -245,7 +245,7 @@ update_sql_conf() {
             sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf &> /dev/null
               wait
           else
-            update_innodb_log_file_size
+            innodb_log_file_size_update
           fi
         fi
       fi
@@ -1011,7 +1011,7 @@ forced_mysql_root_password_update() {
   fi
 }
 
-install_db_server() {
+db_server_install() {
   if [ "${_OSR}" = "chimaera" ]; then
     _SQL_OSR=bullseye
   elif [ "${_OSR}" = "beowulf" ]; then
@@ -1038,7 +1038,7 @@ install_db_server() {
     install_with_aptitude_sql
   else
     if [ "${_UP_NRC}" = "YES" ]; then
-      update_newrelic
+      newrelic_update
     fi
 
     ### Only supported upgrade path allowed
@@ -1402,7 +1402,7 @@ EOF
   fi
 }
 
-update_sql_root_credentials() {
+sql_root_credentials_update() {
   if [ ! -e "/root/.my.cnf" ]; then
     msg "INFO: ${_DB_SERVER} final setup"
     #

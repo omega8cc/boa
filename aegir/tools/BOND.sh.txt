@@ -662,7 +662,7 @@ fix_php_ini_mongo_all() {
 }
 #
 # Update PHP Config.
-update_php_conf() {
+php_conf_update() {
   if [ -z "${_THISHTIP}" ]; then
     _LOC_DOM="${_THISHOST}"
     find_correct_ip
@@ -817,7 +817,7 @@ tune_php() {
 }
 #
 # Update innodb_log_file_size.
-update_innodb_log_file_size() {
+innodb_log_file_size_update() {
   msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   if [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "10.3" ] \
@@ -940,7 +940,7 @@ restore_default_sql() {
               /etc/mysql/my.cnf &> /dev/null
             wait
           else
-            update_innodb_log_file_size
+            innodb_log_file_size_update
           fi
         fi
       fi
@@ -1726,7 +1726,7 @@ if prompt_yes_no "${tPrmt}?" ; then
     source /root/.barracuda.cnf
   fi
   restore_default_php
-  update_php_conf
+  php_conf_update
   tune_php
   restore_default_sql
   tune_sql
@@ -1745,7 +1745,7 @@ else
     source /root/.barracuda.cnf
   fi
   restore_default_php
-  update_php_conf
+  php_conf_update
   restore_default_sql
   restore_default_nginx
   tune_memory_limits

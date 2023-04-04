@@ -1174,7 +1174,7 @@ check_dns_curl() {
   fi
 }
 
-check_fix_csf() {
+csf_check_fix() {
   if [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
     && [ ! -x "/etc/csf/csfpost.sh" ]; then
@@ -1223,7 +1223,7 @@ check_root() {
       _B_NICE=10
     fi
     renice ${_B_NICE} -p $$ &> /dev/null
-    check_fix_csf
+    csf_check_fix
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then

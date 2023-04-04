@@ -376,9 +376,9 @@ fix_php_ini_mongo_all() {
 
 #
 # Update PHP Config.
-update_php_conf() {
+php_conf_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: update_php_conf"
+    msg "PROC: php_conf_update"
   fi
   if [ -z "${_THISHTIP}" ]; then
     _LOC_DOM="${_THISHOST}"
@@ -490,12 +490,12 @@ update_php_conf() {
 
 #
 # Check PHP Config.
-check_update_php_config() {
+php_config_check_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: check_update_php_config"
+    msg "PROC: php_config_check_update"
   fi
-  update_php_conf
-  update_ini_tpl
+  php_conf_update
+  ini_tpl_update
 }
 
 #
@@ -558,29 +558,31 @@ tune_web_server_config() {
 
 #
 # Install IonCube.
-install_ioncube() {
+if_install_php_ioncube() {
   ###--------------------###
-  if [ ! -e "${pthLog}/ioncube-update-${_IONCUBE_VRN}.log" ] \
-    || [ ! -e "/usr/local/ioncube" ] \
-    || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-    mkdir -p /usr/local/ioncube
-    _X86_64_TEST=$(uname -m 2>&1)
-    if [ "${_X86_64_TEST}" = "x86_64" ]; then
-      SYSTEM_ARCH="x86_64"
-      msg "INFO: Installing IonCube ${_IONCUBE_VRN} for PHP..."
-      cd /var/opt
-      rm -rf ioncube_loaders*
-      get_dev_arch "ioncube_loaders_lin_x86-64_${_IONCUBE_VRN}.tar.gz"
-    else
-      SYSTEM_ARCH="x86"
-      msg "INFO: Installing IonCube ${_IONCUBE_VRN} for PHP..."
-      cd /var/opt
-      rm -rf ioncube_loaders*
-      get_dev_arch "ioncube_loaders_lin_x86_${_IONCUBE_VRN}.tar.gz"
+  if [ "${_PHP_IONCUBE}" = "YES" ]; then
+    if [ ! -e "${pthLog}/ioncube-update-${_IONCUBE_VRN}.log" ] \
+      || [ ! -e "/usr/local/ioncube" ] \
+      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      mkdir -p /usr/local/ioncube
+      _X86_64_TEST=$(uname -m 2>&1)
+      if [ "${_X86_64_TEST}" = "x86_64" ]; then
+        SYSTEM_ARCH="x86_64"
+        msg "INFO: Installing IonCube ${_IONCUBE_VRN} for PHP..."
+        cd /var/opt
+        rm -rf ioncube_loaders*
+        get_dev_arch "ioncube_loaders_lin_x86-64_${_IONCUBE_VRN}.tar.gz"
+      else
+        SYSTEM_ARCH="x86"
+        msg "INFO: Installing IonCube ${_IONCUBE_VRN} for PHP..."
+        cd /var/opt
+        rm -rf ioncube_loaders*
+        get_dev_arch "ioncube_loaders_lin_x86_${_IONCUBE_VRN}.tar.gz"
+      fi
+      rm -f /usr/local/ioncube/*
+      cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
+      touch ${pthLog}/ioncube-update-${_IONCUBE_VRN}.log
     fi
-    rm -f /usr/local/ioncube/*
-    cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
-    touch ${pthLog}/ioncube-update-${_IONCUBE_VRN}.log
   fi
 }
 
@@ -874,7 +876,7 @@ install_php_extensions() {
 
 #
 # Update extensions for PHP built from sources.
-update_php_extensions() {
+php_extensions_update() {
   ###--------------------###
   if [ "$1" = "56" ]; then
     _USE_PHPREDIS="${_PHPREDIS_FOUR_VRN}"
@@ -1456,16 +1458,16 @@ install_php_multi() {
 
 #
 # Update PHP extensions
-update_php_multi() {
+php_multi_update() {
   _T_PHP_VRN="${_PHP_VERSION}"
   _T_PHP_PTH="/opt/php$1/bin"
   _T_PHP_CFG="/opt/php$1/bin/php-config"
-  update_php_extensions "$1"
+  php_extensions_update "$1"
 }
 
 #
 # Update New Relic.
-update_newrelic() {
+newrelic_update() {
   ###--------------------###
   if [ ! -z "${_NEWRELIC_KEY}" ]; then
     if [ -x "/usr/bin/gpg2" ]; then
@@ -1581,7 +1583,7 @@ update_newrelic() {
 
 #
 # Install New Relic.
-install_newrelic() {
+if_install_php_newrelic() {
   ###--------------------###
   if [ ! -z "${_NEWRELIC_KEY}" ]; then
     if [ -x "/usr/bin/gpg2" ]; then
@@ -1891,7 +1893,7 @@ check_php_broken() {
     if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]]; then
       _PHP_BIN_BROKEN=YES
       msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix broken libcurl..."
-      install_curl_src
+      curl_install_src
       install_php_multi "$1"
       _PHP_ALREADY_REBUILT=$1
     else
@@ -2085,7 +2087,7 @@ php_upgrade_all() {
       switch_php_cli "${e}"
       check_php_broken "${e}"
       check_php_rebuild "${e}"
-      update_php_multi "${e}"
+      php_multi_update "${e}"
       mrun "service php${e}-fpm restart" &> /dev/null
       _PHP_VERSION=""
       _T_PHP_VRN=""
@@ -2104,7 +2106,7 @@ get_php_conf_extra() {
   fi
 }
 
-install_update_php() {
+php_install_update() {
   if_to_do_fix
   if [ "${_STATUS}" = "UPGRADE" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2203,7 +2205,7 @@ install_update_php() {
   fi
 }
 
-check_fix_php() {
+php_check_fix() {
   check_php_cli
   if [ -x "/opt/php74/bin/php" ]; then
     isSodium=
@@ -2235,20 +2237,10 @@ check_fix_php() {
       msg "NOTE: Default PHP was built without freetype support"
     fi
   fi
-  if [ -x "/opt/php56/bin/php" ]; then
-    _CURLWRAPPERS_TEST=$(/opt/php56/bin/php -i | grep "with-curlwrappers" 2>&1)
-    if [[ "$_CURLWRAPPERS_TEST" =~ "with-curlwrappers" ]]; then
-      _CURLWRAPPERS_REBUILD=YES
-    fi
-  fi
-  if [ "${_CURLWRAPPERS_REBUILD}" = "YES" ] \
-    && [[ ! "${_PHP_EXTRA_CONF}" =~ "with-curlwrappers" ]]; then
-    msg "INFO: PHP rebuild required to remove --with-curlwrappers option..."
-    _PHP_FORCE_REINSTALL=YES
-    php_upgrade_all
-  fi
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
     && [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
+    mrun "${_APT_UPDATE} -qq" &> /dev/null
+    mrun "${_INSTALL} libonig-dev" 2> /dev/null
     if [ -e "/usr/lib/libtidy.so" ]; then
       mrun "apt-get remove libtidy-dev -y -qq" &> /dev/null
       mrun "apt-get remove libtidy-0.99-0 -y -qq" &> /dev/null
@@ -2269,26 +2261,20 @@ check_fix_php() {
       ln -sf libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
       touch ${pthLog}/libtidy-${_LIB_TIDY_VRN}.log
     fi
+    msg "INFO: PHP rebuild required to add --with-tidy option..."
     _PHP_FORCE_REINSTALL=YES
     php_upgrade_all
   fi
-  _BROKEN_LIBCURL_TEST=$(php -v 2>&1)
-  if [[ "${_BROKEN_LIBCURL_TEST}" =~ "libcurl.so.4" ]]; then
-    msg "INFO: PHP rebuild required to fix broken libcurl..."
-    install_curl_src
-    php_upgrade_all
-  fi
-  install_newrelic
   if [ "${_PHP_IONCUBE}" = "YES" ]; then
     if [ ! -e "${pthLog}/ioncube-update-${_IONCUBE_VRN}.log" ] \
       || [ "${_PHP_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-      install_ioncube
+      if_install_php_ioncube
     fi
   fi
 }
 
-install_update_composer() {
+composer_install_update() {
   _COMPOSER_IS=$(composer --no-interaction --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f13 \
