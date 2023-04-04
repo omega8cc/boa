@@ -3155,8 +3155,8 @@ curl_install_src() {
             --with-zlib=/usr \
             --with-libssl-prefix=/usr/local/ssl \
             --prefix=/usr/local &> /dev/null
-          mrun "make --quiet" 2> /dev/null
-          mrun "make --quiet install" 2> /dev/null
+          mrun "make" 2> /dev/null
+          mrun "make install" 2> /dev/null
           mrun "ldconfig" &> /dev/null
           if [ -x "/usr/local/bin/curl" ]; then
             mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S 2>&1)
