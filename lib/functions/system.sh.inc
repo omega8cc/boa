@@ -2829,8 +2829,8 @@ install_ssh_src() {
       --without-openssl-header-check \
       --prefix=/usr \
       --with-pam" 2> /dev/null
-    mrun "make --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
+    mrun "make" 2> /dev/null
+    mrun "make install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     mrun "service ssh restart" &> /dev/null
     if [[ ! "${_SSH_GET_DPKG}" =~ "hold" ]]; then
