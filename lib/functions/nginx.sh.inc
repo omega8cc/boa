@@ -363,10 +363,11 @@ nginx_install_upgrade() {
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_NGX_FORCE_REINSTALL}" = "YES" ]; then
     if [ "${_STATUS}" = "UPGRADE" ]; then
-      msg "INFO: Upgrading Nginx..."
+      msg "INFO: Upgrading Nginx, please wait..."
     else
-      msg "INFO: Installing Nginx..."
+      msg "INFO: Installing Nginx, please wait..."
     fi
+    msg "HINT: It may take several minutes depending on your system CPU..."
     cd /var/opt; rm -rf nginx*
     get_dev_src "nginx-${_NGINX_VRN}.tar.gz"
     sed -i "s/nginx/${_CUSTOM_NAME}/g" \

@@ -1107,7 +1107,7 @@ db_server_install() {
         rm -f /etc/csf/csf.error
         csf -x &> /dev/null
       fi
-      msg "INFO: Running ${_DB_SERVER} upgrade..."
+      msg "INFO: Running ${_DB_SERVER} upgrade, please wait..."
       msg "HINT: It may take several minutes depending on your system CPU..."
       if [ ! -e "/root/.proxy.cnf" ]; then
         mrun "sleep 120"

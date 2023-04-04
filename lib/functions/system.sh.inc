@@ -2119,7 +2119,7 @@ barracuda_cnf() {
 #
 # Running aptitude full-upgrade.
 run_aptitude_full_upgrade() {
-  msg "INFO: Running aptitude full-upgrade..."
+  msg "INFO: Running aptitude full-upgrade, please wait..."
   msg "HINT: It may take several minutes depending on your system CPU..."
   st_runner "apt --fix-broken install -y" 2> /dev/null
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
@@ -2887,7 +2887,7 @@ install_magick_src() {
     fi
   fi
   if [ "${_MAGICK_INSTALL_REQUIRED}" = "YES" ]; then
-    msg "INFO: Building ImageMagick ${_IMAGE_MAGICK_VRN} from sources, please wait..."
+    msg "INFO: Installing ImageMagick ${_IMAGE_MAGICK_VRN} from sources, please wait..."
     msg "HINT: It may take several minutes depending on your system CPU..."
     cd /var/opt
     rm -rf ImageMagick*
@@ -4612,7 +4612,7 @@ webmin_apt_update() {
 }
 
 sys_packages_update() {
-  msg "INFO: Running system packages update..."
+  msg "INFO: Running system packages update, please wait..."
   if [ -e "/var/aegir" ]; then
     echo "curl install"           | dpkg --set-selections &> /dev/null
     echo "git install"            | dpkg --set-selections &> /dev/null
@@ -4708,13 +4708,13 @@ sys_packages_install() {
   if_to_do_fix
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Installing required libraries and tools, please wait..."
+    msg "HINT: It may take several minutes depending on your system CPU..."
   else
-    msg "INFO: Upgrading required libraries and tools..."
+    msg "INFO: Upgrading required libraries and tools, please wait..."
     if [ ! -e "/etc/init.d/php5-fpm" ]; then
       cp -af ${locCnf}/php5-fpm-init-vanilla /etc/init.d/php5-fpm
     fi
   fi
-  msg "HINT: It may take several minutes depending on your system CPU..."
   if [ "${_STATUS}" = "INIT" ]; then
     if [[ "${_XTRAS_LIST}" =~ "SR" ]] \
       || [[ "${_THISHOST}" =~ ".host8." ]] \
@@ -4990,7 +4990,7 @@ php_libs_fix() {
       || [ ! -e "/usr/lib/libgmp.so.3" ] \
       || [ ! -e "/usr/lib/libcurl.so" ] \
       || [ ! -e "/usr/include/gmp.h" ]; then
-      msg "INFO: Fix #1 for PHP libs in ${_THIS_OS} ${_OSR}"
+      msg "INFO: Fix for PHP libs in ${_THIS_OS} ${_OSR}"
       _X86_64_TEST=$(uname -m 2>&1)
       if [ "${_X86_64_TEST}" = "x86_64" ]; then
         ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
@@ -5046,7 +5046,7 @@ php_libs_fix() {
 
 ssl_crypto_lib_fix() {
   if [ ! -e "/usr/lib/libssl.so" ] || [ ! -e "/usr/lib/libcrypto.so" ]; then
-    msg "INFO: Fix #2 for SSL libssl/libcrypto in ${_THIS_OS} ${_OSR}"
+    msg "INFO: Fix for SSL libssl/libcrypto in ${_THIS_OS} ${_OSR}"
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ -e "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
