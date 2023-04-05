@@ -2916,6 +2916,61 @@ install_magick_src() {
 }
 
 #
+# Fix symlinks for libs.
+ssl_crypto_lib_fix() {
+  if [ ! -e "/usr/lib/libssl.so" ] || [ ! -e "/usr/lib/libcrypto.so" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Fix for SSL libssl/libcrypto in ${_THIS_OS} ${_OSR}"
+    fi
+    _X86_64_TEST=$(uname -m 2>&1)
+    if [ "${_X86_64_TEST}" = "x86_64" ]; then
+      if [ -e "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
+        && [ ! -e "/usr/lib/libssl.so" ]; then
+        ln -s /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
+      elif [ -e "/lib/x86_64-linux-gnu/libssl.so" ] \
+        && [ ! -e "/usr/lib/libssl.so" ]; then
+        ln -s /lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
+        && [ ! -e "/usr/lib/libcrypto.so" ]; then
+        ln -s /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+      elif [ -e "/lib/x86_64-linux-gnu/libcrypto.so" ] \
+        && [ ! -e "/usr/lib/libcrypto.so" ]; then
+        ln -s /lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+      fi
+    else
+      if [ -e "/usr/lib/i386-linux-gnu/libssl.so" ] \
+        && [ ! -e "/usr/lib/libssl.so" ]; then
+        ln -s /usr/lib/i386-linux-gnu/libssl.so /usr/lib/libssl.so
+      elif [ -e "/lib/i386-linux-gnu/libssl.so" ] \
+        && [ ! -e "/usr/lib/libssl.so" ]; then
+        ln -s /lib/i386-linux-gnu/libssl.so /usr/lib/libssl.so
+      fi
+      if [ -e "/usr/lib/i386-linux-gnu/libcrypto.so" ] \
+        && [ ! -e "/usr/lib/libcrypto.so" ]; then
+        ln -s /usr/lib/i386-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+      elif [ -e "/lib/i386-linux-gnu/libcrypto.so" ] \
+        && [ ! -e "/usr/lib/libcrypto.so" ]; then
+        ln -s /lib/i386-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+      fi
+    fi
+  fi
+  if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
+    && [ -f "/usr/lib/x86_64-linux-gnu/libssl3.so" ]; then
+    rm -f /usr/lib/x86_64-linux-gnu/libssl.so
+    ln -sf /usr/lib/x86_64-linux-gnu/libssl3.so /usr/lib/x86_64-linux-gnu/libssl.so
+    ln -sf /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
+  fi
+  if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
+    && [ -f "/usr/local/ssl/lib/libcrypto.so.3" ]; then
+    rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
+    ln -sf /usr/local/ssl/lib/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so
+    ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+  fi
+  mrun "ldconfig" 2> /dev/null
+}
+
+#
 # Install OpenSSL from sources.
 ssl_install_src() {
   _SSL_INSTALL_REQUIRED=NO
@@ -3031,7 +3086,6 @@ ssl_install_src() {
         echo "zlib1g hold" | dpkg --set-selections &> /dev/null
         echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
       fi
-      ssl_crypto_lib_fix
     else
       msg "OOPS: OpenSSL version ${_OPENSSL_NEW_VRN} was not installed!"
       _SSL_INSTALL_REQUIRED=
@@ -5051,57 +5105,6 @@ php_libs_fix() {
         fi
       fi
     fi
-  fi
-  mrun "ldconfig" 2> /dev/null
-}
-
-ssl_crypto_lib_fix() {
-  if [ ! -e "/usr/lib/libssl.so" ] || [ ! -e "/usr/lib/libcrypto.so" ]; then
-    msg "INFO: Fix for SSL libssl/libcrypto in ${_THIS_OS} ${_OSR}"
-    _X86_64_TEST=$(uname -m 2>&1)
-    if [ "${_X86_64_TEST}" = "x86_64" ]; then
-      if [ -e "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
-        && [ ! -e "/usr/lib/libssl.so" ]; then
-        ln -s /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
-      elif [ -e "/lib/x86_64-linux-gnu/libssl.so" ] \
-        && [ ! -e "/usr/lib/libssl.so" ]; then
-        ln -s /lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
-      fi
-      if [ -e "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
-        && [ ! -e "/usr/lib/libcrypto.so" ]; then
-        ln -s /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
-      elif [ -e "/lib/x86_64-linux-gnu/libcrypto.so" ] \
-        && [ ! -e "/usr/lib/libcrypto.so" ]; then
-        ln -s /lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
-      fi
-    else
-      if [ -e "/usr/lib/i386-linux-gnu/libssl.so" ] \
-        && [ ! -e "/usr/lib/libssl.so" ]; then
-        ln -s /usr/lib/i386-linux-gnu/libssl.so /usr/lib/libssl.so
-      elif [ -e "/lib/i386-linux-gnu/libssl.so" ] \
-        && [ ! -e "/usr/lib/libssl.so" ]; then
-        ln -s /lib/i386-linux-gnu/libssl.so /usr/lib/libssl.so
-      fi
-      if [ -e "/usr/lib/i386-linux-gnu/libcrypto.so" ] \
-        && [ ! -e "/usr/lib/libcrypto.so" ]; then
-        ln -s /usr/lib/i386-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
-      elif [ -e "/lib/i386-linux-gnu/libcrypto.so" ] \
-        && [ ! -e "/usr/lib/libcrypto.so" ]; then
-        ln -s /lib/i386-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
-      fi
-    fi
-  fi
-  if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
-    && [ -f "/usr/lib/x86_64-linux-gnu/libssl3.so" ]; then
-    rm -f /usr/lib/x86_64-linux-gnu/libssl.so
-    ln -sf /usr/lib/x86_64-linux-gnu/libssl3.so /usr/lib/x86_64-linux-gnu/libssl.so
-    ln -sf /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
-  fi
-  if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
-    && [ -f "/usr/local/ssl/lib/libcrypto.so.3" ]; then
-    rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
-    ln -sf /usr/local/ssl/lib/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so
-    ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
   fi
   mrun "ldconfig" 2> /dev/null
 }
