@@ -3940,6 +3940,7 @@ run_aptitude_deps_install() {
   mrun "apt --fix-broken install -y" 2> /dev/null
   _EXTRA_APT="tree"
   st_runner "apt-get install ${_EXTRA_APT} ${nrmUpArg}" 2> /dev/null
+  st_runner "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
   if [ -e "/etc/init.d/php5-fpm" ]; then
     mrun "service php5-fpm stop" &> /dev/null
     mrun "update-rc.d -f php5-fpm remove" &> /dev/null
