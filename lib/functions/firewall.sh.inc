@@ -113,9 +113,13 @@ csf_install() {
   if [ "$_CSF_COMPATIBILITY" = "YES" ] \
     || [ "$_CSF_COMPATIBILITY" = "PARTIAL" ]; then
     if [ "$_CSF_COMPATIBILITY" = "PARTIAL" ]; then
-      msg "TEST: csf/lfd firewall should mostly work on this system"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "TEST: csf/lfd firewall should mostly work on this system"
+      fi
     else
-      msg "TEST: csf/lfd firewall should work fine on this system"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "TEST: csf/lfd firewall should work fine on this system"
+      fi
     fi
     mv -f /etc/csf/csf.conf \
       /etc/csf/csf.conf-pre-${_X_VERSION}-${_NOW} &> /dev/null
@@ -148,9 +152,13 @@ csf_install() {
     fi
     mrun "service ssh restart" &> /dev/null
     if [ "$_CSF_MODE" = "install" ]; then
-      msg "INFO: csf/lfd firewall installed"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: csf/lfd firewall installed"
+      fi
     else
-      msg "INFO: csf/lfd firewall upgrade completed"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: csf/lfd firewall upgrade completed"
+      fi
     fi
     touch ${pthLog}/csf_${_X_VERSION}.log
   else

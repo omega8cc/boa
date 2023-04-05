@@ -2279,7 +2279,9 @@ composer_install_update() {
     | cut -d" " -f13 \
     | awk '{ print $1}' 2>&1)
   if [ "${_COMPOSER_IS}" != "${_COMPOSER_VRN}" ]; then
-    msg "INFO: Installed Composer version ${_COMPOSER_IS}, update required"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Installed Composer ${_COMPOSER_IS}, update required"
+    fi
     cd /var/opt
     rm -rf composer*
     get_dev_src "composer-${_COMPOSER_VRN}.phar.gz"
@@ -2290,6 +2292,8 @@ composer_install_update() {
       msg "INFO: Composer updated to version ${_COMPOSER_VRN}"
     fi
   else
-    msg "INFO: Installed Composer version ${_COMPOSER_VRN}, no action needed"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Installed Composer ${_COMPOSER_VRN}, no action needed"
+    fi
   fi
 }

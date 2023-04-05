@@ -2296,7 +2296,9 @@ if_install_wkhtmltox() {
       || [ -L "/usr/bin/wkhtmltopdf" ] \
       || [ -L "/usr/bin/wkhtmltoimage" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-      msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
+      fi
       mrun "${_APT_UPDATE} -qq" &> /dev/null
       mrun "${_INSTALL} xfonts-75dpi xfonts-base" 2> /dev/null
       mrun "${_INSTALL} wkhtmltopdf" 2> /dev/null
@@ -2317,7 +2319,9 @@ if_install_wkhtmltox() {
       fi
       if [ "${_X86_64_TEST}" = "x86_64" ]; then
         SYSTEM_ARCH="x86_64"
-        msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
+        fi
         cd /var/opt
         rm -rf wkhtmltox*
         mkdir -p /var/opt/wkhtmltox
@@ -2334,7 +2338,9 @@ if_install_wkhtmltox() {
         fi
       else
         SYSTEM_ARCH="x86"
-        msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
+        fi
         mrun "${_INSTALL} xfonts-75dpi xfonts-base" &> /dev/null
         cd /var/opt
         rm -rf wkhtmltox*
@@ -2923,7 +2929,9 @@ install_magick_src() {
     mrun "apt-get purge imagemagick -y -qq" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    msg "HINT: Please modify /usr/etc/ImageMagick-7/policy.xml file, if needed"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "HINT: Please modify /usr/etc/ImageMagick-7/policy.xml file, if needed"
+    fi
   fi
 }
 
@@ -5258,7 +5266,9 @@ vnstat_install() {
 
 install_myquick_src() {
   if [ "${_MYQUICK_INSTALL_REQUIRED}" = "YES" ]; then
-    msg "INFO: Building MyQuick ${_MYQUICK_VRN} from sources..."
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Building MyQuick ${_MYQUICK_VRN} from sources..."
+    fi
     mrun "${_APT_UPDATE} -qq" &> /dev/null
     mrun "${_INSTALL} cmake" 2> /dev/null
     if [ "${_DB_SERVER}" = "Percona" ] || [ "${_DB_SERIES}" = "5.7" ]; then
