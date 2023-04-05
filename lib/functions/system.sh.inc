@@ -3226,9 +3226,8 @@ curl_install_src() {
           || [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ]; then
           cd /var/opt/curl-${_CURL_VRN}
           LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig" ./configure \
-            --with-ssl \
+            --with-openssl \
             --with-zlib=/usr \
-            --with-libssl-prefix=/usr/local/ssl \
             --prefix=/usr/local &> /dev/null
           mrun "make" 2> /dev/null
           mrun "make install" 2> /dev/null
