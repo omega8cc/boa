@@ -1780,6 +1780,7 @@ update_wrappers() {
     rm -rf /var/lib/apt/lists/*
     ${_APT_UPDATE} -qq &> /dev/null
     apt-get install curl ${forCer} &> /dev/null
+    apt-get build-dep curl -y &> /dev/null
     mkdir -p /var/backups/libcurl
     mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
     mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -1797,6 +1798,7 @@ update_wrappers() {
       rm -rf /var/lib/apt/lists/*
       ${_APT_UPDATE} -qq &> /dev/null
       apt-get install curl ${forCer} &> /dev/null
+      apt-get build-dep curl -y &> /dev/null
       mkdir -p /var/backups/libcurl
       mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
       mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -1999,6 +2001,7 @@ setup() {
     rm -rf /var/lib/apt/lists/*
     ${_APT_UPDATE} -qq &> /dev/null
     apt-get install curl ${forCer} &> /dev/null
+    apt-get build-dep curl -y &> /dev/null
     mkdir -p /var/backups/libcurl
     mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
     mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -2016,6 +2019,7 @@ setup() {
       rm -rf /var/lib/apt/lists/*
       ${_APT_UPDATE} -qq &> /dev/null
       apt-get install curl ${forCer} &> /dev/null
+      apt-get build-dep curl -y &> /dev/null
       mkdir -p /var/backups/libcurl
       mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
       mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null

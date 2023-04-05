@@ -3201,9 +3201,12 @@ curl_install_src() {
           rm -rf /var/lib/apt/lists/*
           mrun "${_APT_UPDATE} -qq" &> /dev/null
           mrun "apt-get install curl ${forCer}" 2> /dev/null
+          mrun "apt-get build-dep curl -y" 2> /dev/null
         fi
       fi
     else
+      echo "curl install" | dpkg --set-selections &> /dev/null
+      mrun "${_APT_UPDATE} -qq" &> /dev/null
       mrun "apt-get build-dep curl -y" 2> /dev/null
       mrun "${_INSTALL} libssl-dev" 2> /dev/null
       mrun "${_INSTALL} libc-client2007e-dev" 2> /dev/null
@@ -4367,6 +4370,7 @@ if_major_os_upgrade() {
     mrun "${_INSTALL} openssl"    2> /dev/null
     mrun "${_INSTALL} libssl-dev" 2> /dev/null
     mrun "apt-get install curl ${forCer}"           2> /dev/null
+    mrun "apt-get build-dep curl -y"                2> /dev/null
     mrun "apt-get install git ${forCer}"            2> /dev/null
     mrun "apt-get install git-core ${forCer}"       2> /dev/null
     mrun "apt-get install git-man ${forCer}"        2> /dev/null
