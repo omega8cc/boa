@@ -3190,9 +3190,6 @@ curl_install_src() {
         fi
       fi
     else
-      if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
-        echo "curl hold" | dpkg --set-selections &> /dev/null
-      fi
       mrun "apt-get build-dep curl -y" 2> /dev/null
       mrun "${_INSTALL} libssl-dev" 2> /dev/null
       mrun "${_INSTALL} libc-client2007e-dev" 2> /dev/null
@@ -3225,6 +3222,9 @@ curl_install_src() {
           fi
           if [ ! -e "/usr/local/ssl/certs/ca-certificates.crt" ]; then
             cp -af /etc/ssl/certs/* /usr/local/ssl/certs/ &> /dev/null
+          fi
+          if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
+            echo "curl hold" | dpkg --set-selections &> /dev/null
           fi
         else
           msg "OOPS: Building OpenSSL ${_OPENSSL_NEW_VRN} from sources failed!"
