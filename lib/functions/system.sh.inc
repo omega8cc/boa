@@ -4771,7 +4771,6 @@ sys_packages_install() {
   if_to_do_fix
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Installing required libraries and tools, please wait..."
-    msg "HINT: It may take several minutes depending on your system CPU..."
   else
     msg "INFO: Upgrading required libraries and tools, please wait..."
     if [ ! -e "/etc/init.d/php5-fpm" ]; then
