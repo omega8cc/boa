@@ -334,7 +334,6 @@ sql_root_credentials_update
 ###
 run_aptitude_full_upgrade
 run_aptitude_deps_install
-if_install_bind
 git_check_install_src
 nginx_install_upgrade
 kill_nash
