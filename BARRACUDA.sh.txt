@@ -334,12 +334,9 @@ sql_root_credentials_update
 ###
 run_aptitude_full_upgrade
 run_aptitude_deps_install
-git_check_install_src
 nginx_install_upgrade
 kill_nash
-sftp_ftps_modern_fix
 disable_old_purge_cruft_machine
-wkhtmltox_install
 smtp_check
 nginx_initd_check
 vnstat_install
@@ -350,13 +347,9 @@ curl_install_src
 lshell_install_update
 redis_install_update
 myquick_install_update
-if_install_magick
 php_install_deps
 php_libs_fix
 php_install_update
-if_install_php_ioncube
-if_install_php_newrelic
-php_upgrade_all
 
 
 ###
@@ -374,9 +367,9 @@ php_config_check_update
 
 
 ###
-### Install OpenSSH from sources if needed
+### Install OpenSSH from sources on upgrade
 ###
-if [ "${_SSH_FROM_SOURCES}" = "YES" ]; then
+if [ "${_SSH_FROM_SOURCES}" = "YES" ] && [ "${_STATUS}" = "UPGRADE" ]; then
   if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
     ssh_install_src
   fi
@@ -389,7 +382,6 @@ fi
 avatars_check_fix
 umask_check_fix
 bin_extra_check_fix
-newrelic_check_fix
 
 
 ###
@@ -401,20 +393,31 @@ nginx_wildcard_ssl_install
 
 
 ###
-### Optional add-on services
+### Optional add-on services installed on upgrade
 ###
-if_install_ffmpeg
-if_install_bzr
-if_install_ftpd
-if_install_jetty
-if_install_adminer
-if_install_chive
-if_install_sqlbuddy
-if_install_collectd
-if_install_hhvm
-if_install_webmin
-if_install_bind
-if_install_rvm
+if [ "${_STATUS}" = "UPGRADE" ]; then
+  php_upgrade_all
+  if_install_php_newrelic
+  if_install_php_ioncube
+  if_install_wkhtmltox
+  if_install_magick
+  if_install_git_src
+  if_install_ffmpeg
+  if_install_bzr
+  if_install_jetty
+  if_install_adminer
+  if_install_chive
+  if_install_sqlbuddy
+  if_install_collectd
+  if_install_hhvm
+  if_install_webmin
+  if_install_bind
+  if_install_rvm
+  if_install_ftpd
+  if_install_pdnsd
+  sftp_ftps_modern_fix
+  newrelic_check_fix
+fi
 
 
 ###
@@ -426,7 +429,9 @@ initd_update
 ###
 ### Make sshd armoured
 ###
-sshd_armour
+if [ "${_STATUS}" = "UPGRADE" ]; then
+  sshd_armour
+fi
 
 
 ###
@@ -443,12 +448,6 @@ nginx_config_update_fix
 ### Install or upgrade csf/lfd monitoring
 ###
 csf_lfd_install_upgrade
-
-
-###
-### Install or upgrade DNS cache pdnsd server
-###
-if_install_upgrade_pdnsd
 
 
 ###

@@ -2175,7 +2175,7 @@ do_install_latest_git() {
 
 #
 # Check if latest Git should be installed.
-git_check_install_src() {
+if_install_git_src() {
   _GIT_ITD=$(git --version 2>&1)
   if [[ "${_GIT_ITD}" =~ "git version 1.9.1" ]]; then
     _GIT_FORCE_REINSTALL=YES
@@ -2258,7 +2258,7 @@ php_install_deps() {
 
 #
 # Install wkhtmltopdf and wkhtmltoimage.
-wkhtmltox_install() {
+if_install_wkhtmltox() {
   ###--------------------###
   mrun "${_APT_UPDATE} -qq" &> /dev/null
   mrun "${_INSTALL} fonts-thai-tlwg" 2> /dev/null
