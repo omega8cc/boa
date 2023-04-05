@@ -2607,8 +2607,8 @@ sources_list_update() {
   rm -rf /var/lib/apt/lists/*
   ###--------------------###
   _X_SE="414prodT58"
-  if [ -e "${pthLog}/apt-updates-${_X_SE}.txt" ] \
-    || [ -e "/var/log/apt-updates-${_X_SE}.txt" ]; then
+  if [ -e "${pthLog}/apt-deb-src-updates-${_X_SE}.txt" ] \
+    || [ -e "/var/log/apt-deb-src-updates-${_X_SE}.txt" ]; then
     _APT_SOURCES_REWRITE=NO
     if [ ! -z "${_LOCAL_DEVUAN_MIRROR}" ]; then
       _APT_SOURCES_REWRITE=YES
@@ -2640,12 +2640,15 @@ sources_list_update() {
       cd /var/opt
       echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
       echo "deb http://${_MIRROR}/merged ${_OSR} main" >> ${aptLiSys}
+      echo "deb-src http://${_MIRROR}/merged ${_OSR} main" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
 	  echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
 	  echo "deb http://${_MIRROR}/merged ${_OSR}-updates main" >> ${aptLiSys}
+	  echo "deb-src http://${_MIRROR}/merged ${_OSR}-updates main" >> ${aptLiSys}
 	  echo "" >> ${aptLiSys}
       echo "## DEVUAN SECURITY UPDATES" >> ${aptLiSys}
       echo "deb http://${_MIRROR}/merged ${_OSR}-security main" >> ${aptLiSys}
+      echo "deb-src http://${_MIRROR}/merged ${_OSR}-security main" >> ${aptLiSys}
     elif [ "${_THIS_OS}" = "Debian" ]; then
       _MIRROR_CHECK=NO
       if [ "${_OSR}" = "deprecated" ]; then
@@ -2710,12 +2713,15 @@ sources_list_update() {
       fi
       echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
       echo "deb http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
+      echo "deb-src http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
       echo "deb http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
+      echo "deb-src http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
       echo "deb http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb-src http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
     elif [ "${_THIS_OS}" = "Ubuntu" ]; then
       if [ "${_AUTOPILOT}" = "YES" ]; then
         if [ -z "${_LOCAL_UBUNTU_MIRROR}" ]; then
@@ -2757,21 +2763,29 @@ sources_list_update() {
       echo "## MAIN REPOSITORIES" > ${aptLiSys}
       echo "deb http://${_MIRROR}/ubuntu/ ${_OSR} main \
         restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb-src http://${_MIRROR}/ubuntu/ ${_OSR} main \
+        restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES" >> ${aptLiSys}
       echo "deb http://${_MIRROR}/ubuntu/ ${_OSR}-updates main \
+        restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb-src http://${_MIRROR}/ubuntu/ ${_OSR}-updates main \
         restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## BACKPORTS" >> ${aptLiSys}
       echo "deb http://${_MIRROR}/ubuntu/ ${_OSR}-backports main \
         restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb-src http://${_MIRROR}/ubuntu/ ${_OSR}-backports main \
+        restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## UBUNTU SECURITY UPDATES" >> ${aptLiSys}
       echo "deb http://security.ubuntu.com/ubuntu ${_OSR}-security \
         main restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb-src http://security.ubuntu.com/ubuntu ${_OSR}-security \
+        main restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
     fi
     mkdir -p ${pthLog}
-    touch ${pthLog}/apt-updates-${_X_SE}.txt
+    touch ${pthLog}/apt-deb-src-updates-${_X_SE}.txt
     cd /var/opt
   fi
   ###--------------------###
@@ -4402,12 +4416,15 @@ if_major_os_upgrade() {
       _TGT_MRR="deb.devuan.org/merged"
       echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
       echo "deb http://${_TGT_MRR} ${_NEW_OSR} main" >> ${aptLiSys}
+      echo "deb-src http://${_TGT_MRR} ${_NEW_OSR} main" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
       echo "deb http://${_TGT_MRR} ${_NEW_OSR}-updates main" >> ${aptLiSys}
+      echo "deb-src http://${_TGT_MRR} ${_NEW_OSR}-updates main" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## DEVUAN SECURITY UPDATES" >> ${aptLiSys}
       echo "deb http://${_TGT_MRR} ${_NEW_OSR}-security main" >> ${aptLiSys}
+      echo "deb-src http://${_TGT_MRR} ${_NEW_OSR}-security main" >> ${aptLiSys}
       if [ -e "/etc/apt/apt.conf" ]; then
         sed -i "s/APT::Default-Release.*/APT::Default-Release \"${_NEW_OSR}\";/g" \
           /etc/apt/apt.conf &> /dev/null
@@ -4436,12 +4453,15 @@ if_major_os_upgrade() {
       fi
       echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
       echo "deb http://${_NEW_APT_MIRROR} ${_NEW_OSR} main contrib non-free" >> ${aptLiSys}
+      echo "deb-src http://${_NEW_APT_MIRROR} ${_NEW_OSR} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
       echo "deb http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
+      echo "deb-src http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
       echo "deb http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
+      echo "deb-src http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       if [ -e "/etc/apt/apt.conf" ]; then
         sed -i "s/APT::Default-Release.*/APT::Default-Release \"${_NEW_OSR}\";/g" \
           /etc/apt/apt.conf &> /dev/null
