@@ -1444,6 +1444,12 @@ install_db_cluster() {
     _SQL_OSR="${_OSR}"
   fi
 
+  if [ -x "/vservers/${idn}/usr/bin/gpg2" ]; then
+    _GPG=gpg2
+  else
+    _GPG=gpg
+  fi
+
   _CLUSTER_NAME="${_CLUSTER_PREFIX}_galera"
   _MAINT_USER_PWD="$(openssl rand -base64 32 2>&1)"
   _ROOT_SQL_PASWD="$(openssl rand -base64 32 2>&1)"

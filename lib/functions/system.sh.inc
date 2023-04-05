@@ -3894,11 +3894,6 @@ run_aptitude_deps_install() {
   st_runner "${_INSTAPP} ${_EXTRA_PACKAGES}" 2> /dev/null
   st_runner "${_INSTAPP} ${_SYSLOGD}" 2> /dev/null
   mrun "apt --fix-broken install -y" 2> /dev/null
-  if [ -x "/usr/bin/gpg2" ]; then
-    _GPG=gpg2
-  else
-    _GPG=gpg
-  fi
   _EXTRA_APT="tree"
   st_runner "apt-get install ${_EXTRA_APT} ${nrmUpArg}" 2> /dev/null
   if [ -e "/etc/init.d/php5-fpm" ]; then
@@ -4669,6 +4664,11 @@ webmin_apt_update() {
         _KEYS_SERVER_TEST=$(grep GnuPG jcameron-key.gpg 2>&1)
         sleep 2
       done
+      if [ -x "/usr/bin/gpg2" ]; then
+        _GPG=gpg2
+      else
+        _GPG=gpg
+      fi
       cat jcameron-key.gpg | ${_GPG} --import &> /dev/null
       rm -f jcameron-key.gpg*
       touch ${pthLog}/webmin_update_apt_src.log
