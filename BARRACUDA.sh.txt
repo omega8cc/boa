@@ -379,7 +379,7 @@ php_config_check_update
 ###
 if [ "${_SSH_FROM_SOURCES}" = "YES" ]; then
   if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
-    install_ssh_src
+    ssh_install_src
   fi
 fi
 
@@ -391,7 +391,6 @@ avatars_check_fix
 umask_check_fix
 bin_extra_check_fix
 newrelic_check_fix
-java_check_fix
 
 
 ###

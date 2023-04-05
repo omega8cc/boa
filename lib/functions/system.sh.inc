@@ -2781,7 +2781,7 @@ sources_list_update() {
 
 #
 # Install OpenSSH from sources.
-install_ssh_src() {
+ssh_install_src() {
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
     || [ "${_OSR}" = "bullseye" ] \
