@@ -3900,7 +3900,6 @@ run_aptitude_deps_install() {
   mrun "apt-get remove libcurl4-gnutls-dev -y -qq" 2> /dev/null
   mrun "apt-get remove libcurl4-openssl-dev -y -qq" 2> /dev/null
   mrun "apt autoremove -y -qq" 2> /dev/null
-  mrun "apt --fix-broken install -y" 2> /dev/null
   mrun "${_INSTAPP} build-essential devscripts libsasl2-modules" 2> /dev/null
   mrun "${_INSTAPP} zlibc time vim cvs makepasswd" 2> /dev/null
   mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables" 2> /dev/null
