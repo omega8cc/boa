@@ -2969,29 +2969,42 @@ ssl_crypto_lib_fix() {
       fi
     fi
   fi
-  if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
-    && [ -f "/usr/local/ssl/lib/libssl.so.1.1" ]; then
-    rm -f /usr/lib/x86_64-linux-gnu/libssl.so
-    ln -sf /usr/local/ssl/lib/libssl.so.1.1 /usr/lib/x86_64-linux-gnu/libssl.so
-    ln -sf /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
+  mrun "ldconfig" 2> /dev/null
+  _SSL_ITD=$(openssl version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f2 \
+    | awk '{ print $1}')
+  if [[ "${_SSL_ITD}" =~ "3.1." ]]; then
+    _SSL_INSTALLED=MODERN
+  elif [[ "${_SSL_ITD}" =~ "1.1.1" ]]; then
+    _SSL_INSTALLED=LEGACY
   fi
-  if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
-    && [ -f "/usr/local/ssl/lib/libcrypto.so.1.1" ]; then
-    rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
-    ln -sf /usr/local/ssl/lib/libcrypto.so.1.1 /usr/lib/x86_64-linux-gnu/libcrypto.so
-    ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
-  fi
-  if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
-    && [ -f "/usr/local/ssl/lib/libssl.so.3" ]; then
-    rm -f /usr/lib/x86_64-linux-gnu/libssl.so
-    ln -sf /usr/local/ssl/lib/libssl.so.3 /usr/lib/x86_64-linux-gnu/libssl.so
-    ln -sf /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
-  fi
-  if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
-    && [ -f "/usr/local/ssl/lib/libcrypto.so.3" ]; then
-    rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
-    ln -sf /usr/local/ssl/lib/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so
-    ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+  if [ "${_SSL_INSTALLED}" = "LEGACY" ]; then
+    if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
+      && [ -f "/usr/local/ssl/lib/libssl.so.1.1" ]; then
+      rm -f /usr/lib/x86_64-linux-gnu/libssl.so
+      ln -sf /usr/local/ssl/lib/libssl.so.1.1 /usr/lib/x86_64-linux-gnu/libssl.so
+      ln -sf /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
+    fi
+    if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
+      && [ -f "/usr/local/ssl/lib/libcrypto.so.1.1" ]; then
+      rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
+      ln -sf /usr/local/ssl/lib/libcrypto.so.1.1 /usr/lib/x86_64-linux-gnu/libcrypto.so
+      ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+    fi
+  elif [ "${_SSL_INSTALLED}" = "MODERN" ]; then
+    if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
+      && [ -f "/usr/local/ssl/lib/libssl.so.3" ]; then
+      rm -f /usr/lib/x86_64-linux-gnu/libssl.so
+      ln -sf /usr/local/ssl/lib/libssl.so.3 /usr/lib/x86_64-linux-gnu/libssl.so
+      ln -sf /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
+    fi
+    if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
+      && [ -f "/usr/local/ssl/lib/libcrypto.so.3" ]; then
+      rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
+      ln -sf /usr/local/ssl/lib/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so
+      ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+    fi
   fi
   mrun "ldconfig" 2> /dev/null
 }
