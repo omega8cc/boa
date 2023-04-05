@@ -1,5 +1,7 @@
 APT::Get::Assume-Yes "true";
 APT::Get::Show-Upgraded "true";
+APT::Get::Install-Recommends "false";
+APT::Get::Install-Suggests "false";
 APT::Quiet "true";
 DPkg::Options {"--force-confdef";"--force-confmiss";"--force-confold"};
 DPkg::Pre-Install-Pkgs {"/usr/sbin/dpkg-preconfigure --apt";};
