@@ -2970,6 +2970,18 @@ ssl_crypto_lib_fix() {
     fi
   fi
   if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
+    && [ -f "/usr/local/ssl/lib/libssl.so.1.1" ]; then
+    rm -f /usr/lib/x86_64-linux-gnu/libssl.so
+    ln -sf /usr/local/ssl/lib/libssl.so.1.1 /usr/lib/x86_64-linux-gnu/libssl.so
+    ln -sf /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
+  fi
+  if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
+    && [ -f "/usr/local/ssl/lib/libcrypto.so.1.1" ]; then
+    rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
+    ln -sf /usr/local/ssl/lib/libcrypto.so.1.1 /usr/lib/x86_64-linux-gnu/libcrypto.so
+    ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+  fi
+  if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
     && [ -f "/usr/local/ssl/lib/libssl.so.3" ]; then
     rm -f /usr/lib/x86_64-linux-gnu/libssl.so
     ln -sf /usr/local/ssl/lib/libssl.so.3 /usr/lib/x86_64-linux-gnu/libssl.so
