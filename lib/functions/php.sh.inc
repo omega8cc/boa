@@ -1202,8 +1202,7 @@ install_php_multi() {
   get_php_conf_extra
   _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-curlwrappers//g" 2>&1)
   ###--------------------###
-  msg "INFO: Building PHP ${_PHP_VERSION} from sources, please wait..."
-  msg "HINT: It may take several minutes depending on your system CPU..."
+  msg "INFO: Building PHP ${_PHP_VERSION} from sources..."
   mrun "${_APT_UPDATE} -qq" &> /dev/null
   mrun "${_INSTALL} libonig-dev" 2> /dev/null
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
@@ -1344,6 +1343,7 @@ install_php_multi() {
                 ${_PHP_EXTRA}" 2> /dev/null
   if [ -e "/var/opt/php-${_PHP_VERSION}/Makefile" ]; then
     msg "INFO: Building PHP ${_PHP_VERSION} part 3/3"
+    msg "WAIT: This may take a while, please wait..."
     sed -i "s/^EXTRA_LIBS = \-lcrypt/EXTRA_LIBS = \-llber \-lcrypt/g" /var/opt/php-${_PHP_VERSION}/Makefile
     mrun "make" 2> /dev/null
     mrun "make install" 2> /dev/null
@@ -1380,6 +1380,7 @@ install_php_multi() {
     if [ -f "/var/opt/php-${_PHP_VERSION}/Makefile" ]; then
       sed -i "s/^EXTRA_LIBS = \-lcrypt/EXTRA_LIBS = \-llber \-lcrypt/g" /var/opt/php-${_PHP_VERSION}/Makefile
       msg "INFO: Building PHP ${_PHP_VERSION} part 3/3 (again)"
+      msg "WAIT: This may take a while, please wait..."
       mrun "make" 2> /dev/null
       mrun "make install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null

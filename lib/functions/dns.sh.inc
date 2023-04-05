@@ -378,7 +378,7 @@ install_pdnsd_cache() {
     || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ]; then
     st_runner "${_INSTALL} resolvconf" &> /dev/null
-    msg "INFO: Building pdnsd ${_PDNSD_VRN} from sources, please wait..."
+    msg "INFO: Building pdnsd ${_PDNSD_VRN} from sources..."
     cd /var/opt
     rm -rf pdnsd*
     get_dev_src "pdnsd-${_PDNSD_VRN}.tar.gz"

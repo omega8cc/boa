@@ -2118,11 +2118,11 @@ barracuda_cnf() {
 #
 # Running aptitude full-upgrade.
 run_aptitude_full_upgrade() {
-  msg "INFO: Running aptitude full-upgrade, please wait..."
-  msg "HINT: It may take several minutes depending on your system CPU..."
+  msg "INFO: Running aptitude full-upgrade..."
+  msg "WAIT: This may take a while, please wait..."
+  st_runner "${_APT_UPDATE} -qq" &> /dev/null
   st_runner "apt --fix-broken install -y" 2> /dev/null
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
-  st_runner "${_APT_UPDATE} -qq" &> /dev/null
   if [ -e "/usr/bin/mytop" ]; then
     st_runner "${_RMAPP} mytop" &> /dev/null
     st_runner "apt-get purge mytop -y -qq" &> /dev/null
@@ -2133,7 +2133,7 @@ run_aptitude_full_upgrade() {
     -o Dpkg::Options::=--force-confdef \
     -o Dpkg::Options::=--force-confold" &> /dev/null
   if [ ! -e "/usr/local/bin/mytop" ] && [ -e "/usr/bin/mysql" ]; then
-    msg "INFO: Building MyTop from sources, please wait..."
+    msg "INFO: Building MyTop from sources..."
     cd /var/opt
     rm -rf git*
     get_dev_src "mytop-1.6.tar.gz"
@@ -2149,8 +2149,8 @@ run_aptitude_full_upgrade() {
 # Install latest Git.
 do_install_latest_git() {
   if [ ! -e "${pthLog}/git-${_GIT_VRN}-${_X_VERSION}-${_NOW}.log" ]; then
-    msg "INFO: Building Git ${_GIT_VRN} from sources, please wait..."
-    msg "HINT: It may take several minutes depending on your system CPU..."
+    msg "INFO: Building Git ${_GIT_VRN} from sources..."
+    msg "WAIT: This may take a while, please wait..."
     cd /var/opt
     rm -rf git*
     get_dev_src "git-${_GIT_VRN}.tar.gz"
@@ -2833,8 +2833,8 @@ ssh_install_src() {
     msg "INFO: Installed OpenSSH version ${_SSH_ITD}, upgrade required"
   fi
   if [ "${_SSH_INSTALL_REQUIRED}" = "YES" ]; then
-    msg "INFO: Building OpenSSH ${_OPENSSH_VRN} from sources, please wait..."
-    msg "HINT: It may take several minutes depending on your system CPU..."
+    msg "INFO: Building OpenSSH ${_OPENSSH_VRN} from sources..."
+    msg "WAIT: This may take a while, please wait..."
     cd /var/opt
     rm -rf openssh*
     get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
@@ -2904,8 +2904,8 @@ install_magick_src() {
     fi
   fi
   if [ "${_MAGICK_INSTALL_REQUIRED}" = "YES" ]; then
-    msg "INFO: Installing ImageMagick ${_IMAGE_MAGICK_VRN} from sources, please wait..."
-    msg "HINT: It may take several minutes depending on your system CPU..."
+    msg "INFO: Installing ImageMagick ${_IMAGE_MAGICK_VRN} from sources..."
+    msg "WAIT: This may take a while, please wait..."
     cd /var/opt
     rm -rf ImageMagick*
     get_dev_src "ImageMagick-${_IMAGE_MAGICK_VRN}.tar.gz"
@@ -3058,7 +3058,7 @@ ssl_install_src() {
   fi
   if [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
-    msg "INFO: Building zlib ${_ZLIB_VRN} from sources first, please wait..."
+    msg "INFO: Building zlib ${_ZLIB_VRN} from sources first..."
     cd /var/opt
     rm -rf zlib*
     get_dev_src "zlib-${_ZLIB_VRN}.tar.gz"
@@ -3068,8 +3068,8 @@ ssl_install_src() {
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     ###--------------------###
-    msg "INFO: Building OpenSSL ${_OPENSSL_NEW_VRN} from sources, please wait..."
-    msg "HINT: It may take several minutes depending on your system CPU..."
+    msg "INFO: Building OpenSSL ${_OPENSSL_NEW_VRN} from sources..."
+    msg "WAIT: This may take a while, please wait..."
     if [ ! -e "/var/opt/openssl-${_OPENSSL_NEW_VRN}" ]; then
       cd /var/opt
       rm -rf openssl*
@@ -3248,8 +3248,8 @@ curl_install_src() {
         extract_archive "curl-${_CURL_VRN}.tar.gz"
       fi
       if [ -e "/var/opt/curl-${_CURL_VRN}" ]; then
-        msg "INFO: Building cURL ${_CURL_VRN} from sources, please wait..."
-        msg "HINT: It may take several minutes depending on your system CPU..."
+        msg "INFO: Building cURL ${_CURL_VRN} from sources..."
+        msg "WAIT: This may take a while, please wait..."
         if [ -e "/usr/local/ssl/lib/libssl.so.3" ] \
           || [ -e "/usr/local/ssl/lib/libssl.so.1.1" ] \
           || [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ]; then
@@ -3893,8 +3893,8 @@ run_aptitude_deps_install() {
   elif [ "${_THIS_OS}" = "Ubuntu" ]; then
     ${_INITINS} ubuntu-keyring &> /dev/null
   fi
-  msg "INFO: Installing a large list of libraries and tools, please wait..."
-  msg "HINT: It may take several minutes depending on your system CPU..."
+  msg "INFO: Installing a large list of libraries and tools..."
+  msg "WAIT: This may take a while, please wait..."
   mrun "${_APT_UPDATE} -qq" &> /dev/null
   mrun "apt-get remove percona-xtrabackup-24 -y -qq" 2> /dev/null
   mrun "apt-get remove libcurl4-gnutls-dev -y -qq" 2> /dev/null
@@ -3976,7 +3976,7 @@ basic_packages_install_on_init() {
   fi
   if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "SYSTEMD" ]; then
     if [ ! -e "/root/.step.init.basic.cnf" ]; then
-      msg "INFO: Installing some basic tools, please wait..."
+      msg "INFO: Installing some basic tools..."
       apt-get clean -qq &> /dev/null
       rm -rf /var/lib/apt/lists/*
       ${_APT_UPDATE} -qq &> /dev/null
@@ -4093,7 +4093,7 @@ basic_packages_install_on_init() {
 
 more_packages_install_on_init() {
   if [ "${_STATUS}" = "INIT" ]; then
-    msg "INFO: Installing more basic tools now, please wait..."
+    msg "INFO: Installing more basic tools now..."
     if [ -e "/etc/debian_version" ]; then
       _L_DEB_TEST=$(grep "^5." /etc/debian_version 2>&1)
       if [ ! -z "${_L_DEB_TEST}" ]; then
@@ -4733,7 +4733,7 @@ webmin_apt_update() {
 }
 
 sys_packages_update() {
-  msg "INFO: Running system packages update, please wait..."
+  msg "INFO: Running system packages update..."
   if [ -e "/var/aegir" ]; then
     echo "curl install"           | dpkg --set-selections &> /dev/null
     echo "git install"            | dpkg --set-selections &> /dev/null
@@ -4828,9 +4828,9 @@ sys_packages_update() {
 sys_packages_install() {
   if_to_do_fix
   if [ "${_STATUS}" = "INIT" ]; then
-    msg "INFO: Installing required libraries and tools, please wait..."
+    msg "INFO: Installing required libraries and tools..."
   else
-    msg "INFO: Upgrading required libraries and tools, please wait..."
+    msg "INFO: Upgrading required libraries and tools..."
     if [ ! -e "/etc/init.d/php5-fpm" ]; then
       cp -af ${locCnf}/php5-fpm-init-vanilla /etc/init.d/php5-fpm
     fi
@@ -5255,7 +5255,7 @@ vnstat_install() {
 
 install_myquick_src() {
   if [ "${_MYQUICK_INSTALL_REQUIRED}" = "YES" ]; then
-    msg "INFO: Building MyQuick ${_MYQUICK_VRN} from sources, please wait..."
+    msg "INFO: Building MyQuick ${_MYQUICK_VRN} from sources..."
     mrun "${_APT_UPDATE} -qq" &> /dev/null
     mrun "${_INSTALL} cmake" 2> /dev/null
     if [ "${_DB_SERVER}" = "Percona" ] || [ "${_DB_SERIES}" = "5.7" ]; then
@@ -5433,7 +5433,6 @@ xdrago_install_update() {
     fi
   fi
   if [ "${_STATUS}" = "INIT" ]; then
-    msg "INFO: Installing a few more tools..."
     mkdir -p ./xdrago
     cp -af ${bldPth}/aegir/tools/system/* ./xdrago/ &> /dev/null
     cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
@@ -5638,9 +5637,9 @@ if_install_ftpd() {
       || [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
-      msg "INFO: Building Pure-FTPd server from sources, please wait..."
+      msg "INFO: Building Pure-FTPd server from sources..."
       if [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ]; then
-        msg "INFO: Generating DH parameters, 2048 bit, please wait..."
+        msg "INFO: Generating DH parameters, 2048 bit..."
         st_runner "openssl dhparam \
           -out /etc/ssl/private/pure-ftpd-dhparams.pem 2048" 2> /dev/null
       fi

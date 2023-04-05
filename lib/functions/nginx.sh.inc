@@ -56,7 +56,7 @@ sub_force_advanced_nginx_config() {
 # Force advanced Nginx configuration.
 force_advanced_nginx_config() {
   if [ ! -e "/etc/ssl/private/nginx-wild-ssl.dhp" ]; then
-    msg "INFO: Generating DH parameters, 2048 bit, please wait..."
+    msg "INFO: Generating DH parameters, 2048 bit..."
     mrun "openssl dhparam \
       -out /etc/ssl/private/nginx-wild-ssl.dhp 2048" 2> /dev/null
   fi
@@ -270,23 +270,27 @@ nginx_install_upgrade() {
       && [ "${_STATUS}" = "UPGRADE" ]; then
       _NGINX_INSTALL_REQUIRED=NO
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed Nginx version ${_NGINX_F_ITD}, OK"
+        msg "INFO: Installed Nginx ${_NGINX_F_ITD}, OK"
       fi
     elif [ "${_NGINX_F_ITD}" = "${_NGINX_F_VERSION}" ] \
       && [ "${_STATUS}" = "INIT" ]; then
       _NGINX_INSTALL_REQUIRED=NO
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed Nginx version ${_NGINX_F_ITD}, OK"
+        msg "INFO: Installed Nginx ${_NGINX_F_ITD}, OK"
       fi
     elif [ "${_NGINX_F_ITD}" != "${_NGINX_F_VERSION}" ]; then
       _NGINX_INSTALL_REQUIRED=YES
-      msg "INFO: Installed Nginx version ${_NGINX_F_ITD}, upgrade required"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Installed Nginx ${_NGINX_F_ITD}, upgrade required"
+      fi
     fi
     if [ "${_NGINX_F_ITD}" = "${_NGINX_F_VERSION}" ]; then
       if [[ ! "${_NGINX_V_ITD}" =~ "geoip" ]]; then
         _NGINX_INSTALL_REQUIRED=YES
-        msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
-        msg "INFO: Nginx forced rebuild to include geoip module"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
+          msg "INFO: Nginx forced rebuild to include geoip module"
+        fi
       fi
       if [[ "${_NGINX_V_ITD}" =~ "nginx-development-kit" ]]; then
         _NGINX_INSTALL_REQUIRED=YES
@@ -295,8 +299,10 @@ nginx_install_upgrade() {
       if [[ ! "${_NGINX_V_ITD}" =~ "http_flv_module" ]] \
         || [[ ! "${_NGINX_V_ITD}" =~ "http_mp4_module" ]]; then
         _NGINX_INSTALL_REQUIRED=YES
-        msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
-        msg "INFO: Nginx forced rebuild to include pseudo-streaming support"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
+          msg "INFO: Nginx forced rebuild to include pseudo-streaming support"
+        fi
       fi
       if [ "${_OSR}" = "chimaera" ] \
         || [ "${_OSR}" = "beowulf" ] \
@@ -312,42 +318,54 @@ nginx_install_upgrade() {
       fi
       if [[ ! "${_NGINX_V_ITD}" =~ "openssl-${_OPENSSL_NEW_VRN}" ]]; then
         _NGINX_INSTALL_REQUIRED=YES
-        msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
-        msg "INFO: Nginx forced rebuild to include latest OpenSSL version"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
+          msg "INFO: Nginx forced rebuild to include latest OpenSSL version"
+        fi
       fi
       if [ "${_NGINX_HEADERS}" = "YES" ]; then
         if [[ ! "${_NGINX_V_ITD}" =~ "nginx-headers-more" ]]; then
           _NGINX_INSTALL_REQUIRED=YES
-          msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
-          msg "INFO: Nginx forced rebuild to include Headers More support"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
+            msg "INFO: Nginx forced rebuild to include Headers More support"
+          fi
         fi
       fi
       if [ "${_NGINX_LDAP}" = "YES" ]; then
         if [[ ! "${_NGINX_V_ITD}" =~ "nginx-auth-ldap" ]]; then
           _NGINX_INSTALL_REQUIRED=YES
-          msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
-          msg "INFO: Nginx forced rebuild to include LDAP support"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
+            msg "INFO: Nginx forced rebuild to include LDAP support"
+          fi
         fi
       fi
       if [ "${_PURGE_MODE}" = "ON" ]; then
         if [[ ! "${_NGINX_V_ITD}" =~ "purge" ]]; then
           _NGINX_INSTALL_REQUIRED=YES
-          msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
-          msg "INFO: Nginx forced rebuild to include purge module"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
+            msg "INFO: Nginx forced rebuild to include purge module"
+          fi
         fi
       fi
       if [ "${_NGINX_NAXSI}" = "YES" ]; then
         if [[ ! "${_NGINX_V_ITD}" =~ "naxsi" ]]; then
           _NGINX_INSTALL_REQUIRED=YES
-          msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
-          msg "INFO: Nginx forced rebuild to include NAXSI module"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
+            msg "INFO: Nginx forced rebuild to include NAXSI module"
+          fi
         fi
       fi
       if [ "${_NGINX_SPDY}" = "YES" ]; then
         if [[ ! "${_NGINX_V_ITD}" =~ "http_v2_module" ]]; then
           _NGINX_INSTALL_REQUIRED=YES
-          msg "INFO: Installed Nginx version ${_NGINX_F_ITD}"
-          msg "INFO: Nginx forced rebuild to include SPDY support"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
+            msg "INFO: Nginx forced rebuild to include SPDY support"
+          fi
         fi
       fi
     fi
@@ -363,11 +381,10 @@ nginx_install_upgrade() {
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_NGX_FORCE_REINSTALL}" = "YES" ]; then
     if [ "${_STATUS}" = "UPGRADE" ]; then
-      msg "INFO: Upgrading Nginx, please wait..."
+      msg "INFO: Upgrading Nginx to ${_NGINX_VRN}..."
     else
-      msg "INFO: Installing Nginx, please wait..."
+      msg "INFO: Installing Nginx ${_NGINX_VRN}..."
     fi
-    msg "HINT: It may take several minutes depending on your system CPU..."
     cd /var/opt; rm -rf nginx*
     get_dev_src "nginx-${_NGINX_VRN}.tar.gz"
     sed -i "s/nginx/${_CUSTOM_NAME}/g" \

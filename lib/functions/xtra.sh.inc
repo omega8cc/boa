@@ -5,7 +5,7 @@ if_install_bzr() {
     if [ ! -e "$_PATH_BZR" ] \
       || [ ! -e "${pthLog}/bzr-${_BZR_VRN}.log" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-      msg "INFO: Building Bazaar (bzr) ${_BZR_VRN} from sources, please wait..."
+      msg "INFO: Building Bazaar (bzr) ${_BZR_VRN} from sources..."
       if [ -e "/usr/local/lib/python2.6/dist-packages/bzrlib" ]; then
         rm -rf /usr/local/lib/python2.6/dist-packages/bzrlib
       fi

@@ -666,7 +666,7 @@ aegir_master_install_upgrade() {
     fi
 
   ###--------------------###
-    msg "INFO: Installing Aegir Master Instance, please wait..."
+    msg "INFO: Installing Aegir Master Instance..."
     if [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ]; then

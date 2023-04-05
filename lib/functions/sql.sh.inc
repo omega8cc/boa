@@ -832,7 +832,7 @@ install_with_aptitude_sql() {
   st_runner "${_INSTAPP} ${SQLDEB}" 2> /dev/null
   st_runner "${_INSTAPP} ${SQLDEB}" 2> /dev/null
   if [ ! -e "/usr/local/bin/mytop" ] && [ -e "/usr/bin/mysql" ]; then
-    msg "INFO: Building MyTop from sources, please wait..."
+    msg "INFO: Building MyTop from sources..."
     cd /var/opt
     rm -rf git*
     get_dev_src "mytop-1.6.tar.gz"
@@ -1117,8 +1117,8 @@ db_server_install() {
         rm -f /etc/csf/csf.error
         csf -x &> /dev/null
       fi
-      msg "INFO: Running ${_DB_SERVER} upgrade, please wait..."
-      msg "HINT: It may take several minutes depending on your system CPU..."
+      msg "INFO: Running ${_DB_SERVER} upgrade..."
+      msg "WAIT: This may take a while, please wait..."
       if [ ! -e "/root/.proxy.cnf" ]; then
         mrun "sleep 120"
         mrun "service nginx stop" &> /dev/null
