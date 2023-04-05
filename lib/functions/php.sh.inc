@@ -2059,7 +2059,7 @@ php_upgrade_all() {
   if [ ! -z "${1}" ] ; then
     _PHP_V="${1}"
   else
-    _PHP_V="74 73 80 81 56 72 71 70"
+    _PHP_V="74 81 80 56 73 72 71 70"
   fi
   for e in ${_PHP_V}; do
     if [ -x "/opt/php${e}/bin/php" ]; then
