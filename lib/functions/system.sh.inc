@@ -3872,17 +3872,21 @@ run_aptitude_deps_install() {
   mrun "apt-get remove libcurl4-openssl-dev -y -qq" 2> /dev/null
   mrun "apt autoremove -y -qq" 2> /dev/null
   mrun "apt --fix-broken install -y" 2> /dev/null
-  mrun "${_INSTAPP} libcurl4-gnutls-dev" 2> /dev/null
   mrun "${_INSTAPP} build-essential devscripts libsasl2-modules" 2> /dev/null
+  mrun "${_INSTAPP} zlibc time vim cvs makepasswd" 2> /dev/null
   mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables" 2> /dev/null
   mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc" 2> /dev/null
+  mrun "${_INSTAPP} libssl-dev" 2> /dev/null
+  echo "curl install" | dpkg --set-selections &> /dev/null
+  mrun "${_INSTAPP} curl" 2> /dev/null
+  mrun "apt-get build-dep curl -y" 2> /dev/null
+  mrun "${_INSTAPP} libcurl4-gnutls-dev mcrypt libc-client-dev" 2> /dev/null
+  mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
   mrun "${_INSTAPP} apticron aptitude auditd apt-listchanges" 2> /dev/null
   mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
-  mrun "${_INSTAPP} zlibc time vim cvs makepasswd" 2> /dev/null
   mrun "${_INSTAPP} unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
   mrun "${_INSTAPP} rsync strace ntpdate python-dev" 2> /dev/null
   mrun "${_INSTAPP} mc whois zlib1g zlib1g-dev librsync-dev" 2> /dev/null
-  mrun "${_INSTAPP} mcrypt curl libssl-dev" 2> /dev/null
   mrun "${_INSTAPP} sqlite3 libsqlite3-dev s4cmd" 2> /dev/null
   mrun "${_INSTAPP} ssh ssl-cert libpam-umask shtool" 2> /dev/null
   mrun "${_INSTAPP} xml-core xml2 xpdf libtool rrdtool" 2> /dev/null
@@ -3894,7 +3898,6 @@ run_aptitude_deps_install() {
   mrun "${_INSTAPP} libonig-dev libpq5 libxml2-dev libxpm4" 2> /dev/null
   mrun "${_INSTAPP} libxslt-dev libxslt1-dev libxslt1.1 subversion" 2> /dev/null
   mrun "${_INSTAPP} libaprutil1 libapr1 ldap-utils ipset" 2> /dev/null
-  mrun "${_INSTAPP} libc-client-dev libc-client2007e libc-client2007e-dev" 2> /dev/null
   mrun "${_INSTAPP} pdftk patchutils p7zip-full fontconfig-config" 2> /dev/null
   mrun "${_INSTAPP} bison catdoc cython3 geoip-database gettext" 2> /dev/null
   mrun "${_INSTAPP} clamav clamav-base clamav-daemon clamdscan" 2> /dev/null
