@@ -213,7 +213,6 @@ remove_systemd() {
     ${_INSTALL} sysvinit
     ${_INSTALL} sysvinit-core
     ${_INSTALL} sysvinit-utils
-    apt --fix-broken install -y
     ls -la /usr/share/sysvinit/inittab
     if [ -e "/usr/share/sysvinit/inittab" ]; then
       cp -af /usr/share/sysvinit/inittab /etc/inittab
@@ -223,7 +222,6 @@ remove_systemd() {
     echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
     ${_INSTALL} sysvinit-core &> /dev/null
     ${_INSTALL} sysvinit-utils &> /dev/null
-    apt --fix-broken install -y
   fi
 }
 
@@ -1356,7 +1354,6 @@ db_head_to_stretch_first()
         ${_INSTALL} sysvinit
         ${_INSTALL} sysvinit-core
         ${_INSTALL} sysvinit-utils
-        apt --fix-broken install -y
         ls -la /usr/share/sysvinit/inittab
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
@@ -1365,7 +1362,6 @@ db_head_to_stretch_first()
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
         ${_INSTALL} sysvinit-core &> /dev/null
         ${_INSTALL} sysvinit-utils &> /dev/null
-        apt --fix-broken install -y
   	  fi
       echo "Upgrade OS to Stretch 1st stage complete!"
       echo "Bye!"
@@ -1384,7 +1380,6 @@ db_head_to_stretch_second()
         ${_INSTALL} sysvinit
         ${_INSTALL} sysvinit-core
         ${_INSTALL} sysvinit-utils
-        apt --fix-broken install -y
         ls -la /usr/share/sysvinit/inittab
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
@@ -1394,7 +1389,6 @@ db_head_to_stretch_second()
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
         ${_INSTALL} sysvinit-core &> /dev/null
         ${_INSTALL} sysvinit-utils &> /dev/null
-        apt --fix-broken install -y
   	  fi
   	  apt-get upgrade ${nrmUpArg}
   	  apt-get dist-upgrade ${nrmUpArg}

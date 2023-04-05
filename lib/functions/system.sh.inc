@@ -176,7 +176,6 @@ if_running_as_root_barracuda() {
         mrun "apt-get purge auditd -y -qq" &> /dev/null
       fi
       if [ -d "/etc/webmin" ]; then
-        mrun "apt --fix-broken install -y" 2> /dev/null
         mrun "dpkg --configure --force-all -a" 2> /dev/null
         mrun "apt-get clean -qq" &> /dev/null
         rm -rf /var/lib/apt/lists/*
@@ -3934,14 +3933,12 @@ run_aptitude_deps_install() {
   mrun "${_INSTAPP} clamav clamav-base clamav-daemon clamdscan" 2> /dev/null
   mrun "${_INSTAPP} ghostscript htop icu-devtools lemon lftp nano" 2> /dev/null
   mrun "${_INSTAPP} python3-dev python3-debian python3-magic" 2> /dev/null
-  mrun "apt --fix-broken install -y" 2> /dev/null
   fix_postfix
   st_runner "${_INSTAPP} ${_MAILSERV}" 2> /dev/null
   st_runner "${_INSTAPP} ${_APT_XTRA}" 2> /dev/null
   st_runner "${_INSTAPP} ${_EXTRA_LIB_APT}" 2> /dev/null
   st_runner "${_INSTAPP} ${_EXTRA_PACKAGES}" 2> /dev/null
   st_runner "${_INSTAPP} ${_SYSLOGD}" 2> /dev/null
-  mrun "apt --fix-broken install -y" 2> /dev/null
   _EXTRA_APT="tree"
   st_runner "apt-get install ${_EXTRA_APT} ${nrmUpArg}" 2> /dev/null
   if [ -e "/etc/init.d/php5-fpm" ]; then
@@ -4011,7 +4008,6 @@ basic_packages_install_on_init() {
       mrun "${_APT_UPDATE} -qq" &> /dev/null
       mrun "${_INITINS} sysvinit-core" 2> /dev/null
       mrun "${_INITINS} sysvinit-utils" 2> /dev/null
-      mrun "apt --fix-broken install -y" 2> /dev/null
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
@@ -4019,7 +4015,6 @@ basic_packages_install_on_init() {
         mrun "${_APT_UPDATE} -qq" &> /dev/null
         mrun "${_INITINS} sysvinit-core" 2> /dev/null
         mrun "${_INITINS} sysvinit-utils" 2> /dev/null
-        mrun "apt --fix-broken install -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/nosystemd.list
         rm -f /etc/apt/preferences.d/nosystemd
         msg "INFO: The sysvinit-core installed on ${_THIS_OS} ${_OSR}..."
@@ -4044,14 +4039,12 @@ basic_packages_install_on_init() {
       msg "INFO: Removing systemd on ${_THIS_OS} ${_OSR}..."
       mrun "${_INITINS} sysvinit-core" 2> /dev/null
       mrun "${_INITINS} sysvinit-utils" 2> /dev/null
-      mrun "apt --fix-broken install -y" 2> /dev/null
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
         mrun "${_INITINS} sysvinit-core" 2> /dev/null
         mrun "${_INITINS} sysvinit-utils" 2> /dev/null
-        mrun "apt --fix-broken install -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/nosystemd.list
         rm -f /etc/apt/preferences.d/nosystemd
         mrun "apt-get remove systemd -y -qq --purge --auto-remove" 2> /dev/null
