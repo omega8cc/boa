@@ -209,19 +209,22 @@ EOF
 remove_systemd() {
   if [ -x "/lib/systemd/systemd" ]; then
     ls -la /lib/systemd/systemd
-    apt-get remove systemd -y -qq --auto-remove
-    ${_INSTALL} sysvinit
     ${_INSTALL} sysvinit-core
     ${_INSTALL} sysvinit-utils
     ls -la /usr/share/sysvinit/inittab
     if [ -e "/usr/share/sysvinit/inittab" ]; then
       cp -af /usr/share/sysvinit/inittab /etc/inittab
     fi
-    apt-get remove systemd -y -qq --purge --auto-remove
+    apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
+    apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
+    apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
+    apt-get remove systemd-udevd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
     echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
     echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-    ${_INSTALL} sysvinit-core &> /dev/null
-    ${_INSTALL} sysvinit-utils &> /dev/null
+    apt-get autoremove --purge -y -qq 2> /dev/null
+    apt-get autoclean -y -qq 2> /dev/null
+    ${_INSTALL} sysvinit-core 2> /dev/null
+    ${_INSTALL} sysvinit-utils 2> /dev/null
   fi
 }
 
@@ -1351,7 +1354,6 @@ db_head_to_stretch_first()
   	  apt-get install lsb-release ${dstUpArg}
   	  if [ -x "/lib/systemd/systemd" ]; then
         ls -la /lib/systemd/systemd
-        ${_INSTALL} sysvinit
         ${_INSTALL} sysvinit-core
         ${_INSTALL} sysvinit-utils
         ls -la /usr/share/sysvinit/inittab
@@ -1377,14 +1379,16 @@ db_head_to_stretch_second()
 	    ${_APT_UPDATE} -qq &> /dev/null
   	  if [ -x "/lib/systemd/systemd" ]; then
         ls -la /lib/systemd/systemd
-        ${_INSTALL} sysvinit
         ${_INSTALL} sysvinit-core
         ${_INSTALL} sysvinit-utils
         ls -la /usr/share/sysvinit/inittab
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
-        apt-get remove systemd -y -qq --purge --auto-remove
+        apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
+        apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
+        apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
+        apt-get remove systemd-udevd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
         ${_INSTALL} sysvinit-core &> /dev/null

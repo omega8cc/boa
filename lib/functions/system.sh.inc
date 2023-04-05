@@ -4047,8 +4047,12 @@ basic_packages_install_on_init() {
         mrun "${_INITINS} sysvinit-utils" 2> /dev/null
         rm -f /etc/apt/sources.list.d/nosystemd.list
         rm -f /etc/apt/preferences.d/nosystemd
-        mrun "apt-get remove systemd -y -qq --purge --auto-remove" 2> /dev/null
-        mrun "apt --fix-broken install -y" 2> /dev/null
+        mrun "apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
+        mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
+        mrun "apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
+        mrun "apt-get remove systemd-udevd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
+        mrun "apt-get autoremove --purge -y -qq" 2> /dev/null
+        mrun "apt-get autoclean -y -qq" 2> /dev/null
       else
         echo
         msg "ALRT: The sysvinit has NOT been installed on ${_THIS_OS} ${_OSR}"
@@ -4078,6 +4082,7 @@ basic_packages_install_on_init() {
         msg "ALRT: The systemd has NOT been removed on ${_THIS_OS} ${_OSR}"
         msg "ALRT: Please check details in the logs located in /var/backups/"
         msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
+        touch /root/run_post_major_os_upgrade.info
       fi
       echo
       mrun "sleep 3"
@@ -4273,20 +4278,24 @@ if_proxysql_update() {
 
 if_post_major_os_upgrade() {
   if [ -e "/root/run_post_major_os_upgrade.info" ]; then
-    msg "INFO: Running dist-upgrade to complete the major system upgrade..."
-    msg "HINT: It may take several minutes depending on your system CPU..."
+
     mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
-    mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
-    mrun "apt-get ${dstUpArg} install" 2> /dev/null
+
     msg "INFO: Cleaning up any systemd remnants..."
-    mrun "apt-get remove systemd -y -qq --purge --auto-remove" 2> /dev/null
-    if [ "${_THIS_OS}" = "Devuan" ]; then
-      mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove" 2> /dev/null
-    fi
-    mrun "apt --fix-broken install -y" 2> /dev/null
+    mrun "apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
+    mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
+    mrun "apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
+    mrun "apt-get remove systemd-udevd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
+
     msg "INFO: Removing any packages orphaned by the migration process..."
     mrun "apt-get autoremove --purge -y -qq" 2> /dev/null
     mrun "apt-get autoclean -y -qq" 2> /dev/null
+
+    msg "INFO: Running dist-upgrade to complete the system upgrade..."
+    msg "WAIT: This may take a while, please wait..."
+    mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
+    mrun "apt-get ${dstUpArg} install" 2> /dev/null
+
     rm -f /root/run_post_major_os_upgrade.info
     msg "INFO: The post_major_os_upgrade procedure is complete."
   fi
