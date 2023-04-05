@@ -3899,50 +3899,54 @@ run_aptitude_deps_install() {
   mrun "apt-get remove libcurl4-gnutls-dev -y -qq" 2> /dev/null
   mrun "apt-get remove libcurl4-openssl-dev -y -qq" 2> /dev/null
   mrun "apt autoremove -y -qq" 2> /dev/null
-  mrun "${_INSTAPP} build-essential devscripts libsasl2-modules" 2> /dev/null
-  mrun "${_INSTAPP} zlibc time vim cvs makepasswd" 2> /dev/null
-  mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables" 2> /dev/null
-  mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc" 2> /dev/null
-  mrun "${_INSTAPP} curl" 2> /dev/null
+  mrun "${_INSTALL} build-essential devscripts libsasl2-modules" 2> /dev/null
+  mrun "${_INSTALL} zlibc time vim cvs makepasswd" 2> /dev/null
+  mrun "${_INSTALL} man-db dnsutils sudo symlinks iptables" 2> /dev/null
+  mrun "${_INSTALL} autoconf automake autotools-dev m4 bc" 2> /dev/null
+  mrun "${_INSTALL} curl" 2> /dev/null
   mrun "apt-get build-dep curl -y" 2> /dev/null
   mrun "apt-get remove libssl1.0-dev -y" 2> /dev/null
   mrun "apt autoremove -y" 2> /dev/null
   mrun "${_INSTALL} libssl-dev" 2> /dev/null
   mrun "${_INSTALL} libc-client2007e libc-client2007e-dev" 2> /dev/null
-  mrun "${_INSTAPP} libcurl4-gnutls-dev mcrypt libc-client-dev" 2> /dev/null
-  mrun "${_INSTAPP} apticron aptitude auditd apt-listchanges" 2> /dev/null
-  mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
-  mrun "${_INSTAPP} unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
-  mrun "${_INSTAPP} rsync strace ntpdate python-dev" 2> /dev/null
-  mrun "${_INSTAPP} mc whois zlib1g zlib1g-dev librsync-dev" 2> /dev/null
-  mrun "${_INSTAPP} sqlite3 libsqlite3-dev s4cmd" 2> /dev/null
-  mrun "${_INSTAPP} ssh ssl-cert libpam-umask shtool" 2> /dev/null
-  mrun "${_INSTAPP} xml-core xml2 xpdf libtool rrdtool" 2> /dev/null
-  mrun "${_INSTAPP} ncurses-dev ncurses-term sipcalc" 2> /dev/null
-  mrun "${_INSTAPP} netcat libzip-dev libwww-perl libsodium-dev" 2> /dev/null
-  mrun "${_INSTAPP} libfontconfig1 libfreetype6 libfreetype6-dev" 2> /dev/null
-  mrun "${_INSTAPP} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev" 2> /dev/null
-  mrun "${_INSTAPP} libicu-dev libjpeg-dev libjpeg62" 2> /dev/null
-  mrun "${_INSTAPP} libonig-dev libpq5 libxml2-dev libxpm4" 2> /dev/null
-  mrun "${_INSTAPP} libxslt-dev libxslt1-dev libxslt1.1 subversion" 2> /dev/null
-  mrun "${_INSTAPP} libaprutil1 libapr1 ldap-utils ipset" 2> /dev/null
-  mrun "${_INSTAPP} pdftk patchutils p7zip-full fontconfig-config" 2> /dev/null
-  mrun "${_INSTAPP} bison catdoc cython3 geoip-database gettext" 2> /dev/null
-  mrun "${_INSTAPP} clamav clamav-base clamav-daemon clamdscan" 2> /dev/null
-  mrun "${_INSTAPP} ghostscript htop icu-devtools lemon lftp nano" 2> /dev/null
-  mrun "${_INSTAPP} python3-dev python3-debian python3-magic" 2> /dev/null
+  mrun "${_INSTALL} libcurl4-gnutls-dev mcrypt libc-client-dev" 2> /dev/null
+  mrun "${_INSTALL} sysvinit-core" 2> /dev/null
+  mrun "${_INSTALL} sysvinit-utils" 2> /dev/null
+  mrun "${_INSTALL} apticron aptitude auditd apt-listchanges" 2> /dev/null
+  mrun "${_INSTALL} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
+  mrun "${_INSTALL} unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
+  mrun "${_INSTALL} rsync strace ntpdate python-dev" 2> /dev/null
+  mrun "${_INSTALL} mc whois zlib1g zlib1g-dev librsync-dev" 2> /dev/null
+  mrun "${_INSTALL} sqlite3 libsqlite3-dev s4cmd" 2> /dev/null
+  mrun "${_INSTALL} ssh ssl-cert libpam-umask shtool" 2> /dev/null
+  mrun "${_INSTALL} xml-core xml2 xpdf libtool rrdtool" 2> /dev/null
+  mrun "${_INSTALL} ncurses-dev ncurses-term sipcalc" 2> /dev/null
+  mrun "${_INSTALL} netcat libzip-dev libwww-perl libsodium-dev" 2> /dev/null
+  mrun "${_INSTALL} libfontconfig1 libfreetype6 libfreetype6-dev" 2> /dev/null
+  mrun "${_INSTALL} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev" 2> /dev/null
+  mrun "${_INSTALL} libicu-dev libjpeg-dev libjpeg62" 2> /dev/null
+  mrun "${_INSTALL} libonig-dev libpq5 libxml2-dev libxpm4" 2> /dev/null
+  mrun "${_INSTALL} libxslt-dev libxslt1-dev libxslt1.1 subversion" 2> /dev/null
+  mrun "${_INSTALL} libaprutil1 libapr1 ldap-utils ipset" 2> /dev/null
+  mrun "${_INSTALL} pdftk patchutils p7zip-full fontconfig-config" 2> /dev/null
+  mrun "${_INSTALL} bison catdoc cython3 geoip-database gettext" 2> /dev/null
+  mrun "${_INSTALL} clamav clamav-base clamav-daemon clamdscan" 2> /dev/null
+  mrun "${_INSTALL} ghostscript htop icu-devtools lemon lftp nano" 2> /dev/null
+  mrun "${_INSTALL} python3-dev python3-debian python3-magic" 2> /dev/null
   fix_postfix
-  st_runner "${_INSTAPP} ${_MAILSERV}" 2> /dev/null
-  st_runner "${_INSTAPP} ${_APT_XTRA}" 2> /dev/null
-  st_runner "${_INSTAPP} ${_EXTRA_LIB_APT}" 2> /dev/null
-  st_runner "${_INSTAPP} ${_EXTRA_PACKAGES}" 2> /dev/null
-  st_runner "${_INSTAPP} ${_SYSLOGD}" 2> /dev/null
+  st_runner "${_INSTALL} ${_MAILSERV}" 2> /dev/null
+  st_runner "${_INSTALL} ${_APT_XTRA}" 2> /dev/null
+  st_runner "${_INSTALL} ${_EXTRA_LIB_APT}" 2> /dev/null
+  st_runner "${_INSTALL} ${_EXTRA_PACKAGES}" 2> /dev/null
+  st_runner "${_INSTALL} ${_SYSLOGD}" 2> /dev/null
   _EXTRA_APT="tree"
   st_runner "apt-get install ${_EXTRA_APT} ${nrmUpArg}" 2> /dev/null
   if [ -e "/etc/init.d/php5-fpm" ]; then
     mrun "service php5-fpm stop" &> /dev/null
     mrun "update-rc.d -f php5-fpm remove" &> /dev/null
   fi
+  mrun "${_INSTALL} sysvinit-core" 2> /dev/null
+  mrun "${_INSTALL} sysvinit-utils" 2> /dev/null
 }
 
 basic_packages_install_on_init() {

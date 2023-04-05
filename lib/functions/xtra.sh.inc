@@ -210,7 +210,7 @@ if_install_collectd() {
         if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
           true
           msg "INFO: Installing Collectd Graph Panel..."
-          st_runner "${_INSTAPP} collectd" 2> /dev/null
+          st_runner "${_INSTALL} collectd" 2> /dev/null
           rm -rf /var/www/cgp
           cd /var/www
           get_dev_arch "cgp-${_CGP_VRN}.tar.gz"
@@ -347,7 +347,7 @@ if_install_webmin() {
         rm -f jcameron-key.gpg*
         touch ${pthLog}/webmin_update_apt_src.log
         st_runner "${_APT_UPDATE} -qq" &> /dev/null
-        st_runner "${_INSTAPP} webmin \
+        st_runner "${_INSTALL} webmin \
                              libxml-simple-perl \
                              libcrypt-ssleay-perl" 2> /dev/null
         update-rc.d webmin defaults &> /dev/null
@@ -377,7 +377,7 @@ if_install_bind() {
           find_correct_ip
           _THISHTIP="${_LOC_IP}"
         fi
-        st_runner "${_INSTAPP} bind9" 2> /dev/null
+        st_runner "${_INSTALL} bind9" 2> /dev/null
         cp -af /etc/bind/named.conf.options \
           ${vBs}/named.conf.options.pre-${_X_VERSION}-${_NOW}
         cp -af ${locCnf}/named.conf.options /etc/bind/named.conf.options
@@ -627,7 +627,7 @@ if_install_ffmpeg() {
           st_runner "${_APT_UPDATE} -qq" &> /dev/null
           st_runner "apt-get install deb-multimedia-keyring ${forCer}" 2> /dev/null
           st_runner "${_APT_UPDATE} -qq" &> /dev/null
-          st_runner "${_INSTAPP} ffmpeg" 2> /dev/null
+          st_runner "${_INSTALL} ffmpeg" 2> /dev/null
         elif [ "${_OSR}" = "trusty" ] || [ "${_OSR}" = "precise" ]; then
           _X86_64_TEST=$(uname -m 2>&1)
           rm -rf ffmpeg*
