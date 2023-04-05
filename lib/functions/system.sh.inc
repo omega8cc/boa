@@ -2807,7 +2807,9 @@ install_ssh_src() {
     | cut -d" " -f3 \
     | awk '{ print $1}' 2>&1)
   if [ "${_SSH_SSL_ITD}" != "${_SSL_ITD}" ]; then
-    msg "INFO: OpenSSL in SSH is ${_SSH_SSL_ITD}, rebuild to ${_SSL_ITD} required"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: OpenSSL in SSH is ${_SSH_SSL_ITD}, rebuild to ${_SSL_ITD} required"
+    fi
     _SSH_INSTALL_REQUIRED=YES
   fi
   if [ "${_SSH_FORCE_REINSTALL}" = "YES" ]; then
@@ -2883,7 +2885,9 @@ install_magick_src() {
       _MAGICK_INSTALL_REQUIRED=NO
     else
       _MAGICK_INSTALL_REQUIRED=YES
-      msg "INFO: Installed ImageMagick version ${_MAGICK_ITD}, upgrade required"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Installed ImageMagick version ${_MAGICK_ITD}, upgrade required"
+      fi
     fi
   fi
   if [ "${_MAGICK_INSTALL_REQUIRED}" = "YES" ]; then
@@ -4159,7 +4163,9 @@ if_proxysql_update() {
           rm -f /var/lib/proxysql/pxc_test_proxysql_galera_check.log
           proxysql_galera_checker --log=/var/lib/proxysql/pxc_test_proxysql_galera_check.log --debug
           cat /var/lib/proxysql/pxc_test_proxysql_galera_check.log
-          msg "INFO: Restarting ProxySQL server..."
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: Restarting ProxySQL server..."
+          fi
           mrun "service proxysql restart" 2> /dev/null
           mysql -uadmin -p`cat /root/.my.proxysql_adm_pwd.txt` -h127.0.0.1 -P6032 -e "SELECT * FROM scheduler\G"
           mysql -uadmin -p`cat /root/.my.proxysql_adm_pwd.txt` -h127.0.0.1 -P6032 -e "SELECT * FROM mysql_servers;"
@@ -4993,7 +4999,9 @@ php_libs_fix() {
       || [ ! -e "/usr/lib/libgmp.so.3" ] \
       || [ ! -e "/usr/lib/libcurl.so" ] \
       || [ ! -e "/usr/include/gmp.h" ]; then
-      msg "INFO: Fix for PHP libs in ${_THIS_OS} ${_OSR}"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Fix for PHP libs in ${_THIS_OS} ${_OSR}"
+      fi
       _X86_64_TEST=$(uname -m 2>&1)
       if [ "${_X86_64_TEST}" = "x86_64" ]; then
         ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
@@ -5976,7 +5984,9 @@ initd_update() {
     mrun "service ssh reload" &> /dev/null
     tune_memory_limits
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
-      msg "INFO: Restarting Solr 7"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Restarting Solr 7"
+      fi
       mrun "service solr7 stop" &> /dev/null
       #kill -9 $(ps aux | grep '[j]ava-8-openjdk' | awk '{print $2}') &> /dev/null
       #kill -9 $(ps aux | grep '[j]ava-11-openjdk' | awk '{print $2}') &> /dev/null
@@ -5984,17 +5994,23 @@ initd_update() {
       mrun "service solr7 start" &> /dev/null
     fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
-      msg "INFO: Restarting Jetty 9"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Restarting Jetty 9"
+      fi
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
       mrun "service jetty9 start" &> /dev/null
     fi
     if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
-      msg "INFO: Restarting Jetty 8"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Restarting Jetty 8"
+      fi
       kill -9 $(ps aux | grep '[j]etty8' | awk '{print $2}') &> /dev/null
       mrun "service jetty8 start" &> /dev/null
     fi
     if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
-      msg "INFO: Restarting Jetty 7"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Restarting Jetty 7"
+      fi
       kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
       mrun "service jetty7 start" &> /dev/null
     fi
@@ -6102,7 +6118,9 @@ initd_update() {
     fix_on_upgrade
     tune_memory_limits
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
-      msg "INFO: Restarting Solr 7"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Restarting Solr 7"
+      fi
       mrun "service solr7 stop" &> /dev/null
       #kill -9 $(ps aux | grep '[j]ava-8-openjdk' | awk '{print $2}') &> /dev/null
       #kill -9 $(ps aux | grep '[j]ava-11-openjdk' | awk '{print $2}') &> /dev/null
@@ -6111,20 +6129,28 @@ initd_update() {
     fi
     kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
-      msg "INFO: Restarting Jetty 9"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Restarting Jetty 9"
+      fi
       mrun "service jetty9 start" &> /dev/null
     fi
     if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
-      msg "INFO: Restarting Jetty 8"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Restarting Jetty 8"
+      fi
       mrun "service jetty8 start" &> /dev/null
     fi
     if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
-      msg "INFO: Restarting Jetty 7"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Restarting Jetty 7"
+      fi
       mrun "service jetty7 start" &> /dev/null
     fi
     if [ ! -e "/var/run/aegir_upgrade.pid" ] \
       && [ ! -e "/root/.proxy.cnf" ]; then
-      msg "INFO: Restarting Redis, PHP-FPM and Nginx..."
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Restarting Redis, PHP-FPM and Nginx..."
+      fi
       mrun "service redis-server stop" &> /dev/null
       mrun "killall -9 redis-server" &> /dev/null
       rm -f /var/lib/redis/*
@@ -6213,7 +6239,9 @@ initd_update() {
         msg "INFO: ${_DB_SERVER} already restarted!"
       fi
       if [ "${myCnfUpdate}" = "YES" ]; then
-        msg "INFO: Restarting ${_DB_SERVER} server..."
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Restarting ${_DB_SERVER} server..."
+        fi
         mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
         mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
         msg "INFO: ${_DB_SERVER} server restart completed"

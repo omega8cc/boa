@@ -717,7 +717,9 @@ aegir_master_install_upgrade() {
     if [ "${_VMFAMILY}" != "AWS" ]; then
       _MYSQLTEST=$(mysql --silent -h${_AEGIR_HOST_IP} -uINVALIDLOGIN -pINVALIDPASS 2>&1 >/dev/null | cat)
       if [ -z `echo $_MYSQLTEST | grep -q "ERROR \(2003\|1130\)"` ]; then
-        msg "INFO: ${_DB_SERVER} is listening on ${_AEGIR_HOST_IP}."
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: ${_DB_SERVER} is listening on ${_AEGIR_HOST_IP}."
+        fi
       else
         msg "FATAL ERROR: ${_DB_SERVER} is not configured to listen on ${_AEGIR_HOST_IP}"
         clean_pid_exit

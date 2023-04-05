@@ -903,7 +903,9 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
       pxyCmd="proxysql_galera_checker --log=/var/lib/proxysql/pxc_test_proxysql_galera_check.log --debug"
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCmd}"
       cat /vservers/${idn}/var/lib/proxysql/pxc_test_proxysql_galera_check.log
-      echo "INFO: Restarting ProxySQL server..."
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        echo "INFO: Restarting ProxySQL server..."
+      fi
       vserver ${idn} exec service proxysql restart
       pxyCmd="SELECT * FROM runtime_scheduler\\G"
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
@@ -1704,7 +1706,9 @@ upgrade_db_cluster() {
     _KEYS_SIG="8507EFA5"
     _KEYS_SERVER_TEST=FALSE
     until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
-      echo "INFO: Retrieving ${_KEYS_SIG} key on ${idn}/${IP}..."
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        echo "INFO: Retrieving ${_KEYS_SIG} key on ${idn}/${IP}..."
+      fi
       vserver ${idn} exec wget -q -U iCab ${urlDev}/percona-key.gpg -O /var/backups/percona-key.gpg
       vserver ${idn} exec cat /var/backups/percona-key.gpg | ${_GPG} --import &> /dev/null
       vserver ${idn} exec ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG}

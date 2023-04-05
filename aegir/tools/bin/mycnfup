@@ -696,9 +696,13 @@ if_restart_sql() {
   myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
   echo "INFO: ${_DB_SERVER} ${myUptime}"
   if [ "${myCnfUpdate}" = "YES" ]; then
-    echo "INFO: Restarting ${_DB_SERVER} server..."
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "INFO: Restarting ${_DB_SERVER} server..."
+    fi
     restart_sql
-    echo "INFO: ${_DB_SERVER} server restart completed"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "INFO: ${_DB_SERVER} server restart completed"
+    fi
     myRstrd=YES
   fi
 }

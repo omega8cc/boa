@@ -542,7 +542,9 @@ prep_for_install_db_sql() {
     _KEYS_SIG="8507EFA5"
     _KEYS_SERVER_TEST=FALSE
     until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
-      msg "INFO: Retrieving ${_KEYS_SIG} key..."
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Retrieving ${_KEYS_SIG} key..."
+      fi
       cd /var/opt
       _KEYS_FILE_TEST=FALSE
       until [[ "${_KEYS_FILE_TEST}" =~ "GnuPG" ]]; do
@@ -573,7 +575,9 @@ prep_for_install_db_sql() {
     _KEYS_SIG="C74CD1D8"
     _KEYS_SERVER_TEST=FALSE
     until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
-      msg "INFO: Retrieving ${_KEYS_SIG} key..."
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Retrieving ${_KEYS_SIG} key..."
+      fi
       ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG} &> /dev/null
       ${_GPG} -a --export ${_KEYS_SIG} | apt-key add - &> /dev/null
       _KEYS_SERVER_TEST=$(${_GPG} --list-keys ${_KEYS_SIG} 2>&1)
@@ -805,7 +809,9 @@ install_with_aptitude_sql() {
       || [ -e "/root/.wbhd.clstr.cnf" ]; then
       msg "INFO: Installing ${_DB_SERVER} Galera Cluster..."
     else
-      msg "INFO: Installing ${_DB_SERVER}..."
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Installing ${_DB_SERVER}..."
+      fi
     fi
   else
     if [ "${_EASY_SETUP}" = "MSTR" ] \
@@ -817,7 +823,9 @@ install_with_aptitude_sql() {
       || [ -e "/root/.wbhd.clstr.cnf" ]; then
       msg "INFO: Installing ${_DB_SERVER} Galera Cluster..."
     else
-      msg "INFO: Installing ${_DB_SERVER}..."
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Installing ${_DB_SERVER}..."
+      fi
     fi
   fi
   prep_for_install_db_sql
@@ -851,7 +859,9 @@ install_with_aptitude_sql() {
   if [ "${_DB_SERVER}" = "Percona" ] \
     && [ "${_DB_SERIES}" = "5.7" ] \
     && [ "${_SQL_FORCE_REINSTALL}" = "YES" ]; then
-    msg "INFO: Running ${_DB_SERVER} tables fix, check and upgrade..."
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Running ${_DB_SERVER} tables fix, check and upgrade..."
+    fi
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
     mrun "mysqlcheck -A --auto-repair" &> /dev/null
       wait
@@ -1127,7 +1137,9 @@ db_server_install() {
         _KEYS_SIG="8507EFA5"
         _KEYS_SERVER_TEST=FALSE
         until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
-          msg "INFO: Retrieving ${_KEYS_SIG} key..."
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: Retrieving ${_KEYS_SIG} key..."
+          fi
           cd /var/opt
           _KEYS_FILE_TEST=FALSE
           until [[ "${_KEYS_FILE_TEST}" =~ "GnuPG" ]]; do
@@ -1158,7 +1170,9 @@ db_server_install() {
         _KEYS_SIG="C74CD1D8"
         _KEYS_SERVER_TEST=FALSE
         until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
-          msg "INFO: Retrieving ${_KEYS_SIG} key..."
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: Retrieving ${_KEYS_SIG} key..."
+          fi
           ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG} &> /dev/null
           ${_GPG} -a --export ${_KEYS_SIG} | apt-key add - &> /dev/null
           _KEYS_SERVER_TEST=$(${_GPG} --list-keys ${_KEYS_SIG} 2>&1)
@@ -1272,7 +1286,9 @@ db_server_install() {
       myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
       msg "INFO: ${_DB_SERVER} ${myUptime}"
       if [ "${myCnfUpdate}" = "YES" ]; then
-        msg "INFO: Restarting ${_DB_SERVER} server..."
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Restarting ${_DB_SERVER} server..."
+        fi
         mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
           wait
         mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
@@ -1333,9 +1349,13 @@ init_sql_root_credentials() {
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-      msg "INFO: Generating random password for ${_DB_SERVER}"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Generating random password for ${_DB_SERVER}"
+      fi
     else
-      msg "INFO: Using default dummy password for ${_DB_SERVER}"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Using default dummy password for ${_DB_SERVER}"
+      fi
     fi
     touch /root/.my.pass.txt
     chmod 0600 /root/.my.pass.txt &> /dev/null
@@ -1384,7 +1404,9 @@ init_sql_root_credentials() {
   fi
   if [ -e "/root/.my.pass.txt" ]; then
     if [ "${_STATUS}" = "INIT" ]; then
-      msg "INFO: New ${_DB_SERVER} root password in /root/.my.pass.txt"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: New ${_DB_SERVER} root password in /root/.my.pass.txt"
+      fi
     fi
   else
     msg "EXIT on error due to not found file with your ${_DB_SERVER} root password"
@@ -1404,7 +1426,9 @@ EOF
 
 sql_root_credentials_update() {
   if [ ! -e "/root/.my.cnf" ]; then
-    msg "INFO: ${_DB_SERVER} final setup"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: ${_DB_SERVER} final setup"
+    fi
     #
     # Let's just do what mysql_secure_installation does,
     # so we can do it non-interactively:
@@ -1634,12 +1658,16 @@ sql_root_credentials_update() {
           wait
         mysqladmin flush-hosts
           wait
-        msg "INFO: Restarting ${_DB_SERVER} server..."
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Restarting ${_DB_SERVER} server..."
+        fi
         mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
         mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
           wait
-        msg "INFO: ${_DB_SERVER} setup completed"
-        msg "INFO: You can now log in as root by typing just 'mysql'"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: ${_DB_SERVER} setup completed"
+          msg "INFO: You can now log in as root by typing just 'mysql'"
+        fi
       fi
     fi
   else

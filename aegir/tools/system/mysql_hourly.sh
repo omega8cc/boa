@@ -199,7 +199,9 @@ if [ ! -e "${percList}" ] \
   _KEYS_SIG="8507EFA5"
   _KEYS_SERVER_TEST=FALSE
   until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
-    echo "Retrieving ${_KEYS_SIG} key..."
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "Retrieving ${_KEYS_SIG} key..."
+    fi
     cd /var/opt
     _KEYS_FILE_TEST=FALSE
     until [[ "${_KEYS_FILE_TEST}" =~ "GnuPG" ]]; do
