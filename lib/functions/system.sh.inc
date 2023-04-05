@@ -2119,7 +2119,6 @@ barracuda_cnf() {
 # Running aptitude full-upgrade.
 run_aptitude_full_upgrade() {
   msg "INFO: Running aptitude full-upgrade..."
-  msg "WAIT: This may take a while, please wait..."
   st_runner "${_APT_UPDATE} -qq" &> /dev/null
   st_runner "apt --fix-broken install -y" 2> /dev/null
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
