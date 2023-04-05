@@ -3227,14 +3227,19 @@ curl_install_src() {
           mrun "${_APT_UPDATE} -qq" &> /dev/null
           mrun "apt-get install curl ${forCer}" 2> /dev/null
           mrun "apt-get build-dep curl -y" 2> /dev/null
+          mrun "apt-get remove libssl1.0-dev -y" 2> /dev/null
+          mrun "apt autoremove -y" 2> /dev/null
+          mrun "${_INSTALL} libssl-dev" 2> /dev/null
+          mrun "${_INSTALL} libc-client2007e libc-client2007e-dev" 2> /dev/null
         fi
       fi
     else
-      echo "curl install" | dpkg --set-selections &> /dev/null
       mrun "${_APT_UPDATE} -qq" &> /dev/null
       mrun "apt-get build-dep curl -y" 2> /dev/null
+      mrun "apt-get remove libssl1.0-dev -y" 2> /dev/null
+      mrun "apt autoremove -y" 2> /dev/null
       mrun "${_INSTALL} libssl-dev" 2> /dev/null
-      mrun "${_INSTALL} libc-client2007e-dev" 2> /dev/null
+      mrun "${_INSTALL} libc-client2007e libc-client2007e-dev" 2> /dev/null
       cd /var/opt
       rm -rf curl*
       wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
@@ -3264,9 +3269,7 @@ curl_install_src() {
           if [ ! -e "/usr/local/ssl/certs/ca-certificates.crt" ]; then
             cp -af /etc/ssl/certs/* /usr/local/ssl/certs/ &> /dev/null
           fi
-          if [[ ! "${_CURL_GET_DPKG}" =~ "hold" ]]; then
-            echo "curl hold" | dpkg --set-selections &> /dev/null
-          fi
+          echo "curl hold" | dpkg --set-selections &> /dev/null
         else
           msg "OOPS: Building OpenSSL ${_OPENSSL_NEW_VRN} from sources failed!"
         fi
@@ -3903,12 +3906,13 @@ run_aptitude_deps_install() {
   mrun "${_INSTAPP} zlibc time vim cvs makepasswd" 2> /dev/null
   mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables" 2> /dev/null
   mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc" 2> /dev/null
-  mrun "${_INSTAPP} libssl-dev" 2> /dev/null
-  echo "curl install" | dpkg --set-selections &> /dev/null
   mrun "${_INSTAPP} curl" 2> /dev/null
   mrun "apt-get build-dep curl -y" 2> /dev/null
+  mrun "apt-get remove libssl1.0-dev -y" 2> /dev/null
+  mrun "apt autoremove -y" 2> /dev/null
+  mrun "${_INSTALL} libssl-dev" 2> /dev/null
+  mrun "${_INSTALL} libc-client2007e libc-client2007e-dev" 2> /dev/null
   mrun "${_INSTAPP} libcurl4-gnutls-dev mcrypt libc-client-dev" 2> /dev/null
-  mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
   mrun "${_INSTAPP} apticron aptitude auditd apt-listchanges" 2> /dev/null
   mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
   mrun "${_INSTAPP} unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
@@ -3940,7 +3944,6 @@ run_aptitude_deps_install() {
   mrun "apt --fix-broken install -y" 2> /dev/null
   _EXTRA_APT="tree"
   st_runner "apt-get install ${_EXTRA_APT} ${nrmUpArg}" 2> /dev/null
-  st_runner "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
   if [ -e "/etc/init.d/php5-fpm" ]; then
     mrun "service php5-fpm stop" &> /dev/null
     mrun "update-rc.d -f php5-fpm remove" &> /dev/null

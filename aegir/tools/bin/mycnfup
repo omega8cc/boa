@@ -1299,7 +1299,6 @@ db_head_to_stretch_first()
   	  ${_INSTALL} openssl
   	  ${_INSTALL} libssl-dev
   	  apt-get install curl ${forCer}
-  	  apt-get build-dep curl -y
   	  apt-get install openssh-client ${forCer}
   	  apt-get install openssh-server ${forCer}
   	  apt-get install ssh ${forCer}
