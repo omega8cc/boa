@@ -343,6 +343,7 @@ php_libs_fix
 php_install_upgrade
 php_config_check_update
 smtp_check
+xdrago_install_upgrade
 
 
 ###
@@ -415,7 +416,6 @@ umask_check_fix
 avatars_check_fix
 sysctl_update
 initd_update
-xdrago_install_upgrade
 apticron_update
 barracuda_log_update
 
