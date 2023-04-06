@@ -403,21 +403,21 @@ fi
 
 
 ###
-### Update barracuda log and system settings
+### Install or upgrade csf/lfd monitoring
+###
+csf_lfd_install_upgrade
+
+
+###
+### Update barracuda log, tools and system settings
 ###
 umask_check_fix
 avatars_check_fix
 sysctl_update
 initd_update
+xdrago_install_upgrade
 apticron_update
 barracuda_log_update
-
-
-###
-### Install or upgrade csf/lfd monitoring
-###
-csf_lfd_install_upgrade
-xdrago_install_upgrade
 
 
 ###
