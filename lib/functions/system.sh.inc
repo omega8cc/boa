@@ -5460,6 +5460,9 @@ myquick_install_upgrade() {
 }
 
 xdrago_install_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: xdrago_install_upgrade"
+  fi
   cd /var
   if [ -d "/var/xdrago/conf" ] \
     && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
