@@ -4095,6 +4095,7 @@ basic_packages_install_on_init() {
       && [ -e "/root/.step.init.systemd.one.cnf" ]; then
       msg "STEP: Let's continue to STEP 3..."
       msg "INFO: Removing systemd on ${_THIS_OS} ${_OSR}..."
+      mrun "${_APT_UPDATE} -qq" &> /dev/null
       mrun "${_INITINS} sysvinit-core" 2> /dev/null
       mrun "${_INITINS} sysvinit-utils" 2> /dev/null
       if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -4111,6 +4112,7 @@ basic_packages_install_on_init() {
         mrun "apt-get remove systemd-udevd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
         mrun "apt-get autoremove --purge -y -qq" 2> /dev/null
         mrun "apt-get autoclean -y -qq" 2> /dev/null
+        mrun "apt autoremove -y -qq" 2> /dev/null
       else
         echo
         msg "ALRT: The sysvinit has NOT been installed on ${_THIS_OS} ${_OSR}"
@@ -4146,6 +4148,41 @@ basic_packages_install_on_init() {
       mrun "sleep 3"
       echo "Bye"
       clean_pid_exit
+    fi
+  fi
+  if [ -e "/root/.step.init.systemd.two.cnf" ] \
+    && [ -e "/root/.step.init.systemd.one.cnf" ] \
+    && [ -e "/lib/systemd/systemd" ]; then
+    echo
+    msg "WARN: The systemd has NOT been cleanly removed yet"
+    msg "WARN: Running one extra cleanup procedure now..."
+    mrun "${_APT_UPDATE} -qq" &> /dev/null
+    mrun "${_INITINS} sysvinit-core" 2> /dev/null
+    wait
+    mrun "${_INITINS} sysvinit-utils" 2> /dev/null
+    wait
+	mrun "apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
+	wait
+	mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
+	wait
+	mrun "apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
+	wait
+	mrun "apt-get remove systemd-udevd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
+	wait
+	mrun "apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
+	wait
+	mrun "apt-get autoremove --purge -y -qq" 2> /dev/null
+	wait
+	mrun "apt-get autoclean -y -qq" 2> /dev/null
+	wait
+	mrun "apt autoremove -y -qq" 2> /dev/null
+	wait
+    if [ -e "/lib/systemd/systemd" ]; then
+      msg "ALRT: The systemd has NOT been removed on ${_THIS_OS} ${_OSR}"
+      msg "ALRT: Please check details in the logs located in /var/backups/"
+      msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
+    else
+      msg "INFO: The systemd has been finally removed on ${_THIS_OS} ${_OSR}"
     fi
   fi
 }
@@ -4353,10 +4390,12 @@ if_post_major_os_upgrade() {
     mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
     mrun "apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
     mrun "apt-get remove systemd-udevd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
+    mrun "apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
 
     msg "INFO: Removing any packages orphaned by the migration process..."
     mrun "apt-get autoremove --purge -y -qq" 2> /dev/null
     mrun "apt-get autoclean -y -qq" 2> /dev/null
+    mrun "apt autoremove -y -qq" 2> /dev/null
 
     msg "INFO: Running dist-upgrade to complete the system upgrade..."
     msg "WAIT: This may take a while, please wait..."

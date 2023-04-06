@@ -223,6 +223,7 @@ remove_systemd() {
     echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
     apt-get autoremove --purge -y -qq 2> /dev/null
     apt-get autoclean -y -qq 2> /dev/null
+    apt autoremove -y -qq 2> /dev/null
     ${_INSTALL} sysvinit-core 2> /dev/null
     ${_INSTALL} sysvinit-utils 2> /dev/null
   fi
