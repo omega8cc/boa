@@ -287,12 +287,6 @@ if_post_major_os_upgrade
 
 
 ###
-### Download system-wide Drush versions
-###
-get_drush_versions
-
-
-###
 ### Upgrade only Aegir Master Instance (obsolete mode)
 ###
 if_upgrade_only_aegir_master
@@ -334,62 +328,21 @@ sql_root_credentials_update
 ###
 run_aptitude_full_upgrade
 run_aptitude_deps_install
-nginx_install_upgrade
 kill_nash
-disable_old_purge_cruft_machine
-smtp_check
+nginx_install_upgrade
 nginx_initd_check
+redis_install_upgrade
 vnstat_install
-xdrago_install_update
 ssl_install_src
 ssl_crypto_lib_fix
 curl_install_src
-lshell_install_update
-redis_install_update
-myquick_install_update
+lshell_install_upgrade
+myquick_install_upgrade
 php_install_deps
 php_libs_fix
-php_install_update
-
-
-###
-### Allow PHP forced rebuilds only on upgrade
-###
-if [ "${_STATUS}" = "UPGRADE" ]; then
-  php_check_fix
-fi
-
-
-###
-### PHP config update
-###
+php_install_upgrade
 php_config_check_update
-
-
-###
-### Install OpenSSH from sources on upgrade
-###
-if [ "${_SSH_FROM_SOURCES}" = "YES" ] && [ "${_STATUS}" = "UPGRADE" ]; then
-  if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
-    ssh_install_src
-  fi
-fi
-
-
-###
-### Apply other fixes
-###
-avatars_check_fix
-umask_check_fix
-bin_extra_check_fix
-
-
-###
-### Install or upgrade Aegir Master Instance
-###
-aegir_master_install_upgrade
-nginx_mime_check_fix
-nginx_wildcard_ssl_install
+smtp_check
 
 
 ###
@@ -417,37 +370,54 @@ if [ "${_STATUS}" = "UPGRADE" ]; then
   if_install_pdnsd
   sftp_ftps_modern_fix
   newrelic_check_fix
+  php_check_fix
 fi
 
 
 ###
-### Update initd scripts
+### Download system-wide Drush versions
 ###
-initd_update
+get_drush_versions
 
 
 ###
-### Make sshd armoured
+### Install or upgrade Aegir Master Instance
 ###
-if [ "${_STATUS}" = "UPGRADE" ]; then
-  sshd_armour
+aegir_master_install_upgrade
+aegir_bin_extra_check_fix
+nginx_mime_check_fix
+nginx_wildcard_ssl_install
+nginx_config_update_fix
+aegir_master_display_login_link
+
+
+###
+### Install OpenSSH from sources on upgrade
+###
+if [ "${_SSH_FROM_SOURCES}" = "YES" ] && [ "${_STATUS}" = "UPGRADE" ]; then
+  if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
+    sshd_install_src
+    sshd_armour
+  fi
 fi
 
 
 ###
 ### Update barracuda log and system settings
 ###
-barracuda_log_update
+umask_check_fix
+avatars_check_fix
 sysctl_update
+initd_update
 apticron_update
-if_display_login_link
-nginx_config_update_fix
+barracuda_log_update
 
 
 ###
 ### Install or upgrade csf/lfd monitoring
 ###
 csf_lfd_install_upgrade
+xdrago_install_upgrade
 
 
 ###
