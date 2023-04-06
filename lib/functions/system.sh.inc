@@ -5067,6 +5067,7 @@ sys_packages_install() {
   fi
 
   if [[ "${_XTRAS_LIST}" =~ "IMG" ]] \
+    || [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
     || [[ "${_THISHOST}" =~ ".o8.io" ]] \
@@ -5648,7 +5649,8 @@ lshell_install_update() {
 }
 
 if_install_ftpd() {
-  if [[ "${_XTRAS_LIST}" =~ "ALL" ]] || [[ "${_XTRAS_LIST}" =~ "FTP" ]]; then
+  if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
+    || [[ "${_XTRAS_LIST}" =~ "FTP" ]]; then
     if [ ! -e "/etc/ssl/private/pure-ftpd.pem" ] \
       || [ ! -e "/usr/local/sbin/pure-config.pl" ] \
       || [ ! -e "/usr/local/sbin/pure-ftpd" ] \

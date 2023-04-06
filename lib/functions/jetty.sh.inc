@@ -3,6 +3,7 @@
 if_install_jetty() {
   if_to_do_fix
   if [[ "${_XTRAS_LIST}" =~ "SR7" ]] \
+    || [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
     || [[ "${_THISHOST}" =~ ".o8.io" ]] \
@@ -25,6 +26,7 @@ if_install_jetty() {
     fi
   fi
   if [[ "${_XTRAS_LIST}" =~ "SR7" ]] \
+    || [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
     || [[ "${_THISHOST}" =~ ".o8.io" ]] \

@@ -200,7 +200,7 @@ fix_collectd_nginx() {
 }
 
 if_install_collectd() {
-  if [[ "${_XTRAS_LIST}" =~ "ALL" ]] || [[ "${_XTRAS_LIST}" =~ "CGP" ]]; then
+  if [[ "${_XTRAS_LIST}" =~ "CGP" ]]; then
     _CGP_VHOST="${mtrNgx}/vhost.d/cgp.${_THIS_FRONT}"
     if [ ! -e "/var/run/cloud_vhost.pid" ]; then
       if [ ! -d "/var/www/cgp" ] \
@@ -319,7 +319,7 @@ if_install_hhvm() {
 }
 
 if_install_webmin() {
-  if [[ "${_XTRAS_LIST}" =~ "ALL" ]] || [[ "${_XTRAS_LIST}" =~ "WMN" ]]; then
+  if [[ "${_XTRAS_LIST}" =~ "WMN" ]]; then
     if [ ! -d "/etc/webmin" ] && [ ! -e "/var/run/cloud_vhost.pid" ]; then
       if [ -x "/usr/bin/gpg2" ]; then
         _GPG=gpg2

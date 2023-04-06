@@ -35,7 +35,7 @@
     ###
     ### _XTRAS_LIST=""
     ### _XTRAS_LIST="ALL"
-    ### _XTRAS_LIST="ALL GIT SR7"
+    ### _XTRAS_LIST="ALL GIT SR4"
     ### _XTRAS_LIST="ADM CSF CGP CHV FTP DCS"
     ###
 
