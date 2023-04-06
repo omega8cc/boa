@@ -1026,7 +1026,7 @@ if_upgrade_only_aegir_master() {
   fi
 }
 
-if_display_login_link() {
+aegir_master_display_login_link() {
   if [ "${_STATUS}" = "INIT" ]; then
     if [ "${_EASY_SETUP}" != "LOCAL" ]; then
       mrun "bash /usr/sbin/apticron" &> /dev/null

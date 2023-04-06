@@ -2799,7 +2799,7 @@ sources_list_update() {
 
 #
 # Install OpenSSH from sources.
-ssh_install_src() {
+sshd_install_src() {
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
     || [ "${_OSR}" = "bullseye" ] \
@@ -5288,7 +5288,7 @@ install_myquick_src() {
   fi
 }
 
-myquick_install_update() {
+myquick_install_upgrade() {
   if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
     mkdir -p /etc/mysql/mariadb.conf.d/
   fi
@@ -5342,7 +5342,7 @@ myquick_install_update() {
   fi
 }
 
-xdrago_install_update() {
+xdrago_install_upgrade() {
   cd /var
   if [ -d "/var/xdrago/conf" ] \
     && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
@@ -5594,7 +5594,7 @@ if_node_lshell() {
   fi
 }
 
-lshell_install_update() {
+lshell_install_upgrade() {
   _PATH_LSHELL="/usr/local/bin/lshell"
   if [ ! -e "${_PATH_LSHELL}" ] \
     || [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}" ] \
@@ -6460,7 +6460,7 @@ complete() {
   fix_lfd_uidignore
   fix_cnf_postfix
   re_set_default_php_cli
-  composer_install_update
+  composer_install_upgrade
   if [ "${_STATUS}" = "INIT" ]; then
     _STRICT_BIN_PERMISSIONS=NO
   fi

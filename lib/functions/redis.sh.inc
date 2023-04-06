@@ -274,7 +274,7 @@ install_redis_src() {
   mrun "service redis-server restart" &> /dev/null
 }
 
-redis_install_update() {
+redis_install_upgrade() {
   if [ "${_REDIS_MAJOR_RELEASE}" = "7" ] \
     && [ ! -z "${_REDIS_SEVEN_VRN}" ]; then
     _REDIS_VRN=${_REDIS_SEVEN_VRN}

@@ -783,7 +783,7 @@ avatars_check_fix() {
   fi
 }
 
-bin_extra_check_fix() {
+aegir_bin_extra_check_fix() {
   SDIR="${bldPth}/aegir/tools/bin"
   SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
   if [ ! -x "/usr/local/bin/fix-drupal-site-permissions.sh" ] \

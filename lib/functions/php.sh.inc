@@ -2105,7 +2105,7 @@ get_php_conf_extra() {
   fi
 }
 
-php_install_update() {
+php_install_upgrade() {
   if_to_do_fix
   if [ "${_STATUS}" = "UPGRADE" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2273,7 +2273,7 @@ php_check_fix() {
   fi
 }
 
-composer_install_update() {
+composer_install_upgrade() {
   _COMPOSER_IS=$(composer --no-interaction --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f13 \
