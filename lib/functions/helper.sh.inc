@@ -237,6 +237,9 @@ get_dev_src() {
 }
 
 normalize_ip_name_variables() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: normalize_ip_name_variables"
+  fi
   if [ ! -z "${_LOCAL_NETWORK_IP}" ]; then
     _LOCAL_NETWORK_IP=${_LOCAL_NETWORK_IP//[^0-9.]/}
   fi
@@ -262,6 +265,9 @@ normalize_ip_name_variables() {
 }
 
 mode_detection() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: mode_detection"
+  fi
   if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
     && [ ! -e "/lib/systemd/systemd" ]; then
     _STATUS=UPGRADE
@@ -441,6 +447,9 @@ mode_detection() {
 }
 
 check_exception_mycnf() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_exception_mycnf"
+  fi
   if [ "${_STATUS}" = "UPGRADE" ]; then
     if [ ! -e "/root/.my.cnf" ]; then
     msg "EXIT on error due to not found file with your ${_DB_SERVER} root password"
@@ -462,6 +471,9 @@ EOF
 }
 
 virt_detection() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: virt_detection"
+  fi
   _VIRT_TOOL=$(which virt-what 2> /dev/null)
   if [ -x "${_VIRT_TOOL}" ]; then
     _VIRT_TEST=$(virt-what 2> /dev/null)
@@ -527,6 +539,9 @@ virt_detection() {
 }
 
 os_detection_minimal() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: os_detection_minimal"
+  fi
   _THIS_RV=$(lsb_release -sc 2>&1)
   if [ "${_THIS_RV}" = "chimaera" ] \
     || [ "${_THIS_RV}" = "beowulf" ] \
@@ -539,6 +554,9 @@ os_detection_minimal() {
 }
 
 os_detection() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: os_detection"
+  fi
   _THIS_OS=$(lsb_release -si 2>&1)
   _THIS_RV=$(lsb_release -sc 2>&1)
   if [ "${_THIS_OS}" = "Ubuntu" ]; then
@@ -657,6 +675,9 @@ os_detection() {
 }
 
 check_boa_php_compatibility() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_boa_php_compatibility"
+  fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "7.4" ]] \
     || [[ "${_PHP_MULTI_INSTALL}" =~ "7.3" ]]; then
     _DO_NOTHING=YES
@@ -694,6 +715,9 @@ check_boa_php_compatibility() {
 }
 
 check_boa_version() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_boa_version"
+  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Checking BARRACUDA version..."
   fi
@@ -758,6 +782,9 @@ check_boa_version() {
 
 check_prepare_dirs_permissions() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_prepare_dirs_permissions"
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Cleaning up temp files in /var/opt/"
   fi
   rm -rf /var/opt/*
@@ -771,6 +798,9 @@ check_prepare_dirs_permissions() {
 }
 
 avatars_check_fix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: avatars_check_fix"
+  fi
   if [ ! -e "/var/www/nginx-default/profiles/commons/images/avatars" ]; then
     if [ -e "${bldPth}/aegir/var/commons/images" ]; then
       mkdir -p /var/www/nginx-default/profiles/commons
@@ -784,6 +814,9 @@ avatars_check_fix() {
 }
 
 aegir_bin_extra_check_fix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: aegir_bin_extra_check_fix"
+  fi
   SDIR="${bldPth}/aegir/tools/bin"
   SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
   if [ ! -x "/usr/local/bin/fix-drupal-site-permissions.sh" ] \
@@ -800,6 +833,9 @@ aegir_bin_extra_check_fix() {
 }
 
 barracuda_log_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: barracuda_log_update"
+  fi
   if [ -L "${mtrInc}/barracuda_log.txt" ]; then
     rm -f ${mtrInc}/barracuda_log.txt
   fi

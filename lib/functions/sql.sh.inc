@@ -1022,6 +1022,9 @@ forced_mysql_root_password_update() {
 }
 
 db_server_install() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: db_server_install"
+  fi
   if [ "${_OSR}" = "chimaera" ]; then
     _SQL_OSR=bullseye
   elif [ "${_OSR}" = "beowulf" ]; then
@@ -1344,6 +1347,9 @@ db_server_install() {
 }
 
 init_sql_root_credentials() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: init_sql_root_credentials"
+  fi
   if [ ! -e "/root/.my.pass.txt" ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -1425,6 +1431,9 @@ EOF
 }
 
 sql_root_credentials_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: sql_root_credentials_update"
+  fi
   if [ ! -e "/root/.my.cnf" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: ${_DB_SERVER} final setup"

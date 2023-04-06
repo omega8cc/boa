@@ -120,6 +120,9 @@ count_cpu() {
 }
 
 if_running_as_root_barracuda() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_running_as_root_barracuda"
+  fi
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
@@ -210,6 +213,9 @@ set_xterm() {
 #
 # Kill nash-hotplug.
 kill_nash() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: kill_nash"
+  fi
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _DO_NOTHING=YES
@@ -272,6 +278,9 @@ fix_ftps_pam() {
 #
 # Fix FTPS and SFTP access on modern systems.
 sftp_ftps_modern_fix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: sftp_ftps_modern_fix"
+  fi
   _LSHELL_PATH_TEST=$(grep "/usr/bin/lshell" /etc/shells 2>&1)
   if [[ ! "${_LSHELL_PATH_TEST}" =~ "/usr/bin/lshell" ]]; then
     echo "/usr/bin/lshell" >> /etc/shells
@@ -667,6 +676,9 @@ tune_memory_limits() {
 #
 # Fix locales.
 locales_check_fix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: locales_check_fix"
+  fi
   ${_INITINS} locales &> /dev/null
   if [ -e "/etc/ssh/sshd_config" ]; then
     _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /etc/ssh/sshd_config 2>&1)
@@ -2118,6 +2130,9 @@ barracuda_cnf() {
 #
 # Running aptitude full-upgrade.
 run_aptitude_full_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: run_aptitude_full_upgrade"
+  fi
   msg "INFO: Running aptitude full-upgrade..."
   st_runner "${_APT_UPDATE} -qq" &> /dev/null
   st_runner "apt --fix-broken install -y" 2> /dev/null
@@ -2176,6 +2191,9 @@ do_install_latest_git() {
 #
 # Check if latest Git should be installed.
 if_install_git_src() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_install_git_src"
+  fi
   _GIT_ITD=$(git --version 2>&1)
   if [[ "${_GIT_ITD}" =~ "git version 1.9.1" ]]; then
     _GIT_FORCE_REINSTALL=YES
@@ -2236,6 +2254,9 @@ install_icu() {
 #
 # Install PHP deps.
 php_install_deps() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: php_install_deps"
+  fi
   ###--------------------###
   mrun "${_APT_UPDATE} -qq" &> /dev/null
   mrun "${_INSTALL} cmake" 2> /dev/null
@@ -2259,6 +2280,9 @@ php_install_deps() {
 #
 # Install wkhtmltopdf and wkhtmltoimage.
 if_install_wkhtmltox() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_install_wkhtmltox"
+  fi
   ###--------------------###
   mrun "${_APT_UPDATE} -qq" &> /dev/null
   mrun "${_INSTALL} fonts-thai-tlwg" 2> /dev/null
@@ -2481,6 +2505,9 @@ get_drush_eight() {
 #
 # Install or update Drush versions.
 get_drush_versions() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: get_drush_versions"
+  fi
   msg "INFO: Installing supported Drush versions..."
   _X_SE="414prodT58"
   ###--------------------###
@@ -2605,6 +2632,9 @@ get_drush_versions() {
 #
 # Update packages sources list.
 sources_list_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: sources_list_update"
+  fi
   ###--------------------###
   aptitude autoclean -y &> /dev/null
   apt-get clean -qq &> /dev/null
@@ -2800,6 +2830,9 @@ sources_list_update() {
 #
 # Install OpenSSH from sources.
 sshd_install_src() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: sshd_install_src"
+  fi
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
     || [ "${_OSR}" = "bullseye" ] \
@@ -2938,6 +2971,9 @@ install_magick_src() {
 #
 # Fix symlinks for libs.
 ssl_crypto_lib_fix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: ssl_crypto_lib_fix"
+  fi
   if [ ! -e "/usr/lib/libssl.so" ] || [ ! -e "/usr/lib/libcrypto.so" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Fix for SSL libssl/libcrypto in ${_THIS_OS} ${_OSR}"
@@ -3018,6 +3054,9 @@ ssl_crypto_lib_fix() {
 #
 # Install OpenSSL from sources.
 ssl_install_src() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: ssl_install_src"
+  fi
   _SSL_INSTALL_REQUIRED=NO
   _SSL_ITD=$(openssl version 2>&1 \
     | tr -d "\n" \
@@ -3147,6 +3186,9 @@ ssl_install_src() {
 #
 # Install cURL from sources.
 curl_install_src() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: curl_install_src"
+  fi
   if [ "${_OSR}" = "precise" ] || [ "${_OSR}" = "jessie" ]; then
     touch /root/.use.curl.from.packages.cnf
     chattr +i /root/.use.curl.from.packages.cnf
@@ -3892,6 +3934,9 @@ finale() {
 }
 
 run_aptitude_deps_install() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: run_aptitude_deps_install"
+  fi
   if_to_do_fix
   if [ "${_THIS_OS}" = "Devuan" ]; then
     ${_INITINS} devuan-keyring --allow-unauthenticated &> /dev/null
@@ -3958,6 +4003,9 @@ run_aptitude_deps_install() {
 }
 
 basic_packages_install_on_init() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: basic_packages_install_on_init"
+  fi
   apt-get remove --purge unscd -y &> /dev/null
   apt-get remove --purge dbus -y &> /dev/null
   userdel -r debian &> /dev/null
@@ -4103,6 +4151,9 @@ basic_packages_install_on_init() {
 }
 
 more_packages_install_on_init() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: more_packages_install_on_init"
+  fi
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Installing more basic tools now..."
     if [ -e "/etc/debian_version" ]; then
@@ -4133,6 +4184,9 @@ more_packages_install_on_init() {
 }
 
 if_proxysql_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_proxysql_update"
+  fi
   if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
     isPxy=$(which proxysql 2>&1)
     _REINSTALL_PXC=NO
@@ -4287,6 +4341,9 @@ if_proxysql_update() {
 }
 
 if_post_major_os_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_post_major_os_upgrade"
+  fi
   if [ -e "/root/run_post_major_os_upgrade.info" ]; then
 
     mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
@@ -4312,6 +4369,9 @@ if_post_major_os_upgrade() {
 }
 
 if_major_os_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_major_os_upgrade"
+  fi
   if [ -e "/root/run_post_major_os_upgrade.info" ]; then
     rm -f /root/run_post_major_os_upgrade.info
   fi
@@ -4744,6 +4804,9 @@ webmin_apt_update() {
 }
 
 sys_packages_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: sys_packages_update"
+  fi
   msg "INFO: Running system packages update..."
   if [ -e "/var/aegir" ]; then
     echo "curl install"           | dpkg --set-selections &> /dev/null
@@ -4837,6 +4900,9 @@ sys_packages_update() {
 }
 
 sys_packages_install() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: sys_packages_install"
+  fi
   if_to_do_fix
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Installing required libraries and tools..."
@@ -5108,6 +5174,9 @@ sys_packages_install() {
 }
 
 php_libs_fix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: php_libs_fix"
+  fi
   if_to_do_fix
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
@@ -5179,6 +5248,9 @@ php_libs_fix() {
 }
 
 smtp_check() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: smtp_check"
+  fi
   if [ -z "${_SMTP_RELAY_HOST}" ] && [ "${_SMTP_RELAY_TEST}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Checking SMTP connections..."
@@ -5217,6 +5289,9 @@ EOF
 }
 
 vnstat_install() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: vnstat_install"
+  fi
   if [ ! -e "/var/run/cloud_vhost.pid" ]; then
     if [ ! -e "${pthLog}/vnstat-${_VNSTAT_VRN}.log" ] \
       || [ ! -e "/usr/bin/vnstat" ] \
@@ -5289,6 +5364,9 @@ install_myquick_src() {
 }
 
 myquick_install_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: myquick_install_upgrade"
+  fi
   if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
     mkdir -p /etc/mysql/mariadb.conf.d/
   fi
@@ -5541,6 +5619,9 @@ xdrago_install_upgrade() {
 }
 
 umask_check_fix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: umask_check_fix"
+  fi
   if [ ! -e "${pthLog}/umask_fixed_new.log" ]; then
     mkdir -p /var/www/nginx-default
     sed -i "s/^UMASK.*//g" /etc/default/login &> /dev/null
@@ -5595,6 +5676,9 @@ if_node_lshell() {
 }
 
 lshell_install_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: lshell_install_upgrade"
+  fi
   _PATH_LSHELL="/usr/local/bin/lshell"
   if [ ! -e "${_PATH_LSHELL}" ] \
     || [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}" ] \
@@ -5649,6 +5733,9 @@ lshell_install_upgrade() {
 }
 
 if_install_ftpd() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_install_ftpd"
+  fi
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "FTP" ]]; then
     if [ ! -e "/etc/ssl/private/pure-ftpd.pem" ] \
@@ -5703,6 +5790,9 @@ if_install_ftpd() {
 }
 
 newrelic_check_fix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: newrelic_check_fix"
+  fi
   _NEWRELIC_APP_CFG="/etc/newrelic/newrelic.cfg"
   if [ -e "${_NEWRELIC_APP_CFG}" ]; then
     _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" ${_NEWRELIC_APP_CFG} 2>&1)
@@ -5758,6 +5848,9 @@ newrelic_check_fix() {
 }
 
 java_check_fix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: java_check_fix"
+  fi
   if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
     && [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
     ln -sf /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
@@ -5876,6 +5969,9 @@ java_check_fix() {
 }
 
 sshd_armour() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: sshd_armour"
+  fi
   ###
   ### See: https://stribika.github.io/2015/01/04/secure-secure-shell.html
   ### Also: https://github.com/stribika/stribika.github.io/wiki/Secure-Secure-Shell
@@ -6023,6 +6119,9 @@ sshd_armour() {
 }
 
 initd_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: initd_update"
+  fi
   _THIS_DB_PORT=3306
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Updating init scripts"
@@ -6353,6 +6452,9 @@ initd_update() {
 }
 
 sysctl_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: sysctl_update"
+  fi
   if [ ! -e "/root/.no.sysctl.update.cnf" ] \
     && [ ! -e "${pthLog}/sysctl.conf-${_X_VERSION}-${_NOW}.log" ]; then
     cp -af /etc/sysctl.conf \
@@ -6384,6 +6486,9 @@ sysctl_update() {
 }
 
 apticron_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: apticron_update"
+  fi
   XPTEMAIL=${_MY_EMAIL//\@/\\\\\@}
   sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g"  \
     /etc/csf/csf.conf &> /dev/null

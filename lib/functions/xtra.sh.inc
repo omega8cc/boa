@@ -1,5 +1,8 @@
 
 if_install_bzr() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_install_bzr"
+  fi
   if [[ "${_XTRAS_LIST}" =~ "BZR" ]]; then
     _PATH_BZR="/usr/local/bin/bzr"
     if [ ! -e "$_PATH_BZR" ] \
@@ -27,6 +30,9 @@ if_install_bzr() {
 }
 
 if_install_adminer() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_install_adminer"
+  fi
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "ADM" ]] \
     || [ -d "/var/www/chive" ]; then
@@ -76,6 +82,9 @@ if_install_adminer() {
 }
 
 if_install_chive() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_install_chive"
+  fi
   if [[ "${_XTRAS_LIST}" =~ "CHV" ]] || [ -d "/var/www/chive" ]; then
     _CHIVE_VHOST="${mtrNgx}/vhost.d/chive.${_THIS_FRONT}"
     if [ ! -d "/var/www/chive" ] \
@@ -120,6 +129,9 @@ if_install_chive() {
 }
 
 if_install_sqlbuddy() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_install_sqlbuddy"
+  fi
   if [[ "${_XTRAS_LIST}" =~ "BDD" ]]; then
     _SQLBUDDY_VHOST="${mtrNgx}/vhost.d/sqlbuddy.${_THIS_FRONT}"
     if [ ! -d "/var/www/sqlbuddy" ] \
@@ -200,6 +212,9 @@ fix_collectd_nginx() {
 }
 
 if_install_collectd() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_install_collectd"
+  fi
   if [[ "${_XTRAS_LIST}" =~ "CGP" ]]; then
     _CGP_VHOST="${mtrNgx}/vhost.d/cgp.${_THIS_FRONT}"
     if [ ! -e "/var/run/cloud_vhost.pid" ]; then
@@ -266,6 +281,9 @@ if_install_collectd() {
 }
 
 if_install_hhvm() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_install_hhvm"
+  fi
   if_to_do_fix
   if [[ "${_XTRAS_LIST}" =~ "HVM" ]]; then
     if [ -x "/usr/bin/gpg2" ]; then
@@ -319,6 +337,9 @@ if_install_hhvm() {
 }
 
 if_install_webmin() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_install_webmin"
+  fi
   if [[ "${_XTRAS_LIST}" =~ "WMN" ]]; then
     if [ ! -d "/etc/webmin" ] && [ ! -e "/var/run/cloud_vhost.pid" ]; then
       if [ -x "/usr/bin/gpg2" ]; then
@@ -360,6 +381,9 @@ if_install_webmin() {
 }
 
 if_install_bind() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_install_bind"
+  fi
   _CHECK_OS=$(grep "Ubuntu.*LTS" /etc/issue.net 2>&1)
   if [[ "${_CHECK_OS}" =~ "Ubuntu" ]]; then
     _CHECK_OS=ULTS
@@ -399,6 +423,9 @@ if_install_bind() {
 }
 
 if_install_rvm() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_install_rvm"
+  fi
   if [ -x "/usr/bin/gpg2" ]; then
     _GPG=gpg2
   else
@@ -590,6 +617,9 @@ if_install_rvm() {
 }
 
 if_install_magick() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_install_magick"
+  fi
   _MAGICK_FROM_SOURCES=YES
   if [ "${_MAGICK_FROM_SOURCES}" = "YES" ]; then
     install_magick_src
@@ -597,6 +627,9 @@ if_install_magick() {
 }
 
 if_install_ffmpeg() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_install_ffmpeg"
+  fi
   if [[ "${_XTRAS_LIST}" =~ "FMG" ]]; then
     if [ ! -x "/usr/bin/ffmpeg" ]; then
       echo " "

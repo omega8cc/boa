@@ -167,6 +167,9 @@ csf_install() {
 }
 
 csf_lfd_install_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: csf_lfd_install_upgrade"
+  fi
   _IPSET_TEST=$(which ipset 2> /dev/null)
   if [ ! -x "${_IPSET_TEST}" ]; then
     apt-get clean -qq &> /dev/null

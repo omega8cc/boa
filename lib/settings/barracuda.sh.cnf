@@ -1141,6 +1141,9 @@ os_detection_early() {
 ### Download helpers and libs
 ###
 download_helpers_libs() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "PROC: os_detection_minimal"
+  fi
   os_detection_early
   find_fast_mirror
   mkdir -p /opt/tmp

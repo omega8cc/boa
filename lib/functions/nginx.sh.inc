@@ -252,6 +252,9 @@ nginx_clean_legacy_config() {
 # Install or upgrade Nginx.
 nginx_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: nginx_install_upgrade"
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Testing Nginx version..."
   fi
   if [ "${_STATUS}" = "UPGRADE" ]; then
@@ -524,6 +527,9 @@ d;};' ${mtrInc}/nginx_vhost_common.conf
 }
 
 nginx_initd_check() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: nginx_initd_check"
+  fi
   _X_INIT_TEST=$(cat /etc/init.d/nginx 2>&1)
   if [[ "$_X_INIT_TEST" =~ "github" ]]; then
     _DO_NOTHING=YES
@@ -536,6 +542,9 @@ nginx_initd_check() {
 }
 
 nginx_mime_check_fix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: nginx_mime_check_fix"
+  fi
   if [ -e "${locCnf}/mime.types" ]; then
     mv -f /etc/nginx/mime.types \
       /etc/nginx/mime.types-pre-${_X_VERSION}-${_NOW} &> /dev/null
@@ -559,6 +568,9 @@ nginx_mime_check_fix() {
 }
 
 nginx_wildcard_ssl_install() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: nginx_wildcard_ssl_install"
+  fi
   _WILD_SSL_VHOST="${mtrNgx}/pre.d/nginx_wild_ssl.conf"
   if [ ! -e "${_WILD_SSL_VHOST}" ]; then
     msg "INFO: Installing default SSL Wildcard Nginx Proxy..."
@@ -601,6 +613,9 @@ nginx_wildcard_ssl_install() {
 }
 
 nginx_config_update_fix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: nginx_config_update_fix"
+  fi
   if [ "${_STATUS}" = "INIT" ]; then
     service cron start &> /dev/null
     if [ "${_EASY_SETUP}" = "NO" ]; then

@@ -650,6 +650,9 @@ php_cli_cron_update() {
 }
 
 aegir_master_install_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: aegir_master_install_upgrade"
+  fi
   if [ "${_STATUS}" = "INIT" ]; then
 
   ###--------------------###
@@ -1012,6 +1015,9 @@ EOFMYSQL
 }
 
 if_upgrade_only_aegir_master() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_upgrade_only_aegir_master"
+  fi
   if [ "${_STATUS}" = "UPGRADE" ]; then
     if [ "${_AEGIR_UPGRADE_ONLY}" = "YES" ] \
       && [ "${_SYSTEM_UPGRADE_ONLY}" = "NO" ]; then
@@ -1027,6 +1033,9 @@ if_upgrade_only_aegir_master() {
 }
 
 aegir_master_display_login_link() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: aegir_master_display_login_link"
+  fi
   if [ "${_STATUS}" = "INIT" ]; then
     if [ "${_EASY_SETUP}" != "LOCAL" ]; then
       mrun "bash /usr/sbin/apticron" &> /dev/null

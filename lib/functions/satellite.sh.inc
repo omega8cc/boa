@@ -508,6 +508,9 @@ disable_chattr() {
 #
 # Read or create Octopus cnf file.
 satellite_cnf() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "PROC: satellite_cnf"
+  fi
   if [ ! -e "${octCnf}" ]; then
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]] \
       || [[ "${_CLIENT_EMAIL}" =~ "omega8.cc" ]]; then
@@ -3895,6 +3898,9 @@ satellite_send_welcome_email() {
 #
 # Satellite start.
 satellite_make() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "PROC: satellite_make"
+  fi
   export _THIS_OS=$(lsb_release -si 2>&1)
   export _OSR=$(lsb_release -sc 2>&1)
   if [ -d "/data/all/000" ]; then
@@ -4127,6 +4133,9 @@ satellite_make() {
 }
 
 satellite_if_head_github_connection_test() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "PROC: satellite_if_head_github_connection_test"
+  fi
   ###--------------------###
   if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
     rm -rf /opt/tmp/test-*
@@ -4174,6 +4183,9 @@ satellite_if_head_github_connection_test() {
 }
 
 satellite_if_sql_exception_test() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "PROC: satellite_if_sql_exception_test"
+  fi
   ###--------------------###
   if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
     || [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
@@ -4187,6 +4199,9 @@ satellite_if_sql_exception_test() {
 }
 
 satellite_if_running_as_root_octopus() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "PROC: satellite_if_running_as_root_octopus"
+  fi
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
@@ -4203,6 +4218,9 @@ satellite_if_running_as_root_octopus() {
 }
 
 satellite_check_sanitize_user_name() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "PROC: satellite_check_sanitize_user_name"
+  fi
   _USER=${_USER//[^a-zA-Z0-9-.]/}
   _USER=$(echo -n ${_USER} | tr A-Z a-z 2>&1)
   _WEB="${_USER}.web"
@@ -4216,6 +4234,9 @@ satellite_check_sanitize_user_name() {
 }
 
 satellite_if_localhost_mode_magic() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "PROC: satellite_if_localhost_mode_magic"
+  fi
   _THIS_HOST=$(uname -n 2>&1)
   if [ "${_THIS_HOST}" = "aegir.local" ] && [ ! -d "${_ROOT}" ]; then
     _DEBUG_MODE=NO
@@ -4228,6 +4249,9 @@ satellite_if_localhost_mode_magic() {
 }
 
 satellite_check_sanitize_domain_name() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "PROC: satellite_check_sanitize_domain_name"
+  fi
   _DOMAIN=${_DOMAIN//[^a-zA-Z0-9-.]/}
   _DOMAIN=$(echo -n ${_DOMAIN} | tr A-Z a-z 2>&1)
   if [ ! -f "/var/aegir/config/server_master/nginx/vhost.d/${_DOMAIN}" ]; then
@@ -4241,6 +4265,9 @@ satellite_check_sanitize_domain_name() {
 }
 
 satellite_detect_vm_family() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "PROC: satellite_detect_vm_family"
+  fi
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
@@ -4266,6 +4293,9 @@ satellite_detect_vm_family() {
 }
 
 satellite_check_php_compatibility() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "PROC: satellite_check_php_compatibility"
+  fi
   if [ -e "${_ROOT}/static/control/fpm.info" ]; then
     _T_FPM_VRN=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
     _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
@@ -4322,6 +4352,9 @@ satellite_check_php_compatibility() {
 }
 
 satellite_check_octopus_versus_barracuda_version() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "PROC: satellite_check_octopus_versus_barracuda_version"
+  fi
   if [ ! -f "/var/log/barracuda_log.txt" ]; then
     msg "ERROR: This octopus installer can be used only when the same version"
     msg "of boa or barracuda installer was used before. Your system must be"
@@ -4363,6 +4396,9 @@ satellite_check_octopus_versus_barracuda_version() {
 }
 
 satellite_if_init_or_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "PROC: satellite_if_init_or_upgrade"
+  fi
   if [ -d "${_ROOT}" ]; then
     msg "Octopus Satellite Instance Upgrade in progress..."
     if [ -d "${_ROOT}/distro" ]; then
@@ -4507,6 +4543,9 @@ satellite_if_init_or_upgrade() {
 }
 
 satellite_if_major_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "PROC: satellite_if_major_upgrade"
+  fi
   if [ "${_CLIENT_OPTION}" = "POWER" ] \
     && [ -e "${_ROOT}/log/octopus_log.txt" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
@@ -4540,6 +4579,9 @@ satellite_if_major_upgrade() {
 }
 
 satellite_if_check_dns() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "PROC: satellite_if_check_dns"
+  fi
   if [ "${_DNS_SETUP_TEST}" = "YES" ]; then
     if [ "${_VMFAMILY}" = "AWS" ]; then
       _LOC_DOM="${_DOMAIN}"
@@ -4582,6 +4624,9 @@ satellite_if_check_dns() {
 }
 
 satellite_checkpoint() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "PROC: satellite_checkpoint"
+  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     echo " "
     msg "START -> checkpoint: "
@@ -4641,6 +4686,9 @@ EOF
 }
 
 satellite_pre_cleanup() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "PROC: satellite_pre_cleanup"
+  fi
   rm -f /tmp/cache.inc*
   rm -f /opt/tmp/status-*
   rm -rf /tmp/drush_make_tmp*
@@ -4652,6 +4700,9 @@ satellite_pre_cleanup() {
 }
 
 satellite_post_cleanup() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    echo "PROC: satellite_post_cleanup"
+  fi
   if [ -d "/home/${_USER}.ftp/" ]; then
     enable_chattr ${_USER}.ftp
   fi

@@ -140,6 +140,9 @@ check_dns_settings() {
 #
 # Check repo status.
 check_git_repos() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_git_repos"
+  fi
   if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
     _GITHUB_WORKS=NO
     _GITLAB_WORKS=NO
@@ -474,6 +477,9 @@ install_pdnsd_cache() {
 }
 
 check_github_for_aegir_head_mode() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_github_for_aegir_head_mode"
+  fi
   if [ "${_SYSTEM_UPGRADE_ONLY}" = "NO" ] \
     && [ "${_AEGIR_VERSION}" = "HEAD" ]; then
     rm -rf /opt/tmp/test-*
@@ -521,6 +527,9 @@ check_github_for_aegir_head_mode() {
 }
 
 check_db_src() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_db_src"
+  fi
   if ! netcat -w 14 -z ${_DB_SRC} 80 ; then
     echo " "
     msg "EXIT on error due to ${_DB_SRC} downtime"
@@ -532,6 +541,9 @@ check_db_src() {
 }
 
 check_ip_hostname() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_ip_hostname"
+  fi
   if [ "${_STATUS}" = "INIT" ]; then
     if [ ! -z "${_LOCAL_NETWORK_IP}" ]; then
       if [ -z "${_LOCAL_NETWORK_HN}" ]; then
@@ -778,6 +790,9 @@ install_upgrade_pdnsd() {
 }
 
 if_install_pdnsd() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_install_pdnsd"
+  fi
   if [ -r "/etc/pdnsd.conf" ] \
     || [[ "${_XTRAS_LIST}" =~ "DCS" ]] \
     || [[ "${_XTRAS_LIST}" =~ "ALL" ]]; then

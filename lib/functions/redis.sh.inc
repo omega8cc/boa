@@ -275,6 +275,9 @@ install_redis_src() {
 }
 
 redis_install_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: redis_install_upgrade"
+  fi
   if [ "${_REDIS_MAJOR_RELEASE}" = "7" ] \
     && [ ! -z "${_REDIS_SEVEN_VRN}" ]; then
     _REDIS_VRN=${_REDIS_SEVEN_VRN}

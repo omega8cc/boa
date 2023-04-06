@@ -1,6 +1,9 @@
 
 
 if_install_jetty() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_install_jetty"
+  fi
   if_to_do_fix
   if [[ "${_XTRAS_LIST}" =~ "SR7" ]] \
     || [[ "${_XTRAS_LIST}" =~ "ALL" ]] \

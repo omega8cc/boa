@@ -559,6 +559,9 @@ tune_web_server_config() {
 #
 # Install IonCube.
 if_install_php_ioncube() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_install_php_ioncube"
+  fi
   ###--------------------###
   if [ "${_PHP_IONCUBE}" = "YES" ]; then
     if [ ! -e "${pthLog}/ioncube-update-${_IONCUBE_VRN}.log" ] \
@@ -1583,6 +1586,9 @@ newrelic_update() {
 #
 # Install New Relic.
 if_install_php_newrelic() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_install_php_newrelic"
+  fi
   ###--------------------###
   if [ ! -z "${_NEWRELIC_KEY}" ]; then
     if [ -x "/usr/bin/gpg2" ]; then
@@ -2057,6 +2063,9 @@ switch_php_cli() {
 }
 
 php_upgrade_all() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: php_upgrade_all"
+  fi
   if [ ! -z "${1}" ] ; then
     _PHP_V="${1}"
   else
@@ -2106,6 +2115,9 @@ get_php_conf_extra() {
 }
 
 php_install_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: php_install_upgrade"
+  fi
   if_to_do_fix
   if [ "${_STATUS}" = "UPGRADE" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2205,6 +2217,9 @@ php_install_upgrade() {
 }
 
 php_check_fix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: php_check_fix"
+  fi
   check_php_cli
   if [ -x "/opt/php74/bin/php" ]; then
     isSodium=
