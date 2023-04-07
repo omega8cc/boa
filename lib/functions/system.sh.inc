@@ -1,4 +1,63 @@
 
+#
+# Install sysvinit with apt.
+sysvinit_install() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: sysvinit_install"
+  fi
+  mrun "${_APT_UPDATE} -qq" &> /dev/null
+  mrun "${_INITINS} sysvinit-core" 2> /dev/null
+  mrun "${_INITINS} sysvinit-utils" 2> /dev/null
+}
+
+#
+# Remove systemd with apt.
+systemd_remove_apt_cmd() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: systemd_remove_apt_cmd"
+  fi
+  mrun "${_APT_UPDATE} -qq" &> /dev/null
+  mrun "apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
+  mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
+  mrun "apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
+  mrun "apt-get autoremove --purge -y -qq" 2> /dev/null
+  mrun "apt-get autoclean -y -qq" 2> /dev/null
+  mrun "apt autoremove -y -qq" 2> /dev/null
+}
+
+#
+# Remove systemd if detected.
+systemd_remove_if_detected() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: systemd_remove_if_detected"
+  fi
+  if [ -e "/root/.step.init.systemd.two.cnf" ] \
+    && [ -e "/root/.step.init.systemd.one.cnf" ] \
+    && [ -e "/lib/systemd/systemd" ]; then
+    msg "WARN: The systemd has NOT been cleanly removed yet"
+    msg "WARN: Running one extra cleanup procedure now..."
+    systemd_remove_apt_cmd
+  fi
+  if [ ! -e "/usr/share/sysvinit/inittab" ]; then
+    msg "SYSD: Forced sysvinit install required..."
+    sysvinit_install
+  fi
+  if [ `ps aux | grep -v "grep" | grep --count "systemd"` -gt "0" ]; then
+    msg "SYSD: Some systemd processes still runnig..."
+    msg "SYSD: Forced systemd removal required..."
+    systemd_remove_apt_cmd
+  fi
+  if [ -e "/lib/systemd/systemd" ]; then
+    msg "ALRT: The systemd has NOT been removed on ${_THIS_OS} ${_OSR}"
+    msg "ALRT: Please check details in the logs located in /var/backups/"
+    msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
+  else
+    msg "INFO: The systemd has been finally removed on ${_THIS_OS} ${_OSR}"
+  fi
+}
+
+#
+# Detect and prepare for major OS upgrade.
 define_loc_osr() {
   _LOC_OSR=
   _NEW_OSR=
@@ -62,6 +121,8 @@ define_loc_osr() {
   fi
 }
 
+#
+# Detect and prepare for major OS upgrade.
 if_to_do_fix() {
   _DO_FIX=
   if [ "${_JESSIE_TO_BEOWULF}" = "YES" ] \
@@ -98,6 +159,8 @@ if_to_do_fix() {
   fi
 }
 
+#
+# Check system CPU power.
 count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
@@ -119,6 +182,8 @@ count_cpu() {
   fi
 }
 
+#
+# Make sure that we are root.
 if_running_as_root_barracuda() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: if_running_as_root_barracuda"
@@ -2394,6 +2459,7 @@ if_install_wkhtmltox() {
       cd /var/opt
     fi
   fi
+  systemd_remove_if_detected
 }
 
 #
@@ -3962,8 +4028,7 @@ run_aptitude_deps_install() {
   mrun "${_INSTALL} libssl-dev" 2> /dev/null
   mrun "${_INSTALL} libc-client2007e libc-client2007e-dev" 2> /dev/null
   mrun "${_INSTALL} libcurl4-gnutls-dev mcrypt libc-client-dev" 2> /dev/null
-  mrun "${_INSTALL} sysvinit-core" 2> /dev/null
-  mrun "${_INSTALL} sysvinit-utils" 2> /dev/null
+  sysvinit_install
   mrun "${_INSTALL} apticron aptitude auditd apt-listchanges" 2> /dev/null
   mrun "${_INSTALL} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
   mrun "${_INSTALL} unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
@@ -3997,8 +4062,7 @@ run_aptitude_deps_install() {
     mrun "service php5-fpm stop" &> /dev/null
     mrun "update-rc.d -f php5-fpm remove" &> /dev/null
   fi
-  mrun "${_INSTALL} sysvinit-core" 2> /dev/null
-  mrun "${_INSTALL} sysvinit-utils" 2> /dev/null
+  sysvinit_install
 }
 
 basic_packages_install_on_init() {
@@ -4062,16 +4126,12 @@ basic_packages_install_on_init() {
       echo
       msg "STEP: Let's begin with STEP 1..."
       msg "INFO: Installing sysvinit on ${_THIS_OS} ${_OSR}..."
-      mrun "${_APT_UPDATE} -qq" &> /dev/null
-      mrun "${_INITINS} sysvinit-core" 2> /dev/null
-      mrun "${_INITINS} sysvinit-utils" 2> /dev/null
+      sysvinit_install
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-        mrun "${_APT_UPDATE} -qq" &> /dev/null
-        mrun "${_INITINS} sysvinit-core" 2> /dev/null
-        mrun "${_INITINS} sysvinit-utils" 2> /dev/null
+        sysvinit_install
         rm -f /etc/apt/sources.list.d/nosystemd.list
         rm -f /etc/apt/preferences.d/nosystemd
         msg "INFO: The sysvinit-core installed on ${_THIS_OS} ${_OSR}..."
@@ -4094,24 +4154,15 @@ basic_packages_install_on_init() {
       && [ -e "/root/.step.init.systemd.one.cnf" ]; then
       msg "STEP: Let's continue to STEP 3..."
       msg "INFO: Removing systemd on ${_THIS_OS} ${_OSR}..."
-      mrun "${_APT_UPDATE} -qq" &> /dev/null
-      mrun "${_INITINS} sysvinit-core" 2> /dev/null
-      mrun "${_INITINS} sysvinit-utils" 2> /dev/null
+      sysvinit_install
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-        mrun "${_INITINS} sysvinit-core" 2> /dev/null
-        mrun "${_INITINS} sysvinit-utils" 2> /dev/null
+        sysvinit_install
         rm -f /etc/apt/sources.list.d/nosystemd.list
         rm -f /etc/apt/preferences.d/nosystemd
-        mrun "apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
-        mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
-        mrun "apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
-        mrun "apt-get remove systemd-udevd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
-        mrun "apt-get autoremove --purge -y -qq" 2> /dev/null
-        mrun "apt-get autoclean -y -qq" 2> /dev/null
-        mrun "apt autoremove -y -qq" 2> /dev/null
+        systemd_remove_apt_cmd
       else
         echo
         msg "ALRT: The sysvinit has NOT been installed on ${_THIS_OS} ${_OSR}"
@@ -4155,27 +4206,8 @@ basic_packages_install_on_init() {
     echo
     msg "WARN: The systemd has NOT been cleanly removed yet"
     msg "WARN: Running one extra cleanup procedure now..."
-    mrun "${_APT_UPDATE} -qq" &> /dev/null
-    mrun "${_INITINS} sysvinit-core" 2> /dev/null
-    wait
-    mrun "${_INITINS} sysvinit-utils" 2> /dev/null
-    wait
-	mrun "apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
-	wait
-	mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
-	wait
-	mrun "apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
-	wait
-	mrun "apt-get remove systemd-udevd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
-	wait
-	mrun "apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
-	wait
-	mrun "apt-get autoremove --purge -y -qq" 2> /dev/null
-	wait
-	mrun "apt-get autoclean -y -qq" 2> /dev/null
-	wait
-	mrun "apt autoremove -y -qq" 2> /dev/null
-	wait
+    sysvinit_install
+    systemd_remove_apt_cmd
     if [ -e "/lib/systemd/systemd" ]; then
       msg "ALRT: The systemd has NOT been removed on ${_THIS_OS} ${_OSR}"
       msg "ALRT: Please check details in the logs located in /var/backups/"
@@ -4385,11 +4417,7 @@ if_post_major_os_upgrade() {
     mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
 
     msg "INFO: Cleaning up any systemd remnants..."
-    mrun "apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
-    mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
-    mrun "apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
-    mrun "apt-get remove systemd-udevd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
-    mrun "apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
+    systemd_remove_apt_cmd
 
     msg "INFO: Removing any packages orphaned by the migration process..."
     mrun "apt-get autoremove --purge -y -qq" 2> /dev/null
