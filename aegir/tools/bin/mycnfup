@@ -218,7 +218,6 @@ remove_systemd() {
     apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
     apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
     apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-    apt-get remove systemd-udevd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
     echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
     echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
     apt-get autoremove --purge -y -qq 2> /dev/null
@@ -1389,7 +1388,6 @@ db_head_to_stretch_second()
         apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
         apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
         apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-        apt-get remove systemd-udevd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
         ${_INSTALL} sysvinit-core &> /dev/null

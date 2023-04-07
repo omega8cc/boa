@@ -2015,7 +2015,6 @@ upgrade_host() {
     apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
     apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
     apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-    apt-get remove systemd-udevd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
     apt-get autoremove --purge -y -qq &> /dev/null
     apt-get autoclean -y -qq &> /dev/null
     apt autoremove -y -qq &> /dev/null
