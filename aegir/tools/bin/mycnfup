@@ -33,6 +33,10 @@ vBs="/var/backups"
 tVr="0.7"
 _THIS_OS=$(lsb_release -si 2>&1)
 _OSR=$(lsb_release -sc 2>&1)
+_INSTAPP="/usr/bin/aptitude -f -y -q \
+  --allow-untrusted \
+  -o Dpkg::Options::=--force-confdef \
+  -o Dpkg::Options::=--force-confold install"
 
 
 ###-------------SYSTEM-----------------###
@@ -209,8 +213,11 @@ EOF
 remove_systemd() {
   if [ -x "/lib/systemd/systemd" ]; then
     ls -la /lib/systemd/systemd
-    ${_INSTALL} sysvinit-core
-    ${_INSTALL} sysvinit-utils
+    ${_APT_UPDATE} -qq
+    echo "sysvinit-core install" | dpkg --set-selections
+    echo "sysvinit-utils install" | dpkg --set-selections
+    ${_INSTAPP} sysvinit-core
+    ${_INSTAPP} sysvinit-utils
     ls -la /usr/share/sysvinit/inittab
     if [ -e "/usr/share/sysvinit/inittab" ]; then
       cp -af /usr/share/sysvinit/inittab /etc/inittab
@@ -222,9 +229,8 @@ remove_systemd() {
     echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
     apt-get autoremove --purge -y -qq 2> /dev/null
     apt-get autoclean -y -qq 2> /dev/null
-    apt autoremove -y -qq 2> /dev/null
-    ${_INSTALL} sysvinit-core 2> /dev/null
-    ${_INSTALL} sysvinit-utils 2> /dev/null
+    echo "sysvinit-core hold" | dpkg --set-selections &> /dev/null
+    echo "sysvinit-utils hold" | dpkg --set-selections &> /dev/null
   fi
 }
 
@@ -1294,11 +1300,11 @@ db_head_to_stretch_first()
   	  echo "zlib1g install"         | dpkg --set-selections
   	  echo "zlib1g-dev install"     | dpkg --set-selections
   	  echo "zlibc install"          | dpkg --set-selections
-  	  ${_INSTALL} zlib1g
-  	  ${_INSTALL} zlib1g-dev
-  	  ${_INSTALL} zlibc
-  	  ${_INSTALL} openssl
-  	  ${_INSTALL} libssl-dev
+  	  ${_INSTAPP} zlib1g
+  	  ${_INSTAPP} zlib1g-dev
+  	  ${_INSTAPP} zlibc
+  	  ${_INSTAPP} openssl
+  	  ${_INSTAPP} libssl-dev
   	  apt-get install curl ${forCer}
   	  apt-get install openssh-client ${forCer}
   	  apt-get install openssh-server ${forCer}
@@ -1354,16 +1360,15 @@ db_head_to_stretch_first()
   	  apt-get install lsb-release ${dstUpArg}
   	  if [ -x "/lib/systemd/systemd" ]; then
         ls -la /lib/systemd/systemd
-        ${_INSTALL} sysvinit-core
-        ${_INSTALL} sysvinit-utils
+        ${_APT_UPDATE} -qq
+        ${_INSTAPP} sysvinit-core
+        ${_INSTAPP} sysvinit-utils
         ls -la /usr/share/sysvinit/inittab
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-        ${_INSTALL} sysvinit-core &> /dev/null
-        ${_INSTALL} sysvinit-utils &> /dev/null
   	  fi
       echo "Upgrade OS to Stretch 1st stage complete!"
       echo "Bye!"
@@ -1376,11 +1381,11 @@ db_head_to_stretch_second()
   if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ] ; then
     _HOST_HOSTNAME=`hostname 2>&1`
     if [[ "${_OSR}" =~ "stretch" ]]; then
-	    ${_APT_UPDATE} -qq &> /dev/null
   	  if [ -x "/lib/systemd/systemd" ]; then
         ls -la /lib/systemd/systemd
-        ${_INSTALL} sysvinit-core
-        ${_INSTALL} sysvinit-utils
+        ${_APT_UPDATE} -qq
+        ${_INSTAPP} sysvinit-core
+        ${_INSTAPP} sysvinit-utils
         ls -la /usr/share/sysvinit/inittab
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
@@ -1388,11 +1393,12 @@ db_head_to_stretch_second()
         apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
         apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
         apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
+        apt-get autoremove --purge -y -qq 2> /dev/null
+        apt-get autoclean -y -qq 2> /dev/null
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-        ${_INSTALL} sysvinit-core &> /dev/null
-        ${_INSTALL} sysvinit-utils &> /dev/null
   	  fi
+  	  ${_APT_UPDATE} -qq
   	  apt-get upgrade ${nrmUpArg}
   	  apt-get dist-upgrade ${nrmUpArg}
   	  echo "Upgrade OS to Stretch 2nd stage complete!"

@@ -380,7 +380,7 @@ install_pdnsd_cache() {
     || [ "${_OSR}" = "bullseye" ] \
     || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ]; then
-    st_runner "${_INSTALL} resolvconf" &> /dev/null
+    st_runner "${_INSTAPP} resolvconf" &> /dev/null
     msg "INFO: Building pdnsd ${_PDNSD_VRN} from sources..."
     cd /var/opt
     rm -rf pdnsd*
@@ -400,10 +400,10 @@ install_pdnsd_cache() {
     mrun "update-rc.d pdnsd defaults" &> /dev/null
     mrun "service pdnsd start" &> /dev/null
   else
-    st_runner "${_INSTALL} resolvconf" &> /dev/null
-    st_runner "${_INSTALL} pdnsd" &> /dev/null
-    st_runner "${_INSTALL} resolvconf" &> /dev/null
-    st_runner "${_INSTALL} pdnsd" &> /dev/null
+    st_runner "${_INSTAPP} resolvconf" &> /dev/null
+    st_runner "${_INSTAPP} pdnsd" &> /dev/null
+    st_runner "${_INSTAPP} resolvconf" &> /dev/null
+    st_runner "${_INSTAPP} pdnsd" &> /dev/null
     sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
     cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
   fi

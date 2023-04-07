@@ -734,7 +734,7 @@ install_php_extensions() {
       msg "INFO: Building GEOS extension ${_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
         st_runner "${_APT_UPDATE} -qq" &> /dev/null
-        st_runner "${_INSTALL} libgeos-dev libgeos-c1" 2> /dev/null
+        st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
         touch ${pthLog}/geos-${_X_VERSION}.log
       fi
       cd /var/opt
@@ -788,7 +788,7 @@ install_php_extensions() {
   msg "INFO: Installing Imagick ${_IMAGICK_VRN} for PHP ${_T_PHP_VRN}..."
   if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
     mrun "${_APT_UPDATE} -qq" &> /dev/null
-    mrun "${_INSTALL} libmagickwand-dev" 2> /dev/null
+    mrun "${_INSTAPP} libmagickwand-dev" 2> /dev/null
     touch ${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
   fi
   cd /var/opt
@@ -1046,7 +1046,7 @@ php_extensions_update() {
       msg "INFO: Building GEOS ${_GEOS_VRN} upgrade for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
         st_runner "${_APT_UPDATE} -qq" &> /dev/null
-        st_runner "${_INSTALL} libgeos-dev libgeos-c1" 2> /dev/null
+        st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
         touch ${pthLog}/geos-${_X_VERSION}.log
       fi
       cd /var/opt
@@ -1106,7 +1106,7 @@ php_extensions_update() {
     msg "INFO: Installing Imagick {_IMAGICK_VRN} upgrade for PHP ${_T_PHP_VRN}..."
     if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
       mrun "${_APT_UPDATE} -qq" &> /dev/null
-      mrun "${_INSTALL} libmagickwand-dev" 2> /dev/null
+      mrun "${_INSTAPP} libmagickwand-dev" 2> /dev/null
       touch ${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
     fi
     cd /var/opt
@@ -1207,7 +1207,7 @@ install_php_multi() {
   ###--------------------###
   msg "INFO: Building PHP ${_PHP_VERSION} from sources..."
   mrun "${_APT_UPDATE} -qq" &> /dev/null
-  mrun "${_INSTALL} libonig-dev" 2> /dev/null
+  mrun "${_INSTAPP} libonig-dev" 2> /dev/null
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
     && [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
     if [ -e "/usr/lib/libtidy.so" ]; then
@@ -1218,7 +1218,7 @@ install_php_multi() {
     cd /var/opt
     rm -rf tidy*
     mrun "${_APT_UPDATE} -qq" &> /dev/null
-    mrun "${_INSTALL} cmake" 2> /dev/null
+    mrun "${_INSTAPP} cmake" 2> /dev/null
     get_dev_src "tidy-html5-${_LIB_TIDY_VRN}.tar.gz"
     cd tidy-html5-${_LIB_TIDY_VRN}/build/cmake
     mrun "cmake ../.. -DCMAKE_INSTALL_PREFIX=/usr/" 2> /dev/null
@@ -2254,7 +2254,7 @@ php_check_fix() {
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
     && [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
     mrun "${_APT_UPDATE} -qq" &> /dev/null
-    mrun "${_INSTALL} libonig-dev" 2> /dev/null
+    mrun "${_INSTAPP} libonig-dev" 2> /dev/null
     if [ -e "/usr/lib/libtidy.so" ]; then
       mrun "apt-get remove libtidy-dev -y -qq" &> /dev/null
       mrun "apt-get remove libtidy-0.99-0 -y -qq" &> /dev/null
@@ -2263,7 +2263,7 @@ php_check_fix() {
     cd /var/opt
     rm -rf tidy*
     mrun "${_APT_UPDATE} -qq" &> /dev/null
-    mrun "${_INSTALL} cmake" 2> /dev/null
+    mrun "${_INSTAPP} cmake" 2> /dev/null
     get_dev_src "tidy-html5-${_LIB_TIDY_VRN}.tar.gz"
     cd tidy-html5-${_LIB_TIDY_VRN}/build/cmake
     mrun "cmake ../.. -DCMAKE_INSTALL_PREFIX=/usr/" 2> /dev/null

@@ -265,7 +265,6 @@ os_detection_minimal
 sources_list_update
 basic_packages_install_on_init
 more_packages_install_on_init
-run_apt_get_dist_upgrade
 run_aptitude_full_upgrade
 
 
@@ -335,7 +334,6 @@ mytop_install
 ###
 ### Install other services
 ###
-run_apt_get_dist_upgrade
 run_aptitude_full_upgrade
 run_aptitude_deps_install
 kill_nash

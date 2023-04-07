@@ -6,8 +6,12 @@ sysvinit_install() {
     msg "PROC: sysvinit_install"
   fi
   mrun "${_APT_UPDATE} -qq" &> /dev/null
+  echo "sysvinit-core install" | dpkg --set-selections
+  echo "sysvinit-utils install" | dpkg --set-selections
   mrun "${_INITINS} sysvinit-core" 2> /dev/null
   mrun "${_INITINS} sysvinit-utils" 2> /dev/null
+  echo "sysvinit-core hold" | dpkg --set-selections &> /dev/null
+  echo "sysvinit-utils hold" | dpkg --set-selections &> /dev/null
 }
 
 #
@@ -23,6 +27,7 @@ systemd_remove_apt_cmd() {
   mrun "apt-get autoremove --purge -y -qq" 2> /dev/null
   mrun "apt-get autoclean -y -qq" 2> /dev/null
   mrun "apt autoremove -y -qq" 2> /dev/null
+  mrun "${_APT_UPDATE} -qq" &> /dev/null
 }
 
 #
@@ -318,7 +323,6 @@ fix_postfix() {
   else
     _POSTFIX_TEST=$(grep "fatal: open lock file" /var/log/mail.log 2>&1)
     if [[ "${_POSTFIX_TEST}" =~ "fatal: open lock file" ]]; then
-      mrun "apt --fix-broken install -y" 2> /dev/null
       mrun "dpkg --configure --force-all -a" 2> /dev/null
       mrun "apt-get clean -qq" &> /dev/null
       rm -rf /var/lib/apt/lists/*
@@ -2229,8 +2233,6 @@ run_apt_get_dist_upgrade() {
   fi
   msg "INFO: Running apt-get upgrade..."
   mrun "${_APT_UPDATE} -qq" &> /dev/null
-  mrun "apt --fix-broken install -y" 2> /dev/null
-  mrun "dpkg --configure --force-all -a" 2> /dev/null
   mrun "apt-get upgrade ${nrmUpArg}" 2> /dev/null
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Running apt-get full-upgrade..."
@@ -2358,20 +2360,20 @@ php_install_deps() {
   fi
   ###--------------------###
   mrun "${_APT_UPDATE} -qq" &> /dev/null
-  mrun "${_INSTALL} cmake" 2> /dev/null
-  mrun "${_INSTALL} libgd-dev" 2> /dev/null
-  mrun "${_INSTALL} libgd3" 2> /dev/null
-  mrun "${_INSTALL} libkrb5-dev" 2> /dev/null
-  mrun "${_INSTALL} libldap-dev" 2> /dev/null
-  mrun "${_INSTALL} libmagickwand-dev" 2> /dev/null
-  mrun "${_INSTALL} libonig-dev" 2> /dev/null
-  mrun "${_INSTALL} libsodium-dev" 2> /dev/null
-  mrun "${_INSTALL} libwebp-dev" 2> /dev/null
-  mrun "${_INSTALL} libxpm-dev" 2> /dev/null
+  mrun "${_INSTAPP} cmake" 2> /dev/null
+  mrun "${_INSTAPP} libgd-dev" 2> /dev/null
+  mrun "${_INSTAPP} libgd3" 2> /dev/null
+  mrun "${_INSTAPP} libkrb5-dev" 2> /dev/null
+  mrun "${_INSTAPP} libldap-dev" 2> /dev/null
+  mrun "${_INSTAPP} libmagickwand-dev" 2> /dev/null
+  mrun "${_INSTAPP} libonig-dev" 2> /dev/null
+  mrun "${_INSTAPP} libsodium-dev" 2> /dev/null
+  mrun "${_INSTAPP} libwebp-dev" 2> /dev/null
+  mrun "${_INSTAPP} libxpm-dev" 2> /dev/null
   if [ "${_OSR}" = "jessie" ]; then
     install_icu
   else
-    st_runner "${_INSTALL} libicu-dev" 2> /dev/null
+    st_runner "${_INSTAPP} libicu-dev" 2> /dev/null
   fi
 }
 
@@ -2383,7 +2385,7 @@ if_install_wkhtmltox() {
   fi
   ###--------------------###
   mrun "${_APT_UPDATE} -qq" &> /dev/null
-  mrun "${_INSTALL} fonts-thai-tlwg" 2> /dev/null
+  mrun "${_INSTAPP} fonts-thai-tlwg" 2> /dev/null
   _THIS_RV=$(lsb_release -sc 2>&1)
   _X86_64_TEST=$(uname -m 2>&1)
   _WOX_IS=OLD
@@ -2422,8 +2424,8 @@ if_install_wkhtmltox() {
         msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
       fi
       mrun "${_APT_UPDATE} -qq" &> /dev/null
-      mrun "${_INSTALL} xfonts-75dpi xfonts-base" 2> /dev/null
-      mrun "${_INSTALL} wkhtmltopdf" 2> /dev/null
+      mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
+      mrun "${_INSTAPP} wkhtmltopdf" 2> /dev/null
     fi
   else
     if [ "${_WOX_IS}" = "OLD" ] \
@@ -2448,12 +2450,12 @@ if_install_wkhtmltox() {
         rm -rf wkhtmltox*
         mkdir -p /var/opt/wkhtmltox
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          mrun "${_INSTALL} xfonts-75dpi xfonts-base"
+          mrun "${_INSTAPP} xfonts-75dpi xfonts-base"
           get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz"
           dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb"
           apt-get install -f -y
         else
-          mrun "${_INSTALL} xfonts-75dpi xfonts-base" &> /dev/null
+          mrun "${_INSTAPP} xfonts-75dpi xfonts-base" &> /dev/null
           get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz" &> /dev/null
           dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb" &> /dev/null
           apt-get install -f -y &> /dev/null
@@ -2463,7 +2465,7 @@ if_install_wkhtmltox() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
         fi
-        mrun "${_INSTALL} xfonts-75dpi xfonts-base" &> /dev/null
+        mrun "${_INSTAPP} xfonts-75dpi xfonts-base" &> /dev/null
         cd /var/opt
         rm -rf wkhtmltox*
         mkdir -p /var/opt/wkhtmltox
@@ -3375,8 +3377,8 @@ curl_install_src() {
           mrun "apt-get build-dep curl -y" 2> /dev/null
           mrun "apt-get remove libssl1.0-dev -y" 2> /dev/null
           mrun "apt autoremove -y" 2> /dev/null
-          mrun "${_INSTALL} libssl-dev" 2> /dev/null
-          mrun "${_INSTALL} libc-client2007e libc-client2007e-dev" 2> /dev/null
+          mrun "${_INSTAPP} libssl-dev" 2> /dev/null
+          mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
         fi
       fi
     else
@@ -3384,8 +3386,8 @@ curl_install_src() {
       mrun "apt-get build-dep curl -y" 2> /dev/null
       mrun "apt-get remove libssl1.0-dev -y" 2> /dev/null
       mrun "apt autoremove -y" 2> /dev/null
-      mrun "${_INSTALL} libssl-dev" 2> /dev/null
-      mrun "${_INSTALL} libc-client2007e libc-client2007e-dev" 2> /dev/null
+      mrun "${_INSTAPP} libssl-dev" 2> /dev/null
+      mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
       cd /var/opt
       rm -rf curl*
       wget -q -U iCab ${urlDev}/src/curl-${_CURL_VRN}.tar.gz
@@ -4049,45 +4051,43 @@ run_aptitude_deps_install() {
   mrun "apt-get remove percona-xtrabackup-24 -y -qq" 2> /dev/null
   mrun "apt-get remove libcurl4-gnutls-dev -y -qq" 2> /dev/null
   mrun "apt-get remove libcurl4-openssl-dev -y -qq" 2> /dev/null
-  mrun "apt autoremove -y -qq" 2> /dev/null
-  mrun "${_INSTALL} build-essential libsasl2-modules" 2> /dev/null
-  mrun "${_INSTALL} zlibc time vim cvs makepasswd" 2> /dev/null
-  mrun "${_INSTALL} man-db dnsutils sudo symlinks iptables" 2> /dev/null
-  mrun "${_INSTALL} autoconf automake autotools-dev m4 bc" 2> /dev/null
-  mrun "${_INSTALL} curl" 2> /dev/null
+  mrun "${_INSTAPP} build-essential libsasl2-modules" 2> /dev/null
+  mrun "${_INSTAPP} zlibc time vim cvs makepasswd" 2> /dev/null
+  mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables" 2> /dev/null
+  mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc" 2> /dev/null
+  mrun "${_INSTAPP} curl" 2> /dev/null
   mrun "apt-get build-dep curl -y" 2> /dev/null
   mrun "apt-get remove libssl1.0-dev -y" 2> /dev/null
-  mrun "apt autoremove -y" 2> /dev/null
-  mrun "${_INSTALL} libssl-dev" 2> /dev/null
-  mrun "${_INSTALL} libc-client2007e libc-client2007e-dev" 2> /dev/null
-  mrun "${_INSTALL} libcurl4-gnutls-dev mcrypt libc-client-dev" 2> /dev/null
-  mrun "${_INSTALL} apticron aptitude auditd apt-listchanges" 2> /dev/null
-  mrun "${_INSTALL} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
-  mrun "${_INSTALL} unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
-  mrun "${_INSTALL} rsync strace ntpdate python-dev" 2> /dev/null
-  mrun "${_INSTALL} mc whois zlib1g zlib1g-dev librsync-dev" 2> /dev/null
-  mrun "${_INSTALL} sqlite3 libsqlite3-dev s4cmd" 2> /dev/null
-  mrun "${_INSTALL} ssh ssl-cert libpam-umask shtool" 2> /dev/null
-  mrun "${_INSTALL} xml-core xml2 xpdf libtool rrdtool" 2> /dev/null
-  mrun "${_INSTALL} ncurses-dev ncurses-term sipcalc" 2> /dev/null
-  mrun "${_INSTALL} netcat libzip-dev libwww-perl libsodium-dev" 2> /dev/null
-  mrun "${_INSTALL} libfontconfig1 libfreetype6 libfreetype6-dev" 2> /dev/null
-  mrun "${_INSTALL} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev" 2> /dev/null
-  mrun "${_INSTALL} libicu-dev libjpeg-dev libjpeg62" 2> /dev/null
-  mrun "${_INSTALL} libonig-dev libpq5 libxml2-dev libxpm4" 2> /dev/null
-  mrun "${_INSTALL} libxslt-dev libxslt1-dev libxslt1.1 subversion" 2> /dev/null
-  mrun "${_INSTALL} libaprutil1 libapr1 ldap-utils ipset" 2> /dev/null
-  mrun "${_INSTALL} pdftk patchutils p7zip-full fontconfig-config" 2> /dev/null
-  mrun "${_INSTALL} bison catdoc cython3 geoip-database gettext" 2> /dev/null
-  mrun "${_INSTALL} clamav clamav-base clamav-daemon clamdscan" 2> /dev/null
-  mrun "${_INSTALL} ghostscript htop icu-devtools lemon lftp nano" 2> /dev/null
-  mrun "${_INSTALL} python3-dev python3-debian python3-magic" 2> /dev/null
+  mrun "${_INSTAPP} libssl-dev" 2> /dev/null
+  mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
+  mrun "${_INSTAPP} libcurl4-gnutls-dev mcrypt libc-client-dev" 2> /dev/null
+  mrun "${_INSTAPP} apticron aptitude auditd apt-listchanges" 2> /dev/null
+  mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
+  mrun "${_INSTAPP} unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
+  mrun "${_INSTAPP} rsync strace ntpdate python-dev" 2> /dev/null
+  mrun "${_INSTAPP} mc whois zlib1g zlib1g-dev librsync-dev" 2> /dev/null
+  mrun "${_INSTAPP} sqlite3 libsqlite3-dev s4cmd" 2> /dev/null
+  mrun "${_INSTAPP} ssh ssl-cert libpam-umask shtool" 2> /dev/null
+  mrun "${_INSTAPP} xml-core xml2 xpdf libtool rrdtool" 2> /dev/null
+  mrun "${_INSTAPP} ncurses-dev ncurses-term sipcalc" 2> /dev/null
+  mrun "${_INSTAPP} netcat libzip-dev libwww-perl libsodium-dev" 2> /dev/null
+  mrun "${_INSTAPP} libfontconfig1 libfreetype6 libfreetype6-dev" 2> /dev/null
+  mrun "${_INSTAPP} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev" 2> /dev/null
+  mrun "${_INSTAPP} libicu-dev libjpeg-dev libjpeg62" 2> /dev/null
+  mrun "${_INSTAPP} libonig-dev libpq5 libxml2-dev libxpm4" 2> /dev/null
+  mrun "${_INSTAPP} libxslt-dev libxslt1-dev libxslt1.1 subversion" 2> /dev/null
+  mrun "${_INSTAPP} libaprutil1 libapr1 ldap-utils ipset" 2> /dev/null
+  mrun "${_INSTAPP} pdftk patchutils p7zip-full fontconfig-config" 2> /dev/null
+  mrun "${_INSTAPP} bison catdoc cython3 geoip-database gettext" 2> /dev/null
+  mrun "${_INSTAPP} clamav clamav-base clamav-daemon clamdscan" 2> /dev/null
+  mrun "${_INSTAPP} ghostscript htop icu-devtools lemon lftp nano" 2> /dev/null
+  mrun "${_INSTAPP} python3-dev python3-debian python3-magic" 2> /dev/null
   fix_postfix
-  st_runner "${_INSTALL} ${_MAILSERV}" 2> /dev/null
-  st_runner "${_INSTALL} ${_APT_XTRA}" 2> /dev/null
-  st_runner "${_INSTALL} ${_EXTRA_LIB_APT}" 2> /dev/null
-  st_runner "${_INSTALL} ${_EXTRA_PACKAGES}" 2> /dev/null
-  st_runner "${_INSTALL} ${_SYSLOGD}" 2> /dev/null
+  st_runner "${_INSTAPP} ${_MAILSERV}" 2> /dev/null
+  st_runner "${_INSTAPP} ${_APT_XTRA}" 2> /dev/null
+  st_runner "${_INSTAPP} ${_EXTRA_LIB_APT}" 2> /dev/null
+  st_runner "${_INSTAPP} ${_EXTRA_PACKAGES}" 2> /dev/null
+  st_runner "${_INSTAPP} ${_SYSLOGD}" 2> /dev/null
   _EXTRA_APT="tree"
   st_runner "apt-get install ${_EXTRA_APT} ${nrmUpArg}" 2> /dev/null
   if [ -e "/etc/init.d/php5-fpm" ]; then
@@ -4225,7 +4225,6 @@ basic_packages_install_on_init() {
   ${_APT_UPDATE} -qq &> /dev/null
   apt-get remove --purge unscd -y &> /dev/null
   apt-get remove --purge dbus -y &> /dev/null
-  apt autoremove -y &> /dev/null
   userdel -r debian &> /dev/null
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
@@ -4348,20 +4347,20 @@ if_proxysql_update() {
         msg "INFO: Running ProxySQL re-install to ${_PXC_VRN}..."
         mrun "apt-get clean" 2> /dev/null
         mrun "${_APT_UPDATE} -qq" &> /dev/null
-        mrun "${_INSTALL} sysbench" 2> /dev/null
-        mrun "${_INSTALL} debconf-utils" 2> /dev/null
+        mrun "${_INSTAPP} sysbench" 2> /dev/null
+        mrun "${_INSTAPP} debconf-utils" 2> /dev/null
         mrun "apt-get remove proxysql -y" 2> /dev/null
         mrun "apt-get clean" 2> /dev/null
         mrun "${_APT_UPDATE} -qq" &> /dev/null
-        mrun "${_INSTALL} proxysql" 2> /dev/null
+        mrun "${_INSTAPP} proxysql" 2> /dev/null
       fi
       isPxy=$(which proxysql 2>&1)
       if [ ! -x "${isPxy}" ]; then
         mrun "apt-get clean" 2> /dev/null
         mrun "${_APT_UPDATE} -qq" &> /dev/null
-        mrun "${_INSTALL} sysbench" 2> /dev/null
-        mrun "${_INSTALL} debconf-utils" 2> /dev/null
-        mrun "${_INSTALL} proxysql" 2> /dev/null
+        mrun "${_INSTAPP} sysbench" 2> /dev/null
+        mrun "${_INSTAPP} debconf-utils" 2> /dev/null
+        mrun "${_INSTAPP} proxysql" 2> /dev/null
       else
         mrun "apt-get install --only-upgrade ${nrmUpArg} proxysql" 2> /dev/null
       fi
@@ -4570,6 +4569,8 @@ if_major_os_upgrade() {
     if [ "${_LOC_OSR}" = "stretch" ]; then
       mrun "apt-get purge libpam-systemd -y -qq" 2> /dev/null
     fi
+    echo "sysvinit-core install"  | dpkg --set-selections &> /dev/null
+    echo "sysvinit-utils install" | dpkg --set-selections &> /dev/null
     echo "curl install"           | dpkg --set-selections &> /dev/null
     echo "git install"            | dpkg --set-selections &> /dev/null
     echo "git-core install"       | dpkg --set-selections &> /dev/null
@@ -4583,11 +4584,11 @@ if_major_os_upgrade() {
     echo "zlib1g install"         | dpkg --set-selections &> /dev/null
     echo "zlib1g-dev install"     | dpkg --set-selections &> /dev/null
     echo "zlibc install"          | dpkg --set-selections &> /dev/null
-    mrun "${_INSTALL} zlib1g"     2> /dev/null
-    mrun "${_INSTALL} zlib1g-dev" 2> /dev/null
-    mrun "${_INSTALL} zlibc"      2> /dev/null
-    mrun "${_INSTALL} openssl"    2> /dev/null
-    mrun "${_INSTALL} libssl-dev" 2> /dev/null
+    mrun "${_INSTAPP} zlib1g"     2> /dev/null
+    mrun "${_INSTAPP} zlib1g-dev" 2> /dev/null
+    mrun "${_INSTAPP} zlibc"      2> /dev/null
+    mrun "${_INSTAPP} openssl"    2> /dev/null
+    mrun "${_INSTAPP} libssl-dev" 2> /dev/null
     mrun "apt-get install curl ${forCer}"           2> /dev/null
     mrun "apt-get build-dep curl -y"                2> /dev/null
     mrun "apt-get install git ${forCer}"            2> /dev/null
@@ -4732,6 +4733,8 @@ if_major_os_upgrade() {
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     ###
     ### Make sure that sysvinit-core is installed.
+    echo "sysvinit-core install" | dpkg --set-selections 2> /dev/null
+    echo "sysvinit-utils install" | dpkg --set-selections 2> /dev/null
     mrun "${_INITINS} sysvinit-core" 2> /dev/null
     mrun "${_INITINS} sysvinit-utils" 2> /dev/null
     mrun "apt --fix-broken install -y" 2> /dev/null
@@ -4943,22 +4946,12 @@ sys_packages_update() {
     echo "zlibc install"          | dpkg --set-selections &> /dev/null
   fi
   webmin_apt_update
-  st_runner "apt --fix-broken install -y" 2> /dev/null
-  st_runner "dpkg --configure --force-all -a" 2> /dev/null
   st_runner "${_APT_UPDATE} -qq" &> /dev/null
-  st_runner "apt-get upgrade ${nrmUpArg}" 2> /dev/null
-  if [ "${_LOC_OSR}" = "bullseye" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
-    _SAFE_TO_DIST=NO
-  else
-    st_runner "apt-get dist-upgrade ${nrmUpArg}" 2> /dev/null
-  fi
-  st_runner "apt --fix-broken install -y" 2> /dev/null
-  st_runner "dpkg --configure --force-all -a" 2> /dev/null
+  st_runner "aptitude full-upgrade -f -y -q \
+    --allow-untrusted \
+    -o Dpkg::Options::=--force-confdef \
+    -o Dpkg::Options::=--force-confold" &> /dev/null
   if [ "${_STATUS}" = "INIT" ]; then
-    st_runner "aptitude full-upgrade -f -y -q \
-      --allow-untrusted \
-      -o Dpkg::Options::=--force-confdef \
-      -o Dpkg::Options::=--force-confold" &> /dev/null
     st_runner "${_APT_UPDATE} -qq" &> /dev/null
     st_runner "aptitude full-upgrade -f -y -q \
       --allow-untrusted \
@@ -5097,8 +5090,6 @@ sys_packages_install() {
     fi
     _APT_ELSE="netcat"
     mrun "${_APT_UPDATE} -qq" &> /dev/null
-    mrun "apt-get -f install -qq"             &> /dev/null
-    mrun "apt --fix-broken install -y"        &> /dev/null
     mrun "service nginx start"                &> /dev/null
     mrun "apt-get remove nginx-extras -y -qq" &> /dev/null
     mrun "apt-get remove nginx -y -qq"        &> /dev/null
@@ -5464,11 +5455,11 @@ install_myquick_src() {
       msg "INFO: Building MyQuick ${_MYQUICK_VRN} from sources..."
     fi
     mrun "${_APT_UPDATE} -qq" &> /dev/null
-    mrun "${_INSTALL} cmake" 2> /dev/null
+    mrun "${_INSTAPP} cmake" 2> /dev/null
     if [ "${_DB_SERVER}" = "Percona" ] || [ "${_DB_SERIES}" = "5.7" ]; then
-      mrun "${_INSTALL} libperconaserverclient20-dev" 2> /dev/null
+      mrun "${_INSTAPP} libperconaserverclient20-dev" 2> /dev/null
     else
-      mrun "${_INSTALL} libmariadb-dev" 2> /dev/null
+      mrun "${_INSTAPP} libmariadb-dev" 2> /dev/null
     fi
     cd /var/opt
     rm -rf mydumper*

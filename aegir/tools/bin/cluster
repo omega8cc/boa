@@ -1739,7 +1739,6 @@ upgrade_db_cluster() {
   	vserver ${idn} exec ${_INSTAPP} bc
   	vserver ${idn} exec apt-get upgrade ${_APT_XTR}
   	vserver ${idn} exec apt-get dist-upgrade ${_APT_XTR}
-  	vserver ${idn} exec apt --fix-broken install -y
   	vserver ${idn} exec dpkg --configure --force-all -a
   	vserver ${idn} exec update-rc.d -f mysql remove
 
@@ -1948,6 +1947,9 @@ install_host() {
       || [ "${osx}" = "stretch" ] \
       || [ "${osx}" = "buster" ] \
       || [ "${osx}" = "bullseye" ]; then
+      ${_APT_UPDATE} -qq
+      echo "sysvinit-core install" | dpkg --set-selections
+      echo "sysvinit-utils install" | dpkg --set-selections
       ${_INSTAPP} sysvinit-core
       ${_INSTAPP} sysvinit-utils
       if [ -e "/usr/share/sysvinit/inittab" ]; then
@@ -1955,10 +1957,10 @@ install_host() {
       fi
       echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
       echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-      ${_INSTAPP} sysvinit-core
-      ${_INSTAPP} sysvinit-utils
       rm -f /etc/apt/sources.list.d/nosystemd.list
       rm -f /etc/apt/preferences.d/nosystemd
+      echo "sysvinit-core hold" | dpkg --set-selections &> /dev/null
+      echo "sysvinit-utils hold" | dpkg --set-selections &> /dev/null
     fi
     echo
     echo "NOTE: Please reboot and then run 'cluster up-host'"
@@ -1996,6 +1998,9 @@ upgrade_host() {
 
   if [ -x "/lib/systemd/systemd" ]; then
     echo "Removing systemd on ${_THIS_OS} ${_OSR}..."
+    ${_APT_UPDATE} -qq
+    echo "sysvinit-core install" | dpkg --set-selections
+    echo "sysvinit-utils install" | dpkg --set-selections
     if [ "${osx}" = "jessie" ] \
       || [ "${osx}" = "stretch" ] \
       || [ "${osx}" = "buster" ] \
@@ -2007,8 +2012,6 @@ upgrade_host() {
       fi
       echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
       echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-      ${_INSTAPP} sysvinit-core
-      ${_INSTAPP} sysvinit-utils
       rm -f /etc/apt/sources.list.d/nosystemd.list
       rm -f /etc/apt/preferences.d/nosystemd
     fi
@@ -2017,7 +2020,8 @@ upgrade_host() {
     apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
     apt-get autoremove --purge -y -qq &> /dev/null
     apt-get autoclean -y -qq &> /dev/null
-    apt autoremove -y -qq &> /dev/null
+    echo "sysvinit-core hold" | dpkg --set-selections &> /dev/null
+    echo "sysvinit-utils hold" | dpkg --set-selections &> /dev/null
   fi
 
   if [ "${thisMode}" = "UPGRADE" ]; then

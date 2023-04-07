@@ -537,7 +537,10 @@ prep_for_install_db_sql() {
     || [ "${_OSR}" = "stretch" ] \
     || [ "${_OSR}" = "jessie" ] \
     || [ "${_OSR}" = "trusty" ]; then
-    st_runner "${_INSTALL} software-properties-common dirmngr" 2> /dev/null
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Installing software-properties-common dirmngr..."
+    fi
+    st_runner "${_INSTAPP} software-properties-common dirmngr" 2> /dev/null
   fi
   if [ "${_DB_SERVER}" = "Percona" ] || [ "${_DB_SERIES}" = "5.7" ]; then
     _KEYS_SIG="8507EFA5"
@@ -830,8 +833,8 @@ install_with_aptitude_sql() {
     fi
   fi
   prep_for_install_db_sql
-  st_runner "${_INSTALL} ${SQLDEB}" 2> /dev/null
-  st_runner "${_INSTALL} ${SQLDEB}" 2> /dev/null
+  st_runner "${_INSTAPP} ${SQLDEB}" 2> /dev/null
+  st_runner "${_INSTAPP} ${SQLDEB}" 2> /dev/null
   if [ ! -e "/usr/local/bin/mytop" ] && [ -e "/usr/bin/mysql" ]; then
     msg "INFO: Building MyTop from sources..."
     cd /var/opt
