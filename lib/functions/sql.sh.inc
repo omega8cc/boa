@@ -1,6 +1,7 @@
 #
 # Only supported upgrade path allowed.
 sql_strict_upgrade_path() {
+  _DB_SERVER_TEST=$(mysql -V 2>&1)
   _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
     _NOW_DB_V=$(mysql -V 2>&1 \
@@ -845,6 +846,7 @@ install_with_aptitude_sql() {
   if [ "${_EASY_SETUP}" = "DBHD" ] \
     || [ -e "/etc/mysql/conf.d/galera.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
+    _DB_SERVER_TEST=$(mysql -V 2>&1)
     if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERIES}" ]]; then
       msg "INFO: Running ${_DB_SERVER} system tables check..."
       if [ -x "/usr/bin/mariadb_upgrade" ]; then
@@ -1232,6 +1234,7 @@ db_server_install() {
       fi
       _CUSTOM_CONFIG_SQL=NO
       mrun "sleep 8"
+      _DB_SERVER_TEST=$(mysql -V 2>&1)
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
         msg "INFO: Running ${_DB_SERVER} system tables (1) upgrade..."
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null

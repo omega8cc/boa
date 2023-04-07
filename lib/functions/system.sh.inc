@@ -36,7 +36,9 @@ systemd_remove_if_detected() {
     && [ -e "/lib/systemd/systemd" ]; then
     msg "WARN: The systemd has NOT been cleanly removed yet"
     msg "WARN: Running one extra cleanup procedure now..."
+    sysvinit_install
     systemd_remove_apt_cmd
+    sysvinit_install
   fi
   if [ ! -e "/usr/share/sysvinit/inittab" ]; then
     msg "SYSD: Forced sysvinit install required..."
@@ -45,14 +47,17 @@ systemd_remove_if_detected() {
   if [ `ps aux | grep -v "grep" | grep --count "systemd"` -gt "0" ]; then
     msg "SYSD: Some systemd processes still runnig..."
     msg "SYSD: Forced systemd removal required..."
+    sysvinit_install
     systemd_remove_apt_cmd
+    sysvinit_install
   fi
   if [ -e "/lib/systemd/systemd" ]; then
     msg "ALRT: The systemd has NOT been removed on ${_THIS_OS} ${_OSR}"
     msg "ALRT: Please check details in the logs located in /var/backups/"
     msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
+    msg "STEP: You can also run the 'boa init' command again"
   else
-    msg "INFO: The systemd has been finally removed on ${_THIS_OS} ${_OSR}"
+    msg "INFO: The systemd has been removed on ${_THIS_OS} ${_OSR}"
   fi
 }
 
@@ -2194,23 +2199,15 @@ barracuda_cnf() {
 
 #
 # Running aptitude full-upgrade.
-run_aptitude_full_upgrade() {
+mytop_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: run_aptitude_full_upgrade"
+    msg "PROC: mytop_install"
   fi
-  msg "INFO: Running aptitude full-upgrade..."
-  st_runner "${_APT_UPDATE} -qq" &> /dev/null
-  st_runner "apt --fix-broken install -y" 2> /dev/null
-  st_runner "dpkg --configure --force-all -a" 2> /dev/null
   if [ -e "/usr/bin/mytop" ]; then
     st_runner "${_RMAPP} mytop" &> /dev/null
     st_runner "apt-get purge mytop -y -qq" &> /dev/null
     rm -f /usr/bin/mytop
   fi
-  st_runner "aptitude full-upgrade -f -y -q \
-    --allow-untrusted \
-    -o Dpkg::Options::=--force-confdef \
-    -o Dpkg::Options::=--force-confold" &> /dev/null
   if [ ! -e "/usr/local/bin/mytop" ] && [ -e "/usr/bin/mysql" ]; then
     msg "INFO: Building MyTop from sources..."
     cd /var/opt
@@ -2222,6 +2219,43 @@ run_aptitude_full_upgrade() {
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
   fi
+}
+
+#
+# Running apt-get full-dist-upgrade.
+run_apt_get_dist_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: run_apt_get_dist_upgrade"
+  fi
+  msg "INFO: Running apt-get upgrade..."
+  mrun "${_APT_UPDATE} -qq" &> /dev/null
+  mrun "apt --fix-broken install -y" 2> /dev/null
+  mrun "dpkg --configure --force-all -a" 2> /dev/null
+  mrun "apt-get upgrade ${nrmUpArg}" 2> /dev/null
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Running apt-get full-upgrade..."
+  fi
+  mrun "apt-get full-upgrade ${nrmUpArg}" 2> /dev/null
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Running apt-get dist-upgrade..."
+  fi
+  mrun "apt-get dist-upgrade ${nrmUpArg}" 2> /dev/null
+}
+
+#
+# Running aptitude full-upgrade.
+run_aptitude_full_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: run_aptitude_full_upgrade"
+  fi
+  msg "INFO: Running aptitude full-upgrade..."
+  st_runner "${_APT_UPDATE} -qq" &> /dev/null
+  st_runner "apt --fix-broken install -y" 2> /dev/null
+  st_runner "dpkg --configure --force-all -a" 2> /dev/null
+  st_runner "aptitude full-upgrade -f -y -q \
+    --allow-untrusted \
+    -o Dpkg::Options::=--force-confdef \
+    -o Dpkg::Options::=--force-confold" &> /dev/null
 }
 
 #
@@ -2701,7 +2735,6 @@ sources_list_update() {
     msg "PROC: sources_list_update"
   fi
   ###--------------------###
-  aptitude autoclean -y &> /dev/null
   apt-get clean -qq &> /dev/null
   rm -rf /var/lib/apt/lists/*
   ###--------------------###
@@ -4028,7 +4061,6 @@ run_aptitude_deps_install() {
   mrun "${_INSTALL} libssl-dev" 2> /dev/null
   mrun "${_INSTALL} libc-client2007e libc-client2007e-dev" 2> /dev/null
   mrun "${_INSTALL} libcurl4-gnutls-dev mcrypt libc-client-dev" 2> /dev/null
-  sysvinit_install
   mrun "${_INSTALL} apticron aptitude auditd apt-listchanges" 2> /dev/null
   mrun "${_INSTALL} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
   mrun "${_INSTALL} unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
@@ -4062,15 +4094,138 @@ run_aptitude_deps_install() {
     mrun "service php5-fpm stop" &> /dev/null
     mrun "update-rc.d -f php5-fpm remove" &> /dev/null
   fi
-  sysvinit_install
+}
+
+systemd_cleanup_on_init() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: systemd_cleanup_on_init"
+  fi
+  if [ "${_STATUS}" = "SYSTEMD" ]; then
+    if [ ! -e "/root/.step.init.systemd.one.cnf" ]; then
+      msg "INFO: This server is running systemd, which should be"
+      msg "INFO: removed before installing BOA which involves"
+      msg "INFO: procedure in five steps, as outlined below:"
+      echo
+      msg "STEP: 1. The 'boa init' command will install sysvinit"
+      msg "STEP: 2. You will reboot the server"
+      msg "STEP: 3. Run 'boa init' again so it can remove systemd"
+      msg "STEP: 4. You will reboot the server again"
+      msg "STEP: 5. Run boa standard install command"
+      echo
+      msg "STEP: Let's begin with STEP 1..."
+      msg "INFO: Installing sysvinit on ${_THIS_OS} ${_OSR}..."
+      sysvinit_install
+      if [ -e "/usr/share/sysvinit/inittab" ]; then
+        cp -af /usr/share/sysvinit/inittab /etc/inittab
+        echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+        echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+        sysvinit_install
+        rm -f /etc/apt/sources.list.d/nosystemd.list
+        rm -f /etc/apt/preferences.d/nosystemd
+        msg "INFO: The sysvinit-core installed on ${_THIS_OS} ${_OSR}..."
+        echo
+        msg "STEP: Let's continue to STEP 2... Please reboot this server"
+        msg "STEP: Once the system is up, run 'boa init' command again"
+        touch /root/.step.init.systemd.one.cnf
+      else
+        echo
+        msg "ALRT: The sysvinit has NOT been installed on ${_THIS_OS} ${_OSR}"
+        msg "ALRT: Please check details in the logs located in /var/backups/"
+        msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
+        msg "STEP: You can also run the 'boa init' command again"
+      fi
+      echo
+      mrun "sleep 3"
+      echo "Bye"
+      clean_pid_exit
+    fi
+    if [ ! -e "/root/.step.init.systemd.two.cnf" ] \
+      && [ -e "/root/.step.init.systemd.one.cnf" ]; then
+      msg "STEP: Let's continue to STEP 3..."
+      msg "INFO: Removing systemd on ${_THIS_OS} ${_OSR}..."
+      sysvinit_install
+      if [ -e "/usr/share/sysvinit/inittab" ]; then
+        cp -af /usr/share/sysvinit/inittab /etc/inittab
+        echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+        echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+        rm -f /etc/apt/sources.list.d/nosystemd.list
+        rm -f /etc/apt/preferences.d/nosystemd
+        sysvinit_install
+        systemd_remove_apt_cmd
+        sysvinit_install
+      else
+        echo
+        msg "ALRT: The sysvinit has NOT been installed on ${_THIS_OS} ${_OSR}"
+        msg "ALRT: Please check details in the logs located in /var/backups/"
+        msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
+        msg "STEP: You can also run the 'boa init' command again"
+        echo
+        mrun "sleep 3"
+        echo "Bye"
+        clean_pid_exit
+      fi
+      if [ ! -e "/lib/systemd/systemd" ]; then
+        msg "INFO: The systemd has been removed on ${_THIS_OS} ${_OSR}"
+        msg "INFO: One more check to make sure that everything works..."
+        _CHECK_CRON=$(service cron status 2>&1)
+        if [[ "${_CHECK_CRON}" =~ "running" ]]; then
+          msg "INFO: OK, it works! ${_CHECK_CRON}"
+          msg "STEP: Let's continue to STEP 4... Please reboot this server again"
+          msg "STEP: Once the system is up, run standard boa install command"
+          touch /root/.step.init.systemd.two.cnf
+        else
+          msg "ALRT: Ouch! cron does not work ${_CHECK_CRON}"
+          msg "ALRT: Please check details in the logs located in /var/backups/"
+          msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
+          msg "STEP: You can also run the 'boa init' command again"
+        fi
+      else
+        echo
+        msg "ALRT: The systemd has NOT been removed on ${_THIS_OS} ${_OSR}"
+        msg "ALRT: Please check details in the logs located in /var/backups/"
+        msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
+        msg "STEP: You can also run the 'boa init' command again"
+        touch /root/run_post_major_os_upgrade.info
+      fi
+      echo
+      mrun "sleep 3"
+      echo "Bye"
+      clean_pid_exit
+    fi
+  fi
+  if [ -e "/root/.step.init.systemd.two.cnf" ] \
+    && [ -e "/root/.step.init.systemd.one.cnf" ] \
+    && [ -e "/lib/systemd/systemd" ]; then
+    echo
+    msg "WARN: The systemd has NOT been cleanly removed yet"
+    msg "WARN: Running one extra cleanup procedure now..."
+    sysvinit_install
+    systemd_remove_apt_cmd
+    sysvinit_install
+    if [ -e "/lib/systemd/systemd" ]; then
+      msg "ALRT: The systemd has NOT been removed on ${_THIS_OS} ${_OSR}"
+      msg "ALRT: Please check details in the logs located in /var/backups/"
+      msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
+      msg "STEP: You can also run the 'boa init' command again"
+    else
+      msg "INFO: Yes, systemd has been removed on ${_THIS_OS} ${_OSR}"
+      msg "STEP: Please run standard boa install command again"
+    fi
+    echo
+    mrun "sleep 3"
+    echo "Bye"
+    clean_pid_exit
+  fi
 }
 
 basic_packages_install_on_init() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: basic_packages_install_on_init"
   fi
+  ${_APT_UPDATE} -qq &> /dev/null
   apt-get remove --purge unscd -y &> /dev/null
   apt-get remove --purge dbus -y &> /dev/null
+  apt autoremove -y 2> /dev/null
   userdel -r debian &> /dev/null
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
@@ -4110,110 +4265,6 @@ basic_packages_install_on_init() {
       ${_INITINS} curl &> /dev/null
       ${_INITINS} wget &> /dev/null
       touch /root/.step.init.basic.cnf
-    fi
-  fi
-  if [ "${_STATUS}" = "SYSTEMD" ]; then
-    if [ ! -e "/root/.step.init.systemd.one.cnf" ]; then
-      msg "INFO: This server is running systemd, which should be"
-      msg "INFO: removed before installing BOA which involves"
-      msg "INFO: procedure in five steps, as outlined below:"
-      echo
-      msg "STEP: 1. The 'boa init' command will install sysvinit"
-      msg "STEP: 2. You will reboot the server"
-      msg "STEP: 3. Run 'boa init' again so it can remove systemd"
-      msg "STEP: 4. You will reboot the server again"
-      msg "STEP: 5. Run boa standard install command"
-      echo
-      msg "STEP: Let's begin with STEP 1..."
-      msg "INFO: Installing sysvinit on ${_THIS_OS} ${_OSR}..."
-      sysvinit_install
-      if [ -e "/usr/share/sysvinit/inittab" ]; then
-        cp -af /usr/share/sysvinit/inittab /etc/inittab
-        echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-        echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-        sysvinit_install
-        rm -f /etc/apt/sources.list.d/nosystemd.list
-        rm -f /etc/apt/preferences.d/nosystemd
-        msg "INFO: The sysvinit-core installed on ${_THIS_OS} ${_OSR}..."
-        echo
-        msg "STEP: Let's continue to STEP 2... Please reboot this server"
-        msg "STEP: Once the system is up, run 'boa init' command again"
-        touch /root/.step.init.systemd.one.cnf
-      else
-        echo
-        msg "ALRT: The sysvinit has NOT been installed on ${_THIS_OS} ${_OSR}"
-        msg "ALRT: Please check details in the logs located in /var/backups/"
-        msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
-      fi
-      echo
-      mrun "sleep 3"
-      echo "Bye"
-      clean_pid_exit
-    fi
-    if [ ! -e "/root/.step.init.systemd.two.cnf" ] \
-      && [ -e "/root/.step.init.systemd.one.cnf" ]; then
-      msg "STEP: Let's continue to STEP 3..."
-      msg "INFO: Removing systemd on ${_THIS_OS} ${_OSR}..."
-      sysvinit_install
-      if [ -e "/usr/share/sysvinit/inittab" ]; then
-        cp -af /usr/share/sysvinit/inittab /etc/inittab
-        echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-        echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-        sysvinit_install
-        rm -f /etc/apt/sources.list.d/nosystemd.list
-        rm -f /etc/apt/preferences.d/nosystemd
-        systemd_remove_apt_cmd
-      else
-        echo
-        msg "ALRT: The sysvinit has NOT been installed on ${_THIS_OS} ${_OSR}"
-        msg "ALRT: Please check details in the logs located in /var/backups/"
-        msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
-        echo
-        mrun "sleep 3"
-        echo "Bye"
-        clean_pid_exit
-      fi
-      if [ ! -e "/lib/systemd/systemd" ]; then
-        msg "INFO: The systemd has been removed on ${_THIS_OS} ${_OSR}"
-        msg "INFO: One more check to make sure that everything works..."
-        _CHECK_CRON=$(service cron status 2>&1)
-        if [[ "${_CHECK_CRON}" =~ "running" ]]; then
-          msg "INFO: OK, it works! ${_CHECK_CRON}"
-          msg "STEP: Let's continue to STEP 4... Please reboot this server again"
-          msg "STEP: Once the system is up, run standard boa install command"
-          touch /root/.step.init.systemd.two.cnf
-        else
-          msg "ALRT: Ouch! cron does not work ${_CHECK_CRON}"
-          msg "ALRT: Please check details in the logs located in /var/backups/"
-          msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
-        fi
-      else
-        echo
-        msg "ALRT: The systemd has NOT been removed on ${_THIS_OS} ${_OSR}"
-        msg "ALRT: Please check details in the logs located in /var/backups/"
-        msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
-        touch /root/run_post_major_os_upgrade.info
-      fi
-      echo
-      mrun "sleep 3"
-      echo "Bye"
-      clean_pid_exit
-    fi
-  fi
-  if [ -e "/root/.step.init.systemd.two.cnf" ] \
-    && [ -e "/root/.step.init.systemd.one.cnf" ] \
-    && [ -e "/lib/systemd/systemd" ]; then
-    echo
-    msg "WARN: The systemd has NOT been cleanly removed yet"
-    msg "WARN: Running one extra cleanup procedure now..."
-    sysvinit_install
-    systemd_remove_apt_cmd
-    if [ -e "/lib/systemd/systemd" ]; then
-      msg "ALRT: The systemd has NOT been removed on ${_THIS_OS} ${_OSR}"
-      msg "ALRT: Please check details in the logs located in /var/backups/"
-      msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
-    else
-      msg "INFO: The systemd has been finally removed on ${_THIS_OS} ${_OSR}"
     fi
   fi
 }
@@ -4417,7 +4468,9 @@ if_post_major_os_upgrade() {
     mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
 
     msg "INFO: Cleaning up any systemd remnants..."
+    sysvinit_install
     systemd_remove_apt_cmd
+    sysvinit_install
 
     msg "INFO: Removing any packages orphaned by the migration process..."
     mrun "apt-get autoremove --purge -y -qq" 2> /dev/null
@@ -4901,7 +4954,6 @@ sys_packages_update() {
   fi
   st_runner "apt --fix-broken install -y" 2> /dev/null
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
-  _DB_SERVER_TEST=$(mysql -V 2>&1)
   if [ "${_STATUS}" = "INIT" ]; then
     st_runner "aptitude full-upgrade -f -y -q \
       --allow-untrusted \
@@ -6424,6 +6476,7 @@ initd_update() {
         fi
       done
       mrun "service nginx start" &> /dev/null
+      _DB_SERVER_TEST=$(mysql -V 2>&1)
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
         msg "INFO: Running ${_DB_SERVER} system tables (2) upgrade..."
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null

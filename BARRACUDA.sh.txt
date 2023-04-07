@@ -260,11 +260,19 @@ os_detection_minimal
 
 
 ###
-### Basic packages check and update
+### Packages update on init
 ###
-basic_packages_install_on_init
 sources_list_update
+basic_packages_install_on_init
 more_packages_install_on_init
+run_apt_get_dist_upgrade
+run_aptitude_full_upgrade
+
+
+###
+### Systemd cleanup on init
+###
+systemd_cleanup_on_init
 
 
 ###
@@ -321,11 +329,13 @@ db_server_install
 ###
 init_sql_root_credentials
 sql_root_credentials_update
+mytop_install
 
 
 ###
 ### Install other services
 ###
+run_apt_get_dist_upgrade
 run_aptitude_full_upgrade
 run_aptitude_deps_install
 kill_nash
