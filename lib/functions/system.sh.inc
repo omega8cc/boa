@@ -5505,24 +5505,25 @@ myquick_install_upgrade() {
       | cut -d"-" -f1 \
       | awk '{ print $1}' \
       | sed "s/[\,']//g" 2>&1)
-    if [ "${_DB_V}" != "${_MD_V}" ]; then
-      _MYQUICK_INSTALL_REQUIRED=YES
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V}), rebuild required"
+    if [ -x "${isMyQuick}" ]; then
+      if [ "${_DB_V}" != "${_MD_V}" ]; then
+        _MYQUICK_INSTALL_REQUIRED=YES
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V}), rebuild required"
+        fi
+        install_myquick_src
+      elif [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN}" ]; then
+        _MYQUICK_INSTALL_REQUIRED=YES
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
+        fi
+        install_myquick_src
       fi
-      install_myquick_src
     fi
     if [ ! -e "${isMyQuick}" ]; then
       _MYQUICK_INSTALL_REQUIRED=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V}), rebuild required"
-      fi
-      install_myquick_src
-    fi
-    if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN}" ]; then
-      _MYQUICK_INSTALL_REQUIRED=YES
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
+        msg "INFO: MyQuick ${_MYQUICK_VRN} not installed yet..."
       fi
       install_myquick_src
     fi
