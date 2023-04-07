@@ -451,7 +451,12 @@ if [ -d "${_ROOT}/host_master/000" ]; then
   list=([0-9]*)
   last=${list[@]: -1}
   _LASTNUM=$last
-  nextnum=00$((10#${last%%[^0-9]*} + 1))
+  _BASH_TEST=$(bash --version 2>&1)
+  if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+    nextnum=00$((10#0${last%%[^0-9]*} + 1))
+  else
+    nextnum=00$((10#${last%%[^0-9]*} + 1))
+  fi
   nextnum=${nextnum: -3}
   _PREV_HM_ROOT_TEST="${_ROOT}/host_master/${_LASTNUM}"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -474,7 +479,12 @@ if [ -d "${_ROOT}/host_master/000" ]; then
     list=([0-9]*)
     last=${list[@]: -1}
     _LASTNUM=$last
-    nextnum=00$((10#${last%%[^0-9]*} + 1))
+    _BASH_TEST=$(bash --version 2>&1)
+    if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+      nextnum=00$((10#0${last%%[^0-9]*} + 1))
+    else
+      nextnum=00$((10#${last%%[^0-9]*} + 1))
+    fi
     nextnum=${nextnum: -3}
     _DISTRO=${nextnum}
     _PREV_HM_ROOT_TEST="${_ROOT}/host_master/${_LASTNUM}"
@@ -494,7 +504,12 @@ if [ -d "${_ROOT}/host_master/000" ]; then
       list=([0-9]*)
       last=${list[@]: -1}
       _LASTNUM=$last
-      nextnum=00$((10#${last%%[^0-9]*} + 1))
+      _BASH_TEST=$(bash --version 2>&1)
+      if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+        nextnum=00$((10#0${last%%[^0-9]*} + 1))
+      else
+        nextnum=00$((10#${last%%[^0-9]*} + 1))
+      fi
       nextnum=${nextnum: -3}
       _DISTRO=${nextnum}
       _PREV_HM_ROOT_TEST="${_ROOT}/host_master/${_LASTNUM}"

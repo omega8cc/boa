@@ -4492,7 +4492,12 @@ satellite_if_init_or_upgrade() {
         list=([0-9]*)
         last=${list[@]: -1}
         _LASTNUM=$last
-        nextnum=00$((10#${last%%[^0-9]*} + 1))
+        _BASH_TEST=$(bash --version 2>&1)
+        if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+          nextnum=00$((10#0${last%%[^0-9]*} + 1))
+        else
+          nextnum=00$((10#${last%%[^0-9]*} + 1))
+        fi
         nextnum=${nextnum: -3}
         _DISTRO=${nextnum}
       fi
@@ -4503,7 +4508,12 @@ satellite_if_init_or_upgrade() {
         listx=([0-9]*)
         lastx=${listx[@]: -1}
         _LAST_HMR=$lastx
-        nextnumx=00$((10#${lastx%%[^0-9]*} + 1))
+        _BASH_TEST=$(bash --version 2>&1)
+        if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+          nextnumx=00$((10#0${lastx%%[^0-9]*} + 1))
+        else
+          nextnumx=00$((10#${lastx%%[^0-9]*} + 1))
+        fi
         nextnumx=${nextnumx: -3}
         _HM_DISTRO=${nextnumx}
       fi
@@ -4514,7 +4524,12 @@ satellite_if_init_or_upgrade() {
         listl=([0-9]*)
         lastl=${listl[@]: -1}
         export _LAST_ALL=$lastl
-        nextnuml=00$((10#${lastl%%[^0-9]*} + 1))
+        _BASH_TEST=$(bash --version 2>&1)
+        if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+          nextnuml=00$((10#0${lastl%%[^0-9]*} + 1))
+        else
+          nextnuml=00$((10#${lastl%%[^0-9]*} + 1))
+        fi
         nextnuml=${nextnuml: -3}
         export _ALL_DISTRO=${nextnuml}
       fi
@@ -4535,7 +4550,12 @@ satellite_if_init_or_upgrade() {
       listl=([0-9]*)
       lastl=${listl[@]: -1}
       export _LAST_ALL=$lastl
-      nextnuml=00$((10#${lastl%%[^0-9]*} + 1))
+      _BASH_TEST=$(bash --version 2>&1)
+      if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+        nextnuml=00$((10#0${lastl%%[^0-9]*} + 1))
+      else
+        nextnuml=00$((10#${lastl%%[^0-9]*} + 1))
+      fi
       nextnuml=${nextnuml: -3}
       export _ALL_DISTRO=${nextnuml}
     fi
@@ -5328,7 +5348,12 @@ satellite_child_b_aegir_build() {
       list=([0-9]*)
       last=${list[@]: -1}
       _L_LAST_HMR=$last
-      nextnum=00$((10#${last%%[^0-9]*} + 1))
+      _BASH_TEST=$(bash --version 2>&1)
+      if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+        nextnum=00$((10#0${last%%[^0-9]*} + 1))
+      else
+        nextnum=00$((10#${last%%[^0-9]*} + 1))
+      fi
       nextnum=${nextnum: -3}
       _L_HM_DISTRO=${nextnum}
       _HM_ROOT="${_ROOT}/aegir/distro/${_L_HM_DISTRO}"
@@ -5344,7 +5369,12 @@ satellite_child_b_aegir_build() {
         list=([0-9]*)
         last=${list[@]: -1}
         _L_LAST_HMR=$last
-        nextnum=00$((10#${last%%[^0-9]*} + 1))
+        _BASH_TEST=$(bash --version 2>&1)
+        if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+          nextnum=00$((10#0${last%%[^0-9]*} + 1))
+        else
+          nextnum=00$((10#${last%%[^0-9]*} + 1))
+        fi
         nextnum=${nextnum: -3}
         _L_HM_DISTRO=${nextnum}
         _HM_ROOT="${_ROOT}/aegir/distro/${_L_HM_DISTRO}"
