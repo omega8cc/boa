@@ -4225,7 +4225,7 @@ basic_packages_install_on_init() {
   ${_APT_UPDATE} -qq &> /dev/null
   apt-get remove --purge unscd -y &> /dev/null
   apt-get remove --purge dbus -y &> /dev/null
-  apt autoremove -y 2> /dev/null
+  apt autoremove -y &> /dev/null
   userdel -r debian &> /dev/null
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
