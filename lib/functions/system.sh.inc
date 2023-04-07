@@ -2260,7 +2260,6 @@ php_install_deps() {
   ###--------------------###
   mrun "${_APT_UPDATE} -qq" &> /dev/null
   mrun "${_INSTALL} cmake" 2> /dev/null
-  mrun "${_INSTALL} devscripts" 2> /dev/null
   mrun "${_INSTALL} libgd-dev" 2> /dev/null
   mrun "${_INSTALL} libgd3" 2> /dev/null
   mrun "${_INSTALL} libkrb5-dev" 2> /dev/null
@@ -3952,7 +3951,7 @@ run_aptitude_deps_install() {
   mrun "apt-get remove libcurl4-gnutls-dev -y -qq" 2> /dev/null
   mrun "apt-get remove libcurl4-openssl-dev -y -qq" 2> /dev/null
   mrun "apt autoremove -y -qq" 2> /dev/null
-  mrun "${_INSTALL} build-essential devscripts libsasl2-modules" 2> /dev/null
+  mrun "${_INSTALL} build-essential libsasl2-modules" 2> /dev/null
   mrun "${_INSTALL} zlibc time vim cvs makepasswd" 2> /dev/null
   mrun "${_INSTALL} man-db dnsutils sudo symlinks iptables" 2> /dev/null
   mrun "${_INSTALL} autoconf automake autotools-dev m4 bc" 2> /dev/null
