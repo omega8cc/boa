@@ -1248,6 +1248,16 @@ install_php_multi() {
   ### patch -p1 < ${bldPth}/aegir/patches/fpm_main.c.patch &> /dev/null
   ### cd /var/opt/php-${_PHP_VERSION}
   msg "INFO: Building PHP ${_PHP_VERSION} part 2/3"
+  if [ "${_OSR}" = "chimaera" ] \
+    || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bullseye" ] \
+    || [ "${_OSR}" = "buster" ]; then
+    if [ "$1" = "56" ]; then
+      _PHP_EXTRA="${_PHP_EXTRA}"
+    else
+      _PHP_EXTRA="${_PHP_EXTRA} --enable-intl"
+    fi
+  fi
   _PRE_SNFR=
   if [ -e "/usr/local/lib/icu/current" ] \
     && [ "$1" = "56" ]; then
@@ -1328,7 +1338,6 @@ install_php_multi() {
                 --enable-calendar \
                 --enable-exif \
                 --enable-ftp \
-                --enable-intl \
                 --enable-mbstring \
                 --enable-pcntl \
                 --enable-soap \
@@ -1364,7 +1373,6 @@ install_php_multi() {
                 --enable-calendar \
                 --enable-exif \
                 --enable-ftp \
-                --enable-intl \
                 --enable-mbstring \
                 --enable-pcntl \
                 --enable-soap \
