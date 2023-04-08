@@ -4045,7 +4045,11 @@ run_aptitude_deps_install() {
   elif [ "${_THIS_OS}" = "Ubuntu" ]; then
     ${_INITINS} ubuntu-keyring &> /dev/null
   fi
-  msg "INFO: Installing a large list of libraries and tools..."
+  if [ "${_STATUS}" = "INIT" ]; then
+    msg "INFO: Installing a large list of libraries and tools..."
+  elif [ "${_STATUS}" = "UPGRADE" ]; then
+    msg "INFO: Upgrading a large list of libraries and tools..."
+  fi
   msg "WAIT: This may take a while, please wait..."
   mrun "${_APT_UPDATE} -qq" &> /dev/null
   mrun "apt-get remove percona-xtrabackup-24 -y -qq" 2> /dev/null
