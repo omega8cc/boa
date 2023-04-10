@@ -1392,12 +1392,13 @@ barracuda_cnf() {
         _CLSTR_PHP_MULTI_INSTALL="${_PHP_OVERRIDE}"
         _CLSTR_PHP_MULTI_INSTALL="8.1 7.4 5.6"
       fi
-      if [ ! -e "/root/.debug.cnf" ] || [ -e "/root/.default.cnf" ]; then
+      if [ ! -z "${_PHP_MULTI_INSTALL}" ]; then
         sed -i "s/^_PHP_MULTI_INSTALL.*//g" ${barCnf}
+        wait
+        echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
         wait
         sed -i "/^$/d" ${barCnf}
         wait
-        _PHP_MULTI_INSTALL=""
       fi
     fi
 
@@ -1585,7 +1586,9 @@ barracuda_cnf() {
         _PHP_MULTI_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
         if [[ "${_PHP_MULTI_TEST}" =~ "_PHP_MULTI_INSTALL" ]]; then
           sed -i "s/^_PHP_MULTI_INSTALL.*//g" ${barCnf}
+          wait
           sed -i "/^$/d" ${barCnf}
+          wait
         fi
         echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
       fi
