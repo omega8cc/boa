@@ -472,8 +472,7 @@ up_action() {
     ### Make sure that _PHP_SINGLE_INSTALL is set in ${barCnf}
     if [ "${phpS}" = "8.1" ] \
       || [ "${phpS}" = "8.0" ] \
-      || [ "${phpS}" = "7.4" ] \
-      || [ "${phpS}" = "7.3" ]; then
+      || [ "${phpS}" = "7.4" ]; then
       _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL ${barCnf} 2>&1)
       if [[ "${_PHP_SINGLE_INSTALL_TEST}" =~ "_PHP_SINGLE_INSTALL" ]]; then
         sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=${phpS}/g" ${barCnf}
@@ -486,8 +485,7 @@ up_action() {
     if [ ! -z "${phpS}" ]; then
       if [ "${phpS}" = "8.1" ] \
         || [ "${phpS}" = "8.0" ] \
-        || [ "${phpS}" = "7.4" ] \
-        || [ "${phpS}" = "7.3" ]; then
+        || [ "${phpS}" = "7.4" ]; then
 
         ### Debugging
         if [ "$debug" = "debug" ]; then
@@ -553,7 +551,12 @@ up_action() {
           done
         fi
       elif [ "${phpS}" = "ALL" ]; then
-        phpM="7.4 8.0 8.1"
+        if [ "${_DEBUG_MODE}" = "YES" ] \
+          || [ -e "/root/.debug-barracuda-installer.cnf" ]; then
+          phpM="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2"
+        else
+           phpM="7.4 8.1 8.2"
+        fi
         phpS="7.4"
 
         ### Debugging
