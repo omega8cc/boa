@@ -13,7 +13,7 @@ hold() {
   killall -9 nginx &> /dev/null
   sleep 1
   killall -9 nginx &> /dev/null
-  _PHP_V="81 80 74 73 72 71 70 56 55 54 53"
+  _PHP_V="82 81 80 74 73 72 71 70 56 55 54 53"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ]; then
       service php${e}-fpm stop &> /dev/null

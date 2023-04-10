@@ -127,7 +127,10 @@ _DISTRO_ROOT="${_ROOT}/distro/${_DISTRO}"
 _D="/data/all"
 _SRCDIR="/opt/tmp/files"
 _LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
-if [ "${_PHP_CLI_VERSION}" = "8.1" ] \
+if [ "${_PHP_CLI_VERSION}" = "8.2" ] \
+  && [ -x "/opt/php82/bin/php" ]; then
+  _T_CLI=/opt/php82/bin
+elif [ "${_PHP_CLI_VERSION}" = "8.1" ] \
   && [ -x "/opt/php81/bin/php" ]; then
   _T_CLI=/opt/php81/bin
 elif [ "${_PHP_CLI_VERSION}" = "8.0" ] \

@@ -52,7 +52,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### PHP MULTI INSTALL                      ###
 ###----------------------------------------###
 ###
-### By default Barracuda installs only PHP 5.6
+### By default Barracuda installs PHP 7.4/8.1
 ### but this option allows you to install also
 ### other experimental PHP versions and then
 ### choose different version for PHP and
@@ -61,11 +61,11 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### and _PHP_CLI_VERSION.
 ###
 ### Available options:
-### 8.1, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
+### 8.2, 8.1, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
 ###
 ### NOTE: 7.4 is required
 ###
-### Example: _PHP_MULTI_INSTALL="8.0 7.4 5.6"
+### Example: _PHP_MULTI_INSTALL="7.4 8.1 5.6"
 ###
 ### Note that removing any version from this
 ### list once it is already installed, will

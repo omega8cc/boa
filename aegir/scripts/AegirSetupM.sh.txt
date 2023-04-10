@@ -82,7 +82,10 @@ done
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
   _THIS_DB_HOST=$(uname -n 2>&1)
 fi
-if [ "${_PHP_CLI_VERSION}" = "8.1" ] \
+if [ "${_PHP_CLI_VERSION}" = "8.2" ] \
+  && [ -x "/opt/php82/bin/php" ]; then
+  _T_CLI=/opt/php82/bin
+elif [ "${_PHP_CLI_VERSION}" = "8.1" ] \
   && [ -x "/opt/php81/bin/php" ]; then
   _T_CLI=/opt/php81/bin
 elif [ "${_PHP_CLI_VERSION}" = "8.0" ] \
@@ -114,7 +117,11 @@ urlHmr="http://${_USE_MIR}/versions/master/aegir"
 # Update php-cli for Drush.
 php_cli_drush_update() {
   _DRUSH_FILE="${_ROOT}/drush/drush.php"
-  if [ "${_PHP_CLI_VERSION}" = "8.1" ] \
+  if [ "${_PHP_CLI_VERSION}" = "8.2" ] \
+    && [ -x "/opt/php82/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php82\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "8.1" ] \
     && [ -x "/opt/php81/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php81\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null

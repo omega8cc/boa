@@ -172,6 +172,7 @@ so both can be used as default versions in the Aegir PHP configuration files:
 ###
 ### Supported values for single PHP-FPM mode which can be written in this file:
 ###
+### 8.2
 ### 8.1
 ### 8.0
 ### 7.4
@@ -228,6 +229,7 @@ so both can be used as default versions in the Aegir PHP configuration files:
 ###
 ### Supported values which can be written in this file:
 ###
+### 8.2
 ### 8.1
 ### 8.0
 ### 7.4

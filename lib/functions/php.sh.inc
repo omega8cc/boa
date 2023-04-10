@@ -171,12 +171,12 @@ fix_php_ini_newrelic_all() {
       _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
       _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
     fi
-    _PHP_V="80 74 73 72 71 70 56"
+    _PHP_V="82 81 80 74 73 72 71 70 56"
     if [ "${_DB_SERIES}" = "10.4" ] \
       || [ "${_DB_SERIES}" = "10.3" ] \
       || [ "${_DB_SERIES}" = "10.2" ] \
       || [ "${_DB_SERIES}" = "5.7" ]; then
-      _PHP_V="80 74 73 72 71 70 56"
+      _PHP_V="82 81 80 74 73 72 71 70 56"
     fi
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
@@ -209,15 +209,16 @@ fix_php_ini_opcache() {
 #
 # Fix all FMP php.ini files to add Zend OPcache
 fix_php_ini_opcache_all() {
-  _PHP_V="81 80 74 73 72 71 70 56"
+  _PHP_V="82 81 80 74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ] \
     || [ "${_DB_SERIES}" = "5.7" ]; then
-    _PHP_V="81 80 74 73 72 71 70 56"
+    _PHP_V="82 81 80 74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
     case "${e}" in
+      82) _P_API="${_PHP82_API}" ;;
       81) _P_API="${_PHP81_API}" ;;
       80) _P_API="${_PHP80_API}" ;;
       74) _P_API="${_PHP74_API}" ;;
@@ -259,9 +260,11 @@ fix_php_ini_tet() {
 # Fix all php.ini files to add php_tet.so
 fix_php_ini_tet_all() {
   if [ "${_PHP_TET}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "TET" ]]; then
-    _PHP_V="80 74 73 72 71 70 56"
+    _PHP_V="82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       case "${e}" in
+        82) _P_API="${_PHP82_API}" ;;
+        81) _P_API="${_PHP81_API}" ;;
         80) _P_API="${_PHP80_API}" ;;
         74) _P_API="${_PHP74_API}" ;;
         73) _P_API="${_PHP73_API}" ;;
@@ -275,7 +278,11 @@ fix_php_ini_tet_all() {
       _TET_BASE="/opt/php${e}/lib/php/extensions/no-debug-non-zts"
       _TET_SO="${_TET_BASE}-${_P_API}/php_tet.so"
       if [ ! -e "${_TET_SO}" ]; then
-        if [[ "${e}" =~ "80" ]] || [[ "${e}" =~ "74" ]] || [[ "${e}" =~ "73" ]]; then
+        if [[ "${e}" =~ "82" ]] \
+          || [[ "${e}" =~ "81" ]] \
+          || [[ "${e}" =~ "80" ]] \
+          || [[ "${e}" =~ "74" ]] \
+          || [[ "${e}" =~ "73" ]]; then
           _TET_VRN="5.3-Linux-x64-Perl-PHP-Python-Ruby"
         else
           _TET_VRN="5.2-Linux-x86_64-Perl-PHP-Python-Ruby"
@@ -394,12 +401,12 @@ php_conf_update() {
   wait
   sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
   wait
-  _PHP_V="81 80 74 73 72 71 70 56"
+  _PHP_V="82 81 80 74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ] \
     || [ "${_DB_SERIES}" = "5.7" ]; then
-    _PHP_V="81 80 74 73 72 71 70 56"
+    _PHP_V="82 81 80 74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
@@ -432,10 +439,10 @@ php_conf_update() {
       fix_php_ini_mailparse
       fix_php_ini_twig
     fi
-    if [ "${e}" != "80" ] && [ "${e}" != "81" ]; then
+    if [ "${e}" != "80" ] && [ "${e}" != "81" ] && [ "${e}" != "82" ]; then
       add_php_ini_jsmin
     fi
-    if [ "${e}" = "80" ] || [ "${e}" = "81" ]; then
+    if [ "${e}" = "80" ] || [ "${e}" = "81" ] || [ "${e}" = "82" ]; then
       remove_php_ini_jsmin
     fi
     fix_php_ini_redis
@@ -455,10 +462,10 @@ php_conf_update() {
       fix_php_ini_mailparse
       fix_php_ini_twig
     fi
-    if [ "${e}" != "80" ] && [ "${e}" != "81" ]; then
+    if [ "${e}" != "80" ] && [ "${e}" != "81" ] && [ "${e}" != "82" ]; then
       add_php_ini_jsmin
     fi
-    if [ "${e}" = "80" ] || [ "${e}" = "81" ]; then
+    if [ "${e}" = "80" ] || [ "${e}" = "81" ] || [ "${e}" = "82" ]; then
       remove_php_ini_jsmin
     fi
     fix_php_ini_redis
@@ -520,12 +527,12 @@ tune_web_server_config() {
       _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
     fi
   fi
-  _PHP_V="81 80 74 73 72 71 70 56"
+  _PHP_V="82 81 80 74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "10.3" ] \
     || [ "${_DB_SERIES}" = "10.2" ] \
     || [ "${_DB_SERIES}" = "5.7" ]; then
-    _PHP_V="81 80 74 73 72 71 70 56"
+    _PHP_V="82 81 80 74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
     sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
@@ -666,7 +673,12 @@ install_php_extensions() {
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     touch ${pthLog}/f_uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log
-  elif [ "$1" = "72" ] || [ "$1" = "73" ] || [ "$1" = "74" ] || [ "$1" = "80" ] || [ "$1" = "81" ]; then
+  elif [ "$1" = "72" ] \
+    || [ "$1" = "73" ] \
+    || [ "$1" = "74" ] \
+    || [ "$1" = "80" ] \
+    || [ "$1" = "81" ] \
+    || [ "$1" = "82" ]; then
     msg "INFO: Installing UploadProgress ${_UPROGRESS_EIGHT_VRN} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf uploadprogress*
@@ -692,7 +704,7 @@ install_php_extensions() {
     touch ${pthLog}/f_uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
-  if [ "$1" != "80" ] && [ "$1" != "81" ]; then
+  if [ "$1" != "80" ] && [ "$1" != "81" ] && [ "$1" != "82" ]; then
     msg "INFO: Installing JSMin ${_JSMIN_VRN} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf pecl-jsmin*
@@ -859,22 +871,22 @@ install_php_extensions() {
       fi
     fi
   fi
-  msg "INFO: Installing YAML ${_YAML_VRN} for PHP ${_T_PHP_VRN}..."
+  msg "INFO: Installing YAML ${_YAML_PHP_LEGACY_VRN} for PHP ${_T_PHP_VRN}..."
   cd /var/opt
   rm -rf yaml*
   if [ "$1" = "56" ] || [ "$1" = "70" ]; then
-    get_dev_src "yaml-${_YAML_VRN}.tgz"
-    cd /var/opt/yaml-${_YAML_VRN}
+    get_dev_src "yaml-${_YAML_PHP_LEGACY_VRN}.tgz"
+    cd /var/opt/yaml-${_YAML_PHP_LEGACY_VRN}
   else
-    get_dev_src "yaml-${_YAML_PHP7_VRN}.tgz"
-    cd /var/opt/yaml-${_YAML_PHP7_VRN}
+    get_dev_src "yaml-${_YAML_PHP_MODERN_VRN}.tgz"
+    cd /var/opt/yaml-${_YAML_PHP_MODERN_VRN}
   fi
   mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
   mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
   mrun "make --quiet" 2> /dev/null
   mrun "make --quiet install" 2> /dev/null
   mrun "ldconfig" 2> /dev/null
-  touch ${pthLog}/f_yaml-${_YAML_VRN}-${_T_PHP_VRN}.log
+  touch ${pthLog}/f_yaml-${_YAML_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log
 }
 
 #
@@ -964,7 +976,12 @@ php_extensions_update() {
       mrun "ldconfig" 2> /dev/null
       touch ${pthLog}/f_uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log
     fi
-  elif [ "$1" = "72" ] || [ "$1" = "73" ] || [ "$1" = "74" ] || [ "$1" = "80" ] || [ "$1" = "81" ]; then
+  elif [ "$1" = "72" ] \
+    || [ "$1" = "73" ] \
+    || [ "$1" = "74" ] \
+    || [ "$1" = "80" ] \
+    || [ "$1" = "81" ] \
+    || [ "$1" = "82" ]; then
     if [ ! -e "${pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing UploadProgress ${_UPROGRESS_EIGHT_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
@@ -1178,23 +1195,23 @@ php_extensions_update() {
       fi
     fi
   fi
-  if [ ! -e "${pthLog}/f_yaml-${_YAML_VRN}-${_T_PHP_VRN}.log" ]; then
-    msg "INFO: Installing YAML ${_YAML_VRN} upgrade for PHP ${_T_PHP_VRN}..."
+  if [ ! -e "${pthLog}/f_yaml-${_YAML_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log" ]; then
+    msg "INFO: Installing YAML ${_YAML_PHP_LEGACY_VRN} upgrade for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf yaml*
     if [ "$1" = "56" ] || [ "$1" = "70" ]; then
-      get_dev_src "yaml-${_YAML_VRN}.tgz"
-      cd /var/opt/yaml-${_YAML_VRN}
+      get_dev_src "yaml-${_YAML_PHP_LEGACY_VRN}.tgz"
+      cd /var/opt/yaml-${_YAML_PHP_LEGACY_VRN}
     else
-      get_dev_src "yaml-${_YAML_PHP7_VRN}.tgz"
-      cd /var/opt/yaml-${_YAML_PHP7_VRN}
+      get_dev_src "yaml-${_YAML_PHP_MODERN_VRN}.tgz"
+      cd /var/opt/yaml-${_YAML_PHP_MODERN_VRN}
     fi
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
     mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    touch ${pthLog}/f_yaml-${_YAML_VRN}-${_T_PHP_VRN}.log
+    touch ${pthLog}/f_yaml-${_YAML_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log
   fi
 }
 
@@ -1294,7 +1311,7 @@ install_php_multi() {
              --with-ldap \
              --with-sodium \
              --with-gmp"
-  if [ "$1" = "74" ] || [ "$1" = "80" ] || [ "$1" = "81" ]; then
+  if [ "$1" = "74" ] || [ "$1" = "80" ] || [ "$1" = "81" ] || [ "$1" = "82" ]; then
     _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-freetype-dir=\/usr//g" 2>&1)
     _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-openssl=\/usr\/local\/ssl/--with-openssl/g" 2>&1)
     _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-curl=\/usr\/local/--with-curl/g" 2>&1)
@@ -1506,6 +1523,7 @@ newrelic_update() {
       mv -f /etc/newrelic \
         ${vBs}/nr/etc-newrelic-pre-${_X_VERSION}-${_NOW} &> /dev/null
       pthNrx="lib/php/extensions/no-debug-non-zts"
+      _PHP_EXT_DIR_82="/opt/php82/${pthNrx}-${_PHP82_API}"
       _PHP_EXT_DIR_81="/opt/php81/${pthNrx}-${_PHP81_API}"
       _PHP_EXT_DIR_80="/opt/php80/${pthNrx}-${_PHP80_API}"
       _PHP_EXT_DIR_74="/opt/php74/${pthNrx}-${_PHP74_API}"
@@ -1521,7 +1539,7 @@ newrelic_update() {
       st_runner "${_APT_UPDATE} -qq" &> /dev/null
       st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
       st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null
-      NR_PHPLIST="/opt/php56/bin:/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin"
+      NR_PHPLIST="/opt/php56/bin:/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin"
       NR_SILENT="silent"
       export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
       export NR_INSTALL_SILENT="${NR_SILENT}"
@@ -1533,6 +1551,16 @@ newrelic_update() {
         _SYSTEM_ARCH="x32"
       fi
       pthNra="/usr/lib/newrelic-php5/agent"
+      if [ -e "$_PHP_EXT_DIR_82" ] && [ ! -e "$_PHP_EXT_DIR_82/newrelic.so" ] \
+        && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP82_API}.so" ]; then
+        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP82_API}.so \
+          $_PHP_EXT_DIR_82/newrelic.so
+      fi
+      if [ -e "$_PHP_EXT_DIR_81" ] && [ ! -e "$_PHP_EXT_DIR_81/newrelic.so" ] \
+        && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP81_API}.so" ]; then
+        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP81_API}.so \
+          $_PHP_EXT_DIR_81/newrelic.so
+      fi
       if [ -e "$_PHP_EXT_DIR_80" ] && [ ! -e "$_PHP_EXT_DIR_80/newrelic.so" ] \
         && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP80_API}.so" ]; then
         ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP80_API}.so \
@@ -1605,6 +1633,8 @@ if_install_php_newrelic() {
       _GPG=gpg
     fi
     _MULTI_NR=NO
+    _PHP_EXT_DIR_82="/opt/php82/lib/php/extensions/no-debug-non-zts-${_PHP82_API}"
+    _PHP_EXT_DIR_81="/opt/php81/lib/php/extensions/no-debug-non-zts-${_PHP81_API}"
     _PHP_EXT_DIR_80="/opt/php80/lib/php/extensions/no-debug-non-zts-${_PHP80_API}"
     _PHP_EXT_DIR_74="/opt/php74/lib/php/extensions/no-debug-non-zts-${_PHP74_API}"
     _PHP_EXT_DIR_73="/opt/php73/lib/php/extensions/no-debug-non-zts-${_PHP73_API}"
@@ -1612,6 +1642,14 @@ if_install_php_newrelic() {
     _PHP_EXT_DIR_71="/opt/php71/lib/php/extensions/no-debug-non-zts-${_PHP71_API}"
     _PHP_EXT_DIR_70="/opt/php70/lib/php/extensions/no-debug-non-zts-${_PHP70_API}"
     _PHP_EXT_DIR_56="/opt/php56/lib/php/extensions/no-debug-non-zts-${_PHP56_API}"
+    if [ -e "$_PHP_EXT_DIR_82" ] \
+      && [ ! -e "$_PHP_EXT_DIR_82/newrelic.so" ]; then
+      _MULTI_NR=YES
+    fi
+    if [ -e "$_PHP_EXT_DIR_81" ] \
+      && [ ! -e "$_PHP_EXT_DIR_81/newrelic.so" ]; then
+      _MULTI_NR=YES
+    fi
     if [ -e "$_PHP_EXT_DIR_80" ] \
       && [ ! -e "$_PHP_EXT_DIR_80/newrelic.so" ]; then
       _MULTI_NR=YES
@@ -1665,7 +1703,7 @@ if_install_php_newrelic() {
       st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null
       if [ "$_MULTI_NR" = "YES" ]; then
         msg "INFO: Installing latest version of New Relic Apps Monitor..."
-        NR_PHPLIST="/opt/php56/bin:/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin"
+        NR_PHPLIST="/opt/php56/bin:/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin"
         NR_SILENT="silent"
         export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
         export NR_INSTALL_SILENT="${NR_SILENT}"
@@ -1677,6 +1715,16 @@ if_install_php_newrelic() {
           _SYSTEM_ARCH="x32"
         fi
         pthNra="/usr/lib/newrelic-php5/agent"
+        if [ -e "$_PHP_EXT_DIR_82" ] && [ ! -e "$_PHP_EXT_DIR_82/newrelic.so" ] \
+          && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP82_API}.so" ]; then
+          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP82_API}.so \
+            $_PHP_EXT_DIR_82/newrelic.so
+        fi
+        if [ -e "$_PHP_EXT_DIR_81" ] && [ ! -e "$_PHP_EXT_DIR_81/newrelic.so" ] \
+          && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP81_API}.so" ]; then
+          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP81_API}.so \
+            $_PHP_EXT_DIR_81/newrelic.so
+        fi
         if [ -e "$_PHP_EXT_DIR_80" ] && [ ! -e "$_PHP_EXT_DIR_80/newrelic.so" ] \
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP80_API}.so" ]; then
           ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP80_API}.so \
@@ -1939,7 +1987,7 @@ php_single_initd_cleanup() {
   if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
     _FPM_INITD_CLEANUP=
     if [ "${_PHP_SINGLE_INSTALL}" = "8.1" ]; then
-      _PHP_V="80 74 73 72 71 70 56"
+      _PHP_V="82 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/opt/php${e}/bin/php" ]; then
           mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
@@ -1952,7 +2000,7 @@ php_single_initd_cleanup() {
         fi
       done
     elif [ "${_PHP_SINGLE_INSTALL}" = "8.0" ]; then
-      _PHP_V="81 74 73 72 71 70 56"
+      _PHP_V="82 81 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/opt/php${e}/bin/php" ]; then
           mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
@@ -1965,20 +2013,7 @@ php_single_initd_cleanup() {
         fi
       done
     elif [ "${_PHP_SINGLE_INSTALL}" = "7.4" ]; then
-      _PHP_V="81 80 73 72 71 70 56"
-      for e in ${_PHP_V}; do
-        if [ -e "/opt/php${e}/bin/php" ]; then
-          mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
-        fi
-        if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          service php${e}-fpm stop &> /dev/null
-          update-rc.d -f php${e}-fpm remove &> /dev/null
-          mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
-          _FPM_INITD_CLEANUP=YES
-        fi
-      done
-    elif [ "${_PHP_SINGLE_INSTALL}" = "7.3" ]; then
-      _PHP_V="81 80 74 72 71 70 56"
+      _PHP_V="82 81 80 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/opt/php${e}/bin/php" ]; then
           mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
@@ -2001,14 +2036,14 @@ php_single_initd_cleanup() {
 #
 # Re-set default PHP-CLI.
 re_set_default_php_cli() {
-  if [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
+  if [ "${_PHP_CLI_VERSION}" = "8.2" ]; then
+    switch_php_cli "82"
+  elif [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
     switch_php_cli "81"
   elif [ "${_PHP_CLI_VERSION}" = "8.0" ]; then
     switch_php_cli "80"
   elif [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
     switch_php_cli "74"
-  elif [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
-    switch_php_cli "73"
   fi
 }
 
@@ -2017,12 +2052,12 @@ re_set_default_php_cli() {
 check_php_cli() {
   if [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
     _PHP_CLI_PATH="/opt/php74/bin/php"
-  elif [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
-    _PHP_CLI_PATH="/opt/php73/bin/php"
   elif [ "${_PHP_CLI_VERSION}" = "8.0" ]; then
     _PHP_CLI_PATH="/opt/php80/bin/php"
   elif [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
     _PHP_CLI_PATH="/opt/php81/bin/php"
+  elif [ "${_PHP_CLI_VERSION}" = "8.2" ]; then
+    _PHP_CLI_PATH="/opt/php82/bin/php"
   else
     _PHP_CLI_PATH=""
   fi
@@ -2031,12 +2066,12 @@ check_php_cli() {
   else
     if  [ -x "/opt/php74/bin/php" ]; then
       _USE_PHP_CLI_PATH="/opt/php74/bin/php"
-    elif  [ -x "/opt/php73/bin/php" ]; then
-      _USE_PHP_CLI_PATH="/opt/php73/bin/php"
     elif  [ -x "/opt/php80/bin/php" ]; then
       _USE_PHP_CLI_PATH="/opt/php80/bin/php"
     elif  [ -x "/opt/php81/bin/php" ]; then
       _USE_PHP_CLI_PATH="/opt/php81/bin/php"
+    elif  [ -x "/opt/php82/bin/php" ]; then
+      _USE_PHP_CLI_PATH="/opt/php82/bin/php"
     fi
   fi
   if [ -x "${_USE_PHP_CLI_PATH}" ]; then
@@ -2077,20 +2112,22 @@ php_upgrade_all() {
   if [ ! -z "${1}" ] ; then
     _PHP_V="${1}"
   else
-    _PHP_V="74 81 80 56 73 72 71 70"
+    _PHP_V="74 81 56 82 80 73 72 71 70"
   fi
   for e in ${_PHP_V}; do
     if [ -x "/opt/php${e}/bin/php" ]; then
       if [ "${e}" = "74" ]; then
         _PHP_VERSION="${_PHP74_VRN}"
-      elif [ "${e}" = "73" ]; then
-        _PHP_VERSION="${_PHP73_VRN}"
-      elif [ "${e}" = "80" ]; then
-        _PHP_VERSION="${_PHP80_VRN}"
       elif [ "${e}" = "81" ]; then
         _PHP_VERSION="${_PHP81_VRN}"
       elif [ "${e}" = "56" ]; then
         _PHP_VERSION="${_PHP56_VRN}"
+      elif [ "${e}" = "82" ]; then
+        _PHP_VERSION="${_PHP82_VRN}"
+      elif [ "${e}" = "80" ]; then
+        _PHP_VERSION="${_PHP80_VRN}"
+      elif [ "${e}" = "73" ]; then
+        _PHP_VERSION="${_PHP73_VRN}"
       elif [ "${e}" = "72" ]; then
         _PHP_VERSION="${_PHP72_VRN}"
       elif [ "${e}" = "71" ]; then
@@ -2145,16 +2182,38 @@ php_install_upgrade() {
     _T_PHP_PTH=""
     _FRESH_PHP74_BUILD=74
   fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.3" ]] \
-    && [ ! -x "/opt/php73/bin/php" ]; then
-    _PHP_VERSION="${_PHP73_VRN}"
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "8.1" ]] \
+    && [ ! -x "/opt/php81/bin/php" ]; then
+    _PHP_VERSION="${_PHP81_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    install_php_multi "73"
-    switch_php_cli "73"
+    install_php_multi "81"
+    switch_php_cli "81"
     _PHP_VERSION=""
     _T_PHP_VRN=""
     _T_PHP_PTH=""
-    _FRESH_PHP73_BUILD=73
+    _FRESH_PHP81_BUILD=81
+  fi
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "5.6" ]] \
+    && [ ! -x "/opt/php56/bin/php" ]; then
+    _PHP_VERSION="${_PHP56_VRN}"
+    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+    install_php_multi "56"
+    switch_php_cli "56"
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+    _FRESH_PHP56_BUILD=56
+  fi
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "8.2" ]] \
+    && [ ! -x "/opt/php82/bin/php" ]; then
+    _PHP_VERSION="${_PHP82_VRN}"
+    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+    install_php_multi "82"
+    switch_php_cli "82"
+    _PHP_VERSION=""
+    _T_PHP_VRN=""
+    _T_PHP_PTH=""
+    _FRESH_PHP82_BUILD=82
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "8.0" ]] \
     && [ ! -x "/opt/php80/bin/php" ]; then
@@ -2167,16 +2226,16 @@ php_install_upgrade() {
     _T_PHP_PTH=""
     _FRESH_PHP80_BUILD=80
   fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "8.1" ]] \
-    && [ ! -x "/opt/php81/bin/php" ]; then
-    _PHP_VERSION="${_PHP81_VRN}"
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.3" ]] \
+    && [ ! -x "/opt/php73/bin/php" ]; then
+    _PHP_VERSION="${_PHP73_VRN}"
     msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    install_php_multi "81"
-    switch_php_cli "81"
+    install_php_multi "73"
+    switch_php_cli "73"
     _PHP_VERSION=""
     _T_PHP_VRN=""
     _T_PHP_PTH=""
-    _FRESH_PHP81_BUILD=81
+    _FRESH_PHP73_BUILD=73
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "7.2" ]] \
     && [ ! -x "/opt/php72/bin/php" ]; then
@@ -2188,17 +2247,6 @@ php_install_upgrade() {
     _T_PHP_VRN=""
     _T_PHP_PTH=""
     _FRESH_PHP72_BUILD=72
-  fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "5.6" ]] \
-    && [ ! -x "/opt/php56/bin/php" ]; then
-    _PHP_VERSION="${_PHP56_VRN}"
-    msg "INFO: PHP ${_PHP_VERSION} will be installed now"
-    install_php_multi "56"
-    switch_php_cli "56"
-    _PHP_VERSION=""
-    _T_PHP_VRN=""
-    _T_PHP_PTH=""
-    _FRESH_PHP56_BUILD=56
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "7.1" ]] \
     && [ ! -x "/opt/php71/bin/php" ]; then
@@ -2236,7 +2284,7 @@ php_check_fix() {
       || [ -z "${isSodium}" ]; then
       msg "INFO: PHP rebuild required to add Sodium support..."
       _PHP_FORCE_REINSTALL=YES
-      php_upgrade_all "74 80 81"
+      php_upgrade_all "74 80 81 82"
     fi
   fi
   isWebP=

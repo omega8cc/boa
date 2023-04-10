@@ -580,7 +580,7 @@ update_agents() {
     && [ -e "/data/disk/arch/sql" ] \
     && [ ! -e "${pthLog}/fast_shutdown.ctrl.${_X_SE}.pid" ]; then
     sed -i "s/.*opcache.fast_shutdown.*//g" /opt/etc/fpm/fpm-pool-common.conf
-    _PHP_V="81 80 74 73 72 71 70 56"
+    _PHP_V="82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ]; then
         service php${e}-fpm reload &> /dev/null

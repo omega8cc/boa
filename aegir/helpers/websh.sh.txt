@@ -115,7 +115,10 @@ check_php_cli_version() {
       _PHP_CLI=$(grep "/opt/php" /data/disk/${_Y_USR}/tools/drush/drush.php 2>&1)
     fi
   fi
-  if [[ "${_PHP_CLI}" =~ "php81" ]]; then
+  if [[ "${_PHP_CLI}" =~ "php82" ]]; then
+    DRUSH_PHP="/opt/php82/bin/php"
+    PHP_INI="/opt/php82/lib/php.ini"
+  elif [[ "${_PHP_CLI}" =~ "php81" ]]; then
     DRUSH_PHP="/opt/php81/bin/php"
     PHP_INI="/opt/php81/lib/php.ini"
   elif [[ "${_PHP_CLI}" =~ "php80" ]]; then
@@ -182,7 +185,9 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             _PHP_DEFAULT=$(/usr/bin/php-cli -v | grep 'PHP 8' \
               | cut -d: -f1 | awk '{ print $2}' 2>&1)
           fi
-          if [[ "${_PHP_DEFAULT}" =~ "8.1." ]]; then
+          if [[ "${_PHP_DEFAULT}" =~ "8.2." ]]; then
+            PHP_INI="/opt/php82/lib/php.ini"
+          elif [[ "${_PHP_DEFAULT}" =~ "8.1." ]]; then
             PHP_INI="/opt/php81/lib/php.ini"
           elif [[ "${_PHP_DEFAULT}" =~ "8.0." ]]; then
             PHP_INI="/opt/php80/lib/php.ini"

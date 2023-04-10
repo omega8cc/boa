@@ -394,28 +394,28 @@ check_report() {
 check_php_cli() {
   _PHP_CHECK=$(readlink -n /usr/bin/php 2>&1)
   if [ ! -x "$_PHP_CHECK" ]; then
-    if [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
-      _PHP_CLI_PATH="/opt/php81/bin/php"
+    if [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
+      _PHP_CLI_PATH="/opt/php74/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "8.0" ]; then
       _PHP_CLI_PATH="/opt/php80/bin/php"
-    elif [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
-      _PHP_CLI_PATH="/opt/php74/bin/php"
-    elif [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
-      _PHP_CLI_PATH="/opt/php73/bin/php"
+    elif [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
+      _PHP_CLI_PATH="/opt/php81/bin/php"
+    elif [ "${_PHP_CLI_VERSION}" = "8.2" ]; then
+      _PHP_CLI_PATH="/opt/php82/bin/php"
     else
       _PHP_CLI_PATH=""
     fi
     if [ -x "${_PHP_CLI_PATH}" ]; then
       _USE_PHP_CLI_PATH="${_PHP_CLI_PATH}"
     else
-      if  [ -x "/opt/php81/bin/php" ]; then
-        _USE_PHP_CLI_PATH="/opt/php81/bin/php"
+      if  [ -x "/opt/php74/bin/php" ]; then
+        _USE_PHP_CLI_PATH="/opt/php74/bin/php"
       elif  [ -x "/opt/php80/bin/php" ]; then
         _USE_PHP_CLI_PATH="/opt/php80/bin/php"
-      elif  [ -x "/opt/php74/bin/php" ]; then
-        _USE_PHP_CLI_PATH="/opt/php74/bin/php"
-      elif  [ -x "/opt/php73/bin/php" ]; then
-        _USE_PHP_CLI_PATH="/opt/php73/bin/php"
+      elif  [ -x "/opt/php81/bin/php" ]; then
+        _USE_PHP_CLI_PATH="/opt/php81/bin/php"
+      elif  [ -x "/opt/php82/bin/php" ]; then
+        _USE_PHP_CLI_PATH="/opt/php82/bin/php"
       fi
     fi
     if [ -x "${_USE_PHP_CLI_PATH}" ]; then
