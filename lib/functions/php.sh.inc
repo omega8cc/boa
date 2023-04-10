@@ -1326,7 +1326,9 @@ install_php_multi() {
     _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR} --enable-gd-native-ttf --with-mcrypt"
   elif [ "$1" = "56" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR} --enable-gd-native-ttf --with-mcrypt --with-mysql=mysqlnd"
-    if [ "${_OSR}" = "stretch" ]; then
+    if [ "${_OSR}" != "jessie" ] \
+      && [ "${_OSR}" != "trusty" ] \
+      && [ "${_OSR}" != "precise" ]; then
       patchFile="PHP-5.6.31-OpenSSL-1.1.0-compatibility-20170801.patch"
       patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
     fi
