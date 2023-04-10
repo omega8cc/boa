@@ -1269,7 +1269,7 @@ install_php_multi() {
     if [ "${_OSR}" = "chimaera" ] \
       || [ "${_OSR}" = "beowulf" ] \
       || [ "${_OSR}" = "bullseye" ] \
-      || [ "${_OSR}" = "buster" ] \
+      || [ "${_OSR}" = "buster" ]; then
       _PHP_EXTRA="${_PHP_EXTRA}"
     else
       _PHP_EXTRA="${_PHP_EXTRA} --enable-intl"
