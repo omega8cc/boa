@@ -424,7 +424,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_PHP=
     _AUTO_VER="head"
     if [ ! -e "/root/.fixed_clstr_fpm.pid" ]; then
-      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"7.4 7.3 5.6\"/g" ${barCnf}
+      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"8.1 7.4 5.6\"/g" ${barCnf}
       wait
       sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g" ${barCnf}
       touch /root/.fixed_clstr_fpm.pid

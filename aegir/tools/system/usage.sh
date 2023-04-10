@@ -140,7 +140,7 @@ and there are no exceptions possible to avoid it.
 
 This means that all Aegir instances still running PHP $1
 will stop working if not switched to one of currently
-supported versions: 8.1, 8.0, 7.4, 7.3
+supported versions: 8.1, 8.0, 7.4
 
 To switch PHP-FPM version on command line, please type:
 
@@ -175,7 +175,7 @@ and there are no exceptions possible to avoid it.
 
 This means that all Aegir instances still running PHP $1
 will stop working if not switched to one of currently
-supported versions: 8.1, 8.0, 7.4, 7.3
+supported versions: 8.1, 8.0, 7.4
 
 To switch PHP-FPM version on command line, please type:
 
@@ -210,7 +210,7 @@ and there are no exceptions possible to avoid it.
 
 This means that all Aegir instances still running PHP $1
 will stop working if not switched to one of currently
-supported versions: 8.1, 8.0, 7.4, 7.3
+supported versions: 8.1, 8.0, 7.4
 
 To switch PHP-FPM version on command line, please type:
 

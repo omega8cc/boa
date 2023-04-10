@@ -53,7 +53,7 @@ A: While limits are still auto-configured, depending on available RAM and CPU
    in a file shared between all PHP-FPM pools in all running PHP versions:
    `/opt/etc/fpm/fpm-pool-common.conf` -- of course you need to reload all
    running FPM versions to make the change active, for example:
-   `service php72-fpm reload`, `service php71-fpm reload`, etc.
+   `service php74-fpm reload`, `service php81-fpm reload`, etc.
    Check also: https://drupal.org/comment/8689745#comment-8689745
 
    The same applies to some other hardcoded/enforced limits:

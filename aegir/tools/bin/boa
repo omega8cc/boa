@@ -915,22 +915,14 @@ barracuda_install() {
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${filIncO}
         wait
-      elif [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.3/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.3/g"   ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.3/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.3/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.3/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.3/g" ${vBs}/${filIncO}
-        wait
       elif [ "${rkey}" = "php-all" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=/g"    ${vBs}/${filIncB}
-        pA="7.4 8.0 8.1"
+        if [ "${_DEBUG_MODE}" = "YES" ] \
+          || [ -e "/root/.debug-barracuda-installer.cnf" ]; then
+          pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2"
+        else
+           pA="7.4 8.1 8.2"
+        fi
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${filIncB}
         wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${filIncB}
@@ -985,18 +977,14 @@ barracuda_install() {
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${octName}
         wait
-      elif [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.3/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.3/g"   ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.3/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.3/g" ${vBs}/${octName}
-        wait
       elif [ "${rkey}" = "php-all" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=/g"    ${vBs}/${barName}
-        pA="7.4 8.0 8.1"
+        if [ "${_DEBUG_MODE}" = "YES" ] \
+          || [ -e "/root/.debug-barracuda-installer.cnf" ]; then
+          pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2"
+        else
+           pA="7.4 8.1 8.2"
+        fi
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${barName}
         wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${barName}
@@ -2129,10 +2117,9 @@ case "$1" in
   {extra}
       license <------ valid new relic license key
       php-7.4 <------ single PHP version to install and use (supported, default)
-      php-7.3 <------ single PHP version to install and use (supported)
       php-8.1 <------ single PHP version to install and use (experimental)
-      php-8.0 <------ single PHP version to install and use (experimental)
-      php-all <------ all supported (7.3+) PHP versions to install, use 7.4 by default
+      php-8.2 <------ single PHP version to install and use (experimental)
+      php-all <------ install PHP 7.4, 8.1, 8.2, but use 7.4 by default
       nodns <-------- disable DNS checks on the fly
 
   {mysql}

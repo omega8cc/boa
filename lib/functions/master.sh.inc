@@ -640,9 +640,6 @@ php_cli_cron_update() {
     elif [ "${_PHP_CLI_VERSION}" = "7.4" ] && [ -x "/opt/php74/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php74\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
         /var/spool/cron/crontabs/aegir &> /dev/null
-    elif [ "${_PHP_CLI_VERSION}" = "7.3" ] && [ -x "/opt/php73/bin/php" ]; then
-      sed -i "s/^PATH=.*/PATH=\/opt\/php73\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
-        /var/spool/cron/crontabs/aegir &> /dev/null
     fi
     chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
     chmod 600 /var/spool/cron/crontabs/aegir

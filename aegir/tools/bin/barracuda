@@ -439,8 +439,6 @@ up_action() {
         phpS="8.0"
       elif [ "${rkey}" = "php-74" ] || [ "${rkey}" = "php-7.4" ]; then
         phpS="7.4"
-      elif [ "${rkey}" = "php-73" ] || [ "${rkey}" = "php-7.3" ]; then
-        phpS="7.3"
       elif [ "${rkey}" = "php-all" ]; then
         phpS="ALL"
       elif [ "${rkey}" = "nodns" ]; then
