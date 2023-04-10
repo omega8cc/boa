@@ -982,6 +982,9 @@ EOFMYSQL
     msg "INFO: Aegir Master Instance installed"
   else
     echo " "
+    if [ -e "/root/.debug-barracuda-installer.cnf" ]; then
+      _SYSTEM_UPGRADE_ONLY=YES
+    fi
     if_to_do_fix
     if [ "${_DO_FIX}" = "YES" ]; then
       msg "INFO: Aegir Master Instance upgrade skipped!"
