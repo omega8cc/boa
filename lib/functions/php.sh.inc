@@ -2312,7 +2312,9 @@ php_check_fix() {
       _PHP_FORCE_REINSTALL=YES
       php_upgrade_all
     else
-      msg "NOTE: Default PHP was built without freetype support"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "NOTE: Default PHP was built without freetype support"
+      fi
     fi
   fi
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
