@@ -2616,129 +2616,131 @@ get_drush_eight() {
 
 #
 # Install or update Drush versions.
-get_drush_versions() {
+drush_system_install_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: get_drush_versions"
+    msg "PROC: drush_system_install_update"
   fi
-  msg "INFO: Installing supported Drush versions..."
-  _X_SE="414prodT58"
-  ###--------------------###
-  if [ -e "/opt/tools/drush/9" ]; then
-    rm -rf /opt/tools/drush/9
-    rm -f /usr/bin/drush9
-  fi
-  if [ -e "/opt/tools/drush/7" ]; then
-    rm -rf /opt/tools/drush/7
-    rm -f /usr/bin/drush7
-  fi
-  if [ -e "/opt/tools/drush/6" ]; then
-    rm -rf /opt/tools/drush/6
-    rm -f /usr/bin/drush6
-  fi
-  if [ -e "/opt/tools/drush/5" ]; then
-    rm -rf /opt/tools/drush/5
-    rm -f /usr/bin/drush5
-  fi
-  if [ -e "/opt/tools/drush/4" ]; then
-    rm -rf /opt/tools/drush/4
-    rm -f /usr/bin/drush4
-  fi
-  mkdir -p /opt/tools/drush/{8,10,11,launcher}
-  chown -R root:root /opt/tools
-  if [ -e "/opt/tools/drush/8" ]; then
-    _DRUSH_ITD=$(drush8 --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f8 \
-      | awk '{ print $1}' 2>&1)
-    if [ "${_DRUSH_ITD}" != "${_DRUSH_EIGHT_TEST_VRN}" ] \
-      || [ ! -x "/opt/tools/drush/8/drush/drush" ] \
-      || [ ! -e "/opt/tools/drush/8/.ctrl.${_X_SE}.pid" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Drush ${_DRUSH_EIGHT_VRN} re-installation required"
-      fi
-      get_drush_eight
-    else
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Drush ${_DRUSH_EIGHT_VRN} already installed"
+  if [ ! -e "/root/.debug-barracuda-installer.cnf" ]; then
+    msg "INFO: Installing supported Drush versions..."
+    _X_SE="414prodT58"
+    ###--------------------###
+    if [ -e "/opt/tools/drush/9" ]; then
+      rm -rf /opt/tools/drush/9
+      rm -f /usr/bin/drush9
+    fi
+    if [ -e "/opt/tools/drush/7" ]; then
+      rm -rf /opt/tools/drush/7
+      rm -f /usr/bin/drush7
+    fi
+    if [ -e "/opt/tools/drush/6" ]; then
+      rm -rf /opt/tools/drush/6
+      rm -f /usr/bin/drush6
+    fi
+    if [ -e "/opt/tools/drush/5" ]; then
+      rm -rf /opt/tools/drush/5
+      rm -f /usr/bin/drush5
+    fi
+    if [ -e "/opt/tools/drush/4" ]; then
+      rm -rf /opt/tools/drush/4
+      rm -f /usr/bin/drush4
+    fi
+    mkdir -p /opt/tools/drush/{8,10,11,launcher}
+    chown -R root:root /opt/tools
+    if [ -e "/opt/tools/drush/8" ]; then
+      _DRUSH_ITD=$(drush8 --version 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f8 \
+        | awk '{ print $1}' 2>&1)
+      if [ "${_DRUSH_ITD}" != "${_DRUSH_EIGHT_TEST_VRN}" ] \
+        || [ ! -x "/opt/tools/drush/8/drush/drush" ] \
+        || [ ! -e "/opt/tools/drush/8/.ctrl.${_X_SE}.pid" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Drush ${_DRUSH_EIGHT_VRN} re-installation required"
+        fi
+        get_drush_eight
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Drush ${_DRUSH_EIGHT_VRN} already installed"
+        fi
       fi
     fi
-  fi
-  if [ -e "/opt/tools/drush/10" ]; then
-    _DRUSH_ITD=$(drush10-bin --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f4 \
-      | awk '{ print $1}' 2>&1)
-    if [ "${_DRUSH_ITD}" != "${_DRUSH_TEN_VRN}" ] \
-      || [ ! -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ] \
-      || [ ! -e "/opt/tools/drush/10/.ctrl.${_X_SE}.pid" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Drush ${_DRUSH_TEN_VRN} re-installation required"
-      fi
-      get_drush_ten
-    else
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Drush ${_DRUSH_TEN_VRN} already installed"
-      fi
-    fi
-  fi
-  if [ -e "/opt/tools/drush/11" ]; then
-    _DRUSH_ITD=$(drush11-bin --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f4 \
-      | awk '{ print $1}' 2>&1)
-    if [ "${_DRUSH_ITD}" != "${_DRUSH_ELEVEN_VRN}" ] \
-      || [ ! -x "/opt/tools/drush/11/drush/vendor/drush/drush/drush" ] \
-      || [ ! -e "/opt/tools/drush/11/.ctrl.${_X_SE}.pid" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} re-installation required"
-      fi
-      get_drush_eleven
-    else
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} already installed"
+    if [ -e "/opt/tools/drush/10" ]; then
+      _DRUSH_ITD=$(drush10-bin --version 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f4 \
+        | awk '{ print $1}' 2>&1)
+      if [ "${_DRUSH_ITD}" != "${_DRUSH_TEN_VRN}" ] \
+        || [ ! -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ] \
+        || [ ! -e "/opt/tools/drush/10/.ctrl.${_X_SE}.pid" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Drush ${_DRUSH_TEN_VRN} re-installation required"
+        fi
+        get_drush_ten
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Drush ${_DRUSH_TEN_VRN} already installed"
+        fi
       fi
     fi
-  fi
-  if [ -e "/opt/tools/drush/launcher" ]; then
-    _DRUSH_ITD=$(drush-launcher --version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f4 \
-      | sed 's/The//g' \
-      | awk '{ print $1}' 2>&1)
-    if [ "${_DRUSH_ITD}" != "${_DRUSH_LAUNCHER_VRN}" ] \
-      || [ ! -x "/opt/tools/drush/launcher/drush.phar" ] \
-      || [ ! -e "/opt/tools/drush/launcher/.ctrl.${_X_SE}.pid" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} re-installation required"
-      fi
-      get_drush_launcher
-    else
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} already installed"
+    if [ -e "/opt/tools/drush/11" ]; then
+      _DRUSH_ITD=$(drush11-bin --version 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f4 \
+        | awk '{ print $1}' 2>&1)
+      if [ "${_DRUSH_ITD}" != "${_DRUSH_ELEVEN_VRN}" ] \
+        || [ ! -x "/opt/tools/drush/11/drush/vendor/drush/drush/drush" ] \
+        || [ ! -e "/opt/tools/drush/11/.ctrl.${_X_SE}.pid" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} re-installation required"
+        fi
+        get_drush_eleven
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} already installed"
+        fi
       fi
     fi
+    if [ -e "/opt/tools/drush/launcher" ]; then
+      _DRUSH_ITD=$(drush-launcher --version 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f4 \
+        | sed 's/The//g' \
+        | awk '{ print $1}' 2>&1)
+      if [ "${_DRUSH_ITD}" != "${_DRUSH_LAUNCHER_VRN}" ] \
+        || [ ! -x "/opt/tools/drush/launcher/drush.phar" ] \
+        || [ ! -e "/opt/tools/drush/launcher/.ctrl.${_X_SE}.pid" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} re-installation required"
+        fi
+        get_drush_launcher
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} already installed"
+        fi
+      fi
+    fi
+    set_drush_perm
+    if [ -x "/opt/tools/drush/8/drush/drush" ]; then
+      rm -f /usr/bin/drush8
+      rm -f /usr/bin/drush
+      ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush8
+      ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush
+    else
+      msg "FAIL: Drush ${_DRUSH_EIGHT_VRN} installation failed!"
+    fi
+    if [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
+      clean_drush_ten
+    else
+      msg "FAIL: Drush ${_DRUSH_TEN_VRN} installation failed!"
+    fi
+    if [ -x "/opt/tools/drush/11/drush/vendor/drush/drush/drush" ]; then
+      clean_drush_eleven
+    else
+      msg "FAIL: Drush ${_DRUSH_ELEVEN_VRN} installation failed!"
+    fi
+    chown -R root:root /opt/tools/drush
+    cd /opt/tmp
   fi
-  set_drush_perm
-  if [ -x "/opt/tools/drush/8/drush/drush" ]; then
-    rm -f /usr/bin/drush8
-    rm -f /usr/bin/drush
-    ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush8
-    ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush
-  else
-    msg "FAIL: Drush ${_DRUSH_EIGHT_VRN} installation failed!"
-  fi
-  if [ -x "/opt/tools/drush/10/drush/vendor/drush/drush/drush" ]; then
-    clean_drush_ten
-  else
-    msg "FAIL: Drush ${_DRUSH_TEN_VRN} installation failed!"
-  fi
-  if [ -x "/opt/tools/drush/11/drush/vendor/drush/drush/drush" ]; then
-    clean_drush_eleven
-  else
-    msg "FAIL: Drush ${_DRUSH_ELEVEN_VRN} installation failed!"
-  fi
-  chown -R root:root /opt/tools/drush
-  cd /opt/tmp
 }
 
 #

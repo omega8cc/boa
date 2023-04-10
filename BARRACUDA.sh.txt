@@ -388,7 +388,7 @@ fi
 ###
 ### Download system-wide Drush versions
 ###
-get_drush_versions
+drush_system_install_update
 
 
 ###
