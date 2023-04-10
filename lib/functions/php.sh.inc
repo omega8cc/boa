@@ -1807,7 +1807,12 @@ check_php_rebuild() {
     _PHP_FORCE_REINSTALL=NO
   fi
   _PHP_SSL_TEST=$(/opt/php$1/bin/php -i | grep "SSL Version" 2>&1)
-  if [[ ! "${_PHP_SSL_TEST}" =~ "${_OPENSSL_USE_VRN}" ]]; then
+  if [ "$1" = "56" ]; then
+    _PHP_SSL_LOOK_FOR="GnuTLS"
+  else
+    _PHP_SSL_LOOK_FOR="${_OPENSSL_USE_VRN}"
+  fi
+  if [[ ! "${_PHP_SSL_TEST}" =~ "${_PHP_SSL_LOOK_FOR}" ]]; then
     if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
       msg "INFO: PHP $1 ${_PHP_SSL_TEST}, but no rebuild forced yet"
       _PHP_FORCE_REINSTALL=NO
