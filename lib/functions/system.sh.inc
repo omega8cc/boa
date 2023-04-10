@@ -1392,14 +1392,6 @@ barracuda_cnf() {
         _CLSTR_PHP_MULTI_INSTALL="${_PHP_OVERRIDE}"
         _CLSTR_PHP_MULTI_INSTALL="8.1 7.4 5.6"
       fi
-      if [ ! -z "${_PHP_MULTI_INSTALL}" ]; then
-        sed -i "s/^_PHP_MULTI_INSTALL.*//g" ${barCnf}
-        wait
-        echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
-        wait
-        sed -i "/^$/d" ${barCnf}
-        wait
-      fi
     fi
 
     if [ -e "/var/aegir/host_master/000/placeholder_dont_remove.txt" ] \
