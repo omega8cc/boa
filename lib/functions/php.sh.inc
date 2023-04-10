@@ -1120,7 +1120,7 @@ php_extensions_update() {
   fi
   ###--------------------###
   if [ ! -e "${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
-    msg "INFO: Installing Imagick {_IMAGICK_VRN} upgrade for PHP ${_T_PHP_VRN}..."
+    msg "INFO: Installing Imagick ${_IMAGICK_VRN} upgrade for PHP ${_T_PHP_VRN}..."
     if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
       mrun "${_APT_UPDATE} -qq" &> /dev/null
       mrun "${_INSTAPP} libmagickwand-dev" 2> /dev/null
