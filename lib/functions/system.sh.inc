@@ -6,8 +6,8 @@ sysvinit_install() {
     msg "PROC: sysvinit_install"
   fi
   mrun "${_APT_UPDATE} -qq" &> /dev/null
-  echo "sysvinit-core install" | dpkg --set-selections
-  echo "sysvinit-utils install" | dpkg --set-selections
+  echo "sysvinit-core install" | dpkg --set-selections &> /dev/null
+  echo "sysvinit-utils install" | dpkg --set-selections &> /dev/null
   mrun "${_INITINS} sysvinit-core" 2> /dev/null
   mrun "${_INITINS} sysvinit-utils" 2> /dev/null
   echo "sysvinit-core hold" | dpkg --set-selections &> /dev/null
