@@ -21,7 +21,7 @@ if_install_bzr() {
       cd /var/opt/bzr-${_BZR_VRN}
       mrun "python setup.py --quiet install build_ext -\
         -allow-python-fallback" 2> /dev/null
-      mrun "make --quiet" 2> /dev/null
+      mrun "make -j $(nproc) --quiet" 2> /dev/null
       touch ${pthLog}/bzr-${_BZR_VRN}.log
       mkdir -p /root/.bazaar
       echo ignore_missing_extensions=True > /root/.bazaar/bazaar.conf

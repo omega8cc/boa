@@ -472,8 +472,8 @@ nginx_install_upgrade() {
       --with-http_geoip_module \
       --with-openssl=/var/opt/openssl-${_OPENSSL_NEW_VRN} \
       --with-debug ${_NGINX_EXTRA}" 2> /dev/null
-    mrun "make" 2> /dev/null
-    mrun "make install" 2> /dev/null
+    mrun "make -j $(nproc)" 2> /dev/null
+    mrun "make -j $(nproc) install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     if_to_do_fix
     if [ "${_DO_FIX}" = "YES" ]; then

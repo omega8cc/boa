@@ -369,7 +369,7 @@ sftp_ftps_modern_fix() {
     get_dev_src "mysecureshell-${_MSS_VRN}.tar.gz"
     cd /var/opt/mysecureshell
     mrun "bash ./configure" 2> /dev/null
-    mrun "make --quiet" 2> /dev/null
+    mrun "make -j $(nproc) --quiet" 2> /dev/null
     st_runner "sh ./install.sh yesall" 2> /dev/null
     touch ${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log
     cp -af ${locCnf}/sftp_config /etc/ssh/sftp_config
@@ -2230,8 +2230,8 @@ mytop_install() {
     get_dev_src "mytop-1.6.tar.gz"
     cd /var/opt/mytop-1.6
     mrun "perl Makefile.PL" 2> /dev/null
-    mrun "make --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
+    mrun "make -j $(nproc) --quiet" 2> /dev/null
+    mrun "make -j $(nproc) --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
   fi
 }
@@ -2281,10 +2281,10 @@ do_install_latest_git() {
     rm -rf git*
     get_dev_src "git-${_GIT_VRN}.tar.gz"
     cd /var/opt/git-${_GIT_VRN}
-    mrun "make configure" 2> /dev/null
+    mrun "make -j $(nproc) configure" 2> /dev/null
     mrun "bash ./configure --without-tcltk --quiet" 2> /dev/null
-    mrun "make --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
+    mrun "make -j $(nproc) --quiet" 2> /dev/null
+    mrun "make -j $(nproc) --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     mv -f /usr/bin/git /usr/bin/git-old
     ln -sf /usr/local/bin/git /usr/bin/git
@@ -2357,8 +2357,8 @@ install_icu() {
     cd /var/opt/icu/source/
     mrun "bash ./configure \
       --prefix=/usr/local" 2> /dev/null
-    mrun "make --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
+    mrun "make -j $(nproc) --quiet" 2> /dev/null
+    mrun "make -j $(nproc) --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
   fi
 }
@@ -2995,8 +2995,8 @@ sshd_install_src() {
       --without-openssl-header-check \
       --prefix=/usr \
       --with-pam" 2> /dev/null
-    mrun "make" 2> /dev/null
-    mrun "make install" 2> /dev/null
+    mrun "make -j $(nproc)" 2> /dev/null
+    mrun "make -j $(nproc) install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     mrun "service ssh restart" &> /dev/null
     if [[ ! "${_SSH_GET_DPKG}" =~ "hold" ]]; then
@@ -3062,7 +3062,7 @@ install_magick_src() {
     get_dev_src "ImageMagick-${_IMAGE_MAGICK_VRN}.tar.gz"
     cd /var/opt/ImageMagick-${_IMAGE_MAGICK_VRN}
     mrun "bash ./configure --prefix=/usr" 2> /dev/null
-    mrun "make --quiet" 2> /dev/null
+    mrun "make -j $(nproc) --quiet" 2> /dev/null
     if [ ! -e "/etc/.ImageMagick-6" ] \
       && [ -e "/etc/ImageMagick-6" ]; then
         cp -a /etc/ImageMagick-6 /etc/.ImageMagick-6
@@ -3073,7 +3073,7 @@ install_magick_src() {
     fi
     mrun "apt-get remove imagemagick -y -qq" 2> /dev/null
     mrun "apt-get purge imagemagick -y -qq" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
+    mrun "make -j $(nproc) --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "HINT: Please modify /usr/etc/ImageMagick-7/policy.xml file, if needed"
@@ -3223,8 +3223,8 @@ ssl_install_src() {
     get_dev_src "zlib-${_ZLIB_VRN}.tar.gz"
     cd /var/opt/zlib-${_ZLIB_VRN}
     st_runner "bash ./configure --prefix=/usr" 2> /dev/null
-    mrun "make --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
+    mrun "make -j $(nproc) --quiet" 2> /dev/null
+    mrun "make -j $(nproc) --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     ###--------------------###
     msg "INFO: Building OpenSSL ${_OPENSSL_NEW_VRN} from sources..."
@@ -3259,9 +3259,9 @@ ssl_install_src() {
           ${_SSL_BUILD_ARGS} \
           shared" 2> /dev/null
       fi
-      mrun "make depend" 2> /dev/null
-      mrun "make" 2> /dev/null
-      mrun "make install" 2> /dev/null
+      mrun "make -j $(nproc) depend" 2> /dev/null
+      mrun "make -j $(nproc)" 2> /dev/null
+      mrun "make -j $(nproc) install" 2> /dev/null
     fi
     if [ -x "/usr/local/ssl/bin/openssl" ]; then
       cp -af /usr/bin/openssl /usr/bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
@@ -3420,8 +3420,8 @@ curl_install_src() {
             --with-openssl \
             --with-zlib=/usr \
             --prefix=/usr/local &> /dev/null
-          mrun "make" 2> /dev/null
-          mrun "make install" 2> /dev/null
+          mrun "make -j $(nproc)" 2> /dev/null
+          mrun "make -j $(nproc) install" 2> /dev/null
           mrun "ldconfig" &> /dev/null
           if [ -x "/usr/local/bin/curl" ]; then
             mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S 2>&1)
@@ -5431,8 +5431,8 @@ vnstat_install() {
       get_dev_src "vnstat-${_VNSTAT_VRN}.tar.gz"
       cd vnstat-${_VNSTAT_VRN}
       mrun "bash ./configure --prefix=/usr --sysconfdir=/etc" 2> /dev/null
-      mrun "make --quiet" 2> /dev/null
-      mrun "make --quiet install" 2> /dev/null
+      mrun "make -j $(nproc) --quiet" 2> /dev/null
+      mrun "make -j $(nproc) --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
       for INF in `vnstat --iflist \
         | sed "s/Available interfaces//g; s/(1000 Mbit)//g; s/(100 Mbit)//g; s/ lo//g;" \
@@ -5486,8 +5486,8 @@ install_myquick_src() {
     get_dev_src "mydumper-${_MYQUICK_VRN}.tar.gz"
     cd /var/opt/mydumper-${_MYQUICK_VRN}
     mrun "cmake -DWITH_SSL=OFF ." 2> /dev/null
-    mrun "make --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
+    mrun "make -j $(nproc) --quiet" 2> /dev/null
+    mrun "make -j $(nproc) --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
   fi
 }
@@ -5903,7 +5903,7 @@ if_install_ftpd() {
       mrun "bash ./configure --with-everything --with-virtualchroot \
         --without-humor --with-tls --with-diraliases --with-pam \
         --with-certfile=/etc/ssl/private/pure-ftpd.pem" 2> /dev/null
-      mrun "make install-strip" 2> /dev/null
+      mrun "make -j $(nproc) install-strip" 2> /dev/null
       cd /usr/local/sbin/
       cp -af ${locCnf}/pure-config.pl.txt ./
       mv -f pure-config.pl.txt pure-config.pl &> /dev/null
