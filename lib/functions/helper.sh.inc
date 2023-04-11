@@ -427,10 +427,10 @@ mode_detection() {
   find /opt/tmp/boa -type f -exec chmod 0644 {} \; &> /dev/null
   rm -f /var/run/aegir_upgrade.pid
   if [ "${_STRICT_BIN_PERMISSIONS}" = "YES" ]; then
-    if [ -x "/bin/dash" ]; then
+    if [ -x "/bin/dash" ] || [ -x "/usr/bin/dash" ]; then
       symlink_to_dash
       switch_to_dash
-    else
+    elif [ -x "/bin/bash" ] || [ -x "/usr/bin/bash" ]; then
       symlink_to_bash
       switch_to_bash
     fi

@@ -3430,12 +3430,20 @@ curl_install_src() {
 #
 # Symlink to dash.
 symlink_to_dash() {
-  if [ -x "/bin/dash" ]; then
-    rm -f /bin/sh
-    ln -s /bin/dash /bin/sh
-    if [ -e "/usr/bin/sh" ]; then
+  if [ -x "/usr/bin/dash" ]; then
+    if [ -L "/usr/bin/sh" ]; then
       rm -f /usr/bin/sh
-      ln -s /bin/dash /usr/bin/sh
+      ln -s /usr/bin/dash /usr/bin/sh
+    fi
+    if [ -L "/bin/sh" ]; then
+      rm -f /bin/sh
+      ln -s /usr/bin/dash /bin/sh
+    fi
+  fi
+  if [ -x "/bin/dash" ] && [ ! -L "/bin/dash" ]; then
+    if [ -L "/bin/sh" ]; then
+      rm -f /bin/sh
+      ln -s /bin/dash /bin/sh
     fi
   fi
 }
@@ -3443,12 +3451,20 @@ symlink_to_dash() {
 #
 # Symlink to bash.
 symlink_to_bash() {
-  if [ -x "/bin/bash" ]; then
-    rm -f /bin/sh
-    ln -s /bin/bash /bin/sh
-    if [ -e "/usr/bin/sh" ]; then
+  if [ -x "/usr/bin/bash" ]; then
+    if [ -L "/usr/bin/sh" ]; then
       rm -f /usr/bin/sh
-      ln -s /bin/bash /usr/bin/sh
+      ln -s /usr/bin/bash /usr/bin/sh
+    fi
+    if [ -L "/bin/sh" ]; then
+      rm -f /bin/sh
+      ln -s /usr/bin/bash /bin/sh
+    fi
+  fi
+  if [ -x "/bin/bash" ] && [ ! -L "/bin/bash" ]; then
+    if [ -L "/bin/sh" ]; then
+      rm -f /bin/sh
+      ln -s /bin/bash /bin/sh
     fi
   fi
 }
@@ -6667,10 +6683,12 @@ complete() {
       || [ "${_OSR}" = "stretch" ]; then
       usermod -aG users _apt
     fi
-    if [ -x "/bin/bash" ]; then
-      switch_to_bash
-    elif [ -x "/bin/dash" ]; then
+    if [ -x "/bin/dash" ] || [ -x "/usr/bin/dash" ]; then
+      symlink_to_dash
       switch_to_dash
+    elif [ -x "/bin/bash" ] || [ -x "/usr/bin/bash" ]; then
+      symlink_to_bash
+      switch_to_bash
     fi
     strict_bin_permissions
     rm -f /etc/apt/apt.conf.d/00sandboxtmp
