@@ -143,6 +143,12 @@ crontab_update() {
       if [ "${_AUTO_PHP}" = "php-all" ]; then
         _BCDA_FULL="up-${_AUTO_VER} log php-all"
         _BCDA_SYST="up-${_AUTO_VER} system php-all"
+      elif [ "${_AUTO_PHP}" = "php-min" ]; then
+        _BCDA_FULL="up-${_AUTO_VER} log php-min"
+        _BCDA_SYST="up-${_AUTO_VER} system php-min"
+      elif [ "${_AUTO_PHP}" = "php-max" ]; then
+        _BCDA_FULL="up-${_AUTO_VER} log php-max"
+        _BCDA_SYST="up-${_AUTO_VER} system php-max"
       else
         _BCDA_FULL="up-${_AUTO_VER} log"
         _BCDA_SYST="up-${_AUTO_VER} system"

@@ -119,7 +119,7 @@ _SYS_COLLATION_SQL= #----------- By default on the DB server: utf8mb4_unicode_ci
 ###
 ### You can further modify the auto-upgrade by specifying either head or dev
 ### with _AUTO_VER variable, plus you can include all supported PHP versions
-### with _AUTO_PHP variable set to "php-all" -- otherwise it will be ignored.
+### with _AUTO_PHP variable set to "php-min" -- otherwise it will be ignored.
 ###
 ### Note that weekly system upgrade will start shortly after midnight on the
 ### specified weekday, while the day/month upgrades for both Barracuda
@@ -132,7 +132,7 @@ _AUTO_UP_WEEKLY= #-------------- Day of week (1-7) for weekly system upgrades
 _AUTO_UP_MONTH= #--------------- Month (1-12) to define date of one-time upgrade
 _AUTO_UP_DAY= #----------------- Day (1-31) to define date of one-time upgrade
 _AUTO_VER=head #---------------- The BOA version to use (head by default)
-_AUTO_PHP= #-------------------- Useful to force php-all, otherwise ignored
+_AUTO_PHP= #-------------------- Useful to force php-min, otherwise ignored
 
 ###
 ### You can whitelist extra binaries to make them available for web server

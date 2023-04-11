@@ -89,11 +89,11 @@
    built-in platform, while "ask" is a default mode if you don't specify
    this option at all.
 
-   The last {newrelickey|php-7.4|php-8.1|php-all|nodns} part is
+   The last {newrelickey|php-7.4|php-8.1|php-min|php-max|nodns} part is
    optional and can be used either to install New Relic Apps Monitor (you should
    replace the "newrelickey" keyword with a valid license key), or to define
    single PHP version to install and use both for Master and Satellite instances.
-   When "php-all" is defined, then all available versions will be installed,
+   When "php-min" is defined, then all supported versions will be installed,
    but 7.4 will be used by default. You can later install or modify PHP version
    used via _PHP_MULTI_INSTALL, _PHP_CLI_VERSION and _PHP_FPM_VERSION, but
    the _PHP_SINGLE_INSTALL variable must be set empty to not override other
@@ -134,14 +134,14 @@
    Octopus platforms install mode, as explained below.
 
    You can also specify PHP version to install, as shown in examples below.
-   The {php-7.4|php-all} argument can be either added
+   The {php-7.4|php-min|php-max} argument can be either added
    after {ask|mini|max|none} or specified instead of {ask|mini|max|none}
 
    # Latest on localhost - prompt for every platform install
    $ boa in-head local my@email
 
    # Latest on localhost - prompt for every platform + install all PHP versions
-   $ boa in-head local my@email php-all
+   $ boa in-head local my@email php-min
 
    # Latest on localhost - no prompt with 3xD6 + 3xD7 only + single PHP version
    $ boa in-head local my@email mini php-7.4

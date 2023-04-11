@@ -433,14 +433,16 @@ check_php_cli() {
 up_action() {
   if [ -e "${vBs}/${barName}" ] && [ -e "${barCnf}" ]; then
     if [ ! -z "${rkey}" ]; then
-      if [ "${rkey}" = "php-81" ] || [ "${rkey}" = "php-8.1" ]; then
+      if [ "${rkey}" = "php-82" ] || [ "${rkey}" = "php-8.2" ]; then
+        phpS="8.2"
+      elif [ "${rkey}" = "php-81" ] || [ "${rkey}" = "php-8.1" ]; then
         phpS="8.1"
-      elif [ "${rkey}" = "php-80" ] || [ "${rkey}" = "php-8.0" ]; then
-        phpS="8.0"
       elif [ "${rkey}" = "php-74" ] || [ "${rkey}" = "php-7.4" ]; then
         phpS="7.4"
-      elif [ "${rkey}" = "php-all" ]; then
-        phpS="ALL"
+      elif [ "${rkey}" = "php-all" ] || [ "${rkey}" = "php-min" ]; then
+        phpS="MIN"
+      elif [ "${rkey}" = "php-max" ]; then
+        phpS="MAX"
       elif [ "${rkey}" = "nodns" ]; then
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${barName}
         wait
@@ -470,8 +472,8 @@ up_action() {
 
     fi
     ### Make sure that _PHP_SINGLE_INSTALL is set in ${barCnf}
-    if [ "${phpS}" = "8.1" ] \
-      || [ "${phpS}" = "8.0" ] \
+    if [ "${phpS}" = "8.2" ] \
+      || [ "${phpS}" = "8.1" ] \
       || [ "${phpS}" = "7.4" ]; then
       _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL ${barCnf} 2>&1)
       if [[ "${_PHP_SINGLE_INSTALL_TEST}" =~ "_PHP_SINGLE_INSTALL" ]]; then
@@ -483,8 +485,8 @@ up_action() {
     fi
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${phpS}" ]; then
-      if [ "${phpS}" = "8.1" ] \
-        || [ "${phpS}" = "8.0" ] \
+      if [ "${phpS}" = "8.2" ] \
+        || [ "${phpS}" = "8.1" ] \
         || [ "${phpS}" = "7.4" ]; then
 
         ### Debugging
@@ -550,8 +552,9 @@ up_action() {
             echo ${phpS} > ${Ctrl}
           done
         fi
-      elif [ "${phpS}" = "ALL" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ] \
+      elif [ "${phpS}" = "MIN" ] || [ "${phpS}" = "MAX" ]; then
+        if [ "${phpS}" = "MAX" ] \
+          || [ "${_DEBUG_MODE}" = "YES" ] \
           || [ -e "/root/.debug-barracuda-installer.cnf" ]; then
           phpM="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2"
         else
@@ -1420,7 +1423,7 @@ proceed() {
     _SCRIPT_URL="$rgUrl/${lgcA}/${barName}"
   else
     echo
-    echo "Usage: $(basename "$0") {up-head|up-dev} {system|log} {newrelickey|php-7.4|php-all|nodns} {percona|mariadb}"
+    echo "Usage: $(basename "$0") {up-head|up-dev} {system|log} {newrelickey|php-7.4|php-min|php-max|nodns} {percona|mariadb}"
     echo
     echo "  Silent Mode Option: system == OS only upgrade"
     echo "  Silent Mode Option: log ===== OS and Aegir Master Instance upgrade"
