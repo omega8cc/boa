@@ -615,7 +615,11 @@ install_php_extensions() {
   mrun "make -j $(nproc) --quiet" 2> /dev/null
   mrun "make -j $(nproc) --quiet install" 2> /dev/null
   mrun "ldconfig" 2> /dev/null
-  touch ${pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
+  if [ ! -e "${_THIS_PHP_EXT_DIR}/redis.so" ]; then
+    msg "WARN: Installing PhpRedis for PHP ${_T_PHP_VRN} failed!"
+  else
+    touch ${pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
+  fi
   ###--------------------###
   if [ "$1" != "56" ]; then
     msg "INFO: Installing APCu ${_PHP_APCU} for PHP ${_T_PHP_VRN}..."
@@ -628,7 +632,11 @@ install_php_extensions() {
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make -j $(nproc) --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    touch ${pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ]; then
+      msg "WARN: Installing APCu for PHP ${_T_PHP_VRN} failed!"
+    else
+      touch ${pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
   if [ "$1" != "56" ]; then
@@ -642,7 +650,11 @@ install_php_extensions() {
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make -j $(nproc) --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    touch ${pthLog}/igbinary-${_PHP_IGBINARY}-${_T_PHP_VRN}.log
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
+      msg "WARN: Installing igbinary for PHP ${_T_PHP_VRN} failed!"
+    else
+      touch ${pthLog}/igbinary-${_PHP_IGBINARY}-${_T_PHP_VRN}.log
+    fi
     _X_SE="414prodT58"
     rm -f /data/disk/*/static/control/.*${_X_SE}.pid
   fi
@@ -658,7 +670,11 @@ install_php_extensions() {
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make -j $(nproc) --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    touch ${pthLog}/mcrypt-${_PHP_MCRYPT}-${_T_PHP_VRN}.log
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/mcrypt.so" ]; then
+      msg "WARN: Installing MCRYPT for PHP ${_T_PHP_VRN} failed!"
+    else
+      touch ${pthLog}/mcrypt-${_PHP_MCRYPT}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
   if [ "$1" = "56" ]; then
@@ -672,7 +688,11 @@ install_php_extensions() {
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make -j $(nproc) --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    touch ${pthLog}/f_uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
+      msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
+    else
+      touch ${pthLog}/f_uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log
+    fi
   elif [ "$1" = "72" ] \
     || [ "$1" = "73" ] \
     || [ "$1" = "74" ] \
@@ -689,7 +709,11 @@ install_php_extensions() {
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make -j $(nproc) --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    touch ${pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
+      msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
+    else
+      touch ${pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log
+    fi
   else
     msg "INFO: Installing UploadProgress ${_UPROGRESS_SEVEN_VRN} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
@@ -701,7 +725,11 @@ install_php_extensions() {
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make -j $(nproc) --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    touch ${pthLog}/f_uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
+      msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
+    else
+      touch ${pthLog}/f_uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
   if [ "$1" != "80" ] && [ "$1" != "81" ] && [ "$1" != "82" ]; then
@@ -720,10 +748,14 @@ install_php_extensions() {
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make -j $(nproc) --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    if [ "$1" = "56" ]; then
-      touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
+      msg "WARN: Installing JSMin for PHP ${_T_PHP_VRN} failed!"
     else
-      touch ${pthLog}/php-pecl-jsmin-${_JSMIN_PHP7_VRN}-${_T_PHP_VRN}.log
+      if [ "$1" = "56" ]; then
+        touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
+      else
+        touch ${pthLog}/php-pecl-jsmin-${_JSMIN_PHP7_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
   fi
   ###--------------------###
@@ -738,7 +770,11 @@ install_php_extensions() {
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make -j $(nproc) --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    touch ${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/twig.so" ]; then
+      msg "WARN: Installing Twig C for PHP ${_T_PHP_VRN} failed!"
+    else
+      touch ${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
@@ -781,7 +817,11 @@ install_php_extensions() {
       mrun "make -j $(nproc) --quiet" 2> /dev/null
       mrun "make -j $(nproc) --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
-      touch ${pthLog}/php-mongo-${_MONGO_VRN}-${_T_PHP_VRN}.log
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/mongo.so" ]; then
+        msg "WARN: Installing MongoDB driver for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${pthLog}/php-mongo-${_MONGO_VRN}-${_T_PHP_VRN}.log
+      fi
     else
       msg "INFO: Installing MongoDB driver ${_MONGODB_VRN} for PHP ${_T_PHP_VRN}..."
       cd /var/opt
@@ -793,7 +833,11 @@ install_php_extensions() {
       mrun "make -j $(nproc) --quiet" 2> /dev/null
       mrun "make -j $(nproc) --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
-      touch ${pthLog}/php-mongodb-${_MONGODB_VRN}-${_T_PHP_VRN}.log
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/mongo.so" ]; then
+        msg "WARN: Installing MongoDB driver for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${pthLog}/php-mongodb-${_MONGODB_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
   fi
   ###--------------------###
@@ -812,7 +856,11 @@ install_php_extensions() {
   mrun "make -j $(nproc) --quiet" 2> /dev/null
   mrun "make -j $(nproc) --quiet install" 2> /dev/null
   mrun "ldconfig" 2> /dev/null
-  touch ${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
+  if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ]; then
+    msg "WARN: Installing Imagick for PHP ${_T_PHP_VRN} failed!"
+  else
+    touch ${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
+  fi
   ###--------------------###
   if [ "$1" = "56" ]; then
     msg "INFO: Installing MailParse ${_MAILPARSE_VRN} for PHP ${_T_PHP_VRN}..."
@@ -825,7 +873,11 @@ install_php_extensions() {
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make -j $(nproc) --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    touch ${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/mailparse.so" ]; then
+      msg "WARN: Installing MailParse for PHP ${_T_PHP_VRN} failed!"
+    else
+      touch ${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
   if [ ! -e "${pthLog}/f_libyaml-${_LIB_YAML_VRN}.log" ] \
@@ -886,7 +938,11 @@ install_php_extensions() {
   mrun "make -j $(nproc) --quiet" 2> /dev/null
   mrun "make -j $(nproc) --quiet install" 2> /dev/null
   mrun "ldconfig" 2> /dev/null
-  touch ${pthLog}/f_yaml-${_YAML_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log
+  if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
+    msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
+  else
+    touch ${pthLog}/f_yaml-${_YAML_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log
+  fi
 }
 
 #
@@ -909,7 +965,11 @@ php_extensions_update() {
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make -j $(nproc) --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    touch ${pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/redis.so" ]; then
+      msg "WARN: Installing PhpRedis for PHP ${_T_PHP_VRN} failed!"
+    else
+      touch ${pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
   if [ "$1" != "56" ]; then
@@ -924,7 +984,11 @@ php_extensions_update() {
       mrun "make -j $(nproc) --quiet" 2> /dev/null
       mrun "make -j $(nproc) --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
-      touch ${pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ]; then
+        msg "WARN: Installing APCu for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log
+      fi
     fi
   fi
   ###--------------------###
@@ -940,7 +1004,11 @@ php_extensions_update() {
       mrun "make -j $(nproc) --quiet" 2> /dev/null
       mrun "make -j $(nproc) --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
-      touch ${pthLog}/igbinary-${_PHP_IGBINARY}-${_T_PHP_VRN}.log
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
+        msg "WARN: Installing igbinary for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${pthLog}/igbinary-${_PHP_IGBINARY}-${_T_PHP_VRN}.log
+      fi
       _X_SE="414prodT58"
       rm -f /data/disk/*/static/control/.*${_X_SE}.pid
     fi
@@ -958,7 +1026,11 @@ php_extensions_update() {
       mrun "make -j $(nproc) --quiet" 2> /dev/null
       mrun "make -j $(nproc) --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
-      touch ${pthLog}/mcrypt-${_PHP_MCRYPT}-${_T_PHP_VRN}.log
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/mcrypt.so" ]; then
+        msg "WARN: Installing MCRYPT for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${pthLog}/mcrypt-${_PHP_MCRYPT}-${_T_PHP_VRN}.log
+      fi
     fi
   fi
   ###--------------------###
@@ -974,7 +1046,11 @@ php_extensions_update() {
       mrun "make -j $(nproc) --quiet" 2> /dev/null
       mrun "make -j $(nproc) --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
-      touch ${pthLog}/f_uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
+        msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${pthLog}/f_uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
   elif [ "$1" = "72" ] \
     || [ "$1" = "73" ] \
@@ -993,7 +1069,11 @@ php_extensions_update() {
       mrun "make -j $(nproc) --quiet" 2> /dev/null
       mrun "make -j $(nproc) --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
-      touch ${pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
+        msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
   else
     if [ ! -e "${pthLog}/f_uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log" ]; then
@@ -1007,7 +1087,11 @@ php_extensions_update() {
       mrun "make -j $(nproc) --quiet" 2> /dev/null
       mrun "make -j $(nproc) --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
-      touch ${pthLog}/f_uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
+        msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${pthLog}/f_uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
   fi
   ###--------------------###
@@ -1023,9 +1107,13 @@ php_extensions_update() {
       mrun "make -j $(nproc) --quiet" 2> /dev/null
       mrun "make -j $(nproc) --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
-      touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/jsmin.so" ]; then
+        msg "WARN: Installing JSMin for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${pthLog}/php-pecl-jsmin-${_JSMIN_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
-  elif [ "$1" = "70" ] || [ "$1" = "71" ] || [ "$1" = "72" ] || [ "$1" = "73" ] || [ "$1" = "74" ]; then
+  else
     if [ ! -e "${pthLog}/php-pecl-jsmin-${_JSMIN_PHP7_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing JSMin ${_JSMIN_PHP7_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
@@ -1037,7 +1125,11 @@ php_extensions_update() {
       mrun "make -j $(nproc) --quiet" 2> /dev/null
       mrun "make -j $(nproc) --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
-      touch ${pthLog}/php-pecl-jsmin-${_JSMIN_PHP7_VRN}-${_T_PHP_VRN}.log
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/jsmin.so" ]; then
+        msg "WARN: Installing JSMin for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${pthLog}/php-pecl-jsmin-${_JSMIN_PHP7_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
   fi
   ###--------------------###
@@ -1053,7 +1145,11 @@ php_extensions_update() {
       mrun "make -j $(nproc) --quiet" 2> /dev/null
       mrun "make -j $(nproc) --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
-      touch ${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/twig.so" ]; then
+        msg "WARN: Installing Twig C for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
   fi
   ###--------------------###
@@ -1099,7 +1195,11 @@ php_extensions_update() {
       mrun "make -j $(nproc) --quiet" 2> /dev/null
       mrun "make -j $(nproc) --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
-      touch ${pthLog}/php-mongo-${_MONGO_VRN}-${_T_PHP_VRN}.log
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/mongo.so" ]; then
+        msg "WARN: Installing MongoDB driver for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${pthLog}/php-mongo-${_MONGO_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
   fi
   if [ "$1" != "56" ] \
@@ -1115,7 +1215,11 @@ php_extensions_update() {
       mrun "make -j $(nproc) --quiet" 2> /dev/null
       mrun "make -j $(nproc) --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
-      touch ${pthLog}/php-mongodb-${_MONGODB_VRN}-${_T_PHP_VRN}.log
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/mongo.so" ]; then
+        msg "WARN: Installing MongoDB driver for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${pthLog}/php-mongodb-${_MONGODB_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
   fi
   ###--------------------###
@@ -1135,7 +1239,11 @@ php_extensions_update() {
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make -j $(nproc) --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    touch ${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ]; then
+      msg "WARN: Installing Imagick for PHP ${_T_PHP_VRN} failed!"
+    else
+      touch ${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
   if [ "$1" = "56" ]; then
@@ -1150,7 +1258,11 @@ php_extensions_update() {
       mrun "make -j $(nproc) --quiet" 2> /dev/null
       mrun "make -j $(nproc) --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
-      touch ${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/mailparse.so" ]; then
+        msg "WARN: Installing MailParse for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
   fi
   ###--------------------###
@@ -1211,7 +1323,11 @@ php_extensions_update() {
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make -j $(nproc) --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    touch ${pthLog}/f_yaml-${_YAML_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
+      msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
+    else
+      touch ${pthLog}/f_yaml-${_YAML_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log
+    fi
   fi
 }
 
@@ -1440,6 +1556,25 @@ install_php_multi() {
     _T_PHP_VRN="${_PHP_VERSION}"
     _T_PHP_PTH="/opt/php$1/bin"
     _T_PHP_CFG="/opt/php$1/bin/php-config"
+    if [ "$1" = "56" ]; then
+      _THIS_PHP_EXT_DIR="/opt/php56/lib/php/extensions/no-debug-non-zts-${_PHP56_API}"
+    elif [ "$1" = "70" ]; then
+      _THIS_PHP_EXT_DIR="/opt/php70/lib/php/extensions/no-debug-non-zts-${_PHP70_API}"
+    elif [ "$1" = "71" ]; then
+      _THIS_PHP_EXT_DIR="/opt/php71/lib/php/extensions/no-debug-non-zts-${_PHP71_API}"
+    elif [ "$1" = "72" ]; then
+      _THIS_PHP_EXT_DIR="/opt/php72/lib/php/extensions/no-debug-non-zts-${_PHP72_API}"
+    elif [ "$1" = "73" ]; then
+      _THIS_PHP_EXT_DIR="/opt/php73/lib/php/extensions/no-debug-non-zts-${_PHP73_API}"
+    elif [ "$1" = "74" ]; then
+      _THIS_PHP_EXT_DIR="/opt/php74/lib/php/extensions/no-debug-non-zts-${_PHP74_API}"
+    elif [ "$1" = "80" ]; then
+      _THIS_PHP_EXT_DIR="/opt/php80/lib/php/extensions/no-debug-non-zts-${_PHP80_API}"
+    elif [ "$1" = "81" ]; then
+      _THIS_PHP_EXT_DIR="/opt/php81/lib/php/extensions/no-debug-non-zts-${_PHP81_API}"
+    elif [ "$1" = "82" ]; then
+      _THIS_PHP_EXT_DIR="/opt/php82/lib/php/extensions/no-debug-non-zts-${_PHP82_API}"
+    fi
     install_php_extensions "$1"
     if [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
