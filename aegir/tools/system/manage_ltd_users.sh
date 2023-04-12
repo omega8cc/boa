@@ -427,7 +427,7 @@ enable_chattr() {
                 ln -s /bin/dash /usr/bin/sh
               fi
             fi
-          else
+          elif [ -x "/bin/bash" ]; then
             if [ "${_WEB_SH}" != "/bin/bash" ]; then
               rm -f /bin/sh
               ln -s /bin/bash /bin/sh
@@ -478,6 +478,10 @@ enable_chattr() {
             if [ "${_WEB_SH}" != "/bin/bash" ]; then
               rm -f /bin/sh
               ln -s /bin/bash /bin/sh
+              if [ -e "/usr/bin/sh" ]; then
+                rm -f /usr/bin/sh
+                ln -s /bin/bash /usr/bin/sh
+              fi
             fi
           fi
         fi
@@ -510,6 +514,10 @@ enable_chattr() {
             if [ "${_WEB_SH}" != "/bin/bash" ]; then
               rm -f /bin/sh
               ln -s /bin/bash /bin/sh
+              if [ -e "/usr/bin/sh" ]; then
+                rm -f /usr/bin/sh
+                ln -s /bin/bash /usr/bin/sh
+              fi
             fi
           fi
         fi
@@ -2479,8 +2487,10 @@ else
         && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
         rm -f /bin/sh
         ln -s /bin/websh /bin/sh
-        rm -f /usr/bin/sh
-        ln -s /bin/websh /usr/bin/sh
+        if [ -e "/usr/bin/sh" ]; then
+          rm -f /usr/bin/sh
+          ln -s /bin/websh /usr/bin/sh
+        fi
       fi
     else
       if [ -x "/bin/dash" ]; then
@@ -2492,12 +2502,14 @@ else
             ln -s /bin/dash /usr/bin/sh
           fi
         fi
-      else
+      elif [ -x "/bin/bash" ]; then
         if [ "${_WEB_SH}" != "/bin/bash" ]; then
           rm -f /bin/sh
           ln -s /bin/bash /bin/sh
-          rm -f /usr/bin/sh
-          ln -s /bin/bash /usr/bin/sh
+          if [ -e "/usr/bin/sh" ]; then
+            rm -f /usr/bin/sh
+            ln -s /bin/bash /usr/bin/sh
+          fi
         fi
       fi
       curl -s -A iCab "${urlHmr}/helpers/websh.sh.txt" -o /bin/websh
