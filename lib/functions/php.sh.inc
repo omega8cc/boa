@@ -925,10 +925,14 @@ install_php_extensions() {
   fi
   cd /var/opt
   rm -rf yaml*
-  if [ "$1" = "56" ] || [ "$1" = "70" ]; then
+  if [ "$1" = "56" ]; then
     msg "INFO: Installing YAML ${_YAML_PHP_LEGACY_VRN} for PHP ${_T_PHP_VRN}..."
     get_dev_src "yaml-${_YAML_PHP_LEGACY_VRN}.tgz"
     cd /var/opt/yaml-${_YAML_PHP_LEGACY_VRN}
+  elif [ "$1" = "70" ]; then
+    msg "INFO: Installing YAML ${_YAML_PHP_SEVENO_VRN} for PHP ${_T_PHP_VRN}..."
+    get_dev_src "yaml-${_YAML_PHP_SEVENO_VRN}.tgz"
+    cd /var/opt/yaml-${_YAML_PHP_SEVENO_VRN}
   else
     msg "INFO: Installing YAML ${_YAML_PHP_MODERN_VRN} for PHP ${_T_PHP_VRN}..."
     get_dev_src "yaml-${_YAML_PHP_MODERN_VRN}.tgz"
@@ -942,8 +946,10 @@ install_php_extensions() {
   if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
     msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
   else
-    if [ "$1" = "56" ] || [ "$1" = "70" ]; then
+    if [ "$1" = "56" ]; then
       touch ${pthLog}/f_yaml-${_YAML_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log
+    elif [ "$1" = "70" ]; then
+      touch ${pthLog}/f_yaml-${_YAML_PHP_SEVENO_VRN}-${_T_PHP_VRN}.log
     else
       touch ${pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log
     fi
@@ -1312,7 +1318,7 @@ php_extensions_update() {
       fi
     fi
   fi
-  if [ "$1" = "56" ] || [ "$1" = "70" ]; then
+  if [ "$1" = "56" ]; then
     if [ ! -e "${pthLog}/f_yaml-${_YAML_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing YAML ${_YAML_PHP_LEGACY_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
@@ -1328,6 +1334,24 @@ php_extensions_update() {
         msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
       else
         touch ${pthLog}/f_yaml-${_YAML_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log
+      fi
+    fi
+  elif [ "$1" = "70" ]; then
+    if [ ! -e "${pthLog}/f_yaml-${_YAML_PHP_SEVENO_VRN}-${_T_PHP_VRN}.log" ]; then
+      msg "INFO: Installing YAML ${_YAML_PHP_SEVENO_VRN} upgrade for PHP ${_T_PHP_VRN}..."
+      cd /var/opt
+      rm -rf yaml*
+      get_dev_src "yaml-${_YAML_PHP_SEVENO_VRN}.tgz"
+      cd /var/opt/yaml-${_YAML_PHP_SEVENO_VRN}
+      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+      mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "make -j $(nproc) --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
+      mrun "ldconfig" 2> /dev/null
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
+        msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${pthLog}/f_yaml-${_YAML_PHP_SEVENO_VRN}-${_T_PHP_VRN}.log
       fi
     fi
   else
