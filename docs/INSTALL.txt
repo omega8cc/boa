@@ -16,11 +16,12 @@
 * Don't run any installer via sudo.
   You must be logged in as root directly.
 
-* Don't run any system updates before running Barracuda installer.
+* Don't run any system updates with apt before running Barracuda installer.
   You should use vanilla system.
 
-* Once BOA is installed, the server SSH keys will change, so you will need to
-  remove relevant lines from your ~/.ssh/known_hosts file and accept new key.
+* Once OpenSSH is installed on barracuda upgrade, the server keys will change,
+  so you will need to remove relevant lines from your ~/.ssh/known_hosts
+  file and accept new key.
 
   The next time you will ssh-in, you will see error or it may look like this:
 
@@ -89,23 +90,34 @@
    built-in platform, while "ask" is a default mode if you don't specify
    this option at all.
 
-   The last {newrelickey|php-7.4|php-8.1|php-min|php-max|nodns} part is
+   The last {newrelickey|php-7.4|php-min|php-max|nodns} part is
    optional and can be used either to install New Relic Apps Monitor (you should
    replace the "newrelickey" keyword with a valid license key), or to define
    single PHP version to install and use both for Master and Satellite instances.
-   When "php-min" is defined, then all supported versions will be installed,
-   but 7.4 will be used by default. You can later install or modify PHP version
+   When "php-min" is defined, then only 3 versions will be installed: 8.2, 8.1,
+   plus 7.4 will be used by default. You can later install or modify PHP version
    used via _PHP_MULTI_INSTALL, _PHP_CLI_VERSION and _PHP_FPM_VERSION, but
    the _PHP_SINGLE_INSTALL variable must be set empty to not override other
    related variables. The "nodns" option allows to skip DNS and SMTP checks.
 
-   # Latest on public server - prompt for every platform install
+   Examples:
+
+   # Latest on server - no Aegir platforms + install all 9 PHP versions
+   $ boa in-head public server.mydomain.org my@email o1 none php-max
+
+   # Latest on server - no Aegir platforms + install 3 PHP versions
+   $ boa in-head public server.mydomain.org my@email o1 none php-min
+
+   # Latest on server - some Aegir platforms + single PHP version
+   $ boa in-head public server.mydomain.org my@email o1 mini php-7.4
+
+   # Latest on server - prompt for every platform install + 3 PHP versions
    $ boa in-head public server.mydomain.org my@email o1
 
-   # Latest on public server - no prompt with 3xD6 + 3xD7 only
+   # Latest on server - no prompt with 3xD6 + 3xD7 only + 3 PHP versions
    $ boa in-head public server.mydomain.org my@email o1 mini
 
-   # Latest on public server - no prompt with all platforms and New Relic
+   # Latest on server - no prompt all platforms + New Relic + 3 PHP versions
    $ boa in-head public server.mydomain.org my@email o1 max newrelickey
 
    To install Legacy version instead of Latest, use the same commands, but
@@ -140,13 +152,16 @@
    # Latest on localhost - prompt for every platform install
    $ boa in-head local my@email
 
-   # Latest on localhost - prompt for every platform + install all PHP versions
+   # Latest on localhost - prompt for every platform + install 9 PHP versions
+   $ boa in-head local my@email php-max
+
+   # Latest on localhost - prompt for every platform + install 3 PHP versions
    $ boa in-head local my@email php-min
 
    # Latest on localhost - no prompt with 3xD6 + 3xD7 only + single PHP version
    $ boa in-head local my@email mini php-7.4
 
-   # Latest on localhost - no prompt with all platforms installed
+   # Latest on localhost - no prompt all platforms + 3 PHP versions
    $ boa in-head local my@email max
 
    To install DEV instead of Latest, use the same commands, but
