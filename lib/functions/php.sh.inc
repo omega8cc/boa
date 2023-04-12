@@ -748,7 +748,7 @@ install_php_extensions() {
   mrun "make -j $(nproc) --quiet" 2> /dev/null
   mrun "make --quiet install" 2> /dev/null
   mrun "ldconfig" 2> /dev/null
-  if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
+  if [ ! -e "${_THIS_PHP_EXT_DIR}/jsmin.so" ]; then
     msg "WARN: Installing JSMin for PHP ${_T_PHP_VRN} failed!"
   else
     if [ "$1" = "56" ]; then
