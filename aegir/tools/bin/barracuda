@@ -553,12 +553,10 @@ up_action() {
           done
         fi
       elif [ "${phpS}" = "MIN" ] || [ "${phpS}" = "MAX" ]; then
-        if [ "${phpS}" = "MAX" ] \
-          || [ "${_DEBUG_MODE}" = "YES" ] \
-          || [ -e "/root/.debug-barracuda-installer.cnf" ]; then
+        if [ "${phpS}" = "MAX" ]; then
           phpM="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2"
         else
-           phpM="7.4 8.1 8.2"
+          phpM="7.4 8.1 8.2"
         fi
         phpS="7.4"
 
