@@ -613,7 +613,7 @@ install_php_extensions() {
   mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
   mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
   mrun "make -j $(nproc) --quiet" 2> /dev/null
-  mrun "make -j $(nproc) --quiet install" 2> /dev/null
+  mrun "make --quiet install" 2> /dev/null
   mrun "ldconfig" 2> /dev/null
   if [ ! -e "${_THIS_PHP_EXT_DIR}/redis.so" ]; then
     msg "WARN: Installing PhpRedis for PHP ${_T_PHP_VRN} failed!"
@@ -630,7 +630,7 @@ install_php_extensions() {
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
     mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make -j $(nproc) --quiet install" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ]; then
       msg "WARN: Installing APCu for PHP ${_T_PHP_VRN} failed!"
@@ -648,7 +648,7 @@ install_php_extensions() {
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
     mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make -j $(nproc) --quiet install" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
       msg "WARN: Installing igbinary for PHP ${_T_PHP_VRN} failed!"
@@ -668,7 +668,7 @@ install_php_extensions() {
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
     mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make -j $(nproc) --quiet install" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     if [ ! -e "${_THIS_PHP_EXT_DIR}/mcrypt.so" ]; then
       msg "WARN: Installing MCRYPT for PHP ${_T_PHP_VRN} failed!"
@@ -686,7 +686,7 @@ install_php_extensions() {
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
     mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make -j $(nproc) --quiet install" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
       msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
@@ -707,7 +707,7 @@ install_php_extensions() {
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
     mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make -j $(nproc) --quiet install" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
       msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
@@ -723,7 +723,7 @@ install_php_extensions() {
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
     mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make -j $(nproc) --quiet install" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
       msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
@@ -746,7 +746,7 @@ install_php_extensions() {
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
     mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make -j $(nproc) --quiet install" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
       msg "WARN: Installing JSMin for PHP ${_T_PHP_VRN} failed!"
@@ -768,7 +768,7 @@ install_php_extensions() {
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
     mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make -j $(nproc) --quiet install" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     if [ ! -e "${_THIS_PHP_EXT_DIR}/twig.so" ]; then
       msg "WARN: Installing Twig C for PHP ${_T_PHP_VRN} failed!"
@@ -799,7 +799,7 @@ install_php_extensions() {
       done
       mrun "bash ./configure --enable-php" 2> /dev/null
       mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make -j $(nproc) --quiet install" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
       touch ${pthLog}/php-geos-${_GEOS_VRN}-${_T_PHP_VRN}.log
     fi
@@ -815,7 +815,7 @@ install_php_extensions() {
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
       mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make -j $(nproc) --quiet install" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
       if [ ! -e "${_THIS_PHP_EXT_DIR}/mongo.so" ]; then
         msg "WARN: Installing MongoDB driver for PHP ${_T_PHP_VRN} failed!"
@@ -831,7 +831,7 @@ install_php_extensions() {
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
       mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make -j $(nproc) --quiet install" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
       if [ ! -e "${_THIS_PHP_EXT_DIR}/mongo.so" ]; then
         msg "WARN: Installing MongoDB driver for PHP ${_T_PHP_VRN} failed!"
@@ -854,7 +854,7 @@ install_php_extensions() {
   mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
   mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
   mrun "make -j $(nproc) --quiet" 2> /dev/null
-  mrun "make -j $(nproc) --quiet install" 2> /dev/null
+  mrun "make --quiet install" 2> /dev/null
   mrun "ldconfig" 2> /dev/null
   if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ]; then
     msg "WARN: Installing Imagick for PHP ${_T_PHP_VRN} failed!"
@@ -871,7 +871,7 @@ install_php_extensions() {
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
     mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make -j $(nproc) --quiet install" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     if [ ! -e "${_THIS_PHP_EXT_DIR}/mailparse.so" ]; then
       msg "WARN: Installing MailParse for PHP ${_T_PHP_VRN} failed!"
@@ -891,7 +891,7 @@ install_php_extensions() {
     mrun "sh ./bootstrap" 2> /dev/null
     mrun "bash ./configure --prefix=/usr" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make -j $(nproc) --quiet install" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     touch ${pthLog}/f_libyaml-${_LIB_YAML_VRN}.log
     rm -f ${pthLog}/yaml*.log
@@ -936,7 +936,7 @@ install_php_extensions() {
   mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
   mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
   mrun "make -j $(nproc) --quiet" 2> /dev/null
-  mrun "make -j $(nproc) --quiet install" 2> /dev/null
+  mrun "make --quiet install" 2> /dev/null
   mrun "ldconfig" 2> /dev/null
   if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
     msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
@@ -963,7 +963,7 @@ php_extensions_update() {
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
     mrun "bash ./configure --enable-redis-igbinary --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make -j $(nproc) --quiet install" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     if [ ! -e "${_THIS_PHP_EXT_DIR}/redis.so" ]; then
       msg "WARN: Installing PhpRedis for PHP ${_T_PHP_VRN} failed!"
@@ -982,7 +982,7 @@ php_extensions_update() {
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
       mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make -j $(nproc) --quiet install" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
       if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ]; then
         msg "WARN: Installing APCu for PHP ${_T_PHP_VRN} failed!"
@@ -1002,7 +1002,7 @@ php_extensions_update() {
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
       mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make -j $(nproc) --quiet install" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
       if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
         msg "WARN: Installing igbinary for PHP ${_T_PHP_VRN} failed!"
@@ -1024,7 +1024,7 @@ php_extensions_update() {
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
       mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make -j $(nproc) --quiet install" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
       if [ ! -e "${_THIS_PHP_EXT_DIR}/mcrypt.so" ]; then
         msg "WARN: Installing MCRYPT for PHP ${_T_PHP_VRN} failed!"
@@ -1044,7 +1044,7 @@ php_extensions_update() {
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
       mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make -j $(nproc) --quiet install" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
       if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
         msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
@@ -1067,7 +1067,7 @@ php_extensions_update() {
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
       mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make -j $(nproc) --quiet install" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
       if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
         msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
@@ -1085,7 +1085,7 @@ php_extensions_update() {
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
       mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make -j $(nproc) --quiet install" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
       if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
         msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
@@ -1105,7 +1105,7 @@ php_extensions_update() {
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
       mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make -j $(nproc) --quiet install" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
       if [ ! -e "${_THIS_PHP_EXT_DIR}/jsmin.so" ]; then
         msg "WARN: Installing JSMin for PHP ${_T_PHP_VRN} failed!"
@@ -1123,7 +1123,7 @@ php_extensions_update() {
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
       mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make -j $(nproc) --quiet install" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
       if [ ! -e "${_THIS_PHP_EXT_DIR}/jsmin.so" ]; then
         msg "WARN: Installing JSMin for PHP ${_T_PHP_VRN} failed!"
@@ -1143,7 +1143,7 @@ php_extensions_update() {
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
       mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make -j $(nproc) --quiet install" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
       if [ ! -e "${_THIS_PHP_EXT_DIR}/twig.so" ]; then
         msg "WARN: Installing Twig C for PHP ${_T_PHP_VRN} failed!"
@@ -1176,7 +1176,7 @@ php_extensions_update() {
       done
       mrun "bash ./configure --enable-php" 2> /dev/null
       mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make -j $(nproc) --quiet install" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
       touch ${pthLog}/php-geos-${_GEOS_VRN}-${_T_PHP_VRN}.log
     fi
@@ -1193,7 +1193,7 @@ php_extensions_update() {
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
       mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make -j $(nproc) --quiet install" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
       if [ ! -e "${_THIS_PHP_EXT_DIR}/mongo.so" ]; then
         msg "WARN: Installing MongoDB driver for PHP ${_T_PHP_VRN} failed!"
@@ -1213,7 +1213,7 @@ php_extensions_update() {
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
       mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make -j $(nproc) --quiet install" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
       if [ ! -e "${_THIS_PHP_EXT_DIR}/mongo.so" ]; then
         msg "WARN: Installing MongoDB driver for PHP ${_T_PHP_VRN} failed!"
@@ -1237,7 +1237,7 @@ php_extensions_update() {
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
     mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make -j $(nproc) --quiet install" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ]; then
       msg "WARN: Installing Imagick for PHP ${_T_PHP_VRN} failed!"
@@ -1256,7 +1256,7 @@ php_extensions_update() {
       mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
       mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
       mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make -j $(nproc) --quiet install" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
       if [ ! -e "${_THIS_PHP_EXT_DIR}/mailparse.so" ]; then
         msg "WARN: Installing MailParse for PHP ${_T_PHP_VRN} failed!"
@@ -1277,7 +1277,7 @@ php_extensions_update() {
     mrun "sh ./bootstrap" 2> /dev/null
     mrun "bash ./configure --prefix=/usr" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make -j $(nproc) --quiet install" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     touch ${pthLog}/f_libyaml-${_LIB_YAML_VRN}.log
     rm -f ${pthLog}/yaml*.log
@@ -1321,7 +1321,7 @@ php_extensions_update() {
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
     mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make -j $(nproc) --quiet install" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
       msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
@@ -1356,7 +1356,7 @@ install_php_multi() {
     cd tidy-html5-${_LIB_TIDY_VRN}/build/cmake
     mrun "cmake ../.. -DCMAKE_INSTALL_PREFIX=/usr/" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make -j $(nproc) --quiet install" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     if [ -e "/usr/lib/libtidy.so" ]; then
       cd /usr/lib
@@ -1496,7 +1496,7 @@ install_php_multi() {
     msg "WAIT: This may take a while, please wait..."
     sed -i "s/^EXTRA_LIBS = \-lcrypt/EXTRA_LIBS = \-llber \-lcrypt/g" /var/opt/php-${_PHP_VERSION}/Makefile
     mrun "make -j $(nproc)" 2> /dev/null
-    mrun "make -j $(nproc) install" 2> /dev/null
+    mrun "make install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
   else
     msg "WARN: No Makefile, configure for PHP ${_PHP_VERSION} failed"
@@ -1531,7 +1531,7 @@ install_php_multi() {
       msg "INFO: Building PHP ${_PHP_VERSION} part 3/3 (again)"
       msg "WAIT: This may take a while, please wait..."
       mrun "make -j $(nproc)" 2> /dev/null
-      mrun "make -j $(nproc) install" 2> /dev/null
+      mrun "make install" 2> /dev/null
       mrun "ldconfig" 2> /dev/null
     else
       msg "ALRT: No Makefile, building PHP ${_PHP_VERSION} failed again!"
@@ -2471,7 +2471,7 @@ php_check_fix() {
     cd tidy-html5-${_LIB_TIDY_VRN}/build/cmake
     mrun "cmake ../.. -DCMAKE_INSTALL_PREFIX=/usr/" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make -j $(nproc) --quiet install" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     if [ -e "/usr/lib/libtidy.so" ]; then
       cd /usr/lib

@@ -232,7 +232,7 @@ install_redis_src() {
   rm -f /usr/bin/redis*
   cd redis-${_REDIS_VRN}
   mrun "make -j $(nproc) --quiet" 2> /dev/null
-  mrun "make -j $(nproc) --quiet PREFIX=/usr install" 2> /dev/null
+  mrun "make --quiet PREFIX=/usr install" 2> /dev/null
   cp -af ${locCnf}/redis-server /etc/init.d/redis-server
   chmod 755 /etc/init.d/redis-server &> /dev/null
   mrun "update-rc.d redis-server defaults" &> /dev/null
