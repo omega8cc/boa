@@ -2505,6 +2505,20 @@ if_install_wkhtmltox() {
       cd /var/opt
     fi
   fi
+  if [ ! -x "/usr/local/bin/wkhtmltopdf" ] \
+    && [ -x "/usr/bin/wkhtmltopdf" ]; then
+    rm -f /usr/local/bin/wkhtmltopdf
+    cp -af /usr/bin/wkhtmltopdf /usr/local/bin/wkhtmltopdf
+    chgrp root /usr/local/bin/wkhtmltopdf &> /dev/null
+    chmod 755 /usr/local/bin/wkhtmltopdf &> /dev/null
+  fi
+  if [ ! -x "/usr/local/bin/wkhtmltoimage" ] \
+    && [ -x "/usr/bin/wkhtmltoimage" ]; then
+    rm -f /usr/local/bin/wkhtmltoimage
+    cp -af /usr/bin/wkhtmltoimage /usr/local/bin/wkhtmltoimage
+    chgrp root /usr/local/bin/wkhtmltoimage &> /dev/null
+    chmod 755 /usr/local/bin/wkhtmltoimage &> /dev/null
+  fi
   systemd_remove_if_detected
 }
 
