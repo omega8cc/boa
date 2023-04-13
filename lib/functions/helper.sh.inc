@@ -85,12 +85,9 @@ not_supported_os() {
   echo
   echo "=== OOPS! ==="
   echo
-  echo "It is not any supported Devuan, Debian or Ubuntu version."
+  echo "It is not any supported Devuan or Debian version."
   echo
   echo "You need Devuan Beowulf (recommended) or Debian Buster first."
-  echo
-  echo "Also Ubuntu (Trusty or Precise) should work fine,"
-  echo "although BOA developers test only Devuan and Debian."
   echo
   echo "Bye"
   echo
