@@ -1,6 +1,9 @@
 #
 # Fix for SA-CORE-2014-005
 fix_core_dgd() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_core_dgd"
+  fi
   # https://www.drupal.org/SA-CORE-2014-005
   # sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g" /root/.barracuda.cnf
   if [ -e "/var/xdrago" ] \
@@ -140,6 +143,9 @@ fix_core_dgd() {
 }
 # Fix for Postfix configuration.
 fix_cnf_postfix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_cnf_postfix"
+  fi
   _RELOAD_POSTFIX=NO
   _INET_TEST=$(grep 'inet_protocols' /etc/postfix/main.cf 2>&1)
   if [[ "$_INET_TEST" =~ "inet_protocols" ]]; then

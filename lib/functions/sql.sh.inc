@@ -1,6 +1,9 @@
 #
 # Only supported upgrade path allowed.
 sql_strict_upgrade_path() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: sql_strict_upgrade_path"
+  fi
   _DB_SERVER_TEST=$(mysql -V 2>&1)
   _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
@@ -105,6 +108,9 @@ sql_strict_upgrade_path() {
 #
 # Update innodb_log_file_size.
 innodb_log_file_size_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: innodb_log_file_size_update"
+  fi
   msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
     sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf &> /dev/null
@@ -144,6 +150,9 @@ innodb_log_file_size_update() {
 #
 # Update SQL Config.
 sql_conf_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: sql_conf_update"
+  fi
   sed -i "s/.*innodb_force_recovery/#innodb_force_recovery/g" /etc/mysql/my.cnf &> /dev/null
     wait
   if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
@@ -257,6 +266,9 @@ sql_conf_update() {
 #
 #
 check_mysqld_running() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_mysqld_running"
+  fi
   until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
     && [ -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
@@ -269,6 +281,9 @@ check_mysqld_running() {
 #
 # Tune memory limits for SQL server.
 tune_sql_memory_limits() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: tune_sql_memory_limits"
+  fi
   check_mysqld_running
   if [ "${_DB_SERVER}" = "MariaDB" ]; then
     sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" \
@@ -497,6 +512,9 @@ tune_sql_memory_limits() {
 }
 
 prep_for_install_db_sql() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: prep_for_install_db_sql"
+  fi
   if [ "${_OSR}" = "chimaera" ]; then
     _SQL_OSR=bullseye
   elif [ "${_OSR}" = "beowulf" ]; then
@@ -796,6 +814,9 @@ prep_for_install_db_sql() {
 }
 
 install_with_aptitude_sql() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: install_with_aptitude_sql"
+  fi
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
     || [ "${_OSR}" = "bullseye" ] \
@@ -888,6 +909,9 @@ install_with_aptitude_sql() {
 #
 # Forced MySQL root password update.
 forced_mysql_root_password_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: forced_mysql_root_password_update"
+  fi
   mv -f /root/.my.cnf-pre-* ${vBs}/ &> /dev/null
   mv -f /root/.my.pass.txt-pre-* ${vBs}/ &> /dev/null
   touch /root/.my.pass.txt

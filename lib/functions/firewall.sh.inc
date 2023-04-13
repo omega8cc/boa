@@ -1,6 +1,9 @@
 #
 # Fix csf.uidignore file to whitelist important system uids when UID_INTERVAL != 0
 fix_lfd_uidignore() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_lfd_uidignore"
+  fi
   _THIS_FILE=/etc/csf/csf.uidignore
   if [ -e "${_THIS_FILE}" ]; then
     _CSF_UIDIGNORE_TEST=$(grep "pdnsd" ${_THIS_FILE} 2>&1)
@@ -34,6 +37,9 @@ fix_lfd_uidignore() {
 #
 # Fix csf.fignore file to whitelist /tmp/drush_*
 fix_lfd_whitelist() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_lfd_whitelist"
+  fi
   _THIS_FILE=/etc/csf/csf.fignore
   if [ -e "${_THIS_FILE}" ]; then
     _CSF_WHITELIST_TEST=$(grep "jetty" ${_THIS_FILE} 2>&1)
@@ -56,6 +62,9 @@ fix_lfd_whitelist() {
 #
 # install csf/lfd firewall
 csf_install() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: csf_install"
+  fi
   if [ "$_CSF_MODE" = "install" ]; then
     msg "INFO: Installing csf/lfd firewall..."
   else

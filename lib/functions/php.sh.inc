@@ -1,6 +1,9 @@
 #
 # Fix php.ini files to remove ionCube
 fix_php_ini_ioncube() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_php_ini_ioncube"
+  fi
   if [ -e "${_THIS_FILE}" ] && [ "${_PHP_IONCUBE}" = "NO" ]; then
     _IONCUBE_INI_TEST=$(grep "ioncube_loader" ${_THIS_FILE} 2>&1)
     if [[ "$_IONCUBE_INI_TEST" =~ "ioncube_loader" ]]; then
@@ -13,6 +16,9 @@ fix_php_ini_ioncube() {
 #
 # Fix php.ini files to remove jsmin.so
 remove_php_ini_jsmin() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: remove_php_ini_jsmin"
+  fi
   if [ -e "${_THIS_FILE}" ]; then
     _JSMIN_INI_TEST=$(grep "^extension=jsmin.so" ${_THIS_FILE} 2>&1)
     if [[ "$_JSMIN_INI_TEST" =~ "extension=jsmin.so" ]]; then
@@ -25,6 +31,9 @@ remove_php_ini_jsmin() {
 #
 # Fix php.ini files to remove suhosin.so
 remove_php_ini_suhosin() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: remove_php_ini_suhosin"
+  fi
   if [ -e "${_THIS_FILE}" ]; then
     _SUHOSIN_INI_TEST=$(grep "^extension=suhosin.so" ${_THIS_FILE} 2>&1)
     if [[ "$_SUHOSIN_INI_TEST" =~ "extension=suhosin.so" ]]; then
@@ -37,6 +46,9 @@ remove_php_ini_suhosin() {
 #
 # Fix php.ini files to add mailparse.so
 fix_php_ini_mailparse() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_php_ini_mailparse"
+  fi
   if [ -e "${_THIS_FILE}" ]; then
     _MAILPARSE_INI_TEST=$(grep "^extension=mailparse.so" ${_THIS_FILE} 2>&1)
     if [[ "$_MAILPARSE_INI_TEST" =~ "extension=mailparse.so" ]]; then
@@ -50,6 +62,9 @@ fix_php_ini_mailparse() {
 #
 # Fix php.ini files to add yaml.so
 fix_php_ini_yaml() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_php_ini_yaml"
+  fi
   if [ -e "${_THIS_FILE}" ]; then
     _YAML_INI_TEST=$(grep "^extension=yaml.so" ${_THIS_FILE} 2>&1)
     if [[ "$_YAML_INI_TEST" =~ "extension=yaml.so" ]]; then
@@ -63,6 +78,9 @@ fix_php_ini_yaml() {
 #
 # Fix php.ini files to add jsmin.so
 add_php_ini_jsmin() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: add_php_ini_jsmin"
+  fi
   if [ -e "${_THIS_FILE}" ]; then
     _JSMIN_INI_TEST=$(grep "^extension=jsmin.so" ${_THIS_FILE} 2>&1)
     if [[ "$_JSMIN_INI_TEST" =~ "extension=jsmin.so" ]]; then
@@ -76,6 +94,9 @@ add_php_ini_jsmin() {
 #
 # Fix php.ini files to add twig.so
 fix_php_ini_twig() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_php_ini_twig"
+  fi
   if [ -e "${_THIS_FILE}" ]; then
     _TWIG_INI_TEST=$(grep "^extension=twig.so" ${_THIS_FILE} 2>&1)
     if [[ "$_TWIG_INI_TEST" =~ "extension=twig.so" ]]; then
@@ -89,6 +110,9 @@ fix_php_ini_twig() {
 #
 # Fix php.ini files to add redis.so
 fix_php_ini_redis() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_php_ini_redis"
+  fi
   if [ -e "${_THIS_FILE}" ]; then
     _REDIS_INI_TEST=$(grep "^extension=redis.so" ${_THIS_FILE} 2>&1)
     if [[ "$_REDIS_INI_TEST" =~ "extension=redis.so" ]]; then
@@ -102,6 +126,9 @@ fix_php_ini_redis() {
 #
 # Fix php.ini files to add mcrypt.so
 fix_php_ini_mcrypt() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_php_ini_mcrypt"
+  fi
   if [ -e "${_THIS_FILE}" ]; then
     _MCRYPT_INI_TEST=$(grep "^extension=mcrypt.so" ${_THIS_FILE} 2>&1)
     if [[ "$_MCRYPT_INI_TEST" =~ "extension=mcrypt.so" ]]; then
@@ -115,6 +142,9 @@ fix_php_ini_mcrypt() {
 #
 # Fix php.ini files to add apcu.so
 fix_php_ini_apcu() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_php_ini_apcu"
+  fi
   if [ -e "${_THIS_FILE}" ]; then
     _APCU_INI_TEST=$(grep "^apc.shm_size" ${_THIS_FILE} 2>&1)
     if [[ "$_APCU_INI_TEST" =~ "apc.shm_size" ]]; then
@@ -129,6 +159,9 @@ fix_php_ini_apcu() {
 #
 # Fix php.ini files to add igbinary.so
 fix_php_ini_igbinary() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_php_ini_igbinary"
+  fi
   if [ -e "${_THIS_FILE}" ]; then
     _IGBINARY_INI_TEST=$(grep "^extension=igbinary.so" ${_THIS_FILE} 2>&1)
     if [[ "$_IGBINARY_INI_TEST" =~ "extension=igbinary.so" ]]; then
@@ -142,6 +175,9 @@ fix_php_ini_igbinary() {
 #
 # Fix php.ini file to add newrelic.ini
 fix_php_ini_newrelic() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_php_ini_newrelic"
+  fi
   _NR_TPL="${locCnf}/newrelic.ini"
   if [ -e "${_THIS_FILE}" ]; then
     _NEWRELIC_INI_TEST_A=$(grep "^extension=newrelic.so" ${_THIS_FILE} 2>&1)
@@ -166,6 +202,9 @@ fix_php_ini_newrelic() {
 #
 # Fix all php.ini files to add newrelic.ini
 fix_php_ini_newrelic_all() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_php_ini_newrelic_all"
+  fi
   if [ -e "/etc/newrelic/newrelic.cfg" ]; then
     if [ -z "${_NEWRELIC_KEY}" ]; then
       _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
@@ -190,6 +229,9 @@ fix_php_ini_newrelic_all() {
 #
 # Fix FMP php.ini file to add opcache.so
 fix_php_ini_opcache() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_php_ini_opcache"
+  fi
   if [ -e "${_THIS_FILE}" ]; then
     _OPCACHE_INI_TEST=$(grep "opcache.so" ${_THIS_FILE} 2>&1)
     if [[ "$_OPCACHE_INI_TEST" =~ "opcache.so" ]]; then
@@ -209,6 +251,9 @@ fix_php_ini_opcache() {
 #
 # Fix all FMP php.ini files to add Zend OPcache
 fix_php_ini_opcache_all() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_php_ini_opcache_all"
+  fi
   _PHP_V="82 81 80 74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "10.4" ] \
     || [ "${_DB_SERIES}" = "10.3" ] \
@@ -240,6 +285,9 @@ fix_php_ini_opcache_all() {
 #
 # Fix php.ini file to add php_tet.so
 fix_php_ini_tet() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_php_ini_tet"
+  fi
   if [ -e "${_THIS_FILE}" ]; then
     _TET_INI_TEST=$(grep "^extension=php_tet.so" ${_THIS_FILE} 2>&1)
     if [[ "$_TET_INI_TEST" =~ "extension=php_tet.so" ]]; then
@@ -259,6 +307,9 @@ fix_php_ini_tet() {
 #
 # Fix all php.ini files to add php_tet.so
 fix_php_ini_tet_all() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_php_ini_tet_all"
+  fi
   if [ "${_PHP_TET}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "TET" ]]; then
     _PHP_V="82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
@@ -310,6 +361,9 @@ fix_php_ini_tet_all() {
 #
 # Fix php.ini file to add geos.so
 fix_php_ini_geos() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_php_ini_geos"
+  fi
   if [ -e "${_THIS_FILE}" ]; then
     _GEOS_INI_TEST=$(grep "^extension=geos.so" ${_THIS_FILE} 2>&1)
     if [[ "$_GEOS_INI_TEST" =~ "extension=geos.so" ]]; then
@@ -323,6 +377,9 @@ fix_php_ini_geos() {
 #
 # Fix all php.ini files to add geos.so
 fix_php_ini_geos_all() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_php_ini_geos_all"
+  fi
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
     _PHP_V="56"
     for e in ${_PHP_V}; do
@@ -337,6 +394,9 @@ fix_php_ini_geos_all() {
 #
 # Fix php.ini file to add mongo.so
 fix_php_ini_mongo() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_php_ini_mongo"
+  fi
   if [ -e "${_THIS_FILE}" ]; then
     _MONGO_INI_TEST=$(grep "^extension=mongo.so" ${_THIS_FILE} 2>&1)
     if [[ "$_MONGO_INI_TEST" =~ "extension=mongo.so" ]]; then
@@ -350,6 +410,9 @@ fix_php_ini_mongo() {
 #
 # Fix php.ini file to add mongodb.so
 fix_php_ini_mongodb() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_php_ini_mongodb"
+  fi
   if [ -e "${_THIS_FILE}" ]; then
     _MONGODB_INI_TEST=$(grep "^extension=mongodb.so" ${_THIS_FILE} 2>&1)
     if [[ "$_MONGODB_INI_TEST" =~ "extension=mongodb.so" ]]; then
@@ -363,6 +426,9 @@ fix_php_ini_mongodb() {
 #
 # Fix all php.ini files to add mongo.so or mongodb.so
 fix_php_ini_mongo_all() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_php_ini_mongo_all"
+  fi
   if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
     _PHP_V="56"
     for e in ${_PHP_V}; do
@@ -502,12 +568,15 @@ php_config_check_update() {
     msg "PROC: php_config_check_update"
   fi
   php_conf_update
-  ini_tpl_update
+  boa_ini_tpl_update
 }
 
 #
 # Tune Web Sever configuration.
 tune_web_server_config() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: tune_web_server_config"
+  fi
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
   if [ "${_LIM_FPM}" -lt "48" ]; then
     if [[ "${_THISHOST}" =~ ".host8." ]] \
@@ -599,6 +668,9 @@ if_install_php_ioncube() {
 #
 # Install PHP extensions.
 install_php_extensions() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: install_php_extensions"
+  fi
   ###--------------------###
   if [ "$1" = "56" ]; then
     _USE_PHPREDIS="${_PHPREDIS_FOUR_VRN}"
@@ -959,6 +1031,9 @@ install_php_extensions() {
 #
 # Update extensions for PHP built from sources.
 php_extensions_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: php_extensions_update"
+  fi
   ###--------------------###
   if [ "$1" = "56" ]; then
     _USE_PHPREDIS="${_PHPREDIS_FOUR_VRN}"
@@ -1378,6 +1453,9 @@ php_extensions_update() {
 #
 # Install modern PHP version
 install_php_multi() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: install_php_multi"
+  fi
   if_to_do_fix
   get_php_conf_extra
   _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-curlwrappers//g" 2>&1)
@@ -1670,6 +1748,9 @@ install_php_multi() {
 #
 # Update PHP extensions
 php_multi_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: php_multi_update"
+  fi
   _T_PHP_VRN="${_PHP_VERSION}"
   _T_PHP_PTH="/opt/php$1/bin"
   _T_PHP_CFG="/opt/php$1/bin/php-config"
@@ -1679,6 +1760,9 @@ php_multi_update() {
 #
 # Update New Relic.
 newrelic_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: newrelic_update"
+  fi
   ###--------------------###
   if [ ! -z "${_NEWRELIC_KEY}" ]; then
     if [ -x "/usr/bin/gpg2" ]; then
@@ -1972,6 +2056,9 @@ if_install_php_newrelic() {
 #
 # Check if the PHP rebuild is required.
 check_php_rebuild() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_php_rebuild"
+  fi
   if_to_do_fix
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
@@ -2097,6 +2184,9 @@ check_php_rebuild() {
 #
 # Check if the PHP build has broken freetype support.
 check_php_broken_freetype() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_php_broken_freetype"
+  fi
   isFreeType=
   isFreeType=$(/opt/php$1/bin/php -i | grep with-freetype 2>&1)
   if [[ ! "${isFreeType}" =~ "with-freetype" ]] \
@@ -2116,6 +2206,9 @@ check_php_broken_freetype() {
 #
 # Check if the PHP build has broken GD support.
 check_php_broken_gd() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_php_broken_gd"
+  fi
   isGd=
   isGd=$(/opt/php$1/bin/php -i | grep GD 2>&1)
   if [[ ! "${isGd}" =~ "GD Support" ]] \
@@ -2131,6 +2224,9 @@ check_php_broken_gd() {
 #
 # Check if the PHP build is broken.
 check_php_broken() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_php_broken"
+  fi
   if_to_do_fix
   if [ "${_DO_FIX}" = "YES" ]; then
     _DO_NOTHING=YES
@@ -2153,6 +2249,9 @@ check_php_broken() {
 #
 # Fix init.d to disable deprecated PHP-FPM versions
 php_deprecated_cleanup() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: php_deprecated_cleanup"
+  fi
   _PHP_V="55 54 53"
   for e in ${_PHP_V}; do
     if [ -e "/opt/php${e}/bin/php" ]; then
@@ -2169,6 +2268,9 @@ php_deprecated_cleanup() {
 #
 # Fix init.d to disable not used PHP-FPM versions
 php_single_initd_cleanup() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: php_single_initd_cleanup"
+  fi
   if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
     _FPM_INITD_CLEANUP=
     if [ "${_PHP_SINGLE_INSTALL}" = "8.1" ]; then
@@ -2221,6 +2323,9 @@ php_single_initd_cleanup() {
 #
 # Re-set default PHP-CLI.
 re_set_default_php_cli() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: re_set_default_php_cli"
+  fi
   if [ "${_PHP_CLI_VERSION}" = "8.2" ]; then
     switch_php_cli "82"
   elif [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
@@ -2235,6 +2340,9 @@ re_set_default_php_cli() {
 #
 # Fix path to PHP-CLI if needed.
 check_php_cli() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_php_cli"
+  fi
   if [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
     _PHP_CLI_PATH="/opt/php74/bin/php"
   elif [ "${_PHP_CLI_VERSION}" = "8.0" ]; then
@@ -2270,6 +2378,9 @@ check_php_cli() {
 }
 
 switch_php_cli() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: switch_php_cli"
+  fi
   isTest="$1"
   isTest=${isTest//[^0-9]/}
   if [ ! -z "${isTest}" ]; then
@@ -2335,6 +2446,9 @@ php_upgrade_all() {
 }
 
 get_php_conf_extra() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: get_php_conf_extra"
+  fi
   _PHP_EXTRA=""
   if [ -x "/usr/bin/freetype-config" ]; then
     _PHP_EXTRA="--with-freetype-dir=/usr"
@@ -2532,6 +2646,9 @@ php_check_fix() {
 }
 
 composer_install_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: composer_install_upgrade"
+  fi
   _COMPOSER_IS=$(composer --no-interaction --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f13 \

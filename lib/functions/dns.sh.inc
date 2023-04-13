@@ -1,6 +1,9 @@
 #
 # Fix DNS settings.
 fix_dns_settings() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_dns_settings"
+  fi
   dnsLi="/root/.local.dns.IP.list"
   mkdir -p ${vBs}
   rm -f ${vBs}/resolv.conf.tmp
@@ -113,6 +116,9 @@ d;};' /etc/pdnsd.conf
 #
 # Check DNS settings.
 check_dns_settings() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_dns_settings"
+  fi
   if [ -e "/root/.use.default.nameservers.cnf" ]; then
     _USE_DEFAULT_DNS=YES
     rm -f /root/.local.dns.IP.list
@@ -208,6 +214,9 @@ EOF
 #
 # Find correct IP.
 find_correct_ip() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: find_correct_ip"
+  fi
   if [ -e "/root/.found_correct_ipv4.cnf" ]; then
     _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>&1)
     _LOC_IP=$(echo -n ${_LOC_IP} | tr -d "\n" 2>&1)
@@ -227,6 +236,9 @@ find_correct_ip() {
 #
 # Validate server public IP.
 validate_public_ip() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: validate_public_ip"
+  fi
   if [ "${_VMFAMILY}" = "AWS" ]; then
     _LOC_DOM="${_MY_HOSTN}"
     if [ -z "${_MY_OWNIP}" ]; then
@@ -269,6 +281,9 @@ validate_public_ip() {
 #
 # Validate server IP for xtras.
 validate_xtras_ip() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: validate_xtras_ip"
+  fi
   if [ "${_VMFAMILY}" = "AWS" ]; then
     _LOC_DOM="${_MY_HOSTN}"
     if [ -z "${_MY_OWNIP}" ]; then
@@ -284,6 +299,9 @@ validate_xtras_ip() {
 #
 # Validate server IP for purge vhost.
 validate_purge_ip() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: validate_purge_ip"
+  fi
   if [ "${_PURGE_ALL_THISHTIP}" = "YES" ]; then
     _PURGE_THISHTIP="0.0.0.0/0"
   else
@@ -326,12 +344,18 @@ validate_purge_ip() {
 #
 # Validate local server IP.
 validate_local_ip() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: validate_local_ip"
+  fi
   _LOCAL_THISHTIP=all
 }
 
 #
 # Wait for connection.
 wait_for_connection() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: wait_for_connection"
+  fi
   echo " "
   msg "I can not connect to github.com on port 443 at the moment"
   msg "I will try again in 60 seconds, please wait..."
@@ -342,6 +366,9 @@ wait_for_connection() {
 #
 # Check connection.
 check_connection() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_connection"
+  fi
   if ! netcat -w 10 -z github.com 443 ; then
     wait_for_connection "2/4"
     if ! netcat -w 10 -z github.com 443 ; then
@@ -364,6 +391,9 @@ check_connection() {
 }
 
 install_pdnsd_cache() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: install_pdnsd_cache"
+  fi
   msg "INFO: Installing DNS cache pdnsd server..."
   cp -af /etc/resolv.conf ${vBs}/resolv.conf.pre-${_X_VERSION}-${_NOW}
   if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
@@ -776,6 +806,9 @@ EOF
 }
 
 install_upgrade_pdnsd() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: install_upgrade_pdnsd"
+  fi
   if [ -f "/etc/default/dhcpcd" ]; then
     sed -i "s/.*SET_DNS/#SET_DNS/g" /etc/default/dhcpcd &> /dev/null
     wait

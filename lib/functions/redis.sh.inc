@@ -1,6 +1,9 @@
 #
 # Forced Redis password update.
 forced_redis_password_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: forced_redis_password_update"
+  fi
   if [ "${_REDIS_LISTEN_MODE}" = "SOCKET" ] \
     || [ "${_REDIS_LISTEN_MODE}" = "PORT" ] \
     || [ "${_REDIS_LISTEN_MODE}" = "127.0.0.1" ]; then
@@ -71,6 +74,9 @@ forced_redis_password_update() {
 #
 # Fix Redis mode.
 fix_redis_mode() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_redis_mode"
+  fi
   mkdir -p /var/run/redis
   chown redis:redis /var/run/redis
   if [ "${_CUSTOM_CONFIG_REDIS}" = "NO" ] \
@@ -179,6 +185,9 @@ fix_redis_mode() {
 #
 # Set or update Redis password.
 redis_password_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: redis_password_update"
+  fi
   if [ -e "/etc/redis/redis.conf" ]; then
     if [ ! -e "${pthLog}/sec-redis-pass-${_X_VERSION}-${_NOW}.log" ]; then
       if [ ! -e "/root/.redis.no.new.password.cnf" ] \
@@ -216,6 +225,9 @@ redis_password_update() {
 #
 # Install Redis from sources.
 install_redis_src() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: install_redis_src"
+  fi
   msg "INFO: Installing Redis server for ${_THIS_OS}/${_THIS_RV}..."
   if [ ! -e "/var/lib/redis" ]; then
     mrun "adduser --system --group redis" 2> /dev/null

@@ -1,6 +1,9 @@
 #
 # Update Nginx Config.
 nginx_conf_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: nginx_conf_update"
+  fi
   if [ ! -e "${pthLog}/nginx-config-params-fixed-${_X_VERSION}" ] \
     && [ -d "/var/aegir" ]; then
     if [ -e "${locCnf}/nginx.conf" ] \
@@ -23,6 +26,9 @@ nginx_conf_update() {
 #
 # Sub Force advanced Nginx configuration.
 sub_force_advanced_nginx_config() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: sub_force_advanced_nginx_config"
+  fi
   if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ]; then
     sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             ${mtrInc}/nginx_compact_include.conf &> /dev/null
 
@@ -55,6 +61,9 @@ sub_force_advanced_nginx_config() {
 #
 # Force advanced Nginx configuration.
 force_advanced_nginx_config() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: force_advanced_nginx_config"
+  fi
   if [ ! -e "/etc/ssl/private/nginx-wild-ssl.dhp" ]; then
     msg "INFO: Generating DH parameters, 2048 bit..."
     mrun "openssl dhparam \
@@ -195,6 +204,9 @@ force_advanced_nginx_config() {
 #
 # Check for Linux/Cdorked.A malware and delete if discovered.
 detect_cdorked_malware() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: detect_cdorked_malware"
+  fi
   if [ -x "/usr/sbin/nginx" ]; then
     _C_DORKED=NO
     _C_FILE=${bldPth}/aegir/helpers/dump_cdorked_config.c
@@ -223,6 +235,9 @@ detect_cdorked_malware() {
 #
 # Purge legacy Nginx config.
 nginx_clean_legacy_config() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: nginx_clean_legacy_config"
+  fi
   if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ]; then
     rm -f /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
   fi
@@ -494,6 +509,9 @@ nginx_install_upgrade() {
 #
 # Fix multi-IP cron access.
 master_fix_multi_ip_cron_access() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: master_fix_multi_ip_cron_access"
+  fi
   rm -f /root/.local.IP.list.allow
   for _IP in `cat /root/.local.IP.list \
     | cut -d '#' -f1 \

@@ -1,6 +1,9 @@
 #
 # Generate provision backend db_passwd.
 provision_backend_dbpass_generate() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: provision_backend_dbpass_generate"
+  fi
   _ESC_PASS=""
   _LEN_PASS=0
   if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
@@ -213,6 +216,9 @@ EOFMYSQL
 #
 # Sync provision backend db_passwd.
 provision_backend_dbpass_sync() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: provision_backend_dbpass_sync"
+  fi
   find_correct_ip
   _USE_RESOLVEIP="${_LOC_IP}"
   _RESOLVEIP="${_LOC_IP}"
@@ -299,6 +305,9 @@ EOFMYSQL
 # Sync hostmaster frontend db_passwd.
 hostmaster_frontend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: hostmaster_frontend_dbpass_sync"
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Syncing hostmaster frontend db_passwd..."
   fi
   if [ -e "/var/aegir/use_proxysql.txt" ]; then
@@ -374,6 +383,9 @@ EOFMYSQL
 #
 # Download for Drush Make Local build.
 master_download_for_local_build() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: master_download_for_local_build"
+  fi
   mL="/opt/tmp/make_local"
   if [ ! -e "${mL}/hosting/hosting.info" ] \
     || [ ! -e "${mL}/hosting_custom_settings/hosting_custom_settings.info" ]; then
@@ -450,6 +462,9 @@ master_download_for_local_build() {
 #
 # Upgrade Aegir Master Instance.
 aegir_master_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: aegir_master_upgrade"
+  fi
   if prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
     true
     msg "INFO: Running Aegir Master Instance upgrade"
@@ -615,6 +630,9 @@ aegir_master_upgrade() {
 #
 # Update php-cli in the cron entry.
 php_cli_cron_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: php_cli_cron_update"
+  fi
   rm -f /var/spool/cron/crontabs/aegir
   if [ ! -e "/root/.mstr.clstr.cnf" ] \
     && [ ! -e "/root/.wbhd.clstr.cnf" ] \
@@ -1068,6 +1086,9 @@ aegir_master_display_login_link() {
 #
 # Update local INI for PHP CLI on the Aegir Master Instance.
 php_cli_local_ini_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: php_cli_local_ini_update"
+  fi
   _X_SE="414prodT58"
   _U_HD="/var/aegir/.drush"
   _U_TP="/var/aegir/.tmp"

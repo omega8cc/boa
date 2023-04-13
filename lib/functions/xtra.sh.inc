@@ -176,6 +176,9 @@ if_install_sqlbuddy() {
 }
 
 fix_collectd_rrd_syslog_flood() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_collectd_rrd_syslog_flood"
+  fi
   _COLLECTD_CNF="/etc/collectd/collectd.conf"
   if [ -e "${_COLLECTD_CNF}" ]; then
     _COLLECTD_CNF_TEST=$(grep "rootfs" ${_COLLECTD_CNF} 2>&1)
@@ -193,6 +196,9 @@ fix_collectd_rrd_syslog_flood() {
 ### Credit: http://emacstragic.net/collectd-causing-rrd-illegal-attempt-to-update-using-time-errors/
 
 fix_collectd_nginx() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_collectd_nginx"
+  fi
   _COLLECTD_CNF="/etc/collectd/collectd.conf"
   if [ -e "${_COLLECTD_CNF}" ]; then
     _COLLECTD_CNF_TEST=$(grep "^LoadPlugin nginx" ${_COLLECTD_CNF} 2>&1)

@@ -69,6 +69,9 @@ systemd_remove_if_detected() {
 #
 # Detect and prepare for major OS upgrade.
 define_loc_osr() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: define_loc_osr"
+  fi
   _LOC_OSR=
   _NEW_OSR=
   _TGT_OSN=
@@ -134,6 +137,9 @@ define_loc_osr() {
 #
 # Detect and prepare for major OS upgrade.
 if_to_do_fix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_to_do_fix"
+  fi
   _DO_FIX=
   if [ "${_JESSIE_TO_BEOWULF}" = "YES" ] \
     && [ "${_LOC_OSR}" = "jessie" ]; then
@@ -172,6 +178,9 @@ if_to_do_fix() {
 #
 # Check system CPU power.
 count_cpu() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: count_cpu"
+  fi
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
   _NPROC_TEST=$(which nproc 2>&1)
@@ -276,6 +285,9 @@ if_running_as_root_barracuda() {
 #
 # Set xterm.
 set_xterm() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: set_xterm"
+  fi
   if [ -e "/root/.bashrc" ]; then
     _XTERM_TEST=$(grep "export TERM" /root/.bashrc 2>&1)
     if [[ "${_XTERM_TEST}" =~ "export TERM" ]]; then
@@ -310,6 +322,9 @@ kill_nash() {
 #
 # Cleanup for Postfix.
 fix_postfix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_postfix"
+  fi
   if [ "${_STATUS}" = "INIT" ]; then
     st_runner "${_RMAPP} exim4 exim4-base exim4-config" &> /dev/null
     st_runner "${_RMAPP} sendmail \
@@ -340,6 +355,9 @@ fix_postfix() {
 #
 # Fix FTPS PAM where required.
 fix_ftps_pam() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_ftps_pam"
+  fi
   if [ ! -e "/etc/ftpusers" ]; then
     cp -af ${locCnf}/ftpusers /etc/ftpusers
   fi
@@ -403,6 +421,9 @@ sftp_ftps_modern_fix() {
 #
 # Disable Old Purge Cruft Machine.
 disable_old_purge_cruft_machine() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: disable_old_purge_cruft_machine"
+  fi
   if [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io" ]] \
     || [[ "${_THISHOST}" =~ ".o8.io" ]] \
@@ -417,8 +438,11 @@ disable_old_purge_cruft_machine() {
 }
 
 #
-# Update INI templates.
-ini_tpl_update() {
+# Update BOA INI templates.
+boa_ini_tpl_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: boa_ini_tpl_update"
+  fi
   mkdir -p /data/conf
   if [ -e "${locCnf}/default.boa_platform_control.ini" ]; then
     cp -af ${locCnf}/default.boa_platform_control.ini /data/conf/default.boa_platform_control.ini
@@ -433,6 +457,9 @@ ini_tpl_update() {
 #
 # Update global.inc Config.
 global_inc_conf_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: global_inc_conf_update"
+  fi
   if [ -e "/data/conf/global.inc" ]; then
     mv -f /data/conf/global.inc /data/conf/global.inc-pre-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${locCnf}/global.inc /data/conf/global.inc
@@ -444,6 +471,9 @@ global_inc_conf_update() {
 #
 # Fix this on upgrade.
 fix_on_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: fix_on_upgrade"
+  fi
   sed -i "s/loglevel.*/loglevel warning/g" /etc/redis/redis.conf &> /dev/null
   sed -i "s/^TLS.*/TLS 2/g" /usr/local/etc/pure-ftpd.conf &> /dev/null
   cp -af ${locCnf}/clean-boa-env /etc/init.d/clean-boa-env
@@ -462,6 +492,9 @@ fix_on_upgrade() {
 #
 # Tune memory limits for PHP, Nginx and MariaDB or Percona.
 tune_memory_limits() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: tune_memory_limits"
+  fi
   count_cpu
   _VM_TEST=$(uname -a 2>&1)
   if [ -e "/proc/bean_counters" ]; then
@@ -911,6 +944,9 @@ EOF
 #
 # Sort and de-duplicate versions in _PHP_MULTI_INSTALL.
 php_multi_uniq() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: php_multi_uniq"
+  fi
   _uniqPHPv=
   rm -f /var/backups/_vPHP.txt
   for _vPHP in `echo ${_PHP_MULTI_INSTALL} \
@@ -933,6 +969,9 @@ php_multi_uniq() {
 #
 # Read or create Barracuda cnf file.
 barracuda_cnf() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: barracuda_cnf"
+  fi
   _CHECK_HOST=$(uname -n 2>&1)
   _VMFAMILY=XEN
   _VM_TEST=$(uname -a 2>&1)
@@ -2225,6 +2264,9 @@ run_aptitude_full_upgrade() {
 #
 # Install latest Git.
 do_install_latest_git() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: do_install_latest_git"
+  fi
   if [ ! -e "${pthLog}/git-${_GIT_VRN}-${_X_VERSION}-${_NOW}.log" ]; then
     msg "INFO: Building Git ${_GIT_VRN} from sources..."
     msg "WAIT: This may take a while, please wait..."
@@ -2278,6 +2320,9 @@ if_install_git_src() {
 #
 # Check apt updates.
 check_apt_updates() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_apt_updates"
+  fi
   for Update in `/usr/bin/apt-get -q -y --allow-unauthenticated \
     -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`; do
     case "${Update}" in
@@ -2297,6 +2342,9 @@ check_apt_updates() {
 #
 # Install ICU from sources for Jessie.
 install_icu() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: install_icu"
+  fi
   ###--------------------###
   if [ ! -e "/usr/local/lib/icu/current" ]; then
     msg "INFO: Installing ICU libs version ${_ICU_VRN}..."
@@ -2463,6 +2511,9 @@ if_install_wkhtmltox() {
 #
 # Clean Drush 11.
 clean_drush_eleven() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: clean_drush_eleven"
+  fi
   rm -f /usr/bin/drush11*
   ln -sf /opt/tools/drush/11/drush/vendor/drush/drush/drush /usr/bin/drush11-bin
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2473,6 +2524,9 @@ clean_drush_eleven() {
 #
 # Clean Drush 10.
 clean_drush_ten() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: clean_drush_ten"
+  fi
   rm -f /usr/bin/drush10*
   rm -f /usr/local/bin/dcg
   rm -f /usr/local/bin/drush
@@ -2490,6 +2544,9 @@ clean_drush_ten() {
 #
 # Set Drush permissions.
 set_drush_perm() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: set_drush_perm"
+  fi
   find /opt/tools -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tools -type f -exec chmod 0644 {} \; &> /dev/null
   chmod 755 /opt/tools/drush/*/drush/drush
@@ -2516,6 +2573,9 @@ set_drush_perm() {
 #
 # Install or update Drush Launcher.
 get_drush_launcher() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: get_drush_launcher"
+  fi
   rm -rf /opt/tools/drush/launcher/*
   cd /opt/tools/drush/launcher/
   wget -q -U iCab https://github.com/drush-ops/drush-launcher/releases/latest/download/drush.phar
@@ -2532,6 +2592,9 @@ get_drush_launcher() {
 #
 # Install or update Drush 11.
 get_drush_eleven() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: get_drush_eleven"
+  fi
   rm -rf /opt/tools/drush/11/*
   cd /opt/tools/drush/11/
   get_dev_ext "drush-${_DRUSH_ELEVEN_VRN}.tar.gz"
@@ -2544,6 +2607,9 @@ get_drush_eleven() {
 #
 # Install or update Drush 10.
 get_drush_ten() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: get_drush_ten"
+  fi
   rm -rf /opt/tools/drush/10/*
   cd /opt/tools/drush/10/
   get_dev_ext "drush-${_DRUSH_TEN_VRN}.tar.gz"
@@ -2556,6 +2622,9 @@ get_drush_ten() {
 #
 # Install or update Drush 8.
 get_drush_eight() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: get_drush_eight"
+  fi
   rm -rf /opt/tools/drush/8/*
   cd /opt/tools/drush/8/
   get_dev_ext "drush-${_DRUSH_EIGHT_VRN}.tar.gz"
@@ -2990,6 +3059,9 @@ sshd_install_src() {
 #
 # Install ImageMagick from sources.
 install_magick_src() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: install_magick_src"
+  fi
   _MAGICK_INSTALL_REQUIRED=NO
   _MAGICK_ITD=$(convert --version 2>&1 \
     | tr -d "\n" \
@@ -3429,6 +3501,9 @@ curl_install_src() {
 #
 # Symlink to dash.
 symlink_to_dash() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: symlink_to_dash"
+  fi
   if [ -x "/usr/bin/dash" ]; then
     if [ -L "/usr/bin/sh" ]; then
       rm -f /usr/bin/sh
@@ -3450,6 +3525,9 @@ symlink_to_dash() {
 #
 # Symlink to bash.
 symlink_to_bash() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: symlink_to_bash"
+  fi
   if [ -x "/usr/bin/bash" ]; then
     if [ -L "/usr/bin/sh" ]; then
       rm -f /usr/bin/sh
@@ -3471,6 +3549,9 @@ symlink_to_bash() {
 #
 # Switch to dash.
 switch_to_dash() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: switch_to_dash"
+  fi
   if [ -x "/bin/dash" ]; then
     sed -i "s/:\/bin\/sh/:\/bin\/dash/g"  /etc/passwd &> /dev/null
     sed -i "s/\/bin\/sh/\/bin\/dash/g" /etc/crontab &> /dev/null
@@ -3540,6 +3621,9 @@ switch_to_dash() {
 #
 # Switch to bash.
 switch_to_bash() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: switch_to_bash"
+  fi
   if [ -x "/bin/bash" ]; then
     sed -i "s/:\/bin\/sh/:\/bin\/bash/g"  /etc/passwd &> /dev/null
     sed -i "s/\/bin\/sh/\/bin\/bash/g" /etc/crontab &> /dev/null
@@ -3609,6 +3693,9 @@ switch_to_bash() {
 #
 # Strict Permissions on All Binaries.
 strict_bin_permissions() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: strict_bin_permissions"
+  fi
 
   _BIN_PATHS="/bin \
               /etc/alternatives \
@@ -3836,6 +3923,9 @@ strict_bin_permissions() {
 #
 # Final cleanup.
 finale() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: finale"
+  fi
   ###--------------------###
   if [ "${_STATUS}" = "INIT" ]; then
     _L_ST="install"
@@ -4885,6 +4975,9 @@ if_major_os_upgrade() {
 }
 
 webmin_apt_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: webmin_apt_update"
+  fi
   if [ -d "/etc/webmin" ]; then
     if [ ! -e "${pthLog}/webmin_update_apt_src.log" ]; then
       cd /var/opt
@@ -5437,6 +5530,9 @@ vnstat_install() {
 }
 
 install_myquick_src() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: install_myquick_src"
+  fi
   if [ "${_MYQUICK_INSTALL_REQUIRED}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Building MyQuick ${_MYQUICK_VRN} from sources..."
@@ -5758,6 +5854,9 @@ umask_check_fix() {
 }
 
 if_node_lshell() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_node_lshell"
+  fi
   if [ "${_STATUS}" = "UPGRADE" ] && [ -e "/etc/lshell.conf" ]; then
     PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
     PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
@@ -6662,6 +6761,9 @@ apticron_update() {
 }
 
 complete() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: complete"
+  fi
   fix_lfd_whitelist
   fix_lfd_uidignore
   fix_cnf_postfix
