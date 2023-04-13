@@ -453,8 +453,7 @@ fix_on_upgrade() {
   sftp_ftps_modern_fix
   fix_ftps_pam
   disable_old_purge_cruft_machine
-  php_conf_update
-  ini_tpl_update
+  php_config_check_update
   nginx_conf_update
   global_inc_conf_update
   redis_password_update
