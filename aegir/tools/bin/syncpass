@@ -15,11 +15,19 @@ sanitize_string() {
 #
 # Find correct IP.
 find_correct_ip() {
-  _LOC_IP=$(curl ${crlGet} https://api.ipify.org \
-    | sed 's/[^0-9\.]//g' 2>&1)
-  if [ -z "${_LOC_IP}" ]; then
-    _LOC_IP=$(curl ${crlGet} http://ipv4.icanhazip.com \
+  if [ -e "/root/.found_correct_ipv4.cnf" ]; then
+    _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>&1)
+    _LOC_IP=$(echo -n ${_LOC_IP} | tr -d "\n" 2>&1)
+  else
+    _LOC_IP=$(curl ${crlGet} https://api.ipify.org \
       | sed 's/[^0-9\.]//g' 2>&1)
+    if [ -z "${_LOC_IP}" ]; then
+      _LOC_IP=$(curl ${crlGet} http://ipv4.icanhazip.com \
+        | sed 's/[^0-9\.]//g' 2>&1)
+    fi
+    if [ ! -z "${_LOC_IP}" ]; then
+      echo ${_LOC_IP} > /root/.found_correct_ipv4.cnf
+    fi
   fi
 }
 
