@@ -4303,20 +4303,15 @@ basic_packages_install_on_init() {
   apt-get remove --purge unscd -y &> /dev/null
   apt-get remove --purge dbus -y &> /dev/null
   userdel -r debian &> /dev/null
-  if [ "${_OSR}" = "chimaera" ] \
-    || [ "${_OSR}" = "beowulf" ] \
-    || [ "${_OSR}" = "bullseye" ] \
-    || [ "${_OSR}" = "buster" ] \
-    || [ "${_OSR}" = "stretch" ]; then
-    _APT_SHELLS=$(id -nG _apt 2>&1)
-    if [[ "${_APT_SHELLS}" =~ "nogroup" ]]; then
-      usermod -aG users _apt
-    fi
-  fi
-  _MAN_SHELLS=$(id -nG man 2>&1)
-  if [[ "${_MAN_SHELLS}" =~ "man" ]]; then
-    usermod -aG users man
-  fi
+  usermod -aG users _apt &> /dev/null
+  usermod -aG users aegir &> /dev/null
+  usermod -aG users bin &> /dev/null
+  usermod -aG users daemon &> /dev/null
+  usermod -aG users man &> /dev/null
+  usermod -aG users mysql &> /dev/null
+  usermod -aG users nobody &> /dev/null
+  usermod -aG users root &> /dev/null
+  usermod -aG users sync &> /dev/null
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -6773,16 +6768,16 @@ complete() {
     _STRICT_BIN_PERMISSIONS=NO
   fi
   if [ "${_STRICT_BIN_PERMISSIONS}" = "YES" ]; then
-    usermod -aG users aegir
-    usermod -aG users man
-    usermod -aG users mysql
-    if [ "${_OSR}" = "chimaera" ] \
-      || [ "${_OSR}" = "beowulf" ] \
-      || [ "${_OSR}" = "bullseye" ] \
-      || [ "${_OSR}" = "buster" ] \
-      || [ "${_OSR}" = "stretch" ]; then
-      usermod -aG users _apt
-    fi
+    usermod -aG users _apt &> /dev/null
+    usermod -aG users aegir &> /dev/null
+    usermod -aG users bin &> /dev/null
+    usermod -aG users daemon &> /dev/null
+    usermod -aG users man &> /dev/null
+    usermod -aG users mysql &> /dev/null
+    usermod -aG users nobody &> /dev/null
+    usermod -aG users root &> /dev/null
+    usermod -aG users sync &> /dev/null
+    usermod -aG users sys &> /dev/null
     if [ -x "/bin/dash" ] || [ -x "/usr/bin/dash" ]; then
       symlink_to_dash
       switch_to_dash
