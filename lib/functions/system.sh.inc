@@ -6780,10 +6780,10 @@ complete() {
     usermod -aG users sys &> /dev/null
     if [ -x "/bin/dash" ] || [ -x "/usr/bin/dash" ]; then
       symlink_to_dash
-      switch_to_dash
+      # switch_to_dash
     elif [ -x "/bin/bash" ] || [ -x "/usr/bin/bash" ]; then
       symlink_to_bash
-      switch_to_bash
+      # switch_to_bash
     fi
     strict_bin_permissions
     rm -f /etc/apt/apt.conf.d/00sandboxtmp

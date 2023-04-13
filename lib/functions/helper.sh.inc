@@ -429,10 +429,10 @@ mode_detection() {
   if [ "${_STRICT_BIN_PERMISSIONS}" = "YES" ]; then
     if [ -x "/bin/dash" ] || [ -x "/usr/bin/dash" ]; then
       symlink_to_dash
-      switch_to_dash
+      # switch_to_dash
     elif [ -x "/bin/bash" ] || [ -x "/usr/bin/bash" ]; then
       symlink_to_bash
-      switch_to_bash
+      # switch_to_bash
     fi
   fi
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
