@@ -2077,13 +2077,31 @@ check_php_rebuild() {
   fi
   _PHP_SSL_TEST=$(/opt/php$1/bin/php -i | grep "SSL Version" 2>&1)
   _PHP_SSL_LOOK_FOR="${_OPENSSL_USE_VRN}"
-  if [[ ! "${_PHP_SSL_TEST}" =~ "${_PHP_SSL_LOOK_FOR}" ]]; then
-    if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-      msg "INFO: PHP $1 ${_PHP_SSL_TEST}, but no rebuild forced yet"
-      _PHP_FORCE_REINSTALL=NO
+  _PHP_SSL_ALTER_LOOK_FOR="GnuTLS"
+  if [ "$1" = "56" ] || [ "$1" = "70" ] || [ "$1" = "71" ]; then
+    if [[ "${_PHP_SSL_TEST}" =~ "${_PHP_SSL_LOOK_FOR}" ]] \
+      || [[ "${_PHP_SSL_TEST}" =~ "${_PHP_SSL_ALTER_LOOK_FOR}" ]]; then
+      msg "INFO: Installed PHP ${_PHP_ITD} with ${_PHP_SSL_TEST}, OK"
     else
-      msg "INFO: PHP $1 ${_PHP_SSL_TEST}, thus rebuild forced"
-      _PHP_FORCE_REINSTALL=YES
+      if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
+        msg "INFO: PHP $1 ${_PHP_SSL_TEST}, rebuild on next upgrade"
+        _PHP_FORCE_REINSTALL=NO
+      else
+        msg "INFO: PHP $1 ${_PHP_SSL_TEST}, thus rebuild forced"
+        _PHP_FORCE_REINSTALL=YES
+      fi
+    fi
+  else
+    if [[ ! "${_PHP_SSL_TEST}" =~ "${_PHP_SSL_LOOK_FOR}" ]]; then
+      if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
+        msg "INFO: PHP $1 ${_PHP_SSL_TEST}, rebuild on next upgrade"
+        _PHP_FORCE_REINSTALL=NO
+      else
+        msg "INFO: PHP $1 ${_PHP_SSL_TEST}, thus rebuild forced"
+        _PHP_FORCE_REINSTALL=YES
+      fi
+    else
+      msg "INFO: Installed PHP ${_PHP_ITD} with ${_PHP_SSL_TEST}, OK"
     fi
   fi
   _PHP_ITD=$(/opt/php$1/bin/php -v \
@@ -2118,7 +2136,7 @@ check_php_rebuild() {
     || [[ "${_PHP_ITD}" =~ "~" ]] \
     || [[ "${_PHP_ITD}" =~ "dotdeb" ]] \
     || [[ "${_PHP_ITD}" =~ "ubuntu" ]]; then
-    msg "INFO: Installed PHP version ${_PHP_ITD}, upgrade required"
+    msg "INFO: Installed PHP version ${_PHP_ITD}, upgrade to mysqlnd required"
     install_php_multi "$1"
   else
     if [[ "${_PHP_ITD}" =~ "${_PHP_VERSION}" ]]; then
@@ -2129,12 +2147,27 @@ check_php_rebuild() {
             msg "INFO: Installed PHP version ${_PHP_ITD}, OK"
           fi
         else
-          msg "INFO: PHP ${_PHP_VERSION} rebuild required to include upgraded libs"
-          install_php_multi "$1"
+          if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
+            msg "INFO: PHP $1 libs related rebuild on next upgrade"
+            _PHP_FORCE_REINSTALL=NO
+          else
+            msg "INFO: PHP $1 libs related rebuild forced now"
+            _PHP_FORCE_REINSTALL=YES
+          fi
         fi
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: Installed PHP version ${_PHP_ITD}, OK"
+        fi
+      fi
+      if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
+        || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
+        if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
+          msg "INFO: PHP ${_PHP_ITD} rebuild on next upgrade"
+          _PHP_FORCE_REINSTALL=NO
+        else
+          msg "INFO: PHP ${_PHP_ITD} rebuild will happen now..."
+          install_php_multi "$1"
         fi
       fi
     else
@@ -2144,7 +2177,12 @@ check_php_rebuild() {
       else
         msg "INFO: Installed PHP version ${_PHP_ITD}, upgrade required"
       fi
-      install_php_multi "$1"
+      if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
+        msg "INFO: PHP ${_PHP_ITD} rebuild on next upgrade"
+      else
+        msg "INFO: PHP ${_PHP_ITD} rebuild will happen now..."
+        install_php_multi "$1"
+      fi
     fi
   fi
   if [ "${_DB_SERIES}" = "10.4" ] \
