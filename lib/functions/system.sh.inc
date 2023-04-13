@@ -3301,8 +3301,14 @@ ssl_install_src() {
       mrun "make install" 2> /dev/null
     fi
     if [ -x "/usr/local/ssl/bin/openssl" ]; then
-      cp -af /usr/bin/openssl /usr/bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
-      ln -sf /usr/local/ssl/bin/openssl `which openssl`
+      if [ -e "/usr/bin/openssl" ]; then
+        cp -af /usr/bin/openssl /usr/bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
+      fi
+      ln -sf /usr/local/ssl/bin/openssl /usr/bin/openssl
+      if [ -e "/bin/openssl" ]; then
+        cp -af /bin/openssl /bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
+        ln -sf /usr/local/ssl/bin/openssl /bin/openssl
+      fi
       echo "/usr/local/ssl/lib" >> /etc/ld.so.conf.d/libc.conf
       mrun "ldconfig" 2> /dev/null
       ###--------------------###
