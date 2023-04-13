@@ -449,10 +449,12 @@ enable_chattr() {
         if [ -d "/usr/local/.off_rvm" ]; then
           mv -f /usr/local/.off_rvm /usr/local/rvm
         fi
-        rm -f /bin/sh
-        ln -s /bin/websh /bin/sh
-        rm -f /usr/bin/sh
-        ln -s /bin/websh /usr/bin/sh
+        if [ ! -e "/root/.debug-barracuda-installer.cnf" ]; then
+          rm -f /bin/sh
+          ln -s /bin/websh /bin/sh
+          rm -f /usr/bin/sh
+          ln -s /bin/websh /usr/bin/sh
+        fi
       fi
       su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
       wait
@@ -491,10 +493,12 @@ enable_chattr() {
         if [ -d "/usr/local/.off_rvm" ]; then
           mv -f /usr/local/.off_rvm /usr/local/rvm
         fi
-        rm -f /bin/sh
-        ln -s /bin/websh /bin/sh
-        rm -f /usr/bin/sh
-        ln -s /bin/websh /usr/bin/sh
+        if [ ! -e "/root/.debug-barracuda-installer.cnf" ]; then
+          rm -f /bin/sh
+          ln -s /bin/websh /bin/sh
+          rm -f /usr/bin/sh
+          ln -s /bin/websh /usr/bin/sh
+        fi
       fi
       if [ ! -f "${dscUsr}/log/.gems.build.d.${UQ}.${_X_SE}.txt" ]; then
         rm -f ${dscUsr}/log/eventmachine*
@@ -541,10 +545,12 @@ enable_chattr() {
         if [ -d "/usr/local/.off_rvm" ]; then
           mv -f /usr/local/.off_rvm /usr/local/rvm
         fi
-        rm -f /bin/sh
-        ln -s /bin/websh /bin/sh
-        rm -f /usr/bin/sh
-        ln -s /bin/websh /usr/bin/sh
+        if [ ! -e "/root/.debug-barracuda-installer.cnf" ]; then
+          rm -f /bin/sh
+          ln -s /bin/websh /bin/sh
+          rm -f /usr/bin/sh
+          ln -s /bin/websh /usr/bin/sh
+        fi
       fi
       if [ -d "/home/${UQ}/.rvm/src" ]; then
         rm -rf /home/${UQ}/.rvm/src/*
@@ -2487,7 +2493,7 @@ else
       rm -f ${_THIS_LTD_CONF}
     fi
   fi
-  if [ -L "/bin/sh" ]; then
+  if [ -L "/bin/sh" ] && [ ! -e "/root/.debug-barracuda-installer.cnf" ]; then
     _WEB_SH=$(readlink -n /bin/sh 2>&1)
     _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
     if [ -x "/bin/websh" ]; then

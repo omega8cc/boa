@@ -6764,7 +6764,7 @@ complete() {
   fix_cnf_postfix
   re_set_default_php_cli
   composer_install_upgrade
-  if [ "${_STATUS}" = "INIT" ]; then
+  if [ "${_STATUS}" != "UPGRADE" ] || [ -e "/root/.debug-barracuda-installer.cnf" ]; then
     _STRICT_BIN_PERMISSIONS=NO
   fi
   if [ "${_STRICT_BIN_PERMISSIONS}" = "YES" ]; then

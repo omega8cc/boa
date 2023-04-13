@@ -19,6 +19,9 @@ set -e
 
 case "$1" in
   start)
+    if [ -e "/root/.debug-barracuda-installer.cnf" ]; then
+      exit 0
+    fi
     echo -n "Starting $DESC: "
     if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
       _WEB_SH=`readlink -n /bin/sh`
@@ -96,6 +99,9 @@ case "$1" in
     fi
   ;;
   stop)
+    if [ -e "/root/.debug-barracuda-installer.cnf" ]; then
+      exit 0
+    fi
     echo -n "Stopping $DESC: "
     if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
       _WEB_SH=`readlink -n /bin/sh`
@@ -159,24 +165,27 @@ case "$1" in
   ;;
 
   status)
+    if [ -e "/root/.debug-barracuda-installer.cnf" ]; then
+      exit 0
+    fi
     echo -n "$DESC status: "
     if [ -e "/var/run/boa_wait.pid" ]; then
       echo "fail 1"
     else
       echo "OK 1"
-      exit 1
+      exit 0
     fi
     if [ -e "/var/run/boa_run.pid" ]; then
       echo "fail 2"
     else
       echo "OK 2"
-      exit 1
+      exit 0
     fi
   ;;
 
   *)
     echo "Usage: service $NAME {start|stop|restart|force-reload}" >&2
-    exit 1
+    exit 0
   ;;
 esac
 
