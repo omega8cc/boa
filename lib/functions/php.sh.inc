@@ -2060,6 +2060,22 @@ check_php_rebuild() {
     msg "PROC: check_php_rebuild $1"
   fi
   if_to_do_fix
+  _PHP_ITD=$(/opt/php$1/bin/php -v \
+    | grep 'PHP 7' \
+    | cut -d: -f1 \
+    | awk '{ print $2}' 2>&1)
+  if [ -z "${_PHP_ITD}" ]; then
+    _PHP_ITD=$(/opt/php$1/bin/php -v \
+      | grep 'PHP 5' \
+      | cut -d: -f1 \
+      | awk '{ print $2}' 2>&1)
+  fi
+  if [ -z "${_PHP_ITD}" ]; then
+    _PHP_ITD=$(/opt/php$1/bin/php -v \
+      | grep 'PHP 8' \
+      | cut -d: -f1 \
+      | awk '{ print $2}' 2>&1)
+  fi
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
     || [ "${_OSR}" = "bullseye" ] \
@@ -2084,41 +2100,25 @@ check_php_rebuild() {
       msg "INFO: Installed PHP ${_PHP_ITD} with ${_PHP_SSL_TEST}, OK"
     else
       if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-        msg "INFO: PHP $1 ${_PHP_SSL_TEST}, rebuild on next upgrade"
+        msg "INFO: PHP ${_PHP_ITD} ${_PHP_SSL_TEST}, rebuild on next upgrade"
         _PHP_FORCE_REINSTALL=NO
       else
-        msg "INFO: PHP $1 ${_PHP_SSL_TEST}, thus rebuild forced"
+        msg "INFO: PHP ${_PHP_ITD} ${_PHP_SSL_TEST}, thus rebuild forced"
         _PHP_FORCE_REINSTALL=YES
       fi
     fi
   else
     if [[ ! "${_PHP_SSL_TEST}" =~ "${_PHP_SSL_LOOK_FOR}" ]]; then
       if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-        msg "INFO: PHP $1 ${_PHP_SSL_TEST}, rebuild on next upgrade"
+        msg "INFO: PHP ${_PHP_ITD} ${_PHP_SSL_TEST}, rebuild on next upgrade"
         _PHP_FORCE_REINSTALL=NO
       else
-        msg "INFO: PHP $1 ${_PHP_SSL_TEST}, thus rebuild forced"
+        msg "INFO: PHP ${_PHP_ITD} ${_PHP_SSL_TEST}, thus rebuild forced"
         _PHP_FORCE_REINSTALL=YES
       fi
     else
       msg "INFO: Installed PHP ${_PHP_ITD} with ${_PHP_SSL_TEST}, OK"
     fi
-  fi
-  _PHP_ITD=$(/opt/php$1/bin/php -v \
-    | grep 'PHP 7' \
-    | cut -d: -f1 \
-    | awk '{ print $2}' 2>&1)
-  if [ -z "${_PHP_ITD}" ]; then
-    _PHP_ITD=$(/opt/php$1/bin/php -v \
-      | grep 'PHP 5' \
-      | cut -d: -f1 \
-      | awk '{ print $2}' 2>&1)
-  fi
-  if [ -z "${_PHP_ITD}" ]; then
-    _PHP_ITD=$(/opt/php$1/bin/php -v \
-      | grep 'PHP 8' \
-      | cut -d: -f1 \
-      | awk '{ print $2}' 2>&1)
   fi
   if [ -x "/opt/php$1/bin/php" ]; then
     if [ "$1" = "56" ]; then
@@ -2148,10 +2148,10 @@ check_php_rebuild() {
           fi
         else
           if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-            msg "INFO: PHP $1 libs related rebuild on next upgrade"
+            msg "INFO: PHP ${_PHP_ITD} libs related rebuild on next upgrade"
             _PHP_FORCE_REINSTALL=NO
           else
-            msg "INFO: PHP $1 libs related rebuild forced now"
+            msg "INFO: PHP ${_PHP_ITD} libs related rebuild forced now"
             _PHP_FORCE_REINSTALL=YES
           fi
         fi
