@@ -92,7 +92,9 @@ check_running() {
   until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
     && [ -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
-    echo "Waiting for MySQLD availability..."
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      echo "Waiting for MySQLD availability..."
+    fi
     sleep 3
   done
 }

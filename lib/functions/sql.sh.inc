@@ -272,7 +272,9 @@ check_mysqld_running() {
   until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
     && [ -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
-    msg "INFO: Waiting for MySQLD availability before tune_sql_memory_limits..."
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Waiting for MySQLD availability before tune_sql_memory_limits..."
+    fi
     sleep 5
     service mysql start &> /dev/null
   done
@@ -872,7 +874,9 @@ install_with_aptitude_sql() {
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
     _DB_SERVER_TEST=$(mysql -V 2>&1)
     if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERIES}" ]]; then
-      msg "INFO: Running ${_DB_SERVER} system tables check..."
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Running ${_DB_SERVER} system tables check..."
+      fi
       if [ -x "/usr/bin/mariadb_upgrade" ]; then
         mrun "mariadb_upgrade --force" &> /dev/null
           wait
@@ -1154,7 +1158,9 @@ db_server_install() {
       if [ ! -e "/root/.proxy.cnf" ]; then
         mrun "sleep 120"
         mrun "service nginx stop" &> /dev/null
-        msg "INFO: Running ${_DB_SERVER} system tables check..."
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Running ${_DB_SERVER} system tables check..."
+        fi
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
         if [ -x "/usr/bin/mariadb_upgrade" ]; then
           mrun "mariadb_upgrade --force" &> /dev/null
@@ -1263,7 +1269,9 @@ db_server_install() {
       mrun "sleep 8"
       _DB_SERVER_TEST=$(mysql -V 2>&1)
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
-        msg "INFO: Running ${_DB_SERVER} system tables (1) upgrade..."
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Running ${_DB_SERVER} system tables (1) upgrade..."
+        fi
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
         if [ -x "/usr/bin/mariadb_upgrade" ]; then
           mrun "mariadb_upgrade --force" &> /dev/null

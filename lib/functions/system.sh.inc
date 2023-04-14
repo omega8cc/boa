@@ -6582,7 +6582,9 @@ initd_update() {
       mrun "service nginx start" &> /dev/null
       _DB_SERVER_TEST=$(mysql -V 2>&1)
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
-        msg "INFO: Running ${_DB_SERVER} system tables (2) upgrade..."
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Running ${_DB_SERVER} system tables (2) upgrade..."
+        fi
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
         if [ -x "/usr/bin/mariadb_upgrade" ]; then
           mrun "mariadb_upgrade --force" &> /dev/null
