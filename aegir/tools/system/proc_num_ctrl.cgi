@@ -22,6 +22,7 @@ foreach $USER (sort keys %li_cnt) {
   if ($USER eq "solr7") {$solr7lives = "YES"; $solr7sumar = $li_cnt{$USER};}
 }
 foreach $COMMAND (sort keys %li_cnt) {
+  if ($COMMAND =~ /lfd/) {$lfdlives = "YES"; $lfdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /named/) {$namedlives = "YES"; $namedsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /buagent/) {$buagentlives = "YES"; $buagentsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /collectd/) {$collectdlives = "YES"; $collectdsumar = $li_cnt{$COMMAND};}
@@ -62,6 +63,7 @@ if ($convertsumar > 1)
   &convert_action;
 }
 print "\n $sumar ALL procs\t\tGLOBAL";
+print "\n $lfdsumar LFD procs\t\tGLOBAL" if ($lfdlives && -f "/etc/init.d/lfd");
 print "\n $namedsumar Bind procs\t\tGLOBAL" if ($namedlives);
 print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
 print "\n $collectdsumar Collectd\t\tGLOBAL" if ($collectdlives);
@@ -99,6 +101,8 @@ print "\n $sshdsumar SSHd procs\t\tGLOBAL" if ($sshdlives);
 print "\n $pxydsumar PxySQL procs\t\tGLOBAL" if ($pxydlives);
 print "\n";
 
+system("csf -e") if (!$lfdsumar && -f "/etc/init.d/lfd");
+system("service lfd start") if (!$lfdsumar && -f "/etc/init.d/lfd");
 system("service bind9 restart") if (!$namedsumar && -f "/etc/init.d/bind9");
 system("service ssh restart") if (!$sshdsumar && -f "/etc/init.d/ssh");
 system("service proxysql restart") if (!$pxydsumar && -f "/etc/init.d/proxysql");
