@@ -62,7 +62,9 @@ systemd_remove_if_detected() {
     msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
     msg "STEP: You can also run the 'boa init' command again"
   else
-    msg "INFO: The systemd has been removed on ${_THIS_OS} ${_OSR}"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: The systemd has been removed on ${_THIS_OS} ${_OSR}"
+    fi
   fi
 }
 
@@ -3336,7 +3338,9 @@ ssl_install_src() {
       _GIT_FORCE_REINSTALL=
     fi
   else
-    msg "INFO: OpenSSL version detected ${_SSL_ITD}, no upgrade required"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: OpenSSL version detected ${_SSL_ITD}, no upgrade required"
+    fi
   fi
 }
 
@@ -3515,7 +3519,9 @@ curl_install_src() {
     fi
     _CURL_ALREADY_REBUILT=YES
   else
-    msg "INFO: cURL version detected ${_CURL_ITD}, no upgrade required"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: cURL version detected ${_CURL_ITD}, no upgrade required"
+    fi
   fi
 }
 
@@ -6600,7 +6606,9 @@ initd_update() {
           -I key_buffer_size ${myCnf} ${preCnf} 2>&1)
         if [ -z "${diffMyTest}" ]; then
           myCnfUpdate=NO
-          msg "INFO: ${_DB_SERVER} diff0 empty"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: ${_DB_SERVER} diff0 empty"
+          fi
         else
           myCnfUpdate=YES
           # diffMyTest=$(echo -n ${diffMyTest} | fmt -su -w 2500 2>&1)

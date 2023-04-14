@@ -923,8 +923,8 @@ tune_sql_memory_limits() {
   pthTun="/var/opt/mysqltuner.pl"
   outTun="/var/opt/mysqltuner-${_NOW}.txt"
   if [ ! -e "${outTun}" ]; then
-    echo "INFO: Running MySQLTuner check on all databases..."
-    echo "NOTE! This step may take a LONG time, please wait..."
+    echo "INFO: Running MySQLTuner check on all databases"
+    echo "WAIT: This may take a while, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
     rm -f /var/opt/mysqltuner*
     curl ${crlGet} "${urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${pthTun}

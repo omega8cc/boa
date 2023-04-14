@@ -317,8 +317,8 @@ tune_sql_memory_limits() {
     && [ "${_USE_MYSQLTUNER}" != "NO" ] \
     && [ "${_STATUS}" = "UPGRADE" ] \
     && [ -z "${_GALERA_COMP}" ]; then
-    msg "INFO: Running MySQLTuner check on all databases..."
-    msg "NOTE! This step may take a LONG time, please wait..."
+    msg "INFO: Running MySQLTuner check on all databases"
+    msg "WAIT: This may take a while, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
     rm -f /var/opt/mysqltuner*
     curl ${crlGet} "${urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${pthTun}
@@ -1297,7 +1297,9 @@ db_server_install() {
           -I key_buffer_size ${myCnf} ${preCnf} 2>&1)
         if [ -z "${diffMyTest}" ]; then
           myCnfUpdate=NO
-          msg "INFO: ${_DB_SERVER} diff0 empty"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: ${_DB_SERVER} diff0 empty"
+          fi
         else
           myCnfUpdate=YES
           # diffMyTest=$(echo -n ${diffMyTest} | fmt -su -w 2500 2>&1)

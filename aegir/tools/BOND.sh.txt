@@ -1133,8 +1133,8 @@ tune_sql_memory_limits() {
   if [ ! -e "${outTun}" ] \
     && [ "${_STATUS}" = "UPGRADE" ] \
     && [ -z "${_GALERA_COMP}" ]; then
-    msg "INFO: Running MySQLTuner check on all databases..."
-    msg "NOTE! This step may take a LONG time, please wait..."
+    msg "INFO: Running MySQLTuner check on all databases"
+    msg "WAIT: This may take a while, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
     rm -f /var/opt/mysqltuner*
     curl ${crlGet} "${urlDev}/mysqltuner.pl.${_MYSQLTUNER_VRN}" -o ${pthTun}

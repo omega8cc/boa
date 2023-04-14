@@ -1013,7 +1013,9 @@ EOFMYSQL
       msg "NOTE! Aegir Master Instance."
       echo " "
     elif [ "${_SYSTEM_UPGRADE_ONLY}" = "YES" ]; then
-      msg "INFO: Aegir Master Instance upgrade skipped"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Aegir Master Instance upgrade skipped"
+      fi
     else
       if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
         || [ ! -e "/var/run/mysqld/mysqld.sock" ]; then

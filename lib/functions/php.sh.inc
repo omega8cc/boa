@@ -2097,7 +2097,9 @@ check_php_rebuild() {
   if [ "$1" = "56" ] || [ "$1" = "70" ] || [ "$1" = "71" ]; then
     if [[ "${_PHP_SSL_TEST}" =~ "${_PHP_SSL_LOOK_FOR}" ]] \
       || [[ "${_PHP_SSL_TEST}" =~ "${_PHP_SSL_ALTER_LOOK_FOR}" ]]; then
-      msg "INFO: Installed PHP ${_PHP_ITD} with ${_PHP_SSL_TEST}, OK"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Installed PHP ${_PHP_ITD} with ${_PHP_SSL_TEST}, OK"
+      fi
     else
       if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
         msg "INFO: PHP ${_PHP_ITD} ${_PHP_SSL_TEST}, rebuild on next upgrade"
@@ -2117,7 +2119,9 @@ check_php_rebuild() {
         _PHP_FORCE_REINSTALL=YES
       fi
     else
-      msg "INFO: Installed PHP ${_PHP_ITD} with ${_PHP_SSL_TEST}, OK"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Installed PHP ${_PHP_ITD} with ${_PHP_SSL_TEST}, OK"
+      fi
     fi
   fi
   if [ -x "/opt/php$1/bin/php" ]; then
@@ -2234,7 +2238,9 @@ check_php_broken_freetype() {
       install_php_multi "$1"
       _PHP_ALREADY_REBUILT=$1
     else
-      msg "NOTE: PHP ${_PHP_VERSION} was built without freetype support"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "NOTE: PHP ${_PHP_VERSION} was built without freetype support"
+      fi
     fi
   else
     _PHP_ALREADY_REBUILT=
