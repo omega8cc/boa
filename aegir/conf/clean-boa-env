@@ -103,6 +103,18 @@ case "$1" in
       exit 0
     fi
     echo -n "Stopping $DESC: "
+    service cron stop &> /dev/null
+    kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
+    sleep 9
+    kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
+    kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}') &> /dev/null
+    kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
+    kill -9 $(ps aux | grep '[j]ava-11-openjdk' | awk '{print $2}') &> /dev/null
+    kill -9 $(ps aux | grep '[j]ava-17-openjdk' | awk '{print $2}') &> /dev/null
+    kill -9 $(ps aux | grep '[j]ava-8-openjdk' | awk '{print $2}') &> /dev/null
+    kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
+    kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
+    kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
     if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
       _WEB_SH=`readlink -n /bin/sh`
       _WEB_SH=`echo -n $_WEB_SH | tr -d "\n"`
