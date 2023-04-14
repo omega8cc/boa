@@ -1031,7 +1031,7 @@ up_finish() {
     killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
-    service clean-boa-env stop &> /dev/null
+    service clean-boa-env start &> /dev/null
     wait
     csf -uf &> /dev/null
     csf -e  &> /dev/null
@@ -1194,7 +1194,7 @@ csf_check_fix() {
     killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
-    service clean-boa-env stop &> /dev/null
+    service clean-boa-env start &> /dev/null
     wait
     csf -uf &> /dev/null
     csf -e  &> /dev/null

@@ -4085,7 +4085,7 @@ finale() {
     wait
   fi
   if [ -e "/root/.dbhd.clstr.cnf" ]; then
-    service clean-boa-env stop &> /dev/null
+    service clean-boa-env start &> /dev/null
   fi
   killall -9 memcached     &> /dev/null
   if [ -e "/sbin/auditd" ]; then
@@ -4110,7 +4110,7 @@ finale() {
     killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
-    service clean-boa-env stop &> /dev/null
+    service clean-boa-env start &> /dev/null
     wait
     csf -uf &> /dev/null
     csf -e  &> /dev/null
