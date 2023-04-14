@@ -2120,7 +2120,9 @@ satellite_add_user_dirs() {
   chown root:root /data &> /dev/null
   chown root:root /data/disk &> /dev/null
   if [ ! -d "${_ROOT}" ]; then
-    msg "${_STATUS} A: Adding user..."
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "${_STATUS} A: Adding user..."
+    fi
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
     adduser --system --home ${_ROOT} --ingroup ${_USRG} ${_USER} &> /dev/null
     adduser ${_USER} ${_WEBG} &> /dev/null
@@ -2892,7 +2894,9 @@ satellite_run_child_c() {
   fi
   if [ ! -e "${_CORE}/dot-files-ctrl-${_X_VERSION}" ] \
     && [ -e "${_CORE}" ]; then
-    msg "${_STATUS} A: Cleaning up various dot files, please wait..."
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "${_STATUS} A: Cleaning up various dot files, please wait..."
+    fi
     cd ${_CORE}
     find . -name .svn -exec rm -rf {} \; &> /dev/null
     find . -name .bzr -exec rm -rf {} \; &> /dev/null
@@ -2940,7 +2944,9 @@ satellite_if_add_ftps_lshell_access() {
   _ID_SHELLS=$(id -nG ${_USERFTP} 2>&1)
   if [[ ! "${_ID_SHELLS}" =~ "users" ]] \
     || [ ! -d "${_USERFTP_ROOT}" ]; then
-    msg "${_STATUS} A: Adding ftps/lshell user"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "${_STATUS} A: Adding ftps/lshell user"
+    fi
     # add user
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
     useradd -d /home/${_USERFTP} -s ${_PATH_LSHELL} -m -N -r ${_USERFTP} &> /dev/null
@@ -3022,7 +3028,9 @@ satellite_if_add_update_user_symlinks() {
   _USER_DS="${_USER_HD}/.drush"
   disable_chattr ${_USERFTP}
   if [ ! -L "${_USER_HD}/backups" ]; then
-    msg "${_STATUS} A: Adding symlink to the sites backups"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "${_STATUS} A: Adding symlink to the sites backups"
+    fi
     ln -sf ${_ROOT}/backups ${_USER_HD}/backups
   fi
 
@@ -3057,7 +3065,9 @@ satellite_if_add_update_user_symlinks() {
   #
   if [ ! -L "${_USER_DS}/usr/registry_rebuild" ] \
     && [ -e "${_ROOT}/.drush/usr/registry_rebuild" ]; then
-    msg "${_STATUS} A: Adding symlink to the system registry_rebuild"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "${_STATUS} A: Adding symlink to the system registry_rebuild"
+    fi
     mkdir -p ${_USER_DS}/usr
     chown ${_USERFTP}:${_USRG} ${_USER_DS}
     chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
@@ -3070,7 +3080,9 @@ satellite_if_add_update_user_symlinks() {
   #
   if [ ! -L "${_USER_DS}/usr/clean_missing_modules" ] \
     && [ -e "${_ROOT}/.drush/usr/clean_missing_modules" ]; then
-    msg "${_STATUS} A: Adding symlink to the system clean_missing_modules"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "${_STATUS} A: Adding symlink to the system clean_missing_modules"
+    fi
     mkdir -p ${_USER_DS}/usr
     chown ${_USERFTP}:${_USRG} ${_USER_DS}
     chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
@@ -3083,7 +3095,9 @@ satellite_if_add_update_user_symlinks() {
   #
   if [ ! -L "${_USER_DS}/usr/drupalgeddon" ] \
     && [ -e "${_ROOT}/.drush/usr/drupalgeddon" ]; then
-    msg "${_STATUS} A: Adding symlink to the system drupalgeddon"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "${_STATUS} A: Adding symlink to the system drupalgeddon"
+    fi
     mkdir -p ${_USER_DS}/usr
     chown ${_USERFTP}:${_USRG} ${_USER_DS}
     chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
@@ -3096,7 +3110,9 @@ satellite_if_add_update_user_symlinks() {
   #
   if [ ! -L "${_USER_DS}/usr/drush_ecl" ] \
     && [ -e "${_ROOT}/.drush/usr/drush_ecl" ]; then
-    msg "${_STATUS} A: Adding symlink to the system drush_ecl"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "${_STATUS} A: Adding symlink to the system drush_ecl"
+    fi
     mkdir -p ${_USER_DS}/usr
     chown ${_USERFTP}:${_USRG} ${_USER_DS}
     chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
@@ -3109,7 +3125,9 @@ satellite_if_add_update_user_symlinks() {
   #
   if [ ! -L "${_USER_DS}/usr/safe_cache_form_clear" ] \
     && [ -e "${_ROOT}/.drush/usr/safe_cache_form_clear" ]; then
-    msg "${_STATUS} A: Adding symlink to the system safe_cache_form_clear"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "${_STATUS} A: Adding symlink to the system safe_cache_form_clear"
+    fi
     mkdir -p ${_USER_DS}/usr
     chown ${_USERFTP}:${_USRG} ${_USER_DS}
     chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
@@ -3122,7 +3140,9 @@ satellite_if_add_update_user_symlinks() {
   #
   if [ ! -L "${_USER_DS}/usr/utf8mb4_convert" ] \
     && [ -e "${_ROOT}/.drush/usr/utf8mb4_convert" ]; then
-    msg "${_STATUS} A: Adding symlink to the system utf8mb4_convert"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "${_STATUS} A: Adding symlink to the system utf8mb4_convert"
+    fi
     mkdir -p ${_USER_DS}/usr
     chown ${_USERFTP}:${_USRG} ${_USER_DS}
     chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
@@ -3134,7 +3154,9 @@ satellite_if_add_update_user_symlinks() {
   ###---### Add symlink to the clients directory.
   #
   if [ ! -L "${_USER_HD}/clients" ]; then
-    msg "${_STATUS} A: Adding symlink to the clients directory"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "${_STATUS} A: Adding symlink to the clients directory"
+    fi
     ln -sf ${_ROOT}/clients ${_USER_HD}/clients
   fi
   rm -rf ${_ROOT}/clients/admin &> /dev/null
@@ -4994,7 +5016,9 @@ satellite_child_b_install_drush() {
     fi
   fi
   cd ${_ROOT}/tools
-  msg "${_STATUS} B: Downloading drush ${_DRUSH_VERSION}..."
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "${_STATUS} B: Downloading drush ${_DRUSH_VERSION}..."
+  fi
   get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
   cd ${_ROOT}/tools/drush/
   find ${_ROOT}/tools/drush -type d -exec chmod 0755 {} \; &> /dev/null
@@ -5047,11 +5071,15 @@ satellite_child_b_drush_xts_cleanup() {
 }
 
 satellite_child_b_drush_xts_install() {
-  msg "${_STATUS} B: Installing Aegir Provision backend..."
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "${_STATUS} B: Installing Aegir Provision backend..."
+  fi
   mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
   cd ${_ROOT}/.drush
   if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
-    msg "${_STATUS} B: Downloading Drush and Provision extensions..."
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "${_STATUS} B: Downloading Drush and Provision extensions..."
+    fi
     rm -rf ${_ROOT}/.drush/{sys,xts,usr}
     rm -rf ${_ROOT}/.drush/{provision,drush_make}
     mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
@@ -5076,7 +5104,9 @@ satellite_child_b_drush_xts_install() {
     get_dev_ext "clean_missing_modules.tar.gz"
     get_dev_ext "utf8mb4_convert-7.x-1.3.tar.gz"
   else
-    msg "${_STATUS} B: Downloading Drush and Provision extensions..."
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "${_STATUS} B: Downloading Drush and Provision extensions..."
+    fi
     cd ${_ROOT}/.drush/sys
     get_dev_ext "provision.tar.gz"
     cd ${_ROOT}/.drush/usr

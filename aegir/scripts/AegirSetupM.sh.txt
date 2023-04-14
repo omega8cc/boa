@@ -169,11 +169,15 @@ chmod 755 ${_ROOT}/drush/examples/helloworld.script
 php_cli_drush_update
 php_cli_local_ini_update
 
-msg "INFO: Installing Aegir Provision backend..."
+if [ "${_DEBUG_MODE}" = "YES" ]; then
+  msg "INFO: Installing Aegir Provision backend..."
+fi
 mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
 if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
   cd ${_ROOT}/.drush
-  msg "INFO: Downloading Drush and Provision extensions..."
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Downloading Drush and Provision extensions..."
+  fi
   rm -rf ${_ROOT}/.drush/{sys,xts,usr}
   rm -rf ${_ROOT}/.drush/{provision,drush_make}
   mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
@@ -198,7 +202,9 @@ if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
   get_dev_ext "clean_missing_modules.tar.gz"
   get_dev_ext "utf8mb4_convert-7.x-1.3.tar.gz"
 else
-  msg "INFO: Downloading Drush and Provision extensions..."
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Downloading Drush and Provision extensions..."
+  fi
   cd ${_ROOT}/.drush/sys
   get_dev_ext "provision.tar.gz"
   cd ${_ROOT}/.drush/usr
