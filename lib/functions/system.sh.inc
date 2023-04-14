@@ -3591,7 +3591,7 @@ switch_to_dash() {
                   /etc/init.d \
                   /etc/network/if-down.d \
                   /etc/network/if-up.d \
-                  /etc/resolvconf \
+                  /etc/resolvconf/update.d \
                   /etc/webmin \
                   /opt/php56/bin \
                   /opt/php70/bin \
@@ -3617,24 +3617,26 @@ switch_to_dash() {
         for f in `find $p ! -perm -4000 ! -perm -2000 -type f`; do
           if [[ "$f" =~ "drush"($) ]] \
             || [[ "$f" =~ "clean-boa-env"($) ]] \
+            || [[ "$f" =~ "dash"($) ]] \
+            || [[ "$f" =~ "bash"($) ]] \
+            || [[ "$f" =~ "ssh"($) ]] \
+            || [[ "$f" =~ "sshd"($) ]] \
             || [[ "$f" =~ "websh"($) ]]; then
             _SKIP_THIS=YES
           else
-            _SHELL_TEST=$(grep -I -o "/bin/sh" $f 2>&1)
-            if [ ! -z "${_SHELL_TEST}" ] \
+            _SHELL_TEST=
+            _SHELL_TEST=$(grep -I -o "\#\!.*/bin/sh" $f 2>&1)
+            if [[ "${_SHELL_TEST}" =~ "/bin/sh" ]] \
               && [ "$f" != "/etc/init.d/clean-boa-env" ] \
               && [ "$f" != "/bin/websh" ]; then
-              sed -i "s/^#\! \/.*/#\!\/bin\/dash/g" $f &> /dev/null
-              wait
               sed -i "s/\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
               wait
             fi
-            _SHELL_TEST=$(grep -I -o "/usr/bin/sh" $f 2>&1)
-            if [ ! -z "${_SHELL_TEST}" ] \
+            _SHELL_TEST=
+            _SHELL_TEST=$(grep -I -o "\#\!.*/usr/bin/sh" $f 2>&1)
+            if [[ "${_SHELL_TEST}" =~ "/bin/sh" ]] \
               && [ "$f" != "/etc/init.d/clean-boa-env" ] \
               && [ "$f" != "/bin/websh" ]; then
-              sed -i "s/^#\! \/.*/#\!\/bin\/dash/g" $f &> /dev/null
-              wait
               sed -i "s/\/usr\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
               wait
             fi
@@ -3663,7 +3665,7 @@ switch_to_bash() {
                   /etc/init.d \
                   /etc/network/if-down.d \
                   /etc/network/if-up.d \
-                  /etc/resolvconf \
+                  /etc/resolvconf/update.d \
                   /etc/webmin \
                   /opt/php56/bin \
                   /opt/php70/bin \
@@ -3689,24 +3691,26 @@ switch_to_bash() {
         for f in `find $p ! -perm -4000 ! -perm -2000 -type f`; do
           if [[ "$f" =~ "drush"($) ]] \
             || [[ "$f" =~ "clean-boa-env"($) ]] \
+            || [[ "$f" =~ "dash"($) ]] \
+            || [[ "$f" =~ "bash"($) ]] \
+            || [[ "$f" =~ "ssh"($) ]] \
+            || [[ "$f" =~ "sshd"($) ]] \
             || [[ "$f" =~ "websh"($) ]]; then
             _SKIP_THIS=YES
           else
-            _SHELL_TEST=$(grep -I -o "/bin/sh" $f 2>&1)
-            if [ ! -z "${_SHELL_TEST}" ] \
+            _SHELL_TEST=
+            _SHELL_TEST=$(grep -I -o "\#\!.*/bin/sh" $f 2>&1)
+            if [[ "${_SHELL_TEST}" =~ "/bin/sh" ]] \
               && [ "$f" != "/etc/init.d/clean-boa-env" ] \
               && [ "$f" != "/bin/websh" ]; then
-              sed -i "s/^#\! \/.*/#\!\/bin\/bash/g" $f &> /dev/null
-              wait
               sed -i "s/\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
               wait
             fi
-            _SHELL_TEST=$(grep -I -o "/usr/bin/sh" $f 2>&1)
-            if [ ! -z "${_SHELL_TEST}" ] \
+            _SHELL_TEST=
+            _SHELL_TEST=$(grep -I -o "\#\!.*/usr/bin/sh" $f 2>&1)
+            if [[ "${_SHELL_TEST}" =~ "/bin/sh" ]] \
               && [ "$f" != "/etc/init.d/clean-boa-env" ] \
               && [ "$f" != "/bin/websh" ]; then
-              sed -i "s/^#\! \/.*/#\!\/bin\/bash/g" $f &> /dev/null
-              wait
               sed -i "s/\/usr\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
               wait
             fi
@@ -6809,10 +6813,10 @@ complete() {
     usermod -aG users sys &> /dev/null
     if [ -x "/bin/dash" ] || [ -x "/usr/bin/dash" ]; then
       symlink_to_dash
-      # switch_to_dash
+      switch_to_dash
     elif [ -x "/bin/bash" ] || [ -x "/usr/bin/bash" ]; then
       symlink_to_bash
-      # switch_to_bash
+      switch_to_bash
     fi
     strict_bin_permissions
     rm -f /etc/apt/apt.conf.d/00sandboxtmp
