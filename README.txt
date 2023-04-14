@@ -99,8 +99,8 @@ production settings.
 
 === Debian @ https://wiki.debian.org/LTS
 
-* Debian 11 Bullseye (work in progress -- do not use yet)
-* Debian 10 Buster (recommended)
+* Debian 11 Bullseye (fully supported)
+* Debian 10 Buster (fully supported)
 * Debian 9 Stretch (deprecated but still works)
 * Debian 8 Jessie (deprecated but still works)
 
