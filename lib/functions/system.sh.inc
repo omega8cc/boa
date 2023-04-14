@@ -2654,7 +2654,8 @@ drush_system_install_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: drush_system_install_update"
   fi
-  if [ ! -e "/root/.debug-barracuda-installer.cnf" ]; then
+  if [ ! -e "/root/.debug-barracuda-installer.cnf" ] \
+    && [ ! -e "/root/.skip-aegir-master-upgrade.cnf" ]; then
     msg "INFO: Installing supported Drush versions..."
     _X_SE="414prodT58"
     ###--------------------###
