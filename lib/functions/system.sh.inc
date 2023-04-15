@@ -4715,7 +4715,6 @@ if_major_os_upgrade() {
     ###
     ### Run pre-migration upgrade in the current OS version.
     mrun "apt-get upgrade ${nrmUpArg}" 2> /dev/null
-    mrun "apt-get dist-upgrade ${nrmUpArg}" 2> /dev/null
     ###
     ### Check if we can continue.
     _AUDIT_DPKG=$(dpkg --audit 2>&1)
