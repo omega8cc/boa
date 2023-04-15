@@ -291,8 +291,8 @@ check_prepare_dirs_permissions
 ###
 ### Optional major system upgrades
 ###
-if_major_os_upgrade
 if_post_major_os_upgrade
+if_major_os_upgrade
 
 
 ###
