@@ -4992,6 +4992,8 @@ if_major_os_upgrade() {
     msg "INFO: REBOOT your system once Barracuda completes THIS run AND..."
     msg "INFO: THEN remember to RUN ANOTHER Barracuda full upgrade"
     echo " "
+    msg "Bye"
+    clean_pid_exit
   fi
 }
 
