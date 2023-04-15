@@ -1301,11 +1301,6 @@ db_head_to_stretch_first()
   	  echo "zlib1g install"         | dpkg --set-selections
   	  echo "zlib1g-dev install"     | dpkg --set-selections
   	  echo "zlibc install"          | dpkg --set-selections
-  	  ${_INSTAPP} zlib1g
-  	  ${_INSTAPP} zlib1g-dev
-  	  ${_INSTAPP} zlibc
-  	  ${_INSTAPP} openssl
-  	  ${_INSTAPP} libssl-dev
   	  apt-get upgrade ${nrmUpArg}
       ### Check if we can continue
       _AUDIT_DPKG=$(dpkg --audit 2>&1)
