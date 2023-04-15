@@ -2200,7 +2200,7 @@ barracuda_cnf() {
 }
 
 #
-# Running aptitude full-upgrade.
+# Install MyTop.
 mytop_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: mytop_install"
@@ -2243,7 +2243,7 @@ run_apt_get_dist_upgrade() {
 }
 
 #
-# Running aptitude full-upgrade.
+# Run aptitude full-upgrade.
 run_aptitude_full_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: run_aptitude_full_upgrade"
@@ -3245,7 +3245,6 @@ ssl_install_src() {
     _SSH_FORCE_REINSTALL=YES
     _NGX_FORCE_REINSTALL=YES
     _PHP_FORCE_REINSTALL=YES
-    _GIT_FORCE_REINSTALL=YES
     rm -f ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_VERSION}.log
     rm -f ${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log
     msg "INFO: Installed OpenSSL version ${_SSL_ITD}, rebuild forced"
@@ -4560,7 +4559,8 @@ if_post_major_os_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: if_post_major_os_upgrade"
   fi
-  if [ -e "/root/run_post_major_os_upgrade.info" ]; then
+  if [ -e "/root/run_post_major_os_upgrade.info" ] \
+    && [ ! -e "/root/completed_post_major_os_upgrade.info" ]; then
 
     mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
 
@@ -4580,7 +4580,15 @@ if_post_major_os_upgrade() {
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
 
     rm -f /root/run_post_major_os_upgrade.info
-    msg "INFO: The post_major_os_upgrade procedure is complete."
+    touch /root/completed_post_major_os_upgrade.info
+    msg "INFO: The post_major_os_upgrade procedure is complete"
+    msg "INFO: Time for re-installing services built from sources..."
+
+    _NGX_FORCE_REINSTALL=YES
+    _PHP_FORCE_REINSTALL=YES
+    _SSH_FORCE_REINSTALL=YES
+    _SSL_FORCE_REINSTALL=YES
+    _PURGE_MODE=OFF
   fi
 }
 
@@ -4616,7 +4624,9 @@ if_major_os_upgrade() {
     msg "WARN: Too late! ${_MSG_LOC} upgrade in progress..."
     msg "HINT: Run tail -f ${_LOG}"
     msg "HINT: in another terminal window to watch details"
-    _FULL_FORCE_REINSTALL=YES
+    _NGX_FORCE_REINSTALL=YES
+    _SSH_FORCE_REINSTALL=YES
+    _SSL_FORCE_REINSTALL=YES
     _PURGE_MODE=OFF
     rm -f ${mtrNgx}/pre.d/nginx_speed_purge.conf
     if [ -e "/etc/init.d/bind" ]; then
@@ -4812,7 +4822,6 @@ if_major_os_upgrade() {
     mrun "apt-get install apt dpkg aptitude util-linux ${dstUpArg}" 2> /dev/null
     ###
     ### Back to BOA stuff re-install as needed.
-    nginx_install_upgrade
     if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
       ln -sf /etc/init.d/bind9 /etc/init.d/bind
     fi
@@ -4821,8 +4830,8 @@ if_major_os_upgrade() {
         mv -f /etc/init.d/networking /etc/init.d/networking.bak
         cp -af /etc/init.d/networking.dpkg-dist /etc/init.d/networking
         chmod 755 /etc/init.d/networking
+        ls -la /etc/init.d/networking
       fi
-      ll /etc/init.d/networking
     fi
     if [ -d "/var/www/cgp" ]; then
       mrun "apt-get install collectd ${dstUpArg}" 2> /dev/null
@@ -4866,11 +4875,20 @@ if_major_os_upgrade() {
     ### Note that Debian Bullseye to Devuan Chimaera migration
     ### requires the dist-upgrade step to be run AFTER reboot!
     if [ "${_LOC_OSR}" = "bullseye" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
+      echo
       msg "ATTN: NOTE! Debian Bullseye to Devuan Chimaera migration"
       msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
-      msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot."
+      msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
+      echi
     else
       mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
+      nginx_install_upgrade
+      ssl_install_src
+      ssl_crypto_lib_fix
+      curl_install_src
+      if [ "${_SSH_FROM_SOURCES}" = "YES" ]; then
+        sshd_install_src
+      fi
     fi
     ###
     ### Time for init scripts cleanup for VM running beng kernel.
@@ -4988,9 +5006,9 @@ if_major_os_upgrade() {
     ### Add ctrl file to trigger if_post_major_os_upgrade() after reboot.
     touch /root/run_post_major_os_upgrade.info
     echo " "
-    msg "INFO: No errors? Then ${_MSG_LOC} upgrade was successful :)"
-    msg "INFO: REBOOT your system once Barracuda completes THIS run AND..."
-    msg "INFO: THEN remember to RUN ANOTHER Barracuda full upgrade"
+    msg "RLLY: No errors? ${_MSG_LOC} migration worked :)"
+    msg "STEP: Please reboot this server now"
+    msg "STEP: Once the system is up, run 'barracuda up-head' command again"
     echo " "
     msg "Bye"
     clean_pid_exit
