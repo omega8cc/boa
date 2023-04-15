@@ -4699,9 +4699,6 @@ if_major_os_upgrade() {
     mrun "${_INSTAPP} libssl-dev" 2> /dev/null
     mrun "apt-get install curl ${forCer}"           2> /dev/null
     mrun "apt-get build-dep curl -y"                2> /dev/null
-    mrun "apt-get install git ${forCer}"            2> /dev/null
-    mrun "apt-get install git-core ${forCer}"       2> /dev/null
-    mrun "apt-get install git-man ${forCer}"        2> /dev/null
     sed -i "s/^PermitRootLogin.*/#PermitRootLogin yes/g" \
       /etc/ssh/sshd_config &> /dev/null
     if [ -e "/usr/bin/java" ] \
