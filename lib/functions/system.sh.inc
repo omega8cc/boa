@@ -3032,9 +3032,9 @@ sshd_install_src() {
     mrun "ldconfig" 2> /dev/null
     mrun "service ssh restart" &> /dev/null
     if [[ ! "${_SSH_GET_DPKG}" =~ "hold" ]]; then
-      ### aptitude hold openssh-server &> /dev/null
-      ### aptitude hold openssh-client &> /dev/null
-      ### aptitude hold ssh &> /dev/null
+      aptitude hold openssh-server &> /dev/null
+      aptitude hold openssh-client &> /dev/null
+      aptitude hold ssh &> /dev/null
       echo "openssh-client hold" | dpkg --set-selections &> /dev/null
       echo "openssh-server hold" | dpkg --set-selections &> /dev/null
       echo "ssh hold" | dpkg --set-selections &> /dev/null
@@ -3049,9 +3049,9 @@ sshd_install_src() {
     fi
   else
     if [[ ! "${_SSH_GET_DPKG}" =~ "hold" ]]; then
-      ### aptitude hold openssh-server &> /dev/null
-      ### aptitude hold openssh-client &> /dev/null
-      ### aptitude hold ssh &> /dev/null
+      aptitude hold openssh-server &> /dev/null
+      aptitude hold openssh-client &> /dev/null
+      aptitude hold ssh &> /dev/null
       echo "openssh-client hold" | dpkg --set-selections &> /dev/null
       echo "openssh-server hold" | dpkg --set-selections &> /dev/null
       echo "ssh hold" | dpkg --set-selections &> /dev/null
@@ -4704,9 +4704,6 @@ if_major_os_upgrade() {
     mrun "apt-get install git-man ${forCer}"        2> /dev/null
     sed -i "s/^PermitRootLogin.*/#PermitRootLogin yes/g" \
       /etc/ssh/sshd_config &> /dev/null
-    mrun "apt-get install openssh-client ${forCer}" 2> /dev/null
-    mrun "apt-get install openssh-server ${forCer}" 2> /dev/null
-    mrun "apt-get install ssh ${forCer}"            2> /dev/null
     if [ -e "/usr/bin/java" ] \
       || [ -e "/usr/bin/java7" ] \
       || [ -e "/usr/bin/java8" ] \
@@ -4803,6 +4800,10 @@ if_major_os_upgrade() {
         wait
       fi
     fi
+    ###
+    ### Make sure the systemd packages are locked in apt.
+    echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+    echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
     ###
     ### Update packages registry.
     mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null

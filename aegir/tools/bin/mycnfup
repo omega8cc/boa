@@ -1285,6 +1285,8 @@ db_head_to_stretch_first()
   	  echo "nameserver 8.8.8.8" >/etc/resolv.conf
   	  echo "nameserver 8.8.4.4" >>/etc/resolv.conf
   	  cat /etc/resolv.conf
+      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
   	  ${_APT_UPDATE} -qq &> /dev/null
   	  echo "curl install"           | dpkg --set-selections
   	  echo "git install"            | dpkg --set-selections
@@ -1305,9 +1307,6 @@ db_head_to_stretch_first()
   	  ${_INSTAPP} openssl
   	  ${_INSTAPP} libssl-dev
   	  apt-get install curl ${forCer}
-  	  apt-get install openssh-client ${forCer}
-  	  apt-get install openssh-server ${forCer}
-  	  apt-get install ssh ${forCer}
   	  apt-get upgrade ${nrmUpArg}
   	  apt-get dist-upgrade ${nrmUpArg}
       ### Check if we can continue
