@@ -4871,6 +4871,15 @@ if_major_os_upgrade() {
       mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
     fi
     ###
+    ### Re-install some service early to limit downtime and SSH keys confusion.
+    nginx_install_upgrade
+    ssl_install_src
+    ssl_crypto_lib_fix
+    curl_install_src
+    if [ "${_SSH_FROM_SOURCES}" = "YES" ]; then
+      sshd_install_src
+    fi
+    ###
     ### Finally, the proper dist-upgrade time.
     ### Note that Debian Bullseye to Devuan Chimaera migration
     ### requires the dist-upgrade step to be run AFTER reboot!
@@ -4882,13 +4891,6 @@ if_major_os_upgrade() {
       echo
     else
       mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
-      nginx_install_upgrade
-      ssl_install_src
-      ssl_crypto_lib_fix
-      curl_install_src
-      if [ "${_SSH_FROM_SOURCES}" = "YES" ]; then
-        sshd_install_src
-      fi
     fi
     ###
     ### Time for init scripts cleanup for VM running beng kernel.
