@@ -27,7 +27,7 @@ dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.di
 nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
 _INSTALL="/usr/bin/apt-get ${nrmUpArg} install"
 _INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
-forCer="-fuy --allow-unauthenticated --reinstall"
+aptYesUnth="-y --allow-unauthenticated"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 vBs="/var/backups"
 tVr="0.7"
@@ -311,7 +311,7 @@ check_root() {
       apt-get clean -qq
       rm -rf /var/lib/apt/lists/*
       ${_APT_UPDATE} -qq
-      apt-get install lsb-release ${forCer}
+      ${_INSTAPP} lsb-release
     fi
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ -x "${_LSB_TEST}" ]; then
@@ -463,7 +463,7 @@ find_fast_mirror() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     ${_APT_UPDATE} -qq &> /dev/null
-    apt-get install netcat ${forCer} &> /dev/null
+    ${_INSTAPP} netcat &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -1306,9 +1306,7 @@ db_head_to_stretch_first()
   	  ${_INSTAPP} zlibc
   	  ${_INSTAPP} openssl
   	  ${_INSTAPP} libssl-dev
-  	  apt-get install curl ${forCer}
   	  apt-get upgrade ${nrmUpArg}
-  	  apt-get dist-upgrade ${nrmUpArg}
       ### Check if we can continue
       _AUDIT_DPKG=$(dpkg --audit 2>&1)
       if [ ! -z "${_AUDIT_DPKG}" ]; then

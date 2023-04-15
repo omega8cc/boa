@@ -3,7 +3,7 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 
-forCer="-fuy --allow-unauthenticated --reinstall"
+aptYesUnth="-y --allow-unauthenticated"
 
 check_root() {
   if [ `whoami` = "root" ]; then
@@ -66,7 +66,7 @@ find_fast_mirror() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     ${_APT_UPDATE} -qq &> /dev/null
-    apt-get install netcat ${forCer} &> /dev/null
+    apt-get install netcat ${aptYesUnth} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -106,7 +106,7 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
       apt-get clean -qq &> /dev/null
       rm -rf /var/lib/apt/lists/*
       ${_APT_UPDATE} -qq &> /dev/null
-      apt-get install curl ${forCer} &> /dev/null
+      apt-get install curl ${aptYesUnth} &> /dev/null
       mkdir -p /var/backups/libcurl
       mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
       mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null

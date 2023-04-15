@@ -3428,7 +3428,7 @@ curl_install_src() {
           mrun "apt-get clean -qq" 2> /dev/null
           rm -rf /var/lib/apt/lists/*
           mrun "${_APT_UPDATE} -qq" &> /dev/null
-          mrun "apt-get install curl ${forCer}" 2> /dev/null
+          mrun "${_INSTAPP} curl" 2> /dev/null
           mrun "apt-get build-dep curl -y" 2> /dev/null
           mrun "apt-get remove libssl1.0-dev -y" 2> /dev/null
           mrun "apt autoremove -y" 2> /dev/null

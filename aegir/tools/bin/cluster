@@ -36,7 +36,7 @@ _X_SE="414prodT59"
 #
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-forCer="-fuy --allow-unauthenticated --reinstall"
+aptYesUnth="-y --allow-unauthenticated"
 optBin="/opt/local/bin"
 usrBin="/usr/local/bin"
 pthLog="/var/xdrago/log"
@@ -72,7 +72,7 @@ check_root() {
         ln -s /proc/self/fd /dev/fd
       fi
     fi
-    forCer="-fuy --allow-unauthenticated --reinstall"
+    aptYesUnth="-y --allow-unauthenticated"
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -82,7 +82,7 @@ check_root() {
       apt-get clean -qq
       rm -rf /var/lib/apt/lists/*
       ${_APT_UPDATE} -qq
-      apt-get install lsb-release ${forCer}
+      apt-get install lsb-release ${aptYesUnth}
     fi
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ -x "${_LSB_TEST}" ]; then
@@ -492,7 +492,7 @@ find_fast_mirror() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     ${_APT_UPDATE} -qq &> /dev/null
-    apt-get install netcat ${forCer} &> /dev/null
+    apt-get install netcat ${aptYesUnth} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)

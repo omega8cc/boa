@@ -59,7 +59,7 @@ _X_SE="414prodT59"
 #
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-forCer="-fuy --allow-unauthenticated --reinstall"
+aptYesUnth="-y --allow-unauthenticated"
 optBin="/opt/local/bin"
 usrBin="/usr/local/bin"
 pthLog="/var/xdrago/log"
@@ -1801,7 +1801,7 @@ update_wrappers() {
     apt-get clean -qq &> /dev/null
     rm -rf /var/lib/apt/lists/*
     ${_APT_UPDATE} -qq &> /dev/null
-    apt-get install curl ${forCer} &> /dev/null
+    apt-get install curl ${aptYesUnth} &> /dev/null
     mkdir -p /var/backups/libcurl
     mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
     mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -1818,7 +1818,7 @@ update_wrappers() {
       apt-get clean -qq &> /dev/null
       rm -rf /var/lib/apt/lists/*
       ${_APT_UPDATE} -qq &> /dev/null
-      apt-get install curl ${forCer} &> /dev/null
+      apt-get install curl ${aptYesUnth} &> /dev/null
       mkdir -p /var/backups/libcurl
       mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
       mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -1838,7 +1838,7 @@ update_wrappers() {
     apt-get clean -qq &> /dev/null
     rm -rf /var/lib/apt/lists/*
     ${_APT_UPDATE} -qq &> /dev/null
-    apt-get install lsb-release ${forCer} &> /dev/null
+    apt-get install lsb-release ${aptYesUnth} &> /dev/null
   fi
   _IPSET_TEST=$(which ipset 2> /dev/null)
   if [ ! -x "${_IPSET_TEST}" ]; then
@@ -1855,7 +1855,7 @@ update_wrappers() {
     if [ -L "/usr/sbin/ipset" ]; then
       rm -f /usr/sbin/ipset
     fi
-    apt-get install ipset ${forCer} &> /dev/null
+    apt-get install ipset ${aptYesUnth} &> /dev/null
   fi
   if [ -x "/sbin/ipset" ] && [ ! -e "/usr/sbin/ipset" ]; then
     ln -s /sbin/ipset /usr/sbin/ipset
@@ -2020,7 +2020,7 @@ setup() {
     apt-get clean -qq &> /dev/null
     rm -rf /var/lib/apt/lists/*
     ${_APT_UPDATE} -qq &> /dev/null
-    apt-get install curl ${forCer} &> /dev/null
+    apt-get install curl ${aptYesUnth} &> /dev/null
     mkdir -p /var/backups/libcurl
     mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
     mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -2037,7 +2037,7 @@ setup() {
       apt-get clean -qq &> /dev/null
       rm -rf /var/lib/apt/lists/*
       ${_APT_UPDATE} -qq &> /dev/null
-      apt-get install curl ${forCer} &> /dev/null
+      apt-get install curl ${aptYesUnth} &> /dev/null
       mkdir -p /var/backups/libcurl
       mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
       mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -2057,7 +2057,7 @@ setup() {
     apt-get clean -qq &> /dev/null
     rm -rf /var/lib/apt/lists/*
     ${_APT_UPDATE} -qq &> /dev/null
-    apt-get install virt-what ${forCer} &> /dev/null
+    apt-get install virt-what ${aptYesUnth} &> /dev/null
   fi
   _LSB_TEST=$(which lsb_release 2> /dev/null)
   if [ ! -x "${_LSB_TEST}" ]; then
@@ -2068,7 +2068,7 @@ setup() {
     apt-get clean -qq &> /dev/null
     rm -rf /var/lib/apt/lists/*
     ${_APT_UPDATE} -qq &> /dev/null
-    apt-get install lsb-release ${forCer} &> /dev/null
+    apt-get install lsb-release ${aptYesUnth} &> /dev/null
   fi
   mkdir -p ${usrBin}
   if [ -e "${pthLog}" ] && [ ! -e "${pthLog}/fixPSop.ctrl.${_X_SE}.pid" ]; then
@@ -2195,7 +2195,7 @@ find_fast_mirror() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     ${_APT_UPDATE} -qq &> /dev/null
-    apt-get install netcat ${forCer} &> /dev/null
+    apt-get install netcat ${aptYesUnth} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)

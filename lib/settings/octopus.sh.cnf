@@ -600,7 +600,7 @@ _BRANCH_PRN="AUTO"
 _X_VERSION="AUTO"
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${gitHub}"
-forCer="-fuy --allow-unauthenticated --reinstall"
+aptYesUnth="-y --allow-unauthenticated"
 
 
 ###
@@ -618,7 +618,7 @@ find_fast_mirror() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     ${_APT_UPDATE} -qq &> /dev/null
-    apt-get install netcat ${forCer} &> /dev/null
+    apt-get install netcat ${aptYesUnth} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)

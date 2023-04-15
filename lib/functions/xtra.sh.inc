@@ -332,7 +332,7 @@ if_install_hhvm() {
           done
           cat /var/opt/hhvm.gpg.key | ${_GPG} --import &> /dev/null
           st_runner "${_APT_UPDATE} -qq" &> /dev/null
-          st_runner "apt-get install hhvm ${forCer}" 2> /dev/null
+          st_runner "apt-get install hhvm ${aptYesUnth}" 2> /dev/null
           msg "INFO: HHVM Engine installed"
         else
           msg "INFO: HHVM Engine installation skipped"
@@ -683,7 +683,7 @@ if_install_ffmpeg() {
             echo "deb http://www.deb-multimedia.org buster-backports main" >> ${aptLiSys}.d/ffmpeg.list
           fi
           st_runner "${_APT_UPDATE} -qq" &> /dev/null
-          st_runner "apt-get install deb-multimedia-keyring ${forCer}" 2> /dev/null
+          st_runner "apt-get install deb-multimedia-keyring ${aptYesUnth}" 2> /dev/null
           st_runner "${_APT_UPDATE} -qq" &> /dev/null
           st_runner "${_INSTAPP} ffmpeg" 2> /dev/null
         elif [ "${_OSR}" = "trusty" ] || [ "${_OSR}" = "precise" ]; then

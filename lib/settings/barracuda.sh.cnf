@@ -1076,7 +1076,7 @@ dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/tmp/apt.conf.noi.di
 nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/tmp/apt.conf.noi.nrml"
 _INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
 _INSTALL="/usr/bin/apt-get ${nrmUpArg} install"
-forCer="-fuy --allow-unauthenticated --reinstall"
+aptYesUnth="-y --allow-unauthenticated"
 
 
 ###
@@ -1094,7 +1094,7 @@ find_fast_mirror() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     ${_APT_UPDATE} -qq &> /dev/null
-    apt-get install netcat ${forCer} &> /dev/null
+    apt-get install netcat ${aptYesUnth} &> /dev/null
     sleep 3
   fi
   ffMirr=$(which ffmirror 2>&1)
