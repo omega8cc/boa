@@ -353,10 +353,9 @@ detect_vanilla_core() {
           && [[ "${Plr}" =~ "static" ]] \
           && [ ! -e "${Plr}/modules/cookie_cache_bypass" ]; then
           if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-            || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-            || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-            || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-            || [ "${_VMFAMILY}" = "VS" ]; then
+            || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+            || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+            || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
             echo Vanilla Drupal 5.x Platform detected in ${Plr}
             read_account_data
             send_notice_core
@@ -370,10 +369,9 @@ detect_vanilla_core() {
           if [ ! -e "/boot/grub/grub.cfg" ] \
             && [ ! -e "/boot/grub/menu.lst" ]; then
             if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-              || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-              || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-              || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-              || [ "${_VMFAMILY}" = "VS" ]; then
+              || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+              || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+              || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
               read_account_data
               send_notice_core
             fi
@@ -1119,10 +1117,9 @@ action() {
         echo SumDat is ${SumDat} or ${SumDatH} MB
         echo SkipDt is ${SkipDt} or ${SkipDtH} MB
         if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-          || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-          || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-          || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-          || [ "${_VMFAMILY}" = "VS" ]; then
+          || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+          || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+          || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
           check_limits
           if [ -e "${_THIS_HM_SITE}" ]; then
             su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster \
@@ -1192,19 +1189,13 @@ action() {
 }
 
 ###--------------------###
-echo "INFO: Daily maintenance start"
+echo "INFO: Starting usage monitoring on `date`"
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _DATE=$(date 2>&1)
 _CHECK_HOST=$(uname -n 2>&1)
-_VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "-beng" ]]; then
-  _VMFAMILY="VS"
-else
-  _VMFAMILY="XEN"
-fi
 mkdir -p /var/xdrago/log/usage
 action >/var/xdrago/log/usage/usage-${_NOW}.log 2>&1
-echo "INFO: Daily maintenance complete"
+echo "INFO: Completing usage monitoring on `date`"
 exit 0
 ###EOF2023###

@@ -85,10 +85,9 @@ action() {
   chmod 777 /opt/tmp
   rm -f /opt/tmp/sess*
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-    || [ "${_VMFAMILY}" = "VS" ] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
     || [ -e "/root/.host8.cnf" ]; then
     rm -f /tmp/*
   fi

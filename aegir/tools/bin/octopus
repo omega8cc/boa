@@ -234,10 +234,9 @@ send_report() {
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
+      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
@@ -256,10 +255,9 @@ send_alert() {
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
+      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
@@ -668,10 +666,9 @@ up_one() {
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
+      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else

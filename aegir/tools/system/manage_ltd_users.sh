@@ -223,10 +223,9 @@ enable_chattr() {
     _U_II="${_U_HD}/php.ini"
     if [ ! -e "${_U_HD}/.ctrl.${_X_SE}.pid" ]; then
       if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-        || [ "${_VMFAMILY}" = "VS" ]; then
+        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
         rm -rf ${_U_HD}/
       else
         rm -f ${_U_HD}/{drush_make,registry_rebuild,clean_missing_modules}
@@ -1900,10 +1899,9 @@ switch_php() {
           satellite_tune_fpm_workers
           _LIM_FPM="${_L_PHP_FPM_WORKERS}"
           if [[ "${_THISHOST}" =~ ".host8." ]] \
-            || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-            || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-            || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
-            || [ "${_VMFAMILY}" = "VS" ]; then
+            || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+            || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+            || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
             if [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
               if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
                 _LIM_FPM=96
@@ -2084,10 +2082,9 @@ switch_php() {
                 wait
               else
                 if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-                  || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-                  || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-                  || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-                  || [ "${_VMFAMILY}" = "VS" ] \
+                  || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+                  || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+                  || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
                   || [ -e "/root/.host8.cnf" ]; then
                   _DO_NOTHING=YES
                 else

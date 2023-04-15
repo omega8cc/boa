@@ -265,10 +265,9 @@ if [ -e "/data/disk/arch/sql" ]; then
     fi
   fi
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-    || [ "${_VMFAMILY}" = "VS" ] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
     || [ -e "/root/.host8.cnf" ] \
     || [ "${_AUTO_UP}" = "YES" ]; then
 	if [[ "${_CHECK_HOST}" =~ ^(lcy1.ao.|lcy15.uk.) ]]; then

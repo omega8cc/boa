@@ -8,9 +8,9 @@ if_install_jetty() {
   if [[ "${_XTRAS_LIST}" =~ "SR7" ]] \
     || [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
+    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
     || [ -e "/root/.auto.up.cnf" ] \
     || [ -e "/root/.host8.cnf" ]; then
     _R_SOLR="7"
@@ -31,9 +31,9 @@ if_install_jetty() {
   if [[ "${_XTRAS_LIST}" =~ "SR7" ]] \
     || [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
+    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
     || [ -e "/root/.auto.up.cnf" ] \
     || [ -e "/root/.host8.cnf" ]; then
     if [ ! -d "${_SOLR_VPATH}" ]; then
@@ -127,9 +127,9 @@ if_install_jetty() {
   fi
   if [[ "${_XTRAS_LIST}" =~ "SR4" ]] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
+    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
     || [ -e "/root/.auto.up.cnf" ] \
     || [ -e "/root/.host8.cnf" ]; then
     if [ ! -d "/opt/solr4" ] \

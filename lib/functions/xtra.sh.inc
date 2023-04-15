@@ -441,11 +441,10 @@ if_install_rvm() {
     || [[ "${_XTRAS_LIST}" =~ "CSS" ]] \
     || [ ! -z "${_SCOUT_KEY}" ] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
-    || [ -e "/root/.host8.cnf" ] \
-    || [ "${_VMFAMILY}" = "VS" ]; then
+    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
+    || [ -e "/root/.host8.cnf" ]; then
     if [ "${_STATUS}" = "INIT" ]; then
       _L_ST="install"
     else

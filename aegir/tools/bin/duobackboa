@@ -87,9 +87,9 @@ check_vps() {
     _BENG_VS=YES
   fi
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]]; then
+    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
     _VMFAMILY=HOSTED
   fi
 }

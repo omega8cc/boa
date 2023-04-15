@@ -97,10 +97,9 @@ csf_install() {
   mrun "sh install.sh" 2> /dev/null
   cd /var/opt
   if [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
-    || [ "${_VMFAMILY}" = "VS" ]; then
+    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
     _SSH_PORT=22
   fi
   _CSF_COMPATIBILITY_TEST=$(perl /etc/csf/csftest.pl 2>&1)
@@ -256,9 +255,9 @@ csf_lfd_install_upgrade() {
       fi
       if [ -e "/root/.host8.cnf" ] \
         || [ -e "/root/.auto.up.cnf" ] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
+        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]]; then
         sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"0\"/g" \
           /etc/csf/csf.conf &> /dev/null

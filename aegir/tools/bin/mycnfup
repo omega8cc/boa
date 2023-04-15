@@ -852,8 +852,7 @@ sql_conf_update() {
   wait
   sed -i "s/^thread_concurrency.*//g" /etc/mysql/my.cnf
   wait
-  if [ -e "/root/.my.cluster_root_pwd.txt" ] \
-    || [ "${_VMFAMILY}" = "VS" ]; then
+  if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
     _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
     if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
       if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then

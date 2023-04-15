@@ -457,10 +457,9 @@ octopus_install() {
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-        || [ "${_VMFAMILY}" = "VS" ]; then
+        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
         _DO_NOTHING=YES
       else
         if [ -e "${barCnf}" ]; then
@@ -560,10 +559,9 @@ octopus_install() {
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
+      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
       if [ ! -e "/root/.debug.cnf" ] || [ -e "/root/.default.cnf" ]; then
         if [ -e "${vBs}/${filIncO}" ]; then
           sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"           ${vBs}/${filIncO}

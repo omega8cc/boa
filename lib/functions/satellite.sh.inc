@@ -267,10 +267,9 @@ satellite_tune_fpm_config() {
   satellite_tune_fpm_workers
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
   if [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
-    || [ "${_VMFAMILY}" = "VS" ]; then
+    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
     if [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _LIM_FPM=96
@@ -527,10 +526,9 @@ satellite_cnf() {
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-        || [ "${_VMFAMILY}" = "VS" ]; then
+        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
         _DO_NOTHING=YES
       else
         msg "EXIT: You must enter **your** valid email address"
@@ -619,10 +617,9 @@ satellite_cnf() {
     fi
     _CHECK_HOST=$(uname -n 2>&1)
     if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
+      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
       _LD_DOM=YES
       if [ -e "/root/.debug-boa-installer.cnf" ]; then
         _DEBUG_MODE=YES
@@ -886,10 +883,9 @@ satellite_cnf() {
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-        || [ "${_VMFAMILY}" = "VS" ]; then
+        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
         _DO_NOTHING=YES
       else
         msg "EXIT: You must enter **your** valid email address in the"
@@ -4351,10 +4347,9 @@ satellite_if_init_or_upgrade() {
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-        || [ "${_VMFAMILY}" = "VS" ]; then
+        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
         if [ -e "${_ROOT}/log/amazing_upgrade.txt" ] \
           && [ ! -e "${_ROOT}/log/amazing_upgrade_complete.txt" ]; then
           if [ -e "${_ROOT}/log/original_option.txt" ]; then
@@ -4404,10 +4399,9 @@ satellite_if_init_or_upgrade() {
         if [ -e "/root/.auto.up.cnf" ] \
           || [ -e "/root/.host8.cnf" ] \
           || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-          || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-          || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-          || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-          || [ "${_VMFAMILY}" = "VS" ]; then
+          || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+          || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+          || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
           _DO_NOTHING=YES
         else
           msg "EXIT: You must enter your valid email address in the"
@@ -5846,10 +5840,9 @@ satellite_child_b_aegir_ui_enhance() {
         SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'"
       _CHECK_HOST=$(uname -n 2>&1)
       if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-        || [ "${_VMFAMILY}" = "VS" ] \
+        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \] \
         || [ -e "/root/.host8.cnf" ] \
         || [ "${_AUTO_UP}" = "YES" ]; then
         pBy="Octopus System powered by Barracuda"

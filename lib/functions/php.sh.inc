@@ -580,10 +580,9 @@ tune_web_server_config() {
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
   if [ "${_LIM_FPM}" -lt "48" ]; then
     if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
+      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
       _LIM_FPM=48
     fi
   fi

@@ -169,10 +169,9 @@ sql_conf_update() {
     wait
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
-    || [ "${_VMFAMILY}" = "VS" ]; then
+    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
     if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
       _DO_NOTHING=YES
     else

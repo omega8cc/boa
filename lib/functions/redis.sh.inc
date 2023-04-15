@@ -81,15 +81,13 @@ fix_redis_mode() {
   chown redis:redis /var/run/redis
   if [ "${_CUSTOM_CONFIG_REDIS}" = "NO" ] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
-    || [ "${_VMFAMILY}" = "VS" ]; then
+    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
     if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
+      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ] \
@@ -259,10 +257,9 @@ install_redis_src() {
   if [ -e "/etc/redis/redis.conf" ] && [ "${_STATUS}" = "UPGRADE" ]; then
     if [ "${_CUSTOM_CONFIG_REDIS}" = "NO" ] \
       || [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
+      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
       if [ "${_CUSTOM_CONFIG_REDIS}" = "YES" ]; then
         _DO_NOTHING=YES
       else

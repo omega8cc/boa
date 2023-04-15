@@ -427,10 +427,9 @@ disable_old_purge_cruft_machine() {
     msg "PROC: disable_old_purge_cruft_machine"
   fi
   if [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
-    || [ "${_VMFAMILY}" = "VS" ] \
+    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
     || [ -e "/root/.host8.cnf" ]; then
     sed -i "s/.*purge_cruft.*//g" /etc/crontab &> /dev/null
     wait
@@ -537,9 +536,9 @@ tune_memory_limits() {
   fi
   _USE=$(( _RAM / 4 ))
   if [ "${_VMFAMILY}" = "VS" ] \
-    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io" ]] \
+    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
+    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
     || [[ "${_THISHOST}" =~ ".host8." ]]; then
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.tg.cnf" ]; then
@@ -985,10 +984,9 @@ barracuda_cnf() {
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-        || [ "${_VMFAMILY}" = "VS" ]; then
+        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
         if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
           _DO_NOTHING=YES
         else
@@ -1140,10 +1138,9 @@ barracuda_cnf() {
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
+      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
       ### Force latest OpenSSH from sources on supported systems
       sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"   ${barCnf}
       wait
@@ -1204,7 +1201,7 @@ barracuda_cnf() {
           wait
         fi
         # if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        #   || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        #   || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
         #   || [ "${_VMFAMILY}" = "VS" ]; then
         #   if [ "${_VMFAMILY}" = "VS" ]; then
         #     sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                     ${barCnf}
@@ -1887,10 +1884,9 @@ barracuda_cnf() {
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
+      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
       ### Force latest OpenSSH from sources on supported systems
       sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"   ${barCnf}
       wait
@@ -1951,7 +1947,7 @@ barracuda_cnf() {
           wait
         fi
         # if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        #   || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
+        #   || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
         #   || [ "${_VMFAMILY}" = "VS" ]; then
         #   if [ "${_VMFAMILY}" = "VS" ]; then
         #     sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                     ${barCnf}
@@ -2024,10 +2020,9 @@ barracuda_cnf() {
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ] \
         || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-        || [ "${_VMFAMILY}" = "VS" ]; then
+        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
         if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
           _DO_NOTHING=YES
         else
@@ -4061,9 +4056,9 @@ finale() {
     sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
     wait
     if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io" ]]; then
+      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
+      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".boa.io"($) ]]; then
       if [ "${_VMFAMILY}" = "VS" ]; then
         _DO_NOTHING=YES
       else
@@ -4087,15 +4082,15 @@ finale() {
   if [ -e "/root/.dbhd.clstr.cnf" ]; then
     service clean-boa-env start &> /dev/null
   fi
-  killall -9 memcached     &> /dev/null
+  killall -9 memcached &> /dev/null
   if [ -e "/sbin/auditd" ]; then
     chmod 0750 /sbin/audispd &> /dev/null
-    service auditd restart   &> /dev/null
+    service auditd restart &> /dev/null
   fi
   php_deprecated_cleanup
   php_single_initd_cleanup
   if [ ! -e "/root/.upstart.cnf" ]; then
-    service cron start     &> /dev/null
+    service cron start &> /dev/null
   fi
   if [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
@@ -5132,9 +5127,9 @@ sys_packages_install() {
   if [ "${_STATUS}" = "INIT" ]; then
     if [[ "${_XTRAS_LIST}" =~ "SR" ]] \
       || [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
+      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
       if [ "${_OSR}" = "trusty" ] \
@@ -5170,9 +5165,9 @@ sys_packages_install() {
     fi
     if [[ "${_XTRAS_LIST}" =~ "SR" ]] \
       || [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
+      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
       if [ "${_OSR}" = "trusty" ] \
@@ -5350,9 +5345,9 @@ sys_packages_install() {
   if [[ "${_XTRAS_LIST}" =~ "IMG" ]] \
     || [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
+    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
     || [ -e "/root/.auto.up.cnf" ] \
     || [ -e "/root/.host8.cnf" ]; then
     _EXTRA_PACKAGES="advancecomp \
@@ -5677,10 +5672,9 @@ xdrago_install_upgrade() {
       _THISHTIP="${_LOC_IP}"
     fi
     if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
-      || [ "${_VMFAMILY}" = "VS" ] \
+      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
       if [ ! -e "/etc/init.d/redis-server" ]; then
@@ -5724,10 +5718,9 @@ xdrago_install_upgrade() {
     chown root:crontab /var/spool/cron/crontabs/root
     chmod 600 /var/spool/cron/crontabs/root
     if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
+      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
       sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
       wait
       sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
@@ -5764,10 +5757,9 @@ xdrago_install_upgrade() {
       _THISHTIP="${_LOC_IP}"
     fi
     if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
-      || [ "${_VMFAMILY}" = "VS" ] \
+      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
       if [ ! -e "/etc/init.d/redis-server" ]; then
@@ -5805,10 +5797,9 @@ xdrago_install_upgrade() {
     fi
     mv -f /etc/cron.daily/mlocate ${vBs}/ &> /dev/null
     if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
+      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
@@ -6436,10 +6427,9 @@ initd_update() {
     fi
   else
     if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io" ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io" ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc" ]] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
+      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
       sed -i "s/.*UseDNS.*//g" /etc/ssh/sshd_config &> /dev/null
       wait
       sed -i "s/.*UsePAM.*//g" /etc/ssh/sshd_config &> /dev/null

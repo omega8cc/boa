@@ -290,10 +290,9 @@ send_report() {
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
+      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
@@ -311,10 +310,9 @@ send_alert() {
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
+      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
@@ -629,10 +627,9 @@ up_action() {
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
+      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
       _DO_NOTHING=YES
     else
       mkdir -p ${vBs}/old-firewall-monitor/${_NOW}
@@ -775,10 +772,9 @@ up_action() {
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
+      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
@@ -803,10 +799,9 @@ up_action() {
             wait
           fi
           if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-            || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-            || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-            || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-            || [ "${_VMFAMILY}" = "VS" ]; then
+            || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+            || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+            || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
             # if [ "${_VMFAMILY}" = "VS" ]; then
             #   sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"       ${barCnf}
             #   wait
@@ -1010,10 +1005,9 @@ up_finish() {
     rm -f /usr/local/bin/php
   fi
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-    || [ "${_VMFAMILY}" = "VS" ]; then
+    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
     service webmin stop &> /dev/null
     service usermin stop &> /dev/null
   fi

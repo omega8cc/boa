@@ -389,10 +389,9 @@ sync_user_register_protection_ini_vars() {
       _ENABLE_USER_REGISTER_PROTECTION=NO
     fi
     if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-      || [ "${_VMFAMILY}" = "VS" ]; then
+      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
       if [ "${_CLIENT_OPTION}" = "POWER" ] \
         || [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
         _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
@@ -612,10 +611,9 @@ send_shutdown_notice() {
     _ALRT_EMAIL="${_MY_EMAIL}"
   fi
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-    || [ "${_VMFAMILY}" = "VS" ] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
     || [ -e "/root/.host8.cnf" ]; then
     _BCC_EMAIL="omega8cc@gmail.com"
   else
@@ -750,10 +748,9 @@ send_hacked_alert() {
     _ALRT_EMAIL="${_MY_EMAIL}"
   fi
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-    || [ "${_VMFAMILY}" = "VS" ] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
     || [ -e "/root/.host8.cnf" ]; then
     _BCC_EMAIL="omega8cc@gmail.com"
   else
@@ -924,10 +921,9 @@ send_core_alert() {
     _ALRT_EMAIL="${_MY_EMAIL}"
   fi
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-    || [ "${_VMFAMILY}" = "VS" ] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
     || [ -e "/root/.host8.cnf" ]; then
     _BCC_EMAIL="omega8cc@gmail.com"
   else
@@ -1807,10 +1803,9 @@ if_site_db_conversion() {
     fi
   fi
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-    || [ "${_VMFAMILY}" = "VS" ]; then
+    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
     _DENY_SQL_CONVERT=YES
     _SQL_CONVERT=
   fi
@@ -2653,10 +2648,9 @@ check_old_empty_hostmaster_platforms() {
 	_DO_NOTHING=YES
   else
 	if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-	  || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-	  || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-	  || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-	  || [ "${_VMFAMILY}" = "VS" ]; then
+	  || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+	  || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+	  || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
 	  _DEL_OLD_EMPTY_PLATFORMS="7"
 	else
 	  _DEL_OLD_EMPTY_PLATFORMS="30"
@@ -2704,10 +2698,9 @@ delete_this_platform() {
 
 check_old_empty_platforms() {
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-    || [ "${_VMFAMILY}" = "VS" ] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
     || [ -e "/root/.host8.cnf" ]; then
     if [[ "${_CHECK_HOST}" =~ "demo.aegir.cc" ]] \
       || [ -e "${User}/static/control/platforms.info" ] \
@@ -2719,10 +2712,9 @@ check_old_empty_platforms() {
         _DO_NOTHING=YES
       else
         if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-          || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-          || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-          || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-          || [ "${_VMFAMILY}" = "VS" ]; then
+          || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+          || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+          || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
           _DEL_OLD_EMPTY_PLATFORMS="60"
         else
           _DEL_OLD_EMPTY_PLATFORMS="60"
@@ -2782,10 +2774,9 @@ purge_cruft_machine() {
 
   _LOW_NR="2"
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-    || [ "${_VMFAMILY}" = "VS" ] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
     || [ -e "/root/.host8.cnf" ]; then
     _PURGE_BACKUPS="3"
     _PURGE_TMP="0"
@@ -3181,10 +3172,9 @@ action() {
           SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'\""
         purge_cruft_machine
         if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-          || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-          || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-          || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-          || [ "${_VMFAMILY}" = "VS" ]; then
+          || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+          || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+          || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
           rm -rf ${User}/clients/admin &> /dev/null
           rm -rf ${User}/clients/omega8ccgmailcom &> /dev/null
           rm -rf ${User}/clients/nocomega8cc &> /dev/null
@@ -3378,10 +3368,9 @@ elif [ -e "/root/.wbhd.clstr.cnf" ]; then
 else
   touch /var/run/daily-fix.pid
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-    || [ "${_VMFAMILY}" = "VS" ]; then
+    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
     n=$((RANDOM%180+80))
     echo "waiting $n sec"
     sleep $n
@@ -3554,10 +3543,9 @@ find /var/backups/solr/*/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 find /var/backups/jetty* -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/backups/dragon/* -mtime +7 -exec rm -rf {} \; &> /dev/null
 if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-  || [[ "${_CHECK_HOST}" =~ ".boa.io" ]] \
-  || [[ "${_CHECK_HOST}" =~ ".o8.io" ]] \
-  || [[ "${_CHECK_HOST}" =~ ".aegir.cc" ]] \
-  || [ "${_VMFAMILY}" = "VS" ] \
+  || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+  || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+  || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
   || [ -e "/root/.host8.cnf" ]; then
   if [ -d "/var/backups/codebases-cleanup" ]; then
     find /var/backups/codebases-cleanup/* -mtime +7 -exec rm -rf {} \; &> /dev/null
