@@ -4692,26 +4692,6 @@ if_major_os_upgrade() {
     echo "zlib1g install"         | dpkg --set-selections &> /dev/null
     echo "zlib1g-dev install"     | dpkg --set-selections &> /dev/null
     echo "zlibc install"          | dpkg --set-selections &> /dev/null
-    mrun "${_INSTAPP} zlib1g"     2> /dev/null
-    mrun "${_INSTAPP} zlib1g-dev" 2> /dev/null
-    mrun "${_INSTAPP} zlibc"      2> /dev/null
-    mrun "${_INSTAPP} openssl"    2> /dev/null
-    mrun "${_INSTAPP} libssl-dev" 2> /dev/null
-    mrun "apt-get install curl ${forCer}"           2> /dev/null
-    mrun "apt-get build-dep curl -y"                2> /dev/null
-    sed -i "s/^PermitRootLogin.*/#PermitRootLogin yes/g" \
-      /etc/ssh/sshd_config &> /dev/null
-    if [ -e "/usr/bin/java" ] \
-      || [ -e "/usr/bin/java7" ] \
-      || [ -e "/usr/bin/java8" ] \
-      || [ -e "/usr/bin/java11" ]; then
-      mrun "apt-get install default-jre ${forCer}" 2> /dev/null
-    fi
-    ###
-    ### Make sure that udev is installed first, if needed.
-    if [ "${_VMFAMILY}" != "VS" ]; then
-      mrun "apt-get install udev ${dstUpArg}" 2> /dev/null
-    fi
     ###
     ### Run pre-migration upgrade in the current OS version.
     mrun "apt-get upgrade ${nrmUpArg}" 2> /dev/null
