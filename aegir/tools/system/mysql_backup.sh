@@ -15,7 +15,7 @@ check_root() {
       fi
     fi
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "INFO: ERROR: This script should be ran as a root user"
     exit 1
   fi
   _DF_TEST=$(df -kTh / -l \
@@ -24,8 +24,8 @@ check_root() {
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
-    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
-    echo "ERROR: We can not proceed until it is below 90/100"
+    echo "INFO: ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "INFO: ERROR: We can not proceed until it is below 90/100"
     exit 1
   fi
 }
@@ -40,12 +40,12 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
 fi
 
 n=$((RANDOM%600+8))
-echo "Waiting $n seconds 1/2 on `date` before running backup..."
+echo "INFO: Waiting $n seconds 1/2 on `date` before running backup..."
 sleep $n
 n=$((RANDOM%300+8))
-echo "Waiting $n seconds 2/2 on `date` before running backup..."
+echo "INFO: Waiting $n seconds 2/2 on `date` before running backup..."
 sleep $n
-echo "Starting backup on `date`"
+echo "INFO: Starting backup on `date`"
 
 if [ -e "/root/.barracuda.cnf" ]; then
   source /root/.barracuda.cnf
@@ -77,14 +77,12 @@ fi
 touch /var/run/boa_sql_backup.pid
 
 create_locks() {
-  echo "Creating locks for $1"
-  #touch /var/run/boa_wait.pid
+  echo "INFO: Creating locks for $1"
   touch /var/run/mysql_backup_running.pid
 }
 
 remove_locks() {
-  echo "Removing locks for $1"
-  #rm -f /var/run/boa_wait.pid
+  echo "INFO: Removing locks for $1"
   rm -f /var/run/mysql_backup_running.pid
 }
 
@@ -93,7 +91,7 @@ check_running() {
     && [ -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      echo "Waiting for MySQLD availability..."
+      echo "INFO: Waiting for MySQLD availability..."
     fi
     sleep 3
   done
@@ -106,18 +104,16 @@ truncate_cache_tables() {
 mysql ${_DB}<<EOFMYSQL
 TRUNCATE ${C};
 EOFMYSQL
-    sleep 1
   done
 }
 
 truncate_watchdog_tables() {
   check_running
   _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^watchdog$ 2>&1)
-  for A in ${_TABLES}; do
+  for W in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
-TRUNCATE ${A};
+TRUNCATE ${W};
 EOFMYSQL
-    sleep 1
   done
 }
 
@@ -128,18 +124,16 @@ truncate_accesslog_tables() {
 mysql ${_DB}<<EOFMYSQL
 TRUNCATE ${A};
 EOFMYSQL
-    sleep 1
   done
 }
 
 truncate_batch_tables() {
   check_running
   _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^batch$ 2>&1)
-  for Q in ${_TABLES}; do
+  for B in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
-TRUNCATE ${Q};
+TRUNCATE ${B};
 EOFMYSQL
-    sleep 1
   done
 }
 
@@ -150,18 +144,16 @@ truncate_queue_tables() {
 mysql ${_DB}<<EOFMYSQL
 TRUNCATE ${Q};
 EOFMYSQL
-    sleep 1
   done
 }
 
 truncate_views_data_export() {
   check_running
   _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^views_data_export_index_ 2>&1)
-  for Q in ${_TABLES}; do
+  for V in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
-DROP TABLE ${Q};
+DROP TABLE ${V};
 EOFMYSQL
-    sleep 1
   done
 mysql ${_DB}<<EOFMYSQL
 TRUNCATE views_data_export_object_cache;
@@ -244,14 +236,14 @@ compress_backup() {
     chmod 600 ${_SAVELOCATION}/*
     chmod 700 ${_SAVELOCATION}
     chmod 700 /data/disk/arch
-    echo "Permissions fixed"
+    echo "INFO: Permissions fixed"
   else
     bzip2 ${_SAVELOCATION}/*.sql
     chmod 600 ${_BACKUPDIR}/*/*
     chmod 700 ${_BACKUPDIR}/*
     chmod 700 ${_BACKUPDIR}
     chmod 700 /data/disk/arch
-    echo "Permissions fixed"
+    echo "INFO: Permissions fixed"
   fi
 }
 
@@ -310,44 +302,40 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/queue.ibd | grep "G" 2>&1)
         if [[ "${_IS_GB}" =~ "queue" ]]; then
           truncate_queue_tables &> /dev/null
-          echo "Truncated giant queue in ${_DB}"
+          echo "INFO: Truncated giant queue in ${_DB}"
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/batch.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/batch.ibd | grep "G" 2>&1)
         if [[ "${_IS_GB}" =~ "batch" ]]; then
           truncate_batch_tables &> /dev/null
-          echo "Truncated giant batch in ${_DB}"
+          echo "INFO: Truncated giant batch in ${_DB}"
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>&1)
         if [[ "${_IS_GB}" =~ "watchdog" ]]; then
           truncate_watchdog_tables &> /dev/null
-          echo "Truncated giant watchdog in ${_DB}"
+          echo "INFO: Truncated giant watchdog in ${_DB}"
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/accesslog.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/accesslog.ibd | grep "G" 2>&1)
         if [[ "${_IS_GB}" =~ "accesslog" ]]; then
           truncate_accesslog_tables &> /dev/null
-          echo "Truncated giant accesslog in ${_DB}"
+          echo "INFO: Truncated giant accesslog in ${_DB}"
         fi
       fi
       truncate_views_data_export &> /dev/null
-      echo "Truncated not used views_data_export in ${_DB}"
-      # truncate_accesslog_tables &> /dev/null
-      # echo "Truncated not used accesslog in ${_DB}"
-      # truncate_queue_tables &> /dev/null
-      # echo "Truncated queue table in ${_DB}"
+      echo "INFO: Truncated not used views_data_export in ${_DB}"
       _CACHE_CLEANUP=NONE
       if [ "${_DOW}" = "6" ] && [ -e "/root/.my.batch_innodb.cnf" ]; then
         repair_this_database &> /dev/null
-        echo "Repair task for ${_DB} completed"
+        echo "INFO: Repair task for ${_DB} completed"
         truncate_cache_tables &> /dev/null
-        echo "All cache tables in ${_DB} truncated"
+        echo "INFO: All cache tables in ${_DB} truncated"
         convert_to_innodb &> /dev/null
-        echo "InnoDB conversion task for ${_DB} completed"
+        echo "INFO: InnoDB conversion task for ${_DB} completed"
         _CACHE_CLEANUP=DONE
       fi
       if [ "${_OPTIM}" = "YES" ] \
@@ -355,16 +343,16 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         && [ "${_DOM}" -ge "24" ] \
         && [ "${_DOM}" -lt "31" ]; then
         repair_this_database &> /dev/null
-        echo "Repair task for ${_DB} completed"
+        echo "INFO: Repair task for ${_DB} completed"
         truncate_cache_tables &> /dev/null
-        echo "All cache tables in ${_DB} truncated"
+        echo "INFO: All cache tables in ${_DB} truncated"
         optimize_this_database &> /dev/null
-        echo "Optimize task for ${_DB} completed"
+        echo "INFO: Optimize task for ${_DB} completed"
         _CACHE_CLEANUP=DONE
       fi
       if [ "${_CACHE_CLEANUP}" != "DONE" ]; then
         truncate_cache_tables &> /dev/null
-        echo "All cache tables in ${_DB} truncated"
+        echo "INFO: All cache tables in ${_DB} truncated"
       fi
     fi
     if [ "${_MYQUICK_STATUS}" = "OK" ]; then
@@ -373,10 +361,14 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
       backup_this_database_with_mysqldump &> /dev/null
     fi
     remove_locks ${_DB}
-    echo "Backup completed for ${_DB}"
-    echo " "
+    echo "INFO: Backup completed for ${_DB}"
+    echo
   fi
 done
+
+echo "INFO: Running all dbs usage report on `date`"
+du -s /var/lib/mysql/* > /root/.du.local.sql
+echo "INFO: Completing all dbs usage report on `date`"
 
 if [ "${_OPTIM}" = "YES" ] \
   && [ "${_DOW}" = "7" ] \
@@ -397,25 +389,36 @@ if [ "${_OPTIM}" = "YES" ] \
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
   fi
+  echo "INFO: Running db server restart on `date`"
   bash /var/xdrago/move_sql.sh
+  wait
+  echo "INFO: Completing db server restart on `date`"
 fi
 
-echo "MAIN TASKS COMPLETED"
+echo "INFO: Completing all dbs backups on `date`"
 rm -f /var/run/boa_sql_backup.pid
-echo "CLEANUP"
+touch /var/xdrago/log/last-run-backup
+
+n=$((RANDOM%300+8))
+echo "INFO: Waiting $n seconds on `date` before running compress..."
+sleep $n
+echo "INFO: Starting dbs backup compress on `date`"
+compress_backup &> /dev/null
+echo "INFO: Completing dbs backup compress on `date`"
+
+echo "INFO: Starting dbs backup cleanup on `date`"
 _DB_BACKUPS_TTL=${_DB_BACKUPS_TTL//[^0-9]/}
 if [ -z "${_DB_BACKUPS_TTL}" ]; then
   _DB_BACKUPS_TTL="7"
 fi
 find ${_BACKUPDIR} -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
-echo "Backups older than ${_DB_BACKUPS_TTL} days deleted"
-n=$((RANDOM%300+8))
-echo "Waiting $n seconds on `date` before running compress..."
-sleep $n
-echo "Starting compress on `date`"
-echo "COMPRESS"
-compress_backup &> /dev/null
-touch /var/xdrago/log/last-run-backup
-echo "ALL TASKS COMPLETED"
+echo "INFO: Backups older than ${_DB_BACKUPS_TTL} days deleted"
+
+echo "INFO: Starting usage report on `date`"
+bash /var/xdrago/usage.sh
+wait
+echo "INFO: Completing usage report on `date`"
+
+echo "INFO: ALL TASKS COMPLETED, BYE!"
 exit 0
 ###EOF2023###
