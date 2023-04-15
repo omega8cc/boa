@@ -45,7 +45,12 @@ sleep $n
 n=$((RANDOM%300+8))
 echo "INFO: Waiting $n seconds 2/2 on `date` before running backup..."
 sleep $n
-echo "INFO: Starting backup on `date`"
+echo "INFO: Starting silent usage report on `date`"
+bash /var/xdrago/usage.sh silent
+wait
+echo "INFO: Completing silent usage report on `date`"
+
+echo "INFO: Starting dbs backup on `date`"
 
 if [ -e "/root/.barracuda.cnf" ]; then
   source /root/.barracuda.cnf

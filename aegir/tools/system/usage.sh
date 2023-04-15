@@ -244,7 +244,9 @@ detect_deprecated_php() {
       || [ "${_PHP_FPM_VERSION}" = "5.2" ]; then
       echo Deprecated PHP-FPM ${_PHP_FPM_VERSION} detected in ${_THIS_U}
       read_account_data
-      send_notice_php ${_PHP_FPM_VERSION}
+      if [ "${_THIS_MODE}" = "verbose" ]; then
+        send_notice_php ${_PHP_FPM_VERSION}
+      fi
     fi
   fi
 }
@@ -358,7 +360,9 @@ detect_vanilla_core() {
             || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
             echo Vanilla Drupal 5.x Platform detected in ${Plr}
             read_account_data
-            send_notice_core
+            if [ "${_THIS_MODE}" = "verbose" ]; then
+              send_notice_core
+            fi
           fi
         fi
       else
@@ -373,7 +377,9 @@ detect_vanilla_core() {
               || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
               || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
               read_account_data
-              send_notice_core
+              if [ "${_THIS_MODE}" = "verbose" ]; then
+                send_notice_core
+              fi
             fi
           fi
         fi
@@ -956,13 +962,17 @@ check_limits() {
   if [ "${SumDatH}" -gt "${_SQL_MAX_LIMIT}" ]; then
     if [ ! -e "${User}/log/CANCELLED" ] \
       && [ ! -e "${User}/log/proxied.pid" ]; then
-      send_notice_sql "LIVE"
+      if [ "${_THIS_MODE}" = "verbose" ]; then
+        send_notice_sql "LIVE"
+      fi
     fi
     echo SQL Usage for ${_THIS_U} above limits
   elif [ "${SkipDtH}" -gt "${_SQL_DEV_LIMIT}" ]; then
     if [ ! -e "${User}/log/CANCELLED" ] \
       && [ ! -e "${User}/log/proxied.pid" ]; then
-      send_notice_sql "DEV"
+      if [ "${_THIS_MODE}" = "verbose" ]; then
+        send_notice_sql "DEV"
+      fi
     fi
     echo SQL Usage for ${_THIS_U} above limits
   else
@@ -971,7 +981,9 @@ check_limits() {
   if [ "${HomSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
     if [ ! -e "${User}/log/CANCELLED" ] \
       && [ ! -e "${User}/log/proxied.pid" ]; then
-      send_notice_disk
+      if [ "${_THIS_MODE}" = "verbose" ]; then
+        send_notice_disk
+      fi
     fi
     echo Disk Usage for ${_THIS_U} above limits
   else
@@ -980,9 +992,11 @@ check_limits() {
   if [ ! -e "${User}/log/GDPRsent.log" ]; then
     if [ ! -e "${User}/log/CANCELLED" ] \
       && [ ! -e "${User}/log/proxied.pid" ]; then
-      send_notice_gprd
-      touch ${User}/log/GDPRsent.log
-      echo GDPR info for ${_THIS_U} sent
+      if [ "${_THIS_MODE}" = "verbose" ]; then
+        send_notice_gprd
+        touch ${User}/log/GDPRsent.log
+        echo GDPR info for ${_THIS_U} sent
+      fi
     fi
   fi
 }
@@ -1151,7 +1165,12 @@ action() {
               else
                 DbsD="DbsDev"
               fi
-              echo "${AegirUrl},${Files}:${HomSizH},${DbsL}:${SumDatH},${DbsD}:${SkipDtH},${eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/xdrago/log/usage/usage-latest.log
+              if [ "${_THIS_MODE}" = "verbose" ]; then
+                _LOG_FILE="usage-latest.log"
+              else
+                _LOG_FILE="usage-latest-silent.log"
+              fi
+              echo "${AegirUrl},${Files}:${HomSizH},${DbsL}:${SumDatH},${DbsD}:${SkipDtH},${eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/xdrago/log/usage/${_LOG_FILE}
             fi
             TmDir="${_THIS_HM_PLR}/profiles/hostmaster/themes/aegir/eldir"
             PgTpl="${TmDir}/page.tpl.php"
@@ -1195,6 +1214,11 @@ _NOW=${_NOW//[^0-9-]/}
 _DATE=$(date 2>&1)
 _CHECK_HOST=$(uname -n 2>&1)
 mkdir -p /var/xdrago/log/usage
+if [ "$1" = "silent" ]; then
+  _THIS_MODE="silent"
+else
+  _THIS_MODE="verbose"
+fi
 action >/var/xdrago/log/usage/usage-${_NOW}.log 2>&1
 echo "INFO: Completing usage monitoring on `date`"
 exit 0
