@@ -132,6 +132,17 @@ EOFMYSQL
   done
 }
 
+truncate_batch_tables() {
+  check_running
+  _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^batch$ 2>&1)
+  for Q in ${_TABLES}; do
+mysql ${_DB}<<EOFMYSQL
+TRUNCATE ${Q};
+EOFMYSQL
+    sleep 1
+  done
+}
+
 truncate_queue_tables() {
   check_running
   _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^queue$ 2>&1)
@@ -295,18 +306,25 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     check_running
     create_locks ${_DB}
     if [ "${_DB}" != "mysql" ]; then
-      if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ]; then
-        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>&1)
-        if [[ "${_IS_GB}" =~ "watchdog" ]]; then
-          truncate_watchdog_tables &> /dev/null
-          echo "Truncated giant watchdog in ${_DB}"
-        fi
-      fi
       if [ -e "/var/lib/mysql/${_DB}/queue.ibd" ]; then
         _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/queue.ibd | grep "G" 2>&1)
         if [[ "${_IS_GB}" =~ "queue" ]]; then
           truncate_queue_tables &> /dev/null
           echo "Truncated giant queue in ${_DB}"
+        fi
+      fi
+      if [ -e "/var/lib/mysql/${_DB}/batch.ibd" ]; then
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/batch.ibd | grep "G" 2>&1)
+        if [[ "${_IS_GB}" =~ "batch" ]]; then
+          truncate_batch_tables &> /dev/null
+          echo "Truncated giant batch in ${_DB}"
+        fi
+      fi
+      if [ -e "/var/lib/mysql/${_DB}/watchdog.ibd" ]; then
+        _IS_GB=$(du -s -h /var/lib/mysql/${_DB}/watchdog.ibd | grep "G" 2>&1)
+        if [[ "${_IS_GB}" =~ "watchdog" ]]; then
+          truncate_watchdog_tables &> /dev/null
+          echo "Truncated giant watchdog in ${_DB}"
         fi
       fi
       if [ -e "/var/lib/mysql/${_DB}/accesslog.ibd" ]; then
