@@ -4888,7 +4888,6 @@ if_major_os_upgrade() {
       msg "ATTN: NOTE! Debian Bullseye to Devuan Chimaera migration"
       msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
       msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
-      echo
     else
       mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
     fi
