@@ -3367,10 +3367,7 @@ elif [ -e "/root/.wbhd.clstr.cnf" ]; then
   exit 1
 else
   touch /var/run/daily-fix.pid
-  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+  if [ "${_VMFAMILY}" = "VS" ]; then
     n=$((RANDOM%180+80))
     echo "waiting $n sec"
     sleep $n

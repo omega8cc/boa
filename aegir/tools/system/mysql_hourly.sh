@@ -249,12 +249,15 @@ if [ ! -e "${percList}" ] \
   apt-get install percona-xtrabackup-24 -y
 fi
 
-n=$((RANDOM%300+8))
-echo "Waiting $n seconds 1/2 on `date` before running backup..."
-sleep $n
-n=$((RANDOM%180+8))
-echo "Waiting $n seconds 2/2 on `date` before running backup..."
-sleep $n
+if [ "${_VMFAMILY}" = "VS" ]; then
+  n=$((RANDOM%300+8))
+  echo "Waiting $n seconds 1/2 on `date` before running backup..."
+  sleep $n
+  n=$((RANDOM%180+8))
+  echo "Waiting $n seconds 2/2 on `date` before running backup..."
+  sleep $n
+fi
+
 echo "Starting backup on `date`"
 touch /var/run/boa_live_sql_backup.pid
 

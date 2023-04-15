@@ -39,16 +39,26 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-n=$((RANDOM%600+8))
-echo "INFO: Waiting $n seconds 1/2 on `date` before running backup..."
-sleep $n
-n=$((RANDOM%300+8))
-echo "INFO: Waiting $n seconds 2/2 on `date` before running backup..."
-sleep $n
 echo "INFO: Starting silent usage report on `date`"
 bash /var/xdrago/usage.sh silent
 wait
 echo "INFO: Completing silent usage report on `date`"
+
+_VM_TEST=$(uname -a 2>&1)
+if [[ "${_VM_TEST}" =~ "-beng" ]]; then
+  _VMFAMILY="VS"
+else
+  _VMFAMILY="XEN"
+fi
+
+if [ "${_VMFAMILY}" = "VS" ]; then
+  n=$((RANDOM%600+8))
+  echo "INFO: Waiting $n seconds 1/2 on `date` before running backup..."
+  sleep $n
+  n=$((RANDOM%300+8))
+  echo "INFO: Waiting $n seconds 2/2 on `date` before running backup..."
+  sleep $n
+fi
 
 echo "INFO: Starting dbs backup on `date`"
 
@@ -72,12 +82,6 @@ if [ -e "/root/.my.optimize.cnf" ]; then
   _OPTIM=YES
 else
   _OPTIM=NO
-fi
-_VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "-beng" ]]; then
-  _VMFAMILY="VS"
-else
-  _VMFAMILY="XEN"
 fi
 touch /var/run/boa_sql_backup.pid
 
@@ -404,9 +408,11 @@ echo "INFO: Completing all dbs backups on `date`"
 rm -f /var/run/boa_sql_backup.pid
 touch /var/xdrago/log/last-run-backup
 
-n=$((RANDOM%300+8))
-echo "INFO: Waiting $n seconds on `date` before running compress..."
-sleep $n
+if [ "${_VMFAMILY}" = "VS" ]; then
+  n=$((RANDOM%300+8))
+  echo "INFO: Waiting $n seconds on `date` before running compress..."
+  sleep $n
+fi
 echo "INFO: Starting dbs backup compress on `date`"
 compress_backup &> /dev/null
 echo "INFO: Completing dbs backup compress on `date`"
