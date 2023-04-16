@@ -1085,14 +1085,8 @@ db_server_install() {
     if [ "${_UP_NRC}" = "YES" ]; then
       newrelic_update
     fi
-
     ### Only supported upgrade path allowed
     sql_strict_upgrade_path
-
-    if_to_do_fix
-    if [ "${_DO_FIX}" = "YES" ]; then
-      _SQL_UPGRADE=NO
-    fi
     if [ "${_DB_SERVER}" = "MariaDB" ]; then
       _DB_SRC="ftp.osuosl.org"
       _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \

@@ -4888,7 +4888,11 @@ if_major_os_upgrade() {
       php_libs_fix
       php_install_upgrade
       php_config_check_update
-    fi
+      php_upgrade_all
+      if_install_php_newrelic
+      newrelic_check_fix
+      php_check_fix
+     fi
     ###
     ### Time for init scripts cleanup for VM running beng kernel.
     _VM_TEST=$(uname -a 2>&1)

@@ -2270,23 +2270,18 @@ check_php_broken() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: check_php_broken $1"
   fi
-  if_to_do_fix
-  if [ "${_DO_FIX}" = "YES" ]; then
-    _DO_NOTHING=YES
+  _BROKEN_LIBCURL_TEST=$(/opt/php$1/bin/php -v 2>&1)
+  if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]]; then
+    _PHP_BIN_BROKEN=YES
+    msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix broken libcurl..."
+    curl_install_src
+    install_php_multi "$1"
+    _PHP_ALREADY_REBUILT=$1
   else
-    _BROKEN_LIBCURL_TEST=$(/opt/php$1/bin/php -v 2>&1)
-    if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]]; then
-      _PHP_BIN_BROKEN=YES
-      msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix broken libcurl..."
-      curl_install_src
-      install_php_multi "$1"
-      _PHP_ALREADY_REBUILT=$1
-    else
-      _PHP_ALREADY_REBUILT=
-    fi
-    check_php_broken_freetype "$1"
-    check_php_broken_gd "$1"
+    _PHP_ALREADY_REBUILT=
   fi
+  check_php_broken_freetype "$1"
+  check_php_broken_gd "$1"
 }
 
 #
