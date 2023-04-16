@@ -4718,7 +4718,37 @@ if_major_os_upgrade() {
       clean_pid_exit
     fi
     ###
-    ### Switching gears on the fly.
+    ### Switching db gears on the fly.
+    if [ "${_TGT_OSN}" = "Debian" ] || [ "${_TGT_OSN}" = "Devuan" ]; then
+      _NEW_OSN=debian
+    elif [ "${_TGT_OSN}" = "Ubuntu" ]; then
+      _NEW_OSN=ubuntu
+    fi
+    if [ "${_DB_SERVER}" = "MariaDB" ]; then
+      mdbRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
+      mdbList="/etc/apt/sources.list.d/mariadb.list"
+      rm -f /etc/apt/sources.list.d/percona-release.*
+      rm -f /etc/apt/sources.list.d/xtrabackup.*
+      rm -f /etc/apt/preferences.d/00percona.pref
+      echo "## MariaDB APT Repository" > ${mdbList}
+      echo "deb [arch=amd64,i386] http://${mdbRepo}/${_NEW_OSN} ${_NEW_OSR} main" >> ${mdbList}
+      echo "deb-src [arch=amd64,i386] http://${mdbRepo}/${_NEW_OSN} ${_NEW_OSR} main" >> ${mdbList}
+    else
+      percRepo="repo.percona.com/percona/apt"
+      percList="/etc/apt/sources.list.d/percona-release.list"
+      rm -f /etc/apt/sources.list.d/mariadb.*
+      rm -f /etc/apt/sources.list.d/percona-.*
+      rm -f /etc/apt/sources.list.d/xtrabackup.*
+      rm -f /etc/apt/sources.list.d/percona-original-release.list
+      rm -f /etc/apt/sources.list.d/percona-prel-release.list
+      rm -f /etc/apt/sources.list.d/percona-release.list.bak
+      echo "## Percona APT Repository" > ${percList}
+      echo "deb http://${percRepo} ${_SQL_NEW_OSR} main" >> ${percList}
+      echo "deb-src http://${percRepo} ${_SQL_NEW_OSR} main" >> ${percList}
+      echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
+    fi
+    ###
+    ### Switching system gears on the fly.
     if [ "${_TGT_OSN}" = "Devuan" ]; then
       _TGT_MRR="deb.devuan.org/merged"
       echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
