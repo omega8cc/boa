@@ -4876,6 +4876,8 @@ if_major_os_upgrade() {
       else
         touch /root/.big_hop_yes_db_removal_on_major_os_upgrade.info
       fi
+    else
+      touch /root/.big_hop_yes_db_removal_on_major_os_upgrade.info
     fi
     if [ -e "/root/.big_hop_yes_db_removal_on_major_os_upgrade.info" ]; then
       _PHP_FORCE_REINSTALL=YES
