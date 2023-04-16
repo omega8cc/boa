@@ -4287,7 +4287,7 @@ systemd_cleanup_on_init() {
         msg "ALRT: Please check details in the logs located in /var/backups/"
         msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
         msg "STEP: You can also run the 'boa init' command again"
-        touch /root/run_post_major_os_upgrade.info
+        touch /root/.run_post_major_os_upgrade.info
       fi
       echo
       mrun "sleep 3"
@@ -4559,8 +4559,8 @@ if_post_major_os_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: if_post_major_os_upgrade"
   fi
-  if [ -e "/root/run_post_major_os_upgrade.info" ] \
-    && [ ! -e "/root/completed_post_major_os_upgrade.info" ]; then
+  if [ -e "/root/.run_post_major_os_upgrade.info" ] \
+    && [ ! -e "/root/.completed_post_major_os_upgrade.info" ]; then
 
     mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
 
@@ -4579,16 +4579,19 @@ if_post_major_os_upgrade() {
     mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
 
-    rm -f /root/run_post_major_os_upgrade.info
-    touch /root/completed_post_major_os_upgrade.info
+    rm -f /root/.run_post_major_os_upgrade.info
+    touch /root/.completed_post_major_os_upgrade.info
     msg "INFO: The post_major_os_upgrade procedure is complete"
-    msg "INFO: Time for re-installing services built from sources..."
 
-    _NGX_FORCE_REINSTALL=YES
-    _PHP_FORCE_REINSTALL=YES
-    _SSH_FORCE_REINSTALL=YES
-    _SSL_FORCE_REINSTALL=YES
-    _PURGE_MODE=OFF
+    # if [ -e "/root/.big_hop_yes_db_removal_on_major_os_upgrade.info" ]; then
+    #   msg "INFO: Time for re-installing services built from sources..."
+    #   _SQL_FORCE_REINSTALL=YES
+    #   _PURGE_MODE=OFF
+    #   _NGX_FORCE_REINSTALL=YES
+    #   _PHP_FORCE_REINSTALL=YES
+    #   _SSH_FORCE_REINSTALL=YES
+    #   _SSL_FORCE_REINSTALL=YES
+    # fi
   fi
 }
 
@@ -4596,8 +4599,8 @@ if_major_os_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: if_major_os_upgrade"
   fi
-  if [ -e "/root/run_post_major_os_upgrade.info" ]; then
-    rm -f /root/run_post_major_os_upgrade.info
+  if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
+    rm -f /root/.run_post_major_os_upgrade.info
   fi
   define_loc_osr
   if [ ! -z "${_MSG_LOC}" ]; then
@@ -4624,10 +4627,6 @@ if_major_os_upgrade() {
     msg "WARN: Too late! ${_MSG_LOC} upgrade in progress..."
     msg "HINT: Run tail -f ${_LOG}"
     msg "HINT: in another terminal window to watch details"
-    _NGX_FORCE_REINSTALL=YES
-    _SSH_FORCE_REINSTALL=YES
-    _SSL_FORCE_REINSTALL=YES
-    _PURGE_MODE=OFF
     rm -f ${mtrNgx}/pre.d/nginx_speed_purge.conf
     if [ -e "/etc/init.d/bind" ]; then
       rm -f /etc/init.d/bind
@@ -4848,15 +4847,6 @@ if_major_os_upgrade() {
       mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
     fi
     ###
-    ### Re-install some service early to limit downtime and SSH keys confusion.
-    nginx_install_upgrade
-    ssl_install_src
-    ssl_crypto_lib_fix
-    curl_install_src
-    if [ "${_SSH_FROM_SOURCES}" = "YES" ]; then
-      sshd_install_src
-    fi
-    ###
     ### Finally, the proper dist-upgrade time.
     ### Note that Debian Bullseye to Devuan Chimaera migration
     ### requires the dist-upgrade step to be run AFTER reboot!
@@ -4867,6 +4857,35 @@ if_major_os_upgrade() {
       msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
     else
       mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
+    fi
+    touch /root/.${_LOC_OSR}_to_${_NEW_OSR}_os_upgrade.info
+    ###
+    ### Re-install key services early to limit downtime and SSH keys confusion.
+    _PURGE_MODE=OFF
+    _NGX_FORCE_REINSTALL=YES
+    _SSL_FORCE_REINSTALL=YES
+    _SSH_FORCE_REINSTALL=YES
+    nginx_install_upgrade
+    ssl_install_src
+    ssl_crypto_lib_fix
+    curl_install_src
+    sshd_install_src
+    if [ "${_TGT_OSN}" = "Devuan" ]; then
+      if [ "${_LOC_OSR}" = "bullseye" ] || [ "${_LOC_OSR}" = "buster" ]; then
+        touch /root/.small_hop_no_db_removal_on_major_os_upgrade.info
+      else
+        touch /root/.big_hop_yes_db_removal_on_major_os_upgrade.info
+      fi
+    fi
+    if [ -e "/root/.big_hop_yes_db_removal_on_major_os_upgrade.info" ]; then
+      _PHP_FORCE_REINSTALL=YES
+      _SQL_FORCE_REINSTALL=YES
+      db_server_install
+      myquick_install_upgrade
+      php_install_deps
+      php_libs_fix
+      php_install_upgrade
+      php_config_check_update
     fi
     ###
     ### Time for init scripts cleanup for VM running beng kernel.
@@ -4982,7 +5001,7 @@ if_major_os_upgrade() {
     mv -f /var/xdrago_wait /var/xdrago &> /dev/null
     ###
     ### Add ctrl file to trigger if_post_major_os_upgrade() after reboot.
-    touch /root/run_post_major_os_upgrade.info
+    touch /root/.run_post_major_os_upgrade.info
     echo " "
     msg "RLLY: No errors? ${_MSG_LOC} migration worked :)"
     msg "STEP: Please reboot this server now"
