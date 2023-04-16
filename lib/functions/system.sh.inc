@@ -4583,15 +4583,14 @@ if_post_major_os_upgrade() {
     touch /root/.completed_post_major_os_upgrade.info
     msg "INFO: The post_major_os_upgrade procedure is complete"
 
-    # if [ -e "/root/.big_hop_yes_db_removal_on_major_os_upgrade.info" ]; then
-    #   msg "INFO: Time for re-installing services built from sources..."
-    #   _SQL_FORCE_REINSTALL=YES
-    #   _PURGE_MODE=OFF
-    #   _NGX_FORCE_REINSTALL=YES
-    #   _PHP_FORCE_REINSTALL=YES
-    #   _SSH_FORCE_REINSTALL=YES
-    #   _SSL_FORCE_REINSTALL=YES
-    # fi
+    if [ -e "/root/.big_hop_yes_db_removal_on_major_os_upgrade.info" ]; then
+      msg "INFO: Time for re-installing services built from sources..."
+      _PURGE_MODE=OFF
+      _NGX_FORCE_REINSTALL=YES
+      _PHP_FORCE_REINSTALL=YES
+      _SSH_FORCE_REINSTALL=YES
+      _SSL_FORCE_REINSTALL=YES
+    fi
   fi
 }
 
@@ -4914,20 +4913,20 @@ if_major_os_upgrade() {
     else
       touch /root/.big_hop_yes_db_removal_on_major_os_upgrade.info
     fi
-    if [ -e "/root/.big_hop_yes_db_removal_on_major_os_upgrade.info" ]; then
-      _PHP_FORCE_REINSTALL=YES
-      _SQL_FORCE_REINSTALL=YES
-      db_server_install
-      myquick_install_upgrade
-      php_install_deps
-      php_libs_fix
-      php_install_upgrade
-      php_config_check_update
-      php_upgrade_all
-      if_install_php_newrelic
-      newrelic_check_fix
-      php_check_fix
-     fi
+    # if [ -e "/root/.big_hop_yes_db_removal_on_major_os_upgrade.info" ]; then
+    #   _PHP_FORCE_REINSTALL=YES
+    #   _SQL_FORCE_REINSTALL=YES
+    #   db_server_install
+    #   myquick_install_upgrade
+    #   php_install_deps
+    #   php_libs_fix
+    #   php_install_upgrade
+    #   php_config_check_update
+    #   php_upgrade_all
+    #   if_install_php_newrelic
+    #   newrelic_check_fix
+    #   php_check_fix
+    # fi
     ###
     ### Time for init scripts cleanup for VM running beng kernel.
     _VM_TEST=$(uname -a 2>&1)
