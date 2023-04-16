@@ -5842,7 +5842,7 @@ satellite_child_b_aegir_ui_enhance() {
       if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
         || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \] \
+        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
         || [ -e "/root/.host8.cnf" ] \
         || [ "${_AUTO_UP}" = "YES" ]; then
         pBy="Octopus System powered by Barracuda"
