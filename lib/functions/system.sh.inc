@@ -273,9 +273,9 @@ if_running_as_root_barracuda() {
         mrun "apt-get purge webmin -y -qq" &> /dev/null
         rm -rf /usr/share/webmin
       fi
-      rm -f ${aptLiSys}.d/ksplice.list
-      rm -f ${aptLiSys}.d/longview.list
-      rm -f ${aptLiSys}.d/webmin.list
+      rm -f /etc/apt/sources.list.d/ksplice.list
+      rm -f /etc/apt/sources.list.d/longview.list
+      rm -f /etc/apt/sources.list.d/webmin.list
     fi
     sleep 1
   else
@@ -5060,11 +5060,11 @@ webmin_apt_update() {
   if [ -d "/etc/webmin" ]; then
     if [ ! -e "${pthLog}/webmin_update_apt_src.log" ]; then
       cd /var/opt
-      echo "## Webmin APT Repository" > ${aptLiSys}.d/webmin.list
+      echo "## Webmin APT Repository" > /etc/apt/sources.list.d/webmin.list
       echo "deb http://download.webmin.com/download/repository \
-        sarge contrib" | fmt -su -w 2500 >> ${aptLiSys}.d/webmin.list
+        sarge contrib" | fmt -su -w 2500 >> /etc/apt/sources.list.d/webmin.list
       echo "deb http://webmin.mirror.somersettechsolutions.co.uk/repository \
-        sarge contrib" | fmt -su -w 2500 >> ${aptLiSys}.d/webmin.list
+        sarge contrib" | fmt -su -w 2500 >> /etc/apt/sources.list.d/webmin.list
       _KEYS_SERVER_TEST=FALSE
       until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
         rm -f jcameron-key.gpg*

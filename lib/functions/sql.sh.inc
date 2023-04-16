@@ -650,20 +650,15 @@ prep_for_install_db_sql() {
         && [ "${_SQL_MAJOR_UP_ALLOW}" = "YES" ]; then
         _DB_SERVER=Percona
         _DBS_VRN="${_PERCONA_5_7_VRN}"
-        cd /var/opt
-        rm -rf /var/opt/percona*
         rm -f /etc/apt/sources.list.d/mariadb.*
         rm -f /etc/apt/sources.list.d/percona-.*
         rm -f /etc/apt/sources.list.d/xtrabackup.*
-        echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
-        aptLiSys="/etc/apt/sources.list"
-        percList="${aptLiSys}.d/percona-release.list"
-        percRepo="repo.percona.com/percona/apt"
-        rm -f /etc/apt/sources.list.d/percona-original-release.list
-        rm -f /etc/apt/sources.list.d/percona-prel-release.list
-        rm -f /etc/apt/sources.list.d/percona-release.list.bak
+        percList="/etc/apt/sources.list.d/percona-release.list"
+        percRepo="${_DB_SRC}/percona/apt"
         echo "## Percona APT Repository" > ${percList}
         echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+        echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+        echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
         ${_APT_UPDATE} -qq &> /dev/null
       else
         _DB_SERVER=Percona
@@ -672,17 +667,12 @@ prep_for_install_db_sql() {
         rm -f /etc/apt/sources.list.d/mariadb.*
         rm -f /etc/apt/sources.list.d/percona-.*
         rm -f /etc/apt/sources.list.d/xtrabackup.*
-        echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
-        cd /var/opt
-        rm -rf /var/opt/percona*
-        aptLiSys="/etc/apt/sources.list"
-        percList="${aptLiSys}.d/percona-release.list"
-        percRepo="repo.percona.com/percona/apt"
-        rm -f /etc/apt/sources.list.d/percona-original-release.list
-        rm -f /etc/apt/sources.list.d/percona-prel-release.list
-        rm -f /etc/apt/sources.list.d/percona-release.list.bak
+        percList="/etc/apt/sources.list.d/percona-release.list"
+        percRepo="${_DB_SRC}/percona/apt"
         echo "## Percona APT Repository" > ${percList}
         echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+        echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+        echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
         ${_APT_UPDATE} -qq &> /dev/null
       fi
     fi
@@ -711,24 +701,31 @@ prep_for_install_db_sql() {
   sql_strict_upgrade_path
 
   if [ "${_DB_SERVER}" = "MariaDB" ]; then
-    aptRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
-    aptLiDb="${aptLiSys}.d/mariadb.list"
-    echo "## MariaDB APT Repository" > ${aptLiDb}
-    echo "deb [arch=amd64,i386] http://${aptRepo}/${_OSN} ${_OSR} main" >> ${aptLiDb}
+    mdbRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
+    mdbList="/etc/apt/sources.list.d/mariadb.list"
+    rm -f /etc/apt/sources.list.d/percona-.*
+    rm -f /etc/apt/sources.list.d/xtrabackup.*
+    rm -f /etc/apt/preferences.d/00percona.pref
+    echo "## MariaDB APT Repository" > ${mdbList}
+    echo "deb [arch=amd64,i386] http://${mdbRepo}/${_OSN} ${_SQL_OSR} main" >> ${mdbList}
+    echo "deb-src [arch=amd64,i386] http://${mdbRepo}/${_OSN} ${_SQL_OSR} main" >> ${mdbList}
+  else
+    percRepo="${_DB_SRC}/percona/apt"
+    percList="/etc/apt/sources.list.d/percona-release.list"
+    rm -f /etc/apt/sources.list.d/mariadb.*
+    rm -f /etc/apt/sources.list.d/percona-.*
+    rm -f /etc/apt/sources.list.d/xtrabackup.*
+    echo "## Percona APT Repository" > ${percList}
+    echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+    echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+    echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
   fi
-  rm -f /etc/apt/sources.list.d/percona-original-release.list
-  rm -f /etc/apt/sources.list.d/percona-prel-release.list
-  rm -f /etc/apt/sources.list.d/percona-release.list.bak
-  percRepo="repo.percona.com/percona/apt"
-  percList="${aptLiSys}.d/percona-release.list"
-  echo "## Percona APT Repository" > ${percList}
-  echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+  st_runner "${_APT_UPDATE} -qq" &> /dev/null
   if [ -e "/usr/bin/mytop" ]; then
     st_runner "${_RMAPP} mytop" &> /dev/null
     st_runner "apt-get purge mytop -y" &> /dev/null
     rm -f /usr/bin/mytop
   fi
-  st_runner "${_APT_UPDATE} -qq" &> /dev/null
   if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     sed -i "s/.*innodb_force_recovery.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf &> /dev/null
@@ -1090,15 +1087,15 @@ db_server_install() {
     if [ "${_DB_SERVER}" = "MariaDB" ]; then
       _DB_SRC="ftp.osuosl.org"
       _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
-        ${aptLiSys}.d/mariadb.list 2>&1)
+        /etc/apt/sources.list.d/mariadb.list 2>&1)
       _SQL_DEB_SRC_TEST_B=$(grep ${_OSR} \
-        ${aptLiSys}.d/mariadb.list 2>&1)
+        /etc/apt/sources.list.d/mariadb.list 2>&1)
     else
       _DB_SRC="repo.percona.com"
       _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
-        ${aptLiSys}.d/percona-release.list 2>&1)
+        /etc/apt/sources.list.d/percona-release.list 2>&1)
       _SQL_DEB_SRC_TEST_B=$(grep ${_OSR} \
-        ${aptLiSys}.d/percona-release.list 2>&1)
+        /etc/apt/sources.list.d/percona-release.list 2>&1)
     fi
     if [[ "${_SQL_DEB_SRC_TEST_A}" =~ "${_DB_SRC}" ]] \
       && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_OSR}" ]]; then
@@ -1110,29 +1107,24 @@ db_server_install() {
         _OSN=ubuntu
       fi
       if [ "${_DB_SERVER}" = "MariaDB" ]; then
-        aptRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
-        aptLiDb="${aptLiSys}.d/mariadb.list"
-        echo "## MariaDB APT Repository" > ${aptLiDb}
-        echo "deb [arch=amd64,i386] http://${aptRepo}/${_OSN} ${_OSR} main" >> ${aptLiDb}
-        rm -f /etc/apt/sources.list.d/percona-release.*
+        mdbRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
+        mdbList="/etc/apt/sources.list.d/mariadb.list"
+        rm -f /etc/apt/sources.list.d/percona-.*
         rm -f /etc/apt/sources.list.d/xtrabackup.*
         rm -f /etc/apt/preferences.d/00percona.pref
+        echo "## MariaDB APT Repository" > ${mdbList}
+        echo "deb [arch=amd64,i386] http://${mdbRepo}/${_OSN} ${_SQL_OSR} main" >> ${mdbList}
+        echo "deb-src [arch=amd64,i386] http://${mdbRepo}/${_OSN} ${_SQL_OSR} main" >> ${mdbList}
       else
-        cd /var/opt
-        rm -rf /var/opt/percona*
+        percList="/etc/apt/sources.list.d/percona-release.list"
+        percRepo="${_DB_SRC}/percona/apt"
         rm -f /etc/apt/sources.list.d/mariadb.*
         rm -f /etc/apt/sources.list.d/percona-.*
         rm -f /etc/apt/sources.list.d/xtrabackup.*
-        echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
-        aptLiSys="/etc/apt/sources.list"
-        percList="${aptLiSys}.d/percona-release.list"
-        percRepo="repo.percona.com/percona/apt"
-        rm -f /etc/apt/sources.list.d/percona-original-release.list
-        rm -f /etc/apt/sources.list.d/percona-prel-release.list
-        rm -f /etc/apt/sources.list.d/percona-release.list.bak
         echo "## Percona APT Repository" > ${percList}
         echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-        st_runner "${_APT_UPDATE} -qq" &> /dev/null
+        echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+        echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
       fi
       st_runner "${_APT_UPDATE} -qq" &> /dev/null
     fi
@@ -1163,7 +1155,7 @@ db_server_install() {
             wait
         fi
       fi
-      rm -f ${aptLiSys}.d/ourdelta.list
+      rm -f /etc/apt/sources.list.d/ourdelta.list
       if [ "${_DB_SERVER}" = "Percona" ] || [ "${_DB_SERIES}" = "5.7" ]; then
         _KEYS_SIG="8507EFA5"
         _KEYS_SERVER_TEST=FALSE

@@ -1770,7 +1770,7 @@ newrelic_update() {
       _GPG=gpg
     fi
     if [ -e "/etc/newrelic/newrelic.cfg" ] \
-      || [ -e "${aptLiSys}.d/newrelic.list" ]; then
+      || [ -e "/etc/apt/sources.list.d/newrelic.list" ]; then
       msg "INFO: Uninstalling previous version of New Relic Apps Monitor..."
       cd /var/opt
       _KEYS_SERVER_TEST=FALSE
@@ -1800,9 +1800,9 @@ newrelic_update() {
       _PHP_EXT_DIR_70="/opt/php70/${pthNrx}-${_PHP70_API}"
       _PHP_EXT_DIR_56="/opt/php56/${pthNrx}-${_PHP56_API}"
       msg "INFO: Installing latest version of New Relic Apps Monitor..."
-      echo "## New Relic APT Repository" > ${aptLiSys}.d/newrelic.list
+      echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
-        >> ${aptLiSys}.d/newrelic.list
+        >> /etc/apt/sources.list.d/newrelic.list
       st_runner "${_APT_UPDATE} -qq" &> /dev/null
       st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
       st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null
@@ -1949,7 +1949,7 @@ if_install_php_newrelic() {
       || [ ! -e "${pthLog}/newrelic-${_X_VERSION}.log" ] \
       || [ ! -e "/etc/newrelic/newrelic.cfg" ] \
       || [ ! -e "/etc/newrelic/nrsysmond.cfg" ] \
-      || [ ! -e "${aptLiSys}.d/newrelic.list" ]; then
+      || [ ! -e "/etc/apt/sources.list.d/newrelic.list" ]; then
       msg "INFO: Installing New Relic Apps Monitor..."
       cd /var/opt
       _KEYS_SERVER_TEST=FALSE
@@ -1962,9 +1962,9 @@ if_install_php_newrelic() {
       cat 548C16BF.gpg | ${_GPG} --import &> /dev/null
       rm -f 548C16BF.gpg*
       echo "## New Relic APT Repository" > \
-        ${aptLiSys}.d/newrelic.list
+        /etc/apt/sources.list.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
-        >> ${aptLiSys}.d/newrelic.list
+        >> /etc/apt/sources.list.d/newrelic.list
       st_runner "${_APT_UPDATE} -qq" &> /dev/null
       st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
       st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null

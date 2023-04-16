@@ -152,12 +152,11 @@ if [ -z "${_HOURLY_DB_BACKUPS}" ] \
   exit 1
 fi
 
-aptLiSys="/etc/apt/sources.list"
-percList="${aptLiSys}.d/percona-release.list"
-
 if [ ! -e "/usr/bin/innobackupex" ]; then
   touch /usr/bin/innobackupex
 fi
+
+percList="/etc/apt/sources.list.d/percona-release.list"
 
 if [ ! -e "${percList}" ] \
   || [ ! -e "/usr/bin/innobackupex" ]; then
@@ -165,14 +164,12 @@ if [ ! -e "${percList}" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   fi
-  cd /var/opt
-  rm -rf /var/opt/percona*
   rm -f /etc/apt/sources.list.d/mariadb.*
   rm -f /etc/apt/sources.list.d/percona-.*
   rm -f /etc/apt/sources.list.d/xtrabackup.*
-  aptLiSys="/etc/apt/sources.list"
-  percList="${aptLiSys}.d/percona-release.list"
-  percRepo="repo.percona.com/percona/apt"
+  percList="/etc/apt/sources.list.d/percona-release.list"
+  _DB_SRC="repo.percona.com"
+  percRepo="${_DB_SRC}/percona/apt"
   if [ "${_OSR}" = "chimaera" ]; then
     _SQL_OSR=bullseye
   elif [ "${_OSR}" = "beowulf" ]; then
@@ -180,11 +177,10 @@ if [ ! -e "${percList}" ] \
   else
     _SQL_OSR="${_OSR}"
   fi
-  rm -f /etc/apt/sources.list.d/percona-original-release.list
-  rm -f /etc/apt/sources.list.d/percona-prel-release.list
-  rm -f /etc/apt/sources.list.d/percona-release.list.bak
   echo "## Percona APT Repository" > ${percList}
   echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+  echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+  echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
   ${_APT_UPDATE} -qq &> /dev/null
   if [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then

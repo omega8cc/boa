@@ -308,19 +308,19 @@ if_install_hhvm() {
           true
           msg "INFO: Installing HHVM Engine..."
           cd /var/opt
-          echo "## HHVM APT Repository" > ${aptLiSys}.d/hhvm.list
+          echo "## HHVM APT Repository" > /etc/apt/sources.list.d/hhvm.list
           if [ "${_OSR}" = "jessie" ]; then
             echo "deb http://dl.hhvm.com/debian jessie main" >> \
-              ${aptLiSys}.d/hhvm.list
+              /etc/apt/sources.list.d/hhvm.list
           elif [ "${_OSR}" = "stretch" ] || [ "${_DO_FIX}" = "YES" ]; then
             echo "deb http://dl.hhvm.com/debian stretch main" >> \
-              ${aptLiSys}.d/hhvm.list
+              /etc/apt/sources.list.d/hhvm.list
           elif [ "${_OSR}" = "buster" ] || [ "${_DO_FIX}" = "YES" ]; then
             echo "deb http://dl.hhvm.com/debian buster main" >> \
-              ${aptLiSys}.d/hhvm.list
+              /etc/apt/sources.list.d/hhvm.list
           elif [ "${_OSR}" = "trusty" ]; then
             echo "deb http://dl.hhvm.com/ubuntu trusty main" >> \
-              ${aptLiSys}.d/hhvm.list
+              /etc/apt/sources.list.d/hhvm.list
           fi
           _KEYS_SERVER_TEST=FALSE
           until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
@@ -358,11 +358,11 @@ if_install_webmin() {
         true
         msg "INFO: Installing Webmin Control Panel..."
         cd /var/opt
-        echo "## Webmin APT Repository" > ${aptLiSys}.d/webmin.list
+        echo "## Webmin APT Repository" > /etc/apt/sources.list.d/webmin.list
         echo "deb http://download.webmin.com/download/repository \
-          sarge contrib" | fmt -su -w 2500 >> ${aptLiSys}.d/webmin.list
+          sarge contrib" | fmt -su -w 2500 >> /etc/apt/sources.list.d/webmin.list
         echo "deb http://webmin.mirror.somersettechsolutions.co.uk/repository \
-          sarge contrib" | fmt -su -w 2500 >> ${aptLiSys}.d/webmin.list
+          sarge contrib" | fmt -su -w 2500 >> /etc/apt/sources.list.d/webmin.list
         _KEYS_SERVER_TEST=FALSE
         until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
           rm -f jcameron-key.gpg*
@@ -668,19 +668,19 @@ if_install_ffmpeg() {
           || [ "${_OSR}" = "buster" ] \
           || [ "${_OSR}" = "stretch" ] \
           || [ "${_OSR}" = "jessie" ]; then
-          echo "## deb-multimedia APT Repository for FFmpeg" > ${aptLiSys}.d/ffmpeg.list
+          echo "## deb-multimedia APT Repository for FFmpeg" > /etc/apt/sources.list.d/ffmpeg.list
           if [ "${_OSR}" = "bullseye" ] \
             || [ "${_OSR}" = "buster" ] \
             || [ "${_OSR}" = "stretch" ] \
             || [ "${_OSR}" = "jessie" ]; then
-            echo "deb http://www.deb-multimedia.org ${_OSR} main non-free" >> ${aptLiSys}.d/ffmpeg.list
-            echo "deb http://www.deb-multimedia.org ${_OSR}-backports main" >> ${aptLiSys}.d/ffmpeg.list
+            echo "deb http://www.deb-multimedia.org ${_OSR} main non-free" >> /etc/apt/sources.list.d/ffmpeg.list
+            echo "deb http://www.deb-multimedia.org ${_OSR}-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
           elif [ "${_OSR}" = "chimaera" ]; then
-            echo "deb http://www.deb-multimedia.org bullseye main non-free" >> ${aptLiSys}.d/ffmpeg.list
-            echo "deb http://www.deb-multimedia.org bullseye-backports main" >> ${aptLiSys}.d/ffmpeg.list
+            echo "deb http://www.deb-multimedia.org bullseye main non-free" >> /etc/apt/sources.list.d/ffmpeg.list
+            echo "deb http://www.deb-multimedia.org bullseye-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
           elif [ "${_OSR}" = "beowulf" ]; then
-            echo "deb http://www.deb-multimedia.org buster main non-free" >> ${aptLiSys}.d/ffmpeg.list
-            echo "deb http://www.deb-multimedia.org buster-backports main" >> ${aptLiSys}.d/ffmpeg.list
+            echo "deb http://www.deb-multimedia.org buster main non-free" >> /etc/apt/sources.list.d/ffmpeg.list
+            echo "deb http://www.deb-multimedia.org buster-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
           fi
           st_runner "${_APT_UPDATE} -qq" &> /dev/null
           st_runner "apt-get install deb-multimedia-keyring ${aptYesUnth}" 2> /dev/null

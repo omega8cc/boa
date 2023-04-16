@@ -1461,8 +1461,9 @@ install_db_cluster() {
   _CLUSTER_STRING="gcomm://"$(IFS=, ; echo "${_DB_NODE_IP[*]}")
   inc="0"
 
-  percList="${aptLiSys}.d/percona-release.list"
-  percRepo="repo.percona.com/percona/apt"
+  percList="/etc/apt/sources.list.d/percona-release.list"
+  _DB_SRC="repo.percona.com"
+  percRepo="${_DB_SRC}/percona/apt"
 
   for IP in "${_DB_NODE_IP[@]}"; do
     echo "${IP} # Cluster Galera Node" >> /etc/csf/csf.allow
