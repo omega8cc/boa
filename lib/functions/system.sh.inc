@@ -4748,6 +4748,9 @@ if_major_os_upgrade() {
       echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
     fi
     ###
+    ### Switching other gears on the fly.
+    sed -i "s/${_LOC_OSR}/${_SQL_NEW_OSR}/g" /etc/apt/sources.list.d/*
+    ###
     ### Switching system gears on the fly.
     if [ "${_TGT_OSN}" = "Devuan" ]; then
       _TGT_MRR="deb.devuan.org/merged"
