@@ -2265,13 +2265,49 @@ check_php_broken_gd() {
 }
 
 #
+# Check if the PHP build has broken ICU support.
+check_php_broken_icu() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_php_broken_icu $1"
+  fi
+  isIcu=
+  isIcu=$(/opt/php$1/bin/php -i | grep libicuio 2>&1)
+  if [[ "${isIcu}" =~ "libicuio" ]]; then
+    msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix ICU support..."
+    install_php_multi "$1"
+    _PHP_ALREADY_REBUILT=$1
+  else
+    _PHP_ALREADY_REBUILT=
+  fi
+}
+
+#
+# Check if the PHP build has broken ICU support.
+check_php_broken_segfault() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_php_broken_segfault $1"
+  fi
+  isSegft=
+  isSegft=$(/opt/php$1/bin/php -i 2>&1)
+  if [[ "${isSegft}" =~ "Segmentation fault" ]]; then
+    msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix broken build..."
+    install_php_multi "$1"
+    _PHP_ALREADY_REBUILT=$1
+  else
+    _PHP_ALREADY_REBUILT=
+  fi
+}
+
+#
 # Check if the PHP build is broken.
 check_php_broken() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: check_php_broken $1"
   fi
+  check_php_broken_segfault "$1"
+  check_php_broken_icu "$1"
   _BROKEN_LIBCURL_TEST=$(/opt/php$1/bin/php -v 2>&1)
-  if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]]; then
+  if [[ "${_BROKEN_LIBCURL_TEST} " =~ "libcurl.so.4" ]]; then
     _PHP_BIN_BROKEN=YES
     msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix broken libcurl..."
     curl_install_src
@@ -2280,8 +2316,8 @@ check_php_broken() {
   else
     _PHP_ALREADY_REBUILT=
   fi
-  check_php_broken_freetype "$1"
   check_php_broken_gd "$1"
+  check_php_broken_freetype "$1"
 }
 
 #
