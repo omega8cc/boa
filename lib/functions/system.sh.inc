@@ -2368,15 +2368,14 @@ php_install_deps() {
   ###--------------------###
   mrun "${_APT_UPDATE} -qq" &> /dev/null
   mrun "${_INSTAPP} cmake" 2> /dev/null
-  mrun "${_INSTAPP} libgd-dev" 2> /dev/null
-  mrun "${_INSTAPP} libgd3" 2> /dev/null
-  mrun "${_INSTAPP} libkrb5-dev" 2> /dev/null
-  mrun "${_INSTAPP} libldap-dev" 2> /dev/null
+  mrun "${_INSTAPP} libgd-dev libgd3" 2> /dev/null
+  mrun "${_INSTAPP} libkrb5-dev libldap-dev" 2> /dev/null
   mrun "${_INSTAPP} libmagickwand-dev" 2> /dev/null
   mrun "${_INSTAPP} libonig-dev" 2> /dev/null
   mrun "${_INSTAPP} libsodium-dev" 2> /dev/null
   mrun "${_INSTAPP} libwebp-dev" 2> /dev/null
   mrun "${_INSTAPP} libxpm-dev" 2> /dev/null
+  mrun "${_INSTAPP} llibjpeg-dev libjpeg62" 2> /dev/null
   if [ "${_OSR}" = "jessie" ]; then
     install_icu
   else
