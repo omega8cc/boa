@@ -1583,6 +1583,7 @@ install_php_multi() {
       msg "INFO: ${_DISPLAY_PHP_EXTRA}"
     fi
   fi
+  export LD_LIBRARY_PATH=/usr/local/lib
   mrun "bash ./configure \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
