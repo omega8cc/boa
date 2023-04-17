@@ -5494,6 +5494,12 @@ php_libs_fix() {
           else
             ln -sf /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
           fi
+          ln -sf /usr/local/lib/libicudata.so /usr/lib/x86_64-linux-gnu/libicudata.so
+          ln -sf /usr/local/lib/libicui18n.so /usr/lib/x86_64-linux-gnu/libicui18n.so
+          ln -sf /usr/local/lib/libicuio.so   /usr/lib/x86_64-linux-gnu/libicuio.so
+          ln -sf /usr/local/lib/libicutest.so /usr/lib/x86_64-linux-gnu/libicutest.so
+          ln -sf /usr/local/lib/libicutu.so   /usr/lib/x86_64-linux-gnu/libicutu.so
+          ln -sf /usr/local/lib/libicuuc.so   /usr/lib/x86_64-linux-gnu/libicuuc.so
         fi
         ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
         ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
@@ -5526,6 +5532,12 @@ php_libs_fix() {
           else
             ln -sf /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
           fi
+          ln -sf /usr/local/lib/libicudata.so /usr/lib/i386-linux-gnu/libicudata.so
+          ln -sf /usr/local/lib/libicui18n.so /usr/lib/i386-linux-gnu/libicui18n.so
+          ln -sf /usr/local/lib/libicuio.so   /usr/lib/i386-linux-gnu/libicuio.so
+          ln -sf /usr/local/lib/libicutest.so /usr/lib/i386-linux-gnu/libicutest.so
+          ln -sf /usr/local/lib/libicutu.so   /usr/lib/i386-linux-gnu/libicutu.so
+          ln -sf /usr/local/lib/libicuuc.so   /usr/lib/i386-linux-gnu/libicuuc.so
         fi
         ln -sf /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so
         ln -sf /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
