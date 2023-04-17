@@ -4579,11 +4579,7 @@ if_post_major_os_upgrade() {
     mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
 
-    rm -f /root/.run_post_major_os_upgrade.info
-    touch /root/.completed_post_major_os_upgrade.info
-    msg "INFO: The post_major_os_upgrade procedure is complete"
-
-    if [ -e "/root/.big_hop_yes_db_removal_on_major_os_upgrade.info" ]; then
+    if [ -e "/root/.big_hop_on_major_os_upgrade.info" ]; then
       msg "INFO: Time for re-installing services built from sources..."
       _PURGE_MODE=OFF
       _NGX_FORCE_REINSTALL=YES
@@ -4591,6 +4587,10 @@ if_post_major_os_upgrade() {
       _SSH_FORCE_REINSTALL=YES
       _SSL_FORCE_REINSTALL=YES
     fi
+
+    rm -f /root/.run_post_major_os_upgrade.info
+    touch /root/.completed_post_major_os_upgrade.info
+    msg "INFO: The post_major_os_upgrade procedure is complete"
   fi
 }
 
@@ -4906,14 +4906,14 @@ if_major_os_upgrade() {
     sshd_install_src
     if [ "${_TGT_OSN}" = "Devuan" ]; then
       if [ "${_LOC_OSR}" = "bullseye" ] || [ "${_LOC_OSR}" = "buster" ]; then
-        touch /root/.small_hop_no_db_removal_on_major_os_upgrade.info
+        touch /root/.small_hop_on_major_os_upgrade.info
       else
-        touch /root/.big_hop_yes_db_removal_on_major_os_upgrade.info
+        touch /root/.big_hop_on_major_os_upgrade.info
       fi
     else
-      touch /root/.big_hop_yes_db_removal_on_major_os_upgrade.info
+      touch /root/.big_hop_on_major_os_upgrade.info
     fi
-    # if [ -e "/root/.big_hop_yes_db_removal_on_major_os_upgrade.info" ]; then
+    # if [ -e "/root/.big_hop_on_major_os_upgrade.info" ]; then
     #   _PHP_FORCE_REINSTALL=YES
     #   _SQL_FORCE_REINSTALL=YES
     #   db_server_install
