@@ -4913,6 +4913,7 @@ if_major_os_upgrade() {
     else
       touch /root/.big_hop_on_major_os_upgrade.info
     fi
+    echo ${_LOC_OSR} > /root/.old_os_before_upgrade.info
     # if [ -e "/root/.big_hop_on_major_os_upgrade.info" ]; then
     #   _PHP_FORCE_REINSTALL=YES
     #   _SQL_FORCE_REINSTALL=YES
