@@ -15,7 +15,7 @@ check_root() {
       fi
     fi
   else
-    echo "INFO: ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be ran as a root user"
     exit 1
   fi
   _DF_TEST=$(df -kTh / -l \
@@ -24,8 +24,8 @@ check_root() {
     | awk '{print $6}' 2> /dev/null)
   _DF_TEST=${_DF_TEST//[^0-9]/}
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
-    echo "INFO: ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
-    echo "INFO: ERROR: We can not proceed until it is below 90/100"
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
   fi
 }
