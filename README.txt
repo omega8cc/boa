@@ -97,6 +97,18 @@ production settings.
 
 ### DEVUAN & DEBIAN {c} please read also: docs/CAVEATS.txt
 
+=== Devuan @ https://www.devuan.org/os/releases
+
+* Devuan Chimaera (fully supported)
+* Devuan Beowulf (fully supported)
+
+=== Debian to Devuan major OS upgrades (fully supported for Buster and Bullseye)
+
+* Debian 11 Bullseye => upgrade to Chimaera with _BULLSEYE_TO_CHIMAERA=YES
+* Debian 10 Buster   => upgrade to Beowulf with  _BUSTER_TO_BEOWULF=YES
+* Debian 9 Stretch   => upgrade to Beowulf with  _STRETCH_TO_BEOWULF=YES
+* Debian 8 Jessie    => upgrade to Beowulf with  _JESSIE_TO_BEOWULF=YES
+
 === Debian @ https://wiki.debian.org/LTS
 
 * Debian 11 Bullseye (fully supported)
@@ -109,18 +121,6 @@ production settings.
 * Debian 10 Buster   => upgrade to Bullseye with _BUSTER_TO_BULLSEYE=YES
 * Debian 9 Stretch   => upgrade to Buster with   _STRETCH_TO_BUSTER=YES
 * Debian 8 Jessie    => upgrade to Stretch with  _JESSIE_TO_STRETCH=YES
-
-=== Devuan @ https://www.devuan.org/os/releases
-
-* Devuan Chimaera (work in progress -- do not use yet)
-* Devuan Beowulf (work in progress -- do not use yet)
-
-=== Debian to Devuan major OS upgrades (work in progress)
-
-* Debian 11 Bullseye => upgrade to Chimaera with _BULLSEYE_TO_CHIMAERA=YES
-* Debian 10 Buster   => upgrade to Beowulf with  _BUSTER_TO_BEOWULF=YES
-* Debian 9 Stretch   => upgrade to Beowulf with  _STRETCH_TO_BEOWULF=YES
-* Debian 8 Jessie    => upgrade to Beowulf with  _JESSIE_TO_BEOWULF=YES
 
 === Ubuntu @ https://ubuntu.com/about/release-cycle
 
