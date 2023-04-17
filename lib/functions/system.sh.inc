@@ -5480,7 +5480,7 @@ php_libs_fix() {
     if [ ! -L "/usr/lib/librtmp.so" ] \
       || [ ! -e "/usr/lib/libgmp.so.3" ] \
       || [ ! -e "/usr/lib/libcurl.so" ] \
-      || [ ! -e "/usr/local/lib/libicuio.so" ] \
+      || [ ! -e "/usr/lib/libicuio.so" ] \
       || [ ! -e "/usr/include/gmp.h" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Fix for PHP libs in ${_THIS_OS} ${_OSR}"
@@ -5501,6 +5501,12 @@ php_libs_fix() {
           ln -sf /usr/local/lib/libicutest.so /usr/lib/x86_64-linux-gnu/libicutest.so
           ln -sf /usr/local/lib/libicutu.so   /usr/lib/x86_64-linux-gnu/libicutu.so
           ln -sf /usr/local/lib/libicuuc.so   /usr/lib/x86_64-linux-gnu/libicuuc.so
+          ln -sf /usr/local/lib/libicudata.so /usr/lib/libicudata.so
+          ln -sf /usr/local/lib/libicui18n.so /usr/lib/libicui18n.so
+          ln -sf /usr/local/lib/libicuio.so   /usr/lib/libicuio.so
+          ln -sf /usr/local/lib/libicutest.so /usr/lib/libicutest.so
+          ln -sf /usr/local/lib/libicutu.so   /usr/lib/libicutu.so
+          ln -sf /usr/local/lib/libicuuc.so   /usr/lib/libicuuc.so
         fi
         ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
         ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
@@ -5539,6 +5545,12 @@ php_libs_fix() {
           ln -sf /usr/local/lib/libicutest.so /usr/lib/i386-linux-gnu/libicutest.so
           ln -sf /usr/local/lib/libicutu.so   /usr/lib/i386-linux-gnu/libicutu.so
           ln -sf /usr/local/lib/libicuuc.so   /usr/lib/i386-linux-gnu/libicuuc.so
+          ln -sf /usr/local/lib/libicudata.so /usr/lib/libicudata.so
+          ln -sf /usr/local/lib/libicui18n.so /usr/lib/libicui18n.so
+          ln -sf /usr/local/lib/libicuio.so   /usr/lib/libicuio.so
+          ln -sf /usr/local/lib/libicutest.so /usr/lib/libicutest.so
+          ln -sf /usr/local/lib/libicutu.so   /usr/lib/libicutu.so
+          ln -sf /usr/local/lib/libicuuc.so   /usr/lib/libicuuc.so
         fi
         ln -sf /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so
         ln -sf /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
