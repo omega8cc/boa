@@ -2338,21 +2338,21 @@ check_apt_updates() {
 
 #
 # Install ICU from sources for Jessie.
-install_icu() {
+install_icu_jessie() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: install_icu"
+    msg "PROC: install_icu_jessie"
   fi
   ###--------------------###
   if [ ! -e "/usr/local/lib/icu/current" ]; then
-    msg "INFO: Installing ICU libs version ${_ICU_VRN}..."
+    msg "INFO: Installing ICU libs version ${_ICU_LEGACY_VRN}..."
+    msg "WAIT: This may take a while, please wait..."
     if [ ! -e "/var/opt/icu/source" ]; then
       cd /var/opt
       rm -rf icu*
-      get_dev_src "icu4c-${_ICU_VRN}-src.tgz"
+      get_dev_src "icu4c-${_ICU_LEGACY_VRN}-src.tgz"
     fi
     cd /var/opt/icu/source/
-    mrun "bash ./configure \
-      --prefix=/usr/local" 2> /dev/null
+    mrun "bash ./configure --prefix=/usr/local" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
@@ -2377,7 +2377,7 @@ php_install_deps() {
   mrun "${_INSTAPP} libxpm-dev" 2> /dev/null
   mrun "${_INSTAPP} llibjpeg-dev libjpeg62" 2> /dev/null
   if [ "${_OSR}" = "jessie" ]; then
-    install_icu
+    install_icu_jessie
   else
     # mrun "${_INSTAPP} libicu-dev icu-devtools" 2> /dev/null
   fi
