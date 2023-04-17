@@ -2337,6 +2337,29 @@ check_apt_updates() {
 }
 
 #
+# Install modern ICU from sources.
+install_icu_modern() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: install_icu_modern"
+  fi
+  ###--------------------###
+  if [ ! -e "/usr/local/lib/icu/current" ]; then
+    msg "INFO: Installing ICU libs version ${_ICU_MODERN_VRN}..."
+    msg "WAIT: This may take a while, please wait..."
+    if [ ! -e "/var/opt/icu-release-${_ICU_MODERN_VRN}/icu4c/source" ]; then
+      cd /var/opt
+      rm -rf icu*
+      get_dev_src "icu-release-${_ICU_MODERN_VRN}.tar.gz"
+    fi
+    cd /var/opt/icu-release-${_ICU_MODERN_VRN}/icu4c/source
+    mrun "bash ./configure --prefix=/usr/local" 2> /dev/null
+    mrun "make -j $(nproc) --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    mrun "ldconfig" 2> /dev/null
+  fi
+}
+
+#
 # Install ICU from sources for Jessie.
 install_icu_jessie() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2379,6 +2402,7 @@ php_install_deps() {
   if [ "${_OSR}" = "jessie" ]; then
     install_icu_jessie
   else
+    install_icu_modern
     # mrun "${_INSTAPP} libicu-dev icu-devtools" 2> /dev/null
   fi
 }
@@ -5462,6 +5486,15 @@ php_libs_fix() {
       fi
       _X86_64_TEST=$(uname -m 2>&1)
       if [ "${_X86_64_TEST}" = "x86_64" ]; then
+        if [ -e "/usr/local/lib/icu" ]; then
+          if [ -e "/usr/lib/x86_64-linux-gnu/icu" ] \
+            && [ ! -L "/usr/lib/x86_64-linux-gnu/icu" ]; then
+            mv /usr/lib/x86_64-linux-gnu/icu /usr/lib/x86_64-linux-gnu/.old_icu
+            ln -sf /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
+          else
+            ln -sf /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
+          fi
+        fi
         ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
         ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
         ln -sf /usr/lib/x86_64-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
@@ -5485,6 +5518,15 @@ php_libs_fix() {
           ln -sf librtmp.so.1 librtmp.so.0
         fi
       else
+        if [ -e "/usr/local/lib/icu" ]; then
+          if [ -e "/usr/lib/i386-linux-gnu/icu" ] \
+            && [ ! -L "/usr/lib/i386-linux-gnu/icu" ]; then
+            mv /usr/lib/i386-linux-gnu/icu /usr/lib/i386-linux-gnu/.old_icu
+            ln -sf /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
+          else
+            ln -sf /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
+          fi
+        fi
         ln -sf /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so
         ln -sf /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
         ln -sf /usr/lib/i386-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
