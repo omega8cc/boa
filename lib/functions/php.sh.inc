@@ -2266,28 +2266,6 @@ check_php_broken_gd() {
 
 #
 # Check if the PHP build has broken ICU support.
-check_php_broken_icu() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: check_php_broken_icu $1"
-  fi
-  isIcu=
-  isIcu=$(/opt/php$1/bin/php -i | grep libicuio 2>&1)
-  if [[ "${isIcu}" =~ "libicuio" ]] \
-    || [ ! -e "/usr/local/lib/icu/current" ] \
-    || [ -e "/usr/lib/x86_64-linux-gnu/.old_icu" ] \
-    || [ -e "/usr/lib/i386-linux-gnu/.old_icu" ]; then
-    msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix ICU support..."
-    php_install_deps
-    php_libs_fix
-    install_php_multi "$1"
-    _PHP_ALREADY_REBUILT=$1
-  else
-    _PHP_ALREADY_REBUILT=
-  fi
-}
-
-#
-# Check if the PHP build has broken ICU support.
 check_php_broken_segfault() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: check_php_broken_segfault $1"
@@ -2310,7 +2288,6 @@ check_php_broken() {
     msg "PROC: check_php_broken $1"
   fi
   check_php_broken_segfault "$1"
-  check_php_broken_icu "$1"
   _BROKEN_LIBCURL_TEST=$(/opt/php$1/bin/php -v 2>&1)
   if [[ "${_BROKEN_LIBCURL_TEST} " =~ "libcurl.so.4" ]]; then
     _PHP_BIN_BROKEN=YES
@@ -2689,20 +2666,6 @@ php_check_if_rebuild() {
     msg "INFO: PHP rebuild required to add WebP support..."
     _PHP_FORCE_REINSTALL=YES
     php_upgrade_all
-  fi
-  isFreeType=
-  isFreeType=$(php -i | grep with-freetype 2>&1)
-  if [[ ! "${isFreeType}" =~ "with-freetype" ]] \
-    || [ -z "${isFreeType}" ]; then
-    if [ -x "/usr/bin/freetype-config" ]; then
-      msg "INFO: PHP rebuild required to fix freetype support..."
-      _PHP_FORCE_REINSTALL=YES
-      php_upgrade_all
-    else
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "NOTE: Default PHP was built without freetype support"
-      fi
-    fi
   fi
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
     && [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
