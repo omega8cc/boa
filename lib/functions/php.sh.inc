@@ -2645,11 +2645,18 @@ php_install_upgrade() {
   fi
 }
 
-php_check_fix() {
+php_check_if_rebuild() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: php_check_fix"
+    msg "PROC: php_check_if_rebuild"
   fi
   check_php_cli
+  isIcu=
+  isIcu=$(php -i | grep libicuio 2>&1)
+  if [[ "${isIcu}" =~ "libicuio" ]]; then
+    msg "INFO: PHP rebuild required to fix ICU support..."
+    _PHP_FORCE_REINSTALL=YES
+    php_upgrade_all
+  fi
   if [ -x "/opt/php74/bin/php" ]; then
     isSodium=
     isSodium=$(/opt/php74/bin/php -i | grep with-sodium 2>&1)
