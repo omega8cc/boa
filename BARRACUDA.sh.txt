@@ -350,12 +350,12 @@ lshell_install_upgrade
 myquick_install_upgrade
 php_install_deps
 php_libs_fix
+php_check_if_rebuild
 php_install_upgrade
 php_config_check_update
 php_upgrade_all
 if_install_php_newrelic
 newrelic_check_fix
-php_check_fix
 smtp_check
 xdrago_install_upgrade
 
