@@ -5489,7 +5489,7 @@ php_libs_fix() {
         if [ -e "/usr/local/lib/icu" ]; then
           if [ -e "/usr/lib/x86_64-linux-gnu/icu" ] \
             && [ ! -L "/usr/lib/x86_64-linux-gnu/icu" ]; then
-            mv /usr/lib/x86_64-linux-gnu/icu /usr/lib/x86_64-linux-gnu/.old_icu
+            mv -f /usr/lib/x86_64-linux-gnu/icu /usr/lib/x86_64-linux-gnu/.old_icu
             ln -sf /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
           else
             ln -sf /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
@@ -5521,7 +5521,7 @@ php_libs_fix() {
         if [ -e "/usr/local/lib/icu" ]; then
           if [ -e "/usr/lib/i386-linux-gnu/icu" ] \
             && [ ! -L "/usr/lib/i386-linux-gnu/icu" ]; then
-            mv /usr/lib/i386-linux-gnu/icu /usr/lib/i386-linux-gnu/.old_icu
+            mv -f /usr/lib/i386-linux-gnu/icu /usr/lib/i386-linux-gnu/.old_icu
             ln -sf /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
           else
             ln -sf /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu

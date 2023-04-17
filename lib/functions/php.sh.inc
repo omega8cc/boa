@@ -2272,8 +2272,13 @@ check_php_broken_icu() {
   fi
   isIcu=
   isIcu=$(/opt/php$1/bin/php -i | grep libicuio 2>&1)
-  if [[ "${isIcu}" =~ "libicuio" ]]; then
+  if [[ "${isIcu}" =~ "libicuio" ]] \
+    || [ ! -e "/usr/local/lib/icu/current" ] \
+    || [ -e "/usr/lib/x86_64-linux-gnu/.old_icu" ] \
+    || [ -e "/usr/lib/i386-linux-gnu/.old_icu" ]; then
     msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix ICU support..."
+    php_install_deps
+    php_libs_fix
     install_php_multi "$1"
     _PHP_ALREADY_REBUILT=$1
   else
@@ -2652,10 +2657,20 @@ php_check_if_rebuild() {
   check_php_cli
   isIcu=
   isIcu=$(php -i | grep libicuio 2>&1)
-  if [[ "${isIcu}" =~ "libicuio" ]]; then
+  if [[ "${isIcu}" =~ "libicuio" ]] \
+    || [ ! -e "/usr/local/lib/icu/current" ] \
+    || [ -e "/usr/lib/x86_64-linux-gnu/.old_icu" ] \
+    || [ -e "/usr/lib/i386-linux-gnu/.old_icu" ]; then
     msg "INFO: PHP rebuild required to fix ICU support..."
     _PHP_FORCE_REINSTALL=YES
+    php_install_deps
+    php_libs_fix
     php_upgrade_all
+    if [ -e "/usr/lib/x86_64-linux-gnu/.old_icu" ]; then
+      mv -f /usr/lib/x86_64-linux-gnu/.old_icu /usr/lib/x86_64-linux-gnu/.legacy_icu
+    elif [ -e "/usr/lib/i386-linux-gnu/.old_icu" ]; then
+      mv -f /usr/lib/i386-linux-gnu/.old_icu /usr/lib/i386-linux-gnu/.legacy_icu
+    fi
   fi
   if [ -x "/opt/php74/bin/php" ]; then
     isSodium=
