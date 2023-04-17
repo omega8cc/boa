@@ -2380,7 +2380,7 @@ php_install_deps() {
   if [ "${_OSR}" = "jessie" ]; then
     install_icu
   else
-    st_runner "${_INSTAPP} libicu-dev" 2> /dev/null
+    # mrun "${_INSTAPP} libicu-dev icu-devtools" 2> /dev/null
   fi
 }
 
@@ -4175,14 +4175,13 @@ run_aptitude_deps_install() {
   mrun "${_INSTAPP} netcat libzip-dev libwww-perl libsodium-dev" 2> /dev/null
   mrun "${_INSTAPP} libfontconfig1 libfreetype6 libfreetype6-dev" 2> /dev/null
   mrun "${_INSTAPP} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev" 2> /dev/null
-  mrun "${_INSTAPP} libicu-dev libjpeg-dev libjpeg62" 2> /dev/null
   mrun "${_INSTAPP} libonig-dev libpq5 libxml2-dev libxpm4" 2> /dev/null
   mrun "${_INSTAPP} libxslt-dev libxslt1-dev libxslt1.1 subversion" 2> /dev/null
   mrun "${_INSTAPP} libaprutil1 libapr1 ldap-utils ipset" 2> /dev/null
   mrun "${_INSTAPP} pdftk patchutils p7zip-full fontconfig-config" 2> /dev/null
   mrun "${_INSTAPP} bison catdoc cython3 geoip-database gettext" 2> /dev/null
   mrun "${_INSTAPP} clamav clamav-base clamav-daemon clamdscan" 2> /dev/null
-  mrun "${_INSTAPP} ghostscript htop icu-devtools lemon lftp nano" 2> /dev/null
+  mrun "${_INSTAPP} ghostscript htop lemon lftp nano" 2> /dev/null
   mrun "${_INSTAPP} python3-dev python3-debian python3-magic" 2> /dev/null
   fix_postfix
   st_runner "${_INSTAPP} ${_MAILSERV}" 2> /dev/null
