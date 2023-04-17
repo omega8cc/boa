@@ -2648,6 +2648,7 @@ php_check_if_rebuild() {
     elif [ -e "/usr/lib/i386-linux-gnu/.old_icu" ]; then
       mv -f /usr/lib/i386-linux-gnu/.old_icu /usr/lib/i386-linux-gnu/.legacy_icu
     fi
+    _PHP_FORCE_REINSTALL=NO
   fi
   if [ -x "/opt/php74/bin/php" ]; then
     isSodium=
@@ -2657,6 +2658,7 @@ php_check_if_rebuild() {
       msg "INFO: PHP rebuild required to add Sodium support..."
       _PHP_FORCE_REINSTALL=YES
       php_upgrade_all "74 80 81 82"
+      _PHP_FORCE_REINSTALL=NO
     fi
   fi
   isWebP=
@@ -2666,6 +2668,7 @@ php_check_if_rebuild() {
     msg "INFO: PHP rebuild required to add WebP support..."
     _PHP_FORCE_REINSTALL=YES
     php_upgrade_all
+    _PHP_FORCE_REINSTALL=NO
   fi
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
     && [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
@@ -2694,6 +2697,7 @@ php_check_if_rebuild() {
     msg "INFO: PHP rebuild required to add --with-tidy option..."
     _PHP_FORCE_REINSTALL=YES
     php_upgrade_all
+    _PHP_FORCE_REINSTALL=NO
   fi
   if [ "${_PHP_IONCUBE}" = "YES" ]; then
     if [ ! -e "${pthLog}/ioncube-update-${_IONCUBE_VRN}.log" ] \
