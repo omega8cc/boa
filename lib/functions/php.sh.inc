@@ -1516,7 +1516,11 @@ install_php_multi() {
   fi
   _PRE_SNFR=
   if [ -e "/usr/local/lib/icu/current" ]; then
-    if [ "$1" = "56" ] || [ "$1" = "70" ]; then
+    if [ "$1" = "56" ] \
+      || [ "$1" = "70" ] \
+      || [ "$1" = "71" ] \
+      || [ "$1" = "72" ] \
+      || [ "$1" = "73" ]; then
       _PRE_SNFR="--with-icu-dir=/usr/local"
     fi
   fi
