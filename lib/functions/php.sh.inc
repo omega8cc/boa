@@ -2128,6 +2128,8 @@ check_php_rebuild() {
     || [[ "${_PHP_ITD}" =~ "ubuntu" ]]; then
     msg "INFO: Installed PHP version ${_PHP_ITD}, upgrade to mysqlnd required"
     install_php_multi "$1"
+    _PHP_ALREADY_REBUILT=$1
+    _PHP_FORCE_REINSTALL=NO
   else
     if [[ "${_PHP_ITD}" =~ "${_PHP_VERSION}" ]]; then
       if [ "${_UP_PHP}" = "YES" ]; then
@@ -2158,6 +2160,8 @@ check_php_rebuild() {
         else
           msg "INFO: PHP ${_PHP_ITD} forced rebuild will happen now..."
           install_php_multi "$1"
+          _PHP_ALREADY_REBUILT=$1
+          _PHP_FORCE_REINSTALL=NO
         fi
       fi
     else
@@ -2172,6 +2176,8 @@ check_php_rebuild() {
       else
         msg "INFO: PHP ${_PHP_ITD} upgrade will happen now..."
         install_php_multi "$1"
+        _PHP_ALREADY_REBUILT=$1
+        _PHP_FORCE_REINSTALL=NO
       fi
     fi
   fi
@@ -2223,6 +2229,7 @@ check_php_broken_freetype() {
       msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix freetype support..."
       install_php_multi "$1"
       _PHP_ALREADY_REBUILT=$1
+      _PHP_FORCE_REINSTALL=NO
     else
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "NOTE: PHP ${_PHP_VERSION} was built without freetype support"
@@ -2246,6 +2253,7 @@ check_php_broken_gd() {
     msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix GD support..."
     install_php_multi "$1"
     _PHP_ALREADY_REBUILT=$1
+    _PHP_FORCE_REINSTALL=NO
   else
     _PHP_ALREADY_REBUILT=
   fi
@@ -2263,6 +2271,7 @@ check_php_broken_segfault() {
     msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix broken build..."
     install_php_multi "$1"
     _PHP_ALREADY_REBUILT=$1
+    _PHP_FORCE_REINSTALL=NO
   else
     _PHP_ALREADY_REBUILT=
   fi
@@ -2282,6 +2291,7 @@ check_php_broken() {
     curl_install_src
     install_php_multi "$1"
     _PHP_ALREADY_REBUILT=$1
+    _PHP_FORCE_REINSTALL=NO
   else
     _PHP_ALREADY_REBUILT=
   fi
