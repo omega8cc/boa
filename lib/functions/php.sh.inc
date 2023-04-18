@@ -2264,14 +2264,14 @@ check_php_broken_gd() {
 }
 
 #
-# Check if the PHP build has broken ICU support.
+# Check if the PHP build is totally broken.
 check_php_broken_segfault() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: check_php_broken_segfault $1"
   fi
   isSegft=
-  isSegft=$(/opt/php$1/bin/php -i 2>&1)
-  if [[ "${isSegft}" =~ "Segmentation fault" ]]; then
+  isSegft=$(/opt/php$1/bin/php -v | grep cli 2>&1)
+  if [[ ! "${isSegft}" =~ "cli" ]] || [ -z "${isSegft}" ]; then
     msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix broken build..."
     install_php_multi "$1"
     _PHP_ALREADY_REBUILT=$1
