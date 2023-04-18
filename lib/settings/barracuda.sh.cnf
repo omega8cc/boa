@@ -1034,7 +1034,7 @@ _ENABLE_GOACCESS=NO
 ### re-install from sources.
 ### Required for webp support.
 ###
-_MAGICK_FROM_SOURCES=YES
+_MAGICK_FROM_SOURCES=NO
 
 ###
 ### AUTO will default to values calculated

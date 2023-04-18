@@ -645,7 +645,6 @@ magick_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: magick_install_upgrade"
   fi
-  _MAGICK_FROM_SOURCES=YES
   if [ "${_MAGICK_FROM_SOURCES}" = "YES" ]; then
     install_magick_src
   fi

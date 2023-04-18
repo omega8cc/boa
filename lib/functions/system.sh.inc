@@ -3159,8 +3159,8 @@ install_magick_src() {
       && [ -e "/etc/ImageMagick" ]; then
         cp -a /etc/ImageMagick /etc/.ImageMagick
     fi
-    mrun "apt-get remove imagemagick -y -qq" 2> /dev/null
-    mrun "apt-get purge imagemagick -y -qq" 2> /dev/null
+    mrun "apt-get remove imagemagick libmagickwand-dev graphviz libgraphviz-dev -y -qq" 2> /dev/null
+    mrun "apt-get purge imagemagick libmagickwand-dev graphviz libgraphviz-dev -y -qq" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5534,10 +5534,9 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  _MAGICK_FROM_SOURCES=YES
   if [ "${_MAGICK_FROM_SOURCES}" = "NO" ] \
     || [ -z "${_MAGICK_FROM_SOURCES}" ]; then
-    _EXTRA_PACKAGES="imagemagick \
+    _EXTRA_PACKAGES="imagemagick libmagickwand-dev graphviz libgraphviz-dev \
                      ${_EXTRA_PACKAGES}"
   fi
 
