@@ -701,6 +701,7 @@ prep_for_install_db_sql() {
   sql_strict_upgrade_path
 
   if [ "${_DB_SERVER}" = "MariaDB" ]; then
+    _DB_SRC="ftp.osuosl.org"
     mdbRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
     mdbList="/etc/apt/sources.list.d/mariadb.list"
     rm -f /etc/apt/sources.list.d/percona-.*
@@ -1107,6 +1108,7 @@ db_server_install() {
         _OSN=ubuntu
       fi
       if [ "${_DB_SERVER}" = "MariaDB" ]; then
+        _DB_SRC="ftp.osuosl.org"
         mdbRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
         mdbList="/etc/apt/sources.list.d/mariadb.list"
         rm -f /etc/apt/sources.list.d/percona-.*

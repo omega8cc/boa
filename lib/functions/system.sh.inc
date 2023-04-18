@@ -4835,6 +4835,7 @@ if_major_os_upgrade() {
       _SQL_NEW_OSR="${_NEW_OSR}"
     fi
     if [ "${_DB_SERVER}" = "MariaDB" ]; then
+      _DB_SRC="ftp.osuosl.org"
       mdbRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
       mdbList="/etc/apt/sources.list.d/mariadb.list"
       rm -f /etc/apt/sources.list.d/percona-.*
