@@ -1507,12 +1507,6 @@ install_php_multi() {
   else
     _PHP_EXTRA="${_PHP_EXTRA} --enable-intl"
   fi
-  _PRE_SNFR=
-  if [ -e "/usr/local/lib/icu/current" ]; then
-    if [ "$1" = "72" ] || [ "$1" = "73" ]; then
-      _PRE_SNFR="--with-icu-dir=/usr/local"
-    fi
-  fi
   if [ -e "/usr/local/ssl/lib/libssl.so.3" ] \
     || [ -e "/usr/local/ssl/lib/libssl.so.1.1" ] \
     || [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ]; then
@@ -1533,8 +1527,7 @@ install_php_multi() {
              --with-webp-dir=/usr \
              --with-ldap \
              --with-gmp \
-             --with-xmlrpc \
-             ${_PRE_SNFR}"
+             --with-xmlrpc"
   _NEW_SNFR="--with-zip \
              --enable-gd \
              --with-jpeg \
