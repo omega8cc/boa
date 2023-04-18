@@ -4616,6 +4616,9 @@ if_post_major_os_upgrade() {
 
     rm -f /root/.run_post_major_os_upgrade.info
     touch /root/.completed_post_major_os_upgrade.info
+    if [ -e "/root/.skip-aegir-master-upgrade.cnf" ]; then
+      rm -f /root/.skip-aegir-master-upgrade.cnf
+    fi
     msg "INFO: The post_major_os_upgrade procedure is complete"
   fi
 }
@@ -4626,6 +4629,7 @@ if_major_os_upgrade() {
   fi
   define_loc_osr
   if [ ! -z "${_MSG_LOC}" ]; then
+    touch /root/.skip-aegir-master-upgrade.cnf
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       rm -f /root/.run_post_major_os_upgrade.info
     fi
