@@ -3360,7 +3360,7 @@ ssl_install_src() {
     fi
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: OpenSSL version detected ${_SSL_ITD}, no upgrade required"
+      msg "INFO: OpenSSL version detected ${_SSL_ITD}, OK"
     fi
   fi
 }
@@ -3541,7 +3541,7 @@ curl_install_src() {
     _CURL_ALREADY_REBUILT=YES
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: cURL version detected ${_CURL_ITD}, no upgrade required"
+      msg "INFO: cURL version detected ${_CURL_ITD}, OK"
     fi
   fi
 }
