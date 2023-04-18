@@ -1502,7 +1502,11 @@ install_php_multi() {
   ### patch -p1 < ${bldPth}/aegir/patches/fpm_main.c.patch &> /dev/null
   ### cd /var/opt/php-${_PHP_VERSION}
   msg "INFO: Building PHP ${_PHP_VERSION} part 2/3"
-  if [ "$1" = "56" ] || [ "$1" = "70" ] || [ "$1" = "71" ]; then
+  if [ "$1" = "56" ] \
+    || [ "$1" = "70" ] \
+    || [ "$1" = "71" ] \
+    || [ "$1" = "72" ] \
+    || [ "$1" = "73" ]; then
     _PHP_EXTRA="${_PHP_EXTRA}"
   else
     _PHP_EXTRA="${_PHP_EXTRA} --enable-intl"
