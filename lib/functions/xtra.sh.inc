@@ -641,9 +641,9 @@ if_install_rvm() {
   fi
 }
 
-if_install_magick() {
+magick_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_magick"
+    msg "PROC: magick_install_upgrade"
   fi
   _MAGICK_FROM_SOURCES=YES
   if [ "${_MAGICK_FROM_SOURCES}" = "YES" ]; then

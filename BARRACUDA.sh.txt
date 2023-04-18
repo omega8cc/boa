@@ -349,6 +349,7 @@ ssl_crypto_lib_fix
 curl_install_src
 lshell_install_upgrade
 myquick_install_upgrade
+magick_install_upgrade
 php_install_deps
 php_libs_fix
 php_check_if_rebuild
@@ -366,7 +367,6 @@ xdrago_install_upgrade
 ###
 if [ "${_STATUS}" = "UPGRADE" ]; then
   if_install_wkhtmltox
-  if_install_magick
   if_install_git_src
   if_install_ffmpeg
   if_install_bzr
