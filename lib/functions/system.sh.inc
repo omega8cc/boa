@@ -4680,10 +4680,12 @@ if_major_os_upgrade() {
     tPrmt=$(echo -n ${tPrmt} | fmt -su -w 2500 2>&1)
     if prompt_yes_no "${tPrmt}?" ; then
       true
+      echo
       msg "FINE: But you can still hit ctrl-c to stop if you wish"
       msg "WAIT: We need a minute to stop all running cron tasks..."
       service cron stop &> /dev/null
     else
+      echo
       msg "FINE: Please try again later once you are ready"
       echo
       mrun "sleep 3"
