@@ -4629,6 +4629,47 @@ if_major_os_upgrade() {
   fi
   define_loc_osr
   if [ ! -z "${_MSG_LOC}" ]; then
+    _AUTOPILOT=NO
+    msg "MODE: ${_MSG_LOC} upgrade"
+    echo
+    msg "RLLY: Have you created a Fresh Backup Snapshot of this VM?"
+    echo
+    mrun "sleep 5"
+    msg "ATTN: You have to be prepared in case the upgrade will fail"
+    msg "ATTN: You have to be prepared for a crash of this system"
+    msg "ATTN: This procedure is well tested but things happen!"
+    echo
+    mrun "sleep 5"
+    tPrmt="Are you sure you want to proceed?"
+    tPrmt=$(echo -n ${tPrmt} | fmt -su -w 2500 2>&1)
+    if prompt_yes_no "${tPrmt}?" ; then
+      true
+      msg "FINE: But you can still hit ctrl-c to stop if you wish"
+      msg "WAIT: We need a minute to stop all running cron tasks..."
+      service cron stop &> /dev/null
+    else
+      msg "FINE: Please try again later once you are ready"
+      echo
+      mrun "sleep 3"
+      echo "Bye"
+      clean_pid_exit
+    fi
+    echo
+    mrun "sleep 5"
+    msg "WAIT: This major system upgrade will start in 60s..."
+    mrun "sleep 15"
+    msg "WAIT: ...it will start in 45s..."
+    mrun "sleep 15"
+    msg "WAIT: ...it will start in 30s..."
+    mrun "sleep 15"
+    msg "WAIT: ...it will start in 15s..."
+    msg "ATTN: You can still hit ctrl-c to stop if you wish"
+    mrun "sleep 15"
+    msg "INFO: ${_MSG_LOC} upgrade in progress..."
+    echo
+    msg "HINT: Command to run in another terminal window to watch details"
+    msg "CMND: tail -f ${_LOG}"
+    echo
     touch /root/.skip-aegir-master-upgrade.cnf
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       rm -f /root/.run_post_major_os_upgrade.info
@@ -4638,12 +4679,6 @@ if_major_os_upgrade() {
     fi
     if [ -e "/root/.big_hop_on_major_os_upgrade.info" ]; then
       rm -f /root/.big_hop_on_major_os_upgrade.info
-    fi
-    msg "WARN: ${_MSG_LOC} upgrade will start in 60 seconds..."
-    msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
-    if [ ! -e "/root/.upstart.cnf" ]; then
-      service cron stop &> /dev/null
-      mrun "sleep 60"
     fi
     check_dns_settings
     if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
@@ -4659,9 +4694,6 @@ if_major_os_upgrade() {
     fi
     rm -f ${pthLog}/ruby-sys-clean-reload.log
     mv -f /var/xdrago /var/xdrago_wait &> /dev/null
-    msg "WARN: Too late! ${_MSG_LOC} upgrade in progress..."
-    msg "HINT: Run tail -f ${_LOG}"
-    msg "HINT: in another terminal window to watch details"
     rm -f ${mtrNgx}/pre.d/nginx_speed_purge.conf
     if [ -e "/etc/init.d/bind" ]; then
       rm -f /etc/init.d/bind
