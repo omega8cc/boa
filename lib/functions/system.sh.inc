@@ -943,6 +943,196 @@ EOF
 }
 
 #
+# Cleanup for Barracuda cnf file.
+barracuda_cnf_cleanup() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: barracuda_cnf_cleanup"
+  fi
+  ###
+  ### legacy config cleanup start
+  ###
+  _DB_ENGINE_TEST=$(grep _DB_ENGINE ${barCnf} 2>&1)
+  if [[ "${_DB_ENGINE_TEST}" =~ "_DB_ENGINE" ]]; then
+    sed -i "s/^_DB_ENGINE.*//g" ${barCnf}
+    wait
+  fi
+  _INNODB_LOG_FILE_SIZE_TEST=$(grep _INNODB_LOG_FILE_SIZE ${barCnf} 2>&1)
+  if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "_INNODB_LOG_FILE_SIZE" ]]; then
+    sed -i "s/^_INNODB_LOG_FILE_SIZE.*//g" ${barCnf}
+    wait
+  fi
+  _USE_STOCK_TEST=$(grep _USE_STOCK ${barCnf} 2>&1)
+  if [[ "${_USE_STOCK_TEST}" =~ "_USE_STOCK" ]]; then
+    sed -i "s/^_USE_STOCK.*//g" ${barCnf}
+    wait
+  fi
+  _HTTP_WILDCARD_TEST=$(grep _HTTP_WILDCARD ${barCnf} 2>&1)
+  if [[ "${_HTTP_WILDCARD_TEST}" =~ "_HTTP_WILDCARD" ]]; then
+    sed -i "s/^_HTTP_WILDCARD.*//g" ${barCnf}
+    wait
+  fi
+  _PHP_MODERN_ONLY_TEST=$(grep _PHP_MODERN_ONLY ${barCnf} 2>&1)
+  if [[ "${_PHP_MODERN_ONLY_TEST}" =~ "_PHP_MODERN_ONLY" ]]; then
+    sed -i "s/^_PHP_MODERN_ONLY.*//g" ${barCnf}
+    wait
+  fi
+  _USE_SPEED_BOOSTER_TEST=$(grep _USE_SPEED_BOOSTER ${barCnf} 2>&1)
+  if [[ "${_USE_SPEED_BOOSTER_TEST}" =~ "_USE_SPEED_BOOSTER" ]]; then
+    sed -i "s/^_USE_SPEED_BOOSTER.*//g" ${barCnf}
+    wait
+  fi
+  _PHP_INSTALL_NEW_TEST=$(grep _PHP_INSTALL_NEW ${barCnf} 2>&1)
+  if [[ "${_PHP_INSTALL_NEW_TEST}" =~ "_PHP_INSTALL_NEW" ]]; then
+    sed -i "s/^_PHP_INSTALL_NEW.*//g" ${barCnf}
+    wait
+  fi
+  _CUSTOM_CONFIG_PHP_TEST=$(grep _CUSTOM_CONFIG_PHP ${barCnf} 2>&1)
+  if [[ "${_CUSTOM_CONFIG_PHP_TEST}" =~ "_CUSTOM_CONFIG_PHP" ]]; then
+    sed -i "s/^_CUSTOM_CONFIG_PHP.*//g" ${barCnf}
+    wait
+  fi
+  _LOAD_LIMIT_ONE_TEST=$(grep _LOAD_LIMIT_ONE ${barCnf} 2>&1)
+  if [[ "${_LOAD_LIMIT_ONE_TEST}" =~ "_LOAD_LIMIT_ONE" ]]; then
+    sed -i "s/^_LOAD_LIMIT_ONE.*//g" ${barCnf}
+    wait
+  fi
+  _LOAD_LIMIT_TWO_TEST=$(grep _LOAD_LIMIT_TWO ${barCnf} 2>&1)
+  if [[ "${_LOAD_LIMIT_TWO_TEST}" =~ "_LOAD_LIMIT_TWO" ]]; then
+    sed -i "s/^_LOAD_LIMIT_TWO.*//g" ${barCnf}
+    wait
+  fi
+  _USE_MEMCACHED_TEST=$(grep _USE_MEMCACHED ${barCnf} 2>&1)
+  if [[ "${_USE_MEMCACHED_TEST}" =~ "_USE_MEMCACHED" ]]; then
+    sed -i "s/^_USE_MEMCACHED.*//g" ${barCnf}
+    wait
+  fi
+  _PHP_ZEND_OPCACHE_TEST=$(grep _PHP_ZEND_OPCACHE ${barCnf} 2>&1)
+  if [[ "${_PHP_ZEND_OPCACHE_TEST}" =~ "_PHP_ZEND_OPCACHE" ]]; then
+    sed -i "s/^_PHP_ZEND_OPCACHE.*//g" ${barCnf}
+    wait
+  fi
+  _BUILD_FROM_SRC_TEST=$(grep _BUILD_FROM_SRC ${barCnf} 2>&1)
+  if [[ "${_BUILD_FROM_SRC_TEST}" =~ "_BUILD_FROM_SRC" ]]; then
+    sed -i "s/^_BUILD_FROM_SRC.*//g" ${barCnf}
+    wait
+  fi
+  _SSL_FROM_SOURCES_TEST=$(grep _SSL_FROM_SOURCES ${barCnf} 2>&1)
+  if [[ "${_SSL_FROM_SOURCES_TEST}" =~ "_SSL_FROM_SOURCES" ]]; then
+    sed -i "s/^_SSL_FROM_SOURCES.*//g" ${barCnf}
+    wait
+  fi
+  ###
+  ### legacy config cleanup end
+  ###
+
+  ###
+  ### config cleanup start
+  ###
+  _NGX_FORCE_REINSTALL_TEST=$(grep _NGX_FORCE_REINSTALL ${barCnf} 2>&1)
+  if [[ "${_NGX_FORCE_REINSTALL_TEST}" =~ "_NGX_FORCE_REINSTALL" ]]; then
+    sed -i "s/^_NGX_FORCE_REINSTALL.*//g" ${barCnf}
+    wait
+  fi
+  _PHP_FORCE_REINSTALL_TEST=$(grep _PHP_FORCE_REINSTALL ${barCnf} 2>&1)
+  if [[ "${_PHP_FORCE_REINSTALL_TEST}" =~ "_PHP_FORCE_REINSTALL" ]]; then
+    sed -i "s/^_PHP_FORCE_REINSTALL.*//g" ${barCnf}
+    wait
+  fi
+  _SQL_FORCE_REINSTALL_TEST=$(grep _SQL_FORCE_REINSTALL ${barCnf} 2>&1)
+  if [[ "${_SQL_FORCE_REINSTALL_TEST}" =~ "_SQL_FORCE_REINSTALL" ]]; then
+    sed -i "s/^_SQL_FORCE_REINSTALL.*//g" ${barCnf}
+    wait
+  fi
+  _SSL_FORCE_REINSTALL_TEST=$(grep _SSL_FORCE_REINSTALL ${barCnf} 2>&1)
+  if [[ "${_SSL_FORCE_REINSTALL_TEST}" =~ "_SSL_FORCE_REINSTALL" ]]; then
+    sed -i "s/^_SSL_FORCE_REINSTALL.*//g" ${barCnf}
+    wait
+  fi
+  _SSH_FORCE_REINSTALL_TEST=$(grep _SSH_FORCE_REINSTALL ${barCnf} 2>&1)
+  if [[ "${_SSH_FORCE_REINSTALL_TEST}" =~ "_SSH_FORCE_REINSTALL" ]]; then
+    sed -i "s/^_SSH_FORCE_REINSTALL.*//g" ${barCnf}
+    wait
+  fi
+  _GIT_FORCE_REINSTALL_TEST=$(grep _GIT_FORCE_REINSTALL ${barCnf} 2>&1)
+  if [[ "${_GIT_FORCE_REINSTALL_TEST}" =~ "_GIT_FORCE_REINSTALL" ]]; then
+    sed -i "s/^_GIT_FORCE_REINSTALL.*//g" ${barCnf}
+    wait
+  fi
+  _FULL_FORCE_REINSTALL_TEST=$(grep _FULL_FORCE_REINSTALL ${barCnf} 2>&1)
+  if [[ "${_FULL_FORCE_REINSTALL_TEST}" =~ "_FULL_FORCE_REINSTALL" ]]; then
+    sed -i "s/^_FULL_FORCE_REINSTALL.*//g" ${barCnf}
+    wait
+  fi
+  _TOMCAT_TO_JETTY_TEST=$(grep _TOMCAT_TO_JETTY ${barCnf} 2>&1)
+  if [[ "${_TOMCAT_TO_JETTY_TEST}" =~ "_TOMCAT_TO_JETTY" ]]; then
+    if [ ! -e "/etc/init.d/tomcat" ]; then
+      sed -i "s/^_TOMCAT_TO_JETTY.*//g" ${barCnf}
+      wait
+    fi
+  fi
+  _BULLSEYE_TO_CHIMAERA_TEST=$(grep _BULLSEYE_TO_CHIMAERA ${barCnf} 2>&1)
+  if [[ "${_BULLSEYE_TO_CHIMAERA_TEST}" =~ "_BULLSEYE_TO_CHIMAERA" ]]; then
+    sed -i "s/^_BULLSEYE_TO_CHIMAERA.*//g" ${barCnf}
+    wait
+  fi
+  _BEOWULF_TO_CHIMAERA_TEST=$(grep _BEOWULF_TO_CHIMAERA ${barCnf} 2>&1)
+  if [[ "${_BEOWULF_TO_CHIMAERA_TEST}" =~ "_BEOWULF_TO_CHIMAERA" ]]; then
+    sed -i "s/^_BEOWULF_TO_CHIMAERA.*//g" ${barCnf}
+    wait
+  fi
+  _BUSTER_TO_BEOWULF_TEST=$(grep _BUSTER_TO_BEOWULF ${barCnf} 2>&1)
+  if [[ "${_BUSTER_TO_BEOWULF_TEST}" =~ "_BUSTER_TO_BEOWULF" ]]; then
+    sed -i "s/^_BUSTER_TO_BEOWULF.*//g" ${barCnf}
+    wait
+  fi
+  _STRETCH_TO_BEOWULF_TEST=$(grep _STRETCH_TO_BEOWULF ${barCnf} 2>&1)
+  if [[ "${_STRETCH_TO_BEOWULF_TEST}" =~ "_STRETCH_TO_BEOWULF" ]]; then
+    sed -i "s/^_STRETCH_TO_BEOWULF.*//g" ${barCnf}
+    wait
+  fi
+  _JESSIE_TO_BEOWULF_TEST=$(grep _JESSIE_TO_BEOWULF ${barCnf} 2>&1)
+  if [[ "${_JESSIE_TO_BEOWULF_TEST}" =~ "_JESSIE_TO_BEOWULF" ]]; then
+    sed -i "s/^_JESSIE_TO_BEOWULF.*//g" ${barCnf}
+    wait
+  fi
+  _BUSTER_TO_BULLSEYE_TEST=$(grep _BUSTER_TO_BULLSEYE ${barCnf} 2>&1)
+  if [[ "${_BUSTER_TO_BULLSEYE_TEST}" =~ "_BUSTER_TO_BULLSEYE" ]]; then
+    sed -i "s/^_BUSTER_TO_BULLSEYE.*//g" ${barCnf}
+    wait
+  fi
+  _STRETCH_TO_BUSTER_TEST=$(grep _STRETCH_TO_BUSTER ${barCnf} 2>&1)
+  if [[ "${_STRETCH_TO_BUSTER_TEST}" =~ "_STRETCH_TO_BUSTER" ]]; then
+    sed -i "s/^_STRETCH_TO_BUSTER.*//g" ${barCnf}
+    wait
+  fi
+  _JESSIE_TO_STRETCH_TEST=$(grep _JESSIE_TO_STRETCH ${barCnf} 2>&1)
+  if [[ "${_JESSIE_TO_STRETCH_TEST}" =~ "_JESSIE_TO_STRETCH" ]]; then
+    sed -i "s/^_JESSIE_TO_STRETCH.*//g" ${barCnf}
+    wait
+  fi
+  _WHEEZY_TO_JESSIE_TEST=$(grep _WHEEZY_TO_JESSIE ${barCnf} 2>&1)
+  if [[ "${_WHEEZY_TO_JESSIE_TEST}" =~ "_WHEEZY_TO_JESSIE" ]]; then
+    sed -i "s/^_WHEEZY_TO_JESSIE.*//g" ${barCnf}
+    wait
+  fi
+  _SQUEEZE_TO_WHEEZY_TEST=$(grep _SQUEEZE_TO_WHEEZY ${barCnf} 2>&1)
+  if [[ "${_SQUEEZE_TO_WHEEZY_TEST}" =~ "_SQUEEZE_TO_WHEEZY" ]]; then
+    sed -i "s/^_SQUEEZE_TO_WHEEZY.*//g" ${barCnf}
+    wait
+  fi
+  _LENNY_TO_SQUEEZE_TEST=$(grep _LENNY_TO_SQUEEZE ${barCnf} 2>&1)
+  if [[ "${_LENNY_TO_SQUEEZE_TEST}" =~ "_LENNY_TO_SQUEEZE" ]]; then
+    sed -i "s/^_LENNY_TO_SQUEEZE.*//g" ${barCnf}
+    wait
+  fi
+  sed -i "/^$/d" ${barCnf}
+  wait
+  ###
+  ### config cleanup end
+  ###
+}
+
+#
 # Sort and de-duplicate versions in _PHP_MULTI_INSTALL.
 php_multi_uniq() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -965,6 +1155,353 @@ php_multi_uniq() {
     fi
   done
   _PHP_MULTI_INSTALL="${_uniqPHPv}"
+}
+
+#
+# Cleanup for legacy PHP versions.
+php_legacy_versions_cleanup_cnf() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: php_legacy_versions_cleanup_cnf"
+  fi
+  _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.2" /data/disk/*/log/cli.txt 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.2" /data/disk/*/static/control/cli.info 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.2" /root/.*.octopus.cnf 2>&1)
+  if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.2" ]] \
+    || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.2" ]] \
+    || [[ "${_PHP_CLI_LEGACY_IF_USED_C}" =~ "5.2" ]]; then
+    if [ -e "/opt/php52/bin/php" ] || [ -e "/etc/init.d/php52-fpm" ]; then
+      echo " "
+      msg "Legacy PHP-CLI 5.2 is used on this system but will be removed"
+    fi
+  fi
+
+  _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.2" /data/disk/*/log/fpm.txt 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.2" /data/disk/*/static/control/fpm.info 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.2" /root/.*.octopus.cnf 2>&1)
+  if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.2" ]] \
+    || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.2" ]] \
+    || [[ "${_PHP_FPM_LEGACY_IF_USED_C}" =~ "5.2" ]]; then
+    if [ -e "/opt/php52/bin/php" ] || [ -e "/etc/init.d/php52-fpm" ]; then
+      msg "Legacy PHP-FPM 5.2 is used on this system but will be removed"
+      echo " "
+    fi
+  fi
+
+  _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.3" /data/disk/*/log/cli.txt 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.3" /data/disk/*/static/control/cli.info 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.3" /root/.*.octopus.cnf 2>&1)
+  if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.3" ]] \
+    || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.3" ]] \
+    || [[ "${_PHP_CLI_LEGACY_IF_USED_C}" =~ "5.3" ]]; then
+    if [ -e "/opt/php53/bin/php" ] || [ -e "/etc/init.d/php53-fpm" ]; then
+      echo " "
+      msg "Legacy PHP-CLI 5.3 is used on this system but will be removed"
+    fi
+  fi
+
+  _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.3" /data/disk/*/log/fpm.txt 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.3" /data/disk/*/static/control/fpm.info 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.3" /root/.*.octopus.cnf 2>&1)
+  if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.3" ]] \
+    || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.3" ]] \
+    || [[ "${_PHP_FPM_LEGACY_IF_USED_C}" =~ "5.3" ]]; then
+    if [ -e "/opt/php53/bin/php" ] || [ -e "/etc/init.d/php53-fpm" ]; then
+      msg "Legacy PHP-FPM 5.3 is used on this system but will be removed"
+      echo " "
+    fi
+  fi
+
+  _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.4" /data/disk/*/log/cli.txt 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.4" /data/disk/*/static/control/cli.info 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.4" /root/.*.octopus.cnf 2>&1)
+  if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.4" ]] \
+    || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.4" ]] \
+    || [[ "${_PHP_CLI_LEGACY_IF_USED_C}" =~ "5.4" ]]; then
+    if [ -e "/opt/php54/bin/php" ] || [ -e "/etc/init.d/php54-fpm" ]; then
+      echo " "
+      msg "Legacy PHP-CLI 5.4 is used on this system but will be removed"
+    fi
+  fi
+
+  _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.4" /data/disk/*/log/fpm.txt 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.4" /data/disk/*/static/control/fpm.info 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.4" /root/.*.octopus.cnf 2>&1)
+  if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.4" ]] \
+    || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.4" ]] \
+    || [[ "${_PHP_FPM_LEGACY_IF_USED_C}" =~ "5.4" ]]; then
+    if [ -e "/opt/php54/bin/php" ] || [ -e "/etc/init.d/php54-fpm" ]; then
+      msg "Legacy PHP-FPM 5.4 is used on this system but will be removed"
+      echo " "
+    fi
+  fi
+
+  _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.5" /data/disk/*/log/cli.txt 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.5" /data/disk/*/static/control/cli.info 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.5" /root/.*.octopus.cnf 2>&1)
+  if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.5" ]] \
+    || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.5" ]] \
+    || [[ "${_PHP_CLI_LEGACY_IF_USED_C}" =~ "5.5" ]]; then
+    if [ -e "/opt/php55/bin/php" ] || [ -e "/etc/init.d/php55-fpm" ]; then
+      echo " "
+      msg "Legacy PHP-CLI 5.5 is used on this system but will be removed"
+    fi
+  fi
+
+  _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.5" /data/disk/*/log/fpm.txt 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.5" /data/disk/*/static/control/fpm.info 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.5" /root/.*.octopus.cnf 2>&1)
+  if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.5" ]] \
+    || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.5" ]] \
+    || [[ "${_PHP_FPM_LEGACY_IF_USED_C}" =~ "5.5" ]]; then
+    if [ -e "/opt/php55/bin/php" ] || [ -e "/etc/init.d/php55-fpm" ]; then
+      msg "Legacy PHP-FPM 5.5 is used on this system but will be removed"
+      echo " "
+    fi
+  fi
+
+  _PHP_MULTI_INSTALL_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
+
+  if [[ "${_PHP_MULTI_INSTALL_TEST}" =~ "5.2" ]]; then
+    _R_M=5.2
+    _PHP_MULTI_INSTALL=${_PHP_MULTI_INSTALL%%${_R_M}}
+    sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
+    wait
+    sed -i "/^$/d" ${barCnf}
+    wait
+  fi
+
+  if [[ "${_PHP_MULTI_INSTALL_TEST}" =~ "5.3" ]]; then
+    _R_M=5.3
+    _PHP_MULTI_INSTALL=${_PHP_MULTI_INSTALL%%${_R_M}}
+    sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
+    wait
+    sed -i "/^$/d" ${barCnf}
+    wait
+  fi
+
+  if [[ "${_PHP_MULTI_INSTALL_TEST}" =~ "5.4" ]]; then
+    _R_M=5.4
+    _PHP_MULTI_INSTALL=${_PHP_MULTI_INSTALL%%${_R_M}}
+    sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
+    wait
+    sed -i "/^$/d" ${barCnf}
+    wait
+  fi
+
+  if [[ "${_PHP_MULTI_INSTALL_TEST}" =~ "5.5" ]]; then
+    _R_M=5.5
+    _PHP_MULTI_INSTALL=${_PHP_MULTI_INSTALL%%${_R_M}}
+    sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
+    wait
+    sed -i "/^$/d" ${barCnf}
+    wait
+  fi
+
+  if [ -e "/etc/init.d/php-fpm" ]; then
+    mrun "service php-fpm stop" &> /dev/null
+    update-rc.d -f php-fpm remove &> /dev/null
+    rm -f /etc/init.d/php-fpm
+  fi
+  if [ -e "/etc/init.d/php52-fpm" ]; then
+    mrun "service php52-fpm stop" &> /dev/null
+    update-rc.d -f php52-fpm remove &> /dev/null
+    rm -f /etc/init.d/php52-fpm
+  fi
+  killall -9 php-cgi &> /dev/null
+  if [ -e "/etc/init.d/php53-fpm" ]; then
+    mrun "service php53-fpm stop" &> /dev/null
+    update-rc.d -f php53-fpm remove &> /dev/null
+    rm -f /etc/init.d/php53-fpm
+  fi
+  if [ -e "/etc/init.d/php54-fpm" ]; then
+    mrun "service php54-fpm stop" &> /dev/null
+    update-rc.d -f php54-fpm remove &> /dev/null
+    rm -f /etc/init.d/php54-fpm
+  fi
+  if [ -e "/etc/init.d/php55-fpm" ]; then
+    mrun "service php55-fpm stop" &> /dev/null
+    update-rc.d -f php55-fpm remove &> /dev/null
+    rm -f /etc/init.d/php55-fpm
+  fi
+
+  _CHECK_HOST=$(uname -n 2>&1)
+  _VMFAMILY=XEN
+  _VM_TEST=$(uname -a 2>&1)
+  if [[ "${_VM_TEST}" =~ "-beng" ]]; then
+    _VMFAMILY="VS"
+  fi
+}
+
+#
+# Cleanup for PHP versions list.
+php_if_versions_cleanup_cnf() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: php_if_versions_cleanup_cnf"
+  fi
+  if [ -e "/var/aegir/host_master/000/placeholder_dont_remove.txt" ] \
+    && [ -e "/root/.allow-php-multi-install-cleanup.cnf" ]; then
+    if [ -e "/root/.mstr.clstr.cnf" ] \
+      || [ -e "/root/.wbhd.clstr.cnf" ] \
+      || [ -e "/root/.dbhd.clstr.cnf" ]; then
+      _PHP_OVERRIDE=$(grep _PHP_FPM_VERSION ${barCnf} \
+        | cut -d= -f2 \
+        | awk '{ print $1}' \
+        | sed "s/[\"]//g" 2>&1)
+      _CLSTR_PHP_MULTI_INSTALL="${_PHP_OVERRIDE}"
+      if [ ! -z "${_CLSTR_PHP_MULTI_INSTALL}" ]; then
+        _PHP_MULTI_INSTALL="${_CLSTR_PHP_MULTI_INSTALL}"
+      else
+        ### Use default mini-legacy list if empty
+        _PHP_MULTI_INSTALL="8.1 7.4 5.6"
+      fi
+    else
+      ### Make sure that _PHP_SINGLE_INSTALL takes precedence
+      if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
+        if [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] \
+          || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
+          || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ]; then
+          _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
+          _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
+          _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
+        fi
+      else
+        ### Make sure that _PHP_MULTI_INSTALL includes _PHP_FPM_VERSION
+        _local_PHP_MULTI_INSTALL="${_PHP_FPM_VERSION}"
+
+        ### Add PHP 5.6 if used
+        _is_PHP_multi_five_six=$(grep "5\.6" /data/disk/*/static/control/multi-fpm.info 2>&1)
+        _is_PHP_FPM_five_six=$(grep "5\.6" /data/disk/*/static/control/fpm.info 2>&1)
+        _is_PHP_CLI_five_six=$(grep "5\.6" /data/disk/*/static/control/cli.info 2>&1)
+        _is_PHP_five_six=
+        if [[ "${_is_PHP_multi_five_six}" =~ "5.6" ]] \
+          || [[ "${_is_PHP_FPM_five_six}" =~ "5.6" ]] \
+          || [[ "${_is_PHP_CLI_five_six}" =~ "5.6" ]]; then
+          _is_PHP_five_six=5.6
+          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_five_six}"
+        fi
+
+        ### Add PHP 7.0 if used
+        _is_PHP_multi_seven_zero=$(grep "7\.0" /data/disk/*/static/control/multi-fpm.info 2>&1)
+        _is_PHP_FPM_seven_zero=$(grep "7\.0" /data/disk/*/static/control/fpm.info 2>&1)
+        _is_PHP_CLI_seven_zero=$(grep "7\.0" /data/disk/*/static/control/cli.info 2>&1)
+        _is_PHP_seven_zero=
+        if [[ "${_is_PHP_multi_seven_zero}" =~ "7.0" ]] \
+          || [[ "${_is_PHP_FPM_seven_zero}" =~ "7.0" ]] \
+          || [[ "${_is_PHP_CLI_seven_zero}" =~ "7.0" ]]; then
+          _is_PHP_seven_zero=7.0
+          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_zero}"
+        fi
+
+        ### Add PHP 7.1 if used
+        _is_PHP_multi_seven_one=$(grep "7\.1" /data/disk/*/static/control/multi-fpm.info 2>&1)
+        _is_PHP_FPM_seven_one=$(grep "7\.1" /data/disk/*/static/control/fpm.info 2>&1)
+        _is_PHP_CLI_seven_one=$(grep "7\.1" /data/disk/*/static/control/cli.info 2>&1)
+        _is_PHP_seven_one=
+        if [[ "${_is_PHP_multi_seven_one}" =~ "7.1" ]] \
+          || [[ "${_is_PHP_FPM_seven_one}" =~ "7.1" ]] \
+          || [[ "${_is_PHP_CLI_seven_one}" =~ "7.1" ]]; then
+          _is_PHP_seven_one=7.1
+          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_one}"
+        fi
+
+        ### Add PHP 7.2 if used
+        _is_PHP_multi_seven_two=$(grep "7\.2" /data/disk/*/static/control/multi-fpm.info 2>&1)
+        _is_PHP_FPM_seven_two=$(grep "7\.2" /data/disk/*/static/control/fpm.info 2>&1)
+        _is_PHP_CLI_seven_two=$(grep "7\.2" /data/disk/*/static/control/cli.info 2>&1)
+        _is_PHP_seven_two=
+        if [[ "${_is_PHP_multi_seven_two}" =~ "7.2" ]] \
+          || [[ "${_is_PHP_FPM_seven_two}" =~ "7.2" ]] \
+          || [[ "${_is_PHP_CLI_seven_two}" =~ "7.2" ]]; then
+          _is_PHP_seven_two=7.2
+          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_two}"
+        fi
+
+        ### Add PHP 7.3 if used
+        _is_PHP_multi_seven_three=$(grep "7\.3" /data/disk/*/static/control/multi-fpm.info 2>&1)
+        _is_PHP_FPM_seven_three=$(grep "7\.3" /data/disk/*/static/control/fpm.info 2>&1)
+        _is_PHP_CLI_seven_three=$(grep "7\.3" /data/disk/*/static/control/cli.info 2>&1)
+        _is_PHP_seven_three=
+        if [[ "${_is_PHP_multi_seven_three}" =~ "7.3" ]] \
+          || [[ "${_is_PHP_FPM_seven_three}" =~ "7.3" ]] \
+          || [[ "${_is_PHP_CLI_seven_three}" =~ "7.3" ]]; then
+          _is_PHP_seven_three=7.3
+          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_three}"
+        fi
+
+        ### Add PHP 7.4 if used
+        _is_PHP_multi_seven_four=$(grep "7\.4" /data/disk/*/static/control/multi-fpm.info 2>&1)
+        _is_PHP_FPM_seven_four=$(grep "7\.4" /data/disk/*/static/control/fpm.info 2>&1)
+        _is_PHP_CLI_seven_four=$(grep "7\.4" /data/disk/*/static/control/cli.info 2>&1)
+        _is_PHP_seven_four=
+        if [[ "${_is_PHP_multi_seven_four}" =~ "7.4" ]] \
+          || [[ "${_is_PHP_FPM_seven_four}" =~ "7.4" ]] \
+          || [[ "${_is_PHP_CLI_seven_four}" =~ "7.4" ]]; then
+          _is_PHP_seven_four=7.4
+          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_four}"
+        fi
+
+        ### Add PHP 8.0 if used
+        _is_PHP_multi_eight_zero=$(grep "8\.0" /data/disk/*/static/control/multi-fpm.info 2>&1)
+        _is_PHP_FPM_eight_zero=$(grep "8\.0" /data/disk/*/static/control/fpm.info 2>&1)
+        _is_PHP_CLI_eight_zero=$(grep "8\.0" /data/disk/*/static/control/cli.info 2>&1)
+        _is_PHP_eight_zero=
+        if [[ "${_is_PHP_multi_eight_zero}" =~ "8.0" ]] \
+          || [[ "${_is_PHP_FPM_eight_zero}" =~ "8.0" ]] \
+          || [[ "${_is_PHP_CLI_eight_zero}" =~ "8.0" ]]; then
+          _is_PHP_eight_zero=8.0
+          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_zero}"
+        fi
+
+        ### Add PHP 8.1 if used
+        _is_PHP_multi_eight_one=$(grep "8\.1" /data/disk/*/static/control/multi-fpm.info 2>&1)
+        _is_PHP_FPM_eight_one=$(grep "8\.1" /data/disk/*/static/control/fpm.info 2>&1)
+        _is_PHP_CLI_eight_one=$(grep "8\.1" /data/disk/*/static/control/cli.info 2>&1)
+        _is_PHP_eight_one=
+        if [[ "${_is_PHP_multi_eight_one}" =~ "8.1" ]] \
+          || [[ "${_is_PHP_FPM_eight_one}" =~ "8.1" ]] \
+          || [[ "${_is_PHP_CLI_eight_one}" =~ "8.1" ]]; then
+          _is_PHP_eight_one=8.1
+          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_one}"
+        fi
+
+        ### Add PHP 8.2 if used
+        _is_PHP_multi_eight_two=$(grep "8\.2" /data/disk/*/static/control/multi-fpm.info 2>&1)
+        _is_PHP_FPM_eight_two=$(grep "8\.2" /data/disk/*/static/control/fpm.info 2>&1)
+        _is_PHP_CLI_eight_two=$(grep "8\.2" /data/disk/*/static/control/cli.info 2>&1)
+        _is_PHP_eight_two=
+        if [[ "${_is_PHP_multi_eight_two}" =~ "8.2" ]] \
+          || [[ "${_is_PHP_FPM_eight_two}" =~ "8.2" ]] \
+          || [[ "${_is_PHP_CLI_eight_two}" =~ "8.2" ]]; then
+          _is_PHP_eight_two=8.2
+          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_two}"
+        fi
+
+        ### Overwrite _PHP_MULTI_INSTALL with the list of used PHP versions
+        _PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL}"
+
+        if [ -z "${_PHP_MULTI_INSTALL}" ]; then
+          ### Use default mini-legacy list if empty
+          _PHP_MULTI_INSTALL="8.1 7.4 5.6"
+        else
+          ### Sort and remove duplicates from _PHP_MULTI_INSTALL
+          php_multi_uniq
+        fi
+        ### Remove previous _PHP_MULTI_INSTALL in /root/.barracuda.cnf
+        _PHP_MULTI_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
+        if [[ "${_PHP_MULTI_TEST}" =~ "_PHP_MULTI_INSTALL" ]]; then
+          sed -i "s/^_PHP_MULTI_INSTALL.*//g" ${barCnf}
+          wait
+          sed -i "/^$/d" ${barCnf}
+          wait
+        fi
+        ### Add optimized _PHP_MULTI_INSTALL in /root/.barracuda.cnf
+        echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
+        touch /root/.sorted.multi.php.cnf
+        rm -f /root/.updated.multi.php.cnf
+        rm -f /root/.fixed.multi.php.cnf
+      fi
+    fi
+  fi
 }
 
 #
@@ -1245,338 +1782,8 @@ barracuda_cnf() {
       echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}" >> ${barCnf}
     fi
 
-    _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.2" /data/disk/*/log/cli.txt 2>&1)
-    _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.2" /data/disk/*/static/control/cli.info 2>&1)
-    _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.2" /root/.*.octopus.cnf 2>&1)
-    if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.2" ]] \
-      || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.2" ]] \
-      || [[ "${_PHP_CLI_LEGACY_IF_USED_C}" =~ "5.2" ]]; then
-      if [ -e "/opt/php52/bin/php" ] || [ -e "/etc/init.d/php52-fpm" ]; then
-        echo " "
-        msg "Legacy PHP-CLI 5.2 is used on this system but will be removed"
-      fi
-    fi
-
-    _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.2" /data/disk/*/log/fpm.txt 2>&1)
-    _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.2" /data/disk/*/static/control/fpm.info 2>&1)
-    _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.2" /root/.*.octopus.cnf 2>&1)
-    if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.2" ]] \
-      || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.2" ]] \
-      || [[ "${_PHP_FPM_LEGACY_IF_USED_C}" =~ "5.2" ]]; then
-      if [ -e "/opt/php52/bin/php" ] || [ -e "/etc/init.d/php52-fpm" ]; then
-        msg "Legacy PHP-FPM 5.2 is used on this system but will be removed"
-        echo " "
-      fi
-    fi
-
-    _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.3" /data/disk/*/log/cli.txt 2>&1)
-    _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.3" /data/disk/*/static/control/cli.info 2>&1)
-    _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.3" /root/.*.octopus.cnf 2>&1)
-    if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.3" ]] \
-      || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.3" ]] \
-      || [[ "${_PHP_CLI_LEGACY_IF_USED_C}" =~ "5.3" ]]; then
-      if [ -e "/opt/php53/bin/php" ] || [ -e "/etc/init.d/php53-fpm" ]; then
-        echo " "
-        msg "Legacy PHP-CLI 5.3 is used on this system but will be removed"
-      fi
-    fi
-
-    _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.3" /data/disk/*/log/fpm.txt 2>&1)
-    _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.3" /data/disk/*/static/control/fpm.info 2>&1)
-    _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.3" /root/.*.octopus.cnf 2>&1)
-    if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.3" ]] \
-      || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.3" ]] \
-      || [[ "${_PHP_FPM_LEGACY_IF_USED_C}" =~ "5.3" ]]; then
-      if [ -e "/opt/php53/bin/php" ] || [ -e "/etc/init.d/php53-fpm" ]; then
-        msg "Legacy PHP-FPM 5.3 is used on this system but will be removed"
-        echo " "
-      fi
-    fi
-
-    _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.4" /data/disk/*/log/cli.txt 2>&1)
-    _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.4" /data/disk/*/static/control/cli.info 2>&1)
-    _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.4" /root/.*.octopus.cnf 2>&1)
-    if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.4" ]] \
-      || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.4" ]] \
-      || [[ "${_PHP_CLI_LEGACY_IF_USED_C}" =~ "5.4" ]]; then
-      if [ -e "/opt/php54/bin/php" ] || [ -e "/etc/init.d/php54-fpm" ]; then
-        echo " "
-        msg "Legacy PHP-CLI 5.4 is used on this system but will be removed"
-      fi
-    fi
-
-    _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.4" /data/disk/*/log/fpm.txt 2>&1)
-    _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.4" /data/disk/*/static/control/fpm.info 2>&1)
-    _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.4" /root/.*.octopus.cnf 2>&1)
-    if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.4" ]] \
-      || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.4" ]] \
-      || [[ "${_PHP_FPM_LEGACY_IF_USED_C}" =~ "5.4" ]]; then
-      if [ -e "/opt/php54/bin/php" ] || [ -e "/etc/init.d/php54-fpm" ]; then
-        msg "Legacy PHP-FPM 5.4 is used on this system but will be removed"
-        echo " "
-      fi
-    fi
-
-    _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.5" /data/disk/*/log/cli.txt 2>&1)
-    _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.5" /data/disk/*/static/control/cli.info 2>&1)
-    _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.5" /root/.*.octopus.cnf 2>&1)
-    if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.5" ]] \
-      || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.5" ]] \
-      || [[ "${_PHP_CLI_LEGACY_IF_USED_C}" =~ "5.5" ]]; then
-      if [ -e "/opt/php55/bin/php" ] || [ -e "/etc/init.d/php55-fpm" ]; then
-        echo " "
-        msg "Legacy PHP-CLI 5.5 is used on this system but will be removed"
-      fi
-    fi
-
-    _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.5" /data/disk/*/log/fpm.txt 2>&1)
-    _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.5" /data/disk/*/static/control/fpm.info 2>&1)
-    _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.5" /root/.*.octopus.cnf 2>&1)
-    if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.5" ]] \
-      || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.5" ]] \
-      || [[ "${_PHP_FPM_LEGACY_IF_USED_C}" =~ "5.5" ]]; then
-      if [ -e "/opt/php55/bin/php" ] || [ -e "/etc/init.d/php55-fpm" ]; then
-        msg "Legacy PHP-FPM 5.5 is used on this system but will be removed"
-        echo " "
-      fi
-    fi
-
-    _PHP_MULTI_INSTALL_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
-
-    if [[ "${_PHP_MULTI_INSTALL_TEST}" =~ "5.2" ]]; then
-      _R_M=5.2
-      _PHP_MULTI_INSTALL=${_PHP_MULTI_INSTALL%%${_R_M}}
-      sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
-      wait
-      sed -i "/^$/d" ${barCnf}
-      wait
-    fi
-
-    if [[ "${_PHP_MULTI_INSTALL_TEST}" =~ "5.3" ]]; then
-      _R_M=5.3
-      _PHP_MULTI_INSTALL=${_PHP_MULTI_INSTALL%%${_R_M}}
-      sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
-      wait
-      sed -i "/^$/d" ${barCnf}
-      wait
-    fi
-
-    if [[ "${_PHP_MULTI_INSTALL_TEST}" =~ "5.4" ]]; then
-      _R_M=5.4
-      _PHP_MULTI_INSTALL=${_PHP_MULTI_INSTALL%%${_R_M}}
-      sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
-      wait
-      sed -i "/^$/d" ${barCnf}
-      wait
-    fi
-
-    if [[ "${_PHP_MULTI_INSTALL_TEST}" =~ "5.5" ]]; then
-      _R_M=5.5
-      _PHP_MULTI_INSTALL=${_PHP_MULTI_INSTALL%%${_R_M}}
-      sed -i "s/^_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"/g" ${barCnf}
-      wait
-      sed -i "/^$/d" ${barCnf}
-      wait
-    fi
-
-    if [ -e "/etc/init.d/php-fpm" ]; then
-      mrun "service php-fpm stop" &> /dev/null
-      update-rc.d -f php-fpm remove &> /dev/null
-      rm -f /etc/init.d/php-fpm
-    fi
-    if [ -e "/etc/init.d/php52-fpm" ]; then
-      mrun "service php52-fpm stop" &> /dev/null
-      update-rc.d -f php52-fpm remove &> /dev/null
-      rm -f /etc/init.d/php52-fpm
-    fi
-    killall -9 php-cgi &> /dev/null
-    if [ -e "/etc/init.d/php53-fpm" ]; then
-      mrun "service php53-fpm stop" &> /dev/null
-      update-rc.d -f php53-fpm remove &> /dev/null
-      rm -f /etc/init.d/php53-fpm
-    fi
-    if [ -e "/etc/init.d/php54-fpm" ]; then
-      mrun "service php54-fpm stop" &> /dev/null
-      update-rc.d -f php54-fpm remove &> /dev/null
-      rm -f /etc/init.d/php54-fpm
-    fi
-    if [ -e "/etc/init.d/php55-fpm" ]; then
-      mrun "service php55-fpm stop" &> /dev/null
-      update-rc.d -f php55-fpm remove &> /dev/null
-      rm -f /etc/init.d/php55-fpm
-    fi
-
-    _CHECK_HOST=$(uname -n 2>&1)
-    _VMFAMILY=XEN
-    _VM_TEST=$(uname -a 2>&1)
-    if [[ "${_VM_TEST}" =~ "-beng" ]]; then
-      _VMFAMILY="VS"
-    fi
-
-    if [ -e "/var/aegir/host_master/000/placeholder_dont_remove.txt" ] \
-      && [ -e "/root/.allow-php-multi-install-cleanup.cnf" ]; then
-      if [ -e "/root/.mstr.clstr.cnf" ] \
-        || [ -e "/root/.wbhd.clstr.cnf" ] \
-        || [ -e "/root/.dbhd.clstr.cnf" ]; then
-        _PHP_OVERRIDE=$(grep _PHP_FPM_VERSION ${barCnf} \
-          | cut -d= -f2 \
-          | awk '{ print $1}' \
-          | sed "s/[\"]//g" 2>&1)
-        _CLSTR_PHP_MULTI_INSTALL="${_PHP_OVERRIDE}"
-        if [ ! -z "${_CLSTR_PHP_MULTI_INSTALL}" ]; then
-          _PHP_MULTI_INSTALL="${_CLSTR_PHP_MULTI_INSTALL}"
-        else
-          ### Use default mini-legacy list if empty
-          _PHP_MULTI_INSTALL="8.1 7.4 5.6"
-        fi
-      else
-        ### Make sure that _PHP_SINGLE_INSTALL takes precedence
-        if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-          if [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] \
-            || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
-            || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ]; then
-            _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
-            _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
-            _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
-          fi
-        else
-          ### Make sure that _PHP_MULTI_INSTALL includes _PHP_FPM_VERSION
-          _local_PHP_MULTI_INSTALL="${_PHP_FPM_VERSION}"
-
-          ### Add PHP 5.6 if used
-          _is_PHP_multi_five_six=$(grep "5\.6" /data/disk/*/static/control/multi-fpm.info 2>&1)
-          _is_PHP_FPM_five_six=$(grep "5\.6" /data/disk/*/static/control/fpm.info 2>&1)
-          _is_PHP_CLI_five_six=$(grep "5\.6" /data/disk/*/static/control/cli.info 2>&1)
-          _is_PHP_five_six=
-          if [[ "${_is_PHP_multi_five_six}" =~ "5.6" ]] \
-            || [[ "${_is_PHP_FPM_five_six}" =~ "5.6" ]] \
-            || [[ "${_is_PHP_CLI_five_six}" =~ "5.6" ]]; then
-            _is_PHP_five_six=5.6
-            _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_five_six}"
-          fi
-
-          ### Add PHP 7.0 if used
-          _is_PHP_multi_seven_zero=$(grep "7\.0" /data/disk/*/static/control/multi-fpm.info 2>&1)
-          _is_PHP_FPM_seven_zero=$(grep "7\.0" /data/disk/*/static/control/fpm.info 2>&1)
-          _is_PHP_CLI_seven_zero=$(grep "7\.0" /data/disk/*/static/control/cli.info 2>&1)
-          _is_PHP_seven_zero=
-          if [[ "${_is_PHP_multi_seven_zero}" =~ "7.0" ]] \
-            || [[ "${_is_PHP_FPM_seven_zero}" =~ "7.0" ]] \
-            || [[ "${_is_PHP_CLI_seven_zero}" =~ "7.0" ]]; then
-            _is_PHP_seven_zero=7.0
-            _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_zero}"
-          fi
-
-          ### Add PHP 7.1 if used
-          _is_PHP_multi_seven_one=$(grep "7\.1" /data/disk/*/static/control/multi-fpm.info 2>&1)
-          _is_PHP_FPM_seven_one=$(grep "7\.1" /data/disk/*/static/control/fpm.info 2>&1)
-          _is_PHP_CLI_seven_one=$(grep "7\.1" /data/disk/*/static/control/cli.info 2>&1)
-          _is_PHP_seven_one=
-          if [[ "${_is_PHP_multi_seven_one}" =~ "7.1" ]] \
-            || [[ "${_is_PHP_FPM_seven_one}" =~ "7.1" ]] \
-            || [[ "${_is_PHP_CLI_seven_one}" =~ "7.1" ]]; then
-            _is_PHP_seven_one=7.1
-            _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_one}"
-          fi
-
-          ### Add PHP 7.2 if used
-          _is_PHP_multi_seven_two=$(grep "7\.2" /data/disk/*/static/control/multi-fpm.info 2>&1)
-          _is_PHP_FPM_seven_two=$(grep "7\.2" /data/disk/*/static/control/fpm.info 2>&1)
-          _is_PHP_CLI_seven_two=$(grep "7\.2" /data/disk/*/static/control/cli.info 2>&1)
-          _is_PHP_seven_two=
-          if [[ "${_is_PHP_multi_seven_two}" =~ "7.2" ]] \
-            || [[ "${_is_PHP_FPM_seven_two}" =~ "7.2" ]] \
-            || [[ "${_is_PHP_CLI_seven_two}" =~ "7.2" ]]; then
-            _is_PHP_seven_two=7.2
-            _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_two}"
-          fi
-
-          ### Add PHP 7.3 if used
-          _is_PHP_multi_seven_three=$(grep "7\.3" /data/disk/*/static/control/multi-fpm.info 2>&1)
-          _is_PHP_FPM_seven_three=$(grep "7\.3" /data/disk/*/static/control/fpm.info 2>&1)
-          _is_PHP_CLI_seven_three=$(grep "7\.3" /data/disk/*/static/control/cli.info 2>&1)
-          _is_PHP_seven_three=
-          if [[ "${_is_PHP_multi_seven_three}" =~ "7.3" ]] \
-            || [[ "${_is_PHP_FPM_seven_three}" =~ "7.3" ]] \
-            || [[ "${_is_PHP_CLI_seven_three}" =~ "7.3" ]]; then
-            _is_PHP_seven_three=7.3
-            _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_three}"
-          fi
-
-          ### Add PHP 7.4 if used
-          _is_PHP_multi_seven_four=$(grep "7\.4" /data/disk/*/static/control/multi-fpm.info 2>&1)
-          _is_PHP_FPM_seven_four=$(grep "7\.4" /data/disk/*/static/control/fpm.info 2>&1)
-          _is_PHP_CLI_seven_four=$(grep "7\.4" /data/disk/*/static/control/cli.info 2>&1)
-          _is_PHP_seven_four=
-          if [[ "${_is_PHP_multi_seven_four}" =~ "7.4" ]] \
-            || [[ "${_is_PHP_FPM_seven_four}" =~ "7.4" ]] \
-            || [[ "${_is_PHP_CLI_seven_four}" =~ "7.4" ]]; then
-            _is_PHP_seven_four=7.4
-            _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_four}"
-          fi
-
-          ### Add PHP 8.0 if used
-          _is_PHP_multi_eight_zero=$(grep "8\.0" /data/disk/*/static/control/multi-fpm.info 2>&1)
-          _is_PHP_FPM_eight_zero=$(grep "8\.0" /data/disk/*/static/control/fpm.info 2>&1)
-          _is_PHP_CLI_eight_zero=$(grep "8\.0" /data/disk/*/static/control/cli.info 2>&1)
-          _is_PHP_eight_zero=
-          if [[ "${_is_PHP_multi_eight_zero}" =~ "8.0" ]] \
-            || [[ "${_is_PHP_FPM_eight_zero}" =~ "8.0" ]] \
-            || [[ "${_is_PHP_CLI_eight_zero}" =~ "8.0" ]]; then
-            _is_PHP_eight_zero=8.0
-            _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_zero}"
-          fi
-
-          ### Add PHP 8.1 if used
-          _is_PHP_multi_eight_one=$(grep "8\.1" /data/disk/*/static/control/multi-fpm.info 2>&1)
-          _is_PHP_FPM_eight_one=$(grep "8\.1" /data/disk/*/static/control/fpm.info 2>&1)
-          _is_PHP_CLI_eight_one=$(grep "8\.1" /data/disk/*/static/control/cli.info 2>&1)
-          _is_PHP_eight_one=
-          if [[ "${_is_PHP_multi_eight_one}" =~ "8.1" ]] \
-            || [[ "${_is_PHP_FPM_eight_one}" =~ "8.1" ]] \
-            || [[ "${_is_PHP_CLI_eight_one}" =~ "8.1" ]]; then
-            _is_PHP_eight_one=8.1
-            _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_one}"
-          fi
-
-          ### Add PHP 8.2 if used
-          _is_PHP_multi_eight_two=$(grep "8\.2" /data/disk/*/static/control/multi-fpm.info 2>&1)
-          _is_PHP_FPM_eight_two=$(grep "8\.2" /data/disk/*/static/control/fpm.info 2>&1)
-          _is_PHP_CLI_eight_two=$(grep "8\.2" /data/disk/*/static/control/cli.info 2>&1)
-          _is_PHP_eight_two=
-          if [[ "${_is_PHP_multi_eight_two}" =~ "8.2" ]] \
-            || [[ "${_is_PHP_FPM_eight_two}" =~ "8.2" ]] \
-            || [[ "${_is_PHP_CLI_eight_two}" =~ "8.2" ]]; then
-            _is_PHP_eight_two=8.2
-            _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_two}"
-          fi
-
-          ### Overwrite _PHP_MULTI_INSTALL with the list of used PHP versions
-          _PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL}"
-
-          if [ -z "${_PHP_MULTI_INSTALL}" ]; then
-            ### Use default mini-legacy list if empty
-            _PHP_MULTI_INSTALL="8.1 7.4 5.6"
-          else
-            ### Sort and remove duplicates from _PHP_MULTI_INSTALL
-            php_multi_uniq
-          fi
-          ### Remove previous _PHP_MULTI_INSTALL in /root/.barracuda.cnf
-          _PHP_MULTI_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
-          if [[ "${_PHP_MULTI_TEST}" =~ "_PHP_MULTI_INSTALL" ]]; then
-            sed -i "s/^_PHP_MULTI_INSTALL.*//g" ${barCnf}
-            wait
-            sed -i "/^$/d" ${barCnf}
-            wait
-          fi
-          ### Add optimized _PHP_MULTI_INSTALL in /root/.barracuda.cnf
-          echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
-          touch /root/.sorted.multi.php.cnf
-          rm -f /root/.updated.multi.php.cnf
-          rm -f /root/.fixed.multi.php.cnf
-        fi
-      fi
-    fi
+    php_legacy_versions_cleanup_cnf
+    php_if_versions_cleanup_cnf
 
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION ${barCnf} 2>&1)
     if [[ ! "${_PHP_FPM_VERSION_TEST}" =~ "_PHP_FPM_VERSION" ]]; then
@@ -1797,83 +2004,6 @@ barracuda_cnf() {
       echo "_TOMCAT_TO_JETTY=YES" >> ${barCnf}
     fi
 
-    ###
-    ### config cleanup start
-    ###
-    _DB_ENGINE_TEST=$(grep _DB_ENGINE ${barCnf} 2>&1)
-    if [[ "${_DB_ENGINE_TEST}" =~ "_DB_ENGINE" ]]; then
-      sed -i "s/^_DB_ENGINE.*//g" ${barCnf}
-      wait
-    fi
-    _INNODB_LOG_FILE_SIZE_TEST=$(grep _INNODB_LOG_FILE_SIZE ${barCnf} 2>&1)
-    if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "_INNODB_LOG_FILE_SIZE" ]]; then
-      sed -i "s/^_INNODB_LOG_FILE_SIZE.*//g" ${barCnf}
-      wait
-    fi
-    _USE_STOCK_TEST=$(grep _USE_STOCK ${barCnf} 2>&1)
-    if [[ "${_USE_STOCK_TEST}" =~ "_USE_STOCK" ]]; then
-      sed -i "s/^_USE_STOCK.*//g" ${barCnf}
-      wait
-    fi
-    _HTTP_WILDCARD_TEST=$(grep _HTTP_WILDCARD ${barCnf} 2>&1)
-    if [[ "${_HTTP_WILDCARD_TEST}" =~ "_HTTP_WILDCARD" ]]; then
-      sed -i "s/^_HTTP_WILDCARD.*//g" ${barCnf}
-      wait
-    fi
-    _PHP_MODERN_ONLY_TEST=$(grep _PHP_MODERN_ONLY ${barCnf} 2>&1)
-    if [[ "${_PHP_MODERN_ONLY_TEST}" =~ "_PHP_MODERN_ONLY" ]]; then
-      sed -i "s/^_PHP_MODERN_ONLY.*//g" ${barCnf}
-      wait
-    fi
-    _USE_SPEED_BOOSTER_TEST=$(grep _USE_SPEED_BOOSTER ${barCnf} 2>&1)
-    if [[ "${_USE_SPEED_BOOSTER_TEST}" =~ "_USE_SPEED_BOOSTER" ]]; then
-      sed -i "s/^_USE_SPEED_BOOSTER.*//g" ${barCnf}
-      wait
-    fi
-    _PHP_INSTALL_NEW_TEST=$(grep _PHP_INSTALL_NEW ${barCnf} 2>&1)
-    if [[ "${_PHP_INSTALL_NEW_TEST}" =~ "_PHP_INSTALL_NEW" ]]; then
-      sed -i "s/^_PHP_INSTALL_NEW.*//g" ${barCnf}
-      wait
-    fi
-    _CUSTOM_CONFIG_PHP_TEST=$(grep _CUSTOM_CONFIG_PHP ${barCnf} 2>&1)
-    if [[ "${_CUSTOM_CONFIG_PHP_TEST}" =~ "_CUSTOM_CONFIG_PHP" ]]; then
-      sed -i "s/^_CUSTOM_CONFIG_PHP.*//g" ${barCnf}
-      wait
-    fi
-    _LOAD_LIMIT_ONE_TEST=$(grep _LOAD_LIMIT_ONE ${barCnf} 2>&1)
-    if [[ "${_LOAD_LIMIT_ONE_TEST}" =~ "_LOAD_LIMIT_ONE" ]]; then
-      sed -i "s/^_LOAD_LIMIT_ONE.*//g" ${barCnf}
-      wait
-    fi
-    _LOAD_LIMIT_TWO_TEST=$(grep _LOAD_LIMIT_TWO ${barCnf} 2>&1)
-    if [[ "${_LOAD_LIMIT_TWO_TEST}" =~ "_LOAD_LIMIT_TWO" ]]; then
-      sed -i "s/^_LOAD_LIMIT_TWO.*//g" ${barCnf}
-      wait
-    fi
-    _USE_MEMCACHED_TEST=$(grep _USE_MEMCACHED ${barCnf} 2>&1)
-    if [[ "${_USE_MEMCACHED_TEST}" =~ "_USE_MEMCACHED" ]]; then
-      sed -i "s/^_USE_MEMCACHED.*//g" ${barCnf}
-      wait
-    fi
-    _PHP_ZEND_OPCACHE_TEST=$(grep _PHP_ZEND_OPCACHE ${barCnf} 2>&1)
-    if [[ "${_PHP_ZEND_OPCACHE_TEST}" =~ "_PHP_ZEND_OPCACHE" ]]; then
-      sed -i "s/^_PHP_ZEND_OPCACHE.*//g" ${barCnf}
-      wait
-    fi
-    _BUILD_FROM_SRC_TEST=$(grep _BUILD_FROM_SRC ${barCnf} 2>&1)
-    if [[ "${_BUILD_FROM_SRC_TEST}" =~ "_BUILD_FROM_SRC" ]]; then
-      sed -i "s/^_BUILD_FROM_SRC.*//g" ${barCnf}
-      wait
-    fi
-    _SSL_FROM_SOURCES_TEST=$(grep _SSL_FROM_SOURCES ${barCnf} 2>&1)
-    if [[ "${_SSL_FROM_SOURCES_TEST}" =~ "_SSL_FROM_SOURCES" ]]; then
-      sed -i "s/^_SSL_FROM_SOURCES.*//g" ${barCnf}
-      wait
-    fi
-    ###
-    ### config cleanup end
-    ###
-
     sleep 1
     _CHECK_HOST=$(uname -n 2>&1)
     ### Force HTTP/2 or SPDY plus PFS on supported systems
@@ -2073,112 +2203,6 @@ barracuda_cnf() {
         fi
       fi
     fi
-
-    ###
-    ### config cleanup start
-    ###
-    _NGX_FORCE_REINSTALL_TEST=$(grep _NGX_FORCE_REINSTALL ${barCnf} 2>&1)
-    if [[ "${_NGX_FORCE_REINSTALL_TEST}" =~ "_NGX_FORCE_REINSTALL" ]]; then
-      sed -i "s/^_NGX_FORCE_REINSTALL.*//g" ${barCnf}
-      wait
-    fi
-    _PHP_FORCE_REINSTALL_TEST=$(grep _PHP_FORCE_REINSTALL ${barCnf} 2>&1)
-    if [[ "${_PHP_FORCE_REINSTALL_TEST}" =~ "_PHP_FORCE_REINSTALL" ]]; then
-      sed -i "s/^_PHP_FORCE_REINSTALL.*//g" ${barCnf}
-      wait
-    fi
-    _SQL_FORCE_REINSTALL_TEST=$(grep _SQL_FORCE_REINSTALL ${barCnf} 2>&1)
-    if [[ "${_SQL_FORCE_REINSTALL_TEST}" =~ "_SQL_FORCE_REINSTALL" ]]; then
-      sed -i "s/^_SQL_FORCE_REINSTALL.*//g" ${barCnf}
-      wait
-    fi
-    _SSL_FORCE_REINSTALL_TEST=$(grep _SSL_FORCE_REINSTALL ${barCnf} 2>&1)
-    if [[ "${_SSL_FORCE_REINSTALL_TEST}" =~ "_SSL_FORCE_REINSTALL" ]]; then
-      sed -i "s/^_SSL_FORCE_REINSTALL.*//g" ${barCnf}
-      wait
-    fi
-    _SSH_FORCE_REINSTALL_TEST=$(grep _SSH_FORCE_REINSTALL ${barCnf} 2>&1)
-    if [[ "${_SSH_FORCE_REINSTALL_TEST}" =~ "_SSH_FORCE_REINSTALL" ]]; then
-      sed -i "s/^_SSH_FORCE_REINSTALL.*//g" ${barCnf}
-      wait
-    fi
-    _GIT_FORCE_REINSTALL_TEST=$(grep _GIT_FORCE_REINSTALL ${barCnf} 2>&1)
-    if [[ "${_GIT_FORCE_REINSTALL_TEST}" =~ "_GIT_FORCE_REINSTALL" ]]; then
-      sed -i "s/^_GIT_FORCE_REINSTALL.*//g" ${barCnf}
-      wait
-    fi
-    _FULL_FORCE_REINSTALL_TEST=$(grep _FULL_FORCE_REINSTALL ${barCnf} 2>&1)
-    if [[ "${_FULL_FORCE_REINSTALL_TEST}" =~ "_FULL_FORCE_REINSTALL" ]]; then
-      sed -i "s/^_FULL_FORCE_REINSTALL.*//g" ${barCnf}
-      wait
-    fi
-    _TOMCAT_TO_JETTY_TEST=$(grep _TOMCAT_TO_JETTY ${barCnf} 2>&1)
-    if [[ "${_TOMCAT_TO_JETTY_TEST}" =~ "_TOMCAT_TO_JETTY" ]]; then
-      if [ ! -e "/etc/init.d/tomcat" ]; then
-        sed -i "s/^_TOMCAT_TO_JETTY.*//g" ${barCnf}
-        wait
-      fi
-    fi
-    _BULLSEYE_TO_CHIMAERA_TEST=$(grep _BULLSEYE_TO_CHIMAERA ${barCnf} 2>&1)
-    if [[ "${_BULLSEYE_TO_CHIMAERA_TEST}" =~ "_BULLSEYE_TO_CHIMAERA" ]]; then
-      sed -i "s/^_BULLSEYE_TO_CHIMAERA.*//g" ${barCnf}
-      wait
-    fi
-    _BEOWULF_TO_CHIMAERA_TEST=$(grep _BEOWULF_TO_CHIMAERA ${barCnf} 2>&1)
-    if [[ "${_BEOWULF_TO_CHIMAERA_TEST}" =~ "_BEOWULF_TO_CHIMAERA" ]]; then
-      sed -i "s/^_BEOWULF_TO_CHIMAERA.*//g" ${barCnf}
-      wait
-    fi
-    _BUSTER_TO_BEOWULF_TEST=$(grep _BUSTER_TO_BEOWULF ${barCnf} 2>&1)
-    if [[ "${_BUSTER_TO_BEOWULF_TEST}" =~ "_BUSTER_TO_BEOWULF" ]]; then
-      sed -i "s/^_BUSTER_TO_BEOWULF.*//g" ${barCnf}
-      wait
-    fi
-    _STRETCH_TO_BEOWULF_TEST=$(grep _STRETCH_TO_BEOWULF ${barCnf} 2>&1)
-    if [[ "${_STRETCH_TO_BEOWULF_TEST}" =~ "_STRETCH_TO_BEOWULF" ]]; then
-      sed -i "s/^_STRETCH_TO_BEOWULF.*//g" ${barCnf}
-      wait
-    fi
-    _JESSIE_TO_BEOWULF_TEST=$(grep _JESSIE_TO_BEOWULF ${barCnf} 2>&1)
-    if [[ "${_JESSIE_TO_BEOWULF_TEST}" =~ "_JESSIE_TO_BEOWULF" ]]; then
-      sed -i "s/^_JESSIE_TO_BEOWULF.*//g" ${barCnf}
-      wait
-    fi
-    _BUSTER_TO_BULLSEYE_TEST=$(grep _BUSTER_TO_BULLSEYE ${barCnf} 2>&1)
-    if [[ "${_BUSTER_TO_BULLSEYE_TEST}" =~ "_BUSTER_TO_BULLSEYE" ]]; then
-      sed -i "s/^_BUSTER_TO_BULLSEYE.*//g" ${barCnf}
-      wait
-    fi
-    _STRETCH_TO_BUSTER_TEST=$(grep _STRETCH_TO_BUSTER ${barCnf} 2>&1)
-    if [[ "${_STRETCH_TO_BUSTER_TEST}" =~ "_STRETCH_TO_BUSTER" ]]; then
-      sed -i "s/^_STRETCH_TO_BUSTER.*//g" ${barCnf}
-      wait
-    fi
-    _JESSIE_TO_STRETCH_TEST=$(grep _JESSIE_TO_STRETCH ${barCnf} 2>&1)
-    if [[ "${_JESSIE_TO_STRETCH_TEST}" =~ "_JESSIE_TO_STRETCH" ]]; then
-      sed -i "s/^_JESSIE_TO_STRETCH.*//g" ${barCnf}
-      wait
-    fi
-    _WHEEZY_TO_JESSIE_TEST=$(grep _WHEEZY_TO_JESSIE ${barCnf} 2>&1)
-    if [[ "${_WHEEZY_TO_JESSIE_TEST}" =~ "_WHEEZY_TO_JESSIE" ]]; then
-      sed -i "s/^_WHEEZY_TO_JESSIE.*//g" ${barCnf}
-      wait
-    fi
-    _SQUEEZE_TO_WHEEZY_TEST=$(grep _SQUEEZE_TO_WHEEZY ${barCnf} 2>&1)
-    if [[ "${_SQUEEZE_TO_WHEEZY_TEST}" =~ "_SQUEEZE_TO_WHEEZY" ]]; then
-      sed -i "s/^_SQUEEZE_TO_WHEEZY.*//g" ${barCnf}
-      wait
-    fi
-    _LENNY_TO_SQUEEZE_TEST=$(grep _LENNY_TO_SQUEEZE ${barCnf} 2>&1)
-    if [[ "${_LENNY_TO_SQUEEZE_TEST}" =~ "_LENNY_TO_SQUEEZE" ]]; then
-      sed -i "s/^_LENNY_TO_SQUEEZE.*//g" ${barCnf}
-      wait
-    fi
-    sed -i "/^$/d" ${barCnf}
-    wait
-    ###
-    ### config cleanup end
-    ###
 
     if [ "${_STATUS}" = "INIT" ]; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
@@ -4004,6 +4028,7 @@ finale() {
     mrun "sleep 8"
   fi
   msg "Final post-${_L_ST} cleaning, one moment..."
+  barracuda_cnf_cleanup
   if [ -e "/var/log/barracuda_log.txt" ]; then
     _T_SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_T_SERIES_TEST}" =~ "BOA-4." ]] \
@@ -5127,6 +5152,7 @@ if_major_os_upgrade() {
     msg "STEP: Once the system is up, run 'barracuda up-head' command again"
     echo " "
     msg "Bye"
+    barracuda_cnf_cleanup
     clean_pid_exit
   fi
 }
