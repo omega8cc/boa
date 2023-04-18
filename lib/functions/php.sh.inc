@@ -2633,6 +2633,14 @@ php_check_if_rebuild() {
     msg "PROC: php_check_if_rebuild"
   fi
   check_php_cli
+  isSeg=
+  isSeg=$(php -v | grep cli 2>&1)
+  if [[ ! "${isSeg}" =~ "cli" ]] || [ -z "${isSeg}" ]; then
+    msg "INFO: PHP rebuild required to fix broken libs..."
+    _PHP_FORCE_REINSTALL=YES
+    php_upgrade_all
+    _PHP_FORCE_REINSTALL=NO
+  fi
   isOnig=
   isOnig=$(php -i | grep libonig 2>&1)
   if [[ "${isOnig}" =~ "libonig.so" ]]; then
