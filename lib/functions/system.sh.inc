@@ -4624,11 +4624,17 @@ if_major_os_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: if_major_os_upgrade"
   fi
-  if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
-    rm -f /root/.run_post_major_os_upgrade.info
-  fi
   define_loc_osr
   if [ ! -z "${_MSG_LOC}" ]; then
+    if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
+      rm -f /root/.run_post_major_os_upgrade.info
+    fi
+    if [ -e "/root/.completed_post_major_os_upgrade.info" ]; then
+      rm -f /root/.completed_post_major_os_upgrade.info
+    fi
+    if [ -e "/root/.big_hop_on_major_os_upgrade.info" ]; then
+      rm -f /root/.big_hop_on_major_os_upgrade.info
+    fi
     msg "WARN: ${_MSG_LOC} upgrade will start in 60 seconds..."
     msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
     if [ ! -e "/root/.upstart.cnf" ]; then
@@ -4918,7 +4924,7 @@ if_major_os_upgrade() {
     else
       mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
     fi
-    touch /root/.${_LOC_OSR}_to_${_NEW_OSR}_os_upgrade.info
+    touch /root/.${_LOC_OSR}_to_${_NEW_OSR}_major_os_upgrade.info
     ###
     ### Re-install key services early to limit downtime and SSH keys confusion.
     _PURGE_MODE=OFF
@@ -4939,7 +4945,6 @@ if_major_os_upgrade() {
     else
       touch /root/.big_hop_on_major_os_upgrade.info
     fi
-    echo ${_LOC_OSR} > /root/.old_os_before_upgrade.info
     # if [ -e "/root/.big_hop_on_major_os_upgrade.info" ]; then
     #   _PHP_FORCE_REINSTALL=YES
     #   _SQL_FORCE_REINSTALL=YES
