@@ -2153,10 +2153,10 @@ check_php_rebuild() {
       if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
         || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
         if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-          msg "INFO: PHP ${_PHP_ITD} rebuild on next upgrade"
+          msg "INFO: PHP ${_PHP_ITD} forced rebuild on next barracuda up-head"
           _PHP_FORCE_REINSTALL=NO
         else
-          msg "INFO: PHP ${_PHP_ITD} rebuild will happen now..."
+          msg "INFO: PHP ${_PHP_ITD} forced rebuild will happen now..."
           install_php_multi "$1"
         fi
       fi
@@ -2168,9 +2168,9 @@ check_php_rebuild() {
         msg "INFO: Installed PHP version ${_PHP_ITD}, upgrade required"
       fi
       if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-        msg "INFO: PHP ${_PHP_ITD} rebuild on next upgrade"
+        msg "INFO: PHP ${_PHP_ITD} upgrade on next barracuda up-head"
       else
-        msg "INFO: PHP ${_PHP_ITD} rebuild will happen now..."
+        msg "INFO: PHP ${_PHP_ITD} upgrade will happen now..."
         install_php_multi "$1"
       fi
     fi
