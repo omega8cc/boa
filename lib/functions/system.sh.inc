@@ -4629,6 +4629,17 @@ if_major_os_upgrade() {
   fi
   define_loc_osr
   if [ ! -z "${_MSG_LOC}" ]; then
+    if [ ! -e "/usr/local/lib/icu/73.1" ] \
+      && [ "${_LOC_OSR}" != "jessie" ]; then
+      echo
+      msg "OOPS: Please run normal 'barracuda up-head' upgrade"
+      msg "OOPS: before trying to run major OS upgrade"
+      echo
+      mrun "sleep 3"
+      echo "Bye"
+      barracuda_cnf_cleanup
+      clean_pid_exit
+    fi
     _AUTOPILOT=NO
     msg "MODE: ${_MSG_LOC} upgrade"
     echo
