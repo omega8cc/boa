@@ -528,8 +528,8 @@ virt_detection() {
       msg "VIRT: This system is supported: ${_VIRT_IS}"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         echo
-        msg "HINT: Run tail -f ${_LOG}"
-        msg "HINT: in another terminal window to watch details"
+        msg "HINT: Command to run in another terminal window to watch details"
+        msg "CMND: tail -f ${_LOG}"
         echo
       fi
     else
