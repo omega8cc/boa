@@ -5615,7 +5615,7 @@ php_libs_fix() {
           ln -sf /usr/lib/x86_64-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
           ln -sf /usr/lib/x86_64-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
           ln -sf /usr/lib/x86_64-linux-gnu/libImath-2_2.so.23 /usr/lib/libImath-2_2.so.12
-          ln -sf /usr/lib/x86_64-linux-gnu/llibIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
+          ln -sf /usr/lib/x86_64-linux-gnu/libIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
         fi
         if [ ! -e "/usr/include/curl/curl.h" ] \
           && [ -e "/usr/include/x86_64-linux-gnu/curl/curl.h" ]; then
