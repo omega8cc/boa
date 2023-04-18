@@ -2635,8 +2635,8 @@ php_check_if_rebuild() {
   check_php_cli
   isOnig=
   isOnig=$(php -i | grep libonig 2>&1)
-  if [[  "${isOnig}" =~ "libonig.so" ]]; then
-    msg "INFO: PHP rebuild required to Fix libonig..."
+  if [[ "${isOnig}" =~ "libonig.so" ]]; then
+    msg "INFO: PHP rebuild required to fix libonig..."
     _PHP_FORCE_REINSTALL=YES
     php_upgrade_all
     _PHP_FORCE_REINSTALL=NO
