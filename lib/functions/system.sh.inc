@@ -5611,12 +5611,6 @@ php_libs_fix() {
         ln -sf /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
         ln -sf /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
         ln -sf /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so
-        if [ -e "/usr/lib/x86_64-linux-gnu/libHalf.so.23" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
-          ln -sf /usr/lib/x86_64-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
-          ln -sf /usr/lib/x86_64-linux-gnu/libImath-2_2.so.23 /usr/lib/libImath-2_2.so.12
-          ln -sf /usr/lib/x86_64-linux-gnu/libIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
-        fi
         if [ ! -e "/usr/include/curl/curl.h" ] \
           && [ -e "/usr/include/x86_64-linux-gnu/curl/curl.h" ]; then
           ln -s /usr/include/x86_64-linux-gnu/curl /usr/include/curl
@@ -5664,12 +5658,6 @@ php_libs_fix() {
         ln -sf /usr/lib/i386-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
         ln -sf /usr/lib/i386-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
         ln -sf /usr/lib/i386-linux-gnu/libonig.so /usr/lib/libonig.so
-        if [ -e "/usr/lib/i386-linux-gnu/libHalf.so.23" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
-          ln -sf /usr/lib/i386-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
-          ln -sf /usr/lib/i386-linux-gnu/libImath-2_2.so.23 /usr/lib/libImath-2_2.so.12
-          ln -sf /usr/lib/i386-linux-gnu/libIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
-        fi
         if [ ! -e "/usr/include/curl/curl.h" ] \
           && [ -e "/usr/include/i386-linux-gnu/curl/curl.h" ]; then
           ln -s /usr/include/i386-linux-gnu/curl /usr/include/curl
