@@ -2633,6 +2633,14 @@ php_check_if_rebuild() {
     msg "PROC: php_check_if_rebuild"
   fi
   check_php_cli
+  isOnig=
+  isOnig=$(php -i | grep libonig 2>&1)
+  if [[  "${isOnig}" =~ "libonig.so" ]]; then
+    msg "INFO: PHP rebuild required to Fix libonig..."
+    _PHP_FORCE_REINSTALL=YES
+    php_upgrade_all
+    _PHP_FORCE_REINSTALL=NO
+  fi
   isIcu=
   isIcu=$(php -i | grep libicuio 2>&1)
   if [[ "${isIcu}" =~ "libicuio" ]] \
