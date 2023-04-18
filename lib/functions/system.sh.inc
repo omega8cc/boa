@@ -4632,6 +4632,7 @@ if_post_major_os_upgrade() {
 
     if [ -e "/root/.big_hop_on_major_os_upgrade.info" ]; then
       msg "INFO: Time for re-installing services built from sources..."
+      rm -f /var/xdrago/log/*.log
       _PURGE_MODE=OFF
       _NGX_FORCE_REINSTALL=YES
       _PHP_FORCE_REINSTALL=YES
@@ -5002,6 +5003,7 @@ if_major_os_upgrade() {
     touch /root/.${_LOC_OSR}_to_${_NEW_OSR}_major_os_upgrade.info
     ###
     ### Re-install key services early to limit downtime and SSH keys confusion.
+    rm -f /var/xdrago/log/*.log
     _PURGE_MODE=OFF
     _NGX_FORCE_REINSTALL=YES
     _SSL_FORCE_REINSTALL=YES
