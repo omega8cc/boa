@@ -1667,6 +1667,7 @@ install_php_multi() {
     _T_PHP_VRN="${_PHP_VERSION}"
     _T_PHP_PTH="/opt/php$1/bin"
     _T_PHP_CFG="/opt/php$1/bin/php-config"
+    _THIS_PHP_EXT_DIR=
     if [ "$1" = "56" ]; then
       _THIS_PHP_EXT_DIR="/opt/php56/lib/php/extensions/no-debug-non-zts-${_PHP56_API}"
     elif [ "$1" = "70" ]; then
@@ -1686,7 +1687,13 @@ install_php_multi() {
     elif [ "$1" = "82" ]; then
       _THIS_PHP_EXT_DIR="/opt/php82/lib/php/extensions/no-debug-non-zts-${_PHP82_API}"
     fi
-    install_php_extensions "$1"
+    if [ ! -z "${_THIS_PHP_EXT_DIR}" ]; then
+      install_php_extensions "$1"
+    else
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "WARN: _THIS_PHP_EXT_DIR for PHP $1 empty..."
+      fi
+    fi
     if [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ]; then
