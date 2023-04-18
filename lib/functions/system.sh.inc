@@ -3125,12 +3125,14 @@ install_magick_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: install_magick_src"
   fi
+  _MAGICK_SRC_BUILD_CTRL="${pthLog}/ImageMagick-src-build-${_IMAGE_MAGICK_VRN}.log"
   _MAGICK_INSTALL_REQUIRED=NO
   _MAGICK_ITD=$(convert --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f3 \
     | awk '{ print $1}' 2>&1)
-  if [ "${_MAGICK_ITD}" != "${_IMAGE_MAGICK_VRN}" ]; then
+  if [ "${_MAGICK_ITD}" != "${_IMAGE_MAGICK_VRN}" ] \
+    || [ ! -e "${_MAGICK_SRC_BUILD_CTRL}" ]; then
     if [ "${_OSR}" = "none" ]; then
       _MAGICK_INSTALL_REQUIRED=NO
     else
@@ -3164,6 +3166,7 @@ install_magick_src() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "HINT: Please modify /usr/etc/ImageMagick-7/policy.xml file, if needed"
     fi
+    touch ${_MAGICK_SRC_BUILD_CTRL}
   fi
 }
 
