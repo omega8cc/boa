@@ -5647,6 +5647,9 @@ php_libs_fix() {
         ln -sf /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
         ln -sf /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
         ln -sf /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so
+        ln -sf /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so.4
+        ln -sf /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so
+        ln -sf /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
         if [ -e "/usr/lib/x86_64-linux-gnu/libHalf.so.23" ]; then
           ln -sf /usr/lib/x86_64-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
           ln -sf /usr/lib/x86_64-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
@@ -5704,6 +5707,9 @@ php_libs_fix() {
         ln -sf /usr/lib/i386-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
         ln -sf /usr/lib/i386-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
         ln -sf /usr/lib/i386-linux-gnu/libonig.so /usr/lib/libonig.so
+        ln -sf /usr/lib/i386-linux-gnu/libonig.so /usr/lib/libonig.so.4
+        ln -sf /usr/lib/i386-linux-gnu/libsodium.so /usr/lib/libsodium.so
+        ln -sf /usr/lib/i386-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
         if [ -e "/usr/lib/i386-linux-gnu/libHalf.so.23" ]; then
           ln -sf /usr/lib/i386-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
           ln -sf /usr/lib/i386-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
