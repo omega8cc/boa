@@ -2277,7 +2277,9 @@ check_php_broken_segfault() {
   fi
   isSegft=
   isSegft=$(/opt/php$1/bin/php -v | grep cli 2>&1)
-  if [[ ! "${isSegft}" =~ "cli" ]] || [ -z "${isSegft}" ]; then
+  if [[ ! "${isSegft}" =~ "cli" ]] \
+    || [ -z "${isSegft}" ] \
+    || [[ "${isSegft}" =~ "has different size" ]]; then
     msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix broken build..."
     install_php_multi "$1"
     _PHP_ALREADY_REBUILT=$1
