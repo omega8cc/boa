@@ -52,7 +52,7 @@ os_detection_minimal() {
 }
 os_detection_minimal
 
-_X_SE="414prodT59"
+_X_SE="414prodT60"
 _CHECK_HOST=$(uname -n 2>&1)
 usrGroup=users
 _WEBG=www-data
