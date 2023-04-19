@@ -4712,8 +4712,9 @@ if_major_os_upgrade() {
     msg "WAIT: ...it will start in 30s..."
     mrun "sleep 15"
     msg "WAIT: ...it will start in 15s..."
-    msg "ATTN: You can still hit ctrl-c to stop if you wish"
-    mrun "sleep 15"
+    mrun "sleep 5"
+    msg "ATTN: Ten seconds left to hit ctrl-c to stop..."
+    mrun "sleep 10"
     msg "INFO: ${_MSG_LOC} upgrade in progress..."
     echo
     msg "HINT: Command to run in another terminal window to watch details"
