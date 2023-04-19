@@ -4388,7 +4388,7 @@ basic_packages_install_on_init() {
   apt-get remove --purge unscd -y &> /dev/null
   apt-get remove --purge dbus -y &> /dev/null
   if [ -e "/usr/share/dbus-1" ]; then
-    mv -f /usr/share/dbus-1 /var/backups/
+    rm -f /usr/share/dbus-1/*/*freedesktop*
   fi
   userdel -r debian &> /dev/null
   usermod -aG users _apt &> /dev/null
@@ -4757,7 +4757,7 @@ if_major_os_upgrade() {
     mrun "${_APT_UPDATE} -qq" &> /dev/null
     mrun "apt-get remove --purge dbus  -y -qq" 2> /dev/null
     if [ -e "/usr/share/dbus-1" ]; then
-      mv -f /usr/share/dbus-1 /var/backups/
+      rm -f /usr/share/dbus-1/*/*freedesktop*
     fi
     mrun "apt-get remove collectd      -y -qq" 2> /dev/null
     mrun "apt-get remove libc-client2007b-dev -y -qq" 2> /dev/null
@@ -4973,6 +4973,12 @@ if_major_os_upgrade() {
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     ###
+    ### Make sure that org.freedesktop.systemd1 was not atempted by dbus.
+    mrun "apt-get remove --purge dbus -y -qq" 2> /dev/null
+    if [ -e "/usr/share/dbus-1" ]; then
+      rm -f /usr/share/dbus-1/*/*freedesktop*
+    fi
+    ###
     ### Make sure that sysvinit-core is installed.
     echo "sysvinit-core install" | dpkg --set-selections 2> /dev/null
     echo "sysvinit-utils install" | dpkg --set-selections 2> /dev/null
@@ -5015,12 +5021,6 @@ if_major_os_upgrade() {
       msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
     else
       mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
-    fi
-    ###
-    ### Make sure that useless dbus-daemon was not re-installed.
-    mrun "apt-get remove --purge dbus -y -qq" 2> /dev/null
-    if [ -e "/usr/share/dbus-1" ]; then
-      mv -f /usr/share/dbus-1 /var/backups/
     fi
     ###
     ### Add info file to keep major OS upgrades track.
