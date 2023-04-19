@@ -568,6 +568,11 @@ if_firewall_update() {
         echo "root      hard    nofile      1048576" >> /etc/security/limits.conf
         echo "root      soft    nofile      1048576" >> /etc/security/limits.conf
       fi
+      _IF_NF=$(grep '65556' /etc/security/limits.conf 2>&1)
+      if [ -z "${_IF_NF}" ]; then
+        echo "*         hard    nproc       65556"   >> /etc/security/limits.conf
+        echo "*         soft    nproc       65556"   >> /etc/security/limits.conf
+      fi
     fi
     sysctl -p /etc/sysctl.conf
     cd

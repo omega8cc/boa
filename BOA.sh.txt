@@ -2242,6 +2242,11 @@ sysctl_update() {
         echo "root      hard    nofile      1048576" >> /etc/security/limits.conf
         echo "root      soft    nofile      1048576" >> /etc/security/limits.conf
       fi
+      _IF_NF=$(grep '65556' /etc/security/limits.conf 2>&1)
+      if [ -z "${_IF_NF}" ]; then
+        echo "*         hard    nproc       65556"   >> /etc/security/limits.conf
+        echo "*         soft    nproc       65556"   >> /etc/security/limits.conf
+      fi
     fi
     if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ]; then
       #echo never > /sys/kernel/mm/transparent_hugepage/enabled
