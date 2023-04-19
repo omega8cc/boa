@@ -2005,6 +2005,9 @@ setup() {
     apt-get install hostname -y &> /dev/null
     apt-get remove --purge unscd -y &> /dev/null
     apt-get remove --purge dbus -y &> /dev/null
+    if [ -e "/usr/share/dbus-1" ]; then
+      mv -f /usr/share/dbus-1 /var/backups/
+    fi
     userdel -r debian &> /dev/null
     sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc &> /dev/null
   fi

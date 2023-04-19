@@ -4387,6 +4387,9 @@ basic_packages_install_on_init() {
   ${_APT_UPDATE} -qq &> /dev/null
   apt-get remove --purge unscd -y &> /dev/null
   apt-get remove --purge dbus -y &> /dev/null
+  if [ -e "/usr/share/dbus-1" ]; then
+    mv -f /usr/share/dbus-1 /var/backups/
+  fi
   userdel -r debian &> /dev/null
   usermod -aG users _apt &> /dev/null
   usermod -aG users aegir &> /dev/null
@@ -4752,6 +4755,10 @@ if_major_os_upgrade() {
       kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
     fi
     mrun "${_APT_UPDATE} -qq" &> /dev/null
+    mrun "apt-get remove --purge dbus  -y -qq" 2> /dev/null
+    if [ -e "/usr/share/dbus-1" ]; then
+      mv -f /usr/share/dbus-1 /var/backups/
+    fi
     mrun "apt-get remove collectd      -y -qq" 2> /dev/null
     mrun "apt-get remove libc-client2007b-dev -y -qq" 2> /dev/null
     mrun "apt-get remove nginx-extras  -y -qq" 2> /dev/null
@@ -5009,6 +5016,14 @@ if_major_os_upgrade() {
     else
       mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
     fi
+    ###
+    ### Make sure that useless dbus-daemon was not re-installed.
+    mrun "apt-get remove --purge dbus -y -qq" 2> /dev/null
+    if [ -e "/usr/share/dbus-1" ]; then
+      mv -f /usr/share/dbus-1 /var/backups/
+    fi
+    ###
+    ### Add info file to keep major OS upgrades track.
     touch /root/.${_LOC_OSR}_to_${_NEW_OSR}_major_os_upgrade.info
     ###
     ### Re-install key services early to limit downtime and SSH keys confusion.
