@@ -4700,9 +4700,7 @@ if_major_os_upgrade() {
     else
       echo
       msg "FINE: Please try again later once you are ready"
-      echo
       mrun "sleep 3"
-      echo "Bye"
       clean_pid_exit
     fi
     echo
