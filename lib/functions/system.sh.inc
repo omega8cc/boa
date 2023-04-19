@@ -3287,10 +3287,12 @@ ssl_install_src() {
     _SSL_INSTALL_REQUIRED=YES
   fi
   if [ "${_STATUS}" = "UPGRADE" ]; then
-    _PHP_COMPATIBILITY_TEST=$(php -i | grep "SSL Version" 2>&1)
-    if [[ ! "${_PHP_COMPATIBILITY_TEST}" =~ "${_OPENSSL_NEW_VRN}" ]]; then
-      msg "INFO: PHP ${_PHP_COMPATIBILITY_TEST}, rebuild forced later"
-      _PHP_FORCE_REINSTALL=YES
+    if [ "${_RUNNING_MAJOR_OS_UPGRADE}" = "NO" ]; then
+      _PHP_COMPATIBILITY_TEST=$(php -i | grep "SSL Version" 2>&1)
+      if [[ ! "${_PHP_COMPATIBILITY_TEST}" =~ "${_OPENSSL_NEW_VRN}" ]]; then
+        msg "INFO: PHP ${_PHP_COMPATIBILITY_TEST}, rebuild forced later"
+        _PHP_FORCE_REINSTALL=YES
+      fi
     fi
     _SPDY_COMPATIBILITY_TEST=$(service nginx configtest 2>&1)
     if [[ "${_SPDY_COMPATIBILITY_TEST}" =~ "without OpenSSL ALPN or NPN" ]]; then
@@ -4665,6 +4667,7 @@ if_major_os_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: if_major_os_upgrade"
   fi
+  _RUNNING_MAJOR_OS_UPGRADE=NO
   define_loc_osr
   if [ ! -z "${_MSG_LOC}" ]; then
     if [ ! -e "/usr/local/lib/icu/73.1" ] \
@@ -4679,6 +4682,7 @@ if_major_os_upgrade() {
       clean_pid_exit
     fi
     _AUTOPILOT=NO
+    _RUNNING_MAJOR_OS_UPGRADE=YES
     msg "MODE: ${_MSG_LOC} upgrade"
     echo
     msg "RLLY: Have you created a Fresh Backup Snapshot of this VM?"
