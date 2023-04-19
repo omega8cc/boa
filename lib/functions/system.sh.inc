@@ -4979,12 +4979,15 @@ if_major_os_upgrade() {
       rm -f /usr/share/dbus-1/*/*freedesktop*
     fi
     ###
-    ### Make sure that sysvinit-core is installed.
-    echo "sysvinit-core install" | dpkg --set-selections 2> /dev/null
-    echo "sysvinit-utils install" | dpkg --set-selections 2> /dev/null
-    mrun "${_INITINS} sysvinit-core" 2> /dev/null
-    mrun "${_INITINS} sysvinit-utils" 2> /dev/null
+    ### Fix any broken packages.
     mrun "apt --fix-broken install -y" 2> /dev/null
+    ###
+    ### Make sure that sysvinit-core is still installed and systemd removed.
+    sysvinit_install
+    systemd_remove_apt_cmd
+    sysvinit_install
+    ###
+    ### Prepare for the last step.
     if [ "${_TGT_OSN}" = "Devuan" ]; then
       ###
       ### The last step before migration to Devuan is to switch to eudev.
@@ -5011,6 +5014,11 @@ if_major_os_upgrade() {
       mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
     fi
     ###
+    ### Make sure that sysvinit-core is still installed and systemd removed.
+    sysvinit_install
+    systemd_remove_apt_cmd
+    sysvinit_install
+    ###
     ### Finally, the proper dist-upgrade time.
     ### Note that Debian Bullseye to Devuan Chimaera migration
     ### requires the dist-upgrade step to be run AFTER reboot!
@@ -5022,6 +5030,11 @@ if_major_os_upgrade() {
     else
       mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
     fi
+    ###
+    ### Make sure that sysvinit-core is still installed and systemd removed.
+    sysvinit_install
+    systemd_remove_apt_cmd
+    sysvinit_install
     ###
     ### Add info file to keep major OS upgrades track.
     touch /root/.${_LOC_OSR}_to_${_NEW_OSR}_major_os_upgrade.info
