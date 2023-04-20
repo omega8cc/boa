@@ -3589,7 +3589,7 @@ symlink_to_dash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: symlink_to_dash"
   fi
-  if [ -x "/usr/bin/dash" ]; then
+  if [ -x "/usr/bin/dash" ] && [ ! -L "/usr/bin/dash" ]; then
     if [ -L "/usr/bin/sh" ]; then
       rm -f /usr/bin/sh
       ln -s /usr/bin/dash /usr/bin/sh
@@ -3600,6 +3600,10 @@ symlink_to_dash() {
     fi
   fi
   if [ -x "/bin/dash" ] && [ ! -L "/bin/dash" ]; then
+    if [ -L "/usr/bin/sh" ]; then
+      rm -f /usr/bin/sh
+      ln -s /bin/dash /usr/bin/sh
+    fi
     if [ -L "/bin/sh" ]; then
       rm -f /bin/sh
       ln -s /bin/dash /bin/sh
@@ -3613,7 +3617,7 @@ symlink_to_bash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: symlink_to_bash"
   fi
-  if [ -x "/usr/bin/bash" ]; then
+  if [ -x "/usr/bin/bash" ] && [ ! -L "/usr/bin/bash" ]; then
     if [ -L "/usr/bin/sh" ]; then
       rm -f /usr/bin/sh
       ln -s /usr/bin/bash /usr/bin/sh
@@ -3624,6 +3628,10 @@ symlink_to_bash() {
     fi
   fi
   if [ -x "/bin/bash" ] && [ ! -L "/bin/bash" ]; then
+    if [ -L "/usr/bin/sh" ]; then
+      rm -f /usr/bin/sh
+      ln -s /bin/bash /usr/bin/sh
+    fi
     if [ -L "/bin/sh" ]; then
       rm -f /bin/sh
       ln -s /bin/bash /bin/sh
@@ -3636,6 +3644,9 @@ symlink_to_bash() {
 switch_to_dash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: switch_to_dash"
+  fi
+  if [ -x "/usr/bin/dash" ] && [ ! -e "/bin/dash" ]; then
+    cp -a /usr/bin/dash /bin/
   fi
   if [ -x "/bin/dash" ]; then
     sed -i "s/:\/bin\/sh/:\/bin\/dash/g"  /etc/passwd &> /dev/null
@@ -3710,6 +3721,9 @@ switch_to_dash() {
 switch_to_bash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: switch_to_bash"
+  fi
+  if [ -x "/usr/bin/bash" ] && [ ! -e "/bin/bash" ]; then
+    cp -a /usr/bin/bash /bin/
   fi
   if [ -x "/bin/bash" ]; then
     sed -i "s/:\/bin\/sh/:\/bin\/bash/g"  /etc/passwd &> /dev/null

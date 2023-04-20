@@ -432,6 +432,15 @@ enable_chattr() {
                 ln -s /bin/dash /usr/bin/sh
               fi
             fi
+          elif [ -x "/usr/bin/dash" ]; then
+            if [ "${_WEB_SH}" != "/usr/bin/dash" ]; then
+              rm -f /bin/sh
+              ln -s /usr/bin/dash /bin/sh
+              if [ -e "/usr/bin/sh" ]; then
+                rm -f /usr/bin/sh
+                ln -s /usr/bin/dash /usr/bin/sh
+              fi
+            fi
           elif [ -x "/bin/bash" ]; then
             if [ "${_WEB_SH}" != "/bin/bash" ]; then
               rm -f /bin/sh
@@ -439,6 +448,15 @@ enable_chattr() {
               if [ -e "/usr/bin/sh" ]; then
                 rm -f /usr/bin/sh
                 ln -s /bin/bash /usr/bin/sh
+              fi
+            fi
+          elif [ -x "/usr/bin/bash" ]; then
+            if [ "${_WEB_SH}" != "/usr/bin/bash" ]; then
+              rm -f /bin/sh
+              ln -s /usr/bin/bash /bin/sh
+              if [ -e "/usr/bin/sh" ]; then
+                rm -f /usr/bin/sh
+                ln -s /usr/bin/bash /usr/bin/sh
               fi
             fi
           fi
@@ -481,13 +499,31 @@ enable_chattr() {
                 ln -s /bin/dash /usr/bin/sh
               fi
             fi
-          else
+          elif [ -x "/usr/bin/dash" ]; then
+            if [ "${_WEB_SH}" != "/usr/bin/dash" ]; then
+              rm -f /bin/sh
+              ln -s /usr/bin/dash /bin/sh
+              if [ -e "/usr/bin/sh" ]; then
+                rm -f /usr/bin/sh
+                ln -s /usr/bin/dash /usr/bin/sh
+              fi
+            fi
+          elif [ -x "/bin/bash" ]; then
             if [ "${_WEB_SH}" != "/bin/bash" ]; then
               rm -f /bin/sh
               ln -s /bin/bash /bin/sh
               if [ -e "/usr/bin/sh" ]; then
                 rm -f /usr/bin/sh
                 ln -s /bin/bash /usr/bin/sh
+              fi
+            fi
+          elif [ -x "/usr/bin/bash" ]; then
+            if [ "${_WEB_SH}" != "/usr/bin/bash" ]; then
+              rm -f /bin/sh
+              ln -s /usr/bin/bash /bin/sh
+              if [ -e "/usr/bin/sh" ]; then
+                rm -f /usr/bin/sh
+                ln -s /usr/bin/bash /usr/bin/sh
               fi
             fi
           fi
@@ -519,13 +555,31 @@ enable_chattr() {
                 ln -s /bin/dash /usr/bin/sh
               fi
             fi
-          else
+          elif [ -x "/usr/bin/dash" ]; then
+            if [ "${_WEB_SH}" != "/usr/bin/dash" ]; then
+              rm -f /bin/sh
+              ln -s /usr/bin/dash /bin/sh
+              if [ -e "/usr/bin/sh" ]; then
+                rm -f /usr/bin/sh
+                ln -s /usr/bin/dash /usr/bin/sh
+              fi
+            fi
+          elif [ -x "/bin/bash" ]; then
             if [ "${_WEB_SH}" != "/bin/bash" ]; then
               rm -f /bin/sh
               ln -s /bin/bash /bin/sh
               if [ -e "/usr/bin/sh" ]; then
                 rm -f /usr/bin/sh
                 ln -s /bin/bash /usr/bin/sh
+              fi
+            fi
+          elif [ -x "/usr/bin/bash" ]; then
+            if [ "${_WEB_SH}" != "/usr/bin/bash" ]; then
+              rm -f /bin/sh
+              ln -s /usr/bin/bash /bin/sh
+              if [ -e "/usr/bin/sh" ]; then
+                rm -f /usr/bin/sh
+                ln -s /usr/bin/bash /usr/bin/sh
               fi
             fi
           fi
@@ -2519,6 +2573,15 @@ else
             ln -s /bin/dash /usr/bin/sh
           fi
         fi
+      elif [ -x "/usr/bin/dash" ]; then
+        if [ "${_WEB_SH}" != "/usr/bin/dash" ]; then
+          rm -f /bin/sh
+          ln -s /usr/bin/dash /bin/sh
+          if [ -e "/usr/bin/sh" ]; then
+            rm -f /usr/bin/sh
+            ln -s /usr/bin/dash /usr/bin/sh
+          fi
+        fi
       elif [ -x "/bin/bash" ]; then
         if [ "${_WEB_SH}" != "/bin/bash" ]; then
           rm -f /bin/sh
@@ -2526,6 +2589,15 @@ else
           if [ -e "/usr/bin/sh" ]; then
             rm -f /usr/bin/sh
             ln -s /bin/bash /usr/bin/sh
+          fi
+        fi
+      elif [ -x "/usr/bin/bash" ]; then
+        if [ "${_WEB_SH}" != "/usr/bin/bash" ]; then
+          rm -f /bin/sh
+          ln -s /usr/bin/bash /bin/sh
+          if [ -e "/usr/bin/sh" ]; then
+            rm -f /usr/bin/sh
+            ln -s /usr/bin/bash /usr/bin/sh
           fi
         fi
       fi

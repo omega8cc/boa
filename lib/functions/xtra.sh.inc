@@ -496,7 +496,7 @@ if_install_rvm() {
           if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
             _WEB_SH=$(readlink -n /bin/sh 2>&1)
             _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
-            if [ -x "/bin/dash" ]; then
+            if [ -x "/bin/dash" ] || [ -x "/usr/bin/dash" ]; then
               if [ "${_WEB_SH}" != "/bin/dash" ]; then
                 if [ -x "/usr/bin/dash" ]; then
                   if [ -L "/usr/bin/sh" ]; then
@@ -509,13 +509,17 @@ if_install_rvm() {
                   fi
                 fi
                 if [ -x "/bin/dash" ] && [ ! -L "/bin/dash" ]; then
+                  if [ -L "/usr/bin/sh" ]; then
+                    rm -f /usr/bin/sh
+                    ln -s /bin/dash /usr/bin/sh
+                  fi
                   if [ -L "/bin/sh" ]; then
                     rm -f /bin/sh
                     ln -s /bin/dash /bin/sh
                   fi
                 fi
               fi
-            elif [ -x "/bin/bash" ]; then
+            elif [ -x "/bin/bash" ] || [ -x "/usr/bin/bash" ]; then
               if [ "${_WEB_SH}" != "/bin/bash" ]; then
                 if [ -x "/usr/bin/bash" ]; then
                   if [ -L "/usr/bin/sh" ]; then
@@ -528,6 +532,10 @@ if_install_rvm() {
                   fi
                 fi
                 if [ -x "/bin/bash" ] && [ ! -L "/bin/bash" ]; then
+                  if [ -L "/usr/bin/sh" ]; then
+                    rm -f /usr/bin/sh
+                    ln -s /bin/bash /usr/bin/sh
+                  fi
                   if [ -L "/bin/sh" ]; then
                     rm -f /bin/sh
                     ln -s /bin/bash /bin/sh
