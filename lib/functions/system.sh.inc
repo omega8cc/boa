@@ -4843,6 +4843,9 @@ if_major_os_upgrade() {
       clean_pid_exit
     fi
     ###
+    ### Switching other gears on the fly.
+    sed -i "s/${_LOC_OSR}/${_NEW_OSR}/g" /etc/apt/sources.list.d/*
+    ###
     ### Switching db gears on the fly.
     if [ "${_TGT_OSN}" = "Debian" ] || [ "${_TGT_OSN}" = "Devuan" ]; then
       _NEW_OSN=debian
@@ -4875,9 +4878,6 @@ if_major_os_upgrade() {
       echo "deb-src http://${percRepo} ${_SQL_NEW_OSR} main" >> ${percList}
       echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
     fi
-    ###
-    ### Switching other gears on the fly.
-    sed -i "s/${_LOC_OSR}/${_SQL_NEW_OSR}/g" /etc/apt/sources.list.d/*
     ###
     ### Switching system gears on the fly.
     if [ "${_TGT_OSN}" = "Devuan" ]; then
