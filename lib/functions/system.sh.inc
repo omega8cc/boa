@@ -4843,9 +4843,6 @@ if_major_os_upgrade() {
       clean_pid_exit
     fi
     ###
-    ### Switching other gears on the fly.
-    sed -i "s/${_LOC_OSR}/${_NEW_OSR}/g" /etc/apt/sources.list.d/*
-    ###
     ### Switching db gears on the fly.
     if [ "${_TGT_OSN}" = "Debian" ] || [ "${_TGT_OSN}" = "Devuan" ]; then
       _NEW_OSN=debian
@@ -4857,6 +4854,11 @@ if_major_os_upgrade() {
     else
       _SQL_NEW_OSR="${_NEW_OSR}"
     fi
+    ###
+    ### Switching other gears on the fly first.
+    sed -i "s/${_LOC_OSR}/${_SQL_NEW_OSR}/g" /etc/apt/sources.list.d/*
+    ###
+    ### Now overwriting db gears apt sources.
     if [ "${_DB_SERVER}" = "MariaDB" ]; then
       _DB_SRC="ftp.osuosl.org"
       mdbRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
