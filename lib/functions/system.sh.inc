@@ -4679,6 +4679,11 @@ if_post_major_os_upgrade() {
       magick_install_upgrade
       php_install_deps
       php_libs_fix
+      nginx_install_upgrade
+      ssl_install_src
+      ssl_crypto_lib_fix
+      curl_install_src
+      sshd_install_src
       if [ -x "/opt/php81/bin/php" ]; then
         _PHP_VERSION="${_PHP81_VRN}"
         install_php_multi "81"
@@ -4703,6 +4708,10 @@ if_post_major_os_upgrade() {
       _T_PHP_VRN=""
       _T_PHP_PTH=""
       php_upgrade_all
+      _NGX_FORCE_REINSTALL=
+      _PHP_FORCE_REINSTALL=
+      _SSH_FORCE_REINSTALL=
+      _SSL_FORCE_REINSTALL=
     fi
 
     rm -f /root/.run_post_major_os_upgrade.info
