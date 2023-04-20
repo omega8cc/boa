@@ -4680,20 +4680,28 @@ if_post_major_os_upgrade() {
       php_install_deps
       php_libs_fix
       if [ -x "/opt/php81/bin/php" ]; then
+        _PHP_VERSION="${_PHP81_VRN}"
         install_php_multi "81"
       fi
       if [ -x "/opt/php74/bin/php" ]; then
+        _PHP_VERSION="${_PHP74_VRN}"
         install_php_multi "74"
       fi
       if [ -x "/opt/php82/bin/php" ]; then
+        _PHP_VERSION="${_PHP82_VRN}"
         install_php_multi "82"
       fi
       if [ -x "/opt/php80/bin/php" ]; then
+        _PHP_VERSION="${_PHP80_VRN}"
         install_php_multi "80"
       fi
       if [ -x "/opt/php56/bin/php" ]; then
+        _PHP_VERSION="${_PHP56_VRN}"
         install_php_multi "56"
       fi
+      _PHP_VERSION=""
+      _T_PHP_VRN=""
+      _T_PHP_PTH=""
       php_upgrade_all
     fi
 
