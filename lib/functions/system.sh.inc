@@ -2377,8 +2377,13 @@ install_icu_modern() {
     msg "PROC: install_icu_modern"
   fi
   ###--------------------###
+  if [ -e "${pthLog}" ]; then
+    pthIcuLog="${pthLog}/icu-update-${_ICU_MODERN_VRN}.log"
+  else
+    pthIcuLog="/root/.icu-update-${_ICU_MODERN_VRN}.log"
+  fi
   if [ ! -e "/usr/local/lib/icu/current" ] \
-    || [ ! -e "${pthLog}/icu-update-${_ICU_MODERN_VRN}.log" ]; then
+    || [ ! -e "${pthIcuLog}" ]; then
     msg "INFO: Installing ICU libs version ${_ICU_MODERN_VRN}..."
     msg "WAIT: This may take a while, please wait..."
     if [ ! -e "/var/opt/icu-release-${_ICU_MODERN_VRN}/icu4c/source" ]; then
@@ -2391,7 +2396,7 @@ install_icu_modern() {
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    touch ${pthLog}/icu-update-${_ICU_MODERN_VRN}.log
+    touch ${pthIcuLog}
   fi
 }
 
@@ -2402,8 +2407,13 @@ install_icu_jessie() {
     msg "PROC: install_icu_jessie"
   fi
   ###--------------------###
+  if [ -e "${pthLog}" ]; then
+    pthIcuLog="${pthLog}/icu-update-${_ICU_LEGACY_VRN}.log"
+  else
+    pthIcuLog="/root/.icu-update-${_ICU_LEGACY_VRN}.log"
+  fi
   if [ ! -e "/usr/local/lib/icu/current" ] \
-    || [ ! -e "${pthLog}/icu-update-${_ICU_LEGACY_VRN}.log" ]; then
+    || [ ! -e "${pthIcuLog}" ]; then
     msg "INFO: Installing ICU libs version ${_ICU_LEGACY_VRN}..."
     msg "WAIT: This may take a while, please wait..."
     if [ ! -e "/var/opt/icu/source" ]; then
@@ -2416,7 +2426,7 @@ install_icu_jessie() {
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
-    touch ${pthLog}/icu-update-${_ICU_LEGACY_VRN}.log
+    touch ${pthIcuLog}
   fi
 }
 
