@@ -4658,10 +4658,6 @@ if_post_major_os_upgrade() {
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
 
-    magick_install_upgrade
-    php_install_deps
-    php_libs_fix
-
     if [ -e "/root/.big_hop_on_major_os_upgrade.info" ]; then
       msg "INFO: Time for re-installing services built from sources..."
       rm -f /var/xdrago/log/*.log
@@ -4670,6 +4666,25 @@ if_post_major_os_upgrade() {
       _PHP_FORCE_REINSTALL=YES
       _SSH_FORCE_REINSTALL=YES
       _SSL_FORCE_REINSTALL=YES
+      magick_install_upgrade
+      php_install_deps
+      php_libs_fix
+      if [ -x "/opt/php81/bin/php" ]; then
+        install_php_multi "81"
+      fi
+      if [ -x "/opt/php74/bin/php" ]; then
+        install_php_multi "74"
+      fi
+      if [ -x "/opt/php82/bin/php" ]; then
+        install_php_multi "82"
+      fi
+      if [ -x "/opt/php80/bin/php" ]; then
+        install_php_multi "80"
+      fi
+      if [ -x "/opt/php56/bin/php" ]; then
+        install_php_multi "56"
+      fi
+      php_upgrade_all
     fi
 
     rm -f /root/.run_post_major_os_upgrade.info
