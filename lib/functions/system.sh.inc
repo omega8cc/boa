@@ -5,7 +5,7 @@ sysvinit_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: sysvinit_install"
   fi
-  mrun "${_APT_UPDATE} -qq" &> /dev/null
+  apt_clean_update
   echo "sysvinit-core install" | dpkg --set-selections &> /dev/null
   echo "sysvinit-utils install" | dpkg --set-selections &> /dev/null
   mrun "${_INITINS} sysvinit-core" 2> /dev/null
@@ -20,14 +20,14 @@ systemd_remove_apt_cmd() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: systemd_remove_apt_cmd"
   fi
-  mrun "${_APT_UPDATE} -qq" &> /dev/null
+  apt_clean_update
   mrun "apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
   mrun "apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
   mrun "apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential" 2> /dev/null
   mrun "apt-get autoremove --purge -y -qq" 2> /dev/null
   mrun "apt-get autoclean -y -qq" 2> /dev/null
   mrun "apt autoremove -y -qq" 2> /dev/null
-  mrun "${_APT_UPDATE} -qq" &> /dev/null
+  apt_clean_update
 }
 
 #
@@ -71,6 +71,12 @@ systemd_remove_if_detected() {
 #
 # Detect and prepare for major OS upgrade.
 define_loc_osr() {
+  apt_clean_update
+  mrun "apt-get upgrade ${nrmUpArg}" 2> /dev/null
+  mrun "apt-get full-upgrade ${nrmUpArg}" 2> /dev/null
+  mrun "apt-get install lsb-release ${nrmUpArg}" 2> /dev/null
+  _THIS_OS=$(lsb_release -si 2>&1)
+  _OSR=$(lsb_release -sc 2>&1)
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: define_loc_osr"
   fi
@@ -238,17 +244,17 @@ if_running_as_root_barracuda() {
       if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: fuse\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
-        ${_APT_UPDATE} -qq &> /dev/null
+        apt_clean_update
       fi
       if [ ! -e "/etc/apt/preferences.d/udev" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
-        ${_APT_UPDATE} -qq &> /dev/null
+        apt_clean_update
       fi
       if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
-        ${_APT_UPDATE} -qq &> /dev/null
+        apt_clean_update
       fi
       apt-get remove fuse -y -qq &> /dev/null
       apt-get purge fuse -y -qq &> /dev/null
@@ -266,9 +272,7 @@ if_running_as_root_barracuda() {
       fi
       if [ -d "/etc/webmin" ]; then
         mrun "dpkg --configure --force-all -a" 2> /dev/null
-        mrun "apt-get clean -qq" &> /dev/null
-        rm -rf /var/lib/apt/lists/*
-        mrun "${_APT_UPDATE} -qq" &> /dev/null
+        apt_clean_update
         mrun "apt-get remove webmin -y -qq" &> /dev/null
         mrun "apt-get purge webmin -y -qq" &> /dev/null
         rm -rf /usr/share/webmin
@@ -341,9 +345,7 @@ fix_postfix() {
     _POSTFIX_TEST=$(grep "fatal: open lock file" /var/log/mail.log 2>&1)
     if [[ "${_POSTFIX_TEST}" =~ "fatal: open lock file" ]]; then
       mrun "dpkg --configure --force-all -a" 2> /dev/null
-      mrun "apt-get clean -qq" &> /dev/null
-      rm -rf /var/lib/apt/lists/*
-      mrun "${_APT_UPDATE} -qq" &> /dev/null
+      apt_clean_update
       mrun "apt-get purge postfix -y" &> /dev/null
       echo > /var/log/mail.log
     fi
@@ -2260,7 +2262,7 @@ run_apt_get_dist_upgrade() {
     msg "PROC: run_apt_get_dist_upgrade"
   fi
   msg "INFO: Running apt-get upgrade..."
-  mrun "${_APT_UPDATE} -qq" &> /dev/null
+  apt_clean_update
   mrun "apt-get upgrade ${nrmUpArg}" 2> /dev/null
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Running apt-get full-upgrade..."
@@ -2270,6 +2272,7 @@ run_apt_get_dist_upgrade() {
     msg "INFO: Running apt-get dist-upgrade..."
   fi
   mrun "apt-get dist-upgrade ${nrmUpArg}" 2> /dev/null
+  mrun "apt-get install lsb-release ${nrmUpArg}" 2> /dev/null
 }
 
 #
@@ -2279,7 +2282,7 @@ run_aptitude_full_upgrade() {
     msg "PROC: run_aptitude_full_upgrade"
   fi
   msg "INFO: Running aptitude full-upgrade..."
-  st_runner "${_APT_UPDATE} -qq" &> /dev/null
+  apt_clean_update
   st_runner "apt --fix-broken install -y" 2> /dev/null
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
   st_runner "aptitude full-upgrade -f -y -q \
@@ -2423,7 +2426,7 @@ php_install_deps() {
     msg "PROC: php_install_deps"
   fi
   ###--------------------###
-  mrun "${_APT_UPDATE} -qq" &> /dev/null
+  apt_clean_update
   mrun "${_INSTAPP} cmake" 2> /dev/null
   mrun "${_INSTAPP} libgd-dev libgd3" 2> /dev/null
   mrun "${_INSTAPP} libkrb5-dev libldap-dev" 2> /dev/null
@@ -2448,7 +2451,7 @@ if_install_wkhtmltox() {
     msg "PROC: if_install_wkhtmltox"
   fi
   ###--------------------###
-  mrun "${_APT_UPDATE} -qq" &> /dev/null
+  apt_clean_update
   mrun "${_INSTAPP} fonts-thai-tlwg" 2> /dev/null
   _THIS_RV=$(lsb_release -sc 2>&1)
   _X86_64_TEST=$(uname -m 2>&1)
@@ -2487,7 +2490,7 @@ if_install_wkhtmltox() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
       fi
-      mrun "${_APT_UPDATE} -qq" &> /dev/null
+      apt_clean_update
       mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
       mrun "${_INSTAPP} wkhtmltopdf" 2> /dev/null
     fi
@@ -3025,7 +3028,7 @@ sources_list_update() {
     cd /var/opt
   fi
   ###--------------------###
-  ${_APT_UPDATE} -qq &> /dev/null
+  apt_clean_update
   ###--------------------###
 }
 
@@ -3487,9 +3490,7 @@ curl_install_src() {
       if [[ "${_CURL_GET_DPKG}" =~ "hold" ]]; then
         echo "curl install" | dpkg --set-selections &> /dev/null
         if [ -z "${_CURL_ALREADY_REBUILT}" ]; then
-          mrun "apt-get clean -qq" 2> /dev/null
-          rm -rf /var/lib/apt/lists/*
-          mrun "${_APT_UPDATE} -qq" &> /dev/null
+          apt_clean_update
           mrun "${_INSTAPP} curl" 2> /dev/null
           mrun "apt-get build-dep curl -y" 2> /dev/null
           mrun "apt-get remove libssl1.0-dev -y" 2> /dev/null
@@ -3499,7 +3500,7 @@ curl_install_src() {
         fi
       fi
     else
-      mrun "${_APT_UPDATE} -qq" &> /dev/null
+      apt_clean_update
       mrun "apt-get build-dep curl -y" 2> /dev/null
       mrun "apt-get remove libssl1.0-dev -y" 2> /dev/null
       mrun "apt autoremove -y" 2> /dev/null
@@ -4212,7 +4213,7 @@ run_aptitude_deps_install() {
     msg "INFO: Upgrading a large list of libraries and tools..."
   fi
   msg "WAIT: This may take a while, please wait..."
-  mrun "${_APT_UPDATE} -qq" &> /dev/null
+  apt_clean_update
   mrun "apt-get remove percona-xtrabackup-24 -y -qq" 2> /dev/null
   mrun "apt-get remove libcurl4-gnutls-dev -y -qq" 2> /dev/null
   mrun "apt-get remove libcurl4-openssl-dev -y -qq" 2> /dev/null
@@ -4386,7 +4387,7 @@ basic_packages_install_on_init() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: basic_packages_install_on_init"
   fi
-  ${_APT_UPDATE} -qq &> /dev/null
+  apt_clean_update
   apt-get remove --purge unscd -y &> /dev/null
   apt-get remove --purge dbus -y &> /dev/null
   if [ -e "/usr/share/dbus-1" ]; then
@@ -4415,9 +4416,7 @@ basic_packages_install_on_init() {
   if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "SYSTEMD" ]; then
     if [ ! -e "/root/.step.init.basic.cnf" ]; then
       msg "INFO: Installing some basic tools..."
-      apt-get clean -qq &> /dev/null
-      rm -rf /var/lib/apt/lists/*
-      ${_APT_UPDATE} -qq &> /dev/null
+      apt_clean_update
       ${_INITINS} locales &> /dev/null
       locales_check_fix
       ${_INITINS} lsb-release &> /dev/null
@@ -4449,7 +4448,7 @@ more_packages_install_on_init() {
         wait
       fi
     fi
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
     ${_INITINS} locales &> /dev/null
     locales_check_fix
     ${_INITINS} git &> /dev/null
@@ -4507,19 +4506,16 @@ if_proxysql_update() {
         msg "INFO: Running ProxySQL upgrade to ${_PXC_VRN}..."
       else
         msg "INFO: Running ProxySQL re-install to ${_PXC_VRN}..."
-        mrun "apt-get clean" 2> /dev/null
-        mrun "${_APT_UPDATE} -qq" &> /dev/null
+        apt_clean_update
         mrun "${_INSTAPP} sysbench" 2> /dev/null
         mrun "${_INSTAPP} debconf-utils" 2> /dev/null
         mrun "apt-get remove proxysql -y" 2> /dev/null
-        mrun "apt-get clean" 2> /dev/null
-        mrun "${_APT_UPDATE} -qq" &> /dev/null
+        apt_clean_update
         mrun "${_INSTAPP} proxysql" 2> /dev/null
       fi
       isPxy=$(which proxysql 2>&1)
       if [ ! -x "${isPxy}" ]; then
-        mrun "apt-get clean" 2> /dev/null
-        mrun "${_APT_UPDATE} -qq" &> /dev/null
+        apt_clean_update
         mrun "${_INSTAPP} sysbench" 2> /dev/null
         mrun "${_INSTAPP} debconf-utils" 2> /dev/null
         mrun "${_INSTAPP} proxysql" 2> /dev/null
@@ -4627,6 +4623,7 @@ if_post_major_os_upgrade() {
   if [ -e "/root/.run_post_major_os_upgrade.info" ] \
     && [ ! -e "/root/.completed_post_major_os_upgrade.info" ]; then
 
+    apt_clean_update
     mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
 
     msg "INFO: Cleaning up any systemd remnants..."
@@ -4642,6 +4639,7 @@ if_post_major_os_upgrade() {
     msg "INFO: Running dist-upgrade to complete the system upgrade..."
     msg "WAIT: This may take a while, please wait..."
     mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
+    mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
 
     if [ -e "/root/.big_hop_on_major_os_upgrade.info" ]; then
@@ -4757,7 +4755,7 @@ if_major_os_upgrade() {
       mv /etc/init.d/tomcat /etc/init.d/offtomcat
       kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
     fi
-    mrun "${_APT_UPDATE} -qq" &> /dev/null
+    apt_clean_update
     mrun "apt-get remove --purge dbus  -y -qq" 2> /dev/null
     if [ -e "/usr/share/dbus-1" ]; then
       rm -f /usr/share/dbus-1/*/*freedesktop*
@@ -4902,6 +4900,7 @@ if_major_os_upgrade() {
       fi
       ###
       ### Add devuan-keyring first.
+      apt_clean_update
       mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
       mrun "${_INITINS} devuan-keyring --allow-unauthenticated" 2> /dev/null
     else
@@ -4944,10 +4943,12 @@ if_major_os_upgrade() {
     echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
     ###
     ### Update packages registry.
+    apt_clean_update
     mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
     ###
     ### Two step upgrade with apt-get only.
     mrun "apt-get install apt -t ${_NEW_OSR} ${dstUpArg}" 2> /dev/null
+    apt_clean_update
     mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
     ###
     ### Requirement for Debian Stretch to Devuan Beowulf migration.
@@ -5004,9 +5005,13 @@ if_major_os_upgrade() {
     ###
     ### Upgrade all packages so that you have the latest versions.
     if [ "${_LOC_OSR}" = "stretch" ]; then
+      mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
       mrun "apt-get full-upgrade ${dstUpArg}" 2> /dev/null
+      mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     else
       mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
+      mrun "apt-get full-upgrade ${dstUpArg}" 2> /dev/null
+      mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     fi
     ###
     ### Force install/upgrade to give it another chance to complete.
@@ -5014,9 +5019,13 @@ if_major_os_upgrade() {
     ###
     ### Upgrade again all packages so that you have the latest versions.
     if [ "${_LOC_OSR}" = "stretch" ]; then
+      mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
       mrun "apt-get full-upgrade ${dstUpArg}" 2> /dev/null
+      mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     else
       mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
+      mrun "apt-get full-upgrade ${dstUpArg}" 2> /dev/null
+      mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     fi
     ###
     ### Make sure that sysvinit-core is still installed and systemd removed.
@@ -5034,6 +5043,7 @@ if_major_os_upgrade() {
       msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
     else
       mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
+      mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     fi
     ###
     ### Make sure that sysvinit-core is still installed and systemd removed.
@@ -5142,7 +5152,7 @@ if_major_os_upgrade() {
         msg "WARN: Required /dev/pts/ptmx does not exist! We will fix this now..."
         mkdir -p /dev/pts
         rm -rf /dev/pts/*
-        ${_APT_UPDATE} -qq &> /dev/null
+        apt_clean_update
         apt-get install udev -y --allow-unauthenticated &> /dev/null
         echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
         mount -t devpts devpts /dev/pts &> /dev/null
@@ -5256,13 +5266,13 @@ sys_packages_update() {
     echo "zlibc install"          | dpkg --set-selections &> /dev/null
   fi
   webmin_apt_update
-  st_runner "${_APT_UPDATE} -qq" &> /dev/null
+  apt_clean_update
   st_runner "aptitude full-upgrade -f -y -q \
     --allow-untrusted \
     -o Dpkg::Options::=--force-confdef \
     -o Dpkg::Options::=--force-confold" &> /dev/null
   if [ "${_STATUS}" = "INIT" ]; then
-    st_runner "${_APT_UPDATE} -qq" &> /dev/null
+    apt_clean_update
     st_runner "aptitude full-upgrade -f -y -q \
       --allow-untrusted \
       -o Dpkg::Options::=--force-confdef \
@@ -5399,7 +5409,7 @@ sys_packages_install() {
       _APT_XTRA=""
     fi
     _APT_ELSE="netcat"
-    mrun "${_APT_UPDATE} -qq" &> /dev/null
+    apt_clean_update
     mrun "service nginx start"                &> /dev/null
     mrun "apt-get remove nginx-extras -y -qq" &> /dev/null
     mrun "apt-get remove nginx -y -qq"        &> /dev/null
@@ -5842,7 +5852,7 @@ install_myquick_src() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Building MyQuick ${_MYQUICK_VRN} from sources..."
     fi
-    mrun "${_APT_UPDATE} -qq" &> /dev/null
+    apt_clean_update
     mrun "${_INSTAPP} cmake" 2> /dev/null
     if [ "${_DB_SERVER}" = "Percona" ] || [ "${_DB_SERIES}" = "5.7" ]; then
       mrun "${_INSTAPP} libperconaserverclient20-dev" 2> /dev/null

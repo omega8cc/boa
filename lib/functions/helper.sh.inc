@@ -559,6 +559,12 @@ os_detection_minimal() {
   fi
 }
 
+apt_clean_update() {
+  apt-get clean -qq &> /dev/null
+  rm -rf /var/lib/apt/lists/* &> /dev/null
+  ${_APT_UPDATE} -qq &> /dev/null
+}
+
 os_detection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: os_detection"

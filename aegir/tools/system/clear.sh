@@ -41,6 +41,12 @@ os_detection_minimal() {
 }
 os_detection_minimal
 
+apt_clean_update() {
+  apt-get clean -qq &> /dev/null
+  rm -rf /var/lib/apt/lists/* &> /dev/null
+  ${_APT_UPDATE} -qq &> /dev/null
+}
+
 find /var/run/boa*.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/run/manage*users.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/run/daily-fix.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -65,7 +71,7 @@ find_fast_mirror() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
     apt-get install netcat ${aptYesUnth} &> /dev/null
     sleep 3
   fi
@@ -103,9 +109,7 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
         echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
       fi
       echo "curl install" | dpkg --set-selections &> /dev/null
-      apt-get clean -qq &> /dev/null
-      rm -rf /var/lib/apt/lists/*
-      ${_APT_UPDATE} -qq &> /dev/null
+      apt_clean_update
       apt-get install curl ${aptYesUnth} &> /dev/null
       mkdir -p /var/backups/libcurl
       mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null

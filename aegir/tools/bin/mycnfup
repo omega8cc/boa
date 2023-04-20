@@ -41,6 +41,24 @@ _INSTAPP="/usr/bin/aptitude -f -y -q \
 
 ###-------------SYSTEM-----------------###
 
+os_detection_minimal() {
+  _THIS_RV=$(lsb_release -sc 2>&1)
+  if [ "${_THIS_RV}" = "chimaera" ] \
+    || [ "${_THIS_RV}" = "beowulf" ] \
+    || [ "${_THIS_RV}" = "bullseye" ] \
+    || [ "${_THIS_RV}" = "buster" ]; then
+    _APT_UPDATE="apt-get update --allow-releaseinfo-change"
+  else
+    _APT_UPDATE="apt-get update"
+  fi
+}
+
+apt_clean_update() {
+  apt-get clean -qq &> /dev/null
+  rm -rf /var/lib/apt/lists/* &> /dev/null
+  ${_APT_UPDATE} -qq &> /dev/null
+}
+
 count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
@@ -213,7 +231,7 @@ EOF
 remove_systemd() {
   if [ -x "/lib/systemd/systemd" ]; then
     ls -la /lib/systemd/systemd
-    ${_APT_UPDATE} -qq
+    apt_clean_update
     echo "sysvinit-core install" | dpkg --set-selections
     echo "sysvinit-utils install" | dpkg --set-selections
     ${_INSTAPP} sysvinit-core
@@ -231,18 +249,6 @@ remove_systemd() {
     apt-get autoclean -y -qq 2> /dev/null
     echo "sysvinit-core hold" | dpkg --set-selections &> /dev/null
     echo "sysvinit-utils hold" | dpkg --set-selections &> /dev/null
-  fi
-}
-
-os_detection_minimal() {
-  _THIS_RV=$(lsb_release -sc 2>&1)
-  if [ "${_THIS_RV}" = "chimaera" ] \
-    || [ "${_THIS_RV}" = "beowulf" ] \
-    || [ "${_THIS_RV}" = "bullseye" ] \
-    || [ "${_THIS_RV}" = "buster" ]; then
-    _APT_UPDATE="apt-get update --allow-releaseinfo-change"
-  else
-    _APT_UPDATE="apt-get update"
   fi
 }
 
@@ -308,9 +314,7 @@ check_root() {
     fi
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ ! -x "${_LSB_TEST}" ]; then
-      apt-get clean -qq
-      rm -rf /var/lib/apt/lists/*
-      ${_APT_UPDATE} -qq
+      apt_clean_update
       ${_INSTAPP} lsb-release
     fi
     _LSB_TEST=$(which lsb_release 2> /dev/null)
@@ -348,9 +352,7 @@ check_root() {
       echo "deb http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       echo "deb-src http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       echo
-      apt-get clean -qq &> /dev/null
-      rm -rf /var/lib/apt/lists/*
-      ${_APT_UPDATE} -qq &> /dev/null
+      apt_clean_update
     fi
     if [ "${_THIS_OS}" != "Debian" ]; then
       echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
@@ -360,17 +362,17 @@ check_root() {
       if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: fuse\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
-        ${_APT_UPDATE} -qq &> /dev/null
+        apt_clean_update
       fi
       if [ ! -e "/etc/apt/preferences.d/udev" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
-        ${_APT_UPDATE} -qq &> /dev/null
+        apt_clean_update
       fi
       if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
-        ${_APT_UPDATE} -qq &> /dev/null
+        apt_clean_update
       fi
       apt-get remove fuse -y -qq &> /dev/null
       apt-get purge fuse -y -qq &> /dev/null
@@ -462,7 +464,7 @@ find_fast_mirror() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
     ${_INSTAPP} netcat &> /dev/null
     sleep 3
   fi
@@ -1292,7 +1294,7 @@ db_head_to_stretch_first()
   	  cat /etc/resolv.conf
       echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
       echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-  	  ${_APT_UPDATE} -qq &> /dev/null
+  	  apt_clean_update
   	  echo "curl install"           | dpkg --set-selections
   	  echo "git install"            | dpkg --set-selections
   	  echo "git-core install"       | dpkg --set-selections
@@ -1307,6 +1309,8 @@ db_head_to_stretch_first()
   	  echo "zlib1g-dev install"     | dpkg --set-selections
   	  echo "zlibc install"          | dpkg --set-selections
   	  apt-get upgrade ${nrmUpArg}
+  	  apt-get full-upgrade ${nrmUpArg}
+  	  apt-get install lsb-release ${nrmUpArg}
       ### Check if we can continue
       _AUDIT_DPKG=$(dpkg --audit 2>&1)
       if [ ! -z "${_AUDIT_DPKG}" ]; then
@@ -1347,7 +1351,7 @@ db_head_to_stretch_first()
         wait
       fi
   	  cat /etc/apt/sources.list
-  	  ${_APT_UPDATE} -qq &> /dev/null
+  	  apt_clean_update
   	  apt-get install apt -t stretch ${dstUpArg}
   	  apt-get upgrade ${dstUpArg}
   	  apt-get install apt dpkg aptitude util-linux ${dstUpArg}
@@ -1356,7 +1360,7 @@ db_head_to_stretch_first()
   	  apt-get install lsb-release ${dstUpArg}
   	  if [ -x "/lib/systemd/systemd" ]; then
         ls -la /lib/systemd/systemd
-        ${_APT_UPDATE} -qq
+        apt_clean_update
         ${_INSTAPP} sysvinit-core
         ${_INSTAPP} sysvinit-utils
         ls -la /usr/share/sysvinit/inittab
@@ -1379,7 +1383,7 @@ db_head_to_stretch_second()
     if [[ "${_OSR}" =~ "stretch" ]]; then
   	  if [ -x "/lib/systemd/systemd" ]; then
         ls -la /lib/systemd/systemd
-        ${_APT_UPDATE} -qq
+        apt_clean_update
         ${_INSTAPP} sysvinit-core
         ${_INSTAPP} sysvinit-utils
         ls -la /usr/share/sysvinit/inittab
@@ -1394,9 +1398,10 @@ db_head_to_stretch_second()
         echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
         echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
   	  fi
-  	  ${_APT_UPDATE} -qq
+  	  apt_clean_update
   	  apt-get upgrade ${nrmUpArg}
   	  apt-get dist-upgrade ${nrmUpArg}
+  	  apt-get install lsb-release ${nrmUpArg}
   	  echo "Upgrade OS to Stretch 2nd stage complete!"
       echo "Bye!"
     fi

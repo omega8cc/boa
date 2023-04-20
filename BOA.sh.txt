@@ -91,6 +91,12 @@ os_detection_minimal() {
   fi
 }
 
+apt_clean_update() {
+  apt-get clean -qq &> /dev/null
+  rm -rf /var/lib/apt/lists/* &> /dev/null
+  ${_APT_UPDATE} -qq &> /dev/null
+}
+
 #
 # Find correct IP.
 find_correct_ip() {
@@ -1798,9 +1804,7 @@ update_wrappers() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     echo "curl install" | dpkg --set-selections &> /dev/null
-    apt-get clean -qq &> /dev/null
-    rm -rf /var/lib/apt/lists/*
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
     apt-get install curl ${aptYesUnth} &> /dev/null
     mkdir -p /var/backups/libcurl
     mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -1815,9 +1819,7 @@ update_wrappers() {
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "curl install" | dpkg --set-selections &> /dev/null
-      apt-get clean -qq &> /dev/null
-      rm -rf /var/lib/apt/lists/*
-      ${_APT_UPDATE} -qq &> /dev/null
+      apt_clean_update
       apt-get install curl ${aptYesUnth} &> /dev/null
       mkdir -p /var/backups/libcurl
       mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -1835,9 +1837,7 @@ update_wrappers() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt-get clean -qq &> /dev/null
-    rm -rf /var/lib/apt/lists/*
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
     apt-get install lsb-release ${aptYesUnth} &> /dev/null
   fi
   _IPSET_TEST=$(which ipset 2> /dev/null)
@@ -1846,9 +1846,7 @@ update_wrappers() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt-get clean -qq &> /dev/null
-    rm -rf /var/lib/apt/lists/*
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
     if [ -L "/sbin/ipset" ]; then
       rm -f /sbin/ipset
     fi
@@ -1997,9 +1995,7 @@ setup() {
       echo "APT::Get::AllowUnauthenticated \"true\";"     >> /etc/apt/apt.conf.d/99ignorestrict
       echo "Aptitude::CmdLine::Fix-Broken \"true\";"      >> /etc/apt/apt.conf.d/99ignorestrict
     fi
-    apt-get clean -qq &> /dev/null
-    rm -rf /var/lib/apt/lists/*
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
     apt-get install screen -y &> /dev/null
     apt-get install net-tools -y &> /dev/null
     apt-get install hostname -y &> /dev/null
@@ -2020,9 +2016,7 @@ setup() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     echo "curl install" | dpkg --set-selections &> /dev/null
-    apt-get clean -qq &> /dev/null
-    rm -rf /var/lib/apt/lists/*
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
     apt-get install curl ${aptYesUnth} &> /dev/null
     mkdir -p /var/backups/libcurl
     mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -2037,9 +2031,7 @@ setup() {
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "curl install" | dpkg --set-selections &> /dev/null
-      apt-get clean -qq &> /dev/null
-      rm -rf /var/lib/apt/lists/*
-      ${_APT_UPDATE} -qq &> /dev/null
+      apt_clean_update
       apt-get install curl ${aptYesUnth} &> /dev/null
       mkdir -p /var/backups/libcurl
       mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -2057,9 +2049,7 @@ setup() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt-get clean -qq &> /dev/null
-    rm -rf /var/lib/apt/lists/*
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
     apt-get install virt-what ${aptYesUnth} &> /dev/null
   fi
   _LSB_TEST=$(which lsb_release 2> /dev/null)
@@ -2068,9 +2058,7 @@ setup() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt-get clean -qq &> /dev/null
-    rm -rf /var/lib/apt/lists/*
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
     apt-get install lsb-release ${aptYesUnth} &> /dev/null
   fi
   mkdir -p ${usrBin}
@@ -2197,7 +2185,7 @@ find_fast_mirror() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
     apt-get install netcat ${aptYesUnth} &> /dev/null
     sleep 3
   fi

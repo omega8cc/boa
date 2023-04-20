@@ -593,7 +593,7 @@ prep_for_install_db_sql() {
           /var/xdrago/log/gpg-agent-count.kill.log
       fi
     done
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
   else
     _KEYS_SIG="C74CD1D8"
     _KEYS_SERVER_TEST=FALSE
@@ -616,7 +616,7 @@ prep_for_install_db_sql() {
           /var/xdrago/log/gpg-agent-count.kill.log
       fi
     done
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
   fi
   _KEYS_SIG=""
   _KEYS_SERVER_TEST=FALSE
@@ -659,7 +659,7 @@ prep_for_install_db_sql() {
         echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
         echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
         echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
-        ${_APT_UPDATE} -qq &> /dev/null
+        apt_clean_update
       else
         _DB_SERVER=Percona
         _DB_SERIES=5.7
@@ -673,7 +673,7 @@ prep_for_install_db_sql() {
         echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
         echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
         echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
-        ${_APT_UPDATE} -qq &> /dev/null
+        apt_clean_update
       fi
     fi
     msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSR}"
@@ -721,7 +721,7 @@ prep_for_install_db_sql() {
     echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
     echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
   fi
-  st_runner "${_APT_UPDATE} -qq" &> /dev/null
+  apt_clean_update
   if [ -e "/usr/bin/mytop" ]; then
     st_runner "${_RMAPP} mytop" &> /dev/null
     st_runner "apt-get purge mytop -y" &> /dev/null
@@ -1128,7 +1128,7 @@ db_server_install() {
         echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
         echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
       fi
-      st_runner "${_APT_UPDATE} -qq" &> /dev/null
+      apt_clean_update
     fi
     if [ "${_SQL_UPGRADE}" = "YES" ]; then
       if [ -x "/usr/sbin/csf" ] \
@@ -1190,7 +1190,7 @@ db_server_install() {
               /var/xdrago/log/gpg-agent-count.kill.log
           fi
         done
-        ${_APT_UPDATE} -qq &> /dev/null
+        apt_clean_update
       else
         _KEYS_SIG="C74CD1D8"
         _KEYS_SERVER_TEST=FALSE
@@ -1213,7 +1213,7 @@ db_server_install() {
               /var/xdrago/log/gpg-agent-count.kill.log
           fi
         done
-        ${_APT_UPDATE} -qq &> /dev/null
+        apt_clean_update
       fi
       _KEYS_SIG=""
       _KEYS_SERVER_TEST=FALSE
@@ -1223,9 +1223,7 @@ db_server_install() {
         _OSN=ubuntu
       fi
       st_runner "aptitude autoclean -y" &> /dev/null
-      st_runner "apt-get clean -qq" &> /dev/null
-      rm -rf /var/lib/apt/lists/*
-      st_runner "${_APT_UPDATE} -qq" &> /dev/null
+      apt_clean_update
       if [ "${_DB_SERVER}" = "MariaDB" ]; then
         cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
       fi

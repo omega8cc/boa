@@ -66,6 +66,12 @@ os_detection_minimal() {
   fi
 }
 
+apt_clean_update() {
+  apt-get clean -qq &> /dev/null
+  rm -rf /var/lib/apt/lists/* &> /dev/null
+  ${_APT_UPDATE} -qq &> /dev/null
+}
+
 not_supported_virt() {
   echo
   echo "=== OOPS! ==="
@@ -1342,7 +1348,7 @@ find_fast_mirror() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
     apt-get install netcat ${aptYesUnth} &> /dev/null
     sleep 3
   fi
@@ -1394,9 +1400,7 @@ check_dns_curl() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     echo "curl install" | dpkg --set-selections &> /dev/null
-    apt-get clean -qq &> /dev/null
-    rm -rf /var/lib/apt/lists/*
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
     apt-get install curl ${aptYesUnth} &> /dev/null
     mkdir -p /var/backups/libcurl
     mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -1411,9 +1415,7 @@ check_dns_curl() {
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "curl install" | dpkg --set-selections &> /dev/null
-      apt-get clean -qq &> /dev/null
-      rm -rf /var/lib/apt/lists/*
-      ${_APT_UPDATE} -qq &> /dev/null
+      apt_clean_update
       apt-get install curl ${aptYesUnth} &> /dev/null
       mkdir -p /var/backups/libcurl
       mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -1526,17 +1528,17 @@ check_root() {
     if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
       mkdir -p /etc/apt/preferences.d/
       echo -e 'Package: fuse\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
-      ${_APT_UPDATE} -qq &> /dev/null
+      apt_clean_update
     fi
     if [ ! -e "/etc/apt/preferences.d/udev" ]; then
       mkdir -p /etc/apt/preferences.d/
       echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
-      ${_APT_UPDATE} -qq &> /dev/null
+      apt_clean_update
     fi
     if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
       mkdir -p /etc/apt/preferences.d/
       echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
-      ${_APT_UPDATE} -qq &> /dev/null
+      apt_clean_update
     fi
     apt-get remove fuse -y -qq &> /dev/null
     apt-get purge fuse -y -qq &> /dev/null

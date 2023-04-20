@@ -852,7 +852,7 @@ install_php_extensions() {
     if [ "$1" = "56" ]; then
       msg "INFO: Building GEOS extension ${_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
-        st_runner "${_APT_UPDATE} -qq" &> /dev/null
+        apt_clean_update
         st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
         touch ${pthLog}/geos-${_X_VERSION}.log
       fi
@@ -914,7 +914,7 @@ install_php_extensions() {
   ###--------------------###
   msg "INFO: Installing Imagick ${_IMAGICK_VRN} for PHP ${_T_PHP_VRN}..."
   if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
-    mrun "${_APT_UPDATE} -qq" &> /dev/null
+    apt_clean_update
     mrun "${_INSTAPP} libmagickwand-dev" 2> /dev/null
     touch ${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
   fi
@@ -1243,7 +1243,7 @@ php_extensions_update() {
     if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
       msg "INFO: Building GEOS ${_GEOS_VRN} upgrade for PHP ${_T_PHP_VRN} from sources..."
       if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
-        st_runner "${_APT_UPDATE} -qq" &> /dev/null
+        apt_clean_update
         st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
         touch ${pthLog}/geos-${_X_VERSION}.log
       fi
@@ -1311,7 +1311,7 @@ php_extensions_update() {
   if [ ! -e "${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
     msg "INFO: Installing Imagick ${_IMAGICK_VRN} upgrade for PHP ${_T_PHP_VRN}..."
     if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
-      mrun "${_APT_UPDATE} -qq" &> /dev/null
+      apt_clean_update
       mrun "${_INSTAPP} libmagickwand-dev" 2> /dev/null
       touch ${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
     fi
@@ -1460,7 +1460,7 @@ install_php_multi() {
   _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-curlwrappers//g" 2>&1)
   ###--------------------###
   msg "INFO: Building PHP ${_PHP_VERSION} from sources..."
-  mrun "${_APT_UPDATE} -qq" &> /dev/null
+  apt_clean_update
   mrun "${_INSTAPP} libonig-dev" 2> /dev/null
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
     && [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
@@ -1471,7 +1471,7 @@ install_php_multi() {
     fi
     cd /var/opt
     rm -rf tidy*
-    mrun "${_APT_UPDATE} -qq" &> /dev/null
+    apt_clean_update
     mrun "${_INSTAPP} cmake" 2> /dev/null
     get_dev_src "tidy-html5-${_LIB_TIDY_VRN}.tar.gz"
     cd tidy-html5-${_LIB_TIDY_VRN}/build/cmake
@@ -1800,7 +1800,7 @@ newrelic_update() {
       echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
         >> /etc/apt/sources.list.d/newrelic.list
-      st_runner "${_APT_UPDATE} -qq" &> /dev/null
+      apt_clean_update
       st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
       st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null
       NR_PHPLIST="/opt/php56/bin:/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin"
@@ -1962,7 +1962,7 @@ if_install_php_newrelic() {
         /etc/apt/sources.list.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
         >> /etc/apt/sources.list.d/newrelic.list
-      st_runner "${_APT_UPDATE} -qq" &> /dev/null
+      apt_clean_update
       st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
       st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null
       if [ "$_MULTI_NR" = "YES" ]; then
@@ -2697,7 +2697,7 @@ php_check_if_rebuild() {
   fi
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
     && [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
-    mrun "${_APT_UPDATE} -qq" &> /dev/null
+    apt_clean_update
     mrun "${_INSTAPP} libonig-dev" 2> /dev/null
     if [ -e "/usr/lib/libtidy.so" ]; then
       mrun "apt-get remove libtidy-dev -y -qq" &> /dev/null
@@ -2706,7 +2706,7 @@ php_check_if_rebuild() {
     fi
     cd /var/opt
     rm -rf tidy*
-    mrun "${_APT_UPDATE} -qq" &> /dev/null
+    apt_clean_update
     mrun "${_INSTAPP} cmake" 2> /dev/null
     get_dev_src "tidy-html5-${_LIB_TIDY_VRN}.tar.gz"
     cd tidy-html5-${_LIB_TIDY_VRN}/build/cmake

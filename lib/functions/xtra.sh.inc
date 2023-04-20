@@ -331,7 +331,7 @@ if_install_hhvm() {
             sleep 2
           done
           cat /var/opt/hhvm.gpg.key | ${_GPG} --import &> /dev/null
-          st_runner "${_APT_UPDATE} -qq" &> /dev/null
+          apt_clean_update
           st_runner "apt-get install hhvm ${aptYesUnth}" 2> /dev/null
           msg "INFO: HHVM Engine installed"
         else
@@ -373,7 +373,7 @@ if_install_webmin() {
         cat jcameron-key.gpg | ${_GPG} --import &> /dev/null
         rm -f jcameron-key.gpg*
         touch ${pthLog}/webmin_update_apt_src.log
-        st_runner "${_APT_UPDATE} -qq" &> /dev/null
+        apt_clean_update
         st_runner "${_INSTAPP} webmin \
                              libxml-simple-perl \
                              libcrypt-ssleay-perl" 2> /dev/null
@@ -540,7 +540,7 @@ if_install_rvm() {
           if [ "${_STATUS}" = "INIT" ] \
             || [ "${_RUBY_UPGRADE}" = "YES" ] \
             || [ "${_RUBY_RELOAD}" = "YES" ]; then
-            mrun "${_APT_UPDATE} -qq" &> /dev/null
+            apt_clean_update
             if [ "${_DEBUG_MODE}" = "YES" ]; then
               ${rvmPth} get stable --auto-dotfiles
               ${rvmPth} install ${_RUBY_VRN}
@@ -555,7 +555,7 @@ if_install_rvm() {
               mrun "${_INSTAPP} nodejs" &> /dev/null
             fi
           else
-            mrun "${_APT_UPDATE} -qq" &> /dev/null
+            apt_clean_update
             if [ "${_DEBUG_MODE}" = "YES" ]; then
               ${rvmPth} get stable --auto-dotfiles
               ${rvmPth} install ${_RUBY_VRN}
@@ -681,9 +681,9 @@ if_install_ffmpeg() {
             echo "deb http://www.deb-multimedia.org buster main non-free" >> /etc/apt/sources.list.d/ffmpeg.list
             echo "deb http://www.deb-multimedia.org buster-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
           fi
-          st_runner "${_APT_UPDATE} -qq" &> /dev/null
+          apt_clean_update
           st_runner "apt-get install deb-multimedia-keyring ${aptYesUnth}" 2> /dev/null
-          st_runner "${_APT_UPDATE} -qq" &> /dev/null
+          apt_clean_update
           st_runner "${_INSTAPP} ffmpeg" 2> /dev/null
         elif [ "${_OSR}" = "trusty" ] || [ "${_OSR}" = "precise" ]; then
           _X86_64_TEST=$(uname -m 2>&1)

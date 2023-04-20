@@ -55,6 +55,12 @@ os_detection_minimal() {
 }
 os_detection_minimal
 
+apt_clean_update() {
+  apt-get clean -qq &> /dev/null
+  rm -rf /var/lib/apt/lists/* &> /dev/null
+  ${_APT_UPDATE} -qq &> /dev/null
+}
+
 if [ -x "/usr/bin/gpg2" ]; then
   _GPG=gpg2
 else
@@ -68,7 +74,7 @@ find_fast_mirror() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
     apt-get install netcat ${aptYesUnth} &> /dev/null
     sleep 3
   fi
@@ -181,7 +187,7 @@ if [ ! -e "${percList}" ] \
   echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
   echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
   echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
-  ${_APT_UPDATE} -qq &> /dev/null
+  apt_clean_update
   if [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
     service lfd stop &> /dev/null
@@ -222,7 +228,7 @@ if [ ! -e "${percList}" ] \
         /var/xdrago/log/gpg-agent-count.kill.log
     fi
   done
-  ${_APT_UPDATE} -qq &> /dev/null
+  apt_clean_update
   if [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
     csf -e &> /dev/null
@@ -241,7 +247,7 @@ if [ ! -e "${percList}" ] \
       fi
     fi
   fi
-  ${_APT_UPDATE} -qq
+  apt_clean_update
   apt-get install percona-xtrabackup-24 -y
 fi
 

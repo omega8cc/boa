@@ -63,6 +63,12 @@ os_detection_minimal() {
   fi
 }
 
+apt_clean_update() {
+  apt-get clean -qq &> /dev/null
+  rm -rf /var/lib/apt/lists/* &> /dev/null
+  ${_APT_UPDATE} -qq &> /dev/null
+}
+
 check_root() {
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
@@ -79,9 +85,7 @@ check_root() {
     fi
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ ! -x "${_LSB_TEST}" ]; then
-      apt-get clean -qq
-      rm -rf /var/lib/apt/lists/*
-      ${_APT_UPDATE} -qq
+      apt_clean_update
       apt-get install lsb-release ${aptYesUnth}
     fi
     _LSB_TEST=$(which lsb_release 2> /dev/null)
@@ -121,9 +125,7 @@ check_root() {
       echo "deb http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       echo "deb-src http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       echo
-      apt-get clean -qq &> /dev/null
-      rm -rf /var/lib/apt/lists/*
-      ${_APT_UPDATE} -qq &> /dev/null
+      apt_clean_update
     fi
     if [ "${_THIS_OS}" = "Devuan" ] || [ "${_THIS_OS}" = "Debian" ]; then
       _SUPPORTED_OS=YES
@@ -491,7 +493,7 @@ find_fast_mirror() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
     apt-get install netcat ${aptYesUnth} &> /dev/null
     sleep 3
   fi
@@ -1523,6 +1525,7 @@ install_db_cluster() {
     vserver ${idn} exec ${_INSTAPP} debian-keyring
     vserver ${idn} exec ${_INSTAPP} debian-archive-keyring
   	vserver ${idn} exec apt-get upgrade -y -qq
+  	vserver ${idn} exec apt-get full-upgrade -y -qq
   	vserver ${idn} exec apt-get remove apparmor -y -qq
   	vserver ${idn} exec ${_INSTAPP} software-properties-common dirmngr
     rm -f /vservers/${idn}/etc/apt/sources.list.d/percona-.*
@@ -1745,6 +1748,7 @@ upgrade_db_cluster() {
   	vserver ${idn} exec ${_INSTAPP} bc
   	vserver ${idn} exec apt-get upgrade ${_APT_XTR}
   	vserver ${idn} exec apt-get dist-upgrade ${_APT_XTR}
+  	vserver ${idn} exec apt-get install lsb-release
   	vserver ${idn} exec dpkg --configure --force-all -a
   	vserver ${idn} exec update-rc.d -f mysql remove
 
@@ -1818,9 +1822,9 @@ install_host() {
   cat /etc/apt/sources.list
 
   echo "Installing basic tools..."
-  ${_APT_UPDATE} -qq &> /dev/null
+  apt_clean_update
   apt-get upgrade ${nrmUpArg}
-  ${_APT_UPDATE} -qq
+  apt-get full-upgrade ${nrmUpArg}
   ${_INSTAPP} locales
   ${_INSTAPP} lsb-release
   ${_INSTAPP} dnsutils
@@ -1939,7 +1943,7 @@ install_host() {
     done
     cat pubkey.txt | ${_GPG} --import &> /dev/null
     rm -f pubkey.txt*
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
     ${_INSTAPP} build-essential
     ${_INSTAPP} linux-headers-vserver-${_BENG_SERIES}-beng
     ${_INSTAPP} linux-image-vserver-${_BENG_SERIES}-beng
@@ -1953,7 +1957,7 @@ install_host() {
       || [ "${osx}" = "stretch" ] \
       || [ "${osx}" = "buster" ] \
       || [ "${osx}" = "bullseye" ]; then
-      ${_APT_UPDATE} -qq
+      apt_clean_update
       echo "sysvinit-core install" | dpkg --set-selections
       echo "sysvinit-utils install" | dpkg --set-selections
       ${_INSTAPP} sysvinit-core
@@ -2004,7 +2008,7 @@ upgrade_host() {
 
   if [ -x "/lib/systemd/systemd" ]; then
     echo "Removing systemd on ${_THIS_OS} ${_OSR}..."
-    ${_APT_UPDATE} -qq
+    apt_clean_update
     echo "sysvinit-core install" | dpkg --set-selections
     echo "sysvinit-utils install" | dpkg --set-selections
     if [ "${osx}" = "jessie" ] \
@@ -2032,7 +2036,7 @@ upgrade_host() {
 
   if [ "${thisMode}" = "UPGRADE" ]; then
     echo "Installing vserver tools dependencies..."
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
     ${_INSTAPP} vlan
     ${_INSTAPP} e2fslibs-dev
     ${_INSTAPP} libnss3-dev
@@ -2155,8 +2159,8 @@ upgrade_host() {
   fi
 
   echo "Updating packages on this system..."
-  ${_APT_UPDATE} -qq \
-    && apt-get install aptitude ${_APT_XTR} \
+  apt_clean_update
+  apt-get install aptitude ${_APT_XTR} \
     && aptitude full-upgrade -f -y -q \
       -o Dpkg::Options::=--force-confdef \
       -o Dpkg::Options::=--force-confold \

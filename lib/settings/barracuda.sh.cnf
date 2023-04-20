@@ -1093,7 +1093,7 @@ find_fast_mirror() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
     apt-get install netcat ${aptYesUnth} &> /dev/null
     sleep 3
   fi
@@ -1149,7 +1149,7 @@ download_helpers_libs() {
   if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
     isGit=$(which git 2>&1)
     if [ ! -x "${isGit}" ] || [ -z "${isGit}" ]; then
-      ${_APT_UPDATE} -qq &> /dev/null
+      apt_clean_update
       apt-get install git -fuy --allow-unauthenticated --reinstall &> /dev/null
       apt-get install git-core -fuy --allow-unauthenticated --reinstall &> /dev/null
       apt-get install git-man -fuy --allow-unauthenticated --reinstall &> /dev/null

@@ -73,9 +73,7 @@ csf_install() {
   cd /var/opt
   _IPSET_TEST=$(which ipset 2> /dev/null)
   if [ ! -x "${_IPSET_TEST}" ]; then
-    apt-get clean -qq &> /dev/null
-    rm -rf /var/lib/apt/lists/*
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
     if [ -L "/sbin/ipset" ]; then
       rm -f /sbin/ipset
     fi
@@ -180,9 +178,7 @@ csf_lfd_install_upgrade() {
   fi
   _IPSET_TEST=$(which ipset 2> /dev/null)
   if [ ! -x "${_IPSET_TEST}" ]; then
-    apt-get clean -qq &> /dev/null
-    rm -rf /var/lib/apt/lists/*
-    ${_APT_UPDATE} -qq &> /dev/null
+    apt_clean_update
     if [ -L "/sbin/ipset" ]; then
       rm -f /sbin/ipset
     fi

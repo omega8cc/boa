@@ -401,7 +401,7 @@ install_pdnsd_cache() {
     echo "nameserver 1.1.1.1" > /etc/resolv.conf
     echo "nameserver 1.0.0.1" >> /etc/resolv.conf
   fi
-  st_runner "${_APT_UPDATE} -qq" &> /dev/null
+  apt_clean_update
   st_runner "aptitude purge pdnsd -y" &> /dev/null
   st_runner "aptitude purge resolvconf -y" &> /dev/null
   rm -rf /lib/init/rw/resolvconf
