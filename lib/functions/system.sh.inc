@@ -2263,16 +2263,16 @@ run_apt_get_dist_upgrade() {
   fi
   msg "INFO: Running apt-get upgrade..."
   apt_clean_update
-  mrun "apt-get upgrade ${nrmUpArg}" 2> /dev/null
+  mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Running apt-get full-upgrade..."
   fi
-  mrun "apt-get full-upgrade ${nrmUpArg}" 2> /dev/null
+  mrun "apt-get full-upgrade ${dstUpArg}" 2> /dev/null
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Running apt-get dist-upgrade..."
   fi
-  mrun "apt-get dist-upgrade ${nrmUpArg}" 2> /dev/null
-  mrun "apt-get install lsb-release ${nrmUpArg}" 2> /dev/null
+  mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
+  mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
 }
 
 #
@@ -4639,6 +4639,7 @@ if_post_major_os_upgrade() {
     msg "INFO: Running dist-upgrade to complete the system upgrade..."
     msg "WAIT: This may take a while, please wait..."
     mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
+    mrun "apt-get dist-upgrade -y" 2> /dev/null
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
 
