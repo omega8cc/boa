@@ -5080,6 +5080,9 @@ if_major_os_upgrade() {
     _NGX_FORCE_REINSTALL=YES
     _SSL_FORCE_REINSTALL=YES
     _SSH_FORCE_REINSTALL=YES
+    magick_install_upgrade
+    php_install_deps
+    php_libs_fix
     nginx_install_upgrade
     ssl_install_src
     ssl_crypto_lib_fix
