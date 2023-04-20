@@ -4986,6 +4986,7 @@ if_major_os_upgrade() {
     fi
     ###
     ### Fix any broken packages.
+    apt_clean_update
     mrun "apt --fix-broken install -y" 2> /dev/null
     ###
     ### Make sure that sysvinit-core is still installed and systemd removed.
@@ -5027,6 +5028,8 @@ if_major_os_upgrade() {
       mrun "apt-get full-upgrade ${dstUpArg}" 2> /dev/null
       mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     fi
+    mrun "apt-get upgrade -y" 2> /dev/null
+    mrun "apt-get full-upgrade -y" 2> /dev/null
     ###
     ### Make sure that sysvinit-core is still installed and systemd removed.
     sysvinit_install
@@ -5043,6 +5046,7 @@ if_major_os_upgrade() {
       msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
     else
       mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
+      mrun "apt-get dist-upgrade -y" 2> /dev/null
       mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     fi
     ###
