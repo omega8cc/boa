@@ -2272,6 +2272,7 @@ run_apt_get_dist_upgrade() {
     msg "INFO: Running apt-get dist-upgrade..."
   fi
   mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
+  mrun "apt-get dist-upgrade -y" 2> /dev/null
   mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
 }
 
@@ -2435,7 +2436,7 @@ php_install_deps() {
   mrun "${_INSTAPP} libsodium-dev" 2> /dev/null
   mrun "${_INSTAPP} libwebp-dev" 2> /dev/null
   mrun "${_INSTAPP} libxpm-dev" 2> /dev/null
-  mrun "${_INSTAPP} llibjpeg-dev libjpeg62" 2> /dev/null
+  mrun "${_INSTAPP} libjpeg-dev libjpeg62" 2> /dev/null
   if [ "${_OSR}" = "jessie" ]; then
     install_icu_jessie
   else
