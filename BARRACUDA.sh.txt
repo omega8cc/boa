@@ -323,9 +323,7 @@ fi
 ###
 ### Install Percona server
 ###
-if [ ! -e "/root/.run_post_major_os_upgrade.info" ]; then
-  db_server_install
-fi
+db_server_install
 
 
 ###
