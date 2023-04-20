@@ -1735,6 +1735,9 @@ install_php_multi() {
     rm -f /etc/init.d/php$1-fpm*
     cp -af ${locCnf}/php$1-fpm /etc/init.d/php$1-fpm
     chmod 755 /etc/init.d/php$1-fpm
+    if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
+      touch ${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info
+    fi
     mrun "update-rc.d php$1-fpm defaults" &> /dev/null
   else
     msg "WARN: Building PHP ${_PHP_VERSION} failed!"
@@ -2136,10 +2139,12 @@ check_php_rebuild() {
     || [[ "${_PHP_ITD}" =~ "~" ]] \
     || [[ "${_PHP_ITD}" =~ "dotdeb" ]] \
     || [[ "${_PHP_ITD}" =~ "ubuntu" ]]; then
-    msg "INFO: Installed PHP version ${_PHP_ITD}, upgrade to mysqlnd required"
-    install_php_multi "$1"
-    _PHP_ALREADY_REBUILT=$1
-    _PHP_FORCE_REINSTALL=NO
+    if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
+      msg "INFO: Installed PHP version ${_PHP_ITD}, upgrade to mysqlnd required"
+      install_php_multi "$1"
+      _PHP_ALREADY_REBUILT=$1
+      _PHP_FORCE_REINSTALL=NO
+    fi
   else
     if [[ "${_PHP_ITD}" =~ "${_PHP_VERSION}" ]]; then
       if [ "${_UP_PHP}" = "YES" ]; then
@@ -2168,10 +2173,12 @@ check_php_rebuild() {
           msg "INFO: PHP ${_PHP_ITD} forced rebuild on next barracuda up-head"
           _PHP_FORCE_REINSTALL=NO
         else
-          msg "INFO: PHP ${_PHP_ITD} forced rebuild will happen now..."
-          install_php_multi "$1"
-          _PHP_ALREADY_REBUILT=$1
-          _PHP_FORCE_REINSTALL=NO
+          if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
+            msg "INFO: PHP ${_PHP_ITD} forced rebuild will happen now..."
+            install_php_multi "$1"
+            _PHP_ALREADY_REBUILT=$1
+            _PHP_FORCE_REINSTALL=NO
+          fi
         fi
       fi
     else
@@ -2184,10 +2191,12 @@ check_php_rebuild() {
       if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
         msg "INFO: PHP ${_PHP_ITD} upgrade on next barracuda up-head"
       else
-        msg "INFO: PHP ${_PHP_ITD} upgrade will happen now..."
-        install_php_multi "$1"
-        _PHP_ALREADY_REBUILT=$1
-        _PHP_FORCE_REINSTALL=NO
+        if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
+          msg "INFO: PHP ${_PHP_ITD} upgrade will happen now..."
+          install_php_multi "$1"
+          _PHP_ALREADY_REBUILT=$1
+          _PHP_FORCE_REINSTALL=NO
+        fi
       fi
     fi
   fi
@@ -2236,10 +2245,12 @@ check_php_broken_freetype() {
   if [[ ! "${isFreeType}" =~ "with-freetype" ]] \
     || [ -z "${isFreeType}" ]; then
     if [ -x "/usr/bin/freetype-config" ]; then
-      msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix freetype support..."
-      install_php_multi "$1"
-      _PHP_ALREADY_REBUILT=$1
-      _PHP_FORCE_REINSTALL=NO
+      if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
+        msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix freetype support..."
+        install_php_multi "$1"
+        _PHP_ALREADY_REBUILT=$1
+        _PHP_FORCE_REINSTALL=NO
+      fi
     else
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "NOTE: PHP ${_PHP_VERSION} was built without freetype support"
@@ -2260,10 +2271,12 @@ check_php_broken_gd() {
   isGd=$(/opt/php$1/bin/php -i | grep GD 2>&1)
   if [[ ! "${isGd}" =~ "GD Support" ]] \
     || [ -z "${isGd}" ]; then
-    msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix GD support..."
-    install_php_multi "$1"
-    _PHP_ALREADY_REBUILT=$1
-    _PHP_FORCE_REINSTALL=NO
+    if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
+      msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix GD support..."
+      install_php_multi "$1"
+      _PHP_ALREADY_REBUILT=$1
+      _PHP_FORCE_REINSTALL=NO
+    fi
   else
     _PHP_ALREADY_REBUILT=
   fi
@@ -2280,10 +2293,12 @@ check_php_broken_segfault() {
   if [[ ! "${isSegft}" =~ "cli" ]] \
     || [ -z "${isSegft}" ] \
     || [[ "${isSegft}" =~ "has different size" ]]; then
-    msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix broken build..."
-    install_php_multi "$1"
-    _PHP_ALREADY_REBUILT=$1
-    _PHP_FORCE_REINSTALL=NO
+    if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
+      msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix broken build..."
+      install_php_multi "$1"
+      _PHP_ALREADY_REBUILT=$1
+      _PHP_FORCE_REINSTALL=NO
+    fi
   else
     _PHP_ALREADY_REBUILT=
   fi
@@ -2298,12 +2313,14 @@ check_php_broken() {
   check_php_broken_segfault "$1"
   _BROKEN_LIBCURL_TEST=$(/opt/php$1/bin/php -v 2>&1)
   if [[ "${_BROKEN_LIBCURL_TEST} " =~ "libcurl.so.4" ]]; then
-    _PHP_BIN_BROKEN=YES
-    msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix broken libcurl..."
-    curl_install_src
-    install_php_multi "$1"
-    _PHP_ALREADY_REBUILT=$1
-    _PHP_FORCE_REINSTALL=NO
+    if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
+      _PHP_BIN_BROKEN=YES
+      msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix broken libcurl..."
+      curl_install_src
+      install_php_multi "$1"
+      _PHP_ALREADY_REBUILT=$1
+      _PHP_FORCE_REINSTALL=NO
+    fi
   else
     _PHP_ALREADY_REBUILT=
   fi
