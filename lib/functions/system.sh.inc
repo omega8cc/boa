@@ -4658,6 +4658,10 @@ if_post_major_os_upgrade() {
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
 
+    magick_install_upgrade
+    php_install_deps
+    php_libs_fix
+
     if [ -e "/root/.big_hop_on_major_os_upgrade.info" ]; then
       msg "INFO: Time for re-installing services built from sources..."
       rm -f /var/xdrago/log/*.log
@@ -5643,6 +5647,9 @@ php_libs_fix() {
       || [ ! -e "/usr/lib/libonig.so" ] \
       || [ ! -e "/usr/lib/libcurl.so" ] \
       || [ ! -e "/usr/lib/libicuio.so" ] \
+      || [ ! -e "/usr/lib/libImath-2_2.so.12" ] \
+      || [ ! -e "/usr/lib/libHalf.so.12" ] \
+      || [ ! -e "/usr/lib/libIlmImf-2_2.so.22" ] \
       || [ ! -e "/usr/include/gmp.h" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Fix for PHP libs in ${_THIS_OS} ${_OSR}"
