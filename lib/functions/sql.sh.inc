@@ -516,12 +516,18 @@ prep_for_install_db_sql() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: prep_for_install_db_sql"
   fi
-  if [ "${_OSR}" = "chimaera" ]; then
+  if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
+    || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
+    _REAL_OSR="chimaera"
+  else
+    _REAL_OSR="${_OSR}"
+  fi
+  if [ "${_REAL_OSR}" = "chimaera" ]; then
     _SQL_OSR=bullseye
-  elif [ "${_OSR}" = "beowulf" ]; then
+  elif [ "${_REAL_OSR}" = "beowulf" ]; then
     _SQL_OSR=buster
   else
-    _SQL_OSR="${_OSR}"
+    _SQL_OSR="${_REAL_OSR}"
   fi
   _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
@@ -1055,12 +1061,18 @@ db_server_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: db_server_install"
   fi
-  if [ "${_OSR}" = "chimaera" ]; then
+  if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
+    || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
+    _REAL_OSR="chimaera"
+  else
+    _REAL_OSR="${_OSR}"
+  fi
+  if [ "${_REAL_OSR}" = "chimaera" ]; then
     _SQL_OSR=bullseye
-  elif [ "${_OSR}" = "beowulf" ]; then
+  elif [ "${_REAL_OSR}" = "beowulf" ]; then
     _SQL_OSR=buster
   else
-    _SQL_OSR="${_OSR}"
+    _SQL_OSR="${_REAL_OSR}"
   fi
   _THIS_DB_PORT=3306
   if [ -x "/usr/bin/gpg2" ]; then

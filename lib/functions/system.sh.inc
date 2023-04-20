@@ -2887,18 +2887,24 @@ sources_list_update() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: We will use ${_THIS_OS} mirror ${_MIRROR}"
       fi
+      if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
+        || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
+        _REAL_OSR="chimaera"
+      else
+        _REAL_OSR="${_OSR}"
+      fi
       cd /var/opt
       echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_MIRROR}/merged ${_OSR} main" >> ${aptLiSys}
-      echo "deb-src http://${_MIRROR}/merged ${_OSR} main" >> ${aptLiSys}
+      echo "deb http://${_MIRROR}/merged ${_REAL_OSR} main" >> ${aptLiSys}
+      echo "deb-src http://${_MIRROR}/merged ${_REAL_OSR} main" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
 	  echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-	  echo "deb http://${_MIRROR}/merged ${_OSR}-updates main" >> ${aptLiSys}
-	  echo "deb-src http://${_MIRROR}/merged ${_OSR}-updates main" >> ${aptLiSys}
+	  echo "deb http://${_MIRROR}/merged ${_REAL_OSR}-updates main" >> ${aptLiSys}
+	  echo "deb-src http://${_MIRROR}/merged ${_REAL_OSR}-updates main" >> ${aptLiSys}
 	  echo "" >> ${aptLiSys}
       echo "## DEVUAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://${_MIRROR}/merged ${_OSR}-security main" >> ${aptLiSys}
-      echo "deb-src http://${_MIRROR}/merged ${_OSR}-security main" >> ${aptLiSys}
+      echo "deb http://${_MIRROR}/merged ${_REAL_OSR}-security main" >> ${aptLiSys}
+      echo "deb-src http://${_MIRROR}/merged ${_REAL_OSR}-security main" >> ${aptLiSys}
     elif [ "${_THIS_OS}" = "Debian" ]; then
       _MIRROR_CHECK=NO
       if [ "${_OSR}" = "deprecated" ]; then
@@ -4907,12 +4913,18 @@ if_major_os_upgrade() {
     if [ "${_TGT_OSN}" = "Debian" ] || [ "${_TGT_OSN}" = "Devuan" ]; then
       _NEW_OSN=debian
     fi
-    if [ "${_NEW_OSR}" = "chimaera" ]; then
+    if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
+      || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
+      _REAL_OSR="chimaera"
+    else
+      _REAL_OSR="${_NEW_OSR}"
+    fi
+    if [ "${_REAL_OSR}" = "chimaera" ]; then
       _SQL_NEW_OSR=bullseye
-    elif [ "${_NEW_OSR}" = "beowulf" ]; then
+    elif [ "${_REAL_OSR}" = "beowulf" ]; then
       _SQL_NEW_OSR=buster
     else
-      _SQL_NEW_OSR="${_NEW_OSR}"
+      _SQL_NEW_OSR="${_REAL_OSR}"
     fi
     ###
     ### Switching other gears on the fly first.
