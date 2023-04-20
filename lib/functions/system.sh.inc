@@ -5687,6 +5687,12 @@ php_libs_fix() {
     msg "PROC: php_libs_fix"
   fi
   if_to_do_fix
+  if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
+    || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
+    _REAL_OSR="chimaera"
+  else
+    _REAL_OSR="${_OSR}"
+  fi
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
     || [ "${_OSR}" = "bullseye" ] \
@@ -5701,9 +5707,7 @@ php_libs_fix() {
       || [ ! -e "/usr/lib/libonig.so" ] \
       || [ ! -e "/usr/lib/libcurl.so" ] \
       || [ ! -e "/usr/lib/libicuio.so" ] \
-      || [ ! -e "/usr/lib/libImath-2_2.so.12" ] \
-      || [ ! -e "/usr/lib/libHalf.so.12" ] \
-      || [ ! -e "/usr/lib/libIlmImf-2_2.so.22" ] \
+      || [ ! -e "/root/.php_libs_fix_${_REAL_OSR}.pid" ] \
       || [ ! -e "/usr/include/gmp.h" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Fix for PHP libs in ${_THIS_OS} ${_OSR}"
@@ -5746,14 +5750,34 @@ php_libs_fix() {
         ln -sf /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so.4
         ln -sf /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so
         ln -sf /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
+        if [ -e "/usr/lib/x86_64-linux-gnu/libHalf.so" ]; then
+          ln -sf /usr/lib/x86_64-linux-gnu/libHalf.so /usr/lib/libHalf.so.12
+        fi
         if [ -e "/usr/lib/x86_64-linux-gnu/libHalf.so.23" ]; then
           ln -sf /usr/lib/x86_64-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
+        fi
+        if [ -e "/usr/lib/x86_64-linux-gnu/libIlmImf.so" ]; then
+          ln -sf /usr/lib/x86_64-linux-gnu/libIlmImf.so /usr/lib/libIlmImf-2_2.so.22
+        fi
+        if [ -e "/usr/lib/x86_64-linux-gnu/libIlmImf-2_2.so.23" ]; then
           ln -sf /usr/lib/x86_64-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
+        fi
+        if [ -e "/usr/lib/x86_64-linux-gnu/libImath.so" ]; then
+          ln -sf /usr/lib/x86_64-linux-gnu/libImath.so /usr/lib/libImath-2_2.so.12
+        fi
+        if [ -e "/usr/lib/x86_64-linux-gnu/libImath-2_2.so.23" ]; then
           ln -sf /usr/lib/x86_64-linux-gnu/libImath-2_2.so.23 /usr/lib/libImath-2_2.so.12
+        fi
+        if [ -e "/usr/lib/x86_64-linux-gnu/libIex.so" ]; then
+          ln -sf /usr/lib/x86_64-linux-gnu/libIex.so /usr/lib/libIex-2_2.so.12
+        fi
+        if [ -e "/usr/lib/x86_64-linux-gnu/libIex-2_2.so.23" ]; then
           ln -sf /usr/lib/x86_64-linux-gnu/libIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
+        fi
+        if [ -e "/usr/lib/x86_64-linux-gnu/libIexMath.so" ]; then
           ln -sf /usr/lib/x86_64-linux-gnu/libIexMath.so /usr/lib/libIexMath-2_2.so.12
-          ln -sf /usr/lib/x86_64-linux-gnu/libIexMath.so /usr/lib/libIexMath.so
-          ln -sf /usr/lib/x86_64-linux-gnu/libIlmThread.so /usr/lib/libIlmThread.so
+        fi
+        if [ -e "/usr/lib/x86_64-linux-gnu/libIlmThread.so" ]; then
           ln -sf /usr/lib/x86_64-linux-gnu/libIlmThread.so /usr/lib/libIlmThread-2_2.so.12
         fi
         if [ ! -e "/usr/include/curl/curl.h" ] \
@@ -5806,14 +5830,34 @@ php_libs_fix() {
         ln -sf /usr/lib/i386-linux-gnu/libonig.so /usr/lib/libonig.so.4
         ln -sf /usr/lib/i386-linux-gnu/libsodium.so /usr/lib/libsodium.so
         ln -sf /usr/lib/i386-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
+        if [ -e "/usr/lib/i386-linux-gnu/libHalf.so" ]; then
+          ln -sf /usr/lib/i386-linux-gnu/libHalf.so /usr/lib/libHalf.so.12
+        fi
         if [ -e "/usr/lib/i386-linux-gnu/libHalf.so.23" ]; then
           ln -sf /usr/lib/i386-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
+        fi
+        if [ -e "/usr/lib/i386-linux-gnu/libIlmImf.so" ]; then
+          ln -sf /usr/lib/i386-linux-gnu/libIlmImf.so /usr/lib/libIlmImf-2_2.so.22
+        fi
+        if [ -e "/usr/lib/i386-linux-gnu/libIlmImf-2_2.so.23" ]; then
           ln -sf /usr/lib/i386-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
+        fi
+        if [ -e "/usr/lib/i386-linux-gnu/libImath.so" ]; then
+          ln -sf /usr/lib/i386-linux-gnu/libImath.so /usr/lib/libImath-2_2.so.12
+        fi
+        if [ -e "/usr/lib/i386-linux-gnu/libImath-2_2.so.23" ]; then
           ln -sf /usr/lib/i386-linux-gnu/libImath-2_2.so.23 /usr/lib/libImath-2_2.so.12
+        fi
+        if [ -e "/usr/lib/i386-linux-gnu/libIex.so" ]; then
+          ln -sf /usr/lib/i386-linux-gnu/libIex.so /usr/lib/libIex-2_2.so.12
+        fi
+        if [ -e "/usr/lib/i386-linux-gnu/libIex-2_2.so.23" ]; then
           ln -sf /usr/lib/i386-linux-gnu/libIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
+        fi
+        if [ -e "/usr/lib/i386-linux-gnu/libIexMath.so" ]; then
           ln -sf /usr/lib/i386-linux-gnu/libIexMath.so /usr/lib/libIexMath-2_2.so.12
-          ln -sf /usr/lib/i386-linux-gnu/libIexMath.so /usr/lib/libIexMath.so
-          ln -sf /usr/lib/i386-linux-gnu/libIlmThread.so /usr/lib/libIlmThread.so
+        fi
+        if [ -e "/usr/lib/i386-linux-gnu/libIlmThread.so" ]; then
           ln -sf /usr/lib/i386-linux-gnu/libIlmThread.so /usr/lib/libIlmThread-2_2.so.12
         fi
         if [ ! -e "/usr/include/curl/curl.h" ] \
@@ -5830,6 +5874,7 @@ php_libs_fix() {
           ln -sf librtmp.so.1 librtmp.so.0
         fi
       fi
+      touch /root/.php_libs_fix_${_REAL_OSR}.pid
     fi
   fi
   mrun "ldconfig" 2> /dev/null
