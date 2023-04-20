@@ -97,33 +97,31 @@ production settings.
 
 ### DEVUAN & DEBIAN {c} please read also: docs/CAVEATS.txt
 
-=== Devuan @ https://www.devuan.org/os/releases
-
+##== Devuan @ https://www.devuan.org/os/releases
 * Devuan Chimaera (fully supported)
 * Devuan Beowulf (fully supported)
 
-=== Debian to Devuan major OS upgrades (fully supported for Buster and Bullseye)
+  >=> Devuan to Devuan major OS upgrades (fully supported)
+  * Devuan Beowulf     => upgrade to Bullseye with _BEOWULF_TO_CHIMAERA=YES
 
-* Debian 11 Bullseye => upgrade to Chimaera with _BULLSEYE_TO_CHIMAERA=YES
-* Debian 10 Buster   => upgrade to Beowulf with  _BUSTER_TO_BEOWULF=YES
-* Debian 9 Stretch   => upgrade to Beowulf with  _STRETCH_TO_BEOWULF=YES
-* Debian 8 Jessie    => upgrade to Beowulf with  _JESSIE_TO_BEOWULF=YES
+  >=> Debian to Devuan major OS upgrades (fully supported)
+  * Debian 11 Bullseye => upgrade to Chimaera with _BULLSEYE_TO_CHIMAERA=YES
+  * Debian 10 Buster   => upgrade to Beowulf with  _BUSTER_TO_BEOWULF=YES
+  * Debian 9 Stretch   => upgrade to Beowulf with  _STRETCH_TO_BEOWULF=YES
+  * Debian 8 Jessie    => upgrade to Beowulf with  _JESSIE_TO_BEOWULF=YES
 
-=== Debian @ https://wiki.debian.org/LTS
-
+##== Debian @ https://wiki.debian.org/LTS
 * Debian 11 Bullseye (fully supported)
 * Debian 10 Buster (fully supported)
 * Debian 9 Stretch (deprecated but still works)
 * Debian 8 Jessie (deprecated but still works)
 
-=== Debian to Debian major OS upgrades (work in progress)
+  >=> Debian to Debian major OS upgrades (fully supported)
+  * Debian 10 Buster   => upgrade to Bullseye with _BUSTER_TO_BULLSEYE=YES
+  * Debian 9 Stretch   => upgrade to Buster with   _STRETCH_TO_BUSTER=YES
+  * Debian 8 Jessie    => upgrade to Stretch with  _JESSIE_TO_STRETCH=YES
 
-* Debian 10 Buster   => upgrade to Bullseye with _BUSTER_TO_BULLSEYE=YES
-* Debian 9 Stretch   => upgrade to Buster with   _STRETCH_TO_BUSTER=YES
-* Debian 8 Jessie    => upgrade to Stretch with  _JESSIE_TO_STRETCH=YES
-
-=== Ubuntu @ https://ubuntu.com/about/release-cycle
-
+##== Ubuntu @ https://ubuntu.com/about/release-cycle
 * Ubuntu Trusty Tahr 14.04 LTS (deprecated and no longer tested)
 * Ubuntu Precise Pangolin 12.04.3 LTS (deprecated and no longer tested)
 
