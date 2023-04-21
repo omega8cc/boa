@@ -4677,6 +4677,7 @@ if_post_major_os_upgrade() {
     if [ -e "/root/.big_hop_on_major_os_upgrade.info" ]; then
       msg "INFO: Time for re-installing services built from sources..."
       rm -f /var/xdrago/log/*.log
+      rm -f /root/.php_libs_fix_*.pid
       _PURGE_MODE=OFF
       _NGX_FORCE_REINSTALL=YES
       _PHP_FORCE_REINSTALL=YES
