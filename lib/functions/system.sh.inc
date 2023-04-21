@@ -2893,6 +2893,7 @@ sources_list_update() {
         _REAL_OS="Devuan"
       else
         _REAL_OSR="${_OSR}"
+        _REAL_OS="${_THIS_OS}"
       fi
       cd /var/opt
       echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
