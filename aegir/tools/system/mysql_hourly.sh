@@ -130,6 +130,7 @@ _DOM=${_DOM//[^0-9]/}
 _SAVELOCATION=${_BACKUPDIR}/${_CHECK_HOST}-${_DATE}
 _VM_TEST=$(uname -a 2>&1)
 _LOGDIR="/var/xdrago/log/hourly"
+_THIS_OS=$(lsb_release -si 2>&1)
 _OSR=$(lsb_release -sc 2>&1)
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
@@ -179,8 +180,10 @@ if [ ! -e "${percList}" ] \
   if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
     || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
     _REAL_OSR="chimaera"
+    _REAL_OS="Devuan"
   else
     _REAL_OSR="${_OSR}"
+    _REAL_OS="${_THIS_OS}"
   fi
   if [ "${_REAL_OSR}" = "chimaera" ]; then
     _SQL_OSR=bullseye

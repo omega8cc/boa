@@ -519,8 +519,10 @@ prep_for_install_db_sql() {
   if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
     || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
     _REAL_OSR="chimaera"
+    _REAL_OS="Devuan"
   else
     _REAL_OSR="${_OSR}"
+    _REAL_OS="${_THIS_OS}"
   fi
   if [ "${_REAL_OSR}" = "chimaera" ]; then
     _SQL_OSR=bullseye
@@ -1064,8 +1066,10 @@ db_server_install() {
   if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
     || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
     _REAL_OSR="chimaera"
+    _REAL_OS="Devuan"
   else
     _REAL_OSR="${_OSR}"
+    _REAL_OS="${_THIS_OS}"
   fi
   if [ "${_REAL_OSR}" = "chimaera" ]; then
     _SQL_OSR=bullseye

@@ -2890,6 +2890,7 @@ sources_list_update() {
       if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
         || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
         _REAL_OSR="chimaera"
+        _REAL_OS="Devuan"
       else
         _REAL_OSR="${_OSR}"
       fi
@@ -4917,8 +4918,10 @@ if_major_os_upgrade() {
     if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
       || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
       _REAL_OSR="chimaera"
+      _REAL_OS="Devuan"
     else
       _REAL_OSR="${_NEW_OSR}"
+      _REAL_OS="${_THIS_OS}"
     fi
     if [ "${_REAL_OSR}" = "chimaera" ]; then
       _SQL_NEW_OSR=bullseye
@@ -5691,8 +5694,10 @@ php_libs_fix() {
   if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
     || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
     _REAL_OSR="chimaera"
+    _REAL_OS="Devuan"
   else
     _REAL_OSR="${_OSR}"
+    _REAL_OS="${_THIS_OS}"
   fi
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
@@ -5711,7 +5716,7 @@ php_libs_fix() {
       || [ ! -e "/root/.php_libs_fix_${_REAL_OSR}.pid" ] \
       || [ ! -e "/usr/include/gmp.h" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Fix for PHP libs in ${_THIS_OS} ${_OSR}"
+        msg "INFO: Fix for PHP libs in ${_REAL_OS} ${_REAL_OSR}"
       fi
       _X86_64_TEST=$(uname -m 2>&1)
       if [ "${_X86_64_TEST}" = "x86_64" ]; then
