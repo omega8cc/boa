@@ -4185,6 +4185,11 @@ finale() {
   fi
   php_deprecated_cleanup
   php_single_initd_cleanup
+  if [ -e "/root/.skip-aegir-master-upgrade.cnf" ] \
+    && [ -e "/root/.completed_post_major_os_upgrade.info" ] \
+    && [ ! -e "/root/.run_post_major_os_upgrade.info" ]; then
+    rm -f /root/.skip-aegir-master-upgrade.cnf
+  fi
   if [ ! -e "/root/.upstart.cnf" ]; then
     service cron start &> /dev/null
   fi
@@ -4729,9 +4734,6 @@ if_post_major_os_upgrade() {
 
     rm -f /root/.run_post_major_os_upgrade.info
     touch /root/.completed_post_major_os_upgrade.info
-    if [ -e "/root/.skip-aegir-master-upgrade.cnf" ]; then
-      rm -f /root/.skip-aegir-master-upgrade.cnf
-    fi
     msg "INFO: The post_major_os_upgrade procedure is complete"
   fi
 }
