@@ -57,13 +57,13 @@ systemd_remove_if_detected() {
     sysvinit_install
   fi
   if [ -e "/lib/systemd/systemd" ]; then
-    msg "ALRT: The systemd has NOT been removed on ${_THIS_OS} ${_OSR}"
+    msg "ALRT: The systemd has NOT been removed in ${_REAL_OS}/${_REAL_OSR}"
     msg "ALRT: Please check details in the logs located in /var/backups/"
     msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
     msg "STEP: You can also run the 'boa init' command again"
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: The systemd has been removed on ${_THIS_OS} ${_OSR}"
+      msg "INFO: The systemd has been removed in ${_REAL_OS}/${_REAL_OSR}"
     fi
   fi
 }
@@ -2884,9 +2884,6 @@ sources_list_update() {
 	  else
 		_MIRROR=${_LOCAL_DEVUAN_MIRROR}
 	  fi
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: We will use ${_THIS_OS} mirror ${_MIRROR}"
-      fi
       if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
         || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
         _REAL_OSR="chimaera"
@@ -2894,6 +2891,9 @@ sources_list_update() {
       else
         _REAL_OSR="${_OSR}"
         _REAL_OS="${_THIS_OS}"
+      fi
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: We will use ${_REAL_OS} mirror ${_MIRROR}"
       fi
       cd /var/opt
       echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
@@ -2908,6 +2908,14 @@ sources_list_update() {
       echo "deb http://${_MIRROR}/merged ${_REAL_OSR}-security main" >> ${aptLiSys}
       echo "deb-src http://${_MIRROR}/merged ${_REAL_OSR}-security main" >> ${aptLiSys}
     elif [ "${_THIS_OS}" = "Debian" ]; then
+      if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
+        || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
+        _REAL_OSR="chimaera"
+        _REAL_OS="Devuan"
+      else
+        _REAL_OSR="${_OSR}"
+        _REAL_OS="${_THIS_OS}"
+      fi
       _MIRROR_CHECK=NO
       if [ "${_OSR}" = "deprecated" ]; then
         _MIRROR=archive.debian.org
@@ -2950,7 +2958,7 @@ sources_list_update() {
         fi
       fi
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: We will use ${_THIS_OS} mirror ${_MIRROR}"
+        msg "INFO: We will use ${_REAL_OS} mirror ${_MIRROR}"
       fi
       cd /var/opt
       if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
@@ -3206,7 +3214,7 @@ ssl_crypto_lib_fix() {
   fi
   if [ ! -e "/usr/lib/libssl.so" ] || [ ! -e "/usr/lib/libcrypto.so" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Fix for SSL libssl/libcrypto in ${_THIS_OS} ${_OSR}"
+      msg "INFO: Fix for SSL libssl/libcrypto in ${_REAL_OS}/${_REAL_OSR}"
     fi
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
@@ -4316,7 +4324,7 @@ systemd_cleanup_on_init() {
       msg "STEP: 5. Run boa standard install command"
       echo
       msg "STEP: Let's begin with STEP 1..."
-      msg "INFO: Installing sysvinit on ${_THIS_OS} ${_OSR}..."
+      msg "INFO: Installing sysvinit in ${_REAL_OS}/${_REAL_OSR}..."
       sysvinit_install
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
@@ -4325,14 +4333,14 @@ systemd_cleanup_on_init() {
         sysvinit_install
         rm -f /etc/apt/sources.list.d/nosystemd.list
         rm -f /etc/apt/preferences.d/nosystemd
-        msg "INFO: The sysvinit-core installed on ${_THIS_OS} ${_OSR}..."
+        msg "INFO: The sysvinit-core installed in ${_REAL_OS}/${_REAL_OSR}"
         echo
         msg "STEP: Let's continue to STEP 2... Please reboot this server"
         msg "STEP: Once the system is up, run 'boa init' command again"
         touch /root/.step.init.systemd.one.cnf
       else
         echo
-        msg "ALRT: The sysvinit has NOT been installed on ${_THIS_OS} ${_OSR}"
+        msg "ALRT: The sysvinit has NOT been installed in ${_REAL_OS}/${_REAL_OSR}"
         msg "ALRT: Please check details in the logs located in /var/backups/"
         msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
         msg "STEP: You can also run the 'boa init' command again"
@@ -4345,7 +4353,7 @@ systemd_cleanup_on_init() {
     if [ ! -e "/root/.step.init.systemd.two.cnf" ] \
       && [ -e "/root/.step.init.systemd.one.cnf" ]; then
       msg "STEP: Let's continue to STEP 3..."
-      msg "INFO: Removing systemd on ${_THIS_OS} ${_OSR}..."
+      msg "INFO: Removing systemd in ${_REAL_OS}/${_REAL_OSR}..."
       sysvinit_install
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
@@ -4358,7 +4366,7 @@ systemd_cleanup_on_init() {
         sysvinit_install
       else
         echo
-        msg "ALRT: The sysvinit has NOT been installed on ${_THIS_OS} ${_OSR}"
+        msg "ALRT: The sysvinit has NOT been installed in ${_REAL_OS}/${_REAL_OSR}"
         msg "ALRT: Please check details in the logs located in /var/backups/"
         msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
         msg "STEP: You can also run the 'boa init' command again"
@@ -4368,7 +4376,7 @@ systemd_cleanup_on_init() {
         clean_pid_exit
       fi
       if [ ! -e "/lib/systemd/systemd" ]; then
-        msg "INFO: The systemd has been removed on ${_THIS_OS} ${_OSR}"
+        msg "INFO: The systemd has been removed in ${_REAL_OS}/${_REAL_OSR}"
         msg "INFO: One more check to make sure that everything works..."
         _CHECK_CRON=$(service cron status 2>&1)
         if [[ "${_CHECK_CRON}" =~ "running" ]]; then
@@ -4384,7 +4392,7 @@ systemd_cleanup_on_init() {
         fi
       else
         echo
-        msg "ALRT: The systemd has NOT been removed on ${_THIS_OS} ${_OSR}"
+        msg "ALRT: The systemd has NOT been removed in ${_REAL_OS}/${_REAL_OSR}"
         msg "ALRT: Please check details in the logs located in /var/backups/"
         msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
         msg "STEP: You can also run the 'boa init' command again"
@@ -4406,12 +4414,12 @@ systemd_cleanup_on_init() {
     systemd_remove_apt_cmd
     sysvinit_install
     if [ -e "/lib/systemd/systemd" ]; then
-      msg "ALRT: The systemd has NOT been removed on ${_THIS_OS} ${_OSR}"
+      msg "ALRT: The systemd has NOT been removed in ${_REAL_OS}/${_REAL_OSR}"
       msg "ALRT: Please check details in the logs located in /var/backups/"
       msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
       msg "STEP: You can also run the 'boa init' command again"
     else
-      msg "INFO: Yes, systemd has been removed on ${_THIS_OS} ${_OSR}"
+      msg "INFO: Yes, systemd has been removed in ${_REAL_OS}/${_REAL_OSR}"
       msg "STEP: Please run standard boa install command again"
     fi
     echo
@@ -5723,7 +5731,7 @@ php_libs_fix() {
       || [ ! -e "/root/.php_libs_fix_${_REAL_OSR}.pid" ] \
       || [ ! -e "/usr/include/gmp.h" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Fix for PHP libs in ${_REAL_OS} ${_REAL_OSR}"
+        msg "INFO: Fix for PHP libs in ${_REAL_OS}/${_REAL_OSR}"
       fi
       _X86_64_TEST=$(uname -m 2>&1)
       if [ "${_X86_64_TEST}" = "x86_64" ]; then

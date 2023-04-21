@@ -71,6 +71,14 @@ apt_clean_update() {
 
 check_root() {
   if [ `whoami` = "root" ]; then
+    if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
+      || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
+      _REAL_OSR="chimaera"
+      _REAL_OS="Devuan"
+    else
+      _REAL_OSR="${_OSR}"
+      _REAL_OS="${_THIS_OS}"
+    fi
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -1952,7 +1960,7 @@ install_host() {
   fi
 
   if [ -x "/lib/systemd/systemd" ]; then
-    echo "Installing sysvinit-core on ${_THIS_OS} ${_OSR}..."
+    echo "Installing sysvinit-core in ${_REAL_OS}/${_REAL_OSR}..."
     if [ "${osx}" = "jessie" ] \
       || [ "${osx}" = "stretch" ] \
       || [ "${osx}" = "buster" ] \
@@ -2007,7 +2015,7 @@ upgrade_host() {
   fi
 
   if [ -x "/lib/systemd/systemd" ]; then
-    echo "Removing systemd on ${_THIS_OS} ${_OSR}..."
+    echo "Removing systemd in ${_REAL_OS}/${_REAL_OSR}..."
     apt_clean_update
     echo "sysvinit-core install" | dpkg --set-selections
     echo "sysvinit-utils install" | dpkg --set-selections

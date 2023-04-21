@@ -226,7 +226,7 @@ install_redis_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: install_redis_src"
   fi
-  msg "INFO: Installing Redis server for ${_THIS_OS}/${_THIS_RV}..."
+  msg "INFO: Installing Redis server for ${_REAL_OS}/${_REAL_OSR}..."
   if [ ! -e "/var/lib/redis" ]; then
     mrun "adduser --system --group redis" 2> /dev/null
   fi

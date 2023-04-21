@@ -684,7 +684,7 @@ prep_for_install_db_sql() {
         apt_clean_update
       fi
     fi
-    msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSR}"
+    msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_REAL_OS}/${_REAL_OSR}"
   else
     if [ "${_DB_SERIES}" = "10.4" ] \
       || [ "${_DB_SERIES}" = "10.3" ] \
@@ -695,13 +695,13 @@ prep_for_install_db_sql() {
       _DB_SERVER=Percona
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
-      msg "INFO: Forced ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSR}"
+      msg "INFO: Forced ${_DB_SERVER} ${_DBS_VRN} in ${_REAL_OS}/${_REAL_OSR}"
     fi
     if [ -z "${_DB_SERIES}" ]; then
       _DB_SERVER=Percona
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
-      msg "INFO: Forced ${_DB_SERVER} ${_DBS_VRN} in ${_THIS_OS}/${_OSR}"
+      msg "INFO: Forced ${_DB_SERVER} ${_DBS_VRN} in ${_REAL_OS}/${_REAL_OSR}"
     fi
   fi
 
