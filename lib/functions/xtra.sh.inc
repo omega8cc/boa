@@ -553,13 +553,21 @@ if_install_rvm() {
               ${rvmPth} get stable --auto-dotfiles
               ${rvmPth} install ${_RUBY_VRN}
               ${rvmPth} use ${_RUBY_VRN} --default
-              curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+              if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
+                curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+              else
+                curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+              fi
               mrun "${_INSTAPP} nodejs"
             else
               ${rvmPth} get stable --auto-dotfiles &> /dev/null
               ${rvmPth} install ${_RUBY_VRN} &> /dev/null
               ${rvmPth} use ${_RUBY_VRN} --default &> /dev/null
-              curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash - &> /dev/null
+              if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
+                curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash - &> /dev/null
+              else
+                curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash - &> /dev/null
+              fi
               mrun "${_INSTAPP} nodejs" &> /dev/null
             fi
           else
@@ -568,13 +576,21 @@ if_install_rvm() {
               ${rvmPth} get stable --auto-dotfiles
               ${rvmPth} install ${_RUBY_VRN}
               ${rvmPth} use ${_RUBY_VRN} --default
-              curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+              if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
+                curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+              else
+                curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+              fi
               mrun "${_INSTAPP} nodejs"
             else
               ${rvmPth} get stable --auto-dotfiles &> /dev/null
               ${rvmPth} install ${_RUBY_VRN} &> /dev/null
               ${rvmPth} use ${_RUBY_VRN} --default &> /dev/null
-              curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash - &> /dev/null
+              if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
+                curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash - &> /dev/null
+              else
+                curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash - &> /dev/null
+              fi
               mrun "${_INSTAPP} nodejs" &> /dev/null
             fi
           fi
