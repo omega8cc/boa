@@ -34,7 +34,8 @@
 ### HOW-TO: Command to launch auto-upgrade ###
 ###----------------------------------------###
 ###
-###    touch /root/.run-to-chimaera.cnf
+###    $ touch /root/.run-to-chimaera.cnf
+###    $ service clean-boa-env start
 ###
 ###  Once enabled, the system will launch
 ###  a series of barracuda up-head and reboots
