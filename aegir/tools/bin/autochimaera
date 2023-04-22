@@ -58,7 +58,7 @@
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-export PATH=$PATH:/opt/local/bin
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 barCnf="/root/.barracuda.cnf"
 
