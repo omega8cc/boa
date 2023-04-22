@@ -362,7 +362,9 @@ check_report() {
     _ALERT_MSG="ALERT: Failed Barracuda upgrade"
   fi
   _RESULT_ENJOY=$(grep "Enjoy your Aegir Hosting System" ${_UP_LOG} 2>&1)
-  if [[ "${_RESULT_ENJOY}" =~ "Enjoy your Aegir Hosting System" ]]; then
+  _RESULT_REBOOT=$(grep "Please reboot this server" ${_UP_LOG} 2>&1)
+  if [[ "${_RESULT_ENJOY}" =~ "Enjoy" ]] \
+    || [[ "${_RESULT_REBOOT}" =~ "Please" ]]; then
     _DO_NOTHING=YES
   else
     _SEND_ALERT=YES
