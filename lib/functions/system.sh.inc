@@ -5764,6 +5764,8 @@ php_libs_fix() {
     _REAL_OSR="${_OSR}"
     _REAL_OS="${_THIS_OS}"
   fi
+  _LIB_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+  _LIB_NOW=${_LIB_NOW//[^0-9-]/}
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
     || [ "${_OSR}" = "bullseye" ] \
@@ -5778,8 +5780,8 @@ php_libs_fix() {
       || [ ! -e "/usr/lib/libonig.so" ] \
       || [ ! -e "/usr/lib/libcurl.so" ] \
       || [ ! -e "/usr/lib/libicuio.so" ] \
-      || [ ! -e "/root/.php_libs_fix_${_OSR}.pid" ] \
-      || [ ! -e "/root/.php_libs_fix_${_REAL_OSR}.pid" ] \
+      || [ ! -e "/root/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid" ] \
+      || [ ! -e "/root/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid" ] \
       || [ ! -e "/usr/include/gmp.h" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Fix for PHP libs in ${_REAL_OS}/${_REAL_OSR}"
