@@ -4198,6 +4198,7 @@ finale() {
     && [ ! -e "/root/.run_post_major_os_upgrade.info" ]; then
     rm -f /root/.skip-aegir-master-upgrade.cnf
   fi
+  echo "FINALE" > /root/.latest-barracuda-upgrade-finale.info
   if [ ! -e "/root/.upstart.cnf" ]; then
     service cron start &> /dev/null
   fi
@@ -5354,6 +5355,23 @@ webmin_apt_update() {
       rm -f jcameron-key.gpg*
       touch ${pthLog}/webmin_update_apt_src.log
     fi
+  fi
+}
+
+early_sys_ctrl_mark() {
+  if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
+    touch /root/.early-sys-ctrl-mark.cnf
+  else
+    rm -f /root/.early-sys-ctrl-mark.cnf
+  fi
+}
+
+normal_sys_ctrl_mark() {
+  if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
+    rm -f /root/.latest-barracuda-upgrade-finale.info
+    touch /root/.normal-sys-ctrl-mark.cnf
+  else
+    rm -f /root/.normal-sys-ctrl-mark.cnf
   fi
 }
 

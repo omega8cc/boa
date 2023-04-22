@@ -2086,7 +2086,8 @@ setup() {
     ln -s ${optBin}/barracuda ${usrBin}/barracuda
     ln -s ${optBin}/octopus   ${usrBin}/octopus
   fi
-  boaBins="autoupboa \
+  boaBins="autochimaera \
+           autoupboa \
            barracuda \
            boa \
            ffmirror \
@@ -2143,7 +2144,7 @@ setup() {
       touch /root/.backboa.autoupdate
     fi
   fi
-  chmod 700 ${optBin}/{autoupboa,backboa,barracuda,boa,duobackboa}
+  chmod 700 ${optBin}/{autochimaera,autoupboa,backboa,barracuda,boa,duobackboa}
   chmod 700 ${optBin}/{ffmirror,octopus,syncpass,xboa,mycnfup,weblogx}
   chmod 755 ${optBin}/{randpass,sqlmagic,thinkdifferent}
   echo

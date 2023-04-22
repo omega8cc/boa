@@ -22,6 +22,10 @@ case "$1" in
     if [ -e "/root/.debug-barracuda-installer.cnf" ]; then
       exit 0
     fi
+    if [ -e "/root/.run-to-chimaera.cnf" ] \
+      && [ -x "/opt/local/bin/autochimaera" ]; then
+      bash /opt/local/bin/autochimaera > /dev/null 2>&1 &
+    fi
     echo -n "Starting $DESC: "
     if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
       _WEB_SH=`readlink -n /bin/sh`

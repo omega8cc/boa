@@ -292,8 +292,10 @@ check_prepare_dirs_permissions
 ###
 ### Optional major system upgrades
 ###
+early_sys_ctrl_mark
 if_post_major_os_upgrade
 if_major_os_upgrade
+normal_sys_ctrl_mark
 
 
 ###
