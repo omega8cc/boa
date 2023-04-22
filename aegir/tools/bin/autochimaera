@@ -105,7 +105,7 @@ check_root() {
 check_root
 
 if [ ! -e "/root/.run-to-chimaera.cnf" ] \
-  || [ ! -e "${barCnf" ]; then
+  || [ ! -e "${barCnf}" ]; then
   exit 1
 fi
 
@@ -139,19 +139,19 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
       _REAL_OSR="${_THIS_SYS}"
     fi
     if [ "${_REAL_OSRR}" = "jessie" ]; then
-      echo _JESSIE_TO_BEOWULF=YES >> ${barCnf}
+      echo "_JESSIE_TO_BEOWULF=YES" >> ${barCnf}
       echo "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf"
     elif [ "${_REAL_OSRR}" = "stretch" ]; then
-      echo _STRETCH_TO_BEOWULF=YES >> ${barCnf}
+      echo "_STRETCH_TO_BEOWULF=YES" >> ${barCnf}
       echo "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf"
     elif [ "${_REAL_OSRR}" = "buster" ]; then
-      echo _BUSTER_TO_BEOWULF=YES >> ${barCnf}
+      echo "_BUSTER_TO_BEOWULF=YES" >> ${barCnf}
       echo "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf"
     elif [ "${_REAL_OSR}" = "bullseye" ]; then
-      echo _BULLSEYE_TO_CHIMAERA=YES >> ${barCnf}
+      echo "_BULLSEYE_TO_CHIMAERA=YES" >> ${barCnf}
       echo "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/chimaera"
     elif [ "${_REAL_OSR}" = "beowulf" ]; then
-      echo _BEOWULF_TO_CHIMAERA=YES >> ${barCnf}
+      echo "_BEOWULF_TO_CHIMAERA=YES" >> ${barCnf}
       echo "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/chimaera"
     fi
     echo "The first stage of major OS upgrade will start now"
@@ -199,10 +199,10 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
     fi
   fi
   if [ "${_REAL_OSR}" = "bullseye" ] && [ "${_FURTHER_UPGRADE}" = "YES" ]; then
-    echo _BULLSEYE_TO_CHIMAERA=YES >> ${barCnf}
+    echo "_BULLSEYE_TO_CHIMAERA=YES" >> ${barCnf}
     echo "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/chimaera"
   elif [ "${_REAL_OSR}" = "beowulf" ] && [ "${_FURTHER_UPGRADE}" = "YES" ]; then
-    echo _BEOWULF_TO_CHIMAERA=YES >> ${barCnf}
+    echo "_BEOWULF_TO_CHIMAERA=YES" >> ${barCnf}
     echo "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/chimaera"
   fi
   if [ "${_FURTHER_UPGRADE}" = "YES" ]; then
