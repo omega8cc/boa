@@ -1326,18 +1326,21 @@ db_server_install() {
       if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
         mkdir -p /etc/mysql/mariadb.conf.d/
       fi
-      myUptime=$(mysqladmin version | grep -i uptime 2>&1)
-      myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
-      msg "INFO: ${_DB_SERVER} ${myUptime}"
-      if [ "${myCnfUpdate}" = "YES" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Restarting ${_DB_SERVER} server..."
+      if [ ! -e "/root/.run-to-chimaera.cnf" ] \
+        && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
+        myUptime=$(mysqladmin version | grep -i uptime 2>&1)
+        myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
+        msg "INFO: ${_DB_SERVER} ${myUptime}"
+        if [ "${myCnfUpdate}" = "YES" ]; then
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: Restarting ${_DB_SERVER} server..."
+          fi
+          mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
+            wait
+          mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
+          msg "INFO: ${_DB_SERVER} server restart completed"
+          myRstrd=YES
         fi
-        mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
-          wait
-        mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
-        msg "INFO: ${_DB_SERVER} server restart completed"
-        myRstrd=YES
       fi
       if [[ "${_DB_SERIES}" =~ "5.7" ]]; then
         _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
