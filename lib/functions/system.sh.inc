@@ -4777,7 +4777,9 @@ if_major_os_upgrade() {
       barracuda_cnf_cleanup
       clean_pid_exit
     fi
-    _AUTOPILOT=NO
+    if [ -e "/root/.run-to-chimaera.cnf" ]; then
+      _AUTOPILOT=YES
+    fi
     _RUNNING_MAJOR_OS_UPGRADE=YES
     msg "MODE: ${_MSG_LOC} upgrade"
     echo
