@@ -63,6 +63,7 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 barCnf="/root/.barracuda.cnf"
+logAbf="/root/.autobeowulf.log"
 
 ###
 ### Avoid too many questions
@@ -113,7 +114,7 @@ if [ ! -e "/root/.run-to-beowulf.cnf" ] \
 fi
 
 if [ -e "/root/.run-to-beowulf.cnf" ]; then
-  echo "Waiting 120 seconds for the system start scripts to finish"
+  echo "Waiting 120 seconds for the system start scripts to finish" >> ${logAbf}
   sleep 120
 fi
 
@@ -125,38 +126,32 @@ fi
 if [ -e "/root/.run-to-beowulf.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
-  echo
-  echo "Launching standard barracuda up-head system first"
+  echo " " >> ${logAbf}
+  echo "Launching standard barracuda up-head system first" >> ${logAbf}
   barracuda up-head system
   wait
-  echo "The initial barracuda up-head system completed"
+  echo "The initial barracuda up-head system completed" >> ${logAbf}
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
     _THIS_OS=$(lsb_release -si 2>&1)
     _THIS_SYS=$(lsb_release -sc 2>&1)
-    if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
-      || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
-      _REAL_OS="Devuan"
-      _REAL_OSR="chimaera"
-    else
-      _REAL_OS="${_THIS_OS}"
-      _REAL_OSR="${_THIS_SYS}"
-    fi
+    _REAL_OS="${_THIS_OS}"
+    _REAL_OSR="${_THIS_SYS}"
     if [ "${_REAL_OSR}" = "jessie" ]; then
       echo "_JESSIE_TO_BEOWULF=YES" >> ${barCnf}
-      echo "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf"
+      echo "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf" >> ${logAbf}
     elif [ "${_REAL_OSR}" = "stretch" ]; then
       echo "_STRETCH_TO_BEOWULF=YES" >> ${barCnf}
-      echo "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf"
+      echo "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf" >> ${logAbf}
     elif [ "${_REAL_OSR}" = "buster" ]; then
       echo "_BUSTER_TO_BEOWULF=YES" >> ${barCnf}
-      echo "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf"
+      echo "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf" >> ${logAbf}
     fi
-    echo "The first stage of major OS upgrade will start now"
+    echo "The first stage of major OS upgrade will start now" >> ${logAbf}
     barracuda up-head system
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
-      echo "The first stage of major OS upgrade completed"
-      echo "The system will reboot now"
+      echo "The first stage of major OS upgrade completed" >> ${logAbf}
+      echo "The system will reboot now" >> ${logAbf}
       rm -f /root/.latest-barracuda-upgrade-finale.info
       touch /root/.run-auto-major-os-reboot-one.cnf
       reboot
@@ -167,51 +162,37 @@ fi
 if [ -e "/root/.run-to-beowulf.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
-  echo
-  echo "Launching post-reboot barracuda up-head system"
-  echo "to complete the first stage of major OS upgrade"
+  echo " " >> ${logAbf}
+  echo "Launching post-reboot barracuda up-head system" >> ${logAbf}
+  echo "to complete the first stage of major OS upgrade" >> ${logAbf}
   barracuda up-head system
   wait
-  echo "The post-reboot barracuda up-head system completed"
-  echo
-  _THIS_OS=$(lsb_release -si 2>&1)
-  _THIS_SYS=$(lsb_release -sc 2>&1)
-  if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
-    || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
-    _REAL_OS="Devuan"
-    _REAL_OSR="chimaera"
-    _FURTHER_UPGRADE=NO
-  else
-    _REAL_OS="${_THIS_OS}"
-    _REAL_OSR="${_THIS_SYS}"
-    _FURTHER_UPGRADE=YES
-  fi
-  if [ "${_FURTHER_UPGRADE}" = "NO" ]; then
-    if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
-      echo "The single stage major OS upgrade completed"
-      echo "The system will reboot now for a final upgrade"
-      rm -f /root/.latest-barracuda-upgrade-finale.info
-      touch /root/.run-auto-major-os-reboot-two.cnf
-      reboot
-    fi
+  echo "The post-reboot barracuda up-head system completed" >> ${logAbf}
+  echo " " >> ${logAbf}
+  if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
+    echo "The single stage major OS upgrade completed" >> ${logAbf}
+    echo "The system will reboot now for a final upgrade" >> ${logAbf}
+    rm -f /root/.latest-barracuda-upgrade-finale.info
+    touch /root/.run-auto-major-os-reboot-two.cnf
+    reboot
   fi
 fi
 
 if [ -e "/root/.run-to-beowulf.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
-  echo
-  echo "Launching final post-reboot barracuda up-head system"
+  echo " " >> ${logAbf}
+  echo "Launching the final post-second-reboot barracuda up-head system" >> ${logAbf}
   barracuda up-head system
   wait
   rm -f /root/.run-to-beowulf.cnf
   rm -f /root/.run-auto-major-os-reboot-one.cnf
   rm -f /root/.run-auto-major-os-reboot-two.cnf
   sed -i "s/^_AUTO_BEOWULF.*//g" /root/.barracuda.cnf
-  echo "The final post-reboot barracuda up-head system completed"
-  echo "That's all folks!"
-  echo "Bye!"
-  echo
+  echo "The final post-reboot barracuda up-head system completed" >> ${logAbf}
+  echo "That's all folks!" >> ${logAbf}
+  echo "Bye!" >> ${logAbf}
+  echo " " >> ${logAbf}
 fi
 
 exit 0
