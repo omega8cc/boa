@@ -822,7 +822,7 @@ locales_check_fix() {
     _LOCALE_TEST=BROKEN
   fi
   if [ "${_LOCALE_TEST}" = "BROKEN" ]; then
-    msg "WARNING!"
+    msg "NOTE!"
     cat <<EOF
 
   Locales on this system are broken or not installed
