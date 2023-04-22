@@ -133,7 +133,7 @@ fi
 if [ -e "/root/.run-to-beowulf.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
-  msg " " >> ${logAbf}
+  echo " " >> ${logAbf}
   msg "Launching standard barracuda up-head system first" >> ${logAbf}
   barracuda up-head system
   wait
