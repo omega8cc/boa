@@ -139,13 +139,13 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
       _REAL_OS="${_THIS_OS}"
       _REAL_OSR="${_THIS_SYS}"
     fi
-    if [ "${_REAL_OSRR}" = "jessie" ]; then
+    if [ "${_REAL_OSR}" = "jessie" ]; then
       echo "_JESSIE_TO_BEOWULF=YES" >> ${barCnf}
       echo "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf"
-    elif [ "${_REAL_OSRR}" = "stretch" ]; then
+    elif [ "${_REAL_OSR}" = "stretch" ]; then
       echo "_STRETCH_TO_BEOWULF=YES" >> ${barCnf}
       echo "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf"
-    elif [ "${_REAL_OSRR}" = "buster" ]; then
+    elif [ "${_REAL_OSR}" = "buster" ]; then
       echo "_BUSTER_TO_BEOWULF=YES" >> ${barCnf}
       echo "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf"
     elif [ "${_REAL_OSR}" = "bullseye" ]; then
