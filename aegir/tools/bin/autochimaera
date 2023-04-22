@@ -228,6 +228,8 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   barracuda up-head system
   wait
   rm -f /root/.run-to-chimaera.cnf
+  rm -f /root/.run-auto-major-os-reboot-one.cnf
+  rm -f /root/.run-auto-major-os-reboot-two.cnf
   sed -i "s/^_AUTO_CHIMAERA.*//g" /root/.barracuda.cnf
   echo "The final post-reboot barracuda up-head system completed"
   echo "That's all folks!"
