@@ -4691,7 +4691,8 @@ if_post_major_os_upgrade() {
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
 
     _REBUILD_SRC_ON_AUTO_NOW=YES
-    if [ -e "/root/.run-to-chimaera.cnf" ]; then
+    if [ -e "/root/.run-to-chimaera.cnf" ] \
+      || [ -e "/root/.run-to-beowulf.cnf" ]; then
       if [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
         && [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
         _REBUILD_SRC_ON_AUTO_NOW=YES
@@ -4788,7 +4789,8 @@ if_major_os_upgrade() {
       barracuda_cnf_cleanup
       clean_pid_exit
     fi
-    if [ -e "/root/.run-to-chimaera.cnf" ]; then
+    if [ -e "/root/.run-to-chimaera.cnf" ] \
+      || [ -e "/root/.run-to-beowulf.cnf" ]; then
       _AUTOPILOT=YES
     fi
     _RUNNING_MAJOR_OS_UPGRADE=YES
@@ -5178,7 +5180,8 @@ if_major_os_upgrade() {
     touch /root/.${_LOC_OSR}_to_${_NEW_OSR}_major_os_upgrade.info
     ###
     ### Re-install key services early to limit downtime and SSH keys confusion.
-    if [ -e "/root/.run-to-chimaera.cnf" ]; then
+    if [ -e "/root/.run-to-chimaera.cnf" ] \
+      || [ -e "/root/.run-to-beowulf.cnf" ]; then
       _REBUILD_SRC_ON_AUTO_NOW=NO
     else
       _REBUILD_SRC_ON_AUTO_NOW=YES

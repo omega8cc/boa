@@ -2086,7 +2086,8 @@ setup() {
     ln -s ${optBin}/barracuda ${usrBin}/barracuda
     ln -s ${optBin}/octopus   ${usrBin}/octopus
   fi
-  boaBins="autochimaera \
+  boaBins="autobeowulf \
+           autochimaera \
            autoupboa \
            barracuda \
            boa \
@@ -2145,7 +2146,7 @@ setup() {
     fi
   fi
   chmod 700 ${optBin}/{autochimaera,autoupboa,backboa,barracuda,boa,duobackboa}
-  chmod 700 ${optBin}/{ffmirror,octopus,syncpass,xboa,mycnfup,weblogx}
+  chmod 700 ${optBin}/{autobeowulf,ffmirror,octopus,syncpass,xboa,mycnfup,weblogx}
   chmod 755 ${optBin}/{randpass,sqlmagic,thinkdifferent}
   echo
   echo "BOA Meta Installer setup completed"
