@@ -47,6 +47,7 @@ apt_clean_update() {
   ${_APT_UPDATE} -qq &> /dev/null
 }
 
+rm -f /var/run/clear_m.pid
 find /var/run/boa*.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/run/manage*users.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
 find /var/run/daily-fix.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
@@ -55,12 +56,6 @@ find /var/run/clear_m.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
 if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
-
-if [ -e "/var/run/clear_m.pid" ]; then
-  exit 0
-fi
-
-touch /var/run/clear_m.pid
 
 #
 # Find the fastest mirror.
@@ -147,6 +142,5 @@ curl ${crlHead} -A "${checkVn}" "${urlBpth}/thinkdifferent" &> /dev/null
 renice ${_B_NICE} -p $$ &> /dev/null
 service ssh restart &> /dev/null
 touch /var/xdrago/log/clear.done
-rm -f /var/run/clear_m.pid
 exit 0
 ###EOF2023###
