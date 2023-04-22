@@ -172,6 +172,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
       rm -f /root/.latest-barracuda-upgrade-finale.info
       touch /root/.run-auto-major-os-reboot-one.cnf
       reboot
+      exit 0
     fi
   fi
 fi
@@ -205,6 +206,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
       rm -f /root/.latest-barracuda-upgrade-finale.info
       touch /root/.run-auto-major-os-reboot-two.cnf
       reboot
+      exit 0
     fi
   fi
   if [ "${_REAL_OSR}" = "bullseye" ] && [ "${_FURTHER_UPGRADE}" = "YES" ]; then
@@ -224,6 +226,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
       rm -f /root/.latest-barracuda-upgrade-finale.info
       touch /root/.run-auto-major-os-reboot-two.cnf
       reboot
+      exit 0
     fi
   fi
 fi
