@@ -4690,7 +4690,18 @@ if_post_major_os_upgrade() {
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
 
-    if [ -e "/root/.big_hop_on_major_os_upgrade.info" ]; then
+    _REBUILD_SRC_ON_AUTO_NOW=YES
+    if [ -e "/root/.run-to-chimaera.cnf" ]; then
+      if [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
+        && [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
+        _REBUILD_SRC_ON_AUTO_NOW=YES
+      else
+        _REBUILD_SRC_ON_AUTO_NOW=NO
+      fi
+    fi
+
+    if [ -e "/root/.big_hop_on_major_os_upgrade.info" ] \
+      && [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
       msg "INFO: Time for re-installing services built from sources..."
       rm -f /var/xdrago/log/*.log
       rm -f /root/.php_libs_fix_*.pid
@@ -5167,19 +5178,26 @@ if_major_os_upgrade() {
     touch /root/.${_LOC_OSR}_to_${_NEW_OSR}_major_os_upgrade.info
     ###
     ### Re-install key services early to limit downtime and SSH keys confusion.
-    rm -f /var/xdrago/log/*.log
-    _PURGE_MODE=OFF
-    _NGX_FORCE_REINSTALL=YES
-    _SSL_FORCE_REINSTALL=YES
-    _SSH_FORCE_REINSTALL=YES
-    magick_install_upgrade
-    php_install_deps
-    php_libs_fix
-    nginx_install_upgrade
-    ssl_install_src
-    ssl_crypto_lib_fix
-    curl_install_src
-    sshd_install_src
+    if [ -e "/root/.run-to-chimaera.cnf" ]; then
+      _REBUILD_SRC_ON_AUTO_NOW=NO
+    else
+      _REBUILD_SRC_ON_AUTO_NOW=YES
+    fi
+    if [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
+      rm -f /var/xdrago/log/*.log
+      _PURGE_MODE=OFF
+      _NGX_FORCE_REINSTALL=YES
+      _SSL_FORCE_REINSTALL=YES
+      _SSH_FORCE_REINSTALL=YES
+      magick_install_upgrade
+      php_install_deps
+      php_libs_fix
+      nginx_install_upgrade
+      ssl_install_src
+      ssl_crypto_lib_fix
+      curl_install_src
+      sshd_install_src
+    fi
     if [ "${_TGT_OSN}" = "Devuan" ]; then
       if [ "${_LOC_OSR}" = "bullseye" ] || [ "${_LOC_OSR}" = "buster" ]; then
         touch /root/.small_hop_on_major_os_upgrade.info
