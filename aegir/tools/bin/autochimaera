@@ -136,6 +136,12 @@ if [ ! -e "/root/.run-to-chimaera.cnf" ] \
   exit 1
 fi
 
+_CHECK_SYS=$(lsb_release -sc 2>&1)
+if [ -e "/root/.auto-upgraded-to-chimaera.cnf" ] \
+  && [ "${_CHECK_SYS}" = "chimaera" ]; then
+  exit 1
+fi
+
 if [ -e "/root/.run-to-chimaera.cnf" ]; then
   echo " " >> ${logAch}
   if [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
@@ -266,6 +272,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   rm -f /root/.run-to-chimaera.cnf
   rm -f /root/.run-auto-major-os-reboot-one.cnf
   rm -f /root/.run-auto-major-os-reboot-two.cnf
+  touch /root/.auto-upgraded-to-chimaera.cnf
   sed -i "s/^_AUTO_CHIMAERA.*//g" /root/.barracuda.cnf
   msg "The final post-reboot barracuda up-head system completed" >> ${logAch}
   msg "That's all folks!" >> ${logAch}
