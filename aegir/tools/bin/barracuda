@@ -342,8 +342,10 @@ check_report() {
   _SEND_ALERT=NO
   _RESULT_TEST_OK=$(grep "INFO: Test OK" ${_UP_LOG} 2>&1)
   _RESULT_TEST_CARD=$(grep "CARD: Now charging" ${_UP_LOG} 2>&1)
+  _RESULT_REBOOT=$(grep "Please reboot this server" ${_UP_LOG} 2>&1)
   if [[ "${_RESULT_TEST_OK}" =~ "INFO: Test OK" ]] \
-    || [[ "${_RESULT_TEST_CARD}" =~ "CARD: Now charging" ]]; then
+    || [[ "${_RESULT_TEST_CARD}" =~ "CARD: Now charging" ]] \
+    || [[ "${_RESULT_REBOOT}" =~ "Please reboot" ]]; then
     _DO_NOTHING=YES
   else
     if [ "${silent}" = "system" ]; then
@@ -363,8 +365,8 @@ check_report() {
   fi
   _RESULT_ENJOY=$(grep "Enjoy your Aegir Hosting System" ${_UP_LOG} 2>&1)
   _RESULT_REBOOT=$(grep "Please reboot this server" ${_UP_LOG} 2>&1)
-  if [[ "${_RESULT_ENJOY}" =~ "Enjoy" ]] \
-    || [[ "${_RESULT_REBOOT}" =~ "Please" ]]; then
+  if [[ "${_RESULT_ENJOY}" =~ "Enjoy your Aegir" ]] \
+    || [[ "${_RESULT_REBOOT}" =~ "Please reboot" ]]; then
     _DO_NOTHING=YES
   else
     _SEND_ALERT=YES
