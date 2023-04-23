@@ -60,9 +60,9 @@
 
 2. Please read docs/NOTES.txt for other related details.
 
-3. Download and run BOA Meta Installer.
+3. Download and run BOA Meta Installers.
 
-   $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
+   $ cd;rm -f BOA*; wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
 
 4. Remove systemd in five steps:
 
@@ -131,9 +131,9 @@
 
 1. Please read docs/NOTES.txt
 
-2. Download and run BOA Meta Installer.
+2. Download and run BOA Meta Installers.
 
-   $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
+   $ cd;rm -f BOA*; wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
 
 3. Install Barracuda and Octopus.
 

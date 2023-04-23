@@ -2163,7 +2163,7 @@ setup() {
   chmod 700 ${optBin}/{autobeowulf,ffmirror,octopus,syncpass,xboa,mycnfup,weblogx}
   chmod 755 ${optBin}/{randpass,sqlmagic,thinkdifferent}
   echo
-  echo "BOA Meta Installer setup completed"
+  echo "BOA Meta Installers setup completed"
   echo "Please check INSTALL.txt and UPGRADE.txt at http://bit.ly/boa-docs"
   echo "Bye"
   echo

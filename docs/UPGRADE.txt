@@ -7,7 +7,7 @@
     Edition yet, don't use any partial upgrade modes explained further below.
     Once new BOA Latest is available, you must run *full* upgrades with commands:
 
-    $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
+    $ cd;rm -f BOA*; wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
     $ barracuda up-head
     $ barracuda up-head system             (recommended on major upgrade)
     $ octopus up-head all force
@@ -21,7 +21,7 @@
     will complete:
 
     $ screen
-    $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
+    $ cd;rm -f BOA*; wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
     $ barracuda up-head log
     $ octopus up-head all force log
 
@@ -44,9 +44,9 @@
 ### Available Standard Upgrade Modes
 ###
 
-    Download and run (as root) BOA Meta Installer first:
+    Download and run (as root) BOA Meta Installers first:
 
-    $ cd;wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
+    $ cd;rm -f BOA*; wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
 
  => To upgrade system and Aegir Master Instance to Latest use:
 
@@ -124,4 +124,3 @@
     "up-head" with "up-dev". Please never use DEV version on any production
     server. Always use Latest. The DEV can be occasionally broken and should
     be used *only* for testing!
-
