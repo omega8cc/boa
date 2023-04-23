@@ -314,6 +314,10 @@ tune_sql_memory_limits() {
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
     _GALERA_COMP=NO
   fi
+  if [ -e "/root/.run-to-chimaera.cnf" ] \
+      || [ -e "/root/.run-to-beowulf.cnf" ]; then
+    _USE_MYSQLTUNER=NO
+  fi
   if [ ! -e "${outTun}" ] \
     && [ "${_USE_MYSQLTUNER}" != "NO" ] \
     && [ "${_STATUS}" = "UPGRADE" ] \
