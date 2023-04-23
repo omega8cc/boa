@@ -2853,7 +2853,7 @@ sources_list_update() {
     msg "PROC: sources_list_update"
   fi
   ###--------------------###
-  apt-get clean -qq &> /dev/null
+  apt-get clean -qq 2> /dev/null
   rm -rf /var/lib/apt/lists/*
   ###--------------------###
   _X_SE="414prodT61"
@@ -4105,7 +4105,7 @@ finale() {
     welcomes you aboard" | fmt -su -w 2500 >> /etc/motd.tail
   echo >> /etc/motd.tail
   aptitude autoclean -y &> /dev/null
-  apt-get clean -qq &> /dev/null
+  apt-get clean -qq 2> /dev/null
   rm -rf /var/lib/apt/lists/*
   mkdir -p /data/conf/arch
   mv -f /data/conf/global.inc-pre* /data/conf/arch/     &> /dev/null
