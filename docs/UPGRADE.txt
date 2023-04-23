@@ -1,6 +1,64 @@
 
 ###
-### Important Notes - Read This First!
+### Automatic BOA System Major Upgrade Tool
+###
+
+ => You can easily upgrade your system from any supported Debian version,
+    starting with Debian Jessie, to latest Devuan Chimaera which is BOA
+    preferred and systemd-free equivalent of Debian Bullseye.
+
+    The same tool can be used to upgrade from Devuan Beowulf to current
+    Devuan Chimaera.
+
+    Please follow the required steps closely!
+
+    First, update your BOA Meta Installers with:
+
+    $ cd;rm -f BOA*; wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
+
+    ###----------------------------------------###
+    ### HOW-TO: Launch auto-upgrade properly   ###
+    ###----------------------------------------###
+    ###
+    ###  Start with manual barracuda upgrade.
+    ###
+    ###    $ barracuda up-head system
+    ###
+    ###  !!! CREATE A FRESH VM BACKUP SNAPSHOT !!!
+    ###  !!! TEST THE FRESHLY CREATED BACKUP.. !!!
+    ###  !!! BY USING IT TO CREATE NEW TEST VM !!!
+    ###  !!! DO NOT CONTINUE UNTIL IT WORKS... !!!
+    ###
+    ###  Reboot the server to make sure there are
+    ###  no issues with boot process.
+    ###
+    ###    $ reboot
+    ###
+    ###  If reboot worked and there are no issues,
+    ###  you are ready for the automated magic...
+    ###
+    ###    $ touch /root/.run-to-chimaera.cnf
+    ###    $ service clean-boa-env start
+    ###
+    ###  Once enabled, the system will launch
+    ###  a series of barracuda up-head and reboots
+    ###  until it migrates any supported Debian
+    ###  or Devuan version to Devuan Chimaera.
+    ###
+    ###  !!! WARNING !!!
+    ###
+    ###  EXPECT IT TO CRASH COMPLETELY, SO ONLY
+    ###  FULL RESTORE FROM LATEST BACKUP SNAPSHOT
+    ###  OF ENTIRE VM WILL BRING IT BACK TO LIVE.
+    ###
+    ###  DO NOT PROCEED UNTIL YOU ARE READY FOR
+    ###  DISASTER RECOVERY FROM TESTED BACKUP!
+    ###
+    ###----------------------------------------###
+
+
+###
+### Important Notes for Standard/Manual BOA Upgrade
 ###
 
  => If you haven't run full barracuda+octopus upgrade to BOA Latest available
