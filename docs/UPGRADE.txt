@@ -10,6 +10,8 @@
     The same tool can be used to upgrade from Devuan Beowulf to current
     Devuan Chimaera.
 
+    NOTE: Only systems running Percona 5.7 are supported.
+
     Please follow the required steps closely!
 
     First, update your BOA Meta Installers with:

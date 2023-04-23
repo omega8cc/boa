@@ -144,6 +144,12 @@ if [ -e "/root/.auto-upgraded-to-beowulf.cnf" ] \
   exit 1
 fi
 
+_DB_SERIES=5.7
+_DB_SERVER_TEST=$(mysql -V 2>&1)
+if [[ ! "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
+  exit 1
+fi
+
 if [ -e "/root/.run-to-beowulf.cnf" ]; then
   echo " " >> ${logAbf}
   if [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
