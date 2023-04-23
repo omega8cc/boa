@@ -107,6 +107,7 @@ check_root() {
   fi
 }
 check_root
+cd /root/
 
 ###
 ### Noticeable messages
