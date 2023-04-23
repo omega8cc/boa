@@ -123,8 +123,14 @@ fi
 
 if [ -e "/root/.run-to-beowulf.cnf" ]; then
   echo " " >> ${logAbf}
-  msg "Waiting 120 seconds for the system start scripts to finish" >> ${logAbf}
-  sleep 120
+  if [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
+    || [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
+    msg "Waiting 120 seconds for the system start scripts to finish" >> ${logAbf}
+    sleep 120
+  else
+    msg "Automatic BOA System Major Upgrade Tool welcomes you aboard!" >> ${logAbf}
+    sleep 5
+  fi
 fi
 
 _AUTO_BEOWULF_TEST=$(grep _AUTO_BEOWULF ${barCnf} 2>&1)
