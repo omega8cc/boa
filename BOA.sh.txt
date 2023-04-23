@@ -404,6 +404,20 @@ update_agents() {
 #     fi
   fi
 
+  if [ -e "/etc/init.d/manage_solr_config.sh" ] \
+    && [ -e "/data/disk/arch/sql" ] \
+    && [ ! -e "${pthLog}/clean-boa-env.ctrl.${_X_SE}.pid" ]; then
+    mv -f /etc/init.d/clean-boa-env /var/xdrago/clean-boa-env.old
+    curl ${crlGet} "${urlHmr}/conf/clean-boa-env" -o /etc/init.d/clean-boa-env
+    if [ -e "/etc/init.d/clean-boa-env" ]; then
+      chmod 700 /etc/init.d/clean-boa-env
+      chown root:root /etc/init.d/clean-boa-env
+      touch ${pthLog}/clean-boa-env.ctrl.${_X_SE}.pid
+    else
+      mv -f /var/xdrago/clean-boa-env.old /etc/init.d/clean-boa-env
+    fi
+  fi
+
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/data/disk/arch/sql" ] \
     && [ ! -e "${pthLog}/mysql_backup.ctrl.${_X_SE}.pid" ]; then
