@@ -145,6 +145,7 @@ fi
 _DB_SERIES=5.7
 _DB_SERVER_TEST=$(mysql -V 2>&1)
 if [[ ! "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
+  msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> ${logAch}
   exit 1
 fi
 
