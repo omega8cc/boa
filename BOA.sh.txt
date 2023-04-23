@@ -404,7 +404,7 @@ update_agents() {
 #     fi
   fi
 
-  if [ -e "/etc/init.d/manage_solr_config.sh" ] \
+  if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/data/disk/arch/sql" ] \
     && [ ! -e "${pthLog}/clean-boa-env.ctrl.${_X_SE}.pid" ]; then
     mv -f /etc/init.d/clean-boa-env /var/xdrago/clean-boa-env.old
