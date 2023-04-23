@@ -348,9 +348,9 @@ tune_sql_memory_limits() {
       || [[ "${_MYSQLTUNER_TEST}" =~ "Cannot calculate MyISAM index" ]] \
       || [[ "${_MYSQLTUNER_TEST}" =~ "InnoDB is enabled but isn" ]]; then
       _MYSQLTUNER_TEST_RESULT=FAIL
-      msg "ALRT! The MySQLTuner test failed!"
-      msg "ALRT! Please review ${outTun}"
-      msg "ALRT! We will use some sane SQL defaults instead, do not worry!"
+      msg "NOTE: The MySQLTuner test failed!"
+      msg "NOTE: Please review ${outTun}"
+      msg "NOTE: We will use some sane SQL defaults instead, do not worry!"
     fi
     ###--------------------###
     if [ ! -z "${_REC_MYISAM_MEM}" ] \
@@ -380,7 +380,7 @@ tune_sql_memory_limits() {
     else
       _USE_MYISAM_MEM="${_USE_SQL}M"
       if [ "${_MYSQLTUNER_TEST_RESULT}" = "FAIL" ]; then
-        msg "ALRT! _USE_MYISAM_MEM is ${_USE_MYISAM_MEM} because _REC_MYISAM_MEM was empty!"
+        msg "NOTE: _USE_MYISAM_MEM is ${_USE_MYISAM_MEM} because _REC_MYISAM_MEM was empty!"
       fi
         sed -i "s/^key_buffer_size.*/key_buffer_size         = ${_USE_MYISAM_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
         wait
@@ -468,7 +468,7 @@ tune_sql_memory_limits() {
         || [ -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         _INNODB_LOG_FILE_SIZE=64
       fi
-      msg "ALRT! _USE_INNODB_MEM is ${_USE_INNODB_MEM} because _REC_INNODB_MEM was empty!"
+      msg "NOTE: _USE_INNODB_MEM is ${_USE_INNODB_MEM} because _REC_INNODB_MEM was empty!"
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = ${_USE_INNODB_MEM}/g"  /etc/mysql/my.cnf &> /dev/null
       fi
@@ -479,8 +479,8 @@ tune_sql_memory_limits() {
     if [ "${_MYSQLTUNER_TEST_RESULT}" = "FAIL" ] \
       && [ "${_STATUS}" = "UPGRADE" ] \
       && [ -z "${_GALERA_COMP}" ]; then
-      msg "ALRT! _USE_MYISAM_MEM is ${_THIS_USE_MEM} because _REC_MYISAM_MEM was empty!"
-      msg "ALRT! _USE_INNODB_MEM is ${_THIS_USE_MEM} because _REC_INNODB_MEM was empty!"
+      msg "NOTE: _USE_MYISAM_MEM is ${_THIS_USE_MEM} because _REC_MYISAM_MEM was empty!"
+      msg "NOTE: _USE_INNODB_MEM is ${_THIS_USE_MEM} because _REC_INNODB_MEM was empty!"
     fi
     _INNODB_LOG_FILE_SIZE=$(echo "scale=0; ${_USE_SQL}/4/40*40" | bc 2>&1)
     _DB_COUNT=$(ls /var/lib/mysql/ | wc -l 2>&1)

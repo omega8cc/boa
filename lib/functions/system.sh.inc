@@ -4070,9 +4070,9 @@ finale() {
   mrun "sleep 3"
   echo " "
   if [ "${_UP_LNX}" = "YES" ]; then
-    msg "ALRT! Your OS kernel has been upgraded!"
+    msg "NOTE: Your OS kernel has been upgraded!"
     if [ ! -e "/usr/sbin/uptrack-upgrade" ]; then
-      msg "ALRT! You *must* reboot immediately to stay secure!"
+      msg "NOTE: You *must* reboot immediately to stay secure!"
     else
       msg "NOTE: You have Ksplice rebootless kernel updates installed"
       msg "HINT: It is recommened to run the uptrack-upgrade -y command"
