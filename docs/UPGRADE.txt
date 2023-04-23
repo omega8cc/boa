@@ -56,6 +56,22 @@
     ###
     ###----------------------------------------###
 
+ => This tool automates OS upgrades you can still run manually if you prefer,
+    by adding respective variable to /root/.barracuda.cnf and running standard
+    command 'barracuda up-head system' for the manual steps based upgrade.
+
+    @> Devuan to Devuan major OS upgrades
+      * Devuan Beowulf     => upgrade to Chimaera with _BEOWULF_TO_CHIMAERA=YES
+
+    @> Debian to Devuan major OS upgrades
+      * Debian 11 Bullseye => upgrade to Chimaera with _BULLSEYE_TO_CHIMAERA=YES
+      * Debian 10 Buster   => upgrade to Beowulf with  _BUSTER_TO_BEOWULF=YES
+      * Debian 9 Stretch   => upgrade to Beowulf with  _STRETCH_TO_BEOWULF=YES
+      * Debian 8 Jessie    => upgrade to Beowulf with  _JESSIE_TO_BEOWULF=YES
+
+    @> Debian to Debian major OS upgrades
+      * Debian 9 Stretch   => upgrade to Buster with   _STRETCH_TO_BUSTER=YES
+
 
 ###
 ### Important Notes for Standard/Manual BOA Upgrade

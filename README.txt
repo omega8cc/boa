@@ -95,33 +95,33 @@ production settings.
 * Xen guest
 
 
+### Automatic BOA System Major Upgrade Tool now available
+
+=> You can easily upgrade your system from any supported Debian version,
+   starting with Debian Jessie, to latest Devuan Chimaera which is BOA
+   preferred and systemd-free equivalent of Debian Bullseye.
+
+   Please read docs/UPGRADE.txt for details.
+
+
 ### DEVUAN & DEBIAN {c} please read also: docs/CAVEATS.txt
 
 ##== Devuan @ https://www.devuan.org/os/releases
-* Devuan Chimaera (fully supported)
-* Devuan Beowulf (fully supported)
 
-  >=> Devuan to Devuan major OS upgrades (fully supported)
-  * Devuan Beowulf     => upgrade to Chimaera with _BEOWULF_TO_CHIMAERA=YES
-
-  >=> Debian to Devuan major OS upgrades (fully supported)
-  * Debian 11 Bullseye => upgrade to Chimaera with _BULLSEYE_TO_CHIMAERA=YES
-  * Debian 10 Buster   => upgrade to Beowulf with  _BUSTER_TO_BEOWULF=YES
-  * Debian 9 Stretch   => upgrade to Beowulf with  _STRETCH_TO_BEOWULF=YES
-  * Debian 8 Jessie    => upgrade to Beowulf with  _JESSIE_TO_BEOWULF=YES
+  * Devuan Chimaera (fully supported)
+  * Devuan Beowulf (fully supported)
 
 ##== Debian @ https://wiki.debian.org/LTS
-* Debian 11 Bullseye (fully supported, but migration to Chimaera recommended)
-* Debian 10 Buster (supported but not recommended, please upgrade to Beowulf)
-* Debian 9 Stretch (deprecated but still works, please upgrade to Beowulf)
-* Debian 8 Jessie (deprecated but still works, please upgrade to Beowulf)
 
-  >=> Debian to Debian major OS upgrades (supported but not recommended)
-  * Debian 9 Stretch   => upgrade to Buster with   _STRETCH_TO_BUSTER=YES
+  * Debian 11 Bullseye (fully supported, but migration to Chimaera recommended)
+  * Debian 10 Buster (supported but not recommended, please upgrade to Beowulf)
+  * Debian 9 Stretch (deprecated but still works, please upgrade to Beowulf)
+  * Debian 8 Jessie (deprecated but still works, please upgrade to Beowulf)
 
 ##== Ubuntu @ https://ubuntu.com/about/release-cycle
-* Ubuntu Trusty Tahr 14.04 LTS (deprecated and no longer tested)
-* Ubuntu Precise Pangolin 12.04.3 LTS (deprecated and no longer tested)
+
+  * Ubuntu Trusty Tahr 14.04 LTS (deprecated and no longer tested)
+  * Ubuntu Precise Pangolin 12.04.3 LTS (deprecated and no longer tested)
 
 
 ### OTHER REQUIREMENTS
