@@ -4,7 +4,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
 barCnf="/root/.barracuda.cnf"
 
-_X_SE="414prodT60"
+_X_SE="414prodT61"
 
 os_detection_minimal() {
   _THIS_RV=$(lsb_release -sc 2>&1)
