@@ -35,25 +35,6 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
-os_detection_minimal() {
-  _THIS_RV=$(lsb_release -sc 2>&1)
-  if [ "${_THIS_RV}" = "chimaera" ] \
-    || [ "${_THIS_RV}" = "beowulf" ] \
-    || [ "${_THIS_RV}" = "bullseye" ] \
-    || [ "${_THIS_RV}" = "buster" ]; then
-    _APT_UPDATE="apt-get update --allow-releaseinfo-change"
-  else
-    _APT_UPDATE="apt-get update"
-  fi
-}
-os_detection_minimal
-
-apt_clean_update() {
-  apt-get clean -qq &> /dev/null
-  rm -rf /var/lib/apt/lists/* &> /dev/null
-  ${_APT_UPDATE} -qq &> /dev/null
-}
-
 if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
@@ -80,6 +61,25 @@ vGet="variable-get"
 vSet="variable-set --always-set"
 
 ###-------------SYSTEM-----------------###
+
+os_detection_minimal() {
+  _THIS_RV=$(lsb_release -sc 2>&1)
+  if [ "${_THIS_RV}" = "chimaera" ] \
+    || [ "${_THIS_RV}" = "beowulf" ] \
+    || [ "${_THIS_RV}" = "bullseye" ] \
+    || [ "${_THIS_RV}" = "buster" ]; then
+    _APT_UPDATE="apt-get update --allow-releaseinfo-change"
+  else
+    _APT_UPDATE="apt-get update"
+  fi
+}
+os_detection_minimal
+
+apt_clean_update() {
+  apt-get clean -qq 2> /dev/null
+  rm -rf /var/lib/apt/lists/* &> /dev/null
+  ${_APT_UPDATE} -qq 2> /dev/null
+}
 
 find_fast_mirror() {
   isNetc=$(which netcat 2>&1)
