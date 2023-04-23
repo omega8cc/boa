@@ -121,6 +121,7 @@ if [ ! -e "/root/.run-to-beowulf.cnf" ] \
 fi
 
 if [ -e "/root/.run-to-beowulf.cnf" ]; then
+  echo " " >> ${logAbf}
   msg "Waiting 120 seconds for the system start scripts to finish" >> ${logAbf}
   sleep 120
 fi

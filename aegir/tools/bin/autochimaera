@@ -119,6 +119,7 @@ if [ ! -e "/root/.run-to-chimaera.cnf" ] \
 fi
 
 if [ -e "/root/.run-to-chimaera.cnf" ]; then
+  echo " " >> ${logAch}
   msg "Waiting 120 seconds for the system start scripts to finish" >> ${logAch}
   sleep 120
 fi
