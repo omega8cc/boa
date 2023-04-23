@@ -1,6 +1,6 @@
 
 NOTE: BOA maintainers currently use only Devuan based 64bit systems/servers.
-      We no longer use Ubuntu, while Debian is pnly supported as a starting
+      We no longer use Ubuntu, while Debian is mainly supported as a starting
       point before migration to its systemd-free alternative -- Devuan.
 
 NOTE: BOA maintainers use only server (public) install mode and rarely test
