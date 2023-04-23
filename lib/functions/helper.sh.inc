@@ -423,7 +423,7 @@ mode_detection() {
   find /opt/tmp/boa -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tmp/boa -type f -exec chmod 0644 {} \; &> /dev/null
   rm -f /var/run/aegir_upgrade.pid
-  if [ "${_STATUS}" != "UPGRADE" ] || [ -e "/root/.debug-barracuda-installer.cnf" ]; then
+  if [ "${_STATUS}" != "UPGRADE" ]; then
     _STRICT_BIN_PERMISSIONS=NO
   fi
   if [ "${_STRICT_BIN_PERMISSIONS}" = "YES" ]; then

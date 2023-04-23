@@ -19,9 +19,6 @@ set -e
 
 case "$1" in
   start)
-    if [ -e "/root/.debug-barracuda-installer.cnf" ]; then
-      exit 0
-    fi
     if [ -e "/root/.run-to-chimaera.cnf" ]; then
       if [ -x "/opt/local/bin/autochimaera" ]; then
         bash /opt/local/bin/autochimaera > /dev/null 2>&1 &
@@ -117,9 +114,6 @@ case "$1" in
     fi
   ;;
   stop)
-    if [ -e "/root/.debug-barracuda-installer.cnf" ]; then
-      exit 0
-    fi
     echo -n "Stopping $DESC: "
     service cron stop &> /dev/null
     kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
@@ -195,9 +189,6 @@ case "$1" in
   ;;
 
   status)
-    if [ -e "/root/.debug-barracuda-installer.cnf" ]; then
-      exit 0
-    fi
     echo -n "$DESC status: "
     if [ -e "/var/run/boa_wait.pid" ]; then
       echo "fail 1"
