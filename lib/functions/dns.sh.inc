@@ -805,9 +805,9 @@ EOF
   fi
 }
 
-install_upgrade_pdnsd() {
+pdnsd_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: install_upgrade_pdnsd"
+    msg "PROC: pdnsd_install_upgrade"
   fi
   if [ -f "/etc/default/dhcpcd" ]; then
     sed -i "s/.*SET_DNS/#SET_DNS/g" /etc/default/dhcpcd &> /dev/null
@@ -837,6 +837,6 @@ if_install_pdnsd() {
   if [ -r "/etc/pdnsd.conf" ] \
     || [[ "${_XTRAS_LIST}" =~ "DCS" ]] \
     || [[ "${_XTRAS_LIST}" =~ "ALL" ]]; then
-    install_upgrade_pdnsd
+    pdnsd_install_upgrade
   fi
 }
