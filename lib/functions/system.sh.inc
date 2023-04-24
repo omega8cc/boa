@@ -5767,7 +5767,7 @@ php_libs_fix() {
     _REAL_OSR="${_OSR}"
     _REAL_OS="${_THIS_OS}"
   fi
-  _LIB_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+  _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
   _LIB_NOW=${_LIB_NOW//[^0-9-]/}
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
@@ -5951,7 +5951,8 @@ php_libs_fix() {
           ln -sf librtmp.so.1 librtmp.so.0
         fi
       fi
-      touch /root/.php_libs_fix_${_REAL_OSR}.pid
+      touch /root/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid
+      touch /root/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid
     fi
   fi
   mrun "ldconfig" 2> /dev/null
