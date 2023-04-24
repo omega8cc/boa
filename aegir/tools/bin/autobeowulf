@@ -139,6 +139,12 @@ msg() {
 faster_reboot() {
   msg "Faster reboot prepare..." >> ${logAbf}
   service cron stop &> /dev/null
+  if [ -e "/etc/init.d/clamav-daemon" ]; then
+    update-rc.d -f clamav-daemon remove &> /dev/null
+  fi
+  if [ -e "/etc/init.d/clamav-freshclam" ]; then
+    update-rc.d -f clamav-freshclam remove &> /dev/null
+  fi
   sleep 60
   kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
   sleep 15
