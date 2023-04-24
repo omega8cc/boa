@@ -2397,6 +2397,22 @@ install_icu_modern() {
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     touch ${pthIcuLog}
+    _X86_64_TEST=$(uname -m 2>&1)
+    if [ "${_X86_64_TEST}" = "x86_64" ]; then
+      if [ -e "/usr/local/lib/icu" ]; then
+        if [ ! -e "/usr/lib/x86_64-linux-gnu/icu" ]; then
+          mkdir -p /usr/lib/x86_64-linux-gnu/.legacy_icu
+          ln -sf /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
+        fi
+      fi
+    else
+      if [ -e "/usr/local/lib/icu" ]; then
+        if [ ! -e "/usr/lib/i386-linux-gnu/icu" ]; then
+          mkdir -p /usr/lib/i386-linux-gnu/.legacy_icu
+          ln -sf /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
+        fi
+      fi
+    fi
   fi
 }
 
@@ -2427,6 +2443,22 @@ install_icu_jessie() {
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     touch ${pthIcuLog}
+    _X86_64_TEST=$(uname -m 2>&1)
+    if [ "${_X86_64_TEST}" = "x86_64" ]; then
+      if [ -e "/usr/local/lib/icu" ]; then
+        if [ ! -e "/usr/lib/x86_64-linux-gnu/icu" ]; then
+          mkdir -p /usr/lib/x86_64-linux-gnu/.legacy_icu
+          ln -sf /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
+        fi
+      fi
+    else
+      if [ -e "/usr/local/lib/icu" ]; then
+        if [ ! -e "/usr/lib/i386-linux-gnu/icu" ]; then
+          mkdir -p /usr/lib/i386-linux-gnu/.legacy_icu
+          ln -sf /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
+        fi
+      fi
+    fi
   fi
 }
 
