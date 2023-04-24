@@ -133,6 +133,26 @@ msg() {
   echo "AutoBeowulf [$(date +%T 2>&1)] ==> $*"
 }
 
+###
+### Faster reboot
+###
+faster_reboot() {
+  msg "Faster reboot prepare..." >> ${logAbf}
+  service cron stop &> /dev/null
+  sleep 60
+  kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
+  sleep 15
+  kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
+  sleep 15
+  service nginx stop &> /dev/null
+  kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
+  kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}') &> /dev/null
+  kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
+  kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+  msg "Faster reboot done" >> ${logAbf}
+}
+
 if [ ! -e "/root/.run-to-beowulf.cnf" ] \
   || [ ! -e "${barCnf}" ]; then
   exit 1
@@ -199,6 +219,7 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
       msg "The system will reboot now" >> ${logAbf}
       rm -f /root/.latest-barracuda-upgrade-finale.info
       touch /root/.run-auto-major-os-reboot-one.cnf
+      faster_reboot
       reboot
       exit 0
     fi
@@ -220,6 +241,7 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
     msg "The system will reboot now for a final upgrade" >> ${logAbf}
     rm -f /root/.latest-barracuda-upgrade-finale.info
     touch /root/.run-auto-major-os-reboot-two.cnf
+    faster_reboot
     reboot
     exit 0
   fi
