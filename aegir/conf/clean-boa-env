@@ -115,18 +115,27 @@ case "$1" in
   ;;
   stop)
     echo -n "Stopping $DESC: "
-    service cron stop &> /dev/null
-    sleep 60
-    kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
-    sleep 15
-    kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
-    sleep 15
-    service nginx stop &> /dev/null
-    kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
-    kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}') &> /dev/null
-    kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
-    kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
-    kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+    if [ ! -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
+      && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
+      service cron stop &> /dev/null
+      sleep 60
+      kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
+      sleep 15
+      kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
+      sleep 15
+      service nginx stop &> /dev/null
+      _PHP_V="82 81 74 73 72 71 70 56"
+      for e in ${_PHP_V}; do
+        if [ -e "/etc/init.d/php${e}-fpm" ]; then
+          service php${e}-fpm force-quit &> /dev/null
+        fi
+      done
+      kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+    fi
     if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
       _WEB_SH=`readlink -n /bin/sh`
       _WEB_SH=`echo -n $_WEB_SH | tr -d "\n"`
