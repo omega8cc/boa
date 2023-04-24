@@ -617,7 +617,7 @@ update_agents() {
     _PHP_V="55 54 53"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ]; then
-        service php${e}-fpm stop &> /dev/null
+        service php${e}-fpm force-quit &> /dev/null
       fi
     done
     touch ${pthLog}/fast_shutdown.ctrl.${_X_SE}.pid

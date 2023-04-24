@@ -82,7 +82,7 @@ stop_sql() {
   _PHP_V="82 81 80 74 73 72 71 70 56 55 54 53"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ]; then
-      service php${e}-fpm stop &> /dev/null
+      service php${e}-fpm force-quit &> /dev/null
     fi
   done
   # kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')

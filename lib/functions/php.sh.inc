@@ -2340,7 +2340,7 @@ php_deprecated_cleanup() {
       mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
     fi
     if [ -e "/etc/init.d/php${e}-fpm" ]; then
-      service php${e}-fpm stop &> /dev/null
+      service php${e}-fpm force-quit &> /dev/null
       update-rc.d -f php${e}-fpm remove &> /dev/null
       mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
     fi
@@ -2362,7 +2362,7 @@ php_single_initd_cleanup() {
           mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
         fi
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          service php${e}-fpm stop &> /dev/null
+          service php${e}-fpm force-quit &> /dev/null
           update-rc.d -f php${e}-fpm remove &> /dev/null
           mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
@@ -2375,7 +2375,7 @@ php_single_initd_cleanup() {
           mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
         fi
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          service php${e}-fpm stop &> /dev/null
+          service php${e}-fpm force-quit &> /dev/null
           update-rc.d -f php${e}-fpm remove &> /dev/null
           mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
@@ -2388,7 +2388,7 @@ php_single_initd_cleanup() {
           mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
         fi
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          service php${e}-fpm stop &> /dev/null
+          service php${e}-fpm force-quit &> /dev/null
           update-rc.d -f php${e}-fpm remove &> /dev/null
           mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES

@@ -7059,7 +7059,7 @@ initd_update() {
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           mrun "update-rc.d php${e}-fpm defaults" &> /dev/null
-          mrun "service php${e}-fpm stop" &> /dev/null
+          mrun "service php${e}-fpm force-quit" &> /dev/null
         fi
       done
       killall -9 php-fpm &> /dev/null
