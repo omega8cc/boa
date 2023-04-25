@@ -1842,7 +1842,6 @@ barracuda_cnf() {
     fi
 
     php_legacy_versions_cleanup_cnf
-    php_if_versions_cleanup_cnf
 
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION ${barCnf} 2>&1)
     if [[ ! "${_PHP_FPM_VERSION_TEST}" =~ "_PHP_FPM_VERSION" ]]; then
