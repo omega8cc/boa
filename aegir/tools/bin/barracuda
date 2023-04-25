@@ -851,7 +851,10 @@ up_action() {
           fi
         fi
       fi
-      if [ "${silent}" = "log" ] || [ "${silent}" = "system" ]; then
+      if [ "${silent}" = "log" ] \
+        || [ "${silent}" = "system" ] \
+        || [ "${silent}" = "disable" ] \
+        || [ "${silent}" = "enable" ]; then
         if [ "${_VMFAMILY}" = "VS" ]; then
           if [ -e "/root/.debug.cnf" ]; then
             n=8
@@ -864,25 +867,28 @@ up_action() {
         if [ -e "/root/.dbhd.clstr.cnf" ]; then
           n=$((RANDOM%300+80))
         fi
-        echo
-        echo "Preparing the upgrade in silent mode..."
-        echo
-        echo "NOTE: There will be no progress displayed in the console"
-        echo "but you will receive an email once the upgrade is complete"
-        echo
-        sleep 5
-        echo "You could watch the progress in another window with command:"
-        echo "  tail -f ${_UP_LOG}"
-        echo "or wait until you will see the line: BARRACUDA upgrade completed"
-        echo
-        echo "Waiting $n seconds..."
-        sleep $n
-        echo "Starting the upgrade in silent mode now..."
-        echo
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                     ${barCnf}
-        wait
-        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"                 ${vBs}/${barName}
-        wait
+        if [ "${silent}" = "log" ] \
+          || [ "${silent}" = "system" ]; then
+          echo
+          echo "Preparing the upgrade in silent mode..."
+          echo
+          echo "NOTE: There will be no progress displayed in the console"
+          echo "but you will receive an email once the upgrade is complete"
+          echo
+          sleep 5
+          echo "You could watch the progress in another window with command:"
+          echo "  tail -f ${_UP_LOG}"
+          echo "or wait until you will see the line: BARRACUDA upgrade completed"
+          echo
+          echo "Waiting $n seconds..."
+          sleep $n
+          echo "Starting the upgrade in silent mode now..."
+          echo
+          sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${barCnf}
+          wait
+          sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"               ${vBs}/${barName}
+          wait
+        fi
         if [ "${silent}" = "system" ]; then
           touch /var/run/boa_system_wait.pid
           if [ "${cmmand}" = "up-2.2" ] \
@@ -930,14 +936,27 @@ up_action() {
           fi
           sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"  ${barCnf}
           wait
+          bash ${vBs}/${barName} >${_UP_LOG} 2>&1
+          check_report
         elif [ "${silent}" = "log" ]; then
           sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"            ${barCnf}
           wait
           sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"  ${barCnf}
           wait
+          bash ${vBs}/${barName} >${_UP_LOG} 2>&1
+          check_report
+        elif [ "${silent}" = "enable" ] || [ "${silent}" = "disable" ]; then
+          sed -i "s/^_PHP_IDLE.*//g"                                   ${barCnf}
+          wait
+          if [ "${silent}" = "enable" ]; then
+            echo "_PHP_IDLE=ON"                                     >> ${barCnf}
+            wait
+          elif [ "${silent}" = "disable" ]; then
+            echo "_PHP_IDLE=OFF"                                    >> ${barCnf}
+            wait
+          fi
+          bash ${vBs}/${barName}
         fi
-        bash ${vBs}/${barName} >${_UP_LOG} 2>&1
-        check_report
       else
         sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"              ${barCnf}
         wait
