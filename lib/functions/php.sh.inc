@@ -2336,6 +2336,7 @@ php_not_used_enable_again() {
   fi
   _PHP_V="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2"
   for e in ${_PHP_V}; do
+    re=
     if [ ! -e "/opt/php${re}/bin/php" ]; then
       re="${e}"
       re=${re//[^0-9]/}
@@ -2368,6 +2369,7 @@ php_not_used_disable() {
   _PHP_V="5.6 7.0 7.1 7.2 7.3 8.0 8.1 8.2"
   _PHP_A="${_PHP_MULTI_OPTIM}"
   for e in ${_PHP_V}; do
+    re=
     if [[ ${_PHP_A} == *"${e}"* ]]; then
       _IS_IDLE=NO
     else
