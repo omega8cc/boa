@@ -2387,6 +2387,8 @@ php_not_used_disable() {
         rm -f -r ${vBs}/off-php${re}-arch
         mv -f /opt/php${re} ${vBs}/off-php${re}-arch
         msg "INFO: /opt/php${re} moved to ${vBs}/off-php${re}-arch"
+      else
+        rm -f -r /opt/php${re}
       fi
     fi
   done
