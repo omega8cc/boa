@@ -1398,6 +1398,17 @@ php_if_versions_cleanup_cnf() {
         ### Make sure that _PHP_MULTI_INSTALL includes _PHP_FPM_VERSION
         _local_PHP_MULTI_INSTALL="${_PHP_FPM_VERSION}"
 
+        ### Always include latest PHP 8.1 and 8.2 if requested
+        if [ -e "/root/.include-php-latest.cnf" ] \
+          || [ -e "/root/.auto.up.cnf" ] \
+          || [ -e "/root/.host8.cnf" ] \
+          || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+          || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
+          || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+          || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
+          _local_PHP_MULTI_INSTALL="8.1 8.2 ${_local_PHP_MULTI_INSTALL}"
+        fi
+
         ### Add PHP 5.6 if used
         _is_PHP_multi_five_six=$(grep "5\.6" /data/disk/*/static/control/multi-fpm.info 2>&1)
         _is_PHP_FPM_five_six=$(grep "5\.6" /data/disk/*/static/control/fpm.info 2>&1)
