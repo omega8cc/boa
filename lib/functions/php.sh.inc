@@ -2329,6 +2329,61 @@ check_php_broken() {
 }
 
 #
+# Enable previously disabled PHP-FPM versions
+php_not_used_enable_again() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: php_not_used_enable_again"
+  fi
+  _PHP_V="${_PHP_ORIG_MULTI}"
+  for e in ${_PHP_V}; do
+    if [ "${e}" != "7.4" ]; then
+      re="${e}"
+      re=${re//[^0-9]/}
+      if [ -e "${vBs}/off-php${re}-arch}/bin/php" ]; then
+        mv -f ${vBs}/off-php${re}-arch /opt/php${re}
+        msg "INFO: ${vBs}/off-php${re}-arch moved to /opt/php${re}"
+      fi
+      if [ -e "${vBs}/initd-php${re}-fpm" ]; then
+        mv -f ${vBs}/initd-php${re}-fpm /etc/init.d/php${re}-fpm
+        chmod 755 /etc/init.d/php${re}-fpm
+        mrun "update-rc.d php${re}-fpm defaults" &> /dev/null
+        mrun "service php${re}-fpm start" &> /dev/null
+        msg "INFO: ${vBs}/initd-php${re}-fpm moved to /etc/init.d/php${re}-fpm"
+      fi
+    fi
+  done
+  if [ -e "/root/.allow-php-multi-install-cleanup.cnf" ]; then
+    rm -f /root/.allow-php-multi-install-cleanup.cnf
+  fi
+}
+
+#
+# Disable not used PHP-FPM versions
+php_not_used_disable() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: php_not_used_disable"
+  fi
+  php_multi_uniq
+  _PHP_V="${_PHP_MULTI_INSTALL}"
+  for e in ${_PHP_V}; do
+    if [ "${e}" != "7.4" ]; then
+      re="${e}"
+      re=${re//[^0-9]/}
+      if [ -e "/etc/init.d/php${re}-fpm" ]; then
+        service php${re}-fpm force-quit &> /dev/null
+        update-rc.d -f php${re}-fpm remove &> /dev/null
+        mv -f /etc/init.d/php${re}-fpm ${vBs}/initd-php${re}-fpm
+        msg "INFO: /etc/init.d/php${re}-fpm moved to ${vBs}/initd-php${re}-fpm"
+      fi
+      if [ -e "/opt/php${re}/bin/php" ]; then
+        mv -f /opt/php${re} ${vBs}/off-php${re}-arch
+        msg "INFO: /opt/php${re} moved to ${vBs}/off-php${re}-arch"
+      fi
+    fi
+  done
+}
+
+#
 # Fix init.d to disable deprecated PHP-FPM versions
 php_deprecated_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2336,13 +2391,15 @@ php_deprecated_cleanup() {
   fi
   _PHP_V="55 54 53"
   for e in ${_PHP_V}; do
-    if [ -e "/opt/php${e}/bin/php" ]; then
-      mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
-    fi
     if [ -e "/etc/init.d/php${e}-fpm" ]; then
       service php${e}-fpm force-quit &> /dev/null
       update-rc.d -f php${e}-fpm remove &> /dev/null
       mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
+      msg "INFO: /etc/init.d/php${e}-fpm moved to ${vBs}/initd-php${e}-fpm"
+    fi
+    if [ -e "/opt/php${e}/bin/php" ]; then
+      mv -f /opt/php${e} ${vBs}/off-php${e}-arch
+      msg "INFO: /opt/php${e} moved to ${vBs}/off-php${e}-arch"
     fi
   done
 }

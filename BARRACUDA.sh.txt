@@ -290,6 +290,12 @@ check_prepare_dirs_permissions
 
 
 ###
+### Quick php-idle ON/OFF procedure only
+###
+if_php_idle_on_off
+
+
+###
 ### Optional major system upgrades
 ###
 early_sys_ctrl_mark

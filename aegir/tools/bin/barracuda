@@ -636,7 +636,8 @@ up_action() {
     if [ "${cmmand}" = "up-head" ] \
       || [ "${cmmand}" = "up-dev" ] \
       || [ "${cmmand}" = "up-legacy" ] \
-      || [ "${cmmand}" = "up-stable" ]; then
+      || [ "${cmmand}" = "up-stable" ] \
+      || [ "${cmmand}" = "php-idle" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
       wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncB}
@@ -705,7 +706,8 @@ up_action() {
     if [ "${cmmand}" = "up-head" ] \
       || [ "${cmmand}" = "up-dev" ] \
       || [ "${cmmand}" = "up-legacy" ] \
-      || [ "${cmmand}" = "up-stable" ]; then
+      || [ "${cmmand}" = "up-stable" ] \
+      || [ "${cmmand}" = "php-idle" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${filIncB}
       wait
     elif [ "${cmmand}" = "up-cluster" ]; then
@@ -943,6 +945,17 @@ up_action() {
         wait
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=NO/g"                      ${barCnf}
         wait
+        if [ "${cmmand}" = "php-idle" ]; then
+          sed -i "s/^_PHP_IDLE.*//g"                                   ${barCnf}
+          wait
+          if [ "${silent}" = "enable" ]; then
+            echo "_PHP_IDLE=ON"                                     >> ${barCnf}
+            wait
+          elif [ "${silent}" = "disable" ]; then
+            echo "_PHP_IDLE=OFF"                                    >> ${barCnf}
+            wait
+          fi
+        fi
         bash ${vBs}/${barName}
       fi
     fi
@@ -1376,7 +1389,8 @@ proceed() {
   if [ "${cmmand}" = "up-head" ] \
     || [ "${cmmand}" = "up-dev" ] \
     || [ "${cmmand}" = "up-legacy" ] \
-    || [ "${cmmand}" = "up-stable" ]; then
+    || [ "${cmmand}" = "up-stable" ] \
+    || [ "${cmmand}" = "php-idle" ]; then
     if [ "${silent}" = "cluster" ] \
       || [ "${silent}" = "foobar" ]; then
       echo "FEATURE MODE: ${silent}"
@@ -1414,6 +1428,8 @@ proceed() {
     echo
     echo "  Silent Mode Option: system == OS only upgrade"
     echo "  Silent Mode Option: log ===== OS and Aegir Master Instance upgrade"
+    echo
+    echo "Usage: $(basename "$0") php-idle {enable|disable}"
     echo
     clean_pid_exit
   fi

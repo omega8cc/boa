@@ -74,6 +74,27 @@
     @> Debian to Debian major OS upgrades
       * Debian 9 Stretch   => upgrade to Buster with   _STRETCH_TO_BUSTER=YES
 
+ => NOTE: This tool will automatically disable all installed but not used
+          in any existing site PHP versions, effectively enforcing otherwise
+          optional procedure normally triggered on barracuda upgrade if the
+          control file exists: /root/.allow-php-multi-install-cleanup.cnf
+
+          Side note: it will not affect migration/upgrade from Debian Bullseye
+          to Devuan Chimaera, though, since it doesn't involve re-installing
+          all existing PHP versions normally required in other major upgrades,
+          which otherwise significantly extends the procedure for no good
+          reasons (not used PHP versions should be skipped and deactivated).
+
+          To re-install disabled PHP versions after all upgrades are already
+          completed, run these commands:
+
+          $ barracuda php-idle enable
+          $ barracuda up-head system
+
+          To disable not used PHP versions again, run only:
+
+          $ barracuda php-idle disable
+
 
 ###
 ### Important Notes for Standard/Manual BOA Upgrade

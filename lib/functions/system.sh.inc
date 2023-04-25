@@ -1336,12 +1336,40 @@ php_legacy_versions_cleanup_cnf() {
 
 #
 # Cleanup for PHP versions list.
+if_php_idle_on_off() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_php_idle_on_off"
+  fi
+  if [ "${_PHP_IDLE}" = "ON" ]; then
+    php_not_used_enable_again
+    sed -i "s/^_PHP_IDLE.*//g" ${barCnf}
+    echo " "
+    msg "Bye"
+    clean_pid_exit
+  elif [ "${_PHP_IDLE}" = "OFF" ]; then
+    php_not_used_disable
+    sed -i "s/^_PHP_IDLE.*//g" ${barCnf}
+    echo " "
+    msg "Bye"
+    clean_pid_exit
+  fi
+}
+
+#
+# Cleanup for PHP versions list.
 php_if_versions_cleanup_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: php_if_versions_cleanup_cnf"
   fi
+  if [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] \
+    || [ -e "/root/.run-to-chimaera.cnf" ] \
+    || [ -e "/root/.run-to-beowulf.cnf" ]; then
+    _AUTO_PHP_CLEANUP=YES
+  else
+    _AUTO_PHP_CLEANUP=NO
+  fi
   if [ -e "/var/aegir/host_master/000/placeholder_dont_remove.txt" ] \
-    && [ -e "/root/.allow-php-multi-install-cleanup.cnf" ]; then
+    && [ "${_AUTO_PHP_CLEANUP}" = "YES" ]; then
     if [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ]; then
@@ -1478,6 +1506,9 @@ php_if_versions_cleanup_cnf() {
           _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_two}"
         fi
 
+        ### Store original _PHP_MULTI_INSTALL in separate never modified var
+        _PHP_ORIG_MULTI="${_PHP_MULTI_INSTALL}"
+
         ### Overwrite _PHP_MULTI_INSTALL with the list of used PHP versions
         _PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL}"
 
@@ -1498,6 +1529,7 @@ php_if_versions_cleanup_cnf() {
         fi
         ### Add optimized _PHP_MULTI_INSTALL in /root/.barracuda.cnf
         echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
+        echo "_PHP_ORIG_MULTI=\"${_PHP_ORIG_MULTI}\"" >> ${barCnf}
         touch /root/.sorted.multi.php.cnf
         rm -f /root/.updated.multi.php.cnf
         rm -f /root/.fixed.multi.php.cnf
@@ -4751,6 +4783,7 @@ if_post_major_os_upgrade() {
       ssl_crypto_lib_fix
       curl_install_src
       sshd_install_src
+      php_not_used_disable
       if [ -x "/opt/php81/bin/php" ]; then
         _PHP_VERSION="${_PHP81_VRN}"
         install_php_multi "81"
