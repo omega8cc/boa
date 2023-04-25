@@ -2727,6 +2727,7 @@ php_check_if_rebuild() {
   if [[ ! "${isSeg}" =~ "cli" ]] || [ -z "${isSeg}" ]; then
     msg "INFO: PHP rebuild required to fix broken libs..."
     _PHP_FORCE_REINSTALL=YES
+    php_if_versions_cleanup_cnf
     php_upgrade_all
     _PHP_FORCE_REINSTALL=NO
   fi
@@ -2735,6 +2736,7 @@ php_check_if_rebuild() {
   if [[ "${isOnig}" =~ "libonig.so" ]]; then
     msg "INFO: PHP rebuild required to fix libonig..."
     _PHP_FORCE_REINSTALL=YES
+    php_if_versions_cleanup_cnf
     php_upgrade_all
     _PHP_FORCE_REINSTALL=NO
   fi
@@ -2748,6 +2750,7 @@ php_check_if_rebuild() {
     _PHP_FORCE_REINSTALL=YES
     php_install_deps
     php_libs_fix
+    php_if_versions_cleanup_cnf
     php_upgrade_all
     if [ -e "/usr/lib/x86_64-linux-gnu/.old_icu" ]; then
       mv -f /usr/lib/x86_64-linux-gnu/.old_icu /usr/lib/x86_64-linux-gnu/.legacy_icu
@@ -2763,6 +2766,7 @@ php_check_if_rebuild() {
       || [ -z "${isSodium}" ]; then
       msg "INFO: PHP rebuild required to add Sodium support..."
       _PHP_FORCE_REINSTALL=YES
+      php_if_versions_cleanup_cnf
       php_upgrade_all "74 80 81 82"
       _PHP_FORCE_REINSTALL=NO
     fi
@@ -2773,6 +2777,7 @@ php_check_if_rebuild() {
     || [ -z "${isWebP}" ]; then
     msg "INFO: PHP rebuild required to add WebP support..."
     _PHP_FORCE_REINSTALL=YES
+    php_if_versions_cleanup_cnf
     php_upgrade_all
     _PHP_FORCE_REINSTALL=NO
   fi
@@ -2802,6 +2807,7 @@ php_check_if_rebuild() {
     fi
     msg "INFO: PHP rebuild required to add --with-tidy option..."
     _PHP_FORCE_REINSTALL=YES
+    php_if_versions_cleanup_cnf
     php_upgrade_all
     _PHP_FORCE_REINSTALL=NO
   fi

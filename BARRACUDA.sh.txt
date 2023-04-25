@@ -360,6 +360,7 @@ myquick_install_upgrade
 magick_install_upgrade
 php_install_deps
 php_libs_fix
+php_if_versions_cleanup_cnf
 if [ "${_STATUS}" = "UPGRADE" ]; then
   php_check_if_rebuild
 fi

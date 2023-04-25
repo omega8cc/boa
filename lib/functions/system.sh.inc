@@ -4793,6 +4793,7 @@ if_post_major_os_upgrade() {
       _SSH_FORCE_REINSTALL=YES
       _SSL_FORCE_REINSTALL=YES
       magick_install_upgrade
+      php_if_versions_cleanup_cnf
       php_install_deps
       php_libs_fix
       nginx_install_upgrade
@@ -5274,6 +5275,7 @@ if_major_os_upgrade() {
       _SSL_FORCE_REINSTALL=YES
       _SSH_FORCE_REINSTALL=YES
       magick_install_upgrade
+      php_if_versions_cleanup_cnf
       php_install_deps
       php_libs_fix
       nginx_install_upgrade
