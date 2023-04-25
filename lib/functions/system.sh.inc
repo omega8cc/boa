@@ -1546,17 +1546,25 @@ if_php_idle_on_off() {
   fi
   if [ "${_PHP_IDLE}" = "ON" ]; then
     rm -f /root/.allow-php-multi-install-cleanup.cnf
+    touch /root/.proxy.cnf
+    kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
+    sleep 5
     php_not_used_enable_again
     sed -i "s/^_PHP_IDLE.*//g" ${barCnf}
     echo " "
     msg "Bye"
+    rm -f /root/.proxy.cnf
     clean_pid_exit
   elif [ "${_PHP_IDLE}" = "OFF" ]; then
+    touch /root/.proxy.cnf
+    kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
+    sleep 5
     touch /root/.allow-php-multi-install-cleanup.cnf
     php_if_versions_cleanup_cnf
     sed -i "s/^_PHP_IDLE.*//g" ${barCnf}
     echo " "
     msg "Bye"
+    rm -f /root/.proxy.cnf
     clean_pid_exit
   fi
 }
