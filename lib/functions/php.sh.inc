@@ -2339,7 +2339,7 @@ php_not_used_enable_again() {
     if [ "${e}" != "7.4" ]; then
       re="${e}"
       re=${re//[^0-9]/}
-      if [ -e "${vBs}/off-php${re}-arch}/bin/php" ] \
+      if [ -e "${vBs}/off-php${re}-arch/bin/php" ] \
         && [ ! -e "/opt/php${re}/bin/php" ]; then
         rm -f -r /opt/php${re}
         mv -f ${vBs}/off-php${re}-arch /opt/php${re}
