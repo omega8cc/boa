@@ -2336,7 +2336,7 @@ php_not_used_enable_again() {
   fi
   _PHP_V="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2"
   for e in ${_PHP_V}; do
-    if [ "${e}" != "7.4" ]; then
+    if [ ! -e "/opt/php${re}/bin/php" ]; then
       re="${e}"
       re=${re//[^0-9]/}
       if [ -e "${vBs}/off-php${re}-arch/bin/php" ] \
