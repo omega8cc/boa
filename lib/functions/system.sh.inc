@@ -1545,6 +1545,7 @@ if_php_idle_on_off() {
     msg "PROC: if_php_idle_on_off"
   fi
   if [ "${_PHP_IDLE}" = "ON" ]; then
+    rm -f /root/.allow-php-multi-install-cleanup.cnf
     php_not_used_enable_again
     sed -i "s/^_PHP_IDLE.*//g" ${barCnf}
     echo " "
