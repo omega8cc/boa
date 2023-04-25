@@ -1473,7 +1473,8 @@ sql="$5"
 if [ ! -z "${silent}" ]; then
   if [ "${silent}" = "log" ] \
     || [ "${silent}" = "cluster" ] \
-    || [ "${silent}" = "foobar" ] \
+    || [ "${silent}" = "disable" ] \
+    || [ "${silent}" = "enable" ] \
     || [ "${silent}" = "system" ]; then
     silent="$2"
   else
