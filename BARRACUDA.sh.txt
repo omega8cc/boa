@@ -263,6 +263,12 @@ os_detection_minimal
 
 
 ###
+### Quick php-idle ON/OFF procedure only
+###
+if_php_idle_on_off
+
+
+###
 ### Packages update on init
 ###
 sources_list_update
@@ -287,12 +293,6 @@ check_db_src
 check_git_repos
 check_ip_hostname
 check_prepare_dirs_permissions
-
-
-###
-### Quick php-idle ON/OFF procedure only
-###
-if_php_idle_on_off
 
 
 ###
