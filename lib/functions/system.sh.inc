@@ -1336,27 +1336,6 @@ php_legacy_versions_cleanup_cnf() {
 
 #
 # Cleanup for PHP versions list.
-if_php_idle_on_off() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_php_idle_on_off"
-  fi
-  if [ "${_PHP_IDLE}" = "ON" ]; then
-    php_not_used_enable_again
-    sed -i "s/^_PHP_IDLE.*//g" ${barCnf}
-    echo " "
-    msg "Bye"
-    clean_pid_exit
-  elif [ "${_PHP_IDLE}" = "OFF" ]; then
-    php_not_used_disable
-    sed -i "s/^_PHP_IDLE.*//g" ${barCnf}
-    echo " "
-    msg "Bye"
-    clean_pid_exit
-  fi
-}
-
-#
-# Cleanup for PHP versions list.
 php_if_versions_cleanup_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: php_if_versions_cleanup_cnf"
@@ -1517,9 +1496,6 @@ php_if_versions_cleanup_cnf() {
           _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_two}"
         fi
 
-        ### Store original _PHP_MULTI_INSTALL in separate never modified var
-        _PHP_ORIG_MULTI="${_PHP_MULTI_INSTALL}"
-
         ### Overwrite _PHP_MULTI_INSTALL with the list of used PHP versions
         _PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL}"
 
@@ -1530,22 +1506,57 @@ php_if_versions_cleanup_cnf() {
           ### Sort and remove duplicates from _PHP_MULTI_INSTALL
           php_multi_uniq
         fi
+        export _PHP_MULTI_INSTALL="${_PHP_MULTI_INSTALL}"
+
         ### Remove previous _PHP_MULTI_INSTALL in /root/.barracuda.cnf
         _PHP_MULTI_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
         if [[ "${_PHP_MULTI_TEST}" =~ "_PHP_MULTI_INSTALL" ]]; then
           sed -i "s/^_PHP_MULTI_INSTALL.*//g" ${barCnf}
           wait
+          sed -i "s/^_PHP_ORIG_MULTI.*//g" ${barCnf}
+          wait
           sed -i "/^$/d" ${barCnf}
           wait
         fi
+
         ### Add optimized _PHP_MULTI_INSTALL in /root/.barracuda.cnf
         echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
-        echo "_PHP_ORIG_MULTI=\"${_PHP_ORIG_MULTI}\"" >> ${barCnf}
+
+        ### Export optimized list as a new var
+        _PHP_MULTI_OPTIM="${_PHP_MULTI_INSTALL}"
+        export _PHP_MULTI_OPTIM="${_PHP_MULTI_OPTIM}"
+
+        ### Disable not used PHP versions
+        php_not_used_disable
+
+        ### Ctrl files cleanup
         touch /root/.sorted.multi.php.cnf
         rm -f /root/.updated.multi.php.cnf
         rm -f /root/.fixed.multi.php.cnf
       fi
     fi
+  fi
+}
+
+#
+# Cleanup for PHP versions list.
+if_php_idle_on_off() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_php_idle_on_off"
+  fi
+  if [ "${_PHP_IDLE}" = "ON" ]; then
+    php_not_used_enable_again
+    sed -i "s/^_PHP_IDLE.*//g" ${barCnf}
+    echo " "
+    msg "Bye"
+    clean_pid_exit
+  elif [ "${_PHP_IDLE}" = "OFF" ]; then
+    touch /root/.allow-php-multi-install-cleanup.cnf
+    php_if_versions_cleanup_cnf
+    sed -i "s/^_PHP_IDLE.*//g" ${barCnf}
+    echo " "
+    msg "Bye"
+    clean_pid_exit
   fi
 }
 
@@ -4768,12 +4779,8 @@ if_post_major_os_upgrade() {
     _REBUILD_SRC_ON_AUTO_NOW=YES
     if [ -e "/root/.run-to-chimaera.cnf" ] \
       || [ -e "/root/.run-to-beowulf.cnf" ]; then
-      if [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
-        && [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
-        _REBUILD_SRC_ON_AUTO_NOW=YES
-      else
-        _REBUILD_SRC_ON_AUTO_NOW=NO
-      fi
+      _REBUILD_SRC_ON_AUTO_NOW=NO
+      php_if_versions_cleanup_cnf
     fi
 
     if [ -e "/root/.big_hop_on_major_os_upgrade.info" ] \
@@ -4794,7 +4801,6 @@ if_post_major_os_upgrade() {
       ssl_crypto_lib_fix
       curl_install_src
       sshd_install_src
-      php_not_used_disable
       if [ -x "/opt/php81/bin/php" ]; then
         _PHP_VERSION="${_PHP81_VRN}"
         install_php_multi "81"

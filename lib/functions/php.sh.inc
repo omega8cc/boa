@@ -2334,7 +2334,7 @@ php_not_used_enable_again() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: php_not_used_enable_again"
   fi
-  _PHP_V="${_PHP_ORIG_MULTI}"
+  _PHP_V="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2"
   for e in ${_PHP_V}; do
     if [ "${e}" != "7.4" ]; then
       re="${e}"
@@ -2363,19 +2363,26 @@ php_not_used_disable() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: php_not_used_disable"
   fi
-  php_multi_uniq
-  _PHP_V="${_PHP_MULTI_INSTALL}"
+  _PHP_V="5.6 7.0 7.1 7.2 7.3 8.0 8.1 8.2"
+  _PHP_A="${_PHP_MULTI_OPTIM}"
   for e in ${_PHP_V}; do
-    if [ "${e}" != "7.4" ]; then
+    if [[ ${_PHP_A} == *"${e}"* ]]; then
+      _IS_IDLE=NO
+    else
+      _IS_IDLE=YES
+    fi
+    if [ "${_IS_IDLE}" = "YES" ]; then
       re="${e}"
       re=${re//[^0-9]/}
       if [ -e "/etc/init.d/php${re}-fpm" ]; then
         service php${re}-fpm force-quit &> /dev/null
         update-rc.d -f php${re}-fpm remove &> /dev/null
+        rm -f ${vBs}/initd-php${re}-fpm
         mv -f /etc/init.d/php${re}-fpm ${vBs}/initd-php${re}-fpm
         msg "INFO: /etc/init.d/php${re}-fpm moved to ${vBs}/initd-php${re}-fpm"
       fi
       if [ -e "/opt/php${re}/bin/php" ]; then
+        rm -f -r ${vBs}/off-php${re}-arch
         mv -f /opt/php${re} ${vBs}/off-php${re}-arch
         msg "INFO: /opt/php${re} moved to ${vBs}/off-php${re}-arch"
       fi
