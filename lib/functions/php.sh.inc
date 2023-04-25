@@ -2340,6 +2340,7 @@ php_not_used_enable_again() {
       re="${e}"
       re=${re//[^0-9]/}
       if [ -e "${vBs}/off-php${re}-arch}/bin/php" ]; then
+        rm -f -r /opt/php${re}
         mv -f ${vBs}/off-php${re}-arch /opt/php${re}
         msg "INFO: ${vBs}/off-php${re}-arch moved to /opt/php${re}"
       fi
