@@ -2685,6 +2685,19 @@ if_install_wkhtmltox() {
 }
 
 #
+# Clean Drush 12.
+clean_drush_twelve() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: clean_drush_twelve"
+  fi
+  rm -f /usr/bin/drush12*
+  ln -sf /opt/tools/drush/12/drush/vendor/drush/drush/drush /usr/bin/drush12-bin
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Drush ${_DRUSH_TWELVE_VRN} setup complete"
+  fi
+}
+
+#
 # Clean Drush 11.
 clean_drush_eleven() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2741,6 +2754,10 @@ set_drush_perm() {
     chmod 755 /opt/tools/drush/11/drush/vendor/drush/drush/drush
     chmod 755 /opt/tools/drush/11/drush/vendor/drush/drush/drush.php
   fi
+  if [ -e "/opt/tools/drush/12/drush/vendor/drush/drush/drush" ]; then
+    chmod 755 /opt/tools/drush/12/drush/vendor/drush/drush/drush
+    chmod 755 /opt/tools/drush/12/drush/vendor/drush/drush/drush.php
+  fi
   if [ -e "/opt/tools/drush/launcher/drush.phar" ]; then
     chmod 755 /opt/tools/drush/launcher/drush.phar
   fi
@@ -2762,6 +2779,21 @@ get_drush_launcher() {
   ln -sf /opt/tools/drush/launcher/drush.phar /usr/bin/drushlr
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} installation complete"
+  fi
+}
+
+#
+# Install or update Drush 12.
+get_drush_twelve() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: get_drush_twelve"
+  fi
+  rm -rf /opt/tools/drush/12/*
+  cd /opt/tools/drush/12/
+  get_dev_ext "drush-${_DRUSH_TWELVE_VRN}.tar.gz"
+  touch /opt/tools/drush/12/.ctrl.${_X_SE}.pid
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Drush ${_DRUSH_TWELVE_VRN} installation complete"
   fi
 }
 
@@ -2897,6 +2929,24 @@ drush_system_install_update() {
         fi
       fi
     fi
+    if [ -e "/opt/tools/drush/12" ]; then
+      _DRUSH_ITD=$(drush12-bin --version 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f4 \
+        | awk '{ print $1}' 2>&1)
+      if [ "${_DRUSH_ITD}" != "${_DRUSH_TWELVE_VRN}" ] \
+        || [ ! -x "/opt/tools/drush/12/drush/vendor/drush/drush/drush" ] \
+        || [ ! -e "/opt/tools/drush/12/.ctrl.${_X_SE}.pid" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Drush ${_DRUSH_TWELVE_VRN} re-installation required"
+        fi
+        get_drush_twelve
+      else
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Drush ${_DRUSH_TWELVE_VRN} already installed"
+        fi
+      fi
+    fi
     if [ -e "/opt/tools/drush/launcher" ]; then
       _DRUSH_ITD=$(drush-launcher --version 2>&1 \
         | tr -d "\n" \
@@ -2934,6 +2984,11 @@ drush_system_install_update() {
       clean_drush_eleven
     else
       msg "FAIL: Drush ${_DRUSH_ELEVEN_VRN} installation failed!"
+    fi
+    if [ -x "/opt/tools/drush/12/drush/vendor/drush/drush/drush" ]; then
+      clean_drush_twelve
+    else
+      msg "FAIL: Drush ${_DRUSH_TWELVE_VRN} installation failed!"
     fi
     chown -R root:root /opt/tools/drush
     cd /opt/tmp
