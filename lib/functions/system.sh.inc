@@ -5278,7 +5278,7 @@ if_major_os_upgrade() {
       _REBUILD_SRC_ON_AUTO_NOW=YES
     fi
     if [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
-      rm -f /var/xdrago/log/*.log
+      rm -f /var/xdrago_wait/log/*.log
       _PURGE_MODE=OFF
       _NGX_FORCE_REINSTALL=YES
       _SSL_FORCE_REINSTALL=YES
@@ -5426,7 +5426,7 @@ if_major_os_upgrade() {
     ###
     ### Final cleanup.
     echo rotate > /var/log/syslog
-    rm -f /var/xdrago/log/*.log
+    rm -f /var/xdrago_wait/log/*.log
     mv -f /var/xdrago_wait /var/xdrago &> /dev/null
     ###
     ### Add ctrl file to trigger if_post_major_os_upgrade() after reboot.
