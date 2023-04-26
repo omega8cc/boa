@@ -6463,9 +6463,9 @@ umask_check_fix() {
   fi
 }
 
-if_node_lshell() {
+fix_node_in_lshell_access() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_node_lshell"
+    msg "PROC: fix_node_in_lshell_access"
   fi
   if [ "${_STATUS}" = "UPGRADE" ] && [ -e "/etc/lshell.conf" ]; then
     PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
@@ -6516,7 +6516,6 @@ lshell_install_upgrade() {
       cp -af /etc/lshell.conf-bak-${_NOW} /etc/lshell.conf &> /dev/null
     else
       cp -af ${bldPth}/aegir/tools/system/conf/lshell.conf /etc/lshell.conf
-      if_node_lshell
       echo "${_PATH_LSHELL}" >> /etc/shells
     fi
     rm -f /etc/logrotate.d/lshell
@@ -6533,6 +6532,7 @@ lshell_install_upgrade() {
       fi
       st_runner "bash /var/xdrago/manage_ltd_users.sh" &> /dev/null
     fi
+    fix_node_in_lshell_access
   fi
   if [ -f "/usr/local/bin/lshell" ]; then
     if [ ! -L "/usr/bin/lshell" ]; then

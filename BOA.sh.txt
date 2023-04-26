@@ -1489,7 +1489,7 @@ fix_fpm_process_max() {
   fi
 }
 
-if_node_lshell() {
+fix_node_in_lshell_access() {
   if [ ! -e "${pthLog}/node.lshell.ctrl.${_X_SE}.pid" ] \
     && [ -e "/etc/lshell.conf" ]; then
     PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
@@ -1504,6 +1504,7 @@ if_node_lshell() {
     else
       _ALLOW_NODE=NO
       sed -i "s/, 'node',/,/g" /etc/lshell.conf
+      sed -i "s/, 'node',/,/g" /var/xdrago/conf/lshell.conf
     fi
     touch ${pthLog}/node.lshell.ctrl.${_X_SE}.pid
   fi
@@ -1529,7 +1530,6 @@ fix_lshell() {
     rm -rf /usr/local/lib/python2.7/dist-packages/lshell*
     python setup.py install --no-compile 2> /dev/null
     cp -af /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5 /etc/lshell.conf
-    if_node_lshell
     rm -f /etc/logrotate.d/lshell
     addgroup --system lshellg &> /dev/null
     mkdir -p /var/log/lsh
@@ -2385,6 +2385,7 @@ if [ `whoami` = "root" ]; then
     fix_ping_perms
     fix_fpm_process_max
     fix_lshell
+    fix_node_in_lshell_access
     fix_authorized_keys
     fix_tcp
     fix_aio

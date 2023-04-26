@@ -2439,7 +2439,7 @@ find_correct_ip() {
 
 #
 # Restrict node if needed.
-if_node_lshell() {
+fix_node_in_lshell_access() {
   pthLog="/var/xdrago/log"
   if [ ! -e "${pthLog}/node.lshell.ctrl.${_X_SE}.pid" ] \
     && [ -e "/etc/lshell.conf" ]; then
@@ -2455,6 +2455,7 @@ if_node_lshell() {
     else
       _ALLOW_NODE=NO
       sed -i "s/, 'node',/,/g" /etc/lshell.conf
+      sed -i "s/, 'node',/,/g" /var/xdrago/conf/lshell.conf
     fi
     touch ${pthLog}/node.lshell.ctrl.${_X_SE}.pid
   fi
@@ -2539,7 +2540,7 @@ else
     if [ ! -z "${_DIFF_T}" ]; then
       cp -af /etc/lshell.conf /var/backups/ltd/old/lshell.conf-before-${_NOW}
       cp -af ${_THIS_LTD_CONF} /etc/lshell.conf
-      if_node_lshell
+      fix_node_in_lshell_access
     else
       rm -f ${_THIS_LTD_CONF}
     fi
