@@ -2510,7 +2510,7 @@ if [ -e "/var/run/manage_rvm_users.pid" ] \
   || [ -e "/var/run/manage_ltd_users.pid" ] \
   || [ -e "/var/run/boa_run.pid" ] \
   || [ -e "/var/run/boa_wait.pid" ]; then
-  touch /var/xdrago/log/wait-manage-ltd-users
+  touch /var/xdrago/log/wait-manage-ltd-users.pid
   echo "Another BOA task is running, we have to wait"
   sleep 10
   exit 0

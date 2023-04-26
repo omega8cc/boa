@@ -141,6 +141,6 @@ curl ${crlHead} -A "${checkVn}" "${urlBpth}/thinkdifferent" &> /dev/null
 
 renice ${_B_NICE} -p $$ &> /dev/null
 service ssh restart &> /dev/null
-touch /var/xdrago/log/clear.done
+touch /var/xdrago/log/clear.done.pid
 exit 0
 ###EOF2023###

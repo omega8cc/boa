@@ -52,7 +52,18 @@ action() {
     service inetutils-syslogd start &> /dev/null
   fi
   rm -f /var/backups/.auth.IP.list*
-  find /var/xdrago/log/*.pid -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/*.pid -mtime +3  -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/*.log -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/*.txt -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/last* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/wait* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/lshe* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/ngin* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/grac* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/purg* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/clea* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/proc* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
+  find /var/xdrago/log/redi* -mtime +30 -type f -exec rm -rf {} \; &> /dev/null
 
   if [ -d "/dev/disk" ]; then
     _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}')
@@ -141,7 +152,7 @@ action() {
     service nginx reload &> /dev/null
     rm -f /var/run/speed_cleanup.pid
   fi
-  touch /var/xdrago/log/graceful.done
+  touch /var/xdrago/log/graceful.done.pid
 }
 
 ###--------------------###

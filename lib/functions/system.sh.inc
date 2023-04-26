@@ -6491,7 +6491,7 @@ lshell_install_upgrade() {
   fi
   _PATH_LSHELL="/usr/local/bin/lshell"
   if [ ! -e "${_PATH_LSHELL}" ] \
-    || [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}" ] \
+    || [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}.log" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
     if [ "${_STATUS}" = "UPGRADE" ]; then
@@ -6524,7 +6524,7 @@ lshell_install_upgrade() {
     mkdir -p /var/log/lsh
     chown :lshellg /var/log/lsh
     chmod 770 /var/log/lsh &> /dev/null
-    touch ${pthLog}/lshell-build-${_LSHELL_VRN}
+    touch ${pthLog}/lshell-build-${_LSHELL_VRN}.log
     if [ -f "/var/xdrago/manage_ltd_users.sh" ]; then
       if [ "${_STATUS}" = "UPGRADE" ] \
         && [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then

@@ -4,7 +4,7 @@ nginx_conf_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: nginx_conf_update"
   fi
-  if [ ! -e "${pthLog}/nginx-config-params-fixed-${_X_VERSION}" ] \
+  if [ ! -e "${pthLog}/nginx-config-params-fixed-${_X_VERSION}.log" ] \
     && [ -d "/var/aegir" ]; then
     if [ -e "${locCnf}/nginx.conf" ] \
       && [ -e "/etc/nginx/nginx.conf" ]; then
@@ -15,7 +15,7 @@ nginx_conf_update() {
       mv -f /etc/nginx/fastcgi_params ${vBs}/dragon/t/fastcgi_params-pre-${_X_VERSION}-${_NOW} &> /dev/null
       cp -af ${locCnf}/nginx.conf /etc/nginx/nginx.conf
       cp -af ${locCnf}/fastcgi_params.txt /etc/nginx/fastcgi_params
-      touch ${pthLog}/nginx-config-params-fixed-${_X_VERSION}
+      touch ${pthLog}/nginx-config-params-fixed-${_X_VERSION}.log
     fi
   fi
   if [ -e "${mtrNgx}/pre.d/nginx_speed_purge.conf" ]; then

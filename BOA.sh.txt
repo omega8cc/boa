@@ -983,7 +983,7 @@ update_agents() {
       echo update > ${_Dir}/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_X_SE}.info
       find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
       find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${pthLog}/redis_nine_ten.ctrl.${_X_SE}.pid
+      touch ${pthLog}/redis_nine_ten.ctrl.${_X_SE}.log
     fi
   fi
 
@@ -998,7 +998,7 @@ update_agents() {
       echo update > ${_Dir}/redis_compr/ver-${_REDIS_C_VERSION}.${_X_SE}.info
       find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
       find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${pthLog}/redis_compr.ctrl.${_X_SE}.pid
+      touch ${pthLog}/redis_compr.ctrl.${_X_SE}.log
     fi
   fi
 
@@ -1013,7 +1013,7 @@ update_agents() {
       echo update > ${_Dir}/redis_edge/ver-${_REDIS_L_VERSION}.${_X_SE}.info
       find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
       find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${pthLog}/redis_edge.ctrl.${_X_SE}.pid
+      touch ${pthLog}/redis_edge.ctrl.${_X_SE}.log
     fi
   fi
 
@@ -1028,7 +1028,7 @@ update_agents() {
       echo update > ${_Dir}/redis_eight/ver-${_REDIS_N_VERSION}.${_X_SE}.info
       find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
       find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${pthLog}/redis_eight.ctrl.${_X_SE}.pid
+      touch ${pthLog}/redis_eight.ctrl.${_X_SE}.log
     fi
   fi
 }
@@ -1514,7 +1514,7 @@ fix_lshell() {
   _LSHELL_VRN=0.9.18.9
   _PATH_LSHELL="${usrBin}/lshell"
   if [ -e "${_PATH_LSHELL}" ] \
-    && [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}-hotfix5" ]; then
+    && [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}.log-hotfix5" ]; then
     cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5
     cd /var/opt
     rm -rf lshell*
@@ -1535,7 +1535,7 @@ fix_lshell() {
     mkdir -p /var/log/lsh
     chown :lshellg /var/log/lsh
     chmod 770 /var/log/lsh &> /dev/null
-    touch ${pthLog}/lshell-build-${_LSHELL_VRN}-hotfix5
+    touch ${pthLog}/lshell-build-${_LSHELL_VRN}.log-hotfix5
     who | awk '$1 !~ /root/{ cmd="pkill -KILL -u " $1; system(cmd) }'
   fi
   if [ -f "${usrBin}/lshell" ]; then

@@ -309,7 +309,7 @@ proc_control() {
     echo ...OK now running proc_num_ctrl...
     renice ${_B_NICE} -p $$ &> /dev/null
     perl /var/xdrago/proc_num_ctrl.cgi
-    touch /var/xdrago/log/proc_num_ctrl.done
+    touch /var/xdrago/log/proc_num_ctrl.done.pid
     echo CTL done
   fi
 }

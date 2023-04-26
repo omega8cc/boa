@@ -63,7 +63,7 @@ if ($java_status ne "CLEAN") {
     `service jetty7 start`;
   }
 }
-`touch /var/xdrago/log/last-run-locked`;
+`touch /var/xdrago/log/last-run-locked.pid`;
 exit;
 
 #############################################################################
@@ -96,7 +96,7 @@ local($sumar,$maxnumber);
         if ($now_is eq $log_is) {
           $li_cnt{$DROP}++;
           print "===NEW:[$now_is]:[$log_is]:$line===\n";
-          `echo "[$now_is]:[$log_is]:$line" >> /var/xdrago/log/last-fpmcheck-y-problem`;
+          `echo "[$now_is]:[$log_is]:$line" >> /var/xdrago/log/last-fpmcheck-y-problem.log`;
         }
         else {
           print "===OLD:[$now_is]:[$log_is]:$line===\n";
