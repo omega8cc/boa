@@ -235,12 +235,12 @@ if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
 fi
 
 if [ -e "/data/disk/arch/sql" ]; then
-  if [ ! -e "/root/.sync3_scan_nginx.pid" ]; then
+  if [ ! -e "/var/xdrago/log/.sync3_scan_nginx.pid" ]; then
     sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=399/g"  ${barCnf}
     sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx
     wait
     sed -i "s/default_lines =.*/default_lines = 599;/g" /var/xdrago/monitor/check/scan_nginx
-    touch /root/.sync3_scan_nginx.pid
+    touch /var/xdrago/log/.sync3_scan_nginx.pid
   fi
   _VM_TEST=$(uname -a 2>&1)
   [ -z "${_AUTO_VER}" ] && _AUTO_VER="head"
@@ -281,7 +281,7 @@ if [ -e "/data/disk/arch/sql" ]; then
 	  _DONT_TOUCH=OK
 	  rm -f /etc/csf/csf.conf-pre*
 	else
-	  if [ ! -e "/root/.csf_legacy_cleanup.pid" ]; then
+	  if [ ! -e "/var/xdrago/log/.csf_legacy_cleanup.pid" ]; then
 	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.ignore
 	    wait
 	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.allow
@@ -297,14 +297,12 @@ if [ -e "/data/disk/arch/sql" ]; then
 	    sed -i "/^$/d" /etc/csf/csf.ignore
 	    sed -i "/^$/d" /etc/csf/csf.allow
 	    rm -f /etc/csf/csf.conf-pre*
-	    touch /root/.csf_legacy_cleanup.pid
+	    touch /var/xdrago/log/.csf_legacy_cleanup.pid
 	  fi
 	fi
 	rm -f /var/xdrago/*.old
 	rm -f /var/xdrago/.*.off
-	rm -f /root/.xdrago_off_cleanup.pid
-	if [ ! -e "/root/.csf_dhcp_udp_cleanup.pid" ]; then
-	  rm -f /root/.csf_dhcp_cleanup.pid
+	if [ ! -e "/var/xdrago/log/.csf_dhcp_udp_cleanup.pid" ]; then
       sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
       wait
       sed -i "/^$/d" /etc/csf/csf.allow
@@ -315,25 +313,25 @@ if [ -e "/data/disk/arch/sql" ]; then
         for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
       fi
 	  csf -q
-	  touch /root/.csf_dhcp_udp_cleanup.pid
+	  touch /var/xdrago/log/.csf_dhcp_udp_cleanup.pid
 	fi
-    if [ ! -e "/root/.fixed_php_seven_four_default.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.fixed_php_seven_four_default.pid" ]; then
       sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=7.4/g"  ${barCnf}
       sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=7.4/g"  ${barCnf}
-      touch /root/.fixed_php_seven_four_default.pid
+      touch /var/xdrago/log/.fixed_php_seven_four_default.pid
     fi
-    if [ ! -e "/root/.disabled_modules_fix.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.disabled_modules_fix.pid" ]; then
       sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=NO/g"  ${barCnf}
-      touch /root/.disabled_modules_fix.pid
+      touch /var/xdrago/log/.disabled_modules_fix.pid
     fi
-    if [ ! -e "/root/.sync399_scan_nginx.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.sync399_scan_nginx.pid" ]; then
       sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=399/g"  ${barCnf}
       sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx
       wait
       sed -i "s/default_lines =.*/default_lines = 599;/g" /var/xdrago/monitor/check/scan_nginx
-      touch /root/.sync399_scan_nginx.pid
+      touch /var/xdrago/log/.sync399_scan_nginx.pid
     fi
-    if [ ! -e "/root/.custom_percona_forced.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.custom_percona_forced.pid" ]; then
       if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
         sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"  ${barCnf}
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"  ${barCnf}
@@ -360,7 +358,7 @@ if [ -e "/data/disk/arch/sql" ]; then
       fi
       sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"  ${barCnf}
       rm -f /etc/mysql/conf.d/mysqldump.cnf
-      touch /root/.custom_percona_forced.pid
+      touch /var/xdrago/log/.custom_percona_forced.pid
     fi
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=12
@@ -376,10 +374,10 @@ if [ -e "/data/disk/arch/sql" ]; then
         csf -tf
       fi
     fi
-    if [ ! -e "/root/.restart_site24x7_agent.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.restart_site24x7_agent.pid" ]; then
       service site24x7monagent restart
       wait
-      touch /root/.restart_site24x7_agent.pid
+      touch /var/xdrago/log/.restart_site24x7_agent.pid
     fi
     if [ ! -e "/root/.silent.update.cnf" ]; then
       touch /root/.silent.update.cnf
@@ -431,11 +429,11 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_UP_DAY=
     _AUTO_PHP=
     _AUTO_VER="head"
-    if [ ! -e "/root/.fixed_clstr_fpm.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.fixed_clstr_fpm.pid" ]; then
       sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"8.1 7.4 5.6\"/g" ${barCnf}
       wait
       sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g" ${barCnf}
-      touch /root/.fixed_clstr_fpm.pid
+      touch /var/xdrago/log/.fixed_clstr_fpm.pid
     fi
   fi
   if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
@@ -443,9 +441,6 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
   fi
-  rm -f /root/.legacy_system_prepare*
-  rm -f /root/.legacy_sys_prep_for_ugrade_ctrl.pid
-  rm -f /root/.legacy_sys_prep_for_ugrade_ctrl.cnf
   if [ ! -e "/root/.legacy_sys_prep_ugrade_ctrl.cnf" ]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=6
@@ -455,8 +450,8 @@ if [ -e "/data/disk/arch/sql" ]; then
     wait
     touch /root/.legacy_sys_prep_ugrade_ctrl.cnf
   fi
-  if [ ! -e "/root/.etc_crontab_update_ctrl.${_X_SE}.pid" ]; then
-    rm -f /root/.*_crontab_*
+  if [ ! -e "/var/xdrago/log/.etc_crontab_update_ctrl.${_X_SE}.pid" ]; then
+    rm -f /var/xdrago/log/.*_crontab_*
     if [ ! -z "${_AUTO_UP_MONTH}" ] \
       && [ ! -z "${_AUTO_UP_DAY}" ]; then
       crontab_update
@@ -464,13 +459,15 @@ if [ -e "/data/disk/arch/sql" ]; then
       crontab_cleanup
     fi
     service cron restart
-    touch /root/.etc_crontab_update_ctrl.${_X_SE}.pid
+    touch /var/xdrago/log/.etc_crontab_update_ctrl.${_X_SE}.pid
   fi
-  if [ ! -e "/root/.etc_csf_allow_bak.${_X_SE}.pid" ]; then
+  if [ ! -e "/var/xdrago/log/.etc_csf_allow_bak.${_X_SE}.pid" ]; then
     mkdir -p /var/backups/csf
     cp -a /etc/csf/csf.ignore /var/backups/csf/csf.ignore.${_X_SE}.txt
     cp -a /etc/csf/csf.allow /var/backups/csf/csf.allow.${_X_SE}.txt
-    touch /root/.etc_csf_allow_ctrl.${_X_SE}.pid
+    rm -f /root/.*.pid
+    rm -f /var/xdrago/log/.etc_csf_allow_ctrl*
+    touch /var/xdrago/log/.etc_csf_allow_ctrl.${_X_SE}.pid
   fi
 fi
 ###EOF2023###

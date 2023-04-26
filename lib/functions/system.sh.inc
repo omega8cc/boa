@@ -4795,7 +4795,7 @@ if_post_major_os_upgrade() {
       && [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
       msg "INFO: Time for re-installing services built from sources..."
       rm -f /var/xdrago/log/*.log
-      rm -f /root/.php_libs_fix_*.pid
+      rm -f /var/xdrago/log/.php_libs_fix_*.pid
       _PURGE_MODE=OFF
       _NGX_FORCE_REINSTALL=YES
       _PHP_FORCE_REINSTALL=YES
@@ -5875,8 +5875,8 @@ php_libs_fix() {
       || [ ! -e "/usr/lib/libonig.so" ] \
       || [ ! -e "/usr/lib/libcurl.so" ] \
       || [ ! -e "/usr/lib/libicuio.so" ] \
-      || [ ! -e "/root/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid" ] \
-      || [ ! -e "/root/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid" ] \
+      || [ ! -e "/var/xdrago/log/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid" ] \
+      || [ ! -e "/var/xdrago/log/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid" ] \
       || [ ! -e "/usr/include/gmp.h" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Fix for PHP libs in ${_REAL_OS}/${_REAL_OSR}"
@@ -6043,8 +6043,8 @@ php_libs_fix() {
           ln -sf librtmp.so.1 librtmp.so.0
         fi
       fi
-      touch /root/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid
-      touch /root/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid
+      touch /var/xdrago/log/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid
+      touch /var/xdrago/log/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid
     fi
   fi
   mrun "ldconfig" 2> /dev/null
