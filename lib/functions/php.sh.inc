@@ -2472,6 +2472,7 @@ php_single_initd_cleanup() {
     fi
     rm -f /opt/local/bin/php
   fi
+  rm -f /var/log/php/*log
 }
 
 #
