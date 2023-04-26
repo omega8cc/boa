@@ -293,13 +293,13 @@ mode_detection() {
       msg "MODE: NORMAL INIT"
     fi
     _ZOMBIE_HOME="${vBs}/zombie/${_X_VERSION}-${_NOW}"
-    mkdir -p $_ZOMBIE_HOME
-    mv -f /etc/nginx/conf.d/* $_ZOMBIE_HOME/ &> /dev/null
-    mv -f /var/aegir $_ZOMBIE_HOME/ &> /dev/null
-    mv -f /var/xdrago $_ZOMBIE_HOME/ &> /dev/null
-    mv -f /root/.my.cnf $_ZOMBIE_HOME/ &> /dev/null
-    mv -f /root/.my.pass.txt $_ZOMBIE_HOME/ &> /dev/null
-    cp -af /etc/sudoers $_ZOMBIE_HOME/ &> /dev/null
+    mkdir -p ${_ZOMBIE_HOME}
+    mv -f /etc/nginx/conf.d/* ${_ZOMBIE_HOME}/ &> /dev/null
+    mv -f /var/aegir ${_ZOMBIE_HOME}/ &> /dev/null
+    mv -f /var/xdrago ${_ZOMBIE_HOME}/ &> /dev/null
+    mv -f /root/.my.cnf ${_ZOMBIE_HOME}/ &> /dev/null
+    mv -f /root/.my.pass.txt ${_ZOMBIE_HOME}/ &> /dev/null
+    cp -af /etc/sudoers ${_ZOMBIE_HOME}/ &> /dev/null
     sed -i "s/^aegir.*//g" /etc/sudoers &> /dev/null
     kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
     deluser aegir &> /dev/null
