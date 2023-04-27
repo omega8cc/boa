@@ -2441,12 +2441,10 @@ find_correct_ip() {
 # Restrict node if needed.
 fix_node_in_lshell_access() {
   pthLog="/var/xdrago/log"
-  if [ ! -e "${pthLog}/node.lshell.ctrl.${_X_SE}.pid" ] \
-    && [ -e "/etc/lshell.conf" ]; then
+  if [ -e "/etc/lshell.conf" ]; then
     PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
     PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
     PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-    ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
     if [[ "${PrTestPower}" =~ "POWER" ]] \
       || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
       || [[ "${PrTestCluster}" =~ "CLUSTER" ]] \
@@ -2457,7 +2455,6 @@ fix_node_in_lshell_access() {
       sed -i "s/, 'node',/,/g" /etc/lshell.conf
       sed -i "s/, 'node',/,/g" /var/xdrago/conf/lshell.conf
     fi
-    touch ${pthLog}/node.lshell.ctrl.${_X_SE}.pid
   fi
 }
 
@@ -2522,6 +2519,10 @@ else
   count_cpu
   find_fast_mirror
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
+  if [ ! -e "${pthLog}/node.manage.lshell.ctrl.${_X_SE}.pid" ]; then
+    fix_node_in_lshell_access
+    touch ${pthLog}/node.manage.lshell.ctrl.${_X_SE}.pid
+  fi
   cat /var/xdrago/conf/lshell.conf > ${_THIS_LTD_CONF}
   find_correct_ip
   sed -i "s/1.1.1.1/${_LOC_IP}/g" ${_THIS_LTD_CONF}
@@ -2540,7 +2541,6 @@ else
     if [ ! -z "${_DIFF_T}" ]; then
       cp -af /etc/lshell.conf /var/backups/ltd/old/lshell.conf-before-${_NOW}
       cp -af ${_THIS_LTD_CONF} /etc/lshell.conf
-      fix_node_in_lshell_access
     else
       rm -f ${_THIS_LTD_CONF}
     fi
