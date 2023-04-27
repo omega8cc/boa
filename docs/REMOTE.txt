@@ -24,6 +24,7 @@
 
 ### Commands to run on both source and target server
 #
+$ touch /data/disk/o1/static/control/MyClassic.info
 $ chsh -s /bin/bash o1
 $ sed -i "s/^max_execution_time =.*/max_execution_time = 7200/g" /opt/php*/lib/php.ini
 $ sed -i "s/^max_input_time =.*/max_input_time = 7200/g"         /opt/php*/lib/php.ini
