@@ -1433,9 +1433,6 @@ satellite_o_contrib_seven_update_global() {
       if [ ! -d "${i}/o_contrib_seven/entitycache" ]; then
         get_dev_contrib "entitycache-7.x-1.5.tar.gz"
       fi
-      if [ ! -d "${i}/o_contrib_seven/filefield_nginx_progress" ]; then
-        get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
-      fi
       if [ ! -d "${i}/o_contrib_seven/file_resup" ]; then
         get_dev_contrib "file_resup-7.x-1.5.tar.gz"
       fi
@@ -1750,7 +1747,6 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "entitycache-7.x-1.5.tar.gz"
   get_dev_contrib "esi-7.x-3.x-dev.tar.gz"
   get_dev_contrib "file_resup-7.x-1.5.tar.gz"
-  get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
   get_dev_contrib "flood_control-7.x-1.1.tar.gz"
   get_dev_contrib "force_password_change-7.x-2.2.tar.gz"
   get_dev_contrib "fpa-7.x-2.6.tar.gz"
@@ -1819,7 +1815,6 @@ satellite_download_o_contrib_six() {
   get_dev_contrib "css_emimage-6.x-2.x-dev.tar.gz"
   get_dev_contrib "dbtuner-6.x-1.x-dev.tar.gz"
   get_dev_contrib "esi-6.x-2.x-dev.tar.gz"
-  get_dev_contrib "filefield_nginx_progress-6.x-1.x-dev.tar.gz"
   get_dev_contrib "force_password_change-6.x-3.4.tar.gz"
   get_dev_contrib "fpa-6.x-2.5.tar.gz"
   get_dev_contrib "httprl-6.x-1.14.tar.gz"
