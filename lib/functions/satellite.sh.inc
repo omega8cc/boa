@@ -1644,8 +1644,8 @@ satellite_download_o_contrib_ten() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_ten modules..."
   fi
-  get_dev_contrib "robotstxt-8.x-1.4.tar.gz"
-  get_dev_contrib "readonlymode-8.x-1.1.tar.gz"
+  get_dev_contrib "robotstxt-8.x-1.5.tar.gz"
+  get_dev_contrib "readonlymode-8.x-1.2.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
@@ -1665,8 +1665,8 @@ satellite_download_o_contrib_nine() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_nine modules..."
   fi
-  get_dev_contrib "robotstxt-8.x-1.4.tar.gz"
-  get_dev_contrib "readonlymode-8.x-1.1.tar.gz"
+  get_dev_contrib "robotstxt-8.x-1.5.tar.gz"
+  get_dev_contrib "readonlymode-8.x-1.2.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
@@ -1695,8 +1695,8 @@ satellite_download_o_contrib_eight() {
   fi
   get_dev_contrib "advagg-8.x-4.1.tar.gz"
   get_dev_contrib "cdn-8.x-3.5.tar.gz"
-  get_dev_contrib "robotstxt-8.x-1.4.tar.gz"
-  get_dev_contrib "readonlymode-8.x-1.1.tar.gz"
+  get_dev_contrib "robotstxt-8.x-1.5.tar.gz"
+  get_dev_contrib "readonlymode-8.x-1.2.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_eight/ver-${_REDIS_N_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
@@ -1741,7 +1741,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "cache_consistent-7.x-2.x-dev.tar.gz"
   get_dev_contrib "cdn-7.x-2.10.tar.gz"
   get_dev_contrib "config_perms-7.x-2.2.tar.gz"
-  get_dev_contrib "css_emimage-7.x-1.x-dev.tar.gz"
+  get_dev_contrib "css_emimage-7.x-1.3.tar.gz"
   get_dev_contrib "display_cache-7.x-1.3.tar.gz"
   get_dev_contrib "entity_print-7.x-1.5.tar.gz"
   get_dev_contrib "entitycache-7.x-1.5.tar.gz"
