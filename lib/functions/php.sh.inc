@@ -1691,7 +1691,7 @@ install_php_multi() {
       install_php_extensions "$1"
     else
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "WARN: _THIS_PHP_EXT_DIR for PHP $1 empty..."
+        msg "WARN: _THIS_PHP_EXT_DIR for PHP $1 empty in install_php_multi"
       fi
     fi
     if [ -e "/root/.mstr.clstr.cnf" ] \
@@ -1753,7 +1753,33 @@ php_multi_update() {
   _T_PHP_VRN="${_PHP_VERSION}"
   _T_PHP_PTH="/opt/php$1/bin"
   _T_PHP_CFG="/opt/php$1/bin/php-config"
-  php_extensions_update "$1"
+  _THIS_PHP_EXT_DIR=
+  if [ "$1" = "56" ]; then
+    _THIS_PHP_EXT_DIR="/opt/php56/lib/php/extensions/no-debug-non-zts-${_PHP56_API}"
+  elif [ "$1" = "70" ]; then
+    _THIS_PHP_EXT_DIR="/opt/php70/lib/php/extensions/no-debug-non-zts-${_PHP70_API}"
+  elif [ "$1" = "71" ]; then
+    _THIS_PHP_EXT_DIR="/opt/php71/lib/php/extensions/no-debug-non-zts-${_PHP71_API}"
+  elif [ "$1" = "72" ]; then
+    _THIS_PHP_EXT_DIR="/opt/php72/lib/php/extensions/no-debug-non-zts-${_PHP72_API}"
+  elif [ "$1" = "73" ]; then
+    _THIS_PHP_EXT_DIR="/opt/php73/lib/php/extensions/no-debug-non-zts-${_PHP73_API}"
+  elif [ "$1" = "74" ]; then
+    _THIS_PHP_EXT_DIR="/opt/php74/lib/php/extensions/no-debug-non-zts-${_PHP74_API}"
+  elif [ "$1" = "80" ]; then
+    _THIS_PHP_EXT_DIR="/opt/php80/lib/php/extensions/no-debug-non-zts-${_PHP80_API}"
+  elif [ "$1" = "81" ]; then
+    _THIS_PHP_EXT_DIR="/opt/php81/lib/php/extensions/no-debug-non-zts-${_PHP81_API}"
+  elif [ "$1" = "82" ]; then
+    _THIS_PHP_EXT_DIR="/opt/php82/lib/php/extensions/no-debug-non-zts-${_PHP82_API}"
+  fi
+  if [ ! -z "${_THIS_PHP_EXT_DIR}" ]; then
+    php_extensions_update "$1"
+  else
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "WARN: _THIS_PHP_EXT_DIR for PHP $1 empty in php_multi_update"
+    fi
+  fi
 }
 
 #
