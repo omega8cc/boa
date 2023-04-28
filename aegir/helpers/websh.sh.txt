@@ -23,6 +23,24 @@ if [[ "${_ALL}" =~ "true COLUMNS=" ]]; then
   done
   ### echo _ARR is ${_ARR}
 fi
+
+_C_ARR=
+if [[ "${_ALL}" =~ "composer " ]]; then
+  if [[ "${_ALL}" =~ "-c set -m" ]]; then
+    _C_RM=`echo -n ${_ALL} | grep -o "\-c set -m\; composer"`
+  fi
+  ### echo _C_RM is ${_C_RM}
+  _CLR=`echo ${_ALL} | sed "s/\${_C_RM}//g"`
+  _C_ARR=() # the buffer array for filtered parameters
+  for arg in "${_CLR}"; do
+    case ${_C_RM} in
+      $arg\ * | *\ $arg | *\ $arg\ *) ;;
+      *) _C_ARR+=("$arg") ;;
+    esac
+  done
+  ### echo _C_ARR is ${_C_ARR}
+fi
+
 _INTERNAL=NO
 _LTD_GID=$(id -nG ${USER} 2>&1)
 _LTD_UID=$(id -nu ${USER} 2>&1)
@@ -151,6 +169,10 @@ check_php_cli_version() {
     # echo 1 PHP_OPTIONS is ${PHP_OPTIONS}
   fi
 }
+
+if [ ! -z "${_C_ARR}" ]; then
+  check_php_cli_version
+fi
 
 if [ "${_LTD_GID}" = "www-data users" ] \
   || [[ "${HOME}" =~ (^)"/var/aegir" ]] \
@@ -396,6 +418,12 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         _IN_PATH=YES
       elif [[ "${_RAW_IN_PATH}" =~ "/usr/bin/wkhtmltoimage-0.12.4" ]]; then
         _IN_PATH=YES
+      elif [[ "${_RAW_IN_PATH}" =~ "/usr/local/bin/composer" ]]; then
+        _IN_PATH=YES
+      elif [[ "${_RAW_IN_PATH}" =~ "/usr/bin/composer" ]]; then
+        _IN_PATH=YES
+      elif [[ "${_RAW_IN_PATH}" =~ "/usr/bin/unzip" ]]; then
+        _IN_PATH=YES
       elif [[ "${_RAW_IN_PATH}" =~ "/usr/bin/convert" ]]; then
         _IN_PATH=YES
       elif [[ "${_RAW_IN_PATH}" =~ "/usr/bin/gs" ]]; then
@@ -519,6 +547,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "${_ALL}" =~ "bzr " ]] \
           || [[ "${_ALL}" =~ "chdir" ]] \
           || [[ "${_ALL}" =~ "compass" ]] \
+          || [[ "${_ALL}" =~ "composer" ]] \
           || [[ "${_ALL}" =~ "convert" ]] \
           || [[ "${_ALL}" =~ "curl " ]] \
           || [[ "${_ALL}" =~ "drush" ]] \
@@ -529,6 +558,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "${_ALL}" =~ "java" ]] \
           || [[ "${_ALL}" =~ "logger" ]] \
           || [[ "${_ALL}" =~ "php " ]] \
+          || [[ "${_ALL}" =~ "unzip" ]] \
           || [[ "${_ALL}" =~ "rename" ]] \
           || [[ "${_ALL}" =~ "rrdtool" ]] \
           || [[ "${_ALL}" =~ "rsync" ]] \
@@ -621,26 +651,34 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       || [ "$0" = "/bin/websh" ]; then
       if [ -x "/bin/dash" ]; then
         if [ ! -z "${_ARR}" ]; then
-          export DRUSH_PHP;export PHP_INI;exec drush ${_ARR}
+          export DRUSH_PHP;export PHP_INI;exec drush "${_ARR}"
+        elif [ ! -z "${_C_ARR}" ]; then
+          exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
         else
           export DRUSH_PHP;export PHP_INI;exec /bin/dash "$@"
         fi
       elif [ -x "/usr/bin/dash" ]; then
         if [ ! -z "${_ARR}" ]; then
-          export DRUSH_PHP;export PHP_INI;exec drush ${_ARR}
+          export DRUSH_PHP;export PHP_INI;exec drush "${_ARR}"
+        elif [ ! -z "${_C_ARR}" ]; then
+          exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
         else
           export DRUSH_PHP;export PHP_INI;exec /usr/bin/dash "$@"
         fi
       else
         if [ ! -z "${_ARR}" ]; then
-          export DRUSH_PHP;export PHP_INI;exec drush ${_ARR}
+          export DRUSH_PHP;export PHP_INI;exec drush "${_ARR}"
+        elif [ ! -z "${_C_ARR}" ]; then
+          exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
         else
           export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
         fi
       fi
     else
       if [ ! -z "${_ARR}" ]; then
-        export DRUSH_PHP;export PHP_INI;exec drush ${_ARR}
+        export DRUSH_PHP;export PHP_INI;exec drush "${_ARR}"
+      elif [ ! -z "${_C_ARR}" ]; then
+          exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
       else
         export DRUSH_PHP;export PHP_INI;exec $0 "$@"
       fi
