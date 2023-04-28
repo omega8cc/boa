@@ -2282,7 +2282,9 @@ manage_user() {
       octInc="${dscUsr}/config/includes"
       octTpl="${dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx"
       usrDgn="${dscUsr}/.drush/usr/drupalgeddon"
-      rm -f ${dscUsr}/*.php* &> /dev/null
+      if [ ! -e "${dscUsr}/rector.php" ]; then
+        rm -f ${dscUsr}/*.php* &> /dev/null
+      fi
       chmod 0440 ${dscUsr}/.drush/*.php &> /dev/null
       chmod 0400 ${dscUsr}/.drush/drushrc.php &> /dev/null
       chmod 0400 ${dscUsr}/.drush/hm.alias.drushrc.php &> /dev/null
