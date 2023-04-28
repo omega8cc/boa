@@ -651,7 +651,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       || [ "$0" = "/bin/websh" ]; then
       if [ -x "/bin/dash" ]; then
         if [ ! -z "${_ARR}" ]; then
-          export DRUSH_PHP;export PHP_INI;exec drush "${_ARR}"
+          export DRUSH_PHP;export PHP_INI;exec drush ${_ARR}
         elif [ ! -z "${_C_ARR}" ]; then
           exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
         else
@@ -659,7 +659,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         fi
       elif [ -x "/usr/bin/dash" ]; then
         if [ ! -z "${_ARR}" ]; then
-          export DRUSH_PHP;export PHP_INI;exec drush "${_ARR}"
+          export DRUSH_PHP;export PHP_INI;exec drush ${_ARR}
         elif [ ! -z "${_C_ARR}" ]; then
           exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
         else
@@ -667,7 +667,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         fi
       else
         if [ ! -z "${_ARR}" ]; then
-          export DRUSH_PHP;export PHP_INI;exec drush "${_ARR}"
+          export DRUSH_PHP;export PHP_INI;exec drush ${_ARR}
         elif [ ! -z "${_C_ARR}" ]; then
           exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
         else
@@ -676,7 +676,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       fi
     else
       if [ ! -z "${_ARR}" ]; then
-        export DRUSH_PHP;export PHP_INI;exec drush "${_ARR}"
+        export DRUSH_PHP;export PHP_INI;exec drush ${_ARR}
       elif [ ! -z "${_C_ARR}" ]; then
           exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
       else
