@@ -7295,6 +7295,7 @@ initd_update() {
           fi
           mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
           mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
+          wait
           msg "INFO: ${_DB_SERVER} server restart completed"
         fi
         if [[ "${_DB_SERIES}" =~ "5.7" ]]; then

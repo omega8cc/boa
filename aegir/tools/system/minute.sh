@@ -41,6 +41,7 @@ sql_restart() {
   killall sleep &> /dev/null
   killall php
   bash /var/xdrago/move_sql.sh
+  wait
   echo "$(date 2>&1) $1 incident mysql restarted"                   >> ${pthOml}
   echo "$(date 2>&1) $1 incident response completed"                >> ${pthOml}
   echo                                                              >> ${pthOml}
@@ -218,6 +219,7 @@ oom_restart() {
   kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}')
   echo "$(date 2>&1) OOM redis-server killed"                       >> ${pthOml}
   bash /var/xdrago/move_sql.sh
+  wait
   echo "$(date 2>&1) OOM mysql restarted"                           >> ${pthOml}
   echo "$(date 2>&1) OOM incident response completed"               >> ${pthOml}
   echo                                                              >> ${pthOml}

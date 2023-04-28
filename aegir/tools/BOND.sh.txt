@@ -1039,6 +1039,7 @@ restart_services() {
     mrun "service php56-fpm reload" &> /dev/null
   fi
   mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
+  wait
   mrun "service nginx reload" &> /dev/null
   service redis-server stop &> /dev/null
   killall -9 redis-server &> /dev/null
