@@ -12,11 +12,11 @@ if [[ "${_ALL}" =~ "true COLUMNS=" ]]; then
   else
     _R_M=`echo -n ${_ALL} | grep -o "\-c true COLUMNS=[0-9]\+ drush"`
   fi
-  ### echo _R_M is $_R_M
-  _CLR=`echo ${_ALL} | sed "s/\$_R_M//g"`
+  ### echo _R_M is ${_R_M}
+  _CLR=`echo ${_ALL} | sed "s/\${_R_M}//g"`
   _ARR=() # the buffer array for filtered parameters
   for arg in "${_CLR}"; do
-    case $_R_M in
+    case ${_R_M} in
       $arg\ * | *\ $arg | *\ $arg\ *) ;;
       *) _ARR+=("$arg") ;;
     esac
@@ -54,7 +54,7 @@ fi
 
 if [[ "${_ARGS}" =~ "true COLUMNS=" ]]; then
   _R_M=`echo -n "${_ARGS}" | grep -o "true COLUMNS=[0-9]\+ "`
-  _ARGS=`echo ${_ARGS} | sed "s/\$_R_M//g"`
+  _ARGS=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
 fi
 
 if [ -d "/home/${USER}/.tmp" ]; then
@@ -167,7 +167,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     if [ "$0" = "/bin/sh" ] || [ "$0" = "/usr/bin/sh" ]; then
       _IS_SH_PATH=YES
     fi
-    if [[ "$2" =~ "set -m;" ]] && [ "$_IS_SH_PATH" = "YES" ]; then
+    if [[ "$2" =~ "set -m;" ]] && [ "${_IS_SH_PATH}" = "YES" ]; then
       _IN_PATH=YES
       _INTERNAL=YES
       if [[ "${_ALL}" =~ "drush" ]]; then
