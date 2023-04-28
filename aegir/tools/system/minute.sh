@@ -208,12 +208,8 @@ oom_restart() {
   echo "$(date 2>&1) OOM nginx killed"                              >> ${pthOml}
   kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
   echo "$(date 2>&1) OOM php-fpm killed"                            >> ${pthOml}
-  kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')
-  echo "$(date 2>&1) OOM jetty killed"                              >> ${pthOml}
-  kill -9 $(ps aux | grep '[j]ava-8-openjdk' | awk '{print $2}')
-  kill -9 $(ps aux | grep '[j]ava-11-openjdk' | awk '{print $2}')
-  kill -9 $(ps aux | grep '[j]ava-17-openjdk' | awk '{print $2}')
-  echo "$(date 2>&1) OOM solr killed"                               >> ${pthOml}
+  kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+  echo "$(date 2>&1) OOM solr/jetty killed"                         >> ${pthOml}
   kill -9 $(ps aux | grep '[n]ewrelic-daemon' | awk '{print $2}')
   echo "$(date 2>&1) OOM newrelic-daemon killed"                    >> ${pthOml}
   kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}')
