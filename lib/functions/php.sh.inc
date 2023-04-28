@@ -2900,7 +2900,7 @@ composer_install_upgrade() {
     fi
     _COMPOSER_IS=$(composer --no-interaction --version 2>&1 \
       | tr -d "\n" \
-      | cut -d" " -f13 \
+      | cut -d" " -f36 \
       | awk '{ print $1}' 2>&1)
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Installed Composer ${_COMPOSER_IS}"
