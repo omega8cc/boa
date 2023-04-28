@@ -2246,9 +2246,9 @@ provision_backend_dbpass_generate() {
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
-    mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+    mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
   else
-    mysqladmin -u root -p${_SQL_PSWD} flush-privileges
+    mysqladmin -u root -p${_SQL_PSWD} flush-privileges &> /dev/null
   fi
 
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
@@ -2345,9 +2345,9 @@ EOFMYSQL
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
-    mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+    mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
   else
-    mysqladmin -u root -p${_SQL_PSWD} flush-privileges
+    mysqladmin -u root -p${_SQL_PSWD} flush-privileges &> /dev/null
   fi
 }
 
@@ -2426,9 +2426,9 @@ EOFMYSQL
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
-    mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+    mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
   else
-    mysqladmin -u root -p${_SQL_PSWD} flush-privileges
+    mysqladmin -u root -p${_SQL_PSWD} flush-privileges &> /dev/null
   fi
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush" &> /dev/null
   rm -rf ${_ROOT}/.tmp/cache
@@ -2521,9 +2521,9 @@ EOFMYSQL
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
-    mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+    mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
   else
-    mysqladmin -u root -p${_SQL_PSWD} flush-privileges
+    mysqladmin -u root -p${_SQL_PSWD} flush-privileges &> /dev/null
   fi
 }
 
@@ -2546,9 +2546,9 @@ satellite_run_pre_install() {
     if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
       _SQL_CONNECT=127.0.0.1
       _THIS_DB_PORT=6033
-      mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+      mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
     else
-      mysqladmin -u root -p${_SQL_PSWD} flush-hosts
+      mysqladmin -u root -p${_SQL_PSWD} flush-hosts &> /dev/null
     fi
     provision_backend_dbpass_generate
     echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
@@ -2576,9 +2576,9 @@ satellite_run_pre_install() {
     if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
       _SQL_CONNECT=127.0.0.1
       _THIS_DB_PORT=6033
-      mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+      mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
     else
-      mysqladmin -u root -p${_SQL_PSWD} flush-hosts
+      mysqladmin -u root -p${_SQL_PSWD} flush-hosts &> /dev/null
     fi
     _RST=$(syncpass fix ${_USER} 2>&1)
     provision_backend_dbpass_sync

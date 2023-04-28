@@ -333,9 +333,9 @@ migrate_sites() {
             if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
               _SQL_CONNECT=127.0.0.1
               _THIS_DB_PORT=6033
-              mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+              mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
             else
-              mysqladmin -u root -p${_SQL_PSWD} flush-privileges
+              mysqladmin -u root -p${_SQL_PSWD} flush-privileges &> /dev/null
             fi
             if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
               mkdir -p /etc/mysql/mariadb.conf.d/
@@ -369,9 +369,9 @@ EOFMYSQL
             if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
               _SQL_CONNECT=127.0.0.1
               _THIS_DB_PORT=6033
-              mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+              mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
             else
-              mysqladmin -u root -p${_SQL_PSWD} flush-privileges
+              mysqladmin -u root -p${_SQL_PSWD} flush-privileges &> /dev/null
             fi
             echo "INFO: site ${Dom} db setup on ${oct} complete"
           else

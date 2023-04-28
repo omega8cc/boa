@@ -1015,8 +1015,8 @@ forced_mysql_root_password_update() {
       mysql -u root -p${_SQL_PSWD} -e "ALTER USER 'root'@'::1' IDENTIFIED BY '${_ESC_PASS}';"
       mysql -u root -p${_SQL_PSWD} -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${_ESC_PASS}';"
     fi
-    mysqladmin -u root -p${_SQL_PSWD} flush-privileges
-    mysqladmin -u root -p${_SQL_PSWD} flush-hosts
+    mysqladmin -u root -p${_SQL_PSWD} flush-privileges &> /dev/null
+    mysqladmin -u root -p${_SQL_PSWD} flush-hosts &> /dev/null
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "DAFT: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
       mysql -u root -p${_SQL_PSWD} -e "SHOW GRANTS FOR 'root'@'localhost';"
