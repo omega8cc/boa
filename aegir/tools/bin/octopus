@@ -74,6 +74,45 @@ apt_clean_update() {
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
+check_sql_access() {
+  if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+    _IS_SYNC_SQL_PSWD=$(grep "${_SQL_PSWD}" /root/.my.cnf 2>&1)
+  else
+    echo "ALERT: /root/.my.cnf or /root/.my.pass.txt not found."
+    echo "ALERT: Please fix this before trying again, giving up."
+    echo "Bye"
+    echo " "
+    clean_pid_exit
+  fi
+  if [ -z "${_IS_SYNC_SQL_PSWD}" ] \
+    || [[ ! "${_IS_SYNC_SQL_PSWD}" =~ "password=${_SQL_PSWD}" ]]; then
+    echo "ALERT: SQL password is out of sync between"
+    echo "ALERT: /root/.my.cnf and /root/.my.pass.txt"
+    echo "ALERT: We will check if the default password works"
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
+      echo "ALERT: SQL server on this system is not running at all."
+      echo "ALERT: Please fix this before trying again, giving up."
+      echo "Bye"
+      echo " "
+      clean_pid_exit
+    else
+      _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
+      if [ -z "${_MYSQL_CONN_TEST}" ] \
+        || [[ "${_MYSQL_CONN_TEST}" =~ "Access denied" ]]; then
+        echo "ALERT: SQL password in /root/.my.cnf does not work."
+        echo "ALERT: Please fix this before trying again, giving up."
+        echo "Bye"
+        echo " "
+        clean_pid_exit
+      fi
+    fi
+  fi
+}
+check_sql_access
+
 fix_dns_settings() {
   dnsLi="/root/.local.dns.IP.list"
   mkdir -p ${vBs}
