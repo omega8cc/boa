@@ -2284,6 +2284,8 @@ manage_user() {
       usrDgn="${dscUsr}/.drush/usr/drupalgeddon"
       if [ ! -e "${dscUsr}/rector.php" ]; then
         rm -f ${dscUsr}/*.php* &> /dev/null
+        rm -f ${dscUsr}/composer.lock &> /dev/null
+        rm -f ${dscUsr}/composer.json &> /dev/null
       fi
       chmod 0440 ${dscUsr}/.drush/*.php &> /dev/null
       chmod 0400 ${dscUsr}/.drush/drushrc.php &> /dev/null
