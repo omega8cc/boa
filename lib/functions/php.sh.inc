@@ -2859,26 +2859,51 @@ composer_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: composer_install_upgrade"
   fi
-  _COMPOSER_IS=$(composer --no-interaction --version 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f13 \
-    | awk '{ print $1}' 2>&1)
-  if [ "${_COMPOSER_IS}" != "${_COMPOSER_VRN}" ]; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Installed Composer ${_COMPOSER_IS}, update required"
-    fi
-    cd /var/opt
-    rm -rf composer*
-    get_dev_src "composer-${_COMPOSER_VRN}.phar.gz"
-    if [ -e "/var/opt/composer-${_COMPOSER_VRN}.phar" ]; then
-      mv -f composer-${_COMPOSER_VRN}.phar /usr/local/bin/composer
-      chmod 755 /usr/local/bin/composer
-      ln -sf /usr/local/bin/composer /usr/bin/composer
-      msg "INFO: Composer updated to version ${_COMPOSER_VRN}"
+  _COMPOSER_FROM_STATIC=NO
+  if [ "${_COMPOSER_FROM_STATIC}" = "YES" ]; then
+    _COMPOSER_IS=$(composer --no-interaction --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f13 \
+      | awk '{ print $1}' 2>&1)
+    if [ "${_COMPOSER_IS}" != "${_COMPOSER_VRN}" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Installed Composer ${_COMPOSER_IS}, update required"
+      fi
+      cd /var/opt
+      rm -rf composer*
+      get_dev_src "composer-${_COMPOSER_VRN}.phar.gz"
+      if [ -e "/var/opt/composer-${_COMPOSER_VRN}.phar" ]; then
+        mv -f composer-${_COMPOSER_VRN}.phar /usr/local/bin/composer
+        chmod 755 /usr/local/bin/composer
+        ln -sf /usr/local/bin/composer /usr/bin/composer
+        msg "INFO: Composer updated to version ${_COMPOSER_VRN}"
+      fi
+    else
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Installed Composer ${_COMPOSER_VRN}, no action needed"
+      fi
     fi
   else
+    if [ -x "/usr/local/bin/composer" ]; then
+      /usr/local/bin/composer self-update --2 &> /dev/null
+    fi
+    if [ ! -x "/usr/local/bin/composer" ] || [ ! -L "/usr/bin/composer" ]; then
+      rm -f /usr/local/bin/composer
+      rm -f /usr/bin/composer
+      rm -rf /root/.composer
+      mkdir -p /var/opt
+      cd /var/opt
+      rm -f /var/opt/composer.phar
+      curl -sS https://getcomposer.org/installer | php &> /dev/null
+      mv -f composer.phar /usr/local/bin/composer
+      ln -sf /usr/local/bin/composer /usr/bin/composer
+    fi
+    _COMPOSER_IS=$(composer --no-interaction --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f13 \
+      | awk '{ print $1}' 2>&1)
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Installed Composer ${_COMPOSER_VRN}, no action needed"
+      msg "INFO: Installed Composer ${_COMPOSER_IS}"
     fi
   fi
 }
