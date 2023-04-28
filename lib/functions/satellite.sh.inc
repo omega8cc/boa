@@ -2134,6 +2134,8 @@ satellite_prepare_child_scripts() {
 #
 # Generate provision backend db_passwd.
 provision_backend_dbpass_generate() {
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
@@ -2244,9 +2246,9 @@ provision_backend_dbpass_generate() {
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
-    mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+    mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
   else
-    mysqladmin flush-privileges
+    mysqladmin -u root -p${_SQL_PSWD} flush-privileges
   fi
 
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
@@ -2290,7 +2292,7 @@ PROXYSQL
       ### [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL14CR -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
       ###
       ###
-      mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+      mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
@@ -2320,13 +2322,13 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
         fi
-        _C_SQL="mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot --database=mysql -e"
+        _C_SQL="mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
         ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
         ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
         ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
         ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
         ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
-        mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+        mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
@@ -2343,15 +2345,17 @@ EOFMYSQL
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
-    mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+    mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
   else
-    mysqladmin flush-privileges
+    mysqladmin -u root -p${_SQL_PSWD} flush-privileges
   fi
 }
 
 #
 # Sync provision backend db_passwd.
 provision_backend_dbpass_sync() {
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
   find_correct_ip
   _USE_RESOLVEIP="${_LOC_IP}"
   _RESOLVEIP="${_LOC_IP}"
@@ -2395,13 +2399,13 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
-    _C_SQL="mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot --database=mysql -e"
+    _C_SQL="mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
-    mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+    mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
@@ -2422,9 +2426,9 @@ EOFMYSQL
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
-    mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+    mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
   else
-    mysqladmin flush-privileges
+    mysqladmin -u root -p${_SQL_PSWD} flush-privileges
   fi
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush" &> /dev/null
   rm -rf ${_ROOT}/.tmp/cache
@@ -2448,6 +2452,8 @@ hostmaster_frontend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Syncing hostmaster frontend db_passwd..."
   fi
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
@@ -2494,13 +2500,13 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
-    _C_SQL="mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot --database=mysql -e"
+    _C_SQL="mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
-    mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+    mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
@@ -2515,13 +2521,15 @@ EOFMYSQL
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
-    mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+    mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
   else
-    mysqladmin flush-privileges
+    mysqladmin -u root -p${_SQL_PSWD} flush-privileges
   fi
 }
 
 satellite_run_pre_install() {
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
   find_correct_ip
   _USE_RESOLVEIP="${_LOC_IP}"
   _RESOLVEIP="${_LOC_IP}"
@@ -2538,9 +2546,9 @@ satellite_run_pre_install() {
     if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
       _SQL_CONNECT=127.0.0.1
       _THIS_DB_PORT=6033
-      mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+      mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
     else
-      mysqladmin flush-hosts
+      mysqladmin -u root -p${_SQL_PSWD} flush-hosts
     fi
     provision_backend_dbpass_generate
     echo "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
@@ -2568,9 +2576,9 @@ satellite_run_pre_install() {
     if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
       _SQL_CONNECT=127.0.0.1
       _THIS_DB_PORT=6033
-      mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
+      mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts
     else
-      mysqladmin flush-hosts
+      mysqladmin -u root -p${_SQL_PSWD} flush-hosts
     fi
     _RST=$(syncpass fix ${_USER} 2>&1)
     provision_backend_dbpass_sync

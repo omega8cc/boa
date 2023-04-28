@@ -42,6 +42,9 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
+_SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+_SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+
 os_detection_minimal() {
   _THIS_RV=$(lsb_release -sc 2>&1)
   if [ "${_THIS_RV}" = "chimaera" ] \
@@ -103,7 +106,7 @@ find_fast_mirror() {
 find_fast_mirror
 
 truncate_watchdog_tables() {
-  _TABLES=$(mysql ${_DB} -e "show tables" -s | grep ^watchdog$ 2>&1)
+  _TABLES=$(mysql ${_DB} -u root -p${_SQL_PSWD} -e "show tables" -s | grep ^watchdog$ 2>&1)
   for A in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
 TRUNCATE ${A};

@@ -116,8 +116,11 @@ innodb_log_file_size_update() {
     sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf &> /dev/null
       wait
   fi
-  mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+  mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
+  wait
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
     mkdir -p ${vBs}/old-sql-ib-log-${_NOW}
@@ -125,11 +128,12 @@ innodb_log_file_size_update() {
     mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf &> /dev/null
-      wait
     mrun "bash /var/xdrago/move_sql.sh start" &> /dev/null
+    wait
   else
     msg "INFO: Waiting 180s for ${_DB_SERVER} clean shutdown..."
     mrun "bash /var/xdrago/move_sql.sh stop" &> /dev/null
+    wait
     mrun "sleep 180"
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
@@ -138,8 +142,8 @@ innodb_log_file_size_update() {
       mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf &> /dev/null
-        wait
       mrun "bash /var/xdrago/move_sql.sh start" &> /dev/null
+      wait
     else
       msg "WARN: ${_DB_SERVER} refused to stop, InnoDB log file size not updated"
       mrun "sleep 5"
@@ -888,10 +892,10 @@ install_with_aptitude_sql() {
       fi
       if [ -x "/usr/bin/mariadb_upgrade" ]; then
         mrun "mariadb_upgrade --force" &> /dev/null
-          wait
       elif [ -x "/usr/bin/mysql_upgrade" ]; then
-        mrun "mysql_upgrade --force" &> /dev/null
-          wait
+        _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+        _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+        mrun "mysql_upgrade -u root -p${_SQL_PSWD} --force" &> /dev/null
       fi
     fi
   fi
@@ -902,21 +906,16 @@ install_with_aptitude_sql() {
       msg "INFO: Running ${_DB_SERVER} tables fix, check and upgrade..."
     fi
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-    mrun "mysqlcheck -A --auto-repair" &> /dev/null
-      wait
-    mrun "mysql_upgrade --force" &> /dev/null
-      wait
-    mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;" &> /dev/null
-      wait
-    mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;" &> /dev/null
-      wait
-    mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;" &> /dev/null
-      wait
-    mrun "mysql_upgrade --force" &> /dev/null
-      wait
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+    mrun "mysqlcheck -u root -p${_SQL_PSWD} -A --auto-repair --silent" &> /dev/null
+    mrun "mysql_upgrade -u root -p${_SQL_PSWD} --force" &> /dev/null
+    mysql -u root -p${_SQL_PSWD} -e "ALTER TABLE mysql.user DROP COLUMN default_role;" &> /dev/null
+    mysql -u root -p${_SQL_PSWD} -e "ALTER TABLE mysql.user DROP COLUMN is_role;" &> /dev/null
+    mysql -u root -p${_SQL_PSWD} -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;" &> /dev/null
+    mrun "mysql_upgrade -u root -p${_SQL_PSWD} --force" &> /dev/null
   fi
   usermod -aG users mysql
-    wait
 }
 
 #
@@ -925,6 +924,8 @@ forced_mysql_root_password_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: forced_mysql_root_password_update"
   fi
+  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
   mv -f /root/.my.cnf-pre-* ${vBs}/ &> /dev/null
   mv -f /root/.my.pass.txt-pre-* ${vBs}/ &> /dev/null
   touch /root/.my.pass.txt
@@ -972,82 +973,60 @@ forced_mysql_root_password_update() {
   if [ ! -z "${_ESC_PASS}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "DBEF: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
-      mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
-      mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
+      mysql -u root -p${_SQL_PSWD} -e "SHOW GRANTS FOR 'root'@'localhost';"
+      mysql -u root -p${_SQL_PSWD} -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
       if [ "${_DB_SERIES}" = "10.3" ] \
         || [ "${_DB_SERIES}" = "10.2" ]; then
-        mysql -u root -e "SELECT user,host,password FROM mysql.user;"
+        mysql -u root -p${_SQL_PSWD} -e "SELECT user,host,password FROM mysql.user;"
       elif [ "${_DB_SERIES}" = "5.7" ]; then
-        mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
+        mysql -u root -p${_SQL_PSWD} -e "SELECT host,user,authentication_string FROM mysql.user;"
       fi
     fi
     cp -af /root/.my.cnf /root/.my.cnf-pre-${_X_VERSION}-${_NOW}
     cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-${_X_VERSION}-${_NOW}
-    mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
-      wait
-    mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
-      wait
+    mysql -u root -p${_SQL_PSWD} -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
+    mysql -u root -p${_SQL_PSWD} -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
     if [ "${_DB_SERIES}" = "5.7" ]; then
-      mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
+      mysql -u root -p${_SQL_PSWD} -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
     else
-      mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${_ESC_PASS}';"
+      mysql -u root -p${_SQL_PSWD} -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${_ESC_PASS}';"
     fi
-      wait
     echo "[client]" > /root/.my.cnf
-      wait
     echo "user=root" >> /root/.my.cnf
-      wait
     echo "password=${_ESC_PASS}" >> /root/.my.cnf
-      wait
     chmod 0600 /root/.my.cnf
-      wait
     echo "db=mysql" > /root/.mytop
-      wait
     chmod 0600 /root/.mytop
-      wait
     echo "${_ESC_PASS}" > /root/.my.pass.txt
-      wait
-    mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
-      wait
-    mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'::1';"
-      wait
-    mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_OWNIP}';"
-      wait
-    mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
-      wait
-    mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'::1' WITH GRANT OPTION;"
-      wait
-    mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_OWNIP}' WITH GRANT OPTION;"
-      wait
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+    mysql -u root -p${_SQL_PSWD} -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
+    mysql -u root -p${_SQL_PSWD} -e "CREATE USER IF NOT EXISTS 'root'@'::1';"
+    mysql -u root -p${_SQL_PSWD} -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_OWNIP}';"
+    mysql -u root -p${_SQL_PSWD} -e "GRANT ALL ON ${_ESC} TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
+    mysql -u root -p${_SQL_PSWD} -e "GRANT ALL ON ${_ESC} TO 'root'@'::1' WITH GRANT OPTION;"
+    mysql -u root -p${_SQL_PSWD} -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_OWNIP}' WITH GRANT OPTION;"
     if [ "${_DB_SERIES}" = "5.7" ]; then
-      mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
-        wait
-      mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
-        wait
-      mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
-        wait
+      mysql -u root -p${_SQL_PSWD} -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
+      mysql -u root -p${_SQL_PSWD} -e "ALTER USER 'root'@'::1' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
+      mysql -u root -p${_SQL_PSWD} -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
     else
-      mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}';"
-        wait
-      mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED BY '${_ESC_PASS}';"
-        wait
-      mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${_ESC_PASS}';"
-        wait
+      mysql -u root -p${_SQL_PSWD} -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}';"
+      mysql -u root -p${_SQL_PSWD} -e "ALTER USER 'root'@'::1' IDENTIFIED BY '${_ESC_PASS}';"
+      mysql -u root -p${_SQL_PSWD} -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${_ESC_PASS}';"
     fi
-    mysqladmin flush-privileges
-      wait
-    mysqladmin flush-hosts
-      wait
+    mysqladmin -u root -p${_SQL_PSWD} flush-privileges
+    mysqladmin -u root -p${_SQL_PSWD} flush-hosts
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "DAFT: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
-      mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
-      mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
-      mysql -u root -e "SHOW GRANTS FOR 'root'@'::1';"
+      mysql -u root -p${_SQL_PSWD} -e "SHOW GRANTS FOR 'root'@'localhost';"
+      mysql -u root -p${_SQL_PSWD} -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
+      mysql -u root -p${_SQL_PSWD} -e "SHOW GRANTS FOR 'root'@'::1';"
       if [ "${_DB_SERIES}" = "10.3" ] \
         || [ "${_DB_SERIES}" = "10.2" ]; then
-        mysql -u root -e "SELECT user,host,password FROM mysql.user;"
+        mysql -u root -p${_SQL_PSWD} -e "SELECT user,host,password FROM mysql.user;"
       elif [ "${_DB_SERIES}" = "5.7" ]; then
-        mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
+        mysql -u root -p${_SQL_PSWD} -e "SELECT host,user,authentication_string FROM mysql.user;"
       fi
     fi
     echo " "
@@ -1171,10 +1150,10 @@ db_server_install() {
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
         if [ -x "/usr/bin/mariadb_upgrade" ]; then
           mrun "mariadb_upgrade --force" &> /dev/null
-            wait
         elif [ -x "/usr/bin/mysql_upgrade" ]; then
-          mrun "mysql_upgrade --force" &> /dev/null
-            wait
+          _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+          _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+          mrun "mysql_upgrade -u root -p${_SQL_PSWD} --force" &> /dev/null
         fi
       fi
       rm -f /etc/apt/sources.list.d/ourdelta.list
@@ -1280,14 +1259,12 @@ db_server_install() {
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
         if [ -x "/usr/bin/mariadb_upgrade" ]; then
           mrun "mariadb_upgrade --force" &> /dev/null
-            wait
           mrun "mariadb_upgrade --force" &> /dev/null
-            wait
         elif [ -x "/usr/bin/mysql_upgrade" ]; then
-          mrun "mysql_upgrade --force" &> /dev/null
-            wait
-          mrun "mysql_upgrade --force" &> /dev/null
-            wait
+          _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+          _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+          mrun "mysql_upgrade -u root -p${_SQL_PSWD} --force" &> /dev/null
+          mrun "mysql_upgrade -u root -p${_SQL_PSWD} --force" &> /dev/null
         fi
       fi
       tune_memory_limits
@@ -1332,44 +1309,41 @@ db_server_install() {
       fi
       if [ ! -e "/root/.run-to-chimaera.cnf" ] \
         && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
-        myUptime=$(mysqladmin version | grep -i uptime 2>&1)
+        _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+        _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+        myUptime=$(mysqladmin -u root -p${_SQL_PSWD} version | grep -i uptime 2>&1)
         myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
         msg "INFO: ${_DB_SERVER} ${myUptime}"
         if [ "${myCnfUpdate}" = "YES" ]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             msg "INFO: Restarting ${_DB_SERVER} server..."
           fi
-          mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
-            wait
+          mysql -u root -p${_SQL_PSWD} -e "INSTALL SONAME 'ha_archive';" &> /dev/null
           mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
+          wait
           msg "INFO: ${_DB_SERVER} server restart completed"
           myRstrd=YES
         fi
         if [[ "${_DB_SERIES}" =~ "5.7" ]]; then
-          _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
+          _CHECK_EXISTS=$(mysql -u root -p${_SQL_PSWD} -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
           if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
-            _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
+            _CHECK_REPAIR=$(mysql -u root -p${_SQL_PSWD} -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
             echo _CHECK_REPAIR 1 ${_CHECK_REPAIR}
             if [[ "${_CHECK_REPAIR}" =~ "corrupted" ]]; then
-              # mysqlcheck -A --auto-repair
-              mysql_upgrade --force
-                wait
-              mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;"
-                wait
-              mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;"
-                wait
-              mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;"
-                wait
-              mysql_upgrade --force
-                wait
+              mysqlcheck -u root -p${_SQL_PSWD} -A --auto-repair --silent
+              mysql_upgrade -u root -p${_SQL_PSWD} --force
+              mysql -u root -p${_SQL_PSWD} -e "ALTER TABLE mysql.user DROP COLUMN default_role;"
+              mysql -u root -p${_SQL_PSWD} -e "ALTER TABLE mysql.user DROP COLUMN is_role;"
+              mysql -u root -p${_SQL_PSWD} -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;"
+              mysql_upgrade -u root -p${_SQL_PSWD} --force
             fi
-            _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
+            _CHECK_REPAIR=$(mysql -u root -p${_SQL_PSWD} -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
             echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
           fi
-          mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
-          mysql -u root -e "SET GLOBAL show_compatibility_56=ON;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
+          mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
+          mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
+          mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL show_compatibility_56=ON;" &> /dev/null
+          mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
           rm -f /etc/mysql/conf.d/mysqldump.cnf
         fi
       fi
@@ -1531,83 +1505,52 @@ sql_root_credentials_update() {
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             msg "DEBG: ${_DB_SERVER} init cleanup"
           fi
-          mysqladmin flush-privileges
-            wait
-          mysqladmin flush-hosts
-            wait
+          mysqladmin -u root flush-privileges
+          mysqladmin -u root flush-hosts
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';"
-              wait
             mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND \
               Host NOT IN ('localhost', '127.0.0.1', '::1');"
-              wait
             mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR \
               Db='test\\_%';"
-              wait
           else
             mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';" &> /dev/null
-              wait
             mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND \
               Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
-              wait
             mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR \
               Db='test\\_%';" &> /dev/null
-              wait
           fi
         fi
         mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
-          wait
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
-          wait
         if [ "${_DB_SERIES}" = "5.7" ]; then
           mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
         else
           mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${PASWD}';"
         fi
-          wait
         echo "[client]" > /root/.my.cnf
-          wait
         echo "user=root" >> /root/.my.cnf
-          wait
         echo "password=${PASWD}" >> /root/.my.cnf
-          wait
         chmod 0600 /root/.my.cnf
-          wait
         echo "db=mysql" > /root/.mytop
-          wait
         chmod 0600 /root/.mytop
-          wait
         mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'127.0.0.1';"
-          wait
         mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'::1';"
-          wait
         mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_MY_OWNIP}';"
-          wait
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
-          wait
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'::1' WITH GRANT OPTION;"
-          wait
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_OWNIP}' WITH GRANT OPTION;"
-          wait
         if [ "${_DB_SERIES}" = "5.7" ]; then
           mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
-            wait
           mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
-            wait
           mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
-            wait
         else
           mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${PASWD}';"
-            wait
           mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED BY '${PASWD}';"
-            wait
           mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${PASWD}';"
-            wait
         fi
-        mysqladmin flush-privileges
-          wait
-        mysqladmin flush-hosts
-          wait
+        mysqladmin -u root flush-privileges
+        mysqladmin -u root flush-hosts
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "DAFT: ${_DB_SERVER} PASWD ${PASWD}"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
@@ -1628,23 +1571,14 @@ sql_root_credentials_update() {
           if [ -e "/etc/mysql/debian.cnf" ] && [ "${_STATUS}" = "INIT" ]; then
             mySysMn="debian-sys-maint"
             mysql -u root -e "CREATE USER IF NOT EXISTS '${mySysMn}'@'localhost';"
-              wait
             mysql -u root -e "CREATE USER IF NOT EXISTS '${mySysMn}'@'127.0.0.1';"
-              wait
             mysql -u root -e "CREATE USER IF NOT EXISTS '${mySysMn}'@'${_MY_OWNIP}';"
-              wait
             mysql -u root -e "GRANT ALL ON ${_ESC} TO '${mySysMn}'@'localhost' WITH GRANT OPTION;"
-              wait
             mysql -u root -e "GRANT ALL ON ${_ESC} TO '${mySysMn}'@'127.0.0.1' WITH GRANT OPTION;"
-              wait
             mysql -u root -e "GRANT ALL ON ${_ESC} TO '${mySysMn}'@'${_MY_OWNIP}' WITH GRANT OPTION;"
-              wait
             mysql -u root -e "ALTER USER '${mySysMn}'@'localhost' IDENTIFIED BY '${PASWD}';"
-              wait
             mysql -u root -e "ALTER USER '${mySysMn}'@'127.0.0.1' IDENTIFIED BY '${PASWD}';"
-              wait
             mysql -u root -e "ALTER USER '${mySysMn}'@'${_MY_OWNIP}' IDENTIFIED BY '${PASWD}';"
-              wait
             mkdir -p ${vBs}
             cp -af /etc/mysql/debian.cnf \
               ${vBs}/debian.cnf-pre-${_X_VERSION}-${_NOW}.txt
@@ -1661,11 +1595,8 @@ sql_root_credentials_update() {
               | uniq \
               | tr -d "\s"`; do
               mysql -u root -e "CREATE USER IF NOT EXISTS 'aegir_root'@'${_IP}';"
-                wait
               mysql -u root -e "GRANT ALL ON ${_ESC} TO 'aegir_root'@'${_IP}' WITH GRANT OPTION;"
-                wait
               mysql -u root -e "ALTER USER 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
-                wait
             done
           fi
           if [ -e "/root/.cluster.IP.list" ]; then
@@ -1675,22 +1606,16 @@ sql_root_credentials_update() {
               | uniq \
               | tr -d "\s"`; do
               mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_IP}';"
-                wait
               mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_IP}' WITH GRANT OPTION;"
-                wait
               if [ "${_DB_SERIES}" = "5.7" ]; then
                 mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
               else
                 mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
               fi
-                wait
             done
             mysql -u root -e "CREATE USER IF NOT EXISTS 'wsrep'@'%';"
-              wait
             mysql -u root -e "GRANT ALL ON ${_ESC} TO 'wsrep'@'%' WITH GRANT OPTION;"
-              wait
             mysql -u root -e "ALTER USER 'wsrep'@'%' IDENTIFIED BY '${PASWD}';"
-              wait
           fi
           touch ${pthLog}/fixed-cluster-ip-grants.log
         fi
@@ -1704,23 +1629,19 @@ sql_root_credentials_update() {
           echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
         else
           sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf &> /dev/null
-            wait
         fi
         if [ "${_DB_SERVER}" = "MariaDB" ]; then
           sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" \
             /etc/mysql/debian-start &> /dev/null
-          wait
         fi
-        mysqladmin flush-privileges
-          wait
-        mysqladmin flush-hosts
-          wait
+        mysqladmin -u root flush-privileges
+        mysqladmin -u root flush-hosts
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: Restarting ${_DB_SERVER} server..."
         fi
         mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
+        wait
         mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
-          wait
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: ${_DB_SERVER} setup completed"
           msg "INFO: You can now log in as root by typing just 'mysql'"
@@ -1730,8 +1651,8 @@ sql_root_credentials_update() {
   else
     if [ ! -e "${pthLog}/fixed-cluster-ip-grants.log" ] \
       && [ -e "/root/.dbhd.clstr.cnf" ]; then
-      PXSWD=$(cat /root/.my.pass.txt 2>&1)
-      PASWD=$(echo -n ${PXSWD} | tr -d "\n" 2>&1)
+      _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+      _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
       if [ -e "/root/.remote.IP.list" ]; then
         _ESC="*.*"
         for _IP in `cat /root/.remote.IP.list \
@@ -1739,12 +1660,9 @@ sql_root_credentials_update() {
           | sort \
           | uniq \
           | tr -d "\s"`; do
-          mysql -u root -e "CREATE USER IF NOT EXISTS 'aegir_root'@'${_IP}';"
-            wait
-          mysql -u root -e "GRANT ALL ON ${_ESC} TO 'aegir_root'@'${_IP}' WITH GRANT OPTION;"
-            wait
-          mysql -u root -e "ALTER USER 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
-            wait
+          mysql -u root -p${_SQL_PSWD} -e "CREATE USER IF NOT EXISTS 'aegir_root'@'${_IP}';"
+          mysql -u root -p${_SQL_PSWD} -e "GRANT ALL ON ${_ESC} TO 'aegir_root'@'${_IP}' WITH GRANT OPTION;"
+          mysql -u root -p${_SQL_PSWD} -e "ALTER USER 'aegir_root'@'${_IP}' IDENTIFIED BY '${_SQL_PSWD}';"
         done
       fi
       if [ -e "/root/.cluster.IP.list" ]; then
@@ -1753,23 +1671,17 @@ sql_root_credentials_update() {
           | sort \
           | uniq \
           | tr -d "\s"`; do
-          mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_IP}';"
-            wait
-          mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_IP}' WITH GRANT OPTION;"
-            wait
+          mysql -u root -p${_SQL_PSWD} -e "CREATE USER IF NOT EXISTS 'root'@'${_IP}';"
+          mysql -u root -p${_SQL_PSWD} -e "GRANT ALL ON ${_ESC} TO 'root'@'${_IP}' WITH GRANT OPTION;"
           if [ "${_DB_SERIES}" = "5.7" ]; then
-            mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
+            mysql -u root -p${_SQL_PSWD} -e "ALTER USER 'root'@'${_IP}' IDENTIFIED WITH mysql_native_password BY '${_SQL_PSWD}';"
           else
-            mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
+            mysql -u root -p${_SQL_PSWD} -e "ALTER USER 'root'@'${_IP}' IDENTIFIED BY '${_SQL_PSWD}';"
           fi
-            wait
         done
-        mysql -u root -e "CREATE USER IF NOT EXISTS 'wsrep'@'%';"
-          wait
-        mysql -u root -e "GRANT ALL ON ${_ESC} TO 'wsrep'@'%' WITH GRANT OPTION;"
-          wait
-        mysql -u root -e "ALTER USER 'wsrep'@'%' IDENTIFIED BY '${PASWD}';"
-          wait
+        mysql -u root -p${_SQL_PSWD} -e "CREATE USER IF NOT EXISTS 'wsrep'@'%';"
+        mysql -u root -p${_SQL_PSWD} -e "GRANT ALL ON ${_ESC} TO 'wsrep'@'%' WITH GRANT OPTION;"
+        mysql -u root -p${_SQL_PSWD} -e "ALTER USER 'wsrep'@'%' IDENTIFIED BY '${_SQL_PSWD}';"
       fi
       touch ${pthLog}/fixed-cluster-ip-grants.log
     fi

@@ -21,7 +21,9 @@ chomp($timedate);
 $logfile="/var/xdrago/log/mysqlcheck.log";
 system("touch /var/run/boa_wait.pid");
 sleep(90);
-system("/usr/bin/mysqlcheck -Aa > $logfile");
+$mysqlrootpass=`cat /root/.my.pass.txt`;
+chomp($mysqlrootpass);
+system("/usr/bin/mysqlcheck -u root --password=$mysqlrootpass -Aa > $logfile");
 &makeactions;
 system("rm -f /var/run/boa_wait.pid");
 system("touch /var/xdrago/log/last-run-acrashsql");
@@ -90,9 +92,9 @@ sub repair_this_action
   local($FIXTABLE,$COUNTER) = @_;
   print "$FIXTABLE [$COUNTER] recorded... $REMOTE_HOST\n";
   system("echo \"#-- BELOW --# $FIXTABLE [$COUNTER] recorded...\" >> $fixfile");
-  system("echo \"/usr/bin/mysqlcheck -r $FIXTABLE\" >> $fixfile");
-  system("echo \"/usr/bin/mysqlcheck -o $FIXTABLE\" >> $fixfile");
-  system("echo \"/usr/bin/mysqlcheck -a $FIXTABLE\" >> $fixfile");
+  system("echo \"/usr/bin/mysqlcheck -u root --password=$mysqlrootpass -r $FIXTABLE\" >> $fixfile");
+  system("echo \"/usr/bin/mysqlcheck -u root --password=$mysqlrootpass -o $FIXTABLE\" >> $fixfile");
+  system("echo \"/usr/bin/mysqlcheck -u root --password=$mysqlrootpass -a $FIXTABLE\" >> $fixfile");
   system("echo \" \" >> $fixfile");
 }
 ###EOF2023###

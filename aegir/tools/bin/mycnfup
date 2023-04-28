@@ -625,7 +625,7 @@ start_sql() {
 
   remove_locks
   echo "MySQLD start procedure completed"
-  mysql -u root -e "SET GLOBAL optimizer_switch='derived_merge=off';"
+  mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL optimizer_switch='derived_merge=off';"
   [ "$1" != "chain" ] && exit 0
 }
 
@@ -637,13 +637,13 @@ stop_sql() {
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     echo "Preparing MySQLD for quick shutdown..."
-    mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+    mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+    mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
+    mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
+    mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
+    mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
+    mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+    mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
     echo "Stopping MySQLD now..."
     update-rc.d -f mysql remove &> /dev/null
     service mysql stop
@@ -709,7 +709,7 @@ if_restart_sql() {
   if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
     mkdir -p /etc/mysql/mariadb.conf.d/
   fi
-  myUptime=$(mysqladmin version | grep -i uptime 2>&1)
+  myUptime=$(mysqladmin -u root -p${_SQL_PSWD} version | grep -i uptime 2>&1)
   myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
   echo "INFO: ${_DB_SERVER} ${myUptime}"
   if [ "${myCnfUpdate}" = "YES" ]; then
@@ -786,7 +786,7 @@ EOFMYSQL
 repair_this_database() {
   echo "running ${tVr} `hostname` repair_this_database procedure..."
   check_mysql_up
-  mysqlcheck --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp --user=root --auto-repair --silent ${_DB}
+  mysqlcheck --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp -u root -p${_SQL_PSWD} --auto-repair --silent ${_DB}
 }
 
 optimize_this_database() {
@@ -816,7 +816,7 @@ EOFMYSQL
 innodb_log_file_size_update() {
   echo "running ${tVr} `hostname` innodb_log_file_size_update procedure..."
   echo "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
-  mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
+  mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   stop_sql "chain"
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   if [ -z "${_IS_MYSQLD_RUNNING}" ]; then

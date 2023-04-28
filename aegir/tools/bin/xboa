@@ -333,9 +333,9 @@ migrate_sites() {
             if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
               _SQL_CONNECT=127.0.0.1
               _THIS_DB_PORT=6033
-              mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+              mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
             else
-              mysqladmin flush-privileges
+              mysqladmin -u root -p${_SQL_PSWD} flush-privileges
             fi
             if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
               mkdir -p /etc/mysql/mariadb.conf.d/
@@ -357,7 +357,7 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
             fi
-            mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot mysql<<EOFMYSQL
+            mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE DATABASE ${_DBN} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '${_DBN}'@'localhost';
 CREATE USER IF NOT EXISTS '${_DBN}'@'%';
@@ -369,9 +369,9 @@ EOFMYSQL
             if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
               _SQL_CONNECT=127.0.0.1
               _THIS_DB_PORT=6033
-              mysqladmin -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
+              mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges
             else
-              mysqladmin flush-privileges
+              mysqladmin -u root -p${_SQL_PSWD} flush-privileges
             fi
             echo "INFO: site ${Dom} db setup on ${oct} complete"
           else
@@ -403,10 +403,6 @@ EOFMYSQL
                 _MYQUICK_STATUS=OK
                 echo "INFO: Installed MyQuick for ${_MD_V} (${_DB_V}) looks fine"
               fi
-            fi
-            if [ -e "/root/.my.pass.txt" ]; then
-              _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-              _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
             fi
             myloader \
               --database=${_DBN} \
@@ -466,10 +462,6 @@ EOFMYSQL
             _MYQUICK_STATUS=OK
             echo "INFO: Installed MyQuick for ${_MD_V} (${_DB_V}) looks fine"
           fi
-        fi
-        if [ -e "/root/.my.pass.txt" ]; then
-          _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-          _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
         fi
         mkdir -p ${_USR}/src/${_DBN}
         mydumper \
@@ -704,13 +696,13 @@ migrate_prepare() {
     if [ ! -z "${dst}" ]; then
       if [ "${oct}" = "${dst}" ]; then
         [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL5 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
-        mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
+        mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
         run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
         touch ${_USR}/log/imported.pid
       fi
     else
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL6 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
-      mysql --silent -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
+      mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
       run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
       touch ${_USR}/log/imported.pid
     fi
@@ -1302,6 +1294,8 @@ check_root() {
         _SQL_CONNECT=localhost
       fi
     fi
+    _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+    _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
   else
     echo "ERROR: This script should be ran as a root user"
     exit 1

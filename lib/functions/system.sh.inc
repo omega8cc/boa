@@ -6526,7 +6526,6 @@ fix_node_in_lshell_access() {
     PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
     PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
     PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-    ReTest=$(ls /data/disk/*/static/control/run-redis-restart.pid | wc -l 2>&1)
     if [[ "${PrTestPower}" =~ "POWER" ]] \
       || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
       || [[ "${PrTestCluster}" =~ "CLUSTER" ]] \
@@ -7230,8 +7229,10 @@ initd_update() {
           mrun "mariadb_upgrade --force" &> /dev/null
           mrun "mariadb_upgrade --force" &> /dev/null
         elif [ -x "/usr/bin/mysql_upgrade" ]; then
-          mrun "mysql_upgrade --force" &> /dev/null
-          mrun "mysql_upgrade --force" &> /dev/null
+          _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+          _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+          mrun "mysql_upgrade -u root -p${_SQL_PSWD} --force" &> /dev/null
+          mrun "mysql_upgrade -u root -p${_SQL_PSWD} --force" &> /dev/null
         fi
       fi
       myCnf="/etc/mysql/my.cnf"
@@ -7282,7 +7283,9 @@ initd_update() {
       fi
       if [ ! -e "/root/.run-to-chimaera.cnf" ] \
         && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
-        myUptime=$(mysqladmin version | grep -i uptime 2>&1)
+        _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+        _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+        myUptime=$(mysqladmin -u root -p${_SQL_PSWD} version | grep -i uptime 2>&1)
         myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
         msg "INFO: ${_DB_SERVER} ${myUptime}"
         if [ "${myRstrd}" = "YES" ]; then
@@ -7293,31 +7296,31 @@ initd_update() {
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             msg "INFO: Restarting ${_DB_SERVER} server..."
           fi
-          mysql -u root -e "INSTALL SONAME 'ha_archive';" &> /dev/null
+          mysql -u root -p${_SQL_PSWD} -e "INSTALL SONAME 'ha_archive';" &> /dev/null
           mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
           wait
           msg "INFO: ${_DB_SERVER} server restart completed"
         fi
         if [[ "${_DB_SERIES}" =~ "5.7" ]]; then
-          _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
+          _CHECK_EXISTS=$(mysql -u root -p${_SQL_PSWD} -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
           if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
-            _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
+            _CHECK_REPAIR=$(mysql -u root -p${_SQL_PSWD} -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
             echo _CHECK_REPAIR 1 ${_CHECK_REPAIR}
             if [[ "${_CHECK_REPAIR}" =~ "corrupted" ]]; then
-              # mysqlcheck -A --auto-repair
-              mysql_upgrade --force
-              mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;"
-              mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;"
-              mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;"
-              mysql_upgrade --force
+              mysqlcheck -u root -p${_SQL_PSWD} -A --auto-repair --silent
+              mysql_upgrade -u root -p${_SQL_PSWD} --force
+              mysql -u root -p${_SQL_PSWD} -e "ALTER TABLE mysql.user DROP COLUMN default_role;"
+              mysql -u root -p${_SQL_PSWD} -e "ALTER TABLE mysql.user DROP COLUMN is_role;"
+              mysql -u root -p${_SQL_PSWD} -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;"
+              mysql_upgrade -u root -p${_SQL_PSWD} --force
             fi
-            _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
+            _CHECK_REPAIR=$(mysql -u root -p${_SQL_PSWD} -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
             echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
           fi
-          mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
-          mysql -u root -e "SET GLOBAL show_compatibility_56=ON;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
+          mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
+          mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
+          mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL show_compatibility_56=ON;" &> /dev/null
+          mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
           rm -f /etc/mysql/conf.d/mysqldump.cnf
         fi
       fi

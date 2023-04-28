@@ -39,9 +39,11 @@ touch /var/run/boa_wait.pid
 sleep 8
 dir=/var/xdrago/log/mysql_optimize
 mkdir -p $dir
-/usr/bin/mysqlcheck -Aa >> $dir/all.a.`date +%y%m%d-%H%M%S`
-/usr/bin/mysqlcheck -A --auto-repair >> $dir/all.r.`date +%y%m%d-%H%M%S`
-/usr/bin/mysqlcheck -Ao >> $dir/all.o.`date +%y%m%d-%H%M%S`
+_SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+_SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+/usr/bin/mysqlcheck -u root -p${_SQL_PSWD} -Aa >> $dir/all.a.`date +%y%m%d-%H%M%S`
+/usr/bin/mysqlcheck -u root -p${_SQL_PSWD} -A --auto-repair >> $dir/all.r.`date +%y%m%d-%H%M%S`
+/usr/bin/mysqlcheck -u root -p${_SQL_PSWD} -Ao >> $dir/all.o.`date +%y%m%d-%H%M%S`
 rm -f /var/run/boa_wait.pid
 exit 0
 ###EOF2023###

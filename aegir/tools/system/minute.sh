@@ -420,7 +420,7 @@ mysql_proc_kill() {
   if [ ! -z "$xtime" ]; then
     if [ $xtime -gt $limit ]; then
       echo "proc to kill is $each by $xuser after $xtime"
-      xkill=$(mysqladmin kill $each 2>&1)
+      xkill=$(mysqladmin -u root -p${_SQL_PSWD} kill $each 2>&1)
       times=$(date 2>&1)
       load=$(cat /proc/loadavg 2>&1)
       echo "$load"
@@ -434,14 +434,14 @@ mysql_proc_kill() {
 mysql_proc_control() {
   if [ ! -z "${_SQLMONITOR}" ] && [ "${_SQLMONITOR}" = "YES" ]; then
     echo "$(date 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
-    echo "$(mysqladmin proc -v 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
+    echo "$(mysqladmin -u root -p${_SQL_PSWD} proc -v 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
     if [ ! -z "${_RAM_PCT_FREE}" ] && [ "${_RAM_PCT_FREE}" -lt "20" ]; then
       sql_restart "RAM"
     fi
   fi
   limit=300
   xkill=null
-  for each in `mysqladmin proc \
+  for each in `mysqladmin -u root -p${_SQL_PSWD} proc \
     | awk '{print $2, $4, $8, $12}' \
     | awk '{print $1}'`; do
     each=${each//[^0-9]/}
@@ -449,13 +449,13 @@ mysql_proc_control() {
     if [ ! -z "$each" ]; then
       if [ "$each" -gt "5" ] \
         && [ ! -z "$each" ]; then
-        xtime=$(mysqladmin proc \
+        xtime=$(mysqladmin -u root -p${_SQL_PSWD} proc \
           | awk '{print $2, $4, $8, $12}' \
           | grep $each \
           | awk '{print $4}' 2>&1)
         xtime=${xtime//[^0-9]/}
         [ ! -z "$xtime" ] && echo "xtime is $xtime [ea:$each]"
-        xuser=$(mysqladmin proc \
+        xuser=$(mysqladmin -u root -p${_SQL_PSWD} proc \
           | awk '{print $2, $4, $8, $12}' \
           | grep $each \
           | awk '{print $2}' 2>&1)

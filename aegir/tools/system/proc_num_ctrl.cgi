@@ -121,13 +121,15 @@ if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/var/run/mysql_restart_running.p
 
 if (-f "/root/.mstr.clstr.cnf" || -f "/root/.wbhd.clstr.cnf") {
   if ($mysqlives && -f "/root/.remote.db.cnf") {
-    system("mysql -u root -e \"SET GLOBAL innodb_max_dirty_pages_pct = 0\;\"");
-    system("mysql -u root -e \"SET GLOBAL innodb_change_buffering = \'none\'\;\"");
-    system("mysql -u root -e \"SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1\;\"");
-    system("mysql -u root -e \"SET GLOBAL innodb_io_capacity = 2000\;\"");
-    system("mysql -u root -e \"SET GLOBAL innodb_io_capacity_max = 4000\;\"");
-    system("mysql -u root -e \"SET GLOBAL innodb_buffer_pool_dump_pct = 100\;\"");
-    system("mysql -u root -e \"SET GLOBAL innodb_buffer_pool_dump_now = ON\;\"");
+    $mysqlrootpass=`cat /root/.my.pass.txt`;
+    chomp($mysqlrootpass);
+    system("mysql -u root --password=$mysqlrootpass -e \"SET GLOBAL innodb_max_dirty_pages_pct = 0\;\"");
+    system("mysql -u root --password=$mysqlrootpass -e \"SET GLOBAL innodb_change_buffering = \'none\'\;\"");
+    system("mysql -u root --password=$mysqlrootpass -e \"SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1\;\"");
+    system("mysql -u root --password=$mysqlrootpass -e \"SET GLOBAL innodb_io_capacity = 2000\;\"");
+    system("mysql -u root --password=$mysqlrootpass -e \"SET GLOBAL innodb_io_capacity_max = 4000\;\"");
+    system("mysql -u root --password=$mysqlrootpass -e \"SET GLOBAL innodb_buffer_pool_dump_pct = 100\;\"");
+    system("mysql -u root --password=$mysqlrootpass -e \"SET GLOBAL innodb_buffer_pool_dump_now = ON\;\"");
     system("service mysql stop");
   }
 }
@@ -209,7 +211,9 @@ if (-f "/usr/local/sbin/pure-config.pl") {
 }
 
 if ($mysqlsumar > 0 ) {
- `mysqladmin flush-hosts &> /dev/null`;
+  $mysqlrootpass=`cat /root/.my.pass.txt`;
+  chomp($mysqlrootpass);
+ `mysqladmin -u root --password=$mysqlrootpass flush-hosts &> /dev/null`;
   print "\n MySQL hosts flushed...\n";
 }
 if ($dhcpcdlives) {
