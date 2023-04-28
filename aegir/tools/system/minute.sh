@@ -50,10 +50,22 @@ sql_restart() {
   exit 0
 }
 
-_MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
-echo _MYSQL_CONN_TEST ${_MYSQL_CONN_TEST}
-if [[ "${_MYSQL_CONN_TEST}" =~ "many connections" ]]; then
-  sql_restart "BUSY"
+if [ -e "/var/log/daemon.log" ]; then
+  if [ `tail --lines=10 /var/log/daemon.log \
+    | grep --count "Too many connections"` -gt "0" ]; then
+    sql_restart "BUSY"
+  fi
+fi
+
+_SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+_SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+_IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
+  _MYSQL_CONN_TEST=$(mysql -u root -p${_SQL_PSWD} -e "status" 2>&1)
+  echo _MYSQL_CONN_TEST ${_MYSQL_CONN_TEST}
+  if [[ "${_MYSQL_CONN_TEST}" =~ "Too many connections" ]]; then
+    sql_restart "BUSY"
+  fi
 fi
 
 if [ -e "/var/lib/mysql/ibtmp1" ] && [ ! -e "/var/run/boa_run.pid" ]; then
