@@ -4,17 +4,15 @@
 * Since Debian is running systemd, it should be removed before installing BOA,
   which involves procedure in five steps, as outlined further below.
 
-* Once BOA is fully installed, you have to reboot again and run barracuda
-  system upgrade to make sure that the system is ready for production and
-  to generate valid SSL/LE/HTTPS certificate for the Aegir control panel.
-  Otherwise there will be incomplete web server, dns etc. setup, which will
-  cause unexpected problems until you will run barracuda upgrade - after reboot.
+* Once BOA is fully installed, you have to run 'barracuda up-head system'
+  (immediately, but without reboot) to make sure that your system is ready
+  for production use. Otherwise there will be incomplete web, dns etc. setup,
+  which will cause unexpected problems until you will run barracuda upgrade.
 
 * BOA requires minimal, supported OS, with no services installed.
   The only acceptable exceptions are: sshd and mail servers.
 
-* Don't run any installer via sudo.
-  You must be logged in as root directly.
+* Don't run any installer via sudo. You must be logged in as root directly.
 
 * Don't run any system updates with apt before running Barracuda installer.
   You should use vanilla system.
@@ -90,12 +88,13 @@
    built-in platform, while "ask" is a default mode if you don't specify
    this option at all.
 
-   The last {newrelickey|php-7.4|php-min|php-max|nodns} part is
-   optional and can be used either to install New Relic Apps Monitor (you should
-   replace the "newrelickey" keyword with a valid license key), or to define
-   single PHP version to install and use both for Master and Satellite instances.
+   The last {newrelickey|php-7.4|php-min|php-max|nodns} part is optional and
+   can be used either to install New Relic Apps Monitor (you should replace
+   the "newrelickey" keyword with a valid license key), or to define single PHP
+   version to install and use both for Master and Satellite instances.
+
    When "php-min" is defined, then only 3 versions will be installed: 8.2, 8.1,
-   plus 7.4 will be used by default. You can later install or modify PHP version
+   plus 7.4, configured as default. You can later install or modify PHP version
    used via _PHP_MULTI_INSTALL, _PHP_CLI_VERSION and _PHP_FPM_VERSION, but
    the _PHP_SINGLE_INSTALL variable must be set empty to not override other
    related variables. The "nodns" option allows to skip DNS and SMTP checks.
