@@ -371,7 +371,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_UP_WEEKLY=7
     _AUTO_UP_MONTH=12
     _AUTO_UP_DAY=12
-    _AUTO_PHP="php-max"
+    _AUTO_PHP="php-min"
     _AUTO_VER="head"
     if [ ! -e "/root/.ignore.site24x7.firewall.cnf" ]; then
       if [ -x "/usr/sbin/csf" ]; then
