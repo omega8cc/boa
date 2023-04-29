@@ -1054,8 +1054,6 @@ sub_count_usr_home() {
 }
 
 action() {
-  rm -f /var/xdrago/log/usage/usage-latest.log
-  rm -f /var/xdrago/log/usage/usage-latest-silent.log
   for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     count_cpu
     load_control
@@ -1171,9 +1169,9 @@ action() {
               else
                 DbsD="DbsDev"
               fi
-              if [ "${_THIS_MODE}" = "verbose" ]; then
-                _LOG_FILE="usage-latest.log"
-              else
+              if [ "${_THIS_MODE}" = "verbose" ] || [ -z "${_THIS_MODE}" ]; then
+                _LOG_FILE="usage-latest-verbose.log"
+              elif [ "${_THIS_MODE}" = "silent" ]; then
                 _LOG_FILE="usage-latest-silent.log"
               fi
               echo "${AegirUrl},${Files}:${HomSizH},${DbsL}:${SumDatH},${DbsD}:${SkipDtH},${eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/xdrago/log/usage/${_LOG_FILE}
@@ -1220,10 +1218,12 @@ _NOW=${_NOW//[^0-9-]/}
 _DATE=$(date 2>&1)
 _CHECK_HOST=$(uname -n 2>&1)
 mkdir -p /var/xdrago/log/usage
-if [ "$1" = "silent" ]; then
-  _THIS_MODE="silent"
-else
+if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
   _THIS_MODE="verbose"
+  rm -f /var/xdrago/log/usage/usage-latest-verbose.log
+elif [ "${1}" = "silent" ]; then
+  _THIS_MODE="silent"
+  rm -f /var/xdrago/log/usage/usage-latest-silent.log
 fi
 action >/var/xdrago/log/usage/usage-${_NOW}.log 2>&1
 echo "INFO: Completing usage monitoring on `date`"
