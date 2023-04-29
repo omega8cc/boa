@@ -106,7 +106,7 @@ find_fast_mirror() {
 find_fast_mirror
 
 truncate_watchdog_tables() {
-  _TABLES=$(mysql ${_DB} -u root -p${_SQL_PSWD} -e "show tables" -s | grep ^watchdog$ 2>&1)
+  _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^watchdog$ 2>&1)
   for A in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
 TRUNCATE ${A};

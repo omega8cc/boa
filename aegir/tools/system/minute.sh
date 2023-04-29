@@ -61,7 +61,7 @@ _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
 _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
 _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
 if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
-  _MYSQL_CONN_TEST=$(mysql -u root -p${_SQL_PSWD} -e "status" 2>&1)
+  _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
   echo _MYSQL_CONN_TEST ${_MYSQL_CONN_TEST}
   if [[ "${_MYSQL_CONN_TEST}" =~ "Too many connections" ]]; then
     sql_restart "BUSY"
@@ -420,7 +420,7 @@ mysql_proc_kill() {
   if [ ! -z "$xtime" ]; then
     if [ $xtime -gt $limit ]; then
       echo "proc to kill is $each by $xuser after $xtime"
-      xkill=$(mysqladmin -u root -p${_SQL_PSWD} kill $each 2>&1)
+      xkill=$(mysqladmin -u root kill $each 2>&1)
       times=$(date 2>&1)
       load=$(cat /proc/loadavg 2>&1)
       echo "$load"
@@ -434,14 +434,14 @@ mysql_proc_kill() {
 mysql_proc_control() {
   if [ ! -z "${_SQLMONITOR}" ] && [ "${_SQLMONITOR}" = "YES" ]; then
     echo "$(date 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
-    echo "$(mysqladmin -u root -p${_SQL_PSWD} proc -v 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
+    echo "$(mysqladmin -u root proc -v 2>&1)" >> /var/xdrago/log/mysqladmin.monitor.log
     if [ ! -z "${_RAM_PCT_FREE}" ] && [ "${_RAM_PCT_FREE}" -lt "20" ]; then
       sql_restart "RAM"
     fi
   fi
   limit=300
   xkill=null
-  for each in `mysqladmin -u root -p${_SQL_PSWD} proc \
+  for each in `mysqladmin -u root proc \
     | awk '{print $2, $4, $8, $12}' \
     | awk '{print $1}'`; do
     each=${each//[^0-9]/}
@@ -449,13 +449,13 @@ mysql_proc_control() {
     if [ ! -z "$each" ]; then
       if [ "$each" -gt "5" ] \
         && [ ! -z "$each" ]; then
-        xtime=$(mysqladmin -u root -p${_SQL_PSWD} proc \
+        xtime=$(mysqladmin -u root proc \
           | awk '{print $2, $4, $8, $12}' \
           | grep $each \
           | awk '{print $4}' 2>&1)
         xtime=${xtime//[^0-9]/}
         [ ! -z "$xtime" ] && echo "xtime is $xtime [ea:$each]"
-        xuser=$(mysqladmin -u root -p${_SQL_PSWD} proc \
+        xuser=$(mysqladmin -u root proc \
           | awk '{print $2, $4, $8, $12}' \
           | grep $each \
           | awk '{print $2}' 2>&1)

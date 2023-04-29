@@ -107,7 +107,7 @@ provision_backend_dbpass_generate() {
   if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
     mkdir -p /etc/mysql/mariadb.conf.d/
   fi
-  mysqladmin -u root -p${_SQL_PSWD} flush-privileges &> /dev/null
+  mysqladmin -u root flush-privileges &> /dev/null
 
   if [ "${_STATUS}" = "INIT" ]; then
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL7 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
@@ -127,7 +127,7 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
-    mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
+    mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_ADBU}'@'localhost';
 CREATE USER IF NOT EXISTS '${_ADBU}'@'%';
 GRANT ALL ON ${_ESC} TO '${_ADBU}'@'localhost' WITH GRANT OPTION;
@@ -157,13 +157,13 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
       fi
-      _C_SQL="mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
+      _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
       ${_C_SQL} "DROP USER '${_ADBU}'@'${_AEGIR_HOST}';" &> /dev/null
       ${_C_SQL} "DROP USER '${_ADBU}'@'${_RESOLVEIP}';" &> /dev/null
       ${_C_SQL} "DROP USER '${_ADBU}'@'localhost';" &> /dev/null
       ${_C_SQL} "DROP USER '${_ADBU}'@'127.0.0.1';" &> /dev/null
       ${_C_SQL} "DROP USER '${_ADBU}'@'%';" &> /dev/null
-      mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
+      mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_ADBU}'@'localhost';
 CREATE USER IF NOT EXISTS '${_ADBU}'@'%';
 GRANT ALL ON ${_ESC} TO '${_ADBU}'@'localhost' WITH GRANT OPTION;
@@ -200,7 +200,7 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
-    mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
+    mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_ADBU}'@'localhost';
 CREATE USER IF NOT EXISTS '${_ADBU}'@'%';
 GRANT ALL ON ${_ESC} TO '${_ADBU}'@'localhost' WITH GRANT OPTION;
@@ -212,7 +212,7 @@ EOFMYSQL
   if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
     mkdir -p /etc/mysql/mariadb.conf.d/
   fi
-  mysqladmin -u root -p${_SQL_PSWD} flush-privileges &> /dev/null
+  mysqladmin -u root flush-privileges &> /dev/null
 }
 
 #
@@ -268,13 +268,13 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
-    _C_SQL="mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
+    _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
-    mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
+    mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
@@ -289,7 +289,7 @@ EOFMYSQL
   if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
     mkdir -p /etc/mysql/mariadb.conf.d/
   fi
-  mysqladmin -u root -p${_SQL_PSWD} flush-privileges &> /dev/null
+  mysqladmin -u root flush-privileges &> /dev/null
   su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
   rm -rf /var/aegir/.tmp/cache
   if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ]; then
@@ -365,13 +365,13 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
-    _C_SQL="mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
+    _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
     ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
-    mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
+    mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
@@ -383,7 +383,7 @@ EOFMYSQL
   if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
     mkdir -p /etc/mysql/mariadb.conf.d/
   fi
-  mysqladmin -u root -p${_SQL_PSWD} flush-privileges &> /dev/null
+  mysqladmin -u root flush-privileges &> /dev/null
 }
 
 #
@@ -479,7 +479,7 @@ aegir_master_upgrade() {
     if [ -x "/usr/bin/mariadb_upgrade" ]; then
       mrun "mariadb_upgrade --force" &> /dev/null
     elif [ -x "/usr/bin/mysql_upgrade" ]; then
-      mrun "mysql_upgrade -u root -p${_SQL_PSWD} --force" &> /dev/null
+      mrun "mysql_upgrade -u root --force" &> /dev/null
     fi
     if [ -e "/var/aegir/use_proxysql.txt" ]; then
       _SQL_CONNECT=127.0.0.1
@@ -571,7 +571,7 @@ aegir_master_upgrade() {
     if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
       mkdir -p /etc/mysql/mariadb.conf.d/
     fi
-    mysqladmin -u root -p${_SQL_PSWD} flush-hosts &> /dev/null
+    mysqladmin -u root flush-hosts &> /dev/null
     _RST=$(syncpass fix aegir 2>&1)
     find_correct_ip
     _USE_RESOLVEIP="${_LOC_IP}"
@@ -747,7 +747,7 @@ aegir_master_install_upgrade() {
     fi
 
     if [ "${_VMFAMILY}" != "AWS" ]; then
-      _MYSQLTEST=$(mysql --silent -u root -p${_SQL_PSWD} -h${_AEGIR_HOST_IP} -uINVALIDLOGIN -pINVALIDPASS 2>&1 >/dev/null | cat)
+      _MYSQLTEST=$(mysql --silent -u root -h${_AEGIR_HOST_IP} -uINVALIDLOGIN -pINVALIDPASS 2>&1 >/dev/null | cat)
       if [ -z `echo $_MYSQLTEST | grep -q "ERROR \(2003\|1130\)"` ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: ${_DB_SERVER} is listening on ${_AEGIR_HOST_IP}."
@@ -835,7 +835,7 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
-    mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
+    mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_AEGIR_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_AEGIR_DB_USER}'@'%';
 GRANT ALL ON ${_ESC} TO '${_AEGIR_DB_USER}'@'localhost' WITH GRANT OPTION;
@@ -870,7 +870,7 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
       fi
-      mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
+      mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_AEGIR_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_AEGIR_DB_USER}'@'%';
 GRANT ALL ON ${_ESC} TO '${_AEGIR_DB_USER}'@'localhost' WITH GRANT OPTION;

@@ -333,9 +333,9 @@ migrate_sites() {
             if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
               _SQL_CONNECT=127.0.0.1
               _THIS_DB_PORT=6033
-              mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
+              mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
             else
-              mysqladmin -u root -p${_SQL_PSWD} flush-privileges &> /dev/null
+              mysqladmin -u root flush-privileges &> /dev/null
             fi
             if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
               mkdir -p /etc/mysql/mariadb.conf.d/
@@ -357,7 +357,7 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
             fi
-            mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
+            mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE DATABASE ${_DBN} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '${_DBN}'@'localhost';
 CREATE USER IF NOT EXISTS '${_DBN}'@'%';
@@ -369,9 +369,9 @@ EOFMYSQL
             if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
               _SQL_CONNECT=127.0.0.1
               _THIS_DB_PORT=6033
-              mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
+              mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
             else
-              mysqladmin -u root -p${_SQL_PSWD} flush-privileges &> /dev/null
+              mysqladmin -u root flush-privileges &> /dev/null
             fi
             echo "INFO: site ${Dom} db setup on ${oct} complete"
           else
@@ -696,13 +696,13 @@ migrate_prepare() {
     if [ ! -z "${dst}" ]; then
       if [ "${oct}" = "${dst}" ]; then
         [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL5 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
-        mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
+        mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
         run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
         touch ${_USR}/log/imported.pid
       fi
     else
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL6 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
-      mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
+      mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql
       run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
       touch ${_USR}/log/imported.pid
     fi

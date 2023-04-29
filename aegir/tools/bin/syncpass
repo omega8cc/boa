@@ -105,7 +105,7 @@ do_syncpass() {
       check_generate
       chown ${uname}:${uname} ${_L_SYS} &> /dev/null
       if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
-        mysqladmin -u root -p${_SQL_PSWD} flush-hosts &> /dev/null
+        mysqladmin -u root flush-hosts &> /dev/null
         su -s /bin/bash - ${uname} -c "drush8 @hostmaster \
           sqlq \"UPDATE hosting_db_server \
           SET db_passwd='${_ESC_PASS}' \
@@ -131,13 +131,13 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
         fi
-        _C_SQL="mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
+        _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
         ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
         ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
         ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
         ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
         ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
-        mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
+        mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
@@ -149,7 +149,7 @@ EOFMYSQL
           "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
           ${prH}/server_*.alias.drushrc.php &> /dev/null
         wait
-        mysqladmin -u root -p${_SQL_PSWD} flush-privileges &> /dev/null
+        mysqladmin -u root flush-privileges &> /dev/null
       else
         echo "ERROR: Auto-generated password for aegir_root system user"
         echo "ERROR: did not work as expected, please try again"
@@ -171,9 +171,9 @@ EOFMYSQL
           if [ -e "/data/conf/${uname}_use_proxysql.txt" ]; then
             _SQL_CONNECT=127.0.0.1
             _THIS_DB_PORT=6033
-            mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
+            mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-hosts &> /dev/null
           else
-            mysqladmin -u root -p${_SQL_PSWD} flush-hosts &> /dev/null
+            mysqladmin -u root flush-hosts &> /dev/null
           fi
           su -s /bin/bash - ${uname} -c "drush8 @hostmaster \
             sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
@@ -199,13 +199,13 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
           fi
-          _C_SQL="mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
+          _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
           ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
           ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
           ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
           ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
           ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
-          mysql --silent -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
+          mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
@@ -220,9 +220,9 @@ EOFMYSQL
           if [ -e "/data/conf/${uname}_use_proxysql.txt" ]; then
             _SQL_CONNECT=127.0.0.1
             _THIS_DB_PORT=6033
-            mysqladmin -u root -p${_SQL_PSWD} -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
+            mysqladmin -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp flush-privileges &> /dev/null
           else
-            mysqladmin -u root -p${_SQL_PSWD} flush-privileges &> /dev/null
+            mysqladmin -u root flush-privileges &> /dev/null
           fi
         else
           echo "ERROR: Auto-generated password for ${uname} system user"

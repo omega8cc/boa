@@ -111,7 +111,7 @@ check_running() {
 
 truncate_cache_tables() {
   check_running
-  _TABLES=$(mysql ${_DB} -u root -p${_SQL_PSWD} -e "show tables" -s | grep ^cache | uniq | sort 2>&1)
+  _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^cache | uniq | sort 2>&1)
   for C in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
 TRUNCATE ${C};
@@ -121,7 +121,7 @@ EOFMYSQL
 
 truncate_watchdog_tables() {
   check_running
-  _TABLES=$(mysql ${_DB} -u root -p${_SQL_PSWD} -e "show tables" -s | grep ^watchdog$ 2>&1)
+  _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^watchdog$ 2>&1)
   for W in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
 TRUNCATE ${W};
@@ -131,7 +131,7 @@ EOFMYSQL
 
 truncate_accesslog_tables() {
   check_running
-  _TABLES=$(mysql ${_DB} -u root -p${_SQL_PSWD} -e "show tables" -s | grep ^accesslog$ 2>&1)
+  _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^accesslog$ 2>&1)
   for A in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
 TRUNCATE ${A};
@@ -141,7 +141,7 @@ EOFMYSQL
 
 truncate_batch_tables() {
   check_running
-  _TABLES=$(mysql ${_DB} -u root -p${_SQL_PSWD} -e "show tables" -s | grep ^batch$ 2>&1)
+  _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^batch$ 2>&1)
   for B in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
 TRUNCATE ${B};
@@ -151,7 +151,7 @@ EOFMYSQL
 
 truncate_queue_tables() {
   check_running
-  _TABLES=$(mysql ${_DB} -u root -p${_SQL_PSWD} -e "show tables" -s | grep ^queue$ 2>&1)
+  _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^queue$ 2>&1)
   for Q in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
 TRUNCATE ${Q};
@@ -161,7 +161,7 @@ EOFMYSQL
 
 truncate_views_data_export() {
   check_running
-  _TABLES=$(mysql ${_DB} -u root -p${_SQL_PSWD} -e "show tables" -s | grep ^views_data_export_index_ 2>&1)
+  _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^views_data_export_index_ 2>&1)
   for V in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
 DROP TABLE ${V};
@@ -174,12 +174,12 @@ EOFMYSQL
 
 repair_this_database() {
   check_running
-  mysqlcheck -u root -p${_SQL_PSWD} --auto-repair --silent ${_DB}
+  mysqlcheck -u root --auto-repair --silent ${_DB}
 }
 
 optimize_this_database() {
   check_running
-  _TABLES=$(mysql ${_DB} -u root -p${_SQL_PSWD} -e "show tables" -s | uniq | sort 2>&1)
+  _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | uniq | sort 2>&1)
   for T in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
 OPTIMIZE TABLE ${T};
@@ -189,7 +189,7 @@ EOFMYSQL
 
 convert_to_innodb() {
   check_running
-  _TABLES=$(mysql ${_DB} -u root -p${_SQL_PSWD} -e "show tables" -s | uniq | sort 2>&1)
+  _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | uniq | sort 2>&1)
   for T in ${_TABLES}; do
 mysql ${_DB}<<EOFMYSQL
 ALTER TABLE ${T} ENGINE=INNODB;
@@ -266,13 +266,13 @@ if [ "${_DB_SERIES}" = "10.4" ] \
   || [ "${_DB_SERIES}" = "10.2" ] \
   || [ "${_DB_SERIES}" = "5.7" ]; then
   check_running
-  mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
-  mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
-  mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-  mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
-  mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
-  mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-  mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+  mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+  mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
+  mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
+  mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
+  mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
+  mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+  mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
 fi
 
 _MYQUICK_STATUS=
@@ -388,13 +388,13 @@ if [ "${_OPTIM}" = "YES" ] \
     || [ "${_DB_SERIES}" = "10.2" ] \
     || [ "${_DB_SERIES}" = "5.7" ]; then
     check_running
-    mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
-    mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
-    mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-    mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
-    mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
-    mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-    mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+    mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
   fi
   echo "INFO: Running db server restart on `date`"
   bash /var/xdrago/move_sql.sh

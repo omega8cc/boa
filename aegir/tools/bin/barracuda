@@ -854,7 +854,7 @@ up_action() {
                 if [[ "${_DB_SERVER}" =~ "Percona" ]]; then
                   _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
                   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-                  mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL show_compatibility_56=ON;" &> /dev/null
+                  mysql -u root -e "SET GLOBAL show_compatibility_56=ON;" &> /dev/null
                 fi
               fi
             else

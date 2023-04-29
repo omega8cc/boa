@@ -102,13 +102,13 @@ stop_sql() {
       echo "Preparing MySQLD for quick shutdown..."
       _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
       _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-      mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
-      mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
-      mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-      mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
-      mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
-      mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-      mysql -u root -p${_SQL_PSWD} -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+      mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
     fi
     echo "Stopping MySQLD now..."
     service mysql stop &> /dev/null
