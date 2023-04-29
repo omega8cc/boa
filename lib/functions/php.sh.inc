@@ -726,7 +726,7 @@ install_php_extensions() {
     else
       touch ${pthLog}/igbinary-${_PHP_IGBINARY}-${_T_PHP_VRN}.log
     fi
-    _X_SE="414prodT63"
+    _X_SE="414prodT64"
     rm -f /data/disk/*/static/control/.*${_X_SE}.pid
   fi
   ###--------------------###
@@ -1102,7 +1102,7 @@ php_extensions_update() {
       else
         touch ${pthLog}/igbinary-${_PHP_IGBINARY}-${_T_PHP_VRN}.log
       fi
-      _X_SE="414prodT63"
+      _X_SE="414prodT64"
       rm -f /data/disk/*/static/control/.*${_X_SE}.pid
     fi
   fi
