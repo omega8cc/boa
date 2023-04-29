@@ -1003,6 +1003,14 @@ forced_mysql_root_password_update() {
     echo "user=root" >> /root/.my.cnf
     echo "password=${_ESC_PASS}" >> /root/.my.cnf
       echo " " >> /root/.my.cnf
+    echo "[mydumper]" >> /root/.my.cnf
+    echo "user=root" >> /root/.my.cnf
+    echo "password=${_ESC_PASS}" >> /root/.my.cnf
+      echo " " >> /root/.my.cnf
+    echo "[myloader]" >> /root/.my.cnf
+    echo "user=root" >> /root/.my.cnf
+    echo "password=${_ESC_PASS}" >> /root/.my.cnf
+      echo " " >> /root/.my.cnf
     echo "[boa]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
     echo "password=${_ESC_PASS}" >> /root/.my.cnf
@@ -1585,6 +1593,14 @@ sql_root_credentials_update() {
         echo "password=${PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[mysqldump]" >> /root/.my.cnf
+        echo "user=root" >> /root/.my.cnf
+        echo "password=${PASWD}" >> /root/.my.cnf
+          echo " " >> /root/.my.cnf
+        echo "[mydumper]" >> /root/.my.cnf
+        echo "user=root" >> /root/.my.cnf
+        echo "password=${PASWD}" >> /root/.my.cnf
+          echo " " >> /root/.my.cnf
+        echo "[myloader]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
         echo "password=${PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
