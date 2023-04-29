@@ -429,7 +429,7 @@ find ${_BACKUPDIR} -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
 echo "INFO: Backups older than ${_DB_BACKUPS_TTL} days deleted"
 
 echo "INFO: Starting usage report on `date`"
-bash /var/xdrago/usage.sh
+bash /var/xdrago/usage.sh verbose
 wait
 echo "INFO: Completing usage report on `date`"
 
