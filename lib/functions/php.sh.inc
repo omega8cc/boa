@@ -913,6 +913,14 @@ install_php_extensions() {
   fi
   ###--------------------###
   msg "INFO: Installing Imagick ${_IMAGICK_VRN} for PHP ${_T_PHP_VRN}..."
+  if [ "${_OSR}" = "chimaera" ]; then
+    if [ -e "/usr/bin/MagickWand-config" ]; then
+      mv -f /usr/bin/MagickWand-config /var/backups/usr-bin-MagickWand-config
+    fi
+    if [ -e "/usr/local/bin/MagickWand-config" ]; then
+      mv -f /usr/local/bin/MagickWand-config /var/backups/usr-local-bin-MagickWand-config
+    fi
+  fi
   if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
     apt_clean_update
     mrun "${_INSTAPP} libmagickwand-dev" 2> /dev/null
@@ -1310,6 +1318,14 @@ php_extensions_update() {
   ###--------------------###
   if [ ! -e "${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
     msg "INFO: Installing Imagick ${_IMAGICK_VRN} upgrade for PHP ${_T_PHP_VRN}..."
+    if [ "${_OSR}" = "chimaera" ]; then
+      if [ -e "/usr/bin/MagickWand-config" ]; then
+        mv -f /usr/bin/MagickWand-config /var/backups/usr-bin-MagickWand-config
+      fi
+      if [ -e "/usr/local/bin/MagickWand-config" ]; then
+        mv -f /usr/local/bin/MagickWand-config /var/backups/usr-local-bin-MagickWand-config
+      fi
+    fi
     if [ ! -e "${pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
       apt_clean_update
       mrun "${_INSTAPP} libmagickwand-dev" 2> /dev/null
