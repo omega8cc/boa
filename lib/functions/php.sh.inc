@@ -924,8 +924,8 @@ install_php_extensions() {
   cd /var/opt/imagick-${_IMAGICK_VRN}
   mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
   mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-  mrun "make -j $(nproc) --quiet" 2> /dev/null
-  mrun "make --quiet install" 2> /dev/null
+  mrun "make" 2> /dev/null
+  mrun "make install" 2> /dev/null
   mrun "ldconfig" 2> /dev/null
   if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ]; then
     msg "WARN: Installing Imagick for PHP ${_T_PHP_VRN} failed!"
@@ -1321,8 +1321,8 @@ php_extensions_update() {
     cd /var/opt/imagick-${_IMAGICK_VRN}
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
     mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
+    mrun "make" 2> /dev/null
+    mrun "make install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ]; then
       msg "WARN: Installing Imagick for PHP ${_T_PHP_VRN} failed!"
