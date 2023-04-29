@@ -12,8 +12,13 @@
 ### http://www.nongnu.org/duplicity/index.html
 ###
 
-PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+HOME=/root
 SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+export PATH=${PATH}
+export SHELL=${SHELL}
+export HOME=${HOME}
 
 _DUPLICITY_VRN="0.7.19"
 _BOTO_VRN="2.49.0"

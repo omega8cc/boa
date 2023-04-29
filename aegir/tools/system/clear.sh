@@ -1,7 +1,12 @@
 #!/bin/bash
 
-PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+HOME=/root
 SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+export PATH=${PATH}
+export SHELL=${SHELL}
+export HOME=${HOME}
 
 aptYesUnth="-y --allow-unauthenticated"
 

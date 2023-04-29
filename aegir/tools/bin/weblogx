@@ -1,7 +1,12 @@
 #!/bin/bash
 
-PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+HOME=/root
 SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+export PATH=${PATH}
+export SHELL=${SHELL}
+export HOME=${HOME}
 
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 _USE_GITHUB=/root/.goaccess.use.github.txt

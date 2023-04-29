@@ -75,8 +75,14 @@
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+HOME=/root
 SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+export PATH=${PATH}
+export SHELL=${SHELL}
+export HOME=${HOME}
+
 barCnf="/root/.barracuda.cnf"
 logAch="/root/.autochimaera.log"
 
@@ -222,7 +228,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
   echo " " >> ${logAch}
   msg "Launching standard barracuda up-head system first" >> ${logAch}
-  barracuda up-head system
+  barracuda up-head system >> ${logAch}
   wait
   msg "The initial barracuda up-head system completed" >> ${logAch}
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
@@ -253,7 +259,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
       msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/chimaera" >> ${logAch}
     fi
     msg "The first stage of major OS upgrade will start now" >> ${logAch}
-    barracuda up-head system
+    barracuda up-head system >> ${logAch}
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       msg "The first stage of major OS upgrade completed" >> ${logAch}
@@ -273,7 +279,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   echo " " >> ${logAch}
   msg "Launching post-reboot barracuda up-head system" >> ${logAch}
   msg "to complete the first stage of major OS upgrade" >> ${logAch}
-  barracuda up-head system
+  barracuda up-head system >> ${logAch}
   wait
   msg "The post-reboot barracuda up-head system completed" >> ${logAch}
   echo " " >> ${logAch}
@@ -309,7 +315,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   fi
   if [ "${_FURTHER_UPGRADE}" = "YES" ]; then
     msg "The second stage of major OS upgrade will start now" >> ${logAch}
-    barracuda up-head system
+    barracuda up-head system >> ${logAch}
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       msg "The second stage of major OS upgrade completed" >> ${logAch}
@@ -328,7 +334,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
   echo " " >> ${logAch}
   msg "Launching the final post-second-reboot barracuda up-head system" >> ${logAch}
-  barracuda up-head system
+  barracuda up-head system >> ${logAch}
   wait
   rm -f /root/.run-to-chimaera.cnf
   rm -f /root/.run-auto-major-os-reboot-one.cnf

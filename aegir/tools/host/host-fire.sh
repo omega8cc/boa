@@ -1,7 +1,12 @@
 #!/bin/bash
 
-PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+HOME=/root
 SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+export PATH=${PATH}
+export SHELL=${SHELL}
+export HOME=${HOME}
 
 csf_flood_guard() {
   thisCountCsf=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/csf"`

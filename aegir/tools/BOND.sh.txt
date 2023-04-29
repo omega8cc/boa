@@ -146,8 +146,12 @@ _NOW=${_NOW//[^0-9-]/}
 _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
 _THISHOST=$(uname -n 2>&1)
 _SPINNER=YES
-PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+HOME=/root
 SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+export PATH=${PATH}
+export SHELL=${SHELL}
+export HOME=${HOME}
 if [ -n "${STY+x}" ]; then
   _SPINNER=NO
 fi

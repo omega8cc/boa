@@ -77,8 +77,14 @@
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+HOME=/root
 SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+export PATH=${PATH}
+export SHELL=${SHELL}
+export HOME=${HOME}
+
 barCnf="/root/.barracuda.cnf"
 logAbf="/root/.autobeowulf.log"
 
@@ -224,7 +230,7 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
   echo " " >> ${logAbf}
   msg "Launching standard barracuda up-head system first" >> ${logAbf}
-  barracuda up-head system
+  barracuda up-head system >> ${logAbf}
   wait
   msg "The initial barracuda up-head system completed" >> ${logAbf}
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
@@ -243,7 +249,7 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
       msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf" >> ${logAbf}
     fi
     msg "The first stage of major OS upgrade will start now" >> ${logAbf}
-    barracuda up-head system
+    barracuda up-head system >> ${logAbf}
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       msg "The first stage of major OS upgrade completed" >> ${logAbf}
@@ -263,7 +269,7 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
   echo " " >> ${logAbf}
   msg "Launching post-reboot barracuda up-head system" >> ${logAbf}
   msg "to complete the first stage of major OS upgrade" >> ${logAbf}
-  barracuda up-head system
+  barracuda up-head system >> ${logAbf}
   wait
   msg "The post-reboot barracuda up-head system completed" >> ${logAbf}
   echo " " >> ${logAbf}
@@ -283,7 +289,7 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
   echo " " >> ${logAbf}
   msg "Launching the final post-second-reboot barracuda up-head system" >> ${logAbf}
-  barracuda up-head system
+  barracuda up-head system >> ${logAbf}
   wait
   rm -f /root/.run-to-beowulf.cnf
   rm -f /root/.run-auto-major-os-reboot-one.cnf

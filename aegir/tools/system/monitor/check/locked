@@ -2,6 +2,9 @@
 
 ### TODO - rewrite this legacy script in bash
 
+$ENV{'HOME'} = '/root';
+$ENV{'PATH'} = '/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin';
+
 $| = 1;
 if (-f "/var/run/boa_wait.pid") {exit;}
 $fpm_status="CLEAN";
