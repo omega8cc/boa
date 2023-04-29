@@ -237,7 +237,11 @@ check_sql_access() {
     || [[ ! "${_IS_SYNC_SQL_PSWD}" =~ "password=${_SQL_PSWD}" ]]; then
     echo "ALERT: SQL password is out of sync between"
     echo "ALERT: /root/.my.cnf and /root/.my.pass.txt"
-    echo "ALERT: We will check if the default password works"
+    echo "ALERT: Please fix this before trying again, giving up."
+    echo "Bye"
+    echo " "
+    clean_pid_exit
+  else
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       echo "ALERT: SQL server on this system is not running at all."
