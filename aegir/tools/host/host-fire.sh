@@ -10,19 +10,24 @@ csf_flood_guard() {
       /var/log/csf-count.kill.log
     kill -9 $(ps aux | grep '[c]sf' | awk '{print $2}') &> /dev/null
     csf -tf
+    wait
     csf -df
+    wait
   fi
   thisCountFire=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/fire.sh"`
   if [ ${thisCountFire} -gt "9" ]; then
     echo "$(date 2>&1) Too many ${thisCountFire} fire.sh processes killed and rules purged" >> \
       /var/log/fire-purge.kill.log
     csf -tf
+    wait
     csf -df
+    wait
     kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
   elif [ ${thisCountFire} -gt "7" ]; then
     echo "$(date 2>&1) Too many ${thisCountFire} fire.sh processes killed" >> \
       /var/log/fire-count.kill.log
     csf -tf
+    wait
     kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
   fi
 }

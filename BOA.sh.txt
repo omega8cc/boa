@@ -710,6 +710,7 @@ update_agents() {
         fi
         touch /var/xdrago/monitor/.scan_nginx_arch.${_X_SE}.pid
         csf -df
+        wait
       fi
     else
       mv -f /var/xdrago/monitor/check/scan_nginx.old /var/xdrago/monitor/check/scan_nginx
@@ -1888,8 +1889,17 @@ update_wrappers() {
       service clean-boa-env start &> /dev/null
       wait
       csf -uf
+      wait
+      sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
+      wait
+      sed -i "/^$/d" /etc/csf/csf.allow
+      _DHCP_TEST=$(grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq 2>&1)
+      if [[ "${_DHCP_TEST}" =~ "port" ]]; then
+        for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+      else
+        for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+      fi
       csf -q
-      sleep 8
       ### Linux kernel TCP SACK CVEs mitigation
       ### CVE-2019-11477 SACK Panic
       ### CVE-2019-11478 SACK Slowness
@@ -1912,11 +1922,10 @@ update_wrappers() {
       service clean-boa-env start &> /dev/null
       wait
       csf -uf
-      sleep 8
+      wait
       sed -i "s/^CC_SRC .*/CC_SRC = \"2\"/g" /etc/csf/csf.conf
       wait
       sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"0\"/g" /etc/csf/csf.conf
-      wait
       csf -q
     fi
   fi

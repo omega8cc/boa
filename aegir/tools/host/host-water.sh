@@ -352,7 +352,9 @@ whitelist_ip_site24x7() {
 
   if [ ! -e "/root/.whitelist.site24x7.cnf" ]; then
     csf -tf
+    wait
     csf -df
+    wait
     touch /root/.whitelist.site24x7.cnf
   fi
 }
@@ -619,15 +621,12 @@ if [ -e "/vservers" ] \
   killall sleep &> /dev/null
   rm -f /etc/csf/csf.error
   service lfd restart
-  echo "Waiting 8 seconds for firewall clean start..."
-  sleep 8
+  wait
   csf -e
-  sleep 1
-  csf -q
-  echo "Waiting 8 seconds for firewall clean restart..."
-  sleep 8
+  wait
   csf -tf
-  sleep 1
+  wait
+  csf -q
   ### Linux kernel TCP SACK CVEs mitigation
   ### CVE-2019-11477 SACK Panic
   ### CVE-2019-11478 SACK Slowness
@@ -662,7 +661,7 @@ if [ -e "/vservers" ] \
   killall sleep &> /dev/null
   rm -f /etc/csf/csf.error
   service lfd restart
-  sleep 8
+  wait
   sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
   wait
   sed -i "/^$/d" /etc/csf/csf.allow
@@ -673,9 +672,8 @@ if [ -e "/vservers" ] \
     for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
   fi
   csf -e
-  sleep 1
+  wait
   csf -q
-  sleep 8
   ### Linux kernel TCP SACK CVEs mitigation
   ### CVE-2019-11477 SACK Panic
   ### CVE-2019-11478 SACK Slowness

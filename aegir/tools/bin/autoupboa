@@ -373,7 +373,9 @@ if [ -e "/data/disk/arch/sql" ]; then
         bash /var/xdrago/guest-water.sh
         wait
         csf -df
+        wait
         csf -tf
+        wait
       fi
     fi
     if [ ! -e "/var/xdrago/log/.restart_site24x7_agent.pid" ]; then

@@ -203,11 +203,12 @@ if [ ! -e "${percList}" ] \
   if [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
     service lfd stop &> /dev/null
-    sleep 3
+    wait
     kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
     killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     csf -x &> /dev/null
+    wait
   fi
   _KEYS_SIG="8507EFA5"
   _KEYS_SERVER_TEST=FALSE
@@ -244,8 +245,9 @@ if [ ! -e "${percList}" ] \
   if [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
     csf -e &> /dev/null
-    sleep 3
+    wait
     service lfd start &> /dev/null
+    wait
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic
     ### CVE-2019-11478 SACK Slowness

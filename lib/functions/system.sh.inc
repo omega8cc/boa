@@ -4359,18 +4359,30 @@ finale() {
     echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
     chmod 700 /etc/csf/csfpost.sh
     service lfd stop &> /dev/null
-    sleep 3
+    wait
     kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
     killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
+    wait
     service clean-boa-env start &> /dev/null
     wait
     csf -uf &> /dev/null
+    wait
     csf -e  &> /dev/null
+    wait
+    sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
+    wait
+    sed -i "/^$/d" /etc/csf/csf.allow
+    _DHCP_TEST=$(grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq 2>&1)
+    if [[ "${_DHCP_TEST}" =~ "port" ]]; then
+      for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+    else
+      for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+    fi
     csf -q  &> /dev/null
-    sleep 8
     service lfd start &> /dev/null
+    wait
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic
     ### CVE-2019-11478 SACK Slowness
@@ -5614,11 +5626,12 @@ sys_packages_update() {
     rm -f /var/lib/mysql/debian-*.flag &> /dev/null
     if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       service lfd stop &> /dev/null
-      sleep 3
+      wait
       kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
       killall sleep &> /dev/null
       rm -f /etc/csf/csf.error
       csf -x &> /dev/null
+      wait
     fi
     _UP_JDK=NO
     _UP_LNX=NO

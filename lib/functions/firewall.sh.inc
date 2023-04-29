@@ -231,11 +231,12 @@ csf_lfd_install_upgrade() {
     fi
     if [ "$_REMOVE_CSF" = "YES" ]; then
       service lfd stop &> /dev/null
-      sleep 3
+      wait
       kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
       killall sleep &> /dev/null
       rm -f /etc/csf/csf.error
       csf -x &> /dev/null
+      wait
       update-rc.d -f csf remove &> /dev/null
       update-rc.d -f lfd remove &> /dev/null
       rm -f /etc/cron.d/{csf,lfd}*
@@ -271,15 +272,17 @@ csf_lfd_install_upgrade() {
       if [ -e "${pthLog}/lastFire" ]; then
         rm -f ${pthLog}/lastFire
         service lfd stop &> /dev/null
-        sleep 3
+        wait
         kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
         killall sleep &> /dev/null
         rm -f /etc/csf/csf.error
         mrun "csf -x" &> /dev/null
+        wait
         mrun "csf -e" &> /dev/null
+        wait
         mrun "csf -q" &> /dev/null
-        sleep 8
         service lfd start &> /dev/null
+        wait
         ### Linux kernel TCP SACK CVEs mitigation
         ### CVE-2019-11477 SACK Panic
         ### CVE-2019-11478 SACK Slowness

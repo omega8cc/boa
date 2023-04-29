@@ -1116,11 +1116,12 @@ db_server_install() {
     if [ -x "/usr/sbin/csf" ] \
       && [ -e "/etc/csf/csf.deny" ]; then
       service lfd stop &> /dev/null
-      sleep 3
+      wait
       kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
       killall sleep &> /dev/null
       rm -f /etc/csf/csf.error
       csf -x &> /dev/null
+      wait
     fi
     install_with_aptitude_sql
   else
@@ -1178,11 +1179,12 @@ db_server_install() {
       if [ -x "/usr/sbin/csf" ] \
         && [ -e "/etc/csf/csf.deny" ]; then
         service lfd stop &> /dev/null
-        sleep 3
+        wait
         kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
         killall sleep &> /dev/null
         rm -f /etc/csf/csf.error
         csf -x &> /dev/null
+        wait
       fi
       msg "INFO: Running ${_DB_SERVER} upgrade..."
       msg "WAIT: This may take a while, please wait..."
@@ -1394,8 +1396,9 @@ db_server_install() {
       fi
       if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
         mrun "csf -e" &> /dev/null
-        sleep 3
+        wait
         service lfd start &> /dev/null
+        wait
         ### Linux kernel TCP SACK CVEs mitigation
         ### CVE-2019-11477 SACK Panic
         ### CVE-2019-11478 SACK Slowness

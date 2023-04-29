@@ -587,13 +587,13 @@ if_firewall_update() {
     sysctl -p /etc/sysctl.conf
     cd
     service lfd stop
-    sleep 3
+    wait
     kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
     killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     csf -q
-    sleep 8
     service lfd start
+    wait
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic
     ### CVE-2019-11478 SACK Slowness
@@ -1489,13 +1489,13 @@ install_db_cluster() {
     echo "${_WEB_NODE_IP} # Web Cluster Node" >> /etc/csf/csf.ignore
   fi
   service lfd stop
-  sleep 3
+  wait
   kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
   killall sleep &> /dev/null
   rm -f /etc/csf/csf.error
   csf -q
-  sleep 8
   service lfd start
+  wait
   ### Linux kernel TCP SACK CVEs mitigation
   ### CVE-2019-11477 SACK Panic
   ### CVE-2019-11478 SACK Slowness

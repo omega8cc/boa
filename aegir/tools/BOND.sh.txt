@@ -1092,7 +1092,6 @@ restart_services() {
   service redis-server start &> /dev/null
   if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     mrun "csf -q" &> /dev/null
-    sleep 8
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic
     ### CVE-2019-11478 SACK Slowness
