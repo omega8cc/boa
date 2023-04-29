@@ -2873,7 +2873,7 @@ drush_system_install_update() {
       rm -rf /opt/tools/drush/4
       rm -f /usr/bin/drush4
     fi
-    mkdir -p /opt/tools/drush/{8,10,11,launcher}
+    mkdir -p /opt/tools/drush/{8,10,11,12,launcher}
     chown -R root:root /opt/tools
     if [ -e "/opt/tools/drush/8" ]; then
       _DRUSH_ITD=$(drush8 --version 2>&1 \
