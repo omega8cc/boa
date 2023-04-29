@@ -1055,6 +1055,7 @@ sub_count_usr_home() {
 
 action() {
   rm -f /var/xdrago/log/usage/usage-latest.log
+  rm -f /var/xdrago/log/usage/usage-latest-silent.log
   for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     count_cpu
     load_control
@@ -1175,7 +1176,7 @@ action() {
               else
                 _LOG_FILE="usage-latest-silent.log"
               fi
-              echo "${AegirUrl},${Files}:${HomSizH},${DbsL}:${SumDatH},${DbsD}:${SkipDtH},${eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" > /var/xdrago/log/usage/${_LOG_FILE}
+              echo "${AegirUrl},${Files}:${HomSizH},${DbsL}:${SumDatH},${DbsD}:${SkipDtH},${eMail},Subs:${_CLIENT_OPTION}:${_CLIENT_CORES},${_THIS_U}" >> /var/xdrago/log/usage/${_LOG_FILE}
             fi
             TmDir="${_THIS_HM_PLR}/profiles/hostmaster/themes/aegir/eldir"
             PgTpl="${TmDir}/page.tpl.php"
