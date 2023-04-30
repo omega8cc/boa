@@ -1546,11 +1546,21 @@ if_php_idle_on_off() {
   fi
   if [ "${_PHP_IDLE}" = "ON" ]; then
     rm -f /root/.allow-php-multi-install-cleanup.cnf
+    rm -f /var/xdrago/log/*.log
+    rm -f /var/xdrago/log/.php_libs_fix_*.pid
     touch /root/.proxy.cnf
     kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
     sleep 5
     php_not_used_enable_again
     sed -i "s/^_PHP_IDLE.*//g" ${barCnf}
+    php_install_deps
+    php_libs_fix
+    php_check_if_rebuild
+    php_install_upgrade
+    php_config_check_update
+    php_upgrade_all
+    if_install_php_newrelic
+    newrelic_check_fix
     echo " "
     msg "Bye"
     rm -f /root/.proxy.cnf
