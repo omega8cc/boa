@@ -2700,7 +2700,8 @@ clean_drush_twelve() {
     msg "PROC: clean_drush_twelve"
   fi
   rm -f /usr/bin/drush12*
-  ln -sf /opt/tools/drush/12/drush/vendor/drush/drush/drush /usr/bin/drush12-bin
+  ln -sf /opt/tools/drush/12/drush/vendor/bin/drush /usr/bin/drush12-bin
+  ln -sf /opt/tools/drush/12/drush/vendor/bin/drush /usr/bin/drush12
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH_TWELVE_VRN} setup complete"
   fi
@@ -2713,7 +2714,8 @@ clean_drush_eleven() {
     msg "PROC: clean_drush_eleven"
   fi
   rm -f /usr/bin/drush11*
-  ln -sf /opt/tools/drush/11/drush/vendor/drush/drush/drush /usr/bin/drush11-bin
+  ln -sf /opt/tools/drush/11/drush/vendor/bin/drush /usr/bin/drush11-bin
+  ln -sf /opt/tools/drush/11/drush/vendor/bin/drush /usr/bin/drush11
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} setup complete"
   fi
@@ -2733,7 +2735,8 @@ clean_drush_ten() {
   rm -f /usr/local/bin/release
   rm -f /usr/local/bin/robo
   rm -f /usr/local/bin/var-dump-server
-  ln -sf /opt/tools/drush/10/drush/vendor/drush/drush/drush /usr/bin/drush10-bin
+  ln -sf /opt/tools/drush/10/drush/vendor/bin/drush /usr/bin/drush10-bin
+  ln -sf /opt/tools/drush/10/drush/vendor/bin/drush /usr/bin/drush10
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH_TEN_VRN} setup complete"
   fi
@@ -2759,13 +2762,22 @@ set_drush_perm() {
     chmod 755 /opt/tools/drush/10/drush/vendor/drush/drush/drush
     chmod 755 /opt/tools/drush/10/drush/vendor/drush/drush/drush.php
   fi
+  if [ -e "/opt/tools/drush/10/drush/vendor/bin/drush" ]; then
+    chmod 755 /opt/tools/drush/10/drush/vendor/bin/*
+  fi
   if [ -e "/opt/tools/drush/11/drush/vendor/drush/drush/drush" ]; then
     chmod 755 /opt/tools/drush/11/drush/vendor/drush/drush/drush
     chmod 755 /opt/tools/drush/11/drush/vendor/drush/drush/drush.php
   fi
+  if [ -e "/opt/tools/drush/11/drush/vendor/bin/drush" ]; then
+    chmod 755 /opt/tools/drush/11/drush/vendor/bin/*
+  fi
   if [ -e "/opt/tools/drush/12/drush/vendor/drush/drush/drush" ]; then
     chmod 755 /opt/tools/drush/12/drush/vendor/drush/drush/drush
     chmod 755 /opt/tools/drush/12/drush/vendor/drush/drush/drush.php
+  fi
+  if [ -e "/opt/tools/drush/12/drush/vendor/bin/drush" ]; then
+    chmod 755 /opt/tools/drush/12/drush/vendor/bin/*
   fi
   if [ -e "/opt/tools/drush/launcher/drush.phar" ]; then
     chmod 755 /opt/tools/drush/launcher/drush.phar
@@ -2944,7 +2956,7 @@ drush_system_install_update() {
         | cut -d" " -f4 \
         | awk '{ print $1}' 2>&1)
       if [ "${_DRUSH_ITD}" != "${_DRUSH_TWELVE_VRN}" ] \
-        || [ ! -x "/opt/tools/drush/12/drush/vendor/drush/drush/drush" ] \
+        || [ ! -x "/opt/tools/drush/12/drush/vendor/bin/drush" ] \
         || [ ! -e "/opt/tools/drush/12/.ctrl.${_X_SE}.pid" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: Drush ${_DRUSH_TWELVE_VRN} re-installation required"
@@ -2994,7 +3006,7 @@ drush_system_install_update() {
     else
       msg "FAIL: Drush ${_DRUSH_ELEVEN_VRN} installation failed!"
     fi
-    if [ -x "/opt/tools/drush/12/drush/vendor/drush/drush/drush" ]; then
+    if [ -x "/opt/tools/drush/12/drush/vendor/bin/drush" ]; then
       clean_drush_twelve
     else
       msg "FAIL: Drush ${_DRUSH_TWELVE_VRN} installation failed!"
