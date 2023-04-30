@@ -100,6 +100,10 @@ else
   export TEMP="/tmp"
 fi
 
+export HOME=${HOME}
+export TEMP=${TEMP}
+export USER=${USER}
+
 # echo HOME is ${HOME}
 # echo TEMP is ${TEMP}
 # echo USER is ${USER}
