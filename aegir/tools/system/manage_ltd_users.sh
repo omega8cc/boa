@@ -2291,6 +2291,11 @@ manage_user() {
         rm -f ${dscUsr}/*.php* &> /dev/null
         rm -f ${dscUsr}/composer.lock &> /dev/null
         rm -f ${dscUsr}/composer.json &> /dev/null
+        rm -f -r ${dscUsr}/vendor &> /dev/null
+        rm -f -r ${dscUsr}/static/vendor &> /dev/null
+        rm -f -r ${dscUsr}/.cache/composer &> /dev/null
+        rm -f -r ${dscUsr}/.config/composer &> /dev/null
+        rm -f -r ${dscUsr}/.composer &> /dev/null
       fi
       chmod 0440 ${dscUsr}/.drush/*.php &> /dev/null
       chmod 0400 ${dscUsr}/.drush/drushrc.php &> /dev/null
