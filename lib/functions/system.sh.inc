@@ -1553,6 +1553,7 @@ if_php_idle_on_off() {
     sleep 5
     php_not_used_enable_again
     sed -i "s/^_PHP_IDLE.*//g" ${barCnf}
+    rm -f /root/.proxy.cnf
     php_install_deps
     php_libs_fix
     php_check_if_rebuild
@@ -1561,10 +1562,8 @@ if_php_idle_on_off() {
     php_upgrade_all
     if_install_php_newrelic
     newrelic_check_fix
-    echo " "
-    msg "Bye"
-    rm -f /root/.proxy.cnf
-    clean_pid_exit
+    complete
+    exit 0
   elif [ "${_PHP_IDLE}" = "OFF" ]; then
     touch /root/.proxy.cnf
     kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
