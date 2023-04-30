@@ -4265,7 +4265,15 @@ finale() {
   rm -rf /var/opt/*
   rm -f /var/xdrago/monitor/acrashsql.sh
   rm -f /var/xdrago/acrashsql.sh
-  rm -f /var/xdrago/usage.sh
+  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
+    _MY_USAGE=YES
+  else
+    _MY_USAGE=NO
+    rm -f /var/xdrago/usage.sh
+  fi
   rm -f /var/xdrago/memcache.sh*
   rm -f /var/xdrago/purge_cruft.sh
   rm -f /var/xdrago/*.old

@@ -550,8 +550,20 @@ update_agents() {
     fi
   fi
 
+  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
+    _MY_USAGE=YES
+  else
+    _MY_USAGE=NO
+    if [ -e "/var/xdrago/usage.sh" ]; then
+      rm -f /var/xdrago/usage.sh
+    fi
+  fi
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/data/disk/arch/sql" ] \
+    && [ "${_MY_USAGE}" = "YES" ] \
     && [ ! -e "${pthLog}/usage.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/usage.sh /var/xdrago/usage.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/usage.sh" -o /var/xdrago/usage.sh
