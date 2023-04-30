@@ -86,14 +86,13 @@
           reasons (not used PHP versions should be skipped and deactivated).
 
           To re-install disabled PHP versions after all upgrades are already
-          completed, run these commands:
+          completed, run this command:
 
-          $ barracuda php-idle enable
-          $ barracuda up-head system
+            $ barracuda php-idle enable
 
-          To disable not used PHP versions again, run only:
+          To disable not used PHP versions again, run this command:
 
-          $ barracuda php-idle disable
+            $ barracuda php-idle disable
 
 
 ###
