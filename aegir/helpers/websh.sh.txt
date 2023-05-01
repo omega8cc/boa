@@ -1,7 +1,6 @@
 #!/bin/bash
 
 export PATH=$PATH:/opt/local/bin
-export DRUSH_LAUNCHER_FALLBACK=/opt/tools/drush/10/drush/vendor/drush/drush/drush
 
 _ALL="$@"
 ### echo _ALL is ${_ALL}
@@ -22,12 +21,132 @@ if [[ "${_ALL}" =~ "true COLUMNS=" ]]; then
     esac
   done
   ### echo _ARR is ${_ARR}
+elif [[ "${_ALL}" =~ "drush " ]]; then
+  if [[ "${_ALL}" =~ "-c set -m" ]]; then
+    _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drush"`
+  else
+    _R_M=`echo -n ${_ALL} | grep -o "drush"`
+  fi
+  ### echo _R_M is ${_R_M}
+  _CLR=`echo ${_ALL} | sed "s/\${_R_M}//g"`
+  _ARR=() # the buffer array for filtered parameters
+  for arg in "${_CLR}"; do
+    case ${_R_M} in
+      $arg\ * | *\ $arg | *\ $arg\ *) ;;
+      *) _ARR+=("$arg") ;;
+    esac
+  done
+  ### echo _ARR is ${_ARR}
+elif [[ "${_ALL}" =~ "drush8 " ]]; then
+  if [[ "${_ALL}" =~ "-c set -m" ]]; then
+    _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drush8"`
+  else
+    _R_M=`echo -n ${_ALL} | grep -o "drush8"`
+  fi
+  ### echo _R_M is ${_R_M}
+  _CLR=`echo ${_ALL} | sed "s/\${_R_M}//g"`
+  _ARR=() # the buffer array for filtered parameters
+  for arg in "${_CLR}"; do
+    case ${_R_M} in
+      $arg\ * | *\ $arg | *\ $arg\ *) ;;
+      *) _ARR+=("$arg") ;;
+    esac
+  done
+  ### echo _ARR is ${_ARR}
+elif [[ "${_ALL}" =~ "drush10-bin " ]]; then
+  if [[ "${_ALL}" =~ "-c set -m" ]]; then
+    _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drush10-bin"`
+  else
+    _R_M=`echo -n ${_ALL} | grep -o "drush10-bin"`
+  fi
+  ### echo _R_M is ${_R_M}
+  _CLR=`echo ${_ALL} | sed "s/\${_R_M}//g"`
+  _ARR=() # the buffer array for filtered parameters
+  for arg in "${_CLR}"; do
+    case ${_R_M} in
+      $arg\ * | *\ $arg | *\ $arg\ *) ;;
+      *) _ARR+=("$arg") ;;
+    esac
+  done
+  ### echo _ARR is ${_ARR}
+elif [[ "${_ALL}" =~ "drush11-bin " ]]; then
+  if [[ "${_ALL}" =~ "-c set -m" ]]; then
+    _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drush11-bin"`
+  else
+    _R_M=`echo -n ${_ALL} | grep -o "drush11-bin"`
+  fi
+  ### echo _R_M is ${_R_M}
+  _CLR=`echo ${_ALL} | sed "s/\${_R_M}//g"`
+  _ARR=() # the buffer array for filtered parameters
+  for arg in "${_CLR}"; do
+    case ${_R_M} in
+      $arg\ * | *\ $arg | *\ $arg\ *) ;;
+      *) _ARR+=("$arg") ;;
+    esac
+  done
+  ### echo _ARR is ${_ARR}
+elif [[ "${_ALL}" =~ "drush12-bin " ]]; then
+  if [[ "${_ALL}" =~ "-c set -m" ]]; then
+    _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drush12-bin"`
+  else
+    _R_M=`echo -n ${_ALL} | grep -o "drush12-bin"`
+  fi
+  ### echo _R_M is ${_R_M}
+  _CLR=`echo ${_ALL} | sed "s/\${_R_M}//g"`
+  _ARR=() # the buffer array for filtered parameters
+  for arg in "${_CLR}"; do
+    case ${_R_M} in
+      $arg\ * | *\ $arg | *\ $arg\ *) ;;
+      *) _ARR+=("$arg") ;;
+    esac
+  done
+  ### echo _ARR is ${_ARR}
+fi
+
+_LNCHR_PHP_ARR=
+if [[ "${_ALL}" =~ "drushlr " ]]; then
+  if [[ "${_ALL}" =~ "-c set -m" ]]; then
+    _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drushlr"`
+  else
+    _R_M=`echo -n ${_ALL} | grep -o "drushlr"`
+  fi
+  ### echo _R_M is ${_R_M}
+  _CLR=`echo ${_ALL} | sed "s/\${_R_M}//g"`
+  _LNCHR_PHP_ARR=() # the buffer array for filtered parameters
+  for arg in "${_CLR}"; do
+    case ${_R_M} in
+      $arg\ * | *\ $arg | *\ $arg\ *) ;;
+      *) _LNCHR_PHP_ARR+=("$arg") ;;
+    esac
+  done
+  ### echo _LNCHR_PHP_ARR is ${_LNCHR_PHP_ARR}
+fi
+
+_LNCHR_SH_ARR=
+if [[ "${_ALL}" =~ "/opt/tools/drush/8/drush/drush.launcher " ]]; then
+  if [[ "${_ALL}" =~ "-c set -m" ]]; then
+    _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; /opt/tools/drush/8/drush/drush.launcher"`
+  else
+    _R_M=`echo -n ${_ALL} | grep -o "/opt/tools/drush/8/drush/drush.launcher"`
+  fi
+  ### echo _R_M is ${_R_M}
+  _CLR=`echo ${_ALL} | sed "s/.*drush.launcher//g"`
+  _LNCHR_SH_ARR=() # the buffer array for filtered parameters
+  for arg in "${_CLR}"; do
+    case ${_R_M} in
+      $arg\ * | *\ $arg | *\ $arg\ *) ;;
+      *) _LNCHR_SH_ARR+=("$arg") ;;
+    esac
+  done
+  ### echo _LNCHR_SH_ARR is ${_LNCHR_SH_ARR}
 fi
 
 _C_ARR=
 if [[ "${_ALL}" =~ "composer " ]]; then
   if [[ "${_ALL}" =~ "-c set -m" ]]; then
     _C_RM=`echo -n ${_ALL} | grep -o "\-c set -m\; composer"`
+  else
+    _C_RM=`echo -n ${_ALL} | grep -o "composer"`
   fi
   ### echo _C_RM is ${_C_RM}
   _CLR=`echo ${_ALL} | sed "s/\${_C_RM}//g"`
@@ -52,8 +171,12 @@ _X_USR=".*"
 if [ "${USER}" = "aegir" ] \
   || [ "${HOME}" = "/var/aegir" ]; then
   _Y_USR=aegir
+  _DRUSH_CLI_CTRL="/var/aegir/static/control/drcr-php-cli"
+  ### echo _DRUSH_CLI_CTRL is ${_DRUSH_CLI_CTRL}
 else
   _Y_USR=${USER%${_X_USR}}
+  _DRUSH_CLI_CTRL="/data/disk/${_Y_USR}/static/control/drcr-php-cli"
+  ### echo _DRUSH_CLI_CTRL is ${_DRUSH_CLI_CTRL}
 fi
 if [ -z "${HOME}" ]; then
   if [ -d "/home/${USER}/.tmp" ]; then
@@ -64,7 +187,7 @@ if [ -z "${HOME}" ]; then
     HOME="/var/${_Y_USR}"
   fi
 fi
-if [ "$1" = "-c" ]; then
+if [ "${1}" = "-c" ] || [[ "${1}" =~ "drush.launcher" ]]; then
   _ARGS="$2"
 else
   _ARGS="$1"
@@ -104,27 +227,27 @@ export HOME=${HOME}
 export TEMP=${TEMP}
 export USER=${USER}
 
-# echo HOME is ${HOME}
-# echo TEMP is ${TEMP}
-# echo USER is ${USER}
+### echo HOME is ${HOME}
+### echo TEMP is ${TEMP}
+### echo USER is ${USER}
 #
-# echo _ALL is ${_ALL}
-# echo _ARGS is ${_ARGS}
-# echo _LTD_GID is ${_LTD_GID}
-# echo _LTD_QQQ is ${_LTD_QQQ}
-# echo _LTD_UID is ${_LTD_UID}
-# echo _Y_USR is ${_Y_USR}
+### echo _ALL is ${_ALL}
+### echo _ARGS is ${_ARGS}
+### echo _LTD_GID is ${_LTD_GID}
+### echo _LTD_QQQ is ${_LTD_QQQ}
+### echo _LTD_UID is ${_LTD_UID}
+### echo _Y_USR is ${_Y_USR}
 #
-# echo 0 is $0
-# echo 1 is $1
-# echo 2 is $2
-# echo 3 is $3
-# echo 4 is $4
-# echo 5 is $5
-# echo 6 is $6
-# echo 7 is $7
-# echo 8 is $8
-# echo 9 is $9
+### echo 0 is $0
+### echo 1 is $1
+### echo 2 is $2
+### echo 3 is $3
+### echo 4 is $4
+### echo 5 is $5
+### echo 6 is $6
+### echo 7 is $7
+### echo 8 is $8
+### echo 9 is $9
 
 # Check PHP CLI version defined.
 check_php_cli_version() {
@@ -165,17 +288,35 @@ check_php_cli_version() {
     DRUSH_PHP="/opt/php56/bin/php"
     PHP_INI="/opt/php56/lib/php.ini"
   else
-    DRUSH_PHP=""
-    PHP_INI=""
+    DRUSH_PHP="/usr/bin/php"
+  fi
+  if [ -f "${HOME}/.drush/php.ini" ]; then
+    PHP_INI="${HOME}/.drush/php.ini"
+    ### echo 1 drush/php.ini PHP_INI is ${PHP_INI}
   fi
   if [ ! -z "${PHP_OPTIONS}" ] && [ -f "${HOME}/.drush/rphp.ini" ]; then
     PHP_INI="${HOME}/.drush/rphp.ini"
-    # echo 1 PHP_OPTIONS is ${PHP_OPTIONS}
+    ### echo 1 drush/rphp.ini PHP_OPTIONS is ${PHP_OPTIONS}
+    ### echo 1 drush/rphp.ini PHP_INI is ${PHP_INI}
   fi
+  export DRUSH_PHP;export PHP_INI;
 }
 
-if [ ! -z "${_C_ARR}" ]; then
-  check_php_cli_version
+if [ ! -z "${_C_ARR}" ] \
+  || [ ! -z "${_ARR}" ] \
+  || [ ! -z "${_LNCHR_PHP_ARR}" ] \
+  || [ ! -z "${_LNCHR_SH_ARR}" ] ; then
+  if [ ! -e "${_DRUSH_CLI_CTRL}/php82.info" ] \
+    && [ ! -e "${_DRUSH_CLI_CTRL}/php81.info" ] \
+    && [ ! -e "${_DRUSH_CLI_CTRL}/php80.info" ] \
+    && [ ! -e "${_DRUSH_CLI_CTRL}/php74.info" ] \
+    && [ ! -e "${_DRUSH_CLI_CTRL}/php73.info" ] \
+    && [ ! -e "${_DRUSH_CLI_CTRL}/php72.info" ] \
+    && [ ! -e "${_DRUSH_CLI_CTRL}/php71.info" ] \
+    && [ ! -e "${_DRUSH_CLI_CTRL}/php70.info" ] \
+    && [ ! -e "${_DRUSH_CLI_CTRL}/php56.info" ]; then
+    check_php_cli_version
+  fi
 fi
 
 if [ "${_LTD_GID}" = "www-data users" ] \
@@ -188,18 +329,250 @@ if [ "${_LTD_GID}" = "www-data users" ] \
   || [[ "${_LTD_GID}" =~ "rvm ltd-shell"($) ]] \
   || [[ "${_LTD_GID}" =~ (^)"users www-data"($) ]] \
   || [[ "${_LTD_GID}" =~ (^)"aegir www-data users"($) ]]; then
-  if [ "$1" = "-c" ]; then
+  if [ "${1}" = "-c" ] || [[ "${1}" =~ "drush.launcher" ]]; then
+    _ARGS="$2"
     _IS_SH_PATH=NO
     if [ "$0" = "/bin/sh" ] || [ "$0" = "/usr/bin/sh" ]; then
       _IS_SH_PATH=YES
+    else
+      echo
+      echo "  ERROR: Not Authorized Path"
+      echo
+      exit 1
     fi
-    if [[ "$2" =~ "set -m;" ]] && [ "${_IS_SH_PATH}" = "YES" ]; then
+    if [[ "${2}" =~ "set -m;" ]] || [[ "${1}" =~ "drush.launcher" ]]; then
       _IN_PATH=YES
       _INTERNAL=YES
-      if [[ "${_ALL}" =~ "drush" ]]; then
+      if [[ "${_ALL}" =~ "drush " ]] \
+        || [[ "${_ALL}" =~ "drush8 " ]] \
+        || [[ "${_ALL}" =~ "drushlr " ]] \
+        || [[ "${_ALL}" =~ "drush.launcher " ]] \
+        || [[ "${_ALL}" =~ "drush10-bin " ]] \
+        || [[ "${_ALL}" =~ "drush11-bin " ]] \
+        || [[ "${_ALL}" =~ "drush12-bin " ]]; then
         _PWD=$(pwd 2>&1)
-        check_php_cli_version
-        if [[ "$2" =~ "pm-update" ]]; then
+        _DEST_DRUSH="/usr/bin/drush8"
+        if [[ "${_ALL}" =~ "drush.launcher " ]]; then
+          _DEST_DRUSH="/opt/tools/drush/8/drush/drush.launcher"
+          if [ -e "${_DRUSH_CLI_CTRL}/php82.info" ] \
+            && [ -x "/opt/php82/bin/php" ]; then
+            DRUSH_PHP="/opt/php82/bin/php"
+            PHP_INI="/opt/php82/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php81.info" ] \
+            && [ -x "/opt/php81/bin/php" ]; then
+            DRUSH_PHP="/opt/php81/bin/php"
+            PHP_INI="/opt/php81/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php80.info" ] \
+            && [ -x "/opt/php80/bin/php" ]; then
+            DRUSH_PHP="/opt/php80/bin/php"
+            PHP_INI="/opt/php80/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php74.info" ] \
+            && [ -x "/opt/php74/bin/php" ]; then
+            DRUSH_PHP="/opt/php74/bin/php"
+            PHP_INI="/opt/php74/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php73.info" ] \
+            && [ -x "/opt/php73/bin/php" ]; then
+            DRUSH_PHP="/opt/php73/bin/php"
+            PHP_INI="/opt/php73/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php72.info" ] \
+            && [ -x "/opt/php72/bin/php" ]; then
+            DRUSH_PHP="/opt/php72/bin/php"
+            PHP_INI="/opt/php72/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php71.info" ] \
+            && [ -x "/opt/php71/bin/php" ]; then
+            DRUSH_PHP="/opt/php71/bin/php"
+            PHP_INI="/opt/php71/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php70.info" ] \
+            && [ -x "/opt/php70/bin/php" ]; then
+            DRUSH_PHP="/opt/php70/bin/php"
+            PHP_INI="/opt/php70/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php56.info" ] \
+            && [ -x "/opt/php56/bin/php" ]; then
+            DRUSH_PHP="/opt/php56/bin/php"
+            PHP_INI="/opt/php56/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          fi
+        elif [[ "${_ALL}" =~ "drushlr " ]]; then
+          _DEST_DRUSH="/usr/bin/drushlr"
+          if [ -e "${_DRUSH_CLI_CTRL}/php82.info" ] \
+            && [ -x "/opt/php82/bin/php" ]; then
+            DRUSH_PHP="/opt/php82/bin/php"
+            PHP_INI="/opt/php82/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php81.info" ] \
+            && [ -x "/opt/php81/bin/php" ]; then
+            DRUSH_PHP="/opt/php81/bin/php"
+            PHP_INI="/opt/php81/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php80.info" ] \
+            && [ -x "/opt/php80/bin/php" ]; then
+            DRUSH_PHP="/opt/php80/bin/php"
+            PHP_INI="/opt/php80/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php74.info" ] \
+            && [ -x "/opt/php74/bin/php" ]; then
+            DRUSH_PHP="/opt/php74/bin/php"
+            PHP_INI="/opt/php74/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php73.info" ] \
+            && [ -x "/opt/php73/bin/php" ]; then
+            DRUSH_PHP="/opt/php73/bin/php"
+            PHP_INI="/opt/php73/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php72.info" ] \
+            && [ -x "/opt/php72/bin/php" ]; then
+            DRUSH_PHP="/opt/php72/bin/php"
+            PHP_INI="/opt/php72/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php71.info" ] \
+            && [ -x "/opt/php71/bin/php" ]; then
+            DRUSH_PHP="/opt/php71/bin/php"
+            PHP_INI="/opt/php71/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php70.info" ] \
+            && [ -x "/opt/php70/bin/php" ]; then
+            DRUSH_PHP="/opt/php70/bin/php"
+            PHP_INI="/opt/php70/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php56.info" ] \
+            && [ -x "/opt/php56/bin/php" ]; then
+            DRUSH_PHP="/opt/php56/bin/php"
+            PHP_INI="/opt/php56/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          fi
+        elif [[ "${_ALL}" =~ "drush12-bin " ]]; then
+          _DEST_DRUSH="/usr/bin/drush12-bin"
+          if [ -e "${_DRUSH_CLI_CTRL}/php82.info" ] \
+            && [ -x "/opt/php82/bin/php" ]; then
+            DRUSH_PHP="/opt/php82/bin/php"
+            PHP_INI="/opt/php82/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php81.info" ] \
+            && [ -x "/opt/php81/bin/php" ]; then
+            DRUSH_PHP="/opt/php81/bin/php"
+            PHP_INI="/opt/php81/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          else
+            if [ -d "${_DRUSH_CLI_CTRL}" ]; then
+              echo
+              echo "  Drush 12 requires either PHP 8.1 or 8.2"
+              echo "  Please create empty control file:"
+              echo
+              echo "  ${_DRUSH_CLI_CTRL}/php81.info"
+              echo "  or"
+              echo "  ${_DRUSH_CLI_CTRL}/php82.info"
+              echo
+              echo "  NOTE: If you create more than one,"
+              echo "        the highest version wins."
+              echo "  Bye"
+              echo
+              exit 0
+            fi
+          fi
+        elif [[ "${_ALL}" =~ "drush11-bin " ]] \
+          || [[ "${_ALL}" =~ "drush10-bin " ]]; then
+          if [[ "${_ALL}" =~ "drush11-bin " ]]; then
+            _DEST_DRUSH="/usr/bin/drush11-bin"
+          elif [[ "${_ALL}" =~ "drush10-bin " ]]; then
+            _DEST_DRUSH="/usr/bin/drush10-bin"
+          fi
+          if [ -e "${_DRUSH_CLI_CTRL}/php82.info" ] \
+            && [ -x "/opt/php82/bin/php" ]; then
+            DRUSH_PHP="/opt/php82/bin/php"
+            PHP_INI="/opt/php82/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php81.info" ] \
+            && [ -x "/opt/php81/bin/php" ]; then
+            DRUSH_PHP="/opt/php81/bin/php"
+            PHP_INI="/opt/php81/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php80.info" ] \
+            && [ -x "/opt/php80/bin/php" ]; then
+            DRUSH_PHP="/opt/php80/bin/php"
+            PHP_INI="/opt/php80/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php74.info" ] \
+            && [ -x "/opt/php74/bin/php" ]; then
+            DRUSH_PHP="/opt/php74/bin/php"
+            PHP_INI="/opt/php74/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          else
+            if [ -d "${_DRUSH_CLI_CTRL}" ]; then
+              echo
+              echo "  Drush 11 and Drush 10 require at least PHP 7.4"
+              echo "  Please create empty control file:"
+              echo
+              echo "  ${_DRUSH_CLI_CTRL}/php74.info"
+              echo "  or"
+              echo "  ${_DRUSH_CLI_CTRL}/php81.info"
+              echo "  or"
+              echo "  ${_DRUSH_CLI_CTRL}/php82.info"
+              echo
+              echo "  NOTE: If you create more than one,"
+              echo "        the highest version wins."
+              echo "  Bye"
+              echo
+              exit 0
+            fi
+          fi
+        else
+          _DEST_DRUSH="/usr/bin/drush8"
+          if [ -e "${_DRUSH_CLI_CTRL}/php82.info" ] \
+            && [ -x "/opt/php82/bin/php" ]; then
+            DRUSH_PHP="/opt/php82/bin/php"
+            PHP_INI="/opt/php82/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php81.info" ] \
+            && [ -x "/opt/php81/bin/php" ]; then
+            DRUSH_PHP="/opt/php81/bin/php"
+            PHP_INI="/opt/php81/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php80.info" ] \
+            && [ -x "/opt/php80/bin/php" ]; then
+            DRUSH_PHP="/opt/php80/bin/php"
+            PHP_INI="/opt/php80/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php74.info" ] \
+            && [ -x "/opt/php74/bin/php" ]; then
+            DRUSH_PHP="/opt/php74/bin/php"
+            PHP_INI="/opt/php74/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php73.info" ] \
+            && [ -x "/opt/php73/bin/php" ]; then
+            DRUSH_PHP="/opt/php73/bin/php"
+            PHP_INI="/opt/php73/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php72.info" ] \
+            && [ -x "/opt/php72/bin/php" ]; then
+            DRUSH_PHP="/opt/php72/bin/php"
+            PHP_INI="/opt/php72/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php71.info" ] \
+            && [ -x "/opt/php71/bin/php" ]; then
+            DRUSH_PHP="/opt/php71/bin/php"
+            PHP_INI="/opt/php71/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php70.info" ] \
+            && [ -x "/opt/php70/bin/php" ]; then
+            DRUSH_PHP="/opt/php70/bin/php"
+            PHP_INI="/opt/php70/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          elif [ -e "${_DRUSH_CLI_CTRL}/php56.info" ] \
+            && [ -x "/opt/php56/bin/php" ]; then
+            DRUSH_PHP="/opt/php56/bin/php"
+            PHP_INI="/opt/php56/lib/php.ini"
+            export DRUSH_PHP;export PHP_INI;
+          fi
+        fi
+        if [[ "$2" =~ "debug-pm-update" ]]; then
           DRUSH_PHP=""
           _PHP_DEFAULT=$(/usr/bin/php-cli -v | grep 'PHP 7' \
             | cut -d: -f1 | awk '{ print $2}' 2>&1)
@@ -230,18 +603,10 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           elif [[ "${_PHP_DEFAULT}" =~ "5.6." ]]; then
             PHP_INI="/opt/php56/lib/php.ini"
           fi
-        else
-          if [ -f "${HOME}/.drush/php.ini" ]; then
-            PHP_INI="${HOME}/.drush/php.ini"
-          fi
-          if [ ! -z "${PHP_OPTIONS}" ] \
-            && [ -f "${HOME}/.drush/rphp.ini" ]; then
-            PHP_INI="${HOME}/.drush/rphp.ini"
-            # echo 2 PHP_OPTIONS is ${PHP_OPTIONS}
-          fi
+          export PHP_INI;
         fi
-        # echo 1 DRUSH_PHP is ${DRUSH_PHP}
-        # echo 1 PHP_INI is ${PHP_INI}
+        ### echo 1 DRUSH_PHP is ${DRUSH_PHP}
+        ### echo 1 PHP_INI is ${PHP_INI}
         if [[ "${_ALL}" =~ "drush make" ]] \
           || [[ "${_ALL}" =~ "drush8 make" ]] \
           || [[ "${_ALL}" =~ "drush cc drush" ]] \
@@ -282,6 +647,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             || [[ "${_ALL}" =~ "drush10-bin @" ]] \
             || [[ "${_ALL}" =~ "drush11-bin @" ]] \
             || [[ "${_ALL}" =~ "drush12-bin @" ]] \
+            || [[ "${_ALL}" =~ "drush.launcher @" ]] \
             || [[ "${_ALL}" =~ "drushlr @" ]]; then
             if [[ "$3" =~ "restore"($) ]] \
               || [[ "$3" =~ "arr"($) ]] \
@@ -358,8 +724,16 @@ if [ "${_LTD_GID}" = "www-data users" ] \
               echo " Hint: Use 'drush aliases' to display all aliases"
               echo
               exit 0
-            elif [[ "${_ALL}" =~ "drush" ]] && [ -f "${_PWD}/settings.php" ]; then
-              _CORRECT=YES
+            elif [ -f "${_PWD}/settings.php" ]; then
+              if [[ "${_ALL}" =~ "drush " ]] \
+                || [[ "${_ALL}" =~ "drush8 " ]] \
+                || [[ "${_ALL}" =~ "drushlr " ]] \
+                || [[ "${_ALL}" =~ "drush.launcher " ]] \
+                || [[ "${_ALL}" =~ "drush10-bin " ]] \
+                || [[ "${_ALL}" =~ "drush11-bin " ]] \
+                || [[ "${_ALL}" =~ "drush12-bin " ]]; then
+                _CORRECT=YES
+              fi
             fi
           fi
         fi
@@ -370,6 +744,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         || [[ "${_ALL}" =~ "drush10-bin @" ]] \
         || [[ "${_ALL}" =~ "drush11-bin @" ]] \
         || [[ "${_ALL}" =~ "drush12-bin @" ]] \
+        || [[ "${_ALL}" =~ "drush.launcher @" ]] \
         || [[ "${_ALL}" =~ "drushlr @" ]]; then
         if [[ "$3" =~ "restore"($) ]] \
           || [[ "$3" =~ "arr"($) ]] \
@@ -455,6 +830,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       || [[ "${_ALL}" =~ "drush10-bin @" ]] \
       || [[ "${_ALL}" =~ "drush11-bin @" ]] \
       || [[ "${_ALL}" =~ "drush12-bin @" ]] \
+      || [[ "${_ALL}" =~ "drush.launcher @" ]] \
       || [[ "${_ALL}" =~ "drushlr @" ]]; then
       if [[ "$3" =~ "restore"($) ]] \
         || [[ "$3" =~ "arr"($) ]] \
@@ -486,18 +862,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       || [[ "$1" =~ (^)"/bin/" ]] \
       || [[ "$1" =~ (^)"/opt/" ]]; then
       _IN_PATH=YES
-      if [ -z "${PHP_INI}" ] && [[ "$1" =~ "drush" ]]; then
-        check_php_cli_version
-        if [ -f "${HOME}/.drush/php.ini" ]; then
-          PHP_INI="${HOME}/.drush/php.ini"
-        fi
-        if [ ! -z "${PHP_OPTIONS}" ] && [ -f "${HOME}/.drush/rphp.ini" ]; then
-          PHP_INI="${HOME}/.drush/rphp.ini"
-          # echo 3 PHP_OPTIONS is ${PHP_OPTIONS}
-        fi
-        # echo 2 DRUSH_PHP is ${DRUSH_PHP}
-        # echo 2 PHP_INI is ${PHP_INI}
-      fi
     elif [[ "$1" =~ (^)"/data/disk/${_Y_USR}/tools/drush/drush.php" ]]; then
       _IN_PATH=YES
     elif [[ "$1" =~ (^)"(/data/disk/${_Y_USR}/tools/drush/drush.php" ]]; then
@@ -518,18 +882,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         || [[ "${_WHICH_TEST}" =~ (^)"/bin/" ]] \
         || [[ "${_WHICH_TEST}" =~ (^)"/opt/" ]]; then
         _IN_PATH=YES
-        if [ -z "${PHP_INI}" ] && [[ "$1" =~ "drush" ]]; then
-          check_php_cli_version
-          if [ -f "${HOME}/.drush/php.ini" ]; then
-            PHP_INI="${HOME}/.drush/php.ini"
-          fi
-          if [ ! -z "${PHP_OPTIONS}" ] && [ -f "${HOME}/.drush/rphp.ini" ]; then
-            PHP_INI="${HOME}/.drush/rphp.ini"
-            # echo 4 PHP_OPTIONS is ${PHP_OPTIONS}
-          fi
-          # echo 3 DRUSH_PHP is ${DRUSH_PHP}
-          # echo 3 PHP_INI is ${PHP_INI}
-        fi
       else
         _IN_PATH=NO
       fi
@@ -549,28 +901,28 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "${_ALL}" =~ ".tmp" ]] \
           || [[ "${_ALL}" =~ "avconv" ]] \
           || [[ "${_ALL}" =~ "bzr " ]] \
-          || [[ "${_ALL}" =~ "chdir" ]] \
-          || [[ "${_ALL}" =~ "compass" ]] \
-          || [[ "${_ALL}" =~ "composer" ]] \
-          || [[ "${_ALL}" =~ "convert" ]] \
+          || [[ "${_ALL}" =~ "chdir " ]] \
+          || [[ "${_ALL}" =~ "compass " ]] \
+          || [[ "${_ALL}" =~ "composer " ]] \
+          || [[ "${_ALL}" =~ "convert " ]] \
           || [[ "${_ALL}" =~ "curl " ]] \
           || [[ "${_ALL}" =~ "drush" ]] \
-          || [[ "${_ALL}" =~ "ffmpeg" ]] \
-          || [[ "${_ALL}" =~ "flvtool" ]] \
-          || [[ "${_ALL}" =~ "git" ]] \
+          || [[ "${_ALL}" =~ "ffmpeg " ]] \
+          || [[ "${_ALL}" =~ "flvtool " ]] \
+          || [[ "${_ALL}" =~ "git " ]] \
           || [[ "${_ALL}" =~ "is_" ]] \
           || [[ "${_ALL}" =~ "java" ]] \
-          || [[ "${_ALL}" =~ "logger" ]] \
+          || [[ "${_ALL}" =~ "logger " ]] \
           || [[ "${_ALL}" =~ "php " ]] \
-          || [[ "${_ALL}" =~ "unzip" ]] \
-          || [[ "${_ALL}" =~ "rename" ]] \
-          || [[ "${_ALL}" =~ "rrdtool" ]] \
-          || [[ "${_ALL}" =~ "rsync" ]] \
-          || [[ "${_ALL}" =~ "sass" ]] \
-          || [[ "${_ALL}" =~ "scp" ]] \
-          || [[ "${_ALL}" =~ "scss" ]] \
-          || [[ "${_ALL}" =~ "sendmail" ]] \
-          || [[ "${_ALL}" =~ "ssh" ]] \
+          || [[ "${_ALL}" =~ "unzip " ]] \
+          || [[ "${_ALL}" =~ "rename " ]] \
+          || [[ "${_ALL}" =~ "rrdtool " ]] \
+          || [[ "${_ALL}" =~ "rsync " ]] \
+          || [[ "${_ALL}" =~ "sass " ]] \
+          || [[ "${_ALL}" =~ "scp " ]] \
+          || [[ "${_ALL}" =~ "scss " ]] \
+          || [[ "${_ALL}" =~ "sendmail " ]] \
+          || [[ "${_ALL}" =~ "ssh " ]] \
           || [[ "${_ALL}" =~ "svn " ]] \
           || [[ "${_ALL}" =~ "tar " ]] \
           || [[ "${_ALL}" =~ "wget " ]] \
@@ -654,37 +1006,137 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       || [ "$0" = "/usr/bin/sh" ] \
       || [ "$0" = "/bin/websh" ]; then
       if [ -x "/bin/dash" ]; then
-        if [ ! -z "${_ARR}" ]; then
-          export DRUSH_PHP;export PHP_INI;exec drush ${_ARR}
+        if [ ! -z "${_ARR}" ] && [ -z "${_LNCHR_PHP_ARR}" ] && [ -z "${_LNCHR_SH_ARR}" ]; then
+          ### echo EXD 1 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 1 PHP_INI is ${PHP_INI}
+          ### echo EXD 1 _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 1 _ARR is ${_ARR}
+          export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}
+          exit 0
+        elif [ ! -z "${_LNCHR_PHP_ARR}" ]; then
+          ### echo EXD 2 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 2 PHP_INI is ${PHP_INI}
+          ### echo EXD 2 _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 2 _LNCHR_PHP_ARR is ${_LNCHR_PHP_ARR}
+          export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_LNCHR_PHP_ARR}
+          exit 0
+        elif [ ! -z "${_LNCHR_SH_ARR}" ]; then
+          ### echo EXD 2 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 2 PHP_INI is ${PHP_INI}
+          ### echo EXD 2 _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 2 _LNCHR_SH_ARR is ${_LNCHR_SH_ARR}
+          export DRUSH_PHP;export PHP_INI;exec /bin/dash ${_DEST_DRUSH} ${_LNCHR_SH_ARR}
+          exit 0
         elif [ ! -z "${_C_ARR}" ]; then
+          ### echo EXC 1 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXC 1 _C_ARR is ${_C_ARR}
           exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
+          exit 0
         else
+          ### echo EXH 1 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXH 1 PHP_INI is ${PHP_INI}
           export DRUSH_PHP;export PHP_INI;exec /bin/dash "$@"
+          exit 0
         fi
       elif [ -x "/usr/bin/dash" ]; then
-        if [ ! -z "${_ARR}" ]; then
-          export DRUSH_PHP;export PHP_INI;exec drush ${_ARR}
+        if [ ! -z "${_ARR}" ] && [ -z "${_LNCHR_PHP_ARR}" ] && [ -z "${_LNCHR_SH_ARR}" ]; then
+          ### echo EXD 1 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 1 PHP_INI is ${PHP_INI}
+          ### echo EXD 1 _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 1 _ARR is ${_ARR}
+          export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}
+          exit 0
+        elif [ ! -z "${_LNCHR_PHP_ARR}" ]; then
+          ### echo EXD 2 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 2 PHP_INI is ${PHP_INI}
+          ### echo EXD 2 _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 2 _LNCHR_PHP_ARR is ${_LNCHR_PHP_ARR}
+          export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_LNCHR_PHP_ARR}
+          exit 0
+        elif [ ! -z "${_LNCHR_SH_ARR}" ]; then
+          ### echo EXD 2 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 2 PHP_INI is ${PHP_INI}
+          ### echo EXD 2 _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 2 _LNCHR_SH_ARR is ${_LNCHR_SH_ARR}
+          export DRUSH_PHP;export PHP_INI;exec /bin/dash ${_DEST_DRUSH} ${_LNCHR_SH_ARR}
+          exit 0
         elif [ ! -z "${_C_ARR}" ]; then
+          ### echo EXC 2 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXC 2 _C_ARR is ${_C_ARR}
           exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
+          exit 0
         else
+          ### echo EXH 2 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXH 2 PHP_INI is ${PHP_INI}
           export DRUSH_PHP;export PHP_INI;exec /usr/bin/dash "$@"
+          exit 0
         fi
       else
-        if [ ! -z "${_ARR}" ]; then
-          export DRUSH_PHP;export PHP_INI;exec drush ${_ARR}
+        if [ ! -z "${_ARR}" ] && [ -z "${_LNCHR_PHP_ARR}" ] && [ -z "${_LNCHR_SH_ARR}" ]; then
+          ### echo EXD 1 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 1 PHP_INI is ${PHP_INI}
+          ### echo EXD 1 _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 1 _ARR is ${_ARR}
+          export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}
+          exit 0
+        elif [ ! -z "${_LNCHR_PHP_ARR}" ]; then
+          ### echo EXD 2 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 2 PHP_INI is ${PHP_INI}
+          ### echo EXD 2 _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 2 _LNCHR_PHP_ARR is ${_LNCHR_PHP_ARR}
+          export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_LNCHR_PHP_ARR}
+          exit 0
+        elif [ ! -z "${_LNCHR_SH_ARR}" ]; then
+          ### echo EXD 2 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 2 PHP_INI is ${PHP_INI}
+          ### echo EXD 2 _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 2 _LNCHR_SH_ARR is ${_LNCHR_SH_ARR}
+          export DRUSH_PHP;export PHP_INI;exec /bin/dash ${_DEST_DRUSH} ${_LNCHR_SH_ARR}
+          exit 0
         elif [ ! -z "${_C_ARR}" ]; then
+          ### echo EXC 3 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXC 3 _C_ARR is ${_C_ARR}
           exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
+          exit 0
         else
+          ### echo EXH 3 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXH 3 PHP_INI is ${PHP_INI}
           export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
+          exit 0
         fi
       fi
     else
-      if [ ! -z "${_ARR}" ]; then
-        export DRUSH_PHP;export PHP_INI;exec drush ${_ARR}
+      if [ ! -z "${_ARR}" ] && [ -z "${_LNCHR_PHP_ARR}" ] && [ -z "${_LNCHR_SH_ARR}" ]; then
+        ### echo EXD 1 DRUSH_PHP is ${DRUSH_PHP}
+        ### echo EXD 1 PHP_INI is ${PHP_INI}
+        ### echo EXD 1 _DEST_DRUSH is ${_DEST_DRUSH}
+        ### echo EXD 1 _ARR is ${_ARR}
+        export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}
+        exit 0
+      elif [ ! -z "${_LNCHR_PHP_ARR}" ]; then
+        ### echo EXD 2 DRUSH_PHP is ${DRUSH_PHP}
+        ### echo EXD 2 PHP_INI is ${PHP_INI}
+        ### echo EXD 2 _DEST_DRUSH is ${_DEST_DRUSH}
+        ### echo EXD 2 _LNCHR_PHP_ARR is ${_LNCHR_PHP_ARR}
+        export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_LNCHR_PHP_ARR}
+        exit 0
+      elif [ ! -z "${_LNCHR_SH_ARR}" ]; then
+        ### echo EXD 2 DRUSH_PHP is ${DRUSH_PHP}
+        ### echo EXD 2 PHP_INI is ${PHP_INI}
+        ### echo EXD 2 _DEST_DRUSH is ${_DEST_DRUSH}
+        ### echo EXD 2 _LNCHR_SH_ARR is ${_LNCHR_SH_ARR}
+        export DRUSH_PHP;export PHP_INI;exec /bin/dash ${_DEST_DRUSH} ${_LNCHR_SH_ARR}
+        exit 0
       elif [ ! -z "${_C_ARR}" ]; then
-          exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
+        ### echo EXC 4 DRUSH_PHP is ${DRUSH_PHP}
+        ### echo EXC 4 _C_ARR is ${_C_ARR}
+        exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
+        exit 0
       else
+        ### echo EXO 1 DRUSH_PHP is ${DRUSH_PHP}
+        ### echo EXO 1 PHP_INI is ${PHP_INI}
         export DRUSH_PHP;export PHP_INI;exec $0 "$@"
+        exit 0
       fi
     fi
     exit 0
@@ -714,28 +1166,30 @@ else
       fi
     fi
   fi
-  check_php_cli_version
-  if [ -f "${HOME}/.drush/php.ini" ]; then
-    PHP_INI="${HOME}/.drush/php.ini"
-  fi
-  if [ ! -z "${PHP_OPTIONS}" ] && [ -f "${HOME}/.drush/rphp.ini" ]; then
-    PHP_INI="${HOME}/.drush/rphp.ini"
-    # echo 5 PHP_OPTIONS is ${PHP_OPTIONS}
-  fi
-  # echo 4 DRUSH_PHP is ${DRUSH_PHP}
-  # echo 4 PHP_INI is ${PHP_INI}
   if [ "$0" = "/bin/sh" ] \
     || [ "$0" = "/usr/bin/sh" ] \
     || [ "$0" = "/bin/websh" ]; then
     if [ -x "/bin/dash" ]; then
+      ### echo EXH 4 DRUSH_PHP is ${DRUSH_PHP}
+      ### echo EXH 4 PHP_INI is ${PHP_INI}
       export DRUSH_PHP;export PHP_INI;exec /bin/dash "$@"
+      exit 0
     elif [ -x "/usr/bin/dash" ]; then
+      ### echo EXH 5 DRUSH_PHP is ${DRUSH_PHP}
+      ### echo EXH 5 PHP_INI is ${PHP_INI}
       export DRUSH_PHP;export PHP_INI;exec /usr/bin/dash "$@"
+      exit 0
     else
+      ### echo EXH 6 DRUSH_PHP is ${DRUSH_PHP}
+      ### echo EXH 6 PHP_INI is ${PHP_INI}
       export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
+      exit 0
     fi
   else
+    ### echo EXO 2 DRUSH_PHP is ${DRUSH_PHP}
+    ### echo EXO 2 PHP_INI is ${PHP_INI}
     export DRUSH_PHP;export PHP_INI;exec $0 "$@"
+    exit 0
   fi
   exit 0
 fi
