@@ -262,6 +262,7 @@ fix_php_ini_opcache_all() {
     _PHP_V="82 81 80 74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
+    _P_API=
     case "${e}" in
       82) _P_API="${_PHP82_API}" ;;
       81) _P_API="${_PHP81_API}" ;;
@@ -313,6 +314,7 @@ fix_php_ini_tet_all() {
   if [ "${_PHP_TET}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "TET" ]]; then
     _PHP_V="82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
+      _P_API=
       case "${e}" in
         82) _P_API="${_PHP82_API}" ;;
         81) _P_API="${_PHP81_API}" ;;

@@ -580,7 +580,9 @@ fix_php_ini_opcache() {
 fix_php_ini_opcache_all() {
   _PHP_V="82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
+    _P_API=
     case "${e}" in
+      82) _P_API="${_PHP82_API}" ;;
       81) _P_API="${_PHP81_API}" ;;
       80) _P_API="${_PHP80_API}" ;;
       74) _P_API="${_PHP74_API}" ;;
@@ -614,9 +616,12 @@ fix_php_ini_tet() {
 # Fix all php.ini files to add php_tet.so
 fix_php_ini_tet_all() {
   if [ "${_PHP_TET}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "TET" ]]; then
-    _PHP_V="80 74 73 72 71 70 56"
+    _PHP_V="82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
+      _P_API=
       case "${e}" in
+        82) _P_API="${_PHP82_API}" ;;
+        81) _P_API="${_PHP81_API}" ;;
         80) _P_API="${_PHP80_API}" ;;
         74) _P_API="${_PHP74_API}" ;;
         73) _P_API="${_PHP73_API}" ;;
