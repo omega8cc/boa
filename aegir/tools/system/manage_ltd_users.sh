@@ -1133,7 +1133,11 @@ php_cli_local_ini_update() {
 #
 # Update PHP-CLI for Drush.
 php_cli_drush_update() {
-  _DRUSH_FILE="${dscUsr}/tools/drush/drush.php"
+  if [ ! -z "${1}" ]; then
+    _DRUSH_FILE="${dscUsr}/tools/drush/${1}"
+  else
+    _DRUSH_FILE="${dscUsr}/tools/drush/drush.php"
+  fi
   if [ "${_T_CLI_VRN}" = "8.2" ] && [ -x "/opt/php82/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php82\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
     _T_CLI=/opt/php82/bin
@@ -1720,7 +1724,10 @@ switch_php() {
         if [ "${_T_CLI_VRN}" != "${_PHP_CLI_VERSION}" ] \
           || [ ! -e "${dscUsr}/static/control/.ctrl.cli.${_X_SE}.pid" ]; then
           _PHP_CLI_UPDATE=YES
-          php_cli_drush_update
+          _DRUSH_FILES="drush.php drush"
+          for df in ${_DRUSH_FILES}; do
+            php_cli_drush_update "${df}"
+          fi
           if [ -x "${_T_CLI}/php" ]; then
             php_cli_local_ini_update
             sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_T_CLI_VRN}/g" \

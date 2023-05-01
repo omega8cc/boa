@@ -116,7 +116,11 @@ urlHmr="http://${_USE_MIR}/versions/master/aegir"
 #
 # Update php-cli for Drush.
 php_cli_drush_update() {
-  _DRUSH_FILE="${_ROOT}/drush/drush.php"
+  if [ ! -z "${1}" ]; then
+    _DRUSH_FILE="${_ROOT}/drush/${1}"
+  else
+    _DRUSH_FILE="${_ROOT}/drush/drush.php"
+  fi
   if [ "${_PHP_CLI_VERSION}" = "8.2" ] \
     && [ -x "/opt/php82/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php82\/bin\/php/g" \
@@ -166,7 +170,10 @@ chmod 755 ${_ROOT}/drush/examples/drush.wrapper
 chmod 755 ${_ROOT}/drush/examples/git-bisect.example.sh
 chmod 755 ${_ROOT}/drush/examples/helloworld.script
 
-php_cli_drush_update
+_DRUSH_FILES="drush.php drush"
+for df in ${_DRUSH_FILES}; do
+  php_cli_drush_update "${df}"
+fi
 php_cli_local_ini_update
 
 if [ "${_DEBUG_MODE}" = "YES" ]; then
