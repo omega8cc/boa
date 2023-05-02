@@ -245,7 +245,7 @@ hostmaster_dr_up() {
   _DRUSH_FILES="drush.php drush"
   for df in ${_DRUSH_FILES}; do
     php_cli_drush_update "${df}"
-  fi
+  done
   php_cli_local_ini_update
 }
 #

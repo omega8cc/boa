@@ -1727,7 +1727,7 @@ switch_php() {
           _DRUSH_FILES="drush.php drush"
           for df in ${_DRUSH_FILES}; do
             php_cli_drush_update "${df}"
-          fi
+          done
           if [ -x "${_T_CLI}/php" ]; then
             php_cli_local_ini_update
             sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_T_CLI_VRN}/g" \
