@@ -56,13 +56,17 @@ if (isset($_SERVER['RAW_HOST'])) {
  */
 if (function_exists('drush_get_command')) {
   $command = drush_get_command();
-  $command = explode(" ", $command['command']);
-  if ($command && !preg_match("/^help/", $command[0])) {
-    $is_backend = TRUE;
-  }
-  if (preg_match("/^(provision-install|provision-save|provision-backup|php-eval)/", $command[0])) {
-    if (!is_readable('/data/conf/clstr.cnf')) {
-      $is_install = TRUE;
+  if (isset($command['command'])) {
+    $command = explode(" ", $command['command']);
+    if (isset($command[0])) {
+      if (!preg_match("/^help/", $command[0])) {
+        $is_backend = TRUE;
+      }
+      if (preg_match("/^(provision-install|provision-save|provision-backup|php-eval)/", $command[0])) {
+        if (!is_readable('/data/conf/clstr.cnf')) {
+          $is_install = TRUE;
+        }
+      }
     }
   }
 }
