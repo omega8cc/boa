@@ -412,6 +412,22 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
+    && [ ! -e "${pthLog}/drush8-symlink.ctrl.${_X_SE}.pid" ]; then
+    if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
+      && [ -L "/usr/bin/drush8" ]; then
+      _DRUSH_SYMLINK=$(readlink -n /usr/bin/drush8 2>&1)
+      _DRUSH_SYMLINK=$(echo -n ${_DRUSH_SYMLINK} | tr -d "\n" 2>&1)
+      if [ "${_DRUSH_SYMLINK}" != "/opt/tools/drush/8/drush/drush.php" ]; then
+        rm -f /usr/bin/drush8
+        rm -f /usr/bin/drush
+        ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush8
+        ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush
+        touch ${pthLog}/drush8-symlink.ctrl.${_X_SE}.pid
+      fi
+    fi
+  fi
+
+  if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/data/disk/arch/sql" ] \
     && [ ! -e "${pthLog}/clean-boa-env.ctrl.${_X_SE}.pid" ]; then
     mv -f /etc/init.d/clean-boa-env /var/xdrago/clean-boa-env.old
@@ -734,7 +750,7 @@ update_agents() {
     fi
   fi
 
-  if [ -e "/opt/tools/drush/8/drush/drush" ] \
+  if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/data/disk/arch/sql" ] \
     && [ ! -e "${pthLog}/lshell.ctrl.${_X_SE}.pid" ]; then
@@ -753,7 +769,7 @@ update_agents() {
     fi
   fi
 
-  if [ -e "/opt/tools/drush/8/drush/drush" ] \
+  if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/data/disk/arch/sql" ] \
     && [ ! -e "${pthLog}/multi.ctrl.${_X_SE}.pid" ]; then
@@ -876,7 +892,7 @@ update_agents() {
     service nginx reload
   fi
 
-  if [ -e "/opt/tools/drush/8/drush/drush" ] \
+  if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "${provLeIncFull}" ] \
     && [ -e "${hoLeIncFull}" ] \
     && [ -e "/var/xdrago" ] \

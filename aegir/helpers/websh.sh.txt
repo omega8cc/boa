@@ -351,9 +351,9 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         || [[ "${_ALL}" =~ "drush11-bin " ]] \
         || [[ "${_ALL}" =~ "drush12-bin " ]]; then
         _PWD=$(pwd 2>&1)
-        _DEST_DRUSH="/usr/bin/drush8"
+        _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
         if [[ "${_ALL}" =~ "drush.launcher " ]]; then
-          _DEST_DRUSH="/opt/tools/drush/8/drush/drush.launcher"
+          _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
           if [ -e "${_DRUSH_CLI_CTRL}/php82.info" ] \
             && [ -x "/opt/php82/bin/php" ]; then
             DRUSH_PHP="/opt/php82/bin/php"
@@ -524,7 +524,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             fi
           fi
         else
-          _DEST_DRUSH="/usr/bin/drush8"
+          _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
           if [ -e "${_DRUSH_CLI_CTRL}/php82.info" ] \
             && [ -x "/opt/php82/bin/php" ]; then
             DRUSH_PHP="/opt/php82/bin/php"
@@ -1025,7 +1025,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           ### echo EXD 2 PHP_INI is ${PHP_INI}
           ### echo EXD 2 _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 2 _LNCHR_SH_ARR is ${_LNCHR_SH_ARR}
-          export DRUSH_PHP;export PHP_INI;exec /bin/dash ${_DEST_DRUSH} ${_LNCHR_SH_ARR}
+          export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_LNCHR_SH_ARR}
           exit 0
         elif [ ! -z "${_C_ARR}" ]; then
           ### echo EXC 1 DRUSH_PHP is ${DRUSH_PHP}
@@ -1058,7 +1058,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           ### echo EXD 2 PHP_INI is ${PHP_INI}
           ### echo EXD 2 _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 2 _LNCHR_SH_ARR is ${_LNCHR_SH_ARR}
-          export DRUSH_PHP;export PHP_INI;exec /bin/dash ${_DEST_DRUSH} ${_LNCHR_SH_ARR}
+          export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_LNCHR_SH_ARR}
           exit 0
         elif [ ! -z "${_C_ARR}" ]; then
           ### echo EXC 2 DRUSH_PHP is ${DRUSH_PHP}
@@ -1091,7 +1091,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           ### echo EXD 2 PHP_INI is ${PHP_INI}
           ### echo EXD 2 _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 2 _LNCHR_SH_ARR is ${_LNCHR_SH_ARR}
-          export DRUSH_PHP;export PHP_INI;exec /bin/dash ${_DEST_DRUSH} ${_LNCHR_SH_ARR}
+          export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_LNCHR_SH_ARR}
           exit 0
         elif [ ! -z "${_C_ARR}" ]; then
           ### echo EXC 3 DRUSH_PHP is ${DRUSH_PHP}
@@ -1125,7 +1125,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         ### echo EXD 2 PHP_INI is ${PHP_INI}
         ### echo EXD 2 _DEST_DRUSH is ${_DEST_DRUSH}
         ### echo EXD 2 _LNCHR_SH_ARR is ${_LNCHR_SH_ARR}
-        export DRUSH_PHP;export PHP_INI;exec /bin/dash ${_DEST_DRUSH} ${_LNCHR_SH_ARR}
+        export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_LNCHR_SH_ARR}
         exit 0
       elif [ ! -z "${_C_ARR}" ]; then
         ### echo EXC 4 DRUSH_PHP is ${DRUSH_PHP}

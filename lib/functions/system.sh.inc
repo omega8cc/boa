@@ -2902,7 +2902,7 @@ drush_system_install_update() {
         | cut -d" " -f8 \
         | awk '{ print $1}' 2>&1)
       if [ "${_DRUSH_ITD}" != "${_DRUSH_EIGHT_TEST_VRN}" ] \
-        || [ ! -x "/opt/tools/drush/8/drush/drush" ] \
+        || [ ! -x "/opt/tools/drush/8/drush/drush.php" ] \
         || [ ! -e "/opt/tools/drush/8/.ctrl.${_X_SE}.pid" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: Drush ${_DRUSH_EIGHT_VRN} re-installation required"
@@ -2988,11 +2988,11 @@ drush_system_install_update() {
       fi
     fi
     set_drush_perm
-    if [ -x "/opt/tools/drush/8/drush/drush" ]; then
+    if [ -x "/opt/tools/drush/8/drush/drush.php" ]; then
       rm -f /usr/bin/drush8
       rm -f /usr/bin/drush
-      ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush8
-      ln -s /opt/tools/drush/8/drush/drush /usr/bin/drush
+      ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush8
+      ln -s /opt/tools/drush/8/drush/drush.php /usr/bin/drush
     else
       msg "FAIL: Drush ${_DRUSH_EIGHT_VRN} installation failed!"
     fi

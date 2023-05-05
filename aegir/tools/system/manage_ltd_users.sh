@@ -2353,7 +2353,7 @@ manage_user() {
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
       if [ -e "${_THIS_HM_PLR}/modules/path_alias_cache" ] \
-        && [ -e "/opt/tools/drush/8/drush/drush" ]; then
+        && [ -x "/opt/tools/drush/8/drush/drush.php" ]; then
         if [ -x "/opt/php56/bin/php" ]; then
           echo 5.6 > ${dscUsr}/static/control/cli.info
         elif [ -x "/opt/php55/bin/php" ]; then
