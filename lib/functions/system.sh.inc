@@ -2872,7 +2872,7 @@ drush_system_install_update() {
   if [ ! -e "/root/.debug-barracuda-installer.cnf" ] \
     && [ ! -e "/root/.skip-aegir-master-upgrade.cnf" ]; then
     msg "INFO: Installing supported Drush versions..."
-    _X_SE="414prodT65"
+    _X_SE="414prodT66"
     ###--------------------###
     if [ -e "/opt/tools/drush/9" ]; then
       rm -rf /opt/tools/drush/9
@@ -3026,7 +3026,7 @@ sources_list_update() {
   apt-get clean -qq 2> /dev/null
   rm -rf /var/lib/apt/lists/*
   ###--------------------###
-  _X_SE="414prodT65"
+  _X_SE="414prodT66"
   if [ -e "${pthLog}/apt-deb-src-updates-${_X_SE}.txt" ] \
     || [ -e "/var/log/apt-deb-src-updates-${_X_SE}.txt" ]; then
     _APT_SOURCES_REWRITE=NO

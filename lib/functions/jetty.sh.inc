@@ -60,7 +60,7 @@ if_install_jetty() {
       fi
     fi
   fi
-  _X_SE="414prodT65"
+  _X_SE="414prodT66"
   if [ -e "/etc/default/${_N_SOLR}.in.sh" ]; then
     _SOLR7_JAVA_TEST=$(grep "BOA ${_X_SE} Path to Java" /etc/default/${_N_SOLR}.in.sh 2>&1)
     if [[ "$_SOLR7_JAVA_TEST" =~ "BOA ${_X_SE} Path to Java" ]]; then
