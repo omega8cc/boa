@@ -4,103 +4,112 @@ export PATH=$PATH:/opt/local/bin
 
 _ALL="$@"
 ### echo _ALL is ${_ALL}
-_ARR=
-if [[ "${_ALL}" =~ "true COLUMNS=" ]]; then
-  if [[ "${_ALL}" =~ "-c set -m" ]]; then
-    _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; true COLUMNS=[0-9]\+ drush"`
-  else
-    _R_M=`echo -n ${_ALL} | grep -o "\-c true COLUMNS=[0-9]\+ drush"`
+
+if [[ ! "${_ALL}" =~ "sql-cli" ]] \
+  && [[ ! "${_ALL}" =~ "sqlc" ]] \
+  && [[ ! "${_ALL}" =~ "sql-connect" ]] \
+  && [[ ! "${_ALL}" =~ "sql-dump" ]] \
+  && [[ ! "${_ALL}" =~ "sql-query" ]] \
+  && [[ ! "${_ALL}" =~ "sqlq" ]] \
+  && [[ ! "${_ALL}" =~ "sql-sync" ]]; then
+  _ARR=
+  if [[ "${_ALL}" =~ "true COLUMNS=" ]]; then
+    if [[ "${_ALL}" =~ "-c set -m" ]]; then
+      _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; true COLUMNS=[0-9]\+ drush"`
+    else
+      _R_M=`echo -n ${_ALL} | grep -o "\-c true COLUMNS=[0-9]\+ drush"`
+    fi
+    ### echo _R_M is ${_R_M}
+    _CLR=`echo ${_ALL} | sed "s/\${_R_M}//g"`
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+      esac
+    done
+    ### echo _ARR is ${_ARR}
+  elif [[ "${_ALL}" =~ "drush " ]]; then
+    if [[ "${_ALL}" =~ "-c set -m" ]]; then
+      _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drush"`
+    else
+      _R_M=`echo -n ${_ALL} | grep -o "drush"`
+    fi
+    ### echo _R_M is ${_R_M}
+    _CLR=`echo ${_ALL} | sed "s/\${_R_M}//g"`
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+      esac
+    done
+    ### echo _ARR is ${_ARR}
+  elif [[ "${_ALL}" =~ "drush8 " ]]; then
+    if [[ "${_ALL}" =~ "-c set -m" ]]; then
+      _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drush8"`
+    else
+      _R_M=`echo -n ${_ALL} | grep -o "drush8"`
+    fi
+    ### echo _R_M is ${_R_M}
+    _CLR=`echo ${_ALL} | sed "s/\${_R_M}//g"`
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+      esac
+    done
+    ### echo _ARR is ${_ARR}
+  elif [[ "${_ALL}" =~ "drush10-bin " ]]; then
+    if [[ "${_ALL}" =~ "-c set -m" ]]; then
+      _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drush10-bin"`
+    else
+      _R_M=`echo -n ${_ALL} | grep -o "drush10-bin"`
+    fi
+    ### echo _R_M is ${_R_M}
+    _CLR=`echo ${_ALL} | sed "s/\${_R_M}//g"`
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+      esac
+    done
+    ### echo _ARR is ${_ARR}
+  elif [[ "${_ALL}" =~ "drush11-bin " ]]; then
+    if [[ "${_ALL}" =~ "-c set -m" ]]; then
+      _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drush11-bin"`
+    else
+      _R_M=`echo -n ${_ALL} | grep -o "drush11-bin"`
+    fi
+    ### echo _R_M is ${_R_M}
+    _CLR=`echo ${_ALL} | sed "s/\${_R_M}//g"`
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+      esac
+    done
+    ### echo _ARR is ${_ARR}
+  elif [[ "${_ALL}" =~ "drush12-bin " ]]; then
+    if [[ "${_ALL}" =~ "-c set -m" ]]; then
+      _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drush12-bin"`
+    else
+      _R_M=`echo -n ${_ALL} | grep -o "drush12-bin"`
+    fi
+    ### echo _R_M is ${_R_M}
+    _CLR=`echo ${_ALL} | sed "s/\${_R_M}//g"`
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+      esac
+    done
+    ### echo _ARR is ${_ARR}
   fi
-  ### echo _R_M is ${_R_M}
-  _CLR=`echo ${_ALL} | sed "s/\${_R_M}//g"`
-  _ARR=() # the buffer array for filtered parameters
-  for arg in "${_CLR}"; do
-    case ${_R_M} in
-      $arg\ * | *\ $arg | *\ $arg\ *) ;;
-      *) _ARR+=("$arg") ;;
-    esac
-  done
-  ### echo _ARR is ${_ARR}
-elif [[ "${_ALL}" =~ "drush " ]]; then
-  if [[ "${_ALL}" =~ "-c set -m" ]]; then
-    _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drush"`
-  else
-    _R_M=`echo -n ${_ALL} | grep -o "drush"`
-  fi
-  ### echo _R_M is ${_R_M}
-  _CLR=`echo ${_ALL} | sed "s/\${_R_M}//g"`
-  _ARR=() # the buffer array for filtered parameters
-  for arg in "${_CLR}"; do
-    case ${_R_M} in
-      $arg\ * | *\ $arg | *\ $arg\ *) ;;
-      *) _ARR+=("$arg") ;;
-    esac
-  done
-  ### echo _ARR is ${_ARR}
-elif [[ "${_ALL}" =~ "drush8 " ]]; then
-  if [[ "${_ALL}" =~ "-c set -m" ]]; then
-    _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drush8"`
-  else
-    _R_M=`echo -n ${_ALL} | grep -o "drush8"`
-  fi
-  ### echo _R_M is ${_R_M}
-  _CLR=`echo ${_ALL} | sed "s/\${_R_M}//g"`
-  _ARR=() # the buffer array for filtered parameters
-  for arg in "${_CLR}"; do
-    case ${_R_M} in
-      $arg\ * | *\ $arg | *\ $arg\ *) ;;
-      *) _ARR+=("$arg") ;;
-    esac
-  done
-  ### echo _ARR is ${_ARR}
-elif [[ "${_ALL}" =~ "drush10-bin " ]]; then
-  if [[ "${_ALL}" =~ "-c set -m" ]]; then
-    _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drush10-bin"`
-  else
-    _R_M=`echo -n ${_ALL} | grep -o "drush10-bin"`
-  fi
-  ### echo _R_M is ${_R_M}
-  _CLR=`echo ${_ALL} | sed "s/\${_R_M}//g"`
-  _ARR=() # the buffer array for filtered parameters
-  for arg in "${_CLR}"; do
-    case ${_R_M} in
-      $arg\ * | *\ $arg | *\ $arg\ *) ;;
-      *) _ARR+=("$arg") ;;
-    esac
-  done
-  ### echo _ARR is ${_ARR}
-elif [[ "${_ALL}" =~ "drush11-bin " ]]; then
-  if [[ "${_ALL}" =~ "-c set -m" ]]; then
-    _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drush11-bin"`
-  else
-    _R_M=`echo -n ${_ALL} | grep -o "drush11-bin"`
-  fi
-  ### echo _R_M is ${_R_M}
-  _CLR=`echo ${_ALL} | sed "s/\${_R_M}//g"`
-  _ARR=() # the buffer array for filtered parameters
-  for arg in "${_CLR}"; do
-    case ${_R_M} in
-      $arg\ * | *\ $arg | *\ $arg\ *) ;;
-      *) _ARR+=("$arg") ;;
-    esac
-  done
-  ### echo _ARR is ${_ARR}
-elif [[ "${_ALL}" =~ "drush12-bin " ]]; then
-  if [[ "${_ALL}" =~ "-c set -m" ]]; then
-    _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drush12-bin"`
-  else
-    _R_M=`echo -n ${_ALL} | grep -o "drush12-bin"`
-  fi
-  ### echo _R_M is ${_R_M}
-  _CLR=`echo ${_ALL} | sed "s/\${_R_M}//g"`
-  _ARR=() # the buffer array for filtered parameters
-  for arg in "${_CLR}"; do
-    case ${_R_M} in
-      $arg\ * | *\ $arg | *\ $arg\ *) ;;
-      *) _ARR+=("$arg") ;;
-    esac
-  done
-  ### echo _ARR is ${_ARR}
 fi
 
 _LNCHR_PHP_ARR=
