@@ -1030,10 +1030,10 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_LNCHR_PHP_ARR}
           exit 0
         elif [ ! -z "${_LNCHR_SH_ARR}" ]; then
-          ### echo EXD 2 DRUSH_PHP is ${DRUSH_PHP}
-          ### echo EXD 2 PHP_INI is ${PHP_INI}
-          ### echo EXD 2 _DEST_DRUSH is ${_DEST_DRUSH}
-          ### echo EXD 2 _LNCHR_SH_ARR is ${_LNCHR_SH_ARR}
+          ### echo EXD 3 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 3 PHP_INI is ${PHP_INI}
+          ### echo EXD 3 _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 3 _LNCHR_SH_ARR is ${_LNCHR_SH_ARR}
           export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_LNCHR_SH_ARR}
           exit 0
         elif [ ! -z "${_C_ARR}" ]; then
@@ -1049,24 +1049,24 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         fi
       elif [ -x "/usr/bin/dash" ]; then
         if [ ! -z "${_ARR}" ] && [ -z "${_LNCHR_PHP_ARR}" ] && [ -z "${_LNCHR_SH_ARR}" ]; then
-          ### echo EXD 1 DRUSH_PHP is ${DRUSH_PHP}
-          ### echo EXD 1 PHP_INI is ${PHP_INI}
-          ### echo EXD 1 _DEST_DRUSH is ${_DEST_DRUSH}
-          ### echo EXD 1 _ARR is ${_ARR}
+          ### echo EXD 4 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 4 PHP_INI is ${PHP_INI}
+          ### echo EXD 4 _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 4 _ARR is ${_ARR}
           export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}
           exit 0
         elif [ ! -z "${_LNCHR_PHP_ARR}" ]; then
-          ### echo EXD 2 DRUSH_PHP is ${DRUSH_PHP}
-          ### echo EXD 2 PHP_INI is ${PHP_INI}
-          ### echo EXD 2 _DEST_DRUSH is ${_DEST_DRUSH}
-          ### echo EXD 2 _LNCHR_PHP_ARR is ${_LNCHR_PHP_ARR}
+          ### echo EXD 5 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 5 PHP_INI is ${PHP_INI}
+          ### echo EXD 5 _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 5 _LNCHR_PHP_ARR is ${_LNCHR_PHP_ARR}
           export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_LNCHR_PHP_ARR}
           exit 0
         elif [ ! -z "${_LNCHR_SH_ARR}" ]; then
-          ### echo EXD 2 DRUSH_PHP is ${DRUSH_PHP}
-          ### echo EXD 2 PHP_INI is ${PHP_INI}
-          ### echo EXD 2 _DEST_DRUSH is ${_DEST_DRUSH}
-          ### echo EXD 2 _LNCHR_SH_ARR is ${_LNCHR_SH_ARR}
+          ### echo EXD 6 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 6 PHP_INI is ${PHP_INI}
+          ### echo EXD 6 _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 6 _LNCHR_SH_ARR is ${_LNCHR_SH_ARR}
           export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_LNCHR_SH_ARR}
           exit 0
         elif [ ! -z "${_C_ARR}" ]; then
@@ -1082,24 +1082,24 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         fi
       else
         if [ ! -z "${_ARR}" ] && [ -z "${_LNCHR_PHP_ARR}" ] && [ -z "${_LNCHR_SH_ARR}" ]; then
-          ### echo EXD 1 DRUSH_PHP is ${DRUSH_PHP}
-          ### echo EXD 1 PHP_INI is ${PHP_INI}
-          ### echo EXD 1 _DEST_DRUSH is ${_DEST_DRUSH}
-          ### echo EXD 1 _ARR is ${_ARR}
+          ### echo EXD 7 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 7 PHP_INI is ${PHP_INI}
+          ### echo EXD 7 _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 7 _ARR is ${_ARR}
           export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}
           exit 0
         elif [ ! -z "${_LNCHR_PHP_ARR}" ]; then
-          ### echo EXD 2 DRUSH_PHP is ${DRUSH_PHP}
-          ### echo EXD 2 PHP_INI is ${PHP_INI}
-          ### echo EXD 2 _DEST_DRUSH is ${_DEST_DRUSH}
-          ### echo EXD 2 _LNCHR_PHP_ARR is ${_LNCHR_PHP_ARR}
+          ### echo EXD 8 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 8 PHP_INI is ${PHP_INI}
+          ### echo EXD 8 _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 8 _LNCHR_PHP_ARR is ${_LNCHR_PHP_ARR}
           export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_LNCHR_PHP_ARR}
           exit 0
         elif [ ! -z "${_LNCHR_SH_ARR}" ]; then
-          ### echo EXD 2 DRUSH_PHP is ${DRUSH_PHP}
-          ### echo EXD 2 PHP_INI is ${PHP_INI}
-          ### echo EXD 2 _DEST_DRUSH is ${_DEST_DRUSH}
-          ### echo EXD 2 _LNCHR_SH_ARR is ${_LNCHR_SH_ARR}
+          ### echo EXD 9 DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 9 PHP_INI is ${PHP_INI}
+          ### echo EXD 9 _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 9 _LNCHR_SH_ARR is ${_LNCHR_SH_ARR}
           export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_LNCHR_SH_ARR}
           exit 0
         elif [ ! -z "${_C_ARR}" ]; then
@@ -1116,24 +1116,24 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       fi
     else
       if [ ! -z "${_ARR}" ] && [ -z "${_LNCHR_PHP_ARR}" ] && [ -z "${_LNCHR_SH_ARR}" ]; then
-        ### echo EXD 1 DRUSH_PHP is ${DRUSH_PHP}
-        ### echo EXD 1 PHP_INI is ${PHP_INI}
-        ### echo EXD 1 _DEST_DRUSH is ${_DEST_DRUSH}
-        ### echo EXD 1 _ARR is ${_ARR}
+        ### echo EXD 10 DRUSH_PHP is ${DRUSH_PHP}
+        ### echo EXD 10 PHP_INI is ${PHP_INI}
+        ### echo EXD 10 _DEST_DRUSH is ${_DEST_DRUSH}
+        ### echo EXD 10 _ARR is ${_ARR}
         export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}
         exit 0
       elif [ ! -z "${_LNCHR_PHP_ARR}" ]; then
-        ### echo EXD 2 DRUSH_PHP is ${DRUSH_PHP}
-        ### echo EXD 2 PHP_INI is ${PHP_INI}
-        ### echo EXD 2 _DEST_DRUSH is ${_DEST_DRUSH}
-        ### echo EXD 2 _LNCHR_PHP_ARR is ${_LNCHR_PHP_ARR}
+        ### echo EXD 11 DRUSH_PHP is ${DRUSH_PHP}
+        ### echo EXD 11 PHP_INI is ${PHP_INI}
+        ### echo EXD 11 _DEST_DRUSH is ${_DEST_DRUSH}
+        ### echo EXD 11 _LNCHR_PHP_ARR is ${_LNCHR_PHP_ARR}
         export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_LNCHR_PHP_ARR}
         exit 0
       elif [ ! -z "${_LNCHR_SH_ARR}" ]; then
-        ### echo EXD 2 DRUSH_PHP is ${DRUSH_PHP}
-        ### echo EXD 2 PHP_INI is ${PHP_INI}
-        ### echo EXD 2 _DEST_DRUSH is ${_DEST_DRUSH}
-        ### echo EXD 2 _LNCHR_SH_ARR is ${_LNCHR_SH_ARR}
+        ### echo EXD 12 DRUSH_PHP is ${DRUSH_PHP}
+        ### echo EXD 12 PHP_INI is ${PHP_INI}
+        ### echo EXD 12 _DEST_DRUSH is ${_DEST_DRUSH}
+        ### echo EXD 12 _LNCHR_SH_ARR is ${_LNCHR_SH_ARR}
         export DRUSH_PHP;export PHP_INI;exec ${DRUSH_PHP} ${_DEST_DRUSH} ${_LNCHR_SH_ARR}
         exit 0
       elif [ ! -z "${_C_ARR}" ]; then
