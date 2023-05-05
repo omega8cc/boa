@@ -197,9 +197,9 @@ if [ -z "${HOME}" ]; then
   fi
 fi
 if [ "${1}" = "-c" ] || [[ "${1}" =~ "drush.launcher" ]]; then
-  _ARGS="$2"
+  _ARGS="${2}"
 else
-  _ARGS="$1"
+  _ARGS="${1}"
 fi
 
 if [[ "${_ARGS}" =~ "true COLUMNS=" ]]; then
@@ -339,7 +339,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
   || [[ "${_LTD_GID}" =~ (^)"users www-data"($) ]] \
   || [[ "${_LTD_GID}" =~ (^)"aegir www-data users"($) ]]; then
   if [ "${1}" = "-c" ] || [[ "${1}" =~ "drush.launcher" ]]; then
-    _ARGS="$2"
+    _ARGS="${2}"
     _IS_SH_PATH=NO
     if [ "$0" = "/bin/sh" ] || [ "$0" = "/usr/bin/sh" ]; then
       _IS_SH_PATH=YES
@@ -581,7 +581,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             export DRUSH_PHP;export PHP_INI;
           fi
         fi
-        if [[ "$2" =~ "debug-pm-update" ]]; then
+        if [[ "${2}" =~ "debug-pm-update" ]]; then
           DRUSH_PHP=""
           _PHP_DEFAULT=$(/usr/bin/php-cli -v | grep 'PHP 7' \
             | cut -d: -f1 | awk '{ print $2}' 2>&1)
@@ -639,7 +639,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             else
               echo
               echo " This drush command can not be run in ${_PWD}"
-              if [[ "$2" =~ "make-generate" ]]; then
+              if [[ "${2}" =~ "make-generate" ]]; then
                 echo " Please cd to the valid sites/foo.com directory first"
                 echo " or use a valid @alias, like: drush @foo.com status"
                 echo " Hint: Use 'drush aliases' to display all aliases"
@@ -782,17 +782,17 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         fi
       fi
       _RAW_IN_PATH=${2//[^a-z/]/}
-      if [[ "$2" =~ (^)"/usr/" ]] \
-        || [[ "$2" =~ (^)"/bin/" ]] \
-        || [[ "$2" =~ (^)"/opt/" ]]; then
+      if [[ "${2}" =~ (^)"/usr/" ]] \
+        || [[ "${2}" =~ (^)"/bin/" ]] \
+        || [[ "${2}" =~ (^)"/opt/" ]]; then
         _IN_PATH=YES
-      elif [[ "$2" =~ (^)"/data/disk/${_Y_USR}/tools/drush/drush.php" ]]; then
+      elif [[ "${2}" =~ (^)"/data/disk/${_Y_USR}/tools/drush/drush.php" ]]; then
         _IN_PATH=YES
-      elif [[ "$2" =~ (^)"(/data/disk/${_Y_USR}/tools/drush/drush.php" ]]; then
+      elif [[ "${2}" =~ (^)"(/data/disk/${_Y_USR}/tools/drush/drush.php" ]]; then
         _IN_PATH=YES
-      elif [[ "$2" =~ (^)"/var/${_Y_USR}/drush/drush.php" ]]; then
+      elif [[ "${2}" =~ (^)"/var/${_Y_USR}/drush/drush.php" ]]; then
         _IN_PATH=YES
-      elif [[ "$2" =~ (^)"(/var/${_Y_USR}/drush/drush.php" ]]; then
+      elif [[ "${2}" =~ (^)"(/var/${_Y_USR}/drush/drush.php" ]]; then
         _IN_PATH=YES
       elif [[ "${_RAW_IN_PATH}" =~ "/usr/bin/wkhtmltopdf" ]]; then
         _IN_PATH=YES
@@ -816,10 +816,10 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         _IN_PATH=YES
       elif [[ "${_RAW_IN_PATH}" =~ "/usr/bin/gs" ]]; then
         _IN_PATH=YES
-      elif [[ "$2" =~ (^)"/home/" ]] \
-        || [[ "$2" =~ (^)"/data/" ]] \
-        || [[ "$2" =~ (^)"/tmp/" ]]; then
-        if [ -e "$2" ]; then
+      elif [[ "${2}" =~ (^)"/home/" ]] \
+        || [[ "${2}" =~ (^)"/data/" ]] \
+        || [[ "${2}" =~ (^)"/tmp/" ]]; then
+        if [ -e "${2}" ]; then
           _IN_PATH=NO
         fi
       else
@@ -1155,16 +1155,16 @@ if [ "${_LTD_GID}" = "www-data users" ] \
 else
   if [ "${USER}" = "root" ]; then
     if [[ "$1" =~ "drush" ]] \
-      || [[ "$2" =~ "drush" ]]; then
-      if [[ "$2" =~ "uli" ]] \
-        || [[ "$2" =~ "vget" ]] \
-        || [[ "$2" =~ "config-list" ]] \
-        || [[ "$2" =~ "config-edit" ]] \
-        || [[ "$2" =~ "config-get" ]] \
-        || [[ "$2" =~ "config-set" ]] \
-        || [[ "$2" =~ "--version" ]] \
-        || [[ "$2" =~ "vset" ]] \
-        || [[ "$2" =~ "status" ]]; then
+      || [[ "${2}" =~ "drush" ]]; then
+      if [[ "${2}" =~ "uli" ]] \
+        || [[ "${2}" =~ "vget" ]] \
+        || [[ "${2}" =~ "config-list" ]] \
+        || [[ "${2}" =~ "config-edit" ]] \
+        || [[ "${2}" =~ "config-get" ]] \
+        || [[ "${2}" =~ "config-set" ]] \
+        || [[ "${2}" =~ "--version" ]] \
+        || [[ "${2}" =~ "vset" ]] \
+        || [[ "${2}" =~ "status" ]]; then
         _ALLOW=YES
       else
         echo
