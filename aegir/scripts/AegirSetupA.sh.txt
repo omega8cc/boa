@@ -193,7 +193,6 @@ fi
 ###
 ### Run all pre/child/post procedures
 ###
-satellite_version_check
 satellite_hot_sauce_check
 satellite_add_user_dirs
 satellite_prepare_child_scripts
