@@ -2038,9 +2038,16 @@ satellite_version_check() {
   if [ -e "/opt/tmp/boa/aegir/conf/${_FILE_VERSION}" ]; then
     _VERSIONS_TEST=$(cat /opt/tmp/boa/aegir/conf/${_FILE_VERSION} 2>&1)
     if [[ "${_VERSIONS_TEST}" =~ "-dev" ]] \
+      || [[ "${_VERSIONS_TEST}" =~ "-stable" ]] \
       || [[ "${_VERSIONS_TEST}" =~ "-rel" ]]; then
       if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
         && [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+        _VERSIONS_TEST_RESULT=OK
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "${_STATUS} A: OCTOPUS version test: OK"
+        fi
+      if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
+        && [ "${_AEGIR_VERSION}" = "DEV" ]; then
         _VERSIONS_TEST_RESULT=OK
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "${_STATUS} A: OCTOPUS version test: OK"
@@ -4323,7 +4330,8 @@ satellite_check_octopus_versus_barracuda_version() {
   fi
   if [ -e "${_ROOT}/log/octopus_log.txt" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
-    if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
+    if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
+      || [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
       _VERSIONS_TEST_RESULT=OK
     else
@@ -4333,7 +4341,8 @@ satellite_check_octopus_versus_barracuda_version() {
       msg "Bye"
       clean_pid_exit
     fi
-    if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
+    if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
+      || [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
       _SERIES_RESULT=OK
     fi
@@ -4514,7 +4523,8 @@ satellite_if_major_upgrade() {
   if [ "${_CLIENT_OPTION}" = "POWER" ] \
     && [ -e "${_ROOT}/log/octopus_log.txt" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
-    if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
+    if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
+      || [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
       _IT_IS_OK=YES
     else
@@ -4529,7 +4539,8 @@ satellite_if_major_upgrade() {
   if [ "${_CLIENT_OPTION}" = "CLUSTER" ] \
     && [ -e "${_ROOT}/log/octopus_log.txt" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
-    if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
+    if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
+      || [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
       _IT_IS_OK=YES
     else
