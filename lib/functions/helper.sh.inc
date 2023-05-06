@@ -740,9 +740,9 @@ check_boa_version() {
       || [[ "${_SERIES_TEST}" =~ "BOA-4." ]]; then
       _VERSIONS_TEST_RESULT=OK
     else
-      msg "ERROR: This barracuda installer can be used only when the instance"
-      msg "has been already upgraded to previous stable BOA-3.2.2 version"
-      msg "Please run 'barracuda up-3.2' full upgrade first"
+      msg "ERROR: This barracuda installer can be used only when the system"
+      msg "has been already upgraded to stable BOA-4.x or dev BOA-5.x"
+      msg "Please run 'barracuda up-stable' full upgrade first!"
       msg "Bye"
       clean_pid_exit
     fi

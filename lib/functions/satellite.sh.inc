@@ -4330,19 +4330,17 @@ satellite_check_octopus_vs_barracuda_ver() {
   if [ -e "${_ROOT}/log/octopus_log.txt" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
     if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
-      || [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
-      || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
+      || [[ "${_SERIES_TEST}" =~ "BOA-4." ]]; then
       _VERSIONS_TEST_RESULT=OK
     else
       msg "ERROR: This octopus installer can be used only when the instance"
-      msg "has been already upgraded to previous stable BOA-3.2.2 version"
-      msg "Please run 'octopus up-3.2 ${_USER} aegir' upgrade first"
+      msg "has been already upgraded to stable BOA-4.x or dev BOA-5.x"
+      msg "Please run 'octopus up-stable ${_USER} force' upgrade first!"
       msg "Bye"
       clean_pid_exit
     fi
     if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
-      || [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
-      || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
+      || [[ "${_SERIES_TEST}" =~ "BOA-4." ]]; then
       _SERIES_RESULT=OK
     fi
   fi
@@ -4523,8 +4521,7 @@ satellite_if_major_upgrade() {
     && [ -e "${_ROOT}/log/octopus_log.txt" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
     if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
-      || [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
-      || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
+      || [[ "${_SERIES_TEST}" =~ "BOA-4." ]]; then
       _IT_IS_OK=YES
     else
       if [ ! -e "${_ROOT}/log/satellite_major_upgrade_ok.txt" ]; then
@@ -4539,8 +4536,7 @@ satellite_if_major_upgrade() {
     && [ -e "${_ROOT}/log/octopus_log.txt" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
     if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
-      || [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
-      || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
+      || [[ "${_SERIES_TEST}" =~ "BOA-4." ]]; then
       _IT_IS_OK=YES
     else
       if [ ! -e "${_ROOT}/log/satellite_major_upgrade_ok.txt" ]; then
