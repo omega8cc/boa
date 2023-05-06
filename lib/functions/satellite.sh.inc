@@ -4305,25 +4305,24 @@ satellite_check_php_compatibility() {
   fi
 }
 
-satellite_check_octopus_versus_barracuda_version() {
+satellite_check_octopus_vs_barracuda_ver() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    echo "PROC: satellite_check_octopus_versus_barracuda_version"
+    echo "PROC: satellite_check_octopus_vs_barracuda_ver"
   fi
   if [ ! -f "/var/log/barracuda_log.txt" ]; then
     msg "ERROR: This octopus installer can be used only when the same version"
     msg "of boa or barracuda installer was used before. Your system must be"
-    msg "upgraded with barracuda installer version ${_X_VERSION} first"
+    msg "upgraded with barracuda installer version ${_X_VERSION} first!"
     msg "Bye"
     clean_pid_exit
   else
     _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-    if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
-      || [[ "${_VERSIONS_TEST}" =~ "BOA-4.1.3" ]]; then
+    if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
       _VERSIONS_TEST_RESULT=OK
     else
       msg "ERROR: This octopus installer can be used only when the same version"
       msg "of boa or barracuda installer was used before. Your system must be"
-      msg "upgraded with barracuda installer version ${_X_VERSION} first"
+      msg "upgraded with barracuda installer version ${_X_VERSION} first!"
       msg "Bye"
       clean_pid_exit
     fi
