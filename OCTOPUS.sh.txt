@@ -238,7 +238,7 @@ _STATUS=INIT
 ### Misc checks
 ###
 satellite_check_php_compatibility
-satellite_check_octopus_versus_barracuda_version
+satellite_check_octopus_vs_barracuda_ver
 satellite_if_head_github_connection_test
 satellite_if_sql_exception_test
 satellite_if_running_as_root_octopus
