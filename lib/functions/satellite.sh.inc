@@ -2046,7 +2046,7 @@ satellite_version_check() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "${_STATUS} A: OCTOPUS version test: OK"
         fi
-      if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
+      elif [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
         && [ "${_AEGIR_VERSION}" = "DEV" ]; then
         _VERSIONS_TEST_RESULT=OK
         if [ "${_DEBUG_MODE}" = "YES" ]; then
