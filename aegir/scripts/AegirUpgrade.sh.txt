@@ -257,7 +257,7 @@ hostmaster_go_up() {
   rm -rf ${_ROOT}/.drush/drush_make
   rm -rf ${_ROOT}/.drush/sys/drush_make
   cd ${_ROOT}/.drush
-  if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+  if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
     cd ${_ROOT}/.drush
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Downloading Drush and Provision extensions..."

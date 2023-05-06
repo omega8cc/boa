@@ -180,7 +180,7 @@ if [ "${_DEBUG_MODE}" = "YES" ]; then
   msg "INFO: Installing Aegir Provision backend..."
 fi
 mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
-if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
   cd ${_ROOT}/.drush
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Downloading Drush and Provision extensions..."

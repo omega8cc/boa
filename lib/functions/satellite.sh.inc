@@ -2030,7 +2030,7 @@ satellite_version_check() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Checking OCTOPUS version..."
   fi
-  if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+  if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
     _FILE_VERSION=octopus-release.txt
   else
     _FILE_VERSION=octopus-version.txt
@@ -4082,7 +4082,7 @@ satellite_if_head_github_connection_test() {
     echo "PROC: satellite_if_head_github_connection_test"
   fi
   ###--------------------###
-  if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+  if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
     rm -rf /opt/tmp/test-*
     check_connection
     _GITHUB_TEST=$(git clone ${gitHub}/provision.git \
@@ -5088,7 +5088,7 @@ satellite_child_b_drush_xts_install() {
   fi
   mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
   cd ${_ROOT}/.drush
-  if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+  if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} B: Downloading Drush and Provision extensions..."
     fi
