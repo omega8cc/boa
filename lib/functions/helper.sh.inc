@@ -742,9 +742,16 @@ check_boa_version() {
   if [ -e "${locCnf}/${_FILE_VERSION}" ]; then
     _VERSIONS_TEST=$(cat ${locCnf}/${_FILE_VERSION} 2>&1)
     if [[ "${_VERSIONS_TEST}" =~ "-dev" ]] \
+      || [[ "${_VERSIONS_TEST}" =~ "-stable" ]] \
       || [[ "${_VERSIONS_TEST}" =~ "-rel" ]]; then
       if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
         && [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+        _VERSIONS_TEST_RESULT=OK
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: BARRACUDA version test: OK"
+        fi
+      elif [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
+        && [ "${_AEGIR_VERSION}" = "DEV" ]; then
         _VERSIONS_TEST_RESULT=OK
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: BARRACUDA version test: OK"
@@ -771,7 +778,8 @@ check_boa_version() {
   fi
   if [ -e "/var/log/barracuda_log.txt" ]; then
     _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-    if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
+    if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
+      || [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
       _VERSIONS_TEST_RESULT=OK
     else
@@ -781,9 +789,13 @@ check_boa_version() {
       msg "Bye"
       clean_pid_exit
     fi
-    if [[ "${_SERIES_TEST}" =~ "BOA-4." ]]; then
-      if [[ ! "${_X_VERSION}" =~ "BOA-4." ]] ; then
-        msg "ERROR: Your system has been already upgraded to BOA-4.x.x series"
+    if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
+      || [[ "${_SERIES_TEST}" =~ "BOA-5." ]]; then
+      if [[ "${_X_VERSION}" =~ "BOA-4." ]] \
+        || [[ "${_X_VERSION}" =~ "BOA-5." ]]; then
+        _VERSIONS_TEST_RESULT=OK
+      else
+        msg "ERROR: Your system has been already upgraded to modern BOA"
         msg "You can not downgrade back to legacy or previous stable version"
         msg "Please use 'barracuda up-head' to upgrade this system"
         msg "Bye"
