@@ -663,8 +663,10 @@ up_one() {
         wait
       fi
     fi
-    if [ "${cmmand}" = "up-head" ] \
-      || [ "${cmmand}" = "up-dev" ] \
+    if [ "${cmmand}" = "up-dev" ]; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${dvbrnch}/g"      ${vBs}/${tocIncO}
+      wait
+    elif [ "${cmmand}" = "up-head" ] \
       || [ "${cmmand}" = "up-legacy" ] \
       || [ "${cmmand}" = "up-stable" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${tocIncO}
