@@ -655,7 +655,7 @@ up_one() {
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcD}/g"         ${vBs}/${tocIncO}
         wait
       else
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g" ${vBs}/${tocIncO}
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"   ${vBs}/${tocIncO}
         wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${tocIncO}
         wait
