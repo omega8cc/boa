@@ -2026,55 +2026,6 @@ satellite_manage_o_contrib() {
   fi
 }
 
-satellite_version_check() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "${_STATUS} A: Checking OCTOPUS version..."
-  fi
-  if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
-    _FILE_VERSION=octopus-release.txt
-  else
-    _FILE_VERSION=octopus-version.txt
-  fi
-  if [ -e "/opt/tmp/boa/aegir/conf/${_FILE_VERSION}" ]; then
-    _VERSIONS_TEST=$(cat /opt/tmp/boa/aegir/conf/${_FILE_VERSION} 2>&1)
-    if [[ "${_VERSIONS_TEST}" =~ "-dev" ]] \
-      || [[ "${_VERSIONS_TEST}" =~ "-stable" ]] \
-      || [[ "${_VERSIONS_TEST}" =~ "-rel" ]]; then
-      if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
-        && [ "${_AEGIR_VERSION}" = "HEAD" ]; then
-        _VERSIONS_TEST_RESULT=OK
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "${_STATUS} A: OCTOPUS version test: OK"
-        fi
-      elif [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
-        && [ "${_AEGIR_VERSION}" = "DEV" ]; then
-        _VERSIONS_TEST_RESULT=OK
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "${_STATUS} A: OCTOPUS version test: OK"
-        fi
-      else
-        _VERSIONS_TEST_RESULT=FAIL
-      fi
-    else
-      if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
-        && [[ "${_AEGIR_VERSION}" =~ "BOA" ]]; then
-        _VERSIONS_TEST_RESULT=OK
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "${_STATUS} A: OCTOPUS version test: OK"
-        fi
-      else
-        _VERSIONS_TEST_RESULT=FAIL
-      fi
-    fi
-    if [ "${_VERSIONS_TEST_RESULT}" = "FAIL" ]; then
-      msg "ERROR: This OCTOPUS version is outdated and will not work correctly"
-      msg "Bye"
-      touch /opt/tmp/status-AegirSetupA-FAIL
-      exit 1
-    fi
-  fi
-}
-
 satellite_hot_sauce_check() {
   mNewC="Shared platforms code v.${_ALL_DISTRO} (new) will be created"
   mLstC="Shared platforms code v.${_LAST_ALL} will be used"
