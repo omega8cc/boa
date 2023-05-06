@@ -476,6 +476,7 @@ check_php_cli() {
       ln -sf ${_USE_PHP_CLI_PATH} /usr/bin/php-cli
     else
       echo "ERROR: I can not find PHP-CLI anywhere!"
+      echo "ERROR: BOA requires PHP 7.4 or newer"
       clean_pid_exit
     fi
   fi
