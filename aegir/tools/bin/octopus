@@ -359,6 +359,77 @@ check_report() {
   fi
 }
 
+php_cli_local_ini_update() {
+  _U_HD="${User}/.drush"
+  _U_TP="${User}/.tmp"
+  _U_II="${_U_HD}/php.ini"
+  chattr -i -R ${_U_HD}/ &> /dev/null
+  if [ ! -e "${_U_II}" ] \
+    || [ ! -d "${_U_TP}" ]; then
+    mkdir -p ${_U_TP}
+    touch ${_U_TP}
+    find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
+    mkdir -p ${_U_HD}
+    chown ${_USER}:${usrGroup} ${_U_TP}
+    chown ${_USER}:${usrGroup} ${_U_HD}
+    chmod 755 ${_U_TP}
+    chmod 755 ${_U_HD}
+    chattr -i ${_U_II} &> /dev/null
+    rm -f ${_U_HD}/.ctrl.php*
+    rm -f ${_U_II}
+    cp -af /opt/php74/lib/php.ini ${_U_II}
+    if [ -e "${_U_II}" ]; then
+      _INI="open_basedir = \".: \
+        /data/all:           \
+        /data/conf:          \
+        /data/disk/all:      \
+        /opt/php74:          \
+        /dev/urandom:        \
+        /opt/tmp/make_local: \
+        /opt/tools/drush:    \
+        ${User}:             \
+        /usr/local/bin:      \
+        /usr/bin\""
+      _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
+      _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
+      _INI=${_INI//\//\\\/}
+      _QTP=${_U_TP//\//\\\/}
+      sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_U_II}
+      wait
+      sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
+      wait
+      sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_U_II}
+      wait
+      sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_U_II}
+      wait
+      sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
+      wait
+      sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
+    fi
+  fi
+}
+
+php_cli_drush_update() {
+  usrGroup=users
+  _DRUSH_FILE="${User}/tools/drush/drush.php"
+  if [ -x "/opt/php74/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g" ${_DRUSH_FILE} &> /dev/null
+    _T_CLI=/opt/php74/bin
+  fi
+  if [ -x "${_T_CLI}/php" ]; then
+    _DRUSHCMD="${_T_CLI}/php ${User}/tools/drush/drush.php"
+    if [ -e "${User}/aegir.sh" ]; then
+      rm -f ${User}/aegir.sh
+    fi
+    touch ${User}/aegir.sh
+    echo -e "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n${_DRUSHCMD} \
+      '@hostmaster' hosting-dispatch\ntouch ${User}/${_USER}-task.done" \
+      | fmt -su -w 2500 | tee -a ${User}/aegir.sh >/dev/null 2>&1
+    chown ${_USER}:${usrGroup} ${User}/aegir.sh &> /dev/null
+    chmod 0700 ${User}/aegir.sh &> /dev/null
+  fi
+}
+
 up_mode() {
   if [ "${mcmode}" = "aegir" ]; then
     sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                     ${octCnf}
@@ -417,11 +488,26 @@ up_mode() {
   fi
 }
 
-satellite_check_up_php() {
-  if [ "${cmmand}" = "up-head" ] \
-    || [ "${cmmand}" = "up-dev" ] \
-    || [ "${cmmand}" = "up-legacy" ] \
-    || [ "${cmmand}" = "up-stable" ]; then
+satellite_check_strict_php_cli() {
+  _PHP_CLI=$(grep "/opt/php" ${User}/tools/drush/drush.php 2>&1)
+  if [[ ! "${_PHP_CLI}" =~ "php74" ]] && [ -x "/opt/php74/bin/php" ]; then
+    echo
+    echo "NOTE: This Aegir version requires PHP 7.4 during Hostmaster upgrade."
+    echo "NOTE: It will be reconfigured on the fly now, but you can change it"
+    echo "NOTE: later for hosted sites management in ~/static/control/cli.info"
+    echo
+    php_cli_drush_update
+    php_cli_local_ini_update
+    echo 7.4 > ${User}/log/cli.txt
+    echo 7.4 > ${User}/static/control/cli.info
+    chown -R ${octUsr}.ftp:users ${User}/static/control
+    sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" \
+      /root/.${octUsr}.octopus.cnf &> /dev/null
+  fi
+}
+
+satellite_check_supported_php_cli() {
+  if [ "${cmmand}" = "up-dev" ]; then
     fmodey=
     _SERIES_TEST=
     _PHP_FPM_LEGACY_FREE=
@@ -445,11 +531,6 @@ satellite_check_up_php() {
           fi
         else
           _PHP_CLI_LEGACY_FREE=YES
-        fi
-        if [ "${_PHP_FPM_LEGACY_FREE}" = "NO" ]; then
-          if [ -x "/opt/php74/bin/php" ]; then
-            echo 7.4 > ${User}/static/control/fpm.info
-          fi
         fi
         if [ "${_PHP_CLI_LEGACY_FREE}" = "NO" ]; then
           if [ -x "/opt/php74/bin/php" ]; then
@@ -483,6 +564,11 @@ up_one() {
     cp -af ${vBs}/${octName}  ${vBs}/${tocName}
     if [ -e "${vBs}/${filIncO}" ]; then
       cp -af ${vBs}/${filIncO}  ${vBs}/${tocIncO}
+    fi
+    if [ "${cmmand}" = "up-dev" ]; then
+      satellite_check_supported_php_cli
+    else
+      satellite_check_strict_php_cli
     fi
     if [ "${cmmand}" = "up-dev" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${dvbrnch}/g"      ${vBs}/${tocIncO}
