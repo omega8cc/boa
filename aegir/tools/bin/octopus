@@ -439,12 +439,7 @@ satellite_check_up_php() {
           if [ "${_T_FPM_VRN}" = "8.2" ] \
             || [ "${_T_FPM_VRN}" = "8.1" ] \
             || [ "${_T_FPM_VRN}" = "8.0" ] \
-            || [ "${_T_FPM_VRN}" = "7.4" ] \
-            || [ "${_T_FPM_VRN}" = "7.3" ] \
-            || [ "${_T_FPM_VRN}" = "7.2" ] \
-            || [ "${_T_FPM_VRN}" = "7.1" ] \
-            || [ "${_T_FPM_VRN}" = "7.0" ] \
-            || [ "${_T_FPM_VRN}" = "5.6" ]; then
+            || [ "${_T_FPM_VRN}" = "7.4" ]; then
             _PHP_FPM_LEGACY_FREE=YES
           else
             _PHP_FPM_LEGACY_FREE=NO
@@ -459,12 +454,7 @@ satellite_check_up_php() {
           if [ "${_T_CLI_VRN}" = "8.2" ] \
             || [ "${_T_CLI_VRN}" = "8.1" ] \
             || [ "${_T_CLI_VRN}" = "8.0" ] \
-            || [ "${_T_CLI_VRN}" = "7.4" ] \
-            || [ "${_T_CLI_VRN}" = "7.3" ] \
-            || [ "${_T_CLI_VRN}" = "7.2" ] \
-            || [ "${_T_CLI_VRN}" = "7.1" ] \
-            || [ "${_T_CLI_VRN}" = "7.0" ] \
-            || [ "${_T_CLI_VRN}" = "5.6" ]; then
+            || [ "${_T_CLI_VRN}" = "7.4" ]; then
             _PHP_CLI_LEGACY_FREE=YES
           else
             _PHP_CLI_LEGACY_FREE=NO
@@ -473,13 +463,13 @@ satellite_check_up_php() {
           _PHP_CLI_LEGACY_FREE=YES
         fi
         if [ "${_PHP_FPM_LEGACY_FREE}" = "NO" ]; then
-          if [ -x "/opt/php56/bin/php" ]; then
-            echo 5.6 > ${User}/static/control/fpm.info
+          if [ -x "/opt/php74/bin/php" ]; then
+            echo 7.4 > ${User}/static/control/fpm.info
           fi
         fi
         if [ "${_PHP_CLI_LEGACY_FREE}" = "NO" ]; then
-          if [ -x "/opt/php56/bin/php" ]; then
-            echo 5.6 > ${User}/static/control/cli.info
+          if [ -x "/opt/php74/bin/php" ]; then
+            echo 7.4 > ${User}/static/control/cli.info
           fi
         fi
         chown -R ${octUsr}.ftp:users ${User}/static/control
@@ -538,12 +528,7 @@ satellite_check_switch_php() {
       if [ "${_T_FPM_VRN}" = "8.2" ] \
         || [ "${_T_FPM_VRN}" = "8.1" ] \
         || [ "${_T_FPM_VRN}" = "8.0" ] \
-        || [ "${_T_FPM_VRN}" = "7.4" ] \
-        || [ "${_T_FPM_VRN}" = "7.3" ] \
-        || [ "${_T_FPM_VRN}" = "7.2" ] \
-        || [ "${_T_FPM_VRN}" = "7.1" ] \
-        || [ "${_T_FPM_VRN}" = "7.0" ] \
-        || [ "${_T_FPM_VRN}" = "5.6" ]; then
+        || [ "${_T_FPM_VRN}" = "7.4" ]; then
         _PHP_FPM_LEGACY_FREE=YES
       else
         _PHP_FPM_LEGACY_FREE=NO
@@ -558,12 +543,7 @@ satellite_check_switch_php() {
       if [ "${_T_CLI_VRN}" = "8.2" ] \
         || [ "${_T_CLI_VRN}" = "8.1" ] \
         || [ "${_T_CLI_VRN}" = "8.0" ] \
-        || [ "${_T_CLI_VRN}" = "7.4" ] \
-        || [ "${_T_CLI_VRN}" = "7.3" ] \
-        || [ "${_T_CLI_VRN}" = "7.2" ] \
-        || [ "${_T_CLI_VRN}" = "7.1" ] \
-        || [ "${_T_CLI_VRN}" = "7.0" ] \
-        || [ "${_T_CLI_VRN}" = "5.6" ]; then
+        || [ "${_T_CLI_VRN}" = "7.4" ]; then
         _PHP_CLI_LEGACY_FREE=YES
       else
         _PHP_CLI_LEGACY_FREE=NO
