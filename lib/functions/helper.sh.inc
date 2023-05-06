@@ -734,53 +734,10 @@ check_boa_version() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Checking BARRACUDA version..."
   fi
-  if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
-    _FILE_VERSION=barracuda-release.txt
-  else
-    _FILE_VERSION=barracuda-version.txt
-  fi
-  if [ -e "${locCnf}/${_FILE_VERSION}" ]; then
-    _VERSIONS_TEST=$(cat ${locCnf}/${_FILE_VERSION} 2>&1)
-    if [[ "${_VERSIONS_TEST}" =~ "-dev" ]] \
-      || [[ "${_VERSIONS_TEST}" =~ "-stable" ]] \
-      || [[ "${_VERSIONS_TEST}" =~ "-rel" ]]; then
-      if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
-        && [ "${_AEGIR_VERSION}" = "HEAD" ]; then
-        _VERSIONS_TEST_RESULT=OK
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: BARRACUDA version test: OK"
-        fi
-      elif [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
-        && [ "${_AEGIR_VERSION}" = "DEV" ]; then
-        _VERSIONS_TEST_RESULT=OK
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: BARRACUDA version test: OK"
-        fi
-      else
-        _VERSIONS_TEST_RESULT=FAIL
-      fi
-    else
-      if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]] \
-        && [[ "${_AEGIR_VERSION}" =~ "BOA" ]]; then
-        _VERSIONS_TEST_RESULT=OK
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: BARRACUDA version test: OK"
-        fi
-      else
-        _VERSIONS_TEST_RESULT=FAIL
-      fi
-    fi
-    if [ "${_VERSIONS_TEST_RESULT}" = "FAIL" ]; then
-      msg "ERROR: This BARRACUDA version is outdated and will not work correctly"
-      msg "Bye"
-      clean_pid_exit
-    fi
-  fi
   if [ -e "/var/log/barracuda_log.txt" ]; then
     _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
-      || [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
-      || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
+      || [[ "${_SERIES_TEST}" =~ "BOA-4." ]]; then
       _VERSIONS_TEST_RESULT=OK
     else
       msg "ERROR: This barracuda installer can be used only when the instance"
