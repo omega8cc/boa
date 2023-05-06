@@ -734,7 +734,7 @@ check_boa_version() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Checking BARRACUDA version..."
   fi
-  if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+  if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
     _FILE_VERSION=barracuda-release.txt
   else
     _FILE_VERSION=barracuda-version.txt

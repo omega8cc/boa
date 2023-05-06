@@ -1708,7 +1708,7 @@ touch /var/run/boa_run.pid
 #
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="https://github.com/omega8cc"
-if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
   check_git_repos
 fi
 #
@@ -1754,7 +1754,7 @@ mkdir -p ${_SRCDIR}
 chmod -R 777 /opt/tmp &> /dev/null
 cd /opt/tmp
 rm -rf /opt/tmp/boa
-if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
   ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git &> /dev/null
 else
   curl ${crlGet} "${urlDev}/${_AEGIR_VERSION}/boa.tar.gz" | tar -xzf -

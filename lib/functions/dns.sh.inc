@@ -149,7 +149,7 @@ check_git_repos() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: check_git_repos"
   fi
-  if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+  if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
     _GITHUB_WORKS=NO
     _GITLAB_WORKS=NO
     if [ "${_FORCE_GIT_MIRROR}" = "drupal" ]; then
