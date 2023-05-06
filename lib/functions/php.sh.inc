@@ -2573,6 +2573,7 @@ check_php_cli() {
     ln -sf ${_USE_PHP_CLI_PATH} /usr/bin/php-cli
   else
     msg "WAIT: I can not find PHP-CLI anywhere!"
+    msg "NOTE: BOA requires PHP 7.4 or newer"
   fi
 }
 
