@@ -1878,7 +1878,7 @@ update_wrappers() {
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     exit 1
   else
-    urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
+    urlHmr="http://${_USE_MIR}/versions/stable/boa/aegir"
   fi
   _LSB_TEST=$(which lsb_release 2> /dev/null)
   if [ ! -x "${_LSB_TEST}" ]; then
@@ -2098,7 +2098,7 @@ setup() {
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     exit 1
   else
-    urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
+    urlHmr="http://${_USE_MIR}/versions/stable/boa/aegir"
   fi
   _VIRT_TEST=$(which virt-what 2> /dev/null)
   if [ ! -x "${_VIRT_TEST}" ]; then
@@ -2268,7 +2268,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/stable/boa/aegir"
 }
 
 sysctl_update() {

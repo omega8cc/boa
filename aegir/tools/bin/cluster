@@ -530,7 +530,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/stable/boa/aegir"
 }
 find_fast_mirror
 
@@ -2090,7 +2090,7 @@ upgrade_host() {
 
   cd
   cp -af /etc/sysctl.conf /etc/sysctl.conf.thrd.three
-  wget -q -U iCab http://${_USE_MIR}/versions/dev/boa/aegir/conf/sysctl.conf
+  wget -q -U iCab http://${_USE_MIR}/versions/stable/boa/aegir/conf/sysctl.conf
   cp -af sysctl.conf /etc/sysctl.conf
   echo "kernel.vshelper = /sbin/vshelper" >> /etc/sysctl.conf
   rm -f sysctl.conf*
