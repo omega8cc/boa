@@ -506,6 +506,25 @@ satellite_check_strict_php_cli() {
   fi
 }
 
+satellite_downgrade_protection() {
+  if [ "${cmmand}" != "up-dev" ]; then
+    if [ -e "${User}/log/octopus_log.txt" ]; then
+      _SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
+      _BOA_SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
+      if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
+        || [[ "${_BOA_SERIES_TEST}" =~ "BOA-5." ]]; then
+        echo
+        echo "ERROR: Your system has been already upgraded to BOA-5.x"
+        echo "You can not downgrade back to previous stable version"
+        echo "Please use 'octopus up-dev ${octUsr} force' to upgrade"
+        echo "Bye"
+        echo
+        clean_pid_exit
+      fi
+    fi
+  fi
+}
+
 satellite_check_supported_php_cli() {
   if [ "${cmmand}" = "up-dev" ]; then
     fmodey=
@@ -568,6 +587,7 @@ up_one() {
     if [ "${cmmand}" = "up-dev" ]; then
       satellite_check_supported_php_cli
     else
+      satellite_downgrade_protection
       satellite_check_strict_php_cli
     fi
     if [ "${cmmand}" = "up-dev" ]; then
