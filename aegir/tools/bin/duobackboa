@@ -127,9 +127,14 @@ find_fast_mirror() {
       echo "sg.files.aegir.cc" >> ${ffList}
     fi
     if [ -e "${ffList}" ]; then
-      _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
-      _USE_MIR="${_CHECK_MIRROR}"
-      [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${ffMirr} 2>&1)
+      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+        _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+        _USE_MIR="${_CHECK_MIRROR}"
+        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+      else
+        _USE_MIR="files.aegir.cc"
+      fi
     else
       _USE_MIR="files.aegir.cc"
     fi
