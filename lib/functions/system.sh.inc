@@ -563,7 +563,7 @@ tune_memory_limits() {
   if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
     _USE_PHP=1024
     _USE_OPC=1024
-    _USE_CLI=1024
+    _USE_CLI=2048
     _QCE_SQL=64M
     _RND_SQL=8M
     _JBF_SQL=4M
