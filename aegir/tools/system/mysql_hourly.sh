@@ -106,7 +106,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/master/aegir"
+  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
 }
 find_fast_mirror
 

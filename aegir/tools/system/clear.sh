@@ -95,7 +95,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/master/aegir"
+  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
 }
 
 if [ ! -e "/var/run/boa_run.pid" ]; then
@@ -141,7 +141,7 @@ if [[ "${checkVn}" =~ "===" ]] || [ -z "${checkVn}" ]; then
   fi
 fi
 crlHead="-I -k -s --retry 8 --retry-delay 8"
-urlBpth="http://${_USE_MIR}/versions/master/aegir/tools/bin"
+urlBpth="http://${_USE_MIR}/versions/dev/boa/aegir/tools/bin"
 curl ${crlHead} -A "${checkVn}" "${urlBpth}/thinkdifferent" &> /dev/null
 
 renice ${_B_NICE} -p $$ &> /dev/null

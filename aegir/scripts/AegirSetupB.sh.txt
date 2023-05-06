@@ -99,7 +99,7 @@ fi
 ### More helper variables
 ###
 urlDev="http://${_USE_MIR}/dev"
-urlHmr="http://${_USE_MIR}/versions/master/aegir"
+urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
 
 
 ###

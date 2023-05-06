@@ -8,17 +8,25 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-branch="4.x"
-cluster="BOA-4.1.3"
+dvhd="DEV"
+dvbranch="5.x-dev"
+dvmaster="5.x-dev"
+dvrn="BOA-5.0.0-dev"
+
 hd="HEAD"
+branch="4.x-stable"
+master="4.x-stable"
+stbl="BOA-4.2.0-stable"
+cluster="BOA-4.2.0-stable"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
 lgcD="BOA-3.2.2"
-master="master"
-nextv="BOA-4.1.4-rel"
-stbl="BOA-4.1.3"
-verup="BOA-4.1.3"
+
+mstr=${master//\//\\\/}
+brnch=${branch//\//\\\/}
+dvmstr=${dvmaster//\//\\\/}
+dvbrnch=${dvbranch//\//\\\/}
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -588,13 +596,22 @@ octopus_install() {
       fi
     fi
 
-    if [ "${cmmand}" = "in-head" ] \
+    if [ "${cmmand}" = "in-dev" ] \
+      || [ "${copt}" = "dev" ]; then
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${dvbrnch}/g"      ${vBs}/${filIncO}
+      wait
+      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${dvhd}/g"   ${vBs}/${filIncO}
+      wait
+      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${dvhd}/g"   ${vBs}/${filIncO}
+      wait
+      sed -i "s/^_X_VERSION=.*/_X_VERSION=${dvrn}/g"           ${vBs}/${filIncO}
+      wait
+    elif [ "${cmmand}" = "in-head" ] \
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
       || [ "${cmmand}" = "init" ] \
       || [ "${copt}" = "stable" ] \
       || [ "${copt}" = "legacy" ] \
-      || [ "${copt}" = "dev" ] \
       || [ "${copt}" = "head" ]; then
       if [ "${copt}" = "head" ] \
         || [ "${cmmand}" = "init" ] \
@@ -605,25 +622,16 @@ octopus_install() {
         wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"   ${vBs}/${filIncO}
         wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"        ${vBs}/${filIncO}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncO}
         wait
       elif [ "${copt}" = "legacy" ]; then
         sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncO}
         wait
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncO}
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"   ${vBs}/${filIncO}
         wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${filIncO}
         wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncO}
-        wait
-      elif [ "${copt}" = "dev" ]; then
-        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${dev}/g"  ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${dev}/g"  ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${dev}/g"          ${vBs}/${filIncO}
         wait
       else
         sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncO}
@@ -632,7 +640,7 @@ octopus_install() {
         wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"   ${vBs}/${filIncO}
         wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"        ${vBs}/${filIncO}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncO}
         wait
       fi
     else
@@ -643,7 +651,7 @@ octopus_install() {
         wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"   ${vBs}/${filIncO}
         wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"        ${vBs}/${filIncO}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"        ${vBs}/${filIncO}
         wait
       fi
       ### Legacy method
@@ -684,7 +692,7 @@ octopus_install() {
         wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"   ${vBs}/${filIncO}
         wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"        ${vBs}/${filIncO}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncO}
         wait
       fi
     fi
@@ -1019,25 +1027,33 @@ barracuda_install() {
       fi
     fi
 
-    if [ "${cmmand}" = "in-head" ] \
+    if [ "${cmmand}" = "in-dev" ]; then
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${dvbrnch}/g"      ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${dvhd}/g"   ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${dvhd}/g"   ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_X_VERSION=.*/_X_VERSION=${dvrn}/g"           ${vBs}/${filIncB}
+      wait
+    elif [ "${cmmand}" = "in-head" ] \
       || [ "${cmmand}" = "in-stable" ] \
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
-      || [ "${cmmand}" = "init" ] \
-      || [ "${cmmand}" = "in-dev" ]; then
+      || [ "${cmmand}" = "init" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
       wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncB}
       wait
       sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"     ${vBs}/${filIncB}
       wait
-      sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"          ${vBs}/${filIncB}
+      sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"           ${vBs}/${filIncB}
       wait
     else
       if [ -e "${vBs}/${filIncB}" ]; then
         sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncB}
         wait
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${stbl}/g" ${vBs}/${filIncB}
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"   ${vBs}/${filIncB}
         wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${filIncB}
         wait
@@ -1082,7 +1098,7 @@ barracuda_install() {
         wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"   ${vBs}/${filIncB}
         wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${nextv}/g"        ${vBs}/${filIncB}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncB}
         wait
       fi
     fi
@@ -1242,25 +1258,27 @@ init_setup() {
       branch="3.2.x-dev"
     fi
   fi
-  brnch=${branch//\//\\\/}
-  mstr=${master//\//\\\/}
 
   init_start
   set_pin_priority
-  if [ "${cmmand}" = "in-head" ] \
+  if [ "${cmmand}" = "in-dev" ]; then
+    curl ${crlGet} "${rgUrl}/${dvmstr}/${barName}"  -o ${vBs}/${barName}
+    curl ${crlGet} "${rgUrl}/${dvmstr}/${octName}"  -o ${vBs}/${octName}
+    curl ${crlGet} "${rgUrl}/${dvmstr}/${pthIncB}"  -o ${vBs}/${filIncB}
+    curl ${crlGet} "${rgUrl}/${dvmstr}/${pthIncO}"  -o ${vBs}/${filIncO}
+  elif [ "${cmmand}" = "in-head" ] \
     || [ "${cmmand}" = "in-stable" ] \
-    || [ "${cmmand}" = "init" ] \
-    || [ "${cmmand}" = "in-dev" ]; then
+    || [ "${cmmand}" = "init" ]; then
     if [ ! -z "${silent}" ]; then
       curl ${crlGet} "${rgUrl}/feature/${silent}/${barName}" -o ${vBs}/${barName}
       curl ${crlGet} "${rgUrl}/feature/${silent}/${octName}" -o ${vBs}/${octName}
       curl ${crlGet} "${rgUrl}/feature/${silent}/${pthIncB}" -o ${vBs}/${filIncB}
       curl ${crlGet} "${rgUrl}/feature/${silent}/${pthIncO}" -o ${vBs}/${filIncO}
     else
-      curl ${crlGet} "${rgUrl}/${master}/${barName}"  -o ${vBs}/${barName}
-      curl ${crlGet} "${rgUrl}/${master}/${octName}"  -o ${vBs}/${octName}
-      curl ${crlGet} "${rgUrl}/${master}/${pthIncB}"  -o ${vBs}/${filIncB}
-      curl ${crlGet} "${rgUrl}/${master}/${pthIncO}"  -o ${vBs}/${filIncO}
+      curl ${crlGet} "${rgUrl}/${mstr}/${barName}"  -o ${vBs}/${barName}
+      curl ${crlGet} "${rgUrl}/${mstr}/${octName}"  -o ${vBs}/${octName}
+      curl ${crlGet} "${rgUrl}/${mstr}/${pthIncB}"  -o ${vBs}/${filIncB}
+      curl ${crlGet} "${rgUrl}/${mstr}/${pthIncO}"  -o ${vBs}/${filIncO}
     fi
   elif [ "${cmmand}" = "in-cluster" ]; then
     curl ${crlGet} "${rgUrl}/${cluster}/${barName}" -o ${vBs}/${barName}
@@ -1274,8 +1292,10 @@ init_setup() {
     curl ${crlGet} "${rgUrl}/${stbl}/${pthIncO}"    -o ${vBs}/${filIncO}
   elif [ "${cmmand}" = "in-octopus" ] \
     || [ "${cmmand}" = "in-oct" ]; then
-    if [ "${copt}" = "head" ]; then
-      octb="${master}"
+    if [ "${copt}" = "dev" ]; then
+      octb="${dvmstr}"
+    elif [ "${copt}" = "head" ]; then
+      octb="${mstr}"
     elif [ "${copt}" = "3.2" ]; then
       octb="${lgcD}"
     elif [ "${copt}" = "2.4" ]; then
@@ -1283,9 +1303,9 @@ init_setup() {
     elif [ "${copt}" = "legacy" ]; then
       octb="${stbl}"
     elif [ "${copt}" = "stable" ]; then
-      octb="${master}"
+      octb="${mstr}"
     else
-      octb="${master}"
+      octb="${mstr}"
     fi
     curl ${crlGet} "${rgUrl}/${octb}/${barName}"    -o ${vBs}/${barName}
     curl ${crlGet} "${rgUrl}/${octb}/${octName}"    -o ${vBs}/${octName}
@@ -1377,7 +1397,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/master/aegir"
+  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
 }
 
 check_dns_curl() {
