@@ -478,81 +478,12 @@ satellite_check_up_php() {
   _SERIES_TEST=
 }
 
-satellite_check_switch_php() {
-  if [ "${cmmand}" = "up-head" ] \
-    || [ "${cmmand}" = "up-dev" ] \
-    || [ "${cmmand}" = "up-legacy" ] \
-    || [ "${cmmand}" = "up-stable" ]; then
-    if [ -e "${User}/log/octopus_log.txt" ]; then
-      _SERIES_TEST_RESULT=
-      _SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
-      if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
-        || [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
-        || [[ "${_SERIES_TEST}" =~ "BOA-3." ]]; then
-        _SERIES_TEST_RESULT=OK
-        if [ "${orgMcmode}" != "force" ]; then
-          mcmode=
-          fmodey=force
-          if [ ! -e "/root/.silent-octopus-upgrade.cnf" ]; then
-            echo
-            echo "This Aegir Instance ${octUsr} is already up to date!"
-            echo "If you wish to run/force the upgrade again,"
-            echo "please use the forced upgrade mode, as shown below"
-            echo
-            echo "Usage: $(basename "$0") ${orgCmmand} ${second} force"
-            echo
-          fi
-        fi
-      fi
-    fi
-    if [ -e "${User}/static/control/fpm.info" ]; then
-      _T_FPM_VRN=$(cat ${User}/static/control/fpm.info 2>&1)
-      _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
-      _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-      if [ "${_T_FPM_VRN}" = "8.2" ] \
-        || [ "${_T_FPM_VRN}" = "8.1" ] \
-        || [ "${_T_FPM_VRN}" = "8.0" ] \
-        || [ "${_T_FPM_VRN}" = "7.4" ]; then
-        _PHP_FPM_LEGACY_FREE=YES
-      else
-        _PHP_FPM_LEGACY_FREE=NO
-      fi
-    else
-      _PHP_FPM_LEGACY_FREE=YES
-    fi
-    if [ -e "${User}/static/control/cli.info" ]; then
-      _T_CLI_VRN=$(cat ${User}/static/control/cli.info 2>&1)
-      _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
-      _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-      if [ "${_T_CLI_VRN}" = "8.2" ] \
-        || [ "${_T_CLI_VRN}" = "8.1" ] \
-        || [ "${_T_CLI_VRN}" = "8.0" ] \
-        || [ "${_T_CLI_VRN}" = "7.4" ]; then
-        _PHP_CLI_LEGACY_FREE=YES
-      else
-        _PHP_CLI_LEGACY_FREE=NO
-      fi
-    else
-      _PHP_CLI_LEGACY_FREE=YES
-    fi
-    if [ "${_PHP_CLI_LEGACY_FREE}" = "YES" ] \
-      && [ "${_PHP_FPM_LEGACY_FREE}" = "YES" ]; then
-      _PHP_LEGACY_FREE=YES
-    else
-      _PHP_LEGACY_FREE=NO
-    fi
-  fi
-  _SERIES_TEST=
-}
-
 up_one() {
   if [ -e "${vBs}/${octName}" ]; then
     cp -af ${vBs}/${octName}  ${vBs}/${tocName}
     if [ -e "${vBs}/${filIncO}" ]; then
       cp -af ${vBs}/${filIncO}  ${vBs}/${tocIncO}
     fi
-    satellite_check_up_php
-    ### satellite_check_switch_php
     if [ "${cmmand}" = "up-dev" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${dvbrnch}/g"      ${vBs}/${tocIncO}
       wait
