@@ -73,7 +73,7 @@ check_generate() {
       echo "${_ESC_PASS}" > ${_L_SYS}
     else
        echo "INFO: We will generate new random password using shuf tool"
-      _ESC_PASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
+      _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
       _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
       _ENC_PASS="${_ESC_PASS}"
@@ -85,7 +85,7 @@ check_generate() {
   if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
      echo "WARN: The random password=${_ESC_PASS} does not look good"
      echo "INFO: We will generate new random password using shuf tool"
-    _ESC_PASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
+    _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
     _ENC_PASS="${_ESC_PASS}"
