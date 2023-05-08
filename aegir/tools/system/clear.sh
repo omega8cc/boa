@@ -129,7 +129,7 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
     --max-redirs 5 \
     --retry 5 \
     --retry-delay 5 \
-    -A iCab "http://${_USE_MIR}/BOA.sh.txt" \
+    -A iCab "http://${_USE_MIR}/dev/boa/BOA.sh.txt" \
     -o /var/backups/BOA.sh.txt.hourly
   wait
   if [ -e "/var/backups/BOA.sh.txt.hourly" ]; then

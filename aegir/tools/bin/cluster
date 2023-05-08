@@ -1039,7 +1039,7 @@ install_vps() {
   if [ "${ver}" != "galera" ]; then
     echo "Installing BOA ${ver} in vps ${idn}..."
     rm -f BOA.sh.txt*
-    wget -q -U iCab http://${_USE_MIR}/BOA.sh.txt
+    wget -q -U iCab http://${_USE_MIR}/dev/boa/BOA.sh.txt
     mv -f BOA.sh.txt /vservers/${idn}/root/
     vserver ${idn} exec bash /root/BOA.sh.txt
     vserver ${idn} exec /opt/local/bin/boa in-${ver} public ${hst} ${eml} o8 mini
