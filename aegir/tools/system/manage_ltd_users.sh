@@ -194,7 +194,7 @@ get_dev_ext() {
 #
 # Remove dangerous stuff from the string.
 sanitize_string() {
-  echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g; s/\(['"'"'\]\)//g'
+  echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'
 }
 #
 # Add ltd-shell group if not exists.

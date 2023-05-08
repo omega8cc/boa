@@ -16,7 +16,7 @@ crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 
 # Remove dangerous stuff from the string.
 sanitize_string() {
-  echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g; s/\(['"'"'\]\)//g'
+  echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'
 }
 
 #
