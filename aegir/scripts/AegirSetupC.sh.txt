@@ -657,6 +657,13 @@ _D7_CORE_DIR="/data/all/000/core/drupal-${_SMALLCORE7}"
 _D8_CORE_DIR="/data/all/000/core/drupal-${_SMALLCORE8}"
 _D9_CORE_DIR="/data/all/000/core/drupal-${_SMALLCORE93}"
 
+if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
+  _USE_AEGIR_VER=SRC
+  _T_BUILD=HEAD
+else
+  _USE_AEGIR_VER=STATIC
+  _T_BUILD=STATIC
+fi
 
 ###---### Distributions full names.
 #
@@ -754,7 +761,7 @@ agov_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_AGOV ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -805,7 +812,7 @@ commerce_7_1_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_COMMERCE1 ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -860,7 +867,7 @@ commerce_7_2_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_COMMERCE2 ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -912,7 +919,7 @@ commons_6_install() {
           true
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_COMMONS2 ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D6_CORE_DIR}" ]; then
                 prepare_drupal6_core
@@ -977,7 +984,7 @@ commons_7_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_COMMONS3 ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -1184,7 +1191,7 @@ erpal_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_ERPAL ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -1235,7 +1242,7 @@ fserver_install() {
         true
         [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_FSERVER ${yOk}"
         if [ ! -d "${_SHRD_PLPATH}" ]; then
-          if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+          if [ "${_USE_AEGIR_VER}" = "SRC" ] \
             && [ "${_T_BUILD}" = "HEAD" ]; then
             if [ ! -e "${_D6_CORE_DIR}" ]; then
               prepare_drupal6_core
@@ -1291,7 +1298,7 @@ guardr_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_GUARDR ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -1372,7 +1379,7 @@ openacademy_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENACADEMY ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -1418,7 +1425,7 @@ openaid_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENAID ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -1465,7 +1472,7 @@ openatrium7_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENATRIUM7 ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -1512,7 +1519,7 @@ openblog_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENBLOG ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -1558,7 +1565,7 @@ openchurch1_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENCHURCH1 ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -1605,7 +1612,7 @@ openchurch2_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENCHURCH2 ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -1653,7 +1660,7 @@ opendeals_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENDEALS ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -1731,7 +1738,7 @@ openoutreach_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENOUTREACH ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -1780,7 +1787,7 @@ openpublic_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENPUBLIC ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -1827,7 +1834,7 @@ openscholar_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENSCHOLAR ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -1946,7 +1953,7 @@ opigno_lms7_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPIGNOLMS7 ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -2001,7 +2008,7 @@ panopoly_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_PANOPOLY ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -2057,7 +2064,7 @@ recruiter_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_RECRUITER ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -2103,7 +2110,7 @@ restaurant_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_RESTAURANT ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -2187,7 +2194,7 @@ ubercart6_install() {
         true
         [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_UBERCART6 ${yOk}"
         if [ ! -d "${_SHRD_PLPATH}" ]; then
-          if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+          if [ "${_USE_AEGIR_VER}" = "SRC" ] \
             && [ "${_T_BUILD}" = "HEAD" ]; then
             cd ${_CORE}
             if [ ! -e "${_D6_CORE_DIR}" ]; then
@@ -2264,7 +2271,7 @@ ubercart7_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_UBERCART7 ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
@@ -2334,7 +2341,7 @@ ubercart7_testing_install() {
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_UBER_CART_T ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
-            if [ "${_AEGIR_VERSION}" = "HEAD" ] \
+            if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
