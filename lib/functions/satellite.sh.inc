@@ -2127,7 +2127,7 @@ provision_backend_dbpass_generate() {
       if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
         _ESC_PASS="$(openssl rand -base64 64 2>&1)"
       else
-        _ESC_PASS=$(randpass "${_PWD_CHARS}" graph 2>&1)
+        _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
       fi
     else
       if [ -e "/root/.my.pass.txt" ]; then
@@ -2947,7 +2947,7 @@ satellite_if_add_ftps_lshell_access() {
       fi
     fi
     if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "32" ]; then
-      _ESC_LUPASS=$(randpass "${_PWD_CHARS}" graph 2>&1)
+      _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
       _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
     fi
@@ -3218,7 +3218,7 @@ satellite_if_read_create_pass_txt() {
         fi
       fi
       if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "32" ]; then
-        _ESC_LUPASS=$(randpass "${_PWD_CHARS}" graph 2>&1)
+        _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
         _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
         _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
       fi

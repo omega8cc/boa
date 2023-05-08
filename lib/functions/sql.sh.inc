@@ -955,7 +955,7 @@ forced_mysql_root_password_update() {
     if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
       _ESC_PASS="$(openssl rand -base64 64 2>&1)"
     else
-      _ESC_PASS=$(randpass "${_PWD_CHARS}" graph 2>&1)
+      _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
     fi
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
@@ -1471,7 +1471,7 @@ init_sql_root_credentials() {
         if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
           _ESC_PASS="$(openssl rand -base64 64 2>&1)"
         else
-          _ESC_PASS=$(randpass "${_PWD_CHARS}" graph 2>&1)
+          _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
         fi
         _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
         _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)

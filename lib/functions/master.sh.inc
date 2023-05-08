@@ -34,7 +34,7 @@ provision_backend_dbpass_generate() {
       if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
         _ESC_PASS="$(openssl rand -base64 64 2>&1)"
       else
-        _ESC_PASS=$(randpass "${_PWD_CHARS}" graph 2>&1)
+        _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
       fi
     else
       if [ -e "/root/.my.pass.txt" ]; then
@@ -802,7 +802,7 @@ aegir_master_install_upgrade() {
         if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
           _ESC_PASS="$(openssl rand -base64 64 2>&1)"
         else
-          _ESC_PASS=$(randpass "${_PWD_CHARS}" graph 2>&1)
+          _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
         fi
       else
         if [ -e "/root/.my.pass.txt" ]; then

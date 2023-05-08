@@ -29,7 +29,7 @@ forced_redis_password_update() {
       fi
     fi
     if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "32" ]; then
-      _ESC_RPASS=$(randpass "${_PWD_CHARS}" graph 2>&1)
+      _ESC_RPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
       _ESC_RPASS=$(echo -n "${_ESC_RPASS}" | tr -d "\n" 2>&1)
       _LEN_RPASS=$(echo ${#_ESC_RPASS} 2>&1)
     fi
