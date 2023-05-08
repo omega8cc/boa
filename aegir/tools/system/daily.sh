@@ -148,11 +148,11 @@ extract_archive() {
 
 get_dev_ext() {
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "${urlDev}/HEAD/$1" -o "$1"
+    curl ${crlGet} "${urlDev}/DEV/$1" -o "$1"
     if [ -e "$1" ]; then
       extract_archive "$1"
     else
-      echo "OOPS: $1 failed download from ${urlDev}/HEAD/$1"
+      echo "OOPS: $1 failed download from ${urlDev}/DEV/$1"
     fi
   fi
 }

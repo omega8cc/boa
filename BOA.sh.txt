@@ -287,11 +287,11 @@ get_dev_src() {
 # Download and extract from dev/contrib mirror.
 get_dev_contrib() {
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "${urlDev}/HEAD/contrib/$1" -o "$1"
+    curl ${crlGet} "${urlDev}/DEV/contrib/$1" -o "$1"
     if [ -e "$1" ]; then
       extract_archive "$1"
     else
-      msg "OOPS: $1 failed download from ${urlDev}/HEAD/contrib/$1"
+      msg "OOPS: $1 failed download from ${urlDev}/DEV/contrib/$1"
     fi
   fi
 }
