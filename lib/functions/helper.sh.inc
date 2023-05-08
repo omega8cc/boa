@@ -393,7 +393,12 @@ mode_detection() {
     [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
     kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}') &> /dev/null
   fi
-  if [ "${_AEGIR_VERSION}" = "HEAD" ] && [ ! -z "${_FORCE_GIT_MIRROR}" ]; then
+  if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
+    _USE_AEGIR_VER=SRC
+  else
+    _USE_AEGIR_VER=STATIC
+  fi
+  if [ "${_USE_AEGIR_VER}" = "SRC" ] && [ ! -z "${_FORCE_GIT_MIRROR}" ]; then
     if [ "${_FORCE_GIT_MIRROR}" = "gitlab" ]; then
       _INSTAPP="/usr/bin/aptitude-fast -f -y -q \
         -o Dpkg::Options::=--force-confdef \

@@ -518,8 +518,13 @@ check_github_for_aegir_head_mode() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: check_github_for_aegir_head_mode"
   fi
+  if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
+    _USE_AEGIR_VER=SRC
+  else
+    _USE_AEGIR_VER=STATIC
+  fi
   if [ "${_SYSTEM_UPGRADE_ONLY}" = "NO" ] \
-    && [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+    && [ "${_USE_AEGIR_VER}" = "SRC" ]; then
     rm -rf /opt/tmp/test-*
     check_connection
     _GITHUB_TEST=$(git clone ${gitHub}/provision.git \
