@@ -55,7 +55,6 @@ system_hostname_check_fix() {
 system_hostname_check_fix
 
 rm -f /var/run/clear_m.pid
-ntpdate pool.ntp.org
 
 _ADD_XTRA=YES
 _CRON_TEST=$(grep "usage.sh" /var/spool/cron/crontabs/root 2>&1)
