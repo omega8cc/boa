@@ -57,7 +57,7 @@ else
   [ -z ${_SQL_HOST} ] && _SQL_HOST="127.0.0.1" && _SQL_PORT="3306"
 fi
 
-_C_SQL="mysql --user=root --password=${_SQL_PSWD} --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp"
+_C_SQL="mysql --user=root --password=\"${_SQL_PSWD}\" --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp"
 
 echo "SQL --host=${_SQL_HOST} --port=${_SQL_PORT}"
 n=$((RANDOM%600+8))
@@ -193,7 +193,7 @@ backup_this_database_with_mydumper() {
     --database=${_DB} \
     --host=${_SQL_HOST} \
     --user=root \
-    --password=${_SQL_PSWD} \
+    --password="${_SQL_PSWD}" \
     --port=${_SQL_PORT} \
     --outputdir=${_SAVELOCATION}/${_DB}/ \
     --rows=50000 \
@@ -208,7 +208,7 @@ backup_this_database_with_mysqldump() {
   check_running
   mysqldump \
     --user=root \
-    --password=${_SQL_PSWD} \
+    --password="${_SQL_PSWD}" \
     --host=${_SQL_HOST} \
     --port=${_SQL_PORT} \
     --protocol=tcp \

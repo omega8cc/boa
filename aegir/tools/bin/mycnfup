@@ -563,7 +563,7 @@ else
   fi
 fi
 
-_C_SQL="mysql --user=root --password=${_SQL_PSWD} --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp"
+_C_SQL="mysql --user=root --password=\"${_SQL_PSWD}\" --host=${_SQL_HOST} --port=${_SQL_PORT} --protocol=tcp"
 
 echo "SQL --host=${_SQL_HOST} --port=${_SQL_PORT}"
 

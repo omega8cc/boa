@@ -214,7 +214,7 @@ backup_this_database_with_mydumper() {
     --database=${_DB} \
     --host=localhost \
     --user=root \
-    --password=${_SQL_PSWD} \
+    --password="${_SQL_PSWD}" \
     --port=3306 \
     --outputdir=${_SAVELOCATION}/${_DB}/ \
     --rows=50000 \
