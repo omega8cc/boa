@@ -2014,9 +2014,6 @@ setup() {
     || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
     _VMFAMILY=HOSTED
   fi
-  if [ "${_BENG_VS}" != "YES" ]; then
-    ntpdate pool.ntp.org &> /dev/null
-  fi
   sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
   wait
   sed -i "s/.*github.*//g" /etc/hosts
