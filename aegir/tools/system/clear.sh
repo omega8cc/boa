@@ -126,14 +126,17 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
   rm -f /var/backups/BOA.sh.txt.hourly*
   find_fast_mirror
   curl -L -k -s \
-    --max-redirs 10 \
-    --retry 10 \
+    --max-redirs 5 \
+    --retry 5 \
     --retry-delay 5 \
     -A iCab "http://${_USE_MIR}/BOA.sh.txt" \
     -o /var/backups/BOA.sh.txt.hourly
-  bash /var/backups/BOA.sh.txt.hourly &> /dev/null
-  rm -f /var/backups/BOA.sh.txt.hourly*
-  sleep 3
+  wait
+  if [ -e "/var/backups/BOA.sh.txt.hourly" ]; then
+    bash /var/backups/BOA.sh.txt.hourly &> /dev/null
+    wait
+    rm -f /var/backups/BOA.sh.txt.hourly*
+  fi
   bash /opt/local/bin/autoupboa
 fi
 
@@ -145,9 +148,10 @@ if [[ "${checkVn}" =~ "===" ]] || [ -z "${checkVn}" ]; then
     checkVn="whereis barracuda_log.txt"
   fi
 fi
-crlHead="-I -k -s --retry 8 --retry-delay 8"
+crlHead="-I -k -s --retry 5 --retry-delay 5"
 urlBpth="http://${_USE_MIR}/versions/dev/boa/aegir/tools/bin"
 curl ${crlHead} -A "${checkVn}" "${urlBpth}/thinkdifferent" &> /dev/null
+wait
 
 renice ${_B_NICE} -p $$ &> /dev/null
 service ssh restart &> /dev/null
