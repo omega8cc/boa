@@ -32,6 +32,8 @@ if [[ ! "${_ALL}" =~ "sql-cli" ]] \
   elif [[ "${_ALL}" =~ "drush " ]]; then
     if [[ "${_ALL}" =~ "-c set -m" ]]; then
       _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drush"`
+    elif [[ "${_ALL}" =~ "-c drush" ]]; then
+      _R_M=`echo -n ${_ALL} | grep -o "\-c drush"`
     else
       _R_M=`echo -n ${_ALL} | grep -o "drush"`
     fi
@@ -48,6 +50,8 @@ if [[ ! "${_ALL}" =~ "sql-cli" ]] \
   elif [[ "${_ALL}" =~ "drush8 " ]]; then
     if [[ "${_ALL}" =~ "-c set -m" ]]; then
       _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drush8"`
+    elif [[ "${_ALL}" =~ "-c drush8" ]]; then
+      _R_M=`echo -n ${_ALL} | grep -o "\-c drush8"`
     else
       _R_M=`echo -n ${_ALL} | grep -o "drush8"`
     fi
@@ -64,6 +68,8 @@ if [[ ! "${_ALL}" =~ "sql-cli" ]] \
   elif [[ "${_ALL}" =~ "drush10-bin " ]]; then
     if [[ "${_ALL}" =~ "-c set -m" ]]; then
       _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drush10-bin"`
+    elif [[ "${_ALL}" =~ "-c drush10-bin" ]]; then
+      _R_M=`echo -n ${_ALL} | grep -o "\-c drush10-bin"`
     else
       _R_M=`echo -n ${_ALL} | grep -o "drush10-bin"`
     fi
@@ -80,6 +86,8 @@ if [[ ! "${_ALL}" =~ "sql-cli" ]] \
   elif [[ "${_ALL}" =~ "drush11-bin " ]]; then
     if [[ "${_ALL}" =~ "-c set -m" ]]; then
       _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drush11-bin"`
+    elif [[ "${_ALL}" =~ "-c drush11-bin " ]]; then
+      _R_M=`echo -n ${_ALL} | grep -o "\-c drush11-bin"`
     else
       _R_M=`echo -n ${_ALL} | grep -o "drush11-bin"`
     fi
@@ -96,6 +104,8 @@ if [[ ! "${_ALL}" =~ "sql-cli" ]] \
   elif [[ "${_ALL}" =~ "drush12-bin " ]]; then
     if [[ "${_ALL}" =~ "-c set -m" ]]; then
       _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drush12-bin"`
+    elif [[ "${_ALL}" =~ "-c drush12-bin " ]]; then
+      _R_M=`echo -n ${_ALL} | grep -o "\-c drush12-bin"`
     else
       _R_M=`echo -n ${_ALL} | grep -o "drush12-bin"`
     fi
@@ -116,6 +126,8 @@ _LNCHR_PHP_ARR=
 if [[ "${_ALL}" =~ "drushlr " ]]; then
   if [[ "${_ALL}" =~ "-c set -m" ]]; then
     _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; drushlr"`
+  elif [[ "${_ALL}" =~ "-c drushlr " ]]; then
+    _R_M=`echo -n ${_ALL} | grep -o "\-c drushlr"`
   else
     _R_M=`echo -n ${_ALL} | grep -o "drushlr"`
   fi
@@ -135,6 +147,8 @@ _LNCHR_SH_ARR=
 if [[ "${_ALL}" =~ "/opt/tools/drush/8/drush/drush.launcher " ]]; then
   if [[ "${_ALL}" =~ "-c set -m" ]]; then
     _R_M=`echo -n ${_ALL} | grep -o "\-c set -m\; /opt/tools/drush/8/drush/drush.launcher"`
+  elif [[ "${_ALL}" =~ "-c /opt/tools/drush/8/drush/drush.launcher" ]]; then
+    _R_M=`echo -n ${_ALL} | grep -o "\-c /opt/tools/drush/8/drush/drush.launcher"`
   else
     _R_M=`echo -n ${_ALL} | grep -o "/opt/tools/drush/8/drush/drush.launcher"`
   fi
@@ -154,6 +168,8 @@ _C_ARR=
 if [[ "${_ALL}" =~ "composer " ]]; then
   if [[ "${_ALL}" =~ "-c set -m" ]]; then
     _C_RM=`echo -n ${_ALL} | grep -o "\-c set -m\; composer"`
+  elif [[ "${_ALL}" =~ "-c composer " ]]; then
+    _C_RM=`echo -n ${_ALL} | grep -o "\-c composer"`
   else
     _C_RM=`echo -n ${_ALL} | grep -o "composer"`
   fi
@@ -205,6 +221,11 @@ fi
 if [[ "${_ARGS}" =~ "true COLUMNS=" ]]; then
   _R_M=`echo -n "${_ARGS}" | grep -o "true COLUMNS=[0-9]\+ "`
   _ARGS=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+fi
+
+if [[ "${_ARR}" =~ "-c " ]]; then
+  _R_M=`echo -n "${_ARR}" | grep -o "\-c "`
+  _ARR=`echo ${_ARR} | sed "s/\${_R_M}//g"`
 fi
 
 if [ -d "/home/${USER}/.tmp" ]; then
@@ -349,7 +370,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       echo
       exit 1
     fi
-    if [[ "${2}" =~ "set -m;" ]] || [[ "${1}" =~ "drush.launcher" ]]; then
+    if [[ "${2}" =~ "set -m;" ]] || [[ "${2}" =~ "drush8 @" ]] || [[ "${1}" =~ "drush.launcher" ]]; then
       _IN_PATH=YES
       _INTERNAL=YES
       if [[ "${_ALL}" =~ "drush " ]] \
