@@ -2103,23 +2103,23 @@ provision_backend_dbpass_generate() {
   _ESC_PASS=""
   _LEN_PASS=0
   if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
-    _PWD_CHARS=32
+    _PWD_CHARS=64
   elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
-    _PWD_CHARS=8
+    _PWD_CHARS=32
   else
     _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
     if [ ! -z "${_STRONG_PASSWORDS}" ] \
-      && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
+      && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
       _PWD_CHARS="${_STRONG_PASSWORDS}"
     else
-      _PWD_CHARS=8
+      _PWD_CHARS=32
     fi
     if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
       _PWD_CHARS=128
     fi
   fi
   if [ "${_STRONG_PASSWORDS}" = "YES" ] \
-    || [ "${_PWD_CHARS}" -gt "8" ]; then
+    || [ "${_PWD_CHARS}" -gt "32" ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
@@ -2127,7 +2127,7 @@ provision_backend_dbpass_generate() {
       if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
         _ESC_PASS="$(openssl rand -base64 64 2>&1)"
       else
-        _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+        _ESC_PASS=$(randpass "${_PWD_CHARS}" graph 2>&1)
       fi
     else
       if [ -e "/root/.my.pass.txt" ]; then
@@ -2931,23 +2931,23 @@ satellite_if_add_ftps_lshell_access() {
     _ESC_LUPASS=""
     _LEN_LUPASS=0
     if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
-      _PWD_CHARS=32
+      _PWD_CHARS=64
     elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
-      _PWD_CHARS=8
+      _PWD_CHARS=32
     else
       _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
       if [ ! -z "${_STRONG_PASSWORDS}" ] \
-        && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
+        && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
         _PWD_CHARS="${_STRONG_PASSWORDS}"
       else
-        _PWD_CHARS=8
+        _PWD_CHARS=32
       fi
       if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
         _PWD_CHARS=128
       fi
     fi
-    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ]; then
-      _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "32" ]; then
+      _ESC_LUPASS=$(randpass "${_PWD_CHARS}" graph 2>&1)
       _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
     fi
@@ -3202,23 +3202,23 @@ satellite_if_read_create_pass_txt() {
       _ESC_LUPASS=""
       _LEN_LUPASS=0
       if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
-        _PWD_CHARS=32
+        _PWD_CHARS=64
       elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
-        _PWD_CHARS=8
+        _PWD_CHARS=32
       else
         _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
         if [ ! -z "${_STRONG_PASSWORDS}" ] \
-          && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
+          && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
           _PWD_CHARS="${_STRONG_PASSWORDS}"
         else
-          _PWD_CHARS=8
+          _PWD_CHARS=32
         fi
         if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
           _PWD_CHARS=128
         fi
       fi
-      if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ]; then
-        _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+      if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "32" ]; then
+        _ESC_LUPASS=$(randpass "${_PWD_CHARS}" graph 2>&1)
         _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
         _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
       fi

@@ -787,8 +787,8 @@ _CLEAR_BOOST="YES"
 
 
 ###
-### Use YES only if both "randpass 32 esc"
-### and "randpass 32 alnum" commands produce
+### Use YES only if both "randpass 64 esc"
+### and "randpass 64 alnum" commands produce
 ### well looking, strong passwords and not
 ### some binary garbage, which is typically
 ### a sign of unreliable /dev/urandom.

@@ -13,23 +13,23 @@ forced_redis_password_update() {
     _ESC_RPASS=""
     _LEN_RPASS=0
     if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
-      _PWD_CHARS=32
+      _PWD_CHARS=64
     elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
-      _PWD_CHARS=8
+      _PWD_CHARS=32
     else
       _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
       if [ ! -z "${_STRONG_PASSWORDS}" ] \
-        && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
+        && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
         _PWD_CHARS="${_STRONG_PASSWORDS}"
       else
-        _PWD_CHARS=8
+        _PWD_CHARS=32
       fi
       if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
         _PWD_CHARS=128
       fi
     fi
-    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ]; then
-      _ESC_RPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "32" ]; then
+      _ESC_RPASS=$(randpass "${_PWD_CHARS}" graph 2>&1)
       _ESC_RPASS=$(echo -n "${_ESC_RPASS}" | tr -d "\n" 2>&1)
       _LEN_RPASS=$(echo ${#_ESC_RPASS} 2>&1)
     fi

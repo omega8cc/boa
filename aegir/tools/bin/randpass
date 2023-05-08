@@ -15,7 +15,7 @@ if [[ "${_SSL_ITD}" =~ "3.1." ]] \
 fi
 
 randpass() {
-  if [ "${integer}" -ge "8" ]; then
+  if [ "${integer}" -ge "32" ]; then
     rkey="${integer}"
   else
     rkey=32
@@ -84,7 +84,7 @@ case "$2" in
          kind="$2"
          randpass
   ;;
-  *)     echo "Usage: randpass {8-32} {alnum|graph|hash|esc}"
+  *)     echo "Usage: randpass {32-128} {alnum|graph|hash|esc}"
          exit 1
   ;;
 esac

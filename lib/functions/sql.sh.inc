@@ -934,16 +934,16 @@ forced_mysql_root_password_update() {
   _LEN_PASS=0
   _ESC="*.*"
   if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
-    _PWD_CHARS=32
+    _PWD_CHARS=64
   elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
-    _PWD_CHARS=8
+    _PWD_CHARS=32
   else
     _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
     if [ ! -z "${_STRONG_PASSWORDS}" ] \
-      && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
+      && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
       _PWD_CHARS="${_STRONG_PASSWORDS}"
     else
-      _PWD_CHARS=8
+      _PWD_CHARS=32
     fi
     if [ ! -z "${_PWD_CHARS}" ] \
       && [ "${_PWD_CHARS}" -gt "128" ]; then
@@ -951,11 +951,11 @@ forced_mysql_root_password_update() {
     fi
   fi
   if [ "${_STRONG_PASSWORDS}" = "YES" ] \
-    || [ "${_PWD_CHARS}" -gt "8" ]; then
+    || [ "${_PWD_CHARS}" -gt "32" ]; then
     if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
       _ESC_PASS="$(openssl rand -base64 64 2>&1)"
     else
-      _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+      _ESC_PASS=$(randpass "${_PWD_CHARS}" graph 2>&1)
     fi
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
@@ -1450,16 +1450,16 @@ init_sql_root_credentials() {
       _ESC_PASS=""
       _LEN_PASS=0
       if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
-        _PWD_CHARS=32
+        _PWD_CHARS=64
       elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
-        _PWD_CHARS=8
+        _PWD_CHARS=32
       else
         _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
         if [ ! -z "${_STRONG_PASSWORDS}" ] \
-          && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
+          && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
           _PWD_CHARS="${_STRONG_PASSWORDS}"
         else
-          _PWD_CHARS=8
+          _PWD_CHARS=32
         fi
         if [ ! -z "${_PWD_CHARS}" ] \
           && [ "${_PWD_CHARS}" -gt "128" ]; then
@@ -1467,11 +1467,11 @@ init_sql_root_credentials() {
         fi
       fi
       if [ "${_STRONG_PASSWORDS}" = "YES" ] \
-        || [ "${_PWD_CHARS}" -gt "8" ]; then
+        || [ "${_PWD_CHARS}" -gt "32" ]; then
         if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
           _ESC_PASS="$(openssl rand -base64 64 2>&1)"
         else
-          _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+          _ESC_PASS=$(randpass "${_PWD_CHARS}" graph 2>&1)
         fi
         _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
         _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
