@@ -996,13 +996,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/data/disk/arch/sql" ] \
-    && [ ! -e "${pthLog}/websh.ctrl.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/websh.fix-regr-01.ctrl.${_X_SE}.pid" ]; then
     mv -f /bin/websh /var/xdrago/websh.sh.old
     curl ${crlGet} "${urlHmr}/helpers/websh.sh.txt" -o /bin/websh
     if [ -e "/bin/websh" ]; then
       chmod 755 /bin/websh
       chown root:root /bin/websh
-      touch ${pthLog}/websh.ctrl.${_X_SE}.pid
+      touch ${pthLog}/websh.fix-regr-01.ctrl.${_X_SE}.pid
     else
       mv -f /var/xdrago/websh.sh.old /bin/websh
     fi
