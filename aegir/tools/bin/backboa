@@ -146,6 +146,9 @@ find_fast_mirror() {
 }
 
 install() {
+  if [ ! -d "${_LOGPTH}" ]; then
+    mkdir -p ${_LOGPTH}
+  fi
   _DUPLICITY_ITD=$(duplicity --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f2 \
