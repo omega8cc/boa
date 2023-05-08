@@ -81,7 +81,7 @@ _SSH_ARMOUR=NO #---------------- Allows to enhance OpenSSH security when YES
 _SSH_FROM_SOURCES=NO #---------- Allows to build OpenSSH from sources on Debian
 _SSH_PORT=22 #------------------ Allows to configure non-standard SSH port
 _STRICT_BIN_PERMISSIONS=YES #--- Aggressively protect all binaries when YES
-_STRONG_PASSWORDS=NO #---------- Configurable length: 8-128, YES (32), NO (8)
+_STRONG_PASSWORDS=YES #--------- Configurable length: 32-128, YES (64), NO (32)
 ###
 _CUSTOM_CONFIG_CSF=NO #--------- Protects custom CSF config when YES
 _CUSTOM_CONFIG_LSHELL=NO #------ Protects custom Limited Shell config when YES

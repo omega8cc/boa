@@ -630,9 +630,9 @@ install_proxysql() {
     fi
   fi
 
-  _PROXYSQL_PASSWORD="$(openssl rand -base64 32 2>&1)"
-  _MONITOR_PASSWORD="$(openssl rand -base64 32 2>&1)"
-  _CLUSTER_APP_PASSWORD="$(openssl rand -base64 32 2>&1)"
+  _PROXYSQL_PASSWORD="$(openssl rand -base64 64 2>&1)"
+  _MONITOR_PASSWORD="$(openssl rand -base64 64 2>&1)"
+  _CLUSTER_APP_PASSWORD="$(openssl rand -base64 64 2>&1)"
 
   _E_PROXYSQL_PASSWORD="${_PROXYSQL_PASSWORD//\//\\\/}"
   _E_MONITOR_PASSWORD="${_MONITOR_PASSWORD//\//\\\/}"
@@ -1479,8 +1479,8 @@ install_db_cluster() {
   fi
 
   _CLUSTER_NAME="${_CLUSTER_PREFIX}_galera"
-  _MAINT_USER_PWD="$(openssl rand -base64 32 2>&1)"
-  _ROOT_SQL_PASWD="$(openssl rand -base64 32 2>&1)"
+  _MAINT_USER_PWD="$(openssl rand -base64 64 2>&1)"
+  _ROOT_SQL_PASWD="$(openssl rand -base64 64 2>&1)"
   _E_MAINT_USER_PWD="${_MAINT_USER_PWD//\//\\\/}"
   _E_ROOT_SQL_PASWD="${_ROOT_SQL_PASWD//\//\\\/}"
   _CLUSTER_STRING="gcomm://"$(IFS=, ; echo "${_DB_NODE_IP[*]}")

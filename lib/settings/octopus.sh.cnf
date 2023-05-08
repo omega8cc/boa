@@ -473,10 +473,10 @@ _LOCAL_NETWORK_IP=""
 ### a sign of unreliable /dev/urandom.
 ### See: https://drupal.org/node/1952042
 ###
-### Configurable length: 8-128 or automatic
-### with keywords: YES (32), NO (8).
+### Configurable length: 32-128 or automatic
+### with keywords: YES (64), NO (32).
 ###
-_STRONG_PASSWORDS=NO
+_STRONG_PASSWORDS=YES
 
 
 ###----------------------------------------###

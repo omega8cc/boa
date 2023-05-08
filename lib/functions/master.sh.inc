@@ -32,7 +32,7 @@ provision_backend_dbpass_generate() {
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-        _ESC_PASS="$(openssl rand -base64 32 2>&1)"
+        _ESC_PASS="$(openssl rand -base64 64 2>&1)"
       else
         _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
       fi
@@ -800,7 +800,7 @@ aegir_master_install_upgrade() {
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-          _ESC_PASS="$(openssl rand -base64 32 2>&1)"
+          _ESC_PASS="$(openssl rand -base64 64 2>&1)"
         else
           _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
         fi
