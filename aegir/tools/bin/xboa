@@ -414,7 +414,7 @@ EOFMYSQL
               --database=${_DBN} \
               --host=localhost \
               --user=root \
-              --password="${_SQL_PSWD}" \
+              --password=${_SQL_PSWD} \
               --port=3306 \
               --directory=${_USR}/src/${_DBN}/ \
               --threads=4 \
@@ -474,7 +474,7 @@ EOFMYSQL
           --database=${_DBN} \
           --host=localhost \
           --user=root \
-          --password="${_SQL_PSWD}" \
+          --password=${_SQL_PSWD} \
           --port=3306 \
           --outputdir=${_USR}/src/${_DBN}/ \
           --rows=50000 \

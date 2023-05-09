@@ -1007,59 +1007,59 @@ forced_mysql_root_password_update() {
     fi
     echo "[client]" > /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
-    echo "password=\"${_ESC_PASS}\"" >> /root/.my.cnf
+    echo "password=${_ESC_PASS}" >> /root/.my.cnf
       echo " " >> /root/.my.cnf
     echo "[mysql]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
-    echo "password=\"${_ESC_PASS}\"" >> /root/.my.cnf
+    echo "password=${_ESC_PASS}" >> /root/.my.cnf
       echo " " >> /root/.my.cnf
     echo "[mysqldump]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
-    echo "password=\"${_ESC_PASS}\"" >> /root/.my.cnf
+    echo "password=${_ESC_PASS}" >> /root/.my.cnf
       echo " " >> /root/.my.cnf
     echo "[mydumper]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
-    echo "password=\"${_ESC_PASS}\"" >> /root/.my.cnf
+    echo "password=${_ESC_PASS}" >> /root/.my.cnf
       echo " " >> /root/.my.cnf
     echo "[myloader]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
-    echo "password=\"${_ESC_PASS}\"" >> /root/.my.cnf
+    echo "password=${_ESC_PASS}" >> /root/.my.cnf
       echo " " >> /root/.my.cnf
     echo "[boa]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
-    echo "password=\"${_ESC_PASS}\"" >> /root/.my.cnf
+    echo "password=${_ESC_PASS}" >> /root/.my.cnf
       echo " " >> /root/.my.cnf
     echo "[barracuda]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
-    echo "password=\"${_ESC_PASS}\"" >> /root/.my.cnf
+    echo "password=${_ESC_PASS}" >> /root/.my.cnf
       echo " " >> /root/.my.cnf
     echo "[octopus]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
-    echo "password=\"${_ESC_PASS}\"" >> /root/.my.cnf
+    echo "password=${_ESC_PASS}" >> /root/.my.cnf
       echo " " >> /root/.my.cnf
     echo "[autobeowulf]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
-    echo "password=\"${_ESC_PASS}\"" >> /root/.my.cnf
+    echo "password=${_ESC_PASS}" >> /root/.my.cnf
       echo " " >> /root/.my.cnf
     echo "[autochimaera]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
-    echo "password=\"${_ESC_PASS}\"" >> /root/.my.cnf
+    echo "password=${_ESC_PASS}" >> /root/.my.cnf
       echo " " >> /root/.my.cnf
     echo "[autoupboa]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
-    echo "password=\"${_ESC_PASS}\"" >> /root/.my.cnf
+    echo "password=${_ESC_PASS}" >> /root/.my.cnf
       echo " " >> /root/.my.cnf
     echo "[mycnfup]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
-    echo "password=\"${_ESC_PASS}\"" >> /root/.my.cnf
+    echo "password=${_ESC_PASS}" >> /root/.my.cnf
       echo " " >> /root/.my.cnf
     echo "[syncpass]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
-    echo "password=\"${_ESC_PASS}\"" >> /root/.my.cnf
+    echo "password=${_ESC_PASS}" >> /root/.my.cnf
       echo " " >> /root/.my.cnf
     echo "[xboa]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
-    echo "password=\"${_ESC_PASS}\"" >> /root/.my.cnf
+    echo "password=${_ESC_PASS}" >> /root/.my.cnf
       echo " " >> /root/.my.cnf
     chmod 0600 /root/.my.cnf
     echo "db=mysql" > /root/.mytop
@@ -1600,59 +1600,59 @@ sql_root_credentials_update() {
         fi
         echo "[client]" > /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=\"${PASWD}\"" >> /root/.my.cnf
+        echo "password=${PASWD}" >> /root/.my.cnf
         echo " " >> /root/.my.cnf
         echo "[mysql]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=\"${PASWD}\"" >> /root/.my.cnf
+        echo "password=${PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[mysqldump]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=\"${PASWD}\"" >> /root/.my.cnf
+        echo "password=${PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[mydumper]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=\"${PASWD}\"" >> /root/.my.cnf
+        echo "password=${PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[myloader]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=\"${PASWD}\"" >> /root/.my.cnf
+        echo "password=${PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[boa]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=\"${PASWD}\"" >> /root/.my.cnf
+        echo "password=${PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[barracuda]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=\"${PASWD}\"" >> /root/.my.cnf
+        echo "password=${PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[octopus]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=\"${PASWD}\"" >> /root/.my.cnf
+        echo "password=${PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[autobeowulf]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=\"${PASWD}\"" >> /root/.my.cnf
+        echo "password=${PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[autochimaera]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=\"${PASWD}\"" >> /root/.my.cnf
+        echo "password=${PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[autoupboa]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=\"${PASWD}\"" >> /root/.my.cnf
+        echo "password=${PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[mycnfup]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=\"${PASWD}\"" >> /root/.my.cnf
+        echo "password=${PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[syncpass]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=\"${PASWD}\"" >> /root/.my.cnf
+        echo "password=${PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[xboa]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
-        echo "password=\"${PASWD}\"" >> /root/.my.cnf
+        echo "password=${PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         chmod 0600 /root/.my.cnf
         echo "db=mysql" > /root/.mytop
