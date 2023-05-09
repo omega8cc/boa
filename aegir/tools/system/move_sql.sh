@@ -90,7 +90,7 @@ stop_sql() {
       service php${e}-fpm force-quit &> /dev/null
     fi
   done
-  # kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
   until [ -z "${_IS_FPM_RUNNING}" ]; do
     _IS_FPM_RUNNING=$(ps aux | grep '[p]hp-fpm' | awk '{print $2}' 2>&1)
     echo "Waiting for PHP-FPM graceful shutdown..."

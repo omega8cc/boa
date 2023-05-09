@@ -42,7 +42,7 @@ sql_restart() {
   echo "$(date 2>&1) $1 incident detected"                          >> ${pthOml}
   sleep 5
   echo "$(date 2>&1) $1 incident response started"                  >> ${pthOml}
-  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}') &> /dev/null
   killall sleep &> /dev/null
   killall php
   bash /var/xdrago/move_sql.sh
@@ -124,7 +124,7 @@ if [ -e "/var/log/php" ]; then
     | grep --count "already listen on"` -gt "0" ]; then
     touch /var/run/fmp_wait.pid
     sleep 8
-    kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
+    kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     _NOW=${_NOW//[^0-9-]/}
     mkdir -p /var/backups/php-logs/${_NOW}/
@@ -146,7 +146,7 @@ if [ -e "/var/log/php" ]; then
     | grep --count "process.max"` -gt "0" ]; then
     touch /var/run/fmp_wait.pid
     sleep 8
-    kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
+    kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     _NOW=${_NOW//[^0-9-]/}
     mkdir -p /var/backups/php-logs/${_NOW}/
@@ -198,7 +198,7 @@ almost_oom_kill() {
   echo "$(date 2>&1) Almost OOM $1 detected"                        >> ${pthOml}
   sleep 5
   echo "$(date 2>&1) Almost OOM incident response started"          >> ${pthOml}
-  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) Almost OOM wkhtmltopdf killed"                 >> ${pthOml}
   killall sleep &> /dev/null
   killall php
@@ -215,21 +215,21 @@ oom_restart() {
   echo "$(date 2>&1) OOM $1 detected"                               >> ${pthOml}
   sleep 5
   echo "$(date 2>&1) OOM incident response started"                 >> ${pthOml}
-  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM wkhtmltopdf killed"                        >> ${pthOml}
   killall sleep &> /dev/null
   killall php
   echo "$(date 2>&1) OOM php-cli killed"                            >> ${pthOml}
   mv -f /var/log/nginx/error.log /var/log/nginx/`date +%y%m%d-%H%M`-error.log
-  kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM nginx killed"                              >> ${pthOml}
-  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM php-fpm killed"                            >> ${pthOml}
   kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM solr/jetty killed"                         >> ${pthOml}
-  kill -9 $(ps aux | grep '[n]ewrelic-daemon' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[n]ewrelic-daemon' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM newrelic-daemon killed"                    >> ${pthOml}
-  kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM redis-server killed"                       >> ${pthOml}
   bash /var/xdrago/move_sql.sh
   wait
