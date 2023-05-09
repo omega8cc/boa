@@ -57,6 +57,16 @@ case "$1" in
 	${0} start
 	;;
 
+  reload)
+    echo -n "Reloading service ${NAME}..."
+    if [ ! -r ${PIDFILE} ]; then
+      echo "warning, no pid file found - ${NAME} is not running ?"
+      exit 1
+    fi
+    kill -USR2 `cat ${PIDFILE}`
+    echo " done"
+	;;
+
   status)
 	echo -n "$DESC is "
 	if start-stop-daemon --stop --quiet --signal 0 --name ${NAME} --pidfile ${PIDFILE}
@@ -69,7 +79,7 @@ case "$1" in
 	;;
 
   *)
-	echo "Usage: service $NAME {start|stop|restart|force-reload}" >&2
+	echo "Usage: service $NAME {start|stop|restart|reload|force-reload}" >&2
 	exit 1
 	;;
 esac
