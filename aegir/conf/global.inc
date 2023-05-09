@@ -1105,7 +1105,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
     }
     if ($all_ini['redis_flush_forced_mode']) {
       if ($drupal_eight) {
-        $settings['redis_perm_ttl']                 = 21600; // 6 hours max
+        $settings['redis_perm_ttl']                 = 86400; // 24 hours max
         $settings['redis_flush_mode']               = 1; // Redis default is 0
         $settings['redis_flush_mode_cache_page']    = 2; // Redis default is 1
         $settings['redis_flush_mode_cache_block']   = 2; // Redis default is 1
@@ -1113,7 +1113,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
         $settings['redis_flush_mode_cache_metatag'] = 2; // Redis default is 0
       }
       else {
-        $conf['redis_perm_ttl']                 = 21600; // 6 hours max
+        $conf['redis_perm_ttl']                 = 86400; // 24 hours max
         $conf['redis_flush_mode']               = 1; // Redis default is 0
         $conf['redis_flush_mode_cache_page']    = 2; // Redis default is 1
         $conf['redis_flush_mode_cache_block']   = 2; // Redis default is 1
