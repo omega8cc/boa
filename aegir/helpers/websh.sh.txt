@@ -5,7 +5,10 @@ export PATH=$PATH:/opt/local/bin
 _ALL="$@"
 ### echo _ALL is ${_ALL}
 
-if [[ ! "${_ALL}" =~ "sql-cli" ]] \
+if [[ ! "${_ALL}" =~ "composer " ]] \
+  && [[ ! "${_ALL}" =~ "drush8 @" ]] \
+  && [[ ! "${_ALL}" =~ "drush @" ]] \
+  && [[ ! "${_ALL}" =~ "sql-cli" ]] \
   && [[ ! "${_ALL}" =~ "sqlc" ]] \
   && [[ ! "${_ALL}" =~ "sql-connect" ]] \
   && [[ ! "${_ALL}" =~ "sql-dump" ]] \
@@ -1060,11 +1063,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         elif [ ! -z "${_C_ARR}" ]; then
           ### echo EXC 1 DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXC 1 _C_ARR is ${_C_ARR}
-          exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
+          ### echo EXC 1 _F_ARR is "$@"
+          exec ${DRUSH_PHP} /usr/local/bin/composer "$@"
           exit 0
         else
           ### echo EXH 1 DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXH 1 PHP_INI is ${PHP_INI}
+          ### echo EXH 1 _F_ARR is "$@"
           export DRUSH_PHP;export PHP_INI;exec /bin/dash "$@"
           exit 0
         fi
@@ -1093,11 +1098,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         elif [ ! -z "${_C_ARR}" ]; then
           ### echo EXC 2 DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXC 2 _C_ARR is ${_C_ARR}
-          exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
+          ### echo EXC 2 _F_ARR is "$@"
+          exec ${DRUSH_PHP} /usr/local/bin/composer "$@"
           exit 0
         else
           ### echo EXH 2 DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXH 2 PHP_INI is ${PHP_INI}
+          ### echo EXH 2 _F_ARR is "$@"
           export DRUSH_PHP;export PHP_INI;exec /usr/bin/dash "$@"
           exit 0
         fi
@@ -1126,11 +1133,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         elif [ ! -z "${_C_ARR}" ]; then
           ### echo EXC 3 DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXC 3 _C_ARR is ${_C_ARR}
-          exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
+          ### echo EXC 3 _F_ARR is "$@"
+          exec ${DRUSH_PHP} /usr/local/bin/composer "$@"
           exit 0
         else
           ### echo EXH 3 DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXH 3 PHP_INI is ${PHP_INI}
+          ### echo EXH 3 _F_ARR is "$@"
           export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
           exit 0
         fi
@@ -1160,11 +1169,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       elif [ ! -z "${_C_ARR}" ]; then
         ### echo EXC 4 DRUSH_PHP is ${DRUSH_PHP}
         ### echo EXC 4 _C_ARR is ${_C_ARR}
-        exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
+        ### echo EXC 4 _F_ARR is "$@"
+        exec ${DRUSH_PHP} /usr/local/bin/composer "$@"
         exit 0
       else
         ### echo EXO 1 DRUSH_PHP is ${DRUSH_PHP}
         ### echo EXO 1 PHP_INI is ${PHP_INI}
+        ### echo EXO 1 _F_ARR is "$@"
         export DRUSH_PHP;export PHP_INI;exec $0 "$@"
         exit 0
       fi
@@ -1202,22 +1213,26 @@ else
     if [ -x "/bin/dash" ]; then
       ### echo EXH 4 DRUSH_PHP is ${DRUSH_PHP}
       ### echo EXH 4 PHP_INI is ${PHP_INI}
+      ### echo EXH 4 _F_ARR is "$@"
       export DRUSH_PHP;export PHP_INI;exec /bin/dash "$@"
       exit 0
     elif [ -x "/usr/bin/dash" ]; then
       ### echo EXH 5 DRUSH_PHP is ${DRUSH_PHP}
       ### echo EXH 5 PHP_INI is ${PHP_INI}
+      ### echo EXH 5 _F_ARR is "$@"
       export DRUSH_PHP;export PHP_INI;exec /usr/bin/dash "$@"
       exit 0
     else
       ### echo EXH 6 DRUSH_PHP is ${DRUSH_PHP}
       ### echo EXH 6 PHP_INI is ${PHP_INI}
+      ### echo EXH 6 _F_ARR is "$@"
       export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
       exit 0
     fi
   else
     ### echo EXO 2 DRUSH_PHP is ${DRUSH_PHP}
     ### echo EXO 2 PHP_INI is ${PHP_INI}
+    ### echo EXO 2 _F_ARR is "$@"
     export DRUSH_PHP;export PHP_INI;exec $0 "$@"
     exit 0
   fi
