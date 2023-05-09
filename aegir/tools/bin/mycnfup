@@ -107,7 +107,6 @@ locales_check_fix() {
       echo "AcceptEnv LANG LC_*" >> /usr/etc/sshd_config
     fi
   fi
-  _LOCALE_TEST=BROKEN
   _LOC_TEST=$(locale 2>&1)
   if [[ "${_LOC_TEST}" =~ LANG=.*UTF-8 ]]; then
     _LOCALE_TEST=OK
