@@ -1,6 +1,7 @@
 #!/bin/bash
 
 export PATH=$PATH:/opt/local/bin
+_DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
 
 _ALL="$@"
 ### echo _ALL is ${_ALL}
