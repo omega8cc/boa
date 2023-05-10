@@ -1064,7 +1064,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           ### echo EXC 1 DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXC 1 _C_ARR is ${_C_ARR}
           ### echo EXC 1 _F_ARR is "$@"
-          exec ${DRUSH_PHP} /usr/local/bin/composer "$@"
+          exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
           exit 0
         else
           ### echo EXH 1 DRUSH_PHP is ${DRUSH_PHP}
@@ -1099,7 +1099,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           ### echo EXC 2 DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXC 2 _C_ARR is ${_C_ARR}
           ### echo EXC 2 _F_ARR is "$@"
-          exec ${DRUSH_PHP} /usr/local/bin/composer "$@"
+          exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
           exit 0
         else
           ### echo EXH 2 DRUSH_PHP is ${DRUSH_PHP}
@@ -1134,7 +1134,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           ### echo EXC 3 DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXC 3 _C_ARR is ${_C_ARR}
           ### echo EXC 3 _F_ARR is "$@"
-          exec ${DRUSH_PHP} /usr/local/bin/composer "$@"
+          exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
           exit 0
         else
           ### echo EXH 3 DRUSH_PHP is ${DRUSH_PHP}
@@ -1170,7 +1170,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         ### echo EXC 4 DRUSH_PHP is ${DRUSH_PHP}
         ### echo EXC 4 _C_ARR is ${_C_ARR}
         ### echo EXC 4 _F_ARR is "$@"
-        exec ${DRUSH_PHP} /usr/local/bin/composer "$@"
+        exec ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
         exit 0
       else
         ### echo EXO 1 DRUSH_PHP is ${DRUSH_PHP}
