@@ -3818,6 +3818,10 @@ satellite_make() {
     writeTo="${vBs}/${filIncO}"
   fi
 
+  _X_SE="500prodT01"
+  export _X_SE="${_X_SE}"
+  export _X_VERSION="${_X_VERSION}"
+
   echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${writeTo}
   echo "_AEGIR_XTS_VRN=\"${_AEGIR_XTS_VRN}\""         >> ${writeTo}
   echo "_AGOV=\"${_AGOV}\""                           >> ${writeTo}
