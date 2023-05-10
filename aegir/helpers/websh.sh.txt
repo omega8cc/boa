@@ -360,7 +360,9 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       echo
       exit 1
     fi
-    if [[ "${2}" =~ "set -m;" ]] || [[ "${2}" =~ "drush8 @" ]] || [[ "${1}" =~ "drush.launcher" ]]; then
+    if [[ "${2}" =~ "set -m;" ]] \
+      || [[ "${2}" =~ "drush" ]] \
+      || [[ "${1}" =~ "drush.launcher" ]]; then
       _IN_PATH=YES
       _INTERNAL=YES
       if [[ "${_ALL}" =~ "drush " ]] \
