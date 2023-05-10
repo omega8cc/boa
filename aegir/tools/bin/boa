@@ -651,7 +651,7 @@ octopus_install() {
         wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"   ${vBs}/${filIncO}
         wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"        ${vBs}/${filIncO}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncO}
         wait
       fi
       ### Legacy method

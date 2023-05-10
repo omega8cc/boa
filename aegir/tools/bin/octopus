@@ -614,7 +614,7 @@ up_one() {
       if [ -e "${vBs}/${tocIncO}" ]; then
         sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${tocIncO}
         wait
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g" ${vBs}/${tocIncO}
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"   ${vBs}/${tocIncO}
         wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${tocIncO}
         wait
