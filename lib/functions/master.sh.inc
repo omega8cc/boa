@@ -237,7 +237,7 @@ provision_backend_dbpass_sync() {
   fi
   _ADBU=aegir_root
   _L_SYS="/var/aegir/backups/system/.${_ADBU}.pass.txt"
-  mv -f ${_L_SYS} ${_L_SYS}-pre-${_X_VERSION}-${_NOW} &> /dev/null
+  mv -f ${_L_SYS} ${_L_SYS}-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
   provision_backend_dbpass_generate
   if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
     su -s /bin/bash - aegir -c "drush8 @hostmaster \
@@ -611,7 +611,7 @@ aegir_master_upgrade() {
     fi
     if [ ! -L "${mtrInc}/global.inc" ] && [ -e "${mtrInc}/global.inc" ]; then
       mv -f ${mtrInc}/global.inc \
-        ${mtrInc}/global.inc-pre-${_X_VERSION}-${_NOW} &> /dev/null
+        ${mtrInc}/global.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     fi
     mkdir -p /data/conf
     cp -af ${locCnf}/global.inc /data/conf/global.inc
@@ -991,7 +991,7 @@ EOFMYSQL
   ###--------------------###
     if [ ! -L "${mtrInc}/global.inc" ] && [ -e "${mtrInc}/global.inc" ]; then
       mv -f ${mtrInc}/global.inc \
-        ${mtrInc}/global.inc-pre-${_X_VERSION}-${_NOW} &> /dev/null
+        ${mtrInc}/global.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     fi
     mkdir -p /data/conf
     cp -af ${locCnf}/global.inc /data/conf/global.inc

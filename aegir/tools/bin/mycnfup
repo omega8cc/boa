@@ -20,10 +20,10 @@ fi
 _AEGIR_VERSION="HEAD"
 _BRANCH_BOA="4.x-stable"
 _X_VERSION="BOA-4.2.0-stable"
+_X_SE="500prodT01"
 _MYSQLTUNER_VRN=1.9.4
 _PHP_FPM_WORKERS=AUTO
 _RESERVED_RAM=0
-_X_SE="500prodT01"
 
 ###
 ### Commands shortcuts

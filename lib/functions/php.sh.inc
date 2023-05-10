@@ -853,10 +853,10 @@ install_php_extensions() {
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
     if [ "$1" = "56" ]; then
       msg "INFO: Building GEOS extension ${_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
-      if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
+      if [ ! -e "${pthLog}/geos-${_X_SE}-${_X_VERSION}.log" ]; then
         apt_clean_update
         st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
-        touch ${pthLog}/geos-${_X_VERSION}.log
+        touch ${pthLog}/geos-${_X_SE}-${_X_VERSION}.log
       fi
       cd /var/opt
       rm -rf geos*
@@ -1252,10 +1252,10 @@ php_extensions_update() {
     && [ ! -e "${pthLog}/php-geos-${_GEOS_VRN}-${_T_PHP_VRN}.log" ]; then
     if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
       msg "INFO: Building GEOS ${_GEOS_VRN} upgrade for PHP ${_T_PHP_VRN} from sources..."
-      if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
+      if [ ! -e "${pthLog}/geos-${_X_SE}-${_X_VERSION}.log" ]; then
         apt_clean_update
         st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
-        touch ${pthLog}/geos-${_X_VERSION}.log
+        touch ${pthLog}/geos-${_X_SE}-${_X_VERSION}.log
       fi
       cd /var/opt
       rm -rf geos*
@@ -1832,7 +1832,7 @@ newrelic_update() {
         newrelic-sysmond" &> /dev/null
       mkdir -p ${vBs}/nr
       mv -f /etc/newrelic \
-        ${vBs}/nr/etc-newrelic-pre-${_X_VERSION}-${_NOW} &> /dev/null
+        ${vBs}/nr/etc-newrelic-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
       pthNrx="lib/php/extensions/no-debug-non-zts"
       _PHP_EXT_DIR_82="/opt/php82/${pthNrx}-${_PHP82_API}"
       _PHP_EXT_DIR_81="/opt/php81/${pthNrx}-${_PHP81_API}"
@@ -1990,7 +1990,7 @@ if_install_php_newrelic() {
       _MULTI_NR=YES
     fi
     if [ "$_MULTI_NR" = "YES" ] \
-      || [ ! -e "${pthLog}/newrelic-${_X_VERSION}.log" ] \
+      || [ ! -e "${pthLog}/newrelic-${_X_SE}-${_X_VERSION}.log" ] \
       || [ ! -e "/etc/newrelic/newrelic.cfg" ] \
       || [ ! -e "/etc/newrelic/nrsysmond.cfg" ] \
       || [ ! -e "/etc/apt/sources.list.d/newrelic.list" ]; then
@@ -2092,7 +2092,7 @@ if_install_php_newrelic() {
         wait
       fi
     fi
-    touch ${pthLog}/newrelic-${_X_VERSION}.log
+    touch ${pthLog}/newrelic-${_X_SE}-${_X_VERSION}.log
   fi
 }
 

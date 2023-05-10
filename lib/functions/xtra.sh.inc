@@ -409,7 +409,7 @@ if_install_bind() {
         fi
         st_runner "${_INSTAPP} bind9" 2> /dev/null
         cp -af /etc/bind/named.conf.options \
-          ${vBs}/named.conf.options.pre-${_X_VERSION}-${_NOW}
+          ${vBs}/named.conf.options.pre-${_X_SE}-${_X_VERSION}-${_NOW}
         cp -af ${locCnf}/named.conf.options /etc/bind/named.conf.options
         sed -i "s/127.0.1.1/${_THISHTIP}/g" /etc/bind/named.conf.options &> /dev/null
         mrun "service bind9 restart" &> /dev/null
@@ -631,7 +631,7 @@ if_install_rvm() {
             sed -i "s/^#\!\/.*/#\!$_RBY_PATH/g" $_GEM_FILE &> /dev/null
           fi
           PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin;export PATH
-          touch ${pthLog}/compass-${_X_VERSION}-ruby-${_RUBY_VRN}-nodejs.log
+          touch ${pthLog}/compass-${_X_SE}-${_X_VERSION}-ruby-${_RUBY_VRN}-nodejs.log
           if [ -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
             msg "INFO: Ruby with RVM ${_L_ST} completed"
             rm -f /var/run/manage_rvm_users.pid

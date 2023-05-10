@@ -780,7 +780,7 @@ check_prepare_dirs_permissions() {
   mkdir -p ${vBs}/dragon/{x,z,t}
   if [ -e "/etc/init.d/buagent" ]; then
     mv -f /etc/init.d/buagent \
-      ${vBs}/buagent-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      ${vBs}/buagent-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
   fi
 }
 
@@ -807,14 +807,14 @@ aegir_bin_extra_check_fix() {
   SDIR="${bldPth}/aegir/tools/bin"
   SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
   if [ ! -x "/usr/local/bin/fix-drupal-site-permissions.sh" ] \
-    || [ ! -e "/var/xdrago/log/fix-drupal-site-permissions-${_X_VERSION}.log" ]; then
+    || [ ! -e "/var/xdrago/log/fix-drupal-site-permissions-${_X_SE}-${_X_VERSION}.log" ]; then
     if [ -e "${SDIR}/fix-drupal-site-permissions.sh" ]; then
       for SCRIPT in ${SCRIPTS[@]}; do
         cp -af ${SDIR}/${SCRIPT}.sh /usr/local/bin/
         chown root:root /usr/local/bin/${SCRIPT}.sh
         chmod 700 /usr/local/bin/${SCRIPT}.sh
       done
-      touch /var/xdrago/log/fix-drupal-site-permissions-${_X_VERSION}.log
+      touch /var/xdrago/log/fix-drupal-site-permissions-${_X_SE}-${_X_VERSION}.log
     fi
   fi
 }

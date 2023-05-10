@@ -1773,7 +1773,7 @@ satellite_download_o_contrib_seven() {
   rm -rf expire*
   find ./ -type d -exec chmod 0755 {} \; &> /dev/null
   find ./ -type f -exec chmod 0644 {} \; &> /dev/null
-  touch ctrl-${_X_VERSION}
+  touch ctrl-${_X_SE}-${_X_VERSION}
   if [ ! -L "./redis" ]; then
     ln -sf ${_D}/000/modules/redis redis
   fi
@@ -1840,7 +1840,7 @@ satellite_download_o_contrib_six() {
   rm -rf expire*
   find ./ -type d -exec chmod 0755 {} \; &> /dev/null
   find ./ -type f -exec chmod 0644 {} \; &> /dev/null
-  touch ctrl-${_X_VERSION}
+  touch ctrl-${_X_SE}-${_X_VERSION}
   if [ ! -L "./redis" ]; then
     ln -sf ${_D}/000/modules/redis redis
   fi
@@ -2327,9 +2327,9 @@ provision_backend_dbpass_sync() {
     _THIS_DB_PORT=3306
   fi
   _L_SYS="${_ROOT}/.${_USER}.pass.txt"
-  mv -f ${_L_SYS} ${_L_SYS}-pre-${_X_VERSION}-${_NOW} &> /dev/null
+  mv -f ${_L_SYS} ${_L_SYS}-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
   _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
-  mv -f ${_L_SYS_PHP} ${_L_SYS_PHP}-pre-${_X_VERSION}-${_NOW} &> /dev/null
+  mv -f ${_L_SYS_PHP} ${_L_SYS_PHP}-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
   provision_backend_dbpass_generate
   if [ ! -z "${_ESC_PASS}" ] || [ ! -z "${_ENC_PASS}" ]; then
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
@@ -2864,7 +2864,7 @@ satellite_run_child_c() {
       fi
     fi
   fi
-  if [ ! -e "${_CORE}/dot-files-ctrl-${_X_VERSION}" ] \
+  if [ ! -e "${_CORE}/dot-files-ctrl-${_X_SE}-${_X_VERSION}" ] \
     && [ -e "${_CORE}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} A: Cleaning up various dot files, please wait..."
@@ -2875,7 +2875,7 @@ satellite_run_child_c() {
     find . -name .git -exec rm -rf {} \; &> /dev/null
     find . -name .DS_Store -exec rm -rf {} \; &> /dev/null
     find . -name "._*" -type f | xargs rm -rf &> /dev/null
-    touch ${_CORE}/dot-files-ctrl-${_X_VERSION}
+    touch ${_CORE}/dot-files-ctrl-${_X_SE}-${_X_VERSION}
   fi
 }
 
@@ -4789,7 +4789,7 @@ satellite_batch_cleanup() {
   chmod 711 opt sbin selinux srv sys usr var share run &> /dev/null
   chmod 700 root &> /dev/null
   if [ -e "${_D}" ]; then
-    if [ ! -f "${_D}/permissions-fix-${_X_VERSION}-${_TODAY}.info" ]; then
+    if [ ! -f "${_D}/permissions-fix-${_X_SE}-${_X_VERSION}-${_TODAY}.info" ]; then
       find ${_D}/000 -type d -exec chmod 0755 {} \; &> /dev/null
       find ${_D}/000 -type f -exec chmod 0644 {} \; &> /dev/null
       mrun "chmod 755 ${_D}/*/*/profiles" &> /dev/null
@@ -4797,7 +4797,7 @@ satellite_batch_cleanup() {
       mrun "chmod 02775 ${_D}/000/core/*/sites/all/{modules,libraries,themes}" &> /dev/null
       mrun "chown -R root:root ${_D}" &> /dev/null
       mrun "chown -R root:users ${_D}/*/*/sites" &> /dev/null
-      echo fixed > ${_D}/permissions-fix-${_X_VERSION}-${_TODAY}.info
+      echo fixed > ${_D}/permissions-fix-${_X_SE}-${_X_VERSION}-${_TODAY}.info
     fi
     chown root:root ${_D} &> /dev/null
     chown root:root ${_CORE} &> /dev/null
@@ -4812,7 +4812,7 @@ satellite_batch_cleanup() {
     chmod 644 /data/all/cpuinfo &> /dev/null
     chmod 0755 ${_D} ${_D}/000 &> /dev/null
   elif [ -e "/data/disk/all" ]; then
-    if [ ! -f "/data/disk/all/permissions-fix-${_X_VERSION}-${_TODAY}.info" ]; then
+    if [ ! -f "/data/disk/all/permissions-fix-${_X_SE}-${_X_VERSION}-${_TODAY}.info" ]; then
       find /data/disk/all/000 -type d -exec chmod 0755 {} \; &> /dev/null
       find /data/disk/all/000 -type f -exec chmod 0644 {} \; &> /dev/null
       mrun "chmod 755 /data/disk/all/*/*/profiles" &> /dev/null
@@ -4820,7 +4820,7 @@ satellite_batch_cleanup() {
       mrun "chmod 02775 /data/disk/all/000/core/*/sites/all/{modules,libraries,themes}" &> /dev/null
       mrun "chown -R root:root /data/disk/all" &> /dev/null
       mrun "chown -R root:users /data/disk/all/*/*/sites" &> /dev/null
-      echo fixed > /data/disk/all/permissions-fix-${_X_VERSION}-${_TODAY}.info
+      echo fixed > /data/disk/all/permissions-fix-${_X_SE}-${_X_VERSION}-${_TODAY}.info
     fi
     chown root:root /data/disk/all &> /dev/null
     chown root:root ${_CORE} &> /dev/null

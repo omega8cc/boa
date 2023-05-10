@@ -184,7 +184,7 @@ sql_conf_update() {
         if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
           _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
           _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
-            ${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW} 2>&1)
+            ${vBs}/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW} 2>&1)
           if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
             _INNODB_LOG_FILE_SIZE_SAME=YES
           else
@@ -295,10 +295,10 @@ tune_sql_memory_limits() {
       /etc/mysql/debian-start &> /dev/null
     wait
   fi
-  if [ ! -e "${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}" ]; then
+  if [ ! -e "${vBs}/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}" ]; then
     mkdir -p ${vBs}/dragon/t/
     if [ -e "/etc/mysql/my.cnf" ]; then
-      cp -af /etc/mysql/my.cnf ${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}
+      cp -af /etc/mysql/my.cnf ${vBs}/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}
     fi
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
@@ -312,7 +312,7 @@ tune_sql_memory_limits() {
   fi
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
   pthTun="/var/opt/mysqltuner.pl"
-  outTun="/var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt"
+  outTun="/var/opt/mysqltuner-${_X_SE}-${_X_VERSION}-${_NOW}.txt"
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
@@ -996,8 +996,8 @@ forced_mysql_root_password_update() {
         mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
       fi
     fi
-    cp -af /root/.my.cnf /root/.my.cnf-pre-${_X_VERSION}-${_NOW}
-    cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-${_X_VERSION}-${_NOW}
+    cp -af /root/.my.cnf /root/.my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}
+    cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-${_X_SE}-${_X_VERSION}-${_NOW}
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
     if [ "${_DB_SERIES}" = "5.7" ]; then
@@ -1336,7 +1336,7 @@ db_server_install() {
       fi
       tune_memory_limits
       myCnf="/etc/mysql/my.cnf"
-      preCnf="${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}"
+      preCnf="${vBs}/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}"
       if [ -f "${myCnf}" ]; then
         myCnfUpdate=NO
         myRstrd=NO
@@ -1702,8 +1702,8 @@ sql_root_credentials_update() {
             mysql -u root -e "ALTER USER '${mySysMn}'@'${_MY_OWNIP}' IDENTIFIED BY '${PASWD}';"
             mkdir -p ${vBs}
             cp -af /etc/mysql/debian.cnf \
-              ${vBs}/debian.cnf-pre-${_X_VERSION}-${_NOW}.txt
-            chmod 400 ${vBs}/debian.cnf-pre-${_X_VERSION}-${_NOW}.txt
+              ${vBs}/debian.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}.txt
+            chmod 400 ${vBs}/debian.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}.txt
             sed -i "s/^password =.*/password = ${PASWD}/g" \
               /etc/mysql/debian.cnf &> /dev/null
               wait

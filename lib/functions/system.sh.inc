@@ -381,7 +381,7 @@ sftp_ftps_modern_fix() {
   if [[ ! "${_LSHELL_PATH_TEST}" =~ "/usr/bin/lshell" ]]; then
     echo "/usr/bin/lshell" >> /etc/shells
   fi
-  if [ ! -e "${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log" ] \
+  if [ ! -e "${pthLog}/mss-build-${_MSS_VRN}-${_X_SE}-${_X_VERSION}.log" ] \
     || [ ! -e "/etc/ssh/sftp_config" ] \
     || [ ! -e "/usr/bin/mysecureshell" ] \
     || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
@@ -393,7 +393,7 @@ sftp_ftps_modern_fix() {
     mrun "bash ./configure" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     st_runner "sh ./install.sh yesall" 2> /dev/null
-    touch ${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log
+    touch ${pthLog}/mss-build-${_MSS_VRN}-${_X_SE}-${_X_VERSION}.log
     cp -af ${locCnf}/sftp_config /etc/ssh/sftp_config
     mrun "service ssh restart" &> /dev/null
   fi
@@ -464,7 +464,7 @@ global_inc_conf_update() {
     msg "PROC: global_inc_conf_update"
   fi
   if [ -e "/data/conf/global.inc" ]; then
-    mv -f /data/conf/global.inc /data/conf/global.inc-pre-${_X_VERSION}-${_NOW} &> /dev/null
+    mv -f /data/conf/global.inc /data/conf/global.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${locCnf}/global.inc /data/conf/global.inc
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
     wait
@@ -2367,7 +2367,7 @@ do_install_latest_git() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: do_install_latest_git"
   fi
-  if [ ! -e "${pthLog}/git-${_GIT_VRN}-${_X_VERSION}-${_NOW}.log" ]; then
+  if [ ! -e "${pthLog}/git-${_GIT_VRN}-${_X_SE}-${_X_VERSION}-${_NOW}.log" ]; then
     msg "INFO: Building Git ${_GIT_VRN} from sources..."
     msg "WAIT: This may take a while, please wait..."
     cd /var/opt
@@ -2382,7 +2382,7 @@ do_install_latest_git() {
     mv -f /usr/bin/git /usr/bin/git-old
     ln -sf /usr/local/bin/git /usr/bin/git
     cd /var/opt
-    touch ${pthLog}/git-${_GIT_VRN}-${_X_VERSION}-${_NOW}.log
+    touch ${pthLog}/git-${_GIT_VRN}-${_X_SE}-${_X_VERSION}-${_NOW}.log
     echo "git hold" | dpkg --set-selections &> /dev/null
     echo "git-core hold" | dpkg --set-selections &> /dev/null
     echo "git-man hold" | dpkg --set-selections &> /dev/null
@@ -3045,7 +3045,7 @@ sources_list_update() {
       msg "INFO: Updating packages sources list..."
     fi
     mv -f ${aptLiSys} \
-      ${vBs}/sources.list-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      ${vBs}/sources.list-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     if [ "${_THIS_OS}" = "Devuan" ]; then
 	  if [ -z "${_LOCAL_DEVUAN_MIRROR}" ]; then
 		_MIRROR=deb.devuan.org
@@ -3505,8 +3505,8 @@ ssl_install_src() {
     _SSH_FORCE_REINSTALL=YES
     _NGX_FORCE_REINSTALL=YES
     _PHP_FORCE_REINSTALL=YES
-    rm -f ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_VERSION}.log
-    rm -f ${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log
+    rm -f ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_SE}-${_X_VERSION}.log
+    rm -f ${pthLog}/mss-build-${_MSS_VRN}-${_X_SE}-${_X_VERSION}.log
     msg "INFO: Installed OpenSSL version ${_SSL_ITD}, rebuild forced"
   fi
   if [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
@@ -4262,7 +4262,7 @@ finale() {
       # fix_core_dgd
     fi
   fi
-  mv -f /etc/motd ${vBs}/dragon/t/motd-pre-${_X_VERSION}-${_NOW} &> /dev/null
+  mv -f /etc/motd ${vBs}/dragon/t/motd-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
   mv -f /etc/motd-pre-* ${vBs}/dragon/t/ &> /dev/null
   echo > /etc/motd
   echo " Skynet Agent v.${_X_VERSION} on $(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) \
@@ -4323,8 +4323,8 @@ finale() {
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   chmod 700 /root
   if [ ! -e "/etc/init.d/buagent" ] \
-    && [ -e "${vBs}/buagent-pre-${_X_VERSION}-${_NOW}" ]; then
-    mv -f ${vBs}/buagent-pre-${_X_VERSION}-${_NOW} \
+    && [ -e "${vBs}/buagent-pre-${_X_SE}-${_X_VERSION}-${_NOW}" ]; then
+    mv -f ${vBs}/buagent-pre-${_X_SE}-${_X_VERSION}-${_NOW} \
       /etc/init.d/buagent &> /dev/null
   fi
   if [ -e "/etc/csf/csf.deny" ] \
@@ -6337,14 +6337,14 @@ xdrago_install_upgrade() {
     rm -rf ${vBs}/dragon/z/init.d-pre-*
     rm -f ${pthLog}/cron-root-pre*
     cp -af /var/xdrago \
-      ${vBs}/dragon/x/xdrago-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      ${vBs}/dragon/x/xdrago-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     rm -f ${pthLog}/VISITOR_ABUSE_ONE.log
     rm -f ${pthLog}/blackIP.log
     rm -f /var/xdrago/{enableStatus,graceful,move_sql,run_all,second,Minute}
     rm -f /var/xdrago/{firewall.sh,stop-mysql-innodb.sh,firewall_restarter}
     rm -f /var/xdrago/{FireStart,memcache,redis}
     cp -af /var/spool/cron/crontabs/root \
-      ${vBs}/dragon/z/cron-root-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      ${vBs}/dragon/z/cron-root-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     if [ "${_CUSTOM_CONFIG_LSHELL}" = "YES" ] \
       && [ -e "/var/xdrago/conf/lshell.conf" ]; then
       cp -af /var/xdrago/conf/lshell.conf ${vBs}/custom_lshell.conf
@@ -6509,8 +6509,8 @@ xdrago_install_upgrade() {
       fi
     fi
   fi
-  if [ -d "/var/xdrago-pre-${_X_VERSION}-${_NOW}" ]; then
-    cp -af /var/xdrago-pre-${_X_VERSION}-${_NOW}/run-* /var/xdrago/ &> /dev/null
+  if [ -d "/var/xdrago-pre-${_X_SE}-${_X_VERSION}-${_NOW}" ]; then
+    cp -af /var/xdrago-pre-${_X_SE}-${_X_VERSION}-${_NOW}/run-* /var/xdrago/ &> /dev/null
   fi
   sed -i "s/firewall/monitor/g" /var/xdrago/minute.sh &> /dev/null
   wait
@@ -6645,7 +6645,7 @@ if_install_ftpd() {
     if [ ! -e "/etc/ssl/private/pure-ftpd.pem" ] \
       || [ ! -e "/usr/local/sbin/pure-config.pl" ] \
       || [ ! -e "/usr/local/sbin/pure-ftpd" ] \
-      || [ ! -e "${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_VERSION}.log" ] \
+      || [ ! -e "${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_SE}-${_X_VERSION}.log" ] \
       || [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
@@ -6688,7 +6688,7 @@ if_install_ftpd() {
       st_runner "/usr/local/sbin/pure-config.pl \
         /usr/local/etc/pure-ftpd.conf" &> /dev/null
       cd /var/opt
-      touch ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_VERSION}.log
+      touch ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_SE}-${_X_VERSION}.log
     fi
   fi
 }
@@ -6721,7 +6721,7 @@ newrelic_check_fix() {
         newrelic-daemon \
         newrelic-sysmond" &> /dev/null
       mv -f /etc/newrelic \
-        ${vBs}/nr/etc-newrelic-pre-${_X_VERSION}-${_NOW} &> /dev/null
+        ${vBs}/nr/etc-newrelic-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
       rm -f /etc/init.d/newrelic-sysmond
       rm -f /etc/init.d/newrelic-daemon
       killall -9 newrelic-daemon &> /dev/null
@@ -7262,7 +7262,7 @@ initd_update() {
         fi
       fi
       myCnf="/etc/mysql/my.cnf"
-      preCnf="${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}"
+      preCnf="${vBs}/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}"
       if [ -f "${myCnf}" ]; then
         myCnfUpdate=NO
         if [ ! -f "${preCnf}" ]; then
@@ -7359,9 +7359,9 @@ sysctl_update() {
     msg "PROC: sysctl_update"
   fi
   if [ ! -e "/root/.no.sysctl.update.cnf" ] \
-    && [ ! -e "${pthLog}/sysctl.conf-${_X_VERSION}-${_NOW}.log" ]; then
+    && [ ! -e "${pthLog}/sysctl.conf-${_X_SE}-${_X_VERSION}-${_NOW}.log" ]; then
     cp -af /etc/sysctl.conf \
-      ${vBs}/dragon/t/sysctl.conf-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      ${vBs}/dragon/t/sysctl.conf-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     if [ -e "${locCnf}/sysctl.conf" ]; then
       cp -af ${locCnf}/sysctl.conf /etc/sysctl.conf
     fi
@@ -7389,7 +7389,7 @@ sysctl_update() {
         sysctl -p /etc/sysctl.conf &> /dev/null
       fi
     fi
-    touch ${pthLog}/sysctl.conf-${_X_VERSION}-${_NOW}.log
+    touch ${pthLog}/sysctl.conf-${_X_SE}-${_X_VERSION}-${_NOW}.log
   fi
 }
 

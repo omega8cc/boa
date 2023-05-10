@@ -395,7 +395,7 @@ install_pdnsd_cache() {
     msg "PROC: install_pdnsd_cache"
   fi
   msg "INFO: Installing DNS cache pdnsd server..."
-  cp -af /etc/resolv.conf ${vBs}/resolv.conf.pre-${_X_VERSION}-${_NOW}
+  cp -af /etc/resolv.conf ${vBs}/resolv.conf.pre-${_X_SE}-${_X_VERSION}-${_NOW}
   if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
     rm -f /etc/resolv.conf
     echo "nameserver 1.1.1.1" > /etc/resolv.conf

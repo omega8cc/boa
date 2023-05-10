@@ -4,18 +4,18 @@ nginx_conf_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: nginx_conf_update"
   fi
-  if [ ! -e "${pthLog}/nginx-config-params-fixed-${_X_VERSION}.log" ] \
+  if [ ! -e "${pthLog}/nginx-config-params-fixed-${_X_SE}-${_X_VERSION}.log" ] \
     && [ -d "/var/aegir" ]; then
     if [ -e "${locCnf}/nginx.conf" ] \
       && [ -e "/etc/nginx/nginx.conf" ]; then
       mv -f /etc/nginx/nginx.conf-* ${vBs}/dragon/t/ &> /dev/null
       mv -f /etc/nginx/mime.types-pre-* ${vBs}/dragon/t/ &> /dev/null
       mv -f /etc/nginx/fastcgi_params-pre-* ${vBs}/dragon/t/ &> /dev/null
-      mv -f /etc/nginx/nginx.conf ${vBs}/dragon/t/nginx.conf-pre-${_X_VERSION}-${_NOW} &> /dev/null
-      mv -f /etc/nginx/fastcgi_params ${vBs}/dragon/t/fastcgi_params-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      mv -f /etc/nginx/nginx.conf ${vBs}/dragon/t/nginx.conf-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
+      mv -f /etc/nginx/fastcgi_params ${vBs}/dragon/t/fastcgi_params-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
       cp -af ${locCnf}/nginx.conf /etc/nginx/nginx.conf
       cp -af ${locCnf}/fastcgi_params.txt /etc/nginx/fastcgi_params
-      touch ${pthLog}/nginx-config-params-fixed-${_X_VERSION}.log
+      touch ${pthLog}/nginx-config-params-fixed-${_X_SE}-${_X_VERSION}.log
     fi
   fi
   if [ -e "${mtrNgx}/pre.d/nginx_speed_purge.conf" ]; then
@@ -546,7 +546,7 @@ nginx_initd_check() {
     _DO_NOTHING=YES
   else
     mv -f /etc/init.d/nginx \
-      ${vBs}/nginx-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      ${vBs}/nginx-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${locCnf}/nginx /etc/init.d/nginx
     chmod 755 /etc/init.d/nginx &> /dev/null
   fi
@@ -558,13 +558,13 @@ nginx_mime_check_fix() {
   fi
   if [ -e "${locCnf}/mime.types" ]; then
     mv -f /etc/nginx/mime.types \
-      /etc/nginx/mime.types-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      /etc/nginx/mime.types-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${locCnf}/mime.types /etc/nginx/mime.types
     if [ ! -L "/var/www/nginx-default/index.html" ] \
       && [ ! -L "/var/www/nginx-default/under_construction.jpg" ]; then
       mkdir -p /var/www/nginx-default
       mv -f /var/www/nginx-default/index.html \
-        /var/www/nginx-default/index.html-pre-${_X_VERSION}-${_NOW} &> /dev/null
+        /var/www/nginx-default/index.html-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
       cp -af ${locCnf}/uc.html /var/www/nginx-default/index.html
       cp -af ${locCnf}/under_construction.jpg \
         /var/www/nginx-default/under_construction.jpg

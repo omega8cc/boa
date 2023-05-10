@@ -52,7 +52,7 @@ forced_redis_password_update() {
   fi
   echo "${_ESC_RPASS}" > /root/.redis.pass.txt
   chmod 0600 /root/.redis.pass.txt &> /dev/null
-  touch ${pthLog}/sec-redis-pass-${_X_VERSION}-${_NOW}.log
+  touch ${pthLog}/sec-redis-pass-${_X_SE}-${_X_VERSION}-${_NOW}.log
   if [ -e "/etc/redis/redis.conf" ]; then
     _FORCE_REDIS_RESTART=YES
     sed -i "s/^# requirepass /requirepass /g" \
@@ -184,7 +184,7 @@ redis_password_update() {
     msg "PROC: redis_password_update"
   fi
   if [ -e "/etc/redis/redis.conf" ]; then
-    if [ ! -e "${pthLog}/sec-redis-pass-${_X_VERSION}-${_NOW}.log" ]; then
+    if [ ! -e "${pthLog}/sec-redis-pass-${_X_SE}-${_X_VERSION}-${_NOW}.log" ]; then
       if [ ! -e "/root/.redis.no.new.password.cnf" ] \
         || [ ! -e "/root/.redis.pass.txt" ]; then
          forced_redis_password_update
@@ -256,7 +256,7 @@ install_redis_src() {
         _DO_NOTHING=YES
       else
         if [ "${_REDIS_INSTALL_MISMATCH}" = "YES" ] \
-          || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log" ]; then
+          || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_SE}-${_X_VERSION}.log" ]; then
           cp -af ${locCnf}/${redisCnfTpl} /etc/redis/redis.conf
         fi
       fi
@@ -264,12 +264,12 @@ install_redis_src() {
   else
     if [ ! -e "/etc/redis/redis.conf" ] \
       || [ "${_REDIS_INSTALL_MISMATCH}" = "YES" ] \
-      || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log" ]; then
+      || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_SE}-${_X_VERSION}.log" ]; then
       cp -af ${locCnf}/${redisCnfTpl} /etc/redis/redis.conf
     fi
   fi
   redis_password_update
-  touch ${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log
+  touch ${pthLog}/redis-${_REDIS_VRN}-${_X_SE}-${_X_VERSION}.log
   service redis-server reload &> /dev/null
 }
 
@@ -348,7 +348,7 @@ redis_install_upgrade() {
     fi
   fi
   if [ "${_REDIS_INSTALL_MISMATCH}" = "YES" ] \
-    || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log" ] \
+    || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_SE}-${_X_VERSION}.log" ] \
     || [ ! -d "/var/run/redis" ] \
     || [ ! -x "/usr/bin/redis-server" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then

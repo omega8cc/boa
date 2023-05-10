@@ -348,7 +348,7 @@ if_install_jetty() {
       cd /var/opt
       rm -rf jetty-distribution-*
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
-      mv -f /opt/jetty9 ${vBs}/jetty9-${_X_VERSION}-${_NOW}
+      mv -f /opt/jetty9 ${vBs}/jetty9-${_X_SE}-${_X_VERSION}-${_NOW}
       if [ "${_OSR}" = "chimaera" ] \
         || [ "${_OSR}" = "beowulf" ] \
         || [ "${_OSR}" = "bullseye" ] \
@@ -515,7 +515,7 @@ if_install_jetty() {
       rm -rf jetty-distribution-*
       get_dev_arch "jetty-distribution-${_JETTY_8_VRN}.tar.gz"
       kill -9 $(ps aux | grep '[j]etty8' | awk '{print $2}') &> /dev/null
-      mv -f /opt/jetty8 ${vBs}/jetty8-${_X_VERSION}-${_NOW}
+      mv -f /opt/jetty8 ${vBs}/jetty8-${_X_SE}-${_X_VERSION}-${_NOW}
       mv -f /var/opt/jetty-distribution-${_JETTY_8_VRN} /opt/jetty8
       get_dev_arch "apache-solr-${_SOLR_3_VRN}.tgz"
       cp -af /var/opt/apache-solr-${_SOLR_3_VRN}/dist/apache-solr-${_SOLR_3_VRN}.war \
@@ -676,7 +676,7 @@ if_install_jetty() {
       rm -rf jetty-distribution-*
       get_dev_arch "jetty-distribution-${_JETTY_7_VRN}.tar.gz"
       kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
-      mv -f /opt/jetty7 ${vBs}/jetty7-${_X_VERSION}-${_NOW}
+      mv -f /opt/jetty7 ${vBs}/jetty7-${_X_SE}-${_X_VERSION}-${_NOW}
       mv -f /var/opt/jetty-distribution-${_JETTY_7_VRN} /opt/jetty7
       get_dev_arch "apache-solr-${_SOLR_1_VRN}.tgz"
       cp -af /var/opt/apache-solr-${_SOLR_1_VRN}/dist/apache-solr-${_SOLR_1_VRN}.war \

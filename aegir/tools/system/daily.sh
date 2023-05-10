@@ -3514,7 +3514,7 @@ fi
 if [ "${_PERMISSIONS_FIX}" = "YES" ] \
   && [ ! -z "${_X_VERSION}" ] \
   && [ -e "/opt/tmp/barracuda-release.txt" ] \
-  && [ ! -e "/data/all/permissions-fix-${_X_VERSION}-fixed-dz.info" ]; then
+  && [ ! -e "/data/all/permissions-fix-${_X_SE}-${_X_VERSION}-fixed-dz.info" ]; then
   echo "INFO: Fixing permissions in the /data/all tree..."
   find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
   find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
@@ -3537,7 +3537,7 @@ if [ "${_PERMISSIONS_FIX}" = "YES" ] \
     chown -R root:users /data/disk/all/000/core/*/sites &> /dev/null
   fi
   chmod 02775 /data/disk/*/distro/*/*/sites/all/{modules,libraries,themes} &> /dev/null
-  echo fixed > /data/all/permissions-fix-${_X_VERSION}-fixed-dz.info
+  echo fixed > /data/all/permissions-fix-${_X_SE}-${_X_VERSION}-fixed-dz.info
 fi
 if [ ! -e "/var/backups/fix-sites-all-permsissions-${_X_SE}.txt" ]; then
   chmod 0751  /data/disk/*/distro/*/*/sites &> /dev/null
