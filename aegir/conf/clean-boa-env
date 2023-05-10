@@ -126,12 +126,6 @@ case "$1" in
       kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
       sleep 15
       service nginx stop &> /dev/null
-      _PHP_V="82 81 74 73 72 71 70 56"
-      for e in ${_PHP_V}; do
-        if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          service php${e}-fpm force-quit &> /dev/null
-        fi
-      done
       kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
       if [ -e "/root/.my.pass.txt" ]; then
         _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
