@@ -65,10 +65,7 @@ forced_redis_password_update() {
     chmod 0600 /etc/redis/redis.conf
   fi
   if [ "${_FORCE_REDIS_RESTART}" = "YES" ]; then
-    service redis-server stop &> /dev/null
-    killall -9 redis-server &> /dev/null
-    rm -f /var/lib/redis/*
-    service redis-server start &> /dev/null
+    service redis-server reload &> /dev/null
   fi
 }
 #
@@ -233,11 +230,6 @@ install_redis_src() {
   cd /var/opt
   rm -rf redis*
   get_dev_src "redis-${_REDIS_VRN}.tar.gz"
-  if [ -e "/var/lib/redis" ]; then
-    mrun "service redis-server stop" &> /dev/null
-    killall -9 redis-server &> /dev/null
-    rm -f /var/lib/redis/*
-  fi
   rm -f /usr/local/bin/redis*
   rm -f /usr/bin/redis*
   cd redis-${_REDIS_VRN}
@@ -278,9 +270,7 @@ install_redis_src() {
   fi
   redis_password_update
   touch ${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log
-  mrun "service redis-server start" &> /dev/null
-  sleep 3
-  mrun "service redis-server restart" &> /dev/null
+  service redis-server reload &> /dev/null
 }
 
 redis_install_upgrade() {

@@ -491,9 +491,7 @@ nginx_install_upgrade() {
     mrun "make install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     nginx_clean_legacy_config
-    mrun "service nginx stop" &> /dev/null
-    killall -9 nginx &> /dev/null
-    mrun "service nginx start" &> /dev/null
+    service nginx quietupgrade &> /dev/null
     _NGINX_INSTALL_REQUIRED=NO
   fi
   if [ ! -L "/usr/bin/nginx" ]; then
@@ -608,8 +606,7 @@ nginx_wildcard_ssl_install() {
     fi
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
     redis_password_update
-    killall -9 nginx &> /dev/null
-    mrun "service nginx start" &> /dev/null
+    service nginx quietupgrade &> /dev/null
   else
     _WILDCARD_SSL_TEST=$(grep "localhost:80" ${_WILD_SSL_VHOST} 2>&1)
     if [[ "${_WILDCARD_SSL_TEST}" =~ "localhost:80" ]]; then

@@ -79,22 +79,21 @@ stop_sql() {
   until [ -z "${_IS_NGINX_RUNNING}" ]; do
     _IS_NGINX_RUNNING=$(ps aux | grep '[n]ginx' | awk '{print $2}' 2>&1)
     echo "Waiting for Nginx graceful shutdown..."
-    sleep 3
+    sleep 1
   done
   echo "Nginx stopped"
 
   echo "Stopping all PHP-FPM instances now..."
-  _PHP_V="82 81 80 74 73 72 71 70 56 55 54 53"
+  _PHP_V="82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ]; then
       service php${e}-fpm force-quit &> /dev/null
     fi
   done
-  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
   until [ -z "${_IS_FPM_RUNNING}" ]; do
     _IS_FPM_RUNNING=$(ps aux | grep '[p]hp-fpm' | awk '{print $2}' 2>&1)
     echo "Waiting for PHP-FPM graceful shutdown..."
-    sleep 3
+    sleep 1
   done
   echo "PHP-FPM stopped"
 

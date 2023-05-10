@@ -1308,7 +1308,6 @@ php_legacy_versions_cleanup_cnf() {
     update-rc.d -f php52-fpm remove &> /dev/null
     rm -f /etc/init.d/php52-fpm
   fi
-  killall -9 php-cgi &> /dev/null
   if [ -e "/etc/init.d/php53-fpm" ]; then
     mrun "service php53-fpm stop" &> /dev/null
     update-rc.d -f php53-fpm remove &> /dev/null
@@ -7101,19 +7100,19 @@ initd_update() {
     fi
     if [ ! -e "/var/run/aegir_upgrade.pid" ]; then
       msg "INFO: Starting Redis, PHP-FPM and Nginx"
-      mrun "service redis-server start" &> /dev/null
-      killall -9 nginx php-cgi php-fpm &> /dev/null
-      mrun "update-rc.d -f php5-fpm remove" &> /dev/null
-      mrun "update-rc.d cron defaults" &> /dev/null
+      service redis-server start &> /dev/null
+      service redis-server reload &> /dev/null
+      update-rc.d -f php5-fpm remove &> /dev/null
+      update-rc.d cron defaults &> /dev/null
       _PHP_V="82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          mrun "update-rc.d php${e}-fpm defaults" &> /dev/null
-          mrun "service php${e}-fpm start" &> /dev/null
+          update-rc.d php${e}-fpm defaults &> /dev/null
+          service php${e}-fpm start &> /dev/null
         fi
       done
-      mrun "update-rc.d nginx defaults" &> /dev/null
-      mrun "service nginx start" &> /dev/null
+      update-rc.d nginx defaults &> /dev/null
+      service nginx start &> /dev/null
     fi
   else
     if [[ "${_THISHOST}" =~ ".host8." ]] \
@@ -7205,11 +7204,7 @@ initd_update() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Restarting Solr 7"
       fi
-      mrun "service solr7 stop" &> /dev/null
-      #kill -9 $(ps aux | grep '[j]ava-8-openjdk' | awk '{print $2}') &> /dev/null
-      #kill -9 $(ps aux | grep '[j]ava-11-openjdk' | awk '{print $2}') &> /dev/null
-      #kill -9 $(ps aux | grep '[j]ava-17-openjdk' | awk '{print $2}') &> /dev/null
-      mrun "service solr7 start" &> /dev/null
+      mrun "service solr7 restart" &> /dev/null
     fi
     kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
@@ -7235,31 +7230,21 @@ initd_update() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Restarting Redis, PHP-FPM and Nginx..."
       fi
-      mrun "service redis-server stop" &> /dev/null
-      mrun "killall -9 redis-server" &> /dev/null
-      rm -f /var/lib/redis/*
-      mrun "service redis-server start" &> /dev/null
-      sleep 3
-      mrun "service redis-server restart" &> /dev/null
-      mrun "update-rc.d -f php5-fpm remove" &> /dev/null
-      mrun "service nginx stop" &> /dev/null
+      update-rc.d -f php5-fpm remove &> /dev/null
+      service redis-server reload &> /dev/null
       _PHP_V="82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          mrun "update-rc.d php${e}-fpm defaults" &> /dev/null
-          mrun "service php${e}-fpm force-quit" &> /dev/null
+          update-rc.d php${e}-fpm defaults &> /dev/null
+          service php${e}-fpm start &> /dev/null
         fi
       done
-      killall -9 php-fpm &> /dev/null
-      killall -9 php-cgi &> /dev/null
-      killall -9 pure-ftpd &> /dev/null
-      _PHP_V="82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          mrun "service php${e}-fpm start" &> /dev/null
+          service php${e}-fpm reload &> /dev/null
         fi
       done
-      mrun "service nginx start" &> /dev/null
+      service nginx quietupgrade &> /dev/null
       _DB_SERVER_TEST=$(mysql -V 2>&1)
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then

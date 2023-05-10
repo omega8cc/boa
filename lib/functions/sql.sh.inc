@@ -1211,8 +1211,6 @@ db_server_install() {
       msg "INFO: Running ${_DB_SERVER} upgrade..."
       msg "WAIT: This may take a while, please wait..."
       if [ ! -e "/root/.proxy.cnf" ]; then
-        mrun "sleep 120"
-        mrun "service nginx stop" &> /dev/null
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: Running ${_DB_SERVER} system tables check..."
         fi

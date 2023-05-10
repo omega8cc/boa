@@ -2637,7 +2637,7 @@ php_upgrade_all() {
       check_php_broken "${e}"
       check_php_rebuild "${e}"
       php_multi_update "${e}"
-      mrun "service php${e}-fpm restart" &> /dev/null
+      service php${e}-fpm reload &> /dev/null
       _PHP_VERSION=""
       _T_PHP_VRN=""
       _T_PHP_PTH=""

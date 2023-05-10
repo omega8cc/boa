@@ -1070,40 +1070,16 @@ tune_nginx() {
 #
 restart_services() {
   msg "INFO: Reloading services"
-  if [ -e "/etc/init.d/php82-fpm" ]; then
-    mrun "service php82-fpm reload" &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php81-fpm" ]; then
-    mrun "service php81-fpm reload" &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php80-fpm" ]; then
-    mrun "service php80-fpm reload" &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php74-fpm" ]; then
-    mrun "service php74-fpm reload" &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php73-fpm" ]; then
-    mrun "service php73-fpm reload" &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php72-fpm" ]; then
-    mrun "service php72-fpm reload" &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php71-fpm" ]; then
-    mrun "service php71-fpm reload" &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php70-fpm" ]; then
-    mrun "service php70-fpm reload" &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php56-fpm" ]; then
-    mrun "service php56-fpm reload" &> /dev/null
-  fi
-  mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
+  _PHP_V="82 81 74 73 72 71 70 56"
+  for e in ${_PHP_V}; do
+    if [ -e "/etc/init.d/php${e}-fpm" ]; then
+      service php${e}-fpm reload &> /dev/null
+    fi
+  done
+  bash /var/xdrago/move_sql.sh &> /dev/null
   wait
-  mrun "service nginx reload" &> /dev/null
-  service redis-server stop &> /dev/null
-  killall -9 redis-server &> /dev/null
-  rm -f /var/lib/redis/*
-  service redis-server start &> /dev/null
+  service nginx reload &> /dev/null
+  service redis-server reload &> /dev/null
   if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     mrun "csf -q" &> /dev/null
     ### Linux kernel TCP SACK CVEs mitigation

@@ -156,14 +156,28 @@ faster_reboot() {
   kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
   kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
   sleep 15
+
   service nginx stop &> /dev/null
+  until [ -z "${_IS_NGINX_RUNNING}" ]; do
+    _IS_NGINX_RUNNING=$(ps aux | grep '[n]ginx' | awk '{print $2}' 2>&1)
+    msg "Waiting for Nginx graceful shutdown..." >> ${logAch}
+    sleep 1
+  done
+  msg "Nginx stopped" >> ${logAch}
+
   _PHP_V="82 81 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ]; then
       service php${e}-fpm force-quit &> /dev/null
     fi
   done
-  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+  until [ -z "${_IS_FPM_RUNNING}" ]; do
+    _IS_FPM_RUNNING=$(ps aux | grep '[p]hp-fpm' | awk '{print $2}' 2>&1)
+    echo "Waiting for PHP-FPM graceful shutdown..." >> ${logAch}
+    sleep 1
+  done
+  msg "PHP-FPM stopped" >> ${logAch}
+
   if [ -e "/root/.my.pass.txt" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
     _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
