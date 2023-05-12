@@ -7226,7 +7226,7 @@ initd_update() {
     if [ ! -e "/var/run/aegir_upgrade.pid" ] \
       && [ ! -e "/root/.proxy.cnf" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Restarting Redis, PHP-FPM and Nginx..."
+        msg "INFO: Reloading Redis, PHP-FPM and Nginx..."
       fi
       update-rc.d -f php5-fpm remove &> /dev/null
       service redis-server reload &> /dev/null
