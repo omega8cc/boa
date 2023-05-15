@@ -1138,7 +1138,7 @@ drupal7_install() {
     || [[ "${_PLATFORMS_LIST}" =~ "D7S" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "D7P" ]]; then
     if [ ! -d "${_ROOT}/distro/${_THIS_CORE}/${_DRUPAL7D}" ]; then
-      if prompt_yes_no "$_F_DRUPAL7 - https://www.drupal.org/project/drupal/releases" ; then
+      if prompt_yes_no "$_F_DRUPAL7 - https://drupal.org/project/drupal/releases/7.97" ; then
         true
         ###---### Drupal 7 Development
         #
@@ -1149,10 +1149,12 @@ drupal7_install() {
         _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
         if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
           || [[ "${_PLATFORMS_LIST}" =~ "D7D" ]]; then
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL7_D ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_DRUPAL7_D} ${yOk}"
           create_drupal7_basic
-          msg "DISTRO: $_F_DRUPAL7_D installed"
-          _RUN_VERIFY=YES
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            msg "DISTRO: ${_F_DRUPAL7_D} installed"
+            _RUN_VERIFY=YES
+          fi
         fi
         ###---### Drupal 7 Staging
         #
@@ -1163,10 +1165,12 @@ drupal7_install() {
         _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
         if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
           || [[ "${_PLATFORMS_LIST}" =~ "D7S" ]]; then
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL7_S ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_DRUPAL7_S} ${yOk}"
           create_drupal7_basic
-          msg "DISTRO: $_F_DRUPAL7_S installed"
-          _RUN_VERIFY=YES
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            msg "DISTRO: ${_F_DRUPAL7_S} installed"
+            _RUN_VERIFY=YES
+          fi
         fi
         ###---### Drupal 7 Production
         #
@@ -1177,10 +1181,12 @@ drupal7_install() {
         _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
         if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
           || [[ "${_PLATFORMS_LIST}" =~ "D7P" ]]; then
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL7_P ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_DRUPAL7_P} ${yOk}"
           create_drupal7_basic
-          msg "DISTRO: $_F_DRUPAL7_P installed"
-          _RUN_VERIFY=YES
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            msg "DISTRO: ${_F_DRUPAL7_P} installed"
+            _RUN_VERIFY=YES
+          fi
         fi
       else
         [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL7 ${noT}"
@@ -2575,27 +2581,27 @@ save_verify_platforms() {
 
   if [ -d "${pthDst}/${_DRUPAL7D}" ]; then
     if [ ! -e "${pthDst}/${_DRUPAL7D}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL7_D" standard \
+      ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL7_D}" standard \
         ${pthDst}/${_DRUPAL7D} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/${_DRUPAL7S}" ]; then
     if [ ! -e "${pthDst}/${_DRUPAL7S}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL7_S" standard \
+      ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL7_S}" standard \
         ${pthDst}/${_DRUPAL7S} &> /dev/null
     fi
   fi
   if [ ! -d "${pthDst}/${_DRUPAL7}" ]; then
     if [ -d "${pthDst}/${_DRUPAL7P}" ]; then
       if [ ! -e "${pthDst}/${_DRUPAL7P}/$drhSrc" ]; then
-        ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL7_P" standard \
+        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL7_P}" standard \
           ${pthDst}/${_DRUPAL7P} &> /dev/null
       fi
     fi
   elif [ ! -d "${pthDst}/${_DRUPAL7P}" ]; then
     if [ -d "${pthDst}/${_DRUPAL7}" ]; then
       if [ ! -e "${pthDst}/${_DRUPAL7}/$drhSrc" ]; then
-        ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL7_P" standard \
+        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL7_P}" standard \
           ${pthDst}/${_DRUPAL7} &> /dev/null
       fi
     fi
