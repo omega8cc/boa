@@ -2579,6 +2579,33 @@ save_verify_platforms() {
 
   pthDst="${_ROOT}/distro/${_THIS_CORE}"
 
+  if [ -d "${pthDst}/${_DRUPAL9D}" ]; then
+    if [ ! -e "${pthDst}/${_DRUPAL9D}/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL9_D}" standard \
+        ${pthDst}/${_DRUPAL9D} &> /dev/null
+    fi
+  fi
+  if [ -d "${pthDst}/${_DRUPAL9S}" ]; then
+    if [ ! -e "${pthDst}/${_DRUPAL9S}/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL9_S}" standard \
+        ${pthDst}/${_DRUPAL9S} &> /dev/null
+    fi
+  fi
+  if [ ! -d "${pthDst}/${_DRUPAL9}" ]; then
+    if [ -d "${pthDst}/${_DRUPAL9P}" ]; then
+      if [ ! -e "${pthDst}/${_DRUPAL9P}/$drhSrc" ]; then
+        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL9_P}" standard \
+          ${pthDst}/${_DRUPAL9P} &> /dev/null
+      fi
+    fi
+  elif [ ! -d "${pthDst}/${_DRUPAL9P}" ]; then
+    if [ -d "${pthDst}/${_DRUPAL9}" ]; then
+      if [ ! -e "${pthDst}/${_DRUPAL9}/$drhSrc" ]; then
+        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL9_P}" standard \
+          ${pthDst}/${_DRUPAL9} &> /dev/null
+      fi
+    fi
+  fi
   if [ -d "${pthDst}/${_DRUPAL7D}" ]; then
     if [ ! -e "${pthDst}/${_DRUPAL7D}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL7_D}" standard \
