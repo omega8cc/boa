@@ -3377,6 +3377,37 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sf ${_A} ${_B}
       fi
     fi
+    if [ -d "${_QR}/${_DRUPAL9D}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL9}-dev" ]; then
+        _A="${_QR}/${_DRUPAL9D}/sites"
+        _B="${_QH}/${_DRUPAL9}-dev"
+        ln -sf ${_A} ${_B}
+      fi
+    fi
+    if [ -d "${_QR}/${_DRUPAL9S}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL9}-stage" ]; then
+        _A="${_QR}/${_DRUPAL9S}/sites"
+        _B="${_QH}/${_DRUPAL9}-stage"
+        ln -sf ${_A} ${_B}
+      fi
+    fi
+    if [ ! -d "${_QR}/${_DRUPAL9}" ]; then
+      if [ -d "${_QR}/${_DRUPAL9P}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL9}-prod" ]; then
+          _A="${_QR}/${_DRUPAL9P}/sites"
+          _B="${_QH}/${_DRUPAL9}-prod"
+          ln -sf ${_A} ${_B}
+        fi
+      fi
+    elif [ ! -d "${_QR}/${_DRUPAL9P}" ]; then
+      if [ -d "${_QR}/${_DRUPAL9}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL9}-prod" ]; then
+          _A="${_QR}/${_DRUPAL9}/sites"
+          _B="${_QH}/${_DRUPAL9}-prod"
+          ln -sf ${_A} ${_B}
+        fi
+      fi
+    fi
     if [ -d "${_QR}/erpal-${_ERPAL}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/erpal-${_ERPAL}-${_SMALLCORE7}" ]; then
         _A="${_QR}/erpal-${_ERPAL}-${_SMALLCORE7}/sites"
@@ -3850,6 +3881,9 @@ satellite_make() {
   echo "_DRUPAL7S=\"${_DRUPAL7}-stage\""              >> ${writeTo}
   echo "_DRUPAL8=\"${_DRUPAL8}\""                     >> ${writeTo}
   echo "_DRUPAL9=\"${_DRUPAL9}\""                     >> ${writeTo}
+  echo "_DRUPAL9D=\"${_DRUPAL9}-dev\""                >> ${writeTo}
+  echo "_DRUPAL9P=\"${_DRUPAL9}-prod\""               >> ${writeTo}
+  echo "_DRUPAL9S=\"${_DRUPAL9}-stage\""              >> ${writeTo}
   echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${writeTo}
   echo "_ERPAL=\"${_ERPAL}\""                         >> ${writeTo}
   echo "_F_TIME=\"${_F_TIME}\""                       >> ${writeTo}
@@ -3899,6 +3933,8 @@ satellite_make() {
   echo "_SMALLCORE8=\"${_SMALLCORE8}\""               >> ${writeTo}
   echo "_SMALLCORE92=\"${_SMALLCORE92}\""             >> ${writeTo}
   echo "_SMALLCORE93=\"${_SMALLCORE93}\""             >> ${writeTo}
+  echo "_SMALLCORE95=\"${_SMALLCORE95}\""             >> ${writeTo}
+  echo "_SMALLCORE9=\"${_SMALLCORE9}\""               >> ${writeTo}
   echo "_SOCIAL=\"${_SOCIAL}\""                       >> ${writeTo}
   echo "_SPINNER=\"${_SPINNER}\""                     >> ${writeTo}
   echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${writeTo}
