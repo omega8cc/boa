@@ -5686,77 +5686,77 @@ satellite_child_b_aegir_ui_enhance() {
       _VMFAMILY="XEN"
     fi
     cd ${_HM_ROOT}/sites/${_DOMAIN}
-    ${_DRUSHCMD} cc drush
+    ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache
-    ${_DRUSHCMD} @hostmaster en aegir_objects -y
-    ${_DRUSHCMD} @hostmaster en fix_ownership -y
-    ${_DRUSHCMD} @hostmaster en fix_permissions -y
-    ${_DRUSHCMD} @hostmaster en hosting_civicrm -y
-    ${_DRUSHCMD} @hostmaster en hosting_civicrm_cron -y
-    ${_DRUSHCMD} @hostmaster en hosting_client -y
-    ${_DRUSHCMD} @hostmaster en hosting_cron -y
-    ${_DRUSHCMD} @hostmaster en hosting_deploy -y
-    ${_DRUSHCMD} @hostmaster en hosting_platform_composer -y
-    ${_DRUSHCMD} @hostmaster en hosting_platform_composer_git -y
-    ${_DRUSHCMD} @hostmaster en hosting_platform_git -y
-    ${_DRUSHCMD} @hostmaster en hosting_tasks_extra -y
-    ${_DRUSHCMD} @hostmaster en hosting_http_basic_auth -y
-    ${_DRUSHCMD} @hostmaster en libraries -y
-    ${_DRUSHCMD} @hostmaster en overlay -y
-    ${_DRUSHCMD} @hostmaster en overlay_paths -y
-    ${_DRUSHCMD} @hostmaster en revision_deletion -y
-    ${_DRUSHCMD} @hostmaster en timeago -y
-    ${_DRUSHCMD} @hostmaster en userprotect -y
-    ${_DRUSHCMD} @hostmaster ${vSet} client 1
-    ${_DRUSHCMD} @hostmaster ${vSet} clone 1
-    ${_DRUSHCMD} @hostmaster ${vSet} hosting_admin_client 1
-    ${_DRUSHCMD} @hostmaster ${vSet} hosting_client_register_user 1
-    ${_DRUSHCMD} @hostmaster ${vSet} hosting_client_send_welcome 1
-    ${_DRUSHCMD} @hostmaster ${vSet} hosting_client_send_welcome 1
-    ${_DRUSHCMD} @hostmaster ${vSet} hosting_feature_client 1
+    ${_DRUSHCMD} @hostmaster en aegir_objects -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en fix_ownership -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en fix_permissions -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_civicrm -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_civicrm_cron -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_client -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_cron -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_deploy -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_platform_composer -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_platform_composer_git -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_platform_git -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_tasks_extra -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_http_basic_auth -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en libraries -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en overlay -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en overlay_paths -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en revision_deletion -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en timeago -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en userprotect -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${vSet} client 1 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${vSet} clone 1 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${vSet} hosting_admin_client 1 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${vSet} hosting_client_register_user 1 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${vSet} hosting_client_send_welcome 1 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${vSet} hosting_client_send_welcome 1 &> /dev/null
+    ${_DRUSHCMD} @hostmaster ${vSet} hosting_feature_client 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_cron_default_interval 3600
+      hosting_cron_default_interval 3600 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_queue_cron_frequency 1
+      hosting_queue_cron_frequency 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_civicrm_cron_queue_frequency 60
+      hosting_civicrm_cron_queue_frequency 60 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_queue_task_gc_frequency 300
+      hosting_queue_task_gc_frequency 300 &> /dev/null
     if [ -e "${_ROOT}/log/hosting_cron_use_backend.txt" ]; then
       ${_DRUSHCMD} @hostmaster ${vSet} \
-        hosting_cron_use_backend 1
+        hosting_cron_use_backend 1 &> /dev/null
     else
       ${_DRUSHCMD} @hostmaster ${vSet} \
-        hosting_cron_use_backend 0
+        hosting_cron_use_backend 0 &> /dev/null
     fi
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_ignore_default_profiles 0
+      hosting_ignore_default_profiles 0 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_queue_tasks_frequency 1
+      hosting_queue_tasks_frequency 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_queue_tasks_items 1
+      hosting_queue_tasks_items 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_delete_force 0
+      hosting_delete_force 0 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_alias_automatic_no_www 1
+      hosting_alias_automatic_no_www 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_alias_automatic_www 1
+      hosting_alias_automatic_www 1 &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_upload_platform_path "${_ROOT}/static"
+      hosting_upload_platform_path "${_ROOT}/static" &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_upload_upload_path "sites/${_DOMAIN}/files/deployment"
+      hosting_upload_upload_path "sites/${_DOMAIN}/files/deployment" &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_platform_base_path "${_ROOT}/static/"
+      hosting_platform_base_path "${_ROOT}/static/" &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      aegir_backup_export_path "${_ROOT}/backup-exports"
+      aegir_backup_export_path "${_ROOT}/backup-exports" &> /dev/null
     ${_DRUSHCMD} @hostmaster ${vSet} \
-      hosting_default_profile "standard"
+      hosting_default_profile "standard" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \
-      WHERE link_path='hosting/platforms'"
+      WHERE link_path='hosting/platforms'" &> /dev/null
     ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM menu_links \
-      WHERE link_path='hosting/sites'"
+      WHERE link_path='hosting/sites'" &> /dev/null
 
-    ${_DRUSHCMD} @hostmaster vdel -y --exact hosting_task_logs_types_display
+    ${_DRUSHCMD} @hostmaster vdel -y --exact hosting_task_logs_types_display &> /dev/null
 
     ${_DRUSHCMD} @hostmaster ev 'variable_set("hosting_task_logs_types_display", array(
       "error" => "error",
@@ -5776,29 +5776,29 @@ satellite_child_b_aegir_ui_enhance() {
 
     if [ "${_LOCAL_STATUS}" = "INIT" ]; then
       pBy="Octopus System powered by Barracuda"
-      ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}"
-      ${_DRUSHCMD} @hostmaster ${vSet} site_mail "${_MY_EMAIL}"
+      ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}" &> /dev/null
+      ${_DRUSHCMD} @hostmaster ${vSet} site_mail "${_MY_EMAIL}" &> /dev/null
       cp -af /opt/tmp/boa/aegir/helpers/make_home.php.txt ./
-      mv -f make_home.php.txt make_home.php
-      ${_DRUSHCMD} php-script make_home
+      mv -f make_home.php.txt make_home.php &> /dev/null
+      ${_DRUSHCMD} php-script make_home &> /dev/null
       rm -f make_home.php
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE field_data_body \
-        SET body_format='full_html' WHERE bundle='book' AND entity_type='node'"
+        SET body_format='full_html' WHERE bundle='book' AND entity_type='node'" &> /dev/null
       cp -af /opt/tmp/boa/aegir/helpers/make_client.php.txt ./
-      mv -f make_client.php.txt make_client.php
+      mv -f make_client.php.txt make_client.php &> /dev/null
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-          SET status=-1 WHERE nid=7"
+          SET status=-1 WHERE nid=7" &> /dev/null
       else
         ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-          SET status=-1 WHERE nid=5"
+          SET status=-1 WHERE nid=5" &> /dev/null
       fi
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL}
       else
-        ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL}
+        ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL} &> /dev/null
       fi
       rm -f make_client.php
     else
@@ -5819,20 +5819,20 @@ satellite_child_b_aegir_ui_enhance() {
         || [ -e "/root/.host8.cnf" ] \
         || [ "${_AUTO_UP}" = "YES" ]; then
         pBy="Octopus System powered by Barracuda"
-        ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}"
+        ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}" &> /dev/null
         cp -af /opt/tmp/boa/aegir/helpers/make_home.php.txt ./
-        mv -f make_home.php.txt make_home.php
-        ${_DRUSHCMD} php-script make_home
+        mv -f make_home.php.txt make_home.php &> /dev/null
+        ${_DRUSHCMD} php-script make_home &> /dev/null
         rm -f make_home.php
       fi
       ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM field_data_body \
-        WHERE body_format IS NULL"
+        WHERE body_format IS NULL" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE field_data_body \
-        SET body_format='full_html' WHERE bundle='book' AND entity_type='node'"
+        SET body_format='full_html' WHERE bundle='book' AND entity_type='node'" &> /dev/null
     fi
 
     ${_DRUSHCMD} @hostmaster sqlq "UPDATE menu_links \
-      SET hidden=1 WHERE plid='0' AND menu_name LIKE 'user-menu'"
+      SET hidden=1 WHERE plid='0' AND menu_name LIKE 'user-menu'" &> /dev/null
 
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"
@@ -5845,15 +5845,15 @@ satellite_child_b_aegir_ui_enhance() {
       ${_DRUSHCMD} @hostmaster cache-clear all
       ${_DRUSHCMD} @hostmaster updb -y
     else
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats"
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"
-      ${_DRUSHCMD} @hostmaster en hosting_le -y
-      ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y
-      ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
-      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y
-      ${_DRUSHCMD} @hostmaster cache-clear all
-      ${_DRUSHCMD} @hostmaster updb -y
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"  &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats" &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"         &> /dev/null
+      ${_DRUSHCMD} @hostmaster en hosting_le -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y  &> /dev/null
+      ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y  &> /dev/null
+      ${_DRUSHCMD} @hostmaster cache-clear all &> /dev/null
+      ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
     fi
 
     if [ "${_LOCAL_STATUS}" = "INIT" ]; then
@@ -5872,24 +5872,24 @@ satellite_child_b_aegir_ui_enhance() {
           ('2', '0', '0', '0', '1', '1', '1', '0', 'user', '1');"
       else
         ${_DRUSHCMD} @hostmaster \
-          urol "admin" --mail=${_CLIENT_EMAIL}
+          urol "admin" --mail=${_CLIENT_EMAIL} &> /dev/null
         ${_DRUSHCMD} @hostmaster \
-          urol "aegir account manager" --mail=${_CLIENT_EMAIL}
+          urol "aegir account manager" --mail=${_CLIENT_EMAIL} &> /dev/null
         ${_DRUSHCMD} @hostmaster \
-          urol "aegir client" --mail=${_CLIENT_EMAIL}
+          urol "aegir client" --mail=${_CLIENT_EMAIL} &> /dev/null
         ${_DRUSHCMD} @hostmaster sqlq "REPLACE INTO userprotect \
           (uid, up_name, up_mail, up_pass, up_status, up_roles, up_cancel, up_edit, up_type, up_openid) VALUES \
           ('0', '0', '0', '0', '0', '0', '1', '1', 'user', '1'),\
           ('1', '0', '0', '0', '0', '0', '0', '0', 'admin', '0'),\
           ('1', '1', '1', '1', '1', '1', '1', '1', 'user', '1'),\
-          ('2', '0', '0', '0', '1', '1', '1', '0', 'user', '1');"
+          ('2', '0', '0', '0', '1', '1', '1', '0', 'user', '1');" &> /dev/null
       fi
     fi
 
     if [ ! -e "${_ROOT}/log/hosting_le_enable.txt" ]; then
-      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_service SET type='nginx_ssl' WHERE service='http'"
+      ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_service SET type='nginx_ssl' WHERE service='http'" &> /dev/null
       sleep 5
-      ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force
+      ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force &> /dev/null
       mkdir -p ${_ROOT}/log
       touch ${_ROOT}/log/hosting_le_enable.txt
     fi
