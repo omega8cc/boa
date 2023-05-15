@@ -1485,11 +1485,16 @@ if (extension_loaded('newrelic') && $all_ini['enable_newrelic_integration']) {
           $this_instance = 'Site: ' . $uri . ';AAA Barracuda Master';
         }
       }
-      // Build drush command
-      $drush_command = array_merge(array($command['command']), $command['arguments']);
-      newrelic_add_custom_parameter('Drush command', implode(' ', $drush_command));
-      newrelic_name_transaction(implode(' ', $drush_command));
-      newrelic_background_job(TRUE);
+      if (function_exists('drush_get_command')) {
+        // Build drush command
+        $command = drush_get_command();
+        if (isset($command['command']) && isset($command['arguments'])) {
+          $drush_command = array_merge(array($command['command']), $command['arguments']);
+          newrelic_add_custom_parameter('Drush command', implode(' ', $drush_command));
+          newrelic_name_transaction(implode(' ', $drush_command));
+          newrelic_background_job(TRUE);
+        }
+      }
     }
   }
   else {
