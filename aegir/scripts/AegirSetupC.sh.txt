@@ -2903,9 +2903,9 @@ save_verify_platforms() {
   rm -f make_platform.php
 }
 
-drupal6_install
 drupal9_install
 drupal7_install
+drupal6_install
 
 #agov_install
 commerce_7_1_install
