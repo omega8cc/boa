@@ -298,6 +298,8 @@ get_dev_contrib() {
 
 update_agents() {
 
+  [ ! -e "/root/.fast.cron.cnf" ] && echo ON > /root/.fast.cron.cnf
+
   if [ -e "/root/.host8.cnf" ] && [ ! -e "/root/.extended.firewall.exceptions.cnf" ]; then
     echo host8 > /root/.extended.firewall.exceptions.cnf
   fi
