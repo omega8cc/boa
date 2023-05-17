@@ -4507,7 +4507,9 @@ run_aptitude_deps_install() {
 systemd_cleanup_on_init() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: systemd_cleanup_on_init"
+    msg "PROC: sync time with ntpdate pool.ntp.org"
   fi
+  ntpdate pool.ntp.org &> /dev/null
   if [ "${_STATUS}" = "SYSTEMD" ]; then
     if [ ! -e "/root/.step.init.systemd.one.cnf" ]; then
       msg "INFO: This server is running systemd, which should be"
@@ -4667,6 +4669,7 @@ basic_packages_install_on_init() {
       ${_INITINS} netcat &> /dev/null
       ${_INITINS} curl &> /dev/null
       ${_INITINS} wget &> /dev/null
+      ${_INITINS} ntpdate &> /dev/null
       touch /root/.step.init.basic.cnf
     fi
   fi
