@@ -4663,6 +4663,8 @@ basic_packages_install_on_init() {
       ${_INITINS} netcat &> /dev/null
       ${_INITINS} curl &> /dev/null
       ${_INITINS} wget &> /dev/null
+      ${_INITINS} hostname &> /dev/null
+      ${_INITINS} net-tools &> /dev/null
       ${_INITINS} ntpdate &> /dev/null
       touch /root/.step.init.basic.cnf
     fi
@@ -4696,8 +4698,6 @@ more_packages_install_on_init() {
     ${_INITINS} git-man &> /dev/null
     ${_INITINS} aptitude &> /dev/null
     ${_INITINS} axel &> /dev/null
-    ${_INITINS} hostname &> /dev/null
-    ${_INITINS} net-tools &> /dev/null
     ${_INITINS} build-essential &> /dev/null
   fi
 }
