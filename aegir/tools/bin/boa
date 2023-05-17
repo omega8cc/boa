@@ -943,13 +943,13 @@ barracuda_install() {
         fi
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.1/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${filIncO}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.1/g" ${vBs}/${filIncO}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${filIncO}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${filIncO}
         wait
       elif [ "${rkey}" = "nodns" ]; then
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${filIncB}
@@ -1006,13 +1006,13 @@ barracuda_install() {
         fi
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${barName}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${barName}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.1/g" ${vBs}/${barName}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${barName}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${barName}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${octName}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.1/g" ${vBs}/${octName}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${octName}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${octName}
         wait
       elif [ "${rkey}" = "nodns" ]; then
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${barName}
@@ -2160,10 +2160,10 @@ case "$1" in
 
   {extra}
       license <------ valid new relic license key
-      php-7.4 <------ single PHP version to install and use (supported, default)
-      php-8.1 <------ single PHP version to install and use (experimental)
+      php-7.4 <------ single PHP version to install and use (supported)
+      php-8.1 <------ single PHP version to install and use (supported, default)
       php-8.2 <------ single PHP version to install and use (experimental)
-      php-min <------ install PHP 7.4, 8.1, 8.2, use 7.4 by default (php-all)
+      php-min <------ install PHP 7.4, 8.1, 8.2, use 8.1 by default (php-all)
       php-max <------ install PHP 7.4, 8.1, 8.2, 8.0, 7.3, 7.2, 7.1, 7.0, 5.6
       nodns <-------- disable DNS checks on the fly
 

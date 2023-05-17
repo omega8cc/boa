@@ -109,11 +109,11 @@ _PHP_SINGLE_INSTALL=
 ### Available options (if installed):
 ### 8.1, 8.0, 7.4
 ###
-### Note that 7.4 will be set automatically
+### Note that 8.1 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_FPM_VERSION=7.4
+_PHP_FPM_VERSION=8.1
 
 
 ###----------------------------------------###
@@ -127,11 +127,11 @@ _PHP_FPM_VERSION=7.4
 ### Available options (if installed):
 ### 8.1, 8.0, 7.4
 ###
-### Note that 7.4 will be set automatically
+### Note that 8.1 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_CLI_VERSION=7.4
+_PHP_CLI_VERSION=8.1
 
 
 ###----------------------------------------###

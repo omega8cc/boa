@@ -627,7 +627,7 @@ up_action() {
         else
           phpM="7.4 8.1 8.2"
         fi
-        phpS="7.4"
+        phpS="8.1"
 
         ### Debugging
         if [ "$debug" = "debug" ]; then

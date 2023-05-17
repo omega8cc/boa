@@ -695,11 +695,12 @@ check_boa_php_compatibility() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: check_boa_php_compatibility"
   fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.4" ]]; then
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.4" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "8.1" ]]; then
     _DO_NOTHING=YES
   else
     msg "ERROR: This BOA version depends on PHP 7.4 or newer"
-    msg "Please add 7.4 to _PHP_MULTI_INSTALL"
+    msg "Please add 7.4 or 8.1 to _PHP_MULTI_INSTALL"
     msg "in /root/.barracuda.cnf before trying again"
     msg "NOTE: You can still install also legacy PHP 7.x and 5.6 versions"
     msg "NOTE: but you must also include at least 7.4 to support Drupal 9"
@@ -723,7 +724,7 @@ check_boa_php_compatibility() {
     || [ "${_PHP_CLI_VERSION}" = "7.2" ] \
     || [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
     msg "ERROR: This BOA version depends on PHP 7.4 or newer"
-    msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to 7.4"
+    msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to 7.4 or 8.1"
     msg "in /root/.barracuda.cnf before trying again"
     msg "NOTE: You can still install also legacy PHP 7.x and 5.6 versions"
     msg "NOTE: but you must use as default version 7.4 to support Drupal 9"

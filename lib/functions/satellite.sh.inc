@@ -633,7 +633,7 @@ satellite_cnf() {
         _PHP_FPM_VERSION=$(cat ${_ROOT}/log/fpm.txt 2>&1)
         _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
       else
-        _PHP_FPM_VERSION=7.4
+        _PHP_FPM_VERSION=8.1
       fi
       echo ${_PHP_FPM_VERSION} > ${_ROOT}/static/control/fpm.info
       chown ${_USER}.ftp:users ${_ROOT}/static/control/fpm.info
@@ -711,7 +711,7 @@ satellite_cnf() {
         _PHP_CLI_VERSION=$(cat ${_ROOT}/log/cli.txt 2>&1)
         _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d "\n" 2>&1)
       else
-        _PHP_CLI_VERSION=7.4
+        _PHP_CLI_VERSION=8.1
       fi
       echo ${_PHP_CLI_VERSION} > ${_ROOT}/static/control/cli.info
       chown ${_USER}.ftp:users ${_ROOT}/static/control/cli.info

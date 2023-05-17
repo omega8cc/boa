@@ -320,10 +320,10 @@ if [ -e "/data/disk/arch/sql" ]; then
 	  csf -q
 	  touch /var/xdrago/log/.csf_dhcp_udp_cleanup.pid
 	fi
-    if [ ! -e "/var/xdrago/log/.fixed_php_seven_four_default.pid" ]; then
-      sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=7.4/g"  ${barCnf}
-      sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=7.4/g"  ${barCnf}
-      touch /var/xdrago/log/.fixed_php_seven_four_default.pid
+    if [ ! -e "/var/xdrago/log/.fixed_php_eight_one_default.pid" ]; then
+      sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=8.1/g"  ${barCnf}
+      sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=8.1/g"  ${barCnf}
+      touch /var/xdrago/log/.fixed_php_eight_one_default.pid
     fi
     if [ ! -e "/var/xdrago/log/.disabled_modules_fix.pid" ]; then
       sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=NO/g"  ${barCnf}

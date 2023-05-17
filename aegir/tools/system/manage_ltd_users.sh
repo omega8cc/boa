@@ -1511,10 +1511,10 @@ site_socket_inc_gen() {
   hmFront=$(echo -n ${hmFront} | tr -d "\n" 2>&1)
   hmstAls="${dscUsr}/.drush/${hmFront}.alias.drushrc.php"
 
-  if [ -x "/opt/php74/bin/php" ] && [ -e "${dscUsr}/log/domain.txt" ]; then
+  if [ -x "/opt/php81/bin/php" ] && [ -e "${dscUsr}/log/domain.txt" ]; then
     if [ ! -e "${unlAeg}" ]; then
       if [ ! -e "${dscUsr}/log/locked-aegir-php.txt" ]; then
-        echo "${hmFront} 7.4" >> ${mltFpm}
+        echo "${hmFront} 8.1" >> ${mltFpm}
         if [ ! -e "${hmstAls}" ]; then
           ln -s ${dscUsr}/.drush/hostmaster.alias.drushrc.php ${hmstAls}
         fi
@@ -1527,9 +1527,9 @@ site_socket_inc_gen() {
         wait
         sed -i "s/ *$//g; /^$/d" ${mltFpm}
         wait
-        echo "7.4" > ${dscUsr}/static/control/cli.info
+        echo "8.1" > ${dscUsr}/static/control/cli.info
         rm -f ${dscUsr}/log/unlocked-aegir-php.txt
-        echo "7.4" > ${dscUsr}/log/locked-aegir-php.txt
+        echo "8.1" > ${dscUsr}/log/locked-aegir-php.txt
       fi
       if [ ! -e "${fpmPth}/fpm_include_site_${hmFront}.inc" ]; then
         mltFpmUpdateForce=YES
@@ -1537,7 +1537,7 @@ site_socket_inc_gen() {
     else
       if [ ! -e "${dscUsr}/log/unlocked-aegir-php.txt" ]; then
         if [ -e "${mltFpm}" ]; then
-          sed -i "s/^${hmFront} 7.4//g" ${mltFpm}
+          sed -i "s/^${hmFront} 8.1//g" ${mltFpm}
           wait
           sed -i "s/^place.holder.dont.remove 5.6//g" ${mltFpm}
           wait
@@ -1555,7 +1555,7 @@ site_socket_inc_gen() {
     fi
   fi
 
-  if [ -x "/opt/php74/bin/php" ] && [ ! -e "/home/${_USER}.74.web" ]; then
+  if [ -x "/opt/php81/bin/php" ] && [ ! -e "/home/${_USER}.81.web" ]; then
     rm -f /data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_default.inc
     mltFpmUpdateForce=YES
   fi

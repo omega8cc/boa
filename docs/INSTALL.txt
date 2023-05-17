@@ -88,13 +88,13 @@
    built-in platform, while "ask" is a default mode if you don't specify
    this option at all.
 
-   The last {newrelickey|php-7.4|php-min|php-max|nodns} part is optional and
+   The last {newrelickey|php-8.1|php-min|php-max|nodns} part is optional and
    can be used either to install New Relic Apps Monitor (you should replace
    the "newrelickey" keyword with a valid license key), or to define single PHP
    version to install and use both for Master and Satellite instances.
 
-   When "php-min" is defined, then only 3 versions will be installed: 8.2, 8.1,
-   plus 7.4, configured as default. You can later install or modify PHP version
+   When "php-min" is defined, then only 3 versions will be installed: 8.2, 7.4,
+   plus 8.1, configured as default. You can later install or modify PHP version
    used via _PHP_MULTI_INSTALL, _PHP_CLI_VERSION and _PHP_FPM_VERSION, but
    the _PHP_SINGLE_INSTALL variable must be set empty to not override other
    related variables. The "nodns" option allows to skip DNS and SMTP checks.
@@ -108,7 +108,7 @@
    $ boa in-head public server.mydomain.org my@email o1 none php-min
 
    # Latest on server - some Aegir platforms + single PHP version
-   $ boa in-head public server.mydomain.org my@email o1 mini php-7.4
+   $ boa in-head public server.mydomain.org my@email o1 mini php-8.1
 
    # Latest on server - prompt for every platform install + 3 PHP versions
    $ boa in-head public server.mydomain.org my@email o1
@@ -158,7 +158,7 @@
    $ boa in-head local my@email php-min
 
    # Latest on localhost - no prompt with 3xD6 + 3xD7 only + single PHP version
-   $ boa in-head local my@email mini php-7.4
+   $ boa in-head local my@email mini php-8.1
 
    # Latest on localhost - no prompt all platforms + 3 PHP versions
    $ boa in-head local my@email max
