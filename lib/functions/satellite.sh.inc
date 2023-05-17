@@ -1261,7 +1261,7 @@ satellite_create_shared_dirs() {
 satellite_o_contrib_update_global() {
 
   _RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 \
-    cookie_cache_bypass_adv module_supports imageinfo_cache"
+    cookie_cache_bypass_adv module_supports imageinfo_cache redis"
 
   for i in `dir -d ${_D}/*`; do
     if [ -e "${i}/o_contrib" ] \
@@ -1272,9 +1272,6 @@ satellite_o_contrib_update_global() {
       _FORCE_UP_SIX=YES
     elif [ -e "${i}/o_contrib" ] \
       && [ ! -L "${i}/o_contrib/redis_edge" ]; then
-      _FORCE_UP_SIX=YES
-    elif [ -e "${i}/o_contrib" ] \
-      && [ ! -L "${i}/o_contrib/redis" ]; then
       _FORCE_UP_SIX=YES
     else
       _FORCE_UP_SIX=NO
@@ -1344,9 +1341,8 @@ satellite_o_contrib_update_global() {
         && [ ! -L "${i}/o_contrib/cache_backport" ]; then
         ln -sf ${_D}/000/modules/cache_backport ${i}/o_contrib/cache_backport
       fi
-      if [ -e "${_D}/000/modules/redis" ] \
-        && [ ! -L "${i}/o_contrib/redis" ]; then
-        ln -sf ${_D}/000/modules/redis ${i}/o_contrib/redis
+      if [ -L "${i}/o_contrib/redis" ]; then
+        rm -f ${i}/o_contrib/redis
       fi
       if [ -e "${_D}/000/modules/redis_edge" ] \
         && [ ! -L "${i}/o_contrib/redis_edge" ]; then
@@ -1371,7 +1367,7 @@ satellite_o_contrib_update_global() {
 # Update o_contrib_seven.
 satellite_o_contrib_seven_update_global() {
 
-  _RMMODULES="session443 cookie_cache_bypass_adv agrcache speedy"
+  _RMMODULES="session443 cookie_cache_bypass_adv agrcache speedy redis"
 
   for i in `dir -d ${_D}/*`; do
     if [ -e "${i}/o_contrib_seven" ] \
@@ -1385,9 +1381,6 @@ satellite_o_contrib_seven_update_global() {
       _FORCE_UP_SEVEN=YES
     elif [ -e "${i}/o_contrib_seven" ] \
       && [ ! -L "${i}/o_contrib_seven/redis_edge" ]; then
-      _FORCE_UP_SEVEN=YES
-    elif [ -e "${i}/o_contrib_seven" ] \
-      && [ ! -L "${i}/o_contrib_seven/redis" ]; then
       _FORCE_UP_SEVEN=YES
     else
       _FORCE_UP_SEVEN=NO
@@ -1482,9 +1475,8 @@ satellite_o_contrib_seven_update_global() {
       if [ -d "${i}/o_contrib_seven/redis_edge" ]; then
         rm -rf ${i}/o_contrib_seven/redis_edge
       fi
-      if [ -e "${_D}/000/modules/redis" ] \
-        && [ ! -L "${i}/o_contrib_seven/redis" ]; then
-        ln -sf ${_D}/000/modules/redis ${i}/o_contrib_seven/redis
+      if [ -L "${i}/o_contrib_seven/redis" ]; then
+        rm -f ${i}/o_contrib_seven/redis
       fi
       if [ -e "${_D}/000/modules/redis_edge" ] \
         && [ ! -L "${i}/o_contrib_seven/redis_edge" ]; then
@@ -1771,18 +1763,14 @@ satellite_download_o_contrib_seven() {
   find ./ -type d -exec chmod 0755 {} \; &> /dev/null
   find ./ -type f -exec chmod 0644 {} \; &> /dev/null
   touch ctrl-${_X_SE}-${_X_VERSION}
-  if [ ! -L "./redis" ]; then
-    ln -sf ${_D}/000/modules/redis redis
+  if [ -L "./redis" ]; then
+    rm -f redis
   fi
   if [ ! -L "./redis_edge" ]; then
     ln -sf ${_D}/000/modules/redis_edge redis_edge
   fi
-  if [ ! -e "${_D}/000/modules/redis/update-${_X_SE}-${_X_VERSION}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
+  if [ -e "${_D}/000/modules/redis" ]; then
     rm -rf ${_D}/000/modules/redis
-    get_dev_contrib "redis-mod-26-06-2015.tar.gz"
-    echo update > ${_D}/000/modules/redis/update-${_X_SE}-${_X_VERSION}.info
   fi
   if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
@@ -1837,8 +1825,8 @@ satellite_download_o_contrib_six() {
   find ./ -type d -exec chmod 0755 {} \; &> /dev/null
   find ./ -type f -exec chmod 0644 {} \; &> /dev/null
   touch ctrl-${_X_SE}-${_X_VERSION}
-  if [ ! -L "./redis" ]; then
-    ln -sf ${_D}/000/modules/redis redis
+  if [ -L "./redis" ]; then
+    rm -f redis
   fi
   if [ ! -L "./redis_edge" ]; then
     ln -sf ${_D}/000/modules/redis_edge redis_edge
@@ -1853,12 +1841,8 @@ satellite_download_o_contrib_six() {
     get_dev_contrib "cache_backport-6.x-1.0-rc4.tar.gz"
     echo update > cache_backport/update-${_X_SE}-${_X_VERSION}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis/update-${_X_SE}-${_X_VERSION}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
+  if [ -e "${_D}/000/modules/redis" ]; then
     rm -rf ${_D}/000/modules/redis
-    get_dev_contrib "redis-mod-26-06-2015.tar.gz"
-    echo update > ${_D}/000/modules/redis/update-${_X_SE}-${_X_VERSION}.info
   fi
   if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
@@ -1933,12 +1917,8 @@ satellite_check_fix_o_contrib() {
     get_dev_contrib "cache_backport-6.x-1.0-rc4.tar.gz"
     echo update > cache_backport/update-${_X_SE}-${_X_VERSION}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis/update-${_X_SE}-${_X_VERSION}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
+  if [ -e "${_D}/000/modules/redis" ]; then
     rm -rf ${_D}/000/modules/redis
-    get_dev_contrib "redis-mod-26-06-2015.tar.gz"
-    echo update > ${_D}/000/modules/redis/update-${_X_SE}-${_X_VERSION}.info
   fi
   if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
