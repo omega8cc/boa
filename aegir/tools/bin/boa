@@ -221,6 +221,10 @@ check_ifnames() {
     echo "ERROR: BOA requires the classic network interface naming convention."
     echo "ERROR: Typically it should be eth0 and not ens3 systemd convention."
     echo
+    echo "RDOCS: Please study recommended docs before introducing any changes!"
+    echo
+    echo "RDOCS:   https://bit.ly/boa-network-config"
+    echo
     echo "HINTS: You can check your active network interfaces with command:"
     echo "HINTS:   ip addr show"
     echo "HINTS: to make sure you are in fact using supported naming convention."
