@@ -1531,8 +1531,8 @@ php_if_versions_cleanup_cnf() {
 
         ### Ctrl files cleanup
         touch /root/.sorted.multi.php.cnf
-        rm -f /root/.updated.multi.php.cnf
-        rm -f /root/.fixed.multi.php.cnf
+        [ -e "/root/.updated.multi.php.cnf" ] && rm -f /root/.updated.multi.php.cnf
+        [ -e "/root/.fixed.multi.php.cnf" ] && rm -f /root/.fixed.multi.php.cnf
       fi
     fi
   fi
@@ -1545,7 +1545,7 @@ if_php_idle_on_off() {
     msg "PROC: if_php_idle_on_off"
   fi
   if [ "${_PHP_IDLE}" = "ON" ]; then
-    rm -f /root/.allow-php-multi-install-cleanup.cnf
+    [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
     rm -f /var/xdrago/log/*.log
     rm -f /var/xdrago/log/.php_libs_fix_*.pid
     touch /root/.proxy.cnf
@@ -1553,7 +1553,7 @@ if_php_idle_on_off() {
     sleep 5
     php_not_used_enable_again
     sed -i "s/^_PHP_IDLE.*//g" ${barCnf}
-    rm -f /root/.proxy.cnf
+    [ -e "/root/.proxy.cnf" ] && rm -f /root/.proxy.cnf
     php_install_deps
     php_libs_fix
     php_check_if_rebuild
@@ -1573,7 +1573,7 @@ if_php_idle_on_off() {
     sed -i "s/^_PHP_IDLE.*//g" ${barCnf}
     echo " "
     msg "Bye"
-    rm -f /root/.proxy.cnf
+    [ -e "/root/.proxy.cnf" ] && rm -f /root/.proxy.cnf
     clean_pid_exit
   fi
 }
@@ -3651,7 +3651,7 @@ curl_install_src() {
     sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
     grep lib /etc/ld.so.conf.d/libc.conf
     mrun "ldconfig" &> /dev/null
-    rm -f /root/.sorted.multi.php.cnf
+    [ -e "/root/.sorted.multi.php.cnf" ] && rm -f /root/.sorted.multi.php.cnf
     msg "INFO: libcurl is broken, cURL re-install from packages required"
   fi
   if [ "${_PHP_BIN_BROKEN}" = "YES" ] && [ -z "${_CURL_ALREADY_REBUILT}" ]; then
@@ -3683,7 +3683,7 @@ curl_install_src() {
     ###--------------------###
     if [ -e "/root/.use.curl.from.packages.cnf" ]; then
       msg "INFO: cURL from packages is forced with /root/.use.curl.from.packages.cnf"
-      rm -f /root/.sorted.multi.php.cnf
+      [ -e "/root/.sorted.multi.php.cnf" ] && rm -f /root/.sorted.multi.php.cnf
       mkdir -p /var/backups/libcurl
       mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
       mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -4308,10 +4308,10 @@ finale() {
   rm -rf /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
   rm -rf /var/aegir/.tmp/cache
-  rm -f /var/run/boa_run.pid
-  rm -f /var/run/boa_wait.pid
-  rm -f /var/run/manage_ltd_users.pid
-  rm -f /var/run/manage_rvm_users.pid
+  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
+  [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
+  [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
   rm -f /var/aegir/.drush/.alias.drushrc.php
   rm -f /data/disk/*/.drush/.alias.drushrc.php
   rm -f ${pthLog}/protected-vhosts-clean.log
@@ -4957,8 +4957,9 @@ if_post_major_os_upgrade() {
       _SSH_FORCE_REINSTALL=
       _SSL_FORCE_REINSTALL=
     fi
-
-    rm -f /root/.run_post_major_os_upgrade.info
+    if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
+      rm -f /root/.run_post_major_os_upgrade.info
+    fi
     touch /root/.completed_post_major_os_upgrade.info
     msg "INFO: The post_major_os_upgrade procedure is complete"
   fi
@@ -5579,7 +5580,7 @@ early_sys_ctrl_mark() {
   if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
     touch /root/.early-sys-ctrl-mark.cnf
   else
-    rm -f /root/.early-sys-ctrl-mark.cnf
+    [ -e "/root/.early-sys-ctrl-mark.cnf" ] && rm -f /root/.early-sys-ctrl-mark.cnf
   fi
 }
 
@@ -5588,7 +5589,7 @@ normal_sys_ctrl_mark() {
     rm -f /root/.latest-barracuda-upgrade-finale.info
     touch /root/.normal-sys-ctrl-mark.cnf
   else
-    rm -f /root/.normal-sys-ctrl-mark.cnf
+    [ -e "/root/.normal-sys-ctrl-mark.cnf" ] && rm -f /root/.normal-sys-ctrl-mark.cnf
   fi
 }
 

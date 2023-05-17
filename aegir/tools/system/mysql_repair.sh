@@ -49,6 +49,6 @@ _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
 /usr/bin/mysqlcheck -u root -Aa >> $dir/all.a.`date +%y%m%d-%H%M%S`
 /usr/bin/mysqlcheck -u root -A --auto-repair >> $dir/all.r.`date +%y%m%d-%H%M%S`
 /usr/bin/mysqlcheck -u root -Ao >> $dir/all.o.`date +%y%m%d-%H%M%S`
-rm -f /var/run/boa_wait.pid
+[ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
 exit 0
 ###EOF2023###

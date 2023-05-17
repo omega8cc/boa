@@ -29,7 +29,7 @@ create_locks() {
 
 remove_locks() {
   echo "Removing locks..."
-  rm -f /var/run/boa_wait.pid
+  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
   rm -f /var/run/fmp_wait.pid
   rm -f /var/run/mysql_restart_running.pid
 }

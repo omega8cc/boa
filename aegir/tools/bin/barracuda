@@ -64,8 +64,8 @@ if [ -z "${TERM+x}" ]; then
 fi
 
 clean_pid_exit() {
-  rm -f /var/run/boa_wait.pid
-  rm -f /var/run/boa_run.pid
+  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
+  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   service cron start &> /dev/null
   exit 1
 }
@@ -326,7 +326,7 @@ d;};' /etc/pdnsd.conf
 check_dns_settings() {
   if [ -e "/root/.use.default.nameservers.cnf" ]; then
     _USE_DEFAULT_DNS=YES
-    rm -f /root/.local.dns.IP.list
+    [ -e "/root/.local.dns.IP.list" ] && rm -f /root/.local.dns.IP.list
   fi
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
@@ -933,7 +933,7 @@ up_action() {
         if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
           && [ ! -e "/root/.dbhd.clstr.cnf" ] \
           && [ -e "/etc/init.d/mysql" ]; then
-          rm -f /root/.remote.db.cnf
+          [ -e "/root/.remote.db.cnf" ] && rm -f /root/.remote.db.cnf
           sleep 5
           if [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
             service mysql start &> /dev/null
@@ -1112,11 +1112,11 @@ up_start() {
 up_finish() {
   rm -f /root/.bashrc.bak*
   rm -f /root/BOA.sh*
-  rm -f /var/run/boa_run.pid
-  rm -f /var/run/boa_system_wait.pid
-  rm -f /var/run/boa_wait.pid
-  rm -f /var/run/manage_ltd_users.pid
-  rm -f /var/run/manage_rvm_users.pid
+  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+  [ -e "/var/run/boa_system_wait.pid" ] && rm -f /var/run/boa_system_wait.pid
+  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
+  [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
+  [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
   rm -f ${vBs}/*.sh.cnf*
   rm -f ${vBs}/BARRACUDA.sh*
   if [ -e "/opt/local/bin/php" ] \

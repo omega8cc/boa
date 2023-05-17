@@ -307,9 +307,9 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
   msg "Launching the final post-second-reboot barracuda up-head system" >> ${logAbf}
   barracuda up-head system >> ${logAbf}
   wait
-  rm -f /root/.run-to-beowulf.cnf
-  rm -f /root/.run-auto-major-os-reboot-one.cnf
-  rm -f /root/.run-auto-major-os-reboot-two.cnf
+  [ -e "/root/.run-to-beowulf.cnf" ] && rm -f /root/.run-to-beowulf.cnf
+  [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] rm -f /root/.run-auto-major-os-reboot-one.cnf
+  [ -e "/root/.run-auto-major-os-reboot-two.cnf" ] rm -f /root/.run-auto-major-os-reboot-two.cnf
   touch /root/.auto-upgraded-to-beowulf.cnf
   sed -i "s/^_AUTO_BEOWULF.*//g" /root/.barracuda.cnf
   msg "The final post-reboot barracuda up-head system completed" >> ${logAbf}

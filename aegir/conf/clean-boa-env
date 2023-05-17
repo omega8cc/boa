@@ -83,19 +83,19 @@ case "$1" in
     fi
     touch $PIDFILE
     if [ -e "/var/run/boa_wait.pid" ]; then
-      rm -f /var/run/boa_wait.pid
+      [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
       echo "$NAME 1 done."
     else
       echo "$NAME 1 nothing to do."
     fi
     if [ -e "/var/run/boa_run.pid" ]; then
-      rm -f /var/run/boa_run.pid
+      [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
       echo "$NAME 2 done."
     else
       echo "$NAME 2 nothing to do."
     fi
     if [ -e "/var/run/manage_ltd_users.pid" ]; then
-      rm -f /var/run/manage_ltd_users.pid
+      [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
       echo "$NAME 3 done."
     else
       echo "$NAME 3 nothing to do."
@@ -173,19 +173,19 @@ case "$1" in
       fi
     fi
     if [ -e "/var/run/boa_wait.pid" ]; then
-      rm -f /var/run/boa_wait.pid
+      [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
       echo "$NAME done."
     else
       echo "$NAME nothing to do."
     fi
     if [ -e "/var/run/boa_run.pid" ]; then
-      rm -f /var/run/boa_run.pid
+      [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
       echo "$NAME 2 done."
     else
       echo "$NAME 2 nothing to do."
     fi
     if [ -e "/var/run/manage_ltd_users.pid" ]; then
-      rm -f /var/run/manage_ltd_users.pid
+      [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
       echo "$NAME 3 done."
     else
       echo "$NAME 3 nothing to do."

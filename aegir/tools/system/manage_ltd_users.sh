@@ -478,7 +478,7 @@ enable_chattr() {
         su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
         wait
         su -s /bin/bash - ${UQ} -c "echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc"
-        rm -f /var/run/manage_rvm_users.pid
+        [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
         if [ -d "/usr/local/.off_rvm" ]; then
           mv -f /usr/local/.off_rvm /usr/local/rvm
         fi
@@ -538,7 +538,7 @@ enable_chattr() {
         fi
         su -s /bin/bash - ${UQ} -c "rvm install ${_RUBY_VRN}"
         su -s /bin/bash - ${UQ} -c "rvm use ${_RUBY_VRN} --default"
-        rm -f /var/run/manage_rvm_users.pid
+        [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
         if [ -d "/usr/local/.off_rvm" ]; then
           mv -f /usr/local/.off_rvm /usr/local/rvm
         fi
@@ -606,7 +606,7 @@ enable_chattr() {
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.1.1 oily_png"      &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative yajl-ruby"      &> /dev/null
         touch ${dscUsr}/log/.gems.build.d.${UQ}.${_X_SE}.txt
-        rm -f /var/run/manage_rvm_users.pid
+        [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
         if [ -d "/usr/local/.off_rvm" ]; then
           mv -f /usr/local/.off_rvm /usr/local/rvm
         fi
@@ -2694,7 +2694,7 @@ else
     fi
   fi
   sleep 5
-  rm -f /var/run/manage_ltd_users.pid
+  [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
   exit 0
 fi
 ###EOF2023###

@@ -102,7 +102,7 @@ create_locks() {
 
 remove_locks() {
   echo "Removing locks for $1"
-  #rm -f /var/run/boa_wait.pid
+  #[ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
   rm -f /var/run/mysql_cluster_backup_running.pid
 }
 

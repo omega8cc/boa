@@ -138,7 +138,7 @@ action() {
     if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
       service jetty7 start
     fi
-    rm -f /var/run/boa_wait.pid
+    [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
     echo "INFO: Solr and Jetty servers restarted OK"
   fi
   _IF_BCP=$(ps aux | grep '[d]uplicity' | awk '{print $2}')
@@ -175,7 +175,7 @@ else
   touch /var/run/boa_wait.pid
   sleep 60
   action
-  rm -f /var/run/boa_wait.pid
+  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
   exit 0
 fi
 ###EOF2023###

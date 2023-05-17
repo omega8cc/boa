@@ -227,7 +227,7 @@ d;};' /etc/pdnsd.conf
 check_dns_settings() {
   if [ -e "/root/.use.default.nameservers.cnf" ]; then
     _USE_DEFAULT_DNS=YES
-    rm -f /root/.local.dns.IP.list
+    [ -e "/root/.local.dns.IP.list" ] && rm -f /root/.local.dns.IP.list
   fi
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
@@ -317,27 +317,27 @@ update_agents() {
       && [[ ! "${PrTestPower}" =~ "POWER" ]] \
       && [[ ! "${PrTestPhantom}" =~ "PHANTOM" ]] \
       && [[ ! "${PrTestCluster}" =~ "CLUSTER" ]]; then
-      rm -f /root/.fast.cron.cnf
-      rm -f /root/.hr.monitor.cnf
-      rm -f /root/.slow.cron.cnf
-      rm -f /root/.tg.cnf
+      [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
+      [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
+      [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
+      [ -e "/root/.tg.cnf" ] && rm -f /root/.tg.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 80;"
       mysql -u root -e "SET GLOBAL max_connections = 100;"
       mysql -u root -e "SET GLOBAL max_user_connections = 80;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [ "${InTest}" -ge "9" ] && [ "${InTest}" -le "50" ]; then
-      rm -f /root/.fast.cron.cnf
-      rm -f /root/.hr.monitor.cnf
-      rm -f /root/.slow.cron.cnf
-      rm -f /root/.tg.cnf
+      [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
+      [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
+      [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
+      [ -e "/root/.tg.cnf" ] && rm -f /root/.tg.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 80;"
       mysql -u root -e "SET GLOBAL max_connections = 200;"
       mysql -u root -e "SET GLOBAL max_user_connections = 80;"
       mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
     fi
     if [ "${InTest}" -gt "50" ]; then
-      rm -f /root/.fast.cron.cnf
+      [ -e "/root/.fast.cron.cnf" ] && rm -f /root/.fast.cron.cnf
       [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
       [ ! -e "/root/.hr.monitor.cnf" ] && echo ${InTest} > /root/.hr.monitor.cnf
       [ ! -e "/root/.slow.cron.cnf" ] && echo ${InTest} > /root/.slow.cron.cnf
@@ -348,9 +348,19 @@ update_agents() {
     fi
     if [[ "${PrTestPower}" =~ "POWER" ]]; then
       [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
-      rm -f /root/.fast.cron.cnf
-      rm -f /root/.hr.monitor.cnf
-      rm -f /root/.slow.cron.cnf
+      [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
+      [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
+      [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
+      mysql -u root -e "SET GLOBAL max_connect_errors = 150;"
+      mysql -u root -e "SET GLOBAL max_connections = 200;"
+      mysql -u root -e "SET GLOBAL max_user_connections = 150;"
+      mysql -u root -e "SET GLOBAL group_concat_max_len = 10000;"
+    fi
+    if [[ "${PrTestPhantom}" =~ "PHANTOM" ]]; then
+      [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
+      [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
+      [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
+      [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 150;"
       mysql -u root -e "SET GLOBAL max_connections = 200;"
       mysql -u root -e "SET GLOBAL max_user_connections = 150;"
@@ -358,9 +368,9 @@ update_agents() {
     fi
     if [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
       [ ! -e "/root/.tg.cnf" ] && echo ${InTest} > /root/.tg.cnf
-      rm -f /root/.fast.cron.cnf
-      rm -f /root/.hr.monitor.cnf
-      rm -f /root/.slow.cron.cnf
+      [ ! -e "/root/.fast.cron.cnf" ] && echo ${InTest} > /root/.fast.cron.cnf
+      [ -e "/root/.hr.monitor.cnf" ] && rm -f /root/.hr.monitor.cnf
+      [ -e "/root/.slow.cron.cnf" ] && rm -f /root/.slow.cron.cnf
       mysql -u root -e "SET GLOBAL max_connect_errors = 150;"
       mysql -u root -e "SET GLOBAL max_connections = 200;"
       mysql -u root -e "SET GLOBAL max_user_connections = 150;"
@@ -387,16 +397,16 @@ update_agents() {
         echo ${InTest} > /root/.skip_duplicity_monthly_cleanup.cnf
       fi
     else
-      rm -f /root/.randomize_duplicity_full_backup_day.cnf
-      rm -f /root/.skip_duplicity_monthly_cleanup.cnf
+      [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ] && rm -f /root/.randomize_duplicity_full_backup_day.cnf
+      [ -e "/root/.skip_duplicity_monthly_cleanup.cnf" ] && rm -f /root/.skip_duplicity_monthly_cleanup.cnf
     fi
-    rm -f /root/.my.batch_innodb.cnf
-    rm -f /root/.batch_innodb.cnf
-    rm -f /root/.force.drupalgeddon.cnf
-    rm -f /root/.skip_cleanup.cnf
-    rm -f /root/.giant_traffic.cnf
-    rm -f /root/.default.cnf
-    rm -f /root/.debug.cnf
+    [ -e "/root/.my.batch_innodb.cnf" ] && rm -f /root/.my.batch_innodb.cnf
+    [ -e "/root/.batch_innodb.cnf" ] && rm -f /root/.batch_innodb.cnf
+    [ -e "/root/.force.drupalgeddon.cnf" ] && rm -f /root/.force.drupalgeddon.cnf
+    [ -e "/root/.skip_cleanup.cnf" ] && rm -f /root/.skip_cleanup.cnf
+    [ -e "/root/.giant_traffic.cnf" ] && rm -f /root/.giant_traffic.cnf
+    [ -e "/root/.default.cnf" ] && rm -f /root/.default.cnf
+    [ -e "/root/.debug.cnf" ] && rm -f /root/.debug.cnf
     if [ ! -e "/root/.fixed_scout.pid" ]; then
       sed -i "s/_SCOUT_KEY=.*/_SCOUT_KEY=/g" ${barCnf}
       sed -i "s/.*scout.*//g" /etc/crontab
@@ -606,7 +616,7 @@ update_agents() {
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
       touch ${pthLog}/manage_ltd_users.ctrl.${_X_SE}.pid
-      rm -f /var/run/manage_ltd_users.pid
+      [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
     else
       mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
     fi
@@ -2186,7 +2196,7 @@ setup() {
   echo "### ${_TODAY} ###" >> ${optBin}/boa
   echo "### ${_TODAY} ###" >> ${optBin}/barracuda
   echo "### ${_TODAY} ###" >> ${optBin}/octopus
-  rm -f /root/.backboa.autoupdate
+  [ -e "/root/.backboa.autoupdate" ] && rm -f /root/.backboa.autoupdate
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
     echo "The duplicity backup is running!"
   else

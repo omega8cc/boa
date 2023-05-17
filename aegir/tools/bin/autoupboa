@@ -273,7 +273,7 @@ if [ -e "/data/disk/arch/sql" ]; then
         touch /root/.host8.cnf
       fi
     else
-      [ -r "/root/.auto.up.cnf" ] && rm -f /root/.auto.up.cnf
+      [ -e "/root/.auto.up.cnf" ] && rm -f /root/.auto.up.cnf
     fi
   fi
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -399,8 +399,8 @@ if [ -e "/data/disk/arch/sql" ]; then
     if [ -e "/var/run/boa_run.pid" ]; then
       touch /root/.pause_tasks_maint.cnf
     else
-      rm -f /root/.pause_tasks_maint.cnf
-      rm -f /root/.restrict_this_vm.cnf
+      [ -e "/root/.pause_tasks_maint.cnf" ] && rm -f /root/.pause_tasks_maint.cnf
+      [ -e "/root/.restrict_this_vm.cnf" ] && rm -f /root/.restrict_this_vm.cnf
       if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
         kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
         echo "$(date 2>&1) Too many gpg-agent processes killed" >> \

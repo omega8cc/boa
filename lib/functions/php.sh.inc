@@ -2399,9 +2399,7 @@ php_not_used_enable_again() {
       fi
     fi
   done
-  if [ -e "/root/.allow-php-multi-install-cleanup.cnf" ]; then
-    rm -f /root/.allow-php-multi-install-cleanup.cnf
-  fi
+  [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
 }
 
 #

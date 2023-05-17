@@ -1029,7 +1029,7 @@ satellite_fix_cron_curl() {
 #
 # Fix multi-IP cron access.
 satellite_fix_multi_ip_cron_access() {
-  rm -f /root/.local.IP.list.allow
+  [ -e "/root/.local.IP.list.allow" ] && rm -f /root/.local.IP.list.allow
   for _IP in `cat /root/.local.IP.list \
     | cut -d '#' -f1 \
     | sort \
@@ -4667,10 +4667,10 @@ satellite_post_cleanup() {
   rm -rf /tmp/drush_make_tmp*
   rm -rf /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
-  rm -f /var/run/boa_run.pid
+  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   rm -rf ${_ROOT}/.tmp/cache
-  rm -f /var/run/manage_ltd_users.pid
-  rm -f /var/run/manage_rvm_users.pid
+  [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
+  [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
 }
 
 satellite_letsencrypt_crt_key_copy() {
@@ -4747,7 +4747,7 @@ satellite_letsencrypt_vhost_setup() {
           mrun "bash /opt/local/bin/xboa ssl-gen" &> /dev/null
         fi
         if [ -e "${Ssl}" ]; then
-          rm -f /root/.ssl.proxy.cnf
+          [ -e "/root/.ssl.proxy.cnf" ] && rm -f /root/.ssl.proxy.cnf
           if [ -e "${crtPath}" ]; then
             crtPath=${crtPath//\//\\\/}
             sed -i "s/ssl_certificate .*/ssl_certificate              ${crtPath};/g" ${Ssl}

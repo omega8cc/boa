@@ -711,7 +711,7 @@ aegir_master_install_upgrade() {
       msg "HINT: Please check ${_LOG} for more information,"
       msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
       msg "Bye"
-      rm -f /root/.my.pass.txt
+      [ -e "/root/.my.pass.txt" ] && rm -f /root/.my.pass.txt
       mkdir -p /var/aegir
       clean_pid_exit
     fi
@@ -988,7 +988,7 @@ EOFMYSQL
   ###--------------------###
     if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
       _DO_NOTHING=YES
-      rm -f /root/.force.reinstall.cnf
+      [ -e "/root/.force.reinstall.cnf" ] && rm -f /root/.force.reinstall.cnf
     else
       msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed!"
       msg "HINT: Please check /var/aegir/install.log for details, and then"

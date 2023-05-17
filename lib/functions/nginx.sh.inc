@@ -505,7 +505,7 @@ master_fix_multi_ip_cron_access() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: master_fix_multi_ip_cron_access"
   fi
-  rm -f /root/.local.IP.list.allow
+  [ -e "/root/.local.IP.list.allow" ] && rm -f /root/.local.IP.list.allow
   for _IP in `cat /root/.local.IP.list \
     | cut -d '#' -f1 \
     | sort \

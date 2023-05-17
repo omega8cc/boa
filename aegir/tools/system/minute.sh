@@ -51,7 +51,7 @@ sql_restart() {
   echo "$(date 2>&1) $1 incident response completed"                >> ${pthOml}
   echo                                                              >> ${pthOml}
   sleep 5
-  rm -f /var/run/boa_run.pid
+  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   exit 0
 }
 
@@ -206,7 +206,7 @@ almost_oom_kill() {
   echo "$(date 2>&1) Almost OOM incident response completed"        >> ${pthOml}
   echo                                                              >> ${pthOml}
   sleep 5
-  rm -f /var/run/boa_run.pid
+  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   exit 0
 }
 
@@ -237,7 +237,7 @@ oom_restart() {
   echo "$(date 2>&1) OOM incident response completed"               >> ${pthOml}
   echo                                                              >> ${pthOml}
   sleep 5
-  rm -f /var/run/boa_run.pid
+  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   exit 0
 }
 
@@ -366,7 +366,7 @@ jetty_restart() {
     service jetty7 start
   fi
   sleep 5
-  rm -f /var/run/boa_wait.pid
+  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
 }
 
 if [ -e "/var/log/jetty9" ]; then

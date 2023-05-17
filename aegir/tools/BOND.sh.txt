@@ -201,8 +201,8 @@ fi
 #
 # Clean pid files on exit.
 clean_pid_exit() {
-  rm -f /var/run/boa_wait.pid
-  rm -f /var/run/boa_run.pid
+  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
+  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   service cron start &> /dev/null
   exit 1
 }
@@ -1822,7 +1822,7 @@ else
 fi
 rm -rf /var/opt/*
 rm -rf /opt/tmp/*
-rm -f /var/run/boa_run.pid
+[ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
 if [ ! -e "/root/.upstart.cnf" ]; then
   service cron start &> /dev/null
 fi

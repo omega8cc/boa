@@ -634,7 +634,7 @@ if_install_rvm() {
           touch ${pthLog}/compass-${_X_SE}-${_X_VERSION}-ruby-${_RUBY_VRN}-nodejs.log
           if [ -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
             msg "INFO: Ruby with RVM ${_L_ST} completed"
-            rm -f /var/run/manage_rvm_users.pid
+            [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
           fi
         fi
       else
