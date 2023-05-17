@@ -1333,6 +1333,12 @@ tune_memory_limits() {
       _CPU_VS=8
     fi
   fi
+  PrTest=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+  if [[ "${PrTest}" =~ "PHANTOM" ]]; then
+    if [ "${_CPU_VS}" -lt "8" ]; then
+      _CPU_VS=8
+    fi
+  fi
   PrTest=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
   if [[ "${PrTest}" =~ "CLUSTER" ]]; then
     if [ "${_CPU_VS}" -lt "8" ]; then

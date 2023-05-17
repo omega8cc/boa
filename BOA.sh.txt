@@ -308,12 +308,14 @@ update_agents() {
     && [ -e "/data/disk/arch/sql" ] \
     && [ -e "/var/xdrago" ]; then
     PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+    PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
     PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
     InTest=$(ls /data/disk/*/static/control/cli.info | wc -l 2>&1)
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
     _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
     if [ "${InTest}" -lt "9" ] \
       && [[ ! "${PrTestPower}" =~ "POWER" ]] \
+      && [[ ! "${PrTestPhantom}" =~ "PHANTOM" ]] \
       && [[ ! "${PrTestCluster}" =~ "CLUSTER" ]]; then
       rm -f /root/.fast.cron.cnf
       rm -f /root/.hr.monitor.cnf

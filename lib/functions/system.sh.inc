@@ -525,8 +525,10 @@ tune_memory_limits() {
     _CPU_VS=2
   fi
   PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+  PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
   PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
   if [[ "${PrTestPower}" =~ "POWER" ]] \
+    || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
     if [ "${_CPU_VS}" -lt "8" ]; then
       _CPU_VS=8

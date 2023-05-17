@@ -2464,8 +2464,10 @@ le_ssl_check_update() {
 
 if_gen_goaccess() {
   PrTestPower=$(grep "POWER" /root/.${_HM_U}.octopus.cnf 2>&1)
+  PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
   PrTestCluster=$(grep "CLUSTER" /root/.${_HM_U}.octopus.cnf 2>&1)
   if [[ "${PrTestPower}" =~ "POWER" ]] \
+    || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
     isWblgx=$(which weblogx 2>&1)
     if [ -x "${isWblgx}" ]; then
