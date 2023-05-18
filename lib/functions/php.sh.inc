@@ -1596,6 +1596,8 @@ install_php_multi() {
     || [ "${_OSR}" = "buster" ]; then
     patchFile="freetype.patch"
     patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
+    patchFile="php-8.1-openssl3.patch"
+    patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
   fi
   _PHP_EXTRA="${_PHP_EXTRA} --enable-opcache"
   if [ ! -z "${_PHP_EXTRA}" ]; then
