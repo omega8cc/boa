@@ -1539,6 +1539,7 @@ install_php_multi() {
     _SSL_PATH="/usr/local/ssl"
     _SSL_LIB_PATH="${_SSL_PATH}/lib"
   fi
+  _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
   if [ -e "${_SSL_LIB_PATH}" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --with-openssl=${_SSL_PATH}"
   else
@@ -1606,7 +1607,7 @@ install_php_multi() {
       msg "INFO: ${_DISPLAY_PHP_EXTRA}"
     fi
   fi
-  mrun "bash ./configure \
+  mrun "LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
                 --enable-bcmath \
@@ -1641,7 +1642,7 @@ install_php_multi() {
     sleep 180
     msg "INFO: Building PHP ${_PHP_VERSION} part 2/3 (again)"
     mrun "make clean" 2> /dev/null
-    mrun "bash ./configure \
+    mrun "LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
                 --enable-bcmath \
