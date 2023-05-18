@@ -3450,16 +3450,28 @@ ssl_crypto_lib_fix() {
     fi
   elif [ "${_SSL_INSTALLED}" = "MODERN" ]; then
     if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
-      && [ -f "/usr/local/ssl/lib/libssl.so.3" ]; then
+      && [ -f "/usr/local/ssl/lib64/libssl.so.3" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libssl.so
       ln -sf /usr/local/ssl/lib/libssl.so.3 /usr/lib/x86_64-linux-gnu/libssl.so
       ln -sf /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
     fi
     if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
-      && [ -f "/usr/local/ssl/lib/libcrypto.so.3" ]; then
+      && [ -f "/usr/local/ssl/lib64/libcrypto.so.3" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
       ln -sf /usr/local/ssl/lib/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so
       ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+    fi
+    if [ -e "/usr/lib/x86_64-linux-gnu/libssl.a" ] \
+      && [ -f "/usr/local/ssl/lib64/libssl.a" ]; then
+      rm -f /usr/lib/x86_64-linux-gnu/libssl.a
+      ln -sf /usr/local/ssl/lib/libssl.a /usr/lib/x86_64-linux-gnu/libssl.a
+      ln -sf /usr/lib/x86_64-linux-gnu/libssl.a /usr/lib/libssl.a
+    fi
+    if [ -e "/usr/lib/x86_64-linux-gnu/libcrypto.a" ] \
+      && [ -f "/usr/local/ssl/lib64/libcrypto.a" ]; then
+      rm -f /usr/lib/x86_64-linux-gnu/libcrypto.a
+      ln -sf /usr/local/ssl/lib/libcrypto.a /usr/lib/x86_64-linux-gnu/libcrypto.a
+      ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.a /usr/lib/libcrypto.a
     fi
   fi
   mrun "ldconfig" 2> /dev/null
@@ -3546,8 +3558,7 @@ ssl_install_src() {
       _X86_64_IF=$(uname -m 2>&1)
       if [ -e "/root/.install.modern.openssl.cnf" ]; then
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
-          --openssldir=/usr/local/ssl \
-          --libdir=lib"
+          --openssldir=/usr/local/ssl"
       else
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
           --openssldir=/usr/local/ssl"
@@ -3574,7 +3585,12 @@ ssl_install_src() {
         cp -af /bin/openssl /bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
         ln -sf /usr/local/ssl/bin/openssl /bin/openssl
       fi
-      echo "/usr/local/ssl/lib" >> /etc/ld.so.conf.d/libc.conf
+      sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
+      if [ -e "/root/.install.modern.openssl.cnf" ]; then
+        echo "/usr/local/ssl/lib64" >> /etc/ld.so.conf.d/libc.conf
+      else
+        echo "/usr/local/ssl/lib" >> /etc/ld.so.conf.d/libc.conf
+      fi
       mrun "ldconfig" 2> /dev/null
       ###--------------------###
       _SSL_GET_DPKG=$(dpkg --get-selections \

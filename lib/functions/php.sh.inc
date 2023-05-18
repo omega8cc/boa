@@ -1527,7 +1527,8 @@ install_php_multi() {
   else
     _PHP_EXTRA="${_PHP_EXTRA} --enable-intl"
   fi
-  if [ -e "/usr/local/ssl/lib/libssl.so.3" ] \
+  if [ -e "/usr/local/ssl/lib64/libssl.so.3" ] \
+    || [ -e "/usr/local/ssl/lib/libssl.so.3" ] \
     || [ -e "/usr/local/ssl/lib/libssl.so.1.1" ] \
     || [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --with-openssl=/usr/local/ssl"
