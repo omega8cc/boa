@@ -12,6 +12,12 @@ else
   _ARGS="${1}"
 fi
 
+if [[ "${_ARGS}" =~ "--php=" ]] || [[ "${_ARGS}" =~ "--php-options" ]]; then
+  PHP_FWD=YES
+else
+  PHP_FWD=
+fi
+
 if [[ "${_ARGS}" =~ "true COLUMNS=" ]]; then
   _R_M=`echo -n "${_ARGS}" | grep -o "true COLUMNS=[0-9]\+ "`
   _ARGS=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
@@ -181,6 +187,7 @@ if [[ "${_ARR}" =~ "-c " ]]; then
 fi
 
 if [[ "${HOME}" =~ (^)"/xdata/disk/" ]] \
+  && [ -z "${PHP_FWD}" ] \
   && [[ "${_ARGS}" =~ (^)"xphp ${HOME}" ]]; then
   _OCTO_SYS="${USER}"
   _OCTO_SYS_ARR=
@@ -995,11 +1002,18 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           ### echo EXD 2 _LNCHR_PHP_ARR is ${_LNCHR_PHP_ARR}
           exec ${DRUSH_PHP} ${PHP_OPT} ${_DEST_DRUSH} --php="${DRUSH_PHP}" --php-options="${PHP_OPT}" ${_LNCHR_PHP_ARR}
           exit 0
-        elif [ ! -z "${PHP_OPT}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
-          ### echo EXD 3 DRUSH_PHP is ${DRUSH_PHP}
-          ### echo EXD 3 PHP_INI is ${PHP_INI}
-          ### echo EXD 3 _DEST_DRUSH is ${_DEST_DRUSH}
-          ### echo EXD 3 _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
+        elif [ ! -z "${PHP_FWD}" ] && [ ! -z "${PHP_OPT}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
+          ### echo EXD 3-PHP_FWD DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 3-PHP_FWD PHP_INI is ${PHP_INI}
+          ### echo EXD 3-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 3-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
+          exec ${DRUSH_PHP} ${PHP_OPT} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
+          exit 0
+        elif [ -z "${PHP_FWD}" ] && [ ! -z "${PHP_OPT}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
+          ### echo EXD 3-NO-PHP_FWD DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 3-NO-PHP_FWD PHP_INI is ${PHP_INI}
+          ### echo EXD 3-NO-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 3-NO-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
           exec ${DRUSH_PHP} ${PHP_OPT} ${_DEST_DRUSH} --php="${DRUSH_PHP}" --php-options="${PHP_OPT}" ${_OCTO_SYS_ARR}
           exit 0
         elif [ ! -z "${_C_ARR}" ]; then
@@ -1028,11 +1042,18 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           ### echo EXD 5 _LNCHR_PHP_ARR is ${_LNCHR_PHP_ARR}
           exec ${DRUSH_PHP} ${PHP_OPT} ${_DEST_DRUSH} --php="${DRUSH_PHP}" --php-options="${PHP_OPT}" ${_LNCHR_PHP_ARR}
           exit 0
-        elif [ ! -z "${PHP_OPT}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
-          ### echo EXD 6 DRUSH_PHP is ${DRUSH_PHP}
-          ### echo EXD 6 PHP_INI is ${PHP_INI}
-          ### echo EXD 6 _DEST_DRUSH is ${_DEST_DRUSH}
-          ### echo EXD 6 _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
+        elif [ ! -z "${PHP_FWD}" ] && [ ! -z "${PHP_OPT}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
+          ### echo EXD 6-PHP_FWD DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 6-PHP_FWD PHP_INI is ${PHP_INI}
+          ### echo EXD 6-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 6-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
+          exec ${DRUSH_PHP} ${PHP_OPT} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
+          exit 0
+        elif [ -z "${PHP_FWD}" ] && [ ! -z "${PHP_OPT}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
+          ### echo EXD 6-NO-PHP_FWD DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 6-NO-PHP_FWD PHP_INI is ${PHP_INI}
+          ### echo EXD 6-NO-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 6-NO-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
           exec ${DRUSH_PHP} ${PHP_OPT} ${_DEST_DRUSH} --php="${DRUSH_PHP}" --php-options="${PHP_OPT}" ${_OCTO_SYS_ARR}
           exit 0
         elif [ ! -z "${_C_ARR}" ]; then
@@ -1061,11 +1082,18 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           ### echo EXD 8 _LNCHR_PHP_ARR is ${_LNCHR_PHP_ARR}
           exec ${DRUSH_PHP} ${PHP_OPT} ${_DEST_DRUSH} --php="${DRUSH_PHP}" --php-options="${PHP_OPT}" ${_LNCHR_PHP_ARR}
           exit 0
-        elif [ ! -z "${PHP_OPT}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
-          ### echo EXD 9 DRUSH_PHP is ${DRUSH_PHP}
-          ### echo EXD 9 PHP_INI is ${PHP_INI}
-          ### echo EXD 9 _DEST_DRUSH is ${_DEST_DRUSH}
-          ### echo EXD 9 _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
+        elif [ ! -z "${PHP_FWD}" ] && [ ! -z "${PHP_OPT}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
+          ### echo EXD 9-PHP_FWD DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 9-PHP_FWD PHP_INI is ${PHP_INI}
+          ### echo EXD 9-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 9-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
+          exec ${DRUSH_PHP} ${PHP_OPT} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
+          exit 0
+        elif [ -z "${PHP_FWD}" ] && [ ! -z "${PHP_OPT}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
+          ### echo EXD 9-NO-PHP_FWD DRUSH_PHP is ${DRUSH_PHP}
+          ### echo EXD 9-NO-PHP_FWD PHP_INI is ${PHP_INI}
+          ### echo EXD 9-NO-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
+          ### echo EXD 9-NO-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
           exec ${DRUSH_PHP} ${PHP_OPT} ${_DEST_DRUSH} --php="${DRUSH_PHP}" --php-options="${PHP_OPT}" ${_OCTO_SYS_ARR}
           exit 0
         elif [ ! -z "${_C_ARR}" ]; then
@@ -1095,11 +1123,18 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         ### echo EXD 11 _LNCHR_PHP_ARR is ${_LNCHR_PHP_ARR}
         exec ${DRUSH_PHP} ${PHP_OPT} ${_DEST_DRUSH} --php="${DRUSH_PHP}" --php-options="${PHP_OPT}" ${_LNCHR_PHP_ARR}
         exit 0
-      elif [ ! -z "${PHP_OPT}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
-        ### echo EXD 12 DRUSH_PHP is ${DRUSH_PHP}
-        ### echo EXD 12 PHP_INI is ${PHP_INI}
-        ### echo EXD 12 _DEST_DRUSH is ${_DEST_DRUSH}
-        ### echo EXD 12 _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
+      elif [ ! -z "${PHP_FWD}" ] && [ ! -z "${PHP_OPT}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
+        ### echo EXD 12-PHP_FWD DRUSH_PHP is ${DRUSH_PHP}
+        ### echo EXD 12-PHP_FWD PHP_INI is ${PHP_INI}
+        ### echo EXD 12-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
+        ### echo EXD 12-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
+        exec ${DRUSH_PHP} ${PHP_OPT} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
+        exit 0
+      elif [ -z "${PHP_FWD}" ] && [ ! -z "${PHP_OPT}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
+        ### echo EXD 12-NO-PHP_FWD DRUSH_PHP is ${DRUSH_PHP}
+        ### echo EXD 12-NO-PHP_FWD PHP_INI is ${PHP_INI}
+        ### echo EXD 12-NO-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
+        ### echo EXD 12-NO-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
         exec ${DRUSH_PHP} ${PHP_OPT} ${_DEST_DRUSH} --php="${DRUSH_PHP}" --php-options="${PHP_OPT}" ${_OCTO_SYS_ARR}
         exit 0
       elif [ ! -z "${_C_ARR}" ]; then
