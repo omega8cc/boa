@@ -3782,10 +3782,10 @@ curl_install_src() {
           LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
             --with-openssl \
             --with-zlib=/usr \
-            --prefix=/usr/local &> /dev/null
+            --prefix=/usr/local 2> /dev/null
           mrun "make -j $(nproc)" 2> /dev/null
           mrun "make install" 2> /dev/null
-          mrun "ldconfig" &> /dev/null
+          mrun "ldconfig" 2> /dev/null
           if [ -x "/usr/local/bin/curl" ]; then
             mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S 2>&1)
             ln -sf /usr/local/bin/curl /usr/bin/curl
