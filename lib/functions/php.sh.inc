@@ -1533,10 +1533,10 @@ install_php_multi() {
     | awk '{ print $1}')
   if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
     && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
-    _SSL_PATH=/usr/local/ssl3
+    _SSL_PATH="/usr/local/ssl3"
     _SSL_LIB_PATH="${_SSL_PATH}/lib64"
   else
-    _SSL_PATH=/usr/local/ssl
+    _SSL_PATH="/usr/local/ssl"
     _SSL_LIB_PATH="${_SSL_PATH}/lib"
   fi
   if [ -e "${_SSL_LIB_PATH}" ]; then
