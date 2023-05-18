@@ -3450,6 +3450,8 @@ ssl_crypto_lib_fix() {
       ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
     fi
   elif [ "${_SSL_INSTALLED}" = "MODERN" ]; then
+    _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
+    _LIB_NOW=${_LIB_NOW//[^0-9-]/}
     if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
       && [ -f "/usr/local/ssl3/lib64/libssl.so.3" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libssl.so
@@ -3476,10 +3478,13 @@ ssl_crypto_lib_fix() {
     fi
     if [ -d "/usr/include/openssl" ] \
       && [ -d "/usr/local/ssl3/include/openssl" ]; then
-      _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
-      _LIB_NOW=${_LIB_NOW//[^0-9-]/}
       mv -f /usr/include/openssl /var/backups/old-usr-include-openssl-${_LIB_NOW}
       ln -sf /usr/local/ssl3/include/openssl /usr/include/openssl
+    fi
+    if [ -f "/usr/include/x86_64-linux-gnu/openssl/opensslconf.h" ] \
+      && [ -f "/usr/local/ssl3/include/openssl/opensslconf.h" ]; then
+      mv -f /usr/include/x86_64-linux-gnu/openssl/opensslconf.h /var/backups/old-opensslconf-h-${_LIB_NOW}
+      ln -sf /usr/local/ssl3/include/openssl/opensslconf.h /usr/include/x86_64-linux-gnu/openssl/opensslconf.h
     fi
   fi
   mrun "ldconfig" 2> /dev/null
