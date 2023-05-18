@@ -3474,6 +3474,13 @@ ssl_crypto_lib_fix() {
       ln -sf /usr/local/ssl3/lib/libcrypto.a /usr/lib/x86_64-linux-gnu/libcrypto.a
       ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.a /usr/lib/libcrypto.a
     fi
+    if [ -d "/usr/include/openssl" ] \
+      && [ -d "/usr/local/ssl3/include/openssl" ]; then
+      _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
+      _LIB_NOW=${_LIB_NOW//[^0-9-]/}
+      mv -f /usr/include/openssl /var/backups/old-usr-include-openssl-${_LIB_NOW}
+      ln -sf /usr/local/ssl3/include/openssl /usr/include/openssl
+    fi
   fi
   mrun "ldconfig" 2> /dev/null
 }
