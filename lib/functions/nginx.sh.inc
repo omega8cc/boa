@@ -746,7 +746,12 @@ nginx_config_update_fix() {
       sed -i "s/:443 ssl spdy;/:443;/g"  /var/aegir/config/server_*/nginx/vhost.d/*               &> /dev/null
       wait
     fi
-    _SSL_ITD=$(openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}' 2>&1)
+    if [ -e "/root/.install.modern.openssl.cnf" ]; then
+      _SSL_BINARY=/usr/local/ssl3/bin/openssl
+    else
+      _SSL_BINARY=/usr/local/ssl/bin/openssl
+    fi
+    _SSL_ITD=$(${_SSL_BINARY} version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}' 2>&1)
     if [ "${_SSL_ITD}" = "${_OPENSSL_MODERN_VRN}" ] \
       || [ "${_SSL_ITD}" = "${_OPENSSL_EOL_VRN}" ] \
       || [ "${_SSL_ITD}" = "${_OPENSSL_LEGACY_VRN}" ] \

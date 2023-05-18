@@ -1527,11 +1527,20 @@ install_php_multi() {
   else
     _PHP_EXTRA="${_PHP_EXTRA} --enable-intl"
   fi
-  if [ -e "/usr/local/ssl/lib64/libssl.so.3" ] \
-    || [ -e "/usr/local/ssl/lib/libssl.so.3" ] \
-    || [ -e "/usr/local/ssl/lib/libssl.so.1.1" ] \
-    || [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ]; then
-    _PHP_EXTRA="${_PHP_EXTRA} --with-openssl=/usr/local/ssl"
+  _SSL_ITD=$(openssl version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f2 \
+    | awk '{ print $1}')
+  if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
+    && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+    _SSL_PATH=/usr/local/ssl3
+    _SSL_LIB_PATH="${_SSL_PATH}/lib64"
+  else
+    _SSL_PATH=/usr/local/ssl
+    _SSL_LIB_PATH="${_SSL_PATH}/lib"
+  fi
+  if [ -e "${_SSL_LIB_PATH}" ]; then
+    _PHP_EXTRA="${_PHP_EXTRA} --with-openssl=${_SSL_PATH}"
   else
     _PHP_EXTRA="${_PHP_EXTRA} --with-openssl"
   fi

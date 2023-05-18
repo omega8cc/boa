@@ -3430,7 +3430,8 @@ ssl_crypto_lib_fix() {
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}')
-  if [[ "${_SSL_ITD}" =~ "3.1." ]]; then
+  if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
+    && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
     _SSL_INSTALLED=MODERN
   elif [[ "${_SSL_ITD}" =~ "1.1.1" ]]; then
     _SSL_INSTALLED=LEGACY
@@ -3450,27 +3451,27 @@ ssl_crypto_lib_fix() {
     fi
   elif [ "${_SSL_INSTALLED}" = "MODERN" ]; then
     if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
-      && [ -f "/usr/local/ssl/lib64/libssl.so.3" ]; then
+      && [ -f "/usr/local/ssl3/lib64/libssl.so.3" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libssl.so
-      ln -sf /usr/local/ssl/lib/libssl.so.3 /usr/lib/x86_64-linux-gnu/libssl.so
+      ln -sf /usr/local/ssl3/lib/libssl.so.3 /usr/lib/x86_64-linux-gnu/libssl.so
       ln -sf /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
     fi
     if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
-      && [ -f "/usr/local/ssl/lib64/libcrypto.so.3" ]; then
+      && [ -f "/usr/local/ssl3/lib64/libcrypto.so.3" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
-      ln -sf /usr/local/ssl/lib/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so
+      ln -sf /usr/local/ssl3/lib/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so
       ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
     fi
     if [ -e "/usr/lib/x86_64-linux-gnu/libssl.a" ] \
-      && [ -f "/usr/local/ssl/lib64/libssl.a" ]; then
+      && [ -f "/usr/local/ssl3/lib64/libssl.a" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libssl.a
-      ln -sf /usr/local/ssl/lib/libssl.a /usr/lib/x86_64-linux-gnu/libssl.a
+      ln -sf /usr/local/ssl3/lib/libssl.a /usr/lib/x86_64-linux-gnu/libssl.a
       ln -sf /usr/lib/x86_64-linux-gnu/libssl.a /usr/lib/libssl.a
     fi
     if [ -e "/usr/lib/x86_64-linux-gnu/libcrypto.a" ] \
-      && [ -f "/usr/local/ssl/lib64/libcrypto.a" ]; then
+      && [ -f "/usr/local/ssl3/lib64/libcrypto.a" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libcrypto.a
-      ln -sf /usr/local/ssl/lib/libcrypto.a /usr/lib/x86_64-linux-gnu/libcrypto.a
+      ln -sf /usr/local/ssl3/lib/libcrypto.a /usr/lib/x86_64-linux-gnu/libcrypto.a
       ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.a /usr/lib/libcrypto.a
     fi
   fi
@@ -3495,10 +3496,17 @@ ssl_install_src() {
     || [ "${_OSR}" = "stretch" ]; then
     _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
     if [ -e "/root/.install.modern.openssl.cnf" ]; then
+      chattr +i /root/.install.modern.openssl.cnf
       _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
     fi
   else
     _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
+  fi
+  if [ -e "/root/.install.modern.openssl.cnf" ]; then
+    _SSL_BINARY=/usr/local/ssl3/bin/openssl
+    if [ ! -x "${_SSL_BINARY}" ]; then
+      _SSL_INSTALL_REQUIRED=YES
+    fi
   fi
   if [ "${_SSL_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
     msg "INFO: OpenSSL is ${_SSL_ITD}, upgrade to ${_OPENSSL_NEW_VRN} required"
@@ -3557,8 +3565,8 @@ ssl_install_src() {
       cd /var/opt/openssl-${_OPENSSL_NEW_VRN}
       _X86_64_IF=$(uname -m 2>&1)
       if [ -e "/root/.install.modern.openssl.cnf" ]; then
-        _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
-          --openssldir=/usr/local/ssl"
+        _SSL_BUILD_ARGS="--prefix=/usr/local/ssl3 \
+          --openssldir=/usr/local/ssl3"
       else
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
           --openssldir=/usr/local/ssl"
@@ -3576,21 +3584,29 @@ ssl_install_src() {
       mrun "make -j $(nproc)" 2> /dev/null
       mrun "make install" 2> /dev/null
     fi
-    if [ -x "/usr/local/ssl/bin/openssl" ]; then
+    if [ -x "${_SSL_BINARY}" ]; then
+      _SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f2 \
+        | awk '{ print $1}')
+      if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
+        && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+        _SSL_PATH=/usr/local/ssl3
+        _SSL_LIB_PATH="${_SSL_PATH}/lib64"
+      else
+        _SSL_PATH=/usr/local/ssl
+        _SSL_LIB_PATH="${_SSL_PATH}/lib"
+      fi
       if [ -e "/usr/bin/openssl" ]; then
         cp -af /usr/bin/openssl /usr/bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
       fi
-      ln -sf /usr/local/ssl/bin/openssl /usr/bin/openssl
-      if [ -e "/bin/openssl" ]; then
+      ln -sf ${_SSL_BINARY} /usr/bin/openssl
+      if [ -e "/bin/openssl" ] && [ ! -L "/bin" ]; then
         cp -af /bin/openssl /bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
-        ln -sf /usr/local/ssl/bin/openssl /bin/openssl
+        ln -sf ${_SSL_BINARY} /bin/openssl
       fi
       sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
-      if [ -e "/root/.install.modern.openssl.cnf" ]; then
-        echo "/usr/local/ssl/lib64" >> /etc/ld.so.conf.d/libc.conf
-      else
-        echo "/usr/local/ssl/lib" >> /etc/ld.so.conf.d/libc.conf
-      fi
+      echo "${_SSL_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
       mrun "ldconfig" 2> /dev/null
       ###--------------------###
       _SSL_GET_DPKG=$(dpkg --get-selections \
@@ -3736,11 +3752,22 @@ curl_install_src() {
       if [ -e "/var/opt/curl-${_CURL_VRN}" ]; then
         msg "INFO: Building cURL ${_CURL_VRN} from sources..."
         msg "WAIT: This may take a while, please wait..."
-        if [ -e "/usr/local/ssl/lib/libssl.so.3" ] \
-          || [ -e "/usr/local/ssl/lib/libssl.so.1.1" ] \
-          || [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ]; then
+        _SSL_ITD=$(openssl version 2>&1 \
+          | tr -d "\n" \
+          | cut -d" " -f2 \
+          | awk '{ print $1}')
+        if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
+          && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+          _SSL_PATH=/usr/local/ssl3
+          _SSL_LIB_PATH="${_SSL_PATH}/lib64"
+        else
+          _SSL_PATH=/usr/local/ssl
+          _SSL_LIB_PATH="${_SSL_PATH}/lib"
+        fi
+        _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
+        if [ -e "${_PKG_CONFIG_PATH}" ]; then
           cd /var/opt/curl-${_CURL_VRN}
-          LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig" ./configure \
+          LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
             --with-openssl \
             --with-zlib=/usr \
             --prefix=/usr/local &> /dev/null
@@ -3751,8 +3778,8 @@ curl_install_src() {
             mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S 2>&1)
             ln -sf /usr/local/bin/curl /usr/bin/curl
           fi
-          if [ ! -e "/usr/local/ssl/certs/ca-certificates.crt" ]; then
-            cp -af /etc/ssl/certs/* /usr/local/ssl/certs/ &> /dev/null
+          if [ ! -e "${_SSL_PATH}/certs/ca-certificates.crt" ]; then
+            cp -af /etc/ssl/certs/* ${_SSL_PATH}/certs/ &> /dev/null
           fi
           echo "curl hold" | dpkg --set-selections &> /dev/null
         else
