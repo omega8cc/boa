@@ -6751,9 +6751,24 @@ if_install_ftpd() {
       mkdir -p /usr/local/etc
       get_dev_src "pure-ftpd-${_PURE_FTPD_VRN}.tar.gz"
       cd pure-ftpd-${_PURE_FTPD_VRN}
-      mrun "bash ./configure --with-everything --with-virtualchroot \
+      bash autogen.sh 2> /dev/null
+      _SSL_ITD=$(openssl version 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f2 \
+        | awk '{ print $1}')
+      if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
+        && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+        _SSL_PATH="/usr/local/ssl3"
+        _SSL_LIB_PATH="${_SSL_PATH}/lib64"
+      else
+        _SSL_PATH="/usr/local/ssl"
+        _SSL_LIB_PATH="${_SSL_PATH}/lib"
+      fi
+      _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
+      LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
+        --with-everything --with-virtualchroot \
         --without-humor --with-tls --with-diraliases --with-pam \
-        --with-certfile=/etc/ssl/private/pure-ftpd.pem" 2> /dev/null
+        --with-certfile=/etc/ssl/private/pure-ftpd.pem 2> /dev/null
       mrun "make install-strip" 2> /dev/null
       cd /usr/local/sbin/
       cp -af ${locCnf}/pure-config.pl.txt ./
