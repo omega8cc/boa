@@ -3295,7 +3295,7 @@ sshd_install_src() {
     get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
     cd /var/opt/openssh-${_OPENSSH_VRN}
     LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
-      --with-openssl=${_SSL_PATH} \
+      --with-ssl-dir=${_SSL_PATH} \
       --prefix=/usr \
       --with-pam 2> /dev/null
     mrun "make -j $(nproc)" 2> /dev/null
