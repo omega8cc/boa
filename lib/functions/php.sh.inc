@@ -1628,7 +1628,7 @@ install_php_multi() {
                 --with-pear \
                 --with-xsl \
                 --with-zlib \
-                ${_PHP_EXTRA} 2> /dev/null
+                ${_PHP_EXTRA} &> /dev/null
   if [ -e "/var/opt/php-${_PHP_VERSION}/Makefile" ]; then
     msg "INFO: Building PHP ${_PHP_VERSION} part 3/3"
     msg "WAIT: This may take a while, please wait..."
@@ -1638,8 +1638,8 @@ install_php_multi() {
     mrun "ldconfig" 2> /dev/null
   else
     msg "WARN: No Makefile, configure for PHP ${_PHP_VERSION} failed"
-    msg "INFO: Waiting 3 minutes before trying again..."
-    sleep 180
+    msg "INFO: Waiting 60 seconds before trying again..."
+    sleep 60
     msg "INFO: Building PHP ${_PHP_VERSION} part 2/3 (again)"
     mrun "make clean" 2> /dev/null
     LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
