@@ -6737,8 +6737,7 @@ if_install_ftpd() {
       msg "INFO: Building Pure-FTPd server from sources..."
       if [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ]; then
         msg "INFO: Generating DH parameters, 2048 bit..."
-        st_runner "openssl dhparam \
-          -out /etc/ssl/private/pure-ftpd-dhparams.pem 2048" 2> /dev/null
+        openssl dhparam -out /etc/ssl/private/pure-ftpd-dhparams.pem 2048 2> /dev/null
       fi
       if [ ! -e "/usr/local/sbin/pure-config.pl" ]; then
         echo "/bin/false" >> /etc/shells
@@ -6747,9 +6746,9 @@ if_install_ftpd() {
       mkdir -p /etc/ssl/private/
       rm -f /etc/ssl/private/pure-ftpd.pem
       rm -f /usr/local/sbin/pure-ftpd
-      st_runner "openssl req -x509 -nodes -sha256 -days 7300 -newkey rsa:2048 \
+      openssl req -x509 -nodes -sha256 -days 7300 -newkey rsa:2048 \
         -keyout /etc/ssl/private/pure-ftpd.pem \
-        -out /etc/ssl/private/pure-ftpd.pem -batch" 2> /dev/null
+        -out /etc/ssl/private/pure-ftpd.pem -batch 2> /dev/null
       chmod 600 /etc/ssl/private/pure-ftpd.pem &> /dev/null
       cd /var/opt
       rm -rf pure-ftpd*
@@ -6771,22 +6770,21 @@ if_install_ftpd() {
       fi
       _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
       LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
-        --with-everything --with-virtualchroot \
+        --with-everything --with-debug --with-virtualchroot \
         --without-humor --with-tls --with-diraliases --with-pam \
         --with-certfile=/etc/ssl/private/pure-ftpd.pem 2> /dev/null
-      mrun "make install-strip" 2> /dev/null
+      make install-strip 2> /dev/null
       cd /usr/local/sbin/
       cp -af ${locCnf}/pure-config.pl.txt ./
-      mv -f pure-config.pl.txt pure-config.pl &> /dev/null
-      chmod 755 /usr/local/sbin/pure-config.pl &> /dev/null
+      mv -f pure-config.pl.txt pure-config.pl 2> /dev/null
+      chmod 755 /usr/local/sbin/pure-config.pl 2> /dev/null
       cp -af /var/opt/pure-ftpd-${_PURE_FTPD_VRN}/pam/pure-ftpd /etc/pam.d/
       fix_ftps_pam
       cd /usr/local/etc
       rm -f pure-ftpd.conf
       cp -af ${locCnf}/pure-ftpd.conf ./
-      killall -9 pure-ftpd &> /dev/null
-      st_runner "/usr/local/sbin/pure-config.pl \
-        /usr/local/etc/pure-ftpd.conf" &> /dev/null
+      killall -9 pure-ftpd 2> /dev/null
+      /usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf 2> /dev/null
       cd /var/opt
       touch ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_SE}-${_X_VERSION}.log
     fi
