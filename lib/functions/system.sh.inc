@@ -3297,7 +3297,7 @@ sshd_install_src() {
     LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
       --with-ssl-dir=${_SSL_PATH} \
       --prefix=/usr \
-      --with-pam 2> /dev/null
+      --with-pam &> /dev/null
     mrun "make -j $(nproc)" 2> /dev/null
     mrun "make install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
