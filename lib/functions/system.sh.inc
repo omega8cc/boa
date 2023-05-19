@@ -6764,6 +6764,12 @@ if_install_ftpd() {
       fi
       _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
       ### LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
+      if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+        _SSL_LEGACY_LIB_PATH=/usr/local/ssl/lib
+        sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
+        echo "${_SSL_LEGACY_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
+        mrun "ldconfig" 2> /dev/null
+      fi
       LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig" ./configure \
         --oldincludedir=/usr/local/ssl/include \
         --includedir=/usr/local/ssl/include \
@@ -6772,6 +6778,12 @@ if_install_ftpd() {
         --with-certfile=/etc/ssl/private/pure-ftpd.pem &> /dev/null
       make &> /dev/null
       make install &> /dev/null
+      if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+        _SSL_MODERN_LIB_PATH=/usr/local/ssl3/lib64
+        sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
+        echo "${_SSL_MODERN_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
+        mrun "ldconfig" 2> /dev/null
+      fi
       cd /usr/local/sbin/
       cp -af ${locCnf}/pure-config.pl.txt ./
       mv -f pure-config.pl.txt pure-config.pl 2> /dev/null
