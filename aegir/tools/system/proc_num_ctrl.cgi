@@ -202,7 +202,7 @@ system("service xinetd start") if (!$xinetdsumar && -f "/etc/init.d/xinetd");
 system("service lsyncd start") if (!$lsyncdsumar && -f "/etc/init.d/lsyncd");
 system("service postfix restart") if (!-f "/var/spool/postfix/pid/master.pid");
 
-if (-f "/usr/local/sbin/pure-config.pl") {
+if (-f "/usr/local/sbin/pure-ftpd" && -f "/usr/local/etc/pure-ftpd.conf") {
   if (-f "/root/.mstr.clstr.cnf" || -f "/root/.wbhd.clstr.cnf" || -f "/root/.dbhd.clstr.cnf") {
     if ($ftpsumar) {
       system("killall -9 pure-ftpd");
