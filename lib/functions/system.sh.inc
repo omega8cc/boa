@@ -6750,7 +6750,7 @@ if_install_ftpd() {
       mkdir -p /usr/local/etc
       get_dev_src "pure-ftpd-${_PURE_FTPD_VRN}.tar.gz"
       cd pure-ftpd-${_PURE_FTPD_VRN}
-      bash autogen.sh 2> /dev/null
+      bash autogen.sh &> /dev/null
       _SSL_ITD=$(openssl version 2>&1 \
         | tr -d "\n" \
         | cut -d" " -f2 \
@@ -6764,11 +6764,13 @@ if_install_ftpd() {
         _SSL_LIB_PATH="${_SSL_PATH}/lib"
       fi
       _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
-      LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
-        --with-everything --with-debug --with-virtualchroot \
+      ### LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
+      LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig" ./configure \
+        --oldincludedir=/usr/local/ssl/include \
+        --with-everything --with-virtualchroot \
         --without-humor --with-tls --with-diraliases --with-pam \
-        --with-certfile=/etc/ssl/private/pure-ftpd.pem 2> /dev/null
-      make install-strip 2> /dev/null
+        --with-certfile=/etc/ssl/private/pure-ftpd.pem &> /dev/null
+      make install-strip &> /dev/null
       cd /usr/local/sbin/
       cp -af ${locCnf}/pure-config.pl.txt ./
       mv -f pure-config.pl.txt pure-config.pl 2> /dev/null
@@ -6778,7 +6780,7 @@ if_install_ftpd() {
       cd /usr/local/etc
       rm -f pure-ftpd.conf
       cp -af ${locCnf}/pure-ftpd.conf ./
-      killall -9 pure-ftpd 2> /dev/null
+      killall -9 pure-ftpd &> /dev/null
       /usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf 2> /dev/null
       cd /var/opt
       touch ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_SE}-${_X_VERSION}.log
