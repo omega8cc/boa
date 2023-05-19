@@ -212,7 +212,7 @@ redis_password_update() {
     if [ -e "${mtrInc}" ] \
       && [ ! -L "${mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
-      ln -sf /data/conf/global.inc ${mtrInc}/global.inc
+      ln -sfn /data/conf/global.inc ${mtrInc}/global.inc
     fi
     fix_redis_mode
   fi

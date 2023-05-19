@@ -2390,7 +2390,7 @@ do_install_latest_git() {
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     mv -f /usr/bin/git /usr/bin/git-old
-    ln -sf /usr/local/bin/git /usr/bin/git
+    ln -sfn /usr/local/bin/git /usr/bin/git
     cd /var/opt
     touch ${pthLog}/git-${_GIT_VRN}-${_X_SE}-${_X_VERSION}-${_NOW}.log
     echo "git hold" | dpkg --set-selections &> /dev/null
@@ -2481,14 +2481,14 @@ install_icu_modern() {
       if [ -e "/usr/local/lib/icu" ]; then
         if [ ! -e "/usr/lib/x86_64-linux-gnu/icu" ]; then
           mkdir -p /usr/lib/x86_64-linux-gnu/.legacy_icu
-          ln -sf /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
+          ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
         fi
       fi
     else
       if [ -e "/usr/local/lib/icu" ]; then
         if [ ! -e "/usr/lib/i386-linux-gnu/icu" ]; then
           mkdir -p /usr/lib/i386-linux-gnu/.legacy_icu
-          ln -sf /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
+          ln -sfn /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
         fi
       fi
     fi
@@ -2527,14 +2527,14 @@ install_icu_jessie() {
       if [ -e "/usr/local/lib/icu" ]; then
         if [ ! -e "/usr/lib/x86_64-linux-gnu/icu" ]; then
           mkdir -p /usr/lib/x86_64-linux-gnu/.legacy_icu
-          ln -sf /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
+          ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
         fi
       fi
     else
       if [ -e "/usr/local/lib/icu" ]; then
         if [ ! -e "/usr/lib/i386-linux-gnu/icu" ]; then
           mkdir -p /usr/lib/i386-linux-gnu/.legacy_icu
-          ln -sf /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
+          ln -sfn /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
         fi
       fi
     fi
@@ -2708,8 +2708,8 @@ clean_drush_twelve() {
     msg "PROC: clean_drush_twelve"
   fi
   rm -f /usr/bin/drush12*
-  ln -sf /opt/tools/drush/12/drush/vendor/bin/drush /usr/bin/drush12-bin
-  ln -sf /opt/tools/drush/12/drush/vendor/bin/drush /usr/bin/drush12
+  ln -sfn /opt/tools/drush/12/drush/vendor/bin/drush /usr/bin/drush12-bin
+  ln -sfn /opt/tools/drush/12/drush/vendor/bin/drush /usr/bin/drush12
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH_TWELVE_VRN} setup complete"
   fi
@@ -2722,8 +2722,8 @@ clean_drush_eleven() {
     msg "PROC: clean_drush_eleven"
   fi
   rm -f /usr/bin/drush11*
-  ln -sf /opt/tools/drush/11/drush/vendor/bin/drush /usr/bin/drush11-bin
-  ln -sf /opt/tools/drush/11/drush/vendor/bin/drush /usr/bin/drush11
+  ln -sfn /opt/tools/drush/11/drush/vendor/bin/drush /usr/bin/drush11-bin
+  ln -sfn /opt/tools/drush/11/drush/vendor/bin/drush /usr/bin/drush11
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} setup complete"
   fi
@@ -2743,8 +2743,8 @@ clean_drush_ten() {
   rm -f /usr/local/bin/release
   rm -f /usr/local/bin/robo
   rm -f /usr/local/bin/var-dump-server
-  ln -sf /opt/tools/drush/10/drush/vendor/bin/drush /usr/bin/drush10-bin
-  ln -sf /opt/tools/drush/10/drush/vendor/bin/drush /usr/bin/drush10
+  ln -sfn /opt/tools/drush/10/drush/vendor/bin/drush /usr/bin/drush10-bin
+  ln -sfn /opt/tools/drush/10/drush/vendor/bin/drush /usr/bin/drush10
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH_TEN_VRN} setup complete"
   fi
@@ -2804,8 +2804,8 @@ get_drush_launcher() {
   touch /opt/tools/drush/launcher/.ctrl.${_X_SE}.pid
   rm -f /usr/bin/drush-launcher
   rm -f /usr/bin/drushlr
-  ln -sf /opt/tools/drush/launcher/drush.phar /usr/bin/drush-launcher
-  ln -sf /opt/tools/drush/launcher/drush.phar /usr/bin/drushlr
+  ln -sfn /opt/tools/drush/launcher/drush.phar /usr/bin/drush-launcher
+  ln -sfn /opt/tools/drush/launcher/drush.phar /usr/bin/drushlr
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} installation complete"
   fi
@@ -3448,14 +3448,14 @@ ssl_crypto_lib_fix() {
     if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
       && [ -f "/usr/local/ssl/lib/libssl.so.1.1" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libssl.so
-      ln -sf /usr/local/ssl/lib/libssl.so.1.1 /usr/lib/x86_64-linux-gnu/libssl.so
-      ln -sf /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
+      ln -sfn /usr/local/ssl/lib/libssl.so.1.1 /usr/lib/x86_64-linux-gnu/libssl.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
     fi
     if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
       && [ -f "/usr/local/ssl/lib/libcrypto.so.1.1" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
-      ln -sf /usr/local/ssl/lib/libcrypto.so.1.1 /usr/lib/x86_64-linux-gnu/libcrypto.so
-      ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+      ln -sfn /usr/local/ssl/lib/libcrypto.so.1.1 /usr/lib/x86_64-linux-gnu/libcrypto.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
     fi
   elif [ "${_SSL_INSTALLED}" = "MODERN" ]; then
     _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
@@ -3463,36 +3463,36 @@ ssl_crypto_lib_fix() {
     if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
       && [ -f "/usr/local/ssl3/lib64/libssl.so.3" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libssl.so
-      ln -sf /usr/local/ssl3/lib/libssl.so.3 /usr/lib/x86_64-linux-gnu/libssl.so
-      ln -sf /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
+      ln -sfn /usr/local/ssl3/lib/libssl.so.3 /usr/lib/x86_64-linux-gnu/libssl.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
     fi
     if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
       && [ -f "/usr/local/ssl3/lib64/libcrypto.so.3" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
-      ln -sf /usr/local/ssl3/lib/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so
-      ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+      ln -sfn /usr/local/ssl3/lib/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
     fi
     if [ -e "/usr/lib/x86_64-linux-gnu/libssl.a" ] \
       && [ -f "/usr/local/ssl3/lib64/libssl.a" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libssl.a
-      ln -sf /usr/local/ssl3/lib/libssl.a /usr/lib/x86_64-linux-gnu/libssl.a
-      ln -sf /usr/lib/x86_64-linux-gnu/libssl.a /usr/lib/libssl.a
+      ln -sfn /usr/local/ssl3/lib/libssl.a /usr/lib/x86_64-linux-gnu/libssl.a
+      ln -sfn /usr/lib/x86_64-linux-gnu/libssl.a /usr/lib/libssl.a
     fi
     if [ -e "/usr/lib/x86_64-linux-gnu/libcrypto.a" ] \
       && [ -f "/usr/local/ssl3/lib64/libcrypto.a" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libcrypto.a
-      ln -sf /usr/local/ssl3/lib/libcrypto.a /usr/lib/x86_64-linux-gnu/libcrypto.a
-      ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.a /usr/lib/libcrypto.a
+      ln -sfn /usr/local/ssl3/lib/libcrypto.a /usr/lib/x86_64-linux-gnu/libcrypto.a
+      ln -sfn /usr/lib/x86_64-linux-gnu/libcrypto.a /usr/lib/libcrypto.a
     fi
     if [ -d "/usr/include/openssl" ] \
       && [ -d "/usr/local/ssl3/include/openssl" ]; then
       mv -f /usr/include/openssl /var/backups/old-usr-include-openssl-${_LIB_NOW}
-      ln -sf /usr/local/ssl3/include/openssl /usr/include/openssl
+      ln -sfn /usr/local/ssl3/include/openssl /usr/include/openssl
     fi
     if [ -f "/usr/include/x86_64-linux-gnu/openssl/opensslconf.h" ] \
       && [ -f "/usr/local/ssl3/include/openssl/opensslconf.h" ]; then
       mv -f /usr/include/x86_64-linux-gnu/openssl/opensslconf.h /var/backups/old-opensslconf-h-${_LIB_NOW}
-      ln -sf /usr/local/ssl3/include/openssl/opensslconf.h /usr/include/x86_64-linux-gnu/openssl/opensslconf.h
+      ln -sfn /usr/local/ssl3/include/openssl/opensslconf.h /usr/include/x86_64-linux-gnu/openssl/opensslconf.h
     fi
   fi
   mrun "ldconfig" 2> /dev/null
@@ -3625,10 +3625,10 @@ ssl_install_src() {
       if [ -e "/usr/bin/openssl" ]; then
         cp -af /usr/bin/openssl /usr/bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
       fi
-      ln -sf ${_SSL_BINARY} /usr/bin/openssl
+      ln -sfn ${_SSL_BINARY} /usr/bin/openssl
       if [ -e "/bin/openssl" ] && [ ! -L "/bin" ]; then
         cp -af /bin/openssl /bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
-        ln -sf ${_SSL_BINARY} /bin/openssl
+        ln -sfn ${_SSL_BINARY} /bin/openssl
       fi
       sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
       echo "${_SSL_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
@@ -3801,7 +3801,7 @@ curl_install_src() {
           mrun "ldconfig" 2> /dev/null
           if [ -x "/usr/local/bin/curl" ]; then
             mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S 2>&1)
-            ln -sf /usr/local/bin/curl /usr/bin/curl
+            ln -sfn /usr/local/bin/curl /usr/bin/curl
           fi
           if [ ! -e "${_SSL_PATH}/certs/ca-certificates.crt" ]; then
             cp -af /etc/ssl/certs/* ${_SSL_PATH}/certs/ &> /dev/null
@@ -3824,10 +3824,10 @@ curl_install_src() {
             mv -f /usr/lib/x86_64-linux-gnu/libcurl.so /var/backups/legacy-curl-pre-${_CURL_VRN}/ &> /dev/null
           fi
           if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so" ]; then
-            ln -sf /usr/local/lib/libcurl.so /usr/lib/x86_64-linux-gnu/libcurl.so &> /dev/null
+            ln -sfn /usr/local/lib/libcurl.so /usr/lib/x86_64-linux-gnu/libcurl.so &> /dev/null
           fi
           if [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
-            ln -sf /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl &> /dev/null
+            ln -sfn /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl &> /dev/null
           fi
         else
           mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}
@@ -3837,10 +3837,10 @@ curl_install_src() {
             mv -f /usr/lib/i386-linux-gnu/libcurl.so /var/backups/legacy-curl-pre-${_CURL_VRN}/ &> /dev/null
           fi
           if [ ! -L "/usr/lib/i386-linux-gnu/libcurl.so" ]; then
-            ln -sf /usr/local/lib/libcurl.so /usr/lib/i386-linux-gnu/libcurl.so &> /dev/null
+            ln -sfn /usr/local/lib/libcurl.so /usr/lib/i386-linux-gnu/libcurl.so &> /dev/null
           fi
           if [ ! -L "/usr/include/i386-linux-gnu/curl" ]; then
-            ln -sf /usr/local/include/curl /usr/include/i386-linux-gnu/curl &> /dev/null
+            ln -sfn /usr/local/include/curl /usr/include/i386-linux-gnu/curl &> /dev/null
           fi
         fi
       fi
@@ -5349,7 +5349,7 @@ if_major_os_upgrade() {
     ###
     ### Back to BOA stuff re-install as needed.
     if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
-      ln -sf /etc/init.d/bind9 /etc/init.d/bind
+      ln -sfn /etc/init.d/bind9 /etc/init.d/bind
     fi
     if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
       if [ -e "/root/.debug.cnf" ]; then
@@ -6062,67 +6062,67 @@ php_libs_fix() {
           if [ -e "/usr/lib/x86_64-linux-gnu/icu" ] \
             && [ ! -L "/usr/lib/x86_64-linux-gnu/icu" ]; then
             mv -f /usr/lib/x86_64-linux-gnu/icu /usr/lib/x86_64-linux-gnu/.old_icu
-            ln -sf /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
+            ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
           else
-            ln -sf /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
+            ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
           fi
-          ln -sf /usr/local/lib/libicudata.so /usr/lib/x86_64-linux-gnu/libicudata.so
-          ln -sf /usr/local/lib/libicui18n.so /usr/lib/x86_64-linux-gnu/libicui18n.so
-          ln -sf /usr/local/lib/libicuio.so   /usr/lib/x86_64-linux-gnu/libicuio.so
-          ln -sf /usr/local/lib/libicutest.so /usr/lib/x86_64-linux-gnu/libicutest.so
-          ln -sf /usr/local/lib/libicutu.so   /usr/lib/x86_64-linux-gnu/libicutu.so
-          ln -sf /usr/local/lib/libicuuc.so   /usr/lib/x86_64-linux-gnu/libicuuc.so
-          ln -sf /usr/local/lib/libicudata.so /usr/lib/libicudata.so
-          ln -sf /usr/local/lib/libicui18n.so /usr/lib/libicui18n.so
-          ln -sf /usr/local/lib/libicuio.so   /usr/lib/libicuio.so
-          ln -sf /usr/local/lib/libicutest.so /usr/lib/libicutest.so
-          ln -sf /usr/local/lib/libicutu.so   /usr/lib/libicutu.so
-          ln -sf /usr/local/lib/libicuuc.so   /usr/lib/libicuuc.so
+          ln -sfn /usr/local/lib/libicudata.so /usr/lib/x86_64-linux-gnu/libicudata.so
+          ln -sfn /usr/local/lib/libicui18n.so /usr/lib/x86_64-linux-gnu/libicui18n.so
+          ln -sfn /usr/local/lib/libicuio.so   /usr/lib/x86_64-linux-gnu/libicuio.so
+          ln -sfn /usr/local/lib/libicutest.so /usr/lib/x86_64-linux-gnu/libicutest.so
+          ln -sfn /usr/local/lib/libicutu.so   /usr/lib/x86_64-linux-gnu/libicutu.so
+          ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/x86_64-linux-gnu/libicuuc.so
+          ln -sfn /usr/local/lib/libicudata.so /usr/lib/libicudata.so
+          ln -sfn /usr/local/lib/libicui18n.so /usr/lib/libicui18n.so
+          ln -sfn /usr/local/lib/libicuio.so   /usr/lib/libicuio.so
+          ln -sfn /usr/local/lib/libicutest.so /usr/lib/libicutest.so
+          ln -sfn /usr/local/lib/libicutu.so   /usr/lib/libicutu.so
+          ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/libicuuc.so
         fi
-        ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
-        ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
-        ln -sf /usr/lib/x86_64-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
-        ln -sf /usr/lib/x86_64-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
-        ln -sf /usr/lib/x86_64-linux-gnu/libldap.so /usr/lib/libldap.so
-        ln -sf /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
-        ln -sf /usr/lib/x86_64-linux-gnu/libXpm.so  /usr/lib/libXpm.so
-        ln -sf /usr/lib/x86_64-linux-gnu/librtmp.so /usr/lib/librtmp.so
-        ln -sf /usr/lib/x86_64-linux-gnu/libcurl.so /usr/lib/libcurl.so
-        ln -sf /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
-        ln -sf /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
-        ln -sf /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so
-        ln -sf /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so.4
-        ln -sf /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so
-        ln -sf /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
+        ln -sfn /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
+        ln -sfn /usr/lib/x86_64-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/libldap.so /usr/lib/libldap.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/libXpm.so  /usr/lib/libXpm.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/librtmp.so /usr/lib/librtmp.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.so /usr/lib/libcurl.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
+        ln -sfn /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so.4
+        ln -sfn /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
         if [ -e "/usr/lib/x86_64-linux-gnu/libHalf.so.23" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
+          ln -sfn /usr/lib/x86_64-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
         fi
         if [ -e "/usr/lib/x86_64-linux-gnu/libHalf.so" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libHalf.so /usr/lib/libHalf.so.12
+          ln -sfn /usr/lib/x86_64-linux-gnu/libHalf.so /usr/lib/libHalf.so.12
         fi
         if [ -e "/usr/lib/x86_64-linux-gnu/libIlmImf-2_2.so.23" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
+          ln -sfn /usr/lib/x86_64-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
         fi
         if [ -e "/usr/lib/x86_64-linux-gnu/libIlmImf.so" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libIlmImf.so /usr/lib/libIlmImf-2_2.so.22
+          ln -sfn /usr/lib/x86_64-linux-gnu/libIlmImf.so /usr/lib/libIlmImf-2_2.so.22
         fi
         if [ -e "/usr/lib/x86_64-linux-gnu/libImath-2_2.so.23" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libImath-2_2.so.23 /usr/lib/libImath-2_2.so.12
+          ln -sfn /usr/lib/x86_64-linux-gnu/libImath-2_2.so.23 /usr/lib/libImath-2_2.so.12
         fi
         if [ -e "/usr/lib/x86_64-linux-gnu/libImath.so" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libImath.so /usr/lib/libImath-2_2.so.12
+          ln -sfn /usr/lib/x86_64-linux-gnu/libImath.so /usr/lib/libImath-2_2.so.12
         fi
         if [ -e "/usr/lib/x86_64-linux-gnu/libIex-2_2.so.23" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
+          ln -sfn /usr/lib/x86_64-linux-gnu/libIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
         fi
         if [ -e "/usr/lib/x86_64-linux-gnu/libIex.so" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libIex.so /usr/lib/libIex-2_2.so.12
+          ln -sfn /usr/lib/x86_64-linux-gnu/libIex.so /usr/lib/libIex-2_2.so.12
         fi
         if [ -e "/usr/lib/x86_64-linux-gnu/libIexMath.so" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libIexMath.so /usr/lib/libIexMath-2_2.so.12
+          ln -sfn /usr/lib/x86_64-linux-gnu/libIexMath.so /usr/lib/libIexMath-2_2.so.12
         fi
         if [ -e "/usr/lib/x86_64-linux-gnu/libIlmThread.so" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libIlmThread.so /usr/lib/libIlmThread-2_2.so.12
+          ln -sfn /usr/lib/x86_64-linux-gnu/libIlmThread.so /usr/lib/libIlmThread-2_2.so.12
         fi
         if [ ! -e "/usr/include/curl/curl.h" ] \
           && [ -e "/usr/include/x86_64-linux-gnu/curl/curl.h" ]; then
@@ -6130,79 +6130,79 @@ php_libs_fix() {
         fi
         if [ ! -e "/usr/include/gmp.h" ] \
           && [ -e "/usr/include/x86_64-linux-gnu/gmp.h" ]; then
-          ln -sf /usr/include/x86_64-linux-gnu/gmp.h  /usr/include/gmp.h
+          ln -sfn /usr/include/x86_64-linux-gnu/gmp.h  /usr/include/gmp.h
         fi
         if [ ! -e "/usr/lib/x86_64-linux-gnu/librtmp.so.0" ] \
           && [ -e "/usr/lib/x86_64-linux-gnu/librtmp.so.1" ]; then
           cd /usr/lib/x86_64-linux-gnu
-          ln -sf librtmp.so.1 librtmp.so.0
+          ln -sfn librtmp.so.1 librtmp.so.0
         fi
       else
         if [ -e "/usr/local/lib/icu" ]; then
           if [ -e "/usr/lib/i386-linux-gnu/icu" ] \
             && [ ! -L "/usr/lib/i386-linux-gnu/icu" ]; then
             mv -f /usr/lib/i386-linux-gnu/icu /usr/lib/i386-linux-gnu/.old_icu
-            ln -sf /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
+            ln -sfn /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
           else
-            ln -sf /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
+            ln -sfn /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
           fi
-          ln -sf /usr/local/lib/libicudata.so /usr/lib/i386-linux-gnu/libicudata.so
-          ln -sf /usr/local/lib/libicui18n.so /usr/lib/i386-linux-gnu/libicui18n.so
-          ln -sf /usr/local/lib/libicuio.so   /usr/lib/i386-linux-gnu/libicuio.so
-          ln -sf /usr/local/lib/libicutest.so /usr/lib/i386-linux-gnu/libicutest.so
-          ln -sf /usr/local/lib/libicutu.so   /usr/lib/i386-linux-gnu/libicutu.so
-          ln -sf /usr/local/lib/libicuuc.so   /usr/lib/i386-linux-gnu/libicuuc.so
-          ln -sf /usr/local/lib/libicudata.so /usr/lib/libicudata.so
-          ln -sf /usr/local/lib/libicui18n.so /usr/lib/libicui18n.so
-          ln -sf /usr/local/lib/libicuio.so   /usr/lib/libicuio.so
-          ln -sf /usr/local/lib/libicutest.so /usr/lib/libicutest.so
-          ln -sf /usr/local/lib/libicutu.so   /usr/lib/libicutu.so
-          ln -sf /usr/local/lib/libicuuc.so   /usr/lib/libicuuc.so
+          ln -sfn /usr/local/lib/libicudata.so /usr/lib/i386-linux-gnu/libicudata.so
+          ln -sfn /usr/local/lib/libicui18n.so /usr/lib/i386-linux-gnu/libicui18n.so
+          ln -sfn /usr/local/lib/libicuio.so   /usr/lib/i386-linux-gnu/libicuio.so
+          ln -sfn /usr/local/lib/libicutest.so /usr/lib/i386-linux-gnu/libicutest.so
+          ln -sfn /usr/local/lib/libicutu.so   /usr/lib/i386-linux-gnu/libicutu.so
+          ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/i386-linux-gnu/libicuuc.so
+          ln -sfn /usr/local/lib/libicudata.so /usr/lib/libicudata.so
+          ln -sfn /usr/local/lib/libicui18n.so /usr/lib/libicui18n.so
+          ln -sfn /usr/local/lib/libicuio.so   /usr/lib/libicuio.so
+          ln -sfn /usr/local/lib/libicutest.so /usr/lib/libicutest.so
+          ln -sfn /usr/local/lib/libicutu.so   /usr/lib/libicutu.so
+          ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/libicuuc.so
         fi
-        ln -sf /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so
-        ln -sf /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
-        ln -sf /usr/lib/i386-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
-        ln -sf /usr/lib/i386-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
-        ln -sf /usr/lib/i386-linux-gnu/libldap.so /usr/lib/libldap.so
-        ln -sf /usr/lib/i386-linux-gnu/libpng.so  /usr/lib/libpng.so
-        ln -sf /usr/lib/i386-linux-gnu/libXpm.so  /usr/lib/libXpm.so
-        ln -sf /usr/lib/i386-linux-gnu/librtmp.so /usr/lib/librtmp.so
-        ln -sf /usr/lib/i386-linux-gnu/libcurl.so /usr/lib/libcurl.so
-        ln -sf /usr/lib/i386-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
-        ln -sf /usr/lib/i386-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
-        ln -sf /usr/lib/i386-linux-gnu/libonig.so /usr/lib/libonig.so
-        ln -sf /usr/lib/i386-linux-gnu/libonig.so /usr/lib/libonig.so.4
-        ln -sf /usr/lib/i386-linux-gnu/libsodium.so /usr/lib/libsodium.so
-        ln -sf /usr/lib/i386-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
+        ln -sfn /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so
+        ln -sfn /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
+        ln -sfn /usr/lib/i386-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
+        ln -sfn /usr/lib/i386-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
+        ln -sfn /usr/lib/i386-linux-gnu/libldap.so /usr/lib/libldap.so
+        ln -sfn /usr/lib/i386-linux-gnu/libpng.so  /usr/lib/libpng.so
+        ln -sfn /usr/lib/i386-linux-gnu/libXpm.so  /usr/lib/libXpm.so
+        ln -sfn /usr/lib/i386-linux-gnu/librtmp.so /usr/lib/librtmp.so
+        ln -sfn /usr/lib/i386-linux-gnu/libcurl.so /usr/lib/libcurl.so
+        ln -sfn /usr/lib/i386-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
+        ln -sfn /usr/lib/i386-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
+        ln -sfn /usr/lib/i386-linux-gnu/libonig.so /usr/lib/libonig.so
+        ln -sfn /usr/lib/i386-linux-gnu/libonig.so /usr/lib/libonig.so.4
+        ln -sfn /usr/lib/i386-linux-gnu/libsodium.so /usr/lib/libsodium.so
+        ln -sfn /usr/lib/i386-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
         if [ -e "/usr/lib/i386-linux-gnu/libHalf.so.23" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
+          ln -sfn /usr/lib/i386-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
         fi
         if [ -e "/usr/lib/i386-linux-gnu/libHalf.so" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libHalf.so /usr/lib/libHalf.so.12
+          ln -sfn /usr/lib/i386-linux-gnu/libHalf.so /usr/lib/libHalf.so.12
         fi
         if [ -e "/usr/lib/i386-linux-gnu/libIlmImf-2_2.so.23" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
+          ln -sfn /usr/lib/i386-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
         fi
         if [ -e "/usr/lib/i386-linux-gnu/libIlmImf.so" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libIlmImf.so /usr/lib/libIlmImf-2_2.so.22
+          ln -sfn /usr/lib/i386-linux-gnu/libIlmImf.so /usr/lib/libIlmImf-2_2.so.22
         fi
         if [ -e "/usr/lib/i386-linux-gnu/libImath-2_2.so.23" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libImath-2_2.so.23 /usr/lib/libImath-2_2.so.12
+          ln -sfn /usr/lib/i386-linux-gnu/libImath-2_2.so.23 /usr/lib/libImath-2_2.so.12
         fi
         if [ -e "/usr/lib/i386-linux-gnu/libImath.so" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libImath.so /usr/lib/libImath-2_2.so.12
+          ln -sfn /usr/lib/i386-linux-gnu/libImath.so /usr/lib/libImath-2_2.so.12
         fi
         if [ -e "/usr/lib/i386-linux-gnu/libIex-2_2.so.23" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
+          ln -sfn /usr/lib/i386-linux-gnu/libIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
         fi
         if [ -e "/usr/lib/i386-linux-gnu/libIex.so" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libIex.so /usr/lib/libIex-2_2.so.12
+          ln -sfn /usr/lib/i386-linux-gnu/libIex.so /usr/lib/libIex-2_2.so.12
         fi
         if [ -e "/usr/lib/i386-linux-gnu/libIexMath.so" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libIexMath.so /usr/lib/libIexMath-2_2.so.12
+          ln -sfn /usr/lib/i386-linux-gnu/libIexMath.so /usr/lib/libIexMath-2_2.so.12
         fi
         if [ -e "/usr/lib/i386-linux-gnu/libIlmThread.so" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libIlmThread.so /usr/lib/libIlmThread-2_2.so.12
+          ln -sfn /usr/lib/i386-linux-gnu/libIlmThread.so /usr/lib/libIlmThread-2_2.so.12
         fi
         if [ ! -e "/usr/include/curl/curl.h" ] \
           && [ -e "/usr/include/i386-linux-gnu/curl/curl.h" ]; then
@@ -6210,12 +6210,12 @@ php_libs_fix() {
         fi
         if [ ! -e "/usr/include/gmp.h" ] \
           && [ -e "/usr/include/i386-linux-gnu/gmp.h" ]; then
-          ln -sf /usr/include/i386-linux-gnu/gmp.h  /usr/include/gmp.h
+          ln -sfn /usr/include/i386-linux-gnu/gmp.h  /usr/include/gmp.h
         fi
         if [ ! -e "/usr/lib/i386-linux-gnu/librtmp.so.0" ] \
           && [ -e "/usr/lib/i386-linux-gnu/librtmp.so.1" ]; then
           cd /usr/lib/i386-linux-gnu
-          ln -sf librtmp.so.1 librtmp.so.0
+          ln -sfn librtmp.so.1 librtmp.so.0
         fi
       fi
       touch /var/xdrago/log/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid
@@ -6711,7 +6711,7 @@ lshell_install_upgrade() {
   fi
   if [ -f "/usr/local/bin/lshell" ]; then
     if [ ! -L "/usr/bin/lshell" ]; then
-      ln -sf /usr/local/bin/lshell /usr/bin/lshell &> /dev/null
+      ln -sfn /usr/local/bin/lshell /usr/bin/lshell &> /dev/null
     fi
   fi
 }
@@ -6768,6 +6768,7 @@ if_install_ftpd() {
         _SSL_LEGACY_LIB_PATH=/usr/local/ssl/lib
         sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
         echo "${_SSL_LEGACY_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
+        ln -sfn /usr/local/ssl/include/openssl /usr/include/openssl
         mrun "ldconfig" 2> /dev/null
       fi
       LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig" ./configure \
@@ -6782,6 +6783,7 @@ if_install_ftpd() {
         _SSL_MODERN_LIB_PATH=/usr/local/ssl3/lib64
         sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
         echo "${_SSL_MODERN_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
+        ln -sfn /usr/local/ssl3/include/openssl /usr/include/openssl
         mrun "ldconfig" 2> /dev/null
       fi
       cd /usr/local/sbin/
@@ -6866,11 +6868,11 @@ java_check_fix() {
 
   # if [ ! -e "/usr/lib/jvm/java-7-openjdk" ] \
   #   && [ -d "/usr/lib/jvm/java-7-openjdk-amd64" ]; then
-  #   ln -sf /usr/lib/jvm/java-7-openjdk-amd64 /usr/lib/jvm/java-7-openjdk
+  #   ln -sfn /usr/lib/jvm/java-7-openjdk-amd64 /usr/lib/jvm/java-7-openjdk
   # fi
   # if [ ! -e "/usr/lib/jvm/java-7-openjdk" ] \
   #   && [ -d "/usr/lib/jvm/java-7-openjdk-i386" ]; then
-  #   ln -sf /usr/lib/jvm/java-7-openjdk-i386 /usr/lib/jvm/java-7-openjdk
+  #   ln -sfn /usr/lib/jvm/java-7-openjdk-i386 /usr/lib/jvm/java-7-openjdk
   # fi
   # if [ -e "/usr/lib/jvm/java-1.7.0-openjdk-i386" ]; then
   #   rm -f /usr/lib/jvm/default-java
@@ -6878,106 +6880,106 @@ java_check_fix() {
   # fi
   # if [ ! -e "/usr/bin/java7" ] \
   #   && [ -e "/usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java" ]; then
-  #   ln -sf /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java /usr/bin/java7
+  #   ln -sfn /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java /usr/bin/java7
   # fi
   # if [ ! -e "/usr/bin/java7" ] \
   #   && [ -e "/usr/lib/jvm/java-7-openjdk-i386/jre/bin/java" ]; then
-  #   ln -sf /usr/lib/jvm/java-7-openjdk-i386/jre/bin/java /usr/bin/java7
+  #   ln -sfn /usr/lib/jvm/java-7-openjdk-i386/jre/bin/java /usr/bin/java7
   # fi
   # if [ -e "/usr/lib/jvm/java-1.7.0-openjdk-amd64" ]; then
   #   rm -f /usr/lib/jvm/default-java
-  #   ln -sf /usr/lib/jvm/java-1.7.0-openjdk-amd64 /usr/lib/jvm/default-java
+  #   ln -sfn /usr/lib/jvm/java-1.7.0-openjdk-amd64 /usr/lib/jvm/default-java
   # fi
   # if [ -x "/usr/lib/jvm/java-7-openjdk/jre/bin/java" ]; then
-  #   ln -sf /usr/lib/jvm/java-7-openjdk/jre/bin/java /etc/alternatives/java
-  #   ln -sf /etc/alternatives/java /usr/bin/java
+  #   ln -sfn /usr/lib/jvm/java-7-openjdk/jre/bin/java /etc/alternatives/java
+  #   ln -sfn /etc/alternatives/java /usr/bin/java
   # fi
 
   if [ ! -e "/usr/lib/jvm/java-8-openjdk" ] \
     && [ -d "/usr/lib/jvm/java-8-openjdk-amd64" ]; then
-    ln -sf /usr/lib/jvm/java-8-openjdk-amd64 /usr/lib/jvm/java-8-openjdk
+    ln -sfn /usr/lib/jvm/java-8-openjdk-amd64 /usr/lib/jvm/java-8-openjdk
   fi
   if [ ! -e "/usr/lib/jvm/java-8-openjdk" ] \
     && [ -d "/usr/lib/jvm/java-8-openjdk-i386" ]; then
-    ln -sf /usr/lib/jvm/java-8-openjdk-i386 /usr/lib/jvm/java-8-openjdk
+    ln -sfn /usr/lib/jvm/java-8-openjdk-i386 /usr/lib/jvm/java-8-openjdk
   fi
   if [ -e "/usr/lib/jvm/java-1.8.0-openjdk-i386" ]; then
     rm -f /usr/lib/jvm/default-java
-    ln -sf /usr/lib/jvm/java-1.8.0-openjdk-i386 /usr/lib/jvm/default-java
+    ln -sfn /usr/lib/jvm/java-1.8.0-openjdk-i386 /usr/lib/jvm/default-java
   fi
   if [ ! -e "/usr/bin/java8" ] \
     && [ -e "/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java /usr/bin/java8
+    ln -sfn /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java /usr/bin/java8
   fi
   if [ ! -e "/usr/bin/java8" ] \
     && [ -e "/usr/lib/jvm/java-8-openjdk-i386/jre/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-8-openjdk-i386/jre/bin/java /usr/bin/java8
+    ln -sfn /usr/lib/jvm/java-8-openjdk-i386/jre/bin/java /usr/bin/java8
   fi
   if [ -e "/usr/lib/jvm/java-1.8.0-openjdk-amd64" ]; then
     rm -f /usr/lib/jvm/default-java
-    ln -sf /usr/lib/jvm/java-1.8.0-openjdk-amd64 /usr/lib/jvm/default-java
+    ln -sfn /usr/lib/jvm/java-1.8.0-openjdk-amd64 /usr/lib/jvm/default-java
   fi
   if [ -x "/usr/lib/jvm/java-8-openjdk/jre/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-8-openjdk/jre/bin/java /etc/alternatives/java
-    ln -sf /etc/alternatives/java /usr/bin/java
+    ln -sfn /usr/lib/jvm/java-8-openjdk/jre/bin/java /etc/alternatives/java
+    ln -sfn /etc/alternatives/java /usr/bin/java
   fi
 
   # if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
   #   && [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
-  #   ln -sf /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
+  #   ln -sfn /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
   # fi
   # if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
   #   && [ -d "/usr/lib/jvm/java-17-openjdk-i386" ]; then
-  #   ln -sf /usr/lib/jvm/java-17-openjdk-i386 /usr/lib/jvm/java-17-openjdk
+  #   ln -sfn /usr/lib/jvm/java-17-openjdk-i386 /usr/lib/jvm/java-17-openjdk
   # fi
   # if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-i386" ]; then
   #   rm -f /usr/lib/jvm/default-java
-  #   ln -sf /usr/lib/jvm/java-1.17.0-openjdk-i386 /usr/lib/jvm/default-java
+  #   ln -sfn /usr/lib/jvm/java-1.17.0-openjdk-i386 /usr/lib/jvm/default-java
   # fi
   # if [ ! -e "/usr/bin/java17" ] \
   #   && [ -e "/usr/lib/jvm/java-17-openjdk-amd64/bin/java" ]; then
-  #   ln -sf /usr/lib/jvm/java-17-openjdk-amd64/bin/java /usr/bin/java17
+  #   ln -sfn /usr/lib/jvm/java-17-openjdk-amd64/bin/java /usr/bin/java17
   # fi
   # if [ ! -e "/usr/bin/java17" ] \
   #   && [ -e "/usr/lib/jvm/java-17-openjdk-i386/bin/java" ]; then
-  #   ln -sf /usr/lib/jvm/java-17-openjdk-i386/bin/java /usr/bin/java17
+  #   ln -sfn /usr/lib/jvm/java-17-openjdk-i386/bin/java /usr/bin/java17
   # fi
   # if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-amd64" ]; then
   #   rm -f /usr/lib/jvm/default-java
-  #   ln -sf /usr/lib/jvm/java-1.17.0-openjdk-amd64 /usr/lib/jvm/default-java
+  #   ln -sfn /usr/lib/jvm/java-1.17.0-openjdk-amd64 /usr/lib/jvm/default-java
   # fi
   # if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ]; then
-  #   ln -sf /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
-  #   ln -sf /etc/alternatives/java /usr/bin/java
+  #   ln -sfn /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
+  #   ln -sfn /etc/alternatives/java /usr/bin/java
   # fi
 
   if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \
     && [ -d "/usr/lib/jvm/java-11-openjdk-amd64" ]; then
-    ln -sf /usr/lib/jvm/java-11-openjdk-amd64 /usr/lib/jvm/java-11-openjdk
+    ln -sfn /usr/lib/jvm/java-11-openjdk-amd64 /usr/lib/jvm/java-11-openjdk
   fi
   if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \
     && [ -d "/usr/lib/jvm/java-11-openjdk-i386" ]; then
-    ln -sf /usr/lib/jvm/java-11-openjdk-i386 /usr/lib/jvm/java-11-openjdk
+    ln -sfn /usr/lib/jvm/java-11-openjdk-i386 /usr/lib/jvm/java-11-openjdk
   fi
   if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-i386" ]; then
     rm -f /usr/lib/jvm/default-java
-    ln -sf /usr/lib/jvm/java-1.11.0-openjdk-i386 /usr/lib/jvm/default-java
+    ln -sfn /usr/lib/jvm/java-1.11.0-openjdk-i386 /usr/lib/jvm/default-java
   fi
   if [ ! -e "/usr/bin/java11" ] \
     && [ -e "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-11-openjdk-amd64/bin/java /usr/bin/java11
+    ln -sfn /usr/lib/jvm/java-11-openjdk-amd64/bin/java /usr/bin/java11
   fi
   if [ ! -e "/usr/bin/java11" ] \
     && [ -e "/usr/lib/jvm/java-11-openjdk-i386/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-11-openjdk-i386/bin/java /usr/bin/java11
+    ln -sfn /usr/lib/jvm/java-11-openjdk-i386/bin/java /usr/bin/java11
   fi
   if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-amd64" ]; then
     rm -f /usr/lib/jvm/default-java
-    ln -sf /usr/lib/jvm/java-1.11.0-openjdk-amd64 /usr/lib/jvm/default-java
+    ln -sfn /usr/lib/jvm/java-1.11.0-openjdk-amd64 /usr/lib/jvm/default-java
   fi
   if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
-    ln -sf /etc/alternatives/java /usr/bin/java
+    ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
+    ln -sfn /etc/alternatives/java /usr/bin/java
   fi
 }
 

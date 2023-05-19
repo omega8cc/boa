@@ -414,7 +414,7 @@ if_install_bind() {
         sed -i "s/127.0.1.1/${_THISHTIP}/g" /etc/bind/named.conf.options &> /dev/null
         mrun "service bind9 restart" &> /dev/null
         if [ ! -e "/etc/init.d/bind" ]; then
-          ln -sf /etc/init.d/bind9 /etc/init.d/bind
+          ln -sfn /etc/init.d/bind9 /etc/init.d/bind
         fi
         sed -i "s/.*bind.*//g" /etc/sudoers &> /dev/null
         wait

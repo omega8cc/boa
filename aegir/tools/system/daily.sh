@@ -545,7 +545,7 @@ fix_o_contrib_symlink() {
       && [ -e "${_O_CONTRIB_SEVEN}" ] \
       && [ ! -e "${Plr}/core" ]; then
       if [ ! -e "${Plr}/modules/o_contrib_seven" ]; then
-        ln -sf ${_O_CONTRIB_SEVEN} ${Plr}/modules/o_contrib_seven &> /dev/null
+        ln -sfn ${_O_CONTRIB_SEVEN} ${Plr}/modules/o_contrib_seven &> /dev/null
       fi
     elif [ -e "${Plr}/core" ] \
       && [ ! -e "${Plr}/core/themes/olivero" ] \
@@ -562,7 +562,7 @@ fix_o_contrib_symlink() {
         rm -f ${Plr}/modules/.o_contrib_ten_dont_use
       fi
       if [ ! -e "${Plr}/modules/o_contrib_eight" ]; then
-        ln -sf ${_O_CONTRIB_EIGHT} ${Plr}/modules/o_contrib_eight &> /dev/null
+        ln -sfn ${_O_CONTRIB_EIGHT} ${Plr}/modules/o_contrib_eight &> /dev/null
       fi
     elif [ -e "${Plr}/core/themes/olivero" ] \
       && [ -e "${Plr}/core/themes/classy" ] \
@@ -578,7 +578,7 @@ fix_o_contrib_symlink() {
         rm -f ${Plr}/modules/.o_contrib_ten_dont_use
       fi
       if [ ! -e "${Plr}/modules/o_contrib_nine" ]; then
-        ln -sf ${_O_CONTRIB_NINE} ${Plr}/modules/o_contrib_nine &> /dev/null
+        ln -sfn ${_O_CONTRIB_NINE} ${Plr}/modules/o_contrib_nine &> /dev/null
       fi
     elif [ -e "${Plr}/core/themes/olivero" ] \
       && [ ! -e "${Plr}/core/themes/classy" ] \
@@ -594,7 +594,7 @@ fix_o_contrib_symlink() {
         rm -f ${Plr}/modules/.o_contrib_nine_dont_use
       fi
       if [ ! -e "${Plr}/modules/o_contrib_ten" ]; then
-        ln -sf ${_O_CONTRIB_TEN} ${Plr}/modules/o_contrib_ten &> /dev/null
+        ln -sfn ${_O_CONTRIB_TEN} ${Plr}/modules/o_contrib_ten &> /dev/null
       fi
     else
       if [ -e "${Plr}/modules/watchdog" ]; then
@@ -604,7 +604,7 @@ fix_o_contrib_symlink() {
       else
         if [ ! -e "${Plr}/modules/o_contrib" ] \
           && [ -e "${_O_CONTRIB}" ]; then
-          ln -sf ${_O_CONTRIB} ${Plr}/modules/o_contrib &> /dev/null
+          ln -sfn ${_O_CONTRIB} ${Plr}/modules/o_contrib &> /dev/null
         fi
       fi
     fi
@@ -2922,7 +2922,7 @@ purge_cruft_machine() {
       mkdir -p ${User}/distro/${i}/keys
       chown ${_HM_U}.ftp:${_WEBG} ${User}/distro/${i}/keys &> /dev/null
       chmod 02775 ${User}/distro/${i}/keys &> /dev/null
-      ln -sf ${User}/distro/${i}/keys /home/${_HM_U}.ftp/platforms/${i}/keys
+      ln -sfn ${User}/distro/${i}/keys /home/${_HM_U}.ftp/platforms/${i}/keys
       for Codebase in `find ${User}/distro/${i}/* \
         -maxdepth 1 \
         -mindepth 1 \
@@ -2931,7 +2931,7 @@ purge_cruft_machine() {
         CodebaseName=$(echo ${Codebase} \
           | cut -d'/' -f7 \
           | awk '{ print $1}' 2> /dev/null)
-        ln -sf ${Codebase} /home/${_HM_U}.ftp/platforms/${i}/${CodebaseName}
+        ln -sfn ${Codebase} /home/${_HM_U}.ftp/platforms/${i}/${CodebaseName}
         echo "Fixed symlink to ${Codebase} for ${_HM_U}.ftp"
       done
     fi

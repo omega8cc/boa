@@ -1497,7 +1497,7 @@ install_php_multi() {
     mrun "ldconfig" 2> /dev/null
     if [ -e "/usr/lib/libtidy.so" ]; then
       cd /usr/lib
-      ln -sf libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
+      ln -sfn libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
       touch ${pthLog}/libtidy-${_LIB_TIDY_VRN}.log
     fi
   fi
@@ -1873,47 +1873,47 @@ newrelic_update() {
       pthNra="/usr/lib/newrelic-php5/agent"
       if [ -e "${_PHP_EXT_DIR_82}" ] && [ ! -e "${_PHP_EXT_DIR_82}/newrelic.so" ] \
         && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP82_API}.so" ]; then
-        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP82_API}.so \
+        ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP82_API}.so \
           ${_PHP_EXT_DIR_82}/newrelic.so
       fi
       if [ -e "${_PHP_EXT_DIR_81}" ] && [ ! -e "${_PHP_EXT_DIR_81}/newrelic.so" ] \
         && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP81_API}.so" ]; then
-        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP81_API}.so \
+        ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP81_API}.so \
           ${_PHP_EXT_DIR_81}/newrelic.so
       fi
       if [ -e "${_PHP_EXT_DIR_80}" ] && [ ! -e "${_PHP_EXT_DIR_80}/newrelic.so" ] \
         && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP80_API}.so" ]; then
-        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP80_API}.so \
+        ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP80_API}.so \
           ${_PHP_EXT_DIR_80}/newrelic.so
       fi
       if [ -e "${_PHP_EXT_DIR_74}" ] && [ ! -e "${_PHP_EXT_DIR_74}/newrelic.so" ] \
         && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP74_API}.so" ]; then
-        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP74_API}.so \
+        ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP74_API}.so \
           ${_PHP_EXT_DIR_74}/newrelic.so
       fi
       if [ -e "${_PHP_EXT_DIR_73}" ] && [ ! -e "${_PHP_EXT_DIR_73}/newrelic.so" ] \
         && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP73_API}.so" ]; then
-        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP73_API}.so \
+        ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP73_API}.so \
           ${_PHP_EXT_DIR_73}/newrelic.so
       fi
       if [ -e "${_PHP_EXT_DIR_72}" ] && [ ! -e "${_PHP_EXT_DIR_72}/newrelic.so" ] \
         && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP72_API}.so" ]; then
-        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP72_API}.so \
+        ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP72_API}.so \
           ${_PHP_EXT_DIR_72}/newrelic.so
       fi
       if [ -e "${_PHP_EXT_DIR_71}" ] && [ ! -e "${_PHP_EXT_DIR_71}/newrelic.so" ] \
         && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP71_API}.so" ]; then
-        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP71_API}.so \
+        ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP71_API}.so \
           ${_PHP_EXT_DIR_71}/newrelic.so
       fi
       if [ -e "${_PHP_EXT_DIR_70}" ] && [ ! -e "${_PHP_EXT_DIR_70}/newrelic.so" ] \
         && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP70_API}.so" ]; then
-        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP70_API}.so \
+        ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP70_API}.so \
           ${_PHP_EXT_DIR_70}/newrelic.so
       fi
       if [ -e "${_PHP_EXT_DIR_56}" ] && [ ! -e "${_PHP_EXT_DIR_56}/newrelic.so" ] \
         && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP56_API}.so" ]; then
-        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP56_API}.so \
+        ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP56_API}.so \
           ${_PHP_EXT_DIR_56}/newrelic.so
       fi
       if [ ! -e "/etc/newrelic/newrelic.cfg" ]; then
@@ -2037,47 +2037,47 @@ if_install_php_newrelic() {
         pthNra="/usr/lib/newrelic-php5/agent"
         if [ -e "${_PHP_EXT_DIR_82}" ] && [ ! -e "${_PHP_EXT_DIR_82}/newrelic.so" ] \
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP82_API}.so" ]; then
-          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP82_API}.so \
+          ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP82_API}.so \
             ${_PHP_EXT_DIR_82}/newrelic.so
         fi
         if [ -e "${_PHP_EXT_DIR_81}" ] && [ ! -e "${_PHP_EXT_DIR_81}/newrelic.so" ] \
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP81_API}.so" ]; then
-          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP81_API}.so \
+          ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP81_API}.so \
             ${_PHP_EXT_DIR_81}/newrelic.so
         fi
         if [ -e "${_PHP_EXT_DIR_80}" ] && [ ! -e "${_PHP_EXT_DIR_80}/newrelic.so" ] \
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP80_API}.so" ]; then
-          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP80_API}.so \
+          ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP80_API}.so \
             ${_PHP_EXT_DIR_80}/newrelic.so
         fi
         if [ -e "${_PHP_EXT_DIR_74}" ] && [ ! -e "${_PHP_EXT_DIR_74}/newrelic.so" ] \
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP74_API}.so" ]; then
-          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP74_API}.so \
+          ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP74_API}.so \
             ${_PHP_EXT_DIR_74}/newrelic.so
         fi
         if [ -e "${_PHP_EXT_DIR_73}" ] && [ ! -e "${_PHP_EXT_DIR_73}/newrelic.so" ] \
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP73_API}.so" ]; then
-          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP73_API}.so \
+          ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP73_API}.so \
             ${_PHP_EXT_DIR_73}/newrelic.so
         fi
         if [ -e "${_PHP_EXT_DIR_72}" ] && [ ! -e "${_PHP_EXT_DIR_72}/newrelic.so" ] \
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP72_API}.so" ]; then
-          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP72_API}.so \
+          ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP72_API}.so \
             ${_PHP_EXT_DIR_72}/newrelic.so
         fi
         if [ -e "${_PHP_EXT_DIR_71}" ] && [ ! -e "${_PHP_EXT_DIR_71}/newrelic.so" ] \
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP71_API}.so" ]; then
-          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP71_API}.so \
+          ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP71_API}.so \
             ${_PHP_EXT_DIR_71}/newrelic.so
         fi
         if [ -e "${_PHP_EXT_DIR_70}" ] && [ ! -e "${_PHP_EXT_DIR_70}/newrelic.so" ] \
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP70_API}.so" ]; then
-          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP70_API}.so \
+          ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP70_API}.so \
             ${_PHP_EXT_DIR_70}/newrelic.so
         fi
         if [ -e "${_PHP_EXT_DIR_56}" ] && [ ! -e "${_PHP_EXT_DIR_56}/newrelic.so" ] \
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP56_API}.so" ]; then
-          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP56_API}.so \
+          ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP56_API}.so \
             ${_PHP_EXT_DIR_56}/newrelic.so
         fi
         if [ ! -e "/etc/newrelic/newrelic.cfg" ]; then
@@ -2576,8 +2576,8 @@ check_php_cli() {
   if [ -x "${_USE_PHP_CLI_PATH}" ]; then
     rm -f /usr/bin/php
     rm -f /usr/bin/php-cli
-    ln -sf ${_USE_PHP_CLI_PATH} /usr/bin/php
-    ln -sf ${_USE_PHP_CLI_PATH} /usr/bin/php-cli
+    ln -sfn ${_USE_PHP_CLI_PATH} /usr/bin/php
+    ln -sfn ${_USE_PHP_CLI_PATH} /usr/bin/php-cli
   else
     msg "WAIT: I can not find PHP-CLI anywhere!"
     msg "NOTE: BOA requires PHP 7.4 or newer"
@@ -2863,7 +2863,7 @@ php_check_if_rebuild() {
     mrun "ldconfig" 2> /dev/null
     if [ -e "/usr/lib/libtidy.so" ]; then
       cd /usr/lib
-      ln -sf libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
+      ln -sfn libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
       touch ${pthLog}/libtidy-${_LIB_TIDY_VRN}.log
     fi
     msg "INFO: PHP rebuild required to add --with-tidy option..."
@@ -2901,7 +2901,7 @@ composer_install_upgrade() {
       if [ -e "/var/opt/composer-${_COMPOSER_VRN}.phar" ]; then
         mv -f composer-${_COMPOSER_VRN}.phar /usr/local/bin/composer
         chmod 755 /usr/local/bin/composer
-        ln -sf /usr/local/bin/composer /usr/bin/composer
+        ln -sfn /usr/local/bin/composer /usr/bin/composer
         msg "INFO: Composer updated to version ${_COMPOSER_VRN}"
       fi
     else
@@ -2922,7 +2922,7 @@ composer_install_upgrade() {
       rm -f /var/opt/composer.phar
       curl -sS https://getcomposer.org/installer | php &> /dev/null
       mv -f composer.phar /usr/local/bin/composer
-      ln -sf /usr/local/bin/composer /usr/bin/composer
+      ln -sfn /usr/local/bin/composer /usr/bin/composer
     fi
     _COMPOSER_IS=$(composer --no-interaction --version 2>&1 \
       | tr -d "\n" \

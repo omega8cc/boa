@@ -221,19 +221,19 @@ fix_dirs_files() {
 # Create D6 symlinks.
 create_d6_symlinks() {
   if [ ! -L "includes" ]; then
-    ln -sf ${_D6_CORE_DIR}/.htaccess .htaccess
-    ln -sf ${_D6_CORE_DIR}/boost_stats.php boost_stats.php
-    ln -sf ${_D6_CORE_DIR}/cron.php cron.php
-    ln -sf ${_D6_CORE_DIR}/crossdomain.xml crossdomain.xml
-    ln -sf ${_D6_CORE_DIR}/includes includes
-    ln -sf ${_D6_CORE_DIR}/index.php index.php
-    ln -sf ${_D6_CORE_DIR}/install.php install.php
-    ln -sf ${_D6_CORE_DIR}/js.php js.php
-    ln -sf ${_D6_CORE_DIR}/misc misc
-    ln -sf ${_D6_CORE_DIR}/modules modules
-    ln -sf ${_D6_CORE_DIR}/themes themes
-    ln -sf ${_D6_CORE_DIR}/update.php update.php
-    ln -sf ${_D6_CORE_DIR}/xmlrpc.php xmlrpc.php
+    ln -sfn ${_D6_CORE_DIR}/.htaccess .htaccess
+    ln -sfn ${_D6_CORE_DIR}/boost_stats.php boost_stats.php
+    ln -sfn ${_D6_CORE_DIR}/cron.php cron.php
+    ln -sfn ${_D6_CORE_DIR}/crossdomain.xml crossdomain.xml
+    ln -sfn ${_D6_CORE_DIR}/includes includes
+    ln -sfn ${_D6_CORE_DIR}/index.php index.php
+    ln -sfn ${_D6_CORE_DIR}/install.php install.php
+    ln -sfn ${_D6_CORE_DIR}/js.php js.php
+    ln -sfn ${_D6_CORE_DIR}/misc misc
+    ln -sfn ${_D6_CORE_DIR}/modules modules
+    ln -sfn ${_D6_CORE_DIR}/themes themes
+    ln -sfn ${_D6_CORE_DIR}/update.php update.php
+    ln -sfn ${_D6_CORE_DIR}/xmlrpc.php xmlrpc.php
     cp -af ${_D6_CORE_DIR}/sites ./
   fi
   if [ ! -L "${_OCTO_PLPATH}/profiles" ] && [ -d "${_SHRD_PLPATH}/profiles" ]; then
@@ -245,20 +245,20 @@ create_d6_symlinks() {
 # Create D7 symlinks.
 create_d7_symlinks() {
   if [ ! -L "web.config" ]; then
-    ln -sf ${_D7_CORE_DIR}/.htaccess .htaccess
-    ln -sf ${_D7_CORE_DIR}/authorize.php authorize.php
-    ln -sf ${_D7_CORE_DIR}/cron.php cron.php
-    ln -sf ${_D7_CORE_DIR}/crossdomain.xml crossdomain.xml
-    ln -sf ${_D7_CORE_DIR}/includes includes
-    ln -sf ${_D7_CORE_DIR}/index.php index.php
-    ln -sf ${_D7_CORE_DIR}/install.php install.php
-    ln -sf ${_D7_CORE_DIR}/js.php js.php
-    ln -sf ${_D7_CORE_DIR}/misc misc
-    ln -sf ${_D7_CORE_DIR}/modules modules
-    ln -sf ${_D7_CORE_DIR}/themes themes
-    ln -sf ${_D7_CORE_DIR}/update.php update.php
-    ln -sf ${_D7_CORE_DIR}/web.config web.config
-    ln -sf ${_D7_CORE_DIR}/xmlrpc.php xmlrpc.php
+    ln -sfn ${_D7_CORE_DIR}/.htaccess .htaccess
+    ln -sfn ${_D7_CORE_DIR}/authorize.php authorize.php
+    ln -sfn ${_D7_CORE_DIR}/cron.php cron.php
+    ln -sfn ${_D7_CORE_DIR}/crossdomain.xml crossdomain.xml
+    ln -sfn ${_D7_CORE_DIR}/includes includes
+    ln -sfn ${_D7_CORE_DIR}/index.php index.php
+    ln -sfn ${_D7_CORE_DIR}/install.php install.php
+    ln -sfn ${_D7_CORE_DIR}/js.php js.php
+    ln -sfn ${_D7_CORE_DIR}/misc misc
+    ln -sfn ${_D7_CORE_DIR}/modules modules
+    ln -sfn ${_D7_CORE_DIR}/themes themes
+    ln -sfn ${_D7_CORE_DIR}/update.php update.php
+    ln -sfn ${_D7_CORE_DIR}/web.config web.config
+    ln -sfn ${_D7_CORE_DIR}/xmlrpc.php xmlrpc.php
     cp -af ${_D7_CORE_DIR}/sites ./
   fi
   if [ ! -L "${_OCTO_PLPATH}/profiles" ] && [ -d "${_SHRD_PLPATH}/profiles" ]; then
@@ -276,23 +276,23 @@ create_distro_d7_symlinks() {
       fix_dirs_files
     fi
     if [ ! -L "${_SHRD_PLPATH}/modules/o_contrib_seven" ]; then
-      ln -sf ${_CORE}/o_contrib_seven ${_SHRD_PLPATH}/modules/o_contrib_seven
+      ln -sfn ${_CORE}/o_contrib_seven ${_SHRD_PLPATH}/modules/o_contrib_seven
     fi
     cd ${_OCTO_PLPATH}
-    ln -sf ${_SHRD_PLPATH}/.htaccess .htaccess
-    ln -sf ${_SHRD_PLPATH}/authorize.php authorize.php
-    ln -sf ${_SHRD_PLPATH}/cron.php cron.php
-    ln -sf ${_SHRD_PLPATH}/crossdomain.xml crossdomain.xml
-    ln -sf ${_SHRD_PLPATH}/includes includes
-    ln -sf ${_SHRD_PLPATH}/index.php index.php
-    ln -sf ${_SHRD_PLPATH}/install.php install.php
-    ln -sf ${_CORE}/o_contrib_seven/js/js.php js.php
-    ln -sf ${_SHRD_PLPATH}/misc misc
-    ln -sf ${_SHRD_PLPATH}/modules modules
-    ln -sf ${_SHRD_PLPATH}/themes themes
-    ln -sf ${_SHRD_PLPATH}/update.php update.php
-    ln -sf ${_SHRD_PLPATH}/web.config web.config
-    ln -sf ${_SHRD_PLPATH}/xmlrpc.php xmlrpc.php
+    ln -sfn ${_SHRD_PLPATH}/.htaccess .htaccess
+    ln -sfn ${_SHRD_PLPATH}/authorize.php authorize.php
+    ln -sfn ${_SHRD_PLPATH}/cron.php cron.php
+    ln -sfn ${_SHRD_PLPATH}/crossdomain.xml crossdomain.xml
+    ln -sfn ${_SHRD_PLPATH}/includes includes
+    ln -sfn ${_SHRD_PLPATH}/index.php index.php
+    ln -sfn ${_SHRD_PLPATH}/install.php install.php
+    ln -sfn ${_CORE}/o_contrib_seven/js/js.php js.php
+    ln -sfn ${_SHRD_PLPATH}/misc misc
+    ln -sfn ${_SHRD_PLPATH}/modules modules
+    ln -sfn ${_SHRD_PLPATH}/themes themes
+    ln -sfn ${_SHRD_PLPATH}/update.php update.php
+    ln -sfn ${_SHRD_PLPATH}/web.config web.config
+    ln -sfn ${_SHRD_PLPATH}/xmlrpc.php xmlrpc.php
     cp -af ${_SHRD_PLPATH}/sites ./
   fi
   if [ ! -L "${_OCTO_PLPATH}/profiles" ] && [ -d "${_SHRD_PLPATH}/profiles" ]; then
@@ -304,24 +304,24 @@ create_distro_d7_symlinks() {
 # Create D8 symlinks.
 create_d8_symlinks() {
   if [ ! -L "core" ]; then
-    ln -sf ${_D8_CORE_DIR}/.csslintrc .csslintrc
-    ln -sf ${_D8_CORE_DIR}/.editorconfig .editorconfig
-    ln -sf ${_D8_CORE_DIR}/.eslintignore .eslintignore
-    ln -sf ${_D8_CORE_DIR}/.eslintrc .eslintrc
-    ln -sf ${_D8_CORE_DIR}/.gitattributes .gitattributes
-    ln -sf ${_D8_CORE_DIR}/.htaccess .htaccess
-    ln -sf ${_D8_CORE_DIR}/autoload.php autoload.php
-    ln -sf ${_D8_CORE_DIR}/composer.json composer.json
-    ln -sf ${_D8_CORE_DIR}/core core
-    ln -sf ${_D8_CORE_DIR}/crossdomain.xml crossdomain.xml
-    ln -sf ${_D8_CORE_DIR}/example.gitignore example.gitignore
-    ln -sf ${_D8_CORE_DIR}/index.php index.php
-    ln -sf ${_D8_CORE_DIR}/modules modules
-    ln -sf ${_D8_CORE_DIR}/profiles profiles
-    ln -sf ${_D8_CORE_DIR}/themes themes
-    ln -sf ${_D8_CORE_DIR}/update.php update.php
-    ln -sf ${_D8_CORE_DIR}/vendor vendor
-    ln -sf ${_D8_CORE_DIR}/web.config web.config
+    ln -sfn ${_D8_CORE_DIR}/.csslintrc .csslintrc
+    ln -sfn ${_D8_CORE_DIR}/.editorconfig .editorconfig
+    ln -sfn ${_D8_CORE_DIR}/.eslintignore .eslintignore
+    ln -sfn ${_D8_CORE_DIR}/.eslintrc .eslintrc
+    ln -sfn ${_D8_CORE_DIR}/.gitattributes .gitattributes
+    ln -sfn ${_D8_CORE_DIR}/.htaccess .htaccess
+    ln -sfn ${_D8_CORE_DIR}/autoload.php autoload.php
+    ln -sfn ${_D8_CORE_DIR}/composer.json composer.json
+    ln -sfn ${_D8_CORE_DIR}/core core
+    ln -sfn ${_D8_CORE_DIR}/crossdomain.xml crossdomain.xml
+    ln -sfn ${_D8_CORE_DIR}/example.gitignore example.gitignore
+    ln -sfn ${_D8_CORE_DIR}/index.php index.php
+    ln -sfn ${_D8_CORE_DIR}/modules modules
+    ln -sfn ${_D8_CORE_DIR}/profiles profiles
+    ln -sfn ${_D8_CORE_DIR}/themes themes
+    ln -sfn ${_D8_CORE_DIR}/update.php update.php
+    ln -sfn ${_D8_CORE_DIR}/vendor vendor
+    ln -sfn ${_D8_CORE_DIR}/web.config web.config
     cp -af ${_D8_CORE_DIR}/sites ./
   fi
   if [ ! -L "${_OCTO_PLPATH}/profiles" ] && [ -d "${_SHRD_PLPATH}/profiles" ]; then
@@ -969,7 +969,7 @@ commons_6_install() {
           init_this_distro_root
           if [ ! -L "${_OCTO_PLPATH}/sites/all/libraries/getid3" ]; then
             mkdir -p ${_OCTO_PLPATH}/sites/all/libraries
-            ln -sf ${_SHRD_PRPATH}/libraries/getid3 \
+            ln -sfn ${_SHRD_PRPATH}/libraries/getid3 \
               ${_OCTO_PLPATH}/sites/all/libraries/getid3
           fi
           msg "DISTRO: $_F_COMMONS2 installed"

@@ -262,32 +262,32 @@ enable_chattr() {
       chmod 02755 ${_U_HD}
       if [ ! -L "${_U_HD}/usr/registry_rebuild" ] \
         && [ -e "${dscUsr}/.drush/usr/registry_rebuild" ]; then
-        ln -sf ${dscUsr}/.drush/usr/registry_rebuild \
+        ln -sfn ${dscUsr}/.drush/usr/registry_rebuild \
           ${_U_HD}/usr/registry_rebuild
       fi
       if [ ! -L "${_U_HD}/usr/clean_missing_modules" ] \
         && [ -e "${dscUsr}/.drush/usr/clean_missing_modules" ]; then
-        ln -sf ${dscUsr}/.drush/usr/clean_missing_modules \
+        ln -sfn ${dscUsr}/.drush/usr/clean_missing_modules \
           ${_U_HD}/usr/clean_missing_modules
       fi
       if [ ! -L "${_U_HD}/usr/drupalgeddon" ] \
         && [ -e "${dscUsr}/.drush/usr/drupalgeddon" ]; then
-        ln -sf ${dscUsr}/.drush/usr/drupalgeddon \
+        ln -sfn ${dscUsr}/.drush/usr/drupalgeddon \
           ${_U_HD}/usr/drupalgeddon
       fi
       if [ ! -L "${_U_HD}/usr/drush_ecl" ] \
         && [ -e "${dscUsr}/.drush/usr/drush_ecl" ]; then
-        ln -sf ${dscUsr}/.drush/usr/drush_ecl \
+        ln -sfn ${dscUsr}/.drush/usr/drush_ecl \
           ${_U_HD}/usr/drush_ecl
       fi
       if [ ! -L "${_U_HD}/usr/safe_cache_form_clear" ] \
         && [ -e "${dscUsr}/.drush/usr/safe_cache_form_clear" ]; then
-        ln -sf ${dscUsr}/.drush/usr/safe_cache_form_clear \
+        ln -sfn ${dscUsr}/.drush/usr/safe_cache_form_clear \
           ${_U_HD}/usr/safe_cache_form_clear
       fi
       if [ ! -L "${_U_HD}/usr/utf8mb4_convert" ] \
         && [ -e "${dscUsr}/.drush/usr/utf8mb4_convert" ]; then
-        ln -sf ${dscUsr}/.drush/usr/utf8mb4_convert \
+        ln -sfn ${dscUsr}/.drush/usr/utf8mb4_convert \
           ${_U_HD}/usr/utf8mb4_convert
       fi
     fi
@@ -819,7 +819,7 @@ manage_sec_user_drush_aliases() {
     if [ "${symTgt}" != "${Client}" ] \
       || [ ! -e "${usrLtdRoot}/sites" ]; then
       rm -f ${usrLtdRoot}/sites
-      ln -sf ${Client} ${usrLtdRoot}/sites
+      ln -sfn ${Client} ${usrLtdRoot}/sites
     fi
   fi
   if [ ! -e "${usrLtdRoot}/.drush" ]; then
@@ -2418,9 +2418,9 @@ manage_user() {
           fi
           if [ ! -L "/home/${_USER}.ftp/static" ]; then
             rm -f /home/${_USER}.ftp/{backups,clients,static}
-            ln -sf ${dscUsr}/backups /home/${_USER}.ftp/backups
-            ln -sf ${dscUsr}/clients /home/${_USER}.ftp/clients
-            ln -sf ${dscUsr}/static  /home/${_USER}.ftp/static
+            ln -sfn ${dscUsr}/backups /home/${_USER}.ftp/backups
+            ln -sfn ${dscUsr}/clients /home/${_USER}.ftp/clients
+            ln -sfn ${dscUsr}/static  /home/${_USER}.ftp/static
           fi
           if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.${_X_SE}.pid" ]; then
             rm -rf /home/${_USER}.ftp/.drush/cache
@@ -2521,7 +2521,7 @@ fi
 
 if [ ! -L "/usr/bin/MySecureShell" ] && [ -x "/usr/bin/mysecureshell" ]; then
   mv -f /usr/bin/MySecureShell /var/backups/legacy-MySecureShell-bin
-  ln -sf /usr/bin/mysecureshell /usr/bin/MySecureShell
+  ln -sfn /usr/bin/mysecureshell /usr/bin/MySecureShell
 fi
 
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)

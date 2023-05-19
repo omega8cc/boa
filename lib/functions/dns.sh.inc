@@ -433,7 +433,7 @@ install_pdnsd_cache() {
     usermod -aG proxy pdnsd
     cp -af ${locCnf}/pdnsd /etc/init.d/pdnsd
     cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
-    ln -sf /etc/pdnsd.conf /usr/etc/pdnsd.conf
+    ln -sfn /etc/pdnsd.conf /usr/etc/pdnsd.conf
     chmod 755 /etc/init.d/pdnsd
     mrun "update-rc.d pdnsd defaults" &> /dev/null
     mrun "service pdnsd start" &> /dev/null

@@ -495,7 +495,7 @@ nginx_install_upgrade() {
     _NGINX_INSTALL_REQUIRED=NO
   fi
   if [ ! -L "/usr/bin/nginx" ]; then
-    ln -sf /usr/sbin/nginx /usr/bin/nginx
+    ln -sfn /usr/sbin/nginx /usr/bin/nginx
   fi
 }
 
@@ -602,7 +602,7 @@ nginx_wildcard_ssl_install() {
     if [ -e "${mtrInc}" ] \
       && [ ! -L "${mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
-      ln -sf /data/conf/global.inc ${mtrInc}/global.inc
+      ln -sfn /data/conf/global.inc ${mtrInc}/global.inc
     fi
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
     redis_password_update

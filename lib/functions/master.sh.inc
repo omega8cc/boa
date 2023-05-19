@@ -622,7 +622,7 @@ aegir_master_upgrade() {
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
     if [ -e "${mtrInc}" ] && [ ! -L "${mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
-      ln -sf /data/conf/global.inc ${mtrInc}/global.inc
+      ln -sfn /data/conf/global.inc ${mtrInc}/global.inc
     fi
     redis_password_update
     force_advanced_nginx_config
@@ -727,7 +727,7 @@ aegir_master_install_upgrade() {
     usermod -aG www-data aegir
     usermod -aG users aegir
     echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
-    ln -sf /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf &> /dev/null
+    ln -sfn /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf &> /dev/null
     nginx_conf_update
 
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
@@ -1008,7 +1008,7 @@ EOFMYSQL
     if [ -e "${mtrInc}" ] \
       && [ ! -L "${mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
-      ln -sf /data/conf/global.inc ${mtrInc}/global.inc
+      ln -sfn /data/conf/global.inc ${mtrInc}/global.inc
     fi
     redis_password_update
     force_advanced_nginx_config

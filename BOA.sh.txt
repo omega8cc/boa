@@ -1589,7 +1589,7 @@ fix_lshell() {
   fi
   if [ -f "${usrBin}/lshell" ]; then
     if [ ! -L "/usr/bin/lshell" ]; then
-      ln -sf ${usrBin}/lshell /usr/bin/lshell &> /dev/null
+      ln -sfn ${usrBin}/lshell /usr/bin/lshell &> /dev/null
     fi
   fi
 }
@@ -1677,29 +1677,29 @@ fix_aio() {
 fix_alt() {
   # if [ -x "/usr/lib/jvm/java-7-openjdk/jre/bin/java" ]; then
   #   if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
-  #     ln -sf /usr/lib/jvm/java-7-openjdk/jre/bin/java /etc/alternatives/java
-  #     ln -sf /etc/alternatives/java /usr/bin/java
+  #     ln -sfn /usr/lib/jvm/java-7-openjdk/jre/bin/java /etc/alternatives/java
+  #     ln -sfn /etc/alternatives/java /usr/bin/java
   #     echo fixed java symlinks
   #   fi
   # fi
   if [ -x "/usr/lib/jvm/java-8-openjdk/jre/bin/java" ]; then
     if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
-      ln -sf /usr/lib/jvm/java-8-openjdk/jre/bin/java /etc/alternatives/java
-      ln -sf /etc/alternatives/java /usr/bin/java
+      ln -sfn /usr/lib/jvm/java-8-openjdk/jre/bin/java /etc/alternatives/java
+      ln -sfn /etc/alternatives/java /usr/bin/java
       echo fixed java symlinks
     fi
   fi
   # if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ]; then
   #   if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
-  #     ln -sf /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
-  #     ln -sf /etc/alternatives/java /usr/bin/java
+  #     ln -sfn /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
+  #     ln -sfn /etc/alternatives/java /usr/bin/java
   #     echo fixed java symlinks
   #   fi
   # fi
   if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
     if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
-      ln -sf /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
-      ln -sf /etc/alternatives/java /usr/bin/java
+      ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
+      ln -sfn /etc/alternatives/java /usr/bin/java
       echo fixed java symlinks
     fi
   fi
