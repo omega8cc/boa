@@ -6732,7 +6732,7 @@ if_install_ftpd() {
       msg "INFO: Building Pure-FTPd server from sources..."
       if [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ]; then
         msg "INFO: Generating DH parameters, 2048 bit..."
-        openssl dhparam -out /etc/ssl/private/pure-ftpd-dhparams.pem 2048 2> /dev/null
+        openssl dhparam -out /etc/ssl/private/pure-ftpd-dhparams.pem 2048 &> /dev/null
       fi
       if [ ! -e "/usr/local/sbin/pure-config.pl" ]; then
         echo "/bin/false" >> /etc/shells
@@ -6743,7 +6743,7 @@ if_install_ftpd() {
       rm -f /usr/local/sbin/pure-ftpd
       openssl req -x509 -nodes -sha256 -days 7300 -newkey rsa:2048 \
         -keyout /etc/ssl/private/pure-ftpd.pem \
-        -out /etc/ssl/private/pure-ftpd.pem -batch 2> /dev/null
+        -out /etc/ssl/private/pure-ftpd.pem -batch &> /dev/null
       chmod 600 /etc/ssl/private/pure-ftpd.pem &> /dev/null
       cd /var/opt
       rm -rf pure-ftpd*
@@ -6770,7 +6770,8 @@ if_install_ftpd() {
         --with-everything --with-virtualchroot \
         --without-humor --with-tls --with-diraliases --with-pam \
         --with-certfile=/etc/ssl/private/pure-ftpd.pem &> /dev/null
-      make install-strip &> /dev/null
+      make &> /dev/null
+      make install &> /dev/null
       cd /usr/local/sbin/
       cp -af ${locCnf}/pure-config.pl.txt ./
       mv -f pure-config.pl.txt pure-config.pl 2> /dev/null
@@ -6781,7 +6782,7 @@ if_install_ftpd() {
       rm -f pure-ftpd.conf
       cp -af ${locCnf}/pure-ftpd.conf ./
       killall -9 pure-ftpd &> /dev/null
-      /usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf 2> /dev/null
+      /usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf &> /dev/null
       cd /var/opt
       touch ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_SE}-${_X_VERSION}.log
     fi
