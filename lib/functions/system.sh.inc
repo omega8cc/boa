@@ -3302,7 +3302,7 @@ sshd_install_src() {
       --with-openssl=${_SSL_PATH} \
       --without-openssl-header-check \
       --prefix=/usr \
-      --with-pam" 2> /dev/null
+      --with-pam 2> /dev/null
     mrun "make -j $(nproc)" 2> /dev/null
     mrun "make install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
