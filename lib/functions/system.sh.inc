@@ -3281,10 +3281,6 @@ sshd_install_src() {
   if [ "${_SSH_INSTALL_REQUIRED}" = "YES" ]; then
     msg "INFO: Building OpenSSH ${_OPENSSH_VRN} from sources..."
     msg "WAIT: This may take a while, please wait..."
-    _SSL_ITD=$(openssl version 2>&1 \
-      | tr -d "\n" \
-      | cut -d" " -f2 \
-      | awk '{ print $1}')
     if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
       && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
       _SSL_PATH="/usr/local/ssl3"
@@ -3300,7 +3296,6 @@ sshd_install_src() {
     cd /var/opt/openssh-${_OPENSSH_VRN}
     LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
       --with-openssl=${_SSL_PATH} \
-      --without-openssl-header-check \
       --prefix=/usr \
       --with-pam 2> /dev/null
     mrun "make -j $(nproc)" 2> /dev/null
