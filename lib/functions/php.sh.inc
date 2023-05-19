@@ -1512,10 +1512,10 @@ install_php_multi() {
     || [ "${_OSR}" = "precise" ]; then
     mrun "sh ./buildconf --force" 2> /dev/null
     patchFile="disable_SSLv2_for_openssl_1_0_0.patch"
-    patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
+    patch -p1 < ${bldPth}/aegir/patches/${patchFile} 2> /dev/null
   fi
   ### cd sapi/fpm/fpm
-  ### patch -p1 < ${bldPth}/aegir/patches/fpm_main.c.patch &> /dev/null
+  ### patch -p1 < ${bldPth}/aegir/patches/fpm_main.c.patch 2> /dev/null
   ### cd /var/opt/php-${_PHP_VERSION}
   msg "INFO: Building PHP ${_PHP_VERSION} part 2/3"
   if [ "$1" = "56" ] \
@@ -1587,17 +1587,17 @@ install_php_multi() {
       && [ "${_OSR}" != "trusty" ] \
       && [ "${_OSR}" != "precise" ]; then
       patchFile="PHP-5.6.31-OpenSSL-1.1.0-compatibility-20170801.patch"
-      patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
+      patch -p1 < ${bldPth}/aegir/patches/${patchFile} 2> /dev/null
     fi
   fi
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
     || [ "${_OSR}" = "bullseye" ] \
     || [ "${_OSR}" = "buster" ]; then
-    patchFile="freetype.patch"
-    patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
-    patchFile="php-8.1-openssl3.patch"
-    patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
+    patchFileOne="freetype.patch"
+    patch -p1 < ${bldPth}/aegir/patches/${patchFileOne} 2> /dev/null
+    patchFileTwo="php-8.1-openssl3.patch"
+    patch -p1 < ${bldPth}/aegir/patches/${patchFileTwo} 2> /dev/null
   fi
   _PHP_EXTRA="${_PHP_EXTRA} --enable-opcache"
   if [ ! -z "${_PHP_EXTRA}" ]; then
