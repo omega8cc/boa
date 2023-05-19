@@ -3795,7 +3795,7 @@ curl_install_src() {
           LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
             --with-openssl \
             --with-zlib=/usr \
-            --prefix=/usr/local 2> /dev/null
+            --prefix=/usr/local &> /dev/null
           mrun "make -j $(nproc)" 2> /dev/null
           mrun "make install" 2> /dev/null
           mrun "ldconfig" 2> /dev/null
