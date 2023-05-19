@@ -209,7 +209,7 @@ if (-f "/usr/local/sbin/pure-config.pl") {
     }
   }
   else {
-    `/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf` if (!$ftpsumar);
+    `/usr/local/sbin/pure-ftpd /usr/local/etc/pure-ftpd.conf` if (!$ftpsumar);
   }
 }
 
