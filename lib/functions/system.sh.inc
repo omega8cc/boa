@@ -3540,7 +3540,12 @@ ssl_install_src() {
   if [ "${_STATUS}" = "UPGRADE" ]; then
     if [ "${_RUNNING_MAJOR_OS_UPGRADE}" = "NO" ]; then
       _PHP_COMPATIBILITY_TEST=$(php -i | grep "SSL Version" 2>&1)
-      if [[ ! "${_PHP_COMPATIBILITY_TEST}" =~ "${_OPENSSL_NEW_VRN}" ]]; then
+      _PHP_SSL_LOOK_FOR="${_OPENSSL_NEW_VRN}"
+      _PHP_SSL_ALTER_LOOK_FOR="GnuTLS"
+      if [[ "${_PHP_COMPATIBILITY_TEST}" =~ "${_PHP_SSL_LOOK_FOR}" ]] \
+        || [[ "${_PHP_COMPATIBILITY_TEST}" =~ "${_PHP_SSL_ALTER_LOOK_FOR}" ]]; then
+        msg "INFO: PHP ${_PHP_COMPATIBILITY_TEST}, looks OK"
+      else
         msg "INFO: PHP ${_PHP_COMPATIBILITY_TEST}, rebuild forced later"
         _PHP_FORCE_REINSTALL=YES
       fi
