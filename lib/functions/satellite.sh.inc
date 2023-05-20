@@ -4302,7 +4302,7 @@ satellite_check_octopus_vs_barracuda_ver() {
     else
       msg "ERROR: This octopus installer can be used only when the instance"
       msg "has been already upgraded to stable BOA-4.x or dev BOA-5.x"
-      msg "Please run 'octopus up-stable ${_USER} force' upgrade first!"
+      msg "Please run 'octopus up-dev ${_USER} force' upgrade first!"
       msg "Bye"
       clean_pid_exit
     fi

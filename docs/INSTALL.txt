@@ -4,7 +4,7 @@
 * Since Debian is running systemd, it should be removed before installing BOA,
   which involves procedure in five steps, as outlined further below.
 
-* Once BOA is fully installed, you have to run 'barracuda up-head system'
+* Once BOA is fully installed, you have to run 'barracuda up-dev system'
   (immediately, but without reboot) to make sure that your system is ready
   for production use. Otherwise there will be incomplete web, dns etc. setup,
   which will cause unexpected problems until you will run barracuda upgrade.

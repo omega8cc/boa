@@ -2223,7 +2223,7 @@ check_php_rebuild() {
       if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
         || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
         if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-          msg "INFO: PHP ${_PHP_ITD} forced rebuild on next barracuda up-head"
+          msg "INFO: PHP ${_PHP_ITD} forced rebuild on next barracuda up-dev"
           _PHP_FORCE_REINSTALL=NO
         else
           if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
@@ -2242,7 +2242,7 @@ check_php_rebuild() {
         msg "INFO: Installed PHP version ${_PHP_ITD}, upgrade required"
       fi
       if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-        msg "INFO: PHP ${_PHP_ITD} upgrade on next barracuda up-head"
+        msg "INFO: PHP ${_PHP_ITD} upgrade on next barracuda up-dev"
       else
         if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
           msg "INFO: PHP ${_PHP_ITD} upgrade will happen now..."
