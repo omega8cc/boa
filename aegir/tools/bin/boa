@@ -2141,7 +2141,7 @@ case "$1" in
   ;;
   *)         echo
              echo "Usage: $(basename "$0") {version} {mode} {fqdn} {email} {user} {platforms} {extra} {mysql}"
-             echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {mini|max|none} {head|dev}
+             echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {mini|max|none} {head|dev}"
              echo "Usage: $(basename "$0") version"
              echo "Usage: $(basename "$0") info {more}"
              echo "Usage: $(basename "$0") info report {octopus|backups|both}"
