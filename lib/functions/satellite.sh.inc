@@ -4063,7 +4063,7 @@ satellite_if_head_github_connection_test() {
       echo " "
       msg "EXIT on error (provision) due to GitHub downtime"
       msg "Please try to run this script again in a few minutes"
-      msg "You may want to check https://status.github.com/messages"
+      msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
       clean_pid_exit
@@ -4074,7 +4074,7 @@ satellite_if_head_github_connection_test() {
       echo " "
       msg "EXIT on error (hostmaster) due to GitHub downtime"
       msg "Please try to run this script again in a few minutes"
-      msg "You may want to check https://status.github.com/messages"
+      msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
       clean_pid_exit
@@ -4090,7 +4090,7 @@ satellite_if_head_github_connection_test() {
       echo " "
       msg "EXIT on error (boa) due to GitHub downtime"
       msg "Please try to run this script again in a few minutes"
-      msg "You may want to check https://status.github.com/messages"
+      msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
       clean_pid_exit

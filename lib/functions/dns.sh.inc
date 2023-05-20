@@ -380,7 +380,7 @@ check_connection() {
           msg "Sorry, I gave up."
           msg "EXIT on error due to GitHub git server at 443 downtime"
           msg "Please try to run this script again in a few minutes"
-          msg "You may want to check https://status.github.com/messages"
+          msg "You may want to check https://www.githubstatus.com"
           msg "Also, make sure that the outgoing connections via port 443 work"
           msg "Bye"
           clean_pid_exit
@@ -533,7 +533,7 @@ check_github_for_aegir_head_mode() {
       echo " "
       msg "EXIT on error (provision) due to GitHub downtime"
       msg "Please try to run this script again in a few minutes"
-      msg "You may want to check https://status.github.com/messages"
+      msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
       clean_pid_exit
@@ -544,7 +544,7 @@ check_github_for_aegir_head_mode() {
       echo " "
       msg "EXIT on error (hostmaster) due to GitHub downtime"
       msg "Please try to run this script again in a few minutes"
-      msg "You may want to check https://status.github.com/messages"
+      msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
       clean_pid_exit
@@ -560,7 +560,7 @@ check_github_for_aegir_head_mode() {
       echo " "
       msg "EXIT on error (boa) due to GitHub downtime"
       msg "Please try to run this script again in a few minutes"
-      msg "You may want to check https://status.github.com/messages"
+      msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
       clean_pid_exit
