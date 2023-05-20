@@ -1,15 +1,14 @@
 <?php
 
   // Create the platform node
-  global $argv;
   $types = node_types_rebuild();
   $node = new stdClass();
   $node->type = 'platform';
-  $node->title = $argv[3];
+  $node->title = $_SERVER[argv][3];
   $node->language = LANGUAGE_NONE;
   node_object_prepare($node);
   $node->uid = 1;
-  $node->publish_path = $argv[5];
+  $node->publish_path = $_SERVER[argv][5];
   $node->web_server = variable_get('hosting_default_web_server', 2);
   $node->status = 1;
   $node = node_submit($node);
@@ -20,12 +19,12 @@
   // Create the platform profile node
   $node = new stdClass();
   $node->type = 'package';
-  $node->title = $argv[3];
+  $node->title = $_SERVER[argv][3];
   $node->language = LANGUAGE_NONE;
   node_object_prepare($node);
   $node->uid = 1;
   $node->package_type = 'profile';
-  $node->short_name = $argv[4];
+  $node->short_name = $_SERVER[argv][4];
   $node->status = 1;
   $node = node_submit($node);
   node_save($node);
