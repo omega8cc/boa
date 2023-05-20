@@ -614,6 +614,7 @@ octopus_install() {
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
       || [ "${cmmand}" = "init" ] \
+      || [ "${copt}" = "dev" ] \
       || [ "${copt}" = "stable" ] \
       || [ "${copt}" = "legacy" ] \
       || [ "${copt}" = "head" ]; then
@@ -627,6 +628,15 @@ octopus_install() {
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"   ${vBs}/${filIncO}
         wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncO}
+        wait
+      elif [ "${copt}" = "dev" ]; then
+        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${dvbrnch}/g"    ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${dvhd}/g" ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${dvhd}/g" ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${dvrn}/g"         ${vBs}/${filIncO}
         wait
       elif [ "${copt}" = "legacy" ]; then
         sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncO}
@@ -705,12 +715,17 @@ octopus_install() {
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
       || [ "${cmmand}" = "init" ] \
+      || [ "${copt}" = "dev" ] \
       || [ "${copt}" = "stable" ] \
       || [ "${copt}" = "legacy" ] \
-      || [ "${copt}" = "dev" ] \
       || [ "${copt}" = "head" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${filIncO}
-      wait
+      if [ "${copt}" = "dev" ]; then
+        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${dvbrnch}/g"    ${vBs}/${filIncO}
+        wait
+      else
+        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"       ${vBs}/${filIncO}
+        wait
+      fi
     elif [ "${cmmand}" = "in-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncO}
       wait
