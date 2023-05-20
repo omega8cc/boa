@@ -1,6 +1,7 @@
 <?php
 
   // Create the client node
+  global $argv;
   $number = rand(100000, 999999);
   $types = node_types_rebuild();
   $node = new stdClass();

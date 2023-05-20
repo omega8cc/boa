@@ -1,6 +1,7 @@
 <?php
 
   // Create the platform node
+  global $argv;
   $types = node_types_rebuild();
   $node = new stdClass();
   $node->type = 'platform';
