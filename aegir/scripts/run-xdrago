@@ -110,7 +110,7 @@ if_octopus_upgrade() {
     if [ -e "${plCtr}" ] && [ -e "${upCtr}" ]; then
       rm -f ${upCtr}
       [ -e "/root/.silent.update.cnf" ] && rm -f /root/.silent.update.cnf
-      bash /opt/local/bin/octopus up-head ${_H_USER} force log
+      bash /opt/local/bin/octopus up-dev ${_H_USER} force log
     fi
   fi
 }
