@@ -2141,6 +2141,7 @@ case "$1" in
   ;;
   *)         echo
              echo "Usage: $(basename "$0") {version} {mode} {fqdn} {email} {user} {platforms} {extra} {mysql}"
+             echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {mini|max|none} {head|dev}
              echo "Usage: $(basename "$0") version"
              echo "Usage: $(basename "$0") info {more}"
              echo "Usage: $(basename "$0") info report {octopus|backups|both}"
@@ -2150,13 +2151,13 @@ case "$1" in
   Accepted keywords and values in every option:
 
   {version}
-      in-head <------ install BOA Latest available
-      in-dev <------- install BOA DEV for development only
+      in-head <------ install BOA Latest available (alias of in-stable)
+      in-dev <------- install BOA Dev Cutting Edge (for development only)
       in-3.2 <------- install old stable 3.2 (for testing only)
       in-2.4 <------- install old stable 2.4 (for testing only)
       in-2.3 <------- install old stable 2.3 (for testing only)
       in-2.2 <------- install old stable 2.2 (for testing only)
-      in-octopus <--- install extra Octopus instance (latest, dev or legacy)
+      in-octopus <--- install extra Octopus instance (head, dev or stable)
 
   {mode}
       public <------- recommended for general use
@@ -2184,7 +2185,7 @@ case "$1" in
       php-8.2 <------ single PHP version to install and use (experimental)
       php-min <------ install PHP 7.4, 8.1, 8.2, use 8.1 by default (php-all)
       php-max <------ install PHP 7.4, 8.1, 8.2, 8.0, 7.3, 7.2, 7.1, 7.0, 5.6
-      nodns <-------- disable DNS checks on the fly
+      nodns <-------- disable DNS/SMTP checks on the fly
 
   {mysql}
       percona <------ database server to install (default)
