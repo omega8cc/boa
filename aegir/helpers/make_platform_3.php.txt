@@ -3,7 +3,6 @@
   // Create the platform node
   global $argv;
   var_dump($argv);
-  print $argv;
   $types = node_types_rebuild();
   $node = new stdClass();
   $node->uid = 1;
