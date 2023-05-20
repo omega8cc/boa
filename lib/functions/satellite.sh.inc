@@ -620,7 +620,8 @@ satellite_cnf() {
       || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
       || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
       _LD_DOM=YES
-      if [ -e "/root/.debug-boa-installer.cnf" ]; then
+      if [ -e "/root/.debug-boa-installer.cnf" ] \
+        || [ -e "/root/.debug-octopus-installer.cnf" ]; then
         _DEBUG_MODE=YES
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g" ${octCnf}
       fi
