@@ -5818,7 +5818,7 @@ satellite_child_b_aegir_ui_enhance() {
       else
         ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL} &> /dev/null
       fi
-      rm -f make_client.php
+      ### rm -f make_client.php
     else
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
         SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%'"
