@@ -1334,8 +1334,28 @@ case "$1" in
              up_legacy "2.2"
   ;;
   *)         echo
-             echo "Usage: $(basename "$0") {up-head|up-stable|up-dev} {all|o1} {aegir|platforms|both|force}"
-             echo
+             echo "Usage: $(basename "$0") {version} {instance} {mode}"
+             cat <<EOF
+
+  Accepted keywords and values in every option:
+
+  {version}
+      up-head <------ upgrade to Octopus Latest available (alias of up-stable)
+      up-dev <------- upgrade to Octopus Dev Cutting Edge (for development only)
+
+  {instance}
+      all <---------- upgrade all active Octopus instances in a batch
+      o1 <----------- upgrade only listed Octopus instance (system name)
+
+  {mode}
+      aegir <-------- upgrade only Aegir Hostmaster
+      platforms <---- upgrade only Platforms
+      both <--------- upgrade both Aegir Hostmaster and Platforms
+      force <-------- force upgrade of either specified instance or all
+
+  See docs/UPGRADE.txt for more details.
+
+EOF
              clean_pid_exit
   ;;
 esac
