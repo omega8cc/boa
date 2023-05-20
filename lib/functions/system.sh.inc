@@ -6796,7 +6796,16 @@ if_install_ftpd() {
       rm -f pure-ftpd.conf
       cp -af ${locCnf}/pure-ftpd.conf ./
       killall -9 pure-ftpd &> /dev/null
-      /usr/local/sbin/pure-ftpd /usr/local/etc/pure-ftpd.conf &> /dev/null
+      ftpdInit="/usr/local/sbin/pure-config.pl"
+      ftpdConf="/usr/local/etc/pure-ftpd.conf"
+      ftpdBind="/usr/local/sbin/pure-ftpd"
+      if [ -x "${ftpdBind}" ] && [ -f "${ftpdConf}" ]; then
+        if [ -x "${ftpdInit}" ]; then
+          ${ftpdInit} ${ftpdConf} &> /dev/null
+        else
+          ${ftpdBind} ${ftpdConf} &> /dev/null
+        fi
+      fi
       cd /var/opt
       touch ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_SE}-${_X_VERSION}.log
     fi
