@@ -3830,11 +3830,17 @@ curl_install_src() {
             mv -f /usr/include/x86_64-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
             mv -f /usr/lib/x86_64-linux-gnu/libcurl.so /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
           fi
+          if [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
+            ln -sfn /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl &> /dev/null
+          fi
           if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so" ]; then
             ln -sfn /usr/local/lib/libcurl.so /usr/lib/x86_64-linux-gnu/libcurl.so &> /dev/null
           fi
-          if [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
-            ln -sfn /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl &> /dev/null
+          if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ]; then
+            ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/x86_64-linux-gnu/libcurl.so.4 &> /dev/null
+          fi
+          if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.a" ]; then
+            ln -sfn /usr/local/lib/libcurl.a /usr/lib/x86_64-linux-gnu/libcurl.a &> /dev/null
           fi
         else
           mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}
