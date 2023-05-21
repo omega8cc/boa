@@ -3818,15 +3818,17 @@ curl_install_src() {
       else
         msg "OOPS: cURL ${_CURL_VRN} could not be extracted..."
       fi
-      if [ -e "/usr/local/lib/libcurl.so" ] \
-        && [ -e "/usr/local/include/curl/curl.h" ]; then
+      if [ -x "/usr/local/bin/curl" ] \
+        && [ -e "/usr/local/lib/libcurl.so" ] \
+        && [ -e "/usr/local/include/curl/header.h" ] \
+        && [ ! -e "/var/xdrago/log/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid" ]; then
         _X86_64_TEST=$(uname -m 2>&1)
         if [ "${_X86_64_TEST}" = "x86_64" ]; then
-          mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}
+          mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}
           if [ -e "/usr/include/x86_64-linux-gnu/curl" ] \
             && [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
-            mv -f /usr/include/x86_64-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}/ &> /dev/null
-            mv -f /usr/lib/x86_64-linux-gnu/libcurl.so /var/backups/legacy-curl-pre-${_CURL_VRN}/ &> /dev/null
+            mv -f /usr/include/x86_64-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
+            mv -f /usr/lib/x86_64-linux-gnu/libcurl.so /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
           fi
           if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so" ]; then
             ln -sfn /usr/local/lib/libcurl.so /usr/lib/x86_64-linux-gnu/libcurl.so &> /dev/null
@@ -3835,11 +3837,11 @@ curl_install_src() {
             ln -sfn /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl &> /dev/null
           fi
         else
-          mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}
+          mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}
           if [ -e "/usr/include/i386-linux-gnu/curl" ] \
             && [ ! -L "/usr/include/i386-linux-gnu/curl" ]; then
-            mv -f /usr/include/i386-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}/ &> /dev/null
-            mv -f /usr/lib/i386-linux-gnu/libcurl.so /var/backups/legacy-curl-pre-${_CURL_VRN}/ &> /dev/null
+            mv -f /usr/include/i386-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
+            mv -f /usr/lib/i386-linux-gnu/libcurl.so /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
           fi
           if [ ! -L "/usr/lib/i386-linux-gnu/libcurl.so" ]; then
             ln -sfn /usr/local/lib/libcurl.so /usr/lib/i386-linux-gnu/libcurl.so &> /dev/null
@@ -3848,9 +3850,12 @@ curl_install_src() {
             ln -sfn /usr/local/include/curl /usr/include/i386-linux-gnu/curl &> /dev/null
           fi
         fi
+        mrun "apt-get remove curl -y" 2> /dev/null
+        mrun "ldconfig" 2> /dev/null
+        touch /var/xdrago/log/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid &> /dev/null
+        _CURL_ALREADY_REBUILT=YES
       fi
     fi
-    _CURL_ALREADY_REBUILT=YES
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: cURL version detected ${_CURL_ITD}, OK"
