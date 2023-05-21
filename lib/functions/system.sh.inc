@@ -3527,6 +3527,11 @@ ssl_install_src() {
     if [ ! -x "${_SSL_BINARY}" ]; then
       _SSL_INSTALL_REQUIRED=YES
     fi
+  else
+    _SSL_BINARY=/usr/local/ssl/bin/openssl
+    if [ ! -x "${_SSL_BINARY}" ]; then
+      _SSL_INSTALL_REQUIRED=YES
+    fi
   fi
   if [ "${_SSL_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
     msg "INFO: OpenSSL is ${_SSL_ITD}, upgrade to ${_OPENSSL_NEW_VRN} required"
