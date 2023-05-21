@@ -4543,7 +4543,10 @@ run_aptitude_deps_install() {
   apt_clean_update
   mrun "apt-get remove percona-xtrabackup-24 -y -qq" 2> /dev/null
   mrun "apt-get remove libcurl4-gnutls-dev -y -qq" 2> /dev/null
+  mrun "apt-get purge libcurl4-gnutls-dev -y -qq" 2> /dev/null
   mrun "apt-get remove libcurl4-openssl-dev -y -qq" 2> /dev/null
+  mrun "apt-get purge libcurl4-openssl-dev -y -qq" 2> /dev/null
+  mrun "apt autoremove -y" 2> /dev/null
   mrun "${_INSTAPP} build-essential libsasl2-modules" 2> /dev/null
   mrun "${_INSTAPP} zlibc time vim cvs makepasswd" 2> /dev/null
   mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables" 2> /dev/null
@@ -4553,7 +4556,7 @@ run_aptitude_deps_install() {
   mrun "apt-get remove libssl1.0-dev -y" 2> /dev/null
   mrun "${_INSTAPP} libssl-dev" 2> /dev/null
   mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
-  mrun "${_INSTAPP} libcurl4-gnutls-dev mcrypt libc-client-dev" 2> /dev/null
+  mrun "${_INSTAPP} mcrypt libc-client-dev" 2> /dev/null
   mrun "${_INSTAPP} apticron aptitude auditd apt-listchanges" 2> /dev/null
   mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
   mrun "${_INSTAPP} unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
