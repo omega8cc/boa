@@ -203,7 +203,7 @@ Octopus can install and/or support the platforms listed below:
  OpenAtrium 2.652 ------------- https://drupal.org/project/openatrium
  OpenOutreach 1.69 ------------ https://drupal.org/project/openoutreach
  Opigno LMS 1.59 -------------- https://drupal.org/project/opigno_lms
- Panopoly 1.86 ---------------- https://drupal.org/project/panopoly
+ Panopoly 1.91 ---------------- https://drupal.org/project/panopoly
  Ubercart 3.13 ---------------- https://drupal.org/project/ubercart
 
  @ Pressflow (D6 LTS included, thanks to myDropWizard) 6.60.1
