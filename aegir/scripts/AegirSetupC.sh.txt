@@ -612,6 +612,24 @@ create_drupal9_basic() {
     fi
   fi
 }
+#
+# Create D9 basic platform.
+create_drupal9_basic_dev() {
+  echo 1 _SHRD_PLPATH is ${_SHRD_PLPATH}
+  if [ ! -d "${_SHRD_PLPATH}" ]; then
+    mkdir -p ${_SHRD_PLPATH}
+    echo 2 _SHRD_PLPATH is ${_SHRD_PLPATH}
+    echo 2 _OCTO_PLPATH is ${_OCTO_PLPATH}
+    echo 2 CD is ${_ROOT}/distro/${_THIS_CORE}
+    if [ ! -d "${_OCTO_PLPATH}" ]; then
+      cd ${_ROOT}/distro/${_THIS_CORE}
+      echo 3 GET is ${_DRUPAL9}.tar.gz
+      get_distro_ext "${_DRUPAL9}.tar.gz"
+      echo 3 MV is ${_DRUPAL9} to ${_SHRD_PLNAME}
+      mv -f ${_DRUPAL9} ${_SHRD_PLNAME}
+    fi
+  fi
+}
 
 
 ###---### Checking status.
@@ -1216,7 +1234,8 @@ drupal9_install() {
         if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
           || [[ "${_PLATFORMS_LIST}" =~ "D9D" ]]; then
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_DRUPAL9_D} ${yOk}"
-          create_drupal9_basic
+          [ "${_DEBUG_MODE}" = "YES" ] && create_drupal9_basic_dev
+          [ "${_DEBUG_MODE}" = "NO" ] && create_drupal9_basic
           if [ -d "${_OCTO_PLPATH}" ]; then
             msg "DISTRO: ${_F_DRUPAL9_D} installed"
             _RUN_VERIFY=YES
@@ -1232,7 +1251,8 @@ drupal9_install() {
         if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
           || [[ "${_PLATFORMS_LIST}" =~ "D9S" ]]; then
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_DRUPAL9_S} ${yOk}"
-          create_drupal9_basic
+          [ "${_DEBUG_MODE}" = "YES" ] && create_drupal9_basic_dev
+          [ "${_DEBUG_MODE}" = "NO" ] && create_drupal9_basic
           if [ -d "${_OCTO_PLPATH}" ]; then
             msg "DISTRO: ${_F_DRUPAL9_S} installed"
             _RUN_VERIFY=YES
@@ -1248,7 +1268,8 @@ drupal9_install() {
         if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
           || [[ "${_PLATFORMS_LIST}" =~ "D9P" ]]; then
           [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_DRUPAL9_P} ${yOk}"
-          create_drupal9_basic
+          [ "${_DEBUG_MODE}" = "YES" ] && create_drupal9_basic_dev
+          [ "${_DEBUG_MODE}" = "NO" ] && create_drupal9_basic
           if [ -d "${_OCTO_PLPATH}" ]; then
             msg "DISTRO: ${_F_DRUPAL9_P} installed"
             _RUN_VERIFY=YES
