@@ -603,13 +603,10 @@ create_drupal7_basic() {
 #
 # Create D9 basic platform.
 create_drupal9_basic() {
-  if [ ! -d "${_SHRD_PLPATH}" ]; then
-    mkdir -p ${_SHRD_PLPATH}
-    if [ ! -d "${_OCTO_PLPATH}" ]; then
-      cd ${_ROOT}/distro/${_THIS_CORE}
-      get_distro_ext "${_DRUPAL9}.tar.gz"
-      mv -f ${_DRUPAL9} ${_SHRD_PLNAME}
-    fi
+  if [ ! -d "${_OCTO_PLPATH}" ]; then
+    cd ${_ROOT}/distro/${_THIS_CORE}
+    get_distro_ext "${_DRUPAL9}.tar.gz"
+    mv -f ${_DRUPAL9} ${_SHRD_PLNAME}
   fi
 }
 #
