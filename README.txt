@@ -202,7 +202,7 @@ Octopus can install and/or support the platforms listed below:
  Guardr 2.57 ------------------ https://drupal.org/project/guardr
  OpenAtrium 2.652 ------------- https://drupal.org/project/openatrium
  OpenOutreach 1.69 ------------ https://drupal.org/project/openoutreach
- Opigno LMS 1.55 -------------- https://drupal.org/project/opigno_lms
+ Opigno LMS 1.59 -------------- https://drupal.org/project/opigno_lms
  Panopoly 1.86 ---------------- https://drupal.org/project/panopoly
  Ubercart 3.13 ---------------- https://drupal.org/project/ubercart
 
