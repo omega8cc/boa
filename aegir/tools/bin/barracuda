@@ -353,7 +353,7 @@ check_dns_settings() {
 }
 
 barracuda_downgrade_protection() {
-  if [ "${cmmand}" != "up-dev" ]; then
+  if [ "${cmmand}" != "up-dev" ] && [ "${cmmand}" != "php-idle" ]; then
     if [ -e "/var/log/barracuda_log.txt" ]; then
       _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
       if [[ "${_SERIES_TEST}" =~ "BOA-5." ]]; then
@@ -712,10 +712,10 @@ up_action() {
         ${vBs}/old-firewall-monitor/${_NOW}/ &> /dev/null
       rm -f /var/xdrago/monitor/* &> /dev/null
     fi
-    if [ "${cmmand}" != "up-dev" ]; then
+    if [ "${cmmand}" != "up-dev" ] && [ "${cmmand}" != "php-idle" ]; then
       barracuda_downgrade_protection
     fi
-    if [ "${cmmand}" = "up-dev" ]; then
+    if [ "${cmmand}" = "up-dev" ] || [ "${cmmand}" = "php-idle" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${dvbrnch}/g"      ${vBs}/${filIncB}
       wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${dvhd}/g"   ${vBs}/${filIncB}
@@ -728,8 +728,7 @@ up_action() {
       wait
     elif [ "${cmmand}" = "up-head" ] \
       || [ "${cmmand}" = "up-legacy" ] \
-      || [ "${cmmand}" = "up-stable" ] \
-      || [ "${cmmand}" = "php-idle" ]; then
+      || [ "${cmmand}" = "up-stable" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
       wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncB}
@@ -793,13 +792,12 @@ up_action() {
         wait
       fi
     fi
-    if [ "${cmmand}" = "up-dev" ]; then
+    if [ "${cmmand}" = "up-dev" ] || [ "${cmmand}" = "php-idle" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${dvmstr}/g"       ${vBs}/${filIncB}
       wait
     elif [ "${cmmand}" = "up-head" ] \
       || [ "${cmmand}" = "up-legacy" ] \
-      || [ "${cmmand}" = "up-stable" ] \
-      || [ "${cmmand}" = "php-idle" ]; then
+      || [ "${cmmand}" = "up-stable" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${filIncB}
       wait
     elif [ "${cmmand}" = "up-cluster" ]; then
@@ -1528,13 +1526,12 @@ proceed() {
   check_php_cli
   set_pin_priority
   up_start
-  if [ "${cmmand}" = "up-dev" ]; then
+  if [ "${cmmand}" = "up-dev" ] || [ "${cmmand}" = "php-idle" ]; then
     _SCRIPT_URL="${rgUrl}/${dvmaster}/${barName}"
     curl ${crlGet} "${rgUrl}/${dvmaster}/${pthIncB}" -o ${vBs}/${filIncB}
   elif [ "${cmmand}" = "up-head" ] \
     || [ "${cmmand}" = "up-legacy" ] \
-    || [ "${cmmand}" = "up-stable" ] \
-    || [ "${cmmand}" = "php-idle" ]; then
+    || [ "${cmmand}" = "up-stable" ]; then
     if [ "${silent}" = "cluster" ] \
       || [ "${silent}" = "foobar" ]; then
       echo "FEATURE MODE: ${silent}"
