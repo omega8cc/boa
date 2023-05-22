@@ -3741,6 +3741,9 @@ curl_install_src() {
       msg "INFO: cURL ${_CURL_ITD} with OpenSSL ${_CURL_SSL_ITD}, rebuild forced"
     fi
   fi
+  if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ] || [ ! -L "/usr/lib/libcurl.so.4" ]; then
+    _CURL_INSTALL_REQUIRED=YES
+  fi
   if [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
     if [ -e "/root/.use.curl.from.packages.cnf" ]; then
@@ -3828,19 +3831,21 @@ curl_install_src() {
           if [ -e "/usr/include/x86_64-linux-gnu/curl" ] \
             && [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
             mv -f /usr/include/x86_64-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
-            mv -f /usr/lib/x86_64-linux-gnu/libcurl.so /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
           fi
           if [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
             ln -sfn /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl &> /dev/null
           fi
-          if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so" ]; then
+          if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so" ] || [ ! -L "/usr/lib/libcurl.so" ]; then
             ln -sfn /usr/local/lib/libcurl.so /usr/lib/x86_64-linux-gnu/libcurl.so &> /dev/null
+            ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.so /usr/lib/libcurl.so
           fi
-          if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ]; then
+          if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ] || [ ! -L "/usr/lib/libcurl.so.4" ]; then
             ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/x86_64-linux-gnu/libcurl.so.4 &> /dev/null
+            ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.so.4 /usr/lib/libcurl.so.4
           fi
-          if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.a" ]; then
+          if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.a" ] || [ ! -L "/usr/lib/libcurl.a" ]; then
             ln -sfn /usr/local/lib/libcurl.a /usr/lib/x86_64-linux-gnu/libcurl.a &> /dev/null
+            ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.a /usr/lib/libcurl.a
           fi
         else
           mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}
