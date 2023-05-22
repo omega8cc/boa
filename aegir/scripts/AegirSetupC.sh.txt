@@ -615,19 +615,14 @@ create_drupal9_basic() {
 #
 # Create D9 basic platform.
 create_drupal9_basic_dev() {
-  echo 1 _SHRD_PLPATH is ${_SHRD_PLPATH}
-  if [ ! -d "${_SHRD_PLPATH}" ]; then
-    mkdir -p ${_SHRD_PLPATH}
-    echo 2 _SHRD_PLPATH is ${_SHRD_PLPATH}
-    echo 2 _OCTO_PLPATH is ${_OCTO_PLPATH}
+  echo 1 _OCTO_PLPATH is ${_OCTO_PLPATH}
+  if [ ! -d "${_OCTO_PLPATH}" ]; then
     echo 2 CD is ${_ROOT}/distro/${_THIS_CORE}
-    if [ ! -d "${_OCTO_PLPATH}" ]; then
-      cd ${_ROOT}/distro/${_THIS_CORE}
-      echo 3 GET is ${_DRUPAL9}.tar.gz
-      get_distro_ext "${_DRUPAL9}.tar.gz"
-      echo 3 MV is ${_DRUPAL9} to ${_SHRD_PLNAME}
-      mv -f ${_DRUPAL9} ${_SHRD_PLNAME}
-    fi
+    cd ${_ROOT}/distro/${_THIS_CORE}
+    echo 3 GET is ${_DRUPAL9}.tar.gz
+    get_distro_ext "${_DRUPAL9}.tar.gz"
+    echo 4 MV is ${_DRUPAL9} to ${_SHRD_PLNAME}
+    mv -f ${_DRUPAL9} ${_SHRD_PLNAME}
   fi
 }
 
@@ -1228,8 +1223,6 @@ drupal9_install() {
         #
         _REAL_PRNAME="standard"
         _SHRD_PLNAME="${_DRUPAL9D}"
-        _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
-        _SHRD_PRPATH="${_SHRD_PLPATH}/core/profiles/${_REAL_PRNAME}"
         _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
         if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
           || [[ "${_PLATFORMS_LIST}" =~ "D9D" ]]; then
@@ -1245,8 +1238,6 @@ drupal9_install() {
         #
         _REAL_PRNAME="standard"
         _SHRD_PLNAME="${_DRUPAL9S}"
-        _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
-        _SHRD_PRPATH="${_SHRD_PLPATH}/core/profiles/${_REAL_PRNAME}"
         _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
         if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
           || [[ "${_PLATFORMS_LIST}" =~ "D9S" ]]; then
@@ -1262,8 +1253,6 @@ drupal9_install() {
         #
         _REAL_PRNAME="standard"
         _SHRD_PLNAME="${_DRUPAL9P}"
-        _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
-        _SHRD_PRPATH="${_SHRD_PLPATH}/core/profiles/${_REAL_PRNAME}"
         _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
         if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
           || [[ "${_PLATFORMS_LIST}" =~ "D9P" ]]; then
