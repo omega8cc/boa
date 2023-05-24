@@ -3090,11 +3090,11 @@ action() {
         _SQL_CONVERT=NO
         _DEL_OLD_EMPTY_PLATFORMS="0"
         if [ -e "/root/.${_HM_U}.octopus.cnf" ]; then
-          if [ -x "/usr/bin/drush10-bin" ]; then
+          if [ -x "/usr/bin/drush10" ]; then
             su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/*.yml"
             su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/.checksums/*.md5"
-            su -s /bin/bash - ${_HM_U} -c "drush10-bin core:init --yes" &> /dev/null
-            su -s /bin/bash - ${_HM_U} -c "drush10-bin site:alias-convert ~/.drush/sites --yes" &> /dev/null
+            su -s /bin/bash - ${_HM_U} -c "drush10 core:init --yes" &> /dev/null
+            su -s /bin/bash - ${_HM_U} -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
           fi
           source /root/.${_HM_U}.octopus.cnf
           _DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS//[^0-9]/}

@@ -2708,7 +2708,6 @@ clean_drush_twelve() {
     msg "PROC: clean_drush_twelve"
   fi
   rm -f /usr/bin/drush12*
-  ln -sfn /opt/tools/drush/12/drush/vendor/bin/drush /usr/bin/drush12-bin
   ln -sfn /opt/tools/drush/12/drush/vendor/bin/drush /usr/bin/drush12
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH_TWELVE_VRN} setup complete"
@@ -2722,7 +2721,6 @@ clean_drush_eleven() {
     msg "PROC: clean_drush_eleven"
   fi
   rm -f /usr/bin/drush11*
-  ln -sfn /opt/tools/drush/11/drush/vendor/bin/drush /usr/bin/drush11-bin
   ln -sfn /opt/tools/drush/11/drush/vendor/bin/drush /usr/bin/drush11
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} setup complete"
@@ -2743,7 +2741,6 @@ clean_drush_ten() {
   rm -f /usr/local/bin/release
   rm -f /usr/local/bin/robo
   rm -f /usr/local/bin/var-dump-server
-  ln -sfn /opt/tools/drush/10/drush/vendor/bin/drush /usr/bin/drush10-bin
   ln -sfn /opt/tools/drush/10/drush/vendor/bin/drush /usr/bin/drush10
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH_TEN_VRN} setup complete"
@@ -2922,7 +2919,7 @@ drush_system_install_update() {
       fi
     fi
     if [ -e "/opt/tools/drush/10" ]; then
-      _DRUSH_ITD=$(drush10-bin --version 2>&1 \
+      _DRUSH_ITD=$(drush10 --version 2>&1 \
         | tr -d "\n" \
         | cut -d" " -f4 \
         | awk '{ print $1}' 2>&1)
@@ -2940,7 +2937,7 @@ drush_system_install_update() {
       fi
     fi
     if [ -e "/opt/tools/drush/11" ]; then
-      _DRUSH_ITD=$(drush11-bin --version 2>&1 \
+      _DRUSH_ITD=$(drush11 --version 2>&1 \
         | tr -d "\n" \
         | cut -d" " -f4 \
         | awk '{ print $1}' 2>&1)
@@ -2958,7 +2955,7 @@ drush_system_install_update() {
       fi
     fi
     if [ -e "/opt/tools/drush/12" ]; then
-      _DRUSH_ITD=$(drush12-bin --version 2>&1 \
+      _DRUSH_ITD=$(drush12 --version 2>&1 \
         | tr -d "\n" \
         | cut -d" " -f4 \
         | awk '{ print $1}' 2>&1)
