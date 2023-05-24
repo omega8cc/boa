@@ -2361,8 +2361,6 @@ manage_user() {
         && [ -x "/opt/tools/drush/8/drush/drush.php" ]; then
         if [ -x "/opt/php56/bin/php" ]; then
           echo 5.6 > ${dscUsr}/static/control/cli.info
-        elif [ -x "/opt/php55/bin/php" ]; then
-          echo 5.5 > ${dscUsr}/static/control/cli.info
         fi
       fi
       nrCheck=
