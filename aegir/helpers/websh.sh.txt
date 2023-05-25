@@ -24,13 +24,14 @@ if [[ "${_ARGS}" =~ "true COLUMNS=" ]]; then
 fi
 
 if [[ ! "${_ARGS} " =~ "composer " ]] \
-  && [[ ! "${_ARGS} " =~ "sql-cli" ]] \
-  && [[ ! "${_ARGS} " =~ "sqlc" ]] \
-  && [[ ! "${_ARGS} " =~ "sql-connect" ]] \
-  && [[ ! "${_ARGS} " =~ "sql-dump" ]] \
-  && [[ ! "${_ARGS} " =~ "sql-query" ]] \
-  && [[ ! "${_ARGS} " =~ "sqlq" ]] \
-  && [[ ! "${_ARGS} " =~ "sql-sync" ]]; then
+  && [[ ! "${_ARGS} " =~ "sudo " ]] \
+  && [[ ! "${_ARGS} " =~ "sql-cli " ]] \
+  && [[ ! "${_ARGS} " =~ "sqlc " ]] \
+  && [[ ! "${_ARGS} " =~ "sql-connect " ]] \
+  && [[ ! "${_ARGS} " =~ "sql-dump " ]] \
+  && [[ ! "${_ARGS} " =~ "sql-query " ]] \
+  && [[ ! "${_ARGS} " =~ "sqlq " ]] \
+  && [[ ! "${_ARGS} " =~ "sql-sync " ]]; then
   _ARR=
   if [[ "${_ARGS} " =~ "drush " ]]; then
     if [[ "${_ARGS} " =~ "set -m" ]]; then
