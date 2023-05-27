@@ -3840,6 +3840,10 @@ curl_install_src() {
             ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/x86_64-linux-gnu/libcurl.so.4 &> /dev/null
             ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.so.4 /usr/lib/libcurl.so.4
           fi
+          if [ -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ] || [ -e "/usr/local/lib/libcurl.so.4" ]; then
+            ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/x86_64-linux-gnu/libcurl.so.4 &> /dev/null
+            ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.so.4 /usr/lib/libcurl.so.4
+          fi
           if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.a" ] || [ ! -L "/usr/lib/libcurl.a" ]; then
             ln -sfn /usr/local/lib/libcurl.a /usr/lib/x86_64-linux-gnu/libcurl.a &> /dev/null
             ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.a /usr/lib/libcurl.a
