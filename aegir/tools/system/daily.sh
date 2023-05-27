@@ -2658,9 +2658,9 @@ check_old_empty_hostmaster_platforms() {
 	  || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
 	  || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
 	  || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-	  _DEL_OLD_EMPTY_PLATFORMS="7"
+	  _DEL_OLD_EMPTY_PLATFORMS="3"
 	else
-	  _DEL_OLD_EMPTY_PLATFORMS="30"
+	  _DEL_OLD_EMPTY_PLATFORMS="7"
 	fi
   fi
   if [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
@@ -2724,7 +2724,7 @@ check_old_empty_platforms() {
           || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
           _DEL_OLD_EMPTY_PLATFORMS="60"
         else
-          _DEL_OLD_EMPTY_PLATFORMS="60"
+          _DEL_OLD_EMPTY_PLATFORMS="90"
         fi
       fi
     fi
@@ -2904,26 +2904,19 @@ purge_cruft_machine() {
     fi
   done
 
-  _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
-    016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
-    034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050 051 \
-    052 053 054 055 056 057 058 059 060 061 062 063 064 065 066 067 068 069 \
-    070 071 072 073 074 075 076 077 078 079 080 081 082 083 084 085 086 087 \
-    088 089 090 091 092 093 094 095 096 097 098 099 100 101 102 103 104 105"
-
-  for i in ${_REVISIONS}; do
-    if [ -e "${User}/distro/${i}" ] \
+  for i in `dir -d ${User}/distro/*`; do
+    if [ -e "${i}" ] \
       && [ ! -e "/home/${_HM_U}.ftp/platforms/${i}" ]; then
       if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
         chattr -i /home/${_HM_U}.ftp/platforms
         chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
       fi
       mkdir -p /home/${_HM_U}.ftp/platforms/${i}
-      mkdir -p ${User}/distro/${i}/keys
-      chown ${_HM_U}.ftp:${_WEBG} ${User}/distro/${i}/keys &> /dev/null
-      chmod 02775 ${User}/distro/${i}/keys &> /dev/null
-      ln -sfn ${User}/distro/${i}/keys /home/${_HM_U}.ftp/platforms/${i}/keys
-      for Codebase in `find ${User}/distro/${i}/* \
+      mkdir -p ${i}/keys
+      chown ${_HM_U}.ftp:${_WEBG} ${i}/keys &> /dev/null
+      chmod 02775 ${i}/keys &> /dev/null
+      ln -sfn ${i}/keys /home/${_HM_U}.ftp/platforms/${i}/keys
+      for Codebase in `find ${i}/* \
         -maxdepth 1 \
         -mindepth 1 \
         -type d \
@@ -2983,15 +2976,9 @@ shared_codebases_cleanup() {
   else
     _CLD="/var/backups/codebases-cleanup"
   fi
-  _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
-    016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
-    034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050 051 \
-    052 053 054 055 056 057 058 059 060 061 062 063 064 065 066 067 068 069 \
-    070 071 072 073 074 075 076 077 078 079 080 081 082 083 084 085 086 087 \
-    088 089 090 091 092 093 094 095 096 097 098 099 100 101 102 103 104 105"
-  for i in ${_REVISIONS}; do
-    if [ -d "/data/all/${i}/o_contrib" ]; then
-      for Codebase in `find /data/all/${i}/* -maxdepth 1 -mindepth 1 -type d \
+  for i in `dir -d /data/all/*/`; do
+    if [ -d "${i}o_contrib" ]; then
+      for Codebase in `find ${i}* -maxdepth 1 -mindepth 1 -type d \
         | grep "/profiles$" 2>&1`; do
         CodebaseDir=$(echo ${Codebase} \
           | sed 's/\/profiles//g' \
@@ -3000,10 +2987,9 @@ shared_codebases_cleanup() {
           -type l -lname ${Codebase} | sort 2>&1)
         if [[ "${CodebaseTest}" =~ "No such file or directory" ]] \
           || [ -z "${CodebaseTest}" ]; then
-          mkdir -p ${_CLD}/${i}
-          echo "Moving no longer used ${CodebaseDir} to ${_CLD}/${i}/"
-          ### mv -f ${CodebaseDir} ${_CLD}/${i}/
-          sleep 1
+          mkdir -p ${_CLD}${i}
+          echo "Moving no longer used ${CodebaseDir} to ${_CLD}${i}"
+          ### mv -f ${CodebaseDir} ${_CLD}${i}
         fi
       done
     fi
@@ -3012,14 +2998,8 @@ shared_codebases_cleanup() {
 
 ghost_codebases_cleanup() {
   _CLD="/var/backups/ghost-codebases-cleanup"
-  _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
-    016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
-    034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050 051 \
-    052 053 054 055 056 057 058 059 060 061 062 063 064 065 066 067 068 069 \
-    070 071 072 073 074 075 076 077 078 079 080 081 082 083 084 085 086 087 \
-    088 089 090 091 092 093 094 095 096 097 098 099 100 101 102 103 104 105"
-  for i in ${_REVISIONS}; do
-    CodebaseTest=$(find /data/disk/*/distro/${i}/*/ -maxdepth 1 -mindepth 1 \
+  for i in `dir -d /data/disk/*/distro/*/*/`; do
+    CodebaseTest=$(find ${i} -maxdepth 1 -mindepth 1 \
       -type d -name vendor | sort 2>&1)
     for vendor in ${CodebaseTest}; do
       ParentDir=`echo ${vendor} | sed "s/\/vendor//g"`
@@ -3030,10 +3010,9 @@ ghost_codebases_cleanup() {
       else
         _CLEAN_THIS="${ParentDir}"
         _TSTAMP=`date +%y%m%d-%H%M%S`
-        mkdir -p ${_CLD}/${i}/${_TSTAMP}
-        echo "Moving ghost ${_CLEAN_THIS} to ${_CLD}/${i}/${_TSTAMP}/"
-        ### mv -f ${_CLEAN_THIS} ${_CLD}/${i}/${_TSTAMP}/
-        sleep 1
+        mkdir -p ${_CLD}${i}${_TSTAMP}
+        echo "Moving ghost ${_CLEAN_THIS} to ${_CLD}${i}${_TSTAMP}/"
+        ### mv -f ${_CLEAN_THIS} ${_CLD}${i}${_TSTAMP}/
       fi
     done
   done
