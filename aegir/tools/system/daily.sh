@@ -2806,6 +2806,13 @@ purge_cruft_machine() {
   find ${User}/backup-exports/* -mtime +${_PURGE_TMP} -type f -exec \
     rm -rf {} \; &> /dev/null
 
+  find /var/aegir/backups/* -mtime +${_PURGE_BACKUPS} -exec \
+    rm -rf {} \; &> /dev/null
+  find /var/aegir/clients/*/backups/* -mtime +${_PURGE_BACKUPS} -exec \
+    rm -rf {} \; &> /dev/null
+  find /var/aegir/backup-exports/* -mtime +${_PURGE_TMP} -type f -exec \
+    rm -rf {} \; &> /dev/null
+
   find ${User}/distro/*/*/sites/*/files/backup_migrate/*/* \
     -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
   find ${User}/distro/*/*/sites/*/private/files/backup_migrate/*/* \
