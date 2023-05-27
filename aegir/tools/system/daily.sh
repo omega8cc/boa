@@ -2802,7 +2802,8 @@ purge_cruft_machine() {
 
   find ${User}/backups/* -mtime +${_PURGE_BACKUPS} -exec \
     rm -rf {} \; &> /dev/null
-
+  find ${User}/clients/*/backups/* -mtime +${_PURGE_BACKUPS} -exec \
+    rm -rf {} \; &> /dev/null
   find ${User}/backup-exports/* -mtime +${_PURGE_TMP} -type f -exec \
     rm -rf {} \; &> /dev/null
 
