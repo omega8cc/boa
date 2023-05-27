@@ -3467,10 +3467,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE93}/web/sites" ]; then
-      if [ ! -L "${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE93}" ]; then
-        _A="${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE93}/web/sites"
-        _B="${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE93}"
+    if [ -d "${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE95}/web/sites" ]; then
+      if [ ! -L "${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE95}" ]; then
+        _A="${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE95}/web/sites"
+        _B="${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE95}"
         ln -sfn ${_A} ${_B}
       fi
     fi
@@ -3530,10 +3530,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/thunder-${_THUNDER}-${_SMALLCORE93}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_SMALLCORE93}" ]; then
-        _A="${_QR}/thunder-${_THUNDER}-${_SMALLCORE93}/docroot/sites"
-        _B="${_QH}/thunder-${_THUNDER}-${_SMALLCORE93}"
+    if [ -d "${_QR}/thunder-${_THUNDER}-${_SMALLCORE95}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_SMALLCORE95}" ]; then
+        _A="${_QR}/thunder-${_THUNDER}-${_SMALLCORE95}/docroot/sites"
+        _B="${_QH}/thunder-${_THUNDER}-${_SMALLCORE95}"
         ln -sfn ${_A} ${_B}
       fi
     fi
@@ -3558,17 +3558,17 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/varbase-${_VARBASE}-${_SMALLCORE93}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/varbase-${_VARBASE}-${_SMALLCORE93}" ]; then
-        _A="${_QR}/varbase-${_VARBASE}-${_SMALLCORE93}/docroot/sites"
-        _B="${_QH}/varbase-${_VARBASE}-${_SMALLCORE93}"
+    if [ -d "${_QR}/varbase-${_VARBASE}-${_SMALLCORE95}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/varbase-${_VARBASE}-${_SMALLCORE95}" ]; then
+        _A="${_QR}/varbase-${_VARBASE}-${_SMALLCORE95}/docroot/sites"
+        _B="${_QH}/varbase-${_VARBASE}-${_SMALLCORE95}"
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/social-${_SOCIAL}-${_SMALLCORE8}/html/sites" ]; then
-      if [ ! -L "${_QH}/social-${_SOCIAL}-${_SMALLCORE8}" ]; then
-        _A="${_QR}/social-${_SOCIAL}-${_SMALLCORE8}/html/sites"
-        _B="${_QH}/social-${_SOCIAL}-${_SMALLCORE8}"
+    if [ -d "${_QR}/social-${_SOCIAL}-${_SMALLCORE94}/html/sites" ]; then
+      if [ ! -L "${_QH}/social-${_SOCIAL}-${_SMALLCORE94}" ]; then
+        _A="${_QR}/social-${_SOCIAL}-${_SMALLCORE94}/html/sites"
+        _B="${_QH}/social-${_SOCIAL}-${_SMALLCORE94}"
         ln -sfn ${_A} ${_B}
       fi
     fi
@@ -3579,10 +3579,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE92}/web/sites" ]; then
-      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE92}" ]; then
-        _A="${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE92}/web/sites"
-        _B="${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE92}"
+    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE94}/web/sites" ]; then
+      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE94}" ]; then
+        _A="${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE94}/web/sites"
+        _B="${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE94}"
         ln -sfn ${_A} ${_B}
       fi
     fi
@@ -3915,6 +3915,7 @@ satellite_make() {
   echo "_SMALLCORE8=\"${_SMALLCORE8}\""               >> ${writeTo}
   echo "_SMALLCORE92=\"${_SMALLCORE92}\""             >> ${writeTo}
   echo "_SMALLCORE93=\"${_SMALLCORE93}\""             >> ${writeTo}
+  echo "_SMALLCORE94=\"${_SMALLCORE94}\""             >> ${writeTo}
   echo "_SMALLCORE95=\"${_SMALLCORE95}\""             >> ${writeTo}
   echo "_SMALLCORE9=\"${_SMALLCORE9}\""               >> ${writeTo}
   echo "_SOCIAL=\"${_SOCIAL}\""                       >> ${writeTo}
