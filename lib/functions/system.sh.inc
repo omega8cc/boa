@@ -3738,7 +3738,9 @@ curl_install_src() {
       msg "INFO: cURL ${_CURL_ITD} with OpenSSL ${_CURL_SSL_ITD}, rebuild forced"
     fi
   fi
-  if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ] || [ ! -L "/usr/lib/libcurl.so.4" ]; then
+  if [ -e "/usr/lib/x86_64-linux-gnu/libcurl.so.4.4.0" ] \
+    || [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ] \
+    || [ ! -L "/usr/lib/libcurl.so.4" ]; then
     _CURL_INSTALL_REQUIRED=YES
   fi
   if [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
@@ -3845,7 +3847,7 @@ curl_install_src() {
             ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.so.4 /usr/lib/libcurl.so.4
           fi
           if [ -e "/usr/lib/x86_64-linux-gnu/libcurl.so.4.4.0" ]; then
-            mv /usr/lib/x86_64-linux-gnu/libcurl.so.4.4.0 /var/backups/
+            mv -f /usr/lib/x86_64-linux-gnu/libcurl.so.4.4.0 /var/backups/
           fi
           if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.a" ] || [ ! -L "/usr/lib/libcurl.a" ]; then
             ln -sfn /usr/local/lib/libcurl.a /usr/lib/x86_64-linux-gnu/libcurl.a &> /dev/null
