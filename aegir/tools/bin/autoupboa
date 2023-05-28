@@ -10,7 +10,7 @@ export HOME=${HOME}
 
 barCnf="/root/.barracuda.cnf"
 
-_X_SE="500prodT01"
+_X_SE="500devT02"
 
 os_detection_minimal() {
   _THIS_RV=$(lsb_release -sc 2>&1)

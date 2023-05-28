@@ -136,6 +136,8 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
     bash /var/backups/BOA.sh.txt.hourly &> /dev/null
     wait
     rm -f /var/backups/BOA.sh.txt.hourly*
+  else
+    echo "Not available /var/backups/BOA.sh.txt.hourly"
   fi
   bash /opt/local/bin/autoupboa
 fi

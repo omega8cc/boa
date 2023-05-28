@@ -602,7 +602,7 @@ _X_VERSION="AUTO"
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${gitHub}"
 aptYesUnth="-y --allow-unauthenticated"
-_X_SE="500prodT01"
+_X_SE="500devT02"
 export _X_SE="${_X_SE}"
 
 
