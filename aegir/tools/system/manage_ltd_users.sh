@@ -2234,6 +2234,7 @@ manage_site_drush_alias_mirror() {
       | sed "s/.alias.drushrc.php//g" \
       | awk '{ print $1}' 2>&1)
     if [ "${AliasName}" = "hm" ] \
+      || [ "${AliasName}" = "none" ] \
       || [[ "${AliasName}" =~ (^)"platform_" ]] \
       || [[ "${AliasName}" =~ (^)"server_" ]] \
       || [[ "${AliasName}" =~ (^)"self" ]] \
