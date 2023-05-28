@@ -2585,7 +2585,7 @@ satellite_download_for_local_build() {
       get_dev_ext "hosting_tasks_extra.tar.gz"
     fi
     ### Aegir Drupal Contrib
-    get_dev_stc "admin_menu-7.x-3.0-rc6.tar.gz"
+    get_dev_stc "admin_menu-7.x-3.0-rc7.tar.gz"
     get_dev_stc "betterlogin-7.x-1.5.tar.gz"
     get_dev_stc "ctools-7.x-1.21.tar.gz"
     get_dev_stc "entity-7.x-1.10.tar.gz"
