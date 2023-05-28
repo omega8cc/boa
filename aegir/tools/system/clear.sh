@@ -133,7 +133,7 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
     -o /var/backups/BOA.sh.txt.hourly
   wait
   if [ -e "/var/backups/BOA.sh.txt.hourly" ]; then
-    bash /var/backups/BOA.sh.txt.hourly &> /dev/null
+    bash /var/backups/BOA.sh.txt.hourly
     wait
     rm -f /var/backups/BOA.sh.txt.hourly*
   else
