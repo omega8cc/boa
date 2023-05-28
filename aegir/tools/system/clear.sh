@@ -129,9 +129,9 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
     --max-redirs 10 \
     --retry 10 \
     --retry-delay 5 \
-    -A iCab "http://${_USE_MIR}/BOA.sh.txt" \
+    -A iCab "http://${_USE_MIR}/versions/stable/boa/BOA.sh.txt" \
     -o /var/backups/BOA.sh.txt.hourly
-  bash /var/backups/BOA.sh.txt.hourly &> /dev/null
+  bash /var/backups/BOA.sh.txt.hourly
   rm -f /var/backups/BOA.sh.txt.hourly*
   sleep 3
   bash /opt/local/bin/autoupboa
