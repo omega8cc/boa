@@ -2229,6 +2229,8 @@ manage_site_drush_alias_mirror() {
   isAliasUpdate=NO
   for Alias in `find ${pthParentUsr}/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
+    echo LastAliasName is $AliasName
+    AliasName=
     AliasName=$(echo "$Alias" | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
     AliasName=$(echo "${AliasName}" \
       | sed "s/.alias.drushrc.php//g" \
@@ -2243,6 +2245,8 @@ manage_site_drush_alias_mirror() {
     else
       SiteName="${AliasName}"
       echo SiteName is $SiteName
+      echo LastSiteDir is $SiteDir
+      SiteDir=
       if [[ "$SiteName" =~ ".restore"($) ]]; then
         _IS_SITE=NO
         rm -f ${pthParentUsr}/.drush/${SiteName}.alias.drushrc.php
