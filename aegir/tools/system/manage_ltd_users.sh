@@ -415,6 +415,7 @@ enable_chattr() {
     fi
 
     UQ="$1"
+    chage -M 99999 ${UQ} &> /dev/null
     if [ -f "${dscUsr}/static/control/compass.info" ]; then
       if [ -d "/home/${UQ}/.rvm/src" ]; then
         rm -rf /home/${UQ}/.rvm/src/*
@@ -647,6 +648,7 @@ enable_chattr() {
         rm -rf /home/${UQ}/.npm-packages    &> /dev/null
       fi
     fi
+    chage -M 90 ${UQ} &> /dev/null
 
     if [ "$1" != "${_USER}.ftp" ]; then
       if [ -d "/home/$1/" ]; then
@@ -2276,10 +2278,12 @@ manage_site_drush_alias_mirror() {
   if [ -x "/usr/bin/drush10" ]; then
     if [ "${isAliasUpdate}" = "YES" ] \
       || [ ! -e "/home/${_USER}.ftp/.drush/sites/.checksums" ]; then
+      chage -M 99999 ${_USER}.ftp &> /dev/null
       su -s /bin/bash - ${_USER}.ftp -c "rm -f ~/.drush/sites/*.yml"
       su -s /bin/bash - ${_USER}.ftp -c "rm -f ~/.drush/sites/.checksums/*.md5"
       su -s /bin/bash - ${_USER}.ftp -c "drush10 core:init --yes" &> /dev/null
       su -s /bin/bash - ${_USER}.ftp -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
+      chage -M 90 ${_USER}.ftp &> /dev/null
     fi
   fi
 }
