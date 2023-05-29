@@ -7219,11 +7219,7 @@ initd_update() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Restarting Solr 7"
       fi
-      mrun "service solr7 stop" &> /dev/null
-      #kill -9 $(ps aux | grep '[j]ava-8-openjdk' | awk '{print $2}') &> /dev/null
-      #kill -9 $(ps aux | grep '[j]ava-11-openjdk' | awk '{print $2}') &> /dev/null
-      #kill -9 $(ps aux | grep '[j]ava-17-openjdk' | awk '{print $2}') &> /dev/null
-      mrun "service solr7 start" &> /dev/null
+      mrun "service solr7 restart" &> /dev/null
     fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
