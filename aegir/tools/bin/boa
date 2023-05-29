@@ -1982,6 +1982,11 @@ case "$1" in
              kind="$2"
              display_version
   ;;
+  reboot)    service clean-boa-env stop
+             wait
+             reboot
+             exit 0
+  ;;
   init)      cmmand="$1"
              check_root
              check_root_keys_pwd
@@ -2145,6 +2150,7 @@ case "$1" in
              echo "Usage: $(basename "$0") version"
              echo "Usage: $(basename "$0") info {more}"
              echo "Usage: $(basename "$0") info report {octopus|backups|both}"
+             echo "Usage: $(basename "$0") reboot"
              echo
              cat <<EOF
 
@@ -2158,6 +2164,7 @@ case "$1" in
       in-2.3 <------- install old stable 2.3 (for testing only)
       in-2.2 <------- install old stable 2.2 (for testing only)
       in-octopus <--- install extra Octopus instance (head, dev or stable)
+      reboot <------- run accelerated system reboot
 
   {mode}
       public <------- recommended for general use
