@@ -81,6 +81,7 @@ stop_sql() {
     echo "Waiting for Nginx graceful shutdown..."
     sleep 1
   done
+  killall nginx &> /dev/null
   echo "Nginx stopped"
 
   echo "Stopping all PHP-FPM instances now..."
@@ -95,6 +96,7 @@ stop_sql() {
     echo "Waiting for PHP-FPM graceful shutdown..."
     sleep 1
   done
+  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
   echo "PHP-FPM stopped"
 
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
