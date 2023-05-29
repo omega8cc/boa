@@ -133,7 +133,7 @@ if [ -e "/var/log/php" ]; then
     renice ${_B_NICE} -p $$ &> /dev/null
     _PHP_V="82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
-      if [ -e "/etc/init.d/php${e}-fpm" ]; then
+      if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm start
       fi
     done
@@ -155,7 +155,7 @@ if [ -e "/var/log/php" ]; then
     renice ${_B_NICE} -p $$ &> /dev/null
     _PHP_V="82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
-      if [ -e "/etc/init.d/php${e}-fpm" ]; then
+      if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm start
       fi
     done
@@ -174,7 +174,7 @@ if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]]; then
   renice ${_B_NICE} -p $$ &> /dev/null
   _PHP_V="82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
-    if [ -e "/etc/init.d/php${e}-fpm" ]; then
+    if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       service php${e}-fpm reload
     fi
   done
@@ -287,7 +287,7 @@ redis_oom_check() {
     renice ${_B_NICE} -p $$ &> /dev/null
     _PHP_V="82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
-      if [ -e "/etc/init.d/php${e}-fpm" ]; then
+      if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm reload
       fi
     done
@@ -313,7 +313,7 @@ redis_slow_check() {
     renice ${_B_NICE} -p $$ &> /dev/null
     _PHP_V="82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
-      if [ -e "/etc/init.d/php${e}-fpm" ]; then
+      if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm reload
       fi
     done
@@ -338,7 +338,7 @@ fpm_sockets_healing() {
     renice ${_B_NICE} -p $$ &> /dev/null
     _PHP_V="82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
-      if [ -e "/etc/init.d/php${e}-fpm" ]; then
+      if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm start
       fi
     done

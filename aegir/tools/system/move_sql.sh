@@ -86,7 +86,7 @@ stop_sql() {
   echo "Stopping all PHP-FPM instances now..."
   _PHP_V="82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
-    if [ -e "/etc/init.d/php${e}-fpm" ]; then
+    if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       service php${e}-fpm force-quit &> /dev/null
     fi
   done
