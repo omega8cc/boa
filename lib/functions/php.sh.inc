@@ -2348,7 +2348,8 @@ check_php_broken_segfault() {
   if [[ ! "${isSegft}" =~ "cli" ]] \
     || [ -z "${isSegft}" ] \
     || [[ "${isOnig}" =~ "OnigEncoding" ]]; then
-    if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
+    if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ] \
+      || [[ "${isOnig}" =~ "OnigEncoding" ]]; then
       msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix broken build..."
       install_php_multi "$1"
       _PHP_ALREADY_REBUILT=$1
