@@ -119,10 +119,18 @@ truncate_cache_tables() {
   check_running
   _TABLES=$(${_C_SQL} ${_DB} -e "show tables" -s | grep ^cache | uniq | sort 2>&1)
   for C in ${_TABLES}; do
-${_C_SQL} ${_DB}<<EOFMYSQL
+    _IF_SKIP_C=
+    _SQL_CACHE_EXC=$(cat /root/.my.cache.exceptions.cnf 2>&1)
+      for X in ${_SQL_CACHE_EXC}; do
+        if [ "${C}" = "${X}" ]; then
+          _IF_SKIP_C=SKIP
+        fi
+      done
+    if [ -z "${_IF_SKIP_C}" ]; then
+      ${_C_SQL} ${_DB}<<EOFMYSQL
 TRUNCATE ${C};
 EOFMYSQL
-    sleep 1
+    fi
   done
 }
 
@@ -133,7 +141,6 @@ truncate_watchdog_tables() {
 ${_C_SQL} ${_DB}<<EOFMYSQL
 TRUNCATE ${A};
 EOFMYSQL
-    sleep 1
   done
 }
 
@@ -144,7 +151,6 @@ truncate_accesslog_tables() {
 ${_C_SQL} ${_DB}<<EOFMYSQL
 TRUNCATE ${A};
 EOFMYSQL
-    sleep 1
   done
 }
 
@@ -155,7 +161,6 @@ truncate_queue_tables() {
 ${_C_SQL} ${_DB}<<EOFMYSQL
 TRUNCATE ${Q};
 EOFMYSQL
-    sleep 1
   done
 }
 
