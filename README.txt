@@ -193,7 +193,7 @@ Octopus can install and/or support the platforms listed below:
 
  @ Drupal 7.97.1
 
- Commerce 1.71 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 1.72 ---------------- https://drupal.org/project/commerce_kickstart
  Commerce 2.75 ---------------- https://drupal.org/project/commerce_kickstart
  Drupal 7.97.1 ---------------- https://drupal.org/project/drupal/releases/7.97
  Guardr 2.57 ------------------ https://drupal.org/project/guardr
