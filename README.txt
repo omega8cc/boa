@@ -162,13 +162,13 @@ production settings.
 
 === Optional add-ons - see docs/NOTES.txt for details
 
-* MultiCore Apache Solr 7 and Solr 4 - see docs/SOLR.txt for details.
-* New Relic Apps Monitor with per Octopus license and per Site reporting.
-* RVM, Compass Tools, and NPM - see docs/RVM.txt for details.
-* Image Optimize toolkit binaries.
-* FFmpeg support.
-* Bind9 DNS server.
-* Collectd server monitor.
+* MultiCore Apache Solr 7 and Solr 4 - see docs/SOLR.txt for details
+* New Relic Apps Monitor with per Octopus license and per Site reporting
+* RVM, Compass Tools, and NPM - see docs/RVM.txt for details
+* Image Optimize toolkit binaries
+* FFmpeg support
+* Bind9 DNS server
+* Collectd server monitor (deprecated)
 * LDAP Nginx support via third-party module (experimental)
 * MongoDB driver for PHP (experimental)
 * GEOS extension for PHP (experimental)
