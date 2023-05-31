@@ -118,9 +118,18 @@ truncate_cache_tables() {
   check_running
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^cache | uniq | sort 2>&1)
   for C in ${_TABLES}; do
-mysql ${_DB}<<EOFMYSQL
+    _IF_SKIP_C=
+    _SQL_CACHE_EXC=$(cat /root/.my.cache.exceptions.cnf 2>&1)
+      for X in ${_SQL_CACHE_EXC}; do
+        if [ "${C}" = "${X}" ]; then
+          _IF_SKIP_C=SKIP
+        fi
+      done
+    if [ -z "${_IF_SKIP_C}" ]; then
+      mysql ${_DB}<<EOFMYSQL
 TRUNCATE ${C};
 EOFMYSQL
+    fi
   done
 }
 
