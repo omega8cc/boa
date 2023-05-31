@@ -158,6 +158,7 @@ production settings.
 * Composer and Drush Make access on command line for main shell account only.
 * PHP errors debugging, including WSOD, enabled on the fly on .dev. aliases.
 * Built-in collection of useful modules available in all platforms.
+* Fast DNS Cache Server (pdnsd)
 
 === Optional add-ons - see docs/NOTES.txt for details
 
@@ -168,7 +169,6 @@ production settings.
 * FFmpeg support.
 * Bind9 DNS server.
 * Collectd server monitor.
-* Fast DNS Cache Server (pdnsd) (not supported on Linode)
 * LDAP Nginx support via third-party module (experimental)
 * MongoDB driver for PHP (experimental)
 * GEOS extension for PHP (experimental)
