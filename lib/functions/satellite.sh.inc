@@ -3565,10 +3565,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/social-${_SOCIAL}-${_SMALLCORE94}/html/sites" ]; then
-      if [ ! -L "${_QH}/social-${_SOCIAL}-${_SMALLCORE94}" ]; then
-        _A="${_QR}/social-${_SOCIAL}-${_SMALLCORE94}/html/sites"
-        _B="${_QH}/social-${_SOCIAL}-${_SMALLCORE94}"
+    if [ -d "${_QR}/social-${_SOCIAL}-${_SMALLCORE95}/html/sites" ]; then
+      if [ ! -L "${_QH}/social-${_SOCIAL}-${_SMALLCORE95}" ]; then
+        _A="${_QR}/social-${_SOCIAL}-${_SMALLCORE95}/html/sites"
+        _B="${_QH}/social-${_SOCIAL}-${_SMALLCORE95}"
         ln -sfn ${_A} ${_B}
       fi
     fi

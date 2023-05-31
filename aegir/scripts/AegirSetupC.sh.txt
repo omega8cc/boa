@@ -723,7 +723,7 @@ _F_OPIGNOLMS9="Opigno LMS ${_OPIGNOLMS9} ${_SMALLCORE94} [${_THIS_CORE}]"
 _F_PANOPOLY="Panopoly ${_PANOPOLY} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_RECRUITER="Recruiter ${_RECRUITER} ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_RESTAURANT="Restaurant ${_RESTAURANT} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_SOCIAL="Social ${_SOCIAL} ${_SMALLCORE94} [${_THIS_CORE}]"
+_F_SOCIAL="Social ${_SOCIAL} ${_SMALLCORE95} [${_THIS_CORE}]"
 _F_THUNDER="Thunder ${_THUNDER} ${_SMALLCORE95} [${_THIS_CORE}]"
 _F_UBER_CART_T="Ubercart ${_UBERCART7} [ud2] ${_SMALLCORE7} [${_THIS_CORE}]"
 _F_UBERCART6="Ubercart ${_UBERCART6} ${_SMALLCORE6} [${_THIS_CORE}]"
@@ -2522,7 +2522,7 @@ social_install() {
 ###---### Social
 #
   _REAL_PRNAME="social"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_SOCIAL}-${_SMALLCORE94}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_SOCIAL}-${_SMALLCORE95}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/html"
@@ -2845,10 +2845,10 @@ save_verify_platforms() {
         ${pthDst}/varbase-${_VARBASE}-${_SMALLCORE95}/docroot &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/social-${_SOCIAL}-${_SMALLCORE94}/html" ]; then
-    if [ ! -e "${pthDst}/social-${_SOCIAL}-${_SMALLCORE94}/html/$drhSrc" ]; then
+  if [ -d "${pthDst}/social-${_SOCIAL}-${_SMALLCORE95}/html" ]; then
+    if [ ! -e "${pthDst}/social-${_SOCIAL}-${_SMALLCORE95}/html/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_SOCIAL" social \
-        ${pthDst}/social-${_SOCIAL}-${_SMALLCORE94}/html &> /dev/null
+        ${pthDst}/social-${_SOCIAL}-${_SMALLCORE95}/html &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/opigno_lms-${_OPIGNOLMS8}-${_SMALLCORE8}/web" ]; then
