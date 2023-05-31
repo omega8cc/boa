@@ -2,7 +2,7 @@
 
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _OSR=$(lsb_release -sc 2>&1)
-_OPENSSL_MODERN_VRN=3.1.0
+_OPENSSL_MODERN_VRN=3.1.1
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
   | cut -d" " -f2 \
