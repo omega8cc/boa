@@ -220,9 +220,6 @@ EOFMYSQL
 }
 
 backup_this_database_with_mydumper() {
-  n=$((RANDOM%15+5))
-  echo waiting ${n} sec
-  sleep ${n}
   check_running
   if [ ! -d "${_SAVELOCATION}/${_DB}" ]; then
     mkdir -p ${_SAVELOCATION}/${_DB}
@@ -243,9 +240,6 @@ backup_this_database_with_mydumper() {
 }
 
 backup_this_database_with_mysqldump() {
-  n=$((RANDOM%15+5))
-  echo waiting ${n} sec
-  sleep ${n}
   check_running
   mysqldump \
     --single-transaction \
