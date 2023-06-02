@@ -75,6 +75,15 @@ if [ -z "${_B_NICE}" ]; then
   _B_NICE=10
 fi
 
+_SQL_CACHE_EXC_DEF="cache_bootstrap cache_discovery cache_config"
+
+if [ -e "/root/.my.cache.exceptions.cnf" ]; then
+  _SQL_CACHE_EXC_ADD=$(cat /root/.my.cache.exceptions.cnf 2>&1)
+  _SQL_CACHE_EXC="${_SQL_CACHE_EXC_DEF} ${_SQL_CACHE_EXC_ADD}"
+else
+  _SQL_CACHE_EXC="${_SQL_CACHE_EXC_DEF}"
+fi
+
 _BACKUPDIR=/data/disk/arch/sql
 _CHECK_HOST=$(uname -n 2>&1)
 _DATE=$(date +%y%m%d-%H%M%S 2>&1)
@@ -119,12 +128,11 @@ truncate_cache_tables() {
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^cache | uniq | sort 2>&1)
   for C in ${_TABLES}; do
     _IF_SKIP_C=
-    _SQL_CACHE_EXC=$(cat /root/.my.cache.exceptions.cnf 2>&1)
-      for X in ${_SQL_CACHE_EXC}; do
-        if [ "${C}" = "${X}" ]; then
-          _IF_SKIP_C=SKIP
-        fi
-      done
+    for X in ${_SQL_CACHE_EXC}; do
+      if [ "${C}" = "${X}" ]; then
+        _IF_SKIP_C=SKIP
+      fi
+    done
     if [ -z "${_IF_SKIP_C}" ]; then
       mysql ${_DB}<<EOFMYSQL
 TRUNCATE ${C};
