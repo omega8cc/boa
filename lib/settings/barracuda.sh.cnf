@@ -904,10 +904,12 @@ _DB_BINARY_LOG=NO
 
 ###
 ### Use MySQLTuner to configure SQL limits.
-### Can be disabled when set to NO, if causes
-### too high load spikes on too weak systems.
+### Can be enabled when set to YES, but may cause
+### very high load spikes or forced SQL restarts
+### on systems with not enough RAM and CPU power
+### and hundreds of sites hosted.
 ###
-_USE_MYSQLTUNER=YES
+_USE_MYSQLTUNER=NO
 
 ###
 ### Set max 1 min load per CPU core before blocking

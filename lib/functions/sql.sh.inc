@@ -41,7 +41,6 @@ sql_strict_upgrade_path() {
         _ALL_FORCE_REINSTALL=NO
       elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.2." ]]; then
         _SQL_UPGRADE=YES
-        _USE_MYSQLTUNER=YES
       else
         _SQL_UPGRADE=NO
         _SQL_FORCE_REINSTALL=NO
