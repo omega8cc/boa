@@ -396,6 +396,14 @@ if [ -e "/var/log/jetty7" ]; then
   fi
 fi
 
+if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/cron"` -gt "1" ]; then
+  service cron stop &> /dev/null
+  killall cron &> /dev/null
+  service cron start &> /dev/null
+  echo "$(date 2>&1) Too many Cron instances running killed" >> \
+    /var/xdrago/log/cron-count.kill.log
+fi
+
 if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt "9" ]; then
   kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) Too many PHP-FPM master processes killed" >> \
