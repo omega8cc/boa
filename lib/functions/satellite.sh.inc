@@ -4604,9 +4604,9 @@ EOF
     else
       echo " "
       thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
-      msg "This Octopus URL address is ${_DOMAIN}"
-      msg "This Octopus PHP version is ${_PHP_FPM_VERSION}"
       msg "This Octopus System is ${thiSys}"
+      msg "This Octopus PHP FPM/CLI version is ${_PHP_FPM_VERSION}/${_PHP_CLI_VERSION}"
+      msg "This Octopus URL address is ${_DOMAIN}"
       echo " "
     fi
   fi
