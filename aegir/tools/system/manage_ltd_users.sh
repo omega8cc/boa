@@ -2304,6 +2304,13 @@ manage_user() {
       octInc="${dscUsr}/config/includes"
       octTpl="${dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx"
       usrDgn="${dscUsr}/.drush/usr/drupalgeddon"
+      if [ -e "${dscUsr}/log/imported.pid" ] \
+        && [ -e "${dscUsr}/log/post-merge-fix.pid" ]; then
+        [ -e "${dscUsr}/log/imported.pid" ] && mv -f ${dscUsr}/log/imported.pid ${dscUsr}/src/
+        [ -e "${dscUsr}/log/exported.pid" ] && mv -f ${dscUsr}/log/exported.pid ${dscUsr}/src/
+        [ -e "${dscUsr}/log/hmpathfix.pid" ] && mv -f ${dscUsr}/log/hmpathfix.pid ${dscUsr}/src/
+        [ -e "${dscUsr}/log/post-merge-fix.pid" ] && mv -f ${dscUsr}/log/post-merge-fix.pid ${dscUsr}/src/
+      fi
       if [ ! -e "${dscUsr}/rector.php" ]; then
         rm -f ${dscUsr}/*.php* &> /dev/null
         rm -f ${dscUsr}/composer.lock &> /dev/null
