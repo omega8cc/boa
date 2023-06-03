@@ -1513,47 +1513,54 @@ site_socket_inc_gen() {
   hmFront=$(echo -n ${hmFront} | tr -d "\n" 2>&1)
   hmstAls="${dscUsr}/.drush/${hmFront}.alias.drushrc.php"
 
-  if [ -x "/opt/php81/bin/php" ] && [ -e "${dscUsr}/log/domain.txt" ]; then
+  hmstCli=$(cat ${dscUsr}/log/cli.txt 2>&1)
+  hmstCli=$(echo -n ${hmstCli} | tr -d "\n" 2>&1)
+
+  if [ "${hmstCli}" = "8.1" ] \
+    && [ -x "/opt/php81/bin/php" ] \
+    && [ -e "${dscUsr}/log/domain.txt" ]; then
     if [ ! -e "${unlAeg}" ]; then
-      if [ ! -e "${dscUsr}/log/locked-aegir-php.txt" ]; then
+      if [ ! -e "${dscUsr}/log/locked-aegir-fpm.txt" ]; then
+        sed -i "s/^${hmFront} .*//g" ${mltFpm}
         echo "${hmFront} 8.1" >> ${mltFpm}
         if [ ! -e "${hmstAls}" ]; then
           ln -s ${dscUsr}/.drush/hostmaster.alias.drushrc.php ${hmstAls}
         fi
-        wait
-        sed -i "s/^place.holder.dont.remove 5.6//g" ${mltFpm}
-        wait
-        sed -i "s/^place.holder.dont.remove 7.4//g" ${mltFpm}
-        wait
-        echo "place.holder.dont.remove 7.4" >> ${mltFpm}
-        wait
+        sed -i "s/^place.holder.dont.remove .*//g" ${mltFpm}
+        echo "place.holder.dont.remove 8.1" >> ${mltFpm}
         sed -i "s/ *$//g; /^$/d" ${mltFpm}
-        wait
         echo "8.1" > ${dscUsr}/static/control/cli.info
-        rm -f ${dscUsr}/log/unlocked-aegir-php.txt
-        echo "8.1" > ${dscUsr}/log/locked-aegir-php.txt
+        rm -f ${dscUsr}/log/unlocked-aegir-fpm.txt
+        echo "8.1" > ${dscUsr}/log/locked-aegir-fpm.txt
       fi
       if [ ! -e "${fpmPth}/fpm_include_site_${hmFront}.inc" ]; then
         mltFpmUpdateForce=YES
       fi
     else
-      if [ ! -e "${dscUsr}/log/unlocked-aegir-php.txt" ]; then
+      if [ ! -e "${dscUsr}/log/unlocked-aegir-fpm.txt" ]; then
         if [ -e "${mltFpm}" ]; then
-          sed -i "s/^${hmFront} 8.1//g" ${mltFpm}
+          sed -i "s/^${hmFront} .*//g" ${mltFpm}
           wait
-          sed -i "s/^place.holder.dont.remove 5.6//g" ${mltFpm}
+          sed -i "s/^place.holder.dont.remove .*//g" ${mltFpm}
           wait
-          sed -i "s/^place.holder.dont.remove 7.4//g" ${mltFpm}
-          wait
-          echo "place.holder.dont.remove 7.4" >> ${mltFpm}
-          wait
+          echo "place.holder.dont.remove 8.1" >> ${mltFpm}
           sed -i "s/ *$//g; /^$/d" ${mltFpm}
-          wait
         fi
         mltFpmUpdateForce=YES
-        rm -f ${dscUsr}/log/locked-aegir-php.txt
-        touch ${dscUsr}/log/unlocked-aegir-php.txt
+        rm -f ${dscUsr}/log/locked-aegir-fpm.txt
+        touch ${dscUsr}/log/unlocked-aegir-fpm.txt
       fi
+    fi
+  elif [ -x "/opt/php74/bin/php" ] && [ -e "${dscUsr}/log/domain.txt" ]; then
+    if [ ! -e "${dscUsr}/log/use-legacy-aegir-fpm.txt" ]; then
+      sed -i "s/^place.holder.dont.remove .*//g" ${mltFpm}
+      echo "place.holder.dont.remove 7.4" >> ${mltFpm}
+      sed -i "s/^${hmFront} .*//g" ${mltFpm}
+      echo "${hmFront} 7.4" >> ${mltFpm}
+      if [ ! -e "${hmstAls}" ]; then
+        ln -s ${dscUsr}/.drush/hostmaster.alias.drushrc.php ${hmstAls}
+      fi
+      echo "7.4" > ${dscUsr}/log/use-legacy-aegir-fpm.txt
     fi
   fi
 
