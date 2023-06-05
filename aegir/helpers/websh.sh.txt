@@ -165,11 +165,11 @@ _X_USR=".*"
 if [ "${USER}" = "aegir" ] \
   || [ "${HOME}" = "/var/aegir" ]; then
   _Y_USR=aegir
-  _DRUSH_CLI_CTRL="/var/aegir/static/control/drcr-php-cli"
+  _DRUSH_CLI_CTRL="/var/aegir/static/control"
   ### echo _DRUSH_CLI_CTRL is ${_DRUSH_CLI_CTRL}
 else
   _Y_USR=${USER%${_X_USR}}
-  _DRUSH_CLI_CTRL="/data/disk/${_Y_USR}/static/control/drcr-php-cli"
+  _DRUSH_CLI_CTRL="/data/disk/${_Y_USR}/static/control"
   ### echo _DRUSH_CLI_CTRL is ${_DRUSH_CLI_CTRL}
 fi
 if [ -z "${HOME}" ]; then
