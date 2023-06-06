@@ -230,6 +230,10 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
   echo " " >> ${logAbf}
+  msg "Running barracuda php-idle disable to speed up upgrades" >> ${logAbf}
+  barracuda php-idle disable >> ${logAbf}
+  wait
+  msg "The barracuda php-idle disable completed" >> ${logAbf}
   msg "Launching standard barracuda up-dev system first" >> ${logAbf}
   barracuda up-dev system >> ${logAbf}
   wait

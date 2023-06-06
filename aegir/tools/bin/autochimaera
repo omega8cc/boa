@@ -228,7 +228,11 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
   echo " " >> ${logAch}
-  msg "Launching standard barracuda up-dev system first" >> ${logAch}
+  msg "Running barracuda php-idle disable to speed up upgrades" >> ${logAch}
+  barracuda php-idle disable >> ${logAch}
+  wait
+  msg "The barracuda php-idle disable completed" >> ${logAch}
+  msg "Launching standard barracuda up-dev system now" >> ${logAch}
   barracuda up-dev system >> ${logAch}
   wait
   msg "The standard barracuda up-dev system completed" >> ${logAch}
