@@ -147,8 +147,8 @@ faster_reboot() {
   kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
   kill -9 $(ps aux | grep '[m]inute.sh' | awk '{print $2}') &> /dev/null
   kill -9 $(ps aux | grep '[r]unner.sh' | awk '{print $2}') &> /dev/null
-  echo "Cron has been stopped" >> ${logAch}
-  echo "Now waiting 60 seconds for any running tasks to complete" >> ${logAch}
+  msg "Cron has been stopped" >> ${logAch}
+  msg "Now waiting 60 seconds for any running tasks to complete" >> ${logAch}
   sleep 55
   if [ -e "/etc/init.d/clamav-daemon" ]; then
     update-rc.d -f clamav-daemon remove &> /dev/null
@@ -164,7 +164,7 @@ faster_reboot() {
   killall nginx &> /dev/null
   killall php &> /dev/null
   kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
-  echo "Nginx, PHP-CLI and PHP-FPM have been stopped" >> ${logAch}
+  msg "Nginx, PHP-CLI and PHP-FPM have been stopped" >> ${logAch}
   if [ -e "/root/.my.pass.txt" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
     _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
