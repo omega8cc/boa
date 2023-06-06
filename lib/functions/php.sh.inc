@@ -2347,8 +2347,10 @@ check_php_broken_segfault() {
   isOnig=$(grep OnigEncoding /var/log/php/php$1-fpm-error.log 2>&1)
   if [[ ! "${isSegft}" =~ "cli" ]] \
     || [ -z "${isSegft}" ] \
+    || [[ "${isSegft}" =~ "OnigEncoding" ]] \
     || [[ "${isOnig}" =~ "OnigEncoding" ]]; then
     if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ] \
+      || [[ "${isSegft}" =~ "OnigEncoding" ]] \
       || [[ "${isOnig}" =~ "OnigEncoding" ]]; then
       msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix broken build..."
       install_php_multi "$1"
