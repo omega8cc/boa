@@ -231,7 +231,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   msg "Launching standard barracuda up-dev system first" >> ${logAch}
   barracuda up-dev system >> ${logAch}
   wait
-  msg "The initial barracuda up-dev system completed" >> ${logAch}
+  msg "The standard barracuda up-dev system completed" >> ${logAch}
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
     _THIS_OS=$(lsb_release -si 2>&1)
     _THIS_SYS=$(lsb_release -sc 2>&1)
