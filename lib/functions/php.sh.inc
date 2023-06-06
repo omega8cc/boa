@@ -2338,13 +2338,15 @@ check_php_broken_gd() {
 #
 # Check if the PHP build is totally broken.
 check_php_broken_segfault() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: check_php_broken_segfault $1"
-  fi
   isSegft=
   isSegft=$(/opt/php$1/bin/php -v | grep cli 2>&1)
   isOnig=
   isOnig=$(grep OnigEncoding /var/log/php/php$1-fpm-error.log 2>&1)
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_php_broken_segfault $1"
+    msg "CTRL: isSegft for $1 is ${isSegft}"
+    msg "CTRL: isOnig for $1 is ${isOnig}"
+  fi
   if [[ ! "${isSegft}" =~ "cli" ]] \
     || [ -z "${isSegft}" ] \
     || [[ "${isSegft}" =~ "OnigEncoding" ]] \
