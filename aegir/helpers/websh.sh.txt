@@ -329,7 +329,7 @@ if [ ! -z "${_C_ARR}" ] \
   || [ ! -z "${_ARR}" ] \
   || [ ! -z "${_LNCHR_PHP_ARR}" ] \
   || [ ! -z "${_OCTO_SYS_ARR}" ]; then
-  if [[ "${HOME}" =~ (^)"/xdata/disk/" ]]; then
+  if [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
     if [ -e "${_DRUSH_CLI_CTRL}/php82.info" ]; then
       DRUSH_PHP="/opt/php82/bin/php"
       PHP_INI="/opt/php82/lib/php.ini"
@@ -463,7 +463,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           elif [[ "${_ARGS} " =~ "drush10 " ]]; then
             _DEST_DRUSH="/usr/bin/drush10"
           fi
-          if [[ "${HOME}" =~ (^)"/xdata/disk/" ]]; then
+          if [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
             if [ -e "${_DRUSH_CLI_CTRL}/php82.info" ] \
               && [ -x "/opt/php82/bin/php" ]; then
               DRUSH_PHP="/opt/php82/bin/php"
@@ -509,7 +509,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           fi
         else
           _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
-          if [[ "${HOME}" =~ (^)"/xdata/disk/" ]]; then
+          if [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
             if [ -e "${_DRUSH_CLI_CTRL}/php82.info" ] \
               && [ -x "/opt/php82/bin/php" ]; then
               DRUSH_PHP="/opt/php82/bin/php"
