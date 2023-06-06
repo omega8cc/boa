@@ -1685,8 +1685,6 @@ satellite_download_o_contrib_eight() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_eight modules..."
   fi
-  get_dev_contrib "advagg-8.x-4.1.tar.gz"
-  get_dev_contrib "cdn-8.x-3.5.tar.gz"
   get_dev_contrib "robotstxt-8.x-1.5.tar.gz"
   get_dev_contrib "readonlymode-8.x-1.2.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_eight/ver-${_REDIS_N_VERSION}.${_X_SE}.info" ]; then
