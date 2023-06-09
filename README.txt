@@ -205,7 +205,7 @@ Octopus can install and/or support the platforms listed below:
 
  @ Pressflow (D6 LTS included, thanks to myDropWizard) 6.60.1
 
- Pressflow 6.60.1 ------------- http://pressflow.org
+ Pressflow 6.60.1 ------------- https://www.pressflow.org
  Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
 
 * All D7 platforms have been enhanced using Drupal 7.98.1 +Extra core:

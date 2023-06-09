@@ -1058,7 +1058,7 @@ drupal6_install() {
     || [[ "${_PLATFORMS_LIST}" =~ "D6P" ]]; then
     pthPfw="pressflow-${_SMALLCORE6}-dev/modules/path_alias_cache"
     if [ ! -d "${_ROOT}/distro/${_THIS_CORE}/${pthPfw}" ]; then
-      if prompt_yes_no "$_F_DRUPAL6 - http://pressflow.org" ; then
+      if prompt_yes_no "$_F_DRUPAL6 - https://www.pressflow.org" ; then
         true
         ###---### Drupal 6 Pressflow Development
         #
