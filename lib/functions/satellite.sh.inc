@@ -3577,10 +3577,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE94}/web/sites" ]; then
-      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE94}" ]; then
-        _A="${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE94}/web/sites"
-        _B="${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE94}"
+    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE95}/web/sites" ]; then
+      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE95}" ]; then
+        _A="${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE95}/web/sites"
+        _B="${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE95}"
         ln -sfn ${_A} ${_B}
       fi
     fi
