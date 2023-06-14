@@ -5855,9 +5855,6 @@ satellite_child_b_aegir_ui_enhance() {
       ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"
       ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats"
       ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE hosting_task_log"
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE hosting_package"
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE hosting_package_instance"
       ${_DRUSHCMD} @hostmaster en hosting_le -y
       ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y
       ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
@@ -5865,12 +5862,9 @@ satellite_child_b_aegir_ui_enhance() {
       ${_DRUSHCMD} @hostmaster cache-clear all
       ${_DRUSHCMD} @hostmaster updb -y
     else
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format" &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"  &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats" &> /dev/null
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter" &> /dev/null
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE hosting_task_log" &> /dev/null
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE hosting_package" &> /dev/null
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE hosting_package_instance" &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"         &> /dev/null
       ${_DRUSHCMD} @hostmaster en hosting_le -y &> /dev/null
       ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y &> /dev/null
       ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y  &> /dev/null
