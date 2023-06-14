@@ -385,17 +385,20 @@ sftp_ftps_modern_fix() {
     || [ ! -e "/etc/ssh/sftp_config" ] \
     || [ ! -e "/usr/bin/mysecureshell" ] \
     || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
-    msg "INFO: Installing MySecureShell ${_MSS_VRN}..."
-    cd /var/opt
-    rm -rf mysecureshell*
-    get_dev_src "mysecureshell-${_MSS_VRN}.tar.gz"
-    cd /var/opt/mysecureshell
-    mrun "bash ./configure" 2> /dev/null
-    mrun "make -j $(nproc) --quiet" 2> /dev/null
-    st_runner "sh ./install.sh yesall" 2> /dev/null
-    touch ${pthLog}/mss-build-${_MSS_VRN}-${_X_SE}-${_X_VERSION}.log
-    cp -af ${locCnf}/sftp_config /etc/ssh/sftp_config
-    mrun "service ssh restart" &> /dev/null
+    if [ "${_MSS_BUILD}" != "YES" ]; then
+      msg "INFO: Installing MySecureShell ${_MSS_VRN}..."
+      cd /var/opt
+      rm -rf mysecureshell*
+      get_dev_src "mysecureshell-${_MSS_VRN}.tar.gz"
+      cd /var/opt/mysecureshell
+      mrun "bash ./configure" 2> /dev/null
+      mrun "make -j $(nproc) --quiet" 2> /dev/null
+      st_runner "sh ./install.sh yesall" 2> /dev/null
+      touch ${pthLog}/mss-build-${_MSS_VRN}-${_X_SE}-${_X_VERSION}.log
+      cp -af ${locCnf}/sftp_config /etc/ssh/sftp_config
+      mrun "service ssh restart" &> /dev/null
+      _MSS_BUILD=YES
+    fi
   fi
   if [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
     _MSS_TEST=$(grep "lshell" /etc/passwd 2>&1)
