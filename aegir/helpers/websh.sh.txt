@@ -265,6 +265,10 @@ export USER=${USER}
 # Check PHP CLI version defined.
 check_php_cli_version() {
   ### echo CHK start check_php_cli_version
+  _PHP_CLI=
+  DRUSH_PHP=
+  PHP_INI=
+  PHP_OPT=
   if [ "${HOME}" = "/var/aegir" ]; then
     _PHP_CLI=$(grep "/opt/php" /var/aegir/drush/drush.php 2>&1)
   elif [[ "${HOME}" =~ "/data/disk/" ]]; then
@@ -274,50 +278,22 @@ check_php_cli_version() {
       _PHP_CLI=$(grep "/opt/php" /data/disk/${_Y_USR}/tools/drush/drush.php 2>&1)
     fi
   fi
-  if [[ "${_PHP_CLI}" =~ "php82" ]]; then
-    DRUSH_PHP="/opt/php82/bin/php"
-    PHP_INI="/opt/php82/lib/php.ini"
-  elif [[ "${_PHP_CLI}" =~ "php81" ]]; then
-    DRUSH_PHP="/opt/php81/bin/php"
-    PHP_INI="/opt/php81/lib/php.ini"
-  elif [[ "${_PHP_CLI}" =~ "php80" ]]; then
-    DRUSH_PHP="/opt/php80/bin/php"
-    PHP_INI="/opt/php80/lib/php.ini"
-  elif [[ "${_PHP_CLI}" =~ "php74" ]]; then
-    DRUSH_PHP="/opt/php74/bin/php"
-    PHP_INI="/opt/php74/lib/php.ini"
-  elif [[ "${_PHP_CLI}" =~ "php73" ]]; then
-    DRUSH_PHP="/opt/php73/bin/php"
-    PHP_INI="/opt/php73/lib/php.ini"
-  elif [[ "${_PHP_CLI}" =~ "php72" ]]; then
-    DRUSH_PHP="/opt/php72/bin/php"
-    PHP_INI="/opt/php72/lib/php.ini"
-  elif [[ "${_PHP_CLI}" =~ "php71" ]]; then
-    DRUSH_PHP="/opt/php71/bin/php"
-    PHP_INI="/opt/php71/lib/php.ini"
-  elif [[ "${_PHP_CLI}" =~ "php70" ]]; then
-    DRUSH_PHP="/opt/php70/bin/php"
-    PHP_INI="/opt/php70/lib/php.ini"
-  elif [[ "${_PHP_CLI}" =~ "php56" ]]; then
-    DRUSH_PHP="/opt/php56/bin/php"
-    PHP_INI="/opt/php56/lib/php.ini"
-  else
-    DRUSH_PHP="/usr/bin/php"
-  fi
   if [ -f "${HOME}/.drush/php.ini" ]; then
     PHP_INI="${HOME}/.drush/php.ini"
-    ### echo RHK 1 drush/php.ini PHP_INI is ${PHP_INI}
   fi
-  if [ ! -z "${PHP_OPTIONS}" ] && [ -f "${HOME}/.drush/rphp.ini" ]; then
-    PHP_INI="${HOME}/.drush/rphp.ini"
-    ### echo RHK 1 drush/rphp.ini PHP_OPTIONS is ${PHP_OPTIONS}
-    ### echo RHK 1 drush/rphp.ini PHP_INI is ${PHP_INI}
-  fi
+  _PHP_V="56 70 71 72 73 74 80 81 82"
+  for e in ${_PHP_V}; do
+    if [[ "${_PHP_CLI}" =~ "php${e}" ]] && [ -x "/opt/php${e}/bin/php" ]; then
+      DRUSH_PHP="/opt/php${e}/bin/php"
+      PHP_INI="/opt/php${e}/lib/php.ini"
+      if [ -f "${HOME}/.drush/php${e}.ini" ]; then
+        PHP_INI="${HOME}/.drush/php${e}.ini"
+      fi
+    fi
+  done
   if [ ! -z "${PHP_INI}" ]; then
     PHP_OPT="--php-ini ${PHP_INI}"
     export DRUSH_PHP;export PHP_INI;export PHP_OPT;
-  else
-    export DRUSH_PHP;
   fi
   ### echo CHK 1 DRUSH_PHP is ${DRUSH_PHP}
   ### echo CHK 1 PHP_INI is ${PHP_INI}
@@ -330,46 +306,24 @@ if [ ! -z "${_C_ARR}" ] \
   || [ ! -z "${_LNCHR_PHP_ARR}" ] \
   || [ ! -z "${_OCTO_SYS_ARR}" ]; then
   if [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
-    if [ -e "${_DRUSH_CLI_CTRL}/php82.info" ]; then
-      DRUSH_PHP="/opt/php82/bin/php"
-      PHP_INI="/opt/php82/lib/php.ini"
-      PHP_OPT="--php-ini ${PHP_INI}"
-    elif [ -e "${_DRUSH_CLI_CTRL}/php81.info" ]; then
-      DRUSH_PHP="/opt/php81/bin/php"
-      PHP_INI="/opt/php81/lib/php.ini"
-      PHP_OPT="--php-ini ${PHP_INI}"
-    elif [ -e "${_DRUSH_CLI_CTRL}/php80.info" ]; then
-      DRUSH_PHP="/opt/php80/bin/php"
-      PHP_INI="/opt/php80/lib/php.ini"
-      PHP_OPT="--php-ini ${PHP_INI}"
-    elif [ -e "${_DRUSH_CLI_CTRL}/php74.info" ]; then
-      DRUSH_PHP="/opt/php74/bin/php"
-      PHP_INI="/opt/php74/lib/php.ini"
-      PHP_OPT="--php-ini ${PHP_INI}"
-    elif [ -e "${_DRUSH_CLI_CTRL}/php73.info" ]; then
-      DRUSH_PHP="/opt/php73/bin/php"
-      PHP_INI="/opt/php73/lib/php.ini"
-      PHP_OPT="--php-ini ${PHP_INI}"
-    elif [ -e "${_DRUSH_CLI_CTRL}/php72.info" ]; then
-      DRUSH_PHP="/opt/php72/bin/php"
-      PHP_INI="/opt/php72/lib/php.ini"
-      PHP_OPT="--php-ini ${PHP_INI}"
-    elif [ -e "${_DRUSH_CLI_CTRL}/php71.info" ]; then
-      DRUSH_PHP="/opt/php71/bin/php"
-      PHP_INI="/opt/php71/lib/php.ini"
-      PHP_OPT="--php-ini ${PHP_INI}"
-    elif [ -e "${_DRUSH_CLI_CTRL}/php70.info" ]; then
-      DRUSH_PHP="/opt/php70/bin/php"
-      PHP_INI="/opt/php70/lib/php.ini"
-      PHP_OPT="--php-ini ${PHP_INI}"
-    elif [ -e "${_DRUSH_CLI_CTRL}/php56.info" ]; then
-      DRUSH_PHP="/opt/php56/bin/php"
-      PHP_INI="/opt/php56/lib/php.ini"
-      PHP_OPT="--php-ini ${PHP_INI}"
-    else
+    DRUSH_PHP=
+    PHP_INI=
+    PHP_OPT=
+    _PHP_V="56 70 71 72 73 74 80 81 82"
+    for e in ${_PHP_V}; do
+      if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
+        DRUSH_PHP="/opt/php${e}/bin/php"
+        PHP_INI="/opt/php${e}/lib/php.ini"
+        if [ -f "${HOME}/.drush/php${e}.ini" ]; then
+          PHP_INI="${HOME}/.drush/php${e}.ini"
+        fi
+        PHP_OPT="--php-ini ${PHP_INI}"
+        export DRUSH_PHP;export PHP_INI;export PHP_OPT;
+      fi
+    done
+    if [ -z "${DRUSH_PHP}" ]; then
       check_php_cli_version
     fi
-    export DRUSH_PHP;export PHP_INI;export PHP_OPT;
     ### echo OCT 1 DRUSH_PHP is ${DRUSH_PHP}
     ### echo OCT 1 PHP_INI is ${PHP_INI}
     ### echo OCT 1 PHP_OPT is ${PHP_OPT}
