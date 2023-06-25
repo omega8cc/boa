@@ -1853,8 +1853,10 @@ newrelic_update() {
       _PHP_EXT_DIR_70="/opt/php70/${pthNrx}-${_PHP70_API}"
       _PHP_EXT_DIR_56="/opt/php56/${pthNrx}-${_PHP56_API}"
       msg "INFO: Installing latest version of New Relic Apps Monitor..."
+      mkdir -p /etc/apt/keyrings/
+      wget -q -U iCab ${urlDev}/newrelic-key-548C16BF.gpg -O /etc/apt/keyrings/newrelic-key-548C16BF.gpg
       echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
-      echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
+      echo "deb [signed-by=/etc/apt/keyrings/newrelic-key-548C16BF.gpg] http://apt.newrelic.com/debian/ newrelic non-free" \
         >> /etc/apt/sources.list.d/newrelic.list
       apt_clean_update
       st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
@@ -2002,6 +2004,7 @@ if_install_php_newrelic() {
       || [ ! -e "${pthLog}/newrelic-${_X_SE}-${_X_VERSION}.log" ] \
       || [ ! -e "/etc/newrelic/newrelic.cfg" ] \
       || [ ! -e "/etc/newrelic/nrsysmond.cfg" ] \
+      || [ ! -e "/etc/apt/keyrings/newrelic-key-548C16BF.gpg" ] \
       || [ ! -e "/etc/apt/sources.list.d/newrelic.list" ]; then
       msg "INFO: Installing New Relic Apps Monitor..."
       cd /var/opt
@@ -2014,9 +2017,10 @@ if_install_php_newrelic() {
       done
       cat 548C16BF.gpg | ${_GPG} --import &> /dev/null
       rm -f 548C16BF.gpg*
-      echo "## New Relic APT Repository" > \
-        /etc/apt/sources.list.d/newrelic.list
-      echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
+      mkdir -p /etc/apt/keyrings/
+      wget -q -U iCab ${urlDev}/newrelic-key-548C16BF.gpg -O /etc/apt/keyrings/newrelic-key-548C16BF.gpg
+      echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
+      echo "deb [signed-by=/etc/apt/keyrings/newrelic-key-548C16BF.gpg] http://apt.newrelic.com/debian/ newrelic non-free" \
         >> /etc/apt/sources.list.d/newrelic.list
       apt_clean_update
       st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
