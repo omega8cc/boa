@@ -2293,7 +2293,7 @@ find_fast_mirror() {
 
 sysctl_update() {
   if [ ! -e "/root/.no.sysctl.update.cnf" ] \
-    && [ ! -e "/var/backups/sysctl.conf-${_X_SE}.log" ]; then
+    && [ ! -e "/var/backups/sysctl.conf.up-${_X_SE}.log" ]; then
     mkdir -p /var/backups
     cd /var/backups
     rm -f /var/backups/sysctl.conf
@@ -2325,7 +2325,14 @@ sysctl_update() {
         sysctl -p /etc/sysctl.conf &> /dev/null
       fi
     fi
-    touch /var/backups/sysctl.conf-${_X_SE}.log
+    if [ -e "/etc/default/nginx" ]; then
+      _IF_ULNX=$(grep '18000' /etc/default/nginx 2>&1)
+      if [ -z "${_IF_ULNX}" ]; then
+        echo ULIMIT=\"-n 18000\" >> /etc/default/nginx
+        service nginx restart &> /dev/null
+      fi
+    fi
+    touch /var/backups/sysctl.conf.up-${_X_SE}.log
   fi
 }
 

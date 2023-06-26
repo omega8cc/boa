@@ -7536,6 +7536,13 @@ sysctl_update() {
         sysctl -p /etc/sysctl.conf &> /dev/null
       fi
     fi
+    if [ -e "/etc/default/nginx" ]; then
+      _IF_ULNX=$(grep '18000' /etc/default/nginx 2>&1)
+      if [ -z "${_IF_ULNX}" ]; then
+        echo ULIMIT=\"-n 18000\" >> /etc/default/nginx
+        service nginx restart &> /dev/null
+      fi
+    fi
     touch ${pthLog}/sysctl.conf-${_X_SE}-${_X_VERSION}-${_NOW}.log
   fi
 }
