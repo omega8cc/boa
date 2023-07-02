@@ -2880,6 +2880,14 @@ drush_system_install_update() {
   if [ ! -e "/root/.debug-barracuda-installer.cnf" ] \
     && [ ! -e "/root/.skip-aegir-master-upgrade.cnf" ]; then
     msg "INFO: Installing supported Drush versions..."
+    ###
+    ### Force all Drush versions update
+    rm -f /opt/tools/drush/8/.ctrl.*
+    rm -f /opt/tools/drush/10/.ctrl.*
+    rm -f /opt/tools/drush/11/.ctrl.*
+    rm -f /opt/tools/drush/12/.ctrl.*
+    rm -f /opt/tools/drush/launcher/.ctrl.*
+    ###
     ###--------------------###
     if [ -e "/opt/tools/drush/9" ]; then
       rm -rf /opt/tools/drush/9
