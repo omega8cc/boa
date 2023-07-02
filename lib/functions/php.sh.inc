@@ -2347,7 +2347,9 @@ check_php_broken_segfault() {
   isSegft=
   isSegft=$(/opt/php$1/bin/php -v | grep cli 2>&1)
   isOlog=
-  isOlog=$(grep OnigEncoding /var/log/php/php$1-fpm-error.log 2>&1)
+  if [ -e "/var/log/php/php$1-fpm-error.log" ]; then
+    isOlog=$(grep OnigEncoding /var/log/php/php$1-fpm-error.log 2>&1)
+  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: check_php_broken_segfault $1"
     msg "CTRL: isOnig for $1 is ${isOnig}"
