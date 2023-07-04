@@ -829,7 +829,7 @@ manage_sec_user_drush_aliases() {
   fi
   for Alias in `find ${usrLtdRoot}/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
-    AliasName=$(echo "$Alias" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
+    AliasName=$(echo "${Alias}" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
     AliasName=$(echo "${AliasName}" \
       | sed "s/.alias.drushrc.php//g" \
       | awk '{ print $1}' 2>&1)
@@ -840,15 +840,15 @@ manage_sec_user_drush_aliases() {
   done
   for Symlink in `find ${usrLtdRoot}/sites/ \
     -maxdepth 1 -mindepth 1 | sort`; do
-    SiteName=$(echo $Symlink \
+    SiteName=$(echo ${Symlink}  \
       | cut -d'/' -f5 \
       | awk '{ print $1}' 2>&1)
     pthAliasMain="${pthParentUsr}/.drush/${SiteName}.alias.drushrc.php"
     pthAliasCopy="${usrLtdRoot}/.drush/${SiteName}.alias.drushrc.php"
-    if [ ! -z "$SiteName" ] && [ ! -e "${pthAliasCopy}" ]; then
+    if [ ! -z "${SiteName}" ] && [ ! -e "${pthAliasCopy}" ]; then
       cp -af ${pthAliasMain} ${pthAliasCopy}
       chmod 440 ${pthAliasCopy}
-    elif [ ! -z "$SiteName" ]  && [ -e "${pthAliasCopy}" ]; then
+    elif [ ! -z "${SiteName}" ]  && [ -e "${pthAliasCopy}" ]; then
       _DIFF_T=$(diff -w -B ${pthAliasCopy} ${pthAliasMain} 2>&1)
       if [ ! -z "${_DIFF_T}" ]; then
         cp -af ${pthAliasMain} ${pthAliasCopy}
@@ -2216,7 +2216,7 @@ manage_site_drush_alias_mirror() {
 
   for Alias in `find /home/${_USER}.ftp/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
-    AliasFile=$(echo "$Alias" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
+    AliasFile=$(echo "${Alias}" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
     if [ ! -e "${pthParentUsr}/.drush/${AliasFile}" ] \
       && [ ! -z "${AliasFile}" ]; then
       rm -f /home/${_USER}.ftp/.drush/${AliasFile}
@@ -2236,9 +2236,11 @@ manage_site_drush_alias_mirror() {
   isAliasUpdate=NO
   for Alias in `find ${pthParentUsr}/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
-    echo LastAliasName is $AliasName
+    ### echo LastAliasName is ${AliasName}
+    SiteDir=
+    SiteName=
     AliasName=
-    AliasName=$(echo "$Alias" | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
+    AliasName=$(echo "${Alias}" | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
     AliasName=$(echo "${AliasName}" \
       | sed "s/.alias.drushrc.php//g" \
       | awk '{ print $1}' 2>&1)
@@ -2250,22 +2252,28 @@ manage_site_drush_alias_mirror() {
       || [[ "${AliasName}" =~ (^)"hostmaster" ]] \
       || [ -z "${AliasName}" ]; then
       _IS_SITE=NO
+      AliasName=
+      SiteName=
+      SiteDir=
     else
       SiteName="${AliasName}"
-      echo SiteName is $SiteName
-      echo LastSiteDir is $SiteDir
+      echo SiteName is "${SiteName}"
+      ### echo LastSiteDir is "${SiteDir}"
       SiteDir=
-      if [[ "$SiteName" =~ ".restore"($) ]]; then
+      if [[ "${SiteName}" =~ ".restore"($) ]]; then
         _IS_SITE=NO
         rm -f ${pthParentUsr}/.drush/${SiteName}.alias.drushrc.php
       else
-        SiteDir=$(cat $Alias \
+        SiteDir=$(cat ${Alias} \
           | grep "site_path'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
-        if [ -d "${SiteDir}" ]; then
+        if [ -e "${SiteDir}/drushrc.php" ] \
+          && [ -e "${SiteDir}/files" ] \
+          && [ -e "${SiteDir}/private" ]; then
           echo SiteDir is ${SiteDir}
+          echo
           pthAliasMain="${pthParentUsr}/.drush/${SiteName}.alias.drushrc.php"
           pthAliasCopy="/home/${_USER}.ftp/.drush/${SiteName}.alias.drushrc.php"
           if [ ! -e "${pthAliasCopy}" ]; then
@@ -2282,7 +2290,10 @@ manage_site_drush_alias_mirror() {
           fi
         else
           rm -f ${pthAliasCopy}
-          echo "ZOMBIE ${SiteDir} IN ${pthAliasMain}"
+          echo "ZOMBIE ${SiteDir} detected"
+          echo "Moving GHOST ${SiteName}.alias.drushrc.php to ${pthParentUsr}/undo/"
+          mv -f ${pthParentUsr}/.drush/${SiteName}.alias.drushrc.php ${pthParentUsr}/undo/ &> /dev/null
+          echo
         fi
       fi
     fi
