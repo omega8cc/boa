@@ -827,17 +827,17 @@ update_agents() {
       chmod 644 /etc/ImageMagick-6/policy.xml
       chown root:root /etc/ImageMagick-6/policy.xml
       touch ${pthLog}/policymap-hf-04.ctrl.${_X_SE}.pid
+      _PHP_V="82 81 74 73 72 71 70 56"
+      for e in ${_PHP_V}; do
+        if [ -e "/etc/init.d/php${e}-fpm" ]; then
+          service php${e}-fpm reload &> /dev/null
+        fi
+      done
     else
       if [ -e "/var/xdrago/conf/etc-ImageMagick-6-policy.xml.old" ]; then
         cp -af /var/xdrago/conf/etc-ImageMagick-6-policy.xml.old /etc/ImageMagick-6/policy.xml
       fi
     fi
-    _PHP_V="82 81 74 73 72 71 70 56"
-    for e in ${_PHP_V}; do
-      if [ -e "/etc/init.d/php${e}-fpm" ]; then
-        service php${e}-fpm reload &> /dev/null
-      fi
-    done
   fi
 
   if [ -e "/opt/tools/drush" ] \
