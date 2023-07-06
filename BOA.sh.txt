@@ -815,6 +815,25 @@ update_agents() {
     fi
   fi
 
+  if [ -e "/etc/ImageMagick-6/policy.xml" ] \
+    && [ -e "/var/xdrago" ] \
+    && [ ! -e "${pthLog}/policymap-hf-03.ctrl.${_X_SE}.pid" ]; then
+    cp -af /etc/ImageMagick-6/policy.xml /var/xdrago/conf/etc-ImageMagick-6-policy.xml.old
+    rm -f /var/xdrago/conf/etc-ImageMagick-6-policy.xml
+    curl ${crlGet} "${urlHmr}/conf/etc-ImageMagick-6-policy.xml" \
+      -o /var/xdrago/conf/etc-ImageMagick-6-policy.xml
+    if [ -e "/var/xdrago/conf/etc-ImageMagick-6-policy.xml" ]; then
+      cp -af /var/xdrago/conf/etc-ImageMagick-6-policy.xml /etc/ImageMagick-6/policy.xml
+      chmod 644 /etc/ImageMagick-6/policy.xml
+      chown root:root /etc/ImageMagick-6/policy.xml
+      touch ${pthLog}/policymap-hf-03.ctrl.${_X_SE}.pid
+    else
+      if [ -e "/var/xdrago/conf/etc-ImageMagick-6-policy.xml.old" ]; then
+        cp -af /var/xdrago/conf/etc-ImageMagick-6-policy.xml.old /etc/ImageMagick-6/policy.xml
+      fi
+    fi
+  fi
+
   if [ -e "/opt/tools/drush" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/data/disk/arch/sql" ] \
