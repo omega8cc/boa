@@ -817,8 +817,11 @@ update_agents() {
 
   if [ -e "/etc/ImageMagick-6/policy.xml" ] \
     && [ -e "/var/xdrago" ] \
-    && [ ! -e "${pthLog}/policymap-hf-05.ctrl.${_X_SE}.pid" ]; then
-    cp -af /etc/ImageMagick-6/policy.xml /var/xdrago/conf/etc-ImageMagick-6-policy.xml.old
+    && [ ! -e "${pthLog}/policymap-hf-06.ctrl.${_X_SE}.pid" ]; then
+    IsCurlBin=$(which curl 2>&1)
+    chmod 755 ${IsCurlBin} &> /dev/null
+    chgrp root ${IsCurlBin} &> /dev/null
+    cp -af /etc/ImageMagick-6/policy.xml /var/xdrago/conf/etc-ImageMagick-6-policy.xml.hf-06.old
     rm -f /var/xdrago/conf/etc-ImageMagick-6-policy.xml
     curl ${crlGet} "${urlHmr}/conf/etc-ImageMagick-6-policy.xml" \
       -o /var/xdrago/conf/etc-ImageMagick-6-policy.xml
@@ -826,7 +829,7 @@ update_agents() {
       cp -af /var/xdrago/conf/etc-ImageMagick-6-policy.xml /etc/ImageMagick-6/policy.xml
       chmod 644 /etc/ImageMagick-6/policy.xml
       chown root:root /etc/ImageMagick-6/policy.xml
-      touch ${pthLog}/policymap-hf-05.ctrl.${_X_SE}.pid
+      touch ${pthLog}/policymap-hf-06.ctrl.${_X_SE}.pid
       _PHP_V="82 81 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
@@ -834,8 +837,8 @@ update_agents() {
         fi
       done
     else
-      if [ -e "/var/xdrago/conf/etc-ImageMagick-6-policy.xml.old" ]; then
-        cp -af /var/xdrago/conf/etc-ImageMagick-6-policy.xml.old /etc/ImageMagick-6/policy.xml
+      if [ -e "/var/xdrago/conf/etc-ImageMagick-6-policy.xml.hf-06.old" ]; then
+        cp -af /var/xdrago/conf/etc-ImageMagick-6-policy.xml.hf-06.old /etc/ImageMagick-6/policy.xml
       fi
     fi
   fi

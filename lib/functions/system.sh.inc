@@ -4210,6 +4210,7 @@ strict_bin_permissions() {
                   compass \
                   composer \
                   convert \
+                  curl \
                   dash \
                   env \
                   ffmpeg \
