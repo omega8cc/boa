@@ -1594,8 +1594,9 @@ fix_node_in_lshell_access() {
 fix_lshell() {
   _LSHELL_VRN=0.9.18.9
   _PATH_LSHELL="${usrBin}/lshell"
+  _LSHELL_LIB="/usr/local/lib/python2.7/dist-packages/lshell/checkconfig.py"
   if [ -e "${_PATH_LSHELL}" ] \
-    && [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}.log-hotfix5" ]; then
+    && [ ! -e "${_LSHELL_LIB}" ]; then
     cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5
     cd /var/opt
     rm -rf lshell*
