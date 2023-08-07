@@ -459,7 +459,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     wait
     touch /root/.legacy_sys_prep_ugrade_ctrl.cnf
   fi
-  if [ ! -e "/var/xdrago/log/.etc_crontab_update_ctrl_hfx_002.${_X_SE}.pid" ]; then
+  if [ ! -e "/var/xdrago/log/.etc_crontab_update_ctrl_hfx_003.${_X_SE}.pid" ]; then
     rm -f /var/xdrago/log/.*_crontab_*
     if [ ! -z "${_AUTO_UP_MONTH}" ] \
       && [ ! -z "${_AUTO_UP_DAY}" ]; then
@@ -468,7 +468,7 @@ if [ -e "/data/disk/arch/sql" ]; then
       crontab_cleanup
     fi
     service cron restart
-    touch /var/xdrago/log/.etc_crontab_update_ctrl_hfx_002.${_X_SE}.pid
+    touch /var/xdrago/log/.etc_crontab_update_ctrl_hfx_003.${_X_SE}.pid
   fi
   if [ ! -e "/var/xdrago/log/.etc_csf_allow_ctrl.${_X_SE}.pid" ]; then
     mkdir -p /var/backups/csf
