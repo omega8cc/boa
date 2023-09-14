@@ -1685,8 +1685,8 @@ satellite_download_o_contrib_eight() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_eight modules..."
   fi
-  get_dev_contrib "robotstxt-8.x-1.5.tar.gz"
-  get_dev_contrib "readonlymode-8.x-1.2.tar.gz"
+  get_dev_contrib "robotstxt-8.x-1.4.tar.gz"
+  get_dev_contrib "readonlymode-8.x-1.0.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_eight/ver-${_REDIS_N_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
