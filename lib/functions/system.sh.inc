@@ -3517,6 +3517,10 @@ ssl_install_src() {
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
+  _SSL_LIB_ITD=$(openssl version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f9 \
+    | awk '{ print $1}' 2>&1)
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
     || [ "${_OSR}" = "bullseye" ] \
@@ -3543,6 +3547,10 @@ ssl_install_src() {
   fi
   if [ "${_SSL_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
     msg "INFO: OpenSSL is ${_SSL_ITD}, upgrade to ${_OPENSSL_NEW_VRN} required"
+    _SSL_INSTALL_REQUIRED=YES
+  fi
+  if [ ! -z "${_SSL_LIB_ITD}" ] && [ "${_SSL_LIB_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
+    msg "INFO: OpenSSL Lib is ${_SSL_LIB_ITD}, upgrade to ${_OPENSSL_NEW_VRN} required"
     _SSL_INSTALL_REQUIRED=YES
   fi
   if [ "${_STATUS}" = "UPGRADE" ]; then
