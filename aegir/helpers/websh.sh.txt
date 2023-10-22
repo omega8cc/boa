@@ -166,6 +166,7 @@ if [ -z "${HOME}" ]; then
     HOME="/home/${USER}"
   elif [ -d "/data/disk/${_Y_USR}/.tmp" ]; then
     HOME="/data/disk/${_Y_USR}"
+    _DRUSH_CLI_CTRL=
   elif [ -d "/var/${_Y_USR}/.tmp" ]; then
     HOME="/var/${_Y_USR}"
   fi
