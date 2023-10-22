@@ -44,7 +44,7 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-_OPENSSL_MODERN_VRN=3.1.1
+_OPENSSL_MODERN_VRN=3.1.3
 _X_SE="500devT02"
 _WEBG=www-data
 _OSR=$(lsb_release -sc 2>&1)
