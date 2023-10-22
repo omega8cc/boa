@@ -2787,28 +2787,6 @@ set_drush_perm() {
   if [ -e "/opt/tools/drush/12/drush/vendor/bin/drush" ]; then
     chmod 755 /opt/tools/drush/12/drush/vendor/bin/*
   fi
-  if [ -e "/opt/tools/drush/launcher/drush.phar" ]; then
-    chmod 755 /opt/tools/drush/launcher/drush.phar
-  fi
-}
-
-#
-# Install or update Drush Launcher.
-get_drush_launcher() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: get_drush_launcher"
-  fi
-  rm -rf /opt/tools/drush/launcher/*
-  cd /opt/tools/drush/launcher/
-  wget -q -U iCab https://github.com/drush-ops/drush-launcher/releases/latest/download/drush.phar
-  touch /opt/tools/drush/launcher/.ctrl.${_X_SE}.pid
-  rm -f /usr/bin/drush-launcher
-  rm -f /usr/bin/drushlr
-  ln -sfn /opt/tools/drush/launcher/drush.phar /usr/bin/drush-launcher
-  ln -sfn /opt/tools/drush/launcher/drush.phar /usr/bin/drushlr
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} installation complete"
-  fi
 }
 
 #
@@ -2886,9 +2864,12 @@ drush_system_install_update() {
     rm -f /opt/tools/drush/10/.ctrl.${_X_SE}.pid
     rm -f /opt/tools/drush/11/.ctrl.${_X_SE}.pid
     rm -f /opt/tools/drush/12/.ctrl.${_X_SE}.pid
-    rm -f /opt/tools/drush/launcher/.ctrl.${_X_SE}.pid
     ###
     ###--------------------###
+    if [ -e "/opt/tools/drush/launcher" ]; then
+      rm -rf /opt/tools/drush/launcher
+      rm -f /usr/bin/drushlr
+    fi
     if [ -e "/opt/tools/drush/9" ]; then
       rm -rf /opt/tools/drush/9
       rm -f /usr/bin/drush9
@@ -2909,7 +2890,7 @@ drush_system_install_update() {
       rm -rf /opt/tools/drush/4
       rm -f /usr/bin/drush4
     fi
-    mkdir -p /opt/tools/drush/{8,10,11,12,launcher}
+    mkdir -p /opt/tools/drush/{8,10,11,12}
     chown -R root:root /opt/tools
     if [ -e "/opt/tools/drush/8" ]; then
       _DRUSH_ITD=$(drush8 --version 2>&1 \
@@ -2980,25 +2961,6 @@ drush_system_install_update() {
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: Drush ${_DRUSH_TWELVE_VRN} already installed"
-        fi
-      fi
-    fi
-    if [ -e "/opt/tools/drush/launcher" ]; then
-      _DRUSH_ITD=$(drush-launcher --version 2>&1 \
-        | tr -d "\n" \
-        | cut -d" " -f4 \
-        | sed 's/The//g' \
-        | awk '{ print $1}' 2>&1)
-      if [ "${_DRUSH_ITD}" != "${_DRUSH_LAUNCHER_VRN}" ] \
-        || [ ! -x "/opt/tools/drush/launcher/drush.phar" ] \
-        || [ ! -e "/opt/tools/drush/launcher/.ctrl.${_X_SE}.pid" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} re-installation required"
-        fi
-        get_drush_launcher
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} already installed"
         fi
       fi
     fi

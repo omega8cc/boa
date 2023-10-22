@@ -124,25 +124,6 @@ if [[ ! "${_ARGS} " =~ "composer" ]] \
   fi
 fi
 
-_LNCHR_PHP_ARR=
-if [[ "${_ARGS} " =~ "drushlr " ]]; then
-  if [[ "${_ARGS} " =~ "set -m" ]]; then
-    _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drushlr"`
-  else
-    _R_M=`echo -n ${_ARGS}  | grep -o "drushlr"`
-  fi
-  ### echo _R_M is ${_R_M}
-  _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
-  _LNCHR_PHP_ARR=() # the buffer array for filtered parameters
-  for arg in "${_CLR}"; do
-    case ${_R_M} in
-      $arg\ * | *\ $arg | *\ $arg\ *) ;;
-      *) _LNCHR_PHP_ARR+=("$arg") ;;
-    esac
-  done
-  ### echo _LNCHR_PHP_ARR is ${_LNCHR_PHP_ARR}
-fi
-
 _C_ARR=
 if [[ "${_ARGS} " =~ "composer " ]]; then
   if [[ "${_ARGS} " =~ "set -m" ]]; then
@@ -355,22 +336,12 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       if [[ "${_ARGS} " =~ "mysql " ]] \
         || [[ "${_ARGS} " =~ "drush " ]] \
         || [[ "${_ARGS} " =~ "drush8 " ]] \
-        || [[ "${_ARGS} " =~ "drushlr " ]] \
         || [[ "${_ARGS} " =~ "drush10 " ]] \
         || [[ "${_ARGS} " =~ "drush11 " ]] \
         || [[ "${_ARGS} " =~ "drush12 " ]]; then
         _PWD=$(pwd 2>&1)
         _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
-        if [[ "${_ARGS} " =~ "drushlr " ]]; then
-          _DEST_DRUSH="/usr/bin/drushlr"
-          if [ ! -z "${DRUSH_PHP}" ] && [ ! -z "${PHP_INI}" ]; then
-            export DRUSH_PHP;export PHP_INI;export PHPRC;
-            ### echo INF 1 DRUSH_PHP is ${DRUSH_PHP}
-            ### echo INF 1 PHP_INI is ${PHP_INI}
-            ### echo INF 1 PHPRC is ${PHPRC}
-            ### echo INF 1 _DEST_DRUSH is ${_DEST_DRUSH}
-          fi
-        elif [[ "${_ARGS} " =~ "drush12 " ]] \
+        if [[ "${_ARGS} " =~ "drush12 " ]] \
           && [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
           _DEST_DRUSH="/usr/bin/drush12"
           _PHP_V="81 82"
@@ -481,15 +452,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "${_ARGS} " =~ "drush8 cc drush" ]] \
           || [[ "${_ARGS} " =~ "drush10 cc drush" ]] \
           || [[ "${_ARGS} " =~ "drush11 cc drush" ]] \
-          || [[ "${_ARGS} " =~ "drush12 cc drush" ]] \
-          || [[ "${_ARGS} " =~ "drushlr cc drush" ]]; then
+          || [[ "${_ARGS} " =~ "drush12 cc drush" ]]; then
           if [[ "${_PWD}" =~ "/static" ]] \
             || [[ "${_ARGS} " =~ "drush cc drush" ]] \
             || [[ "${_ARGS} " =~ "drush8 cc drush" ]] \
             || [[ "${_ARGS} " =~ "drush10 cc drush" ]] \
             || [[ "${_ARGS} " =~ "drush11 cc drush" ]] \
-            || [[ "${_ARGS} " =~ "drush12 cc drush" ]] \
-            || [[ "${_ARGS} " =~ "drushlr cc drush" ]]; then
+            || [[ "${_ARGS} " =~ "drush12 cc drush" ]]; then
             _CORRECT=YES
           else
             if [[ "${_ARGS} " =~ "make-generate" ]] \
@@ -519,9 +488,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             || [[ "${_ARGS} " =~ "drush8 -vvv @" ]] \
             || [[ "${_ARGS} " =~ "drush10 -vvv @" ]] \
             || [[ "${_ARGS} " =~ "drush11 -vvv @" ]] \
-            || [[ "${_ARGS} " =~ "drush12 -vvv @" ]] \
-            || [[ "${_ARGS} " =~ "drush.launcher @" ]] \
-            || [[ "${_ARGS} " =~ "drushlr @" ]]; then
+            || [[ "${_ARGS} " =~ "drush12 -vvv @" ]]; then
             if [[ "${2}" =~ "restore"($) ]] \
               || [[ "${2}" =~ "arr"($) ]] \
               || [[ "${2}" =~ "cli"($) ]] \
@@ -574,12 +541,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             || [[ "${_ARGS} " =~ "drush12 pm-download" ]] \
             || [[ "${_ARGS} " =~ "drush12 sa" ]] \
             || [[ "${_ARGS} " =~ "drush12 site-alias" ]] \
-            || [[ "${_ARGS} " =~ "set -m; drushlr --version" ]] \
-            || [[ "${_ARGS} " =~ "set -m; drushlr help" ]] \
-            || [[ "${_ARGS} " =~ "drushlr dl" ]] \
-            || [[ "${_ARGS} " =~ "drushlr pm-download" ]] \
-            || [[ "${_ARGS} " =~ "drushlr sa" ]] \
-            || [[ "${_ARGS} " =~ "drushlr site-alias" ]] \
             || [[ "${_ARGS} " =~ "set -m; drush --version" ]] \
             || [[ "${_ARGS} " =~ "set -m; drush help" ]] \
             || [[ "${_ARGS} " =~ "drush dl" ]] \
@@ -600,7 +561,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             elif [ -f "${_PWD}/settings.php" ]; then
               if [[ "${_ARGS} " =~ "drush " ]] \
                 || [[ "${_ARGS} " =~ "drush8 " ]] \
-                || [[ "${_ARGS} " =~ "drushlr " ]] \
                 || [[ "${_ARGS} " =~ "drush10 " ]] \
                 || [[ "${_ARGS} " =~ "drush11 " ]] \
                 || [[ "${_ARGS} " =~ "drush12 " ]]; then
@@ -620,9 +580,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         || [[ "${_ARGS} " =~ "drush8 -vvv @" ]] \
         || [[ "${_ARGS} " =~ "drush10 -vvv @" ]] \
         || [[ "${_ARGS} " =~ "drush11 -vvv @" ]] \
-        || [[ "${_ARGS} " =~ "drush12 -vvv @" ]] \
-        || [[ "${_ARGS} " =~ "drush.launcher @" ]] \
-        || [[ "${_ARGS} " =~ "drushlr @" ]]; then
+        || [[ "${_ARGS} " =~ "drush12 -vvv @" ]]; then
         if [[ "${2}" =~ "restore"($) ]] \
           || [[ "${2}" =~ "arr"($) ]] \
           || [[ "${2}" =~ "cli"($) ]] \
@@ -711,9 +669,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       || [[ "${_ARGS} " =~ "drush8 -vvv @" ]] \
       || [[ "${_ARGS} " =~ "drush10 -vvv @" ]] \
       || [[ "${_ARGS} " =~ "drush11 -vvv @" ]] \
-      || [[ "${_ARGS} " =~ "drush12 -vvv @" ]] \
-      || [[ "${_ARGS} " =~ "drush.launcher @" ]] \
-      || [[ "${_ARGS} " =~ "drushlr @" ]]; then
+      || [[ "${_ARGS} " =~ "drush12 -vvv @" ]]; then
       if [[ "${2}" =~ "restore"($) ]] \
         || [[ "${2}" =~ "arr"($) ]] \
         || [[ "${2}" =~ "cli"($) ]] \
@@ -888,21 +844,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       || [ "$0" = "/usr/bin/sh" ] \
       || [ "$0" = "/bin/websh" ]; then
       if [ -x "/bin/dash" ]; then
-        if [ ! -z "${_ARR}" ] && [ -z "${_LNCHR_PHP_ARR}" ] && [ -z "${_OCTO_SYS_ARR}" ]; then
+        if [ ! -z "${_ARR}" ] && [ -z "${_OCTO_SYS_ARR}" ]; then
           ### echo EXD 1 DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXD 1 PHP_INI is ${PHP_INI}
           ### echo EXD 1 _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 1 _ARR is ${_ARR}
           ### echo EXD 1 ${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}
           exec /bin/dash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}"
-          exit 0
-        elif [ ! -z "${_LNCHR_PHP_ARR}" ]; then
-          ### echo EXD 2 DRUSH_PHP is ${DRUSH_PHP}
-          ### echo EXD 2 PHP_INI is ${PHP_INI}
-          ### echo EXD 2 _DEST_DRUSH is ${_DEST_DRUSH}
-          ### echo EXD 2 _LNCHR_PHP_ARR is ${_LNCHR_PHP_ARR}
-          ### echo EXD 2 ${DRUSH_PHP} ${_DEST_DRUSH} ${_LNCHR_PHP_ARR}
-          exec /bin/dash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_LNCHR_PHP_ARR}"
           exit 0
         elif [ ! -z "${PHP_FWD}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
           ### echo EXD 3-PHP_FWD DRUSH_PHP is ${DRUSH_PHP}
