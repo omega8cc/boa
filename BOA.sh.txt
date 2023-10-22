@@ -2010,7 +2010,7 @@ update_wrappers() {
     fi
   fi
   mkdir -p ${usrBin}
-  if [ -e "${pthLog}" ] && [ ! -e "${pthLog}/fixPSop.ctrl.${_X_SE}.pid" ]; then
+  if [ -e "${pthLog}" ] && [ ! -e "${pthLog}/updateFx02.ctrl.${_X_SE}.pid" ]; then
     fxPp="fix-drupal-platform-permissions.sh"
     fxSp="fix-drupal-site-permissions.sh"
     fxPo="fix-drupal-platform-ownership.sh"
@@ -2023,7 +2023,7 @@ update_wrappers() {
     chmod 700 ${usrBin}/${fxSp}
     chmod 700 ${usrBin}/${fxPo}
     chmod 700 ${usrBin}/${fxSo}
-    touch ${pthLog}/fixPSop.ctrl.${_X_SE}.pid
+    touch ${pthLog}/updateFx02.ctrl.${_X_SE}.pid
   fi
   mkdir -p ${optBin}
   rm -f ${usrBin}/{barracuda*,boa*,octopus*}
@@ -2163,7 +2163,7 @@ setup() {
     apt-get install lsb-release ${aptYesUnth} &> /dev/null
   fi
   mkdir -p ${usrBin}
-  if [ -e "${pthLog}" ] && [ ! -e "${pthLog}/fixPSop.ctrl.${_X_SE}.pid" ]; then
+  if [ -e "${pthLog}" ] && [ ! -e "${pthLog}/updateFx02.ctrl.${_X_SE}.pid" ]; then
     fxPp="fix-drupal-platform-permissions.sh"
     fxSp="fix-drupal-site-permissions.sh"
     fxPo="fix-drupal-platform-ownership.sh"
@@ -2176,7 +2176,7 @@ setup() {
     chmod 700 ${usrBin}/${fxSp}
     chmod 700 ${usrBin}/${fxPo}
     chmod 700 ${usrBin}/${fxSo}
-    touch ${pthLog}/fixPSop.ctrl.${_X_SE}.pid
+    touch ${pthLog}/updateFx02.ctrl.${_X_SE}.pid
   fi
   mkdir -p ${optBin}
   rm -f ${optBin}/.{boa*,fix*}
