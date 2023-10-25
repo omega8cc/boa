@@ -74,6 +74,9 @@ vBs="/var/backups"
 eldirF="0001-Print-site_footer-if-defined.patch"
 eldirP="/var/xdrago/conf/${eldirF}"
 #
+dctpF="drupal-ten-aegir-01.patch"
+dctpP="/data/conf/patches/${dctpF}"
+#
 provLeInc="provision_hosting_le.drush.inc"
 provLeIncFull="/var/xdrago/conf/${provLeInc}"
 #
@@ -1798,6 +1801,14 @@ fix_eldir() {
   fi
 }
 
+fix_drupal_core_ten() {
+  if [ -e "/var/xdrago" ] \
+    && [ ! -e "${dctpP}" ]; then
+    mkdir -p /data/conf/patches
+    curl ${crlGet} "${urlHmr}/patches/${dctpF}" -o ${dctpP}
+  fi
+}
+
 fix_pure_ftpd() {
   if [ -e "/usr/local/etc/pure-ftpd.conf" ]; then
     _PAM_AUTH=$(grep "^PAMAuthentication" /usr/local/etc/pure-ftpd.conf 2>&1)
@@ -2492,6 +2503,7 @@ if [ `whoami` = "root" ]; then
     fix_wkhtml
     fix_wkhtml_perms
     fix_eldir
+    fix_drupal_core_ten
     fix_pure_ftpd
     fix_hosting_le
     fix_newrelic
