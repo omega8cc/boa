@@ -111,7 +111,6 @@ satellite_tune_fpm_workers() {
 #
 # Update web user.
 satellite_web_user_update() {
-  _X_SE="420prodT02"
   isTest="${_WEB}"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ]; then
@@ -621,12 +620,14 @@ satellite_cnf() {
       || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
       || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
       _LD_DOM=YES
-      if [ -e "/root/.debug-boa-installer.cnf" ]; then
-        _DEBUG_MODE=YES
-        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g" ${octCnf}
-      fi
     else
       _LD_DOM=NO
+    fi
+
+    if [ -e "/root/.debug-boa-installer.cnf" ] \
+      || [ -e "/root/.debug-octopus-installer.cnf" ]; then
+      _DEBUG_MODE=YES
+      sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g" ${octCnf}
     fi
 
     if [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
@@ -634,7 +635,7 @@ satellite_cnf() {
         _PHP_FPM_VERSION=$(cat ${_ROOT}/log/fpm.txt 2>&1)
         _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
       else
-        _PHP_FPM_VERSION=7.4
+        _PHP_FPM_VERSION=8.1
       fi
       echo ${_PHP_FPM_VERSION} > ${_ROOT}/static/control/fpm.info
       chown ${_USER}.ftp:users ${_ROOT}/static/control/fpm.info
@@ -712,7 +713,7 @@ satellite_cnf() {
         _PHP_CLI_VERSION=$(cat ${_ROOT}/log/cli.txt 2>&1)
         _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d "\n" 2>&1)
       else
-        _PHP_CLI_VERSION=7.4
+        _PHP_CLI_VERSION=8.1
       fi
       echo ${_PHP_CLI_VERSION} > ${_ROOT}/static/control/cli.info
       chown ${_USER}.ftp:users ${_ROOT}/static/control/cli.info
@@ -1030,7 +1031,7 @@ satellite_fix_cron_curl() {
 #
 # Fix multi-IP cron access.
 satellite_fix_multi_ip_cron_access() {
-  rm -f /root/.local.IP.list.allow
+  [ -e "/root/.local.IP.list.allow" ] && rm -f /root/.local.IP.list.allow
   for _IP in `cat /root/.local.IP.list \
     | cut -d '#' -f1 \
     | sort \
@@ -1129,7 +1130,6 @@ satellite_force_advanced_nginx_config() {
 #
 # Update local INI for PHP CLI on the Aegir Satellite Instance.
 satellite_child_b_update_ini_php_cli() {
-  _X_SE="420prodT02"
   _U_HD="${_ROOT}/.drush"
   _U_TP="${_ROOT}/.tmp"
   _U_II="${_U_HD}/php.ini"
@@ -1263,7 +1263,7 @@ satellite_create_shared_dirs() {
 satellite_o_contrib_update_global() {
 
   _RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 \
-    cookie_cache_bypass_adv module_supports imageinfo_cache"
+    cookie_cache_bypass_adv module_supports imageinfo_cache redis"
 
   for i in `dir -d ${_D}/*`; do
     if [ -e "${i}/o_contrib" ] \
@@ -1274,9 +1274,6 @@ satellite_o_contrib_update_global() {
       _FORCE_UP_SIX=YES
     elif [ -e "${i}/o_contrib" ] \
       && [ ! -L "${i}/o_contrib/redis_edge" ]; then
-      _FORCE_UP_SIX=YES
-    elif [ -e "${i}/o_contrib" ] \
-      && [ ! -L "${i}/o_contrib/redis" ]; then
       _FORCE_UP_SIX=YES
     else
       _FORCE_UP_SIX=NO
@@ -1344,15 +1341,14 @@ satellite_o_contrib_update_global() {
       fi
       if [ -e "${_D}/000/modules/cache_backport" ] \
         && [ ! -L "${i}/o_contrib/cache_backport" ]; then
-        ln -sf ${_D}/000/modules/cache_backport ${i}/o_contrib/cache_backport
+        ln -sfn ${_D}/000/modules/cache_backport ${i}/o_contrib/cache_backport
       fi
-      if [ -e "${_D}/000/modules/redis" ] \
-        && [ ! -L "${i}/o_contrib/redis" ]; then
-        ln -sf ${_D}/000/modules/redis ${i}/o_contrib/redis
+      if [ -L "${i}/o_contrib/redis" ]; then
+        rm -f ${i}/o_contrib/redis
       fi
       if [ -e "${_D}/000/modules/redis_edge" ] \
         && [ ! -L "${i}/o_contrib/redis_edge" ]; then
-        ln -sf ${_D}/000/modules/redis_edge ${i}/o_contrib/redis_edge
+        ln -sfn ${_D}/000/modules/redis_edge ${i}/o_contrib/redis_edge
       fi
       touch ${i}/o_contrib/update-${_X_SE}-${_X_VERSION}.info
       find ${i}/o_contrib -type d -exec chmod 0755 {} \; &> /dev/null
@@ -1373,7 +1369,7 @@ satellite_o_contrib_update_global() {
 # Update o_contrib_seven.
 satellite_o_contrib_seven_update_global() {
 
-  _RMMODULES="session443 cookie_cache_bypass_adv agrcache speedy"
+  _RMMODULES="session443 cookie_cache_bypass_adv agrcache speedy redis"
 
   for i in `dir -d ${_D}/*`; do
     if [ -e "${i}/o_contrib_seven" ] \
@@ -1387,9 +1383,6 @@ satellite_o_contrib_seven_update_global() {
       _FORCE_UP_SEVEN=YES
     elif [ -e "${i}/o_contrib_seven" ] \
       && [ ! -L "${i}/o_contrib_seven/redis_edge" ]; then
-      _FORCE_UP_SEVEN=YES
-    elif [ -e "${i}/o_contrib_seven" ] \
-      && [ ! -L "${i}/o_contrib_seven/redis" ]; then
       _FORCE_UP_SEVEN=YES
     else
       _FORCE_UP_SEVEN=NO
@@ -1484,13 +1477,12 @@ satellite_o_contrib_seven_update_global() {
       if [ -d "${i}/o_contrib_seven/redis_edge" ]; then
         rm -rf ${i}/o_contrib_seven/redis_edge
       fi
-      if [ -e "${_D}/000/modules/redis" ] \
-        && [ ! -L "${i}/o_contrib_seven/redis" ]; then
-        ln -sf ${_D}/000/modules/redis ${i}/o_contrib_seven/redis
+      if [ -L "${i}/o_contrib_seven/redis" ]; then
+        rm -f ${i}/o_contrib_seven/redis
       fi
       if [ -e "${_D}/000/modules/redis_edge" ] \
         && [ ! -L "${i}/o_contrib_seven/redis_edge" ]; then
-        ln -sf ${_D}/000/modules/redis_edge ${i}/o_contrib_seven/redis_edge
+        ln -sfn ${_D}/000/modules/redis_edge ${i}/o_contrib_seven/redis_edge
       fi
       find ${i}/o_contrib_seven -type d -exec chmod 0755 {} \; &> /dev/null
       find ${i}/o_contrib_seven -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1535,11 +1527,11 @@ satellite_o_contrib_eight_update_global() {
       fi
       if [ -e "${_D}/000/modules/redis_eight" ] \
         && [ ! -L "${i}/o_contrib_eight/redis_eight" ]; then
-        ln -sf ${_D}/000/modules/redis_eight ${i}/o_contrib_eight/redis_eight
+        ln -sfn ${_D}/000/modules/redis_eight ${i}/o_contrib_eight/redis_eight
       fi
       if [ -e "${_D}/000/modules/redis_compr" ] \
         && [ ! -L "${i}/o_contrib_eight/redis_compr" ]; then
-        ln -sf ${_D}/000/modules/redis_compr ${i}/o_contrib_eight/redis_compr
+        ln -sfn ${_D}/000/modules/redis_compr ${i}/o_contrib_eight/redis_compr
       fi
       find ${i}/o_contrib_eight -type d -exec chmod 0755 {} \; &> /dev/null
       find ${i}/o_contrib_eight -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1579,11 +1571,11 @@ satellite_o_contrib_nine_update_global() {
       fi
       if [ -e "${_D}/000/modules/redis_nine_ten" ] \
         && [ ! -L "${i}/o_contrib_nine/redis_nine_ten" ]; then
-        ln -sf ${_D}/000/modules/redis_nine_ten ${i}/o_contrib_nine/redis_nine_ten
+        ln -sfn ${_D}/000/modules/redis_nine_ten ${i}/o_contrib_nine/redis_nine_ten
       fi
       if [ -e "${_D}/000/modules/redis_compr" ] \
         && [ ! -L "${i}/o_contrib_nine/redis_compr" ]; then
-        ln -sf ${_D}/000/modules/redis_compr ${i}/o_contrib_nine/redis_compr
+        ln -sfn ${_D}/000/modules/redis_compr ${i}/o_contrib_nine/redis_compr
       fi
       find ${i}/o_contrib_nine -type d -exec chmod 0755 {} \; &> /dev/null
       find ${i}/o_contrib_nine -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1626,7 +1618,7 @@ satellite_o_contrib_ten_update_global() {
       fi
       if [ -e "${_D}/000/modules/redis_nine_ten" ] \
         && [ ! -L "${i}/o_contrib_ten/redis_nine_ten" ]; then
-        ln -sf ${_D}/000/modules/redis_nine_ten ${i}/o_contrib_ten/redis_nine_ten
+        ln -sfn ${_D}/000/modules/redis_nine_ten ${i}/o_contrib_ten/redis_nine_ten
       fi
       find ${i}/o_contrib_ten -type d -exec chmod 0755 {} \; &> /dev/null
       find ${i}/o_contrib_ten -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1693,10 +1685,8 @@ satellite_download_o_contrib_eight() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_eight modules..."
   fi
-  get_dev_contrib "advagg-8.x-4.1.tar.gz"
-  get_dev_contrib "cdn-8.x-3.5.tar.gz"
-  get_dev_contrib "robotstxt-8.x-1.5.tar.gz"
-  get_dev_contrib "readonlymode-8.x-1.2.tar.gz"
+  get_dev_contrib "robotstxt-8.x-1.4.tar.gz"
+  get_dev_contrib "readonlymode-8.x-1.0.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_eight/ver-${_REDIS_N_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
@@ -1719,7 +1709,6 @@ satellite_download_o_contrib_eight() {
 #
 # Download o_contrib_seven.
 satellite_download_o_contrib_seven() {
-  _X_SE="420prodT02"
   touch update-${_X_SE}-${_X_VERSION}.info
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_seven modules..."
@@ -1773,19 +1762,15 @@ satellite_download_o_contrib_seven() {
   rm -rf expire*
   find ./ -type d -exec chmod 0755 {} \; &> /dev/null
   find ./ -type f -exec chmod 0644 {} \; &> /dev/null
-  touch ctrl-${_X_VERSION}
-  if [ ! -L "./redis" ]; then
-    ln -sf ${_D}/000/modules/redis redis
+  touch ctrl-${_X_SE}-${_X_VERSION}
+  if [ -L "./redis" ]; then
+    rm -f redis
   fi
   if [ ! -L "./redis_edge" ]; then
-    ln -sf ${_D}/000/modules/redis_edge redis_edge
+    ln -sfn ${_D}/000/modules/redis_edge redis_edge
   fi
-  if [ ! -e "${_D}/000/modules/redis/update-${_X_SE}-${_X_VERSION}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
+  if [ -e "${_D}/000/modules/redis" ]; then
     rm -rf ${_D}/000/modules/redis
-    get_dev_contrib "redis-mod-26-06-2015.tar.gz"
-    echo update > ${_D}/000/modules/redis/update-${_X_SE}-${_X_VERSION}.info
   fi
   if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
@@ -1801,7 +1786,6 @@ satellite_download_o_contrib_seven() {
 #
 # Download o_contrib_six.
 satellite_download_o_contrib_six() {
-  _X_SE="420prodT02"
   touch update-${_X_SE}-${_X_VERSION}.info
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib modules..."
@@ -1840,15 +1824,15 @@ satellite_download_o_contrib_six() {
   rm -rf expire*
   find ./ -type d -exec chmod 0755 {} \; &> /dev/null
   find ./ -type f -exec chmod 0644 {} \; &> /dev/null
-  touch ctrl-${_X_VERSION}
-  if [ ! -L "./redis" ]; then
-    ln -sf ${_D}/000/modules/redis redis
+  touch ctrl-${_X_SE}-${_X_VERSION}
+  if [ -L "./redis" ]; then
+    rm -f redis
   fi
   if [ ! -L "./redis_edge" ]; then
-    ln -sf ${_D}/000/modules/redis_edge redis_edge
+    ln -sfn ${_D}/000/modules/redis_edge redis_edge
   fi
   if [ ! -L "./cache_backport" ]; then
-    ln -sf ${_D}/000/modules/cache_backport cache_backport
+    ln -sfn ${_D}/000/modules/cache_backport cache_backport
   fi
   if [ ! -e "${_D}/000/modules/cache_backport/update-${_X_SE}-${_X_VERSION}.info" ]; then
     mkdir -p ${_D}/000/modules
@@ -1857,12 +1841,8 @@ satellite_download_o_contrib_six() {
     get_dev_contrib "cache_backport-6.x-1.0-rc4.tar.gz"
     echo update > cache_backport/update-${_X_SE}-${_X_VERSION}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis/update-${_X_SE}-${_X_VERSION}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
+  if [ -e "${_D}/000/modules/redis" ]; then
     rm -rf ${_D}/000/modules/redis
-    get_dev_contrib "redis-mod-26-06-2015.tar.gz"
-    echo update > ${_D}/000/modules/redis/update-${_X_SE}-${_X_VERSION}.info
   fi
   if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
@@ -1878,7 +1858,6 @@ satellite_download_o_contrib_six() {
 #
 # Upgrade o_contrib.
 satellite_check_fix_o_contrib() {
-  _X_SE="420prodT02"
   if [ -e "${_CORE}/o_contrib_ten" ]; then
     if [ ! -d "${_CORE}/o_contrib_ten/redis_nine_ten" ] \
       || [ -e "${_CORE}/o_contrib_ten/advagg" ] \
@@ -1938,12 +1917,8 @@ satellite_check_fix_o_contrib() {
     get_dev_contrib "cache_backport-6.x-1.0-rc4.tar.gz"
     echo update > cache_backport/update-${_X_SE}-${_X_VERSION}.info
   fi
-  if [ ! -e "${_D}/000/modules/redis/update-${_X_SE}-${_X_VERSION}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
+  if [ -e "${_D}/000/modules/redis" ]; then
     rm -rf ${_D}/000/modules/redis
-    get_dev_contrib "redis-mod-26-06-2015.tar.gz"
-    echo update > ${_D}/000/modules/redis/update-${_X_SE}-${_X_VERSION}.info
   fi
   if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
@@ -2103,29 +2078,29 @@ provision_backend_dbpass_generate() {
   _ESC_PASS=""
   _LEN_PASS=0
   if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
-    _PWD_CHARS=32
+    _PWD_CHARS=64
   elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
-    _PWD_CHARS=8
+    _PWD_CHARS=32
   else
     _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
     if [ ! -z "${_STRONG_PASSWORDS}" ] \
-      && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
+      && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
       _PWD_CHARS="${_STRONG_PASSWORDS}"
     else
-      _PWD_CHARS=8
+      _PWD_CHARS=32
     fi
     if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
       _PWD_CHARS=128
     fi
   fi
   if [ "${_STRONG_PASSWORDS}" = "YES" ] \
-    || [ "${_PWD_CHARS}" -gt "8" ]; then
+    || [ "${_PWD_CHARS}" -gt "32" ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-        _ESC_PASS="$(openssl rand -base64 32 2>&1)"
+        _ESC_PASS="$(openssl rand -base64 64 2>&1)"
       else
         _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
       fi
@@ -2145,7 +2120,7 @@ provision_backend_dbpass_generate() {
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-      _ESC_PASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
+      _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
       _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
     else
@@ -2327,9 +2302,9 @@ provision_backend_dbpass_sync() {
     _THIS_DB_PORT=3306
   fi
   _L_SYS="${_ROOT}/.${_USER}.pass.txt"
-  mv -f ${_L_SYS} ${_L_SYS}-pre-${_X_VERSION}-${_NOW} &> /dev/null
+  mv -f ${_L_SYS} ${_L_SYS}-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
   _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
-  mv -f ${_L_SYS_PHP} ${_L_SYS_PHP}-pre-${_X_VERSION}-${_NOW} &> /dev/null
+  mv -f ${_L_SYS_PHP} ${_L_SYS_PHP}-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
   provision_backend_dbpass_generate
   if [ ! -z "${_ESC_PASS}" ] || [ ! -z "${_ENC_PASS}" ]; then
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
@@ -2608,7 +2583,7 @@ satellite_download_for_local_build() {
       get_dev_ext "hosting_tasks_extra.tar.gz"
     fi
     ### Aegir Drupal Contrib
-    get_dev_stc "admin_menu-7.x-3.0-rc6.tar.gz"
+    get_dev_stc "admin_menu-7.x-3.0-rc7.tar.gz"
     get_dev_stc "betterlogin-7.x-1.5.tar.gz"
     get_dev_stc "ctools-7.x-1.21.tar.gz"
     get_dev_stc "entity-7.x-1.10.tar.gz"
@@ -2624,7 +2599,7 @@ satellite_download_for_local_build() {
     get_dev_stc "views-7.x-3.29.tar.gz"
     ### BOA Drupal Contrib
     get_dev_stc "features_extra-7.x-1.0.tar.gz"
-    get_dev_stc "features-7.x-2.14.tar.gz"
+    get_dev_stc "features-7.x-2.15.tar.gz"
     get_dev_stc "idna_convert-7.x-1.0.tar.gz"
     get_dev_stc "revision_deletion-7.x-1.3.tar.gz"
     get_dev_stc "strongarm-7.x-2.0.tar.gz"
@@ -2741,7 +2716,7 @@ satellite_if_create_local_bin() {
     chmod 700 $_L_BIN
   fi
   if [ ! -L "$_L_BIN/drush" ]; then
-    ln -sf ${_ROOT}/tools/drush/drush $_L_BIN/drush
+    ln -sfn ${_ROOT}/tools/drush/drush $_L_BIN/drush
   fi
 }
 
@@ -2757,7 +2732,7 @@ satellite_run_post_install() {
       rm -f /var/aegir/config/server_master/nginx/platform.d/${_USER}.conf
       echo "include ${_ROOT}/config/server_master/nginx/vhost.d/*;" > \
         ${_ROOT}/config/${_USER}.nginx.conf
-      ln -sf ${_ROOT}/config/${_USER}.nginx.conf \
+      ln -sfn ${_ROOT}/config/${_USER}.nginx.conf \
         /var/aegir/config/server_master/nginx/platform.d/${_USER}.conf
     fi
     chgrp -R ${_WEBG} ${_HM_ROOT}/sites/${_DOMAIN}/files
@@ -2864,7 +2839,7 @@ satellite_run_child_c() {
       fi
     fi
   fi
-  if [ ! -e "${_CORE}/dot-files-ctrl-${_X_VERSION}" ] \
+  if [ ! -e "${_CORE}/dot-files-ctrl-${_X_SE}-${_X_VERSION}" ] \
     && [ -e "${_CORE}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} A: Cleaning up various dot files, please wait..."
@@ -2875,7 +2850,7 @@ satellite_run_child_c() {
     find . -name .git -exec rm -rf {} \; &> /dev/null
     find . -name .DS_Store -exec rm -rf {} \; &> /dev/null
     find . -name "._*" -type f | xargs rm -rf &> /dev/null
-    touch ${_CORE}/dot-files-ctrl-${_X_VERSION}
+    touch ${_CORE}/dot-files-ctrl-${_X_SE}-${_X_VERSION}
   fi
 }
 
@@ -2931,28 +2906,28 @@ satellite_if_add_ftps_lshell_access() {
     _ESC_LUPASS=""
     _LEN_LUPASS=0
     if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
-      _PWD_CHARS=32
+      _PWD_CHARS=64
     elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
-      _PWD_CHARS=8
+      _PWD_CHARS=32
     else
       _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
       if [ ! -z "${_STRONG_PASSWORDS}" ] \
-        && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
+        && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
         _PWD_CHARS="${_STRONG_PASSWORDS}"
       else
-        _PWD_CHARS=8
+        _PWD_CHARS=32
       fi
       if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
         _PWD_CHARS=128
       fi
     fi
-    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ]; then
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "32" ]; then
       _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
       _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
     fi
     if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ]; then
-      _ESC_LUPASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
+      _ESC_LUPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
       _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
       _ESC_LUPASS=$(sanitize_string "${_ESC_LUPASS}" 2>&1)
     fi
@@ -3003,7 +2978,7 @@ satellite_if_add_update_user_symlinks() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} A: Adding symlink to the sites backups"
     fi
-    ln -sf ${_ROOT}/backups ${_USER_HD}/backups
+    ln -sfn ${_ROOT}/backups ${_USER_HD}/backups
   fi
 
   ###---### Remove legacy symlinks.
@@ -3044,7 +3019,7 @@ satellite_if_add_update_user_symlinks() {
     chown ${_USERFTP}:${_USRG} ${_USER_DS}
     chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
     chmod 700 ${_USER_DS}
-    ln -sf ${_ROOT}/.drush/usr/registry_rebuild \
+    ln -sfn ${_ROOT}/.drush/usr/registry_rebuild \
       ${_USER_DS}/usr/registry_rebuild
   fi
 
@@ -3059,7 +3034,7 @@ satellite_if_add_update_user_symlinks() {
     chown ${_USERFTP}:${_USRG} ${_USER_DS}
     chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
     chmod 700 ${_USER_DS}
-    ln -sf ${_ROOT}/.drush/usr/clean_missing_modules \
+    ln -sfn ${_ROOT}/.drush/usr/clean_missing_modules \
       ${_USER_DS}/usr/clean_missing_modules
   fi
 
@@ -3074,7 +3049,7 @@ satellite_if_add_update_user_symlinks() {
     chown ${_USERFTP}:${_USRG} ${_USER_DS}
     chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
     chmod 700 ${_USER_DS}
-    ln -sf ${_ROOT}/.drush/usr/drupalgeddon \
+    ln -sfn ${_ROOT}/.drush/usr/drupalgeddon \
       ${_USER_DS}/usr/drupalgeddon
   fi
 
@@ -3089,7 +3064,7 @@ satellite_if_add_update_user_symlinks() {
     chown ${_USERFTP}:${_USRG} ${_USER_DS}
     chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
     chmod 700 ${_USER_DS}
-    ln -sf ${_ROOT}/.drush/usr/drush_ecl \
+    ln -sfn ${_ROOT}/.drush/usr/drush_ecl \
       ${_USER_DS}/usr/drush_ecl
   fi
 
@@ -3104,7 +3079,7 @@ satellite_if_add_update_user_symlinks() {
     chown ${_USERFTP}:${_USRG} ${_USER_DS}
     chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
     chmod 700 ${_USER_DS}
-    ln -sf ${_ROOT}/.drush/usr/safe_cache_form_clear \
+    ln -sfn ${_ROOT}/.drush/usr/safe_cache_form_clear \
       ${_USER_DS}/usr/safe_cache_form_clear
   fi
 
@@ -3119,7 +3094,7 @@ satellite_if_add_update_user_symlinks() {
     chown ${_USERFTP}:${_USRG} ${_USER_DS}
     chown ${_USERFTP}:${_USRG} ${_USER_DS}/usr
     chmod 700 ${_USER_DS}
-    ln -sf ${_ROOT}/.drush/usr/utf8mb4_convert \
+    ln -sfn ${_ROOT}/.drush/usr/utf8mb4_convert \
       ${_USER_DS}/usr/utf8mb4_convert
   fi
 
@@ -3129,7 +3104,7 @@ satellite_if_add_update_user_symlinks() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} A: Adding symlink to the clients directory"
     fi
-    ln -sf ${_ROOT}/clients ${_USER_HD}/clients
+    ln -sfn ${_ROOT}/clients ${_USER_HD}/clients
   fi
   rm -rf ${_ROOT}/clients/admin &> /dev/null
   rm -rf ${_ROOT}/clients/omega8ccgmailcom &> /dev/null
@@ -3202,28 +3177,28 @@ satellite_if_read_create_pass_txt() {
       _ESC_LUPASS=""
       _LEN_LUPASS=0
       if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
-        _PWD_CHARS=32
+        _PWD_CHARS=64
       elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
-        _PWD_CHARS=8
+        _PWD_CHARS=32
       else
         _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
         if [ ! -z "${_STRONG_PASSWORDS}" ] \
-          && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
+          && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
           _PWD_CHARS="${_STRONG_PASSWORDS}"
         else
-          _PWD_CHARS=8
+          _PWD_CHARS=32
         fi
         if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
           _PWD_CHARS=128
         fi
       fi
-      if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ]; then
+      if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "32" ]; then
         _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
         _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
         _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
       fi
       if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ]; then
-        _ESC_LUPASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
+        _ESC_LUPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
         _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
         _ESC_LUPASS=$(sanitize_string "${_ESC_LUPASS}" 2>&1)
       fi
@@ -3261,70 +3236,70 @@ satellite_if_add_update_user_platforms_symlinks() {
       if [ ! -L "${_QH}/agov-${_AGOV}-${_SMALLCORE7}" ]; then
         _A="${_QR}/agov-${_AGOV}-${_SMALLCORE7}/sites"
         _B="${_QH}/agov-${_AGOV}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6}/sites" ]; then
       if [ ! -L "${_QH}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6}" ]; then
         _A="${_QR}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6}/sites"
         _B="${_QH}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7}" ]; then
         _A="${_QR}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7}/sites"
         _B="${_QH}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/cod-${_COD}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/cod-${_COD}-${_SMALLCORE7}" ]; then
         _A="${_QR}/cod-${_COD}-${_SMALLCORE7}/sites"
         _B="${_QH}/cod-${_COD}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/commerce-${_COMMERCE1}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/commerce-${_COMMERCE1}-${_SMALLCORE7}" ]; then
         _A="${_QR}/commerce-${_COMMERCE1}-${_SMALLCORE7}/sites"
         _B="${_QH}/commerce-${_COMMERCE1}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/commerce-${_COMMERCE2}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/commerce-${_COMMERCE2}-${_SMALLCORE7}" ]; then
         _A="${_QR}/commerce-${_COMMERCE2}-${_SMALLCORE7}/sites"
         _B="${_QH}/commerce-${_COMMERCE2}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/commons-${_COMMONS2}-${_SMALLCORE6}/sites" ]; then
       if [ ! -L "${_QH}/commons-${_COMMONS2}-${_SMALLCORE6}" ]; then
         _A="${_QR}/commons-${_COMMONS2}-${_SMALLCORE6}/sites"
         _B="${_QH}/commons-${_COMMONS2}-${_SMALLCORE6}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/commons-${_COMMONS3}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/commons-${_COMMONS3}-${_SMALLCORE7}" ]; then
         _A="${_QR}/commons-${_COMMONS3}-${_SMALLCORE7}/sites"
         _B="${_QH}/commons-${_COMMONS3}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/pressflow-${_SMALLCORE6}-dev/sites" ]; then
       if [ ! -L "${_QH}/pressflow-${_SMALLCORE6}-dev" ]; then
         _A="${_QR}/pressflow-${_SMALLCORE6}-dev/sites"
         _B="${_QH}/pressflow-${_SMALLCORE6}-dev"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/pressflow-${_SMALLCORE6}-stage/sites" ]; then
       if [ ! -L "${_QH}/pressflow-${_SMALLCORE6}-stage" ]; then
         _A="${_QR}/pressflow-${_SMALLCORE6}-stage/sites"
         _B="${_QH}/pressflow-${_SMALLCORE6}-stage"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ ! -d "${_QR}/pressflow" ]; then
@@ -3332,7 +3307,7 @@ satellite_if_add_update_user_platforms_symlinks() {
         if [ ! -L "${_QH}/pressflow-${_SMALLCORE6}-prod" ]; then
           _A="${_QR}/pressflow-${_SMALLCORE6}-prod/sites"
           _B="${_QH}/pressflow-${_SMALLCORE6}-prod"
-          ln -sf ${_A} ${_B}
+          ln -sfn ${_A} ${_B}
         fi
       fi
     elif [ ! -d "${_QR}/pressflow-${_SMALLCORE6}-prod" ]; then
@@ -3340,7 +3315,7 @@ satellite_if_add_update_user_platforms_symlinks() {
         if [ ! -L "${_QH}/pressflow-${_SMALLCORE6}-prod" ]; then
           _A="${_QR}/pressflow/sites"
           _B="${_QH}/pressflow-${_SMALLCORE6}-prod"
-          ln -sf ${_A} ${_B}
+          ln -sfn ${_A} ${_B}
         fi
       fi
     fi
@@ -3348,14 +3323,14 @@ satellite_if_add_update_user_platforms_symlinks() {
       if [ ! -L "${_QH}/${_DRUPAL7}-dev" ]; then
         _A="${_QR}/${_DRUPAL7D}/sites"
         _B="${_QH}/${_DRUPAL7}-dev"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/${_DRUPAL7S}/sites" ]; then
       if [ ! -L "${_QH}/${_DRUPAL7}-stage" ]; then
         _A="${_QR}/${_DRUPAL7S}/sites"
         _B="${_QH}/${_DRUPAL7}-stage"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ ! -d "${_QR}/${_DRUPAL7}" ]; then
@@ -3363,7 +3338,7 @@ satellite_if_add_update_user_platforms_symlinks() {
         if [ ! -L "${_QH}/${_DRUPAL7}-prod" ]; then
           _A="${_QR}/${_DRUPAL7P}/sites"
           _B="${_QH}/${_DRUPAL7}-prod"
-          ln -sf ${_A} ${_B}
+          ln -sfn ${_A} ${_B}
         fi
       fi
     elif [ ! -d "${_QR}/${_DRUPAL7P}" ]; then
@@ -3371,7 +3346,7 @@ satellite_if_add_update_user_platforms_symlinks() {
         if [ ! -L "${_QH}/${_DRUPAL7}-prod" ]; then
           _A="${_QR}/${_DRUPAL7}/sites"
           _B="${_QH}/${_DRUPAL7}-prod"
-          ln -sf ${_A} ${_B}
+          ln -sfn ${_A} ${_B}
         fi
       fi
     fi
@@ -3379,203 +3354,296 @@ satellite_if_add_update_user_platforms_symlinks() {
       if [ ! -L "${_QH}/drupal-${_SMALLCORE8}" ]; then
         _A="${_QR}/drupal-${_SMALLCORE8}/sites"
         _B="${_QH}/drupal-${_SMALLCORE8}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ -d "${_QR}/${_DRUPAL9_D}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL9}-dev" ]; then
+        _A="${_QR}/${_DRUPAL9_D}/sites"
+        _B="${_QH}/${_DRUPAL9}-dev"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ -d "${_QR}/${_DRUPAL9_S}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL9}-stage" ]; then
+        _A="${_QR}/${_DRUPAL9_S}/sites"
+        _B="${_QH}/${_DRUPAL9}-stage"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ ! -d "${_QR}/${_DRUPAL9}" ]; then
+      if [ -d "${_QR}/${_DRUPAL9_P}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL9}-prod" ]; then
+          _A="${_QR}/${_DRUPAL9_P}/sites"
+          _B="${_QH}/${_DRUPAL9}-prod"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    elif [ ! -d "${_QR}/${_DRUPAL9_P}" ]; then
+      if [ -d "${_QR}/${_DRUPAL9}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL9}-prod" ]; then
+          _A="${_QR}/${_DRUPAL9}/sites"
+          _B="${_QH}/${_DRUPAL9}-prod"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    fi
+    if [ -d "${_QR}/${_DRUPAL10_0_D}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_0}-dev" ]; then
+        _A="${_QR}/${_DRUPAL10_0_D}/sites"
+        _B="${_QH}/${_DRUPAL10_0}-dev"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ -d "${_QR}/${_DRUPAL10_0_S}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_0}-stage" ]; then
+        _A="${_QR}/${_DRUPAL10_0_S}/sites"
+        _B="${_QH}/${_DRUPAL10_0}-stage"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ ! -d "${_QR}/${_DRUPAL10_0}" ]; then
+      if [ -d "${_QR}/${_DRUPAL10_0_P}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_0}-prod" ]; then
+          _A="${_QR}/${_DRUPAL10_0_P}/sites"
+          _B="${_QH}/${_DRUPAL10_0}-prod"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    elif [ ! -d "${_QR}/${_DRUPAL10_0_P}" ]; then
+      if [ -d "${_QR}/${_DRUPAL10_0}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_0}-prod" ]; then
+          _A="${_QR}/${_DRUPAL10_0}/sites"
+          _B="${_QH}/${_DRUPAL10_0}-prod"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    fi
+    if [ -d "${_QR}/${_DRUPAL10_1_D}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_1}-dev" ]; then
+        _A="${_QR}/${_DRUPAL10_1_D}/sites"
+        _B="${_QH}/${_DRUPAL10_1}-dev"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ -d "${_QR}/${_DRUPAL10_1_S}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_1}-stage" ]; then
+        _A="${_QR}/${_DRUPAL10_1_S}/sites"
+        _B="${_QH}/${_DRUPAL10_1}-stage"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ ! -d "${_QR}/${_DRUPAL10_1}" ]; then
+      if [ -d "${_QR}/${_DRUPAL10_1_P}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_1}-prod" ]; then
+          _A="${_QR}/${_DRUPAL10_1_P}/sites"
+          _B="${_QH}/${_DRUPAL10_1}-prod"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    elif [ ! -d "${_QR}/${_DRUPAL10_1_P}" ]; then
+      if [ -d "${_QR}/${_DRUPAL10_1}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_1}-prod" ]; then
+          _A="${_QR}/${_DRUPAL10_1}/sites"
+          _B="${_QH}/${_DRUPAL10_1}-prod"
+          ln -sfn ${_A} ${_B}
+        fi
       fi
     fi
     if [ -d "${_QR}/erpal-${_ERPAL}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/erpal-${_ERPAL}-${_SMALLCORE7}" ]; then
         _A="${_QR}/erpal-${_ERPAL}-${_SMALLCORE7}/sites"
         _B="${_QH}/erpal-${_ERPAL}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/fserver-${_SMALLCORE6}/sites" ]; then
       if [ ! -L "${_QH}/fserver-${_SMALLCORE6}" ]; then
         _A="${_QR}/fserver-${_SMALLCORE6}/sites"
         _B="${_QH}/fserver-${_SMALLCORE6}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/guardr-${_GUARDR}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/guardr-${_GUARDR}-${_SMALLCORE7}" ]; then
         _A="${_QR}/guardr-${_GUARDR}-${_SMALLCORE7}/sites"
         _B="${_QH}/guardr-${_GUARDR}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/lightning-${_LIGHTNING}-${_SMALLCORE93}/docroot/sites" ]; then
       if [ ! -L "${_QH}/lightning-${_LIGHTNING}-${_SMALLCORE93}" ]; then
         _A="${_QR}/lightning-${_LIGHTNING}-${_SMALLCORE93}/docroot/sites"
         _B="${_QH}/lightning-${_LIGHTNING}-${_SMALLCORE93}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}" ]; then
         _A="${_QR}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}/sites"
         _B="${_QH}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/openaid-${_OPENAID}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/openaid-${_OPENAID}-${_SMALLCORE7}" ]; then
         _A="${_QR}/openaid-${_OPENAID}-${_SMALLCORE7}/sites"
         _B="${_QH}/openaid-${_OPENAID}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7}" ]; then
         _A="${_QR}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7}/sites"
         _B="${_QH}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/openblog-${_OPENBLOG}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/openblog-${_OPENBLOG}-${_SMALLCORE7}" ]; then
         _A="${_QR}/openblog-${_OPENBLOG}-${_SMALLCORE7}/sites"
         _B="${_QH}/openblog-${_OPENBLOG}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7}" ]; then
         _A="${_QR}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7}/sites"
         _B="${_QH}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7}" ]; then
         _A="${_QR}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7}/sites"
         _B="${_QH}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/opendeals-${_OPENDEALS}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/opendeals-${_OPENDEALS}-${_SMALLCORE7}" ]; then
         _A="${_QR}/opendeals-${_OPENDEALS}-${_SMALLCORE7}/sites"
         _B="${_QH}/opendeals-${_OPENDEALS}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE93}/web/sites" ]; then
-      if [ ! -L "${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE93}" ]; then
-        _A="${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE93}/web/sites"
-        _B="${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE93}"
-        ln -sf ${_A} ${_B}
+    if [ -d "${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE95}/web/sites" ]; then
+      if [ ! -L "${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE95}" ]; then
+        _A="${_QR}/openlucius-${_OPENLUCIUS}-${_SMALLCORE95}/web/sites"
+        _B="${_QH}/openlucius-${_OPENLUCIUS}-${_SMALLCORE95}"
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7}" ]; then
         _A="${_QR}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7}/sites"
         _B="${_QH}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7}" ]; then
         _A="${_QR}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7}/sites"
         _B="${_QH}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7}" ]; then
         _A="${_QR}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7}/sites"
         _B="${_QH}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7}" ]; then
         _A="${_QR}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7}/sites"
         _B="${_QH}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7}" ]; then
         _A="${_QR}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7}/sites"
         _B="${_QH}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/panopoly-${_PANOPOLY}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/panopoly-${_PANOPOLY}-${_SMALLCORE7}" ]; then
         _A="${_QR}/panopoly-${_PANOPOLY}-${_SMALLCORE7}/sites"
         _B="${_QH}/panopoly-${_PANOPOLY}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/recruiter-${_RECRUITER}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/recruiter-${_RECRUITER}-${_SMALLCORE7}" ]; then
         _A="${_QR}/recruiter-${_RECRUITER}-${_SMALLCORE7}/sites"
         _B="${_QH}/recruiter-${_RECRUITER}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/restaurant-${_RESTAURANT}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/restaurant-${_RESTAURANT}-${_SMALLCORE7}" ]; then
         _A="${_QR}/restaurant-${_RESTAURANT}-${_SMALLCORE7}/sites"
         _B="${_QH}/restaurant-${_RESTAURANT}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/thunder-${_THUNDER}-${_SMALLCORE93}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_SMALLCORE93}" ]; then
-        _A="${_QR}/thunder-${_THUNDER}-${_SMALLCORE93}/docroot/sites"
-        _B="${_QH}/thunder-${_THUNDER}-${_SMALLCORE93}"
-        ln -sf ${_A} ${_B}
+    if [ -d "${_QR}/thunder-${_THUNDER}-${_SMALLCORE10_1}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_SMALLCORE10_1}" ]; then
+        _A="${_QR}/thunder-${_THUNDER}-${_SMALLCORE10_1}/docroot/sites"
+        _B="${_QH}/thunder-${_THUNDER}-${_SMALLCORE10_1}"
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/ubercart-${_UBERCART6}-${_SMALLCORE6}/sites" ]; then
       if [ ! -L "${_QH}/ubercart-${_UBERCART6}-${_SMALLCORE6}" ]; then
         _A="${_QR}/ubercart-${_UBERCART6}-${_SMALLCORE6}/sites"
         _B="${_QH}/ubercart-${_UBERCART6}-${_SMALLCORE6}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/ubercart-${_UBERCART7}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/ubercart-${_UBERCART7}-${_SMALLCORE7}" ]; then
         _A="${_QR}/ubercart-${_UBERCART7}-${_SMALLCORE7}/sites"
         _B="${_QH}/ubercart-${_UBERCART7}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7}/sites" ]; then
       if [ ! -L "${_QH}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7}" ]; then
         _A="${_QR}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7}/sites"
         _B="${_QH}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/varbase-${_VARBASE}-${_SMALLCORE93}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/varbase-${_VARBASE}-${_SMALLCORE93}" ]; then
-        _A="${_QR}/varbase-${_VARBASE}-${_SMALLCORE93}/docroot/sites"
-        _B="${_QH}/varbase-${_VARBASE}-${_SMALLCORE93}"
-        ln -sf ${_A} ${_B}
+    if [ -d "${_QR}/varbase-${_VARBASE}-${_SMALLCORE10_1}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/varbase-${_VARBASE}-${_SMALLCORE10_1}" ]; then
+        _A="${_QR}/varbase-${_VARBASE}-${_SMALLCORE10_1}/docroot/sites"
+        _B="${_QH}/varbase-${_VARBASE}-${_SMALLCORE10_1}"
+        ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/social-${_SOCIAL}-${_SMALLCORE8}/html/sites" ]; then
-      if [ ! -L "${_QH}/social-${_SOCIAL}-${_SMALLCORE8}" ]; then
-        _A="${_QR}/social-${_SOCIAL}-${_SMALLCORE8}/html/sites"
-        _B="${_QH}/social-${_SOCIAL}-${_SMALLCORE8}"
-        ln -sf ${_A} ${_B}
+    if [ -d "${_QR}/social-${_SOCIAL}-${_SMALLCORE95}/html/sites" ]; then
+      if [ ! -L "${_QH}/social-${_SOCIAL}-${_SMALLCORE95}" ]; then
+        _A="${_QR}/social-${_SOCIAL}-${_SMALLCORE95}/html/sites"
+        _B="${_QH}/social-${_SOCIAL}-${_SMALLCORE95}"
+        ln -sfn ${_A} ${_B}
       fi
     fi
     if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS8}-${_SMALLCORE8}/web/sites" ]; then
       if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS8}-${_SMALLCORE8}" ]; then
         _A="${_QR}/opigno_lms-${_OPIGNOLMS8}-${_SMALLCORE8}/web/sites"
         _B="${_QH}/opigno_lms-${_OPIGNOLMS8}-${_SMALLCORE8}"
-        ln -sf ${_A} ${_B}
+        ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE92}/web/sites" ]; then
-      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE92}" ]; then
-        _A="${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE92}/web/sites"
-        _B="${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE92}"
-        ln -sf ${_A} ${_B}
+    if [ -d "${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE95}/web/sites" ]; then
+      if [ ! -L "${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE95}" ]; then
+        _A="${_QR}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE95}/web/sites"
+        _B="${_QH}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE95}"
+        ln -sfn ${_A} ${_B}
       fi
     fi
   fi
@@ -3586,7 +3654,7 @@ satellite_if_add_update_backend_user_dirs_files_clean() {
   #
   if [ ! -d "${_ROOT}/static" ]; then
     mkdir -p ${_ROOT}/static
-    ln -sf ${_ROOT}/static /home/${_USERFTP}/static
+    ln -sfn ${_ROOT}/static /home/${_USERFTP}/static
   fi
   chown ${_USER}:${_USRG} ${_ROOT}/static &> /dev/null
   chmod 02775 ${_ROOT}/static &> /dev/null
@@ -3648,7 +3716,7 @@ satellite_if_add_update_backend_user_dirs_files_clean() {
     fi
     if [ -d "${_QR}/keys" ]; then
       if [ ! -L "${_QH}/keys" ]; then
-        ln -sf ${_QR}/keys ${_QH}/keys
+        ln -sfn ${_QR}/keys ${_QH}/keys
       fi
     fi
     rm -f ${_QR}/*/robots.txt &> /dev/null
@@ -3823,6 +3891,10 @@ satellite_make() {
     writeTo="${vBs}/${filIncO}"
   fi
 
+  _X_SE="500devT02"
+  export _X_SE="${_X_SE}"
+  export _X_VERSION="${_X_VERSION}"
+
   echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${writeTo}
   echo "_AEGIR_XTS_VRN=\"${_AEGIR_XTS_VRN}\""         >> ${writeTo}
   echo "_AGOV=\"${_AGOV}\""                           >> ${writeTo}
@@ -3851,6 +3923,17 @@ satellite_make() {
   echo "_DRUPAL7S=\"${_DRUPAL7}-stage\""              >> ${writeTo}
   echo "_DRUPAL8=\"${_DRUPAL8}\""                     >> ${writeTo}
   echo "_DRUPAL9=\"${_DRUPAL9}\""                     >> ${writeTo}
+  echo "_DRUPAL9_D=\"${_DRUPAL9}-dev\""               >> ${writeTo}
+  echo "_DRUPAL9_P=\"${_DRUPAL9}-prod\""              >> ${writeTo}
+  echo "_DRUPAL9_S=\"${_DRUPAL9}-stage\""             >> ${writeTo}
+  echo "_DRUPAL10_0=\"${_DRUPAL10_0}\""               >> ${writeTo}
+  echo "_DRUPAL10_0_D=\"${_DRUPAL10_0}-dev\""         >> ${writeTo}
+  echo "_DRUPAL10_0_P=\"${_DRUPAL10_0}-prod\""        >> ${writeTo}
+  echo "_DRUPAL10_0_S=\"${_DRUPAL10_0}-stage\""       >> ${writeTo}
+  echo "_DRUPAL10_1=\"${_DRUPAL10_1}\""               >> ${writeTo}
+  echo "_DRUPAL10_1_D=\"${_DRUPAL10_1}-dev\""         >> ${writeTo}
+  echo "_DRUPAL10_1_P=\"${_DRUPAL10_1}-prod\""        >> ${writeTo}
+  echo "_DRUPAL10_1_S=\"${_DRUPAL10_1}-stage\""       >> ${writeTo}
   echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${writeTo}
   echo "_ERPAL=\"${_ERPAL}\""                         >> ${writeTo}
   echo "_F_TIME=\"${_F_TIME}\""                       >> ${writeTo}
@@ -3900,6 +3983,13 @@ satellite_make() {
   echo "_SMALLCORE8=\"${_SMALLCORE8}\""               >> ${writeTo}
   echo "_SMALLCORE92=\"${_SMALLCORE92}\""             >> ${writeTo}
   echo "_SMALLCORE93=\"${_SMALLCORE93}\""             >> ${writeTo}
+  echo "_SMALLCORE94=\"${_SMALLCORE94}\""             >> ${writeTo}
+  echo "_SMALLCORE95=\"${_SMALLCORE95}\""             >> ${writeTo}
+  echo "_SMALLCORE9=\"${_SMALLCORE9}\""               >> ${writeTo}
+  echo "_SMALLCORE10_0=\"${_SMALLCORE10_0}\""         >> ${writeTo}
+  echo "_SMALLCORE10_1=\"${_SMALLCORE10_1}\""         >> ${writeTo}
+  echo "_SMALLCORE10_0_V=\"${_SMALLCORE10_0_V}\""     >> ${writeTo}
+  echo "_SMALLCORE10_1_V=\"${_SMALLCORE10_1_V}\""     >> ${writeTo}
   echo "_SOCIAL=\"${_SOCIAL}\""                       >> ${writeTo}
   echo "_SPINNER=\"${_SPINNER}\""                     >> ${writeTo}
   echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${writeTo}
@@ -4000,7 +4090,6 @@ satellite_make() {
     fi
   fi
 
-  _X_SE="420prodT02"
   if [ ! -e "${_ROOT}/static/control/.ctrl.${_X_SE}.pid" ] \
     && [ -e "/home/${_USER}.ftp/clients" ]; then
     if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
@@ -4049,7 +4138,7 @@ satellite_if_head_github_connection_test() {
       echo " "
       msg "EXIT on error (provision) due to GitHub downtime"
       msg "Please try to run this script again in a few minutes"
-      msg "You may want to check https://status.github.com/messages"
+      msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
       clean_pid_exit
@@ -4060,7 +4149,7 @@ satellite_if_head_github_connection_test() {
       echo " "
       msg "EXIT on error (hostmaster) due to GitHub downtime"
       msg "Please try to run this script again in a few minutes"
-      msg "You may want to check https://status.github.com/messages"
+      msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
       clean_pid_exit
@@ -4076,7 +4165,7 @@ satellite_if_head_github_connection_test() {
       echo " "
       msg "EXIT on error (boa) due to GitHub downtime"
       msg "Please try to run this script again in a few minutes"
-      msg "You may want to check https://status.github.com/messages"
+      msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
       clean_pid_exit
@@ -4286,7 +4375,7 @@ satellite_check_octopus_vs_barracuda_ver() {
     else
       msg "ERROR: This octopus installer can be used only when the instance"
       msg "has been already upgraded to stable BOA-4.x or dev BOA-5.x"
-      msg "Please run 'octopus up-stable ${_USER} force' upgrade first!"
+      msg "Please run 'octopus up-dev ${_USER} force' upgrade first!"
       msg "Bye"
       clean_pid_exit
     fi
@@ -4587,9 +4676,9 @@ EOF
     else
       echo " "
       thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
-      msg "This Octopus URL address is ${_DOMAIN}"
-      msg "This Octopus PHP version is ${_PHP_FPM_VERSION}"
       msg "This Octopus System is ${thiSys}"
+      msg "This Octopus PHP FPM/CLI version is ${_PHP_FPM_VERSION}/${_PHP_CLI_VERSION}"
+      msg "This Octopus URL address is ${_DOMAIN}"
       echo " "
     fi
   fi
@@ -4633,10 +4722,10 @@ satellite_post_cleanup() {
   rm -rf /tmp/drush_make_tmp*
   rm -rf /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
-  rm -f /var/run/boa_run.pid
+  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   rm -rf ${_ROOT}/.tmp/cache
-  rm -f /var/run/manage_ltd_users.pid
-  rm -f /var/run/manage_rvm_users.pid
+  [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
+  [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
 }
 
 satellite_letsencrypt_crt_key_copy() {
@@ -4713,7 +4802,7 @@ satellite_letsencrypt_vhost_setup() {
           mrun "bash /opt/local/bin/xboa ssl-gen" &> /dev/null
         fi
         if [ -e "${Ssl}" ]; then
-          rm -f /root/.ssl.proxy.cnf
+          [ -e "/root/.ssl.proxy.cnf" ] && rm -f /root/.ssl.proxy.cnf
           if [ -e "${crtPath}" ]; then
             crtPath=${crtPath//\//\\\/}
             sed -i "s/ssl_certificate .*/ssl_certificate              ${crtPath};/g" ${Ssl}
@@ -4789,7 +4878,7 @@ satellite_batch_cleanup() {
   chmod 711 opt sbin selinux srv sys usr var share run &> /dev/null
   chmod 700 root &> /dev/null
   if [ -e "${_D}" ]; then
-    if [ ! -f "${_D}/permissions-fix-${_X_VERSION}-${_TODAY}.info" ]; then
+    if [ ! -f "${_D}/permissions-fix-${_X_SE}-${_X_VERSION}-${_TODAY}.info" ]; then
       find ${_D}/000 -type d -exec chmod 0755 {} \; &> /dev/null
       find ${_D}/000 -type f -exec chmod 0644 {} \; &> /dev/null
       mrun "chmod 755 ${_D}/*/*/profiles" &> /dev/null
@@ -4797,7 +4886,7 @@ satellite_batch_cleanup() {
       mrun "chmod 02775 ${_D}/000/core/*/sites/all/{modules,libraries,themes}" &> /dev/null
       mrun "chown -R root:root ${_D}" &> /dev/null
       mrun "chown -R root:users ${_D}/*/*/sites" &> /dev/null
-      echo fixed > ${_D}/permissions-fix-${_X_VERSION}-${_TODAY}.info
+      echo fixed > ${_D}/permissions-fix-${_X_SE}-${_X_VERSION}-${_TODAY}.info
     fi
     chown root:root ${_D} &> /dev/null
     chown root:root ${_CORE} &> /dev/null
@@ -4812,7 +4901,7 @@ satellite_batch_cleanup() {
     chmod 644 /data/all/cpuinfo &> /dev/null
     chmod 0755 ${_D} ${_D}/000 &> /dev/null
   elif [ -e "/data/disk/all" ]; then
-    if [ ! -f "/data/disk/all/permissions-fix-${_X_VERSION}-${_TODAY}.info" ]; then
+    if [ ! -f "/data/disk/all/permissions-fix-${_X_SE}-${_X_VERSION}-${_TODAY}.info" ]; then
       find /data/disk/all/000 -type d -exec chmod 0755 {} \; &> /dev/null
       find /data/disk/all/000 -type f -exec chmod 0644 {} \; &> /dev/null
       mrun "chmod 755 /data/disk/all/*/*/profiles" &> /dev/null
@@ -4820,7 +4909,7 @@ satellite_batch_cleanup() {
       mrun "chmod 02775 /data/disk/all/000/core/*/sites/all/{modules,libraries,themes}" &> /dev/null
       mrun "chown -R root:root /data/disk/all" &> /dev/null
       mrun "chown -R root:users /data/disk/all/*/*/sites" &> /dev/null
-      echo fixed > /data/disk/all/permissions-fix-${_X_VERSION}-${_TODAY}.info
+      echo fixed > /data/disk/all/permissions-fix-${_X_SE}-${_X_VERSION}-${_TODAY}.info
     fi
     chown root:root /data/disk/all &> /dev/null
     chown root:root ${_CORE} &> /dev/null
@@ -4975,7 +5064,7 @@ satellite_child_b_install_drush() {
       if [ ! -d "${_ROOT}/config" ]; then
         cd ${_ROOT}/aegir
         mv -f config ${_ROOT}/config &> /dev/null
-        ln -sf ${_ROOT}/config ${_ROOT}/aegir/config
+        ln -sfn ${_ROOT}/config ${_ROOT}/aegir/config
       fi
     fi
     if [ -d "${_ROOT}/tools/drush" ]; then
@@ -5191,9 +5280,9 @@ satellite_child_b_aegir_build() {
     chmod 02775 -R sites/${_DOMAIN}/files &> /dev/null
     chgrp -R ${_WEBG} sites/${_DOMAIN}/files &> /dev/null
     rm -f ${_ROOT}/u/${_DOMAIN}
-    ln -sf ${_HM_ROOT} ${_ROOT}/u/${_DOMAIN}
+    ln -sfn ${_HM_ROOT} ${_ROOT}/u/${_DOMAIN}
     rm -f /data/u/${_DOMAIN} &> /dev/null
-    ln -sf ${_HM_ROOT} /data/u/${_DOMAIN}
+    ln -sfn ${_HM_ROOT} /data/u/${_DOMAIN}
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5476,9 +5565,9 @@ satellite_child_b_aegir_build() {
     mv -f ${_ROOT}/.drush/xts/security_review/foo.txt \
       ${_ROOT}/.drush/xts/security_review/security_review.drush.inc  &> /dev/null
     rm -f ${_ROOT}/u/${_DOMAIN}
-    ln -sf ${_HM_ROOT} ${_ROOT}/u/${_DOMAIN}
+    ln -sfn ${_HM_ROOT} ${_ROOT}/u/${_DOMAIN}
     rm -f /data/u/${_DOMAIN} &> /dev/null
-    ln -sf ${_HM_ROOT} /data/u/${_DOMAIN}
+    ln -sfn ${_HM_ROOT} /data/u/${_DOMAIN}
     rm -rf ${_HM_ROOT}/profiles/{default,standard,minimal,testing}
 
     ### Fix for migrated/merged instances
@@ -5802,7 +5891,7 @@ satellite_child_b_aegir_ui_enhance() {
       else
         ${_DRUSHCMD} php-script make_client ${_CLIENT_EMAIL} &> /dev/null
       fi
-      rm -f make_client.php
+      ### rm -f make_client.php
     else
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
         SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%'"
@@ -5919,7 +6008,7 @@ satellite_child_b_vhosts_hotfix() {
 satellite_child_b_symlink_global_inc() {
   cd ${_ROOT}
   if [ -e "/data/conf/global.inc" ]; then
-    ln -sf /data/conf/global.inc ${_ROOT}/config/includes/global.inc
+    ln -sfn /data/conf/global.inc ${_ROOT}/config/includes/global.inc
   fi
 }
 

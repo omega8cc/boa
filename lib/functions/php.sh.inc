@@ -728,7 +728,6 @@ install_php_extensions() {
     else
       touch ${pthLog}/igbinary-${_PHP_IGBINARY}-${_T_PHP_VRN}.log
     fi
-    _X_SE="420prodT02"
     rm -f /data/disk/*/static/control/.*${_X_SE}.pid
   fi
   ###--------------------###
@@ -853,10 +852,10 @@ install_php_extensions() {
   if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
     if [ "$1" = "56" ]; then
       msg "INFO: Building GEOS extension ${_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
-      if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
+      if [ ! -e "${pthLog}/geos-${_X_SE}-${_X_VERSION}.log" ]; then
         apt_clean_update
         st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
-        touch ${pthLog}/geos-${_X_VERSION}.log
+        touch ${pthLog}/geos-${_X_SE}-${_X_VERSION}.log
       fi
       cd /var/opt
       rm -rf geos*
@@ -1104,7 +1103,6 @@ php_extensions_update() {
       else
         touch ${pthLog}/igbinary-${_PHP_IGBINARY}-${_T_PHP_VRN}.log
       fi
-      _X_SE="420prodT02"
       rm -f /data/disk/*/static/control/.*${_X_SE}.pid
     fi
   fi
@@ -1252,10 +1250,10 @@ php_extensions_update() {
     && [ ! -e "${pthLog}/php-geos-${_GEOS_VRN}-${_T_PHP_VRN}.log" ]; then
     if [ "${_PHP_GEOS}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "GEO" ]]; then
       msg "INFO: Building GEOS ${_GEOS_VRN} upgrade for PHP ${_T_PHP_VRN} from sources..."
-      if [ ! -e "${pthLog}/geos-${_X_VERSION}.log" ]; then
+      if [ ! -e "${pthLog}/geos-${_X_SE}-${_X_VERSION}.log" ]; then
         apt_clean_update
         st_runner "${_INSTAPP} libgeos-dev libgeos-c1" 2> /dev/null
-        touch ${pthLog}/geos-${_X_VERSION}.log
+        touch ${pthLog}/geos-${_X_SE}-${_X_VERSION}.log
       fi
       cd /var/opt
       rm -rf geos*
@@ -1499,7 +1497,7 @@ install_php_multi() {
     mrun "ldconfig" 2> /dev/null
     if [ -e "/usr/lib/libtidy.so" ]; then
       cd /usr/lib
-      ln -sf libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
+      ln -sfn libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
       touch ${pthLog}/libtidy-${_LIB_TIDY_VRN}.log
     fi
   fi
@@ -1529,10 +1527,21 @@ install_php_multi() {
   else
     _PHP_EXTRA="${_PHP_EXTRA} --enable-intl"
   fi
-  if [ -e "/usr/local/ssl/lib/libssl.so.3" ] \
-    || [ -e "/usr/local/ssl/lib/libssl.so.1.1" ] \
-    || [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ]; then
-    _PHP_EXTRA="${_PHP_EXTRA} --with-openssl=/usr/local/ssl"
+  _SSL_ITD=$(openssl version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f2 \
+    | awk '{ print $1}')
+  if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
+    && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+    _SSL_PATH="/usr/local/ssl3"
+    _SSL_LIB_PATH="${_SSL_PATH}/lib64"
+  else
+    _SSL_PATH="/usr/local/ssl"
+    _SSL_LIB_PATH="${_SSL_PATH}/lib"
+  fi
+  _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
+  if [ -e "${_SSL_LIB_PATH}" ]; then
+    _PHP_EXTRA="${_PHP_EXTRA} --with-openssl=${_SSL_PATH}"
   else
     _PHP_EXTRA="${_PHP_EXTRA} --with-openssl"
   fi
@@ -1561,8 +1570,6 @@ install_php_multi() {
              --with-gmp"
   if [ "$1" = "74" ] || [ "$1" = "80" ] || [ "$1" = "81" ] || [ "$1" = "82" ]; then
     _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-freetype-dir=\/usr//g" 2>&1)
-    _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-openssl=\/usr\/local\/ssl/--with-openssl/g" 2>&1)
-    _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-curl=\/usr\/local/--with-curl/g" 2>&1)
     _PHP_EXTRA="${_PHP_EXTRA} ${_NEW_SNFR}"
   elif [ "$1" = "73" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR}"
@@ -1587,6 +1594,8 @@ install_php_multi() {
     || [ "${_OSR}" = "buster" ]; then
     patchFile="freetype.patch"
     patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
+    patchFile="php-8.1-openssl3.patch"
+    patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
   fi
   _PHP_EXTRA="${_PHP_EXTRA} --enable-opcache"
   if [ ! -z "${_PHP_EXTRA}" ]; then
@@ -1598,7 +1607,7 @@ install_php_multi() {
       msg "INFO: ${_DISPLAY_PHP_EXTRA}"
     fi
   fi
-  mrun "bash ./configure \
+  LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
                 --enable-bcmath \
@@ -1619,7 +1628,7 @@ install_php_multi() {
                 --with-pear \
                 --with-xsl \
                 --with-zlib \
-                ${_PHP_EXTRA}" 2> /dev/null
+                ${_PHP_EXTRA} &> /dev/null
   if [ -e "/var/opt/php-${_PHP_VERSION}/Makefile" ]; then
     msg "INFO: Building PHP ${_PHP_VERSION} part 3/3"
     msg "WAIT: This may take a while, please wait..."
@@ -1629,11 +1638,11 @@ install_php_multi() {
     mrun "ldconfig" 2> /dev/null
   else
     msg "WARN: No Makefile, configure for PHP ${_PHP_VERSION} failed"
-    msg "INFO: Waiting 3 minutes before trying again..."
-    sleep 180
+    msg "INFO: Waiting 60 seconds before trying again..."
+    sleep 60
     msg "INFO: Building PHP ${_PHP_VERSION} part 2/3 (again)"
     mrun "make clean" 2> /dev/null
-    mrun "bash ./configure \
+    LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
                 --enable-bcmath \
@@ -1654,7 +1663,7 @@ install_php_multi() {
                 --with-pear \
                 --with-xsl \
                 --with-zlib \
-                ${_PHP_EXTRA}" 2> /dev/null
+                ${_PHP_EXTRA} 2> /dev/null
     if [ -f "/var/opt/php-${_PHP_VERSION}/Makefile" ]; then
       sed -i "s/^EXTRA_LIBS = \-lcrypt/EXTRA_LIBS = \-llber \-lcrypt/g" /var/opt/php-${_PHP_VERSION}/Makefile
       msg "INFO: Building PHP ${_PHP_VERSION} part 3/3 (again)"
@@ -1832,7 +1841,7 @@ newrelic_update() {
         newrelic-sysmond" &> /dev/null
       mkdir -p ${vBs}/nr
       mv -f /etc/newrelic \
-        ${vBs}/nr/etc-newrelic-pre-${_X_VERSION}-${_NOW} &> /dev/null
+        ${vBs}/nr/etc-newrelic-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
       pthNrx="lib/php/extensions/no-debug-non-zts"
       _PHP_EXT_DIR_82="/opt/php82/${pthNrx}-${_PHP82_API}"
       _PHP_EXT_DIR_81="/opt/php81/${pthNrx}-${_PHP81_API}"
@@ -1844,8 +1853,10 @@ newrelic_update() {
       _PHP_EXT_DIR_70="/opt/php70/${pthNrx}-${_PHP70_API}"
       _PHP_EXT_DIR_56="/opt/php56/${pthNrx}-${_PHP56_API}"
       msg "INFO: Installing latest version of New Relic Apps Monitor..."
+      mkdir -p /etc/apt/keyrings/
+      wget -q -U iCab ${urlDev}/newrelic-key-548C16BF.gpg -O /etc/apt/keyrings/newrelic-key-548C16BF.gpg
       echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
-      echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
+      echo "deb [signed-by=/etc/apt/keyrings/newrelic-key-548C16BF.gpg] http://apt.newrelic.com/debian/ newrelic non-free" \
         >> /etc/apt/sources.list.d/newrelic.list
       apt_clean_update
       st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
@@ -1864,47 +1875,47 @@ newrelic_update() {
       pthNra="/usr/lib/newrelic-php5/agent"
       if [ -e "${_PHP_EXT_DIR_82}" ] && [ ! -e "${_PHP_EXT_DIR_82}/newrelic.so" ] \
         && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP82_API}.so" ]; then
-        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP82_API}.so \
+        ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP82_API}.so \
           ${_PHP_EXT_DIR_82}/newrelic.so
       fi
       if [ -e "${_PHP_EXT_DIR_81}" ] && [ ! -e "${_PHP_EXT_DIR_81}/newrelic.so" ] \
         && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP81_API}.so" ]; then
-        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP81_API}.so \
+        ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP81_API}.so \
           ${_PHP_EXT_DIR_81}/newrelic.so
       fi
       if [ -e "${_PHP_EXT_DIR_80}" ] && [ ! -e "${_PHP_EXT_DIR_80}/newrelic.so" ] \
         && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP80_API}.so" ]; then
-        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP80_API}.so \
+        ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP80_API}.so \
           ${_PHP_EXT_DIR_80}/newrelic.so
       fi
       if [ -e "${_PHP_EXT_DIR_74}" ] && [ ! -e "${_PHP_EXT_DIR_74}/newrelic.so" ] \
         && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP74_API}.so" ]; then
-        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP74_API}.so \
+        ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP74_API}.so \
           ${_PHP_EXT_DIR_74}/newrelic.so
       fi
       if [ -e "${_PHP_EXT_DIR_73}" ] && [ ! -e "${_PHP_EXT_DIR_73}/newrelic.so" ] \
         && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP73_API}.so" ]; then
-        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP73_API}.so \
+        ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP73_API}.so \
           ${_PHP_EXT_DIR_73}/newrelic.so
       fi
       if [ -e "${_PHP_EXT_DIR_72}" ] && [ ! -e "${_PHP_EXT_DIR_72}/newrelic.so" ] \
         && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP72_API}.so" ]; then
-        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP72_API}.so \
+        ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP72_API}.so \
           ${_PHP_EXT_DIR_72}/newrelic.so
       fi
       if [ -e "${_PHP_EXT_DIR_71}" ] && [ ! -e "${_PHP_EXT_DIR_71}/newrelic.so" ] \
         && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP71_API}.so" ]; then
-        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP71_API}.so \
+        ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP71_API}.so \
           ${_PHP_EXT_DIR_71}/newrelic.so
       fi
       if [ -e "${_PHP_EXT_DIR_70}" ] && [ ! -e "${_PHP_EXT_DIR_70}/newrelic.so" ] \
         && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP70_API}.so" ]; then
-        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP70_API}.so \
+        ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP70_API}.so \
           ${_PHP_EXT_DIR_70}/newrelic.so
       fi
       if [ -e "${_PHP_EXT_DIR_56}" ] && [ ! -e "${_PHP_EXT_DIR_56}/newrelic.so" ] \
         && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP56_API}.so" ]; then
-        ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP56_API}.so \
+        ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP56_API}.so \
           ${_PHP_EXT_DIR_56}/newrelic.so
       fi
       if [ ! -e "/etc/newrelic/newrelic.cfg" ]; then
@@ -1990,9 +2001,10 @@ if_install_php_newrelic() {
       _MULTI_NR=YES
     fi
     if [ "$_MULTI_NR" = "YES" ] \
-      || [ ! -e "${pthLog}/newrelic-${_X_VERSION}.log" ] \
+      || [ ! -e "${pthLog}/newrelic-${_X_SE}-${_X_VERSION}.log" ] \
       || [ ! -e "/etc/newrelic/newrelic.cfg" ] \
       || [ ! -e "/etc/newrelic/nrsysmond.cfg" ] \
+      || [ ! -e "/etc/apt/keyrings/newrelic-key-548C16BF.gpg" ] \
       || [ ! -e "/etc/apt/sources.list.d/newrelic.list" ]; then
       msg "INFO: Installing New Relic Apps Monitor..."
       cd /var/opt
@@ -2005,9 +2017,10 @@ if_install_php_newrelic() {
       done
       cat 548C16BF.gpg | ${_GPG} --import &> /dev/null
       rm -f 548C16BF.gpg*
-      echo "## New Relic APT Repository" > \
-        /etc/apt/sources.list.d/newrelic.list
-      echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
+      mkdir -p /etc/apt/keyrings/
+      wget -q -U iCab ${urlDev}/newrelic-key-548C16BF.gpg -O /etc/apt/keyrings/newrelic-key-548C16BF.gpg
+      echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
+      echo "deb [signed-by=/etc/apt/keyrings/newrelic-key-548C16BF.gpg] http://apt.newrelic.com/debian/ newrelic non-free" \
         >> /etc/apt/sources.list.d/newrelic.list
       apt_clean_update
       st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
@@ -2028,47 +2041,47 @@ if_install_php_newrelic() {
         pthNra="/usr/lib/newrelic-php5/agent"
         if [ -e "${_PHP_EXT_DIR_82}" ] && [ ! -e "${_PHP_EXT_DIR_82}/newrelic.so" ] \
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP82_API}.so" ]; then
-          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP82_API}.so \
+          ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP82_API}.so \
             ${_PHP_EXT_DIR_82}/newrelic.so
         fi
         if [ -e "${_PHP_EXT_DIR_81}" ] && [ ! -e "${_PHP_EXT_DIR_81}/newrelic.so" ] \
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP81_API}.so" ]; then
-          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP81_API}.so \
+          ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP81_API}.so \
             ${_PHP_EXT_DIR_81}/newrelic.so
         fi
         if [ -e "${_PHP_EXT_DIR_80}" ] && [ ! -e "${_PHP_EXT_DIR_80}/newrelic.so" ] \
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP80_API}.so" ]; then
-          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP80_API}.so \
+          ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP80_API}.so \
             ${_PHP_EXT_DIR_80}/newrelic.so
         fi
         if [ -e "${_PHP_EXT_DIR_74}" ] && [ ! -e "${_PHP_EXT_DIR_74}/newrelic.so" ] \
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP74_API}.so" ]; then
-          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP74_API}.so \
+          ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP74_API}.so \
             ${_PHP_EXT_DIR_74}/newrelic.so
         fi
         if [ -e "${_PHP_EXT_DIR_73}" ] && [ ! -e "${_PHP_EXT_DIR_73}/newrelic.so" ] \
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP73_API}.so" ]; then
-          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP73_API}.so \
+          ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP73_API}.so \
             ${_PHP_EXT_DIR_73}/newrelic.so
         fi
         if [ -e "${_PHP_EXT_DIR_72}" ] && [ ! -e "${_PHP_EXT_DIR_72}/newrelic.so" ] \
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP72_API}.so" ]; then
-          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP72_API}.so \
+          ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP72_API}.so \
             ${_PHP_EXT_DIR_72}/newrelic.so
         fi
         if [ -e "${_PHP_EXT_DIR_71}" ] && [ ! -e "${_PHP_EXT_DIR_71}/newrelic.so" ] \
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP71_API}.so" ]; then
-          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP71_API}.so \
+          ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP71_API}.so \
             ${_PHP_EXT_DIR_71}/newrelic.so
         fi
         if [ -e "${_PHP_EXT_DIR_70}" ] && [ ! -e "${_PHP_EXT_DIR_70}/newrelic.so" ] \
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP70_API}.so" ]; then
-          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP70_API}.so \
+          ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP70_API}.so \
             ${_PHP_EXT_DIR_70}/newrelic.so
         fi
         if [ -e "${_PHP_EXT_DIR_56}" ] && [ ! -e "${_PHP_EXT_DIR_56}/newrelic.so" ] \
           && [ -e "${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP56_API}.so" ]; then
-          ln -sf ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP56_API}.so \
+          ln -sfn ${pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP56_API}.so \
             ${_PHP_EXT_DIR_56}/newrelic.so
         fi
         if [ ! -e "/etc/newrelic/newrelic.cfg" ]; then
@@ -2092,7 +2105,7 @@ if_install_php_newrelic() {
         wait
       fi
     fi
-    touch ${pthLog}/newrelic-${_X_VERSION}.log
+    touch ${pthLog}/newrelic-${_X_SE}-${_X_VERSION}.log
   fi
 }
 
@@ -2214,7 +2227,7 @@ check_php_rebuild() {
       if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
         || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
         if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-          msg "INFO: PHP ${_PHP_ITD} forced rebuild on next barracuda up-head"
+          msg "INFO: PHP ${_PHP_ITD} forced rebuild on next barracuda up-dev"
           _PHP_FORCE_REINSTALL=NO
         else
           if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
@@ -2233,7 +2246,7 @@ check_php_rebuild() {
         msg "INFO: Installed PHP version ${_PHP_ITD}, upgrade required"
       fi
       if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-        msg "INFO: PHP ${_PHP_ITD} upgrade on next barracuda up-head"
+        msg "INFO: PHP ${_PHP_ITD} upgrade on next barracuda up-dev"
       else
         if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
           msg "INFO: PHP ${_PHP_ITD} upgrade will happen now..."
@@ -2329,17 +2342,27 @@ check_php_broken_gd() {
 #
 # Check if the PHP build is totally broken.
 check_php_broken_segfault() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: check_php_broken_segfault $1"
-  fi
+  isOnig=
+  isOnig=$(/opt/php$1/bin/php -v 2>&1)
   isSegft=
   isSegft=$(/opt/php$1/bin/php -v | grep cli 2>&1)
-  isOnig=
-  isOnig=$(grep OnigEncoding /var/log/php/php$1-fpm-error.log 2>&1)
+  isOlog=
+  if [ -e "/var/log/php/php$1-fpm-error.log" ]; then
+    isOlog=$(grep OnigEncoding /var/log/php/php$1-fpm-error.log 2>&1)
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: check_php_broken_segfault $1"
+    msg "CTRL: isOnig for $1 is ${isOnig}"
+    msg "CTRL: isSegft for $1 is ${isSegft}"
+    msg "CTRL: isOlog for $1 is ${isOlog}"
+  fi
   if [[ ! "${isSegft}" =~ "cli" ]] \
     || [ -z "${isSegft}" ] \
-    || [[ "${isOnig}" =~ "OnigEncoding" ]]; then
+    || [[ "${isOnig}" =~ "OnigEncoding" ]] \
+    || [[ "${isSegft}" =~ "OnigEncoding" ]] \
+    || [[ "${isOlog}" =~ "OnigEncoding" ]]; then
     if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ] \
+      || [[ "${isOlog}" =~ "OnigEncoding" ]] \
       || [[ "${isOnig}" =~ "OnigEncoding" ]]; then
       msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix broken build..."
       install_php_multi "$1"
@@ -2402,9 +2425,7 @@ php_not_used_enable_again() {
       fi
     fi
   done
-  if [ -e "/root/.allow-php-multi-install-cleanup.cnf" ]; then
-    rm -f /root/.allow-php-multi-install-cleanup.cnf
-  fi
+  [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
 }
 
 #
@@ -2451,7 +2472,7 @@ php_deprecated_cleanup() {
   fi
   _PHP_V="55 54 53"
   for e in ${_PHP_V}; do
-    if [ -e "/etc/init.d/php${e}-fpm" ]; then
+    if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       service php${e}-fpm force-quit &> /dev/null
       update-rc.d -f php${e}-fpm remove &> /dev/null
       mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
@@ -2475,40 +2496,40 @@ php_single_initd_cleanup() {
     if [ "${_PHP_SINGLE_INSTALL}" = "8.1" ]; then
       _PHP_V="82 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
-        if [ -e "/opt/php${e}/bin/php" ]; then
-          mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
-        fi
-        if [ -e "/etc/init.d/php${e}-fpm" ]; then
+        if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
           service php${e}-fpm force-quit &> /dev/null
           update-rc.d -f php${e}-fpm remove &> /dev/null
           mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
+        fi
+        if [ -e "/opt/php${e}/bin/php" ]; then
+          mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
         fi
       done
     elif [ "${_PHP_SINGLE_INSTALL}" = "8.0" ]; then
       _PHP_V="82 81 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
-        if [ -e "/opt/php${e}/bin/php" ]; then
-          mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
-        fi
-        if [ -e "/etc/init.d/php${e}-fpm" ]; then
+        if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
           service php${e}-fpm force-quit &> /dev/null
           update-rc.d -f php${e}-fpm remove &> /dev/null
           mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
+        fi
+        if [ -e "/opt/php${e}/bin/php" ]; then
+          mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
         fi
       done
     elif [ "${_PHP_SINGLE_INSTALL}" = "7.4" ]; then
       _PHP_V="82 81 80 73 72 71 70 56"
       for e in ${_PHP_V}; do
-        if [ -e "/opt/php${e}/bin/php" ]; then
-          mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
-        fi
-        if [ -e "/etc/init.d/php${e}-fpm" ]; then
+        if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
           service php${e}-fpm force-quit &> /dev/null
           update-rc.d -f php${e}-fpm remove &> /dev/null
           mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
+        fi
+        if [ -e "/opt/php${e}/bin/php" ]; then
+          mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
         fi
       done
     fi
@@ -2570,8 +2591,8 @@ check_php_cli() {
   if [ -x "${_USE_PHP_CLI_PATH}" ]; then
     rm -f /usr/bin/php
     rm -f /usr/bin/php-cli
-    ln -sf ${_USE_PHP_CLI_PATH} /usr/bin/php
-    ln -sf ${_USE_PHP_CLI_PATH} /usr/bin/php-cli
+    ln -sfn ${_USE_PHP_CLI_PATH} /usr/bin/php
+    ln -sfn ${_USE_PHP_CLI_PATH} /usr/bin/php-cli
   else
     msg "WAIT: I can not find PHP-CLI anywhere!"
     msg "NOTE: BOA requires PHP 7.4 or newer"
@@ -2638,7 +2659,7 @@ php_upgrade_all() {
       check_php_broken "${e}"
       check_php_rebuild "${e}"
       php_multi_update "${e}"
-      mrun "service php${e}-fpm restart" &> /dev/null
+      service php${e}-fpm reload &> /dev/null
       _PHP_VERSION=""
       _T_PHP_VRN=""
       _T_PHP_PTH=""
@@ -2857,7 +2878,7 @@ php_check_if_rebuild() {
     mrun "ldconfig" 2> /dev/null
     if [ -e "/usr/lib/libtidy.so" ]; then
       cd /usr/lib
-      ln -sf libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
+      ln -sfn libtidy.so.${_LIB_TIDY_VRN} libtidy-0.99.so.0
       touch ${pthLog}/libtidy-${_LIB_TIDY_VRN}.log
     fi
     msg "INFO: PHP rebuild required to add --with-tidy option..."
@@ -2895,7 +2916,7 @@ composer_install_upgrade() {
       if [ -e "/var/opt/composer-${_COMPOSER_VRN}.phar" ]; then
         mv -f composer-${_COMPOSER_VRN}.phar /usr/local/bin/composer
         chmod 755 /usr/local/bin/composer
-        ln -sf /usr/local/bin/composer /usr/bin/composer
+        ln -sfn /usr/local/bin/composer /usr/bin/composer
         msg "INFO: Composer updated to version ${_COMPOSER_VRN}"
       fi
     else
@@ -2916,7 +2937,7 @@ composer_install_upgrade() {
       rm -f /var/opt/composer.phar
       curl -sS https://getcomposer.org/installer | php &> /dev/null
       mv -f composer.phar /usr/local/bin/composer
-      ln -sf /usr/local/bin/composer /usr/bin/composer
+      ln -sfn /usr/local/bin/composer /usr/bin/composer
     fi
     _COMPOSER_IS=$(composer --no-interaction --version 2>&1 \
       | tr -d "\n" \

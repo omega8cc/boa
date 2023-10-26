@@ -124,9 +124,7 @@ action() {
     touch /var/run/boa_wait.pid
     sleep 60
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
-      service solr7 stop
-      #kill -9 $(ps aux | grep '[j]ava-8-openjdk' | awk '{print $2}') &> /dev/null
-      service solr7 start
+      service solr7 restart
     fi
     kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
     rm -rf /tmp/{drush*,pear,jetty*}
@@ -140,7 +138,7 @@ action() {
     if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
       service jetty7 start
     fi
-    rm -f /var/run/boa_wait.pid
+    [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
     echo "INFO: Solr and Jetty servers restarted OK"
   fi
   _IF_BCP=$(ps aux | grep '[d]uplicity' | awk '{print $2}')
@@ -177,7 +175,7 @@ else
   touch /var/run/boa_wait.pid
   sleep 60
   action
-  rm -f /var/run/boa_wait.pid
+  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
   exit 0
 fi
 ###EOF2023###

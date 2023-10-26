@@ -100,7 +100,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/stable/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
 }
 
 if [ ! -e "/var/run/boa_run.pid" ]; then
@@ -115,7 +115,7 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
       fi
       echo "curl install" | dpkg --set-selections &> /dev/null
       apt_clean_update
-      apt-get install curl ${aptYesUnth} &> /dev/null
+      apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
       mkdir -p /var/backups/libcurl
       mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
       mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -126,14 +126,19 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
   rm -f /var/backups/BOA.sh.txt.hourly*
   find_fast_mirror
   curl -L -k -s \
-    --max-redirs 10 \
-    --retry 10 \
+    --max-redirs 5 \
+    --retry 5 \
     --retry-delay 5 \
-    -A iCab "http://${_USE_MIR}/versions/stable/boa/BOA.sh.txt" \
+    -A iCab "http://${_USE_MIR}/versions/dev/boa/BOA.sh.txt" \
     -o /var/backups/BOA.sh.txt.hourly
-  bash /var/backups/BOA.sh.txt.hourly
-  rm -f /var/backups/BOA.sh.txt.hourly*
-  sleep 3
+  wait
+  if [ -e "/var/backups/BOA.sh.txt.hourly" ]; then
+    bash /var/backups/BOA.sh.txt.hourly
+    wait
+    rm -f /var/backups/BOA.sh.txt.hourly*
+  else
+    echo "Not available /var/backups/BOA.sh.txt.hourly"
+  fi
   bash /opt/local/bin/autoupboa
 fi
 
@@ -145,9 +150,10 @@ if [[ "${checkVn}" =~ "===" ]] || [ -z "${checkVn}" ]; then
     checkVn="whereis barracuda_log.txt"
   fi
 fi
-crlHead="-I -k -s --retry 8 --retry-delay 8"
-urlBpth="http://${_USE_MIR}/versions/stable/boa/aegir/tools/bin"
+crlHead="-I -k -s --retry 5 --retry-delay 5"
+urlBpth="http://${_USE_MIR}/versions/dev/boa/aegir/tools/bin"
 curl ${crlHead} -A "${checkVn}" "${urlBpth}/thinkdifferent" &> /dev/null
+wait
 
 renice ${_B_NICE} -p $$ &> /dev/null
 service ssh restart &> /dev/null

@@ -139,6 +139,7 @@ _TUNE_PHP_CLI_TIMEOUT=9999
 _AEGIR_VERSION="HEAD"
 _BRANCH_BOA="4.x-stable"
 _X_VERSION="BOA-4.2.0-stable"
+_X_SE="500devT02"
 _MYSQLTUNER_VRN=1.9.4
 
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
@@ -168,11 +169,11 @@ _PHP73_VRN=7.3.33
 _PHP74_API=20190902
 _PHP74_VRN=7.4.33
 _PHP80_API=20200930
-_PHP80_VRN=8.0.29
+_PHP80_VRN=8.0.30
 _PHP81_API=20210902
-_PHP81_VRN=8.1.20
+_PHP81_VRN=8.1.24
 _PHP82_API=20220829
-_PHP82_VRN=8.2.7
+_PHP82_VRN=8.2.8
 
 ###
 ### Helper variables
@@ -200,8 +201,8 @@ fi
 #
 # Clean pid files on exit.
 clean_pid_exit() {
-  rm -f /var/run/boa_wait.pid
-  rm -f /var/run/boa_run.pid
+  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
+  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   service cron start &> /dev/null
   exit 1
 }
@@ -372,7 +373,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/stable/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
 }
 #
 # Find correct IP.
@@ -941,14 +942,14 @@ restore_default_sql() {
       _DO_NOTHING=YES
     else
       cp -af /etc/mysql/my.cnf \
-        /var/backups/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW} &> /dev/null
+        /var/backups/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
       cp -af ${locCnf}/my.cnf.txt /etc/mysql/my.cnf
       _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
       if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
           _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
           _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
-            /var/backups/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW} 2>&1)
+            /var/backups/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW} 2>&1)
           if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
             _INNODB_LOG_FILE_SIZE_SAME=YES
           else
@@ -1070,40 +1071,16 @@ tune_nginx() {
 #
 restart_services() {
   msg "INFO: Reloading services"
-  if [ -e "/etc/init.d/php82-fpm" ]; then
-    mrun "service php82-fpm reload" &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php81-fpm" ]; then
-    mrun "service php81-fpm reload" &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php80-fpm" ]; then
-    mrun "service php80-fpm reload" &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php74-fpm" ]; then
-    mrun "service php74-fpm reload" &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php73-fpm" ]; then
-    mrun "service php73-fpm reload" &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php72-fpm" ]; then
-    mrun "service php72-fpm reload" &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php71-fpm" ]; then
-    mrun "service php71-fpm reload" &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php70-fpm" ]; then
-    mrun "service php70-fpm reload" &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php56-fpm" ]; then
-    mrun "service php56-fpm reload" &> /dev/null
-  fi
-  mrun "bash /var/xdrago/move_sql.sh" &> /dev/null
+  _PHP_V="82 81 74 73 72 71 70 56"
+  for e in ${_PHP_V}; do
+    if [ -e "/etc/init.d/php${e}-fpm" ]; then
+      service php${e}-fpm reload &> /dev/null
+    fi
+  done
+  bash /var/xdrago/move_sql.sh &> /dev/null
   wait
-  mrun "service nginx reload" &> /dev/null
-  service redis-server stop &> /dev/null
-  killall -9 redis-server &> /dev/null
-  rm -f /var/lib/redis/*
-  service redis-server start &> /dev/null
+  service nginx reload &> /dev/null
+  service redis-server reload &> /dev/null
   if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     mrun "csf -q" &> /dev/null
     ### Linux kernel TCP SACK CVEs mitigation
@@ -1187,7 +1164,7 @@ tune_sql_memory_limits() {
   check_mysqld_running
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
   pthTun="/var/opt/mysqltuner.pl"
-  outTun="/var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt"
+  outTun="/var/opt/mysqltuner-${_X_SE}-${_X_VERSION}-${_NOW}.txt"
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
@@ -1352,6 +1329,12 @@ tune_memory_limits() {
   fi
   PrTest=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
   if [[ "${PrTest}" =~ "POWER" ]]; then
+    if [ "${_CPU_VS}" -lt "8" ]; then
+      _CPU_VS=8
+    fi
+  fi
+  PrTest=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+  if [[ "${PrTest}" =~ "PHANTOM" ]]; then
     if [ "${_CPU_VS}" -lt "8" ]; then
       _CPU_VS=8
     fi
@@ -1839,7 +1822,7 @@ else
 fi
 rm -rf /var/opt/*
 rm -rf /opt/tmp/*
-rm -f /var/run/boa_run.pid
+[ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
 if [ ! -e "/root/.upstart.cnf" ]; then
   service cron start &> /dev/null
 fi

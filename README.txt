@@ -158,17 +158,17 @@ production settings.
 * Composer and Drush Make access on command line for main shell account only.
 * PHP errors debugging, including WSOD, enabled on the fly on .dev. aliases.
 * Built-in collection of useful modules available in all platforms.
+* Fast DNS Cache Server (pdnsd)
 
 === Optional add-ons - see docs/NOTES.txt for details
 
-* MultiCore Apache Solr 7 and Solr 4 - see docs/SOLR.txt for details.
-* New Relic Apps Monitor with per Octopus license and per Site reporting.
-* RVM, Compass Tools, and NPM - see docs/RVM.txt for details.
-* Image Optimize toolkit binaries.
-* FFmpeg support.
-* Bind9 DNS server.
-* Collectd server monitor.
-* Fast DNS Cache Server (pdnsd) (not supported on Linode)
+* MultiCore Apache Solr 7 and Solr 4 - see docs/SOLR.txt for details
+* New Relic Apps Monitor with per Octopus license and per Site reporting
+* RVM, Compass Tools, and NPM - see docs/RVM.txt for details
+* Image Optimize toolkit binaries
+* FFmpeg support
+* Bind9 DNS server
+* Collectd server monitor (deprecated)
 * LDAP Nginx support via third-party module (experimental)
 * MongoDB driver for PHP (experimental)
 * GEOS extension for PHP (experimental)
@@ -182,35 +182,38 @@ production settings.
 
 Octopus can install and/or support the platforms listed below:
 
+ @ Drupal 10
+
+ Drupal 10.1.5 -------------- https://drupal.org/project/drupal/releases/10.1.5
+ Drupal 10.0.11 ------------- https://drupal.org/project/drupal/releases/10.0.11
+ Thunder 7.1.2 -------------- https://drupal.org/project/thunder (10.1.5)
+ Varbase 9.0.16 ------------- https://drupal.org/project/varbase (10.1.5)
+
  @ Drupal 9
 
- OpenLucius 2.0.0 ------------- https://drupal.org/project/openlucius
- Opigno LMS 3.0.0 ------------- https://drupal.org/project/opigno_lms
- Thunder 6.3.3 ---------------- https://drupal.org/project/thunder
- Varbase 9.0.4 ---------------- https://drupal.org/project/varbase
+ Drupal 9.5.11 -------------- https://drupal.org/project/drupal/releases/9.5.11
+ OpenLucius 2.0.0 ----------- https://drupal.org/project/openlucius (9.5.11)
+ Opigno LMS 3.1.0 ----------- https://drupal.org/project/opigno_lms (9.5.11)
+ Social 11.9.14 ------------- https://drupal.org/project/social (9.5.11)
 
- @ Drupal 8
+ @ Drupal 7.98.1
 
- Social 10.3.7 ---------------- https://drupal.org/project/social
-
- @ Drupal 7.97.1
-
- Commerce 1.68 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.71 ---------------- https://drupal.org/project/commerce_kickstart
- Drupal 7.97.1 ---------------- https://drupal.org/project/drupal/releases/7.97
- Guardr 2.55 ------------------ https://drupal.org/project/guardr
- OpenAtrium 2.651 ------------- https://drupal.org/project/openatrium
- OpenOutreach 1.69 ------------ https://drupal.org/project/openoutreach
- Opigno LMS 1.55 -------------- https://drupal.org/project/opigno_lms
- Panopoly 1.86 ---------------- https://drupal.org/project/panopoly
- Ubercart 3.13 ---------------- https://drupal.org/project/ubercart
+ Commerce 1.72 -------------- https://drupal.org/project/commerce_kickstart
+ Commerce 2.77 -------------- https://drupal.org/project/commerce_kickstart
+ Drupal 7.98.1 -------------- https://drupal.org/project/drupal/releases/7.98
+ Guardr 2.57 ---------------- https://drupal.org/project/guardr
+ OpenAtrium 2.652 ----------- https://drupal.org/project/openatrium
+ OpenOutreach 1.69 ---------- https://drupal.org/project/openoutreach
+ Opigno LMS 1.59 ------------ https://drupal.org/project/opigno_lms
+ Panopoly 1.92 -------------- https://drupal.org/project/panopoly
+ Ubercart 3.13 -------------- https://drupal.org/project/ubercart
 
  @ Pressflow (D6 LTS included, thanks to myDropWizard) 6.60.1
 
- Pressflow 6.60.1 ------------- http://pressflow.org
- Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
+ Pressflow 6.60.1 ----------- https://www.pressflow.org
+ Ubercart 2.15 -------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.97.1 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.98.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
 * All D6 platforms have been enhanced using Pressflow (LTS) 6.60.1 +Extra core:

@@ -40,14 +40,15 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
-_X_SE="420prodT02"
+_OPENSSL_MODERN_VRN=3.1.3
+_X_SE="500devT02"
 _WEBG=www-data
 _OSR=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
   | cut -d" " -f2 \
   | awk '{ print $1}')
-if [[ "${_SSL_ITD}" =~ "3.1." ]] \
+if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
   || [[ "${_SSL_ITD}" =~ "1.1.1" ]] \
   || [[ "${_SSL_ITD}" =~ "1.1.0" ]] \
   || [[ "${_SSL_ITD}" =~ "1.0.2" ]] \

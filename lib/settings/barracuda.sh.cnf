@@ -109,11 +109,11 @@ _PHP_SINGLE_INSTALL=
 ### Available options (if installed):
 ### 8.1, 8.0, 7.4
 ###
-### Note that 7.4 will be set automatically
+### Note that 8.1 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_FPM_VERSION=7.4
+_PHP_FPM_VERSION=8.1
 
 
 ###----------------------------------------###
@@ -127,11 +127,11 @@ _PHP_FPM_VERSION=7.4
 ### Available options (if installed):
 ### 8.1, 8.0, 7.4
 ###
-### Note that 7.4 will be set automatically
+### Note that 8.1 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_CLI_VERSION=7.4
+_PHP_CLI_VERSION=8.1
 
 
 ###----------------------------------------###
@@ -154,24 +154,24 @@ _PHP_CLI_VERSION=7.4
 ### ADM --- Adminer DB Manager
 ### CSF --- Firewall
 ### CSS --- RVM + NPM for Gulp/Bower
-### DCS --- Local DNS Cache Server pdnsd
+### DCS --- Fast DNS Cache Server (pdnsd)
 ### FTP --- Pure-FTPd server with forced FTPS
 ### IMG --- Image Optimize binaries
 ### SR7 --- Apache Solr 7
 ###
 ### Xtras which need to be listed explicitly:
 ###
-### BDD --- SQL Buddy DB Manager
+### BDD --- SQL Buddy DB Manager (deprecated)
 ### BND --- Bind9 DNS Server
 ### BZR --- Bazaar
-### CGP --- Collectd Graph Panel
-### CHV --- Chive DB Manager
+### CGP --- Collectd Graph Panel (deprecated)
+### CHV --- Chive DB Manager (deprecated)
 ### FMG --- FFmpeg support
 ### GIT --- Latest Git from sources
 ### SR1 --- Apache Solr 1 with Jetty 7 (deprecated)
 ### SR3 --- Apache Solr 3 with Jetty 8 (deprecated)
 ### SR4 --- Apache Solr 4 with Jetty 9
-### WMN --- Webmin Control Panel
+### WMN --- Webmin Control Panel (deprecated)
 ###
 ### Examples:
 ###
@@ -787,17 +787,17 @@ _CLEAR_BOOST="YES"
 
 
 ###
-### Use YES only if both "randpass 32 esc"
-### and "randpass 32 alnum" commands produce
+### Use YES only if both "randpass 64 esc"
+### and "randpass 64 alnum" commands produce
 ### well looking, strong passwords and not
 ### some binary garbage, which is typically
 ### a sign of unreliable /dev/urandom.
 ### See: https://drupal.org/node/1952042
 ###
-### Configurable length: 8-128 or automatic
-### with keywords: YES (32), NO (8).
+### Configurable length: 32-128 or automatic
+### with keywords: YES (64), NO (32).
 ###
-_STRONG_PASSWORDS=NO
+_STRONG_PASSWORDS=YES
 
 ###
 ### Extra packages to install. Useful to
@@ -904,10 +904,12 @@ _DB_BINARY_LOG=NO
 
 ###
 ### Use MySQLTuner to configure SQL limits.
-### Can be disabled when set to NO, if causes
-### too high load spikes on too weak systems.
+### Can be enabled when set to YES, but may cause
+### very high load spikes or forced SQL restarts
+### on systems with not enough RAM and CPU power
+### and hundreds of sites hosted.
 ###
-_USE_MYSQLTUNER=YES
+_USE_MYSQLTUNER=NO
 
 ###
 ### Set max 1 min load per CPU core before blocking
@@ -1066,6 +1068,8 @@ _BRANCH_PRN="AUTO"
 _X_VERSION="AUTO"
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${gitHub}"
+_X_SE="500devT02"
+export _X_SE="${_X_SE}"
 
 
 ###
@@ -1149,7 +1153,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/stable/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
 }
 
 

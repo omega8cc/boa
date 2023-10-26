@@ -38,7 +38,7 @@ _CPU_SPIDER_RATIO=3 #----------- Max load per CPU core before blocking spiders
 _DB_BINARY_LOG=NO #------------- Allows to enable binary logging when YES
 _DB_SERIES=5.7 #---------------- Supported values: 5.7
 _DB_SERVER=Percona #------------ Install Percona or MariaDB (deprecated)
-_USE_MYSQLTUNER=YES #----------- Use MySQLTuner to configure SQL limits when YES
+_USE_MYSQLTUNER=NO #------------ Use MySQLTuner to configure SQL limits when YES
 ###
 _DNS_SETUP_TEST=YES #----------- Allows to skip DNS testing when NO
 _EXTRA_PACKAGES="" #------------ Installs listed extra packages with apt-get
@@ -62,10 +62,10 @@ _NGINX_NAXSI=NO #--------------- Installs NAXSI WAF when YES - experimental
 _NGINX_SPDY=YES #--------------- Installs SPDY Nginx support when YES (default)
 _NGINX_WORKERS=AUTO #----------- Allows to override AUTO with a valid integer
 ###
-_PHP_CLI_VERSION=7.4 #---------- PHP-CLI for Master Instance
+_PHP_CLI_VERSION=8.1 #---------- PHP-CLI for Master Instance
 _PHP_EXTRA_CONF="" #------------ Allows to add custom options to PHP build
 _PHP_FPM_DENY="" #-------------- Modify disable_functions -- see info below
-_PHP_FPM_VERSION=7.4 #---------- PHP-FPM for Master Instance
+_PHP_FPM_VERSION=8.1 #---------- PHP-FPM for Master Instance
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_IONCUBE=NO #--------------- Installs ionCube for all PHP versions when YES
 _PHP_GEOS=NO #------------------ Installs GEOS for all PHP versions when YES
@@ -81,7 +81,7 @@ _SSH_ARMOUR=NO #---------------- Allows to enhance OpenSSH security when YES
 _SSH_FROM_SOURCES=NO #---------- Allows to build OpenSSH from sources on Debian
 _SSH_PORT=22 #------------------ Allows to configure non-standard SSH port
 _STRICT_BIN_PERMISSIONS=YES #--- Aggressively protect all binaries when YES
-_STRONG_PASSWORDS=NO #---------- Configurable length: 8-128, YES (32), NO (8)
+_STRONG_PASSWORDS=YES #--------- Configurable length: 32-128, YES (64), NO (32)
 ###
 _CUSTOM_CONFIG_CSF=NO #--------- Protects custom CSF config when YES
 _CUSTOM_CONFIG_LSHELL=NO #------ Protects custom Limited Shell config when YES
@@ -115,7 +115,7 @@ _SYS_COLLATION_SQL= #----------- By default on the DB server: utf8mb4_unicode_ci
 ###
 ### Remember that day/month upgrades will include complete upgrade to latest BOA
 ### head for Barracuda and all Octopus instances, while weekly upgrade is
-### designed to run only 'barracuda up-head system' upgrade.
+### designed to run only 'barracuda up-dev system' upgrade.
 ###
 ### You can further modify the auto-upgrade by specifying either head or dev
 ### with _AUTO_VER variable, plus you can include all supported PHP versions

@@ -61,8 +61,8 @@ if [ -z "${TERM+x}" ]; then
 fi
 
 clean_pid_exit() {
-  rm -f /var/run/boa_wait.pid
-  rm -f /var/run/boa_run.pid
+  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
+  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   service cron start &> /dev/null
   exit 1
 }
@@ -446,7 +446,7 @@ d;};' /etc/pdnsd.conf
 check_dns_settings() {
   if [ -e "/root/.use.default.nameservers.cnf" ]; then
     _USE_DEFAULT_DNS=YES
-    rm -f /root/.local.dns.IP.list
+    [ -e "/root/.local.dns.IP.list" ] && rm -f /root/.local.dns.IP.list
   fi
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
@@ -614,6 +614,7 @@ octopus_install() {
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
       || [ "${cmmand}" = "init" ] \
+      || [ "${copt}" = "dev" ] \
       || [ "${copt}" = "stable" ] \
       || [ "${copt}" = "legacy" ] \
       || [ "${copt}" = "head" ]; then
@@ -627,6 +628,15 @@ octopus_install() {
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"   ${vBs}/${filIncO}
         wait
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncO}
+        wait
+      elif [ "${copt}" = "dev" ]; then
+        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${dvbrnch}/g"    ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${dvhd}/g" ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${dvhd}/g" ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${dvrn}/g"         ${vBs}/${filIncO}
         wait
       elif [ "${copt}" = "legacy" ]; then
         sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncO}
@@ -655,7 +665,7 @@ octopus_install() {
         wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"   ${vBs}/${filIncO}
         wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"        ${vBs}/${filIncO}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${filIncO}
         wait
       fi
       ### Legacy method
@@ -705,12 +715,17 @@ octopus_install() {
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
       || [ "${cmmand}" = "init" ] \
+      || [ "${copt}" = "dev" ] \
       || [ "${copt}" = "stable" ] \
       || [ "${copt}" = "legacy" ] \
-      || [ "${copt}" = "dev" ] \
       || [ "${copt}" = "head" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${filIncO}
-      wait
+      if [ "${copt}" = "dev" ]; then
+        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${dvbrnch}/g"    ${vBs}/${filIncO}
+        wait
+      else
+        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"       ${vBs}/${filIncO}
+        wait
+      fi
     elif [ "${cmmand}" = "in-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncO}
       wait
@@ -947,13 +962,13 @@ barracuda_install() {
         fi
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.1/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${filIncO}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.1/g" ${vBs}/${filIncO}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${filIncO}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${filIncO}
         wait
       elif [ "${rkey}" = "nodns" ]; then
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${filIncB}
@@ -1010,13 +1025,13 @@ barracuda_install() {
         fi
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${barName}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${barName}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.1/g" ${vBs}/${barName}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${barName}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${barName}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${octName}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.1/g" ${vBs}/${octName}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${octName}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${octName}
         wait
       elif [ "${rkey}" = "nodns" ]; then
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${barName}
@@ -1188,10 +1203,10 @@ set_pin_priority() {
 
 init_finish() {
   rm -f /root/BOA.sh*
-  rm -f /var/run/boa_run.pid
-  rm -f /var/run/boa_wait.pid
-  rm -f /var/run/manage_ltd_users.pid
-  rm -f /var/run/manage_rvm_users.pid
+  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
+  [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
+  [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
   rm -f ${vBs}/*.sh.cnf*
   rm -f ${vBs}/BARRACUDA.sh*
   rm -f ${vBs}/OCTOPUS.sh*
@@ -1406,7 +1421,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/stable/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
 }
 
 check_dns_curl() {
@@ -1435,7 +1450,7 @@ check_dns_curl() {
     fi
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt_clean_update
-    apt-get install curl ${aptYesUnth} &> /dev/null
+    apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
     mkdir -p /var/backups/libcurl
     mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
     mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -1450,7 +1465,7 @@ check_dns_curl() {
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "curl install" | dpkg --set-selections &> /dev/null
       apt_clean_update
-      apt-get install curl ${aptYesUnth} &> /dev/null
+      apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
       mkdir -p /var/backups/libcurl
       mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
       mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -1967,6 +1982,11 @@ case "$1" in
              kind="$2"
              display_version
   ;;
+  reboot)    service clean-boa-env stop
+             wait
+             reboot
+             exit 0
+  ;;
   init)      cmmand="$1"
              check_root
              check_root_keys_pwd
@@ -2126,22 +2146,25 @@ case "$1" in
   ;;
   *)         echo
              echo "Usage: $(basename "$0") {version} {mode} {fqdn} {email} {user} {platforms} {extra} {mysql}"
+             echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {mini|max|none} {head|dev}"
              echo "Usage: $(basename "$0") version"
              echo "Usage: $(basename "$0") info {more}"
              echo "Usage: $(basename "$0") info report {octopus|backups|both}"
+             echo "Usage: $(basename "$0") reboot"
              echo
              cat <<EOF
 
   Accepted keywords and values in every option:
 
   {version}
-      in-head <------ install BOA Latest available
-      in-dev <------- install BOA DEV for development only
+      in-head <------ install BOA Latest available (alias of in-stable)
+      in-dev <------- install BOA Dev Cutting Edge (for development only)
       in-3.2 <------- install old stable 3.2 (for testing only)
       in-2.4 <------- install old stable 2.4 (for testing only)
       in-2.3 <------- install old stable 2.3 (for testing only)
       in-2.2 <------- install old stable 2.2 (for testing only)
-      in-octopus <--- install extra Octopus instance (latest, dev or legacy)
+      in-octopus <--- install extra Octopus instance (head, dev or stable)
+      reboot <------- run accelerated system reboot
 
   {mode}
       public <------- recommended for general use
@@ -2164,12 +2187,12 @@ case "$1" in
 
   {extra}
       license <------ valid new relic license key
-      php-7.4 <------ single PHP version to install and use (supported, default)
-      php-8.1 <------ single PHP version to install and use (experimental)
+      php-7.4 <------ single PHP version to install and use (supported)
+      php-8.1 <------ single PHP version to install and use (supported, default)
       php-8.2 <------ single PHP version to install and use (experimental)
-      php-min <------ install PHP 7.4, 8.1, 8.2, use 7.4 by default (php-all)
+      php-min <------ install PHP 7.4, 8.1, 8.2, use 8.1 by default (php-all)
       php-max <------ install PHP 7.4, 8.1, 8.2, 8.0, 7.3, 7.2, 7.1, 7.0, 5.6
-      nodns <-------- disable DNS checks on the fly
+      nodns <-------- disable DNS/SMTP checks on the fly
 
   {mysql}
       percona <------ database server to install (default)

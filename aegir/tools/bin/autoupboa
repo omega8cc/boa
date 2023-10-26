@@ -10,7 +10,7 @@ export HOME=${HOME}
 
 barCnf="/root/.barracuda.cnf"
 
-_X_SE="420prodT02"
+_X_SE="500devT02"
 
 os_detection_minimal() {
   _THIS_RV=$(lsb_release -sc 2>&1)
@@ -248,7 +248,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     touch /var/xdrago/log/.sync3_scan_nginx.pid
   fi
   _VM_TEST=$(uname -a 2>&1)
-  [ -z "${_AUTO_VER}" ] && _AUTO_VER="head"
+  [ -z "${_AUTO_VER}" ] && _AUTO_VER="dev"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
@@ -273,7 +273,7 @@ if [ -e "/data/disk/arch/sql" ]; then
         touch /root/.host8.cnf
       fi
     else
-      [ -r "/root/.auto.up.cnf" ] && rm -f /root/.auto.up.cnf
+      [ -e "/root/.auto.up.cnf" ] && rm -f /root/.auto.up.cnf
     fi
   fi
   if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -320,10 +320,10 @@ if [ -e "/data/disk/arch/sql" ]; then
 	  csf -q
 	  touch /var/xdrago/log/.csf_dhcp_udp_cleanup.pid
 	fi
-    if [ ! -e "/var/xdrago/log/.fixed_php_seven_four_default.pid" ]; then
-      sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=7.4/g"  ${barCnf}
-      sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=7.4/g"  ${barCnf}
-      touch /var/xdrago/log/.fixed_php_seven_four_default.pid
+    if [ ! -e "/var/xdrago/log/.fixed_php_eight_one_default.pid" ]; then
+      sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=8.1/g"  ${barCnf}
+      sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=8.1/g"  ${barCnf}
+      touch /var/xdrago/log/.fixed_php_eight_one_default.pid
     fi
     if [ ! -e "/var/xdrago/log/.disabled_modules_fix.pid" ]; then
       sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=NO/g"  ${barCnf}
@@ -363,15 +363,15 @@ if [ -e "/data/disk/arch/sql" ]; then
         mysql -u root -e "SET GLOBAL show_compatibility_56=ON;" &> /dev/null
         mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
       fi
-      sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"  ${barCnf}
+      sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"  ${barCnf}
       rm -f /etc/mysql/conf.d/mysqldump.cnf
       touch /var/xdrago/log/.custom_percona_forced.pid
     fi
-    _AUTO_UP_WEEKLY=
-    _AUTO_UP_MONTH=
-    _AUTO_UP_DAY=
+    _AUTO_UP_WEEKLY=1
+    _AUTO_UP_MONTH=1
+    _AUTO_UP_DAY=1
     _AUTO_PHP="php-min"
-    _AUTO_VER="head"
+    _AUTO_VER="dev"
     if [ ! -e "/root/.ignore.site24x7.firewall.cnf" ]; then
       if [ -x "/usr/sbin/csf" ]; then
         touch /root/.ignore.site24x7.firewall.cnf
@@ -399,8 +399,8 @@ if [ -e "/data/disk/arch/sql" ]; then
     if [ -e "/var/run/boa_run.pid" ]; then
       touch /root/.pause_tasks_maint.cnf
     else
-      rm -f /root/.pause_tasks_maint.cnf
-      rm -f /root/.restrict_this_vm.cnf
+      [ -e "/root/.pause_tasks_maint.cnf" ] && rm -f /root/.pause_tasks_maint.cnf
+      [ -e "/root/.restrict_this_vm.cnf" ] && rm -f /root/.restrict_this_vm.cnf
       if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
         kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
         echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
@@ -428,7 +428,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
-    _AUTO_VER="head"
+    _AUTO_VER="dev"
   fi
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -437,7 +437,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
     _AUTO_PHP=
-    _AUTO_VER="head"
+    _AUTO_VER="dev"
     if [ ! -e "/var/xdrago/log/.fixed_clstr_fpm.pid" ]; then
       sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"8.1 7.4 5.6\"/g" ${barCnf}
       wait
@@ -454,12 +454,12 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=${_DAY_SYSTEM_UP}
-    _AUTO_VER="head"
+    _AUTO_VER="dev"
     crontab_update
     wait
     touch /root/.legacy_sys_prep_ugrade_ctrl.cnf
   fi
-  if [ ! -e "/var/xdrago/log/.etc_crontab_update_ctrl_hfx_002.${_X_SE}.pid" ]; then
+  if [ ! -e "/var/xdrago/log/.etc_crontab_update_ctrl_hfx_003.${_X_SE}.pid" ]; then
     rm -f /var/xdrago/log/.*_crontab_*
     if [ ! -z "${_AUTO_UP_MONTH}" ] \
       && [ ! -z "${_AUTO_UP_DAY}" ]; then
@@ -468,7 +468,7 @@ if [ -e "/data/disk/arch/sql" ]; then
       crontab_cleanup
     fi
     service cron restart
-    touch /var/xdrago/log/.etc_crontab_update_ctrl_hfx_002.${_X_SE}.pid
+    touch /var/xdrago/log/.etc_crontab_update_ctrl_hfx_003.${_X_SE}.pid
   fi
   if [ ! -e "/var/xdrago/log/.etc_csf_allow_ctrl.${_X_SE}.pid" ]; then
     mkdir -p /var/backups/csf

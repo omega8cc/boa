@@ -64,8 +64,8 @@ if [ -z "${TERM+x}" ]; then
 fi
 
 clean_pid_exit() {
-  rm -f /var/run/boa_wait.pid
-  rm -f /var/run/boa_run.pid
+  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
+  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   service cron start &> /dev/null
   exit 1
 }
@@ -330,7 +330,7 @@ d;};' /etc/pdnsd.conf
 check_dns_settings() {
   if [ -e "/root/.use.default.nameservers.cnf" ]; then
     _USE_DEFAULT_DNS=YES
-    rm -f /root/.local.dns.IP.list
+    [ -e "/root/.local.dns.IP.list" ] && rm -f /root/.local.dns.IP.list
   fi
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
@@ -353,7 +353,7 @@ check_dns_settings() {
 }
 
 barracuda_downgrade_protection() {
-  if [ "${cmmand}" != "up-dev" ]; then
+  if [ "${cmmand}" != "up-dev" ] && [ "${cmmand}" != "php-idle" ]; then
     if [ -e "/var/log/barracuda_log.txt" ]; then
       _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
       if [[ "${_SERIES_TEST}" =~ "BOA-5." ]]; then
@@ -493,8 +493,8 @@ check_php_cli() {
     if [ -x "${_USE_PHP_CLI_PATH}" ]; then
       rm -f /usr/bin/php
       rm -f /usr/bin/php-cli
-      ln -sf ${_USE_PHP_CLI_PATH} /usr/bin/php
-      ln -sf ${_USE_PHP_CLI_PATH} /usr/bin/php-cli
+      ln -sfn ${_USE_PHP_CLI_PATH} /usr/bin/php
+      ln -sfn ${_USE_PHP_CLI_PATH} /usr/bin/php-cli
     else
       echo "ERROR: I can not find PHP-CLI anywhere!"
       echo "ERROR: BOA requires PHP 7.4 or newer"
@@ -631,7 +631,7 @@ up_action() {
         else
           phpM="7.4 8.1 8.2"
         fi
-        phpS="7.4"
+        phpS="8.1"
 
         ### Debugging
         if [ "$debug" = "debug" ]; then
@@ -712,10 +712,10 @@ up_action() {
         ${vBs}/old-firewall-monitor/${_NOW}/ &> /dev/null
       rm -f /var/xdrago/monitor/* &> /dev/null
     fi
-    if [ "${cmmand}" != "up-dev" ]; then
+    if [ "${cmmand}" != "up-dev" ] && [ "${cmmand}" != "php-idle" ]; then
       barracuda_downgrade_protection
     fi
-    if [ "${cmmand}" = "up-dev" ]; then
+    if [ "${cmmand}" = "up-dev" ] || [ "${cmmand}" = "php-idle" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${dvbrnch}/g"      ${vBs}/${filIncB}
       wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${dvhd}/g"   ${vBs}/${filIncB}
@@ -728,11 +728,10 @@ up_action() {
       wait
     elif [ "${cmmand}" = "up-head" ] \
       || [ "${cmmand}" = "up-legacy" ] \
-      || [ "${cmmand}" = "up-stable" ] \
-      || [ "${cmmand}" = "php-idle" ]; then
+      || [ "${cmmand}" = "up-stable" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
       wait
-      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"   ${vBs}/${filIncB}
+      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${filIncB}
       wait
       sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g"   ${vBs}/${filIncB}
       wait
@@ -744,7 +743,7 @@ up_action() {
       if [ -e "${vBs}/${filIncB}" ]; then
         sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncB}
         wait
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g" ${vBs}/${filIncB}
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"   ${vBs}/${filIncB}
         wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${filIncB}
         wait
@@ -785,7 +784,7 @@ up_action() {
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcD}/g"         ${vBs}/${filIncB}
         wait
       else
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g" ${vBs}/${filIncB}
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"   ${vBs}/${filIncB}
         wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${filIncB}
         wait
@@ -793,13 +792,12 @@ up_action() {
         wait
       fi
     fi
-    if [ "${cmmand}" = "up-dev" ]; then
+    if [ "${cmmand}" = "up-dev" ] || [ "${cmmand}" = "php-idle" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${dvmstr}/g"       ${vBs}/${filIncB}
       wait
     elif [ "${cmmand}" = "up-head" ] \
       || [ "${cmmand}" = "up-legacy" ] \
-      || [ "${cmmand}" = "up-stable" ] \
-      || [ "${cmmand}" = "php-idle" ]; then
+      || [ "${cmmand}" = "up-stable" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${filIncB}
       wait
     elif [ "${cmmand}" = "up-cluster" ]; then
@@ -901,7 +899,7 @@ up_action() {
             #   wait
             # fi
             if [ -e "/etc/init.d/redis-server" ]; then
-              sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=YES/g"     ${barCnf}
+              sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"     ${barCnf}
               if [ ! -e "/root/.run-to-chimaera.cnf" ] \
                  && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
                 if [[ "${_DB_SERVER}" =~ "Percona" ]]; then
@@ -917,20 +915,19 @@ up_action() {
           fi
         fi
       fi
-      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" ${barCnf}
+      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"       ${barCnf}
       wait
       _THIS_RV=$(lsb_release -sc 2>&1)
       if [ -e "/etc/default/tomcat" ] \
         && [ -e "/etc/init.d/tomcat" ] \
         && [ -e "${barCnf}" ]; then
-        sed -i "s/^_TOMCAT_TO_JETTY=.*/_TOMCAT_TO_JETTY=YES/g" \
-          ${vBs}/${barName}
+        sed -i "s/^_TOMCAT_TO_JETTY=.*/_TOMCAT_TO_JETTY=YES/g" ${vBs}/${barName}
         wait
-        sed -i "s/^_TOMCAT_TO_JETTY.*//g" ${barCnf}
+        sed -i "s/^_TOMCAT_TO_JETTY.*//g"                              ${barCnf}
         wait
-        sed -i "/^$/d" ${barCnf}
+        sed -i "/^$/d"                                                 ${barCnf}
         wait
-        echo "_TOMCAT_TO_JETTY=YES" >> ${barCnf}
+        echo "_TOMCAT_TO_JETTY=YES" >>                                 ${barCnf}
       fi
     fi
     if [ -e "${vBs}/${barName}" ]; then
@@ -938,7 +935,7 @@ up_action() {
         if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
           && [ ! -e "/root/.dbhd.clstr.cnf" ] \
           && [ -e "/etc/init.d/mysql" ]; then
-          rm -f /root/.remote.db.cnf
+          [ -e "/root/.remote.db.cnf" ] && rm -f /root/.remote.db.cnf
           sleep 5
           if [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
             service mysql start &> /dev/null
@@ -1117,11 +1114,11 @@ up_start() {
 up_finish() {
   rm -f /root/.bashrc.bak*
   rm -f /root/BOA.sh*
-  rm -f /var/run/boa_run.pid
-  rm -f /var/run/boa_system_wait.pid
-  rm -f /var/run/boa_wait.pid
-  rm -f /var/run/manage_ltd_users.pid
-  rm -f /var/run/manage_rvm_users.pid
+  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+  [ -e "/var/run/boa_system_wait.pid" ] && rm -f /var/run/boa_system_wait.pid
+  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
+  [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
+  [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
   rm -f ${vBs}/*.sh.cnf*
   rm -f ${vBs}/BARRACUDA.sh*
   if [ -e "/opt/local/bin/php" ] \
@@ -1253,7 +1250,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/stable/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
 }
 
 check_dns_curl() {
@@ -1282,7 +1279,7 @@ check_dns_curl() {
     fi
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt_clean_update
-    apt-get install curl ${aptYesUnth} &> /dev/null
+    apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
     mkdir -p /var/backups/libcurl
     mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
     mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -1297,7 +1294,7 @@ check_dns_curl() {
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "curl install" | dpkg --set-selections &> /dev/null
       apt_clean_update
-      apt-get install curl ${aptYesUnth} &> /dev/null
+      apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
       mkdir -p /var/backups/libcurl
       mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
       mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -1529,13 +1526,12 @@ proceed() {
   check_php_cli
   set_pin_priority
   up_start
-  if [ "${cmmand}" = "up-dev" ]; then
+  if [ "${cmmand}" = "up-dev" ] || [ "${cmmand}" = "php-idle" ]; then
     _SCRIPT_URL="${rgUrl}/${dvmaster}/${barName}"
     curl ${crlGet} "${rgUrl}/${dvmaster}/${pthIncB}" -o ${vBs}/${filIncB}
   elif [ "${cmmand}" = "up-head" ] \
     || [ "${cmmand}" = "up-legacy" ] \
-    || [ "${cmmand}" = "up-stable" ] \
-    || [ "${cmmand}" = "php-idle" ]; then
+    || [ "${cmmand}" = "up-stable" ]; then
     if [ "${silent}" = "cluster" ] \
       || [ "${silent}" = "foobar" ]; then
       echo "FEATURE MODE: ${silent}"
@@ -1569,13 +1565,37 @@ proceed() {
     _SCRIPT_URL="${rgUrl}/${lgcA}/${barName}"
   else
     echo
-    echo "Usage: $(basename "$0") {up-head|up-dev} {system|log} {newrelickey|php-7.4|php-min|php-max|nodns} {percona|mariadb}"
-    echo
-    echo "  Silent Mode Option: system == OS only upgrade"
-    echo "  Silent Mode Option: log ===== OS and Aegir Master Instance upgrade"
+    echo "Usage: $(basename "$0") {version} {mode} {options} {dbserver}"
     echo
     echo "Usage: $(basename "$0") php-idle {enable|disable}"
     echo
+    cat <<EOF
+
+  Accepted keywords and values in every option:
+
+  {version}
+      up-head <------ upgrade to Barracuda Latest available (alias of up-stable)
+      up-dev <------- upgrade to Barracuda Dev Cutting Edge (for testing only)
+      php-idle <----- disable not used PHP versions or enable them again
+
+  {mode}
+      system <------- upgrade only system without Aegir Master Hostmaster
+      log <---------- upgrade both system and Aegir Master in silent mode
+
+  {options}
+      newrelickey <-- activate New Relic integration with valid license key
+      php-8.1 <------ enable single-PHP mode (7.4 or 8.1 or 8.2)
+      php-min <------ install PHP 7.4, 8.1, 8.2, use 8.1 by default (php-all)
+      php-max <------ install PHP 7.4, 8.1, 8.2, 8.0, 7.3, 7.2, 7.1, 7.0, 5.6
+      nodns <-------- disable DNS/SMTP checks on the fly
+
+  {dbserver}
+      percona <------ installed by default
+      mariadb <------ deprecated and no longer supported, for testing only
+
+  See docs/UPGRADE.txt for more details.
+
+EOF
     clean_pid_exit
   fi
   if [ -e "/root/.mstr.clstr.cnf" ] \

@@ -10,11 +10,11 @@
 ### Available options (if installed):
 ### 8.2, 8.1, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
 ###
-### Note that 7.4 will be set automatically
+### Note that 8.1 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_FPM_VERSION=7.4
+_PHP_FPM_VERSION=8.1
 
 
 ###----------------------------------------###
@@ -28,11 +28,11 @@ _PHP_FPM_VERSION=7.4
 ### Available options (if installed):
 ### 8.2, 8.1, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
 ###
-### Note that 7.4 will be set automatically
+### Note that 8.1 will be set automatically
 ### if you specify any other, not installed
 ### version.
 ###
-_PHP_CLI_VERSION=7.4
+_PHP_CLI_VERSION=8.1
 
 
 ###----------------------------------------###
@@ -51,16 +51,26 @@ _PHP_CLI_VERSION=7.4
 ### control which platforms will be installed,
 ### using the symbols listed below.
 ###
-### Drupal 9 based
 ###
-### OLS ----------- OpenLucius
-### OPG ----------- Opigno LMS
+### Drupal 10.1 based
+###
+### D101P D101S D101D --- Drupal 10.1 prod/stage/dev
 ### THR ----------- Thunder
 ### VBE ----------- Varbase
 ###
-### Drupal 8 based
 ###
+### Drupal 10.0 based
+###
+### D100P D100S D100D --- Drupal 10.0 prod/stage/dev
+###
+###
+### Drupal 9 based
+###
+### D9P D9S D9D --- Drupal 9 prod/stage/dev
+### OLS ----------- OpenLucius
+### OPG ----------- Opigno LMS
 ### SOC ----------- Social
+###
 ###
 ### Drupal 7 based
 ###
@@ -74,15 +84,25 @@ _PHP_CLI_VERSION=7.4
 ### PPY ----------- Panopoly
 ### UC7 ----------- Ubercart
 ###
+###
 ### Drupal 6 based
 ###
 ### D6P D6S D6D --- Pressflow (LTS) prod/stage/dev
 ### UCT ----------- Ubercart
 ###
+### You can also use special keyword 'ALL' instead of any other symbols to have
+### all available platforms installed, including newly added in all future BOA
+### system releases.
+###
+### Examples:
+###
+### ALL
+### D101P D101S PPY
+###
 ### Examples:
 ###
 ### _PLATFORMS_LIST=ALL
-### _PLATFORMS_LIST="VBE D7P D7S D7D"
+### _PLATFORMS_LIST="D101P D101S PPY"
 ###
 _PLATFORMS_LIST=
 
@@ -466,17 +486,17 @@ _LOCAL_NETWORK_IP=""
 ### STRONG PASSWORDS                       ###
 ###----------------------------------------###
 ###
-### Use YES only if both "randpass 32 esc"
-### and "randpass 32 alnum" commands produce
+### Use YES only if both "randpass 64 esc"
+### and "randpass 64 alnum" commands produce
 ### well looking, strong passwords and not
 ### some binary garbage, which is typically
 ### a sign of unreliable /dev/urandom.
 ### See: https://drupal.org/node/1952042
 ###
-### Configurable length: 8-128 or automatic
-### with keywords: YES (32), NO (8).
+### Configurable length: 32-128 or automatic
+### with keywords: YES (64), NO (32).
 ###
-_STRONG_PASSWORDS=NO
+_STRONG_PASSWORDS=YES
 
 
 ###----------------------------------------###
@@ -601,6 +621,8 @@ _X_VERSION="AUTO"
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${gitHub}"
 aptYesUnth="-y --allow-unauthenticated"
+_X_SE="500devT02"
+export _X_SE="${_X_SE}"
 
 
 ###
@@ -673,7 +695,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/stable/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
 }
 
 

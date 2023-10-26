@@ -128,7 +128,7 @@ csf_install() {
       fi
     fi
     mv -f /etc/csf/csf.conf \
-      /etc/csf/csf.conf-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      /etc/csf/csf.conf-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${locCnf}/csf.conf /etc/csf/csf.conf
     sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g" /etc/csf/csf.conf &> /dev/null
     wait

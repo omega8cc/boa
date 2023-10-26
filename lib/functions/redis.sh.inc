@@ -13,28 +13,28 @@ forced_redis_password_update() {
     _ESC_RPASS=""
     _LEN_RPASS=0
     if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
-      _PWD_CHARS=32
+      _PWD_CHARS=64
     elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
-      _PWD_CHARS=8
+      _PWD_CHARS=32
     else
       _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
       if [ ! -z "${_STRONG_PASSWORDS}" ] \
-        && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
+        && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
         _PWD_CHARS="${_STRONG_PASSWORDS}"
       else
-        _PWD_CHARS=8
+        _PWD_CHARS=32
       fi
       if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
         _PWD_CHARS=128
       fi
     fi
-    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ]; then
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "32" ]; then
       _ESC_RPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
       _ESC_RPASS=$(echo -n "${_ESC_RPASS}" | tr -d "\n" 2>&1)
       _LEN_RPASS=$(echo ${#_ESC_RPASS} 2>&1)
     fi
     if [ -z "${_ESC_RPASS}" ] || [ "${_LEN_RPASS}" -lt "9" ]; then
-      _ESC_RPASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
+      _ESC_RPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
       _ESC_RPASS=$(echo -n "${_ESC_RPASS}" | tr -d "\n" 2>&1)
       _ESC_RPASS=$(sanitize_string "${_ESC_RPASS}" 2>&1)
     fi
@@ -52,7 +52,7 @@ forced_redis_password_update() {
   fi
   echo "${_ESC_RPASS}" > /root/.redis.pass.txt
   chmod 0600 /root/.redis.pass.txt &> /dev/null
-  touch ${pthLog}/sec-redis-pass-${_X_VERSION}-${_NOW}.log
+  touch ${pthLog}/sec-redis-pass-${_X_SE}-${_X_VERSION}-${_NOW}.log
   if [ -e "/etc/redis/redis.conf" ]; then
     _FORCE_REDIS_RESTART=YES
     sed -i "s/^# requirepass /requirepass /g" \
@@ -65,10 +65,7 @@ forced_redis_password_update() {
     chmod 0600 /etc/redis/redis.conf
   fi
   if [ "${_FORCE_REDIS_RESTART}" = "YES" ]; then
-    service redis-server stop &> /dev/null
-    killall -9 redis-server &> /dev/null
-    rm -f /var/lib/redis/*
-    service redis-server start &> /dev/null
+    service redis-server reload &> /dev/null
   fi
 }
 #
@@ -187,7 +184,7 @@ redis_password_update() {
     msg "PROC: redis_password_update"
   fi
   if [ -e "/etc/redis/redis.conf" ]; then
-    if [ ! -e "${pthLog}/sec-redis-pass-${_X_VERSION}-${_NOW}.log" ]; then
+    if [ ! -e "${pthLog}/sec-redis-pass-${_X_SE}-${_X_VERSION}-${_NOW}.log" ]; then
       if [ ! -e "/root/.redis.no.new.password.cnf" ] \
         || [ ! -e "/root/.redis.pass.txt" ]; then
          forced_redis_password_update
@@ -215,7 +212,7 @@ redis_password_update() {
     if [ -e "${mtrInc}" ] \
       && [ ! -L "${mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
-      ln -sf /data/conf/global.inc ${mtrInc}/global.inc
+      ln -sfn /data/conf/global.inc ${mtrInc}/global.inc
     fi
     fix_redis_mode
   fi
@@ -233,11 +230,6 @@ install_redis_src() {
   cd /var/opt
   rm -rf redis*
   get_dev_src "redis-${_REDIS_VRN}.tar.gz"
-  if [ -e "/var/lib/redis" ]; then
-    mrun "service redis-server stop" &> /dev/null
-    killall -9 redis-server &> /dev/null
-    rm -f /var/lib/redis/*
-  fi
   rm -f /usr/local/bin/redis*
   rm -f /usr/bin/redis*
   cd redis-${_REDIS_VRN}
@@ -264,7 +256,7 @@ install_redis_src() {
         _DO_NOTHING=YES
       else
         if [ "${_REDIS_INSTALL_MISMATCH}" = "YES" ] \
-          || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log" ]; then
+          || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_SE}-${_X_VERSION}.log" ]; then
           cp -af ${locCnf}/${redisCnfTpl} /etc/redis/redis.conf
         fi
       fi
@@ -272,15 +264,13 @@ install_redis_src() {
   else
     if [ ! -e "/etc/redis/redis.conf" ] \
       || [ "${_REDIS_INSTALL_MISMATCH}" = "YES" ] \
-      || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log" ]; then
+      || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_SE}-${_X_VERSION}.log" ]; then
       cp -af ${locCnf}/${redisCnfTpl} /etc/redis/redis.conf
     fi
   fi
   redis_password_update
-  touch ${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log
-  mrun "service redis-server start" &> /dev/null
-  sleep 3
-  mrun "service redis-server restart" &> /dev/null
+  touch ${pthLog}/redis-${_REDIS_VRN}-${_X_SE}-${_X_VERSION}.log
+  service redis-server reload &> /dev/null
 }
 
 redis_install_upgrade() {
@@ -358,7 +348,7 @@ redis_install_upgrade() {
     fi
   fi
   if [ "${_REDIS_INSTALL_MISMATCH}" = "YES" ] \
-    || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_VERSION}.log" ] \
+    || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_SE}-${_X_VERSION}.log" ] \
     || [ ! -d "/var/run/redis" ] \
     || [ ! -x "/usr/bin/redis-server" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then

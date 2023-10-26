@@ -9,16 +9,16 @@ provision_backend_dbpass_generate() {
   _ESC_PASS=""
   _LEN_PASS=0
   if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
-    _PWD_CHARS=32
+    _PWD_CHARS=64
   elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
-    _PWD_CHARS=8
+    _PWD_CHARS=32
   else
     _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
     if [ ! -z "${_STRONG_PASSWORDS}" ] \
-      && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
+      && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
       _PWD_CHARS="${_STRONG_PASSWORDS}"
     else
-      _PWD_CHARS=8
+      _PWD_CHARS=32
     fi
     if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
       _PWD_CHARS=128
@@ -26,13 +26,13 @@ provision_backend_dbpass_generate() {
   fi
 
   if [ "${_STRONG_PASSWORDS}" = "YES" ] \
-    || [ "${_PWD_CHARS}" -gt "8" ]; then
+    || [ "${_PWD_CHARS}" -gt "32" ]; then
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
       if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-        _ESC_PASS="$(openssl rand -base64 32 2>&1)"
+        _ESC_PASS="$(openssl rand -base64 64 2>&1)"
       else
         _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
       fi
@@ -53,7 +53,7 @@ provision_backend_dbpass_generate() {
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
       || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-      _ESC_PASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
+      _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
       _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
     else
@@ -237,7 +237,7 @@ provision_backend_dbpass_sync() {
   fi
   _ADBU=aegir_root
   _L_SYS="/var/aegir/backups/system/.${_ADBU}.pass.txt"
-  mv -f ${_L_SYS} ${_L_SYS}-pre-${_X_VERSION}-${_NOW} &> /dev/null
+  mv -f ${_L_SYS} ${_L_SYS}-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
   provision_backend_dbpass_generate
   if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
     su -s /bin/bash - aegir -c "drush8 @hostmaster \
@@ -453,7 +453,7 @@ master_download_for_local_build() {
       get_dev_ext "hosting_tasks_extra.tar.gz"
     fi
     ### Aegir Drupal Contrib
-    get_dev_stc "admin_menu-7.x-3.0-rc6.tar.gz"
+    get_dev_stc "admin_menu-7.x-3.0-rc7.tar.gz"
     get_dev_stc "betterlogin-7.x-1.5.tar.gz"
     get_dev_stc "ctools-7.x-1.21.tar.gz"
     get_dev_stc "entity-7.x-1.10.tar.gz"
@@ -469,7 +469,7 @@ master_download_for_local_build() {
     get_dev_stc "views-7.x-3.29.tar.gz"
     ### BOA Drupal Contrib
     get_dev_stc "features_extra-7.x-1.0.tar.gz"
-    get_dev_stc "features-7.x-2.14.tar.gz"
+    get_dev_stc "features-7.x-2.15.tar.gz"
     get_dev_stc "idna_convert-7.x-1.0.tar.gz"
     get_dev_stc "revision_deletion-7.x-1.3.tar.gz"
     get_dev_stc "strongarm-7.x-2.0.tar.gz"
@@ -564,6 +564,10 @@ aegir_master_upgrade() {
     chown -R aegir:www-data ${_THIS_HM_SITE}/files
     chmod -R 02775 ${_THIS_HM_SITE}/files
 
+    _X_SE="500devT02"
+    export _X_SE="${_X_SE}"
+    export _X_VERSION="${_X_VERSION}"
+
     echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${vBs}/${filIncB}
     echo "_AEGIR_XTS_VRN=\"${_AEGIR_XTS_VRN}\""         >> ${vBs}/${filIncB}
     echo "_BOA_REPO_GIT_URL=\"${_BOA_REPO_GIT_URL}\""   >> ${vBs}/${filIncB}
@@ -611,14 +615,14 @@ aegir_master_upgrade() {
     fi
     if [ ! -L "${mtrInc}/global.inc" ] && [ -e "${mtrInc}/global.inc" ]; then
       mv -f ${mtrInc}/global.inc \
-        ${mtrInc}/global.inc-pre-${_X_VERSION}-${_NOW} &> /dev/null
+        ${mtrInc}/global.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     fi
     mkdir -p /data/conf
     cp -af ${locCnf}/global.inc /data/conf/global.inc
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
     if [ -e "${mtrInc}" ] && [ ! -L "${mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
-      ln -sf /data/conf/global.inc ${mtrInc}/global.inc
+      ln -sfn /data/conf/global.inc ${mtrInc}/global.inc
     fi
     redis_password_update
     force_advanced_nginx_config
@@ -707,7 +711,7 @@ aegir_master_install_upgrade() {
       msg "HINT: Please check ${_LOG} for more information,"
       msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
       msg "Bye"
-      rm -f /root/.my.pass.txt
+      [ -e "/root/.my.pass.txt" ] && rm -f /root/.my.pass.txt
       mkdir -p /var/aegir
       clean_pid_exit
     fi
@@ -723,7 +727,7 @@ aegir_master_install_upgrade() {
     usermod -aG www-data aegir
     usermod -aG users aegir
     echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
-    ln -sf /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf &> /dev/null
+    ln -sfn /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf &> /dev/null
     nginx_conf_update
 
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
@@ -778,29 +782,29 @@ aegir_master_install_upgrade() {
     _LEN_PASS=0
 
     if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
-      _PWD_CHARS=32
+      _PWD_CHARS=64
     elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
-      _PWD_CHARS=8
+      _PWD_CHARS=32
     else
       _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
       if [ ! -z "${_STRONG_PASSWORDS}" ] \
-        && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
+        && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
         _PWD_CHARS="${_STRONG_PASSWORDS}"
       else
-        _PWD_CHARS=8
+        _PWD_CHARS=32
       fi
       if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
         _PWD_CHARS=128
       fi
     fi
 
-    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ]; then
+    if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "32" ]; then
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
         if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-          _ESC_PASS="$(openssl rand -base64 32 2>&1)"
+          _ESC_PASS="$(openssl rand -base64 64 2>&1)"
         else
           _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
         fi
@@ -820,7 +824,7 @@ aegir_master_install_upgrade() {
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
         || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
         || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-        _ESC_PASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
+        _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
         _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
         _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
       else
@@ -895,6 +899,10 @@ ALTER USER '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     fi
 
+    _X_SE="500devT02"
+    export _X_SE="${_X_SE}"
+    export _X_VERSION="${_X_VERSION}"
+
     echo "_AEGIR_DB_USER=\"${_AEGIR_DB_USER}\""         >> ${vBs}/${filIncB}
     echo "_AEGIR_HOST=\"${_AEGIR_HOST}\""               >> ${vBs}/${filIncB}
     echo "_AEGIR_VERSION=\"${_AEGIR_VERSION}\""         >> ${vBs}/${filIncB}
@@ -916,6 +924,7 @@ EOFMYSQL
     echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${vBs}/${filIncB}
     echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${vBs}/${filIncB}
     echo "_X_SE=\"${_X_SE}\""                           >> ${vBs}/${filIncB}
+    echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${vBs}/${filIncB}
 
     master_download_for_local_build
 
@@ -979,7 +988,7 @@ EOFMYSQL
   ###--------------------###
     if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
       _DO_NOTHING=YES
-      rm -f /root/.force.reinstall.cnf
+      [ -e "/root/.force.reinstall.cnf" ] && rm -f /root/.force.reinstall.cnf
     else
       msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed!"
       msg "HINT: Please check /var/aegir/install.log for details, and then"
@@ -991,7 +1000,7 @@ EOFMYSQL
   ###--------------------###
     if [ ! -L "${mtrInc}/global.inc" ] && [ -e "${mtrInc}/global.inc" ]; then
       mv -f ${mtrInc}/global.inc \
-        ${mtrInc}/global.inc-pre-${_X_VERSION}-${_NOW} &> /dev/null
+        ${mtrInc}/global.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     fi
     mkdir -p /data/conf
     cp -af ${locCnf}/global.inc /data/conf/global.inc
@@ -999,7 +1008,7 @@ EOFMYSQL
     if [ -e "${mtrInc}" ] \
       && [ ! -L "${mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
-      ln -sf /data/conf/global.inc ${mtrInc}/global.inc
+      ln -sfn /data/conf/global.inc ${mtrInc}/global.inc
     fi
     redis_password_update
     force_advanced_nginx_config
@@ -1118,7 +1127,6 @@ php_cli_local_ini_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: php_cli_local_ini_update"
   fi
-  _X_SE="420prodT02"
   _U_HD="/var/aegir/.drush"
   _U_TP="/var/aegir/.tmp"
   _U_II="${_U_HD}/php.ini"

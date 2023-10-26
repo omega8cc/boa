@@ -202,14 +202,21 @@ system("service xinetd start") if (!$xinetdsumar && -f "/etc/init.d/xinetd");
 system("service lsyncd start") if (!$lsyncdsumar && -f "/etc/init.d/lsyncd");
 system("service postfix restart") if (!-f "/var/spool/postfix/pid/master.pid");
 
-if (-f "/usr/local/sbin/pure-config.pl") {
+$ftpdinit="/usr/local/sbin/pure-config.pl";
+$ftpdconf="/usr/local/etc/pure-ftpd.conf";
+$ftpdbind="/usr/local/sbin/pure-ftpd";
+
+if (-f "$ftpdbind" && -f "$ftpdconf") {
   if (-f "/root/.mstr.clstr.cnf" || -f "/root/.wbhd.clstr.cnf" || -f "/root/.dbhd.clstr.cnf") {
     if ($ftpsumar) {
       system("killall -9 pure-ftpd");
     }
   }
   else {
-    `/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf` if (!$ftpsumar);
+    if (!$ftpsumar) {
+      if (-f "$ftpdinit") { system("$ftpdinit $ftpdconf"); }
+      else { system("$ftpdbind $ftpdconf"); }
+    }
   }
 }
 

@@ -35,16 +35,26 @@
 ### Supported values which can be written in this file, listed in a single line
 ### or one per line:
 ###
-### Drupal 9 based
 ###
-### OLS ----------- OpenLucius
-### OPG ----------- Opigno LMS
+### Drupal 10.1 based
+###
+### D101P D101S D101D --- Drupal 10.1 prod/stage/dev
 ### THR ----------- Thunder
 ### VBE ----------- Varbase
 ###
-### Drupal 8 based
 ###
+### Drupal 10.0 based
+###
+### D100P D100S D100D --- Drupal 10.0 prod/stage/dev
+###
+###
+### Drupal 9 based
+###
+### D9P D9S D9D --- Drupal 9 prod/stage/dev
+### OLS ----------- OpenLucius
+### OPG ----------- Opigno LMS
 ### SOC ----------- Social
+###
 ###
 ### Drupal 7 based
 ###
@@ -58,6 +68,7 @@
 ### PPY ----------- Panopoly
 ### UC7 ----------- Ubercart
 ###
+###
 ### Drupal 6 based
 ###
 ### D6P D6S D6D --- Pressflow (LTS) prod/stage/dev
@@ -70,7 +81,7 @@
 ### Examples:
 ###
 ### ALL
-### VBE D7P D7S D7D
+### D101P D101S PPY
 ###
 
 
@@ -190,8 +201,8 @@ so both can be used as default versions in the Aegir PHP configuration files:
 ### This is to guarantee backward compatibility for instances installed
 ### before upgrade to BOA-4.1.3, when the default PHP version was 5.6,
 ### as otherwise after the upgrade the system would automatically switch such
-### accounts to the new default PHP version which is 7.4, and this could break
-### most of the sites hosted, never before tested for PHP 7.4 compatibility.
+### accounts to the new default PHP version which is 8.1, and this could break
+### most of the sites hosted, never before tested for PHP 8.1 compatibility.
 ###
 
 
@@ -207,7 +218,7 @@ so both can be used as default versions in the Aegir PHP configuration files:
 ### other sites not listed in multi-fpm.info will continue to use PHP-FPM
 ### version defined in fpm.info instead, which can be modified independently.
 ###
-### foo.com 8.0
+### foo.com 8.1
 ### bar.com 7.4
 ### old.com 5.6
 ###
@@ -247,14 +258,14 @@ so both can be used as default versions in the Aegir PHP configuration files:
 ### This is to guarantee backward compatibility for instances installed
 ### before upgrade to BOA-4.1.3, when the default PHP version was 5.6,
 ### as otherwise after the upgrade the system would automatically switch such
-### accounts to the new default PHP version which is 7.4, and this could break
-### most of the sites hosted, never before tested for PHP 7.4 compatibility.
+### accounts to the new default PHP version which is 8.1, and this could break
+### most of the sites hosted, never before tested for PHP 8.1 compatibility.
 ###
 ### IMPORTANT: this file will affect only Drush on command line and Drush
 ### in Aegir backend, used for all tasks on hosted sites, but it will not
 ### affect PHP-CLI version used by Composer on command line, because Composer
 ### is installed globally and not per Octopus account, so it will use system
-### default PHP version, which is, since BOA-4.1.4-rel, PHP 7.4 and can be
+### default PHP version, which is, since BOA-5.0.0-dev, PHP 8.1 and can be
 ### changed only by changing system default _PHP_CLI_VERSION in the file
 ### /root/.barracuda.cnf and running barracuda upgrade.
 ###
@@ -301,7 +312,7 @@ so both can be used as default versions in the Aegir PHP configuration files:
 ###
 ### Please note that on a self-hosted BOA you still need to add your valid
 ### license key as _NEWRELIC_KEY in the /root/.barracuda.cnf file and run
-### system upgrade with at least 'barracuda up-head' first. This step is
+### system upgrade with at least 'barracuda up-dev' first. This step is
 ### not required on Omega8.cc hosted service, where New Relic agent is already
 ### pre-installed for you.
 ###

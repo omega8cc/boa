@@ -44,14 +44,15 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-_X_SE="420prodT02"
+_OPENSSL_MODERN_VRN=3.1.3
+_X_SE="500devT02"
 _WEBG=www-data
 _OSR=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
   | tr -d "\n" \
   | cut -d" " -f2 \
   | awk '{ print $1}')
-if [[ "${_SSL_ITD}" =~ "3.1." ]] \
+if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
   || [[ "${_SSL_ITD}" =~ "1.1.1" ]] \
   || [[ "${_SSL_ITD}" =~ "1.1.0" ]] \
   || [[ "${_SSL_ITD}" =~ "1.0.2" ]] \
@@ -122,7 +123,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/stable/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
 }
 
 extract_archive() {
@@ -148,11 +149,11 @@ extract_archive() {
 
 get_dev_ext() {
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "${urlDev}/HEAD/$1" -o "$1"
+    curl ${crlGet} "${urlDev}/DEV/$1" -o "$1"
     if [ -e "$1" ]; then
       extract_archive "$1"
     else
-      echo "OOPS: $1 failed download from ${urlDev}/HEAD/$1"
+      echo "OOPS: $1 failed download from ${urlDev}/DEV/$1"
     fi
   fi
 }
@@ -544,7 +545,7 @@ fix_o_contrib_symlink() {
       && [ -e "${_O_CONTRIB_SEVEN}" ] \
       && [ ! -e "${Plr}/core" ]; then
       if [ ! -e "${Plr}/modules/o_contrib_seven" ]; then
-        ln -sf ${_O_CONTRIB_SEVEN} ${Plr}/modules/o_contrib_seven &> /dev/null
+        ln -sfn ${_O_CONTRIB_SEVEN} ${Plr}/modules/o_contrib_seven &> /dev/null
       fi
     elif [ -e "${Plr}/core" ] \
       && [ ! -e "${Plr}/core/themes/olivero" ] \
@@ -561,7 +562,7 @@ fix_o_contrib_symlink() {
         rm -f ${Plr}/modules/.o_contrib_ten_dont_use
       fi
       if [ ! -e "${Plr}/modules/o_contrib_eight" ]; then
-        ln -sf ${_O_CONTRIB_EIGHT} ${Plr}/modules/o_contrib_eight &> /dev/null
+        ln -sfn ${_O_CONTRIB_EIGHT} ${Plr}/modules/o_contrib_eight &> /dev/null
       fi
     elif [ -e "${Plr}/core/themes/olivero" ] \
       && [ -e "${Plr}/core/themes/classy" ] \
@@ -577,7 +578,7 @@ fix_o_contrib_symlink() {
         rm -f ${Plr}/modules/.o_contrib_ten_dont_use
       fi
       if [ ! -e "${Plr}/modules/o_contrib_nine" ]; then
-        ln -sf ${_O_CONTRIB_NINE} ${Plr}/modules/o_contrib_nine &> /dev/null
+        ln -sfn ${_O_CONTRIB_NINE} ${Plr}/modules/o_contrib_nine &> /dev/null
       fi
     elif [ -e "${Plr}/core/themes/olivero" ] \
       && [ ! -e "${Plr}/core/themes/classy" ] \
@@ -593,7 +594,7 @@ fix_o_contrib_symlink() {
         rm -f ${Plr}/modules/.o_contrib_nine_dont_use
       fi
       if [ ! -e "${Plr}/modules/o_contrib_ten" ]; then
-        ln -sf ${_O_CONTRIB_TEN} ${Plr}/modules/o_contrib_ten &> /dev/null
+        ln -sfn ${_O_CONTRIB_TEN} ${Plr}/modules/o_contrib_ten &> /dev/null
       fi
     else
       if [ -e "${Plr}/modules/watchdog" ]; then
@@ -603,7 +604,7 @@ fix_o_contrib_symlink() {
       else
         if [ ! -e "${Plr}/modules/o_contrib" ] \
           && [ -e "${_O_CONTRIB}" ]; then
-          ln -sf ${_O_CONTRIB} ${Plr}/modules/o_contrib &> /dev/null
+          ln -sfn ${_O_CONTRIB} ${Plr}/modules/o_contrib &> /dev/null
         fi
       fi
     fi
@@ -1528,12 +1529,6 @@ fix_modules() {
     else
       echo ";redis_old_eight_mode = FALSE" >> ${_PLR_CTRL_F}
     fi
-    _VAR_IF_PRESENT=$(grep "redis_use_modern" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_use_modern" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_use_modern = TRUE" >> ${_PLR_CTRL_F}
-    fi
     _VAR_IF_PRESENT=$(grep "redis_flush_forced_mode" ${_PLR_CTRL_F} 2>&1)
     if [[ "${_VAR_IF_PRESENT}" =~ "redis_flush_forced_mode" ]]; then
       _DO_NOTHING=YES
@@ -1637,12 +1632,6 @@ fix_modules() {
       _DO_NOTHING=YES
     else
       echo ";redis_old_eight_mode = FALSE" >> ${_DIR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_use_modern" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_use_modern" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_use_modern = TRUE" >> ${_DIR_CTRL_F}
     fi
     _VAR_IF_PRESENT=$(grep "redis_flush_forced_mode" ${_DIR_CTRL_F} 2>&1)
     if [[ "${_VAR_IF_PRESENT}" =~ "redis_flush_forced_mode" ]]; then
@@ -2464,8 +2453,10 @@ le_ssl_check_update() {
 
 if_gen_goaccess() {
   PrTestPower=$(grep "POWER" /root/.${_HM_U}.octopus.cnf 2>&1)
+  PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
   PrTestCluster=$(grep "CLUSTER" /root/.${_HM_U}.octopus.cnf 2>&1)
   if [[ "${PrTestPower}" =~ "POWER" ]] \
+    || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
     isWblgx=$(which weblogx 2>&1)
     if [ -x "${isWblgx}" ]; then
@@ -2667,9 +2658,9 @@ check_old_empty_hostmaster_platforms() {
 	  || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
 	  || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
 	  || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-	  _DEL_OLD_EMPTY_PLATFORMS="7"
+	  _DEL_OLD_EMPTY_PLATFORMS="3"
 	else
-	  _DEL_OLD_EMPTY_PLATFORMS="30"
+	  _DEL_OLD_EMPTY_PLATFORMS="7"
 	fi
   fi
   if [ ! -z "${_DEL_OLD_EMPTY_PLATFORMS}" ]; then
@@ -2733,7 +2724,7 @@ check_old_empty_platforms() {
           || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
           _DEL_OLD_EMPTY_PLATFORMS="60"
         else
-          _DEL_OLD_EMPTY_PLATFORMS="60"
+          _DEL_OLD_EMPTY_PLATFORMS="90"
         fi
       fi
     fi
@@ -2779,7 +2770,7 @@ purge_cruft_machine() {
   if [ ! -z "${_DEL_OLD_BACKUPS}" ] && [ "${_DEL_OLD_BACKUPS}" -gt "0" ]; then
     _PURGE_BACKUPS="${_DEL_OLD_BACKUPS}"
   else
-    _PURGE_BACKUPS="30"
+    _PURGE_BACKUPS="14"
   fi
 
   if [ ! -z "${_DEL_OLD_TMP}" ] && [ "${_DEL_OLD_TMP}" -gt "0" ]; then
@@ -2794,7 +2785,7 @@ purge_cruft_machine() {
     || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
     || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
     || [ -e "/root/.host8.cnf" ]; then
-    _PURGE_BACKUPS="3"
+    _PURGE_BACKUPS="7"
     _PURGE_TMP="0"
   fi
 
@@ -2811,8 +2802,16 @@ purge_cruft_machine() {
 
   find ${User}/backups/* -mtime +${_PURGE_BACKUPS} -exec \
     rm -rf {} \; &> /dev/null
-
+  find ${User}/clients/*/backups/* -mtime +${_PURGE_BACKUPS} -exec \
+    rm -rf {} \; &> /dev/null
   find ${User}/backup-exports/* -mtime +${_PURGE_TMP} -type f -exec \
+    rm -rf {} \; &> /dev/null
+
+  find /var/aegir/backups/* -mtime +${_PURGE_BACKUPS} -exec \
+    rm -rf {} \; &> /dev/null
+  find /var/aegir/clients/*/backups/* -mtime +${_PURGE_BACKUPS} -exec \
+    rm -rf {} \; &> /dev/null
+  find /var/aegir/backup-exports/* -mtime +${_PURGE_TMP} -type f -exec \
     rm -rf {} \; &> /dev/null
 
   find ${User}/distro/*/*/sites/*/files/backup_migrate/*/* \
@@ -2913,26 +2912,19 @@ purge_cruft_machine() {
     fi
   done
 
-  _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
-    016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
-    034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050 051 \
-    052 053 054 055 056 057 058 059 060 061 062 063 064 065 066 067 068 069 \
-    070 071 072 073 074 075 076 077 078 079 080 081 082 083 084 085 086 087 \
-    088 089 090 091 092 093 094 095 096 097 098 099 100 101 102 103 104 105"
-
-  for i in ${_REVISIONS}; do
-    if [ -e "${User}/distro/${i}" ] \
+  for i in `dir -d ${User}/distro/*`; do
+    if [ -e "${i}" ] \
       && [ ! -e "/home/${_HM_U}.ftp/platforms/${i}" ]; then
       if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
         chattr -i /home/${_HM_U}.ftp/platforms
         chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
       fi
       mkdir -p /home/${_HM_U}.ftp/platforms/${i}
-      mkdir -p ${User}/distro/${i}/keys
-      chown ${_HM_U}.ftp:${_WEBG} ${User}/distro/${i}/keys &> /dev/null
-      chmod 02775 ${User}/distro/${i}/keys &> /dev/null
-      ln -sf ${User}/distro/${i}/keys /home/${_HM_U}.ftp/platforms/${i}/keys
-      for Codebase in `find ${User}/distro/${i}/* \
+      mkdir -p ${i}/keys
+      chown ${_HM_U}.ftp:${_WEBG} ${i}/keys &> /dev/null
+      chmod 02775 ${i}/keys &> /dev/null
+      ln -sfn ${i}/keys /home/${_HM_U}.ftp/platforms/${i}/keys
+      for Codebase in `find ${i}/* \
         -maxdepth 1 \
         -mindepth 1 \
         -type d \
@@ -2940,7 +2932,7 @@ purge_cruft_machine() {
         CodebaseName=$(echo ${Codebase} \
           | cut -d'/' -f7 \
           | awk '{ print $1}' 2> /dev/null)
-        ln -sf ${Codebase} /home/${_HM_U}.ftp/platforms/${i}/${CodebaseName}
+        ln -sfn ${Codebase} /home/${_HM_U}.ftp/platforms/${i}/${CodebaseName}
         echo "Fixed symlink to ${Codebase} for ${_HM_U}.ftp"
       done
     fi
@@ -2992,15 +2984,9 @@ shared_codebases_cleanup() {
   else
     _CLD="/var/backups/codebases-cleanup"
   fi
-  _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
-    016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
-    034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050 051 \
-    052 053 054 055 056 057 058 059 060 061 062 063 064 065 066 067 068 069 \
-    070 071 072 073 074 075 076 077 078 079 080 081 082 083 084 085 086 087 \
-    088 089 090 091 092 093 094 095 096 097 098 099 100 101 102 103 104 105"
-  for i in ${_REVISIONS}; do
-    if [ -d "/data/all/${i}/o_contrib" ]; then
-      for Codebase in `find /data/all/${i}/* -maxdepth 1 -mindepth 1 -type d \
+  for i in `dir -d /data/all/*/`; do
+    if [ -d "${i}o_contrib" ]; then
+      for Codebase in `find ${i}* -maxdepth 1 -mindepth 1 -type d \
         | grep "/profiles$" 2>&1`; do
         CodebaseDir=$(echo ${Codebase} \
           | sed 's/\/profiles//g' \
@@ -3009,10 +2995,9 @@ shared_codebases_cleanup() {
           -type l -lname ${Codebase} | sort 2>&1)
         if [[ "${CodebaseTest}" =~ "No such file or directory" ]] \
           || [ -z "${CodebaseTest}" ]; then
-          mkdir -p ${_CLD}/${i}
-          echo "Moving no longer used ${CodebaseDir} to ${_CLD}/${i}/"
-          ### mv -f ${CodebaseDir} ${_CLD}/${i}/
-          sleep 1
+          mkdir -p ${_CLD}${i}
+          echo "Moving no longer used ${CodebaseDir} to ${_CLD}${i}"
+          ### mv -f ${CodebaseDir} ${_CLD}${i}
         fi
       done
     fi
@@ -3021,14 +3006,8 @@ shared_codebases_cleanup() {
 
 ghost_codebases_cleanup() {
   _CLD="/var/backups/ghost-codebases-cleanup"
-  _REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 \
-    016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 \
-    034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050 051 \
-    052 053 054 055 056 057 058 059 060 061 062 063 064 065 066 067 068 069 \
-    070 071 072 073 074 075 076 077 078 079 080 081 082 083 084 085 086 087 \
-    088 089 090 091 092 093 094 095 096 097 098 099 100 101 102 103 104 105"
-  for i in ${_REVISIONS}; do
-    CodebaseTest=$(find /data/disk/*/distro/${i}/*/ -maxdepth 1 -mindepth 1 \
+  for i in `dir -d /data/disk/*/distro/*/*/`; do
+    CodebaseTest=$(find ${i} -maxdepth 1 -mindepth 1 \
       -type d -name vendor | sort 2>&1)
     for vendor in ${CodebaseTest}; do
       ParentDir=`echo ${vendor} | sed "s/\/vendor//g"`
@@ -3039,10 +3018,9 @@ ghost_codebases_cleanup() {
       else
         _CLEAN_THIS="${ParentDir}"
         _TSTAMP=`date +%y%m%d-%H%M%S`
-        mkdir -p ${_CLD}/${i}/${_TSTAMP}
-        echo "Moving ghost ${_CLEAN_THIS} to ${_CLD}/${i}/${_TSTAMP}/"
-        ### mv -f ${_CLEAN_THIS} ${_CLD}/${i}/${_TSTAMP}/
-        sleep 1
+        mkdir -p ${_CLD}${i}${_TSTAMP}
+        echo "Moving ghost ${_CLEAN_THIS} to ${_CLD}${i}${_TSTAMP}/"
+        ### mv -f ${_CLEAN_THIS} ${_CLD}${i}${_TSTAMP}/
       fi
     done
   done
@@ -3101,11 +3079,11 @@ action() {
         _SQL_CONVERT=NO
         _DEL_OLD_EMPTY_PLATFORMS="0"
         if [ -e "/root/.${_HM_U}.octopus.cnf" ]; then
-          if [ -x "/usr/bin/drush10-bin" ]; then
+          if [ -x "/usr/bin/drush10" ]; then
             su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/*.yml"
             su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/.checksums/*.md5"
-            su -s /bin/bash - ${_HM_U} -c "drush10-bin core:init --yes" &> /dev/null
-            su -s /bin/bash - ${_HM_U} -c "drush10-bin site:alias-convert ~/.drush/sites --yes" &> /dev/null
+            su -s /bin/bash - ${_HM_U} -c "drush10 core:init --yes" &> /dev/null
+            su -s /bin/bash - ${_HM_U} -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
           fi
           source /root/.${_HM_U}.octopus.cnf
           _DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS//[^0-9]/}
@@ -3516,7 +3494,7 @@ fi
 if [ "${_PERMISSIONS_FIX}" = "YES" ] \
   && [ ! -z "${_X_VERSION}" ] \
   && [ -e "/opt/tmp/barracuda-release.txt" ] \
-  && [ ! -e "/data/all/permissions-fix-${_X_VERSION}-fixed-dz.info" ]; then
+  && [ ! -e "/data/all/permissions-fix-${_X_SE}-${_X_VERSION}-fixed-dz.info" ]; then
   echo "INFO: Fixing permissions in the /data/all tree..."
   find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
   find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
@@ -3539,7 +3517,7 @@ if [ "${_PERMISSIONS_FIX}" = "YES" ] \
     chown -R root:users /data/disk/all/000/core/*/sites &> /dev/null
   fi
   chmod 02775 /data/disk/*/distro/*/*/sites/all/{modules,libraries,themes} &> /dev/null
-  echo fixed > /data/all/permissions-fix-${_X_VERSION}-fixed-dz.info
+  echo fixed > /data/all/permissions-fix-${_X_SE}-${_X_VERSION}-fixed-dz.info
 fi
 if [ ! -e "/var/backups/fix-sites-all-permsissions-${_X_SE}.txt" ]; then
   chmod 0751  /data/disk/*/distro/*/*/sites &> /dev/null

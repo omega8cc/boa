@@ -60,7 +60,6 @@ if_install_jetty() {
       fi
     fi
   fi
-  _X_SE="420prodT02"
   if [ -e "/etc/default/${_N_SOLR}.in.sh" ]; then
     _SOLR7_JAVA_TEST=$(grep "BOA ${_X_SE} Path to Java" /etc/default/${_N_SOLR}.in.sh 2>&1)
     if [[ "$_SOLR7_JAVA_TEST" =~ "BOA ${_X_SE} Path to Java" ]]; then
@@ -193,8 +192,8 @@ if_install_jetty() {
           cd /var/opt/solr-${_SOLR_4_VRN}/example/solr/collection1/conf/
           patch -p0 < \
             /var/opt/apachesolr_attachments/solrconfig.tika.patch &> /dev/null
-          ln -sf /opt/jetty9/lib /opt/tika9
-          ln -sf /opt/jetty9/lib /opt/tika
+          ln -sfn /opt/jetty9/lib /opt/tika9
+          ln -sfn /opt/jetty9/lib /opt/tika
           cd /opt/tika9
           rm -f tika-app*
           _TIKA_V="1.8 1.9 1.10 1.11 1.12 1.13 1.20"
@@ -285,7 +284,7 @@ if_install_jetty() {
           touch /opt/jetty9/.fixed.start.ini.txt &> /dev/null
         fi
         sed -i "s/8080/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
-        ln -sf /opt/jetty9/bin/jetty.sh /etc/init.d/jetty9 &> /dev/null
+        ln -sfn /opt/jetty9/bin/jetty.sh /etc/init.d/jetty9 &> /dev/null
         chmod 755 /etc/init.d/jetty9
         mrun "update-rc.d jetty9 defaults" &> /dev/null
         mrun "service jetty9 start" &> /dev/null
@@ -348,7 +347,7 @@ if_install_jetty() {
       cd /var/opt
       rm -rf jetty-distribution-*
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
-      mv -f /opt/jetty9 ${vBs}/jetty9-${_X_VERSION}-${_NOW}
+      mv -f /opt/jetty9 ${vBs}/jetty9-${_X_SE}-${_X_VERSION}-${_NOW}
       if [ "${_OSR}" = "chimaera" ] \
         || [ "${_OSR}" = "beowulf" ] \
         || [ "${_OSR}" = "bullseye" ] \
@@ -441,7 +440,7 @@ if_install_jetty() {
           cd /var/opt/apache-solr-${_SOLR_3_VRN}/example/solr/conf
           patch -p0 < \
             /var/opt/apachesolr_attachments/solrconfig.tika.patch &> /dev/null
-          ln -sf /opt/jetty8/lib /opt/tika8
+          ln -sfn /opt/jetty8/lib /opt/tika8
           cd /opt/tika8
           rm -f tika-app*
           _TIKA_V="1.8 1.9 1.10 1.11 1.12 1.13 1.20"
@@ -490,7 +489,7 @@ if_install_jetty() {
           -Dsolr.solr.home=/opt/solr3 \$JAVA_OPTIONS\" \
           # Options" | fmt -su -w 2500 >> /etc/default/jetty8
         sed -i "s/8080/8088/g" /opt/jetty8/bin/jetty.sh &> /dev/null
-        ln -sf /opt/jetty8/bin/jetty.sh /etc/init.d/jetty8 &> /dev/null
+        ln -sfn /opt/jetty8/bin/jetty.sh /etc/init.d/jetty8 &> /dev/null
         chmod 755 /etc/init.d/jetty8
         mrun "update-rc.d jetty8 defaults" &> /dev/null
         mrun "service jetty8 start" &> /dev/null
@@ -515,7 +514,7 @@ if_install_jetty() {
       rm -rf jetty-distribution-*
       get_dev_arch "jetty-distribution-${_JETTY_8_VRN}.tar.gz"
       kill -9 $(ps aux | grep '[j]etty8' | awk '{print $2}') &> /dev/null
-      mv -f /opt/jetty8 ${vBs}/jetty8-${_X_VERSION}-${_NOW}
+      mv -f /opt/jetty8 ${vBs}/jetty8-${_X_SE}-${_X_VERSION}-${_NOW}
       mv -f /var/opt/jetty-distribution-${_JETTY_8_VRN} /opt/jetty8
       get_dev_arch "apache-solr-${_SOLR_3_VRN}.tgz"
       cp -af /var/opt/apache-solr-${_SOLR_3_VRN}/dist/apache-solr-${_SOLR_3_VRN}.war \
@@ -570,7 +569,7 @@ if_install_jetty() {
           cd /var/opt/apache-solr-${_SOLR_1_VRN}/example/solr/conf
           patch -p0 < \
             /var/opt/apachesolr_attachments/solrconfig.tika.patch &> /dev/null
-          ln -sf /opt/jetty7/lib /opt/tika7
+          ln -sfn /opt/jetty7/lib /opt/tika7
           cd /opt/tika7
           rm -f tika-app*
           _TIKA_V="1.8 1.9 1.10 1.11 1.12 1.13 1.20"
@@ -621,7 +620,7 @@ if_install_jetty() {
           -Dsolr.solr.home=/opt/solr1 \$JAVA_OPTIONS\" \
           # Options" | fmt -su -w 2500 >> /etc/default/jetty7
         sed -i "s/8080/8077/g" /opt/jetty7/bin/jetty.sh &> /dev/null
-        ln -sf /opt/jetty7/bin/jetty.sh /etc/init.d/jetty7 &> /dev/null
+        ln -sfn /opt/jetty7/bin/jetty.sh /etc/init.d/jetty7 &> /dev/null
         chmod 755 /etc/init.d/jetty7
         mrun "update-rc.d jetty7 defaults" &> /dev/null
         mrun "service jetty7 start" &> /dev/null
@@ -676,7 +675,7 @@ if_install_jetty() {
       rm -rf jetty-distribution-*
       get_dev_arch "jetty-distribution-${_JETTY_7_VRN}.tar.gz"
       kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
-      mv -f /opt/jetty7 ${vBs}/jetty7-${_X_VERSION}-${_NOW}
+      mv -f /opt/jetty7 ${vBs}/jetty7-${_X_SE}-${_X_VERSION}-${_NOW}
       mv -f /var/opt/jetty-distribution-${_JETTY_7_VRN} /opt/jetty7
       get_dev_arch "apache-solr-${_SOLR_1_VRN}.tgz"
       cp -af /var/opt/apache-solr-${_SOLR_1_VRN}/dist/apache-solr-${_SOLR_1_VRN}.war \

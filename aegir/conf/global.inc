@@ -77,8 +77,8 @@ if (function_exists('drush_get_command')) {
  */
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
-      !preg_match("/ApacheSolarisNginxD9ce/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginxD9ce/1.24.0';
+      !preg_match("/ApacheSolarisNginxD10CE/i", $_SERVER['SERVER_SOFTWARE'])) {
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginxD10CE/1.24.0';
   }
 }
 
@@ -1271,7 +1271,6 @@ if ($redis_up && $use_redis && !$custom_cache) {
         $settings['cache']['bins']['bootstrap']  = 'cache.backend.database';
         $settings['cache']['bins']['discovery']  = 'cache.backend.database';
         $settings['cache']['bins']['config']     = 'cache.backend.database';
-        $settings['cache']['bins']['cache_form'] = 'cache.backend.database';
       }
       $settings['container_yamls'][]             = $example_services_path;
       $settings['container_yamls'][]             = $redis_services_path;

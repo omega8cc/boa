@@ -8,7 +8,7 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-_CSF_VRN="14.17"
+_CSF_VRN="14.18"
 _PROXYSQL_VRN="1.3.5-debian8_amd64"
 _UTIL_VRN="0.30.216-pre3126"
 _VNSTAT_VRN="2.7"
@@ -36,8 +36,8 @@ fi
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_VERSION="BOA-4.1.3"
-_X_SE="420prodT02"
+_X_VERSION="BOA-4.2.0-stable"
+_X_SE="500devT02"
 #
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
@@ -300,7 +300,6 @@ locales_check_fix() {
       echo "AcceptEnv LANG LC_*" >> /usr/etc/sshd_config
     fi
   fi
-  _LOCALE_TEST=BROKEN
   _LOC_TEST=$(locale 2>&1)
   if [[ "${_LOC_TEST}" =~ LANG=.*UTF-8 ]]; then
     _LOCALE_TEST=OK
@@ -539,7 +538,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/stable/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
 }
 find_fast_mirror
 
@@ -585,12 +584,12 @@ if_firewall_update() {
     fi
     echo kernel.vshelper = /sbin/vshelper >> /etc/sysctl.conf
     if [ -e "/etc/security/limits.conf" ]; then
-      _IF_NF=$(grep '524288' /etc/security/limits.conf)
+      _IF_NF=$(grep '2097152' /etc/security/limits.conf)
       if [ -z "${_IF_NF}" ]; then
-        echo "*         hard    nofile      524288"  >> /etc/security/limits.conf
-        echo "*         soft    nofile      524288"  >> /etc/security/limits.conf
-        echo "root      hard    nofile      1048576" >> /etc/security/limits.conf
-        echo "root      soft    nofile      1048576" >> /etc/security/limits.conf
+        echo "*         hard    nofile      2097152"  >> /etc/security/limits.conf
+        echo "*         soft    nofile      2097152"  >> /etc/security/limits.conf
+        echo "root      hard    nofile      2097152" >> /etc/security/limits.conf
+        echo "root      soft    nofile      2097152" >> /etc/security/limits.conf
       fi
       _IF_NF=$(grep '65556' /etc/security/limits.conf 2>&1)
       if [ -z "${_IF_NF}" ]; then
@@ -634,9 +633,9 @@ install_proxysql() {
     fi
   fi
 
-  _PROXYSQL_PASSWORD="$(openssl rand -base64 32 2>&1)"
-  _MONITOR_PASSWORD="$(openssl rand -base64 32 2>&1)"
-  _CLUSTER_APP_PASSWORD="$(openssl rand -base64 32 2>&1)"
+  _PROXYSQL_PASSWORD="$(openssl rand -base64 64 2>&1)"
+  _MONITOR_PASSWORD="$(openssl rand -base64 64 2>&1)"
+  _CLUSTER_APP_PASSWORD="$(openssl rand -base64 64 2>&1)"
 
   _E_PROXYSQL_PASSWORD="${_PROXYSQL_PASSWORD//\//\\\/}"
   _E_MONITOR_PASSWORD="${_MONITOR_PASSWORD//\//\\\/}"
@@ -1043,7 +1042,7 @@ install_vps() {
   if [ "${ver}" != "galera" ]; then
     echo "Installing BOA ${ver} in vps ${idn}..."
     rm -f BOA.sh.txt*
-    wget -q -U iCab http://${_USE_MIR}/BOA.sh.txt
+    wget -q -U iCab http://${_USE_MIR}/versions/dev/boa/BOA.sh.txt
     mv -f BOA.sh.txt /vservers/${idn}/root/
     vserver ${idn} exec bash /root/BOA.sh.txt
     vserver ${idn} exec /opt/local/bin/boa in-${ver} public ${hst} ${eml} o8 mini
@@ -1483,8 +1482,8 @@ install_db_cluster() {
   fi
 
   _CLUSTER_NAME="${_CLUSTER_PREFIX}_galera"
-  _MAINT_USER_PWD="$(openssl rand -base64 32 2>&1)"
-  _ROOT_SQL_PASWD="$(openssl rand -base64 32 2>&1)"
+  _MAINT_USER_PWD="$(openssl rand -base64 64 2>&1)"
+  _ROOT_SQL_PASWD="$(openssl rand -base64 64 2>&1)"
   _E_MAINT_USER_PWD="${_MAINT_USER_PWD//\//\\\/}"
   _E_ROOT_SQL_PASWD="${_ROOT_SQL_PASWD//\//\\\/}"
   _CLUSTER_STRING="gcomm://"$(IFS=, ; echo "${_DB_NODE_IP[*]}")
@@ -2099,7 +2098,7 @@ upgrade_host() {
 
   cd
   cp -af /etc/sysctl.conf /etc/sysctl.conf.thrd.three
-  wget -q -U iCab http://${_USE_MIR}/versions/stable/boa/aegir/conf/sysctl.conf
+  wget -q -U iCab http://${_USE_MIR}/versions/dev/boa/aegir/conf/sysctl.conf
   cp -af sysctl.conf /etc/sysctl.conf
   echo "kernel.vshelper = /sbin/vshelper" >> /etc/sysctl.conf
   rm -f sysctl.conf*

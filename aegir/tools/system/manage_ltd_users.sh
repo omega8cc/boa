@@ -63,7 +63,7 @@ apt_clean_update() {
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
-_X_SE="420prodT02"
+_X_SE="500devT02"
 _CHECK_HOST=$(uname -n 2>&1)
 usrGroup=users
 _WEBG=www-data
@@ -153,7 +153,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/stable/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
 }
 
 extract_archive() {
@@ -179,11 +179,11 @@ extract_archive() {
 
 get_dev_ext() {
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "${urlDev}/HEAD/$1" -o "$1"
+    curl ${crlGet} "${urlDev}/DEV/$1" -o "$1"
     if [ -e "$1" ]; then
       extract_archive "$1"
     else
-      echo "OOPS: $1 failed download from ${urlDev}/HEAD/$1"
+      echo "OOPS: $1 failed download from ${urlDev}/DEV/$1"
     fi
   fi
 }
@@ -194,7 +194,7 @@ get_dev_ext() {
 #
 # Remove dangerous stuff from the string.
 sanitize_string() {
-  echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g; s/\(['"'"'\]\)//g'
+  echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'
 }
 #
 # Add ltd-shell group if not exists.
@@ -262,32 +262,32 @@ enable_chattr() {
       chmod 02755 ${_U_HD}
       if [ ! -L "${_U_HD}/usr/registry_rebuild" ] \
         && [ -e "${dscUsr}/.drush/usr/registry_rebuild" ]; then
-        ln -sf ${dscUsr}/.drush/usr/registry_rebuild \
+        ln -sfn ${dscUsr}/.drush/usr/registry_rebuild \
           ${_U_HD}/usr/registry_rebuild
       fi
       if [ ! -L "${_U_HD}/usr/clean_missing_modules" ] \
         && [ -e "${dscUsr}/.drush/usr/clean_missing_modules" ]; then
-        ln -sf ${dscUsr}/.drush/usr/clean_missing_modules \
+        ln -sfn ${dscUsr}/.drush/usr/clean_missing_modules \
           ${_U_HD}/usr/clean_missing_modules
       fi
       if [ ! -L "${_U_HD}/usr/drupalgeddon" ] \
         && [ -e "${dscUsr}/.drush/usr/drupalgeddon" ]; then
-        ln -sf ${dscUsr}/.drush/usr/drupalgeddon \
+        ln -sfn ${dscUsr}/.drush/usr/drupalgeddon \
           ${_U_HD}/usr/drupalgeddon
       fi
       if [ ! -L "${_U_HD}/usr/drush_ecl" ] \
         && [ -e "${dscUsr}/.drush/usr/drush_ecl" ]; then
-        ln -sf ${dscUsr}/.drush/usr/drush_ecl \
+        ln -sfn ${dscUsr}/.drush/usr/drush_ecl \
           ${_U_HD}/usr/drush_ecl
       fi
       if [ ! -L "${_U_HD}/usr/safe_cache_form_clear" ] \
         && [ -e "${dscUsr}/.drush/usr/safe_cache_form_clear" ]; then
-        ln -sf ${dscUsr}/.drush/usr/safe_cache_form_clear \
+        ln -sfn ${dscUsr}/.drush/usr/safe_cache_form_clear \
           ${_U_HD}/usr/safe_cache_form_clear
       fi
       if [ ! -L "${_U_HD}/usr/utf8mb4_convert" ] \
         && [ -e "${dscUsr}/.drush/usr/utf8mb4_convert" ]; then
-        ln -sf ${dscUsr}/.drush/usr/utf8mb4_convert \
+        ln -sfn ${dscUsr}/.drush/usr/utf8mb4_convert \
           ${_U_HD}/usr/utf8mb4_convert
       fi
     fi
@@ -479,7 +479,7 @@ enable_chattr() {
         su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
         wait
         su -s /bin/bash - ${UQ} -c "echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc"
-        rm -f /var/run/manage_rvm_users.pid
+        [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
         if [ -d "/usr/local/.off_rvm" ]; then
           mv -f /usr/local/.off_rvm /usr/local/rvm
         fi
@@ -539,7 +539,7 @@ enable_chattr() {
         fi
         su -s /bin/bash - ${UQ} -c "rvm install ${_RUBY_VRN}"
         su -s /bin/bash - ${UQ} -c "rvm use ${_RUBY_VRN} --default"
-        rm -f /var/run/manage_rvm_users.pid
+        [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
         if [ -d "/usr/local/.off_rvm" ]; then
           mv -f /usr/local/.off_rvm /usr/local/rvm
         fi
@@ -607,7 +607,7 @@ enable_chattr() {
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.1.1 oily_png"      &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative yajl-ruby"      &> /dev/null
         touch ${dscUsr}/log/.gems.build.d.${UQ}.${_X_SE}.txt
-        rm -f /var/run/manage_rvm_users.pid
+        [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
         if [ -d "/usr/local/.off_rvm" ]; then
           mv -f /usr/local/.off_rvm /usr/local/rvm
         fi
@@ -821,7 +821,7 @@ manage_sec_user_drush_aliases() {
     if [ "${symTgt}" != "${Client}" ] \
       || [ ! -e "${usrLtdRoot}/sites" ]; then
       rm -f ${usrLtdRoot}/sites
-      ln -sf ${Client} ${usrLtdRoot}/sites
+      ln -sfn ${Client} ${usrLtdRoot}/sites
     fi
   fi
   if [ ! -e "${usrLtdRoot}/.drush" ]; then
@@ -829,7 +829,7 @@ manage_sec_user_drush_aliases() {
   fi
   for Alias in `find ${usrLtdRoot}/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
-    AliasName=$(echo "$Alias" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
+    AliasName=$(echo "${Alias}" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
     AliasName=$(echo "${AliasName}" \
       | sed "s/.alias.drushrc.php//g" \
       | awk '{ print $1}' 2>&1)
@@ -840,15 +840,15 @@ manage_sec_user_drush_aliases() {
   done
   for Symlink in `find ${usrLtdRoot}/sites/ \
     -maxdepth 1 -mindepth 1 | sort`; do
-    SiteName=$(echo $Symlink \
+    SiteName=$(echo ${Symlink}  \
       | cut -d'/' -f5 \
       | awk '{ print $1}' 2>&1)
     pthAliasMain="${pthParentUsr}/.drush/${SiteName}.alias.drushrc.php"
     pthAliasCopy="${usrLtdRoot}/.drush/${SiteName}.alias.drushrc.php"
-    if [ ! -z "$SiteName" ] && [ ! -e "${pthAliasCopy}" ]; then
+    if [ ! -z "${SiteName}" ] && [ ! -e "${pthAliasCopy}" ]; then
       cp -af ${pthAliasMain} ${pthAliasCopy}
       chmod 440 ${pthAliasCopy}
-    elif [ ! -z "$SiteName" ]  && [ -e "${pthAliasCopy}" ]; then
+    elif [ ! -z "${SiteName}" ]  && [ -e "${pthAliasCopy}" ]; then
       _DIFF_T=$(diff -w -B ${pthAliasCopy} ${pthAliasMain} 2>&1)
       if [ ! -z "${_DIFF_T}" ]; then
         cp -af ${pthAliasMain} ${pthAliasCopy}
@@ -882,28 +882,28 @@ ok_create_user() {
       _ESC_LUPASS=""
       _LEN_LUPASS=0
       if [ "${_STRONG_PASSWORDS}" = "YES" ]  ; then
-        _PWD_CHARS=32
+        _PWD_CHARS=64
       elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
-        _PWD_CHARS=8
+        _PWD_CHARS=32
       else
         _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
         if [ ! -z "${_STRONG_PASSWORDS}" ] \
-          && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
+          && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
           _PWD_CHARS="${_STRONG_PASSWORDS}"
         else
-          _PWD_CHARS=8
+          _PWD_CHARS=32
         fi
         if [ ! -z "${_PWD_CHARS}" ] && [ "${_PWD_CHARS}" -gt "128" ]; then
           _PWD_CHARS=128
         fi
       fi
-      if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "8" ]; then
+      if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "32" ]; then
         _ESC_LUPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
         _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
         _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
       fi
       if [ -z "${_ESC_LUPASS}" ] || [ "${_LEN_LUPASS}" -lt "9" ]; then
-        _ESC_LUPASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
+        _ESC_LUPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
         _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
         _ESC_LUPASS=$(sanitize_string "${_ESC_LUPASS}" 2>&1)
       fi
@@ -1513,51 +1513,58 @@ site_socket_inc_gen() {
   hmFront=$(echo -n ${hmFront} | tr -d "\n" 2>&1)
   hmstAls="${dscUsr}/.drush/${hmFront}.alias.drushrc.php"
 
-  if [ -x "/opt/php74/bin/php" ] && [ -e "${dscUsr}/log/domain.txt" ]; then
+  hmstCli=$(cat ${dscUsr}/log/cli.txt 2>&1)
+  hmstCli=$(echo -n ${hmstCli} | tr -d "\n" 2>&1)
+
+  if [ "${hmstCli}" = "8.1" ] \
+    && [ -x "/opt/php81/bin/php" ] \
+    && [ -e "${dscUsr}/log/domain.txt" ]; then
     if [ ! -e "${unlAeg}" ]; then
-      if [ ! -e "${dscUsr}/log/locked-aegir-php.txt" ]; then
-        echo "${hmFront} 7.4" >> ${mltFpm}
+      if [ ! -e "${dscUsr}/log/locked-aegir-fpm.txt" ]; then
+        sed -i "s/^${hmFront} .*//g" ${mltFpm}
+        echo "${hmFront} 8.1" >> ${mltFpm}
         if [ ! -e "${hmstAls}" ]; then
           ln -s ${dscUsr}/.drush/hostmaster.alias.drushrc.php ${hmstAls}
         fi
-        wait
-        sed -i "s/^place.holder.dont.remove 5.6//g" ${mltFpm}
-        wait
-        sed -i "s/^place.holder.dont.remove 7.4//g" ${mltFpm}
-        wait
-        echo "place.holder.dont.remove 7.4" >> ${mltFpm}
-        wait
+        sed -i "s/^place.holder.dont.remove .*//g" ${mltFpm}
+        echo "place.holder.dont.remove 8.1" >> ${mltFpm}
         sed -i "s/ *$//g; /^$/d" ${mltFpm}
-        wait
-        echo "7.4" > ${dscUsr}/static/control/cli.info
-        rm -f ${dscUsr}/log/unlocked-aegir-php.txt
-        echo "7.4" > ${dscUsr}/log/locked-aegir-php.txt
+        echo "8.1" > ${dscUsr}/static/control/cli.info
+        rm -f ${dscUsr}/log/unlocked-aegir-fpm.txt
+        echo "8.1" > ${dscUsr}/log/locked-aegir-fpm.txt
       fi
       if [ ! -e "${fpmPth}/fpm_include_site_${hmFront}.inc" ]; then
         mltFpmUpdateForce=YES
       fi
     else
-      if [ ! -e "${dscUsr}/log/unlocked-aegir-php.txt" ]; then
+      if [ ! -e "${dscUsr}/log/unlocked-aegir-fpm.txt" ]; then
         if [ -e "${mltFpm}" ]; then
-          sed -i "s/^${hmFront} 7.4//g" ${mltFpm}
+          sed -i "s/^${hmFront} .*//g" ${mltFpm}
           wait
-          sed -i "s/^place.holder.dont.remove 5.6//g" ${mltFpm}
+          sed -i "s/^place.holder.dont.remove .*//g" ${mltFpm}
           wait
-          sed -i "s/^place.holder.dont.remove 7.4//g" ${mltFpm}
-          wait
-          echo "place.holder.dont.remove 7.4" >> ${mltFpm}
-          wait
+          echo "place.holder.dont.remove 8.1" >> ${mltFpm}
           sed -i "s/ *$//g; /^$/d" ${mltFpm}
-          wait
         fi
         mltFpmUpdateForce=YES
-        rm -f ${dscUsr}/log/locked-aegir-php.txt
-        touch ${dscUsr}/log/unlocked-aegir-php.txt
+        rm -f ${dscUsr}/log/locked-aegir-fpm.txt
+        touch ${dscUsr}/log/unlocked-aegir-fpm.txt
       fi
+    fi
+  elif [ -x "/opt/php74/bin/php" ] && [ -e "${dscUsr}/log/domain.txt" ]; then
+    if [ ! -e "${dscUsr}/log/use-legacy-aegir-fpm.txt" ]; then
+      sed -i "s/^place.holder.dont.remove .*//g" ${mltFpm}
+      echo "place.holder.dont.remove 7.4" >> ${mltFpm}
+      sed -i "s/^${hmFront} .*//g" ${mltFpm}
+      echo "${hmFront} 7.4" >> ${mltFpm}
+      if [ ! -e "${hmstAls}" ]; then
+        ln -s ${dscUsr}/.drush/hostmaster.alias.drushrc.php ${hmstAls}
+      fi
+      echo "7.4" > ${dscUsr}/log/use-legacy-aegir-fpm.txt
     fi
   fi
 
-  if [ -x "/opt/php74/bin/php" ] && [ ! -e "/home/${_USER}.74.web" ]; then
+  if [ -x "/opt/php81/bin/php" ] && [ ! -e "/home/${_USER}.81.web" ]; then
     rm -f /data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_default.inc
     mltFpmUpdateForce=YES
   fi
@@ -2209,7 +2216,7 @@ manage_site_drush_alias_mirror() {
 
   for Alias in `find /home/${_USER}.ftp/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
-    AliasFile=$(echo "$Alias" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
+    AliasFile=$(echo "${Alias}" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
     if [ ! -e "${pthParentUsr}/.drush/${AliasFile}" ] \
       && [ ! -z "${AliasFile}" ]; then
       rm -f /home/${_USER}.ftp/.drush/${AliasFile}
@@ -2229,7 +2236,11 @@ manage_site_drush_alias_mirror() {
   isAliasUpdate=NO
   for Alias in `find ${pthParentUsr}/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
-    AliasName=$(echo "$Alias" | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
+    ### echo LastAliasName is ${AliasName}
+    SiteDir=
+    SiteName=
+    AliasName=
+    AliasName=$(echo "${Alias}" | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
     AliasName=$(echo "${AliasName}" \
       | sed "s/.alias.drushrc.php//g" \
       | awk '{ print $1}' 2>&1)
@@ -2241,20 +2252,28 @@ manage_site_drush_alias_mirror() {
       || [[ "${AliasName}" =~ (^)"hostmaster" ]] \
       || [ -z "${AliasName}" ]; then
       _IS_SITE=NO
+      AliasName=
+      SiteName=
+      SiteDir=
     else
       SiteName="${AliasName}"
-      echo SiteName is $SiteName
-      if [[ "$SiteName" =~ ".restore"($) ]]; then
+      echo SiteName is "${SiteName}"
+      ### echo LastSiteDir is "${SiteDir}"
+      SiteDir=
+      if [[ "${SiteName}" =~ ".restore"($) ]]; then
         _IS_SITE=NO
         rm -f ${pthParentUsr}/.drush/${SiteName}.alias.drushrc.php
       else
-        SiteDir=$(cat $Alias \
+        SiteDir=$(cat ${Alias} \
           | grep "site_path'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
-        if [ -d "${SiteDir}" ]; then
+        if [ -e "${SiteDir}/drushrc.php" ] \
+          && [ -e "${SiteDir}/files" ] \
+          && [ -e "${SiteDir}/private" ]; then
           echo SiteDir is ${SiteDir}
+          echo
           pthAliasMain="${pthParentUsr}/.drush/${SiteName}.alias.drushrc.php"
           pthAliasCopy="/home/${_USER}.ftp/.drush/${SiteName}.alias.drushrc.php"
           if [ ! -e "${pthAliasCopy}" ]; then
@@ -2271,19 +2290,22 @@ manage_site_drush_alias_mirror() {
           fi
         else
           rm -f ${pthAliasCopy}
-          echo "ZOMBIE ${SiteDir} IN ${pthAliasMain}"
+          echo "ZOMBIE ${SiteDir} detected"
+          echo "Moving GHOST ${SiteName}.alias.drushrc.php to ${pthParentUsr}/undo/"
+          mv -f ${pthParentUsr}/.drush/${SiteName}.alias.drushrc.php ${pthParentUsr}/undo/ &> /dev/null
+          echo
         fi
       fi
     fi
   done
-  if [ -x "/usr/bin/drush10-bin" ]; then
+  if [ -x "/usr/bin/drush10" ]; then
     if [ "${isAliasUpdate}" = "YES" ] \
       || [ ! -e "/home/${_USER}.ftp/.drush/sites/.checksums" ]; then
       chage -M 99999 ${_USER}.ftp &> /dev/null
       su -s /bin/bash - ${_USER}.ftp -c "rm -f ~/.drush/sites/*.yml"
       su -s /bin/bash - ${_USER}.ftp -c "rm -f ~/.drush/sites/.checksums/*.md5"
-      su -s /bin/bash - ${_USER}.ftp -c "drush10-bin core:init --yes" &> /dev/null
-      su -s /bin/bash - ${_USER}.ftp -c "drush10-bin site:alias-convert ~/.drush/sites --yes" &> /dev/null
+      su -s /bin/bash - ${_USER}.ftp -c "drush10 core:init --yes" &> /dev/null
+      su -s /bin/bash - ${_USER}.ftp -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
       chage -M 90 ${_USER}.ftp &> /dev/null
     fi
   fi
@@ -2373,8 +2395,6 @@ manage_user() {
         && [ -x "/opt/tools/drush/8/drush/drush.php" ]; then
         if [ -x "/opt/php56/bin/php" ]; then
           echo 5.6 > ${dscUsr}/static/control/cli.info
-        elif [ -x "/opt/php55/bin/php" ]; then
-          echo 5.5 > ${dscUsr}/static/control/cli.info
         fi
       fi
       nrCheck=
@@ -2430,9 +2450,9 @@ manage_user() {
           fi
           if [ ! -L "/home/${_USER}.ftp/static" ]; then
             rm -f /home/${_USER}.ftp/{backups,clients,static}
-            ln -sf ${dscUsr}/backups /home/${_USER}.ftp/backups
-            ln -sf ${dscUsr}/clients /home/${_USER}.ftp/clients
-            ln -sf ${dscUsr}/static  /home/${_USER}.ftp/static
+            ln -sfn ${dscUsr}/backups /home/${_USER}.ftp/backups
+            ln -sfn ${dscUsr}/clients /home/${_USER}.ftp/clients
+            ln -sfn ${dscUsr}/static  /home/${_USER}.ftp/static
           fi
           if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.${_X_SE}.pid" ]; then
             rm -rf /home/${_USER}.ftp/.drush/cache
@@ -2533,7 +2553,7 @@ fi
 
 if [ ! -L "/usr/bin/MySecureShell" ] && [ -x "/usr/bin/mysecureshell" ]; then
   mv -f /usr/bin/MySecureShell /var/backups/legacy-MySecureShell-bin
-  ln -sf /usr/bin/mysecureshell /usr/bin/MySecureShell
+  ln -sfn /usr/bin/mysecureshell /usr/bin/MySecureShell
 fi
 
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
@@ -2706,7 +2726,7 @@ else
     fi
   fi
   sleep 5
-  rm -f /var/run/manage_ltd_users.pid
+  [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
   exit 0
 fi
 ###EOF2023###

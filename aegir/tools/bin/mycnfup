@@ -20,10 +20,10 @@ fi
 _AEGIR_VERSION="HEAD"
 _BRANCH_BOA="4.x-stable"
 _X_VERSION="BOA-4.2.0-stable"
+_X_SE="500devT02"
 _MYSQLTUNER_VRN=1.9.4
 _PHP_FPM_WORKERS=AUTO
 _RESERVED_RAM=0
-_X_SE="420prodT02"
 
 ###
 ### Commands shortcuts
@@ -107,7 +107,6 @@ locales_check_fix() {
       echo "AcceptEnv LANG LC_*" >> /usr/etc/sshd_config
     fi
   fi
-  _LOCALE_TEST=BROKEN
   _LOC_TEST=$(locale 2>&1)
   if [[ "${_LOC_TEST}" =~ LANG=.*UTF-8 ]]; then
     _LOCALE_TEST=OK
@@ -498,7 +497,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/stable/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
 }
 find_fast_mirror
 
@@ -514,12 +513,12 @@ sysctl_update() {
       cp -af /var/backups/sysctl.conf /etc/sysctl.conf
     fi
     if [ -e "/etc/security/limits.conf" ]; then
-      _IF_NF=$(grep '524288' /etc/security/limits.conf 2>&1)
+      _IF_NF=$(grep '2097152' /etc/security/limits.conf 2>&1)
       if [ -z "${_IF_NF}" ]; then
-        echo "*         hard    nofile      524288"  >> /etc/security/limits.conf
-        echo "*         soft    nofile      524288"  >> /etc/security/limits.conf
-        echo "root      hard    nofile      1048576" >> /etc/security/limits.conf
-        echo "root      soft    nofile      1048576" >> /etc/security/limits.conf
+        echo "*         hard    nofile      2097152"  >> /etc/security/limits.conf
+        echo "*         soft    nofile      2097152"  >> /etc/security/limits.conf
+        echo "root      hard    nofile      2097152" >> /etc/security/limits.conf
+        echo "root      soft    nofile      2097152" >> /etc/security/limits.conf
       fi
       _IF_NF=$(grep '65556' /etc/security/limits.conf 2>&1)
       if [ -z "${_IF_NF}" ]; then

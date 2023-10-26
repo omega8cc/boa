@@ -42,7 +42,7 @@ sql_restart() {
   echo "$(date 2>&1) $1 incident detected"                          >> ${pthOml}
   sleep 5
   echo "$(date 2>&1) $1 incident response started"                  >> ${pthOml}
-  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}') &> /dev/null
   killall sleep &> /dev/null
   killall php
   bash /var/xdrago/move_sql.sh
@@ -51,7 +51,7 @@ sql_restart() {
   echo "$(date 2>&1) $1 incident response completed"                >> ${pthOml}
   echo                                                              >> ${pthOml}
   sleep 5
-  rm -f /var/run/boa_run.pid
+  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   exit 0
 }
 
@@ -124,7 +124,7 @@ if [ -e "/var/log/php" ]; then
     | grep --count "already listen on"` -gt "0" ]; then
     touch /var/run/fmp_wait.pid
     sleep 8
-    kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
+    kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     _NOW=${_NOW//[^0-9-]/}
     mkdir -p /var/backups/php-logs/${_NOW}/
@@ -133,7 +133,7 @@ if [ -e "/var/log/php" ]; then
     renice ${_B_NICE} -p $$ &> /dev/null
     _PHP_V="82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
-      if [ -e "/etc/init.d/php${e}-fpm" ]; then
+      if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm start
       fi
     done
@@ -146,7 +146,7 @@ if [ -e "/var/log/php" ]; then
     | grep --count "process.max"` -gt "0" ]; then
     touch /var/run/fmp_wait.pid
     sleep 8
-    kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
+    kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     _NOW=${_NOW//[^0-9-]/}
     mkdir -p /var/backups/php-logs/${_NOW}/
@@ -155,7 +155,7 @@ if [ -e "/var/log/php" ]; then
     renice ${_B_NICE} -p $$ &> /dev/null
     _PHP_V="82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
-      if [ -e "/etc/init.d/php${e}-fpm" ]; then
+      if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm start
       fi
     done
@@ -174,7 +174,7 @@ if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]]; then
   renice ${_B_NICE} -p $$ &> /dev/null
   _PHP_V="82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
-    if [ -e "/etc/init.d/php${e}-fpm" ]; then
+    if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       service php${e}-fpm reload
     fi
   done
@@ -198,7 +198,7 @@ almost_oom_kill() {
   echo "$(date 2>&1) Almost OOM $1 detected"                        >> ${pthOml}
   sleep 5
   echo "$(date 2>&1) Almost OOM incident response started"          >> ${pthOml}
-  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) Almost OOM wkhtmltopdf killed"                 >> ${pthOml}
   killall sleep &> /dev/null
   killall php
@@ -206,7 +206,7 @@ almost_oom_kill() {
   echo "$(date 2>&1) Almost OOM incident response completed"        >> ${pthOml}
   echo                                                              >> ${pthOml}
   sleep 5
-  rm -f /var/run/boa_run.pid
+  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   exit 0
 }
 
@@ -215,21 +215,21 @@ oom_restart() {
   echo "$(date 2>&1) OOM $1 detected"                               >> ${pthOml}
   sleep 5
   echo "$(date 2>&1) OOM incident response started"                 >> ${pthOml}
-  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[w]khtmltopdf' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM wkhtmltopdf killed"                        >> ${pthOml}
   killall sleep &> /dev/null
   killall php
   echo "$(date 2>&1) OOM php-cli killed"                            >> ${pthOml}
   mv -f /var/log/nginx/error.log /var/log/nginx/`date +%y%m%d-%H%M`-error.log
-  kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM nginx killed"                              >> ${pthOml}
-  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM php-fpm killed"                            >> ${pthOml}
   kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM solr/jetty killed"                         >> ${pthOml}
-  kill -9 $(ps aux | grep '[n]ewrelic-daemon' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[n]ewrelic-daemon' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM newrelic-daemon killed"                    >> ${pthOml}
-  kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}')
+  kill -9 $(ps aux | grep '[r]edis-server' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) OOM redis-server killed"                       >> ${pthOml}
   bash /var/xdrago/move_sql.sh
   wait
@@ -237,7 +237,7 @@ oom_restart() {
   echo "$(date 2>&1) OOM incident response completed"               >> ${pthOml}
   echo                                                              >> ${pthOml}
   sleep 5
-  rm -f /var/run/boa_run.pid
+  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   exit 0
 }
 
@@ -287,7 +287,7 @@ redis_oom_check() {
     renice ${_B_NICE} -p $$ &> /dev/null
     _PHP_V="82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
-      if [ -e "/etc/init.d/php${e}-fpm" ]; then
+      if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm reload
       fi
     done
@@ -313,7 +313,7 @@ redis_slow_check() {
     renice ${_B_NICE} -p $$ &> /dev/null
     _PHP_V="82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
-      if [ -e "/etc/init.d/php${e}-fpm" ]; then
+      if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm reload
       fi
     done
@@ -338,7 +338,7 @@ fpm_sockets_healing() {
     renice ${_B_NICE} -p $$ &> /dev/null
     _PHP_V="82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
-      if [ -e "/etc/init.d/php${e}-fpm" ]; then
+      if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm start
       fi
     done
@@ -366,7 +366,7 @@ jetty_restart() {
     service jetty7 start
   fi
   sleep 5
-  rm -f /var/run/boa_wait.pid
+  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
 }
 
 if [ -e "/var/log/jetty9" ]; then

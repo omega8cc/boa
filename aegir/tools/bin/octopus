@@ -64,8 +64,8 @@ if [ -z "${TERM+x}" ]; then
 fi
 
 clean_pid_exit() {
-  rm -f /var/run/boa_wait.pid
-  rm -f /var/run/boa_run.pid
+  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
+  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   service cron start &> /dev/null
   exit 1
 }
@@ -237,7 +237,7 @@ d;};' /etc/pdnsd.conf
 check_dns_settings() {
   if [ -e "/root/.use.default.nameservers.cnf" ]; then
     _USE_DEFAULT_DNS=YES
-    rm -f /root/.local.dns.IP.list
+    [ -e "/root/.local.dns.IP.list" ] && rm -f /root/.local.dns.IP.list
   fi
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
@@ -282,11 +282,11 @@ extract_archive() {
 
 get_dev_ext() {
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "${urlDev}/HEAD/$1" -o "$1"
+    curl ${crlGet} "${urlDev}/DEV/$1" -o "$1"
     if [ -e "$1" ]; then
       extract_archive "$1"
     else
-      echo "OOPS: $1 failed download from ${urlDev}/HEAD/$1"
+      echo "OOPS: $1 failed download from ${urlDev}/DEV/$1"
     fi
   fi
 }
@@ -588,7 +588,7 @@ up_one() {
       satellite_check_supported_php_cli
     else
       satellite_downgrade_protection
-      satellite_check_strict_php_cli
+      ### satellite_check_strict_php_cli
     fi
     if [ "${cmmand}" = "up-dev" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${dvbrnch}/g"      ${vBs}/${tocIncO}
@@ -614,7 +614,7 @@ up_one() {
       if [ -e "${vBs}/${tocIncO}" ]; then
         sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${tocIncO}
         wait
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g" ${vBs}/${tocIncO}
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"   ${vBs}/${tocIncO}
         wait
         sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${tocIncO}
         wait
@@ -957,7 +957,7 @@ up_start() {
     if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
       && [ ! -e "/root/.dbhd.clstr.cnf" ] \
       && [ -e "/etc/init.d/mysql" ]; then
-      rm -f /root/.remote.db.cnf
+      [ -e "/root/.remote.db.cnf" ] && rm -f /root/.remote.db.cnf
       sleep 5
       if [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
         service mysql start &> /dev/null
@@ -969,10 +969,10 @@ up_start() {
 
 up_finish() {
   rm -f /root/BOA.sh*
-  rm -f /var/run/boa_run.pid
-  rm -f /var/run/boa_wait.pid
-  rm -f /var/run/manage_ltd_users.pid
-  rm -f /var/run/manage_rvm_users.pid
+  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
+  [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
+  [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
   rm -f ${vBs}/*.sh.cnf*
   rm -f ${vBs}/OCTOPUS.sh*
   if [ -e "/opt/local/bin/php" ] || [ -e "/usr/local/bin/php" ]; then
@@ -1103,7 +1103,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/stable/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
 }
 
 check_dns_curl() {
@@ -1132,7 +1132,7 @@ check_dns_curl() {
     fi
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt_clean_update
-    apt-get install curl ${aptYesUnth} &> /dev/null
+    apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
     mkdir -p /var/backups/libcurl
     mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
     mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -1147,7 +1147,7 @@ check_dns_curl() {
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "curl install" | dpkg --set-selections &> /dev/null
       apt_clean_update
-      apt-get install curl ${aptYesUnth} &> /dev/null
+      apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
       mkdir -p /var/backups/libcurl
       mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
       mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -1334,8 +1334,28 @@ case "$1" in
              up_legacy "2.2"
   ;;
   *)         echo
-             echo "Usage: $(basename "$0") {up-head|up-stable|up-dev} {all|o1} {aegir|platforms|both|force}"
-             echo
+             echo "Usage: $(basename "$0") {version} {instance} {mode}"
+             cat <<EOF
+
+  Accepted keywords and values in every option:
+
+  {version}
+      up-head <------ upgrade to Octopus Latest available (alias of up-stable)
+      up-dev <------- upgrade to Octopus Dev Cutting Edge (for development only)
+
+  {instance}
+      all <---------- upgrade all active Octopus instances in a batch
+      o1 <----------- upgrade only listed Octopus instance (system name)
+
+  {mode}
+      aegir <-------- upgrade only Aegir Hostmaster
+      platforms <---- upgrade only Platforms
+      both <--------- upgrade both Aegir Hostmaster and Platforms
+      force <-------- force upgrade of either specified instance or all
+
+  See docs/UPGRADE.txt for more details.
+
+EOF
              clean_pid_exit
   ;;
 esac

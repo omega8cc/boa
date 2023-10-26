@@ -142,7 +142,7 @@ st_runner() {
 #
 # Remove dangerous stuff from the string.
 sanitize_string() {
-  echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g; s/\(['"'"'\]\)//g'
+  echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'
 }
 
 #
@@ -393,7 +393,12 @@ mode_detection() {
     [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
     kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}') &> /dev/null
   fi
-  if [ "${_AEGIR_VERSION}" = "HEAD" ] && [ ! -z "${_FORCE_GIT_MIRROR}" ]; then
+  if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
+    _USE_AEGIR_VER=SRC
+  else
+    _USE_AEGIR_VER=STATIC
+  fi
+  if [ "${_USE_AEGIR_VER}" = "SRC" ] && [ ! -z "${_FORCE_GIT_MIRROR}" ]; then
     if [ "${_FORCE_GIT_MIRROR}" = "gitlab" ]; then
       _INSTAPP="/usr/bin/aptitude-fast -f -y -q \
         -o Dpkg::Options::=--force-confdef \
@@ -690,11 +695,12 @@ check_boa_php_compatibility() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: check_boa_php_compatibility"
   fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.4" ]]; then
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.4" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "8.1" ]]; then
     _DO_NOTHING=YES
   else
     msg "ERROR: This BOA version depends on PHP 7.4 or newer"
-    msg "Please add 7.4 to _PHP_MULTI_INSTALL"
+    msg "Please add 7.4 or 8.1 to _PHP_MULTI_INSTALL"
     msg "in /root/.barracuda.cnf before trying again"
     msg "NOTE: You can still install also legacy PHP 7.x and 5.6 versions"
     msg "NOTE: but you must also include at least 7.4 to support Drupal 9"
@@ -718,7 +724,7 @@ check_boa_php_compatibility() {
     || [ "${_PHP_CLI_VERSION}" = "7.2" ] \
     || [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
     msg "ERROR: This BOA version depends on PHP 7.4 or newer"
-    msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to 7.4"
+    msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to 7.4 or 8.1"
     msg "in /root/.barracuda.cnf before trying again"
     msg "NOTE: You can still install also legacy PHP 7.x and 5.6 versions"
     msg "NOTE: but you must use as default version 7.4 to support Drupal 9"
@@ -742,7 +748,7 @@ check_boa_version() {
     else
       msg "ERROR: This barracuda installer can be used only when the system"
       msg "has been already upgraded to stable BOA-4.x or dev BOA-5.x"
-      msg "Please run 'barracuda up-stable' full upgrade first!"
+      msg "Please run 'barracuda up-dev' full upgrade first!"
       msg "Bye"
       clean_pid_exit
     fi
@@ -754,7 +760,7 @@ check_boa_version() {
       else
         msg "ERROR: Your system has been already upgraded to modern BOA"
         msg "You can not downgrade back to legacy or previous stable version"
-        msg "Please use 'barracuda up-head' to upgrade this system"
+        msg "Please use 'barracuda up-dev' to upgrade this system"
         msg "Bye"
         clean_pid_exit
       fi
@@ -775,7 +781,7 @@ check_prepare_dirs_permissions() {
   mkdir -p ${vBs}/dragon/{x,z,t}
   if [ -e "/etc/init.d/buagent" ]; then
     mv -f /etc/init.d/buagent \
-      ${vBs}/buagent-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      ${vBs}/buagent-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
   fi
 }
 
@@ -802,14 +808,14 @@ aegir_bin_extra_check_fix() {
   SDIR="${bldPth}/aegir/tools/bin"
   SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
   if [ ! -x "/usr/local/bin/fix-drupal-site-permissions.sh" ] \
-    || [ ! -e "/var/xdrago/log/fix-drupal-site-permissions-${_X_VERSION}.log" ]; then
+    || [ ! -e "/var/xdrago/log/fix-drupal-site-permissions-${_X_SE}-${_X_VERSION}.log" ]; then
     if [ -e "${SDIR}/fix-drupal-site-permissions.sh" ]; then
       for SCRIPT in ${SCRIPTS[@]}; do
         cp -af ${SDIR}/${SCRIPT}.sh /usr/local/bin/
         chown root:root /usr/local/bin/${SCRIPT}.sh
         chmod 700 /usr/local/bin/${SCRIPT}.sh
       done
-      touch /var/xdrago/log/fix-drupal-site-permissions-${_X_VERSION}.log
+      touch /var/xdrago/log/fix-drupal-site-permissions-${_X_SE}-${_X_VERSION}.log
     fi
   fi
 }

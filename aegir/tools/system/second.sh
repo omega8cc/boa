@@ -16,16 +16,21 @@ fi
 
 hold() {
   service nginx stop &> /dev/null
-  killall -9 nginx &> /dev/null
-  sleep 1
-  killall -9 nginx &> /dev/null
-  _PHP_V="82 81 80 74 73 72 71 70 56 55 54 53"
+  wait
+  kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
+  echo "Nginx stopped" >> /var/xdrago/log/second.hold.log
+  _PHP_V="82 81 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
-    if [ -e "/etc/init.d/php${e}-fpm" ]; then
+    if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       service php${e}-fpm force-quit &> /dev/null
     fi
   done
-  killall -9 php-fpm php-cgi &> /dev/null
+  until [ -z "${_IS_FPM_RUNNING}" ]; do
+    _IS_FPM_RUNNING=$(ps aux | grep '[p]hp-fpm' | awk '{print $2}' 2>&1)
+    echo "Waiting for PHP-FPM graceful shutdown..." >> /var/xdrago/log/second.hold.log
+    sleep 1
+  done
+  echo "PHP-FPM stopped" >> /var/xdrago/log/second.hold.log
   echo "$(date 2>&1)" >> /var/xdrago/log/second.hold.log
   ### echo "load is ${_O_LOAD}:${_F_LOAD} while
   ### maxload is ${_O_LOAD_MAX}:${_F_LOAD_MAX}"

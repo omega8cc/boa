@@ -121,7 +121,7 @@ check_dns_settings() {
   fi
   if [ -e "/root/.use.default.nameservers.cnf" ]; then
     _USE_DEFAULT_DNS=YES
-    rm -f /root/.local.dns.IP.list
+    [ -e "/root/.local.dns.IP.list" ] && rm -f /root/.local.dns.IP.list
   fi
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
@@ -380,7 +380,7 @@ check_connection() {
           msg "Sorry, I gave up."
           msg "EXIT on error due to GitHub git server at 443 downtime"
           msg "Please try to run this script again in a few minutes"
-          msg "You may want to check https://status.github.com/messages"
+          msg "You may want to check https://www.githubstatus.com"
           msg "Also, make sure that the outgoing connections via port 443 work"
           msg "Bye"
           clean_pid_exit
@@ -395,7 +395,7 @@ install_pdnsd_cache() {
     msg "PROC: install_pdnsd_cache"
   fi
   msg "INFO: Installing DNS cache pdnsd server..."
-  cp -af /etc/resolv.conf ${vBs}/resolv.conf.pre-${_X_VERSION}-${_NOW}
+  cp -af /etc/resolv.conf ${vBs}/resolv.conf.pre-${_X_SE}-${_X_VERSION}-${_NOW}
   if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
     rm -f /etc/resolv.conf
     echo "nameserver 1.1.1.1" > /etc/resolv.conf
@@ -433,7 +433,7 @@ install_pdnsd_cache() {
     usermod -aG proxy pdnsd
     cp -af ${locCnf}/pdnsd /etc/init.d/pdnsd
     cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
-    ln -sf /etc/pdnsd.conf /usr/etc/pdnsd.conf
+    ln -sfn /etc/pdnsd.conf /usr/etc/pdnsd.conf
     chmod 755 /etc/init.d/pdnsd
     mrun "update-rc.d pdnsd defaults" &> /dev/null
     mrun "service pdnsd start" &> /dev/null
@@ -518,8 +518,13 @@ check_github_for_aegir_head_mode() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: check_github_for_aegir_head_mode"
   fi
+  if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
+    _USE_AEGIR_VER=SRC
+  else
+    _USE_AEGIR_VER=STATIC
+  fi
   if [ "${_SYSTEM_UPGRADE_ONLY}" = "NO" ] \
-    && [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+    && [ "${_USE_AEGIR_VER}" = "SRC" ]; then
     rm -rf /opt/tmp/test-*
     check_connection
     _GITHUB_TEST=$(git clone ${gitHub}/provision.git \
@@ -528,7 +533,7 @@ check_github_for_aegir_head_mode() {
       echo " "
       msg "EXIT on error (provision) due to GitHub downtime"
       msg "Please try to run this script again in a few minutes"
-      msg "You may want to check https://status.github.com/messages"
+      msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
       clean_pid_exit
@@ -539,7 +544,7 @@ check_github_for_aegir_head_mode() {
       echo " "
       msg "EXIT on error (hostmaster) due to GitHub downtime"
       msg "Please try to run this script again in a few minutes"
-      msg "You may want to check https://status.github.com/messages"
+      msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
       clean_pid_exit
@@ -555,7 +560,7 @@ check_github_for_aegir_head_mode() {
       echo " "
       msg "EXIT on error (boa) due to GitHub downtime"
       msg "Please try to run this script again in a few minutes"
-      msg "You may want to check https://status.github.com/messages"
+      msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
       clean_pid_exit

@@ -36,7 +36,7 @@
 ###
 ###  Start with manual barracuda upgrade.
 ###
-###    $ barracuda up-head system
+###    $ barracuda up-dev system
 ###
 ###  !!! CREATE A FRESH VM BACKUP SNAPSHOT !!!
 ###  !!! TEST THE FRESHLY CREATED BACKUP.. !!!
@@ -55,7 +55,7 @@
 ###    $ service clean-boa-env start
 ###
 ###  Once enabled, the system will launch
-###  a series of barracuda up-head and reboots
+###  a series of barracuda up-dev and reboots
 ###  until it migrates any supported Debian
 ###  or Devuan version to Devuan Chimaera.
 ###
@@ -97,7 +97,7 @@ fi
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_SE="420prodT02"
+_X_SE="500devT02"
 _THIS_SYS=check
 #
 
@@ -143,8 +143,13 @@ msg() {
 faster_reboot() {
   msg "Faster reboot prepare..." >> ${logAch}
   service cron stop &> /dev/null
+  killall cron &> /dev/null
   kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
-  sleep 45
+  kill -9 $(ps aux | grep '[m]inute.sh' | awk '{print $2}') &> /dev/null
+  kill -9 $(ps aux | grep '[r]unner.sh' | awk '{print $2}') &> /dev/null
+  msg "Cron has been stopped" >> ${logAch}
+  msg "Now waiting 60 seconds for any running tasks to complete" >> ${logAch}
+  sleep 55
   if [ -e "/etc/init.d/clamav-daemon" ]; then
     update-rc.d -f clamav-daemon remove &> /dev/null
   fi
@@ -155,15 +160,11 @@ faster_reboot() {
   kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}') &> /dev/null
   kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
   kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
-  sleep 15
   service nginx stop &> /dev/null
-  _PHP_V="82 81 74 73 72 71 70 56"
-  for e in ${_PHP_V}; do
-    if [ -e "/etc/init.d/php${e}-fpm" ]; then
-      service php${e}-fpm force-quit &> /dev/null
-    fi
-  done
+  killall nginx &> /dev/null
+  killall php &> /dev/null
   kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+  msg "Nginx, PHP-CLI and PHP-FPM have been stopped" >> ${logAch}
   if [ -e "/root/.my.pass.txt" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
     _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
@@ -227,10 +228,14 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
   echo " " >> ${logAch}
-  msg "Launching standard barracuda up-head system first" >> ${logAch}
-  barracuda up-head system >> ${logAch}
+  msg "Running barracuda php-idle disable to speed up upgrades" >> ${logAch}
+  barracuda php-idle disable >> ${logAch}
   wait
-  msg "The initial barracuda up-head system completed" >> ${logAch}
+  msg "The barracuda php-idle disable completed" >> ${logAch}
+  msg "Launching standard barracuda up-dev system now" >> ${logAch}
+  barracuda up-dev system >> ${logAch}
+  wait
+  msg "The standard barracuda up-dev system completed" >> ${logAch}
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
     _THIS_OS=$(lsb_release -si 2>&1)
     _THIS_SYS=$(lsb_release -sc 2>&1)
@@ -259,7 +264,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
       msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/chimaera" >> ${logAch}
     fi
     msg "The first stage of major OS upgrade will start now" >> ${logAch}
-    barracuda up-head system >> ${logAch}
+    barracuda up-dev system >> ${logAch}
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       msg "The first stage of major OS upgrade completed" >> ${logAch}
@@ -278,11 +283,11 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
   echo " " >> ${logAch}
-  msg "Launching post-reboot barracuda up-head system" >> ${logAch}
+  msg "Launching post-reboot barracuda up-dev system" >> ${logAch}
   msg "to complete the first stage of major OS upgrade" >> ${logAch}
-  barracuda up-head system >> ${logAch}
+  barracuda up-dev system >> ${logAch}
   wait
-  msg "The post-reboot barracuda up-head system completed" >> ${logAch}
+  msg "The post-reboot barracuda up-dev system completed" >> ${logAch}
   echo " " >> ${logAch}
   _THIS_OS=$(lsb_release -si 2>&1)
   _THIS_SYS=$(lsb_release -sc 2>&1)
@@ -317,7 +322,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   fi
   if [ "${_FURTHER_UPGRADE}" = "YES" ]; then
     msg "The second stage of major OS upgrade will start now" >> ${logAch}
-    barracuda up-head system >> ${logAch}
+    barracuda up-dev system >> ${logAch}
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       msg "The second stage of major OS upgrade completed" >> ${logAch}
@@ -336,15 +341,15 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
   echo " " >> ${logAch}
-  msg "Launching the final post-second-reboot barracuda up-head system" >> ${logAch}
-  barracuda up-head system >> ${logAch}
+  msg "Launching the final post-second-reboot barracuda up-dev system" >> ${logAch}
+  barracuda up-dev system >> ${logAch}
   wait
-  rm -f /root/.run-to-chimaera.cnf
-  rm -f /root/.run-auto-major-os-reboot-one.cnf
-  rm -f /root/.run-auto-major-os-reboot-two.cnf
+  [ -e "/root/.run-to-chimaera.cnf" ] && rm -f /root/.run-to-chimaera.cnf
+  [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] && rm -f /root/.run-auto-major-os-reboot-one.cnf
+  [ -e "/root/.run-auto-major-os-reboot-two.cnf" ] && rm -f /root/.run-auto-major-os-reboot-two.cnf
   touch /root/.auto-upgraded-to-chimaera.cnf
   sed -i "s/^_AUTO_CHIMAERA.*//g" /root/.barracuda.cnf
-  msg "The final post-reboot barracuda up-head system completed" >> ${logAch}
+  msg "The final post-reboot barracuda up-dev system completed" >> ${logAch}
   msg "That's all folks!" >> ${logAch}
   msg "Bye!" >> ${logAch}
   echo " " >> ${logAch}

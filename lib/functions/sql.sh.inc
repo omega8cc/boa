@@ -41,7 +41,6 @@ sql_strict_upgrade_path() {
         _ALL_FORCE_REINSTALL=NO
       elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.2." ]]; then
         _SQL_UPGRADE=YES
-        _USE_MYSQLTUNER=YES
       else
         _SQL_UPGRADE=NO
         _SQL_FORCE_REINSTALL=NO
@@ -184,7 +183,7 @@ sql_conf_update() {
         if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
           _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
           _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
-            ${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW} 2>&1)
+            ${vBs}/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW} 2>&1)
           if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
             _INNODB_LOG_FILE_SIZE_SAME=YES
           else
@@ -295,10 +294,10 @@ tune_sql_memory_limits() {
       /etc/mysql/debian-start &> /dev/null
     wait
   fi
-  if [ ! -e "${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}" ]; then
+  if [ ! -e "${vBs}/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}" ]; then
     mkdir -p ${vBs}/dragon/t/
     if [ -e "/etc/mysql/my.cnf" ]; then
-      cp -af /etc/mysql/my.cnf ${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}
+      cp -af /etc/mysql/my.cnf ${vBs}/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}
     fi
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
@@ -312,7 +311,7 @@ tune_sql_memory_limits() {
   fi
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
   pthTun="/var/opt/mysqltuner.pl"
-  outTun="/var/opt/mysqltuner-${_X_VERSION}-${_NOW}.txt"
+  outTun="/var/opt/mysqltuner-${_X_SE}-${_X_VERSION}-${_NOW}.txt"
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
@@ -948,16 +947,16 @@ forced_mysql_root_password_update() {
   _LEN_PASS=0
   _ESC="*.*"
   if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
-    _PWD_CHARS=32
+    _PWD_CHARS=64
   elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
-    _PWD_CHARS=8
+    _PWD_CHARS=32
   else
     _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
     if [ ! -z "${_STRONG_PASSWORDS}" ] \
-      && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
+      && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
       _PWD_CHARS="${_STRONG_PASSWORDS}"
     else
-      _PWD_CHARS=8
+      _PWD_CHARS=32
     fi
     if [ ! -z "${_PWD_CHARS}" ] \
       && [ "${_PWD_CHARS}" -gt "128" ]; then
@@ -965,9 +964,9 @@ forced_mysql_root_password_update() {
     fi
   fi
   if [ "${_STRONG_PASSWORDS}" = "YES" ] \
-    || [ "${_PWD_CHARS}" -gt "8" ]; then
+    || [ "${_PWD_CHARS}" -gt "32" ]; then
     if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-      _ESC_PASS="$(openssl rand -base64 32 2>&1)"
+      _ESC_PASS="$(openssl rand -base64 64 2>&1)"
     else
       _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
     fi
@@ -975,7 +974,7 @@ forced_mysql_root_password_update() {
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
   if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
-    _ESC_PASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
+    _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
   fi
@@ -996,8 +995,8 @@ forced_mysql_root_password_update() {
         mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
       fi
     fi
-    cp -af /root/.my.cnf /root/.my.cnf-pre-${_X_VERSION}-${_NOW}
-    cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-${_X_VERSION}-${_NOW}
+    cp -af /root/.my.cnf /root/.my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}
+    cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-${_X_SE}-${_X_VERSION}-${_NOW}
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
     if [ "${_DB_SERIES}" = "5.7" ]; then
@@ -1211,8 +1210,6 @@ db_server_install() {
       msg "INFO: Running ${_DB_SERVER} upgrade..."
       msg "WAIT: This may take a while, please wait..."
       if [ ! -e "/root/.proxy.cnf" ]; then
-        mrun "sleep 120"
-        mrun "service nginx stop" &> /dev/null
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: Running ${_DB_SERVER} system tables check..."
         fi
@@ -1338,7 +1335,7 @@ db_server_install() {
       fi
       tune_memory_limits
       myCnf="/etc/mysql/my.cnf"
-      preCnf="${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}"
+      preCnf="${vBs}/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}"
       if [ -f "${myCnf}" ]; then
         myCnfUpdate=NO
         myRstrd=NO
@@ -1464,16 +1461,16 @@ init_sql_root_credentials() {
       _ESC_PASS=""
       _LEN_PASS=0
       if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
-        _PWD_CHARS=32
+        _PWD_CHARS=64
       elif [ "${_STRONG_PASSWORDS}" = "NO" ]; then
-        _PWD_CHARS=8
+        _PWD_CHARS=32
       else
         _STRONG_PASSWORDS=${_STRONG_PASSWORDS//[^0-9]/}
         if [ ! -z "${_STRONG_PASSWORDS}" ] \
-          && [ "${_STRONG_PASSWORDS}" -gt "8" ]; then
+          && [ "${_STRONG_PASSWORDS}" -gt "32" ]; then
           _PWD_CHARS="${_STRONG_PASSWORDS}"
         else
-          _PWD_CHARS=8
+          _PWD_CHARS=32
         fi
         if [ ! -z "${_PWD_CHARS}" ] \
           && [ "${_PWD_CHARS}" -gt "128" ]; then
@@ -1481,9 +1478,9 @@ init_sql_root_credentials() {
         fi
       fi
       if [ "${_STRONG_PASSWORDS}" = "YES" ] \
-        || [ "${_PWD_CHARS}" -gt "8" ]; then
+        || [ "${_PWD_CHARS}" -gt "32" ]; then
         if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
-          _ESC_PASS="$(openssl rand -base64 32 2>&1)"
+          _ESC_PASS="$(openssl rand -base64 64 2>&1)"
         else
           _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
         fi
@@ -1491,7 +1488,7 @@ init_sql_root_credentials() {
         _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
       fi
       if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
-        _ESC_PASS=$(shuf -zer -n19 {A..Z} {a..z} {0..9} | tr -d '\0' 2>&1)
+        _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
         _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
         _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
       fi
@@ -1704,8 +1701,8 @@ sql_root_credentials_update() {
             mysql -u root -e "ALTER USER '${mySysMn}'@'${_MY_OWNIP}' IDENTIFIED BY '${PASWD}';"
             mkdir -p ${vBs}
             cp -af /etc/mysql/debian.cnf \
-              ${vBs}/debian.cnf-pre-${_X_VERSION}-${_NOW}.txt
-            chmod 400 ${vBs}/debian.cnf-pre-${_X_VERSION}-${_NOW}.txt
+              ${vBs}/debian.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}.txt
+            chmod 400 ${vBs}/debian.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}.txt
             sed -i "s/^password =.*/password = ${PASWD}/g" \
               /etc/mysql/debian.cnf &> /dev/null
               wait

@@ -1,12 +1,14 @@
 <?php
 
   // Create the client node
+  global $argv;
+  var_dump($argv);
   $number = rand(100000, 999999);
   $types = node_types_rebuild();
   $node = new stdClass();
   $node->uid = 1;
   $node->type = 'client';
-  $node->email = $_SERVER[argv][3];
+  $node->email = $_SERVER['argv'][3];
   $node->title = 'Octopus' . $number;
   $node->language = LANGUAGE_NONE;
   $node->status = 1;

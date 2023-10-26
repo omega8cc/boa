@@ -20,8 +20,6 @@
 # where the extra config file is included, thus nginx_force_include.conf
 # can override more than nginx_vhost_include.conf file.
 #
-# Both include points: http://bit.ly/WlOQRy and http://bit.ly/UrfDwu
-#
 # Nginx will look for both files in the include directory specified below:
 #
 # For Satellite Instances:

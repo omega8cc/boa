@@ -4,18 +4,18 @@ nginx_conf_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: nginx_conf_update"
   fi
-  if [ ! -e "${pthLog}/nginx-config-params-fixed-${_X_VERSION}.log" ] \
+  if [ ! -e "${pthLog}/nginx-config-params-fixed-${_X_SE}-${_X_VERSION}.log" ] \
     && [ -d "/var/aegir" ]; then
     if [ -e "${locCnf}/nginx.conf" ] \
       && [ -e "/etc/nginx/nginx.conf" ]; then
       mv -f /etc/nginx/nginx.conf-* ${vBs}/dragon/t/ &> /dev/null
       mv -f /etc/nginx/mime.types-pre-* ${vBs}/dragon/t/ &> /dev/null
       mv -f /etc/nginx/fastcgi_params-pre-* ${vBs}/dragon/t/ &> /dev/null
-      mv -f /etc/nginx/nginx.conf ${vBs}/dragon/t/nginx.conf-pre-${_X_VERSION}-${_NOW} &> /dev/null
-      mv -f /etc/nginx/fastcgi_params ${vBs}/dragon/t/fastcgi_params-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      mv -f /etc/nginx/nginx.conf ${vBs}/dragon/t/nginx.conf-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
+      mv -f /etc/nginx/fastcgi_params ${vBs}/dragon/t/fastcgi_params-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
       cp -af ${locCnf}/nginx.conf /etc/nginx/nginx.conf
       cp -af ${locCnf}/fastcgi_params.txt /etc/nginx/fastcgi_params
-      touch ${pthLog}/nginx-config-params-fixed-${_X_VERSION}.log
+      touch ${pthLog}/nginx-config-params-fixed-${_X_SE}-${_X_VERSION}.log
     fi
   fi
   if [ -e "${mtrNgx}/pre.d/nginx_speed_purge.conf" ]; then
@@ -491,13 +491,11 @@ nginx_install_upgrade() {
     mrun "make install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     nginx_clean_legacy_config
-    mrun "service nginx stop" &> /dev/null
-    killall -9 nginx &> /dev/null
-    mrun "service nginx start" &> /dev/null
+    service nginx quietupgrade &> /dev/null
     _NGINX_INSTALL_REQUIRED=NO
   fi
   if [ ! -L "/usr/bin/nginx" ]; then
-    ln -sf /usr/sbin/nginx /usr/bin/nginx
+    ln -sfn /usr/sbin/nginx /usr/bin/nginx
   fi
 }
 
@@ -507,7 +505,7 @@ master_fix_multi_ip_cron_access() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: master_fix_multi_ip_cron_access"
   fi
-  rm -f /root/.local.IP.list.allow
+  [ -e "/root/.local.IP.list.allow" ] && rm -f /root/.local.IP.list.allow
   for _IP in `cat /root/.local.IP.list \
     | cut -d '#' -f1 \
     | sort \
@@ -548,7 +546,7 @@ nginx_initd_check() {
     _DO_NOTHING=YES
   else
     mv -f /etc/init.d/nginx \
-      ${vBs}/nginx-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      ${vBs}/nginx-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${locCnf}/nginx /etc/init.d/nginx
     chmod 755 /etc/init.d/nginx &> /dev/null
   fi
@@ -560,13 +558,13 @@ nginx_mime_check_fix() {
   fi
   if [ -e "${locCnf}/mime.types" ]; then
     mv -f /etc/nginx/mime.types \
-      /etc/nginx/mime.types-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      /etc/nginx/mime.types-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${locCnf}/mime.types /etc/nginx/mime.types
     if [ ! -L "/var/www/nginx-default/index.html" ] \
       && [ ! -L "/var/www/nginx-default/under_construction.jpg" ]; then
       mkdir -p /var/www/nginx-default
       mv -f /var/www/nginx-default/index.html \
-        /var/www/nginx-default/index.html-pre-${_X_VERSION}-${_NOW} &> /dev/null
+        /var/www/nginx-default/index.html-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
       cp -af ${locCnf}/uc.html /var/www/nginx-default/index.html
       cp -af ${locCnf}/under_construction.jpg \
         /var/www/nginx-default/under_construction.jpg
@@ -604,12 +602,11 @@ nginx_wildcard_ssl_install() {
     if [ -e "${mtrInc}" ] \
       && [ ! -L "${mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
-      ln -sf /data/conf/global.inc ${mtrInc}/global.inc
+      ln -sfn /data/conf/global.inc ${mtrInc}/global.inc
     fi
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
     redis_password_update
-    killall -9 nginx &> /dev/null
-    mrun "service nginx start" &> /dev/null
+    service nginx quietupgrade &> /dev/null
   else
     _WILDCARD_SSL_TEST=$(grep "localhost:80" ${_WILD_SSL_VHOST} 2>&1)
     if [[ "${_WILDCARD_SSL_TEST}" =~ "localhost:80" ]]; then
@@ -749,7 +746,12 @@ nginx_config_update_fix() {
       sed -i "s/:443 ssl spdy;/:443;/g"  /var/aegir/config/server_*/nginx/vhost.d/*               &> /dev/null
       wait
     fi
-    _SSL_ITD=$(openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}' 2>&1)
+    if [ -e "/root/.install.modern.openssl.cnf" ]; then
+      _SSL_BINARY=/usr/local/ssl3/bin/openssl
+    else
+      _SSL_BINARY=/usr/local/ssl/bin/openssl
+    fi
+    _SSL_ITD=$(${_SSL_BINARY} version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}' 2>&1)
     if [ "${_SSL_ITD}" = "${_OPENSSL_MODERN_VRN}" ] \
       || [ "${_SSL_ITD}" = "${_OPENSSL_EOL_VRN}" ] \
       || [ "${_SSL_ITD}" = "${_OPENSSL_LEGACY_VRN}" ] \

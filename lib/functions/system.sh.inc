@@ -381,21 +381,24 @@ sftp_ftps_modern_fix() {
   if [[ ! "${_LSHELL_PATH_TEST}" =~ "/usr/bin/lshell" ]]; then
     echo "/usr/bin/lshell" >> /etc/shells
   fi
-  if [ ! -e "${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log" ] \
+  if [ ! -e "${pthLog}/mss-build-${_MSS_VRN}-${_X_SE}-${_X_VERSION}.log" ] \
     || [ ! -e "/etc/ssh/sftp_config" ] \
     || [ ! -e "/usr/bin/mysecureshell" ] \
     || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
-    msg "INFO: Installing MySecureShell ${_MSS_VRN}..."
-    cd /var/opt
-    rm -rf mysecureshell*
-    get_dev_src "mysecureshell-${_MSS_VRN}.tar.gz"
-    cd /var/opt/mysecureshell
-    mrun "bash ./configure" 2> /dev/null
-    mrun "make -j $(nproc) --quiet" 2> /dev/null
-    st_runner "sh ./install.sh yesall" 2> /dev/null
-    touch ${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log
-    cp -af ${locCnf}/sftp_config /etc/ssh/sftp_config
-    mrun "service ssh restart" &> /dev/null
+    if [ "${_MSS_BUILD}" != "YES" ]; then
+      msg "INFO: Installing MySecureShell ${_MSS_VRN}..."
+      cd /var/opt
+      rm -rf mysecureshell*
+      get_dev_src "mysecureshell-${_MSS_VRN}.tar.gz"
+      cd /var/opt/mysecureshell
+      mrun "bash ./configure" 2> /dev/null
+      mrun "make -j $(nproc) --quiet" 2> /dev/null
+      st_runner "sh ./install.sh yesall" 2> /dev/null
+      touch ${pthLog}/mss-build-${_MSS_VRN}-${_X_SE}-${_X_VERSION}.log
+      cp -af ${locCnf}/sftp_config /etc/ssh/sftp_config
+      mrun "service ssh restart" &> /dev/null
+      _MSS_BUILD=YES
+    fi
   fi
   if [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
     _MSS_TEST=$(grep "lshell" /etc/passwd 2>&1)
@@ -464,7 +467,7 @@ global_inc_conf_update() {
     msg "PROC: global_inc_conf_update"
   fi
   if [ -e "/data/conf/global.inc" ]; then
-    mv -f /data/conf/global.inc /data/conf/global.inc-pre-${_X_VERSION}-${_NOW} &> /dev/null
+    mv -f /data/conf/global.inc /data/conf/global.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${locCnf}/global.inc /data/conf/global.inc
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
     wait
@@ -525,8 +528,10 @@ tune_memory_limits() {
     _CPU_VS=2
   fi
   PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+  PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
   PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
   if [[ "${PrTestPower}" =~ "POWER" ]] \
+    || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
     if [ "${_CPU_VS}" -lt "8" ]; then
       _CPU_VS=8
@@ -810,7 +815,6 @@ locales_check_fix() {
       echo "AcceptEnv LANG LC_*" >> /usr/etc/sshd_config
     fi
   fi
-  _LOCALE_TEST=BROKEN
   _LOC_TEST=$(locale 2>&1)
   if [[ "${_LOC_TEST}" =~ LANG=.*UTF-8 ]]; then
     _LOCALE_TEST=OK
@@ -1309,7 +1313,6 @@ php_legacy_versions_cleanup_cnf() {
     update-rc.d -f php52-fpm remove &> /dev/null
     rm -f /etc/init.d/php52-fpm
   fi
-  killall -9 php-cgi &> /dev/null
   if [ -e "/etc/init.d/php53-fpm" ]; then
     mrun "service php53-fpm stop" &> /dev/null
     update-rc.d -f php53-fpm remove &> /dev/null
@@ -1531,8 +1534,8 @@ php_if_versions_cleanup_cnf() {
 
         ### Ctrl files cleanup
         touch /root/.sorted.multi.php.cnf
-        rm -f /root/.updated.multi.php.cnf
-        rm -f /root/.fixed.multi.php.cnf
+        [ -e "/root/.updated.multi.php.cnf" ] && rm -f /root/.updated.multi.php.cnf
+        [ -e "/root/.fixed.multi.php.cnf" ] && rm -f /root/.fixed.multi.php.cnf
       fi
     fi
   fi
@@ -1545,7 +1548,7 @@ if_php_idle_on_off() {
     msg "PROC: if_php_idle_on_off"
   fi
   if [ "${_PHP_IDLE}" = "ON" ]; then
-    rm -f /root/.allow-php-multi-install-cleanup.cnf
+    [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
     rm -f /var/xdrago/log/*.log
     rm -f /var/xdrago/log/.php_libs_fix_*.pid
     touch /root/.proxy.cnf
@@ -1553,7 +1556,7 @@ if_php_idle_on_off() {
     sleep 5
     php_not_used_enable_again
     sed -i "s/^_PHP_IDLE.*//g" ${barCnf}
-    rm -f /root/.proxy.cnf
+    [ -e "/root/.proxy.cnf" ] && rm -f /root/.proxy.cnf
     php_install_deps
     php_libs_fix
     php_check_if_rebuild
@@ -1573,7 +1576,7 @@ if_php_idle_on_off() {
     sed -i "s/^_PHP_IDLE.*//g" ${barCnf}
     echo " "
     msg "Bye"
-    rm -f /root/.proxy.cnf
+    [ -e "/root/.proxy.cnf" ] && rm -f /root/.proxy.cnf
     clean_pid_exit
   fi
 }
@@ -1793,25 +1796,29 @@ barracuda_cnf() {
           wait
         fi
         if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
-          sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=7.4/g"                  ${barCnf}
+          sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=7.4/g"                  ${barCnf}
+          sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=7.4/g"                  ${barCnf}
+          sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=7.4/g"                  ${barCnf}
+          sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=7.4/g"                  ${barCnf}
+          sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=7.4/g"                  ${barCnf}
+          sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=7.4/g"                  ${barCnf}
+          sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=7.4/g"                  ${barCnf}
+          sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=7.4/g"                  ${barCnf}
+          sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=7.4/g"                  ${barCnf}
+          sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
+          wait
+          sed -i "s/^_PHP_CLI_VERSION=7.4/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
+          wait
+          sed -i "s/^_PHP_FPM_VERSION=7.4/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
           wait
         fi
         # if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -2134,25 +2141,29 @@ barracuda_cnf() {
           wait
         fi
         if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
-          sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=7.4/g"                  ${barCnf}
+          sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=7.4/g"                  ${barCnf}
+          sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=7.4/g"                  ${barCnf}
+          sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=7.4/g"                  ${barCnf}
+          sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=7.4/g"                  ${barCnf}
+          sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=7.4/g"                  ${barCnf}
+          sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=7.4/g"                  ${barCnf}
+          sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=7.4/g"                  ${barCnf}
+          sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=7.4/g"                  ${barCnf}
+          sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
           wait
-          sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=7.4/g"                  ${barCnf}
+          sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
+          wait
+          sed -i "s/^_PHP_CLI_VERSION=7.4/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
+          wait
+          sed -i "s/^_PHP_FPM_VERSION=7.4/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
           wait
         fi
         # if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -2369,7 +2380,7 @@ do_install_latest_git() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: do_install_latest_git"
   fi
-  if [ ! -e "${pthLog}/git-${_GIT_VRN}-${_X_VERSION}-${_NOW}.log" ]; then
+  if [ ! -e "${pthLog}/git-${_GIT_VRN}-${_X_SE}-${_X_VERSION}-${_NOW}.log" ]; then
     msg "INFO: Building Git ${_GIT_VRN} from sources..."
     msg "WAIT: This may take a while, please wait..."
     cd /var/opt
@@ -2382,9 +2393,9 @@ do_install_latest_git() {
     mrun "make --quiet install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
     mv -f /usr/bin/git /usr/bin/git-old
-    ln -sf /usr/local/bin/git /usr/bin/git
+    ln -sfn /usr/local/bin/git /usr/bin/git
     cd /var/opt
-    touch ${pthLog}/git-${_GIT_VRN}-${_X_VERSION}-${_NOW}.log
+    touch ${pthLog}/git-${_GIT_VRN}-${_X_SE}-${_X_VERSION}-${_NOW}.log
     echo "git hold" | dpkg --set-selections &> /dev/null
     echo "git-core hold" | dpkg --set-selections &> /dev/null
     echo "git-man hold" | dpkg --set-selections &> /dev/null
@@ -2473,14 +2484,14 @@ install_icu_modern() {
       if [ -e "/usr/local/lib/icu" ]; then
         if [ ! -e "/usr/lib/x86_64-linux-gnu/icu" ]; then
           mkdir -p /usr/lib/x86_64-linux-gnu/.legacy_icu
-          ln -sf /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
+          ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
         fi
       fi
     else
       if [ -e "/usr/local/lib/icu" ]; then
         if [ ! -e "/usr/lib/i386-linux-gnu/icu" ]; then
           mkdir -p /usr/lib/i386-linux-gnu/.legacy_icu
-          ln -sf /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
+          ln -sfn /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
         fi
       fi
     fi
@@ -2519,14 +2530,14 @@ install_icu_jessie() {
       if [ -e "/usr/local/lib/icu" ]; then
         if [ ! -e "/usr/lib/x86_64-linux-gnu/icu" ]; then
           mkdir -p /usr/lib/x86_64-linux-gnu/.legacy_icu
-          ln -sf /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
+          ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
         fi
       fi
     else
       if [ -e "/usr/local/lib/icu" ]; then
         if [ ! -e "/usr/lib/i386-linux-gnu/icu" ]; then
           mkdir -p /usr/lib/i386-linux-gnu/.legacy_icu
-          ln -sf /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
+          ln -sfn /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
         fi
       fi
     fi
@@ -2700,8 +2711,7 @@ clean_drush_twelve() {
     msg "PROC: clean_drush_twelve"
   fi
   rm -f /usr/bin/drush12*
-  ln -sf /opt/tools/drush/12/drush/vendor/bin/drush /usr/bin/drush12-bin
-  ln -sf /opt/tools/drush/12/drush/vendor/bin/drush /usr/bin/drush12
+  ln -sfn /opt/tools/drush/12/drush/vendor/bin/drush /usr/bin/drush12
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH_TWELVE_VRN} setup complete"
   fi
@@ -2714,8 +2724,7 @@ clean_drush_eleven() {
     msg "PROC: clean_drush_eleven"
   fi
   rm -f /usr/bin/drush11*
-  ln -sf /opt/tools/drush/11/drush/vendor/bin/drush /usr/bin/drush11-bin
-  ln -sf /opt/tools/drush/11/drush/vendor/bin/drush /usr/bin/drush11
+  ln -sfn /opt/tools/drush/11/drush/vendor/bin/drush /usr/bin/drush11
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} setup complete"
   fi
@@ -2735,8 +2744,7 @@ clean_drush_ten() {
   rm -f /usr/local/bin/release
   rm -f /usr/local/bin/robo
   rm -f /usr/local/bin/var-dump-server
-  ln -sf /opt/tools/drush/10/drush/vendor/bin/drush /usr/bin/drush10-bin
-  ln -sf /opt/tools/drush/10/drush/vendor/bin/drush /usr/bin/drush10
+  ln -sfn /opt/tools/drush/10/drush/vendor/bin/drush /usr/bin/drush10
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Drush ${_DRUSH_TEN_VRN} setup complete"
   fi
@@ -2778,28 +2786,6 @@ set_drush_perm() {
   fi
   if [ -e "/opt/tools/drush/12/drush/vendor/bin/drush" ]; then
     chmod 755 /opt/tools/drush/12/drush/vendor/bin/*
-  fi
-  if [ -e "/opt/tools/drush/launcher/drush.phar" ]; then
-    chmod 755 /opt/tools/drush/launcher/drush.phar
-  fi
-}
-
-#
-# Install or update Drush Launcher.
-get_drush_launcher() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: get_drush_launcher"
-  fi
-  rm -rf /opt/tools/drush/launcher/*
-  cd /opt/tools/drush/launcher/
-  wget -q -U iCab https://github.com/drush-ops/drush-launcher/releases/latest/download/drush.phar
-  touch /opt/tools/drush/launcher/.ctrl.${_X_SE}.pid
-  rm -f /usr/bin/drush-launcher
-  rm -f /usr/bin/drushlr
-  ln -sf /opt/tools/drush/launcher/drush.phar /usr/bin/drush-launcher
-  ln -sf /opt/tools/drush/launcher/drush.phar /usr/bin/drushlr
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} installation complete"
   fi
 }
 
@@ -2872,8 +2858,18 @@ drush_system_install_update() {
   if [ ! -e "/root/.debug-barracuda-installer.cnf" ] \
     && [ ! -e "/root/.skip-aegir-master-upgrade.cnf" ]; then
     msg "INFO: Installing supported Drush versions..."
-    _X_SE="420prodT02"
+    ###
+    ### Force all Drush versions update if serial is not new
+    rm -f /opt/tools/drush/8/.ctrl.${_X_SE}.pid
+    rm -f /opt/tools/drush/10/.ctrl.${_X_SE}.pid
+    rm -f /opt/tools/drush/11/.ctrl.${_X_SE}.pid
+    rm -f /opt/tools/drush/12/.ctrl.${_X_SE}.pid
+    ###
     ###--------------------###
+    if [ -e "/opt/tools/drush/launcher" ]; then
+      rm -rf /opt/tools/drush/launcher
+      rm -f /usr/bin/drushlr
+    fi
     if [ -e "/opt/tools/drush/9" ]; then
       rm -rf /opt/tools/drush/9
       rm -f /usr/bin/drush9
@@ -2894,7 +2890,7 @@ drush_system_install_update() {
       rm -rf /opt/tools/drush/4
       rm -f /usr/bin/drush4
     fi
-    mkdir -p /opt/tools/drush/{8,10,11,12,launcher}
+    mkdir -p /opt/tools/drush/{8,10,11,12}
     chown -R root:root /opt/tools
     if [ -e "/opt/tools/drush/8" ]; then
       _DRUSH_ITD=$(drush8 --version 2>&1 \
@@ -2915,7 +2911,7 @@ drush_system_install_update() {
       fi
     fi
     if [ -e "/opt/tools/drush/10" ]; then
-      _DRUSH_ITD=$(drush10-bin --version 2>&1 \
+      _DRUSH_ITD=$(drush10 --version 2>&1 \
         | tr -d "\n" \
         | cut -d" " -f4 \
         | awk '{ print $1}' 2>&1)
@@ -2933,7 +2929,7 @@ drush_system_install_update() {
       fi
     fi
     if [ -e "/opt/tools/drush/11" ]; then
-      _DRUSH_ITD=$(drush11-bin --version 2>&1 \
+      _DRUSH_ITD=$(drush11 --version 2>&1 \
         | tr -d "\n" \
         | cut -d" " -f4 \
         | awk '{ print $1}' 2>&1)
@@ -2951,7 +2947,7 @@ drush_system_install_update() {
       fi
     fi
     if [ -e "/opt/tools/drush/12" ]; then
-      _DRUSH_ITD=$(drush12-bin --version 2>&1 \
+      _DRUSH_ITD=$(drush12 --version 2>&1 \
         | tr -d "\n" \
         | cut -d" " -f4 \
         | awk '{ print $1}' 2>&1)
@@ -2965,25 +2961,6 @@ drush_system_install_update() {
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: Drush ${_DRUSH_TWELVE_VRN} already installed"
-        fi
-      fi
-    fi
-    if [ -e "/opt/tools/drush/launcher" ]; then
-      _DRUSH_ITD=$(drush-launcher --version 2>&1 \
-        | tr -d "\n" \
-        | cut -d" " -f4 \
-        | sed 's/The//g' \
-        | awk '{ print $1}' 2>&1)
-      if [ "${_DRUSH_ITD}" != "${_DRUSH_LAUNCHER_VRN}" ] \
-        || [ ! -x "/opt/tools/drush/launcher/drush.phar" ] \
-        || [ ! -e "/opt/tools/drush/launcher/.ctrl.${_X_SE}.pid" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} re-installation required"
-        fi
-        get_drush_launcher
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Drush Launcher ${_DRUSH_LAUNCHER_VRN} already installed"
         fi
       fi
     fi
@@ -3026,7 +3003,6 @@ sources_list_update() {
   apt-get clean -qq 2> /dev/null
   rm -rf /var/lib/apt/lists/*
   ###--------------------###
-  _X_SE="420prodT02"
   if [ -e "${pthLog}/apt-deb-src-updates-${_X_SE}.txt" ] \
     || [ -e "/var/log/apt-deb-src-updates-${_X_SE}.txt" ]; then
     _APT_SOURCES_REWRITE=NO
@@ -3047,7 +3023,7 @@ sources_list_update() {
       msg "INFO: Updating packages sources list..."
     fi
     mv -f ${aptLiSys} \
-      ${vBs}/sources.list-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      ${vBs}/sources.list-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     if [ "${_THIS_OS}" = "Devuan" ]; then
 	  if [ -z "${_LOCAL_DEVUAN_MIRROR}" ]; then
 		_MIRROR=deb.devuan.org
@@ -3275,15 +3251,23 @@ sshd_install_src() {
   if [ "${_SSH_INSTALL_REQUIRED}" = "YES" ]; then
     msg "INFO: Building OpenSSH ${_OPENSSH_VRN} from sources..."
     msg "WAIT: This may take a while, please wait..."
+    if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
+      && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+      _SSL_PATH="/usr/local/ssl3"
+      _SSL_LIB_PATH="${_SSL_PATH}/lib64"
+    else
+      _SSL_PATH="/usr/local/ssl"
+      _SSL_LIB_PATH="${_SSL_PATH}/lib"
+    fi
+    _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
     cd /var/opt
     rm -rf openssh*
     get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
     cd /var/opt/openssh-${_OPENSSH_VRN}
-    mrun "bash ./configure \
-      --with-openssl \
-      --without-openssl-header-check \
+    LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
+      --with-ssl-dir=${_SSL_PATH} \
       --prefix=/usr \
-      --with-pam" 2> /dev/null
+      --with-pam &> /dev/null
     mrun "make -j $(nproc)" 2> /dev/null
     mrun "make install" 2> /dev/null
     mrun "ldconfig" 2> /dev/null
@@ -3424,7 +3408,8 @@ ssl_crypto_lib_fix() {
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}')
-  if [[ "${_SSL_ITD}" =~ "3.1." ]]; then
+  if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
+    && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
     _SSL_INSTALLED=MODERN
   elif [[ "${_SSL_ITD}" =~ "1.1.1" ]]; then
     _SSL_INSTALLED=LEGACY
@@ -3433,27 +3418,51 @@ ssl_crypto_lib_fix() {
     if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
       && [ -f "/usr/local/ssl/lib/libssl.so.1.1" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libssl.so
-      ln -sf /usr/local/ssl/lib/libssl.so.1.1 /usr/lib/x86_64-linux-gnu/libssl.so
-      ln -sf /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
+      ln -sfn /usr/local/ssl/lib/libssl.so.1.1 /usr/lib/x86_64-linux-gnu/libssl.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
     fi
     if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
       && [ -f "/usr/local/ssl/lib/libcrypto.so.1.1" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
-      ln -sf /usr/local/ssl/lib/libcrypto.so.1.1 /usr/lib/x86_64-linux-gnu/libcrypto.so
-      ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+      ln -sfn /usr/local/ssl/lib/libcrypto.so.1.1 /usr/lib/x86_64-linux-gnu/libcrypto.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
     fi
   elif [ "${_SSL_INSTALLED}" = "MODERN" ]; then
+    _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
+    _LIB_NOW=${_LIB_NOW//[^0-9-]/}
     if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
-      && [ -f "/usr/local/ssl/lib/libssl.so.3" ]; then
+      && [ -f "/usr/local/ssl3/lib64/libssl.so.3" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libssl.so
-      ln -sf /usr/local/ssl/lib/libssl.so.3 /usr/lib/x86_64-linux-gnu/libssl.so
-      ln -sf /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
+      ln -sfn /usr/local/ssl3/lib/libssl.so.3 /usr/lib/x86_64-linux-gnu/libssl.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
     fi
     if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
-      && [ -f "/usr/local/ssl/lib/libcrypto.so.3" ]; then
+      && [ -f "/usr/local/ssl3/lib64/libcrypto.so.3" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
-      ln -sf /usr/local/ssl/lib/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so
-      ln -sf /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+      ln -sfn /usr/local/ssl3/lib/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+    fi
+    if [ -e "/usr/lib/x86_64-linux-gnu/libssl.a" ] \
+      && [ -f "/usr/local/ssl3/lib64/libssl.a" ]; then
+      rm -f /usr/lib/x86_64-linux-gnu/libssl.a
+      ln -sfn /usr/local/ssl3/lib/libssl.a /usr/lib/x86_64-linux-gnu/libssl.a
+      ln -sfn /usr/lib/x86_64-linux-gnu/libssl.a /usr/lib/libssl.a
+    fi
+    if [ -e "/usr/lib/x86_64-linux-gnu/libcrypto.a" ] \
+      && [ -f "/usr/local/ssl3/lib64/libcrypto.a" ]; then
+      rm -f /usr/lib/x86_64-linux-gnu/libcrypto.a
+      ln -sfn /usr/local/ssl3/lib/libcrypto.a /usr/lib/x86_64-linux-gnu/libcrypto.a
+      ln -sfn /usr/lib/x86_64-linux-gnu/libcrypto.a /usr/lib/libcrypto.a
+    fi
+    if [ -d "/usr/include/openssl" ] \
+      && [ -d "/usr/local/ssl3/include/openssl" ]; then
+      mv -f /usr/include/openssl /var/backups/old-usr-include-openssl-${_LIB_NOW}
+      ln -sfn /usr/local/ssl3/include/openssl /usr/include/openssl
+    fi
+    if [ -f "/usr/include/x86_64-linux-gnu/openssl/opensslconf.h" ] \
+      && [ -f "/usr/local/ssl3/include/openssl/opensslconf.h" ]; then
+      mv -f /usr/include/x86_64-linux-gnu/openssl/opensslconf.h /var/backups/old-opensslconf-h-${_LIB_NOW}
+      ln -sfn /usr/local/ssl3/include/openssl/opensslconf.h /usr/include/x86_64-linux-gnu/openssl/opensslconf.h
     fi
   fi
   mrun "ldconfig" 2> /dev/null
@@ -3470,6 +3479,10 @@ ssl_install_src() {
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
+  _SSL_LIB_ITD=$(openssl version 2>&1 \
+    | tr -d "\n" \
+    | cut -d" " -f9 \
+    | awk '{ print $1}' 2>&1)
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
     || [ "${_OSR}" = "bullseye" ] \
@@ -3477,19 +3490,40 @@ ssl_install_src() {
     || [ "${_OSR}" = "stretch" ]; then
     _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
     if [ -e "/root/.install.modern.openssl.cnf" ]; then
+      chattr +i /root/.install.modern.openssl.cnf
       _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
     fi
   else
     _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
   fi
+  if [ -e "/root/.install.modern.openssl.cnf" ]; then
+    _SSL_BINARY=/usr/local/ssl3/bin/openssl
+    if [ ! -x "${_SSL_BINARY}" ]; then
+      _SSL_INSTALL_REQUIRED=YES
+    fi
+  else
+    _SSL_BINARY=/usr/local/ssl/bin/openssl
+    if [ ! -x "${_SSL_BINARY}" ]; then
+      _SSL_INSTALL_REQUIRED=YES
+    fi
+  fi
   if [ "${_SSL_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
     msg "INFO: OpenSSL is ${_SSL_ITD}, upgrade to ${_OPENSSL_NEW_VRN} required"
+    _SSL_INSTALL_REQUIRED=YES
+  fi
+  if [ ! -z "${_SSL_LIB_ITD}" ] && [ "${_SSL_LIB_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
+    msg "INFO: OpenSSL Lib is ${_SSL_LIB_ITD}, upgrade to ${_OPENSSL_NEW_VRN} required"
     _SSL_INSTALL_REQUIRED=YES
   fi
   if [ "${_STATUS}" = "UPGRADE" ]; then
     if [ "${_RUNNING_MAJOR_OS_UPGRADE}" = "NO" ]; then
       _PHP_COMPATIBILITY_TEST=$(php -i | grep "SSL Version" 2>&1)
-      if [[ ! "${_PHP_COMPATIBILITY_TEST}" =~ "${_OPENSSL_NEW_VRN}" ]]; then
+      _PHP_SSL_LOOK_FOR="${_OPENSSL_NEW_VRN}"
+      _PHP_SSL_ALTER_LOOK_FOR="GnuTLS"
+      if [[ "${_PHP_COMPATIBILITY_TEST}" =~ "${_PHP_SSL_LOOK_FOR}" ]] \
+        || [[ "${_PHP_COMPATIBILITY_TEST}" =~ "${_PHP_SSL_ALTER_LOOK_FOR}" ]]; then
+        msg "INFO: PHP ${_PHP_COMPATIBILITY_TEST}, looks OK"
+      else
         msg "INFO: PHP ${_PHP_COMPATIBILITY_TEST}, rebuild forced later"
         _PHP_FORCE_REINSTALL=YES
       fi
@@ -3507,8 +3541,8 @@ ssl_install_src() {
     _SSH_FORCE_REINSTALL=YES
     _NGX_FORCE_REINSTALL=YES
     _PHP_FORCE_REINSTALL=YES
-    rm -f ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_VERSION}.log
-    rm -f ${pthLog}/mss-build-${_MSS_VRN}-${_X_VERSION}.log
+    rm -f ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_SE}-${_X_VERSION}.log
+    rm -f ${pthLog}/mss-build-${_MSS_VRN}-${_X_SE}-${_X_VERSION}.log
     msg "INFO: Installed OpenSSL version ${_SSL_ITD}, rebuild forced"
   fi
   if [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
@@ -3539,9 +3573,8 @@ ssl_install_src() {
       cd /var/opt/openssl-${_OPENSSL_NEW_VRN}
       _X86_64_IF=$(uname -m 2>&1)
       if [ -e "/root/.install.modern.openssl.cnf" ]; then
-        _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
-          --openssldir=/usr/local/ssl \
-          --libdir=lib"
+        _SSL_BUILD_ARGS="--prefix=/usr/local/ssl3 \
+          --openssldir=/usr/local/ssl3"
       else
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
           --openssldir=/usr/local/ssl"
@@ -3559,16 +3592,29 @@ ssl_install_src() {
       mrun "make -j $(nproc)" 2> /dev/null
       mrun "make install" 2> /dev/null
     fi
-    if [ -x "/usr/local/ssl/bin/openssl" ]; then
+    if [ -x "${_SSL_BINARY}" ]; then
+      _SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f2 \
+        | awk '{ print $1}')
+      if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
+        && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+        _SSL_PATH="/usr/local/ssl3"
+        _SSL_LIB_PATH="${_SSL_PATH}/lib64"
+      else
+        _SSL_PATH="/usr/local/ssl"
+        _SSL_LIB_PATH="${_SSL_PATH}/lib"
+      fi
       if [ -e "/usr/bin/openssl" ]; then
         cp -af /usr/bin/openssl /usr/bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
       fi
-      ln -sf /usr/local/ssl/bin/openssl /usr/bin/openssl
-      if [ -e "/bin/openssl" ]; then
+      ln -sfn ${_SSL_BINARY} /usr/bin/openssl
+      if [ -e "/bin/openssl" ] && [ ! -L "/bin" ]; then
         cp -af /bin/openssl /bin/old-openssl-$(date +%y%m%d-%H%M%S 2>&1)
-        ln -sf /usr/local/ssl/bin/openssl /bin/openssl
+        ln -sfn ${_SSL_BINARY} /bin/openssl
       fi
-      echo "/usr/local/ssl/lib" >> /etc/ld.so.conf.d/libc.conf
+      sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
+      echo "${_SSL_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
       mrun "ldconfig" 2> /dev/null
       ###--------------------###
       _SSL_GET_DPKG=$(dpkg --get-selections \
@@ -3609,7 +3655,7 @@ curl_install_src() {
   if [ "${_OSR}" = "precise" ] || [ "${_OSR}" = "jessie" ]; then
     touch /root/.use.curl.from.packages.cnf
     chattr +i /root/.use.curl.from.packages.cnf
-    _CURL_VRN=8.0.1
+    _CURL_VRN=8.4.0
   fi
   _CURL_INSTALL_REQUIRED=NO
   _CURL_GET_DPKG=$(dpkg --get-selections | grep curl | grep 'hold$' 2>&1)
@@ -3645,7 +3691,7 @@ curl_install_src() {
     sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
     grep lib /etc/ld.so.conf.d/libc.conf
     mrun "ldconfig" &> /dev/null
-    rm -f /root/.sorted.multi.php.cnf
+    [ -e "/root/.sorted.multi.php.cnf" ] && rm -f /root/.sorted.multi.php.cnf
     msg "INFO: libcurl is broken, cURL re-install from packages required"
   fi
   if [ "${_PHP_BIN_BROKEN}" = "YES" ] && [ -z "${_CURL_ALREADY_REBUILT}" ]; then
@@ -3673,11 +3719,16 @@ curl_install_src() {
       msg "INFO: cURL ${_CURL_ITD} with OpenSSL ${_CURL_SSL_ITD}, rebuild forced"
     fi
   fi
+  if [ -e "/usr/lib/x86_64-linux-gnu/libcurl.so.4.4.0" ] \
+    || [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ] \
+    || [ ! -L "/usr/lib/libcurl.so.4" ]; then
+    _CURL_INSTALL_REQUIRED=YES
+  fi
   if [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
     if [ -e "/root/.use.curl.from.packages.cnf" ]; then
       msg "INFO: cURL from packages is forced with /root/.use.curl.from.packages.cnf"
-      rm -f /root/.sorted.multi.php.cnf
+      [ -e "/root/.sorted.multi.php.cnf" ] && rm -f /root/.sorted.multi.php.cnf
       mkdir -p /var/backups/libcurl
       mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
       mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
@@ -3714,23 +3765,34 @@ curl_install_src() {
       if [ -e "/var/opt/curl-${_CURL_VRN}" ]; then
         msg "INFO: Building cURL ${_CURL_VRN} from sources..."
         msg "WAIT: This may take a while, please wait..."
-        if [ -e "/usr/local/ssl/lib/libssl.so.3" ] \
-          || [ -e "/usr/local/ssl/lib/libssl.so.1.1" ] \
-          || [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ]; then
+        _SSL_ITD=$(openssl version 2>&1 \
+          | tr -d "\n" \
+          | cut -d" " -f2 \
+          | awk '{ print $1}')
+        if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
+          && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+          _SSL_PATH="/usr/local/ssl3"
+          _SSL_LIB_PATH="${_SSL_PATH}/lib64"
+        else
+          _SSL_PATH="/usr/local/ssl"
+          _SSL_LIB_PATH="${_SSL_PATH}/lib"
+        fi
+        _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
+        if [ -e "${_PKG_CONFIG_PATH}" ]; then
           cd /var/opt/curl-${_CURL_VRN}
-          LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig" ./configure \
+          LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
             --with-openssl \
             --with-zlib=/usr \
             --prefix=/usr/local &> /dev/null
           mrun "make -j $(nproc)" 2> /dev/null
           mrun "make install" 2> /dev/null
-          mrun "ldconfig" &> /dev/null
+          mrun "ldconfig" 2> /dev/null
           if [ -x "/usr/local/bin/curl" ]; then
             mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S 2>&1)
-            ln -sf /usr/local/bin/curl /usr/bin/curl
+            ln -sfn /usr/local/bin/curl /usr/bin/curl
           fi
-          if [ ! -e "/usr/local/ssl/certs/ca-certificates.crt" ]; then
-            cp -af /etc/ssl/certs/* /usr/local/ssl/certs/ &> /dev/null
+          if [ ! -e "${_SSL_PATH}/certs/ca-certificates.crt" ]; then
+            cp -af /etc/ssl/certs/* ${_SSL_PATH}/certs/ &> /dev/null
           fi
           echo "curl hold" | dpkg --set-selections &> /dev/null
         else
@@ -3739,39 +3801,59 @@ curl_install_src() {
       else
         msg "OOPS: cURL ${_CURL_VRN} could not be extracted..."
       fi
-      if [ -e "/usr/local/lib/libcurl.so" ] \
-        && [ -e "/usr/local/include/curl/curl.h" ]; then
+      if [ -x "/usr/local/bin/curl" ] \
+        && [ -e "/usr/local/lib/libcurl.so" ] \
+        && [ -e "/usr/local/include/curl/header.h" ] \
+        && [ ! -e "/var/xdrago/log/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid" ]; then
         _X86_64_TEST=$(uname -m 2>&1)
         if [ "${_X86_64_TEST}" = "x86_64" ]; then
-          mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}
+          mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}
           if [ -e "/usr/include/x86_64-linux-gnu/curl" ] \
             && [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
-            mv -f /usr/include/x86_64-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}/ &> /dev/null
-            mv -f /usr/lib/x86_64-linux-gnu/libcurl.so /var/backups/legacy-curl-pre-${_CURL_VRN}/ &> /dev/null
-          fi
-          if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so" ]; then
-            ln -sf /usr/local/lib/libcurl.so /usr/lib/x86_64-linux-gnu/libcurl.so &> /dev/null
+            mv -f /usr/include/x86_64-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
           fi
           if [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
-            ln -sf /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl &> /dev/null
+            ln -sfn /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl &> /dev/null
+          fi
+          if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so" ] || [ ! -L "/usr/lib/libcurl.so" ]; then
+            ln -sfn /usr/local/lib/libcurl.so /usr/lib/x86_64-linux-gnu/libcurl.so &> /dev/null
+            ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.so /usr/lib/libcurl.so
+          fi
+          if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ] || [ ! -L "/usr/lib/libcurl.so.4" ]; then
+            ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/x86_64-linux-gnu/libcurl.so.4 &> /dev/null
+            ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.so.4 /usr/lib/libcurl.so.4
+          fi
+          if [ -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ] || [ -e "/usr/local/lib/libcurl.so.4" ]; then
+            ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/x86_64-linux-gnu/libcurl.so.4 &> /dev/null
+            ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.so.4 /usr/lib/libcurl.so.4
+          fi
+          if [ -e "/usr/lib/x86_64-linux-gnu/libcurl.so.4.4.0" ]; then
+            mv -f /usr/lib/x86_64-linux-gnu/libcurl.so.4.4.0 /var/backups/
+          fi
+          if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.a" ] || [ ! -L "/usr/lib/libcurl.a" ]; then
+            ln -sfn /usr/local/lib/libcurl.a /usr/lib/x86_64-linux-gnu/libcurl.a &> /dev/null
+            ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.a /usr/lib/libcurl.a
           fi
         else
-          mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}
+          mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}
           if [ -e "/usr/include/i386-linux-gnu/curl" ] \
             && [ ! -L "/usr/include/i386-linux-gnu/curl" ]; then
-            mv -f /usr/include/i386-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}/ &> /dev/null
-            mv -f /usr/lib/i386-linux-gnu/libcurl.so /var/backups/legacy-curl-pre-${_CURL_VRN}/ &> /dev/null
+            mv -f /usr/include/i386-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
+            mv -f /usr/lib/i386-linux-gnu/libcurl.so /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
           fi
           if [ ! -L "/usr/lib/i386-linux-gnu/libcurl.so" ]; then
-            ln -sf /usr/local/lib/libcurl.so /usr/lib/i386-linux-gnu/libcurl.so &> /dev/null
+            ln -sfn /usr/local/lib/libcurl.so /usr/lib/i386-linux-gnu/libcurl.so &> /dev/null
           fi
           if [ ! -L "/usr/include/i386-linux-gnu/curl" ]; then
-            ln -sf /usr/local/include/curl /usr/include/i386-linux-gnu/curl &> /dev/null
+            ln -sfn /usr/local/include/curl /usr/include/i386-linux-gnu/curl &> /dev/null
           fi
         fi
+        mrun "apt-get remove curl -y" 2> /dev/null
+        mrun "ldconfig" 2> /dev/null
+        touch /var/xdrago/log/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid &> /dev/null
+        _CURL_ALREADY_REBUILT=YES
       fi
     fi
-    _CURL_ALREADY_REBUILT=YES
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: cURL version detected ${_CURL_ITD}, OK"
@@ -4264,7 +4346,7 @@ finale() {
       # fix_core_dgd
     fi
   fi
-  mv -f /etc/motd ${vBs}/dragon/t/motd-pre-${_X_VERSION}-${_NOW} &> /dev/null
+  mv -f /etc/motd ${vBs}/dragon/t/motd-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
   mv -f /etc/motd-pre-* ${vBs}/dragon/t/ &> /dev/null
   echo > /etc/motd
   echo " Skynet Agent v.${_X_VERSION} on $(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) \
@@ -4302,10 +4384,10 @@ finale() {
   rm -rf /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
   rm -rf /var/aegir/.tmp/cache
-  rm -f /var/run/boa_run.pid
-  rm -f /var/run/boa_wait.pid
-  rm -f /var/run/manage_ltd_users.pid
-  rm -f /var/run/manage_rvm_users.pid
+  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
+  [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
+  [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
   rm -f /var/aegir/.drush/.alias.drushrc.php
   rm -f /data/disk/*/.drush/.alias.drushrc.php
   rm -f ${pthLog}/protected-vhosts-clean.log
@@ -4325,8 +4407,8 @@ finale() {
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   chmod 700 /root
   if [ ! -e "/etc/init.d/buagent" ] \
-    && [ -e "${vBs}/buagent-pre-${_X_VERSION}-${_NOW}" ]; then
-    mv -f ${vBs}/buagent-pre-${_X_VERSION}-${_NOW} \
+    && [ -e "${vBs}/buagent-pre-${_X_SE}-${_X_VERSION}-${_NOW}" ]; then
+    mv -f ${vBs}/buagent-pre-${_X_SE}-${_X_VERSION}-${_NOW} \
       /etc/init.d/buagent &> /dev/null
   fi
   if [ -e "/etc/csf/csf.deny" ] \
@@ -4453,7 +4535,10 @@ run_aptitude_deps_install() {
   apt_clean_update
   mrun "apt-get remove percona-xtrabackup-24 -y -qq" 2> /dev/null
   mrun "apt-get remove libcurl4-gnutls-dev -y -qq" 2> /dev/null
+  mrun "apt-get purge libcurl4-gnutls-dev -y -qq" 2> /dev/null
   mrun "apt-get remove libcurl4-openssl-dev -y -qq" 2> /dev/null
+  mrun "apt-get purge libcurl4-openssl-dev -y -qq" 2> /dev/null
+  mrun "apt autoremove -y" 2> /dev/null
   mrun "${_INSTAPP} build-essential libsasl2-modules" 2> /dev/null
   mrun "${_INSTAPP} zlibc time vim cvs makepasswd" 2> /dev/null
   mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables" 2> /dev/null
@@ -4463,7 +4548,7 @@ run_aptitude_deps_install() {
   mrun "apt-get remove libssl1.0-dev -y" 2> /dev/null
   mrun "${_INSTAPP} libssl-dev" 2> /dev/null
   mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
-  mrun "${_INSTAPP} libcurl4-gnutls-dev mcrypt libc-client-dev" 2> /dev/null
+  mrun "${_INSTAPP} mcrypt libc-client-dev" 2> /dev/null
   mrun "${_INSTAPP} apticron aptitude auditd apt-listchanges" 2> /dev/null
   mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
   mrun "${_INSTAPP} unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
@@ -4954,8 +5039,9 @@ if_post_major_os_upgrade() {
       _SSH_FORCE_REINSTALL=
       _SSL_FORCE_REINSTALL=
     fi
-
-    rm -f /root/.run_post_major_os_upgrade.info
+    if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
+      rm -f /root/.run_post_major_os_upgrade.info
+    fi
     touch /root/.completed_post_major_os_upgrade.info
     msg "INFO: The post_major_os_upgrade procedure is complete"
   fi
@@ -4971,7 +5057,7 @@ if_major_os_upgrade() {
     if [ ! -e "/usr/local/lib/icu/73.1" ] \
       && [ "${_LOC_OSR}" != "jessie" ]; then
       echo
-      msg "OOPS: Please run normal 'barracuda up-head' upgrade"
+      msg "OOPS: Please run normal 'barracuda up-dev' upgrade"
       msg "OOPS: before trying to run major OS upgrade"
       echo
       mrun "sleep 3"
@@ -5274,7 +5360,7 @@ if_major_os_upgrade() {
     ###
     ### Back to BOA stuff re-install as needed.
     if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
-      ln -sf /etc/init.d/bind9 /etc/init.d/bind
+      ln -sfn /etc/init.d/bind9 /etc/init.d/bind
     fi
     if [ -e "${mtrInc}/nginx_vhost_common.conf" ]; then
       if [ -e "/root/.debug.cnf" ]; then
@@ -5533,7 +5619,7 @@ if_major_os_upgrade() {
     echo " "
     msg "RLLY: No errors? ${_MSG_LOC} migration worked :)"
     msg "STEP: Please reboot this server now"
-    msg "STEP: Once the system is up, run 'barracuda up-head' command again"
+    msg "STEP: Once the system is up, run 'barracuda up-dev' command again"
     echo " "
     msg "Bye"
     barracuda_cnf_cleanup
@@ -5576,7 +5662,7 @@ early_sys_ctrl_mark() {
   if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
     touch /root/.early-sys-ctrl-mark.cnf
   else
-    rm -f /root/.early-sys-ctrl-mark.cnf
+    [ -e "/root/.early-sys-ctrl-mark.cnf" ] && rm -f /root/.early-sys-ctrl-mark.cnf
   fi
 }
 
@@ -5585,7 +5671,7 @@ normal_sys_ctrl_mark() {
     rm -f /root/.latest-barracuda-upgrade-finale.info
     touch /root/.normal-sys-ctrl-mark.cnf
   else
-    rm -f /root/.normal-sys-ctrl-mark.cnf
+    [ -e "/root/.normal-sys-ctrl-mark.cnf" ] && rm -f /root/.normal-sys-ctrl-mark.cnf
   fi
 }
 
@@ -5987,67 +6073,67 @@ php_libs_fix() {
           if [ -e "/usr/lib/x86_64-linux-gnu/icu" ] \
             && [ ! -L "/usr/lib/x86_64-linux-gnu/icu" ]; then
             mv -f /usr/lib/x86_64-linux-gnu/icu /usr/lib/x86_64-linux-gnu/.old_icu
-            ln -sf /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
+            ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
           else
-            ln -sf /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
+            ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
           fi
-          ln -sf /usr/local/lib/libicudata.so /usr/lib/x86_64-linux-gnu/libicudata.so
-          ln -sf /usr/local/lib/libicui18n.so /usr/lib/x86_64-linux-gnu/libicui18n.so
-          ln -sf /usr/local/lib/libicuio.so   /usr/lib/x86_64-linux-gnu/libicuio.so
-          ln -sf /usr/local/lib/libicutest.so /usr/lib/x86_64-linux-gnu/libicutest.so
-          ln -sf /usr/local/lib/libicutu.so   /usr/lib/x86_64-linux-gnu/libicutu.so
-          ln -sf /usr/local/lib/libicuuc.so   /usr/lib/x86_64-linux-gnu/libicuuc.so
-          ln -sf /usr/local/lib/libicudata.so /usr/lib/libicudata.so
-          ln -sf /usr/local/lib/libicui18n.so /usr/lib/libicui18n.so
-          ln -sf /usr/local/lib/libicuio.so   /usr/lib/libicuio.so
-          ln -sf /usr/local/lib/libicutest.so /usr/lib/libicutest.so
-          ln -sf /usr/local/lib/libicutu.so   /usr/lib/libicutu.so
-          ln -sf /usr/local/lib/libicuuc.so   /usr/lib/libicuuc.so
+          ln -sfn /usr/local/lib/libicudata.so /usr/lib/x86_64-linux-gnu/libicudata.so
+          ln -sfn /usr/local/lib/libicui18n.so /usr/lib/x86_64-linux-gnu/libicui18n.so
+          ln -sfn /usr/local/lib/libicuio.so   /usr/lib/x86_64-linux-gnu/libicuio.so
+          ln -sfn /usr/local/lib/libicutest.so /usr/lib/x86_64-linux-gnu/libicutest.so
+          ln -sfn /usr/local/lib/libicutu.so   /usr/lib/x86_64-linux-gnu/libicutu.so
+          ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/x86_64-linux-gnu/libicuuc.so
+          ln -sfn /usr/local/lib/libicudata.so /usr/lib/libicudata.so
+          ln -sfn /usr/local/lib/libicui18n.so /usr/lib/libicui18n.so
+          ln -sfn /usr/local/lib/libicuio.so   /usr/lib/libicuio.so
+          ln -sfn /usr/local/lib/libicutest.so /usr/lib/libicutest.so
+          ln -sfn /usr/local/lib/libicutu.so   /usr/lib/libicutu.so
+          ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/libicuuc.so
         fi
-        ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
-        ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
-        ln -sf /usr/lib/x86_64-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
-        ln -sf /usr/lib/x86_64-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
-        ln -sf /usr/lib/x86_64-linux-gnu/libldap.so /usr/lib/libldap.so
-        ln -sf /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
-        ln -sf /usr/lib/x86_64-linux-gnu/libXpm.so  /usr/lib/libXpm.so
-        ln -sf /usr/lib/x86_64-linux-gnu/librtmp.so /usr/lib/librtmp.so
-        ln -sf /usr/lib/x86_64-linux-gnu/libcurl.so /usr/lib/libcurl.so
-        ln -sf /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
-        ln -sf /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
-        ln -sf /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so
-        ln -sf /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so.4
-        ln -sf /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so
-        ln -sf /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
+        ln -sfn /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
+        ln -sfn /usr/lib/x86_64-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/libldap.so /usr/lib/libldap.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/libXpm.so  /usr/lib/libXpm.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/librtmp.so /usr/lib/librtmp.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.so /usr/lib/libcurl.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
+        ln -sfn /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so.4
+        ln -sfn /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so
+        ln -sfn /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
         if [ -e "/usr/lib/x86_64-linux-gnu/libHalf.so.23" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
+          ln -sfn /usr/lib/x86_64-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
         fi
         if [ -e "/usr/lib/x86_64-linux-gnu/libHalf.so" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libHalf.so /usr/lib/libHalf.so.12
+          ln -sfn /usr/lib/x86_64-linux-gnu/libHalf.so /usr/lib/libHalf.so.12
         fi
         if [ -e "/usr/lib/x86_64-linux-gnu/libIlmImf-2_2.so.23" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
+          ln -sfn /usr/lib/x86_64-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
         fi
         if [ -e "/usr/lib/x86_64-linux-gnu/libIlmImf.so" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libIlmImf.so /usr/lib/libIlmImf-2_2.so.22
+          ln -sfn /usr/lib/x86_64-linux-gnu/libIlmImf.so /usr/lib/libIlmImf-2_2.so.22
         fi
         if [ -e "/usr/lib/x86_64-linux-gnu/libImath-2_2.so.23" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libImath-2_2.so.23 /usr/lib/libImath-2_2.so.12
+          ln -sfn /usr/lib/x86_64-linux-gnu/libImath-2_2.so.23 /usr/lib/libImath-2_2.so.12
         fi
         if [ -e "/usr/lib/x86_64-linux-gnu/libImath.so" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libImath.so /usr/lib/libImath-2_2.so.12
+          ln -sfn /usr/lib/x86_64-linux-gnu/libImath.so /usr/lib/libImath-2_2.so.12
         fi
         if [ -e "/usr/lib/x86_64-linux-gnu/libIex-2_2.so.23" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
+          ln -sfn /usr/lib/x86_64-linux-gnu/libIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
         fi
         if [ -e "/usr/lib/x86_64-linux-gnu/libIex.so" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libIex.so /usr/lib/libIex-2_2.so.12
+          ln -sfn /usr/lib/x86_64-linux-gnu/libIex.so /usr/lib/libIex-2_2.so.12
         fi
         if [ -e "/usr/lib/x86_64-linux-gnu/libIexMath.so" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libIexMath.so /usr/lib/libIexMath-2_2.so.12
+          ln -sfn /usr/lib/x86_64-linux-gnu/libIexMath.so /usr/lib/libIexMath-2_2.so.12
         fi
         if [ -e "/usr/lib/x86_64-linux-gnu/libIlmThread.so" ]; then
-          ln -sf /usr/lib/x86_64-linux-gnu/libIlmThread.so /usr/lib/libIlmThread-2_2.so.12
+          ln -sfn /usr/lib/x86_64-linux-gnu/libIlmThread.so /usr/lib/libIlmThread-2_2.so.12
         fi
         if [ ! -e "/usr/include/curl/curl.h" ] \
           && [ -e "/usr/include/x86_64-linux-gnu/curl/curl.h" ]; then
@@ -6055,79 +6141,79 @@ php_libs_fix() {
         fi
         if [ ! -e "/usr/include/gmp.h" ] \
           && [ -e "/usr/include/x86_64-linux-gnu/gmp.h" ]; then
-          ln -sf /usr/include/x86_64-linux-gnu/gmp.h  /usr/include/gmp.h
+          ln -sfn /usr/include/x86_64-linux-gnu/gmp.h  /usr/include/gmp.h
         fi
         if [ ! -e "/usr/lib/x86_64-linux-gnu/librtmp.so.0" ] \
           && [ -e "/usr/lib/x86_64-linux-gnu/librtmp.so.1" ]; then
           cd /usr/lib/x86_64-linux-gnu
-          ln -sf librtmp.so.1 librtmp.so.0
+          ln -sfn librtmp.so.1 librtmp.so.0
         fi
       else
         if [ -e "/usr/local/lib/icu" ]; then
           if [ -e "/usr/lib/i386-linux-gnu/icu" ] \
             && [ ! -L "/usr/lib/i386-linux-gnu/icu" ]; then
             mv -f /usr/lib/i386-linux-gnu/icu /usr/lib/i386-linux-gnu/.old_icu
-            ln -sf /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
+            ln -sfn /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
           else
-            ln -sf /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
+            ln -sfn /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
           fi
-          ln -sf /usr/local/lib/libicudata.so /usr/lib/i386-linux-gnu/libicudata.so
-          ln -sf /usr/local/lib/libicui18n.so /usr/lib/i386-linux-gnu/libicui18n.so
-          ln -sf /usr/local/lib/libicuio.so   /usr/lib/i386-linux-gnu/libicuio.so
-          ln -sf /usr/local/lib/libicutest.so /usr/lib/i386-linux-gnu/libicutest.so
-          ln -sf /usr/local/lib/libicutu.so   /usr/lib/i386-linux-gnu/libicutu.so
-          ln -sf /usr/local/lib/libicuuc.so   /usr/lib/i386-linux-gnu/libicuuc.so
-          ln -sf /usr/local/lib/libicudata.so /usr/lib/libicudata.so
-          ln -sf /usr/local/lib/libicui18n.so /usr/lib/libicui18n.so
-          ln -sf /usr/local/lib/libicuio.so   /usr/lib/libicuio.so
-          ln -sf /usr/local/lib/libicutest.so /usr/lib/libicutest.so
-          ln -sf /usr/local/lib/libicutu.so   /usr/lib/libicutu.so
-          ln -sf /usr/local/lib/libicuuc.so   /usr/lib/libicuuc.so
+          ln -sfn /usr/local/lib/libicudata.so /usr/lib/i386-linux-gnu/libicudata.so
+          ln -sfn /usr/local/lib/libicui18n.so /usr/lib/i386-linux-gnu/libicui18n.so
+          ln -sfn /usr/local/lib/libicuio.so   /usr/lib/i386-linux-gnu/libicuio.so
+          ln -sfn /usr/local/lib/libicutest.so /usr/lib/i386-linux-gnu/libicutest.so
+          ln -sfn /usr/local/lib/libicutu.so   /usr/lib/i386-linux-gnu/libicutu.so
+          ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/i386-linux-gnu/libicuuc.so
+          ln -sfn /usr/local/lib/libicudata.so /usr/lib/libicudata.so
+          ln -sfn /usr/local/lib/libicui18n.so /usr/lib/libicui18n.so
+          ln -sfn /usr/local/lib/libicuio.so   /usr/lib/libicuio.so
+          ln -sfn /usr/local/lib/libicutest.so /usr/lib/libicutest.so
+          ln -sfn /usr/local/lib/libicutu.so   /usr/lib/libicutu.so
+          ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/libicuuc.so
         fi
-        ln -sf /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so
-        ln -sf /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
-        ln -sf /usr/lib/i386-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
-        ln -sf /usr/lib/i386-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
-        ln -sf /usr/lib/i386-linux-gnu/libldap.so /usr/lib/libldap.so
-        ln -sf /usr/lib/i386-linux-gnu/libpng.so  /usr/lib/libpng.so
-        ln -sf /usr/lib/i386-linux-gnu/libXpm.so  /usr/lib/libXpm.so
-        ln -sf /usr/lib/i386-linux-gnu/librtmp.so /usr/lib/librtmp.so
-        ln -sf /usr/lib/i386-linux-gnu/libcurl.so /usr/lib/libcurl.so
-        ln -sf /usr/lib/i386-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
-        ln -sf /usr/lib/i386-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
-        ln -sf /usr/lib/i386-linux-gnu/libonig.so /usr/lib/libonig.so
-        ln -sf /usr/lib/i386-linux-gnu/libonig.so /usr/lib/libonig.so.4
-        ln -sf /usr/lib/i386-linux-gnu/libsodium.so /usr/lib/libsodium.so
-        ln -sf /usr/lib/i386-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
+        ln -sfn /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so
+        ln -sfn /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
+        ln -sfn /usr/lib/i386-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
+        ln -sfn /usr/lib/i386-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
+        ln -sfn /usr/lib/i386-linux-gnu/libldap.so /usr/lib/libldap.so
+        ln -sfn /usr/lib/i386-linux-gnu/libpng.so  /usr/lib/libpng.so
+        ln -sfn /usr/lib/i386-linux-gnu/libXpm.so  /usr/lib/libXpm.so
+        ln -sfn /usr/lib/i386-linux-gnu/librtmp.so /usr/lib/librtmp.so
+        ln -sfn /usr/lib/i386-linux-gnu/libcurl.so /usr/lib/libcurl.so
+        ln -sfn /usr/lib/i386-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
+        ln -sfn /usr/lib/i386-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
+        ln -sfn /usr/lib/i386-linux-gnu/libonig.so /usr/lib/libonig.so
+        ln -sfn /usr/lib/i386-linux-gnu/libonig.so /usr/lib/libonig.so.4
+        ln -sfn /usr/lib/i386-linux-gnu/libsodium.so /usr/lib/libsodium.so
+        ln -sfn /usr/lib/i386-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
         if [ -e "/usr/lib/i386-linux-gnu/libHalf.so.23" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
+          ln -sfn /usr/lib/i386-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
         fi
         if [ -e "/usr/lib/i386-linux-gnu/libHalf.so" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libHalf.so /usr/lib/libHalf.so.12
+          ln -sfn /usr/lib/i386-linux-gnu/libHalf.so /usr/lib/libHalf.so.12
         fi
         if [ -e "/usr/lib/i386-linux-gnu/libIlmImf-2_2.so.23" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
+          ln -sfn /usr/lib/i386-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
         fi
         if [ -e "/usr/lib/i386-linux-gnu/libIlmImf.so" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libIlmImf.so /usr/lib/libIlmImf-2_2.so.22
+          ln -sfn /usr/lib/i386-linux-gnu/libIlmImf.so /usr/lib/libIlmImf-2_2.so.22
         fi
         if [ -e "/usr/lib/i386-linux-gnu/libImath-2_2.so.23" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libImath-2_2.so.23 /usr/lib/libImath-2_2.so.12
+          ln -sfn /usr/lib/i386-linux-gnu/libImath-2_2.so.23 /usr/lib/libImath-2_2.so.12
         fi
         if [ -e "/usr/lib/i386-linux-gnu/libImath.so" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libImath.so /usr/lib/libImath-2_2.so.12
+          ln -sfn /usr/lib/i386-linux-gnu/libImath.so /usr/lib/libImath-2_2.so.12
         fi
         if [ -e "/usr/lib/i386-linux-gnu/libIex-2_2.so.23" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
+          ln -sfn /usr/lib/i386-linux-gnu/libIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
         fi
         if [ -e "/usr/lib/i386-linux-gnu/libIex.so" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libIex.so /usr/lib/libIex-2_2.so.12
+          ln -sfn /usr/lib/i386-linux-gnu/libIex.so /usr/lib/libIex-2_2.so.12
         fi
         if [ -e "/usr/lib/i386-linux-gnu/libIexMath.so" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libIexMath.so /usr/lib/libIexMath-2_2.so.12
+          ln -sfn /usr/lib/i386-linux-gnu/libIexMath.so /usr/lib/libIexMath-2_2.so.12
         fi
         if [ -e "/usr/lib/i386-linux-gnu/libIlmThread.so" ]; then
-          ln -sf /usr/lib/i386-linux-gnu/libIlmThread.so /usr/lib/libIlmThread-2_2.so.12
+          ln -sfn /usr/lib/i386-linux-gnu/libIlmThread.so /usr/lib/libIlmThread-2_2.so.12
         fi
         if [ ! -e "/usr/include/curl/curl.h" ] \
           && [ -e "/usr/include/i386-linux-gnu/curl/curl.h" ]; then
@@ -6135,12 +6221,12 @@ php_libs_fix() {
         fi
         if [ ! -e "/usr/include/gmp.h" ] \
           && [ -e "/usr/include/i386-linux-gnu/gmp.h" ]; then
-          ln -sf /usr/include/i386-linux-gnu/gmp.h  /usr/include/gmp.h
+          ln -sfn /usr/include/i386-linux-gnu/gmp.h  /usr/include/gmp.h
         fi
         if [ ! -e "/usr/lib/i386-linux-gnu/librtmp.so.0" ] \
           && [ -e "/usr/lib/i386-linux-gnu/librtmp.so.1" ]; then
           cd /usr/lib/i386-linux-gnu
-          ln -sf librtmp.so.1 librtmp.so.0
+          ln -sfn librtmp.so.1 librtmp.so.0
         fi
       fi
       touch /var/xdrago/log/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid
@@ -6342,14 +6428,14 @@ xdrago_install_upgrade() {
     rm -rf ${vBs}/dragon/z/init.d-pre-*
     rm -f ${pthLog}/cron-root-pre*
     cp -af /var/xdrago \
-      ${vBs}/dragon/x/xdrago-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      ${vBs}/dragon/x/xdrago-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     rm -f ${pthLog}/VISITOR_ABUSE_ONE.log
     rm -f ${pthLog}/blackIP.log
     rm -f /var/xdrago/{enableStatus,graceful,move_sql,run_all,second,Minute}
     rm -f /var/xdrago/{firewall.sh,stop-mysql-innodb.sh,firewall_restarter}
     rm -f /var/xdrago/{FireStart,memcache,redis}
     cp -af /var/spool/cron/crontabs/root \
-      ${vBs}/dragon/z/cron-root-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      ${vBs}/dragon/z/cron-root-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     if [ "${_CUSTOM_CONFIG_LSHELL}" = "YES" ] \
       && [ -e "/var/xdrago/conf/lshell.conf" ]; then
       cp -af /var/xdrago/conf/lshell.conf ${vBs}/custom_lshell.conf
@@ -6514,8 +6600,8 @@ xdrago_install_upgrade() {
       fi
     fi
   fi
-  if [ -d "/var/xdrago-pre-${_X_VERSION}-${_NOW}" ]; then
-    cp -af /var/xdrago-pre-${_X_VERSION}-${_NOW}/run-* /var/xdrago/ &> /dev/null
+  if [ -d "/var/xdrago-pre-${_X_SE}-${_X_VERSION}-${_NOW}" ]; then
+    cp -af /var/xdrago-pre-${_X_SE}-${_X_VERSION}-${_NOW}/run-* /var/xdrago/ &> /dev/null
   fi
   sed -i "s/firewall/monitor/g" /var/xdrago/minute.sh &> /dev/null
   wait
@@ -6636,7 +6722,7 @@ lshell_install_upgrade() {
   fi
   if [ -f "/usr/local/bin/lshell" ]; then
     if [ ! -L "/usr/bin/lshell" ]; then
-      ln -sf /usr/local/bin/lshell /usr/bin/lshell &> /dev/null
+      ln -sfn /usr/local/bin/lshell /usr/bin/lshell &> /dev/null
     fi
   fi
 }
@@ -6648,17 +6734,15 @@ if_install_ftpd() {
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "FTP" ]]; then
     if [ ! -e "/etc/ssl/private/pure-ftpd.pem" ] \
-      || [ ! -e "/usr/local/sbin/pure-config.pl" ] \
       || [ ! -e "/usr/local/sbin/pure-ftpd" ] \
-      || [ ! -e "${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_VERSION}.log" ] \
+      || [ ! -e "${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_SE}-${_X_VERSION}.log" ] \
       || [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
       msg "INFO: Building Pure-FTPd server from sources..."
       if [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ]; then
         msg "INFO: Generating DH parameters, 2048 bit..."
-        st_runner "openssl dhparam \
-          -out /etc/ssl/private/pure-ftpd-dhparams.pem 2048" 2> /dev/null
+        openssl dhparam -out /etc/ssl/private/pure-ftpd-dhparams.pem 2048 &> /dev/null
       fi
       if [ ! -e "/usr/local/sbin/pure-config.pl" ]; then
         echo "/bin/false" >> /etc/shells
@@ -6667,33 +6751,74 @@ if_install_ftpd() {
       mkdir -p /etc/ssl/private/
       rm -f /etc/ssl/private/pure-ftpd.pem
       rm -f /usr/local/sbin/pure-ftpd
-      st_runner "openssl req -x509 -nodes -sha256 -days 7300 -newkey rsa:2048 \
+      openssl req -x509 -nodes -sha256 -days 7300 -newkey rsa:2048 \
         -keyout /etc/ssl/private/pure-ftpd.pem \
-        -out /etc/ssl/private/pure-ftpd.pem -batch" 2> /dev/null
+        -out /etc/ssl/private/pure-ftpd.pem -batch &> /dev/null
       chmod 600 /etc/ssl/private/pure-ftpd.pem &> /dev/null
       cd /var/opt
       rm -rf pure-ftpd*
       mkdir -p /usr/local/etc
       get_dev_src "pure-ftpd-${_PURE_FTPD_VRN}.tar.gz"
       cd pure-ftpd-${_PURE_FTPD_VRN}
-      mrun "bash ./configure --with-everything --with-virtualchroot \
+      bash autogen.sh &> /dev/null
+      _SSL_ITD=$(openssl version 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f2 \
+        | awk '{ print $1}')
+      if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
+        && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+        _SSL_PATH="/usr/local/ssl3"
+        _SSL_LIB_PATH="${_SSL_PATH}/lib64"
+      else
+        _SSL_PATH="/usr/local/ssl"
+        _SSL_LIB_PATH="${_SSL_PATH}/lib"
+      fi
+      _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
+      ### LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
+      if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+        _SSL_LEGACY_LIB_PATH=/usr/local/ssl/lib
+        sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
+        echo "${_SSL_LEGACY_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
+        ln -sfn /usr/local/ssl/include/openssl /usr/include/openssl
+        mrun "ldconfig" 2> /dev/null
+      fi
+      LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig" ./configure \
+        --oldincludedir=/usr/local/ssl/include \
+        --includedir=/usr/local/ssl/include \
+        --with-everything --with-virtualchroot \
         --without-humor --with-tls --with-diraliases --with-pam \
-        --with-certfile=/etc/ssl/private/pure-ftpd.pem" 2> /dev/null
-      mrun "make install-strip" 2> /dev/null
+        --with-certfile=/etc/ssl/private/pure-ftpd.pem &> /dev/null
+      make &> /dev/null
+      make install &> /dev/null
+      if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+        _SSL_MODERN_LIB_PATH=/usr/local/ssl3/lib64
+        sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
+        echo "${_SSL_MODERN_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
+        ln -sfn /usr/local/ssl3/include/openssl /usr/include/openssl
+        mrun "ldconfig" 2> /dev/null
+      fi
       cd /usr/local/sbin/
       cp -af ${locCnf}/pure-config.pl.txt ./
-      mv -f pure-config.pl.txt pure-config.pl &> /dev/null
-      chmod 755 /usr/local/sbin/pure-config.pl &> /dev/null
+      mv -f pure-config.pl.txt pure-config.pl 2> /dev/null
+      chmod 755 /usr/local/sbin/pure-config.pl 2> /dev/null
       cp -af /var/opt/pure-ftpd-${_PURE_FTPD_VRN}/pam/pure-ftpd /etc/pam.d/
       fix_ftps_pam
       cd /usr/local/etc
       rm -f pure-ftpd.conf
       cp -af ${locCnf}/pure-ftpd.conf ./
       killall -9 pure-ftpd &> /dev/null
-      st_runner "/usr/local/sbin/pure-config.pl \
-        /usr/local/etc/pure-ftpd.conf" &> /dev/null
+      ftpdInit="/usr/local/sbin/pure-config.pl"
+      ftpdConf="/usr/local/etc/pure-ftpd.conf"
+      ftpdBind="/usr/local/sbin/pure-ftpd"
+      if [ -x "${ftpdBind}" ] && [ -f "${ftpdConf}" ]; then
+        if [ -x "${ftpdInit}" ]; then
+          ${ftpdInit} ${ftpdConf} &> /dev/null
+        else
+          ${ftpdBind} ${ftpdConf} &> /dev/null
+        fi
+      fi
       cd /var/opt
-      touch ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_VERSION}.log
+      touch ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_SE}-${_X_VERSION}.log
     fi
   fi
 }
@@ -6726,7 +6851,7 @@ newrelic_check_fix() {
         newrelic-daemon \
         newrelic-sysmond" &> /dev/null
       mv -f /etc/newrelic \
-        ${vBs}/nr/etc-newrelic-pre-${_X_VERSION}-${_NOW} &> /dev/null
+        ${vBs}/nr/etc-newrelic-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
       rm -f /etc/init.d/newrelic-sysmond
       rm -f /etc/init.d/newrelic-daemon
       killall -9 newrelic-daemon &> /dev/null
@@ -6763,11 +6888,11 @@ java_check_fix() {
 
   # if [ ! -e "/usr/lib/jvm/java-7-openjdk" ] \
   #   && [ -d "/usr/lib/jvm/java-7-openjdk-amd64" ]; then
-  #   ln -sf /usr/lib/jvm/java-7-openjdk-amd64 /usr/lib/jvm/java-7-openjdk
+  #   ln -sfn /usr/lib/jvm/java-7-openjdk-amd64 /usr/lib/jvm/java-7-openjdk
   # fi
   # if [ ! -e "/usr/lib/jvm/java-7-openjdk" ] \
   #   && [ -d "/usr/lib/jvm/java-7-openjdk-i386" ]; then
-  #   ln -sf /usr/lib/jvm/java-7-openjdk-i386 /usr/lib/jvm/java-7-openjdk
+  #   ln -sfn /usr/lib/jvm/java-7-openjdk-i386 /usr/lib/jvm/java-7-openjdk
   # fi
   # if [ -e "/usr/lib/jvm/java-1.7.0-openjdk-i386" ]; then
   #   rm -f /usr/lib/jvm/default-java
@@ -6775,106 +6900,106 @@ java_check_fix() {
   # fi
   # if [ ! -e "/usr/bin/java7" ] \
   #   && [ -e "/usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java" ]; then
-  #   ln -sf /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java /usr/bin/java7
+  #   ln -sfn /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java /usr/bin/java7
   # fi
   # if [ ! -e "/usr/bin/java7" ] \
   #   && [ -e "/usr/lib/jvm/java-7-openjdk-i386/jre/bin/java" ]; then
-  #   ln -sf /usr/lib/jvm/java-7-openjdk-i386/jre/bin/java /usr/bin/java7
+  #   ln -sfn /usr/lib/jvm/java-7-openjdk-i386/jre/bin/java /usr/bin/java7
   # fi
   # if [ -e "/usr/lib/jvm/java-1.7.0-openjdk-amd64" ]; then
   #   rm -f /usr/lib/jvm/default-java
-  #   ln -sf /usr/lib/jvm/java-1.7.0-openjdk-amd64 /usr/lib/jvm/default-java
+  #   ln -sfn /usr/lib/jvm/java-1.7.0-openjdk-amd64 /usr/lib/jvm/default-java
   # fi
   # if [ -x "/usr/lib/jvm/java-7-openjdk/jre/bin/java" ]; then
-  #   ln -sf /usr/lib/jvm/java-7-openjdk/jre/bin/java /etc/alternatives/java
-  #   ln -sf /etc/alternatives/java /usr/bin/java
+  #   ln -sfn /usr/lib/jvm/java-7-openjdk/jre/bin/java /etc/alternatives/java
+  #   ln -sfn /etc/alternatives/java /usr/bin/java
   # fi
 
   if [ ! -e "/usr/lib/jvm/java-8-openjdk" ] \
     && [ -d "/usr/lib/jvm/java-8-openjdk-amd64" ]; then
-    ln -sf /usr/lib/jvm/java-8-openjdk-amd64 /usr/lib/jvm/java-8-openjdk
+    ln -sfn /usr/lib/jvm/java-8-openjdk-amd64 /usr/lib/jvm/java-8-openjdk
   fi
   if [ ! -e "/usr/lib/jvm/java-8-openjdk" ] \
     && [ -d "/usr/lib/jvm/java-8-openjdk-i386" ]; then
-    ln -sf /usr/lib/jvm/java-8-openjdk-i386 /usr/lib/jvm/java-8-openjdk
+    ln -sfn /usr/lib/jvm/java-8-openjdk-i386 /usr/lib/jvm/java-8-openjdk
   fi
   if [ -e "/usr/lib/jvm/java-1.8.0-openjdk-i386" ]; then
     rm -f /usr/lib/jvm/default-java
-    ln -sf /usr/lib/jvm/java-1.8.0-openjdk-i386 /usr/lib/jvm/default-java
+    ln -sfn /usr/lib/jvm/java-1.8.0-openjdk-i386 /usr/lib/jvm/default-java
   fi
   if [ ! -e "/usr/bin/java8" ] \
     && [ -e "/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java /usr/bin/java8
+    ln -sfn /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java /usr/bin/java8
   fi
   if [ ! -e "/usr/bin/java8" ] \
     && [ -e "/usr/lib/jvm/java-8-openjdk-i386/jre/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-8-openjdk-i386/jre/bin/java /usr/bin/java8
+    ln -sfn /usr/lib/jvm/java-8-openjdk-i386/jre/bin/java /usr/bin/java8
   fi
   if [ -e "/usr/lib/jvm/java-1.8.0-openjdk-amd64" ]; then
     rm -f /usr/lib/jvm/default-java
-    ln -sf /usr/lib/jvm/java-1.8.0-openjdk-amd64 /usr/lib/jvm/default-java
+    ln -sfn /usr/lib/jvm/java-1.8.0-openjdk-amd64 /usr/lib/jvm/default-java
   fi
   if [ -x "/usr/lib/jvm/java-8-openjdk/jre/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-8-openjdk/jre/bin/java /etc/alternatives/java
-    ln -sf /etc/alternatives/java /usr/bin/java
+    ln -sfn /usr/lib/jvm/java-8-openjdk/jre/bin/java /etc/alternatives/java
+    ln -sfn /etc/alternatives/java /usr/bin/java
   fi
 
   # if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
   #   && [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
-  #   ln -sf /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
+  #   ln -sfn /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
   # fi
   # if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
   #   && [ -d "/usr/lib/jvm/java-17-openjdk-i386" ]; then
-  #   ln -sf /usr/lib/jvm/java-17-openjdk-i386 /usr/lib/jvm/java-17-openjdk
+  #   ln -sfn /usr/lib/jvm/java-17-openjdk-i386 /usr/lib/jvm/java-17-openjdk
   # fi
   # if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-i386" ]; then
   #   rm -f /usr/lib/jvm/default-java
-  #   ln -sf /usr/lib/jvm/java-1.17.0-openjdk-i386 /usr/lib/jvm/default-java
+  #   ln -sfn /usr/lib/jvm/java-1.17.0-openjdk-i386 /usr/lib/jvm/default-java
   # fi
   # if [ ! -e "/usr/bin/java17" ] \
   #   && [ -e "/usr/lib/jvm/java-17-openjdk-amd64/bin/java" ]; then
-  #   ln -sf /usr/lib/jvm/java-17-openjdk-amd64/bin/java /usr/bin/java17
+  #   ln -sfn /usr/lib/jvm/java-17-openjdk-amd64/bin/java /usr/bin/java17
   # fi
   # if [ ! -e "/usr/bin/java17" ] \
   #   && [ -e "/usr/lib/jvm/java-17-openjdk-i386/bin/java" ]; then
-  #   ln -sf /usr/lib/jvm/java-17-openjdk-i386/bin/java /usr/bin/java17
+  #   ln -sfn /usr/lib/jvm/java-17-openjdk-i386/bin/java /usr/bin/java17
   # fi
   # if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-amd64" ]; then
   #   rm -f /usr/lib/jvm/default-java
-  #   ln -sf /usr/lib/jvm/java-1.17.0-openjdk-amd64 /usr/lib/jvm/default-java
+  #   ln -sfn /usr/lib/jvm/java-1.17.0-openjdk-amd64 /usr/lib/jvm/default-java
   # fi
   # if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ]; then
-  #   ln -sf /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
-  #   ln -sf /etc/alternatives/java /usr/bin/java
+  #   ln -sfn /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
+  #   ln -sfn /etc/alternatives/java /usr/bin/java
   # fi
 
   if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \
     && [ -d "/usr/lib/jvm/java-11-openjdk-amd64" ]; then
-    ln -sf /usr/lib/jvm/java-11-openjdk-amd64 /usr/lib/jvm/java-11-openjdk
+    ln -sfn /usr/lib/jvm/java-11-openjdk-amd64 /usr/lib/jvm/java-11-openjdk
   fi
   if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \
     && [ -d "/usr/lib/jvm/java-11-openjdk-i386" ]; then
-    ln -sf /usr/lib/jvm/java-11-openjdk-i386 /usr/lib/jvm/java-11-openjdk
+    ln -sfn /usr/lib/jvm/java-11-openjdk-i386 /usr/lib/jvm/java-11-openjdk
   fi
   if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-i386" ]; then
     rm -f /usr/lib/jvm/default-java
-    ln -sf /usr/lib/jvm/java-1.11.0-openjdk-i386 /usr/lib/jvm/default-java
+    ln -sfn /usr/lib/jvm/java-1.11.0-openjdk-i386 /usr/lib/jvm/default-java
   fi
   if [ ! -e "/usr/bin/java11" ] \
     && [ -e "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-11-openjdk-amd64/bin/java /usr/bin/java11
+    ln -sfn /usr/lib/jvm/java-11-openjdk-amd64/bin/java /usr/bin/java11
   fi
   if [ ! -e "/usr/bin/java11" ] \
     && [ -e "/usr/lib/jvm/java-11-openjdk-i386/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-11-openjdk-i386/bin/java /usr/bin/java11
+    ln -sfn /usr/lib/jvm/java-11-openjdk-i386/bin/java /usr/bin/java11
   fi
   if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-amd64" ]; then
     rm -f /usr/lib/jvm/default-java
-    ln -sf /usr/lib/jvm/java-1.11.0-openjdk-amd64 /usr/lib/jvm/default-java
+    ln -sfn /usr/lib/jvm/java-1.11.0-openjdk-amd64 /usr/lib/jvm/default-java
   fi
   if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
-    ln -sf /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
-    ln -sf /etc/alternatives/java /usr/bin/java
+    ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
+    ln -sfn /etc/alternatives/java /usr/bin/java
   fi
 }
 
@@ -7076,11 +7201,7 @@ initd_update() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Restarting Solr 7"
       fi
-      mrun "service solr7 stop" &> /dev/null
-      #kill -9 $(ps aux | grep '[j]ava-8-openjdk' | awk '{print $2}') &> /dev/null
-      #kill -9 $(ps aux | grep '[j]ava-11-openjdk' | awk '{print $2}') &> /dev/null
-      #kill -9 $(ps aux | grep '[j]ava-17-openjdk' | awk '{print $2}') &> /dev/null
-      mrun "service solr7 start" &> /dev/null
+      mrun "service solr7 restart" &> /dev/null
     fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -7105,19 +7226,19 @@ initd_update() {
     fi
     if [ ! -e "/var/run/aegir_upgrade.pid" ]; then
       msg "INFO: Starting Redis, PHP-FPM and Nginx"
-      mrun "service redis-server start" &> /dev/null
-      killall -9 nginx php-cgi php-fpm &> /dev/null
-      mrun "update-rc.d -f php5-fpm remove" &> /dev/null
-      mrun "update-rc.d cron defaults" &> /dev/null
+      service redis-server start &> /dev/null
+      service redis-server reload &> /dev/null
+      update-rc.d -f php5-fpm remove &> /dev/null
+      update-rc.d cron defaults &> /dev/null
       _PHP_V="82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          mrun "update-rc.d php${e}-fpm defaults" &> /dev/null
-          mrun "service php${e}-fpm start" &> /dev/null
+          update-rc.d php${e}-fpm defaults &> /dev/null
+          service php${e}-fpm start &> /dev/null
         fi
       done
-      mrun "update-rc.d nginx defaults" &> /dev/null
-      mrun "service nginx start" &> /dev/null
+      update-rc.d nginx defaults &> /dev/null
+      service nginx start &> /dev/null
     fi
   else
     if [[ "${_THISHOST}" =~ ".host8." ]] \
@@ -7209,11 +7330,7 @@ initd_update() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Restarting Solr 7"
       fi
-      mrun "service solr7 stop" &> /dev/null
-      #kill -9 $(ps aux | grep '[j]ava-8-openjdk' | awk '{print $2}') &> /dev/null
-      #kill -9 $(ps aux | grep '[j]ava-11-openjdk' | awk '{print $2}') &> /dev/null
-      #kill -9 $(ps aux | grep '[j]ava-17-openjdk' | awk '{print $2}') &> /dev/null
-      mrun "service solr7 start" &> /dev/null
+      mrun "service solr7 restart" &> /dev/null
     fi
     kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
@@ -7237,33 +7354,23 @@ initd_update() {
     if [ ! -e "/var/run/aegir_upgrade.pid" ] \
       && [ ! -e "/root/.proxy.cnf" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Restarting Redis, PHP-FPM and Nginx..."
+        msg "INFO: Reloading Redis, PHP-FPM and Nginx..."
       fi
-      mrun "service redis-server stop" &> /dev/null
-      mrun "killall -9 redis-server" &> /dev/null
-      rm -f /var/lib/redis/*
-      mrun "service redis-server start" &> /dev/null
-      sleep 3
-      mrun "service redis-server restart" &> /dev/null
-      mrun "update-rc.d -f php5-fpm remove" &> /dev/null
-      mrun "service nginx stop" &> /dev/null
+      update-rc.d -f php5-fpm remove &> /dev/null
+      service redis-server reload &> /dev/null
       _PHP_V="82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          mrun "update-rc.d php${e}-fpm defaults" &> /dev/null
-          mrun "service php${e}-fpm force-quit" &> /dev/null
+          update-rc.d php${e}-fpm defaults &> /dev/null
+          service php${e}-fpm start &> /dev/null
         fi
       done
-      killall -9 php-fpm &> /dev/null
-      killall -9 php-cgi &> /dev/null
-      killall -9 pure-ftpd &> /dev/null
-      _PHP_V="82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          mrun "service php${e}-fpm start" &> /dev/null
+          service php${e}-fpm reload &> /dev/null
         fi
       done
-      mrun "service nginx start" &> /dev/null
+      service nginx quietupgrade &> /dev/null
       _DB_SERVER_TEST=$(mysql -V 2>&1)
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -7281,7 +7388,7 @@ initd_update() {
         fi
       fi
       myCnf="/etc/mysql/my.cnf"
-      preCnf="${vBs}/dragon/t/my.cnf-pre-${_X_VERSION}-${_NOW}"
+      preCnf="${vBs}/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}"
       if [ -f "${myCnf}" ]; then
         myCnfUpdate=NO
         if [ ! -f "${preCnf}" ]; then
@@ -7378,19 +7485,19 @@ sysctl_update() {
     msg "PROC: sysctl_update"
   fi
   if [ ! -e "/root/.no.sysctl.update.cnf" ] \
-    && [ ! -e "${pthLog}/sysctl.conf-${_X_VERSION}-${_NOW}.log" ]; then
+    && [ ! -e "${pthLog}/sysctl.conf-${_X_SE}-${_X_VERSION}-${_NOW}.log" ]; then
     cp -af /etc/sysctl.conf \
-      ${vBs}/dragon/t/sysctl.conf-pre-${_X_VERSION}-${_NOW} &> /dev/null
+      ${vBs}/dragon/t/sysctl.conf-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     if [ -e "${locCnf}/sysctl.conf" ]; then
       cp -af ${locCnf}/sysctl.conf /etc/sysctl.conf
     fi
     if [ -e "/etc/security/limits.conf" ]; then
-      _IF_NF=$(grep '524288' /etc/security/limits.conf 2>&1)
+      _IF_NF=$(grep '2097152' /etc/security/limits.conf 2>&1)
       if [ -z "${_IF_NF}" ]; then
-        echo "*         hard    nofile      524288"  >> /etc/security/limits.conf
-        echo "*         soft    nofile      524288"  >> /etc/security/limits.conf
-        echo "root      hard    nofile      1048576" >> /etc/security/limits.conf
-        echo "root      soft    nofile      1048576" >> /etc/security/limits.conf
+        echo "*         hard    nofile      2097152"  >> /etc/security/limits.conf
+        echo "*         soft    nofile      2097152"  >> /etc/security/limits.conf
+        echo "root      hard    nofile      2097152" >> /etc/security/limits.conf
+        echo "root      soft    nofile      2097152" >> /etc/security/limits.conf
       fi
       _IF_NF=$(grep '65556' /etc/security/limits.conf 2>&1)
       if [ -z "${_IF_NF}" ]; then
@@ -7408,7 +7515,14 @@ sysctl_update() {
         sysctl -p /etc/sysctl.conf &> /dev/null
       fi
     fi
-    touch ${pthLog}/sysctl.conf-${_X_VERSION}-${_NOW}.log
+    if [ -e "/etc/default/nginx" ]; then
+      _IF_ULNX=$(grep '18000' /etc/default/nginx 2>&1)
+      if [ -z "${_IF_ULNX}" ]; then
+        echo ULIMIT=\"-n 18000\" >> /etc/default/nginx
+        service nginx restart &> /dev/null
+      fi
+    fi
+    touch ${pthLog}/sysctl.conf-${_X_SE}-${_X_VERSION}-${_NOW}.log
   fi
 }
 
@@ -7463,27 +7577,18 @@ apticron_update() {
         wait
       fi
     fi
-    if [[ "${_X_VERSION}" =~ "rel" ]] && [ "${_AEGIR_VERSION}" = "HEAD" ]; then
-      sed -i "s/aptitude full-upgrade/barracuda up-head system/g" \
-        /usr/sbin/apticron
-      wait
-      sed -i "s/apt-get dist-upgrade/barracuda up-head system/g" \
-        /usr/sbin/apticron
-      wait
-      sed -i "s/barracuda up-head.*/barracuda up-head system/g" \
-        /usr/sbin/apticron
-      wait
+    if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
+      barUpv=head
+    elif [ "${_AEGIR_VERSION}" = "DEV" ]; then
+      barUpv=dev
     else
-      sed -i "s/aptitude full-upgrade/barracuda up-head system/g" \
-        /usr/sbin/apticron
-      wait
-      sed -i "s/apt-get dist-upgrade/barracuda up-head system/g" \
-        /usr/sbin/apticron
-      wait
-      sed -i "s/barracuda up-stable.*/barracuda up-head system/g" \
-        /usr/sbin/apticron
-      wait
+      barUpv=stable
     fi
+    sed -i "s/aptitude full-upgrade/barracuda up-${barUpv} system/g" /usr/sbin/apticron
+      wait
+    sed -i "s/apt-get dist-upgrade/barracuda up-${barUpv} system/g" /usr/sbin/apticron
+      wait
+    sed -i "s/barracuda up-dev.*/barracuda up-${barUpv} system/g" /usr/sbin/apticron
   fi
 }
 

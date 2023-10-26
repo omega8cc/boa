@@ -76,9 +76,6 @@ mkdir -p ${drupal_root}/sites/all/{modules,themes,libraries,drush}
 rm -f ${drupal_root}/sites/all/libraries/ownership-fixed*.pid
 touch ${drupal_root}/sites/all/libraries/ownership-fixed-${_TODAY}.pid
 if [[ "${drupal_root}" =~ "/static/" ]] && [ -e "${drupal_root}/core" ]; then
-  rm -f ${drupal_root}/../vendor/bin/drush*
-  rm -f ${drupal_root}/vendor/bin/drush*
-  rm -f ${drupal_root}/../drush/*
   rm -f ${drupal_root}/sites/development.services.yml
 fi
 chown -R ${script_user}:users \

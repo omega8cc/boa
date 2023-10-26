@@ -36,8 +36,8 @@ check_root() {
 }
 check_root
 
-rm -f /root/.pause_tasks_maint.cnf
-rm -f /root/.restrict_this_vm.cnf
+[ -e "/root/.pause_tasks_maint.cnf" ] && rm -f /root/.pause_tasks_maint.cnf
+[ -e "/root/.restrict_this_vm.cnf" ] && rm -f /root/.restrict_this_vm.cnf
 
 if [ -e "/root/.proxy.cnf" ]; then
   exit 0
@@ -111,7 +111,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/stable/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
 }
 find_fast_mirror
 
