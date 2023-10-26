@@ -182,31 +182,36 @@ production settings.
 
 Octopus can install and/or support the platforms listed below:
 
+ @ Drupal 10
+
+ Drupal 10.1.5 -------------- https://drupal.org/project/drupal/releases/10.1.5
+ Drupal 10.0.11 ------------- https://drupal.org/project/drupal/releases/10.0.11
+ Thunder 7.1.2 -------------- https://drupal.org/project/thunder (10.1.5)
+ Varbase 9.0.16 ------------- https://drupal.org/project/varbase (10.1.5)
+
  @ Drupal 9
 
- Drupal 9.5.9 ----------------- https://drupal.org/project/drupal/releases/9.5.9
- OpenLucius 2.0.0 ------------- https://drupal.org/project/openlucius (9.5.9)
- Opigno LMS 3.1.0 ------------- https://drupal.org/project/opigno_lms (9.5.9)
- Social 11.9.3 ---------------- https://drupal.org/project/social (9.5.9)
- Thunder 6.5.5 ---------------- https://drupal.org/project/thunder (9.5.9)
- Varbase 9.0.13 --------------- https://drupal.org/project/varbase (9.5.9)
+ Drupal 9.5.11 -------------- https://drupal.org/project/drupal/releases/9.5.11
+ OpenLucius 2.0.0 ----------- https://drupal.org/project/openlucius (9.5.11)
+ Opigno LMS 3.1.0 ----------- https://drupal.org/project/opigno_lms (9.5.11)
+ Social 11.9.14 ------------- https://drupal.org/project/social (9.5.11)
 
  @ Drupal 7.98.1
 
- Commerce 1.72 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.77 ---------------- https://drupal.org/project/commerce_kickstart
- Drupal 7.98.1 ---------------- https://drupal.org/project/drupal/releases/7.98
- Guardr 2.57 ------------------ https://drupal.org/project/guardr
- OpenAtrium 2.652 ------------- https://drupal.org/project/openatrium
- OpenOutreach 1.69 ------------ https://drupal.org/project/openoutreach
- Opigno LMS 1.59 -------------- https://drupal.org/project/opigno_lms
- Panopoly 1.91 ---------------- https://drupal.org/project/panopoly
- Ubercart 3.13 ---------------- https://drupal.org/project/ubercart
+ Commerce 1.72 -------------- https://drupal.org/project/commerce_kickstart
+ Commerce 2.77 -------------- https://drupal.org/project/commerce_kickstart
+ Drupal 7.98.1 -------------- https://drupal.org/project/drupal/releases/7.98
+ Guardr 2.57 ---------------- https://drupal.org/project/guardr
+ OpenAtrium 2.652 ----------- https://drupal.org/project/openatrium
+ OpenOutreach 1.69 ---------- https://drupal.org/project/openoutreach
+ Opigno LMS 1.59 ------------ https://drupal.org/project/opigno_lms
+ Panopoly 1.92 -------------- https://drupal.org/project/panopoly
+ Ubercart 3.13 -------------- https://drupal.org/project/ubercart
 
  @ Pressflow (D6 LTS included, thanks to myDropWizard) 6.60.1
 
- Pressflow 6.60.1 ------------- https://www.pressflow.org
- Ubercart 2.15 ---------------- https://drupal.org/project/ubercart
+ Pressflow 6.60.1 ----------- https://www.pressflow.org
+ Ubercart 2.15 -------------- https://drupal.org/project/ubercart
 
 * All D7 platforms have been enhanced using Drupal 7.98.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8

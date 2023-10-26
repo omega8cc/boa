@@ -35,17 +35,26 @@
 ### Supported values which can be written in this file, listed in a single line
 ### or one per line:
 ###
+###
+### Drupal 10.1 based
+###
+### D101P D101S D101D --- Drupal 10.1 prod/stage/dev
+### THR ----------- Thunder
+### VBE ----------- Varbase
+###
+###
+### Drupal 10.0 based
+###
+### D100P D100S D100D --- Drupal 10.0 prod/stage/dev
+###
+###
 ### Drupal 9 based
 ###
 ### D9P D9S D9D --- Drupal 9 prod/stage/dev
 ### OLS ----------- OpenLucius
 ### OPG ----------- Opigno LMS
-### THR ----------- Thunder
-### VBE ----------- Varbase
-###
-### Drupal 8 based
-###
 ### SOC ----------- Social
+###
 ###
 ### Drupal 7 based
 ###
@@ -59,6 +68,7 @@
 ### PPY ----------- Panopoly
 ### UC7 ----------- Ubercart
 ###
+###
 ### Drupal 6 based
 ###
 ### D6P D6S D6D --- Pressflow (LTS) prod/stage/dev
@@ -71,7 +81,7 @@
 ### Examples:
 ###
 ### ALL
-### VBE D7P D7S D7D
+### D101P D101S PPY
 ###
 
 

@@ -3357,33 +3357,95 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/${_DRUPAL9D}/sites" ]; then
+    if [ -d "${_QR}/${_DRUPAL9_D}/sites" ]; then
       if [ ! -L "${_QH}/${_DRUPAL9}-dev" ]; then
-        _A="${_QR}/${_DRUPAL9D}/sites"
+        _A="${_QR}/${_DRUPAL9_D}/sites"
         _B="${_QH}/${_DRUPAL9}-dev"
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/${_DRUPAL9S}/sites" ]; then
+    if [ -d "${_QR}/${_DRUPAL9_S}/sites" ]; then
       if [ ! -L "${_QH}/${_DRUPAL9}-stage" ]; then
-        _A="${_QR}/${_DRUPAL9S}/sites"
+        _A="${_QR}/${_DRUPAL9_S}/sites"
         _B="${_QH}/${_DRUPAL9}-stage"
         ln -sfn ${_A} ${_B}
       fi
     fi
     if [ ! -d "${_QR}/${_DRUPAL9}" ]; then
-      if [ -d "${_QR}/${_DRUPAL9P}/sites" ]; then
+      if [ -d "${_QR}/${_DRUPAL9_P}/sites" ]; then
         if [ ! -L "${_QH}/${_DRUPAL9}-prod" ]; then
-          _A="${_QR}/${_DRUPAL9P}/sites"
+          _A="${_QR}/${_DRUPAL9_P}/sites"
           _B="${_QH}/${_DRUPAL9}-prod"
           ln -sfn ${_A} ${_B}
         fi
       fi
-    elif [ ! -d "${_QR}/${_DRUPAL9P}" ]; then
+    elif [ ! -d "${_QR}/${_DRUPAL9_P}" ]; then
       if [ -d "${_QR}/${_DRUPAL9}/sites" ]; then
         if [ ! -L "${_QH}/${_DRUPAL9}-prod" ]; then
           _A="${_QR}/${_DRUPAL9}/sites"
           _B="${_QH}/${_DRUPAL9}-prod"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    fi
+    if [ -d "${_QR}/${_DRUPAL10_0_D}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_0}-dev" ]; then
+        _A="${_QR}/${_DRUPAL10_0_D}/sites"
+        _B="${_QH}/${_DRUPAL10_0}-dev"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ -d "${_QR}/${_DRUPAL10_0_S}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_0}-stage" ]; then
+        _A="${_QR}/${_DRUPAL10_0_S}/sites"
+        _B="${_QH}/${_DRUPAL10_0}-stage"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ ! -d "${_QR}/${_DRUPAL10_0}" ]; then
+      if [ -d "${_QR}/${_DRUPAL10_0_P}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_0}-prod" ]; then
+          _A="${_QR}/${_DRUPAL10_0_P}/sites"
+          _B="${_QH}/${_DRUPAL10_0}-prod"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    elif [ ! -d "${_QR}/${_DRUPAL10_0_P}" ]; then
+      if [ -d "${_QR}/${_DRUPAL10_0}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_0}-prod" ]; then
+          _A="${_QR}/${_DRUPAL10_0}/sites"
+          _B="${_QH}/${_DRUPAL10_0}-prod"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    fi
+    if [ -d "${_QR}/${_DRUPAL10_1_D}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_1}-dev" ]; then
+        _A="${_QR}/${_DRUPAL10_1_D}/sites"
+        _B="${_QH}/${_DRUPAL10_1}-dev"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ -d "${_QR}/${_DRUPAL10_1_S}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_1}-stage" ]; then
+        _A="${_QR}/${_DRUPAL10_1_S}/sites"
+        _B="${_QH}/${_DRUPAL10_1}-stage"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ ! -d "${_QR}/${_DRUPAL10_1}" ]; then
+      if [ -d "${_QR}/${_DRUPAL10_1_P}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_1}-prod" ]; then
+          _A="${_QR}/${_DRUPAL10_1_P}/sites"
+          _B="${_QH}/${_DRUPAL10_1}-prod"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    elif [ ! -d "${_QR}/${_DRUPAL10_1_P}" ]; then
+      if [ -d "${_QR}/${_DRUPAL10_1}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_1}-prod" ]; then
+          _A="${_QR}/${_DRUPAL10_1}/sites"
+          _B="${_QH}/${_DRUPAL10_1}-prod"
           ln -sfn ${_A} ${_B}
         fi
       fi
@@ -3528,10 +3590,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/thunder-${_THUNDER}-${_SMALLCORE95}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_SMALLCORE95}" ]; then
-        _A="${_QR}/thunder-${_THUNDER}-${_SMALLCORE95}/docroot/sites"
-        _B="${_QH}/thunder-${_THUNDER}-${_SMALLCORE95}"
+    if [ -d "${_QR}/thunder-${_THUNDER}-${_SMALLCORE10_1}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_SMALLCORE10_1}" ]; then
+        _A="${_QR}/thunder-${_THUNDER}-${_SMALLCORE10_1}/docroot/sites"
+        _B="${_QH}/thunder-${_THUNDER}-${_SMALLCORE10_1}"
         ln -sfn ${_A} ${_B}
       fi
     fi
@@ -3556,10 +3618,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/varbase-${_VARBASE}-${_SMALLCORE95}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/varbase-${_VARBASE}-${_SMALLCORE95}" ]; then
-        _A="${_QR}/varbase-${_VARBASE}-${_SMALLCORE95}/docroot/sites"
-        _B="${_QH}/varbase-${_VARBASE}-${_SMALLCORE95}"
+    if [ -d "${_QR}/varbase-${_VARBASE}-${_SMALLCORE10_1}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/varbase-${_VARBASE}-${_SMALLCORE10_1}" ]; then
+        _A="${_QR}/varbase-${_VARBASE}-${_SMALLCORE10_1}/docroot/sites"
+        _B="${_QH}/varbase-${_VARBASE}-${_SMALLCORE10_1}"
         ln -sfn ${_A} ${_B}
       fi
     fi
@@ -3861,9 +3923,17 @@ satellite_make() {
   echo "_DRUPAL7S=\"${_DRUPAL7}-stage\""              >> ${writeTo}
   echo "_DRUPAL8=\"${_DRUPAL8}\""                     >> ${writeTo}
   echo "_DRUPAL9=\"${_DRUPAL9}\""                     >> ${writeTo}
-  echo "_DRUPAL9D=\"${_DRUPAL9}-dev\""                >> ${writeTo}
-  echo "_DRUPAL9P=\"${_DRUPAL9}-prod\""               >> ${writeTo}
-  echo "_DRUPAL9S=\"${_DRUPAL9}-stage\""              >> ${writeTo}
+  echo "_DRUPAL9_D=\"${_DRUPAL9}-dev\""                >> ${writeTo}
+  echo "_DRUPAL9_P=\"${_DRUPAL9}-prod\""               >> ${writeTo}
+  echo "_DRUPAL9_S=\"${_DRUPAL9}-stage\""              >> ${writeTo}
+  echo "_DRUPAL10_0=\"${_DRUPAL10_0}\""               >> ${writeTo}
+  echo "_DRUPAL10_0_D=\"${_DRUPAL10_0}-dev\""         >> ${writeTo}
+  echo "_DRUPAL10_0_P=\"${_DRUPAL10_0}-prod\""        >> ${writeTo}
+  echo "_DRUPAL10_0_S=\"${_DRUPAL10_0}-stage\""       >> ${writeTo}
+  echo "_DRUPAL10_1=\"${_DRUPAL10_1}\""               >> ${writeTo}
+  echo "_DRUPAL10_1_D=\"${_DRUPAL10_1}-dev\""         >> ${writeTo}
+  echo "_DRUPAL10_1_D=\"${_DRUPAL10_1}-prod\""        >> ${writeTo}
+  echo "_DRUPAL10_1_S=\"${_DRUPAL10_1}-stage\""       >> ${writeTo}
   echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${writeTo}
   echo "_ERPAL=\"${_ERPAL}\""                         >> ${writeTo}
   echo "_F_TIME=\"${_F_TIME}\""                       >> ${writeTo}
@@ -3916,6 +3986,10 @@ satellite_make() {
   echo "_SMALLCORE94=\"${_SMALLCORE94}\""             >> ${writeTo}
   echo "_SMALLCORE95=\"${_SMALLCORE95}\""             >> ${writeTo}
   echo "_SMALLCORE9=\"${_SMALLCORE9}\""               >> ${writeTo}
+  echo "_SMALLCORE10_0=\"${_SMALLCORE10_0}\""         >> ${writeTo}
+  echo "_SMALLCORE10_1=\"${_SMALLCORE10_1}\""         >> ${writeTo}
+  echo "_SMALLCORE10_0_V=\"${_SMALLCORE10_0_V}\""     >> ${writeTo}
+  echo "_SMALLCORE10_1_V=\"${_SMALLCORE10_1_V}\""     >> ${writeTo}
   echo "_SOCIAL=\"${_SOCIAL}\""                       >> ${writeTo}
   echo "_SPINNER=\"${_SPINNER}\""                     >> ${writeTo}
   echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${writeTo}
