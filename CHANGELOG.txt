@@ -1,4 +1,46 @@
 
+###
+### Stable BOA-5.0.0 - Full Edition
+### Date: Thu 26 Oct 2023 09:55:22 PM CEST in Warsaw
+###
+### Documenting details in progress...
+###
+
+@=> New Features
+
+    * Drupal 10 is supported (needs docs)
+    * OpenSSL 3.x optional/test support with /root/.install.modern.openssl.cnf
+    * Make system reboot much faster, also with 'boa reboot' command
+    * Do not purge cache tables listed in /root/.my.cache.exceptions.cnf
+    * Add support for verbose Drush like 'drush -vvv @site status'
+
+@=> Major Improvements
+
+    * Minimize services downtime on upgrade using soft reload only if possible
+    * Enable ~/static/control/FastTrack.info by default (needs docs)
+    * Site Local Drush is no longer removed on platform Verify (only locked)
+    * Use 'barracuda php-idle disable' to speed up major upgrades
+    * Always install latest Composer on barracuda upgrade
+
+@=> Important Changes
+
+    * BOA requires at least PHP 7.4 or newer as default version
+    * Use _STRONG_PASSWORDS=YES by default
+    * Change redis_perm_ttl from 6h to 24h
+    * Enable /root/.fast.cron.cnf by default (needs docs)
+    * The redis_use_modern is no longer optional
+    * Remove confusing -bin suffix from Drush 10+ (needs docs)
+    * Set _PURGE_BACKUPS default to 14 or 7 on hosted BOA
+    * Use _USE_MYSQLTUNER=NO by default
+    * Do not inlcude advagg/cdn in o_contrib_eight
+    * Drush Launcher is not supported anymore so removed
+
+@=> Important Fixes
+
+    * Make sure that expired password will not hang backend task
+    * Do not enable redis on D7/D6 automatically, it works anyway
+    * Fast DNS Cache Server (pdnsd) install is no longer optional since 2014 (!)
+
 
 ###
 ### Cutting Edge BOA-5.0.0-dev - Initial Edition
@@ -7,6 +49,39 @@
 ###
 ### Documenting details in progress...
 ###
+
+@=> New Features
+
+    * New multi-step BOA install procedure -- see docs/INSTALL.txt
+    * Devuan Chimaera and Beowulf support (systemd-free Debian alternative)
+    * Debian Bullseye and Buster support
+    * Automatic BOA System Major Upgrade Tool -- see docs/UPGRADE.txt
+    * PHP 8.2 support
+    * Make PHP-CLI for Composer and Drush configurable on the fly (needs docs)
+    * Make Composer running with PHP defined in ~/static/control/cli.info
+    * Add 'barracuda php-idle disable/enable' (needs docs)
+
+@=> Major Improvements
+
+    * Barracuda first upgrade after boa install no longer requires reboot
+    * Use all available CPU cores for much faster PHP, Nginx, OpenSSL etc builds
+
+@=> Important Changes
+
+    * Rewrite the _PHP_MULTI_INSTALL cleanup to make it optional (needs docs)
+    * Use php-max to install ALL nine (9) PHP versions (needs docs)
+    * The php-all should no longer include 7.3 and older versions (needs docs)
+    * BOA requires the classic network interface naming convention (needs docs)
+    * Ubuntu support is deprecated
+    * Stop running any Drush operations on Drupal 8+ in daily.sh
+    * Disable all nightly codebase cleanup procedures
+    * Remove AdvAgg and CDN from D9+ o_contrib
+    * Switch to Redis Server 7.x by default
+
+@=> Important Fixes
+
+    * Discover the system IPv4 once and store in a file
+    * Maintain csf.allow/ignore backup on serial update in /var/backups/csf/
 
 
 ###
@@ -17,6 +92,39 @@
 ### Documenting details in progress...
 ###
 
+@=> New Features
+
+    * New multi-step BOA install procedure -- see docs/INSTALL.txt
+    * Devuan Chimaera and Beowulf support (systemd-free Debian alternative)
+    * Debian Bullseye and Buster support
+    * Automatic BOA System Major Upgrade Tool -- see docs/UPGRADE.txt
+    * PHP 8.2 support
+    * Make PHP-CLI for Composer and Drush configurable on the fly (needs docs)
+    * Make Composer running with PHP defined in ~/static/control/cli.info
+    * Add 'barracuda php-idle disable/enable' (needs docs)
+
+@=> Major Improvements
+
+    * Barracuda first upgrade after boa install no longer requires reboot
+    * Use all available CPU cores for much faster PHP, Nginx, OpenSSL etc builds
+
+@=> Important Changes
+
+    * Rewrite the _PHP_MULTI_INSTALL cleanup to make it optional (needs docs)
+    * Use php-max to install ALL nine (9) PHP versions (needs docs)
+    * The php-all should no longer include 7.3 and older versions (needs docs)
+    * BOA requires the classic network interface naming convention (needs docs)
+    * Ubuntu support is deprecated
+    * Stop running any Drush operations on Drupal 8+ in daily.sh
+    * Disable all nightly codebase cleanup procedures
+    * Remove AdvAgg and CDN from D9+ o_contrib
+    * Switch to Redis Server 7.x by default
+
+@=> Important Fixes
+
+    * Discover the system IPv4 once and store in a file
+    * Maintain csf.allow/ignore backup on serial update in /var/backups/csf/
+
 
 ###
 ### Stable BOA-4.1.4-rel - Full Edition
@@ -24,6 +132,30 @@
 ###
 ### Documenting details in progress...
 ###
+
+@=> New Features
+
+    *
+    *
+    *
+
+@=> Major Improvements
+
+    *
+    *
+    *
+
+@=> Important Changes
+
+    *
+    *
+    *
+
+@=> Important Fixes
+
+    *
+    *
+    *
 
 
 ### Stable BOA-4.1.3 Release - Full Edition
