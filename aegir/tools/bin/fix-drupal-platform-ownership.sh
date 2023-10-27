@@ -89,6 +89,13 @@ if [[ "${drupal_root}" =~ "/static/" ]] && [ -e "${drupal_root}/core" ]; then
   chown -R ${script_user}:users ${drupal_root}/../vendor/*
   chown -R ${script_user}:users ${drupal_root}/../drush/*
   chown ${script_user}:users ${drupal_root}/../vendor
+  if [[ "${drupal_root}" =~ "/static/" ]] \
+    && [ -e "${drupal_root}/core" ] \
+    && [ -e "${drupal_root}/vendor" ]; then
+    chown -R ${script_user}:users ${drupal_root}/vendor/*
+    chown -R ${script_user}:users ${drupal_root}/drush/*
+    chown ${script_user}:users ${drupal_root}/vendor
+  fi
 fi
 chown ${script_user}:users \
   ${drupal_root}/sites/all/drush/drushrc.php \
