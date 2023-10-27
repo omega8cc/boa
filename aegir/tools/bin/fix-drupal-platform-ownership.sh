@@ -77,26 +77,33 @@ cd ${drupal_root}
 printf "Setting ownership of "${drupal_root}" to: user => "${script_user}" group => "users"\n"
 chown ${script_user}:users ${drupal_root}
 mkdir -p ${drupal_root}/sites/all/{modules,themes,libraries,drush}
+
 ### ctrl pid
 rm -f ${drupal_root}/sites/all/libraries/ownership-fixed*.pid
 touch ${drupal_root}/sites/all/libraries/ownership-fixed-${_TODAY}.pid
+
 if [[ "${drupal_root}" =~ "/static/" ]] && [ -e "${drupal_root}/core" ]; then
   rm -f ${drupal_root}/sites/development.services.yml
 fi
-chown -R ${script_user}:users \
-  ${drupal_root}/sites/all/{modules,themes,libraries,includes,misc,profiles,core,vendor,drush}/*
+
 if [[ "${drupal_root}" =~ "/static/" ]] && [ -e "${drupal_root}/core" ]; then
-  chown -R ${script_user}:users ${drupal_root}/../vendor/*
-  chown -R ${script_user}:users ${drupal_root}/../drush/*
-  chown ${script_user}:users ${drupal_root}/../vendor
-  if [[ "${drupal_root}" =~ "/static/" ]] \
-    && [ -e "${drupal_root}/core" ] \
-    && [ -e "${drupal_root}/vendor" ]; then
-    chown -R ${script_user}:users ${drupal_root}/vendor/*
-    chown -R ${script_user}:users ${drupal_root}/drush/*
-    chown ${script_user}:users ${drupal_root}/vendor
+  if [ -e "${drupal_root}/vendor" ]; then
+    chown -R ${script_user}:users ${drupal_root}/vendor
+    chmod 0400 ${drupal_root}/vendor/drush
+    chmod 0400 ${drupal_root}/vendor/symfony/console/Input
+  elif [ -e "${drupal_root}/../vendor" ]; then
+    chown -R ${script_user}:users ${drupal_root}/../vendor
+    chmod 0400 ${drupal_root}/../vendor/drush
+    chmod 0400 ${drupal_root}/../vendor/symfony/console/Input
   fi
 fi
+
+chown -R ${script_user}:users \
+  ${drupal_root}/sites/all/{modules,themes,libraries,drush}
+
+chown -R ${script_user}:users \
+  ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core}
+
 chown ${script_user}:users \
   ${drupal_root}/sites/all/drush/drushrc.php \
   ${drupal_root}/sites \
