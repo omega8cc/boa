@@ -64,7 +64,9 @@ _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
 
 if [ -e "${drupal_root}/sites/all/libraries/ownership-fixed-${_TODAY}.pid" ]; then
-  exit 0
+  if [ ! -e "${drupal_root}/core/themes/classy" ]; then
+    exit 0
+  fi
 fi
 
 cd ${drupal_root}
