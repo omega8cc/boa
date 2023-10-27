@@ -11,7 +11,7 @@ export HOME=${HOME}
 dvhd="DEV"
 dvbranch="5.x-dev"
 dvmaster="5.x-dev"
-dvrn="BOA-5.0.0-dev"
+dvrn="BOA-5.0.0-head"
 
 hd="HEAD"
 branch="4.x-stable"
@@ -516,7 +516,7 @@ satellite_downgrade_protection() {
         echo
         echo "ERROR: Your system has been already upgraded to BOA-5.x"
         echo "You can not downgrade back to previous stable version"
-        echo "Please use 'octopus up-dev ${octUsr} force' to upgrade"
+        echo "Please use 'octopus up-head ${octUsr} force' to upgrade"
         echo "Bye"
         echo
         clean_pid_exit

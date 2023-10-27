@@ -748,7 +748,7 @@ check_boa_version() {
     else
       msg "ERROR: This barracuda installer can be used only when the system"
       msg "has been already upgraded to stable BOA-4.x or dev BOA-5.x"
-      msg "Please run 'barracuda up-dev' full upgrade first!"
+      msg "Please run 'barracuda up-head' full upgrade first!"
       msg "Bye"
       clean_pid_exit
     fi
@@ -760,7 +760,7 @@ check_boa_version() {
       else
         msg "ERROR: Your system has been already upgraded to modern BOA"
         msg "You can not downgrade back to legacy or previous stable version"
-        msg "Please use 'barracuda up-dev' to upgrade this system"
+        msg "Please use 'barracuda up-head' to upgrade this system"
         msg "Bye"
         clean_pid_exit
       fi

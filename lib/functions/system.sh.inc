@@ -5057,7 +5057,7 @@ if_major_os_upgrade() {
     if [ ! -e "/usr/local/lib/icu/73.1" ] \
       && [ "${_LOC_OSR}" != "jessie" ]; then
       echo
-      msg "OOPS: Please run normal 'barracuda up-dev' upgrade"
+      msg "OOPS: Please run normal 'barracuda up-head' upgrade"
       msg "OOPS: before trying to run major OS upgrade"
       echo
       mrun "sleep 3"
@@ -5619,7 +5619,7 @@ if_major_os_upgrade() {
     echo " "
     msg "RLLY: No errors? ${_MSG_LOC} migration worked :)"
     msg "STEP: Please reboot this server now"
-    msg "STEP: Once the system is up, run 'barracuda up-dev' command again"
+    msg "STEP: Once the system is up, run 'barracuda up-head' command again"
     echo " "
     msg "Bye"
     barracuda_cnf_cleanup
@@ -7588,7 +7588,7 @@ apticron_update() {
       wait
     sed -i "s/apt-get dist-upgrade/barracuda up-${barUpv} system/g" /usr/sbin/apticron
       wait
-    sed -i "s/barracuda up-dev.*/barracuda up-${barUpv} system/g" /usr/sbin/apticron
+    sed -i "s/barracuda up-head.*/barracuda up-${barUpv} system/g" /usr/sbin/apticron
   fi
 }
 

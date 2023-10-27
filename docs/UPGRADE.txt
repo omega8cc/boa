@@ -24,7 +24,7 @@
     ###
     ###  Start with manual barracuda upgrade.
     ###
-    ###    $ barracuda up-dev system
+    ###    $ barracuda up-head system
     ###
     ###  !!! CREATE A FRESH VM BACKUP SNAPSHOT !!!
     ###  !!! TEST THE FRESHLY CREATED BACKUP.. !!!
@@ -43,7 +43,7 @@
     ###    $ service clean-boa-env start
     ###
     ###  Once enabled, the system will launch
-    ###  a series of barracuda up-dev and reboots
+    ###  a series of barracuda up-head and reboots
     ###  until it migrates any supported Debian
     ###  or Devuan version to Devuan Chimaera.
     ###
@@ -60,7 +60,7 @@
 
  => This tool automates OS upgrades you can still run manually if you prefer,
     by adding respective variable to /root/.barracuda.cnf and running standard
-    command 'barracuda up-dev system' for the manual steps based upgrade.
+    command 'barracuda up-head system' for the manual steps based upgrade.
 
     @> Devuan to Devuan major OS upgrades
       * Devuan Beowulf     => upgrade to Chimaera with _BEOWULF_TO_CHIMAERA=YES
@@ -104,9 +104,9 @@
     Once new BOA Latest is available, you must run *full* upgrades with commands:
 
     $ cd;rm -f BOA*; wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
-    $ barracuda up-dev
-    $ barracuda up-dev system              (recommended on major upgrade)
-    $ octopus up-dev all force
+    $ barracuda up-head
+    $ barracuda up-head system              (recommended on major upgrade)
+    $ octopus up-head all force
     $ bash /var/xdrago/manage_ltd_users.sh (recommended on major upgrade)
     $ bash /var/xdrago/daily.sh            (recommended on major upgrade)
 
@@ -118,8 +118,8 @@
 
     $ screen
     $ cd;rm -f BOA*; wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
-    $ barracuda up-dev log
-    $ octopus up-dev all force log
+    $ barracuda up-head log
+    $ octopus up-head all force log
 
     Note that the silent, non-interactive mode will automatically say Y/Yes
     to all prompts and is thus useful to run auto-upgrades scheduled in cron.
@@ -146,15 +146,15 @@
 
  => To upgrade system and Aegir Master Instance to Latest use:
 
-    $ barracuda up-dev
+    $ barracuda up-head
 
  => To upgrade selected Aegir Satellite Instance to Latest use:
 
-    $ octopus up-dev o1 force
+    $ octopus up-head o1 force
 
  => To upgrade *all* Aegir Satellite Instances to Latest use:
 
-    $ octopus up-dev all force
+    $ octopus up-head all force
 
 
 ###
@@ -169,8 +169,8 @@
 
     Examples:
 
-    $ barracuda up-dev log
-    $ octopus up-dev all force log
+    $ barracuda up-head log
+    $ octopus up-head all force log
 
     Detailed backend log on barracuda upgrade is always stored in /var/backups/
 
@@ -182,7 +182,7 @@
 
     Example:
 
-    $ barracuda up-dev system
+    $ barracuda up-head system
 
     Note that while both "log" and "system" modes are "silent", because they
     don't display anything in your console, they will send the log via email
@@ -202,10 +202,10 @@
 
     Examples:
 
-    $ octopus up-dev o1 aegir
-    $ octopus up-dev o1 platforms log
-    $ octopus up-dev all aegir log
-    $ octopus up-dev all platforms
+    $ octopus up-head o1 aegir
+    $ octopus up-head o1 platforms log
+    $ octopus up-head all aegir log
+    $ octopus up-head all platforms
 
  => To keep Legacy version instead of Latest, use the same commands, but
     replace "up-dev" with the legacy version you want to still use:

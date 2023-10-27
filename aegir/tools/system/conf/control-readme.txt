@@ -265,7 +265,7 @@ so both can be used as default versions in the Aegir PHP configuration files:
 ### in Aegir backend, used for all tasks on hosted sites, but it will not
 ### affect PHP-CLI version used by Composer on command line, because Composer
 ### is installed globally and not per Octopus account, so it will use system
-### default PHP version, which is, since BOA-5.0.0-dev, PHP 8.1 and can be
+### default PHP version, which is, since BOA-5.0.0-head, PHP 8.1 and can be
 ### changed only by changing system default _PHP_CLI_VERSION in the file
 ### /root/.barracuda.cnf and running barracuda upgrade.
 ###
@@ -312,7 +312,7 @@ so both can be used as default versions in the Aegir PHP configuration files:
 ###
 ### Please note that on a self-hosted BOA you still need to add your valid
 ### license key as _NEWRELIC_KEY in the /root/.barracuda.cnf file and run
-### system upgrade with at least 'barracuda up-dev' first. This step is
+### system upgrade with at least 'barracuda up-head' first. This step is
 ### not required on Omega8.cc hosted service, where New Relic agent is already
 ### pre-installed for you.
 ###

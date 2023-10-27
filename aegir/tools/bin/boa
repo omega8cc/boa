@@ -11,7 +11,7 @@ export HOME=${HOME}
 dvhd="DEV"
 dvbranch="5.x-dev"
 dvmaster="5.x-dev"
-dvrn="BOA-5.0.0-dev"
+dvrn="BOA-5.0.0-head"
 
 hd="HEAD"
 branch="4.x-stable"

@@ -36,7 +36,7 @@
 ###
 ###  Start with manual barracuda upgrade.
 ###
-###    $ barracuda up-dev system
+###    $ barracuda up-head system
 ###
 ###  !!! CREATE A FRESH VM BACKUP SNAPSHOT !!!
 ###  !!! TEST THE FRESHLY CREATED BACKUP.. !!!
@@ -55,7 +55,7 @@
 ###    $ service clean-boa-env start
 ###
 ###  Once enabled, the system will launch
-###  a series of barracuda up-dev and reboots
+###  a series of barracuda up-head and reboots
 ###  until it migrates any supported Debian
 ###  version to Devuan Beowulf -- excluding
 ###  however Debian Bullseye which can be
@@ -234,10 +234,10 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
   barracuda php-idle disable >> ${logAbf}
   wait
   msg "The barracuda php-idle disable completed" >> ${logAbf}
-  msg "Launching standard barracuda up-dev system first" >> ${logAbf}
-  barracuda up-dev system >> ${logAbf}
+  msg "Launching standard barracuda up-head system first" >> ${logAbf}
+  barracuda up-head system >> ${logAbf}
   wait
-  msg "The standard barracuda up-dev system completed" >> ${logAbf}
+  msg "The standard barracuda up-head system completed" >> ${logAbf}
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
     _THIS_OS=$(lsb_release -si 2>&1)
     _THIS_SYS=$(lsb_release -sc 2>&1)
@@ -254,7 +254,7 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
       msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf" >> ${logAbf}
     fi
     msg "The first stage of major OS upgrade will start now" >> ${logAbf}
-    barracuda up-dev system >> ${logAbf}
+    barracuda up-head system >> ${logAbf}
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       msg "The first stage of major OS upgrade completed" >> ${logAbf}
@@ -273,11 +273,11 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
   echo " " >> ${logAbf}
-  msg "Launching post-reboot barracuda up-dev system" >> ${logAbf}
+  msg "Launching post-reboot barracuda up-head system" >> ${logAbf}
   msg "to complete the first stage of major OS upgrade" >> ${logAbf}
-  barracuda up-dev system >> ${logAbf}
+  barracuda up-head system >> ${logAbf}
   wait
-  msg "The post-reboot barracuda up-dev system completed" >> ${logAbf}
+  msg "The post-reboot barracuda up-head system completed" >> ${logAbf}
   echo " " >> ${logAbf}
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
     msg "The single stage major OS upgrade completed" >> ${logAbf}
@@ -295,15 +295,15 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
   echo " " >> ${logAbf}
-  msg "Launching the final post-second-reboot barracuda up-dev system" >> ${logAbf}
-  barracuda up-dev system >> ${logAbf}
+  msg "Launching the final post-second-reboot barracuda up-head system" >> ${logAbf}
+  barracuda up-head system >> ${logAbf}
   wait
   [ -e "/root/.run-to-beowulf.cnf" ] && rm -f /root/.run-to-beowulf.cnf
   [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] rm -f /root/.run-auto-major-os-reboot-one.cnf
   [ -e "/root/.run-auto-major-os-reboot-two.cnf" ] rm -f /root/.run-auto-major-os-reboot-two.cnf
   touch /root/.auto-upgraded-to-beowulf.cnf
   sed -i "s/^_AUTO_BEOWULF.*//g" /root/.barracuda.cnf
-  msg "The final post-reboot barracuda up-dev system completed" >> ${logAbf}
+  msg "The final post-reboot barracuda up-head system completed" >> ${logAbf}
   msg "That's all folks!" >> ${logAbf}
   msg "Bye!" >> ${logAbf}
   echo " " >> ${logAbf}
