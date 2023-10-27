@@ -99,6 +99,16 @@ if [[ "${drupal_root}" =~ "/static/" ]] && [ -e "${drupal_root}/core" ]; then
     chmod 0664 {} \;
 fi
 
+if [[ "${drupal_root}" =~ "/static/" ]] && [ -e "${drupal_root}/core" ]; then
+  if [ -e "${drupal_root}/vendor" ]; then
+    chmod 0400 ${drupal_root}/vendor/drush
+    chmod 0400 ${drupal_root}/vendor/symfony/console/Input
+  elif [ -e "${drupal_root}/../vendor" ]; then
+    chmod 0400 ${drupal_root}/../vendor/drush
+    chmod 0400 ${drupal_root}/../vendor/symfony/console/Input
+  fi
+fi
+
 ### known exceptions
 chmod -R 775 ${drupal_root}/sites/all/libraries/tcpdf/cache &> /dev/null
 chmod 0644 ${drupal_root}/.htaccess

@@ -89,12 +89,8 @@ fi
 if [[ "${drupal_root}" =~ "/static/" ]] && [ -e "${drupal_root}/core" ]; then
   if [ -e "${drupal_root}/vendor" ]; then
     chown -R ${script_user}:users ${drupal_root}/vendor
-    chmod 0400 ${drupal_root}/vendor/drush
-    chmod 0400 ${drupal_root}/vendor/symfony/console/Input
   elif [ -e "${drupal_root}/../vendor" ]; then
     chown -R ${script_user}:users ${drupal_root}/../vendor
-    chmod 0400 ${drupal_root}/../vendor/drush
-    chmod 0400 ${drupal_root}/../vendor/symfony/console/Input
   fi
 fi
 
