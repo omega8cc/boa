@@ -2536,13 +2536,13 @@ satellite_download_for_local_build() {
     mv -f ${mL}/drupal-${_SMALLCORE7} ${mL}/drupal
     ### Aegir Core
     if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "STABLE" ]; then
-      ${gCb} 4.x-stable ${gitHub}/hostmaster.git &> /dev/null
-      ${gCb} 4.x-stable ${gitHub}/hosting.git    &> /dev/null
-      ${gCb} 4.x-stable ${gitHub}/eldir.git      &> /dev/null
+      ${gCb} 5.x-head ${gitHub}/hostmaster.git &> /dev/null
+      ${gCb} 5.x-head ${gitHub}/hosting.git    &> /dev/null
+      ${gCb} 5.x-head ${gitHub}/eldir.git      &> /dev/null
     elif [ "${_AEGIR_VERSION}" = "DEV" ]; then
-      ${gCb} 5.x-head ${gitHub}/hostmaster.git    &> /dev/null
-      ${gCb} 5.x-head ${gitHub}/hosting.git       &> /dev/null
-      ${gCb} 5.x-head ${gitHub}/eldir.git         &> /dev/null
+      ${gCb} 5.x-dev ${gitHub}/hostmaster.git    &> /dev/null
+      ${gCb} 5.x-dev ${gitHub}/hosting.git       &> /dev/null
+      ${gCb} 5.x-dev ${gitHub}/eldir.git         &> /dev/null
     else
       get_dev_ext "hostmaster.tar.gz"
       get_dev_ext "hosting.tar.gz"
@@ -2550,26 +2550,26 @@ satellite_download_for_local_build() {
     fi
     ### Aegir Golden + BOA Settings
     if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "STABLE" ]; then
-      ${gCb} 4.x-stable ${gitHub}/aegir_objects.git               &> /dev/null
-      ${gCb} 4.x-stable ${gitHub}/hosting_civicrm.git             &> /dev/null
-      ${gCb} 4.x-stable ${gitHub}/hosting_custom_settings.git     &> /dev/null
-      ${gCb} 4.x-stable ${gitHub}/hosting_deploy.git              &> /dev/null
-      ${gCb} 4.x-stable ${gitHub}/hosting_git.git                 &> /dev/null
-      ${gCb} 4.x-stable ${gitHub}/hosting_le.git                  &> /dev/null
-      ${gCb} 4.x-stable ${gitHub}/hosting_remote_import.git       &> /dev/null
-      ${gCb} 4.x-stable ${gitHub}/hosting_site_backup_manager.git &> /dev/null
-      ${gCb} 4.x-stable ${gitHub}/hosting_tasks_extra.git         &> /dev/null
+      ${gCb} 5.x-head ${gitHub}/aegir_objects.git               &> /dev/null
+      ${gCb} 5.x-head ${gitHub}/hosting_civicrm.git             &> /dev/null
+      ${gCb} 5.x-head ${gitHub}/hosting_custom_settings.git     &> /dev/null
+      ${gCb} 5.x-head ${gitHub}/hosting_deploy.git              &> /dev/null
+      ${gCb} 5.x-head ${gitHub}/hosting_git.git                 &> /dev/null
+      ${gCb} 5.x-head ${gitHub}/hosting_le.git                  &> /dev/null
+      ${gCb} 5.x-head ${gitHub}/hosting_remote_import.git       &> /dev/null
+      ${gCb} 5.x-head ${gitHub}/hosting_site_backup_manager.git &> /dev/null
+      ${gCb} 5.x-head ${gitHub}/hosting_tasks_extra.git         &> /dev/null
       rm -rf */.git
     elif [ "${_AEGIR_VERSION}" = "DEV" ]; then
-      ${gCb} 5.x-head ${gitHub}/aegir_objects.git                  &> /dev/null
-      ${gCb} 5.x-head ${gitHub}/hosting_civicrm.git                &> /dev/null
-      ${gCb} 5.x-head ${gitHub}/hosting_custom_settings.git        &> /dev/null
-      ${gCb} 5.x-head ${gitHub}/hosting_deploy.git                 &> /dev/null
-      ${gCb} 5.x-head ${gitHub}/hosting_git.git                    &> /dev/null
-      ${gCb} 5.x-head ${gitHub}/hosting_le.git                     &> /dev/null
-      ${gCb} 5.x-head ${gitHub}/hosting_remote_import.git          &> /dev/null
-      ${gCb} 5.x-head ${gitHub}/hosting_site_backup_manager.git    &> /dev/null
-      ${gCb} 5.x-head ${gitHub}/hosting_tasks_extra.git            &> /dev/null
+      ${gCb} 5.x-dev ${gitHub}/aegir_objects.git                  &> /dev/null
+      ${gCb} 5.x-dev ${gitHub}/hosting_civicrm.git                &> /dev/null
+      ${gCb} 5.x-dev ${gitHub}/hosting_custom_settings.git        &> /dev/null
+      ${gCb} 5.x-dev ${gitHub}/hosting_deploy.git                 &> /dev/null
+      ${gCb} 5.x-dev ${gitHub}/hosting_git.git                    &> /dev/null
+      ${gCb} 5.x-dev ${gitHub}/hosting_le.git                     &> /dev/null
+      ${gCb} 5.x-dev ${gitHub}/hosting_remote_import.git          &> /dev/null
+      ${gCb} 5.x-dev ${gitHub}/hosting_site_backup_manager.git    &> /dev/null
+      ${gCb} 5.x-dev ${gitHub}/hosting_tasks_extra.git            &> /dev/null
       rm -rf */.git
     else
       get_dev_ext "aegir_objects.tar.gz"
@@ -3891,7 +3891,7 @@ satellite_make() {
     writeTo="${vBs}/${filIncO}"
   fi
 
-  _X_SE="500devT02"
+  _X_SE="500headT01"
   export _X_SE="${_X_SE}"
   export _X_VERSION="${_X_VERSION}"
 

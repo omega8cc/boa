@@ -45,7 +45,7 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
 fi
 
 _OPENSSL_MODERN_VRN=3.1.3
-_X_SE="500devT02"
+_X_SE="500headT01"
 _WEBG=www-data
 _OSR=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
@@ -149,11 +149,11 @@ extract_archive() {
 
 get_dev_ext() {
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "${urlDev}/DEV/$1" -o "$1"
+    curl ${crlGet} "${urlDev}/HEAD/$1" -o "$1"
     if [ -e "$1" ]; then
       extract_archive "$1"
     else
-      echo "OOPS: $1 failed download from ${urlDev}/DEV/$1"
+      echo "OOPS: $1 failed download from ${urlDev}/HEAD/$1"
     fi
   fi
 }

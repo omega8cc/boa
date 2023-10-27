@@ -9,15 +9,15 @@ export SHELL=${SHELL}
 export HOME=${HOME}
 
 dvhd="DEV"
-dvbranch="5.x-head"
-dvmaster="5.x-head"
-dvrn="BOA-5.0.0-head"
+dvbranch="5.x-dev"
+dvmaster="5.x-dev"
+dvrn="BOA-5.0.0-dev"
 
 hd="HEAD"
-branch="4.x-stable"
-master="4.x-stable"
-stbl="BOA-4.2.0-stable"
-cluster="BOA-4.2.0-stable"
+branch="5.x-head"
+master="5.x-head"
+stbl="BOA-5.0.0-head"
+cluster="BOA-5.0.0-head"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
@@ -282,11 +282,11 @@ extract_archive() {
 
 get_dev_ext() {
   if [ ! -z "$1" ]; then
-    curl ${crlGet} "${urlDev}/DEV/$1" -o "$1"
+    curl ${crlGet} "${urlDev}/HEAD/$1" -o "$1"
     if [ -e "$1" ]; then
       extract_archive "$1"
     else
-      echo "OOPS: $1 failed download from ${urlDev}/DEV/$1"
+      echo "OOPS: $1 failed download from ${urlDev}/HEAD/$1"
     fi
   fi
 }
