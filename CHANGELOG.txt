@@ -28,7 +28,7 @@
     * Use _STRONG_PASSWORDS=YES by default
     * Change redis_perm_ttl from 6h to 24h
     * Enable /root/.fast.cron.cnf by default (needs docs)
-    * The redis_use_modern is no longer optional
+    * The redis_use_modern is no longer optional in the INI files
     * Remove confusing -bin suffix from Drush 10+ (needs docs)
     * Set _PURGE_BACKUPS default to 14 or 7 on hosted BOA
     * Use _USE_MYSQLTUNER=NO by default
