@@ -14,10 +14,10 @@ dvmaster="5.x-dev"
 dvrn="BOA-5.0.0-dev"
 
 hd="HEAD"
-branch="4.x-stable"
-master="4.x-stable"
-stbl="BOA-4.2.0-stable"
-cluster="BOA-4.2.0-stable"
+branch="5.x-head"
+master="5.x-head"
+stbl="BOA-5.0.0-head"
+cluster="BOA-5.0.0-head"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
@@ -511,11 +511,11 @@ satellite_downgrade_protection() {
     if [ -e "${User}/log/octopus_log.txt" ]; then
       _SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
       _BOA_SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-      if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
-        || [[ "${_BOA_SERIES_TEST}" =~ "BOA-5." ]]; then
+      if [[ "${_SERIES_TEST}" =~ "BOA-5.0.0-dev" ]] \
+        || [[ "${_BOA_SERIES_TEST}" =~ "BOA-5.0.0-dev" ]]; then
         echo
-        echo "ERROR: Your system has been already upgraded to BOA-5.x"
-        echo "You can not downgrade back to previous stable version"
+        echo "ERROR: Your system has been already upgraded to BOA-5.0.0-dev"
+        echo "You can not downgrade back to previous stable/head version"
         echo "Please use 'octopus up-dev ${octUsr} force' to upgrade"
         echo "Bye"
         echo
@@ -526,7 +526,9 @@ satellite_downgrade_protection() {
 }
 
 satellite_check_supported_php_cli() {
-  if [ "${cmmand}" = "up-dev" ]; then
+  if [ "${cmmand}" = "up-dev" ] \
+    || [ "${cmmand}" = "up-head" ] \
+    || [ "${cmmand}" = "up-stable" ]; then
     fmodey=
     _SERIES_TEST=
     _PHP_FPM_LEGACY_FREE=
