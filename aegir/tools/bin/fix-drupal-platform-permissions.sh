@@ -47,7 +47,12 @@ _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
 
 if [ -e "${drupal_root}/sites/all/libraries/permissions-fixed-${_TODAY}.pid" ]; then
-  exit 0
+  if [ -e "${drupal_root}/core/themes/olivero" ] \
+    || [ ! -e "${drupal_root}/core/themes/classy" ]; then
+    _drupal_eight_nine_ten=TRUE
+  else
+    exit 0
+  fi
 fi
 
 cd ${drupal_root}
