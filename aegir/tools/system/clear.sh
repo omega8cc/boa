@@ -100,7 +100,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/head/boa/aegir"
 }
 
 if [ ! -e "/var/run/boa_run.pid" ]; then
@@ -129,7 +129,7 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
     --max-redirs 5 \
     --retry 5 \
     --retry-delay 5 \
-    -A iCab "http://${_USE_MIR}/versions/dev/boa/BOA.sh.txt" \
+    -A iCab "http://${_USE_MIR}/versions/head/boa/BOA.sh.txt" \
     -o /var/backups/BOA.sh.txt.hourly
   wait
   if [ -e "/var/backups/BOA.sh.txt.hourly" ]; then
@@ -151,7 +151,7 @@ if [[ "${checkVn}" =~ "===" ]] || [ -z "${checkVn}" ]; then
   fi
 fi
 crlHead="-I -k -s --retry 5 --retry-delay 5"
-urlBpth="http://${_USE_MIR}/versions/dev/boa/aegir/tools/bin"
+urlBpth="http://${_USE_MIR}/versions/head/boa/aegir/tools/bin"
 curl ${crlHead} -A "${checkVn}" "${urlBpth}/thinkdifferent" &> /dev/null
 wait
 
