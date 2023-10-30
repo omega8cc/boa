@@ -2833,14 +2833,14 @@ save_verify_platforms() {
   if [ ! -d "${pthDst}/${_DRUPAL10_1}" ]; then
     if [ -d "${pthDst}/${_DRUPAL10_1_P}" ]; then
       if [ ! -e "${pthDst}/${_DRUPAL10_1_P}/$drhSrc" ]; then
-        ${_PRUSHCMD} php-script make_platform "${_F_DRUPAL10_1_P}" standard \
+        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_1_P}" standard \
           ${pthDst}/${_DRUPAL10_1_P} &> /dev/null
       fi
     fi
   elif [ ! -d "${pthDst}/${_DRUPAL10_1_P}" ]; then
     if [ -d "${pthDst}/${_DRUPAL10_1}" ]; then
       if [ ! -e "${pthDst}/${_DRUPAL10_1}/$drhSrc" ]; then
-        ${_PRUSHCMD} php-script make_platform "${_F_DRUPAL10_1_P}" standard \
+        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_1_P}" standard \
           ${pthDst}/${_DRUPAL10_1} &> /dev/null
       fi
     fi
