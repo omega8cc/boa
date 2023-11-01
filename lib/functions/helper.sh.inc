@@ -806,7 +806,7 @@ aegir_bin_extra_check_fix() {
     msg "PROC: aegir_bin_extra_check_fix"
   fi
   SDIR="${bldPth}/aegir/tools/bin"
-  SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership)
+  SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
   if [ ! -x "/usr/local/bin/fix-drupal-site-permissions.sh" ] \
     || [ ! -e "/var/xdrago/log/fix-drupal-site-permissions-${_X_SE}-${_X_VERSION}.log" ]; then
     if [ -e "${SDIR}/fix-drupal-site-permissions.sh" ]; then
