@@ -63,6 +63,7 @@ fi
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
 
+### Fix ownership only once daily, unless it's Drupal 8 or newer
 if [ -e "${drupal_root}/sites/all/libraries/ownership-fixed-${_TODAY}.pid" ]; then
   if [ -e "${drupal_root}/core/themes/olivero" ] \
     || [ ! -e "${drupal_root}/core/themes/classy" ]; then
@@ -76,22 +77,23 @@ cd ${drupal_root}
 
 printf "Setting ownership of "${drupal_root}" to: user => "${script_user}" group => "users"\n"
 chown ${script_user}:users ${drupal_root}
+
+### Make sure that expected sites/all sub-directories exist
 mkdir -p ${drupal_root}/sites/all/{modules,themes,libraries,drush}
 
-### ctrl pid
+### Create ctrl pid
 rm -f ${drupal_root}/sites/all/libraries/ownership-fixed*.pid
 touch ${drupal_root}/sites/all/libraries/ownership-fixed-${_TODAY}.pid
 
+### BOA specific path and logic for limited user own codebases
 if [[ "${drupal_root}" =~ "/static/" ]] && [ -e "${drupal_root}/core" ]; then
   rm -f ${drupal_root}/sites/development.services.yml
 fi
 
-if [[ "${drupal_root}" =~ "/static/" ]] && [ -e "${drupal_root}/core" ]; then
-  if [ -e "${drupal_root}/vendor" ]; then
-    chown -R ${script_user}:users ${drupal_root}/vendor
-  elif [ -e "${drupal_root}/../vendor" ]; then
-    chown -R ${script_user}:users ${drupal_root}/../vendor
-  fi
+if [ -e "${drupal_root}/vendor" ]; then
+  chown -R ${script_user}:users ${drupal_root}/vendor
+elif [ -e "${drupal_root}/../vendor" ]; then
+  chown -R ${script_user}:users ${drupal_root}/../vendor
 fi
 
 chown -R ${script_user}:users \
@@ -105,9 +107,7 @@ chown ${script_user}:users \
   ${drupal_root}/sites \
   ${drupal_root}/sites/* \
   ${drupal_root}/sites/sites.php \
-  ${drupal_root}/sites/all \
-  ${drupal_root}/sites/all/{modules,themes,libraries,drush} \
-  ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core,vendor}
+  ${drupal_root}/sites/all
 
 ### known exceptions
 chown -R ${script_user}:www-data \
