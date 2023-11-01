@@ -46,6 +46,7 @@ fi
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
 
+### Fix permissions only once daily, unless it's Drupal 8 or newer
 if [ -e "${drupal_root}/sites/all/libraries/permissions-fixed-${_TODAY}.pid" ]; then
   if [ -e "${drupal_root}/core/themes/olivero" ] \
     || [ ! -e "${drupal_root}/core/themes/classy" ]; then
@@ -59,9 +60,35 @@ cd ${drupal_root}
 
 printf "Setting main permissions inside "${drupal_root}"...\n"
 mkdir -p ${drupal_root}/sites/all/{modules,themes,libraries,drush}
-### ctrl pid
+
+### Create ctrl pid
 rm -f ${drupal_root}/sites/all/libraries/permissions-fixed*.pid
 touch ${drupal_root}/sites/all/libraries/permissions-fixed-${_TODAY}.pid
+
+printf "Setting permissions of all codebase directories inside "${drupal_root}"...\n"
+find ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core} -type d -exec chmod 02775 {} \;
+
+printf "Setting permissions of all codebase files inside "${drupal_root}"...\n"
+find ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core} -type f -exec chmod 0664 {} \;
+
+if [ -e "${drupal_root}/vendor" ]; then
+  printf "Setting permissions of all codebase directories inside "${drupal_root}/vendor"...\n"
+  find ${drupal_root}/vendor -type d -exec chmod 02775 {} \;
+  printf "Setting permissions of all codebase files inside "${drupal_root}/vendor"...\n"
+  find ${drupal_root}/vendor -type f -exec chmod 0664 {} \;
+elif [ -e "${drupal_root}/../vendor" ]; then
+  printf "Setting permissions of all codebase directories inside "${drupal_root}/../vendor"...\n"
+  find ${drupal_root}/../vendor -type d -exec chmod 02775 {} \;
+  printf "Setting permissions of all codebase files inside "${drupal_root}/../vendor"...\n"
+  find ${drupal_root}/../vendor -type f -exec chmod 0664 {} \;
+fi
+
+printf "Setting permissions of all codebase directories inside "${drupal_root}/sites/all"...\n"
+find ${drupal_root}/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \;
+
+printf "Setting permissions of all codebase files inside "${drupal_root}/sites/all"...\n"
+find ${drupal_root}/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \;
+
 chmod 0644 ${drupal_root}/*.php
 chmod 0664 ${drupal_root}/autoload.php
 chmod 0751 ${drupal_root}/sites
@@ -71,45 +98,20 @@ chmod 0644 ${drupal_root}/sites/*.txt
 chmod 0644 ${drupal_root}/sites/*.yml
 chmod 0755 ${drupal_root}/sites/all/drush
 
-printf "Setting permissions of all codebase directories inside "${drupal_root}/sites/all"...\n"
-find ${drupal_root}/sites/all/{modules,themes,libraries} -type d -exec \
-  chmod 02775 {} \;
-
-printf "Setting permissions of all codebase directories inside "${drupal_root}"...\n"
-find ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core,vendor} -type d -exec \
-  chmod 02775 {} \;
-
-if [[ "${drupal_root}" =~ "/static/" ]] && [ -e "${drupal_root}/core" ]; then
-  printf "Setting permissions of all codebase directories inside "${drupal_root}/../vendor"...\n"
-  find ${drupal_root}/../vendor -type d -exec \
-    chmod 02775 {} \;
-fi
-
-printf "Setting permissions of all codebase files inside "${drupal_root}/sites/all"...\n"
-find ${drupal_root}/sites/all/{modules,themes,libraries} -type f -exec \
-  chmod 0664 {} \;
-
-printf "Setting permissions of all codebase files inside "${drupal_root}"...\n"
-find ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core,vendor} -type f -exec \
-  chmod 0664 {} \;
-
-if [[ "${drupal_root}" =~ "/static/" ]] && [ -e "${drupal_root}/core" ]; then
-  printf "Setting permissions of all codebase files inside "${drupal_root}/../vendor"...\n"
-  find ${drupal_root}/../vendor -type f -exec \
-    chmod 0664 {} \;
-fi
-
-if [[ "${drupal_root}" =~ "/static/" ]] && [ -e "${drupal_root}/core" ]; then
+### Lock Local Drush and Symfony Console Input
+if [ -e "${drupal_root}/core" ]; then
   if [ -e "${drupal_root}/vendor" ]; then
+    printf "Locking Drush and Symfony Console Input in "${drupal_root}/vendor"...\n"
     chmod 0400 ${drupal_root}/vendor/drush
     chmod 0400 ${drupal_root}/vendor/symfony/console/Input
   elif [ -e "${drupal_root}/../vendor" ]; then
+    printf "Locking Drush and Symfony Console Input in "${drupal_root}/../vendor"...\n"
     chmod 0400 ${drupal_root}/../vendor/drush
     chmod 0400 ${drupal_root}/../vendor/symfony/console/Input
   fi
 fi
 
-### known exceptions
+### Known exceptions
 chmod -R 775 ${drupal_root}/sites/all/libraries/tcpdf/cache &> /dev/null
 chmod 0644 ${drupal_root}/.htaccess
 
