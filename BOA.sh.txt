@@ -2026,14 +2026,17 @@ update_wrappers() {
     fxSp="fix-drupal-site-permissions.sh"
     fxPo="fix-drupal-platform-ownership.sh"
     fxSo="fix-drupal-site-ownership.sh"
+    fxLo="lock-local-drush-permissions.sh"
     curl ${crlGet} "${urlHmr}/${tBn}/${fxPp}" -o ${usrBin}/${fxPp}
     curl ${crlGet} "${urlHmr}/${tBn}/${fxSp}" -o ${usrBin}/${fxSp}
     curl ${crlGet} "${urlHmr}/${tBn}/${fxPo}" -o ${usrBin}/${fxPo}
     curl ${crlGet} "${urlHmr}/${tBn}/${fxSo}" -o ${usrBin}/${fxSo}
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxLo}" -o ${usrBin}/${fxLo}
     chmod 700 ${usrBin}/${fxPp}
     chmod 700 ${usrBin}/${fxSp}
     chmod 700 ${usrBin}/${fxPo}
     chmod 700 ${usrBin}/${fxSo}
+    chmod 700 ${usrBin}/${fxLo}
     touch ${pthLog}/updateFx06.ctrl.${_X_SE}.pid
   fi
   mkdir -p ${optBin}
