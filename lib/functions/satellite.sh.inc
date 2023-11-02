@@ -5791,6 +5791,7 @@ satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster en hosting_platform_composer_git -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_platform_git -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_tasks_extra -y &> /dev/null
+    ${_DRUSHCMD} @hostmaster en hosting_site_backup_manager -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_http_basic_auth -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en libraries -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en overlay -y &> /dev/null
