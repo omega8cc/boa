@@ -165,7 +165,7 @@ Hostmaster [E]xtensions [M]aster [S]atellite:
  hosting_git ---------------- [D7] ------ [S] [B]      [ES]
  hosting_le ----------------- [D7] ------ [S] [B] [FE] [ES]
  hosting_remote_import ------ [D7] ------ [S] [B]      [ES]
- hosting_site_backup_manager  [D7] ------ [S] [B]      [ES]
+ hosting_site_backup_manager  [D7] ------ [S] [B] [FE] [ES]
  hosting_tasks_extra -------- [D7] ------ [S] [B] [FE] [ES]
  idna_convert --------------- [D7] ------ [S] [B] [FE] [ES]
  revision_deletion ---------- [D7] ------ [S] [B] [FE] [ES]
