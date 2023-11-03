@@ -40,7 +40,7 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
-_OPENSSL_MODERN_VRN=3.1.3
+_OPENSSL_MODERN_VRN=3.1.4
 _X_SE="500devT03"
 _WEBG=www-data
 _OSR=$(lsb_release -sc 2>&1)
