@@ -3,7 +3,7 @@
 ### Aegir upgrade on-demand
 ###
 ### You can now launch Aegir upgrade to (re)install platforms listed in the file
-### ~/static/control/platforms.info (see below) by creating empty pid file:
+### ~/static/control/platforms.info (see further below) by creating empty file:
 ###
 ###   ~/static/control/run-upgrade.pid
 ###
@@ -14,98 +14,6 @@
 ###
 ### Note that this pid file will be ignored if there will be no platforms.info
 ### file, as explained further below.
-###
-
-
-###
-### Customize Octopus platform list via control file
-###
-### ~/static/control/platforms.info
-###
-### This file, if exists and contains a list of symbols used to define supported
-### platforms, allows to control/override the value of _PLATFORMS_LIST variable
-### normally defined in the /root/.${_USER}.octopus.cnf file, which can't be
-### modified by the Aegir instance owner with no system root access.
-###
-### IMPORTANT: If used, it will replace/override the value defined on initial
-### instance install and all previous upgrades. It takes effect on every future
-### Octopus instance upgrade, which means that you will miss all newly added
-### distributions, if they will not be listed also in this control file.
-###
-### Supported values which can be written in this file, listed in a single line
-### or one per line:
-###
-###
-### Drupal 10.1 based
-###
-### D101P D101S D101D --- Drupal 10.1 prod/stage/dev
-### THR ----------- Thunder
-### VBE ----------- Varbase
-###
-###
-### Drupal 10.0 based
-###
-### D100P D100S D100D --- Drupal 10.0 prod/stage/dev
-###
-###
-### Drupal 9 based
-###
-### D9P D9S D9D --- Drupal 9 prod/stage/dev
-### OLS ----------- OpenLucius
-### OPG ----------- Opigno LMS
-### SOC ----------- Social
-###
-###
-### Drupal 7 based
-###
-### D7P D7S D7D --- Drupal 7 prod/stage/dev
-### CME ----------- Commerce v.2
-### DCE ----------- Commerce v.1
-### GDR ----------- Guardr
-### OA7 ----------- OpenAtrium
-### OOH ----------- OpenOutreach
-### OPO ----------- Opigno LMS
-### PPY ----------- Panopoly
-### UC7 ----------- Ubercart
-###
-###
-### Drupal 6 based
-###
-### D6P D6S D6D --- Pressflow (LTS) prod/stage/dev
-### UCT ----------- Ubercart
-###
-### You can also use special keyword 'ALL' instead of any other symbols to have
-### all available platforms installed, including newly added in all future BOA
-### system releases.
-###
-### Examples:
-###
-### ALL
-### D101P D101S PPY
-###
-
-
-###
-### Support for optional Drupalgeddon daily checks on all hosted D7 sites
-###
-### ~/static/control/drupalgeddon.info
-###
-### Previously enabled by default, now requires this control file to still
-### run daily, because it may generate some false positives not always possible
-### to avoid or silence, so it no longer makes sense to run this check daily,
-### especially after BOA has run it automatically for a month and finally even
-### disabled automatically all clearly compromised sites.
-###
-### Note that your system administrator may still enable this with root level
-### control file /root/.force.drupalgeddon.cnf, so it will still run, even
-### if you will not create the Octopus instance level empty control file:
-### ~/static/control/drupalgeddon.info
-###
-### Please note that current version of Drupalgeddon Drush extension needs
-### the 'update' module to be enabled to avoid even more false positives,
-### so BOA will enable the 'update' module temporarily while running this
-### check, which in turn will result with even more emails notices sent
-### to the site admin email, if these notices are enabled.
 ###
 
 
@@ -194,16 +102,15 @@
 ###
 
 
-Aegir version provided by BOA is now fully compatible with PHP 8.0 and 8.1,
-so both can be used as default versions in the Aegir PHP configuration files:
-~/static/control/cli.info and ~/static/control/fpm.info
-
-!!! >>> PHP CAVEATS for Drupal core 7-10 versions:
-
-  => https://www.drupal.org/docs/7/system-requirements/php-requirements
-  => https://www.drupal.org/docs/system-requirements/php-requirements
-
-
+### Aegir version provided by BOA is now fully compatible with PHP 8.0 and 8.1,
+### so both can be used as default versions in the Aegir PHP configuration files
+### ~/static/control/cli.info and ~/static/control/fpm.info
+###
+### !!! >>> PHP CAVEATS for Drupal core 7-10 versions:
+###
+###   => https://www.drupal.org/docs/7/system-requirements/php-requirements
+###   => https://www.drupal.org/docs/system-requirements/php-requirements
+###
 ###
 ### Support for PHP-FPM version switch per Octopus instance (also per site)
 ###
@@ -307,6 +214,74 @@ so both can be used as default versions in the Aegir PHP configuration files:
 
 
 ###
+### Customize Octopus platform list via control file
+###
+### ~/static/control/platforms.info
+###
+### This file, if exists and contains a list of symbols used to define supported
+### platforms, allows to control/override the value of _PLATFORMS_LIST variable
+### normally defined in the /root/.${_USER}.octopus.cnf file, which can't be
+### modified by the Aegir instance owner with no system root access.
+###
+### IMPORTANT: If used, it will replace/override the value defined on initial
+### instance install and all previous upgrades. It takes effect on every future
+### Octopus instance upgrade, which means that you will miss all newly added
+### distributions, if they will not be listed also in this control file.
+###
+### Supported values which can be written in this file, listed in a single line
+### or one per line:
+###
+###
+### Drupal 10.1 based
+###
+### D101P D101S D101D --- Drupal 10.1 prod/stage/dev
+### THR ----------- Thunder
+### VBE ----------- Varbase
+###
+###
+### Drupal 10.0 based
+###
+### D100P D100S D100D --- Drupal 10.0 prod/stage/dev
+###
+###
+### Drupal 9 based
+###
+### D9P D9S D9D --- Drupal 9 prod/stage/dev
+### OLS ----------- OpenLucius
+### OPG ----------- Opigno LMS
+### SOC ----------- Social
+###
+###
+### Drupal 7 based
+###
+### D7P D7S D7D --- Drupal 7 prod/stage/dev
+### CME ----------- Commerce v.2
+### DCE ----------- Commerce v.1
+### GDR ----------- Guardr
+### OA7 ----------- OpenAtrium
+### OOH ----------- OpenOutreach
+### OPO ----------- Opigno LMS
+### PPY ----------- Panopoly
+### UC7 ----------- Ubercart
+###
+###
+### Drupal 6 based
+###
+### D6P D6S D6D --- Pressflow (LTS) prod/stage/dev
+### UCT ----------- Ubercart
+###
+### You can also use special keyword 'ALL' instead of any other symbols to have
+### all available platforms installed, including newly added in all future BOA
+### system releases.
+###
+### Examples:
+###
+### ALL
+### D101P D101S PPY
+###
+
+
+###
 ### Support for forced Drush cache clear in the Aegir backend
 ###
 ### ~/static/control/clear-drush-cache.info
@@ -360,3 +335,29 @@ so both can be used as default versions in the Aegir PHP configuration files:
 ###
 ### Details: https://github.com/omega8cc/boa/blob/master/docs/RVM.txt
 ###
+
+
+###
+### Support for optional Drupalgeddon daily checks on all hosted D7 sites
+###
+### ~/static/control/drupalgeddon.info
+###
+### Previously enabled by default, now requires this control file to still
+### run daily, because it may generate some false positives not always possible
+### to avoid or silence, so it no longer makes sense to run this check daily,
+### especially after BOA has run it automatically for a month and finally even
+### disabled automatically all clearly compromised sites.
+###
+### Note that your system administrator may still enable this with root level
+### control file /root/.force.drupalgeddon.cnf, so it will still run, even
+### if you will not create the Octopus instance level empty control file:
+### ~/static/control/drupalgeddon.info
+###
+### Please note that current version of Drupalgeddon Drush extension needs
+### the 'update' module to be enabled to avoid even more false positives,
+### so BOA will enable the 'update' module temporarily while running this
+### check, which in turn will result with even more emails notices sent
+### to the site admin email, if these notices are enabled.
+###
+
+
