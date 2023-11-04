@@ -367,8 +367,8 @@ if [ -e "/data/disk/arch/sql" ]; then
       touch /var/xdrago/log/.custom_percona_forced.pid
     fi
     _AUTO_UP_WEEKLY=1
-    _AUTO_UP_MONTH=10
-    _AUTO_UP_DAY=28
+    _AUTO_UP_MONTH=11
+    _AUTO_UP_DAY=5
     _AUTO_PHP="php-min"
     _AUTO_VER="dev"
     if [ ! -e "/root/.ignore.site24x7.firewall.cnf" ]; then
@@ -458,7 +458,7 @@ if [ -e "/data/disk/arch/sql" ]; then
 #     wait
 #     touch /root/.legacy_sys_prep_ugrade_ctrl.cnf
 #   fi
-  if [ ! -e "/var/xdrago/log/.etc_crontab_update_ctrl_hfx_009.${_X_SE}.pid" ]; then
+  if [ ! -e "/var/xdrago/log/.etc_crontab_update_ctrl_hfx_010.${_X_SE}.pid" ]; then
     rm -f /var/xdrago/log/.*_crontab_*
     if [ ! -z "${_AUTO_UP_MONTH}" ] \
       && [ ! -z "${_AUTO_UP_DAY}" ]; then
@@ -467,7 +467,7 @@ if [ -e "/data/disk/arch/sql" ]; then
       crontab_cleanup
     fi
     service cron restart
-    touch /var/xdrago/log/.etc_crontab_update_ctrl_hfx_009.${_X_SE}.pid
+    touch /var/xdrago/log/.etc_crontab_update_ctrl_hfx_010.${_X_SE}.pid
   fi
   if [ ! -e "/var/xdrago/log/.etc_csf_allow_ctrl.${_X_SE}.pid" ]; then
     mkdir -p /var/backups/csf
