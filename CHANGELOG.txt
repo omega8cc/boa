@@ -1,5 +1,45 @@
 
 ###
+### Stable BOA-5.1.0 - Full Edition
+### Date: Sat 04 Nov 2023 03:26:41 PM CET in Warsaw
+###
+### Documenting details in progress...
+###
+
+@=> New Features
+
+    * Automatically detect and add know web-root dir names on Add New Platform
+    * Lock Drush in any platform with Aegir task: Verify + Lock Drush
+    * Manage pid files in platforms web-root for Drush Lock/Unlock status
+    * Unlock Drush in any platform with new Aegir task: Unlock Local Drush
+
+@=> Improvements
+
+    * Document ~/static/control/FastTrack.info in docs/FASTTRACK.txt
+    * Improve BOA forks compatibility with standalone Aegir paths
+    * Improve tasks labels in the Aegir control panel
+    * Use Aegir backend built-in chmod for Unlock Drush w/o external scripts
+
+@=> Changes and Upgrades
+
+    * Aegir D10 Platforms: 3x Drupal core 10.1.6
+    * Aegir D10 Platforms: Social 12.0.0-rc3 with core 10.0.11
+    * Aegir D10 Platforms: Thunder 7.1.2 with core 10.1.6
+    * Aegir D10 Platforms: Varbase 9.0.16 with core 10.1.6
+    * Enable hosting_site_backup_manager Aegir extension by default again
+    * Fix permissions and ownership on every Platform Verify for Drupal 8/9/10
+    * OpenSSL 3.1.4
+    * PHP 8.1.25
+    * PHP 8.2.12
+
+@=> Important Fixes
+
+    * Added missing web-root paths in built-in platforms for Drupal 9/10
+    * Fix the ability to rename existing platforms in the Aegir control panel
+    * Multiple fixes for built-in permissions and ownership Aegir scripts
+
+
+###
 ### Stable BOA-5.0.0 - Full Edition
 ### Date: Thu 26 Oct 2023 09:55:22 PM CEST in Warsaw
 ###
@@ -8,38 +48,67 @@
 
 @=> New Features
 
-    * Drupal 10 is supported (needs docs)
-    * OpenSSL 3.x optional/test support with /root/.install.modern.openssl.cnf
-    * Make system reboot much faster, also with 'boa reboot' command
-    * Do not purge cache tables listed in /root/.my.cache.exceptions.cnf
     * Add support for verbose Drush like 'drush -vvv @site status'
+    * Aegir in BOA is now fully compatible with PHP 8.1 and 8.2
+    * Do not purge cache tables listed in /root/.my.cache.exceptions.cnf
+    * Drupal 10 is fully supported (needs docs)
+    * Drupal 10 platforms available: Thunder, Varbase, Drupal 10.1 and 10.0
+    * Make system reboot much faster, also with 'boa reboot' command
+    * OpenSSL 3.x optional/test support with /root/.install.modern.openssl.cnf
 
-@=> Major Improvements
+@=> Improvements
 
-    * Minimize services downtime on upgrade using soft reload only if possible
+    * Always install latest Composer on barracuda upgrade
     * Enable ~/static/control/FastTrack.info by default (needs docs)
+    * Minimize services downtime on upgrade using soft reload only if possible
     * Site Local Drush is no longer removed on platform Verify (only locked)
     * Use 'barracuda php-idle disable' to speed up major upgrades
-    * Always install latest Composer on barracuda upgrade
 
-@=> Important Changes
+@=> Changes and Upgrades
 
+    * Aegir D10 Platforms: 3x Drupal core 10.0.11
+    * Aegir D10 Platforms: 3x Drupal core 10.1.5
+    * Aegir D10 Platforms: Thunder 7.1.2 with core 10.1.5
+    * Aegir D10 Platforms: Varbase 9.0.16 with core 10.1.5
+    * Aegir D7 Platforms: Commerce 1.72 with core 7.98.1
+    * Aegir D7 Platforms: Commerce 2.77 with core 7.98.1
+    * Aegir D7 Platforms: Guardr 2.57 with core 7.98.1
+    * Aegir D7 Platforms: OpenOutreach 1.69 with core 7.98.1
+    * Aegir D7 Platforms: Opigno LMS 1.59 with core 7.98.1
+    * Aegir D7 Platforms: Panopoly 1.92 with core 7.98.1
+    * Aegir D7 Platforms: Ubercart 3.13 with core 7.98.1
+    * Aegir D9 Platforms: 3x Drupal 9.5.11
+    * Aegir D9 Platforms: OpenLucius 2.0.0 with core 9.5.11
+    * Aegir D9 Platforms: Opigno LMS 3.1.0 with core 9.5.11
+    * Aegir D9 Platforms: Social 11.9.14 with core 9.5.11
     * BOA requires at least PHP 7.4 or newer as default version
-    * Use _STRONG_PASSWORDS=YES by default
     * Change redis_perm_ttl from 6h to 24h
+    * Do not inlcude advagg/cdn in o_contrib_eight
+    * Drupal 10: add minimum patch for core
+    * Drupal 10: disable not working yet welcome email on install
+    * Drupal 10: fix compatibility and add missing code in Drush 8
+    * Drupal 10: lock vendor/drush
+    * Drupal 10: lock vendor/symfony/console/Input
+    * Drupal 10: replace psr/log in core with Drush 8 version
+    * Drush Launcher is not supported anymore so removed
     * Enable /root/.fast.cron.cnf by default (needs docs)
-    * The redis_use_modern is no longer optional in the INI files
     * Remove confusing -bin suffix from Drush 10+ (needs docs)
     * Set _PURGE_BACKUPS default to 14 or 7 on hosted BOA
+    * Set Composer Install Support in Aegir Backend as disabled by default
+    * The redis_use_modern is no longer optional in the INI files
+    * Update vendor code in the Aegir backend / Provision
+    * Use _STRONG_PASSWORDS=YES by default
     * Use _USE_MYSQLTUNER=NO by default
-    * Do not inlcude advagg/cdn in o_contrib_eight
-    * Drush Launcher is not supported anymore so removed
 
 @=> Important Fixes
 
-    * Make sure that expired password will not hang backend task
     * Do not enable redis on D7/D6 automatically, it works anyway
     * Fast DNS Cache Server (pdnsd) install is no longer optional since 2014 (!)
+    * Fix for hosting_cron_queue() with ADV_CRON_MAX_PLL logic
+    * Make sure that expired password will not hang backend task
+    * Nginx: Add missing no-cache checks from @cache to @drupal
+    * Nginx: Move exceptions to the /index.php location
+    * Nginx: The css/js aggregation logic has changed in Drupal 10.1
 
 
 ###
@@ -52,14 +121,14 @@
 
 @=> New Features
 
-    * New multi-step BOA install procedure -- see docs/INSTALL.txt
-    * Devuan Chimaera and Beowulf support (systemd-free Debian alternative)
-    * Debian Bullseye and Buster support
-    * Automatic BOA System Major Upgrade Tool -- see docs/UPGRADE.txt
-    * PHP 8.2 support
-    * Make PHP-CLI for Composer and Drush configurable on the fly (needs docs)
-    * Make Composer running with PHP defined in ~/static/control/cli.info
     * Add 'barracuda php-idle disable/enable' (needs docs)
+    * Automatic BOA System Major Upgrade Tool -- see docs/UPGRADE.txt
+    * Debian Bullseye and Buster support
+    * Devuan Chimaera and Beowulf support (systemd-free Debian alternative)
+    * Make Composer running with PHP defined in ~/static/control/cli.info
+    * Make PHP-CLI for Composer and Drush configurable on the fly (needs docs)
+    * New multi-step BOA install procedure -- see docs/INSTALL.txt
+    * PHP 8.2 support
 
 @=> Major Improvements
 
@@ -68,20 +137,25 @@
 
 @=> Important Changes
 
-    * Rewrite the _PHP_MULTI_INSTALL cleanup to make it optional (needs docs)
-    * Use php-max to install ALL nine (9) PHP versions (needs docs)
-    * The php-all should no longer include 7.3 and older versions (needs docs)
     * BOA requires the classic network interface naming convention (needs docs)
-    * Ubuntu support is deprecated
-    * Stop running any Drush operations on Drupal 8+ in daily.sh
     * Disable all nightly codebase cleanup procedures
+    * Nginx: Add PATCH to allowed $request_method list
+    * Nginx: Remove deprecated upload_progress support
     * Remove AdvAgg and CDN from D9+ o_contrib
+    * Rewrite the _PHP_MULTI_INSTALL cleanup to make it optional (needs docs)
+    * Stop running any Drush operations on Drupal 8+ in daily.sh
     * Switch to Redis Server 7.x by default
+    * The php-all should no longer include 7.3 and older versions (needs docs)
+    * Ubuntu support is deprecated
+    * Use php-max to install ALL nine (9) PHP versions (needs docs)
 
 @=> Important Fixes
 
     * Discover the system IPv4 once and store in a file
+    * Fix several issues with ~/static/control/MyQuick.info logic
     * Maintain csf.allow/ignore backup on serial update in /var/backups/csf/
+    * Nginx: Fix protected access to /update.php
+    * Nginx: Protect composer.json if exists in the Drupal web-root
 
 
 ###
@@ -94,14 +168,14 @@
 
 @=> New Features
 
-    * New multi-step BOA install procedure -- see docs/INSTALL.txt
-    * Devuan Chimaera and Beowulf support (systemd-free Debian alternative)
-    * Debian Bullseye and Buster support
-    * Automatic BOA System Major Upgrade Tool -- see docs/UPGRADE.txt
-    * PHP 8.2 support
-    * Make PHP-CLI for Composer and Drush configurable on the fly (needs docs)
-    * Make Composer running with PHP defined in ~/static/control/cli.info
     * Add 'barracuda php-idle disable/enable' (needs docs)
+    * Automatic BOA System Major Upgrade Tool -- see docs/UPGRADE.txt
+    * Debian Bullseye and Buster support
+    * Devuan Chimaera and Beowulf support (systemd-free Debian alternative)
+    * Make Composer running with PHP defined in ~/static/control/cli.info
+    * Make PHP-CLI for Composer and Drush configurable on the fly (needs docs)
+    * New multi-step BOA install procedure -- see docs/INSTALL.txt
+    * PHP 8.2 support
 
 @=> Major Improvements
 
@@ -110,15 +184,15 @@
 
 @=> Important Changes
 
-    * Rewrite the _PHP_MULTI_INSTALL cleanup to make it optional (needs docs)
-    * Use php-max to install ALL nine (9) PHP versions (needs docs)
-    * The php-all should no longer include 7.3 and older versions (needs docs)
     * BOA requires the classic network interface naming convention (needs docs)
-    * Ubuntu support is deprecated
-    * Stop running any Drush operations on Drupal 8+ in daily.sh
     * Disable all nightly codebase cleanup procedures
     * Remove AdvAgg and CDN from D9+ o_contrib
+    * Rewrite the _PHP_MULTI_INSTALL cleanup to make it optional (needs docs)
+    * Stop running any Drush operations on Drupal 8+ in daily.sh
     * Switch to Redis Server 7.x by default
+    * The php-all should no longer include 7.3 and older versions (needs docs)
+    * Ubuntu support is deprecated
+    * Use php-max to install ALL nine (9) PHP versions (needs docs)
 
 @=> Important Fixes
 
