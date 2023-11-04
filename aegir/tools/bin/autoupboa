@@ -81,8 +81,8 @@ if [ "${_DAY_SYSTEM_UP}" = "31" ]; then
   _MINUTE_OCTOPUS_UP="05"
   _MINUTE_SYSTEM_UP=30
 else
-  _HOUR_OCTOPUS_UP=1
-  _HOUR_SYSTEM_UP=0
+  _HOUR_OCTOPUS_UP=4
+  _HOUR_SYSTEM_UP=2
   _MINUTE_OCTOPUS_UP="05"
   _MINUTE_SYSTEM_UP="05"
 fi
@@ -458,7 +458,7 @@ if [ -e "/data/disk/arch/sql" ]; then
 #     wait
 #     touch /root/.legacy_sys_prep_ugrade_ctrl.cnf
 #   fi
-  if [ ! -e "/var/xdrago/log/.etc_crontab_update_ctrl_hfx_008.${_X_SE}.pid" ]; then
+  if [ ! -e "/var/xdrago/log/.etc_crontab_update_ctrl_hfx_009.${_X_SE}.pid" ]; then
     rm -f /var/xdrago/log/.*_crontab_*
     if [ ! -z "${_AUTO_UP_MONTH}" ] \
       && [ ! -z "${_AUTO_UP_DAY}" ]; then
@@ -467,7 +467,7 @@ if [ -e "/data/disk/arch/sql" ]; then
       crontab_cleanup
     fi
     service cron restart
-    touch /var/xdrago/log/.etc_crontab_update_ctrl_hfx_008.${_X_SE}.pid
+    touch /var/xdrago/log/.etc_crontab_update_ctrl_hfx_009.${_X_SE}.pid
   fi
   if [ ! -e "/var/xdrago/log/.etc_csf_allow_ctrl.${_X_SE}.pid" ]; then
     mkdir -p /var/backups/csf
