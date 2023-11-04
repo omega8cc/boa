@@ -207,7 +207,7 @@
 ### in Aegir backend, used for all tasks on hosted sites, but it will not
 ### affect PHP-CLI version used by Composer on command line, because Composer
 ### is installed globally and not per Octopus account, so it will use system
-### default PHP version, which is, since BOA-5.0.0-head, PHP 8.1 and can be
+### default PHP version, which is, since BOA-5.0.0, PHP 8.1 and can be
 ### changed only by changing system default _PHP_CLI_VERSION in the file
 ### /root/.barracuda.cnf and running barracuda upgrade.
 ###
