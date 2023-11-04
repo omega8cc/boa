@@ -45,7 +45,7 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
 fi
 
 _OPENSSL_MODERN_VRN=3.1.4
-_X_SE="500devT03"
+_X_SE="510devT01"
 _WEBG=www-data
 _OSR=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
