@@ -8,7 +8,7 @@
 
 @=> New Features
 
-    * Automatically detect and add know web-root dir names on Add New Platform
+    * Automatically detect and add known web-root dir names on Add New Platform
     * Lock Drush in any platform with Aegir task: Verify + Lock Drush
     * Manage pid files in platforms web-root for Drush Lock/Unlock status
     * Unlock Drush in any platform with new Aegir task: Unlock Local Drush
