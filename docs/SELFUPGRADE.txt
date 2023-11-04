@@ -51,5 +51,5 @@
 _AUTO_UP_WEEKLY= #-------------- Day of week (1-7) for weekly system upgrades
 _AUTO_UP_MONTH= #--------------- Month (1-12) to define date of one-time upgrade
 _AUTO_UP_DAY= #----------------- Day (1-31) to define date of one-time upgrade
-_AUTO_VER=head #---------------- The BOA version to use (head by default)
+_AUTO_VER=dev #----------------- The BOA version to use (dev by default)
 _AUTO_PHP= #-------------------- Useful to force php-min, otherwise ignored
