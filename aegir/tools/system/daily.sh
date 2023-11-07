@@ -2767,11 +2767,6 @@ check_old_empty_platforms() {
 }
 
 purge_cruft_machine() {
-  if [ ! -z "${_DEL_OLD_BACKUPS}" ] && [ "${_DEL_OLD_BACKUPS}" -gt "0" ]; then
-    _PURGE_BACKUPS="${_DEL_OLD_BACKUPS}"
-  else
-    _PURGE_BACKUPS="14"
-  fi
 
   if [ ! -z "${_DEL_OLD_TMP}" ] && [ "${_DEL_OLD_TMP}" -gt "0" ]; then
     _PURGE_TMP="${_DEL_OLD_TMP}"
@@ -2779,16 +2774,20 @@ purge_cruft_machine() {
     _PURGE_TMP="0"
   fi
 
-  _LOW_NR="2"
-  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-    || [ -e "/root/.host8.cnf" ]; then
-    _PURGE_BACKUPS="7"
-    _PURGE_TMP="0"
+  if [ ! -z "${_DEL_OLD_BACKUPS}" ] && [ "${_DEL_OLD_BACKUPS}" -gt "0" ]; then
+    _PURGE_BACKUPS="${_DEL_OLD_BACKUPS}"
+  else
+    _PURGE_BACKUPS="14"
+    if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
+      || [ -e "/root/.host8.cnf" ]; then
+      _PURGE_BACKUPS="7"
+    fi
   fi
 
+  _LOW_NR="2"
   _PURGE_CTRL="14"
 
   find ${User}/log/ctrl/*cert-x1-rebuilt.info \
