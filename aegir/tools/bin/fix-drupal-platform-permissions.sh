@@ -83,6 +83,20 @@ elif [ -e "${drupal_root}/../vendor" ]; then
   find ${drupal_root}/../vendor -type f -exec chmod 0664 {} \;
 fi
 
+if [ -e "${drupal_root}/vendor/bin/drush" ]; then
+  chmod 0775 ${drupal_root}/vendor/bin/drush
+elif [ -e "${drupal_root}/../vendor/bin/drush" ]; then
+  chmod 0775 ${drupal_root}/../vendor/bin/drush
+fi
+
+if [ -e "${drupal_root}/vendor/drush/drush/drush.php" ]; then
+  chmod 0775 ${drupal_root}/vendor/drush/drush/drush.php
+  chmod 0775 ${drupal_root}/vendor/drush/drush/drush
+elif [ -e "${drupal_root}/../vendor/drush/drush/drush.php" ]; then
+  chmod 0775 ${drupal_root}/../vendor/drush/drush/drush.php
+  chmod 0775 ${drupal_root}/../vendor/drush/drush/drush
+fi
+
 printf "Setting permissions of all codebase directories inside "${drupal_root}/sites/all"...\n"
 find ${drupal_root}/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \;
 
