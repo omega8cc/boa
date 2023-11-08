@@ -193,7 +193,6 @@ if [ -z "${HOME}" ]; then
     HOME="/home/${USER}"
   elif [ -d "/data/disk/${_Y_USR}/.tmp" ]; then
     HOME="/data/disk/${_Y_USR}"
-    _DRUSH_CLI_CTRL=
   elif [ -d "/var/${_Y_USR}/.tmp" ]; then
     HOME="/var/${_Y_USR}"
   fi
@@ -226,6 +225,11 @@ if [[ "${HOME}" =~ (^)"/xdata/disk/" ]] \
   fi
 else
   _OCTO_SYS=
+fi
+
+if [[ "${HOME}" =~ (^)"/data/disk/" ]]; then
+  _DRUSH_CLI_CTRL=
+  echo _DRUSH_CLI_CTRL has been disabled
 fi
 
 if [ -d "/home/${USER}/.tmp" ]; then
