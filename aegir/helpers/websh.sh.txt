@@ -24,7 +24,7 @@ if [[ "${_ARGS}" =~ "true COLUMNS=" ]]; then
 fi
 
 if [[ "${_ARGS}" =~ "'" ]] && [[ "${_ARGS}" =~ "drush" ]]; then
-  ### echo _ARGS RAWis ${_ARGS}
+  ### echo _ARGS RAW is ${_ARGS}
   _ARGS=$(echo -n ${_ARGS} | tr -d "''" 2>&1)
   ### echo _ARGS CLEAN is ${_ARGS}
 fi
