@@ -2307,6 +2307,11 @@ manage_site_drush_alias_mirror() {
       su -s /bin/bash - ${_USER}.ftp -c "drush10 core:init --yes" &> /dev/null
       su -s /bin/bash - ${_USER}.ftp -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
       chage -M 90 ${_USER}.ftp &> /dev/null
+      ### Update Drush yml sites aliases also for Aegir system user
+      su -s /bin/bash - ${_USER} -c "rm -f ~/.drush/sites/*.yml"
+      su -s /bin/bash - ${_USER} -c "rm -f ~/.drush/sites/.checksums/*.md5"
+      su -s /bin/bash - ${_USER} -c "drush10 core:init --yes" &> /dev/null
+      su -s /bin/bash - ${_USER} -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
     fi
   fi
 }
