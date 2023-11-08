@@ -23,11 +23,38 @@ if [[ "${_ARGS}" =~ "true COLUMNS=" ]]; then
   _ARGS=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
 fi
 
+if [[ "${_ARGS}" =~ "'" ]] && [[ "${_ARGS}" =~ "drush" ]]; then
+  ### echo _ARGS RAWis ${_ARGS}
+  _ARGS=$(echo -n ${_ARGS} | tr -d "''" 2>&1)
+  ### echo _ARGS CLEAN is ${_ARGS}
+fi
+
 if [[ ! "${_ARGS} " =~ "composer" ]] \
   && [[ ! "${_ARGS} " =~ "mysql" ]] \
   && [[ ! "${_ARGS} " =~ "sudo" ]]; then
   _ARR=
-  if [[ "${_ARGS} " =~ "drush " ]]; then
+  if [[ "${_ARGS} " =~ "vendor/bin/drush " ]]; then
+    if [[ "${_ARGS} " =~ "set -m" ]]; then
+      _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; vendor/bin/drush"`
+    else
+      _R_M=`echo -n ${_ARGS}  | grep -o "vendor/bin/drush"`
+    fi
+    ### echo _R_M is ${_R_M}
+    _R_M=${_R_M//\//\\\/}
+    ### echo _R_M is ${_R_M}
+    _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+      esac
+    done
+    ### echo _ARR is ${_ARR}
+  elif [[ "${_ARGS} " =~ "vendor/drush/drush/drush" ]]; then
+    _ARR="${_ARGS}"
+    ### echo _ARR is ${_ARR}
+  elif [[ "${_ARGS} " =~ "drush " ]]; then
     if [[ "${_ARGS} " =~ "set -m" ]]; then
       _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush"`
     else
@@ -342,6 +369,12 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         || [[ "${_ARGS} " =~ "drush12 " ]]; then
         _PWD=$(pwd 2>&1)
         _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
+        if [[ "${_ARGS} " =~ "vendor/bin/drush " ]]; then
+          _DEST_DRUSH="vendor/bin/drush"
+        fi
+        if [[ "${_ARGS} " =~ "vendor/drush/drush/drush" ]]; then
+          _DEST_DRUSH=
+        fi
         if [[ "${_ARGS} " =~ "drush12 " ]] \
           && [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
           _DEST_DRUSH="/usr/bin/drush12"
@@ -425,6 +458,12 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         elif [[ "${_ARGS} " =~ "drush " ]] \
           || [[ "${_ARGS} " =~ "drush8 " ]]; then
           _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
+          if [[ "${_ARGS} " =~ "vendor/bin/drush " ]]; then
+            _DEST_DRUSH="vendor/bin/drush"
+          fi
+          if [[ "${_ARGS} " =~ "vendor/drush/drush/drush" ]]; then
+            _DEST_DRUSH=
+          fi
           if [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
             _PHP_V="56 70 71 72 73 74 80 81 82"
             for e in ${_PHP_V}; do
@@ -451,12 +490,14 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "${_ARGS} " =~ "drush8 make" ]] \
           || [[ "${_ARGS} " =~ "drush cc drush" ]] \
           || [[ "${_ARGS} " =~ "drush8 cc drush" ]] \
+          || [[ "${_ARGS} " =~ "vendor/bin/drush cc drush" ]] \
           || [[ "${_ARGS} " =~ "drush10 cc drush" ]] \
           || [[ "${_ARGS} " =~ "drush11 cc drush" ]] \
           || [[ "${_ARGS} " =~ "drush12 cc drush" ]]; then
           if [[ "${_PWD}" =~ "/static" ]] \
             || [[ "${_ARGS} " =~ "drush cc drush" ]] \
             || [[ "${_ARGS} " =~ "drush8 cc drush" ]] \
+            || [[ "${_ARGS} " =~ "vendor/bin/drush cc drush" ]] \
             || [[ "${_ARGS} " =~ "drush10 cc drush" ]] \
             || [[ "${_ARGS} " =~ "drush11 cc drush" ]] \
             || [[ "${_ARGS} " =~ "drush12 cc drush" ]]; then
@@ -482,6 +523,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         else
           if [[ "${_ARGS} " =~ "drush @" ]] \
             || [[ "${_ARGS} " =~ "drush8 @" ]] \
+            || [[ "${_ARGS} " =~ "vendor/bin/drush @" ]] \
             || [[ "${_ARGS} " =~ "drush10 @" ]] \
             || [[ "${_ARGS} " =~ "drush11 @" ]] \
             || [[ "${_ARGS} " =~ "drush12 @" ]] \
@@ -574,6 +616,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     else
       if [[ "${_ARGS} " =~ "drush @" ]] \
         || [[ "${_ARGS} " =~ "drush8 @" ]] \
+        || [[ "${_ARGS} " =~ "vendor/bin/drush @" ]] \
         || [[ "${_ARGS} " =~ "drush10 @" ]] \
         || [[ "${_ARGS} " =~ "drush11 @" ]] \
         || [[ "${_ARGS} " =~ "drush12 @" ]] \
@@ -663,6 +706,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
   else
     if [[ "${_ARGS} " =~ "drush @" ]] \
       || [[ "${_ARGS} " =~ "drush8 @" ]] \
+      || [[ "${_ARGS} " =~ "vendor/bin/drush @" ]] \
       || [[ "${_ARGS} " =~ "drush10 @" ]] \
       || [[ "${_ARGS} " =~ "drush11 @" ]] \
       || [[ "${_ARGS} " =~ "drush12 @" ]] \
