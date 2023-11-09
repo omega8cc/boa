@@ -87,6 +87,9 @@ drush8 — all dots in the site name should be replaced with hyphens and only
 the last dot before domain last extension should be a dot.
 Example: drush8 @sub.domain.top.org becomes drush10 @sub-domain-top.org
 
+* On every Aegir / Octopus upgrade all platforms are automatically verified
+and thus local Drush is by default locked again in all existing platforms.
+
 
 @=> STOP using Standalone System Drush 10 and 11
 
