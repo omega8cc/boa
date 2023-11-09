@@ -944,13 +944,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         else
           ### echo EXH 1 _F_ARR is "$@"
           ### echo EXH 1 /bin/dash "$@"
-          exec /bin/dash -c "$@"
+          exec /bin/dash "$@"
           exit 0
         fi
       else
         ### echo EXH 3 _F_ARR is "$@"
         ### echo EXH 3 /bin/bash "$@"
-        exec /bin/bash -c "$@"
+        exec /bin/bash "$@"
         exit 0
       fi
     else
@@ -991,12 +991,12 @@ else
     if [ -x "/bin/dash" ]; then
       ### echo EXH 4 _F_ARR is "$@"
       ### echo EXH 4 /bin/dash "$@"
-      exec /bin/dash -c "$@"
+      exec /bin/dash "$@"
       exit 0
     else
       ### echo EXH 6 _F_ARR is "$@"
       ### echo EXH 6 /bin/bash "$@"
-      exec /bin/bash -c "$@"
+      exec /bin/bash "$@"
       exit 0
     fi
   else
