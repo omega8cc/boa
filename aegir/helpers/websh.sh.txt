@@ -25,16 +25,16 @@ fi
 
 if [[ "${_ARGS}" =~ "'" ]] && [[ "${_ARGS}" =~ "drush" ]]; then
   ### echo _ARGS RAW is ${_ARGS}
-  _ARGS=$(echo -n ${_ARGS} | tr -d "''" 2>&1)
+  _ARGS=$(echo -n ${_ARGS} | tr -d "'" 2>&1)
   ### echo _ARGS CLEAN is ${_ARGS}
 fi
 
-if [[ ! "${_ARGS} " =~ "composer" ]] \
-  && [[ ! "${_ARGS} " =~ "mysql" ]] \
-  && [[ ! "${_ARGS} " =~ "sudo" ]]; then
+if [[ ! "${_ARGS}" =~ "composer" ]] \
+  && [[ ! "${_ARGS}" =~ "mysql" ]] \
+  && [[ ! "${_ARGS}" =~ "sudo" ]]; then
   _ARR=
-  if [[ "${_ARGS} " =~ "vendor/bin/drush " ]]; then
-    if [[ "${_ARGS} " =~ "set -m" ]]; then
+  if [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
+    if [[ "${_ARGS}" =~ "set -m" ]]; then
       _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; vendor/bin/drush"`
     else
       _R_M=`echo -n ${_ARGS}  | grep -o "vendor/bin/drush"`
@@ -51,11 +51,11 @@ if [[ ! "${_ARGS} " =~ "composer" ]] \
       esac
     done
     ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS} " =~ "vendor/drush/drush/drush" ]]; then
+  elif [[ "${_ARGS}" =~ "vendor/drush/drush/drush" ]]; then
     _ARR="${_ARGS}"
     ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS} " =~ "drush " ]]; then
-    if [[ "${_ARGS} " =~ "set -m" ]]; then
+  elif [[ "${_ARGS}" =~ "drush " ]]; then
+    if [[ "${_ARGS}" =~ "set -m" ]]; then
       _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush"`
     else
       _R_M=`echo -n ${_ARGS}  | grep -o "drush"`
@@ -70,8 +70,8 @@ if [[ ! "${_ARGS} " =~ "composer" ]] \
       esac
     done
     ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS} " =~ "drush8 " ]]; then
-    if [[ "${_ARGS} " =~ "set -m" ]]; then
+  elif [[ "${_ARGS}" =~ "drush8 " ]]; then
+    if [[ "${_ARGS}" =~ "set -m" ]]; then
       _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush8"`
     else
       _R_M=`echo -n ${_ARGS}  | grep -o "drush8"`
@@ -86,8 +86,8 @@ if [[ ! "${_ARGS} " =~ "composer" ]] \
       esac
     done
     ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS} " =~ "drush10 " ]]; then
-    if [[ "${_ARGS} " =~ "set -m" ]]; then
+  elif [[ "${_ARGS}" =~ "drush10 " ]]; then
+    if [[ "${_ARGS}" =~ "set -m" ]]; then
       _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush10"`
     else
       _R_M=`echo -n ${_ARGS}  | grep -o "drush10"`
@@ -102,8 +102,8 @@ if [[ ! "${_ARGS} " =~ "composer" ]] \
       esac
     done
     ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS} " =~ "drush11 " ]]; then
-    if [[ "${_ARGS} " =~ "set -m" ]]; then
+  elif [[ "${_ARGS}" =~ "drush11 " ]]; then
+    if [[ "${_ARGS}" =~ "set -m" ]]; then
       _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush11"`
     else
       _R_M=`echo -n ${_ARGS}  | grep -o "drush11"`
@@ -118,8 +118,8 @@ if [[ ! "${_ARGS} " =~ "composer" ]] \
       esac
     done
     ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS} " =~ "drush12 " ]]; then
-    if [[ "${_ARGS} " =~ "set -m" ]]; then
+  elif [[ "${_ARGS}" =~ "drush12 " ]]; then
+    if [[ "${_ARGS}" =~ "set -m" ]]; then
       _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; drush12"`
     else
       _R_M=`echo -n ${_ARGS}  | grep -o "drush12"`
@@ -152,8 +152,8 @@ if [[ ! "${_ARGS} " =~ "composer" ]] \
 fi
 
 _C_ARR=
-if [[ "${_ARGS} " =~ "composer " ]]; then
-  if [[ "${_ARGS} " =~ "set -m" ]]; then
+if [[ "${_ARGS}" =~ "composer " ]]; then
+  if [[ "${_ARGS}" =~ "set -m" ]]; then
     _C_RM=`echo -n ${_ARGS}  | grep -o "set -m\; composer"`
   else
     _C_RM=`echo -n ${_ARGS}  | grep -o "composer"`
@@ -365,21 +365,21 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       || [[ "${2}" =~ "mysql " ]]; then
       _IN_PATH=YES
       _INTERNAL=YES
-      if [[ "${_ARGS} " =~ "mysql " ]] \
-        || [[ "${_ARGS} " =~ "drush " ]] \
-        || [[ "${_ARGS} " =~ "drush8 " ]] \
-        || [[ "${_ARGS} " =~ "drush10 " ]] \
-        || [[ "${_ARGS} " =~ "drush11 " ]] \
-        || [[ "${_ARGS} " =~ "drush12 " ]]; then
+      if [[ "${_ARGS}" =~ "mysql " ]] \
+        || [[ "${_ARGS}" =~ "drush " ]] \
+        || [[ "${_ARGS}" =~ "drush8 " ]] \
+        || [[ "${_ARGS}" =~ "drush10 " ]] \
+        || [[ "${_ARGS}" =~ "drush11 " ]] \
+        || [[ "${_ARGS}" =~ "drush12 " ]]; then
         _PWD=$(pwd 2>&1)
         _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
-        if [[ "${_ARGS} " =~ "vendor/bin/drush " ]]; then
+        if [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
           _DEST_DRUSH="vendor/bin/drush"
         fi
-        if [[ "${_ARGS} " =~ "vendor/drush/drush/drush" ]]; then
+        if [[ "${_ARGS}" =~ "vendor/drush/drush/drush" ]]; then
           _DEST_DRUSH=
         fi
-        if [[ "${_ARGS} " =~ "drush12 " ]] \
+        if [[ "${_ARGS}" =~ "drush12 " ]] \
           && [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
           _DEST_DRUSH="/usr/bin/drush12"
           _PHP_V="81 82"
@@ -415,11 +415,11 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             echo
             exit 0
           fi
-        elif [[ "${_ARGS} " =~ "drush11 " ]] \
-          || [[ "${_ARGS} " =~ "drush10 " ]]; then
-          if [[ "${_ARGS} " =~ "drush11 " ]]; then
+        elif [[ "${_ARGS}" =~ "drush11 " ]] \
+          || [[ "${_ARGS}" =~ "drush10 " ]]; then
+          if [[ "${_ARGS}" =~ "drush11 " ]]; then
             _DEST_DRUSH="/usr/bin/drush11"
-          elif [[ "${_ARGS} " =~ "drush10 " ]]; then
+          elif [[ "${_ARGS}" =~ "drush10 " ]]; then
             _DEST_DRUSH="/usr/bin/drush10"
           fi
           if [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
@@ -459,13 +459,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             echo
             exit 0
           fi
-        elif [[ "${_ARGS} " =~ "drush " ]] \
-          || [[ "${_ARGS} " =~ "drush8 " ]]; then
+        elif [[ "${_ARGS}" =~ "drush " ]] \
+          || [[ "${_ARGS}" =~ "drush8 " ]]; then
           _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
-          if [[ "${_ARGS} " =~ "vendor/bin/drush " ]]; then
+          if [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
             _DEST_DRUSH="vendor/bin/drush"
           fi
-          if [[ "${_ARGS} " =~ "vendor/drush/drush/drush" ]]; then
+          if [[ "${_ARGS}" =~ "vendor/drush/drush/drush" ]]; then
             _DEST_DRUSH=
           fi
           if [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
@@ -490,24 +490,34 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             ### echo INF 4 _DEST_DRUSH is ${_DEST_DRUSH}
           fi
         fi
-        if [[ "${_ARGS} " =~ "drush make" ]] \
-          || [[ "${_ARGS} " =~ "drush8 make" ]] \
-          || [[ "${_ARGS} " =~ "drush cc drush" ]] \
-          || [[ "${_ARGS} " =~ "drush8 cc drush" ]] \
-          || [[ "${_ARGS} " =~ "vendor/bin/drush cc drush" ]] \
-          || [[ "${_ARGS} " =~ "drush10 cc drush" ]] \
-          || [[ "${_ARGS} " =~ "drush11 cc drush" ]] \
-          || [[ "${_ARGS} " =~ "drush12 cc drush" ]]; then
+        if [[ "${_ARGS}" =~ "drush" ]]; then
+          if [[ "${_ARGS}" =~ " site-alias"($) ]] \
+            || [[ "${_ARGS}" =~ " sa"($) ]]; then
+            echo
+            echo " Use 'drush aliases' to display all Drush 8 aliases"
+            echo " Use 'drush10 aliases' to display all Drush 10+ aliases"
+            echo
+            exit 0
+          fi
+        fi
+        if [[ "${_ARGS}" =~ "drush make" ]] \
+          || [[ "${_ARGS}" =~ "drush8 make" ]] \
+          || [[ "${_ARGS}" =~ "drush cc drush" ]] \
+          || [[ "${_ARGS}" =~ "drush8 cc drush" ]] \
+          || [[ "${_ARGS}" =~ "drush10 cr drush" ]] \
+          || [[ "${_ARGS}" =~ "drush11 cr drush" ]] \
+          || [[ "${_ARGS}" =~ "drush12 cr drush" ]] \
+          || [[ "${_ARGS}" =~ "vendor/bin/drush cr drush" ]]; then
           if [[ "${_PWD}" =~ "/static" ]] \
-            || [[ "${_ARGS} " =~ "drush cc drush" ]] \
-            || [[ "${_ARGS} " =~ "drush8 cc drush" ]] \
-            || [[ "${_ARGS} " =~ "vendor/bin/drush cc drush" ]] \
-            || [[ "${_ARGS} " =~ "drush10 cc drush" ]] \
-            || [[ "${_ARGS} " =~ "drush11 cc drush" ]] \
-            || [[ "${_ARGS} " =~ "drush12 cc drush" ]]; then
+            || [[ "${_ARGS}" =~ "drush cc drush" ]] \
+            || [[ "${_ARGS}" =~ "drush8 cc drush" ]] \
+            || [[ "${_ARGS}" =~ "drush10 cr drush" ]] \
+            || [[ "${_ARGS}" =~ "drush11 cr drush" ]] \
+            || [[ "${_ARGS}" =~ "drush12 cr drush" ]] \
+            || [[ "${_ARGS}" =~ "vendor/bin/drush cr drush" ]]; then
             _CORRECT=YES
           else
-            if [[ "${_ARGS} " =~ "make-generate" ]] \
+            if [[ "${_ARGS}" =~ "make-generate" ]] \
               && [ -f "${_PWD}/settings.php" ]; then
               _CORRECT=YES
             else
@@ -516,7 +526,8 @@ if [ "${_LTD_GID}" = "www-data users" ] \
               if [[ "${2}" =~ "make-generate" ]]; then
                 echo " Please cd to the valid sites/foo.com directory first"
                 echo " or use a valid @alias, like: drush @foo.com status"
-                echo " Hint: Use 'drush aliases' to display all aliases"
+                echo " Hint: Use 'drush aliases' to display all Drush 8 aliases"
+                echo " Hint: Use 'drush10 aliases' to display all Drush 10+ aliases"
               else
                 echo " Please cd ~/static first"
               fi
@@ -525,17 +536,18 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             fi
           fi
         else
-          if [[ "${_ARGS} " =~ "drush @" ]] \
-            || [[ "${_ARGS} " =~ "drush8 @" ]] \
-            || [[ "${_ARGS} " =~ "vendor/bin/drush @" ]] \
-            || [[ "${_ARGS} " =~ "drush10 @" ]] \
-            || [[ "${_ARGS} " =~ "drush11 @" ]] \
-            || [[ "${_ARGS} " =~ "drush12 @" ]] \
-            || [[ "${_ARGS} " =~ "drush -vvv @" ]] \
-            || [[ "${_ARGS} " =~ "drush8 -vvv @" ]] \
-            || [[ "${_ARGS} " =~ "drush10 -vvv @" ]] \
-            || [[ "${_ARGS} " =~ "drush11 -vvv @" ]] \
-            || [[ "${_ARGS} " =~ "drush12 -vvv @" ]]; then
+          if [[ "${_ARGS}" =~ "drush @" ]] \
+            || [[ "${_ARGS}" =~ "drush8 @" ]] \
+            || [[ "${_ARGS}" =~ "drush10 @" ]] \
+            || [[ "${_ARGS}" =~ "drush11 @" ]] \
+            || [[ "${_ARGS}" =~ "drush12 @" ]] \
+            || [[ "${_ARGS}" =~ "vendor/bin/drush @" ]] \
+            || [[ "${_ARGS}" =~ "drush -vvv @" ]] \
+            || [[ "${_ARGS}" =~ "drush8 -vvv @" ]] \
+            || [[ "${_ARGS}" =~ "drush10 -vvv @" ]] \
+            || [[ "${_ARGS}" =~ "drush11 -vvv @" ]] \
+            || [[ "${_ARGS}" =~ "drush12 -vvv @" ]] \
+            || [[ "${_ARGS}" =~ "vendor/bin/drush -vvv @" ]]; then
             if [[ "${2}" =~ "restore"($) ]] \
               || [[ "${2}" =~ "arr"($) ]] \
               || [[ "${2}" =~ "cli"($) ]] \
@@ -553,6 +565,8 @@ if [ "${_LTD_GID}" = "www-data users" ] \
               || [[ "${2}" =~ (^)"sha"($) ]] \
               || [[ "${2}" =~ "shell-alias"($) ]] \
               || [[ "${2}" =~ (^)"si"($) ]] \
+              || [[ "${2}" =~ " sa"($) ]] \
+              || [[ "${2}" =~ " site-alias"($) ]] \
               || [[ "${2}" =~ "sql-create"($) ]] \
               || [[ "${2}" =~ (^)"ssh"($) ]] \
               || [[ "${2}" =~ (^)"sup"($) ]]; then
@@ -563,54 +577,51 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             else
               _CORRECT=YES
             fi
-          elif [[ "${_ARGS} " =~ "cc drush" ]] \
-            || [[ "${_ARGS} " =~ "set -m; drush8 --version" ]] \
-            || [[ "${_ARGS} " =~ "set -m; drush8 help" ]] \
-            || [[ "${_ARGS} " =~ "drush8 dl" ]] \
-            || [[ "${_ARGS} " =~ "drush8 pm-download" ]] \
-            || [[ "${_ARGS} " =~ "drush8 sa" ]] \
-            || [[ "${_ARGS} " =~ "drush8 site-alias" ]] \
-            || [[ "${_ARGS} " =~ "set -m; drush10 --version" ]] \
-            || [[ "${_ARGS} " =~ "set -m; drush10 help" ]] \
-            || [[ "${_ARGS} " =~ "drush10 dl" ]] \
-            || [[ "${_ARGS} " =~ "drush10 pm-download" ]] \
-            || [[ "${_ARGS} " =~ "drush10 sa" ]] \
-            || [[ "${_ARGS} " =~ "drush10 site-alias" ]] \
-            || [[ "${_ARGS} " =~ "set -m; drush11 --version" ]] \
-            || [[ "${_ARGS} " =~ "set -m; drush11 help" ]] \
-            || [[ "${_ARGS} " =~ "drush11 dl" ]] \
-            || [[ "${_ARGS} " =~ "drush11 pm-download" ]] \
-            || [[ "${_ARGS} " =~ "drush11 sa" ]] \
-            || [[ "${_ARGS} " =~ "drush11 site-alias" ]] \
-            || [[ "${_ARGS} " =~ "set -m; drush12 --version" ]] \
-            || [[ "${_ARGS} " =~ "set -m; drush12 help" ]] \
-            || [[ "${_ARGS} " =~ "drush12 dl" ]] \
-            || [[ "${_ARGS} " =~ "drush12 pm-download" ]] \
-            || [[ "${_ARGS} " =~ "drush12 sa" ]] \
-            || [[ "${_ARGS} " =~ "drush12 site-alias" ]] \
-            || [[ "${_ARGS} " =~ "set -m; drush --version" ]] \
-            || [[ "${_ARGS} " =~ "set -m; drush help" ]] \
-            || [[ "${_ARGS} " =~ "drush dl" ]] \
-            || [[ "${_ARGS} " =~ "drush pm-download" ]] \
-            || [[ "${_ARGS} " =~ "drush sa" ]] \
-            || [[ "${_ARGS} " =~ "drush site-alias" ]]; then
+          elif [[ "${_ARGS}" =~ "cc drush" ]] \
+            || [[ "${_ARGS}" =~ "cr drush" ]] \
+            || [[ "${_ARGS}" =~ "set -m; drush8 --version" ]] \
+            || [[ "${_ARGS}" =~ "set -m; drush8 help" ]] \
+            || [[ "${_ARGS}" =~ "drush8 dl" ]] \
+            || [[ "${_ARGS}" =~ "drush8 pm-download" ]] \
+            || [[ "${_ARGS}" =~ "set -m; drush10 --version" ]] \
+            || [[ "${_ARGS}" =~ "set -m; drush10 help" ]] \
+            || [[ "${_ARGS}" =~ "drush10 dl" ]] \
+            || [[ "${_ARGS}" =~ "drush10 pm-download" ]] \
+            || [[ "${_ARGS}" =~ "set -m; drush11 --version" ]] \
+            || [[ "${_ARGS}" =~ "set -m; drush11 help" ]] \
+            || [[ "${_ARGS}" =~ "drush11 dl" ]] \
+            || [[ "${_ARGS}" =~ "drush11 pm-download" ]] \
+            || [[ "${_ARGS}" =~ "set -m; drush12 --version" ]] \
+            || [[ "${_ARGS}" =~ "set -m; drush12 help" ]] \
+            || [[ "${_ARGS}" =~ "drush12 dl" ]] \
+            || [[ "${_ARGS}" =~ "drush12 pm-download" ]] \
+            || [[ "${_ARGS}" =~ "set -m; vendor/bin/drush --version" ]] \
+            || [[ "${_ARGS}" =~ "set -m; vendor/bin/drush help" ]] \
+            || [[ "${_ARGS}" =~ "vendor/bin/drush dl" ]] \
+            || [[ "${_ARGS}" =~ "vendor/bin/drush pm-download" ]] \
+            || [[ "${_ARGS}" =~ "set -m; drush --version" ]] \
+            || [[ "${_ARGS}" =~ "set -m; drush help" ]] \
+            || [[ "${_ARGS}" =~ "drush dl" ]] \
+            || [[ "${_ARGS}" =~ "drush pm-download" ]]; then
             _CORRECT=YES
           else
-            if [[ "${_ARGS} " =~ "set -m; drush" ]] \
+            if [[ "${_ARGS}" =~ "set -m; drush" ]] \
               && [ ! -f "${_PWD}/settings.php" ]; then
               echo
               echo " This drush command can not be run in ${_PWD}"
               echo " Please cd to the valid sites/foo.com directory first"
               echo " or use a valid @alias, like: drush @foo.com status"
-              echo " Hint: Use 'drush aliases' to display all aliases"
+              echo " Hint: Use 'drush aliases' to display all Drush 8 aliases"
+              echo " Hint: Use 'drush10 aliases' to display all Drush 10+ aliases"
               echo
               exit 0
             elif [ -f "${_PWD}/settings.php" ]; then
-              if [[ "${_ARGS} " =~ "drush " ]] \
-                || [[ "${_ARGS} " =~ "drush8 " ]] \
-                || [[ "${_ARGS} " =~ "drush10 " ]] \
-                || [[ "${_ARGS} " =~ "drush11 " ]] \
-                || [[ "${_ARGS} " =~ "drush12 " ]]; then
+              if [[ "${_ARGS}" =~ "drush " ]] \
+                || [[ "${_ARGS}" =~ "drush8 " ]] \
+                || [[ "${_ARGS}" =~ "drush10 " ]] \
+                || [[ "${_ARGS}" =~ "drush11 " ]] \
+                || [[ "${_ARGS}" =~ "drush12 " ]] \
+                || [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
                 _CORRECT=YES
               fi
             fi
@@ -618,17 +629,18 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         fi
       fi
     else
-      if [[ "${_ARGS} " =~ "drush @" ]] \
-        || [[ "${_ARGS} " =~ "drush8 @" ]] \
-        || [[ "${_ARGS} " =~ "vendor/bin/drush @" ]] \
-        || [[ "${_ARGS} " =~ "drush10 @" ]] \
-        || [[ "${_ARGS} " =~ "drush11 @" ]] \
-        || [[ "${_ARGS} " =~ "drush12 @" ]] \
-        || [[ "${_ARGS} " =~ "drush -vvv @" ]] \
-        || [[ "${_ARGS} " =~ "drush8 -vvv @" ]] \
-        || [[ "${_ARGS} " =~ "drush10 -vvv @" ]] \
-        || [[ "${_ARGS} " =~ "drush11 -vvv @" ]] \
-        || [[ "${_ARGS} " =~ "drush12 -vvv @" ]]; then
+      if [[ "${_ARGS}" =~ "drush @" ]] \
+        || [[ "${_ARGS}" =~ "drush8 @" ]] \
+        || [[ "${_ARGS}" =~ "drush10 @" ]] \
+        || [[ "${_ARGS}" =~ "drush11 @" ]] \
+        || [[ "${_ARGS}" =~ "drush12 @" ]] \
+        || [[ "${_ARGS}" =~ "vendor/bin/drush @" ]] \
+        || [[ "${_ARGS}" =~ "drush -vvv @" ]] \
+        || [[ "${_ARGS}" =~ "drush8 -vvv @" ]] \
+        || [[ "${_ARGS}" =~ "drush10 -vvv @" ]] \
+        || [[ "${_ARGS}" =~ "drush11 -vvv @" ]] \
+        || [[ "${_ARGS}" =~ "drush12 -vvv @" ]] \
+        || [[ "${_ARGS}" =~ "vendor/bin/drush -vvv @" ]]; then
         if [[ "${2}" =~ "restore"($) ]] \
           || [[ "${2}" =~ "arr"($) ]] \
           || [[ "${2}" =~ "cli"($) ]] \
@@ -646,6 +658,8 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "${2}" =~ (^)"sha"($) ]] \
           || [[ "${2}" =~ "shell-alias"($) ]] \
           || [[ "${2}" =~ (^)"si"($) ]] \
+          || [[ "${2}" =~ " sa"($) ]] \
+          || [[ "${2}" =~ " site-alias"($) ]] \
           || [[ "${2}" =~ "sql-create"($) ]] \
           || [[ "${2}" =~ (^)"ssh"($) ]] \
           || [[ "${2}" =~ (^)"sup"($) ]]; then
@@ -708,17 +722,18 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       fi
     fi
   else
-    if [[ "${_ARGS} " =~ "drush @" ]] \
-      || [[ "${_ARGS} " =~ "drush8 @" ]] \
-      || [[ "${_ARGS} " =~ "vendor/bin/drush @" ]] \
-      || [[ "${_ARGS} " =~ "drush10 @" ]] \
-      || [[ "${_ARGS} " =~ "drush11 @" ]] \
-      || [[ "${_ARGS} " =~ "drush12 @" ]] \
-      || [[ "${_ARGS} " =~ "drush -vvv @" ]] \
-      || [[ "${_ARGS} " =~ "drush8 -vvv @" ]] \
-      || [[ "${_ARGS} " =~ "drush10 -vvv @" ]] \
-      || [[ "${_ARGS} " =~ "drush11 -vvv @" ]] \
-      || [[ "${_ARGS} " =~ "drush12 -vvv @" ]]; then
+    if [[ "${_ARGS}" =~ "drush @" ]] \
+      || [[ "${_ARGS}" =~ "drush8 @" ]] \
+      || [[ "${_ARGS}" =~ "drush10 @" ]] \
+      || [[ "${_ARGS}" =~ "drush11 @" ]] \
+      || [[ "${_ARGS}" =~ "drush12 @" ]] \
+      || [[ "${_ARGS}" =~ "vendor/bin/drush @" ]] \
+      || [[ "${_ARGS}" =~ "drush -vvv @" ]] \
+      || [[ "${_ARGS}" =~ "drush8 -vvv @" ]] \
+      || [[ "${_ARGS}" =~ "drush10 -vvv @" ]] \
+      || [[ "${_ARGS}" =~ "drush11 -vvv @" ]] \
+      || [[ "${_ARGS}" =~ "drush12 -vvv @" ]] \
+      || [[ "${_ARGS}" =~ "vendor/bin/drush -vvv @" ]]; then
       if [[ "${2}" =~ "restore"($) ]] \
         || [[ "${2}" =~ "arr"($) ]] \
         || [[ "${2}" =~ "cli"($) ]] \
@@ -736,6 +751,8 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         || [[ "${2}" =~ (^)"sha"($) ]] \
         || [[ "${2}" =~ "shell-alias"($) ]] \
         || [[ "${2}" =~ (^)"si"($) ]] \
+        || [[ "${2}" =~ " sa"($) ]] \
+        || [[ "${2}" =~ " site-alias"($) ]] \
         || [[ "${2}" =~ "sql-create"($) ]] \
         || [[ "${2}" =~ (^)"ssh"($) ]] \
         || [[ "${2}" =~ (^)"sup"($) ]]; then
@@ -779,42 +796,42 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     || [[ "${_LTD_GID}" =~ "ltd-shell"($) ]] \
     || [[ "${_LTD_GID}" =~ "rvm ltd-shell"($) ]] \
     || [[ "${_LTD_GID}" =~ "ltd-shell rvm"($) ]]; then
-    if [[ "${_ARGS} " =~ "*" ]]; then
-      if [[ "${_ARGS} " =~ "set -m; " ]]; then
+    if [[ "${_ARGS}" =~ "*" ]]; then
+      if [[ "${_ARGS}" =~ "set -m; " ]]; then
         _SILENT=YES
       else
-        if [[ "${_ARGS} " =~ "__build__" ]] \
-          || [[ "${_ARGS} " =~ "_tmp_" ]] \
-          || [[ "${_ARGS} " =~ ".tmp" ]] \
-          || [[ "${_ARGS} " =~ "avconv" ]] \
-          || [[ "${_ARGS} " =~ "bzr " ]] \
-          || [[ "${_ARGS} " =~ "chdir " ]] \
-          || [[ "${_ARGS} " =~ "compass " ]] \
-          || [[ "${_ARGS} " =~ "composer " ]] \
-          || [[ "${_ARGS} " =~ "convert " ]] \
-          || [[ "${_ARGS} " =~ "curl " ]] \
-          || [[ "${_ARGS} " =~ "drush" ]] \
-          || [[ "${_ARGS} " =~ "ffmpeg " ]] \
-          || [[ "${_ARGS} " =~ "flvtool " ]] \
-          || [[ "${_ARGS} " =~ "git " ]] \
-          || [[ "${_ARGS} " =~ "is_" ]] \
-          || [[ "${_ARGS} " =~ "java" ]] \
-          || [[ "${_ARGS} " =~ "logger " ]] \
-          || [[ "${_ARGS} " =~ "php " ]] \
-          || [[ "${_ARGS} " =~ "unzip " ]] \
-          || [[ "${_ARGS} " =~ "rename " ]] \
-          || [[ "${_ARGS} " =~ "rrdtool " ]] \
-          || [[ "${_ARGS} " =~ "rsync " ]] \
-          || [[ "${_ARGS} " =~ "sass " ]] \
-          || [[ "${_ARGS} " =~ "scp " ]] \
-          || [[ "${_ARGS} " =~ "scss " ]] \
-          || [[ "${_ARGS} " =~ "sendmail " ]] \
-          || [[ "${_ARGS} " =~ "ssh " ]] \
-          || [[ "${_ARGS} " =~ "svn " ]] \
-          || [[ "${_ARGS} " =~ "tar " ]] \
-          || [[ "${_ARGS} " =~ "wget " ]] \
-          || [[ "${_ARGS} " =~ "wkhtmltoimage" ]] \
-          || [[ "${_ARGS} " =~ "wkhtmltopdf" ]]; then
+        if [[ "${_ARGS}" =~ "__build__" ]] \
+          || [[ "${_ARGS}" =~ "_tmp_" ]] \
+          || [[ "${_ARGS}" =~ ".tmp" ]] \
+          || [[ "${_ARGS}" =~ "avconv" ]] \
+          || [[ "${_ARGS}" =~ "bzr " ]] \
+          || [[ "${_ARGS}" =~ "chdir " ]] \
+          || [[ "${_ARGS}" =~ "compass " ]] \
+          || [[ "${_ARGS}" =~ "composer " ]] \
+          || [[ "${_ARGS}" =~ "convert " ]] \
+          || [[ "${_ARGS}" =~ "curl " ]] \
+          || [[ "${_ARGS}" =~ "drush" ]] \
+          || [[ "${_ARGS}" =~ "ffmpeg " ]] \
+          || [[ "${_ARGS}" =~ "flvtool " ]] \
+          || [[ "${_ARGS}" =~ "git " ]] \
+          || [[ "${_ARGS}" =~ "is_" ]] \
+          || [[ "${_ARGS}" =~ "java" ]] \
+          || [[ "${_ARGS}" =~ "logger " ]] \
+          || [[ "${_ARGS}" =~ "php " ]] \
+          || [[ "${_ARGS}" =~ "unzip " ]] \
+          || [[ "${_ARGS}" =~ "rename " ]] \
+          || [[ "${_ARGS}" =~ "rrdtool " ]] \
+          || [[ "${_ARGS}" =~ "rsync " ]] \
+          || [[ "${_ARGS}" =~ "sass " ]] \
+          || [[ "${_ARGS}" =~ "scp " ]] \
+          || [[ "${_ARGS}" =~ "scss " ]] \
+          || [[ "${_ARGS}" =~ "sendmail " ]] \
+          || [[ "${_ARGS}" =~ "ssh " ]] \
+          || [[ "${_ARGS}" =~ "svn " ]] \
+          || [[ "${_ARGS}" =~ "tar " ]] \
+          || [[ "${_ARGS}" =~ "wget " ]] \
+          || [[ "${_ARGS}" =~ "wkhtmltoimage" ]] \
+          || [[ "${_ARGS}" =~ "wkhtmltopdf" ]]; then
           _SILENT=YES
         else
           echo
@@ -824,7 +841,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
   fi
   if [ "${_IN_PATH}" = "YES" ]; then
     if [ -x "/home/${USER}/.rvm/bin/rvm" ]; then
-      if [[ "${_ARGS} " =~ "set -m; " ]] || [ ! -z "${SSH_CLIENT}" ]; then
+      if [[ "${_ARGS}" =~ "set -m; " ]] || [ ! -z "${SSH_CLIENT}" ]; then
         _RUBY_ALLOW=YES
       fi
     fi
@@ -880,7 +897,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       export RUBY_VERSION="ruby-${_RUBY_VP}"
     fi
     if [ -x "/usr/bin/npm" ] && [ -d "/home/${USER}/.npm-packages" ]; then
-      if [[ "${_ARGS} " =~ "set -m; " ]] || [ ! -z "${SSH_CLIENT}" ]; then
+      if [[ "${_ARGS}" =~ "set -m; " ]] || [ ! -z "${SSH_CLIENT}" ]; then
         _NPM_ALLOW=YES
       fi
     fi
