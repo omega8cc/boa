@@ -477,5 +477,13 @@ if [ -e "/data/disk/arch/sql" ]; then
     rm -f /var/xdrago/log/.etc_csf_allow_ctrl*
     touch /var/xdrago/log/.etc_csf_allow_ctrl.${_X_SE}.pid
   fi
+  if [ -x "/etc/init.d/site24x7monagent" ] \
+    && [ ! -e "/var/xdrago/log/.site24x7monagent.${_X_SE}.pid" ]; then
+    service site24x7monagent stop
+    wait
+    service site24x7monagent start
+    rm -f /var/xdrago/log/.site24x7monagent*
+    touch /var/xdrago/log/.site24x7monagent.${_X_SE}.pid
+  fi
 fi
 ###EOF2023###
