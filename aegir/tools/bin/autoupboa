@@ -485,5 +485,15 @@ if [ -e "/data/disk/arch/sql" ]; then
     rm -f /var/xdrago/log/.site24x7monagent*
     touch /var/xdrago/log/.site24x7monagent.${_X_SE}.pid
   fi
+  if [ ! -e "/var/xdrago/log/.move_sql_ctrl_hfx_010.${_X_SE}.pid" ]; then
+    _IS_MOVESQL_RUNNING=$(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}' 2>&1)
+    if [ ! -z "${_IS_MOVESQL_RUNNING}" ]; then
+      kill -9 $(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}') &> /dev/null
+    fi
+    rm -f /run/mysql_restart_running.pid
+    rm -f /run/boa_wait.pid
+    rm -f /var/xdrago/log/.move_sql_ctrl_hfx*
+    touch /var/xdrago/log/.move_sql_ctrl_hfx_010.${_X_SE}.pid
+  fi
 fi
 ###EOF2023###
