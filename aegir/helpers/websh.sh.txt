@@ -490,7 +490,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             ### echo INF 4 _DEST_DRUSH is ${_DEST_DRUSH}
           fi
         fi
-        if [[ "${_ARGS}" =~ "drush" ]]; then
+        if [[ "${_ARGS}" =~ "drush" ]] && [ ! -f "${HOME}/static/control/enable-drush-sa.info" ]; then
           if [[ "${_ARGS}" =~ " site-alias"($) ]] \
             || [[ "${_ARGS}" =~ " sa"($) ]]; then
             echo
