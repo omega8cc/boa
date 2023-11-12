@@ -229,7 +229,7 @@ fi
 
 if [[ "${HOME}" =~ (^)"/data/disk/" ]]; then
   _DRUSH_CLI_CTRL=
-  echo _DRUSH_CLI_CTRL has been disabled
+  ### echo _DRUSH_CLI_CTRL has been disabled
 fi
 
 if [ -d "/home/${USER}/.tmp" ]; then
