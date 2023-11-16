@@ -301,35 +301,6 @@ create_distro_d7_symlinks() {
   fi
 }
 #
-# Create D8 symlinks.
-create_d8_symlinks() {
-  if [ ! -L "core" ]; then
-    ln -sfn ${_D8_CORE_DIR}/.csslintrc .csslintrc
-    ln -sfn ${_D8_CORE_DIR}/.editorconfig .editorconfig
-    ln -sfn ${_D8_CORE_DIR}/.eslintignore .eslintignore
-    ln -sfn ${_D8_CORE_DIR}/.eslintrc .eslintrc
-    ln -sfn ${_D8_CORE_DIR}/.gitattributes .gitattributes
-    ln -sfn ${_D8_CORE_DIR}/.htaccess .htaccess
-    ln -sfn ${_D8_CORE_DIR}/autoload.php autoload.php
-    ln -sfn ${_D8_CORE_DIR}/composer.json composer.json
-    ln -sfn ${_D8_CORE_DIR}/core core
-    ln -sfn ${_D8_CORE_DIR}/crossdomain.xml crossdomain.xml
-    ln -sfn ${_D8_CORE_DIR}/example.gitignore example.gitignore
-    ln -sfn ${_D8_CORE_DIR}/index.php index.php
-    ln -sfn ${_D8_CORE_DIR}/modules modules
-    ln -sfn ${_D8_CORE_DIR}/profiles profiles
-    ln -sfn ${_D8_CORE_DIR}/themes themes
-    ln -sfn ${_D8_CORE_DIR}/update.php update.php
-    ln -sfn ${_D8_CORE_DIR}/vendor vendor
-    ln -sfn ${_D8_CORE_DIR}/web.config web.config
-    cp -af ${_D8_CORE_DIR}/sites ./
-  fi
-  if [ ! -L "${_OCTO_PLPATH}/profiles" ] && [ -d "${_SHRD_PLPATH}/profiles" ]; then
-    rm -rf ${_OCTO_PLPATH}/profiles
-    ln -s ${_SHRD_PLPATH}/profiles ${_OCTO_PLPATH}/profiles
-  fi
-}
-#
 # Rename D7 profiles.
 rename_drupal7_profiles() {
   for Files in `find ./profiles -type f`; do
@@ -364,7 +335,7 @@ prepare_drupal6_core() {
     fi
     cd /data/all/000/core
     curl -L --max-redirs 10 -k -s -A iCab \
-      "http://${_USE_MIR}/core/pressflow-${_SMALLCORE6}.tar.gz" | tar -xzf -
+      "http://${_USE_MIR}/core/pressflow-${_SMALLCORE6_V}.tar.gz" | tar -xzf -
     find ${_D6_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
     find ${_D6_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
     cd ${_D6_CORE_DIR}/
@@ -393,7 +364,7 @@ prepare_drupal7_core() {
     fi
     cd /data/all/000/core
     curl ${crlGet} \
-      "http://${_USE_MIR}/core/drupal-${_SMALLCORE7}.tar.gz" \
+      "http://${_USE_MIR}/core/drupal-${_SMALLCORE7_V}.tar.gz" \
       | tar -xzf -
     find ${_D7_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
     find ${_D7_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
@@ -409,29 +380,6 @@ prepare_drupal7_core() {
     cd ${_D7_CORE_DIR}/themes
     get_dev_contrib "rubik-7.x-4.4.tar.gz"
     get_dev_contrib "tao-7.x-3.1.tar.gz"
-    cd ${_CORE}
-  fi
-}
-#
-# Prepare D8 core.
-prepare_drupal8_core() {
-  if [ ! -e "${_D8_CORE_DIR}" ]; then
-    if [ -L "${_D8_CORE_DIR}" ]; then
-      unlink ${_D8_CORE_DIR}
-    fi
-    cd /data/all/000/core
-    curl ${crlGet} \
-      "http://${_USE_MIR}/core/drupal-${_SMALLCORE8}.tar.gz" \
-      | tar -xzf -
-    find ${_D8_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
-    find ${_D8_CORE_DIR} -type f -exec chmod 0644 {} \; &> /dev/null
-    cd ${_D8_CORE_DIR}/
-    patchFile="0001-Symlink-core-support-test.patch"
-    patch -p1 < ${bldPth}/aegir/patches/8-core/${patchFile} &> /dev/null
-    fix_dirs_files
-    rename_drupal8_profiles
-    rm -f modules/o_contrib_eight
-    ln -s ${_CORE}/o_contrib_eight modules/o_contrib_eight
     cd ${_CORE}
   fi
 }
@@ -487,29 +435,6 @@ nocore_d7_dist_clean() {
   fi
 }
 #
-# Remove D8 core from distro directory.
-nocore_d8_dist_clean() {
-  rm -rf ${_SHRD_PLPATH}/cache
-  rm -rf ${_SHRD_PLPATH}/core
-  rm -rf ${_SHRD_PLPATH}/includes
-  rm -rf ${_SHRD_PLPATH}/misc
-  rm -rf ${_SHRD_PLPATH}/modules
-  rm -rf ${_SHRD_PLPATH}/scripts
-  rm -rf ${_SHRD_PLPATH}/sites
-  rm -rf ${_SHRD_PLPATH}/themes
-  rm -rf ${_SHRD_PLPATH}/vendor
-  rm -f ${_SHRD_PLPATH}/.gitignore
-  rm -f ${_SHRD_PLPATH}/.htaccess
-  rm -f ${_SHRD_PLPATH}/*.php
-  rm -f ${_SHRD_PLPATH}/*.txt
-  rm -f ${_SHRD_PLPATH}/*.xml
-  rm -f ${_SHRD_PLPATH}/web.config
-  if [ ! -d "${_SHRD_PLPATH}/profiles" ] && [ -d "${_D8_CORE_DIR}/profiles" ]; then
-    rm -rf ${_SHRD_PLPATH}/profiles
-    cp -af ${_D8_CORE_DIR}/profiles ${_SHRD_PLPATH}/
-  fi
-}
-#
 # Enable D6 admin.
 enable_drupal6_admin() {
   sed -i "s/'path_alias_cache'/'path_alias_cache', 'admin'/g" \
@@ -530,12 +455,10 @@ init_this_distro_root() {
   if [[ "${_USE_DISTRO_CORE}" = "YES" ]]; then
     create_distro_d7_symlinks
   else
-    if [[ "${_SHRD_PLNAME}" =~ "-${_SMALLCORE6}" ]]; then
+    if [[ "${_SHRD_PLNAME}" =~ "-${_SMALLCORE6_V}" ]]; then
       create_d6_symlinks
-    elif [[ "${_SHRD_PLNAME}" =~ "-${_SMALLCORE7}" ]]; then
+    elif [[ "${_SHRD_PLNAME}" =~ "-${_SMALLCORE7_V}" ]]; then
       create_d7_symlinks
-    else
-      create_d8_symlinks
     fi
   fi
 }
@@ -698,14 +621,14 @@ if [ "${_HOT_SAUCE}" = "NO" ]; then
   _CORE="/data/all/${_LAST_ALL}"
   _THIS_CORE="${_LAST_ALL}"
   if [ "${_USE_CURRENT}" = "YES" ] \
-    && [ -e "/data/all/000/core-v-${_SMALLCORE6}.txt" ] \
-    && [ -e "/data/all/000/core-v-${_SMALLCORE7}.txt" ]; then
+    && [ -e "/data/all/000/core-v-${_SMALLCORE6_V}.txt" ] \
+    && [ -e "/data/all/000/core-v-${_SMALLCORE7_V}.txt" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} C: Shared platforms code v.${_LAST_ALL} will be used"
     fi
   elif [ "${_USE_CURRENT}" = "NO" ] \
-    || [ ! -e "/data/all/000/core-v-${_SMALLCORE6}.txt" ] \
-    || [ ! -e "/data/all/000/core-v-${_SMALLCORE7}.txt" ]; then
+    || [ ! -e "/data/all/000/core-v-${_SMALLCORE6_V}.txt" ] \
+    || [ ! -e "/data/all/000/core-v-${_SMALLCORE7_V}.txt" ]; then
     _CORE="/data/all/${_ALL_DISTRO}"
     _THIS_CORE="${_ALL_DISTRO}"
     msg "${_STATUS} C: Shared platforms code v.${_ALL_DISTRO} (new) will be created"
@@ -719,10 +642,9 @@ else
   _THIS_CORE="${_ALL_DISTRO}"
   msg "${_STATUS} C: Shared platforms code v.${_ALL_DISTRO} (new) will be created"
 fi
-_D6_CORE_DIR="/data/all/000/core/pressflow-${_SMALLCORE6}"
-_D7_CORE_DIR="/data/all/000/core/drupal-${_SMALLCORE7}"
-_D8_CORE_DIR="/data/all/000/core/drupal-${_SMALLCORE8}"
-_D9_CORE_DIR="/data/all/000/core/drupal-${_SMALLCORE9}"
+_D6_CORE_DIR="/data/all/000/core/pressflow-${_SMALLCORE6_V}"
+_D7_CORE_DIR="/data/all/000/core/drupal-${_SMALLCORE7_V}"
+_D9_CORE_DIR="/data/all/000/core/drupal-${_SMALLCORE9_V}"
 
 if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
   _USE_AEGIR_VER=SRC
@@ -734,58 +656,55 @@ fi
 
 ###---### Distributions full names.
 #
-_F_AGOV="aGov ${_AGOV} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_CIVICRM_M6="CiviCRM ${_CIVICRM_M6} ${_SMALLCORE6} [${_THIS_CORE}]"
-_F_CIVICRM_M7="CiviCRM ${_CIVICRM_M7} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_COD="Conference 1.0-v5 ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_COMMERCE1="Commerce ${_COMMERCE1} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_COMMERCE2="Commerce ${_COMMERCE2} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_COMMONS2="Commons ${_COMMONS2} ${_SMALLCORE6} [${_THIS_CORE}]"
-_F_COMMONS3="Commons ${_COMMONS3} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_DRUPAL6="Drupal ${_SMALLCORE6} [${_THIS_CORE}]"
-_F_DRUPAL7="Drupal ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_DRUPAL8="Drupal ${_SMALLCORE8} [${_THIS_CORE}]"
-_F_DRUPAL9="Drupal ${_SMALLCORE9} [${_THIS_CORE}]"
+_F_AGOV="aGov ${_AGOV} ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_CIVICRM_M6="CiviCRM ${_CIVICRM_M6} ${_SMALLCORE6_V} [${_THIS_CORE}]"
+_F_CIVICRM_M7="CiviCRM ${_CIVICRM_M7} ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_COD="Conference 1.0-v5 ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_COMMERCE1="Commerce ${_COMMERCE1} ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_COMMERCE2="Commerce ${_COMMERCE2} ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_COMMONS2="Commons ${_COMMONS2} ${_SMALLCORE6_V} [${_THIS_CORE}]"
+_F_COMMONS3="Commons ${_COMMONS3} ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_DRUPAL6="Drupal ${_SMALLCORE6_V} [${_THIS_CORE}]"
+_F_DRUPAL7="Drupal ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_DRUPAL9="Drupal ${_SMALLCORE9_V} [${_THIS_CORE}]"
 _F_DRUPAL10_0="Drupal ${_SMALLCORE10_0_V} [${_THIS_CORE}]"
 _F_DRUPAL10_1="Drupal ${_SMALLCORE10_1_V} [${_THIS_CORE}]"
-_F_ERPAL="ERPAL ${_ERPAL} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_FSERVER="Feature Server 1.3 ${_SMALLCORE6} [${_THIS_CORE}]"
-_F_GUARDR="Guardr ${_GUARDR} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_LIGHTNING="Lightning ${_LIGHTNING} ${_SMALLCORE93} [${_THIS_CORE}]"
-_F_OPENACADEMY="OpenAcademy ${_OPENACADEMY} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_OPENAID="OpenAid ${_OPENAID} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_OPENATRIUM7="OpenAtrium ${_OPENATRIUM7} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_OPENBLOG="OpenBlog 1.0-v3 ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_OPENCHURCH1="OpenChurch 1.17-b2 ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_OPENCHURCH2="OpenChurch ${_OPENCHURCH2} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_OPENDEALS="OpenDeals ${_OPENDEALS} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_OPENLUCIUS="OpenLucius ${_OPENLUCIUS} ${_SMALLCORE95} [${_THIS_CORE}]"
-_F_OPENOUTREACH="OpenOutreach ${_OPENOUTREACH} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_OPENPUBLIC="OpenPublic ${_OPENPUBLIC} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_OPENPUBLISH="OpenPublish 3.0-b7 ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_OPENSCHOLAR="OpenScholar ${_OPENSCHOLAR} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_OPIGNOLMS7="Opigno LMS ${_OPIGNOLMS7} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_OPIGNOLMS8="Opigno LMS ${_OPIGNOLMS8} ${_SMALLCORE8} [${_THIS_CORE}]"
-_F_OPIGNOLMS9="Opigno LMS ${_OPIGNOLMS9} ${_SMALLCORE95} [${_THIS_CORE}]"
-_F_PANOPOLY="Panopoly ${_PANOPOLY} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_RECRUITER="Recruiter ${_RECRUITER} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_RESTAURANT="Restaurant ${_RESTAURANT} ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_SOCIAL="Social ${_SOCIAL} ${_SMALLCORE95} [${_THIS_CORE}]"
-_F_THUNDER="Thunder ${_THUNDER} ${_SMALLCORE10_1} [${_THIS_CORE}]"
-_F_UBER_CART_T="Ubercart ${_UBERCART7} [ud2] ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_UBERCART6="Ubercart ${_UBERCART6} ${_SMALLCORE6} [${_THIS_CORE}]"
-_F_UBERCART7="Ubercart ${_UBERCART7} [aq3] ${_SMALLCORE7} [${_THIS_CORE}]"
-_F_VARBASE="Varbase ${_VARBASE} ${_SMALLCORE10_1} [${_THIS_CORE}]"
+_F_ERPAL="ERPAL ${_ERPAL} ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_FSERVER="Feature Server 1.3 ${_SMALLCORE6_V} [${_THIS_CORE}]"
+_F_GUARDR="Guardr ${_GUARDR} ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_OPENACADEMY="OpenAcademy ${_OPENACADEMY} ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_OPENAID="OpenAid ${_OPENAID} ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_OPENATRIUM7="OpenAtrium ${_OPENATRIUM7} ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_OPENBLOG="OpenBlog 1.0-v3 ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_OPENCHURCH1="OpenChurch 1.17-b2 ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_OPENCHURCH2="OpenChurch ${_OPENCHURCH2} ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_OPENDEALS="OpenDeals ${_OPENDEALS} ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_OPENLUCIUS="OpenLucius ${_OPENLUCIUS} ${_SMALLCORE9_V} [${_THIS_CORE}]"
+_F_OPENOUTREACH="OpenOutreach ${_OPENOUTREACH} ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_OPENPUBLIC="OpenPublic ${_OPENPUBLIC} ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_OPENPUBLISH="OpenPublish 3.0-b7 ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_OPENSCHOLAR="OpenScholar ${_OPENSCHOLAR} ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_OPIGNOLMS7="Opigno LMS ${_OPIGNOLMS7} ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_OPIGNOLMS9="Opigno LMS ${_OPIGNOLMS9} ${_SMALLCORE9_V} [${_THIS_CORE}]"
+_F_PANOPOLY="Panopoly ${_PANOPOLY} ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_RECRUITER="Recruiter ${_RECRUITER} ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_RESTAURANT="Restaurant ${_RESTAURANT} ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_SOCIAL="Social ${_SOCIAL} ${_SMALLCORE10_0_V} [${_THIS_CORE}]"
+_F_THUNDER="Thunder ${_THUNDER} ${_SMALLCORE10_1_V} [${_THIS_CORE}]"
+_F_UBER_CART_T="Ubercart ${_UBERCART7} [ud2] ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_UBERCART6="Ubercart ${_UBERCART6} ${_SMALLCORE6_V} [${_THIS_CORE}]"
+_F_UBERCART7="Ubercart ${_UBERCART7} [aq3] ${_SMALLCORE7_V} [${_THIS_CORE}]"
+_F_VARBASE="Varbase ${_VARBASE} ${_SMALLCORE10_1_V} [${_THIS_CORE}]"
 #
-_F_DRUPAL6_D="Drupal ${_SMALLCORE6} D.${_THIS_CORE}"
-_F_DRUPAL6_S="Drupal ${_SMALLCORE6} S.${_THIS_CORE}"
-_F_DRUPAL6_P="Drupal ${_SMALLCORE6} P.${_THIS_CORE}"
-_F_DRUPAL7_D="Drupal ${_SMALLCORE7} D.${_THIS_CORE}"
-_F_DRUPAL7_S="Drupal ${_SMALLCORE7} S.${_THIS_CORE}"
-_F_DRUPAL7_P="Drupal ${_SMALLCORE7} P.${_THIS_CORE}"
-_F_DRUPAL9_D="Drupal ${_SMALLCORE9} D.${_THIS_CORE}"
-_F_DRUPAL9_S="Drupal ${_SMALLCORE9} S.${_THIS_CORE}"
-_F_DRUPAL9_P="Drupal ${_SMALLCORE9} P.${_THIS_CORE}"
+_F_DRUPAL6_D="Drupal ${_SMALLCORE6_V} D.${_THIS_CORE}"
+_F_DRUPAL6_S="Drupal ${_SMALLCORE6_V} S.${_THIS_CORE}"
+_F_DRUPAL6_P="Drupal ${_SMALLCORE6_V} P.${_THIS_CORE}"
+_F_DRUPAL7_D="Drupal ${_SMALLCORE7_V} D.${_THIS_CORE}"
+_F_DRUPAL7_S="Drupal ${_SMALLCORE7_V} S.${_THIS_CORE}"
+_F_DRUPAL7_P="Drupal ${_SMALLCORE7_V} P.${_THIS_CORE}"
+_F_DRUPAL9_D="Drupal ${_SMALLCORE9_V} D.${_THIS_CORE}"
+_F_DRUPAL9_S="Drupal ${_SMALLCORE9_V} S.${_THIS_CORE}"
+_F_DRUPAL9_P="Drupal ${_SMALLCORE9_V} P.${_THIS_CORE}"
 _F_DRUPAL10_0_D="Drupal ${_SMALLCORE10_0_V} D.${_THIS_CORE}"
 _F_DRUPAL10_0_S="Drupal ${_SMALLCORE10_0_V} S.${_THIS_CORE}"
 _F_DRUPAL10_0_P="Drupal ${_SMALLCORE10_0_V} P.${_THIS_CORE}"
@@ -826,7 +745,7 @@ agov_install() {
 ###---### aGov
 #
   _REAL_PRNAME="agov"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_AGOV}-${_SMALLCORE7}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_AGOV}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -877,7 +796,7 @@ commerce_7_1_install() {
 #
   _REAL_PRNAME="commerce_kickstart"
   _VIRT_PRNAME="commerce"
-  _SHRD_PLNAME="$_VIRT_PRNAME-${_COMMERCE1}-${_SMALLCORE7}"
+  _SHRD_PLNAME="$_VIRT_PRNAME-${_COMMERCE1}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -932,7 +851,7 @@ commerce_7_2_install() {
 #
   _REAL_PRNAME="commerce_kickstart"
   _VIRT_PRNAME="commerce"
-  _SHRD_PLNAME="$_VIRT_PRNAME-${_COMMERCE2}-${_SMALLCORE7}"
+  _SHRD_PLNAME="$_VIRT_PRNAME-${_COMMERCE2}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -985,7 +904,7 @@ commons_6_install() {
 ###---### Commons 6.x
 #
   _REAL_PRNAME="commons"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_COMMONS2}-${_SMALLCORE6}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_COMMONS2}-${_SMALLCORE6_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -1049,7 +968,7 @@ commons_7_install() {
 ###---### Commons 7.x
 #
   _REAL_PRNAME="commons"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_COMMONS3}-${_SMALLCORE7}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_COMMONS3}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -1108,7 +1027,7 @@ drupal6_install() {
     || [[ "${_PLATFORMS_LIST}" =~ "D6D" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "D6S" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "D6P" ]]; then
-    pthPfw="pressflow-${_SMALLCORE6}-dev/modules/path_alias_cache"
+    pthPfw="pressflow-${_SMALLCORE6_V}-dev/modules/path_alias_cache"
     if [ ! -d "${_ROOT}/distro/${_THIS_CORE}/${pthPfw}" ]; then
       if prompt_yes_no "$_F_DRUPAL6 - https://www.pressflow.org" ; then
         true
@@ -1116,7 +1035,7 @@ drupal6_install() {
         #
         _REAL_PRNAME="default"
         _VIRT_PRNAME="pressflow"
-        _SHRD_PLNAME="$_VIRT_PRNAME-${_SMALLCORE6}-dev"
+        _SHRD_PLNAME="$_VIRT_PRNAME-${_SMALLCORE6_V}-dev"
         _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
         _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
         _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -1140,7 +1059,7 @@ drupal6_install() {
         #
         _REAL_PRNAME="default"
         _VIRT_PRNAME="pressflow"
-        _SHRD_PLNAME="$_VIRT_PRNAME-${_SMALLCORE6}-stage"
+        _SHRD_PLNAME="$_VIRT_PRNAME-${_SMALLCORE6_V}-stage"
         _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
         _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
         _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -1164,7 +1083,7 @@ drupal6_install() {
         #
         _REAL_PRNAME="default"
         _VIRT_PRNAME="pressflow"
-        _SHRD_PLNAME="$_VIRT_PRNAME-${_SMALLCORE6}-prod"
+        _SHRD_PLNAME="$_VIRT_PRNAME-${_SMALLCORE6_V}-prod"
         _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
         _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
         _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -1266,7 +1185,7 @@ drupal9_install() {
     || [[ "${_PLATFORMS_LIST}" =~ "D9S" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "D9P" ]]; then
     if [ ! -d "${_ROOT}/distro/${_THIS_CORE}/${_DRUPAL9_D}" ]; then
-      if prompt_yes_no "${_F_DRUPAL9} - https://drupal.org/project/drupal/releases/${_SMALLCORE9}" ; then
+      if prompt_yes_no "${_F_DRUPAL9} - https://drupal.org/project/drupal/releases/${_SMALLCORE9_V}" ; then
         true
         ###---### Drupal 9 Development
         #
@@ -1451,7 +1370,7 @@ erpal_install() {
 ###---### ERPAL
 #
   _REAL_PRNAME="erpal"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_ERPAL}-${_SMALLCORE7}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_ERPAL}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -1504,7 +1423,7 @@ fserver_install() {
 #
   _REAL_PRNAME="feature_server"
   _VIRT_PRNAME="fserver"
-  _SHRD_PLNAME="$_VIRT_PRNAME-${_SMALLCORE6}"
+  _SHRD_PLNAME="$_VIRT_PRNAME-${_SMALLCORE6_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -1558,7 +1477,7 @@ guardr_install() {
 ###---### Guardr
 #
   _REAL_PRNAME="guardr"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_GUARDR}-${_SMALLCORE7}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_GUARDR}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -1603,43 +1522,11 @@ guardr_install() {
 }
 
 
-lightning_install() {
-###---### Lightning
-#
-  _REAL_PRNAME="lightning"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_LIGHTNING}-${_SMALLCORE93}"
-  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
-  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/contrib/${_REAL_PRNAME}"
-  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/docroot"
-  if [ "${_ALLOW_ALL}" = "YES" ]; then
-    if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
-      || [[ "${_PLATFORMS_LIST}" =~ "LHG" ]]; then
-      if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_LIGHTNING - ${urlPrt}/lightning" ; then
-          true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_LIGHTNING ${yOk}"
-          if [ ! -d "${_OCTO_PLPATH}" ]; then
-            cd ${_ROOT}/distro/${_THIS_CORE}
-            get_distro_ext "${_SHRD_PLNAME}.tar.gz"
-          fi
-          if [ -d "${_OCTO_PLPATH}" ]; then
-            msg "DISTRO: $_F_LIGHTNING installed"
-            _RUN_VERIFY=YES
-          fi
-        else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_LIGHTNING ${noT}"
-        fi
-      fi
-    fi
-  fi
-}
-
-
 openacademy_install() {
 ###---### OpenAcademy
 #
   _REAL_PRNAME="openacademy"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENACADEMY}-${_SMALLCORE7}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENACADEMY}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -1685,7 +1572,7 @@ openaid_install() {
 ###---### OpenAid
 #
   _REAL_PRNAME="openaid"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENAID}-${_SMALLCORE7}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENAID}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -1732,7 +1619,7 @@ openatrium7_install() {
 ###---### OpenAtrium D7
 #
   _REAL_PRNAME="openatrium"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENATRIUM7}-${_SMALLCORE7}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENATRIUM7}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -1779,7 +1666,7 @@ openblog_install() {
 ###---### OpenBlog
 #
   _REAL_PRNAME="openblog"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENBLOG}-${_SMALLCORE7}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENBLOG}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -1825,7 +1712,7 @@ openchurch1_install() {
 ###---### OpenChurch
 #
   _REAL_PRNAME="openchurch"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENCHURCH1}-${_SMALLCORE7}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENCHURCH1}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -1872,7 +1759,7 @@ openchurch2_install() {
 ###---### OpenChurch
 #
   _REAL_PRNAME="openchurch"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENCHURCH2}-${_SMALLCORE7}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENCHURCH2}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -1920,7 +1807,7 @@ opendeals_install() {
 ###---### OpenDeals
 #
   _REAL_PRNAME="opendeals"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENDEALS}-${_SMALLCORE7}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENDEALS}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -1966,7 +1853,7 @@ openlucius_install() {
 ###---### OpenLucius
 #
   _REAL_PRNAME="openlucius"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENLUCIUS}-${_SMALLCORE95}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENLUCIUS}-${_SMALLCORE9_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/contrib/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/web"
@@ -1998,7 +1885,7 @@ openoutreach_install() {
 ###---### OpenOutreach
 #
   _REAL_PRNAME="openoutreach"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENOUTREACH}-${_SMALLCORE7}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENOUTREACH}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -2047,7 +1934,7 @@ openpublic_install() {
 ###---### OpenPublic
 #
   _REAL_PRNAME="openpublic"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENPUBLIC}-${_SMALLCORE7}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENPUBLIC}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -2094,7 +1981,7 @@ openscholar_install() {
 ###---### OpenScholar
 #
   _REAL_PRNAME="openscholar"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENSCHOLAR}-${_SMALLCORE7}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPENSCHOLAR}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -2149,7 +2036,7 @@ opigno_lms9_install() {
 ###---### Opigno LMS 9
 #
   _REAL_PRNAME="opigno_lms"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPIGNOLMS9}-${_SMALLCORE95}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPIGNOLMS9}-${_SMALLCORE9_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/contrib/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/web"
@@ -2177,43 +2064,11 @@ opigno_lms9_install() {
 }
 
 
-opigno_lms8_install() {
-###---### Opigno LMS 8
-#
-  _REAL_PRNAME="opigno_lms"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPIGNOLMS8}-${_SMALLCORE8}"
-  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
-  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/contrib/${_REAL_PRNAME}"
-  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/web"
-  if [ "${_ALLOW_ALL}" = "YES" ]; then
-    if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
-      || [[ "${_PLATFORMS_LIST}" =~ "OPG" ]]; then
-      if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_OPIGNOLMS8 - http://opigno.org" ; then
-          true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPIGNOLMS8 ${yOk}"
-          if [ ! -d "${_OCTO_PLPATH}" ]; then
-            cd ${_ROOT}/distro/${_THIS_CORE}
-            get_distro_ext "${_SHRD_PLNAME}.tar.gz"
-          fi
-          if [ -d "${_OCTO_PLPATH}" ]; then
-            msg "DISTRO: $_F_OPIGNOLMS8 installed"
-            _RUN_VERIFY=YES
-          fi
-        else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPIGNOLMS8 ${noT}"
-        fi
-      fi
-    fi
-  fi
-}
-
-
 opigno_lms7_install() {
 ###---### Opigno LMS 7
 #
   _REAL_PRNAME="opigno_lms"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPIGNOLMS7}-${_SMALLCORE7}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_OPIGNOLMS7}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -2268,7 +2123,7 @@ panopoly_install() {
 ###---### Panopoly
 #
   _REAL_PRNAME="panopoly"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_PANOPOLY}-${_SMALLCORE7}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_PANOPOLY}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -2324,7 +2179,7 @@ recruiter_install() {
 ###---### Recruiter
 #
   _REAL_PRNAME="recruiter"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_RECRUITER}-${_SMALLCORE7}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_RECRUITER}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -2370,7 +2225,7 @@ restaurant_install() {
 ###---### Restaurant
 #
   _REAL_PRNAME="restaurant"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_RESTAURANT}-${_SMALLCORE7}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_RESTAURANT}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -2423,7 +2278,7 @@ thunder_install() {
 ###---### Thunder
 #
   _REAL_PRNAME="thunder"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_THUNDER}-${_SMALLCORE10_1}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_THUNDER}-${_SMALLCORE10_1_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/contrib/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/docroot"
@@ -2456,7 +2311,7 @@ ubercart6_install() {
 #
   _REAL_PRNAME="uberdrupal"
   _VIRT_PRNAME="ubercart"
-  _SHRD_PLNAME="$_VIRT_PRNAME-${_UBERCART6}-${_SMALLCORE6}"
+  _SHRD_PLNAME="$_VIRT_PRNAME-${_UBERCART6}-${_SMALLCORE6_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -2531,7 +2386,7 @@ ubercart7_install() {
 #
   _REAL_PRNAME="minimal"
   _VIRT_PRNAME="ubercart"
-  _SHRD_PLNAME="$_VIRT_PRNAME-${_UBERCART7}-${_SMALLCORE7}"
+  _SHRD_PLNAME="$_VIRT_PRNAME-${_UBERCART7}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -2553,7 +2408,7 @@ ubercart7_install() {
               nocore_d7_dist_clean
               rm -rf ${_SHRD_PLPATH}/profiles/standard
               rm -rf ${_SHRD_PLPATH}/profiles/testing
-              sed -i "s/version = VERSION/version = \"${_SMALLCORE7}\"/g" \
+              sed -i "s/version = VERSION/version = \"${_SMALLCORE7_V}\"/g" \
                 ${_SHRD_PLPATH}/profiles/minimal/minimal.info &> /dev/null
               mkdir -p ${_SHRD_PRPATH}/libraries
               cd ${_SHRD_PRPATH}/libraries
@@ -2601,7 +2456,7 @@ ubercart7_testing_install() {
 #
   _REAL_PRNAME="testing"
   _VIRT_PRNAME="ubercart-${_REAL_PRNAME}"
-  _SHRD_PLNAME="$_VIRT_PRNAME-${_UBERCART7}-${_SMALLCORE7}"
+  _SHRD_PLNAME="$_VIRT_PRNAME-${_UBERCART7}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -2623,7 +2478,7 @@ ubercart7_testing_install() {
               nocore_d7_dist_clean
               rm -rf ${_SHRD_PLPATH}/profiles/standard
               rm -rf ${_SHRD_PLPATH}/profiles/minimal
-              sed -i "s/version = VERSION/version = \"${_SMALLCORE7}\"/g" \
+              sed -i "s/version = VERSION/version = \"${_SMALLCORE7_V}\"/g" \
                 ${_SHRD_PLPATH}/profiles/testing/testing.info &> /dev/null
               mkdir -p ${_SHRD_PRPATH}/libraries
               cd ${_SHRD_PRPATH}/libraries
@@ -2669,7 +2524,7 @@ varbase_install() {
 ###---### Varbase
 #
   _REAL_PRNAME="varbase"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_VARBASE}-${_SMALLCORE10_1}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_VARBASE}-${_SMALLCORE10_1_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/docroot"
@@ -2700,7 +2555,7 @@ social_install() {
 ###---### Social
 #
   _REAL_PRNAME="social"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_SOCIAL}-${_SMALLCORE95}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_SOCIAL}-${_SMALLCORE10_0_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/html"
@@ -2873,248 +2728,230 @@ save_verify_platforms() {
     fi
   fi
 
-  if [ -d "${pthDst}/agov-${_AGOV}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/agov-${_AGOV}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/agov-${_AGOV}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/agov-${_AGOV}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_AGOV" agov \
-        ${pthDst}/agov-${_AGOV}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/agov-${_AGOV}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6}" ]; then
-    if [ ! -e "${pthDst}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6}/$drhSrc" ]; then
+  if [ -d "${pthDst}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6_V}" ]; then
+    if [ ! -e "${pthDst}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_CIVICRM_M6" default \
-        ${pthDst}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6} &> /dev/null
+        ${pthDst}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_CIVICRM_M7" default \
-        ${pthDst}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/cod-${_COD}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/cod-${_COD}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/cod-${_COD}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/cod-${_COD}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_COD" cod \
-        ${pthDst}/cod-${_COD}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/cod-${_COD}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/commerce-${_COMMERCE1}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/commerce-${_COMMERCE1}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/commerce-${_COMMERCE1}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/commerce-${_COMMERCE1}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_COMMERCE1" commerce_kickstart \
-        ${pthDst}/commerce-${_COMMERCE1}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/commerce-${_COMMERCE1}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/commerce-${_COMMERCE2}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/commerce-${_COMMERCE2}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/commerce-${_COMMERCE2}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/commerce-${_COMMERCE2}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_COMMERCE2" commerce_kickstart \
-        ${pthDst}/commerce-${_COMMERCE2}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/commerce-${_COMMERCE2}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/commons-${_COMMONS2}-${_SMALLCORE6}" ]; then
-    if [ ! -e "${pthDst}/commons-${_COMMONS2}-${_SMALLCORE6}/$drhSrc" ]; then
+  if [ -d "${pthDst}/commons-${_COMMONS2}-${_SMALLCORE6_V}" ]; then
+    if [ ! -e "${pthDst}/commons-${_COMMONS2}-${_SMALLCORE6_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_COMMONS2" commons \
-        ${pthDst}/commons-${_COMMONS2}-${_SMALLCORE6} &> /dev/null
+        ${pthDst}/commons-${_COMMONS2}-${_SMALLCORE6_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/commons-${_COMMONS3}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/commons-${_COMMONS3}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/commons-${_COMMONS3}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/commons-${_COMMONS3}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_COMMONS3" commons \
-        ${pthDst}/commons-${_COMMONS3}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/commons-${_COMMONS3}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/drupal-${_SMALLCORE8}" ]; then
-    if [ ! -e "${pthDst}/drupal-${_SMALLCORE8}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL8" standard \
-        ${pthDst}/drupal-${_SMALLCORE8} &> /dev/null
-    fi
-  fi
-  if [ -d "${pthDst}/erpal-${_ERPAL}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/erpal-${_ERPAL}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/erpal-${_ERPAL}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/erpal-${_ERPAL}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_ERPAL" erpal \
-        ${pthDst}/erpal-${_ERPAL}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/erpal-${_ERPAL}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/fserver-${_SMALLCORE6}" ]; then
-    if [ ! -e "${pthDst}/fserver-${_SMALLCORE6}/$drhSrc" ]; then
+  if [ -d "${pthDst}/fserver-${_SMALLCORE6_V}" ]; then
+    if [ ! -e "${pthDst}/fserver-${_SMALLCORE6_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_FSERVER" feature_server \
-        ${pthDst}/fserver-${_SMALLCORE6} &> /dev/null
+        ${pthDst}/fserver-${_SMALLCORE6_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/guardr-${_GUARDR}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/guardr-${_GUARDR}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/guardr-${_GUARDR}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/guardr-${_GUARDR}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_GUARDR" guardr \
-        ${pthDst}/guardr-${_GUARDR}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/guardr-${_GUARDR}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/lightning-${_LIGHTNING}-${_SMALLCORE93}/docroot" ]; then
-    if [ ! -e "${pthDst}/lightning-${_LIGHTNING}-${_SMALLCORE93}/docroot/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_LIGHTNING" lightning \
-        ${pthDst}/lightning-${_LIGHTNING}-${_SMALLCORE93}/docroot &> /dev/null
-    fi
-  fi
-  if [ -d "${pthDst}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/openacademy-${_OPENACADEMY}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/openacademy-${_OPENACADEMY}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/openacademy-${_OPENACADEMY}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_OPENACADEMY" openacademy \
-        ${pthDst}/openacademy-${_OPENACADEMY}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/openacademy-${_OPENACADEMY}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/openaid-${_OPENAID}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/openaid-${_OPENAID}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/openaid-${_OPENAID}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/openaid-${_OPENAID}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_OPENAID" openaid \
-        ${pthDst}/openaid-${_OPENAID}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/openaid-${_OPENAID}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_OPENATRIUM7" openatrium \
-        ${pthDst}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/openblog-${_OPENBLOG}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/openblog-${_OPENBLOG}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/openblog-${_OPENBLOG}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/openblog-${_OPENBLOG}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_OPENBLOG" openblog \
-        ${pthDst}/openblog-${_OPENBLOG}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/openblog-${_OPENBLOG}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_OPENCHURCH1" openchurch \
-        ${pthDst}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_OPENCHURCH2" openchurch \
-        ${pthDst}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/opendeals-${_OPENDEALS}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/opendeals-${_OPENDEALS}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/opendeals-${_OPENDEALS}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/opendeals-${_OPENDEALS}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_OPENDEALS" \
-        opendeals ${pthDst}/opendeals-${_OPENDEALS}-${_SMALLCORE7} &> /dev/null
+        opendeals ${pthDst}/opendeals-${_OPENDEALS}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/openlucius-${_OPENLUCIUS}-${_SMALLCORE95}/web" ]; then
-    if [ ! -e "${pthDst}/openlucius-${_OPENLUCIUS}-${_SMALLCORE95}/web/$drhSrc" ]; then
+  if [ -d "${pthDst}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}/web" ]; then
+    if [ ! -e "${pthDst}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}/web/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_OPENLUCIUS" openlucius \
-        ${pthDst}/openlucius-${_OPENLUCIUS}-${_SMALLCORE95}/web &> /dev/null
+        ${pthDst}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}/web &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_OPENOUTREACH" openoutreach \
-        ${pthDst}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_OPENPUBLIC" openpublic \
-        ${pthDst}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_OPENPUBLISH" openpublish \
-        ${pthDst}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_OPENSCHOLAR" openscholar \
-        ${pthDst}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_OPIGNOLMS7" opigno_lms \
-        ${pthDst}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/panopoly-${_PANOPOLY}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/panopoly-${_PANOPOLY}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/panopoly-${_PANOPOLY}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/panopoly-${_PANOPOLY}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_PANOPOLY" panopoly \
-        ${pthDst}/panopoly-${_PANOPOLY}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/panopoly-${_PANOPOLY}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/recruiter-${_RECRUITER}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/recruiter-${_RECRUITER}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/recruiter-${_RECRUITER}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/recruiter-${_RECRUITER}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_RECRUITER" recruiter \
-        ${pthDst}/recruiter-${_RECRUITER}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/recruiter-${_RECRUITER}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/restaurant-${_RESTAURANT}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/restaurant-${_RESTAURANT}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/restaurant-${_RESTAURANT}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/restaurant-${_RESTAURANT}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_RESTAURANT" restaurant \
-        ${pthDst}/restaurant-${_RESTAURANT}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/restaurant-${_RESTAURANT}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_1}/docroot" ]; then
-    if [ ! -e "${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_1}/docroot/$drhSrc" ]; then
+  if [ -d "${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_1_V}/docroot" ]; then
+    if [ ! -e "${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_1_V}/docroot/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_THUNDER" thunder \
-        ${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_1}/docroot &> /dev/null
+        ${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_1_V}/docroot &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/ubercart-${_UBERCART6}-${_SMALLCORE6}" ]; then
-    if [ ! -e "${pthDst}/ubercart-${_UBERCART6}-${_SMALLCORE6}/$drhSrc" ]; then
+  if [ -d "${pthDst}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}" ]; then
+    if [ ! -e "${pthDst}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_UBERCART6" uberdrupal \
-        ${pthDst}/ubercart-${_UBERCART6}-${_SMALLCORE6} &> /dev/null
+        ${pthDst}/ubercart-${_UBERCART6}-${_SMALLCORE6_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/ubercart-${_UBERCART7}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/ubercart-${_UBERCART7}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/ubercart-${_UBERCART7}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/ubercart-${_UBERCART7}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_UBERCART7" minimal \
-        ${pthDst}/ubercart-${_UBERCART7}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/ubercart-${_UBERCART7}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7}" ]; then
-    if [ ! -e "${pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7}/$drhSrc" ]; then
+  if [ -d "${pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7_V}" ]; then
+    if [ ! -e "${pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7_V}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_UBER_CART_T" testing \
-        ${pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7} &> /dev/null
+        ${pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/varbase-${_VARBASE}-${_SMALLCORE10_1}/docroot" ]; then
-    if [ ! -e "${pthDst}/varbase-${_VARBASE}-${_SMALLCORE10_1}/docroot/$drhSrc" ]; then
+  if [ -d "${pthDst}/varbase-${_VARBASE}-${_SMALLCORE10_1_V}/docroot" ]; then
+    if [ ! -e "${pthDst}/varbase-${_VARBASE}-${_SMALLCORE10_1_V}/docroot/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_VARBASE" varbase \
-        ${pthDst}/varbase-${_VARBASE}-${_SMALLCORE10_1}/docroot &> /dev/null
+        ${pthDst}/varbase-${_VARBASE}-${_SMALLCORE10_1_V}/docroot &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/social-${_SOCIAL}-${_SMALLCORE95}/html" ]; then
-    if [ ! -e "${pthDst}/social-${_SOCIAL}-${_SMALLCORE95}/html/$drhSrc" ]; then
+  if [ -d "${pthDst}/social-${_SOCIAL}-${_SMALLCORE10_0_V}/html" ]; then
+    if [ ! -e "${pthDst}/social-${_SOCIAL}-${_SMALLCORE10_0_V}/html/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_SOCIAL" social \
-        ${pthDst}/social-${_SOCIAL}-${_SMALLCORE95}/html &> /dev/null
+        ${pthDst}/social-${_SOCIAL}-${_SMALLCORE10_0_V}/html &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/opigno_lms-${_OPIGNOLMS8}-${_SMALLCORE8}/web" ]; then
-    if [ ! -e "${pthDst}/opigno_lms-${_OPIGNOLMS8}-${_SMALLCORE8}/web/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_OPIGNOLMS8" opigno_lms \
-        ${pthDst}/opigno_lms-${_OPIGNOLMS8}-${_SMALLCORE8}/web &> /dev/null
-    fi
-  fi
-  if [ -d "${pthDst}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE95}/web" ]; then
-    if [ ! -e "${pthDst}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE95}/web/$drhSrc" ]; then
+  if [ -d "${pthDst}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}/web" ]; then
+    if [ ! -e "${pthDst}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}/web/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_OPIGNOLMS9" opigno_lms \
-        ${pthDst}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE95}/web &> /dev/null
+        ${pthDst}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}/web &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/pressflow-${_SMALLCORE6}-dev" ]; then
-    if [ ! -e "${pthDst}/pressflow-${_SMALLCORE6}-dev/$drhSrc" ]; then
+  if [ -d "${pthDst}/pressflow-${_SMALLCORE6_V}-dev" ]; then
+    if [ ! -e "${pthDst}/pressflow-${_SMALLCORE6_V}-dev/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL6_D" default \
-        ${pthDst}/pressflow-${_SMALLCORE6}-dev &> /dev/null
+        ${pthDst}/pressflow-${_SMALLCORE6_V}-dev &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/pressflow-${_SMALLCORE6}-stage" ]; then
-    if [ ! -e "${pthDst}/pressflow-${_SMALLCORE6}-stage/$drhSrc" ]; then
+  if [ -d "${pthDst}/pressflow-${_SMALLCORE6_V}-stage" ]; then
+    if [ ! -e "${pthDst}/pressflow-${_SMALLCORE6_V}-stage/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL6_S" default \
-        ${pthDst}/pressflow-${_SMALLCORE6}-stage &> /dev/null
+        ${pthDst}/pressflow-${_SMALLCORE6_V}-stage &> /dev/null
     fi
   fi
   if [ ! -d "${pthDst}/pressflow" ]; then
-    if [ -d "${pthDst}/pressflow-${_SMALLCORE6}-prod" ]; then
-      if [ ! -e "${pthDst}/pressflow-${_SMALLCORE6}-prod/$drhSrc" ]; then
+    if [ -d "${pthDst}/pressflow-${_SMALLCORE6_V}-prod" ]; then
+      if [ ! -e "${pthDst}/pressflow-${_SMALLCORE6_V}-prod/$drhSrc" ]; then
         ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL6_P" default \
-          ${pthDst}/pressflow-${_SMALLCORE6}-prod &> /dev/null
+          ${pthDst}/pressflow-${_SMALLCORE6_V}-prod &> /dev/null
       fi
     fi
-  elif [ ! -d "${pthDst}/pressflow-${_SMALLCORE6}-prod" ]; then
+  elif [ ! -d "${pthDst}/pressflow-${_SMALLCORE6_V}-prod" ]; then
     if [ -d "${pthDst}/pressflow" ]; then
       if [ ! -e "${pthDst}/pressflow/$drhSrc" ]; then
         ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL6_P" default \
@@ -3160,7 +2997,6 @@ commerce_7_2_install
 ### TMP OFF -- doesn't work with latest core and comes with too old core version
 
 guardr_install
-#lightning_install
 #openaid_install
 
 ### _USE_DISTRO_CORE=YES
@@ -3190,7 +3026,6 @@ ubercart7_install
 ubercart7_testing_install
 varbase_install
 social_install
-#opigno_lms8_install
 opigno_lms9_install
 
 ### openacademy_install

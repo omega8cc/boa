@@ -402,8 +402,8 @@ master_download_for_local_build() {
       msg "INFO: Downloading hostmaster modules..."
     fi
     ### Drupal Core
-    get_dev_ext "drupal-${_SMALLCORE7}.tar.gz"
-    mv -f ${mL}/drupal-${_SMALLCORE7} ${mL}/drupal
+    get_dev_ext "drupal-${_SMALLCORE7_V}.tar.gz"
+    mv -f ${mL}/drupal-${_SMALLCORE7_V} ${mL}/drupal
     ### Aegir Core
     if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "STABLE" ]; then
       ${gCb} 5.x-head ${gitHub}/hostmaster.git &> /dev/null
@@ -580,7 +580,7 @@ aegir_master_upgrade() {
     echo "_NOW=\"${_NOW}\""                             >> ${vBs}/${filIncB}
     echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${vBs}/${filIncB}
     echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${vBs}/${filIncB}
-    echo "_SMALLCORE7=\"${_SMALLCORE7}\""               >> ${vBs}/${filIncB}
+    echo "_SMALLCORE7_V=\"${_SMALLCORE7_V}\""           >> ${vBs}/${filIncB}
     echo "_STRONG_PASSWORDS=\"${_STRONG_PASSWORDS}\""   >> ${vBs}/${filIncB}
     echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${vBs}/${filIncB}
     echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${vBs}/${filIncB}
