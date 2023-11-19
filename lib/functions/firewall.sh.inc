@@ -93,6 +93,22 @@ csf_install() {
   get_dev_src "csf-${_CSF_VRN}.tgz"
   cd csf
   mrun "sh install.sh" 2> /dev/null
+  _NFTABLES_TEST=$(iptables -V 2>&1)
+  if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
+    if [ -e "/usr/sbin/iptables-legacy" ]; then
+      update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
+    fi
+    if [ -e "/usr/sbin/ip6tables-legacy" ]; then
+      update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy &> /dev/null
+    fi
+    if [ -e "/usr/sbin/arptables-legacy" ]; then
+      update-alternatives --set arptables /usr/sbin/arptables-legacy &> /dev/null
+    fi
+    if [ -e "/usr/sbin/ebtables-legacy" ]; then
+      update-alternatives --set ebtables /usr/sbin/ebtables-legacy &> /dev/null
+    fi
+    touch /var/xdrago/log/.nf_tables_ctrl.${_X_SE}.pid
+  fi
   cd /var/opt
   if [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \

@@ -1153,6 +1153,22 @@ up_finish() {
     wait
     csf -uf &> /dev/null
     wait
+    _NFTABLES_TEST=$(iptables -V 2>&1)
+    if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
+      if [ -e "/usr/sbin/iptables-legacy" ]; then
+        update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
+      fi
+      if [ -e "/usr/sbin/ip6tables-legacy" ]; then
+        update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy &> /dev/null
+      fi
+      if [ -e "/usr/sbin/arptables-legacy" ]; then
+        update-alternatives --set arptables /usr/sbin/arptables-legacy &> /dev/null
+      fi
+      if [ -e "/usr/sbin/ebtables-legacy" ]; then
+        update-alternatives --set ebtables /usr/sbin/ebtables-legacy &> /dev/null
+      fi
+      touch /var/xdrago/log/.nf_tables_ctrl.${_X_SE}.pid
+    fi
     csf -e &> /dev/null
     wait
     sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
@@ -1329,6 +1345,22 @@ csf_check_fix() {
     wait
     csf -uf &> /dev/null
     wait
+    _NFTABLES_TEST=$(iptables -V 2>&1)
+    if [[ "${_NFTABLES_TEST}" =~ "nf_tables" ]]; then
+      if [ -e "/usr/sbin/iptables-legacy" ]; then
+        update-alternatives --set iptables /usr/sbin/iptables-legacy &> /dev/null
+      fi
+      if [ -e "/usr/sbin/ip6tables-legacy" ]; then
+        update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy &> /dev/null
+      fi
+      if [ -e "/usr/sbin/arptables-legacy" ]; then
+        update-alternatives --set arptables /usr/sbin/arptables-legacy &> /dev/null
+      fi
+      if [ -e "/usr/sbin/ebtables-legacy" ]; then
+        update-alternatives --set ebtables /usr/sbin/ebtables-legacy &> /dev/null
+      fi
+      touch /var/xdrago/log/.nf_tables_ctrl.${_X_SE}.pid
+    fi
     csf -e &> /dev/null
     wait
     sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
