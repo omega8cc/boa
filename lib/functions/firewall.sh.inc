@@ -107,7 +107,6 @@ csf_install() {
     if [ -e "/usr/sbin/ebtables-legacy" ]; then
       update-alternatives --set ebtables /usr/sbin/ebtables-legacy &> /dev/null
     fi
-    touch /var/xdrago/log/.nf_tables_ctrl.${_X_SE}.pid
   fi
   cd /var/opt
   if [[ "${_THISHOST}" =~ ".host8." ]] \
