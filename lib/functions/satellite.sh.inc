@@ -628,6 +628,9 @@ satellite_cnf() {
       || [ -e "/root/.debug-octopus-installer.cnf" ]; then
       _DEBUG_MODE=YES
       sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g" ${octCnf}
+    else
+      _DEBUG_MODE=NO
+      sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g" ${octCnf}
     fi
 
     if [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
