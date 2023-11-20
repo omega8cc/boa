@@ -167,6 +167,9 @@ faster_reboot() {
   killall php &> /dev/null
   kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
   msg "Nginx, PHP-CLI and PHP-FPM have been stopped" >> ${logAbf}
+  csf -df &> /dev/null
+  csf -tf &> /dev/null
+  msg "Firewall has been purged" >> ${logAbf}
   if [ -e "/root/.my.pass.txt" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
     _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
