@@ -2313,6 +2313,7 @@ provision_backend_dbpass_sync() {
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
       WHERE db_user='${_USER}'\"" &> /dev/null
+    wait
     _ESC="*.*"
     _USE_DB_USER="${_USER}"
     _USE_AEGIR_HOST="$(uname -n 2>&1)"
@@ -2367,6 +2368,7 @@ EOFMYSQL
     mysqladmin -u root flush-privileges &> /dev/null
   fi
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush" &> /dev/null
+  wait
   rm -rf ${_ROOT}/.tmp/cache
   if [ -e "${_ROOT}/.drush/server_localhost.alias.drushrc.php" ]; then
     su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster \
@@ -2375,11 +2377,13 @@ EOFMYSQL
     su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster \
       hosting-task @server_master verify --force" &> /dev/null
   fi
+  wait
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Running hosting-dispatch..."
   fi
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} '@hostmaster' \
     hosting-dispatch" &> /dev/null
+  wait
 }
 
 #
@@ -2626,6 +2630,7 @@ satellite_run_child_b() {
     chown root:${_USRG} /data/u &> /dev/null
     chmod 0771 /data/u &> /dev/null
     su -s /bin/bash - ${_USER} -c "/bin/bash ${AegirSetupB} ${_USER}"
+    wait
     if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ]; then
       msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
       msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
@@ -2682,6 +2687,7 @@ satellite_run_child_b() {
       chown root:${_USRG} /data/u &> /dev/null
       chmod 0771 /data/u &> /dev/null
       su -s /bin/bash - ${_USER} -c "/bin/bash ${AegirSetupB} ${_USER}"
+      wait
       if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ]; then
         msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
         msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
@@ -2704,6 +2710,7 @@ satellite_run_child_b() {
         hostmaster_frontend_dbpass_sync
       fi
       su -s /bin/bash - ${_USER} -c "drush8 @hm rr" &> /dev/null
+      wait
       chmod 0700 /data/u &> /dev/null
       chown root:root /data/u &> /dev/null
       msg "${_STATUS} A: Aegir Satellite Instance upgrade completed"
@@ -2802,6 +2809,7 @@ satellite_run_child_c() {
     cd ${_ROOT}
     AegirSetupC="${bldPth}/aegir/scripts/AegirSetupC.sh.txt"
     su -s /bin/bash - ${_USER} -c "/bin/bash ${AegirSetupC} ${_USER}"
+    wait
     if [ -e "/opt/tmp/status-AegirSetupC-FAIL" ]; then
       msg "${_STATUS} A: FATAL ERROR: AegirSetupC installer failed"
       msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
@@ -2828,6 +2836,7 @@ satellite_run_child_c() {
         cd ${_ROOT}
         AegirSetupC="${bldPth}/aegir/scripts/AegirSetupC.sh.txt"
         su -s /bin/bash - ${_USER} -c "/bin/bash ${AegirSetupC} ${_USER}"
+        wait
         if [ -e "/opt/tmp/status-AegirSetupC-FAIL" ]; then
           msg "${_STATUS} A: FATAL ERROR: AegirSetupC installer failed"
           msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
@@ -3655,17 +3664,29 @@ satellite_if_add_update_backend_user_dirs_files_clean() {
   #
   if [ ! -e "${_ROOT}/.ssh/id_rsa.pub" ]; then
     su -s /bin/bash - ${_USER} -c "ssh-keygen -b 4096 -t rsa -N \"\" -f ~/.ssh/id_rsa" &> /dev/null
+    wait
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H ${_USER}.beanstalkapp.com >> ~/.ssh/known_hosts" &> /dev/null
+    wait
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H ${_USER}.unfuddle.com >> ~/.ssh/known_hosts" &> /dev/null
+    wait
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H beanstalkapp.com >> ~/.ssh/known_hosts" &> /dev/null
+    wait
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H bitbucket.org >> ~/.ssh/known_hosts" &> /dev/null
+    wait
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H codebasehq.com >> ~/.ssh/known_hosts" &> /dev/null
+    wait
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H drupal.org >> ~/.ssh/known_hosts" &> /dev/null
+    wait
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H git.drupal.org >> ~/.ssh/known_hosts" &> /dev/null
+    wait
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H github.com >> ~/.ssh/known_hosts" &> /dev/null
+    wait
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H gitlab.org >> ~/.ssh/known_hosts" &> /dev/null
+    wait
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H gitlab.com >> ~/.ssh/known_hosts" &> /dev/null
+    wait
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H unfuddle.com >> ~/.ssh/known_hosts" &> /dev/null
+    wait
     cp -af ${_ROOT}/.ssh/id_rsa.pub ${_ROOT}/static/${_USER}.id_rsa.pub
     chmod 644 ${_ROOT}/static/${_USER}.id_rsa.pub
   fi
@@ -4021,6 +4042,7 @@ satellite_make() {
   ###
   AegirSetupA="${bldPth}/aegir/scripts/AegirSetupA.sh.txt"
   bash ${AegirSetupA} ${_USER}
+  wait
   ###
 
   if [ -e "/opt/tmp/status-AegirSetupA-FAIL" ]; then
@@ -5612,10 +5634,11 @@ satellite_child_b_aegir_health_check() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} B: Reloading Nginx..."
       sudo /etc/init.d/nginx reload
+      wait
     else
       sudo /etc/init.d/nginx reload &> /dev/null
+      wait
     fi
-    sleep 5
   else
     msg "${_STATUS} B: FATAL ERROR: Required file does not exist:"
     msg "${_STATUS} B: FATAL ERROR: ${_HM_ROOT}/sites/${_DOMAIN}/settings.php"
@@ -5704,30 +5727,34 @@ satellite_child_b_letsencrypt() {
       if [ -e "${onDemandRegPid}" ]; then
         rm -rf ${leRoot}/accounts*
         bash ${exeLe} --register --accept-terms
-        sleep 3
+        wait
         bash ${exeLe} --register --accept-terms
-        sleep 3
+        wait
         bash ${exeLe} ${leParams} --domain ${_DOMAIN} --force
+        wait
         touch ${leRoot}/.ctrl/forced-${_DOMAIN}-mode.pid
       else
         bash ${exeLe} --register --accept-terms
-        sleep 3
+        wait
         bash ${exeLe} ${leParams} --domain ${_DOMAIN}
+        wait
       fi
     else
       mkdir -p ${_ROOT}/log
       if [ -e "${onDemandRegPid}" ]; then
         rm -rf ${leRoot}/accounts*
         bash ${exeLe} --register --accept-terms >${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
-        sleep 3
+        wait
         bash ${exeLe} --register --accept-terms >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
-        sleep 3
+        wait
         bash ${exeLe} ${leParams} --domain ${_DOMAIN} --force >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
+        wait
         touch ${leRoot}/.ctrl/forced-${_DOMAIN}-mode.pid
       else
         bash ${exeLe} --register --accept-terms >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
-        sleep 3
+        wait
         bash ${exeLe} ${leParams} --domain ${_DOMAIN} >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
+        wait
       fi
     fi
   else
@@ -5953,8 +5980,9 @@ satellite_child_b_aegir_ui_enhance() {
 
     if [ ! -e "${_ROOT}/log/hosting_le_enable.txt" ]; then
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_service SET type='nginx_ssl' WHERE service='http'" &> /dev/null
-      sleep 5
+      wait
       ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force &> /dev/null
+      wait
       mkdir -p ${_ROOT}/log
       touch ${_ROOT}/log/hosting_le_enable.txt
     fi

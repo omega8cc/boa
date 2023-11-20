@@ -279,10 +279,12 @@ disable_chattr() {
 
 run_drush8_hmr_cmd() {
   su -s /bin/bash - ${_THIS_HM_USER} -c "drush8 @hostmaster $1"
+  wait
 }
 
 run_drush8_nosilent_cmd() {
   su -s /bin/bash - ${_THIS_HM_USER} -c "drush8 @${Dom} $1"
+  wait
 }
 
 migrate_sites() {
@@ -526,7 +528,7 @@ delete_this_platform() {
   run_drush8_hmr_cmd "hosting-task @platform_${_T_PFM_NAME} delete --force"
   echo "Old empty platform_${_T_PFM_NAME} will be deleted"
   run_drush8_hmr_cmd "hosting-dispatch"
-  sleep 5
+  sleep 1
 }
 
 migrate_prepare() {
@@ -580,6 +582,7 @@ migrate_prepare() {
   fi
 
   su -s /bin/bash ${_THIS_HM_USER} -c "drush8 cc drush" &> /dev/null
+  wait
   disable_chattr ${_THIS_HM_USER}.ftp &> /dev/null
   rm -rf /home/${_THIS_HM_USER}.ftp/drush-backups
   run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
@@ -800,6 +803,7 @@ migrate_prepare() {
         run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET web_server='2' WHERE web_server='0'\"" &> /dev/null
         run_drush8_hmr_cmd "sqlq \"UPDATE users_roles SET rid='7' WHERE rid='5'\"" &> /dev/null
         su -s /bin/bash ${_THIS_HM_USER} -c "drush8 cc drush" &> /dev/null
+        wait
         rm -rf ${_USR}/.tmp/cache
         run_drush8_hmr_cmd "hosting-task @server_localhost verify --force" &> /dev/null
         run_drush8_hmr_cmd "hosting-dispatch" &> /dev/null

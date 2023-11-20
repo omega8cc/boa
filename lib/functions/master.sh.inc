@@ -243,6 +243,7 @@ provision_backend_dbpass_sync() {
     su -s /bin/bash - aegir -c "drush8 @hostmaster \
       sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
       WHERE db_user='${_ADBU}'\"" &> /dev/null
+    wait
     _SQL_CONNECT=localhost
     if [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
@@ -291,6 +292,7 @@ EOFMYSQL
   fi
   mysqladmin -u root flush-privileges &> /dev/null
   su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
+  wait
   rm -rf /var/aegir/.tmp/cache
   if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ]; then
     su -s /bin/bash aegir -c "drush8 @hostmaster hosting-task @server_localhost \
@@ -299,10 +301,12 @@ EOFMYSQL
     su -s /bin/bash aegir -c "drush8 @hostmaster hosting-task @server_master \
       verify --force" &> /dev/null
   fi
+  wait
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Running hosting-dispatch..."
   fi
   su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-dispatch" &> /dev/null
+  wait
 }
 
 #
@@ -602,6 +606,7 @@ aegir_master_upgrade() {
     ###
     AegirUpgrade="${bldPth}/aegir/scripts/AegirUpgrade.sh.txt"
     su -s /bin/bash - aegir -c "/bin/bash ${AegirUpgrade} aegir"
+    wait
     ###
 
     if [ -e "/opt/tmp/status-AegirUpgrade-FAIL" ]; then
@@ -943,6 +948,7 @@ EOFMYSQL
         --aegir_db_host='${_THIS_DB_HOST}' \
         --client_email='${_MY_EMAIL}' -y >/var/aegir/install.log 2>&1"
     fi
+    wait
     if [ -e "/opt/tmp/status-AegirSetupM-FAIL" ]; then
       msg "FATAL ERROR: AegirSetupM installer failed"
       msg "FATAL ERROR: Aborting Barracuda installer NOW!"
@@ -966,11 +972,13 @@ EOFMYSQL
     _U_HD="/var/aegir/.drush"
     chattr +i ${_U_HD}/php.ini
     su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
+    wait
     rm -rf /var/aegir/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Running hosting-dispatch..."
     fi
     su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-dispatch" &> /dev/null
+    wait
     if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
       _THIS_HM_ROOT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
         | grep "root'" \

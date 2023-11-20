@@ -48,6 +48,7 @@ fi
 fix_clear_cache() {
   if [ -e "${Plr}/profiles/hostmaster" ]; then
     su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster cache-clear all" &> /dev/null
+    wait
   fi
 }
 
@@ -1149,6 +1150,7 @@ action() {
               Aegir ${_CLIENT_OPTION} ${_ENGINE_NR} \
               | CLI <strong>${_CLIENT_CLI}</strong> \
               | FPM <strong>${_CLIENT_FPM}</strong>'" &> /dev/null
+            wait
             if [ ! -e "${User}/log/CANCELLED" ] \
               && [ "${_DEV_EXC}" = "NO" ] \
               && [ ! -e "${User}/log/proxied.pid" ]; then
@@ -1190,14 +1192,17 @@ action() {
             fi
             su -s /bin/bash - ${_THIS_U} \
               -c "drush8 @hostmaster cache-clear all" &> /dev/null
+            wait
           fi
         else
           if [ -e "${_THIS_HM_SITE}" ]; then
             su -s /bin/bash - ${_THIS_U} \
               -c "drush8 @hostmaster variable-set \
               --always-set site_footer ''" &> /dev/null
+            wait
             su -s /bin/bash - ${_THIS_U} \
               -c "drush8 @hostmaster cache-clear all" &> /dev/null
+            wait
           fi
         fi
         echo "Done for ${User}"

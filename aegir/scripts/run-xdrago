@@ -121,7 +121,9 @@ action() {
       || [ -z "${buildTest}" ] \
       || [ ! -e "${ceDir}" ]; then
       su -s /bin/bash - ${_H_USER} -c "drush8 cc drush" &> /dev/null
+      wait
       su -s /bin/bash - ${_H_USER} -c "bash /data/disk/${_H_USER}/aegir.sh"
+      wait
       touch /var/xdrago/log/last-run-${_H_USER}
     else
       touch /var/xdrago/log/skip-run-${_H_USER}

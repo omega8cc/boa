@@ -1028,6 +1028,7 @@ up_action() {
           sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"  ${barCnf}
           wait
           bash ${vBs}/${barName} >${_UP_LOG} 2>&1
+          wait
           check_report
         elif [ "${silent}" = "log" ]; then
           sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"            ${barCnf}
@@ -1035,6 +1036,7 @@ up_action() {
           sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"  ${barCnf}
           wait
           bash ${vBs}/${barName} >${_UP_LOG} 2>&1
+          wait
           check_report
         elif [ "${silent}" = "enable" ] || [ "${silent}" = "disable" ]; then
           sed -i "s/^_PHP_IDLE.*//g"                                   ${barCnf}
@@ -1047,6 +1049,7 @@ up_action() {
             wait
           fi
           bash ${vBs}/${barName}
+          wait
         fi
       else
         sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"              ${barCnf}
@@ -1067,6 +1070,7 @@ up_action() {
           fi
         fi
         bash ${vBs}/${barName}
+        wait
       fi
     fi
   else
@@ -1238,7 +1242,7 @@ find_fast_mirror() {
     fi
     apt_clean_update
     apt-get install netcat ${aptYesUnth} &> /dev/null
-    sleep 3
+    wait
   fi
   ffMirr=$(which ffmirror 2>&1)
   if [ -x "${ffMirr}" ]; then

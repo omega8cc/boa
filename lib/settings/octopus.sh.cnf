@@ -668,7 +668,7 @@ find_fast_mirror() {
     fi
     apt_clean_update
     apt-get install netcat ${aptYesUnth} &> /dev/null
-    sleep 3
+    wait
   fi
   ffMirr=$(which ffmirror 2>&1)
   if [ -x "${ffMirr}" ]; then
@@ -729,9 +729,11 @@ download_helpers_libs() {
     if [ ! -x "${isGit}" ] || [ -z "${isGit}" ]; then
       apt_clean_update
       apt-get install git -fuy --allow-unauthenticated --reinstall &> /dev/null
+      wait
       apt-get install git-core -fuy --allow-unauthenticated --reinstall &> /dev/null
+      wait
       apt-get install git-man -fuy --allow-unauthenticated --reinstall &> /dev/null
-      sleep 3
+      wait
     fi
     ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git \
       ${bldPth} &> /dev/null

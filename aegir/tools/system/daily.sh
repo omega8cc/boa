@@ -96,7 +96,7 @@ find_fast_mirror() {
     fi
     apt_clean_update
     apt-get install netcat ${aptYesUnth} &> /dev/null
-    sleep 3
+    wait
   fi
   ffMirr=$(which ffmirror 2>&1)
   if [ -x "${ffMirr}" ]; then
@@ -220,6 +220,7 @@ run_drush8_cmd() {
     echo "${nOw} ${_HM_U} running drush8 @${Dom} $1"
   fi
   su -s /bin/bash - ${_HM_U} -c "drush8 @${Dom} $1" &> /dev/null
+  wait
 }
 
 run_drush8_hmr_cmd() {
@@ -228,6 +229,7 @@ run_drush8_hmr_cmd() {
     echo "${nOw} ${_HM_U} running drush8 @hostmaster $1"
   fi
   su -s /bin/bash - ${_HM_U} -c "drush8 @hostmaster $1" &> /dev/null
+  wait
 }
 
 run_drush8_hmr_master_cmd() {
@@ -236,6 +238,7 @@ run_drush8_hmr_master_cmd() {
     echo "${nOw} aegir running drush8 @hostmaster $1"
   fi
   su -s /bin/bash - aegir -c "drush8 @hostmaster $1" &> /dev/null
+  wait
 }
 
 run_drush8_nosilent_cmd() {
@@ -244,6 +247,7 @@ run_drush8_nosilent_cmd() {
     echo "${nOw} ${_HM_U} running drush8 @${Dom} $1"
   fi
   su -s /bin/bash - ${_HM_U} -c "drush8 @${Dom} $1"
+  wait
 }
 
 check_if_required_with_drush8() {
@@ -2350,11 +2354,12 @@ le_hm_ssl_check_update() {
     if [ ! -z "${hmFrontExtra}" ]; then
       echo "Running LE cert check directly for hostmaster ${_HM_U} with ${hmFrontExtra}"
       su -s /bin/bash - ${_HM_U} -c "${exeLe} ${leParams} --domain ${hmFront} --domain ${hmFrontExtra}"
+      wait
     else
       echo "Running LE cert check directly for hostmaster ${_HM_U}"
       su -s /bin/bash - ${_HM_U} -c "${exeLe} ${leParams} --domain ${hmFront}"
+      wait
     fi
-    sleep 3
   fi
 }
 
@@ -2440,6 +2445,7 @@ le_ssl_check_update() {
         echo "leParams is ${leParams}"
         echo "dhArgs is ${dhArgs}"
         su -s /bin/bash - ${_HM_U} -c "${exeLe} ${leParams} ${dhArgs}"
+        wait
         if [ -e "${User}/static/control/wildcard-enable-${Dom}.info" ]; then
           sleep 30
         else
@@ -2544,6 +2550,7 @@ process() {
             _STATUS=OK
             if [ ! -f "${User}/log/ctrl/plr.${PlrID}.hm-fix-${_NOW}.info" ]; then
               su -s /bin/bash - ${_HM_U} -c "drush8 cc drush" &> /dev/null
+              wait
               rm -rf ${User}/.tmp/cache
               run_drush8_hmr_cmd "dis update syslog dblog -y"
               run_drush8_hmr_cmd "cron"
@@ -3070,9 +3077,11 @@ action() {
         echo "User ${User}"
         mkdir -p ${User}/log/ctrl
         su -s /bin/bash ${_HM_U} -c "drush8 cc drush" &> /dev/null
+        wait
         rm -rf ${User}/.tmp/cache
         chage -M 99999 ${_HM_U}.ftp &> /dev/null
         su -s /bin/bash - ${_HM_U}.ftp -c "drush8 cc drush" &> /dev/null
+        wait
         chage -M 90 ${_HM_U}.ftp &> /dev/null
         rm -rf /home/${_HM_U}.ftp/.tmp/cache
         _SQL_CONVERT=NO
@@ -3080,9 +3089,13 @@ action() {
         if [ -e "/root/.${_HM_U}.octopus.cnf" ]; then
           if [ -x "/usr/bin/drush10" ]; then
             su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/*.yml"
+            wait
             su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/.checksums/*.md5"
+            wait
             su -s /bin/bash - ${_HM_U} -c "drush10 core:init --yes" &> /dev/null
+            wait
             su -s /bin/bash - ${_HM_U} -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
+            wait
           fi
           source /root/.${_HM_U}.octopus.cnf
           _DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS//[^0-9]/}
@@ -3111,6 +3124,7 @@ action() {
         if [ -e "${_THIS_HM_SITE}" ]; then
           cd ${_THIS_HM_SITE}
           su -s /bin/bash ${_HM_U} -c "drush8 cc drush" &> /dev/null
+          wait
           rm -rf ${User}/.tmp/cache
           run_drush8_hmr_cmd "${vSet} hosting_cron_default_interval 3600"
           run_drush8_hmr_cmd "${vSet} hosting_queue_cron_frequency 1"
@@ -3393,12 +3407,18 @@ else
   fi
 
   su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
+  wait
   rm -rf /var/aegir/.tmp/cache
   su -s /bin/bash - aegir -c "drush8 @hostmaster dis update syslog dblog -y" &> /dev/null
+  wait
   su -s /bin/bash - aegir -c "drush8 @hostmaster cron" &> /dev/null
+  wait
   su -s /bin/bash - aegir -c "drush8 @hostmaster cache-clear all" &> /dev/null
+  wait
   su -s /bin/bash - aegir -c "drush8 @hostmaster cache-clear all" &> /dev/null
+  wait
   su -s /bin/bash - aegir -c "drush8 @hostmaster utf8mb4-convert-databases -y" &> /dev/null
+  wait
 
   action >/var/xdrago/log/daily/daily-${_NOW}.log 2>&1
 
