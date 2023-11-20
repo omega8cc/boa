@@ -759,6 +759,7 @@ octopus_install() {
     fi
 
     bash ${vBs}/${octName}
+    wait
 
     if [ ! -z "${pxyc}" ] && [ ! -z "${pxyi}" ]; then
       if [ -e "/data/disk/${user}/log/octopus_log.txt" ]; then
@@ -1145,6 +1146,7 @@ barracuda_install() {
 
     if [ -e "${vBs}/${barName}" ]; then
       bash ${vBs}/${barName}
+      wait
     fi
   else
     echo "${barName} installer not available - try again"
@@ -1405,7 +1407,7 @@ find_fast_mirror() {
     fi
     apt_clean_update
     apt-get install netcat ${aptYesUnth} &> /dev/null
-    sleep 3
+    wait
   fi
   ffMirr=$(which ffmirror 2>&1)
   if [ -x "${ffMirr}" ]; then

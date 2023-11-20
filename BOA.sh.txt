@@ -1005,6 +1005,7 @@ update_agents() {
             || [ "${_HOUR}" = "17" ] \
             || [ -e "${onDemandRegPid}" ]; then
             su -s /bin/bash - ${tUsr} -c "bash ${exeLe} --register --accept-terms"
+            wait
             touch ${normalRegPid}
           fi
         fi
@@ -1033,6 +1034,7 @@ update_agents() {
             rm -f ${leRoot}/.ctrl/normal*
             if [ -e "${exeLe}" ]; then
               su -s /bin/bash - ${tUsr} -c "bash ${exeLe} --register --accept-terms"
+              wait
               touch ${forcedRegPid}
               touch ${normalRegPid}
             fi
@@ -2334,7 +2336,7 @@ find_fast_mirror() {
     fi
     apt_clean_update
     apt-get install netcat ${aptYesUnth} &> /dev/null
-    sleep 3
+    wait
   fi
   ffMirr=$(which ffmirror 2>&1)
   if [ -x "${ffMirr}" ]; then

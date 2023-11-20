@@ -133,7 +133,7 @@ reload_core_cnf() {
   # Example: reload_core_cnf 8099 ${SolrCoreID}
   curl "http://127.0.0.1:${1}/solr/admin/cores?action=RELOAD&core=${2}" &> /dev/null
   echo "Reloaded Solr core ${2} cnf on port ${1}"
-  sleep 3
+  wait
 }
 
 update_solr() {
@@ -293,8 +293,10 @@ add_solr() {
           || [ -e "${Plr}/modules/o_contrib_nine" ] \
           || [ -e "${Plr}/modules/o_contrib_ten" ]; then
           su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr create_core -p 9077 -c ${SolrCoreID} -d /data/conf/solr/search_api_solr/8"
+          wait
         elif [ -e "${Plr}/modules/o_contrib_seven" ]; then
           su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr create_core -p 9077 -c ${SolrCoreID} -d /data/conf/solr/search_api_solr/7"
+          wait
         else
           echo "The search_api_solr is supported only for Drupal 7 and newer!"
         fi
@@ -333,15 +335,15 @@ delete_solr() {
       && [ -e "/var/solr7/data/solr.xml" ]; then
       if [ -e "${_SOLR_BASE}/${SolrCoreID}" ]; then
         su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr delete -p 9077 -c ${SolrCoreID}"
-        sleep 3
+        wait
       fi
       if [ -e "${_SOLR_BASE}/${OldSolrCoreID}" ]; then
         su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr delete -p 9077 -c ${OldSolrCoreID}"
-        sleep 3
+        wait
       fi
       if [ -e "${_SOLR_BASE}/${LegacySolrCoreID}" ]; then
         su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr delete -p 9077 -c ${LegacySolrCoreID}"
-        sleep 3
+        wait
       fi
       rm -f ${Dir}/solr.php
     else

@@ -511,7 +511,7 @@ find_fast_mirror() {
     fi
     apt_clean_update
     apt-get install netcat ${aptYesUnth} &> /dev/null
-    sleep 3
+    wait
   fi
   ffMirr=$(which ffmirror 2>&1)
   if [ -x "${ffMirr}" ]; then
@@ -713,7 +713,7 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
 
     echo "Pausing ProxySQL..."
     vserver ${idn} exec service proxysql stop
-    sleep 5
+    wait
 
     sed -i "s/admin:admin/admin:${_E_PROXYSQL_PASSWORD}/g" /vservers/${idn}/etc/proxysql.cnf
     wait
@@ -753,7 +753,7 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
 
     echo "Starting ProxySQL..."
     vserver ${idn} exec service proxysql initial
-    sleep 5
+    wait
 
     chmod 640 /vservers/${idn}/etc/proxysql.cnf
     chmod 640 ${pXcnf}
@@ -1778,13 +1778,15 @@ upgrade_db_cluster() {
     if [ -e "/vservers/${idn}${optBin}/mycnfup" ]; then
       echo "Running mycnfup tune on ${idn}/${IP}..."
       ssh ${_NOSTRICT} root@${IP} "bash ${optBin}/mycnfup tune"
+      wait
     fi
-    sleep 5
     echo "Running mysql_upgrade on ${idn}/${IP} to update tables if needed"
     ssh ${_NOSTRICT} root@${IP} "mysql_upgrade"
+    wait
     echo "Checking wsrep status on ${idn}/${IP}"
     sleep 3
     ssh ${_NOSTRICT} root@${IP} "mysql -u root -e \"SHOW STATUS LIKE 'wsrep%';\""
+    wait
     echo "Waiting 60 seconds after ${idn}/${IP} upgrade..."
     sleep 60
     echo "Upgrade for ${idn}/${IP} completed!"

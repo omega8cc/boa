@@ -126,7 +126,7 @@ find_fast_mirror() {
     fi
     apt_clean_update
     apt-get install netcat ${aptYesUnth} &> /dev/null
-    sleep 3
+    wait
   fi
   ffMirr=$(which ffmirror 2>&1)
   if [ -x "${ffMirr}" ]; then
@@ -473,12 +473,17 @@ enable_chattr() {
           fi
         fi
         su -s /bin/bash - ${UQ} -c "\curl -k -sSL ${urlDev}/mpapis.asc | ${_GPG} --import -"
+        wait
         su -s /bin/bash - ${UQ} -c "\curl -k -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import -"
+        wait
         su -s /bin/bash   ${UQ} -c "\curl -k -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable"
+        wait
         su -s /bin/bash - ${UQ} -c "rvm get stable --auto-dotfiles"
+        wait
         su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
         wait
         su -s /bin/bash - ${UQ} -c "echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc"
+        wait
         [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
         if [ -d "/usr/local/.off_rvm" ]; then
           mv -f /usr/local/.off_rvm /usr/local/rvm
@@ -491,6 +496,7 @@ enable_chattr() {
       su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
       wait
       su -s /bin/bash - ${UQ} -c "echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc"
+      wait
       if [ ! -e "/home/${UQ}/.rvm/rubies/default" ]; then
         touch /var/run/manage_rvm_users.pid
         if [ -d "/usr/local/rvm" ]; then
@@ -538,7 +544,9 @@ enable_chattr() {
           fi
         fi
         su -s /bin/bash - ${UQ} -c "rvm install ${_RUBY_VRN}"
+        wait
         su -s /bin/bash - ${UQ} -c "rvm use ${_RUBY_VRN} --default"
+        wait
         [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
         if [ -d "/usr/local/.off_rvm" ]; then
           mv -f /usr/local/.off_rvm /usr/local/rvm
@@ -596,16 +604,27 @@ enable_chattr() {
           mv -f /usr/local/rvm /usr/local/.off_rvm
         fi
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative bluecloth"      &> /dev/null
+        wait
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative eventmachine"   &> /dev/null
+        wait
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.0.3 eventmachine"  &> /dev/null
+        wait
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative ffi"            &> /dev/null
+        wait
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.9.3 ffi"           &> /dev/null
+        wait
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.9.18 ffi"          &> /dev/null
+        wait
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative hitimes"        &> /dev/null
+        wait
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative http_parser.rb" &> /dev/null
+        wait
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative oily_png"       &> /dev/null
+        wait
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.1.1 oily_png"      &> /dev/null
+        wait
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative yajl-ruby"      &> /dev/null
+        wait
         touch ${dscUsr}/log/.gems.build.d.${UQ}.${_X_SE}.txt
         [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
         if [ -d "/usr/local/.off_rvm" ]; then
@@ -627,12 +646,19 @@ enable_chattr() {
       fi
       if [ ! -d "/home/${UQ}/.npm-packages" ] || [ ! -d "/home/${UQ}/.npm" ]; then
         su -s /bin/bash - ${UQ} -c "mkdir ~/.bundle"
+        wait
         su -s /bin/bash - ${UQ} -c "mkdir ~/.composer"
+        wait
         su -s /bin/bash - ${UQ} -c "mkdir ~/.config"
+        wait
         su -s /bin/bash - ${UQ} -c "mkdir ~/.npm-packages"
+        wait
         su -s /bin/bash - ${UQ} -c "mkdir ~/.npm"
+        wait
         su -s /bin/bash - ${UQ} -c "mkdir ~/.sass-cache"
+        wait
         su -s /bin/bash - ${UQ} -c "echo prefix = /home/${UQ}/.npm-packages > ~/.npmrc"
+        wait
       fi
       rm -f /home/${UQ}/{.profile,.bash_logout,.bash_profile,.bashrc,.zlogin,.zshrc}
       rm -f /home/${UQ}/.rvm/scripts/notes
@@ -2303,15 +2329,23 @@ manage_site_drush_alias_mirror() {
       || [ ! -e "/home/${_USER}.ftp/.drush/sites/.checksums" ]; then
       chage -M 99999 ${_USER}.ftp &> /dev/null
       su -s /bin/bash - ${_USER}.ftp -c "rm -f ~/.drush/sites/*.yml"
+      wait
       su -s /bin/bash - ${_USER}.ftp -c "rm -f ~/.drush/sites/.checksums/*.md5"
+      wait
       su -s /bin/bash - ${_USER}.ftp -c "drush10 core:init --yes" &> /dev/null
+      wait
       su -s /bin/bash - ${_USER}.ftp -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
+      wait
       chage -M 90 ${_USER}.ftp &> /dev/null
       ### Update Drush yml sites aliases also for Aegir system user
       su -s /bin/bash - ${_USER} -c "rm -f ~/.drush/sites/*.yml"
+      wait
       su -s /bin/bash - ${_USER} -c "rm -f ~/.drush/sites/.checksums/*.md5"
+      wait
       su -s /bin/bash - ${_USER} -c "drush10 core:init --yes" &> /dev/null
+      wait
       su -s /bin/bash - ${_USER} -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
+      wait
     fi
   fi
 }
@@ -2725,8 +2759,9 @@ else
           mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
         fi
         service mysql stop &> /dev/null
-        sleep 5
+        wait
         service cron start &> /dev/null
+        wait
       fi
     fi
   fi

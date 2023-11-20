@@ -117,6 +117,7 @@ do_syncpass() {
           sqlq \"UPDATE hosting_db_server \
           SET db_passwd='${_ESC_PASS}' \
           WHERE db_user='aegir_root'\"" &> /dev/null
+        wait
         _ESC="*.*"
         _USE_DB_USER="aegir_root"
         _USE_AEGIR_HOST="$(uname -n 2>&1)"
@@ -185,6 +186,7 @@ EOFMYSQL
           su -s /bin/bash - ${uname} -c "drush8 @hostmaster \
             sqlq \"UPDATE hosting_db_server SET db_passwd='${_ESC_PASS}' \
             WHERE db_user='${uname}'\"" &> /dev/null
+          wait
           _ESC="*.*"
           _USE_DB_USER="${uname}"
           _USE_AEGIR_HOST="$(uname -n 2>&1)"
