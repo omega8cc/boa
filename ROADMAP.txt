@@ -1,0 +1,45 @@
+
+###
+### Planned BOA Features, Improvements and general TODO list
+###
+### Documenting details in progress...
+###
+
+@=> New Features
+
+   * PHP 8.3 support
+
+   * Symlink all sites files automatically to speed up migration tasks and
+     to save tons of disk space.
+
+   * Rsync sites files on clone task to create separate symlinked copy.
+
+   * Debian Bookworm and Devuan Daedalus compatibility for installation and
+     automated upgrades.
+
+   * Automate mass import procedure from remote classic Aegir servers running
+     Nginx or Apache to extend xboa tool features.
+
+   * Add Amazon S3 alternatives to backboa and duobackboa
+
+@=> Improvements
+
+   * Update and consolidate all legacy and built-in docs into single Grav CMS
+     and GIT based site for single point of reference.
+
+@=> Changes and Upgrades
+
+   * Sites backup in Aegir will no longer include all files nor database dump,
+     but make it configurable on the fly with new control files if user wants
+     to preserve Restore task functionality.
+
+@=> Important Fixes
+
+   * Drush 11/12 support with Redispatch to site-local Drush (vdrush, sdrush)
+
+
+
+
+
+
+
