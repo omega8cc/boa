@@ -108,15 +108,15 @@ production settings.
 
 ##== Devuan @ https://www.devuan.org/os/releases
 
-  * Devuan Chimaera (fully supported)
-  * Devuan Beowulf (fully supported)
+  * Devuan Chimaera (fully supported and the only OS version recommended)
+  * Devuan Beowulf (supported only as a base for upgrade to Chimaera)
 
 ##== Debian @ https://wiki.debian.org/LTS
 
-  * Debian 11 Bullseye (fully supported, but migration to Chimaera recommended)
-  * Debian 10 Buster (supported but not recommended, please upgrade to Beowulf)
-  * Debian 9 Stretch (deprecated but still works, please upgrade to Beowulf)
-  * Debian 8 Jessie (deprecated but still works, please upgrade to Beowulf)
+  * Debian 11 Bullseye (supported only as a base for migration to Devuan)
+  * Debian 10 Buster (supported only as a base for migration to Devuan)
+  * Debian 9 Stretch (deprecated but still works, please upgrade to Devuan)
+  * Debian 8 Jessie (deprecated but still works, please upgrade to Devuan)
 
 ##== Ubuntu @ https://ubuntu.com/about/release-cycle
 
