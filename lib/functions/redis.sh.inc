@@ -29,7 +29,14 @@ forced_redis_password_update() {
       fi
     fi
     if [ "${_STRONG_PASSWORDS}" = "YES" ] || [ "${_PWD_CHARS}" -gt "32" ]; then
-      _ESC_RPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+      _RANDPASS_TEST=$(randpass -V 2>&1)
+      if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
+        _ESC_RPASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+      else
+        _ESC_RPASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
+        _ESC_RPASS=$(echo -n "${_ESC_RPASS}" | tr -d "\n" 2>&1)
+        _ESC_RPASS=$(sanitize_string "${_ESC_RPASS}" 2>&1)
+      fi
       _ESC_RPASS=$(echo -n "${_ESC_RPASS}" | tr -d "\n" 2>&1)
       _LEN_RPASS=$(echo ${#_ESC_RPASS} 2>&1)
     fi

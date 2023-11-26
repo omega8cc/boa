@@ -34,7 +34,14 @@ provision_backend_dbpass_generate() {
       if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
         _ESC_PASS="$(openssl rand -base64 64 2>&1)"
       else
-        _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+        _RANDPASS_TEST=$(randpass -V 2>&1)
+        if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
+          _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+        else
+          _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
+          _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+          _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+        fi
       fi
     else
       if [ -e "/root/.my.pass.txt" ]; then
@@ -811,7 +818,14 @@ aegir_master_install_upgrade() {
         if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
           _ESC_PASS="$(openssl rand -base64 64 2>&1)"
         else
-          _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+          _RANDPASS_TEST=$(randpass -V 2>&1)
+          if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
+            _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+          else
+            _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
+            _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+            _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+          fi
         fi
       else
         if [ -e "/root/.my.pass.txt" ]; then
