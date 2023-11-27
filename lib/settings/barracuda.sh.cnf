@@ -1158,26 +1158,9 @@ find_fast_mirror() {
 
 
 ###
-### Early OS detection for apt-get update compatibility
-###
-os_detection_early() {
-  _THIS_RV=$(lsb_release -sc 2>&1)
-  if [ "${_THIS_RV}" = "chimaera" ] \
-    || [ "${_THIS_RV}" = "beowulf" ] \
-    || [ "${_THIS_RV}" = "bullseye" ] \
-    || [ "${_THIS_RV}" = "buster" ]; then
-    _APT_UPDATE="apt-get update --allow-releaseinfo-change"
-  else
-    _APT_UPDATE="apt-get update"
-  fi
-}
-
-
-###
 ### Download helpers and libs
 ###
 download_helpers_libs() {
-  os_detection_early
   find_fast_mirror
   mkdir -p /opt/tmp
   cd /opt/tmp
