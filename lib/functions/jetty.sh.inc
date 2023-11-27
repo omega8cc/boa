@@ -109,9 +109,7 @@ if_install_jetty() {
     || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ] \
     || [ "${_OSR}" = "jessie" ] \
-    || [ "${_DO_FIX}" = "YES" ] \
-    || [ "${_OSR}" = "trusty" ] \
-    || [ "${_OSR}" = "precise" ]; then
+    || [ "${_DO_FIX}" = "YES" ]; then
     _R_JETTY=9
     _JETTY_CTRL="/opt/jetty9/jetty-ctrl-${_JETTY_9_VRN}-${_SOLR_4_VRN}-version.txt"
   else
@@ -141,9 +139,7 @@ if_install_jetty() {
         || [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "stretch" ] \
         || [ "${_OSR}" = "jessie" ] \
-        || [ "${_DO_FIX}" = "YES" ] \
-        || [ "${_OSR}" = "trusty" ] \
-        || [ "${_OSR}" = "precise" ]; then
+        || [ "${_DO_FIX}" = "YES" ]; then
         _R_JETTY=9
       else
         _R_JETTY=8
@@ -166,9 +162,7 @@ if_install_jetty() {
           || [ "${_OSR}" = "buster" ] \
           || [ "${_OSR}" = "stretch" ] \
           || [ "${_OSR}" = "jessie" ] \
-          || [ "${_DO_FIX}" = "YES" ] \
-          || [ "${_OSR}" = "trusty" ] \
-          || [ "${_OSR}" = "precise" ]; then
+          || [ "${_DO_FIX}" = "YES" ]; then
           get_dev_arch "jetty-distribution-${_JETTY_9_VRN}.tar.gz"
           mv /var/opt/jetty-distribution-${_JETTY_9_VRN} /opt/jetty9
           echo ${_JETTY_9_VRN} > ${_JETTY_CTRL}
@@ -237,9 +231,7 @@ if_install_jetty() {
         chown -R jetty9:jetty9 /opt/solr4
         chown -R jetty9:jetty9 /opt/jetty9
         chown -R jetty9:jetty9 /var/log/jetty9
-        if [ "${_OSR}" = "jessie" ] \
-          || [ "${_OSR}" = "trusty" ] \
-          || [ "${_OSR}" = "precise" ]; then
+        if [ "${_OSR}" = "jessie" ]; then
           echo "JAVA=/usr/bin/java7 # Path to Java 1.7" > /etc/default/jetty9
           echo "JAVA_HOME=/usr/lib/jvm/java-7-openjdk/jre # Path to Java 1.7" >> \
             /etc/default/jetty9
@@ -265,9 +257,7 @@ if_install_jetty() {
           || [ "${_OSR}" = "buster" ] \
           || [ "${_OSR}" = "stretch" ] \
           || [ "${_OSR}" = "jessie" ] \
-          || [ "${_DO_FIX}" = "YES" ] \
-          || [ "${_OSR}" = "trusty" ] \
-          || [ "${_OSR}" = "precise" ]; then
+          || [ "${_DO_FIX}" = "YES" ]; then
           _DO_NOTHING=YES
         else
           sed -i "s/8/9/g" /opt/jetty9/bin/jetty.sh &> /dev/null
@@ -302,9 +292,7 @@ if_install_jetty() {
     msg "INFO: Jetty 9 restart completed"
   fi
   if [ -e "/opt/jetty9/VERSION.txt" ]; then
-    if [ "${_OSR}" = "jessie" ] \
-      || [ "${_OSR}" = "trusty" ] \
-      || [ "${_OSR}" = "precise" ]; then
+    if [ "${_OSR}" = "jessie" ]; then
       _JETTY9_JAVA_TEST=$(grep "Path to Java 1.7" /etc/default/jetty9 2>&1)
     else
       _JETTY9_JAVA_TEST=$(grep "Path to Java 1.8" /etc/default/jetty9 2>&1)
@@ -312,9 +300,7 @@ if_install_jetty() {
     if [[ "$_JETTY9_JAVA_TEST" =~ "Path to Java" ]]; then
       _DO_NOTHING=YES
     else
-      if [ "${_OSR}" = "jessie" ] \
-        || [ "${_OSR}" = "trusty" ] \
-        || [ "${_OSR}" = "precise" ]; then
+      if [ "${_OSR}" = "jessie" ]; then
         echo "JAVA=/usr/bin/java7 # Path to Java 1.7" > /etc/default/jetty9
         echo "JAVA_HOME=/usr/lib/jvm/java-7-openjdk/jre # Path to Java 1.7" >> \
           /etc/default/jetty9
@@ -354,9 +340,7 @@ if_install_jetty() {
         || [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "stretch" ] \
         || [ "${_OSR}" = "jessie" ] \
-        || [ "${_DO_FIX}" = "YES" ] \
-        || [ "${_OSR}" = "trusty" ] \
-        || [ "${_OSR}" = "precise" ]; then
+        || [ "${_DO_FIX}" = "YES" ]; then
         get_dev_arch "jetty-distribution-${_JETTY_9_VRN}.tar.gz"
         mv /var/opt/jetty-distribution-${_JETTY_9_VRN} /opt/jetty9
         echo ${_JETTY_9_VRN} > ${_JETTY_CTRL}

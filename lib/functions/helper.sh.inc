@@ -575,38 +575,7 @@ os_detection() {
   fi
   _THIS_OS=$(lsb_release -si 2>&1)
   _THIS_RV=$(lsb_release -sc 2>&1)
-  if [ "${_THIS_OS}" = "Ubuntu" ]; then
-    if [ "${_THIS_RV}" = "trusty" ]; then
-      _OSR="trusty"
-      _NGINX_FORWARD_SECRECY=YES
-      _NGINX_SPDY=YES
-      _SSH_FROM_SOURCES=NO
-      if [ "${_DB_SERIES}" = "10.4" ]; then
-        _DB_SERVER=MariaDB
-        _DBS_VRN="${_MARIADB_10_4_VRN}"
-      elif [ "${_DB_SERIES}" = "10.3" ]; then
-        _DB_SERVER=MariaDB
-        _DBS_VRN="${_MARIADB_10_3_VRN}"
-      elif [ "${_DB_SERIES}" = "10.2" ]; then
-        _DB_SERVER=MariaDB
-        _DBS_VRN="${_MARIADB_10_2_VRN}"
-      elif [ "${_DB_SERIES}" = "5.7" ]; then
-        _DB_SERVER=Percona
-        _DBS_VRN="${_PERCONA_5_7_VRN}"
-      else
-        _DB_SERVER=Percona
-        _DB_SERIES=5.7
-        _DBS_VRN="${_PERCONA_5_7_VRN}"
-      fi
-    elif [ "${_THIS_RV}" = "precise" ]; then
-      _OSR="precise"
-      _NGINX_FORWARD_SECRECY=YES
-      _NGINX_SPDY=YES
-      _SSH_FROM_SOURCES=NO
-    else
-      not_supported_os
-    fi
-  elif [ "${_THIS_OS}" = "Debian" ]; then
+  if [ "${_THIS_OS}" = "Debian" ]; then
     if [ "${_THIS_RV}" = "bullseye" ]; then
       _OSR="bullseye"
       _DB_SERVER=Percona

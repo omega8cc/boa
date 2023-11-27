@@ -1693,7 +1693,6 @@ barracuda_cnf() {
     echo "_FORCE_GIT_MIRROR=\"${_FORCE_GIT_MIRROR}\""         >> ${barCnf}
     echo "_LOCAL_DEVUAN_MIRROR=${_LOCAL_DEVUAN_MIRROR}"       >> ${barCnf}
     echo "_LOCAL_DEBIAN_MIRROR=${_LOCAL_DEBIAN_MIRROR}"       >> ${barCnf}
-    echo "_LOCAL_UBUNTU_MIRROR=${_LOCAL_UBUNTU_MIRROR}"       >> ${barCnf}
     echo "_NEWRELIC_KEY=${_NEWRELIC_KEY}"                     >> ${barCnf}
     echo "_SCOUT_KEY=${_SCOUT_KEY}"                           >> ${barCnf}
 
@@ -2596,8 +2595,7 @@ if_install_wkhtmltox() {
     fi
   fi
   if [[ "${_WOX_ITD}" =~ "0.12.5" ]]; then
-    if [ "${_OSR}" = "jessie" ] \
-      || [ "${_OSR}" = "trusty" ]; then
+    if [ "${_OSR}" = "jessie" ]; then
       _WOX_IS=NEW
       _WKHTMLTOX_VRN="12.5-1"
     fi
@@ -3012,9 +3010,6 @@ sources_list_update() {
     if [ ! -z "${_LOCAL_DEBIAN_MIRROR}" ]; then
       _APT_SOURCES_REWRITE=YES
     fi
-    if [ ! -z "${_LOCAL_UBUNTU_MIRROR}" ]; then
-      _APT_SOURCES_REWRITE=YES
-    fi
   else
     _APT_SOURCES_REWRITE=YES
   fi
@@ -3134,67 +3129,6 @@ sources_list_update() {
       echo "## DEBIAN SECURITY UPDATES" >> ${aptLiSys}
       echo "deb http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       echo "deb-src http://${_SEC_MIRROR} ${_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
-    elif [ "${_THIS_OS}" = "Ubuntu" ]; then
-      if [ "${_AUTOPILOT}" = "YES" ]; then
-        if [ -z "${_LOCAL_UBUNTU_MIRROR}" ]; then
-          _MIRROR=archive.ubuntu.com
-        else
-          _MIRROR=${_LOCAL_UBUNTU_MIRROR}
-        fi
-      else
-        if [ -z "${_LOCAL_UBUNTU_MIRROR}" ]; then
-          msg "INFO: Now looking for the best/fastest ${_THIS_OS} mirror"
-          msg "INFO: This may take a while, please wait..."
-          hlpPth="/opt/tmp/boa/aegir/helpers"
-          ffMirr=$(which ffmirror 2>&1)
-          ffList="${hlpPth}/apt-list-ubuntu.txt"
-          if [ -e "${ffMirr}" ] && [ -e "${ffList}" ]; then
-            _MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
-            _MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
-            echo " "
-            askThis="Enter your own mirror to use or press enter"
-            askThis="${askThis} to use the fastest found mirror"
-            prompt_confirm_choice "${askThis}" ${_MIRROR}
-            echo " "
-            _MIRROR=${_CONFIRMED_ANSWER}
-          else
-            _MIRROR=${_LOCAL_UBUNTU_MIRROR}
-          fi
-        else
-          _MIRROR=${_LOCAL_UBUNTU_MIRROR}
-        fi
-        if ! netcat -w 5 -z ${_MIRROR} 80 ; then
-          msg "INFO: The mirror ${_MIRROR} doesn't respond, let's try default"
-          _MIRROR=archive.ubuntu.com
-        fi
-      fi
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: We will use ${_THIS_OS} mirror ${_MIRROR}"
-      fi
-      cd /var/opt
-      echo "## MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_MIRROR}/ubuntu/ ${_OSR} main \
-        restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
-      echo "deb-src http://${_MIRROR}/ubuntu/ ${_OSR} main \
-        restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
-      echo "" >> ${aptLiSys}
-      echo "## MAJOR BUG FIX UPDATES" >> ${aptLiSys}
-      echo "deb http://${_MIRROR}/ubuntu/ ${_OSR}-updates main \
-        restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
-      echo "deb-src http://${_MIRROR}/ubuntu/ ${_OSR}-updates main \
-        restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
-      echo "" >> ${aptLiSys}
-      echo "## BACKPORTS" >> ${aptLiSys}
-      echo "deb http://${_MIRROR}/ubuntu/ ${_OSR}-backports main \
-        restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
-      echo "deb-src http://${_MIRROR}/ubuntu/ ${_OSR}-backports main \
-        restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
-      echo "" >> ${aptLiSys}
-      echo "## UBUNTU SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://security.ubuntu.com/ubuntu ${_OSR}-security \
-        main restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
-      echo "deb-src http://security.ubuntu.com/ubuntu ${_OSR}-security \
-        main restricted universe multiverse" | fmt -su -w 2500 >> ${aptLiSys}
     fi
     mkdir -p ${pthLog}
     touch ${pthLog}/apt-deb-src-updates-${_X_SE}.txt
@@ -4538,8 +4472,6 @@ run_aptitude_deps_install() {
     ${_INITINS} devuan-keyring --allow-unauthenticated &> /dev/null
   elif [ "${_THIS_OS}" = "Debian" ]; then
     ${_INITINS} debian-keyring debian-archive-keyring &> /dev/null
-  elif [ "${_THIS_OS}" = "Ubuntu" ]; then
-    ${_INITINS} ubuntu-keyring &> /dev/null
   fi
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Installing a large list of libraries and tools..."
@@ -5797,10 +5729,7 @@ sys_packages_install() {
       || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
-      if [ "${_OSR}" = "trusty" ] \
-        || [ "${_OSR}" = "precise" ]; then
-        _APT_XTRA="openjdk-7-jre-headless ca-certificates-java nginx"
-      elif [ "${_OSR}" = "jessie" ]; then
+      if [ "${_OSR}" = "jessie" ]; then
         _APT_XTRA="openjdk-7-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "stretch" ]; then
         _APT_XTRA="openjdk-8-jre-headless ca-certificates-java nginx"
@@ -5835,10 +5764,7 @@ sys_packages_install() {
       || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
-      if [ "${_OSR}" = "trusty" ] \
-        || [ "${_OSR}" = "precise" ]; then
-        _APT_XTRA="openjdk-7-jre-headless ca-certificates-java"
-      elif [ "${_OSR}" = "jessie" ]; then
+      if [ "${_OSR}" = "jessie" ]; then
         _APT_XTRA="openjdk-7-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "stretch" ]; then
         _APT_XTRA="openjdk-8-jre-headless ca-certificates-java"
@@ -5880,9 +5806,7 @@ sys_packages_install() {
     mrun "apt-get purge rsyslog -y" &> /dev/null
     mrun "killall -9 sysklogd" &> /dev/null
     mrun "killall -9 rsyslogd" &> /dev/null
-  elif [ -e "/root/.use.sysklogd.cnf" ] \
-    || [ "${_OSR}" = "trusty" ] \
-    || [ "${_OSR}" = "precise" ]; then
+  elif [ -e "/root/.use.sysklogd.cnf" ]; then
     _SYSLOGD=sysklogd
     mrun "apt-get purge rsyslog -y" &> /dev/null
     mrun "killall -9 rsyslogd" &> /dev/null
@@ -5994,8 +5918,7 @@ sys_packages_install() {
     || [ "${_OSR}" = "bullseye" ] \
     || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ] \
-    || [ "${_OSR}" = "jessie" ] \
-    || [ "${_OSR}" = "trusty" ]; then
+    || [ "${_OSR}" = "jessie" ]; then
     _EXTRA_PACKAGES="libgd3 \
                      libkrb5-dev \
                      libldap-dev \
@@ -6040,9 +5963,7 @@ sys_packages_install() {
     || [ "${_OSR}" = "bullseye" ] \
     || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ] \
-    || [ "${_OSR}" = "jessie" ] \
-    || [ "${_OSR}" = "trusty" ] \
-    || [ "${_OSR}" = "precise" ]; then
+    || [ "${_OSR}" = "jessie" ]; then
     _MAILSERV="postfix postfix-pcre"
   fi
 }
@@ -6068,9 +5989,7 @@ php_libs_fix() {
     || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ] \
     || [ "${_OSR}" = "jessie" ] \
-    || [ "${_DO_FIX}" = "YES" ] \
-    || [ "${_OSR}" = "trusty" ] \
-    || [ "${_OSR}" = "precise" ]; then
+    || [ "${_DO_FIX}" = "YES" ]; then
     if [ ! -L "/usr/lib/librtmp.so" ] \
       || [ ! -e "/usr/lib/libwebpmux.so" ] \
       || [ ! -e "/usr/lib/libonig.so" ] \

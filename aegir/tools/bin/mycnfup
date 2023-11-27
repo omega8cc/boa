@@ -147,7 +147,7 @@ EOF
       sed -i "/^$/d" /etc/locale.gen
       locale-gen &> /dev/null
     else
-      locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
+      locale-gen en_US.UTF-8 &> /dev/null
     fi
     # Explicitly enforce all locale settings
     update-locale \
@@ -190,7 +190,7 @@ EOF
       sed -i "/^$/d" /etc/locale.gen
       locale-gen &> /dev/null
     else
-      locale-gen en_US.UTF-8 &> /dev/null # Ubuntu-specific locale-gen
+      locale-gen en_US.UTF-8 &> /dev/null
     fi
     # Explicitly enforce locale settings required for consistency
     update-locale \

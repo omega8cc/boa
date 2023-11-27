@@ -118,11 +118,6 @@ production settings.
   * Debian 9 Stretch (deprecated but still works, please upgrade to Devuan)
   * Debian 8 Jessie (deprecated but still works, please upgrade to Devuan)
 
-##== Ubuntu @ https://ubuntu.com/about/release-cycle
-
-  * Ubuntu Trusty Tahr 14.04 LTS (deprecated and no longer tested)
-  * Ubuntu Precise Pangolin 12.04.3 LTS (deprecated and no longer tested)
-
 
 ### OTHER REQUIREMENTS
 

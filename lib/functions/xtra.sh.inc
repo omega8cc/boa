@@ -300,7 +300,6 @@ if_install_hhvm() {
     if [ "${_OSR}" = "buster" ] \
       || [ "${_OSR}" = "stretch" ] \
       || [ "${_OSR}" = "jessie" ] \
-      || [ "${_OSR}" = "trusty" ] \
       || [ "${_DO_FIX}" = "YES" ]; then
       if [ ! -x "/usr/bin/hhvm" ]; then
         echo " "
@@ -317,9 +316,6 @@ if_install_hhvm() {
               /etc/apt/sources.list.d/hhvm.list
           elif [ "${_OSR}" = "buster" ] || [ "${_DO_FIX}" = "YES" ]; then
             echo "deb http://dl.hhvm.com/debian buster main" >> \
-              /etc/apt/sources.list.d/hhvm.list
-          elif [ "${_OSR}" = "trusty" ]; then
-            echo "deb http://dl.hhvm.com/ubuntu trusty main" >> \
               /etc/apt/sources.list.d/hhvm.list
           fi
           _KEYS_SERVER_TEST=FALSE
@@ -390,13 +386,7 @@ if_install_bind() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: if_install_bind"
   fi
-  _CHECK_OS=$(grep "Ubuntu.*LTS" /etc/issue.net 2>&1)
-  if [[ "${_CHECK_OS}" =~ "Ubuntu" ]]; then
-    _CHECK_OS=ULTS
-  else
-    _CHECK_OS=OTHER
-  fi
-  if [[ "${_XTRAS_LIST}" =~ "BND" ]] && [ "${_CHECK_OS}" = "OTHER" ]; then
+  if [[ "${_XTRAS_LIST}" =~ "BND" ]]; then
     if [ ! -e "/usr/sbin/named" ] || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       echo " "
       if prompt_yes_no "Do you want to install Bind9 DNS Server?" ; then
@@ -709,30 +699,6 @@ if_install_ffmpeg() {
           st_runner "apt-get install deb-multimedia-keyring ${aptYesUnth}" 2> /dev/null
           apt_clean_update
           st_runner "${_INSTAPP} ffmpeg" 2> /dev/null
-        elif [ "${_OSR}" = "trusty" ] || [ "${_OSR}" = "precise" ]; then
-          _X86_64_TEST=$(uname -m 2>&1)
-          rm -rf ffmpeg*
-          if [ "${_X86_64_TEST}" = "x86_64" ]; then
-            SYSTEM_ARCH="x86_64"
-            msg "INFO: Installing ffmpeg ${SYSTEM_ARCH}..."
-            curl ${crlGet} "http://johnvansickle.com/ffmpeg/releases/ffmpeg-release-64bit-static.tar.xz" -o "ffmpeg-release-64bit-static.tar.xz"
-            unxz "ffmpeg-release-64bit-static.tar.xz"
-            mkdir ffmpeg-release-64bit-static
-            tar -xf ffmpeg-release-64bit-static.tar --strip-components 1 -C ffmpeg-release-64bit-static
-            cd ffmpeg-release-64bit-static
-          else
-            SYSTEM_ARCH="x86"
-            msg "INFO: Installing ffmpeg ${SYSTEM_ARCH}..."
-            curl ${crlGet} "http://johnvansickle.com/ffmpeg/releases/ffmpeg-release-32bit-static.tar.xz" -o "ffmpeg-release-32bit-static.tar.xz"
-            unxz "ffmpeg-release-32bit-static.tar.xz"
-            mkdir ffmpeg-release-32bit-static
-            tar -xf ffmpeg-release-32bit-static.tar --strip-components 1 -C ffmpeg-release-32bit-static
-            cd ffmpeg-release-32bit-static
-          fi
-          chown root:root {ffmpeg,ffmpeg-10bit,ffprobe,ffserver,qt-faststart}
-          chmod 755 {ffmpeg,ffmpeg-10bit,ffprobe,ffserver,qt-faststart}
-          cp -af {ffmpeg,ffmpeg-10bit,ffprobe,ffserver,qt-faststart} /usr/bin/
-          cd /var/opt
         fi
         msg "INFO: FFmpeg installed"
       else

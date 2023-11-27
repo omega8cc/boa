@@ -1507,9 +1507,7 @@ install_php_multi() {
   msg "INFO: Building PHP ${_PHP_VERSION} part 1/3"
   cd /var/opt/php-${_PHP_VERSION}
   if [ "${_OSR}" = "stretch" ] \
-    || [ "${_OSR}" = "jessie" ] \
-    || [ "${_OSR}" = "trusty" ] \
-    || [ "${_OSR}" = "precise" ]; then
+    || [ "${_OSR}" = "jessie" ]; then
     mrun "sh ./buildconf --force" 2> /dev/null
     patchFile="disable_SSLv2_for_openssl_1_0_0.patch"
     patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
@@ -1581,9 +1579,7 @@ install_php_multi() {
     _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR} --enable-gd-native-ttf --with-mcrypt"
   elif [ "$1" = "56" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR} --enable-gd-native-ttf --with-mcrypt --with-mysql=mysqlnd"
-    if [ "${_OSR}" != "jessie" ] \
-      && [ "${_OSR}" != "trusty" ] \
-      && [ "${_OSR}" != "precise" ]; then
+    if [ "${_OSR}" != "jessie" ]; then
       patchFile="PHP-5.6.31-OpenSSL-1.1.0-compatibility-20170801.patch"
       patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
     fi
@@ -2194,8 +2190,7 @@ check_php_rebuild() {
   fi
   if [ "${_PHP_DRIVERS_BUILD}" = "NO" ] \
     || [[ "${_PHP_ITD}" =~ "~" ]] \
-    || [[ "${_PHP_ITD}" =~ "dotdeb" ]] \
-    || [[ "${_PHP_ITD}" =~ "ubuntu" ]]; then
+    || [[ "${_PHP_ITD}" =~ "dotdeb" ]]; then
     if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
       msg "INFO: Installed PHP version ${_PHP_ITD}, upgrade to mysqlnd required"
       install_php_multi "$1"

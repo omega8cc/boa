@@ -45,7 +45,6 @@ _EXTRA_PACKAGES="" #------------ Installs listed extra packages with apt-get
 _FORCE_GIT_MIRROR="" #---------- Allows to use different mirror (deprecated)
 _LOCAL_DEVUAN_MIRROR= #--------- Allows to force non-default Devuan mirror
 _LOCAL_DEBIAN_MIRROR= #--------- Allows to force non-default Debian mirror
-_LOCAL_UBUNTU_MIRROR= #--------- Allows to force non-default Ubuntu mirror
 _NEWRELIC_KEY= #---------------- Installs New Relic when license key is set
 _SCOUT_KEY= #------------------- Installs Scout App when license key is set
 ###

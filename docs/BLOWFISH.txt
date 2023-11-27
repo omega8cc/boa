@@ -2,7 +2,7 @@
 ----------
 SHA512
 ----------
-Your Debian or Ubuntu system uses SHA512 for passwords encryption by default.
+Your Devuan or Debian system uses SHA512 for passwords encryption by default.
 
 This is not bad, and for sure much better than MD5 by default used in BOA for
 all newly created SSH/FTPS accounts (both main and extra - for Aegir Clients)

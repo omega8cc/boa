@@ -569,8 +569,7 @@ prep_for_install_db_sql() {
     || [ "${_OSR}" = "bullseye" ] \
     || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ] \
-    || [ "${_OSR}" = "jessie" ] \
-    || [ "${_OSR}" = "trusty" ]; then
+    || [ "${_OSR}" = "jessie" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Installing software-properties-common dirmngr..."
     fi
@@ -637,16 +636,13 @@ prep_for_install_db_sql() {
   _KEYS_SERVER_TEST=FALSE
   if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
     _OSN=debian
-  elif [ "${_THIS_OS}" = "Ubuntu" ]; then
-    _OSN=ubuntu
   fi
   if [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
     || [ "${_OSR}" = "bullseye" ] \
     || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ] \
-    || [ "${_OSR}" = "jessie" ] \
-    || [ "${_OSR}" = "trusty" ]; then
+    || [ "${_OSR}" = "jessie" ]; then
     if [ -e "/root/.mstr.clstr.cnf" ] \
       || [ -e "/root/.wbhd.clstr.cnf" ] \
       || [ -e "/root/.dbhd.clstr.cnf" ]; then
@@ -849,9 +845,7 @@ install_with_aptitude_sql() {
     || [ "${_OSR}" = "bullseye" ] \
     || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ] \
-    || [ "${_OSR}" = "jessie" ] \
-    || [ "${_OSR}" = "trusty" ] \
-    || [ "${_OSR}" = "precise" ]; then
+    || [ "${_OSR}" = "jessie" ]; then
     if [ "${_EASY_SETUP}" = "MSTR" ] \
       || [ "${_EASY_SETUP}" = "DBHD" ] \
       || [ "${_EASY_SETUP}" = "WBHD" ] \
@@ -1177,8 +1171,6 @@ db_server_install() {
     else
       if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
         _OSN=debian
-      elif [ "${_THIS_OS}" = "Ubuntu" ]; then
-        _OSN=ubuntu
       fi
       if [ "${_DB_SERVER}" = "MariaDB" ]; then
         _DB_SRC="ftp.osuosl.org"
@@ -1291,8 +1283,6 @@ db_server_install() {
       _KEYS_SERVER_TEST=FALSE
       if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
         _OSN=debian
-      elif [ "${_THIS_OS}" = "Ubuntu" ]; then
-        _OSN=ubuntu
       fi
       st_runner "aptitude autoclean -y" &> /dev/null
       apt_clean_update

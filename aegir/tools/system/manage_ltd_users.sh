@@ -72,9 +72,7 @@ if [ "${_THIS_RV}" = "chimaera" ] \
   || [ "${_THIS_RV}" = "bullseye" ] \
   || [ "${_THIS_RV}" = "buster" ] \
   || [ "${_THIS_RV}" = "stretch" ] \
-  || [ "${_THIS_RV}" = "jessie" ] \
-  || [ "${_THIS_RV}" = "trusty" ] \
-  || [ "${_THIS_RV}" = "precise" ]; then
+  || [ "${_THIS_RV}" = "jessie" ]; then
   _RUBY_VRN=3.1.2
 else
   _RUBY_VRN=2.0.0

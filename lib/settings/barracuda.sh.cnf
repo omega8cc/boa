@@ -394,7 +394,7 @@ _SSH_PORT=22
 
 
 ###----------------------------------------###
-### LOCAL DEVUAN, DEBIAN OR UBUNTU MIRROR  ###
+### LOCAL DEVUAN or DEBIAN MIRROR          ###
 ###----------------------------------------###
 ###
 ### Modify this if you prefer to use some
@@ -403,14 +403,12 @@ _SSH_PORT=22
 ###
 ### _LOCAL_DEVUAN_MIRROR=devuan.keff.org
 ### _LOCAL_DEBIAN_MIRROR=ftp.au.debian.org
-### _LOCAL_UBUNTU_MIRROR=au.archive.ubuntu.com
 ###
 ### To search for the fastest mirror around
 ### the globe, use empty variables:
 ###
 ### _LOCAL_DEVUAN_MIRROR=""
 ### _LOCAL_DEBIAN_MIRROR=""
-### _LOCAL_UBUNTU_MIRROR=""
 ###
 ### Note that searching around the globe is
 ### no longer enabled by default!
@@ -424,7 +422,6 @@ _SSH_PORT=22
 ###
 _LOCAL_DEVUAN_MIRROR=deb.devuan.org
 _LOCAL_DEBIAN_MIRROR=deb.debian.org
-_LOCAL_UBUNTU_MIRROR=archive.ubuntu.com
 
 
 ###----------------------------------------###
