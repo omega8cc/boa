@@ -45,15 +45,14 @@ if [ -e "/root/.pause_tasks_maint.cnf" ]; then
 fi
 
 os_detection_minimal() {
+  _APT_UPDATE="apt-get update"
   _THIS_RV=$(lsb_release -sc 2>&1)
-  if [ "${_THIS_RV}" = "chimaera" ] \
-    || [ "${_THIS_RV}" = "beowulf" ] \
-    || [ "${_THIS_RV}" = "bullseye" ] \
-    || [ "${_THIS_RV}" = "buster" ]; then
-    _APT_UPDATE="apt-get update --allow-releaseinfo-change"
-  else
-    _APT_UPDATE="apt-get update"
-  fi
+  _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
+  for e in ${_OS_LIST}; do
+    if [ "${e}" = "${_THIS_RV}" ]; then
+      _APT_UPDATE="apt-get update --allow-releaseinfo-change"
+    fi
+  done
 }
 os_detection_minimal
 
