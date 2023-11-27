@@ -40,21 +40,7 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
-_OPENSSL_MODERN_VRN=3.1.4
 _X_SE="510devT02"
-_WEBG=www-data
-_OSR=$(lsb_release -sc 2>&1)
-_SSL_ITD=$(openssl version 2>&1 \
-  | tr -d "\n" \
-  | cut -d" " -f2 \
-  | awk '{ print $1}')
-if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
-  || [[ "${_SSL_ITD}" =~ "1.1.1" ]] \
-  || [[ "${_SSL_ITD}" =~ "1.1.0" ]] \
-  || [[ "${_SSL_ITD}" =~ "1.0.2" ]] \
-  || [[ "${_SSL_ITD}" =~ "1.0.1" ]]; then
-  _NEW_SSL=YES
-fi
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 aptYesUnth="-y --allow-unauthenticated"
 vSet="variable-set --always-set"
