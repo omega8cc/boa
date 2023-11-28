@@ -7,20 +7,28 @@
 
 @=> New Features
 
-   * PHP 8.3 support
-
    * Symlink all sites files automatically to speed up migration tasks and
      to save tons of disk space.
 
    * Rsync sites files on clone task to create separate symlinked copy.
 
-   * Debian Bookworm and Devuan Daedalus compatibility for installation and
-     automated upgrades.
+   * PHP 8.3 support, bringing total PHP versions supported to 10 (ten!)
 
    * Automate mass import procedure from remote classic Aegir servers running
      Nginx or Apache to extend xboa tool features.
 
-   * Add Amazon S3 alternatives to backboa and duobackboa
+   * Percona Server for MySQL 8.0 migration test and support -- required
+     because Percona/MySQL 5.7 EOL already happened in October 2023 plus
+     there is no Percona/MySQL 5.7 for Debian Bookworm / Devuan Daedalus,
+     at least not yet.
+
+   * Add Amazon S3 alternatives to backboa and duobackboa.
+
+   * Debian Bookworm and Devuan Daedalus compatibility for installation and
+     automated upgrades. Experimental only because there is no Percona/MySQL
+     in either 5.7 or 8.0 available yet.
+
+   * Aegir Remote Servers feature is important for some users, let's do it.
 
 @=> Improvements
 
@@ -29,17 +37,14 @@
 
 @=> Changes and Upgrades
 
+   * Switch to OpenSSL LTS 3.0 since 1.1.1 entered EOL in September 2023.
+
+   * Aegir Hostmaster port/migration to Drupal 10 before Drupal 7 EOL.
+
    * Sites backup in Aegir will no longer include all files nor database dump,
      but make it configurable on the fly with new control files if user wants
      to preserve Restore task functionality.
 
 @=> Important Fixes
 
-   * Drush 11/12 support with Redispatch to site-local Drush (vdrush, sdrush)
-
-
-
-
-
-
-
+   * Drush 11/12 support with Redispatch to site-local Drush (vdrush, sdrush).
