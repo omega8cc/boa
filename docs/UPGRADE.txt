@@ -16,7 +16,9 @@
 
     First, update your BOA Meta Installers with:
 
-    $ cd;rm -f BOA*; wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
+    $ cd;rm -f BOA*
+    $ wget -q -U iCab http://files.aegir.cc/versions/dev/boa/BOA.sh.txt
+    $ bash BOA.sh.txt
 
     ###----------------------------------------###
     ### HOW-TO: Launch auto-upgrade properly   ###
@@ -103,7 +105,9 @@
     Edition yet, don't use any partial upgrade modes explained further below.
     Once new BOA Latest is available, you must run *full* upgrades with commands:
 
-    $ cd;rm -f BOA*; wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
+    $ cd;rm -f BOA*
+    $ wget -q -U iCab http://files.aegir.cc/versions/dev/boa/BOA.sh.txt
+    $ bash BOA.sh.txt
     $ barracuda up-dev
     $ barracuda up-dev system              (recommended on major upgrade)
     $ octopus up-dev all force
@@ -117,7 +121,9 @@
     will complete:
 
     $ screen
-    $ cd;rm -f BOA*; wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
+    $ cd;rm -f BOA*
+    $ wget -q -U iCab http://files.aegir.cc/versions/dev/boa/BOA.sh.txt
+    $ bash BOA.sh.txt
     $ barracuda up-dev log
     $ octopus up-dev all force log
 
@@ -142,7 +148,9 @@
 
     Download and run (as root) BOA Meta Installers first:
 
-    $ cd;rm -f BOA*; wget -q -U iCab http://files.aegir.cc/BOA.sh.txt;bash BOA.sh.txt
+    $ cd;rm -f BOA*
+    $ wget -q -U iCab http://files.aegir.cc/versions/dev/boa/BOA.sh.txt
+    $ bash BOA.sh.txt
 
  => To upgrade system and Aegir Master Instance to Latest use:
 
