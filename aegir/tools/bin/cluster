@@ -75,14 +75,8 @@ apt_clean_update() {
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
-      || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
-      _REAL_OSR="chimaera"
-      _REAL_OS="Devuan"
-    else
-      _REAL_OSR="${_OSR}"
-      _REAL_OS="${_THIS_OS}"
-    fi
+    _REAL_OSR="${_OSR}"
+    _REAL_OS="${_THIS_OS}"
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -1466,7 +1460,9 @@ interactive-timeout
 install_db_cluster() {
   check_config_cluster
 
-  if [ "${_OSR}" = "chimaera" ]; then
+  if [ "${_OSR}" = "daedalus" ]; then
+    _SQL_OSR=bookworm
+  elif [ "${_OSR}" = "chimaera" ]; then
     _SQL_OSR=bullseye
   elif [ "${_OSR}" = "beowulf" ]; then
     _SQL_OSR=buster

@@ -77,11 +77,17 @@ if_install_jetty() {
       elif [ "${_OSR}" = "bullseye" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_X_SE} Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
+      elif [ "${_OSR}" = "bookworm" ]; then
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk\" # BOA ${_X_SE} Path to Java 17" >> \
+          /etc/default/${_N_SOLR}.in.sh
       elif [ "${_OSR}" = "beowulf" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_X_SE} Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
       elif [ "${_OSR}" = "chimaera" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_X_SE} Path to Java 11" >> \
+          /etc/default/${_N_SOLR}.in.sh
+      elif [ "${_OSR}" = "daedalus" ]; then
+        echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-17-openjdk\" # BOA ${_X_SE} Path to Java 17" >> \
           /etc/default/${_N_SOLR}.in.sh
       fi
     fi
@@ -103,19 +109,8 @@ if_install_jetty() {
   fi
 
   ###--------------------###
-  if [ "${_OSR}" = "chimaera" ] \
-    || [ "${_OSR}" = "beowulf" ] \
-    || [ "${_OSR}" = "bullseye" ] \
-    || [ "${_OSR}" = "buster" ] \
-    || [ "${_OSR}" = "stretch" ] \
-    || [ "${_OSR}" = "jessie" ] \
-    || [ "${_DO_FIX}" = "YES" ]; then
-    _R_JETTY=9
-    _JETTY_CTRL="/opt/jetty9/jetty-ctrl-${_JETTY_9_VRN}-${_SOLR_4_VRN}-version.txt"
-  else
-    _R_JETTY=8
-    _JETTY_CTRL="/opt/jetty9/jetty-ctrl-${_JETTY_8_VRN}-${_SOLR_4_VRN}-version.txt"
-  fi
+  _R_JETTY=9
+  _JETTY_CTRL="/opt/jetty9/jetty-ctrl-${_JETTY_9_VRN}-${_SOLR_4_VRN}-version.txt"
   _SOLR_CTRL="/opt/jetty9/solr-${_SOLR_4_VRN}-version.txt"
   if [ -e "/opt/jetty9/start.d/http.ini" ]; then
     _PORT_CTRL="/opt/jetty9/start.d/.fixed.http.ini.txt"
@@ -133,17 +128,7 @@ if_install_jetty() {
       && [ ! -e "/root/.mstr.clstr.cnf" ] \
       && [ ! -e "/root/.wbhd.clstr.cnf" ] \
       && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
-      if [ "${_OSR}" = "chimaera" ] \
-        || [ "${_OSR}" = "beowulf" ] \
-        || [ "${_OSR}" = "bullseye" ] \
-        || [ "${_OSR}" = "buster" ] \
-        || [ "${_OSR}" = "stretch" ] \
-        || [ "${_OSR}" = "jessie" ] \
-        || [ "${_DO_FIX}" = "YES" ]; then
-        _R_JETTY=9
-      else
-        _R_JETTY=8
-      fi
+      _R_JETTY=9
       echo " "
       tPrmt="Do you want to install MultiCore Apache Solr"
       tPrmt="${tPrmt} with Jetty ${_R_JETTY}"
@@ -156,21 +141,9 @@ if_install_jetty() {
         rm -rf /opt/solr4
         rm -rf /opt/jetty9
         rm -f /etc/jetty.conf
-        if [ "${_OSR}" = "chimaera" ] \
-          || [ "${_OSR}" = "beowulf" ] \
-          || [ "${_OSR}" = "bullseye" ] \
-          || [ "${_OSR}" = "buster" ] \
-          || [ "${_OSR}" = "stretch" ] \
-          || [ "${_OSR}" = "jessie" ] \
-          || [ "${_DO_FIX}" = "YES" ]; then
-          get_dev_arch "jetty-distribution-${_JETTY_9_VRN}.tar.gz"
-          mv /var/opt/jetty-distribution-${_JETTY_9_VRN} /opt/jetty9
-          echo ${_JETTY_9_VRN} > ${_JETTY_CTRL}
-        else
-          get_dev_arch "jetty-distribution-${_JETTY_8_VRN}.tar.gz"
-          mv /var/opt/jetty-distribution-${_JETTY_8_VRN} /opt/jetty9
-          echo ${_JETTY_8_VRN} > ${_JETTY_CTRL}
-        fi
+        get_dev_arch "jetty-distribution-${_JETTY_9_VRN}.tar.gz"
+        mv /var/opt/jetty-distribution-${_JETTY_9_VRN} /opt/jetty9
+        echo ${_JETTY_9_VRN} > ${_JETTY_CTRL}
         get_dev_arch "solr-${_SOLR_4_VRN}.tgz"
         cp -af /var/opt/solr-${_SOLR_4_VRN}/dist/solr-${_SOLR_4_VRN}.war \
           /opt/jetty9/webapps/solr.war
@@ -251,20 +224,6 @@ if_install_jetty() {
         echo "JAVA_OPTIONS=\"-Xms64m -Xmx128m -Djava.awt.headless=true \
           -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" \
           # Options" | fmt -su -w 2500 >> /etc/default/jetty9
-        if [ "${_OSR}" = "chimaera" ] \
-          || [ "${_OSR}" = "beowulf" ] \
-          || [ "${_OSR}" = "bullseye" ] \
-          || [ "${_OSR}" = "buster" ] \
-          || [ "${_OSR}" = "stretch" ] \
-          || [ "${_OSR}" = "jessie" ] \
-          || [ "${_DO_FIX}" = "YES" ]; then
-          _DO_NOTHING=YES
-        else
-          sed -i "s/8/9/g" /opt/jetty9/bin/jetty.sh &> /dev/null
-          wait
-          sed -i "s/9090/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
-          wait
-        fi
         if [ -e "/opt/jetty9/start.d/http.ini" ]; then
           sed -i "s/8080/8099/g" /opt/jetty9/start.d/http.ini &> /dev/null
           touch /opt/jetty9/start.d/.fixed.http.ini.txt &> /dev/null
@@ -334,25 +293,9 @@ if_install_jetty() {
       rm -rf jetty-distribution-*
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
       mv -f /opt/jetty9 ${vBs}/jetty9-${_X_SE}-${_X_VERSION}-${_NOW}
-      if [ "${_OSR}" = "chimaera" ] \
-        || [ "${_OSR}" = "beowulf" ] \
-        || [ "${_OSR}" = "bullseye" ] \
-        || [ "${_OSR}" = "buster" ] \
-        || [ "${_OSR}" = "stretch" ] \
-        || [ "${_OSR}" = "jessie" ] \
-        || [ "${_DO_FIX}" = "YES" ]; then
-        get_dev_arch "jetty-distribution-${_JETTY_9_VRN}.tar.gz"
-        mv /var/opt/jetty-distribution-${_JETTY_9_VRN} /opt/jetty9
-        echo ${_JETTY_9_VRN} > ${_JETTY_CTRL}
-      else
-        get_dev_arch "jetty-distribution-${_JETTY_8_VRN}.tar.gz"
-        mv /var/opt/jetty-distribution-${_JETTY_8_VRN} /opt/jetty9
-        sed -i "s/8/9/g" /opt/jetty9/bin/jetty.sh &> /dev/null
-        wait
-        sed -i "s/9090/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
-        wait
-        echo ${_JETTY_8_VRN} > ${_JETTY_CTRL}
-      fi
+      get_dev_arch "jetty-distribution-${_JETTY_9_VRN}.tar.gz"
+      mv /var/opt/jetty-distribution-${_JETTY_9_VRN} /opt/jetty9
+      echo ${_JETTY_9_VRN} > ${_JETTY_CTRL}
       if [ -e "/opt/jetty9/start.d/http.ini" ]; then
         sed -i "s/8080/8099/g" /opt/jetty9/start.d/http.ini &> /dev/null
         touch /opt/jetty9/start.d/.fixed.http.ini.txt &> /dev/null

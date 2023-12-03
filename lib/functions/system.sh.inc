@@ -112,12 +112,33 @@ define_loc_osr() {
     _TGT_OSN=Devuan
     _MSG_LOC="Devuan Beowulf to Devuan Chimaera"
   fi
+  if [ "${_CHIMAERA_TO_DAEDALUS}" = "YES" ] \
+    && [ "${_OSR}" = "chimaera" ]; then
+    _LOC_OSR=chimaera
+    _NEW_OSR=daedalus
+    _TGT_OSN=Devuan
+    _MSG_LOC="Devuan Chimaera to Devuan Daedalus"
+  fi
   if [ "${_BULLSEYE_TO_CHIMAERA}" = "YES" ] \
     && [ "${_OSR}" = "bullseye" ]; then
     _LOC_OSR=bullseye
     _NEW_OSR=chimaera
     _TGT_OSN=Devuan
     _MSG_LOC="Debian Bullseye to Devuan Chimaera"
+  fi
+  if [ "${_BOOKWORM_TO_DAEDALUS}" = "YES" ] \
+    && [ "${_OSR}" = "bookworm" ]; then
+    _LOC_OSR=bookworm
+    _NEW_OSR=daedalus
+    _TGT_OSN=Devuan
+    _MSG_LOC="Debian Bookworm to Devuan Daedalus"
+  fi
+  if [ "${_BULLSEYE_TO_BOOKWORM}" = "YES" ] \
+    && [ "${_OSR}" = "bullseye" ]; then
+    _LOC_OSR=bullseye
+    _NEW_OSR=bookworm
+    _TGT_OSN=Debian
+    _MSG_LOC="Debian Bullseye to Debian Bookworm"
   fi
   if [ "${_BUSTER_TO_BULLSEYE}" = "YES" ] \
     && [ "${_OSR}" = "buster" ]; then
@@ -165,7 +186,19 @@ if_to_do_fix() {
     && [ "${_LOC_OSR}" = "beowulf" ]; then
     _DO_FIX=YES
   fi
+  if [ "${_CHIMAERA_TO_DAEDALUS}" = "YES" ] \
+    && [ "${_LOC_OSR}" = "chimaera" ]; then
+    _DO_FIX=YES
+  fi
   if [ "${_BULLSEYE_TO_CHIMAERA}" = "YES" ] \
+    && [ "${_LOC_OSR}" = "bullseye" ]; then
+    _DO_FIX=YES
+  fi
+  if [ "${_BOOKWORM_TO_DAEDALUS}" = "YES" ] \
+    && [ "${_LOC_OSR}" = "bookworm" ]; then
+    _DO_FIX=YES
+  fi
+  if [ "${_BULLSEYE_TO_BOOKWORM}" = "YES" ] \
     && [ "${_LOC_OSR}" = "bullseye" ]; then
     _DO_FIX=YES
   fi
@@ -1076,9 +1109,24 @@ barracuda_cnf_cleanup() {
       wait
     fi
   fi
+  _BOOKWORM_TO_DAEDALUS_TEST=$(grep _BOOKWORM_TO_DAEDALUS ${barCnf} 2>&1)
+  if [[ "${_BOOKWORM_TO_DAEDALUS_TEST}" =~ "_BOOKWORM_TO_DAEDALUS" ]]; then
+    sed -i "s/^_BOOKWORM_TO_DAEDALUS.*//g" ${barCnf}
+    wait
+  fi
+  _CHIMAERA_TO_DAEDALUS_TEST=$(grep _CHIMAERA_TO_DAEDALUS ${barCnf} 2>&1)
+  if [[ "${_CHIMAERA_TO_DAEDALUS_TEST}" =~ "_CHIMAERA_TO_DAEDALUS" ]]; then
+    sed -i "s/^_CHIMAERA_TO_DAEDALUS.*//g" ${barCnf}
+    wait
+  fi
   _BULLSEYE_TO_CHIMAERA_TEST=$(grep _BULLSEYE_TO_CHIMAERA ${barCnf} 2>&1)
   if [[ "${_BULLSEYE_TO_CHIMAERA_TEST}" =~ "_BULLSEYE_TO_CHIMAERA" ]]; then
     sed -i "s/^_BULLSEYE_TO_CHIMAERA.*//g" ${barCnf}
+    wait
+  fi
+  _BULLSEYE_TO_BOOKWORM_TEST=$(grep _BULLSEYE_TO_BOOKWORM ${barCnf} 2>&1)
+  if [[ "${_BULLSEYE_TO_BOOKWORM_TEST}" =~ "_BULLSEYE_TO_BOOKWORM" ]]; then
+    sed -i "s/^_BULLSEYE_TO_BOOKWORM.*//g" ${barCnf}
     wait
   fi
   _BEOWULF_TO_CHIMAERA_TEST=$(grep _BEOWULF_TO_CHIMAERA ${barCnf} 2>&1)
@@ -1344,6 +1392,7 @@ php_if_versions_cleanup_cnf() {
     msg "PROC: php_if_versions_cleanup_cnf"
   fi
   if [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] \
+    || [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ]; then
     _AUTO_PHP_CLEANUP=YES
@@ -2585,8 +2634,10 @@ if_install_wkhtmltox() {
     | cut -d" " -f2 \
     | awk '{ print $1}')
   if [[ "${_WOX_ITD}" =~ "0.12.6" ]]; then
-    if [ "${_OSR}" = "chimaera" ] \
+    if [ "${_OSR}" = "daedalus" ] \
+      || [ "${_OSR}" = "chimaera" ] \
       || [ "${_OSR}" = "bullseye" ] \
+      || [ "${_OSR}" = "bookworm" ] \
       || [ "${_OSR}" = "beowulf" ] \
       || [ "${_OSR}" = "buster" ] \
       || [ "${_OSR}" = "stretch" ]; then
@@ -2600,7 +2651,9 @@ if_install_wkhtmltox() {
       _WKHTMLTOX_VRN="12.5-1"
     fi
   fi
-  if [ "${_OSR}" = "chimaera" ] \
+  if [ "${_OSR}" = "daedalus" ] \
+    || [ "${_OSR}" = "chimaera" ] \
+    || [ "${_OSR}" = "bookworm" ] \
     || [ "${_OSR}" = "bullseye" ]; then
     if [ "${_WOX_IS}" = "OLD" ] \
       || [ ! -x "/usr/local/bin/wkhtmltopdf" ] \
@@ -3025,14 +3078,8 @@ sources_list_update() {
 	  else
 		_MIRROR=${_LOCAL_DEVUAN_MIRROR}
 	  fi
-      if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
-        || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
-        _REAL_OSR="chimaera"
-        _REAL_OS="Devuan"
-      else
-        _REAL_OSR="${_OSR}"
-        _REAL_OS="${_THIS_OS}"
-      fi
+      _REAL_OSR="${_OSR}"
+      _REAL_OS="${_THIS_OS}"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: We will use ${_REAL_OS} mirror ${_MIRROR}"
       fi
@@ -3049,14 +3096,8 @@ sources_list_update() {
       echo "deb http://${_MIRROR}/merged ${_REAL_OSR}-security main" >> ${aptLiSys}
       echo "deb-src http://${_MIRROR}/merged ${_REAL_OSR}-security main" >> ${aptLiSys}
     elif [ "${_THIS_OS}" = "Debian" ]; then
-      if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
-        || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
-        _REAL_OSR="chimaera"
-        _REAL_OS="Devuan"
-      else
-        _REAL_OSR="${_OSR}"
-        _REAL_OS="${_THIS_OS}"
-      fi
+      _REAL_OSR="${_OSR}"
+      _REAL_OS="${_THIS_OS}"
       _MIRROR_CHECK=NO
       if [ "${_OSR}" = "deprecated" ]; then
         _MIRROR=archive.debian.org
@@ -3145,16 +3186,7 @@ sshd_install_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: sshd_install_src"
   fi
-  if [ "${_OSR}" = "chimaera" ] \
-    || [ "${_OSR}" = "beowulf" ] \
-    || [ "${_OSR}" = "bullseye" ] \
-    || [ "${_OSR}" = "buster" ] \
-    || [ "${_OSR}" = "stretch" ] \
-    || [ "${_OSR}" = "jessie" ]; then
-    _SSH_GET_DPKG=$(dpkg --get-selections | grep openssh-sftp-server | grep 'hold$' 2>&1)
-  else
-    _SSH_GET_DPKG=$(dpkg --get-selections | grep ssh | grep 'hold$' 2>&1)
-  fi
+  _SSH_GET_DPKG=$(dpkg --get-selections | grep openssh-sftp-server | grep 'hold$' 2>&1)
   _SSH_INSTALL_REQUIRED=NO
   _SSH_ITD=$(ssh -V 2>&1 \
     | tr -d "\n" \
@@ -3213,14 +3245,7 @@ sshd_install_src() {
       echo "openssh-client hold" | dpkg --set-selections &> /dev/null
       echo "openssh-server hold" | dpkg --set-selections &> /dev/null
       echo "ssh hold" | dpkg --set-selections &> /dev/null
-      if [ "${_OSR}" = "chimaera" ] \
-        || [ "${_OSR}" = "beowulf" ] \
-        || [ "${_OSR}" = "bullseye" ] \
-        || [ "${_OSR}" = "buster" ] \
-        || [ "${_OSR}" = "stretch" ] \
-        || [ "${_OSR}" = "jessie" ]; then
-        echo "openssh-sftp-server hold" | dpkg --set-selections &> /dev/null
-      fi
+      echo "openssh-sftp-server hold" | dpkg --set-selections &> /dev/null
     fi
   else
     if [[ ! "${_SSH_GET_DPKG}" =~ "hold" ]]; then
@@ -3230,14 +3255,7 @@ sshd_install_src() {
       echo "openssh-client hold" | dpkg --set-selections &> /dev/null
       echo "openssh-server hold" | dpkg --set-selections &> /dev/null
       echo "ssh hold" | dpkg --set-selections &> /dev/null
-      if [ "${_OSR}" = "chimaera" ] \
-        || [ "${_OSR}" = "beowulf" ] \
-        || [ "${_OSR}" = "bullseye" ] \
-        || [ "${_OSR}" = "buster" ] \
-        || [ "${_OSR}" = "stretch" ] \
-        || [ "${_OSR}" = "jessie" ]; then
-        echo "openssh-sftp-server hold" | dpkg --set-selections &> /dev/null
-      fi
+      echo "openssh-sftp-server hold" | dpkg --set-selections &> /dev/null
     fi
   fi
   _SSH_FORCE_REINSTALL=NO
@@ -3417,8 +3435,10 @@ ssl_install_src() {
     | tr -d "\n" \
     | cut -d" " -f9 \
     | awk '{ print $1}' 2>&1)
-  if [ "${_OSR}" = "chimaera" ] \
+  if [ "${_OSR}" = "daedalus" ] \
+    || [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bookworm" ] \
     || [ "${_OSR}" = "bullseye" ] \
     || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ]; then
@@ -3636,8 +3656,10 @@ curl_install_src() {
     msg "INFO: Installed cURL version ${_CURL_ITD} but re-install forced"
   fi
   if [ ! -e "/root/.use.curl.from.packages.cnf" ]; then
-    if [ "${_OSR}" = "chimaera" ] \
+    if [ "${_OSR}" = "daedalus" ] \
+      || [ "${_OSR}" = "chimaera" ] \
       || [ "${_OSR}" = "beowulf" ] \
+      || [ "${_OSR}" = "bookworm" ] \
       || [ "${_OSR}" = "bullseye" ] \
       || [ "${_OSR}" = "buster" ] \
       || [ "${_OSR}" = "stretch" ]; then
@@ -4916,7 +4938,8 @@ if_post_major_os_upgrade() {
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
 
     _REBUILD_SRC_ON_AUTO_NOW=YES
-    if [ -e "/root/.run-to-chimaera.cnf" ] \
+    if [ -e "/root/.run-to-daedalus.cnf" ] \
+      || [ -e "/root/.run-to-chimaera.cnf" ] \
       || [ -e "/root/.run-to-beowulf.cnf" ]; then
       _REBUILD_SRC_ON_AUTO_NOW=NO
       php_if_versions_cleanup_cnf
@@ -5012,7 +5035,8 @@ if_major_os_upgrade() {
       barracuda_cnf_cleanup
       clean_pid_exit
     fi
-    if [ -e "/root/.run-to-chimaera.cnf" ] \
+    if [ -e "/root/.run-to-daedalus.cnf" ] \
+      || [ -e "/root/.run-to-chimaera.cnf" ] \
       || [ -e "/root/.run-to-beowulf.cnf" ]; then
       _AUTOPILOT=YES
     fi
@@ -5181,15 +5205,11 @@ if_major_os_upgrade() {
     if [ "${_TGT_OSN}" = "Debian" ] || [ "${_TGT_OSN}" = "Devuan" ]; then
       _NEW_OSN=debian
     fi
-    if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
-      || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
-      _REAL_OSR="chimaera"
-      _REAL_OS="Devuan"
-    else
-      _REAL_OSR="${_NEW_OSR}"
-      _REAL_OS="${_THIS_OS}"
-    fi
-    if [ "${_REAL_OSR}" = "chimaera" ]; then
+    _REAL_OSR="${_NEW_OSR}"
+    _REAL_OS="${_THIS_OS}"
+    if [ "${_REAL_OSR}" = "daedalus" ]; then
+      _SQL_NEW_OSR=bookworm
+    elif [ "${_REAL_OSR}" = "chimaera" ]; then
       _SQL_NEW_OSR=bullseye
     elif [ "${_REAL_OSR}" = "beowulf" ]; then
       _SQL_NEW_OSR=buster
@@ -5403,7 +5423,8 @@ if_major_os_upgrade() {
     touch /root/.${_LOC_OSR}_to_${_NEW_OSR}_major_os_upgrade.info
     ###
     ### Re-install key services early to limit downtime and SSH keys confusion.
-    if [ -e "/root/.run-to-chimaera.cnf" ] \
+    if [ -e "/root/.run-to-daedalus.cnf" ] \
+      || [ -e "/root/.run-to-chimaera.cnf" ] \
       || [ -e "/root/.run-to-beowulf.cnf" ]; then
       _REBUILD_SRC_ON_AUTO_NOW=NO
     else
@@ -5426,7 +5447,9 @@ if_major_os_upgrade() {
       sshd_install_src
     fi
     if [ "${_TGT_OSN}" = "Devuan" ]; then
-      if [ "${_LOC_OSR}" = "bullseye" ] || [ "${_LOC_OSR}" = "buster" ]; then
+      if [ "${_LOC_OSR}" = "bookworm" ] \
+        || [ "${_LOC_OSR}" = "bullseye" ] \
+        || [ "${_LOC_OSR}" = "buster" ]; then
         touch /root/.small_hop_on_major_os_upgrade.info
       else
         touch /root/.big_hop_on_major_os_upgrade.info
@@ -5737,10 +5760,14 @@ sys_packages_install() {
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "bullseye" ]; then
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
+      elif [ "${_OSR}" = "bookworm" ]; then
+        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "beowulf" ]; then
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "chimaera" ]; then
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
+      elif [ "${_OSR}" = "daedalus" ]; then
+        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
       fi
     else
       _APT_XTRA="nginx"
@@ -5772,10 +5799,14 @@ sys_packages_install() {
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "bullseye" ]; then
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
+      elif [ "${_OSR}" = "bookworm" ]; then
+        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "beowulf" ]; then
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "chimaera" ]; then
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
+      elif [ "${_OSR}" = "daedalus" ]; then
+        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
       fi
     else
       _APT_XTRA=""
@@ -5814,7 +5845,21 @@ sys_packages_install() {
     _SYSLOGD=rsyslog
   fi
 
-  if [ "${_OSR}" = "chimaera" ]; then
+  if [ "${_OSR}" = "daedalus" ]; then
+    _EXTRA_PACKAGES="autoconf2.71 \
+                     automake1.11 \
+                     automake-1.16 \
+                     gnupg1-curl \
+                     libpcre2-dev \
+                     libpcre2-posix2 \
+                     libpcre3 \
+                     libpcre3-dev \
+                     libpng-dev \
+                     libpng16-16 \
+                     libtinfo6 \
+                     software-properties-common \
+                     ${_EXTRA_PACKAGES}"
+  elif [ "${_OSR}" = "chimaera" ]; then
     _EXTRA_PACKAGES="autoconf2.69 \
                      automake1.11 \
                      automake-1.16 \
@@ -5845,6 +5890,20 @@ sys_packages_install() {
                      ttf-dejavu \
                      ttf-dejavu-core \
                      ttf-dejavu-extra \
+                     ${_EXTRA_PACKAGES}"
+  elif [ "${_OSR}" = "bookworm" ]; then
+    _EXTRA_PACKAGES="autoconf2.71 \
+                     automake1.11 \
+                     automake-1.16 \
+                     gnupg1-curl \
+                     libpcre2-dev \
+                     libpcre2-posix2 \
+                     libpcre3 \
+                     libpcre3-dev \
+                     libpng-dev \
+                     libpng16-16 \
+                     libtinfo6 \
+                     software-properties-common \
                      ${_EXTRA_PACKAGES}"
   elif [ "${_OSR}" = "bullseye" ]; then
     _EXTRA_PACKAGES="autoconf2.69 \
@@ -5913,22 +5972,12 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  if [ "${_OSR}" = "chimaera" ] \
-    || [ "${_OSR}" = "beowulf" ] \
-    || [ "${_OSR}" = "bullseye" ] \
-    || [ "${_OSR}" = "buster" ] \
-    || [ "${_OSR}" = "stretch" ] \
-    || [ "${_OSR}" = "jessie" ]; then
-    _EXTRA_PACKAGES="libgd3 \
-                     libkrb5-dev \
-                     libldap-dev \
-                     libxpm-dev \
-                     libwebp-dev \
-                     ${_EXTRA_PACKAGES}"
-  else
-    _EXTRA_PACKAGES="libgd2-xpm \
-                     ${_EXTRA_PACKAGES}"
-  fi
+  _EXTRA_PACKAGES="libgd3 \
+                   libkrb5-dev \
+                   libldap-dev \
+                   libxpm-dev \
+                   libwebp-dev \
+                   ${_EXTRA_PACKAGES}"
 
   if [[ "${_XTRAS_LIST}" =~ "IMG" ]] \
     || [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
@@ -5958,14 +6007,7 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  if [ "${_OSR}" = "chimaera" ] \
-    || [ "${_OSR}" = "beowulf" ] \
-    || [ "${_OSR}" = "bullseye" ] \
-    || [ "${_OSR}" = "buster" ] \
-    || [ "${_OSR}" = "stretch" ] \
-    || [ "${_OSR}" = "jessie" ]; then
-    _MAILSERV="postfix postfix-pcre"
-  fi
+  _MAILSERV="postfix postfix-pcre"
 }
 
 php_libs_fix() {
@@ -5973,199 +6015,185 @@ php_libs_fix() {
     msg "PROC: php_libs_fix"
   fi
   if_to_do_fix
-  if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
-    || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
-    _REAL_OSR="chimaera"
-    _REAL_OS="Devuan"
-  else
-    _REAL_OSR="${_OSR}"
-    _REAL_OS="${_THIS_OS}"
-  fi
+  _REAL_OSR="${_OSR}"
+  _REAL_OS="${_THIS_OS}"
   _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
   _LIB_NOW=${_LIB_NOW//[^0-9-]/}
-  if [ "${_OSR}" = "chimaera" ] \
-    || [ "${_OSR}" = "beowulf" ] \
-    || [ "${_OSR}" = "bullseye" ] \
-    || [ "${_OSR}" = "buster" ] \
-    || [ "${_OSR}" = "stretch" ] \
-    || [ "${_OSR}" = "jessie" ] \
-    || [ "${_DO_FIX}" = "YES" ]; then
-    if [ ! -L "/usr/lib/librtmp.so" ] \
-      || [ ! -e "/usr/lib/libwebpmux.so" ] \
-      || [ ! -e "/usr/lib/libonig.so" ] \
-      || [ ! -e "/usr/lib/libcurl.so" ] \
-      || [ ! -e "/usr/lib/libicuio.so" ] \
-      || [ ! -e "/var/xdrago/log/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid" ] \
-      || [ ! -e "/var/xdrago/log/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid" ] \
-      || [ ! -e "/usr/include/gmp.h" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Fix for PHP libs in ${_REAL_OS}/${_REAL_OSR}"
-      fi
-      _X86_64_TEST=$(uname -m 2>&1)
-      if [ "${_X86_64_TEST}" = "x86_64" ]; then
-        if [ -e "/usr/local/lib/icu" ]; then
-          if [ -e "/usr/lib/x86_64-linux-gnu/icu" ] \
-            && [ ! -L "/usr/lib/x86_64-linux-gnu/icu" ]; then
-            mv -f /usr/lib/x86_64-linux-gnu/icu /usr/lib/x86_64-linux-gnu/.old_icu
-            ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
-          else
-            ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
-          fi
-          ln -sfn /usr/local/lib/libicudata.so /usr/lib/x86_64-linux-gnu/libicudata.so
-          ln -sfn /usr/local/lib/libicui18n.so /usr/lib/x86_64-linux-gnu/libicui18n.so
-          ln -sfn /usr/local/lib/libicuio.so   /usr/lib/x86_64-linux-gnu/libicuio.so
-          ln -sfn /usr/local/lib/libicutest.so /usr/lib/x86_64-linux-gnu/libicutest.so
-          ln -sfn /usr/local/lib/libicutu.so   /usr/lib/x86_64-linux-gnu/libicutu.so
-          ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/x86_64-linux-gnu/libicuuc.so
-          ln -sfn /usr/local/lib/libicudata.so /usr/lib/libicudata.so
-          ln -sfn /usr/local/lib/libicui18n.so /usr/lib/libicui18n.so
-          ln -sfn /usr/local/lib/libicuio.so   /usr/lib/libicuio.so
-          ln -sfn /usr/local/lib/libicutest.so /usr/lib/libicutest.so
-          ln -sfn /usr/local/lib/libicutu.so   /usr/lib/libicutu.so
-          ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/libicuuc.so
-        fi
-        ln -sfn /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
-        ln -sfn /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
-        ln -sfn /usr/lib/x86_64-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
-        ln -sfn /usr/lib/x86_64-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
-        ln -sfn /usr/lib/x86_64-linux-gnu/libldap.so /usr/lib/libldap.so
-        ln -sfn /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
-        ln -sfn /usr/lib/x86_64-linux-gnu/libXpm.so  /usr/lib/libXpm.so
-        ln -sfn /usr/lib/x86_64-linux-gnu/librtmp.so /usr/lib/librtmp.so
-        ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.so /usr/lib/libcurl.so
-        ln -sfn /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
-        ln -sfn /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
-        ln -sfn /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so
-        ln -sfn /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so.4
-        ln -sfn /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so
-        ln -sfn /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
-        if [ -e "/usr/lib/x86_64-linux-gnu/libHalf.so.23" ]; then
-          ln -sfn /usr/lib/x86_64-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
-        fi
-        if [ -e "/usr/lib/x86_64-linux-gnu/libHalf.so" ]; then
-          ln -sfn /usr/lib/x86_64-linux-gnu/libHalf.so /usr/lib/libHalf.so.12
-        fi
-        if [ -e "/usr/lib/x86_64-linux-gnu/libIlmImf-2_2.so.23" ]; then
-          ln -sfn /usr/lib/x86_64-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
-        fi
-        if [ -e "/usr/lib/x86_64-linux-gnu/libIlmImf.so" ]; then
-          ln -sfn /usr/lib/x86_64-linux-gnu/libIlmImf.so /usr/lib/libIlmImf-2_2.so.22
-        fi
-        if [ -e "/usr/lib/x86_64-linux-gnu/libImath-2_2.so.23" ]; then
-          ln -sfn /usr/lib/x86_64-linux-gnu/libImath-2_2.so.23 /usr/lib/libImath-2_2.so.12
-        fi
-        if [ -e "/usr/lib/x86_64-linux-gnu/libImath.so" ]; then
-          ln -sfn /usr/lib/x86_64-linux-gnu/libImath.so /usr/lib/libImath-2_2.so.12
-        fi
-        if [ -e "/usr/lib/x86_64-linux-gnu/libIex-2_2.so.23" ]; then
-          ln -sfn /usr/lib/x86_64-linux-gnu/libIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
-        fi
-        if [ -e "/usr/lib/x86_64-linux-gnu/libIex.so" ]; then
-          ln -sfn /usr/lib/x86_64-linux-gnu/libIex.so /usr/lib/libIex-2_2.so.12
-        fi
-        if [ -e "/usr/lib/x86_64-linux-gnu/libIexMath.so" ]; then
-          ln -sfn /usr/lib/x86_64-linux-gnu/libIexMath.so /usr/lib/libIexMath-2_2.so.12
-        fi
-        if [ -e "/usr/lib/x86_64-linux-gnu/libIlmThread.so" ]; then
-          ln -sfn /usr/lib/x86_64-linux-gnu/libIlmThread.so /usr/lib/libIlmThread-2_2.so.12
-        fi
-        if [ ! -e "/usr/include/curl/curl.h" ] \
-          && [ -e "/usr/include/x86_64-linux-gnu/curl/curl.h" ]; then
-          ln -s /usr/include/x86_64-linux-gnu/curl /usr/include/curl
-        fi
-        if [ ! -e "/usr/include/gmp.h" ] \
-          && [ -e "/usr/include/x86_64-linux-gnu/gmp.h" ]; then
-          ln -sfn /usr/include/x86_64-linux-gnu/gmp.h  /usr/include/gmp.h
-        fi
-        if [ ! -e "/usr/lib/x86_64-linux-gnu/librtmp.so.0" ] \
-          && [ -e "/usr/lib/x86_64-linux-gnu/librtmp.so.1" ]; then
-          cd /usr/lib/x86_64-linux-gnu
-          ln -sfn librtmp.so.1 librtmp.so.0
-        fi
-      else
-        if [ -e "/usr/local/lib/icu" ]; then
-          if [ -e "/usr/lib/i386-linux-gnu/icu" ] \
-            && [ ! -L "/usr/lib/i386-linux-gnu/icu" ]; then
-            mv -f /usr/lib/i386-linux-gnu/icu /usr/lib/i386-linux-gnu/.old_icu
-            ln -sfn /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
-          else
-            ln -sfn /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
-          fi
-          ln -sfn /usr/local/lib/libicudata.so /usr/lib/i386-linux-gnu/libicudata.so
-          ln -sfn /usr/local/lib/libicui18n.so /usr/lib/i386-linux-gnu/libicui18n.so
-          ln -sfn /usr/local/lib/libicuio.so   /usr/lib/i386-linux-gnu/libicuio.so
-          ln -sfn /usr/local/lib/libicutest.so /usr/lib/i386-linux-gnu/libicutest.so
-          ln -sfn /usr/local/lib/libicutu.so   /usr/lib/i386-linux-gnu/libicutu.so
-          ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/i386-linux-gnu/libicuuc.so
-          ln -sfn /usr/local/lib/libicudata.so /usr/lib/libicudata.so
-          ln -sfn /usr/local/lib/libicui18n.so /usr/lib/libicui18n.so
-          ln -sfn /usr/local/lib/libicuio.so   /usr/lib/libicuio.so
-          ln -sfn /usr/local/lib/libicutest.so /usr/lib/libicutest.so
-          ln -sfn /usr/local/lib/libicutu.so   /usr/lib/libicutu.so
-          ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/libicuuc.so
-        fi
-        ln -sfn /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so
-        ln -sfn /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
-        ln -sfn /usr/lib/i386-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
-        ln -sfn /usr/lib/i386-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
-        ln -sfn /usr/lib/i386-linux-gnu/libldap.so /usr/lib/libldap.so
-        ln -sfn /usr/lib/i386-linux-gnu/libpng.so  /usr/lib/libpng.so
-        ln -sfn /usr/lib/i386-linux-gnu/libXpm.so  /usr/lib/libXpm.so
-        ln -sfn /usr/lib/i386-linux-gnu/librtmp.so /usr/lib/librtmp.so
-        ln -sfn /usr/lib/i386-linux-gnu/libcurl.so /usr/lib/libcurl.so
-        ln -sfn /usr/lib/i386-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
-        ln -sfn /usr/lib/i386-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
-        ln -sfn /usr/lib/i386-linux-gnu/libonig.so /usr/lib/libonig.so
-        ln -sfn /usr/lib/i386-linux-gnu/libonig.so /usr/lib/libonig.so.4
-        ln -sfn /usr/lib/i386-linux-gnu/libsodium.so /usr/lib/libsodium.so
-        ln -sfn /usr/lib/i386-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
-        if [ -e "/usr/lib/i386-linux-gnu/libHalf.so.23" ]; then
-          ln -sfn /usr/lib/i386-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
-        fi
-        if [ -e "/usr/lib/i386-linux-gnu/libHalf.so" ]; then
-          ln -sfn /usr/lib/i386-linux-gnu/libHalf.so /usr/lib/libHalf.so.12
-        fi
-        if [ -e "/usr/lib/i386-linux-gnu/libIlmImf-2_2.so.23" ]; then
-          ln -sfn /usr/lib/i386-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
-        fi
-        if [ -e "/usr/lib/i386-linux-gnu/libIlmImf.so" ]; then
-          ln -sfn /usr/lib/i386-linux-gnu/libIlmImf.so /usr/lib/libIlmImf-2_2.so.22
-        fi
-        if [ -e "/usr/lib/i386-linux-gnu/libImath-2_2.so.23" ]; then
-          ln -sfn /usr/lib/i386-linux-gnu/libImath-2_2.so.23 /usr/lib/libImath-2_2.so.12
-        fi
-        if [ -e "/usr/lib/i386-linux-gnu/libImath.so" ]; then
-          ln -sfn /usr/lib/i386-linux-gnu/libImath.so /usr/lib/libImath-2_2.so.12
-        fi
-        if [ -e "/usr/lib/i386-linux-gnu/libIex-2_2.so.23" ]; then
-          ln -sfn /usr/lib/i386-linux-gnu/libIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
-        fi
-        if [ -e "/usr/lib/i386-linux-gnu/libIex.so" ]; then
-          ln -sfn /usr/lib/i386-linux-gnu/libIex.so /usr/lib/libIex-2_2.so.12
-        fi
-        if [ -e "/usr/lib/i386-linux-gnu/libIexMath.so" ]; then
-          ln -sfn /usr/lib/i386-linux-gnu/libIexMath.so /usr/lib/libIexMath-2_2.so.12
-        fi
-        if [ -e "/usr/lib/i386-linux-gnu/libIlmThread.so" ]; then
-          ln -sfn /usr/lib/i386-linux-gnu/libIlmThread.so /usr/lib/libIlmThread-2_2.so.12
-        fi
-        if [ ! -e "/usr/include/curl/curl.h" ] \
-          && [ -e "/usr/include/i386-linux-gnu/curl/curl.h" ]; then
-          ln -s /usr/include/i386-linux-gnu/curl /usr/include/curl
-        fi
-        if [ ! -e "/usr/include/gmp.h" ] \
-          && [ -e "/usr/include/i386-linux-gnu/gmp.h" ]; then
-          ln -sfn /usr/include/i386-linux-gnu/gmp.h  /usr/include/gmp.h
-        fi
-        if [ ! -e "/usr/lib/i386-linux-gnu/librtmp.so.0" ] \
-          && [ -e "/usr/lib/i386-linux-gnu/librtmp.so.1" ]; then
-          cd /usr/lib/i386-linux-gnu
-          ln -sfn librtmp.so.1 librtmp.so.0
-        fi
-      fi
-      touch /var/xdrago/log/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid
-      touch /var/xdrago/log/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid
+  if [ ! -L "/usr/lib/librtmp.so" ] \
+    || [ ! -e "/usr/lib/libwebpmux.so" ] \
+    || [ ! -e "/usr/lib/libonig.so" ] \
+    || [ ! -e "/usr/lib/libcurl.so" ] \
+    || [ ! -e "/usr/lib/libicuio.so" ] \
+    || [ ! -e "/var/xdrago/log/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid" ] \
+    || [ ! -e "/var/xdrago/log/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid" ] \
+    || [ ! -e "/usr/include/gmp.h" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Fix for PHP libs in ${_REAL_OS}/${_REAL_OSR}"
     fi
+    _X86_64_TEST=$(uname -m 2>&1)
+    if [ "${_X86_64_TEST}" = "x86_64" ]; then
+      if [ -e "/usr/local/lib/icu" ]; then
+        if [ -e "/usr/lib/x86_64-linux-gnu/icu" ] \
+          && [ ! -L "/usr/lib/x86_64-linux-gnu/icu" ]; then
+          mv -f /usr/lib/x86_64-linux-gnu/icu /usr/lib/x86_64-linux-gnu/.old_icu
+          ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
+        else
+          ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
+        fi
+        ln -sfn /usr/local/lib/libicudata.so /usr/lib/x86_64-linux-gnu/libicudata.so
+        ln -sfn /usr/local/lib/libicui18n.so /usr/lib/x86_64-linux-gnu/libicui18n.so
+        ln -sfn /usr/local/lib/libicuio.so   /usr/lib/x86_64-linux-gnu/libicuio.so
+        ln -sfn /usr/local/lib/libicutest.so /usr/lib/x86_64-linux-gnu/libicutest.so
+        ln -sfn /usr/local/lib/libicutu.so   /usr/lib/x86_64-linux-gnu/libicutu.so
+        ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/x86_64-linux-gnu/libicuuc.so
+        ln -sfn /usr/local/lib/libicudata.so /usr/lib/libicudata.so
+        ln -sfn /usr/local/lib/libicui18n.so /usr/lib/libicui18n.so
+        ln -sfn /usr/local/lib/libicuio.so   /usr/lib/libicuio.so
+        ln -sfn /usr/local/lib/libicutest.so /usr/lib/libicutest.so
+        ln -sfn /usr/local/lib/libicutu.so   /usr/lib/libicutu.so
+        ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/libicuuc.so
+      fi
+      ln -sfn /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
+      ln -sfn /usr/lib/x86_64-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libldap.so /usr/lib/libldap.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libXpm.so  /usr/lib/libXpm.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/librtmp.so /usr/lib/librtmp.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.so /usr/lib/libcurl.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
+      ln -sfn /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so.4
+      ln -sfn /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so
+      ln -sfn /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
+      if [ -e "/usr/lib/x86_64-linux-gnu/libHalf.so.23" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libHalf.so" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libHalf.so /usr/lib/libHalf.so.12
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libIlmImf-2_2.so.23" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libIlmImf.so" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libIlmImf.so /usr/lib/libIlmImf-2_2.so.22
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libImath-2_2.so.23" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libImath-2_2.so.23 /usr/lib/libImath-2_2.so.12
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libImath.so" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libImath.so /usr/lib/libImath-2_2.so.12
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libIex-2_2.so.23" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libIex.so" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libIex.so /usr/lib/libIex-2_2.so.12
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libIexMath.so" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libIexMath.so /usr/lib/libIexMath-2_2.so.12
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libIlmThread.so" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libIlmThread.so /usr/lib/libIlmThread-2_2.so.12
+      fi
+      if [ ! -e "/usr/include/curl/curl.h" ] \
+        && [ -e "/usr/include/x86_64-linux-gnu/curl/curl.h" ]; then
+        ln -s /usr/include/x86_64-linux-gnu/curl /usr/include/curl
+      fi
+      if [ ! -e "/usr/include/gmp.h" ] \
+        && [ -e "/usr/include/x86_64-linux-gnu/gmp.h" ]; then
+        ln -sfn /usr/include/x86_64-linux-gnu/gmp.h  /usr/include/gmp.h
+      fi
+      if [ ! -e "/usr/lib/x86_64-linux-gnu/librtmp.so.0" ] \
+        && [ -e "/usr/lib/x86_64-linux-gnu/librtmp.so.1" ]; then
+        cd /usr/lib/x86_64-linux-gnu
+        ln -sfn librtmp.so.1 librtmp.so.0
+      fi
+    else
+      if [ -e "/usr/local/lib/icu" ]; then
+        if [ -e "/usr/lib/i386-linux-gnu/icu" ] \
+          && [ ! -L "/usr/lib/i386-linux-gnu/icu" ]; then
+          mv -f /usr/lib/i386-linux-gnu/icu /usr/lib/i386-linux-gnu/.old_icu
+          ln -sfn /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
+        else
+          ln -sfn /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
+        fi
+        ln -sfn /usr/local/lib/libicudata.so /usr/lib/i386-linux-gnu/libicudata.so
+        ln -sfn /usr/local/lib/libicui18n.so /usr/lib/i386-linux-gnu/libicui18n.so
+        ln -sfn /usr/local/lib/libicuio.so   /usr/lib/i386-linux-gnu/libicuio.so
+        ln -sfn /usr/local/lib/libicutest.so /usr/lib/i386-linux-gnu/libicutest.so
+        ln -sfn /usr/local/lib/libicutu.so   /usr/lib/i386-linux-gnu/libicutu.so
+        ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/i386-linux-gnu/libicuuc.so
+        ln -sfn /usr/local/lib/libicudata.so /usr/lib/libicudata.so
+        ln -sfn /usr/local/lib/libicui18n.so /usr/lib/libicui18n.so
+        ln -sfn /usr/local/lib/libicuio.so   /usr/lib/libicuio.so
+        ln -sfn /usr/local/lib/libicutest.so /usr/lib/libicutest.so
+        ln -sfn /usr/local/lib/libicutu.so   /usr/lib/libicutu.so
+        ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/libicuuc.so
+      fi
+      ln -sfn /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so
+      ln -sfn /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
+      ln -sfn /usr/lib/i386-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
+      ln -sfn /usr/lib/i386-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
+      ln -sfn /usr/lib/i386-linux-gnu/libldap.so /usr/lib/libldap.so
+      ln -sfn /usr/lib/i386-linux-gnu/libpng.so  /usr/lib/libpng.so
+      ln -sfn /usr/lib/i386-linux-gnu/libXpm.so  /usr/lib/libXpm.so
+      ln -sfn /usr/lib/i386-linux-gnu/librtmp.so /usr/lib/librtmp.so
+      ln -sfn /usr/lib/i386-linux-gnu/libcurl.so /usr/lib/libcurl.so
+      ln -sfn /usr/lib/i386-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
+      ln -sfn /usr/lib/i386-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
+      ln -sfn /usr/lib/i386-linux-gnu/libonig.so /usr/lib/libonig.so
+      ln -sfn /usr/lib/i386-linux-gnu/libonig.so /usr/lib/libonig.so.4
+      ln -sfn /usr/lib/i386-linux-gnu/libsodium.so /usr/lib/libsodium.so
+      ln -sfn /usr/lib/i386-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
+      if [ -e "/usr/lib/i386-linux-gnu/libHalf.so.23" ]; then
+        ln -sfn /usr/lib/i386-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
+      fi
+      if [ -e "/usr/lib/i386-linux-gnu/libHalf.so" ]; then
+        ln -sfn /usr/lib/i386-linux-gnu/libHalf.so /usr/lib/libHalf.so.12
+      fi
+      if [ -e "/usr/lib/i386-linux-gnu/libIlmImf-2_2.so.23" ]; then
+        ln -sfn /usr/lib/i386-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
+      fi
+      if [ -e "/usr/lib/i386-linux-gnu/libIlmImf.so" ]; then
+        ln -sfn /usr/lib/i386-linux-gnu/libIlmImf.so /usr/lib/libIlmImf-2_2.so.22
+      fi
+      if [ -e "/usr/lib/i386-linux-gnu/libImath-2_2.so.23" ]; then
+        ln -sfn /usr/lib/i386-linux-gnu/libImath-2_2.so.23 /usr/lib/libImath-2_2.so.12
+      fi
+      if [ -e "/usr/lib/i386-linux-gnu/libImath.so" ]; then
+        ln -sfn /usr/lib/i386-linux-gnu/libImath.so /usr/lib/libImath-2_2.so.12
+      fi
+      if [ -e "/usr/lib/i386-linux-gnu/libIex-2_2.so.23" ]; then
+        ln -sfn /usr/lib/i386-linux-gnu/libIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
+      fi
+      if [ -e "/usr/lib/i386-linux-gnu/libIex.so" ]; then
+        ln -sfn /usr/lib/i386-linux-gnu/libIex.so /usr/lib/libIex-2_2.so.12
+      fi
+      if [ -e "/usr/lib/i386-linux-gnu/libIexMath.so" ]; then
+        ln -sfn /usr/lib/i386-linux-gnu/libIexMath.so /usr/lib/libIexMath-2_2.so.12
+      fi
+      if [ -e "/usr/lib/i386-linux-gnu/libIlmThread.so" ]; then
+        ln -sfn /usr/lib/i386-linux-gnu/libIlmThread.so /usr/lib/libIlmThread-2_2.so.12
+      fi
+      if [ ! -e "/usr/include/curl/curl.h" ] \
+        && [ -e "/usr/include/i386-linux-gnu/curl/curl.h" ]; then
+        ln -s /usr/include/i386-linux-gnu/curl /usr/include/curl
+      fi
+      if [ ! -e "/usr/include/gmp.h" ] \
+        && [ -e "/usr/include/i386-linux-gnu/gmp.h" ]; then
+        ln -sfn /usr/include/i386-linux-gnu/gmp.h  /usr/include/gmp.h
+      fi
+      if [ ! -e "/usr/lib/i386-linux-gnu/librtmp.so.0" ] \
+        && [ -e "/usr/lib/i386-linux-gnu/librtmp.so.1" ]; then
+        cd /usr/lib/i386-linux-gnu
+        ln -sfn librtmp.so.1 librtmp.so.0
+      fi
+    fi
+    touch /var/xdrago/log/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid
+    touch /var/xdrago/log/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid
   fi
   mrun "ldconfig" 2> /dev/null
 }
@@ -6820,34 +6848,36 @@ java_check_fix() {
     msg "PROC: java_check_fix"
   fi
 
-  # if [ ! -e "/usr/lib/jvm/java-7-openjdk" ] \
-  #   && [ -d "/usr/lib/jvm/java-7-openjdk-amd64" ]; then
-  #   ln -sfn /usr/lib/jvm/java-7-openjdk-amd64 /usr/lib/jvm/java-7-openjdk
-  # fi
-  # if [ ! -e "/usr/lib/jvm/java-7-openjdk" ] \
-  #   && [ -d "/usr/lib/jvm/java-7-openjdk-i386" ]; then
-  #   ln -sfn /usr/lib/jvm/java-7-openjdk-i386 /usr/lib/jvm/java-7-openjdk
-  # fi
-  # if [ -e "/usr/lib/jvm/java-1.7.0-openjdk-i386" ]; then
-  #   rm -f /usr/lib/jvm/default-java
-  #   ln -s /usr/lib/jvm/java-1.7.0-openjdk-i386 /usr/lib/jvm/default-java
-  # fi
-  # if [ ! -e "/usr/bin/java7" ] \
-  #   && [ -e "/usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java" ]; then
-  #   ln -sfn /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java /usr/bin/java7
-  # fi
-  # if [ ! -e "/usr/bin/java7" ] \
-  #   && [ -e "/usr/lib/jvm/java-7-openjdk-i386/jre/bin/java" ]; then
-  #   ln -sfn /usr/lib/jvm/java-7-openjdk-i386/jre/bin/java /usr/bin/java7
-  # fi
-  # if [ -e "/usr/lib/jvm/java-1.7.0-openjdk-amd64" ]; then
-  #   rm -f /usr/lib/jvm/default-java
-  #   ln -sfn /usr/lib/jvm/java-1.7.0-openjdk-amd64 /usr/lib/jvm/default-java
-  # fi
-  # if [ -x "/usr/lib/jvm/java-7-openjdk/jre/bin/java" ]; then
-  #   ln -sfn /usr/lib/jvm/java-7-openjdk/jre/bin/java /etc/alternatives/java
-  #   ln -sfn /etc/alternatives/java /usr/bin/java
-  # fi
+  if [ "${_OSR}" = "jessie" ]; then
+    if [ ! -e "/usr/lib/jvm/java-7-openjdk" ] \
+      && [ -d "/usr/lib/jvm/java-7-openjdk-amd64" ]; then
+      ln -sfn /usr/lib/jvm/java-7-openjdk-amd64 /usr/lib/jvm/java-7-openjdk
+    fi
+    if [ ! -e "/usr/lib/jvm/java-7-openjdk" ] \
+      && [ -d "/usr/lib/jvm/java-7-openjdk-i386" ]; then
+      ln -sfn /usr/lib/jvm/java-7-openjdk-i386 /usr/lib/jvm/java-7-openjdk
+    fi
+    if [ -e "/usr/lib/jvm/java-1.7.0-openjdk-i386" ]; then
+      rm -f /usr/lib/jvm/default-java
+      ln -s /usr/lib/jvm/java-1.7.0-openjdk-i386 /usr/lib/jvm/default-java
+    fi
+    if [ ! -e "/usr/bin/java7" ] \
+      && [ -e "/usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java" ]; then
+      ln -sfn /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java /usr/bin/java7
+    fi
+    if [ ! -e "/usr/bin/java7" ] \
+      && [ -e "/usr/lib/jvm/java-7-openjdk-i386/jre/bin/java" ]; then
+      ln -sfn /usr/lib/jvm/java-7-openjdk-i386/jre/bin/java /usr/bin/java7
+    fi
+    if [ -e "/usr/lib/jvm/java-1.7.0-openjdk-amd64" ]; then
+      rm -f /usr/lib/jvm/default-java
+      ln -sfn /usr/lib/jvm/java-1.7.0-openjdk-amd64 /usr/lib/jvm/default-java
+    fi
+    if [ -x "/usr/lib/jvm/java-7-openjdk/jre/bin/java" ]; then
+      ln -sfn /usr/lib/jvm/java-7-openjdk/jre/bin/java /etc/alternatives/java
+      ln -sfn /etc/alternatives/java /usr/bin/java
+    fi
+  fi
 
   if [ ! -e "/usr/lib/jvm/java-8-openjdk" ] \
     && [ -d "/usr/lib/jvm/java-8-openjdk-amd64" ]; then
@@ -6878,62 +6908,64 @@ java_check_fix() {
     ln -sfn /etc/alternatives/java /usr/bin/java
   fi
 
-  # if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
-  #   && [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
-  #   ln -sfn /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
-  # fi
-  # if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
-  #   && [ -d "/usr/lib/jvm/java-17-openjdk-i386" ]; then
-  #   ln -sfn /usr/lib/jvm/java-17-openjdk-i386 /usr/lib/jvm/java-17-openjdk
-  # fi
-  # if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-i386" ]; then
-  #   rm -f /usr/lib/jvm/default-java
-  #   ln -sfn /usr/lib/jvm/java-1.17.0-openjdk-i386 /usr/lib/jvm/default-java
-  # fi
-  # if [ ! -e "/usr/bin/java17" ] \
-  #   && [ -e "/usr/lib/jvm/java-17-openjdk-amd64/bin/java" ]; then
-  #   ln -sfn /usr/lib/jvm/java-17-openjdk-amd64/bin/java /usr/bin/java17
-  # fi
-  # if [ ! -e "/usr/bin/java17" ] \
-  #   && [ -e "/usr/lib/jvm/java-17-openjdk-i386/bin/java" ]; then
-  #   ln -sfn /usr/lib/jvm/java-17-openjdk-i386/bin/java /usr/bin/java17
-  # fi
-  # if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-amd64" ]; then
-  #   rm -f /usr/lib/jvm/default-java
-  #   ln -sfn /usr/lib/jvm/java-1.17.0-openjdk-amd64 /usr/lib/jvm/default-java
-  # fi
-  # if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ]; then
-  #   ln -sfn /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
-  #   ln -sfn /etc/alternatives/java /usr/bin/java
-  # fi
-
-  if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \
-    && [ -d "/usr/lib/jvm/java-11-openjdk-amd64" ]; then
-    ln -sfn /usr/lib/jvm/java-11-openjdk-amd64 /usr/lib/jvm/java-11-openjdk
-  fi
-  if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \
-    && [ -d "/usr/lib/jvm/java-11-openjdk-i386" ]; then
-    ln -sfn /usr/lib/jvm/java-11-openjdk-i386 /usr/lib/jvm/java-11-openjdk
-  fi
-  if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-i386" ]; then
-    rm -f /usr/lib/jvm/default-java
-    ln -sfn /usr/lib/jvm/java-1.11.0-openjdk-i386 /usr/lib/jvm/default-java
-  fi
-  if [ ! -e "/usr/bin/java11" ] \
-    && [ -e "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
-    ln -sfn /usr/lib/jvm/java-11-openjdk-amd64/bin/java /usr/bin/java11
-  fi
-  if [ ! -e "/usr/bin/java11" ] \
-    && [ -e "/usr/lib/jvm/java-11-openjdk-i386/bin/java" ]; then
-    ln -sfn /usr/lib/jvm/java-11-openjdk-i386/bin/java /usr/bin/java11
-  fi
-  if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-amd64" ]; then
-    rm -f /usr/lib/jvm/default-java
-    ln -sfn /usr/lib/jvm/java-1.11.0-openjdk-amd64 /usr/lib/jvm/default-java
-  fi
-  if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
-    ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
-    ln -sfn /etc/alternatives/java /usr/bin/java
+  if [ "${_OSR}" = "daedalus" ] || [ "${_OSR}" = "bookworm" ]; then
+    if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
+      && [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
+      ln -sfn /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
+    fi
+    if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
+      && [ -d "/usr/lib/jvm/java-17-openjdk-i386" ]; then
+      ln -sfn /usr/lib/jvm/java-17-openjdk-i386 /usr/lib/jvm/java-17-openjdk
+    fi
+    if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-i386" ]; then
+      rm -f /usr/lib/jvm/default-java
+      ln -sfn /usr/lib/jvm/java-1.17.0-openjdk-i386 /usr/lib/jvm/default-java
+    fi
+    if [ ! -e "/usr/bin/java17" ] \
+      && [ -e "/usr/lib/jvm/java-17-openjdk-amd64/bin/java" ]; then
+      ln -sfn /usr/lib/jvm/java-17-openjdk-amd64/bin/java /usr/bin/java17
+    fi
+    if [ ! -e "/usr/bin/java17" ] \
+      && [ -e "/usr/lib/jvm/java-17-openjdk-i386/bin/java" ]; then
+      ln -sfn /usr/lib/jvm/java-17-openjdk-i386/bin/java /usr/bin/java17
+    fi
+    if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-amd64" ]; then
+      rm -f /usr/lib/jvm/default-java
+      ln -sfn /usr/lib/jvm/java-1.17.0-openjdk-amd64 /usr/lib/jvm/default-java
+    fi
+    if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ]; then
+      ln -sfn /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
+      ln -sfn /etc/alternatives/java /usr/bin/java
+    fi
+  else
+    if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \
+      && [ -d "/usr/lib/jvm/java-11-openjdk-amd64" ]; then
+      ln -sfn /usr/lib/jvm/java-11-openjdk-amd64 /usr/lib/jvm/java-11-openjdk
+    fi
+    if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \
+      && [ -d "/usr/lib/jvm/java-11-openjdk-i386" ]; then
+      ln -sfn /usr/lib/jvm/java-11-openjdk-i386 /usr/lib/jvm/java-11-openjdk
+    fi
+    if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-i386" ]; then
+      rm -f /usr/lib/jvm/default-java
+      ln -sfn /usr/lib/jvm/java-1.11.0-openjdk-i386 /usr/lib/jvm/default-java
+    fi
+    if [ ! -e "/usr/bin/java11" ] \
+      && [ -e "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
+      ln -sfn /usr/lib/jvm/java-11-openjdk-amd64/bin/java /usr/bin/java11
+    fi
+    if [ ! -e "/usr/bin/java11" ] \
+      && [ -e "/usr/lib/jvm/java-11-openjdk-i386/bin/java" ]; then
+      ln -sfn /usr/lib/jvm/java-11-openjdk-i386/bin/java /usr/bin/java11
+    fi
+    if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-amd64" ]; then
+      rm -f /usr/lib/jvm/default-java
+      ln -sfn /usr/lib/jvm/java-1.11.0-openjdk-amd64 /usr/lib/jvm/default-java
+    fi
+    if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
+      ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
+      ln -sfn /etc/alternatives/java /usr/bin/java
+    fi
   fi
 }
 
@@ -7367,7 +7399,8 @@ initd_update() {
       if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
         mkdir -p /etc/mysql/mariadb.conf.d/
       fi
-      if [ ! -e "/root/.run-to-chimaera.cnf" ] \
+      if [ ! -e "/root/.run-to-daedalus.cnf" ] \
+        && [ ! -e "/root/.run-to-chimaera.cnf" ] \
         && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
         _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
         _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)

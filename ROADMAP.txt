@@ -18,15 +18,12 @@
      Nginx or Apache to extend xboa tool features.
 
    * Percona Server for MySQL 8.0 migration test and support -- required
-     because Percona/MySQL 5.7 EOL already happened in October 2023 plus
-     there is no Percona/MySQL 5.7 for Debian Bookworm / Devuan Daedalus,
-     at least not yet.
+     because Percona/MySQL 5.7 EOL already happened in October 2023.
 
    * Add Amazon S3 alternatives to backboa and duobackboa.
 
    * Debian Bookworm and Devuan Daedalus compatibility for installation and
-     automated upgrades. Experimental only because there is no Percona/MySQL
-     in either 5.7 or 8.0 available yet.
+     automated upgrades (in progress)
 
    * Aegir Remote Servers feature is important for some users, let's do it.
 

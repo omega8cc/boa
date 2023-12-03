@@ -276,6 +276,12 @@ _BUSTER_TO_BULLSEYE=NO
 
 ###
 ### Use YES to run major system upgrade
+### from Debian Bullseye to Debian Bookworm.
+###
+_BULLSEYE_TO_BOOKWORM=NO
+
+###
+### Use YES to run major system upgrade
 ### from Debian Jessie to Devuan Beowulf.
 ###
 _JESSIE_TO_BEOWULF=NO
@@ -303,6 +309,18 @@ _BEOWULF_TO_CHIMAERA=NO
 ### from Debian Bullseye to Devuan Chimaera.
 ###
 _BULLSEYE_TO_CHIMAERA=NO
+
+###
+### Use YES to run major system upgrade
+### from Devuan Chimaera to Devuan Daedalus.
+###
+_CHIMAERA_TO_DAEDALUS=NO
+
+###
+### Use YES to run major system upgrade
+### from Debian Bookworm to Devuan Daedalus.
+###
+_BOOKWORM_TO_DAEDALUS=NO
 
 ###
 ### Use YES to run migration from Tomcat 6

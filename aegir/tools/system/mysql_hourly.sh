@@ -189,15 +189,11 @@ if [ ! -e "${percList}" ] \
   percList="/etc/apt/sources.list.d/percona-release.list"
   _DB_SRC="repo.percona.com"
   percRepo="${_DB_SRC}/percona/apt"
-  if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
-    || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
-    _REAL_OSR="chimaera"
-    _REAL_OS="Devuan"
-  else
-    _REAL_OSR="${_OSR}"
-    _REAL_OS="${_THIS_OS}"
-  fi
-  if [ "${_REAL_OSR}" = "chimaera" ]; then
+  _REAL_OSR="${_OSR}"
+  _REAL_OS="${_THIS_OS}"
+  if [ "${_REAL_OSR}" = "daedalus" ]; then
+    _SQL_OSR=bookworm
+  elif [ "${_REAL_OSR}" = "chimaera" ]; then
     _SQL_OSR=bullseye
   elif [ "${_REAL_OSR}" = "beowulf" ]; then
     _SQL_OSR=buster

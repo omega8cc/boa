@@ -914,7 +914,7 @@ install_php_extensions() {
   fi
   ###--------------------###
   msg "INFO: Installing Imagick ${_IMAGICK_VRN} for PHP ${_T_PHP_VRN}..."
-  if [ "${_OSR}" = "chimaera" ]; then
+  if [ "${_OSR}" = "daedalus" ] || [ "${_OSR}" = "chimaera" ]; then
     if [ -e "/usr/bin/MagickWand-config" ]; then
       mv -f /usr/bin/MagickWand-config /var/backups/usr-bin-MagickWand-config
     fi
@@ -1318,7 +1318,7 @@ php_extensions_update() {
   ###--------------------###
   if [ ! -e "${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
     msg "INFO: Installing Imagick ${_IMAGICK_VRN} upgrade for PHP ${_T_PHP_VRN}..."
-    if [ "${_OSR}" = "chimaera" ]; then
+    if [ "${_OSR}" = "daedalus" ] || [ "${_OSR}" = "chimaera" ]; then
       if [ -e "/usr/bin/MagickWand-config" ]; then
         mv -f /usr/bin/MagickWand-config /var/backups/usr-bin-MagickWand-config
       fi
@@ -1584,8 +1584,10 @@ install_php_multi() {
       patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
     fi
   fi
-  if [ "${_OSR}" = "chimaera" ] \
+  if [ "${_OSR}" = "daedalus" ] \
+    || [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bookworm" ] \
     || [ "${_OSR}" = "bullseye" ] \
     || [ "${_OSR}" = "buster" ]; then
     patchFile="freetype.patch"
@@ -2128,8 +2130,10 @@ check_php_rebuild() {
       | cut -d: -f1 \
       | awk '{ print $2}' 2>&1)
   fi
-  if [ "${_OSR}" = "chimaera" ] \
+  if [ "${_OSR}" = "daedalus" ] \
+    || [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
+    || [ "${_OSR}" = "bookworm" ] \
     || [ "${_OSR}" = "bullseye" ] \
     || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ]; then

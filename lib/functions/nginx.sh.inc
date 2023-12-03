@@ -322,8 +322,10 @@ nginx_install_upgrade() {
           msg "INFO: Nginx forced rebuild to include pseudo-streaming support"
         fi
       fi
-      if [ "${_OSR}" = "chimaera" ] \
+      if [ "${_OSR}" = "daedalus" ] \
+        || [ "${_OSR}" = "chimaera" ] \
         || [ "${_OSR}" = "beowulf" ] \
+        || [ "${_OSR}" = "bookworm" ] \
         || [ "${_OSR}" = "bullseye" ] \
         || [ "${_OSR}" = "buster" ] \
         || [ "${_OSR}" = "stretch" ]; then
@@ -444,8 +446,10 @@ nginx_install_upgrade() {
         _NGINX_EXTRA="--with-http_v2_module ${_NGINX_EXTRA}"
       fi
     fi
-    if [ "${_OSR}" = "chimaera" ] \
+    if [ "${_OSR}" = "daedalus" ] \
+      || [ "${_OSR}" = "chimaera" ] \
       || [ "${_OSR}" = "beowulf" ] \
+      || [ "${_OSR}" = "bookworm" ] \
       || [ "${_OSR}" = "bullseye" ] \
       || [ "${_OSR}" = "buster" ] \
       || [ "${_OSR}" = "stretch" ]; then

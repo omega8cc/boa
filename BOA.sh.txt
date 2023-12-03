@@ -1711,33 +1711,36 @@ fix_aio() {
   fi
 }
 
-fix_alt() {
-  # if [ -x "/usr/lib/jvm/java-7-openjdk/jre/bin/java" ]; then
-  #   if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
-  #     ln -sfn /usr/lib/jvm/java-7-openjdk/jre/bin/java /etc/alternatives/java
-  #     ln -sfn /etc/alternatives/java /usr/bin/java
-  #     echo fixed java symlinks
-  #   fi
-  # fi
-  if [ -x "/usr/lib/jvm/java-8-openjdk/jre/bin/java" ]; then
+fix_java_symlinks() {
+  if [ "${_THIS_RV}" = "jessie" ] && [ -x "/usr/lib/jvm/java-7-openjdk/jre/bin/java" ]; then
+    if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
+      ln -sfn /usr/lib/jvm/java-7-openjdk/jre/bin/java /etc/alternatives/java
+      ln -sfn /etc/alternatives/java /usr/bin/java
+      echo fixed java symlinks for ${_THIS_RV}
+    fi
+  fi
+  if [ "${_THIS_RV}" = "stretch" ] && [ -x "/usr/lib/jvm/java-8-openjdk/jre/bin/java" ]; then
     if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
       ln -sfn /usr/lib/jvm/java-8-openjdk/jre/bin/java /etc/alternatives/java
       ln -sfn /etc/alternatives/java /usr/bin/java
-      echo fixed java symlinks
+      echo fixed java symlinks for ${_THIS_RV}
     fi
   fi
-  # if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ]; then
-  #   if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
-  #     ln -sfn /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
-  #     ln -sfn /etc/alternatives/java /usr/bin/java
-  #     echo fixed java symlinks
-  #   fi
-  # fi
-  if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
-    if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
-      ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
-      ln -sfn /etc/alternatives/java /usr/bin/java
-      echo fixed java symlinks
+  if [ "${_THIS_RV}" = "daedalus" ] || [ "${_THIS_RV}" = "bookworm" ]; then
+    if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ]; then
+      if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
+        ln -sfn /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
+        ln -sfn /etc/alternatives/java /usr/bin/java
+        echo fixed java symlinks for ${_THIS_RV}
+      fi
+    fi
+  else
+    if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
+      if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
+        ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
+        ln -sfn /etc/alternatives/java /usr/bin/java
+        echo fixed java symlinks for ${_THIS_RV}
+      fi
     fi
   fi
 }
@@ -2234,6 +2237,7 @@ setup() {
   fi
   boaBins="autobeowulf \
            autochimaera \
+           autodaedalus \
            autoupboa \
            barracuda \
            boa \
@@ -2291,8 +2295,8 @@ setup() {
       touch /root/.backboa.autoupdate
     fi
   fi
-  chmod 700 ${optBin}/{autochimaera,autoupboa,backboa,barracuda,boa,duobackboa}
-  chmod 700 ${optBin}/{autobeowulf,ffmirror,octopus,syncpass,xboa,mycnfup,weblogx}
+  chmod 700 ${optBin}/{autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa}
+  chmod 700 ${optBin}/{barracuda,boa,ffmirror,octopus,syncpass,xboa,mycnfup,weblogx}
   chmod 755 ${optBin}/{randpass,sqlmagic,thinkdifferent}
   echo
   echo "BOA Meta Installers setup completed"
@@ -2533,7 +2537,7 @@ if [ `whoami` = "root" ]; then
     fix_authorized_keys
     fix_tcp
     fix_aio
-    fix_alt
+    fix_java_symlinks
     fix_wkhtml
     fix_wkhtml_perms
     fix_eldir

@@ -4,11 +4,11 @@
 ###
 
  => You can easily upgrade your system from any supported Debian version,
-    starting with Debian Jessie, to latest Devuan Chimaera which is BOA
-    preferred and systemd-free equivalent of Debian Bullseye.
+    starting with Debian Jessie, to Devuan Chimaera or Devuan Daedalus which
+    are both systemd-free equivalents of Debian Bullseye and Debian Bookworm.
 
-    The same tool can be used to upgrade from Devuan Beowulf to current
-    Devuan Chimaera.
+    The same tool can be used to upgrade from Devuan Beowulf to currently
+    recommended Devuan Chimaera.
 
     NOTE: Only systems running Percona 5.7 are supported.
 
@@ -42,12 +42,16 @@
     ###  you are ready for the automated magic...
     ###
     ###    $ touch /root/.run-to-chimaera.cnf
+    ###      or
+    ###    $ touch /root/.run-to-daedalus.cnf
+    ###
     ###    $ service clean-boa-env start
     ###
     ###  Once enabled, the system will launch
     ###  a series of barracuda up-dev and reboots
     ###  until it migrates any supported Debian
-    ###  or Devuan version to Devuan Chimaera.
+    ###  or Devuan version to Devuan Chimaera or
+    ###  Devuan Daedalus.
     ###
     ###  !!! WARNING !!!
     ###
@@ -65,16 +69,21 @@
     command 'barracuda up-dev system' for the manual steps based upgrade.
 
     @> Devuan to Devuan major OS upgrades
+      * Devuan Chimaera    => upgrade to Daedalus with _CHIMAERA_TO_DAEDALUS=YES
       * Devuan Beowulf     => upgrade to Chimaera with _BEOWULF_TO_CHIMAERA=YES
 
     @> Debian to Devuan major OS upgrades
+      * Debian 12 Bookworm => upgrade to Daedalus with _BOOKWORM_TO_DAEDALUS=YES
       * Debian 11 Bullseye => upgrade to Chimaera with _BULLSEYE_TO_CHIMAERA=YES
       * Debian 10 Buster   => upgrade to Beowulf with  _BUSTER_TO_BEOWULF=YES
-      * Debian 9 Stretch   => upgrade to Beowulf with  _STRETCH_TO_BEOWULF=YES
-      * Debian 8 Jessie    => upgrade to Beowulf with  _JESSIE_TO_BEOWULF=YES
+      * Debian  9 Stretch  => upgrade to Beowulf with  _STRETCH_TO_BEOWULF=YES
+      * Debian  8 Jessie   => upgrade to Beowulf with  _JESSIE_TO_BEOWULF=YES
 
     @> Debian to Debian major OS upgrades
-      * Debian 9 Stretch   => upgrade to Buster with   _STRETCH_TO_BUSTER=YES
+      * Debian 11 Bullseye => upgrade to Bookworm with _BULLSEYE_TO_BOOKWORM=YES
+      * Debian 10 Buster   => upgrade to Bullseye with _BUSTER_TO_BULLSEYE=YES
+      * Debian  9 Stretch  => upgrade to Buster with   _STRETCH_TO_BUSTER=YES
+      * Debian  8 Jessie   => upgrade to Stretch with  _JESSIE_TO_STRETCH=YES
 
  => NOTE: This tool will automatically disable all installed but not used
           in any existing site PHP versions, effectively enforcing otherwise

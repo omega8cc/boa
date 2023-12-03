@@ -67,16 +67,7 @@ _CHECK_HOST=$(uname -n 2>&1)
 usrGroup=users
 _WEBG=www-data
 _THIS_RV=$(lsb_release -sc 2>&1)
-if [ "${_THIS_RV}" = "chimaera" ] \
-  || [ "${_THIS_RV}" = "beowulf" ] \
-  || [ "${_THIS_RV}" = "bullseye" ] \
-  || [ "${_THIS_RV}" = "buster" ] \
-  || [ "${_THIS_RV}" = "stretch" ] \
-  || [ "${_THIS_RV}" = "jessie" ]; then
-  _RUBY_VRN=3.1.2
-else
-  _RUBY_VRN=2.0.0
-fi
+_RUBY_VRN=3.1.2
 _VM_TEST=$(uname -a 2>&1)
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"

@@ -675,31 +675,28 @@ if_install_ffmpeg() {
         true
         msg "INFO: Installing FFmpeg..."
         cd /var/opt
-        if [ "${_OSR}" = "chimaera" ] \
-          || [ "${_OSR}" = "beowulf" ] \
+        echo "## deb-multimedia APT Repository for FFmpeg" > /etc/apt/sources.list.d/ffmpeg.list
+        if [ "${_OSR}" = "bookworm" ] \
           || [ "${_OSR}" = "bullseye" ] \
           || [ "${_OSR}" = "buster" ] \
           || [ "${_OSR}" = "stretch" ] \
           || [ "${_OSR}" = "jessie" ]; then
-          echo "## deb-multimedia APT Repository for FFmpeg" > /etc/apt/sources.list.d/ffmpeg.list
-          if [ "${_OSR}" = "bullseye" ] \
-            || [ "${_OSR}" = "buster" ] \
-            || [ "${_OSR}" = "stretch" ] \
-            || [ "${_OSR}" = "jessie" ]; then
-            echo "deb http://www.deb-multimedia.org ${_OSR} main non-free" >> /etc/apt/sources.list.d/ffmpeg.list
-            echo "deb http://www.deb-multimedia.org ${_OSR}-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
-          elif [ "${_OSR}" = "chimaera" ]; then
-            echo "deb http://www.deb-multimedia.org bullseye main non-free" >> /etc/apt/sources.list.d/ffmpeg.list
-            echo "deb http://www.deb-multimedia.org bullseye-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
-          elif [ "${_OSR}" = "beowulf" ]; then
-            echo "deb http://www.deb-multimedia.org buster main non-free" >> /etc/apt/sources.list.d/ffmpeg.list
-            echo "deb http://www.deb-multimedia.org buster-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
-          fi
-          apt_clean_update
-          st_runner "apt-get install deb-multimedia-keyring ${aptYesUnth}" 2> /dev/null
-          apt_clean_update
-          st_runner "${_INSTAPP} ffmpeg" 2> /dev/null
+          echo "deb http://www.deb-multimedia.org ${_OSR} main non-free" >> /etc/apt/sources.list.d/ffmpeg.list
+          echo "deb http://www.deb-multimedia.org ${_OSR}-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
+        elif [ "${_OSR}" = "daedalus" ]; then
+          echo "deb http://www.deb-multimedia.org bookworm main non-free" >> /etc/apt/sources.list.d/ffmpeg.list
+          echo "deb http://www.deb-multimedia.org bookworm-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
+        elif [ "${_OSR}" = "chimaera" ]; then
+          echo "deb http://www.deb-multimedia.org bullseye main non-free" >> /etc/apt/sources.list.d/ffmpeg.list
+          echo "deb http://www.deb-multimedia.org bullseye-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
+        elif [ "${_OSR}" = "beowulf" ]; then
+          echo "deb http://www.deb-multimedia.org buster main non-free" >> /etc/apt/sources.list.d/ffmpeg.list
+          echo "deb http://www.deb-multimedia.org buster-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
         fi
+        apt_clean_update
+        st_runner "apt-get install deb-multimedia-keyring ${aptYesUnth}" 2> /dev/null
+        apt_clean_update
+        st_runner "${_INSTAPP} ffmpeg" 2> /dev/null
         msg "INFO: FFmpeg installed"
       else
         msg "INFO: FFmpeg installation skipped"

@@ -317,8 +317,9 @@ tune_sql_memory_limits() {
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
     _GALERA_COMP=NO
   fi
-  if [ -e "/root/.run-to-chimaera.cnf" ] \
-      || [ -e "/root/.run-to-beowulf.cnf" ]; then
+  if [ -e "/root/.run-to-daedalus.cnf" ] \
+    || [ -e "/root/.run-to-chimaera.cnf" ] \
+    || [ -e "/root/.run-to-beowulf.cnf" ]; then
     _USE_MYSQLTUNER=NO
   fi
   if [ ! -e "${outTun}" ] \
@@ -514,8 +515,8 @@ tune_sql_memory_limits() {
     fi
     if [ -e "/etc/mysql/my.cnf" ]; then
       sed -i "s/= 181/= ${_USE_SQL}/g"  /etc/mysql/my.cnf &> /dev/null
-    fi
       wait
+    fi
   fi
 }
 
@@ -523,20 +524,20 @@ prep_for_install_db_sql() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: prep_for_install_db_sql"
   fi
-  if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
-    || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
-    _REAL_OSR="chimaera"
-    _REAL_OS="Devuan"
-  else
-    _REAL_OSR="${_OSR}"
-    _REAL_OS="${_THIS_OS}"
-  fi
-  if [ "${_REAL_OSR}" = "chimaera" ]; then
+  _REAL_OSR="${_OSR}"
+  _REAL_OS="${_THIS_OS}"
+  _SQL_SCR=APT
+  if [ "${_REAL_OSR}" = "daedalus" ]; then
+    _SQL_OSR=bookworm
+  elif [ "${_REAL_OSR}" = "chimaera" ]; then
     _SQL_OSR=bullseye
   elif [ "${_REAL_OSR}" = "beowulf" ]; then
     _SQL_OSR=buster
   else
     _SQL_OSR="${_REAL_OSR}"
+  fi
+  if [ "${_SQL_OSR}" = "foobar" ]; then
+    _SQL_SCR=GIT
   fi
   _DBS_TEST=$(which mysql 2>&1)
   if [ ! -z "${_DBS_TEST}" ]; then
@@ -564,17 +565,12 @@ prep_for_install_db_sql() {
     _GPG=gpg
   fi
   cd /var/opt
-  if [ "${_OSR}" = "chimaera" ] \
-    || [ "${_OSR}" = "beowulf" ] \
-    || [ "${_OSR}" = "bullseye" ] \
-    || [ "${_OSR}" = "buster" ] \
-    || [ "${_OSR}" = "stretch" ] \
-    || [ "${_OSR}" = "jessie" ]; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Installing software-properties-common dirmngr..."
-    fi
-    st_runner "${_INSTAPP} software-properties-common dirmngr" 2> /dev/null
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Installing software-properties-common dirmngr..."
   fi
+  st_runner "${_INSTAPP} software-properties-common dirmngr" 2> /dev/null
+
   if [ "${_DB_SERVER}" = "Percona" ] || [ "${_DB_SERIES}" = "5.7" ]; then
     _KEYS_SIG="8507EFA5"
     _KEYS_SERVER_TEST=FALSE
@@ -637,76 +633,51 @@ prep_for_install_db_sql() {
   if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
     _OSN=debian
   fi
-  if [ "${_OSR}" = "chimaera" ] \
-    || [ "${_OSR}" = "beowulf" ] \
-    || [ "${_OSR}" = "bullseye" ] \
-    || [ "${_OSR}" = "buster" ] \
-    || [ "${_OSR}" = "stretch" ] \
-    || [ "${_OSR}" = "jessie" ]; then
-    if [ -e "/root/.mstr.clstr.cnf" ] \
-      || [ -e "/root/.wbhd.clstr.cnf" ] \
-      || [ -e "/root/.dbhd.clstr.cnf" ]; then
-      _DBS_VRN="${_GALERA_10_VRN}"
-    else
-      if [ "${_DB_SERIES}" = "10.2" ]; then
-        _DB_SERVER=MariaDB
-        _DBS_VRN="${_MARIADB_10_2_VRN}"
-      elif [ "${_DB_SERIES}" = "10.3" ]; then
-        _DB_SERVER=MariaDB
-        _DBS_VRN="${_MARIADB_10_3_VRN}"
-      elif [ "${_DB_SERIES}" = "10.4" ]; then
-        _DB_SERVER=MariaDB
-        _DBS_VRN="${_MARIADB_10_4_VRN}"
-      elif [ "${_DB_SERIES}" = "5.7" ] \
-        && [ "${_SQL_MAJOR_UP_ALLOW}" = "YES" ]; then
-        _DB_SERVER=Percona
-        _DBS_VRN="${_PERCONA_5_7_VRN}"
-        rm -f /etc/apt/sources.list.d/mariadb.*
-        rm -f /etc/apt/sources.list.d/percona-.*
-        rm -f /etc/apt/sources.list.d/xtrabackup.*
-        percList="/etc/apt/sources.list.d/percona-release.list"
-        percRepo="${_DB_SRC}/percona/apt"
-        echo "## Percona APT Repository" > ${percList}
-        echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-        echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-        echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
-        apt_clean_update
-      else
-        _DB_SERVER=Percona
-        _DB_SERIES=5.7
-        _DBS_VRN="${_PERCONA_5_7_VRN}"
-        rm -f /etc/apt/sources.list.d/mariadb.*
-        rm -f /etc/apt/sources.list.d/percona-.*
-        rm -f /etc/apt/sources.list.d/xtrabackup.*
-        percList="/etc/apt/sources.list.d/percona-release.list"
-        percRepo="${_DB_SRC}/percona/apt"
-        echo "## Percona APT Repository" > ${percList}
-        echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-        echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-        echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
-        apt_clean_update
-      fi
-    fi
-    msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_REAL_OS}/${_REAL_OSR}"
+  if [ -e "/root/.mstr.clstr.cnf" ] \
+    || [ -e "/root/.wbhd.clstr.cnf" ] \
+    || [ -e "/root/.dbhd.clstr.cnf" ]; then
+    _DBS_VRN="${_GALERA_10_VRN}"
   else
-    if [ "${_DB_SERIES}" = "10.4" ] \
-      || [ "${_DB_SERIES}" = "10.3" ] \
-      || [ "${_DB_SERIES}" = "10.2" ] \
-      || [ "${_DB_SERIES}" = "5.7" ]; then
-      _DO_NOTHING=YES
+    if [ "${_DB_SERIES}" = "10.2" ]; then
+      _DB_SERVER=MariaDB
+      _DBS_VRN="${_MARIADB_10_2_VRN}"
+    elif [ "${_DB_SERIES}" = "10.3" ]; then
+      _DB_SERVER=MariaDB
+      _DBS_VRN="${_MARIADB_10_3_VRN}"
+    elif [ "${_DB_SERIES}" = "10.4" ]; then
+      _DB_SERVER=MariaDB
+      _DBS_VRN="${_MARIADB_10_4_VRN}"
+    elif [ "${_DB_SERIES}" = "5.7" ] \
+      && [ "${_SQL_MAJOR_UP_ALLOW}" = "YES" ]; then
+      _DB_SERVER=Percona
+      _DBS_VRN="${_PERCONA_5_7_VRN}"
+      rm -f /etc/apt/sources.list.d/mariadb.*
+      rm -f /etc/apt/sources.list.d/percona-.*
+      rm -f /etc/apt/sources.list.d/xtrabackup.*
+      percList="/etc/apt/sources.list.d/percona-release.list"
+      percRepo="${_DB_SRC}/percona/apt"
+      echo "## Percona APT Repository" > ${percList}
+      echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+      echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+      echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
+      apt_clean_update
     else
       _DB_SERVER=Percona
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
-      msg "INFO: Forced ${_DB_SERVER} ${_DBS_VRN} in ${_REAL_OS}/${_REAL_OSR}"
-    fi
-    if [ -z "${_DB_SERIES}" ]; then
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
-      msg "INFO: Forced ${_DB_SERVER} ${_DBS_VRN} in ${_REAL_OS}/${_REAL_OSR}"
+      rm -f /etc/apt/sources.list.d/mariadb.*
+      rm -f /etc/apt/sources.list.d/percona-.*
+      rm -f /etc/apt/sources.list.d/xtrabackup.*
+      percList="/etc/apt/sources.list.d/percona-release.list"
+      percRepo="${_DB_SRC}/percona/apt"
+      echo "## Percona APT Repository" > ${percList}
+      echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+      echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+      echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
+      apt_clean_update
     fi
   fi
+  msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_REAL_OS}/${_REAL_OSR}"
 
   ### Only supported upgrade path allowed
   sql_strict_upgrade_path
@@ -830,8 +801,8 @@ prep_for_install_db_sql() {
             libdbi-perl"
   elif [ "${_DB_SERIES}" = "5.7" ]; then
     SQLADD="libperconaserverclient20-dev \
-            percona-toolkit \
-            python-mysqldb \
+            percona-toolkit"
+    SQLXTR="python-mysqldb \
             libdbi-perl"
   fi
 }
@@ -840,44 +811,29 @@ install_with_aptitude_sql() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: install_with_aptitude_sql"
   fi
-  if [ "${_OSR}" = "chimaera" ] \
-    || [ "${_OSR}" = "beowulf" ] \
-    || [ "${_OSR}" = "bullseye" ] \
-    || [ "${_OSR}" = "buster" ] \
-    || [ "${_OSR}" = "stretch" ] \
-    || [ "${_OSR}" = "jessie" ]; then
-    if [ "${_EASY_SETUP}" = "MSTR" ] \
-      || [ "${_EASY_SETUP}" = "DBHD" ] \
-      || [ "${_EASY_SETUP}" = "WBHD" ] \
-      || [ -e "/etc/mysql/conf.d/galera.cnf" ] \
-      || [ -e "/root/.mstr.clstr.cnf" ] \
-      || [ -e "/root/.dbhd.clstr.cnf" ] \
-      || [ -e "/root/.wbhd.clstr.cnf" ]; then
-      msg "INFO: Installing ${_DB_SERVER} Galera Cluster..."
-    else
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installing ${_DB_SERVER}..."
-      fi
-    fi
+  if [ "${_EASY_SETUP}" = "MSTR" ] \
+    || [ "${_EASY_SETUP}" = "DBHD" ] \
+    || [ "${_EASY_SETUP}" = "WBHD" ] \
+    || [ -e "/etc/mysql/conf.d/galera.cnf" ] \
+    || [ -e "/root/.mstr.clstr.cnf" ] \
+    || [ -e "/root/.dbhd.clstr.cnf" ] \
+    || [ -e "/root/.wbhd.clstr.cnf" ]; then
+    msg "INFO: Installing ${_DB_SERVER} Galera Cluster..."
   else
-    if [ "${_EASY_SETUP}" = "MSTR" ] \
-      || [ "${_EASY_SETUP}" = "DBHD" ] \
-      || [ "${_EASY_SETUP}" = "WBHD" ] \
-      || [ -e "/etc/mysql/conf.d/galera.cnf" ] \
-      || [ -e "/root/.mstr.clstr.cnf" ] \
-      || [ -e "/root/.dbhd.clstr.cnf" ] \
-      || [ -e "/root/.wbhd.clstr.cnf" ]; then
-      msg "INFO: Installing ${_DB_SERVER} Galera Cluster..."
-    else
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Installing ${_DB_SERVER}..."
-      fi
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Installing ${_DB_SERVER}..."
     fi
   fi
   prep_for_install_db_sql
-  st_runner "${_INSTAPP} ${SQLDEB}" 2> /dev/null
-  st_runner "${_INSTAPP} ${SQLADD}" 2> /dev/null
-  st_runner "${_INSTAPP} ${SQLDEB}" 2> /dev/null
+  if [ "${_SQL_SCR}" = "APT" ]; then
+    st_runner "${_INSTAPP} ${SQLDEB}" 2> /dev/null
+    st_runner "${_INSTAPP} ${SQLADD}" 2> /dev/null
+    st_runner "${_INSTAPP} ${SQLXTR}" 2> /dev/null
+    st_runner "${_INSTAPP} ${SQLDEB}" 2> /dev/null
+  elif [ "${_SQL_SCR}" = "GIT" ]; then
+    ### TBD -- only for testing
+    st_runner "${_INSTAPP} ${SQLXTR}" 2> /dev/null
+  fi
   if [ ! -e "/usr/local/bin/mytop" ] && [ -e "/usr/bin/mysql" ]; then
     msg "INFO: Building MyTop from sources..."
     cd /var/opt
@@ -1045,6 +1001,10 @@ forced_mysql_root_password_update() {
     echo "user=root" >> /root/.my.cnf
     echo "password=${_ESC_PASS}" >> /root/.my.cnf
       echo " " >> /root/.my.cnf
+    echo "[autodaedalus]" >> /root/.my.cnf
+    echo "user=root" >> /root/.my.cnf
+    echo "password=${_ESC_PASS}" >> /root/.my.cnf
+      echo " " >> /root/.my.cnf
     echo "[autoupboa]" >> /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
     echo "password=${_ESC_PASS}" >> /root/.my.cnf
@@ -1113,20 +1073,20 @@ db_server_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: db_server_install"
   fi
-  if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
-    || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
-    _REAL_OSR="chimaera"
-    _REAL_OS="Devuan"
-  else
-    _REAL_OSR="${_OSR}"
-    _REAL_OS="${_THIS_OS}"
-  fi
-  if [ "${_REAL_OSR}" = "chimaera" ]; then
+  _REAL_OSR="${_OSR}"
+  _REAL_OS="${_THIS_OS}"
+  _SQL_SCR=APT
+  if [ "${_REAL_OSR}" = "daedalus" ]; then
+    _SQL_OSR=bookworm
+  elif [ "${_REAL_OSR}" = "chimaera" ]; then
     _SQL_OSR=bullseye
   elif [ "${_REAL_OSR}" = "beowulf" ]; then
     _SQL_OSR=buster
   else
     _SQL_OSR="${_REAL_OSR}"
+  fi
+  if [ "${_SQL_OSR}" = "foobar" ]; then
+    _SQL_SCR=GIT
   fi
   _THIS_DB_PORT=3306
   if [ -x "/usr/bin/gpg2" ]; then
@@ -1370,7 +1330,8 @@ db_server_install() {
       if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
         mkdir -p /etc/mysql/mariadb.conf.d/
       fi
-      if [ ! -e "/root/.run-to-chimaera.cnf" ] \
+      if [ ! -e "/root/.run-to-daedalus.cnf" ] \
+        && [ ! -e "/root/.run-to-chimaera.cnf" ] \
         && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
         _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
         _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
@@ -1636,6 +1597,10 @@ sql_root_credentials_update() {
         echo "password=${PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
         echo "[autochimaera]" >> /root/.my.cnf
+        echo "user=root" >> /root/.my.cnf
+        echo "password=${PASWD}" >> /root/.my.cnf
+          echo " " >> /root/.my.cnf
+        echo "[autodaedalus]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
         echo "password=${PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf

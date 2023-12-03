@@ -19,6 +19,11 @@ set -e
 
 case "$1" in
   start)
+    if [ -e "/root/.run-to-daedalus.cnf" ]; then
+      if [ -x "/opt/local/bin/autodaedalus" ]; then
+        bash /opt/local/bin/autodaedalus > /dev/null 2>&1 &
+      fi
+    fi
     if [ -e "/root/.run-to-chimaera.cnf" ]; then
       if [ -x "/opt/local/bin/autochimaera" ]; then
         bash /opt/local/bin/autochimaera > /dev/null 2>&1 &

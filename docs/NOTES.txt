@@ -20,7 +20,7 @@
     ###         to enable per Octopus instance. (deprecated)
     ###
     ### BDD --- SQL Buddy DB Manager (deprecated)
-    ### BND --- Bind9 DNS Server (available on Debian only)
+    ### BND --- Bind9 DNS Server
     ### BZR --- Bazaar
     ### CGP --- Collectd Graph Panel (deprecated)
     ### CHV --- Chive DB Manager (deprecated)
