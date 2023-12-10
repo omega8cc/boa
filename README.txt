@@ -71,7 +71,7 @@ production settings.
   * Linux Containers (LXC) guest
   * Linux KVM guest
   * Linux VServer guest
-  * Microsoft Hyper-V
+  * Microsoft Hyper-V guest
   * OpenVZ Containers guest
   * Parallels guest
   * VirtualBox guest
