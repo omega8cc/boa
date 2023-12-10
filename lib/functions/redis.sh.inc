@@ -201,18 +201,18 @@ redis_password_update() {
   if [ -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ]; then
     if [ -z "${_ESC_RPASS}" ]; then
       RPASS=$(cat /root/.redis.pass.txt 2>&1)
-      RPASS=$(echo -n $RPASS | tr -d "\n" 2>&1)
+      RPASS=$(echo -n ${RPASS} | tr -d "\n" 2>&1)
     else
       RPASS="${_ESC_RPASS}"
     fi
-    _REDIS_PWD_TEST=$(grep "'$RPASS'" /data/conf/global.inc 2>&1)
-    if [[ "$_REDIS_PWD_TEST" =~ "'$RPASS'" ]]; then
+    _REDIS_PWD_TEST=$(grep "'${RPASS}'" /data/conf/global.inc 2>&1)
+    if [[ "${_REDIS_PWD_TEST}" =~ "'${RPASS}'" ]]; then
       _DO_NOTHING=YES
     else
-      if [ ! -z "$RPASS" ]; then
+      if [ ! -z "${RPASS}" ]; then
         mkdir -p /data/conf
         cp -af ${locCnf}/global.inc /data/conf/global.inc
-        sed -i "s/isfoobared/$RPASS/g" /data/conf/global.inc &> /dev/null
+        sed -i "s/isfoobared/${RPASS}/g" /data/conf/global.inc &> /dev/null
         wait
       fi
     fi

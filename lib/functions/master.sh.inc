@@ -338,19 +338,19 @@ hostmaster_frontend_dbpass_sync() {
     | cut -d: -f2 \
     | awk '{ print $3}' \
     | sed "s/[\,']//g" 2>&1)
-  _THIS_HM_DBUR=$(cat $_THIS_HM_SPTH/drushrc.php \
+  _THIS_HM_DBUR=$(cat ${_THIS_HM_SPTH}/drushrc.php \
     | grep "options\['db_user'\] = " \
     | cut -d: -f2 \
     | awk '{ print $3}' \
     | sed "s/[\,';]//g" 2>&1)
-  _THIS_HM_DBPD=$(cat $_THIS_HM_SPTH/drushrc.php \
+  _THIS_HM_DBPD=$(cat ${_THIS_HM_SPTH}/drushrc.php \
     | grep "options\['db_passwd'\] = " \
     | cut -d: -f2 \
     | awk '{ print $3}' \
     | sed "s/[\,';]//g" 2>&1)
-  if [ -e "$_THIS_HM_SPTH" ] \
-    && [ ! -z "$_THIS_HM_DBUR" ] \
-    && [ ! -z "$_THIS_HM_DBPD" ]; then
+  if [ -e "${_THIS_HM_SPTH}" ] \
+    && [ ! -z "${_THIS_HM_DBUR}" ] \
+    && [ ! -z "${_THIS_HM_DBPD}" ]; then
     _SQL_CONNECT=localhost
     if [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
@@ -779,7 +779,7 @@ aegir_master_install_upgrade() {
 
     if [ "${_VMFAMILY}" != "AWS" ]; then
       _MYSQLTEST=$(mysql --silent -u root -h${_AEGIR_HOST_IP} -uINVALIDLOGIN -pINVALIDPASS 2>&1 >/dev/null | cat)
-      if [ -z `echo $_MYSQLTEST | grep -q "ERROR \(2003\|1130\)"` ]; then
+      if [ -z `echo ${_MYSQLTEST} | grep -q "ERROR \(2003\|1130\)"` ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: ${_DB_SERVER} is listening on ${_AEGIR_HOST_IP}."
         fi
@@ -1161,7 +1161,7 @@ php_cli_local_ini_update() {
       _PHP_CLI_UPDATE=YES
     fi
   done
-  if [ "$_PHP_CLI_UPDATE" = "YES" ] \
+  if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
     || [ ! -e "${_U_HD}/.ctrl.${_X_SE}.pid" ]; then

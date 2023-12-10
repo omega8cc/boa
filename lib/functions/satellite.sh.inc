@@ -455,7 +455,7 @@ satellite_check_id() {
     clean_pid_exit
   fi
   _REGEX="^[[:digit:]]"
-  if [[ "${_USER}" =~ "$_REGEX" ]]; then
+  if [[ "${_USER}" =~ "${_REGEX}" ]]; then
     msg "ERROR: ${_USER} is a wrong username"
     msg "ERROR: The correct username should start with a letter, not digit"
     clean_pid_exit
@@ -790,7 +790,7 @@ satellite_cnf() {
     fi
 
     _O_CONTRIB_UP_TEST=$(grep _O_CONTRIB_UP ${octCnf} 2>&1)
-    if [[ "$_O_CONTRIB_UP_TEST" =~ "_O_CONTRIB_UP" ]]; then
+    if [[ "${_O_CONTRIB_UP_TEST}" =~ "_O_CONTRIB_UP" ]]; then
       sed -i "s/^_O_CONTRIB_UP.*//g" ${octCnf} &> /dev/null
       wait
       sed -i "/^$/d" ${octCnf} &> /dev/null
@@ -798,7 +798,7 @@ satellite_cnf() {
     fi
 
     _ALLOW_UNSUPPORTED_TEST=$(grep _ALLOW_UNSUPPORTED ${octCnf} 2>&1)
-    if [[ "$_ALLOW_UNSUPPORTED_TEST" =~ "_ALLOW_UNSUPPORTED" ]]; then
+    if [[ "${_ALLOW_UNSUPPORTED_TEST}" =~ "_ALLOW_UNSUPPORTED" ]]; then
       sed -i "s/^_ALLOW_UNSUPPORTED.*//g" ${octCnf} &> /dev/null
       wait
       sed -i "/^$/d" ${octCnf} &> /dev/null
@@ -814,7 +814,7 @@ satellite_cnf() {
     fi
 
     _HTTP_WILDCARD_TEST=$(grep _HTTP_WILDCARD ${octCnf} 2>&1)
-    if [[ "$_HTTP_WILDCARD_TEST" =~ "_HTTP_WILDCARD" ]]; then
+    if [[ "${_HTTP_WILDCARD_TEST}" =~ "_HTTP_WILDCARD" ]]; then
       sed -i "s/^_HTTP_WILDCARD.*//g" ${octCnf} &> /dev/null
       wait
       sed -i "/^$/d" ${octCnf} &> /dev/null
@@ -1145,7 +1145,7 @@ satellite_child_b_update_ini_php_cli() {
       _PHP_CLI_UPDATE=YES
     fi
   done
-  if [ "$_PHP_CLI_UPDATE" = "YES" ] \
+  if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
     || [ ! -e "${_U_HD}/.ctrl.${_X_SE}.pid" ]; then
@@ -2412,19 +2412,19 @@ hostmaster_frontend_dbpass_sync() {
     | cut -d: -f2 \
     | awk '{ print $3}' \
     | sed "s/[\,']//g" 2>&1)
-  _THIS_HM_DBUR=$(cat $_THIS_HM_SPTH/drushrc.php \
+  _THIS_HM_DBUR=$(cat ${_THIS_HM_SPTH}/drushrc.php \
     | grep "options\['db_user'\] = " \
     | cut -d: -f2 \
     | awk '{ print $3}' \
     | sed "s/[\,';]//g" 2>&1)
-  _THIS_HM_DBPD=$(cat $_THIS_HM_SPTH/drushrc.php \
+  _THIS_HM_DBPD=$(cat ${_THIS_HM_SPTH}/drushrc.php \
     | grep "options\['db_passwd'\] = " \
     | cut -d: -f2 \
     | awk '{ print $3}' \
     | sed "s/[\,';]//g" 2>&1)
-  if [ -e "$_THIS_HM_SPTH" ] \
-    && [ ! -z "$_THIS_HM_DBUR" ] \
-    && [ ! -z "$_THIS_HM_DBPD" ]; then
+  if [ -e "${_THIS_HM_SPTH}" ] \
+    && [ ! -z "${_THIS_HM_DBUR}" ] \
+    && [ ! -z "${_THIS_HM_DBPD}" ]; then
     _ESC="*.*"
     _USE_DB_USER="${_THIS_HM_DBUR}"
     _USE_AEGIR_HOST="$(uname -n 2>&1)"
@@ -2727,13 +2727,13 @@ satellite_run_child_b() {
 
 satellite_if_create_local_bin() {
   _L_BIN="${_ROOT}/bin"
-  if [ ! -d "$_L_BIN" ]; then
-    mkdir -p $_L_BIN
-    chown ${_USER}:${_USRG} $_L_BIN
-    chmod 700 $_L_BIN
+  if [ ! -d "${_L_BIN}" ]; then
+    mkdir -p ${_L_BIN}
+    chown ${_USER}:${_USRG} ${_L_BIN}
+    chmod 700 ${_L_BIN}
   fi
-  if [ ! -L "$_L_BIN/drush" ]; then
-    ln -sfn ${_ROOT}/tools/drush/drush $_L_BIN/drush
+  if [ ! -L "${_L_BIN}/drush" ]; then
+    ln -sfn ${_ROOT}/tools/drush/drush ${_L_BIN}/drush
   fi
 }
 
@@ -3190,11 +3190,11 @@ satellite_if_read_create_pass_txt() {
   else
     if [ -e "${_ROOT}/pass.txt" ]; then
       _PASWD=$(cat ${_ROOT}/pass.txt 2>&1)
-      _PASWD=$(echo -n $_PASWD | tr -d "\n" 2>&1)
+      _PASWD=$(echo -n ${_PASWD} | tr -d "\n" 2>&1)
       mv -f ${_ROOT}/pass.txt ${_ROOT}/log/pass.txt &> /dev/null
     elif [ -e "${_ROOT}/log/pass.txt" ]; then
       _PASWD=$(cat ${_ROOT}/log/pass.txt 2>&1)
-      _PASWD=$(echo -n $_PASWD | tr -d "\n" 2>&1)
+      _PASWD=$(echo -n ${_PASWD} | tr -d "\n" 2>&1)
       rm -f ${_ROOT}/pass.txt
     else
       cd ${_ROOT}/log
@@ -3240,7 +3240,7 @@ satellite_if_read_create_pass_txt() {
         | tr -d '+=' | head -c 16))
       usermod -p $ph ${_USERFTP} &> /dev/null
       _PASWD=$(cat ${_ROOT}/log/pass.txt 2>&1)
-      _PASWD=$(echo -n $_PASWD | tr -d "\n" 2>&1)
+      _PASWD=$(echo -n ${_PASWD} | tr -d "\n" 2>&1)
     fi
   fi
 }
@@ -3790,7 +3790,7 @@ satellite_prepare_setup_email_tpl() {
         wait
         sed -i "s/dragon/${_USER}/g" ${_ROOT}/log/upgrademail.txt
         wait
-        sed -i "s/FN8rXcQn/$_PASWD/g" ${_ROOT}/log/upgrademail.txt
+        sed -i "s/FN8rXcQn/${_PASWD}/g" ${_ROOT}/log/upgrademail.txt
         wait
         sed -i "s/166.84.6.231/${_THISHTIP}/g" ${_ROOT}/log/upgrademail.txt
         wait
@@ -3806,7 +3806,7 @@ satellite_prepare_setup_email_tpl() {
      wait
      sed -i "s/dragon/${_USER}/g" ${_ROOT}/log/setupmail.txt
      wait
-     sed -i "s/FN8rXcQn/$_PASWD/g" ${_ROOT}/log/setupmail.txt
+     sed -i "s/FN8rXcQn/${_PASWD}/g" ${_ROOT}/log/setupmail.txt
      wait
      sed -i "s/166.84.6.231/${_THISHTIP}/g" ${_ROOT}/log/setupmail.txt
      wait
@@ -3834,15 +3834,15 @@ satellite_send_welcome_email() {
         cat ${_ROOT}/log/setupmail.txt \
           | sed "s/[\~]//g" \
           | mail -a "From: ${_MY_EMAIL}" \
-          -a "Bcc: ${_MY_EMAIL}" -e -s "$_Q" ${_AT_CLIENT_EMAIL}
+          -a "Bcc: ${_MY_EMAIL}" -e -s "${_Q}" ${_AT_CLIENT_EMAIL}
       elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
         cat ${_ROOT}/log/setupmail.txt \
           | mail -a "From: ${_MY_EMAIL}" \
-          -e -b ${_MY_EMAIL} -s "$_Q" ${_AT_CLIENT_EMAIL}
+          -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
       else
         cat ${_ROOT}/log/setupmail.txt \
           | mail -r ${_MY_EMAIL} \
-          -e -b ${_MY_EMAIL} -s "$_Q" ${_AT_CLIENT_EMAIL}
+          -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
       fi
     fi
   else
@@ -3858,30 +3858,30 @@ satellite_send_welcome_email() {
           cat ${_ROOT}/log/upgrademail.txt \
             | sed "s/[\~]//g" \
             | mail -a "From: ${_MY_EMAIL}" \
-            -a "Bcc: ${_MY_EMAIL}" -e -s "$_Q" ${_AT_CLIENT_EMAIL}
+            -a "Bcc: ${_MY_EMAIL}" -e -s "${_Q}" ${_AT_CLIENT_EMAIL}
         elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
           cat ${_ROOT}/log/upgrademail.txt \
             | mail -a "From: ${_MY_EMAIL}" \
-            -e -b ${_MY_EMAIL} -s "$_Q" ${_AT_CLIENT_EMAIL}
+            -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
         else
           cat ${_ROOT}/log/upgrademail.txt \
             | mail -r ${_MY_EMAIL} \
-            -e -b ${_MY_EMAIL} -s "$_Q" ${_AT_CLIENT_EMAIL}
+            -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
         fi
       else
         if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
           cat ${_ROOT}/log/setupmail.txt \
             | sed "s/[\~]//g" \
             | mail -a "From: ${_MY_EMAIL}" \
-            -a "Bcc: ${_MY_EMAIL}" -e -s "$_Q" ${_AT_CLIENT_EMAIL}
+            -a "Bcc: ${_MY_EMAIL}" -e -s "${_Q}" ${_AT_CLIENT_EMAIL}
         elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
           cat ${_ROOT}/log/setupmail.txt \
             | mail -a "From: ${_MY_EMAIL}" \
-            -e -b ${_MY_EMAIL} -s "$_Q" ${_AT_CLIENT_EMAIL}
+            -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
         else
           cat ${_ROOT}/log/setupmail.txt \
             | mail -r ${_MY_EMAIL} \
-            -e -b ${_MY_EMAIL} -s "$_Q" ${_AT_CLIENT_EMAIL}
+            -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
         fi
       fi
     else
@@ -5648,10 +5648,10 @@ satellite_child_b_aegir_health_check() {
     _MSG_STATUS="upgrade"
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "${_STATUS} B: Simple check if Aegir $_MSG_STATUS is successful"
+    msg "${_STATUS} B: Simple check if Aegir ${_MSG_STATUS} is successful"
   fi
   if [ -e "${_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
-    msg "${_STATUS} B: Aegir $_MSG_STATUS test result: OK"
+    msg "${_STATUS} B: Aegir ${_MSG_STATUS} test result: OK"
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} B: Reloading Nginx..."
       sudo /etc/init.d/nginx reload

@@ -464,7 +464,7 @@ check_report() {
 
 check_php_cli() {
   _PHP_CHECK=$(readlink -n /usr/bin/php 2>&1)
-  if [ ! -x "$_PHP_CHECK" ]; then
+  if [ ! -x "${_PHP_CHECK}" ]; then
     if [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
       _PHP_CLI_PATH="/opt/php74/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "8.0" ]; then

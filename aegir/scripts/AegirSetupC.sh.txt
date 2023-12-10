@@ -423,7 +423,7 @@ nocore_d7_dist_clean() {
     rm -rf ${_SHRD_PLPATH}/scripts
     rm -rf ${_SHRD_PLPATH}/themes
     _REVISIONS="34 35 36 37 38 39"
-    for i in $_REVISIONS; do
+    for i in ${_REVISIONS}; do
       if [ -d "${_CORE}/drupal-7.$i" ] && [ ! -e "${_SHRD_PLPATH}" ]; then
         mv ${_CORE}/drupal-7.$i ${_SHRD_PLPATH}
       fi
@@ -753,9 +753,9 @@ agov_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "AGV" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_AGOV - ${urlPrt}/agov" ; then
+        if prompt_yes_no "${_F_AGOV} - ${urlPrt}/agov" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_AGOV ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_AGOV} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -780,10 +780,10 @@ agov_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_AGOV installed"
+          msg "DISTRO: ${_F_AGOV} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_AGOV ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_AGOV} ${noT}"
         fi
       fi
     fi
@@ -796,7 +796,7 @@ commerce_7_1_install() {
 #
   _REAL_PRNAME="commerce_kickstart"
   _VIRT_PRNAME="commerce"
-  _SHRD_PLNAME="$_VIRT_PRNAME-${_COMMERCE1}-${_SMALLCORE7_V}"
+  _SHRD_PLNAME="${_VIRT_PRNAME}-${_COMMERCE1}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -804,9 +804,9 @@ commerce_7_1_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "DCE" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_COMMERCE1 - http://drupalcommerce.org" ; then
+        if prompt_yes_no "${_F_COMMERCE1} - http://drupalcommerce.org" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_COMMERCE1 ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_COMMERCE1} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -835,10 +835,10 @@ commerce_7_1_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_COMMERCE1 installed"
+          msg "DISTRO: ${_F_COMMERCE1} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_COMMERCE1 ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_COMMERCE1} ${noT}"
         fi
       fi
     fi
@@ -851,7 +851,7 @@ commerce_7_2_install() {
 #
   _REAL_PRNAME="commerce_kickstart"
   _VIRT_PRNAME="commerce"
-  _SHRD_PLNAME="$_VIRT_PRNAME-${_COMMERCE2}-${_SMALLCORE7_V}"
+  _SHRD_PLNAME="${_VIRT_PRNAME}-${_COMMERCE2}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -859,9 +859,9 @@ commerce_7_2_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "CME" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_COMMERCE2 - http://drupalcommerce.org" ; then
+        if prompt_yes_no "${_F_COMMERCE2} - http://drupalcommerce.org" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_COMMERCE2 ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_COMMERCE2} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -889,10 +889,10 @@ commerce_7_2_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_COMMERCE2 installed"
+          msg "DISTRO: ${_F_COMMERCE2} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_COMMERCE2 ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_COMMERCE2} ${noT}"
         fi
       fi
     fi
@@ -912,9 +912,9 @@ commons_6_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "DCS" ]]; then
       if [ ! -d "${_OCTO_PLPATH}/modules/path_alias_cache" ]; then
-        if prompt_yes_no "$_F_COMMONS2 - http://acquia.com/drupalcommons" ; then
+        if prompt_yes_no "${_F_COMMONS2} - http://acquia.com/drupalcommons" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_COMMONS2 ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_COMMONS2} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
               && [ "${_T_BUILD}" = "HEAD" ]; then
@@ -953,10 +953,10 @@ commons_6_install() {
             ln -sfn ${_SHRD_PRPATH}/libraries/getid3 \
               ${_OCTO_PLPATH}/sites/all/libraries/getid3
           fi
-          msg "DISTRO: $_F_COMMONS2 installed"
+          msg "DISTRO: ${_F_COMMONS2} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_COMMONS2 ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_COMMONS2} ${noT}"
         fi
       fi
     fi
@@ -976,9 +976,9 @@ commons_7_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "CS7" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_COMMONS3 - http://acquia.com/drupalcommons" ; then
+        if prompt_yes_no "${_F_COMMONS3} - http://acquia.com/drupalcommons" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_COMMONS3 ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_COMMONS3} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -1009,10 +1009,10 @@ commons_7_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_COMMONS3 installed"
+          msg "DISTRO: ${_F_COMMONS3} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_COMMONS3 ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_COMMONS3} ${noT}"
         fi
       fi
     fi
@@ -1029,19 +1029,19 @@ drupal6_install() {
     || [[ "${_PLATFORMS_LIST}" =~ "D6P" ]]; then
     pthPfw="pressflow-${_SMALLCORE6_V}-dev/modules/path_alias_cache"
     if [ ! -d "${_ROOT}/distro/${_THIS_CORE}/${pthPfw}" ]; then
-      if prompt_yes_no "$_F_DRUPAL6 - https://www.pressflow.org" ; then
+      if prompt_yes_no "${_F_DRUPAL6} - https://www.pressflow.org" ; then
         true
         ###---### Drupal 6 Pressflow Development
         #
         _REAL_PRNAME="default"
         _VIRT_PRNAME="pressflow"
-        _SHRD_PLNAME="$_VIRT_PRNAME-${_SMALLCORE6_V}-dev"
+        _SHRD_PLNAME="${_VIRT_PRNAME}-${_SMALLCORE6_V}-dev"
         _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
         _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
         _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
         if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
           || [[ "${_PLATFORMS_LIST}" =~ "D6D" ]]; then
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL6_D ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_DRUPAL6_D} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             if [ ! -e "${_D6_CORE_DIR}" ]; then
               prepare_drupal6_core
@@ -1052,20 +1052,20 @@ drupal6_install() {
             enable_drupal6_admin
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_DRUPAL6_D installed"
+          msg "DISTRO: ${_F_DRUPAL6_D} installed"
           _RUN_VERIFY=YES
         fi
         ###---### Drupal 6 Pressflow Staging
         #
         _REAL_PRNAME="default"
         _VIRT_PRNAME="pressflow"
-        _SHRD_PLNAME="$_VIRT_PRNAME-${_SMALLCORE6_V}-stage"
+        _SHRD_PLNAME="${_VIRT_PRNAME}-${_SMALLCORE6_V}-stage"
         _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
         _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
         _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
         if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
           || [[ "${_PLATFORMS_LIST}" =~ "D6S" ]]; then
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL6_S ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_DRUPAL6_S} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             if [ ! -e "${_D6_CORE_DIR}" ]; then
               prepare_drupal6_core
@@ -1076,20 +1076,20 @@ drupal6_install() {
             enable_drupal6_admin
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_DRUPAL6_S installed"
+          msg "DISTRO: ${_F_DRUPAL6_S} installed"
           _RUN_VERIFY=YES
         fi
         ###---### Drupal 6 Pressflow Production
         #
         _REAL_PRNAME="default"
         _VIRT_PRNAME="pressflow"
-        _SHRD_PLNAME="$_VIRT_PRNAME-${_SMALLCORE6_V}-prod"
+        _SHRD_PLNAME="${_VIRT_PRNAME}-${_SMALLCORE6_V}-prod"
         _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
         _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
         _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
         if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
           || [[ "${_PLATFORMS_LIST}" =~ "D6P" ]]; then
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL6 ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_DRUPAL6} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             if [ ! -e "${_D6_CORE_DIR}" ]; then
               prepare_drupal6_core
@@ -1100,11 +1100,11 @@ drupal6_install() {
             enable_drupal6_admin
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_DRUPAL6_P installed"
+          msg "DISTRO: ${_F_DRUPAL6_P} installed"
           _RUN_VERIFY=YES
         fi
       else
-        [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL6 ${noT}"
+        [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_DRUPAL6} ${noT}"
       fi
     fi
   fi
@@ -1170,7 +1170,7 @@ drupal7_install() {
           fi
         fi
       else
-        [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_DRUPAL7 ${noT}"
+        [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_DRUPAL7} ${noT}"
       fi
     fi
   fi
@@ -1378,9 +1378,9 @@ erpal_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "ERP" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_ERPAL - ${urlPrt}/erpal" ; then
+        if prompt_yes_no "${_F_ERPAL} - ${urlPrt}/erpal" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_ERPAL ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_ERPAL} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -1407,10 +1407,10 @@ erpal_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_ERPAL installed"
+          msg "DISTRO: ${_F_ERPAL} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_ERPAL ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_ERPAL} ${noT}"
         fi
       fi
     fi
@@ -1423,16 +1423,16 @@ fserver_install() {
 #
   _REAL_PRNAME="feature_server"
   _VIRT_PRNAME="fserver"
-  _SHRD_PLNAME="$_VIRT_PRNAME-${_SMALLCORE6_V}"
+  _SHRD_PLNAME="${_VIRT_PRNAME}-${_SMALLCORE6_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
   if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "FSR" ]]; then
     if [ ! -d "${_OCTO_PLPATH}/modules/path_alias_cache" ]; then
-      if prompt_yes_no "$_F_FSERVER - http://bit.ly/fservermore" ; then
+      if prompt_yes_no "${_F_FSERVER} - http://bit.ly/fservermore" ; then
         true
-        [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_FSERVER ${yOk}"
+        [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_FSERVER} ${yOk}"
         if [ ! -d "${_SHRD_PLPATH}" ]; then
           if [ "${_USE_AEGIR_VER}" = "SRC" ] \
             && [ "${_T_BUILD}" = "HEAD" ]; then
@@ -1463,10 +1463,10 @@ fserver_install() {
           fi
         fi
         init_this_distro_root
-        msg "DISTRO: $_F_FSERVER installed"
+        msg "DISTRO: ${_F_FSERVER} installed"
         _RUN_VERIFY=YES
       else
-        [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_FSERVER ${noT}"
+        [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_FSERVER} ${noT}"
       fi
     fi
   fi
@@ -1485,9 +1485,9 @@ guardr_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "GDR" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_GUARDR - ${urlPrt}/guardr" ; then
+        if prompt_yes_no "${_F_GUARDR} - ${urlPrt}/guardr" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_GUARDR ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_GUARDR} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -1511,10 +1511,10 @@ guardr_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_GUARDR installed"
+          msg "DISTRO: ${_F_GUARDR} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_GUARDR ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_GUARDR} ${noT}"
         fi
       fi
     fi
@@ -1534,9 +1534,9 @@ openacademy_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "OAY" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_OPENACADEMY - ${urlPrt}/openacademy" ; then
+        if prompt_yes_no "${_F_OPENACADEMY} - ${urlPrt}/openacademy" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENACADEMY ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENACADEMY} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -1557,10 +1557,10 @@ openacademy_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_OPENACADEMY installed"
+          msg "DISTRO: ${_F_OPENACADEMY} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENACADEMY ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENACADEMY} ${noT}"
         fi
       fi
     fi
@@ -1580,9 +1580,9 @@ openaid_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "OAD" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_OPENAID - ${urlPrt}/openaid" ; then
+        if prompt_yes_no "${_F_OPENAID} - ${urlPrt}/openaid" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENAID ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENAID} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -1604,10 +1604,10 @@ openaid_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_OPENAID installed"
+          msg "DISTRO: ${_F_OPENAID} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENAID ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENAID} ${noT}"
         fi
       fi
     fi
@@ -1627,9 +1627,9 @@ openatrium7_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "OA7" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_OPENATRIUM7 - http://openatrium.com" ; then
+        if prompt_yes_no "${_F_OPENATRIUM7} - http://openatrium.com" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENATRIUM7 ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENATRIUM7} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -1651,10 +1651,10 @@ openatrium7_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_OPENATRIUM7 installed"
+          msg "DISTRO: ${_F_OPENATRIUM7} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENATRIUM7 ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENATRIUM7} ${noT}"
         fi
       fi
     fi
@@ -1674,9 +1674,9 @@ openblog_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "OBG" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_OPENBLOG - ${urlPrt}/openblog" ; then
+        if prompt_yes_no "${_F_OPENBLOG} - ${urlPrt}/openblog" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENBLOG ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENBLOG} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -1697,10 +1697,10 @@ openblog_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_OPENBLOG installed"
+          msg "DISTRO: ${_F_OPENBLOG} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENBLOG ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENBLOG} ${noT}"
         fi
       fi
     fi
@@ -1720,9 +1720,9 @@ openchurch1_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "OCH" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_OPENCHURCH1 - http://openchurchsite.com" ; then
+        if prompt_yes_no "${_F_OPENCHURCH1} - http://openchurchsite.com" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENCHURCH1 ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENCHURCH1} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -1744,10 +1744,10 @@ openchurch1_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_OPENCHURCH1 installed"
+          msg "DISTRO: ${_F_OPENCHURCH1} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENCHURCH1 ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENCHURCH1} ${noT}"
         fi
       fi
     fi
@@ -1767,9 +1767,9 @@ openchurch2_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "CH2" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_OPENCHURCH2 - http://openchurchsite.com" ; then
+        if prompt_yes_no "${_F_OPENCHURCH2} - http://openchurchsite.com" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENCHURCH2 ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENCHURCH2} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -1792,10 +1792,10 @@ openchurch2_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_OPENCHURCH2 installed"
+          msg "DISTRO: ${_F_OPENCHURCH2} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENCHURCH2 ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENCHURCH2} ${noT}"
         fi
       fi
     fi
@@ -1815,9 +1815,9 @@ opendeals_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "ODS" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_OPENDEALS - http://opendealsapp.com" ; then
+        if prompt_yes_no "${_F_OPENDEALS} - http://opendealsapp.com" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENDEALS ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENDEALS} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -1838,10 +1838,10 @@ opendeals_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_OPENDEALS installed"
+          msg "DISTRO: ${_F_OPENDEALS} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENDEALS ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENDEALS} ${noT}"
         fi
       fi
     fi
@@ -1861,19 +1861,19 @@ openlucius_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "OLS" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_OPENLUCIUS - ${urlPrt}/openlucius" ; then
+        if prompt_yes_no "${_F_OPENLUCIUS} - ${urlPrt}/openlucius" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENLUCIUS ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENLUCIUS} ${yOk}"
           if [ ! -d "${_OCTO_PLPATH}" ]; then
             cd ${_ROOT}/distro/${_THIS_CORE}
             get_distro_ext "${_SHRD_PLNAME}.tar.gz"
           fi
           if [ -d "${_OCTO_PLPATH}" ]; then
-            msg "DISTRO: $_F_OPENLUCIUS installed"
+            msg "DISTRO: ${_F_OPENLUCIUS} installed"
             _RUN_VERIFY=YES
           fi
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENLUCIUS ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENLUCIUS} ${noT}"
         fi
       fi
     fi
@@ -1893,9 +1893,9 @@ openoutreach_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "OOH" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_OPENOUTREACH - http://openoutreach.org" ; then
+        if prompt_yes_no "${_F_OPENOUTREACH} - http://openoutreach.org" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENOUTREACH ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENOUTREACH} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -1919,10 +1919,10 @@ openoutreach_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_OPENOUTREACH installed"
+          msg "DISTRO: ${_F_OPENOUTREACH} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENOUTREACH ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENOUTREACH} ${noT}"
         fi
       fi
     fi
@@ -1942,9 +1942,9 @@ openpublic_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "OPC" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_OPENPUBLIC - http://openpublicapp.com" ; then
+        if prompt_yes_no "${_F_OPENPUBLIC} - http://openpublicapp.com" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENPUBLIC ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENPUBLIC} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -1966,10 +1966,10 @@ openpublic_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_OPENPUBLIC installed"
+          msg "DISTRO: ${_F_OPENPUBLIC} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENPUBLIC ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENPUBLIC} ${noT}"
         fi
       fi
     fi
@@ -1989,9 +1989,9 @@ openscholar_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "OSR" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_OPENSCHOLAR - http://theopenscholar.org" ; then
+        if prompt_yes_no "${_F_OPENSCHOLAR} - http://theopenscholar.org" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENSCHOLAR ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENSCHOLAR} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -2021,10 +2021,10 @@ openscholar_install() {
           fi
           init_this_distro_root
           mkdir -p ${_OCTO_PLPATH}/sites/all/libraries
-          msg "DISTRO: $_F_OPENSCHOLAR installed"
+          msg "DISTRO: ${_F_OPENSCHOLAR} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPENSCHOLAR ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPENSCHOLAR} ${noT}"
         fi
       fi
     fi
@@ -2044,19 +2044,19 @@ opigno_lms9_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "OPG" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_OPIGNOLMS9 - http://opigno.org" ; then
+        if prompt_yes_no "${_F_OPIGNOLMS9} - http://opigno.org" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPIGNOLMS9 ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPIGNOLMS9} ${yOk}"
           if [ ! -d "${_OCTO_PLPATH}" ]; then
             cd ${_ROOT}/distro/${_THIS_CORE}
             get_distro_ext "${_SHRD_PLNAME}.tar.gz"
           fi
           if [ -d "${_OCTO_PLPATH}" ]; then
-            msg "DISTRO: $_F_OPIGNOLMS9 installed"
+            msg "DISTRO: ${_F_OPIGNOLMS9} installed"
             _RUN_VERIFY=YES
           fi
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPIGNOLMS9 ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPIGNOLMS9} ${noT}"
         fi
       fi
     fi
@@ -2076,9 +2076,9 @@ opigno_lms7_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "OPO" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_OPIGNOLMS7 - http://opigno.org" ; then
+        if prompt_yes_no "${_F_OPIGNOLMS7} - http://opigno.org" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPIGNOLMS7 ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPIGNOLMS7} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -2108,10 +2108,10 @@ opigno_lms7_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_OPIGNOLMS7 installed"
+          msg "DISTRO: ${_F_OPIGNOLMS7} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_OPIGNOLMS7 ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_OPIGNOLMS7} ${noT}"
         fi
       fi
     fi
@@ -2131,9 +2131,9 @@ panopoly_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "PPY" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_PANOPOLY - ${urlPrt}/panopoly" ; then
+        if prompt_yes_no "${_F_PANOPOLY} - ${urlPrt}/panopoly" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_PANOPOLY ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_PANOPOLY} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -2164,10 +2164,10 @@ panopoly_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_PANOPOLY installed"
+          msg "DISTRO: ${_F_PANOPOLY} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_PANOPOLY ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_PANOPOLY} ${noT}"
         fi
       fi
     fi
@@ -2187,9 +2187,9 @@ recruiter_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "RER" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_RECRUITER - ${urlPrt}/recruiter" ; then
+        if prompt_yes_no "${_F_RECRUITER} - ${urlPrt}/recruiter" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_RECRUITER ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_RECRUITER} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -2210,10 +2210,10 @@ recruiter_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_RECRUITER installed"
+          msg "DISTRO: ${_F_RECRUITER} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_RECRUITER ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_RECRUITER} ${noT}"
         fi
       fi
     fi
@@ -2233,9 +2233,9 @@ restaurant_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "RST" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_RESTAURANT - ${urlPrt}/restaurant" ; then
+        if prompt_yes_no "${_F_RESTAURANT} - ${urlPrt}/restaurant" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_RESTAURANT ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_RESTAURANT} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -2263,10 +2263,10 @@ restaurant_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_RESTAURANT installed"
+          msg "DISTRO: ${_F_RESTAURANT} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_RESTAURANT ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_RESTAURANT} ${noT}"
         fi
       fi
     fi
@@ -2286,19 +2286,19 @@ thunder_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "THR" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_THUNDER - ${urlPrt}/thunder" ; then
+        if prompt_yes_no "${_F_THUNDER} - ${urlPrt}/thunder" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_THUNDER ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_THUNDER} ${yOk}"
           if [ ! -d "${_OCTO_PLPATH}" ]; then
             cd ${_ROOT}/distro/${_THIS_CORE}
             get_distro_ext "${_SHRD_PLNAME}.tar.gz"
           fi
           if [ -d "${_OCTO_PLPATH}" ]; then
-            msg "DISTRO: $_F_THUNDER installed"
+            msg "DISTRO: ${_F_THUNDER} installed"
             _RUN_VERIFY=YES
           fi
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_THUNDER ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_THUNDER} ${noT}"
         fi
       fi
     fi
@@ -2311,16 +2311,16 @@ ubercart6_install() {
 #
   _REAL_PRNAME="uberdrupal"
   _VIRT_PRNAME="ubercart"
-  _SHRD_PLNAME="$_VIRT_PRNAME-${_UBERCART6}-${_SMALLCORE6_V}"
+  _SHRD_PLNAME="${_VIRT_PRNAME}-${_UBERCART6}-${_SMALLCORE6_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
   if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "UCT" ]]; then
     if [ ! -d "${_OCTO_PLPATH}/modules/path_alias_cache" ]; then
-      if prompt_yes_no "$_F_UBERCART6 - http://ubercart.org" ; then
+      if prompt_yes_no "${_F_UBERCART6} - http://ubercart.org" ; then
         true
-        [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_UBERCART6 ${yOk}"
+        [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_UBERCART6} ${yOk}"
         if [ ! -d "${_SHRD_PLPATH}" ]; then
           if [ "${_USE_AEGIR_VER}" = "SRC" ] \
             && [ "${_T_BUILD}" = "HEAD" ]; then
@@ -2357,8 +2357,8 @@ ubercart6_install() {
             get_dev_contrib "views-6.x-3.3.tar.gz"
             get_dev_contrib "webform-6.x-3.23.tar.gz"
             ### https://drupal.org/node/1167276#comment-5138248
-            cd ${_SHRD_PRPATH}/modules/$_VIRT_PRNAME
-            patch -p1 < ${pthPch}/$_VIRT_PRNAME-1167276-reroll.patch &> /dev/null
+            cd ${_SHRD_PRPATH}/modules/${_VIRT_PRNAME}
+            patch -p1 < ${pthPch}/${_VIRT_PRNAME}-1167276-reroll.patch &> /dev/null
             cd ${_SHRD_PRPATH}/modules/imagecache
             # https://drupal.org/node/1243258#comment-4850634
             patch -p1 < ${pthPch}/imagecache-1243258-5.patch &> /dev/null
@@ -2371,10 +2371,10 @@ ubercart6_install() {
           fi
         fi
         init_this_distro_root
-        msg "DISTRO: $_F_UBERCART6 installed"
+        msg "DISTRO: ${_F_UBERCART6} installed"
         _RUN_VERIFY=YES
       else
-        [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_UBERCART6 ${noT}"
+        [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_UBERCART6} ${noT}"
       fi
     fi
   fi
@@ -2386,7 +2386,7 @@ ubercart7_install() {
 #
   _REAL_PRNAME="minimal"
   _VIRT_PRNAME="ubercart"
-  _SHRD_PLNAME="$_VIRT_PRNAME-${_UBERCART7}-${_SMALLCORE7_V}"
+  _SHRD_PLNAME="${_VIRT_PRNAME}-${_UBERCART7}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -2394,9 +2394,9 @@ ubercart7_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "UC7" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_UBERCART7 - http://ubercart.org" ; then
+        if prompt_yes_no "${_F_UBERCART7} - http://ubercart.org" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_UBERCART7 ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_UBERCART7} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -2440,10 +2440,10 @@ ubercart7_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_UBERCART7 installed"
+          msg "DISTRO: ${_F_UBERCART7} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_UBERCART7 ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_UBERCART7} ${noT}"
         fi
       fi
     fi
@@ -2456,7 +2456,7 @@ ubercart7_testing_install() {
 #
   _REAL_PRNAME="testing"
   _VIRT_PRNAME="ubercart-${_REAL_PRNAME}"
-  _SHRD_PLNAME="$_VIRT_PRNAME-${_UBERCART7}-${_SMALLCORE7_V}"
+  _SHRD_PLNAME="${_VIRT_PRNAME}-${_UBERCART7}-${_SMALLCORE7_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
@@ -2464,9 +2464,9 @@ ubercart7_testing_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "UC7" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_UBER_CART_T - http://ubercart.org" ; then
+        if prompt_yes_no "${_F_UBER_CART_T} - http://ubercart.org" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_UBER_CART_T ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_UBER_CART_T} ${yOk}"
           if [ ! -d "${_SHRD_PLPATH}" ]; then
             cd ${_CORE}
             if [ "${_USE_AEGIR_VER}" = "SRC" ] \
@@ -2510,10 +2510,10 @@ ubercart7_testing_install() {
             fi
           fi
           init_this_distro_root
-          msg "DISTRO: $_F_UBER_CART_T installed"
+          msg "DISTRO: ${_F_UBER_CART_T} installed"
           _RUN_VERIFY=YES
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_UBER_CART_T ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_UBER_CART_T} ${noT}"
         fi
       fi
     fi
@@ -2532,19 +2532,19 @@ varbase_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "VBE" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_VARBASE - ${urlPrt}/varbase" ; then
+        if prompt_yes_no "${_F_VARBASE} - ${urlPrt}/varbase" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_VARBASE ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_VARBASE} ${yOk}"
           if [ ! -d "${_OCTO_PLPATH}" ]; then
             cd ${_ROOT}/distro/${_THIS_CORE}
             get_distro_ext "${_SHRD_PLNAME}.tar.gz"
           fi
           if [ -d "${_OCTO_PLPATH}" ]; then
-            msg "DISTRO: $_F_VARBASE installed"
+            msg "DISTRO: ${_F_VARBASE} installed"
             _RUN_VERIFY=YES
           fi
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_VARBASE ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_VARBASE} ${noT}"
         fi
       fi
     fi
@@ -2563,19 +2563,19 @@ social_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "SOC" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "$_F_SOCIAL - ${urlPrt}/social" ; then
+        if prompt_yes_no "${_F_SOCIAL} - ${urlPrt}/social" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_SOCIAL ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_SOCIAL} ${yOk}"
           if [ ! -d "${_OCTO_PLPATH}" ]; then
             cd ${_ROOT}/distro/${_THIS_CORE}
             get_distro_ext "${_SHRD_PLNAME}.tar.gz"
           fi
           if [ -d "${_OCTO_PLPATH}" ]; then
-            msg "DISTRO: $_F_SOCIAL installed"
+            msg "DISTRO: ${_F_SOCIAL} installed"
             _RUN_VERIFY=YES
           fi
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: $_F_SOCIAL ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_SOCIAL} ${noT}"
         fi
       fi
     fi
@@ -2730,231 +2730,231 @@ save_verify_platforms() {
 
   if [ -d "${pthDst}/agov-${_AGOV}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/agov-${_AGOV}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_AGOV" agov \
+      ${_DRUSHCMD} php-script make_platform "${_F_AGOV}" agov \
         ${pthDst}/agov-${_AGOV}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6_V}" ]; then
     if [ ! -e "${pthDst}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_CIVICRM_M6" default \
+      ${_DRUSHCMD} php-script make_platform "${_F_CIVICRM_M6}" default \
         ${pthDst}/civicrm-${_CIVICRM_M6}-${_SMALLCORE6_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_CIVICRM_M7" default \
+      ${_DRUSHCMD} php-script make_platform "${_F_CIVICRM_M7}" default \
         ${pthDst}/civicrm-${_CIVICRM_M7}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/cod-${_COD}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/cod-${_COD}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_COD" cod \
+      ${_DRUSHCMD} php-script make_platform "${_F_COD}" cod \
         ${pthDst}/cod-${_COD}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/commerce-${_COMMERCE1}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/commerce-${_COMMERCE1}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_COMMERCE1" commerce_kickstart \
+      ${_DRUSHCMD} php-script make_platform "${_F_COMMERCE1}" commerce_kickstart \
         ${pthDst}/commerce-${_COMMERCE1}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/commerce-${_COMMERCE2}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/commerce-${_COMMERCE2}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_COMMERCE2" commerce_kickstart \
+      ${_DRUSHCMD} php-script make_platform "${_F_COMMERCE2}" commerce_kickstart \
         ${pthDst}/commerce-${_COMMERCE2}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/commons-${_COMMONS2}-${_SMALLCORE6_V}" ]; then
     if [ ! -e "${pthDst}/commons-${_COMMONS2}-${_SMALLCORE6_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_COMMONS2" commons \
+      ${_DRUSHCMD} php-script make_platform "${_F_COMMONS2}" commons \
         ${pthDst}/commons-${_COMMONS2}-${_SMALLCORE6_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/commons-${_COMMONS3}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/commons-${_COMMONS3}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_COMMONS3" commons \
+      ${_DRUSHCMD} php-script make_platform "${_F_COMMONS3}" commons \
         ${pthDst}/commons-${_COMMONS3}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/erpal-${_ERPAL}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/erpal-${_ERPAL}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_ERPAL" erpal \
+      ${_DRUSHCMD} php-script make_platform "${_F_ERPAL}" erpal \
         ${pthDst}/erpal-${_ERPAL}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/fserver-${_SMALLCORE6_V}" ]; then
     if [ ! -e "${pthDst}/fserver-${_SMALLCORE6_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_FSERVER" feature_server \
+      ${_DRUSHCMD} php-script make_platform "${_F_FSERVER}" feature_server \
         ${pthDst}/fserver-${_SMALLCORE6_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/guardr-${_GUARDR}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/guardr-${_GUARDR}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_GUARDR" guardr \
+      ${_DRUSHCMD} php-script make_platform "${_F_GUARDR}" guardr \
         ${pthDst}/guardr-${_GUARDR}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/openacademy-${_OPENACADEMY}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/openacademy-${_OPENACADEMY}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_OPENACADEMY" openacademy \
+      ${_DRUSHCMD} php-script make_platform "${_F_OPENACADEMY}" openacademy \
         ${pthDst}/openacademy-${_OPENACADEMY}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/openaid-${_OPENAID}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/openaid-${_OPENAID}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_OPENAID" openaid \
+      ${_DRUSHCMD} php-script make_platform "${_F_OPENAID}" openaid \
         ${pthDst}/openaid-${_OPENAID}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_OPENATRIUM7" openatrium \
+      ${_DRUSHCMD} php-script make_platform "${_F_OPENATRIUM7}" openatrium \
         ${pthDst}/openatrium-${_OPENATRIUM7}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/openblog-${_OPENBLOG}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/openblog-${_OPENBLOG}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_OPENBLOG" openblog \
+      ${_DRUSHCMD} php-script make_platform "${_F_OPENBLOG}" openblog \
         ${pthDst}/openblog-${_OPENBLOG}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_OPENCHURCH1" openchurch \
+      ${_DRUSHCMD} php-script make_platform "${_F_OPENCHURCH1}" openchurch \
         ${pthDst}/openchurch-${_OPENCHURCH1}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_OPENCHURCH2" openchurch \
+      ${_DRUSHCMD} php-script make_platform "${_F_OPENCHURCH2}" openchurch \
         ${pthDst}/openchurch-${_OPENCHURCH2}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/opendeals-${_OPENDEALS}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/opendeals-${_OPENDEALS}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_OPENDEALS" \
+      ${_DRUSHCMD} php-script make_platform "${_F_OPENDEALS}" \
         opendeals ${pthDst}/opendeals-${_OPENDEALS}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}/web" ]; then
     if [ ! -e "${pthDst}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}/web/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_OPENLUCIUS" openlucius \
+      ${_DRUSHCMD} php-script make_platform "${_F_OPENLUCIUS}" openlucius \
         ${pthDst}/openlucius-${_OPENLUCIUS}-${_SMALLCORE9_V}/web &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_OPENOUTREACH" openoutreach \
+      ${_DRUSHCMD} php-script make_platform "${_F_OPENOUTREACH}" openoutreach \
         ${pthDst}/openoutreach-${_OPENOUTREACH}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_OPENPUBLIC" openpublic \
+      ${_DRUSHCMD} php-script make_platform "${_F_OPENPUBLIC}" openpublic \
         ${pthDst}/openpublic-${_OPENPUBLIC}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_OPENPUBLISH" openpublish \
+      ${_DRUSHCMD} php-script make_platform "${_F_OPENPUBLISH}" openpublish \
         ${pthDst}/openpublish-${_OPENPUBLISH}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_OPENSCHOLAR" openscholar \
+      ${_DRUSHCMD} php-script make_platform "${_F_OPENSCHOLAR}" openscholar \
         ${pthDst}/openscholar-${_OPENSCHOLAR}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_OPIGNOLMS7" opigno_lms \
+      ${_DRUSHCMD} php-script make_platform "${_F_OPIGNOLMS7}" opigno_lms \
         ${pthDst}/opigno_lms-${_OPIGNOLMS7}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/panopoly-${_PANOPOLY}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/panopoly-${_PANOPOLY}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_PANOPOLY" panopoly \
+      ${_DRUSHCMD} php-script make_platform "${_F_PANOPOLY}" panopoly \
         ${pthDst}/panopoly-${_PANOPOLY}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/recruiter-${_RECRUITER}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/recruiter-${_RECRUITER}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_RECRUITER" recruiter \
+      ${_DRUSHCMD} php-script make_platform "${_F_RECRUITER}" recruiter \
         ${pthDst}/recruiter-${_RECRUITER}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/restaurant-${_RESTAURANT}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/restaurant-${_RESTAURANT}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_RESTAURANT" restaurant \
+      ${_DRUSHCMD} php-script make_platform "${_F_RESTAURANT}" restaurant \
         ${pthDst}/restaurant-${_RESTAURANT}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_1_V}/docroot" ]; then
     if [ ! -e "${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_1_V}/docroot/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_THUNDER" thunder \
+      ${_DRUSHCMD} php-script make_platform "${_F_THUNDER}" thunder \
         ${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_1_V}/docroot &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}" ]; then
     if [ ! -e "${pthDst}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_UBERCART6" uberdrupal \
+      ${_DRUSHCMD} php-script make_platform "${_F_UBERCART6}" uberdrupal \
         ${pthDst}/ubercart-${_UBERCART6}-${_SMALLCORE6_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/ubercart-${_UBERCART7}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/ubercart-${_UBERCART7}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_UBERCART7" minimal \
+      ${_DRUSHCMD} php-script make_platform "${_F_UBERCART7}" minimal \
         ${pthDst}/ubercart-${_UBERCART7}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7_V}" ]; then
     if [ ! -e "${pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7_V}/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_UBER_CART_T" testing \
+      ${_DRUSHCMD} php-script make_platform "${_F_UBER_CART_T}" testing \
         ${pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/varbase-${_VARBASE}-${_SMALLCORE10_1_V}/docroot" ]; then
     if [ ! -e "${pthDst}/varbase-${_VARBASE}-${_SMALLCORE10_1_V}/docroot/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_VARBASE" varbase \
+      ${_DRUSHCMD} php-script make_platform "${_F_VARBASE}" varbase \
         ${pthDst}/varbase-${_VARBASE}-${_SMALLCORE10_1_V}/docroot &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/social-${_SOCIAL}-${_SMALLCORE10_0_V}/html" ]; then
     if [ ! -e "${pthDst}/social-${_SOCIAL}-${_SMALLCORE10_0_V}/html/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_SOCIAL" social \
+      ${_DRUSHCMD} php-script make_platform "${_F_SOCIAL}" social \
         ${pthDst}/social-${_SOCIAL}-${_SMALLCORE10_0_V}/html &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}/web" ]; then
     if [ ! -e "${pthDst}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}/web/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_OPIGNOLMS9" opigno_lms \
+      ${_DRUSHCMD} php-script make_platform "${_F_OPIGNOLMS9}" opigno_lms \
         ${pthDst}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}/web &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/pressflow-${_SMALLCORE6_V}-dev" ]; then
     if [ ! -e "${pthDst}/pressflow-${_SMALLCORE6_V}-dev/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL6_D" default \
+      ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL6_D}" default \
         ${pthDst}/pressflow-${_SMALLCORE6_V}-dev &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/pressflow-${_SMALLCORE6_V}-stage" ]; then
     if [ ! -e "${pthDst}/pressflow-${_SMALLCORE6_V}-stage/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL6_S" default \
+      ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL6_S}" default \
         ${pthDst}/pressflow-${_SMALLCORE6_V}-stage &> /dev/null
     fi
   fi
   if [ ! -d "${pthDst}/pressflow" ]; then
     if [ -d "${pthDst}/pressflow-${_SMALLCORE6_V}-prod" ]; then
       if [ ! -e "${pthDst}/pressflow-${_SMALLCORE6_V}-prod/$drhSrc" ]; then
-        ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL6_P" default \
+        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL6_P}" default \
           ${pthDst}/pressflow-${_SMALLCORE6_V}-prod &> /dev/null
       fi
     fi
   elif [ ! -d "${pthDst}/pressflow-${_SMALLCORE6_V}-prod" ]; then
     if [ -d "${pthDst}/pressflow" ]; then
       if [ ! -e "${pthDst}/pressflow/$drhSrc" ]; then
-        ${_DRUSHCMD} php-script make_platform "$_F_DRUPAL6_P" default \
+        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL6_P}" default \
           ${pthDst}/pressflow &> /dev/null
       fi
     fi

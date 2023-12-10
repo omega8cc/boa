@@ -308,15 +308,15 @@ migrate_sites() {
       Plr=`cat ${_USR}/.drush/${Dom}.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       if [ "${cmd}" = "import" ] || [ "${cmd}" = "export" ]; then
         _DBN=`cat ${Dir}/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
-        echo "site ${Dom} raw _DBN is $_DBN"
+        echo "site ${Dom} raw _DBN is ${_DBN}"
         _DBN=${_DBN//[^a-zA-Z0-9_]/}
-        echo "site ${Dom} clean _DBN is $_DBN"
+        echo "site ${Dom} clean _DBN is ${_DBN}"
       fi
       if [ "${cmd}" = "import" ]; then
         _DBP=`cat ${Dir}/drushrc.php | grep "options\['db_passwd'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
-        echo "site ${Dom} raw _DBP is $_DBP"
+        echo "site ${Dom} raw _DBP is ${_DBP}"
         _DBP=${_DBP//[^a-zA-Z0-9_]/}
-        echo "site ${Dom} clean _DBP is $_DBP"
+        echo "site ${Dom} clean _DBP is ${_DBP}"
         if [ -e "${Vhd}" ]; then
           mv -f ${Vhd} ${Vht}
         fi
@@ -795,9 +795,9 @@ migrate_prepare() {
         run_drush8_hmr_cmd "sqlq \"DELETE FROM node_revision WHERE nid='8'\"" &> /dev/null
         run_drush8_hmr_cmd "sqlq \"UPDATE node SET type='server' WHERE nid='2'\"" &> /dev/null
         run_drush8_hmr_cmd "sqlq \"UPDATE node SET type='server' WHERE nid='4'\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='$_USE_AEGIR_HOST' WHERE nid='2'\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='${_USE_AEGIR_HOST}' WHERE nid='2'\"" &> /dev/null
         run_drush8_hmr_cmd "sqlq \"UPDATE node SET title='localhost' WHERE nid='4'\"" &> /dev/null
-        run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='$_USE_AEGIR_HOST' WHERE nid='2'\"" &> /dev/null
+        run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='${_USE_AEGIR_HOST}' WHERE nid='2'\"" &> /dev/null
         run_drush8_hmr_cmd "sqlq \"UPDATE node_revision SET title='localhost' WHERE nid='4'\"" &> /dev/null
         run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET db_server='4' WHERE db_server='2'\"" &> /dev/null
         run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform SET web_server='2' WHERE web_server='0'\"" &> /dev/null

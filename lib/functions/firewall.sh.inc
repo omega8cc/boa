@@ -7,7 +7,7 @@ fix_lfd_uidignore() {
   _THIS_FILE=/etc/csf/csf.uidignore
   if [ -e "${_THIS_FILE}" ]; then
     _CSF_UIDIGNORE_TEST=$(grep "pdnsd" ${_THIS_FILE} 2>&1)
-    if [[ "$_CSF_UIDIGNORE_TEST" =~ "pdnsd" ]]; then
+    if [[ "${_CSF_UIDIGNORE_TEST}" =~ "pdnsd" ]]; then
       _DO_NOTHING=YES
     else
       echo "#root"          >> /etc/csf/csf.uidignore
@@ -23,7 +23,7 @@ fix_lfd_uidignore() {
     fi
     if [ -e "/usr/sbin/named" ]; then
       _CSF_UIDIGNORE_TEST=$(grep "bind" ${_THIS_FILE} 2>&1)
-      if [[ "$_CSF_UIDIGNORE_TEST" =~ "bind" ]]; then
+      if [[ "${_CSF_UIDIGNORE_TEST}" =~ "bind" ]]; then
         _DO_NOTHING=YES
       else
         echo "#bind"        >> /etc/csf/csf.uidignore
@@ -43,7 +43,7 @@ fix_lfd_whitelist() {
   _THIS_FILE=/etc/csf/csf.fignore
   if [ -e "${_THIS_FILE}" ]; then
     _CSF_WHITELIST_TEST=$(grep "jetty" ${_THIS_FILE} 2>&1)
-    if [[ "$_CSF_WHITELIST_TEST" =~ "jetty" ]]; then
+    if [[ "${_CSF_WHITELIST_TEST}" =~ "jetty" ]]; then
       _DO_NOTHING=YES
     else
       sed -i "s/.*\/tmp\/.*//g" ${_THIS_FILE} &> /dev/null
@@ -65,7 +65,7 @@ csf_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: csf_install"
   fi
-  if [ "$_CSF_MODE" = "install" ]; then
+  if [ "${_CSF_MODE}" = "install" ]; then
     msg "INFO: Installing csf/lfd firewall..."
   else
     msg "INFO: Upgrading csf/lfd firewall..."
@@ -116,9 +116,9 @@ csf_install() {
     _SSH_PORT=22
   fi
   _CSF_COMPATIBILITY_TEST=$(perl /etc/csf/csftest.pl 2>&1)
-  if [[ "$_CSF_COMPATIBILITY_TEST" =~ "RESULT: csf should function" ]]; then
+  if [[ "${_CSF_COMPATIBILITY_TEST}" =~ "RESULT: csf should function" ]]; then
     _CSF_COMPATIBILITY=YES
-  elif [[ "$_CSF_COMPATIBILITY_TEST" =~ "some features will not work" ]]; then
+  elif [[ "${_CSF_COMPATIBILITY_TEST}" =~ "some features will not work" ]]; then
     _CSF_COMPATIBILITY=PARTIAL
     sed -i "s/^PORTFLOOD .*/PORTFLOOD = \"\"/g" /etc/csf/csf.conf &> /dev/null
     wait
@@ -126,14 +126,14 @@ csf_install() {
     wait
     sed -i "s/^USE_CONNTRACK .*/USE_CONNTRACK = \"0\"/g" /etc/csf/csf.conf &> /dev/null
     wait
-  elif [[ "$_CSF_COMPATIBILITY_TEST" =~ "FATAL" ]]; then
+  elif [[ "${_CSF_COMPATIBILITY_TEST}" =~ "FATAL" ]]; then
     _CSF_COMPATIBILITY=NO
   else
     _CSF_COMPATIBILITY=NO
   fi
-  if [ "$_CSF_COMPATIBILITY" = "YES" ] \
-    || [ "$_CSF_COMPATIBILITY" = "PARTIAL" ]; then
-    if [ "$_CSF_COMPATIBILITY" = "PARTIAL" ]; then
+  if [ "${_CSF_COMPATIBILITY}" = "YES" ] \
+    || [ "${_CSF_COMPATIBILITY}" = "PARTIAL" ]; then
+    if [ "${_CSF_COMPATIBILITY}" = "PARTIAL" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "TEST: csf/lfd firewall should mostly work on this system"
       fi
@@ -172,7 +172,7 @@ csf_install() {
       wait
     fi
     mrun "service ssh restart" &> /dev/null
-    if [ "$_CSF_MODE" = "install" ]; then
+    if [ "${_CSF_MODE}" = "install" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: csf/lfd firewall installed"
       fi
@@ -219,7 +219,7 @@ csf_lfd_install_upgrade() {
   fi
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "CSF" ]] \
-    || [ "$_CSF_CLSTR" = "YES" ]; then
+    || [ "${_CSF_CLSTR}" = "YES" ]; then
     if [ ! -e "/var/run/cloud_vhost.pid" ]; then
       if [ ! -e "/usr/sbin/csf" ]; then
         echo " "
@@ -236,15 +236,15 @@ csf_lfd_install_upgrade() {
   if [ -x "/usr/sbin/csf" ] \
     || [ -e "/usr/sbin/lfd" ] \
     || [ -e "/etc/cron.d/lfd" ]; then
-    if [ "$_CSF_COMPATIBILITY" = "NO" ] \
-      || [ "$_CSF_CLSTR" = "NO" ]; then
+    if [ "${_CSF_COMPATIBILITY}" = "NO" ] \
+      || [ "${_CSF_CLSTR}" = "NO" ]; then
       _REMOVE_CSF=YES
     elif [ "${_VMFAMILY}" = "VS" ] \
       && [ ! -e "/boot/grub/grub.cfg" ] \
       && [ ! -e "/boot/grub/menu.lst" ]; then
       _REMOVE_CSF=YES
     fi
-    if [ "$_REMOVE_CSF" = "YES" ]; then
+    if [ "${_REMOVE_CSF}" = "YES" ]; then
       service lfd stop &> /dev/null
       wait
       kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
