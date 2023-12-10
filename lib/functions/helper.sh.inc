@@ -518,6 +518,8 @@ virt_detection() {
             hyperv)      _VIRT_IS="Microsoft Hyper-V" ;;
             kvm aws)     _VIRT_IS="Linux KVM guest on AWS" ;;
             kvm)         _VIRT_IS="Linux KVM guest" ;;
+            lxc)         _VIRT_IS="Linux Containers (LXC)" ;;
+            openvz lxc)  _VIRT_IS="OpenVZ Containers" ;;
             parallels)   _VIRT_IS="Parallels guest" ;;
             virtualbox)  _VIRT_IS="VirtualBox guest" ;;
             vmware)      _VIRT_IS="VMware ESXi guest" ;;
