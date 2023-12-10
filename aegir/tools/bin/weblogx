@@ -297,7 +297,7 @@ else
   _SITE=${_SITE#dev-}
   _SITE=${_SITE#stage-}
   _SITE=${_SITE#prod-}
-  _ENV="$( cut -d '-' -f 1 <<< "$_URL" )"
+  _ENV="$( cut -d '-' -f 1 <<< "${_URL}" )"
 fi
 
 echo "[+] _SITE NAME: ${_SITE} / _ENV: ${_ENV}"

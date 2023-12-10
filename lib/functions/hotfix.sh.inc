@@ -148,9 +148,9 @@ fix_cnf_postfix() {
   fi
   _RELOAD_POSTFIX=NO
   _INET_TEST=$(grep 'inet_protocols' /etc/postfix/main.cf 2>&1)
-  if [[ "$_INET_TEST" =~ "inet_protocols" ]]; then
+  if [[ "${_INET_TEST}" =~ "inet_protocols" ]]; then
     _INET_TEST=$(grep 'inet_protocols = ipv4' /etc/postfix/main.cf 2>&1)
-    if [[ "$_INET_TEST" =~ "ipv4" ]]; then
+    if [[ "${_INET_TEST}" =~ "ipv4" ]]; then
       _DO_NOTHING=YES
     else
       sed -i "s/^inet_protocols.*/inet_protocols = ipv4/g" \
@@ -161,7 +161,7 @@ fix_cnf_postfix() {
     echo "inet_protocols = ipv4" >> /etc/postfix/main.cf
     _RELOAD_POSTFIX=YES
   fi
-  if [ "$_RELOAD_POSTFIX" = "YES" ]; then
+  if [ "${_RELOAD_POSTFIX}" = "YES" ]; then
     postfix reload &> /dev/null
   fi
 }

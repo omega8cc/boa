@@ -210,7 +210,7 @@ detect_cdorked_malware() {
   if [ -x "/usr/sbin/nginx" ]; then
     _C_DORKED=NO
     _C_FILE=${bldPth}/aegir/helpers/dump_cdorked_config.c
-    if [ -e "$_C_FILE" ]; then
+    if [ -e "${_C_FILE}" ]; then
       ### msg "INFO: Checking for Linux/Cdorked.A malware..."
       chattr -ai /usr/sbin/nginx
       cd ${vBs}
@@ -391,7 +391,7 @@ nginx_install_upgrade() {
     _NGINX_INSTALL_REQUIRED=YES
   fi
   detect_cdorked_malware
-  if [ "$_C_DORKED" = "YES" ]; then
+  if [ "${_C_DORKED}" = "YES" ]; then
     _NGINX_INSTALL_REQUIRED=YES
     msg "INFO: Nginx rebuild required to remove possible Linux/Cdorked.A malware"
   fi
@@ -542,7 +542,7 @@ nginx_initd_check() {
     msg "PROC: nginx_initd_check"
   fi
   _X_INIT_TEST=$(cat /etc/init.d/nginx 2>&1)
-  if [[ "$_X_INIT_TEST" =~ "github" ]]; then
+  if [[ "${_X_INIT_TEST}" =~ "github" ]]; then
     _DO_NOTHING=YES
   else
     mv -f /etc/init.d/nginx \
@@ -865,25 +865,25 @@ nginx_config_update_fix() {
     if [ -e "/data/disk" ]; then
       for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
         pthPrN="provision/http/Provision/Config/Nginx"
-        if [ -e "$_OCT/.drush/sys/drush_make" ]; then
+        if [ -e "${_OCT}/.drush/sys/drush_make" ]; then
           sed -i "s/\!empty.*';/'*';/g" \
-            $_OCT/.drush/sys/${pNx}/server.tpl.php &> /dev/null
+            ${_OCT}/.drush/sys/${pNx}/server.tpl.php &> /dev/null
           wait
           sed -i "s/\!empty.*';/'*';/g" \
-            $_OCT/.drush/sys/${pNx}/vhost.tpl.php &> /dev/null
+            ${_OCT}/.drush/sys/${pNx}/vhost.tpl.php &> /dev/null
           wait
           sed -i "s/\!empty.*';/'*';/g" \
-            $_OCT/.drush/sys/${pNx}/vhost_disabled.tpl.php &> /dev/null
+            ${_OCT}/.drush/sys/${pNx}/vhost_disabled.tpl.php &> /dev/null
           wait
-        elif [ -e "$_OCT/.drush/drush_make" ]; then
+        elif [ -e "${_OCT}/.drush/drush_make" ]; then
           sed -i "s/\!empty.*';/'*';/g" \
-            $_OCT/.drush/${pNx}/server.tpl.php &> /dev/null
-          wait
-          sed -i "s/\!empty.*';/'*';/g" \
-            $_OCT/.drush/${pNx}/vhost.tpl.php &> /dev/null
+            ${_OCT}/.drush/${pNx}/server.tpl.php &> /dev/null
           wait
           sed -i "s/\!empty.*';/'*';/g" \
-            $_OCT/.drush/${pNx}/vhost_disabled.tpl.php &> /dev/null
+            ${_OCT}/.drush/${pNx}/vhost.tpl.php &> /dev/null
+          wait
+          sed -i "s/\!empty.*';/'*';/g" \
+            ${_OCT}/.drush/${pNx}/vhost_disabled.tpl.php &> /dev/null
           wait
         fi
       done

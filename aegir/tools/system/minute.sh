@@ -106,7 +106,7 @@ check_pdnsd() {
   fi
   if [ -e "/etc/resolv.conf" ]; then
     _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
-    if [[ "$_RESOLV_TEST" =~ "nameserver 127.0.0.1" ]]; then
+    if [[ "${_RESOLV_TEST}" =~ "nameserver 127.0.0.1" ]]; then
       _THIS_DNS_TEST=$(host files.aegir.cc 127.0.0.1 -w 3 2>&1)
       if [[ "${_THIS_DNS_TEST}" =~ "no servers could be reached" ]]; then
         service pdnsd stop &> /dev/null
@@ -167,8 +167,8 @@ if [ -e "/var/log/php" ]; then
 fi
 
 _PHPLOG_SIZE_TEST=$(du -s -h /var/log/php 2>&1)
-if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]]; then
-  echo $_PHPLOG_SIZE_TEST too big
+if [[ "${_PHPLOG_SIZE_TEST}" =~ "G" ]]; then
+  echo ${_PHPLOG_SIZE_TEST} too big
   touch /var/run/fmp_wait.pid
   rm -f /var/log/php/*
   renice ${_B_NICE} -p $$ &> /dev/null
@@ -189,7 +189,7 @@ if [[ "$_PHPLOG_SIZE_TEST" =~ "G" ]]; then
   fi
   sleep 8
   rm -f /var/run/fmp_wait.pid
-  echo "$(date 2>&1) Too big PHP error logs deleted: $_PHPLOG_SIZE_TEST" >> \
+  echo "$(date 2>&1) Too big PHP error logs deleted: ${_PHPLOG_SIZE_TEST}" >> \
     /var/xdrago/log/php.giant.logs.incident.log
 fi
 
@@ -539,7 +539,7 @@ lsyncd_proc_control() {
         /var/xdrago/log/lsyncd.monitor.log
       _ARCHIVE_LOG=YES
     fi
-    if [ "$_ARCHIVE_LOG" = "YES" ]; then
+    if [ "${_ARCHIVE_LOG}" = "YES" ]; then
       cat /var/xdrago/log/lsyncd.monitor.log >> \
         /var/xdrago/log/lsyncd.warn.archive.log
       rm -f /var/xdrago/log/lsyncd.monitor.log

@@ -183,13 +183,13 @@ check_git_repos() {
         msg "WARN: The GitLab mirror repository server doesn't respond..."
       fi
     fi
-    if [ "$_GITHUB_WORKS" = "YES" ]; then
+    if [ "${_GITHUB_WORKS}" = "YES" ]; then
       _BOA_REPO_NAME="boa"
       _BOA_REPO_GIT_URL="${gitHub}"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: GitHub master repository will be used"
       fi
-    elif [ "$_GITLAB_WORKS" = "YES" ]; then
+    elif [ "${_GITLAB_WORKS}" = "YES" ]; then
       _BOA_REPO_NAME="boa"
       _BOA_REPO_GIT_URL="${gitLab}"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -485,7 +485,7 @@ install_pdnsd_cache() {
   resolvconf -u &> /dev/null
   if [ -e "/etc/resolvconf/run/resolv.conf" ]; then
     _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
-    if [[ "$_RESOLV_TEST" =~ "nameserver 127.0.0.1" ]]; then
+    if [[ "${_RESOLV_TEST}" =~ "nameserver 127.0.0.1" ]]; then
       _DO_NOTHING=YES
     else
       rm -f /etc/resolv.conf
@@ -621,7 +621,7 @@ check_ip_hostname() {
             _DO_NOTHING=YES
           else
             sed -i "s/^${_MY_OWNIP}.*//g" /etc/hosts &> /dev/null
-            echo "${_MY_OWNIP} ${_MY_HOSTN} chive.${_MY_HOSTN} sqlbuddy.${_MY_HOSTN} cgp.${_MY_HOSTN} $_S_E" >> /etc/hosts
+            echo "${_MY_OWNIP} ${_MY_HOSTN} chive.${_MY_HOSTN} sqlbuddy.${_MY_HOSTN} cgp.${_MY_HOSTN} ${_S_E}" >> /etc/hosts
           fi
         fi
         hostname -b ${_MY_HOSTN} ### force our custom FQDN/local hostname
@@ -638,14 +638,14 @@ check_ip_hostname() {
         _LOC_DOM="${_MY_FRONT}"
         find_correct_ip
         _THEFRDIP="${_LOC_IP}"
-        if [ "$_THEFRDIP" = "${_THISHTIP}" ]; then
+        if [ "${_THEFRDIP}" = "${_THISHTIP}" ]; then
           _TESTHOST=$(uname -n 2>&1)
-          _LOC_DOM="$_TESTHOST"
+          _LOC_DOM="${_TESTHOST}"
           find_correct_ip
           _TESTRDIP="${_LOC_IP}"
-          if [ "$_TESTRDIP" = "${_THISHTIP}" ]; then
+          if [ "${_TESTRDIP}" = "${_THISHTIP}" ]; then
             _FQDNTEST="TRUE"
-            hostname -b $_TESTHOST
+            hostname -b ${_TESTHOST}
           else
            _FQDNTEST="FALSE"
           fi
@@ -661,7 +661,7 @@ check_ip_hostname() {
       _FQDNPROB=$(uname -n 2>&1)
       _FQDNTEST="FALSE"
       _THISHOST=$(uname -n 2>&1)
-      if [ ! -z "$_FQDNPROB" ]; then
+      if [ ! -z "${_FQDNPROB}" ]; then
         _THISHOST=$(uname -n 2>&1)
         _THISHOST=${_THISHOST//[^a-zA-Z0-9-.]/}
         _THISHOST=$(echo -n ${_THISHOST} | tr A-Z a-z 2>&1)
@@ -674,15 +674,15 @@ check_ip_hostname() {
         else
           _FQDNTEST="FALSE"
           _REVHOSTN=$(host ${_THISHTIP} | cut -d: -f2 | awk '{ print $5}' 2>&1)
-          _REVHOSTN=$(echo -n $_REVHOSTN |sed 's/\(.*\)./\1/' 2>&1)
+          _REVHOSTN=$(echo -n ${_REVHOSTN} |sed 's/\(.*\)./\1/' 2>&1)
           _REVHOSTN=${_REVHOSTN//[^a-zA-Z0-9-.]/}
-          _REVHOSTN=$(echo -n $_REVHOSTN | tr A-Z a-z 2>&1)
-          _LOC_DOM="$_REVHOSTN"
+          _REVHOSTN=$(echo -n ${_REVHOSTN} | tr A-Z a-z 2>&1)
+          _LOC_DOM="${_REVHOSTN}"
           find_correct_ip
           _REVHSTIP="${_LOC_IP}"
-          if [ "$_REVHSTIP" = "${_THISHTIP}" ]; then
-            hostname -b $_REVHOSTN
-            _THISHOST="$_REVHOSTN"
+          if [ "${_REVHSTIP}" = "${_THISHTIP}" ]; then
+            hostname -b ${_REVHOSTN}
+            _THISHOST="${_REVHOSTN}"
             _FQDNTEST="TRUE"
           else
             _FQDNTEST="FALSE"
@@ -690,15 +690,15 @@ check_ip_hostname() {
         fi
       else
         _REVHOSTN=$(host ${_THISHTIP} | cut -d: -f2 | awk '{ print $5}' 2>&1)
-        _REVHOSTN=$(echo -n $_REVHOSTN |sed 's/\(.*\)./\1/' 2>&1)
+        _REVHOSTN=$(echo -n ${_REVHOSTN} |sed 's/\(.*\)./\1/' 2>&1)
         _REVHOSTN=${_REVHOSTN//[^a-zA-Z0-9-.]/}
-        _REVHOSTN=$(echo -n $_REVHOSTN | tr A-Z a-z 2>&1)
-        _LOC_DOM="$_REVHOSTN"
+        _REVHOSTN=$(echo -n ${_REVHOSTN} | tr A-Z a-z 2>&1)
+        _LOC_DOM="${_REVHOSTN}"
         find_correct_ip
         _REVHSTIP="${_LOC_IP}"
-        if [ "$_REVHSTIP" = "${_THISHTIP}" ]; then
-          hostname -b $_REVHOSTN
-          _THISHOST="$_REVHOSTN"
+        if [ "${_REVHSTIP}" = "${_THISHTIP}" ]; then
+          hostname -b ${_REVHOSTN}
+          _THISHOST="${_REVHOSTN}"
           _FQDNTEST="TRUE"
         else
          _FQDNTEST="FALSE"
@@ -718,7 +718,7 @@ check_ip_hostname() {
       msg "Please try something like: aegir.local"
       clean_pid_exit
     fi
-    if [ "$_FQDNTEST" = "FALSE" ]; then
+    if [ "${_FQDNTEST}" = "FALSE" ]; then
       echo " "
       msg "EXIT on error due to invalid DNS setup"
       if [ ! -z "${_MY_OWNIP}" ]; then

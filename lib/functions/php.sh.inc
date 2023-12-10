@@ -6,7 +6,7 @@ fix_php_ini_ioncube() {
   fi
   if [ -e "${_THIS_FILE}" ] && [ "${_PHP_IONCUBE}" = "NO" ]; then
     _IONCUBE_INI_TEST=$(grep "ioncube_loader" ${_THIS_FILE} 2>&1)
-    if [[ "$_IONCUBE_INI_TEST" =~ "ioncube_loader" ]]; then
+    if [[ "${_IONCUBE_INI_TEST}" =~ "ioncube_loader" ]]; then
       sed -i "s/.*ioncube_loader.*//g" ${_THIS_FILE} &> /dev/null
       wait
     fi
@@ -21,7 +21,7 @@ remove_php_ini_jsmin() {
   fi
   if [ -e "${_THIS_FILE}" ]; then
     _JSMIN_INI_TEST=$(grep "^extension=jsmin.so" ${_THIS_FILE} 2>&1)
-    if [[ "$_JSMIN_INI_TEST" =~ "extension=jsmin.so" ]]; then
+    if [[ "${_JSMIN_INI_TEST}" =~ "extension=jsmin.so" ]]; then
       sed -i "s/.*jsmin.*//g" ${_THIS_FILE} &> /dev/null
       wait
     fi
@@ -36,7 +36,7 @@ remove_php_ini_suhosin() {
   fi
   if [ -e "${_THIS_FILE}" ]; then
     _SUHOSIN_INI_TEST=$(grep "^extension=suhosin.so" ${_THIS_FILE} 2>&1)
-    if [[ "$_SUHOSIN_INI_TEST" =~ "extension=suhosin.so" ]]; then
+    if [[ "${_SUHOSIN_INI_TEST}" =~ "extension=suhosin.so" ]]; then
       sed -i "s/.*suhosin.*//g" ${_THIS_FILE} &> /dev/null
       wait
     fi
@@ -51,7 +51,7 @@ fix_php_ini_mailparse() {
   fi
   if [ -e "${_THIS_FILE}" ]; then
     _MAILPARSE_INI_TEST=$(grep "^extension=mailparse.so" ${_THIS_FILE} 2>&1)
-    if [[ "$_MAILPARSE_INI_TEST" =~ "extension=mailparse.so" ]]; then
+    if [[ "${_MAILPARSE_INI_TEST}" =~ "extension=mailparse.so" ]]; then
       _DO_NOTHING=YES
     else
       echo "extension=mailparse.so" >> ${_THIS_FILE}
@@ -67,7 +67,7 @@ fix_php_ini_yaml() {
   fi
   if [ -e "${_THIS_FILE}" ]; then
     _YAML_INI_TEST=$(grep "^extension=yaml.so" ${_THIS_FILE} 2>&1)
-    if [[ "$_YAML_INI_TEST" =~ "extension=yaml.so" ]]; then
+    if [[ "${_YAML_INI_TEST}" =~ "extension=yaml.so" ]]; then
       _DO_NOTHING=YES
     else
       echo "extension=yaml.so" >> ${_THIS_FILE}
@@ -83,7 +83,7 @@ add_php_ini_jsmin() {
   fi
   if [ -e "${_THIS_FILE}" ]; then
     _JSMIN_INI_TEST=$(grep "^extension=jsmin.so" ${_THIS_FILE} 2>&1)
-    if [[ "$_JSMIN_INI_TEST" =~ "extension=jsmin.so" ]]; then
+    if [[ "${_JSMIN_INI_TEST}" =~ "extension=jsmin.so" ]]; then
       _DO_NOTHING=YES
     else
       echo "extension=jsmin.so" >> ${_THIS_FILE}
@@ -99,7 +99,7 @@ fix_php_ini_twig() {
   fi
   if [ -e "${_THIS_FILE}" ]; then
     _TWIG_INI_TEST=$(grep "^extension=twig.so" ${_THIS_FILE} 2>&1)
-    if [[ "$_TWIG_INI_TEST" =~ "extension=twig.so" ]]; then
+    if [[ "${_TWIG_INI_TEST}" =~ "extension=twig.so" ]]; then
       _DO_NOTHING=YES
     else
       echo "extension=twig.so" >> ${_THIS_FILE}
@@ -115,7 +115,7 @@ fix_php_ini_redis() {
   fi
   if [ -e "${_THIS_FILE}" ]; then
     _REDIS_INI_TEST=$(grep "^extension=redis.so" ${_THIS_FILE} 2>&1)
-    if [[ "$_REDIS_INI_TEST" =~ "extension=redis.so" ]]; then
+    if [[ "${_REDIS_INI_TEST}" =~ "extension=redis.so" ]]; then
       _DO_NOTHING=YES
     else
       echo "extension=redis.so" >> ${_THIS_FILE}
@@ -131,7 +131,7 @@ fix_php_ini_mcrypt() {
   fi
   if [ -e "${_THIS_FILE}" ]; then
     _MCRYPT_INI_TEST=$(grep "^extension=mcrypt.so" ${_THIS_FILE} 2>&1)
-    if [[ "$_MCRYPT_INI_TEST" =~ "extension=mcrypt.so" ]]; then
+    if [[ "${_MCRYPT_INI_TEST}" =~ "extension=mcrypt.so" ]]; then
       _DO_NOTHING=YES
     else
       echo "extension=mcrypt.so" >> ${_THIS_FILE}
@@ -147,7 +147,7 @@ fix_php_ini_apcu() {
   fi
   if [ -e "${_THIS_FILE}" ]; then
     _APCU_INI_TEST=$(grep "^apc.shm_size" ${_THIS_FILE} 2>&1)
-    if [[ "$_APCU_INI_TEST" =~ "apc.shm_size" ]]; then
+    if [[ "${_APCU_INI_TEST}" =~ "apc.shm_size" ]]; then
       _DO_NOTHING=YES
     else
       echo "extension=apcu.so" >> ${_THIS_FILE}
@@ -164,7 +164,7 @@ fix_php_ini_igbinary() {
   fi
   if [ -e "${_THIS_FILE}" ]; then
     _IGBINARY_INI_TEST=$(grep "^extension=igbinary.so" ${_THIS_FILE} 2>&1)
-    if [[ "$_IGBINARY_INI_TEST" =~ "extension=igbinary.so" ]]; then
+    if [[ "${_IGBINARY_INI_TEST}" =~ "extension=igbinary.so" ]]; then
       _DO_NOTHING=YES
     else
       echo "extension=igbinary.so" >> ${_THIS_FILE}
@@ -181,13 +181,13 @@ fix_php_ini_newrelic() {
   _NR_TPL="${locCnf}/newrelic.ini"
   if [ -e "${_THIS_FILE}" ]; then
     _NEWRELIC_INI_TEST_A=$(grep "^extension=newrelic.so" ${_THIS_FILE} 2>&1)
-    if [[ "$_NEWRELIC_INI_TEST_A" =~ "extension=newrelic.so" ]]; then
+    if [[ "${_NEWRELIC_INI_TEST_A}" =~ "extension=newrelic.so" ]]; then
       _DO_NOTHING=YES
     else
-      cat $_NR_TPL >> ${_THIS_FILE}
+      cat ${_NR_TPL} >> ${_THIS_FILE}
     fi
     _NEWRELIC_INI_TEST_B=$(grep "newrelic.framework.drupal.modules" ${_THIS_FILE} 2>&1)
-    if [[ "$_NEWRELIC_INI_TEST_B" =~ "newrelic.framework.drupal.modules" ]]; then
+    if [[ "${_NEWRELIC_INI_TEST_B}" =~ "newrelic.framework.drupal.modules" ]]; then
       _DO_NOTHING=YES
     else
       echo "newrelic.framework.drupal.modules = 1" >> ${_THIS_FILE}
@@ -234,12 +234,12 @@ fix_php_ini_opcache() {
   fi
   if [ -e "${_THIS_FILE}" ]; then
     _OPCACHE_INI_TEST=$(grep "opcache.so" ${_THIS_FILE} 2>&1)
-    if [[ "$_OPCACHE_INI_TEST" =~ "opcache.so" ]]; then
+    if [[ "${_OPCACHE_INI_TEST}" =~ "opcache.so" ]]; then
       _DO_NOTHING=YES
     else
       echo ";"                                    >> ${_THIS_FILE}
       echo "; Zend OPcache"                       >> ${_THIS_FILE}
-      echo "zend_extension=\"$_OPCACHE_SO\""      >> ${_THIS_FILE}
+      echo "zend_extension=\"${_OPCACHE_SO}\""    >> ${_THIS_FILE}
       echo "opcache.enable=1"                     >> ${_THIS_FILE}
       echo "opcache.memory_consumption=181"       >> ${_THIS_FILE}
       echo "opcache.revalidate_freq=10"           >> ${_THIS_FILE}
@@ -291,7 +291,7 @@ fix_php_ini_tet() {
   fi
   if [ -e "${_THIS_FILE}" ]; then
     _TET_INI_TEST=$(grep "^extension=php_tet.so" ${_THIS_FILE} 2>&1)
-    if [[ "$_TET_INI_TEST" =~ "extension=php_tet.so" ]]; then
+    if [[ "${_TET_INI_TEST}" =~ "extension=php_tet.so" ]]; then
       _DO_NOTHING=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "PROC: php_tet.so already present in ${_THIS_FILE}"
@@ -368,7 +368,7 @@ fix_php_ini_geos() {
   fi
   if [ -e "${_THIS_FILE}" ]; then
     _GEOS_INI_TEST=$(grep "^extension=geos.so" ${_THIS_FILE} 2>&1)
-    if [[ "$_GEOS_INI_TEST" =~ "extension=geos.so" ]]; then
+    if [[ "${_GEOS_INI_TEST}" =~ "extension=geos.so" ]]; then
       _DO_NOTHING=YES
     else
       echo "extension=geos.so" >> ${_THIS_FILE}
@@ -401,7 +401,7 @@ fix_php_ini_mongo() {
   fi
   if [ -e "${_THIS_FILE}" ]; then
     _MONGO_INI_TEST=$(grep "^extension=mongo.so" ${_THIS_FILE} 2>&1)
-    if [[ "$_MONGO_INI_TEST" =~ "extension=mongo.so" ]]; then
+    if [[ "${_MONGO_INI_TEST}" =~ "extension=mongo.so" ]]; then
       _DO_NOTHING=YES
     else
       echo "extension=mongo.so" >> ${_THIS_FILE}
@@ -417,7 +417,7 @@ fix_php_ini_mongodb() {
   fi
   if [ -e "${_THIS_FILE}" ]; then
     _MONGODB_INI_TEST=$(grep "^extension=mongodb.so" ${_THIS_FILE} 2>&1)
-    if [[ "$_MONGODB_INI_TEST" =~ "extension=mongodb.so" ]]; then
+    if [[ "${_MONGODB_INI_TEST}" =~ "extension=mongodb.so" ]]; then
       _DO_NOTHING=YES
     else
       echo "extension=mongodb.so" >> ${_THIS_FILE}
@@ -2000,7 +2000,7 @@ if_install_php_newrelic() {
       && [ ! -e "${_PHP_EXT_DIR_56}/newrelic.so" ]; then
       _MULTI_NR=YES
     fi
-    if [ "$_MULTI_NR" = "YES" ] \
+    if [ "${_MULTI_NR}" = "YES" ] \
       || [ ! -e "${pthLog}/newrelic-${_X_SE}-${_X_VERSION}.log" ] \
       || [ ! -e "/etc/newrelic/newrelic.cfg" ] \
       || [ ! -e "/etc/newrelic/nrsysmond.cfg" ] \
@@ -2025,7 +2025,7 @@ if_install_php_newrelic() {
       apt_clean_update
       st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
       st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null
-      if [ "$_MULTI_NR" = "YES" ]; then
+      if [ "${_MULTI_NR}" = "YES" ]; then
         msg "INFO: Installing latest version of New Relic Apps Monitor..."
         NR_PHPLIST="/opt/php56/bin:/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin"
         NR_SILENT="silent"

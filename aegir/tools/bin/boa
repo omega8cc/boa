@@ -333,7 +333,7 @@ satellite_check_id() {
     clean_pid_exit
   fi
   _REGEX="^[[:digit:]]"
-  if [[ "${_USER}" =~ "$_REGEX" ]]; then
+  if [[ "${_USER}" =~ "${_REGEX}" ]]; then
     echo "ERROR: ${_USER} is a wrong username, \
       it should start with a letter, not digit"
     clean_pid_exit

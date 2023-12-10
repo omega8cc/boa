@@ -62,7 +62,7 @@ if_install_jetty() {
   fi
   if [ -e "/etc/default/${_N_SOLR}.in.sh" ]; then
     _SOLR7_JAVA_TEST=$(grep "BOA ${_X_SE} Path to Java" /etc/default/${_N_SOLR}.in.sh 2>&1)
-    if [[ "$_SOLR7_JAVA_TEST" =~ "BOA ${_X_SE} Path to Java" ]]; then
+    if [[ "${_SOLR7_JAVA_TEST}" =~ "BOA ${_X_SE} Path to Java" ]]; then
       _DO_NOTHING=YES
     else
       if [ "${_OSR}" = "jessie" ]; then
@@ -96,7 +96,7 @@ if_install_jetty() {
       msg "INFO: MultiCore Apache Solr ${_R_SOLR} upgrade completed"
     fi
   fi
-  if [ "$_UP_JDK" = "YES" ] && [ -e "/etc/init.d/${_N_SOLR}" ]; then
+  if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/${_N_SOLR}" ]; then
     msg "INFO: Solr 7 restart in progress - required after java upgrade"
     mrun "service ${_N_SOLR} restart" &> /dev/null
     msg "INFO: Solr 7 restart completed"
@@ -295,7 +295,7 @@ if_install_jetty() {
       fi
     fi
   fi
-  if [ "$_UP_JDK" = "YES" ] && [ -e "/etc/init.d/jetty9" ]; then
+  if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/jetty9" ]; then
     msg "INFO: Jetty 9 restart in progress - required after java upgrade"
     kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
     mrun "service jetty9 start" &> /dev/null
@@ -309,7 +309,7 @@ if_install_jetty() {
     else
       _JETTY9_JAVA_TEST=$(grep "Path to Java 1.8" /etc/default/jetty9 2>&1)
     fi
-    if [[ "$_JETTY9_JAVA_TEST" =~ "Path to Java" ]]; then
+    if [[ "${_JETTY9_JAVA_TEST}" =~ "Path to Java" ]]; then
       _DO_NOTHING=YES
     else
       if [ "${_OSR}" = "jessie" ] \
@@ -336,7 +336,7 @@ if_install_jetty() {
         -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" \
         # Options" | fmt -su -w 2500 >> /etc/default/jetty9
     fi
-    if [ ! -e "$_PORT_CTRL" ] \
+    if [ ! -e "${_PORT_CTRL}" ] \
       || [ ! -e "/opt/jetty9/lib/ext/slf4j-api-${_SLF4J_VRN}.jar" ] \
       || [ ! -e "/opt/jetty9/.fixed.start.ini.txt" ] \
       || [ ! -e "/opt/jetty9/lib/tika-app-1.8.jar" ] \
@@ -501,7 +501,7 @@ if_install_jetty() {
       fi
     fi
   fi
-  if [ "$_UP_JDK" = "YES" ] && [ -e "/etc/init.d/jetty8" ]; then
+  if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/jetty8" ]; then
     msg "INFO: Jetty 8 restart in progress - required after java upgrade"
     kill -9 $(ps aux | grep '[j]etty8' | awk '{print $2}') &> /dev/null
     mrun "service jetty8 start" &> /dev/null
@@ -632,7 +632,7 @@ if_install_jetty() {
       fi
     fi
   fi
-  if [ "$_UP_JDK" = "YES" ] && [ -e "/etc/init.d/jetty7" ]; then
+  if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/jetty7" ]; then
     msg "INFO: Jetty 7 restart in progress - required after java upgrade"
     kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
     mrun "service jetty7 start" &> /dev/null

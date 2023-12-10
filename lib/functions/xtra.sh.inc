@@ -5,7 +5,7 @@ if_install_bzr() {
   fi
   if [[ "${_XTRAS_LIST}" =~ "BZR" ]]; then
     _PATH_BZR="/usr/local/bin/bzr"
-    if [ ! -e "$_PATH_BZR" ] \
+    if [ ! -e "${_PATH_BZR}" ] \
       || [ ! -e "${pthLog}/bzr-${_BZR_VRN}.log" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       msg "INFO: Building Bazaar (bzr) ${_BZR_VRN} from sources..."
@@ -604,11 +604,11 @@ if_install_rvm() {
           _GEM_CRON="/etc/crontab"
           _VAR_IF_PRESENT=$(grep "scout" ${_GEM_CRON} 2>&1)
           if [[ "${_VAR_IF_PRESENT}" =~ "scout" ]]; then
-            if [ ! -e "$_GEM_FILE" ] && [ ! -z "${_SCOUT_KEY}" ]; then
+            if [ ! -e "${_GEM_FILE}" ] && [ ! -z "${_SCOUT_KEY}" ]; then
               mrun "${rvmPth} @global do gem install --conservative scout" 2> /dev/null
               adduser --system --group --home /var/scout scout &> /dev/null
               usermod -aG users scout
-              sed -i "s/\* \* \* \* \* scout .*/* * * * * scout $_GEM_PATH ${_SCOUT_KEY}/g" ${_GEM_CRON} &> /dev/null
+              sed -i "s/\* \* \* \* \* scout .*/* * * * * scout ${_GEM_PATH} ${_SCOUT_KEY}/g" ${_GEM_CRON} &> /dev/null
             fi
             _VAR_IF_PRESENT=$(grep "scout ALL=NOPASSWD" /etc/sudoers 2>&1)
             if [[ ! "${_VAR_IF_PRESENT}" =~ "scout ALL=NOPASSWD" ]]; then
@@ -619,7 +619,7 @@ if_install_rvm() {
               mrun "${rvmPth} @global do gem install --conservative scout" 2> /dev/null
               adduser --system --group --home /var/scout scout &> /dev/null
               usermod -aG users scout
-              echo -e "* * * * * scout $_GEM_FILE ${_SCOUT_KEY}" \
+              echo -e "* * * * * scout ${_GEM_FILE} ${_SCOUT_KEY}" \
                 | fmt -su -w 2500 | tee -a ${_GEM_CRON} >/dev/null 2>&1
               _VAR_IF_PRESENT=$(grep "scout ALL=NOPASSWD" /etc/sudoers 2>&1)
               if [[ ! "${_VAR_IF_PRESENT}" =~ "scout ALL=NOPASSWD" ]]; then
@@ -627,8 +627,8 @@ if_install_rvm() {
               fi
             fi
           fi
-          if [ -e "$_GEM_FILE" ]; then
-            sed -i "s/^#\!\/.*/#\!$_RBY_PATH/g" $_GEM_FILE &> /dev/null
+          if [ -e "${_GEM_FILE}" ]; then
+            sed -i "s/^#\!\/.*/#\!${_RBY_PATH}/g" ${_GEM_FILE} &> /dev/null
           fi
           PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin;export PATH
           touch ${pthLog}/compass-${_X_SE}-${_X_VERSION}-ruby-${_RUBY_VRN}-nodejs.log
