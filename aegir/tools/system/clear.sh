@@ -141,17 +141,40 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
   bash /opt/local/bin/autoupboa
 fi
 
+_OCT_NR=$(ls /data/disk | wc -l)
+_OCT_NR=$(( _OCT_NR - 1 ))
+for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+  _SITES_NR=0
+  if [ -e "${_OCT}/config/server_master/nginx/vhost.d" ]; then
+    _SITES_NR=$(ls ${_OCT}/config/server_master/nginx/vhost.d | wc -l)
+    if [ "${_SITES_NR}" -gt "0" ]; then
+      if [ -z "${chckSts}" ]; then
+        chckSts="_SITES_NR in ${_OCT} is ${_SITES_NR} "
+      else
+        chckSts="_SITES_NR in ${_OCT} is ${_SITES_NR} ${chckSts} "
+      fi
+    else
+      _OCT_NR=$(( _OCT_NR - 1 ))
+    fi
+  fi
+done
+chckSts="ACTIVE _OCT_NR is ${_OCT_NR} ${chckSts} "
+_ALL_SITES_NR=$(ls /data/disk/*/config/server_master/nginx/vhost.d | wc -l)
+_ALL_SITES_NR=$(( _ALL_SITES_NR - _OCT_NR ))
+chckSts="_ALL_SITES_NR is ${_ALL_SITES_NR} ${chckSts}"
+chckHst=$(hostname 2>&1)
+chckIps=$(hostname -I 2>&1)
 checkVn=$(/opt/local/bin/boa version | tr -d "\n" 2>&1)
 if [[ "${checkVn}" =~ "===" ]] || [ -z "${checkVn}" ]; then
   if [ -e "/var/log/barracuda_log.txt" ]; then
-    checkVn=$(tail --lines=3 /var/log/barracuda_log.txt | tr -d "\n" 2>&1)
+    checkVn=$(tail --lines=1 /var/log/barracuda_log.txt | tr -d "\n" 2>&1)
   else
     checkVn="whereis barracuda_log.txt"
   fi
 fi
-crlHead="-I -k -s --retry 5 --retry-delay 5"
+crlHead="-I -k -s --retry 3 --retry-delay 3"
 urlBpth="http://${_USE_MIR}/versions/dev/boa/aegir/tools/bin"
-curl ${crlHead} -A "${checkVn}" "${urlBpth}/thinkdifferent" &> /dev/null
+curl ${crlHead} -A "${chckHst} ${chckIps} ${checkVn} ${chckSts}" "${urlBpth}/thinkdifferent" &> /dev/null
 wait
 
 renice ${_B_NICE} -p $$ &> /dev/null
