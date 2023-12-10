@@ -2004,7 +2004,6 @@ case "$1" in
   info)      cmmand="$1"
              mode="$2"
              extra="$3"
-             check_root_keys_pwd
              check_virt
              display_info
   ;;
