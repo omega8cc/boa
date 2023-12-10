@@ -68,9 +68,11 @@ production settings.
 
 @=> SUPPORTED VIRTUALIZATION SYSTEMS -- please read also: docs/CAVEATS.txt
 
+  * Linux Containers (LXC) guest
   * Linux KVM guest
   * Linux VServer guest
   * Microsoft Hyper-V
+  * OpenVZ Containers guest
   * Parallels guest
   * VirtualBox guest
   * VMware ESXi guest
