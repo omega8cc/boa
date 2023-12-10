@@ -543,13 +543,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/data/disk/arch/sql" ] \
-    && [ ! -e "${pthLog}/clear.ctrl.a1.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/clear.ctrl.a2.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
     if [ -e "/var/xdrago/clear.sh" ]; then
       chmod 700 /var/xdrago/clear.sh
       chown root:root /var/xdrago/clear.sh
-      touch ${pthLog}/clear.ctrl.a1.${_X_SE}.pid
+      touch ${pthLog}/clear.ctrl.a2.${_X_SE}.pid
     else
       mv -f /var/xdrago/clear.sh.old /var/xdrago/clear.sh
     fi
