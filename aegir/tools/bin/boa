@@ -1962,6 +1962,27 @@ display_info() {
           echo
           grep _PHP_FPM_VERSION /root/.*.octopus.cnf
           echo
+          _OCT_NR=$(ls /data/disk | wc -l)
+          _OCT_NR=$(( _OCT_NR - 1 ))
+          echo ALL _OCT_NR is ${_OCT_NR}
+          echo
+          for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+            _SITES_NR=0
+            if [ -e "${_OCT}/config/server_master/nginx/vhost.d" ]; then
+              _SITES_NR=$(ls ${_OCT}/config/server_master/nginx/vhost.d | wc -l)
+              if [ "${_SITES_NR}" -gt "0" ]; then
+                echo _SITES_NR in ${_OCT} is ${_SITES_NR}
+              else
+                _OCT_NR=$(( _OCT_NR - 1 ))
+              fi
+            fi
+          done
+          echo
+          echo ACTIVE _OCT_NR is ${_OCT_NR}
+          _ALL_SITES_NR=$(ls /data/disk/*/config/server_master/nginx/vhost.d | wc -l)
+          _ALL_SITES_NR=$(( _ALL_SITES_NR - _OCT_NR ))
+          echo
+          echo _ALL_SITES_NR is ${_ALL_SITES_NR}
         fi
         if [ "${extra}" = "backups" ]; then
           tail --lines=19 /var/xdrago/log/*.archive.log
