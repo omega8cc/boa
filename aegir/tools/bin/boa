@@ -152,11 +152,13 @@ check_virt() {
             _VIRT_TEST="xen-domU"
           elif [[ "${_VIRT_TEST}" =~ "virtualbox kvm" ]]; then
             _VIRT_TEST="virtualbox"
+          elif [[ "${_VIRT_TEST}" =~ "hyperv qemu" ]]; then
+            _VIRT_TEST="hyperv"
+          elif [[ "${_VIRT_TEST}" =~ "kvm aws" ]]; then
+            _VIRT_TEST="kvm"
           fi
           case "${_VIRT_TEST}" in
-            hyperv qemu) _VIRT_IS="Microsoft Hyper-V QEMU" ;;
             hyperv)      _VIRT_IS="Microsoft Hyper-V" ;;
-            kvm aws)     _VIRT_IS="Linux KVM guest on AWS" ;;
             kvm)         _VIRT_IS="Linux KVM guest" ;;
             lxc)         _VIRT_IS="Linux Containers (LXC)" ;;
             openvz lxc)  _VIRT_IS="OpenVZ Containers" ;;
@@ -1723,11 +1725,13 @@ display_version() {
               _VIRT_TEST="xen-domU"
             elif [[ "${_VIRT_TEST}" =~ "virtualbox kvm" ]]; then
               _VIRT_TEST="virtualbox"
+            elif [[ "${_VIRT_TEST}" =~ "hyperv qemu" ]]; then
+              _VIRT_TEST="hyperv"
+            elif [[ "${_VIRT_TEST}" =~ "kvm aws" ]]; then
+              _VIRT_TEST="kvm"
             fi
             case "${_VIRT_TEST}" in
-              hyperv qemu) _VIRT_IS="Microsoft Hyper-V QEMU" ;;
               hyperv)      _VIRT_IS="Microsoft Hyper-V" ;;
-              kvm aws)     _VIRT_IS="Linux KVM guest on AWS" ;;
               kvm)         _VIRT_IS="Linux KVM guest" ;;
               lxc)         _VIRT_IS="Linux Containers (LXC)" ;;
               openvz lxc)  _VIRT_IS="OpenVZ Containers" ;;
