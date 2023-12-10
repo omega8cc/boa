@@ -1721,7 +1721,9 @@ display_version() {
               _VIRT_TEST="virtualbox"
             fi
             case "${_VIRT_TEST}" in
+              hyperv qemu) _VIRT_IS="Microsoft Hyper-V QEMU" ;;
               hyperv)      _VIRT_IS="Microsoft Hyper-V" ;;
+              kvm aws)     _VIRT_IS="Linux KVM guest on AWS" ;;
               kvm)         _VIRT_IS="Linux KVM guest" ;;
               parallels)   _VIRT_IS="Parallels guest" ;;
               virtualbox)  _VIRT_IS="VirtualBox guest" ;;
