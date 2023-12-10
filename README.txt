@@ -62,6 +62,56 @@ There is also Tuner script available (see aegir/tools/BOND.sh.txt) for easy
 system tuning for development and switching it back easily to the standard
 production settings.
 
+@=> DUAL LICENCE NOTICE
+
+  While all BOA code is Free/Libre Open Source, only the BOA main installer
+  and Aegir itself is free of charge without limits, while both Barracuda and
+  Octopus updaters are paid upgrade service, with an effective date of
+  January 1st, 2024.
+
+  There are exceptions explained further below, though.
+
+  The reasoning behind this change is simple. Normally Open Source software
+  benefits from its users contributions, both technically (patches) and
+  financially (donations).
+
+  We have carefully reviewed both Aegir and BOA projects history in these two
+  areas and concluded that both Aegir and BOA received only sporadic technical
+  support (patches) while financial support (donations) was basically
+  nonexistent.
+
+  This resulted with developers either leaving theses projects or moving in
+  different, incompatible directions, because all developers were forced to
+  limit, focus or switch their attention and work on something only their
+  clients were interested in.
+
+  This affected also us at omega8.cc because BOA includes many things we don't
+  use in our commercial hosting, it was from the beginning written with the
+  very verbose coding style making it available for reading and improving.
+
+  The resulting maintenance overhead became too big for us to handle and
+  at some point we have considered closing the project for the public. However,
+  many BOA users voiced their interest in keeping BOA alive, so we have spent
+  the last year on taking steps and preparations to find viable solution.
+
+  We know that most of BOA users are running BOA for commercial purposes,
+  effectively creating competition for our hosted BOA service, while not paying
+  anything and not supporting BOA nor Aegir in any other way.
+
+  We have concluded that it's unfair situation and that in the absence of
+  voluntary support for Aegir and BOA we have hoped for over years, the
+  decision has to be made to introduce dual-licence model for BOA use.
+
+  This change will not limit any BOA user from running system upgrades with
+  standard Debian/Devuan tools, but both barracuda and octopus upgrades will
+  require valid licence after January 1st, 2024
+
+  There will be a test-drive period for new servers to run both barracuda and
+  octopus upgrades during the first 90 days, while all servers installed before
+  January 1st, 2024 will enjoy the 30 days of free extension after that date.
+
+  The pricing will be announced on https://omega8.cc/compare page shortly.
+
 
 @=> FOR BUG REPORTING PLEASE FOLLOW GUIDELINES EXPLAINED IN CONTRIBUTING.txt
 
