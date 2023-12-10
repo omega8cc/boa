@@ -157,12 +157,14 @@ check_virt() {
             _VIRT_TEST="hyperv"
           elif [[ "${_VIRT_TEST}" =~ "kvm aws" ]]; then
             _VIRT_TEST="kvm"
+          elif [[ "${_VIRT_TEST}" =~ "openvz lxc" ]]; then
+            _VIRT_TEST="openvz"
           fi
           case "${_VIRT_TEST}" in
             hyperv)      _VIRT_IS="Microsoft Hyper-V" ;;
             kvm)         _VIRT_IS="Linux KVM guest" ;;
             lxc)         _VIRT_IS="Linux Containers (LXC)" ;;
-            openvz lxc)  _VIRT_IS="OpenVZ Containers" ;;
+            openvz)      _VIRT_IS="OpenVZ Containers" ;;
             parallels)   _VIRT_IS="Parallels guest" ;;
             virtualbox)  _VIRT_IS="VirtualBox guest" ;;
             vmware)      _VIRT_IS="VMware ESXi guest" ;;
@@ -1736,12 +1738,14 @@ display_version() {
               _VIRT_TEST="hyperv"
             elif [[ "${_VIRT_TEST}" =~ "kvm aws" ]]; then
               _VIRT_TEST="kvm"
+            elif [[ "${_VIRT_TEST}" =~ "openvz lxc" ]]; then
+              _VIRT_TEST="openvz"
             fi
             case "${_VIRT_TEST}" in
               hyperv)      _VIRT_IS="Microsoft Hyper-V" ;;
               kvm)         _VIRT_IS="Linux KVM guest" ;;
               lxc)         _VIRT_IS="Linux Containers (LXC)" ;;
-              openvz lxc)  _VIRT_IS="OpenVZ Containers" ;;
+              openvz)      _VIRT_IS="OpenVZ Containers" ;;
               parallels)   _VIRT_IS="Parallels guest" ;;
               virtualbox)  _VIRT_IS="VirtualBox guest" ;;
               vmware)      _VIRT_IS="VMware ESXi guest" ;;
