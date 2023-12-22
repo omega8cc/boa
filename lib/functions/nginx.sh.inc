@@ -122,47 +122,53 @@ force_advanced_nginx_config() {
     && [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
     _ALLOW_NGINX_FORWARD_SECRECY=YES
     _SSL_PROTOCOLS="TLSv1.2 TLSv1.3;"
-    _SSL_CIPHERS="ECDHE-RSA-AES128-GCM-SHA256:  \
-      ECDHE-ECDSA-AES128-GCM-SHA256:  \
-      ECDHE-RSA-AES256-GCM-SHA384:    \
+    _SSL_CIPHERS="ECDHE-RSA-AES256-GCM-SHA384:  \
       ECDHE-ECDSA-AES256-GCM-SHA384:  \
+      ECDHE-RSA-AES256-SHA384:  \
+      ECDHE-ECDSA-AES256-SHA384:  \
+      AES256-GCM-SHA384:  \
+      ECDHE-ECDSA-CHACHA20-POLY1305:  \
+      ECDHE-RSA-CHACHA20-POLY1305:  \
+      DHE-RSA-AES256-CCM:  \
+      DHE-RSA-AES256-CCM8:  \
+      DHE-RSA-AES128-CCM:  \
+      DHE-RSA-AES128-CCM8:  \
+      ECDHE-RSA-AES128-GCM-SHA256:  \
+      ECDHE-ECDSA-AES128-GCM-SHA256:  \
       DHE-RSA-AES128-GCM-SHA256:  \
       DHE-DSS-AES128-GCM-SHA256:  \
-      kEDH+AESGCM:                \
-      ECDHE-RSA-AES128-SHA256:    \
+      kEDH+AESGCM:  \
+      ECDHE-RSA-AES128-SHA256:  \
       ECDHE-ECDSA-AES128-SHA256:  \
-      ECDHE-RSA-AES128-SHA:       \
-      ECDHE-ECDSA-AES128-SHA:     \
-      ECDHE-RSA-AES256-SHA384:    \
-      ECDHE-ECDSA-AES256-SHA384:  \
-      ECDHE-RSA-AES256-SHA:       \
-      ECDHE-ECDSA-AES256-SHA:     \
-      DHE-RSA-AES128-SHA256:      \
-      DHE-RSA-AES128-SHA:         \
-      DHE-DSS-AES128-SHA256:      \
-      DHE-RSA-AES256-SHA256:      \
+      ECDHE-RSA-AES128-SHA:  \
+      ECDHE-ECDSA-AES128-SHA:  \
+      ECDHE-RSA-AES256-SHA:  \
+      ECDHE-ECDSA-AES256-SHA:  \
+      DHE-RSA-AES128-SHA256:  \
+      DHE-RSA-AES128-SHA:  \
+      DHE-DSS-AES128-SHA256:  \
+      DHE-RSA-AES256-SHA256:  \
       DHE-DSS-AES256-SHA:  \
       DHE-RSA-AES256-SHA:  \
-      AES128-GCM-SHA256:   \
-      AES256-GCM-SHA384:   \
+      AES128-GCM-SHA256:  \
       AES128-SHA256:  \
       AES256-SHA256:  \
-      AES128-SHA:     \
-      AES256-SHA:     \
-      AES:            \
-      CAMELLIA:       \
-      DES-CBC3-SHA:   \
-      \!aNULL:   \
-      \!eNULL:   \
+      AES128-SHA:  \
+      AES256-SHA:  \
+      AES:  \
+      \!aNULL:  \
+      \!eNULL:  \
       \!EXPORT:  \
-      \!DES:     \
-      \!RC4:     \
-      \!MD5:     \
-      \!PSK:     \
-      \!aECDH:   \
+      \!DES:  \
+      \!RC4:  \
+      \!MD5:  \
+      \!PSK:  \
+      \!aECDH:  \
       \!EDH-DSS-DES-CBC3-SHA:  \
       \!EDH-RSA-DES-CBC3-SHA:  \
-      \!KRB5-DES-CBC3-SHA;"
+      \!KRB5-DES-CBC3-SHA:  \
+      \!ECDHE-ECDSA-AES128-SHA256:  \
+      \!ECDHE-ECDSA-AES256-SHA384;"
     _SSL_CIPHERS=$(echo "${_SSL_CIPHERS}" | sed "s/ //g" 2>&1)
   else
     _ALLOW_NGINX_FORWARD_SECRECY=NO
@@ -766,47 +772,53 @@ nginx_config_update_fix() {
       && [ "${_NGINX_FORWARD_SECRECY}" = "YES" ]; then
       _ALLOW_NGINX_FORWARD_SECRECY=YES
       _SSL_PROTOCOLS="TLSv1.2 TLSv1.3;"
-      _SSL_CIPHERS="ECDHE-RSA-AES128-GCM-SHA256:  \
-        ECDHE-ECDSA-AES128-GCM-SHA256:  \
-        ECDHE-RSA-AES256-GCM-SHA384:    \
+      _SSL_CIPHERS="ECDHE-RSA-AES256-GCM-SHA384:  \
         ECDHE-ECDSA-AES256-GCM-SHA384:  \
+        ECDHE-RSA-AES256-SHA384:  \
+        ECDHE-ECDSA-AES256-SHA384:  \
+        AES256-GCM-SHA384:  \
+        ECDHE-ECDSA-CHACHA20-POLY1305:  \
+        ECDHE-RSA-CHACHA20-POLY1305:  \
+        DHE-RSA-AES256-CCM:  \
+        DHE-RSA-AES256-CCM8:  \
+        DHE-RSA-AES128-CCM:  \
+        DHE-RSA-AES128-CCM8:  \
+        ECDHE-RSA-AES128-GCM-SHA256:  \
+        ECDHE-ECDSA-AES128-GCM-SHA256:  \
         DHE-RSA-AES128-GCM-SHA256:  \
         DHE-DSS-AES128-GCM-SHA256:  \
-        kEDH+AESGCM:                \
-        ECDHE-RSA-AES128-SHA256:    \
+        kEDH+AESGCM:  \
+        ECDHE-RSA-AES128-SHA256:  \
         ECDHE-ECDSA-AES128-SHA256:  \
-        ECDHE-RSA-AES128-SHA:       \
-        ECDHE-ECDSA-AES128-SHA:     \
-        ECDHE-RSA-AES256-SHA384:    \
-        ECDHE-ECDSA-AES256-SHA384:  \
-        ECDHE-RSA-AES256-SHA:       \
-        ECDHE-ECDSA-AES256-SHA:     \
-        DHE-RSA-AES128-SHA256:      \
-        DHE-RSA-AES128-SHA:         \
-        DHE-DSS-AES128-SHA256:      \
-        DHE-RSA-AES256-SHA256:      \
+        ECDHE-RSA-AES128-SHA:  \
+        ECDHE-ECDSA-AES128-SHA:  \
+        ECDHE-RSA-AES256-SHA:  \
+        ECDHE-ECDSA-AES256-SHA:  \
+        DHE-RSA-AES128-SHA256:  \
+        DHE-RSA-AES128-SHA:  \
+        DHE-DSS-AES128-SHA256:  \
+        DHE-RSA-AES256-SHA256:  \
         DHE-DSS-AES256-SHA:  \
         DHE-RSA-AES256-SHA:  \
-        AES128-GCM-SHA256:   \
-        AES256-GCM-SHA384:   \
+        AES128-GCM-SHA256:  \
         AES128-SHA256:  \
         AES256-SHA256:  \
-        AES128-SHA:     \
-        AES256-SHA:     \
-        AES:            \
-        CAMELLIA:       \
-        DES-CBC3-SHA:   \
-        \!aNULL:   \
-        \!eNULL:   \
+        AES128-SHA:  \
+        AES256-SHA:  \
+        AES:  \
+        \!aNULL:  \
+        \!eNULL:  \
         \!EXPORT:  \
-        \!DES:     \
-        \!RC4:     \
-        \!MD5:     \
-        \!PSK:     \
-        \!aECDH:   \
+        \!DES:  \
+        \!RC4:  \
+        \!MD5:  \
+        \!PSK:  \
+        \!aECDH:  \
         \!EDH-DSS-DES-CBC3-SHA:  \
         \!EDH-RSA-DES-CBC3-SHA:  \
-        \!KRB5-DES-CBC3-SHA;"
+        \!KRB5-DES-CBC3-SHA:  \
+        \!ECDHE-ECDSA-AES128-SHA256:  \
+        \!ECDHE-ECDSA-AES256-SHA384;"
       _SSL_CIPHERS=$(echo "${_SSL_CIPHERS}" | sed "s/ //g" 2>&1)
     else
       _ALLOW_NGINX_FORWARD_SECRECY=NO
