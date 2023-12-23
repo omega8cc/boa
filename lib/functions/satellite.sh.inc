@@ -3476,6 +3476,37 @@ satellite_if_add_update_user_platforms_symlinks() {
         fi
       fi
     fi
+    if [ -d "${_QR}/${_DRUPAL10_2_D}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_2}-dev" ]; then
+        _A="${_QR}/${_DRUPAL10_2_D}/sites"
+        _B="${_QH}/${_DRUPAL10_2}-dev"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ -d "${_QR}/${_DRUPAL10_2_S}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_2}-stage" ]; then
+        _A="${_QR}/${_DRUPAL10_2_S}/sites"
+        _B="${_QH}/${_DRUPAL10_2}-stage"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ ! -d "${_QR}/${_DRUPAL10_2}" ]; then
+      if [ -d "${_QR}/${_DRUPAL10_2_P}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_2}-prod" ]; then
+          _A="${_QR}/${_DRUPAL10_2_P}/sites"
+          _B="${_QH}/${_DRUPAL10_2}-prod"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    elif [ ! -d "${_QR}/${_DRUPAL10_2_P}" ]; then
+      if [ -d "${_QR}/${_DRUPAL10_2}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_2}-prod" ]; then
+          _A="${_QR}/${_DRUPAL10_2}/sites"
+          _B="${_QH}/${_DRUPAL10_2}-prod"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    fi
     if [ -d "${_QR}/erpal-${_ERPAL}-${_SMALLCORE7_V}/sites" ]; then
       if [ ! -L "${_QH}/erpal-${_ERPAL}-${_SMALLCORE7_V}" ]; then
         _A="${_QR}/erpal-${_ERPAL}-${_SMALLCORE7_V}/sites"
@@ -4002,6 +4033,7 @@ satellite_make() {
   echo "_SERIES_RESULT=\"${_SERIES_RESULT}\""         >> ${writeTo}
   echo "_SMALLCORE10_0_V=\"${_SMALLCORE10_0_V}\""     >> ${writeTo}
   echo "_SMALLCORE10_1_V=\"${_SMALLCORE10_1_V}\""     >> ${writeTo}
+  echo "_SMALLCORE10_2_V=\"${_SMALLCORE10_2_V}\""     >> ${writeTo}
   echo "_SMALLCORE6_V=\"${_SMALLCORE6_V}\""           >> ${writeTo}
   echo "_SMALLCORE7_V=\"${_SMALLCORE7_V}\""           >> ${writeTo}
   echo "_SMALLCORE9_V=\"${_SMALLCORE9_V}\""           >> ${writeTo}
