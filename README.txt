@@ -197,8 +197,8 @@ production settings.
 
  @ Drupal 10
 
- Drupal 10.1.6 -------------- https://drupal.org/project/drupal/releases/10.1.6
  Drupal 10.2.0 -------------- https://drupal.org/project/drupal/releases/10.2.0
+ Drupal 10.1.7 -------------- https://drupal.org/project/drupal/releases/10.1.7
  Drupal 10.0.11 ------------- https://drupal.org/project/drupal/releases/10.0.11
  Social 12.0.0-rc3 ---------- https://drupal.org/project/social (10.0.11)
  Thunder 7.1.2 -------------- https://drupal.org/project/thunder (10.1.6)
