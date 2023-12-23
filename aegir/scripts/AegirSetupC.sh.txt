@@ -2791,6 +2791,33 @@ save_verify_platforms() {
       fi
     fi
   fi
+  if [ -d "${pthDst}/${_DRUPAL10_2_D}/web" ]; then
+    if [ ! -e "${pthDst}/${_DRUPAL10_2_D}/web/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_2_D}" standard \
+        ${pthDst}/${_DRUPAL10_2_D}/web &> /dev/null
+    fi
+  fi
+  if [ -d "${pthDst}/${_DRUPAL10_2_S}/web" ]; then
+    if [ ! -e "${pthDst}/${_DRUPAL10_2_S}/web/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_2_S}" standard \
+        ${pthDst}/${_DRUPAL10_2_S}/web &> /dev/null
+    fi
+  fi
+  if [ ! -d "${pthDst}/${_DRUPAL10_2}/web" ]; then
+    if [ -d "${pthDst}/${_DRUPAL10_2_P}/web" ]; then
+      if [ ! -e "${pthDst}/${_DRUPAL10_2_P}/web/$drhSrc" ]; then
+        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_2_P}" standard \
+          ${pthDst}/${_DRUPAL10_2_P}/web &> /dev/null
+      fi
+    fi
+  elif [ ! -d "${pthDst}/${_DRUPAL10_2_P}/web" ]; then
+    if [ -d "${pthDst}/${_DRUPAL10_2}/web" ]; then
+      if [ ! -e "${pthDst}/${_DRUPAL10_2}/web/$drhSrc" ]; then
+        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_2_P}" standard \
+          ${pthDst}/${_DRUPAL10_2}/web &> /dev/null
+      fi
+    fi
+  fi
   if [ -d "${pthDst}/${_DRUPAL7D}" ]; then
     if [ ! -e "${pthDst}/${_DRUPAL7D}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL7_D}" standard \
