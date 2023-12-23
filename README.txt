@@ -205,9 +205,9 @@ production settings.
  Drupal 10.2.0 -------------- https://drupal.org/project/drupal/releases/10.2.0
  Drupal 10.1.7 -------------- https://drupal.org/project/drupal/releases/10.1.7
  Drupal 10.0.11 ------------- https://drupal.org/project/drupal/releases/10.0.11
- Varbase 9.0.16 ------------- https://drupal.org/project/varbase (10.1.6)
  Social 12.0.1 -------------- https://drupal.org/project/social (10.0.11)
  Thunder 7.1.5 -------------- https://drupal.org/project/thunder (10.1.7)
+ Varbase 9.1.0 -------------- https://drupal.org/project/varbase (10.1.7)
 
  @ Drupal 9
 
