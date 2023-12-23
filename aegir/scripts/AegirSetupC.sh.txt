@@ -2231,8 +2231,9 @@ panopoly_install() {
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
               fi
+              ### https://ftp.drupal.org/files/projects/panopoly-7.x-1.93.tar.gz
               curl ${crlGet} \
-                "${urlDrp}/${_REAL_PRNAME}-7.x-${_PANOPOLY}-core.tar.gz" \
+                "${urlDrp}/${_REAL_PRNAME}-7.x-${_PANOPOLY}.tar.gz" \
                 | tar -xzf -
               if [ -d "${_CORE}/${_REAL_PRNAME}-7.x-${_PANOPOLY}" ]; then
                 mv ${_REAL_PRNAME}-7.x-${_PANOPOLY} ${_SHRD_PLNAME}
