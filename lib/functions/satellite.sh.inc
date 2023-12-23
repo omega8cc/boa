@@ -3989,6 +3989,10 @@ satellite_make() {
   echo "_DRUPAL10_1_D=\"${_DRUPAL10_1}-dev\""         >> ${writeTo}
   echo "_DRUPAL10_1_P=\"${_DRUPAL10_1}-prod\""        >> ${writeTo}
   echo "_DRUPAL10_1_S=\"${_DRUPAL10_1}-stage\""       >> ${writeTo}
+  echo "_DRUPAL10_2=\"${_DRUPAL10_2}\""               >> ${writeTo}
+  echo "_DRUPAL10_2_D=\"${_DRUPAL10_2}-dev\""         >> ${writeTo}
+  echo "_DRUPAL10_2_P=\"${_DRUPAL10_2}-prod\""        >> ${writeTo}
+  echo "_DRUPAL10_2_S=\"${_DRUPAL10_2}-stage\""       >> ${writeTo}
   echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${writeTo}
   echo "_ERPAL=\"${_ERPAL}\""                         >> ${writeTo}
   echo "_F_TIME=\"${_F_TIME}\""                       >> ${writeTo}
