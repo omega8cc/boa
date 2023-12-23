@@ -77,6 +77,9 @@ eldirP="/var/xdrago/conf/${eldirF}"
 dctpF="drupal-ten-aegir-01.patch"
 dctpP="/data/conf/patches/${dctpF}"
 #
+dctrF="drupal-ten-aegir-02.patch"
+dctrP="/data/conf/patches/${dctrF}"
+#
 provLeInc="provision_hosting_le.drush.inc"
 provLeIncFull="/var/xdrago/conf/${provLeInc}"
 #
@@ -1804,10 +1807,12 @@ fix_eldir() {
 }
 
 fix_drupal_core_ten() {
-  if [ -e "/var/xdrago" ] \
-    && [ ! -e "${dctpP}" ]; then
-    mkdir -p /data/conf/patches
-    curl ${crlGet} "${urlHmr}/patches/${dctpF}" -o ${dctpP}
+  if [ -e "/var/xdrago" ]; then
+    if [ ! -e "${dctpP}" ] || [ ! -e "${dctrP}" ]; then
+      mkdir -p /data/conf/patches
+      curl ${crlGet} "${urlHmr}/patches/${dctrF}" -o ${dctrP}
+      cp -af ${dctrP} ${dctpP}
+    fi
   fi
 }
 
