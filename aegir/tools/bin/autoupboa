@@ -461,7 +461,7 @@ if [ -e "/data/disk/arch/sql" ]; then
 #     touch /root/.legacy_sys_prep_ugrade_ctrl.cnf
 #   fi
 
-  if [ ! -e "/var/xdrago/log/.etc_crontab_update_ctrl_hfx_012.${_X_SE}.pid" ]; then
+  if [ ! -e "/var/xdrago/log/.etc_crontab_update_ctrl.${_X_SE}.pid" ]; then
     rm -f /var/xdrago/log/.*_crontab_*
     if [ ! -z "${_AUTO_UP_MONTH}" ] \
       && [ ! -z "${_AUTO_UP_DAY}" ]; then
@@ -470,7 +470,7 @@ if [ -e "/data/disk/arch/sql" ]; then
       crontab_cleanup
     fi
     service cron restart
-    touch /var/xdrago/log/.etc_crontab_update_ctrl_hfx_012.${_X_SE}.pid
+    touch /var/xdrago/log/.etc_crontab_update_ctrl.${_X_SE}.pid
   fi
 
   if [ ! -e "/var/xdrago/log/.etc_csf_allow_ctrl.${_X_SE}.pid" ]; then
@@ -500,12 +500,22 @@ if [ -e "/data/disk/arch/sql" ]; then
   fi
 
   if [ -x "/etc/init.d/site24x7monagent" ] \
-    && [ ! -e "/var/xdrago/log/.site24x7monagent_ctrl_hfx_010.${_X_SE}.pid" ]; then
+    && [ ! -e "/var/xdrago/log/.site24x7monagent_ctrl.${_X_SE}.pid" ]; then
     service site24x7monagent stop
     wait
     service site24x7monagent start
     rm -f /var/xdrago/log/.site24x7monagent*
-    touch /var/xdrago/log/.site24x7monagent_ctrl_hfx_010.${_X_SE}.pid
+    touch /var/xdrago/log/.site24x7monagent_ctrl.${_X_SE}.pid
+  fi
+
+  if [ ! -e "/var/xdrago/log/.force_nginx_restart_ctrl.${_X_SE}.pid" ]; then
+    _IS_NGINX_LOCKED=$(service nginx restart 2>&1)
+    if [[ "${_IS_NGINX_LOCKED}" =~ "Address already in use" ]]; then
+      kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
+      service nginx start
+      rm -f /var/xdrago/log/.force_nginx_restart_ctrl*
+      touch /var/xdrago/log/.force_nginx_restart_ctrl.${_X_SE}.pid
+    fi
   fi
 
   _IS_MOVESQL_RUNNING=$(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}' 2>&1)
@@ -514,8 +524,8 @@ if [ -e "/data/disk/arch/sql" ]; then
       kill -9 $(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}') &> /dev/null
       rm -f /run/mysql_restart_running.pid
       rm -f /run/boa_wait.pid
-      rm -f /var/xdrago/log/.move_sql_ctrl_hfx*
-      touch /var/xdrago/log/.move_sql_ctrl_hfx_010.${_X_SE}.pid
+      rm -f /var/xdrago/log/.move_sql_ctrl*
+      touch /var/xdrago/log/.move_sql_ctrl.${_X_SE}.pid
     fi
   fi
 
@@ -530,8 +540,8 @@ if [ -e "/data/disk/arch/sql" ]; then
       rm -f /run/mysql_backup_running.pid
       rm -f /run/boa_wait.pid
       rm -f /run/daily-fix.pid
-      rm -f /var/xdrago/log/.sqlbackup_ctrl_hfx_010*
-      touch /var/xdrago/log/.sqlbackup_ctrl_hfx_010.${_X_SE}.pid
+      rm -f /var/xdrago/log/.sqlbackup_ctrl*
+      touch /var/xdrago/log/.sqlbackup_ctrl.${_X_SE}.pid
     fi
   fi
 fi
