@@ -1107,9 +1107,6 @@ db_server_install() {
     fi
     install_with_aptitude_sql
   else
-    if [ "${_UP_NRC}" = "YES" ]; then
-      newrelic_update
-    fi
     ### Only supported upgrade path allowed
     sql_strict_upgrade_path
     if [ "${_DB_SERVER}" = "MariaDB" ]; then

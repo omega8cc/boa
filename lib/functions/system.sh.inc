@@ -6789,6 +6789,28 @@ newrelic_check_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: newrelic_check_fix"
   fi
+  _NR_FORCE_REINSTALL=NO
+  _NRS_TEST=$(which newrelic-daemon 2>&1)
+  if [ ! -z "${_NRS_TEST}" ]; then
+    _NOW_NR_V=$(newrelic-daemon --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f5 \
+      | awk '{ print $1}' \
+      | cut -d"-" -f1 \
+      | awk '{ print $1}' 2>&1)
+  fi
+  if [ ! -z "${_NOW_NR_V}" ]; then
+    if [ "${_NOW_NR_V}" != "${_NEW_RELIC_VRN}" ]; then
+      _NR_FORCE_REINSTALL=YES
+    fi
+  else
+    _NR_FORCE_REINSTALL=YES
+  fi
+  if [ "${_UP_NRC}" = "YES" ] \
+    || [ "${_NR_FORCE_REINSTALL}" = "YES" ] \
+    || [ -e /root/.force.newrelic.update.cnf ]; then
+    newrelic_update
+  fi
   _NEWRELIC_APP_CFG="/etc/newrelic/newrelic.cfg"
   if [ -e "${_NEWRELIC_APP_CFG}" ]; then
     _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" ${_NEWRELIC_APP_CFG} 2>&1)

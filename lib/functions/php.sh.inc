@@ -1859,6 +1859,14 @@ newrelic_update() {
       apt_clean_update
       st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
       st_runner "apt-get install newrelic-sysmond ${nrmUpArg}" 2> /dev/null
+      cd /var/opt
+      rm -rf /opt/newrelic*
+      get_dev_arch "newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb.gz"
+      get_dev_arch "newrelic-daemon_${_NEW_RELIC_VRN}_all.deb.gz"
+      get_dev_arch "newrelic-php5_${_NEW_RELIC_VRN}_all.deb.gz"
+      dpkg -i /var/opt/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb &> /dev/null
+      dpkg -i /var/opt/newrelic-daemon_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
+      dpkg -i /var/opt/newrelic-php5_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
       NR_PHPLIST="/opt/php56/bin:/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin"
       NR_SILENT="silent"
       export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
