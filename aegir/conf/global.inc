@@ -1478,7 +1478,7 @@ if (extension_loaded('newrelic') && $all_ini['enable_newrelic_integration']) {
   else {
     if (isset($_SERVER['SERVER_NAME'])) {
       $this_instance = 'Web Site: ' . $_SERVER['SERVER_NAME'];
-      newrelic_background_job(FALSE);
+      //newrelic_background_job(FALSE);
     }
   }
   if ($this_instance) {
