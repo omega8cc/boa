@@ -1466,45 +1466,19 @@ if (extension_loaded('newrelic') && $all_ini['enable_newrelic_integration']) {
       $uri = $context['DRUSH_DRUPAL_SITE'];
     }
     if ($uri) {
-      $this_instance = 'Site: ' . $uri;
-      $root = FALSE;
-      // Support Barracuda and Octopus naming convention
-      if (isset($context['DRUSH_DRUPAL_CORE'])) {
-        $root = $context['DRUSH_DRUPAL_CORE'];
-      }
-      elseif (isset($context['DRUSH_DRUPAL_ROOT'])) {
-        $root = $context['DRUSH_DRUPAL_ROOT'];
-      }
-      if ($root) {
-        $frags = explode("/", $root);
-        if ($frags[1] == 'data') {
-          $this_instance = 'Site: ' . $uri . ';AAA Octopus ' . $frags[3];
-        }
-        elseif ($frags[2] == 'aegir') {
-          $this_instance = 'Site: ' . $uri . ';AAA Barracuda Master';
-        }
-      }
-      if (function_exists('drush_get_command')) {
-        // Build drush command
-        $command = drush_get_command();
-        if (isset($command['command']) && isset($command['arguments'])) {
-          $drush_command = array_merge(array($command['command']), $command['arguments']);
-          newrelic_add_custom_parameter('Drush command', implode(' ', $drush_command));
-          newrelic_name_transaction(implode(' ', $drush_command));
-          newrelic_background_job(TRUE);
-        }
+      $this_instance = 'Drush Site: ' . $uri;
+      if (isset($command['command']) && isset($command['arguments'])) {
+        $drush_command = array_merge(array($command['command']), $command['arguments']);
+        newrelic_add_custom_parameter('Drush command', implode(' ', $drush_command));
+        newrelic_name_transaction(implode(' ', $drush_command));
+        newrelic_background_job(TRUE);
       }
     }
   }
   else {
-    if (isset($_SERVER['DOCUMENT_ROOT']) && isset($_SERVER['SERVER_NAME'])) {
-      $frags = explode("/", $_SERVER['DOCUMENT_ROOT']);
-      if ($frags[1] == 'data') {
-        $this_instance = 'Site: ' . $_SERVER['SERVER_NAME'] . ';AAA Octopus ' . $frags[3];
-      }
-      elseif ($frags[2] == 'aegir') {
-        $this_instance = 'Site: ' . $_SERVER['SERVER_NAME'] . ';AAA Barracuda Master';
-      }
+    if (isset($_SERVER['SERVER_NAME'])) {
+      $this_instance = 'Web Site: ' . $_SERVER['SERVER_NAME'];
+      newrelic_background_job(FALSE);
     }
   }
   if ($this_instance) {
