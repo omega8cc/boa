@@ -3630,12 +3630,12 @@ curl_install_src() {
     | cut -d"/" -f2 \
     | awk '{ print $1}' 2>&1)
   if [ "${_CURL_ITD}" != "${_CURL_VRN}" ]; then
-    if [ "${_OSR}" = "none" ]; then
-      _CURL_INSTALL_REQUIRED=NO
-    else
-      _CURL_INSTALL_REQUIRED=YES
-      msg "INFO: Installed cURL version ${_CURL_ITD}, upgrade required"
-    fi
+    _CURL_INSTALL_REQUIRED=YES
+    msg "INFO: Installed cURL/lib ${_CURL_ITD}/${_CURL_LIB_ITD}, upgrade required"
+  fi
+  if [ "${_CURL_LIB_ITD}" != "${_CURL_VRN}" ]; then
+    _CURL_INSTALL_REQUIRED=YES
+    msg "INFO: Installed cURL/lib ${_CURL_ITD}/${_CURL_LIB_ITD}, rebuild required"
   fi
   _BROKEN_CURL_TEST=$(curl --version 2>&1)
   if [[ "${_BROKEN_CURL_TEST}" =~ "libcurl.so.4" ]]; then
