@@ -508,6 +508,15 @@ if [ -e "/data/disk/arch/sql" ]; then
     touch /var/xdrago/log/.site24x7monagent_ctrl.${_X_SE}.pid
   fi
 
+  if [ -x "/usr/local/bin/curl" ] \
+    && [ ! -e "/var/xdrago/log/.curl_ctrl.${_X_SE}.pid" ]; then
+    if [ -f "/usr/bin/curl" ]; then
+      mv -f /usr/bin/curl /usr/bin/legacy-curl
+    fi
+    ln -s /usr/local/bin/curl /usr/bin/curl
+    touch /var/xdrago/log/.curl_ctrl.${_X_SE}.pid
+  fi
+
   if [ ! -e "/var/xdrago/log/.force_nginx_restart_ctrl.${_X_SE}.pid" ]; then
     _IS_NGINX_LOCKED=$(service nginx restart 2>&1)
     if [[ "${_IS_NGINX_LOCKED}" =~ "Address already in use" ]]; then
