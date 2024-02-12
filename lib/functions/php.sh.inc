@@ -1852,7 +1852,7 @@ newrelic_update() {
       _PHP_EXT_DIR_56="/opt/php56/${pthNrx}-${_PHP56_API}"
       msg "INFO: Installing latest version of New Relic Apps Monitor..."
       mkdir -p /etc/apt/keyrings/
-      wget -q -U iCab ${urlDev}/newrelic-key-548C16BF.gpg -O /etc/apt/keyrings/newrelic-key-548C16BF.gpg
+      wget -q -U iCab ${urlDev}/newrelic-key-548C16BF.gpg -O /etc/apt/keyrings/newrelic-key-548C16BF.gpg 2> /dev/null
       wget -O- https://download.newrelic.com/548C16BF.gpg | apt-key add - &> /dev/null
       echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
@@ -2026,7 +2026,7 @@ if_install_php_newrelic() {
       cat 548C16BF.gpg | ${_GPG} --import &> /dev/null
       rm -f 548C16BF.gpg*
       mkdir -p /etc/apt/keyrings/
-      wget -q -U iCab ${urlDev}/newrelic-key-548C16BF.gpg -O /etc/apt/keyrings/newrelic-key-548C16BF.gpg
+      wget -q -U iCab ${urlDev}/newrelic-key-548C16BF.gpg -O /etc/apt/keyrings/newrelic-key-548C16BF.gpg 2> /dev/null
       wget -O- https://download.newrelic.com/548C16BF.gpg | apt-key add - &> /dev/null
       echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
