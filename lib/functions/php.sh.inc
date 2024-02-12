@@ -1861,14 +1861,14 @@ newrelic_update() {
       st_runner "apt-get install newrelic-php5-common ${nrmUpArg}" 2> /dev/null
       st_runner "apt-get install newrelic-daemon ${nrmUpArg}" 2> /dev/null
       st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
-      cd /var/opt
-      rm -rf /opt/newrelic*
-      wget -q -U iCab ${urlDev}/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb
-      wget -q -U iCab ${urlDev}/newrelic-daemon_${_NEW_RELIC_VRN}_all.deb
-      wget -q -U iCab ${urlDev}/newrelic-php5_${_NEW_RELIC_VRN}_all.deb
-      dpkg -i /var/opt/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb &> /dev/null
-      dpkg -i /var/opt/newrelic-daemon_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
-      dpkg -i /var/opt/newrelic-php5_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
+      # cd /var/opt
+      # rm -rf /opt/newrelic*
+      # wget -q -U iCab ${urlDev}/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb
+      # wget -q -U iCab ${urlDev}/newrelic-daemon_${_NEW_RELIC_VRN}_all.deb
+      # wget -q -U iCab ${urlDev}/newrelic-php5_${_NEW_RELIC_VRN}_all.deb
+      # dpkg -i /var/opt/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb &> /dev/null
+      # dpkg -i /var/opt/newrelic-daemon_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
+      # dpkg -i /var/opt/newrelic-php5_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
       NR_PHPLIST="/opt/php56/bin:/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin"
       NR_SILENT="silent"
       export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
@@ -2035,14 +2035,14 @@ if_install_php_newrelic() {
       st_runner "apt-get install newrelic-php5-common ${nrmUpArg}" 2> /dev/null
       st_runner "apt-get install newrelic-daemon ${nrmUpArg}" 2> /dev/null
       st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
-      cd /var/opt
-      rm -rf /opt/newrelic*
-      wget -q -U iCab ${urlDev}/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb
-      wget -q -U iCab ${urlDev}/newrelic-daemon_${_NEW_RELIC_VRN}_all.deb
-      wget -q -U iCab ${urlDev}/newrelic-php5_${_NEW_RELIC_VRN}_all.deb
-      dpkg -i /var/opt/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb &> /dev/null
-      dpkg -i /var/opt/newrelic-daemon_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
-      dpkg -i /var/opt/newrelic-php5_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
+      # cd /var/opt
+      # rm -rf /opt/newrelic*
+      # wget -q -U iCab ${urlDev}/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb
+      # wget -q -U iCab ${urlDev}/newrelic-daemon_${_NEW_RELIC_VRN}_all.deb
+      # wget -q -U iCab ${urlDev}/newrelic-php5_${_NEW_RELIC_VRN}_all.deb
+      # dpkg -i /var/opt/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb &> /dev/null
+      # dpkg -i /var/opt/newrelic-daemon_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
+      # dpkg -i /var/opt/newrelic-php5_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
       if [ "${_MULTI_NR}" = "YES" ]; then
         msg "INFO: Installing latest version of New Relic Apps Monitor..."
         NR_PHPLIST="/opt/php56/bin:/opt/php70/bin:/opt/php71/bin:/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin"
