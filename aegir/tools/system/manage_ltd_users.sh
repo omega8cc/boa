@@ -2625,6 +2625,12 @@ else
     sed -i "s/, 'mc':'mc -u'//g" ${_THIS_LTD_CONF}
     wait
   fi
+  if [ ! -e "/root/.allow.du.cnf" ]; then
+    sed -i "s/'du', //g" ${_THIS_LTD_CONF}
+    wait
+    sed -i "s/, 'du':'du -s -h'//g" ${_THIS_LTD_CONF}
+    wait
+  fi
   add_ltd_group_if_not_exists
   kill_zombies >/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   manage_user >/var/backups/ltd/log/users-${_NOW}.log 2>&1
