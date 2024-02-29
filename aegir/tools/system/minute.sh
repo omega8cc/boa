@@ -576,6 +576,26 @@ if_redis_restart() {
 }
 if_redis_restart
 
+if_nginx_restart() {
+  PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+  PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+  PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
+  ReTest=$(ls /data/disk/*/static/control/run-nginx-restart.pid | wc -l 2>&1)
+  if [[ "${PrTestPower}" =~ "POWER" ]] \
+    || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
+    || [[ "${PrTestCluster}" =~ "CLUSTER" ]] \
+    || [ -e "/root/.allow.nginx.restart.cnf" ]; then
+    if [ "${ReTest}" -ge "1" ]; then
+      service nginx restart
+      wait
+      rm -f /data/disk/*/static/control/run-nginx-restart.pid
+      echo "$(date 2>&1) Nginx Server restart forced" >> \
+        /var/xdrago/log/nginx-server-restart.event.log
+    fi
+  fi
+}
+if_nginx_restart
+
 if [ -e "/root/.mysqladmin.monitor.cnf" ]; then
   _SQLMONITOR=YES
 fi
