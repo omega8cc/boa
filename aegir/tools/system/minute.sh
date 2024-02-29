@@ -586,7 +586,8 @@ if_nginx_restart() {
     || [[ "${PrTestCluster}" =~ "CLUSTER" ]] \
     || [ -e "/root/.allow.nginx.restart.cnf" ]; then
     if [ "${ReTest}" -ge "1" ]; then
-      service nginx restart
+      kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
+      service nginx start
       wait
       rm -f /data/disk/*/static/control/run-nginx-restart.pid
       echo "$(date 2>&1) Nginx Server restart forced" >> \

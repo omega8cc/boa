@@ -522,9 +522,19 @@ if [ -e "/data/disk/arch/sql" ]; then
     if [[ "${_IS_NGINX_LOCKED}" =~ "Address already in use" ]]; then
       kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
       service nginx start
+      wait
       rm -f /var/xdrago/log/.force_nginx_restart_ctrl*
       touch /var/xdrago/log/.force_nginx_restart_ctrl.${_X_SE}.pid
     fi
+  fi
+
+  _IS_NGINX_ZOMBIE=$(service nginx status 2>&1)
+  if [[ "${_IS_NGINX_ZOMBIE}" =~ "is NOT running" ]]; then
+    kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
+    service nginx start
+    wait
+    echo "$(date 2>&1) Nginx Zombie restart forced" >> \
+        /var/xdrago/log/nginx-server-restart.event.log
   fi
 
   _IS_MOVESQL_RUNNING=$(ps aux | grep '[m]ove_sql.sh' | awk '{print $2}' 2>&1)
