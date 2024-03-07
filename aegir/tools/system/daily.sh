@@ -399,6 +399,14 @@ sync_user_register_protection_ini_vars() {
     chown ${_HM_U}:users ${_PLR_CTRL_F} &> /dev/null
     chmod 0664 ${_PLR_CTRL_F} &> /dev/null
   fi
+  if [ -e "${User}/static/control/disable_user_register_protection.info" ] \
+    && [ -e "/data/conf/default.boa_platform_control.ini" ] \
+    && [ ! -e "${_PLR_CTRL_F}" ]; then
+    cp -af /data/conf/default.boa_platform_control.ini \
+      ${_PLR_CTRL_F} &> /dev/null
+    chown ${_HM_U}:users ${_PLR_CTRL_F} &> /dev/null
+    chmod 0664 ${_PLR_CTRL_F} &> /dev/null
+  fi
   if [ -e "${_PLR_CTRL_F}" ]; then
     _EN_URP_T=$(grep "^enable_user_register_protection = TRUE" \
       ${_PLR_CTRL_F} 2>&1)
@@ -407,28 +415,12 @@ sync_user_register_protection_ini_vars() {
     else
       _ENABLE_USER_REGISTER_PROTECTION=NO
     fi
-    if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-      if [ "${_CLIENT_OPTION}" = "POWER" ] \
-        || [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
-        _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
-          ${_PLR_CTRL_F} 2>&1)
-        if [[ "${_DIS_URP_T}" =~ "disable_user_register_protection = TRUE" ]]; then
-          _DISABLE_USER_REGISTER_PROTECTION=YES
-        else
-          _DISABLE_USER_REGISTER_PROTECTION=NO
-        fi
-      fi
+    _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
+      ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_DIS_URP_T}" =~ "disable_user_register_protection = TRUE" ]]; then
+      _IGNORE_USER_REGISTER_PROTECTION=YES
     else
-      _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
-        ${_PLR_CTRL_F} 2>&1)
-      if [[ "${_DIS_URP_T}" =~ "disable_user_register_protection = TRUE" ]]; then
-        _DISABLE_USER_REGISTER_PROTECTION=YES
-      else
-        _DISABLE_USER_REGISTER_PROTECTION=NO
-      fi
+      _IGNORE_USER_REGISTER_PROTECTION=NO
     fi
   else
     _ENABLE_USER_REGISTER_PROTECTION=NO
@@ -440,6 +432,13 @@ sync_user_register_protection_ini_vars() {
     wait
     _ENABLE_USER_REGISTER_PROTECTION=YES
   fi
+  if [ "${_ENABLE_USER_REGISTER_PROTECTION}" = "YES" ] \
+    && [ -e "${User}/static/control/disable_user_register_protection.info" ]; then
+    sed -i "s/.*enable_user_register_protection.*/enable_user_register_protection = FALSE/g" \
+      ${_PLR_CTRL_F} &> /dev/null
+    wait
+    _IGNORE_USER_REGISTER_PROTECTION=YES
+  fi
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
     && [ ! -e "${_DIR_CTRL_F}" ]; then
     cp -af /data/conf/default.boa_site_control.ini ${_DIR_CTRL_F} &> /dev/null
@@ -450,12 +449,17 @@ sync_user_register_protection_ini_vars() {
     _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
       ${_DIR_CTRL_F} 2>&1)
     if [[ "${_DIS_URP_T}" =~ "disable_user_register_protection = TRUE" ]]; then
-      _DISABLE_USER_REGISTER_PROTECTION=YES
+      _IGNORE_USER_REGISTER_PROTECTION=YES
     else
-      _DISABLE_USER_REGISTER_PROTECTION=NO
+      _IGNORE_USER_REGISTER_PROTECTION=NO
     fi
   else
-    _DISABLE_USER_REGISTER_PROTECTION=NO
+    _IGNORE_USER_REGISTER_PROTECTION=NO
+  fi
+  if [ -e "${User}/static/control/disable_user_register_protection.info" ]; then
+    _IGNORE_USER_REGISTER_PROTECTION=YES
+  else
+    _IGNORE_USER_REGISTER_PROTECTION=NO
   fi
 }
 
@@ -475,7 +479,7 @@ fix_site_readonlymode() {
 
 fix_user_register_protection_with_vSet() {
   sync_user_register_protection_ini_vars
-  if [ "${_DISABLE_USER_REGISTER_PROTECTION}" = "NO" ] \
+  if [ "${_IGNORE_USER_REGISTER_PROTECTION}" = "NO" ] \
     && [ ! -e "${Plr}/core" ]; then
     Prm=$(run_drush8_nosilent_cmd "${vGet} ^user_register$" \
       | cut -d: -f2 \
