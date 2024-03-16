@@ -714,6 +714,10 @@ download_helpers_libs() {
   if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
     isGit=$(which git 2>&1)
     if [ ! -x "${isGit}" ] || [ -z "${isGit}" ]; then
+      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+        && [ -e "/etc/apt/apt.conf.d" ]; then
+        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+      fi
       apt_clean_update
       apt-get install git -fuy --allow-unauthenticated --reinstall &> /dev/null
       wait

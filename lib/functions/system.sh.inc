@@ -3685,9 +3685,6 @@ curl_install_src() {
     if [ -e "/root/.use.curl.from.packages.cnf" ]; then
       msg "INFO: cURL from packages is forced with /root/.use.curl.from.packages.cnf"
       [ -e "/root/.sorted.multi.php.cnf" ] && rm -f /root/.sorted.multi.php.cnf
-      mkdir -p /var/backups/libcurl
-      mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
-      mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
       if [ -e "/usr/local/bin/curl" ]; then
         mv -f /usr/local/bin/curl /usr/local/bin/curl-src-off-$(date +%y%m%d-%H%M%S 2>&1)
       fi

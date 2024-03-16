@@ -103,6 +103,7 @@ find_fast_mirror() {
 }
 
 if [ ! -e "/var/run/boa_run.pid" ]; then
+  find_fast_mirror
   if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
     isCurl=$(curl --version 2>&1)
@@ -115,15 +116,38 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
       echo "curl install" | dpkg --set-selections &> /dev/null
       apt_clean_update
       apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
-      mkdir -p /var/backups/libcurl
-      mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
-      mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
-      touch /root/.use.curl.from.packages.cnf
+      if [ -f "/usr/bin/curl" ] && [ -e "/usr/local/bin/curl" ]; then
+        rm -f /usr/local/bin/curl--broken
+        mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
+      fi
+    fi
+  fi
+  _CURL_TEST=$(curl -L -k -s \
+    --max-redirs 10 \
+    --retry 3 \
+    --retry-delay 10 \
+    -I "http://${_USE_MIR}" 2> /dev/null)
+  if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
+    if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
+      echo "ERROR: cURL libs are out of sync! Re-installing.."
+      rm -f /etc/apt/sources.list.d/openssl.list
+      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+        && [ -e "/etc/apt/apt.conf.d" ]; then
+        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+      fi
+      echo "curl install" | dpkg --set-selections &> /dev/null
+      apt_clean_update
+      apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
+      if [ -f "/usr/bin/curl" ] && [ -e "/usr/local/bin/curl" ]; then
+        rm -f /usr/local/bin/curl--broken
+        mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
+      fi
+    else
+      echo "ERROR: ${_USE_MIR} is not available, please try later"
     fi
   fi
   rm -f /tmp/*error*
   rm -f /var/backups/BOA.sh.txt.hourly*
-  find_fast_mirror
   curl -L -k -s \
     --max-redirs 5 \
     --retry 5 \

@@ -211,6 +211,7 @@ crontab_cleanup() {
   fi
 }
 
+[ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
 [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
 
 if [ -e "/var/xdrago/log" ]; then

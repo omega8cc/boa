@@ -1913,6 +1913,7 @@ update_wrappers() {
   fi
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+    echo "ERROR: cURL is broken! Re-installing.."
     rm -f /etc/apt/sources.list.d/openssl.list
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -1921,10 +1922,10 @@ update_wrappers() {
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt_clean_update
     apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
-    mkdir -p /var/backups/libcurl
-    mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
-    mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
-    touch /root/.use.curl.from.packages.cnf
+    if [ -f "/usr/bin/curl" ] && [ -e "/usr/local/bin/curl" ]; then
+      rm -f /usr/local/bin/curl--broken
+      mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
+    fi
   fi
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
@@ -1933,13 +1934,19 @@ update_wrappers() {
     -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
+      echo "ERROR: cURL libs are out of sync! Re-installing.."
+      rm -f /etc/apt/sources.list.d/openssl.list
+      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+        && [ -e "/etc/apt/apt.conf.d" ]; then
+        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+      fi
       echo "curl install" | dpkg --set-selections &> /dev/null
       apt_clean_update
       apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
-      mkdir -p /var/backups/libcurl
-      mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
-      mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
-      touch /root/.use.curl.from.packages.cnf
+      if [ -f "/usr/bin/curl" ] && [ -e "/usr/local/bin/curl" ]; then
+        rm -f /usr/local/bin/curl--broken
+        mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
+      fi
     fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     exit 1
@@ -2163,6 +2170,7 @@ setup() {
 
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+    echo "ERROR: cURL is broken! Re-installing.."
     rm -f /etc/apt/sources.list.d/openssl.list
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -2171,10 +2179,10 @@ setup() {
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt_clean_update
     apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
-    mkdir -p /var/backups/libcurl
-    mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
-    mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
-    touch /root/.use.curl.from.packages.cnf
+    if [ -f "/usr/bin/curl" ] && [ -e "/usr/local/bin/curl" ]; then
+      rm -f /usr/local/bin/curl--broken
+      mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
+    fi
   fi
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
@@ -2183,13 +2191,19 @@ setup() {
     -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
+      echo "ERROR: cURL libs are out of sync! Re-installing.."
+      rm -f /etc/apt/sources.list.d/openssl.list
+      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+        && [ -e "/etc/apt/apt.conf.d" ]; then
+        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+      fi
       echo "curl install" | dpkg --set-selections &> /dev/null
       apt_clean_update
       apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
-      mkdir -p /var/backups/libcurl
-      mv -f /usr/local/lib/libcurl* /var/backups/libcurl/ &> /dev/null
-      mv -f /usr/local/lib/pkgconfig/libcurl* /var/backups/libcurl/ &> /dev/null
-      touch /root/.use.curl.from.packages.cnf
+      if [ -f "/usr/bin/curl" ] && [ -e "/usr/local/bin/curl" ]; then
+        rm -f /usr/local/bin/curl--broken
+        mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
+      fi
     fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     exit 1
