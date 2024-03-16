@@ -199,4 +199,4 @@ sub send_alert
   `rm -f /var/xdrago/monitor/segfault_alert`;
 }
 
-###EOF2023###
+###EOF2024###

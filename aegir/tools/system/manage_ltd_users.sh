@@ -118,7 +118,7 @@ find_fast_mirror() {
   fi
   ffMirr=$(which ffmirror 2>&1)
   if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors-2023-01.txt"
+    ffList="/var/backups/boa-mirrors-2024-01.txt"
     mkdir -p /var/backups
     if [ ! -e "${ffList}" ]; then
       echo "de.files.aegir.cc"  > ${ffList}
@@ -2770,4 +2770,4 @@ else
   [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
   exit 0
 fi
-###EOF2023###
+###EOF2024###

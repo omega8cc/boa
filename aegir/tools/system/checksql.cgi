@@ -100,4 +100,4 @@ sub repair_this_action
   system("echo \"/usr/bin/mysqlcheck -u root -a $FIXTABLE\" >> $fixfile");
   system("echo \" \" >> $fixfile");
 }
-###EOF2023###
+###EOF2024###

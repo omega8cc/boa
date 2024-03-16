@@ -51,4 +51,4 @@ _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
 /usr/bin/mysqlcheck -u root -Ao >> $dir/all.o.`date +%y%m%d-%H%M%S`
 [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
 exit 0
-###EOF2023###
+###EOF2024###
