@@ -713,12 +713,12 @@ _F_OPIGNOLMS9="Opigno LMS ${_OPIGNOLMS9} ${_SMALLCORE9_V} [${_THIS_CORE}]"
 _F_PANOPOLY="Panopoly ${_PANOPOLY} ${_SMALLCORE7_V} [${_THIS_CORE}]"
 _F_RECRUITER="Recruiter ${_RECRUITER} ${_SMALLCORE7_V} [${_THIS_CORE}]"
 _F_RESTAURANT="Restaurant ${_RESTAURANT} ${_SMALLCORE7_V} [${_THIS_CORE}]"
-_F_SOCIAL="Social ${_SOCIAL} ${_SMALLCORE10_0_V} [${_THIS_CORE}]"
-_F_THUNDER="Thunder ${_THUNDER} ${_SMALLCORE10_1_V} [${_THIS_CORE}]"
+_F_SOCIAL="Social ${_SOCIAL} ${_SMALLCORE10_2_V} [${_THIS_CORE}]"
+_F_THUNDER="Thunder ${_THUNDER} ${_SMALLCORE10_2_V} [${_THIS_CORE}]"
 _F_UBER_CART_T="Ubercart ${_UBERCART7} [ud2] ${_SMALLCORE7_V} [${_THIS_CORE}]"
 _F_UBERCART6="Ubercart ${_UBERCART6} ${_SMALLCORE6_V} [${_THIS_CORE}]"
 _F_UBERCART7="Ubercart ${_UBERCART7} [aq3] ${_SMALLCORE7_V} [${_THIS_CORE}]"
-_F_VARBASE="Varbase ${_VARBASE} ${_SMALLCORE10_1_V} [${_THIS_CORE}]"
+_F_VARBASE="Varbase ${_VARBASE} ${_SMALLCORE10_2_V} [${_THIS_CORE}]"
 #
 _F_DRUPAL6_D="Drupal ${_SMALLCORE6_V} D.${_THIS_CORE}"
 _F_DRUPAL6_S="Drupal ${_SMALLCORE6_V} S.${_THIS_CORE}"
@@ -2231,7 +2231,7 @@ panopoly_install() {
               if [ ! -e "${_D7_CORE_DIR}" ]; then
                 prepare_drupal7_core
               fi
-              ### https://ftp.drupal.org/files/projects/panopoly-7.x-1.93.tar.gz
+              ### https://ftp.drupal.org/files/projects/panopoly-7.x-1.94.tar.gz
               curl ${crlGet} \
                 "${urlDrp}/${_REAL_PRNAME}-7.x-${_PANOPOLY}.tar.gz" \
                 | tar -xzf -
@@ -2369,7 +2369,7 @@ thunder_install() {
 ###---### Thunder
 #
   _REAL_PRNAME="thunder"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_THUNDER}-${_SMALLCORE10_1_V}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_THUNDER}-${_SMALLCORE10_2_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/contrib/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/docroot"
@@ -2615,7 +2615,7 @@ varbase_install() {
 ###---### Varbase
 #
   _REAL_PRNAME="varbase"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_VARBASE}-${_SMALLCORE10_1_V}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_VARBASE}-${_SMALLCORE10_2_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/docroot"
@@ -2646,7 +2646,7 @@ social_install() {
 ###---### Social
 #
   _REAL_PRNAME="social"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_SOCIAL}-${_SMALLCORE10_0_V}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_SOCIAL}-${_SMALLCORE10_2_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/html"
@@ -3008,10 +3008,10 @@ save_verify_platforms() {
         ${pthDst}/restaurant-${_RESTAURANT}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_1_V}/docroot" ]; then
-    if [ ! -e "${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_1_V}/docroot/$drhSrc" ]; then
+  if [ -d "${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_2_V}/docroot" ]; then
+    if [ ! -e "${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_2_V}/docroot/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_THUNDER}" thunder \
-        ${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_1_V}/docroot &> /dev/null
+        ${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_2_V}/docroot &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}" ]; then
@@ -3032,16 +3032,16 @@ save_verify_platforms() {
         ${pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/varbase-${_VARBASE}-${_SMALLCORE10_1_V}/docroot" ]; then
-    if [ ! -e "${pthDst}/varbase-${_VARBASE}-${_SMALLCORE10_1_V}/docroot/$drhSrc" ]; then
+  if [ -d "${pthDst}/varbase-${_VARBASE}-${_SMALLCORE10_2_V}/docroot" ]; then
+    if [ ! -e "${pthDst}/varbase-${_VARBASE}-${_SMALLCORE10_2_V}/docroot/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_VARBASE}" varbase \
-        ${pthDst}/varbase-${_VARBASE}-${_SMALLCORE10_1_V}/docroot &> /dev/null
+        ${pthDst}/varbase-${_VARBASE}-${_SMALLCORE10_2_V}/docroot &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/social-${_SOCIAL}-${_SMALLCORE10_0_V}/html" ]; then
-    if [ ! -e "${pthDst}/social-${_SOCIAL}-${_SMALLCORE10_0_V}/html/$drhSrc" ]; then
+  if [ -d "${pthDst}/social-${_SOCIAL}-${_SMALLCORE10_2_V}/html" ]; then
+    if [ ! -e "${pthDst}/social-${_SOCIAL}-${_SMALLCORE10_2_V}/html/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_SOCIAL}" social \
-        ${pthDst}/social-${_SOCIAL}-${_SMALLCORE10_0_V}/html &> /dev/null
+        ${pthDst}/social-${_SOCIAL}-${_SMALLCORE10_2_V}/html &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}/web" ]; then

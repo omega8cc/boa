@@ -179,12 +179,12 @@ production settings.
 
  @ Drupal 10
 
- Drupal 10.2.0 -------------- https://drupal.org/project/drupal/releases/10.2.0
- Drupal 10.1.7 -------------- https://drupal.org/project/drupal/releases/10.1.7
+ Drupal 10.2.4 -------------- https://drupal.org/project/drupal/releases/10.2.4
+ Drupal 10.1.8 -------------- https://drupal.org/project/drupal/releases/10.1.8
  Drupal 10.0.11 ------------- https://drupal.org/project/drupal/releases/10.0.11
- Social 12.0.1 -------------- https://drupal.org/project/social (10.0.11)
- Thunder 7.1.5 -------------- https://drupal.org/project/thunder (10.1.7)
- Varbase 9.1.0 -------------- https://drupal.org/project/varbase (10.1.7)
+ Social 12.2.2 -------------- https://drupal.org/project/social (10.2.4)
+ Thunder 7.2.0 -------------- https://drupal.org/project/thunder (10.2.4)
+ Varbase 9.1.1 -------------- https://drupal.org/project/varbase (10.2.4)
 
  @ Drupal 9
 
@@ -196,12 +196,12 @@ production settings.
 
  Commerce 1.72 -------------- https://drupal.org/project/commerce_kickstart
  Commerce 2.77 -------------- https://drupal.org/project/commerce_kickstart
- Drupal 7.100.1 -------------- https://drupal.org/project/drupal/releases/7.100
+ Drupal 7.100.1 ------------- https://drupal.org/project/drupal/releases/7.100
  Guardr 2.57 ---------------- https://drupal.org/project/guardr
  OpenAtrium 2.652 ----------- https://drupal.org/project/openatrium
  OpenOutreach 1.69 ---------- https://drupal.org/project/openoutreach
  Opigno LMS 1.59 ------------ https://drupal.org/project/opigno_lms
- Panopoly 1.93 -------------- https://drupal.org/project/panopoly
+ Panopoly 1.94 -------------- https://drupal.org/project/panopoly
  Ubercart 3.13 -------------- https://drupal.org/project/ubercart
 
  @ Drupal 6

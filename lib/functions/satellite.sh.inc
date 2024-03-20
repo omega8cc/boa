@@ -3640,10 +3640,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/thunder-${_THUNDER}-${_SMALLCORE10_1_V}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_SMALLCORE10_1_V}" ]; then
-        _A="${_QR}/thunder-${_THUNDER}-${_SMALLCORE10_1_V}/docroot/sites"
-        _B="${_QH}/thunder-${_THUNDER}-${_SMALLCORE10_1_V}"
+    if [ -d "${_QR}/thunder-${_THUNDER}-${_SMALLCORE10_2_V}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_SMALLCORE10_2_V}" ]; then
+        _A="${_QR}/thunder-${_THUNDER}-${_SMALLCORE10_2_V}/docroot/sites"
+        _B="${_QH}/thunder-${_THUNDER}-${_SMALLCORE10_2_V}"
         ln -sfn ${_A} ${_B}
       fi
     fi
@@ -3668,17 +3668,17 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/varbase-${_VARBASE}-${_SMALLCORE10_1_V}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/varbase-${_VARBASE}-${_SMALLCORE10_1_V}" ]; then
-        _A="${_QR}/varbase-${_VARBASE}-${_SMALLCORE10_1_V}/docroot/sites"
-        _B="${_QH}/varbase-${_VARBASE}-${_SMALLCORE10_1_V}"
+    if [ -d "${_QR}/varbase-${_VARBASE}-${_SMALLCORE10_2_V}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/varbase-${_VARBASE}-${_SMALLCORE10_2_V}" ]; then
+        _A="${_QR}/varbase-${_VARBASE}-${_SMALLCORE10_2_V}/docroot/sites"
+        _B="${_QH}/varbase-${_VARBASE}-${_SMALLCORE10_2_V}"
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/social-${_SOCIAL}-${_SMALLCORE10_0_V}/html/sites" ]; then
-      if [ ! -L "${_QH}/social-${_SOCIAL}-${_SMALLCORE10_0_V}" ]; then
-        _A="${_QR}/social-${_SOCIAL}-${_SMALLCORE10_0_V}/html/sites"
-        _B="${_QH}/social-${_SOCIAL}-${_SMALLCORE10_0_V}"
+    if [ -d "${_QR}/social-${_SOCIAL}-${_SMALLCORE10_2_V}/html/sites" ]; then
+      if [ ! -L "${_QH}/social-${_SOCIAL}-${_SMALLCORE10_2_V}" ]; then
+        _A="${_QR}/social-${_SOCIAL}-${_SMALLCORE10_2_V}/html/sites"
+        _B="${_QH}/social-${_SOCIAL}-${_SMALLCORE10_2_V}"
         ln -sfn ${_A} ${_B}
       fi
     fi
