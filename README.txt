@@ -62,55 +62,37 @@ There is also Tuner script available (see aegir/tools/BOND.sh.txt) for easy
 system tuning for development and switching it back easily to the standard
 production settings.
 
-@=> DUAL LICENCE NOTICE
+@=> DUAL LICENCE NOTICE (updated on March 20, 2024)
 
-  While all BOA code is Free/Libre Open Source, only the BOA main installer
-  and Aegir itself is free of charge without limits, while both Barracuda and
-  Octopus updaters are paid upgrade service, with an effective date of
-  January 1st, 2024.
+  While all BOA code is Free/Libre Open Source, only the BOA LITE branch
+  and Aegir itself is free of charge without limits, while BOA PRO branch
+  will require valid licence, with an effective date of April 1st, 2024.
 
-  There are exceptions explained further below, though.
+  To provide some context, BOA project will be maintained in four branches:
 
-  The reasoning behind this change is simple. Normally Open Source software
-  benefits from its users contributions, both technically (patches) and
-  financially (donations).
+  * LITE which will remain completely free to use without any kind of license
+    as it was from the beginning (previously named HEAD or STABLE).
 
-  We have carefully reviewed both Aegir and BOA projects history in these two
-  areas and concluded that both Aegir and BOA received only sporadic technical
-  support (patches) while financial support (donations) was basically
-  nonexistent.
+  * PRO which will be free to install but with paid license to run upgrades,
+    with several license tiers for extra support (new branch).
 
-  This resulted with developers either leaving theses projects or moving in
-  different, incompatible directions, because all developers were forced to
-  limit, focus or switch their attention and work on something only their
-  clients were interested in.
+  * DEV which may (TBD) remain public but will not be available to use without
+    license even for install.
 
-  This affected also us at omega8.cc because BOA includes many things we don't
-  use in our commercial hosting, it was from the beginning written with the
-  very verbose coding style making it available for reading and improving.
+  * OM which will remain our private branch with some things we don’t use
+    removed and some added, but generally simplified for easier maintenance
+    and modern coding standards.
 
-  The resulting maintenance overhead became too big for us to handle and
-  at some point we have considered closing the project for the public. However,
-  many BOA users voiced their interest in keeping BOA alive, so we have spent
-  the last year on taking steps and preparations to find viable solution.
+  What’s then the difference between LITE and PRO?
 
-  We know that most of BOA users are running BOA for commercial purposes,
-  effectively creating competition for our hosted BOA service, while not paying
-  anything and not supporting BOA nor Aegir in any other way.
+  * LITE will be updated less regularly, perhaps quarterly, with occasional
+    updates to address security issues. It may not receive all new features
+    from the PRO branch, but should be still better and way more reliable
+    than BOA was in the last few years.
 
-  We have concluded that it's unfair situation and that in the absence of
-  voluntary support for Aegir and BOA we have hoped for over years, the
-  decision has to be made to introduce dual-licence model for BOA use.
+  * PRO will be actively maintained with monthly releases and new features.
 
-  This change will not limit any BOA user from running system upgrades with
-  standard Debian/Devuan tools, but both barracuda and octopus upgrades will
-  require valid licence after January 1st, 2024
-
-  There will be a test-drive period for new servers to run both barracuda and
-  octopus upgrades during the first 90 days, while all servers installed before
-  January 1st, 2024 will enjoy the 30 days of free extension after that date.
-
-  The pricing will be announced on https://omega8.cc/compare page shortly.
+  The pricing will be announced on https://omega8.cc/compare page soon.
 
 
 @=> FOR BUG REPORTING PLEASE FOLLOW GUIDELINES EXPLAINED IN CONTRIBUTING.txt
