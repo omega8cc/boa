@@ -262,11 +262,6 @@
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### CME ----------- Commerce v.2
 ### DCE ----------- Commerce v.1
-### GDR ----------- Guardr
-### OA7 ----------- OpenAtrium
-### OOH ----------- OpenOutreach
-### OPO ----------- Opigno LMS
-### PPY ----------- Panopoly
 ### UC7 ----------- Ubercart
 ###
 ###
@@ -282,7 +277,7 @@
 ### Examples:
 ###
 ### ALL
-### D101P D101S PPY
+### D101P D101S SOC
 ###
 
 

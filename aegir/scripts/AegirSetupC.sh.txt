@@ -3115,16 +3115,16 @@ commerce_7_2_install
 ### _USE_DISTRO_CORE=NO
 ### TMP OFF -- doesn't work with latest core and comes with too old core version
 
-guardr_install
+#guardr_install
 #openaid_install
 
 ### _USE_DISTRO_CORE=YES
-openatrium7_install
+#openatrium7_install
 ### _USE_DISTRO_CORE=NO
 
 ### openchurch2_install -- broken profile
 openlucius_install
-openoutreach_install
+#openoutreach_install
 #openpublic_install
 
 ### _USE_DISTRO_CORE=YES
@@ -3132,8 +3132,8 @@ openoutreach_install
 ### _USE_DISTRO_CORE=NO
 ### TMP OFF -- doesn't work with latest core and comes with too old core version
 
-opigno_lms7_install
-panopoly_install
+#opigno_lms7_install
+#panopoly_install
 #restaurant_install
 
 ### recruiter_install

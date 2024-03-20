@@ -197,11 +197,6 @@ production settings.
  Commerce 1.72 -------------- https://drupal.org/project/commerce_kickstart
  Commerce 2.77 -------------- https://drupal.org/project/commerce_kickstart
  Drupal 7.100.1 ------------- https://drupal.org/project/drupal/releases/7.100
- Guardr 2.57 ---------------- https://drupal.org/project/guardr
- OpenAtrium 2.652 ----------- https://drupal.org/project/openatrium
- OpenOutreach 1.69 ---------- https://drupal.org/project/openoutreach
- Opigno LMS 1.59 ------------ https://drupal.org/project/opigno_lms
- Panopoly 1.94 -------------- https://drupal.org/project/panopoly
  Ubercart 3.13 -------------- https://drupal.org/project/ubercart
 
  @ Drupal 6
