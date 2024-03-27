@@ -42,6 +42,8 @@ bldPth="/opt/tmp/boa"
 filIncB="barracuda.sh.cnf"
 libFnc="${bldPth}/lib/functions"
 vBs="/var/backups"
+tRee=dev
+export tRee="${tRee}"
 
 
 ###
@@ -108,7 +110,7 @@ gitHub="https://github.com/omega8cc"
 gitLab="https://gitlab.com/omega8cc"
 #
 urlDev="http://${_USE_MIR}/dev"
-urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
+urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
 
 
 ###---### Local functions
@@ -180,7 +182,7 @@ if [ "${_DEBUG_MODE}" = "YES" ]; then
   msg "INFO: Installing Aegir Provision backend..."
 fi
 mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
-if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
+if [ "${_AEGIR_VERSION}" != "static" ]; then
   cd ${_ROOT}/.drush
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Downloading Drush and Provision extensions..."

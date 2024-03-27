@@ -1,3 +1,7 @@
+
+tRee=dev
+export tRee="${tRee}"
+
 #
 # Fix DNS settings.
 fix_dns_settings() {
@@ -149,7 +153,7 @@ check_git_repos() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: check_git_repos"
   fi
-  if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
+  if [ "${_AEGIR_VERSION}" != "static" ]; then
     _GITHUB_WORKS=NO
     _GITLAB_WORKS=NO
     if [ "${_FORCE_GIT_MIRROR}" = "drupal" ]; then
@@ -520,7 +524,7 @@ check_github_for_aegir_head_mode() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: check_github_for_aegir_head_mode"
   fi
-  if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
+  if [ "${_AEGIR_VERSION}" != "static" ]; then
     _USE_AEGIR_VER=SRC
   else
     _USE_AEGIR_VER=STATIC
@@ -554,7 +558,8 @@ check_github_for_aegir_head_mode() {
     rm -rf /opt/tmp/test-*
   fi
   if [[ "${_X_VERSION}" =~ "-dev" ]] \
-    || [[ "${_X_VERSION}" =~ "-rel" ]]; then
+    || [[ "${_X_VERSION}" =~ "-lite" ]] \
+    || [[ "${_X_VERSION}" =~ "-pro" ]]; then
     rm -rf /opt/tmp/test-*
     _GITHUB_TEST=$(git clone ${gitHub}/boa.git \
       /opt/tmp/test-boa 2>&1)

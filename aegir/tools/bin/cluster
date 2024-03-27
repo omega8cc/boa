@@ -17,6 +17,8 @@ _INST="/usr/bin/apt-get -y --allow-unauthenticated install"
 _THIS_OS=$(lsb_release -si 2>&1)
 _OSR=$(lsb_release -sc 2>&1)
 aptLiSys="/etc/apt/sources.list"
+tRee=dev
+export tRee="${tRee}"
 
 _INSTAPP="/usr/bin/aptitude -f -y -q \
   --allow-untrusted \
@@ -531,7 +533,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
 }
 find_fast_mirror
 
@@ -1035,7 +1037,7 @@ install_vps() {
   if [ "${ver}" != "galera" ]; then
     echo "Installing BOA ${ver} in vps ${idn}..."
     rm -f BOA.sh.txt*
-    wget -q -U iCab http://${_USE_MIR}/versions/dev/boa/BOA.sh.txt
+    wget -q -U iCab http://${_USE_MIR}/versions/${tRee}/boa/BOA.sh.txt
     mv -f BOA.sh.txt /vservers/${idn}/root/
     vserver ${idn} exec bash /root/BOA.sh.txt
     vserver ${idn} exec /opt/local/bin/boa in-${ver} public ${hst} ${eml} o8 mini
@@ -2095,7 +2097,7 @@ upgrade_host() {
 
   cd
   cp -af /etc/sysctl.conf /etc/sysctl.conf.thrd.three
-  wget -q -U iCab http://${_USE_MIR}/versions/dev/boa/aegir/conf/sysctl.conf
+  wget -q -U iCab http://${_USE_MIR}/versions/${tRee}/boa/aegir/conf/sysctl.conf
   cp -af sysctl.conf /etc/sysctl.conf
   echo "kernel.vshelper = /sbin/vshelper" >> /etc/sysctl.conf
   rm -f sysctl.conf*

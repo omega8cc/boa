@@ -4,7 +4,7 @@
 * Since Debian is running systemd, it should be removed before installing BOA,
   which involves procedure in five steps, as outlined further below.
 
-* Once BOA is fully installed, you have to run 'barracuda up-dev system'
+* Once BOA is fully installed, you have to run 'barracuda up-lite system'
   (immediately, but without reboot) to make sure that your system is ready
   for production use. Otherwise there will be incomplete web, dns etc. setup,
   which will cause unexpected problems until you will run barracuda upgrade.
@@ -61,7 +61,7 @@
 3. Download and run BOA Meta Installers.
 
    $ cd;rm -f BOA*
-   $ wget -q -U iCab http://files.aegir.cc/versions/dev/boa/BOA.sh.txt
+   $ wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
    $ bash BOA.sh.txt
 
 4. Remove systemd in five steps:
@@ -78,9 +78,9 @@
 
    $ screen
 
-   You must specify the kind of install with {in-head|in-dev} or for
-   legacy versions with {in-3.2|in-2.4}, location with {local|public},
-   your hostname and email address, as shown further below.
+   You must specify the kind of install with {in-lite|in-dev}
+   location with {local|public}, your hostname and email address, as shown
+   further below.
 
    Specifying Octopus username is optional. It will use "o1" if empty.
 
@@ -104,28 +104,22 @@
    Examples:
 
    # Latest on server - no Aegir platforms + install all 9 PHP versions
-   $ boa in-head public server.mydomain.org my@email o1 none php-max
+   $ boa in-lite public server.mydomain.org my@email o1 none php-max
 
    # Latest on server - no Aegir platforms + install 3 PHP versions
-   $ boa in-head public server.mydomain.org my@email o1 none php-min
+   $ boa in-lite public server.mydomain.org my@email o1 none php-min
 
    # Latest on server - some Aegir platforms + single PHP version
-   $ boa in-head public server.mydomain.org my@email o1 mini php-8.1
+   $ boa in-lite public server.mydomain.org my@email o1 mini php-8.1
 
    # Latest on server - prompt for every platform install + 3 PHP versions
-   $ boa in-head public server.mydomain.org my@email o1
+   $ boa in-lite public server.mydomain.org my@email o1
 
    # Latest on server - no prompt with 3xD6 + 3xD7 only + 3 PHP versions
-   $ boa in-head public server.mydomain.org my@email o1 mini
+   $ boa in-lite public server.mydomain.org my@email o1 mini
 
    # Latest on server - no prompt all platforms + New Relic + 3 PHP versions
-   $ boa in-head public server.mydomain.org my@email o1 max newrelickey
-
-   To install Legacy version instead of Latest, use the same commands, but
-   replace "in-head" with "in-3.2" or "in-2.4".
-
-   Note that once you will install current Latest or DEV, you can't
-   downgrade back to Legacy version!
+   $ boa in-lite public server.mydomain.org my@email o1 max newrelickey
 
 
 ### Installing BOA system on localhost
@@ -135,12 +129,12 @@
 2. Download and run BOA Meta Installers.
 
    $ cd;rm -f BOA*
-   $ wget -q -U iCab http://files.aegir.cc/versions/dev/boa/BOA.sh.txt
+   $ wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
    $ bash BOA.sh.txt
 
 3. Install Barracuda and Octopus.
 
-   You must specify the kind of install with {in-head|in-dev},
+   You must specify the kind of install with {in-lite|in-dev},
    location with {local|public}, and your email address,
    as shown below. For local installs you don't need to specify
    hostname and Octopus username, as it is fully automated.
@@ -149,41 +143,28 @@
    Octopus platforms install mode, as explained below.
 
    You can also specify PHP version to install, as shown in examples below.
-   The {php-7.4|php-min|php-max} argument can be either added
+   The {php-8.1|php-min|php-max} argument can be either added
    after {ask|mini|max|none} or specified instead of {ask|mini|max|none}
 
    # Latest on localhost - prompt for every platform install
-   $ boa in-head local my@email
+   $ boa in-lite local my@email
 
    # Latest on localhost - prompt for every platform + install 9 PHP versions
-   $ boa in-head local my@email php-max
+   $ boa in-lite local my@email php-max
 
    # Latest on localhost - prompt for every platform + install 3 PHP versions
-   $ boa in-head local my@email php-min
+   $ boa in-lite local my@email php-min
 
    # Latest on localhost - no prompt with 3xD6 + 3xD7 only + single PHP version
-   $ boa in-head local my@email mini php-8.1
+   $ boa in-lite local my@email mini php-8.1
 
    # Latest on localhost - no prompt all platforms + 3 PHP versions
-   $ boa in-head local my@email max
-
-   To install DEV instead of Latest, use the same commands, but
-   replace "in-head" with "in-dev" (DEV should be used only for development)
-
-   To install Legacy version instead of Latest, use the same commands, but
-   replace "in-head" with "in-3.2" or "in-2.4".
-
-   The oldest Legacy version (in-2.2) is the last Edition in the 2.2.x series
-   which still supported Drupal 5 and used Drush 4 along with old Aegir version.
-   Note that once you have current Latest or DEV installed, you can't
-   go back to any legacy version.
-
+   $ boa in-lite local my@email max
 
 ### Installing more Octopus instances
 
-It is now possible to add stable, head or legacy 2.4 Octopus instances w/o
+It is now possible to add lite, pro or dev Octopus instances w/o
 forcing Barracuda upgrade, plus optionally with no platforms added by default:
 
-   $ boa {in-octopus} {email} {o2} {mini|max|none} {head|dev|2.4}
+   $ boa {in-octopus} {email} {o2} {mini|max|none} {lite|dev}
 
-If {head|dev|2.4} is not specified, it will use the Latest (head).

@@ -1,4 +1,7 @@
 
+tRee=dev
+export tRee="${tRee}"
+
 #
 # Install sysvinit with apt.
 sysvinit_install() {
@@ -4299,14 +4302,24 @@ finale() {
       # fix_core_dgd
     fi
   fi
-  mv -f /etc/motd ${vBs}/dragon/t/motd-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
+  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
+    _MTD_VR="BOA-5.1.0-omm"
+  elif [ -e "/root/.host8.cnf" ]; then
+    _MTD_VR="BOA-5.1.0-aln"
+  else
+    _MTD_VR="${_X_VERSION}"
+  fi
+  mv -f /etc/motd ${vBs}/dragon/t/motd-pre-${_X_SE}-${_MTD_VR}-${_NOW} &> /dev/null
   mv -f /etc/motd-pre-* ${vBs}/dragon/t/ &> /dev/null
   echo > /etc/motd
-  echo " Skynet Agent v.${_X_VERSION} on $(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) \
+  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) \
     welcomes you aboard" | fmt -su -w 2500 >> /etc/motd
   echo >> /etc/motd
   echo > /etc/motd.tail
-  echo " Skynet Agent v.${_X_VERSION} on $(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) \
+  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) \
     welcomes you aboard" | fmt -su -w 2500 >> /etc/motd.tail
   echo >> /etc/motd.tail
   aptitude autoclean -y &> /dev/null
@@ -5024,7 +5037,7 @@ if_major_os_upgrade() {
     if [ ! -e "/usr/local/lib/icu/73.1" ] \
       && [ "${_LOC_OSR}" != "jessie" ]; then
       echo
-      msg "OOPS: Please run normal 'barracuda up-dev' upgrade"
+      msg "OOPS: Please run normal 'barracuda up-${tRee}' upgrade"
       msg "OOPS: before trying to run major OS upgrade"
       echo
       mrun "sleep 3"
@@ -5586,7 +5599,7 @@ if_major_os_upgrade() {
     echo " "
     msg "RLLY: No errors? ${_MSG_LOC} migration worked :)"
     msg "STEP: Please reboot this server now"
-    msg "STEP: Once the system is up, run 'barracuda up-dev' command again"
+    msg "STEP: Once the system is up, run 'barracuda up-${tRee}' command again"
     echo " "
     msg "Bye"
     barracuda_cnf_cleanup
@@ -7563,18 +7576,12 @@ apticron_update() {
         wait
       fi
     fi
-    if [ "${_AEGIR_VERSION}" = "HEAD" ]; then
-      barUpv=head
-    elif [ "${_AEGIR_VERSION}" = "DEV" ]; then
-      barUpv=dev
-    else
-      barUpv=stable
-    fi
+    barUpv="${tRee}"
     sed -i "s/aptitude full-upgrade/barracuda up-${barUpv} system/g" /usr/sbin/apticron
       wait
     sed -i "s/apt-get dist-upgrade/barracuda up-${barUpv} system/g" /usr/sbin/apticron
       wait
-    sed -i "s/barracuda up-dev.*/barracuda up-${barUpv} system/g" /usr/sbin/apticron
+    sed -i "s/barracuda up-${tRee}.*/barracuda up-${barUpv} system/g" /usr/sbin/apticron
   fi
 }
 

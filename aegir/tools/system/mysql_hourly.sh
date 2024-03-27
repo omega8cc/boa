@@ -8,6 +8,9 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
+tRee=dev
+export tRee="${tRee}"
+
 check_root() {
   if [ `whoami` = "root" ]; then
     ionice -c2 -n7 -p $$
@@ -110,7 +113,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
 }
 find_fast_mirror
 

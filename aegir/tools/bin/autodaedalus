@@ -36,7 +36,7 @@
 ###
 ###  Start with manual barracuda upgrade.
 ###
-###    $ barracuda up-dev system
+###    $ barracuda up-lite system
 ###
 ###  !!! CREATE A FRESH VM BACKUP SNAPSHOT !!!
 ###  !!! TEST THE FRESHLY CREATED BACKUP.. !!!
@@ -55,7 +55,7 @@
 ###    $ service clean-boa-env start
 ###
 ###  Once enabled, the system will launch
-###  a series of barracuda up-dev and reboots
+###  a series of barracuda upgrades/reboots
 ###  until it migrates any supported Debian
 ###  or Devuan version to Devuan Daedalus.
 ###
@@ -94,6 +94,9 @@ export APT_LISTCHANGES_FRONTEND=none
 if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
+
+tRee=dev
+export tRee="${tRee}"
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
@@ -235,10 +238,10 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   barracuda php-idle disable >> ${logAds}
   wait
   msg "The barracuda php-idle disable completed" >> ${logAds}
-  msg "Launching standard barracuda up-dev system now" >> ${logAds}
-  barracuda up-dev system >> ${logAds}
+  msg "Launching standard barracuda up-${tRee} system now" >> ${logAds}
+  barracuda up-${tRee} system >> ${logAds}
   wait
-  msg "The standard barracuda up-dev system completed" >> ${logAds}
+  msg "The standard barracuda up-${tRee} system completed" >> ${logAds}
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
     _THIS_OS=$(lsb_release -si 2>&1)
     _THIS_SYS=$(lsb_release -sc 2>&1)
@@ -273,7 +276,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
       msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/daedalus" >> ${logAds}
     fi
     msg "The first stage of major OS upgrade will start now" >> ${logAds}
-    barracuda up-dev system >> ${logAds}
+    barracuda up-${tRee} system >> ${logAds}
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       msg "The first stage of major OS upgrade completed" >> ${logAds}
@@ -292,11 +295,11 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
   echo " " >> ${logAds}
-  msg "Launching post-reboot barracuda up-dev system" >> ${logAds}
+  msg "Launching post-reboot barracuda up-${tRee} system" >> ${logAds}
   msg "to complete the first stage of major OS upgrade" >> ${logAds}
-  barracuda up-dev system >> ${logAds}
+  barracuda up-${tRee} system >> ${logAds}
   wait
-  msg "The post-reboot barracuda up-dev system completed" >> ${logAds}
+  msg "The post-reboot barracuda up-${tRee} system completed" >> ${logAds}
   echo " " >> ${logAds}
   _THIS_OS=$(lsb_release -si 2>&1)
   _THIS_SYS=$(lsb_release -sc 2>&1)
@@ -337,7 +340,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   fi
   if [ "${_FURTHER_UPGRADE}" = "YES" ]; then
     msg "The second stage of major OS upgrade will start now" >> ${logAds}
-    barracuda up-dev system >> ${logAds}
+    barracuda up-${tRee} system >> ${logAds}
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       msg "The second stage of major OS upgrade completed" >> ${logAds}
@@ -356,15 +359,15 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
   echo " " >> ${logAds}
-  msg "Launching the final post-second-reboot barracuda up-dev system" >> ${logAds}
-  barracuda up-dev system >> ${logAds}
+  msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> ${logAds}
+  barracuda up-${tRee} system >> ${logAds}
   wait
   [ -e "/root/.run-to-daedalus.cnf" ] && rm -f /root/.run-to-daedalus.cnf
   [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] && rm -f /root/.run-auto-major-os-reboot-one.cnf
   [ -e "/root/.run-auto-major-os-reboot-two.cnf" ] && rm -f /root/.run-auto-major-os-reboot-two.cnf
   touch /root/.auto-upgraded-to-daedalus.cnf
   sed -i "s/^_AUTO_DAEDALUS.*//g" /root/.barracuda.cnf
-  msg "The final post-reboot barracuda up-dev system completed" >> ${logAds}
+  msg "The final post-reboot barracuda up-${tRee} system completed" >> ${logAds}
   msg "That's all folks!" >> ${logAds}
   msg "Bye!" >> ${logAds}
   echo " " >> ${logAds}

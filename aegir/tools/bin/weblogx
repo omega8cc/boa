@@ -13,6 +13,8 @@ _USE_GITHUB=/root/.goaccess.use.github.txt
 _GOACCESS_VRN=1.7.1
 sPmrs="https://raw.githubusercontent.com/matomo-org/referrer-spam-blacklist/master/spammers.txt"
 [ -e "/root/.goaccess.use.github.txt" ] && rm -f /root/.goaccess.use.github.txt
+tRee=dev
+export tRee="${tRee}"
 
 check_root() {
   if [ `whoami` = "root" ]; then
@@ -112,7 +114,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
 }
 
 fetch_geoip() {

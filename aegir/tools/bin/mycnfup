@@ -17,9 +17,12 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
-_AEGIR_VERSION="HEAD"
-_BRANCH_BOA="5.x-head"
-_X_VERSION="BOA-5.1.0-head"
+tRee=dev
+export tRee="${tRee}"
+
+_AEGIR_VERSION="${tRee}"
+_BRANCH_BOA="5.x-${tRee}"
+_X_VERSION="BOA-5.1.0-${tRee}"
 _X_SE="510devT02"
 _MYSQLTUNER_VRN=1.9.4
 _PHP_FPM_WORKERS=AUTO
@@ -496,7 +499,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
 }
 find_fast_mirror
 

@@ -17,7 +17,7 @@
     First, update your BOA Meta Installers with:
 
     $ cd;rm -f BOA*
-    $ wget -q -U iCab http://files.aegir.cc/versions/dev/boa/BOA.sh.txt
+    $ wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
     $ bash BOA.sh.txt
 
     ###----------------------------------------###
@@ -26,7 +26,7 @@
     ###
     ###  Start with manual barracuda upgrade.
     ###
-    ###    $ barracuda up-dev system
+    ###    $ barracuda up-lite system
     ###
     ###  !!! CREATE A FRESH VM BACKUP SNAPSHOT !!!
     ###  !!! TEST THE FRESHLY CREATED BACKUP.. !!!
@@ -48,7 +48,7 @@
     ###    $ service clean-boa-env start
     ###
     ###  Once enabled, the system will launch
-    ###  a series of barracuda up-dev and reboots
+    ###  a series of barracuda up-lite and reboots
     ###  until it migrates any supported Debian
     ###  or Devuan version to Devuan Chimaera or
     ###  Devuan Daedalus.
@@ -66,7 +66,7 @@
 
  => This tool automates OS upgrades you can still run manually if you prefer,
     by adding respective variable to /root/.barracuda.cnf and running standard
-    command 'barracuda up-dev system' for the manual steps based upgrade.
+    command 'barracuda up-lite system' for the manual steps based upgrade.
 
     @> Devuan to Devuan major OS upgrades
       * Devuan Chimaera    => upgrade to Daedalus with _CHIMAERA_TO_DAEDALUS=YES
@@ -115,11 +115,11 @@
     Once new BOA Latest is available, you must run *full* upgrades with commands:
 
     $ cd;rm -f BOA*
-    $ wget -q -U iCab http://files.aegir.cc/versions/dev/boa/BOA.sh.txt
+    $ wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
     $ bash BOA.sh.txt
-    $ barracuda up-dev
-    $ barracuda up-dev system              (recommended on major upgrade)
-    $ octopus up-dev all force
+    $ barracuda up-lite
+    $ barracuda up-lite system              (recommended on major upgrade)
+    $ octopus up-lite all force
     $ bash /var/xdrago/manage_ltd_users.sh (recommended on major upgrade)
     $ bash /var/xdrago/daily.sh            (recommended on major upgrade)
 
@@ -131,10 +131,10 @@
 
     $ screen
     $ cd;rm -f BOA*
-    $ wget -q -U iCab http://files.aegir.cc/versions/dev/boa/BOA.sh.txt
+    $ wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
     $ bash BOA.sh.txt
-    $ barracuda up-dev log
-    $ octopus up-dev all force log
+    $ barracuda up-lite log
+    $ octopus up-lite all force log
 
     Note that the silent, non-interactive mode will automatically say Y/Yes
     to all prompts and is thus useful to run auto-upgrades scheduled in cron.
@@ -158,20 +158,20 @@
     Download and run (as root) BOA Meta Installers first:
 
     $ cd;rm -f BOA*
-    $ wget -q -U iCab http://files.aegir.cc/versions/dev/boa/BOA.sh.txt
+    $ wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
     $ bash BOA.sh.txt
 
  => To upgrade system and Aegir Master Instance to Latest use:
 
-    $ barracuda up-dev
+    $ barracuda up-lite
 
  => To upgrade selected Aegir Satellite Instance to Latest use:
 
-    $ octopus up-dev o1 force
+    $ octopus up-lite o1 force
 
  => To upgrade *all* Aegir Satellite Instances to Latest use:
 
-    $ octopus up-dev all force
+    $ octopus up-lite all force
 
 
 ###
@@ -186,8 +186,8 @@
 
     Examples:
 
-    $ barracuda up-dev log
-    $ octopus up-dev all force log
+    $ barracuda up-lite log
+    $ octopus up-lite all force log
 
     Detailed backend log on barracuda upgrade is always stored in /var/backups/
 
@@ -199,7 +199,7 @@
 
     Example:
 
-    $ barracuda up-dev system
+    $ barracuda up-lite system
 
     Note that while both "log" and "system" modes are "silent", because they
     don't display anything in your console, they will send the log via email
@@ -219,21 +219,7 @@
 
     Examples:
 
-    $ octopus up-dev o1 aegir
-    $ octopus up-dev o1 platforms log
-    $ octopus up-dev all aegir log
-    $ octopus up-dev all platforms
-
- => To keep Legacy version instead of Latest, use the same commands, but
-    replace "up-dev" with the legacy version you want to still use:
-    "up-2.4", "up-2.3" or "up-2.2".
-
-    The oldest Legacy version (up-2.2) is the last Edition in the 2.2.x series
-    which still supported Drupal 5 and used Drush 4 with old Aegir version.
-    Note that once you have current Latest or DEV installed, you can't
-    go back to any legacy version.
-
- => To use DEV instead of Latest, use the same commands, but replace
-    "up-head" with "up-dev". Please never use DEV version on any production
-    server. Always use Latest. The DEV can be occasionally broken and should
-    be used *only* for testing!
+    $ octopus up-lite o1 aegir
+    $ octopus up-lite o1 platforms log
+    $ octopus up-lite all aegir log
+    $ octopus up-lite all platforms

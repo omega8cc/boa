@@ -37,6 +37,8 @@ _HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
 
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 aptYesUnth="-y --allow-unauthenticated"
+tRee=dev
+export tRee="${tRee}"
 
 check_root() {
   if [ `whoami` = "root" ]; then
@@ -141,7 +143,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
 }
 
 install() {

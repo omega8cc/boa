@@ -1,4 +1,7 @@
 
+tRee=dev
+export tRee="${tRee}"
+
 #
 # Count system CPUs.
 count_cpu() {
@@ -2549,53 +2552,20 @@ satellite_download_for_local_build() {
     get_dev_ext "drupal-${_SMALLCORE7_V}.tar.gz"
     mv -f ${mL}/drupal-${_SMALLCORE7_V} ${mL}/drupal
     ### Aegir Core
-    if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "STABLE" ]; then
-      ${gCb} 5.x-head ${gitHub}/hostmaster.git &> /dev/null
-      ${gCb} 5.x-head ${gitHub}/hosting.git    &> /dev/null
-      ${gCb} 5.x-head ${gitHub}/eldir.git      &> /dev/null
-    elif [ "${_AEGIR_VERSION}" = "DEV" ]; then
-      ${gCb} 5.x-dev ${gitHub}/hostmaster.git    &> /dev/null
-      ${gCb} 5.x-dev ${gitHub}/hosting.git       &> /dev/null
-      ${gCb} 5.x-dev ${gitHub}/eldir.git         &> /dev/null
-    else
-      get_dev_ext "hostmaster.tar.gz"
-      get_dev_ext "hosting.tar.gz"
-      get_dev_ext "eldir.tar.gz"
-    fi
+      ${gCb} 5.x-${tRee} ${gitHub}/hostmaster.git    &> /dev/null
+      ${gCb} 5.x-${tRee} ${gitHub}/hosting.git       &> /dev/null
+      ${gCb} 5.x-${tRee} ${gitHub}/eldir.git         &> /dev/null
     ### Aegir Golden + BOA Settings
-    if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "STABLE" ]; then
-      ${gCb} 5.x-head ${gitHub}/aegir_objects.git               &> /dev/null
-      ${gCb} 5.x-head ${gitHub}/hosting_civicrm.git             &> /dev/null
-      ${gCb} 5.x-head ${gitHub}/hosting_custom_settings.git     &> /dev/null
-      ${gCb} 5.x-head ${gitHub}/hosting_deploy.git              &> /dev/null
-      ${gCb} 5.x-head ${gitHub}/hosting_git.git                 &> /dev/null
-      ${gCb} 5.x-head ${gitHub}/hosting_le.git                  &> /dev/null
-      ${gCb} 5.x-head ${gitHub}/hosting_remote_import.git       &> /dev/null
-      ${gCb} 5.x-head ${gitHub}/hosting_site_backup_manager.git &> /dev/null
-      ${gCb} 5.x-head ${gitHub}/hosting_tasks_extra.git         &> /dev/null
+      ${gCb} 5.x-${tRee} ${gitHub}/aegir_objects.git                  &> /dev/null
+      ${gCb} 5.x-${tRee} ${gitHub}/hosting_civicrm.git                &> /dev/null
+      ${gCb} 5.x-${tRee} ${gitHub}/hosting_custom_settings.git        &> /dev/null
+      ${gCb} 5.x-${tRee} ${gitHub}/hosting_deploy.git                 &> /dev/null
+      ${gCb} 5.x-${tRee} ${gitHub}/hosting_git.git                    &> /dev/null
+      ${gCb} 5.x-${tRee} ${gitHub}/hosting_le.git                     &> /dev/null
+      ${gCb} 5.x-${tRee} ${gitHub}/hosting_remote_import.git          &> /dev/null
+      ${gCb} 5.x-${tRee} ${gitHub}/hosting_site_backup_manager.git    &> /dev/null
+      ${gCb} 5.x-${tRee} ${gitHub}/hosting_tasks_extra.git            &> /dev/null
       rm -rf */.git
-    elif [ "${_AEGIR_VERSION}" = "DEV" ]; then
-      ${gCb} 5.x-dev ${gitHub}/aegir_objects.git                  &> /dev/null
-      ${gCb} 5.x-dev ${gitHub}/hosting_civicrm.git                &> /dev/null
-      ${gCb} 5.x-dev ${gitHub}/hosting_custom_settings.git        &> /dev/null
-      ${gCb} 5.x-dev ${gitHub}/hosting_deploy.git                 &> /dev/null
-      ${gCb} 5.x-dev ${gitHub}/hosting_git.git                    &> /dev/null
-      ${gCb} 5.x-dev ${gitHub}/hosting_le.git                     &> /dev/null
-      ${gCb} 5.x-dev ${gitHub}/hosting_remote_import.git          &> /dev/null
-      ${gCb} 5.x-dev ${gitHub}/hosting_site_backup_manager.git    &> /dev/null
-      ${gCb} 5.x-dev ${gitHub}/hosting_tasks_extra.git            &> /dev/null
-      rm -rf */.git
-    else
-      get_dev_ext "aegir_objects.tar.gz"
-      get_dev_ext "hosting_civicrm.tar.gz"
-      get_dev_ext "hosting_custom_settings.tar.gz"
-      get_dev_ext "hosting_deploy.tar.gz"
-      get_dev_ext "hosting_git.tar.gz"
-      get_dev_ext "hosting_le.tar.gz"
-      get_dev_ext "hosting_remote_import.tar.gz"
-      get_dev_ext "hosting_site_backup_manager.tar.gz"
-      get_dev_ext "hosting_tasks_extra.tar.gz"
-    fi
     ### Aegir Drupal Contrib
     get_dev_stc "admin_menu-7.x-3.0-rc7.tar.gz"
     get_dev_stc "betterlogin-7.x-1.5.tar.gz"
@@ -4181,7 +4151,7 @@ satellite_if_head_github_connection_test() {
     echo "PROC: satellite_if_head_github_connection_test"
   fi
   ###--------------------###
-  if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
+  if [ "${_AEGIR_VERSION}" != "static" ]; then
     rm -rf /opt/tmp/test-*
     check_connection
     _GITHUB_TEST=$(git clone ${gitHub}/provision.git \
@@ -4209,7 +4179,8 @@ satellite_if_head_github_connection_test() {
     rm -rf /opt/tmp/test-*
   fi
   if [[ "${_X_VERSION}" =~ "-dev" ]] \
-    || [[ "${_X_VERSION}" =~ "-rel" ]]; then
+    || [[ "${_X_VERSION}" =~ "-lite" ]] \
+    || [[ "${_X_VERSION}" =~ "-pro" ]]; then
     rm -rf /opt/tmp/test-*
     _GITHUB_TEST=$(git clone ${gitHub}/boa.git \
       /opt/tmp/test-boa 2>&1)
@@ -4426,8 +4397,8 @@ satellite_check_octopus_vs_barracuda_ver() {
       _VERSIONS_TEST_RESULT=OK
     else
       msg "ERROR: This octopus installer can be used only when the instance"
-      msg "has been already upgraded to stable BOA-4.x or dev BOA-5.x"
-      msg "Please run 'octopus up-dev ${_USER} force' upgrade first!"
+      msg "has been already upgraded to BOA-4.x or BOA-5.x release"
+      msg "Please run 'octopus up-${tRee} ${_USER} force' upgrade first!"
       msg "Bye"
       clean_pid_exit
     fi
@@ -5186,7 +5157,7 @@ satellite_child_b_drush_xts_install() {
   fi
   mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
   cd ${_ROOT}/.drush
-  if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
+  if [ "${_AEGIR_VERSION}" != "static" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} B: Downloading Drush and Provision extensions..."
     fi

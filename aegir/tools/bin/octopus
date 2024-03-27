@@ -8,25 +8,17 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-dvhd="DEV"
-dvbranch="5.x-dev"
-dvmaster="5.x-dev"
-dvrn="BOA-5.1.0-dev"
+tRee=dev
+export tRee="${tRee}"
 
-hd="HEAD"
-branch="5.x-head"
-master="5.x-head"
-stbl="BOA-5.1.0-head"
-cluster="BOA-5.1.0-head"
+rlse="BOA-5.1.0-${tRee}"
+cluster="${rlse}"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
 lgcC="BOA-2.4.9"
 lgcD="BOA-3.2.2"
-
-mstr=${master//\//\\\/}
+branch="5.x-${tRee}"
 brnch=${branch//\//\\\/}
-dvmstr=${dvmaster//\//\\\/}
-dvbrnch=${dvbranch//\//\\\/}
 
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
@@ -489,33 +481,33 @@ up_mode() {
 
 satellite_check_strict_php_cli() {
   _PHP_CLI=$(grep "/opt/php" ${User}/tools/drush/drush.php 2>&1)
-  if [[ ! "${_PHP_CLI}" =~ "php74" ]] && [ -x "/opt/php74/bin/php" ]; then
+  if [[ ! "${_PHP_CLI}" =~ "php81" ]] && [ -x "/opt/php81/bin/php" ]; then
     echo
-    echo "NOTE: This Aegir version requires PHP 7.4 during Hostmaster upgrade."
+    echo "NOTE: This Aegir version requires PHP 8.1 during Hostmaster upgrade."
     echo "NOTE: It will be reconfigured on the fly now, but you can change it"
     echo "NOTE: later for hosted sites management in ~/static/control/cli.info"
     echo
     php_cli_drush_update
     php_cli_local_ini_update
-    echo 7.4 > ${User}/log/cli.txt
-    echo 7.4 > ${User}/static/control/cli.info
+    echo 8.1 > ${User}/log/cli.txt
+    echo 8.1 > ${User}/static/control/cli.info
     chown -R ${octUsr}.ftp:users ${User}/static/control
-    sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" \
+    sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" \
       /root/.${octUsr}.octopus.cnf &> /dev/null
   fi
 }
 
 satellite_downgrade_protection() {
-  if [ "${cmmand}" != "up-dev" ]; then
+  if [ "${cmmand}" != "up-${tRee}" ]; then
     if [ -e "${User}/log/octopus_log.txt" ]; then
       _SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
       _BOA_SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-      if [[ "${_SERIES_TEST}" =~ "BOA-5.1.0-dev" ]] \
-        || [[ "${_BOA_SERIES_TEST}" =~ "BOA-5.1.0-dev" ]]; then
+      if [[ "${_SERIES_TEST}" =~ "${rlse}" ]] \
+        || [[ "${_BOA_SERIES_TEST}" =~ "${rlse}" ]]; then
         echo
-        echo "ERROR: Your system has been already upgraded to BOA-5.1.0-dev"
-        echo "You can not downgrade back to previous stable/head version"
-        echo "Please use 'octopus up-dev ${octUsr} force' to upgrade"
+        echo "ERROR: Your system has been already upgraded to ${rlse}"
+        echo "You can not downgrade back to previous/older BOA version"
+        echo "Please use 'octopus up-${tRee} ${octUsr} force' to upgrade"
         echo "Bye"
         echo
         clean_pid_exit
@@ -525,9 +517,7 @@ satellite_downgrade_protection() {
 }
 
 satellite_check_supported_php_cli() {
-  if [ "${cmmand}" = "up-dev" ] \
-    || [ "${cmmand}" = "up-head" ] \
-    || [ "${cmmand}" = "up-stable" ]; then
+  if [ "${cmmand}" = "up-${tRee}" ]; then
     fmodey=
     _SERIES_TEST=
     _PHP_FPM_LEGACY_FREE=
@@ -559,7 +549,7 @@ satellite_check_supported_php_cli() {
         fi
         chown -R ${octUsr}.ftp:users ${User}/static/control
       fi
-      if [[ "${_SERIES_TEST}" =~ "${stbl}" ]]; then
+      if [[ "${_SERIES_TEST}" =~ "${rlse}" ]]; then
         if [ "${orgMcmode}" != "force" ]; then
           mcmode=
           fmodey=force
@@ -585,41 +575,32 @@ up_one() {
     if [ -e "${vBs}/${filIncO}" ]; then
       cp -af ${vBs}/${filIncO}  ${vBs}/${tocIncO}
     fi
-    if [ "${cmmand}" = "up-dev" ]; then
+    if [ "${cmmand}" = "up-${tRee}" ]; then
       satellite_check_supported_php_cli
     else
       satellite_downgrade_protection
       ### satellite_check_strict_php_cli
     fi
-    if [ "${cmmand}" = "up-dev" ]; then
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${dvbrnch}/g"      ${vBs}/${tocIncO}
-      wait
-      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${dvhd}/g"   ${vBs}/${tocIncO}
-      wait
-      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${dvhd}/g"   ${vBs}/${tocIncO}
-      wait
-      sed -i "s/^_X_VERSION=.*/_X_VERSION=${dvrn}/g"           ${vBs}/${tocIncO}
-      wait
-    elif [ "${cmmand}" = "up-head" ] \
-      || [ "${cmmand}" = "up-legacy" ] \
-      || [ "${cmmand}" = "up-stable" ]; then
+    if [ "${cmmand}" = "up-dev" ] \
+      || [ "${cmmand}" = "up-pro" ] \
+      || [ "${cmmand}" = "up-lite" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${tocIncO}
       wait
-      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"     ${vBs}/${tocIncO}
+      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g"   ${vBs}/${tocIncO}
       wait
-      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${hd}/g"     ${vBs}/${tocIncO}
+      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${tRee}/g"   ${vBs}/${tocIncO}
       wait
-      sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"           ${vBs}/${tocIncO}
+      sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"           ${vBs}/${tocIncO}
       wait
     else
       if [ -e "${vBs}/${tocIncO}" ]; then
         sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${tocIncO}
         wait
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"   ${vBs}/${tocIncO}
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g" ${vBs}/${tocIncO}
         wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${tocIncO}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${rlse}/g" ${vBs}/${tocIncO}
         wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${tocIncO}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${tocIncO}
         wait
       fi
       ### Legacy method
@@ -656,32 +637,29 @@ up_one() {
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcD}/g"         ${vBs}/${tocIncO}
         wait
       else
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${hd}/g"   ${vBs}/${tocIncO}
+        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g" ${vBs}/${tocIncO}
         wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${stbl}/g" ${vBs}/${tocIncO}
+        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${rlse}/g" ${vBs}/${tocIncO}
         wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${stbl}/g"         ${vBs}/${tocIncO}
+        sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${tocIncO}
         wait
       fi
     fi
-    if [ "${cmmand}" = "up-dev" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${dvbrnch}/g"      ${vBs}/${tocIncO}
-      wait
-    elif [ "${cmmand}" = "up-head" ] \
-      || [ "${cmmand}" = "up-legacy" ] \
-      || [ "${cmmand}" = "up-stable" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${tocIncO}
+    if [ "${cmmand}" = "up-dev" ] \
+      || [ "${cmmand}" = "up-pro" ] \
+      || [ "${cmmand}" = "up-lite" ]; then
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${tocIncO}
       wait
     elif [ "${cmmand}" = "up-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${tocIncO}
       wait
     else
       if [ -e "${vBs}/${tocIncO}" ]; then
-        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"       ${vBs}/${tocIncO}
+        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${tocIncO}
         wait
       fi
       ### Legacy method
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${mstr}/g"         ${vBs}/${tocName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${tocName}
       wait
     fi
     if [ -e "${vBs}/${tocIncO}" ]; then
@@ -988,53 +966,10 @@ up_finish() {
   exit 0
 }
 
-up_dev() {
+up_proceed() {
   up_start
-  curl ${crlGet} "${rgUrl}/${dvmstr}/${octName}"  -o ${vBs}/${octName}
-  curl ${crlGet} "${rgUrl}/${dvmstr}/${pthIncO}"  -o ${vBs}/${filIncO}
-  if [ "${second}" = "all" ]; then
-    up_action_all
-  else
-    up_action_one
-  fi
-  up_finish
-}
-
-up_head() {
-  up_start
-  if [ "${silent}" = "cluster" ] \
-    || [ "${silent}" = "foobar" ]; then
-    echo "FEATURE MODE: ${silent}"
-    master="feature/${silent}"
-    branch="feature/${silent}"
-  fi
-  curl ${crlGet} "${rgUrl}/${mstr}/${octName}"  -o ${vBs}/${octName}
-  curl ${crlGet} "${rgUrl}/${mstr}/${pthIncO}"  -o ${vBs}/${filIncO}
-  if [ "${second}" = "all" ]; then
-    up_action_all
-  else
-    up_action_one
-  fi
-  up_finish
-}
-
-up_cluster() {
-  up_start
-  branch="2.4.x-dev"
-  curl ${crlGet} "${rgUrl}/${cluster}/${octName}" -o ${vBs}/${octName}
-  curl ${crlGet} "${rgUrl}/${cluster}/${pthIncO}" -o ${vBs}/${filIncO}
-  if [ "${second}" = "all" ]; then
-    up_action_all
-  else
-    up_action_one
-  fi
-  up_finish
-}
-
-up_stable() {
-  up_start
-  curl ${crlGet} "${rgUrl}/${stbl}/${octName}"    -o ${vBs}/${octName}
-  curl ${crlGet} "${rgUrl}/${stbl}/${pthIncO}"    -o ${vBs}/${filIncO}
+  curl ${crlGet} "${rgUrl}/${brnch}/${octName}"  -o ${vBs}/${octName}
+  curl ${crlGet} "${rgUrl}/${brnch}/${pthIncO}"  -o ${vBs}/${filIncO}
   if [ "${second}" = "all" ]; then
     up_action_all
   else
@@ -1104,7 +1039,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
 }
 
 check_dns_curl() {
@@ -1288,36 +1223,6 @@ os_detection_minimal
 check_dns_curl
 
 case "$1" in
-  up-head)   cmmand="$1"
-             second="$2"
-             cmmode="$3"
-             silent="$4"
-             up_head
-  ;;
-  up-dev)    cmmand="$1"
-             second="$2"
-             cmmode="$3"
-             silent="$4"
-             up_dev
-  ;;
-  up-stable) cmmand="$1"
-             second="$2"
-             cmmode="$3"
-             silent="$4"
-             up_head
-  ;;
-  up-cluster) cmmand="$1"
-             second="$2"
-             cmmode="$3"
-             silent="$4"
-             up_cluster
-  ;;
-  up-legacy) cmmand="$1"
-             second="$2"
-             cmmode="$3"
-             silent="$4"
-             up_stable
-  ;;
   up-3.2)    cmmand="$1"
              second="$2"
              cmmode="$3"
@@ -1342,15 +1247,16 @@ case "$1" in
              silent="$4"
              up_legacy "2.2"
   ;;
-  *)         echo
+  help)      echo
              echo "Usage: $(basename "$0") {version} {instance} {mode}"
              cat <<EOF
 
   Accepted keywords and values in every option:
 
   {version}
-      up-head <------ upgrade to Octopus Latest available (alias of up-stable)
-      up-dev <------- upgrade to Octopus Dev Cutting Edge (for development only)
+      up-lite <------ upgrade to Octopus Lite release (no license)
+      up-pro <------- upgrade to Octopus Pro release (requires license)
+      up-dev <------- upgrade to Octopus Cutting Edge (requires license)
 
   {instance}
       all <---------- upgrade all active Octopus instances in a batch
@@ -1366,5 +1272,11 @@ case "$1" in
 
 EOF
              clean_pid_exit
+  ;;
+  *)         cmmand="$1"
+             second="$2"
+             cmmode="$3"
+             silent="$4"
+             up_proceed
   ;;
 esac

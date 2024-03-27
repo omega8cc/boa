@@ -1,4 +1,7 @@
 
+tRee=dev
+export tRee="${tRee}"
+
 ###
 ### Noticeable messages
 ###
@@ -393,7 +396,7 @@ mode_detection() {
     [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
     kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}') &> /dev/null
   fi
-  if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
+  if [ "${_AEGIR_VERSION}" != "static" ]; then
     _USE_AEGIR_VER=SRC
   else
     _USE_AEGIR_VER=STATIC
@@ -733,8 +736,8 @@ check_boa_version() {
       _VERSIONS_TEST_RESULT=OK
     else
       msg "ERROR: This barracuda installer can be used only when the system"
-      msg "has been already upgraded to stable BOA-4.x or dev BOA-5.x"
-      msg "Please run 'barracuda up-dev' full upgrade first!"
+      msg "has been already upgraded to BOA-4.x or BOA-5.x release"
+      msg "Please run 'barracuda up-${tRee}' full upgrade first!"
       msg "Bye"
       clean_pid_exit
     fi
@@ -746,7 +749,7 @@ check_boa_version() {
       else
         msg "ERROR: Your system has been already upgraded to modern BOA"
         msg "You can not downgrade back to legacy or previous stable version"
-        msg "Please use 'barracuda up-dev' to upgrade this system"
+        msg "Please use 'barracuda up-${tRee}' to upgrade this system"
         msg "Bye"
         clean_pid_exit
       fi

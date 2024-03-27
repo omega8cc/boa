@@ -136,9 +136,12 @@ _TUNE_PHP_CLI_TIMEOUT=9999
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_AEGIR_VERSION="HEAD"
-_BRANCH_BOA="5.x-head"
-_X_VERSION="BOA-5.1.0-head"
+tRee=dev
+export tRee="${tRee}"
+
+_AEGIR_VERSION="${tRee}"
+_BRANCH_BOA="5.x-${tRee}"
+_X_VERSION="BOA-5.1.0-${tRee}"
 _X_SE="510devT02"
 _MYSQLTUNER_VRN=1.9.4
 
@@ -372,7 +375,7 @@ find_fast_mirror() {
     _USE_MIR="files.aegir.cc"
   fi
   urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/dev/boa/aegir"
+  urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
 }
 #
 # Find correct IP.
@@ -1696,7 +1699,7 @@ touch /var/run/boa_run.pid
 #
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="https://github.com/omega8cc"
-if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
+if [ "${_AEGIR_VERSION}" != "static" ]; then
   check_git_repos
 fi
 #
@@ -1742,7 +1745,7 @@ mkdir -p ${_SRCDIR}
 chmod -R 777 /opt/tmp &> /dev/null
 cd /opt/tmp
 rm -rf /opt/tmp/boa
-if [ "${_AEGIR_VERSION}" = "HEAD" ] || [ "${_AEGIR_VERSION}" = "DEV" ]; then
+if [ "${_AEGIR_VERSION}" != "static" ]; then
   ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git &> /dev/null
 else
   curl ${crlGet} "${urlDev}/${_AEGIR_VERSION}/boa.tar.gz" | tar -xzf -
