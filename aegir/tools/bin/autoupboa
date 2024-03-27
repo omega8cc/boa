@@ -12,6 +12,9 @@ barCnf="/root/.barracuda.cnf"
 
 _X_SE="510devT02"
 
+tRee=dev
+export tRee="${tRee}"
+
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _THIS_RV=$(lsb_release -sc 2>&1)
@@ -247,7 +250,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     touch /var/xdrago/log/.sync3_scan_nginx.pid
   fi
   _VM_TEST=$(uname -a 2>&1)
-  [ -z "${_AUTO_VER}" ] && _AUTO_VER="dev"
+  [ -z "${_AUTO_VER}" ] && _AUTO_VER="${tRee}"
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
@@ -370,7 +373,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_UP_MONTH=12
     _AUTO_UP_DAY=24
     _AUTO_PHP="php-min"
-    _AUTO_VER="dev"
+    _AUTO_VER="${tRee}"
     if [ ! -e "/root/.ignore.site24x7.firewall.cnf" ]; then
       if [ -x "/usr/sbin/csf" ]; then
         touch /root/.ignore.site24x7.firewall.cnf
@@ -429,7 +432,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_UP_WEEKLY=
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
-    _AUTO_VER="dev"
+    _AUTO_VER="${tRee}"
   fi
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -438,7 +441,7 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
     _AUTO_PHP=
-    _AUTO_VER="dev"
+    _AUTO_VER="${tRee}"
     if [ ! -e "/var/xdrago/log/.fixed_clstr_fpm.pid" ]; then
       sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"8.1 7.4 5.6\"/g" ${barCnf}
       wait
@@ -456,7 +459,7 @@ if [ -e "/data/disk/arch/sql" ]; then
 #     _AUTO_UP_WEEKLY=
 #     _AUTO_UP_MONTH=
 #     _AUTO_UP_DAY=${_DAY_SYSTEM_UP}
-#     _AUTO_VER="dev"
+#     _AUTO_VER="${tRee}"
 #     crontab_update
 #     wait
 #     touch /root/.legacy_sys_prep_ugrade_ctrl.cnf
