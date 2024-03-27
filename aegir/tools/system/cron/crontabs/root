@@ -18,5 +18,5 @@
 15 1 * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /opt/local/bin/backboa backup        >/dev/null 2>&1
 15 2 * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/daily.sh                 >/dev/null 2>&1
 15 2 * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/fetch-remote.sh          >/dev/null 2>&1
-55 9 * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /opt/local/bin/duobackboa backup     >/dev/null 2>&1
+55 5 * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /opt/local/bin/duobackboa backup     >/dev/null 2>&1
 
