@@ -11,6 +11,7 @@
 */3 * * * * /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/manage_ltd_users.sh      >/dev/null 2>&1
 */5 * * * * /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/manage_solr_config.sh    >/dev/null 2>&1
 01 * * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/purge_binlogs.sh         >/dev/null 2>&1
+30 * * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/mysql_cleanup.sh         >/dev/null 2>&1
 01 0 * * *  /usr/bin/nice -n10 /usr/bin/ionice -c2 -n7 bash /var/xdrago/graceful.sh              >/dev/null 2>&1
 15 0 * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/mysql_backup.sh          >/dev/null 2>&1
 15 0 * * *  /usr/bin/nice -n19 /usr/bin/ionice -c2 -n7 bash /var/xdrago/mysql_cluster_backup.sh  >/dev/null 2>&1
