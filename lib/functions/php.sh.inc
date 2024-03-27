@@ -2923,7 +2923,7 @@ composer_install_upgrade() {
   if [ "${_COMPOSER_FROM_STATIC}" = "YES" ]; then
     _COMPOSER_IS=$(composer --no-interaction --version 2>&1 \
       | tr -d "\n" \
-      | cut -d" " -f36 \
+      | cut -d" " -f35 \
       | awk '{ print $1}' 2>&1)
     if [ "${_COMPOSER_IS}" != "${_COMPOSER_VRN}" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2960,7 +2960,7 @@ composer_install_upgrade() {
     fi
     _COMPOSER_IS=$(composer --no-interaction --version 2>&1 \
       | tr -d "\n" \
-      | cut -d" " -f36 \
+      | cut -d" " -f35 \
       | awk '{ print $1}' 2>&1)
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Installed Composer ${_COMPOSER_IS}"
