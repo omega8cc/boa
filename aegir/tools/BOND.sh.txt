@@ -980,7 +980,7 @@ restore_default_sql() {
       sed -i "s/.*purge_binlogs.*//g" /var/spool/cron/crontabs/root
       wait
       sed -i "/^$/d" /var/spool/cron/crontabs/root
-      bash /var/xdrago/purge_binlogs.sh                                  &> /dev/null
+      bash /var/xdrago/purge_binlogs.sh &> /dev/null
       wait
       sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf
       wait
