@@ -486,16 +486,32 @@ satellite_check_strict_php_cli() {
 }
 
 satellite_downgrade_protection() {
-  if [ "${cmmand}" != "up-${tRee}" ]; then
-    if [ -e "${User}/log/octopus_log.txt" ]; then
-      _SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
-      _BOA_SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-      if [[ "${_SERIES_TEST}" =~ "${rlse}" ]] \
-        || [[ "${_BOA_SERIES_TEST}" =~ "${rlse}" ]]; then
+  if [ -e "${User}/log/octopus_log.txt" ] \
+    && [ "${cmmand}" != "up-dev" ] \
+    && [ "${cmmand}" != "up-pro" ] \
+    && [ "${cmmand}" != "up-lite" ]; then
+    _SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
+    _BOA_SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
+    if [[ "${_SERIES_TEST}" =~ "Octopus ${rlsn}" ]] \
+      || [[ "${_BOA_SERIES_TEST}" =~ "Barracuda ${rlsn}" ]]; then
+      echo
+      echo "ERROR: Your system has been already upgraded to ${rlsn}"
+      echo "You can not downgrade back to previous/older BOA version"
+      echo "Please use 'octopus up-lite/pro/dev ${octUsr} force' to upgrade"
+      echo "Display all supported commands with: $(basename "$0") help"
+      echo "Bye"
+      echo
+      clean_pid_exit
+    fi
+    if [ -e "${User}/log/octopus_log.txt" ] \
+      && [ "${cmmand}" = "up-lite" ]; then
+      if [[ "${_SERIES_TEST}" =~ "Octopus ${rlsn}-pro" ]] \
+        || [ -e "${User}/tools/key/octopus_key.txt" ]; then
         echo
-        echo "ERROR: Your system has been already upgraded to ${rlse}"
-        echo "You can not downgrade back to previous/older BOA version"
-        echo "Please use 'octopus up-${tRee} ${octUsr} force' to upgrade"
+        echo "ERROR: Your Octopus has been already upgraded to ${rlsn}-pro"
+        echo "You can not downgrade back to previous/older/lite BOA version"
+        echo "Please use 'octopus up-pro ${octUsr} force' to upgrade"
+        echo "Display all supported commands with: $(basename "$0") help"
         echo "Bye"
         echo
         clean_pid_exit
@@ -963,14 +979,15 @@ up_proceed() {
     tRee=lite
   else
     echo
-    echo "  Sorry, not supported command"
-    echo
-    echo "  Display supported commands with: $(basename "$0") help"
+    echo "Sorry, you are trying not supported command.."
+    echo "Please use supported command to upgrade this Octopus"
+    echo "Display supported commands with: $(basename "$0") help"
+    echo "Bye"
     echo
     clean_pid_exit
   fi
-  export tRee="${tRee}"
-  rlse="BOA-5.1.0-${tRee}"
+  rlsn="BOA-5.1.0"
+  rlse="${rlsn}-${tRee}"
   cluster="${rlse}"
   lgcA="BOA-2.2.9"
   lgcB="BOA-2.3.8"
@@ -978,6 +995,8 @@ up_proceed() {
   lgcD="BOA-3.2.2"
   branch="5.x-${tRee}"
   brnch=${branch//\//\\\/}
+  export tRee="${tRee}"
+  export rlsn="${rlsn}"
   up_start
   curl ${crlGet} "${rgUrl}/${brnch}/${octName}"  -o ${vBs}/${octName}
   curl ${crlGet} "${rgUrl}/${brnch}/${pthIncO}"  -o ${vBs}/${filIncO}

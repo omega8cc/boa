@@ -336,12 +336,21 @@ barracuda_downgrade_protection() {
     if [ "${cmmand}" != "up-dev" ] \
       && [ "${cmmand}" != "up-pro" ] \
       && [ "${cmmand}" != "up-lite" ]; then
-      _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-      if [[ "${_SERIES_TEST}" =~ "${rlse}" ]]; then
         echo
-        echo "ERROR: Your system has been already upgraded to ${rlse}"
-        echo "You can not downgrade back to previous/older BOA version"
-        echo "Please use 'barracuda up-${tRee} system' to upgrade this server"
+        echo "Sorry, you are trying not supported command.."
+        echo "Please use supported command to upgrade this server"
+        echo "Display supported commands with: $(basename "$0") help"
+        echo "Bye"
+        echo
+        clean_pid_exit
+    else
+      _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
+      if [ "${cmmand}" = "up-lite" ] \
+        && [[ "${_SERIES_TEST}" =~ "Barracuda ${rlsn}-pro" ]]; then
+        echo
+        echo "ERROR: Your system has been already upgraded to ${rlsn}-pro"
+        echo "You can not downgrade back to previous/older/lite BOA version"
+        echo "Please use 'barracuda up-pro system' to upgrade this server"
         echo "Bye"
         echo
         clean_pid_exit
@@ -1642,16 +1651,17 @@ else
     tRee=dev
   else
     echo
-    echo "  Sorry, not supported command"
-    echo
-    echo "  Display supported commands with: $(basename "$0") help"
+    echo "Sorry, you are trying not supported command.."
+    echo "Please use supported command to upgrade this server"
+    echo "Display supported commands with: $(basename "$0") help"
+    echo "Bye"
     echo
     clean_pid_exit
   fi
 fi
 
-export tRee="${tRee}"
-rlse="BOA-5.1.0-${tRee}"
+rlsn="BOA-5.1.0"
+rlse="${rlsn}-${tRee}"
 cluster="${rlse}"
 lgcA="BOA-2.2.9"
 lgcB="BOA-2.3.8"
@@ -1659,5 +1669,8 @@ lgcC="BOA-2.4.9"
 lgcD="BOA-3.2.2"
 branch="5.x-${tRee}"
 brnch=${branch//\//\\\/}
+
+export tRee="${tRee}"
+export rlsn="${rlsn}"
 
 proceed

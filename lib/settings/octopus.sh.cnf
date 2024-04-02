@@ -697,6 +697,44 @@ find_fast_mirror() {
   fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
+  if [ "${tRee}" = "pro" ] || [ "${tRee}" = "dev" ]; then
+    _allw=NO
+    urlEnc="http://${_USE_MIR}/enc/2024"
+    hName=$(cat /etc/hostname 2>&1)
+    hName=$(echo -n ${hName} | tr -d "\n" 2>&1)
+    encName=$(echo ${hName} \
+              | openssl md5 \
+              | awk '{ print $2}' \
+              | tr -d "\n" 2>&1)
+    if [[ "${hName}" =~ ".aegir.cc"($) ]] \
+      || [[ "${hName}" =~ ".o8.io"($) ]] \
+      || [[ "${hName}" =~ ".boa.io"($) ]]; then
+      _allw=YES
+    fi
+    mkdir -p /var/opt
+    rm -f /var/opt/_encN*
+    curl ${crlGet} "${urlEnc}/${encName}" -o /var/opt/_encN.${encName}.tmp
+    wait
+    echo "${hName}.${encName}" > /var/opt/_encN_local.${encName}.tmp
+    wait
+    if [ -e "/var/opt/_encN.${encName}.tmp" ] \
+      && [ -e "/var/opt/_encN_local.${encName}.tmp" ]; then
+      diffTestIf=$(diff -w -B /var/opt/_encN.${encName}.tmp \
+        /var/opt/_encN_local.${encName}.tmp 2>&1)
+      if [ ! -z "${diffTestIf}" ] && [ "${_allw}" = "NO" ]; then
+        msg "ERROR: Your system requires valid license for upgrade to ${rlsn}-${tRee}"
+        msg "Please visit https://omega8.cc/licenses to purchase one"
+        msg "Bye"
+        rm -f /var/opt/_encN*
+        clean_pid_exit
+      else
+        if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
+          mkdir -p /var/aegir/key
+          cat /var/opt/_encN_local.${encName}.tmp > /var/aegir/key/barracuda_key.txt
+        fi
+      fi
+    fi
+  fi
 }
 
 
