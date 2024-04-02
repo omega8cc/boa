@@ -8,18 +8,6 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-tRee=pro
-export tRee="${tRee}"
-
-rlse="BOA-5.1.0-${tRee}"
-cluster="${rlse}"
-lgcA="BOA-2.2.9"
-lgcB="BOA-2.3.8"
-lgcC="BOA-2.4.9"
-lgcD="BOA-3.2.2"
-branch="5.x-${tRee}"
-brnch=${branch//\//\\\/}
-
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
@@ -1217,6 +1205,20 @@ init_setup() {
 
   init_start
   set_pin_priority
+
+  rlsn="BOA-5.1.0"
+  rlse="${rlsn}-${tRee}"
+  cluster="${rlse}"
+  lgcA="BOA-2.2.9"
+  lgcB="BOA-2.3.8"
+  lgcC="BOA-2.4.9"
+  lgcD="BOA-3.2.2"
+  branch="5.x-${tRee}"
+  brnch=${branch//\//\\\/}
+
+  export tRee="${tRee}"
+  export rlsn="${rlsn}"
+
   if [ "${cmmand}" = "in-dev" ] \
     || [ "${cmmand}" = "in-lite" ] \
     || [ "${cmmand}" = "init" ]; then
@@ -1971,6 +1973,7 @@ case "$1" in
              exit 0
   ;;
   init)      cmmand="$1"
+             tRee=lite
              check_root
              check_root_keys_pwd
              check_virt
@@ -1978,6 +1981,7 @@ case "$1" in
              init_setup
   ;;
   in-lite)   cmmand="$1"
+             tRee=lite
              kind="$2"
              fqdn="$3"
              email="$4"
@@ -1992,6 +1996,7 @@ case "$1" in
              init_setup
   ;;
   in-dev)    cmmand="$1"
+             tRee=dev
              kind="$2"
              fqdn="$3"
              email="$4"
@@ -2006,6 +2011,7 @@ case "$1" in
              init_setup
   ;;
   in-cluster) cmmand="$1"
+             tRee=lite
              kind="$2"
              fqdn="$3"
              email="$4"
@@ -2020,6 +2026,7 @@ case "$1" in
              init_setup
   ;;
   in-3.2)    cmmand="$1"
+             tRee=lite
              kind="$2"
              fqdn="$3"
              email="$4"
@@ -2033,6 +2040,7 @@ case "$1" in
              init_setup
   ;;
   in-2.4)    cmmand="$1"
+             tRee=lite
              kind="$2"
              fqdn="$3"
              email="$4"
@@ -2046,6 +2054,7 @@ case "$1" in
              init_setup
   ;;
   in-2.3)    cmmand="$1"
+             tRee=lite
              kind="$2"
              fqdn="$3"
              email="$4"
@@ -2059,6 +2068,7 @@ case "$1" in
              init_setup
   ;;
   in-2.2)    cmmand="$1"
+             tRee=lite
              kind="$2"
              fqdn="$3"
              email="$4"
@@ -2072,6 +2082,7 @@ case "$1" in
              init_setup
   ;;
   in-octopus) cmmand="$1"
+             tRee=lite
              email="$2"
              user="$3"
              mode="$4"
@@ -2085,6 +2096,7 @@ case "$1" in
              init_setup
   ;;
   in-oct)    cmmand="$1"
+             tRee=lite
              email="$2"
              user="$3"
              mode="$4"

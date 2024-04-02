@@ -1,6 +1,9 @@
 
-tRee=pro
+tRee=dev
+rlsn="BOA-5.1.0"
+rlse="${rlsn}-${tRee}"
 export tRee="${tRee}"
+export rlsn="${rlsn}"
 
 #
 # Count system CPUs.
@@ -3916,7 +3919,7 @@ satellite_make() {
     writeTo="${vBs}/${filIncO}"
   fi
 
-  _X_SE="510proT03"
+  _X_SE="510devT03"
   export _X_SE="${_X_SE}"
   export _X_VERSION="${_X_VERSION}"
 
@@ -4391,6 +4394,11 @@ satellite_check_octopus_vs_barracuda_ver() {
     fi
   fi
   if [ -e "${_ROOT}/log/octopus_log.txt" ]; then
+    if [ -e "/var/aegir/key/barracuda_key.txt" ] \
+      && [ ! -e "${_ROOT}/tools/key/octopus_key.txt" ]; then
+      mkdir ${_ROOT}/tools/key
+      cat /var/aegir/key/barracuda_key.txt > ${_ROOT}/tools/key/octopus_key.txt
+    fi
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
     if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-4." ]]; then
@@ -4398,13 +4406,27 @@ satellite_check_octopus_vs_barracuda_ver() {
     else
       msg "ERROR: This octopus installer can be used only when the instance"
       msg "has been already upgraded to BOA-4.x or BOA-5.x release"
-      msg "Please run 'octopus up-${tRee} ${_USER} force' upgrade first!"
+      msg "Please run 'octopus up-lite/pro/dev ${_USER} force' upgrade first!"
+      msg "Display all supported commands with: octopus help"
       msg "Bye"
       clean_pid_exit
     fi
     if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-4." ]]; then
       _SERIES_RESULT=OK
+    fi
+  fi
+  if [ -e "${_ROOT}/log/octopus_log.txt" ] \
+    && [ "${tRee}" = "lite" ]; then
+    _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
+    if [[ "${_SERIES_TEST}" =~ "Octopus ${rlsn}-pro" ]] \
+      || [ -e "${_ROOT}/tools/key/octopus_key.txt" ]; then
+      msg "ERROR: Your Octopus has been already upgraded to ${rlsn}-pro"
+      msg "You can not downgrade back to previous/older/lite BOA version"
+      msg "Please use 'octopus up-pro ${_USER} force' to upgrade"
+      msg "Display all supported commands with: octopus help"
+      msg "Bye"
+      clean_pid_exit
     fi
   fi
   rm -f /var/run/aegir_upgrade.pid

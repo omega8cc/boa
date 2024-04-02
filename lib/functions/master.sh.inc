@@ -1,6 +1,9 @@
 
-tRee=pro
+tRee=dev
+rlsn="BOA-5.1.0"
+rlse="${rlsn}-${tRee}"
 export tRee="${tRee}"
+export rlsn="${rlsn}"
 
 #
 # Generate provision backend db_passwd.
@@ -546,7 +549,7 @@ aegir_master_upgrade() {
     chown -R aegir:www-data ${_THIS_HM_SITE}/files
     chmod -R 02775 ${_THIS_HM_SITE}/files
 
-    _X_SE="510proT03"
+    _X_SE="510devT03"
     export _X_SE="${_X_SE}"
     export _X_VERSION="${_X_VERSION}"
 
@@ -889,7 +892,7 @@ ALTER USER '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     fi
 
-    _X_SE="510proT03"
+    _X_SE="510devT03"
     export _X_SE="${_X_SE}"
     export _X_VERSION="${_X_VERSION}"
 
@@ -1027,6 +1030,18 @@ EOFMYSQL
     mrun "service nginx reload" &> /dev/null
     msg "INFO: Aegir Master Instance installed"
   else
+    if [ "${tRee}" = "lite" ]; then
+      _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
+      if [[ "${_SERIES_TEST}" =~ "Barracuda ${rlsn}-pro" ]] \
+        || [ -e "/var/aegir/key/barracuda_key.txt" ]; then
+        msg "ERROR: Your system has been already upgraded to ${rlsn}-pro"
+        msg "You can not downgrade back to previous/older/lite BOA version"
+        msg "Please use 'barracuda up-pro system' to upgrade this server"
+        msg "Display all supported commands with: barracuda help"
+        msg "Bye"
+        clean_pid_exit
+      fi
+    fi
     echo " "
     if [ -e "/root/.debug-barracuda-installer.cnf" ] \
       || [ -e "/root/.skip-aegir-master-upgrade.cnf" ]; then
