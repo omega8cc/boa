@@ -702,9 +702,6 @@ up_action() {
         ${vBs}/old-firewall-monitor/${_NOW}/ &> /dev/null
       rm -f /var/xdrago/monitor/* &> /dev/null
     fi
-    if [ "${cmmand}" != "up-${tRee}" ] && [ "${cmmand}" != "php-idle" ]; then
-      barracuda_downgrade_protection
-    fi
     if [ "${cmmand}" = "up-dev" ] \
       || [ "${cmmand}" = "up-pro" ] \
       || [ "${cmmand}" = "up-lite" ] \
@@ -1535,6 +1532,7 @@ proceed() {
   check_root_direct
   check_root_keys_pwd
   check_root
+  barracuda_downgrade_protection
   check_no_systemd
   os_detection_minimal
   check_dns_curl
