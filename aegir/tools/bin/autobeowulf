@@ -97,12 +97,12 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
-tRee=dev
+tRee=lite
 export tRee="${tRee}"
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_SE="510devT03"
+_X_SE="510liteT03"
 _THIS_SYS=check
 #
 

@@ -1,5 +1,5 @@
 
-tRee=dev
+tRee=lite
 rlsn="BOA-5.1.0"
 rlse="${rlsn}-${tRee}"
 export tRee="${tRee}"
@@ -3919,7 +3919,7 @@ satellite_make() {
     writeTo="${vBs}/${filIncO}"
   fi
 
-  _X_SE="510devT03"
+  _X_SE="510liteT03"
   export _X_SE="${_X_SE}"
   export _X_VERSION="${_X_VERSION}"
 

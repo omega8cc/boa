@@ -8,7 +8,7 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-tRee=dev
+tRee=lite
 export tRee="${tRee}"
 
 check_root() {
@@ -65,7 +65,7 @@ apt_clean_update() {
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
-_X_SE="510devT03"
+_X_SE="510liteT03"
 _CHECK_HOST=$(uname -n 2>&1)
 usrGroup=users
 _WEBG=www-data

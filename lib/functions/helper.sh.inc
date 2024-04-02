@@ -1,5 +1,5 @@
 
-tRee=dev
+tRee=lite
 export tRee="${tRee}"
 
 ###

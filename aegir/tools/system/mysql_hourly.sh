@@ -8,7 +8,7 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-tRee=dev
+tRee=lite
 export tRee="${tRee}"
 
 check_root() {
