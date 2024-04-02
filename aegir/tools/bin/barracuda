@@ -1639,7 +1639,7 @@ elif [ "${cmmand}" = "up-lite" ]; then
   tRee=lite
 else
   if [ "${cmmand}" = "php-idle" ]; then
-    tRee=pro
+    tRee=dev
   else
     echo
     echo "  Sorry, not supported command"
