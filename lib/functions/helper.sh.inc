@@ -733,12 +733,10 @@ check_boa_version() {
     _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [ "${tRee}" = "lite" ] \
       && [[ "${_SERIES_TEST}" =~ "Barracuda ${rlsn}-pro" ]]; then
-      echo
-      echo "ERROR: Your system has been already upgraded to ${rlsn}-pro"
-      echo "You can not downgrade back to previous/older/lite BOA version"
-      echo "Please use 'barracuda up-pro system' to upgrade this server"
-      echo "Bye"
-      echo
+      msg "ERROR: Your system has been already upgraded to ${rlsn}-pro"
+      msg "You can not downgrade back to previous/older/lite BOA version"
+      msg "Please use 'barracuda up-pro system' to upgrade this server"
+      msg "Bye"
       clean_pid_exit
     fi
     if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
