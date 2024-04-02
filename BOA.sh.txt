@@ -2401,12 +2401,12 @@ sysctl_update() {
       cp -af /var/backups/sysctl.conf /etc/sysctl.conf
     fi
     if [ -e "/etc/security/limits.conf" ]; then
-      _IF_NF=$(grep '2097152' /etc/security/limits.conf 2>&1)
+      _IF_NF=$(grep '524288' /etc/security/limits.conf 2>&1)
       if [ -z "${_IF_NF}" ]; then
-        echo "*         hard    nofile      2097152"  >> /etc/security/limits.conf
-        echo "*         soft    nofile      2097152"  >> /etc/security/limits.conf
-        echo "root      hard    nofile      2097152" >> /etc/security/limits.conf
-        echo "root      soft    nofile      2097152" >> /etc/security/limits.conf
+        echo "*         hard    nofile      524288"  >> /etc/security/limits.conf
+        echo "*         soft    nofile      524288"  >> /etc/security/limits.conf
+        echo "root      hard    nofile      1048576" >> /etc/security/limits.conf
+        echo "root      soft    nofile      1048576" >> /etc/security/limits.conf
       fi
       _IF_NF=$(grep '65556' /etc/security/limits.conf 2>&1)
       if [ -z "${_IF_NF}" ]; then
