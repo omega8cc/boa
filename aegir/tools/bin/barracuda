@@ -333,30 +333,28 @@ check_dns_settings() {
 
 barracuda_downgrade_protection() {
   if [ "${cmmand}" != "php-idle" ] && [ -e "/var/log/barracuda_log.txt" ]; then
+    if [ "${cmmand}" = "up-lite" ] \
+      && [[ "${_SERIES_TEST}" =~ "Barracuda ${rlsn}-pro" ]]; then
+      _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
+      echo
+      echo "ERROR: Your system has been already upgraded to ${rlsn}-pro"
+      echo "You can not downgrade back to previous/older/lite BOA version"
+      echo "Please use 'barracuda up-pro system' to upgrade this server"
+      echo "Bye"
+      echo
+      clean_pid_exit
+    fi
     if [ "${cmmand}" != "up-dev" ] \
       && [ "${cmmand}" != "up-pro" ] \
       && [ "${cmmand}" != "up-lite" ] \
-      && [ "${cmmand}" != "php-idle" ] \
       && [ "${cmmand}" != "help" ]; then
-        echo
-        echo "Sorry, you are trying not supported command.."
-        echo "Please use supported command to upgrade this server"
-        echo "Display supported commands with: $(basename "$0") help"
-        echo "Bye"
-        echo
-        clean_pid_exit
-    else
-      _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-      if [ "${cmmand}" = "up-lite" ] \
-        && [[ "${_SERIES_TEST}" =~ "Barracuda ${rlsn}-pro" ]]; then
-        echo
-        echo "ERROR: Your system has been already upgraded to ${rlsn}-pro"
-        echo "You can not downgrade back to previous/older/lite BOA version"
-        echo "Please use 'barracuda up-pro system' to upgrade this server"
-        echo "Bye"
-        echo
-        clean_pid_exit
-      fi
+      echo
+      echo "Sorry, you are trying not supported command.."
+      echo "Please use supported command to upgrade this server"
+      echo "Display supported commands with: $(basename "$0") help"
+      echo "Bye"
+      echo
+      clean_pid_exit
     fi
   fi
 }
