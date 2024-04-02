@@ -335,7 +335,9 @@ barracuda_downgrade_protection() {
   if [ "${cmmand}" != "php-idle" ] && [ -e "/var/log/barracuda_log.txt" ]; then
     if [ "${cmmand}" != "up-dev" ] \
       && [ "${cmmand}" != "up-pro" ] \
-      && [ "${cmmand}" != "up-lite" ]; then
+      && [ "${cmmand}" != "up-lite" ] \
+      && [ "${cmmand}" != "php-idle" ] \
+      && [ "${cmmand}" != "help" ]; then
         echo
         echo "Sorry, you are trying not supported command.."
         echo "Please use supported command to upgrade this server"
@@ -1573,7 +1575,7 @@ proceed() {
   elif [ "${cmmand}" = "up-2.2" ]; then
     branch="2.2.x-legacy"
     _SCRIPT_URL="${rgUrl}/${lgcA}/${barName}"
-  else
+  elif [ "${cmmand}" = "help" ]; then
     echo
     echo "Usage: $(basename "$0") {version} {mode} {options} {dbserver}"
     echo
@@ -1647,8 +1649,8 @@ elif [ "${cmmand}" = "up-pro" ]; then
 elif [ "${cmmand}" = "up-lite" ]; then
   tRee=lite
 else
-  if [ "${cmmand}" = "php-idle" ]; then
-    tRee=pro
+  if [ "${cmmand}" = "php-idle" ] || [ "${cmmand}" = "help" ]; then
+    tRee=dev
   else
     echo
     echo "Sorry, you are trying not supported command.."
