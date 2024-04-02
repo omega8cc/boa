@@ -47,7 +47,7 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-_X_SE="510devT03"
+_X_SE="510proT03"
 _WEBG=www-data
 _OSR=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \
