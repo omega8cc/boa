@@ -344,8 +344,10 @@ check_dns_settings() {
 }
 
 barracuda_downgrade_protection() {
-  if [ "${cmmand}" != "up-${tRee}" ] && [ "${cmmand}" != "php-idle" ]; then
-    if [ -e "/var/log/barracuda_log.txt" ]; then
+  if [ "${cmmand}" != "php-idle" ] && [ -e "/var/log/barracuda_log.txt" ]; then
+    if [ "${cmmand}" != "up-dev" ] \
+      && [ "${cmmand}" != "up-pro" ] \
+      && [ "${cmmand}" != "up-lite" ]; then
       _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
       if [[ "${_SERIES_TEST}" =~ "${rlse}" ]]; then
         echo
