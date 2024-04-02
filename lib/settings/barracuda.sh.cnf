@@ -1085,7 +1085,7 @@ _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${gitHub}"
 _X_SE="510devT03"
 export _X_SE="${_X_SE}"
-tRee=dev
+tRee=pro
 export tRee="${tRee}"
 
 

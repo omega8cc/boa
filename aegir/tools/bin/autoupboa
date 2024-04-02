@@ -12,7 +12,7 @@ barCnf="/root/.barracuda.cnf"
 
 _X_SE="510devT03"
 
-tRee=dev
+tRee=pro
 export tRee="${tRee}"
 
 os_detection_minimal() {
