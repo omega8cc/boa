@@ -8,18 +8,6 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-tRee=pro
-export tRee="${tRee}"
-
-rlse="BOA-5.1.0-${tRee}"
-cluster="${rlse}"
-lgcA="BOA-2.2.9"
-lgcB="BOA-2.3.8"
-lgcC="BOA-2.4.9"
-lgcD="BOA-3.2.2"
-branch="5.x-${tRee}"
-brnch=${branch//\//\\\/}
-
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
@@ -1642,4 +1630,34 @@ if [ ! -z "${silent}" ]; then
     sql="$4"
   fi
 fi
+
+if [ "${cmmand}" = "up-dev" ]; then
+  tRee=dev
+elif [ "${cmmand}" = "up-pro" ]; then
+  tRee=pro
+elif [ "${cmmand}" = "up-lite" ]; then
+  tRee=lite
+else
+  if [ "${cmmand}" = "php-idle" ]; then
+    tRee=pro
+  else
+    echo
+    echo "  Sorry, not supported command"
+    echo
+    echo "  Display supported commands with: $(basename "$0") help"
+    echo
+    clean_pid_exit
+  fi
+fi
+
+export tRee="${tRee}"
+rlse="BOA-5.1.0-${tRee}"
+cluster="${rlse}"
+lgcA="BOA-2.2.9"
+lgcB="BOA-2.3.8"
+lgcC="BOA-2.4.9"
+lgcD="BOA-3.2.2"
+branch="5.x-${tRee}"
+brnch=${branch//\//\\\/}
+
 proceed
