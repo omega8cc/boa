@@ -486,6 +486,8 @@ satellite_check_strict_php_cli() {
 }
 
 satellite_downgrade_protection() {
+  User="/data/disk/${second}"
+  octUsr="${second}"
   if [ -e "${User}/log/octopus_log.txt" ] \
     && [ "${cmmand}" = "up-lite" ]; then
     if [[ "${_SERIES_TEST}" =~ "Octopus ${rlsn}-pro" ]] \
@@ -583,7 +585,6 @@ up_one() {
     if [ "${cmmand}" = "up-${tRee}" ]; then
       satellite_check_supported_php_cli
     else
-      satellite_downgrade_protection
       ### satellite_check_strict_php_cli
     fi
     if [ "${cmmand}" = "up-dev" ] \
@@ -978,6 +979,8 @@ up_proceed() {
     tRee=pro
   elif [ "${cmmand}" = "up-lite" ]; then
     tRee=lite
+  elif [ "${cmmand}" = "help" ]; then
+    tRee=lite
   else
     echo
     echo "Sorry, you are trying not supported command.."
@@ -998,6 +1001,7 @@ up_proceed() {
   brnch=${branch//\//\\\/}
   export tRee="${tRee}"
   export rlsn="${rlsn}"
+  satellite_downgrade_protection
   up_start
   curl ${crlGet} "${rgUrl}/${brnch}/${octName}"  -o ${vBs}/${octName}
   curl ${crlGet} "${rgUrl}/${brnch}/${pthIncO}"  -o ${vBs}/${filIncO}
