@@ -490,6 +490,7 @@ satellite_downgrade_protection() {
   octUsr="${second}"
   if [ -e "${User}/log/octopus_log.txt" ] \
     && [ "${cmmand}" = "up-lite" ]; then
+    _SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
     if [[ "${_SERIES_TEST}" =~ "Octopus ${rlsn}-pro" ]] \
       || [ -e "${User}/tools/key/octopus_key.txt" ]; then
       echo
