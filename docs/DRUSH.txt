@@ -1,10 +1,10 @@
 
 ###
-### Using Drush on systems running BOA-5.1.0 or newer
+### Using Drush on systems running BOA-5.2.0 or newer
 ###
 
 
-The BOA-5.1.0 version introduced major improvements to the way Drush can be used
+The BOA-5.2.0 version introduced major improvements to the way Drush can be used
 while preserving all previously available features.
 
 Here are a couple of highlights, with details explained further below:

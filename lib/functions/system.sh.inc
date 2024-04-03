@@ -4306,9 +4306,9 @@ finale() {
     || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
     || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
     || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
-    _MTD_VR="BOA-5.1.0-omm"
+    _MTD_VR="BOA-5.2.0-omm"
   elif [ -e "/root/.host8.cnf" ]; then
-    _MTD_VR="BOA-5.1.0-aln"
+    _MTD_VR="BOA-5.2.0-aln"
   else
     _MTD_VR="${_X_VERSION}"
   fi
