@@ -1170,6 +1170,13 @@ find_fast_mirror_cnf() {
   fi
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
+}
+
+
+###
+### Verify upgrade keys
+###
+verify_upgrade_keys() {
   if [ "${tRee}" = "pro" ] || [ "${tRee}" = "dev" ]; then
     _allw=NO
     urlEnc="http://${_USE_MIR}/enc/2024"
@@ -1217,6 +1224,7 @@ find_fast_mirror_cnf() {
 ###
 download_helpers_libs() {
   find_fast_mirror_cnf
+  verify_upgrade_keys
   mkdir -p /opt/tmp
   cd /opt/tmp
   rm -rf /opt/tmp/boa
