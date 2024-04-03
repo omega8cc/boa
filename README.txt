@@ -22,7 +22,7 @@ environment, with virtual chroot/jail for every Aegir Satellite instance.
 BOA stack doesn't support nor leverage Aegir Remote Servers feature currently.
 However, there are plans to add Remote Servers as an option in the future.
 
-While BOA provide tools for easy migrations of entire Aegir instances between
+While BOA provides tools for easy migrations of entire Aegir instances between
 remote BOA servers, it doesn't support migrating sites between Aegir instances
 on the same BOA server -- at least not yet.
 
