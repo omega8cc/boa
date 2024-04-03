@@ -1,5 +1,97 @@
 
 ###
+### Stable BOA-5.2.0 - Full Edition
+### Date: Wed 03 Apr 2024 02:11:56 PM CEST in Warsaw
+###
+### Documenting details in progress...
+###
+
+@=> Notes on new available BOA branches and licenses
+
+    BOA is available in three main branches, but only LITE for installation:
+
+  * LITE which remains completely free to use without any kind of license
+    as it was from the beginning (previously named HEAD or STABLE).
+    This branch should be considered as BOA LTS with slow updates, focused
+    on both security and bug fixes, but very limited new features additions.
+
+  * DEV which requires paid license for both install and upgrade and includes
+    the latest features, security and bug fixes and installed services versions.
+    This branch shouldn't be used in production without extensive testing.
+
+  * PRO which requires paid license and is available only as an upgrade
+    from either LITE or DEV (or previous HEAD/STABLE) is the branch with regular
+    monthly or bi-monthly releases, closely following tested DEV branch.
+
+    Once you install BOA LITE and want to upgrade to PRO with license obtained
+    from https://omega8.cc/licenses you will need to use up-pro command.
+
+    Once you install BOA LITE or PRO and want to upgrade to DEV with license
+    from https://omega8.cc/licenses you will need to use up-dev command.
+
+    Old commands using in-head, in-stable, up-head and up-stable no longer work
+    to avoid confusion and have been replaced with in-lite and up-lite in all
+    installation and upgrade scripts.
+
+    Please make sure to read updated docs/INSTALL.txt and docs/UPGRADE.txt
+
+@=> New Features
+
+    * Add autodaedalus tool for easy automated major system upgrades
+    * Add Linux Containers (LXC) guest as supported (tested only by others)
+    * Add mysql_cleanup running hourly to keep known caches overhead at minimum
+    * Add OpenVZ Containers guest as supported (tested only by others)
+    * Add support for ~/static/control/disable_user_register_protection.info
+    * Add support for du command in limited shell with /root/.allow.du.cnf
+    * Debian Bookworm and Devuan Daedalus support (needs further testing)
+    * Full Drupal 10.2 support for install and upgrades from Drupal 9 and 10
+
+@=> Improvements
+
+    * Add control/enable-drush-sa.info for native drush sa command
+    * Add hyperv qemu and kvm aws as supported
+    * Add ltd-shell alias vdrush:vendor/bin/drush
+    * Do not enforce newrelic_background_job(FALSE)
+    * Document BOA planned features in the ROADMAP.txt
+    * Document Drush usage in docs/DRUSH.txt
+    * Make it clear that only Devuan Chimaera should be used in production
+    * New Relic: Separate Web and Drush stats
+    * Purge firewall deny rules before reboot for faster system restart
+    * README rewrite and improvements
+
+@=> Changes and Upgrades
+
+    * Aegir D10 Platforms: 3x Drupal core 10.0.11
+    * Aegir D10 Platforms: 3x Drupal core 10.1.8
+    * Aegir D10 Platforms: 3x Drupal core 10.2.4
+    * Aegir D10 Platforms: Social 12.2.2 with core 10.2.4
+    * Aegir D10 Platforms: Thunder 7.2.0 with core 10.2.4
+    * Aegir D10 Platforms: Varbase 9.1.1 with core 10.2.4
+    * Disable support for several built-in legacy D7 distros
+    * Do not enable /root/.fast.cron.cnf by default
+    * Drush 8.4.12.9
+    * Nginx 1.24.0
+    * Nginx: update ssl_ciphers remove 4 weak but leave 2 to support Safari 6-8
+    * OpenSSH 9.6p1
+    * OpenSSL LTS with 3.0.13 (prepare, optional)
+    * PHP 8.1.27
+    * PHP 8.2.17
+    * Redis 7.0.15
+    * Remove legacy Ubuntu support
+
+@=> Important Fixes
+
+    * Always revert to iptables-legacy from nf_tables
+    * Fix for broken cURL self-healing
+    * Fix for cURL/libcurl version conflict
+    * Force Nginx cold restart if status is locked
+    * Improve auto-healing for duplicate move_sql and mysql_backup
+    * Improve downgrade_protection
+    * Revert "Sync /etc/security/limits.conf"
+    * Update Drush yml sites aliases also for Aegir system user
+
+
+###
 ### Stable BOA-5.1.0 - Full Edition
 ### Date: Sat 04 Nov 2023 03:26:41 PM CET in Warsaw
 ###
