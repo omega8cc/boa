@@ -62,7 +62,8 @@ There is also Tuner script available (see aegir/tools/BOND.sh.txt) for easy
 system tuning for development and switching it back easily to the standard
 production settings.
 
-@=> DUAL LICENCE NOTICE (updated on April 3, 2024)
+
+@=> DUAL LICENCE NOTICE (updated on April 3, 2024) -- read also: ROADMAP.txt
 
   While all BOA code is Free/Libre Open Source, only the BOA LITE branch
   and Aegir itself is free of charge without limits, while BOA PRO branch
