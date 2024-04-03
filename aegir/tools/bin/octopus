@@ -991,9 +991,7 @@ up_proceed() {
   else
     echo
     echo "Sorry, you are trying not supported command.."
-    echo "Please use supported command to upgrade this Octopus"
     echo "Display supported commands with: $(basename "$0") help"
-    echo "Bye"
     echo
     clean_pid_exit
   fi
