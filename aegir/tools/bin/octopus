@@ -592,6 +592,7 @@ up_one() {
     if [ "${cmmand}" = "up-${tRee}" ]; then
       satellite_check_supported_php_cli
     else
+      _dis_strict=YES
       ### satellite_check_strict_php_cli
     fi
     if [ "${cmmand}" = "up-dev" ] \
