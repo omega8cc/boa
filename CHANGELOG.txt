@@ -72,7 +72,7 @@
     * Drush 8.4.12.9
     * Nginx 1.24.0
     * Nginx: update ssl_ciphers remove 4 weak but leave 2 to support Safari 6-8
-    * OpenSSH 9.6p1
+    * OpenSSH 9.7p1
     * OpenSSL LTS with 3.0.13 (prepare, optional)
     * PHP 8.1.27
     * PHP 8.2.17
