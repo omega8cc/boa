@@ -62,37 +62,32 @@ There is also Tuner script available (see aegir/tools/BOND.sh.txt) for easy
 system tuning for development and switching it back easily to the standard
 production settings.
 
-@=> DUAL LICENCE NOTICE (updated on March 20, 2024)
+@=> DUAL LICENCE NOTICE (updated on April 3, 2024)
 
   While all BOA code is Free/Libre Open Source, only the BOA LITE branch
   and Aegir itself is free of charge without limits, while BOA PRO branch
-  will require valid licence, with an effective date of April 1st, 2024.
+  will require valid licence, with an effective date of April 8, 2024.
 
-  To provide some context, BOA project will be maintained in four branches:
+  From now on BOA project will be maintained in four branches:
 
-  * LITE which will remain completely free to use without any kind of license
+  * LITE which remains completely free to use without any kind of license
     as it was from the beginning (previously named HEAD or STABLE).
+    This branch should be considered as BOA LTS with slow updates, focused
+    on both security and bug fixes, but very limited new features additions.
 
-  * PRO which will be free to install but with paid license to run upgrades,
-    with several license tiers for extra support (new branch).
+  * DEV which requires paid license for both install and upgrade and includes
+    the latest features, security and bug fixes and installed services versions.
+    This branch shouldn't be used in production without extensive testing.
 
-  * DEV which may (TBD) remain public but will not be available to use without
-    license even for install.
+  * PRO which requires paid license and is available only as an upgrade
+    from either LITE or DEV (or previous HEAD/STABLE) is the branch with regular
+    monthly or bi-monthly releases, closely following tested DEV branch.
 
-  * OM which will remain our private branch with some things we don’t use
+  * OMM which will remain our private branch with some things we don’t use
     removed and some added, but generally simplified for easier maintenance
     and modern coding standards.
 
-  What’s then the difference between LITE and PRO?
-
-  * LITE will be updated less regularly, perhaps quarterly, with occasional
-    updates to address security issues. It may not receive all new features
-    from the PRO branch, but should be still better and way more reliable
-    than BOA was in the last few years.
-
-  * PRO will be actively maintained with monthly releases and new features.
-
-  The pricing will be announced on https://omega8.cc/compare page soon.
+  The pricing will be announced at https://omega8.cc/licenses shortly.
 
 
 @=> FOR BUG REPORTING PLEASE FOLLOW GUIDELINES EXPLAINED IN CONTRIBUTING.txt
