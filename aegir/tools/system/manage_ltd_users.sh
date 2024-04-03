@@ -108,7 +108,7 @@ count_cpu() {
   fi
 }
 
-find_fast_mirror() {
+find_fast_mirror_early() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -2612,7 +2612,7 @@ elif [ ! -e "/var/xdrago/conf/lshell.conf" ]; then
 else
   touch /var/run/manage_ltd_users.pid
   count_cpu
-  find_fast_mirror
+  find_fast_mirror_early
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   if [ ! -e "${pthLog}/node.manage.lshell.ctrl.${_X_SE}.pid" ]; then
     fix_node_in_lshell_access

@@ -77,7 +77,7 @@ else
   _GPG=gpg
 fi
 
-find_fast_mirror() {
+find_fast_mirror_early() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -115,7 +115,7 @@ find_fast_mirror() {
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
 }
-find_fast_mirror
+find_fast_mirror_early
 
 truncate_watchdog_tables() {
   _TABLES=$(mysql ${_DB} -u root -e "show tables" -s | grep ^watchdog$ 2>&1)

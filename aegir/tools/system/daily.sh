@@ -88,7 +88,7 @@ apt_clean_update() {
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
-find_fast_mirror() {
+find_fast_mirror_early() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -3316,7 +3316,7 @@ if [ -e "/root/.barracuda.cnf" ]; then
   source /root/.barracuda.cnf
 fi
 #
-find_fast_mirror
+find_fast_mirror_early
 #
 ###--------------------###
 if [ -z "${_SKYNET_MODE}" ] || [ "${_SKYNET_MODE}" = "ON" ]; then

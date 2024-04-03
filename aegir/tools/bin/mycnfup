@@ -463,7 +463,7 @@ check_root() {
 
 [ -e "/root/.proxy.cnf" ] && exit 0
 
-find_fast_mirror() {
+find_fast_mirror_early() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -501,12 +501,12 @@ find_fast_mirror() {
   urlDev="http://${_USE_MIR}/dev"
   urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
 }
-find_fast_mirror
+find_fast_mirror_early
 
 sysctl_update() {
   if [ ! -e "/root/.no.sysctl.update.cnf" ] \
     && [ ! -e "/var/backups/sysctl.conf-${_X_SE}.log" ]; then
-    find_fast_mirror
+    find_fast_mirror_early
     mkdir -p /var/backups
     cd /var/backups
     rm -f /var/backups/sysctl.conf
