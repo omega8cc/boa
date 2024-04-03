@@ -722,9 +722,10 @@ find_fast_mirror_cnf() {
       diffTestIf=$(diff -w -B /var/opt/_encN.${encName}.tmp \
         /var/opt/_encN_local.${encName}.tmp 2>&1)
       if [ ! -z "${diffTestIf}" ] && [ "${_allw}" = "NO" ]; then
-        msg "ERROR: Your system requires valid license for upgrade to ${rlsn}-${tRee}"
-        msg "Please visit https://omega8.cc/licenses to purchase one"
-        msg "Bye"
+        echo
+        echo "Your system requires valid license for upgrade to ${rlsn}-${tRee}"
+        echo "Please visit https://omega8.cc/licenses to purchase your own"
+        echo
         rm -f /var/opt/_encN*
         clean_pid_exit
       else
