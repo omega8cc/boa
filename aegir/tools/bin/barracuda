@@ -359,9 +359,7 @@ barracuda_downgrade_protection() {
       && [ "${cmmand}" != "help" ]; then
       echo
       echo "Sorry, you are trying not supported command.."
-      echo "Please use supported command to upgrade this server"
       echo "Display supported commands with: $(basename "$0") help"
-      echo "Bye"
       echo
       clean_pid_exit
     fi
@@ -1659,9 +1657,7 @@ else
   else
     echo
     echo "Sorry, you are trying not supported command.."
-    echo "Please use supported command to upgrade this server"
     echo "Display supported commands with: $(basename "$0") help"
-    echo "Bye"
     echo
     clean_pid_exit
   fi
