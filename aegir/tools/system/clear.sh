@@ -54,10 +54,16 @@ apt_clean_update() {
 }
 
 rm -f /var/run/clear_m.pid
-find /var/run/boa*.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
-find /var/run/manage*users.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
-find /var/run/daily-fix.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
-find /var/run/clear_m.pid -mtime +0 -exec rm -rf {} \; &> /dev/null
+
+_ONE_HOUR=$(date --date '1 hour ago' +"%Y-%m-%d %H:%M:%S")
+find /var/run/mysql_restart_running.pid -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \;
+find /var/run/boa_wait.pid -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \;
+find /var/run/manage*users.pid  -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \;
+
+_THR_HOURS=$(date --date '3 hours ago' +"%Y-%m-%d %H:%M:%S")
+find /var/run/boa_run.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \;
+find /var/run/*_backup.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \;
+find /var/run/daily-fix.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \;
 
 if [ -e "/root/.proxy.cnf" ]; then
   exit 0
