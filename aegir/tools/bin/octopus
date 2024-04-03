@@ -1045,7 +1045,7 @@ up_legacy() {
   up_finish
 }
 
-find_fast_mirror() {
+find_fast_mirror_early() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -1100,7 +1100,7 @@ check_dns_curl() {
     && [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
     pdnsd-ctl empty-cache &> /dev/null
   fi
-  find_fast_mirror
+  find_fast_mirror_early
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
     echo "ERROR: cURL is broken! Re-installing.."

@@ -78,7 +78,7 @@ if [ "${_ENABLE_GOACCESS}" != "YES" ]; then
   exit 0
 fi
 
-find_fast_mirror() {
+find_fast_mirror_early() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -153,7 +153,7 @@ install_goaccess() {
   apt-get install libncurses5-dev -y
   apt-get install libncursesw5-dev -y
   apt-get install autopoint -y
-  find_fast_mirror
+  find_fast_mirror_early
   mkdir -p /var/opt
   cd /var/opt
   rm -rf /var/opt/goaccess*

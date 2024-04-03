@@ -339,7 +339,7 @@ count_cpu() {
 }
 #
 # Find the fastest mirror.
-find_fast_mirror() {
+find_fast_mirror_early() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -1714,7 +1714,7 @@ if [ `whoami` = "root" ]; then
   fi
   msg "INFO: This script is ran as a root user"
   count_cpu
-  find_fast_mirror
+  find_fast_mirror_early
 else
   msg "ERROR: This script should be ran as a root user"
   msg "Bye"

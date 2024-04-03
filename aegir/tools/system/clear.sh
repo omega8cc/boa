@@ -65,7 +65,7 @@ fi
 
 #
 # Find the fastest mirror.
-find_fast_mirror() {
+find_fast_mirror_early() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -105,7 +105,7 @@ find_fast_mirror() {
 }
 
 if [ ! -e "/var/run/boa_run.pid" ]; then
-  find_fast_mirror
+  find_fast_mirror_early
   if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
     isCurl=$(curl --version 2>&1)
