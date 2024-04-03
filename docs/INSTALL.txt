@@ -1,5 +1,30 @@
 
-### IMPORTANT!
+###
+### Notes on available BOA branches and licenses
+###
+
+ => BOA is available in three main branches, but only LITE for installation
+
+  * LITE which remains completely free to use without any kind of license
+    as it was from the beginning (previously named HEAD or STABLE).
+    This branch should be considered as BOA LTS with slow updates, focused
+    on both security and bug fixes, but very limited new features additions.
+
+  * DEV which requires paid license for both install and upgrade and includes
+    the latest features, security and bug fixes and installed services versions.
+    This branch shouldn't be used in production without extensive testing.
+
+  * PRO which requires paid license and is available only as an upgrade
+    from either LITE or DEV (or previous HEAD/STABLE) is the branch with regular
+    monthly or bi-monthly releases, closely following tested DEV branch.
+
+ => You can install only BOA LITE and optionally upgrade to PRO with license
+    from https://omega8.cc/licenses
+
+
+###
+### IMPORTANT NOTE!
+###
 
 * Since Debian is running systemd, it should be removed before installing BOA,
   which involves procedure in five steps, as outlined further below.
