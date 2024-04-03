@@ -7,6 +7,8 @@
 
 @=> New Features
 
+   * Add support for Backdrop CMS as platform (urgent)
+
    * Symlink all sites files automatically to speed up migration tasks and
      to save tons of disk space.
 
@@ -36,7 +38,7 @@
 
    * Switch to OpenSSL LTS 3.0 since 1.1.1 entered EOL in September 2023.
 
-   * Aegir Hostmaster port/migration to Drupal 10 before Drupal 7 EOL.
+   * Switch Aegir admin interface from Drupal 7 to Backdrop CMS (urgent)
 
    * Sites backup in Aegir will no longer include all files nor database dump,
      but make it configurable on the fly with new control files if user wants
