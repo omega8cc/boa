@@ -68,9 +68,9 @@ as explained in this document further below.
 
     BOA [02:44:59] ==> UPGRADE B: Letsencrypt SSL initial mode: DEMO
     BOA [02:44:59] ==> UPGRADE B: LE -- No real SSL certs will be generated
-    BOA [02:44:59] ==> UPGRADE B: LE -- To enable live SSL mode, please delete file:
-    BOA [02:44:59] ==> UPGRADE B: LE -- /data/disk/o1/tools/le/.ctrl/ssl-demo-mode.pid
-    BOA [02:44:59] ==> UPGRADE B: LE -- Then run octopus forced upgrade
+    BOA [02:44:59] ==> UPGRADE B: LE -- To enable live SSL mode, please create file:
+    BOA [02:44:59] ==> UPGRADE B: LE -- /data/disk/o1/static/control/ssl-live-mode.info
+    BOA [02:44:59] ==> UPGRADE B: LE -- Then wait 5 min and run octopus forced upgrade
 
 * How to modify/renew Letsencrypt.org SSL certificate for SSL enabled site?
 
