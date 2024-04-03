@@ -1129,7 +1129,7 @@ apt_clean_update() {
 ###
 ### Find the fastest mirror to use for downloads
 ###
-find_fast_mirror() {
+find_fast_mirror_cnf() {
   if [ -d "/var/cache/pdnsd" ] \
     && [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
     pdnsd-ctl empty-cache &> /dev/null
@@ -1217,7 +1217,7 @@ find_fast_mirror() {
 ### Download helpers and libs
 ###
 download_helpers_libs() {
-  find_fast_mirror
+  find_fast_mirror_cnf
   mkdir -p /opt/tmp
   cd /opt/tmp
   rm -rf /opt/tmp/boa

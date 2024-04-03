@@ -2351,7 +2351,7 @@ count_cpu() {
   chmod 644 /data/all/cpuinfo
 }
 
-find_fast_mirror() {
+find_fast_mirror_early() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
@@ -2439,7 +2439,7 @@ sysctl_update() {
 if [ `whoami` = "root" ]; then
 
   os_detection_minimal
-  find_fast_mirror
+  find_fast_mirror_early
 
   ### CVE-2021-44228 Log4j 2 Vulnerability
   ### CVE-2021-45046 Log4j 2 Vulnerability
