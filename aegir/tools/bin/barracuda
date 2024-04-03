@@ -1663,7 +1663,7 @@ else
   fi
 fi
 
-rlsn="BOA-5.1.0"
+rlsn="BOA-5.2.0"
 rlse="${rlsn}-${tRee}"
 cluster="${rlse}"
 lgcA="BOA-2.2.9"
