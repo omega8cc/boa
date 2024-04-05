@@ -30,6 +30,11 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
+_IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}' 2>&1)
+if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
+  exit 0
+fi
+
 echo "INFO: Starting dbs cleanup on `date`"
 
 if [ -e "/root/.barracuda.cnf" ]; then

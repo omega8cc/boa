@@ -40,6 +40,11 @@ check_root
 [ ! -e "/root/.my.cluster_write_node.txt" ] && exit 0
 [ ! -e "/root/.my.cluster_root_pwd.txt" ] && exit 0
 
+_IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}' 2>&1)
+if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
+  exit 0
+fi
+
 if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
   _SQL_PSWD=$(cat /root/.my.cluster_root_pwd.txt 2>&1)
   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
