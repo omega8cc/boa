@@ -53,7 +53,7 @@
 ### Even faster site cloning and migration
 ###
 ### It is now possible to speed up the already blazing fast migrations and
-### cloning with this empty control file added by default:
+### cloning with this empty control file:
 ###
 ###  ~/static/control/FastTrack.info
 ###
@@ -69,8 +69,8 @@
 ### during migration or clone, which could otherwise break the site and leave it
 ### in some state not easy to fix, especially without root access to the system.
 ###
-### The reason we have disabled these extra tasks by default with the help of
-### this new control file is twofold:
+### The potential reasons to disable these extra tasks with the help of
+### this new control file can be twofold:
 ###
 ###  1. To restore default and much faster Aegir own behaviour
 ###  2. To help those running mass migrations to avoid running duplicate tasks
