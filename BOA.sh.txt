@@ -883,9 +883,13 @@ update_agents() {
         && [ ! -e "${pthSysUsr}/static/control/MyClassic.info" ]; then
         echo ON > ${pthSysUsr}/static/control/MyQuick.info
       fi
+      if [ ! -e "${pthSysUsr}/static/control/.disFastTrack.pid" ]; then
+        rm -f ${pthSysUsr}/static/control/FastTrack.info
+        touch ${pthSysUsr}/static/control/.disFastTrack.pid
+      fi
       if [ ! -e "${pthSysUsr}/static/control/FastTrack.info" ] \
         && [ ! -e "${pthSysUsr}/static/control/ClassicTrack.info" ]; then
-        echo ON > ${pthSysUsr}/static/control/FastTrack.info
+        echo ON > ${pthSysUsr}/static/control/ClassicTrack.info
       fi
       if [ -e "${pthSysUsr}/static/control/fpm.info" ] \
         && [ ! -e "${pthSysUsr}/static/control/cli.info" ]; then
