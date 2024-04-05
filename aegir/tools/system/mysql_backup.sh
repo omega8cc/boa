@@ -44,6 +44,11 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
+_IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}' 2>&1)
+if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
+  exit 0
+fi
+
 echo "INFO: Starting silent usage report on `date`"
 bash /var/xdrago/usage.sh silent
 wait
