@@ -44,7 +44,7 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-_IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}' 2>&1)
+_IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_cluster_backup.sh' | awk '{print $2}' 2>&1)
 if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   exit 0
 fi
