@@ -464,13 +464,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/data/disk/arch/sql" ] \
-    && [ ! -e "${pthLog}/mysql_backup.ctrl.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/mysql_backup.ctrl.hf01.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/mysql_backup.sh /var/xdrago/mysql_backup.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/mysql_backup.sh" -o /var/xdrago/mysql_backup.sh
     if [ -e "/var/xdrago/mysql_backup.sh" ]; then
       chmod 700 /var/xdrago/mysql_backup.sh
       chown root:root /var/xdrago/mysql_backup.sh
-      touch ${pthLog}/mysql_backup.ctrl.${_X_SE}.pid
+      touch ${pthLog}/mysql_backup.ctrl.hf01.${_X_SE}.pid
     else
       mv -f /var/xdrago/mysql_backup.sh.old /var/xdrago/mysql_backup.sh
     fi
