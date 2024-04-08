@@ -220,7 +220,11 @@ run_drush8_cmd() {
     nOw=$(date +%y%m%d-%H%M%S 2>&1)
     echo "${nOw} ${_HM_U} running drush8 @${Dom} $1"
   fi
-  su -s /bin/bash - ${_HM_U} -c "drush8 @${Dom} $1" &> /dev/null
+  if [ -x "/opt/php74/bin/php" ]; then
+    su -s /bin/bash - ${_HM_U} -c "/opt/php74/bin/php /usr/bin/drush @${Dom} $1" &> /dev/null
+  else
+    su -s /bin/bash - ${_HM_U} -c "drush8 @${Dom} $1" &> /dev/null
+  fi
   wait
 }
 
@@ -247,7 +251,11 @@ run_drush8_nosilent_cmd() {
     nOw=$(date +%y%m%d-%H%M%S 2>&1)
     echo "${nOw} ${_HM_U} running drush8 @${Dom} $1"
   fi
-  su -s /bin/bash - ${_HM_U} -c "drush8 @${Dom} $1"
+  if [ -x "/opt/php74/bin/php" ]; then
+    su -s /bin/bash - ${_HM_U} -c "/opt/php74/bin/php /usr/bin/drush @${Dom} $1"
+  else
+    su -s /bin/bash - ${_HM_U} -c "drush8 @${Dom} $1"
+  fi
   wait
 }
 
