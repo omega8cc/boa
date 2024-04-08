@@ -394,16 +394,9 @@ enable_modules_with_drush8() {
 }
 
 sync_user_register_protection_ini_vars() {
-  if [ -e "${User}/static/control/enable_user_register_protection.info" ] \
-    && [ -e "/data/conf/default.boa_platform_control.ini" ] \
-    && [ ! -e "${_PLR_CTRL_F}" ]; then
-    cp -af /data/conf/default.boa_platform_control.ini \
-      ${_PLR_CTRL_F} &> /dev/null
-    chown ${_HM_U}:users ${_PLR_CTRL_F} &> /dev/null
-    chmod 0664 ${_PLR_CTRL_F} &> /dev/null
-  fi
-  if [ -e "${User}/static/control/disable_user_register_protection.info" ] \
-    && [ -e "/data/conf/default.boa_platform_control.ini" ] \
+  _IGNORE_USER_REGISTER_PROTECTION=NO
+  _ENABLE_STRICT_USER_REGISTER_PROTECTION=NO
+  if [ -e "/data/conf/default.boa_platform_control.ini" ] \
     && [ ! -e "${_PLR_CTRL_F}" ]; then
     cp -af /data/conf/default.boa_platform_control.ini \
       ${_PLR_CTRL_F} &> /dev/null
@@ -411,33 +404,41 @@ sync_user_register_protection_ini_vars() {
     chmod 0664 ${_PLR_CTRL_F} &> /dev/null
   fi
   if [ -e "${_PLR_CTRL_F}" ]; then
+    _EN_URP_T_S=$(grep "^enable_strict_user_register_protection = TRUE" \
+      ${_PLR_CTRL_F} 2>&1)
     _EN_URP_T=$(grep "^enable_user_register_protection = TRUE" \
       ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_EN_URP_T}" =~ "enable_user_register_protection = TRUE" ]]; then
-      _ENABLE_USER_REGISTER_PROTECTION=YES
-    else
-      _ENABLE_USER_REGISTER_PROTECTION=NO
+    if [[ "${_EN_URP_T_S}" =~ "enable_strict_user_register_protection = TRUE" ]] \
+      || [[ "${_EN_URP_T}" =~ "enable_user_register_protection = TRUE" ]]; then
+      _ENABLE_STRICT_USER_REGISTER_PROTECTION=YES
     fi
     _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
       ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_DIS_URP_T}" =~ "disable_user_register_protection = TRUE" ]]; then
+    _DIS_URP_T_I=$(grep "^ignore_user_register_protection = TRUE" \
+      ${_PLR_CTRL_F} 2>&1)
+    if [[ "${_DIS_URP_T}" =~ "disable_user_register_protection = TRUE" ]] \
+      || [[ "${_DIS_URP_T_I}" =~ "ignore_user_register_protection = TRUE" ]]; then
       _IGNORE_USER_REGISTER_PROTECTION=YES
-    else
-      _IGNORE_USER_REGISTER_PROTECTION=NO
     fi
-  else
-    _ENABLE_USER_REGISTER_PROTECTION=NO
   fi
-  if [ "${_ENABLE_USER_REGISTER_PROTECTION}" = "NO" ] \
-    && [ -e "${User}/static/control/enable_user_register_protection.info" ]; then
-    sed -i "s/.*enable_user_register_protection.*/enable_user_register_protection = TRUE/g" \
+  if [ -e "${User}/static/control/enable_user_register_protection.info" ]; then
+    mv -f ${User}/static/control/enable_user_register_protection.info \
+      ${User}/static/control/enable_strict_user_register_protection.info
+  fi
+  if [ -e "${User}/static/control/disable_user_register_protection.info" ]; then
+    mv -f ${User}/static/control/disable_user_register_protection.info \
+      ${User}/static/control/ignore_user_register_protection.info
+  fi
+  if [ "${_ENABLE_STRICT_USER_REGISTER_PROTECTION}" = "NO" ] \
+    && [ -e "${User}/static/control/enable_strict_user_register_protection.info" ]; then
+    sed -i "s/.*enable.*user_register_protection.*/enable_strict_user_register_protection = TRUE/g" \
       ${_PLR_CTRL_F} &> /dev/null
     wait
-    _ENABLE_USER_REGISTER_PROTECTION=YES
+    _ENABLE_STRICT_USER_REGISTER_PROTECTION=YES
   fi
-  if [ "${_ENABLE_USER_REGISTER_PROTECTION}" = "YES" ] \
-    && [ -e "${User}/static/control/disable_user_register_protection.info" ]; then
-    sed -i "s/.*enable_user_register_protection.*/enable_user_register_protection = FALSE/g" \
+  if [ "${_ENABLE_STRICT_USER_REGISTER_PROTECTION}" = "YES" ] \
+    && [ -e "${User}/static/control/ignore_user_register_protection.info" ]; then
+    sed -i "s/.*enable.*user_register_protection.*/enable_strict_user_register_protection = FALSE/g" \
       ${_PLR_CTRL_F} &> /dev/null
     wait
     _IGNORE_USER_REGISTER_PROTECTION=YES
@@ -451,18 +452,15 @@ sync_user_register_protection_ini_vars() {
   if [ -e "${_DIR_CTRL_F}" ]; then
     _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
       ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_DIS_URP_T}" =~ "disable_user_register_protection = TRUE" ]]; then
+    _DIS_URP_T_I=$(grep "^ignore_user_register_protection = TRUE" \
+      ${_DIR_CTRL_F} 2>&1)
+    if [[ "${_DIS_URP_T}" =~ "disable_user_register_protection = TRUE" ]] \
+      || [[ "${_DIS_URP_T_I}" =~ "ignore_user_register_protection = TRUE" ]]; then
       _IGNORE_USER_REGISTER_PROTECTION=YES
-    else
-      _IGNORE_USER_REGISTER_PROTECTION=NO
     fi
-  else
-    _IGNORE_USER_REGISTER_PROTECTION=NO
   fi
-  if [ -e "${User}/static/control/disable_user_register_protection.info" ]; then
+  if [ -e "${User}/static/control/ignore_user_register_protection.info" ]; then
     _IGNORE_USER_REGISTER_PROTECTION=YES
-  else
-    _IGNORE_USER_REGISTER_PROTECTION=NO
   fi
 }
 
@@ -491,7 +489,7 @@ fix_user_register_protection_with_vSet() {
       | tr -d "\n" 2>&1)
     Prm=${Prm//[^0-2]/}
     echo "Prm user_register for ${Dom} is ${Prm}"
-    if [ "${_ENABLE_USER_REGISTER_PROTECTION}" = "YES" ]; then
+    if [ "${_ENABLE_STRICT_USER_REGISTER_PROTECTION}" = "YES" ]; then
       run_drush8_cmd "${vSet} user_register 0"
       echo "Prm user_register for ${Dom} set to 0"
     else
