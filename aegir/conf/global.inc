@@ -278,7 +278,7 @@ $boa_ini = array(
   'redis_old_nine_mode' => FALSE,
   'redis_old_eight_mode' => FALSE,
   'sql_conversion_mode' => FALSE,
-  'enable_user_register_protection' => FALSE,
+  'enable_strict_user_register_protection' => FALSE,
   'entitycache_dont_enable' => FALSE,
   'views_cache_bully_dont_enable' => FALSE,
   'views_content_cache_dont_enable' => FALSE,
@@ -289,7 +289,7 @@ $boa_ini = array(
   'allow_anon_node_add' => FALSE,
   'enable_newrelic_integration' => FALSE,
   'disable_admin_dos_protection' => FALSE,
-  'disable_user_register_protection' => FALSE,
+  'ignore_user_register_protection' => FALSE,
   'allow_private_file_downloads' => FALSE,
   'server_name_cookie_domain' => FALSE,
   'auto_detect_facebook_integration' => TRUE,      // For backward compatibility until next release, then FALSE
@@ -362,11 +362,11 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Auto-Detect-Domain-Access-Integration: " . $all_ini['auto_detect_domain_access_integration']);
   header("X-Ini-Advagg-Auto-Configuration: " . $all_ini['advagg_auto_configuration']);
   header("X-Ini-Sql-Conversion-Mode: " . $all_ini['sql_conversion_mode']);
-  header("X-Ini-Enable-User-Register-Protection: " . $all_ini['enable_user_register_protection']);
+  header("X-Ini-Enable-Strict-User-Register-Protection: " . $all_ini['enable_strict_user_register_protection']);
   header("X-Ini-Entitycache-Dont-Enable: " . $all_ini['entitycache_dont_enable']);
   header("X-Ini-Views-Cache-Bully-Dont-Enable: " . $all_ini['views_cache_bully_dont_enable']);
   header("X-Ini-Views-Content-Cache-Dont-Enable: " . $all_ini['views_content_cache_dont_enable']);
-  header("X-Ini-Disable-User-Register-Protection: " . $all_ini['disable_user_register_protection']);
+  header("X-Ini-Ignore-User-Register-Protection: " . $all_ini['ignore_user_register_protection']);
   header("X-Ini-Session-Cookie-Ttl: " . $all_ini['session_cookie_ttl']);
   header("X-Ini-Session-Gc-Eol: " . $all_ini['session_gc_eol']);
   header("X-Ini-Disable-Drupal-Page-Cache: " . $all_ini['disable_drupal_page_cache']);
