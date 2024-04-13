@@ -1995,8 +1995,8 @@ octopus_cleanup() {
         for e in ${_PHP_V}; do
           if [ -e "/opt/php${e}/etc/pool.d/${user}.${e}.conf" ]; then
             rm -f /opt/php${e}/etc/pool.d/${user}.${e}.conf
+            echo "${user}.${e}.web:/home/${user}.${e}.web" >> ${zombie_dir}.purge.list
           fi
-          echo "${user}.${e}.web:/home/${user}.${e}.web" >> ${zombie_dir}.purge.list
         done
         kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
         IFS=$'\12'
