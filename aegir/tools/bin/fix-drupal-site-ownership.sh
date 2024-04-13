@@ -46,7 +46,7 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-if [ -z "${site_path}" ] || [ ! -f "${site_path}/settings.php" ] ; then
+if [ -z "${site_path}" ] || [ ! -f "${site_path}/settings.php" ]; then
   printf "Error: Please provide a valid Drupal site directory.\n"
   exit 1
 fi
@@ -65,7 +65,7 @@ _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
 
 if [ -e "${site_path}/../sites/default/default.services.yml" ]; then
-  if [ ! -e "${site_path}/modules/default.services.yml" ] ; then
+  if [ ! -e "${site_path}/modules/default.services.yml" ]; then
     cp -a ${site_path}/../sites/default/default.services.yml ${site_path}/modules/
   fi
 fi

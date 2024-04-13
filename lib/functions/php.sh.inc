@@ -2646,7 +2646,7 @@ php_upgrade_all() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: php_upgrade_all $1"
   fi
-  if [ ! -z "${1}" ] ; then
+  if [ ! -z "${1}" ]; then
     _PHP_V="${1}"
   else
     _PHP_V="74 81 56 82 80 73 72 71 70"

@@ -162,7 +162,7 @@ function check_permission() {
     description="$4"
   fi
 
-  if [ ! $permission "$path_to_check" ] ; then
+  if [ ! $permission "$path_to_check" ]; then
     if [[ $permission == "-r" ]]; then
       error $lineno "You do not have READ permission for: $path_to_check"
     elif [[ $permission == "-w" ]]; then
@@ -461,7 +461,7 @@ function combine_ip_port_into_address()
   local port=$2
   local addr
 
-  if [[ ! $ip_addr =~ \[.*\] && $ip_addr =~ .*:.* ]] ; then
+  if [[ ! $ip_addr =~ \[.*\] && $ip_addr =~ .*:.* ]]; then
     # If there are no brackets and it does have a ':', then add the brackets
     # because this is an unbracketed IPv6 address
     addr="[${ip_addr}]:${port}"
@@ -929,7 +929,7 @@ function parse_args() {
   debug $LINENO "check mode name from proxysql data directory "
   CLUSTER_NAME=$(proxysql_exec $LINENO "SELECT comment from scheduler where arg1 LIKE '%--write-hg=$WRITE_HOSTGROUP_ID %' OR arg1 LIKE '%-w $WRITE_HOSTGROUP_ID %'")
   check_cmd $LINENO $? "Cannot connect to ProxySQL at $PROXYSQL_HOSTNAME:$PROXYSQL_PORT"
-  if [[ ! -z $p_mode ]] ; then
+  if [[ ! -z $p_mode ]]; then
     MODE=$p_mode
     debug $LINENO "command-line: setting MODE to $MODE"
   else

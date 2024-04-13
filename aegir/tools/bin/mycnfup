@@ -1293,7 +1293,7 @@ tune_sql() {
 
 db_head_to_stretch_first()
 {
-  if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ] ; then
+  if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ]; then
     _HOST_HOSTNAME=`hostname 2>&1`
     if [[ "${_OSR}" =~ "stretch" ]]; then
       echo "The ${_HOST_HOSTNAME} is already running Stretch"
@@ -1389,7 +1389,7 @@ db_head_to_stretch_first()
 
 db_head_to_stretch_second()
 {
-  if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ] ; then
+  if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ]; then
     _HOST_HOSTNAME=`hostname 2>&1`
     if [[ "${_OSR}" =~ "stretch" ]]; then
   	  if [ -x "/lib/systemd/systemd" ]; then
