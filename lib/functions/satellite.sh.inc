@@ -5740,7 +5740,7 @@ satellite_child_b_letsencrypt() {
         msg "${_STATUS} B: Letsencrypt SSL initial mode: DEMO"
         msg "${_STATUS} B: LE -- No real SSL certs will be generated"
         msg "${_STATUS} B: LE -- To enable live SSL mode, please create file:"
-        msg "${_STATUS} B: LE -- ${leRoot}/static/control/ssl-live-mode.info"
+        msg "${_STATUS} B: LE -- ${_ROOT}/static/control/ssl-live-mode.info"
         msg "${_STATUS} B: LE -- Then wait 5 min and run octopus forced upgrade"
         echo ""
         msg "${_STATUS} B: LE -- !!! WARNING"
