@@ -1964,7 +1964,12 @@ octopus_cleanup() {
         if [ -d "${Usr}/config/server_master/nginx/vhost.d" ] \
           && [ -e "${Usr}/log/cores.txt" ] \
           && [ -e "${Usr}/log/CANCELLED" ]; then
-          echo ${Usr}
+          echo "CANCELLED ${Usr}"
+        else
+          if [ -d "${Usr}/config/server_master/nginx/vhost.d" ] \
+            && [ -e "${Usr}/log/cores.txt" ]; then
+            echo "ACTIVE ${Usr}"
+          fi
         fi
       done
     elif [ "${action}" = "purge" ] && [ ! -z "${user}" ]; then
