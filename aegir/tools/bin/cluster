@@ -2222,7 +2222,7 @@ check_heads() {
       echo Check Skipped for $i
     else
       if [ -e "/usr/var/run/vservers/${_THIS_VM}" ] \
-        && [ -e "${i}/var/run/crond.pid" ] ; then
+        && [ -e "${i}/var/run/crond.pid" ]; then
         _VS_HOSTNAME=`vserver ${_VS_NAME} exec hostname 2>&1`
         _VS_OS=`vserver ${_VS_NAME} exec lsb_release -sc 2>&1`
         echo "The ${_VS_HOSTNAME} ${_VS_NAME} VM is running ${_VS_OS}"

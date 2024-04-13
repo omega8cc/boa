@@ -1963,7 +1963,7 @@ octopus_cleanup() {
       do
         if [ -d "${Usr}/config/server_master/nginx/vhost.d" ] \
           && [ -e "${Usr}/log/cores.txt" ] \
-          && [ -e "${Usr}/log/CANCELLED" ] ; then
+          && [ -e "${Usr}/log/CANCELLED" ]; then
           echo ${Usr}
         fi
       done
@@ -1976,7 +1976,7 @@ octopus_cleanup() {
       if [ -d "/data/disk/${user}/config/server_master/nginx/vhost.d" ] \
         && [ "${sites_nr}" = "0" ] \
         && [ -e "/data/disk/${user}/log/cores.txt" ] \
-        && [ -e "/data/disk/${user}/log/CANCELLED" ] ; then
+        && [ -e "/data/disk/${user}/log/CANCELLED" ]; then
         echo
         echo "Account to purge: ${user}"
         echo

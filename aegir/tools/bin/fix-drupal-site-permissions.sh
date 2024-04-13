@@ -35,7 +35,7 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-if [ -z "${site_path}" ] || [ ! -f "${site_path}/settings.php" ] ; then
+if [ -z "${site_path}" ] || [ ! -f "${site_path}/settings.php" ]; then
   printf "Error: Please provide a valid Drupal site directory.\n"
   exit 1
 fi
