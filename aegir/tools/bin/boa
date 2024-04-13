@@ -1957,7 +1957,7 @@ octopus_cleanup() {
   if [ `whoami` = "root" ]; then
     if [ "${action}" = "detect" ]; then
       echo
-      echo "Accounts marked for cleanup"
+      echo "Accounts marked for cleanup or active"
       echo
       for Usr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
       do
