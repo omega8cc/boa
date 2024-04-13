@@ -1969,6 +1969,9 @@ octopus_cleanup() {
       done
     elif [ "${action}" = "purge" ] && [ ! -z "${user}" ]; then
       zombie_dir="/var/backups/zombie/purged/${user}/home/"
+      nginx_inc="/var/aegir/config/server_master/nginx/platform.d"
+      nginx_ssl="/var/aegir/config/server_master/nginx/pre.d"
+      nginx_prx=$(ls ${nginx_ssl}/z_${user}.*_ssl_proxy.conf 2>&1)
       sites_nr=$(ls /data/disk/${user}/config/server_master/nginx/vhost.d | wc -l)
       if [ -d "/data/disk/${user}/config/server_master/nginx/vhost.d" ] \
         && [ "${sites_nr}" = "0" ] \
@@ -1978,6 +1981,8 @@ octopus_cleanup() {
         echo "Account to purge: ${user}"
         echo
         mkdir -p ${zombie_dir}
+        mv -f "${nginx_inc}/${user}.conf" ${zombie_dir}
+        mv -f "${nginx_prx}" ${zombie_dir}
         echo "${user}:/data/disk/${user}" > ${zombie_dir}.purge.list
         echo "${user}.ftp:/home/${user}.ftp" >> ${zombie_dir}.purge.list
         echo "${user}.web:/home/${user}.web" >> ${zombie_dir}.purge.list
