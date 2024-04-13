@@ -1953,6 +1953,65 @@ display_info() {
   fi
 }
 
+octopus_cleanup() {
+  if [ `whoami` = "root" ]; then
+    if [ "${action}" = "detect" ]; then
+      echo
+      echo "Accounts marked for cleanup"
+      echo
+      for Usr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
+      do
+        if [ -d "${Usr}/config/server_master/nginx/vhost.d" ] \
+          && [ -e "${Usr}/log/cores.txt" ] \
+          && [ -e "${Usr}/log/CANCELLED" ] ; then
+          echo ${Usr}
+        fi
+      done
+    elif [ "${action}" = "purge" ] && [ ! -z "${user}" ]; then
+      zombie_dir="/var/backups/zombie/purged/${user}/home/"
+      sites_nr=$(ls /data/disk/${user}/config/server_master/nginx/vhost.d | wc -l)
+      if [ -d "/data/disk/${user}/config/server_master/nginx/vhost.d" ] \
+        && [ "${sites_nr}" = "0" ] \
+        && [ -e "/data/disk/${user}/log/cores.txt" ] \
+        && [ -e "/data/disk/${user}/log/CANCELLED" ] ; then
+        echo
+        echo "Account to purge: ${user}"
+        echo
+        mkdir -p ${zombie_dir}
+        echo "${user}:/data/disk/${user}" > ${zombie_dir}.purge.list
+        echo "${user}.ftp:/home/${user}.ftp" >> ${zombie_dir}.purge.list
+        echo "${user}.web:/home/${user}.web" >> ${zombie_dir}.purge.list
+        _PHP_V="82 81 80 74 73 72 71 70 56"
+        for e in ${_PHP_V}; do
+          echo "${user}.${e}.web:/home/${user}.${e}.web" >> ${zombie_dir}.purge.list
+        done
+        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+        IFS=$'\12'
+          for p in $(cat ${zombie_dir}.purge.list | grep "${user}" 2>&1);do
+            usr_name=`echo $p | cut -d':' -f1 | awk '{ print $1}'`
+            usr_home=`echo $p | cut -d':' -f2 | awk '{ print $1}'`
+            echo disabling chattr for ${usr_name} in ${usr_home}
+            chattr -i -R ${usr_home}/ &> /dev/null
+            if [ -d "${usr_home}/.drush/" ]; then
+              chattr -i ${usr_home}/.drush/
+            fi
+            echo purging ${usr_name} to /var/backups/zombie/purged/${user}/home/${usr_name}
+            deluser \
+              --remove-home \
+              --backup-to /var/backups/zombie/purged/${user}/home/ ${usr_name} &> /dev/null
+          done;
+        echo
+        echo "Cleanup complete"
+      else
+        echo
+        echo "OOPS.. ${user} is either active, with existing vhosts or does not exist"
+      fi
+    fi
+    echo
+    exit 0
+  fi
+}
+
 check_root_direct
 os_detection_minimal
 
@@ -1979,6 +2038,11 @@ case "$1" in
              check_virt
              check_dns_curl
              init_setup
+  ;;
+  cleanup)   cmmand="$1"
+             action="$2"
+             user="$3"
+             octopus_cleanup
   ;;
   in-lite)   cmmand="$1"
              tRee=lite
@@ -2117,6 +2181,7 @@ case "$1" in
              echo "Usage: $(basename "$0") version"
              echo "Usage: $(basename "$0") info {more}"
              echo "Usage: $(basename "$0") info report {octopus|backups|both}"
+             echo "Usage: $(basename "$0") cleanup {detect|purge} {user}"
              echo "Usage: $(basename "$0") reboot"
              echo
              cat <<EOF
