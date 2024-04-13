@@ -2003,12 +2003,12 @@ octopus_cleanup() {
           for p in $(cat ${zombie_dir}.purge.list | grep "${user}" 2>&1);do
             usr_name=`echo $p | cut -d':' -f1 | awk '{ print $1}'`
             usr_home=`echo $p | cut -d':' -f2 | awk '{ print $1}'`
-            echo disabling chattr for ${usr_name} in ${usr_home}
+            echo disabling chattr for ${usr_name} in ${usr_home}..
             chattr -i -R ${usr_home}/ &> /dev/null
             if [ -d "${usr_home}/.drush/" ]; then
               chattr -i ${usr_home}/.drush/
             fi
-            echo purging ${usr_name} to /var/backups/zombie/purged/${user}/home/${usr_name}
+            echo purging ${usr_name}..
             deluser \
               --remove-home \
               --backup-to /var/backups/zombie/purged/${user}/home/ ${usr_name} &> /dev/null
