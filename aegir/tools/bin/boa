@@ -2009,6 +2009,7 @@ octopus_cleanup() {
             if [ -d "${usr_home}/.drush/" ]; then
               chattr -i ${usr_home}/.drush/
             fi
+            rm -rf ${usr_home}/.gnupg
             echo purging ${usr_name}..
             deluser \
               --remove-home \
