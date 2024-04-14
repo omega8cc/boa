@@ -2026,6 +2026,13 @@ octopus_cleanup() {
             fi
             rm -rf ${usr_home}/.gnupg
             echo purging ${usr_name}..
+            if [ -d "${usr_home}/static" ]; then
+              rm -rf ${usr_home}/backups
+              rm -rf ${usr_home}/distro
+              rm -rf ${usr_home}/src
+              rm -rf ${usr_home}/static
+              rm -rf ${usr_home}/undo
+            fi
             deluser \
               --remove-home \
               --backup-to /var/backups/zombie/purged/${user}/home/ ${usr_name} &> /dev/null
