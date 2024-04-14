@@ -742,6 +742,7 @@ kill_zombies() {
           mkdir -p /var/backups/zombie/deleted/${_NOW}
           kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
           disable_chattr ${Existing}
+          rm -rf /home/${Existing}/.gnupg
           deluser \
             --remove-home \
             --backup-to /var/backups/zombie/deleted/${_NOW} ${Existing} &> /dev/null
