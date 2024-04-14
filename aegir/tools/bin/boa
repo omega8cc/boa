@@ -1964,7 +1964,8 @@ octopus_cleanup() {
         if [ -d "${Usr}/config/server_master/nginx/vhost.d" ] \
           && [ -e "${Usr}/log/cores.txt" ] \
           && [ -e "${Usr}/log/CANCELLED" ]; then
-          echo "CANCELLED ${Usr}"
+          sIze=$(du -s -h ${Usr} | cut -d' ' -f1 | awk '{ print $1}' 2>&1)
+          echo "CANCELLED ${Usr} ${sIze}"
         else
           if [ -d "${Usr}/config/server_master/nginx/vhost.d" ] \
             && [ -e "${Usr}/log/cores.txt" ]; then
