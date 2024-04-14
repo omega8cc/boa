@@ -1959,6 +1959,7 @@ octopus_cleanup() {
       echo
       echo "Accounts marked for cleanup or active"
       echo
+      rm -f /root/.cleanup.detect.txt
       for Usr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
       do
         if [ -d "${Usr}/config/server_master/nginx/vhost.d" ] \
@@ -1966,6 +1967,8 @@ octopus_cleanup() {
           && [ -e "${Usr}/log/CANCELLED" ]; then
           sIze=$(du -s -h ${Usr} | cut -d' ' -f1 | awk '{ print $1}' 2>&1)
           echo "CANCELLED ${Usr} ${sIze}"
+          iUsr=$(echo ${Usr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+          echo "CANCELLED ${iUsr}" >> /root/.cleanup.detect.txt
         else
           if [ -d "${Usr}/config/server_master/nginx/vhost.d" ] \
             && [ -e "${Usr}/log/cores.txt" ]; then
@@ -1973,7 +1976,19 @@ octopus_cleanup() {
           fi
         fi
       done
-    elif [ "${action}" = "purge" ] && [ ! -z "${user}" ]; then
+    elif [ "${action}" = "purge" ] \
+      && [ "${user}" = "batch" ] \
+      && [ -e "/root/.cleanup.detect.txt" ]; then
+        IFS=$'\12'
+        for p in $(cat /root/.cleanup.detect.txt 2>&1);do
+          usr_purge=`echo $p | cut -d' ' -f2 | awk '{ print $1}'`
+          boa cleanup purge ${usr_purge}
+          wait
+        done
+    elif [ "${action}" = "purge" ] \
+      && [ ! -z "${user}" ] \
+      && [ "${user}" != "batch" ] \
+      && [ -e "/root/.cleanup.detect.txt" ]; then
       zombie_dir="/var/backups/zombie/purged/${user}/home/"
       nginx_inc="/var/aegir/config/server_master/nginx/platform.d"
       nginx_ssl="/var/aegir/config/server_master/nginx/pre.d"
@@ -2196,7 +2211,7 @@ case "$1" in
              echo "Usage: $(basename "$0") version"
              echo "Usage: $(basename "$0") info {more}"
              echo "Usage: $(basename "$0") info report {octopus|backups|both}"
-             echo "Usage: $(basename "$0") cleanup {detect|purge} {user}"
+             echo "Usage: $(basename "$0") cleanup {detect|purge} {user|batch}"
              echo "Usage: $(basename "$0") reboot"
              echo
              cat <<EOF
