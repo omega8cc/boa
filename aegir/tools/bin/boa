@@ -2013,6 +2013,10 @@ octopus_cleanup() {
             rm -f /opt/php${e}/etc/pool.d/${user}.${e}.conf
             echo "${user}.${e}.web:/home/${user}.${e}.web" >> ${zombie_dir}.purge.list
           fi
+          if [ -e "/opt/php${e}/etc/pool.d/${user}.conf" ]; then
+            rm -f /opt/php${e}/etc/pool.d/${user}.conf
+            echo "${user}.web:/home/${user}.web" >> ${zombie_dir}.purge.list
+          fi
         done
         kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
         IFS=$'\12'
