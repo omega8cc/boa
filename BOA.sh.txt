@@ -2396,7 +2396,7 @@ find_fast_mirror_early() {
 
 sysctl_update() {
   if [ ! -e "/root/.no.sysctl.update.cnf" ] \
-    && [ ! -e "/var/backups/sysctl.conf.up-${_X_SE}.log" ]; then
+    && [ ! -e "/var/backups/sysctl.conf.up-hf01-${_X_SE}.log" ]; then
     mkdir -p /var/backups
     cd /var/backups
     rm -f /var/backups/sysctl.conf
@@ -2440,7 +2440,28 @@ sysctl_update() {
         service nginx restart &> /dev/null
       fi
     fi
-    touch /var/backups/sysctl.conf.up-${_X_SE}.log
+    if [ -e "/etc/security/limits.d" ] \
+      && [ ! -e "/etc/security/limits.d/redis.conf" ]; then
+      echo "redis soft nofile 65535" > /etc/security/limits.d/redis.conf
+      echo "redis hard nofile 524288" >> /etc/security/limits.d/redis.conf
+      echo "nginx soft nofile 65535" > /etc/security/limits.d/nginx.conf
+      echo "nginx hard nofile 524288" >> /etc/security/limits.d/nginx.conf
+      echo "jetty9 soft nofile 65535" > /etc/security/limits.d/jetty9.conf
+      echo "jetty9 hard nofile 524288" >> /etc/security/limits.d/jetty9.conf
+      echo "solr7 soft nofile 65535" > /etc/security/limits.d/solr7.conf
+      echo "solr7 hard nofile 524288" >> /etc/security/limits.d/solr7.conf
+      echo "@www-data soft nofile 65535" > /etc/security/limits.d/www.conf
+      echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
+      service redis-server restart &> /dev/null
+      service nginx restart &> /dev/null
+      _PHP_V="82 81 74 73 72 71 70 56"
+      for e in ${_PHP_V}; do
+        if [ -e "/etc/init.d/php${e}-fpm" ]; then
+          service php${e}-fpm reload &> /dev/null
+        fi
+      done
+    fi
+    touch /var/backups/sysctl.conf.up-hf01-${_X_SE}.log
   fi
 }
 

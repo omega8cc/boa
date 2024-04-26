@@ -7526,6 +7526,27 @@ sysctl_update() {
         service nginx restart &> /dev/null
       fi
     fi
+    if [ -e "/etc/security/limits.d" ] \
+      && [ ! -e "/etc/security/limits.d/redis.conf" ]; then
+      echo "redis soft nofile 65535" > /etc/security/limits.d/redis.conf
+      echo "redis hard nofile 524288" >> /etc/security/limits.d/redis.conf
+      echo "nginx soft nofile 65535" > /etc/security/limits.d/nginx.conf
+      echo "nginx hard nofile 524288" >> /etc/security/limits.d/nginx.conf
+      echo "jetty9 soft nofile 65535" > /etc/security/limits.d/jetty9.conf
+      echo "jetty9 hard nofile 524288" >> /etc/security/limits.d/jetty9.conf
+      echo "solr7 soft nofile 65535" > /etc/security/limits.d/solr7.conf
+      echo "solr7 hard nofile 524288" >> /etc/security/limits.d/solr7.conf
+      echo "@www-data soft nofile 65535" > /etc/security/limits.d/www.conf
+      echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
+      service redis-server restart &> /dev/null
+      service nginx restart &> /dev/null
+      _PHP_V="82 81 74 73 72 71 70 56"
+      for e in ${_PHP_V}; do
+        if [ -e "/etc/init.d/php${e}-fpm" ]; then
+          service php${e}-fpm reload &> /dev/null
+        fi
+      done
+    fi
     touch ${pthLog}/sysctl.conf-${_X_SE}-${_X_VERSION}-${_NOW}.log
   fi
 }
