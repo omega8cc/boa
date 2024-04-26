@@ -579,6 +579,11 @@ if_firewall_update() {
     fi
     echo kernel.vshelper = /sbin/vshelper >> /etc/sysctl.conf
     if [ -e "/etc/security/limits.conf" ]; then
+      _IF_NF=$(grep '2097152' /etc/security/limits.conf 2>&1)
+      if [ ! -z "${_IF_NF}" ]; then
+        sed -i "s/.*2097152.*//g" /etc/security/limits.conf
+        wait
+      fi
       _IF_NF=$(grep '524288' /etc/security/limits.conf)
       if [ -z "${_IF_NF}" ]; then
         echo "*         hard    nofile      524288"  >> /etc/security/limits.conf
