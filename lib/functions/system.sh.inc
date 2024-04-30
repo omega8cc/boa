@@ -541,6 +541,8 @@ tune_memory_limits() {
   _VM_TEST=$(uname -a 2>&1)
   if [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
+  elif [ -e "/root/.tg.cnf" ]; then
+    _VMFAMILY="TG"
   else
     _VMFAMILY="XEN"
   fi

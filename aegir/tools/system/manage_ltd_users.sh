@@ -1222,6 +1222,8 @@ satellite_tune_fpm_workers() {
   _AWS_TEST_B=$(head -c 3 /sys/hypervisor/uuid 2>&1)
   if [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
+  elif [ -e "/root/.tg.cnf" ]; then
+    _VMFAMILY="TG"
   else
     _VMFAMILY="XEN"
   fi
