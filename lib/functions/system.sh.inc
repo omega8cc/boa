@@ -623,7 +623,7 @@ tune_memory_limits() {
     fi
   elif [ "${_USE}" -ge "2048" ]; then
     if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
-      _USE_PHP=1024
+      _USE_PHP=2048
       _USE_OPC=2048
       _USE_CLI=4096
       _QCE_SQL=64M
@@ -644,7 +644,7 @@ tune_memory_limits() {
       if [ -e "/boot/grub/grub.cfg" ] \
         || [ -e "/boot/grub/menu.lst" ] \
         || [ -e "/root/.tg.cnf" ]; then
-        _USE_PHP=1024
+        _USE_PHP=2048
         _USE_OPC=2048
         _USE_CLI=4096
         _QCE_SQL=64M
@@ -674,8 +674,8 @@ tune_memory_limits() {
         sed -i "s/64000/128000/g"  /opt/php70/etc/php70.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php56/etc/php56.ini &> /dev/null
       else
-        _USE_PHP=1024
-        _USE_OPC=1024
+        _USE_PHP=2048
+        _USE_OPC=2048
         _USE_CLI=2048
         _QCE_SQL=64M
         _RND_SQL=2M
@@ -733,12 +733,12 @@ tune_memory_limits() {
   if [ "${_VMFAMILY}" = "VZ" ]; then
     _USE_OPC=64
   fi
-  if [ "${_USE_PHP}" -lt "512" ]; then
-    _USE_PHP=512
+  if [ "${_USE_PHP}" -lt "1024" ]; then
+    _USE_PHP=1024
   fi
   _USE_FPM=$(( _USE_PHP / 2 ))
-  if [ "${_USE_FPM}" -lt "395" ]; then
-    _USE_FPM=395
+  if [ "${_USE_FPM}" -lt "1024" ]; then
+    _USE_FPM=1024
   fi
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
     mkdir -p /var/xdrago/conf
