@@ -1626,6 +1626,7 @@ install_php_multi() {
                 --with-pear \
                 --with-xsl \
                 --with-zlib \
+                --with-bz2 \
                 ${_PHP_EXTRA} &> /dev/null
   if [ -e "/var/opt/php-${_PHP_VERSION}/Makefile" ]; then
     msg "INFO: Building PHP ${_PHP_VERSION} part 3/3"
