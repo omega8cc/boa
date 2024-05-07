@@ -686,7 +686,7 @@ install_php_extensions() {
   get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
   cd /var/opt/phpredis
   mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-  mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+  mrun "bash ./configure --enable-redis-igbinary --with-php-config=${_T_PHP_CFG}" 2> /dev/null
   mrun "make -j $(nproc) --quiet" 2> /dev/null
   mrun "make --quiet install" 2> /dev/null
   mrun "ldconfig" 2> /dev/null
