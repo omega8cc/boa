@@ -675,8 +675,10 @@ install_php_extensions() {
   ###--------------------###
   if [ "$1" = "56" ]; then
     _USE_PHPREDIS="${_PHPREDIS_FOUR_VRN}"
-  else
+  elif [ "$1" = "70" ] || [ "$1" = "71" ]; then
     _USE_PHPREDIS="${_PHPREDIS_FIVE_VRN}"
+  else
+    _USE_PHPREDIS="${_PHPREDIS_SIX_VRN}"
   fi
   msg "INFO: Installing PhpRedis ${_USE_PHPREDIS} for PHP ${_T_PHP_VRN}..."
   cd /var/opt
@@ -1045,8 +1047,10 @@ php_extensions_update() {
   ###--------------------###
   if [ "$1" = "56" ]; then
     _USE_PHPREDIS="${_PHPREDIS_FOUR_VRN}"
-  else
+  elif [ "$1" = "70" ] || [ "$1" = "71" ]; then
     _USE_PHPREDIS="${_PHPREDIS_FIVE_VRN}"
+  else
+    _USE_PHPREDIS="${_PHPREDIS_SIX_VRN}"
   fi
   if [ ! -e "${pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log" ]; then
     msg "INFO: Installing PhpRedis ${_USE_PHPREDIS} upgrade for PHP ${_T_PHP_VRN}..."
