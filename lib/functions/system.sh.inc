@@ -664,6 +664,7 @@ tune_memory_limits() {
         else
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
+        sed -i "s/64000/128000/g"  /opt/php83/etc/php83.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php82/etc/php82.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php81/etc/php81.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php80/etc/php80.ini &> /dev/null
@@ -754,7 +755,7 @@ tune_memory_limits() {
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   fi
-  _PHP_V="82 81 80 74 73 72 71 70 56"
+  _PHP_V="83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
       sed -i "s/395/${_USE_FPM}/g" /opt/php${e}/etc/php${e}.ini &> /dev/null
@@ -1423,9 +1424,9 @@ php_if_versions_cleanup_cnf() {
     else
       ### Make sure that _PHP_SINGLE_INSTALL takes precedence
       if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-        if [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] \
-          || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
-          || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ]; then
+        if [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
+          || [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] \
+          || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ]; then
           _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
           _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
           _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
@@ -1434,7 +1435,7 @@ php_if_versions_cleanup_cnf() {
         ### Make sure that _PHP_MULTI_INSTALL includes _PHP_FPM_VERSION
         _local_PHP_MULTI_INSTALL="${_PHP_FPM_VERSION}"
 
-        ### Always include latest PHP 8.1 and 8.2 if requested
+        ### Always include latest PHP 8.1, 8.2 and 8.3 if requested
         if [ -e "/root/.include-php-latest.cnf" ] \
           || [ -e "/root/.auto.up.cnf" ] \
           || [ -e "/root/.host8.cnf" ] \
@@ -1442,7 +1443,7 @@ php_if_versions_cleanup_cnf() {
           || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
           || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
           || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
-          _local_PHP_MULTI_INSTALL="8.1 8.2 ${_local_PHP_MULTI_INSTALL}"
+          _local_PHP_MULTI_INSTALL="8.1 8.2 8.3 ${_local_PHP_MULTI_INSTALL}"
         fi
 
         ### Add PHP 5.6 if used
@@ -1551,6 +1552,18 @@ php_if_versions_cleanup_cnf() {
           || [[ "${_is_PHP_CLI_eight_two}" =~ "8.2" ]]; then
           _is_PHP_eight_two=8.2
           _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_two}"
+        fi
+
+        ### Add PHP 8.3 if used
+        _is_PHP_multi_eight_three=$(grep "8\.3" /data/disk/*/static/control/multi-fpm.info 3>&1)
+        _is_PHP_FPM_eight_three=$(grep "8\.3" /data/disk/*/static/control/fpm.info 3>&1)
+        _is_PHP_CLI_eight_three=$(grep "8\.3" /data/disk/*/static/control/cli.info 3>&1)
+        _is_PHP_eight_three=
+        if [[ "${_is_PHP_multi_eight_three}" =~ "8.3" ]] \
+          || [[ "${_is_PHP_FPM_eight_three}" =~ "8.3" ]] \
+          || [[ "${_is_PHP_CLI_eight_three}" =~ "8.3" ]]; then
+          _is_PHP_eight_three=8.3
+          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_three}"
         fi
 
         ### Overwrite _PHP_MULTI_INSTALL with the list of used PHP versions
@@ -1872,6 +1885,10 @@ barracuda_cnf() {
           sed -i "s/^_PHP_CLI_VERSION=7.4/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
           wait
           sed -i "s/^_PHP_FPM_VERSION=7.4/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
+          wait
+          sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
+          wait
+          sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
           wait
         fi
         # if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -2218,6 +2235,10 @@ barracuda_cnf() {
           wait
           sed -i "s/^_PHP_FPM_VERSION=7.4/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
           wait
+          sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
+          wait
+          sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
+          wait
         fi
         # if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         #   || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
@@ -2310,9 +2331,9 @@ barracuda_cnf() {
 
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-      if [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "8.0" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ]; then
+      if [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ]; then
         _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
         _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
         _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
@@ -3907,6 +3928,7 @@ switch_to_dash() {
                   /opt/php80/bin \
                   /opt/php81/bin \
                   /opt/php82/bin \
+                  /opt/php83/bin \
                   /sbin \
                   /usr/bin \
                   /usr/lib/ConsoleKit/run-session.d \
@@ -3984,6 +4006,7 @@ switch_to_bash() {
                   /opt/php80/bin \
                   /opt/php81/bin \
                   /opt/php82/bin \
+                  /opt/php83/bin \
                   /sbin \
                   /usr/bin \
                   /usr/lib/ConsoleKit/run-session.d \
@@ -4047,6 +4070,7 @@ strict_bin_permissions() {
               /opt/php80/bin \
               /opt/php81/bin \
               /opt/php82/bin \
+              /opt/php83/bin \
               /sbin \
               /usr/bin \
               /usr/local/bin \
@@ -4976,41 +5000,45 @@ if_post_major_os_upgrade() {
       ssl_crypto_lib_fix
       curl_install_src
       sshd_install_src
-      if [ -x "/opt/php81/bin/php" ]; then
-        _PHP_VERSION="${_PHP81_VRN}"
-        install_php_multi "81"
-      fi
-      if [ -x "/opt/php74/bin/php" ]; then
-        _PHP_VERSION="${_PHP74_VRN}"
-        install_php_multi "74"
-      fi
-      if [ -x "/opt/php82/bin/php" ]; then
-        _PHP_VERSION="${_PHP82_VRN}"
-        install_php_multi "82"
-      fi
-      if [ -x "/opt/php80/bin/php" ]; then
-        _PHP_VERSION="${_PHP80_VRN}"
-        install_php_multi "80"
-      fi
-      if [ -x "/opt/php56/bin/php" ]; then
+       if [ -x "/opt/php56/bin/php" ]; then
         _PHP_VERSION="${_PHP56_VRN}"
         install_php_multi "56"
       fi
-      if [ -x "/opt/php73/bin/php" ]; then
-        _PHP_VERSION="${_PHP73_VRN}"
-        install_php_multi "73"
-      fi
-      if [ -x "/opt/php72/bin/php" ]; then
-        _PHP_VERSION="${_PHP72_VRN}"
-        install_php_multi "72"
+      if [ -x "/opt/php70/bin/php" ]; then
+        _PHP_VERSION="${_PHP70_VRN}"
+        install_php_multi "70"
       fi
       if [ -x "/opt/php71/bin/php" ]; then
         _PHP_VERSION="${_PHP71_VRN}"
         install_php_multi "71"
       fi
-      if [ -x "/opt/php70/bin/php" ]; then
-        _PHP_VERSION="${_PHP70_VRN}"
-        install_php_multi "70"
+      if [ -x "/opt/php72/bin/php" ]; then
+        _PHP_VERSION="${_PHP72_VRN}"
+        install_php_multi "72"
+      fi
+      if [ -x "/opt/php73/bin/php" ]; then
+        _PHP_VERSION="${_PHP73_VRN}"
+        install_php_multi "73"
+      fi
+      if [ -x "/opt/php74/bin/php" ]; then
+        _PHP_VERSION="${_PHP74_VRN}"
+        install_php_multi "74"
+      fi
+      if [ -x "/opt/php80/bin/php" ]; then
+        _PHP_VERSION="${_PHP80_VRN}"
+        install_php_multi "80"
+      fi
+      if [ -x "/opt/php81/bin/php" ]; then
+        _PHP_VERSION="${_PHP81_VRN}"
+        install_php_multi "81"
+      fi
+      if [ -x "/opt/php82/bin/php" ]; then
+        _PHP_VERSION="${_PHP82_VRN}"
+        install_php_multi "82"
+      fi
+      if [ -x "/opt/php83/bin/php" ]; then
+        _PHP_VERSION="${_PHP83_VRN}"
+        install_php_multi "83"
       fi
       _PHP_VERSION=""
       _T_PHP_VRN=""
@@ -7230,7 +7258,7 @@ initd_update() {
       service redis-server reload &> /dev/null
       update-rc.d -f php5-fpm remove &> /dev/null
       update-rc.d cron defaults &> /dev/null
-      _PHP_V="82 81 80 74 73 72 71 70 56"
+      _PHP_V="83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           update-rc.d php${e}-fpm defaults &> /dev/null
@@ -7358,7 +7386,7 @@ initd_update() {
       fi
       update-rc.d -f php5-fpm remove &> /dev/null
       service redis-server reload &> /dev/null
-      _PHP_V="82 81 80 74 73 72 71 70 56"
+      _PHP_V="83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           update-rc.d php${e}-fpm defaults &> /dev/null
@@ -7542,7 +7570,7 @@ sysctl_update() {
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
       service redis-server restart &> /dev/null
       service nginx restart &> /dev/null
-      _PHP_V="82 81 74 73 72 71 70 56"
+      _PHP_V="83 82 81 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           service php${e}-fpm reload &> /dev/null

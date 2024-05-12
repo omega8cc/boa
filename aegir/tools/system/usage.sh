@@ -130,7 +130,7 @@ send_notice_php() {
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
   cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
-    -s "URGENT: Please switch your Aegir instance to PHP 7.4 [${_THIS_U}]" ${_CLIENT_EMAIL}
+    -s "URGENT: Please switch your Aegir instance to PHP 8.1 [${_THIS_U}]" ${_CLIENT_EMAIL}
 Hello,
 
 Our monitoring detected that you are still using deprecated
@@ -146,11 +146,11 @@ and there are no exceptions possible to avoid it.
 
 This means that all Aegir instances still running PHP $1
 will stop working if not switched to one of currently
-supported versions: 8.1, 8.0, 7.4
+supported versions: 8.1, 8.2, 8.3
 
 To switch PHP-FPM version on command line, please type:
 
-  echo 7.4 > ~/static/control/fpm.info
+  echo 8.1 > ~/static/control/fpm.info
 
 You can find more details at: https://learn.omega8.cc/node/330
 
@@ -165,7 +165,7 @@ This email has been sent by your Aegir system monitor
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
   cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
-    -s "URGENT: Please switch your Aegir instance to PHP 7.4 [${_THIS_U}]" ${_CLIENT_EMAIL}
+    -s "URGENT: Please switch your Aegir instance to PHP 8.1 [${_THIS_U}]" ${_CLIENT_EMAIL}
 Hello,
 
 Our monitoring detected that you are still using deprecated
@@ -181,11 +181,11 @@ and there are no exceptions possible to avoid it.
 
 This means that all Aegir instances still running PHP $1
 will stop working if not switched to one of currently
-supported versions: 8.1, 8.0, 7.4
+supported versions: 8.1, 8.2, 8.3
 
 To switch PHP-FPM version on command line, please type:
 
-  echo 7.4 > ~/static/control/fpm.info
+  echo 8.1 > ~/static/control/fpm.info
 
 You can find more details at: https://learn.omega8.cc/node/330
 
@@ -200,7 +200,7 @@ This email has been sent by your Aegir system monitor
 EOF
   else
   cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
-    -s "URGENT: Please switch your Aegir instance to PHP 7.4 [${_THIS_U}]" ${_CLIENT_EMAIL}
+    -s "URGENT: Please switch your Aegir instance to PHP 8.1 [${_THIS_U}]" ${_CLIENT_EMAIL}
 Hello,
 
 Our monitoring detected that you are still using deprecated
@@ -216,11 +216,11 @@ and there are no exceptions possible to avoid it.
 
 This means that all Aegir instances still running PHP $1
 will stop working if not switched to one of currently
-supported versions: 8.1, 8.0, 7.4
+supported versions: 8.1, 8.2, 8.3
 
 To switch PHP-FPM version on command line, please type:
 
-  echo 7.4 > ~/static/control/fpm.info
+  echo 8.1 > ~/static/control/fpm.info
 
 You can find more details at: https://learn.omega8.cc/node/330
 

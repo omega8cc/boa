@@ -463,28 +463,24 @@ check_report() {
 check_php_cli() {
   _PHP_CHECK=$(readlink -n /usr/bin/php 2>&1)
   if [ ! -x "${_PHP_CHECK}" ]; then
-    if [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
-      _PHP_CLI_PATH="/opt/php74/bin/php"
-    elif [ "${_PHP_CLI_VERSION}" = "8.0" ]; then
-      _PHP_CLI_PATH="/opt/php80/bin/php"
-    elif [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
+    if [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
       _PHP_CLI_PATH="/opt/php81/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "8.2" ]; then
       _PHP_CLI_PATH="/opt/php82/bin/php"
+    elif [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
+      _PHP_CLI_PATH="/opt/php83/bin/php"
     else
       _PHP_CLI_PATH=""
     fi
     if [ -x "${_PHP_CLI_PATH}" ]; then
       _USE_PHP_CLI_PATH="${_PHP_CLI_PATH}"
     else
-      if  [ -x "/opt/php74/bin/php" ]; then
-        _USE_PHP_CLI_PATH="/opt/php74/bin/php"
-      elif  [ -x "/opt/php80/bin/php" ]; then
-        _USE_PHP_CLI_PATH="/opt/php80/bin/php"
-      elif  [ -x "/opt/php81/bin/php" ]; then
+      if  [ -x "/opt/php81/bin/php" ]; then
         _USE_PHP_CLI_PATH="/opt/php81/bin/php"
       elif  [ -x "/opt/php82/bin/php" ]; then
         _USE_PHP_CLI_PATH="/opt/php82/bin/php"
+      elif  [ -x "/opt/php83/bin/php" ]; then
+        _USE_PHP_CLI_PATH="/opt/php83/bin/php"
       fi
     fi
     if [ -x "${_USE_PHP_CLI_PATH}" ]; then
@@ -494,7 +490,7 @@ check_php_cli() {
       ln -sfn ${_USE_PHP_CLI_PATH} /usr/bin/php-cli
     else
       echo "ERROR: I can not find PHP-CLI anywhere!"
-      echo "ERROR: BOA requires PHP 7.4 or newer"
+      echo "ERROR: BOA requires PHP 8.1 or newer"
       clean_pid_exit
     fi
   fi
@@ -503,12 +499,12 @@ check_php_cli() {
 up_action() {
   if [ -e "${vBs}/${barName}" ] && [ -e "${barCnf}" ]; then
     if [ ! -z "${rkey}" ]; then
-      if [ "${rkey}" = "php-82" ] || [ "${rkey}" = "php-8.2" ]; then
+      if [ "${rkey}" = "php-83" ] || [ "${rkey}" = "php-8.3" ]; then
+        phpS="8.3"
+      elif [ "${rkey}" = "php-82" ] || [ "${rkey}" = "php-8.2" ]; then
         phpS="8.2"
       elif [ "${rkey}" = "php-81" ] || [ "${rkey}" = "php-8.1" ]; then
         phpS="8.1"
-      elif [ "${rkey}" = "php-74" ] || [ "${rkey}" = "php-7.4" ]; then
-        phpS="7.4"
       elif [ "${rkey}" = "php-all" ] || [ "${rkey}" = "php-min" ]; then
         phpS="MIN"
       elif [ "${rkey}" = "php-max" ]; then
@@ -542,9 +538,9 @@ up_action() {
 
     fi
     ### Make sure that _PHP_SINGLE_INSTALL is set in ${barCnf}
-    if [ "${phpS}" = "8.2" ] \
-      || [ "${phpS}" = "8.1" ] \
-      || [ "${phpS}" = "7.4" ]; then
+    if [ "${phpS}" = "8.3" ] \
+      || [ "${phpS}" = "8.2" ] \
+      || [ "${phpS}" = "8.1" ]; then
       _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL ${barCnf} 2>&1)
       if [[ "${_PHP_SINGLE_INSTALL_TEST}" =~ "_PHP_SINGLE_INSTALL" ]]; then
         sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=${phpS}/g" ${barCnf}
@@ -555,9 +551,9 @@ up_action() {
     fi
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${phpS}" ]; then
-      if [ "${phpS}" = "8.2" ] \
-        || [ "${phpS}" = "8.1" ] \
-        || [ "${phpS}" = "7.4" ]; then
+      if [ "${phpS}" = "8.3" ] \
+        || [ "${phpS}" = "8.2" ] \
+        || [ "${phpS}" = "8.1" ]; then
 
         ### Debugging
         if [ "$debug" = "debug" ]; then
@@ -624,9 +620,9 @@ up_action() {
         fi
       elif [ "${phpS}" = "MIN" ] || [ "${phpS}" = "MAX" ]; then
         if [ "${phpS}" = "MAX" ]; then
-          phpM="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2"
+          phpM="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
         else
-          phpM="7.4 8.1 8.2"
+          phpM="8.1 8.2 8.3"
         fi
         phpS="8.1"
 
@@ -1600,9 +1596,9 @@ proceed() {
 
   {options}
       newrelickey <-- activate New Relic integration with valid license key
-      php-8.1 <------ enable single-PHP mode (7.4 or 8.1 or 8.2)
-      php-min <------ install PHP 7.4, 8.1, 8.2, use 8.1 by default (php-all)
-      php-max <------ install PHP 7.4, 8.1, 8.2, 8.0, 7.3, 7.2, 7.1, 7.0, 5.6
+      php-8.1 <------ enable single-PHP mode (8.1 or 8.2 or 8.3)
+      php-min <------ install PHP 8.1, 8.2, 8.3, use 8.1 by default (php-all)
+      php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
 
   {dbserver}
