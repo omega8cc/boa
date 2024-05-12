@@ -138,7 +138,7 @@ production settings.
   *Included/enabled by default -- see docs/NOTES.txt for details
 
   Automatic BOA System Major Upgrade Tool -- see docs/UPGRADE.txt for details.
-  PHP-FPM 8.2/1/0 7.4/3/2/1/0 5.6 in multi-install mode, configurable per site.
+  PHP-FPM 8.3/2/1/0 7.4/3/2/1/0 5.6, configurable per site.
   Latest release of Percona 5.7 database server with Adminer manager.
   All libraries & tools required to install and run Nginx based Aegir system.
   Magic Speed Booster cache, working like a Boost + AuthCache, but per user.

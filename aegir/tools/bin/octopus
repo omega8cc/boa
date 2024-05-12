@@ -545,9 +545,9 @@ satellite_check_supported_php_cli() {
           _T_CLI_VRN=$(cat ${User}/static/control/cli.info 2>&1)
           _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
           _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-          if [ "${_T_CLI_VRN}" = "8.2" ] \
+          if [ "${_T_CLI_VRN}" = "8.3" ] \
+            || [ "${_T_CLI_VRN}" = "8.2" ] \
             || [ "${_T_CLI_VRN}" = "8.1" ] \
-            || [ "${_T_CLI_VRN}" = "8.0" ] \
             || [ "${_T_CLI_VRN}" = "7.4" ]; then
             _PHP_CLI_LEGACY_FREE=YES
           else

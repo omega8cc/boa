@@ -297,7 +297,7 @@ check_php_cli_version() {
   fi
   ### echo CHK 1 _PHP_CLI is ${_PHP_CLI}
 
-  _PHP_V="56 70 71 72 73 74 80 81 82"
+  _PHP_V="56 70 71 72 73 74 80 81 82 83"
   for e in ${_PHP_V}; do
     if [[ "${_PHP_CLI}" =~ "php${e}" ]] && [ -x "/opt/php${e}/bin/php" ]; then
       DRUSH_PHP="/opt/php${e}/bin/php"
@@ -382,7 +382,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         if [[ "${_ARGS}" =~ "drush12 " ]] \
           && [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
           _DEST_DRUSH="/usr/bin/drush12"
-          _PHP_V="81 82"
+          _PHP_V="81 82 83"
           for e in ${_PHP_V}; do
             if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
               DRUSH_PHP="/opt/php${e}/bin/php"
@@ -423,7 +423,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             _DEST_DRUSH="/usr/bin/drush10"
           fi
           if [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
-            _PHP_V="74 80 81 82"
+            _PHP_V="74 80 81 82 83"
             for e in ${_PHP_V}; do
               if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
                 DRUSH_PHP="/opt/php${e}/bin/php"
@@ -469,7 +469,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             _DEST_DRUSH=
           fi
           if [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
-            _PHP_V="56 70 71 72 73 74 80 81 82"
+            _PHP_V="56 70 71 72 73 74 80 81 82 83"
             for e in ${_PHP_V}; do
               if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
                 DRUSH_PHP="/opt/php${e}/bin/php"

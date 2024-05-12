@@ -15,6 +15,9 @@ chomp($now_is);
 &javacheck;
 if ($fpm_status ne "CLEAN") {
   `kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')`;
+  if (-f "/etc/init.d/php83-fpm") {
+    `service php83-fpm restart`;
+  }
   if (-f "/etc/init.d/php82-fpm") {
     `service php82-fpm restart`;
   }
