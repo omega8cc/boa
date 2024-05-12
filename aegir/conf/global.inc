@@ -459,6 +459,7 @@ if ($drupal_eight) {
   $config['system.performance']['css']['preprocess'] = TRUE;       // Enable hardcoded CSS aggregation
   $config['system.performance']['js']['preprocess'] = TRUE;        // Enable hardcoded JS aggregation
   $config['system.performance']['response.gzip'] = FALSE;          // Nginx already compresses everything
+  //$config['system.file']['default_scheme'] = 'public';             // Force public downloads by default
 }
 else {
   if ($backdropcms) {
@@ -711,6 +712,7 @@ if (isset($_SERVER['SERVER_NAME']) &&
     $all_ini['allow_private_file_downloads']) {
   unset($conf['file_downloads']); // Disable hardcoded public downloads for D6
   unset($conf['file_default_scheme']); // Disable hardcoded public downloads for D7
+  //unset($config['system.file']['default_scheme']); // Disable hardcoded public downloads for D8+
   if ($is_dev && !$is_backend) {
     header('X-Is-Cart: YES');
   }
