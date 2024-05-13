@@ -264,6 +264,7 @@ fix_php_ini_opcache_all() {
   for e in ${_PHP_V}; do
     _P_API=
     case "${e}" in
+      83) _P_API="${_PHP83_API}" ;;
       82) _P_API="${_PHP82_API}" ;;
       81) _P_API="${_PHP81_API}" ;;
       80) _P_API="${_PHP80_API}" ;;
