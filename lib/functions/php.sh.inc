@@ -2542,7 +2542,7 @@ php_single_initd_cleanup() {
   fi
   if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
     _FPM_INITD_CLEANUP=
-    if [ "${_PHP_SINGLE_INSTALL}" = "8.3" ]; then
+    if [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
       _PHP_V="82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
@@ -2555,7 +2555,7 @@ php_single_initd_cleanup() {
           mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
         fi
       done
-    elif [ "${_PHP_SINGLE_INSTALL}" = "8.2" ]; then
+    elif [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] && [ -x "/opt/php82/bin/php" ]; then
       _PHP_V="83 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
@@ -2568,7 +2568,7 @@ php_single_initd_cleanup() {
           mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
         fi
       done
-    elif [ "${_PHP_SINGLE_INSTALL}" = "8.1" ]; then
+    elif [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] && [ -x "/opt/php81/bin/php" ]; then
       _PHP_V="83 82 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
