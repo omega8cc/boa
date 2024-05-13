@@ -2378,8 +2378,8 @@ le_ssl_check_update() {
   exeLe="${User}/tools/le/dehydrated"
   Vht="${User}/config/server_master/nginx/vhost.d/${Dom}"
   if [ -x "${exeLe}" ] && [ -e "${Vht}" ]; then
-    _SSL_ON_TEST=$(cat ${Vht} | grep "443 ssl http2" 2>&1)
-    if [[ "${_SSL_ON_TEST}" =~ "443 ssl http2" ]]; then
+    _SSL_ON_TEST=$(cat ${Vht} | grep "443 ssl" 2>&1)
+    if [[ "${_SSL_ON_TEST}" =~ "443 ssl" ]]; then
       if [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
         echo "Running LE cert check directly for ${Dom}"
         useAliases=""
