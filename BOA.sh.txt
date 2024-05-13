@@ -837,7 +837,7 @@ update_agents() {
       chmod 644 /etc/ImageMagick-6/policy.xml
       chown root:root /etc/ImageMagick-6/policy.xml
       touch ${pthLog}/policymap-hf-06.ctrl.${_X_SE}.pid
-      _PHP_V="83 82 81 74 73 72 71 70 56"
+      _PHP_V="83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           service php${e}-fpm reload &> /dev/null
@@ -2454,7 +2454,7 @@ sysctl_update() {
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
       service redis-server restart &> /dev/null
       service nginx restart &> /dev/null
-      _PHP_V="83 82 81 74 73 72 71 70 56"
+      _PHP_V="83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           service php${e}-fpm reload &> /dev/null
