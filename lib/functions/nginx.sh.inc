@@ -449,7 +449,7 @@ nginx_install_upgrade() {
       if [ "${_OSR}" = "none" ]; then
         _NGINX_EXTRA="--with-http_spdy_module ${_NGINX_EXTRA}"
       else
-        _NGINX_EXTRA="--with-http_v2_module ${_NGINX_EXTRA}"
+        _NGINX_EXTRA="--with-http_v2_module --with-http_v3_module ${_NGINX_EXTRA}"
       fi
     fi
     if [ "${_OSR}" = "daedalus" ] \
