@@ -3806,10 +3806,6 @@ curl_install_src() {
             ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/x86_64-linux-gnu/libcurl.so.4 &> /dev/null
             ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.so.4 /usr/lib/libcurl.so.4
           fi
-          if [ -f "/usr/local/lib/libcurl.so.4.8.0" ]; then
-            ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/x86_64-linux-gnu/libcurl.so.4 &> /dev/null
-            ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.so.4 /usr/lib/libcurl.so.4
-          fi
           if [ -e "/usr/lib/x86_64-linux-gnu/libcurl.so.4.4.0" ]; then
             mv -f /usr/lib/x86_64-linux-gnu/libcurl.so.4.4.0 /var/backups/
           fi
