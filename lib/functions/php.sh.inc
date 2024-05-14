@@ -2581,6 +2581,19 @@ php_single_initd_cleanup() {
           mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
         fi
       done
+    elif [ "${_PHP_SINGLE_INSTALL}" = "7.4" ] && [ -x "/opt/php74/bin/php" ]; then
+      _PHP_V="83 82 81 80 73 72 71 70 56"
+      for e in ${_PHP_V}; do
+        if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
+          service php${e}-fpm force-quit &> /dev/null
+          update-rc.d -f php${e}-fpm remove &> /dev/null
+          mv -f /etc/init.d/php${e}-fpm ${vBs}/initd-php${e}-fpm
+          _FPM_INITD_CLEANUP=YES
+        fi
+        if [ -e "/opt/php${e}/bin/php" ]; then
+          mv -f /opt/php${e}/bin/php ${vBs}/bin-php${e}-cli
+        fi
+      done
     fi
     if [ "${_FPM_INITD_CLEANUP}" = "YES" ]; then
       killall php-fpm &> /dev/null

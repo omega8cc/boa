@@ -1426,7 +1426,8 @@ php_if_versions_cleanup_cnf() {
       if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
         if [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
           || [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] \
-          || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ]; then
+          || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
+          || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ]; then
           _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
           _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
           _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
@@ -1435,7 +1436,7 @@ php_if_versions_cleanup_cnf() {
         ### Make sure that _PHP_MULTI_INSTALL includes _PHP_FPM_VERSION
         _local_PHP_MULTI_INSTALL="${_PHP_FPM_VERSION}"
 
-        ### Always include latest PHP 8.1, 8.2 and 8.3 if requested
+        ### Always include latest PHP 7.4, 8.1, 8.2 and 8.3 if requested
         if [ -e "/root/.include-php-latest.cnf" ] \
           || [ -e "/root/.auto.up.cnf" ] \
           || [ -e "/root/.host8.cnf" ] \
@@ -1443,7 +1444,7 @@ php_if_versions_cleanup_cnf() {
           || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
           || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
           || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
-          _local_PHP_MULTI_INSTALL="8.1 8.2 8.3 ${_local_PHP_MULTI_INSTALL}"
+          _local_PHP_MULTI_INSTALL="7.4 8.1 8.2 8.3 ${_local_PHP_MULTI_INSTALL}"
         fi
 
         ### Add PHP 5.6 if used
@@ -1881,10 +1882,6 @@ barracuda_cnf() {
           sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
           wait
           sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_CLI_VERSION=7.4/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_FPM_VERSION=7.4/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
           wait
           sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
           wait
@@ -2333,7 +2330,8 @@ barracuda_cnf() {
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
       if [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] \
-        || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ]; then
+        || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ]; then
         _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
         _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
         _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}

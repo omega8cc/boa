@@ -852,18 +852,18 @@ barracuda_install() {
     if [ ! -z "${rkey}" ] \
       && [ -e "${vBs}/${filIncB}" ] \
       && [ -e "${vBs}/${filIncO}" ]; then
-      if [ "${rkey}" = "php-81" ] || [ "${rkey}" = "php-8.1" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.1/g" ${vBs}/${filIncB}
+      if [ "${rkey}" = "php-83" ] || [ "${rkey}" = "php-8.3" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.3/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.1/g"   ${vBs}/${filIncB}
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.3/g"   ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.1/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.3/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.3/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.1/g" ${vBs}/${filIncO}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.3/g" ${vBs}/${filIncO}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${filIncO}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.3/g" ${vBs}/${filIncO}
         wait
       elif [ "${rkey}" = "php-82" ] || [ "${rkey}" = "php-8.2" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.2/g" ${vBs}/${filIncB}
@@ -878,18 +878,31 @@ barracuda_install() {
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.2/g" ${vBs}/${filIncO}
         wait
-      elif [ "${rkey}" = "php-83" ] || [ "${rkey}" = "php-8.3" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.3/g" ${vBs}/${filIncB}
+      elif [ "${rkey}" = "php-81" ] || [ "${rkey}" = "php-8.1" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.1/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.3/g"   ${vBs}/${filIncB}
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.1/g"   ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.3/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.1/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.3/g" ${vBs}/${filIncB}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.3/g" ${vBs}/${filIncO}
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.1/g" ${vBs}/${filIncO}
         wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.3/g" ${vBs}/${filIncO}
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${filIncO}
+        wait
+      elif [ "${rkey}" = "php-74" ] || [ "${rkey}" = "php-7.4" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.4/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.4/g"   ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${filIncO}
         wait
       elif [ "${rkey}" = "php-all" ] \
         || [ "${rkey}" = "php-min" ] \
@@ -898,7 +911,7 @@ barracuda_install() {
         if [ "${rkey}" = "php-max" ]; then
           pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
         else
-          pA="8.1 8.2 8.3"
+          pA="7.4 8.1 8.2 8.3"
         fi
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${filIncB}
         wait
@@ -954,6 +967,15 @@ barracuda_install() {
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${octName}
         wait
+      elif [ "${rkey}" = "php-74" ] || [ "${rkey}" = "php-7.4" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.4/g" ${vBs}/${barName}
+        wait
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.4/g"   ${vBs}/${barName}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${octName}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${octName}
+        wait
       elif [ "${rkey}" = "php-all" ] \
         || [ "${rkey}" = "php-min" ] \
         || [ "${rkey}" = "php-max" ]; then
@@ -961,7 +983,7 @@ barracuda_install() {
         if [ "${rkey}" = "php-max" ]; then
           pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
         else
-          pA="8.1 8.2 8.3"
+          pA="7.4 8.1 8.2 8.3"
         fi
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${barName}
         wait
@@ -2256,8 +2278,8 @@ case "$1" in
 
   {extra}
       license <------ valid new relic license key
-      php-8.1 <------ enable single-PHP mode (8.1 or 8.2 or 8.3)
-      php-min <------ install PHP 8.1, 8.2, 8.3, use 8.1 by default (php-all)
+      php-8.1 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 7.4)
+      php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.1 by default (php-all)
       php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
 
