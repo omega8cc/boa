@@ -212,6 +212,24 @@ clean_pid_exit() {
   exit 1
 }
 
+check_root() {
+  if [ `whoami` = "root" ]; then
+    if [ -e "/root/.barracuda.cnf" ]; then
+      source /root/.barracuda.cnf
+      _B_NICE=${_B_NICE//[^0-9]/}
+    fi
+    if [ -z "${_B_NICE}" ]; then
+      _B_NICE=10
+    fi
+    renice ${_B_NICE} -p $$ &> /dev/null
+    ionice -c2 -n7 -p $$
+  else
+    echo "ERROR: This script should be ran as a root user"
+    clean_pid_exit
+  fi
+}
+check_root
+
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _THIS_RV=$(lsb_release -sc 2>&1)
