@@ -686,7 +686,8 @@ check_boa_php_compatibility() {
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "8.3" ]] \
     || [[ "${_PHP_MULTI_INSTALL}" =~ "8.2" ]] \
-    || [[ "${_PHP_MULTI_INSTALL}" =~ "8.1" ]]; then
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "8.1" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "7.4" ]]; then
     _DO_NOTHING=YES
   else
     msg "ERROR: This BOA version depends on PHP 8.1 or newer"
@@ -705,7 +706,6 @@ check_boa_php_compatibility() {
     || [ "${_PHP_FPM_VERSION}" = "7.1" ] \
     || [ "${_PHP_FPM_VERSION}" = "7.2" ] \
     || [ "${_PHP_FPM_VERSION}" = "7.3" ] \
-    || [ "${_PHP_FPM_VERSION}" = "7.4" ] \
     || [ "${_PHP_FPM_VERSION}" = "8.0" ] \
     || [ "${_PHP_CLI_VERSION}" = "5.3" ] \
     || [ "${_PHP_CLI_VERSION}" = "5.4" ] \
@@ -715,7 +715,6 @@ check_boa_php_compatibility() {
     || [ "${_PHP_CLI_VERSION}" = "7.1" ] \
     || [ "${_PHP_CLI_VERSION}" = "7.2" ] \
     || [ "${_PHP_CLI_VERSION}" = "7.3" ] \
-    || [ "${_PHP_CLI_VERSION}" = "7.4" ] \
     || [ "${_PHP_CLI_VERSION}" = "8.0" ]; then
     msg "ERROR: This BOA version depends on PHP 8.1 or newer"
     msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to 8.1 or newer"
