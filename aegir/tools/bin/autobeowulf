@@ -216,7 +216,7 @@ check_sql_running() {
     sleep 3
   done
 }
-check_sql_running
+###check_sql_running
 
 _DB_SERIES=5.7
 _DB_SERVER_TEST=$(mysql -V 2>&1)
