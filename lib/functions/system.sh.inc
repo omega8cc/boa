@@ -1436,15 +1436,25 @@ php_if_versions_cleanup_cnf() {
         ### Make sure that _PHP_MULTI_INSTALL includes _PHP_FPM_VERSION
         _local_PHP_MULTI_INSTALL="${_PHP_FPM_VERSION}"
 
-        ### Always include latest PHP 7.4, 8.1, 8.2 and 8.3 if requested
-        if [ -e "/root/.include-php-latest.cnf" ] \
-          || [ -e "/root/.auto.up.cnf" ] \
-          || [ -e "/root/.host8.cnf" ] \
-          || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-          || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-          || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-          || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
-          _local_PHP_MULTI_INSTALL="7.4 8.1 8.2 8.3 ${_local_PHP_MULTI_INSTALL}"
+        ### Include only used PHP versions on major OS upgrades
+        _STRICT_LIMIT_PHP=NO
+        if [ -e "/root/.run-to-daedalus.cnf" ] \
+          || [ -e "/root/.run-to-chimaera.cnf" ] \
+          || [ -e "/root/.run-to-beowulf.cnf" ]; then
+          _STRICT_LIMIT_PHP=YES
+        fi
+
+        ### Include latest PHP 8.2 and 8.3 if conditions are met
+        if [ "${_STRICT_LIMIT_PHP}" = "NO" ]; then
+          if [ -e "/root/.include-php-latest.cnf" ] \
+            || [ -e "/root/.auto.up.cnf" ] \
+            || [ -e "/root/.host8.cnf" ] \
+            || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+            || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
+            || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+            || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
+            _local_PHP_MULTI_INSTALL="8.2 8.3 ${_local_PHP_MULTI_INSTALL}"
+          fi
         fi
 
         ### Add PHP 5.6 if used
