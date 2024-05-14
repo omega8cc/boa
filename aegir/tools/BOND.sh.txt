@@ -230,6 +230,16 @@ apt_clean_update() {
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
+check_sql_running() {
+  until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
+    && [ -e "/var/run/mysqld/mysqld.sock" ]; do
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    echo "INFO: Waiting for MySQLD availability..."
+    sleep 3
+  done
+}
+check_sql_running
+
 check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
