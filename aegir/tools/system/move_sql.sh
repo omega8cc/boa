@@ -57,6 +57,7 @@ start_sql() {
   echo "Starting MySQLD again..."
   renice ${_B_NICE} -p $$ &> /dev/null
   service mysql start &> /dev/null
+  _IS_MYSQLD_RUNNING=
   until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
     && [ -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
