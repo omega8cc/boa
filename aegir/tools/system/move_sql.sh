@@ -58,8 +58,8 @@ start_sql() {
   renice ${_B_NICE} -p $$ &> /dev/null
   service mysql start &> /dev/null
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
-  until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
-    && [ -e "/var/run/mysqld/mysqld.sock" ]; do
+  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
+    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     echo "Waiting for MySQLD graceful start..."
     sleep 3
