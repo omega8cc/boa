@@ -75,7 +75,6 @@ check_sql_running() {
     sleep 3
   done
 }
-check_sql_running
 
 check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
@@ -118,7 +117,6 @@ check_sql_access() {
     fi
   fi
 }
-check_sql_access
 
 fix_dns_settings() {
   dnsLi="/root/.local.dns.IP.list"
@@ -1272,6 +1270,8 @@ check_root
 check_no_systemd
 os_detection_minimal
 check_dns_curl
+check_sql_running
+check_sql_access
 
 case "$1" in
   up-3.2)    cmmand="$1"

@@ -161,7 +161,6 @@ check_sql_running() {
     sleep 3
   done
 }
-check_sql_running
 
 check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
@@ -204,7 +203,6 @@ check_sql_access() {
     fi
   fi
 }
-check_sql_access
 
 fix_dns_settings() {
   dnsLi="/root/.local.dns.IP.list"
@@ -1557,6 +1555,8 @@ proceed() {
   check_dns_curl
   check_php_cli
   set_pin_priority
+  check_sql_running
+  check_sql_access
   up_start
   if [ "${cmmand}" = "up-dev" ] \
     || [ "${cmmand}" = "up-pro" ] \
