@@ -1219,27 +1219,6 @@ check_root() {
     fi
     renice ${_B_NICE} -p $$ &> /dev/null
     ionice -c2 -n7 -p $$
-    chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
-    sed -i "s/.*173.231.133.190.*//g" /etc/hosts
-    wait
-    sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
-    wait
-    sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
-    wait
-    sed -i "s/.*github.*//g" /etc/hosts
-    wait
-    echo >>/etc/hosts
-    sed -i "/^$/d" /etc/hosts
-    wait
-    if [ -e "/etc/init.d/postfix" ]; then
-      service postfix restart &> /dev/null
-    fi
   else
     echo "ERROR: This script should be ran as a root user"
     clean_pid_exit
