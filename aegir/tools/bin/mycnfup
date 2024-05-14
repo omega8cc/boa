@@ -633,7 +633,6 @@ start_sql() {
     _MASTER_START=NO
     service mysql start
   fi
-  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
@@ -745,7 +744,6 @@ if_restart_sql() {
 
 check_mysql_up() {
   echo "running ${tVr} `hostname` check_mysql_up procedure..."
-  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)

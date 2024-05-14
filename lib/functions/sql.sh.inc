@@ -271,7 +271,6 @@ check_mysqld_running() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: check_mysqld_running"
   fi
-  _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
