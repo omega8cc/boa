@@ -3465,10 +3465,17 @@ ssl_install_src() {
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
-  _SSL_LIB_ITD=$(openssl version 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f9 \
-    | awk '{ print $1}' 2>&1)
+  if [ -e "/root/.install.modern.openssl.cnf" ]; then
+    _SSL_LIB_ITD=$(openssl version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f8 \
+      | awk '{ print $1}' 2>&1)
+  else
+    _SSL_LIB_ITD=$(openssl version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f9 \
+      | awk '{ print $1}' 2>&1)
+  fi
   if [ "${_OSR}" = "daedalus" ] \
     || [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
