@@ -2436,7 +2436,7 @@ run_apt_get_dist_upgrade() {
     msg "INFO: Running apt-get dist-upgrade..."
   fi
   mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
-  mrun "apt-get dist-upgrade -y" 2> /dev/null
+  mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
   mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
 }
 
@@ -4984,7 +4984,7 @@ if_post_major_os_upgrade() {
     msg "INFO: Running dist-upgrade to complete the system upgrade..."
     msg "WAIT: This may take a while, please wait..."
     mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
-    mrun "apt-get dist-upgrade -y" 2> /dev/null
+    mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
 
@@ -5475,7 +5475,7 @@ if_major_os_upgrade() {
       msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
     else
       mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
-      mrun "apt-get dist-upgrade -y" 2> /dev/null
+      mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
       mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     fi
     ###

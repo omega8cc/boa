@@ -699,7 +699,7 @@ DPkg::Options {"--force-confdef";"--force-confmiss";"--force-confold"};
 DPkg::Pre-Install-Pkgs {"/usr/sbin/dpkg-preconfigure --apt";};
 Dir::Etc::SourceList "/etc/apt/sources.list";
 ' > /vservers/${idn}/opt/tmp/apt.conf.noi.nrml
-    nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/tmp/apt.conf.noi.nrml"
+    nrmUpArg="-fuy --allow-downgrades --allow-unauthenticated -q --config-file /opt/tmp/apt.conf.noi.nrml"
     vserver ${idn} exec apt-get clean
     vserver ${idn} exec ${_APT_UPDATE} -qq
     vserver ${idn} exec ${_INSTAPP} sysbench
