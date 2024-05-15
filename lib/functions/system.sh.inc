@@ -1436,7 +1436,7 @@ php_if_versions_cleanup_cnf() {
         ### Make sure that _PHP_MULTI_INSTALL includes _PHP_FPM_VERSION
         _local_PHP_MULTI_INSTALL="${_PHP_FPM_VERSION}"
 
-        ### Include only used PHP versions on major OS upgrades
+        ### Include only used PHP versions on major automated OS upgrades
         _STRICT_LIMIT_PHP=NO
         if [ -e "/root/.run-to-daedalus.cnf" ] \
           || [ -e "/root/.run-to-chimaera.cnf" ] \
@@ -5449,11 +5449,21 @@ if_major_os_upgrade() {
     sysvinit_install
     ###
     ### Finally, the proper dist-upgrade time.
-    ### Note that Debian Bullseye to Devuan Chimaera migration
-    ### requires the dist-upgrade step to be run AFTER reboot!
-    if [ "${_LOC_OSR}" = "bullseye" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
+    ### Note that Debian to Devuan migration always requires
+    ### the key dist-upgrade step to be run AFTER reboot!
+    if [ "${_LOC_OSR}" = "bookworm" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
+      echo
+      msg "ATTN: NOTE! Debian Bookworm to Devuan Daedalus migration"
+      msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
+      msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
+    elif [ "${_LOC_OSR}" = "bullseye" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
       echo
       msg "ATTN: NOTE! Debian Bullseye to Devuan Chimaera migration"
+      msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
+      msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
+    elif [ "${_LOC_OSR}" = "buster" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
+      echo
+      msg "ATTN: NOTE! Debian Buster to Devuan Beowulf migration"
       msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
       msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
     else
