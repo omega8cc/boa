@@ -1555,7 +1555,7 @@ proceed() {
   check_dns_curl
   check_php_cli
   set_pin_priority
-  check_sql_running
+  ###check_sql_running
   check_sql_access
   up_start
   if [ "${cmmand}" = "up-dev" ] \

@@ -1249,7 +1249,7 @@ check_root
 check_no_systemd
 os_detection_minimal
 check_dns_curl
-check_sql_running
+###check_sql_running
 check_sql_access
 
 case "$1" in
