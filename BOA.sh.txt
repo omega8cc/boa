@@ -1876,7 +1876,7 @@ fix_newrelic() {
   _NR_SO="/usr/lib/newrelic-php5/agent/x64/newrelic-20131226.so"
   if [ -e "${_PHP_EXT_DIR_56}" ] \
     && [ ! -e "${_NR_SO}" ] \
-    && [ -e "${_PHP_EXT_DIR_56}/newrelic.so" ]; then
+    && [ -L "${_PHP_EXT_DIR_56}/newrelic.so" ]; then
     rm -f ${_PHP_EXT_DIR_56}/newrelic.so
     service php56-fpm reload
   fi
