@@ -1560,55 +1560,45 @@ site_socket_inc_gen() {
   hmstCli=$(cat ${dscUsr}/log/cli.txt 2>&1)
   hmstCli=$(echo -n ${hmstCli} | tr -d "\n" 2>&1)
 
-  if [ "${hmstCli}" = "8.1" ] \
-    && [ -x "/opt/php81/bin/php" ] \
-    && [ -e "${dscUsr}/log/domain.txt" ]; then
-    if [ ! -e "${unlAeg}" ]; then
-      if [ ! -e "${dscUsr}/log/locked-aegir-fpm.txt" ]; then
-        sed -i "s/^${hmFront} .*//g" ${mltFpm}
-        echo "${hmFront} 8.1" >> ${mltFpm}
-        if [ ! -e "${hmstAls}" ]; then
-          ln -s ${dscUsr}/.drush/hostmaster.alias.drushrc.php ${hmstAls}
-        fi
-        sed -i "s/^place.holder.dont.remove .*//g" ${mltFpm}
-        echo "place.holder.dont.remove 8.1" >> ${mltFpm}
-        sed -i "s/ *$//g; /^$/d" ${mltFpm}
-        echo "8.1" > ${dscUsr}/static/control/cli.info
-        rm -f ${dscUsr}/log/unlocked-aegir-fpm.txt
-        echo "8.1" > ${dscUsr}/log/locked-aegir-fpm.txt
-      fi
-      if [ ! -e "${fpmPth}/fpm_include_site_${hmFront}.inc" ]; then
-        mltFpmUpdateForce=YES
-      fi
-    else
-      if [ ! -e "${dscUsr}/log/unlocked-aegir-fpm.txt" ]; then
-        if [ -e "${mltFpm}" ]; then
-          sed -i "s/^${hmFront} .*//g" ${mltFpm}
-          wait
-          sed -i "s/^place.holder.dont.remove .*//g" ${mltFpm}
-          wait
-          echo "place.holder.dont.remove 8.1" >> ${mltFpm}
-          sed -i "s/ *$//g; /^$/d" ${mltFpm}
-        fi
-        mltFpmUpdateForce=YES
-        rm -f ${dscUsr}/log/locked-aegir-fpm.txt
-        touch ${dscUsr}/log/unlocked-aegir-fpm.txt
-      fi
-    fi
-  elif [ -x "/opt/php74/bin/php" ] && [ -e "${dscUsr}/log/domain.txt" ]; then
-    if [ ! -e "${dscUsr}/log/use-legacy-aegir-fpm.txt" ]; then
-      sed -i "s/^place.holder.dont.remove .*//g" ${mltFpm}
-      echo "place.holder.dont.remove 7.4" >> ${mltFpm}
-      sed -i "s/^${hmFront} .*//g" ${mltFpm}
-      echo "${hmFront} 7.4" >> ${mltFpm}
-      if [ ! -e "${hmstAls}" ]; then
-        ln -s ${dscUsr}/.drush/hostmaster.alias.drushrc.php ${hmstAls}
-      fi
-      echo "7.4" > ${dscUsr}/log/use-legacy-aegir-fpm.txt
-    fi
+  if [ ! -e "${hmstAls}" ]; then
+    ln -s ${dscUsr}/.drush/hostmaster.alias.drushrc.php ${hmstAls}
   fi
 
-  if [ -x "/opt/php81/bin/php" ] && [ ! -e "/home/${_USER}.81.web" ]; then
+  if [ ! -e "${dscUsr}/log/no-lock-aegir-fpm.txt" ]; then
+    sed -i "s/^${hmFront} .*//g" ${mltFpm}
+    wait
+    sed -i "s/^place.holder.dont.remove .*//g" ${mltFpm}
+    wait
+    _PHP_V="83 82 81"
+    phpFnd=NO
+    for e in ${_PHP_V}; do
+      if [ -x "/opt/php${e}/bin/php" ] && [ "${phpFnd}" = "NO" ]; then
+        if [ "${e}" = "83" ]; then
+          phpDot=8.3
+        elif [ "${e}" = "82" ]; then
+          phpDot=8.2
+        elif [ "${e}" = "81" ]; then
+          phpDot=8.1
+        fi
+        echo "place.holder.dont.remove ${phpDot}" >> ${mltFpm}
+        phpFnd=YES
+      fi
+    done
+    sed -i "s/ *$//g; /^$/d" ${mltFpm}
+    wait
+    touch ${dscUsr}/log/no-lock-aegir-fpm.txt
+    rm -f ${dscUsr}/log/locked-aegir-fpm.txt
+    touch ${dscUsr}/log/unlocked-aegir-fpm.txt
+    mltFpmUpdateForce=YES
+  fi
+
+  if [ -x "/opt/php83/bin/php" ] && [ ! -e "/home/${_USER}.83.web" ]; then
+    rm -f /data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_default.inc
+    mltFpmUpdateForce=YES
+  elif [ -x "/opt/php82/bin/php" ] && [ ! -e "/home/${_USER}.82.web" ]; then
+    rm -f /data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_default.inc
+    mltFpmUpdateForce=YES
+  elif [ -x "/opt/php81/bin/php" ] && [ ! -e "/home/${_USER}.81.web" ]; then
     rm -f /data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_default.inc
     mltFpmUpdateForce=YES
   fi
