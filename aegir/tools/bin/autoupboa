@@ -521,6 +521,11 @@ if [ -e "/data/disk/arch/sql" ]; then
     touch /var/xdrago/log/.curl_ctrl.${_X_SE}.pid
   fi
 
+  if [ ! -e "/root/.install.modern.openssl.cnf" ]; then
+      touch /root/.install.modern.openssl.cnf
+      chattr +i /root/.install.modern.openssl.cnf
+  fi
+
   if [ ! -e "/var/xdrago/log/.force_nginx_restart_ctrl.${_X_SE}.pid" ]; then
     _IS_NGINX_LOCKED=$(service nginx restart 2>&1)
     if [[ "${_IS_NGINX_LOCKED}" =~ "Address already in use" ]]; then
