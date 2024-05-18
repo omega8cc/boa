@@ -3635,6 +3635,22 @@ curl_install_src() {
     chattr +i /root/.use.curl.from.packages.cnf
     _CURL_VRN=8.7.1
   fi
+  if [ ! -e "/root/.use.curl.from.packages.cnf" ]; then
+    if [ "${_OSR}" = "daedalus" ] \
+      || [ "${_OSR}" = "chimaera" ] \
+      || [ "${_OSR}" = "beowulf" ] \
+      || [ "${_OSR}" = "bookworm" ] \
+      || [ "${_OSR}" = "bullseye" ] \
+      || [ "${_OSR}" = "buster" ] \
+      || [ "${_OSR}" = "stretch" ]; then
+      _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
+      if [ -e "/root/.install.modern.openssl.cnf" ]; then
+        _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
+      fi
+    else
+      _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
+    fi
+  fi
   _CURL_INSTALL_REQUIRED=NO
   _CURL_GET_DPKG=$(dpkg --get-selections | grep curl | grep 'hold$' 2>&1)
   _CURL_ITD=$(curl --version 2>&1 \
@@ -3661,6 +3677,10 @@ curl_install_src() {
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed cURL/lib ${_CURL_ITD}/${_CURL_LIB_ITD}, rebuild required"
   fi
+  if [ "${_CURL_SSL_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
+    _CURL_INSTALL_REQUIRED=YES
+    msg "INFO: cURL ${_CURL_ITD} with OpenSSL ${_CURL_SSL_ITD}, rebuild forced"
+  fi
   _BROKEN_CURL_TEST=$(curl --version 2>&1)
   if [[ "${_BROKEN_CURL_TEST}" =~ "libcurl.so.4" ]]; then
     _CURL_INSTALL_REQUIRED=YES
@@ -3678,26 +3698,6 @@ curl_install_src() {
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed cURL version ${_CURL_ITD} but re-install forced"
-  fi
-  if [ ! -e "/root/.use.curl.from.packages.cnf" ]; then
-    if [ "${_OSR}" = "daedalus" ] \
-      || [ "${_OSR}" = "chimaera" ] \
-      || [ "${_OSR}" = "beowulf" ] \
-      || [ "${_OSR}" = "bookworm" ] \
-      || [ "${_OSR}" = "bullseye" ] \
-      || [ "${_OSR}" = "buster" ] \
-      || [ "${_OSR}" = "stretch" ]; then
-      _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
-      if [ -e "/root/.install.modern.openssl.cnf" ]; then
-        _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
-      fi
-    else
-      _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
-    fi
-    if [ "${_CURL_SSL_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
-      _CURL_INSTALL_REQUIRED=YES
-      msg "INFO: cURL ${_CURL_ITD} with OpenSSL ${_CURL_SSL_ITD}, rebuild forced"
-    fi
   fi
   if [ -e "/usr/lib/x86_64-linux-gnu/libcurl.so.4.4.0" ] \
     || [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ] \
