@@ -4880,6 +4880,18 @@ satellite_letsencrypt_vhost_setup() {
           msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf exists, OK!"
         fi
         satellite_letsencrypt_crt_key_copy
+        _HTTP3_TEST=$(grep http3 ${Ssl} 2>&1)
+        if [[ ! "${_HTTP3_TEST}" =~ "http3" ]]; then
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf needs update..."
+          fi
+          echo "${_DOMAIN} ${_THISHTIP} ${_USER} ${_CLIENT_EMAIL} ${_THISHTIP}" > /root/.ssl.proxy.cnf
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            bash /opt/local/bin/xboa ssl-gen
+          else
+            mrun "bash /opt/local/bin/xboa ssl-gen" &> /dev/null
+          fi
+        fi
       else
         msg "${_STATUS} A: Creating LE vhost for Hostmaster, please wait..."
         satellite_letsencrypt_crt_key_copy
