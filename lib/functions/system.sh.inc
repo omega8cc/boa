@@ -1675,8 +1675,13 @@ if_php_idle_on_off() {
   fi
   if [ "${_PHP_IDLE}" = "ON" ]; then
     [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
-    rm -f /var/xdrago/log/*.log
-    rm -f /var/xdrago/log/.php_libs_fix_*.pid
+    if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
+      rm -f /var/xdrago_wait/log/*.log
+      rm -f /var/xdrago_wait/log/.php_libs_fix_*.pid
+    else
+      rm -f /var/xdrago/log/*.log
+      rm -f /var/xdrago/log/.php_libs_fix_*.pid
+    fi
     touch /root/.proxy.cnf
     kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
     sleep 5
@@ -5063,8 +5068,13 @@ if_post_major_os_upgrade() {
     if [ -e "/root/.big_hop_on_major_os_upgrade.info" ] \
       && [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
       msg "INFO: Time for re-installing services built from sources..."
-      rm -f /var/xdrago/log/*.log
-      rm -f /var/xdrago/log/.php_libs_fix_*.pid
+      if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
+        rm -f /var/xdrago_wait/log/*.log
+        rm -f /var/xdrago_wait/log/.php_libs_fix_*.pid
+      else
+        rm -f /var/xdrago/log/*.log
+        rm -f /var/xdrago/log/.php_libs_fix_*.pid
+      fi
       _PURGE_MODE=OFF
       _NGX_FORCE_REINSTALL=YES
       _PHP_FORCE_REINSTALL=YES
@@ -6346,8 +6356,13 @@ php_libs_fix() {
         ln -sfn librtmp.so.1 librtmp.so.0
       fi
     fi
-    touch /var/xdrago/log/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid
-    touch /var/xdrago/log/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid
+    if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
+      touch /var/xdrago_wait/log/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid
+      touch /var/xdrago_wait/log/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid
+    else
+      touch /var/xdrago/log/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid
+      touch /var/xdrago/log/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid
+    fi
   fi
   mrun "ldconfig" 2> /dev/null
 }
