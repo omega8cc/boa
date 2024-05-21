@@ -5511,15 +5511,22 @@ if_major_os_upgrade() {
       _NGX_FORCE_REINSTALL=YES
       _SSL_FORCE_REINSTALL=YES
       _SSH_FORCE_REINSTALL=YES
-      magick_install_upgrade
-      php_if_versions_cleanup_cnf
-      php_install_deps
-      php_libs_fix
+      _PHP_FORCE_REINSTALL=YES
       nginx_install_upgrade
       ssl_install_src
       ssl_crypto_lib_fix
       curl_install_src
       sshd_install_src
+      magick_install_upgrade
+      php_install_deps
+      php_libs_fix
+      php_if_versions_cleanup_cnf
+      php_check_if_rebuild
+      php_install_upgrade
+      php_config_check_update
+      php_upgrade_all
+      if_install_php_newrelic
+      newrelic_check_fix
     fi
     if [ "${_TGT_OSN}" = "Devuan" ]; then
       if [ "${_LOC_OSR}" = "bookworm" ] \
