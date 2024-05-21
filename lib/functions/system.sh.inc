@@ -3400,7 +3400,9 @@ ssl_crypto_lib_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: ssl_crypto_lib_fix"
   fi
-  if [ ! -e "/usr/lib/libssl.so" ] || [ ! -e "/usr/lib/libcrypto.so" ]; then
+  if [ ! -e "/usr/lib/liblber.so" ] \
+    || [ ! -e "/usr/lib/libssl.so" ] \
+    || [ ! -e "/usr/lib/libcrypto.so" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Fix for SSL libssl/libcrypto in ${_REAL_OS}/${_REAL_OSR}"
     fi
@@ -3420,6 +3422,13 @@ ssl_crypto_lib_fix() {
         && [ ! -e "/usr/lib/libcrypto.so" ]; then
         ln -s /lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
       fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/liblber.so" ] \
+        && [ ! -e "/usr/lib/liblber.so" ]; then
+        ln -s /usr/lib/x86_64-linux-gnu/liblber.so /usr/lib/liblber.so
+      elif [ -e "/lib/x86_64-linux-gnu/liblber.so" ] \
+        && [ ! -e "/usr/lib/liblber.so" ]; then
+        ln -s /lib/x86_64-linux-gnu/liblber.so /usr/lib/liblber.so
+      fi
     else
       if [ -e "/usr/lib/i386-linux-gnu/libssl.so" ] \
         && [ ! -e "/usr/lib/libssl.so" ]; then
@@ -3434,6 +3443,13 @@ ssl_crypto_lib_fix() {
       elif [ -e "/lib/i386-linux-gnu/libcrypto.so" ] \
         && [ ! -e "/usr/lib/libcrypto.so" ]; then
         ln -s /lib/i386-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+      fi
+      if [ -e "/usr/lib/i386-linux-gnu/liblber.so" ] \
+        && [ ! -e "/usr/lib/liblber.so" ]; then
+        ln -s /usr/lib/i386-linux-gnu/liblber.so /usr/lib/liblber.so
+      elif [ -e "/lib/i386-linux-gnu/liblber.so" ] \
+        && [ ! -e "/usr/lib/liblber.so" ]; then
+        ln -s /lib/i386-linux-gnu/liblber.so /usr/lib/liblber.so
       fi
     fi
   fi
@@ -6155,6 +6171,7 @@ php_libs_fix() {
     || [ ! -e "/usr/lib/libonig.so" ] \
     || [ ! -e "/usr/lib/libcurl.so" ] \
     || [ ! -e "/usr/lib/libicuio.so" ] \
+    || [ ! -e "/usr/lib/liblber.so" ] \
     || [ ! -e "/var/xdrago/log/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid" ] \
     || [ ! -e "/var/xdrago/log/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid" ] \
     || [ ! -e "/usr/include/gmp.h" ]; then
@@ -6199,6 +6216,12 @@ php_libs_fix() {
       ln -sfn /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so.4
       ln -sfn /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so
       ln -sfn /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
+      if [ -e "/usr/lib/x86_64-linux-gnu/liblber.so" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/liblber.so /usr/lib/liblber.so
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/liblber-2.4.so.2" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/liblber-2.4.so.2 /usr/lib/liblber-2.4.so.2
+      fi
       if [ -e "/usr/lib/x86_64-linux-gnu/libHalf.so.23" ]; then
         ln -sfn /usr/lib/x86_64-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
       fi
