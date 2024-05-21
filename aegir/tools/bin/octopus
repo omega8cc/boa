@@ -1269,8 +1269,14 @@ check_root
 check_no_systemd
 os_detection_minimal
 check_dns_curl
-###check_sql_running
-check_sql_access
+if [ -e "/root/.run-to-daedalus.cnf" ] \
+  || [ -e "/root/.run-to-chimaera.cnf" ] \
+  || [ -e "/root/.run-to-beowulf.cnf" ]; then
+  _CHECK_SQL=NO
+else
+  check_sql_running
+  check_sql_access
+fi
 
 case "$1" in
   up-3.2)    cmmand="$1"

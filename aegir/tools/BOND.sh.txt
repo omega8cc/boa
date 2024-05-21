@@ -256,7 +256,7 @@ check_sql_running() {
     sleep 3
   done
 }
-###check_sql_running
+check_sql_running
 
 check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then

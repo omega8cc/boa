@@ -1575,8 +1575,14 @@ proceed() {
   check_dns_curl
   check_php_cli
   set_pin_priority
-  ###check_sql_running
-  check_sql_access
+  if [ -e "/root/.run-to-daedalus.cnf" ] \
+    || [ -e "/root/.run-to-chimaera.cnf" ] \
+    || [ -e "/root/.run-to-beowulf.cnf" ]; then
+    _CHECK_SQL=NO
+  else
+    check_sql_running
+    check_sql_access
+  fi
   up_start
   if [ "${cmmand}" = "up-dev" ] \
     || [ "${cmmand}" = "up-pro" ] \
