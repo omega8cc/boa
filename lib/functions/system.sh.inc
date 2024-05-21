@@ -3,6 +3,54 @@ tRee=dev
 export tRee="${tRee}"
 
 #
+# Re-install curl if broken.
+if_reinstall_curl() {
+  _CURL_VRN=8.7.1
+  isCurl=$(curl --version 2>&1)
+  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+    msg "ERROR: cURL is broken! Re-installing.."
+    rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    echo "curl install" | dpkg --set-selections
+    apt_clean_update
+    apt-get remove curl ${aptYesUnth}
+    apt-get install curl ${aptYesUnth}
+    ldconfig 2> /dev/null
+    if [ -f "/usr/bin/curl" ]; then
+      isCurl=$(/usr/bin/curl --version 2>&1)
+      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+        msg "ERROR: /usr/bin/curl is still broken, uninstalling.."
+        apt-get remove curl ${aptYesUnth}
+      else
+        msg "OK: /usr/bin/curl works"
+      fi
+    fi
+    mkdir -p /var/opt
+    rm -rf /var/opt/curl*
+    cd /var/opt
+    wget http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz
+    tar -xzf curl-${_CURL_VRN}.tar.gz
+    cd /var/opt/curl-${_CURL_VRN}
+    sh ./configure --with-ssl --prefix=/usr/local 2> /dev/null
+    make -j $(nproc) --quiet 2> /dev/null
+    make --quiet install 2> /dev/null
+    if [ -f "/usr/local/bin/curl" ]; then
+      isCurl=$(/usr/local/bin/curl --version 2>&1)
+      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+        msg "ERROR: /usr/local/bin/curl is still broken"
+        rm -f /usr/local/bin/curl--broken
+        mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
+      else
+        msg "OK: /usr/local/bin/curl works"
+      fi
+    fi
+  fi
+}
+
+#
 # Install sysvinit with apt.
 sysvinit_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5512,6 +5560,7 @@ if_major_os_upgrade() {
       _SSL_FORCE_REINSTALL=YES
       _SSH_FORCE_REINSTALL=YES
       _PHP_FORCE_REINSTALL=YES
+      if_reinstall_curl
       ssl_install_src
       ssl_crypto_lib_fix
       curl_install_src
