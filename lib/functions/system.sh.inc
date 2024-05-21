@@ -5458,25 +5458,32 @@ if_major_os_upgrade() {
     ### Finally, the proper dist-upgrade time.
     ### Note that Debian to Devuan migration always requires
     ### the key dist-upgrade step to be run AFTER reboot!
+    _FORCE_REBUILD_SRC_ON_AUTO_NOW=NO
     if [ "${_LOC_OSR}" = "bookworm" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
       echo
-      msg "ATTN: NOTE! Debian Bookworm to Devuan Daedalus migration"
+      msg "ATTN: NOTE! Debian Bookworm to Devuan migration"
       msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
       msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
     elif [ "${_LOC_OSR}" = "bullseye" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
       echo
-      msg "ATTN: NOTE! Debian Bullseye to Devuan Chimaera migration"
+      msg "ATTN: NOTE! Debian Bullseye to Devuan migration"
       msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
       msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
     elif [ "${_LOC_OSR}" = "buster" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
       echo
-      msg "ATTN: NOTE! Debian Buster to Devuan Beowulf migration"
+      msg "ATTN: NOTE! Debian Buster to Devuan migration"
+      msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
+      msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
+    elif [ "${_LOC_OSR}" = "stretch" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
+      echo
+      msg "ATTN: NOTE! Debian Stretch to Devuan migration"
       msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
       msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
     else
       mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
       mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
       mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
+      _FORCE_REBUILD_SRC_ON_AUTO_NOW=YES
     fi
     ###
     ### Make sure that sysvinit-core is still installed and systemd removed.
@@ -5493,6 +5500,9 @@ if_major_os_upgrade() {
       || [ -e "/root/.run-to-beowulf.cnf" ]; then
       _REBUILD_SRC_ON_AUTO_NOW=NO
     else
+      _REBUILD_SRC_ON_AUTO_NOW=YES
+    fi
+    if [ "${_FORCE_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
       _REBUILD_SRC_ON_AUTO_NOW=YES
     fi
     if [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
