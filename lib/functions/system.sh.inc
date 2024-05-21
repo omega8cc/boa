@@ -5006,15 +5006,15 @@ if_post_major_os_upgrade() {
       _PHP_FORCE_REINSTALL=YES
       _SSH_FORCE_REINSTALL=YES
       _SSL_FORCE_REINSTALL=YES
+      ssl_install_src
+      ssl_crypto_lib_fix
+      curl_install_src
+      sshd_install_src
       magick_install_upgrade
       php_if_versions_cleanup_cnf
       php_install_deps
       php_libs_fix
       nginx_install_upgrade
-      ssl_install_src
-      ssl_crypto_lib_fix
-      curl_install_src
-      sshd_install_src
        if [ -x "/opt/php56/bin/php" ]; then
         _PHP_VERSION="${_PHP56_VRN}"
         install_php_multi "56"
@@ -5512,11 +5512,11 @@ if_major_os_upgrade() {
       _SSL_FORCE_REINSTALL=YES
       _SSH_FORCE_REINSTALL=YES
       _PHP_FORCE_REINSTALL=YES
-      nginx_install_upgrade
       ssl_install_src
       ssl_crypto_lib_fix
       curl_install_src
       sshd_install_src
+      nginx_install_upgrade
       magick_install_upgrade
       php_install_deps
       php_libs_fix
