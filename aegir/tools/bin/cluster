@@ -47,6 +47,9 @@ aptYesUnth="-y --allow-unauthenticated"
 optBin="/opt/local/bin"
 usrBin="/usr/local/bin"
 pthLog="/var/xdrago/log"
+if [ ! -e "${pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
+  pthLog="/var/xdrago_wait/log"
+fi
 tBn="tools/bin"
 #
 
