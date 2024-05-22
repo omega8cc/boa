@@ -5080,15 +5080,16 @@ if_post_major_os_upgrade() {
       _PHP_FORCE_REINSTALL=YES
       _SSH_FORCE_REINSTALL=YES
       _SSL_FORCE_REINSTALL=YES
+      if_reinstall_curl
       ssl_install_src
       ssl_crypto_lib_fix
       curl_install_src
       sshd_install_src
+      nginx_install_upgrade
       magick_install_upgrade
-      php_if_versions_cleanup_cnf
       php_install_deps
       php_libs_fix
-      nginx_install_upgrade
+      php_if_versions_cleanup_cnf
        if [ -x "/opt/php56/bin/php" ]; then
         _PHP_VERSION="${_PHP56_VRN}"
         install_php_multi "56"
@@ -5132,7 +5133,12 @@ if_post_major_os_upgrade() {
       _PHP_VERSION=""
       _T_PHP_VRN=""
       _T_PHP_PTH=""
+      php_check_if_rebuild
+      php_install_upgrade
+      php_config_check_update
       php_upgrade_all
+      if_install_php_newrelic
+      newrelic_check_fix
       _NGX_FORCE_REINSTALL=
       _PHP_FORCE_REINSTALL=
       _SSH_FORCE_REINSTALL=
@@ -5140,6 +5146,9 @@ if_post_major_os_upgrade() {
     fi
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       rm -f /root/.run_post_major_os_upgrade.info
+    fi
+    if [ -e "/root/.force.newrelic.update.cnf" ]; then
+      rm -f /root/.force.newrelic.update.cnf
     fi
     touch /root/.completed_post_major_os_upgrade.info
     msg "INFO: The post_major_os_upgrade procedure is complete"
@@ -5568,6 +5577,9 @@ if_major_os_upgrade() {
     ### Add info file to keep major OS upgrades track.
     touch /root/.${_LOC_OSR}_to_${_NEW_OSR}_major_os_upgrade.info
     ###
+    ### Force NR upgrade
+    touch /root/.force.newrelic.update.cnf
+    ###
     ### Re-install key services early to limit downtime and SSH keys confusion.
     if [ -e "/root/.run-to-daedalus.cnf" ] \
       || [ -e "/root/.run-to-chimaera.cnf" ] \
@@ -5583,9 +5595,9 @@ if_major_os_upgrade() {
       rm -f /var/xdrago_wait/log/*.log
       _PURGE_MODE=OFF
       _NGX_FORCE_REINSTALL=YES
+      _PHP_FORCE_REINSTALL=YES
       _SSL_FORCE_REINSTALL=YES
       _SSH_FORCE_REINSTALL=YES
-      _PHP_FORCE_REINSTALL=YES
       if_reinstall_curl
       ssl_install_src
       ssl_crypto_lib_fix
