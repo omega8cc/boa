@@ -1540,7 +1540,13 @@ install_php_multi() {
   else
     _PHP_EXTRA="${_PHP_EXTRA} --enable-intl"
   fi
-  _SSL_ITD=$(openssl version 2>&1 \
+  if [ -e "/root/.install.modern.openssl.cnf" ] \
+    && [ -x "/usr/local/ssl3/bin/openssl" ]; then
+    _SSL_BINARY=/usr/local/ssl3/bin/openssl
+  else
+    _SSL_BINARY=/usr/local/ssl/bin/openssl
+  fi
+  _SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}')

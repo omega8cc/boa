@@ -3280,7 +3280,13 @@ sshd_install_src() {
     | tr -d "," \
     | cut -d"_" -f2 \
     | awk '{ print $1}' 2>&1)
-  _SSL_ITD=$(openssl version 2>&1 \
+  if [ -e "/root/.install.modern.openssl.cnf" ] \
+    && [ -x "/usr/local/ssl3/bin/openssl" ]; then
+    _SSL_BINARY=/usr/local/ssl3/bin/openssl
+  else
+    _SSL_BINARY=/usr/local/ssl/bin/openssl
+  fi
+  _SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
@@ -3459,7 +3465,13 @@ ssl_crypto_lib_fix() {
     fi
   fi
   mrun "ldconfig" 2> /dev/null
-  _SSL_ITD=$(openssl version 2>&1 \
+  if [ -e "/root/.install.modern.openssl.cnf" ] \
+    && [ -x "/usr/local/ssl3/bin/openssl" ]; then
+    _SSL_BINARY=/usr/local/ssl3/bin/openssl
+  else
+    _SSL_BINARY=/usr/local/ssl/bin/openssl
+  fi
+  _SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}')
@@ -3530,7 +3542,13 @@ ssl_install_src() {
     msg "PROC: ssl_install_src"
   fi
   _SSL_INSTALL_REQUIRED=NO
-  _SSL_ITD=$(openssl version 2>&1 \
+  if [ -e "/root/.install.modern.openssl.cnf" ] \
+    && [ -x "/usr/local/ssl3/bin/openssl" ]; then
+    _SSL_BINARY=/usr/local/ssl3/bin/openssl
+  else
+    _SSL_BINARY=/usr/local/ssl/bin/openssl
+  fi
+  _SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
@@ -3828,7 +3846,13 @@ curl_install_src() {
       if [ -e "/var/opt/curl-${_CURL_VRN}" ]; then
         msg "INFO: Building cURL ${_CURL_VRN} from sources..."
         msg "WAIT: This may take a while, please wait..."
-        _SSL_ITD=$(openssl version 2>&1 \
+        if [ -e "/root/.install.modern.openssl.cnf" ] \
+          && [ -x "/usr/local/ssl3/bin/openssl" ]; then
+          _SSL_BINARY=/usr/local/ssl3/bin/openssl
+        else
+          _SSL_BINARY=/usr/local/ssl/bin/openssl
+        fi
+        _SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
           | tr -d "\n" \
           | cut -d" " -f2 \
           | awk '{ print $1}')
@@ -6904,7 +6928,13 @@ if_install_ftpd() {
       get_dev_src "pure-ftpd-${_PURE_FTPD_VRN}.tar.gz"
       cd pure-ftpd-${_PURE_FTPD_VRN}
       bash autogen.sh &> /dev/null
-      _SSL_ITD=$(openssl version 2>&1 \
+      if [ -e "/root/.install.modern.openssl.cnf" ] \
+        && [ -x "/usr/local/ssl3/bin/openssl" ]; then
+        _SSL_BINARY=/usr/local/ssl3/bin/openssl
+      else
+        _SSL_BINARY=/usr/local/ssl/bin/openssl
+      fi
+      _SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
         | tr -d "\n" \
         | cut -d" " -f2 \
         | awk '{ print $1}')
