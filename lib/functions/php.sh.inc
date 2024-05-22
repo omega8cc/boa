@@ -1563,8 +1563,10 @@ install_php_multi() {
     || [ "$1" = "71" ] \
     || [ "$1" = "72" ] \
     || [ "$1" = "73" ]; then
-    _SSL_PATH="/usr/local/ssl"
-    _SSL_LIB_PATH="${_SSL_PATH}/lib"
+    if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ]; then
+      _SSL_PATH="/usr/local/ssl"
+      _SSL_LIB_PATH="${_SSL_PATH}/lib"
+    fi
   fi
   _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
   if [ -e "${_SSL_LIB_PATH}" ]; then
@@ -2198,11 +2200,21 @@ check_php_rebuild() {
     || [ "${_OSR}" = "buster" ] \
     || [ "${_OSR}" = "stretch" ]; then
     _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"
-    if [ -e "/root/.install.modern.openssl.cnf" ]; then
+    if [ -e "/root/.install.modern.openssl.cnf" ] \
+      && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
       _OPENSSL_USE_VRN="${_OPENSSL_MODERN_VRN}"
     fi
   else
     _OPENSSL_USE_VRN="${_OPENSSL_LEGACY_VRN}"
+  fi
+  if [ "$1" = "56" ] \
+    || [ "$1" = "70" ] \
+    || [ "$1" = "71" ] \
+    || [ "$1" = "72" ] \
+    || [ "$1" = "73" ]; then
+    if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ]; then
+      _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"
+    fi
   fi
   if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
     _PHP_FORCE_REINSTALL=NO
