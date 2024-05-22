@@ -1577,7 +1577,9 @@ proceed() {
   set_pin_priority
   if [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
-    || [ -e "/root/.run-to-beowulf.cnf" ]; then
+    || [ -e "/root/.run-to-beowulf.cnf" ] \
+    || [ "${cmmand}" = "help" ] \
+    || [ "${cmmand}" = "php-idle" ]; then
     _CHECK_SQL=NO
   else
     check_sql_running
