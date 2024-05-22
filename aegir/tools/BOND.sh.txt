@@ -212,6 +212,24 @@ clean_pid_exit() {
   exit 1
 }
 
+check_root() {
+  if [ `whoami` = "root" ]; then
+    if [ -e "/root/.barracuda.cnf" ]; then
+      source /root/.barracuda.cnf
+      _B_NICE=${_B_NICE//[^0-9]/}
+    fi
+    if [ -z "${_B_NICE}" ]; then
+      _B_NICE=10
+    fi
+    renice ${_B_NICE} -p $$ &> /dev/null
+    ionice -c2 -n7 -p $$
+  else
+    echo "ERROR: This script should be ran as a root user"
+    clean_pid_exit
+  fi
+}
+check_root
+
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _THIS_RV=$(lsb_release -sc 2>&1)
@@ -229,6 +247,16 @@ apt_clean_update() {
   rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
+
+check_sql_running() {
+  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
+    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    echo "INFO: Waiting for MySQLD availability..."
+    sleep 3
+  done
+}
+check_sql_running
 
 check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
@@ -1159,8 +1187,8 @@ tune_web_server_config() {
 #
 #
 check_mysqld_running() {
-  until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
-    && [ -e "/var/run/mysqld/mysqld.sock" ]; do
+  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
+    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     msg "INFO: Waiting for MySQLD availability before tune_sql_memory_limits..."
     sleep 5
