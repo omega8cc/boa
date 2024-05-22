@@ -3217,7 +3217,7 @@ action() {
 
 ###--------------------###
 echo "INFO: Daily maintenance start"
-until [ ! -e "/var/run/boa_wait.pid" ]; do
+while [ -e "/var/run/boa_wait.pid" ]; do
   echo "Waiting for BOA queue availability..."
   sleep 5
 done
