@@ -3497,28 +3497,32 @@ ssl_crypto_lib_fix() {
   elif [ "${_SSL_INSTALLED}" = "MODERN" ]; then
     _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
     _LIB_NOW=${_LIB_NOW//[^0-9-]/}
-    if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
+    if [ -e "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
       && [ -f "/usr/local/ssl3/lib64/libssl.so.3" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libssl.so
-      ln -sfn /usr/local/ssl3/lib/libssl.so.3 /usr/lib/x86_64-linux-gnu/libssl.so
+      rm -f /usr/lib/x86_64-linux-gnu/libssl.so.3
+      ln -sfn /usr/local/ssl3/lib64/libssl.so.3 /usr/lib/x86_64-linux-gnu/libssl.so
+      ln -sfn /usr/local/ssl3/lib64/libssl.so.3 /usr/lib/x86_64-linux-gnu/libssl.so.3
       ln -sfn /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
     fi
-    if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
+    if [ -e "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
       && [ -f "/usr/local/ssl3/lib64/libcrypto.so.3" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
-      ln -sfn /usr/local/ssl3/lib/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so
+      rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so.3
+      ln -sfn /usr/local/ssl3/lib64/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so
+      ln -sfn /usr/local/ssl3/lib64/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so.3
       ln -sfn /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
     fi
     if [ -e "/usr/lib/x86_64-linux-gnu/libssl.a" ] \
       && [ -f "/usr/local/ssl3/lib64/libssl.a" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libssl.a
-      ln -sfn /usr/local/ssl3/lib/libssl.a /usr/lib/x86_64-linux-gnu/libssl.a
+      ln -sfn /usr/local/ssl3/lib64/libssl.a /usr/lib/x86_64-linux-gnu/libssl.a
       ln -sfn /usr/lib/x86_64-linux-gnu/libssl.a /usr/lib/libssl.a
     fi
     if [ -e "/usr/lib/x86_64-linux-gnu/libcrypto.a" ] \
       && [ -f "/usr/local/ssl3/lib64/libcrypto.a" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libcrypto.a
-      ln -sfn /usr/local/ssl3/lib/libcrypto.a /usr/lib/x86_64-linux-gnu/libcrypto.a
+      ln -sfn /usr/local/ssl3/lib64/libcrypto.a /usr/lib/x86_64-linux-gnu/libcrypto.a
       ln -sfn /usr/lib/x86_64-linux-gnu/libcrypto.a /usr/lib/libcrypto.a
     fi
     if [ -d "/usr/include/openssl" ] \
