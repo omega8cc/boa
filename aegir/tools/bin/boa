@@ -2031,11 +2031,13 @@ octopus_cleanup() {
         echo "${user}.web:/home/${user}.web" >> ${zombie_dir}.purge.list
         _PHP_V="83 82 81 80 74 73 72 71 70 56"
         for e in ${_PHP_V}; do
-          if [ -e "/opt/php${e}/etc/pool.d/${user}.${e}.conf" ]; then
+          if [ -e "/opt/php${e}/etc/pool.d/${user}.${e}.conf" ] \
+            || [ -e "/home/${user}.${e}.web" ]; then
             rm -f /opt/php${e}/etc/pool.d/${user}.${e}.conf
             echo "${user}.${e}.web:/home/${user}.${e}.web" >> ${zombie_dir}.purge.list
           fi
-          if [ -e "/opt/php${e}/etc/pool.d/${user}.conf" ]; then
+          if [ -e "/opt/php${e}/etc/pool.d/${user}.conf" ] \
+            || [ -e "/home/${user}.web" ]; then
             rm -f /opt/php${e}/etc/pool.d/${user}.conf
             echo "${user}.web:/home/${user}.web" >> ${zombie_dir}.purge.list
           fi
