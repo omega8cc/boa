@@ -50,7 +50,13 @@ fi
 _X_SE="520proT02"
 _WEBG=www-data
 _OSR=$(lsb_release -sc 2>&1)
-_SSL_ITD=$(openssl version 2>&1 \
+if [ -e "/root/.install.modern.openssl.cnf" ] \
+  && [ -x "/usr/local/ssl3/bin/openssl" ]; then
+  _SSL_BINARY=/usr/local/ssl3/bin/openssl
+else
+  _SSL_BINARY=/usr/local/ssl/bin/openssl
+fi
+_SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
   | tr -d "\n" \
   | cut -d" " -f2 \
   | awk '{ print $1}')
