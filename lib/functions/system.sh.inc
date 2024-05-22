@@ -3311,7 +3311,7 @@ sshd_install_src() {
     msg "INFO: Building OpenSSH ${_OPENSSH_VRN} from sources..."
     msg "WAIT: This may take a while, please wait..."
     if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
-      && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+      || [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
       _SSL_PATH="/usr/local/ssl3"
       _SSL_LIB_PATH="${_SSL_PATH}/lib64"
     else
@@ -3476,7 +3476,7 @@ ssl_crypto_lib_fix() {
     | cut -d" " -f2 \
     | awk '{ print $1}')
   if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
-    && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+    || [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
     _SSL_INSTALLED=MODERN
   elif [[ "${_SSL_ITD}" =~ "1.1.1" ]]; then
     _SSL_INSTALLED=LEGACY
@@ -3684,7 +3684,7 @@ ssl_install_src() {
         | cut -d" " -f2 \
         | awk '{ print $1}')
       if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
-        && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+        || [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
         _SSL_PATH="/usr/local/ssl3"
         _SSL_LIB_PATH="${_SSL_PATH}/lib64"
       else
@@ -3861,7 +3861,7 @@ curl_install_src() {
           | cut -d" " -f2 \
           | awk '{ print $1}')
         if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
-          && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+          || [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
           _SSL_PATH="/usr/local/ssl3"
           _SSL_LIB_PATH="${_SSL_PATH}/lib64"
         else
@@ -6943,7 +6943,7 @@ if_install_ftpd() {
         | cut -d" " -f2 \
         | awk '{ print $1}')
       if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
-        && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+        || [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
         _SSL_PATH="/usr/local/ssl3"
         _SSL_LIB_PATH="${_SSL_PATH}/lib64"
       else
