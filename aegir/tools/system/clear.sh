@@ -9,7 +9,7 @@ export SHELL=${SHELL}
 export HOME=${HOME}
 
 aptYesUnth="-y --allow-unauthenticated"
-tRee=dev
+tRee=pro
 export tRee="${tRee}"
 
 check_root() {
