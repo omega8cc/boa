@@ -1558,6 +1558,14 @@ install_php_multi() {
     _SSL_PATH="/usr/local/ssl"
     _SSL_LIB_PATH="${_SSL_PATH}/lib"
   fi
+  if [ "$1" = "56" ] \
+    || [ "$1" = "70" ] \
+    || [ "$1" = "71" ] \
+    || [ "$1" = "72" ] \
+    || [ "$1" = "73" ]; then
+    _SSL_PATH="/usr/local/ssl"
+    _SSL_LIB_PATH="${_SSL_PATH}/lib"
+  fi
   _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
   if [ -e "${_SSL_LIB_PATH}" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} --with-openssl=${_SSL_PATH}"
