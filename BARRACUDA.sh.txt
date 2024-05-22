@@ -361,8 +361,6 @@ run_aptitude_deps_install
 kill_nash
 ssl_install_src
 ssl_crypto_lib_fix
-php_install_deps
-php_libs_fix
 curl_install_src
 nginx_install_upgrade
 nginx_initd_check
@@ -371,6 +369,8 @@ vnstat_install
 lshell_install_upgrade
 myquick_install_upgrade
 magick_install_upgrade
+php_install_deps
+php_libs_fix
 php_if_versions_cleanup_cnf
 if [ "${_STATUS}" = "UPGRADE" ]; then
   php_check_if_rebuild
