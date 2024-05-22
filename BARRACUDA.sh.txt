@@ -174,6 +174,9 @@ mtrInc="/var/aegir/config/includes"
 mtrNgx="/var/aegir/config/server_master/nginx"
 mtrTpl="/var/aegir/.drush/sys/provision/http/Provision/Config/Nginx"
 pthLog="/var/xdrago/log"
+if [ ! -e "${pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
+  pthLog="/var/xdrago_wait/log"
+fi
 vBs="/var/backups"
 
 

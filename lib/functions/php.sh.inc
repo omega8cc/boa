@@ -672,6 +672,9 @@ if_install_php_ioncube() {
 #
 # Install PHP extensions.
 install_php_extensions() {
+  if [ ! -e "${pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
+    pthLog="/var/xdrago_wait/log"
+  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: install_php_extensions $1"
   fi
@@ -1045,6 +1048,9 @@ install_php_extensions() {
 #
 # Update extensions for PHP built from sources.
 php_extensions_update() {
+  if [ ! -e "${pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
+    pthLog="/var/xdrago_wait/log"
+  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: php_extensions_update $1"
   fi

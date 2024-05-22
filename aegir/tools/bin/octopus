@@ -67,6 +67,15 @@ apt_clean_update() {
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
+check_sql_running() {
+  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
+    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    echo "INFO: Waiting for MySQLD availability..."
+    sleep 3
+  done
+}
+
 check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
@@ -108,7 +117,6 @@ check_sql_access() {
     fi
   fi
 }
-check_sql_access
 
 fix_dns_settings() {
   dnsLi="/root/.local.dns.IP.list"
@@ -1083,6 +1091,52 @@ find_fast_mirror_early() {
   urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
 }
 
+if_reinstall_curl() {
+  _CURL_VRN=8.7.1
+  isCurl=$(curl --version 2>&1)
+  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+    echo "ERROR: cURL is broken! Re-installing.."
+    rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    echo "curl install" | dpkg --set-selections
+    apt_clean_update
+    apt-get remove curl ${aptYesUnth}
+    apt-get install curl ${aptYesUnth}
+    ldconfig 2> /dev/null
+    if [ -f "/usr/bin/curl" ]; then
+      isCurl=$(/usr/bin/curl --version 2>&1)
+      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+        echo "ERROR: /usr/bin/curl is still broken, uninstalling.."
+        apt-get remove curl ${aptYesUnth}
+      else
+        echo "OK: /usr/bin/curl works"
+      fi
+    fi
+    mkdir -p /var/opt
+    rm -rf /var/opt/curl*
+    cd /var/opt
+    wget http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz
+    tar -xzf curl-${_CURL_VRN}.tar.gz
+    cd /var/opt/curl-${_CURL_VRN}
+    sh ./configure --with-ssl --prefix=/usr/local 2> /dev/null
+    make -j $(nproc) --quiet 2> /dev/null
+    make --quiet install 2> /dev/null
+    if [ -f "/usr/local/bin/curl" ]; then
+      isCurl=$(/usr/local/bin/curl --version 2>&1)
+      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+        echo "ERROR: /usr/local/bin/curl is still broken"
+        rm -f /usr/local/bin/curl--broken
+        mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
+      else
+        echo "OK: /usr/local/bin/curl works"
+      fi
+    fi
+  fi
+}
+
 check_dns_curl() {
   if [ ! -e "/etc/resolv.conf" ]; then
     rm -f /etc/resolv.conf
@@ -1100,22 +1154,7 @@ check_dns_curl() {
     pdnsd-ctl empty-cache &> /dev/null
   fi
   find_fast_mirror_early
-  isCurl=$(curl --version 2>&1)
-  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-    echo "ERROR: cURL is broken! Re-installing.."
-    rm -f /etc/apt/sources.list.d/openssl.list
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-      && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-    fi
-    echo "curl install" | dpkg --set-selections &> /dev/null
-    apt_clean_update
-    apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
-    if [ -f "/usr/bin/curl" ] && [ -e "/usr/local/bin/curl" ]; then
-      rm -f /usr/local/bin/curl--broken
-      mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
-    fi
-  fi
+  if_reinstall_curl
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
     --retry 3 \
@@ -1123,19 +1162,8 @@ check_dns_curl() {
     -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
-      echo "ERROR: cURL libs are out of sync! Re-installing.."
-      rm -f /etc/apt/sources.list.d/openssl.list
-      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-        && [ -e "/etc/apt/apt.conf.d" ]; then
-        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-      fi
-      echo "curl install" | dpkg --set-selections &> /dev/null
-      apt_clean_update
-      apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
-      if [ -f "/usr/bin/curl" ] && [ -e "/usr/local/bin/curl" ]; then
-        rm -f /usr/local/bin/curl--broken
-        mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
-      fi
+      echo "ERROR: cURL libs are out of sync! Re-installing again.."
+      if_reinstall_curl
     else
       echo "ERROR: ${_USE_MIR} is not available, please try later"
       clean_pid_exit
@@ -1211,27 +1239,6 @@ check_root() {
     fi
     renice ${_B_NICE} -p $$ &> /dev/null
     ionice -c2 -n7 -p $$
-    chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
-    sed -i "s/.*173.231.133.190.*//g" /etc/hosts
-    wait
-    sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
-    wait
-    sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
-    wait
-    sed -i "s/.*github.*//g" /etc/hosts
-    wait
-    echo >>/etc/hosts
-    sed -i "/^$/d" /etc/hosts
-    wait
-    if [ -e "/etc/init.d/postfix" ]; then
-      service postfix restart &> /dev/null
-    fi
   else
     echo "ERROR: This script should be ran as a root user"
     clean_pid_exit
@@ -1262,6 +1269,14 @@ check_root
 check_no_systemd
 os_detection_minimal
 check_dns_curl
+if [ -e "/root/.run-to-daedalus.cnf" ] \
+  || [ -e "/root/.run-to-chimaera.cnf" ] \
+  || [ -e "/root/.run-to-beowulf.cnf" ]; then
+  _CHECK_SQL=NO
+else
+  check_sql_running
+  check_sql_access
+fi
 
 case "$1" in
   up-3.2)    cmmand="$1"

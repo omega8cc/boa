@@ -1,6 +1,54 @@
 
-tRee=pro
+tRee=dev
 export tRee="${tRee}"
+
+#
+# Re-install curl if broken.
+if_reinstall_curl() {
+  _CURL_VRN=8.7.1
+  isCurl=$(curl --version 2>&1)
+  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+    msg "ERROR: cURL is broken! Re-installing.."
+    rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    echo "curl install" | dpkg --set-selections
+    apt_clean_update
+    apt-get remove curl ${aptYesUnth}
+    apt-get install curl ${aptYesUnth}
+    ldconfig 2> /dev/null
+    if [ -f "/usr/bin/curl" ]; then
+      isCurl=$(/usr/bin/curl --version 2>&1)
+      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+        msg "ERROR: /usr/bin/curl is still broken, uninstalling.."
+        apt-get remove curl ${aptYesUnth}
+      else
+        msg "OK: /usr/bin/curl works"
+      fi
+    fi
+    mkdir -p /var/opt
+    rm -rf /var/opt/curl*
+    cd /var/opt
+    wget http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz
+    tar -xzf curl-${_CURL_VRN}.tar.gz
+    cd /var/opt/curl-${_CURL_VRN}
+    sh ./configure --with-ssl --prefix=/usr/local 2> /dev/null
+    make -j $(nproc) --quiet 2> /dev/null
+    make --quiet install 2> /dev/null
+    if [ -f "/usr/local/bin/curl" ]; then
+      isCurl=$(/usr/local/bin/curl --version 2>&1)
+      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+        msg "ERROR: /usr/local/bin/curl is still broken"
+        rm -f /usr/local/bin/curl--broken
+        mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
+      else
+        msg "OK: /usr/local/bin/curl works"
+      fi
+    fi
+  fi
+}
 
 #
 # Install sysvinit with apt.
@@ -1436,15 +1484,25 @@ php_if_versions_cleanup_cnf() {
         ### Make sure that _PHP_MULTI_INSTALL includes _PHP_FPM_VERSION
         _local_PHP_MULTI_INSTALL="${_PHP_FPM_VERSION}"
 
-        ### Always include latest PHP 7.4, 8.1, 8.2 and 8.3 if requested
-        if [ -e "/root/.include-php-latest.cnf" ] \
-          || [ -e "/root/.auto.up.cnf" ] \
-          || [ -e "/root/.host8.cnf" ] \
-          || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-          || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-          || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-          || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
-          _local_PHP_MULTI_INSTALL="7.4 8.1 8.2 8.3 ${_local_PHP_MULTI_INSTALL}"
+        ### Include only used PHP versions on major automated OS upgrades
+        _STRICT_LIMIT_PHP=NO
+        if [ -e "/root/.run-to-daedalus.cnf" ] \
+          || [ -e "/root/.run-to-chimaera.cnf" ] \
+          || [ -e "/root/.run-to-beowulf.cnf" ]; then
+          _STRICT_LIMIT_PHP=YES
+        fi
+
+        ### Include latest PHP 8.2 and 8.3 if conditions are met
+        if [ "${_STRICT_LIMIT_PHP}" = "NO" ]; then
+          if [ -e "/root/.include-php-latest.cnf" ] \
+            || [ -e "/root/.auto.up.cnf" ] \
+            || [ -e "/root/.host8.cnf" ] \
+            || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+            || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
+            || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+            || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
+            _local_PHP_MULTI_INSTALL="8.2 8.3 ${_local_PHP_MULTI_INSTALL}"
+          fi
         fi
 
         ### Add PHP 5.6 if used
@@ -1617,8 +1675,13 @@ if_php_idle_on_off() {
   fi
   if [ "${_PHP_IDLE}" = "ON" ]; then
     [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
-    rm -f /var/xdrago/log/*.log
-    rm -f /var/xdrago/log/.php_libs_fix_*.pid
+    if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
+      rm -f /var/xdrago_wait/log/*.log
+      rm -f /var/xdrago_wait/log/.php_libs_fix_*.pid
+    else
+      rm -f /var/xdrago/log/*.log
+      rm -f /var/xdrago/log/.php_libs_fix_*.pid
+    fi
     touch /root/.proxy.cnf
     kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
     sleep 5
@@ -2426,7 +2489,7 @@ run_apt_get_dist_upgrade() {
     msg "INFO: Running apt-get dist-upgrade..."
   fi
   mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
-  mrun "apt-get dist-upgrade -y" 2> /dev/null
+  mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
   mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
 }
 
@@ -3342,7 +3405,9 @@ ssl_crypto_lib_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: ssl_crypto_lib_fix"
   fi
-  if [ ! -e "/usr/lib/libssl.so" ] || [ ! -e "/usr/lib/libcrypto.so" ]; then
+  if [ ! -e "/usr/lib/liblber.so" ] \
+    || [ ! -e "/usr/lib/libssl.so" ] \
+    || [ ! -e "/usr/lib/libcrypto.so" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Fix for SSL libssl/libcrypto in ${_REAL_OS}/${_REAL_OSR}"
     fi
@@ -3362,6 +3427,13 @@ ssl_crypto_lib_fix() {
         && [ ! -e "/usr/lib/libcrypto.so" ]; then
         ln -s /lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
       fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/liblber.so" ] \
+        && [ ! -e "/usr/lib/liblber.so" ]; then
+        ln -s /usr/lib/x86_64-linux-gnu/liblber.so /usr/lib/liblber.so
+      elif [ -e "/lib/x86_64-linux-gnu/liblber.so" ] \
+        && [ ! -e "/usr/lib/liblber.so" ]; then
+        ln -s /lib/x86_64-linux-gnu/liblber.so /usr/lib/liblber.so
+      fi
     else
       if [ -e "/usr/lib/i386-linux-gnu/libssl.so" ] \
         && [ ! -e "/usr/lib/libssl.so" ]; then
@@ -3376,6 +3448,13 @@ ssl_crypto_lib_fix() {
       elif [ -e "/lib/i386-linux-gnu/libcrypto.so" ] \
         && [ ! -e "/usr/lib/libcrypto.so" ]; then
         ln -s /lib/i386-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+      fi
+      if [ -e "/usr/lib/i386-linux-gnu/liblber.so" ] \
+        && [ ! -e "/usr/lib/liblber.so" ]; then
+        ln -s /usr/lib/i386-linux-gnu/liblber.so /usr/lib/liblber.so
+      elif [ -e "/lib/i386-linux-gnu/liblber.so" ] \
+        && [ ! -e "/usr/lib/liblber.so" ]; then
+        ln -s /lib/i386-linux-gnu/liblber.so /usr/lib/liblber.so
       fi
     fi
   fi
@@ -3455,10 +3534,17 @@ ssl_install_src() {
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
-  _SSL_LIB_ITD=$(openssl version 2>&1 \
-    | tr -d "\n" \
-    | cut -d" " -f9 \
-    | awk '{ print $1}' 2>&1)
+  if [ -e "/root/.install.modern.openssl.cnf" ]; then
+    _SSL_LIB_ITD=$(openssl version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f8 \
+      | awk '{ print $1}' 2>&1)
+  else
+    _SSL_LIB_ITD=$(openssl version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f9 \
+      | awk '{ print $1}' 2>&1)
+  fi
   if [ "${_OSR}" = "daedalus" ] \
     || [ "${_OSR}" = "chimaera" ] \
     || [ "${_OSR}" = "beowulf" ] \
@@ -4967,7 +5053,7 @@ if_post_major_os_upgrade() {
     msg "INFO: Running dist-upgrade to complete the system upgrade..."
     msg "WAIT: This may take a while, please wait..."
     mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
-    mrun "apt-get dist-upgrade -y" 2> /dev/null
+    mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
 
@@ -4982,22 +5068,27 @@ if_post_major_os_upgrade() {
     if [ -e "/root/.big_hop_on_major_os_upgrade.info" ] \
       && [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
       msg "INFO: Time for re-installing services built from sources..."
-      rm -f /var/xdrago/log/*.log
-      rm -f /var/xdrago/log/.php_libs_fix_*.pid
+      if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
+        rm -f /var/xdrago_wait/log/*.log
+        rm -f /var/xdrago_wait/log/.php_libs_fix_*.pid
+      else
+        rm -f /var/xdrago/log/*.log
+        rm -f /var/xdrago/log/.php_libs_fix_*.pid
+      fi
       _PURGE_MODE=OFF
       _NGX_FORCE_REINSTALL=YES
       _PHP_FORCE_REINSTALL=YES
       _SSH_FORCE_REINSTALL=YES
       _SSL_FORCE_REINSTALL=YES
+      ssl_install_src
+      ssl_crypto_lib_fix
+      curl_install_src
+      sshd_install_src
       magick_install_upgrade
       php_if_versions_cleanup_cnf
       php_install_deps
       php_libs_fix
       nginx_install_upgrade
-      ssl_install_src
-      ssl_crypto_lib_fix
-      curl_install_src
-      sshd_install_src
        if [ -x "/opt/php56/bin/php" ]; then
         _PHP_VERSION="${_PHP56_VRN}"
         install_php_multi "56"
@@ -5439,17 +5530,34 @@ if_major_os_upgrade() {
     sysvinit_install
     ###
     ### Finally, the proper dist-upgrade time.
-    ### Note that Debian Bullseye to Devuan Chimaera migration
-    ### requires the dist-upgrade step to be run AFTER reboot!
-    if [ "${_LOC_OSR}" = "bullseye" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
+    ### Note that Debian to Devuan migration always requires
+    ### the key dist-upgrade step to be run AFTER reboot!
+    _FORCE_REBUILD_SRC_ON_AUTO_NOW=NO
+    if [ "${_LOC_OSR}" = "bookworm" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
       echo
-      msg "ATTN: NOTE! Debian Bullseye to Devuan Chimaera migration"
+      msg "ATTN: NOTE! Debian Bookworm to Devuan migration"
+      msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
+      msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
+    elif [ "${_LOC_OSR}" = "bullseye" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
+      echo
+      msg "ATTN: NOTE! Debian Bullseye to Devuan migration"
+      msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
+      msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
+    elif [ "${_LOC_OSR}" = "buster" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
+      echo
+      msg "ATTN: NOTE! Debian Buster to Devuan migration"
+      msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
+      msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
+    elif [ "${_LOC_OSR}" = "stretch" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
+      echo
+      msg "ATTN: NOTE! Debian Stretch to Devuan migration"
       msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
       msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
     else
       mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
-      mrun "apt-get dist-upgrade -y" 2> /dev/null
+      mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
       mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
+      _FORCE_REBUILD_SRC_ON_AUTO_NOW=YES
     fi
     ###
     ### Make sure that sysvinit-core is still installed and systemd removed.
@@ -5468,21 +5576,32 @@ if_major_os_upgrade() {
     else
       _REBUILD_SRC_ON_AUTO_NOW=YES
     fi
+    if [ "${_FORCE_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
+      _REBUILD_SRC_ON_AUTO_NOW=YES
+    fi
     if [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
       rm -f /var/xdrago_wait/log/*.log
       _PURGE_MODE=OFF
       _NGX_FORCE_REINSTALL=YES
       _SSL_FORCE_REINSTALL=YES
       _SSH_FORCE_REINSTALL=YES
-      magick_install_upgrade
-      php_if_versions_cleanup_cnf
-      php_install_deps
-      php_libs_fix
-      nginx_install_upgrade
+      _PHP_FORCE_REINSTALL=YES
+      if_reinstall_curl
       ssl_install_src
       ssl_crypto_lib_fix
       curl_install_src
       sshd_install_src
+      nginx_install_upgrade
+      magick_install_upgrade
+      php_install_deps
+      php_libs_fix
+      php_if_versions_cleanup_cnf
+      php_check_if_rebuild
+      php_install_upgrade
+      php_config_check_update
+      php_upgrade_all
+      if_install_php_newrelic
+      newrelic_check_fix
     fi
     if [ "${_TGT_OSN}" = "Devuan" ]; then
       if [ "${_LOC_OSR}" = "bookworm" ] \
@@ -6062,6 +6181,7 @@ php_libs_fix() {
     || [ ! -e "/usr/lib/libonig.so" ] \
     || [ ! -e "/usr/lib/libcurl.so" ] \
     || [ ! -e "/usr/lib/libicuio.so" ] \
+    || [ ! -e "/usr/lib/liblber.so" ] \
     || [ ! -e "/var/xdrago/log/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid" ] \
     || [ ! -e "/var/xdrago/log/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid" ] \
     || [ ! -e "/usr/include/gmp.h" ]; then
@@ -6106,6 +6226,12 @@ php_libs_fix() {
       ln -sfn /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so.4
       ln -sfn /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so
       ln -sfn /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
+      if [ -e "/usr/lib/x86_64-linux-gnu/liblber.so" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/liblber.so /usr/lib/liblber.so
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/liblber-2.4.so.2" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/liblber-2.4.so.2 /usr/lib/liblber-2.4.so.2
+      fi
       if [ -e "/usr/lib/x86_64-linux-gnu/libHalf.so.23" ]; then
         ln -sfn /usr/lib/x86_64-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
       fi
@@ -6230,8 +6356,13 @@ php_libs_fix() {
         ln -sfn librtmp.so.1 librtmp.so.0
       fi
     fi
-    touch /var/xdrago/log/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid
-    touch /var/xdrago/log/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid
+    if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
+      touch /var/xdrago_wait/log/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid
+      touch /var/xdrago_wait/log/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid
+    else
+      touch /var/xdrago/log/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid
+      touch /var/xdrago/log/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid
+    fi
   fi
   mrun "ldconfig" 2> /dev/null
 }
