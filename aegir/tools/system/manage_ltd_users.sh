@@ -2551,6 +2551,9 @@ find_correct_ip() {
 # Restrict node if needed.
 fix_node_in_lshell_access() {
   pthLog="/var/xdrago/log"
+  if [ ! -e "${pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
+    pthLog="/var/xdrago_wait/log"
+  fi
   if [ -e "/etc/lshell.conf" ]; then
     PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
     PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
