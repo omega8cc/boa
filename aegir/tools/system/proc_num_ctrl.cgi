@@ -184,16 +184,17 @@ if (-f "/root/.dbhd.clstr.cnf") {
   }
 }
 else {
-  system("service php83-fpm restart") if ((!$php83lives || !$fpmsumar || $fpmsumar > 10 || !-f "/var/run/php83-fpm.pid") && -f "/etc/init.d/php83-fpm");
-  system("service php82-fpm restart") if ((!$php82lives || !$fpmsumar || $fpmsumar > 10 || !-f "/var/run/php82-fpm.pid") && -f "/etc/init.d/php82-fpm");
-  system("service php81-fpm restart") if ((!$php81lives || !$fpmsumar || $fpmsumar > 10 || !-f "/var/run/php81-fpm.pid") && -f "/etc/init.d/php81-fpm");
-  system("service php80-fpm restart") if ((!$php80lives || !$fpmsumar || $fpmsumar > 10 || !-f "/var/run/php80-fpm.pid") && -f "/etc/init.d/php80-fpm");
-  system("service php74-fpm restart") if ((!$php74lives || !$fpmsumar || $fpmsumar > 10 || !-f "/var/run/php74-fpm.pid") && -f "/etc/init.d/php74-fpm");
-  system("service php73-fpm restart") if ((!$php73lives || !$fpmsumar || $fpmsumar > 10 || !-f "/var/run/php73-fpm.pid") && -f "/etc/init.d/php73-fpm");
-  system("service php72-fpm restart") if ((!$php72lives || !$fpmsumar || $fpmsumar > 10 || !-f "/var/run/php72-fpm.pid") && -f "/etc/init.d/php72-fpm");
-  system("service php71-fpm restart") if ((!$php71lives || !$fpmsumar || $fpmsumar > 10 || !-f "/var/run/php71-fpm.pid") && -f "/etc/init.d/php71-fpm");
-  system("service php70-fpm restart") if ((!$php70lives || !$fpmsumar || $fpmsumar > 10 || !-f "/var/run/php70-fpm.pid") && -f "/etc/init.d/php70-fpm");
-  system("service php56-fpm restart") if ((!$php56lives || !$fpmsumar || $fpmsumar > 10 || !-f "/var/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
+  system("killall -9 php-fpm") if ($fpmsumar > 10 );
+  system("service php83-fpm start") if ((!$php83lives || !$fpmsumar || !-f "/var/run/php83-fpm.pid") && -f "/etc/init.d/php83-fpm");
+  system("service php82-fpm start") if ((!$php82lives || !$fpmsumar || !-f "/var/run/php82-fpm.pid") && -f "/etc/init.d/php82-fpm");
+  system("service php81-fpm start") if ((!$php81lives || !$fpmsumar || !-f "/var/run/php81-fpm.pid") && -f "/etc/init.d/php81-fpm");
+  system("service php80-fpm start") if ((!$php80lives || !$fpmsumar || !-f "/var/run/php80-fpm.pid") && -f "/etc/init.d/php80-fpm");
+  system("service php74-fpm start") if ((!$php74lives || !$fpmsumar || !-f "/var/run/php74-fpm.pid") && -f "/etc/init.d/php74-fpm");
+  system("service php73-fpm start") if ((!$php73lives || !$fpmsumar || !-f "/var/run/php73-fpm.pid") && -f "/etc/init.d/php73-fpm");
+  system("service php72-fpm start") if ((!$php72lives || !$fpmsumar || !-f "/var/run/php72-fpm.pid") && -f "/etc/init.d/php72-fpm");
+  system("service php71-fpm start") if ((!$php71lives || !$fpmsumar || !-f "/var/run/php71-fpm.pid") && -f "/etc/init.d/php71-fpm");
+  system("service php70-fpm start") if ((!$php70lives || !$fpmsumar || !-f "/var/run/php70-fpm.pid") && -f "/etc/init.d/php70-fpm");
+  system("service php56-fpm start") if ((!$php56lives || !$fpmsumar || !-f "/var/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
 }
 
 system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7");
