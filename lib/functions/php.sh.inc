@@ -1844,15 +1844,21 @@ newrelic_update() {
       || [ -e "/etc/apt/sources.list.d/newrelic.list" ]; then
       msg "INFO: Uninstalling previous version of New Relic Apps Monitor..."
       cd /var/opt
-      _KEYS_SERVER_TEST=FALSE
-      until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
-        rm -f 548C16BF.gpg*
-        wget -q -U iCab http://download.newrelic.com/548C16BF.gpg
-        _KEYS_SERVER_TEST=$(grep GnuPG 548C16BF.gpg 2>&1)
-        sleep 2
-      done
-      cat 548C16BF.gpg | ${_GPG} --import &> /dev/null
-      rm -f 548C16BF.gpg*
+      if [ ! -e "/etc/apt/keyrings/newrelic-key-548C16BF.gpg" ] \
+        || [ -e /root/.force.newrelic.update.cnf ]; then
+        _KEYS_SERVER_TEST=FALSE
+        until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
+          rm -f newrelic-key-548C16BF.gpg*
+          wget -q -U iCab ${urlDev}/newrelic-key-548C16BF.gpg
+          _KEYS_SERVER_TEST=$(grep GnuPG newrelic-key-548C16BF.gpg 2>&1)
+          sleep 2
+        done
+        cat newrelic-key-548C16BF.gpg | ${_GPG} --import &> /dev/null
+        rm -f newrelic-key-548C16BF.gpg*
+        mkdir -p /etc/apt/keyrings/
+        wget -q -U iCab ${urlDev}/newrelic-key-548C16BF.gpg -O /etc/apt/keyrings/newrelic-key-548C16BF.gpg 2> /dev/null
+        wget -O- ${urlDev}/newrelic-key-548C16BF.gpg | apt-key add - &> /dev/null
+      fi
       st_runner "${_RMAPP} newrelic-php5 \
         newrelic-php5-common \
         newrelic-daemon \
@@ -1871,9 +1877,6 @@ newrelic_update() {
       _PHP_EXT_DIR_71="/opt/php71/${pthNrx}-${_PHP71_API}"
       _PHP_EXT_DIR_70="/opt/php70/${pthNrx}-${_PHP70_API}"
       msg "INFO: Installing latest version of New Relic Apps Monitor..."
-      mkdir -p /etc/apt/keyrings/
-      wget -q -U iCab ${urlDev}/newrelic-key-548C16BF.gpg -O /etc/apt/keyrings/newrelic-key-548C16BF.gpg 2> /dev/null
-      wget -O- https://download.newrelic.com/548C16BF.gpg | apt-key add - &> /dev/null
       echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
         >> /etc/apt/sources.list.d/newrelic.list
@@ -2036,18 +2039,21 @@ if_install_php_newrelic() {
       || [ ! -e "/etc/apt/sources.list.d/newrelic.list" ]; then
       msg "INFO: Installing New Relic Apps Monitor..."
       cd /var/opt
-      _KEYS_SERVER_TEST=FALSE
-      until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
-        rm -f 548C16BF.gpg*
-        wget -q -U iCab http://download.newrelic.com/548C16BF.gpg
-        _KEYS_SERVER_TEST=$(grep GnuPG 548C16BF.gpg 2>&1)
-        sleep 2
-      done
-      cat 548C16BF.gpg | ${_GPG} --import &> /dev/null
-      rm -f 548C16BF.gpg*
-      mkdir -p /etc/apt/keyrings/
-      wget -q -U iCab ${urlDev}/newrelic-key-548C16BF.gpg -O /etc/apt/keyrings/newrelic-key-548C16BF.gpg 2> /dev/null
-      wget -O- https://download.newrelic.com/548C16BF.gpg | apt-key add - &> /dev/null
+      if [ ! -e "/etc/apt/keyrings/newrelic-key-548C16BF.gpg" ] \
+        || [ -e /root/.force.newrelic.update.cnf ]; then
+        _KEYS_SERVER_TEST=FALSE
+        until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
+          rm -f newrelic-key-548C16BF.gpg*
+          wget -q -U iCab ${urlDev}/newrelic-key-548C16BF.gpg
+          _KEYS_SERVER_TEST=$(grep GnuPG newrelic-key-548C16BF.gpg 2>&1)
+          sleep 2
+        done
+        cat newrelic-key-548C16BF.gpg | ${_GPG} --import &> /dev/null
+        rm -f newrelic-key-548C16BF.gpg*
+        mkdir -p /etc/apt/keyrings/
+        wget -q -U iCab ${urlDev}/newrelic-key-548C16BF.gpg -O /etc/apt/keyrings/newrelic-key-548C16BF.gpg 2> /dev/null
+        wget -O- ${urlDev}/newrelic-key-548C16BF.gpg | apt-key add - &> /dev/null
+      fi
       echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
         >> /etc/apt/sources.list.d/newrelic.list
