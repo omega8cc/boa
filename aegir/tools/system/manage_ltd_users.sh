@@ -1564,7 +1564,10 @@ site_socket_inc_gen() {
     ln -s ${dscUsr}/.drush/hostmaster.alias.drushrc.php ${hmstAls}
   fi
 
-  if [ ! -e "${dscUsr}/log/no-lock-aegir-fpm.txt" ]; then
+  _PLACEHOLDER_TEST=$(grep "place.holder.dont.remove" ${mltFpm} 2>&1)
+
+  if [ ! -e "${dscUsr}/log/no-lock-aegir-fpm.txt" ] \
+    || [[ ! "${_PLACEHOLDER_TEST}" =~ "place.holder.dont.remove" ]]; then
     sed -i "s/^${hmFront} .*//g" ${mltFpm}
     wait
     sed -i "s/^place.holder.dont.remove .*//g" ${mltFpm}
