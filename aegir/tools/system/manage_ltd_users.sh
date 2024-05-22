@@ -1572,7 +1572,7 @@ site_socket_inc_gen() {
     wait
     sed -i "s/^place.holder.dont.remove .*//g" ${mltFpm}
     wait
-    _PHP_V="83 82 81"
+    _PHP_V="83 82 81 74"
     phpFnd=NO
     for e in ${_PHP_V}; do
       if [ -x "/opt/php${e}/bin/php" ] && [ "${phpFnd}" = "NO" ]; then
@@ -1582,6 +1582,8 @@ site_socket_inc_gen() {
           phpDot=8.2
         elif [ "${e}" = "81" ]; then
           phpDot=8.1
+        elif [ "${e}" = "74" ]; then
+          phpDot=7.4
         fi
         echo "place.holder.dont.remove ${phpDot}" >> ${mltFpm}
         phpFnd=YES
