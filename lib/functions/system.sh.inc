@@ -8,7 +8,7 @@ if_reinstall_curl() {
   _CURL_VRN=8.7.1
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-    msg "ERROR: cURL is broken! Re-installing.."
+    msg "OOPS: cURL is broken! Re-installing.."
     rm -f /etc/apt/sources.list.d/openssl.list
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -22,10 +22,10 @@ if_reinstall_curl() {
     if [ -f "/usr/bin/curl" ]; then
       isCurl=$(/usr/bin/curl --version 2>&1)
       if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-        msg "ERROR: /usr/bin/curl is still broken, uninstalling.."
+        msg "OOPS: /usr/bin/curl is still broken, uninstalling.."
         apt-get remove curl ${aptYesUnth}
       else
-        msg "OK: /usr/bin/curl works"
+        msg "GOOD: /usr/bin/curl works"
       fi
     fi
     mkdir -p /var/opt
@@ -40,11 +40,11 @@ if_reinstall_curl() {
     if [ -f "/usr/local/bin/curl" ]; then
       isCurl=$(/usr/local/bin/curl --version 2>&1)
       if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-        msg "ERROR: /usr/local/bin/curl is still broken"
+        msg "OOPS: /usr/local/bin/curl is still broken"
         rm -f /usr/local/bin/curl--broken
         mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
       else
-        msg "OK: /usr/local/bin/curl works"
+        msg "GOOD: /usr/local/bin/curl works"
       fi
     fi
   fi
