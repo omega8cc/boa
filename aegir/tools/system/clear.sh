@@ -120,16 +120,16 @@ if_reinstall_curl() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    echo "curl install" | dpkg --set-selections
+    echo "curl install" | dpkg --set-selections &> /dev/null
     apt_clean_update
-    apt-get remove curl ${aptYesUnth}
-    apt-get install curl ${aptYesUnth}
-    ldconfig 2> /dev/null
+    apt-get remove curl ${aptYesUnth} &> /dev/null
+    apt-get install curl ${aptYesUnth} &> /dev/null
+    ldconfig &> /dev/null
     if [ -f "/usr/bin/curl" ]; then
       isCurl=$(/usr/bin/curl --version 2>&1)
       if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
         echo "OOPS: /usr/bin/curl is still broken, uninstalling.."
-        apt-get remove curl ${aptYesUnth}
+        apt-get remove curl ${aptYesUnth} &> /dev/null
       else
         echo "GOOD: /usr/bin/curl works"
       fi
@@ -137,16 +137,16 @@ if_reinstall_curl() {
     mkdir -p /var/opt
     rm -rf /var/opt/curl*
     cd /var/opt
-    wget http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz
-    tar -xzf curl-${_CURL_VRN}.tar.gz
+    wget http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
+    tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
     cd /var/opt/curl-${_CURL_VRN}
-    sh ./configure --with-ssl --prefix=/usr/local 2> /dev/null
-    make -j $(nproc) --quiet 2> /dev/null
-    make --quiet install 2> /dev/null
+    sh ./configure --with-ssl --prefix=/usr/local &> /dev/null
+    make -j $(nproc) --quiet &> /dev/null
+    make --quiet install &> /dev/null
     if [ -f "/usr/local/bin/curl" ]; then
       isCurl=$(/usr/local/bin/curl --version 2>&1)
       if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-        echo "OOPS: /usr/local/bin/curl is still broken"
+        echo "ERRR: /usr/local/bin/curl is broken, moving to /usr/local/bin/curl--broken"
         rm -f /usr/local/bin/curl--broken
         mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
       else
