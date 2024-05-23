@@ -79,12 +79,12 @@ _DAY_SYSTEM_UP=$(( _DSU + 1 ))
 if [ "${_DAY_SYSTEM_UP}" = "31" ]; then
   _DAY_SYSTEM_UP=30
   _HOUR_OCTOPUS_UP=6
-  _HOUR_SYSTEM_UP=4
+  _HOUR_SYSTEM_UP=3
   _MINUTE_OCTOPUS_UP="05"
   _MINUTE_SYSTEM_UP=30
 else
-  _HOUR_OCTOPUS_UP=4
-  _HOUR_SYSTEM_UP=2
+  _HOUR_OCTOPUS_UP=6
+  _HOUR_SYSTEM_UP=3
   _MINUTE_OCTOPUS_UP="05"
   _MINUTE_SYSTEM_UP="05"
 fi
@@ -169,8 +169,8 @@ crontab_update() {
     fi
     if [ ! -z "${_AUTO_UP_WEEKLY}" ]; then
       echo "# Barracuda weekly system only upgrade" >> /etc/crontab
-      echo "11 0    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
-      echo "14 0    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
+      echo "11 3    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
+      echo "14 3    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
     fi
     echo "# Barracuda ${_AUTO_VER} full upgrade" >> /etc/crontab
     echo "${_MINUTE_SYSTEM_UP} ${_HOUR_SYSTEM_UP}  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
@@ -178,8 +178,7 @@ crontab_update() {
       if [ ! -z "${_OCTO_FULL}" ]; then
         echo "# Octopus ${_AUTO_VER} full upgrade" >> /etc/crontab
         echo "${_MINUTE_OCTOPUS_UP} ${_HOUR_OCTOPUS_UP}  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
-        echo "35 6  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
-        echo "55 6  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
+        echo "55 7  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
       fi
     fi
     echo Cron Update Completed
@@ -465,7 +464,7 @@ if [ -e "/data/disk/arch/sql" ]; then
 #     touch /root/.legacy_sys_prep_ugrade_ctrl.cnf
 #   fi
 
-  if [ ! -e "/var/xdrago/log/.etc_crontab_update_ctrl.${tRee}.${_X_SE}.pid" ]; then
+  if [ ! -e "/var/xdrago/log/.etc_crontab_update_f1_ctrl.${tRee}.${_X_SE}.pid" ]; then
     rm -f /var/xdrago/log/.*_crontab_*
     if [ ! -z "${_AUTO_UP_MONTH}" ] \
       && [ ! -z "${_AUTO_UP_DAY}" ]; then
@@ -474,7 +473,7 @@ if [ -e "/data/disk/arch/sql" ]; then
       crontab_cleanup
     fi
     service cron restart
-    touch /var/xdrago/log/.etc_crontab_update_ctrl.${tRee}.${_X_SE}.pid
+    touch /var/xdrago/log/.etc_crontab_update_f1_ctrl.${tRee}.${_X_SE}.pid
   fi
 
   if [ ! -e "/var/xdrago/log/.etc_csf_allow_ctrl.${_X_SE}.pid" ]; then
