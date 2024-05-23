@@ -5094,6 +5094,7 @@ if_post_major_os_upgrade() {
     fi
 
     if [ -e "/root/.big_hop_on_major_os_upgrade.info" ] \
+      && [ ! -e "/root/.rebuild_src_on_auto_before_reboot.info" ] \
       && [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
       msg "INFO: Time for re-installing services built from sources..."
       if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
@@ -5177,6 +5178,9 @@ if_post_major_os_upgrade() {
     fi
     if [ -e "/root/.force.newrelic.update.cnf" ]; then
       rm -f /root/.force.newrelic.update.cnf
+    fi
+    if [ -e "/root/.rebuild_src_on_auto_before_reboot.info" ]; then
+      rm -f /root/.rebuild_src_on_auto_before_reboot.info
     fi
     touch /root/.completed_post_major_os_upgrade.info
     msg "INFO: The post_major_os_upgrade procedure is complete"
@@ -5619,7 +5623,9 @@ if_major_os_upgrade() {
     if [ "${_FORCE_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
       _REBUILD_SRC_ON_AUTO_NOW=YES
     fi
+    rm -f /root/.rebuild_src_on_auto_before_reboot.info
     if [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
+      touch /root/.rebuild_src_on_auto_before_reboot.info
       rm -f /var/xdrago_wait/log/*.log
       _PURGE_MODE=OFF
       _NGX_FORCE_REINSTALL=YES
