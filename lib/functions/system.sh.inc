@@ -3606,8 +3606,10 @@ ssl_install_src() {
       _PHP_COMPATIBILITY_TEST=$(php -i | grep "SSL Version" 2>&1)
       _PHP_SSL_LOOK_FOR="${_OPENSSL_NEW_VRN}"
       _PHP_SSL_ALTER_LOOK_FOR="GnuTLS"
+      _PHP_SSL_ALTER_MORE_LOOK_FOR="${_OPENSSL_MODERN_VRN}"
       if [[ "${_PHP_COMPATIBILITY_TEST}" =~ "${_PHP_SSL_LOOK_FOR}" ]] \
-        || [[ "${_PHP_COMPATIBILITY_TEST}" =~ "${_PHP_SSL_ALTER_LOOK_FOR}" ]]; then
+        || [[ "${_PHP_COMPATIBILITY_TEST}" =~ "${_PHP_SSL_ALTER_LOOK_FOR}" ]] \
+        || [[ "${_PHP_COMPATIBILITY_TEST}" =~ "${_PHP_SSL_ALTER_MORE_LOOK_FOR}" ]]; then
         msg "INFO: PHP ${_PHP_COMPATIBILITY_TEST}, looks OK"
       else
         msg "INFO: PHP ${_PHP_COMPATIBILITY_TEST}, rebuild forced later"
