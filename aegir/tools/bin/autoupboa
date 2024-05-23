@@ -368,9 +368,9 @@ if [ -e "/data/disk/arch/sql" ]; then
       rm -f /etc/mysql/conf.d/mysqldump.cnf
       touch /var/xdrago/log/.custom_percona_forced.pid
     fi
-    _AUTO_UP_WEEKLY=5
-    _AUTO_UP_MONTH=12
-    _AUTO_UP_DAY=24
+    _AUTO_UP_WEEKLY=7
+    _AUTO_UP_MONTH=5
+    _AUTO_UP_DAY=25
     _AUTO_PHP="php-min"
     _AUTO_VER="${tRee}"
     if [ ! -e "/root/.ignore.site24x7.firewall.cnf" ]; then
