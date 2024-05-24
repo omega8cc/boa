@@ -327,17 +327,17 @@ if_running_as_root_barracuda() {
       touch /var/run/cloud_vhost.pid
       if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
         mkdir -p /etc/apt/preferences.d/
-        echo -e 'Package: fuse\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
+        echo -e 'Package: fuse\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
         apt_clean_update
       fi
       if [ ! -e "/etc/apt/preferences.d/udev" ]; then
         mkdir -p /etc/apt/preferences.d/
-        echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
+        echo -e 'Package: udev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/udev
         apt_clean_update
       fi
       if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
         mkdir -p /etc/apt/preferences.d/
-        echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
+        echo -e 'Package: makedev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
         apt_clean_update
       fi
       apt-get remove fuse -y -qq &> /dev/null
@@ -4725,8 +4725,8 @@ systemd_cleanup_on_init() {
       sysvinit_install
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
-        echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-        echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+        echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+        echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
         sysvinit_install
         rm -f /etc/apt/sources.list.d/nosystemd.list
         rm -f /etc/apt/preferences.d/nosystemd
@@ -4754,8 +4754,8 @@ systemd_cleanup_on_init() {
       sysvinit_install
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
-        echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-        echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+        echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+        echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
         rm -f /etc/apt/sources.list.d/nosystemd.list
         rm -f /etc/apt/preferences.d/nosystemd
         sysvinit_install
@@ -5493,8 +5493,8 @@ if_major_os_upgrade() {
     fi
     ###
     ### Make sure that systemd packages are locked in apt.
-    echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-    echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+    echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+    echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
     ###
     ### Update packages registry.
     apt_clean_update

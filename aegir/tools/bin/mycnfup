@@ -249,8 +249,8 @@ remove_systemd() {
     apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
     apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
     apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-    echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-    echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+    echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+    echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
     apt-get autoremove --purge -y -qq 2> /dev/null
     apt-get autoclean -y -qq 2> /dev/null
     echo "sysvinit-core hold" | dpkg --set-selections &> /dev/null
@@ -369,17 +369,17 @@ check_root() {
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
         mkdir -p /etc/apt/preferences.d/
-        echo -e 'Package: fuse\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
+        echo -e 'Package: fuse\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
         apt_clean_update
       fi
       if [ ! -e "/etc/apt/preferences.d/udev" ]; then
         mkdir -p /etc/apt/preferences.d/
-        echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
+        echo -e 'Package: udev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/udev
         apt_clean_update
       fi
       if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
         mkdir -p /etc/apt/preferences.d/
-        echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
+        echo -e 'Package: makedev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
         apt_clean_update
       fi
       apt-get remove fuse -y -qq &> /dev/null
@@ -1310,8 +1310,8 @@ db_head_to_stretch_first()
   	  echo "nameserver 8.8.8.8" >/etc/resolv.conf
   	  echo "nameserver 8.8.4.4" >>/etc/resolv.conf
   	  cat /etc/resolv.conf
-      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+      echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+      echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
   	  apt_clean_update
   	  echo "curl install"           | dpkg --set-selections
   	  echo "git install"            | dpkg --set-selections
@@ -1385,8 +1385,8 @@ db_head_to_stretch_first()
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
-        echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-        echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+        echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+        echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
   	  fi
       echo "Upgrade OS to Stretch 1st stage complete!"
       echo "Bye!"
@@ -1413,8 +1413,8 @@ db_head_to_stretch_second()
         apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
         apt-get autoremove --purge -y -qq 2> /dev/null
         apt-get autoclean -y -qq 2> /dev/null
-        echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-        echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+        echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
+        echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
   	  fi
   	  apt_clean_update
   	  apt-get upgrade ${nrmUpArg}
