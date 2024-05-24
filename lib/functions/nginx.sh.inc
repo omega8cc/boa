@@ -559,14 +559,17 @@ nginx_initd_check() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: nginx_initd_check"
   fi
-  _X_INIT_TEST=$(cat /etc/init.d/nginx 2>&1)
+  _X_INIT_TEST=$(cat /etc/init.d/nginx | grep github 2>&1)
   if [[ "${_X_INIT_TEST}" =~ "github" ]]; then
-    _DO_NOTHING=YES
+    chmod 755 /etc/init.d/nginx &> /dev/null
+    update-rc.d nginx defaults &> /dev/null
   else
     mv -f /etc/init.d/nginx \
       ${vBs}/nginx-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${locCnf}/nginx /etc/init.d/nginx
     chmod 755 /etc/init.d/nginx &> /dev/null
+    update-rc.d nginx defaults &> /dev/null
+    service nginx start &> /dev/null
   fi
 }
 
