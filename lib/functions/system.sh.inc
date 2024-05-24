@@ -5299,6 +5299,18 @@ if_major_os_upgrade() {
     mrun "apt-get remove nginx         -y -qq" 2> /dev/null
     mrun "apt-get remove nginx-common  -y -qq" 2> /dev/null
     mrun "apt-get remove nginx-full    -y -qq" 2> /dev/null
+    ###
+    ### Make sure that nginx packages are locked in apt.
+    echo -e 'Package: nginx\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/nginx
+    echo -e '\n\nPackage: *nginx*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx
+    ###
+    _NGINX_GET_DPKG=$(dpkg --get-selections | grep nginx | grep 'hold$' 2>&1)
+    if [[ ! "${_NGINX_GET_DPKG}" =~ "hold" ]]; then
+      aptitude hold nginx &> /dev/null
+      aptitude hold nginx-common &> /dev/null
+      echo "nginx hold" | dpkg --set-selections &> /dev/null
+      echo "nginx-common hold" | dpkg --set-selections &> /dev/null
+    fi
     if [ -e "/etc/php5/conf.d" ]; then
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
@@ -6025,6 +6037,18 @@ sys_packages_install() {
     mrun "apt-get remove nginx-common -y -qq" &> /dev/null
     mrun "apt-get remove nginx-full -y -qq"   &> /dev/null
     mrun "apt-get remove redis-server -y -qq" &> /dev/null
+    ###
+    ### Make sure that nginx packages are locked in apt.
+    echo -e 'Package: nginx\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/nginx
+    echo -e '\n\nPackage: *nginx*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx
+    ###
+    _NGINX_GET_DPKG=$(dpkg --get-selections | grep nginx | grep 'hold$' 2>&1)
+    if [[ ! "${_NGINX_GET_DPKG}" =~ "hold" ]]; then
+      aptitude hold nginx &> /dev/null
+      aptitude hold nginx-common &> /dev/null
+      echo "nginx hold" | dpkg --set-selections &> /dev/null
+      echo "nginx-common hold" | dpkg --set-selections &> /dev/null
+    fi
   fi
   _EXTRA_LIB_APT="libmcrypt-dev"
   if [ ! -z "${_EXTRA_PACKAGES}" ]; then
