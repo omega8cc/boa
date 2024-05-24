@@ -5475,7 +5475,7 @@ if_major_os_upgrade() {
       fi
     fi
     ###
-    ### Make sure the systemd packages are locked in apt.
+    ### Make sure that systemd packages are locked in apt.
     echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
     echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
     ###
