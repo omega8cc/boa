@@ -5184,6 +5184,7 @@ if_post_major_os_upgrade() {
     if [ -e "/root/.rebuild_src_on_auto_before_reboot.info" ]; then
       rm -f /root/.rebuild_src_on_auto_before_reboot.info
     fi
+    rm -f /var/xdrago/log/.*_crontab_*
     touch /root/.completed_post_major_os_upgrade.info
     msg "INFO: The post_major_os_upgrade procedure is complete"
   fi
