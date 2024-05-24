@@ -7448,28 +7448,28 @@ initd_update() {
         msg "INFO: Restarting Solr 7"
       fi
       kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
-      mrun "service solr7 start" &> /dev/null
+      #service solr7 start &> /dev/null
     fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Restarting Jetty 9"
       fi
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
-      mrun "service jetty9 start" &> /dev/null
+      #service jetty9 start &> /dev/null
     fi
     if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Restarting Jetty 8"
       fi
       kill -9 $(ps aux | grep '[j]etty8' | awk '{print $2}') &> /dev/null
-      mrun "service jetty8 start" &> /dev/null
+      #service jetty8 start &> /dev/null
     fi
     if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Restarting Jetty 7"
       fi
       kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
-      mrun "service jetty7 start" &> /dev/null
+      #service jetty7 start &> /dev/null
     fi
     if [ ! -e "/var/run/aegir_upgrade.pid" ]; then
       msg "INFO: Starting Redis, PHP-FPM and Nginx"
@@ -7578,28 +7578,28 @@ initd_update() {
         msg "INFO: Restarting Solr 7"
       fi
       kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
-      mrun "service solr7 start" &> /dev/null
+      #service solr7 start &> /dev/null
     fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Restarting Jetty 9"
       fi
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
-      mrun "service jetty9 start" &> /dev/null
+      #service jetty9 start &> /dev/null
     fi
     if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Restarting Jetty 8"
       fi
       kill -9 $(ps aux | grep '[j]etty8' | awk '{print $2}') &> /dev/null
-      mrun "service jetty8 start" &> /dev/null
+      #service jetty8 start &> /dev/null
     fi
     if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Restarting Jetty 7"
       fi
       kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
-      mrun "service jetty7 start" &> /dev/null
+      #service jetty7 start &> /dev/null
     fi
     if [ ! -e "/var/run/aegir_upgrade.pid" ] \
       && [ ! -e "/root/.proxy.cnf" ]; then
