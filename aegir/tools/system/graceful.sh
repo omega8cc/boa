@@ -124,7 +124,8 @@ action() {
     touch /var/run/boa_wait.pid
     sleep 60
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
-      service solr7 restart
+      kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      service solr7 start
     fi
     kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
     rm -rf /tmp/{drush*,pear,jetty*}

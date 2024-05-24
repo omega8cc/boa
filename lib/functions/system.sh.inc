@@ -7447,7 +7447,8 @@ initd_update() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Restarting Solr 7"
       fi
-      mrun "service solr7 restart" &> /dev/null
+      kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      mrun "service solr7 start" &> /dev/null
     fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -7576,7 +7577,8 @@ initd_update() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Restarting Solr 7"
       fi
-      mrun "service solr7 restart" &> /dev/null
+      kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      mrun "service solr7 start" &> /dev/null
     fi
     kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then

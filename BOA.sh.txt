@@ -1696,7 +1696,8 @@ fix_log4j() {
       echo "LOG4J_FORMAT_MSG_NO_LOOKUPS=true" >> /etc/default/solr7.in.sh
     fi
     if [[ ! "${_RESULT_LOG4J}" =~ "LOG4J" ]] || [ ! -z "${_DO_SOLR_RESTART}" ]; then
-      service solr7 restart
+      kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      service solr7 start
     fi
   fi
 }

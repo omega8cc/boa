@@ -626,7 +626,8 @@ fix_solr7_cnf() {
     if [ "${_IF_RESTART_SOLR}" = "YES" ] \
       || [ ! -e "${rStart}" ]; then
       echo "Restarting Solr 7..."
-      service solr7 restart
+      kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      service solr7 start
       touch ${rStart}
     fi
   fi
