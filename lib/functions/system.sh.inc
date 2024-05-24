@@ -5301,8 +5301,12 @@ if_major_os_upgrade() {
     mrun "apt-get remove nginx-full    -y -qq" 2> /dev/null
     ###
     ### Make sure that nginx packages are locked in apt.
-    echo -e 'Package: nginx\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/nginx
-    echo -e '\n\nPackage: nginx-common\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx
+    if [ ! -e "/etc/apt/preferences.d/nginx-common" ]; then
+      rm -f /etc/apt/preferences.d/nginx
+      echo -e 'Package: nginx\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/nginx-common
+      echo -e '\n\nPackage: nginx-common\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx-common
+      apt_clean_update
+    fi
     ###
     _NGINX_GET_DPKG=$(dpkg --get-selections | grep nginx-common | grep 'hold$' 2>&1)
     if [[ ! "${_NGINX_GET_DPKG}" =~ "hold" ]]; then
@@ -5310,6 +5314,7 @@ if_major_os_upgrade() {
       aptitude hold nginx-common &> /dev/null
       echo "nginx hold" | dpkg --set-selections &> /dev/null
       echo "nginx-common hold" | dpkg --set-selections &> /dev/null
+      apt_clean_update
     fi
     if [ -e "/etc/php5/conf.d" ]; then
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
@@ -6039,8 +6044,12 @@ sys_packages_install() {
     mrun "apt-get remove redis-server -y -qq" &> /dev/null
     ###
     ### Make sure that nginx packages are locked in apt.
-    echo -e 'Package: nginx\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/nginx
-    echo -e '\n\nPackage: nginx-common\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx
+    if [ ! -e "/etc/apt/preferences.d/nginx-common" ]; then
+      rm -f /etc/apt/preferences.d/nginx
+      echo -e 'Package: nginx\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/nginx-common
+      echo -e '\n\nPackage: nginx-common\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx-common
+      apt_clean_update
+    fi
     ###
     _NGINX_GET_DPKG=$(dpkg --get-selections | grep nginx-common | grep 'hold$' 2>&1)
     if [[ ! "${_NGINX_GET_DPKG}" =~ "hold" ]]; then
@@ -6048,6 +6057,7 @@ sys_packages_install() {
       aptitude hold nginx-common &> /dev/null
       echo "nginx hold" | dpkg --set-selections &> /dev/null
       echo "nginx-common hold" | dpkg --set-selections &> /dev/null
+      apt_clean_update
     fi
   fi
   _EXTRA_LIB_APT="libmcrypt-dev"
