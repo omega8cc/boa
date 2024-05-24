@@ -289,32 +289,27 @@ nginx_install_upgrade() {
   fi
   if [ -x "/usr/sbin/nginx" ]; then
     _NGINX_F_ITD=$(/usr/sbin/nginx -v 2>&1 | tr -d "\n" \
-      | cut -d" " -f4 | awk '{ print $1}' 2>&1)
+      | cut -d"/" -f2 | awk '{ print $1}' 2>&1)
     _NGINX_V_ITD=$(/usr/sbin/nginx -V 2>&1)
-    if [ -z "${_NGINX_F_ITD}" ]; then
-      _NGINX_F_ITD=$(/usr/sbin/nginx -v 2>&1 | tr -d "\n" \
-        | cut -d" " -f3 | awk '{ print $1}' 2>&1)
-    fi
-    _NGINX_F_VERSION="${_CUSTOM_NAME}/${_NGINX_VRN}"
-    if [ "${_NGINX_F_ITD}" = "${_NGINX_F_VERSION}" ] \
+    if [ "${_NGINX_F_ITD}" = "${_NGINX_VRN}" ] \
       && [ "${_STATUS}" = "UPGRADE" ]; then
       _NGINX_INSTALL_REQUIRED=NO
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Installed Nginx ${_NGINX_F_ITD}, OK"
       fi
-    elif [ "${_NGINX_F_ITD}" = "${_NGINX_F_VERSION}" ] \
+    elif [ "${_NGINX_F_ITD}" = "${_NGINX_VRN}" ] \
       && [ "${_STATUS}" = "INIT" ]; then
       _NGINX_INSTALL_REQUIRED=NO
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Installed Nginx ${_NGINX_F_ITD}, OK"
       fi
-    elif [ "${_NGINX_F_ITD}" != "${_NGINX_F_VERSION}" ]; then
+    elif [ "${_NGINX_F_ITD}" != "${_NGINX_VRN}" ]; then
       _NGINX_INSTALL_REQUIRED=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Installed Nginx ${_NGINX_F_ITD}, upgrade required"
       fi
     fi
-    if [ "${_NGINX_F_ITD}" = "${_NGINX_F_VERSION}" ]; then
+    if [ "${_NGINX_F_ITD}" = "${_NGINX_VRN}" ]; then
       if [[ ! "${_NGINX_V_ITD}" =~ "geoip" ]]; then
         _NGINX_INSTALL_REQUIRED=YES
         if [ "${_DEBUG_MODE}" = "YES" ]; then
