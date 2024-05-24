@@ -1587,17 +1587,17 @@ check_root() {
   if [ "${_VMFAMILY}" = "VS" ]; then
     if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
       mkdir -p /etc/apt/preferences.d/
-      echo -e 'Package: fuse\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
+      echo -e 'Package: fuse\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
       apt_clean_update
     fi
     if [ ! -e "/etc/apt/preferences.d/udev" ]; then
       mkdir -p /etc/apt/preferences.d/
-      echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
+      echo -e 'Package: udev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/udev
       apt_clean_update
     fi
     if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
       mkdir -p /etc/apt/preferences.d/
-      echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
+      echo -e 'Package: makedev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
       apt_clean_update
     fi
     apt-get remove fuse -y -qq &> /dev/null
