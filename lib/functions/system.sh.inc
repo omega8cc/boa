@@ -5302,9 +5302,9 @@ if_major_os_upgrade() {
     ###
     ### Make sure that nginx packages are locked in apt.
     echo -e 'Package: nginx\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/nginx
-    echo -e '\n\nPackage: *nginx*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx
+    echo -e '\n\nPackage: nginx-common\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx
     ###
-    _NGINX_GET_DPKG=$(dpkg --get-selections | grep nginx | grep 'hold$' 2>&1)
+    _NGINX_GET_DPKG=$(dpkg --get-selections | grep nginx-common | grep 'hold$' 2>&1)
     if [[ ! "${_NGINX_GET_DPKG}" =~ "hold" ]]; then
       aptitude hold nginx &> /dev/null
       aptitude hold nginx-common &> /dev/null
@@ -6040,9 +6040,9 @@ sys_packages_install() {
     ###
     ### Make sure that nginx packages are locked in apt.
     echo -e 'Package: nginx\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/nginx
-    echo -e '\n\nPackage: *nginx*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx
+    echo -e '\n\nPackage: nginx-common\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx
     ###
-    _NGINX_GET_DPKG=$(dpkg --get-selections | grep nginx | grep 'hold$' 2>&1)
+    _NGINX_GET_DPKG=$(dpkg --get-selections | grep nginx-common | grep 'hold$' 2>&1)
     if [[ ! "${_NGINX_GET_DPKG}" =~ "hold" ]]; then
       aptitude hold nginx &> /dev/null
       aptitude hold nginx-common &> /dev/null
