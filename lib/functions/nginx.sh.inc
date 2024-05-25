@@ -507,7 +507,7 @@ nginx_install_upgrade() {
       --with-debug ${_NGINX_EXTRA}" 2> /dev/null
     mrun "make -j $(nproc)" 2> /dev/null
     mrun "make install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    ldconfig 2> /dev/null
     nginx_clean_legacy_config
     service nginx quietupgrade &> /dev/null
     _NGINX_INSTALL_REQUIRED=NO

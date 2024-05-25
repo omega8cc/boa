@@ -2468,7 +2468,7 @@ mytop_install() {
     mrun "perl Makefile.PL" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    ldconfig 2> /dev/null
   fi
 }
 
@@ -2526,7 +2526,7 @@ do_install_latest_git() {
     mrun "bash ./configure --without-tcltk --quiet" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    ldconfig 2> /dev/null
     mv -f /usr/bin/git /usr/bin/git-old
     ln -sfn /usr/local/bin/git /usr/bin/git
     cd /var/opt
@@ -2612,7 +2612,7 @@ install_icu_modern() {
     mrun "bash ./configure --prefix=/usr/local" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    ldconfig 2> /dev/null
     touch ${pthIcuLog}
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
@@ -2658,7 +2658,7 @@ install_icu_jessie() {
     mrun "bash ./configure --prefix=/usr/local" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    ldconfig 2> /dev/null
     touch ${pthIcuLog}
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
@@ -3329,7 +3329,7 @@ sshd_install_src() {
       --with-pam &> /dev/null
     mrun "make -j $(nproc)" 2> /dev/null
     mrun "make install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    ldconfig 2> /dev/null
     mrun "service ssh restart" &> /dev/null
     if [[ ! "${_SSH_GET_DPKG}" =~ "hold" ]]; then
       aptitude hold openssh-server &> /dev/null
@@ -3397,7 +3397,7 @@ install_magick_src() {
     mrun "apt-get remove imagemagick libmagickwand-dev graphviz libgraphviz-dev -y -qq" 2> /dev/null
     mrun "apt-get purge imagemagick libmagickwand-dev graphviz libgraphviz-dev -y -qq" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    ldconfig 2> /dev/null
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "HINT: Please modify /usr/etc/ImageMagick-7/policy.xml file, if needed"
     fi
@@ -3464,7 +3464,7 @@ ssl_crypto_lib_fix() {
       fi
     fi
   fi
-  mrun "ldconfig" 2> /dev/null
+  ldconfig 2> /dev/null
   if [ -e "/root/.install.modern.openssl.cnf" ] \
     && [ -x "/usr/local/ssl3/bin/openssl" ]; then
     _SSL_BINARY=/usr/local/ssl3/bin/openssl
@@ -3536,7 +3536,7 @@ ssl_crypto_lib_fix() {
       ln -sfn /usr/local/ssl3/include/openssl/opensslconf.h /usr/include/x86_64-linux-gnu/openssl/opensslconf.h
     fi
   fi
-  mrun "ldconfig" 2> /dev/null
+  ldconfig 2> /dev/null
 }
 
 #
@@ -3643,7 +3643,7 @@ ssl_install_src() {
     st_runner "bash ./configure --prefix=/usr" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    ldconfig 2> /dev/null
     ###--------------------###
     msg "INFO: Building OpenSSL ${_OPENSSL_NEW_VRN} from sources..."
     msg "WAIT: This may take a while, please wait..."
@@ -3703,7 +3703,8 @@ ssl_install_src() {
       fi
       sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
       echo "${_SSL_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
-      mrun "ldconfig" 2> /dev/null
+      sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
+      ldconfig 2> /dev/null
       ###--------------------###
       _SSL_GET_DPKG=$(dpkg --get-selections \
         | grep openssl \
@@ -3797,8 +3798,9 @@ curl_install_src() {
     touch /root/.use.curl.from.packages.cnf
     chattr +i /root/.use.curl.from.packages.cnf
     sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
+    sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
     grep lib /etc/ld.so.conf.d/libc.conf
-    mrun "ldconfig" &> /dev/null
+    ldconfig &> /dev/null
     [ -e "/root/.sorted.multi.php.cnf" ] && rm -f /root/.sorted.multi.php.cnf
     msg "INFO: libcurl is broken, cURL re-install from packages required"
   fi
@@ -3879,7 +3881,7 @@ curl_install_src() {
             --prefix=/usr/local &> /dev/null
           mrun "make -j $(nproc)" 2> /dev/null
           mrun "make install" 2> /dev/null
-          mrun "ldconfig" 2> /dev/null
+          ldconfig 2> /dev/null
           if [ -x "/usr/local/bin/curl" ]; then
             mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S 2>&1)
             ln -sfn /usr/local/bin/curl /usr/bin/curl
@@ -3942,7 +3944,7 @@ curl_install_src() {
           fi
         fi
         mrun "apt-get remove curl -y" 2> /dev/null
-        mrun "ldconfig" 2> /dev/null
+        ldconfig 2> /dev/null
         touch /var/xdrago/log/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid &> /dev/null
         _CURL_ALREADY_REBUILT=YES
       fi
@@ -6458,7 +6460,7 @@ php_libs_fix() {
       touch /var/xdrago/log/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid
     fi
   fi
-  mrun "ldconfig" 2> /dev/null
+  ldconfig 2> /dev/null
 }
 
 smtp_check() {
@@ -6518,7 +6520,7 @@ vnstat_install() {
       mrun "bash ./configure --prefix=/usr --sysconfdir=/etc" 2> /dev/null
       mrun "make -j $(nproc) --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
-      mrun "ldconfig" 2> /dev/null
+      ldconfig 2> /dev/null
       for INF in `vnstat --iflist \
         | sed "s/Available interfaces//g; s/(1000 Mbit)//g; s/(100 Mbit)//g; s/ lo//g;" \
         | cut -d: -f2` ;do vnstat -i $INF &> /dev/null;done
@@ -6576,7 +6578,7 @@ install_myquick_src() {
     mrun "cmake -DWITH_SSL=OFF ." 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    ldconfig 2> /dev/null
   fi
 }
 
@@ -6965,9 +6967,10 @@ if_install_ftpd() {
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
       msg "INFO: Building Pure-FTPd server from sources..."
+      sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
       if [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ]; then
         msg "INFO: Generating DH parameters, 2048 bit..."
-        openssl dhparam -out /etc/ssl/private/pure-ftpd-dhparams.pem 2048 &> /dev/null
+        openssl dhparam -out /etc/ssl/private/pure-ftpd-dhparams.pem 2048 2> /dev/null
       fi
       if [ ! -e "/usr/local/sbin/pure-config.pl" ]; then
         echo "/bin/false" >> /etc/shells
@@ -6978,7 +6981,7 @@ if_install_ftpd() {
       rm -f /usr/local/sbin/pure-ftpd
       openssl req -x509 -nodes -sha256 -days 7300 -newkey rsa:2048 \
         -keyout /etc/ssl/private/pure-ftpd.pem \
-        -out /etc/ssl/private/pure-ftpd.pem -batch &> /dev/null
+        -out /etc/ssl/private/pure-ftpd.pem -batch 2> /dev/null
       chmod 600 /etc/ssl/private/pure-ftpd.pem &> /dev/null
       cd /var/opt
       rm -rf pure-ftpd*
@@ -6986,48 +6989,14 @@ if_install_ftpd() {
       get_dev_src "pure-ftpd-${_PURE_FTPD_VRN}.tar.gz"
       cd pure-ftpd-${_PURE_FTPD_VRN}
       bash autogen.sh &> /dev/null
-      if [ -e "/root/.install.modern.openssl.cnf" ] \
-        && [ -x "/usr/local/ssl3/bin/openssl" ]; then
-        _SSL_BINARY=/usr/local/ssl3/bin/openssl
-      else
-        _SSL_BINARY=/usr/local/ssl/bin/openssl
-      fi
-      _SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
-        | tr -d "\n" \
-        | cut -d" " -f2 \
-        | awk '{ print $1}')
-      if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
-        || [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
-        _SSL_PATH="/usr/local/ssl3"
-        _SSL_LIB_PATH="${_SSL_PATH}/lib64"
-      else
-        _SSL_PATH="/usr/local/ssl"
-        _SSL_LIB_PATH="${_SSL_PATH}/lib"
-      fi
-      _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
-      ### LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
-      if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
-        _SSL_LEGACY_LIB_PATH=/usr/local/ssl/lib
-        sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
-        echo "${_SSL_LEGACY_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
-        ln -sfn /usr/local/ssl/include/openssl /usr/include/openssl
-        mrun "ldconfig" 2> /dev/null
-      fi
       LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig" ./configure \
         --oldincludedir=/usr/local/ssl/include \
         --includedir=/usr/local/ssl/include \
         --with-everything --with-virtualchroot \
         --without-humor --with-tls --with-diraliases --with-pam \
-        --with-certfile=/etc/ssl/private/pure-ftpd.pem &> /dev/null
-      make &> /dev/null
-      make install &> /dev/null
-      if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
-        _SSL_MODERN_LIB_PATH=/usr/local/ssl3/lib64
-        sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
-        echo "${_SSL_MODERN_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
-        ln -sfn /usr/local/ssl3/include/openssl /usr/include/openssl
-        mrun "ldconfig" 2> /dev/null
-      fi
+        --with-certfile=/etc/ssl/private/pure-ftpd.pem 2> /dev/null
+      make 2> /dev/null
+      make install 2> /dev/null
       cd /usr/local/sbin/
       cp -af ${locCnf}/pure-config.pl.txt ./
       mv -f pure-config.pl.txt pure-config.pl 2> /dev/null
@@ -7037,15 +7006,16 @@ if_install_ftpd() {
       cd /usr/local/etc
       rm -f pure-ftpd.conf
       cp -af ${locCnf}/pure-ftpd.conf ./
+      ln -sfn /usr/local/etc/pure-ftpd.conf /usr/local/etc/pure-ftpd.conf~
       killall -9 pure-ftpd &> /dev/null
       ftpdInit="/usr/local/sbin/pure-config.pl"
       ftpdConf="/usr/local/etc/pure-ftpd.conf"
       ftpdBind="/usr/local/sbin/pure-ftpd"
       if [ -x "${ftpdBind}" ] && [ -f "${ftpdConf}" ]; then
         if [ -x "${ftpdInit}" ]; then
-          ${ftpdInit} ${ftpdConf} &> /dev/null
+          ${ftpdInit} ${ftpdConf} 2> /dev/null
         else
-          ${ftpdBind} ${ftpdConf} &> /dev/null
+          ${ftpdBind} ${ftpdConf} 2> /dev/null
         fi
       fi
       cd /var/opt
