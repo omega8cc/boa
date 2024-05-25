@@ -4725,11 +4725,15 @@ systemd_cleanup_on_init() {
       sysvinit_install
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
-        echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-        echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+        if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
+          rm -f /etc/apt/sources.list.d/nosystemd.list
+          rm -f /etc/apt/preferences.d/nosystemd
+          rm -f /etc/apt/preferences.d/systemd
+          echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
+          echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
+          apt_clean_update
+        fi
         sysvinit_install
-        rm -f /etc/apt/sources.list.d/nosystemd.list
-        rm -f /etc/apt/preferences.d/nosystemd
         msg "INFO: The sysvinit-core installed in ${_REAL_OS}/${_REAL_OSR}"
         echo
         msg "STEP: Let's continue to STEP 2... Please reboot this server"
@@ -4754,10 +4758,14 @@ systemd_cleanup_on_init() {
       sysvinit_install
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
-        echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-        echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-        rm -f /etc/apt/sources.list.d/nosystemd.list
-        rm -f /etc/apt/preferences.d/nosystemd
+        if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
+          rm -f /etc/apt/sources.list.d/nosystemd.list
+          rm -f /etc/apt/preferences.d/nosystemd
+          rm -f /etc/apt/preferences.d/systemd
+          echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
+          echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
+          apt_clean_update
+        fi
         sysvinit_install
         systemd_remove_apt_cmd
         sysvinit_install
@@ -5493,8 +5501,11 @@ if_major_os_upgrade() {
     fi
     ###
     ### Make sure that systemd packages are locked in apt.
-    echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-    echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+    if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
+      rm -f /etc/apt/preferences.d/systemd
+      echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
+      echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
+    fi
     ###
     ### Update packages registry.
     apt_clean_update

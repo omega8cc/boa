@@ -1144,8 +1144,11 @@ install_vps() {
         if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
           cp -af /vservers/${idn}/usr/share/sysvinit/inittab /vservers/${idn}/etc/inittab
         fi
-        echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /vservers/${idn}/etc/apt/preferences.d/systemd
-        echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /vservers/${idn}/etc/apt/preferences.d/systemd
+        if [ ! -e "/vservers/${idn}/etc/apt/preferences.d/offsystemd" ]; then
+          rm -f /vservers/${idn}/etc/apt/preferences.d/systemd
+          echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /vservers/${idn}/etc/apt/preferences.d/offsystemd
+          echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /vservers/${idn}/etc/apt/preferences.d/offsystemd
+        fi
         vserver ${idn} exec ${_INSTAPP} sysvinit-core
         vserver ${idn} exec ${_INSTAPP} sysvinit-utils
         rm -f /vservers/${idn}/etc/apt/sources.list.d/nosystemd.list
@@ -1993,10 +1996,14 @@ install_host() {
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
       fi
-      echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-      echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-      rm -f /etc/apt/sources.list.d/nosystemd.list
-      rm -f /etc/apt/preferences.d/nosystemd
+      if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
+        rm -f /etc/apt/sources.list.d/nosystemd.list
+        rm -f /etc/apt/preferences.d/nosystemd
+        rm -f /etc/apt/preferences.d/systemd
+        echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
+        echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
+        apt_clean_update
+      fi
       echo "sysvinit-core hold" | dpkg --set-selections &> /dev/null
       echo "sysvinit-utils hold" | dpkg --set-selections &> /dev/null
     fi
@@ -2048,10 +2055,14 @@ upgrade_host() {
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
       fi
-      echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-      echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-      rm -f /etc/apt/sources.list.d/nosystemd.list
-      rm -f /etc/apt/preferences.d/nosystemd
+      if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
+        rm -f /etc/apt/sources.list.d/nosystemd.list
+        rm -f /etc/apt/preferences.d/nosystemd
+        rm -f /etc/apt/preferences.d/systemd
+        echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
+        echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
+        apt_clean_update
+      fi
     fi
     apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
     apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
