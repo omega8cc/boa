@@ -299,7 +299,7 @@ add_solr() {
         wait
         if [[ "${_SOLR_BASE}" =~ "/opt/solr4" ]]; then
           kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
-          #service jetty9 start &> /dev/null
+          service jetty9 start &> /dev/null
         fi
       fi
       echo "New Solr with ${1} for ${2} added"
@@ -345,7 +345,7 @@ delete_solr() {
       rm -f ${Dir}/solr.php
       if [[ "${_SOLR_BASE}" =~ "/opt/solr4" ]]; then
         kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
-        #service jetty9 start &> /dev/null
+        service jetty9 start &> /dev/null
       fi
     fi
     echo "Deleted Solr core in ${1}"
@@ -626,8 +626,8 @@ fix_solr7_cnf() {
     if [ "${_IF_RESTART_SOLR}" = "YES" ] \
       || [ ! -e "${rStart}" ]; then
       echo "Restarting Solr 7..."
-      kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
-      #service solr7 start
+      #kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
+      service solr7 restart
       touch ${rStart}
     fi
   fi

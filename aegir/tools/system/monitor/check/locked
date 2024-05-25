@@ -62,15 +62,15 @@ if ($fpm_status ne "CLEAN") {
 if ($java_status ne "CLEAN") {
   `kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')`;
   sleep(2);
-#   if (-f "/etc/default/jetty9" && -f "/etc/init.d/jetty9") {
-#     `service jetty9 start`;
-#   }
-#   if (-f "/etc/default/jetty8" && -f "/etc/init.d/jetty8") {
-#     `service jetty8 start`;
-#   }
-#   if (-f "/etc/default/jetty7" && -f "/etc/init.d/jetty7") {
-#     `service jetty7 start`;
-#   }
+  if (-f "/etc/default/jetty9" && -f "/etc/init.d/jetty9") {
+    `service jetty9 start`;
+  }
+  if (-f "/etc/default/jetty8" && -f "/etc/init.d/jetty8") {
+    `service jetty8 start`;
+  }
+  if (-f "/etc/default/jetty7" && -f "/etc/init.d/jetty7") {
+    `service jetty7 start`;
+  }
 }
 `touch /var/xdrago/log/last-run-locked.pid`;
 exit;
