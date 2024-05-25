@@ -55,6 +55,11 @@ apt_clean_update() {
 
 rm -f /var/run/clear_m.pid
 
+_FIVE_MINUTES=$(date --date '5 minutes ago' +"%Y-%m-%d %H:%M:%S")
+find /var/run/solr_jetty.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \;
+find /var/run/fmp_wait.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \;
+find /var/run/restarting_fmp_wait.pid  -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \;
+
 _ONE_HOUR=$(date --date '1 hour ago' +"%Y-%m-%d %H:%M:%S")
 find /var/run/mysql_restart_running.pid -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \;
 find /var/run/boa_wait.pid -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \;
