@@ -362,15 +362,15 @@ jetty_restart() {
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
   rm -f /var/log/jetty{7,8,9}/*
   renice ${_B_NICE} -p $$ &> /dev/null
-#   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
-#     service jetty9 start
-#   fi
-#   if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
-#     service jetty8 start
-#   fi
-#   if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
-#     service jetty7 start
-#   fi
+  if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
+    service jetty9 start
+  fi
+  if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
+    service jetty8 start
+  fi
+  if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
+    service jetty7 start
+  fi
   sleep 5
   [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
 }
