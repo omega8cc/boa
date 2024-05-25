@@ -3800,7 +3800,7 @@ curl_install_src() {
     sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
     sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
     grep lib /etc/ld.so.conf.d/libc.conf
-    mrun "ldconfig" &> /dev/null
+    ldconfig &> /dev/null
     [ -e "/root/.sorted.multi.php.cnf" ] && rm -f /root/.sorted.multi.php.cnf
     msg "INFO: libcurl is broken, cURL re-install from packages required"
   fi
