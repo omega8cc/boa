@@ -650,14 +650,14 @@ update_agents() {
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/data/disk/arch/sql" ] \
-    && [ ! -e "${pthLog}/proc_num_ctrl.ctrl.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/proc_num_ctrl_f1.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/proc_num_ctrl.cgi /var/xdrago/proc_num_ctrl.cgi.old
     curl ${crlGet} "${urlHmr}/tools/system/proc_num_ctrl.cgi" \
       -o /var/xdrago/proc_num_ctrl.cgi
     if [ -e "/var/xdrago/proc_num_ctrl.cgi" ]; then
       chmod 700 /var/xdrago/proc_num_ctrl.cgi
       chown root:root /var/xdrago/proc_num_ctrl.cgi
-      touch ${pthLog}/proc_num_ctrl.ctrl.${_X_SE}.pid
+      touch ${pthLog}/proc_num_ctrl_f1.ctrl.${_X_SE}.pid
     else
       mv -f /var/xdrago/proc_num_ctrl.cgi.old /var/xdrago/proc_num_ctrl.cgi
     fi
