@@ -843,7 +843,7 @@ install_with_aptitude_sql() {
     mrun "perl Makefile.PL" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    ldconfig 2> /dev/null
   fi
   if [ "${_EASY_SETUP}" = "DBHD" ] \
     || [ -e "/etc/mysql/conf.d/galera.cnf" ] \

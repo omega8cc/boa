@@ -2468,7 +2468,7 @@ mytop_install() {
     mrun "perl Makefile.PL" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    ldconfig 2> /dev/null
   fi
 }
 
@@ -2526,7 +2526,7 @@ do_install_latest_git() {
     mrun "bash ./configure --without-tcltk --quiet" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    ldconfig 2> /dev/null
     mv -f /usr/bin/git /usr/bin/git-old
     ln -sfn /usr/local/bin/git /usr/bin/git
     cd /var/opt
@@ -2612,7 +2612,7 @@ install_icu_modern() {
     mrun "bash ./configure --prefix=/usr/local" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    ldconfig 2> /dev/null
     touch ${pthIcuLog}
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
@@ -2658,7 +2658,7 @@ install_icu_jessie() {
     mrun "bash ./configure --prefix=/usr/local" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    ldconfig 2> /dev/null
     touch ${pthIcuLog}
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
@@ -3329,7 +3329,7 @@ sshd_install_src() {
       --with-pam &> /dev/null
     mrun "make -j $(nproc)" 2> /dev/null
     mrun "make install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    ldconfig 2> /dev/null
     mrun "service ssh restart" &> /dev/null
     if [[ ! "${_SSH_GET_DPKG}" =~ "hold" ]]; then
       aptitude hold openssh-server &> /dev/null
@@ -3397,7 +3397,7 @@ install_magick_src() {
     mrun "apt-get remove imagemagick libmagickwand-dev graphviz libgraphviz-dev -y -qq" 2> /dev/null
     mrun "apt-get purge imagemagick libmagickwand-dev graphviz libgraphviz-dev -y -qq" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    ldconfig 2> /dev/null
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "HINT: Please modify /usr/etc/ImageMagick-7/policy.xml file, if needed"
     fi
@@ -3464,7 +3464,7 @@ ssl_crypto_lib_fix() {
       fi
     fi
   fi
-  mrun "ldconfig" 2> /dev/null
+  ldconfig 2> /dev/null
   if [ -e "/root/.install.modern.openssl.cnf" ] \
     && [ -x "/usr/local/ssl3/bin/openssl" ]; then
     _SSL_BINARY=/usr/local/ssl3/bin/openssl
@@ -3536,7 +3536,7 @@ ssl_crypto_lib_fix() {
       ln -sfn /usr/local/ssl3/include/openssl/opensslconf.h /usr/include/x86_64-linux-gnu/openssl/opensslconf.h
     fi
   fi
-  mrun "ldconfig" 2> /dev/null
+  ldconfig 2> /dev/null
 }
 
 #
@@ -3643,7 +3643,7 @@ ssl_install_src() {
     st_runner "bash ./configure --prefix=/usr" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    ldconfig 2> /dev/null
     ###--------------------###
     msg "INFO: Building OpenSSL ${_OPENSSL_NEW_VRN} from sources..."
     msg "WAIT: This may take a while, please wait..."
@@ -3703,7 +3703,7 @@ ssl_install_src() {
       fi
       sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
       echo "${_SSL_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
-      mrun "ldconfig" 2> /dev/null
+      ldconfig 2> /dev/null
       ###--------------------###
       _SSL_GET_DPKG=$(dpkg --get-selections \
         | grep openssl \
@@ -3879,7 +3879,7 @@ curl_install_src() {
             --prefix=/usr/local &> /dev/null
           mrun "make -j $(nproc)" 2> /dev/null
           mrun "make install" 2> /dev/null
-          mrun "ldconfig" 2> /dev/null
+          ldconfig 2> /dev/null
           if [ -x "/usr/local/bin/curl" ]; then
             mv -f /usr/bin/curl /usr/bin/old-curl-$(date +%y%m%d-%H%M%S 2>&1)
             ln -sfn /usr/local/bin/curl /usr/bin/curl
@@ -3942,7 +3942,7 @@ curl_install_src() {
           fi
         fi
         mrun "apt-get remove curl -y" 2> /dev/null
-        mrun "ldconfig" 2> /dev/null
+        ldconfig 2> /dev/null
         touch /var/xdrago/log/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid &> /dev/null
         _CURL_ALREADY_REBUILT=YES
       fi
@@ -6458,7 +6458,7 @@ php_libs_fix() {
       touch /var/xdrago/log/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid
     fi
   fi
-  mrun "ldconfig" 2> /dev/null
+  ldconfig 2> /dev/null
 }
 
 smtp_check() {
@@ -6518,7 +6518,7 @@ vnstat_install() {
       mrun "bash ./configure --prefix=/usr --sysconfdir=/etc" 2> /dev/null
       mrun "make -j $(nproc) --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
-      mrun "ldconfig" 2> /dev/null
+      ldconfig 2> /dev/null
       for INF in `vnstat --iflist \
         | sed "s/Available interfaces//g; s/(1000 Mbit)//g; s/(100 Mbit)//g; s/ lo//g;" \
         | cut -d: -f2` ;do vnstat -i $INF &> /dev/null;done
@@ -6576,7 +6576,7 @@ install_myquick_src() {
     mrun "cmake -DWITH_SSL=OFF ." 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    ldconfig 2> /dev/null
   fi
 }
 
@@ -7011,7 +7011,7 @@ if_install_ftpd() {
         sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
         echo "${_SSL_LEGACY_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
         ln -sfn /usr/local/ssl/include/openssl /usr/include/openssl
-        mrun "ldconfig" 2> /dev/null
+        ldconfig 2> /dev/null
       fi
       LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig" ./configure \
         --oldincludedir=/usr/local/ssl/include \
