@@ -7021,13 +7021,6 @@ if_install_ftpd() {
         --with-certfile=/etc/ssl/private/pure-ftpd.pem &> /dev/null
       make &> /dev/null
       make install &> /dev/null
-      if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
-        _SSL_MODERN_LIB_PATH=/usr/local/ssl3/lib64
-        sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
-        echo "${_SSL_MODERN_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
-        ln -sfn /usr/local/ssl3/include/openssl /usr/include/openssl
-        mrun "ldconfig" 2> /dev/null
-      fi
       cd /usr/local/sbin/
       cp -af ${locCnf}/pure-config.pl.txt ./
       mv -f pure-config.pl.txt pure-config.pl 2> /dev/null
@@ -7037,6 +7030,7 @@ if_install_ftpd() {
       cd /usr/local/etc
       rm -f pure-ftpd.conf
       cp -af ${locCnf}/pure-ftpd.conf ./
+      ln -sfn /usr/local/etc/pure-ftpd.conf /usr/local/etc/pure-ftpd.conf~
       killall -9 pure-ftpd &> /dev/null
       ftpdInit="/usr/local/sbin/pure-config.pl"
       ftpdConf="/usr/local/etc/pure-ftpd.conf"
@@ -7049,6 +7043,14 @@ if_install_ftpd() {
         fi
       fi
       cd /var/opt
+      if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+        _SSL_MODERN_LIB_PATH=/usr/local/ssl3/lib64
+        sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
+        echo "${_SSL_MODERN_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
+        sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
+        ln -sfn /usr/local/ssl3/include/openssl /usr/include/openssl
+        ldconfig 2> /dev/null
+      fi
       touch ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_SE}-${_X_VERSION}.log
     fi
   fi
