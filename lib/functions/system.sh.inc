@@ -6970,7 +6970,7 @@ if_install_ftpd() {
       sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
       if [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ]; then
         msg "INFO: Generating DH parameters, 2048 bit..."
-        openssl dhparam -out /etc/ssl/private/pure-ftpd-dhparams.pem 2048 2> /dev/null
+        openssl dhparam -out /etc/ssl/private/pure-ftpd-dhparams.pem 2048 &> /dev/null
       fi
       if [ ! -e "/usr/local/sbin/pure-config.pl" ]; then
         echo "/bin/false" >> /etc/shells
@@ -6981,7 +6981,7 @@ if_install_ftpd() {
       rm -f /usr/local/sbin/pure-ftpd
       openssl req -x509 -nodes -sha256 -days 7300 -newkey rsa:2048 \
         -keyout /etc/ssl/private/pure-ftpd.pem \
-        -out /etc/ssl/private/pure-ftpd.pem -batch 2> /dev/null
+        -out /etc/ssl/private/pure-ftpd.pem -batch &> /dev/null
       chmod 600 /etc/ssl/private/pure-ftpd.pem &> /dev/null
       cd /var/opt
       rm -rf pure-ftpd*
@@ -6994,9 +6994,9 @@ if_install_ftpd() {
         --includedir=/usr/local/ssl/include \
         --with-everything --with-virtualchroot \
         --without-humor --with-tls --with-diraliases --with-pam \
-        --with-certfile=/etc/ssl/private/pure-ftpd.pem 2> /dev/null
-      make 2> /dev/null
-      make install 2> /dev/null
+        --with-certfile=/etc/ssl/private/pure-ftpd.pem &> /dev/null
+      make &> /dev/null
+      make install &> /dev/null
       cd /usr/local/sbin/
       cp -af ${locCnf}/pure-config.pl.txt ./
       mv -f pure-config.pl.txt pure-config.pl 2> /dev/null
@@ -7013,9 +7013,9 @@ if_install_ftpd() {
       ftpdBind="/usr/local/sbin/pure-ftpd"
       if [ -x "${ftpdBind}" ] && [ -f "${ftpdConf}" ]; then
         if [ -x "${ftpdInit}" ]; then
-          ${ftpdInit} ${ftpdConf} 2> /dev/null
+          ${ftpdInit} ${ftpdConf} &> /dev/null
         else
-          ${ftpdBind} ${ftpdConf} 2> /dev/null
+          ${ftpdBind} ${ftpdConf} &> /dev/null
         fi
       fi
       cd /var/opt
