@@ -188,9 +188,9 @@ else {
     system("killall -9 php-fpm");
     `echo "$timedate KILL FPM $fpmsumar" >> /var/xdrago/log/fpm.kill.log`;
   }
-  if (!-f "/var/run/fmp_wait.pid" && !-f "/var/run/restarting_fmp_wait.pid") {
-    system("touch /var/run/fmp_wait.pid");
-    sleep(3);
+#   if (!-f "/var/run/fmp_wait.pid" && !-f "/var/run/restarting_fmp_wait.pid") {
+#     system("touch /var/run/fmp_wait.pid");
+#     sleep(3);
     system("service php83-fpm start") if ((!$php83lives || !$fpmsumar || !-f "/var/run/php83-fpm.pid") && -f "/etc/init.d/php83-fpm");
     system("service php82-fpm start") if ((!$php82lives || !$fpmsumar || !-f "/var/run/php82-fpm.pid") && -f "/etc/init.d/php82-fpm");
     system("service php81-fpm start") if ((!$php81lives || !$fpmsumar || !-f "/var/run/php81-fpm.pid") && -f "/etc/init.d/php81-fpm");
@@ -201,9 +201,9 @@ else {
     system("service php71-fpm start") if ((!$php71lives || !$fpmsumar || !-f "/var/run/php71-fpm.pid") && -f "/etc/init.d/php71-fpm");
     system("service php70-fpm start") if ((!$php70lives || !$fpmsumar || !-f "/var/run/php70-fpm.pid") && -f "/etc/init.d/php70-fpm");
     system("service php56-fpm start") if ((!$php56lives || !$fpmsumar || !-f "/var/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
-    sleep(3);
-    system("rm -f /var/run/fmp_wait.pid");
-  }
+#     sleep(3);
+#     system("rm -f /var/run/fmp_wait.pid");
+#   }
 }
 
 if (!-f "/var/run/solr_jetty.pid") {
