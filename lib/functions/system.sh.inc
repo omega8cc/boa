@@ -3703,6 +3703,7 @@ ssl_install_src() {
       fi
       sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
       echo "${_SSL_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
+      sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
       ldconfig 2> /dev/null
       ###--------------------###
       _SSL_GET_DPKG=$(dpkg --get-selections \
@@ -3797,6 +3798,7 @@ curl_install_src() {
     touch /root/.use.curl.from.packages.cnf
     chattr +i /root/.use.curl.from.packages.cnf
     sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
+    sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
     grep lib /etc/ld.so.conf.d/libc.conf
     mrun "ldconfig" &> /dev/null
     [ -e "/root/.sorted.multi.php.cnf" ] && rm -f /root/.sorted.multi.php.cnf
@@ -6965,6 +6967,7 @@ if_install_ftpd() {
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
       || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
       msg "INFO: Building Pure-FTPd server from sources..."
+      sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
       if [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ]; then
         msg "INFO: Generating DH parameters, 2048 bit..."
         openssl dhparam -out /etc/ssl/private/pure-ftpd-dhparams.pem 2048 &> /dev/null
