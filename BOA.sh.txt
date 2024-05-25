@@ -1740,9 +1740,9 @@ fix_java_symlinks() {
     fi
   fi
   if [ "${_THIS_RV}" = "daedalus" ] || [ "${_THIS_RV}" = "bookworm" ]; then
-    if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ]; then
+    if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
       if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
-        ln -sfn /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
+        ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
         ln -sfn /etc/alternatives/java /usr/bin/java
         echo fixed java symlinks for ${_THIS_RV}
       fi
