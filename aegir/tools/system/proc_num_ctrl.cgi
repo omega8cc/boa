@@ -204,8 +204,8 @@ else {
   }
 }
 
-if (!-f "/var/run/solr-jetty.pid") {
-  system("touch /var/run/solr-jetty.pid");
+if (!-f "/var/run/solr_jetty.pid") {
+  system("touch /var/run/solr_jetty.pid");
   system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7");
   system("service jetty8 start") if (!$jetty8sumar && -f "/etc/init.d/jetty8");
   system("service jetty9 start") if (!$jetty9sumar && -f "/etc/init.d/jetty9");
@@ -215,7 +215,7 @@ if (!-f "/var/run/solr-jetty.pid") {
   system("service lsyncd start") if (!$lsyncdsumar && -f "/etc/init.d/lsyncd");
   system("service postfix restart") if (!-f "/var/spool/postfix/pid/master.pid");
   sleep(5);
-  system("rm -f /var/run/solr-jetty.pid");
+  system("rm -f /var/run/solr_jetty.pid");
 }
 
 $ftpdinit="/usr/local/sbin/pure-config.pl";
