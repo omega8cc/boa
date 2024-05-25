@@ -204,14 +204,19 @@ else {
   }
 }
 
-system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7");
-system("service jetty8 start") if (!$jetty8sumar && -f "/etc/init.d/jetty8");
-system("service jetty9 start") if (!$jetty9sumar && -f "/etc/init.d/jetty9");
-system("service solr7 start") if (!$solr7sumar && -f "/etc/init.d/solr7");
-system("service collectd start") if (!$collectdsumar && -f "/etc/init.d/collectd");
-system("service xinetd start") if (!$xinetdsumar && -f "/etc/init.d/xinetd");
-system("service lsyncd start") if (!$lsyncdsumar && -f "/etc/init.d/lsyncd");
-system("service postfix restart") if (!-f "/var/spool/postfix/pid/master.pid");
+if (!-f "/var/run/solr-jetty.pid") {
+  system("touch /var/run/solr-jetty.pid");
+  system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7");
+  system("service jetty8 start") if (!$jetty8sumar && -f "/etc/init.d/jetty8");
+  system("service jetty9 start") if (!$jetty9sumar && -f "/etc/init.d/jetty9");
+  system("service solr7 start") if (!$solr7sumar && -f "/etc/init.d/solr7");
+  system("service collectd start") if (!$collectdsumar && -f "/etc/init.d/collectd");
+  system("service xinetd start") if (!$xinetdsumar && -f "/etc/init.d/xinetd");
+  system("service lsyncd start") if (!$lsyncdsumar && -f "/etc/init.d/lsyncd");
+  system("service postfix restart") if (!-f "/var/spool/postfix/pid/master.pid");
+  sleep(5);
+  system("rm -f /var/run/solr-jetty.pid");
+}
 
 $ftpdinit="/usr/local/sbin/pure-config.pl";
 $ftpdconf="/usr/local/etc/pure-ftpd.conf";
