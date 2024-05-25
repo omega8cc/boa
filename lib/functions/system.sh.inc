@@ -6989,33 +6989,6 @@ if_install_ftpd() {
       get_dev_src "pure-ftpd-${_PURE_FTPD_VRN}.tar.gz"
       cd pure-ftpd-${_PURE_FTPD_VRN}
       bash autogen.sh &> /dev/null
-      if [ -e "/root/.install.modern.openssl.cnf" ] \
-        && [ -x "/usr/local/ssl3/bin/openssl" ]; then
-        _SSL_BINARY=/usr/local/ssl3/bin/openssl
-      else
-        _SSL_BINARY=/usr/local/ssl/bin/openssl
-      fi
-      _SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
-        | tr -d "\n" \
-        | cut -d" " -f2 \
-        | awk '{ print $1}')
-      if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
-        || [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
-        _SSL_PATH="/usr/local/ssl3"
-        _SSL_LIB_PATH="${_SSL_PATH}/lib64"
-      else
-        _SSL_PATH="/usr/local/ssl"
-        _SSL_LIB_PATH="${_SSL_PATH}/lib"
-      fi
-      _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
-      ### LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
-      if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
-        _SSL_LEGACY_LIB_PATH=/usr/local/ssl/lib
-        sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
-        echo "${_SSL_LEGACY_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
-        ln -sfn /usr/local/ssl/include/openssl /usr/include/openssl
-        ldconfig 2> /dev/null
-      fi
       LIBS="-ldl -lpthread" PKG_CONFIG_PATH="/usr/local/ssl/lib/pkgconfig" ./configure \
         --oldincludedir=/usr/local/ssl/include \
         --includedir=/usr/local/ssl/include \
@@ -7046,14 +7019,6 @@ if_install_ftpd() {
         fi
       fi
       cd /var/opt
-      if [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
-        _SSL_MODERN_LIB_PATH=/usr/local/ssl3/lib64
-        sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
-        echo "${_SSL_MODERN_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
-        sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
-        ln -sfn /usr/local/ssl3/include/openssl /usr/include/openssl
-        ldconfig 2> /dev/null
-      fi
       touch ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_SE}-${_X_VERSION}.log
     fi
   fi
