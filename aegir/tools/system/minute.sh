@@ -123,6 +123,7 @@ if [ -e "/var/log/php" ]; then
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
     | grep --count "already listen on"` -gt "0" ]; then
     touch /var/run/fmp_wait.pid
+    touch /var/run/restarting_fmp_wait.pid
     sleep 8
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
@@ -139,12 +140,14 @@ if [ -e "/var/log/php" ]; then
     done
     sleep 8
     rm -f /var/run/fmp_wait.pid
+    rm -f /var/run/restarting_fmp_wait.pid
     echo "$(date 2>&1) FPM instances conflict detected" >> \
       /var/xdrago/log/fpm.conflict.incident.log
   fi
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
     | grep --count "process.max"` -gt "0" ]; then
     touch /var/run/fmp_wait.pid
+    touch /var/run/restarting_fmp_wait.pid
     sleep 8
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
@@ -161,6 +164,7 @@ if [ -e "/var/log/php" ]; then
     done
     sleep 8
     rm -f /var/run/fmp_wait.pid
+    rm -f /var/run/restarting_fmp_wait.pid
     echo "$(date 2>&1) Too many running FPM childs detected" >> \
       /var/xdrago/log/fpm.childs.incident.log
   fi
@@ -329,6 +333,7 @@ fpm_sockets_healing() {
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
     | grep --count "Address already in use"` -gt "0" ]; then
     touch /var/run/fmp_wait.pid
+    touch /var/run/restarting_fmp_wait.pid
     sleep 8
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     _NOW=${_NOW//[^0-9-]/}
@@ -344,6 +349,7 @@ fpm_sockets_healing() {
     done
     sleep 8
     rm -f /var/run/fmp_wait.pid
+    rm -f /var/run/restarting_fmp_wait.pid
     echo "$(date 2>&1) FPM Sockets conflict detected" >> \
       /var/xdrago/log/fpm.sockets.incident.log
   fi

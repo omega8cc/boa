@@ -7200,32 +7200,32 @@ java_check_fix() {
   fi
 
   if [ "${_OSR}" = "daedalus" ] || [ "${_OSR}" = "bookworm" ]; then
-    if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
-      && [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
-      ln -sfn /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/java-17-openjdk
+    if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \
+      && [ -d "/usr/lib/jvm/java-11-openjdk-amd64" ]; then
+      ln -sfn /usr/lib/jvm/java-11-openjdk-amd64 /usr/lib/jvm/java-11-openjdk
     fi
-    if [ ! -e "/usr/lib/jvm/java-17-openjdk" ] \
-      && [ -d "/usr/lib/jvm/java-17-openjdk-i386" ]; then
-      ln -sfn /usr/lib/jvm/java-17-openjdk-i386 /usr/lib/jvm/java-17-openjdk
+    if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \
+      && [ -d "/usr/lib/jvm/java-11-openjdk-i386" ]; then
+      ln -sfn /usr/lib/jvm/java-11-openjdk-i386 /usr/lib/jvm/java-11-openjdk
     fi
-    if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-i386" ]; then
+    if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-i386" ]; then
       rm -f /usr/lib/jvm/default-java
-      ln -sfn /usr/lib/jvm/java-1.17.0-openjdk-i386 /usr/lib/jvm/default-java
+      ln -sfn /usr/lib/jvm/java-1.11.0-openjdk-i386 /usr/lib/jvm/default-java
     fi
-    if [ ! -e "/usr/bin/java17" ] \
-      && [ -e "/usr/lib/jvm/java-17-openjdk-amd64/bin/java" ]; then
-      ln -sfn /usr/lib/jvm/java-17-openjdk-amd64/bin/java /usr/bin/java17
+    if [ ! -e "/usr/bin/java11" ] \
+      && [ -e "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
+      ln -sfn /usr/lib/jvm/java-11-openjdk-amd64/bin/java /usr/bin/java11
     fi
-    if [ ! -e "/usr/bin/java17" ] \
-      && [ -e "/usr/lib/jvm/java-17-openjdk-i386/bin/java" ]; then
-      ln -sfn /usr/lib/jvm/java-17-openjdk-i386/bin/java /usr/bin/java17
+    if [ ! -e "/usr/bin/java11" ] \
+      && [ -e "/usr/lib/jvm/java-11-openjdk-i386/bin/java" ]; then
+      ln -sfn /usr/lib/jvm/java-11-openjdk-i386/bin/java /usr/bin/java11
     fi
-    if [ -e "/usr/lib/jvm/java-1.17.0-openjdk-amd64" ]; then
+    if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-amd64" ]; then
       rm -f /usr/lib/jvm/default-java
-      ln -sfn /usr/lib/jvm/java-1.17.0-openjdk-amd64 /usr/lib/jvm/default-java
+      ln -sfn /usr/lib/jvm/java-1.11.0-openjdk-amd64 /usr/lib/jvm/default-java
     fi
-    if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ]; then
-      ln -sfn /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
+    if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
+      ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
       ln -sfn /etc/alternatives/java /usr/bin/java
     fi
   else
