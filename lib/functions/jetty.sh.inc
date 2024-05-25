@@ -61,10 +61,17 @@ if_install_jetty() {
     fi
   fi
   if [ -e "/etc/default/${_N_SOLR}.in.sh" ]; then
-    _SOLR7_JAVA_TEST=$(grep "BOA ${_X_SE} Path to Java" /etc/default/${_N_SOLR}.in.sh 2>&1)
-    if [[ "${_SOLR7_JAVA_TEST}" =~ "BOA ${_X_SE} Path to Java" ]]; then
+    _SOLR7_JAVA_TEST=$(grep "BOA ${_X_SE} Path to Java on ${_OSR}" /etc/default/${_N_SOLR}.in.sh 2>&1)
+    if [[ "${_SOLR7_JAVA_TEST}" =~ "BOA ${_X_SE} Path to Java on ${_OSR}" ]]; then
       _DO_NOTHING=YES
     else
+      sed -i "s/^SOLR_JAVA_HOME=.*//g" /etc/default/${_N_SOLR}.in.sh
+      wait
+      sed -i "s/^LOG4J_FORMAT_MSG_NO_LOOKUPS=.*//g" /etc/default/${_N_SOLR}.in.sh
+      wait
+      sed -i "/^$/d" /etc/default/${_N_SOLR}.in.sh
+      wait
+      echo "LOG4J_FORMAT_MSG_NO_LOOKUPS=true" >> /etc/default/${_N_SOLR}.in.sh
       if [ "${_OSR}" = "jessie" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # BOA ${_X_SE} Path to Java 8" >> \
           /etc/default/${_N_SOLR}.in.sh
