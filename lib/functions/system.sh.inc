@@ -4419,14 +4419,17 @@ finale() {
   msg "JOKE: Just kidding !!! Enjoy your Aegir Hosting System :)"
   mrun "sleep 3"
   echo " "
-  if [ "${_UP_LNX}" = "YES" ]; then
-    msg "NOTE: Your OS kernel has been upgraded!"
-    if [ ! -e "/usr/sbin/uptrack-upgrade" ]; then
-      msg "NOTE: You *must* reboot immediately to stay secure!"
-    else
-      msg "NOTE: You have Ksplice rebootless kernel updates installed"
-      msg "HINT: It is recommened to run the uptrack-upgrade -y command"
+  _KERNEL_UP=NO
+  if [ -e "/run/reboot-required.pkgs" ]; then
+    _T_KERNEL_TEST=$(grep linux /run/reboot-required.pkgs 2>&1)
+    if [[ "${_T_KERNEL_TEST}" =~ "linux" ]]; then
+      _KERNEL_UP=YES
     fi
+  fi
+  if [ "${_UP_LNX}" = "YES" ] || [ "${_KERNEL_UP}" = "YES" ]; then
+    msg "NOTE: Your OS kernel has been upgraded"
+    msg "NOTE: Please reboot this server to activate the new kernel"
+    msg "NOTE: Use 'boa reboot' command for optimized reboot"
     echo " "
     mrun "sleep 8"
   fi
