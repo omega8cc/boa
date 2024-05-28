@@ -1705,10 +1705,17 @@ if_php_idle_on_off() {
     touch /root/.allow-php-multi-install-cleanup.cnf
     php_if_versions_cleanup_cnf
     sed -i "s/^_PHP_IDLE.*//g" ${barCnf}
-    echo " "
-    msg "Bye"
     [ -e "/root/.proxy.cnf" ] && rm -f /root/.proxy.cnf
-    clean_pid_exit
+    if [ -e "/root/.run-to-daedalus.cnf" ] \
+      || [ -e "/root/.run-to-chimaera.cnf" ] \
+      || [ -e "/root/.run-to-beowulf.cnf" ]; then
+      echo " "
+      msg "Bye"
+      clean_pid_exit
+    else
+      complete
+      exit 0
+    fi
   fi
 }
 
@@ -4419,14 +4426,17 @@ finale() {
   msg "JOKE: Just kidding !!! Enjoy your Aegir Hosting System :)"
   mrun "sleep 3"
   echo " "
-  if [ "${_UP_LNX}" = "YES" ]; then
-    msg "NOTE: Your OS kernel has been upgraded!"
-    if [ ! -e "/usr/sbin/uptrack-upgrade" ]; then
-      msg "NOTE: You *must* reboot immediately to stay secure!"
-    else
-      msg "NOTE: You have Ksplice rebootless kernel updates installed"
-      msg "HINT: It is recommened to run the uptrack-upgrade -y command"
+  _KERNEL_UP=NO
+  if [ -e "/run/reboot-required.pkgs" ]; then
+    _T_KERNEL_TEST=$(grep linux /run/reboot-required.pkgs 2>&1)
+    if [[ "${_T_KERNEL_TEST}" =~ "linux" ]]; then
+      _KERNEL_UP=YES
     fi
+  fi
+  if [ "${_UP_LNX}" = "YES" ] || [ "${_KERNEL_UP}" = "YES" ]; then
+    msg "NOTE: Your OS kernel has been upgraded"
+    msg "NOTE: Please reboot this server to activate the new kernel"
+    msg "NOTE: Use 'boa reboot' command for optimized reboot"
     echo " "
     mrun "sleep 8"
   fi
@@ -5997,13 +6007,13 @@ sys_packages_install() {
       elif [ "${_OSR}" = "bullseye" ]; then
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "bookworm" ]; then
-        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "beowulf" ]; then
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "chimaera" ]; then
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "daedalus" ]; then
-        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
       fi
     else
       _APT_XTRA="nginx"
@@ -6036,13 +6046,13 @@ sys_packages_install() {
       elif [ "${_OSR}" = "bullseye" ]; then
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "bookworm" ]; then
-        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "beowulf" ]; then
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "chimaera" ]; then
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "daedalus" ]; then
-        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
       fi
     else
       _APT_XTRA=""
