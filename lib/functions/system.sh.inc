@@ -1705,10 +1705,17 @@ if_php_idle_on_off() {
     touch /root/.allow-php-multi-install-cleanup.cnf
     php_if_versions_cleanup_cnf
     sed -i "s/^_PHP_IDLE.*//g" ${barCnf}
-    echo " "
-    msg "Bye"
     [ -e "/root/.proxy.cnf" ] && rm -f /root/.proxy.cnf
-    clean_pid_exit
+    if [ -e "/root/.run-to-daedalus.cnf" ] \
+      || [ -e "/root/.run-to-chimaera.cnf" ] \
+      || [ -e "/root/.run-to-beowulf.cnf" ]; then
+      echo " "
+      msg "Bye"
+      clean_pid_exit
+    else
+      complete
+      exit 0
+    fi
   fi
 }
 
