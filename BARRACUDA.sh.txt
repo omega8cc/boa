@@ -359,6 +359,12 @@ mytop_install
 run_aptitude_full_upgrade
 run_aptitude_deps_install
 kill_nash
+if [ "${_STATUS}" = "UPGRADE" ]; then
+  if [ ! -e "/root/.install.modern.openssl.cnf" ]; then
+    touch /root/.install.modern.openssl.cnf
+    chattr +i /root/.install.modern.openssl.cnf
+  fi
+fi
 ssl_install_src
 ssl_crypto_lib_fix
 curl_install_src
