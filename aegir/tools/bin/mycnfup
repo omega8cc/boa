@@ -347,6 +347,11 @@ check_root() {
         _APT_REPSRC="${_OSR}-updates"
         _SEC_MIRROR="security.debian.org/debian-security"
         _SEC_REPSRC="${_OSR}-security"
+      elif [ "${_OSR}" = "bookworm" ]; then
+        _APT_MIRROR="${_MIRROR}/debian"
+        _APT_REPSRC="${_OSR}-updates"
+        _SEC_MIRROR="security.debian.org/debian-security"
+        _SEC_REPSRC="${_OSR}-security"
       fi
       echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
       echo "deb http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
