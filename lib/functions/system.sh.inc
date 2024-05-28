@@ -3252,6 +3252,11 @@ sources_list_update() {
         _APT_REPSRC="${_OSR}-updates"
         _SEC_MIRROR="security.debian.org/debian-security"
         _SEC_REPSRC="${_OSR}-security"
+      elif [ "${_OSR}" = "bookworm" ]; then
+        _APT_MIRROR="${_MIRROR}/debian"
+        _APT_REPSRC="${_OSR}-updates"
+        _SEC_MIRROR="security.debian.org/debian-security"
+        _SEC_REPSRC="${_OSR}-security"
       fi
       echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
       echo "deb http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
@@ -5489,6 +5494,11 @@ if_major_os_upgrade() {
         _NEW_SEC_MIRROR="security.debian.org"
         _NEW_SEC_REPSRC="${_NEW_OSR}/updates"
       elif [ "${_NEW_OSR}" = "bullseye" ]; then
+        _NEW_APT_MIRROR="deb.debian.org/debian"
+        _NEW_APT_REPSRC="${_NEW_OSR}-updates"
+        _NEW_SEC_MIRROR="security.debian.org/debian-security"
+        _NEW_SEC_REPSRC="${_NEW_OSR}-security"
+      elif [ "${_NEW_OSR}" = "bookworm" ]; then
         _NEW_APT_MIRROR="deb.debian.org/debian"
         _NEW_APT_REPSRC="${_NEW_OSR}-updates"
         _NEW_SEC_MIRROR="security.debian.org/debian-security"

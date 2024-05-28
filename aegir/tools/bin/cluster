@@ -123,6 +123,11 @@ check_root() {
         _APT_REPSRC="${_OSR}-updates"
         _SEC_MIRROR="security.debian.org/debian-security"
         _SEC_REPSRC="${_OSR}-security"
+      elif [ "${_OSR}" = "bookworm" ]; then
+        _APT_MIRROR="${_MIRROR}/debian"
+        _APT_REPSRC="${_OSR}-updates"
+        _SEC_MIRROR="security.debian.org/debian-security"
+        _SEC_REPSRC="${_OSR}-security"
       fi
       echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
       echo "deb http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
@@ -154,6 +159,9 @@ check_root() {
       _BENG_SERIES="4.9"
       _BNG_VERSION="4.9.202-vs2.3.9.9"
     elif [ "${_OSR}" = "bullseye" ]; then
+      _BENG_SERIES="4.9"
+      _BNG_VERSION="4.9.202-vs2.3.9.9"
+    elif [ "${_OSR}" = "bookworm" ]; then
       _BENG_SERIES="4.9"
       _BNG_VERSION="4.9.202-vs2.3.9.9"
     else
@@ -1138,7 +1146,8 @@ install_vps() {
       if [ "${osx}" = "jessie" ] \
         || [ "${osx}" = "stretch" ] \
         || [ "${osx}" = "buster" ] \
-        || [ "${osx}" = "bullseye" ]; then
+        || [ "${osx}" = "bullseye" ] \
+        || [ "${osx}" = "bookworm" ]; then
         vserver ${idn} exec ${_INSTAPP} sysvinit-core
         vserver ${idn} exec ${_INSTAPP} sysvinit-utils
         if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
@@ -1837,6 +1846,11 @@ install_host() {
     _APT_REPSRC="${_OSR}-updates"
     _SEC_MIRROR="security.debian.org/debian-security"
     _SEC_REPSRC="${_OSR}-security"
+  elif [ "${_OSR}" = "bookworm" ]; then
+    _APT_MIRROR="${_MIRROR}/debian"
+    _APT_REPSRC="${_OSR}-updates"
+    _SEC_MIRROR="security.debian.org/debian-security"
+    _SEC_REPSRC="${_OSR}-security"
   fi
   echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
   echo "deb http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
@@ -1987,7 +2001,8 @@ install_host() {
     if [ "${osx}" = "jessie" ] \
       || [ "${osx}" = "stretch" ] \
       || [ "${osx}" = "buster" ] \
-      || [ "${osx}" = "bullseye" ]; then
+      || [ "${osx}" = "bullseye" ] \
+      || [ "${osx}" = "bookworm" ]; then
       apt_clean_update
       echo "sysvinit-core install" | dpkg --set-selections
       echo "sysvinit-utils install" | dpkg --set-selections
@@ -2049,7 +2064,8 @@ upgrade_host() {
     if [ "${osx}" = "jessie" ] \
       || [ "${osx}" = "stretch" ] \
       || [ "${osx}" = "buster" ] \
-      || [ "${osx}" = "bullseye" ]; then
+      || [ "${osx}" = "bullseye" ] \
+      || [ "${osx}" = "bookworm" ]; then
       ${_INSTAPP} sysvinit-core
       ${_INSTAPP} sysvinit-utils
       if [ -e "/usr/share/sysvinit/inittab" ]; then
