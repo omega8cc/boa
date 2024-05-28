@@ -5997,13 +5997,13 @@ sys_packages_install() {
       elif [ "${_OSR}" = "bullseye" ]; then
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "bookworm" ]; then
-        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "beowulf" ]; then
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "chimaera" ]; then
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "daedalus" ]; then
-        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
       fi
     else
       _APT_XTRA="nginx"
