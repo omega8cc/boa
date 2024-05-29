@@ -592,6 +592,7 @@ octopus_install() {
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
       || [ "${cmmand}" = "init" ] \
+      || [ "${cmmand}" = "init-dev" ] \
       || [ "${copt}" = "dev" ] \
       || [ "${copt}" = "lite" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncO}
@@ -661,6 +662,7 @@ octopus_install() {
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
       || [ "${cmmand}" = "init" ] \
+      || [ "${cmmand}" = "init-dev" ] \
       || [ "${copt}" = "dev" ] \
       || [ "${copt}" = "lite" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncO}
@@ -1012,7 +1014,8 @@ barracuda_install() {
       || [ "${cmmand}" = "in-lite" ] \
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
-      || [ "${cmmand}" = "init" ]; then
+      || [ "${cmmand}" = "init" ] \
+      || [ "${cmmand}" = "init-dev" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
       wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g"   ${vBs}/${filIncB}
@@ -1079,7 +1082,8 @@ barracuda_install() {
       || [ "${cmmand}" = "in-lite" ] \
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
-      || [ "${cmmand}" = "init" ]; then
+      || [ "${cmmand}" = "init" ] \
+      || [ "${cmmand}" = "init-dev" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncB}
       wait
     elif [ "${cmmand}" = "in-cluster" ]; then
@@ -1243,7 +1247,8 @@ init_setup() {
 
   if [ "${cmmand}" = "in-dev" ] \
     || [ "${cmmand}" = "in-lite" ] \
-    || [ "${cmmand}" = "init" ]; then
+    || [ "${cmmand}" = "init" ] \
+    || [ "${cmmand}" = "init-dev" ]; then
     if [ ! -z "${silent}" ]; then
       curl ${crlGet} "${rgUrl}/feature/${silent}/${barName}" -o ${vBs}/${barName}
       curl ${crlGet} "${rgUrl}/feature/${silent}/${octName}" -o ${vBs}/${octName}
@@ -1334,7 +1339,7 @@ init_setup() {
     barracuda_install
   fi
   if [ "${kind}" != "dbhd" ]; then
-    if [ "${cmmand}" != "init" ]; then
+    if [ "${cmmand}" != "init" ] && [ "${cmmand}" != "init-dev" ]; then
       octopus_install
     fi
   fi
@@ -2128,6 +2133,16 @@ case "$1" in
              check_root_keys_pwd
              check_virt
              check_dns_curl
+             mode="$2"
+             init_setup
+  ;;
+  init-dev)  cmmand="$1"
+             tRee=dev
+             check_root
+             check_root_keys_pwd
+             check_virt
+             check_dns_curl
+             mode="$2"
              init_setup
   ;;
   cleanup)   cmmand="$1"
