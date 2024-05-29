@@ -2282,8 +2282,12 @@ case "$1" in
              init_setup
   ;;
   *)         echo
+             echo "Installation commands"
+             echo "Usage: $(basename "$0") {init} {debian|daedalus|chimaera}"
              echo "Usage: $(basename "$0") {version} {mode} {fqdn} {email} {user} {platforms} {extra} {mysql}"
              echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {mini|max|none} {lite|dev}"
+             echo
+             echo "Other available commands"
              echo "Usage: $(basename "$0") version"
              echo "Usage: $(basename "$0") info {more}"
              echo "Usage: $(basename "$0") info report {octopus|backups|both}"
@@ -2292,13 +2296,19 @@ case "$1" in
              echo
              cat <<EOF
 
-  Accepted keywords and values in every option:
+  Accepted keywords and values for installation and other commands:
+
+  {other}
+      version <------ display BOA and OS version
+      info <--------- generate various system reports
+      cleanup <------ (detect|purge) cancelled Octopus instances files (no dbs)
+      reboot <------- run accelerated system reboot
 
   {version}
+      init <--------- initialize system before installation (debian|devaun|daedalus|chimaera)
       in-lite <------ install BOA Lite release (no license)
       in-dev <------- install BOA Cutting Edge (requires license)
       in-octopus <--- install extra Octopus instance (lite|dev)
-      reboot <------- run accelerated system reboot
 
   {mode}
       public <------- recommended for general use
