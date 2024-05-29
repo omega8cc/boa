@@ -74,6 +74,12 @@ sub makeactions
       print "RESTX: $RESTX\n";
     }
 
+    $block_unknown = 0;
+    if ($VISITOR =~ /^(unknown)/)
+    {
+      $block_unknown = 1;
+    }
+
     if ($VISITOR =~ /^((192\.168\.)|(172\.16\.)|(unknown)|(10\.)|(127\.0\.))/)
     {
       $VISITOR = $PROXY;
@@ -93,6 +99,7 @@ sub makeactions
         }
       }
     }
+
     $VISITOR =~ s/[^0-9\.]//g;
     if ($VISITOR !~ /^((192\.168\.)|(172\.16\.)|(10\.)|(127\.0\.))/ && $VISITOR =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
       chomp($line);
@@ -144,6 +151,7 @@ sub makeactions
             $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 1  if ($line =~ /POST/);
           }
         }
+        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 999  if ($block_unknown > 0);
       }
       else {
         if ($line =~ /0.000/) {
@@ -206,6 +214,7 @@ sub makeactions
             $px_cnt{$PROXY} = $px_cnt{$PROXY} + 1  if ($line =~ /POST/);
           }
         }
+        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 999  if ($block_unknown > 0);
       }
       else {
         if ($line =~ /0.000/) {
