@@ -236,6 +236,19 @@ get_dev_src() {
   fi
 }
 
+if_system_dist_upgrade_to_devuan_on_init() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_system_dist_upgrade_to_devuan_on_init"
+  fi
+  if [ -e "/root/.run.devaun.os.upgrade.on.init.cnf" ] \
+    || [ "${_UP_DISTRO}" = "ON" ]; then
+    barracuda_cnf
+    if_major_os_upgrade
+    sed -i "s/^_UP_DISTRO.*//g" ${barCnf}
+    clean_pid_exit
+  fi
+}
+
 normalize_ip_name_variables() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: normalize_ip_name_variables"
@@ -284,6 +297,11 @@ mode_detection() {
     && [ -e "/lib/systemd/systemd" ]; then
     _STATUS=SYSTEMD
     msg "MODE: SYSTEMD"
+    touch /var/run/boa_wait.pid
+  elif [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
+    && [ -e "/root/.run.devaun.os.upgrade.on.init.cnf" ]; then
+    _STATUS=DISTRO
+    msg "MODE: DISTRO"
     touch /var/run/boa_wait.pid
   else
     _STATUS=INIT

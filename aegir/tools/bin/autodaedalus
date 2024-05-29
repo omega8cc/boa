@@ -195,9 +195,11 @@ faster_reboot() {
   msg "Faster reboot done" >> ${logAds}
 }
 
-if [ ! -e "/root/.run-to-daedalus.cnf" ] \
-  || [ ! -e "${barCnf}" ]; then
-  exit 1
+if [ ! -e "/root/.run.devaun.os.upgrade.on.init.cnf" ]; then
+  if [ ! -e "/root/.run-to-daedalus.cnf" ] \
+    || [ ! -e "${barCnf}" ]; then
+    exit 1
+  fi
 fi
 
 _CHECK_SYS=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
@@ -216,11 +218,13 @@ check_sql_running() {
 }
 ###check_sql_running
 
-_DB_SERIES=5.7
-_DB_SERVER_TEST=$(mysql -V 2>&1)
-if [[ ! "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
-  msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> ${logAds}
-  exit 1
+if [ ! -e "/root/.run.devaun.os.upgrade.on.init.cnf" ]; then
+  _DB_SERIES=5.7
+  _DB_SERVER_TEST=$(mysql -V 2>&1)
+  if [[ ! "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
+    msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> ${logAds}
+    exit 1
+  fi
 fi
 
 if [ -e "/root/.run-to-daedalus.cnf" ]; then
@@ -244,14 +248,18 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
   echo " " >> ${logAds}
-  msg "Running barracuda php-idle disable to speed up upgrades" >> ${logAds}
-  barracuda php-idle disable >> ${logAds}
-  wait
-  msg "The barracuda php-idle disable completed" >> ${logAds}
-  msg "Launching standard barracuda up-${tRee} system now" >> ${logAds}
-  barracuda up-${tRee} system >> ${logAds}
-  wait
-  msg "The standard barracuda up-${tRee} system completed" >> ${logAds}
+  if [ ! -e "/root/.run.devaun.os.upgrade.on.init.cnf" ]; then
+    msg "Running barracuda php-idle disable to speed up upgrades" >> ${logAds}
+    barracuda php-idle disable >> ${logAds}
+    wait
+    msg "The barracuda php-idle disable completed" >> ${logAds}
+    msg "Launching standard barracuda up-${tRee} system now" >> ${logAds}
+    barracuda up-${tRee} system >> ${logAds}
+    wait
+    msg "The standard barracuda up-${tRee} system completed" >> ${logAds}
+  else
+    touch /root/.latest-barracuda-upgrade-finale.info
+  fi
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
     _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
     _THIS_SYS=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
@@ -381,6 +389,12 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   msg "That's all folks!" >> ${logAds}
   msg "Bye!" >> ${logAds}
   echo " " >> ${logAds}
+  if [ -e "/root/.run.devaun.os.upgrade.on.init.cnf" ]; then
+    mv -f /root/.run.devaun.os.upgrade.on.init.cnf /root/.done.devaun.os.upgrade.on.init.cnf
+    if [ -e "/root/.barracuda.cnf" ]; then
+      mv -f /root/.barracuda.cnf /root/.init.barracuda.cnf
+    fi
+  fi
 fi
 
 exit 0

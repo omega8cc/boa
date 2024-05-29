@@ -295,6 +295,12 @@ systemd_cleanup_on_init
 
 
 ###
+### System dist upgrade to Devuan on init
+###
+if_system_dist_upgrade_to_devuan_on_init
+
+
+###
 ### Misc checks
 ###
 check_boa_php_compatibility

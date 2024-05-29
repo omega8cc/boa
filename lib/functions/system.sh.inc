@@ -4852,7 +4852,9 @@ systemd_cleanup_on_init() {
   if [ -e "/root/.step.init.systemd.two.cnf" ] \
     && [ -e "/root/.step.init.systemd.one.cnf" ] \
     && [ -e "/root/.run.devaun.os.upgrade.on.init.cnf" ] \
-    && [ ! -e "/lib/systemd/systemd" ]; then
+    && [ ! -e "/lib/systemd/systemd" ] \
+    && [ ! -e "/root/.run-to-chimaera.cnf" ] \
+    && [ ! -e "/root/.run-to-daedalus.cnf" ]; then
     echo
     if [ ! -x "/etc/init.d/clean-boa-env" ]; then
       cp -af ${locCnf}/clean-boa-env /etc/init.d/clean-boa-env
@@ -5708,6 +5710,9 @@ if_major_os_upgrade() {
     fi
     if [ "${_FORCE_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
       _REBUILD_SRC_ON_AUTO_NOW=YES
+    fi
+    if [ -e "/root/.run.devaun.os.upgrade.on.init.cnf" ]; then
+      _REBUILD_SRC_ON_AUTO_NOW=NO
     fi
     rm -f /root/.rebuild_src_on_auto_before_reboot.info
     if [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
