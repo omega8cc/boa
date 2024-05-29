@@ -4849,6 +4849,39 @@ systemd_cleanup_on_init() {
     echo "Bye"
     clean_pid_exit
   fi
+  if [ -e "/root/.step.init.systemd.two.cnf" ] \
+    && [ -e "/root/.step.init.systemd.one.cnf" ] \
+    && [ -e "/root/.run.devaun.os.upgrade.on.init.cnf" ] \
+    && [ ! -e "/lib/systemd/systemd" ]; then
+    echo
+    if [ ! -x "/etc/init.d/clean-boa-env" ]; then
+      cp -af ${locCnf}/clean-boa-env /etc/init.d/clean-boa-env
+      chmod 755 /etc/init.d/clean-boa-env &> /dev/null
+      mrun "update-rc.d clean-boa-env defaults" &> /dev/null
+    fi
+    if [ -e "/root/.run.chimaera.os.upgrade.on.init.cnf" ]; then
+      msg "AUTO: System major upgrade to Devuan Chimaera will start now"
+      runToLog="/root/.autochimaera.log"
+      touch /root/.run-to-chimaera.cnf
+    else
+      msg "AUTO: System major upgrade to Devuan Daedalus will start now"
+      runToLog="/root/.autodaedalus.log"
+      touch /root/.run-to-daedalus.cnf
+    fi
+    msg "AUTO: It will reboot this server twice and continue upgrades"
+    msg "AUTO: You can monitor the progress with command:"
+    echo
+    msg "  tail -f ${runToLog}"
+    echo
+    msg "WARN: Do not run BOA installation until major upgrade is complete!"
+    msg "AUTO: It is complete once you see: That's all folks! in the log above"
+    echo
+    service clean-boa-env start &> /dev/null
+    echo
+    mrun "sleep 3"
+    echo "Bye"
+    clean_pid_exit
+  fi
 }
 
 basic_packages_install_on_init() {

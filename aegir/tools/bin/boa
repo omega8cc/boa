@@ -1099,6 +1099,16 @@ barracuda_install() {
       wait
     fi
 
+    if [ "${cmmand}" = "init" ] || [ "${cmmand}" = "init-dev" ]; then
+      if [ "${mode}" = "devaun" ] || [ "${mode}" = "daedalus" ]; then
+        touch /root/.run.devaun.os.upgrade.on.init.cnf
+        touch /root/.run.daedalus.os.upgrade.on.init.cnf
+      elif [ "${mode}" = "chimaera" ]; then
+        touch /root/.run.devaun.os.upgrade.on.init.cnf
+        touch /root/.run.chimaera.os.upgrade.on.init.cnf
+      fi
+    fi
+
     if [ -e "${vBs}/${barName}" ]; then
       bash ${vBs}/${barName}
       wait
