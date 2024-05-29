@@ -200,7 +200,7 @@ if [ ! -e "/root/.run-to-chimaera.cnf" ] \
   exit 1
 fi
 
-_CHECK_SYS=$(lsb_release -sc 2>&1)
+_CHECK_SYS=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 if [ -e "/root/.auto-upgraded-to-chimaera.cnf" ] \
   && [ "${_CHECK_SYS}" = "chimaera" ]; then
   exit 1
@@ -253,8 +253,8 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   wait
   msg "The standard barracuda up-${tRee} system completed" >> ${logAch}
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
-    _THIS_OS=$(lsb_release -si 2>&1)
-    _THIS_SYS=$(lsb_release -sc 2>&1)
+    _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+    _THIS_SYS=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
     if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
       || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
       _REAL_OS="Devuan"
@@ -305,8 +305,8 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   wait
   msg "The post-reboot barracuda up-${tRee} system completed" >> ${logAch}
   echo " " >> ${logAch}
-  _THIS_OS=$(lsb_release -si 2>&1)
-  _THIS_SYS=$(lsb_release -sc 2>&1)
+  _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _THIS_SYS=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
     || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
     _REAL_OS="Devuan"

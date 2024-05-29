@@ -14,8 +14,8 @@ _UTIL_VRN="0.30.216-pre3126"
 _VNSTAT_VRN="2.7"
 _APT_XTR="-y"
 _INST="/usr/bin/apt-get -y --allow-unauthenticated install"
-_THIS_OS=$(lsb_release -si 2>&1)
-_OSR=$(lsb_release -sc 2>&1)
+_THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+_OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 aptLiSys="/etc/apt/sources.list"
 tRee=dev
 export tRee="${tRee}"
@@ -63,7 +63,7 @@ clean_pid_exit() {
 
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -sc 2>&1)
+  _THIS_RV=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_THIS_RV}" ]; then
@@ -2259,7 +2259,7 @@ check_heads() {
       if [ -e "/usr/var/run/vservers/${_THIS_VM}" ] \
         && [ -e "${i}/var/run/crond.pid" ]; then
         _VS_HOSTNAME=`vserver ${_VS_NAME} exec hostname 2>&1`
-        _VS_OS=`vserver ${_VS_NAME} exec lsb_release -sc 2>&1`
+        _VS_OS=`vserver ${_VS_NAME} exec lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1`
         echo "The ${_VS_HOSTNAME} ${_VS_NAME} VM is running ${_VS_OS}"
         vserver ${_VS_NAME} exec ${optBin}/boa info ${mod} ${ext}
       fi

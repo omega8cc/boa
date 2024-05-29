@@ -55,7 +55,7 @@ _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
 
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -sc 2>&1)
+  _THIS_RV=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_THIS_RV}" ]; then
@@ -145,8 +145,8 @@ _DOM=${_DOM//[^0-9]/}
 _SAVELOCATION=${_BACKUPDIR}/${_CHECK_HOST}-${_DATE}
 _VM_TEST=$(uname -a 2>&1)
 _LOGDIR="/var/xdrago/log/hourly"
-_THIS_OS=$(lsb_release -si 2>&1)
-_OSR=$(lsb_release -sc 2>&1)
+_THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+_OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 else

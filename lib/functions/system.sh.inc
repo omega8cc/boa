@@ -126,8 +126,8 @@ define_loc_osr() {
   mrun "apt-get upgrade ${nrmUpArg}" 2> /dev/null
   mrun "apt-get full-upgrade ${nrmUpArg}" 2> /dev/null
   mrun "apt-get install lsb-release ${nrmUpArg}" 2> /dev/null
-  _THIS_OS=$(lsb_release -si 2>&1)
-  _OSR=$(lsb_release -sc 2>&1)
+  _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: define_loc_osr"
   fi
@@ -2720,7 +2720,7 @@ if_install_wkhtmltox() {
   ###--------------------###
   apt_clean_update
   mrun "${_INSTAPP} fonts-thai-tlwg" 2> /dev/null
-  _THIS_RV=$(lsb_release -sc 2>&1)
+  _THIS_RV=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _X86_64_TEST=$(uname -m 2>&1)
   _WOX_IS=OLD
   _WOX_ITD=$(wkhtmltopdf --version 2>&1 \
@@ -4472,11 +4472,11 @@ finale() {
   mv -f /etc/motd ${vBs}/dragon/t/motd-pre-${_X_SE}-${_MTD_VR}-${_NOW} &> /dev/null
   mv -f /etc/motd-pre-* ${vBs}/dragon/t/ &> /dev/null
   echo > /etc/motd
-  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) \
+  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
     welcomes you aboard" | fmt -su -w 2500 >> /etc/motd
   echo >> /etc/motd
   echo > /etc/motd.tail
-  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) \
+  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
     welcomes you aboard" | fmt -su -w 2500 >> /etc/motd.tail
   echo >> /etc/motd.tail
   aptitude autoclean -y &> /dev/null

@@ -565,7 +565,7 @@ os_detection_minimal() {
     msg "PROC: os_detection_minimal"
   fi
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -sc 2>&1)
+  _THIS_RV=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_THIS_RV}" ]; then
@@ -584,8 +584,8 @@ os_detection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: os_detection"
   fi
-  _THIS_OS=$(lsb_release -si 2>&1)
-  _THIS_RV=$(lsb_release -sc 2>&1)
+  _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _THIS_RV=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ "${_THIS_OS}" = "Debian" ]; then
     if [ "${_THIS_RV}" = "bookworm" ]; then
       _OSR="bookworm"
@@ -674,7 +674,7 @@ os_detection() {
     not_supported_os
   fi
   echo " "
-  thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
+  thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
   thiSys="$(uname -n 2>&1) ${thiSys} PHP ${_PHP_FPM_VERSION}"
   msg "Aegir on ${thiSys}"
   echo " "
@@ -849,7 +849,7 @@ barracuda_log_update() {
     | awk '{ print $1}' \
     | sed "s/[\,']//g" 2>&1)
   _BARRACUDA_VERSION_INFO="$(date 2>&1) / \
-    $(lsb_release -si 2>&1).$(lsb_release -sc 2>&1) \
+    $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1).$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
     $(uname -m 2>&1) ${_VIRT_IS} / \
     Aegir ${_AEGIR_VERSION} / \
     Barracuda ${_X_VERSION}${_LOG_GIT_MIRROR} / \

@@ -3941,8 +3941,8 @@ satellite_make() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     echo "PROC: satellite_make"
   fi
-  export _THIS_OS=$(lsb_release -si 2>&1)
-  export _OSR=$(lsb_release -sc 2>&1)
+  export _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  export _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ -d "/data/all/000" ]; then
     if [ ! -e "/data/all/000/core-v-${_SMALLCORE6_V}.txt" ] \
       || [ ! -e "/data/all/000/core-v-${_SMALLCORE7_V}.txt" ]; then
@@ -4763,7 +4763,7 @@ EOF
 EOF
     else
       echo " "
-      thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
+      thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
       msg "This Octopus System is ${thiSys}"
       msg "This Octopus PHP FPM/CLI version is ${_PHP_FPM_VERSION}/${_PHP_CLI_VERSION}"
       msg "This Octopus URL address is ${_DOMAIN}"

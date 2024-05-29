@@ -202,7 +202,7 @@ if [ ! -e "/root/.run-to-beowulf.cnf" ] \
   exit 1
 fi
 
-_CHECK_SYS=$(lsb_release -sc 2>&1)
+_CHECK_SYS=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 if [ -e "/root/.auto-upgraded-to-beowulf.cnf" ] \
   && [ "${_CHECK_SYS}" = "beowulf" ]; then
   exit 1
@@ -255,8 +255,8 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
   wait
   msg "The standard barracuda up-${tRee} system completed" >> ${logAbf}
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
-    _THIS_OS=$(lsb_release -si 2>&1)
-    _THIS_SYS=$(lsb_release -sc 2>&1)
+    _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+    _THIS_SYS=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
     _REAL_OS="${_THIS_OS}"
     _REAL_OSR="${_THIS_SYS}"
     if [ "${_REAL_OSR}" = "jessie" ]; then

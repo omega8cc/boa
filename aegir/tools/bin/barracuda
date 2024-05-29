@@ -52,7 +52,7 @@ clean_pid_exit() {
 
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -sc 2>&1)
+  _THIS_RV=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_THIS_RV}" ]; then
@@ -905,7 +905,7 @@ up_action() {
       fi
       sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"       ${barCnf}
       wait
-      _THIS_RV=$(lsb_release -sc 2>&1)
+      _THIS_RV=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
       if [ -e "/etc/default/tomcat" ] \
         && [ -e "/etc/init.d/tomcat" ] \
         && [ -e "${barCnf}" ]; then
