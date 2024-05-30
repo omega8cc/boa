@@ -116,6 +116,7 @@ find_fast_mirror_early() {
     fi
     apt_clean_update
     apt-get install netcat ${aptYesUnth}
+    apt-get install netcat-traditional ${aptYesUnth}
     wait
   fi
   ffMirr=$(which ffmirror 2>&1)
