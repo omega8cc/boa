@@ -5258,7 +5258,8 @@ if_major_os_upgrade() {
   define_loc_osr
   if [ ! -z "${_MSG_LOC}" ]; then
     if [ ! -e "/usr/local/lib/icu/73.1" ] \
-      && [ "${_LOC_OSR}" != "jessie" ]; then
+      && [ "${_LOC_OSR}" != "jessie" ] \
+      && [ ! -e "/root/.run.devaun.os.upgrade.on.init.cnf" ]; then
       echo
       msg "OOPS: Please run normal 'barracuda up-${tRee}' upgrade"
       msg "OOPS: before trying to run major OS upgrade"
