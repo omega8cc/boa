@@ -295,12 +295,6 @@ systemd_cleanup_on_init
 
 
 ###
-### System dist upgrade to Devuan on init
-###
-if_system_dist_upgrade_to_devuan_on_init
-
-
-###
 ### Misc checks
 ###
 check_boa_php_compatibility
@@ -317,6 +311,7 @@ check_prepare_dirs_permissions
 ###
 early_sys_ctrl_mark
 if_post_major_os_upgrade
+if_major_os_upgrade_to_devuan_on_init
 if_major_os_upgrade
 normal_sys_ctrl_mark
 
