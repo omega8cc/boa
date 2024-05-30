@@ -19,6 +19,7 @@ set -e
 
 case "$1" in
   start)
+    ntpdate pool.ntp.org
     if [ -e "/root/.run-to-daedalus.cnf" ]; then
       if [ -x "/opt/local/bin/autodaedalus" ]; then
         bash /opt/local/bin/autodaedalus > /dev/null 2>&1 &
