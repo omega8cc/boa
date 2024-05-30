@@ -249,6 +249,13 @@ if_major_os_upgrade_to_devuan_on_init() {
       sed -i "s/^_UP_DISTRO.*//g" ${barCnf}
       touch /root/.already.devaun.os.upgrade.on.init.cnf
       if_major_os_upgrade
+      echo " "
+      msg "Bye"
+      clean_pid_exit
+    else
+      echo " "
+      msg "Bye"
+      clean_pid_exit
     fi
   fi
 }
