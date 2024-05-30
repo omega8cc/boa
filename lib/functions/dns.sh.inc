@@ -777,7 +777,7 @@ EOF
       echo "Installation aborted by you"
       clean_pid_exit
     fi
-  else ### if [ "${_STATUS}" = "UPGRADE" ]; then
+  elif [ "${_STATUS}" = "UPGRADE" ]; then
     _THISHOST=$(cat /etc/hostname 2>&1)
     _THISHOST=$(echo -n ${_THISHOST} | tr -d "\n" 2>&1)
     _THISHOST=${_THISHOST//[^a-zA-Z0-9-.]/}
