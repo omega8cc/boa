@@ -243,6 +243,8 @@ if_system_dist_upgrade_to_devuan_on_init() {
   if [ -e "/root/.run.devaun.os.upgrade.on.init.cnf" ] \
     || [ "${_UP_DISTRO}" = "ON" ]; then
     barracuda_cnf
+    apt_clean_update
+    apt-get install aptitude ${aptYesUnth} &> /dev/null
     if_major_os_upgrade
     sed -i "s/^_UP_DISTRO.*//g" ${barCnf}
     clean_pid_exit
