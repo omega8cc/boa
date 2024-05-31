@@ -52,7 +52,7 @@ _ENABLE_GOACCESS=NO #----------- Generate statistics with GoAccess when YES
 ###
 _MAGICK_FROM_SOURCES=NO #------- Builds ImageMagick from sources when YES
 ###
-_NGINX_DOS_LIMIT=399 #---------- Allows to override default 399/999 limit
+_NGINX_DOS_LIMIT=399 #---------- Allows to override default 399/9999 limit
 _NGINX_EXTRA_CONF="" #---------- Allows to add custom options to Nginx build
 _NGINX_FORWARD_SECRECY=YES #---- Installs PFS Nginx support when YES (default)
 _NGINX_HEADERS=NO #------------- Installs Nginx Headers More support when YES
