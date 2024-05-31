@@ -311,7 +311,6 @@ check_prepare_dirs_permissions
 ###
 early_sys_ctrl_mark
 if_post_major_os_upgrade
-if_major_os_upgrade_to_devuan_on_init
 if_major_os_upgrade
 normal_sys_ctrl_mark
 

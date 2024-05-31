@@ -236,30 +236,6 @@ get_dev_src() {
   fi
 }
 
-if_major_os_upgrade_to_devuan_on_init() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_major_os_upgrade_to_devuan_on_init"
-  fi
-  if [ -e "/root/.run.devaun.os.upgrade.on.init.cnf" ] \
-    || [ "${_UP_DISTRO}" = "ON" ]; then
-    if [ ! -e "/root/.already.devaun.os.upgrade.on.init.cnf" ]; then
-      barracuda_cnf
-      apt_clean_update
-      apt-get install aptitude ${aptYesUnth} &> /dev/null
-      sed -i "s/^_UP_DISTRO.*//g" ${barCnf}
-      touch /root/.already.devaun.os.upgrade.on.init.cnf
-      if_major_os_upgrade
-      echo " "
-      msg "Bye"
-      clean_pid_exit
-    else
-      echo " "
-      msg "Bye"
-      clean_pid_exit
-    fi
-  fi
-}
-
 normalize_ip_name_variables() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: normalize_ip_name_variables"

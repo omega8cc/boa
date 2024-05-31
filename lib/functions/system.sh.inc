@@ -5256,6 +5256,20 @@ if_major_os_upgrade() {
   fi
   _RUNNING_MAJOR_OS_UPGRADE=NO
   define_loc_osr
+  if [ -e "/root/.run.devaun.os.upgrade.on.init.cnf" ] \
+    || [ "${_UP_DISTRO}" = "ON" ]; then
+    if [ ! -e "/root/.already.devaun.os.upgrade.on.init.cnf" ]; then
+      if [ ! -e "${barCnf}" ]; then
+        barracuda_cnf
+      fi
+      apt_clean_update
+      apt-get install aptitude ${aptYesUnth} &> /dev/null
+      sed -i "s/^_UP_DISTRO.*//g" ${barCnf}
+      echo "_DEBUG_MODE=YES" >> ${barCnf}
+      touch /root/.debug-barracuda-installer.cnf
+      touch /root/.already.devaun.os.upgrade.on.init.cnf
+    fi
+  fi
   if [ ! -z "${_MSG_LOC}" ]; then
     if [ ! -e "/usr/local/lib/icu/73.1" ] \
       && [ "${_LOC_OSR}" != "jessie" ] \
