@@ -27,11 +27,19 @@ check_root() {
 check_root
 
 if [ -e "/root/.proxy.cnf" ]; then
+  echo "Ooops, that is a proxy server, we do not run this task on sql proxy"
   exit 0
 fi
 
 _IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}' 2>&1)
 if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
+  echo "Ooops, another mysql procedure/backup is running at the moment"
+  exit 0
+fi
+
+_ALL_DBS_NR=$(ls /var/lib/mysql | wc -l)
+if [ ! -z "${_ALL_DBS_NR}" ] && [ "${_ALL_DBS_NR}" -gt 100 ]; then
+  echo "Sorry, too many databases (${_ALL_DBS_NR}) on this server for this frequent task"
   exit 0
 fi
 
