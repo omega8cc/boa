@@ -1100,11 +1100,11 @@ barracuda_install() {
     fi
 
     if [ "${cmmand}" = "init" ] || [ "${cmmand}" = "init-dev" ]; then
-      if [ "${mode}" = "devaun" ] || [ "${mode}" = "daedalus" ]; then
-        touch /root/.run.devaun.os.upgrade.on.init.cnf
+      if [ "${mode}" = "devuan" ] || [ "${mode}" = "daedalus" ]; then
+        touch /root/.run.devuan.os.upgrade.on.init.cnf
         touch /root/.run.daedalus.os.upgrade.on.init.cnf
       elif [ "${mode}" = "chimaera" ]; then
-        touch /root/.run.devaun.os.upgrade.on.init.cnf
+        touch /root/.run.devuan.os.upgrade.on.init.cnf
         touch /root/.run.chimaera.os.upgrade.on.init.cnf
       fi
     fi
@@ -2316,7 +2316,7 @@ case "$1" in
       reboot <------- run accelerated system reboot
 
   {version}
-      init <--------- initialize system before installation (debian|devaun|daedalus|chimaera)
+      init <--------- initialize system before installation (debian|devuan|daedalus|chimaera)
       in-lite <------ install BOA Lite release (no license)
       in-dev <------- install BOA Cutting Edge (requires license)
       in-octopus <--- install extra Octopus instance (lite|dev)

@@ -195,7 +195,7 @@ faster_reboot() {
   msg "Faster reboot done" >> ${logAch}
 }
 
-if [ ! -e "/root/.run.devaun.os.upgrade.on.init.cnf" ]; then
+if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
   if [ ! -e "/root/.run-to-chimaera.cnf" ] \
     || [ ! -e "${barCnf}" ]; then
     exit 1
@@ -218,7 +218,7 @@ check_sql_running() {
 }
 ###check_sql_running
 
-if [ ! -e "/root/.run.devaun.os.upgrade.on.init.cnf" ]; then
+if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
   _DB_SERIES=5.7
   _DB_SERVER_TEST=$(mysql -V 2>&1)
   if [[ ! "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
@@ -248,7 +248,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
   echo " " >> ${logAch}
-  if [ ! -e "/root/.run.devaun.os.upgrade.on.init.cnf" ]; then
+  if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
     msg "Running barracuda php-idle disable to speed up upgrades" >> ${logAch}
     barracuda php-idle disable >> ${logAch}
     wait
@@ -365,7 +365,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
   echo " " >> ${logAch}
-  if [ ! -e "/root/.run.devaun.os.upgrade.on.init.cnf" ]; then
+  if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
     msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> ${logAds}
     barracuda up-${tRee} system >> ${logAds}
     wait
@@ -379,8 +379,8 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   msg "That's all folks!" >> ${logAch}
   msg "Bye!" >> ${logAch}
   echo " " >> ${logAch}
-  if [ -e "/root/.run.devaun.os.upgrade.on.init.cnf" ]; then
-    mv -f /root/.run.devaun.os.upgrade.on.init.cnf /root/.done.devaun.os.upgrade.on.init.cnf
+  if [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
+    mv -f /root/.run.devuan.os.upgrade.on.init.cnf /root/.done.devuan.os.upgrade.on.init.cnf
     if [ -e "/root/.barracuda.cnf" ]; then
       mv -f /root/.barracuda.cnf /root/.init.barracuda.cnf
     fi

@@ -286,7 +286,7 @@ mode_detection() {
     msg "MODE: SYSTEMD"
     touch /var/run/boa_wait.pid
   elif [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
-    && [ -e "/root/.run.devaun.os.upgrade.on.init.cnf" ]; then
+    && [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
     _STATUS=DISTRO
     msg "MODE: DISTRO"
     touch /var/run/boa_wait.pid

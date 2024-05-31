@@ -4851,7 +4851,7 @@ systemd_cleanup_on_init() {
   fi
   if [ -e "/root/.step.init.systemd.two.cnf" ] \
     && [ -e "/root/.step.init.systemd.one.cnf" ] \
-    && [ -e "/root/.run.devaun.os.upgrade.on.init.cnf" ] \
+    && [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ] \
     && [ ! -e "/lib/systemd/systemd" ] \
     && [ ! -e "/root/.run-to-chimaera.cnf" ] \
     && [ ! -e "/root/.run-to-daedalus.cnf" ]; then
@@ -5124,7 +5124,7 @@ if_post_major_os_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: if_post_major_os_upgrade"
   fi
-  if [ -e "/root/.run.devaun.os.upgrade.on.init.cnf" ] \
+  if [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ] \
     && [ -e "/root/.completed_post_major_os_upgrade.info" ]; then
     msg "NOTE: Major system upgrade to Devuan on init is now complete"
     msg "NOTE: Your system is ready for standard boa install command"
@@ -5155,7 +5155,7 @@ if_post_major_os_upgrade() {
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
 
-    if [ -e "/root/.run.devaun.os.upgrade.on.init.cnf" ]; then
+    if [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
       if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
         rm -f /root/.run_post_major_os_upgrade.info
       fi
@@ -5284,9 +5284,9 @@ if_major_os_upgrade() {
   fi
   _RUNNING_MAJOR_OS_UPGRADE=NO
   define_loc_osr
-  if [ -e "/root/.run.devaun.os.upgrade.on.init.cnf" ] \
+  if [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ] \
     || [ "${_UP_DISTRO}" = "ON" ]; then
-    if [ ! -e "/root/.already.devaun.os.upgrade.on.init.cnf" ]; then
+    if [ ! -e "/root/.already.devuan.os.upgrade.on.init.cnf" ]; then
       if [ ! -e "${barCnf}" ]; then
         barracuda_cnf
       fi
@@ -5295,13 +5295,13 @@ if_major_os_upgrade() {
       sed -i "s/^_UP_DISTRO.*//g" ${barCnf}
       echo "_DEBUG_MODE=YES" >> ${barCnf}
       touch /root/.debug-barracuda-installer.cnf
-      touch /root/.already.devaun.os.upgrade.on.init.cnf
+      touch /root/.already.devuan.os.upgrade.on.init.cnf
     fi
   fi
   if [ ! -z "${_MSG_LOC}" ]; then
     if [ ! -e "/usr/local/lib/icu/73.1" ] \
       && [ "${_LOC_OSR}" != "jessie" ] \
-      && [ ! -e "/root/.run.devaun.os.upgrade.on.init.cnf" ]; then
+      && [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
       echo
       msg "OOPS: Please run normal 'barracuda up-${tRee}' upgrade"
       msg "OOPS: before trying to run major OS upgrade"
@@ -5757,7 +5757,7 @@ if_major_os_upgrade() {
     if [ "${_FORCE_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
       _REBUILD_SRC_ON_AUTO_NOW=YES
     fi
-    if [ -e "/root/.run.devaun.os.upgrade.on.init.cnf" ]; then
+    if [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
       _REBUILD_SRC_ON_AUTO_NOW=NO
     fi
     rm -f /root/.rebuild_src_on_auto_before_reboot.info

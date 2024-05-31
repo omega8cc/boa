@@ -498,7 +498,7 @@ check_php_cli() {
       ln -sfn ${_USE_PHP_CLI_PATH} /usr/bin/php
       ln -sfn ${_USE_PHP_CLI_PATH} /usr/bin/php-cli
     else
-      if [ ! -e "/root/.run.devaun.os.upgrade.on.init.cnf" ]; then
+      if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
         echo "ERROR: I can not find PHP-CLI anywhere!"
         echo "ERROR: BOA requires PHP 8.1 or newer"
         clean_pid_exit
