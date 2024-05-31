@@ -18,12 +18,12 @@ chomp($myip);
 print "myip is $myip";
 if (-e "/root/.hr.monitor.cnf") {
   $default_critnumber = 399;
-  $default_lines = 599;
+  $default_lines = 999;
   $default_mode = 1;
 }
 else {
   $default_critnumber = 399;
-  $default_lines = 599;
+  $default_lines = 999;
   $default_mode = 2;
 }
 &makeactions;
@@ -152,7 +152,7 @@ sub makeactions
           }
         }
         $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 99  if ($block_unknown > 0);
-        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 39  if ($line =~ /\" 404 /);
+        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 99  if ($line =~ /\" 404 /);
       }
       else {
         if ($line =~ /0.000/) {
@@ -216,7 +216,7 @@ sub makeactions
           }
         }
         $px_cnt{$PROXY} = $px_cnt{$PROXY} + 99  if ($block_unknown > 0);
-        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 39  if ($line =~ /\" 404 /);
+        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 99  if ($line =~ /\" 404 /);
       }
       else {
         if ($line =~ /0.000/) {
@@ -232,12 +232,14 @@ sub makeactions
   foreach $VISITOR (sort keys %li_cnt) {
     $sumar = $sumar + $li_cnt{$VISITOR};
     local($thissumar) = $li_cnt{$VISITOR};
+    local($critnumber) = $default_critnumber;
+    local($mininumber) = $critnumber / 2;
     if ($thissumar > $mininumber) {
       local($isloggedin) = 0;
       &check_who($VISITOR);
-      $critnumber = $critnumber - 50 if ($critnumber > 450);
-      $critnumber = 8888 if ($isloggedin); ### don't block logged in users
-      $critnumber = 8888 if ($VISITOR eq $myip); ### don't block own IP
+      $critnumber = 9999 if ($isloggedin); ### don't block logged in users
+      $critnumber = 9998 if ($VISITOR =~ /$myip/); ### don't block own IP
+      print "===[DEBUG] VISITOR is $VISITOR and MYIP is $myip===\n" if ($myip);
       print "===[$isloggedin] VISITOR li_cnt $VISITOR is logged in===\n" if ($isloggedin);
       print "===[$critnumber] VISITOR li_cnt critnumber for $VISITOR===\n" if ($VISITOR);
       local($blocked) = 0;
@@ -258,12 +260,13 @@ sub makeactions
   foreach $PROXY (sort keys %px_cnt) {
     $sumarpx = $sumarpx + $px_cnt{$PROXY};
     local($thissumarpx) = $px_cnt{$PROXY};
+    local($critnumber) = $default_critnumber;
+    local($mininumber) = $critnumber / 2;
     if ($thissumarpx > $mininumber) {
       local($isloggedin) = 0;
       &check_who($PROXY);
-      $critnumber = $critnumber - 50 if ($critnumber > 450);
-      $critnumber = 7777 if ($isloggedin); ### don't block logged in users
-      $critnumber = 7777 if ($PROXY eq $myip); ### don't block own IP
+      $critnumber = 9997 if ($isloggedin); ### don't block logged in users
+      $critnumber = 9996 if ($PROXY eq $myip); ### don't block own IP
       print "===[$isloggedin] PROXY px_cnt $PROXY is logged in===\n" if ($isloggedin);
       print "===[$critnumber] PROXY px_cnt critnumber for $PROXY===\n" if ($PROXY);
       local($blocked) = 0;
@@ -284,12 +287,13 @@ sub makeactions
   foreach $VISITOR (sort keys %im_li_cnt) {
     $im_sumar = $im_sumar + $im_li_cnt{$VISITOR};
     local($thisim_sumar) = $im_li_cnt{$VISITOR};
+    local($critnumber) = $default_critnumber;
+    local($mininumber) = $critnumber / 2;
     if ($thisim_sumar > $mininumber) {
       local($isloggedin) = 0;
       &check_who($VISITOR);
-      $critnumber = $critnumber - 50 if ($critnumber > 450);
-      $critnumber = 9999 if ($isloggedin); ### don't block logged in users
-      $critnumber = 9999 if ($VISITOR eq $myip); ### don't block own IP
+      $critnumber = 9995 if ($isloggedin); ### don't block logged in users
+      $critnumber = 9994 if ($VISITOR eq $myip); ### don't block own IP
       print "===[$isloggedin] VISITOR im_li_cnt $VISITOR is logged in===\n" if ($isloggedin);
       print "===[$critnumber] VISITOR im_li_cnt critnumber for $VISITOR===\n" if ($VISITOR);
       local($blocked) = 0;
@@ -310,12 +314,13 @@ sub makeactions
   foreach $PROXY (sort keys %im_px_cnt) {
     $im_sumarpx = $im_sumarpx + $im_px_cnt{$PROXY};
     local($thisim_sumarpx) = $im_px_cnt{$PROXY};
+    local($critnumber) = $default_critnumber;
+    local($mininumber) = $critnumber / 2;
     if ($thisim_sumarpx > $mininumber) {
       local($isloggedin) = 0;
       &check_who($PROXY);
-      $critnumber = $critnumber - 50 if ($critnumber > 450);
-      $critnumber = 5555 if ($isloggedin); ### don't block logged in users
-      $critnumber = 5555 if ($PROXY eq $myip); ### don't block own IP
+      $critnumber = 9993 if ($isloggedin); ### don't block logged in users
+      $critnumber = 9992 if ($PROXY eq $myip); ### don't block own IP
       print "===[$isloggedin] PROXY im_px_cnt $PROXY is logged in===\n" if ($isloggedin);
       print "===[$critnumber] PROXY im_px_cnt critnumber for $PROXY===\n" if ($PROXY);
       local($blocked) = 0;
