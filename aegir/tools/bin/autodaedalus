@@ -377,9 +377,11 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
   echo " " >> ${logAds}
-  msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> ${logAds}
-  barracuda up-${tRee} system >> ${logAds}
-  wait
+  if [ ! -e "/root/.run.devaun.os.upgrade.on.init.cnf" ]; then
+    msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> ${logAds}
+    barracuda up-${tRee} system >> ${logAds}
+    wait
+  fi
   [ -e "/root/.run-to-daedalus.cnf" ] && rm -f /root/.run-to-daedalus.cnf
   [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] && rm -f /root/.run-auto-major-os-reboot-one.cnf
   [ -e "/root/.run-auto-major-os-reboot-two.cnf" ] && rm -f /root/.run-auto-major-os-reboot-two.cnf

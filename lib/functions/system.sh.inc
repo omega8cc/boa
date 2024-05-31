@@ -5124,6 +5124,14 @@ if_post_major_os_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: if_post_major_os_upgrade"
   fi
+  if [ -e "/root/.run.devaun.os.upgrade.on.init.cnf" ] \
+    && [ -e "/root/.completed_post_major_os_upgrade.info" ]; then
+    msg "NOTE: Major system upgrade to Devuan on init is now complete"
+    msg "NOTE: Your system is ready for standard boa install command"
+    echo " "
+    msg "Bye"
+    clean_pid_exit
+  fi
   if [ -e "/root/.run_post_major_os_upgrade.info" ] \
     && [ ! -e "/root/.completed_post_major_os_upgrade.info" ]; then
 
@@ -5146,6 +5154,26 @@ if_post_major_os_upgrade() {
     mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
+
+    if [ -e "/root/.run.devaun.os.upgrade.on.init.cnf" ]; then
+      if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
+        rm -f /root/.run_post_major_os_upgrade.info
+      fi
+      if [ -e "/root/.force.newrelic.update.cnf" ]; then
+        rm -f /root/.force.newrelic.update.cnf
+      fi
+      if [ -e "/root/.rebuild_src_on_auto_before_reboot.info" ]; then
+        rm -f /root/.rebuild_src_on_auto_before_reboot.info
+      fi
+      rm -f /var/xdrago/log/.*_crontab_*
+      touch /root/.completed_post_major_os_upgrade.info
+      msg "INFO: The post_major_os_upgrade procedure is complete"
+      msg "INFO: Major system upgrade to Devuan on init is now complete"
+      msg "INFO: Your system is ready for standard boa install command"
+      echo " "
+      msg "Bye"
+      clean_pid_exit
+    fi
 
     _REBUILD_SRC_ON_AUTO_NOW=YES
     if [ -e "/root/.run-to-daedalus.cnf" ] \
