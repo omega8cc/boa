@@ -5469,7 +5469,10 @@ if_major_os_upgrade() {
     fi
     ###
     ### Switching other gears on the fly first.
-    sed -i "s/${_LOC_OSR}/${_SQL_NEW_OSR}/g" /etc/apt/sources.list.d/*
+    _APT_SRC_TEST=$(ls -la /etc/apt/sources.list.d/* 2>&1)
+    if [[ ! "${_APT_SRC_TEST}" =~ "No such file" ]]; then
+      sed -i "s/${_LOC_OSR}/${_SQL_NEW_OSR}/g" /etc/apt/sources.list.d/*
+    fi
     ###
     ### Now overwriting db gears apt sources.
     if [ "${_DB_SERVER}" = "MariaDB" ]; then
@@ -5854,25 +5857,27 @@ if_major_os_upgrade() {
     done
     ###
     ### Make sure that Aegir Octopus system users are added to sudo.
-    for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
-      if [ -e "${User}/config/server_master/nginx/vhost.d" ] \
-        && [ ! -e "${User}/log/proxied.pid" ] \
-        && [ ! -e "${User}/log/CANCELLED" ]; then
-        _HM_U=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
-        _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD" /etc/sudoers 2>&1)
-        if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
-          echo "${_HM_U} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
-        fi
-        SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
-        for SCRIPT in ${SCRIPTS[@]}; do
-          _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
+    if [ -e "/data/disk" ]; then
+      for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+        if [ -e "${User}/config/server_master/nginx/vhost.d" ] \
+          && [ ! -e "${User}/log/proxied.pid" ] \
+          && [ ! -e "${User}/log/CANCELLED" ]; then
+          _HM_U=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+          _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD" /etc/sudoers 2>&1)
           if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
-            echo "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
-            chmod 0440 /etc/sudoers.d/${SCRIPT}
+            echo "${_HM_U} ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
           fi
-        done
-      fi
-    done
+          SCRIPTS=(fix-drupal-platform-permissions fix-drupal-site-permissions fix-drupal-platform-ownership fix-drupal-site-ownership lock-local-drush-permissions)
+          for SCRIPT in ${SCRIPTS[@]}; do
+            _VAR_IF_PRESENT=$(grep "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" /etc/sudoers.d/${SCRIPT} 2>&1)
+            if [[ ! "${_VAR_IF_PRESENT}" =~ "${_HM_U} ALL=NOPASSWD" ]]; then
+              echo "${_HM_U} ALL=NOPASSWD: /usr/local/bin/${SCRIPT}.sh" >> /etc/sudoers.d/${SCRIPT}
+              chmod 0440 /etc/sudoers.d/${SCRIPT}
+            fi
+          done
+        fi
+      done
+    fi
     ###
     ### Final cleanup.
     echo rotate > /var/log/syslog
