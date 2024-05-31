@@ -152,6 +152,7 @@ sub makeactions
           }
         }
         $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 999  if ($block_unknown > 0);
+        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 10  if ($line ~ /\" 404 /);
       }
       else {
         if ($line =~ /0.000/) {
@@ -215,6 +216,7 @@ sub makeactions
           }
         }
         $px_cnt{$PROXY} = $px_cnt{$PROXY} + 999  if ($block_unknown > 0);
+        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 10  if ($line ~ /\" 404 /);
       }
       else {
         if ($line =~ /0.000/) {
