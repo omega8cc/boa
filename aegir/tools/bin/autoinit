@@ -205,12 +205,12 @@ init_conf() {
   else
     initCmnd="init"
   fi
-  if [ "${1}" = "debian" ] || [ -z "${1}" ]; then
-    initArgs="debian"
-    toFile="/root/.run-to-debian.cnf"
-  else
+  if [ "${1}" = "devuan" ]; then
     initArgs="devuan"
     toFile="/root/.run-to-devuan.cnf"
+  else
+    initArgs="debian"
+    toFile="/root/.run-to-debian.cnf"
   fi
   initRun="${initCmnd} ${initArgs}"
 }
