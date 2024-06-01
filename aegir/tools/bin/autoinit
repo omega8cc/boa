@@ -175,7 +175,7 @@ init_run_one() {
   if [ "${initArgs}" = "devuan" ] && [ ! -e "/root/.run-to-devuan.cnf" ]; then
     msg "Launching the first run of ${initRun}" >> ${logInt}
     echo 'GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0"' >> /etc/default/grub
-    grub-mkconfig -o /boot/grub/grub.cfg >> ${logInt}
+    grub-mkconfig -o /boot/grub/grub.cfg &> /dev/null
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-to-devuan.cnf
@@ -187,7 +187,7 @@ init_run_one() {
   elif [ "${initArgs}" = "debian" ] && [ ! -e "/root/.run-to-debian.cnf" ]; then
     msg "Launching the first run of ${initRun}" >> ${logInt}
     echo 'GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0"' >> /etc/default/grub
-    grub-mkconfig -o /boot/grub/grub.cfg >> ${logInt}
+    grub-mkconfig -o /boot/grub/grub.cfg &> /dev/null
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-to-debian.cnf
