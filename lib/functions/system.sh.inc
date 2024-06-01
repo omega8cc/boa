@@ -3160,6 +3160,9 @@ sources_list_update() {
   else
     _APT_SOURCES_REWRITE=YES
   fi
+  if [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
+    _APT_SOURCES_REWRITE=NO
+  fi
   if [ "${_APT_SOURCES_REWRITE}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Updating packages sources list..."
