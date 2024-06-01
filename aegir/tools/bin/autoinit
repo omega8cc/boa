@@ -40,9 +40,10 @@
 ###
 ###  $ wget http://files.aegir.cc/BOA.sh.txt
 ###  $ bash BOA.sh.txt
-###  $ autoinit devuan
-###    or
-###  $ autoinit debian
+###  $ touch /root/.run-to-devuan.cnf
+###     or
+###  $ touch /root/.run-to-debian.cnf
+###  $ autoinit &
 ###
 ###  Once started, the autoinit will launch
 ###  a series of boa init/reboots until

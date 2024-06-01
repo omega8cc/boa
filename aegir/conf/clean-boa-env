@@ -22,11 +22,11 @@ case "$1" in
     ntpdate pool.ntp.org
     if [ -e "/root/.run-to-devuan.cnf" ]; then
       if [ -x "/opt/local/bin/autoinit" ]; then
-        bash /opt/local/bin/autoinit devuan > /dev/null 2>&1 &
+        bash /opt/local/bin/autoinit > /dev/null 2>&1 &
       fi
     elif [ -e "/root/.run-to-debian.cnf" ]; then
       if [ -x "/opt/local/bin/autoinit" ]; then
-        bash /opt/local/bin/autoinit debian > /dev/null 2>&1 &
+        bash /opt/local/bin/autoinit > /dev/null 2>&1 &
       fi
     elif [ -e "/root/.run-to-daedalus.cnf" ]; then
       if [ -x "/opt/local/bin/autodaedalus" ]; then
