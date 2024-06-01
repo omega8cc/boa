@@ -200,11 +200,9 @@ faster_reboot() {
   msg "Faster reboot done" >> ${logAch}
 }
 
-if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
-  if [ ! -e "/root/.run-to-chimaera.cnf" ] \
-    || [ ! -e "${barCnf}" ]; then
-    exit 1
-  fi
+if [ ! -e "/root/.run-to-chimaera.cnf" ]; then
+  echo "ERROR: /root/.run-to-chimaera.cnf is required!"
+  exit 1
 fi
 
 _CHECK_SYS=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
