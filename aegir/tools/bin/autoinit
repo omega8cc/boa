@@ -144,6 +144,7 @@ init_run_three() {
     rm -f /root/.run-third-debian.cnf
     rm -f /root/.run-to-devuan.cnf
     rm -f /root/.run-to-debian.cnf
+    rm -f /root/.run.devuan.os.upgrade.on.init.cnf
     sleep 5
     msg "Time for the third reboot..." >> ${logInt}
     sleep 5
@@ -157,6 +158,7 @@ init_run_three() {
     rm -f /root/.run-third-devuan.cnf
     rm -f /root/.run-to-devuan.cnf
     rm -f /root/.run-to-debian.cnf
+    rm -f /root/.run.devuan.os.upgrade.on.init.cnf
     sleep 5
     msg "Time for the third reboot..." >> ${logInt}
     sleep 5
@@ -235,6 +237,7 @@ init_conf() {
     toFile="/root/.run-to-debian.cnf"
   fi
   initRun="${initCmnd} ${initArgs}"
+  touch /root/.run.devuan.os.upgrade.on.init.cnf
 }
 
 initCmnd=
