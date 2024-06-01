@@ -141,7 +141,9 @@ init_run_three() {
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-third-devuan.cnf
+    rm -f /root/.run-third-debian.cnf
     rm -f /root/.run-to-devuan.cnf
+    rm -f /root/.run-to-debian.cnf
     sleep 5
     msg "Time for the third reboot..." >> ${logInt}
     sleep 5
@@ -152,6 +154,8 @@ init_run_three() {
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-third-debian.cnf
+    rm -f /root/.run-third-devuan.cnf
+    rm -f /root/.run-to-devuan.cnf
     rm -f /root/.run-to-debian.cnf
     sleep 5
     msg "Time for the third reboot..." >> ${logInt}
@@ -167,6 +171,7 @@ init_run_two() {
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-two-devuan.cnf
+    rm -f /root/.run-two-debian.cnf
     sleep 5
     msg "Time for the second reboot..." >> ${logInt}
     sleep 5
@@ -177,6 +182,7 @@ init_run_two() {
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-two-debian.cnf
+    rm -f /root/.run-two-devuan.cnf
     sleep 5
     msg "Time for the second reboot..." >> ${logInt}
     sleep 5
@@ -193,6 +199,7 @@ init_run_one() {
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-to-devuan.cnf
+    rm -f /root/.run-to-debian.cnf
     sleep 5
     msg "Time for the first reboot..." >> ${logInt}
     sleep 5
@@ -205,6 +212,7 @@ init_run_one() {
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-to-debian.cnf
+    rm -f /root/.run-to-devuan.cnf
     sleep 5
     msg "Time for the first reboot..." >> ${logInt}
     sleep 5
