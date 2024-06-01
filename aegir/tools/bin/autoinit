@@ -132,6 +132,7 @@ init_run_three() {
     msg "Time for the third reboot..." >> ${logInt}
     sleep 5
     reboot
+    exit 0
   elif [ "${initArgs}" = "debian" ] && [ ! -e "/root/.run-third-debian.cnf" ]; then
     msg "Launching the third run of ${initRun}" >> ${logInt}
     /opt/local/bin/boa ${initRun} >> ${logInt}
@@ -142,6 +143,7 @@ init_run_three() {
     msg "Time for the third reboot..." >> ${logInt}
     sleep 5
     reboot
+    exit 0
   fi
 }
 
@@ -155,6 +157,7 @@ init_run_two() {
     msg "Time for the second reboot..." >> ${logInt}
     sleep 5
     reboot
+    exit 0
   elif [ "${initArgs}" = "debian" ] && [ ! -e "/root/.run-two-debian.cnf" ]; then
     msg "Launching the second run of ${initRun}" >> ${logInt}
     /opt/local/bin/boa ${initRun} >> ${logInt}
@@ -164,6 +167,7 @@ init_run_two() {
     msg "Time for the second reboot..." >> ${logInt}
     sleep 5
     reboot
+    exit 0
   fi
 }
 
@@ -179,6 +183,7 @@ init_run_one() {
     msg "Time for the first reboot..." >> ${logInt}
     sleep 5
     reboot
+    exit 0
   elif [ "${initArgs}" = "debian" ] && [ ! -e "/root/.run-to-debian.cnf" ]; then
     msg "Launching the first run of ${initRun}" >> ${logInt}
     echo 'GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0"' >> /etc/default/grub
@@ -190,6 +195,7 @@ init_run_one() {
     msg "Time for the first reboot..." >> ${logInt}
     sleep 5
     reboot
+    exit 0
   fi
 }
 
