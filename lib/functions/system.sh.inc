@@ -5174,6 +5174,7 @@ if_post_major_os_upgrade() {
     mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
     if [ -e "/root/.allow.downgrades.on.same.os.dist.upgrade.cnf" ]; then
       mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
+      msg "INFO: dist-upgrade with --allow-downgrades option is used"
     else
       mrun "apt-get dist-upgrade -y" 2> /dev/null
     fi
@@ -5765,6 +5766,7 @@ if_major_os_upgrade() {
       msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
       msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
     else
+      echo
       mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
       mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
       mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
@@ -5772,6 +5774,7 @@ if_major_os_upgrade() {
       ###
       ### Signal that --allow-downgrades can be used after reboot
       touch /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
+      msg "INFO: dist-upgrade with --allow-downgrades option is used"
     fi
     ###
     ### Make sure that sysvinit-core is still installed and systemd removed.
