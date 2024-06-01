@@ -5287,9 +5287,6 @@ if_major_os_upgrade() {
   if [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ] \
     || [ "${_UP_DISTRO}" = "ON" ]; then
     if [ ! -e "/root/.already.devuan.os.upgrade.on.init.cnf" ]; then
-      if [ ! -e "${barCnf}" ]; then
-        barracuda_cnf
-      fi
       apt_clean_update
       apt-get install aptitude ${aptYesUnth} &> /dev/null
       sed -i "s/^_UP_DISTRO.*//g" ${barCnf}

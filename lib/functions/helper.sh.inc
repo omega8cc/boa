@@ -289,6 +289,7 @@ mode_detection() {
     && [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
     _STATUS=DISTRO
     msg "MODE: DISTRO"
+    barracuda_cnf
     touch /var/run/boa_wait.pid
   else
     _STATUS=INIT
