@@ -438,8 +438,10 @@ check_report() {
     || [[ "${_RESULT_ENJOY}" =~ "Enjoy your Aegir" ]]; then
     _DO_NOTHING=YES
   else
-    _SEND_ALERT=YES
-    _ALERT_MSG="ALERT: Failed (msg) Barracuda upgrade"
+    if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
+      _SEND_ALERT=YES
+      _ALERT_MSG="ALERT: Failed (msg) Barracuda upgrade"
+    fi
   fi
   if [[ "${_RESULT_APT_FAIL}" =~ "Displaying the last 15 lines" ]]; then
     _SEND_ALERT=YES
@@ -451,8 +453,10 @@ check_report() {
     _ALERT_MSG="REBOOT: Your new system kernel requires boa reboot"
   fi
   if [[ "${_RESULT_ALRT}" =~ "ALRT" ]]; then
-    _SEND_ALERT=YES
-    _ALERT_MSG="ALERT: Failed (alrt) Barracuda upgrade"
+    if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
+      _SEND_ALERT=YES
+      _ALERT_MSG="ALERT: Failed (alrt) Barracuda upgrade"
+    fi
   fi
   if [[ "${_RESULT_FATAL}" =~ "FATAL ERROR" ]]; then
     _SEND_ALERT=YES
