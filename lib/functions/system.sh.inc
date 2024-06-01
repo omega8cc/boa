@@ -4877,6 +4877,7 @@ systemd_cleanup_on_init() {
     echo
     msg "WARN: Do not run BOA installation until major upgrade is complete!"
     msg "AUTO: It is complete once you see: That's all folks! in the log above"
+    touch /root/.latest-barracuda-upgrade-finale.info
     echo
     service clean-boa-env start &> /dev/null
     echo
@@ -5128,6 +5129,7 @@ if_post_major_os_upgrade() {
     && [ -e "/root/.completed_post_major_os_upgrade.info" ]; then
     msg "NOTE: Major system upgrade to Devuan on init is now complete"
     msg "NOTE: Your system is ready for standard boa install command"
+    touch /root/.latest-barracuda-upgrade-finale.info
     echo " "
     msg "Bye"
     clean_pid_exit
@@ -5170,6 +5172,7 @@ if_post_major_os_upgrade() {
       msg "INFO: The post_major_os_upgrade procedure is complete"
       msg "INFO: Major system upgrade to Devuan on init is now complete"
       msg "INFO: Your system is ready for standard boa install command"
+      touch /root/.latest-barracuda-upgrade-finale.info
       echo " "
       msg "Bye"
       clean_pid_exit
@@ -5931,6 +5934,7 @@ if_major_os_upgrade() {
     msg "STEP: Once the system is up, run 'barracuda up-${tRee}' command again"
     echo " "
     msg "Bye"
+    touch /root/.latest-barracuda-upgrade-finale.info
     barracuda_cnf_cleanup
     clean_pid_exit
   fi
@@ -5986,6 +5990,7 @@ normal_sys_ctrl_mark() {
     msg "OOPS: That is a full stop while run.devuan.os.upgrade.on.init is running!"
     echo " "
     msg "Bye"
+    touch /root/.latest-barracuda-upgrade-finale.info
     clean_pid_exit
   fi
 }
