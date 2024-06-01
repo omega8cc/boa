@@ -103,6 +103,8 @@ sub makeactions
     $VISITOR =~ s/[^0-9\.]//g;
     if ($VISITOR !~ /^((192\.168\.)|(172\.16\.)|(10\.)|(127\.0\.))/ && $VISITOR =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
       chomp($line);
+      $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 99  if ($block_unknown > 0);
+      $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 99  if ($line =~ /\" 404 /);
       if ($line =~ /(GET|HEAD|POST)/ && $line !~ /\" 301 /) {
         local($skip_post) = 0;
         if ($line =~ /(GET|POST) \/([a-z]{2}\/)?(civicrm|batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress|files\/progress|file\/progress|elfinder\/connector)/) {
@@ -151,8 +153,6 @@ sub makeactions
             $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 1  if ($line =~ /POST/);
           }
         }
-        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 399  if ($block_unknown > 0);
-        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 399  if ($line =~ /\" 404 /);
       }
       else {
         if ($line =~ /0.000/) {
@@ -167,6 +167,8 @@ sub makeactions
     $PROXY =~ s/[^0-9\.]//g;
     if ($PROXY ne $VISITOR && $PROXY !~ /^((192\.168\.)|(172\.16\.)|(10\.)|(127\.0\.))/ && $PROXY =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
       chomp($line);
+      $px_cnt{$PROXY} = $px_cnt{$PROXY} + 99  if ($block_unknown > 0);
+      $px_cnt{$PROXY} = $px_cnt{$PROXY} + 99  if ($line =~ /\" 404 /);
       if ($line =~ /(GET|HEAD|POST)/ && $line !~ /\" 301 /) {
         local($skip_post) = 0;
         if ($line =~ /(GET|POST) \/([a-z]{2}\/)?(civicrm|batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress|files\/progress|file\/progress|elfinder\/connector)/) {
@@ -215,8 +217,6 @@ sub makeactions
             $px_cnt{$PROXY} = $px_cnt{$PROXY} + 1  if ($line =~ /POST/);
           }
         }
-        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 399  if ($block_unknown > 0);
-        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 399  if ($line =~ /\" 404 /);
       }
       else {
         if ($line =~ /0.000/) {
