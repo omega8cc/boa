@@ -5549,28 +5549,30 @@ if_major_os_upgrade() {
     if [[ ! "${_APT_SRC_TEST}" =~ "No such file" ]]; then
       sed -i "s/${_LOC_OSR}/${_SQL_NEW_OSR}/g" /etc/apt/sources.list.d/*
     fi
-    ###
-    ### Now overwriting db gears apt sources.
-    if [ "${_DB_SERVER}" = "MariaDB" ]; then
-      _DB_SRC="ftp.osuosl.org"
-      mdbRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
-      mdbList="/etc/apt/sources.list.d/mariadb.list"
-      rm -f /etc/apt/sources.list.d/percona-.*
-      rm -f /etc/apt/sources.list.d/xtrabackup.*
-      rm -f /etc/apt/preferences.d/00percona.pref
-      echo "## MariaDB APT Repository" > ${mdbList}
-      echo "deb [arch=amd64,i386] http://${mdbRepo}/${_NEW_OSN} ${_SQL_NEW_OSR} main" >> ${mdbList}
-      echo "deb-src [arch=amd64,i386] http://${mdbRepo}/${_NEW_OSN} ${_SQL_NEW_OSR} main" >> ${mdbList}
-    else
-      percRepo="${_DB_SRC}/percona/apt"
-      percList="/etc/apt/sources.list.d/percona-release.list"
-      rm -f /etc/apt/sources.list.d/mariadb.*
-      rm -f /etc/apt/sources.list.d/percona-.*
-      rm -f /etc/apt/sources.list.d/xtrabackup.*
-      echo "## Percona APT Repository" > ${percList}
-      echo "deb http://${percRepo} ${_SQL_NEW_OSR} main" >> ${percList}
-      echo "deb-src http://${percRepo} ${_SQL_NEW_OSR} main" >> ${percList}
-      echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
+    if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
+      ###
+      ### Now overwriting db gears apt sources.
+      if [ "${_DB_SERVER}" = "MariaDB" ]; then
+        _DB_SRC="ftp.osuosl.org"
+        mdbRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
+        mdbList="/etc/apt/sources.list.d/mariadb.list"
+        rm -f /etc/apt/sources.list.d/percona-.*
+        rm -f /etc/apt/sources.list.d/xtrabackup.*
+        rm -f /etc/apt/preferences.d/00percona.pref
+        echo "## MariaDB APT Repository" > ${mdbList}
+        echo "deb [arch=amd64,i386] http://${mdbRepo}/${_NEW_OSN} ${_SQL_NEW_OSR} main" >> ${mdbList}
+        echo "deb-src [arch=amd64,i386] http://${mdbRepo}/${_NEW_OSN} ${_SQL_NEW_OSR} main" >> ${mdbList}
+      else
+        percRepo="${_DB_SRC}/percona/apt"
+        percList="/etc/apt/sources.list.d/percona-release.list"
+        rm -f /etc/apt/sources.list.d/mariadb.*
+        rm -f /etc/apt/sources.list.d/percona-.*
+        rm -f /etc/apt/sources.list.d/xtrabackup.*
+        echo "## Percona APT Repository" > ${percList}
+        echo "deb http://${percRepo} ${_SQL_NEW_OSR} main" >> ${percList}
+        echo "deb-src http://${percRepo} ${_SQL_NEW_OSR} main" >> ${percList}
+        echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
+      fi
     fi
     ###
     ### Switching system gears on the fly.
