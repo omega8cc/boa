@@ -4757,7 +4757,11 @@ systemd_cleanup_on_init() {
         msg "INFO: The sysvinit-core installed in ${_REAL_OS}/${_REAL_OSR}"
         echo
         msg "STEP: Let's continue to STEP 2... Please reboot this server"
-        msg "STEP: Once the system is up, run 'boa init' command again"
+        if [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
+          msg "STEP: Once the system is up, run 'boa init devuan' command again"
+        else
+          msg "STEP: Once the system is up, run 'boa init' command again"
+        fi
         touch /root/.step.init.systemd.one.cnf
       else
         echo
@@ -4807,7 +4811,11 @@ systemd_cleanup_on_init() {
         if [[ "${_CHECK_CRON}" =~ "running" ]]; then
           msg "INFO: OK, it works! ${_CHECK_CRON}"
           msg "STEP: Let's continue to STEP 4... Please reboot this server again"
-          msg "STEP: Once the system is up, run standard boa install command"
+          if [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
+            msg "STEP: Once the system is up, run 'boa init devuan' command again"
+          else
+            msg "STEP: Once the system is up, run standard boa install command"
+          fi
           touch /root/.step.init.systemd.two.cnf
         else
           msg "ALRT: Ouch! cron does not work ${_CHECK_CRON}"
