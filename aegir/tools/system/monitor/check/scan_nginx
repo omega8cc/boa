@@ -47,7 +47,7 @@ sub makeactions
   }
   local(@MYARR)=`tail --lines=$default_lines /var/log/nginx/access.log 2>&1`;
   local($critnumber) = $default_critnumber;
-  local($mininumber) = $critnumber / 2;
+  local($mininumber) = $critnumber / 3;
   print "\n===[$mininumber] mininumber===\n";
   local($sumar,$li_cnt{$VISITOR},$sumarpx,$px_cnt{$PROXY});
   local($im_sumar,$im_li_cnt{$VISITOR},$im_sumarpx,$im_px_cnt{$PROXY});
@@ -233,7 +233,7 @@ sub makeactions
     $sumar = $sumar + $li_cnt{$VISITOR};
     local($thissumar) = $li_cnt{$VISITOR};
     local($critnumber) = $default_critnumber;
-    local($mininumber) = $critnumber / 2;
+    local($mininumber) = $critnumber / 3;
     if ($thissumar > $mininumber) {
       local($isloggedin) = 0;
       &check_who($VISITOR);
@@ -263,7 +263,7 @@ sub makeactions
     $sumarpx = $sumarpx + $px_cnt{$PROXY};
     local($thissumarpx) = $px_cnt{$PROXY};
     local($critnumber) = $default_critnumber;
-    local($mininumber) = $critnumber / 2;
+    local($mininumber) = $critnumber / 3;
     if ($thissumarpx > $mininumber) {
       local($isloggedin) = 0;
       &check_who($PROXY);
@@ -292,7 +292,7 @@ sub makeactions
     $im_sumar = $im_sumar + $im_li_cnt{$VISITOR};
     local($thisim_sumar) = $im_li_cnt{$VISITOR};
     local($critnumber) = $default_critnumber;
-    local($mininumber) = $critnumber / 2;
+    local($mininumber) = $critnumber / 3;
     if ($thisim_sumar > $mininumber) {
       local($isloggedin) = 0;
       &check_who($VISITOR);
@@ -321,7 +321,7 @@ sub makeactions
     $im_sumarpx = $im_sumarpx + $im_px_cnt{$PROXY};
     local($thisim_sumarpx) = $im_px_cnt{$PROXY};
     local($critnumber) = $default_critnumber;
-    local($mininumber) = $critnumber / 2;
+    local($mininumber) = $critnumber / 3;
     if ($thisim_sumarpx > $mininumber) {
       local($isloggedin) = 0;
       &check_who($PROXY);
