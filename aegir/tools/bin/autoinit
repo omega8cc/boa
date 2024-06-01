@@ -1,0 +1,258 @@
+#!/bin/bash
+
+
+###----------------------------------------###
+###
+###  Automatic BOA System AUTO-INIT Tool
+###
+###  Copyright (C) 2010-2024 Omega8.cc
+###  noc@omega8.cc www.omega8.cc
+###
+###  This program is free software. You can
+###  redistribute it and/or modify it under
+###  the terms of the GNU GPL as published by
+###  the Free Software Foundation, version 2
+###  or later.
+###
+###  This program is distributed in the hope
+###  that it will be useful, but WITHOUT ANY
+###  WARRANTY; without even the implied
+###  warranty of MERCHANTABILITY or FITNESS
+###  FOR A PARTICULAR PURPOSE. See the GNU GPL
+###  for more details.
+###
+###  You should have received a copy of the
+###  GNU GPL along with this program.
+###  If not, see http://www.gnu.org/licenses/
+###
+###  Code: https://github.com/omega8cc/boa
+###
+###----------------------------------------###
+
+
+###----------------------------------------###
+### HOW-TO: Launch AUTO-INIT properly      ###
+###----------------------------------------###
+###
+###  Use clean minimal Debian OS based VPS.
+###
+###  Install and run BOA basic tools:
+###
+###  $ wget http://files.aegir.cc/BOA.sh.txt
+###  $ bash BOA.sh.txt
+###  $ autoinit devuan
+###    or
+###  $ autoinit debian
+###
+###  Once started, the autoinit will launch
+###  a series of boa init/reboots until
+###  you get a basic latest system installed
+###  to be able to run standard BOA install.
+###
+###----------------------------------------###
+
+
+###----------------------------------------###
+### DON'T EDIT ANYTHING BELOW THIS LINE    ###
+###----------------------------------------###
+
+HOME=/root
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+export PATH=${PATH}
+export SHELL=${SHELL}
+export HOME=${HOME}
+
+barCnf="/root/.barracuda.cnf"
+logInt="/root/.autoinit.log"
+
+###
+### Avoid too many questions
+###
+export DEBIAN_FRONTEND=noninteractive
+export APT_LISTCHANGES_FRONTEND=none
+if [ -z "${TERM+x}" ]; then
+  export TERM=vt100
+fi
+
+tRee=dev
+export tRee="${tRee}"
+
+_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=${_TODAY//[^0-9]/}
+_X_SE="520devT02"
+_THIS_SYS=check
+#
+
+check_root() {
+  if [ `whoami` = "root" ]; then
+    ionice -c2 -n7 -p $$
+    renice 19 -p $$
+    chmod a+w /dev/null
+    if [ ! -e "/dev/fd" ]; then
+      if [ -e "/proc/self/fd" ]; then
+        rm -rf /dev/fd
+        ln -s /proc/self/fd /dev/fd
+      fi
+    fi
+  else
+    echo "ERROR: This script should be ran as a root user"
+    exit 1
+  fi
+  _DF_TEST=$(df -kTh / -l \
+    | grep '/' \
+    | sed 's/\%//g' \
+    | awk '{print $6}' 2> /dev/null)
+  _DF_TEST=${_DF_TEST//[^0-9]/}
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
+    exit 1
+  fi
+}
+check_root
+cd /root/
+
+###
+### Noticeable messages
+###
+msg() {
+  echo "AutoInit [$(date +%T 2>&1)] ==> $*"
+}
+
+init_run_three() {
+  if [ "${initArgs}" = "devuan" ] && [ ! -e "/root/.run-third-devuan.cnf" ]; then
+    msg "Launching the third run of ${initRun}" >> ${logInt}
+    /opt/local/bin/boa ${initRun} >> ${logInt}
+    wait
+    touch /root/.run-third-devuan.cnf
+    rm -f /root/.run-to-devuan.cnf
+    sleep 5
+    msg "Time for the third reboot..." >> ${logInt}
+    sleep 5
+    reboot
+  elif [ "${initArgs}" = "debian" ] && [ ! -e "/root/.run-third-debian.cnf" ]; then
+    msg "Launching the third run of ${initRun}" >> ${logInt}
+    /opt/local/bin/boa ${initRun} >> ${logInt}
+    wait
+    touch /root/.run-third-debian.cnf
+    rm -f /root/.run-to-debian.cnf
+    sleep 5
+    msg "Time for the third reboot..." >> ${logInt}
+    sleep 5
+    reboot
+  fi
+}
+
+init_run_two() {
+  if [ "${initArgs}" = "devuan" ] && [ ! -e "/root/.run-two-devuan.cnf" ]; then
+    msg "Launching the second run of ${initRun}" >> ${logInt}
+    /opt/local/bin/boa ${initRun} >> ${logInt}
+    wait
+    touch /root/.run-two-devuan.cnf
+    sleep 5
+    msg "Time for the second reboot..." >> ${logInt}
+    sleep 5
+    reboot
+  elif [ "${initArgs}" = "debian" ] && [ ! -e "/root/.run-two-debian.cnf" ]; then
+    msg "Launching the second run of ${initRun}" >> ${logInt}
+    /opt/local/bin/boa ${initRun} >> ${logInt}
+    wait
+    touch /root/.run-two-debian.cnf
+    sleep 5
+    msg "Time for the second reboot..." >> ${logInt}
+    sleep 5
+    reboot
+  fi
+}
+
+init_run_one() {
+  if [ "${initArgs}" = "devuan" ] && [ ! -e "/root/.run-to-devuan.cnf" ]; then
+    msg "Launching the first run of ${initRun}" >> ${logInt}
+    echo 'GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0"' >> /etc/default/grub
+    grub-mkconfig -o /boot/grub/grub.cfg >> ${logInt}
+    /opt/local/bin/boa ${initRun} >> ${logInt}
+    wait
+    touch /root/.run-to-devuan.cnf
+    sleep 5
+    msg "Time for the first reboot..." >> ${logInt}
+    sleep 5
+    reboot
+  elif [ "${initArgs}" = "debian" ] && [ ! -e "/root/.run-to-debian.cnf" ]; then
+    msg "Launching the first run of ${initRun}" >> ${logInt}
+    echo 'GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0"' >> /etc/default/grub
+    grub-mkconfig -o /boot/grub/grub.cfg >> ${logInt}
+    /opt/local/bin/boa ${initRun} >> ${logInt}
+    wait
+    touch /root/.run-to-debian.cnf
+    sleep 5
+    msg "Time for the first reboot..." >> ${logInt}
+    sleep 5
+    reboot
+  fi
+}
+
+init_conf() {
+  if [ "${tRee}" = "dev" ]; then
+    initCmnd="init-dev"
+  else
+    initCmnd="init"
+  fi
+  if [ "${1}" = "debian" ] || [ -z "${1}" ]; then
+    initArgs="debian"
+    toFile="/root/.run-to-debian.cnf"
+  else
+    initArgs="devuan"
+    toFile="/root/.run-to-devuan.cnf"
+  fi
+  initRun="${initCmnd} ${initArgs}"
+}
+
+initCmnd=
+initArgs=
+initRun=
+
+echo
+msg "Watch the progress with: tail -f ${logInt}" >> ${logInt}
+echo
+init_conf
+init_run_one
+init_run_two
+init_run_three
+echo
+exit 0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
