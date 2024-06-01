@@ -1080,7 +1080,7 @@ up_action() {
     fi
   else
     echo
-    echo "  ${barName} installer not available - try again later"
+    echo "  ${vBs}/${barName} installer not available - try again later"
     echo "  Make sure that required ${barCnf} file also exists"
     echo
     clean_pid_exit
@@ -1675,7 +1675,7 @@ EOF
     _SCRIPT_URL="${rgUrl}/${cluster}/${barName}"
     cmmand="up-cluster"
   fi
-  curl ${crlGet} ${_SCRIPT_URL} -o ${barName}
+  curl ${crlGet} ${_SCRIPT_URL} -o ${vBs}/${barName}
   up_action
   up_finish
 }
