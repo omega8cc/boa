@@ -387,6 +387,9 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
     if [ -e "/root/.barracuda.cnf" ]; then
       mv -f /root/.barracuda.cnf /root/.init.barracuda.cnf
     fi
+    if [ -e "/var/xdrago" ]; then
+      mv -f /var/xdrago /var/backups/.init.xdrago
+    fi
   fi
 fi
 
