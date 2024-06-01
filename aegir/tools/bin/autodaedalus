@@ -402,6 +402,8 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
     if [ -e "/var/xdrago" ]; then
       mv -f /var/xdrago /var/backups/.init.xdrago
     fi
+    rm -f /var/backups/*.sh.txt
+    rm -f /var/backups/*.sh.cnf
   fi
 fi
 
