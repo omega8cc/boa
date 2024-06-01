@@ -219,7 +219,7 @@ init_conf() {
   else
     initCmnd="init"
   fi
-  if [ "${1}" = "devuan" ]; then
+  if [ "${1}" = "devuan" ] || [ -e "/root/.run-to-devuan.cnf" ]; then
     initArgs="devuan"
     toFile="/root/.run-to-devuan.cnf"
   else
