@@ -2496,7 +2496,7 @@ run_apt_get_dist_upgrade() {
     msg "INFO: Running apt-get dist-upgrade..."
   fi
   mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
-  mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
+  mrun "apt-get dist-upgrade -y" 2> /dev/null
   mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
 }
 
@@ -5153,7 +5153,11 @@ if_post_major_os_upgrade() {
     msg "INFO: Running dist-upgrade to complete the system upgrade..."
     msg "WAIT: This may take a while, please wait..."
     mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
-    mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
+    if [ -e "/root/.allow.downgrades.on.same.os.dist.upgrade.cnf" ]; then
+      mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
+    else
+      mrun "apt-get dist-upgrade -y" 2> /dev/null
+    fi
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
 
@@ -5166,6 +5170,9 @@ if_post_major_os_upgrade() {
       fi
       if [ -e "/root/.rebuild_src_on_auto_before_reboot.info" ]; then
         rm -f /root/.rebuild_src_on_auto_before_reboot.info
+      fi
+      if [ -e "/root/.allow.downgrades.on.same.os.dist.upgrade.cnf" ]; then
+        rm -f /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
       fi
       rm -f /var/xdrago/log/.*_crontab_*
       touch /root/.completed_post_major_os_upgrade.info
@@ -5274,6 +5281,9 @@ if_post_major_os_upgrade() {
     fi
     if [ -e "/root/.rebuild_src_on_auto_before_reboot.info" ]; then
       rm -f /root/.rebuild_src_on_auto_before_reboot.info
+    fi
+    if [ -e "/root/.allow.downgrades.on.same.os.dist.upgrade.cnf" ]; then
+      rm -f /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
     fi
     rm -f /var/xdrago/log/.*_crontab_*
     touch /root/.completed_post_major_os_upgrade.info
@@ -5733,6 +5743,9 @@ if_major_os_upgrade() {
       mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
       mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
       _FORCE_REBUILD_SRC_ON_AUTO_NOW=YES
+      ###
+      ### Signal that --allow-downgrades can be used after reboot
+      touch /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
     fi
     ###
     ### Make sure that sysvinit-core is still installed and systemd removed.
