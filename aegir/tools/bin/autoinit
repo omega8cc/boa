@@ -49,6 +49,20 @@
 ###  you get a basic latest system installed
 ###  to be able to run standard BOA install.
 ###
+###  The script will not start automatically
+###  after the first reboot, because it's
+###  not compatible with systemd which is
+###  going to be uninstalled after the first
+###  reboot, so you need to watch the log file
+###  after each reboot:
+###
+###  tail -f /root/.autoinit.log
+###
+###  If there is no progress, simply launch
+###  the procedure again with:
+###
+###  service clean-boa-env start
+###
 ###----------------------------------------###
 
 
