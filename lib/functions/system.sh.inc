@@ -5985,6 +5985,12 @@ normal_sys_ctrl_mark() {
   else
     [ -e "/root/.normal-sys-ctrl-mark.cnf" ] && rm -f /root/.normal-sys-ctrl-mark.cnf
   fi
+  if [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
+    msg "OOPS: That is a full stop while run.devuan.os.upgrade.on.init is running!"
+    echo " "
+    msg "Bye"
+    clean_pid_exit
+  fi
 }
 
 sys_packages_update() {
