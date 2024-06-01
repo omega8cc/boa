@@ -4876,9 +4876,11 @@ systemd_cleanup_on_init() {
     msg "  tail -f ${runToLog}"
     echo
     msg "WARN: Do not run BOA installation until major upgrade is complete!"
-    msg "AUTO: It is complete once you see: That's all folks! in the log above"
-    touch /root/.latest-barracuda-upgrade-finale.info
+    msg "AUTO: It is complete once you see a line in the log above:"
     echo
+    msg "  That's all folks!"
+    echo
+    touch /root/.latest-barracuda-upgrade-finale.info
     service clean-boa-env start &> /dev/null
     echo
     mrun "sleep 3"
@@ -4917,7 +4919,9 @@ basic_packages_install_on_init() {
     echo "APT::Get::AllowUnauthenticated \"true\";"     >> /etc/apt/apt.conf.d/99ignorestrict
     echo "Aptitude::CmdLine::Fix-Broken \"true\";"      >> /etc/apt/apt.conf.d/99ignorestrict
   fi
-  if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "SYSTEMD" ]; then
+  if [ "${_STATUS}" = "INIT" ] \
+    || [ "${_STATUS}" = "SYSTEMD" ] \
+    || [ "${_STATUS}" = "DISTRO" ]; then
     if [ ! -e "/root/.step.init.basic.cnf" ]; then
       msg "INFO: Installing some basic tools..."
       apt_clean_update
@@ -4926,6 +4930,8 @@ basic_packages_install_on_init() {
       ${_INITINS} lsb-release &> /dev/null
       ${_INITINS} dnsutils &> /dev/null
       ${_INITINS} netcat &> /dev/null
+      ${_INITINS} netcat-traditional &> /dev/null
+      ${_INITINS} aptitude &> /dev/null
       ${_INITINS} curl &> /dev/null
       ${_INITINS} wget &> /dev/null
       ${_INITINS} hostname &> /dev/null
@@ -4961,7 +4967,6 @@ more_packages_install_on_init() {
     ${_INITINS} git &> /dev/null
     ${_INITINS} git-core &> /dev/null
     ${_INITINS} git-man &> /dev/null
-    ${_INITINS} aptitude &> /dev/null
     ${_INITINS} axel &> /dev/null
     ${_INITINS} build-essential &> /dev/null
   fi
