@@ -5417,22 +5417,24 @@ if_major_os_upgrade() {
     mrun "apt-get remove nginx         -y -qq" 2> /dev/null
     mrun "apt-get remove nginx-common  -y -qq" 2> /dev/null
     mrun "apt-get remove nginx-full    -y -qq" 2> /dev/null
-    ###
-    ### Make sure that nginx packages are locked in apt.
-    if [ ! -e "/etc/apt/preferences.d/nginx-common" ]; then
-      rm -f /etc/apt/preferences.d/nginx
-      echo -e 'Package: nginx\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/nginx-common
-      echo -e '\n\nPackage: nginx-common\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx-common
-      apt_clean_update
-    fi
-    ###
-    _NGINX_GET_DPKG=$(dpkg --get-selections | grep nginx-common | grep 'hold$' 2>&1)
-    if [[ ! "${_NGINX_GET_DPKG}" =~ "hold" ]]; then
-      aptitude hold nginx &> /dev/null
-      aptitude hold nginx-common &> /dev/null
-      echo "nginx hold" | dpkg --set-selections &> /dev/null
-      echo "nginx-common hold" | dpkg --set-selections &> /dev/null
-      apt_clean_update
+    if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
+      ###
+      ### Make sure that nginx packages are locked in apt.
+      if [ ! -e "/etc/apt/preferences.d/nginx-common" ]; then
+        rm -f /etc/apt/preferences.d/nginx
+        echo -e 'Package: nginx\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/nginx-common
+        echo -e '\n\nPackage: nginx-common\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx-common
+        apt_clean_update
+      fi
+      ###
+      _NGINX_GET_DPKG=$(dpkg --get-selections | grep nginx-common | grep 'hold$' 2>&1)
+      if [[ ! "${_NGINX_GET_DPKG}" =~ "hold" ]]; then
+        aptitude hold nginx &> /dev/null
+        aptitude hold nginx-common &> /dev/null
+        echo "nginx hold" | dpkg --set-selections &> /dev/null
+        echo "nginx-common hold" | dpkg --set-selections &> /dev/null
+        apt_clean_update
+      fi
     fi
     if [ -e "/etc/php5/conf.d" ]; then
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
@@ -6179,7 +6181,7 @@ sys_packages_install() {
     else
       _APT_XTRA=""
     fi
-    _APT_ELSE="netcat"
+    _APT_ELSE="netcat netcat-traditional"
     apt_clean_update
     mrun "service nginx start"                &> /dev/null
     mrun "apt-get remove nginx-extras -y -qq" &> /dev/null
@@ -6187,22 +6189,25 @@ sys_packages_install() {
     mrun "apt-get remove nginx-common -y -qq" &> /dev/null
     mrun "apt-get remove nginx-full -y -qq"   &> /dev/null
     mrun "apt-get remove redis-server -y -qq" &> /dev/null
-    ###
-    ### Make sure that nginx packages are locked in apt.
-    if [ ! -e "/etc/apt/preferences.d/nginx-common" ]; then
-      rm -f /etc/apt/preferences.d/nginx
-      echo -e 'Package: nginx\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/nginx-common
-      echo -e '\n\nPackage: nginx-common\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx-common
-      apt_clean_update
-    fi
-    ###
-    _NGINX_GET_DPKG=$(dpkg --get-selections | grep nginx-common | grep 'hold$' 2>&1)
-    if [[ ! "${_NGINX_GET_DPKG}" =~ "hold" ]]; then
-      aptitude hold nginx &> /dev/null
-      aptitude hold nginx-common &> /dev/null
-      echo "nginx hold" | dpkg --set-selections &> /dev/null
-      echo "nginx-common hold" | dpkg --set-selections &> /dev/null
-      apt_clean_update
+    if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
+      ###
+      ### Make sure that nginx packages are locked in apt.
+      if [ ! -e "/etc/apt/preferences.d/nginx-common" ] \
+        && [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
+        rm -f /etc/apt/preferences.d/nginx
+        echo -e 'Package: nginx\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/nginx-common
+        echo -e '\n\nPackage: nginx-common\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx-common
+        apt_clean_update
+      fi
+      ###
+      _NGINX_GET_DPKG=$(dpkg --get-selections | grep nginx-common | grep 'hold$' 2>&1)
+      if [[ ! "${_NGINX_GET_DPKG}" =~ "hold" ]]; then
+        aptitude hold nginx &> /dev/null
+        aptitude hold nginx-common &> /dev/null
+        echo "nginx hold" | dpkg --set-selections &> /dev/null
+        echo "nginx-common hold" | dpkg --set-selections &> /dev/null
+        apt_clean_update
+      fi
     fi
   fi
   _EXTRA_LIB_APT="libmcrypt-dev"
