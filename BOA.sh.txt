@@ -307,6 +307,17 @@ get_dev_contrib() {
   fi
 }
 
+if_clean_boa_env() {
+  if [ ! -x "/etc/init.d/clean-boa-env" ]; then
+    curl ${crlGet} "${urlHmr}/conf/clean-boa-env" -o /etc/init.d/clean-boa-env
+    if [ -e "/etc/init.d/clean-boa-env" ]; then
+      chmod 700 /etc/init.d/clean-boa-env
+      chown root:root /etc/init.d/clean-boa-env
+      update-rc.d clean-boa-env defaults &> /dev/null
+    fi
+  fi
+}
+
 update_agents() {
 
   if [ -e "/root/.host8.cnf" ] && [ ! -e "/root/.extended.firewall.exceptions.cnf" ]; then
@@ -2226,6 +2237,9 @@ setup() {
   else
     urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
   fi
+
+  if_clean_boa_env
+
   _VIRT_TEST=$(which virt-what 2> /dev/null)
   if [ ! -x "${_VIRT_TEST}" ]; then
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
