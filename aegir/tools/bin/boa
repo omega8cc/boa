@@ -1242,7 +1242,7 @@ init_setup() {
   fi
 
   init_start
-  set_pin_priority
+  #set_pin_priority
 
   rlsn="BOA-5.2.0"
   rlse="${rlsn}-${tRee}"
