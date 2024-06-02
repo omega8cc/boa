@@ -170,15 +170,8 @@ init_run_three() {
     wait
     touch /root/.run-three-devuan.cnf
     rm -f /root/.run-to-devuan.cnf
-    rm -f /root/.run.devuan.os.upgrade.on.init.cnf
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-    echo " " >> ${logInt}
-    msg "Time for the third reboot..." >> ${logInt}
-    echo " " >> ${logInt}
-    sleep 5
     rm -f /var/run/autoinit.pid
-    reboot
-    exit 0
   elif [ "${initArgs}" = "debian" ]; then
     echo " " >> ${logInt}
     msg "Launching the third run of ${initRun}" >> ${logInt}
@@ -186,15 +179,8 @@ init_run_three() {
     wait
     touch /root/.run-three-debian.cnf
     rm -f /root/.run-to-debian.cnf
-    rm -f /root/.run.devuan.os.upgrade.on.init.cnf
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-    echo " " >> ${logInt}
-    msg "Time for the third reboot..." >> ${logInt}
-    echo " " >> ${logInt}
-    sleep 5
     rm -f /var/run/autoinit.pid
-    reboot
-    exit 0
   fi
 }
 
