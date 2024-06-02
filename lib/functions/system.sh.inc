@@ -5322,14 +5322,11 @@ if_major_os_upgrade() {
   fi
   if [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ] \
     || [ "${_UP_DISTRO}" = "ON" ]; then
-    if [ ! -e "/root/.already.devuan.os.upgrade.on.init.cnf" ]; then
-      apt_clean_update
-      apt-get install aptitude ${aptYesUnth} &> /dev/null
-      sed -i "s/^_UP_DISTRO.*//g" ${barCnf}
-      echo "_DEBUG_MODE=YES" >> ${barCnf}
-      touch /root/.debug-barracuda-installer.cnf
-      touch /root/.already.devuan.os.upgrade.on.init.cnf
-    fi
+    msg "INFO: Running dist-upgrade on the existing OS first"
+    apt_clean_update
+    mrun "apt-get dist-upgrade ${dstUpArg} --allow-downgrades" 2> /dev/null
+    mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
+    mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
   fi
   if [ ! -z "${_MSG_LOC}" ]; then
     if [ ! -e "/usr/local/lib/icu/73.1" ] \
