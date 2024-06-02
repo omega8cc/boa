@@ -38,31 +38,28 @@
 ###
 ###  Install and run BOA basic tools:
 ###
-###  $ wget http://files.aegir.cc/BOA.sh.txt
-###  $ bash BOA.sh.txt
-###  $ touch /root/.run-to-devuan.cnf
-###     or
-###  $ touch /root/.run-to-debian.cnf
-###  $ autoinit &
+###   $ wget http://files.aegir.cc/BOA.sh.txt
+###   $ bash BOA.sh.txt
+###   $ touch /root/.run-to-devuan.cnf
+###      OR
+###   $ touch /root/.run-to-debian.cnf
+###   $ autoinit &
 ###
 ###  Once started, the autoinit will launch
 ###  a series of boa init/reboots until
 ###  you get a basic latest system installed
 ###  to be able to run standard BOA install.
 ###
-###  The script will not start automatically
-###  after the first reboot, because it's
-###  not compatible with systemd which is
-###  going to be uninstalled after the first
-###  reboot, so you need to watch the log file
-###  after each reboot:
+###  The script may not start automatically
+###  after the first reboot, so you need
+###  to watch the log file after each reboot:
 ###
-###  tail -f /root/.autoinit.log
+###   $ tail -f /root/.autoinit.log
 ###
 ###  If there is no progress, simply launch
 ###  the procedure again with:
 ###
-###  service clean-boa-env start
+###   $ autoinit &
 ###
 ###----------------------------------------###
 
@@ -137,88 +134,108 @@ msg() {
 }
 
 init_run_three() {
-  if [ "${initArgs}" = "devuan" ] && [ ! -e "/root/.run-third-devuan.cnf" ]; then
+  if [ "${initArgs}" = "devuan" ]; then
+    echo " " >> ${logInt}
     msg "Launching the third run of ${initRun}" >> ${logInt}
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
-    touch /root/.run-third-devuan.cnf
-    rm -f /root/.run-third-debian.cnf
+    touch /root/.run-three-devuan.cnf
     rm -f /root/.run-to-devuan.cnf
-    rm -f /root/.run-to-debian.cnf
     rm -f /root/.run.devuan.os.upgrade.on.init.cnf
-    sleep 5
+    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+    echo " " >> ${logInt}
     msg "Time for the third reboot..." >> ${logInt}
+    echo " " >> ${logInt}
     sleep 5
+    rm -f /var/run/autoinit.pid
     reboot
     exit 0
-  elif [ "${initArgs}" = "debian" ] && [ ! -e "/root/.run-third-debian.cnf" ]; then
+  elif [ "${initArgs}" = "debian" ]; then
+    echo " " >> ${logInt}
     msg "Launching the third run of ${initRun}" >> ${logInt}
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
-    touch /root/.run-third-debian.cnf
-    rm -f /root/.run-third-devuan.cnf
-    rm -f /root/.run-to-devuan.cnf
+    touch /root/.run-three-debian.cnf
     rm -f /root/.run-to-debian.cnf
     rm -f /root/.run.devuan.os.upgrade.on.init.cnf
-    sleep 5
+    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+    echo " " >> ${logInt}
     msg "Time for the third reboot..." >> ${logInt}
+    echo " " >> ${logInt}
     sleep 5
+    rm -f /var/run/autoinit.pid
     reboot
     exit 0
   fi
 }
 
 init_run_two() {
-  if [ "${initArgs}" = "devuan" ] && [ ! -e "/root/.run-two-devuan.cnf" ]; then
+  if [ "${initArgs}" = "devuan" ]; then
+    echo " " >> ${logInt}
     msg "Launching the second run of ${initRun}" >> ${logInt}
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-two-devuan.cnf
-    rm -f /root/.run-two-debian.cnf
-    sleep 5
+    echo " " >> ${logInt}
     msg "Time for the second reboot..." >> ${logInt}
+    echo " " >> ${logInt}
     sleep 5
+    rm -f /var/run/autoinit.pid
     reboot
     exit 0
-  elif [ "${initArgs}" = "debian" ] && [ ! -e "/root/.run-two-debian.cnf" ]; then
+  elif [ "${initArgs}" = "debian" ]; then
+    echo " " >> ${logInt}
     msg "Launching the second run of ${initRun}" >> ${logInt}
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-two-debian.cnf
-    rm -f /root/.run-two-devuan.cnf
-    sleep 5
+    echo " " >> ${logInt}
     msg "Time for the second reboot..." >> ${logInt}
+    echo " " >> ${logInt}
     sleep 5
+    rm -f /var/run/autoinit.pid
     reboot
     exit 0
   fi
 }
 
 init_run_one() {
-  if [ "${initArgs}" = "devuan" ] && [ ! -e "/root/.run-to-devuan.cnf" ]; then
+  if [ "${initArgs}" = "devuan" ]; then
+    echo " " >> ${logInt}
     msg "Launching the first run of ${initRun}" >> ${logInt}
-    echo 'GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0"' >> /etc/default/grub
-    grub-mkconfig -o /boot/grub/grub.cfg &> /dev/null
+    _SYS_IFNAMES=$(grep GRUB_CMDLINE_LINUX= /etc/default/grub | grep "net.ifnames=0" 2>&1)
+    if [ -e "/etc/default/grub" ] && [[ ! "${_SYS_IFNAMES}" =~ "net.ifnames=0" ]]; then
+      echo 'GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0"' >> /etc/default/grub
+      grub-mkconfig -o /boot/grub/grub.cfg &> /dev/null
+    fi
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
-    touch /root/.run-to-devuan.cnf
-    rm -f /root/.run-to-debian.cnf
-    sleep 5
+    touch /root/.run-one-devuan.cnf
+    echo " " >> ${logInt}
     msg "Time for the first reboot..." >> ${logInt}
+    echo " " >> ${logInt}
     sleep 5
+    echo "*  *    * * *   root    bash /opt/local/bin/autoinit devuan" >> /etc/crontab
+    rm -f /var/run/autoinit.pid
     reboot
     exit 0
-  elif [ "${initArgs}" = "debian" ] && [ ! -e "/root/.run-to-debian.cnf" ]; then
+  elif [ "${initArgs}" = "debian" ]; then
+    echo " " >> ${logInt}
     msg "Launching the first run of ${initRun}" >> ${logInt}
-    echo 'GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0"' >> /etc/default/grub
-    grub-mkconfig -o /boot/grub/grub.cfg &> /dev/null
+    _SYS_IFNAMES=$(grep GRUB_CMDLINE_LINUX= /etc/default/grub | grep "net.ifnames=0" 2>&1)
+    if [ -e "/etc/default/grub" ] && [[ ! "${_SYS_IFNAMES}" =~ "net.ifnames=0" ]]; then
+      echo 'GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0"' >> /etc/default/grub
+      grub-mkconfig -o /boot/grub/grub.cfg &> /dev/null
+    fi
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
-    touch /root/.run-to-debian.cnf
-    rm -f /root/.run-to-devuan.cnf
-    sleep 5
+    touch /root/.run-one-debian.cnf
+    echo " " >> ${logInt}
     msg "Time for the first reboot..." >> ${logInt}
+    echo " " >> ${logInt}
     sleep 5
+    echo "*  *    * * *   root    bash /opt/local/bin/autoinit debian" >> /etc/crontab
+    rm -f /var/run/autoinit.pid
     reboot
     exit 0
   fi
@@ -241,16 +258,41 @@ init_conf() {
   touch /root/.run.devuan.os.upgrade.on.init.cnf
 }
 
-initCmnd=
-initArgs=
-initRun=
 
-echo
-msg "Watch the progress with: tail -f ${logInt}" >> ${logInt}
-echo
-init_conf
-init_run_one
-init_run_two
-init_run_three
-echo
+init() {
+  initCmnd=
+  initArgs=
+  initRun=
+  touch /var/run/autoinit.pid
+  sleep 10
+  init_conf
+  if [ ! -e "/root/.run-one-devuan.cnf" ] \
+    && [ ! -e "/root/.run-one-debian.cnf" ]; then
+    init_run_one
+  fi
+  if [ -e "/root/.run-one-devuan.cnf" ] \
+    || [ -e "/root/.run-one-debian.cnf" ]; then
+    if [ ! -e "/root/.run-two-devuan.cnf" ] \
+      && [ ! -e "/root/.run-two-debian.cnf" ]; then
+      init_run_two
+    fi
+  fi
+  if [ -e "/root/.run-two-devuan.cnf" ] \
+    || [ -e "/root/.run-two-debian.cnf" ]; then
+    if [ ! -e "/root/.run-three-devuan.cnf" ] \
+      && [ ! -e "/root/.run-three-debian.cnf" ]; then
+      init_run_three
+    fi
+  fi
+}
+
+if [ -e "/root/.run-to-devuan.cnf" ] \
+  || [ -e "/root/.run-to-debian.cnf" ]; then
+  echo
+  echo "Launching BOA System INIT.."
+  echo "Watch the progress with: tail -f /root/.autoinit.log"
+  echo
+  init
+fi
+
 exit 0
