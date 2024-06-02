@@ -5324,6 +5324,7 @@ if_major_os_upgrade() {
     || [ "${_UP_DISTRO}" = "ON" ]; then
     msg "INFO: Running dist-upgrade on the existing OS first"
     apt_clean_update
+    mrun "${_INITINS} aptitude" 2> /dev/null
     mrun "apt-get dist-upgrade ${dstUpArg} --allow-downgrades" 2> /dev/null
     mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
