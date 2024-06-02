@@ -59,8 +59,8 @@ system_hostname_check_fix
 rm -f /var/run/clear_m.pid
 
 _ADD_XTRA=YES
-_CRON_TEST=$(grep "usage.sh" /var/spool/cron/crontabs/root 2>&1)
-if [[ "${_CRON_TEST}" =~ "usage.sh" ]]; then
+_CRON_TEST=$(grep "clear.sh" /var/spool/cron/crontabs/root 2>&1)
+if [[ "${_CRON_TEST}" =~ "clear.sh" ]]; then
   _ADD_XTRA=NO
 fi
 
