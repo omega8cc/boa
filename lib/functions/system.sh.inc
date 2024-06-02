@@ -2496,7 +2496,7 @@ run_apt_get_dist_upgrade() {
     msg "INFO: Running apt-get dist-upgrade..."
   fi
   mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
-  mrun "apt-get dist-upgrade -y" 2> /dev/null
+  mrun "apt-get dist-upgrade -y --allow-unauthenticated" 2> /dev/null
   mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
 }
 
@@ -4664,7 +4664,7 @@ run_aptitude_deps_install() {
   fi
   if_to_do_fix
   if [ "${_THIS_OS}" = "Devuan" ]; then
-    ${_INITINS} devuan-keyring --allow-unauthenticated &> /dev/null
+    ${_INITINS} devuan-keyring &> /dev/null
   elif [ "${_THIS_OS}" = "Debian" ]; then
     ${_INITINS} debian-keyring debian-archive-keyring &> /dev/null
   fi
@@ -5599,7 +5599,7 @@ if_major_os_upgrade() {
       ### Add devuan-keyring first.
       apt_clean_update
       mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
-      mrun "${_INITINS} devuan-keyring --allow-unauthenticated" 2> /dev/null
+      mrun "${_INITINS} devuan-keyring" 2> /dev/null
     else
       if [ "${_NEW_OSR}" = "stretch" ]; then
         _NEW_APT_MIRROR="archive.debian.org/debian"
