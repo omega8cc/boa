@@ -178,6 +178,7 @@ init_run_three() {
     touch /root/.run-three-devuan.cnf
     rm -f /root/.run-to-devuan.cnf
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+    echo "*/3 *   * * *   root    test -e /root/.run.devuan.os.upgrade.on.init.cnf && { bash /etc/init.d/clean-boa-env start; }" >> /etc/crontab
     rm -f /var/run/autoinit.pid
   elif [ "${initArgs}" = "debian" ]; then
     echo " " >> ${logInt}
@@ -187,6 +188,7 @@ init_run_three() {
     touch /root/.run-three-debian.cnf
     rm -f /root/.run-to-debian.cnf
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+    echo "*/3 *   * * *   root    test -e /root/.run.devuan.os.upgrade.on.init.cnf && { bash /etc/init.d/clean-boa-env start; }" >> /etc/crontab
     rm -f /var/run/autoinit.pid
   fi
 }
