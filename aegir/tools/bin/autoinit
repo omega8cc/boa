@@ -43,7 +43,7 @@
 ###   $ touch /root/.run-to-devuan.cnf
 ###      OR
 ###   $ touch /root/.run-to-debian.cnf
-###   $ autoinit &
+###   $ autoinit
 ###
 ###  Once started, the autoinit will launch
 ###  a series of boa init/reboots until
@@ -59,7 +59,7 @@
 ###  If there is no progress, simply launch
 ###  the procedure again with:
 ###
-###   $ autoinit &
+###   $ autoinit
 ###
 ###----------------------------------------###
 
@@ -276,8 +276,6 @@ init() {
 }
 
 init_pre() {
-  apt-get update &> /dev/null
-  apt-get install locales-all &> /dev/null
   _SYS_IFNAMES=$(grep GRUB_CMDLINE_LINUX= /etc/default/grub | grep "net.ifnames=0" 2>&1)
   if [ -e "/etc/default/grub" ] && [[ ! "${_SYS_IFNAMES}" =~ "net.ifnames=0" ]]; then
     echo "OOPS, we need to fix GRUB_CMDLINE_LINUX and reboot first"
@@ -289,6 +287,19 @@ init_pre() {
     echo "Waiting ten seconds before reboot..."
     sleep 10
     reboot
+  else
+    echo "We need to install some tools early..."
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    apt-get update &> /dev/null
+    apt-get install locales-all &> /dev/null
+    apt-get install aptitude -fuy --allow-unauthenticated &> /dev/null
+    apt-get install curl -fuy --allow-unauthenticated &> /dev/null
+    apt-get install git -fuy --allow-unauthenticated &> /dev/null
+    apt-get install git-core -fuy --allow-unauthenticated &> /dev/null
+    apt-get install git-man -fuy --allow-unauthenticated &> /dev/null
   fi
 }
 
