@@ -273,6 +273,19 @@ elif [ "${_RAM_PCT_FREE}" -le "20" ]; then
   fi
 fi
 
+redis_bind_check() {
+  if [ `tail --lines=8 /var/log/redis/redis-server.log \
+    | grep --count "Address already in use"` -gt "0" ]; then
+    service redis-server stop &> /dev/null
+    killall -9 redis-server &> /dev/null
+    rm -f /var/lib/redis/*
+    service redis-server start &> /dev/null
+    echo "$(date 2>&1) RedisException BIND detected"
+    echo "$(date 2>&1) RedisException BIND detected" >> /var/xdrago/log/redis.watch.log
+  fi
+}
+redis_bind_check
+
 redis_oom_check() {
   if [ `tail --lines=500 /var/log/php/error_log_* \
     | grep --count "RedisException"` -gt "0" ]; then
