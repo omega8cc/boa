@@ -126,6 +126,13 @@ check_root() {
 check_root
 cd /root/
 
+if [ -e "/var/aegir" ]; then
+  echo
+  echo "ERROR: This script can not be used once BOA is installed"
+  echo
+  exit 1
+fi
+
 ###
 ### Noticeable messages
 ###
