@@ -250,12 +250,12 @@ init_conf() {
   if [ "${1}" = "devuan" ] || [ -e "/root/.run-to-devuan.cnf" ]; then
     initArgs="devuan"
     toFile="/root/.run-to-devuan.cnf"
+    touch /root/.run.devuan.os.upgrade.on.init.cnf
   else
     initArgs="debian"
     toFile="/root/.run-to-debian.cnf"
   fi
   initRun="${initCmnd} ${initArgs}"
-  touch /root/.run.devuan.os.upgrade.on.init.cnf
 }
 
 
