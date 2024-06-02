@@ -152,7 +152,7 @@ init_pre() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt-get update &> /dev/null
-    apt-get install locales-all &> /dev/null
+    apt-get install locales-all -fuy --allow-unauthenticated &> /dev/null
     apt-get install aptitude -fuy --allow-unauthenticated &> /dev/null
     apt-get install curl -fuy --allow-unauthenticated &> /dev/null
     apt-get install git -fuy --allow-unauthenticated &> /dev/null
