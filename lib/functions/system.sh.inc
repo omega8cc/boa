@@ -4908,10 +4908,12 @@ basic_packages_install_on_init() {
     msg "PROC: basic_packages_install_on_init"
   fi
   apt_clean_update
-  apt-get remove --purge unscd -y &> /dev/null
-  apt-get remove --purge dbus -y &> /dev/null
-  if [ -e "/usr/share/dbus-1" ]; then
-    rm -f /usr/share/dbus-1/*/*freedesktop*
+  if [ "${_STATUS}" = "INIT" ]; then
+    apt-get remove --purge unscd -y &> /dev/null
+    apt-get remove --purge dbus -y &> /dev/null
+    if [ -e "/usr/share/dbus-1" ]; then
+      rm -f /usr/share/dbus-1/*/*freedesktop*
+    fi
   fi
   userdel -r debian &> /dev/null
   usermod -aG users _apt &> /dev/null

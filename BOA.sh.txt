@@ -2214,8 +2214,8 @@ setup() {
     apt-get install screen -y &> /dev/null
     apt-get install net-tools -y &> /dev/null
     apt-get install hostname -y &> /dev/null
-    apt-get remove --purge unscd -y &> /dev/null
-    apt-get remove --purge dbus -y &> /dev/null
+    #apt-get remove --purge unscd -y &> /dev/null
+    #apt-get remove --purge dbus -y &> /dev/null
     if [ -e "/usr/share/dbus-1" ]; then
       rm -f /usr/share/dbus-1/*/*freedesktop*
     fi
