@@ -241,7 +241,7 @@ init_run_one() {
     msg "Time for the first reboot..." >> ${logInt}
     echo " " >> ${logInt}
     sleep 5
-    echo "*  *    * * *   root    bash /opt/local/bin/autoinit devuan" >> /etc/crontab
+    echo "*/3 *   * * *   root    bash /opt/local/bin/autoinit devuan" >> /etc/crontab
     rm -f /var/run/autoinit.pid
     reboot
     exit 0
@@ -255,7 +255,7 @@ init_run_one() {
     msg "Time for the first reboot..." >> ${logInt}
     echo " " >> ${logInt}
     sleep 5
-    echo "*  *    * * *   root    bash /opt/local/bin/autoinit debian" >> /etc/crontab
+    echo "*/3 *   * * *   root    bash /opt/local/bin/autoinit debian" >> /etc/crontab
     rm -f /var/run/autoinit.pid
     reboot
     exit 0
