@@ -5591,6 +5591,8 @@ if_major_os_upgrade() {
         sed -i "s/APT::Default-Release.*/APT::Default-Release \"${_NEW_OSR}\";/g" \
           /etc/apt/apt.conf &> /dev/null
         wait
+      else
+        echo "APT::Default-Release \"${_NEW_OSR}\";" > /etc/apt/apt.conf
       fi
       ###
       ### Add devuan-keyring first.
@@ -5634,6 +5636,8 @@ if_major_os_upgrade() {
         sed -i "s/APT::Default-Release.*/APT::Default-Release \"${_NEW_OSR}\";/g" \
           /etc/apt/apt.conf &> /dev/null
         wait
+      else
+        echo "APT::Default-Release \"${_NEW_OSR}\";" > /etc/apt/apt.conf
       fi
     fi
     ###
