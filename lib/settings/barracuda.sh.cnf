@@ -1099,8 +1099,8 @@ export tRee="${tRee}"
 ### Commands shortcuts
 ###
 gCb="git clone --branch"
-dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/tmp/apt.conf.noi.dist"
-nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/tmp/apt.conf.noi.nrml"
+dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
+nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
 _INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
 _INSTALL="/usr/bin/apt-get ${nrmUpArg} install"
 aptYesUnth="-y --allow-unauthenticated"
@@ -1272,6 +1272,9 @@ download_helpers_libs() {
   rm -f apt.conf.noi*
   cp -af ${bldPth}/aegir/helpers/apt.conf.noi.nrml ./
   cp -af ${bldPth}/aegir/helpers/apt.conf.noi.dist ./
+  mkdir -p /opt/apt/
+  cp -af ${bldPth}/aegir/helpers/apt.conf.noi.nrml /opt/apt/
+  cp -af ${bldPth}/aegir/helpers/apt.conf.noi.dist /opt/apt/
   #
   # Create tmp stuff
   if [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then

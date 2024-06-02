@@ -797,6 +797,9 @@ download_helpers_libs() {
   rm -f apt.conf.noi*
   cp -af ${bldPth}/aegir/helpers/apt.conf.noi.nrml ./
   cp -af ${bldPth}/aegir/helpers/apt.conf.noi.dist ./
+  mkdir -p /opt/apt/
+  cp -af ${bldPth}/aegir/helpers/apt.conf.noi.nrml /opt/apt/
+  cp -af ${bldPth}/aegir/helpers/apt.conf.noi.dist /opt/apt/
   #
   # Create tmp stuff
   if [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
