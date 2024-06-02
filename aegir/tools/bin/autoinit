@@ -203,11 +203,6 @@ init_run_one() {
   if [ "${initArgs}" = "devuan" ]; then
     echo " " >> ${logInt}
     msg "Launching the first run of ${initRun}" >> ${logInt}
-    _SYS_IFNAMES=$(grep GRUB_CMDLINE_LINUX= /etc/default/grub | grep "net.ifnames=0" 2>&1)
-    if [ -e "/etc/default/grub" ] && [[ ! "${_SYS_IFNAMES}" =~ "net.ifnames=0" ]]; then
-      echo 'GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0"' >> /etc/default/grub
-      grub-mkconfig -o /boot/grub/grub.cfg &> /dev/null
-    fi
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-one-devuan.cnf
@@ -222,11 +217,6 @@ init_run_one() {
   elif [ "${initArgs}" = "debian" ]; then
     echo " " >> ${logInt}
     msg "Launching the first run of ${initRun}" >> ${logInt}
-    _SYS_IFNAMES=$(grep GRUB_CMDLINE_LINUX= /etc/default/grub | grep "net.ifnames=0" 2>&1)
-    if [ -e "/etc/default/grub" ] && [[ ! "${_SYS_IFNAMES}" =~ "net.ifnames=0" ]]; then
-      echo 'GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0"' >> /etc/default/grub
-      grub-mkconfig -o /boot/grub/grub.cfg &> /dev/null
-    fi
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-one-debian.cnf
@@ -258,7 +248,6 @@ init_conf() {
   initRun="${initCmnd} ${initArgs}"
 }
 
-
 init() {
   initCmnd=
   initArgs=
@@ -285,6 +274,23 @@ init() {
     fi
   fi
 }
+
+init_pre() {
+  _SYS_IFNAMES=$(grep GRUB_CMDLINE_LINUX= /etc/default/grub | grep "net.ifnames=0" 2>&1)
+  if [ -e "/etc/default/grub" ] && [[ ! "${_SYS_IFNAMES}" =~ "net.ifnames=0" ]]; then
+    echo "OOPS, we need to fix GRUB_CMDLINE_LINUX and reboot first"
+    echo "Once the server us up again, launch the autoinit again"
+    echo "Bye"
+    echo 'GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0"' >> /etc/default/grub
+    grub-mkconfig -o /boot/grub/grub.cfg
+    wait
+    echo "Waiting ten seconds before reboot..."
+    sleep 10
+    reboot
+  fi
+}
+
+init_pre
 
 if [ -e "/root/.run-to-devuan.cnf" ] \
   || [ -e "/root/.run-to-debian.cnf" ]; then
