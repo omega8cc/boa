@@ -4934,7 +4934,6 @@ basic_packages_install_on_init() {
     echo "Aptitude::CmdLine::Fix-Broken \"true\";"      >> /etc/apt/apt.conf.d/99ignorestrict
   fi
   if [ "${_STATUS}" = "INIT" ] \
-    || [ "${_STATUS}" = "SYSTEMD" ] \
     || [ "${_STATUS}" = "DISTRO" ]; then
     if [ ! -e "/root/.step.init.basic.cnf" ]; then
       msg "INFO: Installing some basic tools..."
