@@ -5764,7 +5764,7 @@ if_major_os_upgrade() {
       msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
     else
       echo
-      mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
+      mrun "apt-get dist-upgrade ${dstUpArg} --allow-downgrades" 2> /dev/null
       mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
       mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
       _FORCE_REBUILD_SRC_ON_AUTO_NOW=YES
