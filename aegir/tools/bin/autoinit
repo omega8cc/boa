@@ -210,6 +210,7 @@ init_run_two() {
     echo " " >> ${logInt}
     sleep 5
     rm -f /var/run/autoinit.pid
+    touch /root/.run.devuan.os.upgrade.on.init.cnf
     reboot
     exit 0
   elif [ "${initArgs}" = "debian" ]; then
@@ -223,6 +224,7 @@ init_run_two() {
     echo " " >> ${logInt}
     sleep 5
     rm -f /var/run/autoinit.pid
+    touch /root/.run.devuan.os.upgrade.on.init.cnf
     reboot
     exit 0
   fi
@@ -269,7 +271,6 @@ init_conf() {
   if [ "${1}" = "devuan" ] || [ -e "/root/.run-to-devuan.cnf" ]; then
     initArgs="devuan"
     toFile="/root/.run-to-devuan.cnf"
-    touch /root/.run.devuan.os.upgrade.on.init.cnf
   else
     initArgs="debian"
     toFile="/root/.run-to-debian.cnf"
