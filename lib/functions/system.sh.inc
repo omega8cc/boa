@@ -5320,14 +5320,6 @@ if_major_os_upgrade() {
   if [ -e "/etc/apt/preferences" ]; then
     mv -f /etc/apt/preferences /var/backups/.apt.preferences
   fi
-  if [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ] \
-    || [ "${_UP_DISTRO}" = "ON" ]; then
-    msg "INFO: Running upgrade on the existing OS first"
-    apt_clean_update
-    mrun "${_INITINS} aptitude" 2> /dev/null
-    mrun "apt-get upgrade -y --allow-downgrades" 2> /dev/null
-    mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
-  fi
   if [ ! -z "${_MSG_LOC}" ]; then
     if [ ! -e "/usr/local/lib/icu/73.1" ] \
       && [ "${_LOC_OSR}" != "jessie" ] \
