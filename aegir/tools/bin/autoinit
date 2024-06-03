@@ -90,7 +90,7 @@ if [ -z "${TERM+x}" ]; then
 fi
 tRee=dev
 export tRee="${tRee}"
-_INITINS="/usr/bin/apt-get -y --allow-unauthenticated --allow-downgrades install"
+_INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
 #
 
 check_root() {
@@ -182,12 +182,12 @@ init_pre() {
       msg "Starting with existing ${_THIS_OS}/${_OSR} OS upgrade..." >> ${logInt}
       if [ "${silentMode}" = "verbose" ]; then
         /usr/bin/apt-get update --allow-releaseinfo-change >> ${logInt}
-        /usr/bin/apt-get upgrade -y --allow-downgrades >> ${logInt}
-        /usr/bin/apt-get dist-upgrade -y --allow-downgrades >> ${logInt}
+        /usr/bin/apt-get upgrade -y >> ${logInt}
+        /usr/bin/apt-get dist-upgrade -y >> ${logInt}
       else
         /usr/bin/apt-get update --allow-releaseinfo-change 2> /dev/null
-        /usr/bin/apt-get upgrade -y --allow-downgrades -qq 2> /dev/null
-        /usr/bin/apt-get dist-upgrade -y --allow-downgrades -qq 2> /dev/null
+        /usr/bin/apt-get upgrade -y -qq 2> /dev/null
+        /usr/bin/apt-get dist-upgrade -y -qq 2> /dev/null
       fi
       msg "We need to install some tools early..." >> ${logInt}
       if [ "${silentMode}" = "verbose" ]; then
@@ -220,13 +220,13 @@ init_run_two_quick() {
   msg "Launching a quick dist-upgrade to Devuan Daedalus" >> ${logInt}
   if [ "${silentMode}" = "verbose" ]; then
     /usr/bin/apt-get update --allow-releaseinfo-change >> ${logInt}
-    /usr/bin/apt-get dist-upgrade -y --allow-downgrades >> ${logInt}
+    /usr/bin/apt-get dist-upgrade -y >> ${logInt}
     /usr/bin/apt-get purge systemd libnss-systemd -y >> ${logInt}
     /usr/bin/apt-get autoremove --purge -y >> ${logInt}
     /usr/bin/apt-get autoclean -y >> ${logInt}
   else
     /usr/bin/apt-get update --allow-releaseinfo-change -qq 2> /dev/null
-    /usr/bin/apt-get dist-upgrade -y --allow-downgrades -qq 2> /dev/null
+    /usr/bin/apt-get dist-upgrade -y -qq 2> /dev/null
     /usr/bin/apt-get purge systemd libnss-systemd -y -qq 2> /dev/null
     /usr/bin/apt-get autoremove --purge -y -qq 2> /dev/null
     /usr/bin/apt-get autoclean -y -qq 2> /dev/null
