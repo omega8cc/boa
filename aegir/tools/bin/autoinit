@@ -316,6 +316,8 @@ init_run_two() {
     rm -f /var/run/autoinit.pid
     if [ ! -e "/root/.run-to-devuan-quick.cnf" ]; then
       touch /root/.run.devuan.os.upgrade.on.init.cnf
+    else
+      rm -f /root/.run.devuan.os.upgrade.on.init.cnf
     fi
     reboot
     exit 0
