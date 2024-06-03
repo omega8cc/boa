@@ -376,7 +376,6 @@ curl_install_src
 nginx_install_upgrade
 nginx_initd_check
 redis_install_upgrade
-vnstat_install
 lshell_install_upgrade
 myquick_install_upgrade
 magick_install_upgrade
@@ -399,6 +398,8 @@ xdrago_install_upgrade
 ### Optional add-on services installed on upgrade
 ###
 if [ "${_STATUS}" = "UPGRADE" ]; then
+  if_install_pdnsd
+  if_install_vnstat
   if_install_wkhtmltox
   if_install_git_src
   if_install_ffmpeg
@@ -413,7 +414,6 @@ if [ "${_STATUS}" = "UPGRADE" ]; then
   if_install_bind
   if_install_rvm
   if_install_ftpd
-  if_install_pdnsd
   sftp_ftps_modern_fix
 fi
 

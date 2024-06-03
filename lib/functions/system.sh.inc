@@ -6665,9 +6665,9 @@ EOF
   fi
 }
 
-vnstat_install() {
+if_install_vnstat() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: vnstat_install"
+    msg "PROC: if_install_vnstat"
   fi
   if [ ! -e "/var/run/cloud_vhost.pid" ]; then
     if [ ! -e "${pthLog}/vnstat-${_VNSTAT_VRN}.log" ] \
