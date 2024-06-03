@@ -162,6 +162,8 @@ init_pre() {
     wait
     echo "Waiting five seconds before reboot..."
     sleep 5
+    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+    wait
     echo "*/2 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
     rm -f /var/run/autoinit.pid
     reboot
@@ -177,6 +179,9 @@ init_pre() {
       /usr/bin/apt-get install git -fuy --allow-unauthenticated &> /dev/null
       /usr/bin/apt-get install git-core -fuy --allow-unauthenticated &> /dev/null
       /usr/bin/apt-get install git-man -fuy --allow-unauthenticated &> /dev/null
+      sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+      wait
+      echo "*/2 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
       rm -f /var/run/autoinit.pid
     fi
   fi
@@ -184,7 +189,7 @@ init_pre() {
 init_pre
 
 
-init_run_four_quick() {
+init_run_two_quick() {
   echo " " >> ${logInt}
   msg "Launching a quick dist-upgrade to Devuan Daedalus" >> ${logInt}
   silentMode=verbose
@@ -207,14 +212,14 @@ init_run_four_quick() {
   msg "Please run standard boa install command" >> ${logInt}
   msg "Bye!" >> ${logInt}
   echo " " >> ${logInt}
-  touch /root/.run-four-devuan-quick.cnf
+  touch /root/.run-two-devuan-quick.cnf
   rm -f /root/.run-to-devuan.cnf
   rm -f /root/.run-to-devuan-quick.cnf
   sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
   rm -f /var/run/autoinit.pid
 }
 
-init_run_three_quick() {
+init_run_one_quick() {
   echo " " >> ${logInt}
   _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
@@ -270,9 +275,8 @@ init_run_three_quick() {
     /usr/bin/apt-get install eudev sysvinit-core -y -qq 2> /dev/null
     /usr/bin/apt-get -f install -y -qq 2> /dev/null
   fi
-  touch /root/.run-three-devuan-quick.cnf
-  echo " " >> ${logInt}
-  msg "Time for the third reboot..." >> ${logInt}
+  touch /root/.run-one-devuan-quick.cnf
+  msg "Time for reboot and then dist-upgrade..." >> ${logInt}
   echo " " >> ${logInt}
   sleep 5
   rm -f /var/run/autoinit.pid
@@ -399,34 +403,34 @@ init() {
   initRun=
   touch /var/run/autoinit.pid
   init_conf
-  if [ ! -e "/root/.run-one-devuan.cnf" ] \
-    && [ ! -e "/root/.run-one-debian.cnf" ]; then
-    init_run_one
-  fi
-  if [ -e "/root/.run-one-devuan.cnf" ] \
-    || [ -e "/root/.run-one-debian.cnf" ]; then
-    if [ ! -e "/root/.run-two-devuan.cnf" ] \
-      && [ ! -e "/root/.run-two-debian.cnf" ]; then
-      init_run_two
+  if [ -e "/root/.run-to-devuan-quick.cnf" ]; then
+    if [ ! -e "/root/.run-one-devuan-quick.cnf" ] \
+      && [ ! -e "/root/.run-two-devuan-quick.cnf" ]; then
+      init_run_one_quick
     fi
-  fi
-  if [ -e "/root/.run-two-devuan.cnf" ] \
-    || [ -e "/root/.run-two-debian.cnf" ]; then
-    if [ -e "/root/.run-to-devuan-quick.cnf" ]; then
-      if [ ! -e "/root/.run-three-devuan-quick.cnf" ] \
-        && [ ! -e "/root/.run-four-devuan-quick.cnf" ]; then
-        init_run_three_quick
+    if [ -e "/root/.run-one-devuan-quick.cnf" ] \
+      && [ ! -e "/root/.run-two-devuan-quick.cnf" ]; then
+      init_run_two_quick
+    fi
+  else
+    if [ ! -e "/root/.run-one-devuan.cnf" ] \
+      && [ ! -e "/root/.run-one-debian.cnf" ]; then
+      init_run_one
+    fi
+    if [ -e "/root/.run-one-devuan.cnf" ] \
+      || [ -e "/root/.run-one-debian.cnf" ]; then
+      if [ ! -e "/root/.run-two-devuan.cnf" ] \
+        && [ ! -e "/root/.run-two-debian.cnf" ]; then
+        init_run_two
       fi
-    else
+    fi
+    if [ -e "/root/.run-two-devuan.cnf" ] \
+      || [ -e "/root/.run-two-debian.cnf" ]; then
       if [ ! -e "/root/.run-three-devuan.cnf" ] \
         && [ ! -e "/root/.run-three-debian.cnf" ]; then
         init_run_three
       fi
     fi
-  fi
-  if [ -e "/root/.run-three-devuan-quick.cnf" ] \
-    && [ ! -e "/root/.run-four-devuan-quick.cnf" ]; then
-    init_run_four_quick
   fi
 }
 
