@@ -8,7 +8,7 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-aptYesUnth="-y --allow-unauthenticated"
+aptYesUnth="-y --allow-unauthenticated --allow-downgrades"
 tRee=dev
 export tRee="${tRee}"
 
