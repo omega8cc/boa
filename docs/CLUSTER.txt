@@ -141,6 +141,6 @@ http://galeracluster.com/documentation-webpages/arbitrator.html
    Usage: cluster {up-dbs} {stable|head}
    Usage: cluster {up-web} {stable|head}
    Usage: cluster {up-all} {stable|head}
-   Usage: cluster {in-oct} {email} {o2} {mini|max|none} {stable|head}
+   Usage: cluster {in-oct} {email} {o2} {lite|dev}
    Usage: cluster {in-pxy} {id} {ip} force-reinstall
    Usage: cluster {check} {more|report} {backups|octopus}

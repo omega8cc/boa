@@ -89,13 +89,10 @@
    $ wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
    $ bash BOA.sh.txt
 
-4. Remove systemd in five steps:
+4. Remove systemd and upgrade to compatible Devuan OS version:
 
-   S1. Run 'boa init' command -- it will install sysvinit.
-   S2. Reboot the server.
-   S3. Run 'boa init' again so it can remove systemd.
-   S4. Reboot the server again.
-   S5. Run boa standard install command, as outlined below.
+   $ touch /root/.run-to-devuan-quick.cnf
+   $ autoinit
 
 5. Install Barracuda and Octopus.
 
@@ -109,18 +106,12 @@
 
    Specifying Octopus username is optional. It will use "o1" if empty.
 
-   The one before last part {ask|mini|max|none} is optional, if you wish
-   to control Octopus platforms install mode, as explained below.
-   Note that "none" is a special option you can use to not install any
-   built-in platform, while "ask" is a default mode if you don't specify
-   this option at all.
-
    The last {newrelickey|php-8.1|php-min|php-max|nodns} part is optional and
    can be used either to install New Relic Apps Monitor (you should replace
    the "newrelickey" keyword with a valid license key), or to define single PHP
    version to install and use both for Master and Satellite instances.
 
-   When "php-min" is defined, then only 3 versions will be installed: 8.3, 8.2,
+   When "php-min" is defined, then 4 versions will be installed: 8.3, 8.2, 7.4
    plus 8.1, configured as default. You can later install or modify PHP version
    used via _PHP_MULTI_INSTALL, _PHP_CLI_VERSION and _PHP_FPM_VERSION, but the
    _PHP_SINGLE_INSTALL variable must be set empty to not override other related
@@ -128,24 +119,23 @@
 
    Examples:
 
-   # Latest on server - no Aegir platforms + install all 9 PHP versions
-   $ boa in-lite public server.mydomain.org my@email o1 none php-max
+   # BOA with no Aegir platforms + install all 10 PHP versions
+   $ boa in-lite public server.mydomain.org my@email o1 php-max
 
-   # Latest on server - no Aegir platforms + install 3 PHP versions
-   $ boa in-lite public server.mydomain.org my@email o1 none php-min
+   # BOA with no Aegir platforms + install 3 PHP versions
+   $ boa in-lite public server.mydomain.org my@email o1 php-min
 
-   # Latest on server - some Aegir platforms + single PHP version
-   $ boa in-lite public server.mydomain.org my@email o1 mini php-8.1
+   # BOA with no Aegir platforms + install 1 PHP version
+   $ boa in-lite public server.mydomain.org my@email o1 php-8.3
 
-   # Latest on server - prompt for every platform install + 3 PHP versions
-   $ boa in-lite public server.mydomain.org my@email o1
+   # BOA with no Aegir platforms + New Relic + 3 PHP versions
+   $ boa in-lite public server.mydomain.org my@email o1 none newrelickey
 
-   # Latest on server - no prompt with 3xD6 + 3xD7 only + 3 PHP versions
-   $ boa in-lite public server.mydomain.org my@email o1 mini
-
-   # Latest on server - no prompt all platforms + New Relic + 3 PHP versions
-   $ boa in-lite public server.mydomain.org my@email o1 max newrelickey
-
+   NOTE: Since BOA no longer installs all bundled Aegir platforms during
+         initial system installation, you will need to add some keywords
+         to ~/static/control/platforms.info and run Octopus upgrade to have
+         these platforms added as explained in the docs you can find in the
+         file ~/control/README.txt within your Octopus account.
 
 ### Installing BOA system on localhost
 
@@ -164,32 +154,24 @@
    as shown below. For local installs you don't need to specify
    hostname and Octopus username, as it is fully automated.
 
-   The last {ask|mini|max|none} part is optional, if you wish to control
-   Octopus platforms install mode, as explained below.
-
    You can also specify PHP version to install, as shown in examples below.
-   The {php-8.1|php-min|php-max} argument can be either added
-   after {ask|mini|max|none} or specified instead of {ask|mini|max|none}
 
-   # Latest on localhost - prompt for every platform install
+   # BOA with no Aegir platforms
    $ boa in-lite local my@email
 
-   # Latest on localhost - prompt for every platform + install 9 PHP versions
+   # BOA with no Aegir platforms + install 10 PHP versions
    $ boa in-lite local my@email php-max
 
-   # Latest on localhost - prompt for every platform + install 3 PHP versions
+   # BOA with no Aegir platforms + install 3 PHP versions
    $ boa in-lite local my@email php-min
 
-   # Latest on localhost - no prompt with 3xD6 + 3xD7 only + single PHP version
-   $ boa in-lite local my@email mini php-8.1
-
-   # Latest on localhost - no prompt all platforms + 3 PHP versions
-   $ boa in-lite local my@email max
+   # BOA with no Aegir platforms + single PHP version
+   $ boa in-lite local my@email php-8.1
 
 ### Installing more Octopus instances
 
 It is now possible to add lite, pro or dev Octopus instances w/o
 forcing Barracuda upgrade, plus optionally with no platforms added by default:
 
-   $ boa {in-octopus} {email} {o2} {mini|max|none} {lite|dev}
+   $ boa {in-octopus} {email} {o2} {lite|dev}
 

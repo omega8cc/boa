@@ -2297,8 +2297,8 @@ case "$1" in
   *)         echo
              echo "Installation commands"
              echo "Usage: $(basename "$0") {init} {debian|daedalus|chimaera}"
-             echo "Usage: $(basename "$0") {version} {mode} {fqdn} {email} {user} {platforms} {extra} {mysql}"
-             echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {mini|max|none} {lite|dev}"
+             echo "Usage: $(basename "$0") {version} {mode} {fqdn} {email} {user} {extra} {mysql}"
+             echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {lite|dev}"
              echo
              echo "Other available commands"
              echo "Usage: $(basename "$0") version"
@@ -2335,12 +2335,6 @@ case "$1" in
 
   {user}
       o1 <----------- default Octopus system account
-
-  {platforms}
-      ask <---------- say y/n to every prompt in install (default)
-      mini <--------- install only basic Drupal platforms w/o prompt
-      max <---------- install all currently supported distros
-      none <--------- do not install platforms, just Aegir
 
   {extra}
       license <------ valid new relic license key
