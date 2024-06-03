@@ -180,12 +180,14 @@ init_pre() {
         /usr/bin/apt-get update >> ${logInt}
         ${_INITINS} locales-all >> ${logInt}
         ${_INITINS} aptitude >> ${logInt}
+        ${_INITINS} build-essential >> ${logInt}
         ${_INITINS} curl >> ${logInt}
         ${_INITINS} git >> ${logInt}
       else
         /usr/bin/apt-get update 2> /dev/null
         ${_INITINS} locales-all 2> /dev/null
         ${_INITINS} aptitude 2> /dev/null
+        ${_INITINS} build-essential 2> /dev/null
         ${_INITINS} curl 2> /dev/null
         ${_INITINS} git 2> /dev/null
       fi
