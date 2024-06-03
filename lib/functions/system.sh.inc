@@ -2695,6 +2695,7 @@ php_install_deps() {
   ###--------------------###
   apt_clean_update
   mrun "${_INSTAPP} cmake" 2> /dev/null
+  mrun "${_INSTAPP} libcurl4-openssl-dev" 2> /dev/null
   mrun "${_INSTAPP} libgd-dev libgd3 lbzip2" 2> /dev/null
   mrun "${_INSTAPP} libkrb5-dev libldap-dev" 2> /dev/null
   mrun "${_INSTAPP} libmagickwand-dev" 2> /dev/null
