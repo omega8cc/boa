@@ -5767,6 +5767,11 @@ if_major_os_upgrade() {
       msg "ATTN: NOTE! Debian Stretch to Devuan migration"
       msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
       msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
+    elif [ "${_LOC_OSR}" = "jessie" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
+      echo
+      msg "ATTN: NOTE! Debian Jessie to Devuan migration"
+      msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
+      msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
     else
       echo
       mrun "apt-get dist-upgrade ${dstUpArg} --allow-downgrades" 2> /dev/null
