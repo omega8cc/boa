@@ -91,9 +91,11 @@
    $ wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
    $ bash BOA.sh.txt
 
-4. Remove systemd and upgrade to compatible Devuan OS version:
+4. Remove systemd and upgrade to compatible Devuan or Debian OS version:
 
    $ touch /root/.run-to-devuan-quick.cnf
+      OR
+   $ touch /root/.run-to-debian.cnf
    $ autoinit
 
 5. Install Barracuda and Octopus.
