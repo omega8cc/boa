@@ -122,7 +122,7 @@ systemd_remove_if_detected() {
 #
 # Detect and prepare for major OS upgrade.
 define_loc_osr() {
-  apt_clean_update
+  apt_clean_update_no_releaseinfo_change
   mrun "apt-get upgrade ${nrmUpArg}" 2> /dev/null
   mrun "apt-get full-upgrade ${nrmUpArg}" 2> /dev/null
   mrun "apt-get install lsb-release ${nrmUpArg}" 2> /dev/null
@@ -2486,7 +2486,7 @@ run_apt_get_dist_upgrade() {
     msg "PROC: run_apt_get_dist_upgrade"
   fi
   msg "INFO: Running apt-get upgrade..."
-  apt_clean_update
+  apt_clean_update_no_releaseinfo_change
   mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Running apt-get full-upgrade..."
@@ -5156,7 +5156,7 @@ if_post_major_os_upgrade() {
   if [ -e "/root/.run_post_major_os_upgrade.info" ] \
     && [ ! -e "/root/.completed_post_major_os_upgrade.info" ]; then
 
-    apt_clean_update
+    apt_clean_update_no_releaseinfo_change
     mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
 
     msg "INFO: Cleaning up any systemd remnants..."
@@ -5421,7 +5421,7 @@ if_major_os_upgrade() {
       mv /etc/init.d/tomcat /etc/init.d/offtomcat
       kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
     fi
-    apt_clean_update
+    apt_clean_update_no_releaseinfo_change
     mrun "apt-get remove --purge dbus  -y -qq" 2> /dev/null
     if [ -e "/usr/share/dbus-1" ]; then
       rm -f /usr/share/dbus-1/*/*freedesktop*
@@ -5439,7 +5439,7 @@ if_major_os_upgrade() {
         rm -f /etc/apt/preferences.d/nginx
         echo -e 'Package: nginx\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/nginx-common
         echo -e '\n\nPackage: nginx-common\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx-common
-        apt_clean_update
+        apt_clean_update_no_releaseinfo_change
       fi
       ###
       _NGINX_GET_DPKG=$(dpkg --get-selections | grep nginx-common | grep 'hold$' 2>&1)
@@ -5448,7 +5448,7 @@ if_major_os_upgrade() {
         aptitude hold nginx-common &> /dev/null
         echo "nginx hold" | dpkg --set-selections &> /dev/null
         echo "nginx-common hold" | dpkg --set-selections &> /dev/null
-        apt_clean_update
+        apt_clean_update_no_releaseinfo_change
       fi
     fi
     if [ -e "/etc/php5/conf.d" ]; then
@@ -5596,7 +5596,7 @@ if_major_os_upgrade() {
       fi
       ###
       ### Add devuan-keyring first.
-      apt_clean_update
+      apt_clean_update_no_releaseinfo_change
       mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
       mrun "${_INITINS} devuan-keyring" 2> /dev/null
     else
@@ -5649,12 +5649,12 @@ if_major_os_upgrade() {
     fi
     ###
     ### Update packages registry.
-    apt_clean_update
+    apt_clean_update_no_releaseinfo_change
     mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
     ###
     ### Two step upgrade with apt-get only.
     mrun "apt-get install apt -t ${_NEW_OSR} ${dstUpArg}" 2> /dev/null
-    apt_clean_update
+    apt_clean_update_no_releaseinfo_change
     mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
     ###
     ### Requirement for Debian Stretch to Devuan Beowulf migration.
@@ -5692,7 +5692,7 @@ if_major_os_upgrade() {
     fi
     ###
     ### Fix any broken packages.
-    apt_clean_update
+    apt_clean_update_no_releaseinfo_change
     mrun "apt --fix-broken install -y" 2> /dev/null
     ###
     ### Make sure that sysvinit-core is still installed and systemd removed.
@@ -5923,7 +5923,7 @@ if_major_os_upgrade() {
         msg "WARN: Required /dev/pts/ptmx does not exist! We will fix this now..."
         mkdir -p /dev/pts
         rm -rf /dev/pts/*
-        apt_clean_update
+        apt_clean_update_no_releaseinfo_change
         apt-get install udev -y --allow-unauthenticated &> /dev/null
         echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
         mount -t devpts devpts /dev/pts &> /dev/null

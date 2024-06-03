@@ -586,6 +586,12 @@ apt_clean_update() {
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
+apt_clean_update_no_releaseinfo_change() {
+  apt-get clean -qq 2> /dev/null
+  rm -rf /var/lib/apt/lists/* &> /dev/null
+  apt-get update -qq 2> /dev/null
+}
+
 os_detection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: os_detection"
