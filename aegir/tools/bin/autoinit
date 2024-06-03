@@ -36,11 +36,14 @@
 ###
 ###  Use clean minimal Debian OS based VPS.
 ###
-###  Install and run BOA basic tools:
+###  Initialise the system before installing
+###  BOA to either remove systemd and use
+###  Debian or also quickly upgrade to the
+###  compatible Devuan OS version.
 ###
 ###   $ wget http://files.aegir.cc/BOA.sh.txt
 ###   $ bash BOA.sh.txt
-###   $ touch /root/.run-to-devuan.cnf
+###   $ touch /root/.run-to-devuan-quick.cnf
 ###      OR
 ###   $ touch /root/.run-to-debian.cnf
 ###   $ autoinit
@@ -158,16 +161,112 @@ init_pre() {
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
-    apt-get update &> /dev/null
-    apt-get install locales-all -fuy --allow-unauthenticated &> /dev/null
-    apt-get install aptitude -fuy --allow-unauthenticated &> /dev/null
-    apt-get install curl -fuy --allow-unauthenticated &> /dev/null
-    apt-get install git -fuy --allow-unauthenticated &> /dev/null
-    apt-get install git-core -fuy --allow-unauthenticated &> /dev/null
-    apt-get install git-man -fuy --allow-unauthenticated &> /dev/null
+    /usr/bin/apt-get update &> /dev/null
+    /usr/bin/apt-get install locales-all -fuy --allow-unauthenticated &> /dev/null
+    /usr/bin/apt-get install aptitude -fuy --allow-unauthenticated &> /dev/null
+    /usr/bin/apt-get install curl -fuy --allow-unauthenticated &> /dev/null
+    /usr/bin/apt-get install git -fuy --allow-unauthenticated &> /dev/null
+    /usr/bin/apt-get install git-core -fuy --allow-unauthenticated &> /dev/null
+    /usr/bin/apt-get install git-man -fuy --allow-unauthenticated &> /dev/null
   fi
 }
 init_pre
+
+
+init_run_four_quick() {
+  echo " " >> ${logInt}
+  msg "Launching a quick dist-upgrade to Devuan Daedalus" >> ${logInt}
+  silentMode=verbose
+  if [ "${silentMode}" = "verbose" ]; then
+    /usr/bin/apt-get update
+    /usr/bin/apt-get dist-upgrade -y
+    /usr/bin/apt-get purge systemd libnss-systemd -y
+    /usr/bin/apt-get autoremove --purge -y
+    /usr/bin/apt-get autoclean -y
+  else
+    /usr/bin/apt-get update -qq 2> /dev/null
+    /usr/bin/apt-get dist-upgrade -y -qq 2> /dev/null
+    /usr/bin/apt-get purge systemd libnss-systemd -y -qq 2> /dev/null
+    /usr/bin/apt-get autoremove --purge -y -qq 2> /dev/null
+    /usr/bin/apt-get autoclean -y -qq 2> /dev/null
+  fi
+  _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  msg "Your system now runs on ${_THIS_OS}/${_OSR}" >> ${logInt}
+  msg "Please run standard boa install command" >> ${logInt}
+  msg "Bye!" >> ${logInt}
+  echo " " >> ${logInt}
+  touch /root/.run-four-devuan-quick.cnf
+  rm -f /root/.run-to-devuan.cnf
+  rm -f /root/.run-to-devuan-quick.cnf
+  sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+  rm -f /var/run/autoinit.pid
+}
+
+init_run_three_quick() {
+  echo " " >> ${logInt}
+  _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  if [ "${_OSR}" = "bookworm" ]; then
+    _NEW_OSR=daedalus
+  elif [ "${_OSR}" = "bullseye" ]; then
+    _NEW_OSR=chimaera
+  elif [ "${_OSR}" = "buster" ]; then
+    _NEW_OSR=beowulf
+  else
+    msg "This procedure supports only Debian bookworm, bullseye and buster" >> ${logInt}
+    msg "Bye!" >> ${logInt}
+    echo " " >> ${logInt}
+    exit 1
+  fi
+  msg "Launching a quick upgrade to Devuan/{_NEW_OSR}" >> ${logInt}
+  echo " " >> ${logInt}
+  aptLiSys="/etc/apt/sources.list"
+  _TGT_MRR="deb.devuan.org/merged"
+  echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
+  echo "deb http://${_TGT_MRR} ${_NEW_OSR} main" >> ${aptLiSys}
+  echo "deb-src http://${_TGT_MRR} ${_NEW_OSR} main" >> ${aptLiSys}
+  echo "" >> ${aptLiSys}
+  echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
+  echo "deb http://${_TGT_MRR} ${_NEW_OSR}-updates main" >> ${aptLiSys}
+  echo "deb-src http://${_TGT_MRR} ${_NEW_OSR}-updates main" >> ${aptLiSys}
+  echo "" >> ${aptLiSys}
+  echo "## DEVUAN SECURITY UPDATES" >> ${aptLiSys}
+  echo "deb http://${_TGT_MRR} ${_NEW_OSR}-security main" >> ${aptLiSys}
+  echo "deb-src http://${_TGT_MRR} ${_NEW_OSR}-security main" >> ${aptLiSys}
+  if [ -e "/etc/apt/apt.conf" ]; then
+    sed -i "s/APT::Default-Release.*/APT::Default-Release \"${_NEW_OSR}\";/g" \
+      /etc/apt/apt.conf &> /dev/null
+      wait
+  else
+    echo "APT::Default-Release \"${_NEW_OSR}\";" > /etc/apt/apt.conf
+  fi
+  silentMode=verbose
+  if [ "${silentMode}" = "verbose" ]; then
+    /usr/bin/apt-get update --allow-insecure-repositories
+    ### /usr/bin/apt-get update --allow-insecure-repositories --allow-releaseinfo-change?
+    /usr/bin/apt-get -y --allow-unauthenticated install devuan-keyring
+    /usr/bin/apt-get update
+    /usr/bin/apt-get upgrade -y
+    /usr/bin/apt-get install eudev sysvinit-core -y
+    /usr/bin/apt-get -f install -y
+  else
+    /usr/bin/apt-get update --allow-insecure-repositories -qq 2> /dev/null
+    /usr/bin/apt-get -y --allow-unauthenticated install devuan-keyring -qq 2> /dev/null
+    /usr/bin/apt-get update -qq 2> /dev/null
+    /usr/bin/apt-get upgrade -y -qq 2> /dev/null
+    /usr/bin/apt-get install eudev sysvinit-core -y -qq 2> /dev/null
+    /usr/bin/apt-get -f install -y -qq 2> /dev/null
+  fi
+  touch /root/.run-three-devuan-quick.cnf
+  echo " " >> ${logInt}
+  msg "Time for the third reboot..." >> ${logInt}
+  echo " " >> ${logInt}
+  sleep 5
+  rm -f /var/run/autoinit.pid
+  reboot
+  exit 0
+}
 
 init_run_three() {
   if [ "${initArgs}" = "devuan" ]; then
@@ -188,7 +287,6 @@ init_run_three() {
     touch /root/.run-three-debian.cnf
     rm -f /root/.run-to-debian.cnf
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-    echo "*/3 *   * * *   root    test -e /root/.run.devuan.os.upgrade.on.init.cnf && { bash /etc/init.d/clean-boa-env start; }" >> /etc/crontab
     rm -f /var/run/autoinit.pid
   fi
 }
@@ -205,7 +303,9 @@ init_run_two() {
     echo " " >> ${logInt}
     sleep 5
     rm -f /var/run/autoinit.pid
-    touch /root/.run.devuan.os.upgrade.on.init.cnf
+    if [ ! -e "/root/.run-to-devuan-quick.cnf" ]; then
+      touch /root/.run.devuan.os.upgrade.on.init.cnf
+    fi
     reboot
     exit 0
   elif [ "${initArgs}" = "debian" ]; then
@@ -219,7 +319,6 @@ init_run_two() {
     echo " " >> ${logInt}
     sleep 5
     rm -f /var/run/autoinit.pid
-    touch /root/.run.devuan.os.upgrade.on.init.cnf
     reboot
     exit 0
   fi
@@ -263,7 +362,10 @@ init_conf() {
   else
     initCmnd="init"
   fi
-  if [ "${1}" = "devuan" ] || [ -e "/root/.run-to-devuan.cnf" ]; then
+  if [ -e "/root/.run-to-devuan-quick.cnf" ]; then
+    initArgs="devuan"
+    toFile="/root/.run-to-devuan-quick.cnf"
+  elif [ -e "/root/.run-to-devuan.cnf" ]; then
     initArgs="devuan"
     toFile="/root/.run-to-devuan.cnf"
   else
@@ -293,15 +395,27 @@ init() {
   fi
   if [ -e "/root/.run-two-devuan.cnf" ] \
     || [ -e "/root/.run-two-debian.cnf" ]; then
-    if [ ! -e "/root/.run-three-devuan.cnf" ] \
-      && [ ! -e "/root/.run-three-debian.cnf" ]; then
-      init_run_three
+    if [ -e "/root/.run-to-devuan-quick.cnf" ]; then
+      if [ ! -e "/root/.run-three-devuan-quick.cnf" ] \
+        && [ ! -e "/root/.run-four-devuan-quick.cnf" ]; then
+        init_run_three_quick
+      fi
+    else
+      if [ ! -e "/root/.run-three-devuan.cnf" ] \
+        && [ ! -e "/root/.run-three-debian.cnf" ]; then
+        init_run_three
+      fi
     fi
+  fi
+  if [ -e "/root/.run-three-devuan-quick.cnf" ] \
+    && [ ! -e "/root/.run-four-devuan-quick.cnf" ]; then
+    init_run_four_quick
   fi
 }
 
 if [ -e "/root/.run-to-devuan.cnf" ] \
-  || [ -e "/root/.run-to-debian.cnf" ]; then
+  || [ -e "/root/.run-to-debian.cnf" ] \
+  || [ -e "/root/.run-to-devuan-quick.cnf" ]; then
   echo
   echo "Launching BOA System INIT.."
   echo "Watch the progress with: tail -f /root/.autoinit.log"
