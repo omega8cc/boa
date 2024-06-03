@@ -322,7 +322,6 @@ init_run_two() {
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-two-devuan.cnf
-    echo " " >> ${logInt}
     msg "Time for the second reboot..." >> ${logInt}
     echo " " >> ${logInt}
     sleep 5
@@ -340,7 +339,6 @@ init_run_two() {
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-two-debian.cnf
-    echo " " >> ${logInt}
     msg "Time for the second reboot..." >> ${logInt}
     echo " " >> ${logInt}
     sleep 5
@@ -357,7 +355,6 @@ init_run_one() {
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-one-devuan.cnf
-    echo " " >> ${logInt}
     msg "Time for the first reboot..." >> ${logInt}
     echo " " >> ${logInt}
     sleep 5
@@ -373,7 +370,6 @@ init_run_one() {
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-one-debian.cnf
-    echo " " >> ${logInt}
     msg "Time for the first reboot..." >> ${logInt}
     echo " " >> ${logInt}
     sleep 5
