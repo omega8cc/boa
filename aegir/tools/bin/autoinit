@@ -230,7 +230,7 @@ init_run_three_quick() {
     echo " " >> ${logInt}
     exit 1
   fi
-  msg "Launching a quick upgrade to Devuan/{_NEW_OSR}" >> ${logInt}
+  msg "Launching a quick upgrade to Devuan/${_NEW_OSR}" >> ${logInt}
   echo " " >> ${logInt}
   aptLiSys="/etc/apt/sources.list"
   _TGT_MRR="deb.devuan.org/merged"
