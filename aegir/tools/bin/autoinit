@@ -234,7 +234,11 @@ init_run_two_quick() {
   rm -f /root/.run-to-devuan.cnf
   rm -f /root/.run-to-devuan-quick.cnf
   sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+  msg "Time for the second reboot and then run boa install" >> ${logInt}
+  sleep 5
   rm -f /var/run/autoinit.pid
+  reboot
+  exit 0
 }
 
 init_run_one_quick() {
