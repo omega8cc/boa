@@ -340,6 +340,14 @@ fi
 
 
 ###
+### Install key packages first
+###
+run_aptitude_full_upgrade
+run_aptitude_deps_install
+kill_nash
+
+
+###
 ### Install Percona server
 ###
 db_server_install
@@ -356,9 +364,6 @@ mytop_install
 ###
 ### Install other services
 ###
-run_aptitude_full_upgrade
-run_aptitude_deps_install
-kill_nash
 if [ "${_STATUS}" = "UPGRADE" ]; then
   if [ ! -e "/root/.install.modern.openssl.cnf" ]; then
     touch /root/.install.modern.openssl.cnf
