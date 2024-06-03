@@ -364,7 +364,7 @@ mytop_install
 ###
 ### Install other services
 ###
-if [ "${_STATUS}" = "UPGRADE" ]; then
+if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
   if [ ! -e "/root/.install.modern.openssl.cnf" ]; then
     touch /root/.install.modern.openssl.cnf
     chattr +i /root/.install.modern.openssl.cnf
