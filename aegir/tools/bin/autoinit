@@ -218,6 +218,7 @@ init_run_three_quick() {
   echo " " >> ${logInt}
   _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  msg "Your system is ${_THIS_OS}/${_OSR}"
   if [ "${_OSR}" = "bookworm" ]; then
     _NEW_OSR=daedalus
   elif [ "${_OSR}" = "bullseye" ]; then
