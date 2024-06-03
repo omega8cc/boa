@@ -312,15 +312,6 @@ init_run_three() {
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
     echo "*/2 *   * * *   root    test -e /root/.run.devuan.os.upgrade.on.init.cnf && { bash /etc/init.d/clean-boa-env start; }" >> /etc/crontab
     rm -f /var/run/autoinit.pid
-  elif [ "${initArgs}" = "debian" ]; then
-    echo " " >> ${logInt}
-    msg "Launching the third run of ${initRun}" >> ${logInt}
-    /opt/local/bin/boa ${initRun} >> ${logInt}
-    wait
-    touch /root/.run-three-debian.cnf
-    rm -f /root/.run-to-debian.cnf
-    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-    rm -f /var/run/autoinit.pid
   fi
 }
 
@@ -441,10 +432,8 @@ init() {
         init_run_two
       fi
     fi
-    if [ -e "/root/.run-two-devuan.cnf" ] \
-      || [ -e "/root/.run-two-debian.cnf" ]; then
-      if [ ! -e "/root/.run-three-devuan.cnf" ] \
-        && [ ! -e "/root/.run-three-debian.cnf" ]; then
+    if [ -e "/root/.run-two-devuan.cnf" ]; then
+      if [ ! -e "/root/.run-three-devuan.cnf" ]; then
         init_run_three
       fi
     fi
