@@ -165,6 +165,7 @@ init_pre() {
     echo "*/2 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
     rm -f /var/run/autoinit.pid
     reboot
+    exit 0
   else
     if [ ! -x "/usr/bin/aptitude" ] || [ ! -x "/usr/bin/git" ]; then
       touch /var/run/autoinit.pid
