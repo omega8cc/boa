@@ -42,7 +42,7 @@ fi
 
 _X_SE="520devT02"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-aptYesUnth="-y --allow-unauthenticated --allow-downgrades"
+aptYesUnth="-y --allow-unauthenticated"
 vSet="variable-set --always-set"
 
 ###-------------SYSTEM-----------------###

@@ -88,9 +88,18 @@ export APT_LISTCHANGES_FRONTEND=none
 if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
+
 tRee=dev
 export tRee="${tRee}"
+<<<<<<< HEAD
 _INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
+=======
+
+_TODAY=$(date +%y%m%d 2>&1)
+_TODAY=${_TODAY//[^0-9]/}
+_X_SE="520devT02"
+_THIS_SYS=check
+>>>>>>> parent of a4f629666 (Testing --allow-downgrades)
 #
 
 check_root() {
@@ -191,6 +200,7 @@ init_pre() {
       fi
       msg "We need to install some tools early..." >> ${logInt}
       if [ "${silentMode}" = "verbose" ]; then
+<<<<<<< HEAD
         /usr/bin/apt-get update --allow-releaseinfo-change >> ${logInt}
         ${_INITINS} locales-all >> ${logInt}
         ${_INITINS} aptitude >> ${logInt}
@@ -204,6 +214,23 @@ init_pre() {
         ${_INITINS} build-essential 2> /dev/null
         ${_INITINS} curl 2> /dev/null
         ${_INITINS} git 2> /dev/null
+=======
+        /usr/bin/apt-get update >> ${logInt}
+        /usr/bin/apt-get install locales-all -fuy --allow-unauthenticated >> ${logInt}
+        /usr/bin/apt-get install aptitude -fuy --allow-unauthenticated >> ${logInt}
+        /usr/bin/apt-get install curl -fuy --allow-unauthenticated >> ${logInt}
+        /usr/bin/apt-get install git -fuy --allow-unauthenticated >> ${logInt}
+        /usr/bin/apt-get install git-core -fuy --allow-unauthenticated >> ${logInt}
+        /usr/bin/apt-get install git-man -fuy --allow-unauthenticated >> ${logInt}
+      else
+        /usr/bin/apt-get update 2> /dev/null
+        /usr/bin/apt-get install locales-all -fuy --allow-unauthenticated 2> /dev/null
+        /usr/bin/apt-get install aptitude -fuy --allow-unauthenticated 2> /dev/null
+        /usr/bin/apt-get install curl -fuy --allow-unauthenticated 2> /dev/null
+        /usr/bin/apt-get install git -fuy --allow-unauthenticated 2> /dev/null
+        /usr/bin/apt-get install git-core -fuy --allow-unauthenticated 2> /dev/null
+        /usr/bin/apt-get install git-man -fuy --allow-unauthenticated 2> /dev/null
+>>>>>>> parent of a4f629666 (Testing --allow-downgrades)
       fi
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
       wait
@@ -219,13 +246,21 @@ init_run_two_quick() {
   echo " " >> ${logInt}
   msg "Launching a quick dist-upgrade to Devuan Daedalus" >> ${logInt}
   if [ "${silentMode}" = "verbose" ]; then
+<<<<<<< HEAD
     /usr/bin/apt-get update --allow-releaseinfo-change >> ${logInt}
+=======
+    /usr/bin/apt-get update >> ${logInt}
+>>>>>>> parent of a4f629666 (Testing --allow-downgrades)
     /usr/bin/apt-get dist-upgrade -y >> ${logInt}
     /usr/bin/apt-get purge systemd libnss-systemd -y >> ${logInt}
     /usr/bin/apt-get autoremove --purge -y >> ${logInt}
     /usr/bin/apt-get autoclean -y >> ${logInt}
   else
+<<<<<<< HEAD
     /usr/bin/apt-get update --allow-releaseinfo-change -qq 2> /dev/null
+=======
+    /usr/bin/apt-get update -qq 2> /dev/null
+>>>>>>> parent of a4f629666 (Testing --allow-downgrades)
     /usr/bin/apt-get dist-upgrade -y -qq 2> /dev/null
     /usr/bin/apt-get purge systemd libnss-systemd -y -qq 2> /dev/null
     /usr/bin/apt-get autoremove --purge -y -qq 2> /dev/null

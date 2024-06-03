@@ -31,11 +31,11 @@ _RESERVED_RAM=0
 ###
 ### Commands shortcuts
 ###
-dstUpArg="-fuy --allow-unauthenticated --allow-downgrades -q --config-file /opt/apt/apt.conf.noi.dist"
-nrmUpArg="-fuy --allow-unauthenticated --allow-downgrades -q --config-file /opt/apt/apt.conf.noi.nrml"
+dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
+nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
 _INSTALL="/usr/bin/apt-get ${nrmUpArg} install"
-_INITINS="/usr/bin/apt-get -y --allow-unauthenticated --allow-downgrades install"
-aptYesUnth="-y --allow-unauthenticated --allow-downgrades"
+_INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
+aptYesUnth="-y --allow-unauthenticated"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 vBs="/var/backups"
 tVr="0.7"

@@ -185,7 +185,7 @@ _PHP83_VRN=8.3.7
 ###
 bldPth="/opt/tmp/boa"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-aptYesUnth="-y --allow-unauthenticated --allow-downgrades"
+aptYesUnth="-y --allow-unauthenticated"
 gCb="git clone --branch"
 gitHub="https://github.com/omega8cc"
 gitLab="https://gitlab.com/omega8cc"

@@ -13,7 +13,7 @@ _PROXYSQL_VRN="1.3.5-debian8_amd64"
 _UTIL_VRN="0.30.216-pre3126"
 _VNSTAT_VRN="2.7"
 _APT_XTR="-y"
-_INST="/usr/bin/apt-get -y --allow-unauthenticated --allow-downgrades install"
+_INST="/usr/bin/apt-get -y --allow-unauthenticated install"
 _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
 _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 aptLiSys="/etc/apt/sources.list"
@@ -43,7 +43,7 @@ _X_SE="520devT02"
 #
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-aptYesUnth="-y --allow-unauthenticated --allow-downgrades"
+aptYesUnth="-y --allow-unauthenticated"
 optBin="/opt/local/bin"
 usrBin="/usr/local/bin"
 pthLog="/var/xdrago/log"
@@ -89,7 +89,7 @@ check_root() {
         ln -s /proc/self/fd /dev/fd
       fi
     fi
-    aptYesUnth="-y --allow-unauthenticated --allow-downgrades"
+    aptYesUnth="-y --allow-unauthenticated"
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -712,7 +712,7 @@ DPkg::Options {"--force-confdef";"--force-confmiss";"--force-confold"};
 DPkg::Pre-Install-Pkgs {"/usr/sbin/dpkg-preconfigure --apt";};
 Dir::Etc::SourceList "/etc/apt/sources.list";
 ' > /vservers/${idn}/opt/apt/apt.conf.noi.nrml
-    nrmUpArg="-fuy --allow-unauthenticated --allow-downgrades -q --config-file /opt/apt/apt.conf.noi.nrml"
+    nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
     vserver ${idn} exec apt-get clean
     vserver ${idn} exec ${_APT_UPDATE} -qq
     vserver ${idn} exec ${_INSTAPP} sysbench
