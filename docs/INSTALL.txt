@@ -27,7 +27,7 @@
 ###
 
 * Since Debian is running systemd, it should be removed before installing BOA,
-  which involves procedure in five steps, as outlined further below.
+  which involves simple autoinit procedure, as outlined further below.
 
 * Once BOA is fully installed, you have to run 'barracuda up-lite system'
   (immediately, but without reboot) to make sure that your system is ready
@@ -66,7 +66,9 @@
   re-generated on the next SSH login attempt once you accept the new SSH key.
 
 
+###
 ### Installing BOA system on a public server/VPS
+###
 
 1. Configure your domain DNS to point its wildcard enabled A record to your
    server IP address, and make sure it propagated on the Internet by trying
@@ -145,7 +147,23 @@
          these platforms added as explained in the docs you can find in the
          file ~/control/README.txt within your Octopus account.
 
-### Installing BOA system on localhost
+6. Post-install Barracuda upgrade (required)
+
+   $ barracuda up-lite system
+
+
+###
+### Installing more Octopus instances
+###
+
+   You can add more Octopus instances easily:
+
+   $ boa {in-octopus} {email} {o2} {lite|dev}
+
+
+###
+### Installing BOA system on localhost (deprecated)
+###
 
 1. Please read docs/NOTES.txt
 
@@ -175,11 +193,4 @@
 
    # BOA with no Aegir platforms + single PHP version
    $ boa in-lite local my@email php-8.1
-
-### Installing more Octopus instances
-
-It is now possible to add lite, pro or dev Octopus instances w/o
-forcing Barracuda upgrade, plus optionally with no platforms added by default:
-
-   $ boa {in-octopus} {email} {o2} {lite|dev}
 
