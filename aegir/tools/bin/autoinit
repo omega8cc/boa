@@ -183,11 +183,9 @@ init_pre() {
       if [ "${silentMode}" = "verbose" ]; then
         /usr/bin/apt-get update --allow-releaseinfo-change >> ${logInt}
         /usr/bin/apt-get upgrade -y >> ${logInt}
-        /usr/bin/apt-get dist-upgrade -y >> ${logInt}
       else
         /usr/bin/apt-get update --allow-releaseinfo-change 2> /dev/null
         /usr/bin/apt-get upgrade -y -qq 2> /dev/null
-        /usr/bin/apt-get dist-upgrade -y -qq 2> /dev/null
       fi
       msg "We need to install some tools early..." >> ${logInt}
       if [ "${silentMode}" = "verbose" ]; then
