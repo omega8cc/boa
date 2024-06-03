@@ -179,14 +179,7 @@ init_pre() {
       touch /var/run/autoinit.pid
       _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
       _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-      msg "Starting with existing ${_THIS_OS}/${_OSR} OS upgrade..." >> ${logInt}
-      if [ "${silentMode}" = "verbose" ]; then
-        /usr/bin/apt-get update --allow-releaseinfo-change >> ${logInt}
-        /usr/bin/apt-get upgrade -y >> ${logInt}
-      else
-        /usr/bin/apt-get update --allow-releaseinfo-change 2> /dev/null
-        /usr/bin/apt-get upgrade -y -qq 2> /dev/null
-      fi
+      msg "This system is ${_THIS_OS}/${_OSR}" >> ${logInt}
       msg "We need to install some tools early..." >> ${logInt}
       if [ "${silentMode}" = "verbose" ]; then
         /usr/bin/apt-get update >> ${logInt}
