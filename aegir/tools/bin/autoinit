@@ -183,18 +183,14 @@ init_pre() {
       msg "We need to install some tools early..." >> ${logInt}
       if [ "${silentMode}" = "verbose" ]; then
         /usr/bin/apt-get update >> ${logInt}
-        ${_INITINS} locales-all >> ${logInt}
-        ${_INITINS} aptitude >> ${logInt}
-        ${_INITINS} build-essential >> ${logInt}
-        ${_INITINS} curl >> ${logInt}
-        ${_INITINS} git >> ${logInt}
+        ${_INITINS} locales-all aptitude >> ${logInt}
+        ${_INITINS} build-essential curl git >> ${logInt}
+        ${_INITINS} libgd-dev libmagickwand-dev libcurl4-openssl-dev >> ${logInt}
       else
         /usr/bin/apt-get update 2> /dev/null
-        ${_INITINS} locales-all 2> /dev/null
-        ${_INITINS} aptitude 2> /dev/null
-        ${_INITINS} build-essential 2> /dev/null
-        ${_INITINS} curl 2> /dev/null
-        ${_INITINS} git 2> /dev/null
+        ${_INITINS} locales-all aptitude 2> /dev/null
+        ${_INITINS} build-essential curl git 2> /dev/null
+        ${_INITINS} libgd-dev libmagickwand-dev libcurl4-openssl-dev 2> /dev/null
       fi
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
       wait
