@@ -6245,7 +6245,7 @@ sys_packages_install() {
   fi
 
   if [ "${_OSR}" = "daedalus" ]; then
-    _EXTRA_PACKAGES="autoconf2.71 \
+    _EXTRA_PACKAGES="autoconf2.69 \
                      automake1.11 \
                      automake-1.16 \
                      gnupg1-curl \
@@ -6291,7 +6291,7 @@ sys_packages_install() {
                      ttf-dejavu-extra \
                      ${_EXTRA_PACKAGES}"
   elif [ "${_OSR}" = "bookworm" ]; then
-    _EXTRA_PACKAGES="autoconf2.71 \
+    _EXTRA_PACKAGES="autoconf2.69 \
                      automake1.11 \
                      automake-1.16 \
                      gnupg1-curl \
