@@ -6140,13 +6140,27 @@ sys_packages_install() {
       elif [ "${_OSR}" = "bullseye" ]; then
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "bookworm" ]; then
-        _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
+        echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
+        echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
+        apt_clean_update
+        apt-get install -t bullseye openjdk-11-jre-headless -y &> /dev/null
+        rm -f /etc/apt/sources.list.d/bullseye.list
+        rm -f /etc/apt/apt.conf
+        apt_clean_update
       elif [ "${_OSR}" = "beowulf" ]; then
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "chimaera" ]; then
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
       elif [ "${_OSR}" = "daedalus" ]; then
-        _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
+        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
+        echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
+        echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
+        apt_clean_update
+        apt-get install -t chimaera openjdk-11-jre-headless -y &> /dev/null
+        rm -f /etc/apt/sources.list.d/chimaera.list
+        rm -f /etc/apt/apt.conf
+        apt_clean_update
       fi
     else
       _APT_XTRA="nginx"
@@ -6179,13 +6193,27 @@ sys_packages_install() {
       elif [ "${_OSR}" = "bullseye" ]; then
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "bookworm" ]; then
-        _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
+        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java"
+        echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
+        echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
+        apt_clean_update
+        apt-get install -t bullseye openjdk-11-jre-headless -y &> /dev/null
+        rm -f /etc/apt/sources.list.d/bullseye.list
+        rm -f /etc/apt/apt.conf
+        apt_clean_update
       elif [ "${_OSR}" = "beowulf" ]; then
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "chimaera" ]; then
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
       elif [ "${_OSR}" = "daedalus" ]; then
-        _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
+        _APT_XTRA="openjdk-17-jre-headless ca-certificates-java"
+        echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
+        echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
+        apt_clean_update
+        apt-get install -t chimaera openjdk-11-jre-headless -y &> /dev/null
+        rm -f /etc/apt/sources.list.d/chimaera.list
+        rm -f /etc/apt/apt.conf
+        apt_clean_update
       fi
     else
       _APT_XTRA=""
