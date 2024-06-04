@@ -4908,8 +4908,8 @@ basic_packages_install_on_init() {
     msg "PROC: basic_packages_install_on_init"
   fi
   apt_clean_update
-  apt-get remove --purge unscd -y &> /dev/null
-  apt-get remove --purge dbus -y &> /dev/null
+  mrun "apt-get remove --purge unscd -y" &> /dev/null
+  mrun "apt-get remove --purge dbus -y" &> /dev/null
   if [ -e "/usr/share/dbus-1" ]; then
     rm -f /usr/share/dbus-1/*/*freedesktop*
   fi
@@ -4938,18 +4938,18 @@ basic_packages_install_on_init() {
     if [ ! -e "/root/.step.init.basic.cnf" ]; then
       msg "INFO: Installing some basic tools..."
       apt_clean_update
-      ${_INITINS} locales &> /dev/null
+      mrun "${_INITINS} locales" &> /dev/null
       locales_check_fix
-      ${_INITINS} lsb-release &> /dev/null
-      ${_INITINS} dnsutils &> /dev/null
-      ${_INITINS} netcat &> /dev/null
-      ${_INITINS} netcat-traditional &> /dev/null
-      ${_INITINS} aptitude &> /dev/null
-      ${_INITINS} curl &> /dev/null
-      ${_INITINS} wget &> /dev/null
-      ${_INITINS} hostname &> /dev/null
-      ${_INITINS} net-tools &> /dev/null
-      ${_INITINS} ntpdate &> /dev/null
+      mrun "${_INITINS} lsb-release" &> /dev/null
+      mrun "${_INITINS} dnsutils" &> /dev/null
+      mrun "${_INITINS} netcat" &> /dev/null
+      mrun "${_INITINS} netcat-traditional" &> /dev/null
+      mrun "${_INITINS} aptitude" &> /dev/null
+      mrun "${_INITINS} curl" &> /dev/null
+      mrun "${_INITINS} wget" &> /dev/null
+      mrun "${_INITINS} hostname" &> /dev/null
+      mrun "${_INITINS} net-tools" &> /dev/null
+      mrun "${_INITINS} ntpdate" &> /dev/null
       touch /root/.step.init.basic.cnf
     fi
   fi
@@ -4975,13 +4975,13 @@ more_packages_install_on_init() {
       fi
     fi
     apt_clean_update
-    ${_INITINS} locales &> /dev/null
+    mrun "${_INITINS} locales" &> /dev/null
     locales_check_fix
-    ${_INITINS} git &> /dev/null
-    ${_INITINS} git-core &> /dev/null
-    ${_INITINS} git-man &> /dev/null
-    ${_INITINS} axel &> /dev/null
-    ${_INITINS} build-essential &> /dev/null
+    mrun "${_INITINS} git" &> /dev/null
+    mrun "${_INITINS} git-core" &> /dev/null
+    mrun "${_INITINS} git-man" &> /dev/null
+    mrun "${_INITINS} axel" &> /dev/null
+    mrun "${_INITINS} build-essential" &> /dev/null
   fi
 }
 
