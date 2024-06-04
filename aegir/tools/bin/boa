@@ -2297,7 +2297,7 @@ case "$1" in
   *)         echo
              echo "Installation commands"
              echo "Usage: $(basename "$0") {init} {debian|daedalus|chimaera}"
-             echo "Usage: $(basename "$0") {version} {mode} {fqdn} {email} {user} {extra} {mysql}"
+             echo "Usage: $(basename "$0") {version} {kind} {fqdn} {email} {user} {extra} {mysql}"
              echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {lite|dev}"
              echo
              echo "Other available commands"
@@ -2323,7 +2323,7 @@ case "$1" in
       in-dev <------- install BOA Cutting Edge (requires license)
       in-octopus <--- install extra Octopus instance (lite|dev)
 
-  {mode}
+  {kind}
       public <------- recommended for general use
       local <-------- experimental
 
