@@ -169,7 +169,7 @@ init_pre() {
     sleep 5
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
     wait
-    echo "*/3 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
+    echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
     rm -f /var/run/autoinit.pid
     reboot
     exit 0
@@ -194,7 +194,7 @@ init_pre() {
       fi
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
       wait
-      echo "*/3 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
+      echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
       rm -f /var/run/autoinit.pid
     fi
   fi
@@ -303,7 +303,7 @@ init_run_three() {
     touch /root/.run-three-devuan.cnf
     rm -f /root/.run-to-devuan.cnf
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-    echo "*/3 *   * * *   root    test -e /root/.run.devuan.os.upgrade.on.init.cnf && { bash /etc/init.d/clean-boa-env start; }" >> /etc/crontab
+    echo "*/1 *   * * *   root    test -e /root/.run.devuan.os.upgrade.on.init.cnf && { bash /etc/init.d/clean-boa-env start; }" >> /etc/crontab
     rm -f /var/run/autoinit.pid
   fi
 }
@@ -353,7 +353,7 @@ init_run_one() {
     sleep 5
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
     wait
-    echo "*/3 *   * * *   root    bash /opt/local/bin/autoinit devuan" >> /etc/crontab
+    echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit devuan" >> /etc/crontab
     rm -f /var/run/autoinit.pid
     reboot
     exit 0
@@ -368,7 +368,7 @@ init_run_one() {
     sleep 5
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
     wait
-    echo "*/3 *   * * *   root    bash /opt/local/bin/autoinit debian" >> /etc/crontab
+    echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit debian" >> /etc/crontab
     rm -f /var/run/autoinit.pid
     reboot
     exit 0
