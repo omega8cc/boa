@@ -19,6 +19,13 @@ if_install_bzr() {
       rm -rf bzr*
       get_dev_src "bzr-${_BZR_VRN}.tar.gz"
       cd /var/opt/bzr-${_BZR_VRN}
+      isPyth=$(which python 2>&1)
+      if [ ! -x "${isPyth}" ] || [ -z "${isPyth}" ]; then
+        isPyth=$(which python3 2>&1)
+        if [ -x "${isPyth}" ]; then
+          ln -s ${isPyth} /usr/bin/python
+        fi
+      fi
       mrun "python setup.py --quiet install build_ext -\
         -allow-python-fallback" 2> /dev/null
       mrun "make -j $(nproc) --quiet" 2> /dev/null

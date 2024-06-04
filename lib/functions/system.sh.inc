@@ -7073,6 +7073,13 @@ lshell_install_upgrade() {
     cd /var/opt/lshell-${_LSHELL_VRN}
     rm -rf /usr/local/lib/python2.6/dist-packages/lshell*
     rm -rf /usr/local/lib/python2.7/dist-packages/lshell*
+    isPyth=$(which python 2>&1)
+    if [ ! -x "${isPyth}" ] || [ -z "${isPyth}" ]; then
+      isPyth=$(which python3 2>&1)
+      if [ -x "${isPyth}" ]; then
+        ln -s ${isPyth} /usr/bin/python
+      fi
+    fi
     mrun "python setup.py install --no-compile" 2> /dev/null
     if [ "${_STATUS}" = "UPGRADE" ]; then
       cp -af /etc/lshell.conf-bak-${_NOW} /etc/lshell.conf &> /dev/null
