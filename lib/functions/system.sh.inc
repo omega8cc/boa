@@ -6278,7 +6278,7 @@ sys_packages_install() {
                      automake-1.16 \
                      gnupg1-curl \
                      libpcre2-dev \
-                     libpcre2-posix2 \
+                     libpcre2-posix3 \
                      libpcre3 \
                      libpcre3-dev \
                      libpng-dev \
@@ -6324,7 +6324,7 @@ sys_packages_install() {
                      automake-1.16 \
                      gnupg1-curl \
                      libpcre2-dev \
-                     libpcre2-posix2 \
+                     libpcre2-posix3 \
                      libpcre3 \
                      libpcre3-dev \
                      libpng-dev \
