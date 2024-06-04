@@ -5580,11 +5580,7 @@ if_major_os_upgrade() {
       echo "deb http://${_TGT_MRR} ${_NEW_OSR}-security main" >> ${aptLiSys}
       echo "deb-src http://${_TGT_MRR} ${_NEW_OSR}-security main" >> ${aptLiSys}
       if [ -e "/etc/apt/apt.conf" ]; then
-        sed -i "s/APT::Default-Release.*/APT::Default-Release \"${_NEW_OSR}\";/g" \
-          /etc/apt/apt.conf &> /dev/null
-        wait
-      else
-        echo "APT::Default-Release \"${_NEW_OSR}\";" > /etc/apt/apt.conf
+        rm -f /etc/apt/apt.conf
       fi
       ###
       ### Add devuan-keyring first.
@@ -5625,11 +5621,7 @@ if_major_os_upgrade() {
       echo "deb http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       echo "deb-src http://${_NEW_SEC_MIRROR} ${_NEW_SEC_REPSRC} main contrib non-free" | fmt -su -w 2500 >> ${aptLiSys}
       if [ -e "/etc/apt/apt.conf" ]; then
-        sed -i "s/APT::Default-Release.*/APT::Default-Release \"${_NEW_OSR}\";/g" \
-          /etc/apt/apt.conf &> /dev/null
-        wait
-      else
-        echo "APT::Default-Release \"${_NEW_OSR}\";" > /etc/apt/apt.conf
+        rm -f /etc/apt/apt.conf
       fi
     fi
     ###

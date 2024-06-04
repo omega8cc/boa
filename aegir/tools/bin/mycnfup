@@ -1377,11 +1377,7 @@ db_head_to_stretch_first()
       sed -i "s/jessie/stretch/g"   /etc/apt/sources.list.d/*
       wait
       if [ -e "/etc/apt/apt.conf" ]; then
-        sed -i "s/APT::Default-Release.*/APT::Default-Release \"stretch\";/g" \
-        /etc/apt/apt.conf &> /dev/null
-        wait
-      else
-        echo "APT::Default-Release \"stretch\";" > /etc/apt/apt.conf
+        rm -f /etc/apt/apt.conf
       fi
   	  cat /etc/apt/sources.list
   	  apt_clean_update
