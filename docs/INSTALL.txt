@@ -149,8 +149,10 @@
          these platforms added as explained in the docs you can find in the
          file ~/control/README.txt within your Octopus account.
 
-6. Post-install Barracuda upgrade (required)
+6. Post-install Barracuda upgrade (required after re-entering screen)
 
+   $ exit
+   $ screen
    $ barracuda up-lite system
 
 
