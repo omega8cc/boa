@@ -1223,6 +1223,10 @@ init_setup() {
       mode="${user}"
       user="o1"
     fi
+    if [[ "${mode}" =~ "php" ]]; then
+      rkey="${mode}"
+      mode="none"
+    fi
     satellite_check_id ${user}
   fi
 
