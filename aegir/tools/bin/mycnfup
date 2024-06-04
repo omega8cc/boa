@@ -1338,7 +1338,6 @@ db_head_to_stretch_first()
   	  echo "ssh install"            | dpkg --set-selections
   	  echo "zlib1g install"         | dpkg --set-selections
   	  echo "zlib1g-dev install"     | dpkg --set-selections
-  	  echo "zlibc install"          | dpkg --set-selections
   	  apt-get upgrade ${nrmUpArg}
   	  apt-get full-upgrade ${nrmUpArg}
   	  apt-get install lsb-release ${nrmUpArg}

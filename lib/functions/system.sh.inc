@@ -3729,13 +3729,12 @@ ssl_install_src() {
         | grep openssl \
         | grep 'hold$' 2>&1)
       _ZLB_GET_DPKG=$(dpkg --get-selections \
-        | grep zlibc \
+        | grep zlib \
         | grep 'hold$' 2>&1)
       if [[ ! "${_SSL_GET_DPKG}" =~ "hold" ]]; then
         echo "openssl hold" | dpkg --set-selections &> /dev/null
       fi
       if [[ ! "${_ZLB_GET_DPKG}" =~ "hold" ]]; then
-        echo "zlibc hold" | dpkg --set-selections &> /dev/null
         echo "zlib1g hold" | dpkg --set-selections &> /dev/null
         echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
       fi
@@ -4683,7 +4682,7 @@ run_aptitude_deps_install() {
   mrun "apt-get purge libcurl4-openssl-dev -y -qq" 2> /dev/null
   mrun "apt autoremove -y" 2> /dev/null
   mrun "${_INSTAPP} build-essential libsasl2-modules" 2> /dev/null
-  mrun "${_INSTAPP} zlibc time vim cvs makepasswd" 2> /dev/null
+  mrun "${_INSTAPP} time vim cvs makepasswd" 2> /dev/null
   mrun "${_INSTAPP} man-db dnsutils sudo symlinks iptables" 2> /dev/null
   mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc" 2> /dev/null
   mrun "${_INSTAPP} curl" 2> /dev/null
@@ -5490,7 +5489,6 @@ if_major_os_upgrade() {
     echo "ssh install"            | dpkg --set-selections &> /dev/null
     echo "zlib1g install"         | dpkg --set-selections &> /dev/null
     echo "zlib1g-dev install"     | dpkg --set-selections &> /dev/null
-    echo "zlibc install"          | dpkg --set-selections &> /dev/null
     ###
     ### Run pre-migration upgrade in the current OS version.
     mrun "apt-get upgrade ${nrmUpArg}" 2> /dev/null
@@ -6045,7 +6043,6 @@ sys_packages_update() {
     echo "ssh install"            | dpkg --set-selections &> /dev/null
     echo "zlib1g install"         | dpkg --set-selections &> /dev/null
     echo "zlib1g-dev install"     | dpkg --set-selections &> /dev/null
-    echo "zlibc install"          | dpkg --set-selections &> /dev/null
   fi
   webmin_apt_update
   apt_clean_update
