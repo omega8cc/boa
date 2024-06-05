@@ -232,7 +232,7 @@ install_redis_src() {
   fi
   msg "INFO: Installing Redis server for ${_REAL_OS}/${_REAL_OSR}..."
   if [ ! -e "/var/lib/redis" ]; then
-    mrun "adduser --system --group redis" 2> /dev/null
+    mrun "adduser --system --group redis --home /home/redis" 2> /dev/null
   fi
   cd /var/opt
   rm -rf redis*
@@ -301,7 +301,7 @@ redis_install_upgrade() {
     redisCnfTpl="redis4.conf"
   fi
   if [ ! -e "/var/lib/redis" ]; then
-    mrun "adduser --system --group redis" 2> /dev/null
+    mrun "adduser --system --group redis --home /home/redis" 2> /dev/null
   fi
   mkdir -p /var/run/redis
   chown -R redis:redis /var/run/redis
