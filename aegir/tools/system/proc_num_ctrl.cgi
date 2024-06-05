@@ -112,8 +112,7 @@ system("service bind9 restart") if (!$namedsumar && -f "/etc/init.d/bind9");
 system("service ssh restart") if (!$sshdsumar && -f "/etc/init.d/ssh");
 system("service proxysql restart") if (!$pxydsumar && -f "/etc/init.d/proxysql");
 
-if (-e "/usr/sbin/unbound" && (!$unboundsumar || !-e "/etc/resolvconf/run/interface/lo.unbound")) {
-  system("resolvconf -u");
+if (-e "/usr/sbin/unbound" && !$unboundsumar) {
   system("service unbound restart");
   system("unbound-control reload");
 }

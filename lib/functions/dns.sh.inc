@@ -344,7 +344,7 @@ dns_unbound_install_on_init() {
     update-rc.d -f pdnsd remove &> /dev/null
     mv -f ${isPdnsd} /var/backups
   fi
-  if [ -x "${isUnbnd}" ]; then
+  if [ -x "${isUnbnd}" ] && [ -e "/etc/resolvconf/interface-order" ]; then
     sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
     service unbound restart &> /dev/null
   fi
@@ -355,6 +355,8 @@ dns_unbound_install_on_init() {
     if [ -e "/etc/resolv.conf" ]; then
       cp -af /etc/resolv.conf ${vBs}/resolv.conf.pre-${_X_SE}-${_X_VERSION}-${_NOW}
     fi
+    check_dns_settings
+    fix_dns_settings
     if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
       echo "nameserver 1.1.1.1" > /etc/resolv.conf
@@ -363,6 +365,7 @@ dns_unbound_install_on_init() {
     apt_clean_update
     st_runner "apt-get purge resolvconf -y" &> /dev/null
     rm -rf /lib/init/rw/resolvconf
+    rm -rf /run/resolvconf
     rm -rf /etc/resolvconf
     st_runner "apt-get purge resolvconf -y" &> /dev/null
     if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
@@ -379,35 +382,24 @@ dns_unbound_install_on_init() {
     cp -a /usr/share/dns/* /var/lib/unbound/
     chown -R unbound:unbound /var/lib/unbound
     cat ${locCnf}/unbound.conf > /etc/unbound/unbound.conf.d/unbound.conf
+    if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
+      && [ -e "${vBs}/resolv.conf.vanilla" ]; then
+      cat ${vBs}/resolv.conf.vanilla > /etc/resolvconf/resolv.conf.d/base
+    fi
     sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
-    service unbound restart &> /dev/null
-  fi
-  isUnbnd=$(which unbound 2>&1)
-  if [ -x "${isUnbnd}" ] \
-    && [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     mkdir -p /etc/resolvconf/run/interface
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     resolvconf -u &> /dev/null
     service unbound restart &> /dev/null
-    unbound-control reload &> /dev/null
   fi
   check_dns_settings
   if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
     && [ -e "${vBs}/resolv.conf.vanilla" ]; then
     cat ${vBs}/resolv.conf.vanilla > /etc/resolvconf/resolv.conf.d/base
-  fi
-  resolvconf -u &> /dev/null
-  if [ -e "/etc/resolvconf/run/resolv.conf" ]; then
-    _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
-    if [[ "${_RESOLV_TEST}" =~ "nameserver 127.0.0.1" ]]; then
-      _DO_NOTHING=YES
-    else
-      rm -f /etc/resolv.conf
-      ln -s /etc/resolvconf/run/resolv.conf /etc/resolv.conf
-      resolvconf -u &> /dev/null
-      service unbound restart &> /dev/null
-      unbound-control reload &> /dev/null
-    fi
+    sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
+    mkdir -p /etc/resolvconf/run/interface
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
+    resolvconf -u &> /dev/null
   fi
   if [ ! -e "/etc/resolv.conf" ]; then
     rm -f /etc/resolv.conf
@@ -423,9 +415,6 @@ dns_unbound_install_on_init() {
       /etc/NetworkManager/NetworkManager.conf &> /dev/null
     mrun "service network-manager restart" &> /dev/null
   fi
-  resolvconf -u &> /dev/null
-  service unbound restart &> /dev/null
-  unbound-control reload &> /dev/null
 }
 
 check_github_for_aegir_head_mode() {
