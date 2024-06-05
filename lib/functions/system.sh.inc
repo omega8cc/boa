@@ -7098,6 +7098,7 @@ lshell_install_upgrade() {
     cd /var/opt/lshell-${_LSHELL_VRN}
     rm -rf /usr/local/lib/python2.6/dist-packages/lshell*
     rm -rf /usr/local/lib/python2.7/dist-packages/lshell*
+    rm -rf /usr/local/lib/python3.9/dist-packages/lshell*
     rm -rf /usr/local/lib/python3.11/dist-packages/lshell*
     isPythonTwo=$(which python2 2>&1)
     isPythonThree=$(which python3 2>&1)

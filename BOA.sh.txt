@@ -1558,9 +1558,12 @@ fix_node_in_lshell_access() {
 fix_lshell() {
   _LSHELL_VRN=0.9.18.9
   _PATH_LSHELL="${usrBin}/lshell"
-  _LSHELL_LIB_OLD="/usr/local/lib/python2.7/dist-packages/lshell/checkconfig.py"
-  _LSHELL_LIB_NEW="/usr/local/lib/python3.11/dist-packages/lshell/checkconfig.py"
-  if [ ! -e "${_LSHELL_LIB_OLD}" ] && [ ! -e "${_LSHELL_LIB_NEW}" ]; then
+  _LSHELL_LIB_TWO="/usr/local/lib/python2.7/dist-packages/lshell/checkconfig.py"
+  _LSHELL_LIB_TNE"/usr/local/lib/python3.9/dist-packages/lshell/checkconfig.py"
+  _LSHELL_LIB_TEL="/usr/local/lib/python3.11/dist-packages/lshell/checkconfig.py"
+  if [ ! -e "${_LSHELL_LIB_TWO}" ] \
+    && [ ! -e "${_LSHELL_LIB_TNE}" ] \
+    && [ ! -e "${_LSHELL_LIB_TEL}" ]; then
     _LSHELL_FORCE_REINSTALL=YES
   else
     _LSHELL_FORCE_REINSTALL=NO
@@ -1580,6 +1583,7 @@ fix_lshell() {
     cd /var/opt/lshell-${_LSHELL_VRN}
     rm -rf /usr/local/lib/python2.6/dist-packages/lshell*
     rm -rf /usr/local/lib/python2.7/dist-packages/lshell*
+    rm -rf /usr/local/lib/python3.9/dist-packages/lshell*
     rm -rf /usr/local/lib/python3.11/dist-packages/lshell*
     isPythonTwo=$(which python2 2>&1)
     isPythonThree=$(which python3 2>&1)
