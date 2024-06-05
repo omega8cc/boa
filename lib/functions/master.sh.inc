@@ -61,7 +61,7 @@ provision_backend_dbpass_generate() {
     isPythonThree=$(which python3 2>&1)
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     if [ -x "${isPythonThree}" ]; then
-      _ENC_PASS=$(python3 -c "import urllib.parse; print urllib.parse.quote('''${_ESC_PASS}''')")
+      _ENC_PASS=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''${_ESC_PASS}'''))")
     elif [ -x "${isPythonTwo}" ]; then
       _ENC_PASS=$(python2 -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
     fi
