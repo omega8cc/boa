@@ -338,6 +338,15 @@ dns_unbound_install_on_init() {
     msg "PROC: dns_unbound_install_on_init"
   fi
   isUnbnd=$(which unbound 2>&1)
+  isPdnsd=$(which pdnsd 2>&1)
+  if [ -x "${isPdnsd}" ]; then
+    service pdnsd stop &> /dev/null
+    update-rc.d -f pdnsd remove &> /dev/null
+    mv -f ${isPdnsd} /var/backups
+  fi
+  if [ -x "${isUnbnd}" ]; then
+    service unbound restart &> /dev/null
+  fi
   if [ ! -x "${isUnbnd}" ] \
     || [ -z "${isUnbnd}" ] \
     || [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
