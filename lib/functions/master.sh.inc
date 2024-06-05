@@ -57,15 +57,14 @@ provision_backend_dbpass_generate() {
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
     fi
-    isPyth=$(which python 2>&1)
-    if [ ! -x "${isPyth}" ] || [ -z "${isPyth}" ]; then
-      isPyth=$(which python3 2>&1)
-      if [ -x "${isPyth}" ]; then
-        ln -s ${isPyth} /usr/bin/python
-      fi
-    fi
+    isPythonTwo=$(which python2 2>&1)
+    isPythonThree=$(which python3 2>&1)
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-    _ENC_PASS=$(python -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
+    if [ -x "${isPythonThree}" ]; then
+      _ENC_PASS=$(python3 -c "import urllib.parse; print urllib.parse.quote('''${_ESC_PASS}''')")
+    elif [ -x "${isPythonTwo}" ]; then
+      _ENC_PASS=$(python2 -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
+    fi
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
 

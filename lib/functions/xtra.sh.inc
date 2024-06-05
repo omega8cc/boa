@@ -22,14 +22,14 @@ if_install_bzr() {
       rm -rf bzr*
       get_dev_src "bzr-${_BZR_VRN}.tar.gz"
       cd /var/opt/bzr-${_BZR_VRN}
-      isPyth=$(which python 2>&1)
-      if [ ! -x "${isPyth}" ] || [ -z "${isPyth}" ]; then
-        isPyth=$(which python3 2>&1)
-        if [ -x "${isPyth}" ]; then
-          ln -s ${isPyth} /usr/bin/python
-        fi
+      isPythonTwo=$(which python2 2>&1)
+      isPythonThree=$(which python3 2>&1)
+      if [ -x "${isPythonThree}" ]; then
+        usePyth=python3
+      elif [ -x "${isPythonTwo}" ]; then
+        usePyth=python2
       fi
-      mrun "python setup.py --quiet install build_ext -\
+      mrun "${usePyth} setup.py --quiet install build_ext -\
         -allow-python-fallback" 2> /dev/null
       mrun "make -j $(nproc) --quiet" 2> /dev/null
       touch ${pthLog}/bzr-${_BZR_VRN}.log

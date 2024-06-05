@@ -7099,14 +7099,14 @@ lshell_install_upgrade() {
     rm -rf /usr/local/lib/python2.6/dist-packages/lshell*
     rm -rf /usr/local/lib/python2.7/dist-packages/lshell*
     rm -rf /usr/local/lib/python3.11/dist-packages/lshell*
-    isPyth=$(which python 2>&1)
-    if [ ! -x "${isPyth}" ] || [ -z "${isPyth}" ]; then
-      isPyth=$(which python3 2>&1)
-      if [ -x "${isPyth}" ]; then
-        ln -s ${isPyth} /usr/bin/python
-      fi
+    isPythonTwo=$(which python2 2>&1)
+    isPythonThree=$(which python3 2>&1)
+    if [ -x "${isPythonThree}" ]; then
+      usePyth=python3
+    elif [ -x "${isPythonTwo}" ]; then
+      usePyth=python2
     fi
-    mrun "python setup.py install --no-compile" 2> /dev/null
+    mrun "${usePyth} setup.py install --no-compile" 2> /dev/null
     if [ "${_STATUS}" = "UPGRADE" ]; then
       cp -af /etc/lshell.conf-bak-${_NOW} /etc/lshell.conf &> /dev/null
     else

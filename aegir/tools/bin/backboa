@@ -185,23 +185,23 @@ install() {
     curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
     tar xzf ${fe}
     cd /var/opt/fasteners-${_FASTENERS_VRN}
-    isPyth=$(which python 2>&1)
-    if [ ! -x "${isPyth}" ] || [ -z "${isPyth}" ]; then
-      isPyth=$(which python3 2>&1)
-      if [ -x "${isPyth}" ]; then
-        ln -s ${isPyth} /usr/bin/python
-      fi
+    isPythonTwo=$(which python2 2>&1)
+    isPythonThree=$(which python3 2>&1)
+    if [ -x "${isPythonThree}" ]; then
+      usePyth=python3
+    elif [ -x "${isPythonTwo}" ]; then
+      usePyth=python2
     fi
-    python setup.py build
-    python setup.py install
+    ${usePyth} setup.py build
+    ${usePyth} setup.py install
     echo ${_FASTENERS_VRN} > ${_LOGPTH}/fasteners-${_FASTENERS_VRN}.log
     cd /var/opt
     fe="boto-${_BOTO_VRN}.tar.gz"
     curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
     tar xzf ${fe}
     cd /var/opt/boto-${_BOTO_VRN}
-    python setup.py build
-    python setup.py install
+    ${usePyth} setup.py build
+    ${usePyth} setup.py install
     echo ${_BOTO_VRN} > ${_LOGPTH}/boto-${_BOTO_VRN}.log
     echo "Building duplicity version ${_DUPLICITY_VRN} from sources..."
     cd /var/opt
@@ -210,8 +210,8 @@ install() {
     tar xzf ${fe}
     rm -rf /usr/local/lib/python*/dist-packages/duplicity*
     cd /var/opt/duplicity-${_DUPLICITY_VRN}
-    python setup.py build
-    python setup.py install
+    ${usePyth} setup.py build
+    ${usePyth} setup.py install
     cd
     rm -rf /var/opt/{boto*,duplicity*}
     echo "Installation complete!"
