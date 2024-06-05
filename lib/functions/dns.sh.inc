@@ -361,7 +361,7 @@ dns_unbound_install_on_init() {
       echo "nameserver 1.0.0.1" >> /etc/resolv.conf
     fi
     st_runner "${_INSTAPP} resolvconf" &> /dev/null
-    ${_INSTAPP} unbound unbound-anchor unbound-host dns-root-data &> /dev/null
+    st_runner "${_INSTAPP} unbound unbound-anchor unbound-host dns-root-data" &> /dev/null
     mkdir -p /var/log/unbound
     touch /var/log/unbound/unbound.log
     chown unbound /var/log/unbound/unbound.log
