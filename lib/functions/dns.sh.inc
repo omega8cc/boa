@@ -401,6 +401,23 @@ dns_unbound_install_on_init() {
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     resolvconf -u &> /dev/null
   fi
+  if [ -e "/etc/resolvconf/run/resolv.conf" ] \
+    || [ -e "/run/resolvconf/resolv.conf" ]; then
+    _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
+    if [[ "${_RESOLV_TEST}" =~ "nameserver 127.0.0.1" ]]; then
+      _DO_NOTHING=YES
+    else
+      rm -f /etc/resolv.conf
+      echo "nameserver 127.0.0.1" > /etc/resolv.conf
+      if [ -e "${vBs}/resolv.conf.vanilla" ]; then
+        cat ${vBs}/resolv.conf.vanilla >>/etc/resolv.conf
+      fi
+      echo "nameserver 1.1.1.1" >>/etc/resolv.conf
+      echo "nameserver 1.0.0.1" >>/etc/resolv.conf
+      service unbound restart &> /dev/null
+      unbound-control reload &> /dev/null
+    fi
+  fi
   if [ ! -e "/etc/resolv.conf" ]; then
     rm -f /etc/resolv.conf
     echo "nameserver 127.0.0.1" > /etc/resolv.conf
