@@ -1579,6 +1579,7 @@ install_db_cluster() {
     vserver ${idn} exec ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG}
     vserver ${idn} exec ${_GPG} -a --export ${_KEYS_SIG} | apt-key add -
     vserver ${idn} exec ${_GPG} --list-keys ${_KEYS_SIG}
+    vserver ${idn} exec apt-key export ${_KEYS_SIG} | ${_GPG} --dearmour -o /etc/apt/trusted.gpg.d/percona.gpg &> /dev/null
   	vserver ${idn} exec ${_APT_UPDATE} -qq
   	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57
   	##vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24
@@ -1773,6 +1774,7 @@ upgrade_db_cluster() {
       vserver ${idn} exec ${_GPG} -a --export ${_KEYS_SIG} | apt-key add -
       _KEYS_SERVER_TEST=$(vserver ${idn} exec ${_GPG} --list-keys ${_KEYS_SIG} 2>&1)
       sleep 2
+      vserver ${idn} exec apt-key export ${_KEYS_SIG} | ${_GPG} --dearmour -o /etc/apt/trusted.gpg.d/percona.gpg &> /dev/null
       if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
         kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
         echo "$(date 2>&1) Too many dirmngr processes killed" >> \
@@ -1784,6 +1786,7 @@ upgrade_db_cluster() {
     vserver ${idn} exec ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG}
     vserver ${idn} exec ${_GPG} -a --export ${_KEYS_SIG} | apt-key add -
     vserver ${idn} exec ${_GPG} --list-keys ${_KEYS_SIG}
+    vserver ${idn} exec apt-key export ${_KEYS_SIG} | ${_GPG} --dearmour -o /etc/apt/trusted.gpg.d/percona.gpg &> /dev/null
   	vserver ${idn} exec ${_APT_UPDATE} -qq
   	vserver ${idn} exec ${_INSTAPP} bc
   	vserver ${idn} exec apt-get upgrade ${_APT_XTR}

@@ -239,6 +239,7 @@ if [ ! -e "${percList}" ] \
     ${_GPG} -a --export ${_KEYS_SIG} | apt-key add - &> /dev/null
     _KEYS_SERVER_TEST=$(${_GPG} --list-keys ${_KEYS_SIG} 2>&1)
     sleep 2
+    apt-key export ${_KEYS_SIG} | ${_GPG} --dearmour -o /etc/apt/trusted.gpg.d/percona.gpg &> /dev/null
     if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
       kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
       echo "$(date 2>&1) Too many dirmngr processes killed" >> \
