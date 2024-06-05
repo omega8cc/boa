@@ -1819,13 +1819,16 @@ upgrade_db_cluster() {
 
 install_host() {
 
-  _CUSTOM_DNS_TEST=$(grep 1.1.1.1 /etc/resolv.conf 2>&1)
-  if [[ ! "${_CUSTOM_DNS_TEST}" =~ "1.1.1.1" ]]; then
+  _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/resolv.conf 2>&1)
+  if [[ ! "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]]; then
     echo "Fixing resolver..."
     cp -af /etc/resolv.conf /etc/resolv.conf.prev
-    echo "nameserver 1.1.1.1" >/etc/resolv.conf
-    echo "nameserver 1.0.0.1" >>/etc/resolv.conf
-    cat /etc/resolv.conf.prev >>/etc/resolv.conf
+    echo "nameserver 127.0.0.1" > /etc/resolv.conf
+    echo "nameserver 1.1.1.1" >> /etc/resolv.conf
+    echo "nameserver 1.0.0.1" >> /etc/resolv.conf
+    echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+    cat /etc/resolv.conf.prev >> /etc/resolv.conf
     cat /etc/resolv.conf
     echo
   fi

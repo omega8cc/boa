@@ -22,8 +22,11 @@ fix_dns_settings() {
     fi
   fi
   if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
-    echo "nameserver 1.1.1.1" >${vBs}/resolv.conf.tmp
-    echo "nameserver 1.0.0.1" >>${vBs}/resolv.conf.tmp
+    echo "nameserver 127.0.0.1" > ${vBs}/resolv.conf.tmp
+    echo "nameserver 1.1.1.1" >> ${vBs}/resolv.conf.tmp
+    echo "nameserver 1.0.0.1" >> ${vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.8.8" >> ${vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.4.4" >> ${vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
     for Pre in `ls -la ${vBs}/resolv.conf.pre-*`; do
@@ -361,6 +364,8 @@ dns_unbound_install_on_init() {
       rm -f /etc/resolv.conf
       echo "nameserver 1.1.1.1" > /etc/resolv.conf
       echo "nameserver 1.0.0.1" >> /etc/resolv.conf
+      echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+      echo "nameserver 8.8.4.4" >> /etc/resolv.conf
     fi
     apt_clean_update
     st_runner "apt-get purge resolvconf -y" &> /dev/null
@@ -372,6 +377,8 @@ dns_unbound_install_on_init() {
       rm -f /etc/resolv.conf
       echo "nameserver 1.1.1.1" > /etc/resolv.conf
       echo "nameserver 1.0.0.1" >> /etc/resolv.conf
+      echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+      echo "nameserver 8.8.4.4" >> /etc/resolv.conf
     fi
     st_runner "${_INSTAPP} resolvconf" &> /dev/null
     st_runner "${_INSTAPP} unbound unbound-anchor unbound-host dns-root-data" &> /dev/null
@@ -403,29 +410,39 @@ dns_unbound_install_on_init() {
   fi
   if [ -e "/etc/resolvconf/run/resolv.conf" ] \
     || [ -e "/run/resolvconf/resolv.conf" ]; then
-    _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
-    if [[ "${_RESOLV_TEST}" =~ "nameserver 127.0.0.1" ]]; then
+    _RESOLV_LOC=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
+    _RESOLV_ELN=$(grep "nameserver 1.1.1.1" /etc/resolv.conf 2>&1)
+    _RESOLV_EGT=$(grep "nameserver 8.8.8.8" /etc/resolv.conf 2>&1)
+    if [[ "${_RESOLV_LOC}" =~ "nameserver 127.0.0.1" ]] \
+      && [[ "${_RESOLV_ELN}" =~ "nameserver 1.1.1.1" ]] \
+      && [[ "${_RESOLV_EGT}" =~ "nameserver 8.8.8.8" ]]; then
       _DO_NOTHING=YES
     else
       rm -f /etc/resolv.conf
       echo "nameserver 127.0.0.1" > /etc/resolv.conf
       if [ -e "${vBs}/resolv.conf.vanilla" ]; then
-        cat ${vBs}/resolv.conf.vanilla >>/etc/resolv.conf
+        cat ${vBs}/resolv.conf.vanilla >> /etc/resolv.conf
       fi
-      echo "nameserver 1.1.1.1" >>/etc/resolv.conf
-      echo "nameserver 1.0.0.1" >>/etc/resolv.conf
+      echo "nameserver 1.1.1.1" >> /etc/resolv.conf
+      echo "nameserver 1.0.0.1" >> /etc/resolv.conf
+      echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+      echo "nameserver 8.8.4.4" >> /etc/resolv.conf
       service unbound restart &> /dev/null
       unbound-control reload &> /dev/null
     fi
   fi
-  if [ ! -e "/etc/resolv.conf" ]; then
+  if [ ! -f "/etc/resolv.conf" ]; then
     rm -f /etc/resolv.conf
     echo "nameserver 127.0.0.1" > /etc/resolv.conf
     if [ -e "${vBs}/resolv.conf.vanilla" ]; then
-      cat ${vBs}/resolv.conf.vanilla >>/etc/resolv.conf
+      cat ${vBs}/resolv.conf.vanilla >> /etc/resolv.conf
     fi
-    echo "nameserver 1.1.1.1" >>/etc/resolv.conf
-    echo "nameserver 1.0.0.1" >>/etc/resolv.conf
+    echo "nameserver 1.1.1.1" >> /etc/resolv.conf
+    echo "nameserver 1.0.0.1" >> /etc/resolv.conf
+    echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+    service unbound restart &> /dev/null
+    unbound-control reload &> /dev/null
   fi
   if [ -e "/etc/NetworkManager/NetworkManager.conf" ]; then
     sed -i "s/^dns=.*/dns=unbound/g" \

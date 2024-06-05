@@ -105,8 +105,12 @@ check_unbound() {
     unbound-control reload &> /dev/null
   fi
   if [ -e "/etc/resolv.conf" ]; then
-    _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
-    if [[ "${_RESOLV_TEST}" =~ "nameserver 127.0.0.1" ]]; then
+    _RESOLV_LOC=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
+    _RESOLV_ELN=$(grep "nameserver 1.1.1.1" /etc/resolv.conf 2>&1)
+    _RESOLV_EGT=$(grep "nameserver 8.8.8.8" /etc/resolv.conf 2>&1)
+    if [[ "${_RESOLV_LOC}" =~ "nameserver 127.0.0.1" ]] \
+      && [[ "${_RESOLV_ELN}" =~ "nameserver 1.1.1.1" ]] \
+      && [[ "${_RESOLV_EGT}" =~ "nameserver 8.8.8.8" ]]; then
       _THIS_DNS_TEST=$(host files.aegir.cc 127.0.0.1 -w 3 2>&1)
       if [[ "${_THIS_DNS_TEST}" =~ "no servers could be reached" ]]; then
         service unbound stop &> /dev/null
@@ -114,6 +118,18 @@ check_unbound() {
         renice ${_B_NICE} -p $$ &> /dev/null
         perl /var/xdrago/proc_num_ctrl.cgi
       fi
+    else
+      rm -f /etc/resolv.conf
+      echo "nameserver 127.0.0.1" > /etc/resolv.conf
+      if [ -e "${vBs}/resolv.conf.vanilla" ]; then
+        cat ${vBs}/resolv.conf.vanilla >> /etc/resolv.conf
+      fi
+      echo "nameserver 1.1.1.1" >> /etc/resolv.conf
+      echo "nameserver 1.0.0.1" >> /etc/resolv.conf
+      echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+      echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+      service unbound restart &> /dev/null
+      unbound-control reload &> /dev/null
     fi
   fi
 }
