@@ -345,6 +345,7 @@ dns_unbound_install_on_init() {
     mv -f ${isPdnsd} /var/backups
   fi
   if [ -x "${isUnbnd}" ]; then
+    sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
     service unbound restart &> /dev/null
   fi
   if [ ! -x "${isUnbnd}" ] \
@@ -378,6 +379,7 @@ dns_unbound_install_on_init() {
     cp -a /usr/share/dns/* /var/lib/unbound/
     chown -R unbound:unbound /var/lib/unbound
     cat ${locCnf}/unbound.conf > /etc/unbound/unbound.conf.d/unbound.conf
+    sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
     service unbound restart &> /dev/null
   fi
   isUnbnd=$(which unbound 2>&1)
@@ -390,30 +392,6 @@ dns_unbound_install_on_init() {
     unbound-control reload &> /dev/null
   fi
   check_dns_settings
-  if [ ! -L "/etc/resolvconf/run" ] \
-    || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] \
-    || [ ! -e "/etc/resolvconf/resolv.conf.d/tail" ]; then
-    rm -rf /run/resolvconf
-    rm -rf /etc/resolvconf/run
-    ln -s /lib/init/rw/resolvconf /etc/resolvconf/run
-    if [ ! -e "/lib/init/rw/resolvconf/interface" ]; then
-      mkdir -p /lib/init/rw/resolvconf/interface
-    fi
-    mkdir -p /run/resolvconf
-    ln -s /lib/init/rw/resolvconf/interface /run/resolvconf/interface
-    rm -f /lib/init/rw/resolvconf/postponed-update
-    touch /lib/init/rw/resolvconf/enable-updates
-    rm -f /etc/resolvconf/resolv.conf.d/tail
-    touch /etc/resolvconf/resolv.conf.d/tail
-  fi
-  if [ -x "${isUnbnd}" ] \
-    && [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
-    mkdir -p /etc/resolvconf/run/interface
-    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
-    resolvconf -u &> /dev/null
-    service unbound restart &> /dev/null
-    unbound-control reload &> /dev/null
-  fi
   if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
     && [ -e "${vBs}/resolv.conf.vanilla" ]; then
     cat ${vBs}/resolv.conf.vanilla > /etc/resolvconf/resolv.conf.d/base
@@ -433,10 +411,10 @@ dns_unbound_install_on_init() {
   fi
   if [ ! -e "/etc/resolv.conf" ]; then
     rm -f /etc/resolv.conf
+    echo "nameserver 127.0.0.1" > /etc/resolv.conf
     if [ -e "${vBs}/resolv.conf.vanilla" ]; then
-      cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
+      cat ${vBs}/resolv.conf.vanilla >>/etc/resolv.conf
     fi
-    echo "nameserver 127.0.0.1" >> /etc/resolv.conf
     echo "nameserver 1.1.1.1" >>/etc/resolv.conf
     echo "nameserver 1.0.0.1" >>/etc/resolv.conf
   fi
