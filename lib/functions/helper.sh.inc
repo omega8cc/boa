@@ -278,7 +278,7 @@ mode_detection() {
     [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
-      _XTRAS_LIST="ADM CSF FTP CSS DCS"
+      _XTRAS_LIST="ADM CSF FTP CSS"
     fi
   elif [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
     && [ -e "/lib/systemd/systemd" ]; then
@@ -333,10 +333,10 @@ mode_detection() {
       _LOCAL_NETWORK_HN="aegir.local"
     elif [ "${_EASY_SETUP}" = "PUBLIC" ]; then
       msg "INFO: Public Setup Mode Active"
-      _XTRAS_LIST="ADM CSF FTP CSS DCS"
+      _XTRAS_LIST="ADM CSF FTP CSS"
       if [ -e "/root/.auto.up.cnf" ] \
         || [ -e "/root/.host8.cnf" ]; then
-        _XTRAS_LIST="ADM CSF FTP CSS DCS"
+        _XTRAS_LIST="ADM CSF FTP CSS"
       fi
       _AUTOPILOT=YES
       _SSH_PORT=22

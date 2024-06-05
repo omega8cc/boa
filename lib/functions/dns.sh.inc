@@ -8,7 +8,6 @@ fix_dns_settings() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: fix_dns_settings"
   fi
-  dnsLi="/root/.local.dns.IP.list"
   mkdir -p ${vBs}
   rm -f ${vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
@@ -54,67 +53,6 @@ fix_dns_settings() {
       cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
     fi
   fi
-  if [ -e "/etc/pdnsd.conf" ]; then
-    if [ -e "${dnsLi}" ]; then
-      sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
-      wait
-      sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
-      wait
-      _BROKEN_DNS_TEST_X=$(grep "\." ${dnsLi} 2>&1)
-      if [ -z "${_BROKEN_DNS_TEST_X}" ]; then
-        echo "        label = \"cloudflare-servers\";" > ${dnsLi}
-        echo "        ip=1.1.1.1;" >> ${dnsLi}
-        echo "        ip=1.0.0.1;" >> ${dnsLi}
-      fi
-    fi
-    _CUSTOM_DNS_TEST=$(grep 1.1.1.1 /etc/pdnsd.conf 2>&1)
-    _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
-    _MISSING_DNS_TEST=$(grep "ip=" /etc/pdnsd.conf 2>&1)
-    if [[ "${_CUSTOM_DNS_TEST}" =~ "1.1.1.1" ]] \
-      || [ ! -e "${dnsLi}" ] \
-      || [ -e "/root/.use.default.nameservers.cnf" ] \
-      || [ -e "/root/.use.local.nameservers.cnf" ] \
-      || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]] \
-      || [[ -z "${_MISSING_DNS_TEST}" ]]; then
-      echo "        label = \"cloudflare-servers\";" > ${dnsLi}
-      for _IP in `cat /etc/resolv.conf \
-        | sed 's/.*127.0.0.1.*//g; s/.*search.*//g; s/.*Dynamic.*//g' \
-        | cut -d ' ' -f2 \
-        | sort \
-        | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
-      wait
-      sed -i "s/ip=.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
-      wait
-      sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
-      wait
-      sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
-      wait
-      _BROKEN_DNS_TEST_Y=$(grep "\." ${dnsLi} 2>&1)
-      if [ -z "${_BROKEN_DNS_TEST_Y}" ]; then
-         echo "        ip=1.1.1.1;" >> ${dnsLi}
-         echo "        ip=1.0.0.1;" >> ${dnsLi}
-      fi
-      ### echo debug dns A
-      _DNS_TPL_TEST_GE=$(grep "google-servers" /etc/pdnsd.conf 2>&1)
-      _DNS_TPL_TEST_CF=$(grep "cloudflare-servers" /etc/pdnsd.conf 2>&1)
-      _DNS_RGX_TEST=$(grep "cloudflare-servers" /root/.local.dns.IP.list 2>&1)
-      if [[ "${_DNS_TPL_TEST_CF}" =~ "cloudflare-servers" ]] \
-        && [[ "${_DNS_RGX_TEST}" =~ "cloudflare-servers" ]]; then
-        sed -i '/        label = \"cloudflare-servers\";/ {r /root/.local.dns.IP.list
-d;};' /etc/pdnsd.conf
-        wait
-      fi
-      if [[ "${_DNS_TPL_TEST_GE}" =~ "google-servers" ]] \
-        && [[ "${_DNS_RGX_TEST}" =~ "cloudflare-servers" ]]; then
-        sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
-d;};' /etc/pdnsd.conf
-        wait
-      fi
-      resolvconf -u         &> /dev/null
-      service pdnsd restart &> /dev/null
-      pdnsd-ctl empty-cache &> /dev/null
-    fi
-  fi
 }
 
 #
@@ -125,7 +63,6 @@ check_dns_settings() {
   fi
   if [ -e "/root/.use.default.nameservers.cnf" ]; then
     _USE_DEFAULT_DNS=YES
-    [ -e "/root/.local.dns.IP.list" ] && rm -f /root/.local.dns.IP.list
   fi
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
@@ -394,70 +331,54 @@ check_connection() {
   fi
 }
 
-install_pdnsd_cache() {
+#
+# DNS cache Unbound.
+dns_unbound_install_on_init() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: install_pdnsd_cache"
+    msg "PROC: dns_unbound_install_on_init"
   fi
-  msg "INFO: Installing DNS cache pdnsd server..."
-  cp -af /etc/resolv.conf ${vBs}/resolv.conf.pre-${_X_SE}-${_X_VERSION}-${_NOW}
-  if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
-    rm -f /etc/resolv.conf
-    echo "nameserver 1.1.1.1" > /etc/resolv.conf
-    echo "nameserver 1.0.0.1" >> /etc/resolv.conf
-  fi
-  apt_clean_update
-  st_runner "aptitude purge pdnsd -y" &> /dev/null
-  st_runner "aptitude purge resolvconf -y" &> /dev/null
-  rm -rf /lib/init/rw/resolvconf
-  rm -rf /etc/resolvconf
-  st_runner "aptitude purge pdnsd -y" &> /dev/null
-  st_runner "aptitude purge resolvconf -y" &> /dev/null
-  if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
-    rm -f /etc/resolv.conf
-    echo "nameserver 1.1.1.1" > /etc/resolv.conf
-    echo "nameserver 1.0.0.1" >> /etc/resolv.conf
-  fi
-  if [ "${_OSR}" = "daedalus" ] \
-    || [ "${_OSR}" = "chimaera" ] \
-    || [ "${_OSR}" = "beowulf" ] \
-    || [ "${_OSR}" = "bookworm" ] \
-    || [ "${_OSR}" = "bullseye" ] \
-    || [ "${_OSR}" = "buster" ] \
-    || [ "${_OSR}" = "stretch" ]; then
+  isUnbnd=$(which unbound 2>&1)
+  if [ ! -x "${isUnbnd}" ] \
+    || [ -z "${isUnbnd}" ] \
+    || [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
+    msg "INFO: Installing DNS cache Unbound server..."
+    if [ -e "/etc/resolv.conf" ]; then
+      cp -af /etc/resolv.conf ${vBs}/resolv.conf.pre-${_X_SE}-${_X_VERSION}-${_NOW}
+    fi
+    if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
+      rm -f /etc/resolv.conf
+      echo "nameserver 1.1.1.1" > /etc/resolv.conf
+      echo "nameserver 1.0.0.1" >> /etc/resolv.conf
+    fi
+    apt_clean_update
+    st_runner "apt-get purge resolvconf -y" &> /dev/null
+    rm -rf /lib/init/rw/resolvconf
+    rm -rf /etc/resolvconf
+    st_runner "apt-get purge resolvconf -y" &> /dev/null
+    if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
+      rm -f /etc/resolv.conf
+      echo "nameserver 1.1.1.1" > /etc/resolv.conf
+      echo "nameserver 1.0.0.1" >> /etc/resolv.conf
+    fi
     st_runner "${_INSTAPP} resolvconf" &> /dev/null
-    msg "INFO: Building pdnsd ${_PDNSD_VRN} from sources..."
-    cd /var/opt
-    rm -rf pdnsd*
-    get_dev_src "pdnsd-${_PDNSD_VRN}.tar.gz"
-    cd /var/opt/pdnsd-${_PDNSD_VRN}
-    st_runner "bash ./configure --prefix=/usr" 2> /dev/null
-    mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
-    ldconfig 2> /dev/null
-    echo "START_DAEMON=yes" > /etc/default/pdnsd
-    adduser --system --ingroup proxy --home /var/cache/pdnsd pdnsd &> /dev/null
-    usermod -aG proxy pdnsd
-    cp -af ${locCnf}/pdnsd /etc/init.d/pdnsd
-    cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
-    ln -sfn /etc/pdnsd.conf /usr/etc/pdnsd.conf
-    chmod 755 /etc/init.d/pdnsd
-    mrun "update-rc.d pdnsd defaults" &> /dev/null
-    mrun "service pdnsd start" &> /dev/null
-  else
-    st_runner "${_INSTAPP} resolvconf" &> /dev/null
-    st_runner "${_INSTAPP} pdnsd" &> /dev/null
-    st_runner "${_INSTAPP} resolvconf" &> /dev/null
-    st_runner "${_INSTAPP} pdnsd" &> /dev/null
-    sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
-    cat ${locCnf}/pdnsd.conf > /etc/pdnsd.conf
+    ${_INSTAPP} unbound unbound-anchor unbound-host dns-root-data &> /dev/null
+    mkdir -p /var/log/unbound
+    touch /var/log/unbound/unbound.log
+    chown unbound /var/log/unbound/unbound.log
+    mkdir -p /var/lib/unbound/
+    cp -a /usr/share/dns/* /var/lib/unbound/
+    chown -R unbound:unbound /var/lib/unbound
+    cat ${locCnf}/unbound.conf > /etc/unbound/unbound.conf.d/unbound.conf
+    service unbound restart &> /dev/null
   fi
-  if [ -x "/usr/sbin/pdnsd" ] \
-    && [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+  isUnbnd=$(which unbound 2>&1)
+  if [ -x "${isUnbnd}" ] \
+    && [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     mkdir -p /etc/resolvconf/run/interface
-    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
-    resolvconf -u         &> /dev/null
-    service pdnsd restart &> /dev/null
-    pdnsd-ctl empty-cache &> /dev/null
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
+    resolvconf -u &> /dev/null
+    service unbound restart &> /dev/null
+    unbound-control reload &> /dev/null
   fi
   check_dns_settings
   if [ ! -L "/etc/resolvconf/run" ] \
@@ -476,13 +397,13 @@ install_pdnsd_cache() {
     rm -f /etc/resolvconf/resolv.conf.d/tail
     touch /etc/resolvconf/resolv.conf.d/tail
   fi
-  if [ -x "/usr/sbin/pdnsd" ] \
-    && [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+  if [ -x "${isUnbnd}" ] \
+    && [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     mkdir -p /etc/resolvconf/run/interface
-    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
-    resolvconf -u         &> /dev/null
-    service pdnsd restart &> /dev/null
-    pdnsd-ctl empty-cache &> /dev/null
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
+    resolvconf -u &> /dev/null
+    service unbound restart &> /dev/null
+    unbound-control reload &> /dev/null
   fi
   if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
     && [ -e "${vBs}/resolv.conf.vanilla" ]; then
@@ -496,9 +417,9 @@ install_pdnsd_cache() {
     else
       rm -f /etc/resolv.conf
       ln -s /etc/resolvconf/run/resolv.conf /etc/resolv.conf
-      resolvconf -u         &> /dev/null
-      service pdnsd restart &> /dev/null
-      pdnsd-ctl empty-cache &> /dev/null
+      resolvconf -u &> /dev/null
+      service unbound restart &> /dev/null
+      unbound-control reload &> /dev/null
     fi
   fi
   if [ ! -e "/etc/resolv.conf" ]; then
@@ -511,13 +432,13 @@ install_pdnsd_cache() {
     echo "nameserver 1.0.0.1" >>/etc/resolv.conf
   fi
   if [ -e "/etc/NetworkManager/NetworkManager.conf" ]; then
-    sed -i "s/^dns=.*/dns=pdnsd/g" \
+    sed -i "s/^dns=.*/dns=unbound/g" \
       /etc/NetworkManager/NetworkManager.conf &> /dev/null
     mrun "service network-manager restart" &> /dev/null
   fi
-  resolvconf -u         &> /dev/null
-  service pdnsd restart &> /dev/null
-  pdnsd-ctl empty-cache &> /dev/null
+  resolvconf -u &> /dev/null
+  service unbound restart &> /dev/null
+  unbound-control reload &> /dev/null
 }
 
 check_github_for_aegir_head_mode() {
@@ -817,38 +738,3 @@ EOF
   fi
 }
 
-pdnsd_install_upgrade() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: pdnsd_install_upgrade"
-  fi
-  if [ -f "/etc/default/dhcpcd" ]; then
-    sed -i "s/.*SET_DNS/#SET_DNS/g" /etc/default/dhcpcd &> /dev/null
-    wait
-    sed -i "s/.*SET_HOSTNAME/#SET_HOSTNAME/g" /etc/default/dhcpcd &> /dev/null
-    wait
-  fi
-  check_dns_settings
-  if [ ! -x "/usr/sbin/pdnsd" ]; then
-    install_pdnsd_cache
-  else
-    if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
-      || [ "${_USE_DEFAULT_DNS}" = "YES" ] \
-      || [ ! -L "/etc/resolvconf/run" ] \
-      || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] \
-      || [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
-      msg "INFO: DNS cache pdnsd server re-installation forced"
-      install_pdnsd_cache
-    fi
-  fi
-}
-
-if_install_pdnsd() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_pdnsd"
-  fi
-  if [ -r "/etc/pdnsd.conf" ] \
-    || [[ "${_XTRAS_LIST}" =~ "DCS" ]] \
-    || [[ "${_XTRAS_LIST}" =~ "ALL" ]]; then
-    pdnsd_install_upgrade
-  fi
-}

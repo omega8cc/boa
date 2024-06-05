@@ -280,11 +280,12 @@ if_php_idle_on_off
 
 
 ###
-### Packages update on init
+### Packages install/update on init
 ###
 sources_list_update
 basic_packages_install_on_init
 more_packages_install_on_init
+dns_unbound_install_on_init
 run_aptitude_full_upgrade
 
 
@@ -398,7 +399,7 @@ xdrago_install_upgrade
 ### Optional add-on services installed on upgrade
 ###
 if [ "${_STATUS}" = "UPGRADE" ]; then
-  if_install_pdnsd
+  if_install_ftpd
   if_install_vnstat
   if_install_wkhtmltox
   if_install_git_src
@@ -413,7 +414,6 @@ if [ "${_STATUS}" = "UPGRADE" ]; then
   if_install_webmin
   if_install_bind
   if_install_rvm
-  if_install_ftpd
   sftp_ftps_modern_fix
 fi
 

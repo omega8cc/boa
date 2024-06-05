@@ -31,7 +31,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /collectd/) {$collectdlives = "YES"; $collectdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /dhcpcd-bin/) {$dhcpcdlives = "YES"; $dhcpcdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /nginx/) {$nginxlives = "YES"; $nginxsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /pdnsd/) {$pdnsdlives = "YES"; $pdnsdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /unbound/) {$unboundlives = "YES"; $unboundsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /php-cgi/) {$phplives = "YES"; $phpsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /php-fpm/) {$fpmlives = "YES"; $fpmsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /postfix/) {$postfixlives = "YES"; $postfixsumar = $li_cnt{$COMMAND};}
@@ -86,7 +86,7 @@ print "\n 1 FPM56 procs\t\tGLOBAL" if ($php56lives);
 print "\n $ftpsumar FTP procs\t\tGLOBAL" if ($ftplives);
 print "\n $mysqlsumar MySQL procs\t\tGLOBAL" if ($mysqlives);
 print "\n $nginxsumar Nginx procs\t\tGLOBAL" if ($nginxlives);
-print "\n $pdnsdsumar DNS procs\t\tGLOBAL" if ($pdnsdlives);
+print "\n $unboundsumar DNS procs\t\tGLOBAL" if ($unboundlives);
 print "\n $phpsumar PHP procs\t\tGLOBAL" if ($phplives);
 print "\n $postfixsumar Postfix procs\tGLOBAL" if ($postfixlives);
 print "\n $redissumar Redis procs\t\tGLOBAL" if ($redislives);
@@ -112,12 +112,10 @@ system("service bind9 restart") if (!$namedsumar && -f "/etc/init.d/bind9");
 system("service ssh restart") if (!$sshdsumar && -f "/etc/init.d/ssh");
 system("service proxysql restart") if (!$pxydsumar && -f "/etc/init.d/proxysql");
 
-if (-e "/usr/sbin/pdnsd" && (!$pdnsdsumar || !-e "/etc/resolvconf/run/interface/lo.pdnsd")) {
-  system("mkdir -p /var/cache/pdnsd");
-  system("chown -R pdnsd:proxy /var/cache/pdnsd");
+if (-e "/usr/sbin/unbound" && (!$unboundsumar || !-e "/etc/resolvconf/run/interface/lo.unbound")) {
   system("resolvconf -u");
-  system("service pdnsd restart");
-  system("pdnsd-ctl empty-cache");
+  system("service unbound restart");
+  system("unbound-control reload");
 }
 
 if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/var/run/mysql_restart_running.pid" && !-f "/var/run/boa_run.pid" && !-f "/root/.remote.db.cnf") {

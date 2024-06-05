@@ -160,7 +160,6 @@ _PHP_CLI_VERSION=8.1
 ### ADM --- Adminer DB Manager
 ### CSF --- Firewall
 ### CSS --- RVM + NPM for Gulp/Bower
-### DCS --- Fast DNS Cache Server (pdnsd)
 ### FTP --- Pure-FTPd server with forced FTPS
 ### IMG --- Image Optimize binaries
 ### SR7 --- Apache Solr 7
@@ -184,13 +183,13 @@ _PHP_CLI_VERSION=8.1
 ### _XTRAS_LIST=""
 ### _XTRAS_LIST="ALL"
 ### _XTRAS_LIST="ALL GIT SR4"
-### _XTRAS_LIST="ADM CSF CGP CHV FTP DCS"
+### _XTRAS_LIST="ADM CSF CGP CHV FTP"
 ###
 ### Note that removing any item from this
 ### list once it is already installed, will
 ### NOT uninstall anything.
 ###
-_XTRAS_LIST="ADM CSF FTP CSS DCS"
+_XTRAS_LIST="ADM CSF FTP CSS"
 
 
 ###----------------------------------------###
@@ -721,7 +720,7 @@ _SMTP_RELAY_HOST=""
 ### means it should work as a handy local
 ### setup on your wirelessly connected laptop
 ### or netbook, with improved DNS cache
-### support - pdnsd will save results in file.
+### support - unbound will save results in file.
 ###
 ### In this case you could use 127.0.1.1 as
 ### _LOCAL_NETWORK_IP to avoid issues with
@@ -1136,9 +1135,9 @@ apt_clean_update() {
 ### Find the fastest mirror to use for downloads
 ###
 find_fast_mirror_cnf() {
-  if [ -d "/var/cache/pdnsd" ] \
-    && [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
-    pdnsd-ctl empty-cache &> /dev/null
+  if [ -x "/usr/sbin/unbound-control" ] \
+    && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
+    unbound-control reload &> /dev/null
   fi
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then

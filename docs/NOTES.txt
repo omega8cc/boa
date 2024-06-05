@@ -9,7 +9,6 @@
     ### ADM --- Adminer DB Manager
     ### CSF --- Firewall
     ### CSS --- RVM for Compass + NPM for Gulp/Bower
-    ### DCS --- Fast DNS Cache Server (pdnsd)
     ### FTP --- Pure-FTPd server with forced FTPS
     ### IMG --- Image Optimize binaries: advdef advpng jpegoptim jpegtran optipng pngcrush pngquant
     ### SR7 --- Apache Solr 7
@@ -36,7 +35,7 @@
     ### _XTRAS_LIST=""
     ### _XTRAS_LIST="ALL"
     ### _XTRAS_LIST="ALL GIT SR4"
-    ### _XTRAS_LIST="ADM CSF CGP CHV FTP DCS"
+    ### _XTRAS_LIST="ADM CSF CGP CHV FTP"
     ###
 
   * Configuration file template: docs/cnf/barracuda.cnf
@@ -53,7 +52,7 @@
         only services listed below:
 
   * Your Aegir Master Instance control panel will be available at https://master.f-q-d-n
-  * Your Fast DNS Cache Server (pdnsd) will listen on 127.0.0.1:53
+  * Your Fast DNS Cache Server (unbound) will listen on 127.0.0.1:53
   * Your Adminer Percona Manager will be available at https://adminer.master.f-q-d-n
   * Your CSF/LFD Firewall will support integrated Nginx Abuse Guard.
 
@@ -61,7 +60,7 @@
         of services listed below:
 
   * Your Aegir Master Instance control panel will be available at https://master.f-q-d-n
-  * Your Fast DNS Cache Server (pdnsd) will listen on 127.0.0.1:53
+  * Your Fast DNS Cache Server (unbound) will listen on 127.0.0.1:53
   * Your (optional) Adminer Percona Manager will be available at https://adminer.master.f-q-d-n
   * Your (optional) Bind9 DNS Server will listen on 123.45.67.89:53
   * Your (optional) Chive Percona Manager will be available at https://chive.master.f-q-d-n (deprecated)
@@ -91,7 +90,7 @@
         automatically only services listed below:
 
   * Your Aegir Master Instance control panel will be available at https://aegir.local
-  * Your Fast DNS Cache Server (pdnsd) will listen on 127.0.0.1:53
+  * Your Fast DNS Cache Server (unbound) will listen on 127.0.0.1:53
   * Your Adminer Percona Manager will be available at https://adminer.aegir.local
 
 

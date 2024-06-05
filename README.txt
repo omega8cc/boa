@@ -157,7 +157,7 @@ production settings.
   Composer and Drush Make access on command line for main shell account only.
   PHP errors debugging, including WSOD, enabled on the fly on .dev. aliases.
   Built-in collection of useful modules available in all platforms.
-  Fast DNS Cache Server (pdnsd)
+  Fast DNS Cache Server (unbound)
 
   +Optional add-ons -- see docs/NOTES.txt for details
 

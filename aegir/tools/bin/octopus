@@ -119,7 +119,6 @@ check_sql_access() {
 }
 
 fix_dns_settings() {
-  dnsLi="/root/.local.dns.IP.list"
   mkdir -p ${vBs}
   rm -f ${vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
@@ -158,73 +157,11 @@ fix_dns_settings() {
       cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
     fi
   fi
-  if [ -e "/etc/pdnsd.conf" ]; then
-    if [ -e "${dnsLi}" ]; then
-      sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
-      wait
-      sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
-      wait
-      _BROKEN_DNS_TEST_X=$(grep "\." ${dnsLi} 2>&1)
-      if [ -z "${_BROKEN_DNS_TEST_X}" ]; then
-        echo "        label = \"cloudflare-servers\";" > ${dnsLi}
-        echo "        ip=1.1.1.1;" >> ${dnsLi}
-        echo "        ip=1.0.0.1;" >> ${dnsLi}
-      fi
-    fi
-    _CUSTOM_DNS_TEST=$(grep 1.1.1.1 /etc/pdnsd.conf 2>&1)
-    _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
-    _MISSING_DNS_TEST=$(grep "ip=" /etc/pdnsd.conf 2>&1)
-    if [[ "${_CUSTOM_DNS_TEST}" =~ "1.1.1.1" ]] \
-      || [ ! -e "${dnsLi}" ] \
-      || [ -e "/root/.use.default.nameservers.cnf" ] \
-      || [ -e "/root/.use.local.nameservers.cnf" ] \
-      || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]] \
-      || [[ -z "${_MISSING_DNS_TEST}" ]]; then
-      echo "        label = \"cloudflare-servers\";" > ${dnsLi}
-      for _IP in `cat /etc/resolv.conf \
-        | sed 's/.*127.0.0.1.*//g; s/.*search.*//g; s/.*Dynamic.*//g' \
-        | cut -d ' ' -f2 \
-        | sort \
-        | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
-      wait
-      sed -i "s/ip=.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
-      wait
-      sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
-      wait
-      sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
-      wait
-      _BROKEN_DNS_TEST_Y=$(grep "\." ${dnsLi} 2>&1)
-      if [ -z "${_BROKEN_DNS_TEST_Y}" ]; then
-         echo "        ip=1.1.1.1;" >> ${dnsLi}
-         echo "        ip=1.0.0.1;" >> ${dnsLi}
-      fi
-      ### echo debug dns A
-      _DNS_TPL_TEST_GE=$(grep "google-servers" /etc/pdnsd.conf 2>&1)
-      _DNS_TPL_TEST_CF=$(grep "cloudflare-servers" /etc/pdnsd.conf 2>&1)
-      _DNS_RGX_TEST=$(grep "cloudflare-servers" /root/.local.dns.IP.list 2>&1)
-      if [[ "${_DNS_TPL_TEST_CF}" =~ "cloudflare-servers" ]] \
-        && [[ "${_DNS_RGX_TEST}" =~ "cloudflare-servers" ]]; then
-        sed -i '/        label = \"cloudflare-servers\";/ {r /root/.local.dns.IP.list
-d;};' /etc/pdnsd.conf
-        wait
-      fi
-      if [[ "${_DNS_TPL_TEST_GE}" =~ "google-servers" ]] \
-        && [[ "${_DNS_RGX_TEST}" =~ "cloudflare-servers" ]]; then
-        sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
-d;};' /etc/pdnsd.conf
-        wait
-      fi
-      resolvconf -u         &> /dev/null
-      service pdnsd restart &> /dev/null
-      pdnsd-ctl empty-cache &> /dev/null
-    fi
-  fi
 }
 
 check_dns_settings() {
   if [ -e "/root/.use.default.nameservers.cnf" ]; then
     _USE_DEFAULT_DNS=YES
-    [ -e "/root/.local.dns.IP.list" ] && rm -f /root/.local.dns.IP.list
   fi
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
@@ -1150,9 +1087,9 @@ check_dns_curl() {
   else
     check_dns_settings
   fi
-  if [ -d "/var/cache/pdnsd" ] \
-    && [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
-    pdnsd-ctl empty-cache &> /dev/null
+  if [ -x "/usr/sbin/unbound-control" ] \
+    && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
+    unbound-control reload &> /dev/null
   fi
   find_fast_mirror_early
   if_reinstall_curl

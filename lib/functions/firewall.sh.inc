@@ -6,15 +6,15 @@ fix_lfd_uidignore() {
   fi
   _THIS_FILE=/etc/csf/csf.uidignore
   if [ -e "${_THIS_FILE}" ]; then
-    _CSF_UIDIGNORE_TEST=$(grep "pdnsd" ${_THIS_FILE} 2>&1)
-    if [[ "${_CSF_UIDIGNORE_TEST}" =~ "pdnsd" ]]; then
+    _CSF_UIDIGNORE_TEST=$(grep "unbound" ${_THIS_FILE} 2>&1)
+    if [[ "${_CSF_UIDIGNORE_TEST}" =~ "unbound" ]]; then
       _DO_NOTHING=YES
     else
       echo "#root"          >> /etc/csf/csf.uidignore
       echo `id -u root`     >> /etc/csf/csf.uidignore
-      if [ -r "/etc/pdnsd.conf" ]; then
-        echo "#pdnsd"       >> /etc/csf/csf.uidignore
-        echo `id -u pdnsd`  >> /etc/csf/csf.uidignore
+      if [ -r "/etc/unbound/unbound.conf.d/unbound.conf" ]; then
+        echo "#unbound"       >> /etc/csf/csf.uidignore
+        echo `id -u unbound`  >> /etc/csf/csf.uidignore
       fi
       echo "#postfix"       >> /etc/csf/csf.uidignore
       echo `id -u postfix`  >> /etc/csf/csf.uidignore

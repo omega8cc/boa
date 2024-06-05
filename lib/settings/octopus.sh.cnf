@@ -466,7 +466,7 @@ _DEL_OLD_TMP="0"
 ### means it should work as a handy local
 ### setup on your wirelessly connected laptop
 ### or netbook, with improved DNS cache
-### support - pdnsd will save results in file.
+### support - unbound will save results in file.
 ###
 ### In this case you could use 127.0.1.1 as
 ### _LOCAL_NETWORK_IP to avoid issues with
@@ -661,9 +661,9 @@ apt_clean_update() {
 ### Find the fastest mirror to use for downloads
 ###
 find_fast_mirror_cnf() {
-  if [ -d "/var/cache/pdnsd" ] \
-    && [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
-    pdnsd-ctl empty-cache &> /dev/null
+  if [ -x "/usr/sbin/unbound-control" ] \
+    && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
+    unbound-control reload &> /dev/null
   fi
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then

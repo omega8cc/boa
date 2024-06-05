@@ -95,21 +95,21 @@ if [ -e "/etc/cron.daily/logrotate" ]; then
   fi
 fi
 
-check_pdnsd() {
-  if [ -x "/usr/sbin/pdnsd" ] \
-    && [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+check_unbound() {
+  if [ -x "/usr/sbin/unbound" ] \
+    && [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     mkdir -p /etc/resolvconf/run/interface
-    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
-    resolvconf -u         &> /dev/null
-    service pdnsd restart &> /dev/null
-    pdnsd-ctl empty-cache &> /dev/null
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
+    resolvconf -u &> /dev/null
+    service unbound restart &> /dev/null
+    unbound-control reload &> /dev/null
   fi
   if [ -e "/etc/resolv.conf" ]; then
     _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
     if [[ "${_RESOLV_TEST}" =~ "nameserver 127.0.0.1" ]]; then
       _THIS_DNS_TEST=$(host files.aegir.cc 127.0.0.1 -w 3 2>&1)
       if [[ "${_THIS_DNS_TEST}" =~ "no servers could be reached" ]]; then
-        service pdnsd stop &> /dev/null
+        service unbound stop &> /dev/null
         sleep 1
         renice ${_B_NICE} -p $$ &> /dev/null
         perl /var/xdrago/proc_num_ctrl.cgi
@@ -117,7 +117,7 @@ check_pdnsd() {
     fi
   fi
 }
-check_pdnsd
+check_unbound
 
 if [ -e "/var/log/php" ]; then
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
