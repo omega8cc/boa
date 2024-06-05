@@ -6290,6 +6290,7 @@ sys_packages_install() {
                      libpng16-16 \
                      libtinfo6 \
                      software-properties-common \
+                     python3-software-properties \
                      ${_EXTRA_PACKAGES}"
   elif [ "${_OSR}" = "chimaera" ]; then
     _EXTRA_PACKAGES="autoconf2.69 \
@@ -6336,6 +6337,7 @@ sys_packages_install() {
                      libpng16-16 \
                      libtinfo6 \
                      software-properties-common \
+                     python3-software-properties \
                      ${_EXTRA_PACKAGES}"
   elif [ "${_OSR}" = "bullseye" ]; then
     _EXTRA_PACKAGES="autoconf2.69 \
