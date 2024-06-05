@@ -4908,12 +4908,14 @@ basic_packages_install_on_init() {
     msg "PROC: basic_packages_install_on_init"
   fi
   apt_clean_update
-  mrun "apt-get remove --purge unscd -y" &> /dev/null
-  mrun "apt-get remove --purge dbus -y" &> /dev/null
-  if [ -e "/usr/share/dbus-1" ]; then
-    rm -f /usr/share/dbus-1/*/*freedesktop*
+  if [ ! -e "/var/aegir" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
+    mrun "apt-get remove --purge unscd -y" &> /dev/null
+    mrun "apt-get remove --purge dbus -y" &> /dev/null
+    if [ -e "/usr/share/dbus-1" ]; then
+      rm -f /usr/share/dbus-1/*/*freedesktop*
+    fi
+    userdel -r debian &> /dev/null
   fi
-  userdel -r debian &> /dev/null
   usermod -aG users _apt &> /dev/null
   usermod -aG users aegir &> /dev/null
   usermod -aG users bin &> /dev/null
