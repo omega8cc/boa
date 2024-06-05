@@ -1559,7 +1559,7 @@ fix_lshell() {
   _LSHELL_VRN=0.9.18.9
   _PATH_LSHELL="${usrBin}/lshell"
   _LSHELL_LIB_TWO="/usr/local/lib/python2.7/dist-packages/lshell/checkconfig.py"
-  _LSHELL_LIB_TNE"/usr/local/lib/python3.9/dist-packages/lshell/checkconfig.py"
+  _LSHELL_LIB_TNE="/usr/local/lib/python3.9/dist-packages/lshell/checkconfig.py"
   _LSHELL_LIB_TEL="/usr/local/lib/python3.11/dist-packages/lshell/checkconfig.py"
   if [ ! -e "${_LSHELL_LIB_TWO}" ] \
     && [ ! -e "${_LSHELL_LIB_TNE}" ] \
