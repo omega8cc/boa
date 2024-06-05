@@ -264,7 +264,7 @@ satellite_create_web_user() {
   elif [ -z "${_T_ID_EXISTS}" ] || [ ! -e "${_T_II}" ]; then
     ### msg "DEBUG: ARG1 is $1 in satellite_create_web_user C"
     satellite_remove_web_user "clean"
-    adduser --force-badname --system --ingroup www-data ${_WEB} &> /dev/null
+    adduser --force-badname --system --ingroup www-data --home /home/${_WEB} ${_WEB} &> /dev/null
     satellite_web_user_update "$1"
   fi
 }

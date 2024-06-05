@@ -1540,7 +1540,7 @@ satellite_create_web_user() {
       satellite_web_user_update "$1"
     elif [ -z "${_T_ID_EXISTS}" ] || [ ! -e "${_T_II}" ]; then
       satellite_remove_web_user "clean"
-      adduser --force-badname --system --ingroup www-data ${_WEB} &> /dev/null
+      adduser --force-badname --system --ingroup www-data --home /home/${_WEB} ${_WEB} &> /dev/null
       satellite_web_user_update "$1"
     fi
   fi
