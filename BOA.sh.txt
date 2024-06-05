@@ -1558,9 +1558,15 @@ fix_node_in_lshell_access() {
 fix_lshell() {
   _LSHELL_VRN=0.9.18.9
   _PATH_LSHELL="${usrBin}/lshell"
-  _LSHELL_LIB="/usr/local/lib/python2.7/dist-packages/lshell/checkconfig.py"
+  _LSHELL_LIB_OLD="/usr/local/lib/python2.7/dist-packages/lshell/checkconfig.py"
+  _LSHELL_LIB_NEW="/usr/local/lib/python3.11/dist-packages/lshell/checkconfig.py"
+  if [ ! -e "${_LSHELL_LIB_OLD}" ] && [ ! -e "${_LSHELL_LIB_NEW}" ]; then
+    _LSHELL_FORCE_REINSTALL=YES
+  else
+    _LSHELL_FORCE_REINSTALL=NO
+  fi
   if [ -e "${_PATH_LSHELL}" ] \
-    && [ ! -e "${_LSHELL_LIB}" ]; then
+    && [[ "${_LSHELL_FORCE_REINSTALL}" =~ "YES" ]] ; then
     cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5
     cd /var/opt
     rm -rf lshell*
@@ -1574,6 +1580,7 @@ fix_lshell() {
     cd /var/opt/lshell-${_LSHELL_VRN}
     rm -rf /usr/local/lib/python2.6/dist-packages/lshell*
     rm -rf /usr/local/lib/python2.7/dist-packages/lshell*
+    rm -rf /usr/local/lib/python3.11/dist-packages/lshell*
     isPyth=$(which python 2>&1)
     if [ ! -x "${isPyth}" ] || [ -z "${isPyth}" ]; then
       isPyth=$(which python3 2>&1)
