@@ -192,7 +192,7 @@ production settings.
 
  Commerce 1.72 -------------- https://drupal.org/project/commerce_kickstart
  Commerce 2.77 -------------- https://drupal.org/project/commerce_kickstart
- Drupal 7.100.1 ------------- https://drupal.org/project/drupal/releases/7.100
+ Drupal 7.101.1 ------------- https://drupal.org/project/drupal/releases/7.101
  Ubercart 3.13 -------------- https://drupal.org/project/ubercart
 
  @ Drupal 6
@@ -200,7 +200,7 @@ production settings.
  Pressflow 6.60.1 ----------- https://www.pressflow.org
  Ubercart 2.15 -------------- https://drupal.org/project/ubercart
 
- * All D7 platforms have been enhanced using Drupal 7.100.1 +Extra core:
+ * All D7 platforms have been enhanced using Drupal 7.101.1 +Extra core:
    https://github.com/omega8cc/7x/tree/7.x-om8
 
  * All D6 platforms have been enhanced using Pressflow (LTS) 6.60.1 +Extra core:
