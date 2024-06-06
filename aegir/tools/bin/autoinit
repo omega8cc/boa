@@ -203,10 +203,13 @@ init_pre() {
     if [ ! -x "/usr/bin/aptitude" ] || [ ! -x "/usr/bin/cc" ]; then
       echo "Running init_pre procedure B..."
       touch /var/run/autoinit.pid
+      /usr/bin/apt-get update >> ${logSlt}
+      ${_INITINS} lsb-release >> ${logSlt}
       _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
       _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
       msg "This system is ${_THIS_OS}/${_OSR}" >> ${logInt}
       msg "We need to install some tools early..." >> ${logInt}
+      echo " " >> ${logInt}
       if [ "${silentMode}" = "verbose" ]; then
         echo " " >> ${logInt}
         /usr/bin/apt-get update >> ${logInt}
@@ -267,13 +270,17 @@ init_run_two_quick() {
   _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   msg "Your system now runs on ${_THIS_OS}/${_OSR}" >> ${logInt}
-  msg "Time for reboot and then you can run boa install" >> ${logInt}
+  if [ "${_OSR}" = "daedalus" ]; then
+    msg "Time for reboot and then you can run boa install" >> ${logInt}
+    rm -f /root/.init-to-devuan.cnf
+    rm -f /root/.init-to-devuan-loop.cnf
+    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+  else
+    msg "Time for reboot and next upgrade cycle..." >> ${logInt}
+  fi
   echo " " >> ${logInt}
-  touch /root/.run-two-devuan-quick.cnf
-  rm -f /root/.init-to-devuan.cnf
-  rm -f /root/.init-to-devuan-loop.cnf
-  sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
   sleep 5
+  touch /root/.run-two-devuan-quick.cnf
   rm -f /var/run/autoinit.pid
   reboot
   exit 0
@@ -380,18 +387,19 @@ init_run_one_quick() {
     _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
     msg "Your system now runs on ${_THIS_OS}/${_OSR}" >> ${logInt}
     msg "Time for reboot and next upgrade cycle..." >> ${logInt}
-  else
-    _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-    _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  fi
+  _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  if [ "${_OSR}" = "daedalus" ]; then
     msg "Your system now runs on ${_THIS_OS}/${_OSR}" >> ${logInt}
-    msg "Time for reboot and then you can run boa install" >> ${logInt}
+    msg "Time for the last reboot and then you can run boa install" >> ${logInt}
     rm -f /root/.init-to-devuan.cnf
     rm -f /root/.init-to-devuan-loop.cnf
-    touch /root/.run-one-devuan-quick.cnf
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
   fi
   echo " " >> ${logInt}
   sleep 5
+  touch /root/.run-one-devuan-quick.cnf
   rm -f /var/run/autoinit.pid
   reboot
   exit 0
@@ -508,15 +516,20 @@ init() {
   initRun=
   init_conf
   if [ -e "/root/.init-to-devuan-loop.cnf" ]; then
-    if [ ! -e "/root/.run-one-devuan-quick.cnf" ] \
-      && [ ! -e "/root/.run-two-devuan-quick.cnf" ]; then
-      init_run_one_quick
+    init_run_one_quick
+    _OLD_SYS=
+    _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+    if [ "${_OSR}" = "bookworm" ]; then
+      _OLD_SYS=Debian
+    elif [ "${_OSR}" = "bullseye" ]; then
+      _OLD_SYS=Debian
+    elif [ "${_OSR}" = "buster" ]; then
+      _OLD_SYS=Debian
     fi
-    if [ -e "/root/.run-one-devuan-quick.cnf" ] \
+    if [ "${_OLD_SYS}" = "Debian" ] \
+      && [ -e "/root/.run-one-devuan-quick.cnf" ] \
       && [ ! -e "/root/.run-two-devuan-quick.cnf" ]; then
-      if [ "${_OSR}" != "daedalus" ]; then
-        init_run_two_quick
-      fi
+      init_run_two_quick
     fi
   else
     if [ ! -e "/root/.run-one-devuan.cnf" ] \
