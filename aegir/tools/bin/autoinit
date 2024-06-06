@@ -141,8 +141,9 @@ msg() {
 }
 
 if [ -e "/var/run/autoinit.pid" ]; then
-  echo "The /var/run/autoinit.pid is blocking this run"
-  msg "The /var/run/autoinit.pid is blocking this run..." >> ${logInt}
+  echo " " >> ${logSlt}
+  msg "The /var/run/autoinit.pid is blocking this run..." >> ${logSlt}
+  echo " " >> ${logSlt}
   exit 1
 fi
 
