@@ -138,13 +138,8 @@ msg() {
 }
 
 if [ -e "/var/run/autoinit.pid" ]; then
-  echo
   echo "The /var/run/autoinit.pid is blocking this run"
-  echo
-  echo " " >> ${logInt}
   msg "The /var/run/autoinit.pid is blocking this run..." >> ${logInt}
-  echo " " >> ${logInt}
-  sleep 5
   exit 1
 fi
 
@@ -515,14 +510,9 @@ pre() {
     _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
     _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
     touch /var/run/autoinit.pid
-    echo
     echo "Launching BOA System INIT on ${_THIS_OS}/${_OSR}"
-    echo
     echo "Watch the progress with: tail -f /root/.autoinit.log"
-    echo
-    echo " " >> ${logInt}
     msg "Launching BOA System INIT on ${_THIS_OS}/${_OSR}" >> ${logInt}
-    echo " " >> ${logInt}
     init
   fi
 }
