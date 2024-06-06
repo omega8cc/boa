@@ -538,21 +538,11 @@ init() {
   initRun=
   init_conf
   if [ -e "/root/.init-to-devuan-loop.cnf" ]; then
-    init_run_one_quick
-    _OLD_SYS=
-    _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-    if [ "${_OSR}" = "bookworm" ]; then
-      _OLD_SYS=Debian
-    elif [ "${_OSR}" = "bullseye" ]; then
-      _OLD_SYS=Debian
-    elif [ "${_OSR}" = "buster" ]; then
-      _OLD_SYS=Debian
-    fi
-    if [ "${_OLD_SYS}" = "Debian" ] \
-      && [ -e "/root/.run-one-devuan-quick.cnf" ] \
+    if [ -e "/root/.run-one-devuan-quick.cnf" ] \
       && [ ! -e "/root/.run-two-devuan-quick.cnf" ]; then
       init_run_two_quick
     fi
+    init_run_one_quick
   else
     if [ ! -e "/root/.run-one-devuan.cnf" ] \
       && [ ! -e "/root/.run-one-debian.cnf" ]; then
