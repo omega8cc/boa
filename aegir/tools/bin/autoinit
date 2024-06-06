@@ -154,6 +154,7 @@ init_pre() {
   fi
   _SYS_IFNAMES=$(grep GRUB_CMDLINE_LINUX= /etc/default/grub | grep "net.ifnames=0" 2>&1)
   if [ -e "/etc/default/grub" ] && [[ ! "${_SYS_IFNAMES}" =~ "net.ifnames=0" ]]; then
+    echo "Running init_pre procedure A..."
     sleep 5
     touch /var/run/autoinit.pid
     sleep 5
@@ -176,6 +177,7 @@ init_pre() {
     exit 0
   else
     if [ ! -x "/usr/bin/aptitude" ] || [ ! -x "/usr/bin/git" ]; then
+      echo "Running init_pre procedure B..."
       sleep 5
       touch /var/run/autoinit.pid
       sleep 5
@@ -213,6 +215,7 @@ init_run_two_quick() {
   echo " " >> ${logInt}
   _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  msg "Running init_run_two_quick procedure..." >> ${logInt}
   msg "Launching a quick dist-upgrade to ${_THIS_OS}/${_OSR}" >> ${logInt}
   if [ "${silentMode}" = "verbose" ]; then
     /usr/bin/apt-get update >> ${logInt}
@@ -248,6 +251,7 @@ init_run_one_quick() {
   echo " " >> ${logInt}
   _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  msg "Running init_run_one_quick procedure..." >> ${logInt}
   msg "Your current system is ${_THIS_OS}/${_OSR}" >> ${logInt}
   echo " " >> ${logInt}
   if [ "${_OSR}" = "bookworm" ]; then
@@ -306,7 +310,7 @@ init_run_one_quick() {
 init_run_three() {
   if [ "${initArgs}" = "devuan" ]; then
     echo " " >> ${logInt}
-    msg "Launching the third run of ${initRun}" >> ${logInt}
+    msg "Launching a third run of ${initRun}" >> ${logInt}
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-three-devuan.cnf
@@ -320,7 +324,7 @@ init_run_three() {
 init_run_two() {
   if [ "${initArgs}" = "devuan" ]; then
     echo " " >> ${logInt}
-    msg "Launching the second run of ${initRun}" >> ${logInt}
+    msg "Launching a second run of ${initRun}" >> ${logInt}
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-two-devuan.cnf
@@ -337,7 +341,7 @@ init_run_two() {
     exit 0
   elif [ "${initArgs}" = "debian" ]; then
     echo " " >> ${logInt}
-    msg "Launching the second run of ${initRun}" >> ${logInt}
+    msg "Launching a second run of ${initRun}" >> ${logInt}
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-two-debian.cnf
@@ -353,7 +357,7 @@ init_run_two() {
 init_run_one() {
   if [ "${initArgs}" = "devuan" ]; then
     echo " " >> ${logInt}
-    msg "Launching the first run of ${initRun}" >> ${logInt}
+    msg "Launching a first run of ${initRun}" >> ${logInt}
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-one-devuan.cnf
@@ -368,7 +372,7 @@ init_run_one() {
     exit 0
   elif [ "${initArgs}" = "debian" ]; then
     echo " " >> ${logInt}
-    msg "Launching the first run of ${initRun}" >> ${logInt}
+    msg "Launching a first run of ${initRun}" >> ${logInt}
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-one-debian.cnf
