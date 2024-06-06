@@ -235,8 +235,30 @@ init_pre() {
     fi
   fi
 }
-init_pre &> /dev/null
 
+init_info() {
+  echo "Running init_pre procedure, please wait..."
+  sleep 3
+  echo "The system will reboot and continue several times..."
+  sleep 3
+  if [ -e "/root/.init-to-devuan-loop.cnf" ]; then
+    echo "until it is ugraded to latest Devuan/daedalus version."
+  else
+    echo "until it is ugraded to systemd-free Debian version."
+  fi
+  sleep 3
+  echo "Once all upgrades are complete, you can run boa install"
+  sleep 3
+  echo "Let's go!"
+  sleep 3
+  echo "It will take only a few minutes..."
+}
+
+if [ ! -x "/usr/bin/cc" ]; then
+  init_info
+fi
+
+init_pre &> /dev/null
 
 init_run_two_quick() {
   echo " " >> ${logInt}
