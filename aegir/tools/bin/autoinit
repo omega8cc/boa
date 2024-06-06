@@ -216,6 +216,11 @@ init_run_two_quick() {
   msg "Running init_run_two_quick procedure..." >> ${logInt}
   touch /var/run/autoinit.pid
   msg "Launching a quick dist-upgrade to ${_THIS_OS}/${_OSR}" >> ${logInt}
+  if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
+    rm -f /etc/apt/preferences.d/systemd
+    echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
+    echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
+  fi
   if [ "${silentMode}" = "verbose" ]; then
     /usr/bin/apt-get update >> ${logInt}
     /usr/bin/apt-get dist-upgrade -y >> ${logInt}
