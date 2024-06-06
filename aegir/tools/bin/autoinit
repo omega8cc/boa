@@ -405,10 +405,6 @@ init_run_one_quick() {
         /usr/bin/apt-get autoclean -y -qq >> ${logSlt}
       fi
     fi
-    _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-    _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-    msg "Your system now runs on ${_THIS_OS}/${_OSR}" >> ${logInt}
-    msg "Time for reboot and next upgrade cycle..." >> ${logInt}
   fi
   _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
@@ -418,6 +414,9 @@ init_run_one_quick() {
     rm -f /root/.init-to-devuan.cnf
     rm -f /root/.init-to-devuan-loop.cnf
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+  else
+    msg "Your system now runs on ${_THIS_OS}/${_OSR}" >> ${logInt}
+    msg "Time for reboot and next upgrade cycle..." >> ${logInt}
   fi
   echo " " >> ${logInt}
   sleep 5
