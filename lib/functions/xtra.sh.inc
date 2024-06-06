@@ -441,13 +441,7 @@ if_install_rvm() {
     _GPG=gpg
   fi
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
-    || [[ "${_XTRAS_LIST}" =~ "CSS" ]] \
-    || [ ! -z "${_SCOUT_KEY}" ] \
-    || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-    || [ -e "/root/.host8.cnf" ]; then
+    || [[ "${_XTRAS_LIST}" =~ "CSS" ]]; then
     if [ "${_STATUS}" = "INIT" ]; then
       _L_ST="install"
     else

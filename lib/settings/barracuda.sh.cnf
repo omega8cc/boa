@@ -183,13 +183,13 @@ _PHP_CLI_VERSION=8.1
 ### _XTRAS_LIST=""
 ### _XTRAS_LIST="ALL"
 ### _XTRAS_LIST="ALL GIT SR4"
-### _XTRAS_LIST="ADM CSF CGP CHV FTP"
+### _XTRAS_LIST="ADM CSF IMG SR7 FTP"
 ###
 ### Note that removing any item from this
 ### list once it is already installed, will
 ### NOT uninstall anything.
 ###
-_XTRAS_LIST="ADM CSF FTP CSS"
+_XTRAS_LIST="ADM CSF FTP"
 
 
 ###----------------------------------------###
