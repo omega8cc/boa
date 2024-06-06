@@ -175,7 +175,7 @@ init_pre() {
     reboot
     exit 0
   else
-    if [ ! -x "/usr/bin/aptitude" ] || [ ! -x "/usr/bin/git" ]; then
+    if [ ! -x "/usr/bin/aptitude" ] || [ ! -x "/usr/bin/cc" ]; then
       echo "Running init_pre procedure B..."
       touch /var/run/autoinit.pid
       _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
