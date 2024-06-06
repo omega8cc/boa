@@ -265,7 +265,7 @@ update_agents() {
   fi
 
   if [ "${_VMFAMILY}" = "HOSTED" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ -e "/var/xdrago" ]; then
     [ ! -e "/root/.fast.cron.cnf" ] && echo ON > /root/.fast.cron.cnf
     PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
@@ -403,7 +403,7 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/clean-boa-env.ctrl.${_X_SE}.pid" ]; then
     mv -f /etc/init.d/clean-boa-env /var/xdrago/clean-boa-env.old
     curl ${crlGet} "${urlHmr}/conf/clean-boa-env" -o /etc/init.d/clean-boa-env
@@ -417,7 +417,7 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/mysql_backup.ctrl.hf01.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/mysql_backup.sh /var/xdrago/mysql_backup.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/mysql_backup.sh" -o /var/xdrago/mysql_backup.sh
@@ -431,7 +431,7 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/mysql_cluster_backup.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/mysql_cluster_backup.sh /var/xdrago/mysql_cluster_backup.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/mysql_cluster_backup.sh" -o /var/xdrago/mysql_cluster_backup.sh
@@ -445,7 +445,7 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/mysql_hourly.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/mysql_hourly.sh /var/xdrago/mysql_hourly.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/mysql_hourly.sh" -o /var/xdrago/mysql_hourly.sh
@@ -459,7 +459,7 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/runner.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
@@ -473,7 +473,7 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/minute_f3.ctrl${_X_SE}.pid" ]; then
     mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
@@ -500,7 +500,7 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/clear.ctrl.a2.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/clear.sh /var/xdrago/clear.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/clear.sh" -o /var/xdrago/clear.sh
@@ -514,7 +514,7 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/daily.ctrl.hfx03.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
@@ -528,7 +528,7 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/graceful_f2.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/graceful.sh /var/xdrago/graceful.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/graceful.sh" -o /var/xdrago/graceful.sh
@@ -553,7 +553,7 @@ update_agents() {
     fi
   fi
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ "${_MY_USAGE}" = "YES" ] \
     && [ ! -e "${pthLog}/usage.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/usage.sh /var/xdrago/usage.sh.old
@@ -568,7 +568,7 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/manage_ltd_users.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/manage_ltd_users.sh" \
@@ -584,7 +584,7 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/manage_solr_config_f2.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/manage_solr_config.sh /var/xdrago/manage_solr_config.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/manage_solr_config.sh" \
@@ -600,7 +600,7 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/proc_num_ctrl_f2.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/proc_num_ctrl.cgi /var/xdrago/proc_num_ctrl.cgi.old
     curl ${crlGet} "${urlHmr}/tools/system/proc_num_ctrl.cgi" \
@@ -615,7 +615,7 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/fast_shutdown.ctrl.${_X_SE}.pid" ]; then
     sed -i "s/.*opcache.fast_shutdown.*//g" /opt/etc/fpm/fpm-pool-common.conf
     _PHP_V="83 82 81 80 74 73 72 71 70 56"
@@ -634,7 +634,7 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
     && [ ! -e "${pthLog}/guest-fire-sh2.ctrl.${_X_SE}.pid" ]; then
@@ -652,7 +652,7 @@ update_agents() {
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
     && [ ! -e "${pthLog}/guest-water-sh2.ctrl.${_X_SE}.pid" ]; then
@@ -669,7 +669,7 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/hackcheck.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/monitor/check/hackcheck /var/xdrago/monitor/check/hackcheck.old
     curl ${crlGet} "${urlHmr}/tools/system/monitor/check/hackcheck" \
@@ -684,7 +684,7 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/scan_nginx.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/monitor/check/scan_nginx /var/xdrago/monitor/check/scan_nginx.old
     curl ${crlGet} "${urlHmr}/tools/system/monitor/check/scan_nginx" \
@@ -727,7 +727,7 @@ update_agents() {
 
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/lshell.ctrl.${_X_SE}.pid" ]; then
     if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
       || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
@@ -746,7 +746,7 @@ update_agents() {
 
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/multi.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/conf/fpm-pool-foo-multi.conf /var/xdrago/conf/fpm-pool-foo-multi.conf.old
     curl ${crlGet} "${urlHmr}/conf/fpm-pool-foo-multi.conf" \
@@ -762,7 +762,7 @@ update_agents() {
 
   if [ -e "/opt/tools/drush" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/single.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf.old
     curl ${crlGet} "${urlHmr}/conf/fpm-pool-foo.conf" \
@@ -806,7 +806,7 @@ update_agents() {
 
   if [ -e "/opt/tools/drush" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/dispatch.ctrl.${_X_SE}.pid" ]; then
     sed -i "s/.*cache.*//g; s/.*cc drush.*//g; s/ *$//g; /^$/d" /data/disk/*/aegir.sh
     touch ${pthLog}/dispatch.ctrl.${_X_SE}.pid
@@ -853,7 +853,7 @@ update_agents() {
         || [ -e "${pthSysUsr}/log/proxied.pid" ] \
         || [ ! -e "${pthSysUsr}/static/control/cli.info" ]; then
         if [ -e "/var/xdrago/run-${tUsr}" ] \
-          && [ -e "/data/disk/arch/sql" ]; then
+          && [ -e "/var/aegir/drush" ]; then
           if [ ! -e "/var/backups/off-run" ]; then
             mkdir -p /var/backups/off-run/
           fi
@@ -869,13 +869,13 @@ update_agents() {
           sed -i "s/args.*q=/args ~* \"foobaroff=/g" ${ngxCnf}
         fi
         if [ ! -e "${dscUsr}/static/control/fpm.info" ] \
-          && [ -e "/data/disk/arch/sql" ]; then
+          && [ -e "/var/aegir/drush" ]; then
           echo 5.6 > ${dscUsr}/static/control/fpm.info
           chown ${tUsr}.ftp:${usrGroup} ${dscUsr}/static/control/fpm.info
           chmod 0644 ${dscUsr}/static/control/fpm.info
         fi
         if [ ! -e "${dscUsr}/static/control/cli.info" ] \
-          && [ -e "/data/disk/arch/sql" ]; then
+          && [ -e "/var/aegir/drush" ]; then
           if [ -e "${dscUsr}/static/control/fpm.info" ]; then
             cp -af ${dscUsr}/static/control/fpm.info ${dscUsr}/static/control/cli.info
           else
@@ -907,7 +907,7 @@ update_agents() {
     && [ -e "${provLeIncFull}" ] \
     && [ -e "${hoLeIncFull}" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/hosting_le_vt.ctrl.${_X_SE}.pid" ]; then
     leBasePath="profiles/hostmaster/modules/aegir/hosting_le"
     lePath="${leBasePath}/drush/${provLeInc}"
@@ -1008,7 +1008,7 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/websh.fix-regr-04.ctrl.${_X_SE}.pid" ]; then
     mv -f /bin/websh /var/xdrago/websh.sh.old
     curl ${crlGet} "${urlHmr}/helpers/websh.sh.txt" -o /bin/websh
@@ -1104,7 +1104,7 @@ fix_core_dgd() {
 
   # SA-CORE D8 patch
   if [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${saQPatch}" ]; then
     mkdir -p /var/xdrago/conf
     curl ${crlGet} "${urlHmr}/patches/8-core/${saQCoreS}.patch" -o ${saQPatch}
@@ -1112,7 +1112,7 @@ fix_core_dgd() {
 
   # SA-CORE D7 patch
   if [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${saPatch}" ]; then
     mkdir -p /var/xdrago/conf
     curl ${crlGet} "${urlHmr}/patches/7-core/${saCoreS}.patch" -o ${saPatch}
@@ -1120,7 +1120,7 @@ fix_core_dgd() {
 
   # SA-CORE D6 patch
   # if [ -e "/var/xdrago" ] \
-  #   && [ -e "/data/disk/arch/sql" ] \
+  #   && [ -e "/var/aegir/drush" ] \
 	#   && [ ! -e "${saXPatch}" ]; then
 	#   mkdir -p /var/xdrago/conf
 	#   curl ${crlGet} "${urlHmr}/patches/6-core/${saXCoreS}.patch" -o ${saXPatch}
@@ -1128,7 +1128,7 @@ fix_core_dgd() {
 
   # SA-CORE for Octopus hostmaster platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ -e "${saPatch}" ]; then
     if [ -d "/data/all" ] \
       && [ ! -e "${pthLog}/hostmaster-octopus-${saCoreN}-fixed-d7.log" ]; then
@@ -1149,7 +1149,7 @@ fix_core_dgd() {
 
   # SA-CORE for Barracuda hostmaster platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ -e "${saPatch}" ]; then
     if [ -d "/data/all" ] \
       && [ ! -e "${pthLog}/hostmaster-barracuda-${saCoreN}-fixed-d7.log" ]; then
@@ -1182,7 +1182,7 @@ fix_core_dgd() {
 
   # SA-CORE for built-in D7 platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ -e "${saPatch}" ] \
     && [ ! -e "${pthLog}/${saCoreN}-fixed-d7.log" ]; then
     if [ -d "/data/all/000/core" ]; then
@@ -1204,7 +1204,7 @@ fix_core_dgd() {
 
   # SA-CORE for ancient D7 platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ -e "${saPatch}" ]; then
     if [ -d "/data/all" ] \
       && [ ! -e "${pthLog}/legacy-${saCoreN}-fixed-d7.log" ]; then
@@ -1238,7 +1238,7 @@ fix_core_dgd() {
 
   # SA-CORE for custom D7 platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ -e "${saPatch}" ]; then
     if [ -d "/data/disk" ] \
       && [ ! -e "${pthLog}/batch-custom-${saCoreN}-fixed-d7.log" ]; then
@@ -1314,7 +1314,7 @@ fix_core_dgd() {
 
   # SA-CORE for D8 platforms in ~/static
   if [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ -e "${saQPatch}" ]; then
     if [ -d "/data/disk" ] \
       && [ ! -e "${pthLog}/batch-custom-${saQCoreN}-fixed-d8.log" ]; then
@@ -1390,7 +1390,7 @@ fix_core_dgd() {
 
   # SA-CORE for built-in D6 platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ -e "${saXPatch}" ] \
     && [ ! -e "${pthLog}/${saXCoreN}-finally-fixed-d6.log" ]; then
     if [ -d "/data/all/000/core" ]; then
@@ -1412,7 +1412,7 @@ fix_core_dgd() {
 
   # SA-CORE for ancient D6 platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ -e "${saXPatch}" ]; then
     if [ -d "/data/all" ] \
       && [ ! -e "${pthLog}/legacy-${saXCoreN}-finally-fixed-d6.log" ]; then
@@ -1446,7 +1446,7 @@ fix_core_dgd() {
 
   # SA-CORE for custom D6 platforms
   if [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ -e "${saXPatch}" ]; then
     if [ -d "/data/disk" ] \
       && [ ! -e "${pthLog}/batch-custom-${saXCoreN}-finally-fixed-d6.log" ]; then
@@ -1780,7 +1780,7 @@ fix_wkhtml() {
 
 fix_eldir() {
   if [ -e "/var/xdrago" ] \
-    && [ -e "/data/disk/arch/sql" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${eldirP}" ]; then
     mkdir -p /var/xdrago/conf
     curl ${crlGet} "${urlHmr}/patches/${eldirF}" -o ${eldirP}
@@ -2308,7 +2308,7 @@ setup() {
     chmod 700 ${optBin}/{backboa,duobackboa}
     if [ ! -e "${pthLog}/duplicity.ctrl.${_X_SE}.pid" ] \
       && [ -x "/usr/local/bin/duplicity" ] \
-      && [ -e "/data/disk/arch/sql" ] \
+      && [ -e "/var/aegir/drush" ] \
       && [ -e "/var/xdrago" ]; then
       backboa install
       touch ${pthLog}/duplicity.ctrl.${_X_SE}.pid

@@ -240,7 +240,7 @@ if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
   apt_clean_update
 fi
 
-if [ -e "/data/disk/arch/sql" ]; then
+if [ -e "/var/aegir/drush" ]; then
   if [ ! -e "/var/xdrago/log/.sync3_scan_nginx.pid" ]; then
     sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=399/g"  ${barCnf}
     sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx
