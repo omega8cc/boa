@@ -137,8 +137,13 @@ msg() {
 }
 
 if [ -e "/var/run/autoinit.pid" ]; then
+  echo
   echo "The /var/run/autoinit.pid is blocking this run"
+  echo
+  echo " " >> ${logInt}
   msg "The /var/run/autoinit.pid is blocking this run..." >> ${logInt}
+  echo " " >> ${logInt}
+  sleep 5
   exit 1
 fi
 
@@ -415,7 +420,6 @@ init() {
   initCmnd=
   initArgs=
   initRun=
-  touch /var/run/autoinit.pid
   init_conf
   if [ -e "/root/.run-to-devuan-quick.cnf" ]; then
     if [ ! -e "/root/.run-one-devuan-quick.cnf" ] \
@@ -446,14 +450,26 @@ init() {
   fi
 }
 
-if [ -e "/root/.run-to-devuan.cnf" ] \
-  || [ -e "/root/.run-to-debian.cnf" ] \
-  || [ -e "/root/.run-to-devuan-quick.cnf" ]; then
-  echo
-  echo "Launching BOA System INIT.."
-  echo "Watch the progress with: tail -f /root/.autoinit.log"
-  echo
-  init
+pre() {
+  if [ -e "/root/.run-to-devuan.cnf" ] \
+    || [ -e "/root/.run-to-debian.cnf" ] \
+    || [ -e "/root/.run-to-devuan-quick.cnf" ]; then
+    touch /var/run/autoinit.pid
+    echo
+    echo "Launching BOA System INIT.."
+    echo
+    echo "Watch the progress with: tail -f /root/.autoinit.log"
+    echo
+    echo " " >> ${logInt}
+    msg "Launching BOA System INIT.." >> ${logInt}
+    echo " " >> ${logInt}
+    init
+  fi
+}
+
+sleep 15
+if [ ! -e "/var/run/autoinit.pid" ]; then
+  pre
 fi
 
 exit 0
