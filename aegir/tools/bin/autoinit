@@ -92,6 +92,9 @@ fi
 tRee=dev
 export tRee="${tRee}"
 _INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
+dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
+nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
+
 #
 
 check_root() {
@@ -154,6 +157,26 @@ init_pre() {
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   fi
+  if [ ! -e "/opt/apt/apt.conf.noi.dist" ] \
+    || [ ! -e "/opt/apt/apt.conf.noi.nrml" ]; then
+    mkdir -p /opt/apt
+    echo "APT::Get::Assume-Yes \"true\";" > /opt/apt/apt.conf.noi.dist
+    echo "APT::Get::Show-Upgraded \"true\";" >> /opt/apt/apt.conf.noi.dist
+    echo "APT::Get::Install-Recommends \"false\";" >> /opt/apt/apt.conf.noi.dist
+    echo "APT::Get::Install-Suggests \"false\";" >> /opt/apt/apt.conf.noi.dist
+    echo "APT::Quiet \"true\";" >> /opt/apt/apt.conf.noi.dist
+    echo "DPkg::Options {\"--force-confnew\";\"--force-confmiss\";};" >> /opt/apt/apt.conf.noi.dist
+    echo "DPkg::Pre-Install-Pkgs {\"/usr/sbin/dpkg-preconfigure --apt\";};" >> /opt/apt/apt.conf.noi.dist
+    echo "Dir::Etc::SourceList \"/etc/apt/sources.list\";" >> /opt/apt/apt.conf.noi.dist
+    echo "APT::Get::Assume-Yes \"true\";" > /opt/apt/apt.conf.noi.nrml
+    echo "APT::Get::Show-Upgraded \"true\";" >> /opt/apt/apt.conf.noi.nrml
+    echo "APT::Get::Install-Recommends \"false\";" >> /opt/apt/apt.conf.noi.nrml
+    echo "APT::Get::Install-Suggests \"false\";" >> /opt/apt/apt.conf.noi.nrml
+    echo "APT::Quiet \"true\";" >> /opt/apt/apt.conf.noi.nrml
+    echo "DPkg::Options {\"--force-confdef\";\"--force-confmiss\";\"--force-confold\"};" >> /opt/apt/apt.conf.noi.nrml
+    echo "DPkg::Pre-Install-Pkgs {\"/usr/sbin/dpkg-preconfigure --apt\";};" >> /opt/apt/apt.conf.noi.nrml
+    echo "Dir::Etc::SourceList \"/etc/apt/sources.list\";" >> /opt/apt/apt.conf.noi.nrml
+  fi
   _SYS_IFNAMES=$(grep GRUB_CMDLINE_LINUX= /etc/default/grub | grep "net.ifnames=0" 2>&1)
   if [ -e "/etc/default/grub" ] && [[ ! "${_SYS_IFNAMES}" =~ "net.ifnames=0" ]]; then
     echo "Running init_pre procedure A..."
@@ -184,11 +207,13 @@ init_pre() {
       msg "This system is ${_THIS_OS}/${_OSR}" >> ${logInt}
       msg "We need to install some tools early..." >> ${logInt}
       if [ "${silentMode}" = "verbose" ]; then
+        echo " " >> ${logInt}
         /usr/bin/apt-get update >> ${logInt}
         ${_INITINS} locales-all aptitude >> ${logInt}
         ${_INITINS} build-essential curl git >> ${logInt}
         ${_INITINS} libgd-dev libmagickwand-dev libcurl4-openssl-dev >> ${logInt}
       else
+        echo " " >> ${logSlt}
         /usr/bin/apt-get update >> ${logSlt}
         ${_INITINS} locales-all aptitude >> ${logSlt}
         ${_INITINS} build-essential curl git >> ${logSlt}
@@ -223,14 +248,18 @@ init_run_two_quick() {
   fi
   if [ "${silentMode}" = "verbose" ]; then
     /usr/bin/apt-get update >> ${logInt}
-    /usr/bin/apt-get dist-upgrade -y >> ${logInt}
-    /usr/bin/apt-get purge systemd libnss-systemd -y >> ${logInt}
+    /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logInt}
+    /usr/bin/apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
+    /usr/bin/apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
+    /usr/bin/apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
     /usr/bin/apt-get autoremove --purge -y >> ${logInt}
     /usr/bin/apt-get autoclean -y >> ${logInt}
   else
     /usr/bin/apt-get update -qq >> ${logSlt}
-    /usr/bin/apt-get dist-upgrade -y -qq >> ${logSlt}
-    /usr/bin/apt-get purge systemd libnss-systemd -y -qq >> ${logSlt}
+    /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logSlt}
+    /usr/bin/apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential >> ${logSlt}
+    /usr/bin/apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential >> ${logSlt}
+    /usr/bin/apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential >> ${logSlt}
     /usr/bin/apt-get autoremove --purge -y -qq >> ${logSlt}
     /usr/bin/apt-get autoclean -y -qq >> ${logSlt}
   fi
@@ -284,10 +313,10 @@ init_run_one_quick() {
   if [ "${_OLD_SYS}" = "Devuan" ]; then
     if [ "${silentMode}" = "verbose" ]; then
       /usr/bin/apt-get update >> ${logInt}
-      /usr/bin/apt-get upgrade -y >> ${logInt}
+      /usr/bin/apt-get upgrade ${nrmUpArg} >> ${logInt}
     else
       /usr/bin/apt-get update -qq >> ${logSlt}
-      /usr/bin/apt-get upgrade -y -qq >> ${logSlt}
+      /usr/bin/apt-get upgrade ${nrmUpArg} >> ${logSlt}
     fi
   fi
   if [ ! -z "${_NEW_OSR}" ] && [ ! -z "${_NEW_SYS}" ]; then
@@ -317,14 +346,14 @@ init_run_one_quick() {
         /usr/bin/apt-get -y --allow-unauthenticated install devuan-keyring >> ${logInt}
       fi
       /usr/bin/apt-get update >> ${logInt}
-      /usr/bin/apt-get upgrade -y >> ${logInt}
+      /usr/bin/apt-get upgrade ${dstUpArg} >> ${logInt}
       if [ "${_OLD_SYS}" = "Debian" ]; then
         /usr/bin/apt-get install eudev sysvinit-core -y >> ${logInt}
         /usr/bin/apt-get -f install -y >> ${logInt}
       else
-        /usr/bin/apt-get dist-upgrade -y >> ${logInt}
+        /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logInt}
         /usr/bin/apt-get -f install -y >> ${logInt}
-        /usr/bin/apt-get dist-upgrade -y >> ${logInt}
+        /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logInt}
         /usr/bin/apt-get autoremove --purge -y >> ${logInt}
         /usr/bin/apt-get autoclean -y >> ${logInt}
       fi
@@ -334,14 +363,14 @@ init_run_one_quick() {
         /usr/bin/apt-get -y --allow-unauthenticated install devuan-keyring -qq >> ${logSlt}
       fi
       /usr/bin/apt-get update -qq >> ${logSlt}
-      /usr/bin/apt-get upgrade -y -qq >> ${logSlt}
+      /usr/bin/apt-get upgrade ${dstUpArg} >> ${logSlt}
       if [ "${_OLD_SYS}" = "Debian" ]; then
         /usr/bin/apt-get install eudev sysvinit-core -y -qq >> ${logSlt}
         /usr/bin/apt-get -f install -y -qq >> ${logSlt}
       else
-        /usr/bin/apt-get dist-upgrade -y -qq >> ${logSlt}
+        /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logSlt}
         /usr/bin/apt-get -f install -y -qq >> ${logSlt}
-        /usr/bin/apt-get dist-upgrade -y -qq >> ${logSlt}
+        /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logSlt}
         /usr/bin/apt-get autoremove --purge -y -qq >> ${logSlt}
         /usr/bin/apt-get autoclean -y -qq >> ${logSlt}
       fi
