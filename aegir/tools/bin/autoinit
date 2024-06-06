@@ -213,6 +213,7 @@ init_run_two_quick() {
   _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   msg "Running init_run_two_quick procedure..." >> ${logInt}
+  touch /var/run/autoinit.pid
   msg "Launching a quick dist-upgrade to ${_THIS_OS}/${_OSR}" >> ${logInt}
   if [ "${silentMode}" = "verbose" ]; then
     /usr/bin/apt-get update >> ${logInt}
@@ -249,6 +250,7 @@ init_run_one_quick() {
   _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   msg "Running init_run_one_quick procedure..." >> ${logInt}
+  touch /var/run/autoinit.pid
   msg "Your current system is ${_THIS_OS}/${_OSR}" >> ${logInt}
   echo " " >> ${logInt}
   if [ "${_OSR}" = "bookworm" ]; then
@@ -308,6 +310,7 @@ init_run_three() {
   if [ "${initArgs}" = "devuan" ]; then
     echo " " >> ${logInt}
     msg "Launching a third run of ${initRun}" >> ${logInt}
+    touch /var/run/autoinit.pid
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-three-devuan.cnf
@@ -322,6 +325,7 @@ init_run_two() {
   if [ "${initArgs}" = "devuan" ]; then
     echo " " >> ${logInt}
     msg "Launching a second run of ${initRun}" >> ${logInt}
+    touch /var/run/autoinit.pid
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-two-devuan.cnf
@@ -339,6 +343,7 @@ init_run_two() {
   elif [ "${initArgs}" = "debian" ]; then
     echo " " >> ${logInt}
     msg "Launching a second run of ${initRun}" >> ${logInt}
+    touch /var/run/autoinit.pid
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-two-debian.cnf
@@ -355,6 +360,7 @@ init_run_one() {
   if [ "${initArgs}" = "devuan" ]; then
     echo " " >> ${logInt}
     msg "Launching a first run of ${initRun}" >> ${logInt}
+    touch /var/run/autoinit.pid
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-one-devuan.cnf
@@ -370,6 +376,7 @@ init_run_one() {
   elif [ "${initArgs}" = "debian" ]; then
     echo " " >> ${logInt}
     msg "Launching a first run of ${initRun}" >> ${logInt}
+    touch /var/run/autoinit.pid
     /opt/local/bin/boa ${initRun} >> ${logInt}
     wait
     touch /root/.run-one-debian.cnf
