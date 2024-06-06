@@ -91,11 +91,17 @@
    $ wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
    $ bash BOA.sh.txt
 
-4. Remove systemd and upgrade to compatible Devuan or Debian OS version:
+4. Remove systemd and upgrade to Devuan 5 Daedalus from any compatible
+   Debian version -- Buster, Bullseye or Bookworm. You can also opt to
+   only remove systemd and then install BOA on Debian with the second
+   file listed below, although it is not recommended, because it will
+   not upgrade Debian in a loop to the latest version, unlike it's with
+   the recommended first file, which automatically runs upgrade from any
+   supported Debian version and then again until it's on Devuan Daedalus.
 
-   $ touch /root/.run-to-devuan-quick.cnf
+   $ touch /root/.init-to-devuan-loop.cnf
       OR
-   $ touch /root/.run-to-debian.cnf
+   $ touch /root/.init-to-debian.cnf
    $ autoinit
 
 5. Install Barracuda and Octopus.
