@@ -140,7 +140,7 @@ if [ -e "/var/run/autoinit.pid" ]; then
   echo "The /var/run/autoinit.pid is blocking this run"
   msg "The /var/run/autoinit.pid is blocking this run..." >> ${logInt}
   exit 1
-done
+fi
 
 if [ -e "/root/.run-to-verbose.cnf" ]; then
   silentMode=verbose
