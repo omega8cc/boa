@@ -136,9 +136,10 @@ msg() {
   echo "AutoInit [$(date +%T 2>&1)] ==> $*"
 }
 
-until [ ! -e "/var/run/autoinit.pid" ]; do
-  echo "Waiting until previous /var/run/autoinit.pid ends..."
-  sleep 5
+if [ -e "/var/run/autoinit.pid" ]; then
+  echo "The /var/run/autoinit.pid is blocking this run"
+  msg "The /var/run/autoinit.pid is blocking this run..." >> ${logInt}
+  exit 1
 done
 
 if [ -e "/root/.run-to-verbose.cnf" ]; then
