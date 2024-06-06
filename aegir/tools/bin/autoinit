@@ -231,7 +231,7 @@ init_pre() {
     fi
   fi
 }
-init_pre
+init_pre &> /dev/null
 
 
 init_run_two_quick() {
