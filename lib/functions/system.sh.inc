@@ -3147,7 +3147,7 @@ sources_list_update() {
   fi
   ###--------------------###
   apt-get clean -qq 2> /dev/null
-  rm -rf /var/lib/apt/lists/*
+  #rm -rf /var/lib/apt/lists/*
   ###--------------------###
   if [ -e "${pthLog}/apt-deb-src-updates-${_X_SE}.txt" ] \
     || [ -e "/var/log/apt-deb-src-updates-${_X_SE}.txt" ]; then
@@ -4487,7 +4487,7 @@ finale() {
   echo >> /etc/motd.tail
   aptitude autoclean -y &> /dev/null
   apt-get clean -qq 2> /dev/null
-  rm -rf /var/lib/apt/lists/*
+  #rm -rf /var/lib/apt/lists/*
   mkdir -p /data/conf/arch
   mv -f /data/conf/global.inc-pre* /data/conf/arch/     &> /dev/null
   mv -f /data/conf/global.inc-before* /data/conf/arch/  &> /dev/null
