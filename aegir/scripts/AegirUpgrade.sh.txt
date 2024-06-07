@@ -483,7 +483,7 @@ if [ -d "${_ROOT}/host_master/000" ]; then
   last=${list[@]: -1}
   _LASTNUM=$last
   _BASH_TEST=$(bash --version 2>&1)
-  if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+  if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
     nextnum=00$((10#0${last%%[^0-9]*} + 1))
   else
     nextnum=00$((10#${last%%[^0-9]*} + 1))
@@ -511,7 +511,7 @@ if [ -d "${_ROOT}/host_master/000" ]; then
     last=${list[@]: -1}
     _LASTNUM=$last
     _BASH_TEST=$(bash --version 2>&1)
-    if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+    if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
       nextnum=00$((10#0${last%%[^0-9]*} + 1))
     else
       nextnum=00$((10#${last%%[^0-9]*} + 1))
@@ -536,7 +536,7 @@ if [ -d "${_ROOT}/host_master/000" ]; then
       last=${list[@]: -1}
       _LASTNUM=$last
       _BASH_TEST=$(bash --version 2>&1)
-      if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+      if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
         nextnum=00$((10#0${last%%[^0-9]*} + 1))
       else
         nextnum=00$((10#${last%%[^0-9]*} + 1))

@@ -4578,7 +4578,7 @@ satellite_if_init_or_upgrade() {
         last=${list[@]: -1}
         _LASTNUM=$last
         _BASH_TEST=$(bash --version 2>&1)
-        if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+        if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
           nextnum=00$((10#0${last%%[^0-9]*} + 1))
         else
           nextnum=00$((10#${last%%[^0-9]*} + 1))
@@ -4594,7 +4594,7 @@ satellite_if_init_or_upgrade() {
         lastx=${listx[@]: -1}
         _LAST_HMR=$lastx
         _BASH_TEST=$(bash --version 2>&1)
-        if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+        if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
           nextnumx=00$((10#0${lastx%%[^0-9]*} + 1))
         else
           nextnumx=00$((10#${lastx%%[^0-9]*} + 1))
@@ -4610,7 +4610,7 @@ satellite_if_init_or_upgrade() {
         lastl=${listl[@]: -1}
         export _LAST_ALL=$lastl
         _BASH_TEST=$(bash --version 2>&1)
-        if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+        if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
           nextnuml=00$((10#0${lastl%%[^0-9]*} + 1))
         else
           nextnuml=00$((10#${lastl%%[^0-9]*} + 1))
@@ -4636,7 +4636,7 @@ satellite_if_init_or_upgrade() {
       lastl=${listl[@]: -1}
       export _LAST_ALL=$lastl
       _BASH_TEST=$(bash --version 2>&1)
-      if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+      if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
         nextnuml=00$((10#0${lastl%%[^0-9]*} + 1))
       else
         nextnuml=00$((10#${lastl%%[^0-9]*} + 1))
@@ -5454,7 +5454,7 @@ satellite_child_b_aegir_build() {
       last=${list[@]: -1}
       _L_LAST_HMR=$last
       _BASH_TEST=$(bash --version 2>&1)
-      if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+      if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
         nextnum=00$((10#0${last%%[^0-9]*} + 1))
       else
         nextnum=00$((10#${last%%[^0-9]*} + 1))
@@ -5475,7 +5475,7 @@ satellite_child_b_aegir_build() {
         last=${list[@]: -1}
         _L_LAST_HMR=$last
         _BASH_TEST=$(bash --version 2>&1)
-        if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+        if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
           nextnum=00$((10#0${last%%[^0-9]*} + 1))
         else
           nextnum=00$((10#${last%%[^0-9]*} + 1))
