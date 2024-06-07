@@ -2603,10 +2603,16 @@ install_icu_modern() {
     msg "PROC: install_icu_modern"
   fi
   ###--------------------###
+  if [ ! -e "${pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
+    pthLog="/var/xdrago_wait/log"
+  fi
   if [ -e "${pthLog}" ]; then
     pthIcuLog="${pthLog}/icu-update-${_ICU_MODERN_VRN}.log"
   else
     pthIcuLog="/root/.icu-update-${_ICU_MODERN_VRN}.log"
+  fi
+  if [ -e "${pthIcuLog}" ]; then
+    chattr +i ${pthIcuLog}
   fi
   if [ ! -e "/usr/local/lib/icu/current" ] \
     || [ ! -e "${pthIcuLog}" ]; then
@@ -2623,6 +2629,7 @@ install_icu_modern() {
     mrun "make --quiet install" 2> /dev/null
     ldconfig 2> /dev/null
     touch ${pthIcuLog}
+    chattr +i ${pthIcuLog}
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ -e "/usr/local/lib/icu" ]; then
@@ -2663,10 +2670,16 @@ install_icu_jessie() {
     msg "PROC: install_icu_jessie"
   fi
   ###--------------------###
+  if [ ! -e "${pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
+    pthLog="/var/xdrago_wait/log"
+  fi
   if [ -e "${pthLog}" ]; then
     pthIcuLog="${pthLog}/icu-update-${_ICU_LEGACY_VRN}.log"
   else
     pthIcuLog="/root/.icu-update-${_ICU_LEGACY_VRN}.log"
+  fi
+  if [ -e "${pthIcuLog}" ]; then
+    chattr +i ${pthIcuLog}
   fi
   if [ ! -e "/usr/local/lib/icu/current" ] \
     || [ ! -e "${pthIcuLog}" ]; then
@@ -2683,6 +2696,7 @@ install_icu_jessie() {
     mrun "make --quiet install" 2> /dev/null
     ldconfig 2> /dev/null
     touch ${pthIcuLog}
+    chattr +i ${pthIcuLog}
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ -e "/usr/local/lib/icu" ]; then
