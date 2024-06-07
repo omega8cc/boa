@@ -5513,6 +5513,8 @@ if_major_os_upgrade() {
     echo "ssh install"            | dpkg --set-selections &> /dev/null
     echo "zlib1g install"         | dpkg --set-selections &> /dev/null
     echo "zlib1g-dev install"     | dpkg --set-selections &> /dev/null
+    echo "nginx install"          | dpkg --set-selections &> /dev/null
+    echo "nginx-common install"   | dpkg --set-selections &> /dev/null
     ###
     ### Run pre-migration upgrade in the current OS version.
     mrun "apt-get upgrade ${nrmUpArg}" 2> /dev/null
@@ -6069,6 +6071,8 @@ sys_packages_update() {
     echo "ssh install"            | dpkg --set-selections &> /dev/null
     echo "zlib1g install"         | dpkg --set-selections &> /dev/null
     echo "zlib1g-dev install"     | dpkg --set-selections &> /dev/null
+    echo "nginx install"          | dpkg --set-selections &> /dev/null
+    echo "nginx-common install"   | dpkg --set-selections &> /dev/null
   fi
   webmin_apt_update
   apt_clean_update
