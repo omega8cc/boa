@@ -1690,7 +1690,9 @@ if_php_idle_on_off() {
     [ -e "/root/.proxy.cnf" ] && rm -f /root/.proxy.cnf
     php_install_deps
     php_libs_fix
-    php_check_if_rebuild
+    if [ "${_STATUS}" = "UPGRADE" ]; then
+      php_check_if_rebuild
+    fi
     php_install_upgrade
     php_config_check_update
     php_upgrade_all
@@ -5297,7 +5299,10 @@ if_post_major_os_upgrade() {
       _PHP_VERSION=""
       _T_PHP_VRN=""
       _T_PHP_PTH=""
-      php_check_if_rebuild
+      php_libs_fix
+      if [ "${_STATUS}" = "UPGRADE" ]; then
+        php_check_if_rebuild
+      fi
       php_install_upgrade
       php_config_check_update
       php_upgrade_all
@@ -5828,7 +5833,9 @@ if_major_os_upgrade() {
       php_install_deps
       php_libs_fix
       php_if_versions_cleanup_cnf
-      php_check_if_rebuild
+      if [ "${_STATUS}" = "UPGRADE" ]; then
+        php_check_if_rebuild
+      fi
       php_install_upgrade
       php_config_check_update
       php_upgrade_all
