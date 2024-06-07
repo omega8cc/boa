@@ -250,12 +250,6 @@ init_info() {
   echo "It will take only a few minutes..."
 }
 
-if [ ! -x "/usr/bin/cc" ]; then
-  init_info
-fi
-
-init_pre &> /dev/null
-
 init_run_two_quick() {
   echo " " >> ${logInt}
   _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
@@ -525,21 +519,28 @@ init_conf() {
   fi
   if [ -e "/root/.init-to-devuan-loop.cnf" ]; then
     initArgs="devuan"
-    toFile="/root/.init-to-devuan-loop.cnf"
+    initFile="/root/.init-to-devuan-loop.cnf"
   elif [ -e "/root/.init-to-devuan.cnf" ]; then
     initArgs="devuan"
-    toFile="/root/.init-to-devuan.cnf"
+    initFile="/root/.init-to-devuan.cnf"
   else
     initArgs="debian"
-    toFile="/root/.init-to-debian.cnf"
+    initFile="/root/.init-to-debian.cnf"
   fi
   initRun="${initCmnd} ${initArgs}"
+  if [ ! -z "${initFile}" ] && [ -e "${initFile}" ]; then
+    if [ ! -x "/usr/bin/cc" ]; then
+      init_info
+    fi
+    init_pre &> /dev/null
+  fi
 }
 
 init() {
   initCmnd=
   initArgs=
   initRun=
+  initFile=
   init_conf
   if [ -e "/root/.init-to-devuan-loop.cnf" ]; then
     if [ -e "/root/.run-one-devuan-quick.cnf" ] \
@@ -581,6 +582,7 @@ pre() {
   fi
 }
 
+echo "Welcome to BOA Init, please wait..."
 sleep 15
 if [ ! -e "/var/run/autoinit.pid" ]; then
   pre
