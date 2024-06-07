@@ -190,11 +190,9 @@ init_pre() {
     else
       grub-mkconfig -o /boot/grub/grub.cfg >> ${logSlt}
     fi
-    wait
     echo "Waiting five seconds before reboot..."
     sleep 5
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-    wait
     echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
     rm -f /var/run/autoinit.pid
     reboot
@@ -223,11 +221,9 @@ init_pre() {
         ${_INITINS} build-essential curl git >> ${logSlt}
         ${_INITINS} libgd-dev libmagickwand-dev libcurl4-openssl-dev >> ${logSlt}
       fi
-      wait
       echo "Waiting five seconds before reboot..."
       sleep 5
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-      wait
       echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
       rm -f /var/run/autoinit.pid
       reboot
@@ -499,7 +495,6 @@ init_run_one() {
     echo " " >> ${logInt}
     sleep 5
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-    wait
     echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit devuan" >> /etc/crontab
     rm -f /var/run/autoinit.pid
     reboot
@@ -515,7 +510,6 @@ init_run_one() {
     echo " " >> ${logInt}
     sleep 5
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-    wait
     echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit debian" >> /etc/crontab
     rm -f /var/run/autoinit.pid
     reboot
