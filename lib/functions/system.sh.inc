@@ -2627,12 +2627,26 @@ install_icu_modern() {
         if [ ! -e "/usr/lib/x86_64-linux-gnu/icu" ]; then
           mkdir -p /usr/lib/x86_64-linux-gnu/.legacy_icu
           ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
+        else
+          if [ -e "/var/aegir/drush" ]; then
+            mv -f /usr/lib/x86_64-linux-gnu/icu /usr/lib/x86_64-linux-gnu/.old_icu
+          else
+            mv -f /usr/lib/x86_64-linux-gnu/icu /usr/lib/x86_64-linux-gnu/.legacy_icu
+          fi
+          ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
         fi
       fi
     else
       if [ -e "/usr/local/lib/icu" ]; then
         if [ ! -e "/usr/lib/i386-linux-gnu/icu" ]; then
           mkdir -p /usr/lib/i386-linux-gnu/.legacy_icu
+          ln -sfn /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
+        else
+          if [ -e "/var/aegir/drush" ]; then
+            mv -f /usr/lib/i386-linux-gnu/icu /usr/lib/i386-linux-gnu/.old_icu
+          else
+            mv -f /usr/lib/i386-linux-gnu/icu /usr/lib/i386-linux-gnu/.legacy_icu
+          fi
           ln -sfn /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
         fi
       fi
