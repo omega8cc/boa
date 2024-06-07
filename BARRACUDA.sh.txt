@@ -396,9 +396,9 @@ xdrago_install_upgrade
 
 
 ###
-### Optional add-on services installed on upgrade
+### Optional add-on services
 ###
-if [ "${_STATUS}" = "UPGRADE" ]; then
+if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
   if_install_ftpd
   if_install_vnstat
   if_install_wkhtmltox
@@ -438,10 +438,12 @@ aegir_master_display_login_link
 ###
 ### Install OpenSSH from sources on upgrade
 ###
-if [ "${_SSH_FROM_SOURCES}" = "YES" ] && [ "${_STATUS}" = "UPGRADE" ]; then
-  if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
-    sshd_install_src
-    sshd_armour
+if [ "${_SSH_FROM_SOURCES}" = "YES" ]; then
+  if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
+    if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
+      sshd_install_src
+      sshd_armour
+    fi
   fi
 fi
 
