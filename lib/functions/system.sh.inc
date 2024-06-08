@@ -3343,6 +3343,40 @@ sshd_install_src() {
     | tr -d "\n" \
     | cut -d" " -f3 \
     | awk '{ print $1}' 2>&1)
+  if [ -e "/usr/etc/sshd_config" ]; then
+    _SYSCONFDIR="/usr/etc"
+    _PREFIX_SSH="/usr"
+  else
+    _SYSCONFDIR="/etc/ssh"
+    _PREFIX_SSH="/usr/local"
+  fi
+  if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
+    || [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
+    _SSL_PATH="/usr/local/ssl3"
+    _SSL_LIB_PATH="${_SSL_PATH}/lib64"
+  else
+    _SSL_PATH="/usr/local/ssl"
+    _SSL_LIB_PATH="${_SSL_PATH}/lib"
+  fi
+  if [ "${_STATUS}" = "UPGRADE" ]; then
+    isKeyg=$(which ssh-keygen 2>&1)
+    if [ -x "${isKeyg}" ] \
+      && [ -e "${_SYSCONFDIR}/moduli" ] \
+      && [ ! -e "${_SYSCONFDIR}/.moduli_bak" ]; then
+      msg "WAIT: New SSH moduli generate may take a long time, please wait..."
+      cd /var/opt
+      rm -rf /var/opt/moduli-*
+      mrun "${isKeyg} -M generate -O bits=2048 moduli-2048.candidates" 2> /dev/null
+      wait
+      mrun "${isKeyg} -M screen -f moduli-2048.candidates moduli-2048" 2> /dev/null
+      wait
+      if [ -e "/var/opt/moduli-2048" ]; then
+        cp -af ${_SYSCONFDIR}/moduli ${_SYSCONFDIR}/.moduli_bak
+        cp -af /var/opt/moduli-2048 ${_SYSCONFDIR}/moduli
+        mrun "service ssh restart" &> /dev/null
+      fi
+    fi
+  fi
   if [ "${_SSH_SSL_ITD}" != "${_SSL_ITD}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: OpenSSL in SSH is ${_SSH_SSL_ITD}, rebuild to ${_SSL_ITD} required"
@@ -3359,13 +3393,12 @@ sshd_install_src() {
   if [ "${_SSH_INSTALL_REQUIRED}" = "YES" ]; then
     msg "INFO: Building OpenSSH ${_OPENSSH_VRN} from sources..."
     msg "WAIT: This may take a while, please wait..."
-    if [[ "${_SSL_ITD}" =~ "${_OPENSSL_MODERN_VRN}" ]] \
-      || [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
-      _SSL_PATH="/usr/local/ssl3"
-      _SSL_LIB_PATH="${_SSL_PATH}/lib64"
-    else
-      _SSL_PATH="/usr/local/ssl"
-      _SSL_LIB_PATH="${_SSL_PATH}/lib"
+    mrun "${_INITINS} libpam0g-dev libselinux1-dev" &> /dev/null
+    if [ ! -e "/var/lib/sshd" ]; then
+      mkdir -p /var/lib/sshd
+      chmod -R 700 /var/lib/sshd/
+      chown -R root:sys /var/lib/sshd/
+      useradd -r -U -d /var/lib/sshd/ -c "sshd privsep" -s /bin/false sshd &> /dev/null
     fi
     _PKG_CONFIG_PATH="${_SSL_LIB_PATH}/pkgconfig"
     cd /var/opt
@@ -3374,7 +3407,11 @@ sshd_install_src() {
     cd /var/opt/openssh-${_OPENSSH_VRN}
     LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
       --with-ssl-dir=${_SSL_PATH} \
-      --prefix=/usr \
+      --with-privsep-path=/var/lib/sshd/ \
+      --sysconfdir=${_SYSCONFDIR} \
+      --prefix=${_PREFIX_SSH} \
+      --with-selinux \
+      --with-md5-passwords \
       --with-pam &> /dev/null
     mrun "make -j $(nproc)" 2> /dev/null
     mrun "make install" 2> /dev/null
