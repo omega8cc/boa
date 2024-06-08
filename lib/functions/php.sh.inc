@@ -1877,7 +1877,9 @@ newrelic_update() {
         mkdir -p /etc/apt/keyrings/
         wget -q -U iCab ${urlDev}/newrelic-key-${_KEYS_NR}.gpg -O /etc/apt/keyrings/newrelic-key-${_KEYS_NR}.gpg 2> /dev/null
         wget -O- ${urlDev}/newrelic-key-${_KEYS_NR}.gpg | apt-key add - &> /dev/null
-        apt-key export ${_KEYS_NR} | ${_GPG} --dearmour -o /etc/apt/trusted.gpg.d/newrelic.gpg &> /dev/null
+        if [ ! -e "/etc/apt/trusted.gpg.d/newrelic.gpg" ]; then
+          apt-key export ${_KEYS_NR} | ${_GPG} --dearmour -o /etc/apt/trusted.gpg.d/newrelic.gpg &> /dev/null
+        fi
       fi
       st_runner "${_RMAPP} newrelic-php5 \
         newrelic-php5-common \
@@ -2076,7 +2078,9 @@ if_install_php_newrelic() {
         mkdir -p /etc/apt/keyrings/
         wget -q -U iCab ${urlDev}/newrelic-key-${_KEYS_NR}.gpg -O /etc/apt/keyrings/newrelic-key-${_KEYS_NR}.gpg 2> /dev/null
         wget -O- ${urlDev}/newrelic-key-${_KEYS_NR}.gpg | apt-key add - &> /dev/null
-        apt-key export ${_KEYS_NR} | ${_GPG} --dearmour -o /etc/apt/trusted.gpg.d/newrelic.gpg &> /dev/null
+        if [ ! -e "/etc/apt/trusted.gpg.d/newrelic.gpg" ]; then
+          apt-key export ${_KEYS_NR} | ${_GPG} --dearmour -o /etc/apt/trusted.gpg.d/newrelic.gpg &> /dev/null
+        fi
       fi
       echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" \
