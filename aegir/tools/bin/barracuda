@@ -370,11 +370,13 @@ check_report() {
   _RESULT_KERNEL=$(grep "NOTE: Your OS kernel has been upgraded" ${_UP_LOG} 2>&1)
   _RESULT_REBOOT=$(grep "NOTE: Please reboot this server" ${_UP_LOG} 2>&1)
   _RESULT_ENJOY=$(grep "Enjoy your Aegir Hosting System" ${_UP_LOG} 2>&1)
+  _RESULT_RLLY=$(grep "RLLY: No errors" ${_UP_LOG} 2>&1)
   _RESULT_APT_FAIL=$(grep "Displaying the last 15 lines" ${_UP_LOG} 2>&1)
   _RESULT_ALRT=$(grep "ALRT" ${_UP_LOG} 2>&1)
   _RESULT_FATAL=$(grep "FATAL ERROR" ${_UP_LOG} 2>&1)
   if [[ "${_RESULT_TEST_OK}" =~ "INFO: Test OK" ]] \
     || [[ "${_RESULT_TEST_CARD}" =~ "CARD: Now charging" ]] \
+    || [[ "${_RESULT_RLLY}" =~ "RLLY: No errors" ]] \
     || [[ "${_RESULT_ENJOY}" =~ "Enjoy your Aegir" ]]; then
     _DO_NOTHING=YES
   else
