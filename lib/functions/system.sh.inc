@@ -3461,6 +3461,15 @@ sshd_install_src() {
       echo "openssh-sftp-server hold" | dpkg --set-selections &> /dev/null
     fi
   fi
+  if [ -x "/usr/local/sbin/sshd" ] \
+    && [ -x "/usr/local/bin/ssh" ] \
+    && [ ! -e "/usr/sbin/.sshd_bak" ]; then
+    mv -f /usr/sbin/sshd /usr/sbin/.sshd_bak
+    ln -sfn /usr/local/sbin/sshd /usr/sbin/sshd
+    mv -f /usr/bin/ssh /usr/bin/.ssh_bak
+    ln -sfn /usr/local/bin/ssh /usr/bin/ssh
+    mrun "service ssh restart" &> /dev/null
+  fi
   _SSH_FORCE_REINSTALL=NO
 }
 
