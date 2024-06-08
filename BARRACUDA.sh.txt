@@ -396,6 +396,23 @@ xdrago_install_upgrade
 
 
 ###
+### Download system-wide Drush versions
+###
+drush_system_install_update
+
+
+###
+### Install or upgrade Aegir Master Instance
+###
+aegir_master_install_upgrade
+aegir_bin_extra_check_fix
+nginx_mime_check_fix
+nginx_wildcard_ssl_install
+nginx_config_update_fix
+aegir_master_display_login_link
+
+
+###
 ### Optional add-on services
 ###
 if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
@@ -416,23 +433,6 @@ if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
   if_install_rvm
   sftp_ftps_modern_fix
 fi
-
-
-###
-### Download system-wide Drush versions
-###
-drush_system_install_update
-
-
-###
-### Install or upgrade Aegir Master Instance
-###
-aegir_master_install_upgrade
-aegir_bin_extra_check_fix
-nginx_mime_check_fix
-nginx_wildcard_ssl_install
-nginx_config_update_fix
-aegir_master_display_login_link
 
 
 ###
