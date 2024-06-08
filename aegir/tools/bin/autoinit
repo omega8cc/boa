@@ -578,12 +578,18 @@ pre() {
     echo "Launching BOA System INIT on ${_THIS_OS}/${_OSR}"
     echo "Watch the progress with: tail -f /root/.autoinit.log"
     msg "Launching BOA System INIT on ${_THIS_OS}/${_OSR}" >> ${logInt}
+    sleep 15
     init
+  else
+    echo "Welcome to BOA System INIT"
+    echo "This script requires one of supported command files:"
+    echo "  for Devuan: touch /root/.init-to-devuan-loop.cnf"
+    echo "  for Debian: touch /root/.init-to-debian.cnf"
+    echo "Bye!"
+    exit 1
   fi
 }
 
-echo "Welcome to BOA Init, please wait..."
-sleep 15
 if [ ! -e "/var/run/autoinit.pid" ]; then
   pre
 fi
