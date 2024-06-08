@@ -2606,13 +2606,24 @@ install_icu_modern() {
   if [ ! -e "${pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
     pthLog="/var/xdrago_wait/log"
   fi
+  _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ -e "${pthLog}" ]; then
-    pthIcuLog="${pthLog}/icu-update-${_ICU_MODERN_VRN}.log"
+    pthIcuLog="${pthLog}/icu-update-${_ICU_LEGACY_VRN}-for-${_OSR}.log"
+    pthIcuLcy="${pthLog}/icu-update-${_ICU_LEGACY_VRN}.log"
   else
-    pthIcuLog="/root/.icu-update-${_ICU_MODERN_VRN}.log"
+    pthIcuLog="/root/.icu-update-${_ICU_LEGACY_VRN}-for-${_OSR}.log"
+    pthIcuLcy="/root/.icu-update-${_ICU_LEGACY_VRN}.log"
+  fi
+  if [ "${_OSR}" = "daedalus" ] \
+    && [ -e "${pthIcuLcy}" ] \
+    && [ ! -e "${pthIcuLog}" ]; then
+    touch ${pthIcuLog}
   fi
   if [ -e "${pthIcuLog}" ]; then
-    chattr +i ${pthIcuLog}
+    chattr -i ${pthIcuLog}
+  fi
+  if [ -e "${pthIcuLcy}" ]; then
+    chattr -i ${pthIcuLcy}
   fi
   if [ ! -e "/usr/local/lib/icu/current" ] \
     || [ ! -e "${pthIcuLog}" ]; then
@@ -2628,8 +2639,9 @@ install_icu_modern() {
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     ldconfig 2> /dev/null
-    touch ${pthIcuLog}
-    chattr +i ${pthIcuLog}
+    if [ -e "/usr/local/lib/icu" ]; then
+      touch ${pthIcuLog}
+    fi
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ -e "/usr/local/lib/icu" ]; then
@@ -2673,13 +2685,24 @@ install_icu_jessie() {
   if [ ! -e "${pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
     pthLog="/var/xdrago_wait/log"
   fi
+  _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ -e "${pthLog}" ]; then
-    pthIcuLog="${pthLog}/icu-update-${_ICU_LEGACY_VRN}.log"
+    pthIcuLog="${pthLog}/icu-update-${_ICU_LEGACY_VRN}-for-${_OSR}.log"
+    pthIcuLcy="${pthLog}/icu-update-${_ICU_LEGACY_VRN}.log"
   else
-    pthIcuLog="/root/.icu-update-${_ICU_LEGACY_VRN}.log"
+    pthIcuLog="/root/.icu-update-${_ICU_LEGACY_VRN}-for-${_OSR}.log"
+    pthIcuLcy="/root/.icu-update-${_ICU_LEGACY_VRN}.log"
+  fi
+  if [ "${_OSR}" = "daedalus" ] \
+    && [ -e "${pthIcuLcy}" ] \
+    && [ ! -e "${pthIcuLog}" ]; then
+    touch ${pthIcuLog}
   fi
   if [ -e "${pthIcuLog}" ]; then
-    chattr +i ${pthIcuLog}
+    chattr -i ${pthIcuLog}
+  fi
+  if [ -e "${pthIcuLcy}" ]; then
+    chattr -i ${pthIcuLcy}
   fi
   if [ ! -e "/usr/local/lib/icu/current" ] \
     || [ ! -e "${pthIcuLog}" ]; then
@@ -2695,8 +2718,9 @@ install_icu_jessie() {
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     ldconfig 2> /dev/null
-    touch ${pthIcuLog}
-    chattr +i ${pthIcuLog}
+    if [ -e "/usr/local/lib/icu" ]; then
+      touch ${pthIcuLog}
+    fi
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ -e "/usr/local/lib/icu" ]; then
