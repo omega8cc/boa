@@ -219,38 +219,40 @@ if [ ! -e "${percList}" ] \
     csf -x &> /dev/null
     wait
   fi
-  _KEYS_SIG="8507EFA5"
-  _KEYS_SERVER_TEST=FALSE
-  until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      echo "Retrieving ${_KEYS_SIG} key..."
-    fi
-    cd /var/opt
-    _KEYS_FILE_TEST=FALSE
-    until [[ "${_KEYS_FILE_TEST}" =~ "GnuPG" ]]; do
+  if [ ! -e "/etc/apt/trusted.gpg.d/percona.gpg" ]; then
+    _KEYS_SIG="8507EFA5"
+    _KEYS_SERVER_TEST=FALSE
+    until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        echo "Retrieving ${_KEYS_SIG} key..."
+      fi
+      cd /var/opt
+      _KEYS_FILE_TEST=FALSE
+      until [[ "${_KEYS_FILE_TEST}" =~ "GnuPG" ]]; do
+        rm -f percona-key.gpg*
+        wget -q -U iCab ${urlDev}/percona-key.gpg
+        _KEYS_FILE_TEST=$(grep GnuPG percona-key.gpg 2>&1)
+        sleep 5
+      done
+      cat percona-key.gpg | ${_GPG} --import &> /dev/null
       rm -f percona-key.gpg*
-      wget -q -U iCab ${urlDev}/percona-key.gpg
-      _KEYS_FILE_TEST=$(grep GnuPG percona-key.gpg 2>&1)
-      sleep 5
+      ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG} &> /dev/null
+      ${_GPG} -a --export ${_KEYS_SIG} | apt-key add - &> /dev/null
+      _KEYS_SERVER_TEST=$(${_GPG} --list-keys ${_KEYS_SIG} 2>&1)
+      sleep 2
+      apt-key export ${_KEYS_SIG} | ${_GPG} --dearmour -o /etc/apt/trusted.gpg.d/percona.gpg &> /dev/null
+      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
+        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+        echo "$(date 2>&1) Too many dirmngr processes killed" >> \
+          /var/xdrago/log/dirmngr-count.kill.log
+      fi
+      if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
+        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+        echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
+          /var/xdrago/log/gpg-agent-count.kill.log
+      fi
     done
-    cat percona-key.gpg | ${_GPG} --import &> /dev/null
-    rm -f percona-key.gpg*
-    ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG} &> /dev/null
-    ${_GPG} -a --export ${_KEYS_SIG} | apt-key add - &> /dev/null
-    _KEYS_SERVER_TEST=$(${_GPG} --list-keys ${_KEYS_SIG} 2>&1)
-    sleep 2
-    apt-key export ${_KEYS_SIG} | ${_GPG} --dearmour -o /etc/apt/trusted.gpg.d/percona.gpg &> /dev/null
-    if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
-      kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-      echo "$(date 2>&1) Too many dirmngr processes killed" >> \
-        /var/xdrago/log/dirmngr-count.kill.log
-    fi
-    if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
-      kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
-      echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
-        /var/xdrago/log/gpg-agent-count.kill.log
-    fi
-  done
+  fi
   apt_clean_update
   if [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ]; then
