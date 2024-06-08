@@ -195,14 +195,35 @@ faster_reboot() {
   msg "Faster reboot done" >> ${logAds}
 }
 
+check_os_compatibility() {
+  _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  if [ "${_OSR}" = "daedalus" ]; then
+    echo "This server already runs ${_THIS_OS}/${_OSR}"
+    echo "Bye!"
+    exit 1
+  fi
+  if [ "${_OSR}" = "chimaera" ]; then
+    _NEXT_OSR=daedalus
+  elif [ "${_OSR}" = "bookworm" ]; then
+    _NEXT_OSR=daedalus
+  elif [ "${_OSR}" = "beowulf" ]; then
+    _NEXT_OSR=chimaera
+  elif [ "${_OSR}" = "bullseye" ]; then
+    _NEXT_OSR=chimaera
+  elif [ "${_OSR}" = "buster" ]; then
+    _NEXT_OSR=beowulf
+  else
+    echo "This procedure does not support ${_THIS_OS}/${_OSR}"
+    echo "The minimum supported system is Debian/buster"
+    echo "Bye!"
+    exit 1
+  fi
+}
+check_os_compatibility
+
 if [ ! -e "/root/.run-to-daedalus.cnf" ]; then
   echo "ERROR: /root/.run-to-daedalus.cnf is required!"
-  exit 1
-fi
-
-_CHECK_SYS=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-if [ -e "/root/.auto-upgraded-to-daedalus.cnf" ] \
-  && [ "${_CHECK_SYS}" = "daedalus" ]; then
   exit 1
 fi
 
@@ -269,13 +290,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
       _REAL_OS="${_THIS_OS}"
       _REAL_OSR="${_THIS_SYS}"
     fi
-    if [ "${_REAL_OSR}" = "jessie" ]; then
-      echo "_JESSIE_TO_BEOWULF=YES" >> ${barCnf}
-      msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf"  >> ${logAds}
-    elif [ "${_REAL_OSR}" = "stretch" ]; then
-      echo "_STRETCH_TO_BEOWULF=YES" >> ${barCnf}
-      msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf"  >> ${logAds}
-    elif [ "${_REAL_OSR}" = "buster" ]; then
+    if [ "${_REAL_OSR}" = "buster" ]; then
       echo "_BUSTER_TO_BEOWULF=YES" >> ${barCnf}
       msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf"  >> ${logAds}
     elif [ "${_REAL_OSR}" = "bullseye" ]; then
