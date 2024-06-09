@@ -211,12 +211,34 @@ init_pre() {
       if [ "${silentMode}" = "verbose" ]; then
         echo " " >> ${logInt}
         /usr/bin/apt-get update >> ${logInt}
+        _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
+        if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
+          || [ -e "/etc/cloud/cloud.cfg.d" ]; then
+          /usr/bin/apt-get remove cloud-utils cloud-init -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
+          /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
+          /usr/bin/apt-get autoremove --purge -y >> ${logInt}
+          /usr/bin/apt-get autoclean -y >> ${logInt}
+          if [ -e "/etc/cloud/cloud.cfg.d" ]; then
+            mv -f /etc/cloud /var/backups/
+          fi
+        fi
         ${_INITINS} locales-all aptitude >> ${logInt}
         ${_INITINS} build-essential curl git >> ${logInt}
         ${_INITINS} libgd-dev libmagickwand-dev libcurl4-openssl-dev >> ${logInt}
       else
         echo " " >> ${logSlt}
         /usr/bin/apt-get update >> ${logSlt}
+        _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
+        if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
+          || [ -e "/etc/cloud/cloud.cfg.d" ]; then
+          /usr/bin/apt-get remove cloud-utils cloud-init -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
+          /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
+          /usr/bin/apt-get autoremove --purge -y >> ${logInt}
+          /usr/bin/apt-get autoclean -y >> ${logInt}
+          if [ -e "/etc/cloud/cloud.cfg.d" ]; then
+            mv -f /etc/cloud /var/backups/
+          fi
+        fi
         ${_INITINS} locales-all aptitude >> ${logSlt}
         ${_INITINS} build-essential curl git >> ${logSlt}
         ${_INITINS} libgd-dev libmagickwand-dev libcurl4-openssl-dev >> ${logSlt}
