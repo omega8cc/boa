@@ -131,9 +131,18 @@
    and upgrades for either barracuda or octopus (or both with -boa-) by adding
    these control files before running installation/upgrade:
 
-   $ touch /root/.debug-barracuda-installer.cnf
+   $ touch /root/.debug-barracuda-installer.cnf (read the caveats below)
    $ touch /root/.debug-octopus-installer.cnf
    $ touch /root/.debug-boa-installer.cnf
+
+   NOTE: You should never use /root/.debug-barracuda-installer.cnf unless you
+         need to debug barracuda without running the Aegir Master Instance
+         upgrades, because this file will automatically turn off updating
+         system Drush and the Aegir Master Instance on barracuda upgrade.
+
+         Interestingly, while /root/.debug-boa-installer.cnf enables debugging
+         mode for both barracuda and octopus, it will not prevent Aegir Master
+         Instance and Drush updates.
 
    Examples:
 
