@@ -17,7 +17,7 @@ export tRee="${tRee}"
 
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -sc 2>&1)
+  _THIS_RV=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_THIS_RV}" ]; then
@@ -28,8 +28,8 @@ os_detection_minimal() {
 os_detection_minimal
 
 apt_clean_update() {
-  apt-get clean -qq 2> /dev/null
-  rm -rf /var/lib/apt/lists/* &> /dev/null
+  #apt-get clean -qq 2> /dev/null
+  #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
@@ -59,8 +59,8 @@ system_hostname_check_fix
 rm -f /var/run/clear_m.pid
 
 _ADD_XTRA=YES
-_CRON_TEST=$(grep "usage.sh" /var/spool/cron/crontabs/root 2>&1)
-if [[ "${_CRON_TEST}" =~ "usage.sh" ]]; then
+_CRON_TEST=$(grep "clear.sh" /var/spool/cron/crontabs/root 2>&1)
+if [[ "${_CRON_TEST}" =~ "clear.sh" ]]; then
   _ADD_XTRA=NO
 fi
 
@@ -240,7 +240,7 @@ if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
   apt_clean_update
 fi
 
-if [ -e "/data/disk/arch/sql" ]; then
+if [ -e "/var/aegir/drush" ]; then
   if [ ! -e "/var/xdrago/log/.sync3_scan_nginx.pid" ]; then
     sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=399/g"  ${barCnf}
     sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx
@@ -464,16 +464,25 @@ if [ -e "/data/disk/arch/sql" ]; then
 #     touch /root/.legacy_sys_prep_ugrade_ctrl.cnf
 #   fi
 
-  if [ ! -e "/var/xdrago/log/.etc_crontab_update_f1_ctrl.${tRee}.${_X_SE}.pid" ]; then
-    rm -f /var/xdrago/log/.*_crontab_*
-    if [ ! -z "${_AUTO_UP_MONTH}" ] \
-      && [ ! -z "${_AUTO_UP_DAY}" ]; then
-      crontab_update
-    else
+  if [ -e "/root/.dev.server.cnf" ]; then
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl.${tRee}.${_X_SE}.pid" ]; then
+      rm -f /var/xdrago/log/.*etc_crontab_update_dev_ctrl*
       crontab_cleanup
+      service cron restart
+      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl.${tRee}.${_X_SE}.pid
     fi
-    service cron restart
-    touch /var/xdrago/log/.etc_crontab_update_f1_ctrl.${tRee}.${_X_SE}.pid
+  else
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl.${tRee}.${_X_SE}.pid" ]; then
+      rm -f /var/xdrago/log/.*etc_crontab_update_prod_ctrl*
+      if [ ! -z "${_AUTO_UP_MONTH}" ] \
+        && [ ! -z "${_AUTO_UP_DAY}" ]; then
+        crontab_update
+      else
+        crontab_cleanup
+      fi
+      service cron restart
+      touch /var/xdrago/log/.etc_crontab_update_prod_ctrl.${tRee}.${_X_SE}.pid
+    fi
   fi
 
   if [ ! -e "/var/xdrago/log/.etc_csf_allow_ctrl.${_X_SE}.pid" ]; then
