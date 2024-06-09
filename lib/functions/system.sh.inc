@@ -7777,6 +7777,8 @@ initd_update() {
       wait
       sed -i "s/.*UsePAM.*//g" /etc/ssh/sshd_config &> /dev/null
       wait
+      sed -i "s/.*PrintMotd.*//g" /etc/ssh/sshd_config &> /dev/null
+      wait
       sed -i "s/^ClientAliveCountMax.*//g" /etc/ssh/sshd_config &> /dev/null
       wait
       sed -i "s/^ClientAliveInterval.*//g" /etc/ssh/sshd_config &> /dev/null
@@ -7797,6 +7799,7 @@ initd_update() {
       fi
       echo "UseDNS no" >> /etc/ssh/sshd_config
       echo "UsePAM no" >> /etc/ssh/sshd_config
+      echo "PrintMotd yes" >> /etc/ssh/sshd_config
       echo "ClientAliveInterval 300" >> /etc/ssh/sshd_config
       echo "ClientAliveCountMax 10000" >> /etc/ssh/sshd_config
       echo "TCPKeepAlive yes" >> /etc/ssh/sshd_config
@@ -7806,6 +7809,8 @@ initd_update() {
         sed -i "s/.*UseDNS.*//g" /usr/etc/sshd_config &> /dev/null
         wait
         sed -i "s/.*UsePAM.*//g" /usr/etc/sshd_config &> /dev/null
+        wait
+        sed -i "s/.*PrintMotd.*//g" /usr/etc/sshd_config &> /dev/null
         wait
         sed -i "s/^ClientAliveCountMax.*//g" /usr/etc/sshd_config &> /dev/null
         wait
@@ -7830,6 +7835,7 @@ initd_update() {
         fi
         echo "UseDNS no" >> /usr/etc/sshd_config
         echo "UsePAM no" >> /usr/etc/sshd_config
+        echo "PrintMotd yes" >> /usr/etc/sshd_config
         echo "ClientAliveInterval 300" >> /usr/etc/sshd_config
         echo "ClientAliveCountMax 10000" >> /usr/etc/sshd_config
         echo "TCPKeepAlive yes" >> /usr/etc/sshd_config
