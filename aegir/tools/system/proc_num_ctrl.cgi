@@ -158,10 +158,12 @@ if (!-f "/root/.dbhd.clstr.cnf") {
   system("service redis-server restart") if (!-f "/var/run/redis/redis.pid");
 }
 
-system("service newrelic-daemon restart") if (!$newrelicdaemonsumar && -f "/etc/init.d/newrelic-daemon");
-system("service newrelic-sysmond restart") if (!$newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && -f "/root/.enable.newrelic.sysmond.cnf");
-system("service newrelic-sysmond stop") if ($newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/root/.enable.newrelic.sysmond.cnf");
-system("service postfix restart") if (!$postfixsumar && -f "/etc/init.d/postfix");
+if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
+  system("service newrelic-daemon restart") if (!$newrelicdaemonsumar && -f "/etc/init.d/newrelic-daemon");
+  system("service newrelic-sysmond restart") if (!$newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && -f "/root/.enable.newrelic.sysmond.cnf");
+  system("service newrelic-sysmond stop") if ($newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/root/.enable.newrelic.sysmond.cnf");
+  system("service postfix restart") if (!$postfixsumar && -f "/etc/init.d/postfix");
+}
 
 if (!$nginxsumar && -f "/etc/init.d/nginx" && !-f "/root/.dbhd.clstr.cnf") {
   system("killall -9 nginx");
@@ -207,8 +209,9 @@ else {
 #   }
 }
 
-# if (!-f "/var/run/solr_jetty.pid") {
-#   system("touch /var/run/solr_jetty.pid");
+if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
+  # if (!-f "/var/run/solr_jetty.pid") {
+  #   system("touch /var/run/solr_jetty.pid");
   system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7");
   system("service jetty8 start") if (!$jetty8sumar && -f "/etc/init.d/jetty8");
   system("service jetty9 start") if (!$jetty9sumar && -f "/etc/init.d/jetty9");
@@ -217,9 +220,10 @@ else {
   system("service xinetd start") if (!$xinetdsumar && -f "/etc/init.d/xinetd");
   system("service lsyncd start") if (!$lsyncdsumar && -f "/etc/init.d/lsyncd");
   system("service postfix restart") if (!-f "/var/spool/postfix/pid/master.pid");
-#   sleep(9);
-#   system("rm -f /var/run/solr_jetty.pid");
-# }
+  #   sleep(9);
+  #   system("rm -f /var/run/solr_jetty.pid");
+  # }
+}
 
 $ftpdinit="/usr/local/sbin/pure-config.pl";
 $ftpdconf="/usr/local/etc/pure-ftpd.conf";
@@ -269,12 +273,16 @@ elsif (-f "/etc/init.d/inetutils-syslogd") {
   }
 }
 if ((!$clamdsumar || !-f "/var/run/clamav/clamd.pid") && -f "/etc/init.d/clamav-daemon") {
-  system("killall -9 clamd");
-  system("service clamav-daemon start");
+  if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
+    system("killall -9 clamd");
+    system("service clamav-daemon start");
+  }
 }
 if ((!$freshclamsumar || !-f "/var/run/clamav/freshclam.pid") && -f "/etc/init.d/clamav-freshclam") {
-  system("killall -9 freshclam");
-  system("service clamav-freshclam start");
+  if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
+    system("killall -9 freshclam");
+    system("service clamav-freshclam start");
+  }
 }
 exit;
 
