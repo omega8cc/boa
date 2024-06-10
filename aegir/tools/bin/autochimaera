@@ -250,8 +250,8 @@ if [ -e "/root/.run-to-chimaera.cnf" ]; then
   echo " " >> ${logAch}
   if [ -e "/root/.run-auto-major-os-reboot-chimaera-one.cnf" ] \
     || [ -e "/root/.run-auto-major-os-reboot-chimaera-two.cnf" ]; then
-    msg "Waiting 99 seconds for the system start scripts to finish" >> ${logAch}
-    sleep 99
+    msg "Waiting 30 seconds for the system start scripts to finish" >> ${logAch}
+    sleep 30
   else
     msg "Automatic BOA System Major Upgrade Tool welcomes you aboard!" >> ${logAch}
     sleep 3

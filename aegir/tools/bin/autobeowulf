@@ -254,8 +254,8 @@ if [ -e "/root/.run-to-beowulf.cnf" ]; then
   echo " " >> ${logAbf}
   if [ -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] \
     || [ -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ]; then
-    msg "Waiting 99 seconds for the system start scripts to finish" >> ${logAbf}
-    sleep 99
+    msg "Waiting 30 seconds for the system start scripts to finish" >> ${logAbf}
+    sleep 30
   else
     msg "Automatic BOA System Major Upgrade Tool welcomes you aboard!" >> ${logAbf}
     sleep 3
