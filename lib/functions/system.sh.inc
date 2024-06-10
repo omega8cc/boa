@@ -5238,6 +5238,9 @@ if_proxysql_update() {
 }
 
 if_rebuild_src_on_major_os_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_rebuild_src_on_major_os_upgrade"
+  fi
   if [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ]; then
