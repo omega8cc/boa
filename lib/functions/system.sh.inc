@@ -3378,7 +3378,7 @@ sshd_install_src() {
     _SSL_PATH="/usr/local/ssl"
     _SSL_LIB_PATH="${_SSL_PATH}/lib"
   fi
-  if [ "${_STATUS}" = "UPGRADE" ]; then
+  if [ "${_STATUS}" = "UPGRADE" ] && [ "${_ALLOW_LONG_GENERATE}" = "YES" ]; then
     isKeyg=$(which ssh-keygen 2>&1)
     if [ -x "${isKeyg}" ] \
       && [ -e "${_SYSCONFDIR}/moduli" ] \
@@ -5251,6 +5251,19 @@ if_rebuild_src_on_major_os_upgrade() {
     fi
   else
     _ALLOW_HEAVY_REBUILDS=YES
+  fi
+}
+
+if_long_generate_on_major_os_upgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_long_generate_on_major_os_upgrade"
+  fi
+  if [ -e "/root/.run-to-daedalus.cnf" ] \
+    || [ -e "/root/.run-to-chimaera.cnf" ] \
+    || [ -e "/root/.run-to-beowulf.cnf" ]; then
+    _ALLOW_LONG_GENERATE=NO
+  else
+    _ALLOW_LONG_GENERATE=YES
   fi
 }
 
