@@ -597,9 +597,10 @@ pre() {
     _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
     _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
     touch /var/run/autoinit.pid
-    echo "Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}"
-    echo "Watch the progress with: tail -f /root/.autoinit.log"
-    msg "Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
+    if [ ! -e "/root/.autoinit.log" ]; then
+      echo "Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..."
+      msg "Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..." >> ${logInt}
+    fi
     sleep 15
     init
   else
