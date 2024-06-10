@@ -71,8 +71,8 @@ if ($convertsumar > 1)
 print "\n $sumar ALL procs\t\tGLOBAL";
 print "\n $lfdsumar LFD procs\t\tGLOBAL" if ($lfdlives && -f "/etc/init.d/lfd");
 print "\n $namedsumar Bind procs\t\tGLOBAL" if ($namedlives);
-print "\n $clamdsumar Bind procs\t\tGLOBAL" if ($clamdlives);
-print "\n $freshclamsumar Bind procs\t\tGLOBAL" if ($freshclamlives);
+print "\n $clamdsumar Clamd procs\t\tGLOBAL" if ($clamdlives);
+print "\n $freshclamsumar Freshclam procs\t\tGLOBAL" if ($freshclamlives);
 print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
 print "\n $collectdsumar Collectd\t\tGLOBAL" if ($collectdlives);
 print "\n $dhcpcdsumar dhcpcd procs\t\tGLOBAL" if ($dhcpcdlives);
