@@ -27,6 +27,8 @@ foreach $USER (sort keys %li_cnt) {
 foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /lfd/) {$lfdlives = "YES"; $lfdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /named/) {$namedlives = "YES"; $namedsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /clamd/) {$clamdlives = "YES"; $clamdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /freshclam/) {$freshclamlives = "YES"; $freshclamsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /buagent/) {$buagentlives = "YES"; $buagentsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /collectd/) {$collectdlives = "YES"; $collectdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /dhcpcd-bin/) {$dhcpcdlives = "YES"; $dhcpcdsumar = $li_cnt{$COMMAND};}
@@ -69,6 +71,8 @@ if ($convertsumar > 1)
 print "\n $sumar ALL procs\t\tGLOBAL";
 print "\n $lfdsumar LFD procs\t\tGLOBAL" if ($lfdlives && -f "/etc/init.d/lfd");
 print "\n $namedsumar Bind procs\t\tGLOBAL" if ($namedlives);
+print "\n $clamdsumar Bind procs\t\tGLOBAL" if ($clamdlives);
+print "\n $freshclamsumar Bind procs\t\tGLOBAL" if ($freshclamlives);
 print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
 print "\n $collectdsumar Collectd\t\tGLOBAL" if ($collectdlives);
 print "\n $dhcpcdsumar dhcpcd procs\t\tGLOBAL" if ($dhcpcdlives);
@@ -263,6 +267,14 @@ elsif (-f "/etc/init.d/inetutils-syslogd") {
     system("killall -9 syslogd");
     system("service inetutils-syslogd restart");
   }
+}
+if ((!$clamdsumar || !-f "/var/run/clamav/clamd.pid") && -f "/etc/init.d/clamav-daemon") {
+  system("killall -9 clamd");
+  system("service clamav-daemon start");
+}
+if ((!$freshclamsumar || !-f "/var/run/clamav/freshclam.pid") && -f "/etc/init.d/clamav-freshclam") {
+  system("killall -9 freshclam");
+  system("service clamav-freshclam start");
 }
 exit;
 
