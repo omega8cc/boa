@@ -35,8 +35,8 @@ if_reinstall_curl() {
     tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
     cd /var/opt/curl-${_CURL_VRN}
     sh ./configure --with-ssl --prefix=/usr/local &> /dev/null
-    make -j $(nproc) --quiet &> /dev/null
-    make --quiet install &> /dev/null
+    mrun "make -j $(nproc) --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
     if [ -f "/usr/local/bin/curl" ]; then
       isCurl=$(/usr/local/bin/curl --version 2>&1)
       if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
@@ -7314,8 +7314,8 @@ if_install_ftpd() {
         --with-everything --with-virtualchroot \
         --without-humor --with-tls --with-diraliases --with-pam \
         --with-certfile=/etc/ssl/private/pure-ftpd.pem &> /dev/null
-      make &> /dev/null
-      make install &> /dev/null
+      mrun "make -j $(nproc) --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
       cd /usr/local/sbin/
       cp -af ${locCnf}/pure-config.pl.txt ./
       mv -f pure-config.pl.txt pure-config.pl 2> /dev/null
