@@ -232,8 +232,8 @@ fi
 
 if [ -e "/root/.run-to-beowulf.cnf" ]; then
   echo " " >> ${logAbf}
-  if [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
-    || [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
+  if [ -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] \
+    || [ -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ]; then
     msg "Waiting 99 seconds for the system start scripts to finish" >> ${logAbf}
     sleep 99
   else
@@ -248,8 +248,8 @@ if [[ ! "${_AUTO_BEOWULF_TEST}" =~ "_AUTO_BEOWULF" ]]; then
 fi
 
 if [ -e "/root/.run-to-beowulf.cnf" ] \
-  && [ ! -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
-  && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
+  && [ ! -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] \
+  && [ ! -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ]; then
   echo " " >> ${logAbf}
   msg "Running barracuda php-idle disable to speed up upgrades" >> ${logAbf}
   barracuda php-idle disable >> ${logAbf}
@@ -279,7 +279,7 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
       msg "The first stage of major OS upgrade completed" >> ${logAbf}
       msg "The system will reboot now" >> ${logAbf}
       rm -f /root/.latest-barracuda-upgrade-finale.info
-      touch /root/.run-auto-major-os-reboot-one.cnf
+      touch /root/.run-auto-major-os-reboot-beowulf-one.cnf
       update-grub >> ${logAbf}
       faster_reboot
       reboot
@@ -289,8 +289,8 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
 fi
 
 if [ -e "/root/.run-to-beowulf.cnf" ] \
-  && [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
-  && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
+  && [ -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] \
+  && [ ! -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ]; then
   echo " " >> ${logAbf}
   msg "Launching post-reboot barracuda up-${tRee} system" >> ${logAbf}
   msg "to complete the first stage of major OS upgrade" >> ${logAbf}
@@ -302,7 +302,7 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
     msg "The single stage major OS upgrade completed" >> ${logAbf}
     msg "The system will reboot now for a final upgrade" >> ${logAbf}
     rm -f /root/.latest-barracuda-upgrade-finale.info
-    touch /root/.run-auto-major-os-reboot-two.cnf
+    touch /root/.run-auto-major-os-reboot-beowulf-two.cnf
     update-grub >> ${logAbf}
     faster_reboot
     reboot
@@ -311,15 +311,15 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
 fi
 
 if [ -e "/root/.run-to-beowulf.cnf" ] \
-  && [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
-  && [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
+  && [ -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] \
+  && [ -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ]; then
   echo " " >> ${logAbf}
   msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> ${logAbf}
   barracuda up-${tRee} system >> ${logAbf}
   wait
   [ -e "/root/.run-to-beowulf.cnf" ] && rm -f /root/.run-to-beowulf.cnf
-  [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] rm -f /root/.run-auto-major-os-reboot-one.cnf
-  [ -e "/root/.run-auto-major-os-reboot-two.cnf" ] rm -f /root/.run-auto-major-os-reboot-two.cnf
+  [ -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] rm -f /root/.run-auto-major-os-reboot-beowulf-one.cnf
+  [ -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ] rm -f /root/.run-auto-major-os-reboot-beowulf-two.cnf
   touch /root/.auto-upgraded-to-beowulf.cnf
   sed -i "s/^_AUTO_BEOWULF.*//g" /root/.barracuda.cnf
   msg "The final post-reboot barracuda up-${tRee} system completed" >> ${logAbf}

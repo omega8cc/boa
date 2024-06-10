@@ -252,8 +252,8 @@ fi
 
 if [ -e "/root/.run-to-chimaera.cnf" ]; then
   echo " " >> ${logAch}
-  if [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
-    || [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
+  if [ -e "/root/.run-auto-major-os-reboot-chimaera-one.cnf" ] \
+    || [ -e "/root/.run-auto-major-os-reboot-chimaera-two.cnf" ]; then
     msg "Waiting 99 seconds for the system start scripts to finish" >> ${logAch}
     sleep 99
   else
@@ -268,8 +268,8 @@ if [[ ! "${_AUTO_CHIMAERA_TEST}" =~ "_AUTO_CHIMAERA" ]]; then
 fi
 
 if [ -e "/root/.run-to-chimaera.cnf" ] \
-  && [ ! -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
-  && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
+  && [ ! -e "/root/.run-auto-major-os-reboot-chimaera-one.cnf" ] \
+  && [ ! -e "/root/.run-auto-major-os-reboot-chimaera-two.cnf" ]; then
   echo " " >> ${logAch}
   if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
     msg "Running barracuda php-idle disable to speed up upgrades" >> ${logAch}
@@ -309,7 +309,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
       msg "The first stage of major OS upgrade completed" >> ${logAch}
       msg "The system will reboot now" >> ${logAch}
       rm -f /root/.latest-barracuda-upgrade-finale.info
-      touch /root/.run-auto-major-os-reboot-one.cnf
+      touch /root/.run-auto-major-os-reboot-chimaera-one.cnf
       update-grub >> ${logAch}
       faster_reboot
       reboot
@@ -319,8 +319,8 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
 fi
 
 if [ -e "/root/.run-to-chimaera.cnf" ] \
-  && [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
-  && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
+  && [ -e "/root/.run-auto-major-os-reboot-chimaera-one.cnf" ] \
+  && [ ! -e "/root/.run-auto-major-os-reboot-chimaera-two.cnf" ]; then
   echo " " >> ${logAch}
   msg "Launching post-reboot barracuda up-${tRee} system" >> ${logAch}
   msg "to complete the first stage of major OS upgrade" >> ${logAch}
@@ -341,7 +341,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
       msg "The single stage major OS upgrade completed" >> ${logAch}
       msg "The system will reboot now for a final upgrade" >> ${logAch}
       rm -f /root/.latest-barracuda-upgrade-finale.info
-      touch /root/.run-auto-major-os-reboot-two.cnf
+      touch /root/.run-auto-major-os-reboot-chimaera-two.cnf
       update-grub >> ${logAch}
       faster_reboot
       reboot
@@ -363,7 +363,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
       msg "The second stage of major OS upgrade completed" >> ${logAch}
       msg "The system will reboot now" >> ${logAch}
       rm -f /root/.latest-barracuda-upgrade-finale.info
-      touch /root/.run-auto-major-os-reboot-two.cnf
+      touch /root/.run-auto-major-os-reboot-chimaera-two.cnf
       update-grub >> ${logAch}
       faster_reboot
       reboot
@@ -373,8 +373,8 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
 fi
 
 if [ -e "/root/.run-to-chimaera.cnf" ] \
-  && [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
-  && [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
+  && [ -e "/root/.run-auto-major-os-reboot-chimaera-one.cnf" ] \
+  && [ -e "/root/.run-auto-major-os-reboot-chimaera-two.cnf" ]; then
   echo " " >> ${logAch}
   if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
     msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> ${logAds}
@@ -382,8 +382,8 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
     wait
   fi
   [ -e "/root/.run-to-chimaera.cnf" ] && rm -f /root/.run-to-chimaera.cnf
-  [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] && rm -f /root/.run-auto-major-os-reboot-one.cnf
-  [ -e "/root/.run-auto-major-os-reboot-two.cnf" ] && rm -f /root/.run-auto-major-os-reboot-two.cnf
+  [ -e "/root/.run-auto-major-os-reboot-chimaera-one.cnf" ] && rm -f /root/.run-auto-major-os-reboot-chimaera-one.cnf
+  [ -e "/root/.run-auto-major-os-reboot-chimaera-two.cnf" ] && rm -f /root/.run-auto-major-os-reboot-chimaera-two.cnf
   touch /root/.auto-upgraded-to-chimaera.cnf
   sed -i "s/^_AUTO_CHIMAERA.*//g" /root/.barracuda.cnf
   msg "The final post-reboot barracuda up-${tRee} system completed" >> ${logAch}

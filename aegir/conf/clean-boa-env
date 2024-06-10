@@ -119,8 +119,10 @@ case "$1" in
   ;;
   stop)
     echo -n "Stopping $DESC: "
-    if [ ! -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
-      && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
+    _REBOOT_ONE_TEST=$(ls -la /root/.run-auto-major-os-reboot*-one.cnf 2>&1)
+    _REBOOT_TWO_TEST=$(ls -la /root/.run-auto-major-os-reboot*-two.cnf 2>&1)
+    if [[ "${_REBOOT_ONE_TEST}" =~ "No such file" ]] \
+      && [[ "${_REBOOT_TWO_TEST}" =~ "No such file" ]]; then
       service cron stop &> /dev/null
       killall cron &> /dev/null
       kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null

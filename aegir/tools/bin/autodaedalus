@@ -248,8 +248,8 @@ fi
 
 if [ -e "/root/.run-to-daedalus.cnf" ]; then
   echo " " >> ${logAds}
-  if [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
-    || [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
+  if [ -e "/root/.run-auto-major-os-reboot-daedalus-one.cnf" ] \
+    || [ -e "/root/.run-auto-major-os-reboot-daedalus-two.cnf" ]; then
     msg "Waiting 99 seconds for the system start scripts to finish" >> ${logAds}
     sleep 99
   else
@@ -264,8 +264,8 @@ if [[ ! "${_AUTO_DAEDALUS_TEST}" =~ "_AUTO_DAEDALUS" ]]; then
 fi
 
 if [ -e "/root/.run-to-daedalus.cnf" ] \
-  && [ ! -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
-  && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
+  && [ ! -e "/root/.run-auto-major-os-reboot-daedalus-one.cnf" ] \
+  && [ ! -e "/root/.run-auto-major-os-reboot-daedalus-two.cnf" ]; then
   echo " " >> ${logAds}
   if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
     msg "Running barracuda php-idle disable to speed up upgrades" >> ${logAds}
@@ -305,7 +305,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
       msg "The first stage of major OS upgrade completed" >> ${logAds}
       msg "The system will reboot now" >> ${logAds}
       rm -f /root/.latest-barracuda-upgrade-finale.info
-      touch /root/.run-auto-major-os-reboot-one.cnf
+      touch /root/.run-auto-major-os-reboot-daedalus-one.cnf
       update-grub >> ${logAds}
       faster_reboot
       reboot
@@ -315,8 +315,8 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
 fi
 
 if [ -e "/root/.run-to-daedalus.cnf" ] \
-  && [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
-  && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
+  && [ -e "/root/.run-auto-major-os-reboot-daedalus-one.cnf" ] \
+  && [ ! -e "/root/.run-auto-major-os-reboot-daedalus-two.cnf" ]; then
   echo " " >> ${logAds}
   msg "Launching post-reboot barracuda up-${tRee} system" >> ${logAds}
   msg "to complete the first stage of major OS upgrade" >> ${logAds}
@@ -337,7 +337,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
       msg "The single stage major OS upgrade completed" >> ${logAds}
       msg "The system will reboot now for a final upgrade" >> ${logAds}
       rm -f /root/.latest-barracuda-upgrade-finale.info
-      touch /root/.run-auto-major-os-reboot-two.cnf
+      touch /root/.run-auto-major-os-reboot-daedalus-two.cnf
       update-grub >> ${logAds}
       faster_reboot
       reboot
@@ -365,7 +365,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
       msg "The second stage of major OS upgrade completed" >> ${logAds}
       msg "The system will reboot now" >> ${logAds}
       rm -f /root/.latest-barracuda-upgrade-finale.info
-      touch /root/.run-auto-major-os-reboot-two.cnf
+      touch /root/.run-auto-major-os-reboot-daedalus-two.cnf
       update-grub >> ${logAds}
       faster_reboot
       reboot
@@ -375,8 +375,8 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
 fi
 
 if [ -e "/root/.run-to-daedalus.cnf" ] \
-  && [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
-  && [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
+  && [ -e "/root/.run-auto-major-os-reboot-daedalus-one.cnf" ] \
+  && [ -e "/root/.run-auto-major-os-reboot-daedalus-two.cnf" ]; then
   echo " " >> ${logAds}
   if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
     msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> ${logAds}
@@ -384,8 +384,8 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
     wait
   fi
   [ -e "/root/.run-to-daedalus.cnf" ] && rm -f /root/.run-to-daedalus.cnf
-  [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] && rm -f /root/.run-auto-major-os-reboot-one.cnf
-  [ -e "/root/.run-auto-major-os-reboot-two.cnf" ] && rm -f /root/.run-auto-major-os-reboot-two.cnf
+  [ -e "/root/.run-auto-major-os-reboot-daedalus-one.cnf" ] && rm -f /root/.run-auto-major-os-reboot-daedalus-one.cnf
+  [ -e "/root/.run-auto-major-os-reboot-daedalus-two.cnf" ] && rm -f /root/.run-auto-major-os-reboot-daedalus-two.cnf
   touch /root/.auto-upgraded-to-daedalus.cnf
   sed -i "s/^_AUTO_DAEDALUS.*//g" /root/.barracuda.cnf
   msg "The final post-reboot barracuda up-${tRee} system completed" >> ${logAds}
