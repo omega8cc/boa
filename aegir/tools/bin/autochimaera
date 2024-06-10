@@ -220,6 +220,7 @@ check_os_compatibility() {
   else
     echo "This procedure does not support ${_OS_DIST}/${_OS_CODE}"
     echo "The minimum supported system is Debian/jessie"
+    echo "The maximum supported system is Debian/bullseye or Devuan/beowulf"
     echo "Bye!"
     exit 1
   fi
