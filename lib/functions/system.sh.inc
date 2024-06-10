@@ -6647,6 +6647,9 @@ php_libs_fix() {
       if [ -e "/usr/lib/x86_64-linux-gnu/liblber.so" ]; then
         ln -sfn /usr/lib/x86_64-linux-gnu/liblber.so /usr/lib/liblber.so
       fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/liblber-2.5.so.0" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/liblber-2.5.so.0 /usr/lib/liblber-2.5.so.0
+      fi
       if [ -e "/usr/lib/x86_64-linux-gnu/liblber-2.4.so.2" ]; then
         ln -sfn /usr/lib/x86_64-linux-gnu/liblber-2.4.so.2 /usr/lib/liblber-2.4.so.2
       fi
