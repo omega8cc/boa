@@ -268,15 +268,35 @@ if_clean_boa_env() {
 }
 if_clean_boa_env
 
+if_fix_dhcp() {
+  if [ -e "/var/log/daemon.log" ]; then
+    if [ `tail --lines=100 /var/log/daemon.log \
+      | grep --count "dhclient.*Failed"` -gt "0" ]; then
+      sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
+      wait
+      sed -i "/^$/d" /etc/csf/csf.allow
+      _DHCP_TEST=$(grep DHCPREQUEST /var/log/daemon.log | cut -d ' ' -f13 | sort | uniq 2>&1)
+      if [[ "${_DHCP_TEST}" =~ "port" ]]; then
+        for _IP in `grep DHCPREQUEST /var/log/daemon.log | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+      else
+        for _IP in `grep DHCPREQUEST /var/log/daemon.log | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+      fi
+      csf -q &> /dev/null
+    fi
+  fi
+}
+
 if [ -e "/root/.run-to-beowulf.cnf" ]; then
   echo " " >> ${logAbf}
   if [ -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] \
     || [ -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ]; then
     msg "Waiting 30 seconds for the system start scripts to finish" >> ${logAbf}
     sleep 30
+    if_fix_dhcp
   else
     msg "Automatic BOA System Major Upgrade Tool welcomes you aboard!" >> ${logAbf}
     sleep 3
+    if_fix_dhcp
   fi
 fi
 
