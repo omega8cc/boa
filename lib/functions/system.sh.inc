@@ -5865,9 +5865,13 @@ if_major_os_upgrade() {
       mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
       _FORCE_REBUILD_SRC_ON_AUTO_NOW=YES
       ###
-      ### Signal that --allow-downgrades can be used after reboot
-      touch /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
-      msg "INFO: dist-upgrade with --allow-downgrades option is used"
+      if [ "${_LOC_OS_CODE}" = "chimaera" ] \
+        && [ "${_NEW_OS_CODE}" = "daedalus" ]; then
+        ### Signal that --allow-downgrades can be used after reboot
+        touch /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
+        msg "INFO: dist-upgrade with --allow-downgrades option is used"
+      fi
+      ###
     fi
     ###
     ### Make sure that sysvinit-core is still installed and systemd removed.
