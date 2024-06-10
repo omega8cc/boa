@@ -147,11 +147,6 @@ msg() {
 ###
 faster_reboot() {
   msg "Faster reboot prepare..." >> ${logAbf}
-  if [ ! -x "/etc/init.d/clean-boa-env" ]; then
-    cp -af ${locCnf}/clean-boa-env /etc/init.d/clean-boa-env
-    chmod 755 /etc/init.d/clean-boa-env &> /dev/null
-  fi
-  mrun "update-rc.d clean-boa-env defaults" &> /dev/null
   service cron stop &> /dev/null
   killall cron &> /dev/null
   kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
