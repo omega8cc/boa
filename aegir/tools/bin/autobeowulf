@@ -271,6 +271,7 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
   wait
   msg "The barracuda php-idle disable completed" >> ${logAbf}
   msg "Launching standard barracuda up-${tRee} system first" >> ${logAbf}
+  [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
   barracuda up-${tRee} system >> ${logAbf}
   wait
   msg "The standard barracuda up-${tRee} system completed" >> ${logAbf}
@@ -288,6 +289,7 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
       msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> ${logAbf}
     fi
     msg "The first stage of major OS upgrade will start now" >> ${logAbf}
+    [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
     barracuda up-${tRee} system >> ${logAbf}
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
@@ -309,6 +311,7 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
   echo " " >> ${logAbf}
   msg "Launching post-reboot barracuda up-${tRee} system" >> ${logAbf}
   msg "to complete the first stage of major OS upgrade" >> ${logAbf}
+  [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
   barracuda up-${tRee} system >> ${logAbf}
   wait
   msg "The post-reboot barracuda up-${tRee} system completed" >> ${logAbf}
@@ -330,9 +333,11 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ]; then
   echo " " >> ${logAbf}
   msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> ${logAbf}
+  [ ! -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && touch /root/.force.rebuild.src.on.auto.now.cnf
   barracuda up-${tRee} system >> ${logAbf}
   wait
   [ -e "/root/.run-to-beowulf.cnf" ] && rm -f /root/.run-to-beowulf.cnf
+  [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
   [ -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] rm -f /root/.run-auto-major-os-reboot-beowulf-one.cnf
   [ -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ] rm -f /root/.run-auto-major-os-reboot-beowulf-two.cnf
   touch /root/.auto-upgraded-to-beowulf.cnf

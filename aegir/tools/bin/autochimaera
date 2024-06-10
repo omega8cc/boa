@@ -268,6 +268,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
     wait
     msg "The barracuda php-idle disable completed" >> ${logAch}
     msg "Launching standard barracuda up-${tRee} system now" >> ${logAch}
+    [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
     barracuda up-${tRee} system >> ${logAch}
     wait
     msg "The standard barracuda up-${tRee} system completed" >> ${logAch}
@@ -294,6 +295,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
       msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> ${logAch}
     fi
     msg "The first stage of major OS upgrade will start now" >> ${logAch}
+    [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
     barracuda up-${tRee} system >> ${logAch}
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
@@ -315,6 +317,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   echo " " >> ${logAch}
   msg "Launching post-reboot barracuda up-${tRee} system" >> ${logAch}
   msg "to complete the first stage of major OS upgrade" >> ${logAch}
+  [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
   barracuda up-${tRee} system >> ${logAch}
   wait
   msg "The post-reboot barracuda up-${tRee} system completed" >> ${logAch}
@@ -348,6 +351,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   fi
   if [ "${_FURTHER_UPGRADE}" = "YES" ]; then
     msg "The second stage of major OS upgrade will start now" >> ${logAch}
+    [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
     barracuda up-${tRee} system >> ${logAch}
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
@@ -369,10 +373,12 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   echo " " >> ${logAch}
   if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
     msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> ${logAds}
+    [ ! -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && touch /root/.force.rebuild.src.on.auto.now.cnf
     barracuda up-${tRee} system >> ${logAds}
     wait
   fi
   [ -e "/root/.run-to-chimaera.cnf" ] && rm -f /root/.run-to-chimaera.cnf
+  [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
   [ -e "/root/.run-auto-major-os-reboot-chimaera-one.cnf" ] && rm -f /root/.run-auto-major-os-reboot-chimaera-one.cnf
   [ -e "/root/.run-auto-major-os-reboot-chimaera-two.cnf" ] && rm -f /root/.run-auto-major-os-reboot-chimaera-two.cnf
   touch /root/.auto-upgraded-to-chimaera.cnf

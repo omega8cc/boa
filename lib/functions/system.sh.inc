@@ -5237,6 +5237,20 @@ if_proxysql_update() {
   fi
 }
 
+if_rebuild_src_on_major_os_upgrade() {
+  if [ -e "/root/.run-to-daedalus.cnf" ] \
+    || [ -e "/root/.run-to-chimaera.cnf" ] \
+    || [ -e "/root/.run-to-beowulf.cnf" ]; then
+    if [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ]; then
+      _ALLOW_HEAVY_REBUILDS=YES
+    else
+      _ALLOW_HEAVY_REBUILDS=NO
+    fi
+  else
+    _ALLOW_HEAVY_REBUILDS=YES
+  fi
+}
+
 if_post_major_os_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: if_post_major_os_upgrade"
@@ -5308,6 +5322,10 @@ if_post_major_os_upgrade() {
       || [ -e "/root/.run-to-beowulf.cnf" ]; then
       _REBUILD_SRC_ON_AUTO_NOW=NO
       php_if_versions_cleanup_cnf
+    fi
+
+    if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+      _REBUILD_SRC_ON_AUTO_NOW=YES
     fi
 
     if [ -e "/root/.big_hop_on_major_os_upgrade.info" ] \
@@ -5900,7 +5918,8 @@ if_major_os_upgrade() {
       _REBUILD_SRC_ON_AUTO_NOW=NO
     fi
     rm -f /root/.rebuild_src_on_auto_before_reboot.info
-    if [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
+    if [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ] \
+      && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
       touch /root/.rebuild_src_on_auto_before_reboot.info
       rm -f /var/xdrago_wait/log/*.log
       _PURGE_MODE=OFF

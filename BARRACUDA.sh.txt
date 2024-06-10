@@ -311,6 +311,7 @@ check_prepare_dirs_permissions
 ### Optional major system upgrades
 ###
 early_sys_ctrl_mark
+if_rebuild_src_on_major_os_upgrade
 if_post_major_os_upgrade
 if_major_os_upgrade
 normal_sys_ctrl_mark
@@ -319,8 +320,9 @@ normal_sys_ctrl_mark
 ###
 ### Upgrade only Aegir Master Instance (obsolete mode)
 ###
-if_upgrade_only_aegir_master
-
+if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+  if_upgrade_only_aegir_master
+fi
 
 ###
 ### System packages install and update
@@ -371,26 +373,28 @@ if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
     chattr +i /root/.install.modern.openssl.cnf
   fi
 fi
-ssl_install_src
-ssl_crypto_lib_fix
-curl_install_src
-nginx_install_upgrade
-nginx_initd_check
-redis_install_upgrade
-lshell_install_upgrade
-myquick_install_upgrade
-magick_install_upgrade
-php_install_deps
-php_libs_fix
-php_if_versions_cleanup_cnf
-if [ "${_STATUS}" = "UPGRADE" ]; then
-  php_check_if_rebuild
+if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+  ssl_install_src
+  ssl_crypto_lib_fix
+  curl_install_src
+  nginx_install_upgrade
+  nginx_initd_check
+  redis_install_upgrade
+  lshell_install_upgrade
+  myquick_install_upgrade
+  magick_install_upgrade
+  php_install_deps
+  php_libs_fix
+  php_if_versions_cleanup_cnf
+  if [ "${_STATUS}" = "UPGRADE" ]; then
+    php_check_if_rebuild
+  fi
+  php_install_upgrade
+  php_config_check_update
+  php_upgrade_all
+  if_install_php_newrelic
+  newrelic_check_fix
 fi
-php_install_upgrade
-php_config_check_update
-php_upgrade_all
-if_install_php_newrelic
-newrelic_check_fix
 smtp_check
 xdrago_install_upgrade
 
@@ -404,41 +408,45 @@ drush_system_install_update
 ###
 ### Install or upgrade Aegir Master Instance
 ###
-aegir_master_install_upgrade
-aegir_bin_extra_check_fix
-nginx_mime_check_fix
-nginx_wildcard_ssl_install
-nginx_config_update_fix
-aegir_master_display_login_link
+if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+  aegir_master_install_upgrade
+  aegir_bin_extra_check_fix
+  nginx_mime_check_fix
+  nginx_wildcard_ssl_install
+  nginx_config_update_fix
+  aegir_master_display_login_link
+fi
 
 
 ###
 ### Optional add-on services
 ###
 if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
-  if_install_ftpd
-  if_install_vnstat
-  if_install_wkhtmltox
-  if_install_git_src
-  if_install_ffmpeg
-  if_install_bzr
-  if_install_jetty
-  if_install_adminer
-  if_install_chive
-  if_install_sqlbuddy
-  if_install_collectd
-  if_install_hhvm
-  if_install_webmin
-  if_install_bind
-  if_install_rvm
-  sftp_ftps_modern_fix
+  if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+    if_install_ftpd
+    if_install_vnstat
+    if_install_wkhtmltox
+    if_install_git_src
+    if_install_ffmpeg
+    if_install_bzr
+    if_install_jetty
+    if_install_adminer
+    if_install_chive
+    if_install_sqlbuddy
+    if_install_collectd
+    if_install_hhvm
+    if_install_webmin
+    if_install_bind
+    if_install_rvm
+    sftp_ftps_modern_fix
+  fi
 fi
 
 
 ###
 ### Install OpenSSH from sources on upgrade
 ###
-if [ "${_SSH_FROM_SOURCES}" = "YES" ]; then
+if [ "${_SSH_FROM_SOURCES}" = "YES" ] && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
     if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
       sshd_install_src

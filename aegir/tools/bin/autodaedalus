@@ -264,6 +264,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
     wait
     msg "The barracuda php-idle disable completed" >> ${logAds}
     msg "Launching standard barracuda up-${tRee} system now" >> ${logAds}
+    [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
     barracuda up-${tRee} system >> ${logAds}
     wait
     msg "The standard barracuda up-${tRee} system completed" >> ${logAds}
@@ -290,6 +291,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
       msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/daedalus" >> ${logAds}
     fi
     msg "The first stage of major OS upgrade will start now" >> ${logAds}
+    [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
     barracuda up-${tRee} system >> ${logAds}
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
@@ -311,6 +313,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   echo " " >> ${logAds}
   msg "Launching post-reboot barracuda up-${tRee} system" >> ${logAds}
   msg "to complete the first stage of major OS upgrade" >> ${logAds}
+  [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
   barracuda up-${tRee} system >> ${logAds}
   wait
   msg "The post-reboot barracuda up-${tRee} system completed" >> ${logAds}
@@ -350,6 +353,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   fi
   if [ "${_FURTHER_UPGRADE}" = "YES" ]; then
     msg "The second stage of major OS upgrade will start now" >> ${logAds}
+    [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
     barracuda up-${tRee} system >> ${logAds}
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
@@ -371,10 +375,12 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   echo " " >> ${logAds}
   if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
     msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> ${logAds}
+    [ ! -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && touch /root/.force.rebuild.src.on.auto.now.cnf
     barracuda up-${tRee} system >> ${logAds}
     wait
   fi
   [ -e "/root/.run-to-daedalus.cnf" ] && rm -f /root/.run-to-daedalus.cnf
+  [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
   [ -e "/root/.run-auto-major-os-reboot-daedalus-one.cnf" ] && rm -f /root/.run-auto-major-os-reboot-daedalus-one.cnf
   [ -e "/root/.run-auto-major-os-reboot-daedalus-two.cnf" ] && rm -f /root/.run-auto-major-os-reboot-daedalus-two.cnf
   touch /root/.auto-upgraded-to-daedalus.cnf
