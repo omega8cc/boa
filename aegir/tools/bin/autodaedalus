@@ -195,11 +195,17 @@ faster_reboot() {
   msg "Faster reboot done" >> ${logAds}
 }
 
+if [ ! -e "/root/.run-to-daedalus.cnf" ]; then
+  echo "ERROR: /root/.run-to-daedalus.cnf is required!"
+  exit 1
+fi
+
 check_os_compatibility() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ "${_OS_CODE}" = "daedalus" ] \
-    && [ -e "/root/.auto-upgraded-to-daedalus.cnf" ]; then
+    && [ ! -e "/root/.run-auto-major-os-reboot-daedalus-one.cnf" ] \
+    && [ ! -e "/root/.run-auto-major-os-reboot-daedalus-two.cnf" ]; then
     echo "This server already runs ${_OS_DIST}/${_OS_CODE}"
     echo "Bye!"
     exit 1
@@ -215,7 +221,8 @@ check_os_compatibility() {
   elif [ "${_OS_CODE}" = "buster" ]; then
     _NEXT_OS_CODE=beowulf
   else
-    if [ ! -e "/root/.auto-upgraded-to-daedalus.cnf" ]; then
+    if [ ! -e "/root/.run-auto-major-os-reboot-daedalus-one.cnf" ] \
+      && [ ! -e "/root/.run-auto-major-os-reboot-daedalus-two.cnf" ]; then
       echo "This procedure does not support ${_OS_DIST}/${_OS_CODE}"
       echo "The minimum supported system is Debian/buster"
       echo "The maximum supported system is Debian/bookworm or Devuan/chimaera"
@@ -225,11 +232,6 @@ check_os_compatibility() {
   fi
 }
 check_os_compatibility
-
-if [ ! -e "/root/.run-to-daedalus.cnf" ]; then
-  echo "ERROR: /root/.run-to-daedalus.cnf is required!"
-  exit 1
-fi
 
 if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
   _DB_SERIES=5.7
