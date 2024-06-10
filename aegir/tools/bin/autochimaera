@@ -101,7 +101,7 @@ export tRee="${tRee}"
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
 _X_SE="520devT02"
-_THIS_SYS=check
+_OS_CODE=check
 #
 
 check_root() {
@@ -196,29 +196,29 @@ faster_reboot() {
 }
 
 check_os_compatibility() {
-  _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-  if [ "${_OSR}" = "chimaera" ]; then
-    echo "This server already runs ${_THIS_OS}/${_OSR}"
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  if [ "${_OS_CODE}" = "chimaera" ]; then
+    echo "This server already runs ${_OS_DIST}/${_OS_CODE}"
     echo "Bye!"
     exit 1
-  elif [ "${_OSR}" = "daedalus" ] || [ "${_OSR}" = "bookworm" ]; then
-    echo "This server already runs newer ${_THIS_OS}/${_OSR}"
+  elif [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "bookworm" ]; then
+    echo "This server already runs newer ${_OS_DIST}/${_OS_CODE}"
     echo "Bye!"
     exit 1
   fi
-  if [ "${_OSR}" = "beowulf" ]; then
-    _NEXT_OSR=chimaera
-  elif [ "${_OSR}" = "bullseye" ]; then
-    _NEXT_OSR=chimaera
-  elif [ "${_OSR}" = "buster" ]; then
-    _NEXT_OSR=beowulf
-  elif [ "${_OSR}" = "stretch" ]; then
-    _NEXT_OSR=beowulf
-  elif [ "${_OSR}" = "jessie" ]; then
-    _NEXT_OSR=beowulf
+  if [ "${_OS_CODE}" = "beowulf" ]; then
+    _NEXT_OS_CODE=chimaera
+  elif [ "${_OS_CODE}" = "bullseye" ]; then
+    _NEXT_OS_CODE=chimaera
+  elif [ "${_OS_CODE}" = "buster" ]; then
+    _NEXT_OS_CODE=beowulf
+  elif [ "${_OS_CODE}" = "stretch" ]; then
+    _NEXT_OS_CODE=beowulf
+  elif [ "${_OS_CODE}" = "jessie" ]; then
+    _NEXT_OS_CODE=beowulf
   else
-    echo "This procedure does not support ${_THIS_OS}/${_OSR}"
+    echo "This procedure does not support ${_OS_DIST}/${_OS_CODE}"
     echo "The minimum supported system is Debian/jessie"
     echo "Bye!"
     exit 1
@@ -284,31 +284,23 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
     touch /root/.latest-barracuda-upgrade-finale.info
   fi
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
-    _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-    _THIS_SYS=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-    if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
-      || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
-      _REAL_OS="Devuan"
-      _REAL_OSR="chimaera"
-    else
-      _REAL_OS="${_THIS_OS}"
-      _REAL_OSR="${_THIS_SYS}"
-    fi
-    if [ "${_REAL_OSR}" = "jessie" ]; then
+    _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+    _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+    if [ "${_OS_CODE}" = "jessie" ]; then
       echo "_JESSIE_TO_BEOWULF=YES" >> ${barCnf}
-      msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf" >> ${logAch}
-    elif [ "${_REAL_OSR}" = "stretch" ]; then
+      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> ${logAch}
+    elif [ "${_OS_CODE}" = "stretch" ]; then
       echo "_STRETCH_TO_BEOWULF=YES" >> ${barCnf}
-      msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf" >> ${logAch}
-    elif [ "${_REAL_OSR}" = "buster" ]; then
+      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> ${logAch}
+    elif [ "${_OS_CODE}" = "buster" ]; then
       echo "_BUSTER_TO_BEOWULF=YES" >> ${barCnf}
-      msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf" >> ${logAch}
-    elif [ "${_REAL_OSR}" = "bullseye" ]; then
+      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> ${logAch}
+    elif [ "${_OS_CODE}" = "bullseye" ]; then
       echo "_BULLSEYE_TO_CHIMAERA=YES" >> ${barCnf}
-      msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/chimaera" >> ${logAch}
-    elif [ "${_REAL_OSR}" = "beowulf" ]; then
+      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> ${logAch}
+    elif [ "${_OS_CODE}" = "beowulf" ]; then
       echo "_BEOWULF_TO_CHIMAERA=YES" >> ${barCnf}
-      msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/chimaera" >> ${logAch}
+      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> ${logAch}
     fi
     msg "The first stage of major OS upgrade will start now" >> ${logAch}
     barracuda up-${tRee} system >> ${logAch}
@@ -336,16 +328,12 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   wait
   msg "The post-reboot barracuda up-${tRee} system completed" >> ${logAch}
   echo " " >> ${logAch}
-  _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _THIS_SYS=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
     || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
-    _REAL_OS="Devuan"
-    _REAL_OSR="chimaera"
     _FURTHER_UPGRADE=NO
   else
-    _REAL_OS="${_THIS_OS}"
-    _REAL_OSR="${_THIS_SYS}"
     _FURTHER_UPGRADE=YES
   fi
   if [ "${_FURTHER_UPGRADE}" = "NO" ]; then
@@ -360,12 +348,12 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
       exit 0
     fi
   fi
-  if [ "${_REAL_OSR}" = "bullseye" ] && [ "${_FURTHER_UPGRADE}" = "YES" ]; then
+  if [ "${_OS_CODE}" = "bullseye" ] && [ "${_FURTHER_UPGRADE}" = "YES" ]; then
     echo "_BULLSEYE_TO_CHIMAERA=YES" >> ${barCnf}
-    msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/chimaera" >> ${logAch}
-  elif [ "${_REAL_OSR}" = "beowulf" ] && [ "${_FURTHER_UPGRADE}" = "YES" ]; then
+    msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> ${logAch}
+  elif [ "${_OS_CODE}" = "beowulf" ] && [ "${_FURTHER_UPGRADE}" = "YES" ]; then
     echo "_BEOWULF_TO_CHIMAERA=YES" >> ${barCnf}
-    msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/chimaera" >> ${logAch}
+    msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> ${logAch}
   fi
   if [ "${_FURTHER_UPGRADE}" = "YES" ]; then
     msg "The second stage of major OS upgrade will start now" >> ${logAch}

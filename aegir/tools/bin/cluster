@@ -14,8 +14,8 @@ _UTIL_VRN="0.30.216-pre3126"
 _VNSTAT_VRN="2.7"
 _APT_XTR="-y"
 _INST="/usr/bin/apt-get -y --allow-unauthenticated install"
-_THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-_OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+_OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+_OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 aptLiSys="/etc/apt/sources.list"
 tRee=dev
 export tRee="${tRee}"
@@ -63,10 +63,10 @@ clean_pid_exit() {
 
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
-    if [ "${e}" = "${_THIS_RV}" ]; then
+    if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
@@ -80,8 +80,6 @@ apt_clean_update() {
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    _REAL_OSR="${_OSR}"
-    _REAL_OS="${_THIS_OS}"
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -101,37 +99,37 @@ check_root() {
     fi
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ -x "${_LSB_TEST}" ]; then
-      if [ "${_THIS_OS}" = "Devuan" ] || [ "${_THIS_OS}" = "Debian" ]; then
+      if [ "${_OS_DIST}" = "Devuan" ] || [ "${_OS_DIST}" = "Debian" ]; then
         _SUPPORTED_OS=YES
       else
-        echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
+        echo "ERROR: Not supported OS detected: ${_OS_DIST}/${_OS_CODE}"
         exit 1
       fi
       echo
-      if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
+      if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
         _APT_MIRROR="archive.debian.org/debian"
-        _APT_REPSRC="${_OSR}-backports"
+        _APT_REPSRC="${_OS_CODE}-backports"
         _SEC_MIRROR="archive.debian.org/debian-security"
-        _SEC_REPSRC="${_OSR}/updates"
-      elif [ "${_OSR}" = "buster" ]; then
+        _SEC_REPSRC="${_OS_CODE}/updates"
+      elif [ "${_OS_CODE}" = "buster" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OSR}-updates"
+        _APT_REPSRC="${_OS_CODE}-updates"
         _SEC_MIRROR="security.debian.org"
-        _SEC_REPSRC="${_OSR}/updates"
-      elif [ "${_OSR}" = "bullseye" ]; then
+        _SEC_REPSRC="${_OS_CODE}/updates"
+      elif [ "${_OS_CODE}" = "bullseye" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OSR}-updates"
+        _APT_REPSRC="${_OS_CODE}-updates"
         _SEC_MIRROR="security.debian.org/debian-security"
-        _SEC_REPSRC="${_OSR}-security"
-      elif [ "${_OSR}" = "bookworm" ]; then
+        _SEC_REPSRC="${_OS_CODE}-security"
+      elif [ "${_OS_CODE}" = "bookworm" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OSR}-updates"
+        _APT_REPSRC="${_OS_CODE}-updates"
         _SEC_MIRROR="security.debian.org/debian-security"
-        _SEC_REPSRC="${_OSR}-security"
+        _SEC_REPSRC="${_OS_CODE}-security"
       fi
       echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
-      echo "deb-src http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
+      echo "deb http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${aptLiSys}
+      echo "deb-src http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
       echo "deb http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
@@ -143,29 +141,29 @@ check_root() {
       echo
       apt_clean_update
     fi
-    if [ "${_THIS_OS}" = "Devuan" ] || [ "${_THIS_OS}" = "Debian" ]; then
+    if [ "${_OS_DIST}" = "Devuan" ] || [ "${_OS_DIST}" = "Debian" ]; then
       _SUPPORTED_OS=YES
     else
-      echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
+      echo "ERROR: Not supported OS detected: ${_OS_DIST}/${_OS_CODE}"
       exit 1
     fi
-    if [ "${_OSR}" = "jessie" ]; then
+    if [ "${_OS_CODE}" = "jessie" ]; then
       _BENG_SERIES="4.9"
       _BNG_VERSION="4.9.202-vs2.3.9.9"
-    elif [ "${_OSR}" = "stretch" ]; then
+    elif [ "${_OS_CODE}" = "stretch" ]; then
       _BENG_SERIES="4.9"
       _BNG_VERSION="4.9.202-vs2.3.9.9"
-    elif [ "${_OSR}" = "buster" ]; then
+    elif [ "${_OS_CODE}" = "buster" ]; then
       _BENG_SERIES="4.9"
       _BNG_VERSION="4.9.202-vs2.3.9.9"
-    elif [ "${_OSR}" = "bullseye" ]; then
+    elif [ "${_OS_CODE}" = "bullseye" ]; then
       _BENG_SERIES="4.9"
       _BNG_VERSION="4.9.202-vs2.3.9.9"
-    elif [ "${_OSR}" = "bookworm" ]; then
+    elif [ "${_OS_CODE}" = "bookworm" ]; then
       _BENG_SERIES="4.9"
       _BNG_VERSION="4.9.202-vs2.3.9.9"
     else
-      echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
+      echo "ERROR: Not supported OS detected: ${_OS_DIST}/${_OS_CODE}"
       exit 1
     fi
   else
@@ -1484,14 +1482,14 @@ interactive-timeout
 install_db_cluster() {
   check_config_cluster
 
-  if [ "${_OSR}" = "daedalus" ]; then
-    _SQL_OSR=bookworm
-  elif [ "${_OSR}" = "chimaera" ]; then
-    _SQL_OSR=bullseye
-  elif [ "${_OSR}" = "beowulf" ]; then
-    _SQL_OSR=buster
+  if [ "${_OS_CODE}" = "daedalus" ]; then
+    _SQL_OS_CODE=bookworm
+  elif [ "${_OS_CODE}" = "chimaera" ]; then
+    _SQL_OS_CODE=bullseye
+  elif [ "${_OS_CODE}" = "beowulf" ]; then
+    _SQL_OS_CODE=buster
   else
-    _SQL_OSR="${_OSR}"
+    _SQL_OS_CODE="${_OS_CODE}"
   fi
 
   if [ -x "/vservers/${idn}/usr/bin/gpg2" ]; then
@@ -1571,7 +1569,7 @@ install_db_cluster() {
     rm -f /vservers/${idn}/etc/apt/sources.list.d/percona-.*
     rm -f /vservers/${idn}/etc/apt/sources.list.d/xtrabackup.*
     echo "## Percona Cluster APT Repository" > /vservers/${idn}${percList}
-    echo "deb http://${percRepo} ${_SQL_OSR} main" >> /vservers/${idn}${percList}
+    echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> /vservers/${idn}${percList}
     echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /vservers/${idn}/etc/apt/preferences.d/00percona.pref
     _KEYS_SIG="8507EFA5"
     vserver ${idn} exec wget -q -U iCab ${urlDev}/percona-key.gpg -O /var/backups/percona-key.gpg
@@ -1839,30 +1837,30 @@ install_host() {
 
   cat /etc/apt/sources.list
   echo
-  if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
+  if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
     _APT_MIRROR="archive.debian.org/debian"
-    _APT_REPSRC="${_OSR}-backports"
+    _APT_REPSRC="${_OS_CODE}-backports"
     _SEC_MIRROR="archive.debian.org/debian-security"
-    _SEC_REPSRC="${_OSR}/updates"
-  elif [ "${_OSR}" = "buster" ]; then
+    _SEC_REPSRC="${_OS_CODE}/updates"
+  elif [ "${_OS_CODE}" = "buster" ]; then
     _APT_MIRROR="${_MIRROR}/debian"
-    _APT_REPSRC="${_OSR}-updates"
+    _APT_REPSRC="${_OS_CODE}-updates"
     _SEC_MIRROR="security.debian.org"
-    _SEC_REPSRC="${_OSR}/updates"
-  elif [ "${_OSR}" = "bullseye" ]; then
+    _SEC_REPSRC="${_OS_CODE}/updates"
+  elif [ "${_OS_CODE}" = "bullseye" ]; then
     _APT_MIRROR="${_MIRROR}/debian"
-    _APT_REPSRC="${_OSR}-updates"
+    _APT_REPSRC="${_OS_CODE}-updates"
     _SEC_MIRROR="security.debian.org/debian-security"
-    _SEC_REPSRC="${_OSR}-security"
-  elif [ "${_OSR}" = "bookworm" ]; then
+    _SEC_REPSRC="${_OS_CODE}-security"
+  elif [ "${_OS_CODE}" = "bookworm" ]; then
     _APT_MIRROR="${_MIRROR}/debian"
-    _APT_REPSRC="${_OSR}-updates"
+    _APT_REPSRC="${_OS_CODE}-updates"
     _SEC_MIRROR="security.debian.org/debian-security"
-    _SEC_REPSRC="${_OSR}-security"
+    _SEC_REPSRC="${_OS_CODE}-security"
   fi
   echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
-  echo "deb http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
-  echo "deb-src http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
+  echo "deb http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${aptLiSys}
+  echo "deb-src http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${aptLiSys}
   echo "" >> ${aptLiSys}
   echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
   echo "deb http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
@@ -1980,7 +1978,7 @@ install_host() {
 
   if [ ! -e "/boot/vmlinuz-${_BNG_VERSION}-beng" ]; then
     echo "Installing beng vserver kernel..."
-    echo "deb http://repo.psand.net/ ${_OSR} main" > /etc/apt/sources.list.d/vserver.list
+    echo "deb http://repo.psand.net/ ${_OS_CODE} main" > /etc/apt/sources.list.d/vserver.list
     cd /var/backups
     _KEYS_SERVER_TEST=FALSE
     until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
@@ -2005,7 +2003,7 @@ install_host() {
   fi
 
   if [ -x "/lib/systemd/systemd" ]; then
-    echo "Installing sysvinit-core in ${_REAL_OS}/${_REAL_OSR}..."
+    echo "Installing sysvinit-core in ${_OS_DIST}/${_OS_CODE}..."
     if [ "${osx}" = "jessie" ] \
       || [ "${osx}" = "stretch" ] \
       || [ "${osx}" = "buster" ] \
@@ -2065,7 +2063,7 @@ upgrade_host() {
   fi
 
   if [ -x "/lib/systemd/systemd" ]; then
-    echo "Removing systemd in ${_REAL_OS}/${_REAL_OSR}..."
+    echo "Removing systemd in ${_OS_DIST}/${_OS_CODE}..."
     apt_clean_update
     echo "sysvinit-core install" | dpkg --set-selections
     echo "sysvinit-utils install" | dpkg --set-selections

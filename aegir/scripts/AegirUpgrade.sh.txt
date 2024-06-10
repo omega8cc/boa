@@ -115,7 +115,6 @@ elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
   && [ -x "/opt/php56/bin/php" ]; then
   _T_CLI=/opt/php56/bin
 fi
-_OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 _ROOT="${HOME}"
 _DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
 #

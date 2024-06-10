@@ -55,10 +55,10 @@ _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
 
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
-    if [ "${e}" = "${_THIS_RV}" ]; then
+    if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
@@ -146,8 +146,8 @@ _DOM=${_DOM//[^0-9]/}
 _SAVELOCATION=${_BACKUPDIR}/${_CHECK_HOST}-${_DATE}
 _VM_TEST=$(uname -a 2>&1)
 _LOGDIR="/var/xdrago/log/hourly"
-_THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-_OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+_OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+_OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
   _VMFAMILY="VS"
 else
@@ -193,20 +193,18 @@ if [ ! -e "${percList}" ] \
   percList="/etc/apt/sources.list.d/percona-release.list"
   _DB_SRC="repo.percona.com"
   percRepo="${_DB_SRC}/percona/apt"
-  _REAL_OSR="${_OSR}"
-  _REAL_OS="${_THIS_OS}"
-  if [ "${_REAL_OSR}" = "daedalus" ]; then
-    _SQL_OSR=bookworm
-  elif [ "${_REAL_OSR}" = "chimaera" ]; then
-    _SQL_OSR=bullseye
-  elif [ "${_REAL_OSR}" = "beowulf" ]; then
-    _SQL_OSR=buster
+  if [ "${_OS_CODE}" = "daedalus" ]; then
+    _SQL_OS_CODE=bookworm
+  elif [ "${_OS_CODE}" = "chimaera" ]; then
+    _SQL_OS_CODE=bullseye
+  elif [ "${_OS_CODE}" = "beowulf" ]; then
+    _SQL_OS_CODE=buster
   else
-    _SQL_OSR="${_REAL_OSR}"
+    _SQL_OS_CODE="${_OS_CODE}"
   fi
   echo "## Percona APT Repository" > ${percList}
-  echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-  echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+  echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
+  echo "deb-src http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
   echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
   apt_clean_update
   if [ -x "/usr/sbin/csf" ] \

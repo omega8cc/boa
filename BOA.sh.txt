@@ -98,10 +98,10 @@ legacyLeSh="/var/xdrago/conf/letsencrypt.sh"
 
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
-    if [ "${e}" = "${_THIS_RV}" ]; then
+    if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
@@ -1697,26 +1697,26 @@ fix_aio() {
 }
 
 fix_java_symlinks() {
-  if [ "${_THIS_RV}" = "jessie" ] && [ -x "/usr/lib/jvm/java-7-openjdk/jre/bin/java" ]; then
+  if [ "${_OS_CODE}" = "jessie" ] && [ -x "/usr/lib/jvm/java-7-openjdk/jre/bin/java" ]; then
     if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
       ln -sfn /usr/lib/jvm/java-7-openjdk/jre/bin/java /etc/alternatives/java
       ln -sfn /etc/alternatives/java /usr/bin/java
-      echo fixed java symlinks for ${_THIS_RV}
+      echo fixed java symlinks for ${_OS_CODE}
     fi
   fi
-  if [ "${_THIS_RV}" = "stretch" ] && [ -x "/usr/lib/jvm/java-8-openjdk/jre/bin/java" ]; then
+  if [ "${_OS_CODE}" = "stretch" ] && [ -x "/usr/lib/jvm/java-8-openjdk/jre/bin/java" ]; then
     if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
       ln -sfn /usr/lib/jvm/java-8-openjdk/jre/bin/java /etc/alternatives/java
       ln -sfn /etc/alternatives/java /usr/bin/java
-      echo fixed java symlinks for ${_THIS_RV}
+      echo fixed java symlinks for ${_OS_CODE}
     fi
   fi
-  if [ "${_THIS_RV}" = "daedalus" ] || [ "${_THIS_RV}" = "bookworm" ]; then
+  if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "bookworm" ]; then
     if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
       if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
         ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
         ln -sfn /etc/alternatives/java /usr/bin/java
-        echo fixed java symlinks for ${_THIS_RV}
+        echo fixed java symlinks for ${_OS_CODE}
       fi
     fi
   else
@@ -1724,7 +1724,7 @@ fix_java_symlinks() {
       if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
         ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
         ln -sfn /etc/alternatives/java /usr/bin/java
-        echo fixed java symlinks for ${_THIS_RV}
+        echo fixed java symlinks for ${_OS_CODE}
       fi
     fi
   fi

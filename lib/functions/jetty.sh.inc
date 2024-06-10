@@ -17,7 +17,7 @@ if_install_jetty() {
     _N_SOLR="solr${_R_SOLR}"
     _SOLR_VPATH="/var/${_N_SOLR}/data"
     _SOLR_CTRL="/var/${_N_SOLR}/solr-${_SOLR_7_VRN}-version.txt"
-    if [ "${_OSR}" = "jessie" ]; then
+    if [ "${_OS_CODE}" = "jessie" ]; then
       if [ -e "/etc/apt/sources.list.d/java8.list" ]; then
         rm -f /etc/apt/sources.list.d/java8.list
       fi
@@ -61,8 +61,8 @@ if_install_jetty() {
     fi
   fi
   if [ -e "/etc/default/${_N_SOLR}.in.sh" ]; then
-    _SOLR7_JAVA_TEST=$(grep "BOA ${_X_SE} Path to Java on ${_OSR}" /etc/default/${_N_SOLR}.in.sh 2>&1)
-    if [[ "${_SOLR7_JAVA_TEST}" =~ "BOA ${_X_SE} Path to Java on ${_OSR}" ]]; then
+    _SOLR7_JAVA_TEST=$(grep "BOA ${_X_SE} Path to Java on ${_OS_CODE}" /etc/default/${_N_SOLR}.in.sh 2>&1)
+    if [[ "${_SOLR7_JAVA_TEST}" =~ "BOA ${_X_SE} Path to Java on ${_OS_CODE}" ]]; then
       _DO_NOTHING=YES
     else
       sed -i "s/^SOLR_JAVA_HOME=.*//g" /etc/default/${_N_SOLR}.in.sh
@@ -72,28 +72,28 @@ if_install_jetty() {
       sed -i "/^$/d" /etc/default/${_N_SOLR}.in.sh
       wait
       echo "LOG4J_FORMAT_MSG_NO_LOOKUPS=true" >> /etc/default/${_N_SOLR}.in.sh
-      if [ "${_OSR}" = "jessie" ]; then
+      if [ "${_OS_CODE}" = "jessie" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # BOA ${_X_SE} Path to Java 8" >> \
           /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OSR}" = "stretch" ]; then
+      elif [ "${_OS_CODE}" = "stretch" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk/jre\" # BOA ${_X_SE} Path to Java 8" >> \
           /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OSR}" = "buster" ]; then
+      elif [ "${_OS_CODE}" = "buster" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_X_SE} Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OSR}" = "bullseye" ]; then
+      elif [ "${_OS_CODE}" = "bullseye" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_X_SE} Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OSR}" = "bookworm" ]; then
+      elif [ "${_OS_CODE}" = "bookworm" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_X_SE} Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OSR}" = "beowulf" ]; then
+      elif [ "${_OS_CODE}" = "beowulf" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_X_SE} Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OSR}" = "chimaera" ]; then
+      elif [ "${_OS_CODE}" = "chimaera" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_X_SE} Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
-      elif [ "${_OSR}" = "daedalus" ]; then
+      elif [ "${_OS_CODE}" = "daedalus" ]; then
         echo "SOLR_JAVA_HOME=\"/usr/lib/jvm/java-11-openjdk\" # BOA ${_X_SE} Path to Java 11" >> \
           /etc/default/${_N_SOLR}.in.sh
       fi
@@ -211,7 +211,7 @@ if_install_jetty() {
         chown -R jetty9:jetty9 /opt/solr4
         chown -R jetty9:jetty9 /opt/jetty9
         chown -R jetty9:jetty9 /var/log/jetty9
-        if [ "${_OSR}" = "jessie" ]; then
+        if [ "${_OS_CODE}" = "jessie" ]; then
           echo "JAVA=/usr/bin/java7 # Path to Java 1.7" > /etc/default/jetty9
           echo "JAVA_HOME=/usr/lib/jvm/java-7-openjdk/jre # Path to Java 1.7" >> \
             /etc/default/jetty9
@@ -258,7 +258,7 @@ if_install_jetty() {
     msg "INFO: Jetty 9 restart completed"
   fi
   if [ -e "/opt/jetty9/VERSION.txt" ]; then
-    if [ "${_OSR}" = "jessie" ]; then
+    if [ "${_OS_CODE}" = "jessie" ]; then
       _JETTY9_JAVA_TEST=$(grep "Path to Java 1.7" /etc/default/jetty9 2>&1)
     else
       _JETTY9_JAVA_TEST=$(grep "Path to Java 1.8" /etc/default/jetty9 2>&1)
@@ -266,7 +266,7 @@ if_install_jetty() {
     if [[ "${_JETTY9_JAVA_TEST}" =~ "Path to Java" ]]; then
       _DO_NOTHING=YES
     else
-      if [ "${_OSR}" = "jessie" ]; then
+      if [ "${_OS_CODE}" = "jessie" ]; then
         echo "JAVA=/usr/bin/java7 # Path to Java 1.7" > /etc/default/jetty9
         echo "JAVA_HOME=/usr/lib/jvm/java-7-openjdk/jre # Path to Java 1.7" >> \
           /etc/default/jetty9

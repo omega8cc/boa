@@ -571,10 +571,10 @@ os_detection_minimal() {
     msg "PROC: os_detection_minimal"
   fi
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
-    if [ "${e}" = "${_THIS_RV}" ]; then
+    if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
@@ -596,28 +596,28 @@ os_detection() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: os_detection"
   fi
-  _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _THIS_RV=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-  if [ "${_THIS_OS}" = "Debian" ]; then
-    if [ "${_THIS_RV}" = "bookworm" ]; then
-      _OSR="bookworm"
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  if [ "${_OS_DIST}" = "Debian" ]; then
+    if [ "${_OS_CODE}" = "bookworm" ]; then
+      _OS_CODE="bookworm"
       _DB_SERVER=Percona
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
-    elif [ "${_THIS_RV}" = "bullseye" ]; then
-      _OSR="bullseye"
+    elif [ "${_OS_CODE}" = "bullseye" ]; then
+      _OS_CODE="bullseye"
       _DB_SERVER=Percona
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
-    elif [ "${_THIS_RV}" = "buster" ]; then
-      _OSR="buster"
+    elif [ "${_OS_CODE}" = "buster" ]; then
+      _OS_CODE="buster"
       _DB_SERVER=Percona
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
-    elif [ "${_THIS_RV}" = "stretch" ]; then
-      _OSR="stretch"
-    elif [ "${_THIS_RV}" = "jessie" ]; then
-      _OSR="jessie"
+    elif [ "${_OS_CODE}" = "stretch" ]; then
+      _OS_CODE="stretch"
+    elif [ "${_OS_CODE}" = "jessie" ]; then
+      _OS_CODE="jessie"
     else
       not_supported_os
     fi
@@ -642,19 +642,19 @@ os_detection() {
     fi
     _SPINNER=NO
     _SKIP_LEGACY_PHP=YES
-  elif [ "${_THIS_OS}" = "Devuan" ]; then
-    if [ "${_THIS_RV}" = "daedalus" ]; then
-      _OSR="daedalus"
+  elif [ "${_OS_DIST}" = "Devuan" ]; then
+    if [ "${_OS_CODE}" = "daedalus" ]; then
+      _OS_CODE="daedalus"
       _DB_SERVER=Percona
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
-    elif [ "${_THIS_RV}" = "chimaera" ]; then
-      _OSR="chimaera"
+    elif [ "${_OS_CODE}" = "chimaera" ]; then
+      _OS_CODE="chimaera"
       _DB_SERVER=Percona
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
-    elif [ "${_THIS_RV}" = "beowulf" ]; then
-      _OSR="beowulf"
+    elif [ "${_OS_CODE}" = "beowulf" ]; then
+      _OS_CODE="beowulf"
       _DB_SERVER=Percona
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"

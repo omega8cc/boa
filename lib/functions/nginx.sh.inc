@@ -75,7 +75,7 @@ force_advanced_nginx_config() {
   sed -i "s/ 90;/ 180;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
   wait
   if [ "${_NGINX_SPDY}" = "YES" ]; then
-    if [ "${_OSR}" = "none" ]; then
+    if [ "${_OS_CODE}" = "none" ]; then
       sed -i "s/:443;/:443 ssl spdy;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
       wait
       sed -i "s/:443;/:443 ssl spdy;/g" ${mtrNgx}/vhost.d/* &> /dev/null
@@ -329,13 +329,13 @@ nginx_install_upgrade() {
           msg "INFO: Nginx forced rebuild to include pseudo-streaming support"
         fi
       fi
-      if [ "${_OSR}" = "daedalus" ] \
-        || [ "${_OSR}" = "chimaera" ] \
-        || [ "${_OSR}" = "beowulf" ] \
-        || [ "${_OSR}" = "bookworm" ] \
-        || [ "${_OSR}" = "bullseye" ] \
-        || [ "${_OSR}" = "buster" ] \
-        || [ "${_OSR}" = "stretch" ]; then
+      if [ "${_OS_CODE}" = "daedalus" ] \
+        || [ "${_OS_CODE}" = "chimaera" ] \
+        || [ "${_OS_CODE}" = "beowulf" ] \
+        || [ "${_OS_CODE}" = "bookworm" ] \
+        || [ "${_OS_CODE}" = "bullseye" ] \
+        || [ "${_OS_CODE}" = "buster" ] \
+        || [ "${_OS_CODE}" = "stretch" ]; then
         _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
         if [ -e "/root/.install.modern.openssl.cnf" ]; then
           _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
@@ -454,19 +454,19 @@ nginx_install_upgrade() {
       fi
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
-      if [ "${_OSR}" = "none" ]; then
+      if [ "${_OS_CODE}" = "none" ]; then
         _NGINX_EXTRA="--with-http_spdy_module ${_NGINX_EXTRA}"
       else
         _NGINX_EXTRA="--with-http_v2_module --with-http_v3_module ${_NGINX_EXTRA}"
       fi
     fi
-    if [ "${_OSR}" = "daedalus" ] \
-      || [ "${_OSR}" = "chimaera" ] \
-      || [ "${_OSR}" = "beowulf" ] \
-      || [ "${_OSR}" = "bookworm" ] \
-      || [ "${_OSR}" = "bullseye" ] \
-      || [ "${_OSR}" = "buster" ] \
-      || [ "${_OSR}" = "stretch" ]; then
+    if [ "${_OS_CODE}" = "daedalus" ] \
+      || [ "${_OS_CODE}" = "chimaera" ] \
+      || [ "${_OS_CODE}" = "beowulf" ] \
+      || [ "${_OS_CODE}" = "bookworm" ] \
+      || [ "${_OS_CODE}" = "bullseye" ] \
+      || [ "${_OS_CODE}" = "buster" ] \
+      || [ "${_OS_CODE}" = "stretch" ]; then
       _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
       if [ -e "/root/.install.modern.openssl.cnf" ]; then
         _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
@@ -753,7 +753,7 @@ nginx_config_update_fix() {
       wait
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
-      if [ "${_OSR}" = "none" ]; then
+      if [ "${_OS_CODE}" = "none" ]; then
         sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
         wait
         sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null

@@ -108,13 +108,13 @@ systemd_remove_if_detected() {
     sysvinit_install
   fi
   if [ -e "/lib/systemd/systemd" ]; then
-    msg "ALRT: The systemd has NOT been removed in ${_REAL_OS}/${_REAL_OSR}"
+    msg "ALRT: The systemd has NOT been removed in ${_OS_DIST}/${_OS_CODE}"
     msg "ALRT: Please check details in the logs located in /var/backups/"
     msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
     msg "STEP: You can also run the 'boa init' command again"
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: The systemd has been removed in ${_REAL_OS}/${_REAL_OSR}"
+      msg "INFO: The systemd has been removed in ${_OS_DIST}/${_OS_CODE}"
     fi
   fi
 }
@@ -126,89 +126,89 @@ define_loc_osr() {
   mrun "apt-get upgrade ${nrmUpArg}" 2> /dev/null
   mrun "apt-get full-upgrade ${nrmUpArg}" 2> /dev/null
   mrun "apt-get install lsb-release ${nrmUpArg}" 2> /dev/null
-  _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: define_loc_osr"
   fi
-  _LOC_OSR=
-  _NEW_OSR=
+  _LOC_OS_CODE=
+  _NEW_OS_CODE=
   _TGT_OSN=
   _MSG_LOC=
   if [ "${_JESSIE_TO_BEOWULF}" = "YES" ] \
-    && [ "${_OSR}" = "jessie" ]; then
-    _LOC_OSR=jessie
-    _NEW_OSR=beowulf
+    && [ "${_OS_CODE}" = "jessie" ]; then
+    _LOC_OS_CODE=jessie
+    _NEW_OS_CODE=beowulf
     _TGT_OSN=Devuan
     _MSG_LOC="Debian Jessie to Devuan Beowulf"
   fi
   if [ "${_STRETCH_TO_BEOWULF}" = "YES" ] \
-    && [ "${_OSR}" = "stretch" ]; then
-    _LOC_OSR=stretch
-    _NEW_OSR=beowulf
+    && [ "${_OS_CODE}" = "stretch" ]; then
+    _LOC_OS_CODE=stretch
+    _NEW_OS_CODE=beowulf
     _TGT_OSN=Devuan
     _MSG_LOC="Debian Stretch to Devuan Beowulf"
   fi
   if [ "${_BUSTER_TO_BEOWULF}" = "YES" ] \
-    && [ "${_OSR}" = "buster" ]; then
-    _LOC_OSR=buster
-    _NEW_OSR=beowulf
+    && [ "${_OS_CODE}" = "buster" ]; then
+    _LOC_OS_CODE=buster
+    _NEW_OS_CODE=beowulf
     _TGT_OSN=Devuan
     _MSG_LOC="Debian Buster to Devuan Beowulf"
   fi
   if [ "${_BEOWULF_TO_CHIMAERA}" = "YES" ] \
-    && [ "${_OSR}" = "beowulf" ]; then
-    _LOC_OSR=beowulf
-    _NEW_OSR=chimaera
+    && [ "${_OS_CODE}" = "beowulf" ]; then
+    _LOC_OS_CODE=beowulf
+    _NEW_OS_CODE=chimaera
     _TGT_OSN=Devuan
     _MSG_LOC="Devuan Beowulf to Devuan Chimaera"
   fi
   if [ "${_CHIMAERA_TO_DAEDALUS}" = "YES" ] \
-    && [ "${_OSR}" = "chimaera" ]; then
-    _LOC_OSR=chimaera
-    _NEW_OSR=daedalus
+    && [ "${_OS_CODE}" = "chimaera" ]; then
+    _LOC_OS_CODE=chimaera
+    _NEW_OS_CODE=daedalus
     _TGT_OSN=Devuan
     _MSG_LOC="Devuan Chimaera to Devuan Daedalus"
   fi
   if [ "${_BULLSEYE_TO_CHIMAERA}" = "YES" ] \
-    && [ "${_OSR}" = "bullseye" ]; then
-    _LOC_OSR=bullseye
-    _NEW_OSR=chimaera
+    && [ "${_OS_CODE}" = "bullseye" ]; then
+    _LOC_OS_CODE=bullseye
+    _NEW_OS_CODE=chimaera
     _TGT_OSN=Devuan
     _MSG_LOC="Debian Bullseye to Devuan Chimaera"
   fi
   if [ "${_BOOKWORM_TO_DAEDALUS}" = "YES" ] \
-    && [ "${_OSR}" = "bookworm" ]; then
-    _LOC_OSR=bookworm
-    _NEW_OSR=daedalus
+    && [ "${_OS_CODE}" = "bookworm" ]; then
+    _LOC_OS_CODE=bookworm
+    _NEW_OS_CODE=daedalus
     _TGT_OSN=Devuan
     _MSG_LOC="Debian Bookworm to Devuan Daedalus"
   fi
   if [ "${_BULLSEYE_TO_BOOKWORM}" = "YES" ] \
-    && [ "${_OSR}" = "bullseye" ]; then
-    _LOC_OSR=bullseye
-    _NEW_OSR=bookworm
+    && [ "${_OS_CODE}" = "bullseye" ]; then
+    _LOC_OS_CODE=bullseye
+    _NEW_OS_CODE=bookworm
     _TGT_OSN=Debian
     _MSG_LOC="Debian Bullseye to Debian Bookworm"
   fi
   if [ "${_BUSTER_TO_BULLSEYE}" = "YES" ] \
-    && [ "${_OSR}" = "buster" ]; then
-    _LOC_OSR=buster
-    _NEW_OSR=bullseye
+    && [ "${_OS_CODE}" = "buster" ]; then
+    _LOC_OS_CODE=buster
+    _NEW_OS_CODE=bullseye
     _TGT_OSN=Debian
     _MSG_LOC="Debian Buster to Debian Bullseye"
   fi
   if [ "${_STRETCH_TO_BUSTER}" = "YES" ] \
-    && [ "${_OSR}" = "stretch" ]; then
-    _LOC_OSR=stretch
-    _NEW_OSR=buster
+    && [ "${_OS_CODE}" = "stretch" ]; then
+    _LOC_OS_CODE=stretch
+    _NEW_OS_CODE=buster
     _TGT_OSN=Debian
     _MSG_LOC="Debian Stretch to Debian Buster"
   fi
   if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_OSR}" = "jessie" ]; then
-    _LOC_OSR=jessie
-    _NEW_OSR=stretch
+    && [ "${_OS_CODE}" = "jessie" ]; then
+    _LOC_OS_CODE=jessie
+    _NEW_OS_CODE=stretch
     _TGT_OSN=Debian
     _MSG_LOC="Debian Jessie to Debian Stretch"
   fi
@@ -222,47 +222,47 @@ if_to_do_fix() {
   fi
   _DO_FIX=
   if [ "${_JESSIE_TO_BEOWULF}" = "YES" ] \
-    && [ "${_LOC_OSR}" = "jessie" ]; then
+    && [ "${_LOC_OS_CODE}" = "jessie" ]; then
     _DO_FIX=YES
   fi
   if [ "${_STRETCH_TO_BEOWULF}" = "YES" ] \
-    && [ "${_LOC_OSR}" = "stretch" ]; then
+    && [ "${_LOC_OS_CODE}" = "stretch" ]; then
     _DO_FIX=YES
   fi
   if [ "${_BUSTER_TO_BEOWULF}" = "YES" ] \
-    && [ "${_LOC_OSR}" = "buster" ]; then
+    && [ "${_LOC_OS_CODE}" = "buster" ]; then
     _DO_FIX=YES
   fi
   if [ "${_BEOWULF_TO_CHIMAERA}" = "YES" ] \
-    && [ "${_LOC_OSR}" = "beowulf" ]; then
+    && [ "${_LOC_OS_CODE}" = "beowulf" ]; then
     _DO_FIX=YES
   fi
   if [ "${_CHIMAERA_TO_DAEDALUS}" = "YES" ] \
-    && [ "${_LOC_OSR}" = "chimaera" ]; then
+    && [ "${_LOC_OS_CODE}" = "chimaera" ]; then
     _DO_FIX=YES
   fi
   if [ "${_BULLSEYE_TO_CHIMAERA}" = "YES" ] \
-    && [ "${_LOC_OSR}" = "bullseye" ]; then
+    && [ "${_LOC_OS_CODE}" = "bullseye" ]; then
     _DO_FIX=YES
   fi
   if [ "${_BOOKWORM_TO_DAEDALUS}" = "YES" ] \
-    && [ "${_LOC_OSR}" = "bookworm" ]; then
+    && [ "${_LOC_OS_CODE}" = "bookworm" ]; then
     _DO_FIX=YES
   fi
   if [ "${_BULLSEYE_TO_BOOKWORM}" = "YES" ] \
-    && [ "${_LOC_OSR}" = "bullseye" ]; then
+    && [ "${_LOC_OS_CODE}" = "bullseye" ]; then
     _DO_FIX=YES
   fi
   if [ "${_BUSTER_TO_BULLSEYE}" = "YES" ] \
-    && [ "${_LOC_OSR}" = "buster" ]; then
+    && [ "${_LOC_OS_CODE}" = "buster" ]; then
     _DO_FIX=YES
   fi
   if [ "${_STRETCH_TO_BUSTER}" = "YES" ] \
-    && [ "${_LOC_OSR}" = "stretch" ]; then
+    && [ "${_LOC_OS_CODE}" = "stretch" ]; then
     _DO_FIX=YES
   fi
   if [ "${_JESSIE_TO_STRETCH}" = "YES" ] \
-    && [ "${_LOC_OSR}" = "jessie" ]; then
+    && [ "${_LOC_OS_CODE}" = "jessie" ]; then
     _DO_FIX=YES
   fi
 }
@@ -935,7 +935,7 @@ locales_check_fix() {
 
 EOF
     sleep 5
-    if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
+    if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
       _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
       if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
@@ -987,7 +987,7 @@ EOF
       cp -af ${locCnf}/boa.bashrc.txt /root/.bashrc
       set_xterm
     fi
-    if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
+    if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
       _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
       if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
@@ -2606,15 +2606,15 @@ install_icu_modern() {
   if [ ! -e "${pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
     pthLog="/var/xdrago_wait/log"
   fi
-  _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ -e "${pthLog}" ]; then
-    pthIcuLog="${pthLog}/icu-update-${_ICU_LEGACY_VRN}-for-${_OSR}.log"
+    pthIcuLog="${pthLog}/icu-update-${_ICU_LEGACY_VRN}-for-${_OS_CODE}.log"
     pthIcuLcy="${pthLog}/icu-update-${_ICU_LEGACY_VRN}.log"
   else
-    pthIcuLog="/root/.icu-update-${_ICU_LEGACY_VRN}-for-${_OSR}.log"
+    pthIcuLog="/root/.icu-update-${_ICU_LEGACY_VRN}-for-${_OS_CODE}.log"
     pthIcuLcy="/root/.icu-update-${_ICU_LEGACY_VRN}.log"
   fi
-  if [ "${_OSR}" = "daedalus" ] \
+  if [ "${_OS_CODE}" = "daedalus" ] \
     && [ -e "${pthIcuLcy}" ] \
     && [ ! -e "${pthIcuLog}" ]; then
     touch ${pthIcuLog}
@@ -2685,15 +2685,15 @@ install_icu_jessie() {
   if [ ! -e "${pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
     pthLog="/var/xdrago_wait/log"
   fi
-  _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ -e "${pthLog}" ]; then
-    pthIcuLog="${pthLog}/icu-update-${_ICU_LEGACY_VRN}-for-${_OSR}.log"
+    pthIcuLog="${pthLog}/icu-update-${_ICU_LEGACY_VRN}-for-${_OS_CODE}.log"
     pthIcuLcy="${pthLog}/icu-update-${_ICU_LEGACY_VRN}.log"
   else
-    pthIcuLog="/root/.icu-update-${_ICU_LEGACY_VRN}-for-${_OSR}.log"
+    pthIcuLog="/root/.icu-update-${_ICU_LEGACY_VRN}-for-${_OS_CODE}.log"
     pthIcuLcy="/root/.icu-update-${_ICU_LEGACY_VRN}.log"
   fi
-  if [ "${_OSR}" = "daedalus" ] \
+  if [ "${_OS_CODE}" = "daedalus" ] \
     && [ -e "${pthIcuLcy}" ] \
     && [ ! -e "${pthIcuLog}" ]; then
     touch ${pthIcuLog}
@@ -2758,7 +2758,7 @@ php_install_deps() {
   mrun "${_INSTAPP} libwebp-dev" 2> /dev/null
   mrun "${_INSTAPP} libxpm-dev" 2> /dev/null
   mrun "${_INSTAPP} libjpeg-dev libjpeg62" 2> /dev/null
-  if [ "${_OSR}" = "jessie" ]; then
+  if [ "${_OS_CODE}" = "jessie" ]; then
     install_icu_jessie
   else
     install_icu_modern
@@ -2775,7 +2775,7 @@ if_install_wkhtmltox() {
   ###--------------------###
   apt_clean_update
   mrun "${_INSTAPP} fonts-thai-tlwg" 2> /dev/null
-  _THIS_RV=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _X86_64_TEST=$(uname -m 2>&1)
   _WOX_IS=OLD
   _WOX_ITD=$(wkhtmltopdf --version 2>&1 \
@@ -2783,27 +2783,27 @@ if_install_wkhtmltox() {
     | cut -d" " -f2 \
     | awk '{ print $1}')
   if [[ "${_WOX_ITD}" =~ "0.12.6" ]]; then
-    if [ "${_OSR}" = "daedalus" ] \
-      || [ "${_OSR}" = "chimaera" ] \
-      || [ "${_OSR}" = "bullseye" ] \
-      || [ "${_OSR}" = "bookworm" ] \
-      || [ "${_OSR}" = "beowulf" ] \
-      || [ "${_OSR}" = "buster" ] \
-      || [ "${_OSR}" = "stretch" ]; then
+    if [ "${_OS_CODE}" = "daedalus" ] \
+      || [ "${_OS_CODE}" = "chimaera" ] \
+      || [ "${_OS_CODE}" = "bullseye" ] \
+      || [ "${_OS_CODE}" = "bookworm" ] \
+      || [ "${_OS_CODE}" = "beowulf" ] \
+      || [ "${_OS_CODE}" = "buster" ] \
+      || [ "${_OS_CODE}" = "stretch" ]; then
       _WOX_IS=NEW
       _WKHTMLTOX_VRN="12.6-1"
     fi
   fi
   if [[ "${_WOX_ITD}" =~ "0.12.5" ]]; then
-    if [ "${_OSR}" = "jessie" ]; then
+    if [ "${_OS_CODE}" = "jessie" ]; then
       _WOX_IS=NEW
       _WKHTMLTOX_VRN="12.5-1"
     fi
   fi
-  if [ "${_OSR}" = "daedalus" ] \
-    || [ "${_OSR}" = "chimaera" ] \
-    || [ "${_OSR}" = "bookworm" ] \
-    || [ "${_OSR}" = "bullseye" ]; then
+  if [ "${_OS_CODE}" = "daedalus" ] \
+    || [ "${_OS_CODE}" = "chimaera" ] \
+    || [ "${_OS_CODE}" = "bookworm" ] \
+    || [ "${_OS_CODE}" = "bullseye" ]; then
     if [ "${_WOX_IS}" = "OLD" ] \
       || [ ! -x "/usr/local/bin/wkhtmltopdf" ] \
       || [ ! -x "/usr/local/bin/wkhtmltoimage" ] \
@@ -2828,10 +2828,10 @@ if_install_wkhtmltox() {
       || [ -L "/usr/bin/wkhtmltopdf" ] \
       || [ -L "/usr/bin/wkhtmltoimage" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-      if [ "${_OSR}" = "beowulf" ]; then
+      if [ "${_OS_CODE}" = "beowulf" ]; then
         _WKHTML_SYS_RV="buster"
       else
-        _WKHTML_SYS_RV="${_OSR}"
+        _WKHTML_SYS_RV="${_OS_CODE}"
       fi
       if [ "${_X86_64_TEST}" = "x86_64" ]; then
         SYSTEM_ARCH="x86_64"
@@ -3227,34 +3227,30 @@ sources_list_update() {
     fi
     mv -f ${aptLiSys} \
       ${vBs}/sources.list-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-    if [ "${_THIS_OS}" = "Devuan" ]; then
+    if [ "${_OS_DIST}" = "Devuan" ]; then
 	  if [ -z "${_LOCAL_DEVUAN_MIRROR}" ]; then
 		_MIRROR=deb.devuan.org
 	  else
 		_MIRROR=${_LOCAL_DEVUAN_MIRROR}
 	  fi
-      _REAL_OSR="${_OSR}"
-      _REAL_OS="${_THIS_OS}"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: We will use ${_REAL_OS} mirror ${_MIRROR}"
+        msg "INFO: We will use ${_OS_DIST} mirror ${_MIRROR}"
       fi
       cd /var/opt
       echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_MIRROR}/merged ${_REAL_OSR} main" >> ${aptLiSys}
-      echo "deb-src http://${_MIRROR}/merged ${_REAL_OSR} main" >> ${aptLiSys}
+      echo "deb http://${_MIRROR}/merged ${_OS_CODE} main" >> ${aptLiSys}
+      echo "deb-src http://${_MIRROR}/merged ${_OS_CODE} main" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
 	  echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-	  echo "deb http://${_MIRROR}/merged ${_REAL_OSR}-updates main" >> ${aptLiSys}
-	  echo "deb-src http://${_MIRROR}/merged ${_REAL_OSR}-updates main" >> ${aptLiSys}
+	  echo "deb http://${_MIRROR}/merged ${_OS_CODE}-updates main" >> ${aptLiSys}
+	  echo "deb-src http://${_MIRROR}/merged ${_OS_CODE}-updates main" >> ${aptLiSys}
 	  echo "" >> ${aptLiSys}
       echo "## DEVUAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://${_MIRROR}/merged ${_REAL_OSR}-security main" >> ${aptLiSys}
-      echo "deb-src http://${_MIRROR}/merged ${_REAL_OSR}-security main" >> ${aptLiSys}
-    elif [ "${_THIS_OS}" = "Debian" ]; then
-      _REAL_OSR="${_OSR}"
-      _REAL_OS="${_THIS_OS}"
+      echo "deb http://${_MIRROR}/merged ${_OS_CODE}-security main" >> ${aptLiSys}
+      echo "deb-src http://${_MIRROR}/merged ${_OS_CODE}-security main" >> ${aptLiSys}
+    elif [ "${_OS_DIST}" = "Debian" ]; then
       _MIRROR_CHECK=NO
-      if [ "${_OSR}" = "deprecated" ]; then
+      if [ "${_OS_CODE}" = "deprecated" ]; then
         _MIRROR=archive.debian.org
       else
         if [ "${_AUTOPILOT}" = "YES" ]; then
@@ -3269,7 +3265,7 @@ sources_list_update() {
       fi
       if [ "${_MIRROR_CHECK}" = "YES" ]; then
         if [ -z "${_LOCAL_DEBIAN_MIRROR}" ]; then
-          msg "INFO: Now looking for the best/fastest ${_THIS_OS} mirror"
+          msg "INFO: Now looking for the best/fastest ${_OS_DIST} mirror"
           msg "INFO: This may take a while, please wait..."
           hlpPth="/opt/tmp/boa/aegir/helpers"
           ffMirr=$(which ffmirror 2>&1)
@@ -3295,33 +3291,33 @@ sources_list_update() {
         fi
       fi
       if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: We will use ${_REAL_OS} mirror ${_MIRROR}"
+        msg "INFO: We will use ${_OS_DIST} mirror ${_MIRROR}"
       fi
       cd /var/opt
-      if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
+      if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
         _APT_MIRROR="archive.debian.org/debian"
-        _APT_REPSRC="${_OSR}-backports"
+        _APT_REPSRC="${_OS_CODE}-backports"
         _SEC_MIRROR="archive.debian.org/debian-security"
-        _SEC_REPSRC="${_OSR}/updates"
-      elif [ "${_OSR}" = "buster" ]; then
+        _SEC_REPSRC="${_OS_CODE}/updates"
+      elif [ "${_OS_CODE}" = "buster" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OSR}-updates"
+        _APT_REPSRC="${_OS_CODE}-updates"
         _SEC_MIRROR="security.debian.org"
-        _SEC_REPSRC="${_OSR}/updates"
-      elif [ "${_OSR}" = "bullseye" ]; then
+        _SEC_REPSRC="${_OS_CODE}/updates"
+      elif [ "${_OS_CODE}" = "bullseye" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OSR}-updates"
+        _APT_REPSRC="${_OS_CODE}-updates"
         _SEC_MIRROR="security.debian.org/debian-security"
-        _SEC_REPSRC="${_OSR}-security"
-      elif [ "${_OSR}" = "bookworm" ]; then
+        _SEC_REPSRC="${_OS_CODE}-security"
+      elif [ "${_OS_CODE}" = "bookworm" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OSR}-updates"
+        _APT_REPSRC="${_OS_CODE}-updates"
         _SEC_MIRROR="security.debian.org/debian-security"
-        _SEC_REPSRC="${_OSR}-security"
+        _SEC_REPSRC="${_OS_CODE}-security"
       fi
       echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
-      echo "deb-src http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
+      echo "deb http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${aptLiSys}
+      echo "deb-src http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
       echo "deb http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
@@ -3487,7 +3483,7 @@ install_magick_src() {
     | awk '{ print $1}' 2>&1)
   if [ "${_MAGICK_ITD}" != "${_IMAGE_MAGICK_VRN}" ] \
     || [ ! -e "${_MAGICK_SRC_BUILD_CTRL}" ]; then
-    if [ "${_OSR}" = "none" ]; then
+    if [ "${_OS_CODE}" = "none" ]; then
       _MAGICK_INSTALL_REQUIRED=NO
     else
       _MAGICK_INSTALL_REQUIRED=YES
@@ -3534,7 +3530,7 @@ ssl_crypto_lib_fix() {
     || [ ! -e "/usr/lib/libssl.so" ] \
     || [ ! -e "/usr/lib/libcrypto.so" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Fix for SSL libssl/libcrypto in ${_REAL_OS}/${_REAL_OSR}"
+      msg "INFO: Fix for SSL libssl/libcrypto in ${_OS_DIST}/${_OS_CODE}"
     fi
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
@@ -3686,13 +3682,13 @@ ssl_install_src() {
       | cut -d" " -f9 \
       | awk '{ print $1}' 2>&1)
   fi
-  if [ "${_OSR}" = "daedalus" ] \
-    || [ "${_OSR}" = "chimaera" ] \
-    || [ "${_OSR}" = "beowulf" ] \
-    || [ "${_OSR}" = "bookworm" ] \
-    || [ "${_OSR}" = "bullseye" ] \
-    || [ "${_OSR}" = "buster" ] \
-    || [ "${_OSR}" = "stretch" ]; then
+  if [ "${_OS_CODE}" = "daedalus" ] \
+    || [ "${_OS_CODE}" = "chimaera" ] \
+    || [ "${_OS_CODE}" = "beowulf" ] \
+    || [ "${_OS_CODE}" = "bookworm" ] \
+    || [ "${_OS_CODE}" = "bullseye" ] \
+    || [ "${_OS_CODE}" = "buster" ] \
+    || [ "${_OS_CODE}" = "stretch" ]; then
     _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
     if [ -e "/root/.install.modern.openssl.cnf" ]; then
       chattr +i /root/.install.modern.openssl.cnf
@@ -3859,19 +3855,19 @@ curl_install_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: curl_install_src"
   fi
-  if [ "${_OSR}" = "precise" ] || [ "${_OSR}" = "jessie" ]; then
+  if [ "${_OS_CODE}" = "precise" ] || [ "${_OS_CODE}" = "jessie" ]; then
     touch /root/.use.curl.from.packages.cnf
     chattr +i /root/.use.curl.from.packages.cnf
     _CURL_VRN=8.7.1
   fi
   if [ ! -e "/root/.use.curl.from.packages.cnf" ]; then
-    if [ "${_OSR}" = "daedalus" ] \
-      || [ "${_OSR}" = "chimaera" ] \
-      || [ "${_OSR}" = "beowulf" ] \
-      || [ "${_OSR}" = "bookworm" ] \
-      || [ "${_OSR}" = "bullseye" ] \
-      || [ "${_OSR}" = "buster" ] \
-      || [ "${_OSR}" = "stretch" ]; then
+    if [ "${_OS_CODE}" = "daedalus" ] \
+      || [ "${_OS_CODE}" = "chimaera" ] \
+      || [ "${_OS_CODE}" = "beowulf" ] \
+      || [ "${_OS_CODE}" = "bookworm" ] \
+      || [ "${_OS_CODE}" = "bullseye" ] \
+      || [ "${_OS_CODE}" = "buster" ] \
+      || [ "${_OS_CODE}" = "stretch" ]; then
       _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
       if [ -e "/root/.install.modern.openssl.cnf" ]; then
         _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
@@ -4763,9 +4759,9 @@ run_aptitude_deps_install() {
     msg "PROC: run_aptitude_deps_install"
   fi
   if_to_do_fix
-  if [ "${_THIS_OS}" = "Devuan" ]; then
+  if [ "${_OS_DIST}" = "Devuan" ]; then
     ${_INITINS} devuan-keyring &> /dev/null
-  elif [ "${_THIS_OS}" = "Debian" ]; then
+  elif [ "${_OS_DIST}" = "Debian" ]; then
     ${_INITINS} debian-keyring debian-archive-keyring &> /dev/null
   fi
   if [ "${_STATUS}" = "INIT" ]; then
@@ -4844,7 +4840,7 @@ systemd_cleanup_on_init() {
       msg "STEP: 5. Run boa standard install command"
       echo
       msg "STEP: Let's begin with STEP 1..."
-      msg "INFO: Installing sysvinit in ${_REAL_OS}/${_REAL_OSR}..."
+      msg "INFO: Installing sysvinit in ${_OS_DIST}/${_OS_CODE}..."
       sysvinit_install
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
@@ -4857,7 +4853,7 @@ systemd_cleanup_on_init() {
           apt_clean_update
         fi
         sysvinit_install
-        msg "INFO: The sysvinit-core installed in ${_REAL_OS}/${_REAL_OSR}"
+        msg "INFO: The sysvinit-core installed in ${_OS_DIST}/${_OS_CODE}"
         echo
         msg "STEP: Let's continue to STEP 2... Please reboot this server"
         if [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
@@ -4868,7 +4864,7 @@ systemd_cleanup_on_init() {
         touch /root/.step.init.systemd.one.cnf
       else
         echo
-        msg "ALRT: The sysvinit has NOT been installed in ${_REAL_OS}/${_REAL_OSR}"
+        msg "ALRT: The sysvinit has NOT been installed in ${_OS_DIST}/${_OS_CODE}"
         msg "ALRT: Please check details in the logs located in /var/backups/"
         msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
         msg "STEP: You can also run the 'boa init' command again"
@@ -4881,7 +4877,7 @@ systemd_cleanup_on_init() {
     if [ ! -e "/root/.step.init.systemd.two.cnf" ] \
       && [ -e "/root/.step.init.systemd.one.cnf" ]; then
       msg "STEP: Let's continue to STEP 3..."
-      msg "INFO: Removing systemd in ${_REAL_OS}/${_REAL_OSR}..."
+      msg "INFO: Removing systemd in ${_OS_DIST}/${_OS_CODE}..."
       sysvinit_install
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
@@ -4898,7 +4894,7 @@ systemd_cleanup_on_init() {
         sysvinit_install
       else
         echo
-        msg "ALRT: The sysvinit has NOT been installed in ${_REAL_OS}/${_REAL_OSR}"
+        msg "ALRT: The sysvinit has NOT been installed in ${_OS_DIST}/${_OS_CODE}"
         msg "ALRT: Please check details in the logs located in /var/backups/"
         msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
         msg "STEP: You can also run the 'boa init' command again"
@@ -4908,7 +4904,7 @@ systemd_cleanup_on_init() {
         clean_pid_exit
       fi
       if [ ! -e "/lib/systemd/systemd" ]; then
-        msg "INFO: The systemd has been removed in ${_REAL_OS}/${_REAL_OSR}"
+        msg "INFO: The systemd has been removed in ${_OS_DIST}/${_OS_CODE}"
         msg "INFO: One more check to make sure that everything works..."
         _CHECK_CRON=$(service cron status 2>&1)
         if [[ "${_CHECK_CRON}" =~ "running" ]]; then
@@ -4928,7 +4924,7 @@ systemd_cleanup_on_init() {
         fi
       else
         echo
-        msg "ALRT: The systemd has NOT been removed in ${_REAL_OS}/${_REAL_OSR}"
+        msg "ALRT: The systemd has NOT been removed in ${_OS_DIST}/${_OS_CODE}"
         msg "ALRT: Please check details in the logs located in /var/backups/"
         msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
         msg "STEP: You can also run the 'boa init' command again"
@@ -4950,12 +4946,12 @@ systemd_cleanup_on_init() {
     systemd_remove_apt_cmd
     sysvinit_install
     if [ -e "/lib/systemd/systemd" ]; then
-      msg "ALRT: The systemd has NOT been removed in ${_REAL_OS}/${_REAL_OSR}"
+      msg "ALRT: The systemd has NOT been removed in ${_OS_DIST}/${_OS_CODE}"
       msg "ALRT: Please check details in the logs located in /var/backups/"
       msg "ALRT: Please DO NOT REBOOT until you manage to fix this!"
       msg "STEP: You can also run the 'boa init' command again"
     else
-      msg "INFO: Yes, systemd has been removed in ${_REAL_OS}/${_REAL_OSR}"
+      msg "INFO: Yes, systemd has been removed in ${_OS_DIST}/${_OS_CODE}"
       msg "STEP: Please run standard boa install command again"
     fi
     echo
@@ -5126,7 +5122,7 @@ if_proxysql_update() {
       _UP_PXC=YES
     fi
     if [ "${_UP_PXC}" = "YES" ] \
-      && [ "${_THIS_OS}" = "Debian" ]; then
+      && [ "${_OS_DIST}" = "Debian" ]; then
       if [ "${_REINSTALL_PXC}" = "YES" ]; then
         msg "INFO: Running ProxySQL upgrade to ${_PXC_VRN}..."
       else
@@ -5426,7 +5422,7 @@ if_major_os_upgrade() {
   fi
   if [ ! -z "${_MSG_LOC}" ]; then
     if [ ! -e "/usr/local/lib/icu/73.1" ] \
-      && [ "${_LOC_OSR}" != "jessie" ] \
+      && [ "${_LOC_OS_CODE}" != "jessie" ] \
       && [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
       echo
       msg "OOPS: Please run normal 'barracuda up-${tRee}' upgrade"
@@ -5577,10 +5573,10 @@ if_major_os_upgrade() {
     mrun "apt-get remove php5-common   -y -qq" 2> /dev/null
     mrun "apt-get remove php5-apc      -y -qq" 2> /dev/null
     mrun "apt-get remove php-apc       -y -qq" 2> /dev/null
-    if [ "${_LOC_OSR}" = "jessie" ]; then
+    if [ "${_LOC_OS_CODE}" = "jessie" ]; then
       mrun "apt-get purge gnome-tweak-tool -y -qq" 2> /dev/null
     fi
-    if [ "${_LOC_OSR}" = "stretch" ]; then
+    if [ "${_LOC_OS_CODE}" = "stretch" ]; then
       mrun "apt-get purge libpam-systemd -y -qq" 2> /dev/null
     fi
     echo "sysvinit-core install"  | dpkg --set-selections &> /dev/null
@@ -5630,22 +5626,21 @@ if_major_os_upgrade() {
     if [ "${_TGT_OSN}" = "Debian" ] || [ "${_TGT_OSN}" = "Devuan" ]; then
       _NEW_OSN=debian
     fi
-    _REAL_OSR="${_NEW_OSR}"
-    _REAL_OS="${_THIS_OS}"
-    if [ "${_REAL_OSR}" = "daedalus" ]; then
-      _SQL_NEW_OSR=bookworm
-    elif [ "${_REAL_OSR}" = "chimaera" ]; then
-      _SQL_NEW_OSR=bullseye
-    elif [ "${_REAL_OSR}" = "beowulf" ]; then
-      _SQL_NEW_OSR=buster
+    _OS_CODE="${_NEW_OS_CODE}"
+    if [ "${_OS_CODE}" = "daedalus" ]; then
+      _SQL_NEW_OS_CODE=bookworm
+    elif [ "${_OS_CODE}" = "chimaera" ]; then
+      _SQL_NEW_OS_CODE=bullseye
+    elif [ "${_OS_CODE}" = "beowulf" ]; then
+      _SQL_NEW_OS_CODE=buster
     else
-      _SQL_NEW_OSR="${_REAL_OSR}"
+      _SQL_NEW_OS_CODE="${_OS_CODE}"
     fi
     ###
     ### Switching other gears on the fly first.
     _APT_SRC_TEST=$(ls -la /etc/apt/sources.list.d/* 2>&1)
     if [[ ! "${_APT_SRC_TEST}" =~ "No such file" ]]; then
-      sed -i "s/${_LOC_OSR}/${_SQL_NEW_OSR}/g" /etc/apt/sources.list.d/*
+      sed -i "s/${_LOC_OS_CODE}/${_SQL_NEW_OS_CODE}/g" /etc/apt/sources.list.d/*
     fi
     if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
       ###
@@ -5658,8 +5653,8 @@ if_major_os_upgrade() {
         rm -f /etc/apt/sources.list.d/xtrabackup.*
         rm -f /etc/apt/preferences.d/00percona.pref
         echo "## MariaDB APT Repository" > ${mdbList}
-        echo "deb [arch=amd64,i386] http://${mdbRepo}/${_NEW_OSN} ${_SQL_NEW_OSR} main" >> ${mdbList}
-        echo "deb-src [arch=amd64,i386] http://${mdbRepo}/${_NEW_OSN} ${_SQL_NEW_OSR} main" >> ${mdbList}
+        echo "deb [arch=amd64,i386] http://${mdbRepo}/${_NEW_OSN} ${_SQL_NEW_OS_CODE} main" >> ${mdbList}
+        echo "deb-src [arch=amd64,i386] http://${mdbRepo}/${_NEW_OSN} ${_SQL_NEW_OS_CODE} main" >> ${mdbList}
       else
         percRepo="${_DB_SRC}/percona/apt"
         percList="/etc/apt/sources.list.d/percona-release.list"
@@ -5667,8 +5662,8 @@ if_major_os_upgrade() {
         rm -f /etc/apt/sources.list.d/percona-.*
         rm -f /etc/apt/sources.list.d/xtrabackup.*
         echo "## Percona APT Repository" > ${percList}
-        echo "deb http://${percRepo} ${_SQL_NEW_OSR} main" >> ${percList}
-        echo "deb-src http://${percRepo} ${_SQL_NEW_OSR} main" >> ${percList}
+        echo "deb http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
+        echo "deb-src http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
         echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
       fi
     fi
@@ -5677,16 +5672,16 @@ if_major_os_upgrade() {
     if [ "${_TGT_OSN}" = "Devuan" ]; then
       _TGT_MRR="deb.devuan.org/merged"
       echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_TGT_MRR} ${_NEW_OSR} main" >> ${aptLiSys}
-      echo "deb-src http://${_TGT_MRR} ${_NEW_OSR} main" >> ${aptLiSys}
+      echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${aptLiSys}
+      echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-      echo "deb http://${_TGT_MRR} ${_NEW_OSR}-updates main" >> ${aptLiSys}
-      echo "deb-src http://${_TGT_MRR} ${_NEW_OSR}-updates main" >> ${aptLiSys}
+      echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${aptLiSys}
+      echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## DEVUAN SECURITY UPDATES" >> ${aptLiSys}
-      echo "deb http://${_TGT_MRR} ${_NEW_OSR}-security main" >> ${aptLiSys}
-      echo "deb-src http://${_TGT_MRR} ${_NEW_OSR}-security main" >> ${aptLiSys}
+      echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${aptLiSys}
+      echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${aptLiSys}
       if [ -e "/etc/apt/apt.conf" ]; then
         rm -f /etc/apt/apt.conf
       fi
@@ -5696,30 +5691,30 @@ if_major_os_upgrade() {
       mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
       mrun "${_INITINS} devuan-keyring" 2> /dev/null
     else
-      if [ "${_NEW_OSR}" = "stretch" ]; then
+      if [ "${_NEW_OS_CODE}" = "stretch" ]; then
         _NEW_APT_MIRROR="archive.debian.org/debian"
-        _NEW_APT_REPSRC="${_NEW_OSR}-backports"
+        _NEW_APT_REPSRC="${_NEW_OS_CODE}-backports"
         _NEW_SEC_MIRROR="archive.debian.org/debian-security"
-        _NEW_SEC_REPSRC="${_NEW_OSR}/updates"
-      elif [ "${_NEW_OSR}" = "buster" ]; then
+        _NEW_SEC_REPSRC="${_NEW_OS_CODE}/updates"
+      elif [ "${_NEW_OS_CODE}" = "buster" ]; then
         _NEW_APT_MIRROR="deb.debian.org/debian"
-        _NEW_APT_REPSRC="${_NEW_OSR}-updates"
+        _NEW_APT_REPSRC="${_NEW_OS_CODE}-updates"
         _NEW_SEC_MIRROR="security.debian.org"
-        _NEW_SEC_REPSRC="${_NEW_OSR}/updates"
-      elif [ "${_NEW_OSR}" = "bullseye" ]; then
+        _NEW_SEC_REPSRC="${_NEW_OS_CODE}/updates"
+      elif [ "${_NEW_OS_CODE}" = "bullseye" ]; then
         _NEW_APT_MIRROR="deb.debian.org/debian"
-        _NEW_APT_REPSRC="${_NEW_OSR}-updates"
+        _NEW_APT_REPSRC="${_NEW_OS_CODE}-updates"
         _NEW_SEC_MIRROR="security.debian.org/debian-security"
-        _NEW_SEC_REPSRC="${_NEW_OSR}-security"
-      elif [ "${_NEW_OSR}" = "bookworm" ]; then
+        _NEW_SEC_REPSRC="${_NEW_OS_CODE}-security"
+      elif [ "${_NEW_OS_CODE}" = "bookworm" ]; then
         _NEW_APT_MIRROR="deb.debian.org/debian"
-        _NEW_APT_REPSRC="${_NEW_OSR}-updates"
+        _NEW_APT_REPSRC="${_NEW_OS_CODE}-updates"
         _NEW_SEC_MIRROR="security.debian.org/debian-security"
-        _NEW_SEC_REPSRC="${_NEW_OSR}-security"
+        _NEW_SEC_REPSRC="${_NEW_OS_CODE}-security"
       fi
       echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_NEW_APT_MIRROR} ${_NEW_OSR} main contrib non-free" >> ${aptLiSys}
-      echo "deb-src http://${_NEW_APT_MIRROR} ${_NEW_OSR} main contrib non-free" >> ${aptLiSys}
+      echo "deb http://${_NEW_APT_MIRROR} ${_NEW_OS_CODE} main contrib non-free" >> ${aptLiSys}
+      echo "deb-src http://${_NEW_APT_MIRROR} ${_NEW_OS_CODE} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
       echo "deb http://${_NEW_APT_MIRROR} ${_NEW_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
@@ -5745,13 +5740,13 @@ if_major_os_upgrade() {
     mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
     ###
     ### Two step upgrade with apt-get only.
-    mrun "apt-get install apt -t ${_NEW_OSR} ${dstUpArg}" 2> /dev/null
+    mrun "apt-get install apt -t ${_NEW_OS_CODE} ${dstUpArg}" 2> /dev/null
     apt_clean_update_no_releaseinfo_change
     mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
     ###
     ### Requirement for Debian Stretch to Devuan Beowulf migration.
     ### The libtinfo package needs to be upgraded to prevent breaks.
-    if [ "${_LOC_OSR}" = "stretch" ]; then
+    if [ "${_LOC_OS_CODE}" = "stretch" ]; then
       mrun "apt-get install libtinfo6 ${dstUpArg}" 2> /dev/null
     fi
     ###
@@ -5797,13 +5792,13 @@ if_major_os_upgrade() {
       ###
       ### The last step before migration to Devuan is to switch to eudev.
       ### Jessie exception needs testing, though.
-      if [ "${_LOC_OSR}" != "jessie" ]; then
+      if [ "${_LOC_OS_CODE}" != "jessie" ]; then
         mrun "apt-get install eudev ${dstUpArg}" 2> /dev/null
       fi
     fi
     ###
     ### Upgrade all packages so that you have the latest versions.
-    if [ "${_LOC_OSR}" = "stretch" ]; then
+    if [ "${_LOC_OS_CODE}" = "stretch" ]; then
       mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
       mrun "apt-get full-upgrade ${dstUpArg}" 2> /dev/null
       mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
@@ -5817,7 +5812,7 @@ if_major_os_upgrade() {
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
     ###
     ### Upgrade again all packages so that you have the latest versions.
-    if [ "${_LOC_OSR}" = "stretch" ]; then
+    if [ "${_LOC_OS_CODE}" = "stretch" ]; then
       mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
       mrun "apt-get full-upgrade ${dstUpArg}" 2> /dev/null
       mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
@@ -5838,27 +5833,27 @@ if_major_os_upgrade() {
     ### Note that Debian to Devuan migration always requires
     ### the key dist-upgrade step to be run AFTER reboot!
     _FORCE_REBUILD_SRC_ON_AUTO_NOW=NO
-    if [ "${_LOC_OSR}" = "bookworm" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
+    if [ "${_LOC_OS_CODE}" = "bookworm" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
       echo
       msg "ATTN: NOTE! Debian Bookworm to Devuan migration"
       msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
       msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
-    elif [ "${_LOC_OSR}" = "bullseye" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
+    elif [ "${_LOC_OS_CODE}" = "bullseye" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
       echo
       msg "ATTN: NOTE! Debian Bullseye to Devuan migration"
       msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
       msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
-    elif [ "${_LOC_OSR}" = "buster" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
+    elif [ "${_LOC_OS_CODE}" = "buster" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
       echo
       msg "ATTN: NOTE! Debian Buster to Devuan migration"
       msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
       msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
-    elif [ "${_LOC_OSR}" = "stretch" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
+    elif [ "${_LOC_OS_CODE}" = "stretch" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
       echo
       msg "ATTN: NOTE! Debian Stretch to Devuan migration"
       msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
       msg "ATTN: you MUST RUN ANOTHER Barracuda upgrade after reboot"
-    elif [ "${_LOC_OSR}" = "jessie" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
+    elif [ "${_LOC_OS_CODE}" = "jessie" ] && [ "${_TGT_OSN}" = "Devuan" ]; then
       echo
       msg "ATTN: NOTE! Debian Jessie to Devuan migration"
       msg "ATTN: requires the key dist-upgrade step AFTER reboot, so"
@@ -5881,7 +5876,7 @@ if_major_os_upgrade() {
     sysvinit_install
     ###
     ### Add info file to keep major OS upgrades track.
-    touch /root/.${_LOC_OSR}_to_${_NEW_OSR}_major_os_upgrade.info
+    touch /root/.${_LOC_OS_CODE}_to_${_NEW_OS_CODE}_major_os_upgrade.info
     ###
     ### Force NR upgrade
     touch /root/.force.newrelic.update.cnf
@@ -5929,9 +5924,9 @@ if_major_os_upgrade() {
       newrelic_check_fix
     fi
     if [ "${_TGT_OSN}" = "Devuan" ]; then
-      if [ "${_LOC_OSR}" = "bookworm" ] \
-        || [ "${_LOC_OSR}" = "bullseye" ] \
-        || [ "${_LOC_OSR}" = "buster" ]; then
+      if [ "${_LOC_OS_CODE}" = "bookworm" ] \
+        || [ "${_LOC_OS_CODE}" = "bullseye" ] \
+        || [ "${_LOC_OS_CODE}" = "buster" ]; then
         touch /root/.small_hop_on_major_os_upgrade.info
       else
         touch /root/.big_hop_on_major_os_upgrade.info
@@ -6245,15 +6240,15 @@ sys_packages_install() {
       || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
-      if [ "${_OSR}" = "jessie" ]; then
+      if [ "${_OS_CODE}" = "jessie" ]; then
         _APT_XTRA="openjdk-7-jre-headless ca-certificates-java nginx"
-      elif [ "${_OSR}" = "stretch" ]; then
+      elif [ "${_OS_CODE}" = "stretch" ]; then
         _APT_XTRA="openjdk-8-jre-headless ca-certificates-java nginx"
-      elif [ "${_OSR}" = "buster" ]; then
+      elif [ "${_OS_CODE}" = "buster" ]; then
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java nginx"
-      elif [ "${_OSR}" = "bullseye" ]; then
+      elif [ "${_OS_CODE}" = "bullseye" ]; then
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
-      elif [ "${_OSR}" = "bookworm" ]; then
+      elif [ "${_OS_CODE}" = "bookworm" ]; then
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
         echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
@@ -6262,11 +6257,11 @@ sys_packages_install() {
         rm -f /etc/apt/sources.list.d/bullseye.list
         rm -f /etc/apt/apt.conf
         apt_clean_update
-      elif [ "${_OSR}" = "beowulf" ]; then
+      elif [ "${_OS_CODE}" = "beowulf" ]; then
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java nginx"
-      elif [ "${_OSR}" = "chimaera" ]; then
+      elif [ "${_OS_CODE}" = "chimaera" ]; then
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
-      elif [ "${_OSR}" = "daedalus" ]; then
+      elif [ "${_OS_CODE}" = "daedalus" ]; then
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
         echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
@@ -6298,15 +6293,15 @@ sys_packages_install() {
       || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
       || [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ]; then
-      if [ "${_OSR}" = "jessie" ]; then
+      if [ "${_OS_CODE}" = "jessie" ]; then
         _APT_XTRA="openjdk-7-jre-headless ca-certificates-java"
-      elif [ "${_OSR}" = "stretch" ]; then
+      elif [ "${_OS_CODE}" = "stretch" ]; then
         _APT_XTRA="openjdk-8-jre-headless ca-certificates-java"
-      elif [ "${_OSR}" = "buster" ]; then
+      elif [ "${_OS_CODE}" = "buster" ]; then
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java"
-      elif [ "${_OSR}" = "bullseye" ]; then
+      elif [ "${_OS_CODE}" = "bullseye" ]; then
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
-      elif [ "${_OSR}" = "bookworm" ]; then
+      elif [ "${_OS_CODE}" = "bookworm" ]; then
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java"
         echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
@@ -6315,11 +6310,11 @@ sys_packages_install() {
         rm -f /etc/apt/sources.list.d/bullseye.list
         rm -f /etc/apt/apt.conf
         apt_clean_update
-      elif [ "${_OSR}" = "beowulf" ]; then
+      elif [ "${_OS_CODE}" = "beowulf" ]; then
         _APT_XTRA="openjdk-11-jre-headless ca-certificates-java"
-      elif [ "${_OSR}" = "chimaera" ]; then
+      elif [ "${_OS_CODE}" = "chimaera" ]; then
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
-      elif [ "${_OSR}" = "daedalus" ]; then
+      elif [ "${_OS_CODE}" = "daedalus" ]; then
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java"
         echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
@@ -6386,7 +6381,7 @@ sys_packages_install() {
     _SYSLOGD=rsyslog
   fi
 
-  if [ "${_OSR}" = "daedalus" ]; then
+  if [ "${_OS_CODE}" = "daedalus" ]; then
     _EXTRA_PACKAGES="autoconf2.69 \
                      automake1.11 \
                      automake-1.16 \
@@ -6401,7 +6396,7 @@ sys_packages_install() {
                      software-properties-common \
                      python3-software-properties \
                      ${_EXTRA_PACKAGES}"
-  elif [ "${_OSR}" = "chimaera" ]; then
+  elif [ "${_OS_CODE}" = "chimaera" ]; then
     _EXTRA_PACKAGES="autoconf2.69 \
                      automake1.11 \
                      automake-1.16 \
@@ -6415,7 +6410,7 @@ sys_packages_install() {
                      libtinfo6 \
                      software-properties-common \
                      ${_EXTRA_PACKAGES}"
-  elif [ "${_OSR}" = "beowulf" ]; then
+  elif [ "${_OS_CODE}" = "beowulf" ]; then
     _EXTRA_PACKAGES="autoconf2.64 \
                      automake1.11 \
                      automake-1.15 \
@@ -6433,7 +6428,7 @@ sys_packages_install() {
                      ttf-dejavu-core \
                      ttf-dejavu-extra \
                      ${_EXTRA_PACKAGES}"
-  elif [ "${_OSR}" = "bookworm" ]; then
+  elif [ "${_OS_CODE}" = "bookworm" ]; then
     _EXTRA_PACKAGES="autoconf2.69 \
                      automake1.11 \
                      automake-1.16 \
@@ -6448,7 +6443,7 @@ sys_packages_install() {
                      software-properties-common \
                      python3-software-properties \
                      ${_EXTRA_PACKAGES}"
-  elif [ "${_OSR}" = "bullseye" ]; then
+  elif [ "${_OS_CODE}" = "bullseye" ]; then
     _EXTRA_PACKAGES="autoconf2.69 \
                      automake1.11 \
                      automake-1.16 \
@@ -6462,7 +6457,7 @@ sys_packages_install() {
                      libtinfo6 \
                      software-properties-common \
                      ${_EXTRA_PACKAGES}"
-  elif [ "${_OSR}" = "buster" ]; then
+  elif [ "${_OS_CODE}" = "buster" ]; then
     _EXTRA_PACKAGES="autoconf2.64 \
                      automake1.11 \
                      automake-1.15 \
@@ -6480,7 +6475,7 @@ sys_packages_install() {
                      ttf-dejavu-core \
                      ttf-dejavu-extra \
                      ${_EXTRA_PACKAGES}"
-  elif [ "${_OSR}" = "stretch" ]; then
+  elif [ "${_OS_CODE}" = "stretch" ]; then
     _EXTRA_PACKAGES="autoconf2.64 \
                      automake1.11 \
                      automake-1.15 \
@@ -6539,7 +6534,7 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  if [ "${_VMFAMILY}" != "VS" ] && [ "${_THIS_OS}" != "Devuan" ]; then
+  if [ "${_VMFAMILY}" != "VS" ] && [ "${_OS_DIST}" != "Devuan" ]; then
     _EXTRA_PACKAGES="udev \
                      ${_EXTRA_PACKAGES}"
   fi
@@ -6558,8 +6553,6 @@ php_libs_fix() {
     msg "PROC: php_libs_fix"
   fi
   if_to_do_fix
-  _REAL_OSR="${_OSR}"
-  _REAL_OS="${_THIS_OS}"
   _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
   _LIB_NOW=${_LIB_NOW//[^0-9-]/}
   if [ ! -L "/usr/lib/librtmp.so" ] \
@@ -6568,11 +6561,11 @@ php_libs_fix() {
     || [ ! -e "/usr/lib/libcurl.so" ] \
     || [ ! -e "/usr/lib/libicuio.so" ] \
     || [ ! -e "/usr/lib/liblber.so" ] \
-    || [ ! -e "/var/xdrago/log/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid" ] \
-    || [ ! -e "/var/xdrago/log/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid" ] \
+    || [ ! -e "/var/xdrago/log/.php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid" ] \
+    || [ ! -e "/var/xdrago/log/.php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid" ] \
     || [ ! -e "/usr/include/gmp.h" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Fix for PHP libs in ${_REAL_OS}/${_REAL_OSR}"
+      msg "INFO: Fix for PHP libs in ${_OS_DIST}/${_OS_CODE}"
     fi
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
@@ -6743,11 +6736,11 @@ php_libs_fix() {
       fi
     fi
     if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
-      touch /var/xdrago_wait/log/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid
-      touch /var/xdrago_wait/log/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid
+      touch /var/xdrago_wait/log/.php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
+      touch /var/xdrago_wait/log/.php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
     else
-      touch /var/xdrago/log/.php_libs_fix_${_REAL_OSR}_${_LIB_NOW}.pid
-      touch /var/xdrago/log/.php_libs_fix_${_OSR}_${_LIB_NOW}.pid
+      touch /var/xdrago/log/.php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
+      touch /var/xdrago/log/.php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
     fi
   fi
   ldconfig 2> /dev/null
@@ -7409,7 +7402,7 @@ java_check_fix() {
     msg "PROC: java_check_fix"
   fi
 
-  if [ "${_OSR}" = "jessie" ]; then
+  if [ "${_OS_CODE}" = "jessie" ]; then
     if [ ! -e "/usr/lib/jvm/java-7-openjdk" ] \
       && [ -d "/usr/lib/jvm/java-7-openjdk-amd64" ]; then
       ln -sfn /usr/lib/jvm/java-7-openjdk-amd64 /usr/lib/jvm/java-7-openjdk
@@ -7469,7 +7462,7 @@ java_check_fix() {
     ln -sfn /etc/alternatives/java /usr/bin/java
   fi
 
-  if [ "${_OSR}" = "daedalus" ] || [ "${_OSR}" = "bookworm" ]; then
+  if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "bookworm" ]; then
     if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \
       && [ -d "/usr/lib/jvm/java-11-openjdk-amd64" ]; then
       ln -sfn /usr/lib/jvm/java-11-openjdk-amd64 /usr/lib/jvm/java-11-openjdk

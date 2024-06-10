@@ -313,9 +313,9 @@ if_install_hhvm() {
     else
       _GPG=gpg
     fi
-    if [ "${_OSR}" = "buster" ] \
-      || [ "${_OSR}" = "stretch" ] \
-      || [ "${_OSR}" = "jessie" ] \
+    if [ "${_OS_CODE}" = "buster" ] \
+      || [ "${_OS_CODE}" = "stretch" ] \
+      || [ "${_OS_CODE}" = "jessie" ] \
       || [ "${_DO_FIX}" = "YES" ]; then
       if [ ! -x "/usr/bin/hhvm" ]; then
         echo " "
@@ -324,13 +324,13 @@ if_install_hhvm() {
           msg "INFO: Installing HHVM Engine..."
           cd /var/opt
           echo "## HHVM APT Repository" > /etc/apt/sources.list.d/hhvm.list
-          if [ "${_OSR}" = "jessie" ]; then
+          if [ "${_OS_CODE}" = "jessie" ]; then
             echo "deb http://dl.hhvm.com/debian jessie main" >> \
               /etc/apt/sources.list.d/hhvm.list
-          elif [ "${_OSR}" = "stretch" ] || [ "${_DO_FIX}" = "YES" ]; then
+          elif [ "${_OS_CODE}" = "stretch" ] || [ "${_DO_FIX}" = "YES" ]; then
             echo "deb http://dl.hhvm.com/debian stretch main" >> \
               /etc/apt/sources.list.d/hhvm.list
-          elif [ "${_OSR}" = "buster" ] || [ "${_DO_FIX}" = "YES" ]; then
+          elif [ "${_OS_CODE}" = "buster" ] || [ "${_DO_FIX}" = "YES" ]; then
             echo "deb http://dl.hhvm.com/debian buster main" >> \
               /etc/apt/sources.list.d/hhvm.list
           fi
@@ -553,7 +553,7 @@ if_install_rvm() {
               ${rvmPth} get stable --auto-dotfiles
               ${rvmPth} install ${_RUBY_VRN}
               ${rvmPth} use ${_RUBY_VRN} --default
-              if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
+              if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
                 curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
               else
                 curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
@@ -563,7 +563,7 @@ if_install_rvm() {
               ${rvmPth} get stable --auto-dotfiles &> /dev/null
               ${rvmPth} install ${_RUBY_VRN} &> /dev/null
               ${rvmPth} use ${_RUBY_VRN} --default &> /dev/null
-              if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
+              if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
                 curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash - &> /dev/null
               else
                 curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash - &> /dev/null
@@ -576,7 +576,7 @@ if_install_rvm() {
               ${rvmPth} get stable --auto-dotfiles
               ${rvmPth} install ${_RUBY_VRN}
               ${rvmPth} use ${_RUBY_VRN} --default
-              if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
+              if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
                 curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
               else
                 curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
@@ -586,7 +586,7 @@ if_install_rvm() {
               ${rvmPth} get stable --auto-dotfiles &> /dev/null
               ${rvmPth} install ${_RUBY_VRN} &> /dev/null
               ${rvmPth} use ${_RUBY_VRN} --default &> /dev/null
-              if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
+              if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
                 curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash - &> /dev/null
               else
                 curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash - &> /dev/null
@@ -686,20 +686,20 @@ if_install_ffmpeg() {
         msg "INFO: Installing FFmpeg..."
         cd /var/opt
         echo "## deb-multimedia APT Repository for FFmpeg" > /etc/apt/sources.list.d/ffmpeg.list
-        if [ "${_OSR}" = "bookworm" ] \
-          || [ "${_OSR}" = "bullseye" ] \
-          || [ "${_OSR}" = "buster" ] \
-          || [ "${_OSR}" = "stretch" ] \
-          || [ "${_OSR}" = "jessie" ]; then
-          echo "deb http://www.deb-multimedia.org ${_OSR} main non-free" >> /etc/apt/sources.list.d/ffmpeg.list
-          echo "deb http://www.deb-multimedia.org ${_OSR}-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
-        elif [ "${_OSR}" = "daedalus" ]; then
+        if [ "${_OS_CODE}" = "bookworm" ] \
+          || [ "${_OS_CODE}" = "bullseye" ] \
+          || [ "${_OS_CODE}" = "buster" ] \
+          || [ "${_OS_CODE}" = "stretch" ] \
+          || [ "${_OS_CODE}" = "jessie" ]; then
+          echo "deb http://www.deb-multimedia.org ${_OS_CODE} main non-free" >> /etc/apt/sources.list.d/ffmpeg.list
+          echo "deb http://www.deb-multimedia.org ${_OS_CODE}-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
+        elif [ "${_OS_CODE}" = "daedalus" ]; then
           echo "deb http://www.deb-multimedia.org bookworm main non-free" >> /etc/apt/sources.list.d/ffmpeg.list
           echo "deb http://www.deb-multimedia.org bookworm-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
-        elif [ "${_OSR}" = "chimaera" ]; then
+        elif [ "${_OS_CODE}" = "chimaera" ]; then
           echo "deb http://www.deb-multimedia.org bullseye main non-free" >> /etc/apt/sources.list.d/ffmpeg.list
           echo "deb http://www.deb-multimedia.org bullseye-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
-        elif [ "${_OSR}" = "beowulf" ]; then
+        elif [ "${_OS_CODE}" = "beowulf" ]; then
           echo "deb http://www.deb-multimedia.org buster main non-free" >> /etc/apt/sources.list.d/ffmpeg.list
           echo "deb http://www.deb-multimedia.org buster-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
         fi

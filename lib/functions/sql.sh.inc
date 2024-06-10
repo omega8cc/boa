@@ -524,19 +524,17 @@ prep_for_install_db_sql() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: prep_for_install_db_sql"
   fi
-  _REAL_OSR="${_OSR}"
-  _REAL_OS="${_THIS_OS}"
   _SQL_SCR=APT
-  if [ "${_REAL_OSR}" = "daedalus" ]; then
-    _SQL_OSR=bookworm
-  elif [ "${_REAL_OSR}" = "chimaera" ]; then
-    _SQL_OSR=bullseye
-  elif [ "${_REAL_OSR}" = "beowulf" ]; then
-    _SQL_OSR=buster
+  if [ "${_OS_CODE}" = "daedalus" ]; then
+    _SQL_OS_CODE=bookworm
+  elif [ "${_OS_CODE}" = "chimaera" ]; then
+    _SQL_OS_CODE=bullseye
+  elif [ "${_OS_CODE}" = "beowulf" ]; then
+    _SQL_OS_CODE=buster
   else
-    _SQL_OSR="${_REAL_OSR}"
+    _SQL_OS_CODE="${_OS_CODE}"
   fi
-  if [ "${_SQL_OSR}" = "foobar" ]; then
+  if [ "${_SQL_OS_CODE}" = "foobar" ]; then
     _SQL_SCR=GIT
   fi
   _DBS_TEST=$(which mysql 2>&1)
@@ -636,7 +634,7 @@ prep_for_install_db_sql() {
   fi
   _KEYS_SIG=""
   _KEYS_SERVER_TEST=FALSE
-  if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
+  if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
     _OSN=debian
   fi
   if [ -e "/root/.mstr.clstr.cnf" ] \
@@ -663,8 +661,8 @@ prep_for_install_db_sql() {
       percList="/etc/apt/sources.list.d/percona-release.list"
       percRepo="${_DB_SRC}/percona/apt"
       echo "## Percona APT Repository" > ${percList}
-      echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-      echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+      echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
+      echo "deb-src http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
       echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
       apt_clean_update
     else
@@ -677,13 +675,13 @@ prep_for_install_db_sql() {
       percList="/etc/apt/sources.list.d/percona-release.list"
       percRepo="${_DB_SRC}/percona/apt"
       echo "## Percona APT Repository" > ${percList}
-      echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-      echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+      echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
+      echo "deb-src http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
       echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
       apt_clean_update
     fi
   fi
-  msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_REAL_OS}/${_REAL_OSR}"
+  msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_OS_DIST}/${_OS_CODE}"
 
   ### Only supported upgrade path allowed
   sql_strict_upgrade_path
@@ -696,8 +694,8 @@ prep_for_install_db_sql() {
     rm -f /etc/apt/sources.list.d/xtrabackup.*
     rm -f /etc/apt/preferences.d/00percona.pref
     echo "## MariaDB APT Repository" > ${mdbList}
-    echo "deb [arch=amd64,i386] http://${mdbRepo}/${_OSN} ${_SQL_OSR} main" >> ${mdbList}
-    echo "deb-src [arch=amd64,i386] http://${mdbRepo}/${_OSN} ${_SQL_OSR} main" >> ${mdbList}
+    echo "deb [arch=amd64,i386] http://${mdbRepo}/${_OSN} ${_SQL_OS_CODE} main" >> ${mdbList}
+    echo "deb-src [arch=amd64,i386] http://${mdbRepo}/${_OSN} ${_SQL_OS_CODE} main" >> ${mdbList}
   else
     percRepo="${_DB_SRC}/percona/apt"
     percList="/etc/apt/sources.list.d/percona-release.list"
@@ -705,8 +703,8 @@ prep_for_install_db_sql() {
     rm -f /etc/apt/sources.list.d/percona-.*
     rm -f /etc/apt/sources.list.d/xtrabackup.*
     echo "## Percona APT Repository" > ${percList}
-    echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-    echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+    echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
+    echo "deb-src http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
     echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
   fi
   apt_clean_update
@@ -1079,19 +1077,17 @@ db_server_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: db_server_install"
   fi
-  _REAL_OSR="${_OSR}"
-  _REAL_OS="${_THIS_OS}"
   _SQL_SCR=APT
-  if [ "${_REAL_OSR}" = "daedalus" ]; then
-    _SQL_OSR=bookworm
-  elif [ "${_REAL_OSR}" = "chimaera" ]; then
-    _SQL_OSR=bullseye
-  elif [ "${_REAL_OSR}" = "beowulf" ]; then
-    _SQL_OSR=buster
+  if [ "${_OS_CODE}" = "daedalus" ]; then
+    _SQL_OS_CODE=bookworm
+  elif [ "${_OS_CODE}" = "chimaera" ]; then
+    _SQL_OS_CODE=bullseye
+  elif [ "${_OS_CODE}" = "beowulf" ]; then
+    _SQL_OS_CODE=buster
   else
-    _SQL_OSR="${_REAL_OSR}"
+    _SQL_OS_CODE="${_OS_CODE}"
   fi
-  if [ "${_SQL_OSR}" = "foobar" ]; then
+  if [ "${_SQL_OS_CODE}" = "foobar" ]; then
     _SQL_SCR=GIT
   fi
   _THIS_DB_PORT=3306
@@ -1119,20 +1115,20 @@ db_server_install() {
       _DB_SRC="ftp.osuosl.org"
       _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
         /etc/apt/sources.list.d/mariadb.list 2>&1)
-      _SQL_DEB_SRC_TEST_B=$(grep ${_OSR} \
+      _SQL_DEB_SRC_TEST_B=$(grep ${_OS_CODE} \
         /etc/apt/sources.list.d/mariadb.list 2>&1)
     else
       _DB_SRC="repo.percona.com"
       _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
         /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_B=$(grep ${_OSR} \
+      _SQL_DEB_SRC_TEST_B=$(grep ${_OS_CODE} \
         /etc/apt/sources.list.d/percona-release.list 2>&1)
     fi
     if [[ "${_SQL_DEB_SRC_TEST_A}" =~ "${_DB_SRC}" ]] \
-      && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_OSR}" ]]; then
+      && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_OS_CODE}" ]]; then
       _SQL_DEB_SRC_UPDATE=NO
     else
-      if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
+      if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
         _OSN=debian
       fi
       if [ "${_DB_SERVER}" = "MariaDB" ]; then
@@ -1143,8 +1139,8 @@ db_server_install() {
         rm -f /etc/apt/sources.list.d/xtrabackup.*
         rm -f /etc/apt/preferences.d/00percona.pref
         echo "## MariaDB APT Repository" > ${mdbList}
-        echo "deb [arch=amd64,i386] http://${mdbRepo}/${_OSN} ${_SQL_OSR} main" >> ${mdbList}
-        echo "deb-src [arch=amd64,i386] http://${mdbRepo}/${_OSN} ${_SQL_OSR} main" >> ${mdbList}
+        echo "deb [arch=amd64,i386] http://${mdbRepo}/${_OSN} ${_SQL_OS_CODE} main" >> ${mdbList}
+        echo "deb-src [arch=amd64,i386] http://${mdbRepo}/${_OSN} ${_SQL_OS_CODE} main" >> ${mdbList}
       else
         percList="/etc/apt/sources.list.d/percona-release.list"
         percRepo="${_DB_SRC}/percona/apt"
@@ -1152,8 +1148,8 @@ db_server_install() {
         rm -f /etc/apt/sources.list.d/percona-.*
         rm -f /etc/apt/sources.list.d/xtrabackup.*
         echo "## Percona APT Repository" > ${percList}
-        echo "deb http://${percRepo} ${_SQL_OSR} main" >> ${percList}
-        echo "deb-src http://${percRepo} ${_SQL_OSR} main" >> ${percList}
+        echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
+        echo "deb-src http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
         echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
       fi
       apt_clean_update
@@ -1250,7 +1246,7 @@ db_server_install() {
       fi
       _KEYS_SIG=""
       _KEYS_SERVER_TEST=FALSE
-      if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
+      if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
         _OSN=debian
       fi
       st_runner "aptitude autoclean -y" &> /dev/null

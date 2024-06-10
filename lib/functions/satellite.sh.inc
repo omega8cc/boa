@@ -3947,8 +3947,8 @@ satellite_make() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     echo "PROC: satellite_make"
   fi
-  export _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  export _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  export _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  export _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ -d "/data/all/000" ]; then
     if [ ! -e "/data/all/000/core-v-${_SMALLCORE6_V}.txt" ] \
       || [ ! -e "/data/all/000/core-v-${_SMALLCORE7_V}.txt" ]; then
@@ -4040,7 +4040,7 @@ satellite_make() {
   echo "_OPENSCHOLAR=\"${_OPENSCHOLAR}\""             >> ${writeTo}
   echo "_OPIGNOLMS7=\"${_OPIGNOLMS7}\""               >> ${writeTo}
   echo "_OPIGNOLMS9=\"${_OPIGNOLMS9}\""               >> ${writeTo}
-  echo "_OSR=\"${_OSR}\""                             >> ${writeTo}
+  echo "_OS_CODE=\"${_OS_CODE}\""                     >> ${writeTo}
   echo "_PANOPOLY=\"${_PANOPOLY}\""                   >> ${writeTo}
   echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${writeTo}
   echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${writeTo}
@@ -4067,7 +4067,7 @@ satellite_make() {
   echo "_T_BUILD=\"${_T_BUILD}\""                     >> ${writeTo}
   echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${writeTo}
   echo "_THIS_DB_PORT=\"${_THIS_DB_PORT}\""           >> ${writeTo}
-  echo "_THIS_OS=\"${_THIS_OS}\""                     >> ${writeTo}
+  echo "_OS_DIST=\"${_OS_DIST}\""                     >> ${writeTo}
   echo "_THISHTIP=\"${_THISHTIP}\""                   >> ${writeTo}
   echo "_THUNDER=\"${_THUNDER}\""                     >> ${writeTo}
   echo "_TODAY=\"${_TODAY}\""                         >> ${writeTo}
@@ -4962,7 +4962,7 @@ satellite_log_update() {
     echo ${_F_TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
   fi
   _OCTOPUS_VERSION_INFO="${_F_TIME} / \
-    ${_THIS_OS}.${_OSR} $(uname -m 2>&1) \
+    ${_OS_DIST}.${_OS_CODE} $(uname -m 2>&1) \
     / Aegir ${_AEGIR_VERSION} / Octopus ${_X_VERSION} \
     / FPM ${_PHP_FPM_VERSION} / CLI ${_PHP_CLI_VERSION}"
   echo "${_OCTOPUS_VERSION_INFO}" | fmt -su -w 2500 >> \

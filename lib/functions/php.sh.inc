@@ -923,7 +923,7 @@ install_php_extensions() {
   fi
   ###--------------------###
   msg "INFO: Installing Imagick ${_IMAGICK_VRN} for PHP ${_T_PHP_VRN}..."
-  if [ "${_OSR}" = "daedalus" ] || [ "${_OSR}" = "chimaera" ]; then
+  if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "chimaera" ]; then
     if [ -e "/usr/bin/MagickWand-config" ]; then
       mv -f /usr/bin/MagickWand-config /var/backups/usr-bin-MagickWand-config
     fi
@@ -1333,7 +1333,7 @@ php_extensions_update() {
   ###--------------------###
   if [ ! -e "${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
     msg "INFO: Installing Imagick ${_IMAGICK_VRN} upgrade for PHP ${_T_PHP_VRN}..."
-    if [ "${_OSR}" = "daedalus" ] || [ "${_OSR}" = "chimaera" ]; then
+    if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "chimaera" ]; then
       if [ -e "/usr/bin/MagickWand-config" ]; then
         mv -f /usr/bin/MagickWand-config /var/backups/usr-bin-MagickWand-config
       fi
@@ -1521,8 +1521,8 @@ install_php_multi() {
   get_dev_src "php-${_PHP_VERSION}.tar.bz2"
   msg "INFO: Building PHP ${_PHP_VERSION} part 1/3"
   cd /var/opt/php-${_PHP_VERSION}
-  if [ "${_OSR}" = "stretch" ] \
-    || [ "${_OSR}" = "jessie" ]; then
+  if [ "${_OS_CODE}" = "stretch" ] \
+    || [ "${_OS_CODE}" = "jessie" ]; then
     mrun "sh ./buildconf --force" 2> /dev/null
     patchFile="disable_SSLv2_for_openssl_1_0_0.patch"
     patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
@@ -1611,17 +1611,17 @@ install_php_multi() {
     _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR} --enable-gd-native-ttf --with-mcrypt"
   elif [ "$1" = "56" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR} --enable-gd-native-ttf --with-mcrypt --with-mysql=mysqlnd"
-    if [ "${_OSR}" != "jessie" ]; then
+    if [ "${_OS_CODE}" != "jessie" ]; then
       patchFile="PHP-5.6.31-OpenSSL-1.1.0-compatibility-20170801.patch"
       patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
     fi
   fi
-  if [ "${_OSR}" = "daedalus" ] \
-    || [ "${_OSR}" = "chimaera" ] \
-    || [ "${_OSR}" = "beowulf" ] \
-    || [ "${_OSR}" = "bookworm" ] \
-    || [ "${_OSR}" = "bullseye" ] \
-    || [ "${_OSR}" = "buster" ]; then
+  if [ "${_OS_CODE}" = "daedalus" ] \
+    || [ "${_OS_CODE}" = "chimaera" ] \
+    || [ "${_OS_CODE}" = "beowulf" ] \
+    || [ "${_OS_CODE}" = "bookworm" ] \
+    || [ "${_OS_CODE}" = "bullseye" ] \
+    || [ "${_OS_CODE}" = "buster" ]; then
     patchFile="freetype.patch"
     patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
     patchFile="php-8.1-openssl3.patch"
@@ -2204,13 +2204,13 @@ check_php_rebuild() {
       | cut -d: -f1 \
       | awk '{ print $2}' 2>&1)
   fi
-  if [ "${_OSR}" = "daedalus" ] \
-    || [ "${_OSR}" = "chimaera" ] \
-    || [ "${_OSR}" = "beowulf" ] \
-    || [ "${_OSR}" = "bookworm" ] \
-    || [ "${_OSR}" = "bullseye" ] \
-    || [ "${_OSR}" = "buster" ] \
-    || [ "${_OSR}" = "stretch" ]; then
+  if [ "${_OS_CODE}" = "daedalus" ] \
+    || [ "${_OS_CODE}" = "chimaera" ] \
+    || [ "${_OS_CODE}" = "beowulf" ] \
+    || [ "${_OS_CODE}" = "bookworm" ] \
+    || [ "${_OS_CODE}" = "bullseye" ] \
+    || [ "${_OS_CODE}" = "buster" ] \
+    || [ "${_OS_CODE}" = "stretch" ]; then
     _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"
     if [ -e "/root/.install.modern.openssl.cnf" ] \
       && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then

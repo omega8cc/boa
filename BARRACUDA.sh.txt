@@ -143,7 +143,7 @@ _CUSTOM_NAME="nginx"
 _DRUSH_VERSION="${_DRUSH_EIGHT_VRN}"
 _DRUSH_VERSION_TEST="${_DRUSH_EIGHT_TEST_VRN}"
 _FORCE_REDIS_RESTART=NO
-_LOC_OSR=""
+_LOC_OS_CODE=""
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _PURGE_ALL_THISHTIP=NO
@@ -440,7 +440,7 @@ fi
 ###
 if [ "${_SSH_FROM_SOURCES}" = "YES" ]; then
   if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
-    if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
+    if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
       sshd_install_src
       sshd_armour
     fi

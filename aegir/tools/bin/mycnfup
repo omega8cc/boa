@@ -39,8 +39,8 @@ aptYesUnth="-y --allow-unauthenticated"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 vBs="/var/backups"
 tVr="0.7"
-_THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-_OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+_OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+_OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 _INSTAPP="/usr/bin/aptitude -f -y -q \
   --allow-untrusted \
   -o Dpkg::Options::=--force-confdef \
@@ -51,10 +51,10 @@ _INSTAPP="/usr/bin/aptitude -f -y -q \
 
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
-    if [ "${e}" = "${_THIS_RV}" ]; then
+    if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
@@ -142,7 +142,7 @@ locales_check_fix() {
 
 EOF
     sleep 5
-    if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
+    if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
       _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
       if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
@@ -185,7 +185,7 @@ EOF
     export LC_IDENTIFICATION=en_US.UTF-8
     export LC_ALL=
   else
-    if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
+    if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
       _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
       if [[ ! "${_LOCALE_GEN_TEST}" =~ "en_US.UTF-8 UTF-8" ]]; then
         echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
@@ -331,35 +331,35 @@ check_root() {
     fi
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ -x "${_LSB_TEST}" ]; then
-      if [ "${_THIS_OS}" != "Debian" ]; then
-        echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
+      if [ "${_OS_DIST}" != "Debian" ]; then
+        echo "ERROR: Not supported OS detected: ${_OS_DIST}/${_OS_CODE}"
         exit 1
       fi
       echo
-      if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
+      if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
         _APT_MIRROR="archive.debian.org/debian"
-        _APT_REPSRC="${_OSR}-backports"
+        _APT_REPSRC="${_OS_CODE}-backports"
         _SEC_MIRROR="archive.debian.org/debian-security"
-        _SEC_REPSRC="${_OSR}/updates"
-      elif [ "${_OSR}" = "buster" ]; then
+        _SEC_REPSRC="${_OS_CODE}/updates"
+      elif [ "${_OS_CODE}" = "buster" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OSR}-updates"
+        _APT_REPSRC="${_OS_CODE}-updates"
         _SEC_MIRROR="security.debian.org"
-        _SEC_REPSRC="${_OSR}/updates"
-      elif [ "${_OSR}" = "bullseye" ]; then
+        _SEC_REPSRC="${_OS_CODE}/updates"
+      elif [ "${_OS_CODE}" = "bullseye" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OSR}-updates"
+        _APT_REPSRC="${_OS_CODE}-updates"
         _SEC_MIRROR="security.debian.org/debian-security"
-        _SEC_REPSRC="${_OSR}-security"
-      elif [ "${_OSR}" = "bookworm" ]; then
+        _SEC_REPSRC="${_OS_CODE}-security"
+      elif [ "${_OS_CODE}" = "bookworm" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OSR}-updates"
+        _APT_REPSRC="${_OS_CODE}-updates"
         _SEC_MIRROR="security.debian.org/debian-security"
-        _SEC_REPSRC="${_OSR}-security"
+        _SEC_REPSRC="${_OS_CODE}-security"
       fi
       echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
-      echo "deb-src http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
+      echo "deb http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${aptLiSys}
+      echo "deb-src http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
       echo "deb http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
@@ -371,8 +371,8 @@ check_root() {
       echo
       apt_clean_update
     fi
-    if [ "${_THIS_OS}" != "Debian" ]; then
-      echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
+    if [ "${_OS_DIST}" != "Debian" ]; then
+      echo "ERROR: Not supported OS detected: ${_OS_DIST}/${_OS_CODE}"
       exit 1
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
@@ -1312,9 +1312,9 @@ db_head_to_stretch_first()
 {
   if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ]; then
     _HOST_HOSTNAME=`hostname 2>&1`
-    if [[ "${_OSR}" =~ "stretch" ]]; then
+    if [[ "${_OS_CODE}" =~ "stretch" ]]; then
       echo "The ${_HOST_HOSTNAME} is already running Stretch"
-    elif [[ "${_OSR}" =~ "jessie" ]]; then
+    elif [[ "${_OS_CODE}" =~ "jessie" ]]; then
   	  cat /etc/resolv.conf > /var/backups/resolv.conf.pre-dist-upgrade
   	  rm -f /etc/resolv.conf
   	  echo "nameserver 127.0.0.1" > /etc/resolv.conf
@@ -1417,7 +1417,7 @@ db_head_to_stretch_second()
 {
   if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ]; then
     _HOST_HOSTNAME=`hostname 2>&1`
-    if [[ "${_OSR}" =~ "stretch" ]]; then
+    if [[ "${_OS_CODE}" =~ "stretch" ]]; then
   	  if [ -x "/lib/systemd/systemd" ]; then
         ls -la /lib/systemd/systemd
         apt_clean_update

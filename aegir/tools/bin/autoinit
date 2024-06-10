@@ -203,9 +203,9 @@ init_pre() {
       touch /var/run/autoinit.pid
       /usr/bin/apt-get update >> ${logSlt}
       ${_INITINS} lsb-release >> ${logSlt}
-      _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-      _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-      msg "This system is ${_THIS_OS}/${_OSR}" >> ${logInt}
+      _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+      _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+      msg "This system is ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
       msg "We need to install some tools early..." >> ${logInt}
       echo " " >> ${logInt}
       if [ "${silentMode}" = "verbose" ]; then
@@ -274,11 +274,11 @@ init_info() {
 
 init_run_two_quick() {
   echo " " >> ${logInt}
-  _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   msg "Running init_run_two_quick procedure..." >> ${logInt}
   touch /var/run/autoinit.pid
-  msg "Launching a quick dist-upgrade to ${_THIS_OS}/${_OSR}" >> ${logInt}
+  msg "Launching a quick dist-upgrade to ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
   if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
     rm -f /etc/apt/preferences.d/systemd
     echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
@@ -301,10 +301,10 @@ init_run_two_quick() {
     /usr/bin/apt-get autoremove --purge -y -qq >> ${logSlt}
     /usr/bin/apt-get autoclean -y -qq >> ${logSlt}
   fi
-  _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-  msg "Your system now runs on ${_THIS_OS}/${_OSR}" >> ${logInt}
-  if [ "${_OSR}" = "daedalus" ]; then
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
+  if [ "${_OS_CODE}" = "daedalus" ]; then
     msg "Time for reboot and then you can run boa install" >> ${logInt}
     rm -f /root/.init-to-devuan.cnf
     rm -f /root/.init-to-devuan-loop.cnf
@@ -322,32 +322,32 @@ init_run_two_quick() {
 
 init_run_one_quick() {
   echo " " >> ${logInt}
-  _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   msg "Running init_run_one_quick procedure..." >> ${logInt}
   touch /var/run/autoinit.pid
-  msg "Your current system is ${_THIS_OS}/${_OSR}" >> ${logInt}
+  msg "Your current system is ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
   echo " " >> ${logInt}
   _NEW_SYS=Devuan
   _OLD_SYS=Devuan
-  if [ "${_OSR}" = "bookworm" ]; then
-    _NEW_OSR=daedalus
+  if [ "${_OS_CODE}" = "bookworm" ]; then
+    _NEW_OS_CODE=daedalus
     _OLD_SYS=Debian
-  elif [ "${_OSR}" = "bullseye" ]; then
-    _NEW_OSR=chimaera
+  elif [ "${_OS_CODE}" = "bullseye" ]; then
+    _NEW_OS_CODE=chimaera
     _OLD_SYS=Debian
-  elif [ "${_OSR}" = "buster" ]; then
-    _NEW_OSR=beowulf
+  elif [ "${_OS_CODE}" = "buster" ]; then
+    _NEW_OS_CODE=beowulf
     _OLD_SYS=Debian
-  elif [ "${_OSR}" = "beowulf" ]; then
-    _NEW_OSR=chimaera
-  elif [ "${_OSR}" = "chimaera" ]; then
-    _NEW_OSR=daedalus
-  elif [ "${_OSR}" = "daedalus" ]; then
-    _NEW_OSR=
+  elif [ "${_OS_CODE}" = "beowulf" ]; then
+    _NEW_OS_CODE=chimaera
+  elif [ "${_OS_CODE}" = "chimaera" ]; then
+    _NEW_OS_CODE=daedalus
+  elif [ "${_OS_CODE}" = "daedalus" ]; then
+    _NEW_OS_CODE=
     _NEW_SYS=
   else
-    msg "This procedure does not support ${_THIS_OS}/${_OSR}" >> ${logInt}
+    msg "This procedure does not support ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
     msg "Bye!" >> ${logInt}
     echo " " >> ${logInt}
     exit 1
@@ -361,27 +361,27 @@ init_run_one_quick() {
       /usr/bin/apt-get upgrade ${nrmUpArg} >> ${logSlt}
     fi
   fi
-  if [ ! -z "${_NEW_OSR}" ] && [ ! -z "${_NEW_SYS}" ]; then
-    msg "Launching a quick upgrade to ${_NEW_SYS}/${_NEW_OSR}" >> ${logInt}
+  if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
+    msg "Launching a quick upgrade to ${_NEW_SYS}/${_NEW_OS_CODE}" >> ${logInt}
     echo " " >> ${logInt}
     aptLiSys="/etc/apt/sources.list"
     _TGT_MRR="deb.devuan.org/merged"
     echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
-    echo "deb http://${_TGT_MRR} ${_NEW_OSR} main" >> ${aptLiSys}
-    echo "deb-src http://${_TGT_MRR} ${_NEW_OSR} main" >> ${aptLiSys}
+    echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${aptLiSys}
+    echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE} main" >> ${aptLiSys}
     echo "" >> ${aptLiSys}
     echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
-    echo "deb http://${_TGT_MRR} ${_NEW_OSR}-updates main" >> ${aptLiSys}
-    echo "deb-src http://${_TGT_MRR} ${_NEW_OSR}-updates main" >> ${aptLiSys}
+    echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${aptLiSys}
+    echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE}-updates main" >> ${aptLiSys}
     echo "" >> ${aptLiSys}
     echo "## DEVUAN SECURITY UPDATES" >> ${aptLiSys}
-    echo "deb http://${_TGT_MRR} ${_NEW_OSR}-security main" >> ${aptLiSys}
-    echo "deb-src http://${_TGT_MRR} ${_NEW_OSR}-security main" >> ${aptLiSys}
+    echo "deb http://${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${aptLiSys}
+    echo "deb-src http://${_TGT_MRR} ${_NEW_OS_CODE}-security main" >> ${aptLiSys}
     if [ -e "/etc/apt/apt.conf" ]; then
       rm -f /etc/apt/apt.conf
     fi
   fi
-  if [ ! -z "${_NEW_OSR}" ] && [ ! -z "${_NEW_SYS}" ]; then
+  if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
     if [ "${silentMode}" = "verbose" ]; then
       if [ "${_OLD_SYS}" = "Debian" ]; then
         /usr/bin/apt-get update --allow-insecure-repositories >> ${logInt}
@@ -418,10 +418,10 @@ init_run_one_quick() {
       fi
     fi
   fi
-  _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-  _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ "${_OLD_SYS}" = "Debian" ]; then
-    msg "Your initial Debian system now runs on ${_THIS_OS}/${_OSR}" >> ${logInt}
+    msg "Your initial Debian system now runs on ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
     msg "Time for reboot and next upgrade cycle..." >> ${logInt}
     echo " " >> ${logInt}
     sleep 5
@@ -430,14 +430,14 @@ init_run_one_quick() {
     reboot
     exit 0
   else
-    if [ "${_OSR}" = "daedalus" ]; then
-      msg "Your system now runs on ${_THIS_OS}/${_OSR}" >> ${logInt}
+    if [ "${_OS_CODE}" = "daedalus" ]; then
+      msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
       msg "Time for the last reboot and then you can run boa install" >> ${logInt}
       rm -f /root/.init-to-devuan.cnf
       rm -f /root/.init-to-devuan-loop.cnf
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
     else
-      msg "Your system now runs on ${_THIS_OS}/${_OSR}" >> ${logInt}
+      msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
       msg "Time for reboot and next upgrade cycle..." >> ${logInt}
     fi
     echo " " >> ${logInt}
@@ -594,12 +594,12 @@ pre() {
   if [ -e "/root/.init-to-devuan.cnf" ] \
     || [ -e "/root/.init-to-debian.cnf" ] \
     || [ -e "/root/.init-to-devuan-loop.cnf" ]; then
-    _THIS_OS=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-    _OSR=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+    _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+    _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
     touch /var/run/autoinit.pid
-    echo "Launching BOA System INIT on ${_THIS_OS}/${_OSR}"
+    echo "Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}"
     echo "Watch the progress with: tail -f /root/.autoinit.log"
-    msg "Launching BOA System INIT on ${_THIS_OS}/${_OSR}" >> ${logInt}
+    msg "Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
     sleep 15
     init
   else
