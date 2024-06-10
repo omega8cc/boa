@@ -242,6 +242,29 @@ if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
   fi
 fi
 
+if_clean_boa_env() {
+  if [ ! -x "/etc/init.d/clean-boa-env" ] \
+    || [ ! -e "/root/.run-auto-update-clean-boa-env.cnf" ]; then
+    if [ -e "/etc/init.d/clean-boa-env" ]; then
+      mv -f /etc/init.d/clean-boa-env /var/backups/clean-boa-env-bak
+    fi
+    crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+    urlHmr="http://files.aegir.cc/versions/${tRee}/boa/aegir"
+    curl ${crlGet} "${urlHmr}/conf/clean-boa-env" -o /etc/init.d/clean-boa-env
+    if [ -e "/etc/init.d/clean-boa-env" ]; then
+      chmod 700 /etc/init.d/clean-boa-env
+      chown root:root /etc/init.d/clean-boa-env
+      update-rc.d clean-boa-env defaults &> /dev/null
+      touch /root/.run-auto-update-clean-boa-env.cnf
+    else
+      if [ -e "/var/backups/clean-boa-env-bak" ]; then
+        mv -f /var/backups/clean-boa-env-bak /etc/init.d/clean-boa-env
+      fi
+    fi
+  fi
+}
+if_clean_boa_env
+
 if [ -e "/root/.run-to-daedalus.cnf" ]; then
   echo " " >> ${logAds}
   if [ -e "/root/.run-auto-major-os-reboot-daedalus-one.cnf" ] \
