@@ -225,11 +225,13 @@ check_os_compatibility() {
   elif [ "${_OS_CODE}" = "jessie" ]; then
     _NEXT_OS_CODE=beowulf
   else
-    echo "This procedure does not support ${_OS_DIST}/${_OS_CODE}"
-    echo "The minimum supported system is Debian/jessie"
-    echo "The maximum supported system is Debian/buster"
-    echo "Bye!"
-    exit 1
+    if [ ! -e "/root/.auto-upgraded-to-beowulf.cnf" ]; then
+      echo "This procedure does not support ${_OS_DIST}/${_OS_CODE}"
+      echo "The minimum supported system is Debian/jessie"
+      echo "The maximum supported system is Debian/buster"
+      echo "Bye!"
+      exit 1
+    fi
   fi
 }
 check_os_compatibility
