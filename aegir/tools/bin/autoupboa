@@ -308,11 +308,11 @@ if [ -e "/var/aegir/drush" ]; then
       sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
       wait
       sed -i "/^$/d" /etc/csf/csf.allow
-      _DHCP_TEST=$(grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq 2>&1)
+      _DHCP_TEST=$(grep DHCPREQUEST /var/log/daemon.log | cut -d ' ' -f13 | sort | uniq 2>&1)
       if [[ "${_DHCP_TEST}" =~ "port" ]]; then
-	    for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+	    for _IP in `grep DHCPREQUEST /var/log/daemon.log | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
       else
-        for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+        for _IP in `grep DHCPREQUEST /var/log/daemon.log | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
       fi
 	  csf -q
 	  touch /var/xdrago/log/.csf_dhcp_udp_cleanup.${_X_SE}.pid
