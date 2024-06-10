@@ -232,16 +232,6 @@ if [ ! -e "/root/.run-to-chimaera.cnf" ]; then
   exit 1
 fi
 
-check_sql_running() {
-  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
-    msg "INFO: Waiting for MySQLD availability..." >> ${logAch}
-    sleep 3
-  done
-}
-###check_sql_running
-
 if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
   _DB_SERIES=5.7
   _DB_SERVER_TEST=$(mysql -V 2>&1)
