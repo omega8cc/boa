@@ -5863,13 +5863,13 @@ if_major_os_upgrade() {
       mrun "apt-get dist-upgrade ${dstUpArg} --allow-downgrades" 2> /dev/null
       mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
       mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
-      _FORCE_REBUILD_SRC_ON_AUTO_NOW=YES
       ###
       if [ "${_LOC_OS_CODE}" = "chimaera" ] \
         && [ "${_NEW_OS_CODE}" = "daedalus" ]; then
         ### Signal that --allow-downgrades can be used after reboot
         touch /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
         msg "INFO: dist-upgrade with --allow-downgrades option is used"
+        _FORCE_REBUILD_SRC_ON_AUTO_NOW=YES
       fi
       ###
     fi
