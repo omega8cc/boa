@@ -440,11 +440,11 @@ satellite_check_id() {
   elif [[ "${_ID_EXISTS}" =~ "${_USER}" ]]; then
     msg "ERROR: ${_USER} username is already taken"
     msg "Please choose different _USER"
-    clean_pid_exit
+    clean_pid_exit satellite_check_id_a
   else
     msg "ERROR: ${_USER} username check failed"
     msg "Please try different _USER"
-    clean_pid_exit
+    clean_pid_exit satellite_check_id_b
   fi
   if [ "${_USER}" = "admin" ] \
     || [ "${_USER}" = "hostmaster" ] \
@@ -454,20 +454,20 @@ satellite_check_id() {
     || [ "${_USER}" = "all" ]; then
     msg "ERROR: ${_USER} is a restricted username"
     msg "ERROR: Please choose a different _USER"
-    clean_pid_exit
+    clean_pid_exit satellite_check_id_c
   elif [[ "${_USER}" =~ "drupal" ]] \
     || [[ "${_USER}" =~ "drush" ]] \
     || [[ "${_USER}" =~ "sites" ]] \
     || [[ "${_USER}" =~ "default" ]]; then
     msg "ERROR: ${_USER} includes restricted keyword"
     msg "ERROR: Please choose a different _USER"
-    clean_pid_exit
+    clean_pid_exit satellite_check_id_d
   fi
   _REGEX="^[[:digit:]]"
   if [[ "${_USER}" =~ "${_REGEX}" ]]; then
     msg "ERROR: ${_USER} is a wrong username"
     msg "ERROR: The correct username should start with a letter, not digit"
-    clean_pid_exit
+    clean_pid_exit satellite_check_id_e
   fi
 }
 
@@ -541,7 +541,7 @@ satellite_cnf() {
       else
         msg "EXIT: You must enter **your** valid email address"
         msg "EXIT: in the _MY_EMAIL **and** _CLIENT_EMAIL variables"
-        clean_pid_exit
+        clean_pid_exit satellite_cnf_a
       fi
     fi
     msg "INFO: Creating your ${octCnf} config file"
@@ -927,7 +927,7 @@ satellite_cnf() {
       else
         msg "EXIT: You must enter **your** valid email address in the"
         msg "EXIT: _MY_EMAIL variable in the ${octCnf} file"
-        clean_pid_exit
+        clean_pid_exit satellite_cnf_b
       fi
     fi
     if [ "${_PHP_FPM_VERSION}" = "8.3" ] \
@@ -1047,7 +1047,7 @@ satellite_cnf() {
     if [ -z "${_PHP_FPM_VERSION}" ] || [ -z "${_PHP_CLI_VERSION}" ]; then
       msg "EXIT: You must specify already installed PHP version"
       msg "EXIT: in both _PHP_FPM_VERSION and _PHP_CLI_VERSION"
-      clean_pid_exit
+      clean_pid_exit satellite_cnf_c
     fi
   fi
 
@@ -4126,7 +4126,7 @@ satellite_make() {
     msg "FATAL ERROR: AegirSetupA installer failed"
     msg "FATAL ERROR: Aborting Octopus installer NOW!"
     touch /opt/tmp/status-Octopus-FAIL
-    clean_pid_exit
+    clean_pid_exit satellite_make_a
   fi
 
   if [ ! -e "${_ROOT}/log/email.txt" ]; then
@@ -4213,7 +4213,7 @@ satellite_if_head_github_connection_test() {
       msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
-      clean_pid_exit
+      clean_pid_exit satellite_if_head_github_connection_test_a
     fi
     _GITHUB_TEST=$(git clone ${gitHub}/hostmaster.git \
       /opt/tmp/test-hostmaster 2>&1)
@@ -4224,7 +4224,7 @@ satellite_if_head_github_connection_test() {
       msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
-      clean_pid_exit
+      clean_pid_exit satellite_if_head_github_connection_test_b
     fi
     rm -rf /opt/tmp/test-*
   fi
@@ -4241,7 +4241,7 @@ satellite_if_head_github_connection_test() {
       msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
-      clean_pid_exit
+      clean_pid_exit satellite_if_head_github_connection_test_c
     fi
     rm -rf /opt/tmp/test-*
   fi
@@ -4259,7 +4259,7 @@ satellite_if_sql_exception_test() {
     msg "HINT: Please check ${_LOG} for more information,"
     msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
     msg "Bye"
-    clean_pid_exit
+    clean_pid_exit satellite_if_sql_exception_test_a
   fi
 }
 
@@ -4278,7 +4278,7 @@ satellite_if_running_as_root_octopus() {
   else
     msg "ERROR: This script should be ran as a root user"
     msg "Bye"
-    clean_pid_exit
+    clean_pid_exit satellite_if_running_as_root_octopus_a
   fi
 }
 
@@ -4325,7 +4325,7 @@ satellite_check_sanitize_domain_name() {
     msg "ERROR: ${_DOMAIN} is already used on the Aegir Master Instance"
     msg "Please change the value for _DOMAIN to make it unique"
     msg "Bye"
-    clean_pid_exit
+    clean_pid_exit satellite_check_sanitize_domain_name_a
   fi
 }
 
@@ -4416,7 +4416,7 @@ satellite_check_php_compatibility() {
     msg "Please switch FPM and CLI on ${_USER} to PHP 5.6 or newer"
     msg "Then please run the octopus upgrade again"
     msg "Bye"
-    clean_pid_exit
+    clean_pid_exit satellite_check_php_compatibility_a
   fi
 }
 
@@ -4429,7 +4429,7 @@ satellite_check_octopus_vs_barracuda_ver() {
     msg "of boa or barracuda installer was used before. Your system must be"
     msg "upgraded with barracuda installer version ${_X_VERSION} first!"
     msg "Bye"
-    clean_pid_exit
+    clean_pid_exit satellite_check_octopus_vs_barracuda_ver_a
   else
     _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
@@ -4439,7 +4439,7 @@ satellite_check_octopus_vs_barracuda_ver() {
       msg "of boa or barracuda installer was used before. Your system must be"
       msg "upgraded with barracuda installer version ${_X_VERSION} first!"
       msg "Bye"
-      clean_pid_exit
+      clean_pid_exit satellite_check_octopus_vs_barracuda_ver_b
     fi
   fi
   if [ -e "${_ROOT}/log/octopus_log.txt" ]; then
@@ -4458,7 +4458,7 @@ satellite_check_octopus_vs_barracuda_ver() {
       msg "Please run 'octopus up-lite/pro/dev ${_USER} force' upgrade first!"
       msg "Display all supported commands with: octopus help"
       msg "Bye"
-      clean_pid_exit
+      clean_pid_exit satellite_check_octopus_vs_barracuda_ver_c
     fi
     if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-4." ]]; then
@@ -4475,7 +4475,7 @@ satellite_check_octopus_vs_barracuda_ver() {
       msg "Please use 'octopus up-pro ${_USER} force' to upgrade"
       msg "Display all supported commands with: octopus help"
       msg "Bye"
-      clean_pid_exit
+      clean_pid_exit satellite_check_octopus_vs_barracuda_ver_d
     fi
   fi
   rm -f /var/run/aegir_upgrade.pid
@@ -4495,11 +4495,11 @@ satellite_if_init_or_upgrade() {
       fi
       if [ -z "${_DOMAIN}" ]; then
         msg "ALERT! _DOMAIN is e-m-p-t-y, exit now"
-        clean_pid_exit
+        clean_pid_exit satellite_if_init_or_upgrade_a
       fi
       if [ -z "${_USER}" ]; then
         msg "ALERT! _USER is e-m-p-t-y, exit now"
-        clean_pid_exit
+        clean_pid_exit satellite_if_init_or_upgrade_b
       fi
       _CHECK_HOST=$(uname -n 2>&1)
       if [ -e "/root/.auto.up.cnf" ] \
@@ -4548,7 +4548,7 @@ satellite_if_init_or_upgrade() {
           msg "EXIT: ${octCnf} file and in the"
           msg "EXIT: ${_ROOT}/log/email.txt file"
           msg "EXIT: Bye (1)"
-          clean_pid_exit
+          clean_pid_exit satellite_if_init_or_upgrade_c
         fi
         _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
       fi
@@ -4567,7 +4567,7 @@ satellite_if_init_or_upgrade() {
           msg "EXIT: ${octCnf} file and in the"
           msg "EXIT: ${_ROOT}/log/email.txt file"
           msg "EXIT: Bye (2)"
-          clean_pid_exit
+          clean_pid_exit satellite_if_init_or_upgrade_d
         fi
       fi
       #
@@ -4662,7 +4662,7 @@ satellite_if_major_upgrade() {
         msg "ERROR: Major version upgrade requires control file:"
         msg "${_ROOT}/log/satellite_major_upgrade_ok.txt"
         msg "Bye"
-        clean_pid_exit
+        clean_pid_exit satellite_if_major_upgrade_a
       fi
     fi
   fi
@@ -4677,7 +4677,7 @@ satellite_if_major_upgrade() {
         msg "ERROR: Major version upgrade requires control file:"
         msg "${_ROOT}/log/satellite_major_upgrade_ok.txt"
         msg "Bye"
-        clean_pid_exit
+        clean_pid_exit satellite_if_major_upgrade_b
       fi
     fi
   fi
@@ -4713,7 +4713,7 @@ satellite_if_check_dns() {
       msg "Please make sure you have a valid A record in your DNS"
       msg "It is also possible that DNS change didn't propagate yet"
       msg "Bye"
-      clean_pid_exit
+      clean_pid_exit satellite_if_check_dns_a
     fi
   else
     if [ -z "${_MY_OWNIP}" ]; then

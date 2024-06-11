@@ -203,6 +203,7 @@ fi
 ### Clean pid files on exit
 ###
 clean_pid_exit() {
+  echo "REASON ${e} on $(date 2>&1)" >> /root/.barracuda.sh.exit.exceptions.log
   [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
   [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   service cron start &> /dev/null
@@ -220,7 +221,7 @@ panic_exit() {
   echo " EXIT: Cannot continue"
   echo " EXIT: Bye (0)"
   echo
-  clean_pid_exit
+  clean_pid_exit panic_exit_a
 }
 
 
@@ -299,9 +300,16 @@ systemd_cleanup_on_init
 ###
 check_boa_php_compatibility
 check_boa_version
-check_github_for_aegir_head_mode
-check_db_src
-check_git_repos
+if [ -e "/root/.run-to-daedalus.cnf" ] \
+  || [ -e "/root/.run-to-chimaera.cnf" ] \
+  || [ -e "/root/.run-to-beowulf.cnf" ]; then
+  _CHECKS=NO
+else
+  check_github_for_aegir_head_mode
+  check_db_src
+  check_git_repos
+fi
+
 check_ip_hostname
 check_prepare_dirs_permissions
 
@@ -369,10 +377,15 @@ db_server_install
 ###
 ### Finalize initial Percona server setup
 ###
-init_sql_root_credentials
-sql_root_credentials_update
-mytop_install
-
+if [ -e "/root/.run-to-daedalus.cnf" ] \
+  || [ -e "/root/.run-to-chimaera.cnf" ] \
+  || [ -e "/root/.run-to-beowulf.cnf" ]; then
+  _CHECKS=NO
+else
+  init_sql_root_credentials
+  sql_root_credentials_update
+  mytop_install
+fi
 
 ###
 ### Install other services

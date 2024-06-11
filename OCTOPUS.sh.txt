@@ -163,6 +163,7 @@ fi
 ### Clean pid files on exit
 ###
 clean_pid_exit() {
+  echo "REASON ${e} on $(date 2>&1)" >> /root/.octopus.sh.exit.exceptions.log
   [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
   [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   service cron start &> /dev/null
@@ -180,7 +181,7 @@ panic_exit() {
   echo " EXIT: Cannot continue"
   echo " EXIT: Bye (0)"
   echo
-  clean_pid_exit
+  clean_pid_exit panic_exit_a
 }
 
 

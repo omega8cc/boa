@@ -41,6 +41,7 @@ if [ -z "${TERM+x}" ]; then
 fi
 
 clean_pid_exit() {
+  echo "REASON ${e} on $(date 2>&1)" >> /root/.boa.exit.exceptions.log
   [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
   [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   service cron start &> /dev/null
@@ -95,7 +96,7 @@ not_supported_virt() {
   echo
   echo "Bye"
   echo
-  clean_pid_exit
+  clean_pid_exit not_supported_virt_a
 }
 
 check_virt() {
@@ -172,7 +173,7 @@ system_check_ready() {
     echo "ERROR: Please install complete BOA system before trying"
     echo "ERROR: to install additional Aegir / Octopus instances"
     echo "Bye"
-    clean_pid_exit
+    clean_pid_exit system_check_ready_a
   fi
 }
 
@@ -197,7 +198,7 @@ system_check_clean() {
       echo
     fi
     echo "Bye"
-    clean_pid_exit
+    clean_pid_exit system_check_clean_a
   fi
 }
 
@@ -225,7 +226,7 @@ check_ifnames() {
     echo
     echo "Bye"
     echo
-    clean_pid_exit
+    clean_pid_exit check_ifnames_a
   fi
 }
 
@@ -256,7 +257,7 @@ check_root_direct() {
     echo "         PermitRootLogin without-password"
     echo "       in the /usr/etc/sshd_config file"
     echo "Bye"
-    clean_pid_exit
+    clean_pid_exit check_root_direct_a
   fi
 }
 
@@ -282,7 +283,7 @@ check_root_keys_pwd() {
     echo
     echo "Bye"
     echo
-    clean_pid_exit
+    clean_pid_exit check_root_keys_pwd_a
   fi
   check_ifnames
 }
@@ -295,11 +296,11 @@ satellite_check_id() {
   elif [[ "${_ID_EXISTS}" =~ "${_USER}" ]]; then
     echo "ERROR: ${_USER} username is already taken"
     echo "Please choose different username"
-    clean_pid_exit
+    clean_pid_exit satellite_check_id_a
   else
     echo "ERROR: ${_USER} username check failed"
     echo "Please try different username"
-    clean_pid_exit
+    clean_pid_exit satellite_check_id_b
   fi
   if [ "${_USER}" = "admin" ] \
     || [ "${_USER}" = "hostmaster" ] \
@@ -309,7 +310,7 @@ satellite_check_id() {
     || [ "${_USER}" = "all" ]; then
     echo "ERROR: ${_USER} is a restricted username, \
       please choose different _USER"
-    clean_pid_exit
+    clean_pid_exit satellite_check_id_c
   elif [[ "${_USER}" =~ "aegir" ]] \
     || [[ "${_USER}" =~ "drupal" ]] \
     || [[ "${_USER}" =~ "drush" ]] \
@@ -317,13 +318,13 @@ satellite_check_id() {
     || [[ "${_USER}" =~ "default" ]]; then
     echo "ERROR: ${_USER} includes restricted keyword, \
       please choose different _USER"
-    clean_pid_exit
+    clean_pid_exit satellite_check_id_d
   fi
   _REGEX="^[[:digit:]]"
   if [[ "${_USER}" =~ "${_REGEX}" ]]; then
     echo "ERROR: ${_USER} is a wrong username, \
       it should start with a letter, not digit"
-    clean_pid_exit
+    clean_pid_exit satellite_check_id_e
   fi
 }
 
@@ -655,7 +656,7 @@ octopus_install() {
     wait
   else
     echo "${octName} installer not available - try again"
-    clean_pid_exit
+    clean_pid_exit octopus_install_a
   fi
 }
 
@@ -1055,7 +1056,7 @@ barracuda_install() {
     fi
   else
     echo "${barName} installer not available - try again"
-    clean_pid_exit
+    clean_pid_exit barracuda_install_a
   fi
 }
 
@@ -1420,7 +1421,7 @@ check_dns_curl() {
       if_reinstall_curl
     else
       echo "ERROR: ${_USE_MIR} is not available, please try later"
-      clean_pid_exit
+      clean_pid_exit check_dns_curl_a
     fi
   fi
 }
@@ -1533,7 +1534,7 @@ check_root() {
     wait
   else
     echo "ERROR: This script should be ran as a root user"
-    clean_pid_exit
+    clean_pid_exit check_root_a
   fi
   _DF_TEST=$(df -kTh / -l \
     | grep '/' \
@@ -1543,7 +1544,7 @@ check_root() {
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
-    clean_pid_exit
+    clean_pid_exit check_root_b
   fi
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -2297,6 +2298,6 @@ case "$1" in
   See docs/INSTALL.txt for more details.
 
 EOF
-             clean_pid_exit
+             clean_pid_exit cmmand_a
   ;;
 esac

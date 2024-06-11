@@ -206,6 +206,7 @@ fi
 #
 # Clean pid files on exit.
 clean_pid_exit() {
+  echo "REASON ${e} on $(date 2>&1)" >> /root/.bond.sh.exit.exceptions.log
   [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
   [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   service cron start &> /dev/null
@@ -225,7 +226,7 @@ check_root() {
     ionice -c2 -n7 -p $$
   else
     echo "ERROR: This script should be ran as a root user"
-    clean_pid_exit
+    clean_pid_exit check_root_a
   fi
 }
 check_root
@@ -268,7 +269,7 @@ check_sql_access() {
     echo "ALERT: Please fix this before trying again, giving up."
     echo "Bye"
     echo " "
-    clean_pid_exit
+    clean_pid_exit check_sql_access_a
   fi
   if [ -z "${_IS_SYNC_SQL_PSWD}" ] \
     || [[ ! "${_IS_SYNC_SQL_PSWD}" =~ "password=${_SQL_PSWD}" ]]; then
@@ -277,7 +278,7 @@ check_sql_access() {
     echo "ALERT: Please fix this before trying again, giving up."
     echo "Bye"
     echo " "
-    clean_pid_exit
+    clean_pid_exit check_sql_access_b
   else
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
@@ -285,7 +286,7 @@ check_sql_access() {
       echo "ALERT: Please fix this before trying again, giving up."
       echo "Bye"
       echo " "
-      clean_pid_exit
+      clean_pid_exit check_sql_access_c
     else
       _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
       if [ -z "${_MYSQL_CONN_TEST}" ] \
@@ -294,7 +295,7 @@ check_sql_access() {
         echo "ALERT: Please fix this before trying again, giving up."
         echo "Bye"
         echo " "
-        clean_pid_exit
+        clean_pid_exit check_sql_access_d
       fi
     fi
   fi
@@ -1732,7 +1733,7 @@ check_git_repos() {
     Bye.
 
 EOF
-    clean_pid_exit
+    clean_pid_exit check_git_repos_a
   fi
 }
 
@@ -1762,14 +1763,14 @@ if [ `whoami` = "root" ]; then
 else
   msg "ERROR: This script should be ran as a root user"
   msg "Bye"
-  clean_pid_exit
+  clean_pid_exit root_a
 fi
 #
 #
 if [ ! -f "/var/log/barracuda_log.txt" ]; then
   msg "ERROR: Please upgrade this system to BOA version ${_X_VERSION} first"
   msg "Bye"
-  clean_pid_exit
+  clean_pid_exit version_a
 else
   _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
   if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
@@ -1777,7 +1778,7 @@ else
   else
     msg "ERROR: Please upgrade this system to BOA version ${_X_VERSION} first"
     msg "Bye"
-    clean_pid_exit
+    clean_pid_exit version_b
   fi
 fi
 #

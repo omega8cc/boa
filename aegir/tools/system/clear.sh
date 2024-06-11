@@ -176,7 +176,7 @@ check_dns_curl() {
       if_reinstall_curl
     else
       echo "ERROR: ${_USE_MIR} is not available, please try later"
-      clean_pid_exit
+      clean_pid_exit check_dns_curl_clear_a
     fi
   fi
 }

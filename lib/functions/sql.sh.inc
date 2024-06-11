@@ -1491,7 +1491,7 @@ init_sql_root_credentials() {
 
 EOF
     msg "EXIT on error due to not found file with your ${_DB_SERVER} root password"
-    clean_pid_exit
+    clean_pid_exit init_sql_root_credentials_a
   fi
 }
 

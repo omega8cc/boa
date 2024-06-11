@@ -44,6 +44,7 @@ if [ -z "${TERM+x}" ]; then
 fi
 
 clean_pid_exit() {
+  echo "REASON ${e} on $(date 2>&1)" >> /root/.barracuda.exit.exceptions.log
   [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
   [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   service cron start &> /dev/null
@@ -91,7 +92,7 @@ check_ifnames() {
     echo
     echo "Bye"
     echo
-    clean_pid_exit
+    clean_pid_exit check_ifnames_a
   fi
 }
 
@@ -122,7 +123,7 @@ check_root_direct() {
     echo "         PermitRootLogin without-password"
     echo "       in the /usr/etc/sshd_config file"
     echo "Bye"
-    clean_pid_exit
+    clean_pid_exit check_root_direct_a
   fi
   check_ifnames
 }
@@ -149,7 +150,7 @@ check_root_keys_pwd() {
     echo
     echo "Bye"
     echo
-    clean_pid_exit
+    clean_pid_exit check_root_keys_pwd_a
   fi
 }
 
@@ -172,7 +173,7 @@ check_sql_access() {
     echo "ALERT: Please fix this before trying again, giving up."
     echo "Bye"
     echo " "
-    clean_pid_exit
+    clean_pid_exit check_sql_access_a
   fi
   if [ -z "${_IS_SYNC_SQL_PSWD}" ] \
     || [[ ! "${_IS_SYNC_SQL_PSWD}" =~ "password=${_SQL_PSWD}" ]]; then
@@ -181,7 +182,7 @@ check_sql_access() {
     echo "ALERT: Please fix this before trying again, giving up."
     echo "Bye"
     echo " "
-    clean_pid_exit
+    clean_pid_exit check_sql_access_b
   else
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
@@ -189,7 +190,7 @@ check_sql_access() {
       echo "ALERT: Please fix this before trying again, giving up."
       echo "Bye"
       echo " "
-      clean_pid_exit
+      clean_pid_exit check_sql_access_c
     else
       _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
       if [ -z "${_MYSQL_CONN_TEST}" ] \
@@ -198,7 +199,7 @@ check_sql_access() {
         echo "ALERT: Please fix this before trying again, giving up."
         echo "Bye"
         echo " "
-        clean_pid_exit
+        clean_pid_exit check_sql_access_d
       fi
     fi
   fi
@@ -292,7 +293,7 @@ barracuda_downgrade_protection() {
         echo "Please use 'barracuda up-pro system' to upgrade this server"
         echo "Bye"
         echo
-        clean_pid_exit
+        clean_pid_exit barracuda_downgrade_protection_a
       elif [[ "${_SERIES_TEST}" =~ "Barracuda ${rlsn}-dev" ]]; then
         echo
         echo "ERROR: Your system has been already upgraded to ${rlsn}-dev"
@@ -300,7 +301,7 @@ barracuda_downgrade_protection() {
         echo "Please use 'barracuda up-dev system' to upgrade this server"
         echo "Bye"
         echo
-        clean_pid_exit
+        clean_pid_exit barracuda_downgrade_protection_b
       fi
     fi
     if [ "${cmmand}" != "up-dev" ] \
@@ -311,7 +312,7 @@ barracuda_downgrade_protection() {
       echo "Sorry, you are trying not supported command.."
       echo "Display supported commands with: $(basename "$0") help"
       echo
-      clean_pid_exit
+      clean_pid_exit barracuda_downgrade_protection_c
     fi
   fi
 }
@@ -447,7 +448,7 @@ check_php_cli() {
       if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
         echo "ERROR: I can not find PHP-CLI anywhere!"
         echo "ERROR: BOA requires PHP 8.1 or newer"
-        clean_pid_exit
+        clean_pid_exit check_php_cli_a
       fi
     fi
   fi
@@ -563,7 +564,7 @@ up_action() {
           cat ${barCnf}
           echo
           echo test fin!
-          clean_pid_exit
+          clean_pid_exit debug_a
         fi
         ### Debugging
 
@@ -635,7 +636,7 @@ up_action() {
           cat ${barCnf}
           echo
           echo test fin!
-          clean_pid_exit
+          clean_pid_exit debug_b
         fi
         ### Debugging
 
@@ -1029,7 +1030,7 @@ up_action() {
     echo "  ${vBs}/${barName} installer not available - try again later"
     echo "  Make sure that required ${barCnf} file also exists"
     echo
-    clean_pid_exit
+    clean_pid_exit up_action_a
   fi
 }
 
@@ -1298,7 +1299,7 @@ check_dns_curl() {
       if_reinstall_curl
     else
       echo "ERROR: ${_USE_MIR} is not available, please try later"
-      clean_pid_exit
+      clean_pid_exit check_dns_curl_a
     fi
   fi
 }
@@ -1504,7 +1505,7 @@ check_root() {
     fi
   else
     echo "ERROR: This script should be ran as a root user"
-    clean_pid_exit
+    clean_pid_exit check_root_a
   fi
   _DF_TEST=$(df -kTh / -l \
     | grep '/' \
@@ -1514,7 +1515,7 @@ check_root() {
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
-    clean_pid_exit
+    clean_pid_exit check_root_b
   fi
   if [ -e "${barCnf}" ]; then
     source ${barCnf}
@@ -1525,7 +1526,7 @@ check_no_systemd() {
   if [ -e "/lib/systemd/systemd" ]; then
     echo "ERROR: This script can not be used with systemd"
     echo "ERROR: Please run 'boa init' first"
-    clean_pid_exit
+    clean_pid_exit check_no_systemd_a
   fi
 }
 
@@ -1618,7 +1619,7 @@ proceed() {
   See docs/UPGRADE.txt for more details.
 
 EOF
-    clean_pid_exit
+    clean_pid_exit proceed_a
   fi
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
@@ -1668,7 +1669,7 @@ else
     echo "Sorry, you are trying not supported command.."
     echo "Display supported commands with: $(basename "$0") help"
     echo
-    clean_pid_exit
+    clean_pid_exit cmmand_a
   fi
 fi
 

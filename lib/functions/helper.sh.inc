@@ -79,7 +79,7 @@ not_supported_virt() {
   echo
   echo "Bye"
   echo
-  clean_pid_exit
+  clean_pid_exit not_supported_virt_a
 }
 
 #
@@ -94,7 +94,7 @@ not_supported_os() {
   echo
   echo "Bye"
   echo
-  clean_pid_exit
+  clean_pid_exit not_supported_os_a
 }
 
 ###
@@ -318,7 +318,7 @@ mode_detection() {
         if [ -z "${_EASY_HOSTNAME}" ] \
           || [ "${_EASY_HOSTNAME}" = "wildcard-enabled-hostname" ]; then
           msg "FATAL ERROR: You must define also _EASY_HOSTNAME"
-          clean_pid_exit
+          clean_pid_exit mode_detection_a
         fi
       fi
     fi
@@ -479,7 +479,7 @@ check_exception_mycnf() {
 
 EOF
     msg "EXIT on error due to not found file with your ${_DB_SERVER} root password"
-    clean_pid_exit
+    clean_pid_exit check_exception_mycnf
     fi
   fi
 }
@@ -708,7 +708,7 @@ check_boa_php_compatibility() {
     msg "NOTE: You can still install also legacy PHP 7.x and 5.6 versions"
     msg "NOTE: but you must also include at least 8.1 to support Drupal 10"
     msg "Bye"
-    clean_pid_exit
+    clean_pid_exit check_boa_php_compatibility_a
   fi
   if [ "${_PHP_FPM_VERSION}" = "5.3" ] \
     || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
@@ -734,7 +734,7 @@ check_boa_php_compatibility() {
     msg "NOTE: You can still install also legacy PHP 7.x and 5.6 versions"
     msg "NOTE: but you must use as default version 8.1 to support Drupal 10"
     msg "Bye"
-    clean_pid_exit
+    clean_pid_exit check_boa_php_compatibility_b
   fi
 }
 
@@ -753,7 +753,7 @@ check_boa_version() {
       msg "You can not downgrade back to previous/older/lite BOA version"
       msg "Please use 'barracuda up-pro system' to upgrade this server"
       msg "Bye"
-      clean_pid_exit
+      clean_pid_exit check_boa_version_a
     fi
     if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-4." ]]; then
@@ -763,7 +763,7 @@ check_boa_version() {
       msg "has been already upgraded to BOA-4.x or BOA-5.x release"
       msg "Please run 'barracuda up-${tRee}' full upgrade first!"
       msg "Bye"
-      clean_pid_exit
+      clean_pid_exit check_boa_version_b
     fi
     if [[ "${_SERIES_TEST}" =~ "BOA-4." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-5." ]]; then
@@ -775,7 +775,7 @@ check_boa_version() {
         msg "You can not downgrade back to legacy or previous stable version"
         msg "Please use 'barracuda up-${tRee}' to upgrade this system"
         msg "Bye"
-        clean_pid_exit
+        clean_pid_exit check_boa_version_c
       fi
     fi
   fi

@@ -1213,7 +1213,7 @@ verify_upgrade_keys() {
         echo "Please visit https://omega8.cc/licenses to purchase your own"
         echo
         rm -f /var/opt/_encN*
-        clean_pid_exit
+        clean_pid_exit verify_upgrade_keys_a
       else
         if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
           mkdir -p /var/aegir/key
@@ -1262,7 +1262,7 @@ download_helpers_libs() {
     echo "Also, make sure that the outgoing connections via port 443 work"
     echo "Bye"
     echo " "
-    clean_pid_exit
+    clean_pid_exit download_helpers_libs_a
   fi
   # Get apt helpers
   rm -f apt.conf.noi*

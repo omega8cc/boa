@@ -150,7 +150,7 @@ check_git_repos() {
       Bye.
 
 EOF
-      clean_pid_exit
+      clean_pid_exit check_git_repos_a
     fi
   fi
 }
@@ -195,7 +195,7 @@ validate_public_ip() {
   if [ ! -z "${_LOCAL_NETWORK_IP}" ]; then
     if [ -z "${_LOCAL_NETWORK_HN}" ]; then
       msg "FATAL ERROR: you must specify also _LOCAL_NETWORK_HN"
-      clean_pid_exit
+      clean_pid_exit validate_public_ip_a
     else
       _MY_OWNIP="${_LOCAL_NETWORK_IP}"
       _MY_HOSTN="${_LOCAL_NETWORK_HN}"
@@ -327,7 +327,7 @@ check_connection() {
           msg "You may want to check https://www.githubstatus.com"
           msg "Also, make sure that the outgoing connections via port 443 work"
           msg "Bye"
-          clean_pid_exit
+          clean_pid_exit check_connection_a
         fi
       fi
     fi
@@ -342,7 +342,7 @@ dns_unbound_install() {
   fi
   isUnbnd=$(which unbound 2>&1)
   isUnbndErr=$(${isUnbnd} --version 2>&1)
-  if [[ "${isUnbndErr}" =~ "No such file" ]] || [ -z "${isUnbndErr}" ]; then
+  if [[ "${isUnbndErr}" =~ "cannot open shared object file" ]] || [ -z "${isUnbndErr}" ]; then
     isUnbndFix=YES
   else
     isUnbndFix=NO
@@ -486,7 +486,7 @@ check_github_for_aegir_head_mode() {
       msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
-      clean_pid_exit
+      clean_pid_exit check_github_for_aegir_head_mode_a
     fi
     _GITHUB_TEST=$(git clone ${gitHub}/hostmaster.git \
       /opt/tmp/test-hostmaster 2>&1)
@@ -497,7 +497,7 @@ check_github_for_aegir_head_mode() {
       msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
-      clean_pid_exit
+      clean_pid_exit check_github_for_aegir_head_mode_b
     fi
     rm -rf /opt/tmp/test-*
   fi
@@ -514,7 +514,7 @@ check_github_for_aegir_head_mode() {
       msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
-      clean_pid_exit
+      clean_pid_exit check_github_for_aegir_head_mode_c
     fi
     rm -rf /opt/tmp/test-*
   fi
@@ -530,7 +530,7 @@ check_db_src() {
     msg "Please try to run this script again in a few minutes"
     msg "or better yet, hours"
     msg "Bye"
-    clean_pid_exit
+    clean_pid_exit check_db_src_a
   fi
 }
 
@@ -542,7 +542,7 @@ check_ip_hostname() {
     if [ ! -z "${_LOCAL_NETWORK_IP}" ]; then
       if [ -z "${_LOCAL_NETWORK_HN}" ]; then
         msg "FATAL ERROR: you must specify also _LOCAL_NETWORK_HN"
-        clean_pid_exit
+        clean_pid_exit check_ip_hostname_a
       else
         _DNS_SETUP_TEST=NO
         _SMTP_RELAY_TEST=NO
@@ -667,7 +667,7 @@ check_ip_hostname() {
     if [ "${_THISHOST}" = "localhost" ]; then
       msg "FATAL ERROR: you can't use localhost as your FQDN hostname"
       msg "Please try something like: aegir.local"
-      clean_pid_exit
+      clean_pid_exit check_ip_hostname_b
     fi
     if [ "${_FQDNTEST}" = "FALSE" ]; then
       echo " "
@@ -699,7 +699,7 @@ EOF
 
 EOF
       msg "EXIT on error due to invalid DNS setup"
-      clean_pid_exit
+      clean_pid_exit check_ip_hostname_c
     else
       echo "${_THISHOST}" > /etc/hostname
       echo "${_THISHOST}" > /etc/mailname
@@ -719,7 +719,7 @@ EOF
       true
     else
       echo "Installation aborted by you"
-      clean_pid_exit
+      clean_pid_exit check_ip_hostname_d
     fi
   elif [ "${_STATUS}" = "UPGRADE" ]; then
     _THISHOST=$(cat /etc/hostname 2>&1)
@@ -737,7 +737,7 @@ EOF
     else
       msg "EXIT on error due to not found or not specified Aegir domain"
       msg "Please specify your working Aegir domain as a value of _MY_FRONT"
-      clean_pid_exit
+      clean_pid_exit check_ip_hostname_e
     fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo " "
@@ -755,7 +755,7 @@ EOF
         true
       else
         echo "Upgrade aborted by you"
-        clean_pid_exit
+        clean_pid_exit check_ip_hostname_f
       fi
     fi
   fi

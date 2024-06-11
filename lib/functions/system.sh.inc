@@ -368,7 +368,7 @@ if_running_as_root_barracuda() {
     sleep 1
   else
     msg "ERROR: This script should be ran as a root user"
-    clean_pid_exit
+    clean_pid_exit if_running_as_root_barracuda_a
   fi
 }
 
@@ -1713,7 +1713,7 @@ if_php_idle_on_off() {
       || [ -e "/root/.run-to-beowulf.cnf" ]; then
       echo " "
       msg "Bye"
-      clean_pid_exit
+      clean_pid_exit if_php_idle_on_off_a
     else
       complete
       exit 0
@@ -1749,7 +1749,7 @@ barracuda_cnf() {
       else
         msg "EXIT: Invalid email address defined in the _MY_EMAIL variable"
         msg "EXIT: Bye (1)"
-        clean_pid_exit
+        clean_pid_exit barracuda_cnf_a
       fi
     fi
     if [ "${_DB_SERIES}" = "10.4" ] \
@@ -2394,7 +2394,7 @@ barracuda_cnf() {
       else
         msg "EXIT: Invalid email address defined in the _MY_EMAIL variable"
         msg "EXIT: Bye (2)"
-        clean_pid_exit
+        clean_pid_exit barracuda_cnf_b
       fi
     fi
 
@@ -2443,7 +2443,7 @@ barracuda_cnf() {
         true
       else
         echo "Installation aborted by you"
-        clean_pid_exit
+        clean_pid_exit barracuda_cnf_c
       fi
     else
       echo " "
@@ -2451,7 +2451,7 @@ barracuda_cnf() {
         true
       else
         echo "Upgrade aborted by you"
-        clean_pid_exit
+        clean_pid_exit barracuda_cnf_d
       fi
     fi
   fi
@@ -3618,7 +3618,8 @@ ssl_crypto_lib_fix() {
       rm -f /usr/lib/x86_64-linux-gnu/libssl.so.3
       ln -sfn /usr/local/ssl3/lib64/libssl.so.3 /usr/lib/x86_64-linux-gnu/libssl.so
       ln -sfn /usr/local/ssl3/lib64/libssl.so.3 /usr/lib/x86_64-linux-gnu/libssl.so.3
-      ln -sfn /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
+      ln -sfn /usr/local/ssl3/lib64/libssl.so.3 /usr/lib/libssl.so
+      ln -sfn /usr/local/ssl3/lib64/libssl.so.3 /usr/lib/libssl.so.3
     fi
     if [ -e "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
       && [ -f "/usr/local/ssl3/lib64/libcrypto.so.3" ]; then
@@ -3626,19 +3627,20 @@ ssl_crypto_lib_fix() {
       rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so.3
       ln -sfn /usr/local/ssl3/lib64/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so
       ln -sfn /usr/local/ssl3/lib64/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so.3
-      ln -sfn /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+      ln -sfn /usr/local/ssl3/lib64/libcrypto.so.3 /usr/lib/libcrypto.so
+      ln -sfn /usr/local/ssl3/lib64/libcrypto.so.3 /usr/lib/libcrypto.so.3
     fi
     if [ -e "/usr/lib/x86_64-linux-gnu/libssl.a" ] \
       && [ -f "/usr/local/ssl3/lib64/libssl.a" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libssl.a
       ln -sfn /usr/local/ssl3/lib64/libssl.a /usr/lib/x86_64-linux-gnu/libssl.a
-      ln -sfn /usr/lib/x86_64-linux-gnu/libssl.a /usr/lib/libssl.a
+      ln -sfn /usr/local/ssl3/lib64/libssl.a /usr/lib/libssl.a
     fi
     if [ -e "/usr/lib/x86_64-linux-gnu/libcrypto.a" ] \
       && [ -f "/usr/local/ssl3/lib64/libcrypto.a" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libcrypto.a
       ln -sfn /usr/local/ssl3/lib64/libcrypto.a /usr/lib/x86_64-linux-gnu/libcrypto.a
-      ln -sfn /usr/lib/x86_64-linux-gnu/libcrypto.a /usr/lib/libcrypto.a
+      ln -sfn /usr/local/ssl3/lib64/libcrypto.a /usr/lib/libcrypto.a
     fi
     if [ -d "/usr/include/openssl" ] \
       && [ -d "/usr/local/ssl3/include/openssl" ]; then
@@ -4872,7 +4874,7 @@ systemd_cleanup_on_init() {
       echo
       mrun "sleep 3"
       echo "Bye"
-      clean_pid_exit
+      clean_pid_exit systemd_cleanup_on_init_a
     fi
     if [ ! -e "/root/.step.init.systemd.two.cnf" ] \
       && [ -e "/root/.step.init.systemd.one.cnf" ]; then
@@ -4901,7 +4903,7 @@ systemd_cleanup_on_init() {
         echo
         mrun "sleep 3"
         echo "Bye"
-        clean_pid_exit
+        clean_pid_exit systemd_cleanup_on_init_b
       fi
       if [ ! -e "/lib/systemd/systemd" ]; then
         msg "INFO: The systemd has been removed in ${_OS_DIST}/${_OS_CODE}"
@@ -4933,7 +4935,7 @@ systemd_cleanup_on_init() {
       echo
       mrun "sleep 3"
       echo "Bye"
-      clean_pid_exit
+      clean_pid_exit systemd_cleanup_on_init_c
     fi
   fi
   if [ -e "/root/.step.init.systemd.two.cnf" ] \
@@ -4957,7 +4959,7 @@ systemd_cleanup_on_init() {
     echo
     mrun "sleep 3"
     echo "Bye"
-    clean_pid_exit
+    clean_pid_exit systemd_cleanup_on_init_d
   fi
   if [ -e "/root/.step.init.systemd.two.cnf" ] \
     && [ -e "/root/.step.init.systemd.one.cnf" ] \
@@ -4995,7 +4997,7 @@ systemd_cleanup_on_init() {
     echo
     mrun "sleep 3"
     echo "Bye"
-    clean_pid_exit
+    clean_pid_exit systemd_cleanup_on_init_e
   fi
 }
 
@@ -5278,7 +5280,7 @@ if_post_major_os_upgrade() {
     touch /root/.latest-barracuda-upgrade-finale.info
     echo " "
     msg "Bye"
-    clean_pid_exit
+    clean_pid_exit if_post_major_os_upgrade_a
   fi
   if [ -e "/root/.run_post_major_os_upgrade.info" ] \
     && [ ! -e "/root/.completed_post_major_os_upgrade.info" ]; then
@@ -5329,7 +5331,7 @@ if_post_major_os_upgrade() {
       touch /root/.latest-barracuda-upgrade-finale.info
       echo " "
       msg "Bye"
-      clean_pid_exit
+      clean_pid_exit if_post_major_os_upgrade_b
     fi
 
     _REBUILD_SRC_ON_AUTO_NOW=YES
@@ -5465,7 +5467,7 @@ if_major_os_upgrade() {
       mrun "sleep 3"
       echo "Bye"
       barracuda_cnf_cleanup
-      clean_pid_exit
+      clean_pid_exit if_major_os_upgrade_a
     fi
     if [ -e "/root/.run-to-daedalus.cnf" ] \
       || [ -e "/root/.run-to-chimaera.cnf" ] \
@@ -5495,7 +5497,7 @@ if_major_os_upgrade() {
       echo
       msg "FINE: Please try again later once you are ready"
       mrun "sleep 3"
-      clean_pid_exit
+      clean_pid_exit if_major_os_upgrade_b
     fi
     echo
     mrun "sleep 5"
@@ -5639,21 +5641,21 @@ if_major_os_upgrade() {
       msg "ALRT! I can not continue until dpkg --audit is clean"
       msg "ALRT! ${_AUDIT_DPKG}"
       msg "ALRT! Aborting installer NOW!"
-      clean_pid_exit
+      clean_pid_exit if_major_os_upgrade_c
     fi
     _HOLD_TEST_DPKG=$(dpkg --get-selections | grep 'hold$' 2>&1)
     if [ ! -z "${_HOLD_TEST_DPKG}" ]; then
       msg "ALRT! I can not continue until these packages are un-hold"
       msg "ALRT! ${_HOLD_TEST_DPKG}"
       msg "ALRT! Aborting installer NOW!"
-      clean_pid_exit
+      clean_pid_exit if_major_os_upgrade_d
     fi
     _HOLD_TEST_ATE=$(aptitude search "~ahold" 2>&1)
     if [ ! -z "${_HOLD_TEST_ATE}" ]; then
       msg "ALRT! I can not continue until these packages are un-hold"
       msg "ALRT! ${_HOLD_TEST_ATE}"
       msg "ALRT! Aborting installer NOW!"
-      clean_pid_exit
+      clean_pid_exit if_major_os_upgrade_e
     fi
     ###
     ### Switching db gears on the fly.
@@ -6112,7 +6114,7 @@ if_major_os_upgrade() {
     msg "Bye"
     touch /root/.latest-barracuda-upgrade-finale.info
     barracuda_cnf_cleanup
-    clean_pid_exit
+    clean_pid_exit if_major_os_upgrade_f
   fi
 }
 
@@ -6167,7 +6169,7 @@ normal_sys_ctrl_mark() {
     echo " "
     msg "Bye"
     touch /root/.latest-barracuda-upgrade-finale.info
-    clean_pid_exit
+    clean_pid_exit normal_sys_ctrl_mark_a
   fi
 }
 

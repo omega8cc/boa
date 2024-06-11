@@ -600,7 +600,7 @@ aegir_master_upgrade() {
       msg "FATAL ERROR: AegirUpgrade installer failed"
       msg "FATAL ERROR: Aborting Barracuda installer NOW!"
       touch /opt/tmp/status-Barracuda-FAIL
-      clean_pid_exit
+      clean_pid_exit aegir_master_upgrade_a
     else
       chattr +i ${_U_HD}/php.ini
       hostmaster_frontend_dbpass_sync
@@ -705,7 +705,7 @@ aegir_master_install_upgrade() {
       msg "Bye"
       [ -e "/root/.my.pass.txt" ] && rm -f /root/.my.pass.txt
       mkdir -p /var/aegir
-      clean_pid_exit
+      clean_pid_exit aegir_master_install_upgrade_a
     fi
 
   ###--------------------###
@@ -752,7 +752,7 @@ aegir_master_install_upgrade() {
     _RESOLVEIP="${_LOC_IP}"
     if [ -z "${_RESOLVEIP}" ]; then
       msg "FATAL ERROR: DNS looks broken for server ${_AEGIR_HOST}"
-      clean_pid_exit
+      clean_pid_exit aegir_master_install_upgrade_b
     else
       _AEGIR_HOST_IP="${_RESOLVEIP}"
     fi
@@ -765,7 +765,7 @@ aegir_master_install_upgrade() {
         fi
       else
         msg "FATAL ERROR: ${_DB_SERVER} is not configured to listen on ${_AEGIR_HOST_IP}"
-        clean_pid_exit
+        clean_pid_exit aegir_master_install_upgrade_c
       fi
     fi
 
@@ -949,7 +949,7 @@ EOFMYSQL
       msg "HINT: Please check /var/aegir/install.log"
       msg "HINT: for more information on errors occured"
       touch /opt/tmp/status-Barracuda-FAIL
-      clean_pid_exit
+      clean_pid_exit aegir_master_install_upgrade_d
     fi
     if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
       _THIS_HM_ROOT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \
@@ -996,7 +996,7 @@ EOFMYSQL
       msg "HINT: Please check /var/aegir/install.log for details, and then"
       msg "HINT: run the same install command again to complete installation."
       touch /root/.force.reinstall.cnf
-      clean_pid_exit
+      clean_pid_exit aegir_master_install_upgrade_e
     fi
 
   ###--------------------###
@@ -1045,7 +1045,7 @@ EOFMYSQL
         msg "Please use 'barracuda up-pro system' to upgrade this server"
         msg "Display all supported commands with: barracuda help"
         msg "Bye"
-        clean_pid_exit
+        clean_pid_exit aegir_master_install_upgrade_f
       fi
     fi
     echo " "
@@ -1073,7 +1073,7 @@ EOFMYSQL
         msg "HINT: Please check ${_LOG} for more information,"
         msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
         msg "Bye"
-        clean_pid_exit
+        clean_pid_exit aegir_master_install_upgrade_g
       fi
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \

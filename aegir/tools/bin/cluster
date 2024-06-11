@@ -56,6 +56,7 @@ tBn="tools/bin"
 ###-------------SYSTEM-----------------###
 
 clean_pid_exit() {
+  echo "REASON ${e} on $(date 2>&1)" >> /root/.cluster.exit.exceptions.log
   rm -f /var/run/cluster_run.pid
   service cron start
   exit 1
@@ -176,7 +177,7 @@ check_no_systemd() {
   if [ -e "/lib/systemd/systemd" ]; then
     echo "ERROR: This script can not be used with systemd"
     echo "ERROR: Please run 'boa init' first"
-    clean_pid_exit
+    clean_pid_exit check_no_systemd_a
   fi
 }
 
@@ -204,7 +205,7 @@ check_ifnames() {
     echo
     echo "Bye"
     echo
-    clean_pid_exit
+    clean_pid_exit check_ifnames_a
   fi
 }
 
@@ -235,7 +236,7 @@ check_root_direct() {
     echo "         PermitRootLogin without-password"
     echo "       in the /usr/etc/sshd_config file"
     echo "Bye"
-    clean_pid_exit
+    clean_pid_exit check_root_direct_a
   fi
   check_ifnames
 }
@@ -262,7 +263,7 @@ check_root_keys_pwd() {
     echo
     echo "Bye"
     echo
-    clean_pid_exit
+    clean_pid_exit check_root_keys_pwd_a
   fi
 }
 
@@ -276,7 +277,7 @@ system_check_clean() {
     echo "ERROR: The only acceptable exceptions are: sshd and mail servers"
     echo "ERROR: This script must be run on a bare metal server main OS level"
     echo "Bye"
-    clean_pid_exit
+    clean_pid_exit system_check_clean_a
   fi
 }
 
