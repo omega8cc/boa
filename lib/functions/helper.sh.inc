@@ -479,7 +479,7 @@ check_exception_mycnf() {
 
 EOF
     msg "EXIT on error due to not found file with your ${_DB_SERVER} root password"
-    clean_pid_exit check_exception_mycnf
+    clean_pid_exit check_exception_mycnf_a
     fi
   fi
 }
