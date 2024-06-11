@@ -278,7 +278,6 @@ check_mysqld_running() {
       msg "INFO: Waiting for MySQLD availability before tune_sql_memory_limits..."
     fi
     sleep 5
-    service mysql start &> /dev/null
   done
 }
 
@@ -288,7 +287,14 @@ tune_sql_memory_limits() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: tune_sql_memory_limits"
   fi
-  check_mysqld_running
+  if [ -e "/root/.run-to-daedalus.cnf" ] \
+    || [ -e "/root/.run-to-chimaera.cnf" ] \
+    || [ -e "/root/.run-to-beowulf.cnf" ]; then
+    _DO_NOTHING=YES
+  else
+    _DO_NOTHING=YES
+    #check_mysqld_running
+  fi
   if [ "${_DB_SERVER}" = "MariaDB" ]; then
     sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" \
       /etc/mysql/debian-start &> /dev/null
