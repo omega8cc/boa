@@ -336,16 +336,25 @@ check_connection() {
 
 #
 # DNS cache Unbound.
-dns_unbound_install_on_init() {
+dns_unbound_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: dns_unbound_install_on_init"
+    msg "PROC: dns_unbound_install"
   fi
   isUnbnd=$(which unbound 2>&1)
-  isPdnsd=$(which pdnsd 2>&1)
-  if [ -x "${isPdnsd}" ]; then
-    service pdnsd stop &> /dev/null
-    update-rc.d -f pdnsd remove &> /dev/null
-    mv -f ${isPdnsd} /var/backups
+  isUnbndErr=$(${isUnbnd} --version 2>&1)
+  if [[ "${isUnbndErr}" =~ "No such file" ]] || [ -z "${isUnbndErr}" ]; then
+    isUnbndFix=YES
+  else
+    isUnbndFix=NO
+  fi
+  if [ "${isUnbndFix}" = "NO" ]; then
+    isPdnsd=$(which pdnsd 2>&1)
+    if [ -x "${isPdnsd}" ]; then
+      service pdnsd stop &> /dev/null
+      update-rc.d -f pdnsd remove &> /dev/null
+      killall -9 pdnsd &> /dev/null
+      mv -f ${isPdnsd} /var/backups
+    fi
   fi
   if [ -x "${isUnbnd}" ] && [ -e "/etc/resolvconf/interface-order" ]; then
     sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
@@ -353,6 +362,7 @@ dns_unbound_install_on_init() {
   fi
   if [ ! -x "${isUnbnd}" ] \
     || [ -z "${isUnbnd}" ] \
+    || [ "${isUnbndFix}" = "YES" ] \
     || [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     msg "INFO: Installing DNS cache Unbound server..."
     if [ -e "/etc/resolv.conf" ]; then
@@ -368,6 +378,9 @@ dns_unbound_install_on_init() {
       echo "nameserver 8.8.4.4" >> /etc/resolv.conf
     fi
     apt_clean_update
+    if [ "${isUnbndFix}" = "YES" ]; then
+      st_runner "apt-get purge unbound unbound-anchor unbound-host dns-root-data -y" &> /dev/null
+    fi
     st_runner "apt-get purge resolvconf -y" &> /dev/null
     rm -rf /lib/init/rw/resolvconf
     rm -rf /run/resolvconf

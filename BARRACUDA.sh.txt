@@ -285,7 +285,6 @@ if_php_idle_on_off
 sources_list_update
 basic_packages_install_on_init
 more_packages_install_on_init
-dns_unbound_install_on_init
 run_aptitude_full_upgrade
 
 
@@ -316,6 +315,16 @@ if_long_generate_on_major_os_upgrade
 if_post_major_os_upgrade
 if_major_os_upgrade
 normal_sys_ctrl_mark
+
+
+###
+### DNS cache server
+###
+if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
+  if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+    dns_unbound_install
+  fi
+fi
 
 
 ###
