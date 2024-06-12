@@ -187,20 +187,20 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
     source /root/.barracuda.cnf
   fi
   rm -f /tmp/*error*
-  rm -f /var/backups/BOA.sh.txt.hourly*
+  rm -f /var/backups/BOA.sh.txt.clear*
   curl -L -k -s \
     --max-redirs 5 \
     --retry 5 \
     --retry-delay 5 \
     -A iCab "http://${_USE_MIR}/versions/${tRee}/boa/BOA.sh.txt" \
-    -o /var/backups/BOA.sh.txt.hourly
+    -o /var/backups/BOA.sh.txt.clear
   wait
-  if [ -e "/var/backups/BOA.sh.txt.hourly" ]; then
-    bash /var/backups/BOA.sh.txt.hourly
+  if [ -e "/var/backups/BOA.sh.txt.clear" ]; then
+    bash /var/backups/BOA.sh.txt.clear
     wait
-    rm -f /var/backups/BOA.sh.txt.hourly*
+    rm -f /var/backups/BOA.sh.txt.clear*
   else
-    echo "Not available /var/backups/BOA.sh.txt.hourly"
+    echo "Not available /var/backups/BOA.sh.txt.clear"
   fi
   bash /opt/local/bin/autoupboa
 fi
