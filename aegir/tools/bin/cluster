@@ -1569,6 +1569,7 @@ install_db_cluster() {
     rm -f /vservers/${idn}/etc/apt/sources.list.d/xtrabackup.*
     echo "## Percona Cluster APT Repository" > /vservers/${idn}${percList}
     echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> /vservers/${idn}${percList}
+    chmod 644 /vservers/${idn}${percList}
     echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /vservers/${idn}/etc/apt/preferences.d/00percona.pref
     _KEYS_SIG="8507EFA5"
     vserver ${idn} exec wget -q -U iCab ${urlDev}/percona-key.gpg -O /var/backups/percona-key.gpg
