@@ -446,20 +446,6 @@ update_agents() {
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/mysql_hourly.ctrl.${tRee}.${_X_SE}.pid" ]; then
-    mv -f /var/xdrago/mysql_hourly.sh /var/xdrago/mysql_hourly.sh.old
-    curl ${crlGet} "${urlHmr}/tools/system/mysql_hourly.sh" -o /var/xdrago/mysql_hourly.sh
-    if [ -e "/var/xdrago/mysql_hourly.sh" ]; then
-      chmod 700 /var/xdrago/mysql_hourly.sh
-      chown root:root /var/xdrago/mysql_hourly.sh
-      touch ${pthLog}/mysql_hourly.ctrl.${tRee}.${_X_SE}.pid
-    else
-      mv -f /var/xdrago/mysql_hourly.sh.old /var/xdrago/mysql_hourly.sh
-    fi
-  fi
-
-  if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/runner.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/runner.sh /var/xdrago/runner.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/runner.sh" -o /var/xdrago/runner.sh
