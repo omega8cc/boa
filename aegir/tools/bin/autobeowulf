@@ -139,7 +139,7 @@ cd /root/
 ### Noticeable messages
 ###
 msg() {
-  echo "AutoBeowulf [$(date +%T 2>&1)] ==> $*"
+  echo "AutoBeowulf v.${tRee} [$(date +%T 2>&1)] ==> $*"
 }
 
 ###

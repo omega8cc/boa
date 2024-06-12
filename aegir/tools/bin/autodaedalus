@@ -137,7 +137,7 @@ cd /root/
 ### Noticeable messages
 ###
 msg() {
-  echo "AutoDaedalus [$(date +%T 2>&1)] ==> $*"
+  echo "AutoDaedalus v.${tRee} [$(date +%T 2>&1)] ==> $*"
 }
 
 ###
