@@ -2101,23 +2101,26 @@ update_wrappers() {
     touch ${pthLog}/updateFx07.ctrl.${_X_SE}.pid
   fi
   mkdir -p ${optBin}
-  rm -f ${usrBin}/{autoinit*,barracuda*,boa*,octopus*}
+  rm -f ${usrBin}/{autoinit*,barracuda*,boa*,killer*,octopus*}
   if [ ! -e "/data/disk" ]; then
     ln -s ${optBin}/autoinit  ${usrBin}/autoinit
-    ln -s ${optBin}/boa       ${usrBin}/boa
     ln -s ${optBin}/barracuda ${usrBin}/barracuda
+    ln -s ${optBin}/boa       ${usrBin}/boa
+    ln -s ${optBin}/killer    ${usrBin}/killer
     ln -s ${optBin}/octopus   ${usrBin}/octopus
   fi
-  rm -f ${optBin}/{autoinit*,barracuda*,boa*,octopus*}
+  rm -f ${optBin}/{autoinit*,barracuda*,boa*,killer*,octopus*}
   curl ${crlGet} "${urlHmr}/${tBn}/autoinit"       -o ${optBin}/autoinit
-  curl ${crlGet} "${urlHmr}/${tBn}/boa"            -o ${optBin}/boa
   curl ${crlGet} "${urlHmr}/${tBn}/barracuda"      -o ${optBin}/barracuda
+  curl ${crlGet} "${urlHmr}/${tBn}/boa"            -o ${optBin}/boa
+  curl ${crlGet} "${urlHmr}/${tBn}/killer"         -o ${optBin}/killer
   curl ${crlGet} "${urlHmr}/${tBn}/octopus"        -o ${optBin}/octopus
   echo "### ${_TODAY} ###" >> ${optBin}/autoinit
-  echo "### ${_TODAY} ###" >> ${optBin}/boa
   echo "### ${_TODAY} ###" >> ${optBin}/barracuda
+  echo "### ${_TODAY} ###" >> ${optBin}/boa
+  echo "### ${_TODAY} ###" >> ${optBin}/killer
   echo "### ${_TODAY} ###" >> ${optBin}/octopus
-  chmod 700 ${optBin}/{autoinit*,barracuda*,boa*,octopus*}
+  chmod 700 ${optBin}/{autoinit*,barracuda*,boa*,killer*,octopus*}
 }
 
 setup() {
@@ -2249,11 +2252,12 @@ setup() {
   mkdir -p ${optBin}
   rm -f ${optBin}/.{boa*,fix*}
   rm -f ${usrBin}/{autoinit*,autoupboa*,barracuda*,boa*,ffmirror*,mycnfup*,weblogx*}
-  rm -f ${usrBin}/{octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
+  rm -f ${usrBin}/{killer*,octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
   if [ ! -e "/data/disk" ]; then
     ln -s ${optBin}/autoinit  ${usrBin}/autoinit
-    ln -s ${optBin}/boa       ${usrBin}/boa
     ln -s ${optBin}/barracuda ${usrBin}/barracuda
+    ln -s ${optBin}/boa       ${usrBin}/boa
+    ln -s ${optBin}/killer    ${usrBin}/killer
     ln -s ${optBin}/octopus   ${usrBin}/octopus
   fi
   boaBins="autobeowulf \
@@ -2264,6 +2268,7 @@ setup() {
            barracuda \
            boa \
            ffmirror \
+           killer \
            mycnfup \
            octopus \
            randpass \
@@ -2298,8 +2303,9 @@ setup() {
     fi
   done
   echo "### ${_TODAY} ###" >> ${optBin}/autoinit
-  echo "### ${_TODAY} ###" >> ${optBin}/boa
   echo "### ${_TODAY} ###" >> ${optBin}/barracuda
+  echo "### ${_TODAY} ###" >> ${optBin}/boa
+  echo "### ${_TODAY} ###" >> ${optBin}/killer
   echo "### ${_TODAY} ###" >> ${optBin}/octopus
   [ -e "/root/.backboa.autoupdate" ] && rm -f /root/.backboa.autoupdate
   if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
@@ -2318,8 +2324,8 @@ setup() {
       touch /root/.backboa.autoupdate
     fi
   fi
-  chmod 700 ${optBin}/{autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa}
-  chmod 700 ${optBin}/{autoinit,barracuda,boa,ffmirror,octopus,syncpass,xboa,mycnfup,weblogx}
+  chmod 700 ${optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa}
+  chmod 700 ${optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx}
   chmod 755 ${optBin}/{randpass,sqlmagic,thinkdifferent}
   echo
   echo "BOA Meta Installers setup completed"

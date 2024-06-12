@@ -245,6 +245,11 @@ if [[ ! "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
   exit 1
 fi
 
+if [ -x "/opt/local/bin/killer" ]; then
+  sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
+  echo "*/5 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
+fi
+
 if_remove_cloud_utils() {
   _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
   if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
