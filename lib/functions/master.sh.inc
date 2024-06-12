@@ -124,9 +124,6 @@ provision_backend_dbpass_generate() {
   else
     _THIS_DB_PORT=3306
   fi
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
-  fi
   mysqladmin -u root flush-privileges &> /dev/null
 
   if [ "${_STATUS}" = "INIT" ]; then
@@ -229,9 +226,6 @@ ALTER USER '${_ADBU}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
 ALTER USER '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
   fi
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
-  fi
   mysqladmin -u root flush-privileges &> /dev/null
 }
 
@@ -306,9 +300,6 @@ EOFMYSQL
     sed -i "s/mysql:\/\/${_ADBU}:.*/mysql:\/\/${_ADBU}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
       /var/aegir/.drush/server_*.alias.drushrc.php &> /dev/null
     wait
-  fi
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
   fi
   mysqladmin -u root flush-privileges &> /dev/null
   su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
@@ -404,9 +395,6 @@ ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
 EOFMYSQL
   fi
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
-  fi
   mysqladmin -u root flush-privileges &> /dev/null
 }
 
@@ -482,9 +470,7 @@ aegir_master_upgrade() {
   if prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
     true
     msg "INFO: Running Aegir Master Instance upgrade"
-    if [ -x "/usr/bin/mariadb_upgrade" ]; then
-      mrun "mariadb_upgrade --force" &> /dev/null
-    elif [ -x "/usr/bin/mysql_upgrade" ]; then
+    if [ -x "/usr/bin/mysql_upgrade" ]; then
       mrun "mysql_upgrade -u root --force" &> /dev/null
     fi
     if [ -e "/var/aegir/use_proxysql.txt" ]; then
@@ -578,9 +564,6 @@ aegir_master_upgrade() {
     echo "_X_SE=\"${_X_SE}\""                           >> ${vBs}/${filIncB}
     echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${vBs}/${filIncB}
 
-    if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-      mkdir -p /etc/mysql/mariadb.conf.d/
-    fi
     mysqladmin -u root flush-hosts &> /dev/null
     _RST=$(syncpass fix aegir 2>&1)
     find_correct_ip

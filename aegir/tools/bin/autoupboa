@@ -219,10 +219,6 @@ if [ -e "/var/xdrago/log" ]; then
   fi
 fi
 
-if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-  mkdir -p /etc/mysql/mariadb.conf.d
-fi
-
 if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   killall -9 mysqldump
   killall -9 rsync

@@ -2212,9 +2212,6 @@ provision_backend_dbpass_generate() {
   chmod 0600 ${_L_SYS_PHP}
 
   _ESC="*.*"
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
-  fi
 
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
     || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -2335,9 +2332,6 @@ EOFMYSQL
       fi
     fi
   fi
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
-  fi
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
@@ -2416,9 +2410,6 @@ EOFMYSQL
     wait
   else
     msg "CRIT: _ESC_PASS empty or not generated"
-  fi
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
   fi
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
@@ -2515,9 +2506,6 @@ ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
 EOFMYSQL
   fi
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
-  fi
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
@@ -2540,9 +2528,6 @@ satellite_run_pre_install() {
     _THIS_DB_PORT=3306
   fi
   if [ "${_STATUS}" = "INIT" ]; then
-    if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-      mkdir -p /etc/mysql/mariadb.conf.d/
-    fi
     if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
       _SQL_CONNECT=127.0.0.1
       _THIS_DB_PORT=6033
@@ -2570,9 +2555,6 @@ satellite_run_pre_install() {
         chmod 0440 /etc/sudoers.d/${SCRIPT}
       fi
     done
-    if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-      mkdir -p /etc/mysql/mariadb.conf.d/
-    fi
     if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
       _SQL_CONNECT=127.0.0.1
       _THIS_DB_PORT=6033

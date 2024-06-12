@@ -2767,10 +2767,7 @@ else
         service cron stop &> /dev/null
         sleep 180
         touch /root/.remote.db.cnf
-        if [ "${_DB_SERIES}" = "10.4" ] \
-          || [ "${_DB_SERIES}" = "10.3" ] \
-          || [ "${_DB_SERIES}" = "10.2" ] \
-          || [ "${_DB_SERIES}" = "5.7" ]; then
+        if [ "${_DB_SERIES}" = "5.7" ]; then
           _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
           _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
           mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null

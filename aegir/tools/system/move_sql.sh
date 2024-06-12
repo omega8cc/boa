@@ -103,10 +103,7 @@ stop_sql() {
 
   _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
-    if [ "${_DB_SERIES}" = "10.4" ] \
-      || [ "${_DB_SERIES}" = "10.3" ] \
-      || [ "${_DB_SERIES}" = "10.2" ] \
-      || [ "${_DB_SERIES}" = "5.7" ]; then
+    if [ "${_DB_SERIES}" = "5.7" ]; then
       echo "Preparing MySQLD for quick shutdown..."
       _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
       _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)

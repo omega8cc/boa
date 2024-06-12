@@ -785,17 +785,6 @@ up_action() {
       wait
       sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"                   ${barCnf}
       wait
-    elif [ "${sql}" = "mariadb" ] \
-      || [ "${rkey}" = "mariadb" ] \
-      || [ "${debug}" = "mariadb" ]; then
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g"              ${vBs}/${filIncB}
-      wait
-      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"           ${vBs}/${filIncB}
-      wait
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g"                      ${barCnf}
-      wait
-      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                   ${barCnf}
-      wait
     fi
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
@@ -1628,7 +1617,6 @@ proceed() {
 
   {dbserver}
       percona <------ installed by default
-      mariadb <------ deprecated and no longer supported, for testing only
 
   See docs/UPGRADE.txt for more details.
 

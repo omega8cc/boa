@@ -580,7 +580,7 @@ fix_on_upgrade() {
 }
 
 #
-# Tune memory limits for PHP, Nginx and MariaDB or Percona.
+# Tune memory limits for PHP, Nginx and Percona.
 tune_memory_limits() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: tune_memory_limits"
@@ -1752,25 +1752,13 @@ barracuda_cnf() {
         clean_pid_exit barracuda_cnf_a
       fi
     fi
-    if [ "${_DB_SERIES}" = "10.4" ] \
-      || [ "${_DB_SERIES}" = "10.3" ] \
-      || [ "${_DB_SERIES}" = "10.2" ] \
-      || [ "${_DB_SERIES}" = "5.7" ]; then
+    if [ "${_DB_SERIES}" = "5.7" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
         _DBS_VRN="${_GALERA_10_VRN}"
       else
-        if [ "${_DB_SERIES}" = "10.3" ]; then
-          _DB_SERVER=MariaDB
-          _DBS_VRN="${_MARIADB_10_3_VRN}"
-        elif [ "${_DB_SERIES}" = "10.2" ]; then
-          _DB_SERVER=MariaDB
-          _DBS_VRN="${_MARIADB_10_2_VRN}"
-        elif [ "${_DB_SERIES}" = "10.4" ]; then
-          _DB_SERVER=MariaDB
-          _DBS_VRN="${_MARIADB_10_4_VRN}"
-        elif [ "${_DB_SERIES}" = "5.7" ]; then
+        if [ "${_DB_SERIES}" = "5.7" ]; then
           _DB_SERVER=Percona
           _DBS_VRN="${_PERCONA_5_7_VRN}"
         else
@@ -2342,25 +2330,13 @@ barracuda_cnf() {
       sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=deb.debian.org/g"     ${barCnf}
       wait
     fi
-    if [ "${_DB_SERIES}" = "10.4" ] \
-      || [ "${_DB_SERIES}" = "10.3" ] \
-      || [ "${_DB_SERIES}" = "10.2" ] \
-      || [ "${_DB_SERIES}" = "5.7" ]; then
+    if [ "${_DB_SERIES}" = "5.7" ]; then
       if [ -e "/root/.mstr.clstr.cnf" ] \
         || [ -e "/root/.wbhd.clstr.cnf" ] \
         || [ -e "/root/.dbhd.clstr.cnf" ]; then
         _DBS_VRN="${_GALERA_10_VRN}"
       else
-        if [ "${_DB_SERIES}" = "10.3" ]; then
-          _DB_SERVER=MariaDB
-          _DBS_VRN="${_MARIADB_10_3_VRN}"
-        elif [ "${_DB_SERIES}" = "10.2" ]; then
-          _DB_SERVER=MariaDB
-          _DBS_VRN="${_MARIADB_10_2_VRN}"
-        elif [ "${_DB_SERIES}" = "10.4" ]; then
-          _DB_SERVER=MariaDB
-          _DBS_VRN="${_MARIADB_10_4_VRN}"
-        elif [ "${_DB_SERIES}" = "5.7" ]; then
+        if [ "${_DB_SERIES}" = "5.7" ]; then
           _DB_SERVER=Percona
           _DBS_VRN="${_PERCONA_5_7_VRN}"
         else
@@ -5702,7 +5678,6 @@ if_major_os_upgrade() {
       else
         percRepo="${_DB_SRC}/percona/apt"
         percList="/etc/apt/sources.list.d/percona-release.list"
-        rm -f /etc/apt/sources.list.d/mariadb.*
         rm -f /etc/apt/sources.list.d/percona-.*
         rm -f /etc/apt/sources.list.d/xtrabackup.*
         echo "## Percona APT Repository" > ${percList}
@@ -6903,8 +6878,6 @@ install_myquick_src() {
     mrun "${_INSTAPP} cmake" 2> /dev/null
     if [ "${_DB_SERVER}" = "Percona" ] || [ "${_DB_SERIES}" = "5.7" ]; then
       mrun "${_INSTAPP} libperconaserverclient20-dev" 2> /dev/null
-    else
-      mrun "${_INSTAPP} libmariadb-dev" 2> /dev/null
     fi
     cd /var/opt
     rm -rf mydumper*
@@ -6920,9 +6893,6 @@ install_myquick_src() {
 myquick_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: myquick_install_upgrade"
-  fi
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
   fi
   isMyQuick=$(which mydumper 2>&1)
   if [ ! -x "${isMyQuick}" ] \
@@ -7959,10 +7929,7 @@ initd_update() {
           msg "INFO: Running ${_DB_SERVER} system tables (2) upgrade..."
         fi
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-        if [ -x "/usr/bin/mariadb_upgrade" ]; then
-          mrun "mariadb_upgrade --force" &> /dev/null
-          mrun "mariadb_upgrade --force" &> /dev/null
-        elif [ -x "/usr/bin/mysql_upgrade" ]; then
+        if [ -x "/usr/bin/mysql_upgrade" ]; then
           _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
           _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
           mrun "mysql_upgrade -u root --force" &> /dev/null
@@ -8011,9 +7978,6 @@ initd_update() {
           myCnfUpdate=YES
           msg "INFO: ${_DB_SERVER} restart after upgrade forced"
         fi
-      fi
-      if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-        mkdir -p /etc/mysql/mariadb.conf.d/
       fi
       if [ ! -e "/root/.run-to-daedalus.cnf" ] \
         && [ ! -e "/root/.run-to-chimaera.cnf" ] \

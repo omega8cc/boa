@@ -110,9 +110,6 @@ check_generate() {
 do_syncpass() {
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
-  fi
   if [ ! -z "${uname}" ]; then
     find_correct_ip
     prH="/var/aegir/.drush"

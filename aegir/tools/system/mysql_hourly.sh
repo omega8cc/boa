@@ -187,7 +187,6 @@ if [ ! -e "${percList}" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   fi
-  rm -f /etc/apt/sources.list.d/mariadb.*
   rm -f /etc/apt/sources.list.d/percona-.*
   rm -f /etc/apt/sources.list.d/xtrabackup.*
   percList="/etc/apt/sources.list.d/percona-release.list"

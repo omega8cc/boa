@@ -282,10 +282,7 @@ compress_backup() {
 
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
-if [ "${_DB_SERIES}" = "10.4" ] \
-  || [ "${_DB_SERIES}" = "10.3" ] \
-  || [ "${_DB_SERIES}" = "10.2" ] \
-  || [ "${_DB_SERIES}" = "5.7" ]; then
+if [ "${_DB_SERIES}" = "5.7" ]; then
   check_running
   mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
   mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
@@ -404,10 +401,7 @@ if [ "${_OPTIM}" = "YES" ] \
   && [ "${_DOM}" -lt "31" ] \
   && [ -e "/root/.my.restart_after_optimize.cnf" ] \
   && [ ! -e "/var/run/boa_run.pid" ]; then
-  if [ "${_DB_SERIES}" = "10.4" ] \
-    || [ "${_DB_SERIES}" = "10.3" ] \
-    || [ "${_DB_SERIES}" = "10.2" ] \
-    || [ "${_DB_SERIES}" = "5.7" ]; then
+  if [ "${_DB_SERIES}" = "5.7" ]; then
     check_running
     mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null

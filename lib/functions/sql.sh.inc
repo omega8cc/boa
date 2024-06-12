@@ -32,72 +32,6 @@ sql_strict_upgrade_path() {
   else
     _ALL_FORCE_REINSTALL=NO
   fi
-  if [[ "${_DB_SERVER_TEST}" =~ "MariaDB" ]] \
-    || [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
-    if [ "${_DB_SERIES}" = "5.7" ]; then
-      if [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
-        _SQL_UPGRADE=NO
-        _SQL_FORCE_REINSTALL=NO
-        _ALL_FORCE_REINSTALL=NO
-      elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.2." ]]; then
-        _SQL_UPGRADE=YES
-      else
-        _SQL_UPGRADE=NO
-        _SQL_FORCE_REINSTALL=NO
-        _ALL_FORCE_REINSTALL=NO
-        msg "WARN: SQL upgrade to ${_DB_SERIES} from ${_NOW_DB_V} not supported"
-        msg "HINT: You can upgrade to ${_DB_SERIES} only from 10.2"
-      fi
-    elif [ "${_DB_SERIES}" = "10.4" ]; then
-      if [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.4." ]]; then
-        _SQL_UPGRADE=NO
-        _SQL_FORCE_REINSTALL=NO
-        _ALL_FORCE_REINSTALL=NO
-      elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.3." ]]; then
-        _SQL_UPGRADE=YES
-      else
-        _SQL_UPGRADE=NO
-        _SQL_FORCE_REINSTALL=NO
-        _ALL_FORCE_REINSTALL=NO
-        msg "WARN: SQL upgrade to ${_DB_SERIES} from ${_NOW_DB_V} not supported"
-        msg "HINT: You can upgrade to ${_DB_SERIES} only from 10.3"
-      fi
-    elif [ "${_DB_SERIES}" = "10.3" ]; then
-      if [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.3." ]]; then
-        _SQL_UPGRADE=NO
-        _SQL_FORCE_REINSTALL=NO
-        _ALL_FORCE_REINSTALL=NO
-      elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.2." ]]; then
-        _SQL_UPGRADE=YES
-      else
-        _SQL_UPGRADE=NO
-        _SQL_FORCE_REINSTALL=NO
-        _ALL_FORCE_REINSTALL=NO
-        msg "WARN: SQL upgrade to ${_DB_SERIES} from ${_NOW_DB_V} not supported"
-        msg "HINT: You can upgrade to ${_DB_SERIES} only from 10.2"
-      fi
-    elif [ "${_DB_SERIES}" = "10.2" ]; then
-      if [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.2." ]]; then
-        _SQL_UPGRADE=NO
-        _SQL_FORCE_REINSTALL=NO
-        _ALL_FORCE_REINSTALL=NO
-      elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 10.1." ]]; then
-        _SQL_UPGRADE=YES
-      else
-        _SQL_UPGRADE=NO
-        _SQL_FORCE_REINSTALL=NO
-        _ALL_FORCE_REINSTALL=NO
-        msg "WARN: SQL upgrade to ${_DB_SERIES} from ${_NOW_DB_V} not supported"
-        msg "HINT: You can upgrade to ${_DB_SERIES} only from 10.1"
-      fi
-    else
-      _SQL_UPGRADE=NO
-      _SQL_FORCE_REINSTALL=NO
-      _ALL_FORCE_REINSTALL=NO
-      msg "WARN: SQL upgrade to ${_DB_SERIES} from ${_NOW_DB_V} not supported"
-      msg "HINT: You can upgrade to ${_DB_SERIES} only from 10.1"
-    fi
-  fi
   if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
     _SQL_UPGRADE=YES
@@ -162,10 +96,6 @@ sql_conf_update() {
     sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf &> /dev/null
       wait
   fi
-  # if [ "${_DB_SERIES}" = "10.4" ]; then
-  #   sed -i "s/.*innodb-defragment/innodb-defragment/g" /etc/mysql/my.cnf &> /dev/null
-  #     wait
-  # fi
   sed -i "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" /etc/mysql/my.cnf &> /dev/null
     wait
   sed -i "s/^thread_concurrency.*//g" /etc/mysql/my.cnf &> /dev/null
@@ -294,11 +224,6 @@ tune_sql_memory_limits() {
   else
     _DO_NOTHING=YES
     #check_mysqld_running
-  fi
-  if [ "${_DB_SERVER}" = "MariaDB" ]; then
-    sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" \
-      /etc/mysql/debian-start &> /dev/null
-    wait
   fi
   if [ ! -e "${vBs}/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}" ]; then
     mkdir -p ${vBs}/dragon/t/
@@ -648,20 +573,10 @@ prep_for_install_db_sql() {
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
     _DBS_VRN="${_GALERA_10_VRN}"
   else
-    if [ "${_DB_SERIES}" = "10.2" ]; then
-      _DB_SERVER=MariaDB
-      _DBS_VRN="${_MARIADB_10_2_VRN}"
-    elif [ "${_DB_SERIES}" = "10.3" ]; then
-      _DB_SERVER=MariaDB
-      _DBS_VRN="${_MARIADB_10_3_VRN}"
-    elif [ "${_DB_SERIES}" = "10.4" ]; then
-      _DB_SERVER=MariaDB
-      _DBS_VRN="${_MARIADB_10_4_VRN}"
-    elif [ "${_DB_SERIES}" = "5.7" ] \
+    if [ "${_DB_SERIES}" = "5.7" ] \
       && [ "${_SQL_MAJOR_UP_ALLOW}" = "YES" ]; then
       _DB_SERVER=Percona
       _DBS_VRN="${_PERCONA_5_7_VRN}"
-      rm -f /etc/apt/sources.list.d/mariadb.*
       rm -f /etc/apt/sources.list.d/percona-.*
       rm -f /etc/apt/sources.list.d/xtrabackup.*
       percList="/etc/apt/sources.list.d/percona-release.list"
@@ -675,7 +590,6 @@ prep_for_install_db_sql() {
       _DB_SERVER=Percona
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
-      rm -f /etc/apt/sources.list.d/mariadb.*
       rm -f /etc/apt/sources.list.d/percona-.*
       rm -f /etc/apt/sources.list.d/xtrabackup.*
       percList="/etc/apt/sources.list.d/percona-release.list"
@@ -692,17 +606,6 @@ prep_for_install_db_sql() {
   ### Only supported upgrade path allowed
   sql_strict_upgrade_path
 
-  if [ "${_DB_SERVER}" = "MariaDB" ]; then
-    _DB_SRC="ftp.osuosl.org"
-    mdbRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
-    mdbList="/etc/apt/sources.list.d/mariadb.list"
-    rm -f /etc/apt/sources.list.d/percona-.*
-    rm -f /etc/apt/sources.list.d/xtrabackup.*
-    rm -f /etc/apt/preferences.d/00percona.pref
-    echo "## MariaDB APT Repository" > ${mdbList}
-    echo "deb [arch=amd64,i386] http://${mdbRepo}/${_OSN} ${_SQL_OS_CODE} main" >> ${mdbList}
-    echo "deb-src [arch=amd64,i386] http://${mdbRepo}/${_OSN} ${_SQL_OS_CODE} main" >> ${mdbList}
-  else
     percRepo="${_DB_SRC}/percona/apt"
     percList="/etc/apt/sources.list.d/percona-release.list"
     rm -f /etc/apt/sources.list.d/mariadb.*
@@ -724,72 +627,8 @@ prep_for_install_db_sql() {
     sed -i "s/.*innodb_force_recovery.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf &> /dev/null
       wait
   fi
-  if [ "${_EASY_SETUP}" = "MSTR" ] \
-    || [ "${_EASY_SETUP}" = "DBHD" ] \
-    || [ "${_EASY_SETUP}" = "WBHD" ] \
-    || [ -e "/etc/mysql/conf.d/galera.cnf" ] \
-    || [ -e "/root/.mstr.clstr.cnf" ] \
-    || [ -e "/root/.dbhd.clstr.cnf" ] \
-    || [ -e "/root/.wbhd.clstr.cnf" ]; then
-    SQLDEB="mariadb-galera-server"
-  elif [ "${_DB_SERIES}" = "10.4" ]; then
-    if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
-      || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
-      st_runner "${_RMAPP} mariadb-server-5.5" &> /dev/null
-      st_runner "${_RMAPP} mariadb-client-5.5" &> /dev/null
-      st_runner "${_RMAPP} mariadb-server-10.1" &> /dev/null
-      st_runner "${_RMAPP} mariadb-client-10.1" &> /dev/null
-      st_runner "${_RMAPP} mariadb-server-10.2" &> /dev/null
-      st_runner "${_RMAPP} mariadb-client-10.2" &> /dev/null
-      st_runner "${_RMAPP} mariadb-server-10.3" &> /dev/null
-      st_runner "${_RMAPP} mariadb-client-10.3" &> /dev/null
-      st_runner "${_RMAPP} mariadb-server" &> /dev/null
-    fi
-    SQLDEB="mariadb-server"
-  elif [ "${_DB_SERIES}" = "10.3" ]; then
-    if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
-      || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
-      st_runner "${_RMAPP} mariadb-server-5.5" &> /dev/null
-      st_runner "${_RMAPP} mariadb-client-5.5" &> /dev/null
-      st_runner "${_RMAPP} mariadb-server-10.1" &> /dev/null
-      st_runner "${_RMAPP} mariadb-client-10.1" &> /dev/null
-      st_runner "${_RMAPP} mariadb-server-10.2" &> /dev/null
-      st_runner "${_RMAPP} mariadb-client-10.2" &> /dev/null
-      st_runner "${_RMAPP} mariadb-server-10.4" &> /dev/null
-      st_runner "${_RMAPP} mariadb-client-10.4" &> /dev/null
-      st_runner "${_RMAPP} mariadb-server" &> /dev/null
-    fi
-    SQLDEB="mariadb-server"
-  elif [ "${_DB_SERIES}" = "10.2" ]; then
-    if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
-      || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
-      st_runner "${_RMAPP} mariadb-server-5.5" &> /dev/null
-      st_runner "${_RMAPP} mariadb-client-5.5" &> /dev/null
-      st_runner "${_RMAPP} mariadb-server-10.1" &> /dev/null
-      st_runner "${_RMAPP} mariadb-client-10.1" &> /dev/null
-      st_runner "${_RMAPP} mariadb-server-10.3" &> /dev/null
-      st_runner "${_RMAPP} mariadb-client-10.3" &> /dev/null
-      st_runner "${_RMAPP} mariadb-server-10.4" &> /dev/null
-      st_runner "${_RMAPP} mariadb-client-10.4" &> /dev/null
-      st_runner "${_RMAPP} mariadb-server" &> /dev/null
-    fi
-    SQLDEB="mariadb-server"
-  elif [ "${_DB_SERIES}" = "5.7" ]; then
-    if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
-      || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
-      st_runner "${_RMAPP} mariadb-server-5.5" &> /dev/null
-      st_runner "${_RMAPP} mariadb-client-5.5" &> /dev/null
-      st_runner "${_RMAPP} mariadb-server-10.1" &> /dev/null
-      st_runner "${_RMAPP} mariadb-client-10.1" &> /dev/null
-      st_runner "${_RMAPP} mariadb-server-10.2" &> /dev/null
-      st_runner "${_RMAPP} mariadb-client-10.2" &> /dev/null
-      st_runner "${_RMAPP} mariadb-server-10.3" &> /dev/null
-      st_runner "${_RMAPP} mariadb-client-10.3" &> /dev/null
-      st_runner "${_RMAPP} mariadb-server" &> /dev/null
-    fi
+  if [ "${_DB_SERIES}" = "5.7" ]; then
     SQLDEB="percona-server-server-${_DB_SERIES}"
-  else
-    SQLDEB="mariadb-server"
   fi
   if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
@@ -802,14 +641,7 @@ prep_for_install_db_sql() {
     sed -i "s/.*innodb-defragment.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf &> /dev/null
     sed -i "s/^thread_concurrency.*//g" /etc/mysql/my.cnf &> /dev/null
   fi
-  if [ "${_DB_SERIES}" = "10.4" ] \
-    || [ "${_DB_SERIES}" = "10.3" ] \
-    || [ "${_DB_SERIES}" = "10.2" ]; then
-    SQLADD="libdbd-mysql-perl \
-            python-mysqldb \
-            libmariadb-dev \
-            libdbi-perl"
-  elif [ "${_DB_SERIES}" = "5.7" ]; then
+  if [ "${_DB_SERIES}" = "5.7" ]; then
     SQLADD="libperconaserverclient20-dev \
             percona-toolkit"
     SQLXTR="python-mysqldb \
@@ -863,9 +695,7 @@ install_with_aptitude_sql() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Running ${_DB_SERVER} system tables check..."
       fi
-      if [ -x "/usr/bin/mariadb_upgrade" ]; then
-        mrun "mariadb_upgrade --force" &> /dev/null
-      elif [ -x "/usr/bin/mysql_upgrade" ]; then
+      if [ -x "/usr/bin/mysql_upgrade" ]; then
         _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
         _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
         mrun "mysql_upgrade -u root --force" &> /dev/null
@@ -955,10 +785,7 @@ forced_mysql_root_password_update() {
       msg "DBEF: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
-      if [ "${_DB_SERIES}" = "10.3" ] \
-        || [ "${_DB_SERIES}" = "10.2" ]; then
-        mysql -u root -e "SELECT user,host,password FROM mysql.user;"
-      elif [ "${_DB_SERIES}" = "5.7" ]; then
+      if [ "${_DB_SERIES}" = "5.7" ]; then
         mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
       fi
     fi
@@ -1059,10 +886,7 @@ forced_mysql_root_password_update() {
       mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'::1';"
-      if [ "${_DB_SERIES}" = "10.3" ] \
-        || [ "${_DB_SERIES}" = "10.2" ]; then
-        mysql -u root -e "SELECT user,host,password FROM mysql.user;"
-      elif [ "${_DB_SERIES}" = "5.7" ]; then
+      if [ "${_DB_SERIES}" = "5.7" ]; then
         mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
       fi
     fi
@@ -1117,13 +941,7 @@ db_server_install() {
   else
     ### Only supported upgrade path allowed
     sql_strict_upgrade_path
-    if [ "${_DB_SERVER}" = "MariaDB" ]; then
-      _DB_SRC="ftp.osuosl.org"
-      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
-        /etc/apt/sources.list.d/mariadb.list 2>&1)
-      _SQL_DEB_SRC_TEST_B=$(grep ${_OS_CODE} \
-        /etc/apt/sources.list.d/mariadb.list 2>&1)
-    else
+    if [ "${_DB_SERVER}" = "Percona" ]; then
       _DB_SRC="repo.percona.com"
       _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
         /etc/apt/sources.list.d/percona-release.list 2>&1)
@@ -1137,25 +955,20 @@ db_server_install() {
       if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
         _OSN=debian
       fi
-      if [ "${_DB_SERVER}" = "MariaDB" ]; then
-        _DB_SRC="ftp.osuosl.org"
-        mdbRepo="${_DB_SRC}/pub/mariadb/repo/${_DB_SERIES}"
-        mdbList="/etc/apt/sources.list.d/mariadb.list"
-        rm -f /etc/apt/sources.list.d/percona-.*
-        rm -f /etc/apt/sources.list.d/xtrabackup.*
-        rm -f /etc/apt/preferences.d/00percona.pref
-        echo "## MariaDB APT Repository" > ${mdbList}
-        echo "deb [arch=amd64,i386] http://${mdbRepo}/${_OSN} ${_SQL_OS_CODE} main" >> ${mdbList}
-        echo "deb-src [arch=amd64,i386] http://${mdbRepo}/${_OSN} ${_SQL_OS_CODE} main" >> ${mdbList}
-      else
+      if [ "${_DB_SERVER}" = "Percona" ]; then
         percList="/etc/apt/sources.list.d/percona-release.list"
         percRepo="${_DB_SRC}/percona/apt"
-        rm -f /etc/apt/sources.list.d/mariadb.*
         rm -f /etc/apt/sources.list.d/percona-.*
         rm -f /etc/apt/sources.list.d/xtrabackup.*
         echo "## Percona APT Repository" > ${percList}
-        echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-        echo "deb-src http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
+        if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
+          echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
+          echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
+        else
+          echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
+          echo "deb-src http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
+        fi
+        chmod 644 ${percList}
         echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
       fi
       apt_clean_update
@@ -1178,9 +991,7 @@ db_server_install() {
           msg "INFO: Running ${_DB_SERVER} system tables check..."
         fi
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-        if [ -x "/usr/bin/mariadb_upgrade" ]; then
-          mrun "mariadb_upgrade --force" &> /dev/null
-        elif [ -x "/usr/bin/mysql_upgrade" ]; then
+        if [ -x "/usr/bin/mysql_upgrade" ]; then
           _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
           _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
           mrun "mysql_upgrade -u root --force" &> /dev/null
@@ -1223,32 +1034,6 @@ db_server_install() {
           done
         fi
         apt_clean_update
-      else
-        if [ ! -e "/etc/apt/trusted.gpg.d/mariadb.gpg" ]; then
-          _KEYS_SIG="C74CD1D8"
-          _KEYS_SERVER_TEST=FALSE
-          until [[ "${_KEYS_SERVER_TEST}" =~ "MariaDB" ]]; do
-            if [ "${_DEBUG_MODE}" = "YES" ]; then
-              msg "INFO: Retrieving ${_KEYS_SIG} key..."
-            fi
-            ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG} &> /dev/null
-            ${_GPG} -a --export ${_KEYS_SIG} | apt-key add - &> /dev/null
-            _KEYS_SERVER_TEST=$(${_GPG} --list-keys ${_KEYS_SIG} 2>&1)
-            sleep 2
-            apt-key export ${_KEYS_SIG} | ${_GPG} --dearmour -o /etc/apt/trusted.gpg.d/mariadb.gpg &> /dev/null
-            if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
-              kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-              echo "$(date 2>&1) Too many dirmngr processes killed" >> \
-                /var/xdrago/log/dirmngr-count.kill.log
-            fi
-            if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
-              kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
-              echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
-                /var/xdrago/log/gpg-agent-count.kill.log
-            fi
-          done
-        fi
-        apt_clean_update
       fi
       _KEYS_SIG=""
       _KEYS_SERVER_TEST=FALSE
@@ -1257,9 +1042,6 @@ db_server_install() {
       fi
       st_runner "aptitude autoclean -y" &> /dev/null
       apt_clean_update
-      if [ "${_DB_SERVER}" = "MariaDB" ]; then
-        cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
-      fi
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
           wait
@@ -1291,10 +1073,7 @@ db_server_install() {
           msg "INFO: Running ${_DB_SERVER} system tables (1) upgrade..."
         fi
         rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-        if [ -x "/usr/bin/mariadb_upgrade" ]; then
-          mrun "mariadb_upgrade --force" &> /dev/null
-          mrun "mariadb_upgrade --force" &> /dev/null
-        elif [ -x "/usr/bin/mysql_upgrade" ]; then
+        if [ -x "/usr/bin/mysql_upgrade" ]; then
           _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
           _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
           mrun "mysql_upgrade -u root --force" &> /dev/null
@@ -1337,9 +1116,6 @@ db_server_install() {
           myCnfUpdate=NO
           msg "INFO: ${_DB_SERVER} diff3 ${diffMyTest}"
         fi
-      fi
-      if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-        mkdir -p /etc/mysql/mariadb.conf.d/
       fi
       if [ ! -e "/root/.run-to-daedalus.cnf" ] \
         && [ ! -e "/root/.run-to-chimaera.cnf" ] \
@@ -1517,11 +1293,7 @@ sql_root_credentials_update() {
       init_sql_root_credentials
     fi
     if [ -e "/root/.my.pass.txt" ]; then
-      if [ "${_DB_SERIES}" = "10.4" ]; then
-        myUsrTbl="mysql.global_priv"
-      else
-        myUsrTbl="mysql.user"
-      fi
+      myUsrTbl="mysql.user"
       if [ -z "${_ESC_PASS}" ]; then
         PXSWD=$(cat /root/.my.pass.txt 2>&1)
       else
@@ -1536,32 +1308,8 @@ sql_root_credentials_update() {
           msg "DBEF: ${_DB_SERVER} PASWD ${PASWD}"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
-          if [ "${_DB_SERIES}" = "10.3" ] \
-            || [ "${_DB_SERIES}" = "10.2" ]; then
-            mysql -u root -e "SELECT user,host,password FROM mysql.user;"
-          elif [ "${_DB_SERIES}" = "5.7" ]; then
+          if [ "${_DB_SERIES}" = "5.7" ]; then
             mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
-          fi
-        fi
-        if [ "${_DB_SERIES}" = "10.3" ] \
-          || [ "${_DB_SERIES}" = "10.2" ]; then
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "DEBG: ${_DB_SERVER} init cleanup"
-          fi
-          mysqladmin -u root flush-privileges
-          mysqladmin -u root flush-hosts
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';"
-            mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND \
-              Host NOT IN ('localhost', '127.0.0.1', '::1');"
-            mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR \
-              Db='test\\_%';"
-          else
-            mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='';" &> /dev/null
-            mysql -u root -e "DELETE FROM ${myUsrTbl} WHERE User='root' AND \
-              Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
-            mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR \
-              Db='test\\_%';" &> /dev/null
           fi
         fi
         mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
@@ -1655,10 +1403,7 @@ sql_root_credentials_update() {
           msg "DAFT: ${_DB_SERVER} PASWD ${PASWD}"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
-          if [ "${_DB_SERIES}" = "10.3" ] \
-            || [ "${_DB_SERIES}" = "10.2" ]; then
-            mysql -u root -e "SELECT user,host,password FROM mysql.user;"
-          elif [ "${_DB_SERIES}" = "5.7" ]; then
+          if [ "${_DB_SERIES}" = "5.7" ]; then
             mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
           fi
         fi
@@ -1729,10 +1474,6 @@ sql_root_credentials_update() {
           echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
         else
           sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf &> /dev/null
-        fi
-        if [ "${_DB_SERVER}" = "MariaDB" ]; then
-          sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" \
-            /etc/mysql/debian-start &> /dev/null
         fi
         mysqladmin -u root flush-privileges
         mysqladmin -u root flush-hosts

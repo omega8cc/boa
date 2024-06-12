@@ -1259,11 +1259,6 @@ init_setup() {
     wait
     sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"     ${vBs}/${filIncB}
     wait
-  elif [ "${sql}" = "mariadb" ]; then
-    sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g"        ${vBs}/${filIncB}
-    wait
-    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"     ${vBs}/${filIncB}
-    wait
   fi
   if [ -e "/root/.debug-boa-installer.cnf" ]; then
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncB}
@@ -2302,7 +2297,6 @@ case "$1" in
 
   {mysql}
       percona <------ database server to install (default)
-      mariadb <------ database server to install (deprecated)
 
   See docs/INSTALL.txt for more details.
 

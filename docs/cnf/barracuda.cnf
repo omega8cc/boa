@@ -37,7 +37,7 @@ _CPU_SPIDER_RATIO=3 #----------- Max load per CPU core before blocking spiders
 ###
 _DB_BINARY_LOG=NO #------------- Allows to enable binary logging when YES
 _DB_SERIES=5.7 #---------------- Supported values: 5.7
-_DB_SERVER=Percona #------------ Install Percona or MariaDB (deprecated)
+_DB_SERVER=Percona #------------ Install Percona SQL Server
 _USE_MYSQLTUNER=NO #------------ Use MySQLTuner to configure SQL limits when YES
 ###
 _DNS_SETUP_TEST=YES #----------- Allows to skip DNS testing when NO

@@ -734,9 +734,6 @@ if_restart_sql() {
       echo "INFO: ${_DB_SERVER} diff3 ${diffMyTest}"
     fi
   fi
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
-  fi
   myUptime=$(mysqladmin -u root version | grep -i uptime 2>&1)
   myUptime=$(echo -n ${myUptime} | fmt -su -w 2500 2>&1)
   echo "INFO: ${_DB_SERVER} ${myUptime}"

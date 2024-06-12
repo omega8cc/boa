@@ -345,9 +345,6 @@ migrate_sites() {
             else
               mysqladmin -u root flush-privileges &> /dev/null
             fi
-            if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-              mkdir -p /etc/mysql/mariadb.conf.d/
-            fi
             [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL3 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
             if [ -e "/root/.my.proxysql_adm_pwd.txt" ]; then
               _PROXYSQL_PASSWORD=$(cat /root/.my.proxysql_adm_pwd.txt 2>&1)
