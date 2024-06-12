@@ -544,15 +544,23 @@ whitelist_ip_dns() {
   csf -dr 1.1.1.1
   csf -dr 1.0.0.1
   sed -i "s/.*1.1.1.1.*//g"  /etc/csf/csf.allow
+  wait
   sed -i "s/.*1.1.1.1.*//g"  /etc/csf/csf.ignore
+  wait
   sed -i "s/.*1.0.0.1.*//g"  /etc/csf/csf.allow
+  wait
   sed -i "s/.*1.0.0.1.*//g"  /etc/csf/csf.ignore
+  wait
   echo "tcp|out|d=53|d=1.1.1.1 # Cloudflare DNS" >> /etc/csf/csf.allow
   echo "tcp|out|d=53|d=1.0.0.1 # Cloudflare DNS" >> /etc/csf/csf.allow
   sed -i "s/.*8.8.8.8.*//g"  /etc/csf/csf.allow
+  wait
   sed -i "s/.*8.8.8.8.*//g"  /etc/csf/csf.ignore
+  wait
   sed -i "s/.*8.8.4.4.*//g"  /etc/csf/csf.allow
+  wait
   sed -i "s/.*8.8.4.4.*//g"  /etc/csf/csf.ignore
+  wait
   echo "tcp|out|d=53|d=8.8.8.8 # Google DNS" >> /etc/csf/csf.allow
   echo "tcp|out|d=53|d=8.8.4.4 # Google DNS" >> /etc/csf/csf.allow
 }
