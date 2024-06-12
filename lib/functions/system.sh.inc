@@ -3198,9 +3198,6 @@ sources_list_update() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Updating packages sources list..."
     fi
-    if [ -e "/etc/apt/preferences" ]; then
-      mv -f /etc/apt/preferences /var/backups/.apt.preferences
-    fi
     mv -f ${aptLiSys} \
       ${vBs}/sources.list-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     if [ "${_OS_DIST}" = "Devuan" ]; then
@@ -5437,9 +5434,6 @@ if_major_os_upgrade() {
   fi
   _RUNNING_MAJOR_OS_UPGRADE=NO
   define_loc_osr
-  if [ -e "/etc/apt/preferences" ]; then
-    mv -f /etc/apt/preferences /var/backups/.apt.preferences
-  fi
   if [ ! -z "${_MSG_LOC}" ]; then
     if [ ! -e "/usr/local/lib/icu/73.1" ] \
       && [ "${_LOC_OS_CODE}" != "jessie" ] \
