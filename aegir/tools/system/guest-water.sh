@@ -13,8 +13,6 @@ whitelist_ip_pingdom() {
     echo removing pingdom ips from csf.allow
     sed -i "s/.*pingdom.*//g" /etc/csf/csf.allow
     wait
-    sed -i "/^$/d" /etc/csf/csf.allow
-    wait
   fi
 
   _IPS=$(curl -k -s https://my.pingdom.com/probes/feed \
@@ -49,8 +47,6 @@ whitelist_ip_cloudflare() {
     echo removing cloudflare ips from csf.allow
     sed -i "s/.*cloudflare.*//g" /etc/csf/csf.allow
     wait
-    sed -i "/^$/d" /etc/csf/csf.allow
-    wait
   fi
 
   _IPS=$(curl -k -s https://www.cloudflare.com/ips-v4 \
@@ -83,8 +79,6 @@ whitelist_ip_imperva() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing imperva ips from csf.allow
     sed -i "s/.*imperva.*//g" /etc/csf/csf.allow
-    wait
-    sed -i "/^$/d" /etc/csf/csf.allow
     wait
   fi
 
@@ -119,8 +113,6 @@ whitelist_ip_googlebot() {
     echo removing googlebot ips from csf.allow
     sed -i "s/.*googlebot.*//g" /etc/csf/csf.allow
     wait
-    sed -i "/^$/d" /etc/csf/csf.allow
-    wait
   fi
 
   _IPS="66.249.64.0/19"
@@ -151,8 +143,6 @@ whitelist_ip_microsoft() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing microsoft ips from csf.allow
     sed -i "s/.*microsoft.*//g" /etc/csf/csf.allow
-    wait
-    sed -i "/^$/d" /etc/csf/csf.allow
     wait
   fi
 
@@ -187,8 +177,6 @@ whitelist_ip_sucuri() {
     echo removing sucuri ips from csf.allow
     sed -i "s/.*sucuri.*//g" /etc/csf/csf.allow
     wait
-    sed -i "/^$/d" /etc/csf/csf.allow
-    wait
   fi
 
   _IPS="192.88.134.0/23 185.93.228.0/22 66.248.200.0/22 208.109.0.0/22"
@@ -217,8 +205,6 @@ whitelist_ip_authzero() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing authzero ips from csf.allow
     sed -i "s/.*authzero.*//g" /etc/csf/csf.allow
-    wait
-    sed -i "/^$/d" /etc/csf/csf.allow
     wait
   fi
 
@@ -291,12 +277,8 @@ whitelist_ip_site24x7() {
     echo removing site24x7 ips from csf.allow
     sed -i "s/.*site24x7.*//g" /etc/csf/csf.allow
     wait
-    sed -i "/^$/d" /etc/csf/csf.allow
-    wait
     echo removing site24x7 ips from csf.ignore
     sed -i "s/.*site24x7.*//g" /etc/csf/csf.ignore
-    wait
-    sed -i "/^$/d" /etc/csf/csf.ignore
     wait
   fi
 
@@ -416,10 +398,6 @@ local_ip_rg() {
       | uniq`;do echo "${_IP} # local IP address" >> /root/.local.IP.list;done
     rm -f /root/.tmp.IP.list*
   fi
-  sed -i "/^$/d" /etc/csf/csf.ignore &> /dev/null
-  wait
-  sed -i "/^$/d" /etc/csf/csf.allow &> /dev/null
-  wait
 }
 
 guard_stats() {
@@ -577,8 +555,6 @@ whitelist_ip_dns() {
   sed -i "s/.*8.8.4.4.*//g"  /etc/csf/csf.ignore
   echo "tcp|out|d=53|d=8.8.8.8 # Google DNS" >> /etc/csf/csf.allow
   echo "tcp|out|d=53|d=8.8.4.4 # Google DNS" >> /etc/csf/csf.allow
-  sed -i "/^$/d" /etc/csf/csf.ignore
-  sed -i "/^$/d" /etc/csf/csf.allow
 }
 
 if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
