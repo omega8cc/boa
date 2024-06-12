@@ -5671,8 +5671,14 @@ if_major_os_upgrade() {
         rm -f /etc/apt/sources.list.d/percona-.*
         rm -f /etc/apt/sources.list.d/xtrabackup.*
         echo "## Percona APT Repository" > ${percList}
-        echo "deb http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
-        echo "deb-src http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
+        if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
+          echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
+          echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
+        else
+          echo "deb http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
+          echo "deb-src http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
+        fi
+        chmod 644 ${percList}
         echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
       fi
     fi

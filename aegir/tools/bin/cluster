@@ -1565,17 +1565,28 @@ install_db_cluster() {
   	vserver ${idn} exec ${_INSTAPP} software-properties-common dirmngr
     rm -f /vservers/${idn}/etc/apt/sources.list.d/percona-.*
     rm -f /vservers/${idn}/etc/apt/sources.list.d/xtrabackup.*
+    _PERCONA_KEYS_SIG="8507EFA5"
+    if [ ! -e "/vservers/${idn}/etc/apt/keyrings/percona.gpg" ]; then
+      if [ ! -e "/vservers/${idn}/etc/apt/keyrings" ]; then
+        mkdir -m 0755 -p /vservers/${idn}/etc/apt/keyrings
+      fi
+      if [ -e "/vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg" ]; then
+        rm -f /vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg
+      fi
+      vserver ${idn} exec apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
+      curl -fsSL ${urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /vservers/${idn}/etc/apt/keyrings/percona.gpg &> /dev/null
+      chmod 644 /vservers/${idn}/etc/apt/keyrings/percona.gpg
+    fi
     echo "## Percona Cluster APT Repository" > /vservers/${idn}${percList}
-    echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> /vservers/${idn}${percList}
+    if [ -e "/vservers/${idn}/etc/apt/keyrings/percona.gpg" ]; then
+      echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> /vservers/${idn}${percList}
+      echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> /vservers/${idn}${percList}
+    else
+      echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> /vservers/${idn}${percList}
+      echo "deb-src http://${percRepo} ${_SQL_OS_CODE} main" >> /vservers/${idn}${percList}
+    fi
     chmod 644 /vservers/${idn}${percList}
     echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /vservers/${idn}/etc/apt/preferences.d/00percona.pref
-    _KEYS_SIG="8507EFA5"
-    vserver ${idn} exec wget -q -U iCab ${urlDev}/percona-key.gpg -O /var/backups/percona-key.gpg
-    vserver ${idn} exec cat /var/backups/percona-key.gpg | ${_GPG} --import &> /dev/null
-    vserver ${idn} exec ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG}
-    vserver ${idn} exec ${_GPG} -a --export ${_KEYS_SIG} | apt-key add -
-    vserver ${idn} exec ${_GPG} --list-keys ${_KEYS_SIG}
-    vserver ${idn} exec apt-key export ${_KEYS_SIG} | ${_GPG} --dearmour -o /etc/apt/trusted.gpg.d/percona.gpg &> /dev/null
   	vserver ${idn} exec ${_APT_UPDATE} -qq
   	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57
   	##vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24
@@ -1758,31 +1769,20 @@ upgrade_db_cluster() {
     else
       _GPG=gpg
     fi
-    _KEYS_SIG="8507EFA5"
-    _KEYS_SERVER_TEST=FALSE
-    until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        echo "INFO: Retrieving ${_KEYS_SIG} key on ${idn}/${IP}..."
+    _PERCONA_KEYS_SIG="8507EFA5"
+
+    echo "INFO: Retrieving ${_PERCONA_KEYS_SIG} key on ${idn}/${IP}..."
+    if [ ! -e "/vservers/${idn}/etc/apt/keyrings/percona.gpg" ]; then
+      if [ ! -e "/vservers/${idn}/etc/apt/keyrings" ]; then
+        mkdir -m 0755 -p /vservers/${idn}/etc/apt/keyrings
       fi
-      vserver ${idn} exec wget -q -U iCab ${urlDev}/percona-key.gpg -O /var/backups/percona-key.gpg
-      vserver ${idn} exec cat /var/backups/percona-key.gpg | ${_GPG} --import &> /dev/null
-      vserver ${idn} exec ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG}
-      vserver ${idn} exec ${_GPG} -a --export ${_KEYS_SIG} | apt-key add -
-      _KEYS_SERVER_TEST=$(vserver ${idn} exec ${_GPG} --list-keys ${_KEYS_SIG} 2>&1)
-      sleep 2
-      vserver ${idn} exec apt-key export ${_KEYS_SIG} | ${_GPG} --dearmour -o /etc/apt/trusted.gpg.d/percona.gpg &> /dev/null
-      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
-        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-        echo "$(date 2>&1) Too many dirmngr processes killed" >> \
-          /var/xdrago/log/dirmngr-count.kill.log
+      if [ -e "/vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg" ]; then
+        rm -f /vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg
       fi
-    done
-    vserver ${idn} exec wget -q -U iCab ${urlDev}/percona-key.gpg -O /var/backups/percona-key.gpg
-    vserver ${idn} exec cat /var/backups/percona-key.gpg | ${_GPG} --import &> /dev/null
-    vserver ${idn} exec ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG}
-    vserver ${idn} exec ${_GPG} -a --export ${_KEYS_SIG} | apt-key add -
-    vserver ${idn} exec ${_GPG} --list-keys ${_KEYS_SIG}
-    vserver ${idn} exec apt-key export ${_KEYS_SIG} | ${_GPG} --dearmour -o /etc/apt/trusted.gpg.d/percona.gpg &> /dev/null
+      vserver ${idn} exec apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
+      curl -fsSL ${urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /vservers/${idn}/etc/apt/keyrings/percona.gpg &> /dev/null
+      chmod 644 /vservers/${idn}/etc/apt/keyrings/percona.gpg
+    fi
   	vserver ${idn} exec ${_APT_UPDATE} -qq
   	vserver ${idn} exec ${_INSTAPP} bc
   	vserver ${idn} exec apt-get upgrade ${_APT_XTR}
