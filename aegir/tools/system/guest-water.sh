@@ -690,11 +690,16 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   wait
   sed -i "/^$/d" /etc/csf/csf.ignore
   wait
-  _DHCP_TEST=$(grep DHCPREQUEST /var/log/daemon.log | cut -d ' ' -f13 | sort | uniq 2>&1)
-  if [[ "${_DHCP_TEST}" =~ "port" ]]; then
-    for _IP in `grep DHCPREQUEST /var/log/daemon.log | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+  if [ -e "/var/log/daemon.log" ]; then
+    _DHCP_LOG="/var/log/daemon.log"
   else
-    for _IP in `grep DHCPREQUEST /var/log/daemon.log | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+    _DHCP_LOG="/var/log/syslog"
+  fi
+  _DHCP_TEST=$(grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq 2>&1)
+  if [[ "${_DHCP_TEST}" =~ "port" ]]; then
+    for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+  else
+    for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
   fi
   csf -e
   wait

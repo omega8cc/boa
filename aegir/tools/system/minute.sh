@@ -56,7 +56,12 @@ sql_restart() {
 }
 
 if [ -e "/var/log/daemon.log" ]; then
-  if [ `tail --lines=10 /var/log/daemon.log \
+  _SQL_LOG="/var/log/daemon.log"
+else
+  _SQL_LOG="/var/log/syslog"
+fi
+if [ -e "${_SQL_LOG}" ]; then
+  if [ `tail --lines=10 ${_SQL_LOG} \
     | grep --count "Too many connections"` -gt "0" ]; then
     sql_restart "BUSY"
   fi

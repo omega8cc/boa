@@ -292,16 +292,21 @@ if_clean_boa_env
 
 if_fix_dhcp() {
   if [ -e "/var/log/daemon.log" ]; then
-    if [ `tail --lines=100 /var/log/daemon.log \
+    _DHCP_LOG="/var/log/daemon.log"
+  else
+    _DHCP_LOG="/var/log/syslog"
+  fi
+  if [ -e "${_DHCP_LOG}" ]; then
+    if [ `tail --lines=100 ${_DHCP_LOG} \
       | grep --count "dhclient.*Failed"` -gt "0" ]; then
       sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
       wait
       sed -i "/^$/d" /etc/csf/csf.allow
-      _DHCP_TEST=$(grep DHCPREQUEST /var/log/daemon.log | cut -d ' ' -f13 | sort | uniq 2>&1)
+      _DHCP_TEST=$(grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq 2>&1)
       if [[ "${_DHCP_TEST}" =~ "port" ]]; then
-        for _IP in `grep DHCPREQUEST /var/log/daemon.log | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+        for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
       else
-        for _IP in `grep DHCPREQUEST /var/log/daemon.log | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+        for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
       fi
       csf -q &> /dev/null
     fi
