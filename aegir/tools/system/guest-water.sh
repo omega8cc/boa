@@ -135,7 +135,7 @@ whitelist_ip_googlebot() {
       echo "${_IP} already listed in /etc/csf/csf.allow"
     fi
   done
-  sed -i "s/66.249..*//g" /etc/csf/csf.deny
+  sed -i "s/^66.249..*//g" /etc/csf/csf.deny
   wait
 }
 
@@ -166,9 +166,9 @@ whitelist_ip_microsoft() {
       echo "${_IP} already listed in /etc/csf/csf.allow"
     fi
   done
-  sed -i "s/65.5.*//g" /etc/csf/csf.deny
+  sed -i "s/^65.5.*//g" /etc/csf/csf.deny
   wait
-  sed -i "s/199.30..*//g" /etc/csf/csf.deny
+  sed -i "s/^199.30..*//g" /etc/csf/csf.deny
   wait
 }
 
