@@ -948,9 +948,7 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
       pxyCmd="proxysql_galera_checker --log=/var/lib/proxysql/pxc_test_proxysql_galera_check.log --debug"
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCmd}"
       cat /vservers/${idn}/var/lib/proxysql/pxc_test_proxysql_galera_check.log
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        echo "INFO: Restarting ProxySQL server..."
-      fi
+      echo "INFO: Restarting ProxySQL server..."
       vserver ${idn} exec service proxysql restart
       pxyCmd="SELECT * FROM runtime_scheduler\\G"
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
