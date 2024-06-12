@@ -581,22 +581,21 @@ prep_for_install_db_sql() {
   ### Only supported upgrade path allowed
   sql_strict_upgrade_path
 
-    percRepo="${_DB_SRC}/percona/apt"
-    percList="/etc/apt/sources.list.d/percona-release.list"
-    rm -f /etc/apt/sources.list.d/mariadb.*
-    rm -f /etc/apt/sources.list.d/percona-.*
-    rm -f /etc/apt/sources.list.d/xtrabackup.*
-    echo "## Percona APT Repository" > ${percList}
-    if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
-      echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-      echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-    else
-      echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-      echo "deb-src http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-    fi
-    chmod 644 ${percList}
-    echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
+  percRepo="${_DB_SRC}/percona/apt"
+  percList="/etc/apt/sources.list.d/percona-release.list"
+  rm -f /etc/apt/sources.list.d/mariadb.*
+  rm -f /etc/apt/sources.list.d/percona-.*
+  rm -f /etc/apt/sources.list.d/xtrabackup.*
+  echo "## Percona APT Repository" > ${percList}
+  if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
+    echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
+    echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
+  else
+    echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
+    echo "deb-src http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
   fi
+  chmod 644 ${percList}
+  echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
   apt_clean_update
   if [ -e "/usr/bin/mytop" ]; then
     st_runner "${_RMAPP} mytop" &> /dev/null
@@ -606,7 +605,7 @@ prep_for_install_db_sql() {
   if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     sed -i "s/.*innodb_force_recovery.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf &> /dev/null
-      wait
+    wait
   fi
   if [ "${_DB_SERIES}" = "5.7" ]; then
     SQLDEB="percona-server-server-${_DB_SERIES}"
