@@ -1156,22 +1156,10 @@ up_finish() {
   exit 0
 }
 
-set_pin_priority() {
-  if [ ! -e "/etc/apt/preferences" ] && [ -e "/etc/issue.net" ]; then
-    _IS_DEVUAN=$(grep "Devuan" /etc/issue.net 2>&1)
-    _IS_DEBIAN=$(grep "Debian" /etc/issue.net 2>&1)
-    if [[ "${_IS_DEVUAN}" =~ "Devuan" ]]; then
-      _OS_DIST=Devuan
-    elif [[ "${_IS_DEBIAN}" =~ "Debian" ]]; then
-      _OS_DIST=Debian
-    fi
-    if [ "${_OS_DIST}" = "Devuan" ]; then
-      curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-devuan.txt" \
-        -o /etc/apt/preferences
-    elif [ "${_OS_DIST}" = "Debian" ]; then
-      curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-debian.txt" \
-        -o /etc/apt/preferences
-    fi
+check_etc_apt_preferences() {
+  if [ -e "/etc/apt/preferences" ] \
+    && [ ! -e "/var/backups/old_etc_apt_preferences" ]; then
+    mv -f /etc/apt/preferences /var/backups/old_etc_apt_preferences
   fi
 }
 
@@ -1542,7 +1530,7 @@ proceed() {
   os_detection_minimal
   check_dns_curl
   check_php_cli
-  #set_pin_priority
+  check_etc_apt_preferences
   if [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ] \
