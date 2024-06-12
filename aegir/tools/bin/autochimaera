@@ -447,9 +447,9 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-chimaera-two.cnf" ]; then
   echo " " >> ${logAch}
   if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
-    msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> ${logAds}
+    msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> ${logAch}
     [ ! -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && touch /root/.force.rebuild.src.on.auto.now.cnf
-    /opt/local/bin/barracuda up-${tRee} system >> ${logAds}
+    /opt/local/bin/barracuda up-${tRee} system >> ${logAch}
     wait
   fi
   [ -e "/root/.run-to-chimaera.cnf" ] && rm -f /root/.run-to-chimaera.cnf
