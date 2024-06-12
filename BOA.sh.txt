@@ -2493,8 +2493,16 @@ if [ `whoami` = "root" ]; then
   ### Block known attackers IPs
   _CSF_TEST=$(which csf 2> /dev/null)
   if [ -x "${_CSF_TEST}" ]; then
-    csf -d 185.206.225.30 Flooding user/password
-    csf -d 185.253.97.238 Flooding user/password
+    _IP_BLOCK="185.206.225.30 185.253.97.238"
+    for _IP in ${_IP_BLOCK}; do
+      _FW_TEST=$(csf -g ${_IP} 2>&1)
+      if [[ "${_FF_TEST}" =~ "DENY Match:${_IP} Setting" ]] \
+        && [[ "${_FW_TEST}" =~ "csf.deny: ${_IP}" ]]; then
+        echo "${_IP} already denied for Flooding user/password"
+      else
+        csf -d ${_IP} Flooding user/password
+      fi
+    done
   fi
 
   ### Linux kernel CVE-2017-2636 hotfix
