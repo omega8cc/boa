@@ -1935,7 +1935,105 @@ if_boa_key_tools_update_allowed() {
   fi
 }
 
-update_boa_key_tools_only() {
+update_boa_tools() {
+  mkdir -p ${usrBin}
+  if [ -e "${pthLog}" ] && [ ! -e "${pthLog}/updateFx07.ctrl.${tRee}.${_X_SE}.pid" ]; then
+    fxPp="fix-drupal-platform-permissions.sh"
+    fxSp="fix-drupal-site-permissions.sh"
+    fxPo="fix-drupal-platform-ownership.sh"
+    fxSo="fix-drupal-site-ownership.sh"
+    fxLo="lock-local-drush-permissions.sh"
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxPp}" -o ${usrBin}/${fxPp}
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxSp}" -o ${usrBin}/${fxSp}
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxPo}" -o ${usrBin}/${fxPo}
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxSo}" -o ${usrBin}/${fxSo}
+    curl ${crlGet} "${urlHmr}/${tBn}/${fxLo}" -o ${usrBin}/${fxLo}
+    chmod 700 ${usrBin}/${fxPp}
+    chmod 700 ${usrBin}/${fxSp}
+    chmod 700 ${usrBin}/${fxPo}
+    chmod 700 ${usrBin}/${fxSo}
+    chmod 700 ${usrBin}/${fxLo}
+    touch ${pthLog}/updateFx07.ctrl.${tRee}.${_X_SE}.pid
+  fi
+  mkdir -p ${optBin}
+  rm -f ${usrBin}/{autoinit*,barracuda*,boa*,killer*,octopus*}
+  if [ ! -e "/data/disk" ]; then
+    ln -s ${optBin}/autoinit  ${usrBin}/autoinit
+    ln -s ${optBin}/barracuda ${usrBin}/barracuda
+    ln -s ${optBin}/boa       ${usrBin}/boa
+    ln -s ${optBin}/killer    ${usrBin}/killer
+    ln -s ${optBin}/octopus   ${usrBin}/octopus
+  fi
+  boaBins="autobeowulf \
+           autochimaera \
+           autodaedalus \
+           autoinit \
+           autoupboa \
+           barracuda \
+           boa \
+           ffmirror \
+           killer \
+           mycnfup \
+           octopus \
+           randpass \
+           sqlmagic \
+           syncpass \
+           thinkdifferent \
+           weblogx \
+           xboa"
+  for cbn in ${boaBins}; do
+    if [ -e "${optBin}/${cbn}" ]; then
+      if [ `ps aux | grep -v "grep" | grep --count "/${cbn}"` -gt "0" ]; then
+        echo "The ${cbn} is running!"
+      else
+        if [ "${cbn}" = "weblogx" ] \
+          && [ `ps aux | grep -v "grep" | grep --count "/daily.sh"` -gt "0" ]; then
+          echo "The ${cbn} and daily.sh is running!"
+        else
+          rm -f ${optBin}/${cbn}.new
+          curl ${crlGet} "${urlHmr}/${tBn}/${cbn}" -o ${optBin}/${cbn}.new
+          mv -f ${optBin}/${cbn} ${optBin}/${cbn}.prev
+          mv -f ${optBin}/${cbn}.new ${optBin}/${cbn}
+          if [ -e "${optBin}/${cbn}" ]; then
+            chmod 755 ${optBin}/${cbn}
+            rm -f ${optBin}/${cbn}.prev
+          else
+            mv -f ${optBin}/${cbn}.prev ${optBin}/${cbn}
+          fi
+        fi
+      fi
+    else
+      curl ${crlGet} "${urlHmr}/${tBn}/${cbn}" -o ${optBin}/${cbn}
+    fi
+  done
+  echo "### ${_TODAY} ###" >> ${optBin}/autoinit
+  echo "### ${_TODAY} ###" >> ${optBin}/barracuda
+  echo "### ${_TODAY} ###" >> ${optBin}/boa
+  echo "### ${_TODAY} ###" >> ${optBin}/killer
+  echo "### ${_TODAY} ###" >> ${optBin}/octopus
+  [ -e "/root/.backboa.autoupdate" ] && rm -f /root/.backboa.autoupdate
+  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
+    echo "The duplicity backup is running!"
+  else
+    rm -f ${optBin}/{backboa,duobackboa}
+    curl ${crlGet} "${urlHmr}/${tBn}/backboa"      -o ${optBin}/backboa
+    curl ${crlGet} "${urlHmr}/${tBn}/duobackboa"   -o ${optBin}/duobackboa
+    chmod 700 ${optBin}/{backboa,duobackboa}
+    if [ ! -e "${pthLog}/duplicity.ctrl.${tRee}.${_X_SE}.pid" ] \
+      && [ -x "/usr/local/bin/duplicity" ] \
+      && [ -e "/var/aegir/drush" ] \
+      && [ -e "/var/xdrago" ]; then
+      backboa install
+      touch ${pthLog}/duplicity.ctrl.${tRee}.${_X_SE}.pid
+      touch /root/.backboa.autoupdate
+    fi
+  fi
+  chmod 700 ${optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa}
+  chmod 700 ${optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx}
+  chmod 755 ${optBin}/{randpass,sqlmagic,thinkdifferent}
+}
+
+if_update_boa_key_tools_only() {
   sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
   wait
   sed -i "s/.*github.*//g" /etc/hosts
@@ -2096,46 +2194,14 @@ update_boa_key_tools_only() {
       csf -q
     fi
   fi
-  mkdir -p ${usrBin}
-  if [ -e "${pthLog}" ] && [ ! -e "${pthLog}/updateFx07.ctrl.${tRee}.${_X_SE}.pid" ]; then
-    fxPp="fix-drupal-platform-permissions.sh"
-    fxSp="fix-drupal-site-permissions.sh"
-    fxPo="fix-drupal-platform-ownership.sh"
-    fxSo="fix-drupal-site-ownership.sh"
-    fxLo="lock-local-drush-permissions.sh"
-    curl ${crlGet} "${urlHmr}/${tBn}/${fxPp}" -o ${usrBin}/${fxPp}
-    curl ${crlGet} "${urlHmr}/${tBn}/${fxSp}" -o ${usrBin}/${fxSp}
-    curl ${crlGet} "${urlHmr}/${tBn}/${fxPo}" -o ${usrBin}/${fxPo}
-    curl ${crlGet} "${urlHmr}/${tBn}/${fxSo}" -o ${usrBin}/${fxSo}
-    curl ${crlGet} "${urlHmr}/${tBn}/${fxLo}" -o ${usrBin}/${fxLo}
-    chmod 700 ${usrBin}/${fxPp}
-    chmod 700 ${usrBin}/${fxSp}
-    chmod 700 ${usrBin}/${fxPo}
-    chmod 700 ${usrBin}/${fxSo}
-    chmod 700 ${usrBin}/${fxLo}
-    touch ${pthLog}/updateFx07.ctrl.${tRee}.${_X_SE}.pid
+  update_boa_tools
+  if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
+    echo
+    echo "BOA Meta Installers setup completed"
+    echo "Please check INSTALL.txt and UPGRADE.txt at http://bit.ly/boa-docs"
+    echo "Bye"
+    echo
   fi
-  mkdir -p ${optBin}
-  rm -f ${usrBin}/{autoinit*,barracuda*,boa*,killer*,octopus*}
-  if [ ! -e "/data/disk" ]; then
-    ln -s ${optBin}/autoinit  ${usrBin}/autoinit
-    ln -s ${optBin}/barracuda ${usrBin}/barracuda
-    ln -s ${optBin}/boa       ${usrBin}/boa
-    ln -s ${optBin}/killer    ${usrBin}/killer
-    ln -s ${optBin}/octopus   ${usrBin}/octopus
-  fi
-  rm -f ${optBin}/{autoinit*,barracuda*,boa*,killer*,octopus*}
-  curl ${crlGet} "${urlHmr}/${tBn}/autoinit"       -o ${optBin}/autoinit
-  curl ${crlGet} "${urlHmr}/${tBn}/barracuda"      -o ${optBin}/barracuda
-  curl ${crlGet} "${urlHmr}/${tBn}/boa"            -o ${optBin}/boa
-  curl ${crlGet} "${urlHmr}/${tBn}/killer"         -o ${optBin}/killer
-  curl ${crlGet} "${urlHmr}/${tBn}/octopus"        -o ${optBin}/octopus
-  echo "### ${_TODAY} ###" >> ${optBin}/autoinit
-  echo "### ${_TODAY} ###" >> ${optBin}/barracuda
-  echo "### ${_TODAY} ###" >> ${optBin}/boa
-  echo "### ${_TODAY} ###" >> ${optBin}/killer
-  echo "### ${_TODAY} ###" >> ${optBin}/octopus
-  chmod 700 ${optBin}/{autoinit*,barracuda*,boa*,killer*,octopus*}
 }
 
 setup() {
@@ -2248,100 +2314,7 @@ setup() {
     apt_clean_update
     apt-get install lsb-release ${aptYesUnth} &> /dev/null
   fi
-  mkdir -p ${usrBin}
-  if [ -e "${pthLog}" ] && [ ! -e "${pthLog}/updateFx07.ctrl.${tRee}.${_X_SE}.pid" ]; then
-    fxPp="fix-drupal-platform-permissions.sh"
-    fxSp="fix-drupal-site-permissions.sh"
-    fxPo="fix-drupal-platform-ownership.sh"
-    fxSo="fix-drupal-site-ownership.sh"
-    curl ${crlGet} "${urlHmr}/${tBn}/${fxPp}" -o ${usrBin}/${fxPp}
-    curl ${crlGet} "${urlHmr}/${tBn}/${fxSp}" -o ${usrBin}/${fxSp}
-    curl ${crlGet} "${urlHmr}/${tBn}/${fxPo}" -o ${usrBin}/${fxPo}
-    curl ${crlGet} "${urlHmr}/${tBn}/${fxSo}" -o ${usrBin}/${fxSo}
-    chmod 700 ${usrBin}/${fxPp}
-    chmod 700 ${usrBin}/${fxSp}
-    chmod 700 ${usrBin}/${fxPo}
-    chmod 700 ${usrBin}/${fxSo}
-    touch ${pthLog}/updateFx07.ctrl.${tRee}.${_X_SE}.pid
-  fi
-  mkdir -p ${optBin}
-  rm -f ${optBin}/.{boa*,fix*}
-  rm -f ${usrBin}/{autoinit*,autoupboa*,barracuda*,boa*,ffmirror*,mycnfup*,weblogx*}
-  rm -f ${usrBin}/{killer*,octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
-  if [ ! -e "/data/disk" ]; then
-    ln -s ${optBin}/autoinit  ${usrBin}/autoinit
-    ln -s ${optBin}/barracuda ${usrBin}/barracuda
-    ln -s ${optBin}/boa       ${usrBin}/boa
-    ln -s ${optBin}/killer    ${usrBin}/killer
-    ln -s ${optBin}/octopus   ${usrBin}/octopus
-  fi
-  boaBins="autobeowulf \
-           autochimaera \
-           autodaedalus \
-           autoinit \
-           autoupboa \
-           barracuda \
-           boa \
-           ffmirror \
-           killer \
-           mycnfup \
-           octopus \
-           randpass \
-           sqlmagic \
-           syncpass \
-           thinkdifferent \
-           weblogx \
-           xboa"
-  for cbn in ${boaBins}; do
-    if [ -e "${optBin}/${cbn}" ]; then
-      if [ `ps aux | grep -v "grep" | grep --count "/${cbn}"` -gt "0" ]; then
-        echo "The ${cbn} is running!"
-      else
-        if [ "${cbn}" = "weblogx" ] \
-          && [ `ps aux | grep -v "grep" | grep --count "/daily.sh"` -gt "0" ]; then
-          echo "The ${cbn} and daily.sh is running!"
-        else
-          rm -f ${optBin}/${cbn}.new
-          curl ${crlGet} "${urlHmr}/${tBn}/${cbn}" -o ${optBin}/${cbn}.new
-          mv -f ${optBin}/${cbn} ${optBin}/${cbn}.prev
-          mv -f ${optBin}/${cbn}.new ${optBin}/${cbn}
-          if [ -e "${optBin}/${cbn}" ]; then
-            chmod 755 ${optBin}/${cbn}
-            rm -f ${optBin}/${cbn}.prev
-          else
-            mv -f ${optBin}/${cbn}.prev ${optBin}/${cbn}
-          fi
-        fi
-      fi
-    else
-      curl ${crlGet} "${urlHmr}/${tBn}/${cbn}" -o ${optBin}/${cbn}
-    fi
-  done
-  echo "### ${_TODAY} ###" >> ${optBin}/autoinit
-  echo "### ${_TODAY} ###" >> ${optBin}/barracuda
-  echo "### ${_TODAY} ###" >> ${optBin}/boa
-  echo "### ${_TODAY} ###" >> ${optBin}/killer
-  echo "### ${_TODAY} ###" >> ${optBin}/octopus
-  [ -e "/root/.backboa.autoupdate" ] && rm -f /root/.backboa.autoupdate
-  if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
-    echo "The duplicity backup is running!"
-  else
-    rm -f ${optBin}/{backboa,duobackboa}
-    curl ${crlGet} "${urlHmr}/${tBn}/backboa"      -o ${optBin}/backboa
-    curl ${crlGet} "${urlHmr}/${tBn}/duobackboa"   -o ${optBin}/duobackboa
-    chmod 700 ${optBin}/{backboa,duobackboa}
-    if [ ! -e "${pthLog}/duplicity.ctrl.${tRee}.${_X_SE}.pid" ] \
-      && [ -x "/usr/local/bin/duplicity" ] \
-      && [ -e "/var/aegir/drush" ] \
-      && [ -e "/var/xdrago" ]; then
-      backboa install
-      touch ${pthLog}/duplicity.ctrl.${tRee}.${_X_SE}.pid
-      touch /root/.backboa.autoupdate
-    fi
-  fi
-  chmod 700 ${optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa}
-  chmod 700 ${optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx}
-  chmod 755 ${optBin}/{randpass,sqlmagic,thinkdifferent}
+  update_boa_tools
   echo
   echo "BOA Meta Installers setup completed"
   echo "Please check INSTALL.txt and UPGRADE.txt at http://bit.ly/boa-docs"
@@ -2573,10 +2546,10 @@ if [ `whoami` = "root" ]; then
         echo "STATUS: Please remove the _SKYNET_MODE=OFF line from"
         echo "STATUS: ${barCnf} to enable me again."
         echo "NOTE: Critically important BOA tools will be still updated"
-        update_boa_key_tools_only verbose
+        if_update_boa_key_tools_only verbose
         exit 0
       else
-        update_boa_key_tools_only silent
+        if_update_boa_key_tools_only silent
         exit 0
       fi
     else
