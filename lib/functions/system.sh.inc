@@ -4675,8 +4675,9 @@ finale() {
   fi
   killall -9 memcached &> /dev/null
   if [ -e "/sbin/auditd" ]; then
-    chmod 0750 /sbin/audispd &> /dev/null
-    service auditd restart &> /dev/null
+    apt-get remove auditd -y -qq &> /dev/null
+    apt-get purge auditd -y -qq &> /dev/null
+    killall -9 auditd &> /dev/null
   fi
   php_deprecated_cleanup
   php_single_initd_cleanup
@@ -4778,6 +4779,8 @@ run_aptitude_deps_install() {
   mrun "apt-get purge libcurl4-gnutls-dev -y -qq" 2> /dev/null
   mrun "apt-get remove libcurl4-openssl-dev -y -qq" 2> /dev/null
   mrun "apt-get purge libcurl4-openssl-dev -y -qq" 2> /dev/null
+  mrun "apt-get remove auditd -y -qq" 2> /dev/null
+  mrun "apt-get purge auditd -y -qq" 2> /dev/null
   mrun "apt autoremove -y" 2> /dev/null
   mrun "${_INSTAPP} build-essential libsasl2-modules" 2> /dev/null
   mrun "${_INSTAPP} time vim cvs makepasswd" 2> /dev/null
@@ -4789,7 +4792,7 @@ run_aptitude_deps_install() {
   mrun "${_INSTAPP} libssl-dev" 2> /dev/null
   mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
   mrun "${_INSTAPP} mcrypt libc-client-dev" 2> /dev/null
-  mrun "${_INSTAPP} apticron aptitude auditd apt-listchanges" 2> /dev/null
+  mrun "${_INSTAPP} apticron aptitude apt-listchanges" 2> /dev/null
   mrun "${_INSTAPP} sysstat telnet cron gnupg2 gnupg" 2> /dev/null
   mrun "${_INSTAPP} unzip unrtf wdiff pwgen flex re2c" 2> /dev/null
   mrun "${_INSTAPP} rsync strace ntpdate python-dev" 2> /dev/null
