@@ -1925,7 +1925,17 @@ if_reinstall_curl() {
   fi
 }
 
-update_wrappers() {
+if_boa_key_tools_update_allowed() {
+  if [ -e "/root/.run-to-daedalus.cnf" ] \
+    || [ -e "/root/.run-to-chimaera.cnf" ] \
+    || [ -e "/root/.run-to-beowulf.cnf" ]; then
+    _BOA_KEY_TOOLS_UPDATE_ALLOWED=NO
+  else
+    _BOA_KEY_TOOLS_UPDATE_ALLOWED=YES
+  fi
+}
+
+update_boa_key_tools_only() {
   sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
   wait
   sed -i "s/.*github.*//g" /etc/hosts
@@ -2549,7 +2559,10 @@ if [ `whoami` = "root" ]; then
     count_cpu
   fi
 
-  if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
+  if_boa_key_tools_update_allowed
+
+  if [ "${_BOA_KEY_TOOLS_UPDATE_ALLOWED}" = "YES" ] \
+    && [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] \
     && [ -e "/var/xdrago" ]; then
     if [ -e "${barCnf}" ]; then
       source ${barCnf}
@@ -2559,11 +2572,11 @@ if [ `whoami` = "root" ]; then
         echo "STATUS: Skynet Agent is Inactive!"
         echo "STATUS: Please remove the _SKYNET_MODE=OFF line from"
         echo "STATUS: ${barCnf} to enable me again."
-        echo "NOTE: Only barracuda, boa and octopus wrappers will be updated"
-        update_wrappers
+        echo "NOTE: Critically important BOA tools will be still updated"
+        update_boa_key_tools_only verbose
         exit 0
       else
-        update_wrappers
+        update_boa_key_tools_only silent
         exit 0
       fi
     else
@@ -2589,8 +2602,11 @@ if [ `whoami` = "root" ]; then
       ln -s /proc/self/fd /dev/fd
     fi
   fi
-  setup
-  if [ -e "/var/log/barracuda_log.txt" ]; then
+  if [ "${_BOA_KEY_TOOLS_UPDATE_ALLOWED}" = "YES" ]; then
+    setup
+  fi
+  if [ "${_BOA_KEY_TOOLS_UPDATE_ALLOWED}" = "YES" ] \
+    && [ -e "/var/log/barracuda_log.txt" ]; then
     fix_ping_perms
     fix_fpm_process_max
     fix_lshell
