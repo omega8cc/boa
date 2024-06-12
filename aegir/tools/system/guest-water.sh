@@ -583,6 +583,18 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   echo Waiting $n seconds...
   sleep $n
 
+  _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+  _NOW=${_NOW//[^0-9-]/}
+  useCnfUpdate=NO
+  vBs="/var/backups"
+  useCnf="/etc/csf/csf.allow"
+  preCnf="${vBs}/dragon/t/csf.allow.backup-${_NOW}"
+  brkCnf="${vBs}/dragon/t/csf.allow.broken-${_NOW}"
+  if [ -f "${useCnf}" ]; then
+    mkdir -p ${vBs}/dragon/t/
+    cp -af ${useCnf} ${preCnf}
+  fi
+
   whitelist_ip_dns
   whitelist_ip_pingdom
   whitelist_ip_cloudflare
@@ -593,6 +605,33 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_authzero
   [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_site24x7_extra
   [ -e "/root/.extended.firewall.exceptions.cnf" ] && whitelist_ip_site24x7
+
+  if [ -f "${useCnf}" ]; then
+    diffCnfTest=$(diff -w -B \
+      -I pingdom \
+      -I cloudflare \
+      -I googlebot \
+      -I microsoft \
+      -I imperva \
+      -I sucuri \
+      -I authzero \
+      -I site24x7 \
+      -I DHCP ${useCnf} ${preCnf} 2>&1)
+    if [ -z "${diffCnfTest}" ]; then
+      useCnfUpdate=YES
+      echo "YES $(date 2>&1) diff0 empty" >> ${vBs}/dragon/t/csf.log
+    else
+      diffCnfTest=$(echo -n ${diffCnfTest} | fmt -su -w 2500 2>&1)
+      echo "NO $(date 2>&1) diff1 ${diffCnfTest}" >> ${vBs}/dragon/t/csf.log
+    fi
+    if [[ "${diffCnfTest}" =~ "No such file or directory" ]]; then
+      echo "NO $(date 2>&1) diff3 ${diffCnfTest}" >> ${vBs}/dragon/t/csf.log
+    fi
+  fi
+  if [ "${myCnfUpdate}" = "NO" ]; then
+    cp -af ${useCnf} ${brkCnf}
+    cp -af ${preCnf} ${useCnf}
+  fi
 
   if [ -e "/root/.full.csf.cleanup.cnf" ]; then
     sed -i "s/.*do not delete.*//g" /etc/csf/csf.deny
