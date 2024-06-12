@@ -1321,22 +1321,6 @@ sql_root_credentials_update() {
         echo "user=root" >> /root/.my.cnf
         echo "password=${PASWD}" >> /root/.my.cnf
           echo " " >> /root/.my.cnf
-        echo "[autobeowulf]" >> /root/.my.cnf
-        echo "user=root" >> /root/.my.cnf
-        echo "password=${PASWD}" >> /root/.my.cnf
-          echo " " >> /root/.my.cnf
-        echo "[autochimaera]" >> /root/.my.cnf
-        echo "user=root" >> /root/.my.cnf
-        echo "password=${PASWD}" >> /root/.my.cnf
-          echo " " >> /root/.my.cnf
-        echo "[autodaedalus]" >> /root/.my.cnf
-        echo "user=root" >> /root/.my.cnf
-        echo "password=${PASWD}" >> /root/.my.cnf
-          echo " " >> /root/.my.cnf
-        echo "[autoupboa]" >> /root/.my.cnf
-        echo "user=root" >> /root/.my.cnf
-        echo "password=${PASWD}" >> /root/.my.cnf
-          echo " " >> /root/.my.cnf
         echo "[mycnfup]" >> /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
         echo "password=${PASWD}" >> /root/.my.cnf
