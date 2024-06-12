@@ -175,7 +175,7 @@ _BACKEND_ITEMS_LIST=
 ### auto-updates do these things for you, while you sleep:
 ###
 ### * Daily version/release check and notification
-### * Hourly update for all meta-installers and related tools
+### * Every 6 minutes update for all meta-installers and related tools
 ### * Hourly check for D7 core vulnerability and patching if detected
 ### * Hourly update for key BOA tools, monitors and self-healing agents
 ### * Hourly check if your DNS resolver works as expected and repair if not
@@ -186,9 +186,13 @@ _BACKEND_ITEMS_LIST=
 ### BOA system never calls home, and whatever happens, is totally under
 ### your control.
 ###
-### Now you can disable this convenient magic completely by adding the line:
+### Now you can disable this convenient magic by adding the line:
 ###
 ###   _SKYNET_MODE=OFF
+###
+### NOTE: Critically important BOA tools will be still auto-updated
+###       every 6 minutes to keep your system ready for upgrade
+###       if/when needed and as initially intended.
 ###
 _SKYNET_MODE=ON
 
