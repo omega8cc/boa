@@ -1521,6 +1521,36 @@ check_no_systemd() {
   fi
 }
 
+old_apt_keys_cleanup() {
+  isAptKey=$(which apt-key 2>&1)
+  if [ -x "${isAptKey}" ]; then
+    _OLD_KEY_KSPLICE_TEST=$(${isAptKey} list | grep ksplice 2>&1)
+    _OLD_KEY_ORACLE_TEST=$(${isAptKey} list | grep oracle 2>&1)
+    _OLD_KEY_NEWRELIC_TEST=$(${isAptKey} list | grep newrelic 2>&1)
+    _OLD_KEY_PERCONA_TEST=$(${isAptKey} list | grep percona 2>&1)
+    _OLD_KEY_MALLORY_TEST=$(${isAptKey} list | grep mallory 2>&1)
+    _OLD_KEY_GHOST_TEST=$(${isAptKey} list | grep "6857 6280" 2>&1)
+    if [[ "${_OLD_KEY_KSPLICE_TEST}" =~ "ksplice" ]]; then
+      ${isAptKey} del B6D4038E &> /dev/null
+    fi
+    if [[ "${_OLD_KEY_ORACLE_TEST}" =~ "oracle" ]]; then
+      ${isAptKey} del AD986DA3 &> /dev/null
+    fi
+    if [[ "${_OLD_KEY_NEWRELIC_TEST}" =~ "newrelic" ]]; then
+      ${isAptKey} del 548C16BF &> /dev/null
+    fi
+    if [[ "${_OLD_KEY_PERCONA_TEST}" =~ "percona" ]]; then
+      ${isAptKey} del 8507EFA5 &> /dev/null
+    fi
+    if [[ "${_OLD_KEY_MALLORY_TEST}" =~ "mallory" ]]; then
+      ${isAptKey} del 8507EFA5 &> /dev/null
+    fi
+    if [[ "${_OLD_KEY_GHOST_TEST}" =~ "6857 6280" ]]; then
+      ${isAptKey} del 68576280 &> /dev/null
+    fi
+  fi
+}
+
 proceed() {
   check_root_direct
   check_root_keys_pwd
@@ -1530,6 +1560,7 @@ proceed() {
   os_detection_minimal
   check_dns_curl
   check_php_cli
+  old_apt_keys_cleanup
   check_etc_apt_preferences
   if [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
