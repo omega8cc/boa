@@ -596,7 +596,9 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
 
   if [ -e "/root/.full.csf.cleanup.cnf" ]; then
     sed -i "s/.*do not delete.*//g" /etc/csf/csf.deny
+    wait
     sed -i "/^$/d" /etc/csf/csf.deny
+    wait
   fi
 
   kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
