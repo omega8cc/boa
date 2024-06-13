@@ -741,7 +741,7 @@ update_agents() {
     if [ -e "/var/xdrago/monitor/check/scan_nginx" ]; then
       sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx
       wait
-      sed -i "s/default_lines =.*/default_lines = 9999;/g" /var/xdrago/monitor/check/scan_nginx
+      sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx
       wait
       if [ -e "/root/.host8.cnf" ] && [ -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
         _NGINX_DONTCOUNT_KEYWORDS="doccomment"
