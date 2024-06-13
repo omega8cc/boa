@@ -110,9 +110,39 @@ sub makeactions
       $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 99  if ($line =~ /wp-content/ || $line =~ /wp-admin/ || $line =~ /wp-includes/);
       if ($line =~ /(GET|HEAD|POST)/ && $line !~ /\" 301 /) {
         local($skip_post) = 0;
-        if ($line =~ /(GET|POST) \/([a-z]{2}\/)?(civicrm|batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress|files\/progress|file\/progress|elfinder\/connector)/) {
-          ### print "Not Counted Dynamic Request URI: $line\n";
+        local($ignore_admin) = 0;
+        if ($line =~ /\/admin\/content/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /POST \/quickedit/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /POST \/node\/add/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /GET \/entity_reference_autocomplete/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /POST \/entity-browser/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /POST \/contextual\/render/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /POST \/node\//) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /(GET|POST) \/([a-z]{2}\/)?(civicrm|batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress|files\/progress|file\/progress|elfinder\/connector)/) {
+          ### print "Not Counted Admin Request URI: $line\n";
           $skip_post = 1;
+          $ignore_admin = 1;
         }
         elsif ($line =~ /files\/(imagecache|styles|media)/) {
           ### print "Monitored Not Counted Dynamic Request URI: $line\n";
@@ -146,7 +176,7 @@ sub makeactions
         else {
           $li_cnt{$VISITOR}++;
         }
-        if ($skip_post < 1) {
+        if ($skip_post < 1 || $ignore_admin < 1) {
           if ($default_mode eq "1") {
             $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 5 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/(register|pass|login))|(node\/add)/);
             $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 3 if ($line =~ /GET/  && $line =~ /node\/add/);
@@ -162,8 +192,10 @@ sub makeactions
           print "Not Counted Not Supported Request Type: $line\n";
         }
         else {
-          $li_cnt{$VISITOR}++;
-          ### print "Counted Not Supported Request Type: $line\n";
+          if ($ignore_admin < 1) {
+            $li_cnt{$VISITOR}++;
+            ### print "Counted Not Supported Request Type: $line\n";
+          }
         }
       }
     }
@@ -177,9 +209,39 @@ sub makeactions
       $px_cnt{$PROXY} = $px_cnt{$PROXY} + 99  if ($line =~ /wp-content/ || $line =~ /wp-admin/ || $line =~ /wp-includes/);
       if ($line =~ /(GET|HEAD|POST)/ && $line !~ /\" 301 /) {
         local($skip_post) = 0;
-        if ($line =~ /(GET|POST) \/([a-z]{2}\/)?(civicrm|batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress|files\/progress|file\/progress|elfinder\/connector)/) {
+        local($ignore_admin) = 0;
+        if ($line =~ /\/admin\/content/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /POST \/quickedit/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /POST \/node\/add/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /GET \/entity_reference_autocomplete/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /POST \/entity-browser/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /POST \/contextual\/render/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /POST \/node\//) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /(GET|POST) \/([a-z]{2}\/)?(civicrm|batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress|files\/progress|file\/progress|elfinder\/connector)/) {
           ### print "Not Counted Dynamic Request URI: $line\n";
           $skip_post = 1;
+          $ignore_admin = 1;
         }
         elsif ($line =~ /files\/(imagecache|styles|media)/) {
           ### print "Monitored Not Counted Dynamic Request URI: $line\n";
@@ -213,7 +275,7 @@ sub makeactions
         else {
           $px_cnt{$PROXY}++;
         }
-        if ($skip_post < 1) {
+        if ($skip_post < 1 || $ignore_admin < 1) {
           if ($default_mode eq "1") {
             $px_cnt{$PROXY} = $px_cnt{$PROXY} + 5 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/(register|pass|login))|(node\/add)/);
             $px_cnt{$PROXY} = $px_cnt{$PROXY} + 3 if ($line =~ /GET/  && $line =~ /node\/add/);
@@ -229,8 +291,10 @@ sub makeactions
           print "Not Counted Not Supported Request Type: $line\n";
         }
         else {
-          $px_cnt{$PROXY}++;
-          ### print "Counted Not Supported Request Type: $line\n";
+          if ($ignore_admin < 1) {
+            $px_cnt{$PROXY}++;
+            ### print "Counted Not Supported Request Type: $line\n";
+          }
         }
       }
     }
