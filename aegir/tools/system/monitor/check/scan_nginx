@@ -107,6 +107,7 @@ sub makeactions
       $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 99  if ($line =~ /\" 404 /);
       $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 99  if ($line =~ /\" 403 /);
       $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 99  if ($line =~ /\" 500 /);
+      $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 99  if ($line =~ /wp-content/);
       if ($line =~ /(GET|HEAD|POST)/ && $line !~ /\" 301 /) {
         local($skip_post) = 0;
         if ($line =~ /(GET|POST) \/([a-z]{2}\/)?(civicrm|batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress|files\/progress|file\/progress|elfinder\/connector)/) {
@@ -173,6 +174,7 @@ sub makeactions
       $px_cnt{$PROXY} = $px_cnt{$PROXY} + 99  if ($line =~ /\" 404 /);
       $px_cnt{$PROXY} = $px_cnt{$PROXY} + 99  if ($line =~ /\" 403 /);
       $px_cnt{$PROXY} = $px_cnt{$PROXY} + 99  if ($line =~ /\" 500 /);
+      $px_cnt{$PROXY} = $px_cnt{$PROXY} + 99  if ($line =~ /wp-content/);
       if ($line =~ /(GET|HEAD|POST)/ && $line !~ /\" 301 /) {
         local($skip_post) = 0;
         if ($line =~ /(GET|POST) \/([a-z]{2}\/)?(civicrm|batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress|files\/progress|file\/progress|elfinder\/connector)/) {
