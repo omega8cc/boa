@@ -233,12 +233,12 @@ if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
 fi
 
 if [ -e "/var/aegir/drush" ]; then
-  if [ ! -e "/var/xdrago/log/.sync3_scan_nginx.${_X_SE}.pid" ]; then
+  if [ ! -e "/var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid" ]; then
     sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=399/g"  ${barCnf}
     sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx
     wait
-    sed -i "s/default_lines =.*/default_lines = 9999;/g" /var/xdrago/monitor/check/scan_nginx
-    touch /var/xdrago/log/.sync3_scan_nginx.${_X_SE}.pid
+    sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx
+    touch /var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid
   fi
   _VM_TEST=$(uname -a 2>&1)
   [ -z "${_AUTO_VER}" ] && _AUTO_VER="${tRee}"
@@ -322,12 +322,12 @@ if [ -e "/var/aegir/drush" ]; then
       sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=NO/g"  ${barCnf}
       touch /var/xdrago/log/.disabled_modules_fix.${_X_SE}.pid
     fi
-    if [ ! -e "/var/xdrago/log/.sync399_scan_nginx.${_X_SE}.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid" ]; then
       sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=399/g"  ${barCnf}
       sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx
       wait
-      sed -i "s/default_lines =.*/default_lines = 9999;/g" /var/xdrago/monitor/check/scan_nginx
-      touch /var/xdrago/log/.sync399_scan_nginx.${_X_SE}.pid
+      sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx
+      touch /var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid
     fi
     if [ ! -e "/var/xdrago/log/.custom_percona_forced.${_X_SE}.pid" ]; then
       if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
