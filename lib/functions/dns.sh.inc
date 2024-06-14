@@ -397,7 +397,7 @@ dns_unbound_install() {
     st_runner "${_INSTAPP} unbound unbound-anchor unbound-host dns-root-data" &> /dev/null
     mkdir -p /var/log/unbound
     touch /var/log/unbound/unbound.log
-    chown unbound /var/log/unbound/unbound.log
+    chown -R unbound:unbound /var/log/unbound
     mkdir -p /var/lib/unbound/
     cp -a /usr/share/dns/* /var/lib/unbound/
     chown -R unbound:unbound /var/lib/unbound
