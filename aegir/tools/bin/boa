@@ -259,6 +259,7 @@ check_root_direct() {
     echo "Bye"
     clean_pid_exit check_root_direct_a
   fi
+  check_ifnames
 }
 
 check_root_keys_pwd() {
@@ -285,7 +286,6 @@ check_root_keys_pwd() {
     echo
     clean_pid_exit check_root_keys_pwd_a
   fi
-  check_ifnames
 }
 
 satellite_check_id() {
