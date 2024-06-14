@@ -374,15 +374,10 @@ db_server_install
 ###
 ### Finalize initial Percona server setup
 ###
-if [ -e "/root/.run-to-daedalus.cnf" ] \
-  || [ -e "/root/.run-to-chimaera.cnf" ] \
-  || [ -e "/root/.run-to-beowulf.cnf" ]; then
-  _CHECKS=NO
-else
-  init_sql_root_credentials
-  sql_root_credentials_update
-  mytop_install
-fi
+init_sql_root_credentials
+sql_root_credentials_update
+mytop_install
+
 
 ###
 ### Install other services
