@@ -1942,11 +1942,12 @@ update_boa_tools() {
     touch ${pthLog}/updateFx07.ctrl.${tRee}.${_X_SE}.pid
   fi
   mkdir -p ${optBin}
-  rm -f ${usrBin}/{autoinit*,barracuda*,boa*,killer*,octopus*}
+  rm -f ${usrBin}/{autoinit*,barracuda*,boa*,fancynow*,killer*,octopus*}
   if [ ! -e "/data/disk" ]; then
     ln -s ${optBin}/autoinit  ${usrBin}/autoinit
     ln -s ${optBin}/barracuda ${usrBin}/barracuda
     ln -s ${optBin}/boa       ${usrBin}/boa
+    ln -s ${optBin}/fancynow  ${usrBin}/fancynow
     ln -s ${optBin}/killer    ${usrBin}/killer
     ln -s ${optBin}/octopus   ${usrBin}/octopus
   fi
@@ -1957,6 +1958,7 @@ update_boa_tools() {
            autoupboa \
            barracuda \
            boa \
+           fancynow \
            ffmirror \
            killer \
            mycnfup \
@@ -1995,6 +1997,7 @@ update_boa_tools() {
   echo "### ${_TODAY} ###" >> ${optBin}/autoinit
   echo "### ${_TODAY} ###" >> ${optBin}/barracuda
   echo "### ${_TODAY} ###" >> ${optBin}/boa
+  echo "### ${_TODAY} ###" >> ${optBin}/fancynow
   echo "### ${_TODAY} ###" >> ${optBin}/killer
   echo "### ${_TODAY} ###" >> ${optBin}/octopus
   [ -e "/root/.backboa.autoupdate" ] && rm -f /root/.backboa.autoupdate
@@ -2016,7 +2019,7 @@ update_boa_tools() {
   fi
   chmod 700 ${optBin}/{autoinit,autodaedalus,autochimaera,autobeowulf,autoupboa,backboa,duobackboa}
   chmod 700 ${optBin}/{barracuda,boa,ffmirror,killer,mycnfup,octopus,syncpass,xboa,weblogx}
-  chmod 755 ${optBin}/{randpass,sqlmagic,thinkdifferent}
+  chmod 755 ${optBin}/{fancynow,randpass,sqlmagic,thinkdifferent}
 }
 
 if_update_boa_key_tools_only() {

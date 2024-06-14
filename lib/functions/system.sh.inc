@@ -964,6 +964,23 @@ EOF
       cp -af /root/.bashrc /root/.bashrc.bak.${_NOW}
       cp -af ${locCnf}/boa.bashrc.txt /root/.bashrc
       set_xterm
+      if [ -e "/root/.dont.use.fancy.bash.login.cnf" ]; then
+        _FANCY_TEST=$(grep "fancynow" /root/.bashrc 2>&1)
+        if [[ "${_FANCY_TEST}" =~ "fancynow" ]]; then
+          sed -i "s/.*fancynow.*//g" /root/.bashrc &> /dev/null
+          wait
+          sed -i "s/.*screenfetch.*//g" /root/.bashrc &> /dev/null
+          wait
+        fi
+      else
+        if [ -e "/usr/bin/screenfetch" ]; then
+          _FANCY_TEST=$(grep "fancynow" /root/.bashrc 2>&1)
+          if [[ ! "${_FANCY_TEST}" =~ "fancynow" ]]; then
+            echo "/opt/local/bin/fancynow" >> /root/.bashrc
+            echo "/usr/bin/screenfetch" >> /root/.bashrc
+          fi
+        fi
+      fi
     fi
     # Define all locale settings on the fly to prevent unnecessary
     # warnings during installation of packages.
@@ -986,6 +1003,23 @@ EOF
       cp -af /root/.bashrc /root/.bashrc.bak.${_NOW}
       cp -af ${locCnf}/boa.bashrc.txt /root/.bashrc
       set_xterm
+      if [ -e "/root/.dont.use.fancy.bash.login.cnf" ]; then
+        _FANCY_TEST=$(grep "fancynow" /root/.bashrc 2>&1)
+        if [[ "${_FANCY_TEST}" =~ "fancynow" ]]; then
+          sed -i "s/.*fancynow.*//g" /root/.bashrc &> /dev/null
+          wait
+          sed -i "s/.*screenfetch.*//g" /root/.bashrc &> /dev/null
+          wait
+        fi
+      else
+        if [ -e "/usr/bin/screenfetch" ]; then
+          _FANCY_TEST=$(grep "fancynow" /root/.bashrc 2>&1)
+          if [[ ! "${_FANCY_TEST}" =~ "fancynow" ]]; then
+            echo "/opt/local/bin/fancynow" >> /root/.bashrc
+            echo "/usr/bin/screenfetch" >> /root/.bashrc
+          fi
+        fi
+      fi
     fi
     if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
       _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
@@ -4790,6 +4824,13 @@ run_aptitude_deps_install() {
   mrun "${_INSTAPP} clamav clamav-base clamav-daemon clamdscan" 2> /dev/null
   mrun "${_INSTAPP} ghostscript htop lemon lftp nano" 2> /dev/null
   mrun "${_INSTAPP} python3-dev python3-debian python3-magic" 2> /dev/null
+  if [ -e "/root/.dont.use.fancy.bash.login.cnf" ] \
+    && [ -e "/usr/bin/screenfetch" ]; then
+    mrun "apt-get remove toilet figlet screenfetch -y -qq" 2> /dev/null
+    mrun "apt-get purge toilet figlet screenfetch -y -qq" 2> /dev/null
+  else
+    mrun "${_INSTAPP} toilet figlet screenfetch" 2> /dev/null
+  fi
   fix_postfix
   st_runner "${_INSTAPP} ${_MAILSERV}" 2> /dev/null
   st_runner "${_INSTAPP} ${_APT_XTRA}" 2> /dev/null
