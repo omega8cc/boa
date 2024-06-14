@@ -323,16 +323,6 @@ normal_sys_ctrl_mark
 
 
 ###
-### DNS cache server
-###
-if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
-  if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
-    dns_unbound_install
-  fi
-fi
-
-
-###
 ### Upgrade only Aegir Master Instance (obsolete mode)
 ###
 if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
@@ -468,6 +458,16 @@ if [ "${_SSH_FROM_SOURCES}" = "YES" ] && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ];
       sshd_install_src
       sshd_armour
     fi
+  fi
+fi
+
+
+###
+### DNS cache server
+###
+if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
+  if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+    dns_unbound_install
   fi
 fi
 
