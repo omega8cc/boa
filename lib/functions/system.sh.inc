@@ -3385,25 +3385,6 @@ sshd_install_src() {
     _SSL_PATH="/usr/local/ssl"
     _SSL_LIB_PATH="${_SSL_PATH}/lib"
   fi
-  if [ "${_STATUS}" = "UPGRADE" ] && [ "${_ALLOW_LONG_GENERATE}" = "YES" ]; then
-    isKeyg=$(which ssh-keygen 2>&1)
-    if [ -x "${isKeyg}" ] \
-      && [ -e "${_SYSCONFDIR}/moduli" ] \
-      && [ ! -e "${_SYSCONFDIR}/.moduli_bak" ]; then
-      msg "WAIT: New SSH moduli generate may take a long time, please wait..."
-      cd /var/opt
-      rm -rf /var/opt/moduli-*
-      mrun "${isKeyg} -M generate -O bits=2048 moduli-2048.candidates" 2> /dev/null
-      wait
-      mrun "${isKeyg} -M screen -f moduli-2048.candidates moduli-2048" 2> /dev/null
-      wait
-      if [ -e "/var/opt/moduli-2048" ]; then
-        cp -af ${_SYSCONFDIR}/moduli ${_SYSCONFDIR}/.moduli_bak
-        cp -af /var/opt/moduli-2048 ${_SYSCONFDIR}/moduli
-        mrun "service ssh restart" &> /dev/null
-      fi
-    fi
-  fi
   if [ "${_SSH_SSL_ITD}" != "${_SSL_ITD}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: OpenSSL in SSH is ${_SSH_SSL_ITD}, rebuild to ${_SSL_ITD} required"
@@ -7690,19 +7671,21 @@ sshd_armour() {
         touch /usr/etc/.ssh_host_rsa_key4096.pid
         msg "NOTE: You will be asked to accept the new SSH fingerprint the next time you connect"
       fi
-      if [ ! -e "/usr/etc/.moduli.pid" ]; then
-        if [ -e "/usr/etc/moduli" ]; then
-          mv -f /usr/etc/moduli /usr/etc/.old.moduli
-          awk '$5 > 2000' /usr/etc/.old.moduli > /usr/etc/.tmp.moduli
-          mv -f /usr/etc/.tmp.moduli /usr/etc/moduli
-          touch /usr/etc/.moduli.pid
-        else
-          msg "INFO: Generating new SSH moduli, this may take 1-2 hours :/ please wait..."
-          mrun "ssh-keygen -G /usr/etc/moduli.all -b 4096" &> /dev/null
-          mrun "ssh-keygen -T /usr/etc/moduli.safe -f /usr/etc/moduli.all" &> /dev/null
-          mv -f /usr/etc/moduli.safe /usr/etc/moduli
-          rm -f /usr/etc/moduli.all
-          touch /usr/etc/.moduli.pid
+      isKeyg=$(which ssh-keygen 2>&1)
+      if [ -x "${isKeyg}" ] \
+        && [ -e "${_SYSCONFDIR}/moduli" ] \
+        && [ ! -e "${_SYSCONFDIR}/.moduli_bak" ]; then
+        msg "WAIT: New SSH moduli generate may take a long time, please wait..."
+        cd /var/opt
+        rm -rf /var/opt/moduli-*
+        mrun "${isKeyg} -M generate -O bits=2048 moduli-2048.candidates" 2> /dev/null
+        wait
+        mrun "${isKeyg} -M screen -f moduli-2048.candidates moduli-2048" 2> /dev/null
+        wait
+        if [ -e "/var/opt/moduli-2048" ]; then
+          cp -af ${_SYSCONFDIR}/moduli ${_SYSCONFDIR}/.moduli_bak
+          cp -af /var/opt/moduli-2048 ${_SYSCONFDIR}/moduli
+          mrun "service ssh restart" &> /dev/null
         fi
       fi
       _SSH_KEXALGO_TEST=$(grep "KexAlgorithms" /usr/etc/ssh_config 2>&1)
