@@ -1560,7 +1560,7 @@ fix_lshell() {
     _LSHELL_FORCE_REINSTALL=NO
   fi
   if [ -e "${_PATH_LSHELL}" ] \
-    && [[ "${_LSHELL_FORCE_REINSTALL}" =~ "YES" ]] ; then
+    && [[ "${_LSHELL_FORCE_REINSTALL}" =~ "YES" ]]; then
     cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5
     cd /var/opt
     rm -rf lshell*
