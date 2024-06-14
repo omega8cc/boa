@@ -884,7 +884,7 @@ find_server_city() {
   else
     if [ -e "/root/.found_correct_ipv4.cnf" ]; then
       _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>&1)
-      _LOC_CITY=$(curl ipinfo.io/${_LOC_IP}/city 2>&1)
+      _LOC_CITY=$(curl ${crlGet} ipinfo.io/${_LOC_IP}/city 2>&1)
       _LOC_CITY=$(echo -n ${_LOC_CITY} | tr -d "\n" 2>&1)
     fi
     if [ ! -z "${_LOC_CITY}" ]; then
