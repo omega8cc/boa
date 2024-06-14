@@ -233,8 +233,8 @@ check_root_direct() {
     echo
     echo "HINT:  You can always restrict access later, or"
     echo "       allow only SSH (RSA) keys for root with directive"
-    echo "         PermitRootLogin without-password"
     echo "       in the /usr/etc/sshd_config file"
+    echo "         PermitRootLogin prohibit-password"
     echo "Bye"
     clean_pid_exit check_root_direct_a
   fi
@@ -1931,7 +1931,7 @@ install_host() {
   if_firewall_update
 
   echo "Improving sshd configuration..."
-  sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" /etc/ssh/sshd_config
+  sed -i "s/^PermitRootLogin.*/PermitRootLogin prohibit-password/g" /etc/ssh/sshd_config
   sed -i "s/^IgnoreUserKnownHosts.*//g" /etc/ssh/sshd_config
   sed -i "s/^PasswordAuthentication.*//g" /etc/ssh/sshd_config
   sed -i "s/^UseDNS.*//g" /etc/ssh/sshd_config
