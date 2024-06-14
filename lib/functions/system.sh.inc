@@ -954,23 +954,6 @@ EOF
       cp -af /root/.bashrc /root/.bashrc.bak.${_NOW}
       cp -af ${locCnf}/boa.bashrc.txt /root/.bashrc
       set_xterm
-      if [ -e "/root/.dont.use.fancy.bash.login.cnf" ]; then
-        _FANCY_TEST=$(grep "fancynow" /root/.bashrc 2>&1)
-        if [[ "${_FANCY_TEST}" =~ "fancynow" ]]; then
-          sed -i "s/.*fancynow.*//g" /root/.bashrc &> /dev/null
-          wait
-          sed -i "s/.*screenfetch.*//g" /root/.bashrc &> /dev/null
-          wait
-        fi
-      else
-        if [ -e "/usr/bin/screenfetch" ]; then
-          _FANCY_TEST=$(grep "fancynow" /root/.bashrc 2>&1)
-          if [[ ! "${_FANCY_TEST}" =~ "fancynow" ]]; then
-            echo "/opt/local/bin/fancynow" >> /root/.bashrc
-            echo "/usr/bin/screenfetch" >> /root/.bashrc
-          fi
-        fi
-      fi
     fi
     # Define all locale settings on the fly to prevent unnecessary
     # warnings during installation of packages.
@@ -993,23 +976,6 @@ EOF
       cp -af /root/.bashrc /root/.bashrc.bak.${_NOW}
       cp -af ${locCnf}/boa.bashrc.txt /root/.bashrc
       set_xterm
-      if [ -e "/root/.dont.use.fancy.bash.login.cnf" ]; then
-        _FANCY_TEST=$(grep "fancynow" /root/.bashrc 2>&1)
-        if [[ "${_FANCY_TEST}" =~ "fancynow" ]]; then
-          sed -i "s/.*fancynow.*//g" /root/.bashrc &> /dev/null
-          wait
-          sed -i "s/.*screenfetch.*//g" /root/.bashrc &> /dev/null
-          wait
-        fi
-      else
-        if [ -e "/usr/bin/screenfetch" ]; then
-          _FANCY_TEST=$(grep "fancynow" /root/.bashrc 2>&1)
-          if [[ ! "${_FANCY_TEST}" =~ "fancynow" ]]; then
-            echo "/opt/local/bin/fancynow" >> /root/.bashrc
-            echo "/usr/bin/screenfetch" >> /root/.bashrc
-          fi
-        fi
-      fi
     fi
     if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
       _LOCALE_GEN_TEST=$(grep -v "^#" /etc/locale.gen 2>&1)
@@ -1056,6 +1022,24 @@ EOF
     echo "export LC_IDENTIFICATION=en_US.UTF-8" >> /root/.bashrc
     echo "export LC_ALL=" >> /root/.bashrc
     printf "\n" >> /root/.bashrc
+  fi
+  if [ -e "/root/.dont.use.fancy.bash.login.cnf" ]; then
+    _FANCY_TEST=$(grep "fancynow" /root/.bashrc 2>&1)
+    if [[ "${_FANCY_TEST}" =~ "fancynow" ]]; then
+      sed -i "s/.*fancynow.*//g" /root/.bashrc &> /dev/null
+      wait
+      sed -i "s/.*screenfetch.*//g" /root/.bashrc &> /dev/null
+      wait
+    fi
+  else
+    if [ -e "/usr/bin/screenfetch" ]; then
+      _FANCY_TEST=$(grep "fancynow" /root/.bashrc 2>&1)
+      if [[ ! "${_FANCY_TEST}" =~ "fancynow" ]]; then
+        echo "/opt/local/bin/fancynow" >> /root/.bashrc
+        echo "/usr/bin/screenfetch" >> /root/.bashrc
+        printf "\n" >> /root/.bashrc
+      fi
+    fi
   fi
 }
 
