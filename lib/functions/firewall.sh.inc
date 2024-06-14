@@ -158,17 +158,11 @@ csf_install() {
       wait
       sed -i "s/^#Port.*/Port ${_SSH_PORT}/g" /etc/ssh/sshd_config
       wait
-    fi
-    if [ -e "/usr/etc/sshd_config" ]; then
-      sed -i "s/^Port.*/Port ${_SSH_PORT}/g"  /usr/etc/sshd_config
+      sed -i "s/^UsePrivilegeSeparation.*//g" /etc/ssh/sshd_config
       wait
-      sed -i "s/^#Port.*/Port ${_SSH_PORT}/g" /usr/etc/sshd_config
+      sed -i "s/^ClientAliveCountMax.*/ClientAliveCountMax 10000/g" /etc/ssh/sshd_config
       wait
-      sed -i "s/^UsePrivilegeSeparation.*//g" /usr/etc/sshd_config
-      wait
-      sed -i "s/^ClientAliveCountMax.*/ClientAliveCountMax 10000/g" /usr/etc/sshd_config
-      wait
-      sed -i "s/^#TCPKeepAlive.*/TCPKeepAlive yes/g" /usr/etc/sshd_config
+      sed -i "s/^#TCPKeepAlive.*/TCPKeepAlive yes/g" /etc/ssh/sshd_config
       wait
     fi
     mrun "service ssh restart" &> /dev/null

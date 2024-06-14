@@ -120,8 +120,8 @@ check_root_direct() {
     echo
     echo "HINT:  You can always restrict access later, or"
     echo "       allow only SSH (RSA) keys for root with directive"
-    echo "       in the /usr/etc/sshd_config file"
     echo "         PermitRootLogin prohibit-password"
+    echo "       in the /etc/ssh/sshd_config file"
     echo "Bye"
     clean_pid_exit check_root_direct_a
   fi

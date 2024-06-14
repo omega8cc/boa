@@ -892,16 +892,6 @@ locales_check_fix() {
       echo "AcceptEnv LANG LC_*" >> /etc/ssh/sshd_config
     fi
   fi
-  if [ -e "/usr/etc/sshd_config" ]; then
-    _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /usr/etc/sshd_config 2>&1)
-    if [[ "${_SSH_LC_TEST}" =~ "AcceptEnv LANG LC_" ]]; then
-      _DO_NOTHING=YES
-    else
-      sed -i "s/.*AcceptEnv.*//g" /usr/etc/sshd_config
-      wait
-      echo "AcceptEnv LANG LC_*" >> /usr/etc/sshd_config
-    fi
-  fi
   _LOC_TEST=$(locale 2>&1)
   if [[ "${_LOC_TEST}" =~ LANG=.*UTF-8 ]]; then
     _LOCALE_TEST=OK
@@ -3371,8 +3361,13 @@ sshd_install_src() {
     | cut -d" " -f3 \
     | awk '{ print $1}' 2>&1)
   if [ -e "/usr/etc/sshd_config" ]; then
-    _SYSCONFDIR="/usr/etc"
-    _PREFIX_SSH="/usr"
+    _SSH_FORCE_REINSTALL=YES
+    _OLD_SYSCONFDIR="/usr/etc"
+    _SYSCONFDIR="/etc/ssh"
+    _PREFIX_SSH="/usr/local"
+    if [ -e "${_SYSCONFDIR}" ]; then
+      cp -af ${_OLD_SYSCONFDIR}/* ${_SYSCONFDIR}/
+    fi
   else
     _SYSCONFDIR="/etc/ssh"
     _PREFIX_SSH="/usr/local"
@@ -3452,6 +3447,11 @@ sshd_install_src() {
     ln -sfn /usr/local/sbin/sshd /usr/sbin/sshd
     mv -f /usr/bin/ssh /usr/bin/.ssh_bak
     ln -sfn /usr/local/bin/ssh /usr/bin/ssh
+    if [ -e "${_OLD_SYSCONFDIR}" ]; then
+      cp -a ${_OLD_SYSCONFDIR} /var/backups/old_ssh_usr_etc
+      rm -f ${_OLD_SYSCONFDIR}/ssh*
+      rm -f ${_OLD_SYSCONFDIR}/moduli*
+    fi
     mrun "service ssh restart" &> /dev/null
   fi
   _SSH_FORCE_REINSTALL=NO
@@ -7585,90 +7585,90 @@ sshd_armour() {
   ### See: https://stribika.github.io/2015/01/04/secure-secure-shell.html
   ### Also: https://github.com/stribika/stribika.github.io/wiki/Secure-Secure-Shell
   ###
-  if [ -e "/usr/etc/sshd_config" ]; then
+  if [ -e "/etc/ssh/sshd_config" ]; then
     if [ "${_SSH_ARMOUR}" = "NO" ] \
       || [ -z "${_SSH_ARMOUR}" ]; then
-      if [ -e "/usr/etc/.vanilla.sshd_config" ]; then
-        mv -f /usr/etc/.vanilla.sshd_config /usr/etc/sshd_config
+      if [ -e "/etc/ssh/.vanilla.sshd_config" ]; then
+        mv -f /etc/ssh/.vanilla.sshd_config /etc/ssh/sshd_config
       fi
-      if [ -e "/usr/etc/.vanilla.ssh_config" ]; then
-        mv -f /usr/etc/.vanilla.ssh_config /usr/etc/ssh_config
+      if [ -e "/etc/ssh/.vanilla.ssh_config" ]; then
+        mv -f /etc/ssh/.vanilla.ssh_config /etc/ssh/ssh_config
       fi
     else
-      if [ ! -e "/usr/etc/.vanilla.sshd_config" ]; then
-        cp -a /usr/etc/sshd_config /usr/etc/.vanilla.sshd_config
+      if [ ! -e "/etc/ssh/.vanilla.sshd_config" ]; then
+        cp -a /etc/ssh/sshd_config /etc/ssh/.vanilla.sshd_config
       fi
-      if [ ! -e "/usr/etc/.vanilla.ssh_config" ]; then
-        cp -a /usr/etc/ssh_config /usr/etc/.vanilla.ssh_config
+      if [ ! -e "/etc/ssh/.vanilla.ssh_config" ]; then
+        cp -a /etc/ssh/ssh_config /etc/ssh/.vanilla.ssh_config
       fi
-      _SSH_PROTOCOL_TEST=$(grep "Protocol" /usr/etc/sshd_config 2>&1)
+      _SSH_PROTOCOL_TEST=$(grep "Protocol" /etc/ssh/sshd_config 2>&1)
       if [[ "${_SSH_PROTOCOL_TEST}" =~ (^)"Protocol 2" ]]; then
         _DO_NOTHING=YES
       elif [[ "${_SSH_PROTOCOL_TEST}" =~ "Protocol" ]]; then
-        sed -i "s/.*Protocol.*/Protocol 2/g" /usr/etc/sshd_config &> /dev/null
+        sed -i "s/.*Protocol.*/Protocol 2/g" /etc/ssh/sshd_config &> /dev/null
         wait
       else
-        echo >> /usr/etc/sshd_config
-        echo "Protocol 2" >> /usr/etc/sshd_config
+        echo >> /etc/ssh/sshd_config
+        echo "Protocol 2" >> /etc/ssh/sshd_config
       fi
-      _SSH_ALGO_TEST=$(grep "KexAlgorithms" /usr/etc/sshd_config 2>&1)
+      _SSH_ALGO_TEST=$(grep "KexAlgorithms" /etc/ssh/sshd_config 2>&1)
       if [[ "${_SSH_ALGO_TEST}" =~ (^)"KexAlgorithms curve25519-sha256" ]]; then
         _DO_NOTHING=YES
       elif [[ "${_SSH_ALGO_TEST}" =~ "KexAlgorithms" ]]; then
-        sed -i "s/.*KexAlgorithms.*//g" /usr/etc/sshd_config &> /dev/null
+        sed -i "s/.*KexAlgorithms.*//g" /etc/ssh/sshd_config &> /dev/null
         wait
-        echo "KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" >> /usr/etc/sshd_config
+        echo "KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" >> /etc/ssh/sshd_config
       else
-        echo >> /usr/etc/sshd_config
-        echo "KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" >> /usr/etc/sshd_config
+        echo >> /etc/ssh/sshd_config
+        echo "KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" >> /etc/ssh/sshd_config
       fi
-      _SSH_CIPHERS_TEST=$(grep "Ciphers" /usr/etc/sshd_config 2>&1)
+      _SSH_CIPHERS_TEST=$(grep "Ciphers" /etc/ssh/sshd_config 2>&1)
       if [[ "${_SSH_CIPHERS_TEST}" =~ (^)"Ciphers chacha20-poly1305" ]]; then
         _DO_NOTHING=YES
       elif [[ "${_SSH_CIPHERS_TEST}" =~ "Ciphers" ]]; then
-        sed -i "s/.*Ciphers.*//g" /usr/etc/sshd_config &> /dev/null
+        sed -i "s/.*Ciphers.*//g" /etc/ssh/sshd_config &> /dev/null
         wait
-        echo "Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" >> /usr/etc/sshd_config
+        echo "Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" >> /etc/ssh/sshd_config
       else
-        echo >> /usr/etc/sshd_config
-        echo "Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" >> /usr/etc/sshd_config
+        echo >> /etc/ssh/sshd_config
+        echo "Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" >> /etc/ssh/sshd_config
       fi
-      _SSH_MACS_TEST=$(grep "MACs" /usr/etc/sshd_config 2>&1)
+      _SSH_MACS_TEST=$(grep "MACs" /etc/ssh/sshd_config 2>&1)
       if [[ "${_SSH_MACS_TEST}" =~ (^)"MACs hmac-sha2-512-etm" ]]; then
         _DO_NOTHING=YES
       elif [[ "${_SSH_MACS_TEST}" =~ "MACs" ]]; then
-        sed -i "s/.*MACs.*//g" /usr/etc/sshd_config &> /dev/null
+        sed -i "s/.*MACs.*//g" /etc/ssh/sshd_config &> /dev/null
         wait
-        echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" >> /usr/etc/sshd_config
+        echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" >> /etc/ssh/sshd_config
       else
-        echo >> /usr/etc/sshd_config
-        echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" >> /usr/etc/sshd_config
+        echo >> /etc/ssh/sshd_config
+        echo "MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" >> /etc/ssh/sshd_config
       fi
-      _SSH_HKEY_TEST=$(grep "HostKey" /usr/etc/sshd_config 2>&1)
+      _SSH_HKEY_TEST=$(grep "HostKey" /etc/ssh/sshd_config 2>&1)
       if [[ "${_SSH_HKEY_TEST}" =~ (^)"HostKey" ]] \
         && [[ "${_SSH_HKEY_TEST}" =~ "ssh_host_ed25519_key" ]]; then
         _DO_NOTHING=YES
       elif [[ "${_SSH_HKEY_TEST}" =~ "HostKey" ]]; then
-        sed -i "s/.*HostKey.*//g" /usr/etc/sshd_config &> /dev/null
+        sed -i "s/.*HostKey.*//g" /etc/ssh/sshd_config &> /dev/null
         wait
-        echo "HostKey /usr/etc/ssh_host_ed25519_key" >> /usr/etc/sshd_config
-        echo "HostKey /usr/etc/ssh_host_rsa_key" >> /usr/etc/sshd_config
+        echo "HostKey /etc/ssh/ssh_host_ed25519_key" >> /etc/ssh/sshd_config
+        echo "HostKey /etc/ssh/ssh_host_rsa_key" >> /etc/ssh/sshd_config
       else
-        echo >> /usr/etc/sshd_config
-        echo "HostKey /usr/etc/ssh_host_ed25519_key" >> /usr/etc/sshd_config
-        echo "HostKey /usr/etc/ssh_host_rsa_key" >> /usr/etc/sshd_config
+        echo >> /etc/ssh/sshd_config
+        echo "HostKey /etc/ssh/ssh_host_ed25519_key" >> /etc/ssh/sshd_config
+        echo "HostKey /etc/ssh/ssh_host_rsa_key" >> /etc/ssh/sshd_config
       fi
-      if [ ! -e "/usr/etc/.ssh_host_ed25519_key.pid" ]; then
+      if [ ! -e "/etc/ssh/.ssh_host_ed25519_key.pid" ]; then
         mkdir -p /var/backups/sshd
-        mv -f /usr/etc/ssh_host_*key* /var/backups/sshd/
+        mv -f /etc/ssh/ssh_host_*key* /var/backups/sshd/
         msg "INFO: Generating new ssh_host_ed25519_key..."
-        ssh-keygen -t ed25519 -N "" -q -f /usr/etc/ssh_host_ed25519_key < /dev/null
-        touch /usr/etc/.ssh_host_ed25519_key.pid
+        ssh-keygen -t ed25519 -N "" -q -f /etc/ssh/ssh_host_ed25519_key < /dev/null
+        touch /etc/ssh/.ssh_host_ed25519_key.pid
       fi
-      if [ ! -e "/usr/etc/.ssh_host_rsa_key4096.pid" ]; then
+      if [ ! -e "/etc/ssh/.ssh_host_rsa_key4096.pid" ]; then
         msg "INFO: Generating new ssh_host_rsa_key..."
-        ssh-keygen -t rsa -b 4096 -N "" -q -f /usr/etc/ssh_host_rsa_key < /dev/null
-        touch /usr/etc/.ssh_host_rsa_key4096.pid
+        ssh-keygen -t rsa -b 4096 -N "" -q -f /etc/ssh/ssh_host_rsa_key < /dev/null
+        touch /etc/ssh/.ssh_host_rsa_key4096.pid
         msg "NOTE: You will be asked to accept the new SSH fingerprint the next time you connect"
       fi
       isKeyg=$(which ssh-keygen 2>&1)
@@ -7688,43 +7688,41 @@ sshd_armour() {
           mrun "service ssh restart" &> /dev/null
         fi
       fi
-      _SSH_KEXALGO_TEST=$(grep "KexAlgorithms" /usr/etc/ssh_config 2>&1)
+      _SSH_KEXALGO_TEST=$(grep "KexAlgorithms" /etc/ssh/ssh_config 2>&1)
       if [[ "${_SSH_KEXALGO_TEST}" =~ "KexAlgorithms curve25519-sha256" ]]; then
         _DO_NOTHING=YES
       elif [[ "${_SSH_KEXALGO_TEST}" =~ "KexAlgorithms" ]]; then
-        sed -i "s/.*PubkeyAuthentication.*//g" /usr/etc/ssh_config &> /dev/null
+        sed -i "s/.*PubkeyAuthentication.*//g" /etc/ssh/ssh_config &> /dev/null
         wait
-        sed -i "s/.*UseRoaming.*//g" /usr/etc/ssh_config &> /dev/null
+        sed -i "s/.*UseRoaming.*//g" /etc/ssh/ssh_config &> /dev/null
         wait
-        sed -i "s/.*Ciphers.*//g" /usr/etc/ssh_config &> /dev/null
+        sed -i "s/.*Ciphers.*//g" /etc/ssh/ssh_config &> /dev/null
         wait
-        sed -i "s/.*HostKeyAlgorithms.*//g" /usr/etc/ssh_config &> /dev/null
+        sed -i "s/.*HostKeyAlgorithms.*//g" /etc/ssh/ssh_config &> /dev/null
         wait
-        sed -i "s/.*KexAlgorithms.*//g" /usr/etc/ssh_config &> /dev/null
+        sed -i "s/.*KexAlgorithms.*//g" /etc/ssh/ssh_config &> /dev/null
         wait
-        sed -i "s/.*MACs.*//g" /usr/etc/ssh_config &> /dev/null
+        sed -i "s/.*MACs.*//g" /etc/ssh/ssh_config &> /dev/null
         wait
-        echo >> /usr/etc/ssh_config
-        echo "Host *" >> /usr/etc/ssh_config
-        echo "  PubkeyAuthentication yes" >> /usr/etc/ssh_config
-        echo "  UseRoaming no" >> /usr/etc/ssh_config
-        echo "  Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" >> /usr/etc/ssh_config
-        echo "  HostKeyAlgorithms ssh-ed25519-cert-v01@openssh.com,ssh-rsa-cert-v01@openssh.com,ssh-ed25519,ssh-rsa" >> /usr/etc/ssh_config
-        echo "  KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" >> /usr/etc/ssh_config
-        echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" >> /usr/etc/ssh_config
+        echo >> /etc/ssh/ssh_config
+        echo "Host *" >> /etc/ssh/ssh_config
+        echo "  PubkeyAuthentication yes" >> /etc/ssh/ssh_config
+        echo "  UseRoaming no" >> /etc/ssh/ssh_config
+        echo "  Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" >> /etc/ssh/ssh_config
+        echo "  HostKeyAlgorithms ssh-ed25519-cert-v01@openssh.com,ssh-rsa-cert-v01@openssh.com,ssh-ed25519,ssh-rsa" >> /etc/ssh/ssh_config
+        echo "  KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" >> /etc/ssh/ssh_config
+        echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" >> /etc/ssh/ssh_config
       else
-        echo >> /usr/etc/ssh_config
-        echo "Host *" >> /usr/etc/ssh_config
-        echo "  PubkeyAuthentication yes" >> /usr/etc/ssh_config
-        echo "  UseRoaming no" >> /usr/etc/ssh_config
-        echo "  Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" >> /usr/etc/ssh_config
-        echo "  HostKeyAlgorithms ssh-ed25519-cert-v01@openssh.com,ssh-rsa-cert-v01@openssh.com,ssh-ed25519,ssh-rsa" >> /usr/etc/ssh_config
-        echo "  KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" >> /usr/etc/ssh_config
-        echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" >> /usr/etc/ssh_config
+        echo >> /etc/ssh/ssh_config
+        echo "Host *" >> /etc/ssh/ssh_config
+        echo "  PubkeyAuthentication yes" >> /etc/ssh/ssh_config
+        echo "  UseRoaming no" >> /etc/ssh/ssh_config
+        echo "  Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr" >> /etc/ssh/ssh_config
+        echo "  HostKeyAlgorithms ssh-ed25519-cert-v01@openssh.com,ssh-rsa-cert-v01@openssh.com,ssh-ed25519,ssh-rsa" >> /etc/ssh/ssh_config
+        echo "  KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256" >> /etc/ssh/ssh_config
+        echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" >> /etc/ssh/ssh_config
       fi
     fi
-    sed -i "/^$/d" /usr/etc/sshd_config &> /dev/nul
-    sed -i "/^$/d" /usr/etc/ssh_config &> /dev/null
     mrun "service ssh reload" &> /dev/null
   fi
 }
@@ -7740,6 +7738,7 @@ initd_update() {
     chmod 755 /etc/init.d/clean-boa-env &> /dev/null
     mrun "update-rc.d clean-boa-env defaults" &> /dev/null
     _SSH_USEDNS_TEST=$(grep "UseDNS" /etc/ssh/sshd_config 2>&1)
+    _SSH_USEDNS_TEST=$(grep "UseDNS" /etc/ssh/sshd_config 2>&1)
     if [[ "${_SSH_USEDNS_TEST}" =~ (^)"UseDNS no" ]]; then
       _DO_NOTHING=YES
     elif [[ "${_SSH_USEDNS_TEST}" =~ "UseDNS" ]]; then
@@ -7749,27 +7748,15 @@ initd_update() {
       echo >> /etc/ssh/sshd_config
       echo "UseDNS no" >> /etc/ssh/sshd_config
     fi
-    if [ -e "/usr/etc/sshd_config" ]; then
-      _SSH_USEDNS_TEST=$(grep "UseDNS" /usr/etc/sshd_config 2>&1)
-      if [[ "${_SSH_USEDNS_TEST}" =~ (^)"UseDNS no" ]]; then
-        _DO_NOTHING=YES
-      elif [[ "${_SSH_USEDNS_TEST}" =~ "UseDNS" ]]; then
-        sed -i "s/.*UseDNS.*/UseDNS no/g" /usr/etc/sshd_config &> /dev/null
-        wait
-      else
-        echo >> /usr/etc/sshd_config
-        echo "UseDNS no" >> /usr/etc/sshd_config
-      fi
-      _SSH_USEPAM_TEST=$(grep "UsePAM" /usr/etc/sshd_config 2>&1)
-      if [[ "${_SSH_USEPAM_TEST}" =~ (^)"UsePAM no" ]]; then
-        _DO_NOTHING=YES
-      elif [[ "${_SSH_USEPAM_TEST}" =~ "UsePAM" ]]; then
-        sed -i "s/.*UsePAM.*/UsePAM no/g" /usr/etc/sshd_config &> /dev/null
-        wait
-      else
-        echo >> /usr/etc/sshd_config
-        echo "UsePAM no" >> /usr/etc/sshd_config
-      fi
+    _SSH_USEPAM_TEST=$(grep "UsePAM" /etc/ssh/sshd_config 2>&1)
+    if [[ "${_SSH_USEPAM_TEST}" =~ (^)"UsePAM no" ]]; then
+      _DO_NOTHING=YES
+    elif [[ "${_SSH_USEPAM_TEST}" =~ "UsePAM" ]]; then
+      sed -i "s/.*UsePAM.*/UsePAM no/g" /etc/ssh/sshd_config &> /dev/null
+      wait
+    else
+      echo >> /etc/ssh/sshd_config
+      echo "UsePAM no" >> /etc/ssh/sshd_config
     fi
     mrun "service ssh reload" &> /dev/null
     tune_memory_limits
@@ -7821,92 +7808,44 @@ initd_update() {
     if [[ "${_THISHOST}" =~ ".host8." ]] \
       || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
       || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
-      sed -i "s/.*UseDNS.*//g" /etc/ssh/sshd_config &> /dev/null
-      wait
-      sed -i "s/.*UsePAM.*//g" /etc/ssh/sshd_config &> /dev/null
-      wait
-      sed -i "s/.*PrintMotd.*//g" /etc/ssh/sshd_config &> /dev/null
-      wait
-      sed -i "s/^ClientAliveCountMax.*//g" /etc/ssh/sshd_config &> /dev/null
-      wait
-      sed -i "s/^ClientAliveInterval.*//g" /etc/ssh/sshd_config &> /dev/null
-      wait
-      sed -i "s/^IgnoreUserKnownHosts.*//g" /etc/ssh/sshd_config &> /dev/null
-      wait
-      sed -i "s/^PasswordAuthentication.*//g" /etc/ssh/sshd_config &> /dev/null
-      wait
-      sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" \
+      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
+      || [ -e "/root/.ssh.root.auth.keys.only.cnf" ]; then
+      sed -i "s/^#PermitRootLogin.*/PermitRootLogin prohibit-password/g" \
         /etc/ssh/sshd_config &> /dev/null
       wait
-      echo >> /etc/ssh/sshd_config
-      echo "IgnoreUserKnownHosts no" >> /etc/ssh/sshd_config
-      if [ -e "/root/.ssh.auth.keys.only.cnf" ]; then
-        echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
-      else
-        echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
-      fi
-      echo "UseDNS no" >> /etc/ssh/sshd_config
-      echo "UsePAM no" >> /etc/ssh/sshd_config
-      echo "PrintMotd yes" >> /etc/ssh/sshd_config
-      echo "ClientAliveInterval 300" >> /etc/ssh/sshd_config
-      echo "ClientAliveCountMax 10000" >> /etc/ssh/sshd_config
-      echo "TCPKeepAlive yes" >> /etc/ssh/sshd_config
-      sed -i "/^$/d" /etc/ssh/sshd_config &> /dev/null
+      sed -i "s/^PermitRootLogin.*/PermitRootLogin prohibit-password/g" \
+        /etc/ssh/sshd_config &> /dev/null
       wait
-      if [ -e "/usr/etc/sshd_config" ]; then
-        sed -i "s/.*UseDNS.*//g" /usr/etc/sshd_config &> /dev/null
-        wait
-        sed -i "s/.*UsePAM.*//g" /usr/etc/sshd_config &> /dev/null
-        wait
-        sed -i "s/.*PrintMotd.*//g" /usr/etc/sshd_config &> /dev/null
-        wait
-        sed -i "s/^ClientAliveCountMax.*//g" /usr/etc/sshd_config &> /dev/null
-        wait
-        sed -i "s/^ClientAliveInterval.*//g" /usr/etc/sshd_config &> /dev/null
-        wait
-        sed -i "s/^IgnoreUserKnownHosts.*//g" /usr/etc/sshd_config &> /dev/null
-        wait
-        sed -i "s/^PasswordAuthentication.*//g" /usr/etc/sshd_config &> /dev/null
-        wait
-        sed -i "s/^#PermitRootLogin.*/PermitRootLogin without-password/g" \
-          /usr/etc/sshd_config &> /dev/null
-        wait
-        sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" \
-          /usr/etc/sshd_config &> /dev/null
-        wait
-        echo >> /usr/etc/sshd_config
-        echo "IgnoreUserKnownHosts no" >> /usr/etc/sshd_config
-        if [ -e "/root/.ssh.auth.keys.only.cnf" ]; then
-          echo "PasswordAuthentication no" >> /usr/etc/sshd_config
-        else
-          echo "PasswordAuthentication yes" >> /usr/etc/sshd_config
-        fi
-        echo "UseDNS no" >> /usr/etc/sshd_config
-        echo "UsePAM no" >> /usr/etc/sshd_config
-        echo "PrintMotd yes" >> /usr/etc/sshd_config
-        echo "ClientAliveInterval 300" >> /usr/etc/sshd_config
-        echo "ClientAliveCountMax 10000" >> /usr/etc/sshd_config
-        echo "TCPKeepAlive yes" >> /usr/etc/sshd_config
-        sed -i "/^$/d" /usr/etc/sshd_config &> /dev/null
-        wait
-      fi
-      mrun "service ssh reload" &> /dev/null
-    else
-      _SSH_USEDNS_TEST=$(grep "^UseDNS no" /etc/ssh/sshd_config 2>&1)
-      if [[ ! "${_SSH_USEDNS_TEST}" =~ "UseDNS no" ]]; then
-        sed -i "s/.*UseDNS.*/UseDNS no/g" /etc/ssh/sshd_config &> /dev/null
-        wait
-      fi
-      if [ -e "/usr/etc/sshd_config" ]; then
-        _SSH_USEDNS_TEST=$(grep "^UseDNS no" /usr/etc/sshd_config 2>&1)
-        if [[ ! "${_SSH_USEDNS_TEST}" =~ "UseDNS no" ]]; then
-          sed -i "s/.*UseDNS.*/UseDNS no/g" /usr/etc/sshd_config &> /dev/null
-          wait
-        fi
-      fi
-      mrun "service ssh reload" &> /dev/null
     fi
+    sed -i "s/.*UseDNS.*//g" /etc/ssh/sshd_config &> /dev/null
+    wait
+    sed -i "s/.*UsePAM.*//g" /etc/ssh/sshd_config &> /dev/null
+    wait
+    sed -i "s/.*PrintMotd.*//g" /etc/ssh/sshd_config &> /dev/null
+    wait
+    sed -i "s/^ClientAliveCountMax.*//g" /etc/ssh/sshd_config &> /dev/null
+    wait
+    sed -i "s/^ClientAliveInterval.*//g" /etc/ssh/sshd_config &> /dev/null
+    wait
+    sed -i "s/^IgnoreUserKnownHosts.*//g" /etc/ssh/sshd_config &> /dev/null
+    wait
+    sed -i "s/^PasswordAuthentication.*//g" /etc/ssh/sshd_config &> /dev/null
+    wait
+    echo >> /etc/ssh/sshd_config
+    echo "IgnoreUserKnownHosts no" >> /etc/ssh/sshd_config
+    if [ -e "/root/.ssh.auth.keys.only.cnf" ]; then
+      echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
+    else
+      echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
+    fi
+    echo "UseDNS no" >> /etc/ssh/sshd_config
+    echo "UsePAM no" >> /etc/ssh/sshd_config
+    echo "PrintMotd yes" >> /etc/ssh/sshd_config
+    echo "ClientAliveInterval 300" >> /etc/ssh/sshd_config
+    echo "ClientAliveCountMax 10000" >> /etc/ssh/sshd_config
+    echo "TCPKeepAlive yes" >> /etc/ssh/sshd_config
+    wait
+    mrun "service ssh reload" &> /dev/null
     fix_on_upgrade
     tune_memory_limits
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then

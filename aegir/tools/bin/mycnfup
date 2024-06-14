@@ -99,16 +99,6 @@ locales_check_fix() {
       echo "AcceptEnv LANG LC_*" >> /etc/ssh/sshd_config
     fi
   fi
-  if [ -e "/usr/etc/sshd_config" ]; then
-    _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /usr/etc/sshd_config 2>&1)
-    if [[ "${_SSH_LC_TEST}" =~ "AcceptEnv LANG LC_" ]]; then
-      _DO_NOTHING=YES
-    else
-      sed -i "s/.*AcceptEnv.*//g" /usr/etc/sshd_config
-      wait
-      echo "AcceptEnv LANG LC_*" >> /usr/etc/sshd_config
-    fi
-  fi
   _LOC_TEST=$(locale 2>&1)
   if [[ "${_LOC_TEST}" =~ LANG=.*UTF-8 ]]; then
     _LOCALE_TEST=OK
