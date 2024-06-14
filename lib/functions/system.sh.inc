@@ -876,6 +876,25 @@ tune_memory_limits() {
 }
 
 #
+# Find server city.
+find_server_city() {
+  if [ -e "/root/.found_correct_city.cnf" ]; then
+    _LOC_CITY=$(cat /root/.found_correct_city.cnf 2>&1)
+    _LOC_CITY=$(echo -n ${_LOC_CITY} | tr -d "\n" 2>&1)
+  else
+    if [ -e "/root/.found_correct_ipv4.cnf" ]; then
+      _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>&1)
+      _LOC_CITY=$(curl ipinfo.io/${_LOC_IP}/city 2>&1)
+      _LOC_CITY=$(echo -n ${_LOC_CITY} | tr -d "\n" 2>&1)
+    fi
+    if [ ! -z "${_LOC_CITY}" ]; then
+      _LOC_CITY=$(echo "${_LOC_CITY}" | tr ' ' '+' 2>&1)
+      echo ${_LOC_CITY} > /root/.found_correct_city.cnf
+    fi
+  fi
+}
+
+#
 # Fix locales.
 locales_check_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
