@@ -335,30 +335,36 @@ check_connection() {
 }
 
 #
+# Install Unbound from sources.
+install_unbound_src() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: install_unbound_src"
+  fi
+  msg "INFO: Installing Unbound server for ${_OS_DIST}/${_OS_CODE}..."
+  ldconfig 2> /dev/null
+  cd /var/opt
+  rm -rf unbound*
+  get_dev_src "unbound-${_UNBOUND_VRN}.tar.gz"
+  cd unbound-${_UNBOUND_VRN}
+  mrun "bash ./configure --prefix=/usr --with-ssl=/usr/local/ssl3" 2> /dev/null
+  mrun "make -j $(nproc) --quiet" 2> /dev/null
+  mrun "make --quiet install" 2> /dev/null
+}
+
+#
 # DNS cache Unbound.
 dns_unbound_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: dns_unbound_install"
   fi
   isUnbnd=$(which unbound 2>&1)
-  isUnbndErr=$(${isUnbnd} --version 2>&1)
-  if [[ "${isUnbndErr}" =~ "cannot open shared object file" ]] || [ -z "${isUnbndErr}" ]; then
+  isUnbndErr=$(${isUnbnd} -V 2>&1)
+  if [[ "${isUnbndErr}" =~ "cannot open shared object file" ]] \
+    || [[ "${isUnbndErr}" =~ "No such file or directory" ]]
+    || [ -z "${isUnbndErr}" ]; then
     isUnbndFix=YES
   else
     isUnbndFix=NO
-  fi
-  if [ "${isUnbndFix}" = "NO" ]; then
-    isPdnsd=$(which pdnsd 2>&1)
-    if [ -x "${isPdnsd}" ]; then
-      service pdnsd stop &> /dev/null
-      update-rc.d -f pdnsd remove &> /dev/null
-      killall -9 pdnsd &> /dev/null
-      mv -f ${isPdnsd} /var/backups
-    fi
-  fi
-  if [ -x "${isUnbnd}" ] && [ -e "/etc/resolvconf/interface-order" ]; then
-    sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
-    service unbound restart &> /dev/null
   fi
   if [ ! -x "${isUnbnd}" ] \
     || [ -z "${isUnbnd}" ] \
@@ -379,13 +385,16 @@ dns_unbound_install() {
     fi
     apt_clean_update
     if [ "${isUnbndFix}" = "YES" ]; then
-      st_runner "apt-get purge unbound unbound-anchor unbound-host dns-root-data -y" &> /dev/null
+      mrun "apt-get remove --purge unbound -y -qq" 2> /dev/null
+      mrun "apt-get remove --purge unbound-anchor -y -qq" 2> /dev/null
+      mrun "apt-get remove --purge unbound-host -y -qq" 2> /dev/null
+      mrun "apt-get remove --purge dns-root-data -y -qq" 2> /dev/null
     fi
-    st_runner "apt-get purge resolvconf -y" &> /dev/null
+    mrun "apt-get remove --purge resolvconf -y -qq" 2> /dev/null
     rm -rf /lib/init/rw/resolvconf
     rm -rf /run/resolvconf
     rm -rf /etc/resolvconf
-    st_runner "apt-get purge resolvconf -y" &> /dev/null
+    mrun "apt-get remove --purge resolvconf -y -qq" 2> /dev/null
     if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
       echo "nameserver 1.1.1.1" > /etc/resolv.conf
@@ -393,8 +402,11 @@ dns_unbound_install() {
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 8.8.4.4" >> /etc/resolv.conf
     fi
-    st_runner "${_INSTAPP} resolvconf" &> /dev/null
-    st_runner "${_INSTAPP} unbound unbound-anchor unbound-host dns-root-data" &> /dev/null
+    mrun "${_INSTAPP} resolvconf" 2> /dev/null
+    mrun "${_INSTAPP} unbound" 2> /dev/null
+    mrun "${_INSTAPP} unbound-anchor" 2> /dev/null
+    mrun "${_INSTAPP} unbound-host" 2> /dev/null
+    mrun "${_INSTAPP} dns-root-data" 2> /dev/null
     mkdir -p /var/log/unbound
     touch /var/log/unbound/unbound.log
     chown -R unbound:unbound /var/log/unbound
@@ -461,6 +473,52 @@ dns_unbound_install() {
     sed -i "s/^dns=.*/dns=unbound/g" \
       /etc/NetworkManager/NetworkManager.conf &> /dev/null
     mrun "service network-manager restart" &> /dev/null
+  fi
+  if [ -x "${isUnbnd}" ] && [ "${isUnbndFix}" = "NO" ]; then
+    _UNBOUND_V_ITD=$(${isUnbnd} -V 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f2 \
+      | awk '{ print $1}' \
+      | sed "s/Configure//gi" 2>&1)
+    if [ "${_UNBOUND_V_ITD}" = "${_UNBOUND_VRN}" ]; then
+      _UNBOUND_INSTALL_REQUIRED=NO
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Installed Unbound version ${_UNBOUND_V_ITD}, OK"
+      fi
+    else
+      _UNBOUND_INSTALL_REQUIRED=YES
+      msg "INFO: Installed Unbound version ${_UNBOUND_V_ITD}, upgrade required"
+    fi
+  else
+    _UNBOUND_INSTALL_REQUIRED=YES
+  fi
+  if [ "${_UNBOUND_INSTALL_REQUIRED}" = "YES" ]; then
+    install_unbound_src
+  fi
+  isUnbnd=$(which unbound 2>&1)
+  isUnbndErr=$(${isUnbnd} -V 2>&1)
+  if [[ "${isUnbndErr}" =~ "cannot open shared object file" ]] \
+    || [[ "${isUnbndErr}" =~ "No such file or directory" ]]
+    || [ -z "${isUnbndErr}" ]; then
+    isUnbndFix=YES
+  else
+    isUnbndFix=NO
+  fi
+  if [ "${isUnbndFix}" = "NO" ]; then
+    isPdnsd=$(which pdnsd 2>&1)
+    if [ -x "${isPdnsd}" ]; then
+      service pdnsd stop &> /dev/null
+      update-rc.d -f pdnsd remove &> /dev/null
+      killall -9 pdnsd &> /dev/null
+      mv -f ${isPdnsd} /var/backups
+    fi
+    service unbound restart &> /dev/null
+  fi
+  if [ -x "${isUnbnd}" ] \
+    && [ "${isUnbndFix}" = "NO" ] \
+    && [ -e "/etc/resolvconf/interface-order" ]; then
+    sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
+    service unbound restart &> /dev/null
   fi
 }
 
