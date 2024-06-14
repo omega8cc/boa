@@ -2888,6 +2888,15 @@ php_check_if_rebuild() {
     msg "PROC: php_check_if_rebuild"
   fi
   check_php_cli
+  isLber=
+  isLber=$(php -i | grep liblber 2>&1)
+  if [[ "${isLber}" =~ "liblber" ]]; then
+    msg "INFO: PHP rebuild required to fix liblber..."
+    _PHP_FORCE_REINSTALL=YES
+    php_if_versions_cleanup_cnf
+    php_upgrade_all
+    _PHP_FORCE_REINSTALL=NO
+  fi
   isSeg=
   isSeg=$(php -v | grep cli 2>&1)
   if [[ ! "${isSeg}" =~ "cli" ]] || [ -z "${isSeg}" ]; then
