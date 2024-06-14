@@ -480,7 +480,8 @@ csf_lfd_install_upgrade
 ###
 ### Update barracuda log, tools and system settings
 ###
-umask_check_fix
+pam_umask_check_fix
+pam_many_check_fix
 avatars_check_fix
 sysctl_update
 initd_update

@@ -7132,11 +7132,12 @@ xdrago_install_upgrade() {
   chmod 700 /var/xdrago &> /dev/null
 }
 
-umask_check_fix() {
+pam_umask_check_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: umask_check_fix"
+    msg "PROC: pam_umask_check_fix"
   fi
-  if [ ! -e "${pthLog}/umask_fixed_new.log" ]; then
+  _PAM_UMASK_TEST=$(grep "pam_umask.so umask=0002" /etc/pam.d/login 2>&1)
+  if [[ ! "${_PAM_UMASK_TEST}" =~ "pam_umask.so umask=0002" ]]; then
     mkdir -p /var/www/nginx-default
     sed -i "s/^UMASK.*//g" /etc/default/login &> /dev/null
     wait
@@ -7147,27 +7148,46 @@ umask_check_fix() {
     wait
     sed -i "s/^umask.*022/umask 002/g" /etc/profile &> /dev/null
     wait
-    sed -i "s/^session optional pam_umask.*//g" /etc/pam.d/login &> /dev/null
+    sed -i "s/.*session.*optional.*pam_umask.*//g" /etc/pam.d/login &> /dev/null
     wait
     echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/login
-    sed -i "/^$/d" /etc/pam.d/login &> /dev/null
     wait
     echo "umask 002" >> /var/www/.profile
     chown www-data:www-data /var/www/.profile &> /dev/null
     chown www-data:www-data /var/www/nginx-default &> /dev/null
-    touch ${pthLog}/umask_fixed_new.log
   fi
-  if [ ! -e "${pthLog}/umask_fixed_shell_sftp.log" ]; then
+  _SFTP_UMASK_TEST=$(grep "sftp-server -u 0002" /etc/ssh/sshd_config 2>&1)
+  if [[ ! "${_SFTP_UMASK_TEST}" =~ "sftp-server -u 0002" ]]; then
     sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /etc/ssh/sshd_config
-    echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/sshd
     mrun "service ssh restart" &> /dev/null
-    touch ${pthLog}/umask_fixed_shell_sftp.log
   fi
-  if [ ! -e "${pthLog}/src_umask_fixed_shell_sftp.log" ] \
-    && [ -e "/usr/etc/sshd_config" ]; then
-    sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /usr/etc/sshd_config
-    mrun "service ssh restart" &> /dev/null
-    touch ${pthLog}/src_umask_fixed_shell_sftp.log
+}
+
+pam_many_check_fix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: pam_many_check_fix"
+  fi
+  _PAM_FIX=NO
+  _PAM_MAIL_LOGIN_TEST=$(grep "pam_mail" /etc/pam.d/login 2>&1)
+  _PAM_MAIL_SSHD_TEST=$(grep "pam_mail" /etc/pam.d/sshd 2>&1)
+  _PAM_MOTD_LOGIN_TEST=$(grep "pam_motd" /etc/pam.d/login 2>&1)
+  _PAM_MOTD_SSHD_TEST=$(grep "pam_motd" /etc/pam.d/sshd 2>&1)
+  if [[ "${_PAM_MAIL_LOGIN_TEST}" =~ "pam_mail" ]] \
+    || [[ "${_PAM_MAIL_LOGIN_TEST}" =~ "pam_mail" ]]; then
+    _PAM_FIX=YES
+  fi
+  if [[ "${_PAM_MOTD_LOGIN_TEST}" =~ "pam_motd" ]] \
+    || [[ "${_PAM_MOTD_SSHD_TEST}" =~ "pam_motd" ]]; then
+    _PAM_FIX=YES
+  fi
+  if [ "${_PAM_FIX}" = "YES" ]; then
+    sed -i "s/.*session.*optional.*pam_mail.*//g" /etc/pam.d/login &> /dev/null
+    wait
+    sed -i "s/.*session.*optional.*pam_mail.*//g" /etc/pam.d/sshd &> /dev/null
+    wait
+    sed -i "s/.*session.*optional.*pam_motd.*//g" /etc/pam.d/login &> /dev/null
+    wait
+    sed -i "s/.*session.*optional.*pam_motd.*//g" /etc/pam.d/sshd &> /dev/null
   fi
 }
 
