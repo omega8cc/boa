@@ -2661,20 +2661,6 @@ install_icu_modern() {
           ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
         fi
       fi
-    else
-      if [ -e "/usr/local/lib/icu" ]; then
-        if [ ! -e "/usr/lib/i386-linux-gnu/icu" ]; then
-          mkdir -p /usr/lib/i386-linux-gnu/.legacy_icu
-          ln -sfn /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
-        else
-          if [ -e "/var/aegir/drush" ]; then
-            mv -f /usr/lib/i386-linux-gnu/icu /usr/lib/i386-linux-gnu/.old_icu
-          else
-            mv -f /usr/lib/i386-linux-gnu/icu /usr/lib/i386-linux-gnu/.legacy_icu
-          fi
-          ln -sfn /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
-        fi
-      fi
     fi
   fi
 }
@@ -2731,13 +2717,6 @@ install_icu_jessie() {
         if [ ! -e "/usr/lib/x86_64-linux-gnu/icu" ]; then
           mkdir -p /usr/lib/x86_64-linux-gnu/.legacy_icu
           ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
-        fi
-      fi
-    else
-      if [ -e "/usr/local/lib/icu" ]; then
-        if [ ! -e "/usr/lib/i386-linux-gnu/icu" ]; then
-          mkdir -p /usr/lib/i386-linux-gnu/.legacy_icu
-          ln -sfn /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
         fi
       fi
     fi
@@ -2856,18 +2835,6 @@ if_install_wkhtmltox() {
           dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb" &> /dev/null
           apt-get install -f -y &> /dev/null
         fi
-      else
-        SYSTEM_ARCH="x86"
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
-        fi
-        mrun "${_INSTAPP} xfonts-75dpi xfonts-base" &> /dev/null
-        cd /var/opt
-        rm -rf wkhtmltox*
-        mkdir -p /var/opt/wkhtmltox
-        get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_i386.deb.gz" &> /dev/null
-        dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_i386.deb" &> /dev/null
-        apt-get install -f -y &> /dev/null
       fi
       if [ -x "/usr/local/bin/wkhtmltopdf" ]; then
         if [ ! -e "/usr/bin/wkhtmltopdf-0.12.4" ]; then
@@ -3547,28 +3514,6 @@ ssl_crypto_lib_fix() {
         && [ ! -e "/usr/lib/liblber.so" ]; then
         ln -s /lib/x86_64-linux-gnu/liblber.so /usr/lib/liblber.so
       fi
-    else
-      if [ -e "/usr/lib/i386-linux-gnu/libssl.so" ] \
-        && [ ! -e "/usr/lib/libssl.so" ]; then
-        ln -s /usr/lib/i386-linux-gnu/libssl.so /usr/lib/libssl.so
-      elif [ -e "/lib/i386-linux-gnu/libssl.so" ] \
-        && [ ! -e "/usr/lib/libssl.so" ]; then
-        ln -s /lib/i386-linux-gnu/libssl.so /usr/lib/libssl.so
-      fi
-      if [ -e "/usr/lib/i386-linux-gnu/libcrypto.so" ] \
-        && [ ! -e "/usr/lib/libcrypto.so" ]; then
-        ln -s /usr/lib/i386-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
-      elif [ -e "/lib/i386-linux-gnu/libcrypto.so" ] \
-        && [ ! -e "/usr/lib/libcrypto.so" ]; then
-        ln -s /lib/i386-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
-      fi
-      if [ -e "/usr/lib/i386-linux-gnu/liblber.so" ] \
-        && [ ! -e "/usr/lib/liblber.so" ]; then
-        ln -s /usr/lib/i386-linux-gnu/liblber.so /usr/lib/liblber.so
-      elif [ -e "/lib/i386-linux-gnu/liblber.so" ] \
-        && [ ! -e "/usr/lib/liblber.so" ]; then
-        ln -s /lib/i386-linux-gnu/liblber.so /usr/lib/liblber.so
-      fi
     fi
   fi
   ldconfig 2> /dev/null
@@ -4020,15 +3965,15 @@ curl_install_src() {
           fi
           if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so" ] || [ ! -L "/usr/lib/libcurl.so" ]; then
             ln -sfn /usr/local/lib/libcurl.so /usr/lib/x86_64-linux-gnu/libcurl.so &> /dev/null
-            ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.so /usr/lib/libcurl.so
+            ln -sfn /usr/local/lib/libcurl.so /usr/lib/libcurl.so
           fi
           if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ] || [ ! -L "/usr/lib/libcurl.so.4" ]; then
             ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/x86_64-linux-gnu/libcurl.so.4 &> /dev/null
-            ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.so.4 /usr/lib/libcurl.so.4
+            ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/libcurl.so.4
           fi
           if [ -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ] || [ -e "/usr/local/lib/libcurl.so.4" ]; then
             ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/x86_64-linux-gnu/libcurl.so.4 &> /dev/null
-            ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.so.4 /usr/lib/libcurl.so.4
+            ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/libcurl.so.4
           fi
           if [ -e "/usr/lib/x86_64-linux-gnu/libcurl.so.4.4.0" ]; then
             mv -f /usr/lib/x86_64-linux-gnu/libcurl.so.4.4.0 /var/backups/
@@ -4036,19 +3981,6 @@ curl_install_src() {
           if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.a" ] || [ ! -L "/usr/lib/libcurl.a" ]; then
             ln -sfn /usr/local/lib/libcurl.a /usr/lib/x86_64-linux-gnu/libcurl.a &> /dev/null
             ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.a /usr/lib/libcurl.a
-          fi
-        else
-          mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}
-          if [ -e "/usr/include/i386-linux-gnu/curl" ] \
-            && [ ! -L "/usr/include/i386-linux-gnu/curl" ]; then
-            mv -f /usr/include/i386-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
-            mv -f /usr/lib/i386-linux-gnu/libcurl.so /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
-          fi
-          if [ ! -L "/usr/lib/i386-linux-gnu/libcurl.so" ]; then
-            ln -sfn /usr/local/lib/libcurl.so /usr/lib/i386-linux-gnu/libcurl.so &> /dev/null
-          fi
-          if [ ! -L "/usr/include/i386-linux-gnu/curl" ]; then
-            ln -sfn /usr/local/include/curl /usr/include/i386-linux-gnu/curl &> /dev/null
           fi
         fi
         mrun "apt-get remove curl -y" 2> /dev/null
@@ -6725,86 +6657,6 @@ php_libs_fix() {
         cd /usr/lib/x86_64-linux-gnu
         ln -sfn librtmp.so.1 librtmp.so.0
       fi
-    else
-      if [ -e "/usr/local/lib/icu" ]; then
-        if [ -e "/usr/lib/i386-linux-gnu/icu" ] \
-          && [ ! -L "/usr/lib/i386-linux-gnu/icu" ]; then
-          mv -f /usr/lib/i386-linux-gnu/icu /usr/lib/i386-linux-gnu/.old_icu
-          ln -sfn /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
-        else
-          ln -sfn /usr/local/lib/icu /usr/lib/i386-linux-gnu/icu
-        fi
-        ln -sfn /usr/local/lib/libicudata.so /usr/lib/i386-linux-gnu/libicudata.so
-        ln -sfn /usr/local/lib/libicui18n.so /usr/lib/i386-linux-gnu/libicui18n.so
-        ln -sfn /usr/local/lib/libicuio.so   /usr/lib/i386-linux-gnu/libicuio.so
-        ln -sfn /usr/local/lib/libicutest.so /usr/lib/i386-linux-gnu/libicutest.so
-        ln -sfn /usr/local/lib/libicutu.so   /usr/lib/i386-linux-gnu/libicutu.so
-        ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/i386-linux-gnu/libicuuc.so
-        ln -sfn /usr/local/lib/libicudata.so /usr/lib/libicudata.so
-        ln -sfn /usr/local/lib/libicui18n.so /usr/lib/libicui18n.so
-        ln -sfn /usr/local/lib/libicuio.so   /usr/lib/libicuio.so
-        ln -sfn /usr/local/lib/libicutest.so /usr/lib/libicutest.so
-        ln -sfn /usr/local/lib/libicutu.so   /usr/lib/libicutu.so
-        ln -sfn /usr/local/lib/libicuuc.so   /usr/lib/libicuuc.so
-      fi
-      ln -sfn /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so
-      ln -sfn /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so.3
-      ln -sfn /usr/lib/i386-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
-      ln -sfn /usr/lib/i386-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
-      ln -sfn /usr/lib/i386-linux-gnu/libldap.so /usr/lib/libldap.so
-      ln -sfn /usr/lib/i386-linux-gnu/libpng.so  /usr/lib/libpng.so
-      ln -sfn /usr/lib/i386-linux-gnu/libXpm.so  /usr/lib/libXpm.so
-      ln -sfn /usr/lib/i386-linux-gnu/librtmp.so /usr/lib/librtmp.so
-      ln -sfn /usr/lib/i386-linux-gnu/libcurl.so /usr/lib/libcurl.so
-      ln -sfn /usr/lib/i386-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
-      ln -sfn /usr/lib/i386-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
-      ln -sfn /usr/lib/i386-linux-gnu/libonig.so /usr/lib/libonig.so
-      ln -sfn /usr/lib/i386-linux-gnu/libonig.so /usr/lib/libonig.so.4
-      ln -sfn /usr/lib/i386-linux-gnu/libsodium.so /usr/lib/libsodium.so
-      ln -sfn /usr/lib/i386-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
-      if [ -e "/usr/lib/i386-linux-gnu/libHalf.so.23" ]; then
-        ln -sfn /usr/lib/i386-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
-      fi
-      if [ -e "/usr/lib/i386-linux-gnu/libHalf.so" ]; then
-        ln -sfn /usr/lib/i386-linux-gnu/libHalf.so /usr/lib/libHalf.so.12
-      fi
-      if [ -e "/usr/lib/i386-linux-gnu/libIlmImf-2_2.so.23" ]; then
-        ln -sfn /usr/lib/i386-linux-gnu/libIlmImf-2_2.so.23 /usr/lib/libIlmImf-2_2.so.22
-      fi
-      if [ -e "/usr/lib/i386-linux-gnu/libIlmImf.so" ]; then
-        ln -sfn /usr/lib/i386-linux-gnu/libIlmImf.so /usr/lib/libIlmImf-2_2.so.22
-      fi
-      if [ -e "/usr/lib/i386-linux-gnu/libImath-2_2.so.23" ]; then
-        ln -sfn /usr/lib/i386-linux-gnu/libImath-2_2.so.23 /usr/lib/libImath-2_2.so.12
-      fi
-      if [ -e "/usr/lib/i386-linux-gnu/libImath.so" ]; then
-        ln -sfn /usr/lib/i386-linux-gnu/libImath.so /usr/lib/libImath-2_2.so.12
-      fi
-      if [ -e "/usr/lib/i386-linux-gnu/libIex-2_2.so.23" ]; then
-        ln -sfn /usr/lib/i386-linux-gnu/libIex-2_2.so.23 /usr/lib/libIex-2_2.so.12
-      fi
-      if [ -e "/usr/lib/i386-linux-gnu/libIex.so" ]; then
-        ln -sfn /usr/lib/i386-linux-gnu/libIex.so /usr/lib/libIex-2_2.so.12
-      fi
-      if [ -e "/usr/lib/i386-linux-gnu/libIexMath.so" ]; then
-        ln -sfn /usr/lib/i386-linux-gnu/libIexMath.so /usr/lib/libIexMath-2_2.so.12
-      fi
-      if [ -e "/usr/lib/i386-linux-gnu/libIlmThread.so" ]; then
-        ln -sfn /usr/lib/i386-linux-gnu/libIlmThread.so /usr/lib/libIlmThread-2_2.so.12
-      fi
-      if [ ! -e "/usr/include/curl/curl.h" ] \
-        && [ -e "/usr/include/i386-linux-gnu/curl/curl.h" ]; then
-        ln -s /usr/include/i386-linux-gnu/curl /usr/include/curl
-      fi
-      if [ ! -e "/usr/include/gmp.h" ] \
-        && [ -e "/usr/include/i386-linux-gnu/gmp.h" ]; then
-        ln -sfn /usr/include/i386-linux-gnu/gmp.h  /usr/include/gmp.h
-      fi
-      if [ ! -e "/usr/lib/i386-linux-gnu/librtmp.so.0" ] \
-        && [ -e "/usr/lib/i386-linux-gnu/librtmp.so.1" ]; then
-        cd /usr/lib/i386-linux-gnu
-        ln -sfn librtmp.so.1 librtmp.so.0
-      fi
     fi
     if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
       touch /var/xdrago_wait/log/.php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid
@@ -7493,21 +7345,9 @@ java_check_fix() {
       && [ -d "/usr/lib/jvm/java-7-openjdk-amd64" ]; then
       ln -sfn /usr/lib/jvm/java-7-openjdk-amd64 /usr/lib/jvm/java-7-openjdk
     fi
-    if [ ! -e "/usr/lib/jvm/java-7-openjdk" ] \
-      && [ -d "/usr/lib/jvm/java-7-openjdk-i386" ]; then
-      ln -sfn /usr/lib/jvm/java-7-openjdk-i386 /usr/lib/jvm/java-7-openjdk
-    fi
-    if [ -e "/usr/lib/jvm/java-1.7.0-openjdk-i386" ]; then
-      rm -f /usr/lib/jvm/default-java
-      ln -s /usr/lib/jvm/java-1.7.0-openjdk-i386 /usr/lib/jvm/default-java
-    fi
     if [ ! -e "/usr/bin/java7" ] \
       && [ -e "/usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java" ]; then
       ln -sfn /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java /usr/bin/java7
-    fi
-    if [ ! -e "/usr/bin/java7" ] \
-      && [ -e "/usr/lib/jvm/java-7-openjdk-i386/jre/bin/java" ]; then
-      ln -sfn /usr/lib/jvm/java-7-openjdk-i386/jre/bin/java /usr/bin/java7
     fi
     if [ -e "/usr/lib/jvm/java-1.7.0-openjdk-amd64" ]; then
       rm -f /usr/lib/jvm/default-java
@@ -7523,21 +7363,9 @@ java_check_fix() {
     && [ -d "/usr/lib/jvm/java-8-openjdk-amd64" ]; then
     ln -sfn /usr/lib/jvm/java-8-openjdk-amd64 /usr/lib/jvm/java-8-openjdk
   fi
-  if [ ! -e "/usr/lib/jvm/java-8-openjdk" ] \
-    && [ -d "/usr/lib/jvm/java-8-openjdk-i386" ]; then
-    ln -sfn /usr/lib/jvm/java-8-openjdk-i386 /usr/lib/jvm/java-8-openjdk
-  fi
-  if [ -e "/usr/lib/jvm/java-1.8.0-openjdk-i386" ]; then
-    rm -f /usr/lib/jvm/default-java
-    ln -sfn /usr/lib/jvm/java-1.8.0-openjdk-i386 /usr/lib/jvm/default-java
-  fi
   if [ ! -e "/usr/bin/java8" ] \
     && [ -e "/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java" ]; then
     ln -sfn /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java /usr/bin/java8
-  fi
-  if [ ! -e "/usr/bin/java8" ] \
-    && [ -e "/usr/lib/jvm/java-8-openjdk-i386/jre/bin/java" ]; then
-    ln -sfn /usr/lib/jvm/java-8-openjdk-i386/jre/bin/java /usr/bin/java8
   fi
   if [ -e "/usr/lib/jvm/java-1.8.0-openjdk-amd64" ]; then
     rm -f /usr/lib/jvm/default-java
@@ -7553,21 +7381,9 @@ java_check_fix() {
       && [ -d "/usr/lib/jvm/java-11-openjdk-amd64" ]; then
       ln -sfn /usr/lib/jvm/java-11-openjdk-amd64 /usr/lib/jvm/java-11-openjdk
     fi
-    if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \
-      && [ -d "/usr/lib/jvm/java-11-openjdk-i386" ]; then
-      ln -sfn /usr/lib/jvm/java-11-openjdk-i386 /usr/lib/jvm/java-11-openjdk
-    fi
-    if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-i386" ]; then
-      rm -f /usr/lib/jvm/default-java
-      ln -sfn /usr/lib/jvm/java-1.11.0-openjdk-i386 /usr/lib/jvm/default-java
-    fi
     if [ ! -e "/usr/bin/java11" ] \
       && [ -e "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
       ln -sfn /usr/lib/jvm/java-11-openjdk-amd64/bin/java /usr/bin/java11
-    fi
-    if [ ! -e "/usr/bin/java11" ] \
-      && [ -e "/usr/lib/jvm/java-11-openjdk-i386/bin/java" ]; then
-      ln -sfn /usr/lib/jvm/java-11-openjdk-i386/bin/java /usr/bin/java11
     fi
     if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-amd64" ]; then
       rm -f /usr/lib/jvm/default-java
@@ -7582,21 +7398,9 @@ java_check_fix() {
       && [ -d "/usr/lib/jvm/java-11-openjdk-amd64" ]; then
       ln -sfn /usr/lib/jvm/java-11-openjdk-amd64 /usr/lib/jvm/java-11-openjdk
     fi
-    if [ ! -e "/usr/lib/jvm/java-11-openjdk" ] \
-      && [ -d "/usr/lib/jvm/java-11-openjdk-i386" ]; then
-      ln -sfn /usr/lib/jvm/java-11-openjdk-i386 /usr/lib/jvm/java-11-openjdk
-    fi
-    if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-i386" ]; then
-      rm -f /usr/lib/jvm/default-java
-      ln -sfn /usr/lib/jvm/java-1.11.0-openjdk-i386 /usr/lib/jvm/default-java
-    fi
     if [ ! -e "/usr/bin/java11" ] \
       && [ -e "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
       ln -sfn /usr/lib/jvm/java-11-openjdk-amd64/bin/java /usr/bin/java11
-    fi
-    if [ ! -e "/usr/bin/java11" ] \
-      && [ -e "/usr/lib/jvm/java-11-openjdk-i386/bin/java" ]; then
-      ln -sfn /usr/lib/jvm/java-11-openjdk-i386/bin/java /usr/bin/java11
     fi
     if [ -e "/usr/lib/jvm/java-1.11.0-openjdk-amd64" ]; then
       rm -f /usr/lib/jvm/default-java

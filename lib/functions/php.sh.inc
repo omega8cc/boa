@@ -631,25 +631,21 @@ if_install_php_ioncube() {
     msg "PROC: if_install_php_ioncube"
   fi
   ###--------------------###
-  if [ "${_PHP_IONCUBE}" = "YES" ]; then
+  _X86_64_TEST=$(uname -m 2>&1)
+  if [ "${_X86_64_TEST}" = "x86_64" ]; then
+    _SYSTEM_ARCH="x64"
+  else
+    _SYSTEM_ARCH="x32"
+  fi
+  if [ "${_PHP_IONCUBE}" = "YES" ] && [ "${_SYSTEM_ARCH}" = "x64" ]; then
     if [ ! -e "${pthLog}/ioncube-update-${_IONCUBE_VRN}.log" ] \
       || [ ! -e "/usr/local/ioncube" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       mkdir -p /usr/local/ioncube
-      _X86_64_TEST=$(uname -m 2>&1)
-      if [ "${_X86_64_TEST}" = "x86_64" ]; then
-        SYSTEM_ARCH="x86_64"
-        msg "INFO: Installing IonCube ${_IONCUBE_VRN} for PHP..."
-        cd /var/opt
-        rm -rf ioncube_loaders*
-        get_dev_arch "ioncube_loaders_lin_x86-64_${_IONCUBE_VRN}.tar.gz"
-      else
-        SYSTEM_ARCH="x86"
-        msg "INFO: Installing IonCube ${_IONCUBE_VRN} for PHP..."
-        cd /var/opt
-        rm -rf ioncube_loaders*
-        get_dev_arch "ioncube_loaders_lin_x86_${_IONCUBE_VRN}.tar.gz"
-      fi
+      msg "INFO: Installing IonCube ${_IONCUBE_VRN} for PHP..."
+      cd /var/opt
+      rm -rf ioncube_loaders*
+      get_dev_arch "ioncube_loaders_lin_x86-64_${_IONCUBE_VRN}.tar.gz"
       rm -f /usr/local/ioncube/*
       cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
       touch ${pthLog}/ioncube-update-${_IONCUBE_VRN}.log
@@ -958,8 +954,7 @@ install_php_extensions() {
   fi
   ###--------------------###
   if [ ! -e "${pthLog}/f_libyaml-${_LIB_YAML_VRN}.log" ] \
-    || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ] \
-    || [ -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.4" ]; then
+    || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ]; then
     msg "INFO: Installing LibYAML ${_LIB_YAML_VRN} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf yaml*
@@ -987,17 +982,6 @@ install_php_extensions() {
         cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/ &> /dev/null
       fi
     else
-      if [ ! -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.9" ] \
-        || [ -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.4" ]; then
-        mkdir -p /var/backups/libyaml
-        mkdir -p /usr/lib/i386-linux-gnu
-        cp -af /usr/lib/i386-linux-gnu/libyaml* /var/backups/libyaml/ &> /dev/null
-        if [ -e "/usr/lib/libyaml-0.so.2.0.9" ]; then
-          rm -f /usr/lib/i386-linux-gnu/libyaml*
-          rm -f /usr/lib/libyaml-0.so.2.0.4
-        fi
-        cp -af /usr/lib/libyaml* /usr/lib/i386-linux-gnu/ &> /dev/null
-      fi
     fi
   fi
   cd /var/opt
@@ -1371,8 +1355,7 @@ php_extensions_update() {
   fi
   ###--------------------###
   if [ ! -e "${pthLog}/f_libyaml-${_LIB_YAML_VRN}.log" ] \
-    || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ] \
-    || [ -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.4" ]; then
+    || [ -e "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.4" ]; then
     msg "INFO: Installing LibYAML upgrade for PHP..."
     cd /var/opt
     rm -rf yaml*
@@ -1397,17 +1380,6 @@ php_extensions_update() {
           rm -f /usr/lib/libyaml-0.so.2.0.4
         fi
         cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/
-      fi
-    else
-      if [ ! -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.9" ] \
-        || [ -e "/usr/lib/i386-linux-gnu/libyaml-0.so.2.0.4" ]; then
-        mkdir -p /var/backups/libyaml
-        cp -af /usr/lib/i386-linux-gnu/libyaml* /var/backups/libyaml/
-        if [ -e "/usr/lib/libyaml-0.so.2.0.9" ]; then
-          rm -f /usr/lib/i386-linux-gnu/libyaml*
-          rm -f /usr/lib/libyaml-0.so.2.0.4
-        fi
-        cp -af /usr/lib/libyaml* /usr/lib/i386-linux-gnu/
       fi
     fi
   fi
@@ -1827,7 +1799,13 @@ newrelic_update() {
     msg "PROC: newrelic_update"
   fi
   ###--------------------###
-  if [ ! -z "${_NEWRELIC_KEY}" ]; then
+  _X86_64_TEST=$(uname -m 2>&1)
+  if [ "${_X86_64_TEST}" = "x86_64" ]; then
+    _SYSTEM_ARCH="x64"
+  else
+    _SYSTEM_ARCH="x32"
+  fi
+  if [ ! -z "${_NEWRELIC_KEY}" ] && [ "${_SYSTEM_ARCH}" = "x64" ]; then
     if [ -x "/usr/bin/gpg2" ]; then
       _GPG=gpg2
     else
@@ -1983,7 +1961,13 @@ if_install_php_newrelic() {
     msg "PROC: if_install_php_newrelic"
   fi
   ###--------------------###
-  if [ ! -z "${_NEWRELIC_KEY}" ]; then
+  _X86_64_TEST=$(uname -m 2>&1)
+  if [ "${_X86_64_TEST}" = "x86_64" ]; then
+    _SYSTEM_ARCH="x64"
+  else
+    _SYSTEM_ARCH="x32"
+  fi
+  if [ ! -z "${_NEWRELIC_KEY}" ] && [ "${_SYSTEM_ARCH}" = "x64" ]; then
     if [ -x "/usr/bin/gpg2" ]; then
       _GPG=gpg2
     else
@@ -2919,8 +2903,7 @@ php_check_if_rebuild() {
   isIcu=$(php -i | grep libicuio 2>&1)
   if [[ "${isIcu}" =~ "libicuio" ]] \
     || [ ! -e "/usr/local/lib/icu/current" ] \
-    || [ -e "/usr/lib/x86_64-linux-gnu/.old_icu" ] \
-    || [ -e "/usr/lib/i386-linux-gnu/.old_icu" ]; then
+    || [ -e "/usr/lib/x86_64-linux-gnu/.old_icu" ]; then
     msg "INFO: PHP rebuild required to fix ICU support..."
     _PHP_FORCE_REINSTALL=YES
     php_install_deps
@@ -2929,8 +2912,6 @@ php_check_if_rebuild() {
     php_upgrade_all
     if [ -e "/usr/lib/x86_64-linux-gnu/.old_icu" ]; then
       mv -f /usr/lib/x86_64-linux-gnu/.old_icu /usr/lib/x86_64-linux-gnu/.legacy_icu
-    elif [ -e "/usr/lib/i386-linux-gnu/.old_icu" ]; then
-      mv -f /usr/lib/i386-linux-gnu/.old_icu /usr/lib/i386-linux-gnu/.legacy_icu
     fi
     _PHP_FORCE_REINSTALL=NO
   fi
