@@ -3800,6 +3800,11 @@ ssl_install_src() {
       msg "INFO: OpenSSL version detected ${_SSL_ITD}, OK"
     fi
   fi
+  if [ -x "/usr/local/ssl3/bin/openssl" ] \
+    && [ -x "/usr/local/ssl/bin/openssl" ]; then
+    mv -f /usr/local/ssl /usr/local/legacy_ssl
+    ldconfig 2> /dev/null
+  fi
 }
 
 #
