@@ -360,7 +360,7 @@ dns_unbound_install() {
   isUnbnd=$(which unbound 2>&1)
   isUnbndErr=$(${isUnbnd} -V 2>&1)
   if [[ "${isUnbndErr}" =~ "cannot open shared object file" ]] \
-    || [[ "${isUnbndErr}" =~ "No such file or directory" ]]
+    || [[ "${isUnbndErr}" =~ "No such file or directory" ]] \
     || [ -z "${isUnbndErr}" ]; then
     isUnbndFix=YES
   else
