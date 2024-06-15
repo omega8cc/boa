@@ -5650,6 +5650,11 @@ if_major_os_upgrade() {
             msg "INFO: Retrieving ${_PERCONA_KEYS_SIG} key..."
           fi
           apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
+          if [ -x "/usr/bin/gpg2" ]; then
+            _GPG=gpg2
+          else
+            _GPG=gpg
+          fi
           curl -fsSL ${urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/percona.gpg
           chmod 644 /etc/apt/keyrings/percona.gpg
           if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
