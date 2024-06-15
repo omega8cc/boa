@@ -375,11 +375,19 @@ check_report() {
   _RESULT_APT_FAIL=$(grep "Displaying the last 15 lines" ${_UP_LOG} 2>&1)
   _RESULT_ALRT=$(grep "ALRT" ${_UP_LOG} 2>&1)
   _RESULT_FATAL=$(grep "FATAL ERROR" ${_UP_LOG} 2>&1)
+  _RESULT_LIB_ERR=$(grep "cannot open shared object file" ${_UP_LOG} 2>&1)
   if [[ "${_RESULT_TEST_OK}" =~ "INFO: Test OK" ]] \
     || [[ "${_RESULT_TEST_CARD}" =~ "CARD: Now charging" ]] \
     || [[ "${_RESULT_RLLY}" =~ "RLLY: No errors" ]] \
     || [[ "${_RESULT_ENJOY}" =~ "Enjoy your Aegir" ]]; then
-    _DO_NOTHING=YES
+    if [[ "${_RESULT_APT_FAIL}" =~ "Displaying the last 15 lines" ]]; then
+      if [[ "${_RESULT_LIB_ERR}" =~ "cannot open shared object file" ]]; then
+        _SEND_ALERT=YES
+        _ALERT_MSG="ALERT: Failed (libs) Barracuda upgrade"
+      fi
+    else
+      _DO_NOTHING=YES
+    fi
   else
     if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
       _SEND_ALERT=YES
@@ -404,6 +412,10 @@ check_report() {
   if [[ "${_RESULT_FATAL}" =~ "FATAL ERROR" ]]; then
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed (aborted) Barracuda upgrade"
+  fi
+  if [[ "${_RESULT_LIB_ERR}" =~ "cannot open shared object file" ]]; then
+    _SEND_ALERT=YES
+    _ALERT_MSG="ALERT: Failed (libs) Barracuda upgrade"
   fi
   if [ "${_SEND_ALERT}" = "YES" ]; then
     send_alert
