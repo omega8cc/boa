@@ -500,13 +500,13 @@ prep_for_install_db_sql() {
   fi
   st_runner "${_INSTAPP} software-properties-common dirmngr" 2> /dev/null
 
-  if [ "${_DB_SERVER}" = "Percona" ] || [ "${_DB_SERIES}" = "5.7" ]; then
+  if [ "${_DB_SERVER}" = "Percona" ] && [ "${_DB_SERIES}" = "5.7" ]; then
     if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
       if [ ! -e "/etc/apt/keyrings" ]; then
         mkdir -m 0755 -p /etc/apt/keyrings
       fi
       if [ -e "/etc/apt/trusted.gpg.d/percona.gpg" ]; then
-        rm -f /etc/apt/trusted.gpg.d/percona.gpg
+        rm -f /etc/apt/trusted.gpg.d/percona.gpg*
       fi
       _PERCONA_KEYS_SIG="8507EFA5"
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -921,7 +921,7 @@ db_server_install() {
   else
     ### Only supported upgrade path allowed
     sql_strict_upgrade_path
-    if [ "${_DB_SERVER}" = "Percona" ]; then
+    if [ "${_DB_SERVER}" = "Percona" ] && [ "${_DB_SERIES}" = "5.7" ]; then
       _DB_SRC="repo.percona.com"
       _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
         /etc/apt/sources.list.d/percona-release.list 2>&1)
@@ -935,7 +935,7 @@ db_server_install() {
       if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
         _OSN=debian
       fi
-      if [ "${_DB_SERVER}" = "Percona" ]; then
+      if [ "${_DB_SERVER}" = "Percona" ] && [ "${_DB_SERIES}" = "5.7" ]; then
         percList="/etc/apt/sources.list.d/percona-release.list"
         percRepo="${_DB_SRC}/percona/apt"
         rm -f /etc/apt/sources.list.d/percona-.*
@@ -978,13 +978,13 @@ db_server_install() {
         fi
       fi
       rm -f /etc/apt/sources.list.d/ourdelta.list
-      if [ "${_DB_SERVER}" = "Percona" ] || [ "${_DB_SERIES}" = "5.7" ]; then
+      if [ "${_DB_SERVER}" = "Percona" ] && [ "${_DB_SERIES}" = "5.7" ]; then
         if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
           if [ ! -e "/etc/apt/keyrings" ]; then
             mkdir -m 0755 -p /etc/apt/keyrings
           fi
           if [ -e "/etc/apt/trusted.gpg.d/percona.gpg" ]; then
-            rm -f /etc/apt/trusted.gpg.d/percona.gpg
+            rm -f /etc/apt/trusted.gpg.d/percona.gpg*
           fi
           _PERCONA_KEYS_SIG="8507EFA5"
           if [ "${_DEBUG_MODE}" = "YES" ]; then
