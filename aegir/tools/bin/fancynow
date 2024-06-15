@@ -15,6 +15,11 @@
 DateColumn=55 # Default is 27 for 80 character line, 34 for 92 character line
 TimeColumn=80 # Default is 49 for   "   "   "   "    61 "   "   "   "
 
+  if [ -e "/root/.found_correct_city.cnf" ]; then
+    _LOC_CITY=$(cat /root/.found_correct_city.cnf 2>&1)
+    _LOC_CITY=$(echo -n ${_LOC_CITY} | tr -d "\n" 2>&1)
+  fi
+
 # Replace Edmonton with your city name, GPS, etc. See: curl wttr.in/:help
 curl wttr.in/${_LOC_CITY}?0 --silent --max-time 3 > /tmp/now-weather
 # Timeout #. Increase for slow connection---^
