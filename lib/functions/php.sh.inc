@@ -1834,6 +1834,7 @@ newrelic_update() {
       _GPG=gpg
     fi
     _NEWRELIC_KEYS_SIG="548C16BF"
+    nrList="/etc/apt/sources.list.d/newrelic.list"
     if [ -e "/etc/newrelic/newrelic.cfg" ] \
       || [ -e "/etc/apt/sources.list.d/newrelic.list" ]; then
       msg "INFO: Uninstalling previous version of New Relic Apps Monitor..."
@@ -1846,7 +1847,7 @@ newrelic_update() {
           mkdir -m 0755 -p /etc/apt/keyrings
         fi
         if [ -e "/etc/apt/trusted.gpg.d/newrelic.gpg" ]; then
-          rm -f /etc/apt/trusted.gpg.d/newrelic.gpg
+          rm -f /etc/apt/trusted.gpg.d/newrelic.gpg*
         fi
         if [ -e "/etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg" ]; then
           rm -f /etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg
@@ -1877,12 +1878,11 @@ newrelic_update() {
       _PHP_EXT_DIR_71="/opt/php71/${pthNrx}-${_PHP71_API}"
       _PHP_EXT_DIR_70="/opt/php70/${pthNrx}-${_PHP70_API}"
       msg "INFO: Installing latest version of New Relic Apps Monitor..."
-      nrList="/etc/apt/sources.list.d/newrelic.list"
-      echo "## New Relic APT Repository" > ${percList}
+      echo "## New Relic APT Repository" > ${nrList}
       if [ -e "/etc/apt/keyrings/newrelic.gpg" ]; then
-        echo "deb [signed-by=/etc/apt/keyrings/newrelic.gpg] http://apt.newrelic.com/debian/ newrelic non-free" >> ${percList}
+        echo "deb [signed-by=/etc/apt/keyrings/newrelic.gpg] http://apt.newrelic.com/debian/ newrelic non-free" >> ${nrList}
       else
-        echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> ${percList}
+        echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> ${nrList}
       fi
       apt_clean_update
       st_runner "apt-get install newrelic-php5-common ${nrmUpArg}" 2> /dev/null
@@ -1991,6 +1991,7 @@ if_install_php_newrelic() {
     fi
     _MULTI_NR=NO
     _NEWRELIC_KEYS_SIG="548C16BF"
+    nrList="/etc/apt/sources.list.d/newrelic.list"
     _PHP_EXT_DIR_83="/opt/php83/lib/php/extensions/no-debug-non-zts-${_PHP83_API}"
     _PHP_EXT_DIR_82="/opt/php82/lib/php/extensions/no-debug-non-zts-${_PHP82_API}"
     _PHP_EXT_DIR_81="/opt/php81/lib/php/extensions/no-debug-non-zts-${_PHP81_API}"
@@ -2053,7 +2054,7 @@ if_install_php_newrelic() {
           mkdir -m 0755 -p /etc/apt/keyrings
         fi
         if [ -e "/etc/apt/trusted.gpg.d/newrelic.gpg" ]; then
-          rm -f /etc/apt/trusted.gpg.d/newrelic.gpg
+          rm -f /etc/apt/trusted.gpg.d/newrelic.gpg*
         fi
         if [ -e "/etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg" ]; then
           rm -f /etc/apt/keyrings/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg
@@ -2065,12 +2066,11 @@ if_install_php_newrelic() {
         curl -fsSL ${urlDev}/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/newrelic.gpg &> /dev/null
         chmod 644 /etc/apt/keyrings/newrelic.gpg
       fi
-      nrList="/etc/apt/sources.list.d/newrelic.list"
-      echo "## New Relic APT Repository" > ${percList}
+      echo "## New Relic APT Repository" > ${nrList}
       if [ -e "/etc/apt/keyrings/newrelic.gpg" ]; then
-        echo "deb [signed-by=/etc/apt/keyrings/newrelic.gpg] http://apt.newrelic.com/debian/ newrelic non-free" >> ${percList}
+        echo "deb [signed-by=/etc/apt/keyrings/newrelic.gpg] http://apt.newrelic.com/debian/ newrelic non-free" >> ${nrList}
       else
-        echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> ${percList}
+        echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> ${nrList}
       fi
       apt_clean_update
       st_runner "apt-get install newrelic-php5-common ${nrmUpArg}" 2> /dev/null
