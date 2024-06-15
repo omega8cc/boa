@@ -1574,6 +1574,7 @@ proceed() {
   check_php_cli
   old_apt_keys_cleanup &> /dev/null
   check_etc_apt_preferences
+  [ ! -e "/root/.mysql.yes.new.password.cnf" ] && touch /root/.mysql.yes.new.password.cnf
   if [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ] \

@@ -200,6 +200,8 @@ if [ ! -e "/root/.run-to-chimaera.cnf" ]; then
   exit 1
 fi
 
+[ ! -e "/root/.mysql.yes.new.password.cnf" ] && touch /root/.mysql.yes.new.password.cnf
+
 check_os_compatibility() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
