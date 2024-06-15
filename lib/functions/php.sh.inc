@@ -2687,7 +2687,7 @@ php_upgrade_all() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: php_upgrade_all $1"
   fi
-  if [ ! -z "${1}" ]; then
+  if [ ! -z "${1}" ] && [ "${1}" != "force" ]; then
     _PHP_V="${1}"
   else
     _PHP_V="56 70 71 72 73 74 80 81 82 83"
@@ -2718,8 +2718,12 @@ php_upgrade_all() {
       _PHP_BIN_BROKEN=NO
       _BROKEN_LIBCURL_TEST=""
       switch_php_cli "${e}"
-      check_php_broken "${e}"
-      check_php_rebuild "${e}"
+      if [ "${1}" = "force" ]; then
+        install_php_multi "${e}"
+      else
+        check_php_broken "${e}"
+        check_php_rebuild "${e}"
+      fi
       php_multi_update "${e}"
       service php${e}-fpm reload &> /dev/null
       _PHP_VERSION=""
@@ -2877,7 +2881,7 @@ php_check_if_rebuild() {
     msg "INFO: PHP rebuild required to fix liblber..."
     _PHP_FORCE_REINSTALL=YES
     php_if_versions_cleanup_cnf
-    php_upgrade_all
+    php_upgrade_all force
     _PHP_FORCE_REINSTALL=NO
   fi
   isSeg=
@@ -2886,7 +2890,7 @@ php_check_if_rebuild() {
     msg "INFO: PHP rebuild required to fix broken libs..."
     _PHP_FORCE_REINSTALL=YES
     php_if_versions_cleanup_cnf
-    php_upgrade_all
+    php_upgrade_all force
     _PHP_FORCE_REINSTALL=NO
   fi
   isOnig=
@@ -2895,7 +2899,7 @@ php_check_if_rebuild() {
     msg "INFO: PHP rebuild required to fix libonig..."
     _PHP_FORCE_REINSTALL=YES
     php_if_versions_cleanup_cnf
-    php_upgrade_all
+    php_upgrade_all force
     _PHP_FORCE_REINSTALL=NO
   fi
   isIcu=
@@ -2908,7 +2912,7 @@ php_check_if_rebuild() {
     php_install_deps
     php_libs_fix
     php_if_versions_cleanup_cnf
-    php_upgrade_all
+    php_upgrade_all force
     if [ -e "/usr/lib/x86_64-linux-gnu/.old_icu" ]; then
       mv -f /usr/lib/x86_64-linux-gnu/.old_icu /usr/lib/x86_64-linux-gnu/.legacy_icu
     fi
@@ -2933,7 +2937,7 @@ php_check_if_rebuild() {
     msg "INFO: PHP rebuild required to add WebP support..."
     _PHP_FORCE_REINSTALL=YES
     php_if_versions_cleanup_cnf
-    php_upgrade_all
+    php_upgrade_all force
     _PHP_FORCE_REINSTALL=NO
   fi
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
@@ -2963,7 +2967,7 @@ php_check_if_rebuild() {
     msg "INFO: PHP rebuild required to add --with-tidy option..."
     _PHP_FORCE_REINSTALL=YES
     php_if_versions_cleanup_cnf
-    php_upgrade_all
+    php_upgrade_all force
     _PHP_FORCE_REINSTALL=NO
   fi
 }
