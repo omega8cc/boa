@@ -2735,25 +2735,18 @@ php_install_deps() {
   mrun "${_INSTAPP} libcurl4-openssl-dev" 2> /dev/null
   mrun "${_INSTAPP} libgd-dev libgd3 lbzip2" 2> /dev/null
   if [ "${_OS_CODE}" = "daedalus" ] \
-    && [ -e "/root/.auto-upgraded-to-daedalus.cnf" ]; then
-    mrun "apt-get remove --purge libkrb5-dev -y -qq" 2> /dev/null
-    mrun "apt-get remove --purge libldap-dev -y -qq" 2> /dev/null
-    echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
-    echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
-    apt_clean_update
-    mrun "apt-get install -t chimaera libkrb5-dev -y" 2> /dev/null
-    mrun "apt-get install -t chimaera libldap-dev -y" 2> /dev/null
-    rm -f /etc/apt/sources.list.d/chimaera.list
-    rm -f /etc/apt/apt.conf
-    apt_clean_update
+    || [ "${_OS_CODE}" = "bookworm" ]; then
+    mrun "apt-get remove --purge libldap2-dev -y -qq" 2> /dev/null
+    mrun "${_INSTAPP} libldap-dev" 2> /dev/null
   else
-    mrun "${_INSTAPP} libkrb5-dev libldap-dev" 2> /dev/null
+    mrun "${_INSTAPP} libldap2-dev" 2> /dev/null
   fi
   mrun "${_INSTAPP} libmagickwand-dev" 2> /dev/null
   mrun "${_INSTAPP} libonig-dev" 2> /dev/null
   mrun "${_INSTAPP} libsodium-dev" 2> /dev/null
   mrun "${_INSTAPP} libwebp-dev" 2> /dev/null
   mrun "${_INSTAPP} libxpm-dev" 2> /dev/null
+  mrun "${_INSTAPP} libkrb5-dev" 2> /dev/null
   mrun "${_INSTAPP} libjpeg-dev libjpeg62" 2> /dev/null
   if [ "${_OS_CODE}" = "jessie" ]; then
     install_icu_jessie
