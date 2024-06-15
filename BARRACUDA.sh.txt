@@ -307,7 +307,6 @@ else
   check_db_src
   check_git_repos
 fi
-
 check_ip_hostname
 check_prepare_dirs_permissions
 
