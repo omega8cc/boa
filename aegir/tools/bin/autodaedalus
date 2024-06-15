@@ -448,6 +448,7 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-daedalus-one.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-daedalus-two.cnf" ]; then
   echo " " >> ${logAds}
+  touch /root/.auto-upgraded-to-daedalus.cnf
   if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
     msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> ${logAds}
     [ ! -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && touch /root/.force.rebuild.src.on.auto.now.cnf
@@ -458,7 +459,6 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
   [ -e "/root/.run-auto-major-os-reboot-daedalus-one.cnf" ] && rm -f /root/.run-auto-major-os-reboot-daedalus-one.cnf
   [ -e "/root/.run-auto-major-os-reboot-daedalus-two.cnf" ] && rm -f /root/.run-auto-major-os-reboot-daedalus-two.cnf
-  touch /root/.auto-upgraded-to-daedalus.cnf
   sed -i "s/^_AUTO_DAEDALUS.*//g" /root/.barracuda.cnf
   msg "The final post-reboot barracuda up-${tRee} system completed" >> ${logAds}
   msg "That's all folks!" >> ${logAds}
