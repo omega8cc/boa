@@ -4718,8 +4718,8 @@ run_aptitude_deps_install() {
   mrun "apt-get remove percona-xtrabackup-24 -y -qq" 2> /dev/null
   mrun "apt-get remove libcurl4-gnutls-dev -y -qq" 2> /dev/null
   mrun "apt-get purge libcurl4-gnutls-dev -y -qq" 2> /dev/null
-  mrun "apt-get remove libcurl4-openssl-dev -y -qq" 2> /dev/null
-  mrun "apt-get purge libcurl4-openssl-dev -y -qq" 2> /dev/null
+  #mrun "apt-get remove libcurl4-openssl-dev -y -qq" 2> /dev/null
+  #mrun "apt-get purge libcurl4-openssl-dev -y -qq" 2> /dev/null
   mrun "apt-get remove auditd -y -qq" 2> /dev/null
   mrun "apt-get purge auditd -y -qq" 2> /dev/null
   mrun "apt autoremove -y" 2> /dev/null
