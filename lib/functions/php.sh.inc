@@ -981,7 +981,6 @@ install_php_extensions() {
         fi
         cp -af /usr/lib/libyaml* /usr/lib/x86_64-linux-gnu/ &> /dev/null
       fi
-    else
     fi
   fi
   cd /var/opt
