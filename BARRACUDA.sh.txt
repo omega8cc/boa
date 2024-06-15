@@ -393,6 +393,7 @@ if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   php_libs_fix
   php_if_versions_cleanup_cnf
   if [ "${_STATUS}" = "UPGRADE" ]; then
+    php_ioncube_check_if_update
     php_check_if_rebuild
   fi
   php_install_upgrade

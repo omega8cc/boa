@@ -1718,6 +1718,7 @@ if_php_idle_on_off() {
     php_install_deps
     php_libs_fix
     if [ "${_STATUS}" = "UPGRADE" ]; then
+      php_ioncube_check_if_update
       php_check_if_rebuild
     fi
     php_install_upgrade
@@ -5423,6 +5424,7 @@ if_post_major_os_upgrade() {
       _T_PHP_PTH=""
       php_libs_fix
       if [ "${_STATUS}" = "UPGRADE" ]; then
+        php_ioncube_check_if_update
         php_check_if_rebuild
       fi
       php_install_upgrade
@@ -5954,6 +5956,7 @@ if_major_os_upgrade() {
       php_libs_fix
       php_if_versions_cleanup_cnf
       if [ "${_STATUS}" = "UPGRADE" ]; then
+        php_ioncube_check_if_update
         php_check_if_rebuild
       fi
       php_install_upgrade
@@ -5985,6 +5988,7 @@ if_major_os_upgrade() {
     #   php_upgrade_all
     #   if_install_php_newrelic
     #   newrelic_check_fix
+    #   php_ioncube_check_if_update
     #   php_check_if_rebuild
     # fi
     ###

@@ -2986,6 +2986,12 @@ php_check_if_rebuild() {
     php_upgrade_all
     _PHP_FORCE_REINSTALL=NO
   fi
+}
+
+php_ioncube_check_if_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: php_check_if_rebuild"
+  fi
   if [ "${_PHP_IONCUBE}" = "YES" ]; then
     if [ ! -e "${pthLog}/ioncube-update-${_IONCUBE_VRN}.log" ] \
       || [ "${_PHP_FORCE_REINSTALL}" = "YES" ] \
