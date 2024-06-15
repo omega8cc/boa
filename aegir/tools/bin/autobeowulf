@@ -402,6 +402,7 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ]; then
   echo " " >> ${logAbf}
+  touch /root/.auto-upgraded-to-beowulf.cnf
   msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> ${logAbf}
   [ ! -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && touch /root/.force.rebuild.src.on.auto.now.cnf
   /opt/local/bin/barracuda up-${tRee} system >> ${logAbf}
@@ -410,7 +411,6 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
   [ -e "/root/.run-auto-major-os-reboot-beowulf-one.cnf" ] rm -f /root/.run-auto-major-os-reboot-beowulf-one.cnf
   [ -e "/root/.run-auto-major-os-reboot-beowulf-two.cnf" ] rm -f /root/.run-auto-major-os-reboot-beowulf-two.cnf
-  touch /root/.auto-upgraded-to-beowulf.cnf
   sed -i "s/^_AUTO_BEOWULF.*//g" /root/.barracuda.cnf
   msg "The final post-reboot barracuda up-${tRee} system completed" >> ${logAbf}
   msg "That's all folks!" >> ${logAbf}
