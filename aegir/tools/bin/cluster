@@ -1564,7 +1564,7 @@ install_db_cluster() {
         rm -f /vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg
       fi
       vserver ${idn} exec apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
-      curl -fsSL ${urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /vservers/${idn}/etc/apt/keyrings/percona.gpg &> /dev/null
+      curl -fsSL ${urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /vservers/${idn}/etc/apt/keyrings/percona.gpg
       chmod 644 /vservers/${idn}/etc/apt/keyrings/percona.gpg
     fi
     echo "## Percona Cluster APT Repository" > /vservers/${idn}${percList}
@@ -1770,7 +1770,7 @@ upgrade_db_cluster() {
         rm -f /vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg
       fi
       vserver ${idn} exec apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
-      curl -fsSL ${urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /vservers/${idn}/etc/apt/keyrings/percona.gpg &> /dev/null
+      curl -fsSL ${urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /vservers/${idn}/etc/apt/keyrings/percona.gpg
       chmod 644 /vservers/${idn}/etc/apt/keyrings/percona.gpg
     fi
   	vserver ${idn} exec ${_APT_UPDATE} -qq
