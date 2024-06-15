@@ -131,14 +131,12 @@ by the BOA install and upgrade tools exclusively.
 
   This file, if exists, allows to automatically generate random, new mysql
   root password on every barracuda upgrade. This file is ignored if
-  /root/.mysql.no.new.password.cnf file also exists. Warning: this may cause
-  problems reported at: https://github.com/omega8cc/boa/issues/642
+  /root/.mysql.no.new.password.cnf file also exists, but is enabled by default.
 
  @=> /root/.mysql.no.new.password.cnf
 
   This file, if exists, allows to ignore /root/.mysql.yes.new.password.cnf
-  for backward compatibility and configuration consistency -- by default
-  BOA (since 2.4.4) doesn't change mysql root password.
+  as mentioned above.
 
  @=> /root/.mysql.force.legacy.backup.cnf
 
