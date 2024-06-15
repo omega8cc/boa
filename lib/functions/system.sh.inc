@@ -6614,6 +6614,9 @@ php_libs_fix() {
       if [ -e "/usr/lib/x86_64-linux-gnu/liblber-2.4.so.2" ]; then
         ln -sfn /usr/lib/x86_64-linux-gnu/liblber-2.4.so.2 /usr/lib/liblber-2.4.so.2
       fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/liblber.a" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/liblber.a /usr/lib/liblber.a
+      fi
       if [ -e "/usr/lib/x86_64-linux-gnu/libHalf.so.23" ]; then
         ln -sfn /usr/lib/x86_64-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
       fi
