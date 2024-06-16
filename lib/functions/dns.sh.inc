@@ -426,7 +426,7 @@ dns_unbound_install() {
     mkdir -p /etc/resolvconf/run/interface
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     resolvconf -u &> /dev/null
-    chmod -x /etc/resolvconf/update.d/unbound
+    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
     killall -9 unbound
     service unbound restart &> /dev/null
   fi
@@ -458,7 +458,7 @@ dns_unbound_install() {
       echo "nameserver 1.0.0.1" >> /etc/resolv.conf
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-      chmod -x /etc/resolvconf/update.d/unbound
+      [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
       killall -9 unbound
       service unbound restart &> /dev/null
       unbound-control reload &> /dev/null
@@ -474,7 +474,7 @@ dns_unbound_install() {
     echo "nameserver 1.0.0.1" >> /etc/resolv.conf
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-    chmod -x /etc/resolvconf/update.d/unbound
+    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
     killall -9 unbound
     service unbound restart &> /dev/null
     unbound-control reload &> /dev/null
@@ -522,7 +522,7 @@ dns_unbound_install() {
       killall -9 pdnsd &> /dev/null
       mv -f ${isPdnsd} /var/backups
     fi
-    chmod -x /etc/resolvconf/update.d/unbound
+    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
     killall -9 unbound
     service unbound restart &> /dev/null
   fi
@@ -530,7 +530,7 @@ dns_unbound_install() {
     && [ "${isUnbndFix}" = "NO" ] \
     && [ -e "/etc/resolvconf/interface-order" ]; then
     sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
-    chmod -x /etc/resolvconf/update.d/unbound
+    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
     killall -9 unbound
     service unbound restart &> /dev/null
   fi
