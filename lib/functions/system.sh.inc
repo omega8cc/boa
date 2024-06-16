@@ -350,9 +350,17 @@ if_running_as_root_barracuda() {
         mrun "apt-get remove hdparm -y -qq" &> /dev/null
         mrun "apt-get purge hdparm -y -qq" &> /dev/null
       fi
-      if [ -e "/sbin/auditd" ]; then
-        mrun "apt-get remove auditd -y -qq" &> /dev/null
-        mrun "apt-get purge auditd -y -qq" &> /dev/null
+      if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
+        isAuditd=$(which auditd 2>&1)
+        if [ -e "${isAuditd}" ]; then
+          apt-get remove --purge auditd -y -qq &> /dev/null
+          killall -9 auditd &> /dev/null
+        fi
+        isApparmor=$(which aa-status 2>&1)
+        if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
+          apt-get remove --purge apparmor -y -qq &> /dev/null
+          rm -rf /etc/apparmor.d
+        fi
       fi
       if [ -d "/etc/webmin" ]; then
         mrun "dpkg --configure --force-all -a" 2> /dev/null
@@ -4610,10 +4618,17 @@ finale() {
     service clean-boa-env start &> /dev/null
   fi
   killall -9 memcached &> /dev/null
-  if [ -e "/sbin/auditd" ]; then
-    apt-get remove auditd -y -qq &> /dev/null
-    apt-get purge auditd -y -qq &> /dev/null
-    killall -9 auditd &> /dev/null
+  if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
+    isAuditd=$(which auditd 2>&1)
+    if [ -e "${isAuditd}" ]; then
+      apt-get remove --purge auditd -y -qq &> /dev/null
+      killall -9 auditd &> /dev/null
+    fi
+    isApparmor=$(which aa-status 2>&1)
+    if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
+      apt-get remove --purge apparmor -y -qq &> /dev/null
+      rm -rf /etc/apparmor.d
+    fi
   fi
   php_deprecated_cleanup
   php_single_initd_cleanup
@@ -4957,6 +4972,18 @@ basic_packages_install_on_init() {
     msg "PROC: basic_packages_install_on_init"
   fi
   apt_clean_update
+  if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
+    isAuditd=$(which auditd 2>&1)
+    if [ -e "${isAuditd}" ]; then
+      apt-get remove --purge auditd -y -qq &> /dev/null
+      killall -9 auditd &> /dev/null
+    fi
+    isApparmor=$(which aa-status 2>&1)
+    if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
+      apt-get remove --purge apparmor -y -qq &> /dev/null
+      rm -rf /etc/apparmor.d
+    fi
+  fi
   if [ ! -e "/var/aegir" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
     mrun "apt-get remove --purge unscd -y" &> /dev/null
     mrun "apt-get remove --purge dbus -y" &> /dev/null

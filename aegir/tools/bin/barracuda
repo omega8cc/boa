@@ -1423,9 +1423,17 @@ check_root() {
         apt-get remove hdparm -y -qq &> /dev/null
         apt-get purge hdparm -y -qq &> /dev/null
       fi
-      if [ -e "/sbin/auditd" ]; then
-        apt-get remove auditd -y -qq &> /dev/null
-        apt-get purge auditd -y -qq &> /dev/null
+      if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
+        isAuditd=$(which auditd 2>&1)
+        if [ -e "${isAuditd}" ]; then
+          apt-get remove --purge auditd -y -qq &> /dev/null
+          killall -9 auditd &> /dev/null
+        fi
+        isApparmor=$(which aa-status 2>&1)
+        if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
+          apt-get remove --purge apparmor -y -qq &> /dev/null
+          rm -rf /etc/apparmor.d
+        fi
       fi
       _REMOVE_LINKS="buagent \
                      checkroot.sh \
