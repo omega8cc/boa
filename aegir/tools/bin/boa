@@ -1572,7 +1572,7 @@ check_root() {
       fi
       isApparmor=$(which aa-status 2>&1)
       if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
-        apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq 2> /dev/null
+        apt-get remove apparmor apparmor-utils libapparmor1 -y --purge --auto-remove -qq 2> /dev/null
         rm -rf /etc/apparmor.d
       fi
     fi

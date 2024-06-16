@@ -354,7 +354,7 @@ if_running_as_root_barracuda() {
         fi
         isApparmor=$(which aa-status 2>&1)
         if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
-          mrun "apt-get remove apparmor apparmor-utils -y --purge --auto-remove" -qq 2> /dev/null
+          mrun "apt-get remove apparmor apparmor-utils libapparmor1 -y --purge --auto-remove" -qq 2> /dev/null
           rm -rf /etc/apparmor.d
         fi
       fi
@@ -4481,7 +4481,7 @@ if_enable_or_disable_apparmor() {
       echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
         | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
       update-grub &> /dev/null
-      mrun "apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt-get remove apparmor apparmor-utils libapparmor1 -y --purge --auto-remove -qq" 2> /dev/null
       rm -rf /etc/apparmor.d
     fi
   else
@@ -4496,7 +4496,7 @@ if_enable_or_disable_apparmor() {
       echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
         | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
       update-grub &> /dev/null
-      mrun "${_INSTAPP} apparmor apparmor-utils" 2> /dev/null
+      mrun "${_INSTAPP} apparmor apparmor-utils libapparmor1" 2> /dev/null
       mrun "${_INSTAPP} auditd" 2> /dev/null
     fi
   fi
@@ -5015,7 +5015,7 @@ basic_packages_install_on_init() {
     fi
     isApparmor=$(which aa-status 2>&1)
     if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
-      mrun "apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt-get remove apparmor apparmor-utils libapparmor1 -y --purge --auto-remove -qq" 2> /dev/null
       rm -rf /etc/apparmor.d
     fi
   fi

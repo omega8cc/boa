@@ -1550,7 +1550,7 @@ install_db_cluster() {
     vserver ${idn} exec ${_INSTAPP} debian-archive-keyring
   	vserver ${idn} exec apt-get upgrade -y -qq
   	vserver ${idn} exec apt-get full-upgrade -y -qq
-  	vserver ${idn} exec apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq
+  	vserver ${idn} exec apt-get remove apparmor apparmor-utils libapparmor1 -y --purge --auto-remove -qq
   	vserver ${idn} exec ${_INSTAPP} software-properties-common dirmngr
     rm -f /vservers/${idn}/etc/apt/sources.list.d/percona-.*
     rm -f /vservers/${idn}/etc/apt/sources.list.d/xtrabackup.*
