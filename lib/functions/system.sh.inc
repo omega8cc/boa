@@ -346,18 +346,6 @@ if_running_as_root_barracuda() {
       if [ -e "/sbin/hdparm" ]; then
         mrun "apt-get remove hdparm -y --purge --auto-remove -qq" 2> /dev/null
       fi
-      if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
-        isAuditd=$(which auditd 2>&1)
-        if [ -e "${isAuditd}" ]; then
-          mrun "apt-get remove auditd -y --purge --auto-remove -qq" 2> /dev/null
-          mrun "killall -9 auditd" 2> /dev/null
-        fi
-        isApparmor=$(which aa-status 2>&1)
-        if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
-          mrun "apt-get remove apparmor apparmor-utils libapparmor1 -y --purge --auto-remove" -qq 2> /dev/null
-          rm -rf /etc/apparmor.d
-        fi
-      fi
       if [ -d "/etc/webmin" ]; then
         mrun "dpkg --configure --force-all -a" 2> /dev/null
         apt_clean_update
@@ -5007,18 +4995,6 @@ basic_packages_install_on_init() {
     msg "PROC: basic_packages_install_on_init"
   fi
   apt_clean_update
-  if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
-    isAuditd=$(which auditd 2>&1)
-    if [ -e "${isAuditd}" ]; then
-      mrun "apt-get remove auditd -y --purge --auto-remove -qq" 2> /dev/null
-      mrun "killall -9 auditd" 2> /dev/null
-    fi
-    isApparmor=$(which aa-status 2>&1)
-    if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
-      mrun "apt-get remove apparmor apparmor-utils libapparmor1 -y --purge --auto-remove -qq" 2> /dev/null
-      rm -rf /etc/apparmor.d
-    fi
-  fi
   if [ ! -e "/var/aegir" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
     mrun "apt-get remove unscd -y --purge --auto-remove -qq" 2> /dev/null
     mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
