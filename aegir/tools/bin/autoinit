@@ -218,6 +218,7 @@ init_pre() {
         _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
         if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
           || [ -e "/etc/cloud/cloud.cfg.d" ]; then
+          /usr/bin/apt-get remove apparmor -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
           /usr/bin/apt-get remove cloud-utils cloud-init -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
           /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
           /usr/bin/apt-get autoremove --purge -y >> ${logInt}
@@ -235,6 +236,7 @@ init_pre() {
         _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
         if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
           || [ -e "/etc/cloud/cloud.cfg.d" ]; then
+          /usr/bin/apt-get remove apparmor -y -qq --purge --auto-remove --allow-remove-essential >> ${logSlt}
           /usr/bin/apt-get remove cloud-utils cloud-init -y -qq --purge --auto-remove --allow-remove-essential >> ${logSlt}
           /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y -qq --purge --auto-remove --allow-remove-essential >> ${logSlt}
           /usr/bin/apt-get autoremove --purge -y >> ${logSlt}
@@ -298,6 +300,7 @@ init_run_two_quick() {
     /usr/bin/apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
     /usr/bin/apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
     /usr/bin/apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
+    /usr/bin/apt-get remove apparmor -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
     /usr/bin/apt-get autoremove --purge -y >> ${logInt}
     /usr/bin/apt-get autoclean -y >> ${logInt}
   else
@@ -306,6 +309,7 @@ init_run_two_quick() {
     /usr/bin/apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential >> ${logSlt}
     /usr/bin/apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential >> ${logSlt}
     /usr/bin/apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential >> ${logSlt}
+    /usr/bin/apt-get remove apparmor -y -qq --purge --auto-remove --allow-remove-essential >> ${logSlt}
     /usr/bin/apt-get autoremove --purge -y -qq >> ${logSlt}
     /usr/bin/apt-get autoclean -y -qq >> ${logSlt}
   fi

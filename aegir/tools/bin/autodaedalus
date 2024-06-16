@@ -255,6 +255,7 @@ if_remove_cloud_utils() {
     || [ -e "/etc/cloud/cloud.cfg.d" ]; then
     msg "Removing problematic cloud-utils detected on this system" >> ${logAbf}
     /usr/bin/apt-get update &> /dev/null
+    /usr/bin/apt-get remove apparmor -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
     /usr/bin/apt-get remove cloud-utils cloud-init -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
     /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
     /usr/bin/apt-get autoremove --purge -y &> /dev/null
