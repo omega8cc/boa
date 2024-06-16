@@ -469,7 +469,7 @@ fi
 ###
 if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
   if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
-    dns_unbound_install
+    if_enable_or_disable_apparmor
   fi
 fi
 

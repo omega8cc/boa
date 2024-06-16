@@ -353,9 +353,9 @@ install_unbound_src() {
 
 #
 # DNS cache Unbound.
-dns_unbound_install() {
+dns_unbound_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: dns_unbound_install"
+    msg "PROC: dns_unbound_install_upgrade"
   fi
   if [ -e "/etc/apparmor.d" ] && [ ! -e "/etc/apparmor.d/usr.sbin.unbound" ]; then
     cat ${locCnf}/usr.sbin.unbound > /etc/apparmor.d/usr.sbin.unbound
