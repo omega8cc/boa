@@ -4457,6 +4457,52 @@ strict_bin_permissions() {
 }
 
 #
+# Manage AppArmor.
+if_enable_or_disable_apparmor() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_enable_or_disable_apparmor"
+  fi
+  ###--------------------###
+  if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
+    isAuditd=$(which auditd 2>&1)
+    if [ -e "${isAuditd}" ]; then
+      msg "ARMR: The system auditd/aureport/ausearch will be uninstalled now..."
+      mrun "apt-get remove auditd -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "killall -9 auditd" 2> /dev/null
+    fi
+    isApparmor=$(which aa-status 2>&1)
+    if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
+      msg "ARMR: The system AppArmor will be uninstalled now, however..."
+      msg "ARMR: ...it will become inactive only after you reboot this server"
+      msg "ARMR: Use 'boa reboot' command for optimized reboot"
+      msg "WAIT: This may take a while, please wait..."
+      mrun "sleep 8"
+      mkdir -p /etc/default/grub.d
+      echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
+        | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
+      update-grub &> /dev/null
+      mrun "apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq" 2> /dev/null
+      rm -rf /etc/apparmor.d
+    fi
+  else
+    isApparmor=$(which aa-status 2>&1)
+    if [ -z "${isApparmor}" ] || [ ! -e "/etc/apparmor.d" ]; then
+      msg "ARMR: The system AppArmor and auditd will be installed now, however..."
+      msg "ARMR: ...it will become active only after you reboot this server"
+      msg "ARMR: Use 'boa reboot' command for optimized reboot"
+      msg "WAIT: This may take a while, please wait..."
+      mrun "sleep 8"
+      mkdir -p /etc/default/grub.d
+      echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
+        | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
+      update-grub &> /dev/null
+      mrun "${_INSTAPP} apparmor apparmor-utils" 2> /dev/null
+      mrun "${_INSTAPP} auditd" 2> /dev/null
+    fi
+  fi
+}
+
+#
 # Final cleanup.
 finale() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -4615,35 +4661,6 @@ finale() {
     service clean-boa-env start &> /dev/null
   fi
   killall -9 memcached &> /dev/null
-  if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
-    isAuditd=$(which auditd 2>&1)
-    if [ -e "${isAuditd}" ]; then
-      mrun "apt-get remove auditd -y --purge --auto-remove -qq" 2> /dev/null
-      mrun "killall -9 auditd" 2> /dev/null
-    fi
-    isApparmor=$(which aa-status 2>&1)
-    if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
-      mrun "apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq" 2> /dev/null
-      rm -rf /etc/apparmor.d
-    fi
-  else
-    isApparmor=$(which aa-status 2>&1)
-    if [ -z "${isApparmor}" ] || [ ! -e "/etc/apparmor.d" ]; then
-      mrun "${_INSTAPP} apparmor apparmor-utils" 2> /dev/null
-      mrun "${_INSTAPP} auditd" 2> /dev/null
-    fi
-  fi
-  if [ -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
-    mkdir -p /etc/default/grub.d
-    echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
-      | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
-    update-grub &> /dev/null
-  else
-    mkdir -p /etc/default/grub.d
-    echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
-      | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
-    update-grub &> /dev/null
-  fi
   php_deprecated_cleanup
   php_single_initd_cleanup
   if [ -e "/root/.skip-aegir-master-upgrade.cnf" ] \

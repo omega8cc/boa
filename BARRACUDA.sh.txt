@@ -465,7 +465,13 @@ fi
 
 
 ###
-### DNS cache server
+### Install or upgrade csf/lfd monitoring
+###
+csf_lfd_install_upgrade
+
+
+###
+### Enable or disable AppArmor on upgrade
 ###
 if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
   if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
@@ -475,9 +481,13 @@ fi
 
 
 ###
-### Install or upgrade csf/lfd monitoring
+### DNS cache server
 ###
-csf_lfd_install_upgrade
+if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
+  if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+    dns_unbound_install_upgrade
+  fi
+fi
 
 
 ###
