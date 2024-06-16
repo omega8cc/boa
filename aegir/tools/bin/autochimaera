@@ -133,6 +133,11 @@ check_root() {
 check_root
 cd /root/
 
+if [ "${tRee}" = "dev" ]; then
+  touch /root/.debug-boa-installer.cnf
+  touch /root/.debug-octopus-installer.cnf
+fi
+
 ###
 ### Noticeable messages
 ###
