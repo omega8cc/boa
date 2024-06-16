@@ -1877,14 +1877,14 @@ if_reinstall_curl() {
     fi
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt_clean_update
-    apt-get remove curl ${aptYesUnth} &> /dev/null
-    apt-get install curl ${aptYesUnth} &> /dev/null
-    ldconfig &> /dev/null
+    apt-get remove curl ${aptYesUnth} 2> /dev/null
+    apt-get install curl ${aptYesUnth} 2> /dev/null
+    ldconfig 2> /dev/null
     if [ -f "/usr/bin/curl" ]; then
       isCurl=$(/usr/bin/curl --version 2>&1)
       if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
         echo "OOPS: /usr/bin/curl is still broken, uninstalling.."
-        apt-get remove curl ${aptYesUnth} &> /dev/null
+        apt-get remove curl ${aptYesUnth} 2> /dev/null
       else
         echo "GOOD: /usr/bin/curl works"
       fi
@@ -2073,7 +2073,7 @@ if_update_boa_key_tools_only() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install lsb-release ${aptYesUnth} &> /dev/null
+    apt-get install lsb-release ${aptYesUnth} 2> /dev/null
   fi
   _IPSET_TEST=$(which ipset 2> /dev/null)
   if [ ! -x "${_IPSET_TEST}" ]; then
@@ -2088,7 +2088,7 @@ if_update_boa_key_tools_only() {
     if [ -L "/usr/sbin/ipset" ]; then
       rm -f /usr/sbin/ipset
     fi
-    apt-get install ipset ${aptYesUnth} &> /dev/null
+    apt-get install ipset ${aptYesUnth} 2> /dev/null
   fi
   if [ -x "/sbin/ipset" ] && [ ! -e "/usr/sbin/ipset" ]; then
     ln -s /sbin/ipset /usr/sbin/ipset
@@ -2251,12 +2251,12 @@ setup() {
       echo "Aptitude::CmdLine::Fix-Broken \"true\";"      >> /etc/apt/apt.conf.d/99ignorestrict
     fi
     apt_clean_update
-    apt-get install screen -y &> /dev/null
-    apt-get install net-tools -y &> /dev/null
-    apt-get install hostname -y &> /dev/null
+    apt-get install screen -y 2> /dev/null
+    apt-get install net-tools -y 2> /dev/null
+    apt-get install hostname -y 2> /dev/null
     if [ ! -e "/var/aegir" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
-      apt-get remove --purge unscd -y &> /dev/null
-      apt-get remove --purge dbus -y &> /dev/null
+      apt-get remove unscd -y --purge --auto-remove -qq 2> /dev/null
+      apt-get remove dbus -y --purge --auto-remove -qq 2> /dev/null
       if [ -e "/usr/share/dbus-1" ]; then
         rm -f /usr/share/dbus-1/*/*freedesktop*
       fi
@@ -2292,7 +2292,7 @@ setup() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install virt-what ${aptYesUnth} &> /dev/null
+    apt-get install virt-what ${aptYesUnth} 2> /dev/null
   fi
   _LSB_TEST=$(which lsb_release 2> /dev/null)
   if [ ! -x "${_LSB_TEST}" ]; then
@@ -2301,7 +2301,7 @@ setup() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install lsb-release ${aptYesUnth} &> /dev/null
+    apt-get install lsb-release ${aptYesUnth} 2> /dev/null
   fi
   update_boa_tools
   echo
@@ -2344,8 +2344,8 @@ find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install netcat ${aptYesUnth} &> /dev/null
-    apt-get install netcat-traditional ${aptYesUnth} &> /dev/null
+    apt-get install netcat ${aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
     wait
   fi
   ffMirr=$(which ffmirror 2>&1)

@@ -236,9 +236,9 @@ remove_systemd() {
     if [ -e "/usr/share/sysvinit/inittab" ]; then
       cp -af /usr/share/sysvinit/inittab /etc/inittab
     fi
-    apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-    apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-    apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
+    apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+    apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+    apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
     if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
       rm -f /etc/apt/preferences.d/systemd
       echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
@@ -381,22 +381,18 @@ check_root() {
         echo -e 'Package: makedev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
         apt_clean_update
       fi
-      apt-get remove fuse -y -qq &> /dev/null
-      apt-get purge fuse -y -qq &> /dev/null
-      apt-get remove udev -y -qq &> /dev/null
-      apt-get purge udev -y -qq &> /dev/null
-      apt-get remove makedev -y -qq &> /dev/null
-      apt-get purge makedev -y -qq &> /dev/null
+      apt-get remove fuse -y --purge --auto-remove -qq 2> /dev/null
+      apt-get remove udev -y --purge --auto-remove -qq 2> /dev/null
+      apt-get remove makedev -y --purge --auto-remove -qq 2> /dev/null
       _PTMX=OK
       if [ -e "/sbin/hdparm" ]; then
-        apt-get remove hdparm -y -qq &> /dev/null
-        apt-get purge hdparm -y -qq &> /dev/null
+        apt-get remove hdparm -y --purge --auto-remove -qq 2> /dev/null
       fi
       if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
         isAuditd=$(which auditd 2>&1)
         if [ -e "${isAuditd}" ]; then
-          apt-get remove --purge auditd -y -qq &> /dev/null
-          killall -9 auditd &> /dev/null
+          apt-get remove auditd -y --purge --auto-remove -qq 2> /dev/null
+          killall -9 auditd 2> /dev/null
         fi
         isApparmor=$(which aa-status 2>&1)
         if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
@@ -1422,9 +1418,9 @@ db_head_to_stretch_second()
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
-        apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-        apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-        apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
+        apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+        apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+        apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
         apt-get autoremove --purge -y -qq 2> /dev/null
         apt-get autoclean -y -qq 2> /dev/null
         if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then

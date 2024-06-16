@@ -505,8 +505,8 @@ find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install netcat ${aptYesUnth} &> /dev/null
-    apt-get install netcat-traditional ${aptYesUnth} &> /dev/null
+    apt-get install netcat ${aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
     wait
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -658,8 +658,7 @@ install_proxysql() {
       vserver ${idn} exec service proxysql stop
       vserver ${idn} exec apt-get clean
       vserver ${idn} exec ${_APT_UPDATE}
-      vserver ${idn} exec apt-get remove proxysql -y -qq
-      vserver ${idn} exec apt-get purge proxysql -y -qq
+      vserver ${idn} exec apt-get remove proxysql -y --purge --auto-remove -qq --purge --auto-remove -qq
       rm -rf /vservers/${idn}/var/lib/proxysql
       rm -rf /vservers/${idn}/var/log/proxysql
       rm -f ${pXcnf}
@@ -2074,11 +2073,11 @@ upgrade_host() {
         apt_clean_update
       fi
     fi
-    apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-    apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-    apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-    apt-get autoremove --purge -y -qq &> /dev/null
-    apt-get autoclean -y -qq &> /dev/null
+    apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+    apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+    apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+    apt-get autoremove --purge -y -qq 2> /dev/null
+    apt-get autoclean -y -qq 2> /dev/null
     echo "sysvinit-core hold" | dpkg --set-selections &> /dev/null
     echo "sysvinit-utils hold" | dpkg --set-selections &> /dev/null
   fi
@@ -2105,7 +2104,7 @@ upgrade_host() {
     service irqbalance start
 
     echo "Installing vserver tools..."
-    apt-get remove util-vserver -y -qq
+    apt-get remove util-vserver -y --purge --auto-remove -qq
     apt-get autoremove -y
     cd /var/opt
     rm -rf util-vserver*
@@ -2201,8 +2200,7 @@ upgrade_host() {
     ${_INSTAPP} postfix
     lSmtp="localhost:25      inet  n       -       -       -       -       smtpd"
     sed -i "s/^smtp.*inet.*n.*smtpd/${lSmtp}/g" /etc/postfix/master.cf
-    apt-get remove exim -y
-    apt-get purge exim -y
+    apt-get remove exim -y --purge --auto-remove -qq
     apt-get autoremove -y
     service postfix restart
   fi

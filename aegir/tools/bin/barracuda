@@ -1183,8 +1183,8 @@ find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install netcat ${aptYesUnth} &> /dev/null
-    apt-get install netcat-traditional ${aptYesUnth} &> /dev/null
+    apt-get install netcat ${aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
     wait
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -1227,14 +1227,14 @@ if_reinstall_curl() {
     fi
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt_clean_update
-    apt-get remove curl ${aptYesUnth} &> /dev/null
-    apt-get install curl ${aptYesUnth} &> /dev/null
-    ldconfig &> /dev/null
+    apt-get remove curl ${aptYesUnth} 2> /dev/null
+    apt-get install curl ${aptYesUnth} 2> /dev/null
+    ldconfig 2> /dev/null
     if [ -f "/usr/bin/curl" ]; then
       isCurl=$(/usr/bin/curl --version 2>&1)
       if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
         echo "OOPS: /usr/bin/curl is still broken, uninstalling.."
-        apt-get remove curl ${aptYesUnth} &> /dev/null
+        apt-get remove curl ${aptYesUnth} 2> /dev/null
       else
         echo "GOOD: /usr/bin/curl works"
       fi
@@ -1412,22 +1412,18 @@ check_root() {
         echo -e 'Package: makedev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
         apt_clean_update
       fi
-      apt-get remove fuse -y -qq &> /dev/null
-      apt-get purge fuse -y -qq &> /dev/null
-      apt-get remove udev -y -qq &> /dev/null
-      apt-get purge udev -y -qq &> /dev/null
-      apt-get remove makedev -y -qq &> /dev/null
-      apt-get purge makedev -y -qq &> /dev/null
+      apt-get remove fuse -y --purge --auto-remove -qq 2> /dev/null
+      apt-get remove udev -y --purge --auto-remove -qq 2> /dev/null
+      apt-get remove makedev -y --purge --auto-remove -qq 2> /dev/null
       _PTMX=OK
       if [ -e "/sbin/hdparm" ]; then
-        apt-get remove hdparm -y -qq &> /dev/null
-        apt-get purge hdparm -y -qq &> /dev/null
+        apt-get remove hdparm -y --purge --auto-remove -qq 2> /dev/null
       fi
       if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
         isAuditd=$(which auditd 2>&1)
         if [ -e "${isAuditd}" ]; then
-          apt-get remove --purge auditd -y -qq &> /dev/null
-          killall -9 auditd &> /dev/null
+          apt-get remove auditd -y --purge --auto-remove -qq 2> /dev/null
+          killall -9 auditd 2> /dev/null
         fi
         isApparmor=$(which aa-status 2>&1)
         if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
@@ -1496,7 +1492,7 @@ check_root() {
         echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
       fi
       apt_clean_update
-      apt-get install udev -y --allow-unauthenticated &> /dev/null
+      apt-get install udev -y --allow-unauthenticated 2> /dev/null
       echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
       mount -t devpts devpts /dev/pts &> /dev/null
     fi

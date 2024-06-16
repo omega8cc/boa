@@ -389,16 +389,16 @@ dns_unbound_install() {
     fi
     apt_clean_update
     if [ "${isUnbndFix}" = "YES" ]; then
-      mrun "apt-get remove --purge unbound -y -qq" 2> /dev/null
-      mrun "apt-get remove --purge unbound-anchor -y -qq" 2> /dev/null
-      mrun "apt-get remove --purge unbound-host -y -qq" 2> /dev/null
-      mrun "apt-get remove --purge dns-root-data -y -qq" 2> /dev/null
+      mrun "apt-get remove unbound -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt-get remove unbound-anchor -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt-get remove unbound-host -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt-get remove dns-root-data -y --purge --auto-remove -qq" 2> /dev/null
     fi
-    mrun "apt-get remove --purge resolvconf -y -qq" 2> /dev/null
+    mrun "apt-get remove resolvconf -y --purge --auto-remove -qq" 2> /dev/null
     rm -rf /lib/init/rw/resolvconf
     rm -rf /run/resolvconf
     rm -rf /etc/resolvconf
-    mrun "apt-get remove --purge resolvconf -y -qq" 2> /dev/null
+    mrun "apt-get remove resolvconf -y --purge --auto-remove -qq" 2> /dev/null
     if [ "${_USE_PROVIDER_DNS}" != "YES" ]; then
       rm -f /etc/resolv.conf
       echo "nameserver 1.1.1.1" > /etc/resolv.conf

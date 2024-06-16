@@ -281,8 +281,7 @@ if_install_collectd() {
     && [ ! -e "/boot/grub/grub.cfg" ] \
     && [ ! -e "/boot/grub/menu.lst" ]; then
     rm -f ${mtrNgx}/vhost.d/cgp*
-    mrun "apt-get remove collectd -y -qq" &> /dev/null
-    mrun "apt-get purge collectd -y -qq" &> /dev/null
+    mrun "apt-get remove collectd -y --purge --auto-remove -qq" 2> /dev/null
     rm -rf /var/www/cgp
   fi
   if [ -d "/var/www/cgp" ]; then

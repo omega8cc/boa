@@ -672,8 +672,8 @@ find_fast_mirror_cnf() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install netcat ${aptYesUnth} &> /dev/null
-    apt-get install netcat-traditional ${aptYesUnth} &> /dev/null
+    apt-get install netcat ${aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
     wait
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -768,9 +768,9 @@ download_helpers_libs() {
         echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
       fi
       apt_clean_update
-      apt-get install git -fuy --allow-unauthenticated &> /dev/null
-      apt-get install git-core -fuy --allow-unauthenticated &> /dev/null
-      apt-get install git-man -fuy --allow-unauthenticated &> /dev/null
+      apt-get install git -fuy --allow-unauthenticated 2> /dev/null
+      apt-get install git-core -fuy --allow-unauthenticated 2> /dev/null
+      apt-get install git-man -fuy --allow-unauthenticated 2> /dev/null
     fi
     ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git \
       ${bldPth} &> /dev/null

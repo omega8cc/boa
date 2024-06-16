@@ -1455,9 +1455,9 @@ install_php_multi() {
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
     && [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
     if [ -e "/usr/lib/libtidy.so" ]; then
-      mrun "apt-get remove libtidy-dev -y -qq" &> /dev/null
-      mrun "apt-get remove libtidy-0.99-0 -y -qq" &> /dev/null
-      mrun "apt-get remove tidy -y -qq" &> /dev/null
+      mrun "apt-get remove libtidy-dev -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt-get remove libtidy-0.99-0 -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt-get remove tidy -y --purge --auto-remove -qq" 2> /dev/null
     fi
     cd /var/opt
     rm -rf tidy*
@@ -1837,10 +1837,10 @@ newrelic_update() {
         chmod 644 /etc/apt/keyrings/newrelic.gpg
       fi
       apt_clean_update
-      st_runner "${_RMAPP} newrelic-php5 \
+      mrun "${_RMAPP} newrelic-php5 \
         newrelic-php5-common \
         newrelic-daemon \
-        newrelic-sysmond" &> /dev/null
+        newrelic-sysmond" 2> /dev/null
       mkdir -p ${vBs}/nr
       mv -f /etc/newrelic \
         ${vBs}/nr/etc-newrelic-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
@@ -2755,8 +2755,7 @@ php_install_upgrade() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Checking if PHP upgrade is available"
     fi
-    st_runner "${_RMAPP} php5-sasl php5-suhosin" &> /dev/null
-    st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
+    mrun "apt-get remove php5-sasl php5-suhosin -y --purge --auto-remove -qq" 2> /dev/null
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "5.6" ]] \
     && [ ! -x "/opt/php56/bin/php" ]; then
@@ -2945,9 +2944,9 @@ php_check_if_rebuild() {
     apt_clean_update
     mrun "${_INSTAPP} libonig-dev" 2> /dev/null
     if [ -e "/usr/lib/libtidy.so" ]; then
-      mrun "apt-get remove libtidy-dev -y -qq" &> /dev/null
-      mrun "apt-get remove libtidy-0.99-0 -y -qq" &> /dev/null
-      mrun "apt-get remove tidy -y -qq" &> /dev/null
+      mrun "apt-get remove libtidy-dev -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt-get remove libtidy-0.99-0 -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt-get remove tidy -y --purge --auto-remove -qq" 2> /dev/null
     fi
     cd /var/opt
     rm -rf tidy*
