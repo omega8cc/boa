@@ -908,7 +908,7 @@ db_server_install() {
   if [ "${_STATUS}" = "INIT" ]; then
     if [ -x "/usr/sbin/csf" ] \
       && [ -e "/etc/csf/csf.deny" ]; then
-      service lfd stop &> /dev/null
+      mrun "service lfd stop" 2> /dev/null
       wait
       kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
       killall sleep &> /dev/null
@@ -955,7 +955,7 @@ db_server_install() {
     if [ "${_SQL_UPGRADE}" = "YES" ]; then
       if [ -x "/usr/sbin/csf" ] \
         && [ -e "/etc/csf/csf.deny" ]; then
-        service lfd stop &> /dev/null
+        mrun "service lfd stop" 2> /dev/null
         wait
         kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
         killall sleep &> /dev/null
@@ -1129,7 +1129,7 @@ db_server_install() {
       if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
         mrun "csf -e" &> /dev/null
         wait
-        service lfd start &> /dev/null
+        mrun "service lfd start" 2> /dev/null
         wait
         ### Linux kernel TCP SACK CVEs mitigation
         ### CVE-2019-11477 SACK Panic

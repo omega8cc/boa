@@ -272,7 +272,7 @@ nginx_clean_legacy_config() {
     sed -i "s/.*track_uploads.*//g" /var/aegir/config/includes/nginx_vhost_common.conf
     wait
   fi
-  mrun "service nginx reload" &> /dev/null
+  mrun "service nginx reload" 2> /dev/null
 }
 
 #
@@ -509,7 +509,7 @@ nginx_install_upgrade() {
     mrun "make install" 2> /dev/null
     ldconfig 2> /dev/null
     nginx_clean_legacy_config
-    service nginx quietupgrade &> /dev/null
+    mrun "service nginx quietupgrade" 2> /dev/null
     _NGINX_INSTALL_REQUIRED=NO
   fi
   if [ ! -L "/usr/bin/nginx" ]; then
@@ -565,14 +565,14 @@ nginx_initd_check() {
   fi
   if [[ "${_X_INIT_TEST}" =~ "github" ]]; then
     chmod 755 /etc/init.d/nginx &> /dev/null
-    update-rc.d nginx defaults &> /dev/null
+    mrun "update-rc.d nginx defaults" 2> /dev/null
   else
     mv -f /etc/init.d/nginx \
       ${vBs}/nginx-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${locCnf}/nginx /etc/init.d/nginx
     chmod 755 /etc/init.d/nginx &> /dev/null
-    update-rc.d nginx defaults &> /dev/null
-    service nginx start &> /dev/null
+    mrun "update-rc.d nginx defaults" 2> /dev/null
+    mrun "service nginx start" 2> /dev/null
   fi
 }
 
@@ -597,7 +597,7 @@ nginx_mime_check_fix() {
     rm -f /etc/nginx/sites-enabled/default
     rm -f /etc/nginx/modules-enabled/*
     if [ ! -e "/var/run/aegir_upgrade.pid" ]; then
-      mrun "service nginx reload" &> /dev/null
+      mrun "service nginx reload" 2> /dev/null
     fi
   fi
 }
@@ -630,7 +630,7 @@ nginx_wildcard_ssl_install() {
     fi
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
     redis_password_update
-    service nginx quietupgrade &> /dev/null
+    mrun "service nginx quietupgrade" 2> /dev/null
   else
     _WILD_SSL_PROXY_UP=NO
     _HTTP3_TEST=$(grep http3 ${_WILD_SSL_VHOST} 2>&1)
@@ -663,7 +663,7 @@ nginx_config_update_fix() {
     msg "PROC: nginx_config_update_fix"
   fi
   if [ "${_STATUS}" = "INIT" ]; then
-    service cron start &> /dev/null
+    mrun "service cron start" 2> /dev/null
     if [ "${_EASY_SETUP}" = "NO" ]; then
       echo " "
       msg "Now waiting 2 minutes before restarting Nginx..."
@@ -992,6 +992,6 @@ nginx_config_update_fix() {
       && [ -e "/root/.local.IP.list" ]; then
       master_fix_multi_ip_cron_access
     fi
-    mrun "service nginx reload" &> /dev/null
+    mrun "service nginx reload" 2> /dev/null
   fi
 }

@@ -267,7 +267,7 @@ if_install_collectd() {
           wait
           sed -i "s/cgp_name/cgp.${_THIS_FRONT}/g"           ${_CGP_VHOST}
           wait
-          mrun "update-rc.d collectd defaults" &> /dev/null
+          mrun "update-rc.d collectd defaults" 2> /dev/null
           touch ${pthLog}/cgp-${_CGP_VRN}.fix-dns-vhost-wildcard.log
           msg "INFO: Collectd Graph Panel installed"
         else
@@ -388,7 +388,7 @@ if_install_webmin() {
         st_runner "${_INSTAPP} webmin \
                              libxml-simple-perl \
                              libcrypt-ssleay-perl" 2> /dev/null
-        update-rc.d webmin defaults &> /dev/null
+        mrun "update-rc.d webmin defaults" 2> /dev/null
         msg "INFO: Webmin Control Panel installed"
       else
         msg "INFO: Webmin Control Panel installation skipped"

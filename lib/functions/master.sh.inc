@@ -1016,7 +1016,7 @@ EOFMYSQL
       mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
       cp -af ${locCnf}/nginx.conf /etc/nginx/nginx.conf
     fi
-    mrun "service nginx reload" &> /dev/null
+    mrun "service nginx reload" 2> /dev/null
     msg "INFO: Aegir Master Instance installed"
   else
     if [ "${tRee}" = "lite" ]; then
@@ -1081,7 +1081,7 @@ if_upgrade_only_aegir_master() {
       aegir_master_upgrade
       php_cli_cron_update
       mrun "sleep 8"
-      mrun "service nginx reload" &> /dev/null
+      mrun "service nginx reload" 2> /dev/null
       finale
       exit 0
     fi

@@ -81,7 +81,7 @@ check_dns_settings() {
       || [ ! -e "${vBs}/resolv.conf.vanilla" ]; then
       fix_dns_settings
       if [ -e "/etc/init.d/postfix" ]; then
-        service postfix restart &> /dev/null
+        mrun "service postfix restart" 2> /dev/null
       fi
     fi
   fi
@@ -517,8 +517,8 @@ dns_unbound_install_upgrade() {
   if [ "${isUnbndFix}" = "NO" ]; then
     isPdnsd=$(which pdnsd 2>&1)
     if [ -x "${isPdnsd}" ]; then
-      service pdnsd stop &> /dev/null
-      update-rc.d -f pdnsd remove &> /dev/null
+      mrun "service pdnsd stop" 2> /dev/null
+      mrun "update-rc.d -f pdnsd remove" 2> /dev/null
       killall -9 pdnsd &> /dev/null
       mv -f ${isPdnsd} /var/backups
     fi

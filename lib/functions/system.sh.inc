@@ -508,7 +508,7 @@ sftp_ftps_modern_fix() {
   fi
   if [ ! -e "${pthLog}/fixed-sftp-idle.log" ]; then
     sed -i "s/IdleTimeOut.*/IdleTimeOut            15m/g" /etc/ssh/sftp_config &> /dev/null
-    mrun "service ssh reload" &> /dev/null
+    mrun "service ssh reload" 2> /dev/null
     touch ${pthLog}/fixed-sftp-idle.log
   fi
 }
@@ -572,7 +572,7 @@ fix_on_upgrade() {
   sed -i "s/^TLS.*/TLS 2/g" /usr/local/etc/pure-ftpd.conf &> /dev/null
   cp -af ${locCnf}/clean-boa-env /etc/init.d/clean-boa-env
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
-  mrun "update-rc.d clean-boa-env defaults" &> /dev/null
+  mrun "update-rc.d clean-boa-env defaults" 2> /dev/null
   kill_nash
   sftp_ftps_modern_fix
   fix_ftps_pam
@@ -1437,28 +1437,28 @@ php_legacy_versions_cleanup_cnf() {
   fi
 
   if [ -e "/etc/init.d/php-fpm" ]; then
-    mrun "service php-fpm stop" &> /dev/null
-    update-rc.d -f php-fpm remove &> /dev/null
+    mrun "service php-fpm stop" 2> /dev/null
+    mrun "update-rc.d -f php-fpm remove" 2> /dev/null
     rm -f /etc/init.d/php-fpm
   fi
   if [ -e "/etc/init.d/php52-fpm" ]; then
-    mrun "service php52-fpm stop" &> /dev/null
-    update-rc.d -f php52-fpm remove &> /dev/null
+    mrun "service php52-fpm stop" 2> /dev/null
+    mrun "update-rc.d -f php52-fpm remove" 2> /dev/null
     rm -f /etc/init.d/php52-fpm
   fi
   if [ -e "/etc/init.d/php53-fpm" ]; then
-    mrun "service php53-fpm stop" &> /dev/null
-    update-rc.d -f php53-fpm remove &> /dev/null
+    mrun "service php53-fpm stop" 2> /dev/null
+    mrun "update-rc.d -f php53-fpm remove" 2> /dev/null
     rm -f /etc/init.d/php53-fpm
   fi
   if [ -e "/etc/init.d/php54-fpm" ]; then
-    mrun "service php54-fpm stop" &> /dev/null
-    update-rc.d -f php54-fpm remove &> /dev/null
+    mrun "service php54-fpm stop" 2> /dev/null
+    mrun "update-rc.d -f php54-fpm remove" 2> /dev/null
     rm -f /etc/init.d/php54-fpm
   fi
   if [ -e "/etc/init.d/php55-fpm" ]; then
-    mrun "service php55-fpm stop" &> /dev/null
-    update-rc.d -f php55-fpm remove &> /dev/null
+    mrun "service php55-fpm stop" 2> /dev/null
+    mrun "update-rc.d -f php55-fpm remove" 2> /dev/null
     rm -f /etc/init.d/php55-fpm
   fi
 
@@ -4658,7 +4658,7 @@ finale() {
     wait
   fi
   if [ -e "/root/.dbhd.clstr.cnf" ]; then
-    service clean-boa-env start &> /dev/null
+    mrun "service clean-boa-env start" 2> /dev/null
   fi
   killall -9 memcached &> /dev/null
   php_deprecated_cleanup
@@ -4670,7 +4670,7 @@ finale() {
   fi
   echo "FINALE" > /root/.latest-barracuda-upgrade-finale.info
   if [ ! -e "/root/.upstart.cnf" ]; then
-    service cron start &> /dev/null
+    mrun "service cron start" 2> /dev/null
   fi
   if [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
@@ -4679,14 +4679,14 @@ finale() {
     echo "iptables -t raw -A PREROUTING -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
     echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
     chmod 700 /etc/csf/csfpost.sh
-    service lfd stop &> /dev/null
+    mrun "service lfd stop" 2> /dev/null
     wait
     kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
     killall sleep &> /dev/null
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
     wait
-    service clean-boa-env start &> /dev/null
+    mrun "service clean-boa-env start" 2> /dev/null
     wait
     csf -uf &> /dev/null
     wait
@@ -4722,7 +4722,7 @@ finale() {
       for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
     fi
     csf -q  &> /dev/null
-    service lfd start &> /dev/null
+    mrun "service lfd start" 2> /dev/null
     wait
     ### Linux kernel TCP SACK CVEs mitigation
     ### CVE-2019-11477 SACK Panic
@@ -4819,8 +4819,8 @@ run_aptitude_deps_install() {
   _EXTRA_APT="tree"
   st_runner "apt-get install ${_EXTRA_APT} ${nrmUpArg}" 2> /dev/null
   if [ -e "/etc/init.d/php5-fpm" ]; then
-    mrun "service php5-fpm stop" &> /dev/null
-    mrun "update-rc.d -f php5-fpm remove" &> /dev/null
+    mrun "service php5-fpm stop" 2> /dev/null
+    mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
   fi
 }
 
@@ -4972,7 +4972,7 @@ systemd_cleanup_on_init() {
     if [ ! -x "/etc/init.d/clean-boa-env" ]; then
       cp -af ${locCnf}/clean-boa-env /etc/init.d/clean-boa-env
       chmod 755 /etc/init.d/clean-boa-env &> /dev/null
-      mrun "update-rc.d clean-boa-env defaults" &> /dev/null
+      mrun "update-rc.d clean-boa-env defaults" 2> /dev/null
     fi
     if [ -e "/root/.run.chimaera.os.upgrade.on.init.cnf" ]; then
       msg "AUTO: System major upgrade to Devuan Chimaera will start now"
@@ -4994,7 +4994,7 @@ systemd_cleanup_on_init() {
     msg "  That's all folks!"
     echo
     touch /root/.latest-barracuda-upgrade-finale.info
-    service clean-boa-env start &> /dev/null
+    mrun "service clean-boa-env start" 2> /dev/null
     echo
     mrun "sleep 3"
     echo "Bye"
@@ -5503,7 +5503,7 @@ if_major_os_upgrade() {
       echo
       msg "FINE: But you can still hit ctrl-c to stop if you wish"
       msg "WAIT: We need a minute to stop all running cron tasks..."
-      service cron stop &> /dev/null
+      mrun "service cron stop" 2> /dev/null
     else
       echo
       msg "FINE: Please try again later once you are ready"
@@ -5559,7 +5559,7 @@ if_major_os_upgrade() {
       rm -f /etc/init.d/bind
     fi
     if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ]; then
-      service tomcat stop &> /dev/null
+      mrun "service tomcat stop" 2> /dev/null
       mv /etc/init.d/tomcat /etc/init.d/offtomcat
       kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
     fi
@@ -6065,7 +6065,7 @@ if_major_os_upgrade() {
                      vnstat"
       for link in ${_REMOVE_LINKS}; do
         if [ -e "/etc/init.d/${link}" ]; then
-          update-rc.d -f ${link} remove &> /dev/null
+          mrun "update-rc.d -f ${link} remove" 2> /dev/null
           mv -f /etc/init.d/${link} /var/backups/init.d.${link}
         fi
       done
@@ -6280,7 +6280,7 @@ sys_packages_update() {
     fi
     rm -f /var/lib/mysql/debian-*.flag &> /dev/null
     if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-      service lfd stop &> /dev/null
+      mrun "service lfd stop" 2> /dev/null
       wait
       kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
       killall sleep &> /dev/null
@@ -6811,15 +6811,15 @@ if_install_vnstat() {
       cp -af /var/opt/vnstat-${_VNSTAT_VRN}/examples/init.d/debian/vnstat \
         /etc/init.d/vnstat
       chmod 755 /etc/init.d/vnstat &> /dev/null
-      mrun "update-rc.d vnstat defaults" &> /dev/null
+      mrun "update-rc.d vnstat defaults" 2> /dev/null
       if [ -e "/usr/etc/vnstat.conf" ]; then
         sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /usr/etc/vnstat.conf
       fi
       if [ -e "/etc/vnstat.conf" ]; then
         sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /etc/vnstat.conf
       fi
-      mrun "service vnstat start" &> /dev/null
-      mrun "killall vnstatd" &> /dev/null
+      mrun "service vnstat start" 2> /dev/null
+      mrun "killall vnstatd" 2> /dev/null
       touch ${pthLog}/vnstat-${_VNSTAT_VRN}.log
       mrun "service vnstat restart" 2> /dev/null
     fi
@@ -6828,8 +6828,8 @@ if_install_vnstat() {
     && [ "${_VMFAMILY}" = "VS" ] \
     && [ ! -e "/boot/grub/grub.cfg" ] \
     && [ ! -e "/boot/grub/menu.lst" ]; then
-    service vnstat stop &> /dev/null
-    update-rc.d -f vnstat remove &> /dev/null
+    mrun "service vnstat stop" 2> /dev/null
+    mrun "update-rc.d -f vnstat remove" 2> /dev/null
     rm -f /etc/init.d/vnstat
     rm -f /usr/bin/vnstat
     rm -rf /var/lib/vnstat
@@ -7374,10 +7374,10 @@ newrelic_check_fix() {
   else
     if [ -e "/etc/init.d/newrelic-daemon" ] \
       || [ -e "/etc/init.d/newrelic-sysmond" ]; then
-      service newrelic-daemon stop &> /dev/null
-      update-rc.d -f newrelic-daemon remove &> /dev/null
-      service newrelic-sysmond stop &> /dev/null
-      update-rc.d -f newrelic-sysmond remove &> /dev/null
+      mrun "service newrelic-daemon stop" 2> /dev/null
+      mrun "update-rc.d -f newrelic-daemon remove" 2> /dev/null
+      mrun "service newrelic-sysmond stop" 2> /dev/null
+      mrun "update-rc.d -f newrelic-sysmond remove" 2> /dev/null
       st_runner "${_RMAPP} newrelic-php5 \
         newrelic-php5-common \
         newrelic-daemon \
@@ -7408,7 +7408,7 @@ newrelic_check_fix() {
     if [ -e "/root/.enable.newrelic.sysmond.cnf" ]; then
       mrun "service newrelic-sysmond restart" 2> /dev/null
     else
-      mrun "service newrelic-sysmond stop" &> /dev/null
+      mrun "service newrelic-sysmond stop" 2> /dev/null
     fi
   fi
 }
@@ -7637,7 +7637,7 @@ sshd_armour() {
         echo "  MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com" >> /etc/ssh/ssh_config
       fi
     fi
-    mrun "service ssh reload" &> /dev/null
+    mrun "service ssh reload" 2> /dev/null
   fi
 }
 
@@ -7650,7 +7650,7 @@ initd_update() {
     msg "INFO: Updating init scripts"
     cp -af ${locCnf}/clean-boa-env /etc/init.d/clean-boa-env
     chmod 755 /etc/init.d/clean-boa-env &> /dev/null
-    mrun "update-rc.d clean-boa-env defaults" &> /dev/null
+    mrun "update-rc.d clean-boa-env defaults" 2> /dev/null
     _SSH_USEDNS_TEST=$(grep "UseDNS" /etc/ssh/sshd_config 2>&1)
     _SSH_USEDNS_TEST=$(grep "UseDNS" /etc/ssh/sshd_config 2>&1)
     if [[ "${_SSH_USEDNS_TEST}" =~ (^)"UseDNS no" ]]; then
@@ -7672,51 +7672,51 @@ initd_update() {
       echo >> /etc/ssh/sshd_config
       echo "UsePAM no" >> /etc/ssh/sshd_config
     fi
-    mrun "service ssh reload" &> /dev/null
+    mrun "service ssh reload" 2> /dev/null
     tune_memory_limits
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Restarting Solr 7"
       fi
       kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
-      service solr7 start &> /dev/null
+      mrun "service solr7 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Restarting Jetty 9"
       fi
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
-      service jetty9 start &> /dev/null
+      mrun "service jetty9 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Restarting Jetty 8"
       fi
       kill -9 $(ps aux | grep '[j]etty8' | awk '{print $2}') &> /dev/null
-      service jetty8 start &> /dev/null
+      mrun "service jetty8 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Restarting Jetty 7"
       fi
       kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
-      service jetty7 start &> /dev/null
+      mrun "service jetty7 start" 2> /dev/null
     fi
     if [ ! -e "/var/run/aegir_upgrade.pid" ]; then
       msg "INFO: Starting Redis, PHP-FPM and Nginx"
-      service redis-server start &> /dev/null
-      service redis-server reload &> /dev/null
-      update-rc.d -f php5-fpm remove &> /dev/null
-      update-rc.d cron defaults &> /dev/null
+      mrun "service redis-server start" 2> /dev/null
+      mrun "service redis-server reload" 2> /dev/null
+      mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
+      mrun "update-rc.d cron defaults" 2> /dev/null
       _PHP_V="83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          update-rc.d php${e}-fpm defaults &> /dev/null
-          service php${e}-fpm start &> /dev/null
+          mrun "update-rc.d php${e}-fpm defaults" 2> /dev/null
+          mrun "service php${e}-fpm start" 2> /dev/null
         fi
       done
-      update-rc.d nginx defaults &> /dev/null
-      service nginx start &> /dev/null
+      mrun "update-rc.d nginx defaults" 2> /dev/null
+      mrun "service nginx start" 2> /dev/null
     fi
   else
     if [[ "${_THISHOST}" =~ ".host8." ]] \
@@ -7759,7 +7759,7 @@ initd_update() {
     echo "ClientAliveCountMax 10000" >> /etc/ssh/sshd_config
     echo "TCPKeepAlive yes" >> /etc/ssh/sshd_config
     wait
-    mrun "service ssh reload" &> /dev/null
+    mrun "service ssh reload" 2> /dev/null
     fix_on_upgrade
     tune_memory_limits
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
@@ -7767,49 +7767,49 @@ initd_update() {
         msg "INFO: Restarting Solr 7"
       fi
       kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
-      service solr7 start &> /dev/null
+      mrun "service solr7 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Restarting Jetty 9"
       fi
       kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
-      service jetty9 start &> /dev/null
+      mrun "service jetty9 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Restarting Jetty 8"
       fi
       kill -9 $(ps aux | grep '[j]etty8' | awk '{print $2}') &> /dev/null
-      service jetty8 start &> /dev/null
+      mrun "service jetty8 start" 2> /dev/null
     fi
     if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Restarting Jetty 7"
       fi
       kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
-      service jetty7 start &> /dev/null
+      mrun "service jetty7 start" 2> /dev/null
     fi
     if [ ! -e "/var/run/aegir_upgrade.pid" ] \
       && [ ! -e "/root/.proxy.cnf" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Reloading Redis, PHP-FPM and Nginx..."
       fi
-      update-rc.d -f php5-fpm remove &> /dev/null
-      service redis-server reload &> /dev/null
+      mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
+      mrun "service redis-server reload" 2> /dev/null
       _PHP_V="83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          update-rc.d php${e}-fpm defaults &> /dev/null
-          service php${e}-fpm start &> /dev/null
+          mrun "update-rc.d php${e}-fpm defaults" 2> /dev/null
+          mrun "service php${e}-fpm start" 2> /dev/null
         fi
       done
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          service php${e}-fpm reload &> /dev/null
+          mrun "service php${e}-fpm reload" 2> /dev/null
         fi
       done
-      service nginx quietupgrade &> /dev/null
+      mrun "service nginx quietupgrade" 2> /dev/null
       _DB_SERVER_TEST=$(mysql -V 2>&1)
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -7978,7 +7978,7 @@ sysctl_update() {
       _PHP_V="83 82 81 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
-          service php${e}-fpm reload &> /dev/null
+          mrun "service php${e}-fpm reload" 2> /dev/null
         fi
       done
     fi

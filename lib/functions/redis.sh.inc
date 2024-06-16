@@ -72,7 +72,7 @@ forced_redis_password_update() {
     chmod 0600 /etc/redis/redis.conf
   fi
   if [ "${_FORCE_REDIS_RESTART}" = "YES" ]; then
-    service redis-server reload &> /dev/null
+    mrun "service redis-server reload" 2> /dev/null
   fi
 }
 #
@@ -142,13 +142,13 @@ fix_redis_mode() {
             sed -i "s/'127.0.0.1'/'${_REDIS_LISTEN_MODE}'/g" \
               /data/conf/global.inc &> /dev/null
             wait
-            service redis-server stop &> /dev/null
+            mrun "service redis-server stop" 2> /dev/null
             killall -9 redis-server &> /dev/null
             rm -f /var/lib/redis/*
-            update-rc.d -f redis-server remove &> /dev/null
-            service redis stop &> /dev/null
+            mrun "update-rc.d -f redis-server remove" 2> /dev/null
+            mrun "service redis stop" 2> /dev/null
             killall -9 redis &> /dev/null
-            update-rc.d -f redis remove &> /dev/null
+            mrun "update-rc.d -f redis remove" 2> /dev/null
             mv -f /etc/init.d/redis /etc/init.d/redis-off &> /dev/null
             mv -f /etc/init.d/redis-server \
               /etc/init.d/redis-server-off &> /dev/null
@@ -163,13 +163,13 @@ fix_redis_mode() {
           sed -i "s/'127.0.0.1'/'${_REDIS_LISTEN_MODE}'/g" \
             /data/conf/global.inc &> /dev/null
           wait
-          service redis-server stop &> /dev/null
+          mrun "service redis-server stop" 2> /dev/null
           killall -9 redis-server &> /dev/null
           rm -f /var/lib/redis/*
-          update-rc.d -f redis-server remove &> /dev/null
-          service redis stop &> /dev/null
+          mrun "update-rc.d -f redis-server remove" 2> /dev/null
+          mrun "service redis stop" 2> /dev/null
           killall -9 redis &> /dev/null
-          update-rc.d -f redis remove &> /dev/null
+          mrun "update-rc.d -f redis remove" 2> /dev/null
           mv -f /etc/init.d/redis /etc/init.d/redis-off &> /dev/null
           mv -f /etc/init.d/redis-server \
             /etc/init.d/redis-server-off &> /dev/null
@@ -244,7 +244,7 @@ install_redis_src() {
   mrun "make --quiet PREFIX=/usr install" 2> /dev/null
   cp -af ${locCnf}/redis-server /etc/init.d/redis-server
   chmod 755 /etc/init.d/redis-server &> /dev/null
-  mrun "update-rc.d redis-server defaults" &> /dev/null
+  mrun "update-rc.d redis-server defaults" 2> /dev/null
   mkdir -p /var/run/redis
   chown -R redis:redis /var/run/redis
   mkdir -p /var/log/redis
@@ -277,7 +277,7 @@ install_redis_src() {
   fi
   redis_password_update
   touch ${pthLog}/redis-${_REDIS_VRN}-${_X_SE}-${_X_VERSION}.log
-  service redis-server reload &> /dev/null
+  mrun "service redis-server reload" 2> /dev/null
 }
 
 redis_install_upgrade() {

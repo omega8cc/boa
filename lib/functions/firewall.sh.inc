@@ -239,15 +239,15 @@ csf_lfd_install_upgrade() {
       _REMOVE_CSF=YES
     fi
     if [ "${_REMOVE_CSF}" = "YES" ]; then
-      service lfd stop &> /dev/null
+      mrun "service lfd stop" 2> /dev/null
       wait
       kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
       killall sleep &> /dev/null
       rm -f /etc/csf/csf.error
       csf -x &> /dev/null
       wait
-      update-rc.d -f csf remove &> /dev/null
-      update-rc.d -f lfd remove &> /dev/null
+      mrun "update-rc.d -f csf remove" 2> /dev/null
+      mrun "update-rc.d -f lfd remove" 2> /dev/null
       rm -f /etc/cron.d/{csf,lfd}*
       rm -f /usr/sbin/{csf,lfd}
       rm -f /etc/init.d/{csf,lfd}
@@ -280,7 +280,7 @@ csf_lfd_install_upgrade() {
       fi
       if [ -e "${pthLog}/lastFire" ]; then
         rm -f ${pthLog}/lastFire
-        service lfd stop &> /dev/null
+        mrun "service lfd stop" 2> /dev/null
         wait
         kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
         killall sleep &> /dev/null
@@ -290,7 +290,7 @@ csf_lfd_install_upgrade() {
         mrun "csf -e" &> /dev/null
         wait
         mrun "csf -q" &> /dev/null
-        service lfd start &> /dev/null
+        mrun "service lfd start" 2> /dev/null
         wait
         ### Linux kernel TCP SACK CVEs mitigation
         ### CVE-2019-11477 SACK Panic

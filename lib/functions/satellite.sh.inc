@@ -423,10 +423,10 @@ satellite_tune_fpm_config() {
     fi
     if [ ! -z "${_PHP_OLD_SV}" ] \
       && [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ]; then
-      mrun "service php${_PHP_OLD_SV}-fpm reload" &> /dev/null
+      mrun "service php${_PHP_OLD_SV}-fpm reload" 2> /dev/null
     fi
     if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ]; then
-      mrun "service php${_PHP_SV}-fpm reload" &> /dev/null
+      mrun "service php${_PHP_SV}-fpm reload" 2> /dev/null
     fi
   fi
 }
@@ -2763,7 +2763,7 @@ satellite_run_post_install() {
     rm -rf ${_HM_ROOT}/scripts
     rm -f ${_HM_ROOT}/themes/README.txt
     rm -f ${_HM_ROOT}/*.txt
-    mrun "service nginx reload" &> /dev/null
+    mrun "service nginx reload" 2> /dev/null
     cd ${_HM_ROOT}
     cp -af /opt/tmp/boa/aegir/conf/robots.txt ./
     cd ${_ROOT}
@@ -4174,7 +4174,7 @@ satellite_make() {
       satellite_tune_fpm_config
     fi
     satellite_force_advanced_nginx_config
-    mrun "service nginx reload" &> /dev/null
+    mrun "service nginx reload" 2> /dev/null
   fi
 }
 
@@ -4856,7 +4856,7 @@ satellite_letsencrypt_vhost_setup() {
         msg "${_STATUS} A: Reloading Nginx..."
         service nginx reload
       else
-        service nginx reload &> /dev/null
+        mrun "service nginx reload" 2> /dev/null
       fi
     fi
   fi
@@ -4923,7 +4923,7 @@ satellite_letsencrypt_vhost_setup() {
             msg "${_STATUS} A: Reloading Nginx..."
             service nginx reload
           else
-            service nginx reload &> /dev/null
+            mrun "service nginx reload" 2> /dev/null
           fi
         else
           msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf doesn't exist!"
@@ -5077,7 +5077,7 @@ satellite_display_url_finalize() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} A: Starting the cron now"
     fi
-    service cron start &> /dev/null
+    mrun "service cron start" 2> /dev/null
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: All done!"

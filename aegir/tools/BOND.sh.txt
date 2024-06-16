@@ -945,7 +945,7 @@ innodb_log_file_size_update() {
     mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   fi
-  mrun "service mysql stop" &> /dev/null
+  mrun "service mysql stop" 2> /dev/null
   echo "Waiting 15 seconds..."
   mrun "sleep 15"
   if [ ! -e "/var/run/mysqld/mysqld.sock" ] \
