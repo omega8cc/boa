@@ -205,7 +205,7 @@ fix_collectd_rrd_syslog_flood() {
       echo "        FSType \"rootfs\""   >> ${_COLLECTD_CNF}
       echo "        IgnoreSelected true" >> ${_COLLECTD_CNF}
       echo "</Plugin>"                   >> ${_COLLECTD_CNF}
-      mrun "service collectd restart" &> /dev/null
+      mrun "service collectd restart" 2> /dev/null
     fi
   fi
 }
@@ -228,7 +228,7 @@ fix_collectd_nginx() {
       echo "</Plugin>"                                     >> ${_COLLECTD_CNF}
       sed -i "s/^#LoadPlugin nginx/LoadPlugin nginx/g"        ${_COLLECTD_CNF}
       wait
-      mrun "service collectd restart" &> /dev/null
+      mrun "service collectd restart" 2> /dev/null
     fi
   fi
 }
@@ -417,7 +417,7 @@ if_install_bind() {
           ${vBs}/named.conf.options.pre-${_X_SE}-${_X_VERSION}-${_NOW}
         cp -af ${locCnf}/named.conf.options /etc/bind/named.conf.options
         sed -i "s/127.0.1.1/${_THISHTIP}/g" /etc/bind/named.conf.options &> /dev/null
-        mrun "service bind9 restart" &> /dev/null
+        mrun "service bind9 restart" 2> /dev/null
         if [ ! -e "/etc/init.d/bind" ]; then
           ln -sfn /etc/init.d/bind9 /etc/init.d/bind
         fi

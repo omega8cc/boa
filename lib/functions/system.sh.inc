@@ -484,7 +484,7 @@ sftp_ftps_modern_fix() {
       st_runner "sh ./install.sh yesall" 2> /dev/null
       touch ${pthLog}/mss-build-${_MSS_VRN}-${_X_SE}-${_X_VERSION}.log
       cp -af ${locCnf}/sftp_config /etc/ssh/sftp_config
-      mrun "service ssh restart" &> /dev/null
+      mrun "service ssh restart" 2> /dev/null
       _MSS_BUILD=YES
     fi
   fi
@@ -3400,7 +3400,7 @@ sshd_install_src() {
     mrun "make -j $(nproc)" 2> /dev/null
     mrun "make install" 2> /dev/null
     ldconfig 2> /dev/null
-    mrun "service ssh restart" &> /dev/null
+    mrun "service ssh restart" 2> /dev/null
     if [[ ! "${_SSH_GET_DPKG}" =~ "hold" ]]; then
       aptitude hold openssh-server &> /dev/null
       aptitude hold openssh-client &> /dev/null
@@ -3433,7 +3433,7 @@ sshd_install_src() {
       rm -f ${_OLD_SYSCONFDIR}/ssh*
       rm -f ${_OLD_SYSCONFDIR}/moduli*
     fi
-    mrun "service ssh restart" &> /dev/null
+    mrun "service ssh restart" 2> /dev/null
   fi
   _SSH_FORCE_REINSTALL=NO
 }
@@ -6804,7 +6804,7 @@ if_install_vnstat() {
       mrun "service vnstat start" &> /dev/null
       mrun "killall vnstatd" &> /dev/null
       touch ${pthLog}/vnstat-${_VNSTAT_VRN}.log
-      mrun "service vnstat restart" &> /dev/null
+      mrun "service vnstat restart" 2> /dev/null
     fi
   fi
   if [ -e "/etc/init.d/vnstat" ] \
@@ -6819,7 +6819,7 @@ if_install_vnstat() {
   fi
   if [ -e "/usr/etc/vnstat.conf" ]; then
     sed -i "s/^MaxBandwidth.*/MaxBandwidth 1000/g" /usr/etc/vnstat.conf
-    mrun "service vnstat restart" &> /dev/null
+    mrun "service vnstat restart" 2> /dev/null
   fi
 }
 
@@ -7126,7 +7126,7 @@ pam_umask_check_fix() {
   _SFTP_UMASK_TEST=$(grep "sftp-server -u 0002" /etc/ssh/sshd_config 2>&1)
   if [[ ! "${_SFTP_UMASK_TEST}" =~ "sftp-server -u 0002" ]]; then
     sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /etc/ssh/sshd_config
-    mrun "service ssh restart" &> /dev/null
+    mrun "service ssh restart" 2> /dev/null
   fi
 }
 
@@ -7353,7 +7353,7 @@ newrelic_check_fix() {
     fi
     sed -i "s/^loglevel=.*/loglevel=error/g" ${_NEWRELIC_APP_CFG} &> /dev/null
     wait
-    mrun "service newrelic-daemon restart" &> /dev/null
+    mrun "service newrelic-daemon restart" 2> /dev/null
   else
     if [ -e "/etc/init.d/newrelic-daemon" ] \
       || [ -e "/etc/init.d/newrelic-sysmond" ]; then
@@ -7389,7 +7389,7 @@ newrelic_check_fix() {
       ${_NEWRELIC_SYS_CFG} &> /dev/null
     wait
     if [ -e "/root/.enable.newrelic.sysmond.cnf" ]; then
-      mrun "service newrelic-sysmond restart" &> /dev/null
+      mrun "service newrelic-sysmond restart" 2> /dev/null
     else
       mrun "service newrelic-sysmond stop" &> /dev/null
     fi
@@ -7582,7 +7582,7 @@ sshd_armour() {
         if [ -e "/var/opt/moduli-2048" ]; then
           cp -af ${_SYSCONFDIR}/moduli ${_SYSCONFDIR}/.moduli_bak
           cp -af /var/opt/moduli-2048 ${_SYSCONFDIR}/moduli
-          mrun "service ssh restart" &> /dev/null
+          mrun "service ssh restart" 2> /dev/null
         fi
       fi
       _SSH_KEXALGO_TEST=$(grep "KexAlgorithms" /etc/ssh/ssh_config 2>&1)
@@ -7941,7 +7941,7 @@ sysctl_update() {
       _IF_ULNX=$(grep '18000' /etc/default/nginx 2>&1)
       if [ -z "${_IF_ULNX}" ]; then
         echo ULIMIT=\"-n 18000\" >> /etc/default/nginx
-        service nginx restart &> /dev/null
+        mrun "service nginx restart" 2> /dev/null
       fi
     fi
     if [ -e "/etc/security/limits.d" ] \
@@ -7956,8 +7956,8 @@ sysctl_update() {
       echo "solr7 hard nofile 524288" >> /etc/security/limits.d/solr7.conf
       echo "@www-data soft nofile 65535" > /etc/security/limits.d/www.conf
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
-      service redis-server restart &> /dev/null
-      service nginx restart &> /dev/null
+      mrun "service redis-server restart" 2> /dev/null
+      mrun "service nginx restart" 2> /dev/null
       _PHP_V="83 82 81 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then

@@ -610,7 +610,7 @@ if_redis_restart() {
     || [[ "${PrTestCluster}" =~ "CLUSTER" ]] \
     || [ -e "/root/.allow.redis.restart.cnf" ]; then
     if [ "${ReTest}" -ge "1" ]; then
-      service redis-server restart
+      service redis-server restart &> /dev/null
       wait
       rm -f /data/disk/*/static/control/run-redis-restart.pid
       echo "$(date 2>&1) Redis Server restart forced" >> \

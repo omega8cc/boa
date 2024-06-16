@@ -427,8 +427,8 @@ dns_unbound_install() {
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     resolvconf -u &> /dev/null
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
-    killall -9 unbound
-    service unbound restart &> /dev/null
+    mrun "killall -9 unbound" 2> /dev/null
+    mrun "service unbound restart" 2> /dev/null
   fi
   check_dns_settings
   if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
@@ -459,8 +459,8 @@ dns_unbound_install() {
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 8.8.4.4" >> /etc/resolv.conf
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
-      killall -9 unbound
-      service unbound restart &> /dev/null
+      mrun "killall -9 unbound" 2> /dev/null
+      mrun "service unbound restart" 2> /dev/null
       unbound-control reload &> /dev/null
     fi
   fi
@@ -475,14 +475,14 @@ dns_unbound_install() {
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
-    killall -9 unbound
-    service unbound restart &> /dev/null
+    mrun "killall -9 unbound" 2> /dev/null
+    mrun "service unbound restart" 2> /dev/null
     unbound-control reload &> /dev/null
   fi
   if [ -e "/etc/NetworkManager/NetworkManager.conf" ]; then
     sed -i "s/^dns=.*/dns=unbound/g" \
       /etc/NetworkManager/NetworkManager.conf &> /dev/null
-    mrun "service network-manager restart" &> /dev/null
+    mrun "service network-manager restart" 2> /dev/null
   fi
   if [ -x "${isUnbnd}" ] && [ "${isUnbndFix}" = "NO" ]; then
     _UNBOUND_V_ITD=$(${isUnbnd} -V 2>&1 \
@@ -523,16 +523,16 @@ dns_unbound_install() {
       mv -f ${isPdnsd} /var/backups
     fi
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
-    killall -9 unbound
-    service unbound restart &> /dev/null
+    mrun "killall -9 unbound" 2> /dev/null
+    mrun "service unbound restart" 2> /dev/null
   fi
   if [ -x "${isUnbnd}" ] \
     && [ "${isUnbndFix}" = "NO" ] \
     && [ -e "/etc/resolvconf/interface-order" ]; then
     sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
-    killall -9 unbound
-    service unbound restart &> /dev/null
+    mrun "killall -9 unbound" 2> /dev/null
+    mrun "service unbound restart" 2> /dev/null
   fi
 }
 

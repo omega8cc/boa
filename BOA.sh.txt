@@ -1655,7 +1655,7 @@ fix_log4j() {
     fi
     if [[ ! "${_RESULT_LOG4J}" =~ "LOG4J" ]] || [ ! -z "${_DO_SOLR_RESTART}" ]; then
       #kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
-      service solr7 restart
+      service solr7 restart &> /dev/null
     fi
   fi
 }

@@ -671,7 +671,7 @@ nginx_config_update_fix() {
     fi
     force_advanced_nginx_config
     mrun "sleep 8"
-    mrun "service nginx restart" &> /dev/null
+    mrun "service nginx restart" 2> /dev/null
   else
     if [ -e "/var/aegir/config" ]; then
       sed -i "s/.*ssl .*on;//g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
