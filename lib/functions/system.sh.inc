@@ -4768,6 +4768,12 @@ run_aptitude_deps_install() {
   mrun "${_INSTAPP} ssh ssl-cert libpam-umask shtool" 2> /dev/null
   mrun "${_INSTAPP} xml-core xml2 xpdf libtool rrdtool" 2> /dev/null
   mrun "${_INSTAPP} ncurses-dev ncurses-term sipcalc" 2> /dev/null
+  _OS_LIST="daedalus chimaera bullseye bookworm"
+  for e in ${_OS_LIST}; do
+    if [ "${e}" = "${_OS_CODE}" ]; then
+      mrun "${_INSTAPP} ncal" 2> /dev/null
+    fi
+  done
   mrun "${_INSTAPP} netcat libzip-dev libwww-perl libsodium-dev" 2> /dev/null
   mrun "${_INSTAPP} libfontconfig1 libfreetype6 libfreetype6-dev" 2> /dev/null
   mrun "${_INSTAPP} libfribidi0 libgeoip-dev libgeoip1 libgmp3-dev" 2> /dev/null
