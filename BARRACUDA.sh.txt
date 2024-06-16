@@ -385,6 +385,9 @@ if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   curl_install_src
   nginx_install_upgrade
   nginx_initd_check
+  nginx_mime_check_fix
+  nginx_wildcard_ssl_install
+  nginx_config_update_fix
   redis_install_upgrade
   lshell_install_upgrade
   myquick_install_upgrade
@@ -418,8 +421,6 @@ drush_system_install_update
 if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   aegir_master_install_upgrade
   aegir_bin_extra_check_fix
-  nginx_mime_check_fix
-  nginx_wildcard_ssl_install
   nginx_config_update_fix
   aegir_master_display_login_link
 fi
