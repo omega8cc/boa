@@ -43,9 +43,6 @@
 ###
 ###   $ wget http://files.aegir.cc/BOA.sh.txt
 ###   $ bash BOA.sh.txt
-###   $ touch /root/.init-to-devuan-loop.cnf
-###      OR
-###   $ touch /root/.init-to-debian.cnf
 ###   $ autoinit
 ###
 ###  Once started, the autoinit will launch
@@ -626,6 +623,11 @@ init() {
 }
 
 pre() {
+  if [ ! -e "/root/.init-to-devuan.cnf" ] \
+    && [ ! -e "/root/.init-to-debian.cnf" ] \
+    && [ ! -e "/root/.init-to-devuan-loop.cnf" ]; then
+    touch /root/.init-to-devuan-loop.cnf
+  fi
   if [ -e "/root/.init-to-devuan.cnf" ] \
     || [ -e "/root/.init-to-debian.cnf" ] \
     || [ -e "/root/.init-to-devuan-loop.cnf" ]; then
