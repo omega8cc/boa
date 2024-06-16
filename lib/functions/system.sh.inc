@@ -4630,6 +4630,12 @@ finale() {
       rm -rf /etc/apparmor.d
     fi
   fi
+  if [ ! -e "/etc/default/grub.d/apparmor.cfg" ]; then
+    mkdir -p /etc/default/grub.d
+    echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
+      | sudo tee /etc/default/grub.d/apparmor.cfg
+    update-grub &> /dev/null
+  fi
   php_deprecated_cleanup
   php_single_initd_cleanup
   if [ -e "/root/.skip-aegir-master-upgrade.cnf" ] \

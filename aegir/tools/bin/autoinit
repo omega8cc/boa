@@ -257,6 +257,12 @@ init_pre() {
         sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
         echo "*/5 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
       fi
+      if [ ! -e "/etc/default/grub.d/apparmor.cfg" ]; then
+        mkdir -p /etc/default/grub.d
+        echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
+          | sudo tee /etc/default/grub.d/apparmor.cfg
+        update-grub &> /dev/null
+      fi
       rm -f /var/run/autoinit.pid
       reboot
       exit 0
@@ -325,6 +331,12 @@ init_run_two_quick() {
     msg "Time for reboot and next upgrade cycle..." >> ${logInt}
   fi
   echo " " >> ${logInt}
+  if [ ! -e "/etc/default/grub.d/apparmor.cfg" ]; then
+    mkdir -p /etc/default/grub.d
+    echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
+      | sudo tee /etc/default/grub.d/apparmor.cfg
+    update-grub &> /dev/null
+  fi
   sleep 5
   touch /root/.run-two-devuan-quick.cnf
   rm -f /var/run/autoinit.pid
