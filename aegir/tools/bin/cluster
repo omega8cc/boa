@@ -658,7 +658,7 @@ install_proxysql() {
       vserver ${idn} exec service proxysql stop
       vserver ${idn} exec apt-get clean
       vserver ${idn} exec ${_APT_UPDATE}
-      vserver ${idn} exec apt-get remove proxysql -y --purge --auto-remove -qq --purge --auto-remove -qq
+      vserver ${idn} exec apt-get remove proxysql -y -qq
       rm -rf /vservers/${idn}/var/lib/proxysql
       rm -rf /vservers/${idn}/var/log/proxysql
       rm -f ${pXcnf}

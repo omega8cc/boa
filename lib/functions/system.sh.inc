@@ -434,7 +434,7 @@ fix_postfix() {
     if [[ "${_POSTFIX_TEST}" =~ "fatal: open lock file" ]]; then
       mrun "dpkg --configure --force-all -a" 2> /dev/null
       apt_clean_update
-      mrun "apt-get remove postfix -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt-get remove postfix -y -qq" 2> /dev/null
       echo > /var/log/mail.log
     fi
   fi
@@ -2472,7 +2472,7 @@ mytop_install() {
     msg "PROC: mytop_install"
   fi
   if [ -e "/usr/bin/mytop" ]; then
-    mrun "apt-get remove mytop -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt-get remove mytop -y -qq" 2> /dev/null
     rm -f /usr/bin/mytop
   fi
   if [ ! -e "/usr/local/bin/mytop" ] && [ -e "/usr/bin/mysql" ]; then
@@ -5547,10 +5547,10 @@ if_major_os_upgrade() {
     fi
     mrun "apt-get remove collectd -y --purge --auto-remove -qq" 2> /dev/null
     mrun "apt-get remove libc-client2007b-dev -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove nginx-extras -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove nginx -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove nginx-common -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove nginx-full -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt-get remove nginx-extras -y -qq" 2> /dev/null
+    mrun "apt-get remove nginx -y -qq" 2> /dev/null
+    mrun "apt-get remove nginx-common -y -qq" 2> /dev/null
+    mrun "apt-get remove nginx-full -y -qq" 2> /dev/null
     if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
       ###
       ### Make sure that nginx packages are locked in apt.
@@ -6384,11 +6384,11 @@ sys_packages_install() {
     _APT_ELSE="netcat netcat-traditional"
     apt_clean_update
     mrun "service nginx start" 2> /dev/null
-    mrun "apt-get remove nginx-extras -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove nginx -y --purge --auto-remove -qq"        2> /dev/null
-    mrun "apt-get remove nginx-common -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove nginx-full -y --purge --auto-remove -qq"   2> /dev/null
-    mrun "apt-get remove redis-server -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt-get remove nginx-extras -y -qq" 2> /dev/null
+    mrun "apt-get remove nginx -y -qq"        2> /dev/null
+    mrun "apt-get remove nginx-common -y -qq" 2> /dev/null
+    mrun "apt-get remove nginx-full -y -qq"   2> /dev/null
+    mrun "apt-get remove redis-server -y -qq" 2> /dev/null
     if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
       ###
       ### Make sure that nginx packages are locked in apt.
