@@ -4629,11 +4629,22 @@ finale() {
       apt-get remove --purge apparmor -y -qq &> /dev/null
       rm -rf /etc/apparmor.d
     fi
+  else
+    isApparmor=$(which aa-status 2>&1)
+    if [ -z "${isApparmor}" ] || [ ! -e "/etc/apparmor.d" ]; then
+      mrun "${_INSTAPP} apparmor apparmor-utils" 2> /dev/null
+      mrun "${_INSTAPP} auditd" 2> /dev/null
+    fi
   fi
-  if [ ! -e "/etc/default/grub.d/apparmor.cfg" ]; then
+  if [ -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
+    mkdir -p /etc/default/grub.d
+    echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
+      | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
+    update-grub &> /dev/null
+  else
     mkdir -p /etc/default/grub.d
     echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
-      | sudo tee /etc/default/grub.d/apparmor.cfg
+      | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
     update-grub &> /dev/null
   fi
   php_deprecated_cleanup
