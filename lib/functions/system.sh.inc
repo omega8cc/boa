@@ -16,14 +16,14 @@ if_reinstall_curl() {
     fi
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt_clean_update
-    apt-get remove curl ${aptYesUnth} 2> /dev/null
-    apt-get install curl ${aptYesUnth} 2> /dev/null
+    mrun "apt-get remove curl ${aptYesUnth}" 2> /dev/null
+    mrun "apt-get install curl ${aptYesUnth}" 2> /dev/null
     ldconfig 2> /dev/null
     if [ -f "/usr/bin/curl" ]; then
       isCurl=$(/usr/bin/curl --version 2>&1)
       if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
         msg "OOPS: /usr/bin/curl is still broken, uninstalling.."
-        apt-get remove curl ${aptYesUnth} 2> /dev/null
+        mrun "apt-get remove curl ${aptYesUnth}" 2> /dev/null
       else
         msg "GOOD: /usr/bin/curl works"
       fi
@@ -340,21 +340,21 @@ if_running_as_root_barracuda() {
         echo -e 'Package: makedev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
         apt_clean_update
       fi
-      apt-get remove fuse -y --purge --auto-remove -qq 2> /dev/null
-      apt-get remove udev -y --purge --auto-remove -qq 2> /dev/null
-      apt-get remove makedev -y --purge --auto-remove -qq 2> /dev/null
+      mrun "apt-get remove fuse -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt-get remove udev -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt-get remove makedev -y --purge --auto-remove -qq" 2> /dev/null
       if [ -e "/sbin/hdparm" ]; then
         mrun "apt-get remove hdparm -y --purge --auto-remove -qq" 2> /dev/null
       fi
       if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
         isAuditd=$(which auditd 2>&1)
         if [ -e "${isAuditd}" ]; then
-          apt-get remove auditd -y --purge --auto-remove -qq 2> /dev/null
-          killall -9 auditd 2> /dev/null
+          mrun "apt-get remove auditd -y --purge --auto-remove -qq" 2> /dev/null
+          mrun "killall -9 auditd" 2> /dev/null
         fi
         isApparmor=$(which aa-status 2>&1)
         if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
-          apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq 2> /dev/null
+          mrun "apt-get remove apparmor apparmor-utils -y --purge --auto-remove" -qq 2> /dev/null
           rm -rf /etc/apparmor.d
         fi
       fi
@@ -2835,15 +2835,15 @@ if_install_wkhtmltox() {
         rm -rf wkhtmltox*
         mkdir -p /var/opt/wkhtmltox
         if [ "${_DEBUG_MODE}" = "YES" ]; then
-          mrun "${_INSTAPP} xfonts-75dpi xfonts-base"
+          mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
           get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz"
           dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb"
-          apt-get install -f -y
+          mrun "apt-get install -f -y" 2> /dev/null
         else
           mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
           get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz" 2> /dev/null
           dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb" 2> /dev/null
-          apt-get install -f -y 2> /dev/null
+          mrun "apt-get install -f -y" 2> /dev/null
         fi
       fi
       if [ -x "/usr/local/bin/wkhtmltopdf" ]; then
@@ -4618,12 +4618,12 @@ finale() {
   if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
     isAuditd=$(which auditd 2>&1)
     if [ -e "${isAuditd}" ]; then
-      apt-get remove auditd -y --purge --auto-remove -qq 2> /dev/null
-      killall -9 auditd 2> /dev/null
+      mrun "apt-get remove auditd -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "killall -9 auditd" 2> /dev/null
     fi
     isApparmor=$(which aa-status 2>&1)
     if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
-      apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq 2> /dev/null
+      mrun "apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq" 2> /dev/null
       rm -rf /etc/apparmor.d
     fi
   else
@@ -4987,12 +4987,12 @@ basic_packages_install_on_init() {
   if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
     isAuditd=$(which auditd 2>&1)
     if [ -e "${isAuditd}" ]; then
-      apt-get remove auditd -y --purge --auto-remove -qq 2> /dev/null
-      killall -9 auditd 2> /dev/null
+      mrun "apt-get remove auditd -y --purge --auto-remove -qq 2> /dev/null
+      mrun "killall -9 auditd" 2> /dev/null
     fi
     isApparmor=$(which aa-status 2>&1)
     if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
-      apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq 2> /dev/null
+      mrun "apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq" 2> /dev/null
       rm -rf /etc/apparmor.d
     fi
   fi
@@ -6069,7 +6069,7 @@ if_major_os_upgrade() {
         mkdir -p /dev/pts
         rm -rf /dev/pts/*
         apt_clean_update_no_releaseinfo_change
-        apt-get install udev -y --allow-unauthenticated 2> /dev/null
+        mrun "apt-get install udev -y --allow-unauthenticated" 2> /dev/null
         echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
         mount -t devpts devpts /dev/pts &> /dev/null
       fi
@@ -6309,7 +6309,7 @@ sys_packages_install() {
         echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
-        apt-get install -t bullseye openjdk-11-jre-headless -y 2> /dev/null
+        mrun "apt-get install -t bullseye openjdk-11-jre-headless -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/bullseye.list
         rm -f /etc/apt/apt.conf
         apt_clean_update
@@ -6322,7 +6322,7 @@ sys_packages_install() {
         echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
-        apt-get install -t chimaera openjdk-11-jre-headless -y 2> /dev/null
+        mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/chimaera.list
         rm -f /etc/apt/apt.conf
         apt_clean_update
@@ -6360,7 +6360,7 @@ sys_packages_install() {
         echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
-        apt-get install -t bullseye openjdk-11-jre-headless -y 2> /dev/null
+        mrun "apt-get install -t bullseye openjdk-11-jre-headless -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/bullseye.list
         rm -f /etc/apt/apt.conf
         apt_clean_update
@@ -6373,7 +6373,7 @@ sys_packages_install() {
         echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
-        apt-get install -t chimaera openjdk-11-jre-headless -y 2> /dev/null
+        mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/chimaera.list
         rm -f /etc/apt/apt.conf
         apt_clean_update

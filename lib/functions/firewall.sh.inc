@@ -80,7 +80,7 @@ csf_install() {
     if [ -L "/usr/sbin/ipset" ]; then
       rm -f /usr/sbin/ipset
     fi
-    apt-get install ipset ${aptYesUnth} 2> /dev/null
+    mrun "apt-get install ipset ${aptYesUnth}" 2> /dev/null
   fi
   if [ -x "/sbin/ipset" ] && [ ! -e "/usr/sbin/ipset" ]; then
     ln -s /sbin/ipset /usr/sbin/ipset
@@ -194,7 +194,7 @@ csf_lfd_install_upgrade() {
     if [ -L "/usr/sbin/ipset" ]; then
       rm -f /usr/sbin/ipset
     fi
-    apt-get install ipset ${aptYesUnth} 2> /dev/null
+    mrun "apt-get install ipset ${aptYesUnth}" 2> /dev/null
   fi
   if [ -x "/sbin/ipset" ] && [ ! -e "/usr/sbin/ipset" ]; then
     ln -s /sbin/ipset /usr/sbin/ipset
