@@ -357,6 +357,10 @@ dns_unbound_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: dns_unbound_install"
   fi
+  if [ -e "/etc/apparmor.d" ] && [ ! -e "/etc/apparmor.d/usr.sbin.unbound" ]; then
+    cat ${locCnf}/usr.sbin.unbound > /etc/apparmor.d/usr.sbin.unbound
+    chmod 644 /etc/apparmor.d/usr.sbin.unbound
+  fi
   isUnbnd=$(which unbound 2>&1)
   isUnbndErr=$(${isUnbnd} -V 2>&1)
   if [[ "${isUnbndErr}" =~ "cannot open shared object file" ]] \

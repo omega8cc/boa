@@ -1,0 +1,56 @@
+# Author: Simon Deziel
+# vim:syntax=apparmor
+#include <tunables/global>
+
+profile unbound /usr/sbin/unbound flags=(attach_disconnected) {
+  #include <abstractions/base>
+  #include <abstractions/nameservice>
+  #include <abstractions/openssl>
+
+  # chown (chgrp) the Unix control socket
+  capability chown,
+  # chmod the Unix control socket
+  capability fowner,
+  capability fsetid,
+
+  # added to abstractions/nameservices in Apparmor 2.12
+  /var/lib/sss/mc/initgroups r,
+
+  capability net_bind_service,
+  capability setgid,
+  capability setuid,
+  capability sys_chroot,
+  capability sys_resource,
+
+  # root hints from dns-data-root
+  /usr/share/dns/root.* r,
+
+  # non-chrooted paths
+  /etc/unbound/** r,
+  owner /etc/unbound/*.key* rw,
+  # explicitly deny (and audit) attempts to write to the key files
+  # this should be unnecessary after switch to /run/unbound.ctl control socket
+  # (here and below)
+  audit deny /etc/unbound/unbound_control.{key,pem} rw,
+  audit deny /etc/unbound/unbound_server.key w,
+
+  # chrooted paths
+  # unbound can be chrooted into /etc/unbound (upstream default) with
+  #  /var/lib/unbound/ bind-mounted to /etc/unbound/var/lib/unbound/,
+  # or it can be chrooted into /var/lib/unbound/ with /etc/unbound/ copied
+  # into there (previous debian package default).
+  /{,etc/unbound/}var/lib/unbound/** r,
+  owner /{,etc/unbound/}var/lib/unbound/** rw,
+  audit deny /{,etc/unbound/}var/lib/unbound/**/unbound_control.{key,pem} rw,
+  audit deny /{,etc/unbound/}var/lib/unbound/**/unbound_server.key w,
+
+  /usr/sbin/unbound mr,
+
+  /run/systemd/notify w,
+  /run/unbound.pid rw,
+
+  # Unix control socket
+  /run/unbound.ctl rw,
+
+  #include <local/usr.sbin.unbound>
+}
