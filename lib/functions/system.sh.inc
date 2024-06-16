@@ -4731,12 +4731,8 @@ run_aptitude_deps_install() {
   msg "WAIT: This may take a while, please wait..."
   apt_clean_update
   mrun "apt-get remove percona-xtrabackup-24 -y -qq" 2> /dev/null
-  mrun "apt-get remove libcurl4-gnutls-dev -y -qq" 2> /dev/null
-  mrun "apt-get purge libcurl4-gnutls-dev -y -qq" 2> /dev/null
-  #mrun "apt-get remove libcurl4-openssl-dev -y -qq" 2> /dev/null
-  #mrun "apt-get purge libcurl4-openssl-dev -y -qq" 2> /dev/null
-  mrun "apt-get remove auditd -y -qq" 2> /dev/null
-  mrun "apt-get purge auditd -y -qq" 2> /dev/null
+  mrun "apt-get remove --purge libcurl4-gnutls-dev -y -qq" 2> /dev/null
+  #mrun "apt-get remove --purge libcurl4-openssl-dev -y -qq" 2> /dev/null
   mrun "apt autoremove -y" 2> /dev/null
   mrun "${_INSTAPP} build-essential libsasl2-modules" 2> /dev/null
   mrun "${_INSTAPP} time vim cvs makepasswd" 2> /dev/null
