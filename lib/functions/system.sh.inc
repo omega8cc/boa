@@ -7745,6 +7745,8 @@ initd_update() {
     wait
     sed -i "s/^PasswordAuthentication.*//g" /etc/ssh/sshd_config &> /dev/null
     wait
+    sed -i "s/^TCPKeepAlive.*//g" /etc/ssh/sshd_config &> /dev/null
+    wait
     echo >> /etc/ssh/sshd_config
     echo "IgnoreUserKnownHosts no" >> /etc/ssh/sshd_config
     if [ -e "/root/.ssh.auth.keys.only.cnf" ]; then
@@ -7758,6 +7760,7 @@ initd_update() {
     echo "ClientAliveInterval 300" >> /etc/ssh/sshd_config
     echo "ClientAliveCountMax 10000" >> /etc/ssh/sshd_config
     echo "TCPKeepAlive yes" >> /etc/ssh/sshd_config
+    sed -i "/^$/d" /etc/ssh/sshd_config
     wait
     mrun "service ssh reload" 2> /dev/null
     fix_on_upgrade
