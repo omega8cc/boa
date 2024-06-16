@@ -117,6 +117,8 @@ system("service ssh restart") if (!$sshdsumar && -f "/etc/init.d/ssh");
 system("service proxysql restart") if (!$pxydsumar && -f "/etc/init.d/proxysql");
 
 if (-e "/usr/sbin/unbound" && !$unboundsumar) {
+  system("chmod -x /etc/resolvconf/update.d/unbound");
+  system("killall -9 unbound");
   system("service unbound restart");
   system("unbound-control reload");
 }
