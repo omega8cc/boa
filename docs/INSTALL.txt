@@ -92,15 +92,18 @@
    $ bash BOA.sh.txt
 
 4. Remove systemd and upgrade to Devuan 5 Daedalus from any compatible
-   Debian version -- Buster, Bullseye or Bookworm. You can also opt to
-   only remove systemd and then install BOA on Debian with the second
-   file listed below, although it is not recommended, because it will
+   Debian version -- Buster, Bullseye or Bookworm. You can also opt to only
+   remove systemd and then install BOA on Debian with /root/.init-to-debian.cnf
+   file as shown below, although PLEASE NOTE THAT RUNNING BOA ON DEBIAN IS NOT
+   SUPPORTED AND NOT EVEN TESTED, so it may not work at all, plus it will
    not upgrade Debian in a loop to the latest version, unlike it's with
-   the recommended first file, which automatically runs upgrade from any
-   supported Debian version and then again until it's on Devuan Daedalus.
+   the recommended Devuan mode, which automatically runs fast upgrade from any
+   supported for autoinit Debian version and then again until it's on Daedalus.
 
-   $ touch /root/.init-to-devuan-loop.cnf
-      OR
+   $ autoinit
+
+   OR for Debian w/o systemd:
+
    $ touch /root/.init-to-debian.cnf
    $ autoinit
 
@@ -110,16 +113,15 @@
 
    $ screen
 
-   You must specify the kind of install with {in-lite|in-dev}
-   location with {local|public}, your hostname and email address, as shown
-   further below.
+   You must specify the kind of install with {in-lite|in-dev} plus mode with
+   {local|public}, your hostname and email address, as shown further below.
 
    Specifying Octopus username is optional. It will use "o1" if empty.
 
    The last {newrelickey|php-8.1|php-min|php-max|nodns} part is optional and
    can be used either to install New Relic Apps Monitor (you should replace
    the "newrelickey" keyword with a valid license key), or to define single PHP
-   version to install and use both for Master and Satellite instances.
+   version to install and use both for Aegir Master and Satellite instances.
 
    When "php-min" is defined, then 4 versions will be installed: 8.3, 8.2, 7.4
    plus 8.1, configured as default. You can later install or modify PHP version
@@ -195,9 +197,9 @@
 3. Install Barracuda and Octopus.
 
    You must specify the kind of install with {in-lite|in-dev},
-   location with {local|public}, and your email address,
-   as shown below. For local installs you don't need to specify
-   hostname and Octopus username, as it is fully automated.
+   mode with {local|public}, and your email address, as shown below.
+   For local installs you don't need to specify hostname and
+   Octopus username, as it is fully automated.
 
    You can also specify PHP version to install, as shown in examples below.
 
