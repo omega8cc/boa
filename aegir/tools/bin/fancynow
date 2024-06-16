@@ -30,7 +30,8 @@ rm -f /tmp/now-weather
 # Was valid weather report found or an error message?
 if [[ "${aWeather[0]}" == "Weather report:"* ]]; then
     WeatherSuccess=true
-    echo "${aWeather[@]}"
+    iWeather=$(echo "${aWeather[@]}" | tr '+' ' ' 2>&1)
+    echo "${iWeather}"
 else
     WeatherSuccess=false
     echo "+============================+"
