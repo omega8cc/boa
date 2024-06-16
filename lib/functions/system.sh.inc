@@ -4749,6 +4749,7 @@ run_aptitude_deps_install() {
   apt_clean_update
   mrun "apt-get remove percona-xtrabackup-24 -y -qq" 2> /dev/null
   mrun "apt-get remove --purge libcurl4-gnutls-dev -y -qq" 2> /dev/null
+  mrun "apt-get remove --purge polkitd -y -qq" 2> /dev/null
   #mrun "apt-get remove --purge libcurl4-openssl-dev -y -qq" 2> /dev/null
   mrun "apt autoremove -y" 2> /dev/null
   mrun "${_INSTAPP} build-essential libsasl2-modules" 2> /dev/null
