@@ -253,36 +253,32 @@ if_remove_cloud_utils() {
   _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
   if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
     || [ -e "/etc/cloud/cloud.cfg.d" ]; then
-    msg "Removing problematic cloud-utils detected on this system" >> ${logAbf}
-    /usr/bin/apt-get update &> /dev/null
-    if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
-      isApparmor=$(which aa-status 2>&1)
-      if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
-        /usr/bin/apt-get remove apparmor -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-        rm -rf /etc/apparmor.d
-      fi
-    fi
-    /usr/bin/apt-get remove cloud-utils cloud-init -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-    /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-    /usr/bin/apt-get autoremove --purge -y &> /dev/null
-    /usr/bin/apt-get autoclean -y &> /dev/null
+    msg "Removing problematic cloud-utils detected on this system" >> ${logAds}
+    /usr/bin/apt-get update 2> /dev/null
+    /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq 2> /dev/null
+    /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq 2> /dev/null
+    /usr/bin/apt-get autoremove --purge -y 2> /dev/null
+    /usr/bin/apt-get autoclean -y 2> /dev/null
     if [ -e "/etc/cloud/cloud.cfg.d" ]; then
       mv -f /etc/cloud /var/backups/
-    fi
-    if [ -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
-      mkdir -p /etc/default/grub.d
-      echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
-        | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
-      update-grub &> /dev/null
-    else
-      mkdir -p /etc/default/grub.d
-      echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
-        | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
-      update-grub &> /dev/null
     fi
   fi
 }
 if_remove_cloud_utils
+
+if_remove_apparmor_utils() {
+  isApparmor=$(which aa-status 2>&1)
+  if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
+    msg "Removing problematic during OS upgrades apparmor" >> ${logAds}
+    /usr/bin/apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq 2> /dev/null
+    rm -rf /etc/apparmor.d
+  fi
+  mkdir -p /etc/default/grub.d
+  echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
+    | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
+  update-grub &> /dev/null
+}
+if_remove_apparmor_utils
 
 if_clean_boa_env() {
   if [ ! -x "/etc/init.d/clean-boa-env" ] \

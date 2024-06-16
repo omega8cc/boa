@@ -218,15 +218,8 @@ init_pre() {
         _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
         if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
           || [ -e "/etc/cloud/cloud.cfg.d" ]; then
-          if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
-            isApparmor=$(which aa-status 2>&1)
-            if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
-              /usr/bin/apt-get remove apparmor -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
-              rm -rf /etc/apparmor.d
-            fi
-          fi
-          /usr/bin/apt-get remove cloud-utils cloud-init -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
-          /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
+          /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq >> ${logInt}
+          /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq >> ${logInt}
           /usr/bin/apt-get autoremove --purge -y >> ${logInt}
           /usr/bin/apt-get autoclean -y >> ${logInt}
           if [ -e "/etc/cloud/cloud.cfg.d" ]; then
@@ -242,15 +235,8 @@ init_pre() {
         _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
         if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
           || [ -e "/etc/cloud/cloud.cfg.d" ]; then
-          if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
-            isApparmor=$(which aa-status 2>&1)
-            if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
-              /usr/bin/apt-get remove apparmor -y -qq --purge --auto-remove --allow-remove-essential >> ${logSlt}
-              rm -rf /etc/apparmor.d
-            fi
-          fi
-          /usr/bin/apt-get remove cloud-utils cloud-init -y -qq --purge --auto-remove --allow-remove-essential >> ${logSlt}
-          /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y -qq --purge --auto-remove --allow-remove-essential >> ${logSlt}
+          /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq >> ${logSlt}
+          /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq >> ${logSlt}
           /usr/bin/apt-get autoremove --purge -y >> ${logSlt}
           /usr/bin/apt-get autoclean -y >> ${logSlt}
           if [ -e "/etc/cloud/cloud.cfg.d" ]; then
@@ -269,23 +255,26 @@ init_pre() {
         sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
         echo "*/5 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
       fi
-      if [ -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
-        mkdir -p /etc/default/grub.d
-        echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
-          | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
-        update-grub &> /dev/null
-      else
-        mkdir -p /etc/default/grub.d
-        echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
-          | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
-        update-grub &> /dev/null
-      fi
       rm -f /var/run/autoinit.pid
       reboot
       exit 0
     fi
   fi
 }
+
+if_remove_apparmor_utils() {
+  isApparmor=$(which aa-status 2>&1)
+  if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
+    msg "Removing problematic during OS upgrades apparmor" >> ${logInt}
+    /usr/bin/apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq >> ${logSlt}
+    rm -rf /etc/apparmor.d
+  fi
+  mkdir -p /etc/default/grub.d
+  echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
+    | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
+  update-grub >> ${logSlt}
+}
+if_remove_apparmor_utils
 
 init_info() {
   echo "Running init_pre procedure, please wait..."
@@ -320,31 +309,17 @@ init_run_two_quick() {
   if [ "${silentMode}" = "verbose" ]; then
     /usr/bin/apt-get update >> ${logInt}
     /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logInt}
-    /usr/bin/apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
-    /usr/bin/apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
-    /usr/bin/apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
-    if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
-      isApparmor=$(which aa-status 2>&1)
-      if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
-        /usr/bin/apt-get remove apparmor -y -qq --purge --auto-remove --allow-remove-essential >> ${logInt}
-        rm -rf /etc/apparmor.d
-      fi
-    fi
+    /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logInt}
+    /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logInt}
+    /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> ${logInt}
     /usr/bin/apt-get autoremove --purge -y >> ${logInt}
     /usr/bin/apt-get autoclean -y >> ${logInt}
   else
     /usr/bin/apt-get update -qq >> ${logSlt}
     /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logSlt}
-    /usr/bin/apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential >> ${logSlt}
-    /usr/bin/apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential >> ${logSlt}
-    /usr/bin/apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential >> ${logSlt}
-    if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
-      isApparmor=$(which aa-status 2>&1)
-      if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
-        /usr/bin/apt-get remove apparmor -y -qq --purge --auto-remove --allow-remove-essential >> ${logSlt}
-        rm -rf /etc/apparmor.d
-      fi
-    fi
+    /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
+    /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
+    /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
     /usr/bin/apt-get autoremove --purge -y -qq >> ${logSlt}
     /usr/bin/apt-get autoclean -y -qq >> ${logSlt}
   fi
@@ -360,17 +335,6 @@ init_run_two_quick() {
     msg "Time for reboot and next upgrade cycle..." >> ${logInt}
   fi
   echo " " >> ${logInt}
-  if [ -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
-    mkdir -p /etc/default/grub.d
-    echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
-      | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
-    update-grub &> /dev/null
-  else
-    mkdir -p /etc/default/grub.d
-    echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
-      | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
-    update-grub &> /dev/null
-  fi
   sleep 5
   touch /root/.run-two-devuan-quick.cnf
   rm -f /var/run/autoinit.pid
