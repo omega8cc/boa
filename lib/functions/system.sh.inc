@@ -4993,7 +4993,7 @@ basic_packages_install_on_init() {
   if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
     isAuditd=$(which auditd 2>&1)
     if [ -e "${isAuditd}" ]; then
-      mrun "apt-get remove auditd -y --purge --auto-remove -qq 2> /dev/null
+      mrun "apt-get remove auditd -y --purge --auto-remove -qq" 2> /dev/null
       mrun "killall -9 auditd" 2> /dev/null
     fi
     isApparmor=$(which aa-status 2>&1)
