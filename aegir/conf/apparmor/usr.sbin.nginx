@@ -1,0 +1,36 @@
+# Last Modified: Mon Jun 17 08:02:39 2024
+#include <tunables/global>
+
+/usr/sbin/nginx flags=(complain) {
+  #include <abstractions/base>
+  #include <abstractions/ssl_keys>
+
+  capability dac_override,
+  capability dac_read_search,
+
+  /usr/sbin/nginx mr,
+  /var/lib/nginx/** rw,
+  /var/log/nginx/access.log w,
+  /var/log/nginx/error.log w,
+  /etc/nginx/** r,
+  /etc/ssl/private/* r,
+  owner /proc/sys/kernel/random/boot_id r,
+  owner /run/nginx.pid rw,
+
+  /var/www/** r,
+
+  /var/aegir/config/** r,
+  /var/aegir/host_master/** r,
+  /var/aegir/platforms/** r,
+
+  /data/disk/*/aegir/** r,
+  /data/disk/*/config/** r,
+  /data/disk/*/distro/** r,
+  /data/disk/*/platforms/** r,
+  /data/disk/*/static/** r,
+  /data/disk/*/tools/le/** r,
+
+  /data/all/** r,
+  /data/conf/* r,
+
+}

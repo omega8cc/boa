@@ -1,0 +1,9 @@
+# Last Modified: Mon Jun 17 11:05:08 2024
+#include <tunables/global>
+
+/usr/bin/newrelic-daemon flags=(complain) {
+  #include <abstractions/base>
+
+  /usr/bin/newrelic-daemon mr,
+
+}

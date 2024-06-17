@@ -53,7 +53,12 @@ profile unbound /usr/sbin/unbound flags=(attach_disconnected) {
   /{,var/}run/unbound.ctl rw,
 
   # SSL libs
-  /usr/local/ssl3/lib64/** r,
+  /usr/local/lib/lib*so* mr,
+  /usr/local/ssl/lib/lib*so* mr,
+  /usr/local/ssl/openssl.cnf r,
+  /usr/local/ssl3/lib64/libcrypto.so.* mr,
+  /usr/local/ssl3/lib64/libssl.so.* mr,
+  /usr/local/ssl3/openssl.cnf r,
 
   #include <local/usr.sbin.unbound>
 }

@@ -4446,6 +4446,28 @@ strict_bin_permissions() {
 
 #
 # Manage AppArmor.
+sync_enable_apparmor_profiles() {
+  isAppArmOn=N
+  if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
+    isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
+    isAppArmOn=$(echo -n ${isAppArmOn} | tr -d "\n" 2>&1)
+  fi
+  if [ "${isAppArmOn}" = "Y" ]; then
+    if [ -d "/etc/apparmor.d" ]; then
+      cp -af ${locCnf}/apparmor/* > /etc/apparmor.d/
+    fi
+    for proFile in `find /etc/apparmor.d/ -maxdepth 1 -mindepth 1 -type f | sort`; do
+      profName=$(echo ${proFile} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+      mrun "aa-complain /etc/apparmor.d/${profName}" 2> /dev/null
+      chmod 644 ${proFile}
+    done
+    mrun "service apparmor reload" 2> /dev/null
+    mrun "service auditd reload" 2> /dev/null
+  fi
+}
+
+#
+# Manage AppArmor.
 if_enable_or_disable_apparmor() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: if_enable_or_disable_apparmor"
@@ -4485,6 +4507,7 @@ if_enable_or_disable_apparmor() {
       update-grub &> /dev/null
       mrun "${_INSTAPP} apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra" 2> /dev/null
       mrun "${_INSTAPP} auditd" 2> /dev/null
+      sync_enable_apparmor_profiles
     fi
   fi
 }

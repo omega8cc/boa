@@ -358,7 +358,7 @@ dns_unbound_install_upgrade() {
     msg "PROC: dns_unbound_install_upgrade"
   fi
   if [ -e "/etc/apparmor.d" ] && [ ! -e "/etc/apparmor.d/usr.sbin.unbound" ]; then
-    cat ${locCnf}/usr.sbin.unbound > /etc/apparmor.d/usr.sbin.unbound
+    cat ${locCnf}/apparmor/usr.sbin.unbound > /etc/apparmor.d/usr.sbin.unbound
     chmod 644 /etc/apparmor.d/usr.sbin.unbound
   fi
   isUnbnd=$(which unbound 2>&1)

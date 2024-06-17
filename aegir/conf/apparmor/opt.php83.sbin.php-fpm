@@ -1,0 +1,49 @@
+# Last Modified: Mon Jun 17 08:20:02 2024
+#include <tunables/global>
+
+/opt/php83/sbin/php-fpm flags=(complain) {
+  #include <abstractions/base>
+
+  /opt/php83/sbin/php-fpm mr,
+
+  /usr/local/ioncube/ioncube_loader_lin_*.so mr,
+  /usr/local/lib/lib*so* mr,
+  /usr/local/ssl/lib/lib*so* mr,
+  /usr/local/ssl/openssl.cnf r,
+  /usr/local/ssl3/lib64/libcrypto.so.* mr,
+  /usr/local/ssl3/lib64/libssl.so.* mr,
+  /usr/local/ssl3/openssl.cnf r,
+  /{media,mnt,opt,srv}/** mr,
+
+  /var/log/php/* w,
+
+  /var/www/** r,
+
+  /var/aegir/host_master/** r,
+  /var/aegir/platforms/** r,
+
+  /data/disk/*/aegir/** r,
+  /data/disk/*/distro/** r,
+  /data/disk/*/platforms/** r,
+  /data/disk/*/static/** r,
+  /data/disk/*/tools/le/** r,
+
+  /data/all/** r,
+  /data/conf/* r,
+
+  owner /var/aegir/host_master/** w,
+  owner /var/aegir/platforms/** w,
+
+  owner /data/disk/*/aegir/** w,
+  owner /data/disk/*/distro/** w,
+  owner /data/disk/*/platforms/** w,
+  owner /data/disk/*/static/** w,
+  owner /var/www/** w,
+
+  owner /home/*.web/.aws/* rw,
+  owner /home/*.web/.drush/* r,
+  owner /home/*.web/.tmp/* rw,
+
+  owner /proc/*/mountinfo r,
+
+}
