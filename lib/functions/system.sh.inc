@@ -9,7 +9,6 @@ if_reinstall_curl() {
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
     msg "OOPS: cURL is broken! Re-installing.."
-    rm -f /etc/apt/sources.list.d/openssl.list
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -17,21 +16,10 @@ if_reinstall_curl() {
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt_clean_update
     mrun "apt remove curl ${aptYesUnth}" 2> /dev/null
-    mrun "apt install curl ${aptYesUnth}" 2> /dev/null
-    ldconfig 2> /dev/null
-    if [ -f "/usr/bin/curl" ]; then
-      isCurl=$(/usr/bin/curl --version 2>&1)
-      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-        msg "OOPS: /usr/bin/curl is still broken, uninstalling.."
-        mrun "apt remove curl ${aptYesUnth}" 2> /dev/null
-      else
-        msg "GOOD: /usr/bin/curl works"
-      fi
-    fi
     mkdir -p /var/opt
     rm -rf /var/opt/curl*
     cd /var/opt
-    wget http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
+    wget -q -U iCab http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
     tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
     cd /var/opt/curl-${_CURL_VRN}
     sh ./configure --with-ssl --prefix=/usr/local &> /dev/null
