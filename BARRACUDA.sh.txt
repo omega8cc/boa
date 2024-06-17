@@ -375,11 +375,18 @@ mytop_install
 ###
 _LC_SSL_CTRL="/root/.install.legacy.openssl.cnf"
 _MD_SSL_CTRL="/root/.install.modern.openssl.cnf"
-
+if [ "${_STATUS}" = "INIT" ] || [ ! -x "/usr/local/ssl/bin/openssl" ]; then
+  if [ -e "${_MD_SSL_CTRL}" ]; then
+    chattr -i ${_MD_SSL_CTRL}
+    rm -f ${_MD_SSL_CTRL}
+  fi
+  touch ${_LC_SSL_CTRL}
+  ssl_install_src
+  ssl_crypto_lib_fix
+fi
 if [ -x "/usr/local/ssl/bin/openssl" ]; then
   [ -e "${_LC_SSL_CTRL}" ] && rm -f ${_LC_SSL_CTRL}
 fi
-
 if [ "${_STATUS}" = "INIT" ]; then
   if [ ! -e "${_LC_SSL_CTRL}" ]; then
     if [ ! -e "${_MD_SSL_CTRL}" ]; then
@@ -407,7 +414,6 @@ elif [ "${_STATUS}" = "UPGRADE" ]; then
     fi
   fi
 fi
-
 if [ -x "/usr/local/ssl/bin/openssl" ] \
   && [ -x "/usr/local/ssl3/bin/openssl" ]; then
   if [ ! -e "${_MD_SSL_CTRL}" ]; then
