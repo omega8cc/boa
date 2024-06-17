@@ -4445,8 +4445,11 @@ strict_bin_permissions() {
 }
 
 #
-# Manage AppArmor.
+# Sync AppArmor profiles.
 sync_enable_apparmor_profiles() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: sync_enable_apparmor_profiles"
+  fi
   isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
     isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
