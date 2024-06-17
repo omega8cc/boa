@@ -4,7 +4,7 @@ export tRee="${tRee}"
 
 #
 # Re-install curl if broken.
-if_reinstall_curl() {
+if_reinstall_curl_src() {
   _CURL_VRN=8.8.0
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
@@ -5364,7 +5364,7 @@ if_post_major_os_upgrade() {
       _PHP_FORCE_REINSTALL=YES
       _SSH_FORCE_REINSTALL=YES
       _SSL_FORCE_REINSTALL=YES
-      if_reinstall_curl
+      if_reinstall_curl_src
       ssl_install_src
       ssl_crypto_lib_fix
       curl_install_src
@@ -5968,7 +5968,7 @@ if_major_os_upgrade() {
       _PHP_FORCE_REINSTALL=YES
       _SSL_FORCE_REINSTALL=YES
       _SSH_FORCE_REINSTALL=YES
-      if_reinstall_curl
+      if_reinstall_curl_src
       ssl_install_src
       ssl_crypto_lib_fix
       curl_install_src

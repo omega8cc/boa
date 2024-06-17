@@ -116,7 +116,7 @@ find_fast_mirror_early() {
   urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
 }
 
-if_reinstall_curl() {
+if_reinstall_curl_src() {
   _CURL_VRN=8.8.0
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
@@ -152,7 +152,7 @@ if_reinstall_curl() {
 
 check_dns_curl() {
   find_fast_mirror_early
-  if_reinstall_curl
+  if_reinstall_curl_src
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
     --retry 3 \
@@ -161,7 +161,7 @@ check_dns_curl() {
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "ERROR: cURL libs are out of sync! Re-installing again.."
-      if_reinstall_curl
+      if_reinstall_curl_src
     else
       echo "ERROR: ${_USE_MIR} is not available, please try later"
       clean_pid_exit check_dns_curl_clear_a
