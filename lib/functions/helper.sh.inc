@@ -589,7 +589,7 @@ apt_clean_update() {
 apt_clean_update_no_releaseinfo_change() {
   #apt clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
-  apt update -qq 2> /dev/null
+  mrun "apt update -qq" 2> /dev/null
 }
 
 os_detection() {
