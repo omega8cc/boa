@@ -389,8 +389,12 @@ if [ -e "/var/aegir/drush" ]; then
     [ -e "/root/.force.sites.verify.cnf" ] && rm -f /root/.force.sites.verify.cnf
     [ -e "/root/.run.example.report.cnf" ] && rm -f /root/.run.example.report.cnf
     [ -e "/var/xdrago/weekly.sh" ] && rm -f /var/xdrago/weekly.sh
-    [ -e "/root/.debug-boa-installer.cnf" ] && rm -f /root/.debug-boa-installer.cnf
-    [ -e "/root/.debug-octopus-installer.cnf" ] && rm -f /root/.debug-octopus-installer.cnf
+    if [ ! -e "/root/.dev.server.cnf" ] \
+      && [ -e "/var/aegir/drush" ] \
+      && [ -e "/data/all/000" ]; then
+      [ -e "/root/.debug-boa-installer.cnf" ] && rm -f /root/.debug-boa-installer.cnf
+      [ -e "/root/.debug-octopus-installer.cnf" ] && rm -f /root/.debug-octopus-installer.cnf
+    fi
     if [ -e "/var/run/boa_run.pid" ]; then
       touch /root/.pause_tasks_maint.cnf
     else
