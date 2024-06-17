@@ -1422,13 +1422,12 @@ check_root() {
       if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
         isAuditd=$(which auditd 2>&1)
         if [ -e "${isAuditd}" ]; then
-          apt-get remove auditd -y --purge --auto-remove -qq 2> /dev/null
+          apt-get remove auditd -y -qq 2> /dev/null
           killall -9 auditd 2> /dev/null
         fi
         isApparmor=$(which aa-status 2>&1)
-        if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
-          apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq 2> /dev/null
-          rm -rf /etc/apparmor.d
+        if [ ! -z "${isApparmor}" ]; then
+          apt-get remove apparmor apparmor-utils -y -qq 2> /dev/null
         fi
       fi
       _REMOVE_LINKS="buagent \

@@ -276,10 +276,9 @@ if_remove_cloud_utils
 
 if_remove_apparmor_utils() {
   isApparmor=$(which aa-status 2>&1)
-  if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
+  if [ ! -z "${isApparmor}" ]; then
     msg "Removing problematic during OS upgrades apparmor" >> ${logAbf}
-    /usr/bin/apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq 2> /dev/null
-    rm -rf /etc/apparmor.d
+    /usr/bin/apt-get remove apparmor apparmor-utils -y -qq 2> /dev/null
   fi
   mkdir -p /etc/default/grub.d
   echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \

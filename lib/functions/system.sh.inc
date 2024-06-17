@@ -4460,11 +4460,11 @@ if_enable_or_disable_apparmor() {
     isAuditd=$(which auditd 2>&1)
     if [ -e "${isAuditd}" ]; then
       msg "ARMR: The system auditd/aureport/ausearch will be uninstalled now..."
-      mrun "apt-get remove auditd -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt-get remove auditd -y -qq" 2> /dev/null
       mrun "killall -9 auditd" 2> /dev/null
     fi
     isApparmor=$(which aa-status 2>&1)
-    if [ ! -z "${isApparmor}" ] || [ -e "/etc/apparmor.d" ]; then
+    if [ ! -z "${isApparmor}" ]; then
       msg "ARMR: The system AppArmor will be uninstalled now, however..."
       msg "ARMR: ...it will become inactive only after you reboot this server"
       msg "ARMR: Use 'boa reboot' command for optimized reboot"
@@ -4474,8 +4474,7 @@ if_enable_or_disable_apparmor() {
       echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
         | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
       update-grub &> /dev/null
-      mrun "apt-get remove apparmor apparmor-utils -y --purge --auto-remove -qq" 2> /dev/null
-      rm -rf /etc/apparmor.d
+      mrun "apt-get remove apparmor apparmor-utils -y -qq" 2> /dev/null
     fi
   else
     isApparmor=$(which aa-status 2>&1)
