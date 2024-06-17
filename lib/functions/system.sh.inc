@@ -6610,7 +6610,7 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  _MAILSERV="postfix postfix-pcre"
+  _MAILSERV="postfix postfix-pcre mailutils"
 }
 
 php_libs_fix() {
