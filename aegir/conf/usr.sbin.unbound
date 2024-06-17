@@ -46,11 +46,14 @@ profile unbound /usr/sbin/unbound flags=(attach_disconnected) {
 
   /usr/sbin/unbound mr,
 
-  /run/systemd/notify w,
-  /run/unbound.pid rw,
+  /{,var/}run/systemd/notify w,
+  /{,var/}run/{unbound/,}unbound.pid rw,
 
   # Unix control socket
-  /run/unbound.ctl rw,
+  /{,var/}run/unbound.ctl rw,
+
+  # SSL libs
+  /usr/local/ssl3/lib64/** r,
 
   #include <local/usr.sbin.unbound>
 }
