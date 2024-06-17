@@ -4469,7 +4469,7 @@ if_enable_or_disable_apparmor() {
       echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
         | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
       update-grub &> /dev/null
-      mrun "apt remove apparmor apparmor-utils -y -qq" 2> /dev/null
+      mrun "apt remove apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra -y -qq" 2> /dev/null
     fi
   else
     isApparmor=$(which aa-status 2>&1)
@@ -4483,7 +4483,7 @@ if_enable_or_disable_apparmor() {
       echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
         | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
       update-grub &> /dev/null
-      mrun "${_INSTAPP} apparmor apparmor-utils" 2> /dev/null
+      mrun "${_INSTAPP} apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra" 2> /dev/null
       mrun "${_INSTAPP} auditd" 2> /dev/null
     fi
   fi

@@ -1572,7 +1572,7 @@ check_root() {
       fi
       isApparmor=$(which aa-status 2>&1)
       if [ ! -z "${isApparmor}" ]; then
-        apt remove apparmor apparmor-utils -y -qq 2> /dev/null
+        apt remove apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra -y -qq 2> /dev/null
       fi
     fi
     _REMOVE_LINKS="buagent \
