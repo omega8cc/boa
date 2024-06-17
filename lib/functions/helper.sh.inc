@@ -583,7 +583,7 @@ os_detection_minimal() {
 apt_clean_update() {
   #apt clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
-  ${_APT_UPDATE} -qq 2> /dev/null
+  mrun "${_APT_UPDATE} -qq" 2> /dev/null
 }
 
 apt_clean_update_no_releaseinfo_change() {
