@@ -21,11 +21,14 @@ if [ -e "/root/.pause_tasks_maint.cnf" ]; then
 fi
 
 maxEtime="300"
-cmndsList="apt-get"
+cmndsList="apt-get apt"
 
 licence_to_kill() {
   if [[ "${1}" =~ "apt-get" ]]; then
     killCmnd="apt-get update"
+    maxEtime="99"
+  elif [[ "${1}" =~ "apt" ]]; then
+    killCmnd="apt update"
     maxEtime="99"
   fi
   aptTms=$(ps -eo uid,pid,etimes,cmd | grep -v "grep" | grep "${killCmnd}" | egrep ' ([0-9]+-)?([0-9]{1}:?){3}' | awk '{print $3}')

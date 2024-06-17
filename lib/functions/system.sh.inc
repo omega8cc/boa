@@ -16,14 +16,14 @@ if_reinstall_curl() {
     fi
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt_clean_update
-    mrun "apt-get remove curl ${aptYesUnth}" 2> /dev/null
-    mrun "apt-get install curl ${aptYesUnth}" 2> /dev/null
+    mrun "apt remove curl ${aptYesUnth}" 2> /dev/null
+    mrun "apt install curl ${aptYesUnth}" 2> /dev/null
     ldconfig 2> /dev/null
     if [ -f "/usr/bin/curl" ]; then
       isCurl=$(/usr/bin/curl --version 2>&1)
       if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
         msg "OOPS: /usr/bin/curl is still broken, uninstalling.."
-        mrun "apt-get remove curl ${aptYesUnth}" 2> /dev/null
+        mrun "apt remove curl ${aptYesUnth}" 2> /dev/null
       else
         msg "GOOD: /usr/bin/curl works"
       fi
@@ -72,11 +72,11 @@ systemd_remove_apt_cmd() {
     msg "PROC: systemd_remove_apt_cmd"
   fi
   apt_clean_update
-  mrun "apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq" 2> /dev/null
-  mrun "apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq" 2> /dev/null
-  mrun "apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq" 2> /dev/null
-  mrun "apt-get autoremove --purge -y --purge --auto-remove -qq" 2> /dev/null
-  mrun "apt-get autoclean -y --purge --auto-remove -qq" 2> /dev/null
+  mrun "apt remove systemd -y --purge --auto-remove --allow-remove-essential -qq" 2> /dev/null
+  mrun "apt remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq" 2> /dev/null
+  mrun "apt remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq" 2> /dev/null
+  mrun "apt autoremove --purge -y --purge --auto-remove -qq" 2> /dev/null
+  mrun "apt autoclean -y --purge --auto-remove -qq" 2> /dev/null
   mrun "apt autoremove -y --purge --auto-remove -qq" 2> /dev/null
   apt_clean_update
 }
@@ -123,9 +123,8 @@ systemd_remove_if_detected() {
 # Detect and prepare for major OS upgrade.
 define_loc_osr() {
   apt_clean_update_no_releaseinfo_change
-  mrun "apt-get upgrade ${nrmUpArg}" 2> /dev/null
-  mrun "apt-get full-upgrade ${nrmUpArg}" 2> /dev/null
-  mrun "apt-get install lsb-release ${nrmUpArg}" 2> /dev/null
+  mrun "apt upgrade ${nrmUpArg}" 2> /dev/null
+  mrun "apt install lsb-release ${nrmUpArg}" 2> /dev/null
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -340,16 +339,16 @@ if_running_as_root_barracuda() {
         echo -e 'Package: makedev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
         apt_clean_update
       fi
-      mrun "apt-get remove fuse -y --purge --auto-remove -qq" 2> /dev/null
-      mrun "apt-get remove udev -y --purge --auto-remove -qq" 2> /dev/null
-      mrun "apt-get remove makedev -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt remove fuse -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt remove udev -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt remove makedev -y --purge --auto-remove -qq" 2> /dev/null
       if [ -e "/sbin/hdparm" ]; then
-        mrun "apt-get remove hdparm -y --purge --auto-remove -qq" 2> /dev/null
+        mrun "apt remove hdparm -y --purge --auto-remove -qq" 2> /dev/null
       fi
       if [ -d "/etc/webmin" ]; then
         mrun "dpkg --configure --force-all -a" 2> /dev/null
         apt_clean_update
-        mrun "apt-get remove webmin -y --purge --auto-remove -qq" 2> /dev/null
+        mrun "apt remove webmin -y --purge --auto-remove -qq" 2> /dev/null
         rm -rf /usr/share/webmin
       fi
       rm -f /etc/apt/sources.list.d/ksplice.list
@@ -407,13 +406,13 @@ fix_postfix() {
     msg "PROC: fix_postfix"
   fi
   if [ "${_STATUS}" = "INIT" ]; then
-    mrun "apt-get remove exim4 -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove exim4-base -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove exim4-config -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove sendmail -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove sendmail-base -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove sendmail-bin -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove sendmail-cf -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove exim4 -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove exim4-base -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove exim4-config -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove sendmail -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove sendmail-base -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove sendmail-bin -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove sendmail-cf -y --purge --auto-remove -qq" 2> /dev/null
     rm -f /etc/aliases
     rm -rf /etc/mail
     killall -9 sendmail &> /dev/null
@@ -422,7 +421,7 @@ fix_postfix() {
     if [[ "${_POSTFIX_TEST}" =~ "fatal: open lock file" ]]; then
       mrun "dpkg --configure --force-all -a" 2> /dev/null
       apt_clean_update
-      mrun "apt-get remove postfix -y -qq" 2> /dev/null
+      mrun "apt remove postfix -y -qq" 2> /dev/null
       echo > /var/log/mail.log
     fi
   fi
@@ -2460,7 +2459,7 @@ mytop_install() {
     msg "PROC: mytop_install"
   fi
   if [ -e "/usr/bin/mytop" ]; then
-    mrun "apt-get remove mytop -y -qq" 2> /dev/null
+    mrun "apt remove mytop -y -qq" 2> /dev/null
     rm -f /usr/bin/mytop
   fi
   if [ ! -e "/usr/local/bin/mytop" ] && [ -e "/usr/bin/mysql" ]; then
@@ -2482,19 +2481,15 @@ run_apt_get_dist_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: run_apt_get_dist_upgrade"
   fi
-  msg "INFO: Running apt-get upgrade..."
+  msg "INFO: Running apt upgrade..."
   apt_clean_update_no_releaseinfo_change
-  mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Running apt-get full-upgrade..."
-  fi
-  mrun "apt-get full-upgrade ${dstUpArg}" 2> /dev/null
+  mrun "apt upgrade ${dstUpArg}" 2> /dev/null
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Running apt-get dist-upgrade..."
   fi
   mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
   mrun "apt-get dist-upgrade -y --allow-unauthenticated" 2> /dev/null
-  mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
+  mrun "apt install lsb-release ${dstUpArg}" 2> /dev/null
 }
 
 #
@@ -2727,7 +2722,7 @@ php_install_deps() {
   mrun "${_INSTAPP} libgd-dev libgd3 lbzip2" 2> /dev/null
   if [ "${_OS_CODE}" = "daedalus" ] \
     || [ "${_OS_CODE}" = "bookworm" ]; then
-    mrun "apt-get remove libldap2-dev -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove libldap2-dev -y --purge --auto-remove -qq" 2> /dev/null
     mrun "${_INSTAPP} libldap-dev" 2> /dev/null
   else
     mrun "${_INSTAPP} libldap2-dev" 2> /dev/null
@@ -2826,12 +2821,12 @@ if_install_wkhtmltox() {
           mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
           get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz"
           dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb"
-          mrun "apt-get install -f -y" 2> /dev/null
+          mrun "apt install -f -y" 2> /dev/null
         else
           mrun "${_INSTAPP} xfonts-75dpi xfonts-base" 2> /dev/null
           get_dev_src "wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb.gz" 2> /dev/null
           dpkg -i "/var/opt/wkhtmltox/wkhtmltox_0.${_WKHTMLTOX_VRN}.${_WKHTML_SYS_RV}_amd64.deb" 2> /dev/null
-          mrun "apt-get install -f -y" 2> /dev/null
+          mrun "apt install -f -y" 2> /dev/null
         fi
       fi
       if [ -x "/usr/local/bin/wkhtmltopdf" ]; then
@@ -3169,7 +3164,7 @@ sources_list_update() {
     msg "PROC: sources_list_update"
   fi
   ###--------------------###
-  apt-get clean -qq 2> /dev/null
+  apt clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/*
   ###--------------------###
   if [ -e "${pthLog}/apt-deb-src-updates-${_X_SE}.txt" ] \
@@ -3466,10 +3461,10 @@ install_magick_src() {
       && [ -e "/etc/ImageMagick" ]; then
         cp -a /etc/ImageMagick /etc/.ImageMagick
     fi
-    mrun "apt-get remove imagemagick -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove libmagickwand-dev -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove graphviz -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove libgraphviz-dev -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove imagemagick -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove libmagickwand-dev -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove graphviz -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove libgraphviz-dev -y --purge --auto-remove -qq" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     ldconfig 2> /dev/null
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -3893,7 +3888,7 @@ curl_install_src() {
           apt_clean_update
           mrun "${_INSTAPP} curl" 2> /dev/null
           mrun "apt-get build-dep curl -y" 2> /dev/null
-          mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq" 2> /dev/null
+          mrun "apt remove libssl1.0-dev -y --purge --auto-remove -qq" 2> /dev/null
           mrun "apt autoremove -y" 2> /dev/null
           mrun "${_INSTAPP} libssl-dev" 2> /dev/null
           mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
@@ -3902,7 +3897,7 @@ curl_install_src() {
     else
       apt_clean_update
       mrun "apt-get build-dep curl -y" 2> /dev/null
-      mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt remove libssl1.0-dev -y --purge --auto-remove -qq" 2> /dev/null
       mrun "apt autoremove -y" 2> /dev/null
       mrun "${_INSTAPP} libssl-dev" 2> /dev/null
       mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
@@ -3993,7 +3988,7 @@ curl_install_src() {
             ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.a /usr/lib/libcurl.a
           fi
         fi
-        mrun "apt-get remove curl ${aptYesUnth}" 2> /dev/null
+        mrun "apt remove curl ${aptYesUnth}" 2> /dev/null
         ldconfig 2> /dev/null
         touch /var/xdrago/log/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid &> /dev/null
         _CURL_ALREADY_REBUILT=YES
@@ -4460,7 +4455,7 @@ if_enable_or_disable_apparmor() {
     isAuditd=$(which auditd 2>&1)
     if [ -e "${isAuditd}" ]; then
       msg "ARMR: The system auditd/aureport/ausearch will be uninstalled now..."
-      mrun "apt-get remove auditd -y -qq" 2> /dev/null
+      mrun "apt remove auditd -y -qq" 2> /dev/null
       mrun "killall -9 auditd" 2> /dev/null
     fi
     isApparmor=$(which aa-status 2>&1)
@@ -4474,7 +4469,7 @@ if_enable_or_disable_apparmor() {
       echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
         | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
       update-grub &> /dev/null
-      mrun "apt-get remove apparmor apparmor-utils -y -qq" 2> /dev/null
+      mrun "apt remove apparmor apparmor-utils -y -qq" 2> /dev/null
     fi
   else
     isApparmor=$(which aa-status 2>&1)
@@ -4563,7 +4558,7 @@ finale() {
     welcomes you aboard" | fmt -su -w 2500 >> /etc/motd.tail
   echo >> /etc/motd.tail
   aptitude autoclean -y &> /dev/null
-  apt-get clean -qq 2> /dev/null
+  apt clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/*
   mkdir -p /data/conf/arch
   mv -f /data/conf/global.inc-pre* /data/conf/arch/     &> /dev/null
@@ -4753,10 +4748,10 @@ run_aptitude_deps_install() {
   fi
   msg "WAIT: This may take a while, please wait..."
   apt_clean_update
-  mrun "apt-get remove percona-xtrabackup-24 -y --purge --auto-remove -qq" 2> /dev/null
-  mrun "apt-get remove libcurl4-gnutls-dev -y --purge --auto-remove -qq" 2> /dev/null
-  mrun "apt-get remove polkitd -y --purge --auto-remove -qq" 2> /dev/null
-  #mrun "apt-get remove libcurl4-openssl-dev -y --purge --auto-remove -qq" 2> /dev/null
+  mrun "apt remove percona-xtrabackup-24 -y --purge --auto-remove -qq" 2> /dev/null
+  mrun "apt remove libcurl4-gnutls-dev -y --purge --auto-remove -qq" 2> /dev/null
+  mrun "apt remove polkitd -y --purge --auto-remove -qq" 2> /dev/null
+  #mrun "apt remove libcurl4-openssl-dev -y --purge --auto-remove -qq" 2> /dev/null
   mrun "apt autoremove -y" 2> /dev/null
   mrun "${_INSTAPP} build-essential libsasl2-modules" 2> /dev/null
   mrun "${_INSTAPP} time vim cvs makepasswd" 2> /dev/null
@@ -4764,7 +4759,7 @@ run_aptitude_deps_install() {
   mrun "${_INSTAPP} autoconf automake autotools-dev m4 bc" 2> /dev/null
   mrun "${_INSTAPP} curl" 2> /dev/null
   mrun "apt-get build-dep curl -y" 2> /dev/null
-  mrun "apt-get remove libssl1.0-dev -y --purge --auto-remove -qq" 2> /dev/null
+  mrun "apt remove libssl1.0-dev -y --purge --auto-remove -qq" 2> /dev/null
   mrun "${_INSTAPP} libssl-dev" 2> /dev/null
   mrun "${_INSTAPP} libc-client2007e libc-client2007e-dev" 2> /dev/null
   mrun "${_INSTAPP} mcrypt libc-client-dev" 2> /dev/null
@@ -4796,9 +4791,9 @@ run_aptitude_deps_install() {
   mrun "${_INSTAPP} python3-dev python3-debian python3-magic" 2> /dev/null
   if [ -e "/root/.dont.use.fancy.bash.login.cnf" ] \
     && [ -e "/usr/bin/screenfetch" ]; then
-    mrun "apt-get remove toilet -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove figlet -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove screenfetch -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove toilet -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove figlet -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove screenfetch -y --purge --auto-remove -qq" 2> /dev/null
   else
     mrun "${_INSTAPP} toilet figlet screenfetch" 2> /dev/null
   fi
@@ -4809,7 +4804,7 @@ run_aptitude_deps_install() {
   st_runner "${_INSTAPP} ${_EXTRA_PACKAGES}" 2> /dev/null
   st_runner "${_INSTAPP} ${_SYSLOGD}" 2> /dev/null
   _EXTRA_APT="tree"
-  st_runner "apt-get install ${_EXTRA_APT} ${nrmUpArg}" 2> /dev/null
+  st_runner "apt install ${_EXTRA_APT} ${nrmUpArg}" 2> /dev/null
   if [ -e "/etc/init.d/php5-fpm" ]; then
     mrun "service php5-fpm stop" 2> /dev/null
     mrun "update-rc.d -f php5-fpm remove" 2> /dev/null
@@ -5000,8 +4995,8 @@ basic_packages_install_on_init() {
   fi
   apt_clean_update
   if [ ! -e "/var/aegir" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
-    mrun "apt-get remove unscd -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove unscd -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove dbus -y --purge --auto-remove -qq" 2> /dev/null
     if [ -e "/usr/share/dbus-1" ]; then
       rm -f /usr/share/dbus-1/*/*freedesktop*
     fi
@@ -5125,7 +5120,7 @@ if_proxysql_update() {
         apt_clean_update
         mrun "${_INSTAPP} sysbench" 2> /dev/null
         mrun "${_INSTAPP} debconf-utils" 2> /dev/null
-        mrun "apt-get remove proxysql -y --purge --auto-remove -qq" 2> /dev/null
+        mrun "apt remove proxysql -y --purge --auto-remove -qq" 2> /dev/null
         apt_clean_update
         mrun "${_INSTAPP} proxysql" 2> /dev/null
       fi
@@ -5136,7 +5131,7 @@ if_proxysql_update() {
         mrun "${_INSTAPP} debconf-utils" 2> /dev/null
         mrun "${_INSTAPP} proxysql" 2> /dev/null
       else
-        mrun "apt-get install --only-upgrade ${nrmUpArg} proxysql" 2> /dev/null
+        mrun "apt install --only-upgrade ${nrmUpArg} proxysql" 2> /dev/null
       fi
       if [ ! -e "/etc/proxysql.cnf" ]; then
         msg "OOPS: Unable to open config file /etc/proxysql.cnf"
@@ -5287,8 +5282,8 @@ if_post_major_os_upgrade() {
     sysvinit_install
 
     msg "INFO: Removing any packages orphaned by the migration process..."
-    mrun "apt-get autoremove --purge -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get autoclean -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt autoremove --purge -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt autoclean -y --purge --auto-remove -qq" 2> /dev/null
     mrun "apt autoremove -y --purge --auto-remove -qq" 2> /dev/null
 
     msg "INFO: Running dist-upgrade to complete the system upgrade..."
@@ -5300,8 +5295,8 @@ if_post_major_os_upgrade() {
     else
       mrun "apt-get dist-upgrade -y" 2> /dev/null
     fi
-    mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
-    mrun "apt-get ${dstUpArg} install" 2> /dev/null
+    mrun "apt install lsb-release ${dstUpArg}" 2> /dev/null
+    mrun "apt ${dstUpArg} install" 2> /dev/null
 
     if [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
       if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
@@ -5544,16 +5539,16 @@ if_major_os_upgrade() {
       kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
     fi
     apt_clean_update_no_releaseinfo_change
-    mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove dbus -y --purge --auto-remove -qq" 2> /dev/null
     if [ -e "/usr/share/dbus-1" ]; then
       rm -f /usr/share/dbus-1/*/*freedesktop*
     fi
-    mrun "apt-get remove collectd -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove libc-client2007b-dev -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove nginx-extras -y -qq" 2> /dev/null
-    mrun "apt-get remove nginx -y -qq" 2> /dev/null
-    mrun "apt-get remove nginx-common -y -qq" 2> /dev/null
-    mrun "apt-get remove nginx-full -y -qq" 2> /dev/null
+    mrun "apt remove collectd -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove libc-client2007b-dev -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove nginx-extras -y -qq" 2> /dev/null
+    mrun "apt remove nginx -y -qq" 2> /dev/null
+    mrun "apt remove nginx-common -y -qq" 2> /dev/null
+    mrun "apt remove nginx-full -y -qq" 2> /dev/null
     if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
       ###
       ### Make sure that nginx packages are locked in apt.
@@ -5577,7 +5572,7 @@ if_major_os_upgrade() {
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
-    mrun "apt-get remove php5 \
+    mrun "apt remove php5 \
                          php5-cgi \
                          php5-curl \
                          php5-fpm \
@@ -5593,18 +5588,18 @@ if_major_os_upgrade() {
                          php5-sqlite \
                          php5-xmlrpc \
                          php5-xsl      -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove phpunit       -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove php-pear      -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove php-benchmark -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove php5-cli      -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove php5-common   -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove php5-apc      -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove php-apc       -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove phpunit       -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove php-pear      -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove php-benchmark -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove php5-cli      -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove php5-common   -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove php5-apc      -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove php-apc       -y --purge --auto-remove -qq" 2> /dev/null
     if [ "${_LOC_OS_CODE}" = "jessie" ]; then
-      mrun "apt-get remove gnome-tweak-tool -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt remove gnome-tweak-tool -y --purge --auto-remove -qq" 2> /dev/null
     fi
     if [ "${_LOC_OS_CODE}" = "stretch" ]; then
-      mrun "apt-get remove libpam-systemd -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt remove libpam-systemd -y --purge --auto-remove -qq" 2> /dev/null
     fi
     echo "sysvinit-core install"  | dpkg --set-selections &> /dev/null
     echo "sysvinit-utils install" | dpkg --set-selections &> /dev/null
@@ -5624,7 +5619,7 @@ if_major_os_upgrade() {
     echo "nginx-common install"   | dpkg --set-selections &> /dev/null
     ###
     ### Run pre-migration upgrade in the current OS version.
-    mrun "apt-get upgrade ${nrmUpArg}" 2> /dev/null
+    mrun "apt upgrade ${nrmUpArg}" 2> /dev/null
     ###
     ### Check if we can continue.
     _AUDIT_DPKG=$(dpkg --audit 2>&1)
@@ -5792,19 +5787,19 @@ if_major_os_upgrade() {
     mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
     ###
     ### Two step upgrade with apt-get only.
-    mrun "apt-get install apt -t ${_NEW_OS_CODE} ${dstUpArg}" 2> /dev/null
+    mrun "apt install apt -t ${_NEW_OS_CODE} ${dstUpArg}" 2> /dev/null
     apt_clean_update_no_releaseinfo_change
     mrun "${_APT_UPDATE} --allow-insecure-repositories -qq" 2> /dev/null
     ###
     ### Requirement for Debian Stretch to Devuan Beowulf migration.
     ### The libtinfo package needs to be upgraded to prevent breaks.
     if [ "${_LOC_OS_CODE}" = "stretch" ]; then
-      mrun "apt-get install libtinfo6 ${dstUpArg}" 2> /dev/null
+      mrun "apt install libtinfo6 ${dstUpArg}" 2> /dev/null
     fi
     ###
     ### Note that this upgrade does not complete the migration yet.
-    mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
-    mrun "apt-get install apt dpkg aptitude util-linux ${dstUpArg}" 2> /dev/null
+    mrun "apt upgrade ${dstUpArg}" 2> /dev/null
+    mrun "apt install apt dpkg aptitude util-linux ${dstUpArg}" 2> /dev/null
     ###
     ### Back to BOA stuff re-install as needed.
     if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ]; then
@@ -5819,13 +5814,13 @@ if_major_os_upgrade() {
       fi
     fi
     if [ -d "/var/www/cgp" ]; then
-      mrun "apt-get install collectd ${dstUpArg}" 2> /dev/null
+      mrun "apt install collectd ${dstUpArg}" 2> /dev/null
     fi
-    mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
-    mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
+    mrun "apt install lsb-release ${dstUpArg}" 2> /dev/null
+    mrun "apt install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     ###
     ### Make sure that org.freedesktop.systemd1 was not atempted by dbus.
-    mrun "apt-get remove dbus -y --purge --auto-remove -qq -qq" 2> /dev/null
+    mrun "apt remove dbus -y --purge --auto-remove -qq -qq" 2> /dev/null
     if [ -e "/usr/share/dbus-1" ]; then
       rm -f /usr/share/dbus-1/*/*freedesktop*
     fi
@@ -5845,36 +5840,33 @@ if_major_os_upgrade() {
       ### The last step before migration to Devuan is to switch to eudev.
       ### Jessie exception needs testing, though.
       if [ "${_LOC_OS_CODE}" != "jessie" ]; then
-        mrun "apt-get install eudev ${dstUpArg}" 2> /dev/null
+        mrun "apt install eudev ${dstUpArg}" 2> /dev/null
       fi
     fi
     ###
     ### Upgrade all packages so that you have the latest versions.
     if [ "${_LOC_OS_CODE}" = "stretch" ]; then
-      mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
-      mrun "apt-get full-upgrade ${dstUpArg}" 2> /dev/null
-      mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
+      mrun "apt upgrade ${dstUpArg}" 2> /dev/null
+      #mrun "apt-get full-upgrade ${dstUpArg}" 2> /dev/null
+      mrun "apt install lsb-release ${dstUpArg}" 2> /dev/null
     else
-      mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
-      mrun "apt-get full-upgrade ${dstUpArg}" 2> /dev/null
-      mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
+      mrun "apt upgrade ${dstUpArg}" 2> /dev/null
+      mrun "apt install lsb-release ${dstUpArg}" 2> /dev/null
     fi
     ###
     ### Force install/upgrade to give it another chance to complete.
-    mrun "apt-get ${dstUpArg} install" 2> /dev/null
+    mrun "apt ${dstUpArg} install" 2> /dev/null
     ###
     ### Upgrade again all packages so that you have the latest versions.
     if [ "${_LOC_OS_CODE}" = "stretch" ]; then
-      mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
-      mrun "apt-get full-upgrade ${dstUpArg}" 2> /dev/null
-      mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
+      mrun "apt upgrade ${dstUpArg}" 2> /dev/null
+      #mrun "apt-get full-upgrade ${dstUpArg}" 2> /dev/null
+      mrun "apt install lsb-release ${dstUpArg}" 2> /dev/null
     else
-      mrun "apt-get upgrade ${dstUpArg}" 2> /dev/null
-      mrun "apt-get full-upgrade ${dstUpArg}" 2> /dev/null
-      mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
+      mrun "apt upgrade ${dstUpArg}" 2> /dev/null
+      mrun "apt install lsb-release ${dstUpArg}" 2> /dev/null
     fi
-    mrun "apt-get upgrade -y" 2> /dev/null
-    mrun "apt-get full-upgrade -y" 2> /dev/null
+    mrun "apt upgrade -y" 2> /dev/null
     ###
     ### Make sure that sysvinit-core is still installed and systemd removed.
     sysvinit_install
@@ -5914,7 +5906,7 @@ if_major_os_upgrade() {
       echo
       mrun "apt-get dist-upgrade ${dstUpArg} --allow-downgrades" 2> /dev/null
       mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
-      mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
+      mrun "apt install lsb-release ${dstUpArg}" 2> /dev/null
       ###
       if [ "${_LOC_OS_CODE}" = "chimaera" ] \
         && [ "${_NEW_OS_CODE}" = "daedalus" ]; then
@@ -6072,7 +6064,7 @@ if_major_os_upgrade() {
         mkdir -p /dev/pts
         rm -rf /dev/pts/*
         apt_clean_update_no_releaseinfo_change
-        mrun "apt-get install udev -y --allow-unauthenticated" 2> /dev/null
+        mrun "apt install udev -y --allow-unauthenticated" 2> /dev/null
         echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
         mount -t devpts devpts /dev/pts &> /dev/null
       fi
@@ -6312,7 +6304,7 @@ sys_packages_install() {
         echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
-        mrun "apt-get install -t bullseye openjdk-11-jre-headless -y" 2> /dev/null
+        mrun "apt install -t bullseye openjdk-11-jre-headless -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/bullseye.list
         rm -f /etc/apt/apt.conf
         apt_clean_update
@@ -6325,7 +6317,7 @@ sys_packages_install() {
         echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
-        mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
+        mrun "apt install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/chimaera.list
         rm -f /etc/apt/apt.conf
         apt_clean_update
@@ -6337,11 +6329,11 @@ sys_packages_install() {
   else
     _APT_ITEM=$(dpkg --get-selections | grep openjdk-6-jdk | grep install 2>&1)
     if [[ "${_APT_ITEM}" =~ "install" ]]; then
-      mrun "apt-get remove openjdk-6-jdk -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt remove openjdk-6-jdk -y --purge --auto-remove -qq" 2> /dev/null
     fi
     _APT_ITEM=$(dpkg --get-selections | grep openjdk-7-jdk | grep install 2>&1)
     if [[ "${_APT_ITEM}" =~ "install" ]]; then
-      mrun "apt-get remove openjdk-7-jdk -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt remove openjdk-7-jdk -y --purge --auto-remove -qq" 2> /dev/null
     fi
     if [[ "${_XTRAS_LIST}" =~ "SR" ]] \
       || [[ "${_THISHOST}" =~ ".host8." ]] \
@@ -6363,7 +6355,7 @@ sys_packages_install() {
         echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
-        mrun "apt-get install -t bullseye openjdk-11-jre-headless -y" 2> /dev/null
+        mrun "apt install -t bullseye openjdk-11-jre-headless -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/bullseye.list
         rm -f /etc/apt/apt.conf
         apt_clean_update
@@ -6376,7 +6368,7 @@ sys_packages_install() {
         echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
-        mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
+        mrun "apt install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/chimaera.list
         rm -f /etc/apt/apt.conf
         apt_clean_update
@@ -6387,11 +6379,11 @@ sys_packages_install() {
     _APT_ELSE="netcat netcat-traditional"
     apt_clean_update
     mrun "service nginx start" 2> /dev/null
-    mrun "apt-get remove nginx-extras -y -qq" 2> /dev/null
-    mrun "apt-get remove nginx -y -qq"        2> /dev/null
-    mrun "apt-get remove nginx-common -y -qq" 2> /dev/null
-    mrun "apt-get remove nginx-full -y -qq"   2> /dev/null
-    mrun "apt-get remove redis-server -y -qq" 2> /dev/null
+    mrun "apt remove nginx-extras -y -qq" 2> /dev/null
+    mrun "apt remove nginx -y -qq"        2> /dev/null
+    mrun "apt remove nginx-common -y -qq" 2> /dev/null
+    mrun "apt remove nginx-full -y -qq"   2> /dev/null
+    mrun "apt remove redis-server -y -qq" 2> /dev/null
     if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
       ###
       ### Make sure that nginx packages are locked in apt.
@@ -6426,13 +6418,13 @@ sys_packages_install() {
   fi
   if [ "${_IS_VZ}" = "YES" ]; then
     _SYSLOGD=inetutils-syslogd
-    mrun "apt-get remove sysklogd -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove rsyslog -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove sysklogd -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove rsyslog -y --purge --auto-remove -qq" 2> /dev/null
     mrun "killall -9 sysklogd" 2> /dev/null
     mrun "killall -9 rsyslogd" 2> /dev/null
   elif [ -e "/root/.use.sysklogd.cnf" ]; then
     _SYSLOGD=sysklogd
-    mrun "apt-get remove rsyslog -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove rsyslog -y --purge --auto-remove -qq" 2> /dev/null
     mrun "killall -9 rsyslogd" 2> /dev/null
   else
     _SYSLOGD=rsyslog
@@ -8003,8 +7995,8 @@ apticron_update() {
           /etc/apticron/apticron.conf
         wait
       else
-        mrun "apt-get remove apticron -y --purge --auto-remove -qq" 2> /dev/null
-        mrun "apt-get install apticron -y" 2> /dev/null
+        mrun "apt remove apticron -y --purge --auto-remove -qq" 2> /dev/null
+        mrun "apt install apticron -y" 2> /dev/null
         sed -i "s/^# NOTIFY_HOLDS=\"0\"/NOTIFY_HOLDS=\"0\"/g" \
           /etc/apticron/apticron.conf
         wait

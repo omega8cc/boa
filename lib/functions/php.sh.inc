@@ -1455,9 +1455,9 @@ install_php_multi() {
   if [[ "${_PHP_EXTRA_CONF}" =~ "--with-tidy" ]] \
     && [ ! -e "${pthLog}/libtidy-${_LIB_TIDY_VRN}.log" ]; then
     if [ -e "/usr/lib/libtidy.so" ]; then
-      mrun "apt-get remove libtidy-dev -y --purge --auto-remove -qq" 2> /dev/null
-      mrun "apt-get remove libtidy-0.99-0 -y --purge --auto-remove -qq" 2> /dev/null
-      mrun "apt-get remove tidy -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt remove libtidy-dev -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt remove libtidy-0.99-0 -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt remove tidy -y --purge --auto-remove -qq" 2> /dev/null
     fi
     cd /var/opt
     rm -rf tidy*
@@ -1861,9 +1861,9 @@ newrelic_update() {
         echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> ${nrList}
       fi
       apt_clean_update
-      st_runner "apt-get install newrelic-php5-common ${nrmUpArg}" 2> /dev/null
-      st_runner "apt-get install newrelic-daemon ${nrmUpArg}" 2> /dev/null
-      st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
+      st_runner "apt install newrelic-php5-common ${nrmUpArg}" 2> /dev/null
+      st_runner "apt install newrelic-daemon ${nrmUpArg}" 2> /dev/null
+      st_runner "apt install newrelic-php5 ${nrmUpArg}" 2> /dev/null
       # cd /var/opt
       # rm -rf /opt/newrelic*
       # wget -q -U iCab ${urlDev}/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb
@@ -2055,9 +2055,9 @@ if_install_php_newrelic() {
         echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> ${nrList}
       fi
       apt_clean_update
-      st_runner "apt-get install newrelic-php5-common ${nrmUpArg}" 2> /dev/null
-      st_runner "apt-get install newrelic-daemon ${nrmUpArg}" 2> /dev/null
-      st_runner "apt-get install newrelic-php5 ${nrmUpArg}" 2> /dev/null
+      st_runner "apt install newrelic-php5-common ${nrmUpArg}" 2> /dev/null
+      st_runner "apt install newrelic-daemon ${nrmUpArg}" 2> /dev/null
+      st_runner "apt install newrelic-php5 ${nrmUpArg}" 2> /dev/null
       # cd /var/opt
       # rm -rf /opt/newrelic*
       # wget -q -U iCab ${urlDev}/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb
@@ -2754,7 +2754,7 @@ php_install_upgrade() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Checking if PHP upgrade is available"
     fi
-    mrun "apt-get remove php5-sasl php5-suhosin -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove php5-sasl php5-suhosin -y --purge --auto-remove -qq" 2> /dev/null
   fi
   if [[ "${_PHP_MULTI_INSTALL}" =~ "5.6" ]] \
     && [ ! -x "/opt/php56/bin/php" ]; then
@@ -2943,9 +2943,9 @@ php_check_if_rebuild() {
     apt_clean_update
     mrun "${_INSTAPP} libonig-dev" 2> /dev/null
     if [ -e "/usr/lib/libtidy.so" ]; then
-      mrun "apt-get remove libtidy-dev -y --purge --auto-remove -qq" 2> /dev/null
-      mrun "apt-get remove libtidy-0.99-0 -y --purge --auto-remove -qq" 2> /dev/null
-      mrun "apt-get remove tidy -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt remove libtidy-dev -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt remove libtidy-0.99-0 -y --purge --auto-remove -qq" 2> /dev/null
+      mrun "apt remove tidy -y --purge --auto-remove -qq" 2> /dev/null
     fi
     cd /var/opt
     rm -rf tidy*

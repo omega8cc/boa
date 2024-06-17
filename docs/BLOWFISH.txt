@@ -35,7 +35,7 @@ BLOWFISH
 You can easily switch your system to use much more secure Bcrypt/Blowfish,
 using the simple steps listed below.
 
-$ apt-get install libpam-unix2 -y
+$ apt install libpam-unix2 -y
 
 $ cp -af /usr/share/pam-configs/unix /usr/share/pam-configs/unix2
 $ sed -i "s/^Name: Unix/Name: Unix2/g"  /usr/share/pam-configs/unix2

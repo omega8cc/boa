@@ -73,19 +73,19 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
 fi
 
 os_detection_minimal() {
-  _APT_UPDATE="apt-get update"
+  _APT_UPDATE="apt update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
-      _APT_UPDATE="apt-get update --allow-releaseinfo-change"
+      _APT_UPDATE="apt update --allow-releaseinfo-change"
     fi
   done
 }
 os_detection_minimal
 
 apt_clean_update() {
-  #apt-get clean -qq 2> /dev/null
+  #apt clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
@@ -115,8 +115,8 @@ find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install netcat ${aptYesUnth}
-    apt-get install netcat-traditional ${aptYesUnth}
+    apt install netcat ${aptYesUnth}
+    apt install netcat-traditional ${aptYesUnth}
     wait
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -174,12 +174,12 @@ install() {
     mkdir -p /usr/local/lib/python3.9/dist-packages/
     mkdir -p /usr/local/lib/python3.11/dist-packages/
     rm -f /usr/local/bin/duplicity
-    apt-get install librsync-dev -y
-    apt-get install python-dev -y
-    apt-get install python-lockfile -y
-    apt-get install python-setuptools -y
-    apt-get install python-monotonic -y
-    apt-get install s4cmd -y
+    apt install librsync-dev -y
+    apt install python-dev -y
+    apt install python-lockfile -y
+    apt install python-setuptools -y
+    apt install python-monotonic -y
+    apt install s4cmd -y
     mkdir -p /var/opt
     rm -rf /var/opt/{fasteners*,boto*,duplicity*}
     cd /var/opt
@@ -389,14 +389,14 @@ if [ -e "${_LOGPTH}/${BUCKET_DOT}.archive.log" ]; then
   mv ${_LOGPTH}/${BUCKET_DOT}.archive.log /var/backups/${BUCKET_DOT}.archive.log
   cat ${_LOGPTH}/${BUCKET_DOT}.randomize.cleanup.log >> ${_LOGPTH}/${BUCKET}.randomize.cleanup.log
   mv ${_LOGPTH}/${BUCKET_DOT}.randomize.cleanup.log /var/backups/${BUCKET_DOT}.randomize.cleanup.log
-  #apt-get clean -qq
+  #apt clean -qq
   #rm -rf /var/lib/apt/lists/*
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   fi
   apt_clean_update
-  apt-get install python-pip -y
+  apt install python-pip -y
   pip install awscli
   aws s3 mb s3://${BUCKET} --region ${_AWS_REG}
   aws s3 sync s3://${BUCKET_DOT} s3://${BUCKET}

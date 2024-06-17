@@ -97,18 +97,18 @@ dehydSrcPath="/var/xdrago/conf/${dehydName}"
 legacyLeSh="/var/xdrago/conf/letsencrypt.sh"
 
 os_detection_minimal() {
-  _APT_UPDATE="apt-get update"
+  _APT_UPDATE="apt update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
-      _APT_UPDATE="apt-get update --allow-releaseinfo-change"
+      _APT_UPDATE="apt update --allow-releaseinfo-change"
     fi
   done
 }
 
 apt_clean_update() {
-  #apt-get clean -qq 2> /dev/null
+  #apt clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
@@ -1877,14 +1877,14 @@ if_reinstall_curl() {
     fi
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt_clean_update
-    apt-get remove curl ${aptYesUnth} 2> /dev/null
-    apt-get install curl ${aptYesUnth} 2> /dev/null
+    apt remove curl ${aptYesUnth} 2> /dev/null
+    apt install curl ${aptYesUnth} 2> /dev/null
     ldconfig 2> /dev/null
     if [ -f "/usr/bin/curl" ]; then
       isCurl=$(/usr/bin/curl --version 2>&1)
       if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
         echo "OOPS: /usr/bin/curl is still broken, uninstalling.."
-        apt-get remove curl ${aptYesUnth} 2> /dev/null
+        apt remove curl ${aptYesUnth} 2> /dev/null
       else
         echo "GOOD: /usr/bin/curl works"
       fi
@@ -2073,7 +2073,7 @@ if_update_boa_key_tools_only() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install lsb-release ${aptYesUnth} 2> /dev/null
+    apt install lsb-release ${aptYesUnth} 2> /dev/null
   fi
   _IPSET_TEST=$(which ipset 2> /dev/null)
   if [ ! -x "${_IPSET_TEST}" ]; then
@@ -2088,7 +2088,7 @@ if_update_boa_key_tools_only() {
     if [ -L "/usr/sbin/ipset" ]; then
       rm -f /usr/sbin/ipset
     fi
-    apt-get install ipset ${aptYesUnth} 2> /dev/null
+    apt install ipset ${aptYesUnth} 2> /dev/null
   fi
   if [ -x "/sbin/ipset" ] && [ ! -e "/usr/sbin/ipset" ]; then
     ln -s /sbin/ipset /usr/sbin/ipset
@@ -2251,12 +2251,12 @@ setup() {
       echo "Aptitude::CmdLine::Fix-Broken \"true\";"      >> /etc/apt/apt.conf.d/99ignorestrict
     fi
     apt_clean_update
-    apt-get install screen -y 2> /dev/null
-    apt-get install net-tools -y 2> /dev/null
-    apt-get install hostname -y 2> /dev/null
+    apt install screen -y 2> /dev/null
+    apt install net-tools -y 2> /dev/null
+    apt install hostname -y 2> /dev/null
     if [ ! -e "/var/aegir" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
-      apt-get remove unscd -y --purge --auto-remove -qq 2> /dev/null
-      apt-get remove dbus -y --purge --auto-remove -qq 2> /dev/null
+      apt remove unscd -y --purge --auto-remove -qq 2> /dev/null
+      apt remove dbus -y --purge --auto-remove -qq 2> /dev/null
       if [ -e "/usr/share/dbus-1" ]; then
         rm -f /usr/share/dbus-1/*/*freedesktop*
       fi
@@ -2292,7 +2292,7 @@ setup() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install virt-what ${aptYesUnth} 2> /dev/null
+    apt install virt-what ${aptYesUnth} 2> /dev/null
   fi
   _LSB_TEST=$(which lsb_release 2> /dev/null)
   if [ ! -x "${_LSB_TEST}" ]; then
@@ -2301,7 +2301,7 @@ setup() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install lsb-release ${aptYesUnth} 2> /dev/null
+    apt install lsb-release ${aptYesUnth} 2> /dev/null
   fi
   update_boa_tools
   echo
@@ -2344,8 +2344,8 @@ find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install netcat ${aptYesUnth} 2> /dev/null
-    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
+    apt install netcat ${aptYesUnth} 2> /dev/null
+    apt install netcat-traditional ${aptYesUnth} 2> /dev/null
     wait
   fi
   ffMirr=$(which ffmirror 2>&1)

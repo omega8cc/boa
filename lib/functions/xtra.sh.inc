@@ -281,7 +281,7 @@ if_install_collectd() {
     && [ ! -e "/boot/grub/grub.cfg" ] \
     && [ ! -e "/boot/grub/menu.lst" ]; then
     rm -f ${mtrNgx}/vhost.d/cgp*
-    mrun "apt-get remove collectd -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt remove collectd -y --purge --auto-remove -qq" 2> /dev/null
     rm -rf /var/www/cgp
   fi
   if [ -d "/var/www/cgp" ]; then
@@ -343,7 +343,7 @@ if_install_hhvm() {
           done
           cat /var/opt/hhvm.gpg.key | ${_GPG} --import &> /dev/null
           apt_clean_update
-          st_runner "apt-get install hhvm ${aptYesUnth}" 2> /dev/null
+          st_runner "apt install hhvm ${aptYesUnth}" 2> /dev/null
           msg "INFO: HHVM Engine installed"
         else
           msg "INFO: HHVM Engine installation skipped"
@@ -703,7 +703,7 @@ if_install_ffmpeg() {
           echo "deb http://www.deb-multimedia.org buster-backports main" >> /etc/apt/sources.list.d/ffmpeg.list
         fi
         apt_clean_update
-        st_runner "apt-get install deb-multimedia-keyring ${aptYesUnth}" 2> /dev/null
+        st_runner "apt install deb-multimedia-keyring ${aptYesUnth}" 2> /dev/null
         apt_clean_update
         st_runner "${_INSTAPP} ffmpeg" 2> /dev/null
         msg "INFO: FFmpeg installed"
