@@ -107,6 +107,16 @@
    $ touch /root/.init-to-debian.cnf
    $ autoinit
 
+   NOTE: It's recommended that you simply wait 10 minutes and then log in back
+         to inspect autoinit logs to make sure there is a line at the bottom
+         saying: "Time for reboot and then you can run boa install"
+
+         $ cat /root/.autoinit.log
+
+         There's also a verbose log of what happened if you are interested:
+
+         $ cat /root/.autoinit-silent.log
+
 5. Install Barracuda and Octopus.
 
    NOTE: always start with screen session!
