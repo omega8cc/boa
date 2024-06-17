@@ -1219,31 +1219,54 @@ if_reinstall_curl() {
   _CURL_VRN=8.8.0
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-    echo "OOPS: cURL is broken! Re-installing.."
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-      && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    if [ -e "/var/aegir/drush" ]; then
+      echo "OOPS: cURL is broken! Re-installing.."
     fi
-    echo "curl install" | dpkg --set-selections &> /dev/null
-    apt_clean_update &> /dev/null
-    apt remove curl -y -qq &> /dev/null
-    mkdir -p /var/opt
-    rm -rf /var/opt/curl*
-    cd /var/opt
-    wget -q -U iCab http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
-    tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
-    cd /var/opt/curl-${_CURL_VRN}
-    sh ./configure --with-ssl --prefix=/usr/local &> /dev/null
-    make -j $(nproc) --quiet &> /dev/null
-    make --quiet install &> /dev/null
-    if [ -f "/usr/local/bin/curl" ]; then
-      isCurl=$(/usr/local/bin/curl --version 2>&1)
-      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-        echo "ERRR: /usr/local/bin/curl is broken, moving to /usr/local/bin/curl--broken"
-        rm -f /usr/local/bin/curl--broken
-        mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
+    if [ ! -e "/var/aegir/drush" ]; then
+      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+        && [ -e "/etc/apt/apt.conf.d" ]; then
+        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+      fi
+      echo "curl install" | dpkg --set-selections 2> /dev/null
+      apt_clean_update
+      apt install curl -y -qq 2> /dev/null
+    fi
+    isCurl=$(curl --version 2>&1)
+    if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+      if [ -e "/var/aegir/drush" ]; then
+        echo "ERRR: curl is still broken, we will install from sources"
       else
-        echo "GOOD: /usr/local/bin/curl works"
+        echo "ERRR: curl is still broken, please install it and debug manually"
+        echo "Bye"
+        exit 1
+      fi
+    fi
+    if [ -e "/var/aegir/drush" ]; then
+      isCurl=$(curl --version 2>&1)
+      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+        echo "INFO: Installing curl from sources..."
+        mkdir -p /var/opt
+        rm -rf /var/opt/curl*
+        cd /var/opt
+        wget -q -U iCab http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
+        tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
+        cd /var/opt/curl-${_CURL_VRN}
+        sh ./configure --with-ssl --prefix=/usr/local &> /dev/null
+        make -j $(nproc) --quiet &> /dev/null
+        make --quiet install &> /dev/null
+      fi
+      if [ -f "/usr/local/bin/curl" ]; then
+        isCurl=$(/usr/local/bin/curl --version 2>&1)
+        if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+          echo "ERRR: /usr/local/bin/curl is broken, moving to /usr/local/bin/curl--broken"
+          echo "ERRR: Please install it and debug manually"
+          echo "Bye"
+          rm -f /usr/local/bin/curl--broken
+          mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
+          exit 1
+        else
+          echo "GOOD: /usr/local/bin/curl works"
+        fi
       fi
     fi
   fi
