@@ -5,7 +5,7 @@ export tRee="${tRee}"
 #
 # Re-install curl if broken.
 if_reinstall_curl() {
-  _CURL_VRN=8.7.1
+  _CURL_VRN=8.8.0
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
     msg "OOPS: cURL is broken! Re-installing.."
@@ -3802,7 +3802,7 @@ curl_install_src() {
   if [ "${_OS_CODE}" = "precise" ] || [ "${_OS_CODE}" = "jessie" ]; then
     touch /root/.use.curl.from.packages.cnf
     chattr +i /root/.use.curl.from.packages.cnf
-    _CURL_VRN=8.7.1
+    _CURL_VRN=8.8.0
   fi
   if [ ! -e "/root/.use.curl.from.packages.cnf" ]; then
     if [ "${_OS_CODE}" = "daedalus" ] \
