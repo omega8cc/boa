@@ -1319,20 +1319,23 @@ db_head_to_stretch_first()
         echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
       fi
   	  apt_clean_update
-  	  echo "curl install"           | dpkg --set-selections
-  	  echo "git install"            | dpkg --set-selections
-  	  echo "git-core install"       | dpkg --set-selections
-  	  echo "git-man install"        | dpkg --set-selections
-  	  echo "libssl-dev install"     | dpkg --set-selections
-  	  echo "openssh-client install" | dpkg --set-selections
-  	  echo "openssh-server install" | dpkg --set-selections
-  	  echo "openssh-sftp-server install" | dpkg --set-selections
-  	  echo "openssl install"        | dpkg --set-selections
-  	  echo "ssh install"            | dpkg --set-selections
-  	  echo "zlib1g install"         | dpkg --set-selections
-  	  echo "zlib1g-dev install"     | dpkg --set-selections
-      echo "nginx install"          | dpkg --set-selections
-      echo "nginx-common install"   | dpkg --set-selections
+      echo "curl install"           | dpkg --set-selections &> /dev/null
+      echo "git install"            | dpkg --set-selections &> /dev/null
+      echo "git-core install"       | dpkg --set-selections &> /dev/null
+      echo "git-man install"        | dpkg --set-selections &> /dev/null
+      echo "libssl-dev install"     | dpkg --set-selections &> /dev/null
+      echo "nginx install"          | dpkg --set-selections &> /dev/null
+      echo "nginx-common install"   | dpkg --set-selections &> /dev/null
+      echo "openssh-client install" | dpkg --set-selections &> /dev/null
+      echo "openssh-server install" | dpkg --set-selections &> /dev/null
+      echo "openssh-sftp-server install" | dpkg --set-selections &> /dev/null
+      echo "openssl install"        | dpkg --set-selections &> /dev/null
+      echo "ssh install"            | dpkg --set-selections &> /dev/null
+      echo "sysvinit-core install"  | dpkg --set-selections &> /dev/null
+      echo "sysvinit-utils install" | dpkg --set-selections &> /dev/null
+      echo "zlib1g install"         | dpkg --set-selections &> /dev/null
+      echo "zlib1g-dev install"     | dpkg --set-selections &> /dev/null
+      echo "zlibc install"          | dpkg --set-selections &> /dev/null
   	  apt upgrade ${nrmUpArg}
   	  apt install lsb-release ${nrmUpArg}
       ### Check if we can continue

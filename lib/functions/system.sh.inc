@@ -5627,22 +5627,23 @@ if_major_os_upgrade() {
     if [ "${_LOC_OS_CODE}" = "stretch" ]; then
       mrun "apt remove libpam-systemd -y --purge --auto-remove -qq" 2> /dev/null
     fi
-    echo "sysvinit-core install"  | dpkg --set-selections &> /dev/null
-    echo "sysvinit-utils install" | dpkg --set-selections &> /dev/null
     echo "curl install"           | dpkg --set-selections &> /dev/null
     echo "git install"            | dpkg --set-selections &> /dev/null
     echo "git-core install"       | dpkg --set-selections &> /dev/null
     echo "git-man install"        | dpkg --set-selections &> /dev/null
     echo "libssl-dev install"     | dpkg --set-selections &> /dev/null
+    echo "nginx install"          | dpkg --set-selections &> /dev/null
+    echo "nginx-common install"   | dpkg --set-selections &> /dev/null
     echo "openssh-client install" | dpkg --set-selections &> /dev/null
     echo "openssh-server install" | dpkg --set-selections &> /dev/null
     echo "openssh-sftp-server install" | dpkg --set-selections &> /dev/null
     echo "openssl install"        | dpkg --set-selections &> /dev/null
     echo "ssh install"            | dpkg --set-selections &> /dev/null
+    echo "sysvinit-core install"  | dpkg --set-selections &> /dev/null
+    echo "sysvinit-utils install" | dpkg --set-selections &> /dev/null
     echo "zlib1g install"         | dpkg --set-selections &> /dev/null
     echo "zlib1g-dev install"     | dpkg --set-selections &> /dev/null
-    echo "nginx install"          | dpkg --set-selections &> /dev/null
-    echo "nginx-common install"   | dpkg --set-selections &> /dev/null
+    echo "zlibc install"          | dpkg --set-selections &> /dev/null
     ###
     ### Run pre-migration upgrade in the current OS version.
     mrun "apt upgrade ${nrmUpArg}" 2> /dev/null
@@ -6220,15 +6221,18 @@ sys_packages_update() {
     echo "git-core install"       | dpkg --set-selections &> /dev/null
     echo "git-man install"        | dpkg --set-selections &> /dev/null
     echo "libssl-dev install"     | dpkg --set-selections &> /dev/null
+    echo "nginx install"          | dpkg --set-selections &> /dev/null
+    echo "nginx-common install"   | dpkg --set-selections &> /dev/null
     echo "openssh-client install" | dpkg --set-selections &> /dev/null
     echo "openssh-server install" | dpkg --set-selections &> /dev/null
     echo "openssh-sftp-server install" | dpkg --set-selections &> /dev/null
     echo "openssl install"        | dpkg --set-selections &> /dev/null
     echo "ssh install"            | dpkg --set-selections &> /dev/null
+    echo "sysvinit-core install"  | dpkg --set-selections &> /dev/null
+    echo "sysvinit-utils install" | dpkg --set-selections &> /dev/null
     echo "zlib1g install"         | dpkg --set-selections &> /dev/null
     echo "zlib1g-dev install"     | dpkg --set-selections &> /dev/null
-    echo "nginx install"          | dpkg --set-selections &> /dev/null
-    echo "nginx-common install"   | dpkg --set-selections &> /dev/null
+    echo "zlibc install"          | dpkg --set-selections &> /dev/null
   fi
   webmin_apt_update
   apt_clean_update
