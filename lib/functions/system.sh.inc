@@ -3740,6 +3740,11 @@ ssl_install_src() {
       fi
       sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
       echo "${_SSL_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
+      _LEGACY_SSL_LIB_PATH="/usr/local/ssl/lib"
+      if [ -e "${_LEGACY_SSL_LIB_PATH}" ] \
+        && [ "${_LEGACY_SSL_LIB_PATH}" != "${_SSL_LIB_PATH}" ]; then
+        echo "${_LEGACY_SSL_LIB_PATH}" >> /etc/ld.so.conf.d/libc.conf
+      fi
       sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
       ldconfig 2> /dev/null
       ###--------------------###
