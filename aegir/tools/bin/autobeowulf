@@ -425,6 +425,7 @@ if [ -e "/root/.run-to-beowulf.cnf" ] \
   echo " " >> ${logAbf}
   touch /root/.auto-upgraded-to-beowulf.cnf
   msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> ${logAbf}
+  [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ] && touch /root/.allow.auditd.and.apparmor.cnf
   [ ! -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && touch /root/.force.rebuild.src.on.auto.now.cnf
   /opt/local/bin/barracuda up-${tRee} system >> ${logAbf}
   wait

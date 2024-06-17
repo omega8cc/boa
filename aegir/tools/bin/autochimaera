@@ -470,6 +470,7 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
   touch /root/.auto-upgraded-to-chimaera.cnf
   if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
     msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> ${logAch}
+    [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ] && touch /root/.allow.auditd.and.apparmor.cnf
     [ ! -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && touch /root/.force.rebuild.src.on.auto.now.cnf
     /opt/local/bin/barracuda up-${tRee} system >> ${logAch}
     wait

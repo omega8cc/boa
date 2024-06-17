@@ -512,8 +512,11 @@ csf_lfd_install_upgrade
 
 
 ###
-### Enable or disable AppArmor on upgrade
+### Enable or disable AppArmor on install and upgrade
 ###
+if [ "${_STATUS}" = "INIT" ]; then
+  [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ] && touch /root/.allow.auditd.and.apparmor.cnf
+fi
 if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
   if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
     if_enable_or_disable_apparmor
