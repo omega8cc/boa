@@ -371,14 +371,55 @@ mytop_install
 
 
 ###
-### Install other services
+### OpenSSL modern and legacy support
 ###
-if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
-  if [ ! -e "/root/.install.modern.openssl.cnf" ]; then
-    touch /root/.install.modern.openssl.cnf
-    chattr +i /root/.install.modern.openssl.cnf
+_LC_SSL_CTRL="/root/.install.legacy.openssl.cnf"
+_MD_SSL_CTRL="/root/.install.modern.openssl.cnf"
+
+if [ -x "/usr/local/ssl/bin/openssl" ]; then
+  [ -e "${_LC_SSL_CTRL}" ] && rm -f ${_LC_SSL_CTRL}
+fi
+
+if [ "${_STATUS}" = "INIT" ]; then
+  if [ ! -e "${_LC_SSL_CTRL}" ]; then
+    if [ ! -e "${_MD_SSL_CTRL}" ]; then
+      touch ${_MD_SSL_CTRL}
+      chattr +i ${_MD_SSL_CTRL}
+    fi
+  fi
+elif [ "${_STATUS}" = "UPGRADE" ]; then
+  if [ ! -e "/opt/php73/bin/php" ] \
+    && [ ! -e "/opt/php72/bin/php" ] \
+    && [ ! -e "/opt/php71/bin/php" ] \
+    && [ ! -e "/opt/php70/bin/php" ] \
+    && [ ! -e "/opt/php56/bin/php" ]; then
+    if [ ! -e "${_MD_SSL_CTRL}" ] \
+      && [ ! -e "${_LC_SSL_CTRL}" ]; then
+      touch ${_MD_SSL_CTRL}
+      chattr +i ${_MD_SSL_CTRL}
+    fi
+  fi
+  if [ ! -x "/usr/local/ssl/bin/openssl" ] \
+    && [ -e "${_LC_SSL_CTRL}" ]; then
+    if [ -e "${_MD_SSL_CTRL}" ]; then
+      chattr -i ${_MD_SSL_CTRL}
+      rm -f ${_MD_SSL_CTRL}
+    fi
   fi
 fi
+
+if [ -x "/usr/local/ssl/bin/openssl" ] \
+  && [ -x "/usr/local/ssl3/bin/openssl" ]; then
+  if [ ! -e "${_MD_SSL_CTRL}" ]; then
+    touch ${_MD_SSL_CTRL}
+    chattr +i ${_MD_SSL_CTRL}
+  fi
+fi
+
+
+###
+### Install other services
+###
 if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   ssl_install_src
   ssl_crypto_lib_fix

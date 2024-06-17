@@ -1522,8 +1522,7 @@ install_php_multi() {
     || [ "$1" = "71" ] \
     || [ "$1" = "72" ] \
     || [ "$1" = "73" ]; then
-    if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ] \
-      && [ ! -e "/root/.force.modern.openssl.php.cnf" ]; then
+    if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ]; then
       _SSL_PATH="/usr/local/ssl"
       _SSL_LIB_PATH="${_SSL_PATH}/lib"
     fi
