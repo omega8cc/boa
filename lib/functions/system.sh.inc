@@ -4469,15 +4469,27 @@ if_enable_or_disable_apparmor() {
     msg "PROC: if_enable_or_disable_apparmor"
   fi
   ###--------------------###
-  if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
+  isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
+  isAppArmorGrub=
+  if [ -e "${isAppArmorGrubFile}" ]; then
+    _GRUB_APPARMOR_TEST=$(grep "apparmor=1 security=apparmor" ${isAppArmorGrubFile} 2>&1)
+    if [[ "${_GRUB_APPARMOR_TEST}" =~ "apparmor=1 security=apparmor" ]]; then
+      isAppArmorGrub=YES
+    fi
+  fi
+  isAppArmorComplain=$(which aa-complain 2>&1)
+  isAppArmorStatus=$(which aa-status 2>&1)
+  if [ -e "/root/.deny.auditd.and.apparmor.cnf" ]; then
     isAuditd=$(which auditd 2>&1)
     if [ -e "${isAuditd}" ]; then
       msg "ARMR: The system auditd/aureport/ausearch will be uninstalled now..."
       mrun "apt-get remove auditd -y -qq" 2> /dev/null
       mrun "killall -9 auditd" 2> /dev/null
     fi
-    isApparmor=$(which aa-status 2>&1)
-    if [ ! -z "${isApparmor}" ]; then
+    if [ ! -z "${isAppArmorGrub}" ] \
+      || [ ! -z "${isAppArmorComplain}" ] \
+      || [ ! -z "${isAppArmorStatus}" ] \
+      || [ -e "/etc/apparmor.d" ]; then
       msg "ARMR: The system AppArmor will be uninstalled now, however..."
       msg "ARMR: ...it will become inactive only after you reboot this server"
       msg "ARMR: Use 'boa reboot' command for optimized reboot"
@@ -4485,13 +4497,15 @@ if_enable_or_disable_apparmor() {
       mrun "sleep 8"
       mkdir -p /etc/default/grub.d
       echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
-        | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
+        | tee ${isAppArmorGrubFile} &> /dev/null
       update-grub &> /dev/null
       mrun "apt-get remove apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra -y -qq" 2> /dev/null
     fi
   else
-    isApparmor=$(which aa-status 2>&1)
-    if [ -z "${isApparmor}" ] || [ ! -e "/etc/apparmor.d" ]; then
+    if [ -z "${isAppArmorGrub}" ] \
+      || [ -z "${isAppArmorComplain}" ] \
+      || [ -z "${isAppArmorStatus}" ] \
+      || [ ! -e "/etc/apparmor.d" ]; then
       msg "ARMR: The system AppArmor and auditd will be installed now, however..."
       msg "ARMR: ...it will become active only after you reboot this server"
       msg "ARMR: Use 'boa reboot' command for optimized reboot"
@@ -4499,7 +4513,7 @@ if_enable_or_disable_apparmor() {
       mrun "sleep 8"
       mkdir -p /etc/default/grub.d
       echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
-        | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
+        | tee ${isAppArmorGrubFile} &> /dev/null
       update-grub &> /dev/null
       mrun "${_INSTAPP} apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra" 2> /dev/null
       mrun "${_INSTAPP} auditd" 2> /dev/null
