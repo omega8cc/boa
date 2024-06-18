@@ -270,6 +270,8 @@ check_exception_mycnf
 virt_detection
 os_detection
 os_detection_minimal
+if_rebuild_src_on_major_os_upgrade
+if_long_generate_on_major_os_upgrade
 
 
 ###
@@ -311,8 +313,6 @@ check_prepare_dirs_permissions
 ### Optional major system upgrades
 ###
 early_sys_ctrl_mark
-if_rebuild_src_on_major_os_upgrade
-if_long_generate_on_major_os_upgrade
 if_post_major_os_upgrade
 if_major_os_upgrade
 normal_sys_ctrl_mark
