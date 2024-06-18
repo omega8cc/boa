@@ -1399,6 +1399,7 @@ check_root() {
         ln -s /proc/self/fd /dev/fd
       fi
     fi
+    rm -f /var/lib/man-db/auto-update
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
