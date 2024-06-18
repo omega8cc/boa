@@ -250,14 +250,26 @@ else
 fi
 
 install_enable_apparmor_utils() {
-  isApparmor=$(which aa-status 2>&1)
-  if [ ! -z "${isApparmor}" ]; then
+  isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
+  isAppArmorGrub=
+  if [ -e "${isAppArmorGrubFile}" ]; then
+    _GRUB_APPARMOR_TEST=$(grep "apparmor=1 security=apparmor" ${isAppArmorGrubFile} 2>&1)
+    if [[ "${_GRUB_APPARMOR_TEST}" =~ "apparmor=1 security=apparmor" ]]; then
+      isAppArmorGrub=YES
+    fi
+  fi
+  isAppArmorComplain=$(which aa-complain 2>&1)
+  isAppArmorStatus=$(which aa-status 2>&1)
+  if [ -z "${isAppArmorGrub}" ] \
+    || [ -z "${isAppArmorComplain}" ] \
+    || [ -z "${isAppArmorStatus}" ] \
+    || [ ! -e "/etc/apparmor.d" ]; then
     msg "Installing AppArmor Tools early" >> ${logInt}
     /usr/bin/apt-get install apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra -y -qq >> ${logSlt}
   fi
   mkdir -p /etc/default/grub.d
   echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
-    | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
+    | tee ${isAppArmorGrubFile} &> /dev/null
   update-grub >> ${logSlt}
 }
 
