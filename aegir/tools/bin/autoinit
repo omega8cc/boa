@@ -249,6 +249,18 @@ else
   silentMode=silent
 fi
 
+install_enable_apparmor_utils() {
+  isApparmor=$(which aa-status 2>&1)
+  if [ ! -z "${isApparmor}" ]; then
+    msg "Installing AppArmor Tools early" >> ${logInt}
+    /usr/bin/apt-get install apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra -y -qq >> ${logSlt}
+  fi
+  mkdir -p /etc/default/grub.d
+  echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
+    | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
+  update-grub >> ${logSlt}
+}
+
 init_pre() {
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -343,6 +355,7 @@ init_pre() {
         ${_INITINS} build-essential curl git >> ${logSlt}
         ${_INITINS} libgd-dev libmagickwand-dev libcurl4-openssl-dev >> ${logSlt}
       fi
+      install_enable_apparmor_utils
       echo "Waiting five seconds before reboot..."
       sleep 5
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
