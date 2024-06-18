@@ -570,26 +570,26 @@ os_detection_minimal() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: os_detection_minimal"
   fi
-  _APT_UPDATE="apt update"
+  _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
-      _APT_UPDATE="apt update --allow-releaseinfo-change"
+      _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
 }
 
 apt_clean_update() {
-  #apt clean -qq 2> /dev/null
+  #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
   mrun "${_APT_UPDATE} -qq" 2> /dev/null
 }
 
 apt_clean_update_no_releaseinfo_change() {
-  #apt clean -qq 2> /dev/null
+  #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
-  mrun "apt update -qq" 2> /dev/null
+  mrun "apt-get update -qq" 2> /dev/null
 }
 
 os_detection() {

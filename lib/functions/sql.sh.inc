@@ -598,7 +598,7 @@ prep_for_install_db_sql() {
   echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
   apt_clean_update
   if [ -e "/usr/bin/mytop" ]; then
-    mrun "apt remove mytop -y --purge --auto-remove -qq" 2> /dev/null
+    mrun "apt-get remove mytop -y --purge --auto-remove -qq" 2> /dev/null
     rm -f /usr/bin/mytop
   fi
   if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \

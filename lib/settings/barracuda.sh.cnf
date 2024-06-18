@@ -1099,8 +1099,8 @@ export tRee="${tRee}"
 gCb="git clone --branch"
 dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
 nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
-_INITINS="/usr/bin/apt -y --allow-unauthenticated install"
-_INSTALL="/usr/bin/apt ${nrmUpArg} install"
+_INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
+_INSTALL="/usr/bin/apt-get ${nrmUpArg} install"
 aptYesUnth="-y --allow-unauthenticated"
 
 
@@ -1108,12 +1108,12 @@ aptYesUnth="-y --allow-unauthenticated"
 ### Determine correct _APT_UPDATE
 ###
 os_detection_minimal() {
-  _APT_UPDATE="apt update"
+  _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
-      _APT_UPDATE="apt update --allow-releaseinfo-change"
+      _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
 }
@@ -1124,7 +1124,7 @@ os_detection_minimal
 ### Apt cleanup
 ###
 apt_clean_update() {
-  #apt clean -qq 2> /dev/null
+  #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
   mrun "${_APT_UPDATE} -qq" 2> /dev/null
 }
@@ -1145,8 +1145,8 @@ find_fast_mirror_cnf() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt install netcat ${aptYesUnth} 2> /dev/null
-    apt install netcat-traditional ${aptYesUnth} 2> /dev/null
+    apt-get install netcat ${aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
     wait
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -1241,9 +1241,9 @@ download_helpers_libs() {
         echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
       fi
       apt_clean_update
-      apt install git -fuy --allow-unauthenticated 2> /dev/null
-      apt install git-core -fuy --allow-unauthenticated 2> /dev/null
-      apt install git-man -fuy --allow-unauthenticated 2> /dev/null
+      apt-get install git -fuy --allow-unauthenticated 2> /dev/null
+      apt-get install git-core -fuy --allow-unauthenticated 2> /dev/null
+      apt-get install git-man -fuy --allow-unauthenticated 2> /dev/null
     fi
     ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git \
       ${bldPth} &> /dev/null

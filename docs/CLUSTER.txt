@@ -66,7 +66,7 @@ http://galeracluster.com/documentation-webpages/arbitrator.html
 
 ### BOA Simple Cluster Installer Setup
 
-   $ apt update -qq && apt install wget -y -qq
+   $ apt-get update -qq && apt-get install wget -y -qq
    $ cd;rm -f cluster.sh
    $ cd;wget -q -U iCab http://files.aegir.cc/cluster/cluster.sh
    $ mv -f cluster.sh /usr/local/bin/cluster

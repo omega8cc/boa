@@ -49,18 +49,18 @@ clean_pid_exit() {
 }
 
 os_detection_minimal() {
-  _APT_UPDATE="apt update"
+  _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
-      _APT_UPDATE="apt update --allow-releaseinfo-change"
+      _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
 }
 
 apt_clean_update() {
-  #apt clean -qq 2> /dev/null
+  #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
@@ -192,7 +192,7 @@ system_check_clean() {
     echo "/etc/nginx /etc/apache2 /etc/mysql /var/lib/mysql /var/aegir"
     if [ ! -e "/etc/nginx" ]; then
       echo
-      echo "HINT: Try to run: 'apt purge mysql-common' and then try again."
+      echo "HINT: Try to run: 'apt-get purge mysql-common' and then try again."
       echo "HINT: You can also enforce installation with empty control file:"
       echo " touch /root/.force.reinstall.cnf -- and then try again."
       echo
@@ -1294,8 +1294,8 @@ find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt install netcat ${aptYesUnth} 2> /dev/null
-    apt install netcat-traditional ${aptYesUnth} 2> /dev/null
+    apt-get install netcat ${aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
     wait
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -1340,7 +1340,7 @@ if_reinstall_curl() {
       fi
       echo "curl install" | dpkg --set-selections 2> /dev/null
       apt_clean_update
-      apt install curl -y -qq 2> /dev/null
+      apt-get install curl -y -qq 2> /dev/null
     fi
     isCurl=$(curl --version 2>&1)
     if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
@@ -1569,21 +1569,21 @@ check_root() {
       echo -e 'Package: makedev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
       apt_clean_update
     fi
-    apt remove fuse -y --purge --auto-remove -qq 2> /dev/null
-    apt remove udev -y --purge --auto-remove -qq 2> /dev/null
-    apt remove makedev -y --purge --auto-remove -qq 2> /dev/null
+    apt-get remove fuse -y --purge --auto-remove -qq 2> /dev/null
+    apt-get remove udev -y --purge --auto-remove -qq 2> /dev/null
+    apt-get remove makedev -y --purge --auto-remove -qq 2> /dev/null
     if [ -e "/sbin/hdparm" ]; then
-      apt remove hdparm -y --purge --auto-remove -qq 2> /dev/null
+      apt-get remove hdparm -y --purge --auto-remove -qq 2> /dev/null
     fi
     if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
       isAuditd=$(which auditd 2>&1)
       if [ -e "${isAuditd}" ]; then
-        apt remove auditd -y -qq 2> /dev/null
+        apt-get remove auditd -y -qq 2> /dev/null
         killall -9 auditd 2> /dev/null
       fi
       isApparmor=$(which aa-status 2>&1)
       if [ ! -z "${isApparmor}" ]; then
-        apt remove apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra -y -qq 2> /dev/null
+        apt-get remove apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra -y -qq 2> /dev/null
       fi
     fi
     _REMOVE_LINKS="buagent \

@@ -36,19 +36,19 @@ check_root() {
 check_root
 
 os_detection_minimal() {
-  _APT_UPDATE="apt update"
+  _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
-      _APT_UPDATE="apt update --allow-releaseinfo-change"
+      _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
 }
 os_detection_minimal
 
 apt_clean_update() {
-  #apt clean -qq 2> /dev/null
+  #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
@@ -84,8 +84,8 @@ find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt install netcat ${aptYesUnth} 2> /dev/null
-    apt install netcat-traditional ${aptYesUnth} 2> /dev/null
+    apt-get install netcat ${aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
     wait
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -127,7 +127,7 @@ if_reinstall_curl_src() {
     fi
     echo "curl install" | dpkg --set-selections &> /dev/null
     apt_clean_update &> /dev/null
-    apt remove curl -y -qq &> /dev/null
+    apt-get remove curl -y -qq &> /dev/null
     mkdir -p /var/opt
     rm -rf /var/opt/curl*
     cd /var/opt

@@ -88,7 +88,7 @@ if [ -z "${TERM+x}" ]; then
 fi
 tRee=dev
 export tRee="${tRee}"
-_INITINS="/usr/bin/apt -y --allow-unauthenticated install"
+_INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
 dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
 nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
 
@@ -136,8 +136,8 @@ fi
 locales_check_fix_early() {
   isLoc=$(which locale 2>&1)
   if [ ! -x "${isLoc}" ] || [ -z "${isLoc}" ]; then
-    _INITINS="/usr/bin/apt -y --allow-unauthenticated install"
-    apt update -qq &> /dev/null
+    _INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
+    apt-get update -qq &> /dev/null
     ${_INITINS} locales locales-all &> /dev/null
   fi
   _LOC_TEST=$(locale 2>&1)
@@ -313,7 +313,7 @@ init_pre() {
     if [ ! -x "/usr/bin/aptitude" ] || [ ! -x "/usr/bin/cc" ]; then
       echo "Running init_pre procedure B..."
       touch /var/run/autoinit.pid
-      /usr/bin/apt update >> ${logSlt}
+      /usr/bin/apt-get update >> ${logSlt}
       ${_INITINS} lsb-release >> ${logSlt}
       _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
       _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
@@ -322,14 +322,14 @@ init_pre() {
       echo " " >> ${logInt}
       if [ "${silentMode}" = "verbose" ]; then
         echo " " >> ${logInt}
-        /usr/bin/apt update >> ${logInt}
+        /usr/bin/apt-get update >> ${logInt}
         _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
         if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
           || [ -e "/etc/cloud/cloud.cfg.d" ]; then
-          /usr/bin/apt remove cloud-utils cloud-init -y --purge --auto-remove -qq >> ${logInt}
-          /usr/bin/apt remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq >> ${logInt}
-          /usr/bin/apt autoremove --purge -y >> ${logInt}
-          /usr/bin/apt autoclean -y >> ${logInt}
+          /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq >> ${logInt}
+          /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq >> ${logInt}
+          /usr/bin/apt-get autoremove --purge -y >> ${logInt}
+          /usr/bin/apt-get autoclean -y >> ${logInt}
           if [ -e "/etc/cloud/cloud.cfg.d" ]; then
             mv -f /etc/cloud /var/backups/
           fi
@@ -339,14 +339,14 @@ init_pre() {
         ${_INITINS} libgd-dev libmagickwand-dev libcurl4-openssl-dev >> ${logInt}
       else
         echo " " >> ${logSlt}
-        /usr/bin/apt update >> ${logSlt}
+        /usr/bin/apt-get update >> ${logSlt}
         _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
         if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
           || [ -e "/etc/cloud/cloud.cfg.d" ]; then
-          /usr/bin/apt remove cloud-utils cloud-init -y --purge --auto-remove -qq >> ${logSlt}
-          /usr/bin/apt remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq >> ${logSlt}
-          /usr/bin/apt autoremove --purge -y >> ${logSlt}
-          /usr/bin/apt autoclean -y >> ${logSlt}
+          /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq >> ${logSlt}
+          /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq >> ${logSlt}
+          /usr/bin/apt-get autoremove --purge -y >> ${logSlt}
+          /usr/bin/apt-get autoclean -y >> ${logSlt}
           if [ -e "/etc/cloud/cloud.cfg.d" ]; then
             mv -f /etc/cloud /var/backups/
           fi
@@ -402,21 +402,21 @@ init_run_two_quick() {
     echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
   fi
   if [ "${silentMode}" = "verbose" ]; then
-    /usr/bin/apt update >> ${logInt}
+    /usr/bin/apt-get update >> ${logInt}
     /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logInt}
-    /usr/bin/apt remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logInt}
-    /usr/bin/apt remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logInt}
-    /usr/bin/apt remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> ${logInt}
-    /usr/bin/apt autoremove --purge -y >> ${logInt}
-    /usr/bin/apt autoclean -y >> ${logInt}
+    /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logInt}
+    /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logInt}
+    /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> ${logInt}
+    /usr/bin/apt-get autoremove --purge -y >> ${logInt}
+    /usr/bin/apt-get autoclean -y >> ${logInt}
   else
-    /usr/bin/apt update -qq >> ${logSlt}
+    /usr/bin/apt-get update -qq >> ${logSlt}
     /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logSlt}
-    /usr/bin/apt remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
-    /usr/bin/apt remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
-    /usr/bin/apt remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
-    /usr/bin/apt autoremove --purge -y -qq >> ${logSlt}
-    /usr/bin/apt autoclean -y -qq >> ${logSlt}
+    /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
+    /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
+    /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
+    /usr/bin/apt-get autoremove --purge -y -qq >> ${logSlt}
+    /usr/bin/apt-get autoclean -y -qq >> ${logSlt}
   fi
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
@@ -471,11 +471,11 @@ init_run_one_quick() {
   fi
   if [ "${_OLD_SYS}" = "Devuan" ]; then
     if [ "${silentMode}" = "verbose" ]; then
-      /usr/bin/apt update >> ${logInt}
-      /usr/bin/apt upgrade ${nrmUpArg} >> ${logInt}
+      /usr/bin/apt-get update >> ${logInt}
+      /usr/bin/apt-get upgrade ${nrmUpArg} >> ${logInt}
     else
-      /usr/bin/apt update -qq >> ${logSlt}
-      /usr/bin/apt upgrade ${nrmUpArg} >> ${logSlt}
+      /usr/bin/apt-get update -qq >> ${logSlt}
+      /usr/bin/apt-get upgrade ${nrmUpArg} >> ${logSlt}
     fi
   fi
   if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
@@ -501,37 +501,37 @@ init_run_one_quick() {
   if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
     if [ "${silentMode}" = "verbose" ]; then
       if [ "${_OLD_SYS}" = "Debian" ]; then
-        /usr/bin/apt update --allow-insecure-repositories >> ${logInt}
-        /usr/bin/apt install devuan-keyring -y --allow-unauthenticated >> ${logInt}
+        /usr/bin/apt-get update --allow-insecure-repositories >> ${logInt}
+        /usr/bin/apt-get install devuan-keyring -y --allow-unauthenticated >> ${logInt}
       fi
-      /usr/bin/apt update >> ${logInt}
-      /usr/bin/apt upgrade ${dstUpArg} >> ${logInt}
+      /usr/bin/apt-get update >> ${logInt}
+      /usr/bin/apt-get upgrade ${dstUpArg} >> ${logInt}
       if [ "${_OLD_SYS}" = "Debian" ]; then
-        /usr/bin/apt install eudev sysvinit-core -y >> ${logInt}
-        /usr/bin/apt -f install -y >> ${logInt}
+        /usr/bin/apt-get install eudev sysvinit-core -y >> ${logInt}
+        /usr/bin/apt-get -f install -y >> ${logInt}
       else
         /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logInt}
-        /usr/bin/apt -f install -y >> ${logInt}
+        /usr/bin/apt-get -f install -y >> ${logInt}
         /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logInt}
-        /usr/bin/apt autoremove --purge -y >> ${logInt}
-        /usr/bin/apt autoclean -y >> ${logInt}
+        /usr/bin/apt-get autoremove --purge -y >> ${logInt}
+        /usr/bin/apt-get autoclean -y >> ${logInt}
       fi
     else
       if [ "${_OLD_SYS}" = "Debian" ]; then
-        /usr/bin/apt update --allow-insecure-repositories -qq >> ${logSlt}
-        /usr/bin/apt install devuan-keyring -y --allow-unauthenticated -qq >> ${logSlt}
+        /usr/bin/apt-get update --allow-insecure-repositories -qq >> ${logSlt}
+        /usr/bin/apt-get install devuan-keyring -y --allow-unauthenticated -qq >> ${logSlt}
       fi
-      /usr/bin/apt update -qq >> ${logSlt}
-      /usr/bin/apt upgrade ${dstUpArg} >> ${logSlt}
+      /usr/bin/apt-get update -qq >> ${logSlt}
+      /usr/bin/apt-get upgrade ${dstUpArg} >> ${logSlt}
       if [ "${_OLD_SYS}" = "Debian" ]; then
-        /usr/bin/apt install eudev sysvinit-core -y -qq >> ${logSlt}
-        /usr/bin/apt -f install -y -qq >> ${logSlt}
+        /usr/bin/apt-get install eudev sysvinit-core -y -qq >> ${logSlt}
+        /usr/bin/apt-get -f install -y -qq >> ${logSlt}
       else
         /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logSlt}
-        /usr/bin/apt -f install -y -qq >> ${logSlt}
+        /usr/bin/apt-get -f install -y -qq >> ${logSlt}
         /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logSlt}
-        /usr/bin/apt autoremove --purge -y -qq >> ${logSlt}
-        /usr/bin/apt autoclean -y -qq >> ${logSlt}
+        /usr/bin/apt-get autoremove --purge -y -qq >> ${logSlt}
+        /usr/bin/apt-get autoclean -y -qq >> ${logSlt}
       fi
     fi
   fi

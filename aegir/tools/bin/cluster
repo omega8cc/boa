@@ -13,7 +13,7 @@ _PROXYSQL_VRN="1.3.5-debian8_amd64"
 _UTIL_VRN="0.30.216-pre3126"
 _VNSTAT_VRN="2.7"
 _APT_XTR="-y"
-_INST="/usr/bin/apt -y --allow-unauthenticated install"
+_INST="/usr/bin/apt-get -y --allow-unauthenticated install"
 _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 aptLiSys="/etc/apt/sources.list"
@@ -63,18 +63,18 @@ clean_pid_exit() {
 }
 
 os_detection_minimal() {
-  _APT_UPDATE="apt update"
+  _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
     if [ "${e}" = "${_OS_CODE}" ]; then
-      _APT_UPDATE="apt update --allow-releaseinfo-change"
+      _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
 }
 
 apt_clean_update() {
-  #apt clean -qq 2> /dev/null
+  #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
@@ -96,7 +96,7 @@ check_root() {
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ ! -x "${_LSB_TEST}" ]; then
       apt_clean_update
-      apt install lsb-release ${aptYesUnth}
+      apt-get install lsb-release ${aptYesUnth}
     fi
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ -x "${_LSB_TEST}" ]; then
@@ -505,8 +505,8 @@ find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt install netcat ${aptYesUnth} 2> /dev/null
-    apt install netcat-traditional ${aptYesUnth} 2> /dev/null
+    apt-get install netcat ${aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
     wait
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -656,9 +656,9 @@ install_proxysql() {
       mkdir -p ${_XPSQL}
       cp -af /vservers/${idn}/var/lib/proxysql/* ${_XPSQL}/
       vserver ${idn} exec service proxysql stop
-      vserver ${idn} exec apt clean
+      vserver ${idn} exec apt-get clean
       vserver ${idn} exec ${_APT_UPDATE}
-      vserver ${idn} exec apt remove proxysql -y -qq
+      vserver ${idn} exec apt-get remove proxysql -y -qq
       rm -rf /vservers/${idn}/var/lib/proxysql
       rm -rf /vservers/${idn}/var/log/proxysql
       rm -f ${pXcnf}
@@ -701,12 +701,12 @@ DPkg::Pre-Install-Pkgs {"/usr/sbin/dpkg-preconfigure --apt";};
 Dir::Etc::SourceList "/etc/apt/sources.list";
 ' > /vservers/${idn}/opt/apt/apt.conf.noi.nrml
     nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
-    vserver ${idn} exec apt clean
+    vserver ${idn} exec apt-get clean
     vserver ${idn} exec ${_APT_UPDATE} -qq
     vserver ${idn} exec ${_INSTAPP} sysbench
     vserver ${idn} exec ${_INSTAPP} debconf-utils
     vserver ${idn} exec ${_INSTAPP} proxysql
-    vserver ${idn} exec apt install --only-upgrade ${nrmUpArg} proxysql
+    vserver ${idn} exec apt-get install --only-upgrade ${nrmUpArg} proxysql
     vserver ${idn} exec mkdir -p /var/log/proxysql
     vserver ${idn} exec chown -R proxysql:proxysql /var/log/proxysql
     vserver ${idn} exec chmod 700 /var/log/proxysql
@@ -1548,8 +1548,8 @@ install_db_cluster() {
   	vserver ${idn} exec ${_APT_UPDATE} -qq
     vserver ${idn} exec ${_INSTAPP} debian-keyring
     vserver ${idn} exec ${_INSTAPP} debian-archive-keyring
-  	vserver ${idn} exec apt upgrade -y -qq
-  	vserver ${idn} exec apt remove apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra -y -qq
+  	vserver ${idn} exec apt-get upgrade -y -qq
+  	vserver ${idn} exec apt-get remove apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra -y -qq
   	vserver ${idn} exec ${_INSTAPP} software-properties-common dirmngr
     rm -f /vservers/${idn}/etc/apt/sources.list.d/percona-.*
     rm -f /vservers/${idn}/etc/apt/sources.list.d/xtrabackup.*
@@ -1773,9 +1773,9 @@ upgrade_db_cluster() {
     fi
   	vserver ${idn} exec ${_APT_UPDATE} -qq
   	vserver ${idn} exec ${_INSTAPP} bc
-  	vserver ${idn} exec apt upgrade ${_APT_XTR}
+  	vserver ${idn} exec apt-get upgrade ${_APT_XTR}
   	vserver ${idn} exec apt-get dist-upgrade ${_APT_XTR}
-  	vserver ${idn} exec apt install lsb-release
+  	vserver ${idn} exec apt-get install lsb-release
   	vserver ${idn} exec dpkg --configure --force-all -a
   	vserver ${idn} exec update-rc.d -f mysql remove
 
@@ -1860,7 +1860,7 @@ install_host() {
 
   echo "Installing basic tools..."
   apt_clean_update
-  apt upgrade ${nrmUpArg}
+  apt-get upgrade ${nrmUpArg}
   ${_INSTAPP} locales
   ${_INSTAPP} lsb-release
   ${_INSTAPP} dnsutils
@@ -2071,11 +2071,11 @@ upgrade_host() {
         apt_clean_update
       fi
     fi
-    apt remove systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
-    apt remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
-    apt remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
-    apt autoremove --purge -y -qq 2> /dev/null
-    apt autoclean -y -qq 2> /dev/null
+    apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+    apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+    apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+    apt-get autoremove --purge -y -qq 2> /dev/null
+    apt-get autoclean -y -qq 2> /dev/null
     echo "sysvinit-core hold" | dpkg --set-selections &> /dev/null
     echo "sysvinit-utils hold" | dpkg --set-selections &> /dev/null
   fi
@@ -2102,8 +2102,8 @@ upgrade_host() {
     service irqbalance start
 
     echo "Installing vserver tools..."
-    apt remove util-vserver -y --purge --auto-remove -qq
-    apt autoremove -y
+    apt-get remove util-vserver -y --purge --auto-remove -qq
+    apt-get autoremove -y
     cd /var/opt
     rm -rf util-vserver*
     wget -q -U iCab http://${_USE_MIR}/dev/src/util-vserver-${_UTIL_VRN}.tar.gz
@@ -2198,14 +2198,14 @@ upgrade_host() {
     ${_INSTAPP} postfix
     lSmtp="localhost:25      inet  n       -       -       -       -       smtpd"
     sed -i "s/^smtp.*inet.*n.*smtpd/${lSmtp}/g" /etc/postfix/master.cf
-    apt remove exim -y --purge --auto-remove -qq
-    apt autoremove -y
+    apt-get remove exim -y --purge --auto-remove -qq
+    apt-get autoremove -y
     service postfix restart
   fi
 
   echo "Updating packages on this system..."
   apt_clean_update
-  apt install aptitude ${_APT_XTR} \
+  apt-get install aptitude ${_APT_XTR} \
     && aptitude full-upgrade -f -y -q \
       -o Dpkg::Options::=--force-confdef \
       -o Dpkg::Options::=--force-confold \

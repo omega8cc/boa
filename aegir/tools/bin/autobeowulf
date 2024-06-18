@@ -262,11 +262,11 @@ if_remove_cloud_utils() {
   if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
     || [ -e "/etc/cloud/cloud.cfg.d" ]; then
     msg "Removing problematic cloud-utils detected on this system" >> ${logAbf}
-    /usr/bin/apt update 2> /dev/null
-    /usr/bin/apt remove cloud-utils cloud-init -y --purge --auto-remove -qq 2> /dev/null
-    /usr/bin/apt remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq 2> /dev/null
-    /usr/bin/apt autoremove --purge -y 2> /dev/null
-    /usr/bin/apt autoclean -y 2> /dev/null
+    /usr/bin/apt-get update 2> /dev/null
+    /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq 2> /dev/null
+    /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq 2> /dev/null
+    /usr/bin/apt-get autoremove --purge -y 2> /dev/null
+    /usr/bin/apt-get autoclean -y 2> /dev/null
     if [ -e "/etc/cloud/cloud.cfg.d" ]; then
       mv -f /etc/cloud /var/backups/
     fi
