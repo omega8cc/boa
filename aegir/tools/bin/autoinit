@@ -358,19 +358,6 @@ init_pre() {
   fi
 }
 
-if_remove_apparmor_utils() {
-  isApparmor=$(which aa-status 2>&1)
-  if [ ! -z "${isApparmor}" ]; then
-    msg "Removing problematic during OS upgrades apparmor" >> ${logInt}
-    /usr/bin/apt remove apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra -y -qq >> ${logSlt}
-  fi
-  mkdir -p /etc/default/grub.d
-  echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
-    | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
-  update-grub >> ${logSlt}
-}
-if_remove_apparmor_utils
-
 init_info() {
   echo "Running init_pre procedure, please wait..."
   sleep 3

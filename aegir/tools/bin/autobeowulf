@@ -274,19 +274,6 @@ if_remove_cloud_utils() {
 }
 if_remove_cloud_utils
 
-if_remove_apparmor_utils() {
-  isApparmor=$(which aa-status 2>&1)
-  if [ ! -z "${isApparmor}" ]; then
-    msg "Removing problematic during OS upgrades apparmor" >> ${logAbf}
-    /usr/bin/apt remove apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra -y -qq 2> /dev/null
-  fi
-  mkdir -p /etc/default/grub.d
-  echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
-    | tee /etc/default/grub.d/apparmor.cfg &> /dev/null
-  update-grub &> /dev/null
-}
-if_remove_apparmor_utils
-
 if_clean_boa_env() {
   if [ ! -x "/etc/init.d/clean-boa-env" ] \
     || [ ! -e "/root/.run-auto-update-clean-boa-env.cnf" ]; then
