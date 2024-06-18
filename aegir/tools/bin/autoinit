@@ -304,7 +304,7 @@ init_pre() {
     echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
     if [ -x "/opt/local/bin/killer" ]; then
       sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
-      echo "*/5 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
+      echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
     fi
     rm -f /var/run/autoinit.pid
     reboot
@@ -362,7 +362,7 @@ init_pre() {
       echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
       if [ -x "/opt/local/bin/killer" ]; then
         sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
-        echo "*/5 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
+        echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
       fi
       rm -f /var/run/autoinit.pid
       reboot
@@ -631,7 +631,7 @@ init_run_one() {
     echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit devuan" >> /etc/crontab
     if [ -x "/opt/local/bin/killer" ]; then
       sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
-      echo "*/5 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
+      echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
     fi
     rm -f /var/run/autoinit.pid
     reboot
@@ -650,7 +650,7 @@ init_run_one() {
     echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit debian" >> /etc/crontab
     if [ -x "/opt/local/bin/killer" ]; then
       sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
-      echo "*/5 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
+      echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
     fi
     rm -f /var/run/autoinit.pid
     reboot

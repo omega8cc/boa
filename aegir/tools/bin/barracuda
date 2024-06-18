@@ -1405,7 +1405,7 @@ check_root() {
     fi
     if [ -x "/opt/local/bin/killer" ]; then
       sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
-      echo "*/5 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
+      echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
     fi
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
