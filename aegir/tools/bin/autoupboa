@@ -15,12 +15,42 @@ _X_SE="520proT02"
 tRee=pro
 export tRee="${tRee}"
 
+bring_all_ram_cpu_online() {
+  _RAM_AUTO_FILE="/sys/devices/system/memory/auto_online_blocks"
+  if [ -f "${_RAM_AUTO_FILE}" ]; then
+    if grep -qx offline "${_RAM_AUTO_FILE}"; then
+      echo online > "${_RAM_AUTO_FILE}"
+    fi
+  fi
+  for _CPU_DIR in /sys/devices/system/cpu/cpu[0-9]*
+  do
+    _CPU=${_CPU_DIR##*/}
+    _CPU_STATE_FILE="${_CPU_DIR}/online"
+    if [ -f "${_CPU_STATE_FILE}" ]; then
+      if grep -qx 0 "${_CPU_STATE_FILE}"; then
+        echo 1 > "${_CPU_STATE_FILE}"
+      fi
+    fi
+  done
+  for _RAM_DIR in /sys/devices/system/memory/memory[0-9]*
+  do
+    _RAM=${_RAM_DIR##*/}
+    _RAM_STATE_FILE="${_RAM_DIR}/state"
+    if [ -f "${_RAM_STATE_FILE}" ]; then
+      if grep -qx offline "${_RAM_STATE_FILE}"; then
+        echo online > "${_RAM_STATE_FILE}"
+      fi
+    fi
+  done
+}
+bring_all_ram_cpu_online
+
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
-    if [ "${e}" = "${_THIS_RV}" ]; then
+    if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
@@ -219,10 +249,6 @@ if [ -e "/var/xdrago/log" ]; then
   fi
 fi
 
-if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-  mkdir -p /etc/mysql/mariadb.conf.d
-fi
-
 if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   killall -9 mysqldump
   killall -9 rsync
@@ -308,11 +334,16 @@ if [ -e "/var/aegir/drush" ]; then
       sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
       wait
       sed -i "/^$/d" /etc/csf/csf.allow
-      _DHCP_TEST=$(grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq 2>&1)
-      if [[ "${_DHCP_TEST}" =~ "port" ]]; then
-	    for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+      if [ -e "/var/log/daemon.log" ]; then
+        _DHCP_LOG="/var/log/daemon.log"
       else
-        for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+        _DHCP_LOG="/var/log/syslog"
+      fi
+      _DHCP_TEST=$(grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq 2>&1)
+      if [[ "${_DHCP_TEST}" =~ "port" ]]; then
+        for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+      else
+        for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
       fi
 	  csf -q
 	  touch /var/xdrago/log/.csf_dhcp_udp_cleanup.${_X_SE}.pid
@@ -388,8 +419,12 @@ if [ -e "/var/aegir/drush" ]; then
     [ -e "/root/.force.sites.verify.cnf" ] && rm -f /root/.force.sites.verify.cnf
     [ -e "/root/.run.example.report.cnf" ] && rm -f /root/.run.example.report.cnf
     [ -e "/var/xdrago/weekly.sh" ] && rm -f /var/xdrago/weekly.sh
-    [ -e "/root/.debug-boa-installer.cnf" ] && rm -f /root/.debug-boa-installer.cnf
-    [ -e "/root/.debug-octopus-installer.cnf" ] && rm -f /root/.debug-octopus-installer.cnf
+    if [ ! -e "/root/.dev.server.cnf" ] \
+      && [ -e "/var/aegir/drush" ] \
+      && [ -e "/data/all/000" ]; then
+      [ -e "/root/.debug-boa-installer.cnf" ] && rm -f /root/.debug-boa-installer.cnf
+      [ -e "/root/.debug-octopus-installer.cnf" ] && rm -f /root/.debug-octopus-installer.cnf
+    fi
     if [ -e "/var/run/boa_run.pid" ]; then
       touch /root/.pause_tasks_maint.cnf
     else
