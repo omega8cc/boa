@@ -5264,9 +5264,11 @@ if_rebuild_src_on_major_os_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: if_rebuild_src_on_major_os_upgrade"
   fi
+  _CHECKS_REMOTE_REPOS=YES
   if [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ]; then
+    _CHECKS_REMOTE_REPOS=NO
     if [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ]; then
       _ALLOW_HEAVY_REBUILDS=YES
     else

@@ -298,11 +298,7 @@ systemd_cleanup_on_init
 ###
 check_boa_php_compatibility
 check_boa_version
-if [ -e "/root/.run-to-daedalus.cnf" ] \
-  || [ -e "/root/.run-to-chimaera.cnf" ] \
-  || [ -e "/root/.run-to-beowulf.cnf" ]; then
-  _CHECKS=NO
-else
+if [ "${_CHECKS_REMOTE_REPOS}" = "YES" ]; then
   check_github_for_aegir_head_mode
   check_db_src
   check_git_repos
