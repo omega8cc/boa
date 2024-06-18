@@ -108,7 +108,7 @@ sub makeactions
       $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 99  if ($line =~ /\" 403 /);
       $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 99  if ($line =~ /\" 500 /);
       $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 99  if ($line =~ /wp-(content|admin|includes)/);
-      $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 49  if ($line =~ /(POST|GET) \/user\/login/);
+      $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 19  if ($line =~ /(POST|GET) \/user\/login/);
       if ($line =~ /(GET|HEAD|POST)/ && $line !~ /\" 301 /) {
         local($skip_post) = 0;
         local($ignore_admin) = 0;
@@ -208,7 +208,7 @@ sub makeactions
       $px_cnt{$PROXY} = $px_cnt{$PROXY} + 99  if ($line =~ /\" 403 /);
       $px_cnt{$PROXY} = $px_cnt{$PROXY} + 99  if ($line =~ /\" 500 /);
       $px_cnt{$PROXY} = $px_cnt{$PROXY} + 99  if ($line =~ /wp-(content|admin|includes)/);
-      $px_cnt{$PROXY} = $px_cnt{$PROXY} + 49  if ($line =~ /(POST|GET) \/user\/login/);
+      $px_cnt{$PROXY} = $px_cnt{$PROXY} + 19  if ($line =~ /(POST|GET) \/user\/login/);
       if ($line =~ /(GET|HEAD|POST)/ && $line !~ /\" 301 /) {
         local($skip_post) = 0;
         local($ignore_admin) = 0;
