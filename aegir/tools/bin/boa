@@ -1540,6 +1540,7 @@ check_root() {
       _B_NICE=10
     fi
     renice ${_B_NICE} -p $$ &> /dev/null
+    rm -f /var/lib/man-db/auto-update
     if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
       system_check_ready
     else

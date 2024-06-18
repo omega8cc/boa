@@ -117,6 +117,7 @@ check_root() {
         ln -s /proc/self/fd /dev/fd
       fi
     fi
+    rm -f /var/lib/man-db/auto-update
   else
     echo "ERROR: This script should be ran as a root user"
     exit 1
