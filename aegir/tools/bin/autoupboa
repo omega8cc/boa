@@ -15,6 +15,36 @@ _X_SE="520devT02"
 tRee=pro
 export tRee="${tRee}"
 
+bring_all_ram_cpu_online() {
+  _RAM_AUTO_FILE="/sys/devices/system/memory/auto_online_blocks"
+  if [ -f "${_RAM_AUTO_FILE}" ]; then
+    if grep -qx offline "${_RAM_AUTO_FILE}"; then
+      echo online > "${_RAM_AUTO_FILE}"
+    fi
+  fi
+  for _CPU_DIR in /sys/devices/system/cpu/cpu[0-9]*
+  do
+    _CPU=${_CPU_DIR##*/}
+    _CPU_STATE_FILE="${_CPU_DIR}/online"
+    if [ -f "${_CPU_STATE_FILE}" ]; then
+      if grep -qx 0 "${_CPU_STATE_FILE}"; then
+        echo 1 > "${_CPU_STATE_FILE}"
+      fi
+    fi
+  done
+  for _RAM_DIR in /sys/devices/system/memory/memory[0-9]*
+  do
+    _RAM=${_RAM_DIR##*/}
+    _RAM_STATE_FILE="${_RAM_DIR}/state"
+    if [ -f "${_RAM_STATE_FILE}" ]; then
+      if grep -qx offline "${_RAM_STATE_FILE}"; then
+        echo online > "${_RAM_STATE_FILE}"
+      fi
+    fi
+  done
+}
+bring_all_ram_cpu_online
+
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)

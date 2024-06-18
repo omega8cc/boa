@@ -19,6 +19,32 @@ set -e
 
 case "$1" in
   start)
+    _RAM_AUTO_FILE="/sys/devices/system/memory/auto_online_blocks"
+    if [ -f "${_RAM_AUTO_FILE}" ]; then
+      if grep -qx offline "${_RAM_AUTO_FILE}"; then
+        echo online > "${_RAM_AUTO_FILE}"
+      fi
+    fi
+    for _CPU_DIR in /sys/devices/system/cpu/cpu[0-9]*
+    do
+      _CPU=${_CPU_DIR##*/}
+      _CPU_STATE_FILE="${_CPU_DIR}/online"
+      if [ -f "${_CPU_STATE_FILE}" ]; then
+        if grep -qx 0 "${_CPU_STATE_FILE}"; then
+          echo 1 > "${_CPU_STATE_FILE}"
+        fi
+      fi
+    done
+    for _RAM_DIR in /sys/devices/system/memory/memory[0-9]*
+    do
+      _RAM=${_RAM_DIR##*/}
+      _RAM_STATE_FILE="${_RAM_DIR}/state"
+      if [ -f "${_RAM_STATE_FILE}" ]; then
+        if grep -qx offline "${_RAM_STATE_FILE}"; then
+          echo online > "${_RAM_STATE_FILE}"
+        fi
+      fi
+    done
     ntpdate pool.ntp.org
     if [ -e "/root/.run-to-daedalus.cnf" ]; then
       if [ -x "/opt/local/bin/autodaedalus" ]; then
