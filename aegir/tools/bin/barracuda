@@ -1430,14 +1430,14 @@ check_root() {
       if [ -e "/sbin/hdparm" ]; then
         apt-get remove hdparm -y --purge --auto-remove -qq 2> /dev/null
       fi
-      if [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ]; then
+      if [ -e "/root/.deny.auditd.and.apparmor.cnf" ]; then
         isAuditd=$(which auditd 2>&1)
         if [ -e "${isAuditd}" ]; then
           apt-get remove auditd -y -qq 2> /dev/null
           killall -9 auditd 2> /dev/null
         fi
-        isApparmor=$(which aa-status 2>&1)
-        if [ ! -z "${isApparmor}" ]; then
+        isAppArmorStatus=$(which aa-status 2>&1)
+        if [ ! -z "${isAppArmorStatus}" ]; then
           apt-get remove apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra -y -qq 2> /dev/null
         fi
       fi
