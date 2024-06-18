@@ -310,6 +310,28 @@ check_prepare_dirs_permissions
 
 
 ###
+### Enable or disable AppArmor on install and upgrade
+###
+if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
+  if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+    [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ] && touch /root/.allow.auditd.and.apparmor.cnf
+    [ -e "/root/.deny.auditd.and.apparmor.cnf" ] && rm -f /root/.allow.auditd.and.apparmor.cnf
+    if_enable_or_disable_apparmor
+  fi
+fi
+
+
+###
+### DNS cache server
+###
+if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
+  if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+    dns_unbound_install_upgrade
+  fi
+fi
+
+
+###
 ### Optional major system upgrades
 ###
 early_sys_ctrl_mark
@@ -510,28 +532,6 @@ fi
 ### Install or upgrade csf/lfd monitoring
 ###
 csf_lfd_install_upgrade
-
-
-###
-### Enable or disable AppArmor on install and upgrade
-###
-if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
-  if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
-    [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ] && touch /root/.allow.auditd.and.apparmor.cnf
-    [ -e "/root/.deny.auditd.and.apparmor.cnf" ] && rm -f /root/.allow.auditd.and.apparmor.cnf
-    if_enable_or_disable_apparmor
-  fi
-fi
-
-
-###
-### DNS cache server
-###
-if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
-  if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
-    dns_unbound_install_upgrade
-  fi
-fi
 
 
 ###
