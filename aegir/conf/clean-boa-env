@@ -45,7 +45,7 @@ case "$1" in
         fi
       fi
     done
-    ntpdate pool.ntp.org
+    ntpdate pool.ntp.org > /dev/null 2>&1 &
     if [ -e "/root/.run-to-daedalus.cnf" ]; then
       if [ -x "/opt/local/bin/autodaedalus" ]; then
         bash /opt/local/bin/autodaedalus > /dev/null 2>&1 &

@@ -718,12 +718,12 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   fi
   rm -f /var/run/water.pid
   echo guard fin `date`
-  ntpdate pool.ntp.org
+  ntpdate pool.ntp.org > /dev/null 2>&1 &
 else
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    ntpdate pool.ntp.org
+    ntpdate pool.ntp.org > /dev/null 2>&1 &
   fi
 fi
 exit 0

@@ -699,7 +699,7 @@ if [ -e "/vservers" ] \
   rm -f /var/run/water.pid
   echo guard fin `date`
 fi
-ntpdate pool.ntp.org
+ntpdate pool.ntp.org > /dev/null 2>&1 &
 _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}')
 if [ -z "${_IF_CDP}" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then
   swapoff -a
