@@ -4850,6 +4850,7 @@ systemd_cleanup_on_init() {
     msg "PROC: sync time with ntpdate pool.ntp.org"
   fi
   ntpdate pool.ntp.org &> /dev/null
+  wait
   if [ "${_STATUS}" = "SYSTEMD" ]; then
     if [ ! -e "/root/.step.init.systemd.one.cnf" ]; then
       msg "INFO: This server is running systemd, which should be"
