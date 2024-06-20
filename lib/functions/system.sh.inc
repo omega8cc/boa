@@ -7970,18 +7970,23 @@ sysctl_update() {
       fi
     fi
     if [ -e "/etc/default/nginx" ]; then
-      _IF_ULNX=$(grep '18000' /etc/default/nginx 2>&1)
+      _IF_ULNX=$(grep '524288' /etc/default/nginx 2>&1)
       if [ -z "${_IF_ULNX}" ]; then
-        echo ULIMIT=\"-n 18000\" >> /etc/default/nginx
-        mrun "service nginx restart" 2> /dev/null
+        sed -i "s/^ULIMIT=.*//gi" /etc/default/nginx
+        wait
+        echo ULIMIT=\"-n 524288\" >> /etc/default/nginx
+        ulimit -n 524288 &> /dev/null
+        service nginx restart &> /dev/null
       fi
     fi
     if [ -e "/etc/security/limits.d" ] \
-      && [ ! -e "/etc/security/limits.d/redis.conf" ]; then
+      && [ ! -e "/etc/security/limits.d/sshd.conf" ]; then
+      echo "sshd soft nofile 524288" > /etc/security/limits.d/sshd.conf
+      echo "sshd hard nofile 999999" >> /etc/security/limits.d/sshd.conf
       echo "redis soft nofile 65535" > /etc/security/limits.d/redis.conf
       echo "redis hard nofile 524288" >> /etc/security/limits.d/redis.conf
-      echo "nginx soft nofile 65535" > /etc/security/limits.d/nginx.conf
-      echo "nginx hard nofile 524288" >> /etc/security/limits.d/nginx.conf
+      echo "nginx soft nofile 524288" > /etc/security/limits.d/nginx.conf
+      echo "nginx hard nofile 999999" >> /etc/security/limits.d/nginx.conf
       echo "jetty9 soft nofile 65535" > /etc/security/limits.d/jetty9.conf
       echo "jetty9 hard nofile 524288" >> /etc/security/limits.d/jetty9.conf
       echo "solr7 soft nofile 65535" > /etc/security/limits.d/solr7.conf
@@ -7990,6 +7995,7 @@ sysctl_update() {
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
       mrun "service redis-server restart" 2> /dev/null
       mrun "service nginx restart" 2> /dev/null
+      mrun "service sshd restart" 2> /dev/null
       _PHP_V="83 82 81 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
