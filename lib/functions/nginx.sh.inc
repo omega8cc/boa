@@ -561,9 +561,9 @@ nginx_initd_check() {
   fi
   _X_INIT_TEST=
   if [ -e "/etc/init.d/nginx" ]; then
-    _X_INIT_TEST=$(cat /etc/init.d/nginx | grep github 2>&1)
+    _X_INIT_TEST=$(cat /etc/init.d/nginx | grep ULIMIT 2>&1)
   fi
-  if [[ "${_X_INIT_TEST}" =~ "github" ]]; then
+  if [[ "${_X_INIT_TEST}" =~ "ULIMIT" ]]; then
     chmod 755 /etc/init.d/nginx &> /dev/null
     mrun "update-rc.d nginx defaults" 2> /dev/null
   else
