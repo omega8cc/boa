@@ -4519,6 +4519,9 @@ if_enable_or_disable_apparmor() {
       mrun "${_INSTAPP} auditd" 2> /dev/null
       sync_enable_apparmor_profiles
     fi
+    if [ -e "/etc/apparmor.d" ] && [ ! -e "/etc/apparmor.d/usr.sbin.nginx" ]; then
+      sync_enable_apparmor_profiles
+    fi
   fi
 }
 
