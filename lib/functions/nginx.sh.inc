@@ -559,17 +559,20 @@ nginx_initd_check() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: nginx_initd_check"
   fi
-  _X_INIT_TEST=$(cat /etc/init.d/nginx | grep github 2>&1)
-  if [[ "${_X_INIT_TEST}" =~ "github" ]]; then
+  _X_INIT_TEST=
+  if [ -e "/etc/init.d/nginx" ]; then
+    _X_INIT_TEST=$(cat /etc/init.d/nginx | grep ULIMIT 2>&1)
+  fi
+  if [[ "${_X_INIT_TEST}" =~ "ULIMIT" ]]; then
     chmod 755 /etc/init.d/nginx &> /dev/null
-    update-rc.d nginx defaults &> /dev/null
+    mrun "update-rc.d nginx defaults" 2> /dev/null
   else
     mv -f /etc/init.d/nginx \
       ${vBs}/nginx-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${locCnf}/nginx /etc/init.d/nginx
     chmod 755 /etc/init.d/nginx &> /dev/null
-    update-rc.d nginx defaults &> /dev/null
-    service nginx start &> /dev/null
+    mrun "update-rc.d nginx defaults" 2> /dev/null
+    mrun "service nginx start" 2> /dev/null
   fi
 }
 
