@@ -4450,7 +4450,7 @@ sync_enable_apparmor_profiles() {
   fi
   if [ "${isAppArmOn}" = "Y" ]; then
     if [ -d "/etc/apparmor.d" ]; then
-      cp -af ${locCnf}/apparmor/* > /etc/apparmor.d/
+      cp -af ${locCnf}/apparmor/* /etc/apparmor.d/
     fi
     for proFile in `find /etc/apparmor.d/ -maxdepth 1 -mindepth 1 -type f | sort`; do
       profName=$(echo ${proFile} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
