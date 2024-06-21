@@ -1,0 +1,18 @@
+# Last Modified: Thu Jun 20 20:21:28 2024
+#include <tunables/global>
+
+/usr/bin/mysql flags=(complain) {
+  #include <abstractions/base>
+  #include <abstractions/bash>
+  #include <abstractions/mysql>
+
+  /usr/bin/mysql mr,
+
+  /usr/local/lib/lib*so* mr,
+  /usr/local/ssl/lib/lib*so* mr,
+  /usr/local/ssl/openssl.cnf r,
+  /usr/local/ssl3/lib64/libcrypto.so.* mr,
+  /usr/local/ssl3/lib64/libssl.so.* mr,
+  /usr/local/ssl3/openssl.cnf r,
+
+}

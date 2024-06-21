@@ -1,0 +1,40 @@
+# Last Modified: Thu Jun 20 20:25:00 2024
+#include <tunables/global>
+
+/usr/bin/mysqld_safe flags=(complain) {
+  #include <abstractions/base>
+  #include <abstractions/bash>
+  #include <abstractions/mysql>
+
+  /usr/local/lib/lib*so* mr,
+  /usr/local/ssl/lib/lib*so* mr,
+  /usr/local/ssl/openssl.cnf r,
+  /usr/local/ssl3/lib64/libcrypto.so.* mr,
+  /usr/local/ssl3/lib64/libssl.so.* mr,
+  /usr/local/ssl3/openssl.cnf r,
+
+  /bin/dash ix,
+  /bin/date mrix,
+  /bin/sed mrix,
+  /etc/mysql/conf.d/mysql.cnf r,
+  /etc/mysql/my.cnf r,
+  /proc/filesystems r,
+  /sys/devices/system/cpu/online r,
+  /usr/bin/cut mrix,
+  /usr/bin/dirname mrix,
+  /usr/bin/expr mrix,
+  /usr/bin/logger mrix,
+  /usr/bin/my_print_defaults mrix,
+  /usr/bin/mysqld_safe r,
+  /usr/bin/nice mrix,
+  /usr/bin/nohup mrix,
+  /usr/bin/wc mrix,
+  /usr/sbin/mysqld mrix,
+
+  owner /proc/*/status r,
+  owner /run/mysqld/mysqld.pid w,
+  owner /run/mysqld/mysqld.sock.lock rw,
+  owner /var/lib/mysql/auto.cnf r,
+  owner /var/lib/mysql/** rwk,
+
+}
