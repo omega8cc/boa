@@ -108,9 +108,6 @@ _OS_CODE=check
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    ionice -c2 -n7 -p $$
-    renice 19 -p $$
-    chmod a+w /dev/null
     rm -f /var/lib/man-db/auto-update
   else
     echo "ERROR: This script should be ran as a root user"
