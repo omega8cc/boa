@@ -1509,8 +1509,6 @@ check_root() {
         ln -s /proc/self/fd /dev/fd
       fi
     fi
-    sed -i "s/.*173.231.133.190.*//g" /etc/hosts
-    wait
     sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
     wait
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts

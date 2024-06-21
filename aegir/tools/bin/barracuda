@@ -1507,8 +1507,6 @@ check_root() {
       echo "devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0" >> /etc/fstab
       mount -t devpts devpts /dev/pts &> /dev/null
     fi
-    sed -i "s/.*173.231.133.190.*//g" /etc/hosts
-    wait
     sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
     wait
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
