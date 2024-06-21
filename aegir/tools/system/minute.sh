@@ -20,12 +20,6 @@ check_root() {
       _B_NICE=10
     fi
     chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
   else
     echo "ERROR: This script should be ran as a root user"
     exit 1
