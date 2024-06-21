@@ -4451,7 +4451,7 @@ sync_enable_apparmor_profiles() {
   if [ "${isAppArmOn}" = "Y" ] || [ -d "/etc/apparmor.d" ]; then
     msg "ARMR: All profiles will be updated now..."
     if [ -d "/etc/apparmor.d" ]; then
-      mv -f /etc/apparmor.d/*.dpkg-dist /var/backups/
+      mv -f /etc/apparmor.d/*.dpkg-dist /var/backups/ &> /dev/null
       cp -af ${locCnf}/apparmor/* /etc/apparmor.d/
     fi
     for proFile in `find /etc/apparmor.d/ -maxdepth 1 -mindepth 1 -type f | sort`; do
