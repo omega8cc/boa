@@ -4449,18 +4449,22 @@ sync_enable_apparmor_profiles() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: sync_enable_apparmor_profiles"
   fi
+  isAppArmorComplain=$(which aa-complain 2>&1)
   isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
     isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
     isAppArmOn=$(echo -n ${isAppArmOn} | tr -d "\n" 2>&1)
   fi
-  if [ "${isAppArmOn}" = "Y" ]; then
+  if [ "${isAppArmOn}" = "Y" ] || [ -d "/etc/apparmor.d" ]; then
     if [ -d "/etc/apparmor.d" ]; then
       cp -af ${locCnf}/apparmor/* /etc/apparmor.d/
     fi
     for proFile in `find /etc/apparmor.d/ -maxdepth 1 -mindepth 1 -type f | sort`; do
       profName=$(echo ${proFile} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
-      mrun "aa-complain /etc/apparmor.d/${profName}" 2> /dev/null
+      if [ ! -z "${isAppArmorComplain}" ] \
+        && [ -x "${isAppArmorComplain}" ]; then
+        mrun "aa-complain /etc/apparmor.d/${profName}" 2> /dev/null
+      fi
       chmod 644 ${proFile}
     done
     mrun "service apparmor reload" 2> /dev/null
