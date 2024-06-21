@@ -288,13 +288,6 @@ if_running_as_root_barracuda() {
   fi
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
-    chmod a+rw /dev/null
     rm -rf /tmp/drush_make_tmp*
     rm -rf /tmp/make_tmp*
     rm -f /tmp/pm-updatecode*

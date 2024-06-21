@@ -4251,12 +4251,6 @@ satellite_if_running_as_root_octopus() {
   fi
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
   else
     msg "ERROR: This script should be ran as a root user"
     msg "Bye"

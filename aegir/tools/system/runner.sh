@@ -13,12 +13,6 @@ export HOME=${HOME}
 check_root() {
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
   else
     echo "ERROR: This script should be ran as a root user"
     exit 1
