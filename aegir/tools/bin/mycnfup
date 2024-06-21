@@ -33,7 +33,8 @@ _RESERVED_RAM=0
 ###
 dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
 nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
-_INSTALL="/usr/bin/apt-get ${nrmUpArg} install"
+_INSTALL_DIST="/usr/bin/apt-get ${dstUpArg} install"
+_INSTALL_NRML="/usr/bin/apt-get ${nrmUpArg} install"
 _INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
 aptYesUnth="-y --allow-unauthenticated"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
@@ -41,10 +42,19 @@ vBs="/var/backups"
 tVr="0.7"
 _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+if [ -e "/var/aegir/drush" ]; then
+  _DPKG_CNF="confold"
+else
+  _DPKG_CNF="confnew"
+fi
 _INSTAPP="/usr/bin/aptitude -f -y -q \
   --allow-untrusted \
+  -o Dpkg::Options::=--force-confmiss \
   -o Dpkg::Options::=--force-confdef \
-  -o Dpkg::Options::=--force-confold install"
+  -o Dpkg::Options::=--force-${_DPKG_CNF} install"
+if [ ! -e "/var/aegir/drush" ]; then
+  _INSTAPP="${_INSTALL_DIST}"
+fi
 
 
 ###-------------SYSTEM-----------------###

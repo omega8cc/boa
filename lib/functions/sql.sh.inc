@@ -1008,7 +1008,7 @@ db_server_install() {
       if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
         _OSN=debian
       fi
-      st_runner "aptitude autoclean -y" &> /dev/null
+      st_runner "apt-get autoclean -y" &> /dev/null
       apt_clean_update
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null

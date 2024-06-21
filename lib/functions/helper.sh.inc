@@ -407,28 +407,42 @@ mode_detection() {
   else
     _USE_AEGIR_VER=STATIC
   fi
+  if [ -e "/var/aegir/drush" ]; then
+    _DPKG_CNF="confold"
+  else
+    _DPKG_CNF="confnew"
+  fi
   if [ "${_USE_AEGIR_VER}" = "SRC" ] && [ ! -z "${_FORCE_GIT_MIRROR}" ]; then
     if [ "${_FORCE_GIT_MIRROR}" = "gitlab" ]; then
       _INSTAPP="/usr/bin/aptitude-fast -f -y -q \
+        -o Dpkg::Options::=--force-confmiss \
         -o Dpkg::Options::=--force-confdef \
-        -o Dpkg::Options::=--force-confold install"
+        -o Dpkg::Options::=--force-${_DPKG_CNF} install"
     else
       _INSTAPP="/usr/bin/aptitude -f -y -q \
         --allow-untrusted \
+        -o Dpkg::Options::=--force-confmiss \
         -o Dpkg::Options::=--force-confdef \
-        -o Dpkg::Options::=--force-confold install"
+        -o Dpkg::Options::=--force-${_DPKG_CNF} install"
     fi
   else
     _INSTAPP="/usr/bin/aptitude -f -y -q \
       --allow-untrusted \
+      -o Dpkg::Options::=--force-confmiss \
       -o Dpkg::Options::=--force-confdef \
-      -o Dpkg::Options::=--force-confold install"
+      -o Dpkg::Options::=--force-${_DPKG_CNF} install"
   fi
 
   _RMAPP="/usr/bin/aptitude -f -y -q \
     --allow-untrusted \
+    -o Dpkg::Options::=--force-confmiss \
     -o Dpkg::Options::=--force-confdef \
-    -o Dpkg::Options::=--force-confold remove"
+    -o Dpkg::Options::=--force-${_DPKG_CNF} remove"
+
+  if [ ! -e "/var/aegir/drush" ]; then
+    _INSTAPP="${_INSTALL_DIST}"
+    _RMAPP="apt-get -y -qq remove"
+  fi
 
   _SRCDIR="/opt/tmp/files"
   rm -rf /var/opt/*

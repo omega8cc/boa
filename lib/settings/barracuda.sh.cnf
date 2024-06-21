@@ -1100,8 +1100,12 @@ gCb="git clone --branch"
 dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
 nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
 _INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
-_INSTALL="/usr/bin/apt-get ${nrmUpArg} install"
+_INSTALL_DIST="/usr/bin/apt-get ${dstUpArg} install"
+_INSTALL_NRML="/usr/bin/apt-get ${nrmUpArg} install"
 aptYesUnth="-y --allow-unauthenticated"
+if [ ! -e "/var/aegir/drush" ]; then
+  _INSTAPP="${_INSTALL_DIST}"
+fi
 
 
 ###

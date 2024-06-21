@@ -2488,12 +2488,18 @@ run_aptitude_full_upgrade() {
   fi
   msg "INFO: Running aptitude full-upgrade..."
   apt_clean_update
+  if [ -e "/var/aegir/drush" ]; then
+    _DPKG_CNF="confold"
+  else
+    _DPKG_CNF="confnew"
+  fi
   st_runner "apt-get --fix-broken install -y" 2> /dev/null
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
   st_runner "aptitude full-upgrade -f -y -q \
     --allow-untrusted \
+    -o Dpkg::Options::=--force-confmiss \
     -o Dpkg::Options::=--force-confdef \
-    -o Dpkg::Options::=--force-confold" &> /dev/null
+    -o Dpkg::Options::=--force-${_DPKG_CNF}" &> /dev/null
 }
 
 #
@@ -4593,7 +4599,7 @@ finale() {
   echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
     welcomes you aboard" | fmt -su -w 2500 >> /etc/motd.tail
   echo >> /etc/motd.tail
-  aptitude autoclean -y &> /dev/null
+  apt-get autoclean -y &> /dev/null
   apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/*
   mkdir -p /data/conf/arch
@@ -5860,7 +5866,7 @@ if_major_os_upgrade() {
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     ###
     ### Make sure that org.freedesktop.systemd1 was not atempted by dbus.
-    mrun "apt-get remove dbus -y --purge --auto-remove -qq -qq" 2> /dev/null
+    mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
     if [ -e "/usr/share/dbus-1" ]; then
       rm -f /usr/share/dbus-1/*/*freedesktop*
     fi
@@ -6249,17 +6255,24 @@ sys_packages_update() {
   fi
   webmin_apt_update
   apt_clean_update
+  if [ -e "/var/aegir/drush" ]; then
+    _DPKG_CNF="confold"
+  else
+    _DPKG_CNF="confnew"
+  fi
   st_runner "aptitude full-upgrade -f -y -q \
     --allow-untrusted \
+    -o Dpkg::Options::=--force-confmiss \
     -o Dpkg::Options::=--force-confdef \
-    -o Dpkg::Options::=--force-confold" &> /dev/null
+    -o Dpkg::Options::=--force-${_DPKG_CNF}" &> /dev/null
   if [ "${_STATUS}" = "INIT" ]; then
     apt_clean_update
     st_runner "aptitude full-upgrade -f -y -q \
       --allow-untrusted \
+      -o Dpkg::Options::=--force-confmiss \
       -o Dpkg::Options::=--force-confdef \
-      -o Dpkg::Options::=--force-confold" &> /dev/null
-    st_runner "aptitude autoclean -y" &> /dev/null
+      -o Dpkg::Options::=--force-${_DPKG_CNF}" &> /dev/null
+    st_runner "apt-get autoclean -y" &> /dev/null
   else
     echo "gnupg-curl install" | dpkg --set-selections &> /dev/null
     if [ -e "/etc/php5/conf.d" ]; then
