@@ -4521,9 +4521,8 @@ if_enable_or_disable_apparmor() {
       update-grub &> /dev/null
       mrun "${_INSTAPP} apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra" 2> /dev/null
       mrun "${_INSTAPP} auditd" 2> /dev/null
-      sync_enable_apparmor_profiles
     fi
-    if [ -e "/etc/apparmor.d" ] && [ ! -e "/etc/apparmor.d/usr.bin.mysqld_safe" ]; then
+    if [ -e "/etc/apparmor.d" ]; then
       sync_enable_apparmor_profiles
     fi
   fi
