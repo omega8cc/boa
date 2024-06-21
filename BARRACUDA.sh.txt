@@ -535,6 +535,12 @@ csf_lfd_install_upgrade
 
 
 ###
+### Update rsyslog configuration
+###
+rsyslog_config_update
+
+
+###
 ### Update barracuda log, tools and system settings
 ###
 pam_umask_check_fix

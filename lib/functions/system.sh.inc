@@ -8081,6 +8081,19 @@ apticron_update() {
   fi
 }
 
+rsyslog_config_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: rsyslog_config_update"
+  fi
+  if [ -x "/etc/init.d/rsyslog" ] \
+    && [ -e "/etc/rsyslog.conf" ]; then
+    mv -f /etc/rsyslog.conf \
+      /var/backups/.etc.rsyslog.conf-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
+    cp -af ${locCnf}/rsyslog.conf /etc/rsyslog.conf
+    mrun "service rsyslog restart" 2> /dev/null
+  fi
+}
+
 complete() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: complete"
