@@ -1777,6 +1777,13 @@ fix_aio() {
   fi
 }
 
+fix_console_print() {
+  _PRK_FIX=$(grep "kernel.printk" /etc/sysctl.conf 2>&1)
+  if [ -z "${_PRK_FIX}" ]; then
+    echo "kernel.printk = 4 1 1 7" >> /etc/sysctl.conf
+  fi
+}
+
 fix_java_symlinks() {
   if [ "${_OS_CODE}" = "jessie" ] && [ -x "/usr/lib/jvm/java-7-openjdk/jre/bin/java" ]; then
     if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
@@ -2699,6 +2706,7 @@ if [ `whoami` = "root" ]; then
     fix_authorized_keys
     fix_tcp
     fix_aio
+    fix_console_print
     fix_java_symlinks
     fix_wkhtml
     fix_wkhtml_perms
