@@ -16,9 +16,10 @@
   /usr/local/ssl3/lib64/libssl.so.* mr,
   /usr/local/ssl3/openssl.cnf r,
 
+  /var/lib/sshd/** rw,
+
   owner /etc/ssh/* r,
   owner /proc/*/oom_score_adj rw,
   owner /run/sshd.pid rw,
-  owner /var/lib/sshd/* rw,
 
 }
