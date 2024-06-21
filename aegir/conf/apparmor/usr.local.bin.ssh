@@ -1,0 +1,25 @@
+# Last Modified: Fri Jun 21 12:40:43 2024
+#include <tunables/global>
+
+/usr/local/bin/ssh flags=(complain) {
+  #include <abstractions/base>
+  #include <abstractions/consoles>
+  #include <abstractions/nis>
+
+  capability sys_resource,
+
+  /usr/local/bin/ssh mr,
+
+  /usr/local/ssl/lib/lib*so* mr,
+  /usr/local/ssl/openssl.cnf r,
+  /usr/local/ssl3/lib64/libcrypto.so.* mr,
+  /usr/local/ssl3/lib64/libssl.so.* mr,
+  /usr/local/ssl3/openssl.cnf r,
+
+  /var/lib/sshd/** rw,
+
+  owner /etc/ssh/* r,
+  owner /proc/*/oom_score_adj rw,
+  owner /run/sshd.pid rw,
+
+}
