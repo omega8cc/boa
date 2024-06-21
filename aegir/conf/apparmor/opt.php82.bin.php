@@ -1,10 +1,11 @@
-# Last Modified: Mon Jun 17 08:11:09 2024
+# Last Modified: Fri Jun 21 16:24:27 2024
 #include <tunables/global>
 
 /opt/php82/bin/php flags=(complain) {
   #include <abstractions/base>
   #include <abstractions/bash>
   #include <abstractions/consoles>
+  #include <abstractions/nameservice>
 
   /bin/dash mrix,
   /bin/websh mrix,
@@ -45,6 +46,7 @@
   /data/all/** r,
   /data/conf/* r,
 
+  owner /var/aegir/.tmp/** w,
   owner /var/aegir/host_master/** w,
   owner /var/aegir/platforms/** w,
 

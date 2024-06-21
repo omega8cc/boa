@@ -1,11 +1,22 @@
-# Last Modified: Mon Jun 17 08:20:02 2024
+# Last Modified: Fri Jun 21 16:24:27 2024
 #include <tunables/global>
 
 /opt/php74/sbin/php-fpm flags=(complain) {
   #include <abstractions/base>
+  #include <abstractions/dovecot-common>
+  #include <abstractions/nameservice>
+  #include <abstractions/php>
+  #include <abstractions/totem>
 
-  /opt/php74/sbin/php-fpm mr,
+  capability dac_override,
+  capability kill,
 
+  /opt/php74/sbin/php-fpm mrix,
+
+  /{media,mnt,opt,srv}/** mr,
+  /etc/ImageMagick-6/log.xml r,
+  /etc/ImageMagick-6/policy.xml r,
+  /etc/newrelic/upgrade_please.key r,
   /usr/local/ioncube/ioncube_loader_lin_*.so mr,
   /usr/local/lib/lib*so* mr,
   /usr/local/ssl/lib/lib*so* mr,
@@ -13,9 +24,9 @@
   /usr/local/ssl3/lib64/libcrypto.so.* mr,
   /usr/local/ssl3/lib64/libssl.so.* mr,
   /usr/local/ssl3/openssl.cnf r,
-  /{media,mnt,opt,srv}/** mr,
 
   /var/log/php/* w,
+  /var/log/newrelic/php_agent.log w,
 
   /var/www/** r,
 
