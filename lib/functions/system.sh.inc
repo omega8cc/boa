@@ -4459,6 +4459,7 @@ sync_enable_apparmor_profiles() {
       if [ ! -z "${isAppArmorComplain}" ] \
         && [ -x "${isAppArmorComplain}" ]; then
         mrun "aa-complain /etc/apparmor.d/${profName}" 2> /dev/null
+        mrun "apparmor_parser -r /etc/apparmor.d/${profName}" 2> /dev/null
       fi
       chmod 644 ${proFile}
     done
