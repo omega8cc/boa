@@ -4463,6 +4463,9 @@ sync_enable_apparmor_profiles() {
       fi
       chmod 644 ${proFile}
     done
+    if [ -e "/etc/audit/auditd.conf" ]; then
+      sed -i "s/^write_logs = yes/write_logs = no/g" /etc/audit/auditd.conf
+    fi
     mrun "service apparmor reload" 2> /dev/null
     mrun "service auditd reload" 2> /dev/null
   fi
