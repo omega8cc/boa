@@ -8093,6 +8093,7 @@ rsyslog_config_update() {
     mv -f /etc/rsyslog.conf \
       /var/backups/.etc.rsyslog.conf-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     cp -af ${locCnf}/rsyslog.conf /etc/rsyslog.conf
+    cp -af ${locCnf}/logrotate.d.rsyslog.conf /etc/logrotate.d/rsyslog
     mrun "service rsyslog restart" 2> /dev/null
   fi
 }
