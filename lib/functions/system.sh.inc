@@ -4449,6 +4449,7 @@ sync_enable_apparmor_profiles() {
     isAppArmOn=$(echo -n ${isAppArmOn} | tr -d "\n" 2>&1)
   fi
   if [ "${isAppArmOn}" = "Y" ] || [ -d "/etc/apparmor.d" ]; then
+    msg "ARMR: All profiles will be updated now..."
     if [ -d "/etc/apparmor.d" ]; then
       mv -f /etc/apparmor.d/*.dpkg-dist /var/backups/
       cp -af ${locCnf}/apparmor/* /etc/apparmor.d/
