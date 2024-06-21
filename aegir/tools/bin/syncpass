@@ -278,18 +278,6 @@ EOFMYSQL
 check_root() {
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
-    sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
-    wait
-    sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
-    wait
-    sed -i "s/.*github.*//g" /etc/hosts
-    wait
-    echo >>/etc/hosts
-    sed -i "/^$/d" /etc/hosts
-    wait
-    if [ -e "/etc/init.d/postfix" ]; then
-      service postfix restart &> /dev/null
-    fi
     if [ -e "/root/.barracuda.cnf" ]; then
       source /root/.barracuda.cnf
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
