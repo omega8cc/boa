@@ -32,7 +32,7 @@
   /usr/sbin/mysqld mrix,
 
   owner /proc/*/status r,
-  owner /run/mysqld/mysqld.pid w,
+  owner /run/mysqld/mysqld.pid rw,
   owner /run/mysqld/mysqld.sock.lock rw,
   owner /var/lib/mysql/auto.cnf r,
   owner /var/lib/mysql/** rwk,
