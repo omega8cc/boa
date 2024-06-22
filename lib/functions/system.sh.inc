@@ -3752,6 +3752,19 @@ ssl_install_src() {
       _NGX_FORCE_REINSTALL=YES
     fi
   fi
+  _USE_LEGACY_TRICK=NO
+  _BROKEN_SSL_LIBS_TEST=$(php -v 2>&1)
+  if [[ "${_BROKEN_SSL_LIBS_TEST}" =~ "so.1.0.0: no version information available" ]]; then
+    msg "INFO: OpenSSL libs are broken, rebuild forced"
+    _SSL_FORCE_REINSTALL=YES
+    _USE_LEGACY_TRICK=YES
+    if [ ! -e "/root/.openssl.ld.legacy.cnf" ]; then
+      echo "OPENSSL_1.0.0 {" > /root/.openssl.ld.legacy.cnf
+      echo "    global:" >> /root/.openssl.ld.legacy.cnf
+      echo "    *;" >> /root/.openssl.ld.legacy.cnf
+      echo "};" >> /root/.openssl.ld.legacy.cnf
+    fi
+  fi
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_SSL_FORCE_REINSTALL}" = "YES" ]; then
     _SSL_INSTALL_REQUIRED=YES
@@ -3788,23 +3801,22 @@ ssl_install_src() {
     fi
     if [ -e "/var/opt/openssl-${_OPENSSL_NEW_VRN}" ]; then
       cd /var/opt/openssl-${_OPENSSL_NEW_VRN}
-      _X86_64_IF=$(uname -m 2>&1)
       if [ -e "/root/.install.modern.openssl.cnf" ]; then
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl3 \
-          --openssldir=/usr/local/ssl3"
+          --openssldir=/usr/local/ssl3 shared -Wl"
       else
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
-          --openssldir=/usr/local/ssl"
+          --openssldir=/usr/local/ssl shared -Wl"
       fi
-      if [ "${_X86_64_IF}" = "x86_64" ]; then
-        mrun "sh ./config zlib-dynamic \
-          ${_SSL_BUILD_ARGS} \
-          shared enable-ec_nistp_64_gcc_128" 2> /dev/null
-      else
-        mrun "sh ./config zlib-dynamic \
-          ${_SSL_BUILD_ARGS} \
-          shared" 2> /dev/null
+      if [ "${_USE_LEGACY_TRICK}" = "YES" ] \
+        && [ -e "/root/.openssl.ld.legacy.cnf" ]; then
+        _SSL_BUILD_ARGS="${_SSL_BUILD_ARGS} \
+        --version-script=/root/.openssl.ld.legacy.cnf -Wl \
+        -Bsymbolic-functions"
       fi
+      mrun "sh ./config zlib-dynamic \
+        ${_SSL_BUILD_ARGS} \
+        enable-ec_nistp_64_gcc_128" 2> /dev/null
       mrun "make depend" 2> /dev/null
       mrun "make -j $(nproc)" 2> /dev/null
       mrun "make install" 2> /dev/null
