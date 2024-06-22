@@ -3959,6 +3959,11 @@ curl_install_src() {
     || [ ! -L "/usr/lib/libcurl.so.4" ]; then
     _CURL_INSTALL_REQUIRED=YES
   fi
+  if [ -e "/usr/lib/x86_64-linux-gnu/libcurl.so.4.3.0" ] \
+    || [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ] \
+    || [ ! -L "/usr/lib/libcurl.so.4" ]; then
+    _CURL_INSTALL_REQUIRED=YES
+  fi
   if [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
     if [ -e "/root/.use.curl.from.packages.cnf" ]; then
