@@ -5977,7 +5977,7 @@ if_major_os_upgrade() {
         ldconfig 2> /dev/null
         ### Signal that --allow-downgrades can be used after reboot
         touch /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
-        msg "INFO: dist-upgrade with --allow-downgrades option is used"
+        msg "INFO: dist-upgrade with --allow-downgrades option can be used"
         _FORCE_REBUILD_SRC_ON_AUTO_NOW=YES
       fi
       ###
