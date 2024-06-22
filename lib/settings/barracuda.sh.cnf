@@ -1215,6 +1215,10 @@ verify_upgrade_keys() {
         echo "Your system requires valid license for upgrade to ${rlsn}-${tRee}"
         echo "Please visit https://omega8.cc/licenses to purchase your own"
         echo
+        if [ -e "/var/aegir/drush/vendor" ] && [ ! -e "/var/aegir/key/barracuda_key.txt" ]; then
+          mkdir -p /var/aegir/key
+          cat /var/opt/_encN_local.${encName}.tmp > /var/aegir/key/barracuda_key.txt
+        fi
         rm -f /var/opt/_encN*
         clean_pid_exit verify_upgrade_keys_a
       else
