@@ -3516,20 +3516,59 @@ ssl_crypto_lib_fix() {
     || [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
     _SSL_INSTALLED=MODERN
   elif [[ "${_SSL_ITD}" =~ "1.1.1" ]]; then
+    _SSL_INSTALLED=EOL
+  else
     _SSL_INSTALLED=LEGACY
   fi
   if [ "${_SSL_INSTALLED}" = "LEGACY" ]; then
     if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
+      && [ -f "/usr/local/ssl/lib/libssl.so.1.0.0" ]; then
+      rm -f /usr/lib/x86_64-linux-gnu/libssl.so
+      ln -sfn /usr/local/ssl/lib/libssl.so.1.0.0 /usr/lib/x86_64-linux-gnu/libssl.so
+      ln -sfn /usr/local/ssl/lib/libssl.so.1.0.0 /usr/lib/libssl.so
+    fi
+    if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
+      && [ -f "/usr/local/ssl/lib/libcrypto.so.1.0.0" ]; then
+      rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
+      ln -sfn /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/lib/x86_64-linux-gnu/libcrypto.so
+      ln -sfn /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/lib/libcrypto.so
+    fi
+    if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
+      && [ -f "/usr/local/ssl/lib/libssl.so.1.0.1" ]; then
+      rm -f /usr/lib/x86_64-linux-gnu/libssl.so
+      ln -sfn /usr/local/ssl/lib/libssl.so.1.0.1 /usr/lib/x86_64-linux-gnu/libssl.so
+      ln -sfn /usr/local/ssl/lib/libssl.so.1.0.1 /usr/lib/libssl.so
+    fi
+    if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
+      && [ -f "/usr/local/ssl/lib/libcrypto.so.1.0.1" ]; then
+      rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
+      ln -sfn /usr/local/ssl/lib/libcrypto.so.1.0.1 /usr/lib/x86_64-linux-gnu/libcrypto.so
+      ln -sfn /usr/local/ssl/lib/libcrypto.so.1.0.1 /usr/lib/libcrypto.so
+    fi
+    if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
+      && [ -f "/usr/local/ssl/lib/libssl.so.1.0.2" ]; then
+      rm -f /usr/lib/x86_64-linux-gnu/libssl.so
+      ln -sfn /usr/local/ssl/lib/libssl.so.1.0.2 /usr/lib/x86_64-linux-gnu/libssl.so
+      ln -sfn /usr/local/ssl/lib/libssl.so.1.0.2 /usr/lib/libssl.so
+    fi
+    if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
+      && [ -f "/usr/local/ssl/lib/libcrypto.so.1.0.2" ]; then
+      rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
+      ln -sfn /usr/local/ssl/lib/libcrypto.so.1.0.2 /usr/lib/x86_64-linux-gnu/libcrypto.so
+      ln -sfn /usr/local/ssl/lib/libcrypto.so.1.0.2 /usr/lib/libcrypto.so
+    fi
+  elif [ "${_SSL_INSTALLED}" = "EOL" ]; then
+    if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
       && [ -f "/usr/local/ssl/lib/libssl.so.1.1" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libssl.so
       ln -sfn /usr/local/ssl/lib/libssl.so.1.1 /usr/lib/x86_64-linux-gnu/libssl.so
-      ln -sfn /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
+      ln -sfn /usr/local/ssl/lib/libssl.so.1.1 /usr/lib/libssl.so
     fi
     if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
       && [ -f "/usr/local/ssl/lib/libcrypto.so.1.1" ]; then
       rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
       ln -sfn /usr/local/ssl/lib/libcrypto.so.1.1 /usr/lib/x86_64-linux-gnu/libcrypto.so
-      ln -sfn /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
+      ln -sfn /usr/local/ssl/lib/libcrypto.so.1.1 /usr/lib/libcrypto.so
     fi
   elif [ "${_SSL_INSTALLED}" = "MODERN" ]; then
     _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)

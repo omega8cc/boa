@@ -1522,7 +1522,10 @@ install_php_multi() {
     || [ "$1" = "71" ] \
     || [ "$1" = "72" ] \
     || [ "$1" = "73" ]; then
-    if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ]; then
+    if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ] \
+      || [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ] \
+      || [ -e "/usr/local/ssl/lib/libssl.so.1.0.1" ] \
+      || [ -e "/usr/local/ssl/lib/libssl.so.1.0.2" ]; then
       _SSL_PATH="/usr/local/ssl"
       _SSL_LIB_PATH="${_SSL_PATH}/lib"
     fi
@@ -2195,6 +2198,10 @@ check_php_rebuild() {
     || [ "$1" = "73" ]; then
     if [ -e "/usr/local/ssl/lib/libssl.so.1.1" ]; then
       _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"
+    elif [ -e "/usr/local/ssl/lib/libssl.so.1.0.0" ] \
+      || [ -e "/usr/local/ssl/lib/libssl.so.1.0.1" ] \
+      || [ -e "/usr/local/ssl/lib/libssl.so.1.0.2" ]; then
+      _OPENSSL_USE_VRN="${_OPENSSL_LEGACY_VRN}"
     fi
   fi
   if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
