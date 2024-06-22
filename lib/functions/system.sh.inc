@@ -4916,7 +4916,7 @@ run_aptitude_deps_install() {
   mrun "apt-get remove percona-xtrabackup-24 -y --purge --auto-remove -qq" 2> /dev/null
   mrun "apt-get remove libcurl4-gnutls-dev -y --purge --auto-remove -qq" 2> /dev/null
   mrun "apt-get remove polkitd -y --purge --auto-remove -qq" 2> /dev/null
-  #mrun "apt-get remove libcurl4-openssl-dev -y --purge --auto-remove -qq" 2> /dev/null
+  mrun "apt-get remove libcurl4-openssl-dev -y --purge --auto-remove -qq" 2> /dev/null
   mrun "apt-get autoremove -y" 2> /dev/null
   mrun "${_INSTAPP} build-essential libsasl2-modules" 2> /dev/null
   mrun "${_INSTAPP} time vim cvs makepasswd" 2> /dev/null
