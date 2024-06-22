@@ -428,6 +428,19 @@ fi
 
 
 ###
+### Install OpenSSH from sources
+###
+if [ "${_SSH_FROM_SOURCES}" = "YES" ] && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+  if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
+    if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
+      sshd_install_src
+      sshd_armour
+    fi
+  fi
+fi
+
+
+###
 ### DNS cache server
 ###
 if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
@@ -518,19 +531,6 @@ if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
     if_install_bind
     if_install_rvm
     sftp_ftps_modern_fix
-  fi
-fi
-
-
-###
-### Install OpenSSH from sources on upgrade
-###
-if [ "${_SSH_FROM_SOURCES}" = "YES" ] && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
-  if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
-    if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
-      sshd_install_src
-      sshd_armour
-    fi
   fi
 fi
 
