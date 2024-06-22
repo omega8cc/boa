@@ -457,8 +457,11 @@ nginx_install_upgrade() {
       if [ "${_OS_CODE}" = "none" ]; then
         _NGINX_EXTRA="--with-http_spdy_module ${_NGINX_EXTRA}"
       else
-        _NGINX_EXTRA="--with-http_v2_module --with-http_v3_module ${_NGINX_EXTRA}"
+        _NGINX_EXTRA="--with-http_v2_module ${_NGINX_EXTRA}"
       fi
+    fi
+    if [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ]; then
+      _NGINX_EXTRA="--with-http_v3_module ${_NGINX_EXTRA}"
     fi
     if [ "${_OS_CODE}" = "daedalus" ] \
       || [ "${_OS_CODE}" = "chimaera" ] \
