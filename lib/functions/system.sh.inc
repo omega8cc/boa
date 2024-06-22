@@ -3834,8 +3834,8 @@ curl_install_src() {
     msg "PROC: curl_install_src"
   fi
   if [ "${_OS_CODE}" = "precise" ] || [ "${_OS_CODE}" = "jessie" ]; then
-    touch /root/.use.curl.from.packages.cnf
-    chattr +i /root/.use.curl.from.packages.cnf
+    #touch /root/.use.curl.from.packages.cnf
+    #chattr +i /root/.use.curl.from.packages.cnf
     _CURL_VRN=8.8.0
   fi
   if [ ! -e "/root/.use.curl.from.packages.cnf" ]; then
