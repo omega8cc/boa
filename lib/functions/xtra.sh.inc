@@ -15,6 +15,9 @@ if_install_bzr() {
       if [ -e "/usr/local/lib/python2.7/dist-packages/bzrlib" ]; then
         rm -rf /usr/local/lib/python2.7/dist-packages/bzrlib
       fi
+      if [ -e "/usr/local/lib/python3.4/dist-packages/bzrlib" ]; then
+        rm -rf /usr/local/lib/python3.4/dist-packages/bzrlib
+      fi
       if [ -e "/usr/local/lib/python3.5/dist-packages/bzrlib" ]; then
         rm -rf /usr/local/lib/python3.5/dist-packages/bzrlib
       fi

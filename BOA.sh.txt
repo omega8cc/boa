@@ -1643,10 +1643,12 @@ fix_lshell() {
   _LSHELL_VRN=0.9.18.10
   _PATH_LSHELL="${usrBin}/lshell"
   _LSHELL_LIB_TWO="/usr/local/lib/python2.7/dist-packages/lshell/checkconfig.py"
+  _LSHELL_LIB_TFR="/usr/local/lib/python3.4/dist-packages/lshell/checkconfig.py"
   _LSHELL_LIB_TFV="/usr/local/lib/python3.5/dist-packages/lshell/checkconfig.py"
   _LSHELL_LIB_TNE="/usr/local/lib/python3.9/dist-packages/lshell/checkconfig.py"
   _LSHELL_LIB_TEL="/usr/local/lib/python3.11/dist-packages/lshell/checkconfig.py"
   if [ ! -e "${_LSHELL_LIB_TWO}" ] \
+    && [ ! -e "${_LSHELL_LIB_TFR}" ] \
     && [ ! -e "${_LSHELL_LIB_TFV}" ] \
     && [ ! -e "${_LSHELL_LIB_TNE}" ] \
     && [ ! -e "${_LSHELL_LIB_TEL}" ]; then
@@ -1669,6 +1671,7 @@ fix_lshell() {
     cd /var/opt/lshell-${_LSHELL_VRN}
     rm -rf /usr/local/lib/python2.6/dist-packages/lshell*
     rm -rf /usr/local/lib/python2.7/dist-packages/lshell*
+    rm -rf /usr/local/lib/python3.4/dist-packages/lshell*
     rm -rf /usr/local/lib/python3.5/dist-packages/lshell*
     rm -rf /usr/local/lib/python3.9/dist-packages/lshell*
     rm -rf /usr/local/lib/python3.11/dist-packages/lshell*

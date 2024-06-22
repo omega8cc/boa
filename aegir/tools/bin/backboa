@@ -164,6 +164,7 @@ install() {
     aptitude purge duplicity -y
     rm -rf /usr/local/lib/python*/dist-packages/{fasteners*,duplicity*,boto*}
     mkdir -p /usr/local/lib/python2.7/dist-packages/
+    mkdir -p /usr/local/lib/python3.4/dist-packages/
     mkdir -p /usr/local/lib/python3.5/dist-packages/
     mkdir -p /usr/local/lib/python3.9/dist-packages/
     mkdir -p /usr/local/lib/python3.11/dist-packages/
