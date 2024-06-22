@@ -6717,8 +6717,10 @@ sys_packages_install() {
                      gnupg-curl \
                      libpcre3 \
                      libpcre3-dev \
+                     libpng-dev \
                      libpng12-0 \
                      libpng12-dev \
+                     libpng12-0-dev \
                      libt1-5 \
                      libt1-dev \
                      python-software-properties \
