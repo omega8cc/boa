@@ -3888,6 +3888,9 @@ ssl_install_src() {
     #mv -f /usr/local/ssl /usr/local/legacy_ssl
     ldconfig 2> /dev/null
   fi
+  if [ "${_USE_LEGACY_TRICK}" = "YES" ]; then
+    dns_unbound_install_upgrade
+  fi
 }
 
 #
