@@ -418,7 +418,7 @@ fi
 
 
 ###
-### Install other services
+### Install OpenSSL and cURL from sources
 ###
 if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   ssl_install_src
