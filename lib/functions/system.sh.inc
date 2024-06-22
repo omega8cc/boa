@@ -4050,35 +4050,40 @@ curl_install_src() {
         && [ ! -e "/var/xdrago/log/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid" ]; then
         _X86_64_TEST=$(uname -m 2>&1)
         if [ "${_X86_64_TEST}" = "x86_64" ]; then
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: Updating cURL ${_CURL_VRN} libs symlinks..."
+          fi
           mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}
+          mv -f /usr/lib/x86_64-linux-gnu/libcurl-gnutls* /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
+          mv -f /usr/lib/x86_64-linux-gnu/libcurl.so* /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
+          mv -f /usr/lib/x86_64-linux-gnu/libcurl.la /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
+          mv -f /usr/lib/x86_64-linux-gnu/libcurl.a /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
           if [ -e "/usr/include/x86_64-linux-gnu/curl" ] \
             && [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
-            mv -f /usr/include/x86_64-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
+            mv -f /usr/include/x86_64-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/
           fi
           if [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
-            ln -sfn /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl &> /dev/null
+            ln -sfn /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl
           fi
-          if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so" ] || [ ! -L "/usr/lib/libcurl.so" ]; then
-            ln -sfn /usr/local/lib/libcurl.so /usr/lib/x86_64-linux-gnu/libcurl.so &> /dev/null
+          if [ -e "/usr/local/lib/libcurl.so.4.8.0" ]; then
+            ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/x86_64-linux-gnu/libcurl.so.4.8.0
+            ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/libcurl.so.4.8.0
+          fi
+          if [ -e "/usr/local/lib/libcurl.so" ]; then
+            ln -sfn /usr/local/lib/libcurl.so /usr/lib/x86_64-linux-gnu/libcurl.so
             ln -sfn /usr/local/lib/libcurl.so /usr/lib/libcurl.so
           fi
-          if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ] || [ ! -L "/usr/lib/libcurl.so.4" ]; then
-            ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/x86_64-linux-gnu/libcurl.so.4 &> /dev/null
+          if [ -e "/usr/local/lib/libcurl.so.4" ]; then
+            ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/x86_64-linux-gnu/libcurl.so.4
             ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/libcurl.so.4
           fi
-          if [ -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ] || [ -e "/usr/local/lib/libcurl.so.4" ]; then
-            ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/x86_64-linux-gnu/libcurl.so.4 &> /dev/null
-            ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/libcurl.so.4
+          if [ -e "/usr/local/lib/libcurl.la" ]; then
+            ln -sfn /usr/local/lib/libcurl.la /usr/lib/x86_64-linux-gnu/libcurl.la
+            ln -sfn /usr/local/lib/libcurl.la /usr/lib/libcurl.la
           fi
-          if [ -e "/usr/lib/x86_64-linux-gnu/libcurl.so.4.4.0" ]; then
-            mv -f /usr/lib/x86_64-linux-gnu/libcurl.so.4.4.0 /var/backups/
-          fi
-          if [ -e "/usr/lib/x86_64-linux-gnu/libcurl.so.4.3.0" ]; then
-            mv -f /usr/lib/x86_64-linux-gnu/libcurl.so.4.3.0 /var/backups/
-          fi
-          if [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.a" ] || [ ! -L "/usr/lib/libcurl.a" ]; then
-            ln -sfn /usr/local/lib/libcurl.a /usr/lib/x86_64-linux-gnu/libcurl.a &> /dev/null
-            ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.a /usr/lib/libcurl.a
+          if [ -e "/usr/local/lib/libcurl.a" ]; then
+            ln -sfn /usr/local/lib/libcurl.a /usr/lib/x86_64-linux-gnu/libcurl.a
+            ln -sfn /usr/local/lib/libcurl.a /usr/lib/libcurl.a
           fi
         fi
         mrun "apt-get remove curl ${aptYesUnth}" 2> /dev/null
