@@ -3470,38 +3470,9 @@ ssl_crypto_lib_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: ssl_crypto_lib_fix"
   fi
-  if [ ! -e "/usr/lib/liblber.so" ] \
-    || [ ! -e "/usr/lib/libssl.so" ] \
-    || [ ! -e "/usr/lib/libcrypto.so" ]; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Fix for SSL libssl/libcrypto in ${_OS_DIST}/${_OS_CODE}"
-    fi
-    _X86_64_TEST=$(uname -m 2>&1)
-    if [ "${_X86_64_TEST}" = "x86_64" ]; then
-      if [ -e "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
-        && [ ! -e "/usr/lib/libssl.so" ]; then
-        ln -s /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
-      elif [ -e "/lib/x86_64-linux-gnu/libssl.so" ] \
-        && [ ! -e "/usr/lib/libssl.so" ]; then
-        ln -s /lib/x86_64-linux-gnu/libssl.so /usr/lib/libssl.so
-      fi
-      if [ -e "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
-        && [ ! -e "/usr/lib/libcrypto.so" ]; then
-        ln -s /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
-      elif [ -e "/lib/x86_64-linux-gnu/libcrypto.so" ] \
-        && [ ! -e "/usr/lib/libcrypto.so" ]; then
-        ln -s /lib/x86_64-linux-gnu/libcrypto.so /usr/lib/libcrypto.so
-      fi
-      if [ -e "/usr/lib/x86_64-linux-gnu/liblber.so" ] \
-        && [ ! -e "/usr/lib/liblber.so" ]; then
-        ln -s /usr/lib/x86_64-linux-gnu/liblber.so /usr/lib/liblber.so
-      elif [ -e "/lib/x86_64-linux-gnu/liblber.so" ] \
-        && [ ! -e "/usr/lib/liblber.so" ]; then
-        ln -s /lib/x86_64-linux-gnu/liblber.so /usr/lib/liblber.so
-      fi
-    fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Fix for SSL libssl/libcrypto in ${_OS_DIST}/${_OS_CODE}"
   fi
-  ldconfig 2> /dev/null
   if [ -e "/root/.install.modern.openssl.cnf" ] \
     && [ -x "/usr/local/ssl3/bin/openssl" ]; then
     _SSL_BINARY=/usr/local/ssl3/bin/openssl
@@ -3521,97 +3492,177 @@ ssl_crypto_lib_fix() {
     _SSL_INSTALLED=LEGACY
   fi
   if [ "${_SSL_INSTALLED}" = "LEGACY" ]; then
-    if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
-      && [ -f "/usr/local/ssl/lib/libssl.so.1.0.0" ]; then
-      rm -f /usr/lib/x86_64-linux-gnu/libssl.so
-      ln -sfn /usr/local/ssl/lib/libssl.so.1.0.0 /usr/lib/x86_64-linux-gnu/libssl.so
-      ln -sfn /usr/local/ssl/lib/libssl.so.1.0.0 /usr/lib/libssl.so
-    fi
-    if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
-      && [ -f "/usr/local/ssl/lib/libcrypto.so.1.0.0" ]; then
-      rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
-      ln -sfn /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/lib/x86_64-linux-gnu/libcrypto.so
-      ln -sfn /usr/local/ssl/lib/libcrypto.so.1.0.0 /usr/lib/libcrypto.so
-    fi
-    if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
-      && [ -f "/usr/local/ssl/lib/libssl.so.1.0.1" ]; then
-      rm -f /usr/lib/x86_64-linux-gnu/libssl.so
-      ln -sfn /usr/local/ssl/lib/libssl.so.1.0.1 /usr/lib/x86_64-linux-gnu/libssl.so
-      ln -sfn /usr/local/ssl/lib/libssl.so.1.0.1 /usr/lib/libssl.so
-    fi
-    if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
-      && [ -f "/usr/local/ssl/lib/libcrypto.so.1.0.1" ]; then
-      rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
-      ln -sfn /usr/local/ssl/lib/libcrypto.so.1.0.1 /usr/lib/x86_64-linux-gnu/libcrypto.so
-      ln -sfn /usr/local/ssl/lib/libcrypto.so.1.0.1 /usr/lib/libcrypto.so
-    fi
-    if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
-      && [ -f "/usr/local/ssl/lib/libssl.so.1.0.2" ]; then
-      rm -f /usr/lib/x86_64-linux-gnu/libssl.so
-      ln -sfn /usr/local/ssl/lib/libssl.so.1.0.2 /usr/lib/x86_64-linux-gnu/libssl.so
-      ln -sfn /usr/local/ssl/lib/libssl.so.1.0.2 /usr/lib/libssl.so
-    fi
-    if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
-      && [ -f "/usr/local/ssl/lib/libcrypto.so.1.0.2" ]; then
-      rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
-      ln -sfn /usr/local/ssl/lib/libcrypto.so.1.0.2 /usr/lib/x86_64-linux-gnu/libcrypto.so
-      ln -sfn /usr/local/ssl/lib/libcrypto.so.1.0.2 /usr/lib/libcrypto.so
-    fi
-  elif [ "${_SSL_INSTALLED}" = "EOL" ]; then
-    if [ -L "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
-      && [ -f "/usr/local/ssl/lib/libssl.so.1.1" ]; then
-      rm -f /usr/lib/x86_64-linux-gnu/libssl.so
-      ln -sfn /usr/local/ssl/lib/libssl.so.1.1 /usr/lib/x86_64-linux-gnu/libssl.so
-      ln -sfn /usr/local/ssl/lib/libssl.so.1.1 /usr/lib/libssl.so
-    fi
-    if [ -L "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
-      && [ -f "/usr/local/ssl/lib/libcrypto.so.1.1" ]; then
-      rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
-      ln -sfn /usr/local/ssl/lib/libcrypto.so.1.1 /usr/lib/x86_64-linux-gnu/libcrypto.so
-      ln -sfn /usr/local/ssl/lib/libcrypto.so.1.1 /usr/lib/libcrypto.so
-    fi
-  elif [ "${_SSL_INSTALLED}" = "MODERN" ]; then
+    ###
     _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
     _LIB_NOW=${_LIB_NOW//[^0-9-]/}
-    if [ -e "/usr/lib/x86_64-linux-gnu/libssl.so" ] \
-      && [ -f "/usr/local/ssl3/lib64/libssl.so.3" ]; then
-      rm -f /usr/lib/x86_64-linux-gnu/libssl.so
-      rm -f /usr/lib/x86_64-linux-gnu/libssl.so.3
-      ln -sfn /usr/local/ssl3/lib64/libssl.so.3 /usr/lib/x86_64-linux-gnu/libssl.so
-      ln -sfn /usr/local/ssl3/lib64/libssl.so.3 /usr/lib/x86_64-linux-gnu/libssl.so.3
-      ln -sfn /usr/local/ssl3/lib64/libssl.so.3 /usr/lib/libssl.so
-      ln -sfn /usr/local/ssl3/lib64/libssl.so.3 /usr/lib/libssl.so.3
+    ###
+    if [ -f "/usr/local/ssl/lib/libssl.so.1.0.0" ] \
+      && [ -f "/usr/local/ssl/lib/libcrypto.so.1.0.0" ] \
+      && [ -f "/usr/local/ssl/lib/libssl.a" ] \
+      && [ -f "/usr/local/ssl/lib/libcrypto.a" ]; then
+      ###
+      _SSL_LIB_PATH="/usr/local/ssl/lib"
+      _SSL_CNF_PATH="/usr/local/ssl/include/openssl"
+      _GNU_LIB_PATH="/usr/lib/x86_64-linux-gnu"
+      _GNU_CNF_PATH="/usr/include/x86_64-linux-gnu/openssl"
+      ###
+      rm -f /usr/lib/libcrypto.a
+      rm -f /usr/lib/libcrypto.so
+      rm -f /usr/lib/libcrypto.so.1.0.0
+      rm -f /usr/lib/libssl.a
+      rm -f /usr/lib/libssl.so
+      rm -f /usr/lib/libssl.so.1.0.0
+      rm -f ${_GNU_LIB_PATH}/libcrypto.a
+      rm -f ${_GNU_LIB_PATH}/libcrypto.so
+      rm -f ${_GNU_LIB_PATH}/libcrypto.so.1.0.0
+      rm -f ${_GNU_LIB_PATH}/libssl.a
+      rm -f ${_GNU_LIB_PATH}/libssl.so
+      rm -f ${_GNU_LIB_PATH}/libssl.so.1.0.0
+      ###
+      rm -f ${_GNU_LIB_PATH}/libssl3.so
+      rm -f ${_SSL_LIB_PATH}/libcrypto.so.1.1*
+      rm -f ${_SSL_LIB_PATH}/libssl.so.1.1*
+      ###
+      ln -sfn ${_SSL_LIB_PATH}/libssl.a /usr/lib/libssl.a
+      ln -sfn ${_SSL_LIB_PATH}/libssl.a ${_GNU_LIB_PATH}/libssl.a
+      ln -sfn ${_SSL_LIB_PATH}/libssl.so.1.0.0 /usr/lib/libssl.so
+      ln -sfn ${_SSL_LIB_PATH}/libssl.so.1.0.0 /usr/lib/libssl.so.1.0.0
+      ln -sfn ${_SSL_LIB_PATH}/libssl.so.1.0.0 ${_GNU_LIB_PATH}/libssl.so
+      ln -sfn ${_SSL_LIB_PATH}/libssl.so.1.0.0 ${_GNU_LIB_PATH}/libssl.so.1.0.0
+      ###
+      ln -sfn ${_SSL_LIB_PATH}/libcrypto.a /usr/lib/libcrypto.a
+      ln -sfn ${_SSL_LIB_PATH}/libcrypto.a ${_GNU_LIB_PATH}/libcrypto.a
+      ln -sfn ${_SSL_LIB_PATH}/libcrypto.so.1.0.0 /usr/lib/libcrypto.so
+      ln -sfn ${_SSL_LIB_PATH}/libcrypto.so.1.0.0 /usr/lib/libcrypto.so.1.0.0
+      ln -sfn ${_SSL_LIB_PATH}/libcrypto.so.1.0.0 ${_GNU_LIB_PATH}/libcrypto.so
+      ln -sfn ${_SSL_LIB_PATH}/libcrypto.so.1.0.0 ${_GNU_LIB_PATH}/libcrypto.so.1.0.0
+      ###
+      if [ -e "${_SSL_CNF_PATH}/opensslconf.h" ]; then
+        if [ -e "${_GNU_CNF_PATH}/opensslconf.h" ]; then
+          mv -f ${_GNU_CNF_PATH}/opensslconf.h /var/backups/old-opensslconf-h-${_LIB_NOW}
+        fi
+        ln -sfn ${_SSL_CNF_PATH}/opensslconf.h ${_GNU_CNF_PATH}/opensslconf.h
+      fi
+      ###
+      if [ -e "/usr/include/openssl" ] \
+        && [ -d "/usr/local/ssl/include/openssl" ]; then
+        mv -f /usr/include/openssl /var/backups/old-usr-include-openssl-${_LIB_NOW}
+        ln -sfn /usr/local/ssl/include/openssl /usr/include/openssl
+      fi
     fi
-    if [ -e "/usr/lib/x86_64-linux-gnu/libcrypto.so" ] \
-      && [ -f "/usr/local/ssl3/lib64/libcrypto.so.3" ]; then
-      rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so
-      rm -f /usr/lib/x86_64-linux-gnu/libcrypto.so.3
-      ln -sfn /usr/local/ssl3/lib64/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so
-      ln -sfn /usr/local/ssl3/lib64/libcrypto.so.3 /usr/lib/x86_64-linux-gnu/libcrypto.so.3
-      ln -sfn /usr/local/ssl3/lib64/libcrypto.so.3 /usr/lib/libcrypto.so
-      ln -sfn /usr/local/ssl3/lib64/libcrypto.so.3 /usr/lib/libcrypto.so.3
+  elif [ "${_SSL_INSTALLED}" = "EOL" ]; then
+    ###
+    _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
+    _LIB_NOW=${_LIB_NOW//[^0-9-]/}
+    ###
+    if [ -f "/usr/local/ssl/lib/libssl.so.1.1" ] \
+      && [ -f "/usr/local/ssl/lib/libcrypto.so.1.1" ] \
+      && [ -f "/usr/local/ssl/lib/libssl.a" ] \
+      && [ -f "/usr/local/ssl/lib/libcrypto.a" ]; then
+      ###
+      _SSL_LIB_PATH="/usr/local/ssl/lib"
+      _SSL_CNF_PATH="/usr/local/ssl/include/openssl"
+      _GNU_LIB_PATH="/usr/lib/x86_64-linux-gnu"
+      _GNU_CNF_PATH="/usr/include/x86_64-linux-gnu/openssl"
+      ###
+      rm -f /usr/lib/libcrypto.a
+      rm -f /usr/lib/libcrypto.so
+      rm -f /usr/lib/libcrypto.so.1.1
+      rm -f /usr/lib/libssl.a
+      rm -f /usr/lib/libssl.so
+      rm -f /usr/lib/libssl.so.1.1
+      rm -f ${_GNU_LIB_PATH}/libcrypto.a
+      rm -f ${_GNU_LIB_PATH}/libcrypto.so
+      rm -f ${_GNU_LIB_PATH}/libcrypto.so.1.1
+      rm -f ${_GNU_LIB_PATH}/libssl.a
+      rm -f ${_GNU_LIB_PATH}/libssl.so
+      rm -f ${_GNU_LIB_PATH}/libssl.so.1.1
+      ###
+      rm -f ${_GNU_LIB_PATH}/libssl3.so
+      rm -f ${_SSL_LIB_PATH}/libcrypto.so.1.0.0*
+      rm -f ${_SSL_LIB_PATH}/libssl.so.1.0.0*
+      ###
+      ln -sfn ${_SSL_LIB_PATH}/libssl.a /usr/lib/libssl.a
+      ln -sfn ${_SSL_LIB_PATH}/libssl.a ${_GNU_LIB_PATH}/libssl.a
+      ln -sfn ${_SSL_LIB_PATH}/libssl.so.1.1 /usr/lib/libssl.so
+      ln -sfn ${_SSL_LIB_PATH}/libssl.so.1.1 /usr/lib/libssl.so.1.1
+      ln -sfn ${_SSL_LIB_PATH}/libssl.so.1.1 ${_GNU_LIB_PATH}/libssl.so
+      ln -sfn ${_SSL_LIB_PATH}/libssl.so.1.1 ${_GNU_LIB_PATH}/libssl.so.1.1
+      ###
+      ln -sfn ${_SSL_LIB_PATH}/libcrypto.a /usr/lib/libcrypto.a
+      ln -sfn ${_SSL_LIB_PATH}/libcrypto.a ${_GNU_LIB_PATH}/libcrypto.a
+      ln -sfn ${_SSL_LIB_PATH}/libcrypto.so.1.1 /usr/lib/libcrypto.so
+      ln -sfn ${_SSL_LIB_PATH}/libcrypto.so.1.1 /usr/lib/libcrypto.so.1.1
+      ln -sfn ${_SSL_LIB_PATH}/libcrypto.so.1.1 ${_GNU_LIB_PATH}/libcrypto.so
+      ln -sfn ${_SSL_LIB_PATH}/libcrypto.so.1.1 ${_GNU_LIB_PATH}/libcrypto.so.1.1
+      ###
+      if [ -e "${_SSL_CNF_PATH}/opensslconf.h" ]; then
+        if [ -e "${_GNU_CNF_PATH}/opensslconf.h" ]; then
+          mv -f ${_GNU_CNF_PATH}/opensslconf.h /var/backups/old-opensslconf-h-${_LIB_NOW}
+        fi
+        ln -sfn ${_SSL_CNF_PATH}/opensslconf.h ${_GNU_CNF_PATH}/opensslconf.h
+      fi
+      ###
+      if [ -e "/usr/include/openssl" ] \
+        && [ -d "/usr/local/ssl/include/openssl" ]; then
+        mv -f /usr/include/openssl /var/backups/old-usr-include-openssl-${_LIB_NOW}
+        ln -sfn /usr/local/ssl/include/openssl /usr/include/openssl
+      fi
     fi
-    if [ -e "/usr/lib/x86_64-linux-gnu/libssl.a" ] \
-      && [ -f "/usr/local/ssl3/lib64/libssl.a" ]; then
-      rm -f /usr/lib/x86_64-linux-gnu/libssl.a
-      ln -sfn /usr/local/ssl3/lib64/libssl.a /usr/lib/x86_64-linux-gnu/libssl.a
-      ln -sfn /usr/local/ssl3/lib64/libssl.a /usr/lib/libssl.a
-    fi
-    if [ -e "/usr/lib/x86_64-linux-gnu/libcrypto.a" ] \
-      && [ -f "/usr/local/ssl3/lib64/libcrypto.a" ]; then
-      rm -f /usr/lib/x86_64-linux-gnu/libcrypto.a
-      ln -sfn /usr/local/ssl3/lib64/libcrypto.a /usr/lib/x86_64-linux-gnu/libcrypto.a
-      ln -sfn /usr/local/ssl3/lib64/libcrypto.a /usr/lib/libcrypto.a
-    fi
-    if [ -d "/usr/include/openssl" ] \
-      && [ -d "/usr/local/ssl3/include/openssl" ]; then
-      mv -f /usr/include/openssl /var/backups/old-usr-include-openssl-${_LIB_NOW}
-      ln -sfn /usr/local/ssl3/include/openssl /usr/include/openssl
-    fi
-    if [ -f "/usr/include/x86_64-linux-gnu/openssl/opensslconf.h" ] \
-      && [ -f "/usr/local/ssl3/include/openssl/opensslconf.h" ]; then
-      mv -f /usr/include/x86_64-linux-gnu/openssl/opensslconf.h /var/backups/old-opensslconf-h-${_LIB_NOW}
-      ln -sfn /usr/local/ssl3/include/openssl/opensslconf.h /usr/include/x86_64-linux-gnu/openssl/opensslconf.h
+  elif [ "${_SSL_INSTALLED}" = "MODERN" ]; then
+    ###
+    _LIB_NOW=$(date +%y%m%d-%H%M 2>&1)
+    _LIB_NOW=${_LIB_NOW//[^0-9-]/}
+    ###
+    if [ -f "/usr/local/ssl/lib/libssl.so.1.1" ] \
+      && [ -f "/usr/local/ssl/lib/libcrypto.so.1.1" ] \
+      && [ -f "/usr/local/ssl/lib/libssl.a" ] \
+      && [ -f "/usr/local/ssl/lib/libcrypto.a" ]; then
+      ###
+      _SSL_LIB_PATH="/usr/local/ssl3/lib64"
+      _SSL_CNF_PATH="/usr/local/ssl3/include/openssl"
+      _GNU_LIB_PATH="/usr/lib/x86_64-linux-gnu"
+      _GNU_CNF_PATH="/usr/include/x86_64-linux-gnu/openssl"
+      ###
+      rm -f /usr/lib/libcrypto.a
+      rm -f /usr/lib/libcrypto.so
+      rm -f /usr/lib/libcrypto.so.3
+      rm -f /usr/lib/libssl.a
+      rm -f /usr/lib/libssl.so
+      rm -f /usr/lib/libssl.so.3
+      rm -f ${_GNU_LIB_PATH}/libcrypto.a
+      rm -f ${_GNU_LIB_PATH}/libcrypto.so
+      rm -f ${_GNU_LIB_PATH}/libcrypto.so.3
+      rm -f ${_GNU_LIB_PATH}/libssl.a
+      rm -f ${_GNU_LIB_PATH}/libssl.so
+      rm -f ${_GNU_LIB_PATH}/libssl.so.3
+      ###
+      ln -sfn ${_SSL_LIB_PATH}/libssl.a /usr/lib/libssl.a
+      ln -sfn ${_SSL_LIB_PATH}/libssl.a ${_GNU_LIB_PATH}/libssl.a
+      ln -sfn ${_SSL_LIB_PATH}/libssl.so.3 /usr/lib/libssl.so
+      ln -sfn ${_SSL_LIB_PATH}/libssl.so.3 /usr/lib/libssl.so.3
+      ln -sfn ${_SSL_LIB_PATH}/libssl.so.3 ${_GNU_LIB_PATH}/libssl.so
+      ln -sfn ${_SSL_LIB_PATH}/libssl.so.3 ${_GNU_LIB_PATH}/libssl.so.3
+      ###
+      ln -sfn ${_SSL_LIB_PATH}/libcrypto.a /usr/lib/libcrypto.a
+      ln -sfn ${_SSL_LIB_PATH}/libcrypto.a ${_GNU_LIB_PATH}/libcrypto.a
+      ln -sfn ${_SSL_LIB_PATH}/libcrypto.so.3 /usr/lib/libcrypto.so
+      ln -sfn ${_SSL_LIB_PATH}/libcrypto.so.3 /usr/lib/libcrypto.so.3
+      ln -sfn ${_SSL_LIB_PATH}/libcrypto.so.3 ${_GNU_LIB_PATH}/libcrypto.so
+      ln -sfn ${_SSL_LIB_PATH}/libcrypto.so.3 ${_GNU_LIB_PATH}/libcrypto.so.3
+      ###
+      if [ -e "${_SSL_CNF_PATH}/opensslconf.h" ]; then
+        if [ -e "${_GNU_CNF_PATH}/opensslconf.h" ]; then
+          mv -f ${_GNU_CNF_PATH}/opensslconf.h /var/backups/old-opensslconf-h-${_LIB_NOW}
+        fi
+        ln -sfn ${_SSL_CNF_PATH}/opensslconf.h ${_GNU_CNF_PATH}/opensslconf.h
+      fi
+      ###
+      if [ -e "/usr/include/openssl" ] \
+        && [ -d "/usr/local/ssl3/include/openssl" ]; then
+        mv -f /usr/include/openssl /var/backups/old-usr-include-openssl-${_LIB_NOW}
+        ln -sfn /usr/local/ssl3/include/openssl /usr/include/openssl
+      fi
     fi
   fi
   ldconfig 2> /dev/null
@@ -6773,14 +6824,14 @@ php_libs_fix() {
       if [ -e "/usr/lib/x86_64-linux-gnu/liblber.so" ]; then
         ln -sfn /usr/lib/x86_64-linux-gnu/liblber.so /usr/lib/liblber.so
       fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/liblber.a" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/liblber.a /usr/lib/liblber.a
+      fi
       if [ -e "/usr/lib/x86_64-linux-gnu/liblber-2.5.so.0" ]; then
         ln -sfn /usr/lib/x86_64-linux-gnu/liblber-2.5.so.0 /usr/lib/liblber-2.5.so.0
       fi
       if [ -e "/usr/lib/x86_64-linux-gnu/liblber-2.4.so.2" ]; then
         ln -sfn /usr/lib/x86_64-linux-gnu/liblber-2.4.so.2 /usr/lib/liblber-2.4.so.2
-      fi
-      if [ -e "/usr/lib/x86_64-linux-gnu/liblber.a" ]; then
-        ln -sfn /usr/lib/x86_64-linux-gnu/liblber.a /usr/lib/liblber.a
       fi
       if [ -e "/usr/lib/x86_64-linux-gnu/libHalf.so.23" ]; then
         ln -sfn /usr/lib/x86_64-linux-gnu/libHalf.so.23 /usr/lib/libHalf.so.12
