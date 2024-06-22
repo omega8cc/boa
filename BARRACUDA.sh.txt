@@ -322,16 +322,6 @@ fi
 
 
 ###
-### DNS cache server
-###
-if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
-  if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
-    dns_unbound_install_upgrade
-  fi
-fi
-
-
-###
 ### Optional major system upgrades
 ###
 early_sys_ctrl_mark
@@ -434,6 +424,16 @@ if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   ssl_install_src
   ssl_crypto_lib_fix
   curl_install_src
+fi
+
+
+###
+### DNS cache server
+###
+if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
+  if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+    dns_unbound_install_upgrade
+  fi
 fi
 
 
