@@ -5341,8 +5341,8 @@ if_post_major_os_upgrade() {
     mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     if [ -e "/root/.allow.downgrades.on.same.os.dist.upgrade.cnf" ]; then
-      mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
       msg "INFO: dist-upgrade with --allow-downgrades option is used"
+      mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     else
       mrun "apt-get dist-upgrade -y" 2> /dev/null
