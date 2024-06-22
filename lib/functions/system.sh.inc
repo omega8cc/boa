@@ -3754,6 +3754,7 @@ ssl_install_src() {
   fi
   if [ "${_OPENSSL_NEW_VRN}" = "${_OPENSSL_LEGACY_VRN}" ]; then
     _USE_LEGACY_TRICK=YES
+    _SSL_FORCE_REINSTALL=YES
     _BROKEN_SSL_LIBS_TEST=$(php -v 2>&1)
     if [[ "${_BROKEN_SSL_LIBS_TEST}" =~ "so.1.0.0: no version information available" ]] \
       || [[ "${_BROKEN_SSL_LIBS_TEST}" =~ "cannot open shared object file" ]]; then
