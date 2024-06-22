@@ -3761,7 +3761,7 @@ ssl_install_src() {
       _SSL_FORCE_REINSTALL=YES
       _USE_LEGACY_TRICK=YES
       if [ ! -e "/root/.openssl.ld.legacy.cnf" ]; then
-        echo "OPENSSL_1.0.0 {" > /root/.openssl.ld.legacy.cnf
+        echo "OPENSSL_1.0.2 {" > /root/.openssl.ld.legacy.cnf
         echo "    global:" >> /root/.openssl.ld.legacy.cnf
         echo "    *;" >> /root/.openssl.ld.legacy.cnf
         echo "};" >> /root/.openssl.ld.legacy.cnf
