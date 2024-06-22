@@ -375,20 +375,6 @@ kill_nash
 
 
 ###
-### Install Percona server
-###
-db_server_install
-
-
-###
-### Finalize initial Percona server setup
-###
-init_sql_root_credentials
-sql_root_credentials_update
-mytop_install
-
-
-###
 ### OpenSSL modern and legacy support
 ###
 _LC_SSL_CTRL="/root/.install.legacy.openssl.cnf"
@@ -448,6 +434,27 @@ if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   ssl_install_src
   ssl_crypto_lib_fix
   curl_install_src
+fi
+
+
+###
+### Install Percona server
+###
+db_server_install
+
+
+###
+### Finalize initial Percona server setup
+###
+init_sql_root_credentials
+sql_root_credentials_update
+mytop_install
+
+
+###
+### Install other services
+###
+if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   nginx_install_upgrade
   nginx_initd_check
   nginx_mime_check_fix
