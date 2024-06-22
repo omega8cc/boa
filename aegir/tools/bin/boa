@@ -1493,7 +1493,7 @@ csf_check_fix() {
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    rm -f /var/lib/man-db/auto-update
+    [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
       system_check_ready
     else

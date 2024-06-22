@@ -94,7 +94,7 @@ nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nr
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    rm -f /var/lib/man-db/auto-update
+    [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   else
     echo "ERROR: This script should be ran as a root user"
     exit 1

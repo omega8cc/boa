@@ -39,7 +39,7 @@ licence_to_kill() {
   fi
 }
 
-rm -f /var/lib/man-db/auto-update
+[ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
 
 for frozenCmnd in ${cmndsList}; do
   licence_to_kill ${cmndsList}
