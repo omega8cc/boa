@@ -2709,8 +2709,9 @@ php_install_deps() {
   mrun "${_INSTAPP} libgd-dev libgd3 lbzip2" 2> /dev/null
   if [ "${_OS_CODE}" = "daedalus" ] \
     || [ "${_OS_CODE}" = "bookworm" ]; then
-    mrun "apt-get remove libldap2-dev -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "${_INSTAPP} libldap-dev" 2> /dev/null
+    #mrun "apt-get remove libldap2-dev libldap-common -y -qq" 2> /dev/null
+    #mrun "${_INSTAPP} libldap-dev" 2> /dev/null
+    _NOTHING_TO_DO=YES
   else
     mrun "${_INSTAPP} libldap2-dev" 2> /dev/null
   fi
@@ -6363,6 +6364,7 @@ sys_packages_install() {
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
         mrun "apt-get install -t bullseye openjdk-11-jre-headless -y" 2> /dev/null
+        mrun "apt-get install -t bullseye libldap2-dev libldap-common -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/bullseye.list
         rm -f /etc/apt/apt.conf
         apt_clean_update
@@ -6376,6 +6378,7 @@ sys_packages_install() {
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
         mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
+        mrun "apt-get install -t chimaera libldap2-dev libldap-common -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/chimaera.list
         rm -f /etc/apt/apt.conf
         apt_clean_update
@@ -6414,6 +6417,7 @@ sys_packages_install() {
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
         mrun "apt-get install -t bullseye openjdk-11-jre-headless -y" 2> /dev/null
+        mrun "apt-get install -t bullseye libldap2-dev libldap-common -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/bullseye.list
         rm -f /etc/apt/apt.conf
         apt_clean_update
@@ -6427,6 +6431,7 @@ sys_packages_install() {
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
         mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
+        mrun "apt-get install -t chimaera libldap2-dev libldap-common -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/chimaera.list
         rm -f /etc/apt/apt.conf
         apt_clean_update
