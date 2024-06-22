@@ -394,7 +394,8 @@ nginx_install_upgrade() {
             msg "INFO: Nginx forced rebuild to include HTTP/2 support"
           fi
         fi
-        if [[ ! "${_NGINX_V_ITD}" =~ "http_v3_module" ]]; then
+        if [[ ! "${_NGINX_V_ITD}" =~ "http_v3_module" ]] \
+          && [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ]; then
           _NGINX_INSTALL_REQUIRED=YES
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             msg "INFO: Installed Nginx ${_NGINX_F_ITD}"
