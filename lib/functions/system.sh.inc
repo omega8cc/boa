@@ -6710,8 +6710,9 @@ sys_packages_install() {
                      ttf-dejavu-extra \
                      ${_EXTRA_PACKAGES}"
   else
-    _EXTRA_PACKAGES="autoconf2.13 \
-                     automake1.4 \
+    _EXTRA_PACKAGES="autoconf2.64 \
+                     automake1.11 \
+                     automake-1.14 \
                      defoma \
                      gnupg-curl \
                      libpcre3 \
