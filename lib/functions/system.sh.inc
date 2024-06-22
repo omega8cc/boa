@@ -3806,20 +3806,19 @@ ssl_install_src() {
       cd /var/opt/openssl-${_OPENSSL_NEW_VRN}
       if [ -e "/root/.install.modern.openssl.cnf" ]; then
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl3 \
-          --openssldir=/usr/local/ssl3 shared -Wl"
+          --openssldir=/usr/local/ssl3 shared"
       else
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
-          --openssldir=/usr/local/ssl shared -Wl"
+          --openssldir=/usr/local/ssl shared"
       fi
       if [ "${_USE_LEGACY_TRICK}" = "YES" ] \
         && [ -e "/root/.openssl.ld.legacy.cnf" ]; then
         _SSL_BUILD_ARGS="${_SSL_BUILD_ARGS} \
-        --version-script=/root/.openssl.ld.legacy.cnf -Wl \
-        -Bsymbolic-functions"
+          -Wl,--version-script=/root/.openssl.ld.legacy.cnf -Wl,-Bsymbolic-functions"
       fi
       mrun "sh ./config zlib-dynamic \
-        ${_SSL_BUILD_ARGS} \
-        enable-ec_nistp_64_gcc_128" 2> /dev/null
+        enable-ec_nistp_64_gcc_128 \
+        ${_SSL_BUILD_ARGS}" 2> /dev/null
       mrun "make depend" 2> /dev/null
       mrun "make -j $(nproc)" 2> /dev/null
       mrun "make install" 2> /dev/null
