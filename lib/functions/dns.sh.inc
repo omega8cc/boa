@@ -340,7 +340,7 @@ install_unbound_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: install_unbound_src"
   fi
-  msg "INFO: Installing Unbound server for ${_OS_DIST}/${_OS_CODE}..."
+  msg "INFO: Installing Unbound server from sources ${_OS_DIST}/${_OS_CODE}..."
   ldconfig 2> /dev/null
   cd /var/opt
   rm -rf unbound*
@@ -374,7 +374,7 @@ dns_unbound_install_upgrade() {
     || [ -z "${isUnbnd}" ] \
     || [ "${isUnbndFix}" = "YES" ] \
     || [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
-    msg "INFO: Installing DNS cache Unbound server..."
+    msg "INFO: Installing DNS cache Unbound server from packages..."
     if [ -e "/etc/resolv.conf" ]; then
       cp -af /etc/resolv.conf ${vBs}/resolv.conf.pre-${_X_SE}-${_X_VERSION}-${_NOW}
     fi
