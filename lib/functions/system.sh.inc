@@ -5959,6 +5959,15 @@ if_major_os_upgrade() {
       ###
       if [ "${_LOC_OS_CODE}" = "chimaera" ] \
         && [ "${_NEW_OS_CODE}" = "daedalus" ]; then
+        ### Fix PHP early
+        echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
+        echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
+        apt_clean_update
+        mrun "apt-get install -t chimaera libldap2-dev libldap-common -y" 2> /dev/null
+        rm -f /etc/apt/sources.list.d/chimaera.list
+        rm -f /etc/apt/apt.conf
+        apt_clean_update
+        ldconfig 2> /dev/null
         ### Signal that --allow-downgrades can be used after reboot
         touch /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
         msg "INFO: dist-upgrade with --allow-downgrades option is used"
