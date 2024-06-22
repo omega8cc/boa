@@ -1791,6 +1791,7 @@ upgrade_db_cluster() {
   	vserver ${idn} exec ${_INSTAPP} bc
   	vserver ${idn} exec apt-get upgrade ${_APT_XTR}
   	vserver ${idn} exec apt-get dist-upgrade ${_APT_XTR}
+  	vserver ${idn} exec rm -f /var/lib/man-db/auto-update
   	vserver ${idn} exec apt-get install lsb-release
   	vserver ${idn} exec dpkg --configure --force-all -a
   	vserver ${idn} exec update-rc.d -f mysql remove

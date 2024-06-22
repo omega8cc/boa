@@ -408,6 +408,7 @@ init_run_two_quick() {
   if [ "${silentMode}" = "verbose" ]; then
     /usr/bin/apt-get update >> ${logInt}
     /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logInt}
+    [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logInt}
     /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logInt}
     /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> ${logInt}
@@ -416,6 +417,7 @@ init_run_two_quick() {
   else
     /usr/bin/apt-get update -qq >> ${logSlt}
     /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logSlt}
+    [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
     /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
     /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
@@ -515,8 +517,10 @@ init_run_one_quick() {
         /usr/bin/apt-get -f install -y >> ${logInt}
       else
         /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logInt}
+        [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
         /usr/bin/apt-get -f install -y >> ${logInt}
         /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logInt}
+        [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
         /usr/bin/apt-get autoremove --purge -y >> ${logInt}
         /usr/bin/apt-get autoclean -y >> ${logInt}
       fi
@@ -532,8 +536,10 @@ init_run_one_quick() {
         /usr/bin/apt-get -f install -y -qq >> ${logSlt}
       else
         /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logSlt}
+        [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
         /usr/bin/apt-get -f install -y -qq >> ${logSlt}
         /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logSlt}
+        [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
         /usr/bin/apt-get autoremove --purge -y -qq >> ${logSlt}
         /usr/bin/apt-get autoclean -y -qq >> ${logSlt}
       fi

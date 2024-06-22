@@ -2469,7 +2469,9 @@ run_apt_get_dist_upgrade() {
     msg "INFO: Running apt-get dist-upgrade..."
   fi
   mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
+  [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   mrun "apt-get dist-upgrade -y --allow-unauthenticated" 2> /dev/null
+  [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
 }
 
@@ -5337,11 +5339,14 @@ if_post_major_os_upgrade() {
     msg "INFO: Running dist-upgrade to complete the system upgrade..."
     msg "WAIT: This may take a while, please wait..."
     mrun "apt-get dist-upgrade ${dstUpArg}" 2> /dev/null
+    [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     if [ -e "/root/.allow.downgrades.on.same.os.dist.upgrade.cnf" ]; then
       mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
       msg "INFO: dist-upgrade with --allow-downgrades option is used"
+      [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     else
       mrun "apt-get dist-upgrade -y" 2> /dev/null
+      [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
     fi
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
@@ -5954,7 +5959,9 @@ if_major_os_upgrade() {
     else
       echo
       mrun "apt-get dist-upgrade ${dstUpArg} --allow-downgrades" 2> /dev/null
+      [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
+      [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
       ###
       if [ "${_LOC_OS_CODE}" = "chimaera" ] \
