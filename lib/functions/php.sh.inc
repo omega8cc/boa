@@ -1557,8 +1557,10 @@ install_php_multi() {
              --with-webp \
              --with-freetype \
              --with-ldap \
-             --with-sodium \
              --with-gmp"
+  if [ "${_OS_CODE}" != "jessie" ]; then
+    _NEW_SNFR="${_NEW_SNFR} --with-sodium"
+  fi
   if [ "$1" = "74" ] || [ "$1" = "80" ] || [ "$1" = "81" ] || [ "$1" = "82" ] || [ "$1" = "83" ]; then
     _PHP_EXTRA=$(echo "${_PHP_EXTRA}" | sed "s/--with-freetype-dir=\/usr//g" 2>&1)
     _PHP_EXTRA="${_PHP_EXTRA} ${_NEW_SNFR}"
@@ -2923,7 +2925,7 @@ php_check_if_rebuild() {
     fi
     _PHP_FORCE_REINSTALL=NO
   fi
-  if [ -x "/opt/php74/bin/php" ]; then
+  if [ -x "/opt/php74/bin/php" ] && [ "${_OS_CODE}" != "jessie" ]; then
     isSodium=
     isSodium=$(/opt/php74/bin/php -i | grep with-sodium 2>&1)
     if [[ ! "${isSodium}" =~ "with-sodium" ]] \
