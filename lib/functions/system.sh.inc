@@ -4582,7 +4582,19 @@ sync_enable_apparmor_profiles() {
       chmod 644 ${proFile}
     done
     if [ -e "/etc/audit/auditd.conf" ]; then
-      sed -i "s/^write_logs = yes/write_logs = no/g" /etc/audit/auditd.conf
+      if [ -e "/root/.disable.auditd.logs.cnf" ]; then
+        sed -i "s/^write_logs =.*/write_logs = no/g" /etc/audit/auditd.conf
+      else
+        sed -i "s/^write_logs =.*/write_logs = yes/g" /etc/audit/auditd.conf
+      fi
+      _AUDITD_CNF_LOC_TEST=$(grep "local_events" /etc/audit/auditd.conf 2>&1)
+      if [[ ! "${_AUDITD_CNF_LOC_TEST}" =~ "local_events" ]]; then
+        echo "local_events = yes" >> /etc/audit/auditd.conf
+      fi
+      _AUDITD_CNF_WRT_TEST=$(grep "write_logs" /etc/audit/auditd.conf 2>&1)
+      if [[ ! "${_AUDITD_CNF_WRT_TEST}" =~ "write_logs" ]]; then
+        echo "write_logs = yes" >> /etc/audit/auditd.conf
+      fi
     fi
     mrun "service apparmor reload" 2> /dev/null
     mrun "service auditd reload" 2> /dev/null
