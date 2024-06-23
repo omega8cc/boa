@@ -69,7 +69,9 @@ apt_clean_update() {
 }
 
 check_ifnames() {
-  _SYS_IFNAMES=$(grep GRUB_CMDLINE_LINUX= /etc/default/grub | grep "net.ifnames=0" 2>&1)
+  if [ -e "/etc/default/grub" ]; then
+    _SYS_IFNAMES=$(grep GRUB_CMDLINE_LINUX= /etc/default/grub | grep "net.ifnames=0" 2>&1)
+  fi
   if [ -e "/etc/default/grub" ] && [[ ! "${_SYS_IFNAMES}" =~ "net.ifnames=0" ]]; then
     echo
     echo "ERROR: BOA requires the classic network interface naming convention."
