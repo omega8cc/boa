@@ -3760,9 +3760,7 @@ ssl_install_src() {
   fi
   if [ "${_OPENSSL_NEW_VRN}" = "${_OPENSSL_LEGACY_VRN}" ]; then
     _USE_LEGACY_TRICK=NO
-    _SSL_FORCE_REINSTALL=YES
     _BROKEN_SSL_LIBS_TEST=$(php -v 2>&1)
-    rm -f /root/.openssl.ld.legacy.cnf
     if [[ "${_BROKEN_SSL_LIBS_TEST}" =~ "no version information available" ]] \
       || [ ! -e "/root/.openssl.ld.legacy.cnf" ] \
       || [[ "${_BROKEN_SSL_LIBS_TEST}" =~ "cannot open shared object file" ]]; then
@@ -3820,11 +3818,11 @@ ssl_install_src() {
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
           --openssldir=/usr/local/ssl shared"
       fi
-#       if [ "${_USE_LEGACY_TRICK}" = "YES" ] \
-#         && [ -e "/root/.openssl.ld.legacy.cnf" ]; then
-#         _SSL_BUILD_ARGS="${_SSL_BUILD_ARGS} \
-#           -Wl,--version-script=/root/.openssl.ld.legacy.cnf -Wl,-Bsymbolic-functions"
-#       fi
+      if [ "${_USE_LEGACY_TRICK}" = "YES" ] \
+        && [ -e "/root/.openssl.ld.legacy.cnf" ]; then
+        _SSL_BUILD_ARGS="${_SSL_BUILD_ARGS} \
+          -Wl,--version-script=/root/.openssl.ld.legacy.cnf -Wl,-Bsymbolic-functions"
+      fi
       mrun "sh ./config zlib-dynamic \
         enable-ec_nistp_64_gcc_128 \
         ${_SSL_BUILD_ARGS}" 2> /dev/null
