@@ -2413,6 +2413,8 @@ check_php_broken_segfault() {
   isOnig=$(/opt/php$1/bin/php -v 2>&1)
   isSegft=
   isSegft=$(/opt/php$1/bin/php -v | grep cli 2>&1)
+  isSSLibs=
+  isSSLibs=$(/opt/php$1/bin/php -v | grep cli 2>&1)
   isOlog=
   if [ -e "/var/log/php/php$1-fpm-error.log" ]; then
     isOlog=$(grep OnigEncoding /var/log/php/php$1-fpm-error.log 2>&1)
@@ -2422,14 +2424,17 @@ check_php_broken_segfault() {
     msg "CTRL: isOnig for $1 is ${isOnig}"
     msg "CTRL: isSegft for $1 is ${isSegft}"
     msg "CTRL: isOlog for $1 is ${isOlog}"
+    msg "CTRL: isSSLibs for $1 is ${isSSLibs}"
   fi
   if [[ ! "${isSegft}" =~ "cli" ]] \
     || [ -z "${isSegft}" ] \
     || [[ "${isOnig}" =~ "OnigEncoding" ]] \
     || [[ "${isSegft}" =~ "OnigEncoding" ]] \
+    || [[ "${isSSLibs}" =~ "no version information" ]] \
     || [[ "${isOlog}" =~ "OnigEncoding" ]]; then
     if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ] \
       || [[ "${isOlog}" =~ "OnigEncoding" ]] \
+      || [[ "${isSSLibs}" =~ "no version information" ]] \
       || [[ "${isOnig}" =~ "OnigEncoding" ]]; then
       msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix broken build..."
       install_php_multi "$1"
