@@ -3299,6 +3299,9 @@ sshd_install_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: sshd_install_src"
   fi
+  if [ "${_OS_CODE}" = "jessie" ]; then
+    _OPENSSH_VRN=8.3p1
+  fi
   _SSH_GET_DPKG=$(dpkg --get-selections | grep openssh-sftp-server | grep 'hold$' 2>&1)
   _SSH_INSTALL_REQUIRED=NO
   _SSH_ITD=$(ssh -V 2>&1 \
