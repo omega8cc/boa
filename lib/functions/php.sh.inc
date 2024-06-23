@@ -1576,7 +1576,11 @@ install_php_multi() {
     _PHP_EXTRA="${_PHP_EXTRA} ${_PRE_SNFR} --enable-gd-native-ttf --with-mcrypt --with-mysql=mysqlnd"
     if [ "${_OS_CODE}" != "jessie" ]; then
       patchFile="PHP-5.6.31-OpenSSL-1.1.0-compatibility-20170801.patch"
-      patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        patch -p1 < ${bldPth}/aegir/patches/${patchFile}
+      else
+        patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
+      fi
     fi
   fi
   if [ "${_OS_CODE}" = "daedalus" ] \
@@ -1586,9 +1590,17 @@ install_php_multi() {
     || [ "${_OS_CODE}" = "bullseye" ] \
     || [ "${_OS_CODE}" = "buster" ]; then
     patchFile="freetype.patch"
-    patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      patch -p1 < ${bldPth}/aegir/patches/${patchFile}
+    else
+      patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
+    fi
     patchFile="php-8.1-openssl3.patch"
-    patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      patch -p1 < ${bldPth}/aegir/patches/${patchFile}
+    else
+      patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
+    fi
   fi
   if [ "${_OS_CODE}" != "jessie" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} \
