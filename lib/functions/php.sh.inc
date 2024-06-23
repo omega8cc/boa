@@ -1590,6 +1590,12 @@ install_php_multi() {
     patchFile="php-8.1-openssl3.patch"
     patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
   fi
+  if [ "${_OS_CODE}" != "jessie" ]; then
+    _PHP_EXTRA="${_PHP_EXTRA} \
+                --with-imap \
+                --with-imap-ssl \
+                --with-kerberos"
+  fi
   _PHP_EXTRA="${_PHP_EXTRA} --enable-opcache"
   if [ ! -z "${_PHP_EXTRA}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1612,9 +1618,6 @@ install_php_multi() {
                 --enable-soap \
                 --with-fpm-group=www-data \
                 --with-fpm-user=www-data \
-                --with-imap \
-                --with-imap-ssl \
-                --with-kerberos \
                 --with-mysql-sock=/var/run/mysqld/mysqld.sock \
                 --with-mysqli=mysqlnd \
                 --with-pdo-mysql=mysqlnd \
@@ -1648,9 +1651,6 @@ install_php_multi() {
                 --enable-soap \
                 --with-fpm-group=www-data \
                 --with-fpm-user=www-data \
-                --with-imap \
-                --with-imap-ssl \
-                --with-kerberos \
                 --with-mysql-sock=/var/run/mysqld/mysqld.sock \
                 --with-mysqli=mysqlnd \
                 --with-pdo-mysql=mysqlnd \
