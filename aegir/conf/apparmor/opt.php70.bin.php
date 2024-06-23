@@ -6,14 +6,27 @@
   #include <abstractions/bash>
   #include <abstractions/consoles>
   #include <abstractions/nameservice>
+  #include <abstractions/totem>
+
+  /opt/php70/bin/php mrix,
 
   /bin/dash mrix,
+  /bin/grep mrix,
+  /bin/stty mrix,
   /bin/websh mrix,
+  /usr/bin/id mrix,
+  /usr/bin/mysql mrix,
+  /usr/bin/tput mrix,
+  /usr/bin/which mrix,
 
   /etc/ImageMagick-6/log.xml r,
   /etc/ImageMagick-6/policy.xml r,
+  /etc/mysql/conf.d/mysql.cnf r,
+  /etc/mysql/my.cnf r,
+  /etc/newrelic/upgrade_please.key r,
 
   /proc/loadavg r,
+  /proc/filesystems r,
 
   /usr/local/ioncube/ioncube_loader_lin_*.so mr,
   /usr/local/lib/lib*so* mr,
@@ -35,12 +48,14 @@
   /var/aegir/host_master/** r,
   /var/aegir/platforms/** r,
 
+  /data/disk/*/.bashrc r,
   /data/disk/*/.drush/** r,
   /data/disk/*/aegir/** r,
   /data/disk/*/config/** r,
   /data/disk/*/distro/** r,
   /data/disk/*/platforms/** r,
   /data/disk/*/static/** r,
+  /data/disk/*/tools/drush/** r,
   /data/disk/*/tools/le/** r,
 
   /data/all/** r,

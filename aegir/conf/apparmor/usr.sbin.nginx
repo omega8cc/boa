@@ -3,7 +3,9 @@
 
 /usr/sbin/nginx flags=(complain) {
   #include <abstractions/base>
+  #include <abstractions/nameservice>
   #include <abstractions/ssl_keys>
+  #include <abstractions/totem>
 
   capability dac_override,
   capability dac_read_search,
