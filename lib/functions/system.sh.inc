@@ -3823,7 +3823,7 @@ ssl_install_src() {
         _SSL_BUILD_ARGS="${_SSL_BUILD_ARGS} \
           -Wl,--version-script=/root/.openssl.ld.legacy.cnf -Wl,-Bsymbolic-functions"
       fi
-      mrun "sh ./config zlib-dynamic \
+      mrun "sh ./config no-comp \
         enable-ec_nistp_64_gcc_128 \
         ${_SSL_BUILD_ARGS}" 2> /dev/null
       mrun "make depend" 2> /dev/null
