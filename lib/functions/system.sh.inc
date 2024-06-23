@@ -2754,16 +2754,22 @@ if_install_wkhtmltox() {
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}')
+  if [ "${_OS_CODE}" = "jessie" ]; then
+    _WOX_ITD=$(wkhtmltopdf --version 2>&1)
+  fi
   if [[ "${_WOX_ITD}" =~ "0.12.6" ]]; then
-    if [ "${_OS_CODE}" = "daedalus" ] \
-      || [ "${_OS_CODE}" = "chimaera" ] \
-      || [ "${_OS_CODE}" = "bullseye" ] \
-      || [ "${_OS_CODE}" = "bookworm" ] \
+    if [ "${_OS_CODE}" = "chimaera" ] \
       || [ "${_OS_CODE}" = "beowulf" ] \
+      || [ "${_OS_CODE}" = "bullseye" ] \
       || [ "${_OS_CODE}" = "buster" ] \
       || [ "${_OS_CODE}" = "stretch" ]; then
       _WOX_IS=NEW
-      _WKHTMLTOX_VRN="12.6-1"
+      if [ "${_OS_CODE}" = "chimaera" ] \
+        || [ "${_OS_CODE}" = "bullseye" ]; then
+        _WKHTMLTOX_VRN="12.6.1-2"
+      else
+        _WKHTMLTOX_VRN="12.6-1"
+      fi
     fi
   fi
   if [[ "${_WOX_ITD}" =~ "0.12.5" ]]; then
@@ -2772,10 +2778,12 @@ if_install_wkhtmltox() {
       _WKHTMLTOX_VRN="12.5-1"
     fi
   fi
-  if [ "${_OS_CODE}" = "daedalus" ] \
-    || [ "${_OS_CODE}" = "chimaera" ] \
-    || [ "${_OS_CODE}" = "bookworm" ] \
-    || [ "${_OS_CODE}" = "bullseye" ]; then
+  if [ "${_OS_CODE}" = "chimaera" ] \
+    || [ "${_OS_CODE}" = "beowulf" ] \
+    || [ "${_OS_CODE}" = "bullseye" ] \
+    || [ "${_OS_CODE}" = "buster" ] \
+    || [ "${_OS_CODE}" = "stretch" ] \
+    || [ "${_OS_CODE}" = "jessie" ]; then
     if [ "${_WOX_IS}" = "OLD" ] \
       || [ ! -x "/usr/local/bin/wkhtmltopdf" ] \
       || [ ! -x "/usr/local/bin/wkhtmltoimage" ] \
@@ -2802,6 +2810,8 @@ if_install_wkhtmltox() {
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       if [ "${_OS_CODE}" = "beowulf" ]; then
         _WKHTML_SYS_RV="buster"
+      elif [ "${_OS_CODE}" = "chimaera" ]; then
+        _WKHTML_SYS_RV="bullseye"
       else
         _WKHTML_SYS_RV="${_OS_CODE}"
       fi
