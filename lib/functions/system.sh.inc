@@ -6554,7 +6554,6 @@ sys_packages_install() {
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
         mrun "apt-get install -t bullseye openjdk-11-jre-headless -y" 2> /dev/null
-        #mrun "apt-get install -t bullseye libldap2-dev libldap-common -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/bullseye.list
         rm -f /etc/apt/apt.conf
         apt_clean_update
@@ -6568,7 +6567,6 @@ sys_packages_install() {
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
         mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
-        #mrun "apt-get install -t chimaera libldap2-dev libldap-common -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/chimaera.list
         rm -f /etc/apt/apt.conf
         apt_clean_update
@@ -6607,7 +6605,6 @@ sys_packages_install() {
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
         mrun "apt-get install -t bullseye openjdk-11-jre-headless -y" 2> /dev/null
-        mrun "apt-get install -t bullseye libldap2-dev libldap-common -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/bullseye.list
         rm -f /etc/apt/apt.conf
         apt_clean_update
@@ -6621,7 +6618,6 @@ sys_packages_install() {
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
         mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
-        mrun "apt-get install -t chimaera libldap2-dev libldap-common -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/chimaera.list
         rm -f /etc/apt/apt.conf
         apt_clean_update
