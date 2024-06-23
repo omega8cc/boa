@@ -346,7 +346,11 @@ install_unbound_src() {
   rm -rf unbound*
   get_dev_src "unbound-${_UNBOUND_VRN}.tar.gz"
   cd unbound-${_UNBOUND_VRN}
-  mrun "bash ./configure --prefix=/usr --with-ssl=/usr/local/ssl3" 2> /dev/null
+  if [ -e "/usr/local/ssl3/" ]; then
+    mrun "bash ./configure --prefix=/usr --with-ssl=/usr/local/ssl3" 2> /dev/null
+  elif [ -e "/usr/local/ssl/" ]; then
+    mrun "bash ./configure --prefix=/usr --with-ssl=/usr/local/ssl" 2> /dev/null
+  fi
   mrun "make -j $(nproc) --quiet" 2> /dev/null
   mrun "make --quiet install" 2> /dev/null
 }
