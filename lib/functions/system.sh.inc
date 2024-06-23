@@ -3764,8 +3764,10 @@ ssl_install_src() {
     if [[ "${_BROKEN_SSL_LIBS_TEST}" =~ "no version information available" ]] \
       || [ ! -e "/root/.openssl.ld.legacy.cnf" ] \
       || [[ "${_BROKEN_SSL_LIBS_TEST}" =~ "cannot open shared object file" ]]; then
-      msg "INFO: OpenSSL legacy libs are broken, rebuild forced"
+      msg "INFO: OpenSSL legacy libs are broken, reinstall forced"
+      mrun "apt-get install openssl --reinstall -y" 2> /dev/null
       _SSL_FORCE_REINSTALL=YES
+      _SSH_FORCE_REINSTALL=YES
       _USE_LEGACY_TRICK=YES
       if [ ! -e "/root/.openssl.ld.legacy.cnf" ]; then
         echo "OPENSSL_1.0.0 {" > /root/.openssl.ld.legacy.cnf
@@ -3813,16 +3815,17 @@ ssl_install_src() {
       cd /var/opt/openssl-${_OPENSSL_NEW_VRN}
       if [ -e "/root/.install.modern.openssl.cnf" ]; then
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl3 \
-          --openssldir=/usr/local/ssl3 shared -Wl,-Bsymbolic-functions"
+          --openssldir=/usr/local/ssl3"
       else
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
-          --openssldir=/usr/local/ssl shared -Wl,-Bsymbolic-functions"
+          --openssldir=/usr/local/ssl"
       fi
 #       if [ "${_USE_LEGACY_TRICK}" = "YES" ] \
 #         && [ -e "/root/.openssl.ld.legacy.cnf" ]; then
 #         _SSL_BUILD_ARGS="${_SSL_BUILD_ARGS},--version-script=/root/.openssl.ld.legacy.cnf -Wl"
 #       fi
-      mrun "sh ./config zlib-dynamic \
+      mrun "sh ./config shared \
+        zlib-dynamic \
         enable-ec_nistp_64_gcc_128 \
         ${_SSL_BUILD_ARGS}" 2> /dev/null
       mrun "make depend" 2> /dev/null
