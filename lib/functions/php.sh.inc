@@ -2414,7 +2414,7 @@ check_php_broken_segfault() {
   isSegft=
   isSegft=$(/opt/php$1/bin/php -v | grep cli 2>&1)
   isSSLibs=
-  isSSLibs=$(/opt/php$1/bin/php -v | grep cli 2>&1)
+  isSSLibs=$(/opt/php$1/bin/php -v 2>&1)
   isOlog=
   if [ -e "/var/log/php/php$1-fpm-error.log" ]; then
     isOlog=$(grep OnigEncoding /var/log/php/php$1-fpm-error.log 2>&1)
