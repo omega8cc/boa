@@ -1483,8 +1483,8 @@ install_php_multi() {
   if [ "${_OS_CODE}" = "stretch" ] \
     || [ "${_OS_CODE}" = "jessie" ]; then
     mrun "sh ./buildconf --force" 2> /dev/null
-    patchFile="disable_SSLv2_for_openssl_1_0_0.patch"
-    patch -p1 < ${bldPth}/aegir/patches/${patchFile}
+    #patchFile="disable_SSLv2_for_openssl_1_0_0.patch"
+    #patch -p1 < ${bldPth}/aegir/patches/${patchFile}
   fi
   ### cd sapi/fpm/fpm
   ### patch -p1 < ${bldPth}/aegir/patches/fpm_main.c.patch &> /dev/null
