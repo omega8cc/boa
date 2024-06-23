@@ -6103,19 +6103,56 @@ if_major_os_upgrade() {
       ###
       if [ "${_LOC_OS_CODE}" = "chimaera" ] \
         && [ "${_NEW_OS_CODE}" = "daedalus" ]; then
+        ###
         ### Fix PHP early
+        ###
+        msg "DIST: Special procedure for ${_LOC_OS_CODE} to ${_NEW_OS_CODE} upgrade"
+        ###
+        msg "TRCK: Removing libldap packages for a clean start"
+        mrun "apt-get remove libldap-common -y -qq" 2> /dev/null
+        mrun "apt-get remove libldap2-dev -y -qq" 2> /dev/null
+        mrun "apt-get remove libldap-dev -y -qq" 2> /dev/null
+        apt_clean_update
+        ###
+        msg "TRCK: Installing now libldap packages from Chimaera"
         echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
-        mrun "apt-get install -t chimaera libldap2-dev libldap-common -y" 2> /dev/null
+        mrun "apt-get install -t chimaera libldap-common -y" 2> /dev/null
+        mrun "apt-get install -t chimaera libldap2-dev -y" 2> /dev/null
+        ###
+        msg "TRCK: Locking libldap packages to prevent upgrade on Daedalus"
+        ### Make sure that libldap packages are locked in apt.
+        echo -e 'Package: libldap-common\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/libldap
+        echo -e '\n\nPackage: libldap2-dev\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/libldap
+        echo -e '\n\nPackage: libldap-dev\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/libldap
+        apt_clean_update
+        ###
+        _LDAP_GET_DPKG=$(dpkg --get-selections | grep libldap-common | grep 'hold$' 2>&1)
+        if [[ ! "${_LDAP_GET_DPKG}" =~ "hold" ]]; then
+          aptitude hold libldap-common &> /dev/null
+          aptitude hold libldap2-dev &> /dev/null
+          aptitude hold libldap-dev &> /dev/null
+          echo "libldap-common hold" | dpkg --set-selections &> /dev/null
+          echo "libldap2-dev hold" | dpkg --set-selections &> /dev/null
+          echo "libldap-dev hold" | dpkg --set-selections &> /dev/null
+          apt_clean_update
+        fi
         rm -f /etc/apt/sources.list.d/chimaera.list
         rm -f /etc/apt/apt.conf
         apt_clean_update
         ldconfig 2> /dev/null
+        ###
+        msg "DIST: The dist-upgrade with --allow-downgrades option can be used"
         ### Signal that --allow-downgrades can be used after reboot
         touch /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
-        msg "INFO: dist-upgrade with --allow-downgrades option can be used"
+        ###
+        msg "DIST: Rebuidling key services from sources before reboot..."
         _FORCE_REBUILD_SRC_ON_AUTO_NOW=YES
+        touch /root/.force.rebuild.src.on.auto.now.cnf
+        if_rebuild_src_on_major_os_upgrade
+      else
+        msg "DIST: No quick rebuild from src on ${_LOC_OS_CODE} to ${_NEW_OS_CODE} upgrade"
       fi
       ###
     fi
