@@ -3368,7 +3368,7 @@ sshd_install_src() {
     rm -rf openssh*
     get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
     cd /var/opt/openssh-${_OPENSSH_VRN}
-    mrun "LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
+    mrun "LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
       --with-ssl-dir=${_SSL_PATH} \
       --with-privsep-path=/var/lib/sshd/ \
       --sysconfdir=${_SYSCONFDIR} \
