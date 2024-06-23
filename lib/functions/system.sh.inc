@@ -3375,7 +3375,7 @@ sshd_install_src() {
       --prefix=${_PREFIX_SSH} \
       --with-selinux \
       --with-md5-passwords \
-      --with-pam 2> /dev/null
+      --with-pam &> /dev/null
     mrun "make -j $(nproc)" 2> /dev/null
     mrun "make install" 2> /dev/null
     ldconfig 2> /dev/null
