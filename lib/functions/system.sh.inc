@@ -3368,14 +3368,14 @@ sshd_install_src() {
     rm -rf openssh*
     get_dev_src "openssh-${_OPENSSH_VRN}.tar.gz"
     cd /var/opt/openssh-${_OPENSSH_VRN}
-    LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
+    mrun "LIBS="-ldl -lpthread" PKG_CONFIG_PATH="${_PKG_CONFIG_PATH}" ./configure \
       --with-ssl-dir=${_SSL_PATH} \
       --with-privsep-path=/var/lib/sshd/ \
       --sysconfdir=${_SYSCONFDIR} \
       --prefix=${_PREFIX_SSH} \
       --with-selinux \
       --with-md5-passwords \
-      --with-pam &> /dev/null
+      --with-pam" 2> /dev/null
     mrun "make -j $(nproc)" 2> /dev/null
     mrun "make install" 2> /dev/null
     ldconfig 2> /dev/null
