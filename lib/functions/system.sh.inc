@@ -3823,10 +3823,6 @@ ssl_install_src() {
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
           --openssldir=/usr/local/ssl"
       fi
-#       if [ "${_USE_LEGACY_TRICK}" = "YES" ] \
-#         && [ -e "/root/.openssl.ld.legacy.cnf" ]; then
-#         _SSL_BUILD_ARGS="${_SSL_BUILD_ARGS},--version-script=/root/.openssl.ld.legacy.cnf -Wl"
-#       fi
       mrun "sh ./config shared \
         zlib-dynamic \
         enable-ec_nistp_64_gcc_128 \
@@ -3901,9 +3897,6 @@ ssl_install_src() {
     && [ -x "/usr/local/ssl/bin/openssl" ]; then
     #mv -f /usr/local/ssl /usr/local/legacy_ssl
     ldconfig 2> /dev/null
-  fi
-  if [ "${_USE_LEGACY_TRICK}" = "YES" ]; then
-    dns_unbound_install_upgrade
   fi
 }
 
