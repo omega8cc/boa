@@ -19,6 +19,9 @@ sql_strict_upgrade_path() {
     if [[ ! "${_NOW_DB_V}" =~ (^)"${_DB_SERIES}" ]]; then
       _SQL_FORCE_REINSTALL=YES
     fi
+    if [[ "${_NOW_DB_V}" =~ "available" ]]; then
+      _SQL_FORCE_REINSTALL=NO
+    fi
   else
     _SQL_FORCE_REINSTALL=YES
   fi
