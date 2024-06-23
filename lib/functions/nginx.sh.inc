@@ -341,7 +341,7 @@ nginx_install_upgrade() {
           _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
         fi
       else
-        _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
+        _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
       fi
       if [[ ! "${_NGINX_V_ITD}" =~ "openssl-${_OPENSSL_NEW_VRN}" ]]; then
         _NGINX_INSTALL_REQUIRED=YES
@@ -476,7 +476,7 @@ nginx_install_upgrade() {
         _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
       fi
     else
-      _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
+      _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
     fi
     if [ ! -e "/var/opt/openssl-${_OPENSSL_NEW_VRN}" ]; then
       cd /var/opt

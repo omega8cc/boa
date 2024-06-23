@@ -3715,7 +3715,7 @@ ssl_install_src() {
       _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
     fi
   else
-    _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
+    _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
   fi
   if [ -e "/root/.install.modern.openssl.cnf" ]; then
     _SSL_BINARY=/usr/local/ssl3/bin/openssl
@@ -3758,23 +3758,23 @@ ssl_install_src() {
       _NGX_FORCE_REINSTALL=YES
     fi
   fi
-  if [ "${_OPENSSL_NEW_VRN}" = "${_OPENSSL_LEGACY_VRN}" ]; then
-    _USE_LEGACY_TRICK=NO
-    _BROKEN_SSL_LIBS_TEST=$(php -v 2>&1)
-    if [[ "${_BROKEN_SSL_LIBS_TEST}" =~ "no version information available" ]] \
-      || [ ! -e "/root/.openssl.ld.legacy.cnf" ] \
-      || [[ "${_BROKEN_SSL_LIBS_TEST}" =~ "cannot open shared object file" ]]; then
-      msg "INFO: OpenSSL legacy libs are broken, rebuild forced"
-      _SSL_FORCE_REINSTALL=YES
-      _USE_LEGACY_TRICK=YES
-      if [ ! -e "/root/.openssl.ld.legacy.cnf" ]; then
-        echo "OPENSSL_1.0.0 {" > /root/.openssl.ld.legacy.cnf
-        echo "    global:" >> /root/.openssl.ld.legacy.cnf
-        echo "    *;" >> /root/.openssl.ld.legacy.cnf
-        echo "};" >> /root/.openssl.ld.legacy.cnf
-      fi
-    fi
-  fi
+#   if [ "${_OPENSSL_NEW_VRN}" = "${_OPENSSL_LEGACY_VRN}" ]; then
+#     _USE_LEGACY_TRICK=NO
+#     _BROKEN_SSL_LIBS_TEST=$(php -v 2>&1)
+#     if [[ "${_BROKEN_SSL_LIBS_TEST}" =~ "no version information available" ]] \
+#       || [ ! -e "/root/.openssl.ld.legacy.cnf" ] \
+#       || [[ "${_BROKEN_SSL_LIBS_TEST}" =~ "cannot open shared object file" ]]; then
+#       msg "INFO: OpenSSL legacy libs are broken, rebuild forced"
+#       _SSL_FORCE_REINSTALL=YES
+#       _USE_LEGACY_TRICK=YES
+#       if [ ! -e "/root/.openssl.ld.legacy.cnf" ]; then
+#         echo "OPENSSL_1.0.0 {" > /root/.openssl.ld.legacy.cnf
+#         echo "    global:" >> /root/.openssl.ld.legacy.cnf
+#         echo "    *;" >> /root/.openssl.ld.legacy.cnf
+#         echo "};" >> /root/.openssl.ld.legacy.cnf
+#       fi
+#     fi
+#   fi
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_SSL_FORCE_REINSTALL}" = "YES" ]; then
     _SSL_INSTALL_REQUIRED=YES
@@ -3813,18 +3813,16 @@ ssl_install_src() {
       cd /var/opt/openssl-${_OPENSSL_NEW_VRN}
       if [ -e "/root/.install.modern.openssl.cnf" ]; then
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl3 \
-          --openssldir=/usr/local/ssl3 shared -Wl,-Bsymbolic-functions"
+          --openssldir=/usr/local/ssl3 shared"
       else
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
-          --openssldir=/usr/local/ssl shared -Wl,-Bsymbolic-functions"
+          --openssldir=/usr/local/ssl shared"
       fi
-      if [ "${_USE_LEGACY_TRICK}" = "YES" ] \
-        && [ -e "/root/.openssl.ld.legacy.cnf" ]; then
-        _SSL_BUILD_ARGS="${_SSL_BUILD_ARGS},--version-script=/root/.openssl.ld.legacy.cnf -Wl"
-      fi
-      mrun "sh ./config no-comp \
-        enable-ec_nistp_64_gcc_128 \
-        ${_SSL_BUILD_ARGS}" 2> /dev/null
+#       if [ "${_USE_LEGACY_TRICK}" = "YES" ] \
+#         && [ -e "/root/.openssl.ld.legacy.cnf" ]; then
+#         _SSL_BUILD_ARGS="${_SSL_BUILD_ARGS},--version-script=/root/.openssl.ld.legacy.cnf -Wl"
+#       fi
+      mrun "sh ./config enable-ec_nistp_64_gcc_128 ${_SSL_BUILD_ARGS}" 2> /dev/null
       mrun "make depend" 2> /dev/null
       mrun "make -j $(nproc)" 2> /dev/null
       mrun "make install" 2> /dev/null
@@ -3896,9 +3894,9 @@ ssl_install_src() {
     #mv -f /usr/local/ssl /usr/local/legacy_ssl
     ldconfig 2> /dev/null
   fi
-  if [ "${_USE_LEGACY_TRICK}" = "YES" ]; then
-    dns_unbound_install_upgrade
-  fi
+#   if [ "${_USE_LEGACY_TRICK}" = "YES" ]; then
+#     dns_unbound_install_upgrade
+#   fi
 }
 
 #
@@ -3925,7 +3923,7 @@ curl_install_src() {
         _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
       fi
     else
-      _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
+      _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
     fi
   fi
   _CURL_INSTALL_REQUIRED=NO
