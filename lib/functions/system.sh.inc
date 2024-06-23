@@ -6553,6 +6553,7 @@ sys_packages_install() {
         echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
+        msg "TRCK: Installing now openjdk-11-jre-headless from Bullseye"
         mrun "apt-get install -t bullseye openjdk-11-jre-headless -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/bullseye.list
         rm -f /etc/apt/apt.conf
@@ -6566,6 +6567,7 @@ sys_packages_install() {
         echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
+        msg "TRCK: Installing now openjdk-11-jre-headless from Chimaera"
         mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/chimaera.list
         rm -f /etc/apt/apt.conf
@@ -6604,6 +6606,7 @@ sys_packages_install() {
         echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
+        msg "TRCK: Installing now openjdk-11-jre-headless from Bullseye"
         mrun "apt-get install -t bullseye openjdk-11-jre-headless -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/bullseye.list
         rm -f /etc/apt/apt.conf
@@ -6617,6 +6620,7 @@ sys_packages_install() {
         echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
+        msg "TRCK: Installing now openjdk-11-jre-headless from Chimaera"
         mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/chimaera.list
         rm -f /etc/apt/apt.conf
