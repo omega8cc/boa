@@ -3762,14 +3762,14 @@ ssl_install_src() {
     _USE_LEGACY_TRICK=NO
     _BROKEN_SSL_LIBS_TEST=$(php -v 2>&1)
     rm -f /root/.openssl.ld.legacy.cnf
-    if [[ "${_BROKEN_SSL_LIBS_TEST}" =~ "so.1.0.0: no version information available" ]] \
+    if [[ "${_BROKEN_SSL_LIBS_TEST}" =~ "no version information available" ]] \
       || [ ! -e "/root/.openssl.ld.legacy.cnf" ] \
       || [[ "${_BROKEN_SSL_LIBS_TEST}" =~ "cannot open shared object file" ]]; then
       msg "INFO: OpenSSL legacy libs are broken, rebuild forced"
       _SSL_FORCE_REINSTALL=YES
       _USE_LEGACY_TRICK=YES
       if [ ! -e "/root/.openssl.ld.legacy.cnf" ]; then
-        echo "OPENSSL_1.0.0 {" > /root/.openssl.ld.legacy.cnf
+        echo "OPENSSL_1.0.1 {" > /root/.openssl.ld.legacy.cnf
         echo "    global:" >> /root/.openssl.ld.legacy.cnf
         echo "    *;" >> /root/.openssl.ld.legacy.cnf
         echo "};" >> /root/.openssl.ld.legacy.cnf
