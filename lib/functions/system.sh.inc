@@ -2511,7 +2511,16 @@ do_install_latest_git() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: do_install_latest_git"
   fi
-  if [ ! -e "${pthLog}/git-${_GIT_VRN}-${_X_SE}-${_X_VERSION}-${_NOW}.log" ]; then
+  _GIT_INSTALL=NO
+  _GIT_V=$(git --version 2>&1 \
+    | cut -d" " -f3 \
+    | awk '{ print $1}' 2>&1)
+  if [ ! -z "${_GIT_V}" ]; then
+    if [ "${_GIT_V}" != "${_GIT_VRN}" ]; then
+      _GIT_INSTALL=YES
+    fi
+  fi
+  if [ "${_GIT_INSTALL}" = "YES" ]; then
     msg "INFO: Building Git ${_GIT_VRN} from sources..."
     msg "WAIT: This may take a while, please wait..."
     cd /var/opt
@@ -2523,8 +2532,12 @@ do_install_latest_git() {
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     ldconfig 2> /dev/null
-    mv -f /usr/bin/git /usr/bin/git-old
-    ln -sfn /usr/local/bin/git /usr/bin/git
+    if [ -x "/usr/local/bin/git" ]; then
+      if [ ! -L "/usr/bin/git" ]; then
+        mv -f /usr/bin/git /usr/bin/git-old
+      fi
+      ln -sfn /usr/local/bin/git /usr/bin/git
+    fi
     cd /var/opt
     touch ${pthLog}/git-${_GIT_VRN}-${_X_SE}-${_X_VERSION}-${_NOW}.log
     echo "git hold" | dpkg --set-selections &> /dev/null
@@ -2532,7 +2545,7 @@ do_install_latest_git() {
     echo "git-man hold" | dpkg --set-selections &> /dev/null
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Git ${_GIT_VRN} already installed from sources, OK"
+      msg "INFO: Git ${_GIT_V} already installed from sources ${_GIT_VRN}, OK"
     fi
   fi
 }
