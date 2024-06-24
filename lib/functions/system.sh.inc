@@ -2526,9 +2526,9 @@ do_install_latest_git() {
     get_dev_src "git-${_GIT_VRN}.tar.gz"
     cd /var/opt/git-${_GIT_VRN}
     mrun "make configure" 2> /dev/null
-    mrun "bash ./configure --without-tcltk --quiet" 2> /dev/null
-    mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
+    mrun "bash ./configure --without-tcltk" 2> /dev/null
+    mrun "make all -j $(nproc)" 2> /dev/null
+    mrun "make install" 2> /dev/null
     ldconfig 2> /dev/null
     if [ -x "/usr/local/bin/git" ]; then
       if [ -e "/usr/bin/git" ] && [ ! -L "/usr/bin/git" ]; then

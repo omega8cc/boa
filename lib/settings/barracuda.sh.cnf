@@ -1312,9 +1312,9 @@ download_helpers_libs() {
       get_dev_src_pre "git-${_GIT_VRN}.tar.gz"
       cd /var/opt/git-${_GIT_VRN}
       make configure 2> /dev/null
-      bash ./configure --without-tcltk --quiet 2> /dev/null
-      make -j $(nproc) --quiet 2> /dev/null
-      make --quiet install 2> /dev/null
+      bash ./configure --without-tcltk 2> /dev/null
+      make all -j $(nproc) 2> /dev/null
+      make install 2> /dev/null
       ldconfig 2> /dev/null
       if [ -x "/usr/local/bin/git" ]; then
         if [ -e "/usr/bin/git" ] && [ ! -L "/usr/bin/git" ]; then
