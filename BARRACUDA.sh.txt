@@ -313,11 +313,9 @@ check_prepare_dirs_permissions
 ### Enable or disable AppArmor on install and upgrade
 ###
 if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
-  if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
-    [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ] && touch /root/.allow.auditd.and.apparmor.cnf
-    [ -e "/root/.deny.auditd.and.apparmor.cnf" ] && rm -f /root/.allow.auditd.and.apparmor.cnf
-    if_enable_or_disable_apparmor
-  fi
+  [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ] && touch /root/.allow.auditd.and.apparmor.cnf
+  [ -e "/root/.deny.auditd.and.apparmor.cnf" ] && rm -f /root/.allow.auditd.and.apparmor.cnf
+  if_enable_or_disable_apparmor
 fi
 
 
