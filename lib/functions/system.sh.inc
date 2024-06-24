@@ -2724,10 +2724,13 @@ php_install_deps() {
   mrun "${_INSTAPP} libgd-dev libgd3 lbzip2" 2> /dev/null
   if [ "${_OS_CODE}" = "daedalus" ] \
     || [ "${_OS_CODE}" = "bookworm" ]; then
-    #mrun "apt-get remove libldap2-dev libldap-common -y -qq" 2> /dev/null
-    #mrun "${_INSTAPP} libldap-dev" 2> /dev/null
-    _NOTHING_TO_DO=YES
+    if [ ! -e "/root/.rebuild_src_on_auto_before_reboot.info" ]; then
+      mrun "${_INSTAPP} libldap-common" 2> /dev/null
+      mrun "${_INSTAPP} libldap-dev" 2> /dev/null
+      mrun "${_INSTAPP} libldap2-dev" 2> /dev/null
+    fi
   else
+    mrun "${_INSTAPP} libldap-common" 2> /dev/null
     mrun "${_INSTAPP} libldap2-dev" 2> /dev/null
   fi
   mrun "${_INSTAPP} libmagickwand-dev" 2> /dev/null
