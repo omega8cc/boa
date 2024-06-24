@@ -759,6 +759,9 @@ verify_upgrade_keys() {
 ### Download helpers and libs
 ###
 download_helpers_libs() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "PROC: download_helpers_libs in octopus"
+  fi
   find_fast_mirror_cnf
   verify_upgrade_keys
   mkdir -p /opt/tmp
@@ -766,6 +769,7 @@ download_helpers_libs() {
   rm -rf /opt/tmp/boa
   if [ "${_AEGIR_VERSION}" != "static" ]; then
     isGit=$(which git 2>&1)
+    gCb="${isGit} clone --branch"
     if [ ! -x "${isGit}" ] || [ -z "${isGit}" ]; then
       if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
         && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -776,8 +780,16 @@ download_helpers_libs() {
       apt-get install git-core -fuy --allow-unauthenticated 2> /dev/null
       apt-get install git-man -fuy --allow-unauthenticated 2> /dev/null
     fi
-    ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git \
-      ${bldPth} &> /dev/null
+    if [ -e "/root/.dev.server.cnf" ]; then
+      echo "Running ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth}"
+      if [ -x "${isGit}" ]; then
+        ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth}
+      else
+        echo "ERROR: ${isGit} is probably broken"
+      fi
+    else
+      ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth} &> /dev/null
+    fi
   else
     curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/boa.tar.gz" | tar -xzf -
     _BOA_REPO_NAME="boa"
