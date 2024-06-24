@@ -1319,14 +1319,6 @@ download_helpers_libs() {
       echo "git hold" | dpkg --set-selections &> /dev/null
       echo "git-core hold" | dpkg --set-selections &> /dev/null
       echo "git-man hold" | dpkg --set-selections &> /dev/null
-      if [ -x "/usr/local/lib/git-core/git-remote-https" ]; then
-        _GIT_TEST=$(/usr/local/lib/git-core/git-remote-https --help 2>&1)
-      fi
-      if [[ ! "${_GIT_TEST}" =~ "cannot open shared object file" ]]; then
-        echo "FIXED: Git Libs OK"
-      else
-        echo "ERROR: Still broken Git Libs..."
-      fi
     fi
     if [ -e "/root/.dev.server.cnf" ]; then
       echo "Running ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth}"
