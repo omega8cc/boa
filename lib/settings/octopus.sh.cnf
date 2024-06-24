@@ -811,21 +811,23 @@ download_helpers_libs() {
     _FORCE_GIT_REINSTALL=NO
     _GIT_VRN=2.45.2
     isGit=$(which git 2>&1)
-    gCb="${isGit} clone --branch"
-    if [ -x "/usr/lib/git-core/git-remote-https" ]; then
-      _GIT_TEST=$(/usr/lib/git-core/git-remote-https --help 2>&1)
+    _GIT_INSTALL=NO
+    _GIT_V=$(git --version 2>&1 \
+      | cut -d" " -f3 \
+      | awk '{ print $1}' 2>&1)
+    if [ ! -z "${_GIT_V}" ]; then
+      if [ "${_GIT_V}" != "${_GIT_VRN}" ]; then
+        _GIT_INSTALL=YES
+      fi
     fi
-    if [[ "${_GIT_TEST}" =~ "cannot open shared object file" ]]; then
-      echo "ERROR: Broken Git Libs, let's fix this by reinstalling git..."
-      _FORCE_GIT_REINSTALL=YES
-    fi
-    if [ "${_FORCE_GIT_REINSTALL}" = "YES" ] \
+    if [ "${_GIT_INSTALL}" = "YES" ] \
       || [ ! -x "${isGit}" ] \
       || [ -z "${isGit}" ]; then
       echo "INFO: Building Git ${_GIT_VRN} from sources..."
       echo "WAIT: This may take a while, please wait..."
+      mkdir -p /var/opt
+      rm -rf /var/opt/git*
       cd /var/opt
-      rm -rf git*
       get_dev_src_pre "git-${_GIT_VRN}.tar.gz"
       cd /var/opt/git-${_GIT_VRN}
       make configure 2> /dev/null
@@ -844,6 +846,8 @@ download_helpers_libs() {
       echo "git-core hold" | dpkg --set-selections &> /dev/null
       echo "git-man hold" | dpkg --set-selections &> /dev/null
     fi
+    isGit=$(which git 2>&1)
+    gCb="${isGit} clone --branch"
     if [ -e "/root/.dev.server.cnf" ]; then
       echo "Running ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth}"
       if [ -x "${isGit}" ]; then

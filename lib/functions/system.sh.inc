@@ -2514,8 +2514,9 @@ do_install_latest_git() {
   if [ "${_GIT_INSTALL}" = "YES" ]; then
     msg "INFO: Building Git ${_GIT_VRN} from sources..."
     msg "WAIT: This may take a while, please wait..."
+    mkdir -p /var/opt
+    rm -rf /var/opt/git*
     cd /var/opt
-    rm -rf git*
     get_dev_src "git-${_GIT_VRN}.tar.gz"
     cd /var/opt/git-${_GIT_VRN}
     mrun "make configure" 2> /dev/null
