@@ -2588,6 +2588,14 @@ install_icu_modern() {
     msg "PROC: install_icu_modern"
   fi
   ###--------------------###
+  if [ -e "/usr/lib/x86_64-linux-gnu/.old_icu" ]; then
+    rm -rf /var/backups/.old_icu
+    mv -f /usr/lib/x86_64-linux-gnu/.old_icu /var/backups/.old_icu
+  fi
+  if [ -e "/usr/lib/x86_64-linux-gnu/.legacy_icu" ]; then
+    rm -rf /var/backups/.legacy_icu
+    mv -f /usr/lib/x86_64-linux-gnu/.legacy_icu /var/backups/.legacy_icu
+  fi
   if [ ! -e "${pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
     pthLog="/var/xdrago_wait/log"
   fi
@@ -2630,15 +2638,11 @@ install_icu_modern() {
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ -e "/usr/local/lib/icu" ]; then
-        if [ ! -e "/usr/lib/x86_64-linux-gnu/icu" ]; then
-          mkdir -p /usr/lib/x86_64-linux-gnu/.legacy_icu
-          ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
-        else
-          if [ -e "/var/aegir/drush" ]; then
-            mv -f /usr/lib/x86_64-linux-gnu/icu /usr/lib/x86_64-linux-gnu/.old_icu
-          else
-            mv -f /usr/lib/x86_64-linux-gnu/icu /usr/lib/x86_64-linux-gnu/.legacy_icu
-          fi
+        if [ -d "/usr/lib/x86_64-linux-gnu/icu" ]; then
+          rm -rf /var/backups/pre_icu
+          mv -f /usr/lib/x86_64-linux-gnu/icu /var/backups/pre_icu
+        fi
+        if [ ! -L "/usr/lib/x86_64-linux-gnu/icu" ]; then
           ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
         fi
       fi
@@ -2695,8 +2699,11 @@ install_icu_jessie() {
     _X86_64_TEST=$(uname -m 2>&1)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then
       if [ -e "/usr/local/lib/icu" ]; then
-        if [ ! -e "/usr/lib/x86_64-linux-gnu/icu" ]; then
-          mkdir -p /usr/lib/x86_64-linux-gnu/.legacy_icu
+        if [ -d "/usr/lib/x86_64-linux-gnu/icu" ]; then
+          rm -rf /var/backups/pre_icu
+          mv -f /usr/lib/x86_64-linux-gnu/icu /var/backups/pre_icu
+        fi
+        if [ ! -L "/usr/lib/x86_64-linux-gnu/icu" ]; then
           ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
         fi
       fi
@@ -6875,7 +6882,8 @@ php_libs_fix() {
       if [ -e "/usr/local/lib/icu" ]; then
         if [ -e "/usr/lib/x86_64-linux-gnu/icu" ] \
           && [ ! -L "/usr/lib/x86_64-linux-gnu/icu" ]; then
-          mv -f /usr/lib/x86_64-linux-gnu/icu /usr/lib/x86_64-linux-gnu/.old_icu
+          rm -rf /var/backups/.prev_icu
+          mv -f /usr/lib/x86_64-linux-gnu/icu /var/backups/.prev_icu
           ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu
         else
           ln -sfn /usr/local/lib/icu /usr/lib/x86_64-linux-gnu/icu

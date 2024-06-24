@@ -2933,17 +2933,13 @@ php_check_if_rebuild() {
   isIcu=
   isIcu=$(php -i | grep libicuio 2>&1)
   if [[ "${isIcu}" =~ "libicuio" ]] \
-    || [ ! -e "/usr/local/lib/icu/current" ] \
-    || [ -e "/usr/lib/x86_64-linux-gnu/.old_icu" ]; then
+    || [ ! -e "/usr/local/lib/icu/current" ]; then
     msg "INFO: PHP rebuild required to fix ICU support..."
     _PHP_FORCE_REINSTALL=YES
     php_install_deps
     php_libs_fix
     php_if_versions_cleanup_cnf
     php_upgrade_all force
-    if [ -e "/usr/lib/x86_64-linux-gnu/.old_icu" ]; then
-      mv -f /usr/lib/x86_64-linux-gnu/.old_icu /usr/lib/x86_64-linux-gnu/.legacy_icu
-    fi
     _PHP_FORCE_REINSTALL=NO
   fi
   if [ -x "/opt/php74/bin/php" ] && [ "${_OS_CODE}" != "jessie" ]; then
