@@ -1284,7 +1284,6 @@ download_helpers_libs() {
   cd /opt/tmp
   rm -rf /opt/tmp/boa
   if [ "${_AEGIR_VERSION}" != "static" ]; then
-    _FORCE_GIT_REINSTALL=NO
     _GIT_VRN=2.45.2
     isGit=$(which git 2>&1)
     _GIT_INSTALL=NO
