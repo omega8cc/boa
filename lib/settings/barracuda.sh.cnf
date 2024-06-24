@@ -1232,6 +1232,46 @@ verify_upgrade_keys() {
 
 
 ###
+### Extract archive
+###
+extract_archive_pre() {
+  if [ ! -z "$1" ]; then
+    case $1 in
+      *.tar.bz2)   tar xjf $1    ;;
+      *.tar.gz)    tar xzf $1    ;;
+      *.tar.xz)    tar xvf $1    ;;
+      *.bz2)       bunzip2 $1    ;;
+      *.rar)       unrar x $1    ;;
+      *.gz)        gunzip -q $1  ;;
+      *.tar)       tar xf $1     ;;
+      *.tbz2)      tar xjf $1    ;;
+      *.tgz)       tar xzf $1    ;;
+      *.zip)       unzip -qq $1  ;;
+      *.Z)         uncompress $1 ;;
+      *.7z)        7z x $1       ;;
+      *)           echo "'$1' cannot be extracted via >extract<" ;;
+    esac
+    rm -f $1
+  fi
+}
+
+
+###
+### Download and extract archive from dev/src mirror
+###
+get_dev_src_pre() {
+  if [ ! -z "$1" ]; then
+    curl ${crlGet} "${urlDev}/src/$1" -o "$1"
+    if [ -e "$1" ]; then
+      extract_archive_pre "$1"
+    else
+      echo "OOPS: $1 failed download from ${urlDev}/src/$1"
+    fi
+  fi
+}
+
+
+###
 ### Download helpers and libs
 ###
 download_helpers_libs() {
@@ -1245,6 +1285,7 @@ download_helpers_libs() {
   rm -rf /opt/tmp/boa
   if [ "${_AEGIR_VERSION}" != "static" ]; then
     _FORCE_GIT_REINSTALL=NO
+    _GIT_VRN=2.45.2
     isGit=$(which git 2>&1)
     gCb="${isGit} clone --branch"
     if [ -x "/usr/lib/git-core/git-remote-https" ]; then
@@ -1257,12 +1298,35 @@ download_helpers_libs() {
     if [ "${_FORCE_GIT_REINSTALL}" = "YES" ] \
       || [ ! -x "${isGit}" ] \
       || [ -z "${isGit}" ]; then
-      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-        && [ -e "/etc/apt/apt.conf.d" ]; then
-        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+      echo "INFO: Building Git ${_GIT_VRN} from sources..."
+      echo "WAIT: This may take a while, please wait..."
+      cd /var/opt
+      rm -rf git*
+      get_dev_src_pre "git-${_GIT_VRN}.tar.gz"
+      cd /var/opt/git-${_GIT_VRN}
+      make configure 2> /dev/null
+      bash ./configure --without-tcltk --quiet 2> /dev/null
+      make -j $(nproc) --quiet 2> /dev/null
+      make --quiet install 2> /dev/null
+      ldconfig 2> /dev/null
+      if [ -x "/usr/local/bin/git" ]; then
+        if [ -e "/usr/bin/git" ] && [ ! -L "/usr/bin/git" ]; then
+          mv -f /usr/bin/git /usr/bin/git-old
+        fi
+        ln -sfn /usr/local/bin/git /usr/bin/git
       fi
-      apt_clean_update
-      apt-get install git git-core -fuy --reinstall --allow-unauthenticated
+      cd /var/opt
+      echo "git hold" | dpkg --set-selections &> /dev/null
+      echo "git-core hold" | dpkg --set-selections &> /dev/null
+      echo "git-man hold" | dpkg --set-selections &> /dev/null
+      if [ -x "/usr/local/lib/git-core/git-remote-https" ]; then
+        _GIT_TEST=$(/usr/local/lib/git-core/git-remote-https --help 2>&1)
+      fi
+      if [[ ! "${_GIT_TEST}" =~ "cannot open shared object file" ]]; then
+        echo "FIXED: Git Libs OK"
+      else
+        echo "ERROR: Still broken Git Libs..."
+      fi
     fi
     if [ -e "/root/.dev.server.cnf" ]; then
       echo "Running ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth}"
