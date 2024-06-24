@@ -2511,15 +2511,6 @@ do_install_latest_git() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: do_install_latest_git"
   fi
-  _GIT_INSTALL=NO
-  _GIT_V=$(git --version 2>&1 \
-    | cut -d" " -f3 \
-    | awk '{ print $1}' 2>&1)
-  if [ ! -z "${_GIT_V}" ]; then
-    if [ "${_GIT_V}" != "${_GIT_VRN}" ]; then
-      _GIT_INSTALL=YES
-    fi
-  fi
   if [ "${_GIT_INSTALL}" = "YES" ]; then
     msg "INFO: Building Git ${_GIT_VRN} from sources..."
     msg "WAIT: This may take a while, please wait..."
@@ -2533,7 +2524,7 @@ do_install_latest_git() {
     mrun "make --quiet install" 2> /dev/null
     ldconfig 2> /dev/null
     if [ -x "/usr/local/bin/git" ]; then
-      if [ ! -L "/usr/bin/git" ]; then
+      if [ -e "/usr/bin/git" ] && [ ! -L "/usr/bin/git" ]; then
         mv -f /usr/bin/git /usr/bin/git-old
       fi
       ln -sfn /usr/local/bin/git /usr/bin/git
@@ -2556,21 +2547,18 @@ if_install_git_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: if_install_git_src"
   fi
-  _GIT_ITD=$(git --version 2>&1)
-  if [[ "${_GIT_ITD}" =~ "git version 1.9.1" ]]; then
-    _GIT_FORCE_REINSTALL=YES
-  fi
-  if [[ "${_XTRAS_LIST}" =~ "GIT" ]] \
-    || [ "${_GIT_FORCE_REINSTALL}" = "YES" ]; then
-    _GIT_TEST=$(git --version 2>&1)
-    if [[ "${_GIT_TEST}" =~ "git version ${_GIT_VRN}" ]]; then
-      if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
-        || [ "${_GIT_FORCE_REINSTALL}" = "YES" ]; then
-        do_install_latest_git
-      fi
-    else
-      do_install_latest_git
+  _GIT_INSTALL=NO
+  _GIT_V=$(git --version 2>&1 \
+    | cut -d" " -f3 \
+    | awk '{ print $1}' 2>&1)
+  if [ ! -z "${_GIT_V}" ]; then
+    if [ "${_GIT_V}" != "${_GIT_VRN}" ]; then
+      _GIT_INSTALL=YES
     fi
+  fi
+  if [ "${_GIT_INSTALL}" = "YES" ] \
+    || [ "${_GIT_FORCE_REINSTALL}" = "YES" ]; then
+    do_install_latest_git
   fi
 }
 
