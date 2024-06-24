@@ -6196,6 +6196,7 @@ if_major_os_upgrade() {
       _PHP_FORCE_REINSTALL=YES
       _SSL_FORCE_REINSTALL=YES
       _SSH_FORCE_REINSTALL=YES
+      php_libs_fix
       if_reinstall_curl_src
       ssl_install_src
       ssl_crypto_lib_fix
