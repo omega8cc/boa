@@ -6153,8 +6153,7 @@ if_major_os_upgrade() {
         apt_clean_update
         ldconfig 2> /dev/null
         ###
-        msg "DIST: The dist-upgrade with --allow-downgrades option can be used"
-        ### Signal that --allow-downgrades can be used after reboot
+        msg "DIST: Signal that --allow-downgrades can be used after reboot"
         touch /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
         ###
         msg "DIST: Rebuidling key services from sources before reboot..."
