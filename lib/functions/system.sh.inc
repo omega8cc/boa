@@ -2832,10 +2832,14 @@ if_install_wkhtmltox() {
         _WKHTML_SYS_RV="buster"
       elif [ "${_OS_CODE}" = "chimaera" ]; then
         _WKHTML_SYS_RV="bullseye"
+      elif [ "${_OS_CODE}" = "daedalus" ]; then
+        _WKHTML_SYS_RV="none"
+      elif [ "${_OS_CODE}" = "bookworm" ]; then
+        _WKHTML_SYS_RV="none"
       else
         _WKHTML_SYS_RV="${_OS_CODE}"
       fi
-      if [ "${_X86_64_TEST}" = "x86_64" ]; then
+      if [ "${_WKHTML_SYS_RV}" != "none" ] && [ "${_X86_64_TEST}" = "x86_64" ]; then
         SYSTEM_ARCH="x86_64"
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: Installing wkhtmltox tools v.0.${_WKHTMLTOX_VRN}..."
