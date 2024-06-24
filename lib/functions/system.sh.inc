@@ -6915,6 +6915,13 @@ php_libs_fix() {
       ln -sfn /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so.4
       ln -sfn /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so
       ln -sfn /usr/lib/x86_64-linux-gnu/libsodium.so /usr/lib/libsodium.so.18
+      if [ -e "/usr/lib/x86_64-linux-gnu/libwebp.so.7" ] \
+        && [ ! -e "/usr/lib/x86_64-linux-gnu/libwebp.so.6" ]; then
+        ln -sfn /usr/lib/x86_64-linux-gnu/libwebp.so.7 /usr/lib/x86_64-linux-gnu/libwebp.so.6
+        ln -sfn /usr/lib/x86_64-linux-gnu/libwebp.so.7 /usr/lib/x86_64-linux-gnu/libwebp.so.6.0.2
+        ln -sfn /usr/lib/x86_64-linux-gnu/libwebp.so.7 /usr/lib/libwebp.so.6
+        ln -sfn /usr/lib/x86_64-linux-gnu/libwebp.so.7 /usr/lib/libwebp.so.6.0.2
+      fi
       if [ -e "/usr/lib/x86_64-linux-gnu/liblber.so" ]; then
         ln -sfn /usr/lib/x86_64-linux-gnu/liblber.so /usr/lib/liblber.so
       fi
