@@ -1853,7 +1853,9 @@ newrelic_update() {
           msg "INFO: Retrieving ${_NEWRELIC_KEYS_SIG} key..."
         fi
         apt-key del ${_NEWRELIC_KEYS_SIG} &> /dev/null
-        curl -fsSL ${urlDev}/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/newrelic.gpg
+        if [ ! -e "/etc/apt/keyrings/newrelic.gpg" ]; then
+          curl -fsSL ${urlDev}/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/newrelic.gpg
+        fi
         chmod 644 /etc/apt/keyrings/newrelic.gpg
       fi
       apt_clean_update
@@ -2066,7 +2068,9 @@ if_install_php_newrelic() {
           msg "INFO: Retrieving ${_NEWRELIC_KEYS_SIG} key..."
         fi
         apt-key del ${_NEWRELIC_KEYS_SIG} &> /dev/null
-        curl -fsSL ${urlDev}/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/newrelic.gpg
+        if [ ! -e "/etc/apt/keyrings/newrelic.gpg" ]; then
+          curl -fsSL ${urlDev}/newrelic-key-${_NEWRELIC_KEYS_SIG}.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/newrelic.gpg
+        fi
         chmod 644 /etc/apt/keyrings/newrelic.gpg
       fi
       echo "## New Relic APT Repository" > ${nrList}

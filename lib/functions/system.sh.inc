@@ -5884,7 +5884,9 @@ if_major_os_upgrade() {
           else
             _GPG=gpg
           fi
-          curl -fsSL ${urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/percona.gpg
+          if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
+            curl -fsSL ${urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/percona.gpg
+          fi
           chmod 644 /etc/apt/keyrings/percona.gpg
           if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
             kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
