@@ -2608,7 +2608,7 @@ if [ `whoami` = "root" ]; then
     _IP_BLOCK="185.206.225.30 185.253.97.238"
     for _IP in ${_IP_BLOCK}; do
       _FW_TEST=$(csf -g ${_IP} 2>&1)
-      if [[ "${_FF_TEST}" =~ "DENY Match:${_IP} Setting" ]] \
+      if [[ "${_FW_TEST}" =~ "DENY Match:${_IP} Setting" ]] \
         && [[ "${_FW_TEST}" =~ "csf.deny: ${_IP}" ]]; then
         echo "${_IP} already denied for Flooding user/password"
       else
