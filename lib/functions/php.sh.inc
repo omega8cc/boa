@@ -1589,17 +1589,21 @@ install_php_multi() {
     || [ "${_OS_CODE}" = "bookworm" ] \
     || [ "${_OS_CODE}" = "bullseye" ] \
     || [ "${_OS_CODE}" = "buster" ]; then
-    patchFile="freetype.patch"
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      patch -p1 < ${bldPth}/aegir/patches/${patchFile}
-    else
-      patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
+    if [ "$1" = "56" ] || [ "$1" = "70" ] || [ "$1" = "71" ] || [ "$1" = "72" ] || [ "$1" = "73" ]; then
+      patchFile="freetype.patch"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        patch -p1 < ${bldPth}/aegir/patches/${patchFile}
+      else
+        patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
+      fi
     fi
-    patchFile="php-8.1-openssl3.patch"
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      patch -p1 < ${bldPth}/aegir/patches/${patchFile}
-    else
-      patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
+    if [ "$1" != "82" ] && [ "$1" != "83" ]; then
+      patchFile="php-8.1-openssl3.patch"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        patch -p1 < ${bldPth}/aegir/patches/${patchFile}
+      else
+        patch -p1 < ${bldPth}/aegir/patches/${patchFile} &> /dev/null
+      fi
     fi
   fi
   if [ "${_OS_CODE}" != "jessie" ]; then
