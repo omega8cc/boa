@@ -1244,17 +1244,25 @@ download_helpers_libs() {
   cd /opt/tmp
   rm -rf /opt/tmp/boa
   if [ "${_AEGIR_VERSION}" != "static" ]; then
+    _FORCE_GIT_REINSTALL=NO
     isGit=$(which git 2>&1)
     gCb="${isGit} clone --branch"
-    if [ ! -x "${isGit}" ] || [ -z "${isGit}" ]; then
+    if [ -x "/usr/lib/git-core/git-remote-https" ]; then
+      _GIT_TEST=$(/usr/lib/git-core/git-remote-https --help 2>&1)
+    fi
+    if [[ "${_GIT_TEST}" =~ "cannot open shared object file" ]]; then
+      echo "ERROR: Broken Git Libs, let's fix this by reinstalling git..."
+      _FORCE_GIT_REINSTALL=YES
+    fi
+    if [ "${_FORCE_GIT_REINSTALL}" = "YES" ] \
+      || [ ! -x "${isGit}" ] \
+      || [ -z "${isGit}" ]; then
       if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
         && [ -e "/etc/apt/apt.conf.d" ]; then
         echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
       fi
       apt_clean_update
-      apt-get install git -fuy --allow-unauthenticated 2> /dev/null
-      apt-get install git-core -fuy --allow-unauthenticated 2> /dev/null
-      apt-get install git-man -fuy --allow-unauthenticated 2> /dev/null
+      apt-get install git git-core -fuy --reinstall --allow-unauthenticated
     fi
     if [ -e "/root/.dev.server.cnf" ]; then
       echo "Running ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth}"
