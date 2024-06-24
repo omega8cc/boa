@@ -6191,6 +6191,7 @@ if_major_os_upgrade() {
       && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
       touch /root/.rebuild_src_on_auto_before_reboot.info
       rm -f /var/xdrago_wait/log/*.log
+      _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
       _PURGE_MODE=OFF
       _NGX_FORCE_REINSTALL=YES
       _PHP_FORCE_REINSTALL=YES
