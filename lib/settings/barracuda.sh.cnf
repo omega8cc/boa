@@ -157,11 +157,12 @@ _PHP_CLI_VERSION=8.1
 ###
 ### Xtras included with "ALL" wildcard:
 ###
-### ADM --- Adminer DB Manager
-### CSF --- Firewall
+### ADM --- Adminer DB Manager (installed by default)
+### CSF --- Firewall (installed by default)
 ### CSS --- RVM + NPM for Gulp/Bower
-### FTP --- Pure-FTPd server with forced FTPS
-### IMG --- Image Optimize binaries
+### FTP --- Pure-FTPd server with forced FTPS (installed by default)
+### GIT --- Latest Git from sources (installed by default)
+### IMG --- Image Optimize binaries (installed by default)
 ### SR7 --- Apache Solr 7
 ###
 ### Xtras which need to be listed explicitly:
@@ -172,7 +173,6 @@ _PHP_CLI_VERSION=8.1
 ### CGP --- Collectd Graph Panel (deprecated)
 ### CHV --- Chive DB Manager (deprecated)
 ### FMG --- FFmpeg support
-### GIT --- Latest Git from sources
 ### SR1 --- Apache Solr 1 with Jetty 7 (deprecated)
 ### SR3 --- Apache Solr 3 with Jetty 8 (deprecated)
 ### SR4 --- Apache Solr 4 with Jetty 9
@@ -182,14 +182,14 @@ _PHP_CLI_VERSION=8.1
 ###
 ### _XTRAS_LIST=""
 ### _XTRAS_LIST="ALL"
-### _XTRAS_LIST="ALL GIT SR4"
-### _XTRAS_LIST="ADM CSF IMG SR7 FTP"
+### _XTRAS_LIST="ALL SR4"
+### _XTRAS_LIST="SR4 SR7"
 ###
 ### Note that removing any item from this
 ### list once it is already installed, will
 ### NOT uninstall anything.
 ###
-_XTRAS_LIST="ADM CSF FTP"
+_XTRAS_LIST="ADM CSF FTP IMG"
 
 
 ###----------------------------------------###
