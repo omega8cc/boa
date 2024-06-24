@@ -5505,9 +5505,6 @@ if_post_major_os_upgrade() {
       if [ -e "/root/.force.newrelic.update.cnf" ]; then
         rm -f /root/.force.newrelic.update.cnf
       fi
-      if [ -e "/root/.rebuild_src_on_auto_before_reboot.info" ]; then
-        rm -f /root/.rebuild_src_on_auto_before_reboot.info
-      fi
       if [ -e "/root/.allow.downgrades.on.same.os.dist.upgrade.cnf" ]; then
         rm -f /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
       fi
@@ -5623,9 +5620,6 @@ if_post_major_os_upgrade() {
     fi
     if [ -e "/root/.force.newrelic.update.cnf" ]; then
       rm -f /root/.force.newrelic.update.cnf
-    fi
-    if [ -e "/root/.rebuild_src_on_auto_before_reboot.info" ]; then
-      rm -f /root/.rebuild_src_on_auto_before_reboot.info
     fi
     if [ -e "/root/.allow.downgrades.on.same.os.dist.upgrade.cnf" ]; then
       rm -f /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
