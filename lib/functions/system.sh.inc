@@ -2601,11 +2601,11 @@ install_icu_modern() {
   fi
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ -e "${pthLog}" ]; then
-    pthIcuLog="${pthLog}/icu-update-${_ICU_LEGACY_VRN}-for-${_OS_CODE}.log"
-    pthIcuLcy="${pthLog}/icu-update-${_ICU_LEGACY_VRN}.log"
+    pthIcuLog="${pthLog}/icu-update-${_ICU_MODERN_VRN}-for-${_OS_CODE}.log"
+    pthIcuLcy="${pthLog}/icu-update-${_ICU_MODERN_VRN}.log"
   else
-    pthIcuLog="/root/.icu-update-${_ICU_LEGACY_VRN}-for-${_OS_CODE}.log"
-    pthIcuLcy="/root/.icu-update-${_ICU_LEGACY_VRN}.log"
+    pthIcuLog="/root/.icu-update-${_ICU_MODERN_VRN}-for-${_OS_CODE}.log"
+    pthIcuLcy="/root/.icu-update-${_ICU_MODERN_VRN}.log"
   fi
   if [ "${_OS_CODE}" = "daedalus" ] \
     && [ -e "${pthIcuLcy}" ] \
