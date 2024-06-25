@@ -532,8 +532,6 @@ octopus_install() {
       || [ "${cmmand}" = "in-lite" ] \
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
-      || [ "${cmmand}" = "init" ] \
-      || [ "${cmmand}" = "init-dev" ] \
       || [ "${copt}" = "dev" ] \
       || [ "${copt}" = "lite" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncO}
@@ -602,8 +600,6 @@ octopus_install() {
       || [ "${cmmand}" = "in-lite" ] \
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
-      || [ "${cmmand}" = "init" ] \
-      || [ "${cmmand}" = "init-dev" ] \
       || [ "${copt}" = "dev" ] \
       || [ "${copt}" = "lite" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncO}
@@ -954,9 +950,7 @@ barracuda_install() {
     if [ "${cmmand}" = "in-dev" ] \
       || [ "${cmmand}" = "in-lite" ] \
       || [ "${cmmand}" = "in-octopus" ] \
-      || [ "${cmmand}" = "in-oct" ] \
-      || [ "${cmmand}" = "init" ] \
-      || [ "${cmmand}" = "init-dev" ]; then
+      || [ "${cmmand}" = "in-oct" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
       wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g"   ${vBs}/${filIncB}
@@ -1022,9 +1016,7 @@ barracuda_install() {
     if [ "${cmmand}" = "in-dev" ] \
       || [ "${cmmand}" = "in-lite" ] \
       || [ "${cmmand}" = "in-octopus" ] \
-      || [ "${cmmand}" = "in-oct" ] \
-      || [ "${cmmand}" = "init" ] \
-      || [ "${cmmand}" = "init-dev" ]; then
+      || [ "${cmmand}" = "in-oct" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncB}
       wait
     elif [ "${cmmand}" = "in-cluster" ]; then
@@ -1040,13 +1032,6 @@ barracuda_install() {
       wait
     fi
 
-    if [ "${cmmand}" = "init" ] || [ "${cmmand}" = "init-dev" ]; then
-      if [ "${mode}" = "devuan" ] || [ "${mode}" = "daedalus" ]; then
-        touch /root/.run.devuan.os.upgrade.on.init.cnf
-        touch /root/.run.daedalus.os.upgrade.on.init.cnf
-      elif [ "${mode}" = "chimaera" ]; then
-        touch /root/.run.devuan.os.upgrade.on.init.cnf
-        touch /root/.run.chimaera.os.upgrade.on.init.cnf
       fi
     fi
 
@@ -1097,11 +1082,9 @@ init_finish() {
   [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
   [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
   [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
-  if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
-    rm -f ${vBs}/*.sh.cnf*
-    rm -f ${vBs}/BARRACUDA.sh*
-    rm -f ${vBs}/OCTOPUS.sh*
-  fi
+  rm -f ${vBs}/*.sh.cnf*
+  rm -f ${vBs}/BARRACUDA.sh*
+  rm -f ${vBs}/OCTOPUS.sh*
   echo
   rm -rf /opt/tmp/*
   echo BOA ${cmmand} completed
@@ -1191,9 +1174,7 @@ init_setup() {
   export rlsn="${rlsn}"
 
   if [ "${cmmand}" = "in-dev" ] \
-    || [ "${cmmand}" = "in-lite" ] \
-    || [ "${cmmand}" = "init" ] \
-    || [ "${cmmand}" = "init-dev" ]; then
+    || [ "${cmmand}" = "in-lite" ]; then
     if [ ! -z "${silent}" ]; then
       curl ${crlGet} "${rgUrl}/feature/${silent}/${barName}" -o ${vBs}/${barName}
       curl ${crlGet} "${rgUrl}/feature/${silent}/${octName}" -o ${vBs}/${octName}
@@ -2081,24 +2062,6 @@ case "$1" in
              reboot
              exit 0
   ;;
-  init)      cmmand="$1"
-             tRee=lite
-             check_root
-             check_root_keys_pwd
-             check_virt
-             check_dns_curl
-             mode="$2"
-             init_setup
-  ;;
-  init-dev)  cmmand="$1"
-             tRee=dev
-             check_root
-             check_root_keys_pwd
-             check_virt
-             check_dns_curl
-             mode="$2"
-             init_setup
-  ;;
   cleanup)   cmmand="$1"
              action="$2"
              user="$3"
@@ -2237,7 +2200,6 @@ case "$1" in
   ;;
   *)         echo
              echo "Installation commands"
-             echo "Usage: $(basename "$0") {init} {debian|daedalus|chimaera}"
              echo "Usage: $(basename "$0") {version} {kind} {fqdn} {email} {user} {extra} {mysql}"
              echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {lite|dev}"
              echo
@@ -2259,7 +2221,6 @@ case "$1" in
       reboot <------- run accelerated system reboot
 
   {version}
-      init <--------- initialize system before installation (debian|devuan|daedalus|chimaera)
       in-lite <------ install BOA Lite release (no license)
       in-dev <------- install BOA Cutting Edge (requires license)
       in-octopus <--- install extra Octopus instance (lite|dev)

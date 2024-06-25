@@ -285,12 +285,6 @@ mode_detection() {
     _STATUS=SYSTEMD
     msg "MODE: SYSTEMD"
     touch /var/run/boa_wait.pid
-  elif [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
-    && [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
-    _STATUS=DISTRO
-    msg "MODE: DISTRO"
-    barracuda_cnf
-    touch /var/run/boa_wait.pid
   else
     _STATUS=INIT
     [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf

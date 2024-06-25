@@ -391,10 +391,8 @@ check_report() {
       _DO_NOTHING=YES
     fi
   else
-    if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
-      _SEND_ALERT=YES
-      _ALERT_MSG="ALERT: Failed (msg) Barracuda upgrade"
-    fi
+    _SEND_ALERT=YES
+    _ALERT_MSG="ALERT: Failed (msg) Barracuda upgrade"
   fi
   if [[ "${_RESULT_APT_FAIL}" =~ "Displaying the last 15 lines" ]]; then
     _SEND_ALERT=YES
@@ -406,10 +404,8 @@ check_report() {
     _ALERT_MSG="REBOOT: Your new system kernel requires boa reboot"
   fi
   if [[ "${_RESULT_ALRT}" =~ "ALRT" ]]; then
-    if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
-      _SEND_ALERT=YES
-      _ALERT_MSG="ALERT: Failed (alrt) Barracuda upgrade"
-    fi
+    _SEND_ALERT=YES
+    _ALERT_MSG="ALERT: Failed (alrt) Barracuda upgrade"
   fi
   if [[ "${_RESULT_FATAL}" =~ "FATAL ERROR" ]]; then
     _SEND_ALERT=YES
@@ -459,11 +455,9 @@ check_php_cli() {
       ln -sfn ${_USE_PHP_CLI_PATH} /usr/bin/php
       ln -sfn ${_USE_PHP_CLI_PATH} /usr/bin/php-cli
     else
-      if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
-        echo "ERROR: I can not find PHP-CLI anywhere!"
-        echo "ERROR: BOA requires PHP 8.1 or newer"
-        clean_pid_exit check_php_cli_a
-      fi
+      echo "ERROR: I can not find PHP-CLI anywhere!"
+      echo "ERROR: BOA requires PHP 8.1 or newer"
+      clean_pid_exit check_php_cli_a
     fi
   fi
 }
@@ -1079,10 +1073,8 @@ up_finish() {
   [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
   [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
   [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
-  if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
-    rm -f ${vBs}/*.sh.cnf*
-    rm -f ${vBs}/BARRACUDA.sh*
-  fi
+  rm -f ${vBs}/*.sh.cnf*
+  rm -f ${vBs}/BARRACUDA.sh*
   if [ -e "/opt/local/bin/php" ] \
     || [ -e "/usr/local/bin/php" ]; then
     rm -f /opt/local/bin/php

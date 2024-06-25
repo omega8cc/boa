@@ -37,27 +37,26 @@
 ###  Use clean minimal Debian OS based VPS.
 ###
 ###  Initialise the system before installing
-###  BOA to either remove systemd and use
-###  Debian or also quickly upgrade to the
-###  compatible Devuan OS version.
+###  BOA to remove systemd and quickly
+###  upgrade to latest Devuan OS version.
 ###
 ###   $ wget http://files.aegir.cc/BOA.sh.txt
 ###   $ bash BOA.sh.txt
 ###   $ autoinit
 ###
 ###  Once started, the autoinit will launch
-###  a series of boa init/reboots until
+###  a series of upgrades and reboots until
 ###  you get a basic latest system installed
 ###  to be able to run standard BOA install.
 ###
-###  The script logs its actions in the file
+###  The script logs its actions in the files
 ###  you can examine later:
 ###
 ###   $ cat /root/.autoinit.log
 ###
-###  If you prefer to have verbose log mode:
+###  There's also a very verbose extra log:
 ###
-###   $ touch /root/.autoinit-verbose.cnf
+###   $ cat /root/.autoinit-verbose.log
 ###
 ###----------------------------------------###
 
@@ -76,7 +75,7 @@ export HOME=${HOME}
 
 barCnf="/root/.barracuda.cnf"
 logInt="/root/.autoinit.log"
-logSlt="/root/.autoinit-silent.log"
+logSlt="/root/.autoinit-verbose.log"
 
 ###
 ### Avoid too many questions
@@ -380,17 +379,13 @@ init_info() {
   sleep 3
   echo "The system will reboot and continue several times..."
   sleep 3
-  if [ -e "/root/.init-to-devuan-loop.cnf" ]; then
-    echo "until it is ugraded to latest Devuan/daedalus version."
-  else
-    echo "until it is ugraded to systemd-free Debian version."
-  fi
+  echo "until it is ugraded to latest Devuan/daedalus version."
   sleep 3
   echo "Once all upgrades are complete, you can run boa install"
   sleep 3
-  echo "Let's go!"
+  echo "Let's go! It will take only ten minutes max!"
   sleep 3
-  echo "It will take only a few minutes..."
+  echo ""
 }
 
 init_run_two_quick() {
@@ -429,8 +424,7 @@ init_run_two_quick() {
   msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
   if [ "${_OS_CODE}" = "daedalus" ]; then
     msg "Time for reboot and then you can run boa install" >> ${logInt}
-    rm -f /root/.init-to-devuan.cnf
-    rm -f /root/.init-to-devuan-loop.cnf
+    rm -f /root/.init-to-devuan-ctrl.cnf
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
   else
     msg "Time for reboot and next upgrade cycle..." >> ${logInt}
@@ -560,8 +554,7 @@ init_run_one_quick() {
     if [ "${_OS_CODE}" = "daedalus" ]; then
       msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
       msg "Time for the last reboot and then you can run boa install" >> ${logInt}
-      rm -f /root/.init-to-devuan.cnf
-      rm -f /root/.init-to-devuan-loop.cnf
+      rm -f /root/.init-to-devuan-ctrl.cnf
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
     else
       msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
@@ -576,181 +569,38 @@ init_run_one_quick() {
   fi
 }
 
-init_run_three() {
-  if [ "${initArgs}" = "devuan" ]; then
-    echo " " >> ${logInt}
-    msg "Launching a third run of ${initRun}" >> ${logInt}
-    touch /var/run/autoinit.pid
-    /opt/local/bin/boa ${initRun} >> ${logInt}
-    wait
-    touch /root/.run-three-devuan.cnf
-    rm -f /root/.init-to-devuan.cnf
-    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-    echo "*/1 *   * * *   root    test -e /root/.run.devuan.os.upgrade.on.init.cnf && { bash /etc/init.d/clean-boa-env start; }" >> /etc/crontab
-    rm -f /var/run/autoinit.pid
-  fi
-}
-
-init_run_two() {
-  if [ "${initArgs}" = "devuan" ]; then
-    echo " " >> ${logInt}
-    msg "Launching a second run of ${initRun}" >> ${logInt}
-    touch /var/run/autoinit.pid
-    /opt/local/bin/boa ${initRun} >> ${logInt}
-    wait
-    touch /root/.run-two-devuan.cnf
-    msg "Time for the second reboot..." >> ${logInt}
-    echo " " >> ${logInt}
-    sleep 5
-    rm -f /var/run/autoinit.pid
-    if [ ! -e "/root/.init-to-devuan-loop.cnf" ]; then
-      touch /root/.run.devuan.os.upgrade.on.init.cnf
-    else
-      rm -f /root/.run.devuan.os.upgrade.on.init.cnf
-    fi
-    reboot
-    exit 0
-  elif [ "${initArgs}" = "debian" ]; then
-    echo " " >> ${logInt}
-    msg "Launching a second run of ${initRun}" >> ${logInt}
-    touch /var/run/autoinit.pid
-    /opt/local/bin/boa ${initRun} >> ${logInt}
-    wait
-    touch /root/.run-two-debian.cnf
-    msg "Time for the second reboot..." >> ${logInt}
-    echo " " >> ${logInt}
-    sleep 5
-    rm -f /var/run/autoinit.pid
-    reboot
-    exit 0
-  fi
-}
-
-init_run_one() {
-  if [ "${initArgs}" = "devuan" ]; then
-    echo " " >> ${logInt}
-    msg "Launching a first run of ${initRun}" >> ${logInt}
-    touch /var/run/autoinit.pid
-    /opt/local/bin/boa ${initRun} >> ${logInt}
-    wait
-    touch /root/.run-one-devuan.cnf
-    msg "Time for the first reboot..." >> ${logInt}
-    echo " " >> ${logInt}
-    sleep 5
-    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-    echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit devuan" >> /etc/crontab
-    if [ -x "/opt/local/bin/killer" ]; then
-      sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
-      echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
-    fi
-    rm -f /var/run/autoinit.pid
-    reboot
-    exit 0
-  elif [ "${initArgs}" = "debian" ]; then
-    echo " " >> ${logInt}
-    msg "Launching a first run of ${initRun}" >> ${logInt}
-    touch /var/run/autoinit.pid
-    /opt/local/bin/boa ${initRun} >> ${logInt}
-    wait
-    touch /root/.run-one-debian.cnf
-    msg "Time for the first reboot..." >> ${logInt}
-    echo " " >> ${logInt}
-    sleep 5
-    sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
-    echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit debian" >> /etc/crontab
-    if [ -x "/opt/local/bin/killer" ]; then
-      sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
-      echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
-    fi
-    rm -f /var/run/autoinit.pid
-    reboot
-    exit 0
-  fi
-}
-
 init_conf() {
-  if [ "${tRee}" = "dev" ]; then
-    initCmnd="init-dev"
-  else
-    initCmnd="init"
-  fi
-  if [ -e "/root/.init-to-devuan-loop.cnf" ]; then
-    initArgs="devuan"
-    initFile="/root/.init-to-devuan-loop.cnf"
-  elif [ -e "/root/.init-to-devuan.cnf" ]; then
-    initArgs="devuan"
-    initFile="/root/.init-to-devuan.cnf"
-  else
-    initArgs="debian"
-    initFile="/root/.init-to-debian.cnf"
-  fi
-  initRun="${initCmnd} ${initArgs}"
-  if [ ! -z "${initFile}" ] && [ -e "${initFile}" ]; then
+  if [ ! -e "${initFile}" ]; then
     if [ ! -x "/usr/bin/cc" ]; then
       init_info
     fi
     init_pre &> /dev/null
+    touch ${initFile}
   fi
 }
 
 init() {
-  initCmnd=
-  initArgs=
-  initRun=
-  initFile=
+  initFile="/root/.init-to-devuan-ctrl.cnf"
   init_conf
-  if [ -e "/root/.init-to-devuan-loop.cnf" ]; then
+  if [ -e "${initFile}" ]; then
     if [ -e "/root/.run-one-devuan-quick.cnf" ] \
       && [ ! -e "/root/.run-two-devuan-quick.cnf" ]; then
       init_run_two_quick
     fi
     init_run_one_quick
-  else
-    if [ ! -e "/root/.run-one-devuan.cnf" ] \
-      && [ ! -e "/root/.run-one-debian.cnf" ]; then
-      init_run_one
-    fi
-    if [ -e "/root/.run-one-devuan.cnf" ] \
-      || [ -e "/root/.run-one-debian.cnf" ]; then
-      if [ ! -e "/root/.run-two-devuan.cnf" ] \
-        && [ ! -e "/root/.run-two-debian.cnf" ]; then
-        init_run_two
-      fi
-    fi
-    if [ -e "/root/.run-two-devuan.cnf" ]; then
-      if [ ! -e "/root/.run-three-devuan.cnf" ]; then
-        init_run_three
-      fi
-    fi
   fi
 }
 
 pre() {
-  if [ ! -e "/root/.init-to-devuan.cnf" ] \
-    && [ ! -e "/root/.init-to-debian.cnf" ] \
-    && [ ! -e "/root/.init-to-devuan-loop.cnf" ]; then
-    touch /root/.init-to-devuan-loop.cnf
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  touch /var/run/autoinit.pid
+  if [ ! -e "/root/.autoinit.log" ]; then
+    echo "Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..."
+    msg "Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..." >> ${logInt}
   fi
-  if [ -e "/root/.init-to-devuan.cnf" ] \
-    || [ -e "/root/.init-to-debian.cnf" ] \
-    || [ -e "/root/.init-to-devuan-loop.cnf" ]; then
-    _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
-    _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-    touch /var/run/autoinit.pid
-    if [ ! -e "/root/.autoinit.log" ]; then
-      echo "Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..."
-      msg "Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..." >> ${logInt}
-    fi
-    sleep 15
-    init
-  else
-    echo "Welcome to BOA System INIT"
-    echo "This script requires one of supported command files:"
-    echo "  for Devuan: touch /root/.init-to-devuan-loop.cnf"
-    echo "  for Debian: touch /root/.init-to-debian.cnf"
-    echo "Bye!"
-    exit 1
-  fi
+  sleep 15
+  init
 }
 
 if [ ! -e "/var/run/autoinit.pid" ]; then

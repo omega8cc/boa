@@ -3225,9 +3225,6 @@ sources_list_update() {
   else
     _APT_SOURCES_REWRITE=YES
   fi
-  if [ "${_STATUS}" = "DISTRO" ]; then
-    _APT_SOURCES_REWRITE=NO
-  fi
   if [ "${_APT_SOURCES_REWRITE}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Updating packages sources list..."
@@ -5275,8 +5272,7 @@ basic_packages_install_on_init() {
     echo "APT::Get::AllowUnauthenticated \"true\";"     >> /etc/apt/apt.conf.d/99ignorestrict
     echo "Aptitude::CmdLine::Fix-Broken \"true\";"      >> /etc/apt/apt.conf.d/99ignorestrict
   fi
-  if [ "${_STATUS}" = "INIT" ] \
-    || [ "${_STATUS}" = "DISTRO" ]; then
+  if [ "${_STATUS}" = "INIT" ]; then
     if [ ! -e "/root/.step.init.basic.cnf" ]; then
       msg "INFO: Installing some basic tools..."
       apt_clean_update
@@ -5517,8 +5513,7 @@ if_post_major_os_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: if_post_major_os_upgrade"
   fi
-  if [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ] \
-    && [ -e "/root/.completed_post_major_os_upgrade.info" ]; then
+  if [ -e "/root/.completed_post_major_os_upgrade.info" ]; then
     msg "NOTE: Major system upgrade to Devuan on init is now complete"
     msg "NOTE: Your system is ready for standard boa install command"
     touch /root/.latest-barracuda-upgrade-finale.info
@@ -5573,27 +5568,6 @@ if_post_major_os_upgrade() {
       mrun "perl /var/xdrago_wait/proc_num_ctrl.cgi" 2> /dev/null
     else
       mrun "perl /var/xdrago/proc_num_ctrl.cgi" 2> /dev/null
-    fi
-
-    if [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
-      if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
-        rm -f /root/.run_post_major_os_upgrade.info
-      fi
-      if [ -e "/root/.force.newrelic.update.cnf" ]; then
-        rm -f /root/.force.newrelic.update.cnf
-      fi
-      if [ -e "/root/.allow.downgrades.on.same.os.dist.upgrade.cnf" ]; then
-        rm -f /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
-      fi
-      rm -f /var/xdrago/log/.*_crontab_*
-      touch /root/.completed_post_major_os_upgrade.info
-      msg "INFO: The post_major_os_upgrade procedure is complete"
-      msg "INFO: Major system upgrade to Devuan on init is now complete"
-      msg "INFO: Your system is ready for standard boa install command"
-      touch /root/.latest-barracuda-upgrade-finale.info
-      echo " "
-      msg "Bye"
-      clean_pid_exit if_post_major_os_upgrade_b
     fi
 
     _REBUILD_SRC_ON_AUTO_NOW=YES
@@ -5715,8 +5689,7 @@ if_major_os_upgrade() {
   define_loc_osr
   if [ ! -z "${_MSG_LOC}" ]; then
     if [ ! -e "/usr/local/lib/icu/73.1" ] \
-      && [ "${_LOC_OS_CODE}" != "jessie" ] \
-      && [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
+      && [ "${_LOC_OS_CODE}" != "jessie" ]; then
       echo
       msg "OOPS: Please run normal 'barracuda up-${tRee}' upgrade"
       msg "OOPS: before trying to run major OS upgrade"
@@ -5820,25 +5793,24 @@ if_major_os_upgrade() {
     mrun "apt-get remove nginx -y -qq" 2> /dev/null
     mrun "apt-get remove nginx-common -y -qq" 2> /dev/null
     mrun "apt-get remove nginx-full -y -qq" 2> /dev/null
-    if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
-      ###
-      ### Make sure that nginx packages are locked in apt.
-      if [ ! -e "/etc/apt/preferences.d/nginx-common" ]; then
-        rm -f /etc/apt/preferences.d/nginx
-        echo -e 'Package: nginx\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/nginx-common
-        echo -e '\n\nPackage: nginx-common\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx-common
-        apt_clean_update_no_releaseinfo_change
-      fi
-      ###
-      _NGINX_GET_DPKG=$(dpkg --get-selections | grep nginx-common | grep 'hold$' 2>&1)
-      if [[ ! "${_NGINX_GET_DPKG}" =~ "hold" ]]; then
-        aptitude hold nginx &> /dev/null
-        aptitude hold nginx-common &> /dev/null
-        echo "nginx hold" | dpkg --set-selections &> /dev/null
-        echo "nginx-common hold" | dpkg --set-selections &> /dev/null
-        apt_clean_update_no_releaseinfo_change
-      fi
+    ###
+    ### Make sure that nginx packages are locked in apt.
+    if [ ! -e "/etc/apt/preferences.d/nginx-common" ]; then
+      rm -f /etc/apt/preferences.d/nginx
+      echo -e 'Package: nginx\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/nginx-common
+      echo -e '\n\nPackage: nginx-common\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx-common
+      apt_clean_update_no_releaseinfo_change
     fi
+    ###
+    _NGINX_GET_DPKG=$(dpkg --get-selections | grep nginx-common | grep 'hold$' 2>&1)
+    if [[ ! "${_NGINX_GET_DPKG}" =~ "hold" ]]; then
+      aptitude hold nginx &> /dev/null
+      aptitude hold nginx-common &> /dev/null
+      echo "nginx hold" | dpkg --set-selections &> /dev/null
+      echo "nginx-common hold" | dpkg --set-selections &> /dev/null
+      apt_clean_update_no_releaseinfo_change
+    fi
+    ###
     if [ -e "/etc/php5/conf.d" ]; then
       touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini}
       touch /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
@@ -5936,57 +5908,55 @@ if_major_os_upgrade() {
     if [[ ! "${_APT_SRC_TEST}" =~ "No such file" ]]; then
       sed -i "s/${_LOC_OS_CODE}/${_SQL_NEW_OS_CODE}/g" /etc/apt/sources.list.d/*
     fi
-    if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
-      ###
-      ### Now overwriting db gears apt sources.
-      if [ "${_DB_SERVER}" = "Percona" ] && [ "${_DB_SERIES}" = "5.7" ]; then
-        if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
-          if [ ! -e "/etc/apt/keyrings" ]; then
-            mkdir -m 0755 -p /etc/apt/keyrings
-          fi
-          if [ -e "/etc/apt/trusted.gpg.d/percona.gpg" ]; then
-            rm -f /etc/apt/trusted.gpg.d/percona.gpg*
-          fi
-          _PERCONA_KEYS_SIG="8507EFA5"
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: Retrieving ${_PERCONA_KEYS_SIG} key..."
-          fi
-          apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
-          if [ -x "/usr/bin/gpg2" ]; then
-            _GPG=gpg2
-          else
-            _GPG=gpg
-          fi
-          if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
-            curl -fsSL ${urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/percona.gpg
-          fi
-          chmod 644 /etc/apt/keyrings/percona.gpg
-          if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
-            kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-            echo "$(date 2>&1) Too many dirmngr processes killed" >> \
-              /var/xdrago/log/dirmngr-count.kill.log
-          fi
-          if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
-            kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
-            echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
-              /var/xdrago/log/gpg-agent-count.kill.log
-          fi
+    ###
+    ### Now overwriting db gears apt sources.
+    if [ "${_DB_SERVER}" = "Percona" ] && [ "${_DB_SERIES}" = "5.7" ]; then
+      if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
+        if [ ! -e "/etc/apt/keyrings" ]; then
+          mkdir -m 0755 -p /etc/apt/keyrings
         fi
-        percRepo="${_DB_SRC}/percona/apt"
-        percList="/etc/apt/sources.list.d/percona-release.list"
-        rm -f /etc/apt/sources.list.d/percona-.*
-        rm -f /etc/apt/sources.list.d/xtrabackup.*
-        echo "## Percona APT Repository" > ${percList}
-        if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
-          echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
-          echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
+        if [ -e "/etc/apt/trusted.gpg.d/percona.gpg" ]; then
+          rm -f /etc/apt/trusted.gpg.d/percona.gpg*
+        fi
+        _PERCONA_KEYS_SIG="8507EFA5"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Retrieving ${_PERCONA_KEYS_SIG} key..."
+        fi
+        apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
+        if [ -x "/usr/bin/gpg2" ]; then
+          _GPG=gpg2
         else
-          echo "deb http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
-          echo "deb-src http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
+          _GPG=gpg
         fi
-        chmod 644 ${percList}
-        echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
+        if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
+          curl -fsSL ${urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/percona.gpg
+        fi
+        chmod 644 /etc/apt/keyrings/percona.gpg
+        if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
+          kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+          echo "$(date 2>&1) Too many dirmngr processes killed" >> \
+            /var/xdrago/log/dirmngr-count.kill.log
+        fi
+        if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
+          kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+          echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
+            /var/xdrago/log/gpg-agent-count.kill.log
+        fi
       fi
+      percRepo="${_DB_SRC}/percona/apt"
+      percList="/etc/apt/sources.list.d/percona-release.list"
+      rm -f /etc/apt/sources.list.d/percona-.*
+      rm -f /etc/apt/sources.list.d/xtrabackup.*
+      echo "## Percona APT Repository" > ${percList}
+      if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
+        echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
+        echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
+      else
+        echo "deb http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
+        echo "deb-src http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
+      fi
+      chmod 644 ${percList}
+      echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
     fi
     ###
     ### Switching system gears on the fly.
@@ -6275,9 +6245,6 @@ if_major_os_upgrade() {
     if [ "${_FORCE_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ]; then
       _REBUILD_SRC_ON_AUTO_NOW=YES
     fi
-    if [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
-      _REBUILD_SRC_ON_AUTO_NOW=NO
-    fi
     rm -f /root/.rebuild_src_on_auto_before_reboot.info
     if [ "${_REBUILD_SRC_ON_AUTO_NOW}" = "YES" ] \
       && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
@@ -6511,13 +6478,6 @@ normal_sys_ctrl_mark() {
   else
     [ -e "/root/.normal-sys-ctrl-mark.cnf" ] && rm -f /root/.normal-sys-ctrl-mark.cnf
   fi
-  if [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
-    msg "OOPS: That is a full stop while run.devuan.os.upgrade.on.init is running!"
-    echo " "
-    msg "Bye"
-    touch /root/.latest-barracuda-upgrade-finale.info
-    clean_pid_exit normal_sys_ctrl_mark_a
-  fi
 }
 
 sys_packages_update() {
@@ -6735,25 +6695,22 @@ sys_packages_install() {
     mrun "apt-get remove nginx-common -y -qq" 2> /dev/null
     mrun "apt-get remove nginx-full -y -qq"   2> /dev/null
     mrun "apt-get remove redis-server -y -qq" 2> /dev/null
-    if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
-      ###
-      ### Make sure that nginx packages are locked in apt.
-      if [ ! -e "/etc/apt/preferences.d/nginx-common" ] \
-        && [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
-        rm -f /etc/apt/preferences.d/nginx
-        echo -e 'Package: nginx\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/nginx-common
-        echo -e '\n\nPackage: nginx-common\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx-common
-        apt_clean_update
-      fi
-      ###
-      _NGINX_GET_DPKG=$(dpkg --get-selections | grep nginx-common | grep 'hold$' 2>&1)
-      if [[ ! "${_NGINX_GET_DPKG}" =~ "hold" ]]; then
-        aptitude hold nginx &> /dev/null
-        aptitude hold nginx-common &> /dev/null
-        echo "nginx hold" | dpkg --set-selections &> /dev/null
-        echo "nginx-common hold" | dpkg --set-selections &> /dev/null
-        apt_clean_update
-      fi
+    ###
+    ### Make sure that nginx packages are locked in apt.
+    if [ ! -e "/etc/apt/preferences.d/nginx-common" ]; then
+      rm -f /etc/apt/preferences.d/nginx
+      echo -e 'Package: nginx\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/nginx-common
+      echo -e '\n\nPackage: nginx-common\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/nginx-common
+      apt_clean_update
+    fi
+    ###
+    _NGINX_GET_DPKG=$(dpkg --get-selections | grep nginx-common | grep 'hold$' 2>&1)
+    if [[ ! "${_NGINX_GET_DPKG}" =~ "hold" ]]; then
+      aptitude hold nginx &> /dev/null
+      aptitude hold nginx-common &> /dev/null
+      echo "nginx hold" | dpkg --set-selections &> /dev/null
+      echo "nginx-common hold" | dpkg --set-selections &> /dev/null
+      apt_clean_update
     fi
   fi
   _EXTRA_LIB_APT="libmcrypt-dev"

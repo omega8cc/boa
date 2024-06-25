@@ -232,13 +232,11 @@ check_os_compatibility() {
 }
 check_os_compatibility
 
-if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
-  _DB_SERIES=5.7
-  _DB_SERVER_TEST=$(mysql -V 2>&1)
-  if [[ ! "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
-    msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> ${logAds}
-    exit 1
-  fi
+_DB_SERIES=5.7
+_DB_SERVER_TEST=$(mysql -V 2>&1)
+if [[ ! "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
+  msg "Not supported DB server detected ${_DB_SERVER_TEST}" >> ${logAds}
+  exit 1
 fi
 
 if [ -x "/opt/local/bin/killer" ]; then
@@ -332,19 +330,15 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-daedalus-one.cnf" ] \
   && [ ! -e "/root/.run-auto-major-os-reboot-daedalus-two.cnf" ]; then
   echo " " >> ${logAds}
-  if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
-    msg "Running barracuda php-idle disable to speed up upgrades" >> ${logAds}
-    barracuda php-idle disable >> ${logAds}
-    wait
-    msg "The barracuda php-idle disable completed" >> ${logAds}
-    msg "Launching standard barracuda up-${tRee} system now" >> ${logAds}
-    [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
-    /opt/local/bin/barracuda up-${tRee} system >> ${logAds}
-    wait
-    msg "The standard barracuda up-${tRee} system completed" >> ${logAds}
-  else
-    touch /root/.latest-barracuda-upgrade-finale.info
-  fi
+  msg "Running barracuda php-idle disable to speed up upgrades" >> ${logAds}
+  barracuda php-idle disable >> ${logAds}
+  wait
+  msg "The barracuda php-idle disable completed" >> ${logAds}
+  msg "Launching standard barracuda up-${tRee} system now" >> ${logAds}
+  [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
+  /opt/local/bin/barracuda up-${tRee} system >> ${logAds}
+  wait
+  msg "The standard barracuda up-${tRee} system completed" >> ${logAds}
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
     _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
     _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
@@ -448,13 +442,11 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   && [ -e "/root/.run-auto-major-os-reboot-daedalus-two.cnf" ]; then
   echo " " >> ${logAds}
   touch /root/.auto-upgraded-to-daedalus.cnf
-  if [ ! -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
-    msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> ${logAds}
-    [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ] && touch /root/.allow.auditd.and.apparmor.cnf
-    [ ! -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && touch /root/.force.rebuild.src.on.auto.now.cnf
-    /opt/local/bin/barracuda up-${tRee} system >> ${logAds}
-    wait
-  fi
+  msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> ${logAds}
+  [ ! -e "/root/.allow.auditd.and.apparmor.cnf" ] && touch /root/.allow.auditd.and.apparmor.cnf
+  [ ! -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && touch /root/.force.rebuild.src.on.auto.now.cnf
+  /opt/local/bin/barracuda up-${tRee} system >> ${logAds}
+  wait
   [ -e "/root/.run-to-daedalus.cnf" ] && rm -f /root/.run-to-daedalus.cnf
   [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
   [ -e "/root/.run-auto-major-os-reboot-daedalus-one.cnf" ] && rm -f /root/.run-auto-major-os-reboot-daedalus-one.cnf
@@ -464,17 +456,6 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   msg "That's all folks!" >> ${logAds}
   msg "Bye!" >> ${logAds}
   echo " " >> ${logAds}
-  if [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
-    mv -f /root/.run.devuan.os.upgrade.on.init.cnf /root/.done.devuan.os.upgrade.on.init.cnf
-    if [ -e "/root/.barracuda.cnf" ]; then
-      mv -f /root/.barracuda.cnf /root/.init.barracuda.cnf
-    fi
-    if [ -e "/var/xdrago" ]; then
-      mv -f /var/xdrago /var/backups/.init.xdrago
-    fi
-    rm -f /var/backups/*.sh.txt
-    rm -f /var/backups/*.sh.cnf
-  fi
 fi
 
 exit 0
