@@ -34,9 +34,8 @@
 
 * Don't run any installer via sudo. You must be logged in as root directly.
 
-* Don't run any system updates with apt before running Barracuda installer.
-  You should use vanilla system.
-
+* Don't run any system updates nor modifications with apt before running
+  BOA autoinit. You should use vanilla system provided by your host.
 
 
 ###
@@ -88,7 +87,7 @@
 
          There's also a verbose log of what happened if you are interested:
 
-         $ cat /root/.autoinit-silent.log
+         $ cat /root/.autoinit-verbose.log
 
 5. Install Barracuda and Octopus.
 
