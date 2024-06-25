@@ -4617,6 +4617,7 @@ sync_enable_apparmor_profiles() {
   fi
   if [ "${isAppArmOn}" = "Y" ] || [ -d "/etc/apparmor.d" ]; then
     msg "ARMR: All profiles will be updated now..."
+    msg "WAIT: This may take a while, please wait..."
     if [ -d "/etc/apparmor.d" ]; then
       mrun "service apparmor stop" 2> /dev/null
       mrun "service auditd stop" 2> /dev/null
