@@ -6204,6 +6204,21 @@ if_major_os_upgrade() {
       ###
     fi
     ###
+    ### Reload key services if needed early
+    mrun "service redis-server reload" 2> /dev/null
+    mrun "service nginx reload" 2> /dev/null
+    _PHP_V="83 82 81 80 74 73 72 71 70 56"
+    for e in ${_PHP_V}; do
+      if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
+        mrun "service php${e}-fpm reload" 2> /dev/null
+      fi
+    done
+    if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
+      mrun "perl /var/xdrago_wait/proc_num_ctrl.cgi" 2> /dev/null
+    else
+      mrun "perl /var/xdrago/proc_num_ctrl.cgi" 2> /dev/null
+    fi
+    ###
     ### Make sure that sysvinit-core is still installed and systemd removed.
     sysvinit_install
     systemd_remove_apt_cmd
