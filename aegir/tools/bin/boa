@@ -65,6 +65,14 @@ apt_clean_update() {
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
+check_no_systemd() {
+  if [ -e "/lib/systemd/systemd" ]; then
+    echo "ERROR: This script can not be used with systemd"
+    echo "ERROR: Please run 'autoinit' first"
+    clean_pid_exit check_no_systemd_a_boa
+  fi
+}
+
 not_supported_virt() {
   echo
   echo "=== OOPS! ==="
@@ -2044,6 +2052,7 @@ octopus_cleanup() {
 }
 
 check_root_direct
+check_no_systemd
 os_detection_minimal
 
 case "$1" in
