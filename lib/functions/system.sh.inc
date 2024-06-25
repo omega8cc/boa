@@ -2481,6 +2481,22 @@ run_apt_get_dist_upgrade() {
   mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
   ### Run AppArmor update early
   if_enable_or_disable_apparmor
+  ### Update rsyslog configuration early
+  rsyslog_config_update
+  ### Reload key services if needed early
+  mrun "service redis-server reload" 2> /dev/null
+  mrun "service nginx reload" 2> /dev/null
+  _PHP_V="83 82 81 80 74 73 72 71 70 56"
+  for e in ${_PHP_V}; do
+    if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
+      mrun "service php${e}-fpm reload" 2> /dev/null
+    fi
+  done
+  if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
+    mrun "perl /var/xdrago_wait/proc_num_ctrl.cgi" 2> /dev/null
+  else
+    mrun "perl /var/xdrago/proc_num_ctrl.cgi" 2> /dev/null
+  fi
 }
 
 #
@@ -5537,6 +5553,22 @@ if_post_major_os_upgrade() {
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
     ### Run AppArmor update early
     if_enable_or_disable_apparmor
+    ### Update rsyslog configuration early
+    rsyslog_config_update
+    ### Reload key services if needed early
+    mrun "service redis-server reload" 2> /dev/null
+    mrun "service nginx reload" 2> /dev/null
+    _PHP_V="83 82 81 80 74 73 72 71 70 56"
+    for e in ${_PHP_V}; do
+      if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
+        mrun "service php${e}-fpm reload" 2> /dev/null
+      fi
+    done
+    if [ ! -e "/var/xdrago/log" ] && [ -e "/var/xdrago_wait/log" ]; then
+      mrun "perl /var/xdrago_wait/proc_num_ctrl.cgi" 2> /dev/null
+    else
+      mrun "perl /var/xdrago/proc_num_ctrl.cgi" 2> /dev/null
+    fi
 
     if [ -e "/root/.run.devuan.os.upgrade.on.init.cnf" ]; then
       if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
