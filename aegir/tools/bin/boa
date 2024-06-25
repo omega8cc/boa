@@ -619,42 +619,12 @@ octopus_install() {
       wait
       sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${brnch}/g"  ${vBs}/${octName}
       wait
-      if [ "${cmmand}" = "in-2.2" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcA}/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcA}/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcA}/g"         ${vBs}/${octName}
-        wait
-      elif [ "${cmmand}" = "in-2.3" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcB}/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcB}/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcB}/g"         ${vBs}/${octName}
-        wait
-      elif [ "${cmmand}" = "in-2.4" ] || [ "${copt}" = "2.4" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcC}/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${filIncO}
-        wait
-      elif [ "${cmmand}" = "in-3.2" ] || [ "${copt}" = "3.2" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcD}/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcD}/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcD}/g"         ${vBs}/${filIncO}
-        wait
-      else
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${tRee}/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${filIncO}
-        wait
-      fi
+      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g" ${vBs}/${filIncO}
+      wait
+      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${tRee}/g" ${vBs}/${filIncO}
+      wait
+      sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${filIncO}
+      wait
     fi
 
     if [ "${cmmand}" = "in-dev" ] \
@@ -1036,42 +1006,12 @@ barracuda_install() {
       wait
       sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${brnch}/g"  ${vBs}/${barName}
       wait
-      if [ "${cmmand}" = "in-2.2" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcA}/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcA}/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcA}/g"         ${vBs}/${barName}
-        wait
-      elif [ "${cmmand}" = "in-2.3" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcB}/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcB}/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcB}/g"         ${vBs}/${barName}
-        wait
-      elif [ "${cmmand}" = "in-2.4" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcC}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${filIncB}
-        wait
-      elif [ "${cmmand}" = "in-3.2" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcD}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcD}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcD}/g"         ${vBs}/${filIncB}
-        wait
-      else
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${tRee}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${filIncB}
-        wait
-      fi
+      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g" ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${tRee}/g" ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${filIncB}
+      wait
     fi
 
     if [ "${cmmand}" = "in-dev" ] \
@@ -1203,19 +1143,6 @@ init_setup() {
     satellite_check_id ${user}
   fi
 
-  if [[ "${cmmand}" =~ "in-2." ]] || [ "${copt}" = "2.4" ]; then
-    if [ "${cmmand}" = "in-2.4" ] || [ "${copt}" = "2.4" ]; then
-      branch="2.4.x-dev"
-    elif [ "${cmmand}" = "in-2.3" ]; then
-      branch="2.3.x-dev"
-    elif [ "${cmmand}" = "in-2.2" ]; then
-      branch="2.2.x-legacy"
-    fi
-  fi
-  if [[ "${cmmand}" =~ "in-3." ]] || [ "${copt}" = "3.2" ]; then
-    if [ "${cmmand}" = "in-3.2" ] || [ "${copt}" = "3.2" ]; then
-      branch="3.2.x-dev"
-    fi
   fi
 
   init_start
@@ -1224,10 +1151,6 @@ init_setup() {
   rlsn="BOA-5.2.0"
   rlse="${rlsn}-${tRee}"
   cluster="${rlse}"
-  lgcA="BOA-2.2.9"
-  lgcB="BOA-2.3.8"
-  lgcC="BOA-2.4.9"
-  lgcD="BOA-3.2.2"
   branch="5.x-${tRee}"
   brnch=${branch//\//\\\/}
 
@@ -1258,37 +1181,11 @@ init_setup() {
       octb="${brnch}"
     elif [ "${copt}" = "lite" ]; then
       octb="${brnch}"
-    elif [ "${copt}" = "3.2" ]; then
-      octb="${lgcD}"
-    elif [ "${copt}" = "2.4" ]; then
-      octb="${lgcC}"
     fi
     curl ${crlGet} "${rgUrl}/${octb}/${barName}"    -o ${vBs}/${barName}
     curl ${crlGet} "${rgUrl}/${octb}/${octName}"    -o ${vBs}/${octName}
     curl ${crlGet} "${rgUrl}/${octb}/${pthIncB}"    -o ${vBs}/${filIncB}
     curl ${crlGet} "${rgUrl}/${octb}/${pthIncO}"    -o ${vBs}/${filIncO}
-  elif [ "${cmmand}" = "in-3.2" ]; then
-    curl ${crlGet} "${rgUrl}/${lgcD}/${barName}"    -o ${vBs}/${barName}
-    curl ${crlGet} "${rgUrl}/${lgcD}/${octName}"    -o ${vBs}/${octName}
-    curl ${crlGet} "${rgUrl}/${lgcD}/${pthIncB}"    -o ${vBs}/${filIncB}
-    curl ${crlGet} "${rgUrl}/${lgcD}/${pthIncO}"    -o ${vBs}/${filIncO}
-  elif [ "${cmmand}" = "in-2.4" ]; then
-    curl ${crlGet} "${rgUrl}/${lgcC}/${barName}"    -o ${vBs}/${barName}
-    curl ${crlGet} "${rgUrl}/${lgcC}/${octName}"    -o ${vBs}/${octName}
-    curl ${crlGet} "${rgUrl}/${lgcC}/${pthIncB}"    -o ${vBs}/${filIncB}
-    curl ${crlGet} "${rgUrl}/${lgcC}/${pthIncO}"    -o ${vBs}/${filIncO}
-  elif [ "${cmmand}" = "in-2.3" ]; then
-    curl ${crlGet} "${rgUrl}/${lgcB}/${barName}"    -o ${vBs}/${barName}
-    curl ${crlGet} "${rgUrl}/${lgcB}/${octName}"    -o ${vBs}/${octName}
-  elif [ "${cmmand}" = "in-2.2" ]; then
-    curl ${crlGet} "${rgUrl}/${lgcA}/${barName}"    -o ${vBs}/${barName}
-    curl ${crlGet} "${rgUrl}/${lgcA}/${octName}"    -o ${vBs}/${octName}
-  fi
-  if [ "${sql}" = "percona" ]; then
-    sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"         ${vBs}/${filIncB}
-    wait
-    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"     ${vBs}/${filIncB}
-    wait
   fi
   if [ -e "/root/.debug-boa-installer.cnf" ]; then
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncB}
@@ -2170,62 +2067,6 @@ case "$1" in
              mode="$6"
              dbip="$7"
              loip="$8"
-             check_root
-             check_root_keys_pwd
-             check_virt
-             check_dns_curl
-             init_setup
-  ;;
-  in-3.2)    cmmand="$1"
-             tRee=lite
-             kind="$2"
-             fqdn="$3"
-             email="$4"
-             user="$5"
-             mode="$6"
-             rkey="$7"
-             check_root
-             check_root_keys_pwd
-             check_virt
-             check_dns_curl
-             init_setup
-  ;;
-  in-2.4)    cmmand="$1"
-             tRee=lite
-             kind="$2"
-             fqdn="$3"
-             email="$4"
-             user="$5"
-             mode="$6"
-             rkey="$7"
-             check_root
-             check_root_keys_pwd
-             check_virt
-             check_dns_curl
-             init_setup
-  ;;
-  in-2.3)    cmmand="$1"
-             tRee=lite
-             kind="$2"
-             fqdn="$3"
-             email="$4"
-             user="$5"
-             mode="$6"
-             rkey="$7"
-             check_root
-             check_root_keys_pwd
-             check_virt
-             check_dns_curl
-             init_setup
-  ;;
-  in-2.2)    cmmand="$1"
-             tRee=lite
-             kind="$2"
-             fqdn="$3"
-             email="$4"
-             user="$5"
-             mode="$6"
-             rkey="$7"
              check_root
              check_root_keys_pwd
              check_virt
