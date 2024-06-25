@@ -1217,10 +1217,6 @@ init_setup() {
   else
     barracuda_install
   fi
-  if [ "${kind}" != "dbhd" ]; then
-    if [ "${cmmand}" != "init" ] && [ "${cmmand}" != "init-dev" ]; then
-      octopus_install
-    fi
   if [ "${output}" = "logged" ]; then
     send_report
   fi
