@@ -29,11 +29,6 @@
 * Since Debian is running systemd, it should be removed before installing BOA,
   which involves simple autoinit procedure, as outlined further below.
 
-* Once BOA is fully installed, you have to run 'barracuda up-lite system'
-  (immediately, but without reboot) to make sure that your system is ready
-  for production use. Otherwise there will be incomplete web, dns etc. setup,
-  which will cause unexpected problems until you will run barracuda upgrade.
-
 * BOA requires minimal, supported OS, with no services installed.
   The only acceptable exceptions are: sshd and mail servers.
 
@@ -175,12 +170,6 @@
          to ~/static/control/platforms.info and run Octopus upgrade to have
          these platforms added as explained in the docs you can find in the
          file ~/control/README.txt within your Octopus account.
-
-6. Post-install Barracuda upgrade (required after re-entering screen)
-
-   $ exit
-   $ screen
-   $ barracuda up-lite system
 
 
 ###
