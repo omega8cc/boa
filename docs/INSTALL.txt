@@ -155,7 +155,7 @@
 
 
 ###
-### Installing BOA system on localhost (deprecated)
+### Installing BOA system on localhost (old feature, needs work and testing)
 ###
 
 1. Please read docs/NOTES.txt
