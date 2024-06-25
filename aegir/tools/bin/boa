@@ -25,6 +25,9 @@ _TODAY=${_TODAY//[^0-9]/}
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _CHECK_HOST=$(uname -n 2>&1)
+_LOG_DIR="${vBs}/reports/in/$(basename "$0")/${_TODAY}"
+_IN_BARRACUDA_LOG="${_LOG_DIR}/$(basename "$0")-in-barracuda-${_NOW}.log"
+_IN_OCTOPUS_LOG="${_LOG_DIR}/$(basename "$0")-in-octopus-${_NOW}.log"
 _VMFAMILY=XEN
 _VM_TEST=$(uname -a 2>&1)
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
@@ -401,6 +404,56 @@ check_dns_settings() {
         service postfix restart &> /dev/null
       fi
     fi
+  fi
+}
+
+if_extended_report() {
+  _EXTENDED=NO
+  if [ -e "/root/.run-to-daedalus.cnf" ] \
+    || [ -e "/root/.run-to-chimaera.cnf" ] \
+    || [ -e "/root/.run-to-beowulf.cnf" ] \
+    || [ -e "/root/.send-extended-report.cnf" ]; then
+    _EXTENDED=YES
+  fi
+  if [ "${_EXTENDED}" = "YES" ]; then
+    /opt/local/bin/boa info >> ${_THIS_LOG}
+    if [ -e "/root/.autodaedalus.log" ]; then
+      cat /root/.autodaedalus.log >> ${_THIS_LOG}
+    elif [ -e "/root/.autochimaera.log" ]; then
+      cat /root/.autochimaera.log >> ${_THIS_LOG}
+    elif [ -e "/root/.autobeowulf.log" ]; then
+      cat /root/.autobeowulf.log >> ${_THIS_LOG}
+    fi
+    lc -la /root >> ${_THIS_LOG}
+    ps auxf >> ${_THIS_LOG}
+    aureport >> ${_THIS_LOG}
+  fi
+}
+
+send_report() {
+  if [ -e "${_IN_BARRACUDA_LOG}" ]; then
+    _THIS_LOG="${_IN_BARRACUDA_LOG}"
+    _RS="Barracuda"
+  elif [ -e "${_IN_OCTOPUS_LOG}" ]; then
+    _THIS_LOG="${_IN_OCTOPUS_LOG}"
+    _RS="Octopus"
+  fi
+  _MY_EMAIL="${email}"
+  if [ -e "/root/.auto.up.cnf" ] \
+    || [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
+    _MY_EMAIL="$(basename "$0")@omega8.cc"
+  fi
+  if [ ! -z "${_MY_EMAIL}" ]; then
+    repSub="Successful ${_RS} installation"
+    repSub="REPORT: ${repSub} on ${_CHECK_HOST}"
+    repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
+    if_extended_report
+    cat ${_THIS_LOG} | mail -e -s "${repSub} at ${_NOW}" ${_MY_EMAIL}
+    echo "${repSub} sent to ${_MY_EMAIL}"
   fi
 }
 
@@ -1271,6 +1324,8 @@ init_setup() {
     if [ "${cmmand}" != "init" ] && [ "${cmmand}" != "init-dev" ]; then
       octopus_install
     fi
+  if [ "${output}" = "logged" ]; then
+    send_report
   fi
   init_finish
 }
