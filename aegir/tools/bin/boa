@@ -1293,6 +1293,8 @@ init_setup() {
     _OCTOPUS_ONLY=YES
   else
     barracuda_install
+  if [ "${kind}" != "dbhd" ] && [ "${system}" = "bundle" ]; then
+    octopus_install
   fi
   if [ "${output}" = "logged" ]; then
     send_report
