@@ -481,6 +481,7 @@ up_action() {
         phpS="MIN"
       elif [ "${rkey}" = "php-max" ]; then
         phpS="MAX"
+        [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
       elif [ "${rkey}" = "nodns" ]; then
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${barName}
         wait
