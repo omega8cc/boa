@@ -4581,19 +4581,22 @@ sync_enable_apparmor_profiles() {
       mrun "service auditd stop" 2> /dev/null
       _backArmr="/var/backups/apparmor/"
       [ ! -e "${isAppArmOn}" ] && mkdir -p ${isAppArmOn}
-      mv -f /etc/apparmor.d/*.dpkg-dist ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/usr.lib.dovecot* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/usr.sbin.dovecot* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/usr.bin.totem* ${isAppArmOn} &> /dev/null
+      mv -f /etc/apparmor.d/*dpkg-dist ${isAppArmOn} &> /dev/null
+      mv -f /etc/apparmor.d/*dpkg-old ${isAppArmOn} &> /dev/null
+      mv -f /etc/apparmor.d/gst_plugin_scanner* ${isAppArmOn} &> /dev/null
+      mv -f /etc/apparmor.d/nvidia_modprobe* ${isAppArmOn} &> /dev/null
+      mv -f /etc/apparmor.d/php-fpm* ${isAppArmOn} &> /dev/null
+      mv -f /etc/apparmor.d/samba* ${isAppArmOn} &> /dev/null
       mv -f /etc/apparmor.d/sbin.klogd* ${isAppArmOn} &> /dev/null
       mv -f /etc/apparmor.d/sbin.syslog* ${isAppArmOn} &> /dev/null
       mv -f /etc/apparmor.d/usr.bin.irssi* ${isAppArmOn} &> /dev/null
       mv -f /etc/apparmor.d/usr.bin.pidgin* ${isAppArmOn} &> /dev/null
+      mv -f /etc/apparmor.d/usr.bin.totem* ${isAppArmOn} &> /dev/null
+      mv -f /etc/apparmor.d/usr.lib.dovecot* ${isAppArmOn} &> /dev/null
       mv -f /etc/apparmor.d/usr.sbin.apt-cacher-ng* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/gst_plugin_scanner* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/usr.bin.pidgin* ${isAppArmOn} &> /dev/null
       mv -f /etc/apparmor.d/usr.sbin.avahi-daemon* ${isAppArmOn} &> /dev/null
       mv -f /etc/apparmor.d/usr.sbin.dnsmasq* ${isAppArmOn} &> /dev/null
+      mv -f /etc/apparmor.d/usr.sbin.dovecot* ${isAppArmOn} &> /dev/null
       mv -f /etc/apparmor.d/usr.sbin.haveged* ${isAppArmOn} &> /dev/null
       mv -f /etc/apparmor.d/usr.sbin.identd* ${isAppArmOn} &> /dev/null
       mv -f /etc/apparmor.d/usr.sbin.mdnsd* ${isAppArmOn} &> /dev/null
