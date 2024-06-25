@@ -192,8 +192,8 @@ check_root() {
 check_no_systemd() {
   if [ -e "/lib/systemd/systemd" ]; then
     echo "ERROR: This script can not be used with systemd"
-    echo "ERROR: Please run 'boa init' first"
-    clean_pid_exit check_no_systemd_a
+    echo "ERROR: Please run 'autoinit' first"
+    clean_pid_exit check_no_systemd_a_cluster
   fi
 }
 
