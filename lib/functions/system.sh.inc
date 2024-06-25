@@ -6204,6 +6204,9 @@ if_major_os_upgrade() {
       ###
     fi
     ###
+    ### Update rsyslog configuration early
+    rsyslog_config_update
+    ###
     ### Reload key services if needed early
     mrun "service redis-server reload" 2> /dev/null
     mrun "service nginx reload" 2> /dev/null
