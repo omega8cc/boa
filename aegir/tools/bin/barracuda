@@ -473,6 +473,7 @@ up_action() {
         phpS="8.1"
       elif [ "${rkey}" = "php-all" ] || [ "${rkey}" = "php-min" ]; then
         phpS="MIN"
+        [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
       elif [ "${rkey}" = "php-max" ]; then
         phpS="MAX"
         [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
