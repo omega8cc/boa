@@ -290,12 +290,6 @@ run_aptitude_full_upgrade
 
 
 ###
-### Systemd cleanup on init
-###
-systemd_cleanup_on_init
-
-
-###
 ### Misc checks
 ###
 check_boa_php_compatibility
