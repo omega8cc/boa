@@ -5298,14 +5298,6 @@ if_post_major_os_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: if_post_major_os_upgrade"
   fi
-  if [ -e "/root/.completed_post_major_os_upgrade.info" ]; then
-    msg "NOTE: Major system upgrade to Devuan on init is now complete"
-    msg "NOTE: Your system is ready for standard boa install command"
-    touch /root/.latest-barracuda-upgrade-finale.info
-    echo " "
-    msg "Bye"
-    clean_pid_exit if_post_major_os_upgrade_a
-  fi
   if [ -e "/root/.run_post_major_os_upgrade.info" ] \
     && [ ! -e "/root/.completed_post_major_os_upgrade.info" ]; then
 
