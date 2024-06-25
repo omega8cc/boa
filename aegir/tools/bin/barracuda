@@ -319,6 +319,29 @@ barracuda_downgrade_protection() {
   fi
 }
 
+if_extended_report() {
+  _EXTENDED=NO
+  if [ -e "/root/.run-to-daedalus.cnf" ] \
+    || [ -e "/root/.run-to-chimaera.cnf" ] \
+    || [ -e "/root/.run-to-beowulf.cnf" ] \
+    || [ -e "/root/.send-extended-report.cnf" ]; then
+    _EXTENDED=YES
+  fi
+  if [ "${_EXTENDED}" = "YES" ]; then
+    boa info >> ${_UP_LOG}
+    if [ -e "/root/.autodaedalus.log" ]; then
+      cat /root/.autodaedalus.log >> ${_UP_LOG}
+    elif [ -e "/root/.autochimaera.log" ]; then
+      cat /root/.autochimaera.log >> ${_UP_LOG}
+    elif [ -e "/root/.autobeowulf.log" ]; then
+      cat /root/.autobeowulf.log >> ${_UP_LOG}
+    fi
+    lc -la /root >> ${_UP_LOG}
+    ps auxf >> ${_UP_LOG}
+    aureport >> ${_UP_LOG}
+  fi
+}
+
 send_report() {
   if [ -e "${barCnf}" ]; then
     if [ -e "/root/.auto.up.cnf" ] \
@@ -333,6 +356,7 @@ send_report() {
       repSub="Successful Barracuda upgrade"
       repSub="REPORT: ${repSub} on ${_CHECK_HOST}"
       repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
+      if_extended_report
       cat ${_UP_LOG} | mail -e -s "${repSub} at ${_NOW}" ${_MY_EMAIL}
       echo "${repSub} sent to ${_MY_EMAIL}"
     fi
@@ -352,6 +376,7 @@ send_alert() {
     if [ ! -z "${_MY_EMAIL}" ]; then
       repSub="${_ALERT_MSG} on ${_CHECK_HOST}"
       repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
+      if_extended_report
       cat ${_UP_LOG} | mail -e -s "${repSub} at ${_NOW}" ${_MY_EMAIL}
       echo "${repSub} sent to ${_MY_EMAIL}"
     fi
