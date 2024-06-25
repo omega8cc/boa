@@ -131,6 +131,9 @@
    # Barracuda and Octopus w/ New Relic and 3 PHP versions
    $ boa in-lite public server.mydomain.org my@email o1 newrelickey
 
+   # Barracuda without Octopus w/ 3 PHP versions in silent non-interactive mode
+   $ boa in-lite public server.mydomain.org my@email system
+
    NOTE: Since BOA no longer installs all bundled Aegir platforms during
          initial system installation, you will need to add some keywords
          to ~/static/control/platforms.info and run Octopus upgrade to have
