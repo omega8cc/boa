@@ -63,20 +63,9 @@
    $ wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
    $ bash BOA.sh.txt
 
-4. Remove systemd and upgrade to Devuan 5 Daedalus from any compatible
-   Debian version -- Buster, Bullseye or Bookworm. You can also opt to only
-   remove systemd and then install BOA on Debian with /root/.init-to-debian.cnf
-   file as shown below, although PLEASE NOTE THAT RUNNING BOA ON DEBIAN IS NOT
-   SUPPORTED AND NOT EVEN TESTED, so it may not work at all, plus it will
-   not upgrade Debian in a loop to the latest version, unlike it's with
-   the recommended Devuan mode, which automatically runs fast upgrade from any
-   supported for autoinit Debian version and then again until it's on Daedalus.
+4. Prepare your system by removing systemd and upgrading to Devuan 5 Daedalus
+   from any compatible Debian version -- Buster, Bullseye or Bookworm.
 
-   $ autoinit
-
-   OR for Debian w/o systemd:
-
-   $ touch /root/.init-to-debian.cnf
    $ autoinit
 
    NOTE: It's recommended that you simply wait 10 minutes and then log in back
