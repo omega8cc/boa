@@ -37,28 +37,6 @@
 * Don't run any system updates with apt before running Barracuda installer.
   You should use vanilla system.
 
-* Once OpenSSH is installed on barracuda upgrade, the server keys will change,
-  so you will need to remove relevant lines from your ~/.ssh/known_hosts
-  file and accept new key.
-
-  The next time you will ssh-in, you will see error or it may look like this:
-
-  $ ssh root@server.ip
-  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-  @ WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED! @
-  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-  (...)
-  Add correct host key in /home/user/.ssh/known_hosts to get rid of this message.
-  Offending ECDSA key in /home/user/.ssh/known_hosts:51
-  ED25519 host key for my.host has changed and you have requested strict checking.
-  Host key verification failed.
-
-  How to remove/fix this warning?
-
-  You can either edit the ~/.ssh/known_hosts file on your computer and
-  remove only the offending line (51 in the example above), or if you have
-  just one or two entries in this file, just delete it, so it will be
-  re-generated on the next SSH login attempt once you accept the new SSH key.
 
 
 ###
