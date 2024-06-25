@@ -149,6 +149,10 @@
 
    $ boa {in-octopus} {email} {o2} {lite|dev}
 
+   Like above but in silent non-interactive mode:
+
+   $ boa {in-octopus} {email} {o2} {lite|dev} octolog
+
 
 ###
 ### Installing BOA system on localhost (deprecated)
