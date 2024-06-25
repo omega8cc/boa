@@ -6235,10 +6235,12 @@ if_major_os_upgrade() {
       fi
       ###
     fi
-    ###
+    ### Make sure that sysvinit-core is still installed and systemd removed.
+    sysvinit_install
+    systemd_remove_apt_cmd
+    sysvinit_install
     ### Update rsyslog configuration early
     rsyslog_config_update
-    ###
     ### Reload key services if needed early
     mrun "service redis-server reload" 2> /dev/null
     mrun "service nginx reload" 2> /dev/null
@@ -6253,18 +6255,10 @@ if_major_os_upgrade() {
     else
       mrun "perl /var/xdrago/proc_num_ctrl.cgi" 2> /dev/null
     fi
-    ###
-    ### Make sure that sysvinit-core is still installed and systemd removed.
-    sysvinit_install
-    systemd_remove_apt_cmd
-    sysvinit_install
-    ###
     ### Add info file to keep major OS upgrades track.
     touch /root/.${_LOC_OS_CODE}_to_${_NEW_OS_CODE}_major_os_upgrade.info
-    ###
     ### Force NR upgrade
     touch /root/.force.newrelic.update.cnf
-    ###
     ### Re-install key services early to limit downtime and SSH keys confusion.
     if [ -e "/root/.run-to-daedalus.cnf" ] \
       || [ -e "/root/.run-to-chimaera.cnf" ] \
