@@ -667,8 +667,36 @@ octopus_install() {
       fi
     fi
 
-    bash ${vBs}/${octName}
-    wait
+    if [ "${output}" = "logged" ]; then
+      n=$((RANDOM%9+2))
+      echo
+      echo "Preparing to install Octopus in silent mode..."
+      echo
+      echo "NOTE: There will be no progress displayed in this console"
+      echo "but you will receive an email once the installation is complete"
+      echo
+      sleep $n
+      echo "Please watch the progress in another console window with command:"
+      echo "  tail -f ${_IN_OCTOPUS_LOG}"
+      echo "or wait until you will see the line: BOA ${cmmand} completed, Bye"
+      echo
+      sleep $n
+      echo "Starting now..."
+      echo
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${octName}
+      wait
+      sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"                   ${vBs}/${octName}
+      wait
+    fi
+
+    if [ -e "${vBs}/${octName}" ]; then
+      if [ "${output}" = "logged" ]; then
+        bash ${vBs}/${octName} >${_IN_OCTOPUS_LOG} 2>&1
+      else
+        bash ${vBs}/${octName}
+      fi
+      wait
+    fi
 
     if [ ! -z "${pxyc}" ] && [ ! -z "${pxyi}" ]; then
       if [ -e "/data/disk/${user}/log/octopus_log.txt" ]; then
@@ -1033,11 +1061,38 @@ barracuda_install() {
       wait
     fi
 
+    if [ "${output}" = "logged" ] || [ "${output}" = "system" ]; then
+      n=$((RANDOM%9+2))
+      echo
+      if [ "${output}" = "system" ]; then
+        echo "Preparing to install Barracuda and Octopus in silent mode..."
+      else
+        echo "Preparing to install only Barracuda in silent mode..."
       fi
+      echo
+      echo "NOTE: There will be no progress displayed in this console"
+      echo "but you will receive an email once the installation is complete"
+      echo
+      sleep $n
+      echo "Please watch the progress in another console window with command:"
+      echo "  tail -f ${_IN_BARRACUDA_LOG}"
+      echo "or wait until you will see the line: BOA ${cmmand} completed, Bye"
+      echo
+      sleep $n
+      echo "Starting now..."
+      echo
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${barName}
+      wait
+      sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"                   ${vBs}/${barName}
+      wait
     fi
 
     if [ -e "${vBs}/${barName}" ]; then
-      bash ${vBs}/${barName}
+      if [ "${output}" = "logged" ]; then
+        bash ${vBs}/${barName} >${_IN_BARRACUDA_LOG} 2>&1
+      else
+        bash ${vBs}/${barName}
+      fi
       wait
     fi
   else
@@ -1062,7 +1117,7 @@ init_start() {
   else
     touch /var/run/boa_run.pid
     touch /var/run/boa_wait.pid
-    mkdir -p ${vBs}
+    mkdir -p ${_LOG_DIR}
     cd ${vBs}
     rm -f ${vBs}/*.sh.cnf*
     rm -f ${vBs}/BARRACUDA.sh*
@@ -1143,6 +1198,21 @@ init_setup() {
     satellite_check_id ${user}
   fi
 
+  if [ "${user}" = "silent" ] \
+    || [ "${mode}" = "silent" ] \
+    || [ "${rkey}" = "silent" ] \
+    || [ "${sql}" = "silent" ]; then
+    output="logged"
+    system="bundle"
+  elif [ "${user}" = "system" ] \
+    || [ "${mode}" = "system" ] \
+    || [ "${rkey}" = "system" ] \
+    || [ "${sql}" = "system" ]; then
+    output="logged"
+    system="barracuda"
+  else
+    output="verbose"
+    system="bundle"
   fi
 
   init_start
@@ -1181,6 +1251,13 @@ init_setup() {
       octb="${brnch}"
     elif [ "${copt}" = "lite" ]; then
       octb="${brnch}"
+    fi
+    if [ "${copt}" = "octolog" ] || [ "${copt}" = "silent" ]; then
+      octb="${brnch}"
+      output="logged"
+    else
+      octb="${brnch}"
+      output="verbose"
     fi
     curl ${crlGet} "${rgUrl}/${octb}/${barName}"    -o ${vBs}/${barName}
     curl ${crlGet} "${rgUrl}/${octb}/${octName}"    -o ${vBs}/${octName}
@@ -2101,8 +2178,8 @@ case "$1" in
   ;;
   *)         echo
              echo "Installation commands"
-             echo "Usage: $(basename "$0") {version} {kind} {fqdn} {email} {user} {extra} {mysql}"
-             echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {lite|dev}"
+             echo "Usage: $(basename "$0") {version} {kind} {fqdn} {email} {user} {extra} {output}"
+             echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {lite|dev} {output}"
              echo
              echo "Other available commands"
              echo "Usage: $(basename "$0") version"
@@ -2114,12 +2191,6 @@ case "$1" in
              cat <<EOF
 
   Accepted keywords and values for installation and other commands:
-
-  {other}
-      version <------ display BOA and OS version
-      info <--------- generate various system reports
-      cleanup <------ (detect|purge) cancelled Octopus instances files (no dbs)
-      reboot <------- run accelerated system reboot
 
   {version}
       in-lite <------ install BOA Lite release (no license)
@@ -2146,8 +2217,17 @@ case "$1" in
       php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
 
-  {mysql}
-      percona <------ database server to install (default)
+  {output}
+      verbose <------ barracuda and octopus installed (output in the console) (default)
+      silent <------- barracuda and octopus installed (output logged)
+      system <------- only barracuda is installed (output logged)
+      octolog <------ for boa in-octopus (output logged)
+
+  {other}
+      version <------ display BOA and OS version
+      info <--------- generate various system reports
+      cleanup <------ (detect|purge) cancelled Octopus instances files (no dbs)
+      reboot <------- run accelerated system reboot
 
   See docs/INSTALL.txt for more details.
 
