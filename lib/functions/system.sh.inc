@@ -4575,38 +4575,38 @@ sync_enable_apparmor_profiles() {
   fi
   if [ "${isAppArmOn}" = "Y" ] || [ -d "/etc/apparmor.d" ]; then
     msg "ARMR: All profiles will be updated now..."
-    msg "WAIT: This may take a while, please wait..."
+    if [ ! -e "/root/.run-to-daedalus.cnf" ] \
+      && [ ! -e "/root/.run-to-chimaera.cnf" ] \
+      && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
+      msg "WAIT: This may take a while, please wait..."
+    fi
     if [ -d "/etc/apparmor.d" ]; then
-      mrun "service apparmor stop" 2> /dev/null
-      mrun "service auditd stop" 2> /dev/null
       _backArmr="/var/backups/apparmor/"
-      [ ! -e "${isAppArmOn}" ] && mkdir -p ${isAppArmOn}
-      mv -f /etc/apparmor.d/*dpkg-dist ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/*dpkg-old ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/gst_plugin_scanner* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/nvidia_modprobe* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/php-fpm* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/samba* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/sbin.klogd* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/sbin.syslog* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/usr.bin.irssi* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/usr.bin.pidgin* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/usr.bin.totem* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/usr.lib.dovecot* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/usr.sbin.apt-cacher-ng* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/usr.sbin.avahi-daemon* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/usr.sbin.dnsmasq* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/usr.sbin.dovecot* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/usr.sbin.haveged* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/usr.sbin.identd* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/usr.sbin.mdnsd* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/usr.sbin.nmbd* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/usr.sbin.nscd* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/usr.sbin.smbd* ${isAppArmOn} &> /dev/null
-      mv -f /etc/apparmor.d/usr.sbin.smbldap-useradd* ${isAppArmOn} &> /dev/null
+      [ ! -e "${_backArmr}" ] && mkdir -p ${_backArmr}
+      _profArmList="avahi \
+                    cacher \
+                    dnsmasq \
+                    dovecot \
+                    dpkg \
+                    haveged \
+                    identd \
+                    irssi \
+                    klogd \
+                    mdnsd \
+                    modprobe \
+                    nmbd \
+                    nscd \
+                    php-fpm \
+                    pidgin \
+                    samba \
+                    scanner \
+                    smb \
+                    syslog \
+                    totem"
+      for _profArm in ${_profArmList}; do
+        mv -f /etc/apparmor.d/*${_profArm}* ${_backArmr} &> /dev/null
+      done
       cp -af ${locCnf}/apparmor/* /etc/apparmor.d/
-      mrun "service apparmor start" 2> /dev/null
-      mrun "service auditd start" 2> /dev/null
     fi
     for proFile in `find /etc/apparmor.d/ -maxdepth 1 -mindepth 1 -type f | sort`; do
       profName=$(echo ${proFile} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
