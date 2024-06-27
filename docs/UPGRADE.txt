@@ -36,7 +36,7 @@
     are both systemd-free equivalents of Debian Bullseye and Debian Bookworm.
 
     The same tool can be used to upgrade from Devuan Beowulf to currently
-    recommended Devuan Chimaera.
+    recommended Devuan Daedalus.
 
     NOTE: Only systems running Percona 5.7 are supported.
 
