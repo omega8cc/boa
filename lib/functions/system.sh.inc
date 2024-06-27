@@ -4596,6 +4596,7 @@ sync_enable_apparmor_profiles() {
                     modprobe \
                     nmbd \
                     nscd \
+                    usr.sbin.sshd \
                     php-fpm \
                     pidgin \
                     samba \
