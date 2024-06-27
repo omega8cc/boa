@@ -10,7 +10,7 @@ include <tunables/global>
   include <abstractions/openssl>
   include <abstractions/ubuntu-browsers.d/multimedia>
   include <abstractions/user-tmp>
-  include <local/usr.bin.freshclam>
+  include if exists <local/usr.bin.freshclam>
 
   capability chown,
   capability dac_override,

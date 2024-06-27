@@ -8,7 +8,7 @@ include <tunables/global>
   include <abstractions/base>
   include <abstractions/nameservice>
   include <abstractions/openssl>
-  include <local/usr.sbin.clamd>
+  include if exists <local/usr.sbin.clamd>
 
   capability chown,
   capability dac_override,
