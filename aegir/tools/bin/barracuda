@@ -1629,7 +1629,7 @@ proceed() {
     curl ${crlGet} "${rgUrl}/${cluster}/${pthIncB}" -o ${vBs}/${filIncB}
   elif [ "${cmmand}" = "help" ]; then
     echo
-    echo "Usage: $(basename "$0") {version} {mode} {options} {dbserver}"
+    echo "Usage: $(basename "$0") {version} {mode} {options}"
     echo
     echo "Usage: $(basename "$0") php-idle {enable|disable}"
     echo
@@ -1653,9 +1653,6 @@ proceed() {
       php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.1 by default (php-all)
       php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
-
-  {dbserver}
-      percona <------ installed by default
 
   See docs/UPGRADE.txt for more details.
 
