@@ -4567,6 +4567,11 @@ sync_enable_apparmor_profiles() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: sync_enable_apparmor_profiles"
   fi
+  if [ ! -e "/root/.dont.force.reinstall.apparmor.on.update.cnf" ]; then
+    mrun "apt-get remove apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra -y --purge --auto-remove" 2> /dev/null
+    mrun "rm -rf /etc/apparmor.d/local" 2> /dev/null
+    mrun "${_INSTAPP} apparmor apparmor-utils apparmor-notify apparmor-profiles" 2> /dev/null
+  fi
   isAppArmorComplain=$(which aa-complain 2>&1)
   isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
