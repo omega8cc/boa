@@ -4684,7 +4684,7 @@ if_enable_or_disable_apparmor() {
       echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
         | tee ${isAppArmorGrubFile} &> /dev/null
       update-grub &> /dev/null
-      mrun "apt-get remove apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra -y -qq" 2> /dev/null
+      mrun "apt-get remove apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra -y --purge --auto-remove" 2> /dev/null
     fi
   else
     if [ -z "${isAppArmorGrub}" ] \
