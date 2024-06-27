@@ -335,19 +335,19 @@ if_extended_report() {
     elif [ -e "/root/.autobeowulf.log" ]; then
       cat /root/.autobeowulf.log >> ${_UP_LOG}
     fi
-    echo          >> ${_UP_LOG}
-    lc -la /root  >> ${_UP_LOG}
-    echo          >> ${_UP_LOG}
-    ps auxf       >> ${_UP_LOG}
-    echo          >> ${_UP_LOG}
-    aureport      >> ${_UP_LOG}
-    echo          >> ${_UP_LOG}
-    aa-status     >> ${_UP_LOG}
-    echo          >> ${_UP_LOG}
-    aa-unconfined >> ${_UP_LOG}
-    echo          >> ${_UP_LOG}
+    echo            >> ${_UP_LOG}
+    ls -ltcra /root >> ${_UP_LOG}
+    echo            >> ${_UP_LOG}
+    ps auxf         >> ${_UP_LOG}
+    echo            >> ${_UP_LOG}
+    aureport        >> ${_UP_LOG}
+    echo            >> ${_UP_LOG}
+    aa-status       >> ${_UP_LOG}
+    echo            >> ${_UP_LOG}
+    aa-unconfined   >> ${_UP_LOG}
+    echo            >> ${_UP_LOG}
     /opt/local/bin/boa info full >> ${_UP_LOG}
-    echo          >> ${_UP_LOG}
+    echo            >> ${_UP_LOG}
   fi
 }
 
