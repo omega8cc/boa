@@ -4617,11 +4617,11 @@ sync_enable_apparmor_profiles() {
           && [ ! -e "/root/.run-to-chimaera.cnf" ] \
           && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
           mrun "aa-complain /etc/apparmor.d/${profName}" 2> /dev/null
-          mrun "apparmor_parser -r /etc/apparmor.d/${profName}" 2> /dev/null
         fi
       fi
       chmod 644 ${proFile}
     done
+    mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
     if [ -e "/etc/audit/auditd.conf" ]; then
       if [ -e "/root/.disable.auditd.logs.cnf" ]; then
         sed -i "s/^write_logs =.*/write_logs = no/g" /etc/audit/auditd.conf
