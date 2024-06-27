@@ -1,0 +1,33 @@
+# Last Modified: Wed Jun 26 13:56:17 2024
+#include <tunables/global>
+
+/usr/local/sbin/pure-ftpd flags=(complain) {
+  #include <abstractions/base>
+  #include <abstractions/nameservice>
+  #include <abstractions/ssl_keys>
+
+  /usr/local/sbin/pure-ftpd mr,
+
+  owner /var/log/pureftpd.log w,
+
+  /usr/local/lib/lib*so* mr,
+  /usr/local/ssl/lib/lib*so* mr,
+  /usr/local/ssl/openssl.cnf r,
+  /usr/local/ssl3/lib64/libcrypto.so.* mr,
+  /usr/local/ssl3/lib64/libssl.so.* mr,
+  /usr/local/ssl3/openssl.cnf r,
+
+  /data/disk/*/.drush/** r,
+  /data/disk/*/backups/** r,
+  /data/disk/*/clients/** r,
+  /data/disk/*/distro/** r,
+  /data/disk/*/static/** r,
+  /home/*/.drush/** r,
+  /opt/tools/drush/** r,
+
+  owner /data/disk/*/distro/** w,
+  owner /data/disk/*/static/** w,
+  owner /home/*/.drush/cache/** rw,
+  owner /home/*/** rw,
+
+}

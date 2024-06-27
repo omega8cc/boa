@@ -1,0 +1,42 @@
+# Last Modified: Wed Jun 26 13:51:23 2024
+#include <tunables/global>
+
+# vim:syntax=apparmor
+# Author: Jamie Strandboge <jamie@ubuntu.com>
+
+/usr/sbin/clamd flags=(complain) {
+  #include <abstractions/base>
+  #include <abstractions/nameservice>
+  #include <abstractions/openssl>
+  #include <local/usr.sbin.clamd>
+
+  capability chown,
+  capability dac_override,
+  capability setgid,
+  capability setuid,
+
+  /etc/clamav/clamd.conf r,
+  /tmp/ rw,
+  /tmp/** rwk,
+  /usr/local/ssl3/lib64/libcrypto.so.* mr,
+  /usr/local/ssl3/openssl.cnf r,
+  /usr/sbin/clamd mr,
+  /var/lib/amavis/tmp/** r,
+  /var/lib/clamav/ r,
+  /var/lib/clamav/** rwk,
+  /var/log/clamav/* rwk,
+  /var/spool/MIMEDefang/mdefang-*/Work/ r,
+  /var/spool/MIMEDefang/mdefang-*/Work/** r,
+  /var/spool/clamsmtp/* r,
+  /var/spool/exim4/** r,
+  /var/spool/havp/** r,
+  /var/spool/p3scan/children/** r,
+  /var/spool/qpsmtpd/* r,
+  /{,var/}run/clamav/clamd.ctl w,
+  /{,var/}run/clamav/clamd.pid w,
+  @{HOME}/ r,
+  @{HOME}/** r,
+  @{PROC}/[0-9]*/status r,
+  @{PROC}/filesystems r,
+
+}
