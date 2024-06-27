@@ -4700,7 +4700,7 @@ if_enable_or_disable_apparmor() {
       echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
         | tee ${isAppArmorGrubFile} &> /dev/null
       update-grub &> /dev/null
-      mrun "${_INSTAPP} apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra" 2> /dev/null
+      mrun "${_INSTAPP} apparmor apparmor-utils apparmor-notify apparmor-profiles" 2> /dev/null
       mrun "${_INSTAPP} auditd" 2> /dev/null
     fi
     if [ -e "/etc/apparmor.d" ]; then
