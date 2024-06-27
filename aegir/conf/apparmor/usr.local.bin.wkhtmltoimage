@@ -30,6 +30,7 @@
   /{media,mnt,opt,srv}/** mr,
   /etc/ImageMagick-6/log.xml r,
   /etc/ImageMagick-6/policy.xml r,
+  /etc/ld.so.cache r,
   /etc/newrelic/upgrade_please.key r,
   /usr/local/ioncube/ioncube_loader_lin_*.so mr,
   /usr/local/lib/lib*so* mr,

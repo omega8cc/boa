@@ -6,7 +6,6 @@
   #include <abstractions/bash>
   #include <abstractions/consoles>
   #include <abstractions/nameservice>
-  #include <abstractions/totem>
 
   /opt/php82/bin/php mrix,
 
@@ -18,10 +17,13 @@
   /usr/bin/mysql mrix,
   /usr/bin/tput mrix,
   /usr/bin/which mrix,
+  /usr/bin/which.debianutils mrix,
 
   /etc/ImageMagick-6/log.xml r,
   /etc/ImageMagick-6/policy.xml r,
+  /etc/ld.so.cache r,
   /etc/mysql/conf.d/mysql.cnf r,
+  /etc/mysql/conf.d/mysqldump.cnf r,
   /etc/mysql/my.cnf r,
   /etc/newrelic/upgrade_please.key r,
 
@@ -61,7 +63,7 @@
   /data/all/** r,
   /data/conf/* r,
 
-  owner /var/aegir/.tmp/** w,
+  owner /var/aegir/.tmp/** rw,
   owner /var/aegir/host_master/** w,
   owner /var/aegir/platforms/** w,
 
@@ -76,6 +78,7 @@
   owner /var/www/** w,
 
   owner /home/*/.drush/** r,
+  owner /home/*/.drush/cache/** rw,
   owner /home/*/.tmp/* rw,
 
   owner /proc/*/mountinfo r,

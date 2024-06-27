@@ -17,6 +17,7 @@
   /bin/date mrix,
   /bin/sed mrix,
   /etc/mysql/conf.d/mysql.cnf r,
+  /etc/mysql/conf.d/mysqldump.cnf r,
   /etc/mysql/my.cnf r,
   /proc/filesystems r,
   /sys/devices/system/cpu/online r,

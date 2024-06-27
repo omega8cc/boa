@@ -15,4 +15,11 @@
   /usr/local/ssl3/lib64/libssl.so.* mr,
   /usr/local/ssl3/openssl.cnf r,
 
+  owner /etc/mysql/conf.d/mysql.cnf r,
+  owner /etc/mysql/conf.d/mysqldump.cnf r,
+  owner /etc/mysql/my.cnf r,
+  owner /etc/nsswitch.conf r,
+  owner /etc/services r,
+  owner /root/.my.cnf r,
+
 }
