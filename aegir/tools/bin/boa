@@ -434,6 +434,8 @@ if_extended_report() {
     echo            >> ${_THIS_LOG}
     aa-unconfined   >> ${_THIS_LOG}
     echo            >> ${_THIS_LOG}
+    apparmor_parser -Q /etc/apparmor.d/* >> ${_THIS_LOG}
+    echo            >> ${_THIS_LOG}
     /opt/local/bin/boa info full >> ${_THIS_LOG}
     echo            >> ${_THIS_LOG}
   fi
