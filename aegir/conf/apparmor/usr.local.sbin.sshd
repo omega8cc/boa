@@ -2,24 +2,52 @@
 include <tunables/global>
 
 /usr/local/sbin/sshd flags=(enforce) {
+  include <abstractions/apache2-common>
   include <abstractions/base>
+  include <abstractions/bash>
   include <abstractions/consoles>
   include <abstractions/nis>
+  include <abstractions/postfix-common>
+  include <abstractions/ubuntu-konsole>
+  include <abstractions/wutmp>
 
+  capability fsetid,
+  capability kill,
   capability sys_resource,
 
-  /usr/local/sbin/sshd mr,
+  /bin/* mrix,
+  /opt/local/bin/* mrix,
+  /usr/bin/* mrix,
+  /usr/local/bin/* mrix,
+  /usr/local/rvm/scripts/** mrix,
+  /usr/local/sbin/* mrix,
+  /{media,mnt,opt,srv}/** mrix,
 
-  /usr/local/ssl/lib/lib*so* mr,
-  /usr/local/ssl/openssl.cnf r,
-  /usr/local/ssl3/lib64/libcrypto.so.* mr,
-  /usr/local/ssl3/lib64/libssl.so.* mr,
-  /usr/local/ssl3/openssl.cnf r,
+  /usr/lib/** mr,
+  /usr/local/include/** mr,
+  /usr/local/lib/** mr,
+  /usr/local/ssl/lib/* mr,
+  /usr/local/ssl3/lib64/* mr,
+  /var/lib/** mr,
+
+  /etc/dpkg/** r,
+  /etc/rvmrc r,
+  /proc/** rw,
+  /sys/** r,
+  /usr/local/ssl/** r,
+  /usr/local/ssl3/** r,
+  /usr/share/** r,
 
   /var/lib/sshd/** rw,
 
+  owner /etc/default/login r,
+  owner /etc/group r,
+  owner /etc/motd r,
+  owner /etc/passwd r,
+  owner /etc/shadow r,
   owner /etc/ssh/* r,
   owner /proc/*/oom_score_adj rw,
+  owner /root/** rw,
   owner /run/sshd.pid rw,
 
 }
