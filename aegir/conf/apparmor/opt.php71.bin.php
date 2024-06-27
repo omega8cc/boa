@@ -1,7 +1,7 @@
 # Last Modified: Fri Jun 21 16:24:27 2024
 include <tunables/global>
 
-/opt/php71/bin/php flags=(complain) {
+/opt/php71/bin/php flags=(enforce) {
   include <abstractions/base>
   include <abstractions/bash>
   include <abstractions/consoles>

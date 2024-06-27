@@ -2,7 +2,7 @@
 
 include <tunables/global>
 
-/usr/bin/man flags=(complain) {
+/usr/bin/man flags=(enforce) {
   include <abstractions/base>
 
   # Use a special profile when man calls anything groff-related.  We only

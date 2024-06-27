@@ -1,7 +1,7 @@
 # Last Modified: Mon Jun 17 08:02:39 2024
 include <tunables/global>
 
-/usr/sbin/nginx flags=(complain) {
+/usr/sbin/nginx flags=(enforce) {
   include <abstractions/base>
   include <abstractions/nameservice>
   include <abstractions/ssl_keys>

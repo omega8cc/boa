@@ -2,7 +2,7 @@
 # vim:syntax=apparmor
 include <tunables/global>
 
-profile unbound /usr/sbin/unbound flags=(complain) {
+profile unbound /usr/sbin/unbound flags=(enforce) {
   include <abstractions/base>
   include <abstractions/nameservice>
   include <abstractions/openssl>

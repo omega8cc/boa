@@ -3,7 +3,7 @@
 #
 include <tunables/global>
 
-/usr/local/bin/wkhtmltoimage flags=(complain) {
+/usr/local/bin/wkhtmltoimage flags=(enforce) {
   # Allow base system access.
   include <abstractions/base>
 

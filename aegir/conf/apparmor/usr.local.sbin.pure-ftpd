@@ -1,7 +1,7 @@
 # Last Modified: Wed Jun 26 13:56:17 2024
 include <tunables/global>
 
-/usr/local/sbin/pure-ftpd flags=(complain) {
+/usr/local/sbin/pure-ftpd flags=(enforce) {
   include <abstractions/base>
   include <abstractions/nameservice>
   include <abstractions/ssl_keys>

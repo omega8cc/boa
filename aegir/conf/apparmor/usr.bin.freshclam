@@ -4,7 +4,7 @@ include <tunables/global>
 # vim:syntax=apparmor
 # Author: Jamie Strandboge <jamie@ubuntu.com>
 
-/usr/bin/freshclam flags=(complain) {
+/usr/bin/freshclam flags=(enforce) {
   include <abstractions/base>
   include <abstractions/nameservice>
   include <abstractions/openssl>

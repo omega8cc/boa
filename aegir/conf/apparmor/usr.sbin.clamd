@@ -4,7 +4,7 @@ include <tunables/global>
 # vim:syntax=apparmor
 # Author: Jamie Strandboge <jamie@ubuntu.com>
 
-/usr/sbin/clamd flags=(complain) {
+/usr/sbin/clamd flags=(enforce) {
   include <abstractions/base>
   include <abstractions/nameservice>
   include <abstractions/openssl>
