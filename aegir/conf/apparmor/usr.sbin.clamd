@@ -1,14 +1,14 @@
 # Last Modified: Wed Jun 26 13:51:23 2024
-#include <tunables/global>
+include <tunables/global>
 
 # vim:syntax=apparmor
 # Author: Jamie Strandboge <jamie@ubuntu.com>
 
 /usr/sbin/clamd flags=(complain) {
-  #include <abstractions/base>
-  #include <abstractions/nameservice>
-  #include <abstractions/openssl>
-  #include <local/usr.sbin.clamd>
+  include <abstractions/base>
+  include <abstractions/nameservice>
+  include <abstractions/openssl>
+  include <local/usr.sbin.clamd>
 
   capability chown,
   capability dac_override,

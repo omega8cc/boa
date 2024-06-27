@@ -1,10 +1,10 @@
 # Last Modified: Wed Jun 26 13:56:17 2024
-#include <tunables/global>
+include <tunables/global>
 
 /usr/local/sbin/pure-ftpd flags=(complain) {
-  #include <abstractions/base>
-  #include <abstractions/nameservice>
-  #include <abstractions/ssl_keys>
+  include <abstractions/base>
+  include <abstractions/nameservice>
+  include <abstractions/ssl_keys>
 
   /usr/local/sbin/pure-ftpd mr,
 

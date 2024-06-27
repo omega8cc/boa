@@ -1,10 +1,10 @@
 # Last Modified: Fri Jun 21 12:40:43 2024
-#include <tunables/global>
+include <tunables/global>
 
 /usr/local/bin/ssh flags=(complain) {
-  #include <abstractions/base>
-  #include <abstractions/consoles>
-  #include <abstractions/nis>
+  include <abstractions/base>
+  include <abstractions/consoles>
+  include <abstractions/nis>
 
   capability sys_resource,
 

@@ -1,10 +1,10 @@
 # vim:syntax=apparmor
-#include <tunables/global>
+include <tunables/global>
 
 /{,usr/}sbin/dhclient flags=(complain) {
-  #include <abstractions/base>
-  #include <abstractions/nameservice>
-  #include <abstractions/openssl>
+  include <abstractions/base>
+  include <abstractions/nameservice>
+  include <abstractions/openssl>
 
   capability net_bind_service,
   capability net_raw,
@@ -71,12 +71,12 @@
   signal (receive) peer=/usr/lib/NetworkManager/nm-dhcp-helper,
 
   # Site-specific additions and overrides. See local/README for details.
-  #include <local/sbin.dhclient>
+  include <local/sbin.dhclient>
 }
 
 /usr/lib/NetworkManager/nm-dhcp-client.action {
-  #include <abstractions/base>
-  #include <abstractions/dbus>
+  include <abstractions/base>
+  include <abstractions/dbus>
   /usr/lib/NetworkManager/nm-dhcp-client.action mr,
 
   /var/lib/NetworkManager/*lease r,
@@ -87,8 +87,8 @@
 }
 
 /usr/lib/NetworkManager/nm-dhcp-helper {
-  #include <abstractions/base>
-  #include <abstractions/dbus>
+  include <abstractions/base>
+  include <abstractions/dbus>
   /usr/lib/NetworkManager/nm-dhcp-helper mr,
 
   /run/NetworkManager/private-dhcp rw,
@@ -102,8 +102,8 @@
 }
 
 /usr/lib/connman/scripts/dhclient-script {
-  #include <abstractions/base>
-  #include <abstractions/dbus>
+  include <abstractions/base>
+  include <abstractions/dbus>
   /usr/lib/connman/scripts/dhclient-script      mr,
   network inet dgram,
   network inet6 dgram,

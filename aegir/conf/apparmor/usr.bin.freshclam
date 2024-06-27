@@ -1,16 +1,16 @@
 # Last Modified: Wed Jun 26 13:51:52 2024
-#include <tunables/global>
+include <tunables/global>
 
 # vim:syntax=apparmor
 # Author: Jamie Strandboge <jamie@ubuntu.com>
 
 /usr/bin/freshclam flags=(complain) {
-  #include <abstractions/base>
-  #include <abstractions/nameservice>
-  #include <abstractions/openssl>
-  #include <abstractions/ubuntu-browsers.d/multimedia>
-  #include <abstractions/user-tmp>
-  #include <local/usr.bin.freshclam>
+  include <abstractions/base>
+  include <abstractions/nameservice>
+  include <abstractions/openssl>
+  include <abstractions/ubuntu-browsers.d/multimedia>
+  include <abstractions/user-tmp>
+  include <local/usr.bin.freshclam>
 
   capability chown,
   capability dac_override,

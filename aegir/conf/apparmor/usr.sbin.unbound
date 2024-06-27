@@ -1,11 +1,11 @@
 # Author: Simon Deziel
 # vim:syntax=apparmor
-#include <tunables/global>
+include <tunables/global>
 
 profile unbound /usr/sbin/unbound flags=(complain) {
-  #include <abstractions/base>
-  #include <abstractions/nameservice>
-  #include <abstractions/openssl>
+  include <abstractions/base>
+  include <abstractions/nameservice>
+  include <abstractions/openssl>
 
   # chown (chgrp) the Unix control socket
   capability chown,
@@ -60,5 +60,5 @@ profile unbound /usr/sbin/unbound flags=(complain) {
   /usr/local/ssl3/lib64/libssl.so.* mr,
   /usr/local/ssl3/openssl.cnf r,
 
-  #include <local/usr.sbin.unbound>
+  include <local/usr.sbin.unbound>
 }

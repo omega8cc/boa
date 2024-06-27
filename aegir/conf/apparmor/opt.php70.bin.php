@@ -1,11 +1,11 @@
 # Last Modified: Fri Jun 21 16:24:27 2024
-#include <tunables/global>
+include <tunables/global>
 
 /opt/php70/bin/php flags=(complain) {
-  #include <abstractions/base>
-  #include <abstractions/bash>
-  #include <abstractions/consoles>
-  #include <abstractions/nameservice>
+  include <abstractions/base>
+  include <abstractions/bash>
+  include <abstractions/consoles>
+  include <abstractions/nameservice>
 
   /opt/php70/bin/php mrix,
 

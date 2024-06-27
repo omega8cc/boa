@@ -1,10 +1,10 @@
 # Last Modified: Thu Jun 20 20:21:28 2024
-#include <tunables/global>
+include <tunables/global>
 
 /usr/bin/mysql flags=(complain) {
-  #include <abstractions/base>
-  #include <abstractions/bash>
-  #include <abstractions/mysql>
+  include <abstractions/base>
+  include <abstractions/bash>
+  include <abstractions/mysql>
 
   /usr/bin/mysql mr,
 

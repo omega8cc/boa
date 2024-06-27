@@ -1,11 +1,11 @@
 # File: /etc/apparmor.d/usr.local.bin.wkhtmltopdf
 # Template from https://wkhtmltopdf.org/apparmor.html
 #
-#include <tunables/global>
+include <tunables/global>
 
 /usr/local/bin/wkhtmltopdf flags=(complain) {
   # Allow base system access.
-  #include <abstractions/base>
+  include <abstractions/base>
 
   # Allows:
   #  - Basic network connectivity (TCP/UDP)
@@ -13,11 +13,11 @@
   #  - Ability to interact with PAM
   #  - Ability to interact with name-services like nis, ldap, winbind, kerberos
   # Remove if you don't need network access.
-  #include <abstractions/nameservice>
-  #include <abstractions/openssl>
+  include <abstractions/nameservice>
+  include <abstractions/openssl>
 
   # Allow access to font infrastructure
-  #include <abstractions/fonts>
+  include <abstractions/fonts>
 
   deny capability sys_ptrace,
 
