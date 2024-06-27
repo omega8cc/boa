@@ -92,6 +92,12 @@
     ###
     ###----------------------------------------###
 
+ => NOTE FOR LEGACY SYSTEMS
+
+    Servers running Debian Jetty or Debian Stretch must auto-upgrade to Devuan
+    Chimaera first -- they can not run the auto-upgrade to Devuan Daedalus.
+    Once on Chimaera, they can auto-upgrade to Devuan Daedalus.
+
  => This tool automates OS upgrades you can still run manually if you prefer,
     by adding respective variable to /root/.barracuda.cnf and running standard
     command 'barracuda up-lite system' for the manual steps based upgrade.
