@@ -7269,11 +7269,9 @@ fix_node_in_lshell_access() {
     msg "PROC: fix_node_in_lshell_access"
   fi
   if [ "${_STATUS}" = "UPGRADE" ] && [ -e "/etc/lshell.conf" ]; then
-    PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
     PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
     PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-    if [[ "${PrTestPower}" =~ "POWER" ]] \
-      || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
+    if [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
       || [[ "${PrTestCluster}" =~ "CLUSTER" ]] \
       || [ -e "/root/.allow.node.lshell.cnf" ]; then
       _ALLOW_NODE=YES
