@@ -1,0 +1,43 @@
+# Last Modified: Wed Jun 26 13:51:52 2024
+#include <tunables/global>
+
+# vim:syntax=apparmor
+# Author: Jamie Strandboge <jamie@ubuntu.com>
+
+/usr/bin/freshclam flags=(complain) {
+  #include <abstractions/base>
+  #include <abstractions/nameservice>
+  #include <abstractions/openssl>
+  #include <abstractions/ubuntu-browsers.d/multimedia>
+  #include <abstractions/user-tmp>
+  #include <local/usr.bin.freshclam>
+
+  capability chown,
+  capability dac_override,
+  capability setgid,
+  capability setuid,
+
+  deny /{,var/}run/samba/{gencache,unexpected}.tdb mrwlk,
+
+  /etc/clamav/clamd.conf r,
+  /etc/clamav/freshclam.conf r,
+  /etc/clamav/onerrorexecute.d/* mr,
+  /etc/clamav/onupdateexecute.d/* mr,
+  /etc/clamav/virusevent.d/* mr,
+  /usr/bin/freshclam mr,
+  /usr/local/ssl3/lib64/libcrypto.so.* mr,
+  /usr/local/ssl3/lib64/libssl.so.* mr,
+  /usr/local/ssl3/openssl.cnf r,
+  /var/lib/clamav/ r,
+  /var/lib/clamav/** rwk,
+  /var/log/clamav/* rwk,
+  /{,var/}run/clamav/clamd.ctl rw,
+  /{,var/}run/clamav/freshclam.pid w,
+  @{PROC}/filesystems r,
+  owner @{HOME}/.clamtk/db/ rw,
+  owner @{HOME}/.clamtk/db/** rwk,
+  owner @{HOME}/.klamav/database/ rw,
+  owner @{HOME}/.klamav/database/** rwk,
+  owner @{PROC}/[0-9]*/status r,
+
+}
