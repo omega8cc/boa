@@ -6420,14 +6420,16 @@ sys_packages_install() {
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java nginx"
       elif [ "${_OS_CODE}" = "daedalus" ]; then
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
-        echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
-        echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
-        apt_clean_update
-        msg "TRCK: Installing now openjdk-11-jre-headless from Chimaera"
-        mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
-        rm -f /etc/apt/sources.list.d/chimaera.list
-        rm -f /etc/apt/apt.conf
-        apt_clean_update
+        if [ ! -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
+          echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
+          echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
+          apt_clean_update
+          msg "TRCK: Installing now openjdk-11-jre-headless from Chimaera"
+          mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
+          rm -f /etc/apt/sources.list.d/chimaera.list
+          rm -f /etc/apt/apt.conf
+          apt_clean_update
+        fi
       fi
     else
       _APT_XTRA="nginx"
@@ -6473,14 +6475,16 @@ sys_packages_install() {
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
       elif [ "${_OS_CODE}" = "daedalus" ]; then
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java"
-        echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
-        echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
-        apt_clean_update
-        msg "TRCK: Installing now openjdk-11-jre-headless from Chimaera"
-        mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
-        rm -f /etc/apt/sources.list.d/chimaera.list
-        rm -f /etc/apt/apt.conf
-        apt_clean_update
+        if [ ! -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
+          echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
+          echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
+          apt_clean_update
+          msg "TRCK: Installing now openjdk-11-jre-headless from Chimaera"
+          mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
+          rm -f /etc/apt/sources.list.d/chimaera.list
+          rm -f /etc/apt/apt.conf
+          apt_clean_update
+        fi
       fi
     else
       _APT_XTRA=""
