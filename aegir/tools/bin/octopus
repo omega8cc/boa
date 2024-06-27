@@ -571,42 +571,12 @@ up_one() {
       wait
       sed -i "s/^_BRANCH_PRO.*/_BRANCH_PROVISION=${brnch}/g"   ${vBs}/${tocName}
       wait
-      if [ "${cmmand}" = "up-2.2" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcA}/g" ${vBs}/${tocName}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcA}/g" ${vBs}/${tocName}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcA}/g"         ${vBs}/${tocName}
-        wait
-      elif [ "${cmmand}" = "up-2.3" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcB}/g" ${vBs}/${tocName}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcB}/g" ${vBs}/${tocName}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcB}/g"         ${vBs}/${tocName}
-        wait
-      elif [ "${cmmand}" = "up-2.4" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcC}/g" ${vBs}/${tocIncO}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${tocIncO}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${tocIncO}
-        wait
-      elif [ "${cmmand}" = "up-3.2" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcD}/g" ${vBs}/${tocIncO}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcD}/g" ${vBs}/${tocIncO}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcD}/g"         ${vBs}/${tocIncO}
-        wait
-      else
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g" ${vBs}/${tocIncO}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${rlse}/g" ${vBs}/${tocIncO}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${tocIncO}
-        wait
-      fi
+      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g" ${vBs}/${tocIncO}
+      wait
+      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${rlse}/g" ${vBs}/${tocIncO}
+      wait
+      sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${tocIncO}
+      wait
     fi
     if [ "${cmmand}" = "up-dev" ] \
       || [ "${cmmand}" = "up-pro" ] \
@@ -948,10 +918,6 @@ up_proceed() {
   rlsn="BOA-5.2.0"
   rlse="${rlsn}-${tRee}"
   cluster="${rlse}"
-  lgcA="BOA-2.2.9"
-  lgcB="BOA-2.3.8"
-  lgcC="BOA-2.4.9"
-  lgcD="BOA-3.2.2"
   branch="5.x-${tRee}"
   brnch=${branch//\//\\\/}
   export tRee="${tRee}"
@@ -960,31 +926,6 @@ up_proceed() {
   up_start
   curl ${crlGet} "${rgUrl}/${brnch}/${octName}"  -o ${vBs}/${octName}
   curl ${crlGet} "${rgUrl}/${brnch}/${pthIncO}"  -o ${vBs}/${filIncO}
-  if [ "${second}" = "all" ]; then
-    up_action_all
-  else
-    up_action_one
-  fi
-  up_finish
-}
-
-up_legacy() {
-  up_start
-  if [ "${cmmand}" = "up-3.2" ]; then
-    branch="3.2.x-dev"
-    curl ${crlGet} "${rgUrl}/${lgcD}/${octName}"  -o ${vBs}/${octName}
-    curl ${crlGet} "${rgUrl}/${lgcD}/${pthIncO}"  -o ${vBs}/${filIncO}
-  elif [ "${cmmand}" = "up-2.4" ]; then
-    branch="2.4.x-dev"
-    curl ${crlGet} "${rgUrl}/${lgcC}/${octName}"  -o ${vBs}/${octName}
-    curl ${crlGet} "${rgUrl}/${lgcC}/${pthIncO}"  -o ${vBs}/${filIncO}
-  elif [ "${cmmand}" = "up-2.3" ]; then
-    branch="2.3.x-dev"
-    curl ${crlGet} "${rgUrl}/${lgcB}/${octName}"  -o ${vBs}/${octName}
-  elif [ "${cmmand}" = "up-2.2" ]; then
-    branch="2.2.x-legacy"
-    curl ${crlGet} "${rgUrl}/${lgcA}/${octName}"  -o ${vBs}/${octName}
-  fi
   if [ "${second}" = "all" ]; then
     up_action_all
   else
@@ -1236,30 +1177,6 @@ else
 fi
 
 case "$1" in
-  up-3.2)    cmmand="$1"
-             second="$2"
-             cmmode="$3"
-             silent="$4"
-             up_legacy "3.2"
-  ;;
-  up-2.4)    cmmand="$1"
-             second="$2"
-             cmmode="$3"
-             silent="$4"
-             up_legacy "2.4"
-  ;;
-  up-2.3)    cmmand="$1"
-             second="$2"
-             cmmode="$3"
-             silent="$4"
-             up_legacy "2.3"
-  ;;
-  up-2.2)    cmmand="$1"
-             second="$2"
-             cmmode="$3"
-             silent="$4"
-             up_legacy "2.2"
-  ;;
   help)      echo
              echo "Usage: $(basename "$0") {version} {instance} {mode}"
              cat <<EOF

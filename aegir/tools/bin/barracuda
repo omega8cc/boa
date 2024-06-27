@@ -742,42 +742,12 @@ up_action() {
       wait
       sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${brnch}/g"  ${vBs}/${barName}
       wait
-      if [ "${cmmand}" = "up-2.2" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcA}/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcA}/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcA}/g"         ${vBs}/${barName}
-        wait
-      elif [ "${cmmand}" = "up-2.3" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcB}/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcB}/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcB}/g"         ${vBs}/${barName}
-        wait
-      elif [ "${cmmand}" = "up-2.4" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcC}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${filIncB}
-        wait
-      elif [ "${cmmand}" = "up-3.2" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcD}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcD}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcD}/g"         ${vBs}/${filIncB}
-        wait
-      else
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${rlse}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${filIncB}
-        wait
-      fi
+      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g" ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${rlse}/g" ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${filIncB}
+      wait
     fi
     if [ "${cmmand}" = "up-dev" ] \
       || [ "${cmmand}" = "up-pro" ] \
@@ -1659,20 +1629,6 @@ proceed() {
   elif [ "${cmmand}" = "up-cluster" ]; then
     _SCRIPT_URL="${rgUrl}/${cluster}/${barName}"
     curl ${crlGet} "${rgUrl}/${cluster}/${pthIncB}" -o ${vBs}/${filIncB}
-  elif [ "${cmmand}" = "up-3.2" ]; then
-    branch="3.2.x-dev"
-    _SCRIPT_URL="${rgUrl}/${lgcD}/${barName}"
-    curl ${crlGet} "${rgUrl}/${lgcD}/${pthIncB}" -o ${vBs}/${filIncB}
-  elif [ "${cmmand}" = "up-2.4" ]; then
-    branch="2.4.x-dev"
-    _SCRIPT_URL="${rgUrl}/${lgcC}/${barName}"
-    curl ${crlGet} "${rgUrl}/${lgcC}/${pthIncB}" -o ${vBs}/${filIncB}
-  elif [ "${cmmand}" = "up-2.3" ]; then
-    branch="2.3.x-dev"
-    _SCRIPT_URL="${rgUrl}/${lgcB}/${barName}"
-  elif [ "${cmmand}" = "up-2.2" ]; then
-    branch="2.2.x-legacy"
-    _SCRIPT_URL="${rgUrl}/${lgcA}/${barName}"
   elif [ "${cmmand}" = "help" ]; then
     echo
     echo "Usage: $(basename "$0") {version} {mode} {options} {dbserver}"
@@ -1763,10 +1719,6 @@ fi
 rlsn="BOA-5.2.0"
 rlse="${rlsn}-${tRee}"
 cluster="${rlse}"
-lgcA="BOA-2.2.9"
-lgcB="BOA-2.3.8"
-lgcC="BOA-2.4.9"
-lgcD="BOA-3.2.2"
 branch="5.x-${tRee}"
 brnch=${branch//\//\\\/}
 
