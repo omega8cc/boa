@@ -671,6 +671,7 @@ install_php_extensions() {
     _USE_PHPREDIS="${_PHPREDIS_SIX_VRN}"
   fi
   msg "INFO: Installing PhpRedis ${_USE_PHPREDIS} for PHP ${_T_PHP_VRN}..."
+  ldconfig 2> /dev/null
   cd /var/opt
   rm -rf phpredis*
   get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
@@ -1035,6 +1036,7 @@ php_extensions_update() {
   fi
   if [ ! -e "${pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log" ]; then
     msg "INFO: Installing PhpRedis ${_USE_PHPREDIS} upgrade for PHP ${_T_PHP_VRN}..."
+    ldconfig 2> /dev/null
     cd /var/opt
     rm -rf phpredis*
     get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
