@@ -4575,11 +4575,6 @@ sync_enable_apparmor_profiles() {
   fi
   if [ "${isAppArmOn}" = "Y" ] || [ -d "/etc/apparmor.d" ]; then
     msg "ARMR: All profiles will be updated now..."
-    if [ ! -e "/root/.run-to-daedalus.cnf" ] \
-      && [ ! -e "/root/.run-to-chimaera.cnf" ] \
-      && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
-      msg "WAIT: This may take a while, please wait..."
-    fi
     if [ -d "/etc/apparmor.d" ]; then
       _backArmr="/var/backups/apparmor/"
       [ ! -e "${_backArmr}" ] && mkdir -p ${_backArmr}
@@ -4608,6 +4603,11 @@ sync_enable_apparmor_profiles() {
         mv -f /etc/apparmor.d/*${_profArm}* ${_backArmr} &> /dev/null
       done
       cp -af ${locCnf}/apparmor/* /etc/apparmor.d/
+    fi
+    if [ ! -e "/root/.run-to-daedalus.cnf" ] \
+      && [ ! -e "/root/.run-to-chimaera.cnf" ] \
+      && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
+      msg "WAIT: This may take a while, please wait..."
     fi
     for proFile in `find /etc/apparmor.d/ -maxdepth 1 -mindepth 1 -type f | sort`; do
       profName=$(echo ${proFile} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
