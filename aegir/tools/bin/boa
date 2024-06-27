@@ -416,7 +416,6 @@ if_extended_report() {
     _EXTENDED=YES
   fi
   if [ "${_EXTENDED}" = "YES" ]; then
-    /opt/local/bin/boa info >> ${_THIS_LOG}
     if [ -e "/root/.autodaedalus.log" ]; then
       cat /root/.autodaedalus.log >> ${_THIS_LOG}
     elif [ -e "/root/.autochimaera.log" ]; then
@@ -424,9 +423,19 @@ if_extended_report() {
     elif [ -e "/root/.autobeowulf.log" ]; then
       cat /root/.autobeowulf.log >> ${_THIS_LOG}
     fi
-    lc -la /root >> ${_THIS_LOG}
-    ps auxf >> ${_THIS_LOG}
-    aureport >> ${_THIS_LOG}
+    echo          >> ${_THIS_LOG}
+    lc -la /root  >> ${_THIS_LOG}
+    echo          >> ${_THIS_LOG}
+    ps auxf       >> ${_THIS_LOG}
+    echo          >> ${_THIS_LOG}
+    aureport      >> ${_THIS_LOG}
+    echo          >> ${_THIS_LOG}
+    aa-status     >> ${_THIS_LOG}
+    echo          >> ${_THIS_LOG}
+    aa-unconfined >> ${_THIS_LOG}
+    echo          >> ${_THIS_LOG}
+    /opt/local/bin/boa info full >> ${_THIS_LOG}
+    echo          >> ${_THIS_LOG}
   fi
 }
 
@@ -1958,13 +1967,15 @@ display_info() {
           tail --lines=19 /var/xdrago/log/*.archive.log
           echo
         fi
-      elif [ "${mode}" = "full" ] || [ "${mode}" = "more" ]; then
+      elif [ "${mode}" = "full" ]; then
+        cat /var/log/barracuda_log.txt
+      elif [ "${mode}" = "more" ]; then
         display="default"
         cat /var/log/barracuda_log.txt | grep $(date +'%Y' -d 'last year')
         cat /var/log/barracuda_log.txt | grep $(date +%Y)
       else
         display="default"
-        tail --lines=3 /var/log/barracuda_log.txt
+        tail --lines=5 /var/log/barracuda_log.txt
       fi
     fi
     if [ "${display}" = "default" ]; then
