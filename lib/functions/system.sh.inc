@@ -4568,9 +4568,16 @@ sync_enable_apparmor_profiles() {
     msg "PROC: sync_enable_apparmor_profiles"
   fi
   if [ ! -e "/root/.dont.force.reinstall.apparmor.on.update.cnf" ]; then
-    mrun "apt-get remove apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra -y --purge --auto-remove" 2> /dev/null
+    mrun "apt-get remove apparmor \
+      apparmor-utils \
+      apparmor-notify \
+      apparmor-profiles \
+      apparmor-profiles-extra -y --purge --auto-remove" 2> /dev/null
     mrun "rm -rf /etc/apparmor.d/local" 2> /dev/null
-    mrun "${_INSTAPP} apparmor apparmor-utils apparmor-notify apparmor-profiles" 2> /dev/null
+    mrun "${_INSTAPP} apparmor \
+      apparmor-utils \
+      apparmor-notify \
+      apparmor-profiles" 2> /dev/null
   fi
   isAppArmorComplain=$(which aa-complain 2>&1)
   isAppArmOn=N
@@ -4684,7 +4691,11 @@ if_enable_or_disable_apparmor() {
       echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
         | tee ${isAppArmorGrubFile} &> /dev/null
       update-grub &> /dev/null
-      mrun "apt-get remove apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra -y --purge --auto-remove" 2> /dev/null
+      mrun "apt-get remove apparmor \
+        apparmor-utils \
+        apparmor-notify \
+        apparmor-profiles \
+        apparmor-profiles-extra -y --purge --auto-remove" 2> /dev/null
     fi
   else
     if [ -z "${isAppArmorGrub}" ] \
@@ -4700,7 +4711,10 @@ if_enable_or_disable_apparmor() {
       echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
         | tee ${isAppArmorGrubFile} &> /dev/null
       update-grub &> /dev/null
-      mrun "${_INSTAPP} apparmor apparmor-utils apparmor-notify apparmor-profiles" 2> /dev/null
+      mrun "${_INSTAPP} apparmor \
+        apparmor-utils \
+        apparmor-notify \
+        apparmor-profiles" 2> /dev/null
       mrun "${_INSTAPP} auditd" 2> /dev/null
     fi
     if [ -e "/etc/apparmor.d" ]; then

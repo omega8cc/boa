@@ -1469,7 +1469,11 @@ check_root() {
         fi
         isAppArmorStatus=$(which aa-status 2>&1)
         if [ ! -z "${isAppArmorStatus}" ]; then
-          apt-get remove apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra -y --purge --auto-remove 2> /dev/null
+          apt-get remove apparmor \
+            apparmor-utils \
+            apparmor-notify \
+            apparmor-profiles \
+            apparmor-profiles-extra -y --purge --auto-remove 2> /dev/null
         fi
       fi
       _REMOVE_LINKS="buagent \

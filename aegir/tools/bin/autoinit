@@ -256,7 +256,10 @@ install_enable_apparmor_utils() {
     || [ -z "${isAppArmorStatus}" ] \
     || [ ! -e "/etc/apparmor.d" ]; then
     msg "Installing AppArmor Tools early" >> ${logInt}
-    /usr/bin/apt-get install apparmor apparmor-utils apparmor-notify apparmor-profiles apparmor-profiles-extra -y -qq >> ${logSlt}
+    /usr/bin/apt-get install apparmor \
+      apparmor-utils \
+      apparmor-notify \
+      apparmor-profiles -y -qq >> ${logSlt}
   fi
   mkdir -p /etc/default/grub.d
   echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
