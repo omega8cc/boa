@@ -3,7 +3,10 @@ include <tunables/global>
 
 /usr/sbin/nginx flags=(enforce) {
   include <abstractions/base>
+  include <abstractions/consoles>
+  include <abstractions/dovecot-common>
   include <abstractions/nameservice>
+  include <abstractions/postfix-common>
   include <abstractions/ssl_keys>
 
   capability dac_override,
@@ -11,12 +14,12 @@ include <tunables/global>
 
   /usr/sbin/nginx mr,
   /var/lib/nginx/** rw,
+
   /var/log/nginx/access.log w,
   /var/log/nginx/error.log w,
+
   /etc/nginx/** r,
   /etc/ssl/private/* r,
-  owner /proc/sys/kernel/random/boot_id r,
-  owner /run/nginx.pid rw,
 
   /var/www/** r,
 
@@ -33,5 +36,11 @@ include <tunables/global>
 
   /data/all/** r,
   /data/conf/* r,
+
+  owner /usr/fastcgi_temp/** rw,
+  owner /usr/share/GeoIP/GeoIP.dat r,
+  owner /proc/sys/kernel/random/boot_id r,
+  owner /run/nginx.pid rw,
+  owner /data/conf/ r,
 
 }
