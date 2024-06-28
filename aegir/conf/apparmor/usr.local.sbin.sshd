@@ -1,27 +1,49 @@
-# Last Modified: Fri Jun 21 12:40:43 2024
+# Last Modified: Thu Jun 27 19:59:00 2024
 include <tunables/global>
 
 /usr/local/sbin/sshd flags=(enforce) {
-  include <abstractions/apache2-common>
   include <abstractions/base>
   include <abstractions/bash>
-  include <abstractions/consoles>
+  include <abstractions/nameservice>
   include <abstractions/nis>
-  include <abstractions/postfix-common>
   include <abstractions/ubuntu-konsole>
   include <abstractions/wutmp>
 
+  capability audit_write,
+  capability chown,
+  capability dac_read_search,
   capability fsetid,
   capability kill,
+  capability setgid,
+  capability setuid,
+  capability sys_admin,
+  capability sys_chroot,
   capability sys_resource,
 
+  network inet stream,
+  network inet6 stream,
+
+  ptrace read peer=/opt/php83/bin/php,
+  ptrace read peer=/opt/php82/bin/php,
+  ptrace read peer=/opt/php81/bin/php,
+  ptrace read peer=/opt/php80/bin/php,
+  ptrace read peer=/opt/php74/bin/php,
+  ptrace read peer=/opt/php73/bin/php,
+  ptrace read peer=/opt/php72/bin/php,
+  ptrace read peer=/opt/php71/bin/php,
+  ptrace read peer=/opt/php70/bin/php,
+  ptrace read peer=/opt/php56/bin/php,
+  ptrace read peer=/usr/sbin/nginx,
+  ptrace read peer=unconfined,
+
+  /{media,mnt,opt,srv}/** mrix,
   /bin/* mrix,
   /opt/local/bin/* mrix,
   /usr/bin/* mrix,
+  /usr/lib/mc/cons.saver mrix,
   /usr/local/bin/* mrix,
   /usr/local/rvm/scripts/** mrix,
   /usr/local/sbin/* mrix,
-  /{media,mnt,opt,srv}/** mrix,
 
   /usr/lib/** mr,
   /usr/local/include/** mr,
@@ -30,22 +52,41 @@ include <tunables/global>
   /usr/local/ssl3/lib64/* mr,
   /var/lib/** mr,
 
+  /etc/bash.bashrc r,
   /etc/dpkg/** r,
+  /etc/inputrc r,
+  /etc/ld.so.cache r,
+  /etc/machine-id r,
+  /etc/profile r,
+  /etc/profile.d/** r,
   /etc/rvmrc r,
-  /proc/** rw,
+  /etc/terminfo/** r,
+  /lib/** r,
+  /proc/sys/kernel/random/boot_id r,
+  /run/** r,
   /sys/** r,
   /usr/local/ssl/** r,
   /usr/local/ssl3/** r,
   /usr/share/** r,
+  /var/** r,
 
+  /dev/null rw,
+  /dev/ptmx rw,
+  /dev/pts/* rw,
+  /dev/tty rw,
+  /proc/** rw,
+  /run/** rwk,
+  /tmp/** rw,
   /var/lib/sshd/** rw,
 
+  owner /** rwk,
   owner /etc/default/login r,
-  owner /etc/group r,
-  owner /etc/motd r,
-  owner /etc/passwd r,
-  owner /etc/shadow r,
-  owner /etc/ssh/* r,
+  owner /etc/group rw,
+  owner /etc/motd rw,
+  owner /etc/nsswitch.conf r,
+  owner /etc/passwd rw,
+  owner /etc/shadow rw,
+  owner /etc/ssh/* rw,
   owner /proc/*/oom_score_adj rw,
   owner /root/** rw,
   owner /run/sshd.pid rw,
