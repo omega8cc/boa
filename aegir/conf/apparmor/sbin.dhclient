@@ -1,7 +1,7 @@
 # vim:syntax=apparmor
 include <tunables/global>
 
-/{,usr/}sbin/dhclient flags=(enforce) {
+/{,usr/}sbin/dhclient flags=(complain) {
   include <abstractions/base>
   include <abstractions/nameservice>
   include <abstractions/openssl>

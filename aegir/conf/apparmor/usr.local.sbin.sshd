@@ -1,7 +1,7 @@
 # Last Modified: Thu Jun 27 19:59:00 2024
 include <tunables/global>
 
-/usr/local/sbin/sshd flags=(enforce) {
+/usr/local/sbin/sshd flags=(complain) {
   include <abstractions/base>
   include <abstractions/bash>
   include <abstractions/nameservice>

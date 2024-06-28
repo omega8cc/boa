@@ -1,7 +1,7 @@
 # Last Modified: Mon Jun 17 08:02:39 2024
 include <tunables/global>
 
-/usr/sbin/nginx flags=(enforce) {
+/usr/sbin/nginx flags=(complain) {
   include <abstractions/base>
   include <abstractions/consoles>
   include <abstractions/dovecot-common>

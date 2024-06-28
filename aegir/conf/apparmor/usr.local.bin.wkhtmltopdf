@@ -3,7 +3,7 @@
 #
 include <tunables/global>
 
-/usr/local/bin/wkhtmltopdf flags=(enforce) {
+/usr/local/bin/wkhtmltopdf flags=(complain) {
   # Allow base system access.
   include <abstractions/base>
 

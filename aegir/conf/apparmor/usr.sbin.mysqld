@@ -1,7 +1,7 @@
 # Last Modified: Thu Jun 20 20:27:11 2024
 include <tunables/global>
 
-/usr/sbin/mysqld flags=(enforce) {
+/usr/sbin/mysqld flags=(complain) {
   include <abstractions/base>
   include <abstractions/bash>
   include <abstractions/mysql>
