@@ -6,6 +6,7 @@ include <tunables/global>
   include <abstractions/dovecot-common>
   include <abstractions/nameservice>
   include <abstractions/php>
+  include <abstractions/mysql>
 
   capability dac_override,
   capability kill,

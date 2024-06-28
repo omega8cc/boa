@@ -5,27 +5,33 @@ include <tunables/global>
   include <abstractions/base>
   include <abstractions/bash>
   include <abstractions/consoles>
+  include <abstractions/mysql>
   include <abstractions/nameservice>
 
   /opt/php56/bin/php mrix,
 
   /bin/dash mrix,
   /bin/grep mrix,
+  /bin/rm mrix,
   /bin/stty mrix,
+  /bin/touch mrix,
   /bin/websh mrix,
   /usr/bin/id mrix,
   /usr/bin/mysql mrix,
   /usr/bin/tput mrix,
   /usr/bin/which mrix,
   /usr/bin/which.debianutils mrix,
+  /usr/local/bin/curl mrix,
+  /usr/local/bin/wkhtmltoimage mrix,
+  /usr/local/bin/wkhtmltopdf mrix,
 
   /etc/ImageMagick-6/log.xml r,
   /etc/ImageMagick-6/policy.xml r,
   /etc/ld.so.cache r,
-  /etc/mysql/conf.d/mysql.cnf r,
-  /etc/mysql/conf.d/mysqldump.cnf r,
+  /etc/mysql/conf.d/* r,
   /etc/mysql/my.cnf r,
   /etc/newrelic/upgrade_please.key r,
+  /etc/nsswitch.conf r,
 
   /proc/loadavg r,
   /proc/filesystems r,
