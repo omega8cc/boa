@@ -267,6 +267,8 @@ case "$1" in
 
   status)
     echo -n "$DESC status: "
+    service apparmor stop
+    /usr/sbin/aa-teardown
     if [ -e "/var/run/boa_wait.pid" ]; then
       echo "fail 1"
     else
