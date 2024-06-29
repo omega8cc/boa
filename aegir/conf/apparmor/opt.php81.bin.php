@@ -82,7 +82,7 @@ include <tunables/global>
   # Allow PHP-CLI to use /dev/shm for temporary storage
   /dev/shm/** rw,
 
-  # Deny execution of binaries from /tmp and /var/tmp and HOME
+  # Deny execution of binaries from these directories
   deny /home/*/.tmp/** m,
   deny /home/*/** m,
   deny /tmp/** m,
