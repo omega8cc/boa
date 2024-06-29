@@ -1,0 +1,113 @@
+# AppArmor profile for Limited Shell
+# This profile restricts Limited Shell (lshell) to essential operations only.
+
+/usr/local/bin/lshell flags=(complain) {
+
+  # Include the tunables/global definitions
+  include <tunables/global>
+
+  # Include common AppArmor abstractions
+  include <abstractions/base>
+  include <abstractions/python>
+
+  # Read/write access to user home
+  @{HOME}/** rw,
+
+  # Read/write access to SSH client files
+  @{HOME}/.ssh/** rw,
+
+  # Read-only access to Drush aliases and php.ini files
+  @{HOME}/.drush/** r,
+
+  # Drush access
+  /opt/tools/drush/** rix,
+  /usr/bin/drush rix,
+  /usr/bin/drush10 rix,
+  /usr/bin/drush11 rix,
+  /usr/bin/drush8 rix,
+
+  # Read-only access to Octopus directories
+  /data/disk/*/.drush/** r,
+  /data/disk/*/backups/** r,
+  /data/disk/*/clients/** r,
+  /data/disk/*/distro/** r,
+  /data/disk/*/static/** r,
+
+  # Allow write access to Octopus user directories and files
+  owner /data/disk/*/distro/** rw,
+  owner /data/disk/*/static/** rw,
+
+  # Read/write access to Drush cache
+  @{HOME}/.drush/cache/** rw,
+
+  # Deny access to critical system files
+  deny /etc/shadow* rw,
+  deny /etc/passwd* rw,
+
+  # Temporary files and directories
+  @{HOME}/.tmp/** rw,
+
+  # Allow execution of necessary binaries
+  /usr/bin/mysecureshell ix,
+  /usr/bin/python ix,
+  /usr/bin/python2 ix,
+  /usr/bin/python3 ix,
+  /usr/local/bin/lshell ix,
+
+  # Additional binaries allowed in Limited Shell
+  /bin/bzip2 ix,
+  /bin/cat ix,
+  /bin/chmod ix,
+  /bin/cp ix,
+  /bin/echo ix,
+  /bin/grep ix,
+  /bin/gunzip ix,
+  /bin/gzip ix,
+  /bin/ls ix,
+  /bin/mkdir ix,
+  /bin/mv ix,
+  /bin/nano ix,
+  /bin/ping ix,
+  /bin/pwd ix,
+  /bin/rm ix,
+  /bin/rmdir ix,
+  /bin/sed ix,
+  /bin/tar ix,
+  /bin/true ix,
+  /opt/local/bin/sqlmagic ix,
+  /usr/bin/diff ix,
+  /usr/bin/du ix,
+  /usr/bin/env ix,
+  /usr/bin/find ix,
+  /usr/bin/less ix,
+  /usr/bin/lftp ix,
+  /usr/bin/mysql ix,
+  /usr/bin/mysqldump ix,
+  /usr/bin/openssl ix,
+  /usr/bin/passwd ix,
+  /usr/bin/patch ix,
+  /usr/bin/rsync ix,
+  /usr/bin/touch ix,
+  /usr/bin/unzip ix,
+  /usr/bin/vi ix,
+  /usr/bin/vim ix,
+  /usr/bin/wget ix,
+  /usr/local/bin/composer ix,
+  /usr/local/bin/curl ix,
+  /usr/local/bin/git ix,
+  /usr/local/bin/git-receive-pack ix,
+  /usr/local/bin/git-upload-archive ix,
+  /usr/local/bin/git-upload-pack ix,
+  /usr/local/bin/mydumper ix,
+  /usr/local/bin/myloader ix,
+  /usr/local/bin/scp ix,
+  /usr/local/bin/sftp ix,
+  /usr/local/bin/ssh ix,
+  /usr/local/bin/ssh-keygen ix,
+  /usr/local/rvm/bin/rvm ix,
+
+  # Deny execution of any other binaries
+  deny /** mrix,
+
+}
+
