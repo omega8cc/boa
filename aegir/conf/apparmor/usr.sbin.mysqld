@@ -1,21 +1,91 @@
-# Last Modified: Thu Jun 20 20:27:11 2024
-include <tunables/global>
+# AppArmor profile for MySQLd server
+# This profile restricts MySQLd server (mysqld) to essential operations only.
 
 /usr/sbin/mysqld flags=(complain) {
-  include <abstractions/base>
-  include <abstractions/bash>
-  include <abstractions/mysql>
 
+  # Include the tunables/global definitions
+  include <tunables/global>
+
+  # Include common AppArmor abstractions
+  include <abstractions/base>
+  include <abstractions/mysql>
+  include <abstractions/nameservice>
+
+  # Capabilities needed by MySQLd server
+  capability dac_override,
+  capability dac_read_search,
+  capability sys_resource,
+  capability setgid,
+  capability setuid,
+  capability sys_nice,
+
+  network inet stream,
+  network inet6 stream,
+
+  # Allow the execution of the mysqld binary
   /usr/sbin/mysqld mr,
 
-  /usr/local/lib/lib*so* mr,
-  /usr/local/ssl/lib/lib*so* mr,
-  /usr/local/ssl/openssl.cnf r,
-  /usr/local/ssl3/lib64/libcrypto.so.* mr,
-  /usr/local/ssl3/lib64/libssl.so.* mr,
-  /usr/local/ssl3/openssl.cnf r,
+  # Allow MySQL to read its configuration files
+  /etc/mysql/** r,
+  /etc/mysql/conf.d/** r,
+  /etc/mysql/mysql.conf.d/** r,
 
-  owner /etc/mysql/conf.d/mysql.cnf r,
-  owner /etc/mysql/my.cnf r,
+  # Allow MySQL to access its data directory
+  /var/lib/mysql/ r,
+  /var/lib/mysql/** rwk,
 
+  # Allow MySQL to access its run directory
+  /run/mysqld/ r,
+  /run/mysqld/** rw,
+
+  # Allow MySQL to write to its log files
+  /var/log/mysql/ r,
+  /var/log/mysql/** rw,
+
+  # Allow MySQL to access its tmp directories
+  /tmp/** rw,
+  /var/tmp/** rw,
+
+  # Allow MySQL to read system libraries
+  /lib/** r,
+  /lib64/** r,
+  /usr/lib/** r,
+  /usr/lib/mysql/plugin/** r,
+  /usr/local/lib/** r,
+  /usr/local/ssl/lib/** r,
+  /usr/local/ssl3/lib64/** r,
+  /usr/share/mysql/** r,
+  /usr/share/zoneinfo/** r,
+
+  # Allow MySQL to access /proc and /sys for necessary information
+  /proc/** r,
+  /sys/** r,
+
+  # Allow MySQL to use /dev/shm for temporary storage
+  /dev/shm/** rw,
+
+  # Allow MySQL to read network-related configurations
+  /etc/hosts.allow r,
+  /etc/hosts.deny r,
+  /etc/services r,
+
+  # Disallow execution of binaries from /tmp and /var/tmp
+  deny /tmp/** m,
+  deny /var/tmp/** m,
+
+  # Deny access to various sensitive directories
+  deny /boot/** mrwklx,
+  deny /dev/** mrwklx,
+  deny /home/** mrwklx,
+  deny /media/** mrwklx,
+  deny /mnt/** mrwklx,
+  deny /root/** mrwklx,
+  deny /srv/** mrwklx,
+  deny /usr/local/** mrwklx,
+  deny /var/** mrwklx,
+
+  # Catchall to deny everything else
+  deny /** rwklx,
+
+  # Site-specific additions and overrides can be added below
 }

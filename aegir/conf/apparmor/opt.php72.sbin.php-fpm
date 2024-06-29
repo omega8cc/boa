@@ -1,33 +1,100 @@
-# Last Modified: Fri Jun 21 16:24:27 2024
-include <tunables/global>
+# AppArmor profile for PHP-FPM
+# This profile restricts the PHP-FPM (php72) to essential operations only.
 
 /opt/php72/sbin/php-fpm flags=(complain) {
+
+  # Include the tunables/global definitions
+  include <tunables/global>
+
+  # Include common AppArmor abstractions
   include <abstractions/base>
-  include <abstractions/dovecot-common>
   include <abstractions/nameservice>
   include <abstractions/php>
   include <abstractions/mysql>
 
+  # Capabilities needed by PHP-FPM
   capability dac_override,
-  capability kill,
+  capability dac_read_search,
+  capability setgid,
+  capability setuid,
+  capability sys_resource,
+  capability chown,
+  capability fowner,
 
+  network inet stream,
+  network inet6 stream,
+
+  # Allow PHP-FPM to execute its own binary
   /opt/php72/sbin/php-fpm mrix,
 
-  /{media,mnt,opt,srv}/** mr,
+  # Allow PHP-FPM to read its configuration files
+  @{HOME}/.drush/** r,
+  /data/conf/** r,
   /etc/ImageMagick-6/log.xml r,
   /etc/ImageMagick-6/policy.xml r,
   /etc/ld.so.cache r,
   /etc/newrelic/upgrade_please.key r,
-  /usr/local/ioncube/ioncube_loader_lin_*.so mr,
-  /usr/local/lib/lib*so* mr,
-  /usr/local/ssl/lib/lib*so* mr,
-  /usr/local/ssl/openssl.cnf r,
-  /usr/local/ssl3/lib64/libcrypto.so.* mr,
-  /usr/local/ssl3/lib64/libssl.so.* mr,
-  /usr/local/ssl3/openssl.cnf r,
+  /opt/php72/** r,
 
-  /var/log/php/* w,
-  /var/log/newrelic/php_agent.log w,
+  # Allow PHP-FPM to execute some other binaries
+  /bin/websh mrix,
+  /usr/bin/advdef mrix,
+  /usr/bin/advpng mrix,
+  /usr/bin/convert mrix,
+  /usr/bin/jpegoptim mrix,
+  /usr/bin/jpegoptim mrix,
+  /usr/bin/jpegtran mrix,
+  /usr/bin/jpegtran mrix,
+  /usr/bin/magick mrix,
+  /usr/bin/optipng mrix,
+  /usr/bin/pngcrush mrix,
+  /usr/bin/pngquant mrix,
+  /usr/local/bin/curl mrix,
+  /usr/local/bin/wkhtmltoimage mrix,
+  /usr/local/bin/wkhtmltopdf mrix,
+
+  # Allow PHP-FPM to access some /dev
+  /dev/urandom r,
+  /dev/random r,
+  /dev/null rw,
+
+  # Allow PHP-FPM to access its run directory
+  /run/ r,
+  /run/** rw,
+
+  # Allow PHP-FPM to use tmp files
+  @{HOME}/.tmp/** rw,
+  /tmp/** rw,
+  /var/tmp/** rw,
+
+  # Allow read access to necessary libraries
+  /lib/** r,
+  /lib64/** r,
+  /usr/lib/** r,
+  /usr/local/lib/** r,
+  /usr/local/ssl/lib/** r,
+  /usr/local/ssl3/lib64/** r,
+  /opt/php*/lib/php/** mr,
+  /usr/local/ioncube/ioncube_loader_lin_*.so mr,
+
+  # Allow PHP-FPM to read and write its log files
+  /var/log/php/** rw,
+  /var/log/newrelic/php_agent.log rw,
+
+  # Allow PHP-FPM to access /proc and /sys for necessary information
+  /proc/** r,
+  /sys/** r,
+
+  # Allow PHP-FPM to use /dev/shm for temporary storage
+  /dev/shm/** rw,
+
+  # Deny execution of binaries from /tmp and /var/tmp and HOME
+  deny @{HOME}/.tmp/** m,
+  deny @{HOME}/** m,
+  deny /tmp/** m,
+  deny /var/tmp/** m,
+
+  # Allow PHP-FPM to read and write in the custom web root directories
 
   /var/www/** r,
 
@@ -43,19 +110,36 @@ include <tunables/global>
   /data/all/** r,
   /data/conf/* r,
 
-  owner /var/aegir/host_master/** w,
-  owner /var/aegir/platforms/** w,
+  owner /var/aegir/host_master/** rw,
+  owner /var/aegir/platforms/** rw,
 
-  owner /data/disk/*/aegir/** w,
-  owner /data/disk/*/distro/** w,
-  owner /data/disk/*/platforms/** w,
-  owner /data/disk/*/static/** w,
-  owner /var/www/** w,
+  owner /data/disk/*/aegir/** rw,
+  owner /data/disk/*/distro/** rw,
+  owner /data/disk/*/platforms/** rw,
+  owner /data/disk/*/static/** rw,
+  owner /var/www/** rw,
 
   owner /home/*.web/.aws/* rw,
   owner /home/*.web/.drush/* r,
   owner /home/*.web/.tmp/* rw,
 
-  owner /proc/*/mountinfo r,
+  # Deny access to various sensitive directories and files
+  deny /boot/** mrwklx,
+  deny /dev/** mrwklx,
+  deny /home/** mrwklx,
+  deny /media/** mrwklx,
+  deny /mnt/** mrwklx,
+  deny /root/** mrwklx,
+  deny /srv/** mrwklx,
+  deny /usr/local/** mrwklx,
+  deny /var/** mrwklx,
 
+  deny /etc/shadow* rw,
+  deny /etc/passwd* rw,
+  deny /root/** rwklx,
+
+  # Catchall to deny everything else
+  deny /** rwklx,
+
+  # Site-specific additions and overrides can be added below
 }

@@ -1,7 +1,12 @@
-# Last Modified: Mon Jun 17 08:02:39 2024
-include <tunables/global>
+# AppArmor profile for Nginx server
+# This profile restricts Nginx server (nginx) to essential operations only.
 
 /usr/sbin/nginx flags=(complain) {
+
+  # Include the tunables/global definitions
+  include <tunables/global>
+
+  # Include common AppArmor abstractions
   include <abstractions/base>
   include <abstractions/consoles>
   include <abstractions/dovecot-common>
@@ -9,6 +14,7 @@ include <tunables/global>
   include <abstractions/postfix-common>
   include <abstractions/ssl_keys>
 
+  # Capabilities needed by Nginx server
   capability dac_override,
   capability dac_read_search,
 

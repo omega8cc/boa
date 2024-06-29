@@ -1,41 +1,89 @@
-# Last Modified: Thu Jun 20 20:25:00 2024
-include <tunables/global>
+# AppArmor profile for MySQLd starter
+# This profile restricts MySQLd starter (mysqld_safe) to essential operations only.
 
 /usr/bin/mysqld_safe flags=(complain) {
+
+  # Include the tunables/global definitions
+  include <tunables/global>
+
+  # Include common AppArmor abstractions
   include <abstractions/base>
   include <abstractions/bash>
   include <abstractions/mysql>
+  include <abstractions/nameservice>
 
-  /usr/local/lib/lib*so* mr,
-  /usr/local/ssl/lib/lib*so* mr,
-  /usr/local/ssl/openssl.cnf r,
-  /usr/local/ssl3/lib64/libcrypto.so.* mr,
-  /usr/local/ssl3/lib64/libssl.so.* mr,
-  /usr/local/ssl3/openssl.cnf r,
+  # Capabilities needed by MySQLd starter
+  capability dac_override,
+  capability dac_read_search,
+  capability setgid,
+  capability setuid,
+  capability sys_resource,
+  capability sys_nice,
 
-  /bin/dash ix,
-  /bin/date mrix,
-  /bin/sed mrix,
-  /etc/mysql/conf.d/mysql.cnf r,
-  /etc/mysql/conf.d/mysqldump.cnf r,
-  /etc/mysql/my.cnf r,
-  /proc/filesystems r,
-  /sys/devices/system/cpu/online r,
-  /usr/bin/cut mrix,
-  /usr/bin/dirname mrix,
-  /usr/bin/expr mrix,
-  /usr/bin/logger mrix,
-  /usr/bin/my_print_defaults mrix,
-  /usr/bin/mysqld_safe r,
-  /usr/bin/nice mrix,
-  /usr/bin/nohup mrix,
-  /usr/bin/wc mrix,
-  /usr/sbin/mysqld mrix,
+  network inet stream,
+  network inet6 stream,
 
-  owner /proc/*/status r,
-  owner /run/mysqld/mysqld.pid rw,
-  owner /run/mysqld/mysqld.sock.lock rw,
-  owner /var/lib/mysql/auto.cnf r,
-  owner /var/lib/mysql/** rwk,
+  # Allow mysqld_safe to read its configuration files
+  /etc/mysql/** r,
+  /etc/mysql/conf.d/** r,
+  /etc/mysql/mysql.conf.d/** r,
 
+  # Allow mysqld_safe to access its data directory
+  /var/lib/mysql/ r,
+  /var/lib/mysql/** rwk,
+
+  # Allow mysqld_safe to access its run directory
+  /run/mysqld/ r,
+  /run/mysqld/** rw,
+
+  # Allow mysqld_safe to write to its log files
+  /var/log/mysql/ r,
+  /var/log/mysql/** rw,
+
+  # Allow mysqld_safe to access tmp directories
+  /tmp/** rw,
+  /var/tmp/** rw,
+
+  # Allow mysqld_safe to read system libraries
+  /lib/** r,
+  /lib64/** r,
+  /usr/lib/** r,
+  /usr/lib/mysql/plugin/** mr,
+  /usr/local/lib/** r,
+  /usr/local/ssl/lib/** r,
+  /usr/local/ssl3/lib64/** r,
+
+  # Allow mysqld_safe to access /proc and /sys for necessary information
+  /proc/** r,
+  /sys/** r,
+
+  # Allow mysqld_safe to use /dev/shm for temporary storage
+  /dev/shm/** rw,
+
+  # Allow the execution of mysqld_safe
+  /usr/bin/mysqld_safe mr,
+
+  # Allow mysqld_safe to execute mysqld
+  /usr/sbin/mysqld rix,
+
+  # Deny execution of binaries from /tmp and /var/tmp
+  deny /tmp/** m,
+  deny /var/tmp/** m,
+
+  # Deny access to various sensitive directories
+  deny /boot/** mrwklx,
+  deny /dev/** mrwklx,
+  deny /home/** mrwklx,
+  deny /media/** mrwklx,
+  deny /mnt/** mrwklx,
+  deny /opt/** mrwklx,
+  deny /root/** mrwklx,
+  deny /srv/** mrwklx,
+  deny /usr/local/** mrwklx,
+  deny /var/** mrwklx,
+
+  # Catchall to deny everything else
+  deny /** rwklx,
+
+  # Site-specific additions and overrides can be added below
 }

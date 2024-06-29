@@ -1,64 +1,69 @@
-# Author: Simon Deziel
-# vim:syntax=apparmor
-include <tunables/global>
+# AppArmor profile for Unbound server
+# This profile restricts Unbound server (unbound) to essential operations only.
 
-profile unbound /usr/sbin/unbound flags=(complain) {
+/usr/sbin/unbound flags=(complain) {
+
+  # Include the tunables/global definitions
+  include <tunables/global>
+
+  # Include common AppArmor abstractions
   include <abstractions/base>
   include <abstractions/nameservice>
   include <abstractions/openssl>
 
-  # chown (chgrp) the Unix control socket
+  # Capabilities needed by Unbound server
   capability chown,
-  # chmod the Unix control socket
   capability fowner,
   capability fsetid,
-
-  # added to abstractions/nameservices in Apparmor 2.12
-  /var/lib/sss/mc/initgroups r,
-
   capability net_bind_service,
   capability setgid,
   capability setuid,
   capability sys_chroot,
   capability sys_resource,
 
-  # root hints from dns-data-root
-  /usr/share/dns/root.* r,
-
-  # non-chrooted paths
-  /etc/unbound/** r,
-  owner /etc/unbound/*.key* rw,
-  # explicitly deny (and audit) attempts to write to the key files
-  # this should be unnecessary after switch to /run/unbound.ctl control socket
-  # (here and below)
-  audit deny /etc/unbound/unbound_control.{key,pem} rw,
-  audit deny /etc/unbound/unbound_server.key w,
-
-  # chrooted paths
-  # unbound can be chrooted into /etc/unbound (upstream default) with
-  #  /var/lib/unbound/ bind-mounted to /etc/unbound/var/lib/unbound/,
-  # or it can be chrooted into /var/lib/unbound/ with /etc/unbound/ copied
-  # into there (previous debian package default).
-  /{,etc/unbound/}var/lib/unbound/** r,
-  owner /{,etc/unbound/}var/lib/unbound/** rw,
-  audit deny /{,etc/unbound/}var/lib/unbound/**/unbound_control.{key,pem} rw,
-  audit deny /{,etc/unbound/}var/lib/unbound/**/unbound_server.key w,
-
-  /usr/sbin/unbound mr,
-
-  /{,var/}run/systemd/notify w,
-  /{,var/}run/{unbound/,}unbound.pid rw,
-
-  # Unix control socket
-  /{,var/}run/unbound.ctl rw,
+  # Allow to open TCP sockets on any address
+  network inet stream,
+  network inet6 stream,
 
   # SSL libs
-  /usr/local/lib/lib*so* mr,
-  /usr/local/ssl/lib/lib*so* mr,
-  /usr/local/ssl/openssl.cnf r,
-  /usr/local/ssl3/lib64/libcrypto.so.* mr,
-  /usr/local/ssl3/lib64/libssl.so.* mr,
-  /usr/local/ssl3/openssl.cnf r,
+  /lib/** r,
+  /lib64/** r,
+  /usr/lib/** r,
+  /usr/local/lib/** r,
+  /usr/local/ssl/lib/** r,
+  /usr/local/ssl3/lib64/** r,
+
+  # Allow Unbound to access some /dev
+  /dev/log w,
+  /dev/random r,
+  /dev/urandom r,
+
+  # Allow Unbound to access tmp directories
+  /tmp/** rw,
+  /var/tmp/** rw,
+
+  # Access root hints from dns-data-root
+  /usr/share/dns/root.* r,
+
+  # Unbound paths
+  /usr/etc/unbound/** r,
+  /var/lib/unbound/** r,
+  /var/run/unbound/** r,
+
+  # Unbound log
+  /var/log/unbound/** rw,
+
+  # Unbound keys
+  owner /usr/etc/unbound/*.key* rw,
+
+  # Allow Unbound to execute its own binary
+  /usr/sbin/unbound mr,
+
+  # Allow Unbound to access its pid
+  /var/run/unbound/unbound.pid rw,
+
+  # Unix control socket
+  /var/run/unbound/unbound.ctl rw,
 
   include if exists <local/usr.sbin.unbound>
 }

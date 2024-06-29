@@ -1,11 +1,17 @@
-# vim:syntax=apparmor
-include <tunables/global>
+# AppArmor profile for DHCP dhclient
+# This profile restricts DHCP dhclient (dhclient) to essential operations only.
 
 /{,usr/}sbin/dhclient flags=(complain) {
+
+  # Include the tunables/global definitions
+  include <tunables/global>
+
+  # Include common AppArmor abstractions
   include <abstractions/base>
   include <abstractions/nameservice>
   include <abstractions/openssl>
 
+  # Capabilities needed by DHCP dhclient
   capability net_bind_service,
   capability net_raw,
   capability dac_override,

@@ -1,26 +1,51 @@
-# Last Modified: Wed Jun 26 13:51:23 2024
-include <tunables/global>
-
-# vim:syntax=apparmor
-# Author: Jamie Strandboge <jamie@ubuntu.com>
+# AppArmor profile for Clamd service
+# This profile restricts Clamd service (clamd) to essential operations only.
 
 /usr/sbin/clamd flags=(complain) {
+
+  # Include the tunables/global definitions
+  include <tunables/global>
+
+  # Include common AppArmor abstractions
   include <abstractions/base>
   include <abstractions/nameservice>
   include <abstractions/openssl>
   include if exists <local/usr.sbin.clamd>
 
+  # Capabilities needed by Clamd service
   capability chown,
   capability dac_override,
+  capability dac_read_search,
   capability setgid,
   capability setuid,
+  capability sys_resource,
+
+  network inet stream,
+  network inet6 stream,
+  network inet dgram,
+  network inet6 dgram,
+
+  /bin/dash rix,
+  /bin/bash rix,
+  /bin/sh rix,
+  /usr/sbin/clamd rix,
+
+  /dev/log w,
+  /dev/null rw,
+  /dev/random r,
+  /dev/urandom r,
+
+  /proc/** r,
+  /sys/** r,
+
+  /tmp/** rw,
+  /var/tmp/** rw,
+
+  /usr/local/ssl3/lib64/libcrypto.so.* mr,
+  /usr/local/ssl3/lib64/libssl.so.* mr,
+  /usr/local/ssl3/openssl.cnf r,
 
   /etc/clamav/clamd.conf r,
-  /tmp/ rw,
-  /tmp/** rwk,
-  /usr/local/ssl3/lib64/libcrypto.so.* mr,
-  /usr/local/ssl3/openssl.cnf r,
-  /usr/sbin/clamd mr,
   /var/lib/amavis/tmp/** r,
   /var/lib/clamav/ r,
   /var/lib/clamav/** rwk,
@@ -38,5 +63,14 @@ include <tunables/global>
   @{HOME}/** r,
   @{PROC}/[0-9]*/status r,
   @{PROC}/filesystems r,
+
+  deny /etc/shadow* r,
+  deny /etc/passwd* r,
+  deny /root/** rwklx,
+
+  # Catchall to deny everything else
+  deny /** rwklx,
+
+  # Site-specific additions and overrides can be added below
 
 }

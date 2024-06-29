@@ -1,19 +1,14 @@
 # File: /etc/apparmor.d/usr.local.bin.wkhtmltoimage
 # Template from https://wkhtmltopdf.org/apparmor.html
 #
-include <tunables/global>
 
 /usr/local/bin/wkhtmltoimage flags=(complain) {
-  # Allow base system access.
-  include <abstractions/base>
 
-  # Allows:
-  #  - Basic network connectivity (TCP/UDP)
-  #  - Nameservice access (the whole resolver chain)
-  #  - Ability to interact with PAM
-  #  - Ability to interact with name-services like nis, ldap, winbind, kerberos
-  # Remove if you don't need network access.
-  include <abstractions/nameservice>
+  # Include the tunables/global definitions
+  include <tunables/global>
+
+  # Include common AppArmor abstractions
+  include <abstractions/base>
   include <abstractions/openssl>
 
   # Allow access to font infrastructure
@@ -27,48 +22,29 @@ include <tunables/global>
   /var/cache/fontconfig/* r,
   /tmp/** rwlk,
 
-  /{media,mnt,opt,srv}/** mr,
-  /etc/ImageMagick-6/log.xml r,
-  /etc/ImageMagick-6/policy.xml r,
-  /etc/ld.so.cache r,
-  /etc/newrelic/upgrade_please.key r,
-  /usr/local/ioncube/ioncube_loader_lin_*.so mr,
-  /usr/local/lib/lib*so* mr,
-  /usr/local/ssl/lib/lib*so* mr,
-  /usr/local/ssl/openssl.cnf r,
-  /usr/local/ssl3/lib64/libcrypto.so.* mr,
-  /usr/local/ssl3/lib64/libssl.so.* mr,
-  /usr/local/ssl3/openssl.cnf r,
+  # Allow read access to necessary libraries
+  /lib/** r,
+  /lib64/** r,
+  /usr/lib/** r,
+  /usr/local/lib/** r,
+  /usr/local/ssl/lib/** r,
+  /usr/local/ssl3/lib64/** r,
 
-  # Working paths for your application, please customize:
+  # Allow to read and write in the web root directories
 
   /var/www/** r,
-
-  /var/aegir/host_master/** r,
-  /var/aegir/platforms/** r,
-
   /data/disk/*/aegir/** r,
   /data/disk/*/distro/** r,
   /data/disk/*/platforms/** r,
   /data/disk/*/static/** r,
-  /data/disk/*/tools/le/** r,
 
-  /data/all/** r,
-  /data/conf/* r,
-
-  owner /var/aegir/host_master/** w,
-  owner /var/aegir/platforms/** w,
-
-  owner /data/disk/*/aegir/** w,
-  owner /data/disk/*/distro/** w,
-  owner /data/disk/*/platforms/** w,
-  owner /data/disk/*/static/** w,
-  owner /var/www/** w,
+  owner /data/disk/*/distro/** rw,
+  owner /data/disk/*/platforms/** rw,
+  owner /data/disk/*/static/** rw,
+  owner /var/www/** rw,
 
   owner /home/*.web/.aws/* rw,
   owner /home/*.web/.drush/* r,
   owner /home/*.web/.tmp/* rw,
-
-  owner /proc/*/mountinfo r,
 
 }

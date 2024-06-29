@@ -1,10 +1,12 @@
-# Last Modified: Wed Jun 26 13:51:52 2024
-include <tunables/global>
-
-# vim:syntax=apparmor
-# Author: Jamie Strandboge <jamie@ubuntu.com>
+# AppArmor profile for Freshclam service
+# This profile restricts Freshclam service (freshclam) to essential operations only.
 
 /usr/bin/freshclam flags=(complain) {
+
+  # Include the tunables/global definitions
+  include <tunables/global>
+
+  # Include common AppArmor abstractions
   include <abstractions/base>
   include <abstractions/nameservice>
   include <abstractions/openssl>
@@ -12,10 +14,34 @@ include <tunables/global>
   include <abstractions/user-tmp>
   include if exists <local/usr.bin.freshclam>
 
+  # Capabilities needed by Freshclam service
   capability chown,
   capability dac_override,
+  capability net_admin,
+  capability net_bind_service,
   capability setgid,
   capability setuid,
+
+  network inet stream,
+  network inet dgram,
+  network inet6 stream,
+  network inet6 dgram,
+
+  /bin/dash rix,
+  /bin/bash rix,
+  /bin/sh rix,
+  /usr/bin/freshclam rix,
+
+  /dev/log w,
+  /dev/null rw,
+  /dev/random r,
+  /dev/urandom r,
+
+  /proc/** r,
+  /sys/** r,
+
+  /tmp/** rw,
+  /var/tmp/** rw,
 
   deny /{,var/}run/samba/{gencache,unexpected}.tdb mrwlk,
 
@@ -24,10 +50,11 @@ include <tunables/global>
   /etc/clamav/onerrorexecute.d/* mr,
   /etc/clamav/onupdateexecute.d/* mr,
   /etc/clamav/virusevent.d/* mr,
-  /usr/bin/freshclam mr,
+
   /usr/local/ssl3/lib64/libcrypto.so.* mr,
   /usr/local/ssl3/lib64/libssl.so.* mr,
   /usr/local/ssl3/openssl.cnf r,
+
   /var/lib/clamav/ r,
   /var/lib/clamav/** rwk,
   /var/log/clamav/* rwk,
@@ -40,4 +67,12 @@ include <tunables/global>
   owner @{HOME}/.klamav/database/** rwk,
   owner @{PROC}/[0-9]*/status r,
 
+  deny /etc/shadow* r,
+  deny /etc/passwd* r,
+  deny /root/** rwklx,
+
+  # Catchall to deny everything else
+  deny /** rwklx,
+
+  # Site-specific additions and overrides can be added below
 }

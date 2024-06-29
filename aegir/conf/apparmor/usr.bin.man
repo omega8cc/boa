@@ -1,8 +1,12 @@
-# vim:syntax=apparmor
-
-include <tunables/global>
+# AppArmor profile for Man service
+# This profile restricts Man service (man) to essential operations only.
 
 /usr/bin/man flags=(complain) {
+
+  # Include the tunables/global definitions
+  include <tunables/global>
+
+  # Include common AppArmor abstractions
   include <abstractions/base>
 
   # Use a special profile when man calls anything groff-related.  We only
@@ -36,6 +40,7 @@ include <tunables/global>
   /** mrixwlk,
   unix,
 
+  # Capabilities needed by Man service
   capability setuid,
   capability setgid,
 
@@ -105,7 +110,7 @@ profile man_filter {
   /** r,
 
   # Allow writing cat pages.
-  /var/cache/man/** w,
+  /var/cache/man/** rw,
 
   signal peer=/usr/bin/man,
   # @{profile_name} doesn't seem to work here.

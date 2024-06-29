@@ -1,9 +1,71 @@
-# Last Modified: Mon Jun 17 11:05:08 2024
-include <tunables/global>
+# AppArmor profile for New Relic
+# This profile restricts the New Relic (newrelic-daemon) to essential operations only.
 
 /usr/bin/newrelic-daemon flags=(complain) {
-  include <abstractions/base>
 
+  # Include the tunables/global definitions
+  include <tunables/global>
+
+  # Include common AppArmor abstractions
+  include <abstractions/base>
+  include <abstractions/nameservice>
+
+  # Capabilities needed by New Relic
+  capability net_admin,
+  capability setgid,
+  capability setuid,
+
+  network inet stream,
+  network inet dgram,
+  network inet6 stream,
+  network inet6 dgram,
+
+  # Allow execution of the newrelic-daemon binary
   /usr/bin/newrelic-daemon mr,
+
+  # Allow newrelic-daemon to read its configuration files
+  /etc/newrelic/** r,
+
+  # Allow newrelic-daemon to read system libraries
+  /lib/** r,
+  /lib64/** r,
+  /usr/lib/** r,
+  /usr/lib64/** r,
+
+  # Allow newrelic-daemon to access /proc for necessary information
+  /proc/** r,
+
+  # Allow newrelic-daemon to access log files
+  /var/log/newrelic/** rw,
+
+  # Allow newrelic-daemon to use tmp files
+  /tmp/** rw,
+  /var/tmp/** rw,
+
+  # Allow newrelic-daemon to access run directory
+  /run/newrelic/** rw,
+
+  # Allow newrelic-daemon to access shared memory
+  /dev/shm/** rw,
+
+  # Deny execution of binaries from /tmp and /var/tmp
+  deny /tmp/** m,
+  deny /var/tmp/** m,
+
+  # Deny access to various sensitive directories
+  deny /boot/** mrwklx,
+  deny /dev/** mrwklx,
+  deny /home/** mrwklx,
+  deny /media/** mrwklx,
+  deny /mnt/** mrwklx,
+  deny /opt/** mrwklx,
+  deny /root/** mrwklx,
+  deny /srv/** mrwklx,
+  deny /usr/local/** mrwklx,
+
+  # Catchall to deny everything else
+  deny /** rwklx,
+
+  # Site-specific additions and overrides can be added below
 
 }

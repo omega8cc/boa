@@ -1,54 +1,99 @@
-# Last Modified: Fri Jun 21 16:24:27 2024
-include <tunables/global>
+# AppArmor profile for PHP-CLI
+# This profile restricts PHP-CLI (php73) to essential operations only.
 
 /opt/php73/bin/php flags=(complain) {
+
+  # Include the tunables/global definitions
+  include <tunables/global>
+
+  # Include common AppArmor abstractions
   include <abstractions/base>
   include <abstractions/bash>
   include <abstractions/consoles>
   include <abstractions/mysql>
   include <abstractions/nameservice>
 
-  /opt/php73/bin/php mrix,
+  # Capabilities needed by PHP-CLI
+  capability setgid,
+  capability setuid,
+  capability dac_override,
+  capability dac_read_search,
 
-  /bin/dash mrix,
-  /bin/grep mrix,
-  /bin/rm mrix,
-  /bin/stty mrix,
-  /bin/touch mrix,
-  /bin/websh mrix,
-  /usr/bin/id mrix,
-  /usr/bin/mysql mrix,
-  /usr/bin/tput mrix,
-  /usr/bin/which mrix,
-  /usr/bin/which.debianutils mrix,
-  /usr/local/bin/curl mrix,
-  /usr/local/bin/wkhtmltoimage mrix,
-  /usr/local/bin/wkhtmltopdf mrix,
+  # Allow PHP-CLI to execute its own binary
+  /opt/php73/bin/php rix,
 
+  # Allow PHP-CLI to read its configuration files
+  @{HOME}/.drush/** r,
+  /data/conf/** r,
   /etc/ImageMagick-6/log.xml r,
   /etc/ImageMagick-6/policy.xml r,
   /etc/ld.so.cache r,
-  /etc/mysql/conf.d/* r,
-  /etc/mysql/my.cnf r,
   /etc/newrelic/upgrade_please.key r,
-  /etc/nsswitch.conf r,
+  /opt/php73/** r,
 
-  /proc/loadavg r,
-  /proc/filesystems r,
+  # Allow PHP-CLI to execute some other binaries
+  /bin/dash rix,
+  /bin/grep rix,
+  /bin/rm rix,
+  /bin/stty rix,
+  /bin/touch rix,
+  /bin/websh rix,
+  /usr/bin/convert rix,
+  /usr/bin/id rix,
+  /usr/bin/magick rix,
+  /usr/bin/mysql rix,
+  /usr/bin/tput rix,
+  /usr/bin/which rix,
+  /usr/bin/which.debianutils rix,
+  /usr/local/bin/composer rix,
+  /usr/local/bin/curl rix,
+  /usr/local/bin/wkhtmltoimage rix,
+  /usr/local/bin/wkhtmltopdf rix,
 
+  # Allow PHP-CLI to access some /dev
+  /dev/urandom r,
+  /dev/random r,
+  /dev/null rw,
+  /dev/tty rw,
+
+  # Allow PHP-CLI to use tmp files
+  @{HOME}/.tmp/** rw,
+  /tmp/** rw,
+  /var/tmp/** rw,
+
+  # Allow read access to necessary libraries
+  /lib/** r,
+  /lib64/** r,
+  /usr/lib/** r,
+  /usr/local/lib/** r,
+  /usr/local/ssl/lib/** r,
+  /usr/local/ssl3/lib64/** r,
+  /opt/php*/lib/php/** mr,
   /usr/local/ioncube/ioncube_loader_lin_*.so mr,
-  /usr/local/lib/lib*so* mr,
-  /usr/local/ssl/lib/lib*so* mr,
-  /usr/local/ssl/openssl.cnf r,
-  /usr/local/ssl3/lib64/libcrypto.so.* mr,
-  /usr/local/ssl3/lib64/libssl.so.* mr,
-  /usr/local/ssl3/openssl.cnf r,
-  /{media,mnt,opt,srv}/** mr,
 
-  /var/log/php/* w,
+  # Allow PHP-CLI to read and write its log files
+  /var/log/php/** rw,
+  /var/log/newrelic/php_agent.log rw,
 
-  /opt/tools/drush/** r,
-  /var/aegir/drush/** r,
+  # Allow PHP-CLI to access /proc and /sys for necessary information
+  /proc/** r,
+  /sys/** r,
+
+  # Allow PHP-CLI to use /dev/shm for temporary storage
+  /dev/shm/** rw,
+
+  # Deny execution of binaries from /tmp and /var/tmp and HOME
+  deny @{HOME}/.tmp/** m,
+  deny @{HOME}/** m,
+  deny /tmp/** m,
+  deny /var/tmp/** m,
+
+  # Allow PHP-CLI to access drush
+  /opt/tools/drush/** rix,
+  /var/aegir/drush/** rix,
+  /usr/bin/drush rix,
+
+  # Allow PHP-CLI to read and write in the custom web root directories
 
   /var/www/** r,
 
@@ -70,23 +115,39 @@ include <tunables/global>
   /data/conf/* r,
 
   owner /var/aegir/.tmp/** rw,
-  owner /var/aegir/host_master/** w,
-  owner /var/aegir/platforms/** w,
+  owner /var/aegir/host_master/** rw,
+  owner /var/aegir/platforms/** rw,
 
-  owner /data/disk/*/.drush/** w,
+  owner /data/disk/*/.drush/** rw,
   owner /data/disk/*/.tmp/** rw,
-  owner /data/disk/*/aegir/** w,
-  owner /data/disk/*/config/** w,
-  owner /data/disk/*/distro/** w,
-  owner /data/disk/*/platforms/** w,
-  owner /data/disk/*/static/** w,
-  owner /data/disk/*/tools/le/** w,
-  owner /var/www/** w,
+  owner /data/disk/*/aegir/** rw,
+  owner /data/disk/*/config/** rw,
+  owner /data/disk/*/distro/** rw,
+  owner /data/disk/*/platforms/** rw,
+  owner /data/disk/*/static/** rw,
+  owner /data/disk/*/tools/le/** rw,
+  owner /var/www/** rw,
 
-  owner /home/*/.drush/** r,
+  owner @{HOME}/.drush/** r,
   owner /home/*/.drush/cache/** rw,
   owner /home/*/.tmp/* rw,
 
-  owner /proc/*/mountinfo r,
+  # Deny access to various sensitive directories and files
+  deny /boot/** mrwklx,
+  deny /dev/** mrwklx,
+  deny /media/** mrwklx,
+  deny /mnt/** mrwklx,
+  deny /root/** mrwklx,
+  deny /srv/** mrwklx,
+  deny /usr/local/** mrwklx,
+  deny /var/** mrwklx,
 
+  deny /etc/shadow* rw,
+  deny /etc/passwd* rw,
+  deny /root/** rwklx,
+
+  # Catchall to deny everything else
+  deny /** rwklx,
+
+  # Site-specific additions and overrides can be added below
 }

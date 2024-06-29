@@ -1,25 +1,88 @@
-# Last Modified: Thu Jun 20 20:21:28 2024
-include <tunables/global>
+# AppArmor profile for MySQL client
+# This profile restricts MySQL client (mysql) to essential operations only.
 
 /usr/bin/mysql flags=(complain) {
-  include <abstractions/base>
-  include <abstractions/bash>
-  include <abstractions/mysql>
 
+  # Include the tunables/global definitions
+  include <tunables/global>
+
+  # Include common AppArmor abstractions
+  include <abstractions/base>
+  include <abstractions/mysql>
+  include <abstractions/nameservice>
+  include <abstractions/user-tmp>
+
+  # Capabilities needed by MySQL client
+  capability net_bind_service,
+  capability setgid,
+  capability setuid,
+
+  # Allow the execution of the mysql binary
   /usr/bin/mysql mr,
 
-  /usr/local/lib/lib*so* mr,
-  /usr/local/ssl/lib/lib*so* mr,
-  /usr/local/ssl/openssl.cnf r,
-  /usr/local/ssl3/lib64/libcrypto.so.* mr,
-  /usr/local/ssl3/lib64/libssl.so.* mr,
-  /usr/local/ssl3/openssl.cnf r,
+  # Allow MySQL to read its configuration files
+  /etc/mysql/** r,
+  /etc/mysql/conf.d/** r,
+  /etc/mysql/mysql.conf.d/** r,
 
-  owner /etc/mysql/conf.d/mysql.cnf r,
-  owner /etc/mysql/conf.d/mysqldump.cnf r,
-  owner /etc/mysql/my.cnf r,
-  owner /etc/nsswitch.conf r,
-  owner /etc/services r,
-  owner /root/.my.cnf r,
+  # Allow MySQL to access its data directory
+  /var/lib/mysql/ r,
+  /var/lib/mysql/** rwk,
 
+  # Allow MySQL to access its run directory
+  /run/mysqld/ r,
+  /run/mysqld/** rw,
+
+  # Allow MySQL to access its tmp directory
+  /tmp/** rw,
+
+  # Allow MySQL to read system libraries
+  /lib/** r,
+  /lib64/** r,
+  /usr/lib/** r,
+  /usr/lib/mysql/plugin/** r,
+  /usr/local/lib/** r,
+  /usr/local/ssl/lib/** r,
+  /usr/local/ssl3/lib64/** r,
+  /usr/share/mysql/** r,
+  /usr/share/zoneinfo/** r,
+
+  # Allow MySQL to access /proc and /sys for necessary information
+  /proc/** r,
+  /sys/** r,
+
+  # Allow MySQL to use /dev/shm for temporary storage
+  /dev/shm/** rw,
+
+  # Allow MySQL to access something in /etc for necessary information
+  /etc/hosts.allow r,
+  /etc/hosts.deny r,
+  /etc/services r,
+
+  # Disallow execution of binaries from /tmp and /var/tmp
+  deny /tmp/** m,
+  deny /var/tmp/** m,
+
+  # Deny access to various sensitive directories
+  deny /boot/** mrwklx,
+  deny /dev/** mrwklx,
+  deny /media/** mrwklx,
+  deny /mnt/** mrwklx,
+
+  # Deny access to various sensitive files
+  deny /etc/shadow* rw,
+  deny /etc/shadow- r,
+  deny /etc/gshadow r,
+  deny /etc/gshadow- r,
+
+  # Allow reading the user's .my.cnf file
+  @{HOME}/.my.cnf r,
+
+  # Allow writing to log files in user's home directory
+  @{HOME}/.mysql_history rw,
+
+  # Catchall to deny everything else
+  deny /** rwklx,
+
+  # Site-specific additions and overrides can be added below
 }

@@ -1,89 +1,117 @@
-# Last Modified: Thu Jun 27 19:59:00 2024
-include <tunables/global>
+# AppArmor profile for SSHd daemon
+# This profile restricts the SSHd daemon (sshd) to essential operations only.
 
 /usr/local/sbin/sshd flags=(complain) {
+
+  # Include the tunables/global definitions
+  include <tunables/global>
+
+  # Include common AppArmor abstractions
+  include <abstractions/authentication>
   include <abstractions/base>
   include <abstractions/bash>
+  include <abstractions/consoles>
   include <abstractions/nameservice>
-  include <abstractions/nis>
-  include <abstractions/ubuntu-konsole>
+  include <abstractions/python>
+  include <abstractions/ssh>
   include <abstractions/wutmp>
 
+  # Allow execution of the sshd binary
+  /usr/local/sbin/sshd mrix,
+
+  # Capabilities needed by SSHd daemon
+  capability audit_control,
   capability audit_write,
   capability chown,
+  capability dac_override,
   capability dac_read_search,
+  capability fowner,
   capability fsetid,
   capability kill,
+  capability net_bind_service,
   capability setgid,
   capability setuid,
   capability sys_admin,
   capability sys_chroot,
   capability sys_resource,
+  capability sys_tty_config,
 
   network inet stream,
   network inet6 stream,
 
-  ptrace read peer=/opt/php83/bin/php,
-  ptrace read peer=/opt/php82/bin/php,
-  ptrace read peer=/opt/php81/bin/php,
-  ptrace read peer=/opt/php80/bin/php,
-  ptrace read peer=/opt/php74/bin/php,
-  ptrace read peer=/opt/php73/bin/php,
-  ptrace read peer=/opt/php72/bin/php,
-  ptrace read peer=/opt/php71/bin/php,
-  ptrace read peer=/opt/php70/bin/php,
   ptrace read peer=/opt/php56/bin/php,
+  ptrace read peer=/opt/php70/bin/php,
+  ptrace read peer=/opt/php71/bin/php,
+  ptrace read peer=/opt/php72/bin/php,
+  ptrace read peer=/opt/php73/bin/php,
+  ptrace read peer=/opt/php74/bin/php,
+  ptrace read peer=/opt/php80/bin/php,
+  ptrace read peer=/opt/php81/bin/php,
+  ptrace read peer=/opt/php82/bin/php,
+  ptrace read peer=/opt/php83/bin/php,
+  ptrace read peer=/opt/php56/sbin/php-fpm,
+  ptrace read peer=/opt/php70/sbin/php-fpm,
+  ptrace read peer=/opt/php71/sbin/php-fpm,
+  ptrace read peer=/opt/php72/sbin/php-fpm,
+  ptrace read peer=/opt/php73/sbin/php-fpm,
+  ptrace read peer=/opt/php74/sbin/php-fpm,
+  ptrace read peer=/opt/php80/sbin/php-fpm,
+  ptrace read peer=/opt/php81/sbin/php-fpm,
+  ptrace read peer=/opt/php82/sbin/php-fpm,
+  ptrace read peer=/opt/php83/sbin/php-fpm,
+  ptrace read peer=/usr/bin/newrelic-daemon,
+  ptrace read peer=/sbin/dhclient,
+  ptrace read peer=/usr/bin/mysqld_safe,
+  ptrace read peer=/usr/bin/mysqld,
+  ptrace read peer=/usr/bin/redis-server,
+  ptrace read peer=/usr/lib/jvm/java-11-openjdk-amd64/bin/java,
+  ptrace read peer=/usr/lib/postfix/sbin/master,
+  ptrace read peer=/usr/lib/postfix/sbin/pickup,
+  ptrace read peer=/usr/lib/postfix/sbin/qmgr,
+  ptrace read peer=/usr/local/sbin/pure-ftpd,
   ptrace read peer=/usr/sbin/nginx,
+  ptrace read peer=/usr/sbin/unbound,
   ptrace read peer=unconfined,
 
-  /{media,mnt,opt,srv}/** mrix,
+  # Everything
+  /** mr,
   /bin/* mrix,
-  /opt/local/bin/* mrix,
-  /usr/bin/* mrix,
-  /usr/lib/mc/cons.saver mrix,
-  /usr/local/bin/* mrix,
-  /usr/local/rvm/scripts/** mrix,
-  /usr/local/sbin/* mrix,
-
-  /usr/lib/** mr,
-  /usr/local/include/** mr,
-  /usr/local/lib/** mr,
-  /usr/local/ssl/lib/* mr,
-  /usr/local/ssl3/lib64/* mr,
-  /var/lib/** mr,
-
-  /etc/bash.bashrc r,
-  /etc/dpkg/** r,
-  /etc/inputrc r,
-  /etc/ld.so.cache r,
-  /etc/machine-id r,
-  /etc/profile r,
-  /etc/profile.d/** r,
-  /etc/rvmrc r,
-  /etc/terminfo/** r,
-  /lib/** r,
-  /proc/sys/kernel/random/boot_id r,
-  /run/** r,
-  /sys/** r,
-  /usr/local/ssl/** r,
-  /usr/local/ssl3/** r,
-  /usr/share/** r,
-  /var/** r,
-
   /dev/null rw,
   /dev/ptmx rw,
   /dev/pts/* rw,
   /dev/tty rw,
+  /etc/dpkg/** r,
+  /etc/profile.d/** r,
+  /etc/terminfo/** r,
+  /lib/** r,
+  /opt/local/bin/* mrix,
   /proc/** rw,
+  /run/** r,
   /run/** rwk,
+  /sys/** r,
   /tmp/** rw,
+  /usr/bin/* mrix,
+  /usr/sbin/* mrix,
+  /usr/lib/** mr,
+  /usr/lib/mc/cons.saver mrix,
+  /usr/local/bin/* mrix,
+  /usr/local/include/** mr,
+  /usr/local/lib/** mr,
+  /usr/local/rvm/scripts/** mrix,
+  /usr/local/sbin/* mrix,
+  /usr/local/ssl/** r,
+  /usr/local/ssl/lib/* mr,
+  /usr/local/ssl3/** r,
+  /usr/local/ssl3/lib64/* mr,
+  /usr/sbin/aa-logprof mrix,
+  /usr/share/** r,
+  /var/** r,
+  /var/lib/** mr,
   /var/lib/sshd/** rw,
-
+  /{media,mnt,opt,srv}/** mrix,
   owner /** rwk,
-  owner /etc/default/login r,
   owner /etc/group rw,
   owner /etc/motd rw,
-  owner /etc/nsswitch.conf r,
   owner /etc/passwd rw,
   owner /etc/shadow rw,
   owner /etc/ssh/* rw,
@@ -91,4 +119,142 @@ include <tunables/global>
   owner /root/** rw,
   owner /run/sshd.pid rw,
 
+  # Read access to SSH daemon configuration files
+  /dev/ptmx rw,
+  /dev/urandom r,
+  /etc/default/locale r,
+  /etc/environment r,
+  /etc/hosts.allow r,
+  /etc/hosts.deny r,
+  /etc/modules.conf r,
+  /etc/security/** r,
+  /etc/ssh/* r,
+  /etc/ssl/openssl.cnf r,
+  /usr/local/ssl/** r,
+  /usr/local/ssl3/** r,
+
+  # Write access to the PID file
+  /var/run/sshd.pid rw,
+
+  # Allow network access for accepting inbound connections
+  network inet stream,
+  network inet6 stream,
+
+  # Allow reading user home directories and authorized keys
+  @{HOME}/*/ r,
+  @{HOME}/*/.ssh/ r,
+  @{HOME}/.ssh/authorized_keys{,2} r,
+
+  # Write access to the PID file and necessary files in /proc
+  @{PROC}/@{pid}/oom_adj rw,
+  @{PROC}/@{pid}/oom_score_adj rw,
+  /var/log/btmp r,
+  /{,var/}run/ w,
+  /{,var/}run/sshd{,.init}.pid wl,
+
+  @{PROC}/@{pid}/fd/ r,
+  @{PROC}/@{pid}/loginuid w,
+  @{PROC}/@{pid}/limits r,
+
+  # Exec access to various shells
+  /bin/ash rUx,
+  /bin/bash rUx,
+  /bin/bash2 rUx,
+  /bin/bsh rUx,
+  /bin/csh rUx,
+  /bin/dash rUx,
+  /bin/ksh rUx,
+  /bin/sh rUx,
+  /bin/tcsh rUx,
+  /bin/zsh rUx,
+  /bin/zsh4 rUx,
+  /sbin/nologin rUx,
+  /usr/bin/mysecureshell rUx,
+  /usr/local/bin/lshell rUx,
+
+  # Temporary files and directories
+  /tmp/** rw,
+  /var/tmp/** rw,
+
+  /dev/pts/[0-9]* rw,
+  /etc/ssh/moduli r,
+  @{PROC}/@{pid}/mounts r,
+  /etc/motd r,
+  /{,var/}run/motd{,.new} rw,
+  /tmp/ssh-*/agent.[0-9]* rwl,
+  /tmp/ssh-*[0-9]*/ w,
+
+  ^EXEC {
+    # Include base abstractions
+    include <abstractions/base>
+
+    /bin/ash Ux,
+    /bin/bash Ux,
+    /bin/bash2 Ux,
+    /bin/bsh Ux,
+    /bin/csh Ux,
+    /bin/dash Ux,
+    /bin/ksh Ux,
+    /bin/sh Ux,
+    /bin/tcsh Ux,
+    /bin/zsh Ux,
+    /bin/zsh4 Ux,
+    /sbin/nologin Ux,
+    /usr/bin/mysecureshell Ux,
+    /usr/local/bin/lshell Ux,
+  }
+
+  ^PRIVSEP {
+    # Include base and nameservice abstractions
+    include <abstractions/base>
+    include <abstractions/nameservice>
+
+    capability sys_chroot,
+    capability setuid,
+    capability setgid,
+  }
+
+  ^PRIVSEP_MONITOR {
+    # Include authentication, base, nameservice, and wutmp abstractions
+    include <abstractions/authentication>
+    include <abstractions/base>
+    include <abstractions/nameservice>
+    include <abstractions/wutmp>
+
+    capability setuid,
+    capability setgid,
+    capability chown,
+
+    @{HOME}/.ssh/authorized_keys{,2} r,
+    /dev/ptmx rw,
+    /dev/pts/[0-9]* rw,
+    /dev/urandom r,
+    /etc/hosts.allow r,
+    /etc/hosts.deny r,
+    /etc/ssh/moduli r,
+    @{PROC}/@{pid}/mounts r,
+  }
+
+  ^AUTHENTICATED {
+    # Include authentication, consoles, nameservice, and wutmp abstractions
+    include <abstractions/authentication>
+    include <abstractions/consoles>
+    include <abstractions/nameservice>
+    include <abstractions/wutmp>
+
+    capability sys_tty_config,
+    capability setgid,
+    capability setuid,
+
+    /dev/log w,
+    /dev/ptmx rw,
+    /etc/default/passwd r,
+    /etc/localtime r,
+    /etc/writable/localtime r,
+    /etc/login.defs r,
+    /etc/motd r,
+    /{,var/}run/motd{,.new} rw,
+    /tmp/ssh-*/agent.[0-9]* rwl,
+    /tmp/ssh-*[0-9]*/ w,
+  }
 }
