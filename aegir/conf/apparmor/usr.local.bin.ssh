@@ -6,9 +6,6 @@
 
 /usr/local/bin/ssh flags=(complain) {
 
-    # Include the tunables/global definitions
-    include <tunables/global>
-
     # Include common AppArmor abstractions
     include <abstractions/base>
     include <abstractions/nameservice>
