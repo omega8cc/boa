@@ -6948,9 +6948,13 @@ install_myquick_src() {
     fi
     apt_clean_update
     mrun "${_INSTAPP} cmake" 2> /dev/null
+    mrun "${_INSTAPP} libssl-dev" 2> /dev/null
+    mrun "${_INSTAPP} libcurl4" 2> /dev/null
+    mrun "${_INSTAPP} libcurl4-gnutls-dev" 2> /dev/null
     if [ "${_DB_SERVER}" = "Percona" ] && [ "${_DB_SERIES}" = "5.7" ]; then
       mrun "${_INSTAPP} libperconaserverclient20-dev" 2> /dev/null
     fi
+    ldconfig 2> /dev/null
     cd /var/opt
     rm -rf mydumper*
     get_dev_src "mydumper-${_MYQUICK_VRN}.tar.gz"
@@ -6963,6 +6967,8 @@ install_myquick_src() {
         -DWITH_SSL=ON \
         -DBUILD_DOCS=ON \
         -DCMAKE_C_FLAGS=-Wno-error=unused-function .
+      mrun "make" 2> /dev/null
+      mrun "make install" 2> /dev/null
     else
       export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH &> /dev/null
       export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH &> /dev/null
@@ -6971,9 +6977,9 @@ install_myquick_src() {
         -DWITH_SSL=ON \
         -DBUILD_DOCS=ON \
         -DCMAKE_C_FLAGS=-Wno-error=unused-function . &> /dev/null
+      mrun "make --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
     fi
-    mrun "make --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
     ldconfig 2> /dev/null
   fi
 }
