@@ -4601,18 +4601,20 @@ sync_enable_apparmor_profiles() {
                     identd \
                     irssi \
                     klogd \
+                    lsb_release \
                     mdnsd \
                     modprobe \
                     nmbd \
                     nscd \
-                    usr.sbin.sshd \
                     php-fpm \
                     pidgin \
                     samba \
                     scanner \
                     smb \
                     syslog \
-                    totem"
+                    totem \
+                    traceroute \
+                    usr.sbin.sshd"
       for _profArm in ${_profArmList}; do
         mv -f /etc/apparmor.d/*${_profArm}* ${_backArmr} &> /dev/null
       done
