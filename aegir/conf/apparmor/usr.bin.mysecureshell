@@ -2,7 +2,7 @@
 # This profile restricts MySecureShell (mysecureshell) to essential operations only.
 
 # Include the tunables/global definitions
-include <tunables/global>
+#include <tunables/global>
 
 /usr/bin/mysecureshell flags=(complain) {
 

@@ -2,7 +2,7 @@
 # This profile restricts PHP-CLI (php81) to essential operations only.
 
 # Include the tunables/global definitions
-include <tunables/global>
+#include <tunables/global>
 
 /opt/php81/bin/php flags=(complain) {
 

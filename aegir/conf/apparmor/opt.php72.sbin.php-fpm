@@ -2,7 +2,7 @@
 # This profile restricts the PHP-FPM (php72) to essential operations only.
 
 # Include the tunables/global definitions
-include <tunables/global>
+#include <tunables/global>
 
 /opt/php72/sbin/php-fpm flags=(complain) {
 

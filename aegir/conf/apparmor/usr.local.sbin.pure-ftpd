@@ -2,7 +2,7 @@
 # This profile restricts Pure-FTPd server (pure-ftpd) to essential operations only.
 
 # Include the tunables/global definitions
-include <tunables/global>
+#include <tunables/global>
 
 /usr/local/sbin/pure-ftpd flags=(complain) {
 

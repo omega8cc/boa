@@ -2,7 +2,7 @@
 # This profile restricts DHCP dhclient (dhclient) to essential operations only.
 
 # Include the tunables/global definitions
-include <tunables/global>
+#include <tunables/global>
 
 /{,usr/}sbin/dhclient flags=(complain) {
 

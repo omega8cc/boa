@@ -2,7 +2,7 @@
 # This profile restricts the Redis server (redis-server) to essential operations only.
 
 # Include the tunables/global definitions
-include <tunables/global>
+#include <tunables/global>
 
 /usr/bin/redis-server flags=(complain) {
 

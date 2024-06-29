@@ -2,7 +2,7 @@
 # This profile restricts Clamd service (clamd) to essential operations only.
 
 # Include the tunables/global definitions
-include <tunables/global>
+#include <tunables/global>
 
 /usr/sbin/clamd flags=(complain) {
 

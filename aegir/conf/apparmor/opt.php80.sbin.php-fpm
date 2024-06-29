@@ -2,7 +2,7 @@
 # This profile restricts the PHP-FPM (php80) to essential operations only.
 
 # Include the tunables/global definitions
-include <tunables/global>
+#include <tunables/global>
 
 /opt/php80/sbin/php-fpm flags=(complain) {
 

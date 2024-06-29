@@ -2,7 +2,7 @@
 # This profile restricts Man service (man) to essential operations only.
 
 # Include the tunables/global definitions
-include <tunables/global>
+#include <tunables/global>
 
 /usr/bin/man flags=(complain) {
 

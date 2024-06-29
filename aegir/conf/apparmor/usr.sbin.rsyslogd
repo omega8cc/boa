@@ -2,7 +2,7 @@
 # This profile restricts Rsyslogd service (rsyslogd) to essential operations only.
 
 # Include the tunables/global definitions
-include <tunables/global>
+#include <tunables/global>
 
 /usr/sbin/rsyslogd flags=(complain) {
 

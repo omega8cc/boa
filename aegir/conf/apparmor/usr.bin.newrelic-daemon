@@ -2,7 +2,7 @@
 # This profile restricts the New Relic (newrelic-daemon) to essential operations only.
 
 # Include the tunables/global definitions
-include <tunables/global>
+#include <tunables/global>
 
 /usr/bin/newrelic-daemon flags=(complain) {
 
