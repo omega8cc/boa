@@ -107,7 +107,7 @@ include <tunables/global>
   /usr/local/rvm/bin/rvm ix,
 
   # Deny execution of any other binaries
-  deny /** mrix,
+  deny /** rwklx,
 
 }
 

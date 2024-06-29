@@ -51,5 +51,5 @@ include <tunables/global>
     /usr/local/bin/sftp ix,
 
     # Deny execution of any other binaries
-    deny /** mrix,
+    deny /** rwklx,
 }
