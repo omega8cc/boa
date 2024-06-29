@@ -1,0 +1,103 @@
+# AppArmor profile for Rsyslogd service
+# This profile restricts Rsyslogd service (rsyslogd) to essential operations only.
+
+/usr/sbin/rsyslogd {
+
+  # Include the tunables/global definitions
+  include <tunables/global>
+
+  # Allow the execution of the rsyslogd binary
+  /usr/sbin/rsyslogd mr,
+
+  # Allow read access to necessary libraries
+  /lib/** r,
+  /lib64/** r,
+  /usr/lib/** r,
+  /usr/local/lib/** r,
+  /usr/local/ssl/lib/** r,
+  /usr/local/ssl3/lib64/** r,
+
+  # Allow read access to system configuration files
+  /etc/rsyslog.conf r,
+  /etc/rsyslog.d/** r,
+
+  # Allow read and write access to the log directories and files
+  /var/log/** rwk,
+  /var/spool/rsyslog/** rw,
+
+  # Allow read access to the timezone information
+  /etc/localtime r,
+
+  # Allow read access to system certificates
+  /etc/ssl/certs/** r,
+
+  # Allow network access
+  network inet stream,
+  network inet dgram,
+
+  # Allow access to pid files
+  /var/run/rsyslogd.pid rw,
+
+  # Capabilities needed by Rsyslogd service
+  capability net_bind_service,
+  capability setuid,
+  capability setgid,
+  capability chown,
+  capability dac_override,
+
+  # Allow reading necessary kernel parameters
+  /proc/sys/kernel/random/uuid r,
+  /proc/cpuinfo r,
+  /proc/meminfo r,
+  /proc/stat r,
+
+  # Deny access to everything else by default
+  /usr/sbin/rsyslogd {
+    include <abstractions/base>
+    /usr/sbin/rsyslogd mr,
+    /lib/x86_64-linux-gnu/** rm,
+    /usr/lib/x86_64-linux-gnu/** rm,
+    /usr/local/lib/** rm,
+    /usr/local/ssl/lib/** rm,
+    /usr/local/ssl3/lib64/** rm,
+    /etc/rsyslog.conf r,
+    /etc/rsyslog.d/* r,
+    /var/log/** rwk,
+    /var/spool/rsyslog/** rw,
+    /var/run/rsyslogd.pid rw,
+    /etc/localtime r,
+    /etc/ssl/certs/* r,
+    network inet stream,
+    network inet dgram,
+    capability dac_read_search,
+    capability dac_override,
+    capability net_bind_service,
+    capability setuid,
+    capability setgid,
+    capability chown,
+    capability dac_override,
+    /proc/sys/kernel/random/uuid r,
+    /proc/cpuinfo r,
+    /proc/meminfo r,
+    /proc/stat r,
+    deny /sys/kernel/** rwklx,
+    deny /sys/module/** rwklx,
+  }
+
+  # Deny access to critical system paths
+  deny /boot/** rwklx,
+  deny /dev/** rwklx,
+  deny /etc/** rwklx,
+  deny /home/** rwklx,
+  deny /mnt/** rwklx,
+  deny /media/** rwklx,
+  deny /opt/** rwklx,
+  deny /proc/** rwklx,
+  deny /root/** rwklx,
+  deny /sbin/** rwklx,
+  deny /srv/** rwklx,
+  deny /sys/** rwklx,
+  deny /tmp/** rwklx,
+  deny /usr/** rwklx,
+  deny /var/** rwklx,
+}
