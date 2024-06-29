@@ -545,8 +545,8 @@ prep_for_install_db_sql() {
       && [ "${_SQL_MAJOR_UP_ALLOW}" = "YES" ]; then
       _DB_SERVER=Percona
       _DBS_VRN="${_PERCONA_5_7_VRN}"
-      rm -f /etc/apt/sources.list.d/percona-.*
-      rm -f /etc/apt/sources.list.d/xtrabackup.*
+      rm -f /etc/apt/sources.list.d/percona*
+      rm -f /etc/apt/sources.list.d/xtrabackup*
       percList="/etc/apt/sources.list.d/percona-release.list"
       percRepo="${_DB_SRC}/percona/apt"
       echo "## Percona APT Repository" > ${percList}
@@ -564,8 +564,8 @@ prep_for_install_db_sql() {
       _DB_SERVER=Percona
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
-      rm -f /etc/apt/sources.list.d/percona-.*
-      rm -f /etc/apt/sources.list.d/xtrabackup.*
+      rm -f /etc/apt/sources.list.d/percona*
+      rm -f /etc/apt/sources.list.d/xtrabackup*
       percList="/etc/apt/sources.list.d/percona-release.list"
       percRepo="${_DB_SRC}/percona/apt"
       echo "## Percona APT Repository" > ${percList}
@@ -588,9 +588,9 @@ prep_for_install_db_sql() {
 
   percRepo="${_DB_SRC}/percona/apt"
   percList="/etc/apt/sources.list.d/percona-release.list"
-  rm -f /etc/apt/sources.list.d/mariadb.*
-  rm -f /etc/apt/sources.list.d/percona-.*
-  rm -f /etc/apt/sources.list.d/xtrabackup.*
+  rm -f /etc/apt/sources.list.d/mariadb*
+  rm -f /etc/apt/sources.list.d/percona*
+  rm -f /etc/apt/sources.list.d/xtrabackup*
   echo "## Percona APT Repository" > ${percList}
   if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
     echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
@@ -942,8 +942,8 @@ db_server_install() {
       if [ "${_DB_SERVER}" = "Percona" ] && [ "${_DB_SERIES}" = "5.7" ]; then
         percList="/etc/apt/sources.list.d/percona-release.list"
         percRepo="${_DB_SRC}/percona/apt"
-        rm -f /etc/apt/sources.list.d/percona-.*
-        rm -f /etc/apt/sources.list.d/xtrabackup.*
+        rm -f /etc/apt/sources.list.d/percona*
+        rm -f /etc/apt/sources.list.d/xtrabackup*
         echo "## Percona APT Repository" > ${percList}
         if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
           echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}

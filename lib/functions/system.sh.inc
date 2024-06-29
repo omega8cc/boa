@@ -5752,8 +5752,8 @@ if_major_os_upgrade() {
       fi
       percRepo="${_DB_SRC}/percona/apt"
       percList="/etc/apt/sources.list.d/percona-release.list"
-      rm -f /etc/apt/sources.list.d/percona-.*
-      rm -f /etc/apt/sources.list.d/xtrabackup.*
+      rm -f /etc/apt/sources.list.d/percona*
+      rm -f /etc/apt/sources.list.d/xtrabackup*
       echo "## Percona APT Repository" > ${percList}
       if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
         echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
