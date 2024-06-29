@@ -13,7 +13,6 @@ include <tunables/global>
     include <abstractions/base>
     include <abstractions/nameservice>
     include <abstractions/openssl>
-    include <abstractions/ssh>
 
     # Allow execution of the ssh binary
     /usr/local/bin/ssh ix,
