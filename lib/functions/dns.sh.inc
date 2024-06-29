@@ -361,10 +361,6 @@ dns_unbound_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: dns_unbound_install_upgrade"
   fi
-  if [ -e "/etc/apparmor.d" ] && [ ! -e "/etc/apparmor.d/usr.sbin.unbound" ]; then
-    cat ${locCnf}/apparmor/usr.sbin.unbound > /etc/apparmor.d/usr.sbin.unbound
-    chmod 644 /etc/apparmor.d/usr.sbin.unbound
-  fi
   isUnbnd=$(which unbound 2>&1)
   isUnbndErr=$(${isUnbnd} -V 2>&1)
   if [[ "${isUnbndErr}" =~ "cannot open shared object file" ]] \
@@ -415,12 +411,25 @@ dns_unbound_install_upgrade() {
     mrun "${_INSTAPP} unbound-anchor" 2> /dev/null
     mrun "${_INSTAPP} unbound-host" 2> /dev/null
     mrun "${_INSTAPP} dns-root-data" 2> /dev/null
-    mkdir -p /var/log/unbound
+    ###
+    [ ! -e "/var/run/unbound/" ] && mkdir -p /var/run/unbound/
+    chown -R unbound:unbound /var/run/unbound
+    [ ! -e "/var/log/unbound/" ] && mkdir -p /var/log/unbound/
     touch /var/log/unbound/unbound.log
     chown -R unbound:unbound /var/log/unbound
-    mkdir -p /var/lib/unbound/
+    [ ! -e "/var/lib/unbound/" ] && mkdir -p /var/lib/unbound/
     cp -a /usr/share/dns/* /var/lib/unbound/
     chown -R unbound:unbound /var/lib/unbound
+    [ ! -e "/usr/etc/unbound/unbound_control.key" ] && mrun "unbound-control-setup" 2> /dev/null
+    cp -af ${locCnf}/unbound /etc/init.d/unbound
+    chmod 755 /etc/init.d/unbound-server &> /dev/null
+    mrun "update-rc.d unbound defaults" 2> /dev/null
+    ###
+    if [ -e "/etc/apparmor.d" ] && [ ! -e "/etc/apparmor.d/usr.sbin.unbound" ]; then
+      cat ${locCnf}/apparmor/usr.sbin.unbound > /etc/apparmor.d/usr.sbin.unbound
+      chmod 644 /etc/apparmor.d/usr.sbin.unbound
+    fi
+    ###
     cat ${locCnf}/unbound.conf > /etc/unbound/unbound.conf.d/unbound.conf
     if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
       && [ -e "${vBs}/resolv.conf.vanilla" ]; then
