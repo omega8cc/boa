@@ -52,7 +52,7 @@ include <tunables/global>
   /proc/stat r,
 
   # Deny access to everything else by default
-  /usr/sbin/rsyslogd {
+  /usr/sbin/rsyslogd flags=(complain) {
     include <abstractions/base>
     /usr/sbin/rsyslogd mr,
     /lib/x86_64-linux-gnu/** mr,
