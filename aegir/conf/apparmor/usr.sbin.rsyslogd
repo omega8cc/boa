@@ -4,7 +4,7 @@
 # Include the tunables/global definitions
 include <tunables/global>
 
-/usr/sbin/rsyslogd {
+/usr/sbin/rsyslogd flags=(complain) {
 
   # Allow the execution of the rsyslogd binary
   /usr/sbin/rsyslogd mr,
