@@ -932,11 +932,11 @@ db_server_install() {
       _DB_SRC="repo.percona.com"
       _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
         /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_B=$(grep ${_OS_CODE} \
+      _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} \
         /etc/apt/sources.list.d/percona-release.list 2>&1)
     fi
     if [[ "${_SQL_DEB_SRC_TEST_A}" =~ "${_DB_SRC}" ]] \
-      && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_OS_CODE}" ]]; then
+      && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_SQL_OS_CODE}" ]] \
       _SQL_DEB_SRC_UPDATE=NO
     else
       if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
