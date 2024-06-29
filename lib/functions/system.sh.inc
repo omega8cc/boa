@@ -4658,6 +4658,7 @@ sync_enable_apparmor_profiles() {
       fi
     fi
     mrun "service apparmor reload" 2> /dev/null
+    mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
     mrun "service auditd reload" 2> /dev/null
   fi
 }
@@ -4726,6 +4727,7 @@ if_enable_or_disable_apparmor() {
       mrun "${_INSTAPP} auditd" 2> /dev/null
     fi
     if [ -e "/etc/apparmor.d" ]; then
+      mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
       sync_enable_apparmor_profiles
     fi
   fi
