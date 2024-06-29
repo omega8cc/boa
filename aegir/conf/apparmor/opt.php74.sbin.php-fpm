@@ -1,10 +1,10 @@
 # AppArmor profile for PHP-FPM
 # This profile restricts the PHP-FPM (php74) to essential operations only.
 
-/opt/php74/sbin/php-fpm flags=(complain) {
+# Include the tunables/global definitions
+include <tunables/global>
 
-  # Include the tunables/global definitions
-  include <tunables/global>
+/opt/php74/sbin/php-fpm flags=(complain) {
 
   # Include common AppArmor abstractions
   include <abstractions/base>

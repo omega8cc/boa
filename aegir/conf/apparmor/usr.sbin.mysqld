@@ -1,10 +1,10 @@
 # AppArmor profile for MySQLd server
 # This profile restricts MySQLd server (mysqld) to essential operations only.
 
-/usr/sbin/mysqld flags=(complain) {
+# Include the tunables/global definitions
+include <tunables/global>
 
-  # Include the tunables/global definitions
-  include <tunables/global>
+/usr/sbin/mysqld flags=(complain) {
 
   # Include common AppArmor abstractions
   include <abstractions/base>

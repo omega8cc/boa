@@ -1,10 +1,10 @@
 # AppArmor profile for MySecureShell
 # This profile restricts MySecureShell (mysecureshell) to essential operations only.
 
-/usr/bin/mysecureshell flags=(complain) {
+# Include the tunables/global definitions
+include <tunables/global>
 
-  # Include the tunables/global definitions
-  include <tunables/global>
+/usr/bin/mysecureshell flags=(complain) {
 
   # Include common AppArmor abstractions
   include <abstractions/base>

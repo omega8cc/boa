@@ -1,10 +1,10 @@
 # AppArmor profile for PHP-CLI
 # This profile restricts PHP-CLI (php80) to essential operations only.
 
-/opt/php80/bin/php flags=(complain) {
+# Include the tunables/global definitions
+include <tunables/global>
 
-  # Include the tunables/global definitions
-  include <tunables/global>
+/opt/php80/bin/php flags=(complain) {
 
   # Include common AppArmor abstractions
   include <abstractions/base>

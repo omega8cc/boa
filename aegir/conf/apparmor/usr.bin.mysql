@@ -1,10 +1,10 @@
 # AppArmor profile for MySQL client
 # This profile restricts MySQL client (mysql) to essential operations only.
 
-/usr/bin/mysql flags=(complain) {
+# Include the tunables/global definitions
+include <tunables/global>
 
-  # Include the tunables/global definitions
-  include <tunables/global>
+/usr/bin/mysql flags=(complain) {
 
   # Include common AppArmor abstractions
   include <abstractions/base>

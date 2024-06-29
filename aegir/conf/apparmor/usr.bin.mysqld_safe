@@ -1,10 +1,10 @@
 # AppArmor profile for MySQLd starter
 # This profile restricts MySQLd starter (mysqld_safe) to essential operations only.
 
-/usr/bin/mysqld_safe flags=(complain) {
+# Include the tunables/global definitions
+include <tunables/global>
 
-  # Include the tunables/global definitions
-  include <tunables/global>
+/usr/bin/mysqld_safe flags=(complain) {
 
   # Include common AppArmor abstractions
   include <abstractions/base>

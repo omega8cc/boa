@@ -1,10 +1,10 @@
 # AppArmor profile for Clamd service
 # This profile restricts Clamd service (clamd) to essential operations only.
 
-/usr/sbin/clamd flags=(complain) {
+# Include the tunables/global definitions
+include <tunables/global>
 
-  # Include the tunables/global definitions
-  include <tunables/global>
+/usr/sbin/clamd flags=(complain) {
 
   # Include common AppArmor abstractions
   include <abstractions/base>

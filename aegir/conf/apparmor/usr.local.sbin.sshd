@@ -1,10 +1,10 @@
 # AppArmor profile for SSHd daemon
 # This profile restricts the SSHd daemon (sshd) to essential operations only.
 
-/usr/local/sbin/sshd flags=(complain) {
+# Include the tunables/global definitions
+include <tunables/global>
 
-  # Include the tunables/global definitions
-  include <tunables/global>
+/usr/local/sbin/sshd flags=(complain) {
 
   # Include common AppArmor abstractions
   include <abstractions/authentication>

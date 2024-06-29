@@ -1,10 +1,10 @@
 # AppArmor profile for Redis server
 # This profile restricts the Redis server (redis-server) to essential operations only.
 
-/usr/bin/redis-server flags=(complain) {
+# Include the tunables/global definitions
+include <tunables/global>
 
-  # Include the tunables/global definitions
-  include <tunables/global>
+/usr/bin/redis-server flags=(complain) {
 
   # Include common AppArmor abstractions
   include <abstractions/base>

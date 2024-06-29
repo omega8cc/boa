@@ -1,10 +1,10 @@
 # AppArmor profile for Limited Shell
 # This profile restricts Limited Shell (lshell) to essential operations only.
 
-/usr/local/bin/lshell flags=(complain) {
+# Include the tunables/global definitions
+include <tunables/global>
 
-  # Include the tunables/global definitions
-  include <tunables/global>
+/usr/local/bin/lshell flags=(complain) {
 
   # Include common AppArmor abstractions
   include <abstractions/base>

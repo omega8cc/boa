@@ -1,10 +1,10 @@
 # AppArmor profile for Unbound server
 # This profile restricts Unbound server (unbound) to essential operations only.
 
-/usr/sbin/unbound flags=(complain) {
+# Include the tunables/global definitions
+include <tunables/global>
 
-  # Include the tunables/global definitions
-  include <tunables/global>
+/usr/sbin/unbound flags=(complain) {
 
   # Include common AppArmor abstractions
   include <abstractions/base>

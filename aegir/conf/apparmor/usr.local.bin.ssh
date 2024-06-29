@@ -1,6 +1,9 @@
 # AppArmor profile for SSH client
 # This profile restricts the SSH client (ssh) to essential operations only.
 
+# Include the tunables/global definitions
+include <tunables/global>
+
 /usr/local/bin/ssh flags=(complain) {
 
     # Include the tunables/global definitions

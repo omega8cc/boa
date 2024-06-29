@@ -1,10 +1,10 @@
 # AppArmor profile for Freshclam service
 # This profile restricts Freshclam service (freshclam) to essential operations only.
 
-/usr/bin/freshclam flags=(complain) {
+# Include the tunables/global definitions
+include <tunables/global>
 
-  # Include the tunables/global definitions
-  include <tunables/global>
+/usr/bin/freshclam flags=(complain) {
 
   # Include common AppArmor abstractions
   include <abstractions/base>

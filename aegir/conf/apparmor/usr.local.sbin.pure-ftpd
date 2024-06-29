@@ -1,10 +1,10 @@
 # AppArmor profile for Pure-FTPd server
 # This profile restricts Pure-FTPd server (pure-ftpd) to essential operations only.
 
-/usr/local/sbin/pure-ftpd flags=(complain) {
+# Include the tunables/global definitions
+include <tunables/global>
 
-  # Include the tunables/global definitions
-  include <tunables/global>
+/usr/local/sbin/pure-ftpd flags=(complain) {
 
   # Include common AppArmor abstractions
   include <abstractions/base>

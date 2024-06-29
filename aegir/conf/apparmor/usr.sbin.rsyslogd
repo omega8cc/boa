@@ -1,10 +1,10 @@
 # AppArmor profile for Rsyslogd service
 # This profile restricts Rsyslogd service (rsyslogd) to essential operations only.
 
-/usr/sbin/rsyslogd {
+# Include the tunables/global definitions
+include <tunables/global>
 
-  # Include the tunables/global definitions
-  include <tunables/global>
+/usr/sbin/rsyslogd {
 
   # Allow the execution of the rsyslogd binary
   /usr/sbin/rsyslogd mr,

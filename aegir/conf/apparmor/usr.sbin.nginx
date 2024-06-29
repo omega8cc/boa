@@ -1,10 +1,10 @@
 # AppArmor profile for Nginx server
 # This profile restricts Nginx server (nginx) to essential operations only.
 
-/usr/sbin/nginx flags=(complain) {
+# Include the tunables/global definitions
+include <tunables/global>
 
-  # Include the tunables/global definitions
-  include <tunables/global>
+/usr/sbin/nginx flags=(complain) {
 
   # Include common AppArmor abstractions
   include <abstractions/base>

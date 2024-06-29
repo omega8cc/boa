@@ -1,10 +1,10 @@
 # AppArmor profile for DHCP dhclient
 # This profile restricts DHCP dhclient (dhclient) to essential operations only.
 
-/{,usr/}sbin/dhclient flags=(complain) {
+# Include the tunables/global definitions
+include <tunables/global>
 
-  # Include the tunables/global definitions
-  include <tunables/global>
+/{,usr/}sbin/dhclient flags=(complain) {
 
   # Include common AppArmor abstractions
   include <abstractions/base>
