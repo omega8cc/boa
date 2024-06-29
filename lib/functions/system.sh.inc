@@ -6952,7 +6952,13 @@ install_myquick_src() {
     rm -rf mydumper*
     get_dev_src "mydumper-${_MYQUICK_VRN}.tar.gz"
     cd /var/opt/mydumper-${_MYQUICK_VRN}
-    mrun "cmake -DWITH_SSL=OFF ." 2> /dev/null
+    export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+    export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+    mrun "LD_LIBRARY_PATH=/usr/local/lib:/usr/lib/x86_64-linux-gnu \
+      cmake \
+      -DWITH_SSL=ON \
+      -DBUILD_DOCS=ON \
+      -DCMAKE_C_FLAGS=-Wno-error=unused-function ." 2> /dev/null
     mrun "make --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     ldconfig 2> /dev/null
