@@ -4557,8 +4557,10 @@ strict_bin_permissions() {
   cp -af ${bldPth}/aegir/helpers/websh.sh.txt /bin/websh
   chmod 755 /bin/websh
   chown root:root /bin/websh
-  chown root:root /etc/passwd
-  chmod 644 /etc/passwd
+  chown root:root /etc/passwd*
+  chmod 644 /etc/passwd*
+  chown root:shadow /etc/shadow*
+  chmod 640 /etc/shadow*
 }
 
 #
