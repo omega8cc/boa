@@ -937,6 +937,8 @@ db_server_install() {
     fi
     if [[ "${_SQL_DEB_SRC_TEST_A}" =~ "${_DB_SRC}" ]] \
       && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_SQL_OS_CODE}" ]] \
+      && [ -e "/etc/apt/keyrings/percona.gpg" ] \
+      && [ -e "/etc/apt/preferences.d/00percona.pref" ]; then
       _SQL_DEB_SRC_UPDATE=NO
     else
       if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
