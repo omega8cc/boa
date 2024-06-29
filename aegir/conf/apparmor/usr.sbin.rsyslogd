@@ -55,11 +55,11 @@ include <tunables/global>
   /usr/sbin/rsyslogd {
     include <abstractions/base>
     /usr/sbin/rsyslogd mr,
-    /lib/x86_64-linux-gnu/** rm,
-    /usr/lib/x86_64-linux-gnu/** rm,
-    /usr/local/lib/** rm,
-    /usr/local/ssl/lib/** rm,
-    /usr/local/ssl3/lib64/** rm,
+    /lib/x86_64-linux-gnu/** mr,
+    /usr/lib/x86_64-linux-gnu/** mr,
+    /usr/local/lib/** mr,
+    /usr/local/ssl/lib/** mr,
+    /usr/local/ssl3/lib64/** mr,
     /etc/rsyslog.conf r,
     /etc/rsyslog.d/* r,
     /var/log/** rwk,
