@@ -6365,15 +6365,6 @@ sys_packages_update() {
       rm -f /etc/php5/conf.d/{redis.ini,suhosin.ini,newrelic.ini}
     fi
     rm -f /var/lib/mysql/debian-*.flag &> /dev/null
-    if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
-      mrun "service lfd stop" 2> /dev/null
-      wait
-      kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
-      killall sleep &> /dev/null
-      rm -f /etc/csf/csf.error
-      csf -x &> /dev/null
-      wait
-    fi
     _UP_JDK=NO
     _UP_LNX=NO
     _UP_NRC=NO

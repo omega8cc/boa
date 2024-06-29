@@ -922,16 +922,6 @@ db_server_install() {
     _GPG=gpg
   fi
   if [ "${_STATUS}" = "INIT" ]; then
-    if [ -x "/usr/sbin/csf" ] \
-      && [ -e "/etc/csf/csf.deny" ]; then
-      mrun "service lfd stop" 2> /dev/null
-      wait
-      kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
-      killall sleep &> /dev/null
-      rm -f /etc/csf/csf.error
-      csf -x &> /dev/null
-      wait
-    fi
     db_server_apt_cleanup
     install_with_aptitude_sql
     db_server_apt_cleanup
@@ -971,16 +961,6 @@ db_server_install() {
       apt_clean_update
     fi
     if [ "${_SQL_UPGRADE}" = "YES" ]; then
-      if [ -x "/usr/sbin/csf" ] \
-        && [ -e "/etc/csf/csf.deny" ]; then
-        mrun "service lfd stop" 2> /dev/null
-        wait
-        kill -9 $(ps aux | grep '[C]onfigServer' | awk '{print $2}') &> /dev/null
-        killall sleep &> /dev/null
-        rm -f /etc/csf/csf.error
-        csf -x &> /dev/null
-        wait
-      fi
       msg "INFO: Running ${_DB_SERVER} upgrade..."
       msg "WAIT: This may take a while, please wait..."
       if [ ! -e "/root/.proxy.cnf" ]; then
