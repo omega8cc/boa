@@ -6993,6 +6993,7 @@ myquick_install_upgrade() {
     _MYQUICK_ITD=$(mydumper -V 2>&1 \
       | tr -d "\n" \
       | tr -d "," \
+      | tr -d "v" \
       | cut -d" " -f2 \
       | awk '{ print $1}' 2>&1)
     _DB_V=$(mysql -V 2>&1 \
