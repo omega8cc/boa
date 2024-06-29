@@ -887,10 +887,21 @@ forced_mysql_root_password_update() {
   fi
 }
 
+db_server_apt_cleanup() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: db_server_apt_cleanup"
+  fi
+  [ -e "/etc/apt/sources.list.d/percona-original-release.list" ] && rm -f /etc/apt/sources.list.d/percona-original-release.list
+  [ -e "/etc/apt/sources.list.d/percona-prel-release.list" ] && rm -f /etc/apt/sources.list.d/percona-prel-release.list
+  [ -e "/etc/apt/sources.list.d/percona-release.list.bak" ] && rm -f /etc/apt/sources.list.d/percona-release.list.bak
+  apt_clean_update
+}
+
 db_server_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: db_server_install"
   fi
+  db_server_apt_cleanup
   _SQL_SCR=APT
   if [ "${_OS_CODE}" = "daedalus" ]; then
     _SQL_OS_CODE=bookworm
@@ -921,7 +932,9 @@ db_server_install() {
       csf -x &> /dev/null
       wait
     fi
+    db_server_apt_cleanup
     install_with_aptitude_sql
+    db_server_apt_cleanup
   else
     ### Only supported upgrade path allowed
     sql_strict_upgrade_path
@@ -1025,7 +1038,9 @@ db_server_install() {
       fi
       rm -f /var/lib/mysql/debian-*.flag &> /dev/null
       rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
+      db_server_apt_cleanup
       install_with_aptitude_sql
+      db_server_apt_cleanup
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf &> /dev/null
           wait
