@@ -69,7 +69,7 @@
   /data/disk/*/clients/** r,
   /data/disk/*/distro/** r,
   /data/disk/*/static/** r,
-  @{HOME}/.drush/** r,
+  /home/*/.drush/** r,
   /opt/tools/drush/** r,
 
   # Allow write access to Octopus user directories and files

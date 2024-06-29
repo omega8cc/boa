@@ -141,9 +141,9 @@
   network inet6 stream,
 
   # Allow reading user home directories and authorized keys
-  @{HOME}/*/ r,
-  @{HOME}/*/.ssh/ r,
-  @{HOME}/.ssh/authorized_keys{,2} r,
+  /home/*/*/ r,
+  /home/*/*/.ssh/ r,
+  /home/*/.ssh/authorized_keys{,2} r,
 
   # Write access to the PID file and necessary files in /proc
   @{PROC}/@{pid}/oom_adj rw,
@@ -225,7 +225,7 @@
     capability setgid,
     capability chown,
 
-    @{HOME}/.ssh/authorized_keys{,2} r,
+    /home/*/.ssh/authorized_keys{,2} r,
     /dev/ptmx rw,
     /dev/pts/[0-9]* rw,
     /dev/urandom r,

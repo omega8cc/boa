@@ -76,10 +76,10 @@
   deny /etc/gshadow- r,
 
   # Allow reading the user's .my.cnf file
-  @{HOME}/.my.cnf r,
+  /home/*/.my.cnf r,
 
   # Allow writing to log files in user's home directory
-  @{HOME}/.mysql_history rw,
+  /home/*/.mysql_history rw,
 
   # Catchall to deny everything else
   deny /** rwklx,

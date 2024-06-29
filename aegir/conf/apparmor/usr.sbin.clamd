@@ -59,8 +59,8 @@
   /var/spool/qpsmtpd/* r,
   /{,var/}run/clamav/clamd.ctl w,
   /{,var/}run/clamav/clamd.pid w,
-  @{HOME}/ r,
-  @{HOME}/** r,
+  /home/*/ r,
+  /home/*/** r,
   @{PROC}/[0-9]*/status r,
   @{PROC}/filesystems r,
 

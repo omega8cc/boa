@@ -11,13 +11,13 @@
   include <abstractions/python>
 
   # Read/write access to user home
-  @{HOME}/** rw,
+  /home/*/** rw,
 
   # Read/write access to SSH client files
-  @{HOME}/.ssh/** rw,
+  /home/*/.ssh/** rw,
 
   # Read-only access to Drush aliases and php.ini files
-  @{HOME}/.drush/** r,
+  /home/*/.drush/** r,
 
   # Drush access
   /opt/tools/drush/** rix,
@@ -38,14 +38,14 @@
   owner /data/disk/*/static/** rw,
 
   # Read/write access to Drush cache
-  @{HOME}/.drush/cache/** rw,
+  /home/*/.drush/cache/** rw,
 
   # Deny access to critical system files
   deny /etc/shadow* rw,
   deny /etc/passwd* rw,
 
   # Temporary files and directories
-  @{HOME}/.tmp/** rw,
+  /home/*/.tmp/** rw,
 
   # Allow execution of necessary binaries
   /usr/bin/mysecureshell ix,

@@ -28,7 +28,7 @@
   /opt/php80/sbin/php-fpm mrix,
 
   # Allow PHP-FPM to read its configuration files
-  @{HOME}/.drush/** r,
+  /home/*/.drush/** r,
   /data/conf/** r,
   /etc/ImageMagick-6/log.xml r,
   /etc/ImageMagick-6/policy.xml r,
@@ -63,7 +63,7 @@
   /run/** rw,
 
   # Allow PHP-FPM to use tmp files
-  @{HOME}/.tmp/** rw,
+  /home/*/.tmp/** rw,
   /tmp/** rw,
   /var/tmp/** rw,
 
@@ -89,8 +89,8 @@
   /dev/shm/** rw,
 
   # Deny execution of binaries from /tmp and /var/tmp and HOME
-  deny @{HOME}/.tmp/** m,
-  deny @{HOME}/** m,
+  deny /home/*/.tmp/** m,
+  deny /home/*/** m,
   deny /tmp/** m,
   deny /var/tmp/** m,
 

@@ -18,7 +18,7 @@
     # Read access to SSH client configuration files
     /etc/ssh/ssh_config r,
     /etc/ssh/ssh_known_hosts r,
-    @{HOME}/.ssh/** rw,
+    /home/*/.ssh/** rw,
 
     # Allow network access for making outbound connections
     network inet stream,

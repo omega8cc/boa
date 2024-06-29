@@ -23,7 +23,7 @@
   /opt/php73/bin/php rix,
 
   # Allow PHP-CLI to read its configuration files
-  @{HOME}/.drush/** r,
+  /home/*/.drush/** r,
   /data/conf/** r,
   /etc/ImageMagick-6/log.xml r,
   /etc/ImageMagick-6/policy.xml r,
@@ -57,7 +57,7 @@
   /dev/tty rw,
 
   # Allow PHP-CLI to use tmp files
-  @{HOME}/.tmp/** rw,
+  /home/*/.tmp/** rw,
   /tmp/** rw,
   /var/tmp/** rw,
 
@@ -83,8 +83,8 @@
   /dev/shm/** rw,
 
   # Deny execution of binaries from /tmp and /var/tmp and HOME
-  deny @{HOME}/.tmp/** m,
-  deny @{HOME}/** m,
+  deny /home/*/.tmp/** m,
+  deny /home/*/** m,
   deny /tmp/** m,
   deny /var/tmp/** m,
 
@@ -128,7 +128,7 @@
   owner /data/disk/*/tools/le/** rw,
   owner /var/www/** rw,
 
-  owner @{HOME}/.drush/** r,
+  owner /home/*/.drush/** r,
   owner /home/*/.drush/cache/** rw,
   owner /home/*/.tmp/* rw,
 
