@@ -183,7 +183,7 @@ include <tunables/global>
   /tmp/ssh-*/agent.[0-9]* rwl,
   /tmp/ssh-*[0-9]*/ w,
 
-  ^EXEC {
+  ^EXEC flags=(complain) {
     # Include base abstractions
     include <abstractions/base>
 
@@ -203,7 +203,7 @@ include <tunables/global>
     /usr/local/bin/lshell Ux,
   }
 
-  ^PRIVSEP {
+  ^PRIVSEP flags=(complain) {
     # Include base and nameservice abstractions
     include <abstractions/base>
     include <abstractions/nameservice>
@@ -213,7 +213,7 @@ include <tunables/global>
     capability setgid,
   }
 
-  ^PRIVSEP_MONITOR {
+  ^PRIVSEP_MONITOR flags=(complain) {
     # Include authentication, base, nameservice, and wutmp abstractions
     include <abstractions/authentication>
     include <abstractions/base>
@@ -234,7 +234,7 @@ include <tunables/global>
     @{PROC}/@{pid}/mounts r,
   }
 
-  ^AUTHENTICATED {
+  ^AUTHENTICATED flags=(complain) {
     # Include authentication, consoles, nameservice, and wutmp abstractions
     include <abstractions/authentication>
     include <abstractions/consoles>
