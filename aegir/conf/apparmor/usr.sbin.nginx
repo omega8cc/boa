@@ -18,6 +18,18 @@
   capability dac_override,
   capability dac_read_search,
 
+  # Allow read access to necessary libraries
+  /lib/** mr,
+  /lib64/** mr,
+  /usr/lib/** mr,
+  /usr/lib/x86_64-linux-gnu/** mr,
+  /usr/local/include/** mr,
+  /usr/local/lib/** mr,
+  /usr/local/ssl/** r,
+  /usr/local/ssl/lib/** mr,
+  /usr/local/ssl3/** r,
+  /usr/local/ssl3/lib64/** mr,
+
   /usr/sbin/nginx mr,
   /var/lib/nginx/** rw,
 

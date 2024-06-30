@@ -62,14 +62,18 @@
   /var/tmp/** rw,
 
   # Allow read access to necessary libraries
-  /lib/** r,
-  /lib64/** r,
-  /usr/lib/** r,
-  /usr/local/lib/** r,
-  /usr/local/ssl/lib/** r,
-  /usr/local/ssl3/lib64/** r,
+  /lib/** mr,
+  /lib64/** mr,
   /opt/php*/lib/php/** mr,
+  /usr/lib/** mr,
+  /usr/lib/x86_64-linux-gnu/** mr,
+  /usr/local/include/** mr,
   /usr/local/ioncube/ioncube_loader_lin_*.so mr,
+  /usr/local/lib/** mr,
+  /usr/local/ssl/** r,
+  /usr/local/ssl/lib/** mr,
+  /usr/local/ssl3/** r,
+  /usr/local/ssl3/lib64/** mr,
 
   # Allow PHP-CLI to read and write its log files
   /var/log/php/** rw,

@@ -41,9 +41,17 @@
   /tmp/** rw,
   /var/tmp/** rw,
 
-  /usr/local/ssl3/lib64/libcrypto.so.* mr,
-  /usr/local/ssl3/lib64/libssl.so.* mr,
-  /usr/local/ssl3/openssl.cnf r,
+  # Allow read access to necessary libraries
+  /lib/** mr,
+  /lib64/** mr,
+  /usr/lib/** mr,
+  /usr/lib/x86_64-linux-gnu/** mr,
+  /usr/local/include/** mr,
+  /usr/local/lib/** mr,
+  /usr/local/ssl/** r,
+  /usr/local/ssl/lib/** mr,
+  /usr/local/ssl3/** r,
+  /usr/local/ssl3/lib64/** mr,
 
   /etc/clamav/clamd.conf r,
   /var/lib/amavis/tmp/** r,
