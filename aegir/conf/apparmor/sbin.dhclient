@@ -80,7 +80,7 @@
   include if exists <local/sbin.dhclient>
 }
 
-/usr/lib/NetworkManager/nm-dhcp-client.action {
+/usr/lib/NetworkManager/nm-dhcp-client.action flags=(complain) {
   include <abstractions/base>
   include <abstractions/dbus>
   /usr/lib/NetworkManager/nm-dhcp-client.action mr,
@@ -92,7 +92,7 @@
   network inet6 dgram,
 }
 
-/usr/lib/NetworkManager/nm-dhcp-helper {
+/usr/lib/NetworkManager/nm-dhcp-helper flags=(complain) {
   include <abstractions/base>
   include <abstractions/dbus>
   /usr/lib/NetworkManager/nm-dhcp-helper mr,
@@ -107,7 +107,7 @@
   network inet6 dgram,
 }
 
-/usr/lib/connman/scripts/dhclient-script {
+/usr/lib/connman/scripts/dhclient-script flags=(complain) {
   include <abstractions/base>
   include <abstractions/dbus>
   /usr/lib/connman/scripts/dhclient-script      mr,

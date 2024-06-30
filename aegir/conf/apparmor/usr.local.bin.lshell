@@ -107,7 +107,6 @@
   /usr/local/rvm/bin/rvm ix,
 
   # Deny execution of any other binaries
-  deny /** rwklx,
-
+  #deny /** rwklx,
 }
 

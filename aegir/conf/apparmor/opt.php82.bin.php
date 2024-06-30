@@ -151,7 +151,7 @@
   deny /root/** rwklx,
 
   # Catchall to deny everything else
-  deny /** rwklx,
+  #deny /** rwklx,
 
   # Site-specific additions and overrides can be added below
 }

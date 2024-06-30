@@ -48,4 +48,6 @@
   owner /home/*.web/.drush/* r,
   owner /home/*.web/.tmp/* rw,
 
+  # Catchall to deny everything else
+  #deny /** rwklx,
 }

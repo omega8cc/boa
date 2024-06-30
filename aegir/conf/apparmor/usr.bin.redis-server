@@ -53,25 +53,6 @@
   owner /var/lib/redis/temp-*.rdb rw,
   owner /var/log/redis/redis-server.log rw,
 
-  # Deny everything else by default
-  deny /bin/** mrwklx,
-  deny /boot/** mrwklx,
-  deny /dev/** mrwklx,
-  deny /etc/** mrwklx,
-  deny /home/** mrwklx,
-  deny /lib/** mrwklx,
-  deny /lib64/** mrwklx,
-  deny /media/** mrwklx,
-  deny /mnt/** mrwklx,
-  deny /opt/** mrwklx,
-  deny /proc/** mrwklx,
-  deny /root/** mrwklx,
-  deny /run/** mrwklx,
-  deny /sbin/** mrwklx,
-  deny /srv/** mrwklx,
-  deny /sys/** mrwklx,
-  deny /tmp/** mrwklx,
-  deny /usr/** mrwklx,
-  deny /var/** mrwklx,
-
+  # Catchall to deny everything else
+  #deny /** rwklx,
 }

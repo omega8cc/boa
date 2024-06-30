@@ -55,20 +55,6 @@
   /proc/meminfo r,
   /proc/stat r,
 
-  # Deny access to critical system paths
-  deny /boot/** rwklx,
-  deny /dev/** rwklx,
-  deny /etc/** rwklx,
-  deny /home/** rwklx,
-  deny /mnt/** rwklx,
-  deny /media/** rwklx,
-  deny /opt/** rwklx,
-  deny /proc/** rwklx,
-  deny /root/** rwklx,
-  deny /sbin/** rwklx,
-  deny /srv/** rwklx,
-  deny /sys/** rwklx,
-  deny /tmp/** rwklx,
-  deny /usr/** rwklx,
-  deny /var/** rwklx,
+  # Catchall to deny everything else
+  #deny /** rwklx,
 }

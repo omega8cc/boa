@@ -8,13 +8,16 @@
 
   # Include common AppArmor abstractions
   include <abstractions/base>
+  include <abstractions/consoles>
   include <abstractions/nameservice>
   include <abstractions/openssl>
+  include if exists <local/usr.sbin.unbound>
 
   # Capabilities needed by Unbound server
   capability chown,
   capability fowner,
   capability fsetid,
+  capability kill,
   capability net_bind_service,
   capability setgid,
   capability setuid,
@@ -58,7 +61,7 @@
   /var/log/unbound/** rw,
 
   # Unbound keys
-  owner /usr/etc/unbound/*.key* rw,
+  /usr/etc/unbound/** rw,
 
   # Allow Unbound to execute its own binary
   /usr/sbin/unbound mr,

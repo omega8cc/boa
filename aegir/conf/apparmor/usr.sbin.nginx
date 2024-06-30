@@ -61,4 +61,6 @@
   owner /run/nginx.pid rw,
   owner /data/conf/ r,
 
+  # Catchall to deny everything else
+  #deny /** rwklx,
 }
