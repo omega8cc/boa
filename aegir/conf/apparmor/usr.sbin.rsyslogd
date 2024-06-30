@@ -51,39 +51,6 @@
   /proc/meminfo r,
   /proc/stat r,
 
-  # Deny access to everything else by default
-  /usr/sbin/rsyslogd flags=(complain) {
-    include <abstractions/base>
-    /usr/sbin/rsyslogd mr,
-    /lib/x86_64-linux-gnu/** mr,
-    /usr/lib/x86_64-linux-gnu/** mr,
-    /usr/local/lib/** mr,
-    /usr/local/ssl/lib/** mr,
-    /usr/local/ssl3/lib64/** mr,
-    /etc/rsyslog.conf r,
-    /etc/rsyslog.d/* r,
-    /var/log/** rwk,
-    /var/spool/rsyslog/** rw,
-    /var/run/rsyslogd.pid rw,
-    /etc/localtime r,
-    /etc/ssl/certs/* r,
-    network inet stream,
-    network inet dgram,
-    capability dac_read_search,
-    capability dac_override,
-    capability net_bind_service,
-    capability setuid,
-    capability setgid,
-    capability chown,
-    capability dac_override,
-    /proc/sys/kernel/random/uuid r,
-    /proc/cpuinfo r,
-    /proc/meminfo r,
-    /proc/stat r,
-    deny /sys/kernel/** rwklx,
-    deny /sys/module/** rwklx,
-  }
-
   # Deny access to critical system paths
   deny /boot/** rwklx,
   deny /dev/** rwklx,
