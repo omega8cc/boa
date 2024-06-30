@@ -4592,14 +4592,6 @@ sync_enable_apparmor_profiles() {
       isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
       isAppArmOn=$(echo -n ${isAppArmOn} | tr -d "\n" 2>&1)
     fi
-  else
-    if [ ! -z "${isAppArmorComplain}" ] \
-      && [ -x "${isAppArmorComplain}" ]; then
-      mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
-      mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
-      mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
-      mrun "service apparmor reload" 2> /dev/null
-    fi
   fi
   if [ "${isAppArmOn}" = "Y" ] || [ -d "/etc/apparmor.d" ]; then
     msg "ARMR: All profiles will be updated now..."
@@ -4633,18 +4625,14 @@ sync_enable_apparmor_profiles() {
         mv -f /etc/apparmor.d/*${_profArm}* ${_backArmr} &> /dev/null
       done
       cp -af ${locCnf}/apparmor/* /etc/apparmor.d/
+      if [ -d "/etc/apparmor.d/disable" ]; then
+        cp -af /etc/apparmor.d/*ssh* /etc/apparmor.d/disable/ &> /dev/null
+      fi
     fi
     if [ ! -e "/root/.run-to-daedalus.cnf" ] \
       && [ ! -e "/root/.run-to-chimaera.cnf" ] \
       && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
       msg "WAIT: This may take a while, please wait..."
-    fi
-    if [ ! -z "${isAppArmorComplain}" ] \
-      && [ -x "${isAppArmorComplain}" ]; then
-      mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
-      mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
-      mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
-      mrun "service apparmor reload" 2> /dev/null
     fi
     for proFile in `find /etc/apparmor.d/ -maxdepth 1 -mindepth 1 -type f | sort`; do
       profName=$(echo ${proFile} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
@@ -4658,13 +4646,6 @@ sync_enable_apparmor_profiles() {
       fi
       chmod 644 ${proFile}
     done
-    if [ ! -z "${isAppArmorComplain}" ] \
-      && [ -x "${isAppArmorComplain}" ]; then
-      mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
-      mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
-      mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
-      mrun "service apparmor reload" 2> /dev/null
-    fi
     if [ -e "/etc/audit/auditd.conf" ]; then
       if [ -e "/root/.disable.auditd.logs.cnf" ]; then
         sed -i "s/^write_logs =.*/write_logs = no/g" /etc/audit/auditd.conf
@@ -4680,11 +4661,19 @@ sync_enable_apparmor_profiles() {
         echo "write_logs = yes" >> /etc/audit/auditd.conf
       fi
     fi
-    mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
-    mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
-    mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
-    mrun "service apparmor reload" 2> /dev/null
-    mrun "service auditd reload" 2> /dev/null
+    if [ -e "/root/.activate.apparmor.cnf" ]; then
+      mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
+      mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
+      mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
+      mrun "service apparmor reload" 2> /dev/null
+      mrun "service auditd reload" 2> /dev/null
+    elif [ -e "/root/.disable.apparmor.cnf" ] \
+      || [ ! -e "/root/.activate.apparmor.cnf" ]; then
+      mrun "service apparmor stop" 2> /dev/null
+      mrun "update-rc.d -f apparmor remove" 2> /dev/null
+      mrun "service auditd stop" 2> /dev/null
+      mrun "update-rc.d -f auditd remove" 2> /dev/null
+    fi
   fi
 }
 
@@ -4752,10 +4741,6 @@ if_enable_or_disable_apparmor() {
       mrun "${_INSTAPP} auditd" 2> /dev/null
     fi
     if [ -e "/etc/apparmor.d" ]; then
-      mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
-      mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
-      mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
-      mrun "service apparmor reload" 2> /dev/null
       sync_enable_apparmor_profiles
     fi
   fi
