@@ -355,6 +355,7 @@ if_extended_report() {
 
 send_report() {
   if [ -e "${barCnf}" ]; then
+    source ${barCnf}
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
@@ -376,6 +377,7 @@ send_report() {
 
 send_alert() {
   if [ -e "${barCnf}" ]; then
+    source ${barCnf}
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
       || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
