@@ -1,7 +1,6 @@
 # AppArmor profile for PHP-FPM
 # This profile restricts the PHP-FPM (php82) to essential operations only.
 
-# Include the tunables/global definitions
 #include <tunables/global>
 
 /opt/php82/sbin/php-fpm flags=(complain) {
@@ -42,8 +41,6 @@
   /usr/bin/advpng mrix,
   /usr/bin/convert mrix,
   /usr/bin/jpegoptim mrix,
-  /usr/bin/jpegoptim mrix,
-  /usr/bin/jpegtran mrix,
   /usr/bin/jpegtran mrix,
   /usr/bin/magick mrix,
   /usr/bin/optipng mrix,
@@ -76,10 +73,8 @@
   /usr/local/include/** mr,
   /usr/local/ioncube/ioncube_loader_lin_*.so mr,
   /usr/local/lib/** mr,
-  /usr/local/ssl/** r,
-  /usr/local/ssl/lib/** mr,
-  /usr/local/ssl3/** r,
-  /usr/local/ssl3/lib64/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
 
   # Allow PHP-FPM to read and write its log files
   /var/log/php/** rw,
@@ -143,7 +138,7 @@
   deny /root/** rwklx,
 
   # Catchall to deny everything else
-  #deny /** rwklx,
+  deny /** rwklx,
 
   # Site-specific additions and overrides can be added below
 }

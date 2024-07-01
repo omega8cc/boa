@@ -1,7 +1,6 @@
 # AppArmor profile for SSHd daemon
 # This profile restricts the SSHd daemon (sshd) to essential operations only.
 
-# Include the tunables/global definitions
 #include <tunables/global>
 
 /usr/local/sbin/sshd flags=(complain) {
@@ -38,40 +37,6 @@
   network inet stream,
   network inet6 stream,
 
-  ptrace read peer=/opt/php56/bin/php,
-  ptrace read peer=/opt/php70/bin/php,
-  ptrace read peer=/opt/php71/bin/php,
-  ptrace read peer=/opt/php72/bin/php,
-  ptrace read peer=/opt/php73/bin/php,
-  ptrace read peer=/opt/php74/bin/php,
-  ptrace read peer=/opt/php80/bin/php,
-  ptrace read peer=/opt/php81/bin/php,
-  ptrace read peer=/opt/php82/bin/php,
-  ptrace read peer=/opt/php83/bin/php,
-  ptrace read peer=/opt/php56/sbin/php-fpm,
-  ptrace read peer=/opt/php70/sbin/php-fpm,
-  ptrace read peer=/opt/php71/sbin/php-fpm,
-  ptrace read peer=/opt/php72/sbin/php-fpm,
-  ptrace read peer=/opt/php73/sbin/php-fpm,
-  ptrace read peer=/opt/php74/sbin/php-fpm,
-  ptrace read peer=/opt/php80/sbin/php-fpm,
-  ptrace read peer=/opt/php81/sbin/php-fpm,
-  ptrace read peer=/opt/php82/sbin/php-fpm,
-  ptrace read peer=/opt/php83/sbin/php-fpm,
-  ptrace read peer=/usr/bin/newrelic-daemon,
-  ptrace read peer=/sbin/dhclient,
-  ptrace read peer=/usr/bin/mysqld_safe,
-  ptrace read peer=/usr/bin/mysqld,
-  ptrace read peer=/usr/bin/redis-server,
-  ptrace read peer=/usr/lib/jvm/java-11-openjdk-amd64/bin/java,
-  ptrace read peer=/usr/lib/postfix/sbin/master,
-  ptrace read peer=/usr/lib/postfix/sbin/pickup,
-  ptrace read peer=/usr/lib/postfix/sbin/qmgr,
-  ptrace read peer=/usr/local/sbin/pure-ftpd,
-  ptrace read peer=/usr/sbin/nginx,
-  ptrace read peer=/usr/sbin/unbound,
-  ptrace read peer=unconfined,
-
   # Allow read access to necessary libraries
   /lib/** mr,
   /lib64/** mr,
@@ -79,30 +44,21 @@
   /usr/lib/x86_64-linux-gnu/** mr,
   /usr/local/include/** mr,
   /usr/local/lib/** mr,
-  /usr/local/ssl/** r,
-  /usr/local/ssl/lib/** mr,
-  /usr/local/ssl3/** r,
-  /usr/local/ssl3/lib64/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
 
   # Read/Write access
   /dev/null rw,
   /dev/ptmx rw,
   /dev/pts/* rw,
   /dev/tty rw,
-  /etc/dpkg/** r,
-  /etc/profile.d/** r,
-  /etc/terminfo/** r,
-  /lib/** r,
+  /dev/urandom r,
   /proc/** rw,
-  /run/** r,
   /run/** rwk,
   /sys/** r,
   /tmp/** rw,
-  /usr/share/** r,
   /var/** r,
   /var/lib/sshd/** rw,
-  /dev/ptmx rw,
-  /dev/urandom r,
 
   # Read/Write owner access
   owner /** rwk,
@@ -117,17 +73,13 @@
 
   # Exec access
   /{media,mnt,opt,srv}/** mrix,
-  /** mr,
   /bin/* mrix,
   /opt/local/bin/* mrix,
   /usr/bin/* mrix,
-  /usr/lib/mc/cons.saver mrix,
   /usr/local/bin/* mrix,
   /usr/local/rvm/scripts/** mrix,
   /usr/local/sbin/* mrix,
   /usr/sbin/* mrix,
-  /usr/sbin/aa-logprof mrix,
-  /var/lib/** mr,
 
   # Read access to SSH daemon configuration files
   /etc/default/locale r,
@@ -151,18 +103,19 @@
   /home/*/*/.ssh/ r,
   /home/*/.ssh/authorized_keys{,2} r,
 
-  # Write access to the PID file and necessary files in /proc
-  @{PROC}/@{pid}/oom_adj rw,
-  @{PROC}/@{pid}/oom_score_adj rw,
-  /var/log/btmp r,
-  /{,var/}run/ w,
-  /{,var/}run/sshd{,.init}.pid wl,
+  # Temporary files and directories
+  /tmp/** rw,
+  /var/tmp/** rw,
 
-  @{PROC}/@{pid}/fd/ r,
-  @{PROC}/@{pid}/loginuid w,
-  @{PROC}/@{pid}/limits r,
+  /dev/pts/[0-9]* rw,
+  /etc/ssh/moduli r,
+  @{PROC}/@{pid}/mounts r,
+  /etc/motd r,
+  /{,var/}run/motd{,.new} rw,
+  /tmp/ssh-*/agent.[0-9]* rwl,
+  /tmp/ssh-*[0-9]*/ w,
 
-  # Exec access to various shells
+  # Allow execution of various shells
   /bin/ash rUx,
   /bin/bash rUx,
   /bin/bash2 rUx,
@@ -178,17 +131,22 @@
   /usr/bin/mysecureshell rUx,
   /usr/local/bin/lshell rUx,
 
-  # Temporary files and directories
-  /tmp/** rw,
-  /var/tmp/** rw,
-
-  /dev/pts/[0-9]* rw,
-  /etc/ssh/moduli r,
-  @{PROC}/@{pid}/mounts r,
-  /etc/motd r,
-  /{,var/}run/motd{,.new} rw,
-  /tmp/ssh-*/agent.[0-9]* rwl,
-  /tmp/ssh-*[0-9]*/ w,
+  # Allow ptrace read access for necessary binaries
+  ptrace read peer=unconfined,
+  ptrace read peer=/opt/php*/bin/php,
+  ptrace read peer=/opt/php*/sbin/php-fpm,
+  ptrace read peer=/usr/bin/newrelic-daemon,
+  ptrace read peer=/sbin/dhclient,
+  ptrace read peer=/usr/bin/mysqld_safe,
+  ptrace read peer=/usr/bin/mysqld,
+  ptrace read peer=/usr/bin/redis-server,
+  ptrace read peer=/usr/lib/jvm/java-11-openjdk-amd64/bin/java,
+  ptrace read peer=/usr/lib/postfix/sbin/master,
+  ptrace read peer=/usr/lib/postfix/sbin/pickup,
+  ptrace read peer=/usr/lib/postfix/sbin/qmgr,
+  ptrace read peer=/usr/local/sbin/pure-ftpd,
+  ptrace read peer=/usr/sbin/nginx,
+  ptrace read peer=/usr/sbin/unbound,
 
   ^EXEC flags=(complain) {
     # Include base abstractions

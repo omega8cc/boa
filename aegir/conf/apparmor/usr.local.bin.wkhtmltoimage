@@ -7,15 +7,14 @@
   # Include common AppArmor abstractions
   include <abstractions/base>
   include <abstractions/openssl>
-
-  # Allow access to font infrastructure
   include <abstractions/fonts>
 
+  # Deny capability sys_ptrace
   deny capability sys_ptrace,
 
   # System paths wkhtmltoimage needs to operate
   /proc/*/maps r,
-  /usr/local/bin/wkhtmltoimage mr,
+  /usr/local/bin/wkhtmltoimage mrix,
   /var/cache/fontconfig/* r,
   /tmp/** rwlk,
 
@@ -26,10 +25,8 @@
   /usr/lib/x86_64-linux-gnu/** mr,
   /usr/local/include/** mr,
   /usr/local/lib/** mr,
-  /usr/local/ssl/** r,
-  /usr/local/ssl/lib/** mr,
-  /usr/local/ssl3/** r,
-  /usr/local/ssl3/lib64/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
 
   # Allow to read and write in the web root directories
 
@@ -49,5 +46,5 @@
   owner /home/*.web/.tmp/* rw,
 
   # Catchall to deny everything else
-  #deny /** rwklx,
+  deny /** rwklx,
 }

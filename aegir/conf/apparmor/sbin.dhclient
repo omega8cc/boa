@@ -1,7 +1,6 @@
 # AppArmor profile for DHCP dhclient
 # This profile restricts DHCP dhclient (dhclient) to essential operations only.
 
-# Include the tunables/global definitions
 #include <tunables/global>
 
 /{,usr/}sbin/dhclient flags=(complain) {
@@ -24,13 +23,10 @@
   @{PROC}/[0-9]*/net/** r,
 
   # dhclient wants to update its threads with functional names
-  # https://gitlab.com/apparmor/apparmor/-/merge_requests/730
-  # see LP: #1918410
   owner @{PROC}/@{pid}/task/[0-9]*/comm rw,
 
-  /{,usr/}sbin/dhclient mr,
-  # LP: #1197484 and LP: #1202203 - why is this needed? :(
-  /{,usr/}bin/bash mr,
+  /{,usr/}sbin/dhclient mrix,
+  /{,usr/}bin/bash mrix,
 
   /etc/dhclient.conf r,
   /etc/dhcp/ r,
@@ -66,24 +62,25 @@
   # able to subvert dhclient-script or write to the hooks.d directories. As
   # such, if the dhclient3 daemon is subverted, this effectively limits it to
   # only being able to run the hooks scripts.
-  /{,usr/}sbin/dhclient-script                           Uxr,
+  /{,usr/}sbin/dhclient-script Uxr,
 
   # Run the ELF executables under their own unrestricted profiles
-  /usr/lib/NetworkManager/nm-dhcp-client.action   Pxrm,
-  /usr/lib/connman/scripts/dhclient-script        Pxrm,
+  /usr/lib/NetworkManager/nm-dhcp-client.action Pxrm,
+  /usr/lib/connman/scripts/dhclient-script Pxrm,
 
   # Support the new executable helper from NetworkManager.
-  /usr/lib/NetworkManager/nm-dhcp-helper          Pxrm,
+  /usr/lib/NetworkManager/nm-dhcp-helper Pxrm,
   signal (receive) peer=/usr/lib/NetworkManager/nm-dhcp-helper,
 
   # Site-specific additions and overrides. See local/README for details.
   include if exists <local/sbin.dhclient>
 }
 
+# Profile for NetworkManager action
 /usr/lib/NetworkManager/nm-dhcp-client.action flags=(complain) {
   include <abstractions/base>
   include <abstractions/dbus>
-  /usr/lib/NetworkManager/nm-dhcp-client.action mr,
+  /usr/lib/NetworkManager/nm-dhcp-client.action mrix,
 
   /var/lib/NetworkManager/*lease r,
   signal (receive) peer=/usr/sbin/NetworkManager,
@@ -92,10 +89,11 @@
   network inet6 dgram,
 }
 
+# Profile for NetworkManager helper
 /usr/lib/NetworkManager/nm-dhcp-helper flags=(complain) {
   include <abstractions/base>
   include <abstractions/dbus>
-  /usr/lib/NetworkManager/nm-dhcp-helper mr,
+  /usr/lib/NetworkManager/nm-dhcp-helper mrix,
 
   /run/NetworkManager/private-dhcp rw,
   signal (send) peer=/sbin/dhclient,
@@ -107,10 +105,11 @@
   network inet6 dgram,
 }
 
+# Profile for connman script
 /usr/lib/connman/scripts/dhclient-script flags=(complain) {
   include <abstractions/base>
   include <abstractions/dbus>
-  /usr/lib/connman/scripts/dhclient-script      mr,
+  /usr/lib/connman/scripts/dhclient-script mrix,
   network inet dgram,
   network inet6 dgram,
 }

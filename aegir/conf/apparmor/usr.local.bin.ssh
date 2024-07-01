@@ -1,7 +1,6 @@
 # AppArmor profile for SSH client
 # This profile restricts the SSH client (ssh) to essential operations only.
 
-# Include the tunables/global definitions
 #include <tunables/global>
 
 /usr/local/bin/ssh flags=(complain) {
@@ -12,7 +11,7 @@
     include <abstractions/openssl>
 
     # Allow execution of the ssh binary
-    /usr/local/bin/ssh ix,
+    /usr/local/bin/ssh mrix,
 
     # Read access to SSH client configuration files
     /etc/ssh/ssh_config r,
@@ -35,17 +34,17 @@
     /var/tmp/** rw,
 
     # Allow execution of necessary binaries
-    /bin/dash ix,
-    /bin/sh ix,
-    /usr/bin/id ix,
-    /usr/bin/mysecureshell ix,
-    /usr/local/bin/lshell ix,
-    /usr/local/bin/ssh-agent ix,
+    /bin/dash mrix,
+    /bin/sh mrix,
+    /usr/bin/id mrix,
+    /usr/bin/mysecureshell mrix,
+    /usr/local/bin/lshell mrix,
+    /usr/local/bin/ssh-agent mrix,
 
     # Additional binaries used by SSH (e.g., scp, sftp)
-    /usr/local/bin/scp ix,
-    /usr/local/bin/sftp ix,
+    /usr/local/bin/scp mrix,
+    /usr/local/bin/sftp mrix,
 
     # Deny execution of any other binaries
-    #deny /** rwklx,
+    deny /** rwklx,
 }

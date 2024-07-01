@@ -1,7 +1,6 @@
 # AppArmor profile for MySQLd starter
 # This profile restricts MySQLd starter (mysqld_safe) to essential operations only.
 
-# Include the tunables/global definitions
 #include <tunables/global>
 
 /usr/bin/mysqld_safe flags=(complain) {
@@ -51,10 +50,8 @@
   /usr/lib/mysql/plugin/** mr,
   /usr/lib/x86_64-linux-gnu/** mr,
   /usr/local/lib/** mr,
-  /usr/local/ssl/** r,
-  /usr/local/ssl/lib/** mr,
-  /usr/local/ssl3/** r,
-  /usr/local/ssl3/lib64/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
   /usr/share/mysql/** r,
   /usr/share/zoneinfo/** r,
 
@@ -65,14 +62,14 @@
   # Allow mysqld_safe to use /dev/shm for temporary storage
   /dev/shm/** rw,
 
-  # Allow the execution of mysqld_safe
-  /usr/bin/mysqld_safe mr,
+  # Allow execution of mysqld_safe
+  /usr/bin/mysqld_safe mrix,
 
   # Allow mysqld_safe to execute mysqld
-  /usr/sbin/mysqld rix,
+  /usr/sbin/mysqld mrix,
 
   # Catchall to deny everything else
-  #deny /** rwklx,
+  deny /** rwklx,
 
   # Site-specific additions and overrides can be added below
 }

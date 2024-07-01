@@ -1,7 +1,6 @@
 # AppArmor profile for PHP-CLI
 # This profile restricts PHP-CLI (php70) to essential operations only.
 
-# Include the tunables/global definitions
 #include <tunables/global>
 
 /opt/php70/bin/php flags=(complain) {
@@ -20,7 +19,7 @@
   capability dac_read_search,
 
   # Allow PHP-CLI to execute its own binary
-  /opt/php70/bin/php rix,
+  /opt/php70/bin/php mrix,
 
   # Allow PHP-CLI to read its configuration files
   /home/*/.drush/** r,
@@ -32,23 +31,23 @@
   /opt/php70/** r,
 
   # Allow PHP-CLI to execute some other binaries
-  /bin/dash rix,
-  /bin/grep rix,
-  /bin/rm rix,
-  /bin/stty rix,
-  /bin/touch rix,
-  /bin/websh rix,
-  /usr/bin/convert rix,
-  /usr/bin/id rix,
-  /usr/bin/magick rix,
-  /usr/bin/mysql rix,
-  /usr/bin/tput rix,
-  /usr/bin/which rix,
-  /usr/bin/which.debianutils rix,
-  /usr/local/bin/composer rix,
-  /usr/local/bin/curl rix,
-  /usr/local/bin/wkhtmltoimage rix,
-  /usr/local/bin/wkhtmltopdf rix,
+  /bin/dash mrix,
+  /bin/grep mrix,
+  /bin/rm mrix,
+  /bin/stty mrix,
+  /bin/touch mrix,
+  /bin/websh mrix,
+  /usr/bin/convert mrix,
+  /usr/bin/id mrix,
+  /usr/bin/magick mrix,
+  /usr/bin/mysql mrix,
+  /usr/bin/tput mrix,
+  /usr/bin/which mrix,
+  /usr/bin/which.debianutils mrix,
+  /usr/local/bin/composer mrix,
+  /usr/local/bin/curl mrix,
+  /usr/local/bin/wkhtmltoimage mrix,
+  /usr/local/bin/wkhtmltopdf mrix,
 
   # Allow PHP-CLI to access some /dev
   /dev/urandom r,
@@ -70,10 +69,8 @@
   /usr/local/include/** mr,
   /usr/local/ioncube/ioncube_loader_lin_*.so mr,
   /usr/local/lib/** mr,
-  /usr/local/ssl/** r,
-  /usr/local/ssl/lib/** mr,
-  /usr/local/ssl3/** r,
-  /usr/local/ssl3/lib64/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
 
   # Allow PHP-CLI to read and write its log files
   /var/log/php/** rw,
@@ -93,9 +90,9 @@
   deny /var/tmp/** m,
 
   # Allow PHP-CLI to access drush
-  /opt/tools/drush/** rix,
-  /var/aegir/drush/** rix,
-  /usr/bin/drush rix,
+  /opt/tools/drush/** mrix,
+  /var/aegir/drush/** mrix,
+  /usr/bin/drush mrix,
 
   # Allow PHP-CLI to read and write in the custom web root directories
 
@@ -151,7 +148,7 @@
   deny /root/** rwklx,
 
   # Catchall to deny everything else
-  #deny /** rwklx,
+  deny /** rwklx,
 
   # Site-specific additions and overrides can be added below
 }

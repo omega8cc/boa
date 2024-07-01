@@ -1,7 +1,6 @@
 # AppArmor profile for Man service
 # This profile restricts Man service (man) to essential operations only.
 
-# Include the tunables/global definitions
 #include <tunables/global>
 
 /usr/bin/man flags=(complain) {
@@ -9,34 +8,31 @@
   # Include common AppArmor abstractions
   include <abstractions/base>
 
-  # Use a special profile when man calls anything groff-related.  We only
+  # Use a special profile when man calls anything groff-related. We only
   # include the programs that actually parse input data in a non-trivial
   # way, not wrappers such as groff and nroff, since the latter would need a
   # broader profile.
-  /usr/bin/eqn rmCx -> &man_groff,
-  /usr/bin/grap rmCx -> &man_groff,
-  /usr/bin/pic rmCx -> &man_groff,
-  /usr/bin/preconv rmCx -> &man_groff,
-  /usr/bin/refer rmCx -> &man_groff,
-  /usr/bin/tbl rmCx -> &man_groff,
-  /usr/bin/troff rmCx -> &man_groff,
-  /usr/bin/vgrind rmCx -> &man_groff,
+  /usr/bin/eqn mrCx -> &man_groff,
+  /usr/bin/grap mrCx -> &man_groff,
+  /usr/bin/pic mrCx -> &man_groff,
+  /usr/bin/preconv mrCx -> &man_groff,
+  /usr/bin/refer mrCx -> &man_groff,
+  /usr/bin/tbl mrCx -> &man_groff,
+  /usr/bin/troff mrCx -> &man_groff,
+  /usr/bin/vgrind mrCx -> &man_groff,
 
   # Similarly, use a special profile when man calls decompressors and other
   # simple filters.
-  /{,usr/}bin/bzip2 rmCx -> &man_filter,
-  /{,usr/}bin/gzip rmCx -> &man_filter,
-  /usr/bin/col rmCx -> &man_filter,
-  /usr/bin/compress rmCx -> &man_filter,
-  /usr/bin/iconv rmCx -> &man_filter,
-  /usr/bin/lzip.lzip rmCx -> &man_filter,
-  /usr/bin/tr rmCx -> &man_filter,
-  /usr/bin/xz rmCx -> &man_filter,
+  /{,usr/}bin/bzip2 mrCx -> &man_filter,
+  /{,usr/}bin/gzip mrCx -> &man_filter,
+  /usr/bin/col mrCx -> &man_filter,
+  /usr/bin/compress mrCx -> &man_filter,
+  /usr/bin/iconv mrCx -> &man_filter,
+  /usr/bin/lzip.lzip mrCx -> &man_filter,
+  /usr/bin/tr mrCx -> &man_filter,
+  /usr/bin/xz mrCx -> &man_filter,
 
-  # Allow basically anything in terms of file system access, subject to DAC.
-  # The purpose of this profile isn't to confine man itself (that might be
-  # nice in the future, but is tricky since it's quite configurable), but to
-  # confine the processes it calls that parse untrusted data.
+  # Allow basic filesystem access, subject to DAC
   /** mrixwlk,
   unix,
 
@@ -54,27 +50,22 @@
   signal peer=/usr/bin/man//&man_groff,
   signal peer=/usr/bin/man//&man_filter,
 
-  # Site-specific additions and overrides.  See local/README for details.
+  # Site-specific additions and overrides. See local/README for details.
   include if exists <local/usr.bin.man>
 }
 
-profile man_groff {
+profile man_groff flags=(complain) {
   include <abstractions/base>
-  # Recent kernels revalidate open FDs, and there are often some still
-  # open on TTYs.  This is temporary until man learns to close irrelevant
-  # open FDs before execve.
   include <abstractions/consoles>
-  # man always runs its groff pipeline with the input file open on stdin,
-  # so we can skip <abstractions/user-manpages>.
 
-  /usr/bin/eqn rm,
-  /usr/bin/grap rm,
-  /usr/bin/pic rm,
-  /usr/bin/preconv rm,
-  /usr/bin/refer rm,
-  /usr/bin/tbl rm,
-  /usr/bin/troff rm,
-  /usr/bin/vgrind rm,
+  /usr/bin/eqn mrix,
+  /usr/bin/grap mrix,
+  /usr/bin/pic mrix,
+  /usr/bin/preconv mrix,
+  /usr/bin/refer mrix,
+  /usr/bin/tbl mrix,
+  /usr/bin/troff mrix,
+  /usr/bin/vgrind mrix,
 
   /etc/groff/** r,
   /etc/papersize r,
@@ -84,25 +75,21 @@ profile man_groff {
   /tmp/groff* rw,
 
   signal peer=/usr/bin/man,
-  # @{profile_name} doesn't seem to work here.
   signal peer=/usr/bin/man//&man_groff,
 }
 
-profile man_filter {
+profile man_filter flags=(complain) {
   include <abstractions/base>
-  # Recent kernels revalidate open FDs, and there are often some still
-  # open on TTYs.  This is temporary until man learns to close irrelevant
-  # open FDs before execve.
   include <abstractions/consoles>
 
-  /{,usr/}bin/bzip2 rm,
-  /{,usr/}bin/gzip rm,
-  /usr/bin/col rm,
-  /usr/bin/compress rm,
-  /usr/bin/iconv rm,
-  /usr/bin/lzip.lzip rm,
-  /usr/bin/tr rm,
-  /usr/bin/xz rm,
+  /{,usr/}bin/bzip2 mrix,
+  /{,usr/}bin/gzip mrix,
+  /usr/bin/col mrix,
+  /usr/bin/compress mrix,
+  /usr/bin/iconv mrix,
+  /usr/bin/lzip.lzip mrix,
+  /usr/bin/tr mrix,
+  /usr/bin/xz mrix,
 
   # Manual pages can be more or less anywhere, especially with "man -l", and
   # there's no harm in allowing wide read access here since the worst it can
@@ -113,6 +100,5 @@ profile man_filter {
   /var/cache/man/** rw,
 
   signal peer=/usr/bin/man,
-  # @{profile_name} doesn't seem to work here.
   signal peer=/usr/bin/man//&man_filter,
 }

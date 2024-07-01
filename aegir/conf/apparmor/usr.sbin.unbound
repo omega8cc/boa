@@ -1,7 +1,6 @@
 # AppArmor profile for Unbound server
 # This profile restricts Unbound server (unbound) to essential operations only.
 
-# Include the tunables/global definitions
 #include <tunables/global>
 
 /usr/sbin/unbound flags=(complain) {
@@ -35,10 +34,8 @@
   /usr/lib/x86_64-linux-gnu/** mr,
   /usr/local/include/** mr,
   /usr/local/lib/** mr,
-  /usr/local/ssl/** r,
-  /usr/local/ssl/lib/** mr,
-  /usr/local/ssl3/** r,
-  /usr/local/ssl3/lib64/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
 
   # Allow Unbound to access some /dev
   /dev/log w,
@@ -52,24 +49,22 @@
   # Access root hints from dns-data-root
   /usr/share/dns/root.* r,
 
-  # Unbound paths
+  # Unbound configuration paths
   /usr/etc/unbound/** r,
   /var/lib/unbound/** r,
-  /var/run/unbound/** r,
+  /var/run/unbound/** rw,
 
-  # Unbound log
+  # Unbound logs
   /var/log/unbound/** rw,
 
-  # Unbound keys
-  /usr/etc/unbound/** rw,
+  # Unbound keys (if write access is needed)
+  /usr/etc/unbound/keys/** rw,
 
   # Allow Unbound to execute its own binary
-  /usr/sbin/unbound mr,
+  /usr/sbin/unbound mrix,
 
-  # Allow Unbound to access its pid
+  # Allow Unbound to access its pid and control socket
   /var/run/unbound/unbound.pid rw,
-
-  # Unix control socket
   /var/run/unbound/unbound.ctl rw,
 
   include if exists <local/usr.sbin.unbound>

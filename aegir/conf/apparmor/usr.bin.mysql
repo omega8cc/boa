@@ -1,7 +1,6 @@
 # AppArmor profile for MySQL client
 # This profile restricts MySQL client (mysql) to essential operations only.
 
-# Include the tunables/global definitions
 #include <tunables/global>
 
 /usr/bin/mysql flags=(complain) {
@@ -17,8 +16,8 @@
   capability setgid,
   capability setuid,
 
-  # Allow the execution of the mysql binary
-  /usr/bin/mysql mr,
+  # Allow execution of the mysql binary
+  /usr/bin/mysql mrix,
 
   # Allow MySQL to read its configuration files
   /etc/mysql/** r,
@@ -43,10 +42,8 @@
   /usr/lib/mysql/plugin/** mr,
   /usr/lib/x86_64-linux-gnu/** mr,
   /usr/local/lib/** mr,
-  /usr/local/ssl/** r,
-  /usr/local/ssl/lib/** mr,
-  /usr/local/ssl3/** r,
-  /usr/local/ssl3/lib64/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
   /usr/share/mysql/** r,
   /usr/share/zoneinfo/** r,
 
@@ -57,7 +54,7 @@
   # Allow MySQL to use /dev/shm for temporary storage
   /dev/shm/** rw,
 
-  # Allow MySQL to access something in /etc for necessary information
+  # Allow MySQL to read network-related configurations
   /etc/hosts.allow r,
   /etc/hosts.deny r,
   /etc/services r,
@@ -85,7 +82,7 @@
   /home/*/.mysql_history rw,
 
   # Catchall to deny everything else
-  #deny /** rwklx,
+  deny /** rwklx,
 
   # Site-specific additions and overrides can be added below
 }

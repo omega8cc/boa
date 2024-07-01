@@ -1,7 +1,6 @@
 # AppArmor profile for Freshclam service
 # This profile restricts Freshclam service (freshclam) to essential operations only.
 
-# Include the tunables/global definitions
 #include <tunables/global>
 
 /usr/bin/freshclam flags=(complain) {
@@ -27,52 +26,65 @@
   network inet6 stream,
   network inet6 dgram,
 
-  /bin/dash rix,
-  /bin/bash rix,
-  /bin/sh rix,
-  /usr/bin/freshclam rix,
+  # Allow execution of necessary shells and the freshclam binary
+  /bin/dash mrix,
+  /bin/bash mrix,
+  /bin/sh mrix,
+  /usr/bin/freshclam mrix,
 
+  # Allow access to /dev
   /dev/log w,
   /dev/null rw,
   /dev/random r,
   /dev/urandom r,
 
+  # Allow access to /proc and /sys for necessary information
   /proc/** r,
   /sys/** r,
 
+  # Allow access to temporary directories
   /tmp/** rw,
   /var/tmp/** rw,
 
+  # Deny access to samba specific directories
   deny /{,var/}run/samba/{gencache,unexpected}.tdb mrwlk,
 
+  # Allow read access to ClamAV configuration files
   /etc/clamav/clamd.conf r,
   /etc/clamav/freshclam.conf r,
   /etc/clamav/onerrorexecute.d/* mr,
   /etc/clamav/onupdateexecute.d/* mr,
   /etc/clamav/virusevent.d/* mr,
 
+  # Allow read access to SSL libraries
   /usr/local/ssl3/lib64/libcrypto.so.* mr,
   /usr/local/ssl3/lib64/libssl.so.* mr,
   /usr/local/ssl3/openssl.cnf r,
 
+  # Allow access to ClamAV directories and files
   /var/lib/clamav/ r,
   /var/lib/clamav/** rwk,
   /var/log/clamav/* rwk,
   /{,var/}run/clamav/clamd.ctl rw,
   /{,var/}run/clamav/freshclam.pid w,
+
+  # Allow reading filesystems information
   @{PROC}/filesystems r,
+
+  # Allow read/write access to ClamAV user directories
   owner /home/*/.clamtk/db/ rw,
   owner /home/*/.clamtk/db/** rwk,
   owner /home/*/.klamav/database/ rw,
   owner /home/*/.klamav/database/** rwk,
   owner @{PROC}/[0-9]*/status r,
 
+  # Deny access to sensitive files and directories
   deny /etc/shadow* r,
   deny /etc/passwd* r,
   deny /root/** rwklx,
 
   # Catchall to deny everything else
-  #deny /** rwklx,
+  deny /** rwklx,
 
   # Site-specific additions and overrides can be added below
 }

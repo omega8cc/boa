@@ -1,13 +1,17 @@
 # AppArmor profile for Rsyslogd service
 # This profile restricts Rsyslogd service (rsyslogd) to essential operations only.
 
-# Include the tunables/global definitions
 #include <tunables/global>
 
 /usr/sbin/rsyslogd flags=(complain) {
 
-  # Allow the execution of the rsyslogd binary
-  /usr/sbin/rsyslogd mr,
+  # Include common AppArmor abstractions
+  include <abstractions/base>
+  include <abstractions/nameservice>
+  include <abstractions/ssl_keys>
+
+  # Allow execution of the rsyslogd binary
+  /usr/sbin/rsyslogd mrix,
 
   # Allow read access to necessary libraries
   /lib/** mr,
@@ -16,24 +20,18 @@
   /usr/lib/x86_64-linux-gnu/** mr,
   /usr/local/include/** mr,
   /usr/local/lib/** mr,
-  /usr/local/ssl/** r,
-  /usr/local/ssl/lib/** mr,
-  /usr/local/ssl3/** r,
-  /usr/local/ssl3/lib64/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
 
   # Allow read access to system configuration files
   /etc/rsyslog.conf r,
   /etc/rsyslog.d/** r,
+  /etc/localtime r,
+  /etc/ssl/certs/** r,
 
   # Allow read and write access to the log directories and files
   /var/log/** rwk,
   /var/spool/rsyslog/** rw,
-
-  # Allow read access to the timezone information
-  /etc/localtime r,
-
-  # Allow read access to system certificates
-  /etc/ssl/certs/** r,
 
   # Allow network access
   network inet stream,
@@ -55,6 +53,10 @@
   /proc/meminfo r,
   /proc/stat r,
 
+  # Allow access to /dev for logging
+  /dev/log w,
+  /dev/kmsg w,
+
   # Catchall to deny everything else
-  #deny /** rwklx,
+  deny /** rwklx,
 }

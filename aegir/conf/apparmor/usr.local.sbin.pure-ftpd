@@ -1,7 +1,6 @@
 # AppArmor profile for Pure-FTPd server
 # This profile restricts Pure-FTPd server (pure-ftpd) to essential operations only.
 
-# Include the tunables/global definitions
 #include <tunables/global>
 
 /usr/local/sbin/pure-ftpd flags=(complain) {
@@ -20,10 +19,14 @@
   network inet stream,
   network inet6 stream,
 
-  /bin/sh rix,
+  # Allow execution of /bin/sh
+  /bin/sh mrix,
 
+  # Allow access to /dev
   /dev/log w,
   /dev/urandom r,
+
+  # Allow read access to system configuration and password files
   /etc/hostname r,
   /etc/hosts r,
   /etc/pure-ftpd.conf r,
@@ -38,10 +41,10 @@
   /usr/lib/x86_64-linux-gnu/** mr,
   /usr/local/include/** mr,
   /usr/local/lib/** mr,
-  /usr/local/ssl/** r,
-  /usr/local/ssl/lib/** mr,
-  /usr/local/ssl3/** r,
-  /usr/local/ssl3/lib64/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
+
+  # Allow read access to SSL certificates
   /etc/ssl/private/pure-ftpd.pem r,
   /etc/ssl/private/pure-ftpd-dhparams.pem r,
 
@@ -49,23 +52,20 @@
   /proc/** r,
   /sys/** r,
 
-  # Allow pure-ftpd to access its run directory
+  # Allow access to run directory
   /run/** r,
   /run/pure-ftpd.pid rw,
 
-  # Allow pure-ftpd to access tmp directories
+  # Allow access to temporary directories
   /tmp/** rw,
   /var/tmp/** rw,
 
-  # Allow pure-ftpd to write to its log files
+  # Allow write access to log files
   /var/log/pureftpd.log rw,
 
-  # Allow the execution of the pure-ftpd binary
-  /usr/local/sbin/pure-ftpd mr,
-  /usr/local/sbin/pure-config.pl mr,
-
-  # Allow read and write access to the log directories and files
-  owner /var/log/pureftpd.log w,
+  # Allow execution of the pure-ftpd binary and configuration script
+  /usr/local/sbin/pure-ftpd mrix,
+  /usr/local/sbin/pure-config.pl mrix,
 
   # Allow read access to Octopus user directories and files
   /data/disk/*/.drush/** r,
@@ -83,7 +83,7 @@
   owner /home/*/** rw,
 
   # Catchall to deny everything else
-  #deny /** rwklx,
+  deny /** rwklx,
 
   # Site-specific additions and overrides can be added below
 }

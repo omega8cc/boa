@@ -1,7 +1,6 @@
 # AppArmor profile for Nginx server
 # This profile restricts Nginx server (nginx) to essential operations only.
 
-# Include the tunables/global definitions
 #include <tunables/global>
 
 /usr/sbin/nginx flags=(complain) {
@@ -25,22 +24,21 @@
   /usr/lib/x86_64-linux-gnu/** mr,
   /usr/local/include/** mr,
   /usr/local/lib/** mr,
-  /usr/local/ssl/** r,
-  /usr/local/ssl/lib/** mr,
-  /usr/local/ssl3/** r,
-  /usr/local/ssl3/lib64/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
 
-  /usr/sbin/nginx mr,
+  # Allow execution of the nginx binary
+  /usr/sbin/nginx mrix,
+
+  # Allow read/write access to nginx specific directories and files
   /var/lib/nginx/** rw,
-
   /var/log/nginx/access.log w,
   /var/log/nginx/error.log w,
-
   /etc/nginx/** r,
   /etc/ssl/private/* r,
-
   /var/www/** r,
 
+  # Specific directories used by Aegir (if applicable)
   /var/aegir/config/** r,
   /var/aegir/host_master/** r,
   /var/aegir/platforms/** r,
@@ -52,9 +50,11 @@
   /data/disk/*/static/** r,
   /data/disk/*/tools/le/** r,
 
+  # Additional specific directories
   /data/all/** r,
   /data/conf/* r,
 
+  # Owner-specific directories and files
   owner /usr/fastcgi_temp/** rw,
   owner /usr/share/GeoIP/GeoIP.dat r,
   owner /proc/sys/kernel/random/boot_id r,
@@ -62,5 +62,5 @@
   owner /data/conf/ r,
 
   # Catchall to deny everything else
-  #deny /** rwklx,
+  deny /** rwklx,
 }

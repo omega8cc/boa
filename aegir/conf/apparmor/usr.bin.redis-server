@@ -1,7 +1,6 @@
 # AppArmor profile for Redis server
 # This profile restricts the Redis server (redis-server) to essential operations only.
 
-# Include the tunables/global definitions
 #include <tunables/global>
 
 /usr/bin/redis-server flags=(complain) {
@@ -12,7 +11,7 @@
   include <abstractions/user-tmp>
 
   # Allow execution of redis-server binary
-  /usr/bin/redis-server mr,
+  /usr/bin/redis-server mrix,
 
   # Allow Redis to read its configuration file
   /etc/redis/redis.conf r,
@@ -31,14 +30,12 @@
   /usr/bin/logger ixr,
 
   # Allow Redis to read system libraries
-  /lib/** r,
-  /lib64/** r,
-  /usr/lib/** r,
+  /lib/** mr,
+  /lib64/** mr,
+  /usr/lib/** mr,
   /usr/local/sbin/* mrix,
-  /usr/local/ssl/** r,
-  /usr/local/ssl/lib/* mr,
-  /usr/local/ssl3/** r,
-  /usr/local/ssl3/lib64/* mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
 
   # Allow Redis to use /run for pid/sock files
   /run/redis/** rw,
@@ -54,5 +51,5 @@
   owner /var/log/redis/redis-server.log rw,
 
   # Catchall to deny everything else
-  #deny /** rwklx,
+  deny /** rwklx,
 }

@@ -1,7 +1,6 @@
 # AppArmor profile for New Relic
 # This profile restricts the New Relic (newrelic-daemon) to essential operations only.
 
-# Include the tunables/global definitions
 #include <tunables/global>
 
 /usr/bin/newrelic-daemon flags=(complain) {
@@ -21,16 +20,21 @@
   network inet6 dgram,
 
   # Allow execution of the newrelic-daemon binary
-  /usr/bin/newrelic-daemon mr,
+  /usr/bin/newrelic-daemon mrix,
 
   # Allow newrelic-daemon to read its configuration files
   /etc/newrelic/** r,
 
   # Allow newrelic-daemon to read system libraries
-  /lib/** r,
-  /lib64/** r,
-  /usr/lib/** r,
-  /usr/lib64/** r,
+  /lib/** mr,
+  /lib64/** mr,
+  /usr/lib/** mr,
+  /usr/lib/x86_64-linux-gnu/** mr,
+  /usr/lib64/** mr,
+  /usr/local/include/** mr,
+  /usr/local/lib/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
 
   # Allow newrelic-daemon to access /proc for necessary information
   /proc/** r,
@@ -48,7 +52,7 @@
   # Allow newrelic-daemon to access shared memory
   /dev/shm/** rw,
 
-  # Deny execution of binaries from /tmp and /var/tmp
+  # Disallow execution of binaries from /tmp and /var/tmp
   deny /tmp/** m,
   deny /var/tmp/** m,
 
@@ -64,7 +68,7 @@
   deny /usr/local/** mrwklx,
 
   # Catchall to deny everything else
-  #deny /** rwklx,
+  deny /** rwklx,
 
   # Site-specific additions and overrides can be added below
 }

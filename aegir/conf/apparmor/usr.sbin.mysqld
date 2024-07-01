@@ -1,7 +1,6 @@
 # AppArmor profile for MySQLd server
 # This profile restricts MySQLd server (mysqld) to essential operations only.
 
-# Include the tunables/global definitions
 #include <tunables/global>
 
 /usr/sbin/mysqld flags=(complain) {
@@ -22,8 +21,8 @@
   network inet stream,
   network inet6 stream,
 
-  # Allow the execution of the mysqld binary
-  /usr/sbin/mysqld mr,
+  # Allow execution of the mysqld binary
+  /usr/sbin/mysqld mrix,
 
   # Allow MySQL to read its configuration files
   /etc/mysql/** r,
@@ -53,10 +52,8 @@
   /usr/lib/mysql/plugin/** mr,
   /usr/lib/x86_64-linux-gnu/** mr,
   /usr/local/lib/** mr,
-  /usr/local/ssl/** r,
-  /usr/local/ssl/lib/** mr,
-  /usr/local/ssl3/** r,
-  /usr/local/ssl3/lib64/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
   /usr/share/mysql/** r,
   /usr/share/zoneinfo/** r,
 
@@ -88,7 +85,7 @@
   deny /var/** mrwklx,
 
   # Catchall to deny everything else
-  #deny /** rwklx,
+  deny /** rwklx,
 
   # Site-specific additions and overrides can be added below
 }
