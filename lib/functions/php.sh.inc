@@ -1106,7 +1106,8 @@ php_extensions_update() {
   fi
   ###--------------------###
   if [ "$1" != "56" ] && [ "$1" != "70" ] && [ "$1" != "71" ]; then
-    if [ ! -e "${pthLog}/mcrypt-${_PHP_MCRYPT}-${_T_PHP_VRN}.log" ]; then
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/mcrypt.so" ] \
+      || [ ! -e "${pthLog}/mcrypt-${_PHP_MCRYPT}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing MCRYPT ${_PHP_MCRYPT} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf mcrypt*
@@ -1126,7 +1127,8 @@ php_extensions_update() {
   fi
   ###--------------------###
   if [ "$1" = "56" ]; then
-    if [ ! -e "${pthLog}/f_uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log" ]; then
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ] \
+      || [ ! -e "${pthLog}/f_uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing UploadProgress ${_UPROGRESS_LEGACY_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf uploadprogress*
@@ -1150,7 +1152,8 @@ php_extensions_update() {
     || [ "$1" = "81" ] \
     || [ "$1" = "82" ] \
     || [ "$1" = "83" ]; then
-    if [ ! -e "${pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log" ]; then
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ] \
+      || [ ! -e "${pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing UploadProgress ${_UPROGRESS_EIGHT_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf uploadprogress*
@@ -1168,7 +1171,8 @@ php_extensions_update() {
       fi
     fi
   else
-    if [ ! -e "${pthLog}/f_uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log" ]; then
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ] \
+      || [ ! -e "${pthLog}/f_uploadprogress-${_UPROGRESS_SEVEN_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing UploadProgress ${_UPROGRESS_SEVEN_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf uploadprogress*
@@ -1188,7 +1192,8 @@ php_extensions_update() {
   fi
   ###--------------------###
   if [ "$1" = "56" ]; then
-    if [ ! -e "${pthLog}/php-pecl-jsmin-${_JSMIN_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log" ]; then
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/jsmin.so" ] \
+      || [ ! -e "${pthLog}/php-pecl-jsmin-${_JSMIN_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing JSMin ${_JSMIN_PHP_LEGACY_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf pecl-jsmin*
@@ -1206,7 +1211,8 @@ php_extensions_update() {
       fi
     fi
   else
-    if [ ! -e "${pthLog}/php-pecl-jsmin-${_JSMIN_PHP_MODERN_VRN}-${_T_PHP_VRN}.log" ]; then
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/jsmin.so" ] \
+      || [ ! -e "${pthLog}/php-pecl-jsmin-${_JSMIN_PHP_MODERN_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing JSMin ${_JSMIN_PHP_MODERN_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf pecl-jsmin*
@@ -1226,7 +1232,8 @@ php_extensions_update() {
   fi
   ###--------------------###
   if [ "$1" = "56" ]; then
-    if [ ! -e "${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log" ]; then
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/twig.so" ] \
+      || [ ! -e "${pthLog}/php-twig-${_TWIGC_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing Twig C ${_TWIGC_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf twig*
@@ -1315,7 +1322,8 @@ php_extensions_update() {
     fi
   fi
   ###--------------------###
-  if [ ! -e "${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
+  if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ] \
+    || [ ! -e "${pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
     msg "INFO: Installing Imagick ${_IMAGICK_VRN} upgrade for PHP ${_T_PHP_VRN}..."
     if [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "chimaera" ]; then
       if [ -e "/usr/bin/MagickWand-config" ]; then
@@ -1347,7 +1355,8 @@ php_extensions_update() {
   fi
   ###--------------------###
   if [ "$1" = "56" ]; then
-    if [ ! -e "${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log" ]; then
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/mailparse.so" ] \
+      || [ ! -e "${pthLog}/mailparse-${_MAILPARSE_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing MailParse ${_MAILPARSE_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf mailparse*
@@ -1396,7 +1405,8 @@ php_extensions_update() {
     fi
   fi
   if [ "$1" = "56" ]; then
-    if [ ! -e "${pthLog}/f_yaml-${_YAML_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log" ]; then
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ] \
+      || [ ! -e "${pthLog}/f_yaml-${_YAML_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing YAML ${_YAML_PHP_LEGACY_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf yaml*
@@ -1414,7 +1424,8 @@ php_extensions_update() {
       fi
     fi
   elif [ "$1" = "70" ]; then
-    if [ ! -e "${pthLog}/f_yaml-${_YAML_PHP_SEVENO_VRN}-${_T_PHP_VRN}.log" ]; then
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ] \
+      || [ ! -e "${pthLog}/f_yaml-${_YAML_PHP_SEVENO_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing YAML ${_YAML_PHP_SEVENO_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf yaml*
@@ -1432,7 +1443,8 @@ php_extensions_update() {
       fi
     fi
   else
-    if [ ! -e "${pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log" ]; then
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ] \
+      || [ ! -e "${pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing YAML ${_YAML_PHP_MODERN_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf yaml*
