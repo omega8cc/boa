@@ -664,9 +664,9 @@ install_php_extensions() {
   fi
   ###--------------------###
   if [ "$1" = "56" ]; then
-    _USE_PHPREDIS="${_PHPREDIS_FOUR_VRN}"
+    _USE_PHPREDIS="${_PHPREDIS_THREE_VRN}"
   elif [ "$1" = "70" ] || [ "$1" = "71" ]; then
-    _USE_PHPREDIS="${_PHPREDIS_FIVE_VRN}"
+    _USE_PHPREDIS="${_PHPREDIS_FOUR_VRN}"
   else
     _USE_PHPREDIS="${_PHPREDIS_SIX_VRN}"
   fi
@@ -1028,9 +1028,9 @@ php_extensions_update() {
   fi
   ###--------------------###
   if [ "$1" = "56" ]; then
-    _USE_PHPREDIS="${_PHPREDIS_FOUR_VRN}"
+    _USE_PHPREDIS="${_PHPREDIS_THREE_VRN}"
   elif [ "$1" = "70" ] || [ "$1" = "71" ]; then
-    _USE_PHPREDIS="${_PHPREDIS_FIVE_VRN}"
+    _USE_PHPREDIS="${_PHPREDIS_FOUR_VRN}"
   else
     _USE_PHPREDIS="${_PHPREDIS_SIX_VRN}"
   fi
