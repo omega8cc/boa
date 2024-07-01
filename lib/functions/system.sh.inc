@@ -3693,6 +3693,13 @@ ssl_install_src() {
     msg "PROC: ssl_install_src"
   fi
   _SSL_INSTALL_REQUIRED=NO
+  if [ -e "/usr/bin/openssl" ] && [ ! -L "/usr/bin/openssl" ]; then
+    if [ -x "/usr/local/ssl3/bin/openssl" ]; then
+      ln -sf /usr/local/ssl3/bin/openssl /usr/bin/openssl
+    elif [ -x "/usr/local/ssl/bin/openssl" ]; then
+      ln -sf /usr/local/ssl/bin/openssl /usr/bin/openssl
+    fi
+  fi
   if [ -e "/root/.install.modern.openssl.cnf" ] \
     && [ -x "/usr/local/ssl3/bin/openssl" ]; then
     _SSL_BINARY=/usr/local/ssl3/bin/openssl
@@ -6994,6 +7001,8 @@ install_myquick_src() {
       mrun "make --quiet install" 2> /dev/null
     fi
     ldconfig 2> /dev/null
+    ssl_install_src
+    ssl_crypto_lib_fix
   fi
 }
 
