@@ -2708,8 +2708,19 @@ php_install_deps() {
   ###--------------------###
   apt_clean_update
   mrun "${_INSTAPP} cmake" 2> /dev/null
+  mrun "${_INSTAPP} lbzip2" 2> /dev/null
   mrun "${_INSTAPP} libcurl4-openssl-dev" 2> /dev/null
-  mrun "${_INSTAPP} libgd-dev libgd3 lbzip2" 2> /dev/null
+  mrun "${_INSTAPP} libgd-dev" 2> /dev/null
+  mrun "${_INSTAPP} libgd3" 2> /dev/null
+  mrun "${_INSTAPP} libjpeg-dev" 2> /dev/null
+  mrun "${_INSTAPP} libjpeg62" 2> /dev/null
+  mrun "${_INSTAPP} libkrb5-dev" 2> /dev/null
+  mrun "${_INSTAPP} liblzf-dev" 2> /dev/null
+  mrun "${_INSTAPP} libmagickwand-dev" 2> /dev/null
+  mrun "${_INSTAPP} libonig-dev" 2> /dev/null
+  mrun "${_INSTAPP} libsodium-dev" 2> /dev/null
+  mrun "${_INSTAPP} libwebp-dev" 2> /dev/null
+  mrun "${_INSTAPP} libxpm-dev" 2> /dev/null
   if [ "${_OS_CODE}" = "daedalus" ] \
     || [ "${_OS_CODE}" = "bookworm" ]; then
     if [ ! -e "/root/.rebuild_src_on_auto_before_reboot.info" ]; then
@@ -2721,13 +2732,6 @@ php_install_deps() {
     mrun "${_INSTAPP} libldap-common" 2> /dev/null
     mrun "${_INSTAPP} libldap2-dev" 2> /dev/null
   fi
-  mrun "${_INSTAPP} libmagickwand-dev" 2> /dev/null
-  mrun "${_INSTAPP} libonig-dev" 2> /dev/null
-  mrun "${_INSTAPP} libsodium-dev" 2> /dev/null
-  mrun "${_INSTAPP} libwebp-dev" 2> /dev/null
-  mrun "${_INSTAPP} libxpm-dev" 2> /dev/null
-  mrun "${_INSTAPP} libkrb5-dev" 2> /dev/null
-  mrun "${_INSTAPP} libjpeg-dev libjpeg62" 2> /dev/null
   if [ "${_OS_CODE}" = "jessie" ]; then
     install_icu_jessie
   else
