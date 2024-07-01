@@ -420,6 +420,17 @@ fi
 
 
 ###
+### Upgrade MyQuick Tools and sync OpenSSL and cURL if needed
+###
+if [ "${_STATUS}" = "UPGRADE" ] && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+  myquick_install_upgrade
+  ssl_install_src
+  ssl_crypto_lib_fix
+  curl_install_src
+fi
+
+
+###
 ### Install OpenSSH from sources
 ###
 if [ "${_SSH_FROM_SOURCES}" = "YES" ] && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
@@ -465,7 +476,9 @@ if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   nginx_mime_check_fix
   redis_install_upgrade
   lshell_install_upgrade
-  myquick_install_upgrade
+  if [ "${_STATUS}" = "INIT" ]; then
+    myquick_install_upgrade
+  fi
   magick_install_upgrade
   php_install_deps
   php_libs_fix
