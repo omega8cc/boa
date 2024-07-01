@@ -3384,6 +3384,7 @@ sshd_install_src() {
       --with-privsep-path=/var/lib/sshd/ \
       --sysconfdir=${_SYSCONFDIR} \
       --prefix=${_PREFIX_SSH} \
+      --without-openssl-header-check \
       --with-selinux \
       --with-md5-passwords \
       --with-pam &> /dev/null
