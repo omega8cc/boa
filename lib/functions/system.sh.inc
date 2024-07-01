@@ -4673,6 +4673,7 @@ sync_enable_apparmor_profiles() {
       mrun "update-rc.d -f apparmor remove" 2> /dev/null
       mrun "service auditd stop" 2> /dev/null
       mrun "update-rc.d -f auditd remove" 2> /dev/null
+      mrun "aa-teardown" 2> /dev/null
     fi
   fi
 }
