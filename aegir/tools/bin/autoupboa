@@ -390,9 +390,9 @@ if [ -e "/var/aegir/drush" ]; then
       rm -f /etc/mysql/conf.d/mysqldump.cnf
       touch /var/xdrago/log/.custom_percona_forced.${_X_SE}.pid
     fi
-    _AUTO_UP_WEEKLY=7
-    _AUTO_UP_MONTH=5
-    _AUTO_UP_DAY=25
+    _AUTO_UP_WEEKLY=2
+    _AUTO_UP_MONTH=6
+    _AUTO_UP_DAY=6
     _AUTO_PHP="php-min"
     _AUTO_VER="${tRee}"
     if [ ! -e "/root/.ignore.site24x7.firewall.cnf" ]; then
@@ -491,11 +491,11 @@ if [ -e "/var/aegir/drush" ]; then
 #   fi
 
   if [ -e "/root/.dev.server.cnf" ]; then
-    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl.${tRee}.${_X_SE}.pid" ]; then
-      rm -f /var/xdrago/log/.*etc_crontab_update_dev_ctrl*
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f1.${tRee}.${_X_SE}.pid" ]; then
+      rm -f /var/xdrago/log/.*etc_crontab_update_dev_ctrl_f1*
       crontab_cleanup
       service cron restart
-      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl.${tRee}.${_X_SE}.pid
+      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl_f1.${tRee}.${_X_SE}.pid
     fi
   else
     if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl.${tRee}.${_X_SE}.pid" ]; then
