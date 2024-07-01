@@ -1,6 +1,7 @@
 # File: /etc/apparmor.d/usr.local.bin.wkhtmltopdf
 # Template from https://wkhtmltopdf.org/apparmor.html
-#
+
+#include <tunables/global>
 
 /usr/local/bin/wkhtmltopdf flags=(complain) {
 
