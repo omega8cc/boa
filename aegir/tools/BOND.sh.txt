@@ -810,7 +810,6 @@ php_conf_update() {
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     if [ "${e}" != "56" ]; then
       fix_php_ini_apcu
-      fix_php_ini_igbinary
     fi
     if [ "${e}" != "56" ] && [ "${e}" != "70" ] && [ "${e}" != "71" ]; then
       fix_php_ini_mcrypt
@@ -825,6 +824,7 @@ php_conf_update() {
     if [ "${e}" = "80" ] || [ "${e}" = "81" ]; then
       remove_php_ini_jsmin
     fi
+    fix_php_ini_igbinary
     fix_php_ini_redis
     fix_php_ini_ioncube
     remove_php_ini_suhosin
@@ -833,7 +833,6 @@ php_conf_update() {
     _THIS_FILE=/opt/php${e}/lib/php.ini
     if [ "${e}" != "56" ]; then
       fix_php_ini_apcu
-      fix_php_ini_igbinary
     fi
     if [ "${e}" != "56" ] && [ "${e}" != "70" ] && [ "${e}" != "71" ]; then
       fix_php_ini_mcrypt
@@ -848,6 +847,7 @@ php_conf_update() {
     if [ "${e}" = "80" ] || [ "${e}" = "81" ]; then
       remove_php_ini_jsmin
     fi
+    fix_php_ini_igbinary
     fix_php_ini_redis
     fix_php_ini_ioncube
     remove_php_ini_suhosin

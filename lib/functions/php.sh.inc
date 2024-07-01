@@ -492,7 +492,6 @@ php_conf_update() {
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     if [ "${e}" != "56" ]; then
       fix_php_ini_apcu ${e}
-      fix_php_ini_igbinary ${e}
     fi
     if [ "${e}" != "56" ] && [ "${e}" != "70" ] && [ "${e}" != "71" ]; then
       fix_php_ini_mcrypt ${e}
@@ -507,6 +506,7 @@ php_conf_update() {
     if [ "${e}" = "80" ] || [ "${e}" = "81" ] || [ "${e}" = "82" ] || [ "${e}" = "83" ]; then
       remove_php_ini_jsmin ${e}
     fi
+    fix_php_ini_igbinary ${e}
     fix_php_ini_redis ${e}
     fix_php_ini_ioncube ${e}
     remove_php_ini_suhosin ${e}
@@ -515,7 +515,6 @@ php_conf_update() {
     _THIS_FILE=/opt/php${e}/lib/php.ini
     if [ "${e}" != "56" ]; then
       fix_php_ini_apcu ${e}
-      fix_php_ini_igbinary ${e}
     fi
     if [ "${e}" != "56" ] && [ "${e}" != "70" ] && [ "${e}" != "71" ]; then
       fix_php_ini_mcrypt ${e}
@@ -530,6 +529,7 @@ php_conf_update() {
     if [ "${e}" = "80" ] || [ "${e}" = "81" ] || [ "${e}" = "82" ] || [ "${e}" = "83" ]; then
       remove_php_ini_jsmin ${e}
     fi
+    fix_php_ini_igbinary ${e}
     fix_php_ini_redis ${e}
     fix_php_ini_ioncube ${e}
     remove_php_ini_suhosin ${e}
@@ -705,23 +705,25 @@ install_php_extensions() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != "56" ]; then
-    msg "INFO: Installing igbinary ${_PHP_IGBINARY} for PHP ${_T_PHP_VRN}..."
-    cd /var/opt
-    rm -rf igbinary*
-    get_dev_src "igbinary-${_PHP_IGBINARY}.tgz"
-    cd /var/opt/igbinary-${_PHP_IGBINARY}
-    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
-    ldconfig 2> /dev/null
-    if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
-      msg "WARN: Installing igbinary for PHP ${_T_PHP_VRN} failed!"
-    else
-      touch ${pthLog}/igbinary-${_PHP_IGBINARY}-${_T_PHP_VRN}.log
-    fi
-    rm -f /data/disk/*/static/control/.*${_X_SE}.pid
+  if [ "$1" = "56" ]; then
+    _USE_IGBINARY="${_PHP_IGBINARY_TWO}"
+  else
+    _USE_IGBINARY="${_PHP_IGBINARY_THREE}"
+  fi
+  msg "INFO: Installing igbinary ${_USE_IGBINARY} for PHP ${_T_PHP_VRN}..."
+  cd /var/opt
+  rm -rf igbinary*
+  get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
+  cd /var/opt/igbinary-${_USE_IGBINARY}
+  mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+  mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+  mrun "make -j $(nproc) --quiet" 2> /dev/null
+  mrun "make --quiet install" 2> /dev/null
+  ldconfig 2> /dev/null
+  if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
+    msg "WARN: Installing igbinary for PHP ${_T_PHP_VRN} failed!"
+  else
+    touch ${pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log
   fi
   ###--------------------###
   if [ "$1" != "56" ] && [ "$1" != "70" ] && [ "$1" != "71" ]; then
@@ -1073,24 +1075,27 @@ php_extensions_update() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != "56" ]; then
-    if [ ! -e "${pthLog}/igbinary-${_PHP_IGBINARY}-${_T_PHP_VRN}.log" ]; then
-      msg "INFO: Installing igbinary ${_PHP_IGBINARY} upgrade for PHP ${_T_PHP_VRN}..."
-      cd /var/opt
-      rm -rf igbinary*
-      get_dev_src "igbinary-${_PHP_IGBINARY}.tgz"
-      cd /var/opt/igbinary-${_PHP_IGBINARY}
-      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
-      if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
-        msg "WARN: Installing igbinary for PHP ${_T_PHP_VRN} failed!"
-      else
-        touch ${pthLog}/igbinary-${_PHP_IGBINARY}-${_T_PHP_VRN}.log
-      fi
-      rm -f /data/disk/*/static/control/.*${_X_SE}.pid
+  if [ "$1" = "56" ]; then
+    _USE_IGBINARY="${_PHP_IGBINARY_TWO}"
+  else
+    _USE_IGBINARY="${_PHP_IGBINARY_THREE}"
+  fi
+  if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ] \
+    || [ ! -e "${pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log" ]; then
+    msg "INFO: Installing igbinary ${_USE_IGBINARY} upgrade for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -rf igbinary*
+    get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
+    cd /var/opt/igbinary-${_USE_IGBINARY}
+    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+    mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "make -j $(nproc) --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    ldconfig 2> /dev/null
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
+      msg "WARN: Installing igbinary for PHP ${_T_PHP_VRN} failed!"
+    else
+      touch ${pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log
     fi
   fi
   ###--------------------###
@@ -2957,6 +2962,18 @@ php_check_if_rebuild() {
       _PHP_FORCE_REINSTALL=YES
       php_if_versions_cleanup_cnf
       php_upgrade_all "74 80 81 82 83"
+      _PHP_FORCE_REINSTALL=NO
+    fi
+  fi
+  if [ -x "/opt/php56/bin/php" ]; then
+    isIgbinary=
+    isIgbinary=$(/opt/php56/bin/php -i | grep igbinary 2>&1)
+    if [[ ! "${isIgbinary}" =~ "igbinary" ]] \
+      || [ -z "${isIgbinary}" ]; then
+      msg "INFO: PHP 5.6 rebuild required to add igbinary support..."
+      _PHP_FORCE_REINSTALL=YES
+      php_if_versions_cleanup_cnf
+      php_upgrade_all "56"
       _PHP_FORCE_REINSTALL=NO
     fi
   fi
