@@ -4669,6 +4669,9 @@ sync_enable_apparmor_profiles() {
       mrun "service auditd reload" 2> /dev/null
     elif [ -e "/root/.disable.apparmor.cnf" ] \
       || [ ! -e "/root/.activate.apparmor.cnf" ]; then
+      mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
+      mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
+      mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
       mrun "service apparmor stop" 2> /dev/null
       mrun "update-rc.d -f apparmor remove" 2> /dev/null
       mrun "service auditd stop" 2> /dev/null
