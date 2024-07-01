@@ -30,7 +30,6 @@
   /usr/local/ssl3/** mr,
 
   # Allow to read and write in the web root directories
-
   /var/www/** r,
   /data/disk/*/aegir/** r,
   /data/disk/*/distro/** r,
