@@ -1042,7 +1042,8 @@ php_extensions_update() {
     _USE_PHPREDIS="${_PHPREDIS_SIX_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   fi
-  if [ ! -e "${pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log" ]; then
+  if [ ! -e "${_THIS_PHP_EXT_DIR}/redis.so" ] \
+    || [ ! -e "${pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log" ]; then
     msg "INFO: Installing PhpRedis ${_USE_PHPREDIS} upgrade for PHP ${_T_PHP_VRN}..."
     ldconfig 2> /dev/null
     cd /var/opt
@@ -1062,7 +1063,8 @@ php_extensions_update() {
   fi
   ###--------------------###
   if [ "$1" != "56" ]; then
-    if [ ! -e "${pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log" ]; then
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ] \
+      || [ ! -e "${pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log" ]; then
       msg "INFO: Installing APCu ${_PHP_APCU} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf apcu*
