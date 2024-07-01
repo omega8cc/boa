@@ -430,7 +430,9 @@ if_extended_report() {
     echo            >> ${_THIS_LOG}
     aureport        >> ${_THIS_LOG}
     echo            >> ${_THIS_LOG}
-    aa-status       >> ${_THIS_LOG}
+    aa-status | grep loaded   >> ${_THIS_LOG}
+    aa-status | grep enforce  >> ${_THIS_LOG}
+    aa-status | grep complain >> ${_THIS_LOG}
     echo            >> ${_THIS_LOG}
     aa-unconfined   >> ${_THIS_LOG}
     echo            >> ${_THIS_LOG}
