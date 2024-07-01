@@ -36,10 +36,10 @@
   /data/disk/*/platforms/** r,
   /data/disk/*/static/** r,
 
-  owner /data/disk/*/distro/** rw,
-  owner /data/disk/*/platforms/** rw,
-  owner /data/disk/*/static/** rw,
-  owner /var/www/** rw,
+  owner /data/disk/*/distro/** rwk,
+  owner /data/disk/*/platforms/** rwk,
+  owner /data/disk/*/static/** rwk,
+  owner /var/www/** rwk,
 
   owner /home/*.web/.aws/* rw,
   owner /home/*.web/.drush/* r,
