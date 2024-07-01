@@ -665,10 +665,13 @@ install_php_extensions() {
   ###--------------------###
   if [ "$1" = "56" ]; then
     _USE_PHPREDIS="${_PHPREDIS_THREE_VRN}"
+    _PHPREDIS_BUILD="--enable-redis-igbinary"
   elif [ "$1" = "70" ] || [ "$1" = "71" ]; then
     _USE_PHPREDIS="${_PHPREDIS_FOUR_VRN}"
+    _PHPREDIS_BUILD="--enable-redis-igbinary"
   else
     _USE_PHPREDIS="${_PHPREDIS_SIX_VRN}"
+    _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   fi
   msg "INFO: Installing PhpRedis ${_USE_PHPREDIS} for PHP ${_T_PHP_VRN}..."
   ldconfig 2> /dev/null
@@ -677,7 +680,7 @@ install_php_extensions() {
   get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
   cd /var/opt/phpredis
   mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-  mrun "bash ./configure --enable-redis-igbinary --enable-redis-lzf --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+  mrun "bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}" 2> /dev/null
   mrun "make -j $(nproc) --quiet" 2> /dev/null
   mrun "make --quiet install" 2> /dev/null
   ldconfig 2> /dev/null
@@ -1031,10 +1034,13 @@ php_extensions_update() {
   ###--------------------###
   if [ "$1" = "56" ]; then
     _USE_PHPREDIS="${_PHPREDIS_THREE_VRN}"
+    _PHPREDIS_BUILD="--enable-redis-igbinary"
   elif [ "$1" = "70" ] || [ "$1" = "71" ]; then
     _USE_PHPREDIS="${_PHPREDIS_FOUR_VRN}"
+    _PHPREDIS_BUILD="--enable-redis-igbinary"
   else
     _USE_PHPREDIS="${_PHPREDIS_SIX_VRN}"
+    _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   fi
   if [ ! -e "${pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log" ]; then
     msg "INFO: Installing PhpRedis ${_USE_PHPREDIS} upgrade for PHP ${_T_PHP_VRN}..."
@@ -1044,7 +1050,7 @@ php_extensions_update() {
     get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
     cd /var/opt/phpredis
     mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    mrun "bash ./configure --enable-redis-igbinary --enable-redis-lzf --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     ldconfig 2> /dev/null
