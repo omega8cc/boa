@@ -1088,7 +1088,7 @@ php_extensions_update() {
   fi
   if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ] \
     || [ ! -e "${pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log" ]; then
-    msg "INFO: Installing igbinary ${_USE_IGBINARY} upgrade for PHP ${_T_PHP_VRN}..."
+    msg "INFO: Installing Igbinary ${_USE_IGBINARY} upgrade for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf igbinary*
     get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
@@ -1099,7 +1099,7 @@ php_extensions_update() {
     mrun "make --quiet install" 2> /dev/null
     ldconfig 2> /dev/null
     if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
-      msg "WARN: Installing igbinary for PHP ${_T_PHP_VRN} failed!"
+      msg "WARN: Installing Igbinary for PHP ${_T_PHP_VRN} failed!"
     else
       touch ${pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log
     fi
