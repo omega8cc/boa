@@ -4574,6 +4574,23 @@ strict_bin_permissions() {
 }
 
 #
+# Turn Off AppArmor temporarily.
+disable_apparmor_temporarily() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: disable_apparmor_temporarily"
+  fi
+  if [ -d "/etc/apparmor.d" ]; then
+    rm -rf /var/cache/apparmor/*
+    mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
+    mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
+    mrun "service apparmor stop" 2> /dev/null
+    mrun "aa-teardown" 2> /dev/null
+    mrun "service auditd stop" 2> /dev/null
+    mrun "apt-get remove apparmor-profiles-extra -y --purge --auto-remove" 2> /dev/null
+  fi
+}
+
+#
 # Sync AppArmor profiles.
 sync_enable_apparmor_profiles() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
