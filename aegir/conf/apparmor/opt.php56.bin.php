@@ -66,6 +66,7 @@
   /opt/php*/lib/php/** mr,
   /usr/lib/** mr,
   /usr/lib/x86_64-linux-gnu/** mr,
+  /lib/x86_64-linux-gnu/** mr,
   /usr/local/include/** mr,
   /usr/local/ioncube/ioncube_loader_lin_*.so mr,
   /usr/local/lib/** mr,
