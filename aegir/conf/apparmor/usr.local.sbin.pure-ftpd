@@ -54,7 +54,6 @@
   /sys/** r,
 
   # Allow access to run directory
-  /run/** r,
   /run/pure-ftpd.pid rw,
 
   # Allow access to temporary directories

@@ -25,11 +25,9 @@
   /etc/mysql/mysql.conf.d/** r,
 
   # Allow MySQL to access its data directory
-  /var/lib/mysql/ r,
   /var/lib/mysql/** rwk,
 
   # Allow MySQL to access its run directory
-  /run/mysqld/ r,
   /run/mysqld/** rw,
 
   # Allow MySQL to access its tmp directory

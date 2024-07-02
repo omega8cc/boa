@@ -56,7 +56,6 @@
   /dev/null rw,
 
   # Allow PHP-FPM to access its run directory
-  /run/ r,
   /run/** rw,
 
   # Allow PHP-FPM to use tmp files
