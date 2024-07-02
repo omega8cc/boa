@@ -201,12 +201,12 @@ crontab_update() {
       echo "14 3    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
     fi
     echo "# Barracuda ${_AUTO_VER} full upgrade" >> /etc/crontab
-    echo "${_MINUTE_SYSTEM_UP} ${_HOUR_SYSTEM_UP}  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
+    echo "${_MINUTE_SYSTEM_UP} ${_HOUR_SYSTEM_UP}   ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
     if [ ! -e "/root/.wbhd.clstr.cnf" ] && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
       if [ ! -z "${_OCTO_FULL}" ]; then
         echo "# Octopus ${_AUTO_VER} full upgrade" >> /etc/crontab
-        echo "${_MINUTE_OCTOPUS_UP} ${_HOUR_OCTOPUS_UP}  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
-        echo "55 7  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
+        echo "${_MINUTE_OCTOPUS_UP} ${_HOUR_OCTOPUS_UP}   ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
+        echo "55 7   ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
       fi
     fi
     echo Cron Update Completed
@@ -498,7 +498,7 @@ if [ -e "/var/aegir/drush" ]; then
       touch /var/xdrago/log/.etc_crontab_update_dev_ctrl.${tRee}.${_X_SE}.pid
     fi
   else
-    if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl_f1.${tRee}.${_X_SE}.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl_f2.${tRee}.${_X_SE}.pid" ]; then
       rm -f /var/xdrago/log/.*etc_crontab_update_prod_ctrl*
       if [ ! -z "${_AUTO_UP_MONTH}" ] \
         && [ ! -z "${_AUTO_UP_DAY}" ]; then
@@ -507,7 +507,7 @@ if [ -e "/var/aegir/drush" ]; then
         crontab_cleanup
       fi
       service cron restart
-      touch /var/xdrago/log/.etc_crontab_update_prod_ctrl_f1.${tRee}.${_X_SE}.pid
+      touch /var/xdrago/log/.etc_crontab_update_prod_ctrl_f2.${tRee}.${_X_SE}.pid
     fi
   fi
 
