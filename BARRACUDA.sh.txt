@@ -558,7 +558,11 @@ rsyslog_config_update
 if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
   [ ! -e "/root/.allow.apparmor.cnf" ] && touch /root/.allow.apparmor.cnf
   [ -e "/root/.deny.apparmor.cnf" ] && rm -f /root/.allow.apparmor.cnf
-  if_install_or_uninstall_apparmor
+  if [ ! -e "/root/.run-to-daedalus.cnf" ] \
+    && [ ! -e "/root/.run-to-chimaera.cnf" ] \
+    && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
+    if_install_or_uninstall_apparmor
+  fi
 fi
 
 
