@@ -4711,9 +4711,9 @@ sync_enable_apparmor_profiles() {
 
 #
 # Manage AppArmor.
-if_enable_or_disable_apparmor() {
+if_install_or_uninstall_apparmor() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_enable_or_disable_apparmor"
+    msg "PROC: if_install_or_uninstall_apparmor"
   fi
   ###--------------------###
   isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
