@@ -4726,7 +4726,7 @@ if_install_or_uninstall_apparmor() {
   fi
   isAppArmorComplain=$(which aa-complain 2>&1)
   isAppArmorStatus=$(which aa-status 2>&1)
-  if [ -e "/root/.deny.auditd.and.apparmor.cnf" ]; then
+  if [ -e "/root/.deny.apparmor.cnf" ]; then
     isAuditd=$(which auditd 2>&1)
     if [ -e "${isAuditd}" ]; then
       msg "ARMR: The system auditd/aureport/ausearch will be uninstalled now..."
