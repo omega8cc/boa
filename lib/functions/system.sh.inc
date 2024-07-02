@@ -2441,8 +2441,6 @@ run_apt_get_dist_upgrade() {
   mrun "apt-get dist-upgrade -y --allow-unauthenticated" 2> /dev/null
   [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
-  ### Run AppArmor update early
-  if_enable_or_disable_apparmor
   ### Update rsyslog configuration early
   rsyslog_config_update
   ### Reload key services if needed early
@@ -5388,8 +5386,6 @@ if_post_major_os_upgrade() {
     fi
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
-    ### Run AppArmor update early
-    if_enable_or_disable_apparmor
     ### Update rsyslog configuration early
     rsyslog_config_update
     ### Reload key services if needed early
@@ -5990,8 +5986,6 @@ if_major_os_upgrade() {
       mrun "apt-get dist-upgrade -y --allow-downgrades" 2> /dev/null
       [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
       mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
-      ### Run AppArmor update early
-      if_enable_or_disable_apparmor
       ###
       if [ "${_LOC_OS_CODE}" = "chimaera" ] \
         && [ "${_NEW_OS_CODE}" = "daedalus" ]; then
