@@ -20,8 +20,9 @@ set -e
 case "$1" in
   start)
     echo -n "Starting $DESC: "
-    service apparmor stop
-    /usr/sbin/aa-teardown
+    ### service apparmor stop
+    ### service auditd stop
+    ### /usr/sbin/aa-teardown
     _RAM_AUTO_FILE="/sys/devices/system/memory/auto_online_blocks"
     if [ -f "${_RAM_AUTO_FILE}" ]; then
       if grep -qx offline "${_RAM_AUTO_FILE}"; then
@@ -148,8 +149,9 @@ case "$1" in
   ;;
   stop)
     echo -n "Stopping $DESC: "
-    service apparmor stop
-    /usr/sbin/aa-teardown
+    ### service apparmor stop
+    ### service auditd stop
+    ### /usr/sbin/aa-teardown
     _REBOOT_ONE_TEST=$(ls -la /root/.run-auto-major-os-reboot*-one.cnf 2>&1)
     _REBOOT_TWO_TEST=$(ls -la /root/.run-auto-major-os-reboot*-two.cnf 2>&1)
     if [[ "${_REBOOT_ONE_TEST}" =~ "No such file" ]] \
