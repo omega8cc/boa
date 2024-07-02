@@ -4630,6 +4630,7 @@ sync_enable_apparmor_profiles() {
                     scanner \
                     smb \
                     syslog \
+                    tcpdump \
                     totem \
                     traceroute \
                     usr.sbin.sshd"
