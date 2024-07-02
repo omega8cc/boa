@@ -1129,7 +1129,11 @@ os_detection_minimal
 apt_clean_update() {
   #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
-  ${_APT_UPDATE} -qq 2> /dev/null
+  if [ -e "/root/.dev.server.cnf" ]; then
+    ${_APT_UPDATE} -qq 2> /dev/null
+  else
+    ${_APT_UPDATE} -qq &> /dev/null
+  fi
 }
 
 
@@ -1283,7 +1287,7 @@ download_helpers_libs() {
   mkdir -p /opt/tmp
   cd /opt/tmp
   rm -rf /opt/tmp/boa
-  if [ "${_AEGIR_VERSION}" != "static" ]; then
+  if [ -e "/var/aegir/drush" ]; then
     _GIT_VRN=2.45.2
     isGit=$(which git 2>&1)
     _GIT_INSTALL=NO
@@ -1301,20 +1305,35 @@ download_helpers_libs() {
       echo "INFO: Building Git ${_GIT_VRN} from sources..."
       echo "WAIT: This may take a while, please wait..."
       apt_clean_update
-      apt-get install libcurl4 -y --allow-unauthenticated -qq 2> /dev/null
-      apt-get install libcurl4-openssl-dev -y --allow-unauthenticated -qq 2> /dev/null
-      apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated -qq 2> /dev/null
-      apt-get remove git-core -y --purge --auto-remove -qq 2> /dev/null
-      apt-get remove git -y --purge --auto-remove -qq 2> /dev/null
+      if [ -e "/root/.dev.server.cnf" ]; then
+        apt-get install libcurl4 -y --allow-unauthenticated -qq 2> /dev/null
+        apt-get install libcurl4-openssl-dev -y --allow-unauthenticated -qq 2> /dev/null
+        apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated -qq 2> /dev/null
+        apt-get remove git-core -y --purge --auto-remove -qq 2> /dev/null
+        apt-get remove git -y --purge --auto-remove -qq 2> /dev/null
+      else
+        apt-get install libcurl4 -y --allow-unauthenticated -qq &> /dev/null
+        apt-get install libcurl4-openssl-dev -y --allow-unauthenticated -qq &> /dev/null
+        apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated -qq &> /dev/null
+        apt-get remove git-core -y --purge --auto-remove -qq &> /dev/null
+        apt-get remove git -y --purge --auto-remove -qq &> /dev/null
+      fi
       mkdir -p /var/opt
       rm -rf /var/opt/git*
       cd /var/opt
       get_dev_src_pre "git-${_GIT_VRN}.tar.gz"
       cd /var/opt/git-${_GIT_VRN}
-      make configure 2> /dev/null
-      bash ./configure --without-tcltk 2> /dev/null
-      make all -j $(nproc) 2> /dev/null
-      make install 2> /dev/null
+      if [ -e "/root/.dev.server.cnf" ]; then
+        make configure 2> /dev/null
+        bash ./configure --without-tcltk 2> /dev/null
+        make all -j $(nproc) 2> /dev/null
+        make install 2> /dev/null
+      else
+        make configure &> /dev/null
+        bash ./configure --without-tcltk &> /dev/null
+        make all -j $(nproc) &> /dev/null
+        make install &> /dev/null
+      fi
       ldconfig 2> /dev/null
       if [ -x "/usr/local/bin/git" ]; then
         if [ -e "/usr/bin/git" ] && [ ! -L "/usr/bin/git" ]; then
@@ -1340,9 +1359,32 @@ download_helpers_libs() {
       ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth} &> /dev/null
     fi
   else
-    curl ${crlGet} "${urlDev}/${_AEGIR_XTS_VRN}/boa.tar.gz" | tar -xzf -
-    _BOA_REPO_NAME="boa"
-    _THIS_CNF="${bldPth}/aegir/conf"
+    apt_clean_update
+    if [ -e "/root/.dev.server.cnf" ]; then
+      apt-get install libcurl4 -y --allow-unauthenticated -qq 2> /dev/null
+      apt-get install libcurl4-openssl-dev -y --allow-unauthenticated -qq 2> /dev/null
+      apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated -qq 2> /dev/null
+      apt-get install git-core -y --allow-unauthenticated -qq 2> /dev/null
+      apt-get install git -y --allow-unauthenticated -qq 2> /dev/null
+    else
+      apt-get install libcurl4 -y --allow-unauthenticated -qq &> /dev/null
+      apt-get install libcurl4-openssl-dev -y --allow-unauthenticated -qq &> /dev/null
+      apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated -qq &> /dev/null
+      apt-get install git-core -y --allow-unauthenticated -qq &> /dev/null
+      apt-get install git -y --allow-unauthenticated -qq &> /dev/null
+    fi
+    isGit=$(which git 2>&1)
+    gCb="${isGit} clone --branch"
+    if [ -e "/root/.dev.server.cnf" ]; then
+      echo "Running ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth}"
+      if [ -x "${isGit}" ]; then
+        ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth}
+      else
+        echo "ERROR: ${isGit} is probably broken"
+      fi
+    else
+      ${gCb} ${_BRANCH_BOA} ${_BOA_REPO_GIT_URL}/${_BOA_REPO_NAME}.git ${bldPth} &> /dev/null
+    fi
   fi
   #
   if [ ! -e "${bldPth}/aegir/helpers/apt.conf.noi.nrml" ] \
