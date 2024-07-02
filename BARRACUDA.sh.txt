@@ -555,6 +555,16 @@ rsyslog_config_update
 
 
 ###
+### Install or uninstall AppArmor after barracuda install and upgrade
+###
+if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
+  [ ! -e "/root/.allow.apparmor.cnf" ] && touch /root/.allow.apparmor.cnf
+  [ -e "/root/.deny.apparmor.cnf" ] && rm -f /root/.allow.apparmor.cnf
+  if_install_or_uninstall_apparmor
+fi
+
+
+###
 ### Update barracuda log, tools and system settings
 ###
 pam_umask_check_fix
