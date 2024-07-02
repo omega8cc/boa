@@ -10,7 +10,6 @@
   include <abstractions/consoles>
   include <abstractions/nameservice>
   include <abstractions/openssl>
-  include if exists <local/usr.sbin.unbound>
 
   # Capabilities needed by Unbound server
   capability chown,
@@ -67,6 +66,4 @@
   # Allow Unbound to access its pid and control socket
   /var/run/unbound/unbound.pid rw,
   /var/run/unbound/unbound.ctl rw,
-
-  include if exists <local/usr.sbin.unbound>
 }

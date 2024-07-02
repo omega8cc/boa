@@ -9,7 +9,6 @@
   include <abstractions/base>
   include <abstractions/nameservice>
   include <abstractions/openssl>
-  include if exists <local/usr.sbin.clamd>
 
   # Capabilities needed by Clamd service
   capability chown,

@@ -11,7 +11,6 @@
   include <abstractions/openssl>
   include <abstractions/ubuntu-browsers.d/multimedia>
   include <abstractions/user-tmp>
-  include if exists <local/usr.bin.freshclam>
 
   # Capabilities needed by Freshclam service
   capability chown,
