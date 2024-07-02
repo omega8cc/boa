@@ -1161,6 +1161,20 @@ init_finish() {
 }
 
 init_setup() {
+
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo
+    echo RAWV tRee is ${tRee}
+    echo RAWV kind is ${kind}
+    echo RAWV fqdn is ${fqdn}
+    echo RAWV email is ${email}
+    echo RAWV user is ${user}
+    echo RAWV mode is ${mode}
+    echo RAWV rkey is ${rkey}
+    echo RAWV sql is ${sql}
+    echo
+  fi
+
   if [ "${kind}" = "local" ]; then
     if [ "${email}" = "ask" ] \
       || [ "${email}" = "mini" ] \
@@ -1224,6 +1238,22 @@ init_setup() {
   else
     output="verbose"
     system="bundle"
+  fi
+
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo
+    echo MODD tRee is ${tRee}
+    echo MODD kind is ${kind}
+    echo MODD fqdn is ${fqdn}
+    echo MODD email is ${email}
+    echo MODD user is ${user}
+    echo MODD mode is ${mode}
+    echo MODD rkey is ${rkey}
+    echo MODD sql is ${sql}
+    echo
+    echo CTRL output is ${output}
+    echo CTRL system is ${system}
+    echo
   fi
 
   init_start
