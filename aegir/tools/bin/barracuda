@@ -1588,6 +1588,7 @@ proceed() {
   check_root_direct
   check_root_keys_pwd
   check_root
+  up_start
   barracuda_downgrade_protection
   check_no_systemd
   os_detection_minimal
@@ -1611,7 +1612,6 @@ proceed() {
     check_sql_running
     check_sql_access
   fi
-  up_start
   if [ "${cmmand}" = "up-dev" ] \
     || [ "${cmmand}" = "up-pro" ] \
     || [ "${cmmand}" = "up-lite" ] \
