@@ -46,5 +46,5 @@
     /usr/local/bin/sftp mrix,
 
     # Deny execution of any other binaries
-    deny /** rwklx,
+    #deny /** rwklx,
 }

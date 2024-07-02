@@ -106,6 +106,6 @@
   /usr/local/rvm/bin/rvm mrix,
 
   # Deny execution of any other binaries
-  deny /** rwklx,
+  #deny /** rwklx,
 }
 

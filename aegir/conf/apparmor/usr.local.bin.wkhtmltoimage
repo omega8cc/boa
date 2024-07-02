@@ -47,5 +47,5 @@
   owner /home/*.web/.tmp/* rw,
 
   # Catchall to deny everything else
-  deny /** rwklx,
+  #deny /** rwklx,
 }
