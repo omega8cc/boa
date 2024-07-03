@@ -5132,7 +5132,7 @@ basic_packages_install_on_init() {
     msg "PROC: basic_packages_install_on_init"
   fi
   apt_clean_update
-  if [ ! -e "/var/aegir" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
+  if [ ! -e "/var/aegir/drush" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
     mrun "apt-get remove unscd -y --purge --auto-remove -qq" 2> /dev/null
     mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
     if [ -e "/usr/share/dbus-1" ]; then
