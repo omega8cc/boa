@@ -240,6 +240,27 @@ else
   silentMode=silent
 fi
 
+turn_off_apparmor_early() {
+  touch /root/.deny.apparmor.cnf
+  isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
+  msg "Turning off AppArmor early..." >> ${logInt}
+  msg "It's necessary in the pre-install stage" >> ${logInt}
+  msg "to avoid blocking BOA install on Daedalus" >> ${logInt}
+  msg "Do not worry, we will enable AppArmor later" >> ${logInt}
+  apparmor_parser -r /etc/apparmor.d/* >> ${logSlt}
+  aa-complain /etc/apparmor.d/* >> ${logSlt}
+  aa-teardown >> ${logSlt}
+  apt-get remove apparmor \
+    apparmor-utils \
+    apparmor-notify \
+    apparmor-profiles \
+    apparmor-profiles-extra -y --purge --auto-remove >> ${logSlt}
+  mkdir -p /etc/default/grub.d
+  echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
+    | tee ${isAppArmorGrubFile} &> /dev/null
+  update-grub >> ${logSlt}
+}
+
 install_enable_apparmor_utils() {
   isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
   isAppArmorGrub=
@@ -361,7 +382,7 @@ init_pre() {
         ${_INITINS} build-essential curl git >> ${logSlt}
         ${_INITINS} libgd-dev libmagickwand-dev libcurl4-openssl-dev >> ${logSlt}
       fi
-      install_enable_apparmor_utils
+      turn_off_apparmor_early
       echo "Waiting five seconds before reboot..."
       sleep 5
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
