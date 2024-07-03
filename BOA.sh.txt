@@ -108,9 +108,7 @@ os_detection_minimal() {
 }
 
 apt_clean_update() {
-  #apt-get clean -qq 2> /dev/null
-  #rm -rf /var/lib/apt/lists/* &> /dev/null
-  ${_APT_UPDATE} -qq 2> /dev/null
+  ${_APT_UPDATE} -qq &> /dev/null
 }
 
 #
@@ -1680,7 +1678,7 @@ fix_lshell() {
     elif [ -x "${isPythonTwo}" ]; then
       usePyth=python2
     fi
-    ${usePyth} setup.py install --no-compile 2> /dev/null
+    ${usePyth} setup.py install --no-compile &> /dev/null
     cp -af /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5 /etc/lshell.conf
     rm -f /etc/logrotate.d/lshell
     addgroup --system lshellg &> /dev/null
@@ -1980,9 +1978,9 @@ if_reinstall_curl() {
         && [ -e "/etc/apt/apt.conf.d" ]; then
         echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
       fi
-      echo "curl install" | dpkg --set-selections 2> /dev/null
+      echo "curl install" | dpkg --set-selections &> /dev/null
       apt_clean_update
-      apt-get install curl -y -qq 2> /dev/null
+      apt-get install curl -y -qq &> /dev/null
     fi
     isCurl=$(curl --version 2>&1)
     if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
@@ -2187,7 +2185,7 @@ if_update_boa_key_tools_only() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install lsb-release ${aptYesUnth} 2> /dev/null
+    apt-get install lsb-release ${aptYesUnth} &> /dev/null
   fi
   _IPSET_TEST=$(which ipset 2> /dev/null)
   if [ ! -x "${_IPSET_TEST}" ]; then
@@ -2202,7 +2200,7 @@ if_update_boa_key_tools_only() {
     if [ -L "/usr/sbin/ipset" ]; then
       rm -f /usr/sbin/ipset
     fi
-    apt-get install ipset ${aptYesUnth} 2> /dev/null
+    apt-get install ipset ${aptYesUnth} &> /dev/null
   fi
   if [ -x "/sbin/ipset" ] && [ ! -e "/usr/sbin/ipset" ]; then
     ln -s /sbin/ipset /usr/sbin/ipset
@@ -2352,31 +2350,33 @@ setup() {
     unbound-control reload &> /dev/null
   fi
 
+  if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+    && [ -e "/etc/apt/apt.conf.d" ]; then
+    echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+  fi
+  if [ ! -e "/etc/apt/apt.conf.d/99ignorestrict" ] \
+    && [ -e "/etc/apt/apt.conf.d" ]; then
+    echo "APT::Get::AllowInsecureRepositories \"true\";" > /etc/apt/apt.conf.d/99ignorestrict
+    echo "APT::Get::AllowUnauthenticated \"true\";"     >> /etc/apt/apt.conf.d/99ignorestrict
+    echo "Aptitude::CmdLine::Fix-Broken \"true\";"      >> /etc/apt/apt.conf.d/99ignorestrict
+  fi
+  apt_clean_update
+
+  if [ ! -e "/var/aegir/drush" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
+    apt-get remove unscd -y --purge --auto-remove -qq &> /dev/null
+    apt-get remove dbus -y --purge --auto-remove -qq &> /dev/null
+    if [ -e "/usr/share/dbus-1" ]; then
+      rm -f /usr/share/dbus-1/*/*freedesktop*
+    fi
+    userdel -r debian &> /dev/null
+    sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc &> /dev/null
+  fi
+
   isScreen=$(screen --version 2>&1)
   if [[ ! "${isScreen}" =~ "GNU" ]] || [ -z "${isScreen}" ]; then
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-      && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-    fi
-    if [ ! -e "/etc/apt/apt.conf.d/99ignorestrict" ] \
-      && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Get::AllowInsecureRepositories \"true\";" > /etc/apt/apt.conf.d/99ignorestrict
-      echo "APT::Get::AllowUnauthenticated \"true\";"     >> /etc/apt/apt.conf.d/99ignorestrict
-      echo "Aptitude::CmdLine::Fix-Broken \"true\";"      >> /etc/apt/apt.conf.d/99ignorestrict
-    fi
-    apt_clean_update
-    apt-get install screen -y 2> /dev/null
-    apt-get install net-tools -y 2> /dev/null
-    apt-get install hostname -y 2> /dev/null
-    if [ ! -e "/var/aegir" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
-      apt-get remove unscd -y --purge --auto-remove -qq 2> /dev/null
-      apt-get remove dbus -y --purge --auto-remove -qq 2> /dev/null
-      if [ -e "/usr/share/dbus-1" ]; then
-        rm -f /usr/share/dbus-1/*/*freedesktop*
-      fi
-      userdel -r debian &> /dev/null
-      sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc &> /dev/null
-    fi
+    apt-get install screen -y &> /dev/null
+    apt-get install net-tools -y &> /dev/null
+    apt-get install hostname -y &> /dev/null
   fi
 
   if_reinstall_curl
@@ -2406,7 +2406,7 @@ setup() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install virt-what ${aptYesUnth} 2> /dev/null
+    apt-get install virt-what ${aptYesUnth} &> /dev/null
   fi
   _LSB_TEST=$(which lsb_release 2> /dev/null)
   if [ ! -x "${_LSB_TEST}" ]; then
@@ -2415,7 +2415,7 @@ setup() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install lsb-release ${aptYesUnth} 2> /dev/null
+    apt-get install lsb-release ${aptYesUnth} &> /dev/null
   fi
   update_boa_tools
   echo
@@ -2458,9 +2458,8 @@ find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install netcat ${aptYesUnth} 2> /dev/null
-    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
-    wait
+    apt-get install netcat ${aptYesUnth} &> /dev/null
+    apt-get install netcat-traditional ${aptYesUnth} &> /dev/null
   fi
   ffMirr=$(which ffmirror 2>&1)
   if [ -x "${ffMirr}" ]; then
