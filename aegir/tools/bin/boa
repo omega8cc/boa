@@ -537,45 +537,10 @@ octopus_install() {
     sed -i "s/^_USER=.*/_USER=${user}/g"                       ${vBs}/${octName}
     wait
 
-    if [ "${mode}" = "mini" ]; then
-      if [ -e "${vBs}/${filIncO}" ]; then
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${filIncO}
-        wait
-      fi
-      ### Legacy method
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${octName}
+    if [ -e "${vBs}/${filIncO}" ]; then
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${filIncO}
       wait
-    elif [ "${mode}" = "max" ]; then
-      if [ -e "${vBs}/${filIncO}" ]; then
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  ${vBs}/${filIncO}
-        wait
-      fi
-      ### Legacy method
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${octName}
-      wait
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"    ${vBs}/${octName}
-      wait
-    elif [ "${mode}" = "none" ]; then
-      if [ -e "${vBs}/${filIncO}" ]; then
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  ${vBs}/${filIncO}
-        wait
-      fi
-      ### Legacy method
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${octName}
-      wait
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"    ${vBs}/${octName}
-      wait
-    else
-      if [ -e "${vBs}/${filIncO}" ]; then
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  ${vBs}/${filIncO}
-        wait
-      fi
-      ### Legacy method
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"    ${vBs}/${octName}
+      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"    ${vBs}/${filIncO}
       wait
     fi
 
@@ -592,11 +557,6 @@ octopus_install() {
           sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"   ${vBs}/${filIncO}
           wait
         fi
-        ### Legacy method
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${octName}
-        wait
-        sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"     ${vBs}/${octName}
-        wait
       fi
     fi
 
@@ -625,17 +585,6 @@ octopus_install() {
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${filIncO}
         wait
       fi
-      ### Legacy method
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${octName}
-      wait
-      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${brnch}/g"  ${vBs}/${octName}
-      wait
-      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g" ${vBs}/${filIncO}
-      wait
-      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${tRee}/g" ${vBs}/${filIncO}
-      wait
-      sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${filIncO}
-      wait
     fi
 
     if [ "${cmmand}" = "in-dev" ] \
@@ -654,9 +603,6 @@ octopus_install() {
         sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${filIncO}
         wait
       fi
-      ### Legacy method
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${octName}
-      wait
     fi
 
     if [ ! -z "${dbip}" ] && [ "${cmmand}" = "in-cluster" ]; then
@@ -738,11 +684,6 @@ barracuda_install() {
       sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${filIncB}
       wait
     fi
-    ### Legacy method
-    sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"${email}\"/g"          ${vBs}/${barName}
-    wait
-    sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                 ${vBs}/${barName}
-    wait
 
     if [ "${kind}" = "local" ]; then
       echo "127.0.1.1 aegir.local o1.sub.aegir.local \
@@ -751,14 +692,6 @@ barracuda_install() {
         sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=LOCAL/g"         ${vBs}/${filIncB}
         wait
       fi
-      ### Legacy method
-      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=LOCAL/g"           ${vBs}/${barName}
-      wait
-      ### Legacy variables
-      sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=YES/g"     ${vBs}/${barName}
-      wait
-      sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=NO/g"            ${vBs}/${barName}
-      wait
     elif [ "${kind}" = "public" ] && [ ! -z "${fqdn}" ]; then
       if [ -e "${vBs}/${filIncB}" ]; then
         sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        ${vBs}/${filIncB}
@@ -766,16 +699,6 @@ barracuda_install() {
         sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
         wait
       fi
-      ### Legacy method
-      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"          ${vBs}/${barName}
-      wait
-      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${barName}
-      wait
-      ### Legacy variables
-      sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"      ${vBs}/${barName}
-      wait
-      sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"           ${vBs}/${barName}
-      wait
     elif [ "${kind}" = "mstr" ] \
       && [ ! -z "${fqdn}" ] \
       && [ ! -z "${dbip}" ] \
@@ -831,16 +754,6 @@ barracuda_install() {
         sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
         wait
       fi
-      ### Legacy method
-      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"          ${vBs}/${barName}
-      wait
-      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${barName}
-      wait
-      ### Legacy variables
-      sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"      ${vBs}/${barName}
-      wait
-      sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"           ${vBs}/${barName}
-      wait
     fi
 
     if [ ! -z "${fqdn}" ] \
@@ -940,79 +853,7 @@ barracuda_install() {
         sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${filIncO}
         wait
       else
-        sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${rkey}\"/g"    ${vBs}/${filIncB}
-        wait
-      fi
-    fi
-
-    if [ ! -z "${rkey}" ] \
-      && [ -e "${vBs}/${barName}" ] \
-      && [ -e "${vBs}/${octName}" ]; then
-      ### Legacy method
-      if [ "${rkey}" = "php-83" ] || [ "${rkey}" = "php-8.3" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.3/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.3/g"   ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.3/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.3/g" ${vBs}/${octName}
-        wait
-      elif [ "${rkey}" = "php-82" ] || [ "${rkey}" = "php-8.2" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.2/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.2/g"   ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.2/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.2/g" ${vBs}/${octName}
-        wait
-      elif [ "${rkey}" = "php-81" ] || [ "${rkey}" = "php-8.1" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.1/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.1/g"   ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.1/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${octName}
-        wait
-      elif [ "${rkey}" = "php-74" ] || [ "${rkey}" = "php-7.4" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.4/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.4/g"   ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${octName}
-        wait
-      elif [ "${rkey}" = "php-all" ] \
-        || [ "${rkey}" = "php-min" ] \
-        || [ "${rkey}" = "php-max" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=/g"    ${vBs}/${barName}
-        if [ "${rkey}" = "php-max" ]; then
-          pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
-        else
-          pA="7.4 8.1 8.2 8.3"
-        fi
-        sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.1/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.1/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${octName}
-        wait
-      elif [ "${rkey}" = "nodns" ]; then
-        sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${barName}
-        wait
-        sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${barName}
-        wait
-        sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${octName}
-        wait
-      else
-        sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${rkey}\"/g"    ${vBs}/${barName}
+        sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${extra}\"/g"    ${vBs}/${filIncB}
         wait
       fi
     fi
@@ -1040,17 +881,6 @@ barracuda_install() {
         sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${filIncB}
         wait
       fi
-      ### Legacy method
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${barName}
-      wait
-      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${brnch}/g"  ${vBs}/${barName}
-      wait
-      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g" ${vBs}/${filIncB}
-      wait
-      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${tRee}/g" ${vBs}/${filIncB}
-      wait
-      sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${filIncB}
-      wait
     fi
 
     if [ "${cmmand}" = "in-dev" ] \
@@ -1067,9 +897,6 @@ barracuda_install() {
         sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${filIncB}
         wait
       fi
-      ### Legacy method
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${barName}
-      wait
     fi
 
     if [ "${output}" = "logged" ] || [ "${output}" = "system" ]; then
