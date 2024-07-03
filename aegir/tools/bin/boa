@@ -771,10 +771,10 @@ barracuda_install() {
       fi
     fi
 
-    if [ ! -z "${rkey}" ] \
+    if [ ! -z "${extra}" ] \
       && [ -e "${vBs}/${filIncB}" ] \
       && [ -e "${vBs}/${filIncO}" ]; then
-      if [ "${rkey}" = "php-83" ] || [ "${rkey}" = "php-8.3" ]; then
+      if [ "${extra}" = "php-83" ] || [ "${extra}" = "php-8.3" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.3/g" ${vBs}/${filIncB}
         wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.3/g"   ${vBs}/${filIncB}
@@ -787,7 +787,7 @@ barracuda_install() {
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.3/g" ${vBs}/${filIncO}
         wait
-      elif [ "${rkey}" = "php-82" ] || [ "${rkey}" = "php-8.2" ]; then
+      elif [ "${extra}" = "php-82" ] || [ "${extra}" = "php-8.2" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.2/g" ${vBs}/${filIncB}
         wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.2/g"   ${vBs}/${filIncB}
@@ -800,7 +800,7 @@ barracuda_install() {
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.2/g" ${vBs}/${filIncO}
         wait
-      elif [ "${rkey}" = "php-81" ] || [ "${rkey}" = "php-8.1" ]; then
+      elif [ "${extra}" = "php-81" ] || [ "${extra}" = "php-8.1" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.1/g" ${vBs}/${filIncB}
         wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.1/g"   ${vBs}/${filIncB}
@@ -813,7 +813,7 @@ barracuda_install() {
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${filIncO}
         wait
-      elif [ "${rkey}" = "php-74" ] || [ "${rkey}" = "php-7.4" ]; then
+      elif [ "${extra}" = "php-74" ] || [ "${extra}" = "php-7.4" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.4/g" ${vBs}/${filIncB}
         wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.4/g"   ${vBs}/${filIncB}
@@ -826,11 +826,11 @@ barracuda_install() {
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${filIncO}
         wait
-      elif [ "${rkey}" = "php-all" ] \
-        || [ "${rkey}" = "php-min" ] \
-        || [ "${rkey}" = "php-max" ]; then
+      elif [ "${extra}" = "php-all" ] \
+        || [ "${extra}" = "php-min" ] \
+        || [ "${extra}" = "php-max" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=/g"    ${vBs}/${filIncB}
-        if [ "${rkey}" = "php-max" ]; then
+        if [ "${extra}" = "php-max" ]; then
           pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
         else
           pA="7.4 8.1 8.2 8.3"
@@ -845,7 +845,7 @@ barracuda_install() {
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${filIncO}
         wait
-      elif [ "${rkey}" = "nodns" ]; then
+      elif [ "${extra}" = "nodns" ]; then
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${filIncB}
         wait
         sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${filIncB}
@@ -989,106 +989,130 @@ init_finish() {
 
 init_setup() {
 
-  if [ -e "/root/.dev.server.cnf" ]; then
-    echo
-    echo RAWV tRee is ${tRee}
-    echo RAWV kind is ${kind}
-    echo RAWV fqdn is ${fqdn}
-    echo RAWV email is ${email}
-    echo RAWV user is ${user}
-    echo RAWV mode is ${mode}
-    echo RAWV rkey is ${rkey}
-    echo RAWV sql is ${sql}
-    echo
-  fi
-
-  if [ "${kind}" = "local" ]; then
-    if [ "${email}" = "ask" ] \
-      || [ "${email}" = "mini" ] \
-      || [ "${email}" = "max" ] \
-      || [ "${email}" = "none" ]; then
-      mode="${email}"
+  if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
+    if [ -e "/root/.dev.server.cnf" ]; then
+      echo
+      echo RAWV tRee is ${tRee}
+      echo RAWV email is ${email}
+      echo RAWV user is ${user}
+      echo RAWV extra is ${extra}
+      echo RAWV copt is ${copt}
+      echo RAWV csub is ${csub}
+      echo RAWV ccor is ${ccor}
+      echo
+    fi
+    if [ "${extra}" = "lite" ] \
+      || [ "${extra}" = "dev" ]; then
+      _OCTO_EXTRA=OK
     else
-      mode=
-    fi
-    if [ ! -z "${mode}" ] && [ ! -z "${user}" ]; then
-      rkey="${user}"
-    else
-      rkey="${email}"
-    fi
-    email="${fqdn}"
-    user="o1"
-  fi
-  if [ "${kind}" = "public" ] \
-    || [ "${kind}" = "backdrop" ] \
-    || [ "${kind}" = "cluster" ] \
-    || [ "${kind}" = "drush" ] \
-    || [ "${kind}" = "gravcms" ] \
-    || [ "${kind}" = "jessie" ] \
-    || [ "${kind}" = "system" ]; then
-    if [ "${kind}" != "public" ]; then
-      silent="${kind}"
-      echo "FEATURE MODE: ${silent}"
-      master="feature/${silent}"
-      branch="feature/${silent}"
-    else
-      silent=
-    fi
-    kind="public"
-    if [ "${user}" = "ask" ] \
-      || [ "${user}" = "mini" ] \
-      || [ "${user}" = "max" ] \
-      || [ "${user}" = "none" ]; then
-      rkey="${mode}"
-      mode="${user}"
-      user="o1"
-    fi
-    if [[ "${mode}" =~ "php" ]]; then
-      rkey="${mode}"
-      mode="none"
+      extra=lite
     fi
     satellite_check_id ${user}
+    if [ "${copt}" = "octolog" ]; then
+      output="logged"
+      copt=
+    elif [ "${copt}" = "silent" ]; then
+      output="logged"
+      copt=
+    elif [ "${copt}" = "system" ]; then
+      output="logged"
+      copt=
+    else
+      output="verbose"
+    fi
+    if [ "${output}" = "logged" ] \
+      || [ -z "${copt}" ] \
+      || [ -z "${csub}" ] \
+      || [ -z "${ccor}" ]; then
+      copt=MICRO
+      csub=Q
+      ccor=1
+    fi
+    if [ -e "/root/.dev.server.cnf" ]; then
+      echo MODD tRee is ${tRee}
+      echo MODD email is ${email}
+      echo MODD user is ${user}
+      echo MODD extra is ${extra}
+      echo MODD copt is ${copt}
+      echo MODD csub is ${csub}
+      echo MODD ccor is ${ccor}
+      echo
+      echo CTRL output is ${output}
+      echo
+      echo Waiting 60 seconds...
+      sleep 15
+      echo Waiting 45 seconds...
+      sleep 15
+      echo Waiting 30 seconds...
+      sleep 15
+      echo Waiting 15 seconds...
+      echo
+    fi
   fi
 
-  if [ "${user}" = "silent" ] \
-    || [ "${mode}" = "silent" ] \
-    || [ "${rkey}" = "silent" ] \
-    || [ "${sql}" = "silent" ]; then
-    output="logged"
-    system="bundle"
-  elif [ "${user}" = "system" ] \
-    || [ "${mode}" = "system" ] \
-    || [ "${rkey}" = "system" ] \
-    || [ "${sql}" = "system" ]; then
-    output="logged"
-    system="barracuda"
-  else
-    output="verbose"
-    system="bundle"
-  fi
-
-  if [ -e "/root/.dev.server.cnf" ]; then
-    echo
-    echo MODD tRee is ${tRee}
-    echo MODD kind is ${kind}
-    echo MODD fqdn is ${fqdn}
-    echo MODD email is ${email}
-    echo MODD user is ${user}
-    echo MODD mode is ${mode}
-    echo MODD rkey is ${rkey}
-    echo MODD sql is ${sql}
-    echo
-    echo CTRL output is ${output}
-    echo CTRL system is ${system}
-    echo
-    echo Waiting 60 seconds...
-    sleep 15
-    echo Waiting 45 seconds...
-    sleep 15
-    echo Waiting 30 seconds...
-    sleep 15
-    echo Waiting 15 seconds...
-    echo
+  if [ "${cmmand}" = "in-lite" ] \
+    || [ "${cmmand}" = "in-dev" ] \
+    || [ "${cmmand}" = "in-cluster" ]; then
+    if [ -e "/root/.dev.server.cnf" ]; then
+      echo
+      echo RAWV tRee is ${tRee}
+      echo RAWV kind is ${kind}
+      echo RAWV fqdn is ${fqdn}
+      echo RAWV email is ${email}
+      echo RAWV user is ${user}
+      echo RAWV extra is ${extra}
+      echo RAWV output is ${output}
+      echo
+    fi
+    if [ "${kind}" = "local" ]; then
+      if [[ "${email}" =~ "php" ]]; then
+        extra="${email}"
+      fi
+      email="${fqdn}"
+      user="o1"
+    fi
+    if [ "${kind}" = "public" ]; then
+      if [[ "${user}" =~ "php" ]]; then
+        extra="${user}"
+        user="o1"
+      fi
+      satellite_check_id ${user}
+    fi
+    if [ "${user}" = "silent" ] \
+      || [ "${extra}" = "silent" ] \
+      || [ "${output}" = "silent" ]; then
+      output="logged"
+      system="bundle"
+    elif [ "${user}" = "system" ] \
+      || [ "${extra}" = "system" ] \
+      || [ "${output}" = "system" ]; then
+      output="logged"
+      system="barracuda"
+    else
+      output="verbose"
+      system="bundle"
+    fi
+    if [ -e "/root/.dev.server.cnf" ]; then
+      echo MODD tRee is ${tRee}
+      echo MODD kind is ${kind}
+      echo MODD fqdn is ${fqdn}
+      echo MODD email is ${email}
+      echo MODD user is ${user}
+      echo MODD extra is ${extra}
+      echo MODD output is ${output}
+      echo
+      echo CTRL output is ${output}
+      echo CTRL system is ${system}
+      echo
+      echo Waiting 60 seconds...
+      sleep 15
+      echo Waiting 45 seconds...
+      sleep 15
+      echo Waiting 30 seconds...
+      sleep 15
+      echo Waiting 15 seconds...
+      echo
+    fi
   fi
 
   init_start
@@ -1123,22 +1147,10 @@ init_setup() {
     curl ${crlGet} "${rgUrl}/${cluster}/${pthIncO}" -o ${vBs}/${filIncO}
   elif [ "${cmmand}" = "in-octopus" ] \
     || [ "${cmmand}" = "in-oct" ]; then
-    if [ "${copt}" = "dev" ]; then
-      octb="${brnch}"
-    elif [ "${copt}" = "lite" ]; then
-      octb="${brnch}"
-    fi
-    if [ "${copt}" = "octolog" ] || [ "${copt}" = "silent" ]; then
-      octb="${brnch}"
-      output="logged"
-    else
-      octb="${brnch}"
-      output="verbose"
-    fi
-    curl ${crlGet} "${rgUrl}/${octb}/${barName}"    -o ${vBs}/${barName}
-    curl ${crlGet} "${rgUrl}/${octb}/${octName}"    -o ${vBs}/${octName}
-    curl ${crlGet} "${rgUrl}/${octb}/${pthIncB}"    -o ${vBs}/${filIncB}
-    curl ${crlGet} "${rgUrl}/${octb}/${pthIncO}"    -o ${vBs}/${filIncO}
+    curl ${crlGet} "${rgUrl}/${brnch}/${barName}"   -o ${vBs}/${barName}
+    curl ${crlGet} "${rgUrl}/${brnch}/${octName}"   -o ${vBs}/${octName}
+    curl ${crlGet} "${rgUrl}/${brnch}/${pthIncB}"   -o ${vBs}/${filIncB}
+    curl ${crlGet} "${rgUrl}/${brnch}/${pthIncO}"   -o ${vBs}/${filIncO}
   fi
   if [ -e "/root/.debug-boa-installer.cnf" ]; then
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncB}
@@ -1978,7 +1990,6 @@ case "$1" in
              display_info
   ;;
   version)   cmmand="$1"
-             kind="$2"
              display_version
   ;;
   reboot)    service clean-boa-env stop
@@ -1997,9 +2008,8 @@ case "$1" in
              fqdn="$3"
              email="$4"
              user="$5"
-             mode="$6"
-             rkey="$7"
-             sql="$8"
+             extra="$6"
+             output="$7"
              check_root
              check_root_keys_pwd
              check_virt
@@ -2012,9 +2022,8 @@ case "$1" in
              fqdn="$3"
              email="$4"
              user="$5"
-             mode="$6"
-             rkey="$7"
-             sql="$8"
+             extra="$6"
+             output="$7"
              check_root
              check_root_keys_pwd
              check_virt
@@ -2027,7 +2036,7 @@ case "$1" in
              fqdn="$3"
              email="$4"
              user="$5"
-             mode="$6"
+             extra="$6"
              dbip="$7"
              loip="$8"
              check_root
@@ -2040,7 +2049,7 @@ case "$1" in
              tRee=lite
              email="$2"
              user="$3"
-             mode="$4"
+             extra="$4"
              copt="$5"
              csub="$6"
              ccor="$7"
@@ -2054,7 +2063,7 @@ case "$1" in
              tRee=lite
              email="$2"
              user="$3"
-             mode="$4"
+             extra="$4"
              copt="$5"
              csub="$6"
              ccor="$7"
