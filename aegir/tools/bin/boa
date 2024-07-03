@@ -1254,6 +1254,14 @@ init_setup() {
     echo CTRL output is ${output}
     echo CTRL system is ${system}
     echo
+    echo Waiting 60 seconds...
+    sleep 15
+    echo Waiting 45 seconds...
+    sleep 15
+    echo Waiting 30 seconds...
+    sleep 15
+    echo Waiting 15 seconds...
+    echo
   fi
 
   init_start
