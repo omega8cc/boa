@@ -63,7 +63,6 @@ case "$1" in
         bash /opt/local/bin/autobeowulf > /dev/null 2>&1 &
       fi
     fi
-    echo -n "Starting $DESC: "
     if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
       _WEB_SH=`readlink -n /bin/sh`
       _WEB_SH=`echo -n ${_WEB_SH} | tr -d "\n"`
