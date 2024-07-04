@@ -3827,9 +3827,8 @@ ssl_install_src() {
       cd /var/opt/openssl-${_OPENSSL_NEW_VRN}
       if [ -e "/root/.install.modern.openssl.cnf" ]; then
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl3 \
-          --openssldir=/usr/local/ssl3 \
-          no-docs"
-        patchMakefile=NO
+          --openssldir=/usr/local/ssl3"
+        patchMakefile=YES
       else
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
           --openssldir=/usr/local/ssl"
