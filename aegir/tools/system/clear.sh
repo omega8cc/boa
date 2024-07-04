@@ -169,22 +169,10 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
     source /root/.barracuda.cnf
   fi
   rm -f /tmp/*error*
-  rm -f /var/backups/BOA.sh.txt.clear*
-  curl -L -k -s \
-    --max-redirs 5 \
-    --retry 5 \
-    --retry-delay 5 \
-    -A iCab "http://${_USE_MIR}/versions/${tRee}/boa/BOA.sh.txt" \
-    -o /var/backups/BOA.sh.txt.clear
+  wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
   wait
-  if [ -e "/var/backups/BOA.sh.txt.clear" ]; then
-    bash /var/backups/BOA.sh.txt.clear
-    wait
-    rm -f /var/backups/BOA.sh.txt.clear*
-  else
-    echo "Not available /var/backups/BOA.sh.txt.clear"
-  fi
   bash /opt/local/bin/autoupboa
+  wait
 fi
 
 _OCT_NR=$(ls /data/disk | wc -l)
