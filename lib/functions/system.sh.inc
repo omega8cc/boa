@@ -3829,9 +3829,11 @@ ssl_install_src() {
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl3 \
           --openssldir=/usr/local/ssl3 \
           no-docs"
+        patchMakefile=NO
       else
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
           --openssldir=/usr/local/ssl"
+        patchMakefile=YES
       fi
       mrun "sh ./config \
         shared \
@@ -3841,6 +3843,9 @@ ssl_install_src() {
         zlib-dynamic \
         enable-ec_nistp_64_gcc_128 \
         ${_SSL_BUILD_ARGS}" 2> /dev/null
+      if [ "${patchMakefile}" = "YES" ]; then
+        sed -i "s/install_docs:.*/install_docs:/g" /var/opt/openssl-${_OPENSSL_NEW_VRN}/Makefile
+      fi
       mrun "make depend" 2> /dev/null
       mrun "make -j $(nproc)" 2> /dev/null
       mrun "make install" 2> /dev/null
