@@ -663,6 +663,24 @@ install_php_extensions() {
     msg "PROC: install_php_extensions $1"
   fi
   ###--------------------###
+  if [ "$1" != "56" ]; then
+    msg "INFO: Installing APCu ${_PHP_APCU} for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -rf apcu*
+    get_dev_src "apcu-${_PHP_APCU}.tgz"
+    cd /var/opt/apcu-${_PHP_APCU}
+    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+    mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+    mrun "make -j $(nproc) --quiet" 2> /dev/null
+    mrun "make --quiet install" 2> /dev/null
+    ldconfig 2> /dev/null
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ]; then
+      msg "WARN: Installing APCu for PHP ${_T_PHP_VRN} failed!"
+    else
+      touch ${pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log
+    fi
+  fi
+  ###--------------------###
   if [ "$1" = "56" ]; then
     _USE_PHPREDIS="${_PHPREDIS_THREE_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
@@ -688,24 +706,6 @@ install_php_extensions() {
     msg "WARN: Installing PhpRedis for PHP ${_T_PHP_VRN} failed!"
   else
     touch ${pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
-  fi
-  ###--------------------###
-  if [ "$1" != "56" ]; then
-    msg "INFO: Installing APCu ${_PHP_APCU} for PHP ${_T_PHP_VRN}..."
-    cd /var/opt
-    rm -rf apcu*
-    get_dev_src "apcu-${_PHP_APCU}.tgz"
-    cd /var/opt/apcu-${_PHP_APCU}
-    mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-    mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-    mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
-    ldconfig 2> /dev/null
-    if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ]; then
-      msg "WARN: Installing APCu for PHP ${_T_PHP_VRN} failed!"
-    else
-      touch ${pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log
-    fi
   fi
   ###--------------------###
   if [ "$1" = "56" ]; then
@@ -1032,6 +1032,27 @@ php_extensions_update() {
     msg "PROC: php_extensions_update $1"
   fi
   ###--------------------###
+  if [ "$1" != "56" ]; then
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ] \
+      || [ ! -e "${pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log" ]; then
+      msg "INFO: Installing APCu ${_PHP_APCU} upgrade for PHP ${_T_PHP_VRN}..."
+      cd /var/opt
+      rm -rf apcu*
+      get_dev_src "apcu-${_PHP_APCU}.tgz"
+      cd /var/opt/apcu-${_PHP_APCU}
+      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
+      mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
+      mrun "make -j $(nproc) --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
+      ldconfig 2> /dev/null
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ]; then
+        msg "WARN: Installing APCu for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log
+      fi
+    fi
+  fi
+  ###--------------------###
   if [ "$1" = "56" ]; then
     _USE_PHPREDIS="${_PHPREDIS_THREE_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
@@ -1059,27 +1080,6 @@ php_extensions_update() {
       msg "WARN: Installing PhpRedis for PHP ${_T_PHP_VRN} failed!"
     else
       touch ${pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
-    fi
-  fi
-  ###--------------------###
-  if [ "$1" != "56" ]; then
-    if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ] \
-      || [ ! -e "${pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log" ]; then
-      msg "INFO: Installing APCu ${_PHP_APCU} upgrade for PHP ${_T_PHP_VRN}..."
-      cd /var/opt
-      rm -rf apcu*
-      get_dev_src "apcu-${_PHP_APCU}.tgz"
-      cd /var/opt/apcu-${_PHP_APCU}
-      mrun "${_T_PHP_PTH}/phpize" 2> /dev/null
-      mrun "bash ./configure --with-php-config=${_T_PHP_CFG}" 2> /dev/null
-      mrun "make -j $(nproc) --quiet" 2> /dev/null
-      mrun "make --quiet install" 2> /dev/null
-      ldconfig 2> /dev/null
-      if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ]; then
-        msg "WARN: Installing APCu for PHP ${_T_PHP_VRN} failed!"
-      else
-        touch ${pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log
-      fi
     fi
   fi
   ###--------------------###
