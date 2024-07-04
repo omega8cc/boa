@@ -24,97 +24,9 @@ fi
 ###-------------SYSTEM-----------------###
 
 send_notice_migration_complete() {
-  _MAILX_TEST=`mail -V 2>&1`
-  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | s-nail -e -a "From: ${_ADM_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" -s "IMPORTANT: Completed migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
-Hello,
-
-You are receiving this notification because your Aegir hosting system
-migration process to the new facility has been completed.
-
-# Caveats:
-
-  * New Aegir URL is listed in the new welcome email
-  * New SSH/SFTP credentials are listed in the new welcome email
-  * All cron tasks are paused during this migration and in the next 1-3 hours
-  * The old Aegir control panel has been disabled to protect proxy vhosts
-  * The main SSH account home directory contents has not been migrated
-  * SSH (RSA) keys have been transferred, but only for the main SSH account
-  * SSH sub-accounts (Clients), if used, will be recreated from scratch
-  * The Aegir backend USER.id_rsa.pub public SSH key has changed
-
-  * NOTE! YOUR **NEW** WELCOME EMAIL CONTAINS THE NEW DEFAULT IP ADDRESS
-    of your Aegir instance in the new facility. It is recommended
-    that you update DNS for all non-SSL-enabled sites as soon
-    as possible, to point the traffic directly to the new servers
-    and not rely on the provided proxy for too long.
-
-  * For SSL-enabled sites with dedicated IP addresses - please
-    don't update their DNS until you will receive separate email
-    with new dedicated IP address to use. Your SSL certificates
-    have been migrated automatically, so only DNS update will be needed
-    once new IP address is provided.
-
-  * You should use only the new SSH/SFTP credentials listed in the
-    new welcome email, because this is your only access to all your
-    migrated live/active sites and their files.
-
-  * While Aegir control panel URL has changed, its access credentials
-    are still the same as before, in contrast to SSH/SFTP credentials.
-    This is to preserve your Aegir control panel tasks history,
-    all sites<-->clients associations and domain aliases/redirects.
-
-Kind Regards,
---
-Your BOA Server Skynet Agent
-
-EOF
-  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | s-nail -a "From: ${_ADM_EMAIL}" -e -b ${_BCC_EMAIL} -s "IMPORTANT: Completed migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
-Hello,
-
-You are receiving this notification because your Aegir hosting system
-migration process to the new facility has been completed.
-
-# Caveats:
-
-  * New Aegir URL is listed in the new welcome email
-  * New SSH/SFTP credentials are listed in the new welcome email
-  * All cron tasks are paused during this migration and in the next 1-3 hours
-  * The old Aegir control panel has been disabled to protect proxy vhosts
-  * The main SSH account home directory contents has not been migrated
-  * SSH (RSA) keys have been transferred, but only for the main SSH account
-  * SSH sub-accounts (Clients), if used, will be recreated from scratch
-  * The Aegir backend USER.id_rsa.pub public SSH key has changed
-
-  * NOTE! YOUR **NEW** WELCOME EMAIL CONTAINS THE NEW DEFAULT IP ADDRESS
-    of your Aegir instance in the new facility. It is recommended
-    that you update DNS for all non-SSL-enabled sites as soon
-    as possible, to point the traffic directly to the new servers
-    and not rely on the provided proxy for too long.
-
-  * For SSL-enabled sites with dedicated IP addresses - please
-    don't update their DNS until you will receive separate email
-    with new dedicated IP address to use. Your SSL certificates
-    have been migrated automatically, so only DNS update will be needed
-    once new IP address is provided.
-
-  * You should use only the new SSH/SFTP credentials listed in the
-    new welcome email, because this is your only access to all your
-    migrated live/active sites and their files.
-
-  * While Aegir control panel URL has changed, its access credentials
-    are still the same as before, in contrast to SSH/SFTP credentials.
-    This is to preserve your Aegir control panel tasks history,
-    all sites<-->clients associations and domain aliases/redirects.
-
-Kind Regards,
---
-Your BOA Server Skynet Agent
-
-EOF
-  else
-  cat <<EOF | s-nail -r ${_ADM_EMAIL} -e -b ${_BCC_EMAIL} -s "IMPORTANT: Completed migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
+  _MAILX_TEST=`s-nail -V 2>&1`
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
+  cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "IMPORTANT: Completed migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
 Hello,
 
 You are receiving this notification because your Aegir hosting system
@@ -162,45 +74,9 @@ EOF
 }
 
 send_notice_migration_start() {
-  _MAILX_TEST=`mail -V 2>&1`
-  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | s-nail -e -a "From: ${_ADM_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" -s "STATUS: Running migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
-Hello,
-
-You are receiving this notification because your Aegir hosting system
-migration process to the new facility has been started.
-
-You will receive another email when the migration is complete.
-
-WARNING! Please do not run any tasks in your old Aegir control panel.
-It could break special proxy vhosts we have created for you to provide
-service continuity during this migration.
-
-Kind Regards,
---
-Your BOA Server Skynet Agent
-
-EOF
-  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | s-nail -a "From: ${_ADM_EMAIL}" -e -b ${_BCC_EMAIL} -s "STATUS: Running migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
-Hello,
-
-You are receiving this notification because your Aegir hosting system
-migration process to the new facility has been started.
-
-You will receive another email when the migration is complete.
-
-WARNING! Please do not run any tasks in your old Aegir control panel.
-It could break special proxy vhosts we have created for you to provide
-service continuity during this migration.
-
-Kind Regards,
---
-Your BOA Server Skynet Agent
-
-EOF
-  else
-  cat <<EOF | s-nail -r ${_ADM_EMAIL} -e -b ${_BCC_EMAIL} -s "STATUS: Running migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
+  _MAILX_TEST=`s-nail -V 2>&1`
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
+  cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "STATUS: Running migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
 Hello,
 
 You are receiving this notification because your Aegir hosting system

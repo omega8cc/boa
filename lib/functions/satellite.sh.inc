@@ -3852,7 +3852,7 @@ satellite_prepare_setup_email_tpl() {
 ###---### Sending setup email.
 #
 satellite_send_welcome_email() {
-  _MAILX_TEST=$(mail -V 2>&1)
+  _MAILX_TEST=$(s-nail -V 2>&1)
   if [ "${_STATUS}" = "INIT" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} A: Sending setup email on init..."
@@ -3863,19 +3863,10 @@ satellite_send_welcome_email() {
     if [ -e "${_ROOT}/log/setupmail.txt" ] \
       || [ -e "${_ROOT}/log/legacy_setupmail.txt" ] \
       || [ -e "${_ROOT}/log/latest_setupmail.txt" ]; then
-      if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
+      if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
         cat ${_ROOT}/log/setupmail.txt \
           | sed "s/[\~]//g" \
-          | s-nail -a "From: ${_MY_EMAIL}" \
-          -a "Bcc: ${_MY_EMAIL}" -e -s "${_Q}" ${_AT_CLIENT_EMAIL}
-      elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-        cat ${_ROOT}/log/setupmail.txt \
-          | s-nail -a "From: ${_MY_EMAIL}" \
-          -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
-      else
-        cat ${_ROOT}/log/setupmail.txt \
-          | s-nail -r ${_MY_EMAIL} \
-          -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
+          | s-nail -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
       fi
     fi
   else
@@ -3887,34 +3878,16 @@ satellite_send_welcome_email() {
       _Q="[${_X_VERSION}] Aegir Upgrade [${_USER}]"
       echo ${TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
       if [ -e "${_ROOT}/log/upgrademail.txt" ]; then
-        if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
+        if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
           cat ${_ROOT}/log/upgrademail.txt \
             | sed "s/[\~]//g" \
-            | s-nail -a "From: ${_MY_EMAIL}" \
-            -a "Bcc: ${_MY_EMAIL}" -e -s "${_Q}" ${_AT_CLIENT_EMAIL}
-        elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-          cat ${_ROOT}/log/upgrademail.txt \
-            | s-nail -a "From: ${_MY_EMAIL}" \
-            -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
-        else
-          cat ${_ROOT}/log/upgrademail.txt \
-            | s-nail -r ${_MY_EMAIL} \
-            -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
+            | s-nail -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
         fi
       else
-        if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
+        if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
           cat ${_ROOT}/log/setupmail.txt \
             | sed "s/[\~]//g" \
-            | s-nail -a "From: ${_MY_EMAIL}" \
-            -a "Bcc: ${_MY_EMAIL}" -e -s "${_Q}" ${_AT_CLIENT_EMAIL}
-        elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-          cat ${_ROOT}/log/setupmail.txt \
-            | s-nail -a "From: ${_MY_EMAIL}" \
-            -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
-        else
-          cat ${_ROOT}/log/setupmail.txt \
-            | s-nail -r ${_MY_EMAIL} \
-            -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
+            | s-nail -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
         fi
       fi
     else

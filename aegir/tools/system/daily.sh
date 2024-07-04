@@ -652,83 +652,9 @@ send_shutdown_notice() {
   else
     _BCC_EMAIL="${_MY_EMAIL}"
   fi
-  _MAILX_TEST=$(mail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | s-nail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
-    -s "ALERT! Shutdown of Hacked ${Dom} Site on ${_CHECK_HOST}" \
-    ${_ALRT_EMAIL}
-Hello,
-
-Because you have not fixed this site despite several alerts
-sent before, this site is scheduled for automated shutdown
-to prevent further damage for the site owner and visitors.
-
-Once the site is disabled, the only way to re-enable it again
-is to run the Verify task in your Aegir control panel.
-
-But if you will enable the site and not fix it immediately,
-it will be shut down automatically again.
-
-Common signatures of an attack which triggered this alert:
-
-${_DETECTED}
-
-The platform root directory for this site is:
-
-  ${Plr}
-
-The system hostname is:
-
-  ${_CHECK_HOST}
-
-To learn more on what happened, how it was possible and
-how to survive #Drupageddon, please read:
-
-  https://omega8.cc/drupageddon-psa-2014-003-342
-
---
-This email has been sent by your Aegir automatic system monitor.
-
-EOF
-  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | s-nail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
-    -s "ALERT! Shutdown of Hacked ${Dom} Site on ${_CHECK_HOST}" \
-    ${_ALRT_EMAIL}
-Hello,
-
-Because you have not fixed this site despite several alerts
-sent before, this site is scheduled for automated shutdown
-to prevent further damage for the site owner and visitors.
-
-Once the site is disabled, the only way to re-enable it again
-is to run the Verify task in your Aegir control panel.
-
-But if you will enable the site and not fix it immediately,
-it will be shut down automatically again.
-
-Common signatures of an attack which triggered this alert:
-
-${_DETECTED}
-
-The platform root directory for this site is:
-
-  ${Plr}
-
-The system hostname is:
-
-  ${_CHECK_HOST}
-
-To learn more on what happened, how it was possible and
-how to survive #Drupageddon, please read:
-
-  https://omega8.cc/drupageddon-psa-2014-003-342
-
---
-This email has been sent by your Aegir automatic system monitor.
-
-EOF
-  else
-  cat <<EOF | s-nail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+  _MAILX_TEST=$(s-nail -V 2>&1)
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
+  cat <<EOF | s-nail -b ${_BCC_EMAIL} \
     -s "ALERT! Shutdown of Hacked ${Dom} Site on ${_CHECK_HOST}" \
     ${_ALRT_EMAIL}
 Hello,
@@ -789,107 +715,9 @@ send_hacked_alert() {
   else
     _BCC_EMAIL="${_MY_EMAIL}"
   fi
-  _MAILX_TEST=$(mail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | s-nail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
-    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} has been HACKED!" \
-    ${_ALRT_EMAIL}
-Hello,
-
-Our monitoring detected that the site ${Dom} has been hacked!
-
-Common signatures of an attack which triggered this alert:
-
-${_DETECTED}
-
-The platform root directory for this site is:
-
-  ${Plr}
-
-The system hostname is:
-
-  ${_CHECK_HOST}
-
-To learn more on what happened, how it was possible and
-how to survive #Drupageddon, please read:
-
-  https://omega8.cc/drupageddon-psa-2014-003-342
-
-We have restarted these daily checks on May 7, 2016 to make sure that
-no one stays on some too old Drupal version with many known security
-vulnerabilities.
-
-You will receive Drupageddon alert for every site with outdated and
-not secure codebase, even if it was not affected by Drupageddon bug
-directly.
-
-Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-4.1.3. As a bonus, you will be able to speed up your sites
-considerably by switching PHP-FPM to 7.0
-
-We recommend to follow this upgrade how-to:
-
-  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
-
-The how-to for PHP-FPM version switch can be found at:
-
-  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
-
---
-This email has been sent by your Aegir automatic system monitor.
-
-EOF
-  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | s-nail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
-    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} has been HACKED!" \
-    ${_ALRT_EMAIL}
-Hello,
-
-Our monitoring detected that the site ${Dom} has been hacked!
-
-Common signatures of an attack which triggered this alert:
-
-${_DETECTED}
-
-The platform root directory for this site is:
-
-  ${Plr}
-
-The system hostname is:
-
-  ${_CHECK_HOST}
-
-To learn more on what happened, how it was possible and
-how to survive #Drupageddon, please read:
-
-  https://omega8.cc/drupageddon-psa-2014-003-342
-
-We have restarted these daily checks on May 7, 2016 to make sure that
-no one stays on some too old Drupal version with many known security
-vulnerabilities.
-
-You will receive Drupageddon alert for every site with outdated and
-not secure codebase, even if it was not affected by Drupageddon bug
-directly.
-
-Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-4.1.3. As a bonus, you will be able to speed up your sites
-considerably by switching PHP-FPM to 7.0
-
-We recommend to follow this upgrade how-to:
-
-  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
-
-The how-to for PHP-FPM version switch can be found at:
-
-  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
-
---
-This email has been sent by your Aegir automatic system monitor.
-
-EOF
-  else
-  cat <<EOF | s-nail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+  _MAILX_TEST=$(s-nail -V 2>&1)
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
+  cat <<EOF | s-nail -b ${_BCC_EMAIL} \
     -s "URGENT: The ${Dom} site on ${_CHECK_HOST} has been HACKED!" \
     ${_ALRT_EMAIL}
 Hello,
@@ -962,131 +790,9 @@ send_core_alert() {
   else
     _BCC_EMAIL="${_MY_EMAIL}"
   fi
-  _MAILX_TEST=$(mail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | s-nail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
-    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core!" \
-    ${_ALRT_EMAIL}
-Hello,
-
-Our monitoring detected that this site runs on not secure Drupal core:
-
-  ${Dom}
-
-The Drupageddon check result which triggered this alert:
-
-${_DETECTED}
-
-The platform root directory for this site is:
-
-  ${Plr}
-
-The system hostname is:
-
-  ${_CHECK_HOST}
-
-Does it mean that your site is vulnerable to Drupageddon attack, recently
-made famous again by Panama Papers leak?
-
-  https://www.drupal.org/node/2718467
-
-It depends on the Drupal core version you are using, and if it has been
-patched already to close the known attack vectors. You can find more
-details on our website at:
-
-  https://omega8.cc/drupageddon-psa-2014-003-342
-
-Even if the Drupal core version used in this site is not vulnerable
-to Drupageddon attack, it is still vulnerable to other attacks,
-because you have missed Drupal core security release(s).
-
-We have restarted these daily checks on May 7, 2016 to make sure that
-no one stays on some too old Drupal version with many known security
-vulnerabilities.
-
-You will receive Drupageddon alert for every site with outdated and
-not secure codebase, even if it was not affected by Drupageddon bug
-directly.
-
-Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-4.1.3. As a bonus, you will be able to speed up your sites
-considerably by switching PHP-FPM to 7.0
-
-We recommend to follow this upgrade how-to:
-
-  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
-
-The how-to for PHP-FPM version switch can be found at:
-
-  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
-
---
-This email has been sent by your Aegir automatic system monitor.
-
-EOF
-  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | s-nail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
-    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core!" \
-    ${_ALRT_EMAIL}
-Hello,
-
-Our monitoring detected that this site runs on not secure Drupal core:
-
-  ${Dom}
-
-The Drupageddon check result which triggered this alert:
-
-${_DETECTED}
-
-The platform root directory for this site is:
-
-  ${Plr}
-
-The system hostname is:
-
-  ${_CHECK_HOST}
-
-Does it mean that your site is vulnerable to Drupageddon attack, recently
-made famous again by Panama Papers leak?
-
-  https://www.drupal.org/node/2718467
-
-It depends on the Drupal core version you are using, and if it has been
-patched already to close the known attack vectors. You can find more
-details on our website at:
-
-  https://omega8.cc/drupageddon-psa-2014-003-342
-
-Even if the Drupal core version used in this site is not vulnerable
-to Drupageddon attack, it is still vulnerable to other attacks,
-because you have missed Drupal core security release(s).
-
-We have restarted these daily checks on May 7, 2016 to make sure that
-no one stays on some too old Drupal version with many known security
-vulnerabilities.
-
-You will receive Drupageddon alert for every site with outdated and
-not secure codebase, even if it was not affected by Drupageddon bug
-directly.
-
-Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-4.1.3. As a bonus, you will be able to speed up your sites
-considerably by switching PHP-FPM to 7.0
-
-We recommend to follow this upgrade how-to:
-
-  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
-
-The how-to for PHP-FPM version switch can be found at:
-
-  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
-
---
-This email has been sent by your Aegir automatic system monitor.
-
-EOF
-  else
-  cat <<EOF | s-nail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+  _MAILX_TEST=$(s-nail -V 2>&1)
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
+  cat <<EOF | s-nail -b ${_BCC_EMAIL} \
     -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core!" \
     ${_ALRT_EMAIL}
 Hello,
@@ -3351,7 +3057,7 @@ if [ -e "/opt/tmp/barracuda-release.txt" ]; then
       echo "INFO: Version test result: OK"
     else
       sT="Newer BOA available"
-      cat <<EOF | s-nail -e -s "New ${_X_VERSION} ${sT}" ${_MY_EMAIL}
+      cat <<EOF | s-nail -s "New ${_X_VERSION} ${sT}" ${_MY_EMAIL}
 
  There is new ${_X_VERSION} version available.
 
