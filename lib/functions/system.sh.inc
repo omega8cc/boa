@@ -2719,6 +2719,7 @@ php_install_deps() {
   mrun "${_INSTAPP} libsodium-dev" 2> /dev/null
   mrun "${_INSTAPP} libwebp-dev" 2> /dev/null
   mrun "${_INSTAPP} libxpm-dev" 2> /dev/null
+  mrun "${_INSTAPP} libzip-dev" 2> /dev/null
   if [ "${_OS_CODE}" = "daedalus" ] \
     || [ "${_OS_CODE}" = "bookworm" ]; then
     if [ ! -e "/root/.rebuild_src_on_auto_before_reboot.info" ]; then
