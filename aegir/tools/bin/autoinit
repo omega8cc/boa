@@ -382,7 +382,7 @@ init_pre() {
         ${_INITINS} build-essential curl git >> ${logSlt}
         ${_INITINS} libgd-dev libmagickwand-dev libcurl4-openssl-dev >> ${logSlt}
       fi
-      turn_off_apparmor_early
+      install_enable_apparmor_utils
       echo "Waiting five seconds before reboot..."
       sleep 5
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
