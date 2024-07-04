@@ -628,8 +628,7 @@ prep_for_install_db_sql() {
   if [ "${_DB_SERIES}" = "5.7" ]; then
     SQLADD="libperconaserverclient20-dev \
             percona-toolkit"
-    SQLXTR="python-mysqldb \
-            libdbi-perl"
+    SQLXTR="libdbi-perl"
   fi
 }
 
