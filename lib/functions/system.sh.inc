@@ -8144,7 +8144,9 @@ initd_update() {
           _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
           if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
             _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
-            echo _CHECK_REPAIR 1 ${_CHECK_REPAIR}
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              echo _CHECK_REPAIR 1 ${_CHECK_REPAIR}
+            fi
             if [[ "${_CHECK_REPAIR}" =~ "corrupted" ]]; then
               mysqlcheck -u root -A --auto-repair --silent
               mysql_upgrade -u root --force
@@ -8154,7 +8156,9 @@ initd_update() {
               mysql_upgrade -u root --force
             fi
             _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
-            echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
+            fi
           fi
           mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
           mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
