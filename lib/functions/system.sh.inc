@@ -3827,14 +3827,14 @@ ssl_install_src() {
       cd /var/opt/openssl-${_OPENSSL_NEW_VRN}
       if [ -e "/root/.install.modern.openssl.cnf" ]; then
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl3 \
-          --openssldir=/usr/local/ssl3"
+          --openssldir=/usr/local/ssl3 \
+          no-docs"
       else
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
           --openssldir=/usr/local/ssl"
       fi
       mrun "sh ./config \
         shared \
-        no-docs \
         no-comp \
         no-hw \
         no-ssl3 \
