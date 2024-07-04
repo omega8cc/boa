@@ -8327,7 +8327,9 @@ complete() {
   fix_lfd_uidignore
   fix_cnf_postfix
   re_set_default_php_cli
-  composer_install_upgrade
+  if [ "${_STATUS}" = "UPGRADE" ]; then
+    composer_install_upgrade
+  fi
   if [ "${_STATUS}" != "UPGRADE" ]; then
     _STRICT_BIN_PERMISSIONS=NO
   fi
