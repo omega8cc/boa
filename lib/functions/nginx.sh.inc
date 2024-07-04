@@ -494,19 +494,20 @@ nginx_install_upgrade() {
       --lock-path=/var/lock/nginx.lock \
       --user=www-data \
       --group=www-data \
-      --with-http_realip_module \
-      --with-http_gzip_static_module \
-      --with-http_stub_status_module \
-      --with-http_ssl_module \
       --with-http_dav_module \
       --with-http_flv_module \
+      --with-http_geoip_module \
+      --with-http_gzip_static_module \
       --with-http_mp4_module \
-      --without-mail_pop3_module \
-      --without-mail_imap_module \
-      --without-mail_smtp_module \
+      --with-http_realip_module \
+      --with-http_ssl_module \
+      --with-http_stub_status_module \
+      --with-stream_ssl_module \
       --without-http_scgi_module \
       --without-http_uwsgi_module \
-      --with-http_geoip_module \
+      --without-mail_imap_module \
+      --without-mail_pop3_module \
+      --without-mail_smtp_module \
       --with-openssl=/var/opt/openssl-${_OPENSSL_NEW_VRN} \
       --with-openssl-opt="no-docs no-ssl3 no-comp no-hw" \
       --with-debug ${_NGINX_EXTRA}" 2> /dev/null
