@@ -282,7 +282,9 @@ EOFMYSQL
                 | sed "s/[\,']//g" 2>&1)
               if [ "${_DB_V}" = "${_MD_V}" ]; then
                 _MYQUICK_STATUS=OK
-                echo "INFO: Installed MyQuick for ${_MD_V} (${_DB_V}) looks fine"
+                if [ "${_DEBUG_MODE}" = "YES" ]; then
+                  echo "INFO: Installed MyQuick for ${_MD_V} (${_DB_V}) looks fine"
+                fi
               fi
             fi
             myloader \
@@ -341,7 +343,9 @@ EOFMYSQL
             | sed "s/[\,']//g" 2>&1)
           if [ "${_DB_V}" = "${_MD_V}" ]; then
             _MYQUICK_STATUS=OK
-            echo "INFO: Installed MyQuick for ${_MD_V} (${_DB_V}) looks fine"
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              echo "INFO: Installed MyQuick for ${_MD_V} (${_DB_V}) looks fine"
+            fi
           fi
         fi
         mkdir -p ${_USR}/src/${_DBN}

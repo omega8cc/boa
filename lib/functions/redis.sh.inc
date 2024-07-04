@@ -230,7 +230,7 @@ install_redis_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: install_redis_src"
   fi
-  msg "INFO: Installing Redis server for ${_OS_DIST}/${_OS_CODE}..."
+  msg "INFO: Installing Redis ${_REDIS_VRN}..."
   if [ ! -e "/var/lib/redis" ]; then
     mrun "adduser --system --group redis --home /home/redis" 2> /dev/null
   fi
@@ -328,7 +328,9 @@ redis_install_upgrade() {
       fi
     else
       _REDIS_INSTALL_MISMATCH=YES
-      msg "INFO: Installed Redis version ${_REDIS_V_ITD}, upgrade required"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Installed Redis version ${_REDIS_V_ITD}, upgrade required"
+      fi
     fi
   else
     if [ -x "/usr/bin/redis-server" ]; then
@@ -350,7 +352,9 @@ redis_install_upgrade() {
         fi
       else
         _REDIS_INSTALL_MISMATCH=YES
-        msg "INFO: Installed Redis version ${_REDIS_V_ITD}, rebuild required"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Installed Redis version ${_REDIS_V_ITD}, rebuild required"
+        fi
       fi
     fi
   fi

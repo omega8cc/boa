@@ -2280,17 +2280,23 @@ check_php_rebuild() {
         msg "INFO: PHP ${_PHP_ITD} ${_PHP_SSL_TEST}, rebuild on next upgrade"
         _PHP_FORCE_REINSTALL=NO
       else
-        msg "INFO: PHP ${_PHP_ITD} ${_PHP_SSL_TEST}, thus rebuild forced"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: PHP ${_PHP_ITD} ${_PHP_SSL_TEST}, thus rebuild forced"
+        fi
         _PHP_FORCE_REINSTALL=YES
       fi
     fi
   else
     if [[ ! "${_PHP_SSL_TEST}" =~ "${_PHP_SSL_LOOK_FOR}" ]]; then
       if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-        msg "INFO: PHP ${_PHP_ITD} ${_PHP_SSL_TEST}, rebuild on next upgrade"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: PHP ${_PHP_ITD} ${_PHP_SSL_TEST}, rebuild on next upgrade"
+        fi
         _PHP_FORCE_REINSTALL=NO
       else
-        msg "INFO: PHP ${_PHP_ITD} ${_PHP_SSL_TEST}, thus rebuild forced"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: PHP ${_PHP_ITD} ${_PHP_SSL_TEST}, thus rebuild forced"
+        fi
         _PHP_FORCE_REINSTALL=YES
       fi
     else
@@ -2315,7 +2321,9 @@ check_php_rebuild() {
     || [[ "${_PHP_ITD}" =~ "~" ]] \
     || [[ "${_PHP_ITD}" =~ "dotdeb" ]]; then
     if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
-      msg "INFO: Installed PHP version ${_PHP_ITD}, upgrade to mysqlnd required"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Installed PHP version ${_PHP_ITD}, upgrade to mysqlnd required"
+      fi
       install_php_multi "$1"
       _PHP_ALREADY_REBUILT=$1
       _PHP_FORCE_REINSTALL=NO
@@ -2330,10 +2338,14 @@ check_php_rebuild() {
           fi
         else
           if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-            msg "INFO: PHP ${_PHP_ITD} libs related rebuild on next upgrade"
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              msg "INFO: PHP ${_PHP_ITD} libs related rebuild on next upgrade"
+            fi
             _PHP_FORCE_REINSTALL=NO
           else
-            msg "INFO: PHP ${_PHP_ITD} libs related rebuild forced now"
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              msg "INFO: PHP ${_PHP_ITD} libs related rebuild forced now"
+            fi
             _PHP_FORCE_REINSTALL=YES
           fi
         fi
@@ -2345,11 +2357,15 @@ check_php_rebuild() {
       if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
         || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
         if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-          msg "INFO: PHP ${_PHP_ITD} forced rebuild on next barracuda up-${tRee}"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: PHP ${_PHP_ITD} forced rebuild on next barracuda up-${tRee}"
+          fi
           _PHP_FORCE_REINSTALL=NO
         else
           if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
-            msg "INFO: PHP ${_PHP_ITD} forced rebuild will happen now..."
+            if [ "${_DEBUG_MODE}" = "YES" ]; then
+              msg "INFO: PHP ${_PHP_ITD} forced rebuild will happen now..."
+            fi
             install_php_multi "$1"
             _PHP_ALREADY_REBUILT=$1
             _PHP_FORCE_REINSTALL=NO
@@ -2359,15 +2375,23 @@ check_php_rebuild() {
     else
       if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
         || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
-        msg "INFO: Installed PHP version ${_PHP_ITD}, rebuild forced"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Installed PHP version ${_PHP_ITD}, rebuild forced"
+        fi
       else
-        msg "INFO: Installed PHP version ${_PHP_ITD}, upgrade required"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Installed PHP version ${_PHP_ITD}, upgrade required"
+        fi
       fi
       if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
-        msg "INFO: PHP ${_PHP_ITD} upgrade on next barracuda up-${tRee}"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: PHP ${_PHP_ITD} upgrade on next barracuda up-${tRee}"
+        fi
       else
         if [ ! -e "${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
-          msg "INFO: PHP ${_PHP_ITD} upgrade will happen now..."
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: PHP ${_PHP_ITD} upgrade will happen now..."
+          fi
           install_php_multi "$1"
           _PHP_ALREADY_REBUILT=$1
           _PHP_FORCE_REINSTALL=NO

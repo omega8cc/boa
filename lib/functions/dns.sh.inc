@@ -103,12 +103,16 @@ check_git_repos() {
       _FORCE_GIT_MIRROR=gitlab
     fi
     if [ "${_FORCE_GIT_MIRROR}" = "github" ]; then
-      msg "INFO: We will use forced GitHub repository without testing connection"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: We will use forced GitHub repository without testing connection"
+      fi
       _GITHUB_WORKS=YES
       _GITLAB_WORKS=NO
       sleep 1
     elif [ "${_FORCE_GIT_MIRROR}" = "gitlab" ]; then
-      msg "INFO: We will use forced GitLab mirror without testing connection"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: We will use forced GitLab mirror without testing connection"
+      fi
       _GITHUB_WORKS=NO
       _GITLAB_WORKS=YES
       sleep 1
@@ -340,7 +344,7 @@ install_unbound_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: install_unbound_src"
   fi
-  msg "INFO: Installing Unbound server from sources ${_OS_DIST}/${_OS_CODE}..."
+  msg "INFO: Installing Unbound ${_UNBOUND_VRN}..."
   ldconfig 2> /dev/null
   cd /var/opt
   rm -rf unbound*
@@ -374,7 +378,9 @@ dns_unbound_install_upgrade() {
     || [ -z "${isUnbnd}" ] \
     || [ "${isUnbndFix}" = "YES" ] \
     || [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
-    msg "INFO: Installing DNS cache Unbound server from packages..."
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Installing DNS cache Unbound server from packages..."
+    fi
     if [ -e "/etc/resolv.conf" ]; then
       cp -af /etc/resolv.conf ${vBs}/resolv.conf.pre-${_X_SE}-${_X_VERSION}-${_NOW}
     fi
@@ -510,7 +516,9 @@ dns_unbound_install_upgrade() {
       fi
     else
       _UNBOUND_INSTALL_REQUIRED=YES
-      msg "INFO: Installed Unbound version ${_UNBOUND_V_ITD}, upgrade required"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Installed Unbound version ${_UNBOUND_V_ITD}, upgrade required"
+      fi
     fi
   else
     _UNBOUND_INSTALL_REQUIRED=YES

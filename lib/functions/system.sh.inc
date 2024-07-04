@@ -3031,7 +3031,9 @@ drush_system_install_update() {
   fi
   if [ ! -e "/root/.debug-barracuda-installer.cnf" ] \
     && [ ! -e "/root/.skip-aegir-master-upgrade.cnf" ]; then
-    msg "INFO: Installing supported Drush versions..."
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Installing supported Drush versions..."
+    fi
     ###
     ### Force all Drush versions update if serial is not new
     rm -f /opt/tools/drush/8/.ctrl.${_X_SE}.pid
@@ -3362,10 +3364,14 @@ sshd_install_src() {
   fi
   if [ "${_SSH_FORCE_REINSTALL}" = "YES" ]; then
     _SSH_INSTALL_REQUIRED=YES
-    msg "INFO: OpenSSH ${_SSH_ITD}, rebuild forced"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: OpenSSH ${_SSH_ITD}, rebuild forced"
+    fi
   elif [ "${_SSH_ITD}" != "${_OPENSSH_VRN}" ]; then
     _SSH_INSTALL_REQUIRED=YES
-    msg "INFO: Installed OpenSSH version ${_SSH_ITD}, upgrade required"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Installed OpenSSH version ${_SSH_ITD}, upgrade required"
+    fi
   fi
   if [ "${_SSH_INSTALL_REQUIRED}" = "YES" ]; then
     msg "INFO: Building OpenSSH ${_OPENSSH_VRN} from sources..."
@@ -3456,7 +3462,7 @@ install_magick_src() {
     fi
   fi
   if [ "${_MAGICK_INSTALL_REQUIRED}" = "YES" ]; then
-    msg "INFO: Installing ImageMagick ${_IMAGE_MAGICK_VRN} from sources..."
+    msg "INFO: Installing ImageMagick ${_IMAGE_MAGICK_VRN}..."
     msg "WAIT: This may take a while, please wait..."
     cd /var/opt
     rm -rf ImageMagick*
@@ -3751,11 +3757,15 @@ ssl_install_src() {
     fi
   fi
   if [ "${_SSL_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
-    msg "INFO: OpenSSL is ${_SSL_ITD}, upgrade to ${_OPENSSL_NEW_VRN} required"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: OpenSSL is ${_SSL_ITD}, upgrade to ${_OPENSSL_NEW_VRN} required"
+    fi
     _SSL_INSTALL_REQUIRED=YES
   fi
   if [ ! -z "${_SSL_LIB_ITD}" ] && [ "${_SSL_LIB_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
-    msg "INFO: OpenSSL Lib is ${_SSL_LIB_ITD}, upgrade to ${_OPENSSL_NEW_VRN} required"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: OpenSSL Lib is ${_SSL_LIB_ITD}, upgrade to ${_OPENSSL_NEW_VRN} required"
+    fi
     _SSL_INSTALL_REQUIRED=YES
   fi
   if [ "${_STATUS}" = "UPGRADE" ]; then
@@ -3767,15 +3777,21 @@ ssl_install_src() {
       if [[ "${_PHP_COMPATIBILITY_TEST}" =~ "${_PHP_SSL_LOOK_FOR}" ]] \
         || [[ "${_PHP_COMPATIBILITY_TEST}" =~ "${_PHP_SSL_ALTER_LOOK_FOR}" ]] \
         || [[ "${_PHP_COMPATIBILITY_TEST}" =~ "${_PHP_SSL_ALTER_MORE_LOOK_FOR}" ]]; then
-        msg "INFO: PHP ${_PHP_COMPATIBILITY_TEST}, looks OK"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: PHP ${_PHP_COMPATIBILITY_TEST}, looks OK"
+        fi
       else
-        msg "INFO: PHP ${_PHP_COMPATIBILITY_TEST}, rebuild forced later"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: PHP ${_PHP_COMPATIBILITY_TEST}, rebuild forced later"
+        fi
         _PHP_FORCE_REINSTALL=YES
       fi
     fi
     _SPDY_COMPATIBILITY_TEST=$(service nginx configtest 2>&1)
     if [[ "${_SPDY_COMPATIBILITY_TEST}" =~ "without OpenSSL ALPN or NPN" ]]; then
-      msg "INFO: OpenSSL is ${_SSL_ITD}, rebuild for Nginx forced"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: OpenSSL is ${_SSL_ITD}, rebuild for Nginx forced"
+      fi
       _SSL_INSTALL_REQUIRED=YES
       _NGX_FORCE_REINSTALL=YES
     fi
@@ -3784,7 +3800,9 @@ ssl_install_src() {
     _BROKEN_SSL_LIBS_TEST=$(php -v 2>&1)
     if [[ "${_BROKEN_SSL_LIBS_TEST}" =~ "no version information available" ]] \
       || [[ "${_BROKEN_SSL_LIBS_TEST}" =~ "cannot open shared object file" ]]; then
-      msg "INFO: OpenSSL legacy libs are broken, reinstall forced"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: OpenSSL legacy libs are broken, reinstall forced"
+      fi
       mrun "apt-get install openssl --reinstall -y" 2> /dev/null
       _SSL_FORCE_REINSTALL=YES
     fi
@@ -3797,11 +3815,15 @@ ssl_install_src() {
     _PHP_FORCE_REINSTALL=YES
     rm -f ${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_SE}-${_X_VERSION}.log
     rm -f ${pthLog}/mss-build-${_MSS_VRN}-${_X_SE}-${_X_VERSION}.log
-    msg "INFO: Installed OpenSSL version ${_SSL_ITD}, rebuild forced"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Installed OpenSSL version ${_SSL_ITD}, rebuild forced"
+    fi
   fi
   if [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
-    msg "INFO: Building zlib ${_ZLIB_VRN} from sources first..."
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Building zlib ${_ZLIB_VRN} from sources first..."
+    fi
     cd /var/opt
     rm -rf zlib*
     get_dev_src "zlib-${_ZLIB_VRN}.tar.gz"
@@ -3913,7 +3935,6 @@ ssl_install_src() {
     && [ ! -e "/opt/php56/bin/php" ] \
     && [ -x "/usr/local/ssl3/bin/openssl" ] \
     && [ -x "/usr/local/ssl/bin/openssl" ]; then
-    #mv -f /usr/local/ssl /usr/local/legacy_ssl
     ldconfig 2> /dev/null
   fi
 }
@@ -3965,15 +3986,21 @@ curl_install_src() {
     | awk '{ print $1}' 2>&1)
   if [ "${_CURL_ITD}" != "${_CURL_VRN}" ]; then
     _CURL_INSTALL_REQUIRED=YES
-    msg "INFO: Installed cURL/lib ${_CURL_ITD}/${_CURL_LIB_ITD}, upgrade required"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Installed cURL/lib ${_CURL_ITD}/${_CURL_LIB_ITD}, upgrade required"
+    fi
   fi
   if [ "${_CURL_LIB_ITD}" != "${_CURL_VRN}" ]; then
     _CURL_INSTALL_REQUIRED=YES
-    msg "INFO: Installed cURL/lib ${_CURL_ITD}/${_CURL_LIB_ITD}, rebuild required"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Installed cURL/lib ${_CURL_ITD}/${_CURL_LIB_ITD}, rebuild required"
+    fi
   fi
   if [ "${_CURL_SSL_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
     _CURL_INSTALL_REQUIRED=YES
-    msg "INFO: cURL ${_CURL_ITD} with OpenSSL ${_CURL_SSL_ITD}, rebuild forced"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: cURL ${_CURL_ITD} with OpenSSL ${_CURL_SSL_ITD}, rebuild forced"
+    fi
   fi
   _BROKEN_CURL_TEST=$(curl --version 2>&1)
   if [[ "${_BROKEN_CURL_TEST}" =~ "libcurl.so.4" ]]; then
@@ -3992,7 +4019,9 @@ curl_install_src() {
   fi
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     _CURL_INSTALL_REQUIRED=YES
-    msg "INFO: Installed cURL version ${_CURL_ITD} but re-install forced"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Installed cURL version ${_CURL_ITD} but re-install forced"
+    fi
   fi
   if [ -e "/usr/lib/x86_64-linux-gnu/libcurl.so.4.4.0" ] \
     || [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ] \
@@ -4007,7 +4036,9 @@ curl_install_src() {
   if [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
     if [ -e "/root/.use.curl.from.packages.cnf" ]; then
-      msg "INFO: cURL from packages is forced with /root/.use.curl.from.packages.cnf"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: cURL from packages is forced with /root/.use.curl.from.packages.cnf"
+      fi
       [ -e "/root/.sorted.multi.php.cnf" ] && rm -f /root/.sorted.multi.php.cnf
       if [ -e "/usr/local/bin/curl" ]; then
         mv -f /usr/local/bin/curl /usr/local/bin/curl-src-off-$(date +%y%m%d-%H%M%S 2>&1)
@@ -4591,10 +4622,12 @@ turn_off_apparmor_completely() {
   fi
   if [ -d "/etc/apparmor.d" ]; then
     isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
-    msg "ARMR: Turning off AppArmor completely..."
-    msg "ARMR: It's necessary in the pre-install stage"
-    msg "ARMR: to avoid blocking BOA install on Daedalus"
-    msg "ARMR: Do not worry, we will enable AppArmor later"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "ARMR: Turning off AppArmor completely..."
+      msg "ARMR: It's necessary in the pre-install stage"
+      msg "ARMR: to avoid blocking BOA install on Daedalus"
+      msg "ARMR: Do not worry, we will enable AppArmor later"
+    fi
     rm -rf /var/cache/apparmor/*
     mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
     mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
@@ -4616,7 +4649,9 @@ turn_off_apparmor_temporarily() {
     msg "PROC: turn_off_apparmor_temporarily"
   fi
   if [ -d "/etc/apparmor.d" ]; then
-    msg "ARMR: Turning off AppArmor temporarily..."
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "ARMR: Turning off AppArmor temporarily..."
+    fi
     rm -rf /var/cache/apparmor/*
     mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
     mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
@@ -4766,7 +4801,9 @@ if_install_or_uninstall_apparmor() {
   if [ -e "/root/.deny.apparmor.cnf" ]; then
     isAuditd=$(which auditd 2>&1)
     if [ -e "${isAuditd}" ]; then
-      msg "ARMR: The system auditd/aureport/ausearch will be uninstalled now..."
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "ARMR: The system auditd/aureport/ausearch will be uninstalled now..."
+      fi
       mrun "apt-get remove auditd -y -qq" 2> /dev/null
       mrun "killall -9 auditd" 2> /dev/null
     fi
@@ -4774,10 +4811,12 @@ if_install_or_uninstall_apparmor() {
       || [ ! -z "${isAppArmorComplain}" ] \
       || [ ! -z "${isAppArmorStatus}" ] \
       || [ -e "/etc/apparmor.d" ]; then
-      msg "ARMR: The system AppArmor will be uninstalled now, however..."
-      msg "ARMR: ...it will become inactive only after you reboot this server"
-      msg "ARMR: Use 'boa reboot' command for optimized reboot"
-      msg "WAIT: This may take a while, please wait..."
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "ARMR: The system AppArmor will be uninstalled now, however..."
+        msg "ARMR: ...it will become inactive only after you reboot this server"
+        msg "ARMR: Use 'boa reboot' command for optimized reboot"
+        msg "WAIT: This may take a while, please wait..."
+      fi
       mrun "sleep 8"
       mkdir -p /etc/default/grub.d
       echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
@@ -4794,10 +4833,12 @@ if_install_or_uninstall_apparmor() {
       || [ -z "${isAppArmorComplain}" ] \
       || [ -z "${isAppArmorStatus}" ] \
       || [ ! -e "/etc/apparmor.d" ]; then
-      msg "ARMR: The system AppArmor and auditd will be installed now, however..."
-      msg "ARMR: ...it will become active only after you reboot this server"
-      msg "ARMR: Use 'boa reboot' command for optimized reboot"
-      msg "WAIT: This may take a while, please wait..."
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "ARMR: The system AppArmor and auditd will be installed now, however..."
+        msg "ARMR: ...it will become active only after you reboot this server"
+        msg "ARMR: Use 'boa reboot' command for optimized reboot"
+        msg "WAIT: This may take a while, please wait..."
+      fi
       mrun "sleep 8"
       mkdir -p /etc/default/grub.d
       echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
@@ -6074,22 +6115,30 @@ if_major_os_upgrade() {
         ###
         ### Fix PHP early
         ###
-        msg "DIST: Special procedure for ${_LOC_OS_CODE} to ${_NEW_OS_CODE} upgrade"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "DIST: Special procedure for ${_LOC_OS_CODE} to ${_NEW_OS_CODE} upgrade"
+        fi
         ###
-        msg "TRCK: Removing libldap packages for a clean start"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "TRCK: Removing libldap packages for a clean start"
+        fi
         mrun "apt-get remove libldap-common -y -qq" 2> /dev/null
         mrun "apt-get remove libldap2-dev -y -qq" 2> /dev/null
         mrun "apt-get remove libldap-dev -y -qq" 2> /dev/null
         apt_clean_update
         ###
-        msg "TRCK: Installing now libldap packages from Chimaera"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "TRCK: Installing now libldap packages from Chimaera"
+        fi
         echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
         mrun "apt-get install -t chimaera libldap-common -y" 2> /dev/null
         mrun "apt-get install -t chimaera libldap2-dev -y" 2> /dev/null
         ###
-        msg "TRCK: Locking libldap packages to prevent upgrade on Daedalus"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "TRCK: Locking libldap packages to prevent upgrade on Daedalus"
+        fi
         ### Make sure that libldap packages are locked in apt.
         echo -e 'Package: libldap-common\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/libldap
         echo -e '\n\nPackage: libldap2-dev\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/libldap
@@ -6111,15 +6160,21 @@ if_major_os_upgrade() {
         apt_clean_update
         ldconfig 2> /dev/null
         ###
-        msg "DIST: Signal that --allow-downgrades can be used after reboot"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "DIST: Signal that --allow-downgrades can be used after reboot"
+        fi
         touch /root/.allow.downgrades.on.same.os.dist.upgrade.cnf
         ###
-        msg "DIST: Rebuidling key services from sources before reboot..."
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "DIST: Rebuidling key services from sources before reboot..."
+        fi
         _FORCE_REBUILD_SRC_ON_AUTO_NOW=YES
         touch /root/.force.rebuild.src.on.auto.now.cnf
         if_rebuild_src_on_major_os_upgrade
       else
-        msg "DIST: No quick rebuild from src on ${_LOC_OS_CODE} to ${_NEW_OS_CODE} upgrade"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "DIST: No quick rebuild from src on ${_LOC_OS_CODE} to ${_NEW_OS_CODE} upgrade"
+        fi
       fi
       ###
     fi
@@ -6515,7 +6570,9 @@ sys_packages_install() {
         echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
-        msg "TRCK: Installing now openjdk-11-jre-headless from Bullseye"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "TRCK: Installing now openjdk-11-jre-headless from Bullseye"
+        fi
         mrun "apt-get install -t bullseye openjdk-11-jre-headless -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/bullseye.list
         rm -f /etc/apt/apt.conf
@@ -6530,7 +6587,9 @@ sys_packages_install() {
           echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
           echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
           apt_clean_update
-          msg "TRCK: Installing now openjdk-11-jre-headless from Chimaera"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "TRCK: Installing now openjdk-11-jre-headless from Chimaera"
+          fi
           mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
           rm -f /etc/apt/sources.list.d/chimaera.list
           rm -f /etc/apt/apt.conf
@@ -6570,7 +6629,9 @@ sys_packages_install() {
         echo "deb http://deb.debian.org/debian bullseye main contrib non-free" > /etc/apt/sources.list.d/bullseye.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
-        msg "TRCK: Installing now openjdk-11-jre-headless from Bullseye"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "TRCK: Installing now openjdk-11-jre-headless from Bullseye"
+        fi
         mrun "apt-get install -t bullseye openjdk-11-jre-headless -y" 2> /dev/null
         rm -f /etc/apt/sources.list.d/bullseye.list
         rm -f /etc/apt/apt.conf
@@ -6585,7 +6646,9 @@ sys_packages_install() {
           echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
           echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
           apt_clean_update
-          msg "TRCK: Installing now openjdk-11-jre-headless from Chimaera"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "TRCK: Installing now openjdk-11-jre-headless from Chimaera"
+          fi
           mrun "apt-get install -t chimaera openjdk-11-jre-headless -y" 2> /dev/null
           rm -f /etc/apt/sources.list.d/chimaera.list
           rm -f /etc/apt/apt.conf
@@ -7022,7 +7085,9 @@ if_install_vnstat() {
     if [ ! -e "${pthLog}/vnstat-${_VNSTAT_VRN}.log" ] \
       || [ ! -e "/usr/bin/vnstat" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-      msg "INFO: Installing VnStat monitor..."
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Installing VnStat monitor..."
+      fi
       cd /var/opt
       rm -rf vnstat*
       get_dev_src "vnstat-${_VNSTAT_VRN}.tar.gz"
@@ -7528,8 +7593,11 @@ if_install_ftpd() {
       msg "INFO: Building Pure-FTPd server from sources..."
       sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
       if [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ]; then
-        msg "INFO: Generating DH parameters, 2048 bit..."
-        openssl dhparam -out /etc/ssl/private/pure-ftpd-dhparams.pem 2048 &> /dev/null
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Generating DH parameters, 2048 bit..."
+        fi
+        mrun "openssl dhparam -out /etc/ssl/private/pure-ftpd-dhparams.pem 2048" 2> /dev/null
+        wait
       fi
       if [ ! -e "/usr/local/sbin/pure-config.pl" ]; then
         echo "/bin/false" >> /etc/shells
@@ -8114,9 +8182,13 @@ initd_update() {
       if [ "${_UP_SQL}" = "YES" ]; then
         myVnTest=$(mysql -V 2>&1)
         if [[ "${myVnTest}" =~ "${_DBS_VRN}" ]]; then
-          msg "INFO: ${_DB_SERVER} ${_DBS_VRN} already up to date"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: ${_DB_SERVER} ${_DBS_VRN} already up to date"
+          fi
           myCnfUpdate=YES
-          msg "INFO: ${_DB_SERVER} restart after upgrade forced"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: ${_DB_SERVER} restart after upgrade forced"
+          fi
         fi
       fi
       if [ ! -e "/root/.run-to-daedalus.cnf" ] \

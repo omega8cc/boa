@@ -65,9 +65,11 @@ force_advanced_nginx_config() {
     msg "PROC: force_advanced_nginx_config"
   fi
   if [ ! -e "/etc/ssl/private/nginx-wild-ssl.dhp" ]; then
-    msg "INFO: Generating DH parameters, 2048 bit..."
-    mrun "openssl dhparam \
-      -out /etc/ssl/private/nginx-wild-ssl.dhp 2048" 2> /dev/null
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Generating DH parameters, 2048 bit..."
+    fi
+    mrun "openssl dhparam -out /etc/ssl/private/nginx-wild-ssl.dhp 2048" 2> /dev/null
+    wait
   fi
   cp -af ${locCnf}/nginx_compact_include.conf ${mtrInc}/nginx_compact_include.conf
   validate_local_ip &> /dev/null

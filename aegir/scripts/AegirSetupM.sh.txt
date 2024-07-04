@@ -156,7 +156,9 @@ if [ `whoami` = "root" ]; then
   exit 1
 fi
 
-msg "INFO: Installing drush in ${_ROOT}"
+if [ "${_DEBUG_MODE}" = "YES" ]; then
+  msg "INFO: Installing drush in ${_ROOT}"
+fi
 cd ${_ROOT}
 get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
 cd ${_ROOT}/drush/
@@ -242,7 +244,9 @@ sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
   ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
 wait
 
-msg "INFO: Installing the frontend"
+if [ "${_DEBUG_MODE}" = "YES" ]; then
+  msg "INFO: Installing the frontend"
+fi
 ${_DRUSHCMD} cc drush >${_ROOT}/install.log 2>&1
 rm -rf ${_ROOT}/.tmp/cache
 _HM_ROOT="${_ROOT}/hostmaster-${_AEGIR_VERSION}"
