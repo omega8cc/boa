@@ -6776,7 +6776,7 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  _MAILSERV="postfix postfix-pcre s-nail bsd-mailx"
+  _MAILSERV="postfix postfix-pcre s-nail"
 }
 
 php_libs_fix() {
