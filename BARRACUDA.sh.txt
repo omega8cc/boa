@@ -308,10 +308,10 @@ check_prepare_dirs_permissions
 ###
 ### Turn Off AppArmor completely while running barracuda install
 ###
-# if [ "${_STATUS}" = "INIT" ]; then
-#   [ ! -e "/root/.deny.apparmor.cnf" ] && touch /root/.deny.apparmor.cnf
-#   turn_off_apparmor_completely
-# fi
+if [ "${_STATUS}" = "INIT" ]; then
+  [ ! -e "/root/.deny.apparmor.cnf" ] && touch /root/.deny.apparmor.cnf
+  turn_off_apparmor_completely
+fi
 
 
 ###
