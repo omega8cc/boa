@@ -3831,7 +3831,12 @@ ssl_install_src() {
         _SSL_BUILD_ARGS="--prefix=/usr/local/ssl \
           --openssldir=/usr/local/ssl"
       fi
-      mrun "sh ./config shared \
+      mrun "sh ./config \
+        shared \
+        no-docs \
+        no-comp \
+        no-hw \
+        no-ssl3 \
         zlib-dynamic \
         enable-ec_nistp_64_gcc_128 \
         ${_SSL_BUILD_ARGS}" 2> /dev/null
