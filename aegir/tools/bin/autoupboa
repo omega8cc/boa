@@ -129,7 +129,7 @@ send_boa_system_report() {
       _BCC_EMAIL="notify@omega8.cc"
     fi
     if [ ! -z "${_RCPT_EMAIL}" ] \
-      && [ ! -z "${_RCPT_EMAIL}" ] \
+      && [ ! -z "${_BCC_EMAIL}" ] \
       && [ -e "/root/.run.example.report.cnf" ]; then
       repSub="BOA Status on ${_CHECK_HOST}"
       repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
