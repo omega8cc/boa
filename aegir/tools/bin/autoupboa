@@ -134,7 +134,7 @@ send_boa_system_report() {
       repSub="BOA Status on ${_CHECK_HOST}"
       repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
       boa info report both > ${repBodFile}
-      cat ${repBodFile} | mail -e -b ${_BCC_EMAIL} -s "${repSub} at ${_NOW}" ${_RCPT_EMAIL}
+      cat ${repBodFile} | s-nail -e -b ${_BCC_EMAIL} -s "${repSub} at ${_NOW}" ${_RCPT_EMAIL}
       rm -f ${repBodFile}
     fi
   fi

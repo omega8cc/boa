@@ -123,7 +123,7 @@ send_notice_php() {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
+  cat <<EOF | s-nail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
     -s "URGENT: Please switch your Aegir instance to PHP 8.1 [${_THIS_U}]" ${_CLIENT_EMAIL}
 Hello,
 
@@ -158,7 +158,7 @@ This email has been sent by your Aegir system monitor
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
+  cat <<EOF | s-nail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
     -s "URGENT: Please switch your Aegir instance to PHP 8.1 [${_THIS_U}]" ${_CLIENT_EMAIL}
 Hello,
 
@@ -193,7 +193,7 @@ This email has been sent by your Aegir system monitor
 
 EOF
   else
-  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+  cat <<EOF | s-nail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
     -s "URGENT: Please switch your Aegir instance to PHP 8.1 [${_THIS_U}]" ${_CLIENT_EMAIL}
 Hello,
 
@@ -257,7 +257,7 @@ send_notice_core() {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
+  cat <<EOF | s-nail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
     -s "URGENT: Please migrate ${Dom} site to Pressflow (LTS)" ${_CLIENT_EMAIL}
 Hello,
 
@@ -285,7 +285,7 @@ This email has been sent by your Aegir platform core monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
+  cat <<EOF | s-nail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
     -s "URGENT: Please migrate ${Dom} site to Pressflow (LTS)" ${_CLIENT_EMAIL}
 Hello,
 
@@ -313,7 +313,7 @@ This email has been sent by your Aegir platform core monitor.
 
 EOF
   else
-  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+  cat <<EOF | s-nail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
     -s "URGENT: Please migrate ${Dom} site to Pressflow (LTS)" ${_CLIENT_EMAIL}
 Hello,
 
@@ -500,7 +500,7 @@ send_notice_sql() {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
+  cat <<EOF | s-nail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
     -s "NOTICE: Your ${_MODE} DB Usage on [${_THIS_U}] is too high: ${_SQL_NOW} MB" ${_CLIENT_EMAIL}
 Hello,
 
@@ -544,7 +544,7 @@ This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
+  cat <<EOF | s-nail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
     -s "NOTICE: Your ${_MODE} DB Usage on [${_THIS_U}] is too high: ${_SQL_NOW} MB" ${_CLIENT_EMAIL}
 Hello,
 
@@ -588,7 +588,7 @@ This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   else
-  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+  cat <<EOF | s-nail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
     -s "NOTICE: Your ${_MODE} DB Usage on [${_THIS_U}] is too high: ${_SQL_NOW} MB" ${_CLIENT_EMAIL}
 Hello,
 
@@ -641,7 +641,7 @@ send_notice_disk() {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
+  cat <<EOF | s-nail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
     -s "NOTICE: Your Disk Usage on [${_THIS_U}] is too high" ${_CLIENT_EMAIL}
 Hello,
 
@@ -668,7 +668,7 @@ This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
+  cat <<EOF | s-nail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
     -s "NOTICE: Your Disk Usage on [${_THIS_U}] is too high" ${_CLIENT_EMAIL}
 Hello,
 
@@ -695,7 +695,7 @@ This email has been sent by your Aegir resources usage daily monitor.
 
 EOF
   else
-  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+  cat <<EOF | s-nail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
     -s "NOTICE: Your Disk Usage on [${_THIS_U}] is too high" ${_CLIENT_EMAIL}
 Hello,
 
@@ -732,7 +732,7 @@ send_notice_gprd() {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
+  cat <<EOF | s-nail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
     -s "GDPR compliance for your Aegir account" ${_CLIENT_EMAIL}
 Hello,
 
@@ -772,7 +772,7 @@ Omega8.cc
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
+  cat <<EOF | s-nail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
     -s "GDPR compliance for your Aegir account" ${_CLIENT_EMAIL}
 Hello,
 
@@ -812,7 +812,7 @@ Omega8.cc
 
 EOF
   else
-  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+  cat <<EOF | s-nail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
     -s "GDPR compliance for your Aegir account" ${_CLIENT_EMAIL}
 Hello,
 

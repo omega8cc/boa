@@ -654,7 +654,7 @@ send_shutdown_notice() {
   fi
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
+  cat <<EOF | s-nail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
     -s "ALERT! Shutdown of Hacked ${Dom} Site on ${_CHECK_HOST}" \
     ${_ALRT_EMAIL}
 Hello,
@@ -691,7 +691,7 @@ This email has been sent by your Aegir automatic system monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
+  cat <<EOF | s-nail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
     -s "ALERT! Shutdown of Hacked ${Dom} Site on ${_CHECK_HOST}" \
     ${_ALRT_EMAIL}
 Hello,
@@ -728,7 +728,7 @@ This email has been sent by your Aegir automatic system monitor.
 
 EOF
   else
-  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+  cat <<EOF | s-nail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
     -s "ALERT! Shutdown of Hacked ${Dom} Site on ${_CHECK_HOST}" \
     ${_ALRT_EMAIL}
 Hello,
@@ -791,7 +791,7 @@ send_hacked_alert() {
   fi
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
+  cat <<EOF | s-nail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
     -s "URGENT: The ${Dom} site on ${_CHECK_HOST} has been HACKED!" \
     ${_ALRT_EMAIL}
 Hello,
@@ -840,7 +840,7 @@ This email has been sent by your Aegir automatic system monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
+  cat <<EOF | s-nail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
     -s "URGENT: The ${Dom} site on ${_CHECK_HOST} has been HACKED!" \
     ${_ALRT_EMAIL}
 Hello,
@@ -889,7 +889,7 @@ This email has been sent by your Aegir automatic system monitor.
 
 EOF
   else
-  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+  cat <<EOF | s-nail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
     -s "URGENT: The ${Dom} site on ${_CHECK_HOST} has been HACKED!" \
     ${_ALRT_EMAIL}
 Hello,
@@ -964,7 +964,7 @@ send_core_alert() {
   fi
   _MAILX_TEST=$(mail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
+  cat <<EOF | s-nail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
     -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core!" \
     ${_ALRT_EMAIL}
 Hello,
@@ -1025,7 +1025,7 @@ This email has been sent by your Aegir automatic system monitor.
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
+  cat <<EOF | s-nail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
     -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core!" \
     ${_ALRT_EMAIL}
 Hello,
@@ -1086,7 +1086,7 @@ This email has been sent by your Aegir automatic system monitor.
 
 EOF
   else
-  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+  cat <<EOF | s-nail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
     -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core!" \
     ${_ALRT_EMAIL}
 Hello,
@@ -3351,7 +3351,7 @@ if [ -e "/opt/tmp/barracuda-release.txt" ]; then
       echo "INFO: Version test result: OK"
     else
       sT="Newer BOA available"
-      cat <<EOF | mail -e -s "New ${_X_VERSION} ${sT}" ${_MY_EMAIL}
+      cat <<EOF | s-nail -e -s "New ${_X_VERSION} ${sT}" ${_MY_EMAIL}
 
  There is new ${_X_VERSION} version available.
 

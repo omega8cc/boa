@@ -187,13 +187,13 @@ sub send_alert
   $t=`date +%y%m%d-%H%M`;
   chomp($t);
   if ($mailx_test =~ /(GNU Mailutils)/i) {
-    `cat $this_path | mail -e -a "From: notify\@omega8.cc" -a "Bcc: notify\@omega8.cc" -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
+    `cat $this_path | s-nail -e -a "From: notify\@omega8.cc" -a "Bcc: notify\@omega8.cc" -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
   }
   elsif ($mailx_test =~ /invalid/i) {
-    `cat $this_path | mail -a "From: notify\@omega8.cc" -e -b notify\@omega8.cc -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
+    `cat $this_path | s-nail -a "From: notify\@omega8.cc" -e -b notify\@omega8.cc -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
   }
   else {
-    `cat $this_path | mail -r notify\@omega8.cc -e -b notify\@omega8.cc -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
+    `cat $this_path | s-nail -r notify\@omega8.cc -e -b notify\@omega8.cc -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
   }
   `cat /var/xdrago/monitor/segfault_alert >> /var/xdrago/monitor/segfault_alert_archive`;
   `rm -f /var/xdrago/monitor/segfault_alert`;

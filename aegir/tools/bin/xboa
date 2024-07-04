@@ -26,7 +26,7 @@ fi
 send_notice_migration_complete() {
   _MAILX_TEST=`mail -V 2>&1`
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_ADM_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" -s "IMPORTANT: Completed migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
+  cat <<EOF | s-nail -e -a "From: ${_ADM_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" -s "IMPORTANT: Completed migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
 Hello,
 
 You are receiving this notification because your Aegir hosting system
@@ -70,7 +70,7 @@ Your BOA Server Skynet Agent
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_ADM_EMAIL}" -e -b ${_BCC_EMAIL} -s "IMPORTANT: Completed migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
+  cat <<EOF | s-nail -a "From: ${_ADM_EMAIL}" -e -b ${_BCC_EMAIL} -s "IMPORTANT: Completed migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
 Hello,
 
 You are receiving this notification because your Aegir hosting system
@@ -114,7 +114,7 @@ Your BOA Server Skynet Agent
 
 EOF
   else
-  cat <<EOF | mail -r ${_ADM_EMAIL} -e -b ${_BCC_EMAIL} -s "IMPORTANT: Completed migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
+  cat <<EOF | s-nail -r ${_ADM_EMAIL} -e -b ${_BCC_EMAIL} -s "IMPORTANT: Completed migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
 Hello,
 
 You are receiving this notification because your Aegir hosting system
@@ -164,7 +164,7 @@ EOF
 send_notice_migration_start() {
   _MAILX_TEST=`mail -V 2>&1`
   if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_ADM_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" -s "STATUS: Running migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
+  cat <<EOF | s-nail -e -a "From: ${_ADM_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" -s "STATUS: Running migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
 Hello,
 
 You are receiving this notification because your Aegir hosting system
@@ -182,7 +182,7 @@ Your BOA Server Skynet Agent
 
 EOF
   elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_ADM_EMAIL}" -e -b ${_BCC_EMAIL} -s "STATUS: Running migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
+  cat <<EOF | s-nail -a "From: ${_ADM_EMAIL}" -e -b ${_BCC_EMAIL} -s "STATUS: Running migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
 Hello,
 
 You are receiving this notification because your Aegir hosting system
@@ -200,7 +200,7 @@ Your BOA Server Skynet Agent
 
 EOF
   else
-  cat <<EOF | mail -r ${_ADM_EMAIL} -e -b ${_BCC_EMAIL} -s "STATUS: Running migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
+  cat <<EOF | s-nail -r ${_ADM_EMAIL} -e -b ${_BCC_EMAIL} -s "STATUS: Running migration to the new facility for ${_DOMAIN}" ${_CLIENT_EMAIL}
 Hello,
 
 You are receiving this notification because your Aegir hosting system

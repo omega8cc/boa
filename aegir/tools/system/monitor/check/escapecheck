@@ -22,12 +22,12 @@ if ($status ne "CLEAN") {
   $mailx_test=`mail -V 2>&1`;
   if ($mailx_test =~ /(invalid)/i || $mailx_test =~ /(GNU Mailutils)/i) {
     if ($status ne "CLEAN") {
-      `cat $logfile | mail -a "From: notify\@omega8.cc" -e -s "Shell Escape Alert [$server] $now_is" notify\@omega8.cc`;
+      `cat $logfile | s-nail -a "From: notify\@omega8.cc" -e -s "Shell Escape Alert [$server] $now_is" notify\@omega8.cc`;
     }
   }
   else {
     if ($status ne "CLEAN") {
-      `cat $logfile | mail -r notify\@omega8.cc -e -s "Shell Escape Alert [$server] $now_is" notify\@omega8.cc`;
+      `cat $logfile | s-nail -r notify\@omega8.cc -e -s "Shell Escape Alert [$server] $now_is" notify\@omega8.cc`;
     }
   }
 }

@@ -3866,15 +3866,15 @@ satellite_send_welcome_email() {
       if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
         cat ${_ROOT}/log/setupmail.txt \
           | sed "s/[\~]//g" \
-          | mail -a "From: ${_MY_EMAIL}" \
+          | s-nail -a "From: ${_MY_EMAIL}" \
           -a "Bcc: ${_MY_EMAIL}" -e -s "${_Q}" ${_AT_CLIENT_EMAIL}
       elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
         cat ${_ROOT}/log/setupmail.txt \
-          | mail -a "From: ${_MY_EMAIL}" \
+          | s-nail -a "From: ${_MY_EMAIL}" \
           -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
       else
         cat ${_ROOT}/log/setupmail.txt \
-          | mail -r ${_MY_EMAIL} \
+          | s-nail -r ${_MY_EMAIL} \
           -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
       fi
     fi
@@ -3890,30 +3890,30 @@ satellite_send_welcome_email() {
         if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
           cat ${_ROOT}/log/upgrademail.txt \
             | sed "s/[\~]//g" \
-            | mail -a "From: ${_MY_EMAIL}" \
+            | s-nail -a "From: ${_MY_EMAIL}" \
             -a "Bcc: ${_MY_EMAIL}" -e -s "${_Q}" ${_AT_CLIENT_EMAIL}
         elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
           cat ${_ROOT}/log/upgrademail.txt \
-            | mail -a "From: ${_MY_EMAIL}" \
+            | s-nail -a "From: ${_MY_EMAIL}" \
             -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
         else
           cat ${_ROOT}/log/upgrademail.txt \
-            | mail -r ${_MY_EMAIL} \
+            | s-nail -r ${_MY_EMAIL} \
             -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
         fi
       else
         if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
           cat ${_ROOT}/log/setupmail.txt \
             | sed "s/[\~]//g" \
-            | mail -a "From: ${_MY_EMAIL}" \
+            | s-nail -a "From: ${_MY_EMAIL}" \
             -a "Bcc: ${_MY_EMAIL}" -e -s "${_Q}" ${_AT_CLIENT_EMAIL}
         elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
           cat ${_ROOT}/log/setupmail.txt \
-            | mail -a "From: ${_MY_EMAIL}" \
+            | s-nail -a "From: ${_MY_EMAIL}" \
             -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
         else
           cat ${_ROOT}/log/setupmail.txt \
-            | mail -r ${_MY_EMAIL} \
+            | s-nail -r ${_MY_EMAIL} \
             -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
         fi
       fi
