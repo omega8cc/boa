@@ -8402,7 +8402,7 @@ complete() {
   fix_lfd_uidignore
   fix_cnf_postfix
   re_set_default_php_cli
-  if [ "${_STATUS}" = "UPGRADE" ]; then
+  if [ -e "/data/disk" ]; then
     composer_install_upgrade
   fi
   if [ "${_STATUS}" != "UPGRADE" ]; then
