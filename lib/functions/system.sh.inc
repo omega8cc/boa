@@ -5666,6 +5666,34 @@ if_major_os_upgrade() {
     fi
     mrun "apt-get remove collectd -y --purge --auto-remove -qq" 2> /dev/null
     mrun "apt-get remove libc-client2007b-dev -y --purge --auto-remove -qq" 2> /dev/null
+    ###
+    mrun "apt-get remove --purge libmariadb3 -y -qq" 2> /dev/null
+    mrun "apt-get remove --purge mariadb-common -y -qq" 2> /dev/null
+    mrun "apt-get remove --purge mailutils -y -qq" 2> /dev/null
+    mrun "apt-get remove --purge bsd-mailx -y -qq" 2> /dev/null
+    ###
+    ### Make sure that mariadb related packages are locked in apt.
+    if [ ! -e "/etc/apt/preferences.d/mariadb-common" ]; then
+      echo -e 'Package: libmariadb3\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/mariadb-common
+      echo -e '\n\nPackage: mariadb-common\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/mariadb-common
+      echo -e '\n\nPackage: mailutils\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/mariadb-common
+      echo -e '\n\nPackage: bsd-mailx\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/mariadb-common
+      apt_clean_update_no_releaseinfo_change
+    fi
+    ###
+    _NGINX_GET_DPKG=$(dpkg --get-selections | grep mariadb-common | grep 'hold$' 2>&1)
+    if [[ ! "${_NGINX_GET_DPKG}" =~ "hold" ]]; then
+      aptitude hold libmariadb3 &> /dev/null
+      aptitude hold mariadb-common &> /dev/null
+      aptitude hold mailutils &> /dev/null
+      aptitude hold bsd-mailx &> /dev/null
+      echo "libmariadb3 hold" | dpkg --set-selections &> /dev/null
+      echo "mariadb-common hold" | dpkg --set-selections &> /dev/null
+      echo "mailutils hold" | dpkg --set-selections &> /dev/null
+      echo "bsd-mailx hold" | dpkg --set-selections &> /dev/null
+      apt_clean_update_no_releaseinfo_change
+    fi
+    ###
     mrun "apt-get remove nginx-extras -y -qq" 2> /dev/null
     mrun "apt-get remove nginx -y -qq" 2> /dev/null
     mrun "apt-get remove nginx-common -y -qq" 2> /dev/null
@@ -6565,9 +6593,6 @@ sys_packages_install() {
     mrun "apt-get remove nginx-common -y -qq" 2> /dev/null
     mrun "apt-get remove nginx-full -y -qq" 2> /dev/null
     mrun "apt-get remove redis-server -y -qq" 2> /dev/null
-    mrun "apt-get remove --purge libmariadb3 -y -qq" 2> /dev/null
-    mrun "apt-get remove --purge mariadb-common -y -qq" 2> /dev/null
-    mrun "apt-get remove --purge mailutils -y -qq" 2> /dev/null
     ###
     ### Make sure that nginx packages are locked in apt.
     if [ ! -e "/etc/apt/preferences.d/nginx-common" ]; then
@@ -6584,6 +6609,33 @@ sys_packages_install() {
       echo "nginx hold" | dpkg --set-selections &> /dev/null
       echo "nginx-common hold" | dpkg --set-selections &> /dev/null
       apt_clean_update
+    fi
+    ###
+    mrun "apt-get remove --purge libmariadb3 -y -qq" 2> /dev/null
+    mrun "apt-get remove --purge mariadb-common -y -qq" 2> /dev/null
+    mrun "apt-get remove --purge mailutils -y -qq" 2> /dev/null
+    mrun "apt-get remove --purge bsd-mailx -y -qq" 2> /dev/null
+    ###
+    ### Make sure that mariadb related packages are locked in apt.
+    if [ ! -e "/etc/apt/preferences.d/mariadb-common" ]; then
+      echo -e 'Package: libmariadb3\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/mariadb-common
+      echo -e '\n\nPackage: mariadb-common\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/mariadb-common
+      echo -e '\n\nPackage: mailutils\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/mariadb-common
+      echo -e '\n\nPackage: bsd-mailx\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/mariadb-common
+      apt_clean_update_no_releaseinfo_change
+    fi
+    ###
+    _NGINX_GET_DPKG=$(dpkg --get-selections | grep mariadb-common | grep 'hold$' 2>&1)
+    if [[ ! "${_NGINX_GET_DPKG}" =~ "hold" ]]; then
+      aptitude hold libmariadb3 &> /dev/null
+      aptitude hold mariadb-common &> /dev/null
+      aptitude hold mailutils &> /dev/null
+      aptitude hold bsd-mailx &> /dev/null
+      echo "libmariadb3 hold" | dpkg --set-selections &> /dev/null
+      echo "mariadb-common hold" | dpkg --set-selections &> /dev/null
+      echo "mailutils hold" | dpkg --set-selections &> /dev/null
+      echo "bsd-mailx hold" | dpkg --set-selections &> /dev/null
+      apt_clean_update_no_releaseinfo_change
     fi
   fi
   _EXTRA_LIB_APT="libmcrypt-dev"
