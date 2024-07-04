@@ -6561,10 +6561,13 @@ sys_packages_install() {
     apt_clean_update
     mrun "service nginx start" 2> /dev/null
     mrun "apt-get remove nginx-extras -y -qq" 2> /dev/null
-    mrun "apt-get remove nginx -y -qq"        2> /dev/null
+    mrun "apt-get remove nginx -y -qq" 2> /dev/null
     mrun "apt-get remove nginx-common -y -qq" 2> /dev/null
-    mrun "apt-get remove nginx-full -y -qq"   2> /dev/null
+    mrun "apt-get remove nginx-full -y -qq" 2> /dev/null
     mrun "apt-get remove redis-server -y -qq" 2> /dev/null
+    mrun "apt-get remove --purge libmariadb3 -y -qq" 2> /dev/null
+    mrun "apt-get remove --purge mariadb-common -y -qq" 2> /dev/null
+    mrun "apt-get remove --purge mailutils -y -qq" 2> /dev/null
     ###
     ### Make sure that nginx packages are locked in apt.
     if [ ! -e "/etc/apt/preferences.d/nginx-common" ]; then
@@ -6773,7 +6776,7 @@ sys_packages_install() {
                      ${_EXTRA_PACKAGES}"
   fi
 
-  _MAILSERV="postfix postfix-pcre mailutils"
+  _MAILSERV="postfix postfix-pcre s-nail bsd-mailx"
 }
 
 php_libs_fix() {
