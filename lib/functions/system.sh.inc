@@ -4615,40 +4615,17 @@ strict_bin_permissions() {
 }
 
 #
-# Turn Off AppArmor completely.
-turn_off_apparmor_completely() {
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: turn_off_apparmor_completely"
-  fi
-  if [ -d "/etc/apparmor.d" ]; then
-    isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "ARMR: Turning off AppArmor completely..."
-      msg "ARMR: It's necessary in the pre-install stage"
-      msg "ARMR: to avoid blocking BOA install on Daedalus"
-      msg "ARMR: Do not worry, we will enable AppArmor later"
-    fi
-    rm -rf /var/cache/apparmor/*
-    mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
-    mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
-    mrun "service apparmor stop" 2> /dev/null
-    mrun "aa-teardown" 2> /dev/null
-    mrun "service auditd stop" 2> /dev/null
-    mrun "apt-get remove apparmor-profiles-extra -y --purge --auto-remove" 2> /dev/null
-    mkdir -p /etc/default/grub.d
-    echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
-      | tee ${isAppArmorGrubFile} &> /dev/null
-    mrun "update-grub" 2> /dev/null
-  fi
-}
-
-#
 # Turn Off AppArmor temporarily.
 turn_off_apparmor_temporarily() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: turn_off_apparmor_temporarily"
   fi
-  if [ -d "/etc/apparmor.d" ]; then
+  isAppArmOn=N
+  if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
+    isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
+    isAppArmOn=$(echo -n ${isAppArmOn} | tr -d "\n" 2>&1)
+  fi
+  if [ "${isAppArmOn}" = "Y" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "ARMR: Turning off AppArmor temporarily..."
     fi
@@ -4658,39 +4635,14 @@ turn_off_apparmor_temporarily() {
     mrun "service apparmor stop" 2> /dev/null
     mrun "aa-teardown" 2> /dev/null
     mrun "service auditd stop" 2> /dev/null
-    mrun "apt-get remove apparmor-profiles-extra -y --purge --auto-remove" 2> /dev/null
   fi
 }
 
 #
 # Sync AppArmor profiles.
-sync_enable_apparmor_profiles() {
+sync_apparmor_profiles() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: sync_enable_apparmor_profiles"
-  fi
-  isAppArmorComplain=$(which aa-complain 2>&1)
-  isAppArmOn=N
-  if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
-    isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
-    isAppArmOn=$(echo -n ${isAppArmOn} | tr -d "\n" 2>&1)
-  fi
-  if [ -e "/root/.force.reinstall.apparmor.on.update.cnf" ]; then
-    mrun "apt-get remove apparmor \
-      apparmor-utils \
-      apparmor-notify \
-      apparmor-profiles \
-      apparmor-profiles-extra -y --purge --auto-remove" 2> /dev/null
-    mrun "rm -rf /etc/apparmor.d/local" 2> /dev/null
-    mrun "${_INSTAPP} apparmor \
-      apparmor-utils \
-      apparmor-notify \
-      apparmor-profiles" 2> /dev/null
-    isAppArmorComplain=$(which aa-complain 2>&1)
-    isAppArmOn=N
-    if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
-      isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
-      isAppArmOn=$(echo -n ${isAppArmOn} | tr -d "\n" 2>&1)
-    fi
+    msg "PROC: sync_apparmor_profiles"
   fi
   if [ "${isAppArmOn}" = "Y" ] || [ -d "/etc/apparmor.d" ]; then
     msg "ARMR: All profiles will be updated now..."
@@ -4741,7 +4693,9 @@ sync_enable_apparmor_profiles() {
         if [ ! -e "/root/.run-to-daedalus.cnf" ] \
           && [ ! -e "/root/.run-to-chimaera.cnf" ] \
           && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
-          mrun "apparmor_parser -Q /etc/apparmor.d/${profName}" 2> /dev/null
+          if [ "${isAppArmOn}" = "Y" ]; then
+            mrun "apparmor_parser -Q /etc/apparmor.d/${profName}" 2> /dev/null
+          fi
         fi
       fi
       chmod 644 ${proFile}
@@ -4761,98 +4715,84 @@ sync_enable_apparmor_profiles() {
         echo "write_logs = yes" >> /etc/audit/auditd.conf
       fi
     fi
-    if [ -e "/root/.activate.apparmor.cnf" ]; then
-      mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
-      mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
-      mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
-      mrun "service apparmor restart" 2> /dev/null
-      mrun "service auditd restart" 2> /dev/null
-    elif [ -e "/root/.disable.apparmor.cnf" ] \
-      || [ ! -e "/root/.activate.apparmor.cnf" ]; then
-      mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
-      mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
-      mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
-      mrun "service apparmor stop" 2> /dev/null
-      mrun "update-rc.d -f apparmor remove" 2> /dev/null
-      mrun "service auditd stop" 2> /dev/null
-      mrun "update-rc.d -f auditd remove" 2> /dev/null
-      mrun "aa-teardown" 2> /dev/null
+    if [ "${isAppArmOn}" = "Y" ]; then
+      if [ -e "/root/.activate.apparmor.cnf" ]; then
+        mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
+        mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
+        mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
+        if [ -x "/etc/init.d/apparmor" ]; then
+          mrun "service apparmor restart" 2> /dev/null
+        fi
+        if [ -x "/etc/init.d/auditd" ]; then
+          mrun "service auditd restart" 2> /dev/null
+        fi
+      elif [ -e "/root/.disable.apparmor.cnf" ] \
+        || [ ! -e "/root/.activate.apparmor.cnf" ]; then
+        mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
+        mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
+        mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
+        if [ -x "/etc/init.d/apparmor" ]; then
+          mrun "service apparmor stop" 2> /dev/null
+          mrun "update-rc.d -f apparmor remove" 2> /dev/null
+        fi
+        if [ -x "/etc/init.d/auditd" ]; then
+          mrun "service auditd stop" 2> /dev/null
+          mrun "update-rc.d -f auditd remove" 2> /dev/null
+        fi
+        if [ -x "/usr/sbin/aa-teardown" ]; then
+          mrun "aa-teardown" 2> /dev/null
+        fi
+      fi
     fi
   fi
 }
 
 #
 # Manage AppArmor.
-if_install_or_uninstall_apparmor() {
+if_install_apparmor() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_or_uninstall_apparmor"
+    msg "PROC: if_install_apparmor"
   fi
   ###--------------------###
+  isAppArmorRevFile="/sys/kernel/security/apparmor/revision"
   isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
-  isAppArmorGrub=
+  isAppArmorComplain=$(which aa-complain 2>&1)
+  isAppArmorStatus=$(which aa-status 2>&1)
+  isAppArmorGrub=NO
   if [ -e "${isAppArmorGrubFile}" ]; then
     _GRUB_APPARMOR_TEST=$(grep "apparmor=1 security=apparmor" ${isAppArmorGrubFile} 2>&1)
     if [[ "${_GRUB_APPARMOR_TEST}" =~ "apparmor=1 security=apparmor" ]]; then
       isAppArmorGrub=YES
     fi
   fi
-  isAppArmorComplain=$(which aa-complain 2>&1)
-  isAppArmorStatus=$(which aa-status 2>&1)
-  if [ -e "/root/.deny.apparmor.cnf" ]; then
-    isAuditd=$(which auditd 2>&1)
-    if [ -e "${isAuditd}" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "ARMR: The system auditd/aureport/ausearch will be uninstalled now..."
-      fi
-      mrun "apt-get remove auditd -y -qq" 2> /dev/null
-      mrun "killall -9 auditd" 2> /dev/null
+  if [ ! -e "${isAppArmorRevFile}" ] \
+    || [ ! -e "${isAppArmorGrubFile}" ] \
+    || [ -z "${isAppArmorComplain}" ] \
+    || [ -z "${isAppArmorStatus}" ] \
+    || [ "${isAppArmorGrub}" = "NO" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "ARMR: The system AppArmor and auditd will be installed now, however..."
+      msg "ARMR: ...it will become active only after you reboot this server"
+      msg "ARMR: Use 'boa reboot' command for optimized reboot"
+      msg "WAIT: This may take a while, please wait..."
     fi
-    if [ ! -z "${isAppArmorGrub}" ] \
-      || [ ! -z "${isAppArmorComplain}" ] \
-      || [ ! -z "${isAppArmorStatus}" ] \
-      || [ -e "/etc/apparmor.d" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "ARMR: The system AppArmor will be uninstalled now, however..."
-        msg "ARMR: ...it will become inactive only after you reboot this server"
-        msg "ARMR: Use 'boa reboot' command for optimized reboot"
-        msg "WAIT: This may take a while, please wait..."
-      fi
-      mrun "sleep 8"
-      mkdir -p /etc/default/grub.d
-      echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
-        | tee ${isAppArmorGrubFile} &> /dev/null
-      update-grub &> /dev/null
-      mrun "apt-get remove apparmor \
-        apparmor-utils \
-        apparmor-notify \
-        apparmor-profiles \
-        apparmor-profiles-extra -y --purge --auto-remove" 2> /dev/null
-    fi
-  else
-    if [ -z "${isAppArmorGrub}" ] \
-      || [ -z "${isAppArmorComplain}" ] \
-      || [ -z "${isAppArmorStatus}" ] \
-      || [ ! -e "/etc/apparmor.d" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "ARMR: The system AppArmor and auditd will be installed now, however..."
-        msg "ARMR: ...it will become active only after you reboot this server"
-        msg "ARMR: Use 'boa reboot' command for optimized reboot"
-        msg "WAIT: This may take a while, please wait..."
-      fi
-      mrun "sleep 8"
-      mkdir -p /etc/default/grub.d
-      echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
-        | tee ${isAppArmorGrubFile} &> /dev/null
-      update-grub &> /dev/null
-      mrun "${_INSTAPP} apparmor \
-        apparmor-utils \
-        apparmor-notify \
-        apparmor-profiles" 2> /dev/null
-      mrun "${_INSTAPP} auditd" 2> /dev/null
-    fi
-    if [ -e "/etc/apparmor.d" ]; then
-      sync_enable_apparmor_profiles
-    fi
+    mrun "${_INSTAPP} auditd \
+      apparmor \
+      apparmor-utils \
+      apparmor-notify \
+      apparmor-profiles" 2> /dev/null
+    mkdir -p /etc/default/grub.d
+    echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
+      | tee ${isAppArmorGrubFile} &> /dev/null
+    update-grub &> /dev/null
+  fi
+  isAppArmOn=N
+  if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
+    isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
+    isAppArmOn=$(echo -n ${isAppArmOn} | tr -d "\n" 2>&1)
+  fi
+  if [ "${isAppArmOn}" = "Y" ]; then
+    sync_apparmor_profiles
   fi
 }
 

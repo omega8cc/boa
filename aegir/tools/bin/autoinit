@@ -239,52 +239,60 @@ else
   silentMode=silent
 fi
 
-turn_off_apparmor_early() {
-  touch /root/.deny.apparmor.cnf
-  isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
-  msg "Turning off AppArmor early..." >> ${logInt}
-  msg "It's necessary in the pre-install stage" >> ${logInt}
-  msg "to avoid blocking BOA install on Daedalus" >> ${logInt}
-  msg "Do not worry, we will enable AppArmor later" >> ${logInt}
-  apparmor_parser -r /etc/apparmor.d/* >> ${logSlt}
-  aa-complain /etc/apparmor.d/* >> ${logSlt}
-  aa-teardown >> ${logSlt}
-  apt-get remove apparmor \
-    apparmor-utils \
-    apparmor-notify \
-    apparmor-profiles \
-    apparmor-profiles-extra -y --purge --auto-remove >> ${logSlt}
-  mkdir -p /etc/default/grub.d
-  echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=0"' \
-    | tee ${isAppArmorGrubFile} &> /dev/null
-  update-grub >> ${logSlt}
+disable_apparmor_utils() {
+  if [ -e "/etc/apparmor.d" ] && [ -e "/var/cache/apparmor" ]; then
+    rm -rf /var/cache/apparmor/* >> ${logSlt}
+    apparmor_parser -r /etc/apparmor.d/* >> ${logSlt}
+    aa-complain /etc/apparmor.d/* >> ${logSlt}
+  fi
+  if [ -x "/etc/init.d/apparmor" ]; then
+    service apparmor stop >> ${logSlt}
+    update-rc.d -f apparmor remove >> ${logSlt}
+    service auditd stop >> ${logSlt}
+    update-rc.d -f auditd remove >> ${logSlt}
+  fi
+  if [ -x "/usr/sbin/aa-teardown" ]; then
+    aa-teardown >> ${logSlt}
+  fi
+   [ ! -e "/root/.disable.apparmor.cnf" ] && touch /root/.disable.apparmor.cnf
 }
 
-install_enable_apparmor_utils() {
+install_apparmor_utils() {
+  isAppArmorRevFile="/sys/kernel/security/apparmor/revision"
   isAppArmorGrubFile="/etc/default/grub.d/apparmor.cfg"
-  isAppArmorGrub=
+  isAppArmorComplain=$(which aa-complain 2>&1)
+  isAppArmorStatus=$(which aa-status 2>&1)
+  isAppArmorGrub=NO
   if [ -e "${isAppArmorGrubFile}" ]; then
     _GRUB_APPARMOR_TEST=$(grep "apparmor=1 security=apparmor" ${isAppArmorGrubFile} 2>&1)
     if [[ "${_GRUB_APPARMOR_TEST}" =~ "apparmor=1 security=apparmor" ]]; then
       isAppArmorGrub=YES
     fi
   fi
-  isAppArmorComplain=$(which aa-complain 2>&1)
-  isAppArmorStatus=$(which aa-status 2>&1)
-  if [ -z "${isAppArmorGrub}" ] \
+  if [ ! -e "${isAppArmorRevFile}" ] \
+    || [ ! -e "${isAppArmorGrubFile}" ] \
     || [ -z "${isAppArmorComplain}" ] \
     || [ -z "${isAppArmorStatus}" ] \
-    || [ ! -e "/etc/apparmor.d" ]; then
+    || [ "${isAppArmorGrub}" = "NO" ]; then
     msg "Installing AppArmor Tools early" >> ${logInt}
-    /usr/bin/apt-get install apparmor \
+    /usr/bin/apt-get install auditd \
+      apparmor \
       apparmor-utils \
       apparmor-notify \
       apparmor-profiles -y -qq >> ${logSlt}
+    mkdir -p /etc/default/grub.d
+    echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
+      | tee ${isAppArmorGrubFile} &> /dev/null
+    update-grub >> ${logSlt}
   fi
-  mkdir -p /etc/default/grub.d
-  echo 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT apparmor=1 security=apparmor"' \
-    | tee ${isAppArmorGrubFile} &> /dev/null
-  update-grub >> ${logSlt}
+  isAppArmOn=N
+  if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
+    isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
+    isAppArmOn=$(echo -n ${isAppArmOn} | tr -d "\n" 2>&1)
+  fi
+  if [ "${isAppArmOn}" = "Y" ]; then
+    disable_apparmor_utils
+  fi
 }
 
 init_pre() {
@@ -332,6 +340,7 @@ init_pre() {
       sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
       echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
     fi
+    install_apparmor_utils
     rm -f /var/run/autoinit.pid
     reboot
     exit 0
@@ -381,7 +390,6 @@ init_pre() {
         ${_INITINS} build-essential curl git >> ${logSlt}
         ${_INITINS} libgd-dev libmagickwand-dev libcurl4-openssl-dev >> ${logSlt}
       fi
-      turn_off_apparmor_early
       echo "Waiting five seconds before reboot..."
       sleep 5
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
@@ -390,6 +398,7 @@ init_pre() {
         sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
         echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
       fi
+      install_apparmor_utils
       rm -f /var/run/autoinit.pid
       reboot
       exit 0
@@ -455,6 +464,7 @@ init_run_two_quick() {
   echo " " >> ${logInt}
   sleep 5
   touch /root/.run-two-devuan-quick.cnf
+  install_apparmor_utils
   rm -f /var/run/autoinit.pid
   reboot
   exit 0
@@ -570,6 +580,7 @@ init_run_one_quick() {
     echo " " >> ${logInt}
     sleep 5
     touch /root/.run-one-devuan-quick.cnf
+    install_apparmor_utils
     rm -f /var/run/autoinit.pid
     reboot
     exit 0
@@ -586,6 +597,7 @@ init_run_one_quick() {
     echo " " >> ${logInt}
     sleep 5
     touch /root/.run-one-devuan-quick.cnf
+    install_apparmor_utils
     rm -f /var/run/autoinit.pid
     reboot
     exit 0

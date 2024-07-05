@@ -1435,21 +1435,6 @@ check_root() {
       if [ -e "/sbin/hdparm" ]; then
         apt-get remove hdparm -y --purge --auto-remove -qq 2> /dev/null
       fi
-      if [ -e "/root/.deny.apparmor.cnf" ]; then
-        isAuditd=$(which auditd 2>&1)
-        if [ -e "${isAuditd}" ]; then
-          apt-get remove auditd -y -qq 2> /dev/null
-          killall -9 auditd 2> /dev/null
-        fi
-        isAppArmorStatus=$(which aa-status 2>&1)
-        if [ ! -z "${isAppArmorStatus}" ]; then
-          apt-get remove apparmor \
-            apparmor-utils \
-            apparmor-notify \
-            apparmor-profiles \
-            apparmor-profiles-extra -y --purge --auto-remove 2> /dev/null
-        fi
-      fi
       _REMOVE_LINKS="buagent \
                      checkroot.sh \
                      fancontrol \

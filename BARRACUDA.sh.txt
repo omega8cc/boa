@@ -306,21 +306,9 @@ check_prepare_dirs_permissions
 
 
 ###
-### Turn Off AppArmor completely while running barracuda install
+### Turn Off AppArmor temporarily while running barracuda
 ###
-if [ "${_STATUS}" = "INIT" ]; then
-  [ ! -e "/root/.deny.apparmor.cnf" ] && touch /root/.deny.apparmor.cnf
-  turn_off_apparmor_completely
-fi
-
-
-###
-### Turn Off AppArmor temporarily while running barracuda upgrade
-###
-if [ "${_STATUS}" = "UPGRADE" ]; then
-  [ -e "/root/.deny.apparmor.cnf" ] && rm -f /root/.deny.apparmor.cnf
-  turn_off_apparmor_temporarily
-fi
+turn_off_apparmor_temporarily
 
 
 ###
@@ -571,7 +559,7 @@ if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
   if [ ! -e "/root/.run-to-daedalus.cnf" ] \
     && [ ! -e "/root/.run-to-chimaera.cnf" ] \
     && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
-    if_install_or_uninstall_apparmor
+    if_install_apparmor
   fi
 fi
 
