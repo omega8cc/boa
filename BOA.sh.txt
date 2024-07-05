@@ -908,6 +908,7 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
+    && [ -e "/data/disk" ] \
     && [ ! -e "${pthLog}/fpm-cli.ctrl.${tRee}.${_X_SE}.pid" ]; then
     usrGroup=users
     cp -a /var/backups/off-run/run* /var/xdrago/
@@ -989,6 +990,7 @@ update_agents() {
     && [ -e "${hoLeIncFull}" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
+    && [ -e "/data/disk" ] \
     && [ ! -e "${pthLog}/hosting_le_vt.ctrl.${tRee}.${_X_SE}.pid" ]; then
     leBasePath="profiles/hostmaster/modules/aegir/hosting_le"
     lePath="${leBasePath}/drush/${provLeInc}"
