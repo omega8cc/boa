@@ -5666,14 +5666,12 @@ if_major_os_upgrade() {
     mrun "apt-get remove --purge libmariadb3 -y -qq" 2> /dev/null
     mrun "apt-get remove --purge mariadb-common -y -qq" 2> /dev/null
     mrun "apt-get remove --purge mailutils -y -qq" 2> /dev/null
-    mrun "apt-get remove --purge bsd-mailx -y -qq" 2> /dev/null
     ###
     ### Make sure that mariadb related packages are locked in apt.
     if [ ! -e "/etc/apt/preferences.d/mariadb-common" ]; then
       echo -e 'Package: libmariadb3\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/mariadb-common
       echo -e '\n\nPackage: mariadb-common\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/mariadb-common
       echo -e '\n\nPackage: mailutils\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/mariadb-common
-      echo -e '\n\nPackage: bsd-mailx\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/mariadb-common
       apt_clean_update_no_releaseinfo_change
     fi
     ###
@@ -5682,11 +5680,9 @@ if_major_os_upgrade() {
       aptitude hold libmariadb3 &> /dev/null
       aptitude hold mariadb-common &> /dev/null
       aptitude hold mailutils &> /dev/null
-      aptitude hold bsd-mailx &> /dev/null
       echo "libmariadb3 hold" | dpkg --set-selections &> /dev/null
       echo "mariadb-common hold" | dpkg --set-selections &> /dev/null
       echo "mailutils hold" | dpkg --set-selections &> /dev/null
-      echo "bsd-mailx hold" | dpkg --set-selections &> /dev/null
       apt_clean_update_no_releaseinfo_change
     fi
     ###
@@ -6632,14 +6628,12 @@ sys_packages_install() {
     mrun "apt-get remove --purge libmariadb3 -y -qq" 2> /dev/null
     mrun "apt-get remove --purge mariadb-common -y -qq" 2> /dev/null
     mrun "apt-get remove --purge mailutils -y -qq" 2> /dev/null
-    mrun "apt-get remove --purge bsd-mailx -y -qq" 2> /dev/null
     ###
     ### Make sure that mariadb related packages are locked in apt.
     if [ ! -e "/etc/apt/preferences.d/mariadb-common" ]; then
       echo -e 'Package: libmariadb3\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/mariadb-common
       echo -e '\n\nPackage: mariadb-common\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/mariadb-common
       echo -e '\n\nPackage: mailutils\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/mariadb-common
-      echo -e '\n\nPackage: bsd-mailx\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/mariadb-common
       apt_clean_update_no_releaseinfo_change
     fi
     ###
@@ -6648,11 +6642,9 @@ sys_packages_install() {
       aptitude hold libmariadb3 &> /dev/null
       aptitude hold mariadb-common &> /dev/null
       aptitude hold mailutils &> /dev/null
-      aptitude hold bsd-mailx &> /dev/null
       echo "libmariadb3 hold" | dpkg --set-selections &> /dev/null
       echo "mariadb-common hold" | dpkg --set-selections &> /dev/null
       echo "mailutils hold" | dpkg --set-selections &> /dev/null
-      echo "bsd-mailx hold" | dpkg --set-selections &> /dev/null
       apt_clean_update_no_releaseinfo_change
     fi
   fi
