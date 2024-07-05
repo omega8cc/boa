@@ -616,7 +616,7 @@ up_action() {
         fi
         ### Debugging
 
-        if [ -e "/data/disk" ] && [ -e "/data/conf/global.inc" ]; then
+        if [ -d "/data/u" ] && [ -e "/data/conf/global.inc" ]; then
           for Ctrl in `find /data/disk/*/log/fpm.txt \
             -maxdepth 0 -mindepth 0 | sort`; do
             echo ${phpS} > ${Ctrl}
@@ -688,7 +688,7 @@ up_action() {
         fi
         ### Debugging
 
-        if [ -e "/data/disk" ] && [ -e "/data/conf/global.inc" ]; then
+        if [ -d "/data/u" ] && [ -e "/data/conf/global.inc" ]; then
           for Ctrl in `find /data/disk/*/log/fpm.txt \
             -maxdepth 0 -mindepth 0 | sort`; do
             echo ${phpS} > ${Ctrl}

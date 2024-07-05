@@ -259,7 +259,7 @@ nginx_clean_legacy_config() {
   if [[ "${_R_TEST}" =~ "upload_progress" ]]; then
     sed -i "s/.*upload_progress.*//g" /var/aegir/config/nginx.conf
   fi
-  if [ -e "/data/disk" ]; then
+  if [ -d "/data/u" ]; then
     _R_TEST=$(grep "upload_progress_json_output" /data/disk/*/config/includes/nginx_vhost_common.conf 2>&1)
     if [[ "${_R_TEST}" =~ "upload_progress_json_output" ]]; then
       sed -i "s/.*upload_progress_json_output.*//g" /data/disk/*/config/includes/nginx_vhost_common.conf
@@ -709,7 +709,7 @@ nginx_config_update_fix() {
       wait
       sed -i "s/TLSv1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
       wait
-      if [ -e "/data/disk" ]; then
+      if [ -d "/data/u" ]; then
         sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /data/disk/*/config/server_*/nginx/vhost.d/*
       fi
       sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx.conf
@@ -896,7 +896,7 @@ nginx_config_update_fix() {
         /var/aegir/config/server_*/nginx.conf &> /dev/null
       wait
     fi
-    if [ -e "/data/disk" ]; then
+    if [ -d "/data/u" ]; then
       sed -i "s/.*listen.*127.0.0.1:80;.*//g" \
         /data/disk/*/config/server_*/nginx.conf &> /dev/null
       wait
@@ -919,7 +919,7 @@ nginx_config_update_fix() {
       wait
     fi
 
-    if [ -e "/data/disk" ]; then
+    if [ -d "/data/u" ]; then
       for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
         pthPrN="provision/http/Provision/Config/Nginx"
         if [ -e "${_OCT}/.drush/sys/drush_make" ]; then
@@ -950,7 +950,7 @@ nginx_config_update_fix() {
     ### Delete any ghost, outdated or broken config includes and vhosts
     ### in all Octopus instances which could break Nginx restart
     ###
-    if [ -e "/data/disk" ]; then
+    if [ -d "/data/u" ]; then
       for File in `grep will_expire_in /data/disk/*/config/includes/* \
         | cut -d: -f1 \
         | awk '{ print $1}'`; do

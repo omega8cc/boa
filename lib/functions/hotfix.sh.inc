@@ -69,7 +69,7 @@ fix_core_dgd() {
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
     && [ -e "${saPatch}" ]; then
-    if [ -d "/data/disk" ] \
+    if [ -d "/data/u" ] \
       && [ ! -e "${pthLog}/batch-custom-${saCoreN}-fixed-d7.log" ]; then
       for File in `find /data/disk/*/static/*/${saIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do

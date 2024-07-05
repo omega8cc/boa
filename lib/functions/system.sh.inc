@@ -1414,7 +1414,7 @@ php_if_versions_cleanup_cnf() {
   else
     _AUTO_PHP_CLEANUP=NO
   fi
-  if [ ! -e "/data/disk" ]; then
+  if [ ! -d "/data/u" ]; then
     _AUTO_PHP_CLEANUP=NO
   fi
   if [ -e "/var/aegir/host_master/000/placeholder_dont_remove.txt" ] \
@@ -1964,7 +1964,7 @@ barracuda_cnf() {
       echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}" >> ${barCnf}
     fi
 
-    if [ -e "/data/disk" ]; then
+    if [ -d "/data/u" ]; then
       php_legacy_versions_cleanup_cnf
     fi
 
@@ -2366,7 +2366,7 @@ barracuda_cnf() {
         wait
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g" /root/.*.octopus.cnf &> /dev/null
         wait
-        if [ -e "/data/disk" ] && [ -e "/data/conf/global.inc" ]; then
+        if [ -d "/data/u" ] && [ -e "/data/conf/global.inc" ]; then
           for Ctrl in `find /data/disk/*/log -maxdepth 0 -mindepth 0 | sort`; do
             echo ${_PHP_SINGLE_INSTALL} > $Ctrl/fpm.txt
             echo ${_PHP_SINGLE_INSTALL} > $Ctrl/cli.txt
@@ -4902,7 +4902,7 @@ finale() {
   [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
   [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
   [ -e "/var/aegir/.drush/.alias.drushrc.php" ] && rm -f /var/aegir/.drush/.alias.drushrc.php
-  [ -e "/data/disk" ] && rm -f /data/disk/*/.drush/.alias.drushrc.php
+  [ -d "/data/u" ] && rm -f /data/disk/*/.drush/.alias.drushrc.php
   rm -f ${pthLog}/protected-vhosts-clean.log
   rm -f ${vBs}/.auth.IP.list*
   sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
@@ -6304,7 +6304,7 @@ if_major_os_upgrade() {
     done
     ###
     ### Make sure that Aegir Octopus system users are added to sudo.
-    if [ -e "/data/disk" ]; then
+    if [ -d "/data/u" ]; then
       for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
         if [ -e "${User}/config/server_master/nginx/vhost.d" ] \
           && [ ! -e "${User}/log/proxied.pid" ] \
@@ -8347,7 +8347,7 @@ complete() {
   fix_lfd_uidignore
   fix_cnf_postfix
   re_set_default_php_cli
-  if [ -e "/data/disk" ]; then
+  if [ -d "/data/u" ]; then
     composer_install_upgrade
   fi
   if [ "${_STATUS}" != "UPGRADE" ]; then

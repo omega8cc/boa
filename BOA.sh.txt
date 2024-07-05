@@ -359,7 +359,7 @@ update_agents() {
 
   if [ "${_VMFAMILY}" = "HOSTED" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ -e "/data/disk" ] \
+    && [ -d "/data/u" ] \
     && [ -e "/var/xdrago" ]; then
     [ ! -e "/root/.fast.cron.cnf" ] && echo ON > /root/.fast.cron.cnf
     PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
@@ -887,7 +887,7 @@ update_agents() {
   if [ -e "/opt/tools/drush" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ -e "/data/disk" ] \
+    && [ -d "/data/u" ] \
     && [ ! -e "${pthLog}/dispatch.ctrl.${tRee}.${_X_SE}.pid" ]; then
     sed -i "s/.*cache.*//g; s/.*cc drush.*//g; s/ *$//g; /^$/d" /data/disk/*/aegir.sh
     touch ${pthLog}/dispatch.ctrl.${tRee}.${_X_SE}.pid
@@ -908,7 +908,7 @@ update_agents() {
   fi
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
-    && [ -e "/data/disk" ] \
+    && [ -d "/data/u" ] \
     && [ ! -e "${pthLog}/fpm-cli.ctrl.${tRee}.${_X_SE}.pid" ]; then
     usrGroup=users
     cp -a /var/backups/off-run/run* /var/xdrago/
@@ -990,7 +990,7 @@ update_agents() {
     && [ -e "${hoLeIncFull}" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ -e "/data/disk" ] \
+    && [ -d "/data/u" ] \
     && [ ! -e "${pthLog}/hosting_le_vt.ctrl.${tRee}.${_X_SE}.pid" ]; then
     leBasePath="profiles/hostmaster/modules/aegir/hosting_le"
     lePath="${leBasePath}/drush/${provLeInc}"
@@ -1212,7 +1212,7 @@ fix_core_dgd() {
   # SA-CORE for Octopus hostmaster platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ -e "/data/disk" ] \
+    && [ -d "/data/u" ] \
     && [ -e "${saPatch}" ]; then
     if [ -d "/data/all" ] \
       && [ ! -e "${pthLog}/hostmaster-octopus-${saCoreN}-fixed-d7.log" ]; then
@@ -1323,9 +1323,8 @@ fix_core_dgd() {
   # SA-CORE for custom D7 platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ -e "/data/disk" ] \
     && [ -e "${saPatch}" ]; then
-    if [ -d "/data/disk" ] \
+    if [ -d "/data/u" ] \
       && [ ! -e "${pthLog}/batch-custom-${saCoreN}-fixed-d7.log" ]; then
       for File in `find /data/disk/*/static/*/${saIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
@@ -1400,9 +1399,8 @@ fix_core_dgd() {
   # SA-CORE for D8 platforms in ~/static
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ -e "/data/disk" ] \
     && [ -e "${saQPatch}" ]; then
-    if [ -d "/data/disk" ] \
+    if [ -d "/data/u" ] \
       && [ ! -e "${pthLog}/batch-custom-${saQCoreN}-fixed-d8.log" ]; then
       for File in `find /data/disk/*/static/*/${saQIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
@@ -1534,7 +1532,7 @@ fix_core_dgd() {
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
     && [ -e "${saXPatch}" ]; then
-    if [ -d "/data/disk" ] \
+    if [ -d "/data/u" ] \
       && [ ! -e "${pthLog}/batch-custom-${saXCoreN}-finally-fixed-d6.log" ]; then
       for File in `find /data/disk/*/static/*/${saXIncDb} \
         -maxdepth 0 -mindepth 0 | sort`; do
@@ -2062,7 +2060,7 @@ update_boa_tools() {
   fi
   mkdir -p ${optBin}
   rm -f ${usrBin}/{autoinit*,barracuda*,boa*,fancynow*,killer*,octopus*}
-  if [ ! -e "/data/disk" ]; then
+  if [ ! -d "/data/u" ]; then
     ln -s ${optBin}/autoinit  ${usrBin}/autoinit
     ln -s ${optBin}/barracuda ${usrBin}/barracuda
     ln -s ${optBin}/boa       ${usrBin}/boa

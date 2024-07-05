@@ -192,7 +192,7 @@ for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     fi
   fi
 done
-if [ -e "/data/disk" ]; then
+if [ -d "/data/u" ]; then
   chckSts="OCT ${_OCT_NR} ${chckSts} "
   _ALL_SITES_NR=$(ls /data/disk/*/config/server_master/nginx/vhost.d | wc -l)
   _ALL_SITES_NR=$(( _ALL_SITES_NR - _OCT_NR ))

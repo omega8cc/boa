@@ -612,7 +612,7 @@ if_redis_restart() {
     fi
   fi
 }
-[ -e "/data/disk" ] && if_redis_restart
+[ -d "/data/u" ] && if_redis_restart
 
 if_nginx_restart() {
   PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
@@ -633,7 +633,7 @@ if_nginx_restart() {
     fi
   fi
 }
-[ -e "/data/disk" ] && if_nginx_restart
+[ -d "/data/u" ] && if_nginx_restart
 
 if [ -e "/root/.mysqladmin.monitor.cnf" ]; then
   _SQLMONITOR=YES

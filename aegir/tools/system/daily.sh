@@ -2923,7 +2923,7 @@ action() {
 }
 
 ###--------------------###
-[ ! -e "/data/disk" ] && exit 1
+[ ! -d "/data/u" ] && exit 1
 echo "INFO: Daily maintenance start"
 while [ -e "/var/run/boa_wait.pid" ]; do
   echo "Waiting for BOA queue availability..."
@@ -3216,7 +3216,7 @@ else
       sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf                      &> /dev/null
       wait
     fi
-    if [ -e "/data/disk" ]; then
+    if [ -d "/data/u" ]; then
       sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /data/disk/*/config/server_*/nginx/vhost.d/*
     fi
     if [ -e "/var/aegir/config" ]; then
