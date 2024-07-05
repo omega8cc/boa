@@ -556,12 +556,10 @@ virt_detection() {
         echo
       fi
       msg "VIRT: This system is supported: ${_VIRT_IS}"
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        echo
-        msg "HINT: Command to run in another terminal window to watch details"
-        msg "CMND: tail -f ${_LOG}"
-        echo
-      fi
+      echo
+      msg "HINT: Command to run in another terminal window to watch details"
+      msg "CMND: tail -f ${_LOG}"
+      echo
     else
       if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
         _VIRT_TEST="unknown / not a virtual machine"
