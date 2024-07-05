@@ -1414,6 +1414,9 @@ php_if_versions_cleanup_cnf() {
   else
     _AUTO_PHP_CLEANUP=NO
   fi
+  if [ ! -e "/data/disk" ]; then
+    _AUTO_PHP_CLEANUP=NO
+  fi
   if [ -e "/var/aegir/host_master/000/placeholder_dont_remove.txt" ] \
     && [ "${_AUTO_PHP_CLEANUP}" = "YES" ]; then
     if [ -e "/root/.mstr.clstr.cnf" ] \
@@ -1961,7 +1964,9 @@ barracuda_cnf() {
       echo "_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}" >> ${barCnf}
     fi
 
-    php_legacy_versions_cleanup_cnf
+    if [ -e "/data/disk" ]; then
+      php_legacy_versions_cleanup_cnf
+    fi
 
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION ${barCnf} 2>&1)
     if [[ ! "${_PHP_FPM_VERSION_TEST}" =~ "_PHP_FPM_VERSION" ]]; then
@@ -4896,8 +4901,8 @@ finale() {
   [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
   [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
   [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
-  rm -f /var/aegir/.drush/.alias.drushrc.php
-  rm -f /data/disk/*/.drush/.alias.drushrc.php
+  [ -e "/var/aegir/.drush/.alias.drushrc.php" ] && rm -f /var/aegir/.drush/.alias.drushrc.php
+  [ -e "/data/disk" ] && rm -f /data/disk/*/.drush/.alias.drushrc.php
   rm -f ${pthLog}/protected-vhosts-clean.log
   rm -f ${vBs}/.auth.IP.list*
   sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \

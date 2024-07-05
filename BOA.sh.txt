@@ -359,6 +359,7 @@ update_agents() {
 
   if [ "${_VMFAMILY}" = "HOSTED" ] \
     && [ -e "/var/aegir/drush" ] \
+    && [ -e "/data/disk" ] \
     && [ -e "/var/xdrago" ]; then
     [ ! -e "/root/.fast.cron.cnf" ] && echo ON > /root/.fast.cron.cnf
     PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
@@ -886,6 +887,7 @@ update_agents() {
   if [ -e "/opt/tools/drush" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
+    && [ -e "/data/disk" ] \
     && [ ! -e "${pthLog}/dispatch.ctrl.${tRee}.${_X_SE}.pid" ]; then
     sed -i "s/.*cache.*//g; s/.*cc drush.*//g; s/ *$//g; /^$/d" /data/disk/*/aegir.sh
     touch ${pthLog}/dispatch.ctrl.${tRee}.${_X_SE}.pid
@@ -1208,6 +1210,7 @@ fix_core_dgd() {
   # SA-CORE for Octopus hostmaster platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
+    && [ -e "/data/disk" ] \
     && [ -e "${saPatch}" ]; then
     if [ -d "/data/all" ] \
       && [ ! -e "${pthLog}/hostmaster-octopus-${saCoreN}-fixed-d7.log" ]; then
@@ -1318,6 +1321,7 @@ fix_core_dgd() {
   # SA-CORE for custom D7 platforms
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
+    && [ -e "/data/disk" ] \
     && [ -e "${saPatch}" ]; then
     if [ -d "/data/disk" ] \
       && [ ! -e "${pthLog}/batch-custom-${saCoreN}-fixed-d7.log" ]; then
@@ -1394,6 +1398,7 @@ fix_core_dgd() {
   # SA-CORE for D8 platforms in ~/static
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/drush" ] \
+    && [ -e "/data/disk" ] \
     && [ -e "${saQPatch}" ]; then
     if [ -d "/data/disk" ] \
       && [ ! -e "${pthLog}/batch-custom-${saQCoreN}-fixed-d8.log" ]; then

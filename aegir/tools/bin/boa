@@ -1796,7 +1796,7 @@ display_info() {
     if [ -e "/var/log/barracuda_log.txt" ]; then
       if [ "${mode}" = "report" ]; then
         display="system"
-        if [ "${extra}" = "octopus" ]; then
+        if [ "${extra}" = "octopus" ] && [ -e "/data/disk" ]; then
           grep _PHP_CLI_VERSION /root/.*.octopus.cnf
           echo
           grep _PHP_FPM_VERSION /root/.*.octopus.cnf

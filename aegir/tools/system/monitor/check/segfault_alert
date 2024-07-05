@@ -9,6 +9,9 @@ $ENV{'PATH'} = '/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin
 ### This is a segfault monitor for php-fpm and nginx
 ###
 
+if (!-e "/data/disk/") {
+  exit;
+}
 $| = 1;
 $this_filename = "segfault_alert";
 $s=`uname -n 2>&1`;

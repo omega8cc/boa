@@ -2923,6 +2923,7 @@ action() {
 }
 
 ###--------------------###
+[ ! -e "/data/disk" ] && exit 1
 echo "INFO: Daily maintenance start"
 while [ -e "/var/run/boa_wait.pid" ]; do
   echo "Waiting for BOA queue availability..."
