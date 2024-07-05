@@ -45,6 +45,34 @@ bring_all_ram_cpu_online() {
 }
 bring_all_ram_cpu_online
 
+if_disable_not_used_services() {
+  if [ ! -e "/root/.allow.clamav.cnf" ] || [ -e "/root/.deny.clamav.cnf" ]; then
+    if [ -e "/etc/init.d/clamav-daemon" ]; then
+      update-rc.d -f clamav-daemon remove &> /dev/null
+      mv -f /etc/init.d/clamav-daemon /var/backups/
+    fi
+    if [ -e "/etc/init.d/clamav-freshclam" ]; then
+      update-rc.d -f clamav-freshclam remove &> /dev/null
+      mv -f /etc/init.d/clamav-freshclam /var/backups/
+    fi
+    kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}') &> /dev/null
+    kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
+  fi
+  if [ -e "/root/.deny.java.cnf" ]; then
+    if [ -e "/etc/init.d/solr7" ]; then
+      update-rc.d -f solr7 remove &> /dev/null
+      mv -f /etc/init.d/solr7 /var/backups/
+    fi
+    if [ -e "/etc/init.d/jetty9" ]; then
+      update-rc.d -f jetty9 remove &> /dev/null
+      mv -f /etc/init.d/jetty9 /var/backups/
+    fi
+    kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
+    kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+  fi
+}
+if_disable_not_used_services
+
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
