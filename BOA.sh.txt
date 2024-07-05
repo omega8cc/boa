@@ -1763,8 +1763,8 @@ fix_log4j() {
 
 fix_authorized_keys() {
   if [ ! -e "${pthLog}/fix_authorized_keys.ctrl.${tRee}.${_X_SE}.pid" ]; then
-    chmod 0600 /home/*/.ssh/authorized_keys
-    chmod 0700 /home/*/.ssh
+    chmod 0600 /home/*/.ssh/authorized_keys &> /dev/null
+    chmod 0700 /home/*/.ssh &> /dev/null
     touch ${pthLog}/fix_authorized_keys.ctrl.${tRee}.${_X_SE}.pid
   fi
 }
