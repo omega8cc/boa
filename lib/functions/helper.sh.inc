@@ -559,7 +559,6 @@ virt_detection() {
       echo
       msg "HINT: Command to run in another terminal window to watch details"
       msg "CMND: tail -f ${_LOG}"
-      echo
     else
       if [ -z "${_VIRT_TEST}" ] || [ "${_VIRT_TEST}" = "0" ]; then
         _VIRT_TEST="unknown / not a virtual machine"
