@@ -52,15 +52,15 @@ case "$1" in
     ntpdate pool.ntp.org > /dev/null 2>&1 &
     if [ -e "/root/.run-to-daedalus.cnf" ]; then
       if [ -x "/opt/local/bin/autodaedalus" ]; then
-        bash /opt/local/bin/autodaedalus > /dev/null 2>&1 &
+        nohup /opt/local/bin/autodaedalus > /dev/null 2>&1 &
       fi
     elif [ -e "/root/.run-to-chimaera.cnf" ]; then
       if [ -x "/opt/local/bin/autochimaera" ]; then
-        bash /opt/local/bin/autochimaera > /dev/null 2>&1 &
+        nohup /opt/local/bin/autochimaera > /dev/null 2>&1 &
       fi
     elif [ -e "/root/.run-to-beowulf.cnf" ]; then
       if [ -x "/opt/local/bin/autobeowulf" ]; then
-        bash /opt/local/bin/autobeowulf > /dev/null 2>&1 &
+        nohup /opt/local/bin/autobeowulf > /dev/null 2>&1 &
       fi
     fi
     if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
