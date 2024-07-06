@@ -161,7 +161,7 @@ check_sql_running() {
     || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     echo "INFO: Waiting for MySQLD availability..."
-    sleep 3
+    sleep 5
   done
 }
 
@@ -572,24 +572,13 @@ up_action() {
         fi
         ###
 
-        sleep 3
-        if [ -e "${vBs}/${filIncB}" ]; then
-          sed -i "s/^_PHP_SIN.*/_PHP_SINGLE_INSTALL=${phpS}/g" ${vBs}/${filIncB}
-          wait
-          sed -i "s/^_PHP_MUL.*/_PHP_MULTI_INSTALL=${phpS}/g"  ${vBs}/${filIncB}
-          wait
-          sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"  ${vBs}/${filIncB}
-          wait
-          sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"  ${vBs}/${filIncB}
-        fi
-        ### Legacy method
-        sed -i "s/^_PHP_SINGL.*/_PHP_SINGLE_INSTALL=${phpS}/g" ${vBs}/${barName}
+        sed -i "s/^_PHP_SIN.*/_PHP_SINGLE_INSTALL=${phpS}/g"   ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_MULTI.*/_PHP_MULTI_INSTALL=${phpS}/g"  ${vBs}/${barName}
+        sed -i "s/^_PHP_MUL.*/_PHP_MULTI_INSTALL=${phpS}/g"    ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"    ${vBs}/${barName}
+        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"    ${vBs}/${filIncB}
         wait
-        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"    ${vBs}/${barName}
+        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"    ${vBs}/${filIncB}
         wait
         sed -i "s/^_PHP_SINGL.*/_PHP_SINGLE_INSTALL=${phpS}/g"         ${barCnf}
         wait
@@ -605,7 +594,6 @@ up_action() {
         sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g" \
           /root/.*.octopus.cnf &> /dev/null
         wait
-        sleep 3
 
         ### Debugging
         if [ "$debug" = "debug" ]; then
@@ -643,8 +631,6 @@ up_action() {
         fi
         ###
 
-        sleep 3
-        if [ -e "${vBs}/${filIncB}" ]; then
         sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=/g"       ${vBs}/${filIncB}
         wait
         sed -i "s/^_PHP_MU.*/_PHP_MULTI_INSTALL=\"${phpM}\"/g" ${vBs}/${filIncB}
@@ -652,16 +638,6 @@ up_action() {
         sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"    ${vBs}/${filIncB}
         wait
         sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"    ${vBs}/${filIncB}
-        wait
-        fi
-        ### Legacy method
-        sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=/g"       ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_MU.*/_PHP_MULTI_INSTALL=\"${phpM}\"/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${phpS}/g"    ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${phpS}/g"    ${vBs}/${barName}
         wait
         sed -i "s/^_PHP_SINGL.*/_PHP_SINGLE_INSTALL=/g"                ${barCnf}
         wait
@@ -677,7 +653,6 @@ up_action() {
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${phpS}/g" \
           /root/.*.octopus.cnf &> /dev/null
         wait
-        sleep 3
 
         ### Debugging
         if [ "$debug" = "debug" ]; then
@@ -729,26 +704,13 @@ up_action() {
       sed -i "s/^_REDIS_MAJOR_RELEASE=.*/_REDIS_MAJOR_RELEASE=7/g"     ${barCnf}
       wait
     else
-      if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${rlse}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${filIncB}
-        wait
-      fi
-      ### Legacy method
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${barName}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
       wait
-      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${brnch}/g"  ${vBs}/${barName}
+      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g"   ${vBs}/${filIncB}
       wait
-      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g" ${vBs}/${filIncB}
+      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${rlse}/g"   ${vBs}/${filIncB}
       wait
-      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${rlse}/g" ${vBs}/${filIncB}
-      wait
-      sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${filIncB}
+      sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"           ${vBs}/${filIncB}
       wait
     fi
     if [ "${cmmand}" = "up-dev" ] \
@@ -762,24 +724,12 @@ up_action() {
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncB}
       wait
     else
-      if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${filIncB}
-        wait
-      fi
-      ### Legacy method
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${barName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncB}
       wait
     fi
-    if [ -e "${vBs}/${filIncB}" ]; then
-      sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"               ${vBs}/${filIncB}
-      wait
-      sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"   ${vBs}/${filIncB}
-      wait
-    fi
-    ### Legacy method
-    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${barName}
+    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${filIncB}
     wait
-    sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"     ${vBs}/${barName}
+    sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"     ${vBs}/${filIncB}
     wait
     ### Force HTTP/2 or SPDY plus PFS on supported systems
     sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                       ${barCnf}
@@ -914,7 +864,7 @@ up_action() {
           echo "NOTE: There will be no progress displayed in the console"
           echo "but you will receive an email once the upgrade is complete"
           echo
-          sleep 5
+          sleep $n
           echo "You could watch the progress in another window with command:"
           echo "  tail -f ${_UP_LOG}"
           echo "or wait until you will see the line: BARRACUDA upgrade completed"
@@ -930,58 +880,45 @@ up_action() {
         fi
         if [ "${silent}" = "system" ]; then
           touch /var/run/boa_system_wait.pid
-          if [ "${cmmand}" = "up-2.2" ] \
-            || [ "${cmmand}" = "up-2.3" ]; then
-            sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"      ${vBs}/${barName}
+          if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
+            && [ -d "/var/aegir/config/server_master/nginx/subdir.d" ]; then
+            sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=YES/g" ${vBs}/${filIncB}
             wait
-            sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"              ${barCnf}
+            sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=YES/g"         ${barCnf}
             wait
           else
-            if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
-              && [ -d "/var/aegir/config/server_master/nginx/subdir.d" ]; then
-              if [ -e "${vBs}/${filIncB}" ]; then
-                sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"  ${vBs}/${filIncB}
-                wait
-              fi
-              ### Legacy method
-              sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"    ${vBs}/${barName}
-              wait
-              sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"            ${barCnf}
-              wait
-            else
-              if [[ "${_CHECK_HOST}" =~ "v55.lon." ]] \
-                || [[ "${_CHECK_HOST}" =~ ".lon1.h" ]]; then
-                if [ -e "${vBs}/${filIncB}" ]; then
-                sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"  ${vBs}/${filIncB}
-                wait
-                fi
-                ### Legacy method
-                sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"  ${vBs}/${barName}
-                wait
-                sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=YES/g"          ${barCnf}
-                wait
-              else
-                if [ -e "${vBs}/${filIncB}" ]; then
-                  sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=NO/g" ${vBs}/${filIncB}
-                  wait
-                fi
-                ### Legacy method
-                sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=NO/g"   ${vBs}/${barName}
-                wait
-                sed -i "s/^_SYS.*/_SYSTEM_UPGRADE_ONLY=NO/g"           ${barCnf}
-                wait
-              fi
-            fi
+            sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"  ${vBs}/${filIncB}
+            wait
+            sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"          ${barCnf}
+            wait
           fi
-          sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"  ${barCnf}
+          sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"     ${vBs}/${filIncB}
+          wait
+          sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"             ${barCnf}
           wait
           bash ${vBs}/${barName} >${_UP_LOG} 2>&1
           wait
           check_report
         elif [ "${silent}" = "log" ]; then
+          sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"    ${vBs}/${filIncB}
+          wait
           sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"            ${barCnf}
           wait
-          sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"  ${barCnf}
+          sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"     ${vBs}/${filIncB}
+          wait
+          sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"             ${barCnf}
+          wait
+          bash ${vBs}/${barName} >${_UP_LOG} 2>&1
+          wait
+          check_report
+        elif [ "${silent}" = "aegir" ]; then
+          sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"    ${vBs}/${filIncB}
+          wait
+          sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"            ${barCnf}
+          wait
+          sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=YES/g"    ${vBs}/${filIncB}
+          wait
+          sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=YES/g"            ${barCnf}
           wait
           bash ${vBs}/${barName} >${_UP_LOG} 2>&1
           wait
@@ -1000,9 +937,13 @@ up_action() {
           wait
         fi
       else
+        sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"      ${vBs}/${filIncB}
+        wait
         sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=NO/g"              ${barCnf}
         wait
-        sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"    ${barCnf}
+        sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"       ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_AEGIR_UP.*/_AEGIR_UPGRADE_ONLY=NO/g"               ${barCnf}
         wait
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=NO/g"                      ${barCnf}
         wait

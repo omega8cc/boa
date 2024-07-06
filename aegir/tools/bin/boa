@@ -509,12 +509,10 @@ octopus_install() {
         wait
         sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${pxyi}/g"   ${vBs}/${octName}
         wait
-        if [ -e "${vBs}/${filIncO}" ]; then
-          sed -i "s/^_THIS_DB_PORT=.*/_THIS_DB_PORT=${pxyc}/g" ${vBs}/${filIncO}
-          wait
-          sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${pxyi}/g" ${vBs}/${filIncO}
-          wait
-        fi
+        sed -i "s/^_THIS_DB_PORT=.*/_THIS_DB_PORT=${pxyc}/g"   ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${pxyi}/g"   ${vBs}/${filIncO}
+        wait
       fi
       if [ ! -z "${copt}" ]; then
         sed -i "s/^_CLIENT_OPTION=.*/_CLIENT_OPTION=${copt}/g" ${vBs}/${octName}
@@ -537,12 +535,10 @@ octopus_install() {
     sed -i "s/^_USER=.*/_USER=${user}/g"                       ${vBs}/${octName}
     wait
 
-    if [ -e "${vBs}/${filIncO}" ]; then
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${filIncO}
-      wait
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"    ${vBs}/${filIncO}
-      wait
-    fi
+    sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                 ${vBs}/${filIncO}
+    wait
+    sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"      ${vBs}/${filIncO}
+    wait
 
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
@@ -676,84 +672,69 @@ barracuda_install() {
   if [ -e "${vBs}/${barName}" ]; then
 
     sed -i "s/^127.0.1.1.*//g" /etc/hosts
-    wait
 
-    if [ -e "${vBs}/${filIncB}" ]; then
-      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"${email}\"/g"        ${vBs}/${filIncB}
-      wait
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${filIncB}
-      wait
-    fi
+    sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"${email}\"/g"          ${vBs}/${filIncB}
+    wait
+    sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                 ${vBs}/${filIncB}
+    wait
 
     if [ "${kind}" = "local" ]; then
       echo "127.0.1.1 aegir.local o1.sub.aegir.local \
         o2.sub.aegir.local o3.sub.aegir.local" >> /etc/hosts
-      if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=LOCAL/g"         ${vBs}/${filIncB}
-        wait
-      fi
+      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=LOCAL/g"           ${vBs}/${filIncB}
+      wait
     elif [ "${kind}" = "public" ] && [ ! -z "${fqdn}" ]; then
-      if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
-        wait
-      fi
+      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"          ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${filIncB}
+      wait
     elif [ "${kind}" = "mstr" ] \
       && [ ! -z "${fqdn}" ] \
       && [ ! -z "${dbip}" ] \
       && [ ! -z "${loip}" ] \
       && [ "${cmmand}" = "in-cluster" ]; then
       touch /root/.mstr.clstr.cnf
-      if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=MSTR/g"          ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"   ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"           ${vBs}/${filIncB}
-        wait
-      fi
+      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=MSTR/g"            ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"     ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"             ${vBs}/${filIncB}
+      wait
     elif [ "${kind}" = "dbhd" ] \
       && [ ! -z "${fqdn}" ] \
       && [ ! -z "${dbip}" ] \
       && [ ! -z "${loip}" ] \
       && [ "${cmmand}" = "in-cluster" ]; then
       touch /root/.dbhd.clstr.cnf
-      if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=DBHD/g"          ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"   ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"           ${vBs}/${filIncB}
-        wait
-      fi
+      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=DBHD/g"            ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"     ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"             ${vBs}/${filIncB}
+      wait
     elif [ "${kind}" = "wbhd" ] \
       && [ ! -z "${fqdn}" ] \
       && [ ! -z "${dbip}" ] \
       && [ ! -z "${loip}" ] \
       && [ "${cmmand}" = "in-cluster" ]; then
       touch /root/.wbhd.clstr.cnf
-      if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=WBHD/g"          ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"   ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"           ${vBs}/${filIncB}
-        wait
-      fi
+      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=WBHD/g"            ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"     ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"             ${vBs}/${filIncB}
+      wait
     else
-      if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
-        wait
-      fi
+      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"          ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${filIncB}
+      wait
     fi
 
     if [ ! -z "${fqdn}" ] \
@@ -871,16 +852,14 @@ barracuda_install() {
       sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"           ${vBs}/${filIncB}
       wait
     else
-      if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${tRee}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${filIncB}
-        wait
-      fi
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g"   ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${tRee}/g"   ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"           ${vBs}/${filIncB}
+      wait
     fi
 
     if [ "${cmmand}" = "in-dev" ] \
@@ -893,19 +872,17 @@ barracuda_install() {
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncB}
       wait
     else
-      if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${filIncB}
-        wait
-      fi
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncB}
+      wait
     fi
 
-    if [ "${output}" = "logged" ] || [ "${output}" = "system" ]; then
+    if [ "${output}" = "logged" ]; then
       n=$((RANDOM%9+2))
       echo
-      if [ "${output}" = "system" ]; then
-        echo "Preparing to install Barracuda and Octopus in silent mode..."
+      if [ "${system}" = "bundle" ]; then
+        echo "Preparing to install Barracuda and Octopus in almost silent mode..."
       else
-        echo "Preparing to install only Barracuda in silent mode..."
+        echo "Preparing to install only Barracuda in almost silent mode..."
       fi
       echo
       echo "NOTE: There will be no progress displayed in this console"
