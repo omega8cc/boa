@@ -718,7 +718,7 @@ up_action_all() {
           if [ -e "${vBs}/${octName}" ]; then
             sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"             ${vBs}/${octName}
             wait
-            sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"         ${vBs}/${filIncO}
+            sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"         ${vBs}/${tocIncO}
             wait
             sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"         ${octCnf}
             wait
@@ -787,7 +787,7 @@ up_action_one() {
         if [ -e "${vBs}/${octName}" ]; then
           sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"               ${vBs}/${octName}
           wait
-          sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"           ${vBs}/${filIncO}
+          sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"           ${vBs}/${tocIncO}
           wait
           sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"           ${octCnf}
           wait
