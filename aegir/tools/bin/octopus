@@ -758,7 +758,7 @@ up_action_one() {
       octCnf="/root/.${octUsr}.octopus.cnf"
       echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
       echo Octopus upgrade for User ${User}
-      sleep 3
+      n=$((RANDOM%9+2))
 
       ### Enable debugging if requested
       if [ -e "/root/.debug-boa-installer.cnf" ] \
@@ -777,7 +777,7 @@ up_action_one() {
         echo "NOTE: There will be no progress displayed in the console"
         echo "but you will receive an email once the upgrade is complete"
         echo
-        sleep 5
+        sleep $n
         echo "You could watch the progress in another window with command:"
         echo "  tail -f ${_UP_LOG}"
         echo "or wait until you will see the line: OCTOPUS upgrade completed"
