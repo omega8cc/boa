@@ -1213,24 +1213,13 @@ init_setup() {
     wait
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncO}
     wait
-  else
-    sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"        ${vBs}/${filIncB}
-    wait
-    sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"        ${vBs}/${filIncO}
-    wait
   fi
   if [ -e "/root/.debug-barracuda-installer.cnf" ]; then
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncB}
     wait
-  else
-    sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"        ${vBs}/${filIncB}
-    wait
   fi
   if [ -e "/root/.debug-octopus-installer.cnf" ]; then
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncO}
-    wait
-  else
-    sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"        ${vBs}/${filIncO}
     wait
   fi
   if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
