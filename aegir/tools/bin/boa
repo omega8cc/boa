@@ -623,7 +623,7 @@ octopus_install() {
     if [ "${output}" = "logged" ]; then
       n=$((RANDOM%9+2))
       echo
-      echo "Preparing to install Octopus in silent mode..."
+      echo "Preparing to install Octopus in almost silent mode..."
       echo
       echo "NOTE: There will be no progress displayed in this console"
       echo "but you will receive an email once the installation is complete"
@@ -643,7 +643,7 @@ octopus_install() {
     fi
 
     if [ -e "${vBs}/${octName}" ]; then
-      if [ "${output}" = "logged" ]; then
+      if [ "${output}" = "logged" ] || [ "${output}" = "onlylogged" ]; then
         bash ${vBs}/${octName} >${_IN_OCTOPUS_LOG} 2>&1
       else
         bash ${vBs}/${octName}
@@ -903,7 +903,7 @@ barracuda_install() {
     fi
 
     if [ -e "${vBs}/${barName}" ]; then
-      if [ "${output}" = "logged" ]; then
+      if [ "${output}" = "logged" ] || [ "${output}" = "onlylogged" ]; then
         bash ${vBs}/${barName} >${_IN_BARRACUDA_LOG} 2>&1
       else
         bash ${vBs}/${barName}
@@ -1011,15 +1011,26 @@ init_setup() {
       output="logged"
       copt=
     elif [ "${copt}" = "silent" ]; then
-      output="logged"
+      output="onlylogged"
       copt=
     elif [ "${copt}" = "system" ]; then
+      output="logged"
+      copt=
+    elif [ "${copt}" = "minimal" ]; then
       output="logged"
       copt=
     else
       output="verbose"
     fi
     if [ "${output}" = "logged" ] \
+      || [ -z "${copt}" ] \
+      || [ -z "${csub}" ] \
+      || [ -z "${ccor}" ]; then
+      copt=MICRO
+      csub=Q
+      ccor=1
+    fi
+    if [ "${output}" = "onlylogged" ] \
       || [ -z "${copt}" ] \
       || [ -z "${csub}" ] \
       || [ -z "${ccor}" ]; then
@@ -1116,6 +1127,16 @@ init_setup() {
     if [ "${user}" = "silent" ] \
       || [ "${extra}" = "silent" ] \
       || [ "${output}" = "silent" ]; then
+      output="onlylogged"
+      system="bundle"
+    elif [ "${user}" = "minimal" ] \
+      || [ "${extra}" = "minimal" ] \
+      || [ "${output}" = "minimal" ]; then
+      output="logged"
+      system="bundle"
+    elif [ "${user}" = "octolog" ] \
+      || [ "${extra}" = "octolog" ] \
+      || [ "${output}" = "octolog" ]; then
       output="logged"
       system="bundle"
     elif [ "${user}" = "system" ] \
@@ -2137,9 +2158,10 @@ case "$1" in
 
   {output}
       verbose <------ barracuda and octopus installed (output in the console) (default)
-      silent <------- barracuda and octopus installed (output logged)
-      system <------- only barracuda is installed (output logged)
-      octolog <------ for boa in-octopus (output logged)
+      minimal <------ barracuda and octopus installed (output mostly logged)
+      silent <------- barracuda and octopus installed (output only logged)
+      system <------- only barracuda is installed (output mostly logged)
+      octolog <------ for boa in-octopus (output mostly logged)
 
   {other}
       version <------ display BOA and OS version
