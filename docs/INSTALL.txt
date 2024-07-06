@@ -66,6 +66,11 @@
 
    $ autoinit
 
+   NOTE: You can omit this steps and run boa install as explained the step 5.
+         It will record your command, run autoinit for you and then will run
+         your boa install command automatically. Once complete, you should
+         receive an email from the system with all output details logged.
+
    NOTE: It's recommended that you simply wait 10 minutes and then log in back
          to inspect autoinit logs to make sure there is a line at the bottom
          saying: "Time for reboot and then you can run boa install"

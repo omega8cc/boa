@@ -239,6 +239,25 @@ else
   silentMode=silent
 fi
 
+if_launch_boa_install() {
+  _BOA_LOGFILE="/root/.boa.install.command.cnf"
+  if [[ -s "${_BOA_LOGFILE}" ]]; then
+    _BOA_COMMAND=$(cat "${_BOA_LOGFILE}")
+    if [[ "${_BOA_COMMAND}" =~ " silent" ]] \
+      || [[ "${_BOA_COMMAND}" =~ " system" ]]; then
+      _BOA_INSTALL_COMMAND="${_BOA_COMMAND}"
+    else
+      _BOA_INSTALL_COMMAND="${_BOA_COMMAND} silent"
+    fi
+    if [[ "${_BOA_COMMAND}" =~ "boa in-lite" ]] \
+      || [[ "${_BOA_COMMAND}" =~ "boa in-dev" ]]; then
+      eval "${_BOA_INSTALL_COMMAND}"
+      wait
+      mv -f ${_BOA_LOGFILE} /var/backups/
+    fi
+  fi
+}
+
 disable_apparmor_utils() {
   if [ -e "/etc/apparmor.d" ] && [ -e "/var/cache/apparmor" ]; then
     rm -rf /var/cache/apparmor/* >> ${logSlt}
@@ -458,13 +477,15 @@ init_run_two_quick() {
     msg "Time for reboot and then you can run boa install" >> ${logInt}
     rm -f /root/.init-to-devuan-ctrl.cnf
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+    install_apparmor_utils
+    if_launch_boa_install
   else
+    install_apparmor_utils
     msg "Time for reboot and next upgrade cycle..." >> ${logInt}
   fi
   echo " " >> ${logInt}
   sleep 5
   touch /root/.run-two-devuan-quick.cnf
-  install_apparmor_utils
   rm -f /var/run/autoinit.pid
   reboot
   exit 0

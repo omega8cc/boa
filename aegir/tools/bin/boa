@@ -990,6 +990,28 @@ init_finish() {
 init_setup() {
 
   if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
+
+    if [ ! -e "/root/.autoinit.log" ] || [ -e "/lib/systemd/systemd" ]; then
+      # Explain the procedure
+      echo
+      echo "  Since this system is not ready for Octopus installation yet,"
+      echo "  we will run the 'autoinit' for you first, reboot and then"
+      echo "  you can install BOA first and then add more Octopus instances"
+      echo
+      echo "  NOTE: All required autoinit steps are automated"
+      echo
+      echo "  Feel free to log out now and check back after 10 minutes"
+      echo
+      echo "  PLEASE DON'T REBOOT THIS SERVER WHILE THE PROCEDURE IS RUNNING!"
+      echo
+      echo "  Bye!"
+      echo
+      # Execute the autonit and exit
+      nohup /usr/local/bin/autoinit > /dev/null 2>&1 &
+      sleep 1
+      clean_pid_exit
+    fi
+
     if [ -e "/root/.dev.server.cnf" ]; then
       echo
       echo RAWV tRee is ${tRee}
@@ -1049,6 +1071,42 @@ init_setup() {
       echo
     fi
   fi
+
+  # Define the BOA log file for use after autoinit
+  _BOA_LOGFILE="/root/.boa.install.command.cnf"
+
+  # Capture the complete command with arguments
+  _BOA_COMMAND="$0 $@"
+
+  if [ "${cmmand}" = "in-lite" ] \
+    || [ "${cmmand}" = "in-dev" ] \
+    || [ "${cmmand}" = "in-cluster" ]; then
+    if [ ! -e "/root/.autoinit.log" ] || [ -e "/lib/systemd/systemd" ]; then
+      # Write the command to the log file
+      echo "${_BOA_COMMAND}" > "${_BOA_LOGFILE}"
+      # Explain the procedure
+      echo
+      echo "  Since this system is not ready for BOA installation yet,"
+      echo "  we will run the 'autoinit' for you first, reboot and then"
+      echo "  your original boa command will be run in a silent mode"
+      echo
+      echo "  NOTE: All those steps are automated"
+      echo
+      echo "  Feel free to log out now and check back after 30-40 minutes"
+      echo
+      echo "  PLEASE DON'T REBOOT THIS SERVER WHILE THE PROCEDURE IS RUNNING!"
+      echo
+      echo "  You should receive an email once the installation is complete"
+      echo "  Bye!"
+      echo
+      # Execute the autonit and exit
+      nohup /usr/local/bin/autoinit > /dev/null 2>&1 &
+      sleep 1
+      clean_pid_exit
+    fi
+  fi
+
+  check_no_systemd
 
   if [ "${cmmand}" = "in-lite" ] \
     || [ "${cmmand}" = "in-dev" ] \
@@ -1964,7 +2022,6 @@ octopus_cleanup() {
 }
 
 check_root_direct
-check_no_systemd
 os_detection_minimal
 
 case "$1" in
