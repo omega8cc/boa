@@ -857,7 +857,8 @@ up_action() {
           n=$((RANDOM%300+80))
         fi
         if [ "${silent}" = "log" ] \
-          || [ "${silent}" = "system" ]; then
+          || [ "${silent}" = "system" ] \
+          || [ "${silent}" = "aegir" ]; then
           echo
           echo "Preparing the upgrade in silent mode..."
           echo
@@ -1574,8 +1575,9 @@ proceed() {
       php-idle <----- disable not used PHP versions or enable them again
 
   {mode}
-      system <------- upgrade only system without Aegir Master Hostmaster
-      log <---------- upgrade both system and Aegir Master in silent mode
+      system <------- upgrade only system without Aegir Master (silent mode)
+      aegir <-------- upgrade only Aegir Master Hostmaster (silent mode)
+      log <---------- upgrade both system and Aegir Master (silent mode)
 
   {options}
       newrelickey <-- activate New Relic integration with valid license key

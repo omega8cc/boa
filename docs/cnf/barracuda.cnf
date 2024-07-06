@@ -87,7 +87,7 @@ _CUSTOM_CONFIG_LSHELL=NO #------ Protects custom Limited Shell config when YES
 _CUSTOM_CONFIG_REDIS=NO #------- Protects custom Redis config when YES
 _CUSTOM_CONFIG_SQL=NO #--------- Protects custom SQL config when YES
 ###
-_AEGIR_UPGRADE_ONLY=NO #-------- Run only Aegir upgrade when YES (deprecated)
+_AEGIR_UPGRADE_ONLY=NO #-------- Managed on the fly with 'aegir' keyword
 _SYSTEM_UPGRADE_ONLY=NO #------- Managed on the fly with 'system' keyword
 ###
 _SYS_COLLATION_SQL= #----------- By default on the DB server: utf8mb4_unicode_ci
