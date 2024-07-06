@@ -1226,11 +1226,16 @@ init_setup() {
     _OCTOPUS_ONLY=YES
   else
     barracuda_install
-    echo
-    echo "Time for a quick barracuda system upgrade to complete installation"
-    echo
-    /opt/local/bin/barracuda up-${tRee} system
-    wait
+    if [ "${output}" = "verbose" ]; then
+      echo
+      echo "Time for a quick barracuda system upgrade to complete installation"
+      echo
+      /opt/local/bin/barracuda up-${tRee} system
+      wait
+    else
+      /opt/local/bin/barracuda up-${tRee} system > /dev/null 2>&1
+      wait
+    fi
   fi
   if [ "${kind}" != "dbhd" ] && [ "${system}" = "bundle" ]; then
     octopus_install
