@@ -690,6 +690,16 @@ up_action_all() {
         n=$((RANDOM%9+2))
         echo Waiting $n seconds...
         sleep $n
+
+        ### Enable debugging if requested
+        if [ -e "/root/.debug-boa-installer.cnf" ] \
+          || [ -e "/root/.debug-octopus-installer.cnf" ]; then
+          sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"         ${vBs}/${tocIncO}
+          wait
+          sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"         ${octCnf}
+          wait
+        fi
+
         if [ "${silent}" = "log" ]; then
           _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${octUsr}-${_NOW}.log"
           echo
@@ -749,6 +759,16 @@ up_action_one() {
       echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
       echo Octopus upgrade for User ${User}
       sleep 3
+
+      ### Enable debugging if requested
+      if [ -e "/root/.debug-boa-installer.cnf" ] \
+        || [ -e "/root/.debug-octopus-installer.cnf" ]; then
+        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"           ${vBs}/${tocIncO}
+        wait
+        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"           ${octCnf}
+        wait
+      fi
+
       if [ "${silent}" = "log" ]; then
         _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${octUsr}-${_NOW}.log"
         echo

@@ -534,6 +534,15 @@ up_action() {
         fi
       fi
 
+      ### Enable debugging if requested
+      if [ -e "/root/.debug-boa-installer.cnf" ] \
+        || [ -e "/root/.debug-barracuda-installer.cnf" ]; then
+        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"           ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                   ${barCnf}
+        wait
+      fi
+
       ### Debugging
       if [ "$debug" = "debug" ]; then
         echo rkey is ${rkey}

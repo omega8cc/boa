@@ -633,15 +633,6 @@ satellite_cnf() {
       _LD_DOM=NO
     fi
 
-    if [ -e "/root/.debug-boa-installer.cnf" ] \
-      || [ -e "/root/.debug-octopus-installer.cnf" ]; then
-      _DEBUG_MODE=YES
-      sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g" ${octCnf}
-    else
-      _DEBUG_MODE=NO
-      sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g" ${octCnf}
-    fi
-
     if [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
       if [ -e "${_ROOT}/log/fpm.txt" ]; then
         _PHP_FPM_VERSION=$(cat ${_ROOT}/log/fpm.txt 2>&1)
