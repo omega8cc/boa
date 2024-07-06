@@ -82,7 +82,7 @@
 
    $ screen
 
-   You must specify the kind of install with {in-lite|in-dev} plus mode with
+   You must specify the version of install with {in-lite|in-dev} plus kind with
    {local|public}, your hostname and email address, as shown further below.
 
    Specifying Octopus username is optional. It will use "o1" if empty.
