@@ -76,11 +76,13 @@ Worse yet, using the "Reboot" link doesn't always help either, and you have to u
 
 Sometimes even those steps don't bring your server back with a successful boot, so unless you are prepared to try your luck with boot process management in the LISH console, your only rescue option will be restoring your VPS from the Linode backup -- which you have enabled and created a fresh backup before attempting the major upgrade.
 
-### Note for Legacy Systems
+### Note about Legacy Systems
 
 Servers running Debian Jessie or Debian Stretch must auto-upgrade to Devuan Chimaera first -- they cannot run the auto-upgrade to Devuan Daedalus. Once on Chimaera, they can auto-upgrade to Devuan Daedalus.
 
-This tool automates OS upgrades you can still run manually if you prefer, by adding the respective variable to `/root/.barracuda.cnf` and running the standard command `barracuda up-lite system` for the manual steps based upgrade.
+## HOW-TO: Launch Classic Manual Upgrade Properly
+
+The tools discussed above automate major OS upgrades, but you can still run them manually if you prefer, by adding the respective variable to `/root/.barracuda.cnf` and running the standard command `barracuda up-lite system` for the manual steps based upgrade:
 
 ### Devuan to Devuan Major OS Upgrades
 
@@ -102,9 +104,11 @@ This tool automates OS upgrades you can still run manually if you prefer, by add
 - Debian 9 Stretch => upgrade to Buster with `_STRETCH_TO_BUSTER=YES`
 - Debian 8 Jessie => upgrade to Stretch with `_JESSIE_TO_STRETCH=YES`
 
-**NOTE:** This tool will automatically disable all installed but not used PHP versions in any existing site, effectively enforcing an otherwise optional procedure normally triggered on barracuda upgrade if the control file exists: `/root/.allow-php-multi-install-cleanup.cnf`.
+### NOTE on unused PHP versions automatic deactivation
 
-Side note: it will not affect migration/upgrade from Debian Bullseye to Devuan Chimaera, though, since it doesn't involve re-installing all existing PHP versions normally required in other major upgrades, which otherwise significantly extends the procedure for no good reasons (not used PHP versions should be skipped and deactivated).
+Both the automated major OS upgrade tools and the classic manual major OS upgrade with barracuda will automatically disable all installed but not used in any hosted site PHP versions, effectively enforcing an otherwise optional procedure normally triggered on barracuda upgrade if the control file exists: `/root/.allow-php-multi-install-cleanup.cnf`.
+
+It will not affect migration/upgrade from Debian Bullseye to Devuan Chimaera, though, since it doesn't involve re-installing all existing PHP versions normally required in other major upgrades, which otherwise significantly extends the procedure for no good reasons (not used PHP versions should be skipped and deactivated).
 
 To re-install disabled PHP versions after all upgrades are completed, run this command:
 
