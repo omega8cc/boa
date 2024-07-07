@@ -122,19 +122,19 @@
 
    Examples:
 
-   # Barracuda and Octopus w/ 3 PHP versions in silent non-interactive mode
+   # Barracuda and Octopus with 3 PHP versions in silent non-interactive mode
    $ boa in-lite public server.mydomain.org my@email o1 php-min silent
 
-   # Barracuda and Octopus w/ all 10 PHP versions
+   # Barracuda and Octopus with all 10 PHP versions
    $ boa in-lite public server.mydomain.org my@email o1 php-max
 
-   # Barracuda and Octopus w/ 1 PHP version
+   # Barracuda and Octopus with 1 PHP version
    $ boa in-lite public server.mydomain.org my@email o1 php-8.3
 
-   # Barracuda and Octopus w/ New Relic and 3 PHP versions
+   # Barracuda and Octopus with New Relic and 3 PHP versions
    $ boa in-lite public server.mydomain.org my@email o1 newrelickey
 
-   # Barracuda without Octopus w/ 3 PHP versions in silent non-interactive mode
+   # Barracuda without Octopus with 3 PHP versions in silent non-interactive mode
    $ boa in-lite public server.mydomain.org my@email system
 
    NOTE: Since BOA no longer installs all bundled Aegir platforms during
@@ -150,11 +150,11 @@
 
    You can add more Octopus instances easily:
 
-   $ boa {in-octopus} {email} {o2} {lite|dev}
+   $ boa in-octopus my@email o2 lite
 
    Like above but in silent non-interactive mode:
 
-   $ boa {in-octopus} {email} {o2} {lite|dev} octolog
+   $ boa in-octopus my@email o2 lite silent
 
 
 ###
@@ -179,12 +179,12 @@
    # Barracuda and Octopus
    $ boa in-lite local my@email
 
-   # Barracuda and Octopus w/ 10 PHP versions
+   # Barracuda and Octopus with 10 PHP versions
    $ boa in-lite local my@email php-max
 
-   # Barracuda and Octopus w/ 3 PHP versions
+   # Barracuda and Octopus with 3 PHP versions
    $ boa in-lite local my@email php-min
 
-   # Barracuda and Octopus w/ single PHP version
+   # Barracuda and Octopus with single PHP version
    $ boa in-lite local my@email php-8.1
 
