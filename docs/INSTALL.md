@@ -1,8 +1,6 @@
 
 # Notes on Available BOA Branches and Licenses
 
-## BOA Branches
-
 BOA is available in three main branches, but only LITE is available for installation:
 
 - **LITE**: Remains completely free to use without any kind of license as it was from the beginning (previously named HEAD or STABLE). This branch should be considered BOA LTS with slow updates, focused on both security and bug fixes, with very limited new feature additions.
