@@ -629,7 +629,7 @@ up_one() {
           rm -rf ${User}/.drush/{sys,xts,usr}
           rm -rf ${User}/.drush/{provision,drush_make}
           mkdir -p ${User}/.drush/{sys,xts,usr}
-          ${gCb} ${branch} https://github.com/omega8cc/provision.git \
+          ${gCb} ${branch} ${gitHub}/provision.git \
             ${User}/.drush/sys/provision &> /dev/null
           chown -R ${octUsr}:users ${User}/.drush/sys
           up_mode

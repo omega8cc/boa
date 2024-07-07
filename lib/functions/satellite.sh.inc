@@ -2650,8 +2650,7 @@ satellite_run_child_b() {
         mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
         rm -rf ${_ROOT}/.drush/provision
         rm -rf ${_ROOT}/.drush/sys/provision
-        ${gCb} ${_BRANCH_PRN} \
-          https://github.com/omega8cc/provision.git \
+        ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
           ${_ROOT}/.drush/sys/provision &> /dev/null
         sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
           ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
