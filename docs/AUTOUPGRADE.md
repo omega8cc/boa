@@ -37,9 +37,11 @@ Start with a manual barracuda upgrade.
 $ barracuda up-lite system
 ```
 
-**CREATE A FRESH VM BACKUP SNAPSHOT!**
-**TEST the freshly created backup by using it to create a new test VM!**
-**DO NOT CONTINUE UNTIL IT WORKS!**
+**1. CREATE A FRESH VM BACKUP SNAPSHOT!**
+
+**2 TEST the freshly created backup by using it to create a new test VM!**
+
+**3. DO NOT CONTINUE UNTIL IT WORKS!**
 
 Reboot the server to make sure there are no issues with the boot process.
 
