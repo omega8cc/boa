@@ -138,6 +138,18 @@ _HM_ONLY=NO
 
 
 ###----------------------------------------###
+### PLATFORMS MODE                         ###
+###----------------------------------------###
+###
+### To install ONLY new Aegir platforms,
+### change this to YES.
+###
+### _PLATFORMS_ONLY=YES
+###
+_PLATFORMS_ONLY=NO
+
+
+###----------------------------------------###
 ### DRUSH DEBUG MODE                       ###
 ###----------------------------------------###
 ###
