@@ -39,7 +39,7 @@ $ barracuda up-lite system
 
 **1. CREATE A FRESH VM BACKUP SNAPSHOT!**
 
-**2 TEST the freshly created backup by using it to create a new test VM!**
+**2. TEST the freshly created backup by using it to create a new test VM!**
 
 **3. DO NOT CONTINUE UNTIL IT WORKS!**
 
