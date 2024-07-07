@@ -13,15 +13,12 @@ BOA is available in three main branches, but only LITE is available for installa
 
 You can install only BOA LITE and optionally upgrade to PRO with a license from [Omega8.cc](https://omega8.cc/licenses).
 
-# IMPORTANT NOTE!
+# Preparations Before Installing BOA
 
-- Since Debian is running systemd, it should be removed before installing BOA, which involves a simple autoinit procedure, as outlined further below.
-
-- BOA requires minimal, supported OS, with no services installed. The only acceptable exceptions are: sshd and mail servers.
-
+- Add your SSH keys to your VPS root -- BOA will disable password for root over SSH.
+- BOA requires minimal, supported OS, with no web/sql services installed.
 - Don't run any installer via sudo. You must be logged in as root directly.
-
-- Don't run any system updates or modifications with apt before running BOA autoinit. You should use the vanilla system provided by your host.
+- Don't run any system updates or modifications before installing BOA.
 
 # Installing BOA System on a Public Server/VPS
 
@@ -132,7 +129,7 @@ Like above but in silent non-interactive mode:
 boa in-octopus my@email o2 lite silent
 ```
 
-# Installing BOA System on Localhost (Old Feature, Needs Work and Testing)
+# Installing BOA System on Localhost (deprecated)
 
 1. Please read [docs/NOTES.md](docs/NOTES.md).
 
