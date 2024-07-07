@@ -594,7 +594,7 @@ up_one() {
       fi
     fi
     if [ -e "${vBs}/${tocName}" ]; then
-      if [ -e "${User}/.drush/sys/provision" ]; then
+      if [ -e "${User}/.drush/sys/provision/http" ]; then
         _IS_OLD=$(find ${User}/.drush/sys/provision/ \
           -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example)
       elif [ -e "${User}/.drush/provision" ]; then
@@ -603,7 +603,7 @@ up_one() {
       fi
       if [ -z "${_IS_OLD}" ] \
         && [ -z "${mcmode}" ] \
-        && [ -e "${User}/.drush/sys/provision" ]; then
+        && [ -e "${User}/.drush/sys/provision/http" ]; then
         if [ -z "${fmodey}" ]; then
           echo
           echo "This Aegir Instance is already up to date!"
@@ -615,7 +615,7 @@ up_one() {
           echo
         fi
       else
-        if [ -e "${User}/.drush/sys/provision" ]; then
+        if [ -e "${User}/.drush/sys/provision/http" ]; then
           up_mode
         elif [ -e "${User}/.drush/provision" ]; then
           up_mode
