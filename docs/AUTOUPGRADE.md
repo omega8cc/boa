@@ -38,7 +38,7 @@ $ barracuda up-lite system
 ```
 
 **CREATE A FRESH VM BACKUP SNAPSHOT!**
-**TEST THE FRESHLY CREATED BACKUP BY USING IT TO CREATE A NEW TEST VM!**
+**TEST the freshly created backup by using it to create a new test VM!**
 **DO NOT CONTINUE UNTIL IT WORKS!**
 
 Reboot the server to make sure there are no issues with the boot process.
@@ -60,10 +60,11 @@ $ service clean-boa-env start
 Once enabled, the system will launch a series of `barracuda up-lite` and reboots until it migrates any supported Debian or Devuan version to Devuan Chimaera or Devuan Daedalus.
 
 **WARNING!**
-EXPECT IT TO CRASH COMPLETELY, SO ONLY FULL RESTORE FROM THE LATEST BACKUP SNAPSHOT OF THE ENTIRE VM WILL BRING IT BACK TO LIFE.
-DO NOT PROCEED UNTIL YOU ARE READY FOR DISASTER RECOVERY FROM A TESTED BACKUP!
 
-## CAVEATS FOR UNRELIABLE BOOT PROCESS ON SOME HOSTS LIKE LINODE
+Expect it to crash completely, so only full restore from the latest backup snapshot of the entire vm will bring it back to life.
+do not proceed until you are ready for disaster recovery from a tested backup!
+
+### Caveats for Unreliable Boot Process on some Hosts like Linode
 
 Linode (now owned by Akamai) is known for an unreliable system boot process. Unlike many other hosts, it relies on the Lassie watchdog service when you issue a reboot from the system and not from your Linode control panel.
 
@@ -73,7 +74,7 @@ Worse yet, using the "Reboot" link doesn't always help either, and you have to u
 
 Sometimes even those steps don't bring your server back with a successful boot, so unless you are prepared to try your luck with boot process management in the LISH console, your only rescue option will be restoring your VPS from the Linode backup -- which you have enabled and created a fresh backup before attempting the major upgrade.
 
-## NOTE FOR LEGACY SYSTEMS
+### Note for Legacy Systems
 
 Servers running Debian Jessie or Debian Stretch must auto-upgrade to Devuan Chimaera first -- they cannot run the auto-upgrade to Devuan Daedalus. Once on Chimaera, they can auto-upgrade to Devuan Daedalus.
 
