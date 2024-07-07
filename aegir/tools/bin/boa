@@ -2155,7 +2155,6 @@ case "$1" in
       minimal <------ barracuda and octopus installed (output mostly logged)
       silent <------- barracuda and octopus installed (output only logged)
       system <------- only barracuda is installed (output mostly logged)
-      octolog <------ for boa in-octopus (output mostly logged)
 
   {other}
       version <------ display BOA and OS version
