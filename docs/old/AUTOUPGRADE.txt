@@ -90,6 +90,25 @@
     ###
     ###----------------------------------------###
 
+ => CAVEATS FOR UNRELIABLE BOOT PROCESS ON SOME HOSTS LIKE LINODE
+
+    Linode (now owned by Akamai) is known for unreliable system boot process.
+    Unlike many other hosts it relies on Lassie watchdog service when you issue
+    reboot from the system and not from your Linode control panel.
+
+    Unfortunately, Lassie watchdog pretty often fails to mount the filesystem
+    and the boot halts until you will click on the "Reboot" link in your
+    control panel for the particular VPS.
+
+    Worse yet, using "Reboot" link not always helps either, and you have to use
+    "Power Off" and then "Power On" links.
+
+    Sometimes even those steps don't bring you server back with successful boot,
+    so unless your are prepared to try your luck with boot process management
+    in the LISH console, your only rescue option will be restoring your VPS
+    from the Linode backup -- which you have enabled and created a fresh backup
+    before attempting the major upgrade.
+
  => NOTE FOR LEGACY SYSTEMS
 
     Servers running Debian Jetty or Debian Stretch must auto-upgrade to Devuan
@@ -137,126 +156,3 @@
 
             $ barracuda php-idle disable
 
-
-###
-### Important Notes for Standard/Manual BOA Upgrade
-###
-
- => If you haven't run full barracuda+octopus upgrade to BOA Latest available
-    Edition yet, don't use any partial upgrade modes explained further below.
-    Once new BOA Latest is available, you must run *full* upgrades with commands:
-
-    $ wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
-    $ barracuda up-lite
-    $ barracuda up-lite system              (recommended on major upgrade)
-    $ octopus up-lite all force
-    $ bash /var/xdrago/manage_ltd_users.sh (recommended on major upgrade)
-    $ bash /var/xdrago/daily.sh            (recommended on major upgrade)
-
-    For silent, logged mode with email message sent once the upgrade is
-    complete, but no progress is displayed in the terminal window, you can run
-    alternatively, starting with screen session to avoid incomplete upgrade
-    if your SSH session will be closed for any reason before the upgrade
-    will complete:
-
-    $ screen
-    $ wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
-    $ barracuda up-lite log
-    $ octopus up-lite all force log
-
-    Note that the silent, non-interactive mode will automatically say Y/Yes
-    to all prompts and is thus useful to run auto-upgrades scheduled in cron.
-
- => Don't run any installer via sudo.
-    You must be logged in as root or `sudo -i` first.
-
- => All commands will honor settings in their respective config files:
-
-    /root/.barracuda.cnf
-    /root/.o1.octopus.cnf
-
-    However, arguments specified on command line will take precedence - see
-    upgrade modes explained below.
-
-
-###
-### Available Standard Upgrade Modes
-###
-
-    Download and run (as root) BOA Meta Installers first:
-
-    $ wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
-
- => To upgrade system and Aegir Master Instance to Latest use:
-
-    $ barracuda up-lite
-
- => To upgrade selected Aegir Satellite Instance to Latest use:
-
-    $ octopus up-lite o1 force
-
- => To upgrade *all* Aegir Satellite Instances to Latest use:
-
-    $ octopus up-lite all force
-
-
-###
-### Available Custom Upgrade Modes
-###
-
- => You can append "log" as the last argument to every command, and it will
-    write the output to the file instead of to the console, respectively:
-
-    /var/backups/reports/up/barracuda/*
-    /var/backups/reports/up/octopus/*
-
-    Examples:
-
-    $ barracuda up-lite log
-    $ octopus up-lite all force log
-
-    Detailed backend log on barracuda upgrade is always stored in /var/backups/
-
- => You can append "system" as a last argument to the barracuda command, and
-    it will upgrade only the system, without running Aegir Master Instance
-    upgrade, plus it will write the output to the file instead of console:
-
-    /var/backups/reports/up/barracuda/*
-
-    Example:
-
-    $ barracuda up-lite system
-
-    Note that while both "log" and "system" modes are "silent", because they
-    don't display anything in your console, they will send the log via email
-    to your address specified in the config file: /root/.barracuda.cnf
-
-    It is recommended that you start `screen` before running commands using
-    the "silent" mode - to avoid confusion or incomplete tasks when your
-    SSH connection drops for any reason.
-
- => It is possible to set/force the upgrade mode on the fly using optional
-    arguments: {aegir|platforms|both}
-
-    Note that none is similar to "both", however "both" will force aegir plus
-    platforms upgrade, while none will honor also settings from the octopus
-    instance cnf file, where currently only "aegir" mode is defined with
-    _HM_ONLY=YES option.
-
-    Examples:
-
-    $ octopus up-lite o1 aegir
-    $ octopus up-lite o1 platforms log
-    $ octopus up-lite all aegir log
-    $ octopus up-lite all platforms
-
-
-###
-### NOTE on Aegir platforms
-###
-
- => Since BOA no longer installs all bundled Aegir platforms during Octopus
-    installation and upgrades, you will need to add some keywords
-    to ~/static/control/platforms.info and run Octopus upgrade to have
-    these platforms added as explained in the docs you can find in the
-    file ~/control/README.txt within your Octopus account.

@@ -1,3 +1,43 @@
+@=> OCTOPUS PLATFORMS
+
+ Octopus can install and/or support the Aegir platforms listed below:
+
+ @ Drupal 10
+
+ Drupal 10.2.4 -------------- https://drupal.org/project/drupal/releases/10.2.4
+ Drupal 10.1.8 -------------- https://drupal.org/project/drupal/releases/10.1.8
+ Drupal 10.0.11 ------------- https://drupal.org/project/drupal/releases/10.0.11
+ Social 12.2.2 -------------- https://drupal.org/project/social (10.2.4)
+ Thunder 7.2.0 -------------- https://drupal.org/project/thunder (10.2.4)
+ Varbase 9.1.1 -------------- https://drupal.org/project/varbase (10.2.4)
+
+ @ Drupal 9
+
+ Drupal 9.5.11 -------------- https://drupal.org/project/drupal/releases/9.5.11
+ OpenLucius 2.0.0 ----------- https://drupal.org/project/openlucius (9.5.11)
+ Opigno LMS 3.1.0 ----------- https://drupal.org/project/opigno_lms (9.5.11)
+
+ @ Drupal 7
+
+ Commerce 1.72 -------------- https://drupal.org/project/commerce_kickstart
+ Commerce 2.77 -------------- https://drupal.org/project/commerce_kickstart
+ Drupal 7.101.1 ------------- https://drupal.org/project/drupal/releases/7.101
+ Ubercart 3.13 -------------- https://drupal.org/project/ubercart
+
+ @ Drupal 6
+
+ Pressflow 6.60.1 ----------- https://www.pressflow.org
+ Ubercart 2.15 -------------- https://drupal.org/project/ubercart
+
+ * All D7 platforms have been enhanced using Drupal 7.101.1 +Extra core:
+   https://github.com/omega8cc/7x/tree/7.x-om8
+
+ * All D6 platforms have been enhanced using Pressflow (LTS) 6.60.1 +Extra core:
+   https://github.com/omega8cc/pressflow6/tree/pressflow-plus
+
+ * All D6 and D7 platforms include some useful and/all performance related
+   contrib modules - see docs/MODULES.txt for details.
+
 
 ###
 ### Customize Octopus platform list via control file

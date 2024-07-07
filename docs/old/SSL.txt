@@ -1,131 +1,228 @@
 
-
-NOTE ###===>>>
-
-The old how-to shown below is still useful if you prefer to use SSL
-termination separated from your Aegir system, or if you don't want to use
-built-in Letsencrypt.org SSL certificates support (available since BOA-3.1.0).
-
-But if you can use Letsencrypt.org SSL certificates, or you are willing to use
-also built-in BOA feature which allows you to replace Letsencrypt.org SSL
-certificate with any third-party certificate per site, while still managing SSL
-via Aegir control panel (for redirects, forced/required SSL mode), we highly
-recommend to use Aegir built-in SSL support, which is enabled and ready to use
-in all Octopus instances since BOA-3.1.0 release.
-
-NOTE ###===>>>
-
-
-@=> How to add local proxy on the same (TLS/SNI) or dedicated IP address
-
-  BOA provides an easy to use tool to generate correct proxy vhosts
-  for either dedicated IP addresses or default IP address in the TLS/SNI mode.
-
-  Note: The proxy vhosts can reside on the same or remote BOA system, when
-  the target IP address is hosted on a different system than the proxy.
-
-  The steps are almost the same for both options, as shown below, and the only
-  difference is that for proxy listening on the default IP address, both the
-  dedicated_ip and target_ip columns should list the same, default IP address.
-
-  IMPORTANT!
-
-  The 'domain_name' is a placeholder for domain name without any prefixes.
-  Please don't include 'www.' prefix. If you have a wildcard certificate,
-  don't use the *. prefix in front of 'domain_name'. If you have a multi-domain
-  certificate, use any domain or subdomain listed in the certificate, but make
-  sure to not include any prefix.
-
-@=> Prepare the certificate and the private key files
-
-  1. Paste your private SSL key in the file /etc/ssl/private/{domain_name}.key
-
-  2. Paste your SSL certificate and all intermediate certificates (bundles)
-     below it in the file /etc/ssl/private/{domain_name}.crt
-
-  For more related technical hints check also: https://omega8.cc/ssl-order
-
-@=> Verify that the dedicated IP is active (if expected to be used)
-
-  Make sure that your system already has the extra IP address activated,
-  if expected to be used. Otherwise Nginx will fail to start!
-
-  To check if it is active, type as root:
-
-  $ hostname -I | grep dedicated_ip
-
-  If the output is empty, stop here and set up your networking properly first,
-  so the dedicated IP will be listed. Explaining how to set up networking
-  is beyond the scope of this how-to -- please consult your hosting provider
-  docs and support for assistance, if needed.
-
-@=> Generate HTTPS and HTTP proxy vhosts
-
-  1. Create a config file: /root/.ssl.proxy.cnf with one record per line:
-
-      domain_name target_ip o1 foo@email dedicated_ip
-      domain_name target_ip o2 bar@email dedicated_ip
-
-    All fields are required and must be separated with a single space.
-
-    Make sure that 'domain_name' in the {domain_name}.key and {domain_name}.crt
-    filenames matches the 'domain_name' in the respective domain first column
-    in the /root/.ssl.proxy.cnf config file.
-
-    To add HTTPS+HTTP proxy on the same IP address, just use the same IP address
-    both for 'target_ip' and 'dedicated_ip' columns in the respective record.
-
-    You can generate both dedicated and TLS/SNI proxy vhosts at the same time.
-
-  2. Finally run as root:
-
-    $ xboa ssl-gen
-
-  3. Point the 'domain_name' DNS to 'dedicated_ip' if different than 'target_ip'
-
-@=> How to enable permanent redirect to HTTPS with dedicated IP
-
-  Edit /var/aegir/config/server_master/nginx/pre.d/z_{domain_name}_pln_proxy.conf
-
-  Add the extra if{} pseudo-location within the server{} configuration block.
-
-  Make sure that regex in the first line lists all aliases you want to
-  redirect to the HTTPS permanently, as shown in the example below:
-
   ###
-  ### Optional permanent redirect to HTTPS per domain/regex
+#-### Let's Encrypt free SSL certificates are supported directly in Aegir
   ###
-  if ($host ~* ^(www\.)?((foo|bar)\.com)$) {
-    return 301 https://$host$request_uri;
-  }
 
-  Make sure that all dots in all aliases are escaped, as shown above.
+  You can find these important Let's Encrypt topics discussed below:
 
-@=> How to enable permanent redirect to HTTPS with single IP
+  # Introduction
+  # Before we begin... what is the most common mistake and how to avoid it?
+  # How it works?
+  # How to add Letsencrypt.org SSL certificate to hosted site?
+  # How to add Letsencrypt.org SSL certificate to the Aegir Hostmaster site?
+  # How to modify/renew Letsencrypt.org SSL certificate for SSL enabled site?
+  # How to rename a site with SSL enabled?
+  # Are there any requirements, limitations or exceptions?
+  # How to enable live mode?
+  # How to replace Let's Encrypt certificate with custom certificate?
+  # How to replace existing custom certificates with Let's Encrypt certificates?
+  # How to use Let's Encrypt certificate on the old, dedicated IP address?
 
-  While it is not possible to force HTTPS-only mode on the Nginx level in this
-  case because the site doesn't have separate IP and we can't add effectively
-  duplicate vhost for plain HTTP proxy, you can add in the local.settings.php
-  file the PHP code shown below:
+BOA-3.1.0 release opens a new era in SSL support for all hosted Drupal sites.
+The old method of creating SSL proxy vhosts is officially deprecated,
+as explained in this document further below.
 
-  // redirect start
-  $base_url = 'https://' . $_SERVER['HTTP_HOST'];
-  $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
-  if ($request_type != "SSL" && isset($_SERVER['HTTP_USER_AGENT'])) {
-    if (!preg_match("/(?:x-progress-id|ahah|filefield_nginx_progress\/*|tinybrowser|f?ckeditor)/", $_SERVER['REQUEST_URI']) &&
-        !preg_match("/(?:tinymce|flowplayer|jwplayer|videomanager|autocomplete|ajax|batch|js\/.*)/", $_SERVER['REQUEST_URI']) &&
-        !preg_match("/(?:x-progress-id|ahah|filefield_nginx_progress\/*|tinybrowser|f?ckeditor)/", $_SERVER['QUERY_STRING']) &&
-        !preg_match("/(?:tinymce|flowplayer|jwplayer|videomanager|autocomplete|ajax|batch|js\/.*)/", $_SERVER['QUERY_STRING'])) {
-      header('X-Accel-Expires: 1');
-      header("HTTP/1.1 301 Moved Permanently");
-      header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
-      header("Connection: close");
-      exit;
-    }
-  }
-  // redirect end
+* Before we begin... what is the most common mistake and how to avoid it?
 
-@=> Related issue comments
+  Thinking that you don't need to actually read everything here, and instead
+  quickly scanning this documentation, and assuming that you know it already.
+  Specifically, people tend to ignore this line, listed in *requirements* below:
 
-  https://github.com/omega8cc/boa/issues/465#issuecomment-77743643
-  https://github.com/omega8cc/boa/issues/465#issuecomment-77786301
+  * All aliases must have valid DNS names pointing to your server IP address
+
+  Note that it says *ALL ALIASES* -- not just the aliases you have added!
+  This means that also the "Auto Alias" Aegir generates for you -- like
+  www.foo.com when your site's name is foo.com, or like foo.com when the main
+  site name is www.foo.com -- these aliases also must have a valid DNS,
+  already pointing to your Aegir default IP address.
+
+* How it works?
+
+  BOA leverages dehydrated utility to talk to Letsencrypt.org servers,
+  and on the Aegir side it's using new `hosting_le` extension, which replaces
+  self-signed SSL certificates generated by Aegir with Let's Encrypt ones.
+  You can find more information on both at these URLs:
+
+    https://github.com/lukas2511/dehydrated
+    https://github.com/omega8cc/hosting_le
+
+* How to add Letsencrypt.org SSL certificate to hosted site?
+
+  In your Aegir control panel please go to the site's node Edit tab, then
+  under `SSL Settings > Encryption` choose either `Enabled` or `Required`,
+  if you want to enable HTTP->HTTPS redirection on the fly. Now click `Save`
+  and wait until you will see the Verify task completed. Done!
+
+  NOTE: SSL Settings are not available in the Add Site form, only in Edit.
+
+* How to add Letsencrypt.org SSL certificate to the Aegir Hostmaster site?
+
+  !!! WARNING
+  !!! ###===>>> Don't enable SSL option for the Hostmaster site in Aegir
+  !!! WARNING
+
+  Let's Encrypt SSL for Aegir control panel is handled in BOA outside of
+  the control panel, and you should never enable it within control panel.
+
+  During octopus upgrade you will see this message, explaining what to do:
+
+    BOA [02:44:59] ==> UPGRADE B: Letsencrypt SSL initial mode: DEMO
+    BOA [02:44:59] ==> UPGRADE B: LE -- No real SSL certs will be generated
+    BOA [02:44:59] ==> UPGRADE B: LE -- To enable live SSL mode, please create file:
+    BOA [02:44:59] ==> UPGRADE B: LE -- /data/disk/o1/static/control/ssl-live-mode.info
+    BOA [02:44:59] ==> UPGRADE B: LE -- Then wait 5 min and run octopus forced upgrade
+
+* How to modify/renew Letsencrypt.org SSL certificate for SSL enabled site?
+
+  When you modify aliases or redirections, Aegir will re-create the SSL
+  certificate on the fly, to match current settings and aliases to list.
+
+  BOA runs auto-renewal checks for you weekly, and forces renewal if there is
+  less than 30 days to the certificate expiration date (Let's Encrypt certs
+  are valid for up to 90 days before they have to be renewed).
+
+  Also every Verify task against SSL enabled site runs this check on the fly.
+
+* How to rename a site with SSL enabled?
+
+  If you need to rename a site, you must first disable SSL and alias redirection,
+  run the migrate task to rename the site, then re-enable SSL and alias redirection.
+
+  Owing to this requirement, workflows that require renaming sites often, e.g. for
+  dev/staging/production environments, are usually better served by moving aliases
+  between site clones per https://learn.omega8.cc/how-to-debug-failed-migrate-task-328.
+
+* Are there any requirements, limitations or exceptions?
+
+  Yes, there are some:
+
+  * Let's Encrypt leverages TLS/SNI, which works only with modern browsers
+  * Let's Encrypt doesn't support wildcard names
+  * All aliases must have valid DNS names pointing to your server IP address
+  * Even with aliases redirection enabled all aliases are listed as SAN names
+
+  NOTE: The Subject Alternative Names (SAN) is a feature which allows to issue
+  multi-domain / multi-subdomain SSL certificates -- it is automated in BOA.
+
+  Let's Encrypt API for live, real certificates has its own requirements
+  and limits you should be aware of. Please visit their website for details:
+
+    https://letsencrypt.org/docs/rate-limits/
+
+  To make this new BOA feature easy to test before you will be ready to
+  generate real, live SSL certificates, BOA comes with Let's Encrypt demo
+  mode enabled by default, so it will not hit limits enforced for live,
+  real Let's Encrypt SSL certificates. It allows to generate "fake" certs,
+  similar to self-signed certificate used in BOA by default.
+
+  NOTE: All sites with one or more keywords (listed below) in the site's
+  main name, or in their redirection target, if used, will be ignored,
+  and they will receive only self-signed SSL certificates generated by Aegir,
+  once you will switch their SSL settings to `Enabled` or `Required`.
+
+    `.(dev|devel|temp|tmp|temporary|test|testing).`
+
+  Examples: `foo.temp.bar.org`, `foo.test.bar.org`, `foo.dev.bar.org`
+
+  NOTE: This exception rule doesn't apply to aliases which are not used
+  as a redirection target. Even aliases with listed special keywords in their
+  names will be listed as SAN entries, as long as they are valid DNS names.
+
+* How to enable live mode?
+
+  It is enough to delete the `[aegir_root]/tools/le/.ctrl/ssl-demo-mode.pid`
+  control file and run Verify task on any SSL enabled site again.
+
+  NOTE: If you are on hosted BOA, please create an empty control file instead:
+  ~/static/control/ssl-live-mode.info and then wait a few minutes before
+  running Verify task. It is a one-time operation, and even if you will delete
+  this control file later, the system will not switch your instance back to
+  Let's Encrypt demo mode.
+
+  You could switch it back and forth to demo/live mode by adding and deleting
+  the control file, and it will re-register your system via Let's Encrypt API,
+  but we have not tested how it may affect already generated live certificates
+  once you will run the switch many times, so please try not to abuse
+  this feature.
+
+  It is important to remember that once you will switch the Let's Encrypt mode
+  to demo from live, or from live to demo, by adding or removing the
+  `[aegir_root]/tools/le/.ctrl/ssl-demo-mode.pid` control file, it will not
+  replace all previously issued certificates instantly, because certificates
+  are updated, if needed, only when you (or the BOA system for you during its
+  daily maintenance, if used) will run Verify tasks on SSL enabled sites.
+
+  These BOA specific Verify tasks are normally scheduled to run weekly,
+  between Monday and Sunday, depending on the first character in the site's
+  main name, so both live and demo certificates may still work in parallel
+  for SSL enabled sites until it will be their turn to run Verify and update
+  the certificate according to currently set Let's Encrypt mode.
+
+  NOTE: You may find some helpful details in the Verify task log -- look for
+  lines with `[hosting_le]` prefix.
+
+* How to replace Let's Encrypt certificate with custom certificate?
+
+  1. Create an empty control file (replace `example.com` with your site name):
+
+     `[aegir_root]/tools/le/.ctrl/dont-overwrite-example.com.pid`
+
+  2. Replace `privkey.pem` symlink with single file containing your custom
+     certificate key -- use `privkey.pem` as a filename in the directory:
+
+     `[aegir_root]/tools/le/certs/example.com/`
+
+  3. Replace `fullchain.pem` symlink with single file containing your custom
+     certificate and all intermediate certificates beneath it -- use
+     `fullchain.pem` as a filename in the same directory:
+
+     `[aegir_root]/tools/le/certs/example.com/`
+
+  4. Replace `chain.pem` symlink with single file containing your custom
+     intermediate certificates only -- use `chain.pem` as a filename
+     in the same directory:
+
+     `[aegir_root]/tools/le/certs/example.com/`
+
+  5. Run Verify task for your site in the Aegir control panel. Done!
+
+  NOTE: If you are on hosted BOA, you don't have an access to this location
+  on your system, so please open a ticket at: https://omega8.cc/support
+
+* How to replace existing custom certificates with Let's Encrypt certificates?
+
+  Here are the steps to start using Let's Encrypt certificates on sites
+  previously running SSL on dedicated IP as well as shared (default) IP via
+  legacy `xboa ssl-gen` command:
+
+  1. Disable all HTTPS redirects, if configured within these sites.
+
+  2. Update DNS for domains using custom certificates to point them to default
+     instance/server IP address, if they have used dedicated IP before,
+     and run the `service nginx reload` command once DNS update is propagated.
+
+  3. Move away previous HTTP/HTTPS proxy vhosts for those sites, if they
+     still exist in the /var/aegir/config/server_master/nginx/pre.d/ directory,
+     but only if they already use the default IP address, and reload nginx.
+
+  4. Create an empty ~/static/control/ssl-live-mode.info file and wait 5 min.
+
+  5. Enable SSL in Aegir for those sites.
+
+  NOTE: If you are on hosted BOA, all you need to do are steps: 1, 2, 4 and 5
+  from the list above. You don't need to reload nginx, move vhosts, etc.
+
+* How to use Let's Encrypt certificate on the old, dedicated IP address?
+
+  If your old dedicated IP address is still configured within the same system,
+  you can still use it like before, because HTTPS vhosts managed by Aegir use
+  the wildcard "listen" directive, which enables you to use any active IP
+  address available within the same system.
+
+  However, if you have configured the previous dedicated IP within different
+  system, like Omega8.cc was doing for its deprecated SSL add-on, so the old
+  IP address was used in the remote proxy mode, you can't use it any longer,
+  because it will not be managed via Aegir, and we don't offer ability to use
+  dedicated IP addresses with Let's Encrypt certificates. You need to migrate
+  to the built-in Let's Encrypt support mode, as explained in previous section
+  above.

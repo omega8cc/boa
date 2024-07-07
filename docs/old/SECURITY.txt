@@ -1,3 +1,15 @@
+@=> SECURITY
+
+With multi-Aegir-instance system you have to remember that all of them will use
+the same Nginx server, so you could affect others trying to install site with
+the same domain on two or more instances. The instances will not be aware of
+other running instances, so it is your responsibility to use such system wisely.
+
+It's also critically important to never give anyone access to Aegir system user
+on any Octopus instance, because it comes with almost root access to *all* sites
+databases hosted across all Octopus instances on the same BOA server. Only
+the limited shell access accounts and non-admin Aegir control panel accounts
+should be ever provided for your end-users.
 
 ### Option in /root/.barracuda.cnf
 ###

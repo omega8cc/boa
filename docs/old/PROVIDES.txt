@@ -1,0 +1,36 @@
+@=> PROVIDES
+
+  *Included/enabled by default -- see docs/NOTES.txt for details
+
+   1. PHP-FPM 8.3/2/1/0 7.4/3/2/1/0 5.6, configurable per site.
+   2. Latest release of Percona 5.7 database server with Adminer manager.
+   3. All libraries & tools required to install and run Nginx based Aegir system.
+   4. Magic Speed Booster cache, working like a Boost + AuthCache, but per user.
+   5. Entry level XSS built-in protection on the Nginx level.
+   6. Firewall csf/lfd integrated with Nginx abuse guard.
+   7. Autonomous Maintenance & Auto-Healing scripts in /var/xdrago.
+   8. Every 3 seconds uptime/self-healing local monitoring.
+   9. Automated, rotated daily backups for all databases in /data/disk/arch/sql.
+  10. Letsencrypt.org SSL support -- see docs/SSL.txt for details.
+  11. HTTP/2 or SPDY Nginx support.
+  12. PFS (Perfect Forward Secrecy) support in Nginx.
+  13. PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse and ionCube.
+  14. Fast Redis Cache/Lock/Path with DB auto-failover for all Drupal core versions.
+  15. Limited Shell, SFTP and FTPS accounts per Aegir Client with per site access.
+  16. Drush access on command line in all shell accounts.
+  17. Composer and Drush Make access on command line for main shell account only.
+  18. PHP errors debugging, including WSOD, enabled on the fly on .dev. aliases.
+  19. Built-in collection of useful modules available in all platforms.
+  20. Fast DNS Cache Server (unbound)
+  21. Image Optimize toolkit binaries
+
+  +Optional add-ons -- see docs/NOTES.txt for details
+
+  22. MultiCore Apache Solr 7 and Solr 4 -- see docs/SOLR.txt for details
+  23. New Relic Apps Monitor with per Octopus license and per Site reporting
+  24. RVM, Compass Tools, and NPM -- see docs/RVM.txt for details
+  25. FFmpeg support
+  26. Bind9 DNS server
+
+
+
