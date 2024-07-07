@@ -400,12 +400,6 @@ up_mode() {
     bash  ${vBs}/${tocName}
     touch ${User}/log/up-${_TODAY}
   fi
-  if [ ! -z "${switchCLIback}" ]; then
-    echo "${switchCLIback}" > ${User}/static/control/cli.info
-  fi
-  if [ ! -z "${switchFPMback}" ]; then
-    echo "${switchFPMback}" > ${User}/static/control/fpm.info
-  fi
 }
 
 satellite_check_strict_php_cli() {
