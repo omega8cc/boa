@@ -1,6 +1,6 @@
 # Dual License (Updated on April 3, 2024)
 
-Read also: ROADMAP.txt
+Read also: [docs/ROADMAP.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/ROADMAP.md)
 
 While all BOA code is Free/Libre Open Source, only the BOA LITE branch and Aegir itself are free of charge without limits. The BOA PRO branch will require a valid license, effective April 8, 2024.
 
