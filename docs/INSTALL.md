@@ -91,7 +91,7 @@ You can install only BOA LITE and optionally upgrade to PRO with a license from 
 
    ### Examples:
 
-   - Barracuda and Octopus with 3 PHP versions in silent non-interactive mode
+   - Barracuda and Octopus with 4 PHP versions in silent non-interactive mode
      ```sh
      boa in-lite public server.mydomain.org my@email o1 php-min silent
      ```
@@ -106,12 +106,12 @@ You can install only BOA LITE and optionally upgrade to PRO with a license from 
      boa in-lite public server.mydomain.org my@email o1 php-8.3
      ```
 
-   - Barracuda and Octopus with New Relic and 3 PHP versions
+   - Barracuda and Octopus with New Relic and 4 PHP versions
      ```sh
      boa in-lite public server.mydomain.org my@email o1 newrelickey
      ```
 
-   - Barracuda without Octopus with 3 PHP versions in silent non-interactive mode
+   - Barracuda without Octopus with 4 PHP versions in silent non-interactive mode
      ```sh
      boa in-lite public server.mydomain.org my@email system
      ```
@@ -158,7 +158,7 @@ boa in-octopus my@email o2 lite silent
      boa in-lite local my@email php-max
      ```
 
-   - Barracuda and Octopus with 3 PHP versions
+   - Barracuda and Octopus with 4 PHP versions
      ```sh
      boa in-lite local my@email php-min
      ```

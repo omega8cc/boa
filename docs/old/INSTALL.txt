@@ -122,7 +122,7 @@
 
    Examples:
 
-   # Barracuda and Octopus with 3 PHP versions in silent non-interactive mode
+   # Barracuda and Octopus with 4 PHP versions in silent non-interactive mode
    $ boa in-lite public server.mydomain.org my@email o1 php-min silent
 
    # Barracuda and Octopus with all 10 PHP versions
@@ -131,10 +131,10 @@
    # Barracuda and Octopus with 1 PHP version
    $ boa in-lite public server.mydomain.org my@email o1 php-8.3
 
-   # Barracuda and Octopus with New Relic and 3 PHP versions
+   # Barracuda and Octopus with New Relic and 4 PHP versions
    $ boa in-lite public server.mydomain.org my@email o1 newrelickey
 
-   # Barracuda without Octopus with 3 PHP versions in silent non-interactive mode
+   # Barracuda without Octopus with 4 PHP versions in silent non-interactive mode
    $ boa in-lite public server.mydomain.org my@email system
 
    NOTE: Since BOA no longer installs all bundled Aegir platforms during
@@ -182,7 +182,7 @@
    # Barracuda and Octopus with 10 PHP versions
    $ boa in-lite local my@email php-max
 
-   # Barracuda and Octopus with 3 PHP versions
+   # Barracuda and Octopus with 4 PHP versions
    $ boa in-lite local my@email php-min
 
    # Barracuda and Octopus with single PHP version
