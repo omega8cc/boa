@@ -1174,7 +1174,7 @@ case "$1" in
 
   {mode}
       aegir <-------- upgrade only Aegir Hostmaster
-      platforms <---- upgrade only Platforms
+      platforms <---- upgrade only Aegir Platforms
       both <--------- upgrade both Aegir Hostmaster and Platforms
       force <-------- force upgrade of either specified instance or all
 
