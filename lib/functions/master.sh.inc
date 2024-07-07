@@ -493,7 +493,8 @@ aegir_master_upgrade() {
         chmod 0440 /etc/sudoers.d/${SCRIPT}
       fi
     done
-    if [ ! -d "/var/aegir/.drush/sys/provision/http" ]; then
+    if [ ! -d "/var/aegir/.drush/sys/provision/http" ] \
+      || [ ! -d "/var/aegir/drush/includes" ]; then
       rm -rf /var/aegir/.drush/{sys,xts,usr}
       rm -rf /var/aegir/.drush/{provision,drush_make}
       mkdir -p /var/aegir/.drush/{sys,xts,usr}
