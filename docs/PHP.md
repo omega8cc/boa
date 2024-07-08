@@ -9,7 +9,7 @@ The Aegir version provided by BOA is now fully compatible with PHP 8.3, so it ca
 - [Drupal 7 PHP Requirements](https://www.drupal.org/docs/7/system-requirements/php-requirements)
 - [Drupal System Requirements](https://www.drupal.org/docs/system-requirements/php-requirements)
 
-# Support for PHP-FPM Version Switch per Octopus Instance (also per site)
+# Support for PHP-FPM Version Switch per site
 
 `~/static/control/fpm.info`
 
@@ -50,7 +50,7 @@ old.com 5.6
 
 **NOTE**: Each line in the `multi-fpm.info` file must start with the main site name (not an alias), followed by a single space, and then the PHP-FPM version to use.
 
-# Support for PHP-CLI Version Switch per Octopus Instance (all sites)
+# Support for PHP-CLI Version Switch per Octopus Instance
 
 `~/static/control/cli.info`
 
