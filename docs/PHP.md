@@ -1,7 +1,7 @@
 
 # Please check regularly: [PHP Supported Versions](https://www.php.net/supported-versions.php)
 
-The Aegir version provided by BOA is now fully compatible with PHP 8.0 and 8.1, so both can be used as default versions in the Aegir PHP configuration files:
+The Aegir version provided by BOA is now fully compatible with PHP 8.3, so it can be used as default version in the Aegir PHP configuration files:
 `~/static/control/cli.info` and `~/static/control/fpm.info`
 
 ## PHP CAVEATS for Drupal core 7-10 versions:
@@ -48,13 +48,13 @@ bar.com 7.4
 old.com 5.6
 ```
 
-**NOTE**: Each line in the `multi-fpm.info` file must start with the main site name, followed by a single space, and then the PHP-FPM version to use.
+**NOTE**: Each line in the `multi-fpm.info` file must start with the main site name (not an alias), followed by a single space, and then the PHP-FPM version to use.
 
 # Support for PHP-CLI Version Switch per Octopus Instance (all sites)
 
 `~/static/control/cli.info`
 
-This file, similar to `fpm.info`, if it exists and contains a supported and installed PHP version, will be used by a system agent running every 2-3 minutes to switch the PHP-CLI version for this Octopus instance, but it will do this for all hosted sites. There is no option to switch or override this per site hosted.
+This file, similar to `fpm.info`, if it exists and contains a supported and installed PHP version, will be used by a system agent running every 2-3 minutes to switch the PHP-CLI version for this Octopus instance, but it will do this for all hosted sites. There is no option to switch or override this per site hosted (yet).
 
 ## Supported Values:
 
@@ -73,4 +73,4 @@ There must be only one line and one value (e.g., `8.1`) in this control file. Ot
 
 **NOTE**: If the file doesn't exist, the system will create it and set it to the lowest available PHP version installed, not the system default version. This is to guarantee backward compatibility for instances installed before upgrading to BOA-4.1.3 when the default PHP version was 5.6. Otherwise, after the upgrade, the system would automatically switch such accounts to the new default PHP version, which is 8.1, and this could break most of the sites hosted, never before tested for PHP 8.1 compatibility.
 
-**IMPORTANT**: This file will affect only Drush on the command line and Drush in the Aegir backend, used for all tasks on hosted sites. It will not affect the PHP-CLI version used by Composer on the command line, because Composer is installed globally and not per Octopus account. Therefore, it will use the system default PHP version, which is, since BOA-5.0.0, PHP 8.1. This can be changed only by changing the system default `_PHP_CLI_VERSION` in the `/root/.barracuda.cnf` file and running a Barracuda upgrade.
+**IMPORTANT**: This file will affect Drush on the shell user command line, Drush in the Aegir backend, and also the PHP-CLI version used by Composer on the command line.
