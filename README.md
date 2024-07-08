@@ -31,12 +31,13 @@ Octopus is a smart system designed to manage multiple Ægir instances within Bar
 
 ## Multi-Ægir Hosting
 
-Leverage one Aegir Master Instance and multiple Satellite Instances. Use Satellite Instances to host your sites, as the Master holds the central Nginx configuration. Note: The 'Master' and 'Satellite' names in the Barracuda/Octopus context are not related to the multi-server Aegir features but to the multi-instance environment with virtual chroot/jail for each Aegir Satellite instance.
+Leverage one Ægir Master Instance and multiple Satellite Instances. Use Satellite Instances to host your sites, as the Master holds the central Nginx configuration. Note: The 'Master' and 'Satellite' names in the Barracuda/Octopus context are not related to the multi-server Ægir features but to the multi-instance environment with virtual chroot/jail for each Ægir Satellite instance.
 
 ## Installation Scripts
 
-- **Barracuda**: Installs and upgrades the Aegir Master Instance system including OS environment and main Aegir instance, but no platforms (besides hostmaster) are installed there.
-- **Octopus**: Installs and updates Aegir + Drupal platforms with a clean, secure structure.
+- **BOA**: Runs Barracuda and Octopus to install complete BOA system.
+- **BARRACUDA**: Upgrades the system and the Ægir Master Instance.
+- **OCTOPUS**: Updates Ægir Instances + Drupal platforms.
 
 ## Dual License
 
@@ -124,7 +125,7 @@ Check out the details in [docs/PROVIDES.md](https://github.com/omega8cc/boa/tree
 ## Useful Links
 
 - BOA User Handbook (legacy): [Learn BOA](https://learn.omega8.cc/library/good-to-know)
-- Aegir Docs (legacy): [Aegir Project](https://docs.aegirproject.org)
+- Ægir Docs (legacy): [Ægir Project](https://docs.aegirproject.org)
 
 ## Maintainers
 
@@ -132,7 +133,7 @@ BOA is maintained by [Omega8.cc](https://omega8.cc/about).
 
 ## Credits
 
-Thanks to the Aegir Project founders and developers. [Aegir Team](https://docs.aegirproject.org/community/core-team/).
+Thanks to the Ægir Project founders and developers. [Ægir Team](https://docs.aegirproject.org/community/core-team/).
 
 ## Support
 
