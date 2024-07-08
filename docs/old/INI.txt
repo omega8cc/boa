@@ -333,22 +333,6 @@
 ;;
 ;advagg_auto_configuration = FALSE
 
-;;
-;;  When set to TRUE allows to enable auto-configuration for the Purge/Expire
-;;  modules, included in all platforms by default (but not enabled by default)
-;;  on the global.inc level.
-;;
-;;  IMPORTANT!
-;;
-;;  This setting will be automatically set to TRUE during daily maintenance
-;;  procedure if both modules will be detected as enabled in the site, so while
-;;  you could enable or disable it temporarily below, this setting will be
-;;  overwritten again next morning, depending on both modules actual status.
-;;  Of course, it will not affect sites with .dev. or .devel. keyword present
-;;  in the main site name.
-;;
-;purge_expire_auto_configuration = FALSE
-
 
 [system_control]
 ;;
