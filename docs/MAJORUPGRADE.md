@@ -9,9 +9,9 @@ BOA is available in three main branches, but only LITE is available without lice
 
 - **PRO**: This branch requires a paid license and is available only as an upgrade from either LITE or DEV (or previous HEAD/STABLE). It includes regular monthly or bi-monthly releases, closely following the tested DEV branch.
 
-Once you install BOA LITE and want to upgrade to PRO with a license obtained from [Omega8.cc licenses](https://omega8.cc/licenses), you will need to replace `up-lite` in all examples below with `up-pro`.
+Once you install BOA LITE and want to upgrade to PRO with a license obtained from [Omega8.cc](https://omega8.cc/licenses), you will need to replace `up-lite` in all examples below with `up-pro`.
 
-Once you install BOA LITE or PRO and want to upgrade to DEV with a license from [Omega8.cc licenses](https://omega8.cc/licenses), you will need to replace `up-lite` in all examples below with `up-dev`.
+Once you install BOA LITE or PRO and want to upgrade to DEV with a license from [Omega8.cc](https://omega8.cc/licenses), you will need to replace `up-lite` in all examples below with `up-dev`.
 
 # Automatic BOA System Major Upgrade Tools
 

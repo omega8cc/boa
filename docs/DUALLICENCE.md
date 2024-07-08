@@ -14,7 +14,7 @@ From now on, the BOA project will be maintained in four branches:
 
 - **OMM**: This will remain our private branch with some things we don’t use removed and some added, but generally simplified for easier maintenance and modern coding standards.
 
-The pricing will be announced shortly at [Omega8.cc Licenses](https://omega8.cc/licenses).
+The pricing will be announced shortly at [Omega8.cc](https://omega8.cc/licenses).
 
 
 
