@@ -320,7 +320,6 @@
 ;;    sites/all/modules/advagg/       (optional override on the platform level)
 ;;    modules/o_contrib/advagg/       (included in all D6 platforms)
 ;;    modules/o_contrib_seven/advagg/ (included in all D7 platforms)
-;;    modules/o_contrib_eight/advagg/ (included in all D8 platforms)
 ;;
 ;;  IMPORTANT!
 ;;
