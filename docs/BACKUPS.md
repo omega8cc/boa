@@ -1,7 +1,7 @@
 
-  BOA supports automated, encrypted daily backups to your Amazon S3 bucket.
+# BOA supports automated, encrypted daily backups to your Amazon S3 bucket
 
-  * This new feature is available on self-hosted BOA and hosted Power Engines.
+  * This feature is available on self-hosted BOA and hosted Phantom+ Engines.
   * Note that provided 'backboa' tool uses symmetric password-only encryption.
   * You can configure AWS Region you prefer to use and Backup Rotation policy.
 

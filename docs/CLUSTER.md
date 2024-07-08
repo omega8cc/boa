@@ -1,7 +1,7 @@
 
-# About the BOA Simple Cluster
+# About BOA Simple Cluster (deprecated)
 
-The initial version of this installer supports 3 or more Percona XtraDB Cluster Galera nodes, connected via ProxySQL load balancer to a single BOA web node, all running on the same machine, or (soon) multiple machines, leveraging Linux VServer guests to create separate VPS instances.
+The legacy version of this installer supports 3 or more Percona XtraDB Cluster Galera nodes, connected via ProxySQL load balancer to a single BOA web node, all running on the same machine, or (soon) multiple machines, leveraging Linux VServer guests to create separate VPS instances.
 
 It's technically possible to install more BOA web nodes, each with its own ProxySQL load balancer connected to the same Percona XtraDB Cluster, and put some extra load balancers in front of these web nodes, along with auto-sync for files on the web nodes, for a full High Availability setup, but it is beyond the scope of this installer, at least for now.
 
