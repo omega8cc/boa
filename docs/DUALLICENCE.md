@@ -6,7 +6,7 @@ While all BOA code is Free/Libre Open Source, only the BOA LITE branch and Aegir
 
 From now on, the BOA project will be maintained in four branches:
 
-- **LITE**: This branch remains completely free to use without any kind of license, as it was from the beginning (previously named HEAD or STABLE). This branch should be considered as BOA LTS with slow updates, focused on both security and bug fixes, but with very limited new features additions.
+- **LITE**: This branch remains completely free to use without any kind of license, as it was from the beginning (previously named HEAD or STABLE). This branch should be considered as **BOA LTS** with slow updates, focused on both security and bug fixes, but with very limited new features additions.
 
 - **DEV**: This branch requires a paid license for both installation and upgrade and includes the latest features, security and bug fixes, and installed services versions. This branch shouldn't be used in production without extensive testing.
 
