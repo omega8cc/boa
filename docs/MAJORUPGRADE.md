@@ -13,7 +13,7 @@ Once you install BOA LITE and want to upgrade to PRO with a license obtained fro
 
 Once you install BOA LITE or PRO and want to upgrade to DEV with a license from [Omega8.cc licenses](https://omega8.cc/licenses), you will need to replace `up-lite` in all examples below with `up-dev`.
 
-# Automatic BOA System Major Upgrade Tool
+# Automatic BOA System Major Upgrade Tools
 
 You can easily upgrade your system from any supported Debian version, starting with Debian Jessie, to Devuan Chimaera or Devuan Daedalus, which are both systemd-free equivalents of Debian Bullseye and Debian Bookworm.
 
@@ -79,6 +79,22 @@ Sometimes even those steps don't bring your server back with a successful boot, 
 ### Note about Legacy Systems
 
 Servers running Debian Jessie or Debian Stretch must auto-upgrade to Devuan Chimaera first -- they cannot run the auto-upgrade to Devuan Daedalus. Once on Chimaera, they can auto-upgrade to Devuan Daedalus.
+
+# Manual BOA System Major Upgrade Tools
+
+You can easily upgrade your BOA system from any supported Debian or Devuan version, starting with Debian Jessie, to any supported newer version.
+
+The key difference between manual and automated modes is that the automated mode supports upgrades only to Chimaera or Daedalus, while the manual mode allows you to select the target system flavor and version according to your preference. However, we do not recommend running BOA on Debian anymore, as it is no longer regularly tested.
+
+**NOTE:** Only systems running Percona 5.7 are supported.
+
+Please follow the required steps closely!
+
+First, update your BOA Meta Installers with:
+
+```sh
+$ wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
+```
 
 ## HOW-TO: Launch Classic Manual Upgrade Properly
 
