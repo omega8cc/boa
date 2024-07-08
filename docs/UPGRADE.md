@@ -18,21 +18,22 @@ Once you install BOA LITE or PRO and want to upgrade to DEV with a license from 
 If you haven't run a full barracuda+octopus upgrade to the latest BOA edition yet, don't use any partial upgrade modes explained further below. Once the new BOA latest is available, you must run *full* upgrades with the commands:
 
 ```sh
-$ wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
-$ barracuda up-lite
-$ barracuda up-lite system              # Recommended on major upgrade
-$ octopus up-lite all force
-$ bash /var/xdrago/manage_ltd_users.sh  # Recommended on major upgrade
-$ bash /var/xdrago/daily.sh             # Recommended on major upgrade
+screen
+wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
+barracuda up-lite
+barracuda up-lite system              # Recommended on major upgrade
+octopus up-lite all force
+bash /var/xdrago/manage_ltd_users.sh  # Recommended on major upgrade
+bash /var/xdrago/daily.sh             # Recommended on major upgrade
 ```
 
 For silent, logged mode with an email message sent once the upgrade is complete, but no progress displayed in the terminal window, you can alternatively run:
 
 ```sh
-$ screen
-$ wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
-$ barracuda up-lite log
-$ octopus up-lite all force log
+screen
+wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
+barracuda up-lite log
+octopus up-lite all force log
 ```
 
 Note that the silent, non-interactive mode will automatically say Y/Yes to all prompts and is thus useful for running auto-upgrades scheduled in cron.
@@ -51,25 +52,28 @@ However, arguments specified on the command line will take precedence. See the u
 Download and run (as root) BOA Meta Installers first:
 
 ```sh
-$ wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
+wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
 ```
 
 To upgrade the system and Aegir Master Instance to the latest version, use:
 
 ```sh
-$ barracuda up-lite
+screen
+barracuda up-lite
 ```
 
 To upgrade a selected Aegir Satellite Instance to the latest version, use:
 
 ```sh
-$ octopus up-lite o1 force
+screen
+octopus up-lite o1 force
 ```
 
 To upgrade *all* Aegir Satellite Instances to the latest version, use:
 
 ```sh
-$ octopus up-lite all force
+screen
+octopus up-lite all force
 ```
 
 ## Available Custom Upgrade Modes
@@ -82,9 +86,9 @@ You can append `log` as the last argument to every command, and it will write th
 Examples:
 
 ```sh
-$ screen
-$ barracuda up-lite log
-$ octopus up-lite all force log
+screen
+barracuda up-lite log
+octopus up-lite all force log
 ```
 
 A detailed backend log on the barracuda upgrade is always stored in `/var/backups/`.
@@ -96,8 +100,8 @@ You can append `system` as the last argument to the barracuda command, and it wi
 Example:
 
 ```sh
-$ screen
-$ barracuda up-lite system
+screen
+barracuda up-lite system
 ```
 
 Note that while both `log` and `system` modes are "silent" (they don't display anything in your console), they will send the log via email to the address specified in the config file: `/root/.barracuda.cnf`.
@@ -111,12 +115,12 @@ Note that `none` is similar to `both`; however, `both` will force aegir plus pla
 Examples:
 
 ```sh
-$ screen
+screen
 
-$ octopus up-lite o1 aegir
-$ octopus up-lite o1 platforms log
-$ octopus up-lite all aegir log
-$ octopus up-lite all platforms
+octopus up-lite o1 aegir
+octopus up-lite o1 platforms log
+octopus up-lite all aegir log
+octopus up-lite all platforms
 ```
 
 ## NOTE on Aegir Platforms

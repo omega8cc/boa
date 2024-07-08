@@ -26,7 +26,7 @@ Please follow the required steps closely!
 First, update your BOA Meta Installers with:
 
 ```sh
-$ wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
+wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
 ```
 
 ## HOW-TO: Launch Auto-Upgrade Properly
@@ -34,7 +34,8 @@ $ wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
 Start with a manual barracuda upgrade.
 
 ```sh
-$ barracuda up-lite system
+screen
+barracuda up-lite system
 ```
 
 **1. CREATE A FRESH VM BACKUP SNAPSHOT!**
@@ -46,17 +47,17 @@ $ barracuda up-lite system
 Reboot the server to make sure there are no issues with the boot process.
 
 ```sh
-$ reboot
+reboot
 ```
 
 If the reboot worked and there are no issues, you are ready for the automated magic...
 
 ```sh
-$ touch /root/.run-to-chimaera.cnf
+touch /root/.run-to-chimaera.cnf
   or
-$ touch /root/.run-to-daedalus.cnf
+touch /root/.run-to-daedalus.cnf
 
-$ service clean-boa-env start
+service clean-boa-env start
 ```
 
 Once enabled, the system will launch a series of `barracuda up-lite` and reboots until it migrates any supported Debian or Devuan version to Devuan Chimaera or Devuan Daedalus.
@@ -93,7 +94,7 @@ Please follow the required steps closely!
 First, update your BOA Meta Installers with:
 
 ```sh
-$ wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
+wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
 ```
 
 ## HOW-TO: Launch Classic Manual Upgrade Properly
@@ -129,11 +130,11 @@ It will not affect migration/upgrade from Debian Bullseye to Devuan Chimaera, th
 To re-install disabled PHP versions after all upgrades are completed, run this command:
 
 ```sh
-$ barracuda php-idle enable
+barracuda php-idle enable
 ```
 
 To disable unused PHP versions again, run this command:
 
 ```sh
-$ barracuda php-idle disable
+barracuda php-idle disable
 ```
