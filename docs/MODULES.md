@@ -1,3 +1,4 @@
+```sh
 There are some useful and/or performance related modules
 added to all 6.x and 7.x platforms -- even to your custom
 platforms created in the ~/static directory tree.
@@ -170,3 +171,4 @@ Hostmaster [E]xtensions [M]aster [S]atellite:
  idna_convert --------------- [D7] ------ [S] [B] [FE] [ES]
  revision_deletion ---------- [D7] ------ [S] [B] [FE] [ES]
  userprotect ---------------- [D7] ------ [S] [B] [FE] [ES]
+```
