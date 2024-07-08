@@ -1,28 +1,26 @@
 
-  ###
-#-### Let's Encrypt free SSL certificates are supported directly in Aegir
-  ###
+# Let's Encrypt free SSL certificates are supported directly in Aegir
 
   You can find these important Let's Encrypt topics discussed below:
 
-  # Introduction
-  # Before we begin... what is the most common mistake and how to avoid it?
-  # How it works?
-  # How to add Letsencrypt.org SSL certificate to hosted site?
-  # How to add Letsencrypt.org SSL certificate to the Aegir Hostmaster site?
-  # How to modify/renew Letsencrypt.org SSL certificate for SSL enabled site?
-  # How to rename a site with SSL enabled?
-  # Are there any requirements, limitations or exceptions?
-  # How to enable live mode?
-  # How to replace Let's Encrypt certificate with custom certificate?
-  # How to replace existing custom certificates with Let's Encrypt certificates?
-  # How to use Let's Encrypt certificate on the old, dedicated IP address?
+ - Introduction
+ - Before we begin... what is the most common mistake and how to avoid it?
+ - How it works?
+ - How to add Letsencrypt.org SSL certificate to hosted site?
+ - How to add Letsencrypt.org SSL certificate to the Aegir Hostmaster site?
+ - How to modify/renew Letsencrypt.org SSL certificate for SSL enabled site?
+ - How to rename a site with SSL enabled?
+ - Are there any requirements, limitations or exceptions?
+ - How to enable live mode?
+ - How to replace Let's Encrypt certificate with custom certificate?
+ - How to replace existing custom certificates with Let's Encrypt certificates?
+ - How to use Let's Encrypt certificate on the old, dedicated IP address?
 
 BOA-3.1.0 release opens a new era in SSL support for all hosted Drupal sites.
 The old method of creating SSL proxy vhosts is officially deprecated,
 as explained in this document further below.
 
-* Before we begin... what is the most common mistake and how to avoid it?
+## Before we begin... what is the most common mistake and how to avoid it?
 
   Thinking that you don't need to actually read everything here, and instead
   quickly scanning this documentation, and assuming that you know it already.
@@ -36,7 +34,7 @@ as explained in this document further below.
   site name is www.foo.com -- these aliases also must have a valid DNS,
   already pointing to your Aegir default IP address.
 
-* How it works?
+## How it works?
 
   BOA leverages dehydrated utility to talk to Letsencrypt.org servers,
   and on the Aegir side it's using new `hosting_le` extension, which replaces
@@ -46,7 +44,7 @@ as explained in this document further below.
     https://github.com/lukas2511/dehydrated
     https://github.com/omega8cc/hosting_le
 
-* How to add Letsencrypt.org SSL certificate to hosted site?
+## How to add Letsencrypt.org SSL certificate to hosted site?
 
   In your Aegir control panel please go to the site's node Edit tab, then
   under `SSL Settings > Encryption` choose either `Enabled` or `Required`,
@@ -55,24 +53,28 @@ as explained in this document further below.
 
   NOTE: SSL Settings are not available in the Add Site form, only in Edit.
 
-* How to add Letsencrypt.org SSL certificate to the Aegir Hostmaster site?
+## How to add Letsencrypt.org SSL certificate to the Aegir Hostmaster site?
 
+```sh
   !!! WARNING
   !!! ###===>>> Don't enable SSL option for the Hostmaster site in Aegir
   !!! WARNING
+```
 
   Let's Encrypt SSL for Aegir control panel is handled in BOA outside of
   the control panel, and you should never enable it within control panel.
 
   During octopus upgrade you will see this message, explaining what to do:
 
+```sh
     BOA [02:44:59] ==> UPGRADE B: Letsencrypt SSL initial mode: DEMO
     BOA [02:44:59] ==> UPGRADE B: LE -- No real SSL certs will be generated
     BOA [02:44:59] ==> UPGRADE B: LE -- To enable live SSL mode, please create file:
     BOA [02:44:59] ==> UPGRADE B: LE -- /data/disk/o1/static/control/ssl-live-mode.info
     BOA [02:44:59] ==> UPGRADE B: LE -- Then wait 5 min and run octopus forced upgrade
+```
 
-* How to modify/renew Letsencrypt.org SSL certificate for SSL enabled site?
+## How to modify/renew Letsencrypt.org SSL certificate for SSL enabled site?
 
   When you modify aliases or redirections, Aegir will re-create the SSL
   certificate on the fly, to match current settings and aliases to list.
@@ -83,7 +85,7 @@ as explained in this document further below.
 
   Also every Verify task against SSL enabled site runs this check on the fly.
 
-* How to rename a site with SSL enabled?
+## How to rename a site with SSL enabled?
 
   If you need to rename a site, you must first disable SSL and alias redirection,
   run the migrate task to rename the site, then re-enable SSL and alias redirection.
@@ -92,7 +94,7 @@ as explained in this document further below.
   dev/staging/production environments, are usually better served by moving aliases
   between site clones per https://learn.omega8.cc/how-to-debug-failed-migrate-task-328.
 
-* Are there any requirements, limitations or exceptions?
+## Are there any requirements, limitations or exceptions?
 
   Yes, there are some:
 
@@ -128,13 +130,13 @@ as explained in this document further below.
   as a redirection target. Even aliases with listed special keywords in their
   names will be listed as SAN entries, as long as they are valid DNS names.
 
-* How to enable live mode?
+## How to enable live mode?
 
   It is enough to delete the `[aegir_root]/tools/le/.ctrl/ssl-demo-mode.pid`
   control file and run Verify task on any SSL enabled site again.
 
   NOTE: If you are on hosted BOA, please create an empty control file instead:
-  ~/static/control/ssl-live-mode.info and then wait a few minutes before
+  `~/static/control/ssl-live-mode.info` and then wait a few minutes before
   running Verify task. It is a one-time operation, and even if you will delete
   this control file later, the system will not switch your instance back to
   Let's Encrypt demo mode.
@@ -161,7 +163,7 @@ as explained in this document further below.
   NOTE: You may find some helpful details in the Verify task log -- look for
   lines with `[hosting_le]` prefix.
 
-* How to replace Let's Encrypt certificate with custom certificate?
+## How to replace Let's Encrypt certificate with custom certificate?
 
   1. Create an empty control file (replace `example.com` with your site name):
 
@@ -189,7 +191,7 @@ as explained in this document further below.
   NOTE: If you are on hosted BOA, you don't have an access to this location
   on your system, so please open a ticket at: https://omega8.cc/support
 
-* How to replace existing custom certificates with Let's Encrypt certificates?
+## How to replace existing custom certificates with Let's Encrypt certificates?
 
   Here are the steps to start using Let's Encrypt certificates on sites
   previously running SSL on dedicated IP as well as shared (default) IP via
@@ -202,17 +204,17 @@ as explained in this document further below.
      and run the `service nginx reload` command once DNS update is propagated.
 
   3. Move away previous HTTP/HTTPS proxy vhosts for those sites, if they
-     still exist in the /var/aegir/config/server_master/nginx/pre.d/ directory,
+     still exist in the `/var/aegir/config/server_master/nginx/pre.d/` directory,
      but only if they already use the default IP address, and reload nginx.
 
-  4. Create an empty ~/static/control/ssl-live-mode.info file and wait 5 min.
+  4. Create an empty `~/static/control/ssl-live-mode.info` file and wait 5 min.
 
   5. Enable SSL in Aegir for those sites.
 
   NOTE: If you are on hosted BOA, all you need to do are steps: 1, 2, 4 and 5
   from the list above. You don't need to reload nginx, move vhosts, etc.
 
-* How to use Let's Encrypt certificate on the old, dedicated IP address?
+## How to use Let's Encrypt certificate on the old, dedicated IP address?
 
   If your old dedicated IP address is still configured within the same system,
   you can still use it like before, because HTTPS vhosts managed by Aegir use
