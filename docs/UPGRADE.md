@@ -1,5 +1,5 @@
 
-# Notes on Available BOA Branches and Licenses
+# Available BOA Branches and Licenses
 
 BOA is available in three main branches, but only the LITE branch is available for installation:
 
