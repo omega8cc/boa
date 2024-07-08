@@ -1,5 +1,5 @@
 
-# Security Considerations for Multi-Aegir-Instance Systems
+# Security Considerations for Multi-Aegir Systems
 
 In a multi-Aegir-instance system, all instances will use the same Nginx server. This means that attempting to install a site with the same domain on two or more instances can affect others. The instances will not be aware of each other, so it is your responsibility to manage the system wisely.
 
