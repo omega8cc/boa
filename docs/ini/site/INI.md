@@ -271,7 +271,7 @@
 
 ### INI (site level) Clarification on The User Register Protection Logic
 
-```ini
+```text
   Instead of the previously used confusing enable/disable variables and control
   files we use correct names corresponding with the feature behaviour which is
   actually enable_strict/ignore with non-strict enable being the default mode.
