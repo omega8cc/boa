@@ -187,7 +187,7 @@ as explained in this document further below.
   5. Run Verify task for your site in the Aegir control panel. Done!
 
   NOTE: If you are on hosted BOA, you don't have an access to this location
-  on your system, so please open a ticket at: https://omega8.cc/support
+  on your system, so please open a ticket at: https://omega8.cc/contact
 
 * How to replace existing custom certificates with Let's Encrypt certificates?
 
