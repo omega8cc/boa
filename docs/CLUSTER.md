@@ -61,7 +61,7 @@ $ cluster in-vps v1 v1.example.com public.ip.address jessie head my@email
 
 Add the following required lines to your `/root/.cluster.cnf` file. Required lines are marked with [R] and optional with [O]:
 
-```sh
+```ini
 #
 _CLUSTER_EMAIL=""   ### [R] Technical contact email
 #

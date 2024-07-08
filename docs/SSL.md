@@ -55,7 +55,7 @@ as explained in this document further below.
 
 ## How to add Letsencrypt.org SSL certificate to the Aegir Hostmaster site?
 
-```sh
+```text
   !!! WARNING
   !!! ###===>>> Don't enable SSL option for the Hostmaster site in Aegir
   !!! WARNING
@@ -66,7 +66,7 @@ as explained in this document further below.
 
   During octopus upgrade you will see this message, explaining what to do:
 
-```sh
+```text
     BOA [02:44:59] ==> UPGRADE B: Letsencrypt SSL initial mode: DEMO
     BOA [02:44:59] ==> UPGRADE B: LE -- No real SSL certs will be generated
     BOA [02:44:59] ==> UPGRADE B: LE -- To enable live SSL mode, please create file:

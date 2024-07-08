@@ -8,7 +8,7 @@
   It will archive all directories required to restore your data (sites files,
   databases archives, Nginx configuration and more) on a freshly installed BOA:
 
-```sh
+```text
     /etc /var/aegir /var/www /home /data
 ```
 
@@ -29,7 +29,7 @@
   Add listed below four (4) required lines to your /root/.barracuda.cnf file.
   Required lines are marked with [R] and optional with [O]:
 
-```sh
+```ini
     _AWS_KEY='Your AWS Access Key ID'     ### [R] From your AWS S3 settings
     _AWS_SEC='Your AWS Secret Access Key' ### [R] From your AWS S3 settings
     _AWS_PWD='Your Secret Password'       ### [R] Generate with 'openssl rand -base64 32'
@@ -45,7 +45,7 @@
 
     Supported values to use as _AWS_REG (without the # comment):
 
-```sh
+```ini
       us-east-1        # US East (N. Virginia)
       us-east-2        # US East (Ohio)
       us-west-1        # US West (N. California)
