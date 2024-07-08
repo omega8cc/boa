@@ -28,7 +28,7 @@ You can install only BOA LITE and optionally upgrade to PRO with a license from 
 
    You **don't** need to configure your hostname (on the server) before running BOA installer, since BOA will do that for you, automatically.
 
-2. Please read [docs/NOTES.md](docs/NOTES.md) for other related details.
+2. Please read [docs/NOTES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NOTES.md) for other related details.
 
 3. Download and run BOA Meta Installers.
 
@@ -129,7 +129,7 @@ boa in-octopus my@email o2 lite silent
 
 # Installing BOA System on Localhost (deprecated)
 
-1. Please read [docs/NOTES.md](docs/NOTES.md).
+1. Please read [docs/NOTES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NOTES.md).
 
 2. Download and run BOA Meta Installers.
 

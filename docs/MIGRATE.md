@@ -1,7 +1,7 @@
 
 # How to Migrate All Sites Between Remote BOA Servers and Octopus Instances
 
-While [docs/REMOTE.txt](docs/REMOTE.txt) provides a how-to for per-site migration between remote Octopus instances, it depends on some assumptions, namely:
+While [docs/REMOTE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/REMOTE.md) provides a how-to for per-site migration between remote Octopus instances, it depends on some assumptions, namely:
 
 1. Remote Octopus instance must already exist
 2. Remote Octopus instance must use the same system username

@@ -83,11 +83,11 @@ Refer to our [DNS wildcard configuration example](http://bit.ly/UM2nRb) for refe
 
 # Notes Related to Barracuda and Octopus Customized Install and Upgrades
 
-**NOTE**: While the BOA system installed per [docs/INSTALL.txt](https://github.com/omega8cc/boa/tree/5.x-dev/docs/INSTALL.txt) comes with many options set by default to make it as easy as possible, you may want to customize it further on upgrade by editing various settings stored in the BOA config files, respectively:
+**NOTE**: While the BOA system installed per [docs/INSTALL.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/INSTALL.md) comes with many options set by default to make it as easy as possible, you may want to customize it further on upgrade by editing various settings stored in the BOA config files, respectively:
 
 - `/root/.barracuda.cnf` - check [barracuda.cnf](https://github.com/omega8cc/boa/tree/5.x-dev/docs/cnf/barracuda.cnf) template
 - `/root/.o1.octopus.cnf` - check [octopus.cnf](https://github.com/omega8cc/boa/tree/5.x-dev/docs/cnf/octopus.cnf) template
 - `/root/.o2.octopus.cnf` - check [octopus.cnf](https://github.com/omega8cc/boa/tree/5.x-dev/docs/cnf/octopus.cnf) template
 - etc.
 
-Please read [docs/UPGRADE.txt](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE.txt) for simple upgrades how-to.
+Please read [docs/UPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE.md) for simple upgrades how-to.

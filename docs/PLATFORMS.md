@@ -34,7 +34,7 @@ Octopus can install and/or support the Aegir platforms listed below:
 
 * All D6 platforms have been enhanced using [Pressflow (LTS) 6.60.1 +Extra core](https://github.com/omega8cc/pressflow6/tree/pressflow-plus)
 
-* All D6 and D7 platforms include some useful and performance-related contrib modules. See [docs/MODULES.txt](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MODULES.txt) for details.
+* All D6 and D7 platforms include some useful and performance-related contrib modules. See [docs/MODULES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MODULES.md) for details.
 
 # Customize Octopus Platform List via Control File
 
