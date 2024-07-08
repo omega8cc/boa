@@ -36,13 +36,13 @@ You can install only BOA LITE and optionally upgrade to PRO with a license from 
    wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
    ```
 
-4. Prepare your system by removing systemd and upgrading to Devuan 5 Daedalus from any compatible Debian version -- Buster, Bullseye, or Bookworm.
+4. Prepare your system by removing `systemd` and upgrading to Devuan 5 Daedalus from any compatible Debian version -- Buster, Bullseye, or Bookworm.
 
    ```sh
    autoinit
    ```
 
-   **NOTE:** You can omit this step and run `boa install` as explained in step 5. It will record your command, run autoinit for you, and then will run your boa install command automatically. Once complete, you should receive an email from the system with all output details logged.
+   **NOTE:** You can omit this step and run `boa` install as explained in step 5. It will record your command, run `autoinit` for you, and then will run your `boa` install command automatically. Once complete, you should receive an email from the system with all output details logged.
 
    **NOTE:** It's recommended that you simply wait 10 minutes and then log back in to inspect autoinit logs to make sure there is a line at the bottom saying: "Time for reboot and then you can run boa install"
 
@@ -66,11 +66,11 @@ You can install only BOA LITE and optionally upgrade to PRO with a license from 
 
    You must specify the version of install with `{in-lite|in-dev}` plus kind with `{local|public}`, your hostname and email address, as shown further below.
 
-   Specifying Octopus username is optional. It will use "o1" if empty.
+   Specifying Octopus username is optional. It will use `o1` if empty.
 
-   The last `{newrelickey|php-8.1|php-min|php-max|nodns}` part is optional and can be used either to install New Relic Apps Monitor (you should replace the "newrelickey" keyword with a valid license key), or to define a single PHP version to install and use both for Aegir Master and Satellite instances.
+   The last `{newrelickey|php-8.1|php-min|php-max|nodns}` part is optional and can be used either to install New Relic Apps Monitor (you should replace the `newrelickey` keyword with a valid license key), or to define a single PHP version to install and use both for Aegir Master and Satellite instances.
 
-   When "php-min" is defined, then 4 versions will be installed: 8.3, 8.2, 7.4, plus 8.1, configured as default. You can later install or modify PHP versions used via `_PHP_MULTI_INSTALL`, `_PHP_CLI_VERSION`, and `_PHP_FPM_VERSION`, but the `_PHP_SINGLE_INSTALL` variable must be set empty to not override other related variables. The "nodns" option allows skipping DNS and SMTP checks.
+   When `php-min` is defined, then 4 versions will be installed: `8.3`, `8.2`, `7.4`, plus `8.1`, configured as default. You can later install or modify PHP versions used via `_PHP_MULTI_INSTALL`, `_PHP_CLI_VERSION`, and `_PHP_FPM_VERSION`, but the `_PHP_SINGLE_INSTALL` variable must be set empty to not override other related variables. The `nodns` option allows skipping DNS and SMTP checks.
 
    You can enable much more verbose reporting in the console during installation and upgrades for either barracuda or octopus (or both with -boa-) by adding these control files before running installation/upgrade:
 
