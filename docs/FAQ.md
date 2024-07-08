@@ -36,7 +36,7 @@ Check also: [Drupal Comment 8689745](https://drupal.org/comment/8689745#comment-
 
 The same applies to some other hardcoded/enforced limits:
 
-```ini
+```php
 php_admin_value[max_execution_time] = 180
 php_admin_value[max_input_time] = 180
 php_admin_value[default_socket_timeout] = 180

@@ -39,7 +39,7 @@ Supported values for the `solr_integration_module` variable:
 
 To delete an existing Solr core, simply comment out the relevant line. The system will delete the existing Solr core within 15 minutes.
 
-```ini
+```text
 ;solr_integration_module = your_module_name_here
 ```
 
@@ -53,7 +53,7 @@ If a new release is available for either `apachesolr` or `search_api_solr`, your
 
 This option will be ignored if `solr_custom_config` is set to `YES`.
 
-```ini
+```text
 ;solr_update_config = NO
 ```
 
@@ -65,7 +65,7 @@ Ensure you use Solr-compatible config files.
 
 > **IMPORTANT:** With this option enabled, you won't be able to follow the Drupal 8+ specific procedure for `search_api_solr` with config files generated and uploaded to the `files/solr/` directory in your site. You can still use this option to make your Solr core immutable between upgrades. However, disable this option briefly (5-10 minutes) for changes to take effect.
 
-```ini
+```text
 ;solr_custom_config = NO
 ```
 
@@ -75,7 +75,7 @@ Ensure you use Solr-compatible config files.
 
 If you encounter the error:
 
-```
+```text
 Apache Solr Attachments Java executable not found; Could not execute
 a java command. You may need to set the path of the correct java
 executable as the variable 'apachesolr_attachments_java'
