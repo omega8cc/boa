@@ -57,7 +57,7 @@ Follow the guidelines in [docs/CONTRIBUTING.md](https://github.com/omega8cc/boa/
 - Open outgoing TCP ports: 25, 53, 80, 443.
 - Locales with UTF-8 support, otherwise en_US.UTF-8 (default) is forced.
 
-## Provided services and features
+## Provided Services and Features
 
 Check out the details in [docs/PROVIDES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/PROVIDES.md).
 
