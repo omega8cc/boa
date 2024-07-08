@@ -1,10 +1,10 @@
 # Welcome to BOA!
 
-BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack supporting Drupal from Pressflow 6 to the latest Drupal 10 (and soon Drupal 11), as well as Backdrop CMS and Grav CMS.
+BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack supporting Drupal from Pressflow 6 to the latest Drupal 10 (and soon Drupal 11), as well as Backdrop CMS and Grav CMS (soon).
 
 ## What is Ægir?
 
-Ægir, named after the Norse god of the sea, is an open-source hosting system for managing multiple Drupal sites. It automates tasks like site installation, upgrades, and maintenance, making your life easier.
+Ægir, named after the Norse god of the sea, is an open-source hosting system for managing multiple Drupal sites. The name Ægir was chosen to reflect the relationship between Drupal's water drop logo, symbolizing individual sites, and Ægir's role as the god of the ocean, representing the hosting of many Drupal sites together. It automates tasks such as site installation, upgrades, and maintenance, making your life easier.
 
 ### Key Features of Ægir:
 
@@ -17,11 +17,11 @@ BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack sup
 
 ## Why Barracuda?
 
-Barracuda is a specially tuned hosting environment for Ægir, designed to be lightning fast.
+Barracuda is a specially tuned hosting environment for Ægir, designed to be lightning fast and agile, just like the barracuda fish known for its incredible speed and agility in the ocean.
 
 ## Why Octopus?
 
-Octopus is a smart system designed to manage multiple Ægir instances within Barracuda. Like the sea creature, it’s known for its intelligence and adaptability.
+Octopus is a smart system designed to manage multiple Ægir instances within Barracuda. Just like the sea creature with eight limbs, Octopus allows you to create and manage many separate but connected Ægir instances, showcasing its intelligence and adaptability in efficiently handling complex hosting environments.
 
 ## BOA Priorities
 
@@ -56,6 +56,10 @@ Follow the guidelines in [docs/CONTRIBUTING.md](https://github.com/omega8cc/boa/
 - Open outgoing TCP ports: 25, 53, 80, 443.
 - Locales with UTF-8 support, otherwise en_US.UTF-8 (default) is forced.
 
+## Provided services and features
+
+Check out the details in [docs/PROVIDES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/PROVIDES.md).
+
 ## Supported Virtualization Systems
 
 - LXC
@@ -88,16 +92,16 @@ Follow the guidelines in [docs/CONTRIBUTING.md](https://github.com/omega8cc/boa/
 
 - Installation Instructions: [docs/INSTALL.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/INSTALL.md)
 - Upgrade Instructions: [docs/UPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE.md)
-- Auto-Upgrade Instructions: [docs/MAJORUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MAJORUPGRADE.md)
+- Major-Upgrade Instructions: [docs/MAJORUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MAJORUPGRADE.md)
 - Configuration Templates: [docs/cnf/barracuda.cnf](https://github.com/omega8cc/boa/tree/5.x-dev/docs/cnf/barracuda.cnf), [docs/cnf/octopus.cnf](https://github.com/omega8cc/boa/tree/5.x-dev/docs/cnf/octopus.cnf)
 - System Control Files Index: [docs/ctrl/system.ctrl](https://github.com/omega8cc/boa/tree/5.x-dev/docs/ctrl/system.ctrl)
 
 ## Additional Documentation
 
 - Self-Upgrade How-To: [docs/SELFUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SELFUPGRADE.md)
-- Composer: [docs/COMPOSER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/COMPOSER.md)
+- Composer How-To: [docs/COMPOSER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/COMPOSER.md)
 - Dev-Mode Notes: [docs/DEVELOPMENT.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/DEVELOPMENT.md)
-- Drush: [docs/DRUSH.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/DRUSH.md)
+- Drush How-To: [docs/DRUSH.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/DRUSH.md)
 - Fast DB Operations: [docs/MYQUICK.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MYQUICK.md)
 - Fast Migrate/Clone: [docs/FASTTRACK.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/FASTTRACK.md)
 - FAQ: [docs/FAQ.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/FAQ.md)
@@ -106,21 +110,21 @@ Follow the guidelines in [docs/CONTRIBUTING.md](https://github.com/omega8cc/boa/
 - Migration (Octopus Instance): [docs/MIGRATE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MIGRATE.md)
 - Migration (Single Site): [docs/REMOTE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/REMOTE.md)
 - Modules: [docs/MODULES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MODULES.md)
-- New Relic: [docs/NEWRELIC.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NEWRELIC.md)
+- New Relic How-To: [docs/NEWRELIC.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NEWRELIC.md)
 - PHP Configuration: [docs/PHP.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/PHP.md)
 - Remote S3 Backups: [docs/BACKUPS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUPS.md)
 - Nginx Rewrites: [docs/REWRITES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/REWRITES.md)
 - RVM, Compass Tools, NPM: [docs/RVM.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/RVM.md)
 - Security Settings: [docs/SECURITY.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SECURITY.md)
-- Solr: [docs/SOLR.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SOLR.md)
+- Solr How-To: [docs/SOLR.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SOLR.md)
 - Extra Comments: [docs/CAVEATS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/CAVEATS.md)
 - SSH Encryption: [docs/BLOWFISH.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BLOWFISH.md)
 - VServer Cluster: [docs/CLUSTER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/CLUSTER.md) (deprecated)
 
 ## Useful Links
 
-- BOA User Handbook: [Learn BOA](https://learn.omega8.cc/library/good-to-know)
-- Aegir Docs: [Aegir Project](https://docs.aegirproject.org)
+- BOA User Handbook (legacy): [Learn BOA](https://learn.omega8.cc/library/good-to-know)
+- Aegir Docs (legacy): [Aegir Project](https://docs.aegirproject.org)
 
 ## Maintainers
 
