@@ -41,7 +41,7 @@ Leverage one Ægir Master Instance and multiple Satellite Instances. Use Satelli
 
 ## Dual License
 
-Check out the details in [docs/DUALLICENCE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/DUALLICENCE.md).
+Check out the details in [docs/DUALLICENSE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/DUALLICENSE.md).
 
 ## Bug Reporting
 

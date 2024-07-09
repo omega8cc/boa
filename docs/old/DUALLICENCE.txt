@@ -1,9 +1,9 @@
 
-@=> DUAL LICENCE (updated on April 3, 2024) -- read also: ROADMAP.txt
+@=> DUAL LICENSE (updated on April 3, 2024) -- read also: ROADMAP.txt
 
   While all BOA code is Free/Libre Open Source, only the BOA LITE branch
   and Aegir itself is free of charge without limits, while BOA PRO branch
-  will require valid licence, with an effective date of April 8, 2024.
+  will require valid license, with an effective date of April 8, 2024.
 
   From now on BOA project will be maintained in four branches:
 
