@@ -5690,6 +5690,7 @@ if_major_os_upgrade() {
     mrun "apt-get remove nginx -y -qq" 2> /dev/null
     mrun "apt-get remove nginx-common -y -qq" 2> /dev/null
     mrun "apt-get remove nginx-full -y -qq" 2> /dev/null
+    mrun "apt-get remove percona-release -y -qq" 2> /dev/null
     ###
     ### Make sure that nginx packages are locked in apt.
     if [ ! -e "/etc/apt/preferences.d/nginx-common" ]; then
@@ -5706,6 +5707,19 @@ if_major_os_upgrade() {
       echo "nginx hold" | dpkg --set-selections &> /dev/null
       echo "nginx-common hold" | dpkg --set-selections &> /dev/null
       apt_clean_update_no_releaseinfo_change
+    fi
+    ###
+    ### Make sure that percona-release package is locked in apt.
+    if [ ! -e "/etc/apt/preferences.d/percona-release" ]; then
+      echo -e 'Package: percona-release\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/percona-release
+      apt_clean_update
+    fi
+    ###
+    _PERC_GET_DPKG=$(dpkg --get-selections | grep percona-release | grep 'hold$' 2>&1)
+    if [[ ! "${_PERC_GET_DPKG}" =~ "hold" ]]; then
+      aptitude hold percona-release &> /dev/null
+      echo "percona-release hold" | dpkg --set-selections &> /dev/null
+      apt_clean_update
     fi
     ###
     if [ -e "/etc/php5/conf.d" ]; then
@@ -6607,6 +6621,7 @@ sys_packages_install() {
     mrun "apt-get remove nginx-common -y -qq" 2> /dev/null
     mrun "apt-get remove nginx-full -y -qq" 2> /dev/null
     mrun "apt-get remove redis-server -y -qq" 2> /dev/null
+    mrun "apt-get remove percona-release -y -qq" 2> /dev/null
     ###
     ### Make sure that nginx packages are locked in apt.
     if [ ! -e "/etc/apt/preferences.d/nginx-common" ]; then
@@ -6622,6 +6637,19 @@ sys_packages_install() {
       aptitude hold nginx-common &> /dev/null
       echo "nginx hold" | dpkg --set-selections &> /dev/null
       echo "nginx-common hold" | dpkg --set-selections &> /dev/null
+      apt_clean_update
+    fi
+    ###
+    ### Make sure that percona-release package is locked in apt.
+    if [ ! -e "/etc/apt/preferences.d/percona-release" ]; then
+      echo -e 'Package: percona-release\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/percona-release
+      apt_clean_update
+    fi
+    ###
+    _PERC_GET_DPKG=$(dpkg --get-selections | grep percona-release | grep 'hold$' 2>&1)
+    if [[ ! "${_PERC_GET_DPKG}" =~ "hold" ]]; then
+      aptitude hold percona-release &> /dev/null
+      echo "percona-release hold" | dpkg --set-selections &> /dev/null
       apt_clean_update
     fi
     ###
