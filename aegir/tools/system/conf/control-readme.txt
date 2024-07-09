@@ -310,7 +310,7 @@
 ###
 ### ~/static/control/newrelic.info
 ###
-### This new feature will disable global New Relic monitoring by deactivating
+### This feature will disable global New Relic monitoring by deactivating
 ### server-level license key, so it can safely auto-enable or auto-disable it
 ### every 5 minutes, but per Octopus instance -- for all sites hosted on
 ### the given instance -- when a valid license key is present in the special
@@ -337,29 +337,3 @@
 ###
 ### Details: https://github.com/omega8cc/boa/blob/master/docs/RVM.txt
 ###
-
-
-###
-### Support for optional Drupalgeddon daily checks on all hosted D7 sites
-###
-### ~/static/control/drupalgeddon.info
-###
-### Previously enabled by default, now requires this control file to still
-### run daily, because it may generate some false positives not always possible
-### to avoid or silence, so it no longer makes sense to run this check daily,
-### especially after BOA has run it automatically for a month and finally even
-### disabled automatically all clearly compromised sites.
-###
-### Note that your system administrator may still enable this with root level
-### control file /root/.force.drupalgeddon.cnf, so it will still run, even
-### if you will not create the Octopus instance level empty control file:
-### ~/static/control/drupalgeddon.info
-###
-### Please note that current version of Drupalgeddon Drush extension needs
-### the 'update' module to be enabled to avoid even more false positives,
-### so BOA will enable the 'update' module temporarily while running this
-### check, which in turn will result with even more emails notices sent
-### to the site admin email, if these notices are enabled.
-###
-
-
