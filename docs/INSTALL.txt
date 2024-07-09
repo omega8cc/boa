@@ -188,7 +188,7 @@
 
 ### Installing more Octopus instances
 
-It is now possible to add lite, pro or dev Octopus instances w/o
+It is possible to add lts or dev Octopus instances w/o
 forcing Barracuda upgrade, plus optionally with no platforms added by default:
 
    $ boa {in-octopus} {email} {o2} {mini|max|none} {lts|dev}
