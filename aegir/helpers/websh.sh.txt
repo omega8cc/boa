@@ -840,38 +840,17 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     fi
   fi
   if [ "${_IN_PATH}" = "YES" ]; then
-    if [ -x "/home/${USER}/.rvm/bin/rvm" ]; then
+    if [ -x "/usr/bin/ruby" ] && [ -x "/usr/bin/gem" ]; then
       if [[ "${_ARGS}" =~ "set -m; " ]] || [ ! -z "${SSH_CLIENT}" ]; then
         _RUBY_ALLOW=YES
       fi
     fi
     if [ "${_RUBY_ALLOW}" = "YES" ]; then
-      _DETECTED_RUBY_VP=$(grep 'RUBY_VERSION' \
-        /home/${USER}/.rvm/environments/default \
-        | cut -d= -f2 \
-        | awk '{ print $1}' \
-        | sed "s/'//g" \
-        | sed "s/ruby-//g" 2>&1)
-      if [ ! -z "${_DETECTED_RUBY_VP}" ] \
-        && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ]; then
-        _RUBY_VP="${_DETECTED_RUBY_VP}"
-      else
-        _RUBY_VP=3.2.4
+      if [ -d "/opt/user/gems/$USER" ]; then
+        export GEM_HOME="/opt/user/gems/$USER"
+        export GEM_PATH="/opt/user/gems/$USER"
+        export PATH="/opt/user/gems/$USER/bin:$PATH"
       fi
-      _SP_A="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}/bin"
-      _SP_B="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}@global/bin"
-      _SP_C="/home/${USER}/.rvm/rubies/ruby-${_RUBY_VP}/bin"
-      _SP_D="/home/${USER}/.rvm/bin"
-      export PATH="${_SP_A}:${_SP_B}:${_SP_C}:${_SP_D}:${PATH}"
-      export GEM_HOME="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}"
-      _GP_A="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}"
-      _GP_B="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}@global"
-      export GEM_PATH="${_GP_A}:${_GP_B}"
-      export MY_RUBY_HOME="/home/${USER}/.rvm/rubies/ruby-${_RUBY_VP}"
-      export IRBRC="/home/${USER}/.rvm/rubies/ruby-${_RUBY_VP}/.irbrc"
-      unset MAGLEV_HOME
-      unset RBXOPT
-      export RUBY_VERSION="ruby-${_RUBY_VP}"
     fi
     if [ -x "/usr/bin/npm" ] && [ -d "/home/${USER}/.npm-packages" ]; then
       if [[ "${_ARGS}" =~ "set -m; " ]] || [ ! -z "${SSH_CLIENT}" ]; then
@@ -879,9 +858,11 @@ if [ "${_LTD_GID}" = "www-data users" ] \
       fi
     fi
     if [ "${_NPM_ALLOW}" = "YES" ]; then
-      export NPM_PACKAGES="/home/${USER}/.npm-packages"
-      export PATH="${NPM_PACKAGES}/bin:${PATH}"
-      export NODE_PATH="${NPM_PACKAGES}/lib/node_modules:${NODE_PATH}"
+      if [ -d "/opt/user/npm/$USER" ]; then
+        export NPM_PACKAGES="/opt/user/npm/$USER/.npm-packages"
+        export PATH="${NPM_PACKAGES}/bin:${PATH}"
+        export NODE_PATH="${NPM_PACKAGES}/lib/node_modules:${NODE_PATH}"
+      fi
     fi
     if [ "$0" = "/bin/sh" ] \
       || [ "$0" = "/usr/bin/sh" ] \
