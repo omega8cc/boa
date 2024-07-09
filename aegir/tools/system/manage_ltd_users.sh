@@ -8,7 +8,7 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-tRee=lite
+tRee=lts
 export tRee="${tRee}"
 
 check_root() {
@@ -65,7 +65,7 @@ apt_clean_update() {
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
-_X_SE="520liteT01"
+_X_SE="520ltsT01"
 _CHECK_HOST=$(uname -n 2>&1)
 usrGroup=users
 _WEBG=www-data
@@ -2013,7 +2013,7 @@ switch_php() {
                 _LIM_FPM=96
                 _PHP_FPM_WORKERS=192
               fi
-            elif [ "${_CLIENT_OPTION}" = "LITE" ]; then
+            elif [ "${_CLIENT_OPTION}" = "LTS" ]; then
               if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
                   _LIM_FPM=32
                   _PHP_FPM_WORKERS=64
