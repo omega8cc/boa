@@ -6107,19 +6107,19 @@ sys_packages_install() {
       echo "nginx-common hold" | dpkg --set-selections &> /dev/null
       apt_clean_update
     fi
-  fi
-  ###
-  ### Make sure that percona-release package is locked in apt.
-  if [ ! -e "/etc/apt/preferences.d/percona-release" ]; then
-    echo -e 'Package: percona-release\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/percona-release
-    apt_clean_update
-  fi
-  ###
-  _PERC_GET_DPKG=$(dpkg --get-selections | grep percona-release | grep 'hold$' 2>&1)
-  if [[ ! "${_PERC_GET_DPKG}" =~ "hold" ]]; then
-    aptitude hold percona-release &> /dev/null
-    echo "percona-release hold" | dpkg --set-selections &> /dev/null
-    apt_clean_update
+    ###
+    ### Make sure that percona-release package is locked in apt.
+    if [ ! -e "/etc/apt/preferences.d/percona-release" ]; then
+      echo -e 'Package: percona-release\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/percona-release
+      apt_clean_update
+    fi
+    ###
+    _PERC_GET_DPKG=$(dpkg --get-selections | grep percona-release | grep 'hold$' 2>&1)
+    if [[ ! "${_PERC_GET_DPKG}" =~ "hold" ]]; then
+      aptitude hold percona-release &> /dev/null
+      echo "percona-release hold" | dpkg --set-selections &> /dev/null
+      apt_clean_update
+    fi
   fi
   _EXTRA_LIB_APT="libmcrypt-dev"
   if [ ! -z "${_EXTRA_PACKAGES}" ]; then
