@@ -109,12 +109,12 @@ $ cluster in-oct em@il o2 mini head
 
 3. Upgrade web head with master Aegir -- run again if upgrade fails:
    ```sh
-   $ vserver c1rweb exec /opt/local/bin/barracuda up-lite
+   $ vserver c1rweb exec /opt/local/bin/barracuda up-lts
    ```
 
 4. Upgrade all Octopus instances -- run again if upgrade fails:
    ```sh
-   $ vserver c1rweb exec /opt/local/bin/octopus up-lite all force
+   $ vserver c1rweb exec /opt/local/bin/octopus up-lts all force
    ```
 
 ### All Usage Options
@@ -127,7 +127,7 @@ Usage: cluster {in-all} {stable|head}
 Usage: cluster {up-dbs} {stable|head}
 Usage: cluster {up-web} {stable|head}
 Usage: cluster {up-all} {stable|head}
-Usage: cluster {in-oct} {email} {o2} {lite|dev}
+Usage: cluster {in-oct} {email} {o2} {lts|dev}
 Usage: cluster {in-pxy} {id} {ip} force-reinstall
 Usage: cluster {check} {more|report} {backups|octopus}
 ```

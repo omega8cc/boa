@@ -57,7 +57,7 @@ location ~* ^.+\.(?:jpe?g|gif|png|ico|swf|pdf|ttf|html?)$ {
 ### Site specific 301 redirect with parent literal location
 ### to stop searching for (and using) other regex based locations.
 ###
-location ^~ /some-literal-path/no-regex-here {
+location ^~ /some-ltsral-path/no-regex-here {
   location ~* ^/some-path/or-regex-here {
     if ($host ~* ^(www\.)?(domain\.com)$) {
       return 301 $scheme://$host/destination/url;

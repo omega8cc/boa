@@ -3,9 +3,9 @@
 ### Notes on available BOA branches and licenses
 ###
 
- => BOA is available in three main branches, but only LITE for installation:
+ => BOA is available in three main branches, but only LTS for installation:
 
-  * LITE which remains completely free to use without any kind of license
+  * LTS which remains completely free to use without any kind of license
     as it was from the beginning (previously named HEAD or STABLE).
     This branch should be considered as BOA LTS with slow updates, focused
     on both security and bug fixes, but very limited new features additions.
@@ -15,15 +15,15 @@
     This branch shouldn't be used in production without extensive testing.
 
   * PRO which requires paid license and is available only as an upgrade
-    from either LITE or DEV (or previous HEAD/STABLE) is the branch with regular
+    from either LTS or DEV (or previous HEAD/STABLE) is the branch with regular
     monthly or bi-monthly releases, closely following tested DEV branch.
 
- => Once you install BOA LITE and want to upgrade to PRO with license obtained
-    from https://omega8.cc/licenses you will need to replace up-lite in all
+ => Once you install BOA LTS and want to upgrade to PRO with license obtained
+    from https://omega8.cc/licenses you will need to replace up-lts in all
     examples below with up-pro
 
- => Once you install BOA LITE or PRO and want to upgrade to DEV with license
-    from https://omega8.cc/licenses you will need to replace up-lite in all
+ => Once you install BOA LTS or PRO and want to upgrade to DEV with license
+    from https://omega8.cc/licenses you will need to replace up-lts in all
     examples below with up-dev
 
 
@@ -52,7 +52,7 @@
     ###
     ###  Start with manual barracuda upgrade.
     ###
-    ###    $ barracuda up-lite system
+    ###    $ barracuda up-lts system
     ###
     ###  !!! CREATE A FRESH VM BACKUP SNAPSHOT !!!
     ###  !!! TEST THE FRESHLY CREATED BACKUP.. !!!
@@ -74,7 +74,7 @@
     ###    $ service clean-boa-env start
     ###
     ###  Once enabled, the system will launch
-    ###  a series of barracuda up-lite and reboots
+    ###  a series of barracuda up-lts and reboots
     ###  until it migrates any supported Debian
     ###  or Devuan version to Devuan Chimaera or
     ###  Devuan Daedalus.
@@ -117,7 +117,7 @@
 
  => This tool automates OS upgrades you can still run manually if you prefer,
     by adding respective variable to /root/.barracuda.cnf and running standard
-    command 'barracuda up-lite system' for the manual steps based upgrade.
+    command 'barracuda up-lts system' for the manual steps based upgrade.
 
     @> Devuan to Devuan major OS upgrades
       * Devuan Chimaera    => upgrade to Daedalus with _CHIMAERA_TO_DAEDALUS=YES

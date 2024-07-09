@@ -1,15 +1,15 @@
 
 # Available BOA Branches and Licenses
 
-BOA is available in three main branches, but only LITE is available without license:
+BOA is available in three main branches, but only LTS is available without license:
 
-- **LITE**: Remains completely free to use without any kind of license as it was from the beginning (previously named HEAD or STABLE). This branch should be considered **BOA LTS** with slow updates, focused on both security and bug fixes, with very limited new feature additions.
+- **LTS**: Remains completely free to use without any kind of license as it was from the beginning (previously named HEAD or STABLE). This branch should be considered **BOA LTS** with slow updates, focused on both security and bug fixes, with very limited new feature additions.
 
 - **DEV**: Requires a paid license for both installation and upgrade. It includes the latest features, security updates, bug fixes, and installed services versions. This branch shouldn't be used in production without extensive testing.
 
-- **PRO**: Requires a paid license and is available only as an upgrade from either LITE or DEV (or previous HEAD/STABLE). This branch features regular monthly or bi-monthly releases, closely following the tested DEV branch.
+- **PRO**: Requires a paid license and is available only as an upgrade from either LTS or DEV (or previous HEAD/STABLE). This branch features regular monthly or bi-monthly releases, closely following the tested DEV branch.
 
-You can install only BOA LITE and optionally upgrade to PRO with a license from [Omega8.cc](https://omega8.cc/licenses).
+You can install only BOA LTS and optionally upgrade to PRO with a license from [Omega8.cc](https://omega8.cc/licenses).
 
 # Preparations Before Installing BOA
 
@@ -64,7 +64,7 @@ You can install only BOA LITE and optionally upgrade to PRO with a license from 
    screen
    ```
 
-   You must specify the version of install with `{in-lite|in-dev}` plus kind with `{local|public}`, your hostname and email address, as shown further below.
+   You must specify the version of install with `{in-lts|in-dev}` plus kind with `{local|public}`, your hostname and email address, as shown further below.
 
    Specifying Octopus username is optional. It will use `o1` if empty.
 
@@ -88,27 +88,27 @@ You can install only BOA LITE and optionally upgrade to PRO with a license from 
 
    - Barracuda and Octopus with 4 PHP versions in silent non-interactive mode
      ```sh
-     boa in-lite public server.mydomain.org my@email o1 php-min silent
+     boa in-lts public server.mydomain.org my@email o1 php-min silent
      ```
 
    - Barracuda and Octopus with all 10 PHP versions
      ```sh
-     boa in-lite public server.mydomain.org my@email o1 php-max
+     boa in-lts public server.mydomain.org my@email o1 php-max
      ```
 
    - Barracuda and Octopus with 1 PHP version
      ```sh
-     boa in-lite public server.mydomain.org my@email o1 php-8.3
+     boa in-lts public server.mydomain.org my@email o1 php-8.3
      ```
 
    - Barracuda and Octopus with New Relic and 4 PHP versions
      ```sh
-     boa in-lite public server.mydomain.org my@email o1 newrelickey
+     boa in-lts public server.mydomain.org my@email o1 newrelickey
      ```
 
    - Barracuda without Octopus with 4 PHP versions in silent non-interactive mode
      ```sh
-     boa in-lite public server.mydomain.org my@email system
+     boa in-lts public server.mydomain.org my@email system
      ```
 
    **NOTE:** Since BOA no longer installs all bundled Aegir platforms during initial system installation, you will need to add some keywords to `~/static/control/platforms.info` and run Octopus upgrade to have these platforms added as explained in the docs you can find in the file `~/control/README.txt` within your Octopus account.
@@ -118,13 +118,13 @@ You can install only BOA LITE and optionally upgrade to PRO with a license from 
 You can add more Octopus instances easily:
 
 ```sh
-boa in-octopus my@email o2 lite
+boa in-octopus my@email o2 lts
 ```
 
 Like above but in silent non-interactive mode:
 
 ```sh
-boa in-octopus my@email o2 lite silent
+boa in-octopus my@email o2 lts silent
 ```
 
 # Installing BOA System on Localhost (deprecated)
@@ -139,26 +139,26 @@ boa in-octopus my@email o2 lite silent
 
 3. Install Barracuda and Octopus.
 
-   You must specify the kind of install with `{in-lite|in-dev}`, mode with `{local|public}`, and your email address, as shown below. For local installs, you don't need to specify hostname and Octopus username, as it is fully automated.
+   You must specify the kind of install with `{in-lts|in-dev}`, mode with `{local|public}`, and your email address, as shown below. For local installs, you don't need to specify hostname and Octopus username, as it is fully automated.
 
    You can also specify the PHP version to install, as shown in examples below.
 
    - Barracuda and Octopus
      ```sh
-     boa in-lite local my@email
+     boa in-lts local my@email
      ```
 
    - Barracuda and Octopus with 10 PHP versions
      ```sh
-     boa in-lite local my@email php-max
+     boa in-lts local my@email php-max
      ```
 
    - Barracuda and Octopus with 4 PHP versions
      ```sh
-     boa in-lite local my@email php-min
+     boa in-lts local my@email php-min
      ```
 
    - Barracuda and Octopus with single PHP version
      ```sh
-     boa in-lite local my@email php-8.1
+     boa in-lts local my@email php-8.1
      ```

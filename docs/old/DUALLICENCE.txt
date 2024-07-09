@@ -1,13 +1,13 @@
 
 @=> DUAL LICENSE (updated on April 3, 2024) -- read also: ROADMAP.txt
 
-  While all BOA code is Free/Libre Open Source, only the BOA LITE branch
+  While all BOA code is Free/Libre Open Source, only the BOA LTS branch
   and Aegir itself is free of charge without limits, while BOA PRO branch
   will require valid license, with an effective date of April 8, 2024.
 
   From now on BOA project will be maintained in four branches:
 
-  * LITE which remains completely free to use without any kind of license
+  * LTS which remains completely free to use without any kind of license
     as it was from the beginning (previously named HEAD or STABLE).
     This branch should be considered as BOA LTS with slow updates, focused
     on both security and bug fixes, but very limited new features additions.
@@ -17,7 +17,7 @@
     This branch shouldn't be used in production without extensive testing.
 
   * PRO which requires paid license and is available only as an upgrade
-    from either LITE or DEV (or previous HEAD/STABLE) is the branch with regular
+    from either LTS or DEV (or previous HEAD/STABLE) is the branch with regular
     monthly or bi-monthly releases, closely following tested DEV branch.
 
   * OMM which will remain our private branch with some things we don’t use

@@ -1,17 +1,17 @@
 
 # Available BOA Branches and Licenses
 
-BOA is available in three main branches, but only LITE is available without license:
+BOA is available in three main branches, but only LTS is available without license:
 
-- **LITE**: This branch remains completely free to use without any kind of license, as it was from the beginning (previously named HEAD or STABLE). This branch should be considered as **BOA LTS** with slow updates, focused on both security and bug fixes, but very limited new features additions.
+- **LTS**: This branch remains completely free to use without any kind of license, as it was from the beginning (previously named HEAD or STABLE). This branch should be considered as **BOA LTS** with slow updates, focused on both security and bug fixes, but very limited new features additions.
 
 - **DEV**: This branch requires a paid license for both installation and upgrade and includes the latest features, security and bug fixes, and installed services versions. This branch shouldn't be used in production without extensive testing.
 
-- **PRO**: This branch requires a paid license and is available only as an upgrade from either LITE or DEV (or previous HEAD/STABLE). It includes regular monthly or bi-monthly releases, closely following the tested DEV branch.
+- **PRO**: This branch requires a paid license and is available only as an upgrade from either LTS or DEV (or previous HEAD/STABLE). It includes regular monthly or bi-monthly releases, closely following the tested DEV branch.
 
-Once you install BOA LITE and want to upgrade to PRO with a license obtained from [Omega8.cc](https://omega8.cc/licenses), you will need to replace `up-lite` in all examples below with `up-pro`.
+Once you install BOA LTS and want to upgrade to PRO with a license obtained from [Omega8.cc](https://omega8.cc/licenses), you will need to replace `up-lts` in all examples below with `up-pro`.
 
-Once you install BOA LITE or PRO and want to upgrade to DEV with a license from [Omega8.cc](https://omega8.cc/licenses), you will need to replace `up-lite` in all examples below with `up-dev`.
+Once you install BOA LTS or PRO and want to upgrade to DEV with a license from [Omega8.cc](https://omega8.cc/licenses), you will need to replace `up-lts` in all examples below with `up-dev`.
 
 # Automatic BOA System Major Upgrade Tools
 
@@ -35,7 +35,7 @@ Start with a manual barracuda upgrade.
 
 ```sh
 screen
-barracuda up-lite system
+barracuda up-lts system
 ```
 
 **1. CREATE A FRESH VM BACKUP SNAPSHOT!**
@@ -60,7 +60,7 @@ touch /root/.run-to-daedalus.cnf
 service clean-boa-env start
 ```
 
-Once enabled, the system will launch a series of `barracuda up-lite` and reboots until it migrates any supported Debian or Devuan version to Devuan Chimaera or Devuan Daedalus.
+Once enabled, the system will launch a series of `barracuda up-lts` and reboots until it migrates any supported Debian or Devuan version to Devuan Chimaera or Devuan Daedalus.
 
 **WARNING!**
 
@@ -99,7 +99,7 @@ wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
 
 ## HOW-TO: Launch Classic Manual Upgrade Properly
 
-The tools discussed above automate major OS upgrades, but you can still run them manually if you prefer, by adding the respective variable to `/root/.barracuda.cnf` and running the standard command `barracuda up-lite system` for the manual steps based upgrade:
+The tools discussed above automate major OS upgrades, but you can still run them manually if you prefer, by adding the respective variable to `/root/.barracuda.cnf` and running the standard command `barracuda up-lts system` for the manual steps based upgrade:
 
 ### Devuan to Devuan Major OS Upgrades
 

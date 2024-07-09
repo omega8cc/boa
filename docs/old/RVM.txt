@@ -17,7 +17,7 @@
 
   NOTE! On self-hosted BOA you must add the non-default CSS symbol to the
   _XTRAS_LIST variable in your /root/.barracuda.cnf file, and then run the
-  'barracuda up-lite system' command, before initializing RVM or NPM in your
+  'barracuda up-lts system' command, before initializing RVM or NPM in your
   limited shell account. This step is automated on BOA managed by Omega8.cc
 
   Note that Bundler allows you to manage different gems versions per theme,

@@ -1020,12 +1020,12 @@ EOFMYSQL
     mrun "service nginx reload" 2> /dev/null
     msg "INFO: Aegir Master Instance installed"
   else
-    if [ "${tRee}" = "lite" ]; then
+    if [ "${tRee}" = "lts" ]; then
       _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
       if [[ "${_SERIES_TEST}" =~ "Barracuda ${rlsn}-pro" ]] \
         || [ -e "/var/aegir/key/barracuda_key.txt" ]; then
         msg "ERROR: Your system has been already upgraded to ${rlsn}-pro"
-        msg "You can not downgrade back to previous/older/lite BOA version"
+        msg "You can not downgrade back to previous/older/lts BOA version"
         msg "Please use 'barracuda up-pro system' to upgrade this server"
         msg "Display all supported commands with: barracuda help"
         msg "Bye"

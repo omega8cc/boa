@@ -283,7 +283,7 @@ satellite_tune_fpm_config() {
         _LIM_FPM=96
         _PHP_FPM_WORKERS=192
       fi
-    elif [ "${_CLIENT_OPTION}" = "LITE" ]; then
+    elif [ "${_CLIENT_OPTION}" = "LTS" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
           _LIM_FPM=32
           _PHP_FPM_WORKERS=64
@@ -4174,7 +4174,7 @@ satellite_if_head_github_connection_test() {
     rm -rf /opt/tmp/test-*
   fi
   if [[ "${_X_VERSION}" =~ "-dev" ]] \
-    || [[ "${_X_VERSION}" =~ "-lite" ]] \
+    || [[ "${_X_VERSION}" =~ "-lts" ]] \
     || [[ "${_X_VERSION}" =~ "-pro" ]]; then
     rm -rf /opt/tmp/test-*
     _GITHUB_TEST=$(git clone ${gitHub}/boa.git \
@@ -4394,7 +4394,7 @@ satellite_check_octopus_vs_barracuda_ver() {
     else
       msg "ERROR: This octopus installer can be used only when the instance"
       msg "has been already upgraded to BOA-4.x or BOA-5.x release"
-      msg "Please run 'octopus up-lite/pro/dev ${_USER} force' upgrade first!"
+      msg "Please run 'octopus up-lts/pro/dev ${_USER} force' upgrade first!"
       msg "Display all supported commands with: octopus help"
       msg "Bye"
       clean_pid_exit satellite_check_octopus_vs_barracuda_ver_c
@@ -4405,12 +4405,12 @@ satellite_check_octopus_vs_barracuda_ver() {
     fi
   fi
   if [ -e "${_ROOT}/log/octopus_log.txt" ] \
-    && [ "${tRee}" = "lite" ]; then
+    && [ "${tRee}" = "lts" ]; then
     _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
     if [[ "${_SERIES_TEST}" =~ "Octopus ${rlsn}-pro" ]] \
       || [ -e "${_ROOT}/tools/key/octopus_key.txt" ]; then
       msg "ERROR: Your Octopus has been already upgraded to ${rlsn}-pro"
-      msg "You can not downgrade back to previous/older/lite BOA version"
+      msg "You can not downgrade back to previous/older/lts BOA version"
       msg "Please use 'octopus up-pro ${_USER} force' to upgrade"
       msg "Display all supported commands with: octopus help"
       msg "Bye"

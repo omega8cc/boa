@@ -1,17 +1,17 @@
 
 # Available BOA Branches and Licenses
 
-BOA is available in three main branches, but only LITE is available without license:
+BOA is available in three main branches, but only LTS is available without license:
 
-- **LITE**: This branch remains completely free to use without any kind of license, as it was from the beginning (previously named HEAD or STABLE). This branch should be considered as **BOA LTS** with slow updates, focused on both security and bug fixes, but very limited new features.
+- **LTS**: This branch remains completely free to use without any kind of license, as it was from the beginning (previously named HEAD or STABLE). This branch should be considered as **BOA LTS** with slow updates, focused on both security and bug fixes, but very limited new features.
 
 - **DEV**: This branch requires a paid license for both installation and upgrade and includes the latest features, security and bug fixes, and installed services versions. This branch shouldn't be used in production without extensive testing.
 
-- **PRO**: This branch requires a paid license and is available only as an upgrade from either LITE or DEV (or previous HEAD/STABLE). It has regular monthly or bi-monthly releases, closely following the tested DEV branch.
+- **PRO**: This branch requires a paid license and is available only as an upgrade from either LTS or DEV (or previous HEAD/STABLE). It has regular monthly or bi-monthly releases, closely following the tested DEV branch.
 
-Once you install BOA LITE and want to upgrade to PRO with a license obtained from [Omega8.cc](https://omega8.cc/licenses), you will need to replace `up-lite` in all examples below with `up-pro`.
+Once you install BOA LTS and want to upgrade to PRO with a license obtained from [Omega8.cc](https://omega8.cc/licenses), you will need to replace `up-lts` in all examples below with `up-pro`.
 
-Once you install BOA LITE or PRO and want to upgrade to DEV with a license from [Omega8.cc](https://omega8.cc/licenses), you will need to replace `up-lite` in all examples below with `up-dev`.
+Once you install BOA LTS or PRO and want to upgrade to DEV with a license from [Omega8.cc](https://omega8.cc/licenses), you will need to replace `up-lts` in all examples below with `up-dev`.
 
 ## Important Notes for Standard/Manual BOA Upgrade
 
@@ -20,9 +20,9 @@ If you haven't run a full barracuda+octopus upgrade to the latest BOA edition ye
 ```sh
 screen
 wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
-barracuda up-lite
-barracuda up-lite system              # Recommended on major upgrade
-octopus up-lite all force
+barracuda up-lts
+barracuda up-lts system              # Recommended on major upgrade
+octopus up-lts all force
 bash /var/xdrago/manage_ltd_users.sh  # Recommended on major upgrade
 bash /var/xdrago/daily.sh             # Recommended on major upgrade
 ```
@@ -32,8 +32,8 @@ For silent, logged mode with an email message sent once the upgrade is complete,
 ```sh
 screen
 wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
-barracuda up-lite log
-octopus up-lite all force log
+barracuda up-lts log
+octopus up-lts all force log
 ```
 
 Note that the silent, non-interactive mode will automatically say Y/Yes to all prompts and is thus useful for running auto-upgrades scheduled in cron.
@@ -59,21 +59,21 @@ To upgrade the system and Aegir Master Instance to the latest version, use:
 
 ```sh
 screen
-barracuda up-lite
+barracuda up-lts
 ```
 
 To upgrade a selected Aegir Satellite Instance to the latest version, use:
 
 ```sh
 screen
-octopus up-lite o1 force
+octopus up-lts o1 force
 ```
 
 To upgrade *all* Aegir Satellite Instances to the latest version, use:
 
 ```sh
 screen
-octopus up-lite all force
+octopus up-lts all force
 ```
 
 ## Available Custom Upgrade Modes
@@ -87,8 +87,8 @@ Examples:
 
 ```sh
 screen
-barracuda up-lite log
-octopus up-lite all force log
+barracuda up-lts log
+octopus up-lts all force log
 ```
 
 A detailed backend log on the barracuda upgrade is always stored in `/var/backups/`.
@@ -101,7 +101,7 @@ Example:
 
 ```sh
 screen
-barracuda up-lite system
+barracuda up-lts system
 ```
 
 Note that while both `log` and `system` modes are "silent" (they don't display anything in your console), they will send the log via email to the address specified in the config file: `/root/.barracuda.cnf`.
@@ -117,10 +117,10 @@ Examples:
 ```sh
 screen
 
-octopus up-lite o1 aegir
-octopus up-lite o1 platforms log
-octopus up-lite all aegir log
-octopus up-lite all platforms
+octopus up-lts o1 aegir
+octopus up-lts o1 platforms log
+octopus up-lts all aegir log
+octopus up-lts all platforms
 ```
 
 ## NOTE on Aegir Platforms

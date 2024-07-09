@@ -249,7 +249,7 @@ if_launch_boa_install() {
     else
       _BOA_INSTALL_COMMAND="${_BOA_COMMAND} silent"
     fi
-    if [[ "${_BOA_COMMAND}" =~ "boa in-lite" ]] \
+    if [[ "${_BOA_COMMAND}" =~ "boa in-lts" ]] \
       || [[ "${_BOA_COMMAND}" =~ "boa in-dev" ]]; then
       eval "${_BOA_INSTALL_COMMAND}"
       wait

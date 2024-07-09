@@ -114,7 +114,7 @@ _SYS_COLLATION_SQL= #----------- By default on the DB server: utf8mb4_unicode_ci
 ###
 ### Remember that day/month upgrades will include complete upgrade to latest BOA
 ### head for Barracuda and all Octopus instances, while weekly upgrade is
-### designed to run only 'barracuda up-lite system' upgrade.
+### designed to run only 'barracuda up-lts system' upgrade.
 ###
 ### You can further modify the auto-upgrade by specifying either head or dev
 ### with _AUTO_VER variable, plus you can include all supported PHP versions

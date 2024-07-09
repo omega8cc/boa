@@ -2021,7 +2021,7 @@ switch_php() {
                 _LIM_FPM=96
                 _PHP_FPM_WORKERS=192
               fi
-            elif [ "${_CLIENT_OPTION}" = "LITE" ]; then
+            elif [ "${_CLIENT_OPTION}" = "LTS" ]; then
               if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
                   _LIM_FPM=32
                   _PHP_FPM_WORKERS=64

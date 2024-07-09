@@ -555,11 +555,11 @@ octopus_install() {
     fi
 
     if [ "${cmmand}" = "in-dev" ] \
-      || [ "${cmmand}" = "in-lite" ] \
+      || [ "${cmmand}" = "in-lts" ] \
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
       || [ "${copt}" = "dev" ] \
-      || [ "${copt}" = "lite" ]; then
+      || [ "${copt}" = "lts" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncO}
       wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g"   ${vBs}/${filIncO}
@@ -580,11 +580,11 @@ octopus_install() {
     fi
 
     if [ "${cmmand}" = "in-dev" ] \
-      || [ "${cmmand}" = "in-lite" ] \
+      || [ "${cmmand}" = "in-lts" ] \
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
       || [ "${copt}" = "dev" ] \
-      || [ "${copt}" = "lite" ]; then
+      || [ "${copt}" = "lts" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncO}
        wait
     elif [ "${cmmand}" = "in-cluster" ]; then
@@ -832,7 +832,7 @@ barracuda_install() {
     fi
 
     if [ "${cmmand}" = "in-dev" ] \
-      || [ "${cmmand}" = "in-lite" ] \
+      || [ "${cmmand}" = "in-lts" ] \
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
@@ -855,7 +855,7 @@ barracuda_install() {
     fi
 
     if [ "${cmmand}" = "in-dev" ] \
-      || [ "${cmmand}" = "in-lite" ] \
+      || [ "${cmmand}" = "in-lts" ] \
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncB}
@@ -992,7 +992,7 @@ init_setup() {
       echo RAWV ccor is ${ccor}
       echo
     fi
-    if [ "${extra}" = "lite" ] \
+    if [ "${extra}" = "lts" ] \
       || [ "${extra}" = "dev" ]; then
       _OCTO_EXTRA=OK
     else
@@ -1058,7 +1058,7 @@ init_setup() {
   # Capture the complete command with arguments
   _BOA_COMMAND="$0 $@"
 
-  if [ "${cmmand}" = "in-lite" ] \
+  if [ "${cmmand}" = "in-lts" ] \
     || [ "${cmmand}" = "in-dev" ] \
     || [ "${cmmand}" = "in-cluster" ]; then
     if [ ! -e "/root/.autoinit.log" ] || [ -e "/lib/systemd/systemd" ]; then
@@ -1088,7 +1088,7 @@ init_setup() {
 
   check_no_systemd
 
-  if [ "${cmmand}" = "in-lite" ] \
+  if [ "${cmmand}" = "in-lts" ] \
     || [ "${cmmand}" = "in-dev" ] \
     || [ "${cmmand}" = "in-cluster" ]; then
     if [ -e "/root/.dev.server.cnf" ]; then
@@ -1176,7 +1176,7 @@ init_setup() {
   export rlsn="${rlsn}"
 
   if [ "${cmmand}" = "in-dev" ] \
-    || [ "${cmmand}" = "in-lite" ]; then
+    || [ "${cmmand}" = "in-lts" ]; then
     if [ ! -z "${silent}" ]; then
       curl ${crlGet} "${rgUrl}/feature/${silent}/${barName}" -o ${vBs}/${barName}
       curl ${crlGet} "${rgUrl}/feature/${silent}/${octName}" -o ${vBs}/${octName}
@@ -2028,8 +2028,8 @@ case "$1" in
              user="$3"
              octopus_cleanup
   ;;
-  in-lite)   cmmand="$1"
-             tRee=lite
+  in-lts)   cmmand="$1"
+             tRee=lts
              kind="$2"
              fqdn="$3"
              email="$4"
@@ -2057,7 +2057,7 @@ case "$1" in
              init_setup
   ;;
   in-cluster) cmmand="$1"
-             tRee=lite
+             tRee=lts
              kind="$2"
              fqdn="$3"
              email="$4"
@@ -2072,7 +2072,7 @@ case "$1" in
              init_setup
   ;;
   in-octopus) cmmand="$1"
-             tRee=lite
+             tRee=lts
              email="$2"
              user="$3"
              extra="$4"
@@ -2086,7 +2086,7 @@ case "$1" in
              init_setup
   ;;
   in-oct)    cmmand="$1"
-             tRee=lite
+             tRee=lts
              email="$2"
              user="$3"
              extra="$4"
@@ -2104,7 +2104,7 @@ case "$1" in
   *)         echo
              echo "Installation commands"
              echo "Usage: $(basename "$0") {version} {kind} {fqdn} {email} {user} {extra} {output}"
-             echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {lite|dev} {output}"
+             echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {lts|dev} {output}"
              echo
              echo "Other available commands"
              echo "Usage: $(basename "$0") version"
@@ -2118,9 +2118,9 @@ case "$1" in
   Accepted keywords and values for installation and other commands:
 
   {version}
-      in-lite <------ install BOA Lite release (no license)
+      in-lts <------ install BOA LTS release (no license)
       in-dev <------- install BOA Cutting Edge (requires license)
-      in-octopus <--- install extra Octopus instance (lite|dev)
+      in-octopus <--- install extra Octopus instance (lts|dev)
 
   {kind}
       public <------- recommended for general use

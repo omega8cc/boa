@@ -9,7 +9,7 @@ Similarly, you need to initialize your account to auto-install a user-level NPM 
 
 If you want to use NPM to install Grunt, Gulp, and/or Bower, but you have already enabled RVM before NPM support was added in BOA-3.1.2, you need to reinitialize RVM/NPM on your account: delete the control file, wait until `.gem` and `.rvm` subdirectories disappear, add the control file again, and proceed with the further steps as usual.
 
-**NOTE:** On self-hosted BOA, you must add the non-default CSS symbol to the `_XTRAS_LIST` variable in your `/root/.barracuda.cnf` file, and then run the `barracuda up-lite system` command before initializing RVM or NPM in your limited shell account. This step is automated on BOA managed by Omega8.cc.
+**NOTE:** On self-hosted BOA, you must add the non-default CSS symbol to the `_XTRAS_LIST` variable in your `/root/.barracuda.cnf` file, and then run the `barracuda up-lts system` command before initializing RVM or NPM in your limited shell account. This step is automated on BOA managed by Omega8.cc.
 
 Bundler allows you to manage different gem versions per theme, so it is a good idea to use it for gem installation and management. However, you need to install Bundler first.
 

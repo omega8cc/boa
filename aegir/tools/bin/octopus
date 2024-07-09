@@ -428,12 +428,12 @@ satellite_downgrade_protection() {
   User="/data/disk/${second}"
   octUsr="${second}"
   if [ -e "${User}/log/octopus_log.txt" ] \
-    && [ "${cmmand}" = "up-lite" ]; then
+    && [ "${cmmand}" = "up-lts" ]; then
     _SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
     if [[ "${_SERIES_TEST}" =~ "Octopus ${rlsn}-pro" ]]; then
       echo
       echo "ERROR: Your Octopus has been already upgraded to ${rlsn}-pro"
-      echo "You can not downgrade back to previous/older/lite BOA version"
+      echo "You can not downgrade back to previous/older/lts BOA version"
       echo "Please use 'octopus up-pro ${octUsr} force' to upgrade"
       echo "Bye"
       echo
@@ -441,7 +441,7 @@ satellite_downgrade_protection() {
     elif [[ "${_SERIES_TEST}" =~ "Octopus ${rlsn}-dev" ]]; then
       echo
       echo "ERROR: Your Octopus has been already upgraded to ${rlsn}-dev"
-      echo "You can not downgrade back to previous/older/lite BOA version"
+      echo "You can not downgrade back to previous/older/lts BOA version"
       echo "Please use 'octopus up-dev ${octUsr} force' to upgrade"
       echo "Bye"
       echo
@@ -451,7 +451,7 @@ satellite_downgrade_protection() {
   if [ -e "${User}/log/octopus_log.txt" ] \
     && [ "${cmmand}" != "up-dev" ] \
     && [ "${cmmand}" != "up-pro" ] \
-    && [ "${cmmand}" != "up-lite" ] \
+    && [ "${cmmand}" != "up-lts" ] \
     && [ "${cmmand}" != "help" ]; then
     _SERIES_TEST=$(cat ${User}/log/octopus_log.txt 2>&1)
     _BOA_SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
@@ -460,7 +460,7 @@ satellite_downgrade_protection() {
       echo
       echo "ERROR: Your system has been already upgraded to ${rlsn}"
       echo "You can not downgrade back to previous/older BOA version"
-      echo "Please use 'octopus up-lite/pro/dev ${octUsr} force' to upgrade"
+      echo "Please use 'octopus up-lts/pro/dev ${octUsr} force' to upgrade"
       echo "Display all supported commands with: $(basename "$0") help"
       echo "Bye"
       echo
@@ -536,7 +536,7 @@ up_one() {
     fi
     if [ "${cmmand}" = "up-dev" ] \
       || [ "${cmmand}" = "up-pro" ] \
-      || [ "${cmmand}" = "up-lite" ]; then
+      || [ "${cmmand}" = "up-lts" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${tocIncO}
       wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g"   ${vBs}/${tocIncO}
@@ -557,7 +557,7 @@ up_one() {
     fi
     if [ "${cmmand}" = "up-dev" ] \
       || [ "${cmmand}" = "up-pro" ] \
-      || [ "${cmmand}" = "up-lite" ]; then
+      || [ "${cmmand}" = "up-lts" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${tocIncO}
       wait
     elif [ "${cmmand}" = "up-cluster" ]; then
@@ -884,10 +884,10 @@ up_proceed() {
     tRee=dev
   elif [ "${cmmand}" = "up-pro" ]; then
     tRee=pro
-  elif [ "${cmmand}" = "up-lite" ]; then
-    tRee=lite
+  elif [ "${cmmand}" = "up-lts" ]; then
+    tRee=lts
   elif [ "${cmmand}" = "help" ]; then
-    tRee=lite
+    tRee=lts
   else
     echo
     echo "Sorry, you are trying not supported command.."
@@ -1164,8 +1164,8 @@ case "$1" in
   Accepted keywords and values in every option:
 
   {version}
-      up-lite <------ upgrade to Octopus Lite release (no license)
-      up-pro <------- upgrade to Octopus Pro release (requires license)
+      up-lts <------ upgrade to Octopus LTS release (no license)
+      up-pro <------- upgrade to Octopus PRO release (requires license)
       up-dev <------- upgrade to Octopus Cutting Edge (requires license)
 
   {instance}

@@ -23,7 +23,7 @@ You can configure BOA to run automated upgrades to the latest head version for b
 
 You can set `_AUTO_UP_MONTH` and `_AUTO_UP_DAY` to any date in the past or future (e.g., `_AUTO_UP_MONTH=2` with `_AUTO_UP_DAY=29`) if you wish to enable only weekly system upgrades.
 
-Remember that day/month upgrades will include a complete upgrade to the latest BOA head for Barracuda and all Octopus instances, while weekly upgrades are designed to run only the `barracuda up-lite system` upgrade.
+Remember that day/month upgrades will include a complete upgrade to the latest BOA head for Barracuda and all Octopus instances, while weekly upgrades are designed to run only the `barracuda up-lts system` upgrade.
 
 You can further modify the auto-upgrade by specifying either `head` or `dev` with the `_AUTO_VER` variable. Additionally, you can include all supported PHP versions with the `_AUTO_PHP` variable set to "php-min"; otherwise, it will be ignored.
 
