@@ -1,8 +1,6 @@
 # Dual License
 
-While all BOA code is Free/Libre Open Source, only the **BOA LTS** branch and Ægir itself are free of charge without limits. The BOA PRO and BOA DEV public branches require a valid license, effective April 8, 2024.
-
-BOA is available in three public branches, but only LTS is available without license:
+While all **BOA** code is **Free/Libre Open Source**, only the **BOA LTS** branch and Ægir itself are free of charge without limits.
 
 - **LTS**: This public branch remains completely free to use without any kind of license, as it was from the beginning (previously named HEAD or STABLE). This branch should be considered as **BOA LTS** with slow updates, focused on both security and bug fixes, but with very limited new features additions.
 
@@ -12,7 +10,7 @@ BOA is available in three public branches, but only LTS is available without lic
 
 - **OMM**: This private branch is managed separately with some things we don’t use removed and some added, but generally simplified for easier maintenance and modern coding standards.
 
-The pricing for **BOA PRO** is available at [Omega8.cc/licenses](https://omega8.cc/licenses).
+You can install only **BOA LTS** and optionally upgrade to **PRO** with a license from [Omega8.cc](https://omega8.cc/licenses) once available.
 
 
 
