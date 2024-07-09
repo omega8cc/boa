@@ -1164,7 +1164,7 @@ case "$1" in
   Accepted keywords and values in every option:
 
   {version}
-      up-lts <------ upgrade to Octopus LTS release (no license)
+      up-lts <------- upgrade to Octopus LTS release (no license)
       up-pro <------- upgrade to Octopus PRO release (requires license)
       up-dev <------- upgrade to Octopus Cutting Edge (requires license)
 

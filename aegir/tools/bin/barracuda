@@ -1578,7 +1578,7 @@ proceed() {
   Accepted keywords and values in every option:
 
   {version}
-      up-lts <------ upgrade to Barracuda LTS release (no license)
+      up-lts <------- upgrade to Barracuda LTS release (no license)
       up-pro <------- upgrade to Barracuda PRO release (requires license)
       up-dev <------- upgrade to Barracuda Cutting Edge (requires license)
       php-idle <----- disable not used PHP versions or enable them again

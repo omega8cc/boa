@@ -2118,7 +2118,7 @@ case "$1" in
   Accepted keywords and values for installation and other commands:
 
   {version}
-      in-lts <------ install BOA LTS release (no license)
+      in-lts <------- install BOA LTS release (no license)
       in-dev <------- install BOA Cutting Edge (requires license)
       in-octopus <--- install extra Octopus instance (lts|dev)
 
