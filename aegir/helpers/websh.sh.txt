@@ -856,7 +856,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ]; then
         _RUBY_VP="${_DETECTED_RUBY_VP}"
       else
-        _RUBY_VP=3.1.2
+        _RUBY_VP=3.3.4
       fi
       _SP_A="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}/bin"
       _SP_B="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}@global/bin"
