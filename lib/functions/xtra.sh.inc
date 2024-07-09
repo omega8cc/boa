@@ -445,6 +445,8 @@ if_install_rvm() {
       if prompt_yes_no "Do you want to ${_L_ST} Ruby with RVM?" ; then
         true
         msg "INFO: Running Ruby with RVM ${_L_ST}..."
+        rm -f /etc/apt/sources.list.d/nodesource.list
+        rm -f /usr/share/keyrings/nodesource.gpg
         if [ ! -e "${pthLog}/ruby-sys-clean-reload.log" ]; then
           _RUBY_RELOAD=YES
           rm -rf /usr/local/rvm
