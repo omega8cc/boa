@@ -558,7 +558,7 @@ check_github_for_aegir_head_mode() {
     rm -rf /opt/tmp/test-*
   fi
   if [[ "${_X_VERSION}" =~ "-dev" ]] \
-    || [[ "${_X_VERSION}" =~ "-lite" ]] \
+    || [[ "${_X_VERSION}" =~ "-lts" ]] \
     || [[ "${_X_VERSION}" =~ "-pro" ]]; then
     rm -rf /opt/tmp/test-*
     _GITHUB_TEST=$(git clone ${gitHub}/boa.git \

@@ -36,7 +36,7 @@
 ###
 ###  Start with manual barracuda upgrade.
 ###
-###    $ barracuda up-lite system
+###    $ barracuda up-lts system
 ###
 ###  !!! CREATE A FRESH VM BACKUP SNAPSHOT !!!
 ###  !!! TEST THE FRESHLY CREATED BACKUP.. !!!

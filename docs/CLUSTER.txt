@@ -127,10 +127,10 @@ http://galeracluster.com/documentation-webpages/arbitrator.html
    $ cluster up-web head
 
    #3 Upgrade web head with master Aegir -- run again if upgrade fails
-   $ vserver c1rweb exec /opt/local/bin/barracuda up-lite
+   $ vserver c1rweb exec /opt/local/bin/barracuda up-lts
 
    #4 Upgrade all Octopus instances -- run again if upgrade fails
-   $ vserver c1rweb exec /opt/local/bin/octopus up-lite all force
+   $ vserver c1rweb exec /opt/local/bin/octopus up-lts all force
 
    #=> All usage options
 
