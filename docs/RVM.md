@@ -23,7 +23,7 @@ When you log into your SSH account, you are presented with a helpful intro:
              Note that not all Drush commands are available
 
        Use RVM and Bundler to manage all your Compass gems! Example:
-             `rvm all do gem install --conservative compass`
+                   `gem install --conservative compass`
 
               Use NPM to manage all your packages! Example:
                         `npm install -g gulp`
@@ -37,13 +37,13 @@ To initialize your account properly, follow these steps:
 
 1. Create an empty control file: `touch ~/static/control/compass.info`
 2. Log out and wait at least 15 minutes.
-3. Log in and install Compass: `rvm all do gem install --conservative compass`
-4. Install Bundler: `rvm all do gem install --conservative bundler`
+3. Log in and install Compass: `gem install --conservative compass`
+4. Install Bundler: `gem install --conservative bundler`
 5. Either `cd` to your theme and run `bundle install` or continue with installing gems manually, for example:
    ```sh
-   $ rvm all do gem install foo_bar
-   $ rvm all do gem install --conservative toolkit
-   $ rvm all do gem install --conservative --version 3.0.3 compass_radix
+   $ gem install foo_bar
+   $ gem install --conservative toolkit
+   $ gem install --conservative --version 3.0.3 compass_radix
    ```
 6. Install Grunt: `npm install -g grunt`
 7. Install Gulp: `npm install -g gulp`

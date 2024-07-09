@@ -595,27 +595,27 @@ enable_chattr() {
         if [ -d "/usr/local/rvm" ]; then
           mv -f /usr/local/rvm /usr/local/.off_rvm
         fi
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative bluecloth"      &> /dev/null
+        su -s /bin/bash - ${UQ} -c "gem install --conservative bluecloth"      &> /dev/null
         wait
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative eventmachine"   &> /dev/null
+        su -s /bin/bash - ${UQ} -c "gem install --conservative eventmachine"   &> /dev/null
         wait
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.0.3 eventmachine"  &> /dev/null
+        su -s /bin/bash - ${UQ} -c "gem install --version 1.0.3 eventmachine"  &> /dev/null
         wait
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative ffi"            &> /dev/null
+        su -s /bin/bash - ${UQ} -c "gem install --conservative ffi"            &> /dev/null
         wait
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.9.3 ffi"           &> /dev/null
+        su -s /bin/bash - ${UQ} -c "gem install --version 1.9.3 ffi"           &> /dev/null
         wait
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.9.18 ffi"          &> /dev/null
+        su -s /bin/bash - ${UQ} -c "gem install --version 1.9.18 ffi"          &> /dev/null
         wait
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative hitimes"        &> /dev/null
+        su -s /bin/bash - ${UQ} -c "gem install --conservative hitimes"        &> /dev/null
         wait
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative http_parser.rb" &> /dev/null
+        su -s /bin/bash - ${UQ} -c "gem install --conservative http_parser.rb" &> /dev/null
         wait
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative oily_png"       &> /dev/null
+        su -s /bin/bash - ${UQ} -c "gem install --conservative oily_png"       &> /dev/null
         wait
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.1.1 oily_png"      &> /dev/null
+        su -s /bin/bash - ${UQ} -c "gem install --version 1.1.1 oily_png"      &> /dev/null
         wait
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative yajl-ruby"      &> /dev/null
+        su -s /bin/bash - ${UQ} -c "gem install --conservative yajl-ruby"      &> /dev/null
         wait
         touch ${dscUsr}/log/.gems.build.d.${UQ}.${_X_SE}.txt
         [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
