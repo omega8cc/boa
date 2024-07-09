@@ -107,7 +107,7 @@ $ cluster in-oct em@il o2 mini head
    $ cluster up-web head
    ```
 
-3. Upgrade web head with master Aegir -- run again if upgrade fails:
+3. Upgrade web head with master Ægir -- run again if upgrade fails:
    ```sh
    $ vserver c1rweb exec /opt/local/bin/barracuda up-lts
    ```

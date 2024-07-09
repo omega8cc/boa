@@ -3,7 +3,7 @@
 
 Here are responses to some common Composer on BOA related questions.
 
-The only documentation source for anything Aegir on BOA related is available at:
+The only documentation source for anything Ægir on BOA related is available at:
 - [Omega8.cc Documentation](https://learn.omega8.cc)
 - [BOA GitHub Issues](https://github.com/omega8cc/boa/issues?utf8=✓&q=is%3Aissue+composer)
 
@@ -14,11 +14,11 @@ For more information, please check:
 
 BOA supports Drupal 8/9/10 codebases both with classic directory structure like in Drupal 7 and also Drupal 8/9/10 distros you can download from Drupal.org. However, if you use a Composer-based codebase with a different structure, the platform path is not the codebase root directory but the subdirectory where you see the Drupal own `index.php` and `core` subdirectory. It can be `platform-name/web` or `platform-name/docroot` or something similar depending on the distro design.
 
-As you may have discovered if you have already tried, the path you should use in Aegir when adding a Composer-based codebase as a platform is the directory where `index.php` resides, so effectively anything above that directory is not available for web requests and thus safely protected.
+As you may have discovered if you have already tried, the path you should use in Ægir when adding a Composer-based codebase as a platform is the directory where `index.php` resides, so effectively anything above that directory is not available for web requests and thus safely protected.
 
-The information from Aegir project docs saying "When verifying a platform, Aegir runs `composer install` if a `composer.json` file is found." doesn't apply to BOA. We have disabled this. There are several reasons, most importantly:
+The information from Ægir project docs saying "When verifying a platform, Ægir runs `composer install` if a `composer.json` file is found." doesn't apply to BOA. We have disabled this. There are several reasons, most importantly:
 
-a. Having this feature enabled is actually against the codebase management workflow in Aegir, because it may modify codebase on a live site.
+a. Having this feature enabled is actually against the codebase management workflow in Ægir, because it may modify codebase on a live site.
 b. Some tasks launch verify many times during clone and migrate, which results in giant overhead and conflicts if we allowed it to run `composer install` many times in parallel.
 c. From our experience, having this poorly implemented feature enabled breaks clone and migration tasks between platforms when both have the `composer.json` file. It just doesn't make any sense in our opinion. The implementation should be improved to make it actually work similarly to Drush Makefiles.
 

@@ -4,7 +4,7 @@
 
 1. PHP-FPM versions 8.3/2/1/0, 7.4/3/2/1/0, and 5.6, configurable per site.
 2. Latest release of Percona 5.7 database server with Adminer manager.
-3. All libraries and tools required to install and run the Nginx-based Aegir system.
+3. All libraries and tools required to install and run the Nginx-based Ægir system.
 4. Magic Speed Booster cache, functioning like a Boost + AuthCache, but per user.
 5. Entry-level XSS protection built into Nginx.
 6. Firewall csf/lfd integrated with Nginx abuse guard.
@@ -16,7 +16,7 @@
 12. Perfect Forward Secrecy (PFS) support in Nginx.
 13. PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse, and ionCube.
 14. Fast Redis Cache/Lock/Path with DB auto-failover for all Drupal core versions.
-15. Limited Shell, SFTP, and FTPS accounts per Aegir Client with per-site access.
+15. Limited Shell, SFTP, and FTPS accounts per Ægir Client with per-site access.
 16. Drush access on the command line in all shell accounts.
 17. Composer and Drush Make access on the command line for the main shell account only.
 18. PHP error debugging, including WSOD, enabled on the fly on `.dev` aliases.

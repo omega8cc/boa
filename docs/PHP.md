@@ -1,7 +1,7 @@
 
 # Please check regularly: [PHP Supported Versions](https://www.php.net/supported-versions.php)
 
-The Aegir version provided by BOA is now fully compatible with PHP 8.3, so it can be used as default version in the Aegir PHP configuration files:
+The Ægir version provided by BOA is now fully compatible with PHP 8.3, so it can be used as default version in the Ægir PHP configuration files:
 `~/static/control/cli.info` and `~/static/control/fpm.info`
 
 ## PHP CAVEATS for Drupal core 7-10 versions:
@@ -73,4 +73,4 @@ There must be only one line and one value (e.g., `8.1`) in this control file. Ot
 
 **NOTE**: If the file doesn't exist, the system will create it and set it to the lowest available PHP version installed, not the system default version. This is to guarantee backward compatibility for instances installed before upgrading to BOA-4.1.3 when the default PHP version was 5.6. Otherwise, after the upgrade, the system would automatically switch such accounts to the new default PHP version, which is 8.1, and this could break most of the sites hosted, never before tested for PHP 8.1 compatibility.
 
-**IMPORTANT**: This file will affect Drush on the shell user command line, Drush in the Aegir backend, and also the PHP-CLI version used by Composer on the command line.
+**IMPORTANT**: This file will affect Drush on the shell user command line, Drush in the Ægir backend, and also the PHP-CLI version used by Composer on the command line.

@@ -1,6 +1,6 @@
 # FAQ
 
-**Q: Can I use BOA to host Drupal sites outside of Aegir?**
+**Q: Can I use BOA to host Drupal sites outside of Ægir?**
 
 **A:** Yes, but it is an unsupported feature, so you need to figure out how to do it properly and you should be prepared that things may explode without any warning after the next BOA upgrade. All custom vhosts must reside in the master vhosts directory: `/var/aegir/config/server_master/nginx/vhost.d/` to avoid GHOST vhost detection and auto-cleanup which runs daily, but only for all Octopus instances in `/data/disk` directory tree.
 

@@ -51,7 +51,7 @@ Refer to our [DNS wildcard configuration example](http://bit.ly/UM2nRb) for refe
 
 With `_EASY_SETUP=PUBLIC` option (default), Barracuda will install automatically only the services listed below:
 
-- Your Aegir Master Instance control panel will be available at `https://master.f-q-d-n`
+- Your Ægir Master Instance control panel will be available at `https://master.f-q-d-n`
 - Your Fast DNS Cache Server (unbound) will listen on `127.0.0.1:53`
 - Your Adminer Percona Manager will be available at `https://adminer.master.f-q-d-n`
 - Your CSF/LFD Firewall will support integrated Nginx Abuse Guard.
@@ -60,7 +60,7 @@ With `_EASY_SETUP=PUBLIC` option (default), Barracuda will install automatically
 
 With `_EASY_SETUP=NO` option (default is PUBLIC), Barracuda will offer installation of services listed below:
 
-- Your Aegir Master Instance control panel will be available at `https://master.f-q-d-n`
+- Your Ægir Master Instance control panel will be available at `https://master.f-q-d-n`
 - Your Fast DNS Cache Server (unbound) will listen on `127.0.0.1:53`
 - Your (optional) Adminer Percona Manager will be available at `https://adminer.master.f-q-d-n`
 - Your (optional) Bind9 DNS Server will listen on `123.45.67.89:53`
@@ -81,7 +81,7 @@ With `_EASY_SETUP=LOCAL` option (not enabled by default), Barracuda will configu
 
 With `_EASY_SETUP=LOCAL` option (not enabled by default), Barracuda will install automatically only the services listed below:
 
-- Your Aegir Master Instance control panel will be available at `https://aegir.local`
+- Your Ægir Master Instance control panel will be available at `https://aegir.local`
 - Your Fast DNS Cache Server (unbound) will listen on `127.0.0.1:53`
 - Your Adminer Percona Manager will be available at `https://adminer.aegir.local`
 

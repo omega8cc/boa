@@ -55,21 +55,21 @@ Download and run (as root) BOA Meta Installers first:
 wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
 ```
 
-To upgrade the system and Aegir Master Instance to the latest version, use:
+To upgrade the system and Ægir Master Instance to the latest version, use:
 
 ```sh
 screen
 barracuda up-lts
 ```
 
-To upgrade a selected Aegir Satellite Instance to the latest version, use:
+To upgrade a selected Ægir Satellite Instance to the latest version, use:
 
 ```sh
 screen
 octopus up-lts o1 force
 ```
 
-To upgrade *all* Aegir Satellite Instances to the latest version, use:
+To upgrade *all* Ægir Satellite Instances to the latest version, use:
 
 ```sh
 screen
@@ -93,7 +93,7 @@ octopus up-lts all force log
 
 A detailed backend log on the barracuda upgrade is always stored in `/var/backups/`.
 
-You can append `system` as the last argument to the barracuda command, and it will upgrade only the system without running the Aegir Master Instance upgrade. It will also write the output to the file instead of the console:
+You can append `system` as the last argument to the barracuda command, and it will upgrade only the system without running the Ægir Master Instance upgrade. It will also write the output to the file instead of the console:
 
 - `/var/backups/reports/up/barracuda/*`
 
@@ -123,6 +123,6 @@ octopus up-lts all aegir log
 octopus up-lts all platforms
 ```
 
-## NOTE on Aegir Platforms
+## NOTE on Ægir Platforms
 
-Since BOA no longer installs all bundled Aegir platforms during Octopus installation and upgrades, you will need to add some keywords to `~/static/control/platforms.info` and run the Octopus upgrade to have these platforms added as explained in the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs) you can find in the file `~/control/README.txt` within your Octopus account.
+Since BOA no longer installs all bundled Ægir platforms during Octopus installation and upgrades, you will need to add some keywords to `~/static/control/platforms.info` and run the Octopus upgrade to have these platforms added as explained in the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs) you can find in the file `~/control/README.txt` within your Octopus account.

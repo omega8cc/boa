@@ -13,9 +13,9 @@ If you are interested in some real-world benchmarks, please check also:
 
 On self-hosted BOA, you must add the 'HVM' symbol to the `_XTRAS_LIST` variable in your `/root/.barracuda.cnf` file and then run the `barracuda up-lts` command, followed by `octopus up-lts all aegir`, before trying to enable HHVM on any existing Octopus Satellite Instance.
 
-Once BOA-2.4.0 is released, HHVM can be installed also with standard commands recommended for production systems: `barracuda up-lts` for Aegir Master, followed by `octopus up-lts all aegir` for Satellite Instances.
+Once BOA-2.4.0 is released, HHVM can be installed also with standard commands recommended for production systems: `barracuda up-lts` for Ægir Master, followed by `octopus up-lts all aegir` for Satellite Instances.
 
-Please note that it is not enough to run `barracuda up-lts system`, because you need to upgrade the system plus Aegir Master and all Satellite Instances.
+Please note that it is not enough to run `barracuda up-lts system`, because you need to upgrade the system plus Ægir Master and all Satellite Instances.
 
 This step will be automated on BOA managed by Omega8.cc, and we plan to make HHVM available on the high-end Power Engines: [Omega8.cc Power Engines](https://omega8.cc/power)
 
@@ -56,13 +56,13 @@ As you can see, it is possible to run multiple Octopus Satellite Instances, some
 
 **A:** It is an option, but not exactly like other PHP-related options, because you can't control HHVM version. It also requires Nginx config modification on the fly. It also requires a custom system user created on the fly.
 
-This must be done on the Octopus Satellite Instance configuration level, and can't be done on the Aegir platform nor Drupal site level.
+This must be done on the Octopus Satellite Instance configuration level, and can't be done on the Ægir platform nor Drupal site level.
 
 We also want to make it possible to switch Octopus Satellite Instance between PHP-FPM and HHVM without system root privileges, so it can't depend on some variable in the Octopus Satellite Instance .cnf file.
 
 Note also that currently it is not possible to define HHVM as a default engine during Octopus instance install or upgrade.
 
-Also, you still need a standard PHP installed anyway, so it can be used by the Aegir/Drush backend, and that is why you can't specify HHVM as an option *instead* of PHP version.
+Also, you still need a standard PHP installed anyway, so it can be used by the Ægir/Drush backend, and that is why you can't specify HHVM as an option *instead* of PHP version.
 
 **Q: Is it possible to initiate HHVM restart without root access?**
 

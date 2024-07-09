@@ -3,7 +3,7 @@
 
 Your Devuan or Debian system uses SHA512 for password encryption by default.
 
-This is not bad, and for sure much better than MD5 by default used in BOA for all newly created SSH/FTPS accounts (both main and extra - for Aegir Clients) in all releases up to BOA-2.0.8.
+This is not bad, and for sure much better than MD5 by default used in BOA for all newly created SSH/FTPS accounts (both main and extra - for Ægir Clients) in all releases up to BOA-2.0.8.
 
 But since BOA forces all users to update their passwords every 90 days, once the user updates their password, it is automatically encrypted with SHA512, so it no longer uses the completely insecure MD5 hashing.
 

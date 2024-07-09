@@ -1,7 +1,7 @@
 
 # Octopus Platforms
 
-Octopus can install and/or support the Aegir platforms listed below:
+Octopus can install and/or support the Ægir platforms listed below:
 
 ## Drupal 10
 
@@ -40,7 +40,7 @@ Octopus can install and/or support the Aegir platforms listed below:
 
 `~/static/control/platforms.info`
 
-This file, if it exists and contains a list of symbols used to define supported platforms, allows control/override of the value of `_PLATFORMS_LIST` variable normally defined in the `/root/.${_USER}.octopus.cnf` file, which can't be modified by the Aegir instance owner with no system root access.
+This file, if it exists and contains a list of symbols used to define supported platforms, allows control/override of the value of `_PLATFORMS_LIST` variable normally defined in the `/root/.${_USER}.octopus.cnf` file, which can't be modified by the Ægir instance owner with no system root access.
 
 **IMPORTANT**: If used, it will replace/override the value defined on initial instance install and all previous upgrades. It takes effect on every future Octopus instance upgrade, which means that you will miss all newly added distributions if they are not listed in this control file.
 

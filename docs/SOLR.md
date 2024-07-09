@@ -59,7 +59,7 @@ This option will be ignored if `solr_custom_config` is set to `YES`.
 
 ## Custom Solr Core Configuration Files
 
-To use customized versions of `schema.xml` or `solrconfig.xml`, set `solr_custom_config` to `YES`. If using a hosted Aegir service, submit a support ticket to update these files with your custom versions. On self-hosted BOA, update these files directly.
+To use customized versions of `schema.xml` or `solrconfig.xml`, set `solr_custom_config` to `YES`. If using a hosted Ægir service, submit a support ticket to update these files with your custom versions. On self-hosted BOA, update these files directly.
 
 Ensure you use Solr-compatible config files.
 

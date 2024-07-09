@@ -406,7 +406,7 @@
 ;;
 ;;  To use customized version of either schema.xml or solrconfig.xml, you need
 ;;  to switch solr_custom_config to YES below and if you are using hosted
-;;  Aegir service, submit a support ticket to get these files updated with
+;;  Ægir service, submit a support ticket to get these files updated with
 ;;  your custom versions. On self-hosted BOA simply update these files directly.
 ;;
 ;;  Please remember to use Solr compatible config files.
@@ -432,7 +432,7 @@
 ;;  It can be also set (and forced) automatically for all sites on all platforms
 ;;  if there is special _SQL_CONVERT variable defined for this Octopus instance
 ;;  in its .USER.octopus.cnf config file, but it may require submitting support
-;;  request if you are using hosted Aegir BOA service without root access.
+;;  request if you are using hosted Ægir BOA service without root access.
 ;;
 ;;  Supported values are: innodb and myisam (lowercase only!)
 ;;

@@ -366,7 +366,7 @@
 ;;  This feature can be useful when you prefer to manage custom platform in
 ;;  a monolithic codebase mode in Git, so forcing permissions could conflict
 ;;  with your workflow or development tools. Otherwise you should never disable
-;;  this to avoid issues with Aegir tasks related to sites on this platform.
+;;  this to avoid issues with Ægir tasks related to sites on this platform.
 ;;
 ;;  This setting affects only the running daily maintenance system behaviour.
 ;;
@@ -386,7 +386,7 @@
 ;;  It can be also set (and forced) automatically for all sites on all platforms
 ;;  if there is special _SQL_CONVERT variable defined for this Octopus instance
 ;;  in its .USER.octopus.cnf config file, but it may require submitting support
-;;  request if you are using hosted Aegir BOA service without root access.
+;;  request if you are using hosted Ægir BOA service without root access.
 ;;
 ;;  Supported values are: innodb and myisam (lowercase only!)
 ;;

@@ -68,7 +68,7 @@ You can install only BOA LTS and optionally upgrade to PRO with a license from [
 
    Specifying Octopus username is optional. It will use `o1` if empty.
 
-   The last `{newrelickey|php-8.1|php-min|php-max|nodns}` part is optional and can be used either to install New Relic Apps Monitor (you should replace the `newrelickey` keyword with a valid license key), or to define a single PHP version to install and use both for Aegir Master and Satellite instances.
+   The last `{newrelickey|php-8.1|php-min|php-max|nodns}` part is optional and can be used either to install New Relic Apps Monitor (you should replace the `newrelickey` keyword with a valid license key), or to define a single PHP version to install and use both for Ægir Master and Satellite instances.
 
    When `php-min` is defined, then 4 versions will be installed: `8.3`, `8.2`, `7.4`, plus `8.1`, configured as default. You can later install or modify PHP versions used via `_PHP_MULTI_INSTALL`, `_PHP_CLI_VERSION`, and `_PHP_FPM_VERSION`, but the `_PHP_SINGLE_INSTALL` variable must be set empty to not override other related variables. The `nodns` option allows skipping DNS and SMTP checks.
 
@@ -80,9 +80,9 @@ You can install only BOA LTS and optionally upgrade to PRO with a license from [
    touch /root/.debug-boa-installer.cnf
    ```
 
-   **NOTE:** You should never use `/root/.debug-barracuda-installer.cnf` unless you need to debug barracuda without running the Aegir Master Instance upgrades because this file will automatically turn off updating system Drush and the Aegir Master Instance on a barracuda upgrade.
+   **NOTE:** You should never use `/root/.debug-barracuda-installer.cnf` unless you need to debug barracuda without running the Ægir Master Instance upgrades because this file will automatically turn off updating system Drush and the Ægir Master Instance on a barracuda upgrade.
 
-   Interestingly, while `/root/.debug-boa-installer.cnf` enables debugging mode for both barracuda and octopus, it will not prevent Aegir Master Instance and Drush updates.
+   Interestingly, while `/root/.debug-boa-installer.cnf` enables debugging mode for both barracuda and octopus, it will not prevent Ægir Master Instance and Drush updates.
 
    ### Examples:
 
@@ -111,7 +111,7 @@ You can install only BOA LTS and optionally upgrade to PRO with a license from [
      boa in-lts public server.mydomain.org my@email system
      ```
 
-   **NOTE:** Since BOA no longer installs all bundled Aegir platforms during initial system installation, you will need to add some keywords to `~/static/control/platforms.info` and run Octopus upgrade to have these platforms added as explained in the docs you can find in the file `~/control/README.txt` within your Octopus account.
+   **NOTE:** Since BOA no longer installs all bundled Ægir platforms during initial system installation, you will need to add some keywords to `~/static/control/platforms.info` and run Octopus upgrade to have these platforms added as explained in the docs you can find in the file `~/control/README.txt` within your Octopus account.
 
 # Installing More Octopus Instances
 

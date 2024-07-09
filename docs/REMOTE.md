@@ -1,11 +1,11 @@
 
-# How to Migrate Single Sites Between Remote Aegir Instances
+# How to Migrate Single Sites Between Remote Ægir Instances
 
-This is a detailed how-to for the `remote_import` Provision extension and `hosting_remote_import` module included by default in every Aegir Satellite Instance since BOA-2.0.3 Edition.
+This is a detailed how-to for the `remote_import` Provision extension and `hosting_remote_import` module included by default in every Ægir Satellite Instance since BOA-2.0.3 Edition.
 
 We assume that your Octopus system user is the default `o1`.
 
-**Important**: The system user must be the same on source and target, since Aegir doesn't allow (yet) to migrate from `o1` to `o2`, only from `o1` to `o1` or from `o2` to `o2`, etc.
+**Important**: The system user must be the same on source and target, since Ægir doesn't allow (yet) to migrate from `o1` to `o2`, only from `o1` to `o1` or from `o2` to `o2`, etc.
 
 - The `source-host` is a placeholder for your source instance FQDN hostname.
 - The `target-host` is a placeholder for your target instance FQDN hostname.
@@ -47,7 +47,7 @@ rsync -avzuL --ignore-errors -e ssh o1@source-host:/path/to/plform-name/sites/al
 rsync -avzuL --ignore-errors -e ssh o1@source-host:/path/to/plform-name/sites/default ~/static/plform-name/sites/
 ```
 
-Add the transferred platform codebase in the Aegir frontend with path: `/data/disk/o1/static/plform-name`
+Add the transferred platform codebase in the Ægir frontend with path: `/data/disk/o1/static/plform-name`
 
 ## Commands to Run on the Source Server Only
 
@@ -60,7 +60,7 @@ service clean-boa-env start
 
 **Note**: You will have to wait for cron to run after every step or run the tasks cron manually with `bash /var/xdrago/run-o1`.
 
-1. Go to `/node/add/server` in the Aegir control panel on the target instance.
+1. Go to `/node/add/server` in the Ægir control panel on the target instance.
 2. Enter FQDN of the source server as a 'Server hostname'.
 3. Choose only 'hostmaster' option under 'Remote Import' and hit 'Save'.
 4. Go to 'Import remote sites' tab on the just added server node once verified.

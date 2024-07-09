@@ -13,9 +13,9 @@ For Satellite Instances: `/data/disk/EDIT_USER/config/server_master/nginx/post.d
 
 For Master Instance: `/var/aegir/config/includes/`
 
-These files will be included if exist and will never be modified or touched by Aegir Provision backend system.
+These files will be included if exist and will never be modified or touched by Ægir Provision backend system.
 
-Note: your custom rewrite rules will apply to *all* sites on the same Aegir Satellite Instance, unless you will use site/domain specific `if{}` embedded locations, as shown in the examples below.
+Note: your custom rewrite rules will apply to *all* sites on the same Ægir Satellite Instance, unless you will use site/domain specific `if{}` embedded locations, as shown in the examples below.
 
 ## Custom rewrites to map legacy content to the Drupal multisite.
 

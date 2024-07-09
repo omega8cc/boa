@@ -16,15 +16,21 @@ Bundler allows you to manage different gem versions per theme, so it is a good i
 When you log into your SSH account, you are presented with a helpful intro:
 
 ```
-======== Welcome to the Aegir, Drush and Compass Shell ========
-   Type '?' or 'help' to get the list of allowed commands
-       Note that not all Drush commands are available
- Use RVM and Bundler to manage all your Compass gems! Example:
-       `rvm all do gem install --conservative compass`
-        Use NPM to manage all your packages! Example:
-                  `npm install -g gulp`
-To install RVM and NPM use the control file and re-login after 15 minutes
-             `touch ~/static/control/compass.info`
+
+      ======== Welcome to the Aegir, Drush and Compass Shell ========
+
+         Type '?' or 'help' to get the list of allowed commands
+             Note that not all Drush commands are available
+
+       Use RVM and Bundler to manage all your Compass gems! Example:
+             `rvm all do gem install --conservative compass`
+
+              Use NPM to manage all your packages! Example:
+                        `npm install -g gulp`
+
+       To install RVM use control file and re-login after 15 minutes
+                 `touch ~/static/control/compass.info`
+
 ```
 
 To initialize your account properly, follow these steps:
@@ -43,7 +49,7 @@ To initialize your account properly, follow these steps:
 7. Install Gulp: `npm install -g gulp`
 8. Install Bower: `npm install -g bower`
 
-The special, single control file `~/static/control/compass.info` will enable RVM and NPM in all extra SSH accounts on your instance. If you delete this file, the system will remove RVM with all gems and npm packages from all SSH accounts on your Aegir Octopus Instance.
+The special, single control file `~/static/control/compass.info` will enable RVM and NPM in all extra SSH accounts on your instance. If you delete this file, the system will remove RVM with all gems and npm packages from all SSH accounts on your Ægir Octopus Instance.
 
 Some gems may require the ability to build their native binaries during installation, which is not possible in the limited shell. When you initialize your account to support Ruby Version Manager (RVM), a few known problematic gems will be pre-installed automatically to limit these problems.
 

@@ -1,9 +1,9 @@
 
-# Security Considerations for Multi-Aegir Systems
+# Security Considerations for Multi-Ægir Systems
 
-In a multi-Aegir-instance system, all instances will use the same Nginx server. This means that attempting to install a site with the same domain on two or more instances can affect others. The instances will not be aware of each other, so it is your responsibility to manage the system wisely.
+In a multi-Ægir-instance system, all instances will use the same Nginx server. This means that attempting to install a site with the same domain on two or more instances can affect others. The instances will not be aware of each other, so it is your responsibility to manage the system wisely.
 
-It is critically important to never give anyone access to the Aegir system user on any Octopus instance. This user has almost root access to all site databases hosted across all Octopus instances on the same BOA server. Only provide limited shell access accounts and non-admin Aegir control panel accounts to end-users.
+It is critically important to never give anyone access to the Ægir system user on any Octopus instance. This user has almost root access to all site databases hosted across all Octopus instances on the same BOA server. Only provide limited shell access accounts and non-admin Ægir control panel accounts to end-users.
 
 ## Customizing PHP Function Restrictions
 
@@ -25,7 +25,7 @@ If `_PHP_FPM_DENY` is **not** empty, its value will **replace** the default `pas
 
 **WARNING!** Do not add `shell_exec` here, or you will break cron for all sites, including those hosted on all Satellite Instances. The `shell_exec` function is also required by Collectd Graph Panel, if installed.
 
-This option affects only the Aegir Master Instance plus all scripts running outside of Octopus Satellite Instances.
+This option affects only the Ægir Master Instance plus all scripts running outside of Octopus Satellite Instances.
 
 **Example:**
 

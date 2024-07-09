@@ -39,10 +39,6 @@ Leverage one Ægir Master Instance and multiple Satellite Instances. Use Satelli
 - **BARRACUDA**: Upgrades the system and the Ægir Master Instance.
 - **OCTOPUS**: Updates Ægir Instances + Drupal platforms.
 
-## Dual License
-
-Check out the details in [docs/DUALLICENSE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/DUALLICENSE.md).
-
 ## Bug Reporting
 
 Follow the guidelines in [docs/CONTRIBUTING.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/CONTRIBUTING.md).
@@ -89,6 +85,10 @@ Check out the details in [docs/PROVIDES.md](https://github.com/omega8cc/boa/tree
 - Stretch (deprecated but still works, please upgrade to Chimaera)
 - Jessie (deprecated but still works, please upgrade to Chimaera)
 
+## Project Roadmap
+
+Check out the details in [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-dev/ROADMAP.md)
+
 ## Documentation and Templates
 
 - Installation Instructions: [docs/INSTALL.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/INSTALL.md)
@@ -128,6 +128,10 @@ Check out the details in [docs/PROVIDES.md](https://github.com/omega8cc/boa/tree
 
 - BOA User Handbook (legacy): [Learn BOA](https://learn.omega8.cc/library/good-to-know)
 - Ægir Docs (legacy): [Ægir Project](https://docs.aegirproject.org)
+
+## Dual License
+
+Check out the details in [DUALLICENSE.md](https://github.com/omega8cc/boa/tree/5.x-dev/DUALLICENSE.md).
 
 ## Maintainers
 

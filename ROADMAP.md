@@ -8,10 +8,10 @@ Documenting details in progress...
 - **Grav CMS Support**: Add support for Grav CMS (command line only).
 - **Symlink Site Files**: Automatically symlink all site files to speed up migration tasks and save disk space.
 - **Rsync on Clone**: Use Rsync to create separate symlinked copies during site clone tasks.
-- **Automate Mass Import**: Extend xboa tool features to automate mass import procedures from remote classic Aegir servers running Nginx or Apache.
+- **Automate Mass Import**: Extend xboa tool features to automate mass import procedures from remote classic Ægir servers running Nginx or Apache.
 - **Percona Server for MySQL 8.0**: Test and support migration to Percona Server for MySQL 8.0, as Percona/MySQL 5.7 reached EOL in October 2023.
 - **Amazon S3 Alternatives**: Add support for Amazon S3 alternatives to backboa and duobackboa.
-- **Aegir Remote Servers**: Implement the Aegir Remote Servers feature to meet user needs.
+- **Ægir Remote Servers**: Implement the Ægir Remote Servers feature to meet user needs.
 
 ## Improvements
 
@@ -19,8 +19,8 @@ Documenting details in progress...
 
 ## Changes and Upgrades
 
-- **Aegir Admin Interface (Urgent)**: Switch the Aegir admin interface from Drupal 7 to Backdrop CMS.
-- **Configurable Site Backups**: Modify Aegir site backups to exclude all files and database dumps by default, making it configurable with new control files to preserve Restore task functionality if desired by the user.
+- **Ægir Admin Interface (Urgent)**: Switch the Ægir admin interface from Drupal 7 to Backdrop CMS.
+- **Configurable Site Backups**: Modify Ægir site backups to exclude all files and database dumps by default, making it configurable with new control files to preserve Restore task functionality if desired by the user.
 
 ## Important Fixes
 

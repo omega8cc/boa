@@ -13,7 +13,7 @@ Please carefully consider the implications, though, because there are very good 
 
 The potential reasons to disable these extra tasks with the help of this new control file can be twofold:
 
-1. To restore default and much faster Aegir own behaviour.
+1. To restore default and much faster Ægir own behaviour.
 2. To help those running mass migrations to avoid running duplicate tasks.
 
 Still, it's your responsibility to run these extra verify tasks when you need to migrate or clone just a single site, but you prefer to have them run for you automatically as before, you can easily restore the previous behaviour:
