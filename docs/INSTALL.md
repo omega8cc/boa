@@ -1,16 +1,4 @@
 
-# Available BOA Branches and Licenses
-
-BOA is available in three main branches, but only LTS is available without license:
-
-- **LTS**: Remains completely free to use without any kind of license as it was from the beginning (previously named HEAD or STABLE). This branch should be considered **BOA LTS** with slow updates, focused on both security and bug fixes, with very limited new feature additions.
-
-- **DEV**: Requires a paid license for both installation and upgrade. It includes the latest features, security updates, bug fixes, and installed services versions. This branch shouldn't be used in production without extensive testing.
-
-- **PRO**: Requires a paid license and is available only as an upgrade from either LTS or DEV (or previous HEAD/STABLE). This branch features regular monthly or bi-monthly releases, closely following the tested DEV branch.
-
-You can install only BOA LTS and optionally upgrade to PRO with a license from [Omega8.cc](https://omega8.cc/licenses).
-
 # Preparations Before Installing BOA
 
 - Add your SSH keys to your VPS root -- BOA will disable password for root over SSH.

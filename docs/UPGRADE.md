@@ -1,17 +1,7 @@
 
-# Available BOA Branches and Licenses
+# How-To Upgrade Your BOA System
 
-BOA is available in three main branches, but only LTS is available without license:
-
-- **LTS**: This branch remains completely free to use without any kind of license, as it was from the beginning (previously named HEAD or STABLE). This branch should be considered as **BOA LTS** with slow updates, focused on both security and bug fixes, but very limited new features.
-
-- **DEV**: This branch requires a paid license for both installation and upgrade and includes the latest features, security and bug fixes, and installed services versions. This branch shouldn't be used in production without extensive testing.
-
-- **PRO**: This branch requires a paid license and is available only as an upgrade from either LTS or DEV (or previous HEAD/STABLE). It has regular monthly or bi-monthly releases, closely following the tested DEV branch.
-
-Once you install BOA LTS and want to upgrade to PRO with a license obtained from [Omega8.cc](https://omega8.cc/licenses), you will need to replace `up-lts` in all examples below with `up-pro`.
-
-Once you install BOA LTS or PRO and want to upgrade to DEV with a license from [Omega8.cc](https://omega8.cc/licenses), you will need to replace `up-lts` in all examples below with `up-dev`.
+All standard non-major system upgrades can be run with **BARRACUDA** and all Ægir instances can be upgraded with **OCTOPUS**, but we highly recommend to use the fully automated procedure explained in Self-Upgrade How-To: [docs/SELFUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SELFUPGRADE.md)
 
 ## Important Notes for Standard/Manual BOA Upgrade
 
