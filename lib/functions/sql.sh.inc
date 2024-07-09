@@ -1073,7 +1073,9 @@ db_server_apt_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: db_server_apt_cleanup"
   fi
+  [ -e "/etc/apt/sources.list.d/percona-original-release.list.bak" ] && rm -f /etc/apt/sources.list.d/percona-original-release.list.bak
   [ -e "/etc/apt/sources.list.d/percona-original-release.list" ] && rm -f /etc/apt/sources.list.d/percona-original-release.list
+  [ -e "/etc/apt/sources.list.d/percona-prel-release.list.bak" ] && rm -f /etc/apt/sources.list.d/percona-prel-release.list.bak
   [ -e "/etc/apt/sources.list.d/percona-prel-release.list" ] && rm -f /etc/apt/sources.list.d/percona-prel-release.list
   [ -e "/etc/apt/sources.list.d/percona-release.list.bak" ] && rm -f /etc/apt/sources.list.d/percona-release.list.bak
   apt_clean_update
