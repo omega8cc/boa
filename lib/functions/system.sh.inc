@@ -2507,6 +2507,20 @@ run_aptitude_full_upgrade() {
     msg "PROC: run_aptitude_full_upgrade"
   fi
   msg "INFO: Running aptitude full-upgrade..."
+  ###
+  ### Make sure that percona-release package is locked in apt early.
+  if [ ! -e "/etc/apt/preferences.d/percona-release" ]; then
+    echo -e 'Package: percona-release\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/percona-release
+    apt_clean_update
+  fi
+  ###
+  _PERC_GET_DPKG=$(dpkg --get-selections | grep percona-release | grep 'hold$' 2>&1)
+  if [[ ! "${_PERC_GET_DPKG}" =~ "hold" ]]; then
+    aptitude hold percona-release &> /dev/null
+    echo "percona-release hold" | dpkg --set-selections &> /dev/null
+    apt_clean_update
+  fi
+  mrun "apt-get remove percona-release -y -qq" 2> /dev/null
   apt_clean_update
   st_runner "apt --fix-broken install -y" 2> /dev/null
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
