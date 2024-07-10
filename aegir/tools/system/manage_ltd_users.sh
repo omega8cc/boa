@@ -1027,8 +1027,9 @@ add_user_if_not_exists() {
 manage_sec_access_paths() {
 #for Domain in `find ${Client}/ -maxdepth 1 -mindepth 1 -type l -printf %P\\n | sort`
 for Domain in `find ${Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
-  _STATIC_FILES="${pthParentUsr}/static/files/${Domain}.files"
-  _STATIC_PRIVATE="${pthParentUsr}/static/files/${Domain}.private"
+  rawDom=$(echo ${Domain} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
+  _STATIC_FILES="${pthParentUsr}/static/files/${rawDom}.files"
+  _STATIC_PRIVATE="${pthParentUsr}/static/files/${rawDom}.private"
   _PATH_DOM=$(readlink -n ${Domain} 2>&1)
   _PATH_DOM=$(echo -n ${_PATH_DOM} | tr -d "\n" 2>&1)
   _ALLD_DIR="${_ALLD_DIR}, '${_PATH_DOM}', '${_STATIC_FILES}', '${_STATIC_PRIVATE}'"
