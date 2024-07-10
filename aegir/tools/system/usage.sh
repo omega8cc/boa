@@ -1143,11 +1143,11 @@ action() {
           if [ -e "${_THIS_HM_SITE}" ]; then
             su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster \
               variable-set --always-set site_footer 'Usage on ${_DATE} \
-              | ALL Files <strong>${HomSizH}</strong> MB \
-              | LIVE Dbs <strong>${SumDatH}</strong> MB \
-              | DEV Dbs <strong>${SkipDtH}</strong> MB \
+              | Files <strong>${HomSizH}</strong> MB \
+              | LiveDb <strong>${SumDatH}</strong> MB \
+              | DevDb <strong>${SkipDtH}</strong> MB \
               | <strong>${_CLIENT_CORES}</strong> \
-              Aegir ${_CLIENT_OPTION} ${_ENGINE_NR} \
+              ${_CLIENT_OPTION} ${_ENGINE_NR} \
               | CLI <strong>${_CLIENT_CLI}</strong> \
               | FPM <strong>${_CLIENT_FPM}</strong>'" &> /dev/null
             wait
