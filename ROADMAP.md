@@ -4,6 +4,7 @@ Documenting details in progress...
 
 ## New Features
 
+- **New Ægir Task for SQL Backup**: Make it possible to create classic mysqldump backup only for download per site.
 - **Backdrop CMS Support (Urgent)**: Add support for Backdrop CMS as a platform.
 - **Grav CMS Support**: Add support for Grav CMS (command line only).
 - **Symlink Site Files**: Automatically symlink all site files to speed up migration tasks and save disk space.
