@@ -1,15 +1,15 @@
 
-# Security Considerations for Multi-Ægir Systems
+## Security Considerations for Multi-Ægir Systems
 
 In a multi-Ægir-instance system, all instances will use the same Nginx server. This means that attempting to install a site with the same domain on two or more instances can affect others. **The instances will not be aware of each other**, so it is your responsibility to manage the system wisely.
 
 It is **critically important** to never give anyone access to the Ægir **system user** on any Octopus instance. This user has almost root access to **all** sites databases hosted across **all** Octopus instances on the same BOA server. Only provide **limited shell** access accounts and **non-admin** Ægir control panel accounts to end-users.
 
-## Security Considerations for Node/NPM
+## Security Considerations for Node/NPM Access
 
 Since `node` can be used to easily escape Limited Shell and thus open a very serious security hole in the BOA system, it should not be enabled on any BOA system with many `lshell` users. For this reason Node/NPM support is not enabled in BOA by default and requires that you create an empty control file `/root/.allow.node.lshell.cnf` to remove the limitation. On hosted BOA Node/NPM support is available only on dedicated systems like Phantom and Cluster.
 
-## BOA System Security Features
+## BOA System Security Features Explained
 
 BOA provides very secure hosting environment for Ægir and Drupal sites, which includes comprehensive built-in security monitoring and autonomous attack prevention systems. Below is a list of the most important features, which together provide robust protection for all hosted sites. You may also want to read about [running performance or load tests](https://learn.omega8.cc/how-to-run-performance-or-load-test-300).
 
