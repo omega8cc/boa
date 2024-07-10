@@ -1,4 +1,4 @@
-# What is HHVM?
+# What is HHVM? (deprecated)
 
 HHVM is an open-source virtual machine designed for executing programs written in Hack and PHP. HHVM uses a just-in-time (JIT) compilation approach to achieve superior performance while maintaining the development flexibility that PHP provides.
 
