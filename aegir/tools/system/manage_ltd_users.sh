@@ -1026,7 +1026,7 @@ for Domain in `find ${Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   _STATIC_PRIVATE="${pthParentUsr}/static/files/${Domain}.private"
   _PATH_DOM=$(readlink -n ${Domain} 2>&1)
   _PATH_DOM=$(echo -n ${_PATH_DOM} | tr -d "\n" 2>&1)
-  _ALLD_DIR="${_ALLD_DIR}, '${_PATH_DOM}'"
+  _ALLD_DIR="${_ALLD_DIR}, '${_PATH_DOM}', '${_STATIC_FILES}', '${_STATIC_PRIVATE}'"
   if [ -e "${_PATH_DOM}" ]; then
     _ALLD_NUM=$(( _ALLD_NUM += 1 ))
   fi
