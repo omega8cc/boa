@@ -7,7 +7,7 @@ If you don’t mind several Classic procedures to get to the latest supported De
 
 But if you prefer to have all major OS upgrade multi-steps and versions automated to get to the latest supported Devuan version, then the Modern procedure is for you.
 
-## HOW-TO: Launch Modern Major OS Auto-Upgrade
+## How To: Launch Modern Major OS Auto-Upgrade
 
 You can easily upgrade your system from any supported Debian version, starting with Debian Jessie, to Devuan Chimaera or Devuan Daedalus, which are both systemd-free equivalents of Debian Bullseye and Debian Bookworm. You can upgrade from Devuan Beowulf or Chimaera to the recommended Devuan Daedalus using the same procedure.
 
@@ -64,7 +64,7 @@ Sometimes even those steps don't bring your server back with a successful boot, 
 
 Servers running Debian Jessie or Debian Stretch must auto-upgrade to Devuan Chimaera first -- they cannot run the auto-upgrade to Devuan Daedalus. Once on Chimaera, they can auto-upgrade to Devuan Daedalus.
 
-## HOW-TO: Launch Classic Major OS Upgrade
+## How To: Launch Classic Major OS Upgrade
 
 You can easily upgrade your BOA system from any supported Debian or Devuan version, starting with Debian Jessie, to any supported newer version.
 

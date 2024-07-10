@@ -10,7 +10,7 @@ The only documentation source for anything Ægir on BOA related is available at:
 **IMPORTANT:** You must switch your `~/static/control/cli.info` to PHP version 8.1 or newer (BOA hosted on Omega8.cc comes with 8.3, 8.2, 8.1, etc.), because D10 based distros require at least PHP 8.1. This also means that to run the sites installed after switching `cli.info` to 8.1 or newer, you will also need to either switch your `~/static/control/fpm.info` to 8.1 or newer, or more probably, to not break any existing sites not compatible with PHP 8.1+, you will need to list these old sites names in `~/static/control/multi-fpm.info`.
 
 For more information, please check:
-- [How to Quickly Switch PHP to Newer Version](https://learn.omega8.cc/how-to-quickly-switch-php-to-newer-version-330)
+- [How To Quickly Switch PHP to Newer Version](https://learn.omega8.cc/how-to-quickly-switch-php-to-newer-version-330)
 
 BOA supports Drupal 8/9/10 codebases both with classic directory structure like in Drupal 7 and also Drupal 8/9/10 distros you can download from Drupal.org. However, if you use a Composer-based codebase with a different structure, the platform path is not the codebase root directory but the subdirectory where you see the Drupal own `index.php` and `core` subdirectory. It can be `platform-name/web` or `platform-name/docroot` or something similar depending on the distro design.
 

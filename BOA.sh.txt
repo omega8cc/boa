@@ -31,7 +31,7 @@
 
 
 ###----------------------------------------###
-### HOW-TO: run it with bash, not with sh  ###
+### How To: run it with bash, not with sh  ###
 ###----------------------------------------###
 ###
 ###  $ wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
