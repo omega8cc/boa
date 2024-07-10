@@ -23,7 +23,7 @@
 ### It is now possible to enable blazing fast migrations and cloning even sites
 ### with complex and giant databases with this empty control file:
 ###
-### ~/static/control/MyQuick.info
+###  ~/static/control/MyQuick.info
 ###
 ### By the way, how fast is the super-fast? It's faster than you would expect!
 ### We have seen it speeding up the clone and migrate tasks normally taking
@@ -95,7 +95,7 @@
 ### enabled Encryption. Once the tasks completes in all-green, you can edit
 ### the site's node again to make the Encryption Required, if you prefer.
 ###
-### ~/static/control/ssl-live-mode.info
+###  ~/static/control/ssl-live-mode.info
 ###
 ### It is a one-time operation, so even if you will delete this control file
 ### later, the system will not switch your instance back to LE demo mode.
@@ -114,7 +114,7 @@
 ###
 ### Support for PHP-FPM version switch per Octopus instance (also per site)
 ###
-### ~/static/control/fpm.info
+###  ~/static/control/fpm.info
 ###
 ### This file, if exists and contains supported and installed PHP-FPM version,
 ### will be used by running every 2-3 minutes system agent to switch PHP-FPM
@@ -154,7 +154,7 @@
 ### simultaneously for sites on the Octopus instance with additional
 ### control file:
 ###
-### ~/static/control/multi-fpm.info
+###  ~/static/control/multi-fpm.info
 ###
 ### This file, if exists, will switch all sites listed in it to their
 ### respective PHP-FPM versions as shown in the example below, while all
@@ -173,7 +173,7 @@
 ###
 ### Support for PHP-CLI version switch per Octopus instance (all sites)
 ###
-### ~/static/control/cli.info
+###  ~/static/control/cli.info
 ###
 ### This file, while similar to fpm.info, if exists and contains supported
 ### and installed PHP version, will be used by running every 2-3 minutes
@@ -218,7 +218,7 @@
 ###
 ### Customize Octopus platform list via control file
 ###
-### ~/static/control/platforms.info
+###  ~/static/control/platforms.info
 ###
 ### This file, if exists and contains a list of symbols used to define supported
 ### platforms, allows to control/override the value of _PLATFORMS_LIST variable
@@ -286,7 +286,7 @@
 ###
 ### Support for forced Drush cache clear in the Aegir backend
 ###
-### ~/static/control/clear-drush-cache.info
+###  ~/static/control/clear-drush-cache.info
 ###
 ### Octopus instance will pause all scheduled tasks in its queue, if it will
 ### detect a platform build from the makefile in progress, to make sure
@@ -308,7 +308,7 @@
 ###
 ### Support for New Relic monitoring with per Octopus instance license key
 ###
-### ~/static/control/newrelic.info
+###  ~/static/control/newrelic.info
 ###
 ### This feature will disable global New Relic monitoring by deactivating
 ### server-level license key, so it can safely auto-enable or auto-disable it
