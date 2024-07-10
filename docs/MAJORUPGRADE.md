@@ -21,7 +21,7 @@ First, update your BOA Meta Installers with:
 wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
 ```
 
-Start with a manual barracuda system upgrade for a smooth experience later.
+Start with a quick barracuda system upgrade for a smooth experience later.
 
 ```sh
 screen
@@ -50,7 +50,7 @@ touch /root/.run-to-daedalus.cnf
 service clean-boa-env start
 ```
 
-Once enabled, the system will launch a series of `barracuda up-lts` and reboots until it migrates any supported Debian or Devuan version to Devuan Chimaera or Devuan Daedalus.
+Once started, the system will launch a series of `barracuda up-lts system` and reboots until it migrates any supported Debian or Devuan version to Devuan Chimaera or Devuan Daedalus.
 
 ### Caveats for Unreliable Boot Process on Some Hosts Like Linode
 
@@ -68,7 +68,7 @@ Servers running Debian Jessie or Debian Stretch must auto-upgrade to Devuan Chim
 
 You can easily upgrade your BOA system from any supported Debian or Devuan version, starting with Debian Jessie, to any supported newer version.
 
-The key difference between manual and automated modes is that the automated mode supports upgrades only to Chimaera or Daedalus, while the manual mode allows you to select the target system flavor and version according to your preference. However, we do not recommend running BOA on Debian anymore, as it is no longer regularly tested.
+The key difference between classic and modern automated procedures is that the automated procedure supports upgrades only to Chimaera or Daedalus, while the classic procedure allows you to select the target system flavor and version according to your preference. However, we do not recommend running BOA on Debian anymore, as it is no longer regularly tested.
 
 **NOTE:** Only systems running Percona 5.7 are currently supported.
 
@@ -80,7 +80,7 @@ First, update your BOA Meta Installers with:
 wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
 ```
 
-The tools discussed above automate major OS upgrades, but you can still run them manually if you prefer, by adding the respective variable to `/root/.barracuda.cnf` and running the standard command `barracuda up-lts system` for the manual steps based upgrade:
+The procedure discussed above automates major OS upgrades by running them in the multi-step cycle, but you can still run the major OS upgrade with classic `barracuda up-lts system` command if you prefer, after adding the respective variable to `/root/.barracuda.cnf`.
 
 ### Devuan to Devuan Major OS Upgrades
 
