@@ -1,7 +1,7 @@
 
 # Preparations Before Installing BOA
 
-- Add your SSH keys to your VPS root -- BOA will disable password for root over SSH.
+- Add your SSH keys to your VPS root-- BOA will disable password for root over SSH.
 - BOA requires minimal, supported OS, with no web/sql services installed.
 - Don't run any installer via sudo. You must be logged in as root directly.
 - Don't run any system updates or modifications before installing BOA.
@@ -52,9 +52,9 @@
    screen
    ```
 
-   You must specify the version of install with `{in-lts|in-dev}` plus kind with `{local|public}`, your hostname and email address, as shown further below.
+   You must specify the version of install with `in-lts` plus kind with `public`, your `hostname` and `email` address, as shown further below.
 
-   Specifying Octopus username is optional. It will use `o1` if empty.
+   Specifying Octopus `username` is optional. It will use `o1` if empty.
 
    The last `{newrelickey|php-8.1|php-min|php-max|nodns}` part is optional and can be used either to install New Relic Apps Monitor (you should replace the `newrelickey` keyword with a valid license key), or to define a single PHP version to install and use both for Ægir Master and Satellite instances.
 
@@ -99,7 +99,7 @@
      boa in-lts public server.mydomain.org my@email system
      ```
 
-   **NOTE:** Since BOA no longer installs all bundled Ægir platforms during initial system installation, you will need to add some keywords to `~/static/control/platforms.info` and run Octopus upgrade to have these platforms added as explained in the docs you can find in the file `~/control/README.txt` within your Octopus account.
+   **NOTE:** Since BOA no longer installs all bundled Ægir platforms during initial system installation, you will need to add some keywords to `~/static/control/platforms.info` and run Octopus upgrade to have these platforms added as explained in the docs you can find in the file `~/control/README.txt` within your Octopus account or online at [docs/PLATFORMS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/PLATFORMS.md)
 
 # Installing More Octopus Instances
 
@@ -115,7 +115,7 @@ Like above but in silent non-interactive mode:
 boa in-octopus my@email o2 lts silent
 ```
 
-# Installing BOA System on Localhost (deprecated)
+# Installing BOA System on Localhost (needs testing)
 
 1. Please read [docs/NOTES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NOTES.md).
 
@@ -127,9 +127,9 @@ boa in-octopus my@email o2 lts silent
 
 3. Install Barracuda and Octopus.
 
-   You must specify the kind of install with `{in-lts|in-dev}`, mode with `{local|public}`, and your email address, as shown below. For local installs, you don't need to specify hostname and Octopus username, as it is fully automated.
+   You must specify the version of install with `in-lts`, plus kind with `local`, and your `email` address, as shown below. For local installs, you don't need to specify hostname and Octopus username.
 
-   You can also specify the PHP version to install, as shown in examples below.
+   You can also specify the PHP version to install, as shown in the examples below.
 
    - Barracuda and Octopus
      ```sh
