@@ -37,7 +37,7 @@ barracuda up-lts system
 Reboot the server to make sure there are no issues with the boot process.
 
 ```sh
-reboot
+boa reboot
 ```
 
 If the reboot worked and there are no issues, you are ready for the automated magic...
