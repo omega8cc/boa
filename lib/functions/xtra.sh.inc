@@ -436,237 +436,89 @@ if_install_bind() {
   fi
 }
 
-if_install_rvm() {
+if_install_node() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_rvm"
+    msg "PROC: if_install_node"
   fi
-  if [ -x "/usr/bin/gpg2" ]; then
-    _GPG=gpg2
+  if [ -e "/root/.allow.node.lshell.cnf" ]; then
+    if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
+      || [[ "${_XTRAS_LIST}" =~ "CSS" ]]; then
+      rm -f /etc/apt/sources.list.d/nodesource.list
+      rm -f /usr/share/keyrings/nodesource.gpg
+      apt_clean_update
+      if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
+        curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+      else
+        curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+      fi
+      mrun "${_INSTAPP} nodejs" 2> /dev/null
+    fi
   else
-    _GPG=gpg
+    isNode=$(which node 2>&1)
+    if [ -x "${isNode}" ]; then
+      mrun "apt-get remove nodejs -y --purge --auto-remove -qq" 2> /dev/null
+    fi
+  fi
+}
+
+if_install_ruby() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_install_ruby"
   fi
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "CSS" ]]; then
-    if [ "${_STATUS}" = "INIT" ]; then
-      _L_ST="install"
+    _RUBY_INSTALL_SCR=NO
+    isRuby=$(which ruby 2>&1)
+    if [ -x "${isRuby}" ]; then
+      _RUBY_V=$(${isRuby} --version 2>&1 \
+        | cut -d" " -f2 \
+        | awk '{ print $1}' 2>&1)
+      if [ "${_RUBY_V}" != "${_RUBY_VRN}" ]; then
+        _RUBY_INSTALL_SCR=YES
+        _L_ST="upgrade"
+      fi
     else
+      _RUBY_INSTALL_SCR=YES
       _L_ST="install"
     fi
-    if [ ! -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
+    if [ "${_RUBY_INSTALL_SCR}" = "YES" ] \
+      || [ ! -d "/opt/user/gems" ] \
+      || [ ! -e "/usr/local/lib/ruby/gems/3.3.0" ] \
+      || [ ! -x "/usr/local/bin/ruby" ] \
+      || [ ! -x "/usr/local/bin/gem" ]; then
       echo " "
-      if prompt_yes_no "Do you want to ${_L_ST} Ruby with RVM?" ; then
+      if prompt_yes_no "Do you want to ${_L_ST} Ruby ${_RUBY_VRN} from sources?" ; then
         true
-        msg "INFO: Running Ruby with RVM ${_L_ST}..."
-        rm -f /etc/apt/sources.list.d/nodesource.list
-        rm -f /usr/share/keyrings/nodesource.gpg
-        if [ ! -e "${pthLog}/ruby-sys-clean-reload.log" ]; then
-          _RUBY_RELOAD=YES
-          rm -rf /usr/local/rvm
-          touch ${pthLog}/ruby-sys-clean-reload.log
-        fi
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          \curl -k -sSL ${urlDev}/mpapis.asc | ${_GPG} --import -
-          \curl -k -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import -
-          \curl -k -sSL ${urlHmr}/helpers/rvm-installer-root.sh | bash -s stable
+        msg "INFO: Installing Ruby ${_RUBY_VRN} from sources..."
+        touch /var/run/manage_ruby_users.pid
+        cd /var/opt
+        rm -rf ruby*
+        get_dev_src "ruby-${_RUBY_VRN}.tar.gz"
+        cd /var/opt/ruby-${_RUBY_VRN}
+        mrun "./configure" 2> /dev/null
+        mrun "make -j $(nproc)" 2> /dev/null
+        mrun "make install" 2> /dev/null
+        ldconfig 2> /dev/null
+        isRuby=$(which ruby 2>&1)
+        if [ -x "${isRuby}" ]; then
+        _RUBY_V=$(${isRuby} --version 2>&1 \
+          | cut -d" " -f2 \
+          | awk '{ print $1}' 2>&1)
+        if [ -x "/usr/local/bin/gem" ] && [ "${_RUBY_V}" = "${_RUBY_VRN}" ]; then
+          msg "INFO: Ruby ${_RUBY_VRN} from sources ${_L_ST} completed"
         else
-          \curl -k -sSL ${urlDev}/mpapis.asc | ${_GPG} --import - &> /dev/null
-          \curl -k -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import - &> /dev/null
-          \curl -k -sSL ${urlHmr}/helpers/rvm-installer-root.sh | bash -s stable &> /dev/null
-        fi
-        echo rvm_autoupdate_flag=0 > ~/.rvmrc
-        wait
-        echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc
-        mrun "sleep 5"
-        if [ -e "/etc/profile.d/rvm.sh" ]; then
-          source /etc/profile.d/rvm.sh
-        fi
-        isRvm=$(which rvm 2>&1)
-        if [ -x "${isRvm}" ]; then
-          rvmPth="${isRvm}"
-        elif [ -x "/usr/local/rvm/bin/rvm" ]; then
-          rvmPth="/usr/local/rvm/bin/rvm"
-        else
-          rvmPth=""
-          msg "WARN: RVM ${_L_ST} failed, so we can't install Ruby!"
-        fi
-        if [ -x "${rvmPth}" ]; then
-          usermod -aG rvm root
-          if [ ! -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
-            _RUBY_UPGRADE=YES
-          fi
-          if [ -e "/etc/profile.d/rvm.sh" ]; then
-            source /etc/profile.d/rvm.sh
-          fi
-          if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
-            _WEB_SH=$(readlink -n /bin/sh 2>&1)
-            _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
-            if [ -x "/bin/dash" ] || [ -x "/usr/bin/dash" ]; then
-              if [ "${_WEB_SH}" != "/bin/dash" ]; then
-                if [ -x "/usr/bin/dash" ]; then
-                  if [ -L "/usr/bin/sh" ]; then
-                    rm -f /usr/bin/sh
-                    ln -s /usr/bin/dash /usr/bin/sh
-                  fi
-                  if [ -L "/bin/sh" ]; then
-                    rm -f /bin/sh
-                    ln -s /usr/bin/dash /bin/sh
-                  fi
-                fi
-                if [ -x "/bin/dash" ] && [ ! -L "/bin/dash" ]; then
-                  if [ -L "/usr/bin/sh" ]; then
-                    rm -f /usr/bin/sh
-                    ln -s /bin/dash /usr/bin/sh
-                  fi
-                  if [ -L "/bin/sh" ]; then
-                    rm -f /bin/sh
-                    ln -s /bin/dash /bin/sh
-                  fi
-                fi
-              fi
-            elif [ -x "/bin/bash" ] || [ -x "/usr/bin/bash" ]; then
-              if [ "${_WEB_SH}" != "/bin/bash" ]; then
-                if [ -x "/usr/bin/bash" ]; then
-                  if [ -L "/usr/bin/sh" ]; then
-                    rm -f /usr/bin/sh
-                    ln -s /usr/bin/bash /usr/bin/sh
-                  fi
-                  if [ -L "/bin/sh" ]; then
-                    rm -f /bin/sh
-                    ln -s /usr/bin/bash /bin/sh
-                  fi
-                fi
-                if [ -x "/bin/bash" ] && [ ! -L "/bin/bash" ]; then
-                  if [ -L "/usr/bin/sh" ]; then
-                    rm -f /usr/bin/sh
-                    ln -s /bin/bash /usr/bin/sh
-                  fi
-                  if [ -L "/bin/sh" ]; then
-                    rm -f /bin/sh
-                    ln -s /bin/bash /bin/sh
-                  fi
-                fi
-              fi
-            fi
-          fi
-          touch /var/run/manage_rvm_users.pid
-          if [ "${_STATUS}" = "INIT" ] \
-            || [ "${_RUBY_UPGRADE}" = "YES" ] \
-            || [ "${_RUBY_RELOAD}" = "YES" ]; then
-            apt_clean_update
-            if [ "${_DEBUG_MODE}" = "YES" ]; then
-              ${rvmPth} get stable --auto-dotfiles
-              ${rvmPth} install ${_RUBY_VRN}
-              ${rvmPth} use ${_RUBY_VRN} --default
-              if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
-                curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
-              else
-                curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-              fi
-              mrun "${_INSTAPP} nodejs"
-            else
-              ${rvmPth} get stable --auto-dotfiles &> /dev/null
-              ${rvmPth} install ${_RUBY_VRN} &> /dev/null
-              ${rvmPth} use ${_RUBY_VRN} --default &> /dev/null
-              if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
-                curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash - &> /dev/null
-              else
-                curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash - &> /dev/null
-              fi
-              mrun "${_INSTAPP} nodejs" &> /dev/null
-            fi
-          else
-            apt_clean_update
-            if [ "${_DEBUG_MODE}" = "YES" ]; then
-              ${rvmPth} get stable --auto-dotfiles
-              ${rvmPth} install ${_RUBY_VRN}
-              ${rvmPth} use ${_RUBY_VRN} --default
-              if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
-                curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
-              else
-                curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-              fi
-              mrun "${_INSTAPP} nodejs"
-            else
-              ${rvmPth} get stable --auto-dotfiles &> /dev/null
-              ${rvmPth} install ${_RUBY_VRN} &> /dev/null
-              ${rvmPth} use ${_RUBY_VRN} --default &> /dev/null
-              if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
-                curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash - &> /dev/null
-              else
-                curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash - &> /dev/null
-              fi
-              mrun "${_INSTAPP} nodejs" &> /dev/null
-            fi
-          fi
-          if [ ! -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
-            msg "WARN: Ruby ${_RUBY_VRN} install failed!"
-          fi
-          _RBY_FILE="/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/ruby"
-          _RBY_PATH=${_RBY_FILE//\//\\\/}
-          _GEM_FILE="/usr/local/rvm/gems/ruby-${_RUBY_VRN}@global/bin/scout"
-          _GEM_PATH=${_GEM_FILE//\//\\\/}
-          _GEM_CRON="/etc/crontab"
-          _VAR_IF_PRESENT=$(grep "scout" ${_GEM_CRON} 2>&1)
-          if [[ "${_VAR_IF_PRESENT}" =~ "scout" ]]; then
-            if [ ! -e "${_GEM_FILE}" ] && [ ! -z "${_SCOUT_KEY}" ]; then
-              mrun "${rvmPth} @global do gem install --conservative scout" 2> /dev/null
-              adduser --system --group --home /var/scout scout &> /dev/null
-              usermod -aG users scout
-              sed -i "s/\* \* \* \* \* scout .*/* * * * * scout ${_GEM_PATH} ${_SCOUT_KEY}/g" ${_GEM_CRON} &> /dev/null
-            fi
-            _VAR_IF_PRESENT=$(grep "scout ALL=NOPASSWD" /etc/sudoers 2>&1)
-            if [[ ! "${_VAR_IF_PRESENT}" =~ "scout ALL=NOPASSWD" ]]; then
-              echo "scout ALL=NOPASSWD: /usr/bin/mysql" >> /etc/sudoers
-            fi
-          else
-            if [ ! -z "${_SCOUT_KEY}" ]; then
-              mrun "${rvmPth} @global do gem install --conservative scout" 2> /dev/null
-              adduser --system --group --home /var/scout scout &> /dev/null
-              usermod -aG users scout
-              echo -e "* * * * * scout ${_GEM_FILE} ${_SCOUT_KEY}" \
-                | fmt -su -w 2500 | tee -a ${_GEM_CRON} >/dev/null 2>&1
-              _VAR_IF_PRESENT=$(grep "scout ALL=NOPASSWD" /etc/sudoers 2>&1)
-              if [[ ! "${_VAR_IF_PRESENT}" =~ "scout ALL=NOPASSWD" ]]; then
-                echo "scout ALL=NOPASSWD: /usr/bin/mysql" >> /etc/sudoers
-              fi
-            fi
-          fi
-          if [ -e "${_GEM_FILE}" ]; then
-            sed -i "s/^#\!\/.*/#\!${_RBY_PATH}/g" ${_GEM_FILE} &> /dev/null
-          fi
-          PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin;export PATH
-          touch ${pthLog}/compass-${_X_SE}-${_X_VERSION}-ruby-${_RUBY_VRN}-nodejs.log
-          if [ -x "/usr/local/rvm/rubies/ruby-${_RUBY_VRN}/bin/gem" ]; then
-            msg "INFO: Ruby with RVM ${_L_ST} completed"
-            [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: Ruby ${_RUBY_VRN} from sources ${_L_ST} failed"
           fi
         fi
       else
-        msg "INFO: Ruby with RVM ${_L_ST} skipped"
-      fi
-      _ID_SHELLS=$(id -nG root 2>&1)
-      if [[ ! "${_ID_SHELLS}" =~ "rvm" ]]; then
-        isRvm=$(which rvm 2>&1)
-        if [ -x "${isRvm}" ]; then
-          rvmPth="${isRvm}"
-        elif [ -x "/usr/local/rvm/bin/rvm" ]; then
-          rvmPth="/usr/local/rvm/bin/rvm"
-        fi
-        if [ -x "${rvmPth}" ]; then
-          usermod -aG rvm root
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Ruby ${_RUBY_VRN} from sources ${_L_ST} skipped"
         fi
       fi
-      _ID_SHELLS=""
     fi
   fi
-  if [ -e "/var/scout" ]; then
-    _SCOUT_CRON_OFF=$(grep "OFFscoutOFF" /etc/crontab 2>&1)
-    _SCOUT_CRON=$(grep "scout" /etc/crontab 2>&1)
-    if [[ ! "${_SCOUT_CRON_OFF}" =~ "OFFscoutOFF" ]] \
-      && [[ "${_SCOUT_CRON}" =~ "scout" ]]; then
-      sed -i "s/scout/OFFscoutOFF/g" /etc/crontab &> /dev/null
-    fi
-  fi
+  [ -e "/var/run/manage_ruby_users.pid" ] && rm -f /var/run/manage_ruby_users.pid
 }
 
 magick_install_upgrade() {

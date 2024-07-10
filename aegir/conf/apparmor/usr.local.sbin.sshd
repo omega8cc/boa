@@ -78,7 +78,6 @@
   /opt/local/bin/* mrix,
   /usr/bin/* mrix,
   /usr/local/bin/* mrix,
-  /usr/local/rvm/scripts/** mrix,
   /usr/local/sbin/* mrix,
   /usr/sbin/* mrix,
 

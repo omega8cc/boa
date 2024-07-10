@@ -7,7 +7,7 @@
 
 - **ADM**: Adminer DB Manager (installed by default)
 - **CSF**: Firewall (installed by default)
-- **CSS**: RVM for Compass + NPM for Gulp/Bower
+- **CSS**: Ruby Gems for Compass + NPM for Gulp/Bower (requires /root/.allow.node.lshell.cnf)
 - **FTP**: Pure-FTPd server with forced FTPS (installed by default)
 - **GIT**: Latest Git from sources (installed by default)
 - **IMG**: Image Optimize binaries: `advdef`, `advpng`, `jpegoptim`, `jpegtran`, `optipng`, `pngcrush`, `pngquant` (installed by default)

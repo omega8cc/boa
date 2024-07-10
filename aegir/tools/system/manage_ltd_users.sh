@@ -193,33 +193,11 @@ add_ltd_group_if_not_exists() {
   fi
 }
 #
-# Add to rvm group if needed.
-if_add_to_rvm_group() {
-  isTest="$1"
-  isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
-    _ID_SHELLS=$(id -nG $1 2>&1)
-    if [[ ! "${_ID_SHELLS}" =~ "rvm" ]]; then
-      isRvm=$(which rvm 2>&1)
-      if [ -x "${isRvm}" ]; then
-        rvmPth="${isRvm}"
-      elif [ -x "/usr/local/rvm/bin/rvm" ]; then
-        rvmPth="/usr/local/rvm/bin/rvm"
-      fi
-      if [ -x "${rvmPth}" ]; then
-        usermod -aG rvm $1
-      fi
-    fi
-    _ID_SHELLS=""
-  fi
-}
-#
 # Enable chattr.
 enable_chattr() {
   isTest="$1"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
-    if_add_to_rvm_group $1
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
     _U_II="${_U_HD}/php.ini"
@@ -408,264 +386,98 @@ enable_chattr() {
 
     UQ="$1"
     chage -M 99999 ${UQ} &> /dev/null
-    if [ -f "${dscUsr}/static/control/compass.info" ]; then
-      if [ -d "/home/${UQ}/.rvm/src" ]; then
-        rm -rf /home/${UQ}/.rvm/src/*
-      fi
-      if [ -d "/home/${UQ}/.rvm/archives" ]; then
-        rm -rf /home/${UQ}/.rvm/archives/*
-      fi
-      if [ -d "/home/${UQ}/.rvm/log" ]; then
-        rm -rf /home/${UQ}/.rvm/log/*
-      fi
-      if [ ! -x "/home/${UQ}/.rvm/bin/rvm" ]; then
-        touch /var/run/manage_rvm_users.pid
-        if [ -d "/usr/local/rvm" ]; then
-          mv -f /usr/local/rvm /usr/local/.off_rvm
+    if [ -f "${dscUsr}/static/control/compass.info" ] \
+      && [ ! -e "${dscUsr}/log/.gems.build.rb.${UQ}.${_X_SE}.txt" ]; then
+      [ -e "/home/${UQ}/.rvm" ] && rm -rf /home/${UQ}/.rvm*
+      [ -e "/home/${UQ}/.gem" ] && rm -rf /home/${UQ}/.gem*
+      [ -e "/home/${UQ}/.npm" ] && rm -rf /home/${UQ}/.npm*
+      [ ! -d "/opt/user/gems/${UQ}/" ] && mkdir -p /opt/user/gems/${UQ}/
+      chown -R ${UQ}:users /opt/user/gems/${UQ}
+      chown root:root /opt/user/gems
+      if [ -d "/opt/user/gems/${UQ}/" ]; then
+        echo 'export GEM_HOME="/opt/user/gems/${UQ}"' > /home/${UQ}/.bashrc
+        echo 'export GEM_PATH="/opt/user/gems/${UQ}"' >> /home/${UQ}/.bashrc
+        echo 'export PATH="/opt/user/gems/$USER/bin:$PATH"' >> /home/${UQ}/.bashrc
+        chown ${UQ}:users /home/${UQ}/.bashrc
+        if [ -e "/root/.dev.server.cnf" ]; then
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative bluecloth"
+          wait
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative eventmachine"
+          wait
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --version 1.0.3 eventmachine"
+          wait
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative ffi"
+          wait
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --version 1.9.3 ffi"
+          wait
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --version 1.9.18 ffi"
+          wait
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative hitimes"
+          wait
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative http_parser.rb"
+          wait
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative oily_png"
+          wait
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --version 1.1.1 oily_png"
+          wait
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative yajl-ruby"
+          wait
+        else
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative bluecloth"      &> /dev/null
+          wait
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative eventmachine"   &> /dev/null
+          wait
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --version 1.0.3 eventmachine"  &> /dev/null
+          wait
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative ffi"            &> /dev/null
+          wait
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --version 1.9.3 ffi"           &> /dev/null
+          wait
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --version 1.9.18 ffi"          &> /dev/null
+          wait
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative hitimes"        &> /dev/null
+          wait
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative http_parser.rb" &> /dev/null
+          wait
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative oily_png"       &> /dev/null
+          wait
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --version 1.1.1 oily_png"      &> /dev/null
+          wait
+          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative yajl-ruby"      &> /dev/null
+          wait
         fi
-        if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
-          _WEB_SH=$(readlink -n /bin/sh 2>&1)
-          _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
-          if [ -x "/bin/dash" ]; then
-            if [ "${_WEB_SH}" != "/bin/dash" ]; then
-              rm -f /bin/sh
-              ln -s /bin/dash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /bin/dash /usr/bin/sh
-              fi
-            fi
-          elif [ -x "/usr/bin/dash" ]; then
-            if [ "${_WEB_SH}" != "/usr/bin/dash" ]; then
-              rm -f /bin/sh
-              ln -s /usr/bin/dash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /usr/bin/dash /usr/bin/sh
-              fi
-            fi
-          elif [ -x "/bin/bash" ]; then
-            if [ "${_WEB_SH}" != "/bin/bash" ]; then
-              rm -f /bin/sh
-              ln -s /bin/bash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /bin/bash /usr/bin/sh
-              fi
-            fi
-          elif [ -x "/usr/bin/bash" ]; then
-            if [ "${_WEB_SH}" != "/usr/bin/bash" ]; then
-              rm -f /bin/sh
-              ln -s /usr/bin/bash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /usr/bin/bash /usr/bin/sh
-              fi
-            fi
-          fi
-        fi
-        su -s /bin/bash - ${UQ} -c "\curl -k -sSL ${urlDev}/mpapis.asc | ${_GPG} --import -"
-        wait
-        su -s /bin/bash - ${UQ} -c "\curl -k -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import -"
-        wait
-        su -s /bin/bash   ${UQ} -c "\curl -k -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable"
-        wait
-        su -s /bin/bash - ${UQ} -c "rvm get stable --auto-dotfiles"
-        wait
-        su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
-        wait
-        su -s /bin/bash - ${UQ} -c "echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc"
-        wait
-        [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
-        if [ -d "/usr/local/.off_rvm" ]; then
-          mv -f /usr/local/.off_rvm /usr/local/rvm
-        fi
-        rm -f /bin/sh
-        ln -s /bin/websh /bin/sh
-        rm -f /usr/bin/sh
-        ln -s /bin/websh /usr/bin/sh
+        touch ${dscUsr}/log/.gems.build.rb.${UQ}.${_X_SE}.txt
+        ln -sfn /bin/websh /bin/sh
+        ln -sfn /bin/websh /usr/bin/sh
       fi
-      su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
-      wait
-      su -s /bin/bash - ${UQ} -c "echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc"
-      wait
-      if [ ! -e "/home/${UQ}/.rvm/rubies/default" ]; then
-        touch /var/run/manage_rvm_users.pid
-        if [ -d "/usr/local/rvm" ]; then
-          mv -f /usr/local/rvm /usr/local/.off_rvm
-        fi
-        if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
-          _WEB_SH=$(readlink -n /bin/sh 2>&1)
-          _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
-          if [ -x "/bin/dash" ]; then
-            if [ "${_WEB_SH}" != "/bin/dash" ]; then
-              rm -f /bin/sh
-              ln -s /bin/dash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /bin/dash /usr/bin/sh
-              fi
-            fi
-          elif [ -x "/usr/bin/dash" ]; then
-            if [ "${_WEB_SH}" != "/usr/bin/dash" ]; then
-              rm -f /bin/sh
-              ln -s /usr/bin/dash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /usr/bin/dash /usr/bin/sh
-              fi
-            fi
-          elif [ -x "/bin/bash" ]; then
-            if [ "${_WEB_SH}" != "/bin/bash" ]; then
-              rm -f /bin/sh
-              ln -s /bin/bash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /bin/bash /usr/bin/sh
-              fi
-            fi
-          elif [ -x "/usr/bin/bash" ]; then
-            if [ "${_WEB_SH}" != "/usr/bin/bash" ]; then
-              rm -f /bin/sh
-              ln -s /usr/bin/bash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /usr/bin/bash /usr/bin/sh
-              fi
-            fi
-          fi
-        fi
-        su -s /bin/bash - ${UQ} -c "rvm install ${_RUBY_VRN}"
-        wait
-        su -s /bin/bash - ${UQ} -c "rvm use ${_RUBY_VRN} --default"
-        wait
-        [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
-        if [ -d "/usr/local/.off_rvm" ]; then
-          mv -f /usr/local/.off_rvm /usr/local/rvm
-        fi
-        rm -f /bin/sh
-        ln -s /bin/websh /bin/sh
-        rm -f /usr/bin/sh
-        ln -s /bin/websh /usr/bin/sh
-      fi
-      if [ ! -f "${dscUsr}/log/.gems.build.d.${UQ}.${_X_SE}.txt" ]; then
-        rm -f ${dscUsr}/log/eventmachine*
-        if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
-          _WEB_SH=$(readlink -n /bin/sh 2>&1)
-          _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
-          if [ -x "/bin/dash" ]; then
-            if [ "${_WEB_SH}" != "/bin/dash" ]; then
-              rm -f /bin/sh
-              ln -s /bin/dash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /bin/dash /usr/bin/sh
-              fi
-            fi
-          elif [ -x "/usr/bin/dash" ]; then
-            if [ "${_WEB_SH}" != "/usr/bin/dash" ]; then
-              rm -f /bin/sh
-              ln -s /usr/bin/dash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /usr/bin/dash /usr/bin/sh
-              fi
-            fi
-          elif [ -x "/bin/bash" ]; then
-            if [ "${_WEB_SH}" != "/bin/bash" ]; then
-              rm -f /bin/sh
-              ln -s /bin/bash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /bin/bash /usr/bin/sh
-              fi
-            fi
-          elif [ -x "/usr/bin/bash" ]; then
-            if [ "${_WEB_SH}" != "/usr/bin/bash" ]; then
-              rm -f /bin/sh
-              ln -s /usr/bin/bash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /usr/bin/bash /usr/bin/sh
-              fi
-            fi
-          fi
-        fi
-        touch /var/run/manage_rvm_users.pid
-        if [ -d "/usr/local/rvm" ]; then
-          mv -f /usr/local/rvm /usr/local/.off_rvm
-        fi
-        su -s /bin/bash - ${UQ} -c "gem install --conservative bluecloth"      &> /dev/null
-        wait
-        su -s /bin/bash - ${UQ} -c "gem install --conservative eventmachine"   &> /dev/null
-        wait
-        su -s /bin/bash - ${UQ} -c "gem install --version 1.0.3 eventmachine"  &> /dev/null
-        wait
-        su -s /bin/bash - ${UQ} -c "gem install --conservative ffi"            &> /dev/null
-        wait
-        su -s /bin/bash - ${UQ} -c "gem install --version 1.9.3 ffi"           &> /dev/null
-        wait
-        su -s /bin/bash - ${UQ} -c "gem install --version 1.9.18 ffi"          &> /dev/null
-        wait
-        su -s /bin/bash - ${UQ} -c "gem install --conservative hitimes"        &> /dev/null
-        wait
-        su -s /bin/bash - ${UQ} -c "gem install --conservative http_parser.rb" &> /dev/null
-        wait
-        su -s /bin/bash - ${UQ} -c "gem install --conservative oily_png"       &> /dev/null
-        wait
-        su -s /bin/bash - ${UQ} -c "gem install --version 1.1.1 oily_png"      &> /dev/null
-        wait
-        su -s /bin/bash - ${UQ} -c "gem install --conservative yajl-ruby"      &> /dev/null
-        wait
-        touch ${dscUsr}/log/.gems.build.d.${UQ}.${_X_SE}.txt
-        [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
-        if [ -d "/usr/local/.off_rvm" ]; then
-          mv -f /usr/local/.off_rvm /usr/local/rvm
-        fi
-        rm -f /bin/sh
-        ln -s /bin/websh /bin/sh
-        rm -f /usr/bin/sh
-        ln -s /bin/websh /usr/bin/sh
-      fi
-      if [ -d "/home/${UQ}/.rvm/src" ]; then
-        rm -rf /home/${UQ}/.rvm/src/*
-      fi
-      if [ -d "/home/${UQ}/.rvm/archives" ]; then
-        rm -rf /home/${UQ}/.rvm/archives/*
-      fi
-      if [ -d "/home/${UQ}/.rvm/log" ]; then
-        rm -rf /home/${UQ}/.rvm/log/*
-      fi
-      if [ ! -d "/home/${UQ}/.npm-packages" ] || [ ! -d "/home/${UQ}/.npm" ]; then
-        su -s /bin/bash - ${UQ} -c "mkdir ~/.bundle"
+      [ ! -d "/opt/user/npm/${UQ}" ] && mkdir -p /opt/user/npm/${UQ}/
+      chown -R ${UQ}:users /opt/user/npm/${UQ}
+      chown root:root /opt/user/npm
+      if [ ! -d "/opt/user/npm/${UQ}/.npm-packages" ] || [ ! -d "/opt/user/npm/${UQ}/.npm" ]; then
+        su -s /bin/bash - ${UQ} -c "mkdir /opt/user/npm/${UQ}/.bundle"
         wait
         su -s /bin/bash - ${UQ} -c "mkdir ~/.composer"
         wait
-        su -s /bin/bash - ${UQ} -c "mkdir ~/.config"
+        su -s /bin/bash - ${UQ} -c "mkdir /opt/user/npm/${UQ}/.composer"
         wait
-        su -s /bin/bash - ${UQ} -c "mkdir ~/.npm-packages"
+        su -s /bin/bash - ${UQ} -c "mkdir /opt/user/npm/${UQ}/.config"
         wait
-        su -s /bin/bash - ${UQ} -c "mkdir ~/.npm"
+        su -s /bin/bash - ${UQ} -c "mkdir /opt/user/npm/${UQ}/.npm-packages"
         wait
-        su -s /bin/bash - ${UQ} -c "mkdir ~/.sass-cache"
+        su -s /bin/bash - ${UQ} -c "mkdir /opt/user/npm/${UQ}/.npm"
         wait
-        su -s /bin/bash - ${UQ} -c "echo prefix = /home/${UQ}/.npm-packages > ~/.npmrc"
+        su -s /bin/bash - ${UQ} -c "mkdir /opt/user/npm/${UQ}/.sass-cache"
+        wait
+        su -s /bin/bash - ${UQ} -c "echo prefix = /opt/user/npm/${UQ}/.npm-packages > ~/.npmrc"
         wait
       fi
-      rm -f /home/${UQ}/{.profile,.bash_logout,.bash_profile,.bashrc,.zlogin,.zshrc}
-      rm -f /home/${UQ}/.rvm/scripts/notes
     else
-      if [ -d "/home/${UQ}/.rvm" ] || [ -d "/home/${UQ}/.gem" ]; then
-        rm -f ${dscUsr}/log/.gems.build*
-        rm -rf /home/${UQ}/.rvm    &> /dev/null
-        rm -rf /home/${UQ}/.gem    &> /dev/null
-      fi
-      if [ -d "/home/${UQ}/.npm" ] || [ -d "/home/${UQ}/.npm-packages" ]; then
-        rm -f /home/${UQ}/.npmrc
-        rm -rf /home/${UQ}/.npm             &> /dev/null
-        rm -rf /home/${UQ}/.npm-packages    &> /dev/null
-      fi
+      [ -e "${dscUsr}/log" ] && rm -f ${dscUsr}/log/.gems.build*
     fi
+    rm -f /home/${UQ}/{.profile,.bash_logout,.bash_profile,.bashrc,.zlogin,.zshrc}
+    [ -e "/home/${UQ}/.rvm" ] && rm -rf /home/${UQ}/.rvm*
+    [ -e "/home/${UQ}/.gem" ] && rm -rf /home/${UQ}/.gem*
+    [ -e "/home/${UQ}/.npm" ] && rm -rf /home/${UQ}/.npm*
     chage -M 90 ${UQ} &> /dev/null
 
     if [ "$1" != "${_USER}.ftp" ]; then
@@ -939,15 +751,6 @@ ok_create_user() {
       passwd -w 7 -x 90 ${usrLtd}
       usermod -aG lshellg ${usrLtd}
       usermod -aG ltd-shell ${usrLtd}
-      isRvm=$(which rvm 2>&1)
-      if [ -x "${isRvm}" ]; then
-        rvmPth="${isRvm}"
-      elif [ -x "/usr/local/rvm/bin/rvm" ]; then
-        rvmPth="/usr/local/rvm/bin/rvm"
-      fi
-      if [ -x "${rvmPth}" ]; then
-        usermod -aG rvm ${usrLtd}
-      fi
     fi
     if [ ! -e "/home/${_ADMIN}/users/${usrLtd}" ] \
       && [ ! -z "${_ESC_LUPASS}" ]; then
@@ -1027,7 +830,9 @@ for Domain in `find ${Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   _STATIC_PRIVATE="${pthParentUsr}/static/files/${rawDom}.private"
   _PATH_DOM=$(readlink -n ${Domain} 2>&1)
   _PATH_DOM=$(echo -n ${_PATH_DOM} | tr -d "\n" 2>&1)
-  _ALLD_DIR="${_ALLD_DIR}, '${_PATH_DOM}', '${_STATIC_FILES}', '${_STATIC_PRIVATE}'"
+  _RUBY_PATH="/opt/user/gems/${usrLtd}"
+  _NPM_PATH="/opt/user/npm/${usrLtd}"
+  _ALLD_DIR="${_ALLD_DIR}, '${_PATH_DOM}', '${_STATIC_FILES}', '${_STATIC_PRIVATE}', '${_RUBY_PATH}', '${_NPM_PATH}'"
   if [ -e "${_PATH_DOM}" ]; then
     _ALLD_NUM=$(( _ALLD_NUM += 1 ))
   fi
@@ -2486,7 +2291,9 @@ manage_user() {
           symlinks -dr /home/${_USER}.ftp &> /dev/null
           echo >> ${_THIS_LTD_CONF}
           echo "[${_USER}.ftp]" >> ${_THIS_LTD_CONF}
-          echo "path : ['${dscUsr}/distro', \
+          echo "path : ['/opt/user/npm/${_USER}.ftp', \
+                        '/opt/user/gems/${_USER}.ftp', \
+                        '${dscUsr}/distro', \
                         '${dscUsr}/static', \
                         '${dscUsr}/backups', \
                         '${dscUsr}/clients']" \
@@ -2612,7 +2419,7 @@ _NOW=${_NOW//[^0-9-]/}
 mkdir -p /var/backups/ltd/{conf,log,old}
 mkdir -p /var/backups/zombie/deleted
 _THIS_LTD_CONF="/var/backups/ltd/conf/lshell.conf.${_NOW}"
-if [ -e "/var/run/manage_rvm_users.pid" ] \
+if [ -e "/var/run/manage_ruby_users.pid" ] \
   || [ -e "/var/run/manage_ltd_users.pid" ] \
   || [ -e "/var/run/boa_run.pid" ] \
   || [ -e "/var/run/boa_wait.pid" ]; then

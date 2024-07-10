@@ -28,6 +28,6 @@
 
 22. MultiCore Apache Solr 7 and Solr 4 (See [docs/SOLR.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SOLR.md) for details).
 23. New Relic Apps Monitor with per Octopus license and per site reporting.
-24. RVM, Compass Tools, and NPM (See [docs/RVM.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/RVM.md) for details).
+24. Ruby Gems and NPM (See [docs/GEM.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/GEM.md) for details).
 25. FFmpeg support.
 26. Bind9 DNS server.

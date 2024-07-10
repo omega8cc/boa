@@ -159,7 +159,7 @@ _PHP_CLI_VERSION=8.1
 ###
 ### ADM --- Adminer DB Manager (installed by default)
 ### CSF --- Firewall (installed by default)
-### CSS --- RVM + NPM for Gulp/Bower
+### CSS --- Ruby Gems for Compass + NPM for Gulp/Bower
 ### FTP --- Pure-FTPd server with forced FTPS (installed by default)
 ### GIT --- Latest Git from sources (installed by default)
 ### IMG --- Image Optimize binaries (installed by default)

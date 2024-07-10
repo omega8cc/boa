@@ -944,7 +944,7 @@ init_finish() {
   [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
   [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
-  [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
+  [ -e "/var/run/manage_ruby_users.pid" ] && rm -f /var/run/manage_ruby_users.pid
   rm -f ${vBs}/*.sh.cnf*
   rm -f ${vBs}/BARRACUDA.sh*
   rm -f ${vBs}/OCTOPUS.sh*

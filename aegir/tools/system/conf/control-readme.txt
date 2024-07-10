@@ -331,9 +331,9 @@
 
 
 ###
-### Support for RVM to install Compass Tools or NPM to install Gulp/Bower
+### Support for Ruby Gems to install Compass or NPM to install Gulp/Bower
 ###
-### ~/static/control/compass.info
+###  ~/static/control/compass.info
 ###
-### Details: https://github.com/omega8cc/boa/blob/master/docs/RVM.txt
+### Details: https://github.com/omega8cc/boa/blob/5.x-dev/docs/GEM.md
 ###

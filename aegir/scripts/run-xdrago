@@ -129,7 +129,7 @@ action() {
 }
 
 if [ -e "/var/run/boa_wait.pid" ] \
-  || [ -e "/var/run/manage_rvm_users.pid" ]; then
+  || [ -e "/var/run/manage_ruby_users.pid" ]; then
   touch /var/xdrago/log/wait-${_H_USER}
   exit 0
 else

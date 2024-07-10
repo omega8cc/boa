@@ -840,7 +840,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     fi
   fi
   if [ "${_IN_PATH}" = "YES" ]; then
-    if [ -x "/usr/bin/ruby" ] && [ -x "/usr/bin/gem" ]; then
+    if [ -x "/usr/local/bin/ruby" ] && [ -x "/usr/local/bin/gem" ]; then
       if [[ "${_ARGS}" =~ "set -m; " ]] || [ ! -z "${SSH_CLIENT}" ]; then
         _RUBY_ALLOW=YES
       fi

@@ -532,7 +532,8 @@ if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
     if_install_hhvm
     if_install_webmin
     if_install_bind
-    if_install_rvm
+    if_install_ruby
+    if_install_node
     sftp_ftps_modern_fix
   fi
 fi

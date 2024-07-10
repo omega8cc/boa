@@ -117,7 +117,7 @@ Check out the details in [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-dev/
 - PHP Configuration: [docs/PHP.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/PHP.md)
 - Remote S3 Backups: [docs/BACKUPS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/BACKUPS.md)
 - Nginx Rewrites: [docs/REWRITES.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/REWRITES.md)
-- RVM, Compass Tools, NPM: [docs/RVM.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/RVM.md)
+- Ruby Gems and NPM: [docs/GEM.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/GEM.md)
 - Security Settings: [docs/SECURITY.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SECURITY.md)
 - Solr How-To: [docs/SOLR.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SOLR.md)
 - Extra Comments: [docs/CAVEATS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/CAVEATS.md)

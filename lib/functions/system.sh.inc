@@ -4517,6 +4517,7 @@ strict_bin_permissions() {
                   ffprobe \
                   flvtool2 \
                   freshclam \
+                  gem \
                   git \
                   gpg \
                   gpgv \
@@ -4558,7 +4559,6 @@ strict_bin_permissions() {
                   redis-server \
                   rrdtool \
                   ruby \
-                  rvm \
                   sass \
                   sass-convert \
                   scss \
@@ -4914,7 +4914,7 @@ finale() {
   [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
   [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
-  [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
+  [ -e "/var/run/manage_ruby_users.pid" ] && rm -f /var/run/manage_ruby_users.pid
   [ -e "/var/aegir/.drush/.alias.drushrc.php" ] && rm -f /var/aegir/.drush/.alias.drushrc.php
   [ -d "/data/u" ] && rm -f /data/disk/*/.drush/.alias.drushrc.php
   rm -f ${pthLog}/protected-vhosts-clean.log

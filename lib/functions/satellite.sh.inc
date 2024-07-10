@@ -2961,28 +2961,13 @@ satellite_if_add_ftps_lshell_access() {
   chsh -s ${_PATH_LSHELL} ${_USERFTP} &> /dev/null
   echo >> /etc/lshell.conf
   echo "[${_USERFTP}]" >> /etc/lshell.conf
-  echo "path : ['${_ROOT}/distro', '${_ROOT}/static', \
-    '${_ROOT}/backups', '${_ROOT}/clients']" \
+  echo "path : ['/opt/user/gems/${_USERFTP}', \
+    '/opt/user/npm/${_USERFTP}', \
+    '${_ROOT}/distro', \
+    '${_ROOT}/static', \
+    '${_ROOT}/backups', \
+    '${_ROOT}/clients']" \
     | fmt -su -w 2500 >> /etc/lshell.conf
-}
-
-satellite_if_add_to_rvm_group() {
-  ###---### Add to rvm group if needed.
-  #
-  _USERFTP="${_USER}.ftp"
-  _ID_SHELLS=$(id -nG ${_USERFTP} 2>&1)
-  if [[ ! "${_ID_SHELLS}" =~ "rvm" ]]; then
-    isRvm=$(which rvm 2>&1)
-    if [ -x "${isRvm}" ]; then
-      rvmPth="${isRvm}"
-    elif [ -x "/usr/local/rvm/bin/rvm" ]; then
-      rvmPth="/usr/local/rvm/bin/rvm"
-    fi
-    if [ -x "${rvmPth}" ]; then
-      usermod -aG rvm ${_USERFTP}
-    fi
-  fi
-  _ID_SHELLS=""
 }
 
 satellite_if_add_update_user_symlinks() {
@@ -4758,7 +4743,7 @@ satellite_post_cleanup() {
   [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
   rm -rf ${_ROOT}/.tmp/cache
   [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
-  [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
+  [ -e "/var/run/manage_ruby_users.pid" ] && rm -f /var/run/manage_ruby_users.pid
 }
 
 satellite_letsencrypt_crt_key_copy() {

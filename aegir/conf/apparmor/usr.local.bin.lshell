@@ -103,7 +103,9 @@
   /usr/local/bin/sftp mrix,
   /usr/local/bin/ssh mrix,
   /usr/local/bin/ssh-keygen mrix,
-  /usr/local/rvm/bin/rvm mrix,
+  /usr/local/bin/gem mrix,
+  owner /opt/user/gems/*/** mrix,
+  owner /opt/user/npm/*/** mrix,
 
   # Deny execution of any other binaries
   #deny /** rwklx,
