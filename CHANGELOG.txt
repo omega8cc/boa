@@ -10,8 +10,8 @@
 
     BOA is available in three main branches, but only LTS for installation:
 
-  * LTS which remains completely free to use without any kind of license
-    as it was from the beginning (previously named HEAD or STABLE).
+  * LTS which remains completely free to use without any kind of commercial
+    license as it was from the beginning (previously named HEAD or STABLE).
     This branch should be considered as BOA LTS with slow updates, focused
     on both security and bug fixes, but very limited new features additions.
 
