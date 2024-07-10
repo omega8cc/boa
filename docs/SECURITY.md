@@ -5,12 +5,12 @@ In a multi-Ægir-instance system, all instances will use the same Nginx server. 
 
 It is **critically important** to never give anyone access to the Ægir **system user** on any Octopus instance. This user has almost root access to **all** sites databases hosted across **all** Octopus instances on the same BOA server. Only provide **limited shell** access accounts and **non-admin** Ægir control panel accounts to end-users.
 
-## BOA Systems Security Features
+## BOA System Security Features
 
 BOA provides very secure hosting environment for Ægir and Drupal sites, which includes comprehensive built-in security monitoring and autonomous attack prevention systems. Below is a list of the most important features, which together provide robust protection for all hosted sites. You may also want to read about [running performance or load tests](https://learn.omega8.cc/how-to-run-performance-or-load-test-300).
 
 1. **Encrypted Connections**: Only SSH, SFTP (FTP over SSH), and FTPS (FTP over SSL) accounts are created.
-2. **Restricted PHP Scripts**: Only known Drupal PHP files are permitted in the BOA secure environment.
+2. **Restricted PHP Scripts**: Only known Drupal PHP files are permitted in the BOA secure environment and web server doesn't have write access to website codebase, which blocks all popular attack vectors even for sites running otherwise vulnerable codebase.
 3. **Web Server Monitoring**: IPs causing DoS-like activity are temporarily blocked for one hour and permanently after repeated offenses. You can [whitelist your IP on the fly](https://omega8.cc/how-firewall-works-is-my-ip-blocked-121) by keeping your SSH connection active.
 4. **Firewall Monitoring**: Repeated failed login attempts for SSH, SFTP, or FTPS result in temporary one-hour blocks, escalating to permanent blocks. Previously whitelisted IPs are not honored if abuse is detected.
 5. **Load Management**: The web server may be temporarily disabled during high system loads due to undetected DoS attacks. Normal service resumes within 10 seconds of load stabilization.
@@ -20,6 +20,7 @@ BOA provides very secure hosting environment for Ægir and Drupal sites, which i
 9. **PHP Error Protection**: PHP errors are not displayed in browsers. Debugging can be done using protected dev domain aliases.
 10. **Password Expiration Policy**: SSH, SFTP, and FTPS passwords expire every 90 days and must be updated, even if SSH keys are used.
 11. **Restricted Admin Access**: Admin account access (uid=1) is unavailable in Ægir to prevent potential misuse. Non-admin main account access provides sufficient privileges for safe management in the multi-Ægir environment.
+12. **Restricted System Binaries Access**: BOA modifies access permissions to all system binaries and commands that could be potentially used as attack vectors by web shells and other typical intrusion methods. This greatly limits the possible damage even for sites running old Drupal versions.
 
 ## Customizing PHP Function Restrictions
 
