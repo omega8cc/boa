@@ -5,11 +5,11 @@ Documenting details in progress...
 ## New Features
 
 - **Debian Bookworm and Devuan Daedalus**: Add compatibility for installation and automated upgrades (DONE).
-- **Super Fast System AutoInit**: Upgrade easily to latest Devuan before instaling BOA (DONE).
-- **PHP 8.3 Support**: Required by Drupal 11 and much faster, bringing total PHP versions supported to 10 (DONE).
+- **Super Fast System AutoInit**: Upgrade easily to the latest Devuan before installing BOA (DONE).
+- **PHP 8.3 Support**: Required by Drupal 11 and much faster, bringing the total PHP versions to 10 (DONE).
 - **Percona for MySQL 8.0**: Add support for Percona Server 8.0 (required by Drupal 11).
 - **Import from Classic Ægir**: Extend xboa to import from remote classic Ægir servers running Nginx or Apache.
-- **Ægir Task for SQL Backup**: Make it possible to create classic mysqldump backup for download per site.
+- **Ægir Task for SQL Backup**: Make it possible to create classic mysqldump backups for download per site.
 - **Symlink Site Files**: Automatically symlink all site files to speed up migration tasks and save disk space.
 - **Rsync on Clone**: Use Rsync to create separate symlinked copies during site clone tasks.
 - **Backdrop CMS Support**: Add support for Backdrop CMS as a platform.
@@ -24,7 +24,7 @@ Documenting details in progress...
 
 ## Changes and Upgrades
 
-- **Use OpenSSL LTS 3.0**: But keep also 1.1.1 to support legacy PHP versions (DONE).
+- **Use OpenSSL LTS 3.0**: But keep 1.1.1 to support legacy PHP versions (DONE).
 - **Ægir Admin Interface**: Switch the Ægir admin interface from Drupal 7 to Backdrop CMS.
 
 ## Important Fixes
