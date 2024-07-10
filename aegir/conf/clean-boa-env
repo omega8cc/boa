@@ -70,22 +70,18 @@ case "$1" in
         if [ "${_WEB_SH}" != "/bin/dash" ]; then
           if [ -x "/usr/bin/dash" ] && [ ! -L "/usr/bin/dash" ]; then
             if [ -L "/usr/bin/sh" ]; then
-              rm -f /usr/bin/sh
-              ln -s /usr/bin/dash /usr/bin/sh
+              ln -sfn /usr/bin/dash /usr/bin/sh
             fi
             if [ -L "/bin/sh" ]; then
-              rm -f /bin/sh
-              ln -s /usr/bin/dash /bin/sh
+              ln -sfn /usr/bin/dash /bin/sh
             fi
           fi
           if [ -x "/bin/dash" ] && [ ! -L "/bin/dash" ]; then
             if [ -L "/usr/bin/sh" ]; then
-              rm -f /usr/bin/sh
-              ln -s /bin/dash /usr/bin/sh
+              ln -sfn /bin/dash /usr/bin/sh
             fi
             if [ -L "/bin/sh" ]; then
-              rm -f /bin/sh
-              ln -s /bin/dash /bin/sh
+              ln -sfn /bin/dash /bin/sh
             fi
           fi
         fi
@@ -93,22 +89,18 @@ case "$1" in
         if [ "${_WEB_SH}" != "/bin/bash" ]; then
           if [ -x "/usr/bin/bash" ] && [ ! -L "/usr/bin/bash" ]; then
             if [ -L "/usr/bin/sh" ]; then
-              rm -f /usr/bin/sh
-              ln -s /usr/bin/bash /usr/bin/sh
+              ln -sfn /usr/bin/bash /usr/bin/sh
             fi
             if [ -L "/bin/sh" ]; then
-              rm -f /bin/sh
-              ln -s /usr/bin/bash /bin/sh
+              ln -sfn /usr/bin/bash /bin/sh
             fi
           fi
           if [ -x "/bin/bash" ] && [ ! -L "/bin/bash" ]; then
             if [ -L "/usr/bin/sh" ]; then
-              rm -f /usr/bin/sh
-              ln -s /bin/bash /usr/bin/sh
+              ln -sfn /bin/bash /usr/bin/sh
             fi
             if [ -L "/bin/sh" ]; then
-              rm -f /bin/sh
-              ln -s /bin/bash /bin/sh
+              ln -sfn /bin/bash /bin/sh
             fi
           fi
         fi
@@ -210,20 +202,16 @@ case "$1" in
       _WEB_SH=`echo -n ${_WEB_SH} | tr -d "\n"`
       if [ -x "/bin/dash" ]; then
         if [ "${_WEB_SH}" != "/bin/dash" ]; then
-          rm -f /bin/sh
-          ln -s /bin/dash /bin/sh
+          ln -sfn /bin/dash /bin/sh
           if [ -e "/usr/bin/sh" ]; then
-            rm -f /usr/bin/sh
-            ln -s /bin/dash /usr/bin/sh
+            ln -sfn /bin/dash /usr/bin/sh
           fi
         fi
       else
         if [ "${_WEB_SH}" != "/bin/bash" ]; then
-          rm -f /bin/sh
-          ln -s /bin/bash /bin/sh
+          ln -sfn /bin/bash /bin/sh
           if [ -e "/usr/bin/sh" ]; then
-            rm -f /usr/bin/sh
-            ln -s /bin/bash /usr/bin/sh
+            ln -sfn /bin/bash /usr/bin/sh
           fi
         fi
       fi

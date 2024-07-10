@@ -2473,48 +2473,38 @@ else
     if [ -x "/bin/websh" ]; then
       if [ "${_WEB_SH}" != "/bin/websh" ] \
         && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
-        rm -f /bin/sh
-        ln -s /bin/websh /bin/sh
+        ln -sfn /bin/websh /bin/sh
         if [ -e "/usr/bin/sh" ]; then
-          rm -f /usr/bin/sh
-          ln -s /bin/websh /usr/bin/sh
+          ln -sfn /bin/websh /usr/bin/sh
         fi
       fi
     else
       if [ -x "/bin/dash" ]; then
         if [ "${_WEB_SH}" != "/bin/dash" ]; then
-          rm -f /bin/sh
-          ln -s /bin/dash /bin/sh
+          ln -sfn /bin/dash /bin/sh
           if [ -e "/usr/bin/sh" ]; then
-            rm -f /usr/bin/sh
-            ln -s /bin/dash /usr/bin/sh
+            ln -sfn /bin/dash /usr/bin/sh
           fi
         fi
       elif [ -x "/usr/bin/dash" ]; then
         if [ "${_WEB_SH}" != "/usr/bin/dash" ]; then
-          rm -f /bin/sh
-          ln -s /usr/bin/dash /bin/sh
+          ln -sfn /usr/bin/dash /bin/sh
           if [ -e "/usr/bin/sh" ]; then
-            rm -f /usr/bin/sh
-            ln -s /usr/bin/dash /usr/bin/sh
+            ln -sfn /usr/bin/dash /usr/bin/sh
           fi
         fi
       elif [ -x "/bin/bash" ]; then
         if [ "${_WEB_SH}" != "/bin/bash" ]; then
-          rm -f /bin/sh
-          ln -s /bin/bash /bin/sh
+          ln -sfn /bin/bash /bin/sh
           if [ -e "/usr/bin/sh" ]; then
-            rm -f /usr/bin/sh
-            ln -s /bin/bash /usr/bin/sh
+            ln -sfn /bin/bash /usr/bin/sh
           fi
         fi
       elif [ -x "/usr/bin/bash" ]; then
         if [ "${_WEB_SH}" != "/usr/bin/bash" ]; then
-          rm -f /bin/sh
-          ln -s /usr/bin/bash /bin/sh
+          ln -sfn /usr/bin/bash /bin/sh
           if [ -e "/usr/bin/sh" ]; then
-            rm -f /usr/bin/sh
-            ln -s /usr/bin/bash /usr/bin/sh
+            ln -sfn /usr/bin/bash /usr/bin/sh
           fi
         fi
       fi

@@ -4196,22 +4196,18 @@ symlink_to_dash() {
   fi
   if [ -x "/usr/bin/dash" ] && [ ! -L "/usr/bin/dash" ]; then
     if [ -L "/usr/bin/sh" ]; then
-      rm -f /usr/bin/sh
-      ln -s /usr/bin/dash /usr/bin/sh
+      ln -sfn /usr/bin/dash /usr/bin/sh
     fi
     if [ -L "/bin/sh" ]; then
-      rm -f /bin/sh
-      ln -s /usr/bin/dash /bin/sh
+      ln -sfn /usr/bin/dash /bin/sh
     fi
   fi
   if [ -x "/bin/dash" ] && [ ! -L "/bin/dash" ]; then
     if [ -L "/usr/bin/sh" ]; then
-      rm -f /usr/bin/sh
-      ln -s /bin/dash /usr/bin/sh
+      ln -sfn /bin/dash /usr/bin/sh
     fi
     if [ -L "/bin/sh" ]; then
-      rm -f /bin/sh
-      ln -s /bin/dash /bin/sh
+      ln -sfn /bin/dash /bin/sh
     fi
   fi
 }
@@ -4224,22 +4220,18 @@ symlink_to_bash() {
   fi
   if [ -x "/usr/bin/bash" ] && [ ! -L "/usr/bin/bash" ]; then
     if [ -L "/usr/bin/sh" ]; then
-      rm -f /usr/bin/sh
-      ln -s /usr/bin/bash /usr/bin/sh
+      ln -sfn /usr/bin/bash /usr/bin/sh
     fi
     if [ -L "/bin/sh" ]; then
-      rm -f /bin/sh
-      ln -s /usr/bin/bash /bin/sh
+      ln -sfn /usr/bin/bash /bin/sh
     fi
   fi
   if [ -x "/bin/bash" ] && [ ! -L "/bin/bash" ]; then
     if [ -L "/usr/bin/sh" ]; then
-      rm -f /usr/bin/sh
-      ln -s /bin/bash /usr/bin/sh
+      ln -sfn /bin/bash /usr/bin/sh
     fi
     if [ -L "/bin/sh" ]; then
-      rm -f /bin/sh
-      ln -s /bin/bash /bin/sh
+      ln -sfn /bin/bash /bin/sh
     fi
   fi
 }
