@@ -1623,7 +1623,7 @@ fix_fpm_process_max() {
 }
 
 fix_node_in_lshell_access() {
-  if [ ! -e "${pthLog}/node.lshell.ctrl.${tRee}.${_X_SE}.pid" ] \
+  if [ ! -e "${pthLog}/node.lshell-fix.ctrl.${tRee}.${_X_SE}.pid" ] \
     && [ -e "/etc/lshell.conf" ]; then
     PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
     PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
@@ -1634,9 +1634,19 @@ fix_node_in_lshell_access() {
     else
       _ALLOW_NODE=NO
       sed -i "s/, 'node',/,/g" /etc/lshell.conf
+      wait
       sed -i "s/, 'node',/,/g" /var/xdrago/conf/lshell.conf
+      wait
+      sed -i "s/, 'npm',/,/g" /etc/lshell.conf
+      wait
+      sed -i "s/, 'npm',/,/g" /var/xdrago/conf/lshell.conf
+      wait
+      sed -i "s/, 'npx',/,/g" /etc/lshell.conf
+      wait
+      sed -i "s/, 'npx',/,/g" /var/xdrago/conf/lshell.conf
+      wait
     fi
-    touch ${pthLog}/node.lshell.ctrl.${tRee}.${_X_SE}.pid
+    touch ${pthLog}/node.lshell-fix.ctrl.${tRee}.${_X_SE}.pid
   fi
 }
 

@@ -2369,7 +2369,17 @@ fix_node_in_lshell_access() {
     else
       _ALLOW_NODE=NO
       sed -i "s/, 'node',/,/g" /etc/lshell.conf
+      wait
       sed -i "s/, 'node',/,/g" /var/xdrago/conf/lshell.conf
+      wait
+      sed -i "s/, 'npm',/,/g" /etc/lshell.conf
+      wait
+      sed -i "s/, 'npm',/,/g" /var/xdrago/conf/lshell.conf
+      wait
+      sed -i "s/, 'npx',/,/g" /etc/lshell.conf
+      wait
+      sed -i "s/, 'npx',/,/g" /var/xdrago/conf/lshell.conf
+      wait
     fi
   fi
 }
