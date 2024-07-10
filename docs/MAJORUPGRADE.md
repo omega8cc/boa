@@ -60,7 +60,7 @@ Unfortunately, the Lassie watchdog pretty often fails to mount the filesystem, a
 
 Sometimes even those steps don't bring your server back with a successful boot, so unless you are prepared to try your luck with boot process management in the LISH console, your only rescue option will be restoring your VPS from the Linode backup -- which you have enabled and created a fresh backup before attempting the major upgrade.
 
-### Note about Legacy Systems
+### Note on Legacy Systems
 
 Servers running Debian Jessie or Debian Stretch must auto-upgrade to Devuan Chimaera first -- they cannot run the auto-upgrade to Devuan Daedalus. Once on Chimaera, they can auto-upgrade to Devuan Daedalus.
 

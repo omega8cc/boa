@@ -39,7 +39,7 @@ in a separate email.
 Once in your control panel, you'll find a number of
 Drupal platforms ready to deploy.
 
-Note about vanilla platforms naming convention:
+Note on vanilla platforms naming convention:
 
   Basic Drupal 6 and Drupal 7 platforms come in three instances,
   to make your standard workflow easier for: -dev, -stage and -prod,
