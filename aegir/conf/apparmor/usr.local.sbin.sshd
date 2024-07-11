@@ -11,7 +11,9 @@
   include <abstractions/bash>
   include <abstractions/consoles>
   include <abstractions/nameservice>
+  include <abstractions/openssl>
   include <abstractions/python>
+  include <abstractions/ssh>
   include <abstractions/wutmp>
 
   # Allow execution of the sshd binary

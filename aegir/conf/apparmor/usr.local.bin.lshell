@@ -6,8 +6,15 @@
 /usr/local/bin/lshell flags=(complain) {
 
   # Include common AppArmor abstractions
+  include <abstractions/authentication>
   include <abstractions/base>
+  include <abstractions/bash>
+  include <abstractions/consoles>
+  include <abstractions/nameservice>
+  include <abstractions/openssl>
   include <abstractions/python>
+  include <abstractions/ssh>
+  include <abstractions/wutmp>
 
   # Read/write access to user home
   /home/*/** rw,
