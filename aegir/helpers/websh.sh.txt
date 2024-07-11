@@ -33,7 +33,13 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
   && [[ ! "${_ARGS}" =~ "mysql" ]] \
   && [[ ! "${_ARGS}" =~ "sudo" ]]; then
   _ARR=
-  if [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
+  if [[ "${_ARGS}" =~ "vendor/drush/drush/drush" ]]; then
+    _ARR="${_ARGS}"
+    ### echo _ARR is ${_ARR}
+  elif [[ "${_ARGS}" =~ "/vendor/bin/drush" ]]; then
+    _ARR="${_ARGS}"
+    ### echo _ARR is ${_ARR}
+  elif [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
     if [[ "${_ARGS}" =~ "set -m" ]]; then
       _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; vendor/bin/drush"`
     else
@@ -50,9 +56,6 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
         *) _ARR+=("$arg") ;;
       esac
     done
-    ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ "vendor/drush/drush/drush" ]]; then
-    _ARR="${_ARGS}"
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "drush " ]]; then
     if [[ "${_ARGS}" =~ "set -m" ]]; then
@@ -379,6 +382,9 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         if [[ "${_ARGS}" =~ "vendor/drush/drush/drush" ]]; then
           _DEST_DRUSH=
         fi
+        if [[ "${_ARGS}" =~ "/vendor/bin/drush " ]]; then
+          _DEST_DRUSH=
+        fi
         if [[ "${_ARGS}" =~ "drush12 " ]] \
           && [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
           _DEST_DRUSH="/usr/bin/drush12"
@@ -466,6 +472,9 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             _DEST_DRUSH="vendor/bin/drush"
           fi
           if [[ "${_ARGS}" =~ "vendor/drush/drush/drush" ]]; then
+            _DEST_DRUSH=
+          fi
+          if [[ "${_ARGS}" =~ "/vendor/bin/drush " ]]; then
             _DEST_DRUSH=
           fi
           if [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
