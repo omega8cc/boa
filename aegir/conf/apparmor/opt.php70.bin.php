@@ -93,7 +93,6 @@
   # Allow PHP-CLI to access drush
   /opt/tools/drush/** mrix,
   /var/aegir/drush/** mrix,
-  /usr/bin/drush mrix,
 
   # Allow PHP-CLI to read and write in the custom web root directories
 

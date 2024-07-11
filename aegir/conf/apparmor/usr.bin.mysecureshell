@@ -21,10 +21,6 @@
 
   # Drush access
   /opt/tools/drush/** mrix,
-  /usr/bin/drush mrix,
-  /usr/bin/drush10 mrix,
-  /usr/bin/drush11 mrix,
-  /usr/bin/drush8 mrix,
 
   # Read-only access to Octopus directories
   /data/disk/*/.drush/** r,
