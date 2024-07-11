@@ -5,46 +5,57 @@
 
 /usr/local/bin/ssh flags=(complain) {
 
-    # Include common AppArmor abstractions
-    include <abstractions/base>
-    include <abstractions/nameservice>
-    include <abstractions/openssl>
+  # Include common AppArmor abstractions
+  include <abstractions/authentication>
+  include <abstractions/base>
+  include <abstractions/bash>
+  include <abstractions/consoles>
+  include <abstractions/nameservice>
+  include <abstractions/openssl>
+  include <abstractions/python>
+  include <abstractions/ssh>
+  include <abstractions/wutmp>
 
-    # Allow execution of the ssh binary
-    /usr/local/bin/ssh mrix,
+  # Allow execution of the ssh binary
+  /usr/local/bin/ssh mrix,
 
-    # Read access to SSH client configuration files
-    /etc/ssh/ssh_config r,
-    /etc/ssh/ssh_known_hosts r,
-    /home/*/.ssh/** rw,
+  # Read access to SSH client configuration files
+  /etc/ssh/ssh_config r,
+  /etc/ssh/ssh_known_hosts r,
+  /home/*/.ssh/** rw,
 
-    # Allow network access for making outbound connections
-    network inet stream,
-    network inet6 stream,
+  # Allow network access for making outbound connections
+  network inet stream,
+  network inet6 stream,
 
-    # Deny access to critical system files
-    deny /etc/shadow* rw,
-    deny /etc/passwd* rw,
+  # Deny access to critical system files
+  deny /etc/shadow* rw,
 
-    # Allow read-only access to resolv.conf for DNS resolution
-    /etc/resolv.conf r,
+  # Allow read access to user information files
+  /etc/passwd r,
+  /etc/group r,
+  /etc/nsswitch.conf r,
+  /etc/hosts r,
 
-    # Temporary files and directories
-    /tmp/** rw,
-    /var/tmp/** rw,
+  # Allow read-only access to resolv.conf for DNS resolution
+  /etc/resolv.conf r,
 
-    # Allow execution of necessary binaries
-    /bin/dash mrix,
-    /bin/sh mrix,
-    /usr/bin/id mrix,
-    /usr/bin/mysecureshell mrix,
-    /usr/local/bin/lshell mrix,
-    /usr/local/bin/ssh-agent mrix,
+  # Temporary files and directories
+  /tmp/** rw,
+  /var/tmp/** rw,
 
-    # Additional binaries used by SSH (e.g., scp, sftp)
-    /usr/local/bin/scp mrix,
-    /usr/local/bin/sftp mrix,
+  # Allow execution of necessary binaries
+  /bin/dash mrix,
+  /bin/sh mrix,
+  /usr/bin/id mrix,
+  /usr/bin/mysecureshell mrix,
+  /usr/local/bin/lshell mrix,
+  /usr/local/bin/ssh-agent mrix,
 
-    # Deny execution of any other binaries
-    #deny /** rwklx,
+  # Additional binaries used by SSH (e.g., scp, sftp)
+  /usr/local/bin/scp mrix,
+  /usr/local/bin/sftp mrix,
+
+  # Deny execution of any other binaries
+  #deny /** rwklx,
 }

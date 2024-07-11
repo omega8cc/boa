@@ -42,7 +42,15 @@
 
   # Deny access to critical system files
   deny /etc/shadow* rw,
-  deny /etc/passwd* rw,
+
+  # Allow read access to user information files
+  /etc/passwd r,
+  /etc/group r,
+  /etc/nsswitch.conf r,
+  /etc/hosts r,
+
+  # Allow read-only access to resolv.conf for DNS resolution
+  /etc/resolv.conf r,
 
   # Temporary files and directories
   /home/*/.tmp/** rw,
