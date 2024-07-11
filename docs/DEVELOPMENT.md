@@ -1,7 +1,7 @@
 
 # Notes Regarding Drupal Development on BOA
 
-## Drupal 8
+## Drupal 8+
 
 **Note:** All commands/paths are relative to the site folder, not the platform.
 
@@ -14,7 +14,7 @@ touch files/development.services.yml
 
 ### Theme Debug Mode (Twig)
 
-To enable theme debugging for your Drupal 8 site you need to use a dev domain (*.dev.*) and add the following in `files/development.services.yml`:
+To enable theme debugging for your Drupal 8+ site you need to use a dev domain (*.dev.*) and add the following in `files/development.services.yml`:
 
 ```yaml
 services:
