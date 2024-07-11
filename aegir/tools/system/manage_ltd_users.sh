@@ -2380,6 +2380,14 @@ fix_node_in_lshell_access() {
       wait
       sed -i "s/, 'npx',/,/g" /var/xdrago/conf/lshell.conf
       wait
+      sed -i "s/, 'find',/,/g" /etc/lshell.conf
+      wait
+      sed -i "s/, 'find',/,/g" /var/xdrago/conf/lshell.conf
+      wait
+      sed -i "s/, 'scp',/,/g" /etc/lshell.conf
+      wait
+      sed -i "s/, 'scp',/,/g" /var/xdrago/conf/lshell.conf
+      wait
     fi
   fi
 }
