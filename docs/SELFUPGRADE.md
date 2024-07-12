@@ -1,5 +1,5 @@
 
-# Ægir Upgrade via Octopus On-Demand without Root Access
+## Ægir Upgrade via Octopus On-Demand without Root Access
 
 You can now launch an Ægir upgrade to (re)install platforms listed in the file `~/static/control/platforms.info` (see below) by creating an empty PID file:
 
@@ -11,7 +11,7 @@ This file, if it exists, will launch your Ægir upgrade in just a few minutes an
 
 Note that this PID file will be ignored if there is no `platforms.info` file, as explained in [PLATFORMS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/PLATFORMS.md).
 
-# Barracuda and Octopus Upgrade on Schedule with Root Access
+## Barracuda and Octopus Upgrade on Schedule with Root Access
 
 You can launch a BOA after-midnight self-upgrade, either for the system only or also for the Ægir instances, by adding supported variables to the file:
 

@@ -1,5 +1,5 @@
 
-# SHA512
+## SHA512
 
 Your Devuan or Debian system uses SHA512 for password encryption by default.
 
@@ -9,7 +9,7 @@ But since BOA forces all users to update their passwords every 90 days, once the
 
 Note that BOA switched to SHA512 instead of MD5 by default in HEAD after BOA-2.0.8 Edition, and will use SHA512 by default starting with BOA-2.0.9.
 
-# WARNING!
+## WARNING!
 
 1. Make sure you have working SSH (RSA) keys for direct root access without sudo.
 2. Make sure you have working SSH (RSA) keys for direct root access without sudo.
@@ -18,7 +18,7 @@ Note that BOA switched to SHA512 instead of MD5 by default in HEAD after BOA-2.0
 **REALLY. Don't even read anything below if you didn't set this up yet!**
 You could lock yourself out of your server forever (almost), if your only access is password based and something will go wrong, because you didn't read and follow this how-to *precisely*. If you are interested why it is so important, read the explanation further below.
 
-# BLOWFISH
+## BLOWFISH
 
 You can easily switch your system to use much more secure Bcrypt/Blowfish, using the simple steps listed below.
 
@@ -46,7 +46,7 @@ In the displayed dialog box, please enable "Unix2 authentication" and **DO NOT**
 
 You should use Arrow keys, then choose `<Ok>` with Tab and hit Enter to confirm.
 
-# TESTING
+## TESTING
 
 Now update your root password and any other account password for testing with the standard `passwd` command. Even if you have disabled password-based root access, you should still keep the password working because you will still need it when accessing the system via remote console, if available.
 
@@ -71,7 +71,7 @@ Test if the updated password for `o1.ftp` allows you to log in via SSH and FTPS.
 
 Done!
 
-# IMPORTANT!
+## IMPORTANT!
 
 Only MD5 passwords would still work after enabling "Unix2 authentication" and disabling "Unix authentication", as it is recommended in many how-tos you can find on the net. Their authors even share horrible stories where they managed to lock the access completely and were forced to boot the system from a rescue CD, etc. because they didn't fully realize what they are doing.
 
@@ -81,7 +81,7 @@ Make sure that you have enabled both!
 
 Note that BOA will still use SHA512 for all new or updated automatically extra accounts, but since it still forces you to update passwords every 90 days, all accounts on your system will use Bcrypt/Blowfish as soon as their passwords are updated with the standard `passwd` command, after you have added Bcrypt/Blowfish support using the how-to above.
 
-# REFERENCES
+## REFERENCES
 
 - [Why LivingSocial's 50 Million Password Breach Is Graver Than You May Think](http://arstechnica.com/security/2013/04/why-livingsocials-50-million-password-breach-is-graver-than-you-may-think/)
 - [Passwords Under Assault](http://arstechnica.com/security/2012/08/passwords-under-assault/)

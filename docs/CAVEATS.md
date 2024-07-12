@@ -1,5 +1,5 @@
 
-# CAVEATS
+## CAVEATS
 
 **Note:** BOA maintainers currently use only Devuan-based 64-bit systems/servers.
 We no longer use Ubuntu, while Debian is mainly supported as a starting point before migration to its systemd-free alternative -- Devuan.
