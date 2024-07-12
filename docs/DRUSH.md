@@ -1,30 +1,36 @@
 
-# Using Drush on Systems Running BOA-5.2.0 or Newer
+# Using Drush on BOA
 
-The BOA-5.2.0 version introduced major improvements to the way Drush can be used while preserving all previously available features.
+BOA-5.2.0 introduced significant improvements to Drush usage while maintaining all previously available features.
 
-Here are a couple of highlights, with details explained further below:
+Here are some highlights, with detailed explanations below:
 
 1. Ægir no longer removes local Drush from any platform.
-2. PHP-CLI version for command line can be switched instantly.
-3. Using any standalone Drush newer than 8 is deprecated.
-4. Drush 8 is still available as either `drush8` or just `drush`.
-5. Drush 10 is still available as standalone `drush10`.
-6. Drush 11 is still available as standalone `drush11`.
-7. Drush 12 is present but does not work as standalone.
-8. Read about CAVEATS, they are important too.
+2. Site-local Drush can be invoked with `vdrush`.
+3. The PHP-CLI version for the command line can be switched instantly.
+4. Using any standalone Drush newer than version 8 is deprecated.
+5. Drush 8 remains available as `drush8` or simply `drush`.
+6. Drush 10 is available as standalone `drush10`.
+7. Drush 11 is available as standalone `drush11`.
+8. Drush 12 is available only as site-local with `vdrush`.
+9. It is important to read about the CAVEATS.
 
-## Site Local Drush is Preserved and Fully Supported
+## Site-Local Drush is Preserved and Fully Supported
 
-The most important improvement is that Ægir no longer removes the local copy of Drush in the platform once you run the platform Verify task.
+The most significant improvement is that Ægir no longer removes the local copy of Drush from the platform when the 'Platform Verify' task is run.
 
 Instead, Ægir only locks permissions on the `vendor/drush` directory, if present.
 
-This allows you to easily unlock local Drush with a new task available on the platform node in the Ægir control panel named Unlock Local Drush, which is now a required step before you try to use local Drush or run any update with Composer on the command line.
+This change allows you to easily unlock the local Drush using a new task available on the platform node in the Ægir control panel named 'Unlock Local Drush'. This task is now a required step before you use local `vdrush` or run any updates with `composer` on the command line.
 
-Since Drush Launcher is no longer supported and working, it has been removed.
+To use site-local Drush, follow these steps:
 
-We are still working on a replacement for accounts using Limited Shell without Bash access, to make using site-local Drush easier.
+1. Run the 'Unlock Local Drush' task on the site's Platform in Ægir.
+2. Find the correct Drush 10+ `@sitealias` with the `drush10 aliases` command.
+3. Switch to the Platform root where `vendor` exists using `cd`.
+4. Run `vdrush --version` or install it with `composer require drush/drush`.
+5. Use `vdrush @sitealias updbst`, `vdrush @sitealias updb`, etc.
+6. Run the 'Platform Verify' task to restore compatibility with Drush 8.
 
 ## PHP-CLI Version Configuration is Much Smarter
 
