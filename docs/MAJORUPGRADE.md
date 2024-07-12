@@ -1,7 +1,6 @@
+# How To: Run a Major OS Upgrade
 
-# How-To Run a Major OS Upgrade
-
-Unlike non-major system upgrades, which can be run with **BARRACUDA** using the Self-Upgrade How-To [docs/SELFUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SELFUPGRADE.md), a major OS upgrade requires different procedures explained below. There are two options: Modern, which is very reliable and easy to use but gives you only two upgrade paths—to Devuan Chimaera or Devuan Daedalus, and Classic, which allows you to upgrade just to the next supported Debian or Devuan OS version.
+Unlike non-major system upgrades, which can be run with **BARRACUDA** using the Self-Upgrade How To [docs/SELFUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SELFUPGRADE.md), a major OS upgrade requires different procedures explained below. There are two options: Modern, which is very reliable and easy to use but gives you only two upgrade paths—to Devuan Chimaera or Devuan Daedalus, and Classic, which allows you to upgrade just to the next supported Debian or Devuan OS version.
 
 If you don’t mind several Classic procedures to get to the latest supported Devuan version, or if you wish to continue running your BOA on Debian, then the Classic procedure is for you.
 

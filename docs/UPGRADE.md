@@ -1,7 +1,6 @@
+# How To: Upgrade Your BOA System
 
-# How-To Upgrade Your BOA System
-
-All standard non-major system upgrades can be run with **BARRACUDA** and all Ægir instances can be upgraded with **OCTOPUS**, but we highly recommend to use the fully automated procedure explained in Self-Upgrade How-To: [docs/SELFUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SELFUPGRADE.md)
+All standard non-major system upgrades can be run with **BARRACUDA** and all Ægir instances can be upgraded with **OCTOPUS**, but we highly recommend to use the fully automated procedure explained in Self-Upgrade How To: [docs/SELFUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SELFUPGRADE.md)
 
 ## Important Notes for Standard/Manual BOA Upgrade
 
