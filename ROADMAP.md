@@ -1,42 +1,31 @@
-# Planned BOA Features, Improvements, and TODO List
+# BOA Roadmap & Progress
 
-Documenting details in progress...
+Documenting ongoing, upcoming and completed tasks, organized alphabetically.
 
-## New Features
+Some tasks are relatively simple, while others are major undertakings that take weeks or months. Therefore, we are working on many things simultaneously.
 
-### TODO
-- **Percona for MySQL 8.0**: Add support for Percona Server 8.0 (required by Drupal 11).
-- **Import from Classic Ægir**: Extend xboa to import from remote classic Ægir servers running Nginx or Apache.
-- **Ægir Task for SQL Backup**: Make it possible to create classic mysqldump backups for download per site.
-- **Symlink Site Files**: Automatically symlink all site files to speed up migration tasks and save disk space.
+This document highlights the most complex or important tasks we are working on or planning to undertake. Routine tasks such as debugging, fixing issues, and implementing small improvements are usually documented in the commit history and changelog, which are updated with each new BOA release.
+
+## IN PROGRESS
+- **Ægir Task for SQL Backup**: Enable classic mysqldump backups for individual site downloads.
+- **Drush Support**: Ensure compatibility with Drush 11/12, including Redispatch to site-local Drush (vdrush).
+- **Import from Classic Ægir**: Extend xboa to import from remote classic Ægir servers using Nginx or Apache.
+- **Percona for MySQL 8.0**: Add support for Percona Server 8.0, necessary for Drupal 11.
 - **Rsync on Clone**: Use Rsync to create separate symlinked copies during site clone tasks.
-- **Backdrop CMS Support**: Add support for Backdrop CMS as a platform.
-- **Grav CMS Support**: Add support for Grav CMS (command line only).
-- **Amazon S3 Alternatives**: Add support for Amazon S3 alternatives to backboa and duobackboa.
-- **Ægir Remote Servers**: Implement the Ægir Remote Servers feature to meet user needs.
+- **Symlink Site Files**: Automatically symlink all site files to expedite migration tasks and conserve disk space.
 
-### DONE
-- **Debian Bookworm and Devuan Daedalus**: Add compatibility for installation and automated upgrades.
-- **Super Fast System AutoInit**: Upgrade easily to the latest Devuan before installing BOA.
-- **PHP 8.3 Support**: Required by Drupal 11 and much faster, bringing the total PHP versions to 10.
+## UPCOMING TASKS
+- **Ægir Admin Interface**: Transition the Ægir admin interface from Drupal 7 to Backdrop CMS.
+- **Ægir Remote Servers**: Implement the Ægir Remote Servers feature to address user requirements.
+- **Amazon S3 Alternatives**: Integrate support for Amazon S3 alternatives in backboa and duobackboa.
+- **Backdrop CMS Support**: Implement Backdrop CMS as a supported platform.
+- **Documentation Consolidation**: Consolidate all legacy and built-in documentation into a unified Grav CMS site.
+- **Grav CMS Support**: Introduce support for Grav CMS (command line only).
 
-## Improvements
+## COMPLETED IN BOA-DEV
+- **Debian Bookworm and Devuan Daedalus**: Ensure compatibility for installation and automated upgrades.
+- **Documentation Conversion to Markdown**: Update all BOA documentation from legacy TXT to Markdown.
+- **PHP 8.3 Support**: Required for Drupal 11, enhancing performance and supporting ten PHP versions.
+- **Super Fast System AutoInit**: Facilitate easy upgrades to the latest Devuan before BOA installation.
+- **Use OpenSSL LTS 3.0**: Maintain compatibility with OpenSSL 1.1.1 for legacy PHP versions.
 
-### TODO
-- **Documentation Consolidation**: Update all legacy and built-in documentation into a single Grav CMS site.
-
-### DONE
-- **Documentation Conversion to Markdown**: All BOA docs should be updated from legacy TXT to Markdown.
-
-## Changes and Upgrades
-
-### TODO
-- **Ægir Admin Interface**: Switch the Ægir admin interface from Drupal 7 to Backdrop CMS.
-
-### DONE
-- **Use OpenSSL LTS 3.0**: But keep 1.1.1 to support legacy PHP versions (DONE).
-
-## Important Fixes
-
-### TODO
-- **Drush Support**: Ensure Drush 11/12 support with Redispatch to site-local Drush (vdrush, sdrush).
