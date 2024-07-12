@@ -1,4 +1,3 @@
-
 # About BOA Simple Cluster (deprecated)
 
 The legacy version of this installer supports 3 or more Percona XtraDB Cluster Galera nodes, connected via ProxySQL load balancer to a single BOA web node, all running on the same machine, or (soon) multiple machines, leveraging Linux VServer guests to create separate VPS instances.

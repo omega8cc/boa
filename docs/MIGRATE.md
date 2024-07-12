@@ -1,5 +1,4 @@
-
-# How To Migrate All Sites Between Remote BOA Servers and Octopus Instances
+# How To: Migrate All Sites Between Remote BOA
 
 While [docs/REMOTE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/REMOTE.md) provides a how-to for per-site migration between remote Octopus instances, it depends on some assumptions, namely:
 

@@ -1,4 +1,3 @@
-
 # SOLR Management Documentation
 
 You can easily add, update, or delete Solr cores powered by the very fast Jetty server. This process is fully automated and can be managed via the site-level active INI file. Ensure Solr is already installed on the system with the `SR7` and `SR4` keywords in the `_XTRAS_LIST` in the `/root/.barracuda.cnf` file.

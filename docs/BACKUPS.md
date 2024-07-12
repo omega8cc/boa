@@ -1,5 +1,4 @@
-
-## Automated, encrypted backups to Amazon S3 bucket
+# Automated, encrypted backups to Amazon S3 bucket
 
   * This feature is available on self-hosted BOA and hosted Phantom+ Engines.
   * Note that provided 'backboa' tool uses symmetric password-only encryption.

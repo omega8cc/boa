@@ -1,4 +1,3 @@
-
 # Octopus Platforms
 
 Octopus can install and/or support the Ægir platforms listed below:

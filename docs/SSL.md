@@ -1,4 +1,3 @@
-
 # Let's Encrypt free SSL certificates are supported directly in Ægir
 
   You can find these important Let's Encrypt topics discussed below:

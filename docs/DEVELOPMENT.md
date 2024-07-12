@@ -1,4 +1,3 @@
-
 # Notes Regarding Drupal Development on BOA
 
 ## Drupal 8+

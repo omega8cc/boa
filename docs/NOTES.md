@@ -1,4 +1,3 @@
-
 # Barracuda _XTRAS_LIST and _EASY_SETUP explained
 
 ## Add-ons configurable with _XTRAS_LIST in `/root/.barracuda.cnf`

@@ -1,4 +1,3 @@
-
 # Using Drush on BOA
 
 BOA-5.2.0 introduced significant improvements to Drush usage while maintaining all previously available features.

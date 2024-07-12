@@ -1,4 +1,3 @@
-
 ## CAVEATS
 
 **Note:** BOA maintainers currently use only Devuan-based 64-bit systems/servers.

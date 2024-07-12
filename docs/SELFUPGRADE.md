@@ -1,4 +1,3 @@
-
 ## Ægir Upgrade via Octopus On-Demand without Root Access
 
 You can now launch an Ægir upgrade to (re)install platforms listed in the file `~/static/control/platforms.info` (see below) by creating an empty PID file:

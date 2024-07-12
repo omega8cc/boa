@@ -1,4 +1,3 @@
-
 ## SHA512
 
 Your Devuan or Debian system uses SHA512 for password encryption by default.

@@ -1,4 +1,3 @@
-
 # Composer on BOA: Common Questions and Answers
 
 Here are responses to some common Composer on BOA related questions.

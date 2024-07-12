@@ -1,4 +1,3 @@
-
 # Please check regularly: [PHP Supported Versions](https://www.php.net/supported-versions.php)
 
 The Ægir version provided by BOA is now fully compatible with PHP 8.3, so it can be used as default version in the Ægir PHP configuration files:

@@ -1,5 +1,4 @@
-
-# Drupalgeddon Daily Checks on All Hosted D7 Sites
+# Drupalgeddon Daily Checks on D7 Sites
 
 ## ~/static/control/drupalgeddon.info
 

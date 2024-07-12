@@ -1,5 +1,4 @@
-
-# How To Migrate Single Sites Between Remote Ægir Instances
+# How To: Migrate Single Site Between Remote Ægir
 
 This is a detailed how-to for the `remote_import` Provision extension and `hosting_remote_import` module included by default in every Ægir Satellite Instance since BOA-2.0.3 Edition.
 

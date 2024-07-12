@@ -1,4 +1,3 @@
-
 # Preparations Before Installing BOA
 
 - Add your SSH keys to your VPS root-- BOA will disable password for root over SSH.

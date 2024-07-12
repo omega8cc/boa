@@ -1,4 +1,3 @@
-
 # Contributing to BOA
 
 Guidelines for contributing code and reporting bugs and problems with BOA.

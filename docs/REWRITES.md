@@ -1,5 +1,4 @@
-
-# How To Customize Rewrites and Locations in Nginx
+# How To: Customize Rewrites and Locations in Nginx
 
 You can include your custom rewrites/locations configuration to modify or add some custom settings taking precedence over other rules in the main Nginx configuration.
 
