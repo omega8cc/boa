@@ -136,13 +136,13 @@ _TUNE_PHP_CLI_TIMEOUT=9999
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-tRee=lts
+tRee=pro
 export tRee="${tRee}"
 
 _AEGIR_VERSION="${tRee}"
 _BRANCH_BOA="5.x-${tRee}"
 _X_VERSION="BOA-5.2.0-${tRee}"
-_X_SE="520ltsT01"
+_X_SE="520proT02"
 _MYSQLTUNER_VRN=1.9.4
 
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
@@ -176,7 +176,9 @@ _PHP80_VRN=8.0.30
 _PHP81_API=20210902
 _PHP81_VRN=8.1.29
 _PHP82_API=20220829
-_PHP82_VRN=8.2.20
+_PHP82_VRN=8.2.21
+_PHP83_API=20230831
+_PHP83_VRN=8.3.9
 
 ###
 ### Helper variables
@@ -210,6 +212,24 @@ clean_pid_exit() {
   exit 1
 }
 
+check_root() {
+  if [ `whoami` = "root" ]; then
+    if [ -e "/root/.barracuda.cnf" ]; then
+      source /root/.barracuda.cnf
+      _B_NICE=${_B_NICE//[^0-9]/}
+    fi
+    if [ -z "${_B_NICE}" ]; then
+      _B_NICE=10
+    fi
+    renice ${_B_NICE} -p $$ &> /dev/null
+    ionice -c2 -n7 -p $$
+  else
+    echo "ERROR: This script should be ran as a root user"
+    clean_pid_exit
+  fi
+}
+check_root
+
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _THIS_RV=$(lsb_release -sc 2>&1)
@@ -227,6 +247,16 @@ apt_clean_update() {
   rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
+
+check_sql_running() {
+  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
+    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    echo "INFO: Waiting for MySQLD availability..."
+    sleep 3
+  done
+}
+check_sql_running
 
 check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
@@ -556,7 +586,7 @@ fix_php_ini_newrelic_all() {
       _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>&1)
       _NEWRELIC_KEY=$(echo -n ${_NEWRELIC_KEY} | tr -d "\n" 2>&1)
     fi
-    _PHP_V="82 81 80 74 73 72 71 70 56"
+    _PHP_V="83 82 81 80 74 73 72 71 70"
     for e in ${_PHP_V}; do
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       fix_php_ini_newrelic
@@ -586,10 +616,11 @@ fix_php_ini_opcache() {
 #
 # Fix all FMP php.ini files to add Zend OPcache
 fix_php_ini_opcache_all() {
-  _PHP_V="82 81 80 74 73 72 71 70 56"
+  _PHP_V="83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     _P_API=
     case "${e}" in
+      83) _P_API="${_PHP83_API}" ;;
       82) _P_API="${_PHP82_API}" ;;
       81) _P_API="${_PHP81_API}" ;;
       80) _P_API="${_PHP80_API}" ;;
@@ -624,10 +655,11 @@ fix_php_ini_tet() {
 # Fix all php.ini files to add php_tet.so
 fix_php_ini_tet_all() {
   if [ "${_PHP_TET}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "TET" ]]; then
-    _PHP_V="82 81 80 74 73 72 71 70 56"
+    _PHP_V="83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       _P_API=
       case "${e}" in
+        83) _P_API="${_PHP83_API}" ;;
         82) _P_API="${_PHP82_API}" ;;
         81) _P_API="${_PHP81_API}" ;;
         80) _P_API="${_PHP80_API}" ;;
@@ -753,7 +785,7 @@ php_conf_update() {
   wait
   sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
   wait
-  _PHP_V="82 81 80 74 73 72 71 70 56"
+  _PHP_V="83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
       adduser --system --group --home /var/www/www${e} www${e} &> /dev/null
@@ -843,6 +875,8 @@ php_conf_update() {
 #
 restore_default_php() {
   msg "INFO: Restoring default PHP configuration"
+  cp -af ${locCnf}/php83-cli.ini /opt/php83/lib/php.ini &> /dev/null
+  cp -af ${locCnf}/php83.ini /opt/php83/etc/php83.ini   &> /dev/null
   cp -af ${locCnf}/php82-cli.ini /opt/php82/lib/php.ini &> /dev/null
   cp -af ${locCnf}/php82.ini /opt/php82/etc/php82.ini   &> /dev/null
   cp -af ${locCnf}/php81-cli.ini /opt/php81/lib/php.ini &> /dev/null
@@ -1074,7 +1108,7 @@ tune_nginx() {
 #
 restart_services() {
   msg "INFO: Reloading services"
-  _PHP_V="82 81 74 73 72 71 70 56"
+  _PHP_V="83 82 81 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ]; then
       service php${e}-fpm reload &> /dev/null
@@ -1121,7 +1155,7 @@ tune_web_server_config() {
       _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
     fi
   fi
-  _PHP_V="82 81 80 74 73 72 71 70 56"
+  _PHP_V="83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
       /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
@@ -1153,8 +1187,8 @@ tune_web_server_config() {
 #
 #
 check_mysqld_running() {
-  until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
-    && [ -e "/var/run/mysqld/mysqld.sock" ]; do
+  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
+    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     msg "INFO: Waiting for MySQLD availability before tune_sql_memory_limits..."
     sleep 5
@@ -1439,6 +1473,7 @@ tune_memory_limits() {
         else
           _L_NGX_WRKS=${_NGINX_WORKERS}
         fi
+        sed -i "s/64000/128000/g"  /opt/php83/etc/php83.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php82/etc/php82.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php81/etc/php81.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php80/etc/php80.ini &> /dev/null
@@ -1530,6 +1565,12 @@ tune_memory_limits() {
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
     wait
+  fi
+  if [ -e "/opt/php83/etc/php83.ini" ]; then
+    sed -i "s/395/${_USE_FPM}/g" /opt/php83/etc/php83.ini &> /dev/null
+    wait
+    sed -i "s/181/${_USE_OPC}/g" /opt/php83/etc/php83.ini &> /dev/null
+    sed -i "s/395/${_USE_CLI}/g" /opt/php83/lib/php.ini   &> /dev/null
   fi
   if [ -e "/opt/php82/etc/php82.ini" ]; then
     sed -i "s/395/${_USE_FPM}/g" /opt/php82/etc/php82.ini &> /dev/null

@@ -42,7 +42,7 @@ bldPth="/opt/tmp/boa"
 filIncB="barracuda.sh.cnf"
 libFnc="${bldPth}/lib/functions"
 vBs="/var/backups"
-tRee=lts
+tRee=pro
 export tRee="${tRee}"
 
 
@@ -84,15 +84,15 @@ done
 if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
   _THIS_DB_HOST=$(uname -n 2>&1)
 fi
-if [ "${_PHP_CLI_VERSION}" = "8.2" ] \
+if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
+  && [ -x "/opt/php83/bin/php" ]; then
+  _T_CLI=/opt/php83/bin
+elif [ "${_PHP_CLI_VERSION}" = "8.2" ] \
   && [ -x "/opt/php82/bin/php" ]; then
   _T_CLI=/opt/php82/bin
 elif [ "${_PHP_CLI_VERSION}" = "8.1" ] \
   && [ -x "/opt/php81/bin/php" ]; then
   _T_CLI=/opt/php81/bin
-elif [ "${_PHP_CLI_VERSION}" = "8.0" ] \
-  && [ -x "/opt/php80/bin/php" ]; then
-  _T_CLI=/opt/php80/bin
 elif [ "${_PHP_CLI_VERSION}" = "7.4" ] \
   && [ -x "/opt/php74/bin/php" ]; then
   _T_CLI=/opt/php74/bin
@@ -123,17 +123,17 @@ php_cli_drush_update() {
   else
     _DRUSH_FILE="${_ROOT}/drush/drush.php"
   fi
-  if [ "${_PHP_CLI_VERSION}" = "8.2" ] \
+  if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
+    && [ -x "/opt/php83/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php83\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "8.2" ] \
     && [ -x "/opt/php82/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php82\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "8.1" ] \
     && [ -x "/opt/php81/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php81\/bin\/php/g" \
-      ${_DRUSH_FILE} &> /dev/null
-  elif [ "${_PHP_CLI_VERSION}" = "8.0" ] \
-    && [ -x "/opt/php80/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php80\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "7.4" ] \
     && [ -x "/opt/php74/bin/php" ]; then

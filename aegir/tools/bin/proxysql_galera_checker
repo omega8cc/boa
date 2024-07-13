@@ -252,7 +252,7 @@ function check_permission() {
     description="$4"
   fi
 
-  if [ ! $permission "$path_to_check" ] ; then
+  if [ ! $permission "$path_to_check" ]; then
     if [[ $permission == "-r" ]]; then
       error $lineno "You do not have READ permission for: $path_to_check"
     elif [[ $permission == "-w" ]]; then
@@ -483,7 +483,7 @@ function combine_ip_port_into_address()
   local port=$2
   local addr
 
-  if [[ ! $ip_addr =~ \[.*\] && $ip_addr =~ .*:.* ]] ; then
+  if [[ ! $ip_addr =~ \[.*\] && $ip_addr =~ .*:.* ]]; then
     # If there are no brackets and it does have a ':', then add the brackets
     # because this is an unbracketed IPv6 address
     addr="[${ip_addr}]:${port}"
@@ -546,7 +546,7 @@ function upgrade_scheduler(){
       proxysql_mode_file="${PROXYSQL_DATADIR}/${s_cluster_name}_mode"
     fi
 
-    if [[ -f ${proxysql_mode_file} && -r ${proxysql_mode_file} ]] ; then
+    if [[ -f ${proxysql_mode_file} && -r ${proxysql_mode_file} ]]; then
       s_mode=$(cat ${proxysql_mode_file})
     else
       log $LINENO ".. Cannot find the ${proxysql_mode_file} file"
@@ -573,7 +573,7 @@ function upgrade_scheduler(){
       # Get the list of hosts from the host_priority file ignoring blanks
       # and any lines that start with '#'
       p_priority_hosts=$(cat $HOST_PRIORITY_FILE | grep '^[^#]' | sed ':a;N;$!ba;s/\n/,/g')
-      if [[ ! -z $p_priority_hosts ]] ; then
+      if [[ ! -z $p_priority_hosts ]]; then
         s_host_priority="--priority=$p_priority_hosts"
       fi
     fi
@@ -914,7 +914,7 @@ function check_is_galera_checker_running() {
     CHECKER_PIDFILE=${PROXYSQL_DATADIR}/${cluster_name}_galera_checker.pid
   fi
 
-  if [[ -f $CHECKER_PIDFILE && -r $CHECKER_PIDFILE ]] ; then
+  if [[ -f $CHECKER_PIDFILE && -r $CHECKER_PIDFILE ]]; then
     local GPID
     GPID=$(cat "$CHECKER_PIDFILE")
     if ps -p $GPID -o args=ARGS | grep $ERR_FILE | grep -o proxysql_galera_check >/dev/null 2>&1 ; then
@@ -927,7 +927,7 @@ function check_is_galera_checker_running() {
         exit 1
       else
         echo $$ > $CHECKER_PIDFILE
-        if [[ $? -ne 0 ]] ; then
+        if [[ $? -ne 0 ]]; then
           warning "$LINENO" "Could not create galera checker PID file"
           exit 1
         fi
@@ -936,7 +936,7 @@ function check_is_galera_checker_running() {
     else
       warning "$LINENO" "Existing PID($GPID) belongs to some other process. Creating new PID file."
       echo $$ > $CHECKER_PIDFILE
-      if [[ $? -ne 0 ]] ; then
+      if [[ $? -ne 0 ]]; then
         warning "$LINENO" "Could not create galera checker PID file"
         exit 1
       fi
@@ -1228,7 +1228,7 @@ function get_host_priority_list() {
     HOST_PRIORITY_FILE=${PROXYSQL_DATADIR}/${cluster_name}_host_priority
   fi
 
-  if [[ ! -z "$P_PRIORITY" ]] ; then
+  if [[ ! -z "$P_PRIORITY" ]]; then
     IFS=',' read -r -a priority_hosts <<< "$P_PRIORITY"
     debug $LINENO "host_priority = ${priority_hosts[@]}"
   elif [[ -f $HOST_PRIORITY_FILE ]];then
@@ -1446,7 +1446,7 @@ function update_writers() {
     # we have to limit amount of writers, WSREP status OK, AND node is marked ONLINE
     # PXC and ProxySQL agreee on the status
     # wsrep:ok  pxc:--  status:online
-    if [ $NUMBER_WRITERS -gt 0 -a "${wsrep_status}" = "4" -a "$stat" == "ONLINE" -a "${pxc_main_mode}" == "DISABLED" ] ; then
+    if [ $NUMBER_WRITERS -gt 0 -a "${wsrep_status}" = "4" -a "$stat" == "ONLINE" -a "${pxc_main_mode}" == "DISABLED" ]; then
       if [[ $number_writers_online -lt $NUMBER_WRITERS ]]; then
         number_writers_online=$(( $number_writers_online + 1 ))
         log "" "server $hostgroup:$address is already ONLINE: ${number_writers_online} of ${NUMBER_WRITERS} write nodes"
@@ -1461,9 +1461,9 @@ function update_writers() {
     # WSREP status OK, but node is not marked ONLINE
     # Make the node ONLINE if possible
     # wsrep:ok  pxc:ok  status:not online
-    if [ "${wsrep_status}" = "4" -a "$stat" != "ONLINE" -a "${pxc_main_mode}" == "DISABLED" ] ; then
+    if [ "${wsrep_status}" = "4" -a "$stat" != "ONLINE" -a "${pxc_main_mode}" == "DISABLED" ]; then
       # we have to limit amount of writers
-      if [[ $NUMBER_WRITERS -gt 0 ]] ; then
+      if [[ $NUMBER_WRITERS -gt 0 ]]; then
         if [[ $number_writers_online -lt $NUMBER_WRITERS ]]; then
           number_writers_online=$(( $number_writers_online + 1 ))
           change_server_status $LINENO $HOSTGROUP_WRITER_ID "$server" "$port" "ONLINE" "$rdstat" \
@@ -1480,7 +1480,7 @@ function update_writers() {
           fi
         fi
       # we do not have to limit
-      elif [[ $NUMBER_WRITERS -eq 0 ]] ; then
+      elif [[ $NUMBER_WRITERS -eq 0 ]]; then
         # TODO: kennt, What if node is SHUNNED?
         change_server_status $LINENO $HOSTGROUP_WRITER_ID "$server" "$port" "ONLINE" "$rdstat"\
                              "Changed state, marking write node ONLINE"
@@ -1721,15 +1721,15 @@ function update_readers() {
 
     log "" "--> Checking READ server $hostgroup:$address, current status $stat, wsrep_local_state $wsrep_status"
 
-    if [[ $WRITER_IS_READER == "ondemand" && $writer_stat == "ONLINE" ]] ; then
-      if [ $online_readonly_nodes_found -eq 0 ] ; then
+    if [[ $WRITER_IS_READER == "ondemand" && $writer_stat == "ONLINE" ]]; then
+      if [ $online_readonly_nodes_found -eq 0 ]; then
         # WSREP:ok  PXC:ok  STATUS:online
-        if [ "${wsrep_status}" = "4" -a "$stat" == "ONLINE" -a "${pxc_main_mode}" == "DISABLED" ] ; then
+        if [ "${wsrep_status}" = "4" -a "$stat" == "ONLINE" -a "${pxc_main_mode}" == "DISABLED" ]; then
           log "" "server $hostgroup:$address is already ONLINE, is also write node in ONLINE state, not enough non-ONLINE readers found"
         fi
 
         # WSREP:ok  PXC:ok  STATUS:not online
-        if [ "${wsrep_status}" = "4" -a "$stat" != "ONLINE"  -a "${pxc_main_mode}" == "DISABLED" ] ; then
+        if [ "${wsrep_status}" = "4" -a "$stat" != "ONLINE"  -a "${pxc_main_mode}" == "DISABLED" ]; then
           #
           # Enable the first one found as ONLINE
           # (when writer-is-reader=ondemand)
@@ -1740,30 +1740,30 @@ function update_readers() {
         fi
       else
         # WSREP:ok  PXC:ok  STATUS:online
-        if [ "${wsrep_status}" = "4" -a "$stat" == "ONLINE" -a "${pxc_main_mode}" == "DISABLED" ] ; then
+        if [ "${wsrep_status}" = "4" -a "$stat" == "ONLINE" -a "${pxc_main_mode}" == "DISABLED" ]; then
           # Else disable the other READ nodes
           change_server_status $LINENO $HOSTGROUP_READER_ID "$server" "$port" "OFFLINE_SOFT" ""\
                                "making ONLINE writer node as read OFFLINE_SOFT as well because writers should not be readers"
           echo "1" > ${reload_check_file}
         fi
         # WSREP:ok  PXC:ok  STATUS:not online
-        if [ "${wsrep_status}" = "4" -a "$stat" != "ONLINE" -a "${pxc_main_mode}" == "DISABLED" ] ; then
+        if [ "${wsrep_status}" = "4" -a "$stat" != "ONLINE" -a "${pxc_main_mode}" == "DISABLED" ]; then
           log "" "server $hostgroup:$address is $stat, keeping node as $stat,as it is an ONLINE writer and we prefer not to have writers as readers (writer-is-reader:ondemand)"
         fi
       fi
     else
       # WSREP:ok  PXC:ok  STATUS:online
-      if [ "${wsrep_status}" = "4" -a "$stat" == "ONLINE" -a "${pxc_main_mode}" == "DISABLED" ] ; then
+      if [ "${wsrep_status}" = "4" -a "$stat" == "ONLINE" -a "${pxc_main_mode}" == "DISABLED" ]; then
         log "" "server $hostgroup:$address is already ONLINE"
         online_readonly_nodes_found=$(( $online_readonly_nodes_found + 1 ))
       # WSREP:ok  PXC:not ok  STATUS:not online
-      elif [ "${wsrep_status}" = "4" -a "$stat" != "ONLINE" -a "${pxc_main_mode}" != "DISABLED" ] ; then
+      elif [ "${wsrep_status}" = "4" -a "$stat" != "ONLINE" -a "${pxc_main_mode}" != "DISABLED" ]; then
         log "" "server $hostgroup:$address is $stat"
       fi
 
       # WSREP status OK, but node is not marked ONLINE
       # WSREP:ok  PXC:ok  STATUS:not online
-      if [ "${wsrep_status}" = "4" -a "$stat" != "ONLINE" -a "${pxc_main_mode}" == "DISABLED" ] ; then
+      if [ "${wsrep_status}" = "4" -a "$stat" != "ONLINE" -a "${pxc_main_mode}" == "DISABLED" ]; then
         change_server_status $LINENO $HOSTGROUP_READER_ID "$server" "$port" "ONLINE" ""\
                               "changed state"
         echo "1" > ${reload_check_file}
@@ -2027,7 +2027,7 @@ function restore_reload_check() {
   # Default return value is failure (non-zero)
   local rc=1
 
-  if [[ $(cat ${reload_check_file}) -ne 0 ]] ; then
+  if [[ $(cat ${reload_check_file}) -ne 0 ]]; then
     save_state=1
 
     # A success means that something changed
@@ -2255,7 +2255,7 @@ function main() {
   check_is_galera_checker_running "$cluster_name"
 
   local mode=$MODE
-  if [[ ! -z $P_MODE ]] ; then
+  if [[ ! -z $P_MODE ]]; then
     mode=$P_MODE
   else
     local proxysql_mode_file
@@ -2497,7 +2497,7 @@ function main() {
   fi
 
 
-  if [[ $(cat ${reload_check_file}) -ne 0 ]] ; then
+  if [[ $(cat ${reload_check_file}) -ne 0 ]]; then
       log "" "###### Loading mysql_servers config into runtime ######"
       proxysql_exec $LINENO -Ns "LOAD MYSQL SERVERS TO RUNTIME;" 2>>${ERR_FILE}
       check_cmd_and_exit $LINENO $? "Could not update the mysql_servers table in ProxySQL. Exiting."

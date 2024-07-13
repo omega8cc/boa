@@ -120,11 +120,11 @@
    the "newrelickey" keyword with a valid license key), or to define single PHP
    version to install and use both for Master and Satellite instances.
 
-   When "php-min" is defined, then only 3 versions will be installed: 8.2, 7.4,
+   When "php-min" is defined, then only 3 versions will be installed: 8.3, 8.2,
    plus 8.1, configured as default. You can later install or modify PHP version
-   used via _PHP_MULTI_INSTALL, _PHP_CLI_VERSION and _PHP_FPM_VERSION, but
-   the _PHP_SINGLE_INSTALL variable must be set empty to not override other
-   related variables. The "nodns" option allows to skip DNS and SMTP checks.
+   used via _PHP_MULTI_INSTALL, _PHP_CLI_VERSION and _PHP_FPM_VERSION, but the
+   _PHP_SINGLE_INSTALL variable must be set empty to not override other related
+   variables. The "nodns" option allows to skip DNS and SMTP checks.
 
    Examples:
 
@@ -188,7 +188,7 @@
 
 ### Installing more Octopus instances
 
-It is possible to add lts or dev Octopus instances w/o
+It is now possible to add lts or dev Octopus instances w/o
 forcing Barracuda upgrade, plus optionally with no platforms added by default:
 
    $ boa {in-octopus} {email} {o2} {mini|max|none} {lts|dev}

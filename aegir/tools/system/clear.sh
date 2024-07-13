@@ -9,7 +9,7 @@ export SHELL=${SHELL}
 export HOME=${HOME}
 
 aptYesUnth="-y --allow-unauthenticated"
-tRee=lts
+tRee=pro
 export tRee="${tRee}"
 
 check_root() {
@@ -54,6 +54,11 @@ apt_clean_update() {
 }
 
 rm -f /var/run/clear_m.pid
+
+_FIVE_MINUTES=$(date --date '5 minutes ago' +"%Y-%m-%d %H:%M:%S")
+find /var/run/solr_jetty.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \;
+find /var/run/fmp_wait.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \;
+find /var/run/restarting_fmp_wait.pid  -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \;
 
 _ONE_HOUR=$(date --date '1 hour ago' +"%Y-%m-%d %H:%M:%S")
 find /var/run/mysql_restart_running.pid -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \;
@@ -110,26 +115,55 @@ find_fast_mirror_early() {
   urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
 }
 
-if [ ! -e "/var/run/boa_run.pid" ]; then
-  find_fast_mirror_early
-  if [ -e "/root/.barracuda.cnf" ]; then
-    source /root/.barracuda.cnf
-    isCurl=$(curl --version 2>&1)
-    if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-      rm -f /etc/apt/sources.list.d/openssl.list
-      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-        && [ -e "/etc/apt/apt.conf.d" ]; then
-        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+if_reinstall_curl() {
+  _CURL_VRN=8.7.1
+  isCurl=$(curl --version 2>&1)
+  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+    echo "OOPS: cURL is broken! Re-installing.."
+    rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    echo "curl install" | dpkg --set-selections &> /dev/null
+    apt_clean_update
+    apt-get remove curl ${aptYesUnth} &> /dev/null
+    apt-get install curl ${aptYesUnth} &> /dev/null
+    ldconfig &> /dev/null
+    if [ -f "/usr/bin/curl" ]; then
+      isCurl=$(/usr/bin/curl --version 2>&1)
+      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+        echo "OOPS: /usr/bin/curl is still broken, uninstalling.."
+        apt-get remove curl ${aptYesUnth} &> /dev/null
+      else
+        echo "GOOD: /usr/bin/curl works"
       fi
-      echo "curl install" | dpkg --set-selections &> /dev/null
-      apt_clean_update
-      apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
-      if [ -f "/usr/bin/curl" ] && [ -e "/usr/local/bin/curl" ]; then
+    fi
+    mkdir -p /var/opt
+    rm -rf /var/opt/curl*
+    cd /var/opt
+    wget http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
+    tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
+    cd /var/opt/curl-${_CURL_VRN}
+    sh ./configure --with-ssl --prefix=/usr/local &> /dev/null
+    make -j $(nproc) --quiet &> /dev/null
+    make --quiet install &> /dev/null
+    if [ -f "/usr/local/bin/curl" ]; then
+      isCurl=$(/usr/local/bin/curl --version 2>&1)
+      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+        echo "ERRR: /usr/local/bin/curl is broken, moving to /usr/local/bin/curl--broken"
         rm -f /usr/local/bin/curl--broken
         mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
+      else
+        echo "GOOD: /usr/local/bin/curl works"
       fi
     fi
   fi
+}
+
+check_dns_curl() {
+  find_fast_mirror_early
+  if_reinstall_curl
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
     --retry 3 \
@@ -137,22 +171,19 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
     -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
-      echo "ERROR: cURL libs are out of sync! Re-installing.."
-      rm -f /etc/apt/sources.list.d/openssl.list
-      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-        && [ -e "/etc/apt/apt.conf.d" ]; then
-        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-      fi
-      echo "curl install" | dpkg --set-selections &> /dev/null
-      apt_clean_update
-      apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
-      if [ -f "/usr/bin/curl" ] && [ -e "/usr/local/bin/curl" ]; then
-        rm -f /usr/local/bin/curl--broken
-        mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
-      fi
+      echo "ERROR: cURL libs are out of sync! Re-installing again.."
+      if_reinstall_curl
     else
       echo "ERROR: ${_USE_MIR} is not available, please try later"
+      clean_pid_exit
     fi
+  fi
+}
+
+if [ ! -e "/var/run/boa_run.pid" ]; then
+  check_dns_curl
+  if [ -e "/root/.barracuda.cnf" ]; then
+    source /root/.barracuda.cnf
   fi
   rm -f /tmp/*error*
   rm -f /var/backups/BOA.sh.txt.hourly*

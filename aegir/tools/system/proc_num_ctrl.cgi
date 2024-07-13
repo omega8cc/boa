@@ -27,6 +27,8 @@ foreach $USER (sort keys %li_cnt) {
 foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /lfd/) {$lfdlives = "YES"; $lfdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /named/) {$namedlives = "YES"; $namedsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /clamd/) {$clamdlives = "YES"; $clamdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /freshclam/) {$freshclamlives = "YES"; $freshclamsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /buagent/) {$buagentlives = "YES"; $buagentsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /collectd/) {$collectdlives = "YES"; $collectdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /dhcpcd-bin/) {$dhcpcdlives = "YES"; $dhcpcdsumar = $li_cnt{$COMMAND};}
@@ -48,6 +50,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /proxysql/) {$pxydlives = "YES"; $pxydsumar = $li_cnt{$COMMAND};}
 }
 foreach $X (sort keys %li_cnt) {
+  if ($X =~ /php83/) {$php83lives = "YES";}
   if ($X =~ /php82/) {$php82lives = "YES";}
   if ($X =~ /php81/) {$php81lives = "YES";}
   if ($X =~ /php80/) {$php80lives = "YES";}
@@ -68,10 +71,13 @@ if ($convertsumar > 1)
 print "\n $sumar ALL procs\t\tGLOBAL";
 print "\n $lfdsumar LFD procs\t\tGLOBAL" if ($lfdlives && -f "/etc/init.d/lfd");
 print "\n $namedsumar Bind procs\t\tGLOBAL" if ($namedlives);
+print "\n $clamdsumar Clamd procs\t\tGLOBAL" if ($clamdlives);
+print "\n $freshclamsumar Freshclam procs\t\tGLOBAL" if ($freshclamlives);
 print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
 print "\n $collectdsumar Collectd\t\tGLOBAL" if ($collectdlives);
 print "\n $dhcpcdsumar dhcpcd procs\t\tGLOBAL" if ($dhcpcdlives);
 print "\n $fpmsumar FPM procs\t\tGLOBAL" if ($fpmlives);
+print "\n 1 FPM83 procs\t\tGLOBAL" if ($php83lives);
 print "\n 1 FPM82 procs\t\tGLOBAL" if ($php82lives);
 print "\n 1 FPM81 procs\t\tGLOBAL" if ($php81lives);
 print "\n 1 FPM80 procs\t\tGLOBAL" if ($php80lives);
@@ -174,7 +180,7 @@ if ($nginxsumar) {
 }
 
 if (-f "/root/.dbhd.clstr.cnf") {
-  if ($php82lives || $php81lives || $php80lives || $php74lives || $php73lives || $php72lives || $php71lives || $php70lives || $php56lives) {
+  if ($php83lives || $php82lives || $php81lives || $php80lives || $php74lives || $php73lives || $php72lives || $php71lives || $php70lives || $php56lives) {
     system("killall -9 php-fpm");
   }
   if ($redislives) {
@@ -182,25 +188,41 @@ if (-f "/root/.dbhd.clstr.cnf") {
   }
 }
 else {
-  system("service php82-fpm restart") if ((!$php82lives || !$fpmsumar || $fpmsumar > 9 || !-f "/var/run/php82-fpm.pid") && -f "/etc/init.d/php82-fpm");
-  system("service php81-fpm restart") if ((!$php81lives || !$fpmsumar || $fpmsumar > 9 || !-f "/var/run/php81-fpm.pid") && -f "/etc/init.d/php81-fpm");
-  system("service php80-fpm restart") if ((!$php80lives || !$fpmsumar || $fpmsumar > 9 || !-f "/var/run/php80-fpm.pid") && -f "/etc/init.d/php80-fpm");
-  system("service php74-fpm restart") if ((!$php74lives || !$fpmsumar || $fpmsumar > 9 || !-f "/var/run/php74-fpm.pid") && -f "/etc/init.d/php74-fpm");
-  system("service php73-fpm restart") if ((!$php73lives || !$fpmsumar || $fpmsumar > 9 || !-f "/var/run/php73-fpm.pid") && -f "/etc/init.d/php73-fpm");
-  system("service php72-fpm restart") if ((!$php72lives || !$fpmsumar || $fpmsumar > 9 || !-f "/var/run/php72-fpm.pid") && -f "/etc/init.d/php72-fpm");
-  system("service php71-fpm restart") if ((!$php71lives || !$fpmsumar || $fpmsumar > 9 || !-f "/var/run/php71-fpm.pid") && -f "/etc/init.d/php71-fpm");
-  system("service php70-fpm restart") if ((!$php70lives || !$fpmsumar || $fpmsumar > 9 || !-f "/var/run/php70-fpm.pid") && -f "/etc/init.d/php70-fpm");
-  system("service php56-fpm restart") if ((!$php56lives || !$fpmsumar || $fpmsumar > 9 || !-f "/var/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
+  if ($fpmsumar > 10 ) {
+    system("killall -9 php-fpm");
+    `echo "$timedate KILL FPM $fpmsumar" >> /var/xdrago/log/fpm.kill.log`;
+  }
+#   if (!-f "/var/run/fmp_wait.pid" && !-f "/var/run/restarting_fmp_wait.pid") {
+#     system("touch /var/run/fmp_wait.pid");
+#     sleep(3);
+    system("service php83-fpm start") if ((!$php83lives || !$fpmsumar || !-f "/var/run/php83-fpm.pid") && -f "/etc/init.d/php83-fpm");
+    system("service php82-fpm start") if ((!$php82lives || !$fpmsumar || !-f "/var/run/php82-fpm.pid") && -f "/etc/init.d/php82-fpm");
+    system("service php81-fpm start") if ((!$php81lives || !$fpmsumar || !-f "/var/run/php81-fpm.pid") && -f "/etc/init.d/php81-fpm");
+    system("service php80-fpm start") if ((!$php80lives || !$fpmsumar || !-f "/var/run/php80-fpm.pid") && -f "/etc/init.d/php80-fpm");
+    system("service php74-fpm start") if ((!$php74lives || !$fpmsumar || !-f "/var/run/php74-fpm.pid") && -f "/etc/init.d/php74-fpm");
+    system("service php73-fpm start") if ((!$php73lives || !$fpmsumar || !-f "/var/run/php73-fpm.pid") && -f "/etc/init.d/php73-fpm");
+    system("service php72-fpm start") if ((!$php72lives || !$fpmsumar || !-f "/var/run/php72-fpm.pid") && -f "/etc/init.d/php72-fpm");
+    system("service php71-fpm start") if ((!$php71lives || !$fpmsumar || !-f "/var/run/php71-fpm.pid") && -f "/etc/init.d/php71-fpm");
+    system("service php70-fpm start") if ((!$php70lives || !$fpmsumar || !-f "/var/run/php70-fpm.pid") && -f "/etc/init.d/php70-fpm");
+    system("service php56-fpm start") if ((!$php56lives || !$fpmsumar || !-f "/var/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
+#     sleep(3);
+#     system("rm -f /var/run/fmp_wait.pid");
+#   }
 }
 
-system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7");
-system("service jetty8 start") if (!$jetty8sumar && -f "/etc/init.d/jetty8");
-system("service jetty9 start") if (!$jetty9sumar && -f "/etc/init.d/jetty9");
-system("service solr7 start") if (!$solr7sumar && -f "/etc/init.d/solr7");
-system("service collectd start") if (!$collectdsumar && -f "/etc/init.d/collectd");
-system("service xinetd start") if (!$xinetdsumar && -f "/etc/init.d/xinetd");
-system("service lsyncd start") if (!$lsyncdsumar && -f "/etc/init.d/lsyncd");
-system("service postfix restart") if (!-f "/var/spool/postfix/pid/master.pid");
+# if (!-f "/var/run/solr_jetty.pid") {
+#   system("touch /var/run/solr_jetty.pid");
+  system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7");
+  system("service jetty8 start") if (!$jetty8sumar && -f "/etc/init.d/jetty8");
+  system("service jetty9 start") if (!$jetty9sumar && -f "/etc/init.d/jetty9");
+  system("service solr7 start") if (!$solr7sumar && -f "/etc/init.d/solr7");
+  system("service collectd start") if (!$collectdsumar && -f "/etc/init.d/collectd");
+  system("service xinetd start") if (!$xinetdsumar && -f "/etc/init.d/xinetd");
+  system("service lsyncd start") if (!$lsyncdsumar && -f "/etc/init.d/lsyncd");
+  system("service postfix restart") if (!-f "/var/spool/postfix/pid/master.pid");
+#   sleep(9);
+#   system("rm -f /var/run/solr_jetty.pid");
+# }
 
 $ftpdinit="/usr/local/sbin/pure-config.pl";
 $ftpdconf="/usr/local/etc/pure-ftpd.conf";
@@ -248,6 +270,14 @@ elsif (-f "/etc/init.d/inetutils-syslogd") {
     system("killall -9 syslogd");
     system("service inetutils-syslogd restart");
   }
+}
+if ((!$clamdsumar || !-f "/var/run/clamav/clamd.pid") && -f "/etc/init.d/clamav-daemon") {
+  system("killall -9 clamd");
+  system("service clamav-daemon start");
+}
+if ((!$freshclamsumar || !-f "/var/run/clamav/freshclam.pid") && -f "/etc/init.d/clamav-freshclam") {
+  system("killall -9 freshclam");
+  system("service clamav-freshclam start");
 }
 exit;
 

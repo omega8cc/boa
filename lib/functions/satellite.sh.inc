@@ -1,5 +1,5 @@
 
-tRee=lts
+tRee=pro
 rlsn="BOA-5.2.0"
 rlse="${rlsn}-${tRee}"
 export tRee="${tRee}"
@@ -159,7 +159,7 @@ satellite_web_user_update() {
         cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
         ### msg "DEBUG: _T_PV is ${_T_PV} in satellite_web_user_update D"
       else
-        _PHP_V="82 81 80 74 73 72 71 70 56"
+        _PHP_V="83 82 81 80 74 73 72 71 70 56"
         for e in ${_PHP_V}; do
           if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
             cp -af /opt/php${e}/etc/php${e}.ini ${_T_II}
@@ -182,6 +182,7 @@ satellite_web_user_update() {
           /opt/php80:     \
           /opt/php81:     \
           /opt/php82:     \
+          /opt/php83:     \
           /opt/tika:      \
           /opt/tika7:     \
           /opt/tika8:     \
@@ -263,7 +264,7 @@ satellite_create_web_user() {
   elif [ -z "${_T_ID_EXISTS}" ] || [ ! -e "${_T_II}" ]; then
     ### msg "DEBUG: ARG1 is $1 in satellite_create_web_user C"
     satellite_remove_web_user "clean"
-    adduser --force-badname --system --ingroup www-data ${_WEB} &> /dev/null
+    adduser --force-badname --system --ingroup www-data --home /home/${_WEB} ${_WEB} &> /dev/null
     satellite_web_user_update "$1"
   fi
 }
@@ -346,7 +347,7 @@ satellite_tune_fpm_config() {
   if [ -z "${_PHP_SV}" ]; then
     _PHP_SV=74
   fi
-  _PHP_V="82 81 80 74 73 72 71 70 56"
+  _PHP_V="83 82 81 80 74 73 72 71 70 56"
   _PHP_OLD_SV=
   for e in ${_PHP_V}; do
     if [ -e "/opt/php${e}/etc/pool.d/${_USER}.conf" ]; then
@@ -375,7 +376,7 @@ satellite_tune_fpm_config() {
       ### create or update special system user if needed
       if [ -e "/home/${_WEB}/.drush/php.ini" ]; then
         _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
-        _PHP_V="82 81 80 74 73 72 71 70 56"
+        _PHP_V="83 82 81 80 74 73 72 71 70 56"
         for e in ${_PHP_V}; do
           if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
             if [ "${e}" != "${_PHP_SV}" ] \
@@ -655,7 +656,8 @@ satellite_cnf() {
     if [ -e "${_ROOT}/static/control/fpm.info" ]; then
       _PHP_FPM_VERSION=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
       _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
-      if [ "${_PHP_FPM_VERSION}" = "8.2" ] \
+      if [ "${_PHP_FPM_VERSION}" = "8.3" ] \
+        || [ "${_PHP_FPM_VERSION}" = "8.2" ] \
         || [ "${_PHP_FPM_VERSION}" = "8.1" ] \
         || [ "${_PHP_FPM_VERSION}" = "8.0" ] \
         || [ "${_PHP_FPM_VERSION}" = "7.4" ] \
@@ -664,20 +666,31 @@ satellite_cnf() {
         || [ "${_PHP_FPM_VERSION}" = "7.1" ] \
         || [ "${_PHP_FPM_VERSION}" = "7.0" ] \
         || [ "${_PHP_FPM_VERSION}" = "5.6" ]; then
-        if [ "${_PHP_FPM_VERSION}" = "8.2" ] \
+        if [ "${_PHP_FPM_VERSION}" = "8.3" ] \
+          && [ ! -x "/opt/php83/bin/php" ]; then
+          if [ -x "/opt/php82/bin/php" ]; then
+            _PHP_FPM_VERSION=8.2
+          elif [ -x "/opt/php81/bin/php" ]; then
+            _PHP_FPM_VERSION=8.1
+          fi
+        elif [ "${_PHP_FPM_VERSION}" = "8.2" ] \
           && [ ! -x "/opt/php82/bin/php" ]; then
-          if [ -x "/opt/php74/bin/php" ]; then
-            _PHP_FPM_VERSION=7.4
+          if [ -x "/opt/php81/bin/php" ]; then
+            _PHP_FPM_VERSION=8.1
+          elif [ -x "/opt/php83/bin/php" ]; then
+            _PHP_FPM_VERSION=8.3
           fi
         elif [ "${_PHP_FPM_VERSION}" = "8.1" ] \
           && [ ! -x "/opt/php81/bin/php" ]; then
-          if [ -x "/opt/php74/bin/php" ]; then
-            _PHP_FPM_VERSION=7.4
+          if [ -x "/opt/php82/bin/php" ]; then
+            _PHP_FPM_VERSION=8.2
+          elif [ -x "/opt/php83/bin/php" ]; then
+            _PHP_FPM_VERSION=8.3
           fi
         elif [ "${_PHP_FPM_VERSION}" = "8.0" ] \
           && [ ! -x "/opt/php80/bin/php" ]; then
-          if [ -x "/opt/php74/bin/php" ]; then
-            _PHP_FPM_VERSION=7.4
+          if [ -x "/opt/php81/bin/php" ]; then
+            _PHP_FPM_VERSION=8.1
           fi
         elif [ "${_PHP_FPM_VERSION}" = "7.4" ] \
           && [ ! -x "/opt/php74/bin/php" ]; then
@@ -733,7 +746,8 @@ satellite_cnf() {
     if [ -e "${_ROOT}/static/control/cli.info" ]; then
       _PHP_CLI_VERSION=$(cat ${_ROOT}/static/control/cli.info 2>&1)
       _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d "\n" 2>&1)
-      if [ "${_PHP_CLI_VERSION}" = "8.2" ] \
+      if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
+        || [ "${_PHP_CLI_VERSION}" = "8.2" ] \
         || [ "${_PHP_CLI_VERSION}" = "8.1" ] \
         || [ "${_PHP_CLI_VERSION}" = "8.0" ] \
         || [ "${_PHP_CLI_VERSION}" = "7.4" ] \
@@ -742,20 +756,31 @@ satellite_cnf() {
         || [ "${_PHP_CLI_VERSION}" = "7.1" ] \
         || [ "${_PHP_CLI_VERSION}" = "7.0" ] \
         || [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
-        if [ "${_PHP_CLI_VERSION}" = "8.2" ] \
+        if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
+          && [ ! -x "/opt/php83/bin/php" ]; then
+          if [ -x "/opt/php82/bin/php" ]; then
+            _PHP_CLI_VERSION=8.2
+          elif [ -x "/opt/php81/bin/php" ]; then
+            _PHP_CLI_VERSION=8.1
+          fi
+        elif [ "${_PHP_CLI_VERSION}" = "8.2" ] \
           && [ ! -x "/opt/php82/bin/php" ]; then
-          if [ -x "/opt/php74/bin/php" ]; then
-            _PHP_CLI_VERSION=7.4
+          if [ -x "/opt/php81/bin/php" ]; then
+            _PHP_CLI_VERSION=8.1
+          elif [ -x "/opt/php83/bin/php" ]; then
+            _PHP_CLI_VERSION=8.3
           fi
         elif [ "${_PHP_CLI_VERSION}" = "8.1" ] \
           && [ ! -x "/opt/php81/bin/php" ]; then
-          if [ -x "/opt/php74/bin/php" ]; then
-            _PHP_CLI_VERSION=7.4
+          if [ -x "/opt/php82/bin/php" ]; then
+            _PHP_CLI_VERSION=8.2
+          elif [ -x "/opt/php83/bin/php" ]; then
+            _PHP_CLI_VERSION=8.3
           fi
         elif [ "${_PHP_CLI_VERSION}" = "8.0" ] \
           && [ ! -x "/opt/php80/bin/php" ]; then
-          if [ -x "/opt/php74/bin/php" ]; then
-            _PHP_CLI_VERSION=7.4
+          if [ -x "/opt/php81/bin/php" ]; then
+            _PHP_CLI_VERSION=8.1
           fi
         elif [ "${_PHP_CLI_VERSION}" = "7.4" ] \
           && [ ! -x "/opt/php74/bin/php" ]; then
@@ -905,7 +930,51 @@ satellite_cnf() {
         clean_pid_exit
       fi
     fi
-    if [ "${_PHP_FPM_VERSION}" = "7.4" ] \
+    if [ "${_PHP_FPM_VERSION}" = "8.3" ] \
+      || [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
+      if [ ! -x "/opt/php83/bin/php" ]; then
+        if [ -x "/opt/php81/bin/php" ]; then
+          _PHP_FPM_VERSION=8.1
+          _PHP_CLI_VERSION=8.1
+        else
+          _PHP_FPM_VERSION=
+          _PHP_CLI_VERSION=
+        fi
+      fi
+    elif [ "${_PHP_FPM_VERSION}" = "8.2" ] \
+      || [ "${_PHP_CLI_VERSION}" = "8.2" ]; then
+      if [ ! -x "/opt/php82/bin/php" ]; then
+        if [ -x "/opt/php81/bin/php" ]; then
+          _PHP_FPM_VERSION=8.1
+          _PHP_CLI_VERSION=8.1
+        else
+          _PHP_FPM_VERSION=
+          _PHP_CLI_VERSION=
+        fi
+      fi
+    elif [ "${_PHP_FPM_VERSION}" = "8.1" ] \
+      || [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
+      if [ ! -x "/opt/php81/bin/php" ]; then
+        if [ -x "/opt/php82/bin/php" ]; then
+          _PHP_FPM_VERSION=8.2
+          _PHP_CLI_VERSION=8.2
+        else
+          _PHP_FPM_VERSION=
+          _PHP_CLI_VERSION=
+        fi
+      fi
+    elif [ "${_PHP_FPM_VERSION}" = "8.0" ] \
+      || [ "${_PHP_CLI_VERSION}" = "8.0" ]; then
+      if [ ! -x "/opt/php80/bin/php" ]; then
+        if [ -x "/opt/php81/bin/php" ]; then
+          _PHP_FPM_VERSION=8.1
+          _PHP_CLI_VERSION=8.1
+        else
+          _PHP_FPM_VERSION=
+          _PHP_CLI_VERSION=
+        fi
+      fi
+    elif [ "${_PHP_FPM_VERSION}" = "7.4" ] \
       || [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
       if [ ! -x "/opt/php74/bin/php" ]; then
         if [ -x "/opt/php81/bin/php" ]; then
@@ -960,39 +1029,6 @@ satellite_cnf() {
           _PHP_CLI_VERSION=
         fi
       fi
-    elif [ "${_PHP_FPM_VERSION}" = "8.0" ] \
-      || [ "${_PHP_CLI_VERSION}" = "8.0" ]; then
-      if [ ! -x "/opt/php80/bin/php" ]; then
-        if [ -x "/opt/php74/bin/php" ]; then
-          _PHP_FPM_VERSION=7.4
-          _PHP_CLI_VERSION=7.4
-        else
-          _PHP_FPM_VERSION=
-          _PHP_CLI_VERSION=
-        fi
-      fi
-    elif [ "${_PHP_FPM_VERSION}" = "8.1" ] \
-      || [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
-      if [ ! -x "/opt/php81/bin/php" ]; then
-        if [ -x "/opt/php74/bin/php" ]; then
-          _PHP_FPM_VERSION=7.4
-          _PHP_CLI_VERSION=7.4
-        else
-          _PHP_FPM_VERSION=
-          _PHP_CLI_VERSION=
-        fi
-      fi
-    elif [ "${_PHP_FPM_VERSION}" = "8.2" ] \
-      || [ "${_PHP_CLI_VERSION}" = "8.2" ]; then
-      if [ ! -x "/opt/php82/bin/php" ]; then
-        if [ -x "/opt/php74/bin/php" ]; then
-          _PHP_FPM_VERSION=7.4
-          _PHP_CLI_VERSION=7.4
-        else
-          _PHP_FPM_VERSION=
-          _PHP_CLI_VERSION=
-        fi
-      fi
     elif [ "${_PHP_FPM_VERSION}" = "5.6" ] \
       || [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
       if [ ! -x "/opt/php56/bin/php" ]; then
@@ -1005,8 +1041,8 @@ satellite_cnf() {
         fi
       fi
     else
-      _PHP_FPM_VERSION=7.4
-      _PHP_CLI_VERSION=7.4
+      _PHP_FPM_VERSION=8.1
+      _PHP_CLI_VERSION=8.1
     fi
     if [ -z "${_PHP_FPM_VERSION}" ] || [ -z "${_PHP_CLI_VERSION}" ]; then
       msg "EXIT: You must specify already installed PHP version"
@@ -1146,7 +1182,7 @@ satellite_child_b_update_ini_php_cli() {
   _U_II="${_U_HD}/php.ini"
   _PHP_CLI_UPDATE=NO
   _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="82 81 80 74 73 72 71 70 56"
+  _PHP_V="83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
       && [ ! -e "${_U_HD}/.ctrl.php${e}.${_X_SE}.pid" ]; then
@@ -1164,7 +1200,7 @@ satellite_child_b_update_ini_php_cli() {
     mkdir -p ${_U_HD}/{sys,xts,usr}
     rm -f ${_U_HD}/.ctrl.php*
     rm -f ${_U_II}
-    _PHP_V="82 81 80 74 73 72 71 70 56"
+    _PHP_V="83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]]; then
         if [ -e "/opt/php${e}/lib/php.ini" ]; then
@@ -1187,6 +1223,7 @@ satellite_child_b_update_ini_php_cli() {
         /opt/php80:          \
         /opt/php81:          \
         /opt/php82:          \
+        /opt/php83:          \
         /opt/tika:           \
         /opt/tika7:          \
         /opt/tika8:          \
@@ -1223,7 +1260,9 @@ satellite_child_b_update_ini_php_cli() {
 # Update php-cli for Drush.
 satellite_child_b_update_php_cli() {
   _DRUSH_FILE="${_ROOT}/tools/drush/drush.php"
-  if [ "${_PHP_CLI_VERSION}" = "8.2" ] && [ -x "/opt/php82/bin/php" ]; then
+  if [ "${_PHP_CLI_VERSION}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php83\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "8.2" ] && [ -x "/opt/php82/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php82\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "8.1" ] && [ -x "/opt/php81/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php81\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
@@ -2577,7 +2616,7 @@ satellite_download_for_local_build() {
     get_dev_stc "ctools-7.x-1.21.tar.gz"
     get_dev_stc "entity-7.x-1.10.tar.gz"
     get_dev_stc "libraries-7.x-2.5.tar.gz"
-    get_dev_stc "module_filter-7.x-2.2.tar.gz"
+    get_dev_stc "module_filter-7.x-2.3.tar.gz"
     get_dev_stc "openidadmin-7.x-1.0.tar.gz"
     get_dev_stc "overlay_paths-7.x-1.3.tar.gz"
     get_dev_stc "r4032login-7.x-1.8.tar.gz"
@@ -3921,7 +3960,7 @@ satellite_make() {
     writeTo="${vBs}/${filIncO}"
   fi
 
-  _X_SE="520ltsT01"
+  _X_SE="520proT02"
   export _X_SE="${_X_SE}"
   export _X_VERSION="${_X_VERSION}"
 
@@ -4320,7 +4359,8 @@ satellite_check_php_compatibility() {
     _T_FPM_VRN=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
     _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
     _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-    if [ "${_T_FPM_VRN}" = "8.2" ] \
+    if [ "${_T_FPM_VRN}" = "8.3" ] \
+      || [ "${_T_FPM_VRN}" = "8.2" ] \
       || [ "${_T_FPM_VRN}" = "8.1" ] \
       || [ "${_T_FPM_VRN}" = "8.0" ] \
       || [ "${_T_FPM_VRN}" = "7.4" ] \
@@ -4340,7 +4380,8 @@ satellite_check_php_compatibility() {
     _T_CLI_VRN=$(cat ${_ROOT}/static/control/cli.info 2>&1)
     _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
     _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-    if [ "${_T_CLI_VRN}" = "8.2" ] \
+    if [ "${_T_CLI_VRN}" = "8.3" ] \
+      || [ "${_T_CLI_VRN}" = "8.2" ] \
       || [ "${_T_CLI_VRN}" = "8.1" ] \
       || [ "${_T_CLI_VRN}" = "8.0" ] \
       || [ "${_T_CLI_VRN}" = "7.4" ] \
@@ -4839,6 +4880,18 @@ satellite_letsencrypt_vhost_setup() {
           msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf exists, OK!"
         fi
         satellite_letsencrypt_crt_key_copy
+        _HTTP3_TEST=$(grep http3 ${Ssl} 2>&1)
+        if [[ ! "${_HTTP3_TEST}" =~ "http3" ]]; then
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf needs update..."
+          fi
+          echo "${_DOMAIN} ${_THISHTIP} ${_USER} ${_CLIENT_EMAIL} ${_THISHTIP}" > /root/.ssl.proxy.cnf
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            bash /opt/local/bin/xboa ssl-gen
+          else
+            mrun "bash /opt/local/bin/xboa ssl-gen" &> /dev/null
+          fi
+        fi
       else
         msg "${_STATUS} A: Creating LE vhost for Hostmaster, please wait..."
         satellite_letsencrypt_crt_key_copy

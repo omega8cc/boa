@@ -19,7 +19,7 @@ hold() {
   wait
   kill -9 $(ps aux | grep '[n]ginx' | awk '{print $2}') &> /dev/null
   echo "Nginx stopped" >> /var/xdrago/log/second.hold.log
-  _PHP_V="82 81 74 73 72 71 70 56"
+  _PHP_V="83 82 81 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       service php${e}-fpm force-quit &> /dev/null

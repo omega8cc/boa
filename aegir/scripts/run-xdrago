@@ -10,7 +10,7 @@ export HOME=${HOME}
 
 _H_USER=EDIT_USER
 
-tRee=lts
+tRee=pro
 export tRee="${tRee}"
 
 check_root() {

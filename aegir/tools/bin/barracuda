@@ -153,6 +153,15 @@ check_root_keys_pwd() {
   fi
 }
 
+check_sql_running() {
+  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
+    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    echo "INFO: Waiting for MySQLD availability..."
+    sleep 3
+  done
+}
+
 check_sql_access() {
   if [ -e "/root/.my.pass.txt" ] && [ -e "/root/.my.cnf" ]; then
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
@@ -194,7 +203,6 @@ check_sql_access() {
     fi
   fi
 }
-check_sql_access
 
 fix_dns_settings() {
   dnsLi="/root/.local.dns.IP.list"
@@ -417,14 +425,14 @@ check_report() {
   _SEND_ALERT=NO
   _RESULT_TEST_OK=$(grep "INFO: Test OK" ${_UP_LOG} 2>&1)
   _RESULT_TEST_CARD=$(grep "CARD: Now charging" ${_UP_LOG} 2>&1)
-  _RESULT_REBOOT=$(grep "Please reboot this server" ${_UP_LOG} 2>&1)
+  _RESULT_KERNEL=$(grep "NOTE: Your OS kernel has been upgraded" ${_UP_LOG} 2>&1)
+  _RESULT_REBOOT=$(grep "NOTE: Please reboot this server" ${_UP_LOG} 2>&1)
   _RESULT_ENJOY=$(grep "Enjoy your Aegir Hosting System" ${_UP_LOG} 2>&1)
   _RESULT_APT_FAIL=$(grep "Displaying the last 15 lines" ${_UP_LOG} 2>&1)
   _RESULT_ALRT=$(grep "ALRT" ${_UP_LOG} 2>&1)
   _RESULT_FATAL=$(grep "FATAL ERROR" ${_UP_LOG} 2>&1)
   if [[ "${_RESULT_TEST_OK}" =~ "INFO: Test OK" ]] \
     || [[ "${_RESULT_TEST_CARD}" =~ "CARD: Now charging" ]] \
-    || [[ "${_RESULT_REBOOT}" =~ "Please reboot" ]] \
     || [[ "${_RESULT_ENJOY}" =~ "Enjoy your Aegir" ]]; then
     _DO_NOTHING=YES
   else
@@ -435,19 +443,14 @@ check_report() {
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed (apt) Barracuda upgrade"
   fi
+  if [[ "${_RESULT_KERNEL}" =~ "Your OS kernel" ]] \
+    && [[ "${_RESULT_REBOOT}" =~ "Please reboot" ]]; then
+    _SEND_ALERT=YES
+    _ALERT_MSG="REBOOT: Your new system kernel requires boa reboot"
+  fi
   if [[ "${_RESULT_ALRT}" =~ "ALRT" ]]; then
     _SEND_ALERT=YES
-    _CHECK_KERNEL=$(grep "Your OS kernel has been upgraded" ${_UP_LOG} 2>&1)
-    _CHECK_KSPLICE=$(grep "Ksplice rebootless kernel" ${_UP_LOG} 2>&1)
-    if [[ "${_CHECK_KERNEL}" =~ "OS kernel" ]]; then
-      if [[ "${_CHECK_KSPLICE}" =~ "rebootless" ]]; then
-        _ALERT_MSG="REPORT: Your OS kernel has been upgraded"
-      else
-        _ALERT_MSG="REBOOT: Your OS kernel has been upgraded"
-      fi
-    else
-      _ALERT_MSG="ALERT: Failed (alrt) Barracuda upgrade"
-    fi
+    _ALERT_MSG="ALERT: Failed (alrt) Barracuda upgrade"
   fi
   if [[ "${_RESULT_FATAL}" =~ "FATAL ERROR" ]]; then
     _SEND_ALERT=YES
@@ -463,28 +466,28 @@ check_report() {
 check_php_cli() {
   _PHP_CHECK=$(readlink -n /usr/bin/php 2>&1)
   if [ ! -x "${_PHP_CHECK}" ]; then
-    if [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
-      _PHP_CLI_PATH="/opt/php74/bin/php"
-    elif [ "${_PHP_CLI_VERSION}" = "8.0" ]; then
-      _PHP_CLI_PATH="/opt/php80/bin/php"
-    elif [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
+    if [ "${_PHP_CLI_VERSION}" = "8.1" ]; then
       _PHP_CLI_PATH="/opt/php81/bin/php"
     elif [ "${_PHP_CLI_VERSION}" = "8.2" ]; then
       _PHP_CLI_PATH="/opt/php82/bin/php"
+    elif [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
+      _PHP_CLI_PATH="/opt/php83/bin/php"
+    elif [ "${_PHP_CLI_VERSION}" = "7.4" ]; then
+      _PHP_CLI_PATH="/opt/php74/bin/php"
     else
       _PHP_CLI_PATH=""
     fi
     if [ -x "${_PHP_CLI_PATH}" ]; then
       _USE_PHP_CLI_PATH="${_PHP_CLI_PATH}"
     else
-      if  [ -x "/opt/php74/bin/php" ]; then
-        _USE_PHP_CLI_PATH="/opt/php74/bin/php"
-      elif  [ -x "/opt/php80/bin/php" ]; then
-        _USE_PHP_CLI_PATH="/opt/php80/bin/php"
-      elif  [ -x "/opt/php81/bin/php" ]; then
+      if  [ -x "/opt/php81/bin/php" ]; then
         _USE_PHP_CLI_PATH="/opt/php81/bin/php"
       elif  [ -x "/opt/php82/bin/php" ]; then
         _USE_PHP_CLI_PATH="/opt/php82/bin/php"
+      elif  [ -x "/opt/php83/bin/php" ]; then
+        _USE_PHP_CLI_PATH="/opt/php83/bin/php"
+      elif  [ -x "/opt/php74/bin/php" ]; then
+        _USE_PHP_CLI_PATH="/opt/php74/bin/php"
       fi
     fi
     if [ -x "${_USE_PHP_CLI_PATH}" ]; then
@@ -494,7 +497,7 @@ check_php_cli() {
       ln -sfn ${_USE_PHP_CLI_PATH} /usr/bin/php-cli
     else
       echo "ERROR: I can not find PHP-CLI anywhere!"
-      echo "ERROR: BOA requires PHP 7.4 or newer"
+      echo "ERROR: BOA requires PHP 8.1 or newer"
       clean_pid_exit
     fi
   fi
@@ -503,12 +506,12 @@ check_php_cli() {
 up_action() {
   if [ -e "${vBs}/${barName}" ] && [ -e "${barCnf}" ]; then
     if [ ! -z "${rkey}" ]; then
-      if [ "${rkey}" = "php-82" ] || [ "${rkey}" = "php-8.2" ]; then
+      if [ "${rkey}" = "php-83" ] || [ "${rkey}" = "php-8.3" ]; then
+        phpS="8.3"
+      elif [ "${rkey}" = "php-82" ] || [ "${rkey}" = "php-8.2" ]; then
         phpS="8.2"
       elif [ "${rkey}" = "php-81" ] || [ "${rkey}" = "php-8.1" ]; then
         phpS="8.1"
-      elif [ "${rkey}" = "php-74" ] || [ "${rkey}" = "php-7.4" ]; then
-        phpS="7.4"
       elif [ "${rkey}" = "php-all" ] || [ "${rkey}" = "php-min" ]; then
         phpS="MIN"
       elif [ "${rkey}" = "php-max" ]; then
@@ -542,7 +545,8 @@ up_action() {
 
     fi
     ### Make sure that _PHP_SINGLE_INSTALL is set in ${barCnf}
-    if [ "${phpS}" = "8.2" ] \
+    if [ "${phpS}" = "8.3" ] \
+      || [ "${phpS}" = "8.2" ] \
       || [ "${phpS}" = "8.1" ] \
       || [ "${phpS}" = "7.4" ]; then
       _PHP_SINGLE_INSTALL_TEST=$(grep _PHP_SINGLE_INSTALL ${barCnf} 2>&1)
@@ -555,7 +559,8 @@ up_action() {
     fi
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${phpS}" ]; then
-      if [ "${phpS}" = "8.2" ] \
+      if [ "${phpS}" = "8.3" ] \
+        || [ "${phpS}" = "8.2" ] \
         || [ "${phpS}" = "8.1" ] \
         || [ "${phpS}" = "7.4" ]; then
 
@@ -624,9 +629,9 @@ up_action() {
         fi
       elif [ "${phpS}" = "MIN" ] || [ "${phpS}" = "MAX" ]; then
         if [ "${phpS}" = "MAX" ]; then
-          phpM="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2"
+          phpM="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
         else
-          phpM="7.4 8.1 8.2"
+          phpM="7.4 8.1 8.2 8.3"
         fi
         phpS="8.1"
 
@@ -1176,7 +1181,7 @@ up_finish() {
       _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
-        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/sull
+        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
         ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
       fi
     fi
@@ -1249,6 +1254,52 @@ find_fast_mirror_early() {
   urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
 }
 
+if_reinstall_curl() {
+  _CURL_VRN=8.7.1
+  isCurl=$(curl --version 2>&1)
+  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+    echo "OOPS: cURL is broken! Re-installing.."
+    rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    echo "curl install" | dpkg --set-selections &> /dev/null
+    apt_clean_update
+    apt-get remove curl ${aptYesUnth} &> /dev/null
+    apt-get install curl ${aptYesUnth} &> /dev/null
+    ldconfig &> /dev/null
+    if [ -f "/usr/bin/curl" ]; then
+      isCurl=$(/usr/bin/curl --version 2>&1)
+      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+        echo "OOPS: /usr/bin/curl is still broken, uninstalling.."
+        apt-get remove curl ${aptYesUnth} &> /dev/null
+      else
+        echo "GOOD: /usr/bin/curl works"
+      fi
+    fi
+    mkdir -p /var/opt
+    rm -rf /var/opt/curl*
+    cd /var/opt
+    wget http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
+    tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
+    cd /var/opt/curl-${_CURL_VRN}
+    sh ./configure --with-ssl --prefix=/usr/local &> /dev/null
+    make -j $(nproc) --quiet &> /dev/null
+    make --quiet install &> /dev/null
+    if [ -f "/usr/local/bin/curl" ]; then
+      isCurl=$(/usr/local/bin/curl --version 2>&1)
+      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+        echo "ERRR: /usr/local/bin/curl is broken, moving to /usr/local/bin/curl--broken"
+        rm -f /usr/local/bin/curl--broken
+        mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
+      else
+        echo "GOOD: /usr/local/bin/curl works"
+      fi
+    fi
+  fi
+}
+
 check_dns_curl() {
   if [ ! -e "/etc/resolv.conf" ]; then
     rm -f /etc/resolv.conf
@@ -1266,22 +1317,7 @@ check_dns_curl() {
     pdnsd-ctl empty-cache &> /dev/null
   fi
   find_fast_mirror_early
-  isCurl=$(curl --version 2>&1)
-  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-    echo "ERROR: cURL is broken! Re-installing.."
-    rm -f /etc/apt/sources.list.d/openssl.list
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-      && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-    fi
-    echo "curl install" | dpkg --set-selections &> /dev/null
-    apt_clean_update
-    apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
-    if [ -f "/usr/bin/curl" ] && [ -e "/usr/local/bin/curl" ]; then
-      rm -f /usr/local/bin/curl--broken
-      mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
-    fi
-  fi
+  if_reinstall_curl
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
     --retry 3 \
@@ -1289,19 +1325,8 @@ check_dns_curl() {
     -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
-      echo "ERROR: cURL libs are out of sync! Re-installing.."
-      rm -f /etc/apt/sources.list.d/openssl.list
-      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-        && [ -e "/etc/apt/apt.conf.d" ]; then
-        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-      fi
-      echo "curl install" | dpkg --set-selections &> /dev/null
-      apt_clean_update
-      apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
-      if [ -f "/usr/bin/curl" ] && [ -e "/usr/local/bin/curl" ]; then
-        rm -f /usr/local/bin/curl--broken
-        mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
-      fi
+      echo "ERROR: cURL libs are out of sync! Re-installing again.."
+      if_reinstall_curl
     else
       echo "ERROR: ${_USE_MIR} is not available, please try later"
       clean_pid_exit
@@ -1369,7 +1394,7 @@ csf_check_fix() {
       _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
-        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/sull
+        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
         ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
       fi
     fi
@@ -1394,6 +1419,7 @@ check_root() {
         ln -s /proc/self/fd /dev/fd
       fi
     fi
+    rm -f /var/lib/man-db/auto-update
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
@@ -1401,17 +1427,17 @@ check_root() {
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
         mkdir -p /etc/apt/preferences.d/
-        echo -e 'Package: fuse\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
+        echo -e 'Package: fuse\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
         apt_clean_update
       fi
       if [ ! -e "/etc/apt/preferences.d/udev" ]; then
         mkdir -p /etc/apt/preferences.d/
-        echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
+        echo -e 'Package: udev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/udev
         apt_clean_update
       fi
       if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
         mkdir -p /etc/apt/preferences.d/
-        echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
+        echo -e 'Package: makedev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
         apt_clean_update
       fi
       apt-get remove fuse -y -qq &> /dev/null
@@ -1539,13 +1565,23 @@ proceed() {
   check_root_direct
   check_root_keys_pwd
   check_root
+  up_start
   barracuda_downgrade_protection
   check_no_systemd
   os_detection_minimal
   check_dns_curl
   check_php_cli
   set_pin_priority
-  up_start
+  if [ -e "/root/.run-to-daedalus.cnf" ] \
+    || [ -e "/root/.run-to-chimaera.cnf" ] \
+    || [ -e "/root/.run-to-beowulf.cnf" ] \
+    || [ "${cmmand}" = "help" ] \
+    || [ "${cmmand}" = "php-idle" ]; then
+    _CHECK_SQL=NO
+  else
+    check_sql_running
+    check_sql_access
+  fi
   if [ "${cmmand}" = "up-dev" ] \
     || [ "${cmmand}" = "up-pro" ] \
     || [ "${cmmand}" = "up-lts" ] \
@@ -1590,7 +1626,7 @@ proceed() {
 
   {version}
       up-lts <------- upgrade to Barracuda LTS release (no license)
-      up-pro <------- upgrade to Barracuda PRO release (requires license)
+      up-pro <------- upgrade to Barracuda Pro release (requires license)
       up-dev <------- upgrade to Barracuda Cutting Edge (requires license)
       php-idle <----- disable not used PHP versions or enable them again
 
@@ -1600,9 +1636,9 @@ proceed() {
 
   {options}
       newrelickey <-- activate New Relic integration with valid license key
-      php-8.1 <------ enable single-PHP mode (7.4 or 8.1 or 8.2)
-      php-min <------ install PHP 7.4, 8.1, 8.2, use 8.1 by default (php-all)
-      php-max <------ install PHP 7.4, 8.1, 8.2, 8.0, 7.3, 7.2, 7.1, 7.0, 5.6
+      php-8.1 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 7.4)
+      php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.1 by default (php-all)
+      php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
 
   {dbserver}
@@ -1653,7 +1689,7 @@ elif [ "${cmmand}" = "up-lts" ]; then
   tRee=lts
 else
   if [ "${cmmand}" = "php-idle" ] || [ "${cmmand}" = "help" ]; then
-    tRee=lts
+    tRee=pro
   else
     echo
     echo "Sorry, you are trying not supported command.."

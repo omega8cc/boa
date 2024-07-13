@@ -8,7 +8,7 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-tRee=lts
+tRee=pro
 export tRee="${tRee}"
 
 check_root() {
@@ -47,10 +47,16 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-_X_SE="520ltsT01"
+_X_SE="520proT02"
 _WEBG=www-data
 _OSR=$(lsb_release -sc 2>&1)
-_SSL_ITD=$(openssl version 2>&1 \
+if [ -e "/root/.install.modern.openssl.cnf" ] \
+  && [ -x "/usr/local/ssl3/bin/openssl" ]; then
+  _SSL_BINARY=/usr/local/ssl3/bin/openssl
+else
+  _SSL_BINARY=/usr/local/ssl/bin/openssl
+fi
+_SSL_ITD=$(${_SSL_BINARY} version 2>&1 \
   | tr -d "\n" \
   | cut -d" " -f2 \
   | awk '{ print $1}')
@@ -2378,8 +2384,8 @@ le_ssl_check_update() {
   exeLe="${User}/tools/le/dehydrated"
   Vht="${User}/config/server_master/nginx/vhost.d/${Dom}"
   if [ -x "${exeLe}" ] && [ -e "${Vht}" ]; then
-    _SSL_ON_TEST=$(cat ${Vht} | grep "443 ssl http2" 2>&1)
-    if [[ "${_SSL_ON_TEST}" =~ "443 ssl http2" ]]; then
+    _SSL_ON_TEST=$(cat ${Vht} | grep "443 ssl" 2>&1)
+    if [[ "${_SSL_ON_TEST}" =~ "443 ssl" ]]; then
       if [ -e "${User}/tools/le/certs/${Dom}/fullchain.pem" ]; then
         echo "Running LE cert check directly for ${Dom}"
         useAliases=""
@@ -3217,7 +3223,7 @@ action() {
 
 ###--------------------###
 echo "INFO: Daily maintenance start"
-until [ ! -e "/var/run/boa_wait.pid" ]; do
+while [ -e "/var/run/boa_wait.pid" ]; do
   echo "Waiting for BOA queue availability..."
   sleep 5
 done

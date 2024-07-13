@@ -48,7 +48,7 @@ libFnc="${bldPth}/lib/functions"
 tocIncO="${filIncO}.$1"
 vBs="/var/backups"
 vSet="variable-set --always-set"
-tRee=lts
+tRee=pro
 export tRee="${tRee}"
 
 
@@ -130,7 +130,10 @@ _PREV_HM_ROOT="${_ROOT}/aegir/distro/${_LAST_HMR}"
 _D="/data/all"
 _SRCDIR="/opt/tmp/files"
 _LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
-if [ "${_PHP_CLI_VERSION}" = "8.2" ] \
+if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
+  && [ -x "/opt/php83/bin/php" ]; then
+  _T_CLI=/opt/php83/bin
+elif [ "${_PHP_CLI_VERSION}" = "8.2" ] \
   && [ -x "/opt/php82/bin/php" ]; then
   _T_CLI=/opt/php82/bin
 elif [ "${_PHP_CLI_VERSION}" = "8.1" ] \

@@ -1,5 +1,5 @@
 
-tRee=lts
+tRee=pro
 export tRee="${tRee}"
 
 #
@@ -433,7 +433,7 @@ install_pdnsd_cache() {
     st_runner "bash ./configure --prefix=/usr" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    ldconfig 2> /dev/null
     echo "START_DAEMON=yes" > /etc/default/pdnsd
     adduser --system --ingroup proxy --home /var/cache/pdnsd pdnsd &> /dev/null
     usermod -aG proxy pdnsd

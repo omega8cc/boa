@@ -51,6 +51,7 @@ But to configure PHP-CLI version to be used on command line with Drush and
 Composer you can also use independent and new configuration system based on
 empty control files:
 
+  ~/static/control/php83.info
   ~/static/control/php82.info
   ~/static/control/php81.info
   ~/static/control/php80.info

@@ -77,8 +77,8 @@ if (function_exists('drush_get_command')) {
  */
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
-      !preg_match("/ApacheSolarisNginxD10CE/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginxD10CE/1.24.0';
+      !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.26.0';
   }
 }
 
@@ -459,6 +459,7 @@ if ($drupal_eight) {
   $config['system.performance']['css']['preprocess'] = TRUE;       // Enable hardcoded CSS aggregation
   $config['system.performance']['js']['preprocess'] = TRUE;        // Enable hardcoded JS aggregation
   $config['system.performance']['response.gzip'] = FALSE;          // Nginx already compresses everything
+  //$config['system.file']['default_scheme'] = 'public';             // Force public downloads by default
 }
 else {
   if ($backdropcms) {
@@ -471,7 +472,8 @@ else {
   $conf['cron_safe_threshold'] = 0; // Disable poormanscron
   $conf['preprocess_css'] = 1;      // Enable hardcoded CSS aggregation
   $conf['preprocess_js'] = 1;       // Enable hardcoded JS aggregation
-  $conf['file_downloads'] = 1;      // Force public downloads by default
+  $conf['file_downloads'] = 1;      // Force public downloads by default in D6
+  $conf['file_default_scheme'] = 'public'; // Force public downloads by default in D7
   $conf['error_level'] = 0;         // Disable errors on screen
   $conf['statistics_enable_access_log'] = 0;   // Disable access log stats
   $conf['allow_authorize_operations'] = FALSE; // Disable insecure plugin manager
@@ -708,7 +710,9 @@ if ($conf['install_profile'] == 'hostmaster') {
  */
 if (isset($_SERVER['SERVER_NAME']) &&
     $all_ini['allow_private_file_downloads']) {
-  unset($conf['file_downloads']); // Disable hardcoded public downloads
+  unset($conf['file_downloads']); // Disable hardcoded public downloads for D6
+  unset($conf['file_default_scheme']); // Disable hardcoded public downloads for D7
+  //unset($config['system.file']['default_scheme']); // Disable hardcoded public downloads for D8+
   if ($is_dev && !$is_backend) {
     header('X-Is-Cart: YES');
   }

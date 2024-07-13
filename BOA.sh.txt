@@ -49,7 +49,7 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-tRee=lts
+tRee=pro
 export tRee="${tRee}"
 
 ###
@@ -63,7 +63,7 @@ fi
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_SE="520ltsT01"
+_X_SE="520proT02"
 #
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
@@ -71,6 +71,9 @@ aptYesUnth="-y --allow-unauthenticated"
 optBin="/opt/local/bin"
 usrBin="/usr/local/bin"
 pthLog="/var/xdrago/log"
+if [ ! -e "${pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
+  pthLog="/var/xdrago_wait/log"
+fi
 tBn="tools/bin"
 vBs="/var/backups"
 #
@@ -520,7 +523,7 @@ update_agents() {
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/data/disk/arch/sql" ] \
-    && [ ! -e "${pthLog}/minute.ctrl.hfix01.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/minute_f3.ctrl${_X_SE}.pid" ]; then
     mv -f /var/xdrago/minute.sh /var/xdrago/minute.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/minute.sh" -o /var/xdrago/minute.sh
     if [ -e "/var/xdrago/minute.sh" ]; then
@@ -539,7 +542,7 @@ update_agents() {
       fi
       chmod 700 /var/xdrago/minute.sh
       chown root:root /var/xdrago/minute.sh
-      touch ${pthLog}/minute.ctrl.hfix01.${_X_SE}.pid
+      touch ${pthLog}/minute_f3.ctrl${_X_SE}.pid
     else
       mv -f /var/xdrago/minute.sh.old /var/xdrago/minute.sh
     fi
@@ -575,13 +578,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/data/disk/arch/sql" ] \
-    && [ ! -e "${pthLog}/graceful.ctrl.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/graceful_f2.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/graceful.sh /var/xdrago/graceful.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/graceful.sh" -o /var/xdrago/graceful.sh
     if [ -e "/var/xdrago/graceful.sh" ]; then
       chmod 700 /var/xdrago/graceful.sh
       chown root:root /var/xdrago/graceful.sh
-      touch ${pthLog}/graceful.ctrl.${_X_SE}.pid
+      touch ${pthLog}/graceful_f2.ctrl.${_X_SE}.pid
     else
       mv -f /var/xdrago/graceful.sh.old /var/xdrago/graceful.sh
     fi
@@ -631,14 +634,14 @@ update_agents() {
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/data/disk/arch/sql" ] \
-    && [ ! -e "${pthLog}/manage_solr_config.ctrl.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/manage_solr_config_f2.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/manage_solr_config.sh /var/xdrago/manage_solr_config.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/manage_solr_config.sh" \
       -o /var/xdrago/manage_solr_config.sh
     if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
       chmod 700 /var/xdrago/manage_solr_config.sh
       chown root:root /var/xdrago/manage_solr_config.sh
-      touch ${pthLog}/manage_solr_config.ctrl.${_X_SE}.pid
+      touch ${pthLog}/manage_solr_config_f2.ctrl.${_X_SE}.pid
       rm -f /var/run/manage_solr_config.pid
     else
       mv -f /var/xdrago/manage_solr_config.sh.old /var/xdrago/manage_solr_config.sh
@@ -647,14 +650,14 @@ update_agents() {
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/data/disk/arch/sql" ] \
-    && [ ! -e "${pthLog}/proc_num_ctrl.ctrl.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/proc_num_ctrl_f2.ctrl.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/proc_num_ctrl.cgi /var/xdrago/proc_num_ctrl.cgi.old
     curl ${crlGet} "${urlHmr}/tools/system/proc_num_ctrl.cgi" \
       -o /var/xdrago/proc_num_ctrl.cgi
     if [ -e "/var/xdrago/proc_num_ctrl.cgi" ]; then
       chmod 700 /var/xdrago/proc_num_ctrl.cgi
       chown root:root /var/xdrago/proc_num_ctrl.cgi
-      touch ${pthLog}/proc_num_ctrl.ctrl.${_X_SE}.pid
+      touch ${pthLog}/proc_num_ctrl_f2.ctrl.${_X_SE}.pid
     else
       mv -f /var/xdrago/proc_num_ctrl.cgi.old /var/xdrago/proc_num_ctrl.cgi
     fi
@@ -664,7 +667,7 @@ update_agents() {
     && [ -e "/data/disk/arch/sql" ] \
     && [ ! -e "${pthLog}/fast_shutdown.ctrl.${_X_SE}.pid" ]; then
     sed -i "s/.*opcache.fast_shutdown.*//g" /opt/etc/fpm/fpm-pool-common.conf
-    _PHP_V="82 81 80 74 73 72 71 70 56"
+    _PHP_V="83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm reload &> /dev/null
@@ -738,7 +741,7 @@ update_agents() {
     if [ -e "/var/xdrago/monitor/check/scan_nginx" ]; then
       sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx
       wait
-      sed -i "s/default_lines =.*/default_lines = 599;/g" /var/xdrago/monitor/check/scan_nginx
+      sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx
       wait
       if [ -e "/root/.host8.cnf" ] && [ -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
         _NGINX_DONTCOUNT_KEYWORDS="doccomment"
@@ -837,7 +840,7 @@ update_agents() {
       chmod 644 /etc/ImageMagick-6/policy.xml
       chown root:root /etc/ImageMagick-6/policy.xml
       touch ${pthLog}/policymap-hf-06.ctrl.${_X_SE}.pid
-      _PHP_V="82 81 74 73 72 71 70 56"
+      _PHP_V="83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           service php${e}-fpm reload &> /dev/null
@@ -1585,22 +1588,38 @@ fix_fpm_process_max() {
 }
 
 fix_node_in_lshell_access() {
-  if [ ! -e "${pthLog}/node.lshell.ctrl.${_X_SE}.pid" ] \
+  if [ ! -e "${pthLog}/node.lshell-fix-scp.ctrl.${tRee}.${_X_SE}.pid" ] \
     && [ -e "/etc/lshell.conf" ]; then
-    PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
     PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
     PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
-    if [[ "${PrTestPower}" =~ "POWER" ]] \
-      || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
+    if [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
       || [[ "${PrTestCluster}" =~ "CLUSTER" ]] \
       || [ -e "/root/.allow.node.lshell.cnf" ]; then
       _ALLOW_NODE=YES
     else
       _ALLOW_NODE=NO
       sed -i "s/, 'node',/,/g" /etc/lshell.conf
+      wait
       sed -i "s/, 'node',/,/g" /var/xdrago/conf/lshell.conf
+      wait
+      sed -i "s/, 'npm',/,/g" /etc/lshell.conf
+      wait
+      sed -i "s/, 'npm',/,/g" /var/xdrago/conf/lshell.conf
+      wait
+      sed -i "s/, 'npx',/,/g" /etc/lshell.conf
+      wait
+      sed -i "s/, 'npx',/,/g" /var/xdrago/conf/lshell.conf
+      wait
+      sed -i "s/, 'find',/,/g" /etc/lshell.conf
+      wait
+      sed -i "s/, 'find',/,/g" /var/xdrago/conf/lshell.conf
+      wait
+      sed -i "s/, 'scp',/,/g" /etc/lshell.conf
+      wait
+      sed -i "s/, 'scp',/,/g" /var/xdrago/conf/lshell.conf
+      wait
     fi
-    touch ${pthLog}/node.lshell.ctrl.${_X_SE}.pid
+    touch ${pthLog}/node.lshell-fix-scp.ctrl.${tRee}.${_X_SE}.pid
   fi
 }
 
@@ -1693,6 +1712,7 @@ fix_log4j() {
       echo "LOG4J_FORMAT_MSG_NO_LOOKUPS=true" >> /etc/default/solr7.in.sh
     fi
     if [[ ! "${_RESULT_LOG4J}" =~ "LOG4J" ]] || [ ! -z "${_DO_SOLR_RESTART}" ]; then
+      #kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
       service solr7 restart
     fi
   fi
@@ -1736,9 +1756,9 @@ fix_java_symlinks() {
     fi
   fi
   if [ "${_THIS_RV}" = "daedalus" ] || [ "${_THIS_RV}" = "bookworm" ]; then
-    if [ -x "/usr/lib/jvm/java-17-openjdk/bin/java" ]; then
+    if [ -x "/usr/lib/jvm/java-11-openjdk/bin/java" ]; then
       if [ ! -e "/usr/bin/java" ] || [ ! -e "/etc/alternatives/java" ]; then
-        ln -sfn /usr/lib/jvm/java-17-openjdk/bin/java /etc/alternatives/java
+        ln -sfn /usr/lib/jvm/java-11-openjdk/bin/java /etc/alternatives/java
         ln -sfn /etc/alternatives/java /usr/bin/java
         echo fixed java symlinks for ${_THIS_RV}
       fi
@@ -1872,6 +1892,14 @@ fix_newrelic() {
     ln -s ${_NR_SO} ${_PHP_EXT_DIR_74}/newrelic.so
     service php74-fpm reload
   fi
+  _PHP_EXT_DIR_56="/opt/php56/lib/php/extensions/no-debug-non-zts-20131226"
+  _NR_SO="/usr/lib/newrelic-php5/agent/x64/newrelic-20131226.so"
+  if [ -e "${_PHP_EXT_DIR_56}" ] \
+    && [ ! -e "${_NR_SO}" ] \
+    && [ -L "${_PHP_EXT_DIR_56}/newrelic.so" ]; then
+    rm -f ${_PHP_EXT_DIR_56}/newrelic.so
+    service php56-fpm reload
+  fi
 }
 
 fix_leftovers() {
@@ -1892,6 +1920,52 @@ force_rebuild() {
     rm -f ${pthLog}/lshell-build*
     rm -f ${pthLog}/redis-*
     touch ${pthLog}/forced.rebuild.glibc.txt
+  fi
+}
+
+if_reinstall_curl() {
+  _CURL_VRN=8.7.1
+  isCurl=$(curl --version 2>&1)
+  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+    echo "OOPS: cURL is broken! Re-installing.."
+    rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    echo "curl install" | dpkg --set-selections &> /dev/null
+    apt_clean_update
+    apt-get remove curl ${aptYesUnth} &> /dev/null
+    apt-get install curl ${aptYesUnth} &> /dev/null
+    ldconfig &> /dev/null
+    if [ -f "/usr/bin/curl" ]; then
+      isCurl=$(/usr/bin/curl --version 2>&1)
+      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+        echo "OOPS: /usr/bin/curl is still broken, uninstalling.."
+        apt-get remove curl ${aptYesUnth} &> /dev/null
+      else
+        echo "GOOD: /usr/bin/curl works"
+      fi
+    fi
+    mkdir -p /var/opt
+    rm -rf /var/opt/curl*
+    cd /var/opt
+    wget http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
+    tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
+    cd /var/opt/curl-${_CURL_VRN}
+    sh ./configure --with-ssl --prefix=/usr/local &> /dev/null
+    make -j $(nproc) --quiet &> /dev/null
+    make --quiet install &> /dev/null
+    if [ -f "/usr/local/bin/curl" ]; then
+      isCurl=$(/usr/local/bin/curl --version 2>&1)
+      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+        echo "ERRR: /usr/local/bin/curl is broken, moving to /usr/local/bin/curl--broken"
+        rm -f /usr/local/bin/curl--broken
+        mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
+      else
+        echo "GOOD: /usr/local/bin/curl works"
+      fi
+    fi
   fi
 }
 
@@ -1918,22 +1992,9 @@ update_wrappers() {
     && [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
     pdnsd-ctl empty-cache &> /dev/null
   fi
-  isCurl=$(curl --version 2>&1)
-  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-    echo "ERROR: cURL is broken! Re-installing.."
-    rm -f /etc/apt/sources.list.d/openssl.list
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-      && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-    fi
-    echo "curl install" | dpkg --set-selections &> /dev/null
-    apt_clean_update
-    apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
-    if [ -f "/usr/bin/curl" ] && [ -e "/usr/local/bin/curl" ]; then
-      rm -f /usr/local/bin/curl--broken
-      mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
-    fi
-  fi
+
+  if_reinstall_curl
+
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
     --retry 3 \
@@ -1942,18 +2003,7 @@ update_wrappers() {
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "ERROR: cURL libs are out of sync! Re-installing.."
-      rm -f /etc/apt/sources.list.d/openssl.list
-      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-        && [ -e "/etc/apt/apt.conf.d" ]; then
-        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-      fi
-      echo "curl install" | dpkg --set-selections &> /dev/null
-      apt_clean_update
-      apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
-      if [ -f "/usr/bin/curl" ] && [ -e "/usr/local/bin/curl" ]; then
-        rm -f /usr/local/bin/curl--broken
-        mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
-      fi
+      if_reinstall_curl
     fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     exit 1
@@ -2175,22 +2225,8 @@ setup() {
     sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc &> /dev/null
   fi
 
-  isCurl=$(curl --version 2>&1)
-  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-    echo "ERROR: cURL is broken! Re-installing.."
-    rm -f /etc/apt/sources.list.d/openssl.list
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-      && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-    fi
-    echo "curl install" | dpkg --set-selections &> /dev/null
-    apt_clean_update
-    apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
-    if [ -f "/usr/bin/curl" ] && [ -e "/usr/local/bin/curl" ]; then
-      rm -f /usr/local/bin/curl--broken
-      mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
-    fi
-  fi
+  if_reinstall_curl
+
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
     --retry 3 \
@@ -2199,18 +2235,7 @@ setup() {
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "ERROR: cURL libs are out of sync! Re-installing.."
-      rm -f /etc/apt/sources.list.d/openssl.list
-      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-        && [ -e "/etc/apt/apt.conf.d" ]; then
-        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-      fi
-      echo "curl install" | dpkg --set-selections &> /dev/null
-      apt_clean_update
-      apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
-      if [ -f "/usr/bin/curl" ] && [ -e "/usr/local/bin/curl" ]; then
-        rm -f /usr/local/bin/curl--broken
-        mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
-      fi
+      if_reinstall_curl
     fi
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     exit 1
@@ -2434,18 +2459,23 @@ sysctl_update() {
       fi
     fi
     if [ -e "/etc/default/nginx" ]; then
-      _IF_ULNX=$(grep '18000' /etc/default/nginx 2>&1)
+      _IF_ULNX=$(grep '524288' /etc/default/nginx 2>&1)
       if [ -z "${_IF_ULNX}" ]; then
-        echo ULIMIT=\"-n 18000\" >> /etc/default/nginx
+        sed -i "s/^ULIMIT=.*//gi" /etc/default/nginx
+        wait
+        echo ULIMIT=\"-n 524288\" >> /etc/default/nginx
+        ulimit -n 524288 &> /dev/null
         service nginx restart &> /dev/null
       fi
     fi
     if [ -e "/etc/security/limits.d" ] \
-      && [ ! -e "/etc/security/limits.d/redis.conf" ]; then
+      && [ ! -e "/etc/security/limits.d/sshd.conf" ]; then
+      echo "sshd soft nofile 524288" > /etc/security/limits.d/sshd.conf
+      echo "sshd hard nofile 999999" >> /etc/security/limits.d/sshd.conf
       echo "redis soft nofile 65535" > /etc/security/limits.d/redis.conf
       echo "redis hard nofile 524288" >> /etc/security/limits.d/redis.conf
-      echo "nginx soft nofile 65535" > /etc/security/limits.d/nginx.conf
-      echo "nginx hard nofile 524288" >> /etc/security/limits.d/nginx.conf
+      echo "nginx soft nofile 524288" > /etc/security/limits.d/nginx.conf
+      echo "nginx hard nofile 999999" >> /etc/security/limits.d/nginx.conf
       echo "jetty9 soft nofile 65535" > /etc/security/limits.d/jetty9.conf
       echo "jetty9 hard nofile 524288" >> /etc/security/limits.d/jetty9.conf
       echo "solr7 soft nofile 65535" > /etc/security/limits.d/solr7.conf
@@ -2454,7 +2484,8 @@ sysctl_update() {
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
       service redis-server restart &> /dev/null
       service nginx restart &> /dev/null
-      _PHP_V="82 81 74 73 72 71 70 56"
+      service sshd restart &> /dev/null
+      _PHP_V="83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           service php${e}-fpm reload &> /dev/null

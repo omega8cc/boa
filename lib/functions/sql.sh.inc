@@ -271,8 +271,8 @@ check_mysqld_running() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: check_mysqld_running"
   fi
-  until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
-    && [ -e "/var/run/mysqld/mysqld.sock" ]; do
+  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
+    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Waiting for MySQLD availability before tune_sql_memory_limits..."
@@ -843,7 +843,7 @@ install_with_aptitude_sql() {
     mrun "perl Makefile.PL" 2> /dev/null
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
-    mrun "ldconfig" 2> /dev/null
+    ldconfig 2> /dev/null
   fi
   if [ "${_EASY_SETUP}" = "DBHD" ] \
     || [ -e "/etc/mysql/conf.d/galera.cnf" ] \
@@ -1069,10 +1069,23 @@ forced_mysql_root_password_update() {
   fi
 }
 
+db_server_apt_cleanup() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: db_server_apt_cleanup"
+  fi
+  [ -e "/etc/apt/sources.list.d/percona-original-release.list.bak" ] && rm -f /etc/apt/sources.list.d/percona-original-release.list.bak
+  [ -e "/etc/apt/sources.list.d/percona-original-release.list" ] && rm -f /etc/apt/sources.list.d/percona-original-release.list
+  [ -e "/etc/apt/sources.list.d/percona-prel-release.list.bak" ] && rm -f /etc/apt/sources.list.d/percona-prel-release.list.bak
+  [ -e "/etc/apt/sources.list.d/percona-prel-release.list" ] && rm -f /etc/apt/sources.list.d/percona-prel-release.list
+  [ -e "/etc/apt/sources.list.d/percona-release.list.bak" ] && rm -f /etc/apt/sources.list.d/percona-release.list.bak
+  apt_clean_update
+}
+
 db_server_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: db_server_install"
   fi
+  db_server_apt_cleanup
   _REAL_OSR="${_OSR}"
   _REAL_OS="${_THIS_OS}"
   _SQL_SCR=APT
@@ -1105,7 +1118,9 @@ db_server_install() {
       csf -x &> /dev/null
       wait
     fi
+    db_server_apt_cleanup
     install_with_aptitude_sql
+    db_server_apt_cleanup
   else
     ### Only supported upgrade path allowed
     sql_strict_upgrade_path
@@ -1254,7 +1269,9 @@ db_server_install() {
       fi
       rm -f /var/lib/mysql/debian-*.flag &> /dev/null
       rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
+      db_server_apt_cleanup
       install_with_aptitude_sql
+      db_server_apt_cleanup
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf &> /dev/null
           wait
@@ -1381,7 +1398,7 @@ db_server_install() {
           _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
           if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
             sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
-            iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/sull
+            iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
             ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
           fi
         fi

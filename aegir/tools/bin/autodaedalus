@@ -95,12 +95,12 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
-tRee=lts
+tRee=pro
 export tRee="${tRee}"
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_SE="520ltsT01"
+_X_SE="520proT02"
 _THIS_SYS=check
 #
 
@@ -115,6 +115,7 @@ check_root() {
         ln -s /proc/self/fd /dev/fd
       fi
     fi
+    rm -f /var/lib/man-db/auto-update
   else
     echo "ERROR: This script should be ran as a root user"
     exit 1
@@ -206,6 +207,16 @@ if [ -e "/root/.auto-upgraded-to-daedalus.cnf" ] \
   exit 1
 fi
 
+check_sql_running() {
+  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
+    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
+    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+    msg "INFO: Waiting for MySQLD availability..." >> ${logAds}
+    sleep 3
+  done
+}
+###check_sql_running
+
 _DB_SERIES=5.7
 _DB_SERVER_TEST=$(mysql -V 2>&1)
 if [[ ! "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
@@ -217,8 +228,8 @@ if [ -e "/root/.run-to-daedalus.cnf" ]; then
   echo " " >> ${logAds}
   if [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
     || [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
-    msg "Waiting 15 seconds for the system start scripts to finish" >> ${logAds}
-    sleep 15
+    msg "Waiting 99 seconds for the system start scripts to finish" >> ${logAds}
+    sleep 99
   else
     msg "Automatic BOA System Major Upgrade Tool welcomes you aboard!" >> ${logAds}
     sleep 3

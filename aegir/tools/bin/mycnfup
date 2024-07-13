@@ -17,13 +17,13 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
-tRee=lts
+tRee=pro
 export tRee="${tRee}"
 
 _AEGIR_VERSION="${tRee}"
 _BRANCH_BOA="5.x-${tRee}"
 _X_VERSION="BOA-5.2.0-${tRee}"
-_X_SE="520ltsT01"
+_X_SE="520proT02"
 _MYSQLTUNER_VRN=1.9.4
 _PHP_FPM_WORKERS=AUTO
 _RESERVED_RAM=0
@@ -31,11 +31,11 @@ _RESERVED_RAM=0
 ###
 ### Commands shortcuts
 ###
-dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
-nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
+dstUpArg="-fuy --allow-downgrades --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
+nrmUpArg="-fuy --allow-downgrades --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
 _INSTALL="/usr/bin/apt-get ${nrmUpArg} install"
-_INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
-aptYesUnth="-y --allow-unauthenticated"
+_INITINS="/usr/bin/apt-get -y --allow-downgrades --allow-unauthenticated install"
+aptYesUnth="-y --allow-downgrades --allow-unauthenticated"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 vBs="/var/backups"
 tVr="0.7"
@@ -249,8 +249,12 @@ remove_systemd() {
     apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
     apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
     apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-    echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-    echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+    if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
+      rm -f /etc/apt/preferences.d/systemd
+      echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
+      echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
+      apt_clean_update
+    fi
     apt-get autoremove --purge -y -qq 2> /dev/null
     apt-get autoclean -y -qq 2> /dev/null
     echo "sysvinit-core hold" | dpkg --set-selections &> /dev/null
@@ -374,17 +378,17 @@ check_root() {
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
         mkdir -p /etc/apt/preferences.d/
-        echo -e 'Package: fuse\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
+        echo -e 'Package: fuse\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
         apt_clean_update
       fi
       if [ ! -e "/etc/apt/preferences.d/udev" ]; then
         mkdir -p /etc/apt/preferences.d/
-        echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
+        echo -e 'Package: udev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/udev
         apt_clean_update
       fi
       if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
         mkdir -p /etc/apt/preferences.d/
-        echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
+        echo -e 'Package: makedev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
         apt_clean_update
       fi
       apt-get remove fuse -y -qq &> /dev/null
@@ -638,8 +642,8 @@ start_sql() {
     _MASTER_START=NO
     service mysql start
   fi
-  until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
-    && [ -e "/var/run/mysqld/mysqld.sock" ]; do
+  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
+    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     echo "Waiting for MySQLD graceful start..."
     sleep 3
@@ -749,8 +753,8 @@ if_restart_sql() {
 
 check_mysql_up() {
   echo "running ${tVr} `hostname` check_mysql_up procedure..."
-  until [ ! -z "${_IS_MYSQLD_RUNNING}" ] \
-    && [ -e "/var/run/mysqld/mysqld.sock" ]; do
+  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
+    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     echo "Waiting for MySQLD availability..."
     sleep 15
@@ -1305,7 +1309,7 @@ tune_sql() {
 
 db_head_to_stretch_first()
 {
-  if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ] ; then
+  if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ]; then
     _HOST_HOSTNAME=`hostname 2>&1`
     if [[ "${_OSR}" =~ "stretch" ]]; then
       echo "The ${_HOST_HOSTNAME} is already running Stretch"
@@ -1315,8 +1319,11 @@ db_head_to_stretch_first()
   	  echo "nameserver 8.8.8.8" >/etc/resolv.conf
   	  echo "nameserver 8.8.4.4" >>/etc/resolv.conf
   	  cat /etc/resolv.conf
-      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+  	  if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
+  	    rm -f /etc/apt/preferences.d/systemd
+        echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
+        echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
+      fi
   	  apt_clean_update
   	  echo "curl install"           | dpkg --set-selections
   	  echo "git install"            | dpkg --set-selections
@@ -1390,8 +1397,12 @@ db_head_to_stretch_first()
         if [ -e "/usr/share/sysvinit/inittab" ]; then
           cp -af /usr/share/sysvinit/inittab /etc/inittab
         fi
-        echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-        echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+        if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
+          rm -f /etc/apt/preferences.d/systemd
+          echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
+          echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
+          apt_clean_update
+        fi
   	  fi
       echo "Upgrade OS to Stretch 1st stage complete!"
       echo "Bye!"
@@ -1401,7 +1412,7 @@ db_head_to_stretch_first()
 
 db_head_to_stretch_second()
 {
-  if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ] ; then
+  if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ]; then
     _HOST_HOSTNAME=`hostname 2>&1`
     if [[ "${_OSR}" =~ "stretch" ]]; then
   	  if [ -x "/lib/systemd/systemd" ]; then
@@ -1418,8 +1429,11 @@ db_head_to_stretch_second()
         apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
         apt-get autoremove --purge -y -qq 2> /dev/null
         apt-get autoclean -y -qq 2> /dev/null
-        echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-        echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
+        if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
+          rm -f /etc/apt/preferences.d/systemd
+          echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
+          echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
+        fi
   	  fi
   	  apt_clean_update
   	  apt-get upgrade ${nrmUpArg}

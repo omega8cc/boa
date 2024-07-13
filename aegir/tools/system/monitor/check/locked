@@ -7,6 +7,7 @@ $ENV{'PATH'} = '/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin
 
 $| = 1;
 if (-f "/var/run/boa_wait.pid") {exit;}
+if (-f "/var/run/fmp_wait.pid") {exit;}
 $fpm_status="CLEAN";
 $java_status="CLEAN";
 $now_is=`date +%b:%d:%H:%M`;
@@ -15,6 +16,10 @@ chomp($now_is);
 &javacheck;
 if ($fpm_status ne "CLEAN") {
   `kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')`;
+  system("touch /var/run/fmp_wait.pid");
+  if (-f "/etc/init.d/php83-fpm") {
+    `service php83-fpm restart`;
+  }
   if (-f "/etc/init.d/php82-fpm") {
     `service php82-fpm restart`;
   }
@@ -52,6 +57,7 @@ if ($fpm_status ne "CLEAN") {
     `service php53-fpm stop`;
   }
   sleep(2);
+  system("rm -f /var/run/fmp_wait.pid");
 }
 if ($java_status ne "CLEAN") {
   `kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')`;
