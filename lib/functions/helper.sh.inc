@@ -775,6 +775,9 @@ check_prepare_dirs_permissions() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Cleaning up temp files in /var/opt/"
   fi
+  if [ ! -e "/root/.run_post_major_os_upgrade.info" ]; then
+    rm -f ${pthLog}/re-installed-php*-on-post_major_os_upgrade.info
+  fi
   rm -rf /var/opt/*
   mkdir -p /var/log/php
   chmod 777 /var/log/php* &> /dev/null
