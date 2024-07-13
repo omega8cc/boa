@@ -1689,7 +1689,7 @@ elif [ "${cmmand}" = "up-lts" ]; then
   tRee=lts
 else
   if [ "${cmmand}" = "php-idle" ] || [ "${cmmand}" = "help" ]; then
-    tRee=pro
+    tRee=lts
   else
     echo
     echo "Sorry, you are trying not supported command.."

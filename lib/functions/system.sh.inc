@@ -1,5 +1,5 @@
 
-tRee=pro
+tRee=lts
 export tRee="${tRee}"
 
 #

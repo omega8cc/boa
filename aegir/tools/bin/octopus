@@ -503,7 +503,7 @@ satellite_downgrade_protection() {
       echo
       echo "ERROR: Your Octopus has been already upgraded to ${rlsn}-pro"
       echo "You can not downgrade back to previous/older/lts BOA version"
-      echo "Please use 'octopus up-pro ${octUsr} force' to upgrade"
+      echo "Please use 'octopus up-lts ${octUsr} force' to upgrade"
       echo "Bye"
       echo
       clean_pid_exit

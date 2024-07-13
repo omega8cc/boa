@@ -1,5 +1,5 @@
 
-tRee=pro
+tRee=lts
 rlsn="BOA-5.2.0"
 rlse="${rlsn}-${tRee}"
 export tRee="${tRee}"
@@ -4466,7 +4466,7 @@ satellite_check_octopus_vs_barracuda_ver() {
       || [ -e "${_ROOT}/tools/key/octopus_key.txt" ]; then
       msg "ERROR: Your Octopus has been already upgraded to ${rlsn}-pro"
       msg "You can not downgrade back to previous/older/lts BOA version"
-      msg "Please use 'octopus up-pro ${_USER} force' to upgrade"
+      msg "Please use 'octopus up-lts ${_USER} force' to upgrade"
       msg "Display all supported commands with: octopus help"
       msg "Bye"
       clean_pid_exit

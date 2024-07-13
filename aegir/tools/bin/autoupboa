@@ -12,7 +12,7 @@ barCnf="/root/.barracuda.cnf"
 
 _X_SE="520proT02"
 
-tRee=pro
+tRee=lts
 export tRee="${tRee}"
 
 bring_all_ram_cpu_online() {

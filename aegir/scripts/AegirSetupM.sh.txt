@@ -42,7 +42,7 @@ bldPth="/opt/tmp/boa"
 filIncB="barracuda.sh.cnf"
 libFnc="${bldPth}/lib/functions"
 vBs="/var/backups"
-tRee=pro
+tRee=lts
 export tRee="${tRee}"
 
 

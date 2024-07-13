@@ -627,7 +627,7 @@ _BOA_REPO_GIT_URL="${gitHub}"
 aptYesUnth="-y --allow-unauthenticated"
 _X_SE="520proT02"
 export _X_SE="${_X_SE}"
-tRee=pro
+tRee=lts
 export tRee="${tRee}"
 
 
