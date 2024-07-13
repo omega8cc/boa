@@ -417,11 +417,17 @@ check_report() {
   _RESULT_FATAL=$(grep "FATAL ERROR" ${_UP_LOG} 2>&1)
   _RESULT_LIB_ERR=$(grep "cannot open shared object file" ${_UP_LOG} 2>&1)
   if [[ "${_RESULT_TEST_OK}" =~ "INFO: Test OK" ]] \
+    || [[ "${_RESULT_TEST_OK}" =~ "binary file matches" ]] \
     || [[ "${_RESULT_TEST_CARD}" =~ "CARD: Now charging" ]] \
+    || [[ "${_RESULT_TEST_CARD}" =~ "binary file matches" ]] \
     || [[ "${_RESULT_RLLY}" =~ "RLLY: No errors" ]] \
-    || [[ "${_RESULT_ENJOY}" =~ "Enjoy your Aegir" ]]; then
-    if [[ "${_RESULT_APT_FAIL}" =~ "Displaying the last 15 lines" ]]; then
-      if [[ "${_RESULT_LIB_ERR}" =~ "cannot open shared object file" ]]; then
+    || [[ "${_RESULT_RLLY}" =~ "binary file matches" ]] \
+    || [[ "${_RESULT_ENJOY}" =~ "Enjoy your Aegir" ]] \
+    || [[ "${_RESULT_ENJOY}" =~ "binary file matches" ]]; then
+    if [[ "${_RESULT_APT_FAIL}" =~ "Displaying the last 15 lines" ]] \
+      || [[ "${_RESULT_APT_FAIL}" =~ "binary file matches" ]]; then
+      if [[ "${_RESULT_LIB_ERR}" =~ "cannot open shared object file" ]] \
+        || [[ "${_RESULT_LIB_ERR}" =~ "binary file matches" ]]; then
         _SEND_ALERT=YES
         _ALERT_MSG="ALERT: Failed (libs) Barracuda upgrade"
       fi
@@ -432,7 +438,8 @@ check_report() {
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed (msg) Barracuda upgrade"
   fi
-  if [[ "${_RESULT_APT_FAIL}" =~ "Displaying the last 15 lines" ]]; then
+  if [[ "${_RESULT_APT_FAIL}" =~ "Displaying the last 15 lines" ]] \
+    || [[ "${_RESULT_APT_FAIL}" =~ "binary file matches" ]]; then
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed (apt) Barracuda upgrade"
   fi
@@ -441,15 +448,18 @@ check_report() {
     _SEND_ALERT=YES
     _ALERT_MSG="REBOOT: Your new system kernel requires boa reboot"
   fi
-  if [[ "${_RESULT_ALRT}" =~ "ALRT" ]]; then
+  if [[ "${_RESULT_ALRT}" =~ "ALRT" ]] \
+    || [[ "${_RESULT_ALRT}" =~ "binary file matches" ]]; then
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed (alrt) Barracuda upgrade"
   fi
-  if [[ "${_RESULT_FATAL}" =~ "FATAL ERROR" ]]; then
+  if [[ "${_RESULT_FATAL}" =~ "FATAL ERROR" ]] \
+    || [[ "${_RESULT_FATAL}" =~ "binary file matches" ]]; then
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed (aborted) Barracuda upgrade"
   fi
-  if [[ "${_RESULT_LIB_ERR}" =~ "cannot open shared object file" ]]; then
+  if [[ "${_RESULT_LIB_ERR}" =~ "cannot open shared object file" ]] \
+    || [[ "${_RESULT_LIB_ERR}" =~ "binary file matches" ]]; then
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed (libs) Barracuda upgrade"
   fi

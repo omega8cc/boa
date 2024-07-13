@@ -266,16 +266,20 @@ check_report() {
   _RESULT_FATAL=$(grep "FATAL ERROR" ${_UP_LOG} 2>&1)
   _RESULT_ALREADY=$(grep "This Aegir Instance is already up" ${_UP_LOG} 2>&1)
   _RESULT_BYE=$(grep "BYE" ${_UP_LOG} 2>&1)
-  if [[ "${_RESULT_ALRT}" =~ "ALRT" ]]; then
+  if [[ "${_RESULT_ALRT}" =~ "ALRT" ]] \
+    || [[ "${_RESULT_ALRT}" =~ "binary file matches" ]]; then
     _SEND_ALERT=YES
   fi
-  if [[ "${_RESULT_FATAL}" =~ "FATAL ERROR" ]]; then
+  if [[ "${_RESULT_FATAL}" =~ "FATAL ERROR" ]] \
+    || [[ "${_RESULT_FATAL}" =~ "binary file matches" ]]; then
     _SEND_ALERT=YES
   fi
-  if [[ "${_RESULT_ALREADY}" =~ "This Aegir Instance is already up" ]]; then
+  if [[ "${_RESULT_ALREADY}" =~ "This Aegir Instance is already up" ]] \
+    || [[ "${_RESULT_ALREADY}" =~ "binary file matches" ]]; then
     _SEND_ALERT=NO
   fi
-  if [[ "${_RESULT_BYE}" =~ "BYE" ]]; then
+  if [[ "${_RESULT_BYE}" =~ "BYE" ]] \
+    || [[ "${_RESULT_BYE}" =~ "binary file matches" ]]; then
     _SEND_ALERT=NO
   else
     _SEND_ALERT=YES
