@@ -880,7 +880,7 @@ check_limits() {
     _SQL_MAX_LIMIT=$(( _SQL_MIN_LIMIT + 2048 ))
     _DSK_MIN_LIMIT=$(( _DSK_MIN_LIMIT *= _DSK_CLU_LIMIT ))
     _DSK_MAX_LIMIT=$(( _DSK_MAX_LIMIT *= _DSK_CLU_LIMIT ))
-  elif [ "${_CLIENT_OPTION}" = "LITE" ]; then
+  elif [ "${_CLIENT_OPTION}" = "LTS" ]; then
     if [ -z "${_DSK_CLU_LIMIT}" ]; then
       _DSK_CLU_LIMIT=1
     fi

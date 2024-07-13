@@ -36,7 +36,7 @@
 ###
 ###  Start with manual barracuda upgrade.
 ###
-###    $ barracuda up-lite system
+###    $ barracuda up-lts system
 ###
 ###  !!! CREATE A FRESH VM BACKUP SNAPSHOT !!!
 ###  !!! TEST THE FRESHLY CREATED BACKUP.. !!!
@@ -97,12 +97,12 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
-tRee=lite
+tRee=lts
 export tRee="${tRee}"
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_SE="520liteT01"
+_X_SE="520ltsT01"
 _THIS_SYS=check
 #
 

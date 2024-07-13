@@ -48,7 +48,7 @@ libFnc="${bldPth}/lib/functions"
 tocIncO="${filIncO}.$1"
 vBs="/var/backups"
 vSet="variable-set --always-set"
-tRee=lite
+tRee=lts
 export tRee="${tRee}"
 
 

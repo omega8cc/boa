@@ -8,7 +8,7 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-tRee=lite
+tRee=lts
 export tRee="${tRee}"
 
 check_root() {
@@ -47,7 +47,7 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-_X_SE="520liteT01"
+_X_SE="520ltsT01"
 _WEBG=www-data
 _OSR=$(lsb_release -sc 2>&1)
 _SSL_ITD=$(openssl version 2>&1 \

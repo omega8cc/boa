@@ -334,11 +334,11 @@ check_dns_settings() {
 barracuda_downgrade_protection() {
   if [ "${cmmand}" != "php-idle" ] && [ -e "/var/log/barracuda_log.txt" ]; then
     _SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
-    if [ "${cmmand}" = "up-lite" ]; then
+    if [ "${cmmand}" = "up-lts" ]; then
       if [[ "${_SERIES_TEST}" =~ "Barracuda ${rlsn}-pro" ]]; then
         echo
         echo "ERROR: Your system has been already upgraded to ${rlsn}-pro"
-        echo "You can not downgrade back to previous/older/lite BOA version"
+        echo "You can not downgrade back to previous/older/lts BOA version"
         echo "Please use 'barracuda up-pro system' to upgrade this server"
         echo "Bye"
         echo
@@ -346,7 +346,7 @@ barracuda_downgrade_protection() {
       elif [[ "${_SERIES_TEST}" =~ "Barracuda ${rlsn}-dev" ]]; then
         echo
         echo "ERROR: Your system has been already upgraded to ${rlsn}-dev"
-        echo "You can not downgrade back to previous/older/lite BOA version"
+        echo "You can not downgrade back to previous/older/lts BOA version"
         echo "Please use 'barracuda up-dev system' to upgrade this server"
         echo "Bye"
         echo
@@ -355,7 +355,7 @@ barracuda_downgrade_protection() {
     fi
     if [ "${cmmand}" != "up-dev" ] \
       && [ "${cmmand}" != "up-pro" ] \
-      && [ "${cmmand}" != "up-lite" ] \
+      && [ "${cmmand}" != "up-lts" ] \
       && [ "${cmmand}" != "help" ]; then
       echo
       echo "Sorry, you are trying not supported command.."
@@ -711,7 +711,7 @@ up_action() {
     fi
     if [ "${cmmand}" = "up-dev" ] \
       || [ "${cmmand}" = "up-pro" ] \
-      || [ "${cmmand}" = "up-lite" ] \
+      || [ "${cmmand}" = "up-lts" ] \
       || [ "${cmmand}" = "php-idle" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
       wait
@@ -778,7 +778,7 @@ up_action() {
     fi
     if [ "${cmmand}" = "up-dev" ] \
       || [ "${cmmand}" = "up-pro" ] \
-      || [ "${cmmand}" = "up-lite" ] \
+      || [ "${cmmand}" = "up-lts" ] \
       || [ "${cmmand}" = "php-idle" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncB}
       wait
@@ -1548,7 +1548,7 @@ proceed() {
   up_start
   if [ "${cmmand}" = "up-dev" ] \
     || [ "${cmmand}" = "up-pro" ] \
-    || [ "${cmmand}" = "up-lite" ] \
+    || [ "${cmmand}" = "up-lts" ] \
     || [ "${cmmand}" = "php-idle" ]; then
     if [ "${silent}" = "cluster" ] \
       || [ "${silent}" = "foobar" ]; then
@@ -1589,8 +1589,8 @@ proceed() {
   Accepted keywords and values in every option:
 
   {version}
-      up-lite <------ upgrade to Barracuda Lite release (no license)
-      up-pro <------- upgrade to Barracuda Pro release (requires license)
+      up-lts <------- upgrade to Barracuda LTS release (no license)
+      up-pro <------- upgrade to Barracuda PRO release (requires license)
       up-dev <------- upgrade to Barracuda Cutting Edge (requires license)
       php-idle <----- disable not used PHP versions or enable them again
 
@@ -1649,11 +1649,11 @@ if [ "${cmmand}" = "up-dev" ]; then
   tRee=dev
 elif [ "${cmmand}" = "up-pro" ]; then
   tRee=pro
-elif [ "${cmmand}" = "up-lite" ]; then
-  tRee=lite
+elif [ "${cmmand}" = "up-lts" ]; then
+  tRee=lts
 else
   if [ "${cmmand}" = "php-idle" ] || [ "${cmmand}" = "help" ]; then
-    tRee=lite
+    tRee=lts
   else
     echo
     echo "Sorry, you are trying not supported command.."

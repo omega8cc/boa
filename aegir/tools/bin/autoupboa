@@ -10,9 +10,9 @@ export HOME=${HOME}
 
 barCnf="/root/.barracuda.cnf"
 
-_X_SE="520liteT01"
+_X_SE="520ltsT01"
 
-tRee=lite
+tRee=lts
 export tRee="${tRee}"
 
 os_detection_minimal() {

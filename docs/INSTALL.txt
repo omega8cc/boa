@@ -3,9 +3,9 @@
 ### Notes on available BOA branches and licenses
 ###
 
- => BOA is available in three main branches, but only LITE for installation:
+ => BOA is available in three main branches, but only LTS for installation:
 
-  * LITE which remains completely free to use without any kind of license
+  * LTS which remains completely free to use without any kind of license
     as it was from the beginning (previously named HEAD or STABLE).
     This branch should be considered as BOA LTS with slow updates, focused
     on both security and bug fixes, but very limited new features additions.
@@ -15,10 +15,10 @@
     This branch shouldn't be used in production without extensive testing.
 
   * PRO which requires paid license and is available only as an upgrade
-    from either LITE or DEV (or previous HEAD/STABLE) is the branch with regular
+    from either LTS or DEV (or previous HEAD/STABLE) is the branch with regular
     monthly or bi-monthly releases, closely following tested DEV branch.
 
- => You can install only BOA LITE and optionally upgrade to PRO with license
+ => You can install only BOA LTS and optionally upgrade to PRO with license
     from https://omega8.cc/licenses
 
 
@@ -29,7 +29,7 @@
 * Since Debian is running systemd, it should be removed before installing BOA,
   which involves procedure in five steps, as outlined further below.
 
-* Once BOA is fully installed, you have to run 'barracuda up-lite system'
+* Once BOA is fully installed, you have to run 'barracuda up-lts system'
   (immediately, but without reboot) to make sure that your system is ready
   for production use. Otherwise there will be incomplete web, dns etc. setup,
   which will cause unexpected problems until you will run barracuda upgrade.
@@ -103,7 +103,7 @@
 
    $ screen
 
-   You must specify the kind of install with {in-lite|in-dev}
+   You must specify the kind of install with {in-lts|in-dev}
    location with {local|public}, your hostname and email address, as shown
    further below.
 
@@ -129,22 +129,22 @@
    Examples:
 
    # Latest on server - no Aegir platforms + install all 9 PHP versions
-   $ boa in-lite public server.mydomain.org my@email o1 none php-max
+   $ boa in-lts public server.mydomain.org my@email o1 none php-max
 
    # Latest on server - no Aegir platforms + install 3 PHP versions
-   $ boa in-lite public server.mydomain.org my@email o1 none php-min
+   $ boa in-lts public server.mydomain.org my@email o1 none php-min
 
    # Latest on server - some Aegir platforms + single PHP version
-   $ boa in-lite public server.mydomain.org my@email o1 mini php-8.1
+   $ boa in-lts public server.mydomain.org my@email o1 mini php-8.1
 
    # Latest on server - prompt for every platform install + 3 PHP versions
-   $ boa in-lite public server.mydomain.org my@email o1
+   $ boa in-lts public server.mydomain.org my@email o1
 
    # Latest on server - no prompt with 3xD6 + 3xD7 only + 3 PHP versions
-   $ boa in-lite public server.mydomain.org my@email o1 mini
+   $ boa in-lts public server.mydomain.org my@email o1 mini
 
    # Latest on server - no prompt all platforms + New Relic + 3 PHP versions
-   $ boa in-lite public server.mydomain.org my@email o1 max newrelickey
+   $ boa in-lts public server.mydomain.org my@email o1 max newrelickey
 
 
 ### Installing BOA system on localhost
@@ -159,7 +159,7 @@
 
 3. Install Barracuda and Octopus.
 
-   You must specify the kind of install with {in-lite|in-dev},
+   You must specify the kind of install with {in-lts|in-dev},
    location with {local|public}, and your email address,
    as shown below. For local installs you don't need to specify
    hostname and Octopus username, as it is fully automated.
@@ -172,24 +172,24 @@
    after {ask|mini|max|none} or specified instead of {ask|mini|max|none}
 
    # Latest on localhost - prompt for every platform install
-   $ boa in-lite local my@email
+   $ boa in-lts local my@email
 
    # Latest on localhost - prompt for every platform + install 9 PHP versions
-   $ boa in-lite local my@email php-max
+   $ boa in-lts local my@email php-max
 
    # Latest on localhost - prompt for every platform + install 3 PHP versions
-   $ boa in-lite local my@email php-min
+   $ boa in-lts local my@email php-min
 
    # Latest on localhost - no prompt with 3xD6 + 3xD7 only + single PHP version
-   $ boa in-lite local my@email mini php-8.1
+   $ boa in-lts local my@email mini php-8.1
 
    # Latest on localhost - no prompt all platforms + 3 PHP versions
-   $ boa in-lite local my@email max
+   $ boa in-lts local my@email max
 
 ### Installing more Octopus instances
 
-It is now possible to add lite, pro or dev Octopus instances w/o
+It is possible to add lts or dev Octopus instances w/o
 forcing Barracuda upgrade, plus optionally with no platforms added by default:
 
-   $ boa {in-octopus} {email} {o2} {mini|max|none} {lite|dev}
+   $ boa {in-octopus} {email} {o2} {mini|max|none} {lts|dev}
 

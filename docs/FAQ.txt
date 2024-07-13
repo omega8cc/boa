@@ -45,7 +45,7 @@ A: There is no upgrade path, only migration with extended downtime, because
    recovery from full VM backup.
 
    NOTE: If you are still on MariaDB 10.3, you can upgrade to Percona 5.7 with
-   normal "barracuda up-lite" upgrade after replacing _DB_SERVER=MariaDB with
+   normal "barracuda up-lts" upgrade after replacing _DB_SERVER=MariaDB with
    _DB_SERVER=Percona in the /root/.barracuda.cnf
 
 

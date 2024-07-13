@@ -588,12 +588,12 @@ octopus_install() {
     fi
 
     if [ "${cmmand}" = "in-dev" ] \
-      || [ "${cmmand}" = "in-lite" ] \
+      || [ "${cmmand}" = "in-lts" ] \
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
       || [ "${cmmand}" = "init" ] \
       || [ "${copt}" = "dev" ] \
-      || [ "${copt}" = "lite" ]; then
+      || [ "${copt}" = "lts" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncO}
       wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g"   ${vBs}/${filIncO}
@@ -657,12 +657,12 @@ octopus_install() {
     fi
 
     if [ "${cmmand}" = "in-dev" ] \
-      || [ "${cmmand}" = "in-lite" ] \
+      || [ "${cmmand}" = "in-lts" ] \
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
       || [ "${cmmand}" = "init" ] \
       || [ "${copt}" = "dev" ] \
-      || [ "${copt}" = "lite" ]; then
+      || [ "${copt}" = "lts" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncO}
        wait
     elif [ "${cmmand}" = "in-cluster" ]; then
@@ -987,7 +987,7 @@ barracuda_install() {
     fi
 
     if [ "${cmmand}" = "in-dev" ] \
-      || [ "${cmmand}" = "in-lite" ] \
+      || [ "${cmmand}" = "in-lts" ] \
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
       || [ "${cmmand}" = "init" ]; then
@@ -1054,7 +1054,7 @@ barracuda_install() {
     fi
 
     if [ "${cmmand}" = "in-dev" ] \
-      || [ "${cmmand}" = "in-lite" ] \
+      || [ "${cmmand}" = "in-lts" ] \
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
       || [ "${cmmand}" = "init" ]; then
@@ -1220,7 +1220,7 @@ init_setup() {
   export rlsn="${rlsn}"
 
   if [ "${cmmand}" = "in-dev" ] \
-    || [ "${cmmand}" = "in-lite" ] \
+    || [ "${cmmand}" = "in-lts" ] \
     || [ "${cmmand}" = "init" ]; then
     if [ ! -z "${silent}" ]; then
       curl ${crlGet} "${rgUrl}/feature/${silent}/${barName}" -o ${vBs}/${barName}
@@ -1242,12 +1242,8 @@ init_setup() {
     || [ "${cmmand}" = "in-oct" ]; then
     if [ "${copt}" = "dev" ]; then
       octb="${brnch}"
-    elif [ "${copt}" = "lite" ]; then
+    elif [ "${copt}" = "lts" ]; then
       octb="${brnch}"
-    elif [ "${copt}" = "3.2" ]; then
-      octb="${lgcD}"
-    elif [ "${copt}" = "2.4" ]; then
-      octb="${lgcC}"
     fi
     curl ${crlGet} "${rgUrl}/${octb}/${barName}"    -o ${vBs}/${barName}
     curl ${crlGet} "${rgUrl}/${octb}/${octName}"    -o ${vBs}/${octName}
@@ -1973,15 +1969,15 @@ case "$1" in
              exit 0
   ;;
   init)      cmmand="$1"
-             tRee=lite
+             tRee=lts
              check_root
              check_root_keys_pwd
              check_virt
              check_dns_curl
              init_setup
   ;;
-  in-lite)   cmmand="$1"
-             tRee=lite
+  in-lts)   cmmand="$1"
+             tRee=lts
              kind="$2"
              fqdn="$3"
              email="$4"
@@ -2011,7 +2007,7 @@ case "$1" in
              init_setup
   ;;
   in-cluster) cmmand="$1"
-             tRee=lite
+             tRee=lts
              kind="$2"
              fqdn="$3"
              email="$4"
@@ -2026,7 +2022,7 @@ case "$1" in
              init_setup
   ;;
   in-3.2)    cmmand="$1"
-             tRee=lite
+             tRee=lts
              kind="$2"
              fqdn="$3"
              email="$4"
@@ -2040,7 +2036,7 @@ case "$1" in
              init_setup
   ;;
   in-2.4)    cmmand="$1"
-             tRee=lite
+             tRee=lts
              kind="$2"
              fqdn="$3"
              email="$4"
@@ -2054,7 +2050,7 @@ case "$1" in
              init_setup
   ;;
   in-2.3)    cmmand="$1"
-             tRee=lite
+             tRee=lts
              kind="$2"
              fqdn="$3"
              email="$4"
@@ -2068,7 +2064,7 @@ case "$1" in
              init_setup
   ;;
   in-2.2)    cmmand="$1"
-             tRee=lite
+             tRee=lts
              kind="$2"
              fqdn="$3"
              email="$4"
@@ -2082,7 +2078,7 @@ case "$1" in
              init_setup
   ;;
   in-octopus) cmmand="$1"
-             tRee=lite
+             tRee=lts
              email="$2"
              user="$3"
              mode="$4"
@@ -2096,7 +2092,7 @@ case "$1" in
              init_setup
   ;;
   in-oct)    cmmand="$1"
-             tRee=lite
+             tRee=lts
              email="$2"
              user="$3"
              mode="$4"
@@ -2113,7 +2109,7 @@ case "$1" in
   ;;
   *)         echo
              echo "Usage: $(basename "$0") {version} {mode} {fqdn} {email} {user} {platforms} {extra} {mysql}"
-             echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {mini|max|none} {lite|dev}"
+             echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {mini|max|none} {lts|dev}"
              echo "Usage: $(basename "$0") version"
              echo "Usage: $(basename "$0") info {more}"
              echo "Usage: $(basename "$0") info report {octopus|backups|both}"
@@ -2124,9 +2120,9 @@ case "$1" in
   Accepted keywords and values in every option:
 
   {version}
-      in-lite <------ install BOA Lite release (no license)
+      in-lts <------- install BOA LTS release (no license)
       in-dev <------- install BOA Cutting Edge (requires license)
-      in-octopus <--- install extra Octopus instance (lite|dev)
+      in-octopus <--- install extra Octopus instance (lts|dev)
       reboot <------- run accelerated system reboot
 
   {mode}

@@ -322,7 +322,7 @@
 ###
 ### Please note that on a self-hosted BOA you still need to add your valid
 ### license key as _NEWRELIC_KEY in the /root/.barracuda.cnf file and run
-### system upgrade with at least 'barracuda up-lite' first. This step is
+### system upgrade with at least 'barracuda up-lts' first. This step is
 ### not required on Omega8.cc hosted service, where New Relic agent is already
 ### pre-installed for you.
 ###
