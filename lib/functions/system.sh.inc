@@ -8111,7 +8111,6 @@ initd_update() {
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           mrun "update-rc.d php${e}-fpm defaults" 2> /dev/null
-          mrun "service php${e}-fpm start" 2> /dev/null
         fi
       done
       for e in ${_PHP_V}; do
