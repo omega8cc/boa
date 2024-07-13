@@ -48,6 +48,7 @@ else
     echo " "
 fi
 echo " "                # Pad blank lines for calendar & time to fit
+echo " "
 
 #--------- DATE -------------------------------------------------------------
 
