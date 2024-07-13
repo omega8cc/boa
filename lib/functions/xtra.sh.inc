@@ -470,7 +470,7 @@ if_install_ruby() {
     _RUBY_INSTALL_SCR=NO
     isRuby=$(which ruby 2>&1)
     if [ -x "${isRuby}" ]; then
-      _RUBY_V=$(${isRuby} --version 2>&1 \
+      _RUBY_V=$(${isRuby} --version \
         | cut -d" " -f2 \
         | awk '{ print $1}' 2>&1)
       if [ "${_RUBY_V}" != "${_RUBY_VRN}" ]; then
@@ -501,9 +501,10 @@ if_install_ruby() {
         ldconfig 2> /dev/null
         isRuby=$(which ruby 2>&1)
         if [ -x "${isRuby}" ]; then
-        _RUBY_V=$(${isRuby} --version 2>&1 \
-          | cut -d" " -f2 \
-          | awk '{ print $1}' 2>&1)
+          _RUBY_V=$(${isRuby} --version \
+            | cut -d" " -f2 \
+            | awk '{ print $1}' 2>&1)
+        fi
         if [ -x "/usr/local/bin/gem" ] && [ "${_RUBY_V}" = "${_RUBY_VRN}" ]; then
           msg "INFO: Ruby ${_RUBY_VRN} from sources ${_L_ST} completed"
         else
