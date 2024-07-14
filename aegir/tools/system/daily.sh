@@ -2609,8 +2609,10 @@ purge_cruft_machine() {
           chattr -i /home/${_HM_U}.ftp/platforms
           chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
         fi
-        echo "Removing ${i}"
-        rm -rf ${i}
+        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
+        echo "Moving ${i} to /var/backups/ghost/${_HM_U}/${_NOW}"
+        mv -f ${i} /var/backups/ghost/${_HM_U}/${_NOW}/
       fi
     fi
   done
@@ -2652,8 +2654,9 @@ purge_cruft_machine() {
         ln -sfn ${i}/keys /home/${_HM_U}.ftp/platforms/${distTrNr}/keys
       fi
       if [ -e "/home/${_HM_U}.ftp/platforms/data" ]; then
-        [ ! -e "/var/backups/ghost" ] && mkdir -p /var/backups/ghost
-        mv -f /home/${_HM_U}.ftp/platforms/data /var/backups/ghost/${_HM_U}_platforms_data
+        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
+        mv -f /home/${_HM_U}.ftp/platforms/data /var/backups/ghost/${_HM_U}/${_NOW}/platforms_data
       fi
       for Codebase in `find ${i}/* \
         -maxdepth 1 \
