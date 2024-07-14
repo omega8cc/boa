@@ -450,12 +450,13 @@ enable_chattr() {
         chmod 1777 /opt/user/npm
         [ ! -d "/opt/user/npm/${UQ}" ] && mkdir -p /opt/user/npm/${UQ}
         [ ! -d "/home/${UQ}/.npmrc" ] && su -s /bin/bash - ${UQ} -c "echo prefix = /opt/user/npm/${UQ}/.npm-packages > ~/.npmrc"
-        mkdir /opt/user/npm/${UQ}/.bundle
-        mkdir /opt/user/npm/${UQ}/.composer
-        mkdir /opt/user/npm/${UQ}/.config
-        mkdir /opt/user/npm/${UQ}/.npm-packages
-        mkdir /opt/user/npm/${UQ}/.npm
-        mkdir /opt/user/npm/${UQ}/.sass-cache
+        mkdir -p /opt/user/npm/${UQ}/.bundle
+        mkdir -p /opt/user/npm/${UQ}/.composer
+        mkdir -p /opt/user/npm/${UQ}/.config
+        mkdir -p /opt/user/npm/${UQ}/.npm
+        mkdir -p /opt/user/npm/${UQ}/.npm-packages/bin
+        mkdir -p /opt/user/npm/${UQ}/.npm-packages/lib/node_modules
+        mkdir -p /opt/user/npm/${UQ}/.sass-cache
         chown -R ${UQ}:users /opt/user/npm/${UQ}
         [ -e "${dscUsr}/log" ] && rm -f ${dscUsr}/log/.npm.build*
         touch ${dscUsr}/log/.npm.build.${UQ}.${_X_SE}.txt
