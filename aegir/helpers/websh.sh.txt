@@ -861,7 +861,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         export PATH="/opt/user/gems/${USER}/bin:$PATH"
       fi
     fi
-    if [ -x "/usr/bin/npm" ] && [ -d "/home/${USER}/.npm-packages" ]; then
+    if [ -x "/usr/bin/npm" ] && [ -e "/home/${USER}/.npmrc" ]; then
       if [[ "${_ARGS}" =~ "set -m; " ]] || [ ! -z "${SSH_CLIENT}" ]; then
         _NPM_ALLOW=YES
       fi
