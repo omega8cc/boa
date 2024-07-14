@@ -386,98 +386,84 @@ enable_chattr() {
 
     UQ="$1"
     chage -M 99999 ${UQ} &> /dev/null
-    if [ -f "${dscUsr}/static/control/compass.info" ] \
-      && [ ! -e "${dscUsr}/log/.gems.build.rb.${UQ}.${_X_SE}.txt" ]; then
-      [ -e "/home/${UQ}/.rvm" ] && rm -rf /home/${UQ}/.rvm*
-      [ -e "/home/${UQ}/.gem" ] && rm -rf /home/${UQ}/.gem*
-      [ -e "/home/${UQ}/.npm" ] && rm -rf /home/${UQ}/.npm*
-      [ ! -d "/opt/user/gems/${UQ}/" ] && mkdir -p /opt/user/gems/${UQ}/
-      chown -R ${UQ}:users /opt/user/gems/${UQ}
-      chown root:root /opt/user/gems
-      if [ -d "/opt/user/gems/${UQ}/" ]; then
-        echo 'export GEM_HOME="/opt/user/gems/${UQ}"' > /home/${UQ}/.bashrc
-        echo 'export GEM_PATH="/opt/user/gems/${UQ}"' >> /home/${UQ}/.bashrc
-        echo 'export PATH="/opt/user/gems/$USER/bin:$PATH"' >> /home/${UQ}/.bashrc
-        chown ${UQ}:users /home/${UQ}/.bashrc
-        if [ -e "/root/.dev.server.cnf" ]; then
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative bluecloth"
-          wait
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative eventmachine"
-          wait
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --version 1.0.3 eventmachine"
-          wait
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative ffi"
-          wait
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --version 1.9.3 ffi"
-          wait
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --version 1.9.18 ffi"
-          wait
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative hitimes"
-          wait
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative http_parser.rb"
-          wait
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative oily_png"
-          wait
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --version 1.1.1 oily_png"
-          wait
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative yajl-ruby"
-          wait
-        else
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative bluecloth"      &> /dev/null
-          wait
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative eventmachine"   &> /dev/null
-          wait
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --version 1.0.3 eventmachine"  &> /dev/null
-          wait
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative ffi"            &> /dev/null
-          wait
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --version 1.9.3 ffi"           &> /dev/null
-          wait
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --version 1.9.18 ffi"          &> /dev/null
-          wait
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative hitimes"        &> /dev/null
-          wait
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative http_parser.rb" &> /dev/null
-          wait
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative oily_png"       &> /dev/null
-          wait
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --version 1.1.1 oily_png"      &> /dev/null
-          wait
-          su -s /bin/bash - ${UQ} -c "source ~/.bashrc;gem install --conservative yajl-ruby"      &> /dev/null
-          wait
-        fi
-        touch ${dscUsr}/log/.gems.build.rb.${UQ}.${_X_SE}.txt
-        ln -sfn /bin/websh /bin/sh
-        ln -sfn /bin/websh /usr/bin/sh
-      fi
-      [ ! -d "/opt/user/npm/${UQ}" ] && mkdir -p /opt/user/npm/${UQ}/
-      chown -R ${UQ}:users /opt/user/npm/${UQ}
-      chown root:root /opt/user/npm
-      if [ ! -d "/opt/user/npm/${UQ}/.npm-packages" ] || [ ! -d "/opt/user/npm/${UQ}/.npm" ]; then
-        su -s /bin/bash - ${UQ} -c "mkdir /opt/user/npm/${UQ}/.bundle"
-        wait
-        su -s /bin/bash - ${UQ} -c "mkdir ~/.composer"
-        wait
-        su -s /bin/bash - ${UQ} -c "mkdir /opt/user/npm/${UQ}/.composer"
-        wait
-        su -s /bin/bash - ${UQ} -c "mkdir /opt/user/npm/${UQ}/.config"
-        wait
-        su -s /bin/bash - ${UQ} -c "mkdir /opt/user/npm/${UQ}/.npm-packages"
-        wait
-        su -s /bin/bash - ${UQ} -c "mkdir /opt/user/npm/${UQ}/.npm"
-        wait
-        su -s /bin/bash - ${UQ} -c "mkdir /opt/user/npm/${UQ}/.sass-cache"
-        wait
-        su -s /bin/bash - ${UQ} -c "echo prefix = /opt/user/npm/${UQ}/.npm-packages > ~/.npmrc"
-        wait
-      fi
-    else
-      [ -e "${dscUsr}/log" ] && rm -f ${dscUsr}/log/.gems.build*
-    fi
-    rm -f /home/${UQ}/{.profile,.bash_logout,.bash_profile,.bashrc,.zlogin,.zshrc}
+    _UPDATE_GEMS=NO
+    ###
+    ### Cleanup of no longer used/allowed Ruby Gems and NPM access leftovers
+    ###
     [ -e "/home/${UQ}/.rvm" ] && rm -rf /home/${UQ}/.rvm*
     [ -e "/home/${UQ}/.gem" ] && rm -rf /home/${UQ}/.gem*
     [ -e "/home/${UQ}/.npm" ] && rm -rf /home/${UQ}/.npm*
+    if [ "$1" = "${_USER}.ftp" ]; then
+      [ ! -d "/home/${UQ}/.composer" ] && su -s /bin/bash - ${UQ} -c "mkdir ~/.composer"
+    else
+      [ -d "/home/${UQ}/.composer" ] && rm -rf /home/${UQ}/.composer
+    fi
+    ###
+    ### Check if Ruby Gems and NPM access should be added or removed
+    ###
+    if [ -f "${dscUsr}/static/control/compass.info" ]; then
+      ###
+      ### Check if Ruby Gems access needs an update
+      ###
+      if [ ! -e "/opt/user/gems/${UQ}/gems/oily_png-1.1.1" ]
+        || [ ! -e "${dscUsr}/log/.gems.build.rb.${UQ}.${_X_SE}.txt" ]; then
+        _UPDATE_GEMS=YES
+      fi
+    else
+      ###
+      ### Remove no longer used Ruby Gems and NPM access
+      ###
+      [ -e "/opt/user/gems/${UQ}" ] && rm -rf /opt/user/gems/${UQ}
+      [ -e "/opt/user/npm/${UQ}" ] && rm -rf /opt/user/npm/${UQ}
+      [ -e "/home/${UQ}/.npm" ] && rm -rf /home/${UQ}/.npm*
+    fi
+    if [ "${_UPDATE_GEMS}" = "YES" ]; then
+      ###
+      ### Ruby Gems are allowed for both main and client SSH accounts
+      ###
+      [ ! -d "/opt/user/gems/${UQ}" ] && mkdir -p /opt/user/gems/${UQ}
+      chmod 1777 /opt/user/gems
+      chown -R ${UQ}:users /opt/user/gems/${UQ}
+      chown root:root /opt/user/gems
+      if [ -d "/opt/user/gems/${UQ}" ] \
+        && [ -e "/usr/local/lib/ruby/gems/3.3.0/gems/oily_png-1.1.1" ] \
+        && [ ! -e "/opt/user/gems/${UQ}/gems/oily_png-1.1.1" ]; then
+        cp -a /usr/local/lib/ruby/gems/3.3.0/gems /opt/user/gems/${UQ}/
+        cp -a /usr/local/lib/ruby/gems/3.3.0/specifications /opt/user/gems/${UQ}/
+        cp -a /usr/local/lib/ruby/gems/3.3.0/extensions /opt/user/gems/${UQ}/
+        cp -a /usr/local/lib/ruby/gems/3.3.0/doc /opt/user/gems/${UQ}/
+        chown -R ${UQ}:users /opt/user/gems/${UQ}
+        [ -e "${dscUsr}/log" ] && rm -f ${dscUsr}/log/.gems.build*
+        touch ${dscUsr}/log/.gems.build.rb.${UQ}.${_X_SE}.txt
+      fi
+      ###
+      ### Check if NPM support is allowed and if needs an update
+      ### NOTE: It will be restricted to the main SSH account only
+      ###
+      if [ -e "/root/.allow.node.lshell.cnf" ] \
+        && [ "$1" = "${_USER}.ftp" ] \
+        && [ -e "/home/${UQ}/static/control" ] \
+        && [ ! -e "${dscUsr}/log/.npm.build.${UQ}.${_X_SE}.txt" ]; then
+        [ ! -d "/opt/user/npm" ] && mkdir -p /opt/user/npm
+        chown root:root /opt/user/npm
+        chmod 1777 /opt/user/npm
+        [ ! -d "/opt/user/npm/${UQ}" ] && mkdir -p /opt/user/npm/${UQ}
+        [ ! -d "/home/${UQ}/.npmrc" ] && su -s /bin/bash - ${UQ} -c "echo prefix = /opt/user/npm/${UQ}/.npm-packages > ~/.npmrc"
+        mkdir /opt/user/npm/${UQ}/.bundle
+        mkdir /opt/user/npm/${UQ}/.composer
+        mkdir /opt/user/npm/${UQ}/.config
+        mkdir /opt/user/npm/${UQ}/.npm-packages
+        mkdir /opt/user/npm/${UQ}/.npm
+        mkdir /opt/user/npm/${UQ}/.sass-cache
+        chown -R ${UQ}:users /opt/user/npm/${UQ}
+        [ -e "${dscUsr}/log" ] && rm -f ${dscUsr}/log/.npm.build*
+        touch ${dscUsr}/log/.npm.build.${UQ}.${_X_SE}.txt
+      else
+        [ -e "/home/${UQ}/.npm" ] && rm -rf /home/${UQ}/.npm*
+        [ -e "/opt/user/npm/${UQ}" ] && rm -rf /opt/user/npm/${UQ}
+      fi
+    fi
+    rm -f /home/${UQ}/{.profile,.bash_logout,.bash_profile,.bashrc,.zlogin,.zshrc}
     chage -M 90 ${UQ} &> /dev/null
 
     if [ "$1" != "${_USER}.ftp" ]; then

@@ -453,11 +453,38 @@ if_install_node() {
       fi
       mrun "${_INSTAPP} nodejs" 2> /dev/null
     fi
+    [ ! -d "/opt/user/npm" ] && mkdir -p /opt/user/npm
+    chown root:root /opt/user/npm
+    chmod 1777 /opt/user/npm
   else
     isNode=$(which node 2>&1)
     if [ -x "${isNode}" ]; then
       mrun "apt-get remove nodejs -y --purge --auto-remove -qq" 2> /dev/null
     fi
+  fi
+}
+
+if_install_ruby_gems() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_install_ruby_gems"
+  fi
+  if [ -d "/opt/user/gems" ] \
+    && [ -e "/usr/local/lib/ruby/gems/3.3.0" ] \
+    && [ ! -e "/usr/local/lib/ruby/gems/3.3.0/gems/oily_png-1.1.1" ] \
+    && [ -x "/usr/local/bin/ruby" ] \
+    && [ -x "/usr/local/bin/gem" ]; then
+    gem update --system
+    gem install --conservative bundler
+    gem install --conservative bluecloth
+    gem install --conservative eventmachine
+    gem install --conservative ffi
+    gem install --version 1.9.3 ffi
+    gem install --version 1.9.18 ffi
+    gem install --conservative hitimes
+    gem install --conservative http_parser.rb
+    gem install --conservative oily_png
+    gem install --version 1.1.1 oily_png
+    gem install --conservative yajl-ruby
   fi
 }
 
@@ -490,6 +517,8 @@ if_install_ruby() {
       if prompt_yes_no "Do you want to ${_L_ST} Ruby ${_RUBY_VRN} from sources?" ; then
         true
         msg "INFO: Installing Ruby ${_RUBY_VRN} from sources..."
+        mkdir -p /opt/user/gems
+        chmod 1777 /opt/user/gems
         touch /var/run/manage_ruby_users.pid
         cd /var/opt
         rm -rf ruby*
@@ -507,6 +536,7 @@ if_install_ruby() {
         fi
         if [ -x "/usr/local/bin/gem" ] && [ "${_RUBY_V}" = "${_RUBY_VRN}" ]; then
           msg "INFO: Ruby ${_RUBY_VRN} from sources ${_L_ST} completed"
+          if_install_ruby_gems
         else
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             msg "INFO: Ruby ${_RUBY_VRN} from sources ${_L_ST} failed"
