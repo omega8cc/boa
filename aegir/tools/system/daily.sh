@@ -2302,7 +2302,9 @@ process() {
                 fix_robots_txt
               fi
               le_ssl_check_update
-              if_gen_goaccess ${Dom}
+              if [ -e "${User}/static/control/goaccess/${Dom}.info" ]; then
+                if_gen_goaccess ${Dom}
+              fi
               ;;
             esac
             fix_site_control_files
