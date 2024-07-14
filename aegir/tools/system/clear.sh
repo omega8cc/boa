@@ -169,7 +169,7 @@ if [ ! -e "/var/run/boa_run.pid" ]; then
     source /root/.barracuda.cnf
   fi
   rm -f /tmp/*error*
-  wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
+  wget -qO- http://files.aegir.cc/versions/${tRee}/boa/BOA.sh.txt | bash
   wait
   bash /opt/local/bin/autoupboa
   wait
