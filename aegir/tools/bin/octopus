@@ -1163,9 +1163,13 @@ if [ -e "/root/.run-to-daedalus.cnf" ] \
   || [ -e "/root/.run-to-beowulf.cnf" ] \
   || [ "${cmmand}" = "help" ]; then
   _CHECK_SQL=NO
-else
+elif [ "${cmmand}" = "up-lts" ] \
+  || [ "${cmmand}" = "up-pro" ] \
+  || [ "${cmmand}" = "up-dev" ]; then
   check_sql_running
   check_sql_access
+else
+  _CHECK_SQL=NO
 fi
 
 case "$1" in
