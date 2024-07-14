@@ -528,10 +528,6 @@ satellite_check_supported_php_cli() {
 
 up_one() {
   if [ -e "${vBs}/${octName}" ]; then
-    cp -af ${vBs}/${octName}  ${vBs}/${tocName}
-    if [ -e "${vBs}/${filIncO}" ]; then
-      cp -af ${vBs}/${filIncO}  ${vBs}/${tocIncO}
-    fi
     if [ "${cmmand}" = "up-${tRee}" ]; then
       satellite_check_supported_php_cli
     else
@@ -691,6 +687,12 @@ up_action_all() {
         octUsr=$(echo ${User} | cut -d'/' -f4 | awk '{ print $1}')
         tocName="${octName}.${octUsr}"
         tocIncO="${filIncO}.${octUsr}"
+        if [ -e "${vBs}/${octName}" ]; then
+          cp -af ${vBs}/${octName} ${vBs}/${tocName}
+        fi
+        if [ -e "${vBs}/${filIncO}" ]; then
+          cp -af ${vBs}/${filIncO} ${vBs}/${tocIncO}
+        fi
         octCnf="/root/.${octUsr}.octopus.cnf"
         echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
         echo Octopus upgrade for User ${User}
@@ -762,6 +764,12 @@ up_action_one() {
       octUsr="${second}"
       tocName="${octName}.${octUsr}"
       tocIncO="${filIncO}.${octUsr}"
+      if [ -e "${vBs}/${octName}" ]; then
+        cp -af ${vBs}/${octName} ${vBs}/${tocName}
+      fi
+      if [ -e "${vBs}/${filIncO}" ]; then
+        cp -af ${vBs}/${filIncO} ${vBs}/${tocIncO}
+      fi
       octCnf="/root/.${octUsr}.octopus.cnf"
       echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
       echo Octopus upgrade for User ${User}
