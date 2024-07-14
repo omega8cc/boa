@@ -2625,7 +2625,7 @@ purge_cruft_machine() {
         echo "RevisionTest is ${RevisionTest}"
         _NOW=$(date +%y%m%d-%H%M%S 2>&1)
         mkdir -p ${User}/undo/dist/${_NOW}
-        ### mv -f ${i} ${User}/undo/dist/${_NOW}/ &> /dev/null
+        mv -f ${i} ${User}/undo/dist/${_NOW}/ &> /dev/null
         echo "GHOST revision ${i} detected and moved to ${User}/undo/dist/${_NOW}/"
       fi
     fi
