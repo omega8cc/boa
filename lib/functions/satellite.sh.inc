@@ -5440,8 +5440,8 @@ satellite_child_b_aegir_build() {
       cd ${_PREV_HM_ROOT}/profiles/hostmaster/modules/contrib
       get_dev_stc "entity-7.x-1.10.tar.gz"
       ${_DRUSHCMD} @hostmaster en entity -y
-      ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_service WHERE service LIKE 'http'"
-      ${_DRUSHCMD} @hostmaster sqlq "INSERT INTO hosting_service (nid, vid, service, type, restart_cmd, port, available) VALUES ('2', '2', 'http', 'nginx_ssl', 'sudo /etc/init.d/nginx reload', '80', '1')"
+      ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_service WHERE service LIKE 'http'" &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "INSERT INTO hosting_service (nid, vid, service, type, restart_cmd, port, available) VALUES ('2', '2', 'http', 'nginx_ssl', 'sudo /etc/init.d/nginx reload', '80', '1')" &> /dev/null
       ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force
       ${_DRUSHCMD} @hostmaster hosting-dispatch
       msg "${_STATUS} B: Waiting 15 seconds..."
@@ -5899,7 +5899,7 @@ satellite_child_b_aegir_ui_enhance() {
       "command" => "command",
       "debug" => "none",
       "debugnotify" => "none",
-      "queue" => "queue"))'
+      "queue" => "queue"))' &> /dev/null
 
     if [ "${_LOCAL_STATUS}" = "INIT" ]; then
       pBy="Octopus System powered by Barracuda"
@@ -5930,14 +5930,14 @@ satellite_child_b_aegir_ui_enhance() {
       ### rm -f make_client.php
     else
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-        SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%'"
+        SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
       _THIS_HM_PLR=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
           | grep "root'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-        SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'"
+        SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'" &> /dev/null
       _CHECK_HOST=$(uname -n 2>&1)
       if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
@@ -5975,12 +5975,12 @@ satellite_child_b_aegir_ui_enhance() {
       ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"  &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"         &> /dev/null
-      ${_DRUSHCMD} @hostmaster en hosting_le -y &> /dev/null
-      ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster en hosting_le -y               &> /dev/null
+      ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y         &> /dev/null
       ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y  &> /dev/null
       ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y  &> /dev/null
-      ${_DRUSHCMD} @hostmaster cache-clear all &> /dev/null
-      ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster cache-clear all                &> /dev/null
+      ${_DRUSHCMD} @hostmaster updb -y                        &> /dev/null
     fi
 
     if [ "${_LOCAL_STATUS}" = "INIT" ]; then
