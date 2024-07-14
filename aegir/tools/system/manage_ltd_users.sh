@@ -405,7 +405,7 @@ enable_chattr() {
       ###
       ### Check if Ruby Gems access needs an update
       ###
-      if [ ! -e "/opt/user/gems/${UQ}/gems/oily_png-1.1.1" ]
+      if [ ! -e "/opt/user/gems/${UQ}/gems/oily_png-1.1.1" ] \
         || [ ! -e "${dscUsr}/log/.gems.build.rb.${UQ}.${_X_SE}.txt" ]; then
         _UPDATE_GEMS=YES
       fi
