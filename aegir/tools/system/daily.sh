@@ -2191,6 +2191,7 @@ if_gen_goaccess() {
         cp -af /var/www/adminer/access/${_HM_U}/${1} /data/disk/${_HM_U}/static/goaccess/
       else
         rm -rf /var/www/adminer/access/${_HM_U}/${1}
+        rm -rf /data/disk/${_HM_U}/static/goaccess/${1}
       fi
     fi
   fi
