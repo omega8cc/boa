@@ -393,6 +393,7 @@ enable_chattr() {
     [ -e "/home/${UQ}/.rvm" ] && rm -rf /home/${UQ}/.rvm*
     [ -e "/home/${UQ}/.gem" ] && rm -rf /home/${UQ}/.gem*
     [ -e "/home/${UQ}/.npm" ] && rm -rf /home/${UQ}/.npm*
+    [ -e "/home/${UQ}/.mks" ] && rm -rf /home/${UQ}/.mks*
     if [ "$1" = "${_USER}.ftp" ]; then
       [ ! -d "/home/${UQ}/.composer" ] && su -s /bin/bash - ${UQ} -c "mkdir ~/.composer"
     else

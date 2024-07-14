@@ -3585,6 +3585,7 @@ ssl_crypto_lib_fix() {
       ###
       if [ -e "${_SSL_CNF_PATH}/opensslconf.h" ]; then
         if [ -e "${_GNU_CNF_PATH}/opensslconf.h" ]; then
+          rm -f /var/backups/old-opensslconf-h*
           mv -f ${_GNU_CNF_PATH}/opensslconf.h /var/backups/old-opensslconf-h-${_LIB_NOW}
         fi
         ln -sfn ${_SSL_CNF_PATH}/opensslconf.h ${_GNU_CNF_PATH}/opensslconf.h
@@ -3592,6 +3593,7 @@ ssl_crypto_lib_fix() {
       ###
       if [ -e "/usr/include/openssl" ] \
         && [ -d "/usr/local/ssl/include/openssl" ]; then
+        rm -rf /var/backups/old-usr-include-openssl*
         mv -f /usr/include/openssl /var/backups/old-usr-include-openssl-${_LIB_NOW}
         ln -sfn /usr/local/ssl/include/openssl /usr/include/openssl
       fi
@@ -3644,6 +3646,7 @@ ssl_crypto_lib_fix() {
       ###
       if [ -e "${_SSL_CNF_PATH}/opensslconf.h" ]; then
         if [ -e "${_GNU_CNF_PATH}/opensslconf.h" ]; then
+          rm -f /var/backups/old-opensslconf-h*
           mv -f ${_GNU_CNF_PATH}/opensslconf.h /var/backups/old-opensslconf-h-${_LIB_NOW}
         fi
         ln -sfn ${_SSL_CNF_PATH}/opensslconf.h ${_GNU_CNF_PATH}/opensslconf.h
@@ -3651,6 +3654,7 @@ ssl_crypto_lib_fix() {
       ###
       if [ -e "/usr/include/openssl" ] \
         && [ -d "/usr/local/ssl/include/openssl" ]; then
+        rm -rf /var/backups/old-usr-include-openssl*
         mv -f /usr/include/openssl /var/backups/old-usr-include-openssl-${_LIB_NOW}
         ln -sfn /usr/local/ssl/include/openssl /usr/include/openssl
       fi
@@ -3699,6 +3703,7 @@ ssl_crypto_lib_fix() {
       ###
       if [ -e "${_SSL_CNF_PATH}/opensslconf.h" ]; then
         if [ -e "${_GNU_CNF_PATH}/opensslconf.h" ]; then
+          rm -f /var/backups/old-opensslconf-h*
           mv -f ${_GNU_CNF_PATH}/opensslconf.h /var/backups/old-opensslconf-h-${_LIB_NOW}
         fi
         ln -sfn ${_SSL_CNF_PATH}/opensslconf.h ${_GNU_CNF_PATH}/opensslconf.h
@@ -3706,6 +3711,7 @@ ssl_crypto_lib_fix() {
       ###
       if [ -e "/usr/include/openssl" ] \
         && [ -d "/usr/local/ssl3/include/openssl" ]; then
+        rm -rf /var/backups/old-usr-include-openssl*
         mv -f /usr/include/openssl /var/backups/old-usr-include-openssl-${_LIB_NOW}
         ln -sfn /usr/local/ssl3/include/openssl /usr/include/openssl
       fi
