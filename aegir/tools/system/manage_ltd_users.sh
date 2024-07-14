@@ -393,7 +393,7 @@ enable_chattr() {
     [ -e "/home/${UQ}/.rvm" ] && rm -rf /home/${UQ}/.rvm*
     [ -e "/home/${UQ}/.gem" ] && rm -rf /home/${UQ}/.gem*
     [ -e "/home/${UQ}/.npm" ] && rm -rf /home/${UQ}/.npm*
-    [ -e "/home/${UQ}/.mks" ] && rm -rf /home/${UQ}/.mks*
+    [ -e "/home/${UQ}/.mkshrc" ] && rm -rf /home/${UQ}/.mkshrc
     if [ "$1" = "${_USER}.ftp" ]; then
       [ ! -d "/home/${UQ}/.composer" ] && su -s /bin/bash - ${UQ} -c "mkdir ~/.composer"
     else
@@ -414,9 +414,11 @@ enable_chattr() {
       ###
       ### Remove no longer used Ruby Gems and NPM access
       ###
+      [ -e "/home/${UQ}/.npm" ] && rm -rf /home/${UQ}/.npm*
       [ -e "/opt/user/gems/${UQ}" ] && rm -rf /opt/user/gems/${UQ}
       [ -e "/opt/user/npm/${UQ}" ] && rm -rf /opt/user/npm/${UQ}
-      [ -e "/home/${UQ}/.npm" ] && rm -rf /home/${UQ}/.npm*
+      [ -e "${dscUsr}/log" ] && rm -f ${dscUsr}/log/.gems.build*
+      [ -e "${dscUsr}/log" ] && rm -f ${dscUsr}/log/.npm.build*
     fi
     if [ "${_UPDATE_GEMS}" = "YES" ]; then
       ###
@@ -463,6 +465,7 @@ enable_chattr() {
       else
         [ -e "/home/${UQ}/.npm" ] && rm -rf /home/${UQ}/.npm*
         [ -e "/opt/user/npm/${UQ}" ] && rm -rf /opt/user/npm/${UQ}
+        [ -e "${dscUsr}/log" ] && rm -f ${dscUsr}/log/.npm.build*
       fi
     fi
     rm -f /home/${UQ}/{.profile,.bash_logout,.bash_profile,.bashrc,.zlogin,.zshrc}
