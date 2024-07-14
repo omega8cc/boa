@@ -19,6 +19,7 @@ This document highlights the most complex or important tasks we are working on o
 - **Ægir Remote Servers**: Implement the Ægir Remote Servers feature to address user requirements.
 - **Amazon S3 Alternatives**: Integrate support for Amazon S3 alternatives in backboa and duobackboa.
 - **Backdrop CMS Support**: Implement Backdrop CMS as a supported platform.
+- **BO4D**: Offer a *BOA On Docker* version tailored for local development, incorporating the features of *DDEV*.
 - **DDEV Integration**: Add support for BOA-compatible configurations within DDEV.
 - **Documentation Consolidation**: Consolidate all legacy and built-in documentation into a unified Grav CMS site.
 - **Grav CMS Support**: Introduce support for Grav CMS (command line only).
