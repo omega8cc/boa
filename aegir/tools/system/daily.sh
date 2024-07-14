@@ -2631,17 +2631,29 @@ purge_cruft_machine() {
   done
 
   for i in `dir -d ${User}/distro/*`; do
-    if [ -e "${i}" ] \
-      && [ ! -e "/home/${_HM_U}.ftp/platforms/${i}" ]; then
+    if [ -e "${i}" ]; then
+      distTrNr=$(echo ${i} \
+        | cut -d'/' -f6 \
+        | awk '{ print $1}' 2> /dev/null)
       if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
         chattr -i /home/${_HM_U}.ftp/platforms
         chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
       fi
-      mkdir -p /home/${_HM_U}.ftp/platforms/${i}
-      mkdir -p ${i}/keys
-      chown ${_HM_U}.ftp:${_WEBG} ${i}/keys &> /dev/null
-      chmod 02775 ${i}/keys &> /dev/null
-      ln -sfn ${i}/keys /home/${_HM_U}.ftp/platforms/${i}/keys
+      if [ ! -e "${i}/keys" ]; then
+        mkdir -p ${i}/keys
+        chown ${_HM_U}.ftp:${_WEBG} ${i}/keys &> /dev/null
+        chmod 02775 ${i}/keys &> /dev/null
+      fi
+      if [ ! -e "/home/${_HM_U}.ftp/platforms/${distTrNr}" ]; then
+        mkdir -p /home/${_HM_U}.ftp/platforms/${distTrNr}
+      fi
+      if [ -e "${i}/keys" ] && [ ! -e "/home/${_HM_U}.ftp/platforms/${distTrNr}/keys" ]; then
+        ln -sfn ${i}/keys /home/${_HM_U}.ftp/platforms/${distTrNr}/keys
+      fi
+      if [ -e "/home/${_HM_U}.ftp/platforms/data" ]; then
+        [ ! -e "/var/backups/ghost" ] && mkdir -p /var/backups/ghost
+        mv -f /home/${_HM_U}.ftp/platforms/data /var/backups/ghost/${_HM_U}_platforms_data
+      fi
       for Codebase in `find ${i}/* \
         -maxdepth 1 \
         -mindepth 1 \
@@ -2650,12 +2662,8 @@ purge_cruft_machine() {
         CodebaseName=$(echo ${Codebase} \
           | cut -d'/' -f7 \
           | awk '{ print $1}' 2> /dev/null)
-        distTreeNumber=$(echo ${i} \
-          | cut -d'/' -f6 \
-          | awk '{ print $1}' 2> /dev/null)
-        mkdir -p /home/${_HM_U}.ftp/platforms/${distTreeNumber}
-        ln -sfn ${Codebase} /home/${_HM_U}.ftp/platforms/${distTreeNumber}/${CodebaseName}
-        echo "Fixed ${CodebaseName} symlink to ${Codebase} for ${_HM_U}.ftp"
+        ln -sfn ${Codebase} /home/${_HM_U}.ftp/platforms/${distTrNr}/${CodebaseName}
+        echo "Fixed ${CodebaseName} in ${distTrNr} symlink to ${Codebase} for ${_HM_U}.ftp"
       done
     fi
   done
