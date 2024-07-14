@@ -2608,6 +2608,7 @@ purge_cruft_machine() {
           chattr -i /home/${_HM_U}.ftp/platforms
           chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
         fi
+        echo "Removing ${i}"
         rm -rf ${i}
       fi
     fi
@@ -2620,6 +2621,7 @@ purge_cruft_machine() {
       fi
       RevisionTest=$(ls ${i} | wc -l 2>&1)
       if [ "${RevisionTest}" -lt "2" ] && [ ! -z "${RevisionTest}" ]; then
+        echo "RevisionTest is ${RevisionTest}"
         _NOW=$(date +%y%m%d-%H%M%S 2>&1)
         mkdir -p ${User}/undo/dist/${_NOW}
         ### mv -f ${i} ${User}/undo/dist/${_NOW}/ &> /dev/null
@@ -2648,8 +2650,12 @@ purge_cruft_machine() {
         CodebaseName=$(echo ${Codebase} \
           | cut -d'/' -f7 \
           | awk '{ print $1}' 2> /dev/null)
-        ln -sfn ${Codebase} /home/${_HM_U}.ftp/platforms/${i}/${CodebaseName}
-        echo "Fixed symlink to ${Codebase} for ${_HM_U}.ftp"
+        distTreeNumber=$(echo ${i} \
+          | cut -d'/' -f6 \
+          | awk '{ print $1}' 2> /dev/null)
+        mkdir -p /home/${_HM_U}.ftp/platforms/${distTreeNumber}
+        ln -sfn ${Codebase} /home/${_HM_U}.ftp/platforms/${distTreeNumber}/${CodebaseName}
+        echo "Fixed ${CodebaseName} symlink to ${Codebase} for ${_HM_U}.ftp"
       done
     fi
   done
