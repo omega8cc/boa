@@ -58,7 +58,9 @@ To initialize your account for Ruby Gems support, follow these steps:
 6. Install Gulp: `npm install -g gulp`
 7. Install Bower: `npm install -g bower`
 
-The special control file `~/static/control/compass.info` enables Ruby Gems and NPM support for all extra SSH accounts on your instance. Deleting this file will remove all Ruby Gems and NPM packages from all SSH accounts on your Ægir Octopus Instance.
+The special control file `~/static/control/compass.info` enables Ruby Gems support for the main Ægir Octopus SSH account and for all `client` level SSH sub-accounts on your instance. Deleting this file will remove all Ruby Gems from all SSH accounts on your Ægir Octopus Instance and will remove Node/NPM support from the main account.
+
+The non-default Node/NPM support, if allowed with `/root/.allow.node.lshell.cnf` file, is initialized using the same `~/static/control/compass.info` file, but will be enabled only on the main Octopus `lshell` account. The `client` level sub-accounts will receive their own Ruby Gems access only.
 
 Some gems may require the ability to build their native binaries during installation, which is not possible in the limited shell. When you initialize your account to support Ruby Gems, a few known problematic gems will be pre-installed automatically to mitigate these issues.
 
@@ -71,8 +73,6 @@ Please note that it is not possible to use Guard in a limited shell via Drush wi
 You need to use Guard and Compass tools directly, with commands like `compass watch` or `guard start`. Ensure that Compass and Guard gems are installed first, as they are not installed by default.
 
 The initial Ruby Gems installation may take 5-6 minutes. Remember to wait until it is complete before re-logging in. Once the installation is finished, you will be able to run the `gem --version` command. If it is still unavailable, please wait a bit longer. The process may take a little longer time if you have extra SSH sub-accounts, as the system installs separate Ruby Gems and some problematic gems in every sub-account.
-
-Please note that Node/NPM support, if allowed with `/root/.allow.node.lshell.cnf` file, will be enabled only on the main Octopus `lshell` account. The `client` level sub-accounts will receive their own Ruby Gems access only.
 
 If `bundle install` complains that it can’t build a native extension for the gem `foobar`, but the gem is already installed and listed when you type `gem-list`, first compare the gem versions.
 
