@@ -1,22 +1,22 @@
-# How To: Enable Ruby Gems or Node/NPM
+# How To: Enable Ruby Gems and Node/NPM
 
-BOA does not install Compass Tools or any related Ruby Gems by default. To enable Ruby Gems support, you need to initialize your account and then use the `gem` command to install Compass, Bundler, and any other necessary gems for your theme.
+To enable Ruby Gems support you need to initialize your account and then use the `gem` command to install Compass and any other necessary gems for your theme. It takes only 5 minutes max and is now 3x faster than before.
 
-Similarly, to enable Node/NPM support, you need to initialize your account to auto-install a user-level NPM package directory. Afterward, you can use NPM to install Grunt, Gulp, and/or Bower.
+Similarly, to enable Node/NPM support, you need to initialize your account to auto-install a user-level NPM packages directory. Afterward, you can use NPM to install Grunt, Gulp, and/or Bower.
 
 ## Security Considerations for Node/NPM
 
 Since `node` can be used to bypass Limited Shell and create a significant security risk within the BOA system, it should not be enabled on any BOA system with multiple `lshell` users. Consequently, Node/NPM support is not enabled in BOA by default. To enable it, you must create an empty control file `/root/.allow.node.lshell.cnf`. Node/NPM support on hosted BOA is available only on dedicated systems like Phantom and Cluster.
 
-Please note that Node/NPM support, if allowed with `/root/.allow.node.lshell.cnf` file, will be enabled only on the main Octopus `lshell` account. The `client` level sub-accounts will receive their own Ruby Gems access only.
+Please note that Node/NPM support, if allowed with `/root/.allow.node.lshell.cnf` file, will be enabled only on the main Ægir Octopus `lshell` account. The `client` level sub-accounts will receive their own Ruby Gems access only.
 
 ## How It Works
 
-If you want to use NPM to install Grunt, Gulp, or Bower, and you previously enabled Ruby Gems support, you will need to reinitialize Ruby/NPM on your account due to security and deployment improvements made in BOA-5.3.0.
+If you want to use Ruby Gems or Node/NPM to install Grunt, Gulp, or Bower, and you previously enabled Ruby Gems support, you will need to reinitialize Ruby/NPM on your account due to security and deployment improvements made in BOA-5.3.0.
 
 1. Delete the control file `~/static/control/compass.info`.
-2. Wait until you can no longer issue the `compass --version` command.
-3. Add the control file `~/static/control/compass.info` again.
+2. Wait until you can no longer issue the `compass --version` command (5 minutes max)
+3. Add the control file `~/static/control/compass.info` again and wait (5 minutes max)
 4. Proceed with the further steps as usual.
 
 **NOTE:** On self-hosted BOA, you must add the non-default CSS symbol to the `_XTRAS_LIST` variable in your `/root/.barracuda.cnf` file and then run the `barracuda up-lts system` command before initializing Ruby Gems or NPM support in your limited shell account. This step is automated on BOA managed by Omega8.cc.
@@ -43,10 +43,10 @@ When you log into your SSH account, you will be presented with a helpful intro:
 
 ```
 
-To initialize your account for Ruby Gems support, follow these steps:
+To initialize your account for Ruby Gems and Node/NPM support, follow these steps:
 
 1. Create an empty control file: `touch ~/static/control/compass.info`
-2. Log out and wait 5-6 minutes.
+2. Log out and wait 5 minutes.
 3. Log in and install Compass: `gem install --conservative compass`
 4. Navigate to your theme directory and run `bundle install`, or manually install gems as needed:
    ```sh
@@ -72,7 +72,7 @@ Please note that it is not possible to use Guard in a limited shell via Drush wi
 
 You need to use Guard and Compass tools directly, with commands like `compass watch` or `guard start`. Ensure that Compass and Guard gems are installed first, as they are not installed by default.
 
-The initial Ruby Gems installation may take 5-6 minutes. Remember to wait until it is complete before re-logging in. Once the installation is finished, you will be able to run the `gem --version` command. If it is still unavailable, please wait a bit longer. The process may take a little longer time if you have extra SSH sub-accounts, as the system installs separate Ruby Gems and some problematic gems in every sub-account.
+The initial Ruby Gems installation may take 5 minutes. Remember to wait until it is complete before re-logging in. Once the installation is finished, you will be able to run the `gem --version` command. If it is still unavailable, please wait a bit longer. The process may take a little longer time if you have extra SSH sub-accounts, as the system installs separate Ruby Gems and some problematic gems in every sub-account.
 
 If `bundle install` complains that it can’t build a native extension for the gem `foobar`, but the gem is already installed and listed when you type `gem-list`, first compare the gem versions.
 
