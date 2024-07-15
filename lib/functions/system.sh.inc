@@ -7579,6 +7579,9 @@ if_install_ftpd() {
   fi
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "FTP" ]]; then
+    if [ ! -e "/var/ftp" ]; then
+      mrun "useradd -r -d /var/ftp -s /sbin/nologin -m ftp" 2> /dev/null
+    fi
     if [ ! -e "/etc/ssl/private/pure-ftpd.pem" ] \
       || [ ! -e "/usr/local/sbin/pure-ftpd" ] \
       || [ ! -e "${pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_X_SE}-${_X_VERSION}.log" ] \
