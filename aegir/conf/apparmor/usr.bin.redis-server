@@ -10,6 +10,11 @@
   include <abstractions/nameservice>
   include <abstractions/user-tmp>
 
+  # Allow reading necessary kernel parameters
+  /proc/sys/kernel/** r,
+  /sys/devices/** r,
+  /sys/kernel/** r,
+
   # Allow execution of redis-server binary
   /usr/bin/redis-server mrix,
 
