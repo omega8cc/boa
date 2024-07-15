@@ -451,7 +451,7 @@ enable_chattr() {
         chown root:root /opt/user/npm
         chmod 1777 /opt/user/npm
         [ ! -d "/opt/user/npm/${UQ}" ] && mkdir -p /opt/user/npm/${UQ}
-        [ ! -d "/home/${UQ}/.npmrc" ] && su -s /bin/bash - ${UQ} -c "echo prefix = /opt/user/npm/${UQ}/.npm-packages > ~/.npmrc"
+        [ ! -e "/home/${UQ}/.npmrc" ] && su -s /bin/bash - ${UQ} -c "echo 'prefix = /opt/user/npm/${UQ}/.npm-packages' > ~/.npmrc"
         mkdir -p /opt/user/npm/${UQ}/.bundle
         mkdir -p /opt/user/npm/${UQ}/.composer
         mkdir -p /opt/user/npm/${UQ}/.config
