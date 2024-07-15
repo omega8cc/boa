@@ -13,6 +13,7 @@
   include <abstractions/nameservice>
 
   # Capabilities needed by PHP-CLI
+  capability sys_resource,
   capability setgid,
   capability setuid,
   capability dac_override,
@@ -21,8 +22,14 @@
   # Allow PHP-CLI to execute its own binary
   /opt/php81/bin/php mrix,
 
+  # Allow PHP-CLI to execute some other binaries
+  /bin/dash mrix,
+  /usr/sbin/postdrop mrix,
+  /usr/sbin/sendmail mrix,
+
   # Allow PHP-CLI to read its configuration files
-  # Allow PHP-CLI to read its configuration files
+  /etc/sudo.conf r,
+  /etc/sudoers r,
   /home/*/.drush/ r,
   /home/*/.drush/** r,
   /data/conf/** r,
