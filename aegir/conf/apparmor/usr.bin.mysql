@@ -79,7 +79,7 @@
   deny /boot/** mrwklx,
 
   # Deny access to various sensitive files
-  deny /etc/shadow* rw,
+  deny /etc/shadow* rwlx,
   deny /etc/shadow- r,
   deny /etc/gshadow r,
   deny /etc/gshadow- r,

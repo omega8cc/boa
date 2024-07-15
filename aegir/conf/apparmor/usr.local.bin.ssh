@@ -28,7 +28,7 @@
   network inet6 stream,
 
   # Deny access to critical system files
-  deny /etc/shadow* rw,
+  deny /etc/shadow* rwlx,
 
   # Allow read access to user information files
   /etc/passwd r,

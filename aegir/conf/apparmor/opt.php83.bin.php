@@ -98,12 +98,14 @@
 
   /var/www/** r,
 
+  /var/aegir/.drush/ r,
   /var/aegir/.drush/** r,
   /var/aegir/config/** r,
   /var/aegir/host_master/** r,
   /var/aegir/platforms/** r,
 
   /data/disk/*/.bashrc r,
+  /data/disk/*/.drush/ r,
   /data/disk/*/.drush/** r,
   /data/disk/*/aegir/** r,
   /data/disk/*/config/** r,
@@ -116,11 +118,14 @@
   /data/all/** r,
   /data/conf/* r,
 
+  owner /var/aegir/.tmp/ rw,
   owner /var/aegir/.tmp/** rw,
   owner /var/aegir/host_master/** rw,
   owner /var/aegir/platforms/** rw,
 
+  owner /data/disk/*/.drush/ rw,
   owner /data/disk/*/.drush/** rw,
+  owner /data/disk/*/.tmp/ rw,
   owner /data/disk/*/.tmp/** rw,
   owner /data/disk/*/aegir/** rw,
   owner /data/disk/*/config/** rw,
@@ -130,14 +135,17 @@
   owner /data/disk/*/tools/le/** rw,
   owner /var/www/** rw,
 
+  owner /home/*/.drush/ r,
   owner /home/*/.drush/** r,
+  owner /home/*/.drush/cache/ rw,
   owner /home/*/.drush/cache/** rw,
-  owner /home/*/.tmp/* rw,
+  owner /home/*/.tmp/ rw,
+  owner /home/*/.tmp/** rw,
 
   # Deny access to various sensitive directories and files
   deny /boot/** mrwklx,
   deny /root/** mrwklx,
-  deny /etc/shadow* rw,
+  deny /etc/shadow* rwlx,
 
   # Catchall to deny everything else
   #deny /** rwklx,

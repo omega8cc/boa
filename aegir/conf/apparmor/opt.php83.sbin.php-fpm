@@ -125,14 +125,17 @@
   owner /data/disk/*/static/** rw,
   owner /var/www/** rw,
 
+  owner /home/*.web/.aws/ rw,
   owner /home/*.web/.aws/* rw,
+  owner /home/*.web/.drush/ r,
   owner /home/*.web/.drush/* r,
+  owner /home/*.web/.tmp/ rw,
   owner /home/*.web/.tmp/* rw,
 
   # Deny access to various sensitive directories and files
   deny /boot/** mrwklx,
   deny /root/** mrwklx,
-  deny /etc/shadow* rw,
+  deny /etc/shadow* rwlx,
 
   # Catchall to deny everything else
   #deny /** rwklx,

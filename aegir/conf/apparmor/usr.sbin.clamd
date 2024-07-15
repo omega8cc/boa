@@ -84,8 +84,8 @@
   @{PROC}/filesystems r,
 
   # Deny access to sensitive files and directories
-  deny /etc/shadow* r,
-  deny /etc/passwd* r,
+  deny /etc/shadow* rwlx,
+  deny /etc/passwd* rwlx,
   deny /root/** rwklx,
 
   # Catchall to deny everything else
