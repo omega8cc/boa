@@ -443,19 +443,38 @@ if_install_node() {
   if [ -e "/root/.allow.node.lshell.cnf" ]; then
     if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
       || [[ "${_XTRAS_LIST}" =~ "CSS" ]]; then
-      rm -f /etc/apt/sources.list.d/nodesource.list
-      rm -f /usr/share/keyrings/nodesource.gpg
-      apt_clean_update
-      if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
-        curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+      _NODE_INSTALL=NO
+      isNode=$(which node 2>&1)
+      if [ -x "${isNode}" ]; then
+       _NODE_V=$(${isNode} --version \
+         | cut -d" " -f2 \
+          | awk '{ print $1}' 2>&1)
+        if [ "${_NODE_V}" != "${_NODE_VRN}" ]; then
+          _NODE_INSTALL=YES
+          _L_ST="upgrade"
+        fi
       else
-        curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+        _NODE_INSTALL=YES
+        _L_ST="install"
       fi
-      mrun "${_INSTAPP} nodejs" 2> /dev/null
+      if [ "${_NODE_INSTALL}" = "YES" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Node ${_NODE_VRN} ${_L_ST}"
+        fi
+        rm -f /etc/apt/sources.list.d/nodesource.list
+        rm -f /usr/share/keyrings/nodesource.gpg
+        apt_clean_update
+        if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
+          curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+        else
+          curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+        fi
+        mrun "${_INSTAPP} nodejs" 2> /dev/null
+      fi
+      [ ! -d "/opt/user/npm" ] && mkdir -p /opt/user/npm
+      chown root:root /opt/user/npm
+      chmod 1777 /opt/user/npm
     fi
-    [ ! -d "/opt/user/npm" ] && mkdir -p /opt/user/npm
-    chown root:root /opt/user/npm
-    chmod 1777 /opt/user/npm
   else
     isNode=$(which node 2>&1)
     if [ -x "${isNode}" ]; then
