@@ -10,6 +10,9 @@
   include <abstractions/nameservice>
   include <abstractions/ssl_keys>
 
+  # Capabilities needed by Rsyslogd service
+  capability syslog,
+
   # Allow execution of the rsyslogd binary
   /usr/sbin/rsyslogd mrix,
 
@@ -26,6 +29,7 @@
 
   # Allow read access to system configuration files
   /etc/rsyslog.conf r,
+  /etc/rsyslog.d/ r,
   /etc/rsyslog.d/** r,
   /etc/localtime r,
   /etc/ssl/certs/** r,
@@ -33,13 +37,15 @@
   # Allow read and write access to the log directories and files
   /var/log/** rwk,
   /var/spool/rsyslog/** rw,
+  /var/spool/postfix/** rw,
 
   # Allow network access
   network inet stream,
   network inet dgram,
 
   # Allow access to pid files
-  /var/run/rsyslogd.pid rw,
+  /run/rsyslogd.pid rw,
+  /run/rsyslogd.pid.tmp rw,
 
   # Capabilities needed by Rsyslogd service
   capability net_bind_service,
@@ -52,6 +58,7 @@
   /proc/sys/kernel/random/uuid r,
   /proc/cpuinfo r,
   /proc/meminfo r,
+  /proc/kmsg r,
   /proc/stat r,
 
   # Allow access to /dev for logging

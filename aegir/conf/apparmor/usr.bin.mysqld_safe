@@ -28,9 +28,11 @@
   /etc/mysql/mysql.conf.d/** r,
 
   # Allow mysqld_safe to access its data directory
+  /var/lib/mysql/ rwk,
   /var/lib/mysql/** rwk,
 
   # Allow mysqld_safe to access its run directory
+  /run/mysqld/ rw,
   /run/mysqld/** rw,
 
   # Allow mysqld_safe to write to its log files
