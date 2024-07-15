@@ -11,7 +11,7 @@
   include <abstractions/user-tmp>
 
   # Allow reading necessary kernel parameters
-  /proc/sys/kernel/** r,
+  /proc/sys/** r,
   /sys/devices/** r,
   /sys/kernel/** r,
 
