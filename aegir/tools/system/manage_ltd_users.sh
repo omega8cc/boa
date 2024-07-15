@@ -2441,6 +2441,7 @@ elif [ ! -e "/var/xdrago/conf/lshell.conf" ]; then
   echo "Missing /var/xdrago/conf/lshell.conf template"
   exit 0
 else
+  rm -f /var/xdrago/log/wait-manage-ltd-users.pid
   touch /var/run/manage_ltd_users.pid
   count_cpu
   find_fast_mirror_early
