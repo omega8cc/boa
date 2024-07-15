@@ -126,7 +126,6 @@
   deny /boot/** mrwklx,
   deny /root/** mrwklx,
   deny /etc/shadow* rw,
-  deny /etc/passwd* rw,
 
   # Catchall to deny everything else
   #deny /** rwklx,
