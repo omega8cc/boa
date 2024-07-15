@@ -36,6 +36,7 @@
   /opt/php81/** r,
 
   # Allow PHP-CLI to execute some other binaries
+  /usr/bin/sudo mrix,
   /bin/dash mrix,
   /bin/grep mrix,
   /bin/rm mrix,
