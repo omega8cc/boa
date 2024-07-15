@@ -3,7 +3,7 @@
 
 #include <tunables/global>
 
-/opt/php71/sbin/php-fpm flags=(complain) {
+/opt/php71/sbin/php-fpm flags=(attach_disconnected) {
 
   # Include common AppArmor abstractions
   include <abstractions/base>
