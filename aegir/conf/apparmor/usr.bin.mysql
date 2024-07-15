@@ -64,9 +64,6 @@
 
   # Deny access to various sensitive directories
   deny /boot/** mrwklx,
-  deny /dev/** mrwklx,
-  deny /media/** mrwklx,
-  deny /mnt/** mrwklx,
 
   # Deny access to various sensitive files
   deny /etc/shadow* rw,

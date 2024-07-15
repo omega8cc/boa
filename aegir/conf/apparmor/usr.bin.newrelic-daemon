@@ -59,14 +59,8 @@
 
   # Deny access to various sensitive directories
   deny /boot/** mrwklx,
-  deny /dev/** mrwklx,
-  deny /home/** mrwklx,
-  deny /media/** mrwklx,
-  deny /mnt/** mrwklx,
   deny /opt/** mrwklx,
   deny /root/** mrwklx,
-  deny /srv/** mrwklx,
-  deny /usr/local/** mrwklx,
 
   # Catchall to deny everything else
   #deny /** rwklx,
