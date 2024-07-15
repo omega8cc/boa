@@ -20,6 +20,7 @@
   capability setgid,
   capability setuid,
   capability sys_resource,
+  capability mmap,
 
   network inet stream,
   network inet6 stream,
