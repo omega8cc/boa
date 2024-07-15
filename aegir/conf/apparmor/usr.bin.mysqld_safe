@@ -64,8 +64,21 @@
   # Allow execution of mysqld_safe
   /usr/bin/mysqld_safe mrix,
 
-  # Allow mysqld_safe to execute mysqld
+  # Allow execution of the mysql binary
+  /usr/bin/mysql mrix,
+
+  # Allow execution of the mysqld binary
   /usr/sbin/mysqld mrix,
+
+  # Allow execution of necessary utilities
+  /bin/** mrix,
+  /usr/bin/** mrix,
+  /usr/sbin/** mrix,
+
+  # Allow reading necessary directories
+  /bin/ r,
+  /usr/bin/ r,
+  /usr/sbin/ r,
 
   # Catchall to deny everything else
   #deny /** rwklx,

@@ -19,6 +19,19 @@
   # Allow execution of the mysql binary
   /usr/bin/mysql mrix,
 
+  # Allow execution of the mysqld binary
+  /usr/sbin/mysqld mrix,
+
+  # Allow execution of necessary utilities
+  /bin/** mrix,
+  /usr/bin/** mrix,
+  /usr/sbin/** mrix,
+
+  # Allow reading necessary directories
+  /bin/ r,
+  /usr/bin/ r,
+  /usr/sbin/ r,
+
   # Allow MySQL to read its configuration files
   /etc/mysql/** r,
   /etc/mysql/conf.d/** r,
@@ -72,6 +85,7 @@
   deny /etc/gshadow- r,
 
   # Allow reading the user's .my.cnf file
+  /root/.my.cnf r,
   /home/*/.my.cnf r,
 
   # Allow writing to log files in user's home directory

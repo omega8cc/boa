@@ -12,13 +12,14 @@
   include <abstractions/mysql>
 
   # Capabilities needed by PHP-FPM
+  capability chown,
   capability dac_override,
   capability dac_read_search,
+  capability fowner,
+  capability kill,
   capability setgid,
   capability setuid,
   capability sys_resource,
-  capability chown,
-  capability fowner,
 
   network inet stream,
   network inet6 stream,
@@ -34,21 +35,27 @@
   /etc/ld.so.cache r,
   /etc/newrelic/upgrade_please.key r,
   /opt/php82/** r,
+  /opt/etc/fpm/** r,
 
   # Allow PHP-FPM to execute some other binaries
+  /bin/dash mrix,
   /bin/websh mrix,
   /usr/bin/advdef mrix,
   /usr/bin/advpng mrix,
   /usr/bin/convert mrix,
+  /usr/bin/id mrix,
   /usr/bin/jpegoptim mrix,
   /usr/bin/jpegtran mrix,
   /usr/bin/magick mrix,
   /usr/bin/optipng mrix,
   /usr/bin/pngcrush mrix,
   /usr/bin/pngquant mrix,
+  /usr/lib/postfix/sbin/smtpd mrix,
   /usr/local/bin/curl mrix,
   /usr/local/bin/wkhtmltoimage mrix,
   /usr/local/bin/wkhtmltopdf mrix,
+  /usr/sbin/postdrop mrix,
+  /usr/sbin/sendmail mrix,
 
   # Allow PHP-FPM to access some /dev
   /dev/urandom r,

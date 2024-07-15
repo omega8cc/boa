@@ -64,6 +64,8 @@
   /usr/sbin/unbound mrix,
 
   # Allow Unbound to access its pid and control socket
-  /var/run/unbound/unbound.pid rw,
+  /usr/etc/unbound/unbound.ctl rw,
+  /usr/etc/unbound/unbound.pid rw,
   /var/run/unbound/unbound.ctl rw,
+  /var/run/unbound/unbound.pid rw,
 }

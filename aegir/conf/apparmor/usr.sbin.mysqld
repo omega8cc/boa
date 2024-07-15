@@ -21,8 +21,24 @@
   network inet stream,
   network inet6 stream,
 
+  # Allow execution of mysqld_safe
+  /usr/bin/mysqld_safe mrix,
+
+  # Allow execution of the mysql binary
+  /usr/bin/mysql mrix,
+
   # Allow execution of the mysqld binary
   /usr/sbin/mysqld mrix,
+
+  # Allow execution of necessary utilities
+  /bin/** mrix,
+  /usr/bin/** mrix,
+  /usr/sbin/** mrix,
+
+  # Allow reading necessary directories
+  /bin/ r,
+  /usr/bin/ r,
+  /usr/sbin/ r,
 
   # Allow MySQL to read its configuration files
   /etc/mysql/** r,

@@ -98,6 +98,7 @@
 
   /var/www/** r,
 
+  /var/aegir/.drush/** r,
   /var/aegir/config/** r,
   /var/aegir/host_master/** r,
   /var/aegir/platforms/** r,
