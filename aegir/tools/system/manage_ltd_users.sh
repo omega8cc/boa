@@ -452,6 +452,7 @@ enable_chattr() {
         chmod 1777 /opt/user/npm
         [ ! -d "/opt/user/npm/${UQ}" ] && mkdir -p /opt/user/npm/${UQ}
         [ ! -e "/home/${UQ}/.npmrc" ] && su -s /bin/bash - ${UQ} -c "echo 'prefix = /opt/user/npm/${UQ}/.npm-packages' > ~/.npmrc"
+        [ -e "/home/${UQ}/.npmrc" ] && chattr +i /home/${UQ}/.npmrc
         mkdir -p /opt/user/npm/${UQ}/.bundle
         mkdir -p /opt/user/npm/${UQ}/.composer
         mkdir -p /opt/user/npm/${UQ}/.config
