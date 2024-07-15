@@ -1,9 +1,29 @@
 
 ###
+### Stable BOA-5.3.0-pro - Full Edition
+### Date: Sat 13 Jul 2024 02:49:37 PM EDT in New York
+###
+
+@=> New Features
+
+    *
+
+@=> Improvements
+
+    *
+
+@=> Changes and Upgrades
+
+    *
+
+@=> Important Fixes
+
+    *
+
+
+###
 ### Stable BOA-5.2.0 - Full Edition
 ### Date: Wed 03 Apr 2024 02:11:56 PM CEST in Warsaw
-###
-### Documenting details in progress...
 ###
 
 @=> Notes on new available BOA branches and licenses
