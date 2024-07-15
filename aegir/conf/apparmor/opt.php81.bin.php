@@ -22,8 +22,11 @@
   /opt/php81/bin/php mrix,
 
   # Allow PHP-CLI to read its configuration files
+  # Allow PHP-CLI to read its configuration files
+  /home/*/.drush/ r,
   /home/*/.drush/** r,
   /data/conf/** r,
+  /etc/mysql/my.cnf r,
   /etc/ImageMagick-6/log.xml r,
   /etc/ImageMagick-6/policy.xml r,
   /etc/ld.so.cache r,
@@ -135,8 +138,6 @@
   owner /data/disk/*/tools/le/** rw,
   owner /var/www/** rw,
 
-  owner /home/*/.drush/ r,
-  owner /home/*/.drush/** r,
   owner /home/*/.drush/cache/ rw,
   owner /home/*/.drush/cache/** rw,
   owner /home/*/.tmp/ rw,
