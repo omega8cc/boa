@@ -27,6 +27,8 @@
   /home/*/.drush/** r,
   /data/conf/** r,
   /etc/mysql/my.cnf r,
+  /etc/mysql/conf.d/ r,
+  /etc/mysql/conf.d/* r,
   /etc/ImageMagick-6/log.xml r,
   /etc/ImageMagick-6/policy.xml r,
   /etc/ld.so.cache r,
