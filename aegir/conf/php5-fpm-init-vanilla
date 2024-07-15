@@ -17,7 +17,7 @@ DESC="PHP5 FastCGI Process Manager"
 NAME=php5-fpm
 DAEMON=/usr/sbin/$NAME
 DAEMON_ARGS="--fpm-config /etc/php5/fpm/php-fpm.conf"
-PIDFILE=/var/run/php5-fpm.pid
+PIDFILE=/run/php5-fpm.pid
 TIMEOUT=30
 SCRIPTNAME=/etc/init.d/$NAME
 

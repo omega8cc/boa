@@ -46,9 +46,11 @@
   /etc/mysql/mysql.conf.d/** r,
 
   # Allow MySQL to access its data directory
+  /var/lib/mysql/ rwk,
   /var/lib/mysql/** rwk,
 
   # Allow MySQL to access its run directory
+  /run/mysqld/ rw,
   /run/mysqld/** rw,
 
   # Allow MySQL to write to its log files

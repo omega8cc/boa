@@ -44,14 +44,14 @@ case "$1" in
 			# Set the ulimits
 			ulimit $ULIMIT
 		fi
-		start-stop-daemon --start --quiet --pidfile /var/run/$NAME.pid \
+		start-stop-daemon --start --quiet --pidfile /run/$NAME.pid \
 		    --exec $DAEMON -- $DAEMON_OPTS || true
 		echo "$NAME."
 		;;
 
 	stop)
 		echo -n "Stopping $DESC: "
-		start-stop-daemon --stop --quiet --pidfile /var/run/$NAME.pid \
+		start-stop-daemon --stop --quiet --pidfile /run/$NAME.pid \
 		    --exec $DAEMON || true
 		echo "$NAME."
 		;;
@@ -59,18 +59,18 @@ case "$1" in
 	restart|force-reload)
 		echo -n "Restarting $DESC: "
 		start-stop-daemon --stop --quiet --pidfile \
-		    /var/run/$NAME.pid --exec $DAEMON || true
+		    /run/$NAME.pid --exec $DAEMON || true
 		sleep 1
 		test_nginx_config
 		start-stop-daemon --start --quiet --pidfile \
-		    /var/run/$NAME.pid --exec $DAEMON -- $DAEMON_OPTS || true
+		    /run/$NAME.pid --exec $DAEMON -- $DAEMON_OPTS || true
 		echo "$NAME."
 		;;
 
 	reload)
 		echo -n "Reloading $DESC configuration: "
 		test_nginx_config
-		start-stop-daemon --stop --signal HUP --quiet --pidfile /var/run/$NAME.pid \
+		start-stop-daemon --stop --signal HUP --quiet --pidfile /run/$NAME.pid \
 		    --exec $DAEMON || true
 		echo "$NAME."
 		;;
@@ -85,7 +85,7 @@ case "$1" in
 		;;
 
 	status)
-		status_of_proc -p /var/run/$NAME.pid "$DAEMON" nginx && exit 0 || exit $?
+		status_of_proc -p /run/$NAME.pid "$DAEMON" nginx && exit 0 || exit $?
 		;;
 	*)
 		echo "Usage: $NAME {start|stop|restart|reload|force-reload|status|configtest}" >&2

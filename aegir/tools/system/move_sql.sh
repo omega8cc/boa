@@ -22,22 +22,22 @@ fi
 
 create_locks() {
   echo "Creating locks..."
-  touch /var/run/boa_wait.pid
-  touch /var/run/fmp_wait.pid
-  touch /var/run/restarting_fmp_wait.pid
-  touch /var/run/mysql_restart_running.pid
+  touch /run/boa_wait.pid
+  touch /run/fmp_wait.pid
+  touch /run/restarting_fmp_wait.pid
+  touch /run/mysql_restart_running.pid
 }
 
 remove_locks() {
   echo "Removing locks..."
-  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
-  rm -f /var/run/fmp_wait.pid
-  rm -f /var/run/restarting_fmp_wait.pid
-  rm -f /var/run/mysql_restart_running.pid
+  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  rm -f /run/fmp_wait.pid
+  rm -f /run/restarting_fmp_wait.pid
+  rm -f /run/mysql_restart_running.pid
 }
 
 check_running() {
-  if [ -e "/var/run/mysql_restart_running.pid" ]; then
+  if [ -e "/run/mysql_restart_running.pid" ]; then
     echo "MySQLD restart procedure in progress?"
     echo "Nothing to do, let's quit now. Bye!"
     exit 1
@@ -60,7 +60,7 @@ start_sql() {
   renice ${_B_NICE} -p $$ &> /dev/null
   service mysql start &> /dev/null
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
+    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     echo "Waiting for MySQLD graceful start..."
     sleep 3

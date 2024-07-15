@@ -331,7 +331,7 @@ _TOMCAT_TO_JETTY=NO
 ### $ innobackupex --copy-back /data/disk/arch/hourly/latest
 ### $ chown -R mysql:mysql: /var/lib/mysql
 ### $ chown -R mysql:mysql: /var/log/mysql
-### $ chown -R mysql:mysql: /var/run/mysqld
+### $ chown -R mysql:mysql: /run/mysqld
 ### $ service mysql start
 ### $ service cron start
 ###

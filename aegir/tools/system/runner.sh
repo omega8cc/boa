@@ -81,7 +81,7 @@ for Runner in `find /var/xdrago -maxdepth 1 -mindepth 1 -type f \
   load_control
   if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ]; then
     echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
-    if [ ! -e "/var/run/boa_wait.pid" ]; then
+    if [ ! -e "/run/boa_wait.pid" ]; then
       echo running ${Runner}
       bash ${Runner}
       n=$((RANDOM%9+2))
@@ -98,8 +98,8 @@ done
 
 ###-------------SYSTEM-----------------###
 
-if [ -e "/var/run/boa_wait.pid" ] \
-  || [ -e "/var/run/boa_cron_wait.pid" ]; then
+if [ -e "/run/boa_wait.pid" ] \
+  || [ -e "/run/boa_cron_wait.pid" ]; then
   touch /var/xdrago/log/wait-runner.pid
   echo "Another BOA task is running, we will try again later..."
   exit 0
@@ -115,13 +115,13 @@ else
     exit 0
   fi
   if [ -e "/root/.slow.cron.cnf" ]; then
-    touch /var/run/boa_cron_wait.pid
+    touch /run/boa_cron_wait.pid
     sleep 15
     action
     sleep 15
-    rm -f /var/run/boa_cron_wait.pid
+    rm -f /run/boa_cron_wait.pid
   elif [ -e "/root/.fast.cron.cnf" ]; then
-    rm -f /var/run/boa_cron_wait.pid
+    rm -f /run/boa_cron_wait.pid
     action
     sleep 5
     action

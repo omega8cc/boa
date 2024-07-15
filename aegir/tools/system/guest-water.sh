@@ -579,7 +579,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   fi
 
   n=$((RANDOM%120+90))
-  touch /var/run/water.pid
+  touch /run/water.pid
   echo Waiting $n seconds...
   sleep $n
 
@@ -716,7 +716,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
     fi
   fi
-  rm -f /var/run/water.pid
+  rm -f /run/water.pid
   echo guard fin `date`
   ntpdate pool.ntp.org > /dev/null 2>&1 &
 else

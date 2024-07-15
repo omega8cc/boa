@@ -100,16 +100,16 @@ if [[ "${_VM_TEST}" =~ "-beng" ]]; then
 else
   _VMFAMILY="XEN"
 fi
-touch /var/run/boa_sql_cluster_backup.pid
+touch /run/boa_sql_cluster_backup.pid
 
 create_locks() {
   echo "Creating locks for $1"
-  touch /var/run/mysql_cluster_backup_running.pid
+  touch /run/mysql_cluster_backup_running.pid
 }
 
 remove_locks() {
   echo "Removing locks for $1"
-  rm -f /var/run/mysql_cluster_backup_running.pid
+  rm -f /run/mysql_cluster_backup_running.pid
 }
 
 check_running() {
@@ -375,7 +375,7 @@ for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
 done
 
 echo "INFO: Completing all dbs backups on `date`"
-rm -f /var/run/boa_sql_cluster_backup.pid
+rm -f /run/boa_sql_cluster_backup.pid
 touch /var/xdrago/log/last-run-cluster-backup
 
 echo "INFO: Starting dbs backup compress on `date`"

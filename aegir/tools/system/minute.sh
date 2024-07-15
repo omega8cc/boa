@@ -32,7 +32,7 @@ if [ -e "/root/.step.init.systemd.two.cnf" ]; then
 fi
 
 sql_restart() {
-  touch /var/run/boa_run.pid
+  touch /run/boa_run.pid
   echo "$(date 2>&1) $1 incident detected"                          >> ${pthOml}
   sleep 5
   echo "$(date 2>&1) $1 incident response started"                  >> ${pthOml}
@@ -45,7 +45,7 @@ sql_restart() {
   echo "$(date 2>&1) $1 incident response completed"                >> ${pthOml}
   echo                                                              >> ${pthOml}
   sleep 5
-  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
 }
 
@@ -72,7 +72,7 @@ if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
   fi
 fi
 
-if [ -e "/var/lib/mysql/ibtmp1" ] && [ ! -e "/var/run/boa_run.pid" ]; then
+if [ -e "/var/lib/mysql/ibtmp1" ] && [ ! -e "/run/boa_run.pid" ]; then
   _SQL_TEMP_SIZE_TEST=$(du -s -h /var/lib/mysql/ibtmp1)
   if [[ "${_SQL_TEMP_SIZE_TEST}" =~ "G" ]]; then
     echo ${_SQL_TEMP_SIZE_TEST} too big
@@ -141,15 +141,15 @@ check_unbound
 if [ -e "/var/log/php" ]; then
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
     | grep --count "already listen on"` -gt "0" ]; then
-    touch /var/run/fmp_wait.pid
-    touch /var/run/restarting_fmp_wait.pid
+    touch /run/fmp_wait.pid
+    touch /run/restarting_fmp_wait.pid
     sleep 8
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     _NOW=${_NOW//[^0-9-]/}
     mkdir -p /var/backups/php-logs/${_NOW}/
     mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
-    rm -f /var/run/*.fpm.socket
+    rm -f /run/*.fpm.socket
     renice ${_B_NICE} -p $$ &> /dev/null
     _PHP_V="83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
@@ -158,22 +158,22 @@ if [ -e "/var/log/php" ]; then
       fi
     done
     sleep 8
-    rm -f /var/run/fmp_wait.pid
-    rm -f /var/run/restarting_fmp_wait.pid
+    rm -f /run/fmp_wait.pid
+    rm -f /run/restarting_fmp_wait.pid
     echo "$(date 2>&1) FPM instances conflict detected" >> \
       /var/xdrago/log/fpm.conflict.incident.log
   fi
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
     | grep --count "process.max"` -gt "0" ]; then
-    touch /var/run/fmp_wait.pid
-    touch /var/run/restarting_fmp_wait.pid
+    touch /run/fmp_wait.pid
+    touch /run/restarting_fmp_wait.pid
     sleep 8
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     _NOW=${_NOW//[^0-9-]/}
     mkdir -p /var/backups/php-logs/${_NOW}/
     mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
-    rm -f /var/run/*.fpm.socket
+    rm -f /run/*.fpm.socket
     renice ${_B_NICE} -p $$ &> /dev/null
     _PHP_V="83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
@@ -182,8 +182,8 @@ if [ -e "/var/log/php" ]; then
       fi
     done
     sleep 8
-    rm -f /var/run/fmp_wait.pid
-    rm -f /var/run/restarting_fmp_wait.pid
+    rm -f /run/fmp_wait.pid
+    rm -f /run/restarting_fmp_wait.pid
     echo "$(date 2>&1) Too many running FPM childs detected" >> \
       /var/xdrago/log/fpm.childs.incident.log
   fi
@@ -192,7 +192,7 @@ fi
 _PHPLOG_SIZE_TEST=$(du -s -h /var/log/php 2>&1)
 if [[ "${_PHPLOG_SIZE_TEST}" =~ "G" ]]; then
   echo ${_PHPLOG_SIZE_TEST} too big
-  touch /var/run/fmp_wait.pid
+  touch /run/fmp_wait.pid
   rm -f /var/log/php/*
   renice ${_B_NICE} -p $$ &> /dev/null
   _PHP_V="83 82 81 80 74 73 72 71 70 56"
@@ -211,13 +211,13 @@ if [[ "${_PHPLOG_SIZE_TEST}" =~ "G" ]]; then
     service php53-fpm stop
   fi
   sleep 8
-  rm -f /var/run/fmp_wait.pid
+  rm -f /run/fmp_wait.pid
   echo "$(date 2>&1) Too big PHP error logs deleted: ${_PHPLOG_SIZE_TEST}" >> \
     /var/xdrago/log/php.giant.logs.incident.log
 fi
 
 almost_oom_kill() {
-  touch /var/run/boa_run.pid
+  touch /run/boa_run.pid
   echo "$(date 2>&1) Almost OOM $1 detected"                        >> ${pthOml}
   sleep 5
   echo "$(date 2>&1) Almost OOM incident response started"          >> ${pthOml}
@@ -229,12 +229,12 @@ almost_oom_kill() {
   echo "$(date 2>&1) Almost OOM incident response completed"        >> ${pthOml}
   echo                                                              >> ${pthOml}
   sleep 5
-  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
 }
 
 oom_restart() {
-  touch /var/run/boa_run.pid
+  touch /run/boa_run.pid
   echo "$(date 2>&1) OOM $1 detected"                               >> ${pthOml}
   sleep 5
   echo "$(date 2>&1) OOM incident response started"                 >> ${pthOml}
@@ -260,7 +260,7 @@ oom_restart() {
   echo "$(date 2>&1) OOM incident response completed"               >> ${pthOml}
   echo                                                              >> ${pthOml}
   sleep 5
-  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
 }
 
@@ -314,7 +314,7 @@ redis_oom_check() {
     service redis-server start &> /dev/null
     echo "$(date 2>&1) RedisException OOM detected"
     echo "$(date 2>&1) RedisException OOM detected" >> /var/xdrago/log/redis.watch.log
-    touch /var/run/fmp_wait.pid
+    touch /run/fmp_wait.pid
     sleep 8
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     _NOW=${_NOW//[^0-9-]/}
@@ -328,7 +328,7 @@ redis_oom_check() {
       fi
     done
     sleep 8
-    rm -f /var/run/fmp_wait.pid
+    rm -f /run/fmp_wait.pid
   fi
 }
 redis_oom_check
@@ -336,7 +336,7 @@ redis_oom_check
 redis_slow_check() {
   if [ `tail --lines=500 /var/log/php/fpm-*-slow.log \
     | grep --count "PhpRedis.php"` -gt "5" ]; then
-    touch /var/run/fmp_wait.pid
+    touch /run/fmp_wait.pid
     sleep 8
     service redis-server stop &> /dev/null
     killall -9 redis-server &> /dev/null
@@ -354,7 +354,7 @@ redis_slow_check() {
       fi
     done
     sleep 8
-    rm -f /var/run/fmp_wait.pid
+    rm -f /run/fmp_wait.pid
     echo "$(date 2>&1) Slow PhpRedis detected" >> \
       /var/xdrago/log/redis.slow.incident.log
   fi
@@ -364,8 +364,8 @@ redis_slow_check
 fpm_sockets_healing() {
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
     | grep --count "Address already in use"` -gt "0" ]; then
-    touch /var/run/fmp_wait.pid
-    touch /var/run/restarting_fmp_wait.pid
+    touch /run/fmp_wait.pid
+    touch /run/restarting_fmp_wait.pid
     sleep 8
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     _NOW=${_NOW//[^0-9-]/}
@@ -380,8 +380,8 @@ fpm_sockets_healing() {
       fi
     done
     sleep 8
-    rm -f /var/run/fmp_wait.pid
-    rm -f /var/run/restarting_fmp_wait.pid
+    rm -f /run/fmp_wait.pid
+    rm -f /run/restarting_fmp_wait.pid
     echo "$(date 2>&1) FPM Sockets conflict detected" >> \
       /var/xdrago/log/fpm.sockets.incident.log
   fi
@@ -389,7 +389,7 @@ fpm_sockets_healing() {
 fpm_sockets_healing
 
 jetty_restart() {
-  touch /var/run/boa_wait.pid
+  touch /run/boa_wait.pid
   sleep 5
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
   rm -f /var/log/jetty{7,8,9}/*
@@ -404,7 +404,7 @@ jetty_restart() {
     service jetty7 start
   fi
   sleep 5
-  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
+  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
 }
 
 if [ -e "/var/log/jetty9" ]; then
@@ -585,10 +585,10 @@ lsyncd_proc_control() {
   fi
 }
 
-if [ -e "/var/run/boa_sql_backup.pid" ] \
-  || [ -e "/var/run/boa_sql_cluster_backup.pid" ] \
-  || [ -e "/var/run/boa_run.pid" ] \
-  || [ -e "/var/run/mysql_restart_running.pid" ]; then
+if [ -e "/run/boa_sql_backup.pid" ] \
+  || [ -e "/run/boa_sql_cluster_backup.pid" ] \
+  || [ -e "/run/boa_run.pid" ] \
+  || [ -e "/run/mysql_restart_running.pid" ]; then
   _SQL_CTRL=NO
 else
   _SQL_CTRL=YES

@@ -588,23 +588,23 @@ _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
 
 create_locks() {
   echo "running ${tVr} `hostname` create_locks procedure..."
-  if [ ! -e "/var/run/mysql_restart_running.pid" ]; then
+  if [ ! -e "/run/mysql_restart_running.pid" ]; then
     echo "Creating locks..."
-    touch /var/run/mysql_restart_running.pid
+    touch /run/mysql_restart_running.pid
   fi
 }
 
 remove_locks() {
   echo "running ${tVr} `hostname` remove_locks procedure..."
-  if [ -e "/var/run/mysql_restart_running.pid" ]; then
+  if [ -e "/run/mysql_restart_running.pid" ]; then
     echo "Removing locks..."
-    rm -f /var/run/mysql_restart_running.pid
+    rm -f /run/mysql_restart_running.pid
   fi
 }
 
 check_restart_if_running() {
   echo "running ${tVr} `hostname` check_restart_if_running procedure..."
-  if [ -e "/var/run/mysql_restart_running.pid" ]; then
+  if [ -e "/run/mysql_restart_running.pid" ]; then
     echo "MySQLD restart procedure in progress?"
     echo "Nothing to do, let's quit now. Bye!"
     exit 1
@@ -636,7 +636,7 @@ start_sql() {
     service mysql start
   fi
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
+    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     echo "Waiting for MySQLD graceful start..."
     sleep 3
@@ -744,7 +744,7 @@ if_restart_sql() {
 check_mysql_up() {
   echo "running ${tVr} `hostname` check_mysql_up procedure..."
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
+    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     echo "Waiting for MySQLD availability..."
     sleep 15
@@ -1290,7 +1290,7 @@ tune_memory_limits() {
 
 tune_sql() {
   echo "running ${tVr} `hostname` tune_sql procedure..."
-  rm -f /var/run/mysql_restart_running.pid
+  rm -f /run/mysql_restart_running.pid
   check_mysql_up
   tune_memory_limits
   if_restart_sql
@@ -1299,7 +1299,7 @@ tune_sql() {
 
 db_head_to_stretch_first()
 {
-  if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ]; then
+  if [ -e "/run/sshd.pid" ] && [ -e "/run/crond.pid" ]; then
     _HOST_HOSTNAME=`hostname 2>&1`
     if [[ "${_OS_CODE}" =~ "stretch" ]]; then
       echo "The ${_HOST_HOSTNAME} is already running Stretch"
@@ -1407,7 +1407,7 @@ db_head_to_stretch_first()
 
 db_head_to_stretch_second()
 {
-  if [ -e "/var/run/sshd.pid" ] && [ -e "/var/run/crond.pid" ]; then
+  if [ -e "/run/sshd.pid" ] && [ -e "/run/crond.pid" ]; then
     _HOST_HOSTNAME=`hostname 2>&1`
     if [[ "${_OS_CODE}" =~ "stretch" ]]; then
   	  if [ -x "/lib/systemd/systemd" ]; then

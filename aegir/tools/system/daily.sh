@@ -2945,7 +2945,7 @@ action() {
 ###--------------------###
 [ ! -d "/data/u" ] && exit 1
 echo "INFO: Daily maintenance start"
-while [ -e "/var/run/boa_wait.pid" ]; do
+while [ -e "/run/boa_wait.pid" ]; do
   echo "Waiting for BOA queue availability..."
   sleep 5
 done
@@ -3096,13 +3096,13 @@ EOF
   fi
 fi
 #
-if [ -e "/var/run/daily-fix.pid" ]; then
+if [ -e "/run/daily-fix.pid" ]; then
   touch /var/xdrago/log/wait-for-daily
   exit 1
 elif [ -e "/root/.wbhd.clstr.cnf" ]; then
   exit 1
 else
-  touch /var/run/daily-fix.pid
+  touch /run/daily-fix.pid
   if [ "${_VMFAMILY}" = "VS" ]; then
     n=$((RANDOM%180+80))
     echo "waiting $n sec"
@@ -3307,8 +3307,8 @@ rm -f /data/disk/*/.tmp/.busy.*.pid
 ###
 ### Delete duplicity ghost pid file if older than 2 days
 ###
-find /var/run/*_backup.pid -mtime +1 -exec rm -rf {} \; &> /dev/null
-rm -f /var/run/daily-fix.pid
+find /run/*_backup.pid -mtime +1 -exec rm -rf {} \; &> /dev/null
+rm -f /run/daily-fix.pid
 echo "INFO: Daily maintenance complete"
 exit 0
 ###EOF2024###

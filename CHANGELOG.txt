@@ -3742,14 +3742,14 @@
   If you have 'fastcgi_pass 127.0.0.1:9090;' in any custom vhost or Nginx
   include file on the Octopus instance, you should replace it with:
 
-    fastcgi_pass unix:/var/run/o1.fpm.socket;
+    fastcgi_pass unix:/run/o1.fpm.socket;
 
   where 'o1' is your corresponding Octopus system username.
 
   Note that if you have custom vhosts or includes in the Aegir Master Instance,
   you should instead replace 'fastcgi_pass 127.0.0.1:9090;' with:
 
-    fastcgi_pass unix:/var/run/www53.fpm.socket;
+    fastcgi_pass unix:/run/www53.fpm.socket;
 
   where '53' is related to PHP version defined via _PHP_FPM_VERSION in your
   /root/.barracuda.cnf file. Note that while variable has a dot, the socket
@@ -4169,7 +4169,7 @@
   * Nginx: Detected $device is not used in Boost config, only in Speed Booster.
   * Nginx: Fix limreq also for some really old vhosts.
   * Nginx: Modify only vhosts known as included in the protected mode.
-  * Remove /var/run/daily-fix.pid if exists when it shouldn't.
+  * Remove /run/daily-fix.pid if exists when it shouldn't.
   * Remove debugging mode in old codebases cleanup.
   * Remove no longer needed/used contrib updates.
   * Restore default websh wrapper symlink as fast as possible.
@@ -4846,7 +4846,7 @@
   * Do not override lshell env_path in websh wrapper.
   * Do not use monitored bin path for custom scripts to avoid LFD false alarms.
   * Extra db GRANT for 127.0.0.1 not added when migrating site.
-  * Improve auto-healing to create required directories in /var/run/ if missing.
+  * Improve auto-healing to create required directories in /run/ if missing.
   * Issue #2230269 - New Jetty 9 version overrides JETTY_PORT=8099 with 8080.
   * Issue #2235991 - Drush make needs better exceptions in websh wrapper.
   * Issue #2236475 - Clarify what the Legacy mode really means.

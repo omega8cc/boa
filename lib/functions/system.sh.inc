@@ -254,7 +254,7 @@ if_running_as_root_barracuda() {
     rm -rf /tmp/make_tmp*
     rm -f /tmp/pm-updatecode*
     rm -f /tmp/cache.inc*
-    touch /var/run/boa_run.pid
+    touch /run/boa_run.pid
     mkdir -p ${pthLog}
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
     _AWS_TEST_A=$(dmidecode -s bios-version 2>&1)
@@ -266,7 +266,7 @@ if_running_as_root_barracuda() {
     _VM_TEST=$(uname -a 2>&1)
     if [[ "${_VM_TEST}" =~ "-beng" ]]; then
       _VMFAMILY="VS"
-      touch /var/run/cloud_vhost.pid
+      touch /run/cloud_vhost.pid
       if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
         mkdir -p /etc/apt/preferences.d/
         echo -e 'Package: fuse\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
@@ -4909,10 +4909,10 @@ finale() {
   rm -rf /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
   rm -rf /var/aegir/.tmp/cache
-  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
-  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
-  [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
-  [ -e "/var/run/manage_ruby_users.pid" ] && rm -f /var/run/manage_ruby_users.pid
+  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
+  [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
   [ -e "/var/aegir/.drush/.alias.drushrc.php" ] && rm -f /var/aegir/.drush/.alias.drushrc.php
   [ -d "/data/u" ] && rm -f /data/disk/*/.drush/.alias.drushrc.php
   rm -f ${pthLog}/protected-vhosts-clean.log
@@ -7058,7 +7058,7 @@ if_install_vnstat() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: if_install_vnstat"
   fi
-  if [ ! -e "/var/run/cloud_vhost.pid" ]; then
+  if [ ! -e "/run/cloud_vhost.pid" ]; then
     if [ ! -e "${pthLog}/vnstat-${_VNSTAT_VRN}.log" ] \
       || [ ! -e "/usr/bin/vnstat" ] \
       || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
@@ -8018,7 +8018,7 @@ initd_update() {
       kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
       mrun "service jetty7 start" 2> /dev/null
     fi
-    if [ ! -e "/var/run/aegir_upgrade.pid" ]; then
+    if [ ! -e "/run/aegir_upgrade.pid" ]; then
       msg "INFO: Starting Redis, PHP-FPM and Nginx"
       mrun "service redis-server start" 2> /dev/null
       mrun "service redis-server reload" 2> /dev/null
@@ -8109,7 +8109,7 @@ initd_update() {
       kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
       mrun "service jetty7 start" 2> /dev/null
     fi
-    if [ ! -e "/var/run/aegir_upgrade.pid" ] \
+    if [ ! -e "/run/aegir_upgrade.pid" ] \
       && [ ! -e "/root/.proxy.cnf" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         msg "INFO: Reloading Redis, PHP-FPM and Nginx..."

@@ -984,7 +984,7 @@ post_mig() {
       service jetty7 start
     fi
     service nginx reload
-    [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
+    [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
     if [ ! -e "/var/xdrago/runner.sh" ] && [ -e "/var/xdrago/.runner.sh.off" ]; then
       mv -f /var/xdrago/.runner.sh.off /var/xdrago/runner.sh
     fi

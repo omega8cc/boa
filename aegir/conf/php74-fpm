@@ -14,7 +14,7 @@ prefix=/opt/php74
 exec_prefix=${prefix}
 php_fpm_BIN=/opt/php74/sbin/php-fpm
 php_fpm_CONF=/opt/php74/etc/php74-fpm.conf
-php_fpm_PID=/var/run/php74-fpm.pid
+php_fpm_PID=/run/php74-fpm.pid
 php_opts="--fpm-config $php_fpm_CONF --pid $php_fpm_PID -c /opt/php74/etc/php74.ini"
 
 wait_for_pid() {

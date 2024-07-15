@@ -680,8 +680,8 @@ aegir_master_install_upgrade() {
   if [ "${_STATUS}" = "INIT" ]; then
 
   ###--------------------###
-    if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
-      || [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
+    if [ ! -e "/run/mysqld/mysqld.pid" ] \
+      || [ ! -e "/run/mysqld/mysqld.sock" ]; then
       msg "ALRT! ${_DB_SERVER} server not running properly!"
       msg "EXIT: We can't proceed and will exit now"
       msg "HINT: Please check ${_LOG} for more information,"
@@ -1050,8 +1050,8 @@ EOFMYSQL
         msg "INFO: Aegir Master Instance upgrade skipped"
       fi
     else
-      if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
-        || [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
+      if [ ! -e "/run/mysqld/mysqld.pid" ] \
+        || [ ! -e "/run/mysqld/mysqld.sock" ]; then
         msg "ALRT! ${_DB_SERVER} server not running properly!"
         msg "EXIT: We can't proceed and will exit now"
         msg "HINT: Please check ${_LOG} for more information,"

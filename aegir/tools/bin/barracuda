@@ -45,8 +45,8 @@ fi
 
 clean_pid_exit() {
   echo "REASON ${e} on $(date 2>&1)" >> /root/.barracuda.exit.exceptions.log
-  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
-  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   service cron start &> /dev/null
   exit 1
 }
@@ -158,7 +158,7 @@ check_root_keys_pwd() {
 
 check_sql_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
+    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     echo "INFO: Waiting for MySQLD availability..."
     sleep 5
@@ -849,12 +849,12 @@ up_action() {
     fi
     if [ -e "${vBs}/${barName}" ]; then
       if [ "${cmmand}" = "up-cluster" ]; then
-        if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
+        if [ ! -e "/run/mysqld/mysqld.pid" ] \
           && [ ! -e "/root/.dbhd.clstr.cnf" ] \
           && [ -e "/etc/init.d/mysql" ]; then
           [ -e "/root/.remote.db.cnf" ] && rm -f /root/.remote.db.cnf
           sleep 5
-          if [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
+          if [ ! -e "/run/mysqld/mysqld.sock" ]; then
             service mysql start &> /dev/null
           fi
         fi
@@ -899,7 +899,7 @@ up_action() {
           wait
         fi
         if [ "${silent}" = "system" ]; then
-          touch /var/run/boa_system_wait.pid
+          touch /run/boa_system_wait.pid
           if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] \
             && [ -d "/var/aegir/config/server_master/nginx/subdir.d" ]; then
             sed -i "s/^_SYSTEM_U.*/_SYSTEM_UPGRADE_ONLY=YES/g" ${vBs}/${filIncB}
@@ -1003,21 +1003,21 @@ up_action() {
 }
 
 up_start() {
-  if [ -e "/var/run/boa_run.pid" ]; then
+  if [ -e "/run/boa_run.pid" ]; then
     echo
     echo "  Another BOA installer is running probably"
-    echo "  because /var/run/boa_run.pid exists"
+    echo "  because /run/boa_run.pid exists"
     echo
     exit 1
-  elif [ -e "/var/run/boa_wait.pid" ]; then
+  elif [ -e "/run/boa_wait.pid" ]; then
     echo
     echo "  Some important system task is running probably"
-    echo "  because /var/run/boa_wait.pid exists"
+    echo "  because /run/boa_wait.pid exists"
     echo
     exit 1
   else
-    touch /var/run/boa_run.pid
-    touch /var/run/boa_wait.pid
+    touch /run/boa_run.pid
+    touch /run/boa_wait.pid
     #kill -9 $(ps aux | grep '[d]aily.sh' | awk '{print $2}') &> /dev/null
     #rm -f /run/*daily*.pid
     mkdir -p ${_LOG_DIR}
@@ -1038,11 +1038,11 @@ up_start() {
 up_finish() {
   rm -f /root/.bashrc.bak*
   rm -f /root/BOA.sh*
-  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
-  [ -e "/var/run/boa_system_wait.pid" ] && rm -f /var/run/boa_system_wait.pid
-  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
-  [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
-  [ -e "/var/run/manage_ruby_users.pid" ] && rm -f /var/run/manage_ruby_users.pid
+  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+  [ -e "/run/boa_system_wait.pid" ] && rm -f /run/boa_system_wait.pid
+  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
+  [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
   rm -f ${vBs}/*.sh.cnf*
   rm -f ${vBs}/BARRACUDA.sh*
   if [ -e "/opt/local/bin/php" ] \

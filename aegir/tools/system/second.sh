@@ -37,7 +37,7 @@ hold() {
 }
 
 terminate() {
-  if [ ! -e "/var/run/boa_run.pid" ]; then
+  if [ ! -e "/run/boa_run.pid" ]; then
     killall -9 php drush.php wget curl &> /dev/null
     echo "$(date 2>&1)" >> /var/xdrago/log/second.terminate.log
   fi
@@ -83,7 +83,7 @@ check_vhost_health() {
 }
 
 ip_auth_access_update() {
-  touch /var/run/.auth.IP.list.pid
+  touch /run/.auth.IP.list.pid
   if [ -e "/var/backups/.auth.IP.list.tmp" ]; then
     if [ -e "${pthVhstd}/adminer."* ]; then
       sed -i "s/### access .*//g; \
@@ -205,7 +205,7 @@ d;};' ${pthVhstd}/sqlbuddy.* &> /dev/null
     echo "  ### access none"                   >> /var/backups/.auth.IP.list
   fi
   sleep 1
-  rm -f /var/run/.auth.IP.list.pid
+  rm -f /run/.auth.IP.list.pid
 }
 
 manage_ip_auth_access() {
@@ -237,7 +237,7 @@ manage_ip_auth_access() {
     echo "  deny                         all;" >  /var/backups/.auth.IP.list.tmp
     echo "  ### access none"                   >> /var/backups/.auth.IP.list.tmp
   fi
-  if [ ! -e "/var/run/.auth.IP.list.pid" ]; then
+  if [ ! -e "/run/.auth.IP.list.pid" ]; then
     if [ ! -e "/var/backups/.auth.IP.list" ]; then
       ip_auth_access_update
     else

@@ -242,7 +242,7 @@ if_install_collectd() {
   fi
   if [[ "${_XTRAS_LIST}" =~ "CGP" ]]; then
     _CGP_VHOST="${mtrNgx}/vhost.d/cgp.${_THIS_FRONT}"
-    if [ ! -e "/var/run/cloud_vhost.pid" ]; then
+    if [ ! -e "/run/cloud_vhost.pid" ]; then
       if [ ! -d "/var/www/cgp" ] \
         || [ ! -f "${_CGP_VHOST}" ] \
         || [ ! -f "${pthLog}/cgp-${_CGP_VRN}.fix-dns-vhost-wildcard.log" ]; then
@@ -361,7 +361,7 @@ if_install_webmin() {
     msg "PROC: if_install_webmin"
   fi
   if [[ "${_XTRAS_LIST}" =~ "WMN" ]]; then
-    if [ ! -d "/etc/webmin" ] && [ ! -e "/var/run/cloud_vhost.pid" ]; then
+    if [ ! -d "/etc/webmin" ] && [ ! -e "/run/cloud_vhost.pid" ]; then
       if [ -x "/usr/bin/gpg2" ]; then
         _GPG=gpg2
       else
@@ -519,7 +519,7 @@ if_install_ruby() {
         msg "INFO: Installing Ruby ${_RUBY_VRN} from sources..."
         mkdir -p /opt/user/gems
         chmod 1777 /opt/user/gems
-        touch /var/run/manage_ruby_users.pid
+        touch /run/manage_ruby_users.pid
         cd /var/opt
         rm -rf ruby*
         get_dev_src "ruby-${_RUBY_VRN}.tar.gz"
@@ -549,7 +549,7 @@ if_install_ruby() {
       fi
     fi
   fi
-  [ -e "/var/run/manage_ruby_users.pid" ] && rm -f /var/run/manage_ruby_users.pid
+  [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
 }
 
 magick_install_upgrade() {

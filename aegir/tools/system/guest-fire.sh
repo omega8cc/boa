@@ -16,11 +16,11 @@ second_flood_guard() {
     kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
   fi
 }
-[ ! -e "/var/run/boa_run.pid" ] && second_flood_guard
+[ ! -e "/run/boa_run.pid" ] && second_flood_guard
 
 csf_flood_guard() {
   thisCountCsf=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/csf"`
-  if [ ! -e "/var/run/boa_run.pid" ] && [ ${thisCountCsf} -gt "4" ]; then
+  if [ ! -e "/run/boa_run.pid" ] && [ ${thisCountCsf} -gt "4" ]; then
     echo "$(date 2>&1) Too many ${thisCountCsf} csf processes killed" >> \
       /var/log/csf-count.kill.log
     kill -9 $(ps aux | grep '[c]sf' | awk '{print $2}') &> /dev/null
@@ -30,7 +30,7 @@ csf_flood_guard() {
     wait
   fi
   thisCountFire=`ps aux | grep -v "grep" | grep -v "null" | grep --count "/fire.sh"`
-  if [ ! -e "/var/run/boa_run.pid" ] && [ ${thisCountFire} -gt "9" ]; then
+  if [ ! -e "/run/boa_run.pid" ] && [ ${thisCountFire} -gt "9" ]; then
     echo "$(date 2>&1) Too many ${thisCountFire} fire.sh processes killed and rules purged" >> \
       /var/log/fire-purge.kill.log
     csf -tf
@@ -38,7 +38,7 @@ csf_flood_guard() {
     csf -df
     wait
     kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
-  elif [ ! -e "/var/run/boa_run.pid" ] && [ ${thisCountFire} -gt "7" ]; then
+  elif [ ! -e "/run/boa_run.pid" ] && [ ${thisCountFire} -gt "7" ]; then
     echo "$(date 2>&1) Too many ${thisCountFire} fire.sh processes killed" >> \
       /var/log/fire-count.kill.log
     csf -tf
@@ -46,11 +46,11 @@ csf_flood_guard() {
     kill -9 $(ps aux | grep '[f]ire.sh' | awk '{print $2}') &> /dev/null
   fi
 }
-[ ! -e "/var/run/water.pid" ] && csf_flood_guard
+[ ! -e "/run/water.pid" ] && csf_flood_guard
 
 guest_guard() {
-if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
-  touch /var/run/fire.pid
+if [ ! -e "/run/fire.pid" ] && [ ! -e "/run/water.pid" ]; then
+  touch /run/fire.pid
   if [ -e "/var/xdrago/monitor/ssh.log" ]; then
     for _IP in `cat /var/xdrago/monitor/ssh.log | cut -d '#' -f1 | sort`; do
       _FW_TEST=
@@ -114,23 +114,23 @@ if [ ! -e "/var/run/fire.pid" ] && [ ! -e "/var/run/water.pid" ]; then
       fi
     done
   fi
-  rm -f /var/run/fire.pid
+  rm -f /run/fire.pid
 fi
 }
 
 if [ -e "/etc/csf/csf.deny" ] \
-  && [ ! -e "/var/run/water.pid" ] \
+  && [ ! -e "/run/water.pid" ] \
   && [ -x "/usr/sbin/csf" ]; then
-  [ ! -e "/var/run/water.pid" ] && guest_guard
+  [ ! -e "/run/water.pid" ] && guest_guard
   sleep 10
-  [ ! -e "/var/run/water.pid" ] && guest_guard
+  [ ! -e "/run/water.pid" ] && guest_guard
   sleep 10
-  [ ! -e "/var/run/water.pid" ] && guest_guard
+  [ ! -e "/run/water.pid" ] && guest_guard
   sleep 10
-  [ ! -e "/var/run/water.pid" ] && guest_guard
+  [ ! -e "/run/water.pid" ] && guest_guard
   sleep 10
-  [ ! -e "/var/run/water.pid" ] && guest_guard
-  rm -f /var/run/fire.pid
+  [ ! -e "/run/water.pid" ] && guest_guard
+  rm -f /run/fire.pid
 fi
 exit 0
 ###EOF2024###

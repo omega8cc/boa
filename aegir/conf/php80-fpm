@@ -14,7 +14,7 @@ prefix=/opt/php80
 exec_prefix=${prefix}
 php_fpm_BIN=/opt/php80/sbin/php-fpm
 php_fpm_CONF=/opt/php80/etc/php80-fpm.conf
-php_fpm_PID=/var/run/php80-fpm.pid
+php_fpm_PID=/run/php80-fpm.pid
 php_opts="--fpm-config $php_fpm_CONF --pid $php_fpm_PID -c /opt/php80/etc/php80.ini"
 
 wait_for_pid() {

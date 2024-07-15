@@ -61,17 +61,17 @@ _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
 
 create_locks() {
   echo "INFO: Creating locks for $1"
-  touch /var/run/mysql_backup_running.pid
+  touch /run/mysql_backup_running.pid
 }
 
 remove_locks() {
   echo "INFO: Removing locks for $1"
-  rm -f /var/run/mysql_backup_running.pid
+  rm -f /run/mysql_backup_running.pid
 }
 
 check_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
+    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "INFO: Waiting for MySQLD availability..."
@@ -199,7 +199,7 @@ done
 
 echo "INFO: Completing all dbs cleanup on `date`"
 touch /var/xdrago/log/last-run-db-cleanup
-rm -f /var/run/mysql_backup_running.pid
+rm -f /run/mysql_backup_running.pid
 
 echo "INFO: ALL TASKS COMPLETED, BYE!"
 exit 0

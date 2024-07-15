@@ -418,8 +418,8 @@ dns_unbound_install_upgrade() {
     mrun "${_INSTAPP} unbound-host" 2> /dev/null
     mrun "${_INSTAPP} dns-root-data" 2> /dev/null
     ###
-    [ ! -e "/var/run/unbound/" ] && mkdir -p /var/run/unbound/
-    chown -R unbound:unbound /var/run/unbound
+    [ ! -e "/run/unbound/" ] && mkdir -p /run/unbound/
+    chown -R unbound:unbound /run/unbound
     [ ! -e "/var/log/unbound/" ] && mkdir -p /var/log/unbound/
     touch /var/log/unbound/unbound.log
     chown -R unbound:unbound /var/log/unbound

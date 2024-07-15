@@ -14,7 +14,7 @@ prefix=/opt/php56
 exec_prefix=${prefix}
 php_fpm_BIN=/opt/php56/sbin/php-fpm
 php_fpm_CONF=/opt/php56/etc/php56-fpm.conf
-php_fpm_PID=/var/run/php56-fpm.pid
+php_fpm_PID=/run/php56-fpm.pid
 php_opts="--fpm-config $php_fpm_CONF --pid $php_fpm_PID -c /opt/php56/etc/php56.ini"
 
 wait_for_pid() {

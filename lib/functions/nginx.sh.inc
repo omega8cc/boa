@@ -494,7 +494,7 @@ nginx_install_upgrade() {
       --conf-path=/etc/nginx/nginx.conf \
       --error-log-path=/var/log/nginx/error.log \
       --http-log-path=/var/log/nginx/access.log \
-      --pid-path=/var/run/nginx.pid \
+      --pid-path=/run/nginx.pid \
       --lock-path=/var/lock/nginx.lock \
       --user=www-data \
       --group=www-data \
@@ -605,7 +605,7 @@ nginx_mime_check_fix() {
     rm -f /etc/nginx/sites-available/default
     rm -f /etc/nginx/sites-enabled/default
     rm -f /etc/nginx/modules-enabled/*
-    if [ ! -e "/var/run/aegir_upgrade.pid" ]; then
+    if [ ! -e "/run/aegir_upgrade.pid" ]; then
       mrun "service nginx reload" 2> /dev/null
     fi
   fi

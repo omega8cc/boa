@@ -2886,7 +2886,7 @@ social_install() {
 #
 save_verify_platforms() {
   _LOCAL_STATUS="NOT_SET"
-  if [ -e "/var/run/aegir_upgrade.pid" ]; then
+  if [ -e "/run/aegir_upgrade.pid" ]; then
     _LOCAL_STATUS=INIT
   fi
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
@@ -3353,7 +3353,7 @@ save_verify_platforms() {
       fi
     fi
   fi
-  if [ -e "/var/run/aegir_upgrade.pid" ]; then
+  if [ -e "/run/aegir_upgrade.pid" ]; then
     _PLATF_IMP=$(ls -la /data/u \
       | grep ${_USER} \
       | cut -d'>' -f2 \

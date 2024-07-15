@@ -85,7 +85,7 @@ EOFMYSQL
   fi
 }
 
-if [ -e "/var/run/boa_wait.pid" ]; then
+if [ -e "/run/boa_wait.pid" ]; then
   touch /var/xdrago/log/wait-purge.pid
   exit 0
 else

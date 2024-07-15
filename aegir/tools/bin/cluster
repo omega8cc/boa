@@ -72,7 +72,7 @@ tBn="tools/bin"
 
 clean_pid_exit() {
   echo "REASON ${e} on $(date 2>&1)" >> /root/.cluster.exit.exceptions.log
-  rm -f /var/run/cluster_run.pid
+  rm -f /run/cluster_run.pid
   service cron start
   exit 1
 }
@@ -1348,13 +1348,13 @@ wsrep_node_name=\"'${IP}'\"
   	ssh ${_NOSTRICT} root@${IP} "echo '
 [client]
 port                    = 3306
-socket                  = /var/run/mysqld/mysqld.sock
+socket                  = /run/mysqld/mysqld.sock
 default-character-set   = utf8mb4
 
 [mysqld]
 user                    = mysql
-pid-file                = /var/run/mysqld/mysqld.pid
-socket                  = /var/run/mysqld/mysqld.sock
+pid-file                = /run/mysqld/mysqld.pid
+socket                  = /run/mysqld/mysqld.sock
 port                    = 3306
 basedir                 = /usr
 datadir                 = /var/lib/mysql
@@ -1448,7 +1448,7 @@ innodb_flush_log_at_timeout = 5
 innodb_temp_data_file_path = ibtmp1:12M:autoextend:max:900M
 
 [mysqld_safe]
-socket                  = /var/run/mysqld/mysqld.sock
+socket                  = /run/mysqld/mysqld.sock
 nice                    = 0
 open_files_limit        = 294912
 syslog
@@ -1620,12 +1620,12 @@ install_db_cluster() {
 host     = localhost
 user     = debian-sys-maint
 password = '${_MAINT_USER_PWD}'
-socket   = /var/run/mysqld/mysqld.sock
+socket   = /run/mysqld/mysqld.sock
 [mysql_upgrade]
 host     = localhost
 user     = debian-sys-maint
 password = '${_MAINT_USER_PWD}'
-socket   = /var/run/mysqld/mysqld.sock
+socket   = /run/mysqld/mysqld.sock
 basedir  = /usr
 ' > /etc/mysql/debian.cnf"
 
@@ -2267,8 +2267,8 @@ check_heads() {
     if [[ ${_THIS_VM} =~ v168q ]]; then
       echo Check Skipped for $i
     else
-      if [ -e "/usr/var/run/vservers/${_THIS_VM}" ] \
-        && [ -e "${i}/var/run/crond.pid" ]; then
+      if [ -e "/usr/run/vservers/${_THIS_VM}" ] \
+        && [ -e "${i}/run/crond.pid" ]; then
         _VS_HOSTNAME=`vserver ${_VS_NAME} exec hostname 2>&1`
         _VS_OS=`vserver ${_VS_NAME} exec lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1`
         echo "The ${_VS_HOSTNAME} ${_VS_NAME} VM is running ${_VS_OS}"

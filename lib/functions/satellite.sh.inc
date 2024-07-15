@@ -2733,7 +2733,7 @@ satellite_if_create_local_bin() {
 # Run standard post-install.
 satellite_run_post_install() {
   _LOCAL_STATUS="${_STATUS}"
-  if [ -e "/var/run/aegir_upgrade.pid" ]; then
+  if [ -e "/run/aegir_upgrade.pid" ]; then
     _LOCAL_STATUS=INIT
   fi
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
@@ -2794,7 +2794,7 @@ satellite_set_permissions_for_all() {
 # Run child C.
 satellite_run_child_c() {
   _LOCAL_STATUS="${_STATUS}"
-  if [ -e "/var/run/aegir_upgrade.pid" ]; then
+  if [ -e "/run/aegir_upgrade.pid" ]; then
     _LOCAL_STATUS=INIT
   fi
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
@@ -2866,7 +2866,7 @@ satellite_run_child_c() {
 }
 
 satellite_if_legacy_permissions_fix() {
-  if [ -e "/var/run/aegir_upgrade.pid" ]; then
+  if [ -e "/run/aegir_upgrade.pid" ]; then
     _PLATF_IMP=$(ls -la /data/u \
       | grep ${_USER} \
       | cut -d'>' -f2 \
@@ -4264,8 +4264,8 @@ satellite_if_sql_exception_test() {
     echo "PROC: satellite_if_sql_exception_test"
   fi
   ###--------------------###
-  if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
-    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
+  if [ ! -e "/run/mysqld/mysqld.pid" ] \
+    || [ ! -e "/run/mysqld/mysqld.sock" ]; then
     msg "ALRT! ${_DB_SERVER} server not running properly!"
     msg "EXIT: We can't proceed and will exit now"
     msg "HINT: Please check ${_LOG} for more information,"
@@ -4484,7 +4484,7 @@ satellite_check_octopus_vs_barracuda_ver() {
       clean_pid_exit satellite_check_octopus_vs_barracuda_ver_d
     fi
   fi
-  rm -f /var/run/aegir_upgrade.pid
+  rm -f /run/aegir_upgrade.pid
   rm -f /opt/tmp/testecho*
 }
 
@@ -4822,10 +4822,10 @@ satellite_post_cleanup() {
   rm -rf /tmp/drush_make_tmp*
   rm -rf /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
-  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   rm -rf ${_ROOT}/.tmp/cache
-  [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
-  [ -e "/var/run/manage_ruby_users.pid" ] && rm -f /var/run/manage_ruby_users.pid
+  [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
+  [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
 }
 
 satellite_letsencrypt_crt_key_copy() {
@@ -5313,7 +5313,7 @@ satellite_child_b_drush_test() {
 
 satellite_child_b_aegir_build() {
   _LOCAL_STATUS="${_STATUS}"
-  if [ -e "/var/run/aegir_upgrade.pid" ]; then
+  if [ -e "/run/aegir_upgrade.pid" ]; then
     _LOCAL_STATUS=INIT
   fi
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then

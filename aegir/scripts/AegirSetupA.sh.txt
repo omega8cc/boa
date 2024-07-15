@@ -174,7 +174,7 @@ if [ -e "${_ROOT}/aegir.sh" ]; then
   rm -f ${_ROOT}/AegirSetupC.sh.txt*
   rm -f ${_ROOT}/AegirSetupB.sh.txt*
   _LOCAL_STATUS="${_STATUS}"
-  if [ -e "/var/run/aegir_upgrade.pid" ]; then
+  if [ -e "/run/aegir_upgrade.pid" ]; then
     _LOCAL_STATUS=INIT
   fi
 fi

@@ -13,7 +13,7 @@
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 NAME=clean-boa-env
 DESC=clean-boa-env
-PIDFILE=/var/run/clean-boa-env.pid
+PIDFILE=/run/clean-boa-env.pid
 
 set -e
 
@@ -107,32 +107,32 @@ case "$1" in
       fi
     fi
     touch $PIDFILE
-    if [ -e "/var/run/boa_wait.pid" ]; then
-      [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
+    if [ -e "/run/boa_wait.pid" ]; then
+      [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
       echo "$NAME 1 done."
     else
       echo "$NAME 1 nothing to do."
     fi
-    if [ -e "/var/run/boa_run.pid" ]; then
-      [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+    if [ -e "/run/boa_run.pid" ]; then
+      [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
       echo "$NAME 2 done."
     else
       echo "$NAME 2 nothing to do."
     fi
-    if [ -e "/var/run/manage_ltd_users.pid" ]; then
-      [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
+    if [ -e "/run/manage_ltd_users.pid" ]; then
+      [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
       echo "$NAME 3 done."
     else
       echo "$NAME 3 nothing to do."
     fi
-    if [ -e "/var/run/daily-fix.pid" ]; then
-      rm -f /var/run/daily-fix.pid
+    if [ -e "/run/daily-fix.pid" ]; then
+      rm -f /run/daily-fix.pid
       echo "$NAME 4 done."
     else
       echo "$NAME 4 nothing to do."
     fi
-    if [ -e "/var/run/boa_cron_wait.pid" ]; then
-      rm -f /var/run/boa_cron_wait.pid
+    if [ -e "/run/boa_cron_wait.pid" ]; then
+      rm -f /run/boa_cron_wait.pid
       echo "$NAME 5 done."
     else
       echo "$NAME 5 nothing to do."
@@ -216,32 +216,32 @@ case "$1" in
         fi
       fi
     fi
-    if [ -e "/var/run/boa_wait.pid" ]; then
-      [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
+    if [ -e "/run/boa_wait.pid" ]; then
+      [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
       echo "$NAME done."
     else
       echo "$NAME nothing to do."
     fi
-    if [ -e "/var/run/boa_run.pid" ]; then
-      [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+    if [ -e "/run/boa_run.pid" ]; then
+      [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
       echo "$NAME 2 done."
     else
       echo "$NAME 2 nothing to do."
     fi
-    if [ -e "/var/run/manage_ltd_users.pid" ]; then
-      [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
+    if [ -e "/run/manage_ltd_users.pid" ]; then
+      [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
       echo "$NAME 3 done."
     else
       echo "$NAME 3 nothing to do."
     fi
-    if [ -e "/var/run/daily-fix.pid" ]; then
-      rm -f /var/run/daily-fix.pid
+    if [ -e "/run/daily-fix.pid" ]; then
+      rm -f /run/daily-fix.pid
       echo "$NAME 4 done."
     else
       echo "$NAME 4 nothing to do."
     fi
-    if [ -e "/var/run/boa_cron_wait.pid" ]; then
-      rm -f /var/run/boa_cron_wait.pid
+    if [ -e "/run/boa_cron_wait.pid" ]; then
+      rm -f /run/boa_cron_wait.pid
       echo "$NAME 5 done."
     else
       echo "$NAME 5 nothing to do."
@@ -259,13 +259,13 @@ case "$1" in
     service apparmor stop
     service auditd stop
     /usr/sbin/aa-teardown
-    if [ -e "/var/run/boa_wait.pid" ]; then
+    if [ -e "/run/boa_wait.pid" ]; then
       echo "fail 1"
     else
       echo "OK 1"
       exit 0
     fi
-    if [ -e "/var/run/boa_run.pid" ]; then
+    if [ -e "/run/boa_run.pid" ]; then
       echo "fail 2"
     else
       echo "OK 2"

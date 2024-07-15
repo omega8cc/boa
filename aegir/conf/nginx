@@ -20,7 +20,7 @@
 #
 # processname: nginx
 # config:      /etc/nginx/nginx.conf
-# pidfile:     /var/run/nginx.pid
+# pidfile:     /run/nginx.pid
 # Provides:    nginx
 #
 # Author:  Jason Giedymin

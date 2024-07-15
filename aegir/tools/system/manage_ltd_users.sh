@@ -1431,7 +1431,7 @@ site_socket_inc_gen() {
         if [ ! -z "${_SITE_NAME}" ] \
           && [ ! -z "${_SITE_SOCKET}" ] \
           && [ -e "${dscUsr}/.drush/${_SITE_NAME}.alias.drushrc.php" ] \
-          && [ -e "/var/run/${_SOCKET_L_NAME}.fpm.socket" ]; then
+          && [ -e "/run/${_SOCKET_L_NAME}.fpm.socket" ]; then
           fpmInc="${fpmPth}/fpm_include_site_${_SITE_NAME}.inc"
           echo "if ( \$main_site_name = ${_SITE_NAME} ) {" > ${fpmInc}
           echo "  set \$user_socket \"${_SOCKET_L_NAME}\";" >> ${fpmInc}
@@ -1594,7 +1594,7 @@ switch_php() {
         && [ -e "/var/xdrago/conf/hhvm/server.foo.ini" ]; then
         if [ ! -e "/opt/hhvm/server.${_USER}.ini" ] \
           || [ ! -e "/etc/init.d/hhvm.${_USER}" ] \
-          || [ ! -e "/var/run/hhvm/${_USER}" ]  ; then
+          || [ ! -e "/run/hhvm/${_USER}" ]  ; then
           ### create or update special system user if needed
           satellite_create_web_user "hhvm"
           ### configure custom hhvm server init.d script
@@ -1635,7 +1635,7 @@ switch_php() {
     else
       if [ -e "/opt/hhvm/server.${_USER}.ini" ] \
         || [ -e "/etc/init.d/hhvm.${_USER}" ] \
-        || [ -e "/var/run/hhvm/${_USER}" ]  ; then
+        || [ -e "/run/hhvm/${_USER}" ]  ; then
         ### disable no longer used custom hhvm server instance
         if [ -e "/etc/init.d/hhvm.${_USER}" ]; then
           service hhvm.${_USER} stop &> /dev/null
@@ -1646,7 +1646,7 @@ switch_php() {
         satellite_remove_web_user "hhvm"
         ### delete leftovers
         rm -f /opt/hhvm/server.${_USER}.ini
-        rm -rf /var/run/hhvm/${_USER}
+        rm -rf /run/hhvm/${_USER}
         rm -rf /var/log/hhvm/${_USER}
         ### update nginx configuration
         sed -i "s/\/var\/run\/hhvm\/${_USER}\/hhvm.socket;/\/var\/run\/\$user_socket.fpm.socket;/g" \
@@ -2429,10 +2429,10 @@ _NOW=${_NOW//[^0-9-]/}
 mkdir -p /var/backups/ltd/{conf,log,old}
 mkdir -p /var/backups/zombie/deleted
 _THIS_LTD_CONF="/var/backups/ltd/conf/lshell.conf.${_NOW}"
-if [ -e "/var/run/manage_ruby_users.pid" ] \
-  || [ -e "/var/run/manage_ltd_users.pid" ] \
-  || [ -e "/var/run/boa_run.pid" ] \
-  || [ -e "/var/run/boa_wait.pid" ]; then
+if [ -e "/run/manage_ruby_users.pid" ] \
+  || [ -e "/run/manage_ltd_users.pid" ] \
+  || [ -e "/run/boa_run.pid" ] \
+  || [ -e "/run/boa_wait.pid" ]; then
   touch /var/xdrago/log/wait-manage-ltd-users.pid
   echo "Another BOA task is running, we have to wait"
   sleep 10
@@ -2442,7 +2442,7 @@ elif [ ! -e "/var/xdrago/conf/lshell.conf" ]; then
   exit 0
 else
   rm -f /var/xdrago/log/wait-manage-ltd-users.pid
-  touch /var/run/manage_ltd_users.pid
+  touch /run/manage_ltd_users.pid
   count_cpu
   find_fast_mirror_early
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
@@ -2564,7 +2564,7 @@ else
         && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
         touch /root/.remote.db.cnf
       fi
-      if [ -e "/var/run/mysqld/mysqld.pid" ] \
+      if [ -e "/run/mysqld/mysqld.pid" ] \
         && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
         ionice -c2 -n0 -p $$
         service cron stop &> /dev/null
@@ -2589,7 +2589,7 @@ else
     fi
   fi
   sleep 5
-  [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
+  [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
   exit 0
 fi
 ###EOF2024###

@@ -12,7 +12,7 @@
 NAME="unbound"
 DESC="DNS server"
 DAEMON="/usr/sbin/unbound"
-PIDFILE="/var/run/unbound/unbound.pid"
+PIDFILE="/run/unbound/unbound.pid"
 
 HELPER="/usr/libexec/unbound-helper"
 

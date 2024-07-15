@@ -8,9 +8,9 @@ $ENV{'PATH'} = '/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin
 ###
 ### System Services Monitor running every 5 seconds
 ###
-if (!-d "/var/run/mysqld") {
-  system("mkdir -p /var/run/mysqld");
-  system("chown -R mysql:root /var/run/mysqld");
+if (!-d "/run/mysqld") {
+  system("mkdir -p /run/mysqld");
+  system("chown -R mysql:root /run/mysqld");
 }
 &cpu_count_load;
 &global_action;
@@ -42,8 +42,8 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /newrelic-daemon/) {$newrelicdaemonlives = "YES"; $newrelicdaemonsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /nrsysmond/) {$newrelicsysmondlives = "YES"; $newrelicsysmondsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /rsyslogd/) {$rsyslogdlives = "YES"; $rsyslogdsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /sbin\/syslogd/ && -f "/var/run/syslogd.pid") {$sysklogdlives = "YES"; $sysklogdsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /sbin\/syslogd/ && -f "/var/run/syslog.pid") {$syslogdlives = "YES"; $syslogdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /sbin\/syslogd/ && -f "/run/syslogd.pid") {$sysklogdlives = "YES"; $sysklogdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /sbin\/syslogd/ && -f "/run/syslog.pid") {$syslogdlives = "YES"; $syslogdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /xinetd/) {$xinetdlives = "YES"; $xinetdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /lsyncd/) {$lsyncdlives = "YES"; $lsyncdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /sshd/) {$sshdlives = "YES"; $sshdsumar = $li_cnt{$COMMAND};}
@@ -125,7 +125,7 @@ if (-e "/usr/sbin/unbound" && !$unboundsumar) {
   system("unbound-control reload");
 }
 
-if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/var/run/mysql_restart_running.pid" && !-f "/var/run/boa_run.pid" && !-f "/root/.remote.db.cnf") {
+if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/run/mysql_restart_running.pid" && !-f "/run/boa_run.pid" && !-f "/root/.remote.db.cnf") {
   system("bash /var/xdrago/move_sql.sh");
 }
 
@@ -145,9 +145,9 @@ if (-f "/root/.mstr.clstr.cnf" || -f "/root/.wbhd.clstr.cnf") {
 }
 
 if (!-f "/root/.dbhd.clstr.cnf") {
-  if (!-d "/var/run/redis") {
-    system("mkdir -p /var/run/redis");
-    system("chown -R redis:redis /var/run/redis");
+  if (!-d "/run/redis") {
+    system("mkdir -p /run/redis");
+    system("chown -R redis:redis /run/redis");
   }
   if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis")) {
     if (-f "/etc/init.d/redis-server") { system("service redis-server start"); }
@@ -157,9 +157,9 @@ if (!-f "/root/.dbhd.clstr.cnf") {
   foreach $line (@RSARR) {
     if ($line =~ /redis_client_socket/) {$redissocket = "YES";}
   }
-  system("service redis-server restart") if (!-e "/var/run/redis/redis.sock" && $redissocket);
+  system("service redis-server restart") if (!-e "/run/redis/redis.sock" && $redissocket);
   sleep(2);
-  system("service redis-server restart") if (!-f "/var/run/redis/redis.pid");
+  system("service redis-server restart") if (!-f "/run/redis/redis.pid");
 }
 
 if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
@@ -195,27 +195,27 @@ else {
     system("killall -9 php-fpm");
     `echo "$timedate KILL FPM $fpmsumar" >> /var/xdrago/log/fpm.kill.log`;
   }
-#   if (!-f "/var/run/fmp_wait.pid" && !-f "/var/run/restarting_fmp_wait.pid") {
-#     system("touch /var/run/fmp_wait.pid");
+#   if (!-f "/run/fmp_wait.pid" && !-f "/run/restarting_fmp_wait.pid") {
+#     system("touch /run/fmp_wait.pid");
 #     sleep(3);
-    system("service php83-fpm start") if ((!$php83lives || !$fpmsumar || !-f "/var/run/php83-fpm.pid") && -f "/etc/init.d/php83-fpm");
-    system("service php82-fpm start") if ((!$php82lives || !$fpmsumar || !-f "/var/run/php82-fpm.pid") && -f "/etc/init.d/php82-fpm");
-    system("service php81-fpm start") if ((!$php81lives || !$fpmsumar || !-f "/var/run/php81-fpm.pid") && -f "/etc/init.d/php81-fpm");
-    system("service php80-fpm start") if ((!$php80lives || !$fpmsumar || !-f "/var/run/php80-fpm.pid") && -f "/etc/init.d/php80-fpm");
-    system("service php74-fpm start") if ((!$php74lives || !$fpmsumar || !-f "/var/run/php74-fpm.pid") && -f "/etc/init.d/php74-fpm");
-    system("service php73-fpm start") if ((!$php73lives || !$fpmsumar || !-f "/var/run/php73-fpm.pid") && -f "/etc/init.d/php73-fpm");
-    system("service php72-fpm start") if ((!$php72lives || !$fpmsumar || !-f "/var/run/php72-fpm.pid") && -f "/etc/init.d/php72-fpm");
-    system("service php71-fpm start") if ((!$php71lives || !$fpmsumar || !-f "/var/run/php71-fpm.pid") && -f "/etc/init.d/php71-fpm");
-    system("service php70-fpm start") if ((!$php70lives || !$fpmsumar || !-f "/var/run/php70-fpm.pid") && -f "/etc/init.d/php70-fpm");
-    system("service php56-fpm start") if ((!$php56lives || !$fpmsumar || !-f "/var/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
+    system("service php83-fpm start") if ((!$php83lives || !$fpmsumar || !-f "/run/php83-fpm.pid") && -f "/etc/init.d/php83-fpm");
+    system("service php82-fpm start") if ((!$php82lives || !$fpmsumar || !-f "/run/php82-fpm.pid") && -f "/etc/init.d/php82-fpm");
+    system("service php81-fpm start") if ((!$php81lives || !$fpmsumar || !-f "/run/php81-fpm.pid") && -f "/etc/init.d/php81-fpm");
+    system("service php80-fpm start") if ((!$php80lives || !$fpmsumar || !-f "/run/php80-fpm.pid") && -f "/etc/init.d/php80-fpm");
+    system("service php74-fpm start") if ((!$php74lives || !$fpmsumar || !-f "/run/php74-fpm.pid") && -f "/etc/init.d/php74-fpm");
+    system("service php73-fpm start") if ((!$php73lives || !$fpmsumar || !-f "/run/php73-fpm.pid") && -f "/etc/init.d/php73-fpm");
+    system("service php72-fpm start") if ((!$php72lives || !$fpmsumar || !-f "/run/php72-fpm.pid") && -f "/etc/init.d/php72-fpm");
+    system("service php71-fpm start") if ((!$php71lives || !$fpmsumar || !-f "/run/php71-fpm.pid") && -f "/etc/init.d/php71-fpm");
+    system("service php70-fpm start") if ((!$php70lives || !$fpmsumar || !-f "/run/php70-fpm.pid") && -f "/etc/init.d/php70-fpm");
+    system("service php56-fpm start") if ((!$php56lives || !$fpmsumar || !-f "/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
 #     sleep(3);
-#     system("rm -f /var/run/fmp_wait.pid");
+#     system("rm -f /run/fmp_wait.pid");
 #   }
 }
 
 if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
-  # if (!-f "/var/run/solr_jetty.pid") {
-  #   system("touch /var/run/solr_jetty.pid");
+  # if (!-f "/run/solr_jetty.pid") {
+  #   system("touch /run/solr_jetty.pid");
   system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7");
   system("service jetty8 start") if (!$jetty8sumar && -f "/etc/init.d/jetty8");
   system("service jetty9 start") if (!$jetty9sumar && -f "/etc/init.d/jetty9");
@@ -225,7 +225,7 @@ if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f 
   system("service lsyncd start") if (!$lsyncdsumar && -f "/etc/init.d/lsyncd");
   system("service postfix restart") if (!-f "/var/spool/postfix/pid/master.pid");
   #   sleep(9);
-  #   system("rm -f /var/run/solr_jetty.pid");
+  #   system("rm -f /run/solr_jetty.pid");
   # }
 }
 
@@ -259,30 +259,30 @@ if ($dhcpcdlives) {
   system("hostname -b $thishostname");
 }
 if (-f "/etc/init.d/rsyslog") {
-  if (!$rsyslogdsumar || !-f "/var/run/rsyslogd.pid") {
+  if (!$rsyslogdsumar || !-f "/run/rsyslogd.pid") {
     system("killall -9 rsyslogd");
     system("service rsyslog restart");
   }
 }
 elsif (-f "/etc/init.d/sysklogd") {
-  if (!$sysklogdsumar || !-f "/var/run/syslogd.pid") {
+  if (!$sysklogdsumar || !-f "/run/syslogd.pid") {
     system("killall -9 sysklogd");
     system("service sysklogd restart");
   }
 }
 elsif (-f "/etc/init.d/inetutils-syslogd") {
-  if (!$syslogdsumar || !-f "/var/run/syslog.pid") {
+  if (!$syslogdsumar || !-f "/run/syslog.pid") {
     system("killall -9 syslogd");
     system("service inetutils-syslogd restart");
   }
 }
-if ((!$clamdsumar || !-f "/var/run/clamav/clamd.pid") && -f "/etc/init.d/clamav-daemon") {
+if ((!$clamdsumar || !-f "/run/clamav/clamd.pid") && -f "/etc/init.d/clamav-daemon") {
   if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
     system("killall -9 clamd");
     system("service clamav-daemon start");
   }
 }
-if ((!$freshclamsumar || !-f "/var/run/clamav/freshclam.pid") && -f "/etc/init.d/clamav-freshclam") {
+if ((!$freshclamsumar || !-f "/run/clamav/freshclam.pid") && -f "/etc/init.d/clamav-freshclam") {
   if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
     system("killall -9 freshclam");
     system("service clamav-freshclam start");

@@ -226,9 +226,9 @@ msg() {
   echo "AutoInit v.${tRee} [$(date +%T 2>&1)] ==> $*"
 }
 
-if [ -e "/var/run/autoinit.pid" ]; then
+if [ -e "/run/autoinit.pid" ]; then
   echo " " >> ${logSlt}
-  msg "The /var/run/autoinit.pid is blocking this run..." >> ${logSlt}
+  msg "The /run/autoinit.pid is blocking this run..." >> ${logSlt}
   echo " " >> ${logSlt}
   exit 1
 fi
@@ -342,7 +342,7 @@ init_pre() {
   _SYS_IFNAMES=$(grep GRUB_CMDLINE_LINUX= /etc/default/grub | grep "net.ifnames=0" 2>&1)
   if [ -e "/etc/default/grub" ] && [[ ! "${_SYS_IFNAMES}" =~ "net.ifnames=0" ]]; then
     echo "Running init_pre procedure A..."
-    touch /var/run/autoinit.pid
+    touch /run/autoinit.pid
     echo "OOPS, we need to fix GRUB_CMDLINE_LINUX and reboot first"
     echo "But do not worry, just log in back in five minutes"
     echo 'GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0 memhp_default_state=online"' >> /etc/default/grub
@@ -360,13 +360,13 @@ init_pre() {
       echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
     fi
     install_apparmor_utils
-    rm -f /var/run/autoinit.pid
+    rm -f /run/autoinit.pid
     reboot
     exit 0
   else
     if [ ! -x "/usr/bin/aptitude" ] || [ ! -x "/usr/bin/cc" ]; then
       echo "Running init_pre procedure B..."
-      touch /var/run/autoinit.pid
+      touch /run/autoinit.pid
       /usr/bin/apt-get update >> ${logSlt}
       ${_INITINS} lsb-release >> ${logSlt}
       _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
@@ -418,7 +418,7 @@ init_pre() {
         echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
       fi
       install_apparmor_utils
-      rm -f /var/run/autoinit.pid
+      rm -f /run/autoinit.pid
       reboot
       exit 0
     fi
@@ -444,7 +444,7 @@ init_run_two_quick() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   msg "Running init_run_two_quick procedure..." >> ${logInt}
-  touch /var/run/autoinit.pid
+  touch /run/autoinit.pid
   msg "Launching a quick dist-upgrade to ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
   if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
     rm -f /etc/apt/preferences.d/systemd
@@ -486,7 +486,7 @@ init_run_two_quick() {
   echo " " >> ${logInt}
   sleep 5
   touch /root/.run-two-devuan-quick.cnf
-  rm -f /var/run/autoinit.pid
+  rm -f /run/autoinit.pid
   reboot
   exit 0
 }
@@ -496,7 +496,7 @@ init_run_one_quick() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   msg "Running init_run_one_quick procedure..." >> ${logInt}
-  touch /var/run/autoinit.pid
+  touch /run/autoinit.pid
   msg "Your current system is ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
   echo " " >> ${logInt}
   _NEW_SYS=Devuan
@@ -602,7 +602,7 @@ init_run_one_quick() {
     sleep 5
     touch /root/.run-one-devuan-quick.cnf
     install_apparmor_utils
-    rm -f /var/run/autoinit.pid
+    rm -f /run/autoinit.pid
     reboot
     exit 0
   else
@@ -619,7 +619,7 @@ init_run_one_quick() {
     sleep 5
     touch /root/.run-one-devuan-quick.cnf
     install_apparmor_utils
-    rm -f /var/run/autoinit.pid
+    rm -f /run/autoinit.pid
     reboot
     exit 0
   fi
@@ -650,7 +650,7 @@ init() {
 pre() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-  touch /var/run/autoinit.pid
+  touch /run/autoinit.pid
   if [ ! -e "/root/.autoinit.log" ]; then
     echo "Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..."
     msg "Launching BOA System INIT on ${_OS_DIST}/${_OS_CODE}..." >> ${logInt}
@@ -659,7 +659,7 @@ pre() {
   init
 }
 
-if [ ! -e "/var/run/autoinit.pid" ]; then
+if [ ! -e "/run/autoinit.pid" ]; then
   pre
 fi
 

@@ -204,8 +204,8 @@ fi
 ###
 clean_pid_exit() {
   echo "REASON ${e} on $(date 2>&1)" >> /root/.barracuda.sh.exit.exceptions.log
-  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
-  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   service cron start &> /dev/null
   exit 1
 }

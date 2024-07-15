@@ -17,7 +17,7 @@ DAEMON=/usr/bin/redis-server
 DAEMON_ARGS=/etc/redis/redis.conf
 NAME=redis-server
 DESC=redis-server
-PIDFILE=/var/run/redis/redis.pid
+PIDFILE=/run/redis/redis.pid
 
 test -x $DAEMON || exit 0
 

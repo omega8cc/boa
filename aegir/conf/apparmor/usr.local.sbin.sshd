@@ -93,7 +93,7 @@
   /etc/ssl/openssl.cnf r,
 
   # Write access to the PID file
-  /var/run/sshd.pid rw,
+  /run/sshd.pid rw,
 
   # Allow network access for accepting inbound connections
   network inet stream,

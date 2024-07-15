@@ -604,20 +604,20 @@ retrieve() {
 }
 
 if [ "$1" = "backup" ]; then
-  if test -f /var/run/${_HST}_backup.pid ; then
+  if test -f /run/${_HST}_backup.pid ; then
     touch ${_LOGPTH}/wait_${_HST}_backup.log
     echo "The duplicity backup is running already?"
-    echo "Existing /var/run/${_HST}_backup.pid found..."
+    echo "Existing /run/${_HST}_backup.pid found..."
     echo "But no active duplicity process detected..."
     exit 1
   else
-    touch /var/run/${_HST}_backup.pid
+    touch /run/${_HST}_backup.pid
     echo "The duplicity backup is starting now..."
     check_boto
     backup
     echo "The duplicity backup is complete!"
     touch ${_LOGPTH}/run_${_HST}_backup.log
-    rm -f /var/run/${_HST}_backup.pid
+    rm -f /run/${_HST}_backup.pid
   fi
 elif [ "$1" = "install" ]; then
   install

@@ -47,22 +47,22 @@ apt_clean_update() {
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
-rm -f /var/run/clear_m.pid
+rm -f /run/clear_m.pid
 
 _FIVE_MINUTES=$(date --date '5 minutes ago' +"%Y-%m-%d %H:%M:%S")
-find /var/run/solr_jetty.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
-find /var/run/fmp_wait.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
-find /var/run/restarting_fmp_wait.pid  -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
+find /run/solr_jetty.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
+find /run/fmp_wait.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
+find /run/restarting_fmp_wait.pid  -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
 
 _ONE_HOUR=$(date --date '1 hour ago' +"%Y-%m-%d %H:%M:%S")
-find /var/run/mysql_restart_running.pid -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \; &> /dev/null
-find /var/run/boa_wait.pid -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \; &> /dev/null
-find /var/run/manage*users.pid  -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \; &> /dev/null
+find /run/mysql_restart_running.pid -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \; &> /dev/null
+find /run/boa_wait.pid -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \; &> /dev/null
+find /run/manage*users.pid  -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \; &> /dev/null
 
 _THR_HOURS=$(date --date '3 hours ago' +"%Y-%m-%d %H:%M:%S")
-find /var/run/boa_run.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \; &> /dev/null
-find /var/run/*_backup.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \; &> /dev/null
-find /var/run/daily-fix.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \; &> /dev/null
+find /run/boa_run.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \; &> /dev/null
+find /run/*_backup.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \; &> /dev/null
+find /run/daily-fix.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \; &> /dev/null
 
 if [ -e "/root/.proxy.cnf" ]; then
   exit 0
@@ -163,7 +163,7 @@ check_dns_curl() {
   fi
 }
 
-if [ ! -e "/var/run/boa_run.pid" ]; then
+if [ ! -e "/run/boa_run.pid" ]; then
   check_dns_curl
   if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf

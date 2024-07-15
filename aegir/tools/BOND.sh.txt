@@ -207,8 +207,8 @@ fi
 # Clean pid files on exit.
 clean_pid_exit() {
   echo "REASON ${e} on $(date 2>&1)" >> /root/.bond.sh.exit.exceptions.log
-  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
-  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   service cron start &> /dev/null
   exit 1
 }
@@ -251,7 +251,7 @@ apt_clean_update() {
 
 check_sql_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
+    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     echo "INFO: Waiting for MySQLD availability..."
     sleep 3
@@ -948,8 +948,8 @@ innodb_log_file_size_update() {
   mrun "service mysql stop" 2> /dev/null
   echo "Waiting 15 seconds..."
   mrun "sleep 15"
-  if [ ! -e "/var/run/mysqld/mysqld.sock" ] \
-    && [ ! -e "/var/run/mysqld/mysqld.pid" ]; then
+  if [ ! -e "/run/mysqld/mysqld.sock" ] \
+    && [ ! -e "/run/mysqld/mysqld.pid" ]; then
     mkdir -p ${vBs}/old-sql-ib-log-${_NOW}
     mrun "sleep 5"
     mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
@@ -959,7 +959,7 @@ innodb_log_file_size_update() {
     echo "Waiting 15 seconds..."
     mrun "sleep 15"
   fi
-  if [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
+  if [ ! -e "/run/mysqld/mysqld.sock" ]; then
     service mysql start &> /dev/null
   fi
 }
@@ -1187,7 +1187,7 @@ tune_web_server_config() {
 #
 check_mysqld_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
+    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     msg "INFO: Waiting for MySQLD availability before tune_sql_memory_limits..."
     sleep 5
@@ -1737,7 +1737,7 @@ EOF
 
 ###---### init
 #
-touch /var/run/boa_run.pid
+touch /run/boa_run.pid
 #
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="https://github.com/omega8cc"
@@ -1774,7 +1774,7 @@ else
 fi
 #
 #
-rm -f /var/run/aegir_upgrade.pid
+rm -f /run/aegir_upgrade.pid
 rm -f /opt/tmp/testecho*
 _SRCDIR="/opt/tmp/files"
 mkdir -p ${_SRCDIR}
@@ -1861,7 +1861,7 @@ else
 fi
 rm -rf /var/opt/*
 rm -rf /opt/tmp/*
-[ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+[ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
 if [ ! -e "/root/.upstart.cnf" ]; then
   service cron start &> /dev/null
 fi

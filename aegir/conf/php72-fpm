@@ -14,7 +14,7 @@ prefix=/opt/php72
 exec_prefix=${prefix}
 php_fpm_BIN=/opt/php72/sbin/php-fpm
 php_fpm_CONF=/opt/php72/etc/php72-fpm.conf
-php_fpm_PID=/var/run/php72-fpm.pid
+php_fpm_PID=/run/php72-fpm.pid
 php_opts="--fpm-config $php_fpm_CONF --pid $php_fpm_PID -c /opt/php72/etc/php72.ini"
 
 wait_for_pid() {

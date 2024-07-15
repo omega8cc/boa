@@ -657,7 +657,7 @@ update_agents() {
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
       touch ${pthLog}/manage_ltd_users.ctrl.${tRee}.${_X_SE}.pid
-      [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
+      [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
     else
       mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
     fi
@@ -673,7 +673,7 @@ update_agents() {
       chmod 700 /var/xdrago/manage_solr_config.sh
       chown root:root /var/xdrago/manage_solr_config.sh
       touch ${pthLog}/manage_solr_config_f2.ctrl.${tRee}.${_X_SE}.pid
-      rm -f /var/run/manage_solr_config.pid
+      rm -f /run/manage_solr_config.pid
     else
       mv -f /var/xdrago/manage_solr_config.sh.old /var/xdrago/manage_solr_config.sh
     fi

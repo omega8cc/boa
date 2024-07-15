@@ -273,7 +273,7 @@ mode_detection() {
     _STATUS=UPGRADE
     msg "MODE: UPGRADE"
     barracuda_cnf
-    touch /var/run/boa_wait.pid
+    touch /run/boa_wait.pid
     [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
     [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
     if [ -e "/root/.auto.up.cnf" ] \
@@ -284,7 +284,7 @@ mode_detection() {
     && [ -e "/lib/systemd/systemd" ]; then
     _STATUS=SYSTEMD
     msg "MODE: SYSTEMD"
-    touch /var/run/boa_wait.pid
+    touch /run/boa_wait.pid
   else
     _STATUS=INIT
     [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
@@ -444,7 +444,7 @@ mode_detection() {
   chmod -R 777 /opt/tmp &> /dev/null
   find /opt/tmp/boa -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tmp/boa -type f -exec chmod 0644 {} \; &> /dev/null
-  rm -f /var/run/aegir_upgrade.pid
+  rm -f /run/aegir_upgrade.pid
   if [ "${_STATUS}" != "UPGRADE" ]; then
     _STRICT_BIN_PERMISSIONS=NO
   fi

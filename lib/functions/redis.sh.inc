@@ -81,8 +81,8 @@ fix_redis_mode() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: fix_redis_mode"
   fi
-  mkdir -p /var/run/redis
-  chown redis:redis /var/run/redis
+  mkdir -p /run/redis
+  chown redis:redis /run/redis
   if [ "${_CUSTOM_CONFIG_REDIS}" = "NO" ] \
     || [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
@@ -153,7 +153,7 @@ fix_redis_mode() {
             mv -f /etc/init.d/redis-server \
               /etc/init.d/redis-server-off &> /dev/null
             killall -9 redis-server &> /dev/null
-            rm -f /var/run/redis/redis.pid
+            rm -f /run/redis/redis.pid
             rm -f /var/xdrago/memcache.sh* &> /dev/null
             killall -9 memcached &> /dev/null
             msg "INFO: Remote Redis IP set to ${_REDIS_LISTEN_MODE}"
@@ -174,7 +174,7 @@ fix_redis_mode() {
           mv -f /etc/init.d/redis-server \
             /etc/init.d/redis-server-off &> /dev/null
           killall -9 redis-server &> /dev/null
-          rm -f /var/run/redis/redis.pid
+          rm -f /run/redis/redis.pid
           rm -f /var/xdrago/memcache.sh* &> /dev/null
           killall -9 memcached &> /dev/null
           msg "INFO: Remote Redis IP set to ${_REDIS_LISTEN_MODE}"
@@ -245,8 +245,8 @@ install_redis_src() {
   cp -af ${locCnf}/redis-server /etc/init.d/redis-server
   chmod 755 /etc/init.d/redis-server &> /dev/null
   mrun "update-rc.d redis-server defaults" 2> /dev/null
-  mkdir -p /var/run/redis
-  chown -R redis:redis /var/run/redis
+  mkdir -p /run/redis
+  chown -R redis:redis /run/redis
   mkdir -p /var/log/redis
   chown -R redis:redis /var/log/redis
   mkdir -p /var/lib/redis
@@ -303,8 +303,8 @@ redis_install_upgrade() {
   if [ ! -e "/var/lib/redis" ]; then
     mrun "adduser --system --group redis --home /home/redis" 2> /dev/null
   fi
-  mkdir -p /var/run/redis
-  chown -R redis:redis /var/run/redis
+  mkdir -p /run/redis
+  chown -R redis:redis /run/redis
   mkdir -p /var/log/redis
   chown -R redis:redis /var/log/redis
   mkdir -p /var/lib/redis
@@ -360,7 +360,7 @@ redis_install_upgrade() {
   fi
   if [ "${_REDIS_INSTALL_MISMATCH}" = "YES" ] \
     || [ ! -e "${pthLog}/redis-${_REDIS_VRN}-${_X_SE}-${_X_VERSION}.log" ] \
-    || [ ! -d "/var/run/redis" ] \
+    || [ ! -d "/run/redis" ] \
     || [ ! -x "/usr/bin/redis-server" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     if [ "${_REDIS_HOST}" = "LOCAL" ] || [ -z "${_REDIS_HOST}" ]; then

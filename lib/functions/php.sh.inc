@@ -1665,7 +1665,7 @@ install_php_multi() {
                 --enable-soap \
                 --with-fpm-group=www-data \
                 --with-fpm-user=www-data \
-                --with-mysql-sock=/var/run/mysqld/mysqld.sock \
+                --with-mysql-sock=/run/mysqld/mysqld.sock \
                 --with-mysqli=mysqlnd \
                 --with-pdo-mysql=mysqlnd \
                 --with-pear \
@@ -1698,7 +1698,7 @@ install_php_multi() {
                 --enable-soap \
                 --with-fpm-group=www-data \
                 --with-fpm-user=www-data \
-                --with-mysql-sock=/var/run/mysqld/mysqld.sock \
+                --with-mysql-sock=/run/mysqld/mysqld.sock \
                 --with-mysqli=mysqlnd \
                 --with-pdo-mysql=mysqlnd \
                 --with-pear \
@@ -1988,7 +1988,7 @@ newrelic_update() {
           /etc/newrelic/newrelic.cfg
         echo "license_key=${_NEWRELIC_KEY}" >> \
           /etc/newrelic/newrelic.cfg
-        echo "pidfile=/var/run/newrelic-daemon.pid" >> \
+        echo "pidfile=/run/newrelic-daemon.pid" >> \
           /etc/newrelic/newrelic.cfg
         echo "logfile=/var/log/newrelic/newrelic-daemon.log" >> \
           /etc/newrelic/newrelic.cfg
@@ -2186,7 +2186,7 @@ if_install_php_newrelic() {
             /etc/newrelic/newrelic.cfg
           echo "license_key=${_NEWRELIC_KEY}" >> \
             /etc/newrelic/newrelic.cfg
-          echo "pidfile=/var/run/newrelic-daemon.pid" >> \
+          echo "pidfile=/run/newrelic-daemon.pid" >> \
             /etc/newrelic/newrelic.cfg
           echo "logfile=/var/log/newrelic/newrelic-daemon.log" >> \
             /etc/newrelic/newrelic.cfg
