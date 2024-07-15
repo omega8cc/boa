@@ -4734,6 +4734,9 @@ sync_apparmor_profiles() {
     fi
     if [ "${isAppArmOn}" = "Y" ]; then
       if [ -e "/root/.activate.apparmor.cnf" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "ARMR: Activating AppArmor in the complain mode"
+        fi
         mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
         mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
         mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
@@ -4744,6 +4747,9 @@ sync_apparmor_profiles() {
           mrun "service auditd restart" 2> /dev/null
         fi
       elif [ -e "/root/.enforce.apparmor.cnf" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "ARMR: Activating AppArmor in the enforced mode"
+        fi
         mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
         mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
         mrun "aa-enforce /etc/apparmor.d/*" 2> /dev/null
@@ -4770,6 +4776,9 @@ sync_apparmor_profiles() {
       elif [ -e "/root/.disable.apparmor.cnf" ] \
         || [ ! -e "/root/.activate.apparmor.cnf" ] \
         || [ ! -e "/root/.enforce.apparmor.cnf" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "ARMR: Deactivating AppArmor using aa-teardown"
+        fi
         mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
         mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
         mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
