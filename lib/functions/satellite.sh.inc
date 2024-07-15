@@ -3298,6 +3298,7 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
+
     if [ -d "${_QR}/pressflow-${_SMALLCORE6_V}-dev/sites" ]; then
       if [ ! -L "${_QH}/pressflow-${_SMALLCORE6_V}-dev" ]; then
         _A="${_QR}/pressflow-${_SMALLCORE6_V}-dev/sites"
@@ -3329,6 +3330,7 @@ satellite_if_add_update_user_platforms_symlinks() {
         fi
       fi
     fi
+
     if [ -d "${_QR}/${_DRUPAL7D}/sites" ]; then
       if [ ! -L "${_QH}/${_DRUPAL7}-dev" ]; then
         _A="${_QR}/${_DRUPAL7D}/sites"
@@ -3360,6 +3362,7 @@ satellite_if_add_update_user_platforms_symlinks() {
         fi
       fi
     fi
+
     if [ -d "${_QR}/${_DRUPAL9_D}/sites" ]; then
       if [ ! -L "${_QH}/${_DRUPAL9}-dev" ]; then
         _A="${_QR}/${_DRUPAL9_D}/sites"
@@ -3391,6 +3394,7 @@ satellite_if_add_update_user_platforms_symlinks() {
         fi
       fi
     fi
+
     if [ -d "${_QR}/${_DRUPAL10_0_D}/sites" ]; then
       if [ ! -L "${_QH}/${_DRUPAL10_0}-dev" ]; then
         _A="${_QR}/${_DRUPAL10_0_D}/sites"
@@ -3422,6 +3426,7 @@ satellite_if_add_update_user_platforms_symlinks() {
         fi
       fi
     fi
+
     if [ -d "${_QR}/${_DRUPAL10_1_D}/sites" ]; then
       if [ ! -L "${_QH}/${_DRUPAL10_1}-dev" ]; then
         _A="${_QR}/${_DRUPAL10_1_D}/sites"
@@ -3453,6 +3458,7 @@ satellite_if_add_update_user_platforms_symlinks() {
         fi
       fi
     fi
+
     if [ -d "${_QR}/${_DRUPAL10_2_D}/sites" ]; then
       if [ ! -L "${_QH}/${_DRUPAL10_2}-dev" ]; then
         _A="${_QR}/${_DRUPAL10_2_D}/sites"
@@ -3484,6 +3490,71 @@ satellite_if_add_update_user_platforms_symlinks() {
         fi
       fi
     fi
+
+    if [ -d "${_QR}/${_DRUPAL10_3_D}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_3}-dev" ]; then
+        _A="${_QR}/${_DRUPAL10_3_D}/sites"
+        _B="${_QH}/${_DRUPAL10_3}-dev"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ -d "${_QR}/${_DRUPAL10_3_S}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_3}-stage" ]; then
+        _A="${_QR}/${_DRUPAL10_3_S}/sites"
+        _B="${_QH}/${_DRUPAL10_3}-stage"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ ! -d "${_QR}/${_DRUPAL10_3}" ]; then
+      if [ -d "${_QR}/${_DRUPAL10_3_P}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_3}-prod" ]; then
+          _A="${_QR}/${_DRUPAL10_3_P}/sites"
+          _B="${_QH}/${_DRUPAL10_3}-prod"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    elif [ ! -d "${_QR}/${_DRUPAL10_3_P}" ]; then
+      if [ -d "${_QR}/${_DRUPAL10_3}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_3}-prod" ]; then
+          _A="${_QR}/${_DRUPAL10_3}/sites"
+          _B="${_QH}/${_DRUPAL10_3}-prod"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    fi
+
+    if [ -d "${_QR}/${_DRUPAL10_4_D}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_4}-dev" ]; then
+        _A="${_QR}/${_DRUPAL10_4_D}/sites"
+        _B="${_QH}/${_DRUPAL10_4}-dev"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ -d "${_QR}/${_DRUPAL10_4_S}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_4}-stage" ]; then
+        _A="${_QR}/${_DRUPAL10_4_S}/sites"
+        _B="${_QH}/${_DRUPAL10_4}-stage"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ ! -d "${_QR}/${_DRUPAL10_4}" ]; then
+      if [ -d "${_QR}/${_DRUPAL10_4_P}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_4}-prod" ]; then
+          _A="${_QR}/${_DRUPAL10_4_P}/sites"
+          _B="${_QH}/${_DRUPAL10_4}-prod"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    elif [ ! -d "${_QR}/${_DRUPAL10_4_P}" ]; then
+      if [ -d "${_QR}/${_DRUPAL10_4}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_4}-prod" ]; then
+          _A="${_QR}/${_DRUPAL10_4}/sites"
+          _B="${_QH}/${_DRUPAL10_4}-prod"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    fi
+
     if [ -d "${_QR}/erpal-${_ERPAL}-${_SMALLCORE7_V}/sites" ]; then
       if [ ! -L "${_QH}/erpal-${_ERPAL}-${_SMALLCORE7_V}" ]; then
         _A="${_QR}/erpal-${_ERPAL}-${_SMALLCORE7_V}/sites"
@@ -3617,10 +3688,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/thunder-${_THUNDER}-${_SMALLCORE10_2_V}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_SMALLCORE10_2_V}" ]; then
-        _A="${_QR}/thunder-${_THUNDER}-${_SMALLCORE10_2_V}/docroot/sites"
-        _B="${_QH}/thunder-${_THUNDER}-${_SMALLCORE10_2_V}"
+    if [ -d "${_QR}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}" ]; then
+        _A="${_QR}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}/docroot/sites"
+        _B="${_QH}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}"
         ln -sfn ${_A} ${_B}
       fi
     fi
@@ -3645,17 +3716,24 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/varbase-${_VARBASE}-${_SMALLCORE10_2_V}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/varbase-${_VARBASE}-${_SMALLCORE10_2_V}" ]; then
-        _A="${_QR}/varbase-${_VARBASE}-${_SMALLCORE10_2_V}/docroot/sites"
-        _B="${_QH}/varbase-${_VARBASE}-${_SMALLCORE10_2_V}"
+    if [ -d "${_QR}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}" ]; then
+        _A="${_QR}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}/docroot/sites"
+        _B="${_QH}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}"
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/social-${_SOCIAL}-${_SMALLCORE10_2_V}/html/sites" ]; then
-      if [ ! -L "${_QH}/social-${_SOCIAL}-${_SMALLCORE10_2_V}" ]; then
-        _A="${_QR}/social-${_SOCIAL}-${_SMALLCORE10_2_V}/html/sites"
-        _B="${_QH}/social-${_SOCIAL}-${_SMALLCORE10_2_V}"
+    if [ -d "${_QR}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}" ]; then
+        _A="${_QR}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}/docroot/sites"
+        _B="${_QH}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ -d "${_QR}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}/html/sites" ]; then
+      if [ ! -L "${_QH}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}" ]; then
+        _A="${_QR}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}/html/sites"
+        _B="${_QH}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}"
         ln -sfn ${_A} ${_B}
       fi
     fi
@@ -3988,6 +4066,9 @@ satellite_make() {
   echo "_SMALLCORE10_0_V=\"${_SMALLCORE10_0_V}\""     >> ${writeTo}
   echo "_SMALLCORE10_1_V=\"${_SMALLCORE10_1_V}\""     >> ${writeTo}
   echo "_SMALLCORE10_2_V=\"${_SMALLCORE10_2_V}\""     >> ${writeTo}
+  echo "_SMALLCORE10_2_6_V=\"${_SMALLCORE10_2_6_V}\"" >> ${writeTo}
+  echo "_SMALLCORE10_3_V=\"${_SMALLCORE10_3_V}\""     >> ${writeTo}
+  echo "_SMALLCORE10_4_V=\"${_SMALLCORE10_4_V}\""     >> ${writeTo}
   echo "_SMALLCORE6_V=\"${_SMALLCORE6_V}\""           >> ${writeTo}
   echo "_SMALLCORE7_V=\"${_SMALLCORE7_V}\""           >> ${writeTo}
   echo "_SMALLCORE9_V=\"${_SMALLCORE9_V}\""           >> ${writeTo}
@@ -4007,7 +4088,8 @@ satellite_make() {
   echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${writeTo}
   echo "_USER=\"${_USER}\""                           >> ${writeTo}
   echo "_USRG=\"${_USRG}\""                           >> ${writeTo}
-  echo "_VARBASE=\"${_VARBASE}\""                     >> ${writeTo}
+  echo "_VARBASE9=\"${_VARBASE9}\""                   >> ${writeTo}
+  echo "_VARBASE10=\"${_VARBASE10}\""                 >> ${writeTo}
   echo "_WEBG=\"${_WEBG}\""                           >> ${writeTo}
   echo "_X_SE=\"${_X_SE}\""                           >> ${writeTo}
   echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${writeTo}

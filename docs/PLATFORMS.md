@@ -1,15 +1,26 @@
 # Octopus Platforms
 
-Octopus can install and/or support the Ægir platforms listed below:
+Octopus can install and/or support the Ægir platforms listed below.
+
+## Note on required and supported PHP versions
+
+Supported Drupal core versions and distributions have different PHP version requirements, while not all PHP versions out of currently supported ten versions are installed by default.
+
+Ensure that you have corresponding PHP versions installed with barracuda before attempting to install older Drupal versions and distributions.
+
+On hosted BOA contact your host if you need any legacy PHP installed again.
 
 ## Drupal 10
 
-- [Drupal 10.2.4](https://drupal.org/project/drupal/releases/10.2.4)
+- [Drupal 10.4.x-dev](https://drupal.org/project/drupal/releases/10.4.x-dev)
+- [Drupal 10.3.1](https://drupal.org/project/drupal/releases/10.3.1)
+- [Drupal 10.2.7](https://drupal.org/project/drupal/releases/10.2.7)
 - [Drupal 10.1.8](https://drupal.org/project/drupal/releases/10.1.8)
 - [Drupal 10.0.11](https://drupal.org/project/drupal/releases/10.0.11)
-- [Social 12.2.2](https://drupal.org/project/social) (10.2.4)
-- [Thunder 7.2.0](https://drupal.org/project/thunder) (10.2.4)
-- [Varbase 9.1.1](https://drupal.org/project/varbase) (10.2.4)
+- [Social 12.4.2](https://drupal.org/project/social) (10.2.6)
+- [Thunder 7.3.0](https://drupal.org/project/thunder) (10.3.1)
+- [Varbase 10.0.0](https://drupal.org/project/varbase) (10.3.1)
+- [Varbase 9.1.3](https://drupal.org/project/varbase) (10.2.6)
 
 ## Drupal 9
 
@@ -45,35 +56,44 @@ This file, if it exists and contains a list of symbols used to define supported 
 
 ## Supported Values
 
-### Drupal 10.2 based
+### Drupal 10.4
+
+- `D104P D104S D104D` — Drupal 10.4 prod/stage/dev
+
+### Drupal 10.3
+
+- `D103P D103S D103D` — Drupal 10.3 prod/stage/dev
+- `THR` — Thunder
+- `VBX` — Varbase 10
+
+### Drupal 10.2
 
 - `D102P D102S D102D` — Drupal 10.2 prod/stage/dev
+- `SOC` — Social
+- `VBE` — Varbase 9
 
-### Drupal 10.1 based
+### Drupal 10.1
 
 - `D101P D101S D101D` — Drupal 10.1 prod/stage/dev
-- `THR` — Thunder
-- `VBE` — Varbase
 
-### Drupal 10.0 based
+### Drupal 10.0
 
 - `D100P D100S D100D` — Drupal 10.0 prod/stage/dev
 
-### Drupal 9 based
+### Drupal 9
 
 - `D9P D9S D9D` — Drupal 9 prod/stage/dev
 - `OLS` — OpenLucius
 - `OPG` — Opigno LMS
-- `SOC` — Social
 
-### Drupal 7 based
+### Drupal 7
 
 - `D7P D7S D7D` — Drupal 7 prod/stage/dev
 - `CME` — Commerce v.2
 - `DCE` — Commerce v.1
 - `UC7` — Ubercart
 
-### Drupal 6 based
+### Drupal 6
 
 - `D6P D6S D6D` — Pressflow (LTS) prod/stage/dev
 - `UCT` — Ubercart
@@ -84,5 +104,5 @@ You can also use the special keyword `ALL` instead of any other symbols to have 
 
 ```
 ALL
-D101P D101S SOC
+D102P D103P SOC UC7
 ```
