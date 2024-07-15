@@ -81,8 +81,7 @@ for Runner in `find /var/xdrago -maxdepth 1 -mindepth 1 -type f \
   load_control
   if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ]; then
     echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
-    if [ ! -e "/var/run/boa_wait.pid" ] \
-      && [ ! -e "/var/run/manage_ruby_users.pid" ]; then
+    if [ ! -e "/var/run/boa_wait.pid" ]; then
       echo running ${Runner}
       bash ${Runner}
       n=$((RANDOM%9+2))
@@ -100,7 +99,6 @@ done
 ###-------------SYSTEM-----------------###
 
 if [ -e "/var/run/boa_wait.pid" ] \
-  || [ -e "/var/run/manage_ruby_users.pid" ] \
   || [ -e "/var/run/boa_cron_wait.pid" ]; then
   touch /var/xdrago/log/wait-runner.pid
   echo "Another BOA task is running, we will try again later..."
