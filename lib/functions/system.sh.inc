@@ -4743,8 +4743,33 @@ sync_apparmor_profiles() {
         if [ -x "/etc/init.d/auditd" ]; then
           mrun "service auditd restart" 2> /dev/null
         fi
+      elif [ -e "/root/.enforce.apparmor.cnf" ]; then
+        mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
+        mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
+        mrun "aa-enforce /etc/apparmor.d/*" 2> /dev/null
+        if [ -x "/etc/init.d/apparmor" ]; then
+          mrun "service apparmor restart" 2> /dev/null
+        fi
+        if [ -x "/etc/init.d/auditd" ]; then
+          mrun "service auditd restart" 2> /dev/null
+        fi
+        _AA_TEST_A=$(aa-status | grep "profiles are loaded" 2>&1)
+        _AA_TEST_B=$(aa-status | grep "0 processes are in complain mode" 2>&1)
+        _AA_TEST_C=$(aa-status | grep "0 profiles are in unconfined mode" 2>&1)
+        _AA_TEST_D=$(aa-status | grep "0 processes are unconfined" 2>&1)
+        if [ -z "${_AA_TEST_A}" ] \
+          || [ -z "${_AA_TEST_B}" ] \
+          || [ -z "${_AA_TEST_C}" ] \
+          || [ -z "${_AA_TEST_D}" ]; then
+          mrun "bash /var/xdrago/move_sql.sh" 2> /dev/null
+          mrun "service redis-server reload" 2> /dev/null
+          mrun "killall unbound" 2> /dev/null
+          mrun "killall pure-ftpd" 2> /dev/null
+          mrun "service rsyslog restart" 2> /dev/null
+        fi
       elif [ -e "/root/.disable.apparmor.cnf" ] \
-        || [ ! -e "/root/.activate.apparmor.cnf" ]; then
+        || [ ! -e "/root/.activate.apparmor.cnf" ] \
+        || [ ! -e "/root/.enforce.apparmor.cnf" ]; then
         mrun "rm -rf /var/cache/apparmor/*" 2> /dev/null
         mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
         mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
