@@ -38,7 +38,7 @@ When you log into your SSH account, you will be presented with a helpful intro:
               Use NPM to manage all your packages! Example:
                         `npm install -g gulp`
 
-     To initialize Ruby use control file and re-login after 15 minutes
+      To initialize Ruby use control file and re-login after 5 minutes
                  `touch ~/static/control/compass.info`
 
 ```
@@ -46,7 +46,7 @@ When you log into your SSH account, you will be presented with a helpful intro:
 To initialize your account for Ruby Gems support, follow these steps:
 
 1. Create an empty control file: `touch ~/static/control/compass.info`
-2. Log out and wait at least 15 minutes.
+2. Log out and wait 5-6 minutes.
 3. Log in and install Compass: `gem install --conservative compass`
 4. Navigate to your theme directory and run `bundle install`, or manually install gems as needed:
    ```sh
@@ -70,7 +70,9 @@ Please note that it is not possible to use Guard in a limited shell via Drush wi
 
 You need to use Guard and Compass tools directly, with commands like `compass watch` or `guard start`. Ensure that Compass and Guard gems are installed first, as they are not installed by default.
 
-The initial Ruby Gems installation may take 15 minutes or longer. Remember to wait until it is complete before re-logging in. Once the installation is finished, you will be able to run the `gem --version` command. If it is still unavailable, please wait a bit longer. The process may take additional time if you have extra SSH sub-accounts, as the system installs separate Ruby Gems and some problematic gems in every sub-account, multiplying the effective wait time.
+The initial Ruby Gems installation may take 5-6 minutes. Remember to wait until it is complete before re-logging in. Once the installation is finished, you will be able to run the `gem --version` command. If it is still unavailable, please wait a bit longer. The process may take a little longer time if you have extra SSH sub-accounts, as the system installs separate Ruby Gems and some problematic gems in every sub-account.
+
+Please note that Node/NPM support, if allowed with `/root/.allow.node.lshell.cnf` file, will be enabled only on the main Octopus `lshell` account. The `client` level sub-accounts will receive their own Ruby Gems access only.
 
 If `bundle install` complains that it can’t build a native extension for the gem `foobar`, but the gem is already installed and listed when you type `gem-list`, first compare the gem versions.
 
