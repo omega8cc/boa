@@ -62,6 +62,7 @@
 
   # Allow mysqld_safe to use /dev/shm for temporary storage
   /dev/shm/** rw,
+  /dev/shm/ rw,
 
   # Allow execution of mysqld_safe
   /usr/bin/mysqld_safe mrix,

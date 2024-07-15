@@ -18,6 +18,7 @@
   capability dac_read_search,
 
   # Allow read access to necessary libraries
+  /usr/libexec/** mr,
   /lib/** mr,
   /lib64/** mr,
   /usr/lib/** mr,

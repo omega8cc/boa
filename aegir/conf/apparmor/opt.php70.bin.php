@@ -66,6 +66,7 @@
   /var/tmp/** rw,
 
   # Allow read access to necessary libraries
+  /usr/libexec/** mr,
   /lib/** mr,
   /lib64/** mr,
   /opt/php*/lib/php/** mr,
@@ -88,6 +89,7 @@
 
   # Allow PHP-CLI to use /dev/shm for temporary storage
   /dev/shm/** rw,
+  /dev/shm/ rw,
 
   # Deny execution of binaries from these directories
   deny /home/*/.tmp/** m,

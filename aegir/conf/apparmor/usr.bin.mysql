@@ -67,6 +67,7 @@
 
   # Allow MySQL to use /dev/shm for temporary storage
   /dev/shm/** rw,
+  /dev/shm/ rw,
 
   # Allow MySQL to read network-related configurations
   /etc/hosts.allow r,
