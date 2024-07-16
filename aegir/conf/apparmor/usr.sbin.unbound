@@ -51,11 +51,13 @@
   /usr/share/dns/root.* r,
 
   # Unbound configuration paths
+  /usr/etc/unbound/ r,
   /usr/etc/unbound/** r,
+  /var/lib/unbound/ r,
   /var/lib/unbound/** r,
-  /run/unbound/** rw,
 
   # Unbound logs
+  /var/log/unbound/ r,
   /var/log/unbound/** rw,
 
   # Unbound keys (if write access is needed)
@@ -65,8 +67,7 @@
   /usr/sbin/unbound mrix,
 
   # Allow Unbound to access its pid and control socket
-  /usr/etc/unbound/unbound.ctl rw,
-  /usr/etc/unbound/unbound.pid rw,
+  /run/unbound/ r,
   /run/unbound/unbound.ctl rw,
   /run/unbound/unbound.pid rw,
 }

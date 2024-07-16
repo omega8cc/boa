@@ -377,6 +377,8 @@ dns_unbound_install_upgrade() {
   if [ ! -x "${isUnbnd}" ] \
     || [ -z "${isUnbnd}" ] \
     || [ "${isUnbndFix}" = "YES" ] \
+    || [ -e "/usr/etc/unbound/unbound.pid" ] \
+    || [ ! -e "/run/unbound" ] \
     || [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Installing DNS cache Unbound server from packages..."
@@ -418,7 +420,8 @@ dns_unbound_install_upgrade() {
     mrun "${_INSTAPP} unbound-host" 2> /dev/null
     mrun "${_INSTAPP} dns-root-data" 2> /dev/null
     ###
-    [ ! -e "/run/unbound/" ] && mkdir -p /run/unbound/
+    [ -e "/usr/etc/unbound/unbound.pid" ] && rm -f /usr/etc/unbound/unbound.pid
+    [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
     chown -R unbound:unbound /run/unbound
     [ ! -e "/var/log/unbound/" ] && mkdir -p /var/log/unbound/
     touch /var/log/unbound/unbound.log
