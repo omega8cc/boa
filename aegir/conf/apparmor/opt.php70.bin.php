@@ -28,6 +28,11 @@
   /usr/sbin/sendmail mrix,
 
   # Allow PHP-CLI to read its configuration files
+  /etc/sudoers.d/ r,
+  /etc/sudoers.d/* r,
+  /run/sudo/ts/ r,
+  /run/sudo/ts/* r,
+  /etc/postfix/main.cf r,
   /etc/sudo.conf r,
   /etc/sudoers r,
   /home/*/.drush/ r,
