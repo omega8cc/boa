@@ -28,6 +28,8 @@
   /opt/php56/sbin/php-fpm mrix,
 
   # Allow PHP-FPM to read its configuration files
+  /etc/postfix/dynamicmaps.cf.d/ r,
+  /etc/postfix/dynamicmaps.cf.d/* r,
   /etc/postfix/dynamicmaps.cf r,
   /etc/mailname r,
   /etc/postfix/main.cf r,
