@@ -28,6 +28,7 @@
   /opt/php56/sbin/php-fpm mrix,
 
   # Allow PHP-FPM to read its configuration files
+  /etc/mailname r,
   /etc/postfix/main.cf r,
   /home/*/.drush/** r,
   /data/conf/** r,
