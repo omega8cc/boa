@@ -57,7 +57,7 @@
 
   # Allow access to run directory
   /run/pure-ftpd.pid rw,
-  /run/pure-ftpd/ rwc,
+  /run/pure-ftpd/ rw,
 
   # Allow access to temporary directories
   /tmp/ r,
@@ -90,8 +90,8 @@
   owner /data/disk/*/static/ rw,
   owner /data/disk/*/static/** rw,
   owner /home/*/ rw,
-  owner /home/*/.drush/cache/ rwc,
-  owner /home/*/.drush/cache/** rwc,
+  owner /home/*/.drush/cache/ rw,
+  owner /home/*/.drush/cache/** rw,
   owner /home/*/** rw,
 
   # Catchall to deny everything else

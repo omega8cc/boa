@@ -143,8 +143,8 @@
   owner /var/aegir/host_master/** rw,
   owner /var/aegir/platforms/** rw,
 
-  owner /data/disk/*/.drush/ rwc,
-  owner /data/disk/*/.drush/** rwc,
+  owner /data/disk/*/.drush/ rw,
+  owner /data/disk/*/.drush/** rw,
   owner /data/disk/*/.tmp/ rw,
   owner /data/disk/*/.tmp/** rw,
   owner /data/disk/*/aegir/** rw,
@@ -155,8 +155,8 @@
   owner /data/disk/*/tools/le/** rw,
   owner /var/www/** rw,
 
-  owner /home/*/.drush/cache/ rwc,
-  owner /home/*/.drush/cache/** rwc,
+  owner /home/*/.drush/cache/ rw,
+  owner /home/*/.drush/cache/** rw,
   owner /home/*/.tmp/ rw,
   owner /home/*/.tmp/** rw,
   owner /root/.tmp/ rw,

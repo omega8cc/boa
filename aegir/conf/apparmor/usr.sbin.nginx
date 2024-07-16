@@ -68,7 +68,7 @@
   # Other required directories and files
   /proc/sys/** r,
   /run/nginx.pid rw,
-  /run/nginx.pid.oldbin rwc,
+  /run/nginx.pid.oldbin rw,
   /usr/fastcgi_temp/ rw,
   /usr/fastcgi_temp/** rw,
   /usr/share/GeoIP/GeoIP.dat r,
