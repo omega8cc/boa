@@ -158,6 +158,8 @@
   owner /home/*/.drush/cache/** rw,
   owner /home/*/.tmp/ rw,
   owner /home/*/.tmp/** rw,
+  owner /root/.tmp/ rw,
+  owner /root/.tmp/** rw,
 
   # Deny access to various sensitive directories and files
   deny /boot/** mrwklx,
