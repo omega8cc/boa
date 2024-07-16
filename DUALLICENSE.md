@@ -1,8 +1,6 @@
-# Dual License and BOA Branches Explained
+## Dual License and BOA Branches Explained
 
-## BOA Continues to be a Free/Libre Open Source Project
-
-While 100% of **BOA** code is **Free/Libre Open Source**, only the **BOA LTS** branch and **Ægir** itself are available free of charge without limits.
+**BOA** remains a **Free/Libre Open Source Project**. While all of **BOA** code is **Free/Libre Open Source**, only the **BOA LTS** branch and **Ægir** are available without any cost or restrictions.
 
 - **LTS**: This public branch remains completely free to use without any commercial license, as it has been from the beginning (previously named HEAD or STABLE). This branch should be considered the **BOA Long Term Support** variant, with slow updates focused on security and bug fixes, and limited new features.
 
