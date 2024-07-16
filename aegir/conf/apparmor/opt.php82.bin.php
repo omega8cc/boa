@@ -22,12 +22,8 @@
   # Allow PHP-CLI to execute its own binary
   /opt/php82/bin/php mrix,
 
-  # Allow PHP-CLI to execute some other binaries
-  /bin/dash mrix,
-  /usr/sbin/postdrop mrix,
-  /usr/sbin/sendmail mrix,
-
   # Allow PHP-CLI to read its configuration files
+  /etc/ldap/ldap.conf r,
   /etc/sudoers.d/ r,
   /etc/sudoers.d/* r,
   /run/sudo/ts/ r,
@@ -48,6 +44,9 @@
   /opt/php82/** r,
 
   # Allow PHP-CLI to execute some other binaries
+  /usr/sbin/postdrop mrix,
+  /usr/sbin/sendmail mrix,
+  /usr/bin/wget mrix,
   /usr/bin/sudo mrix,
   /bin/dash mrix,
   /bin/grep mrix,
