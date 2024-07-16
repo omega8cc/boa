@@ -102,7 +102,7 @@
   /usr/bin/lftp mrix,
   /usr/bin/mysql mrix,
   /usr/bin/mysqldump mrix,
-  /usr/bin/node,
+  /usr/bin/node mrix,
   /usr/bin/openssl mrix,
   /usr/bin/passwd mrix,
   /usr/bin/patch mrix,
