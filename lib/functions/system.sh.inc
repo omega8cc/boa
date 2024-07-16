@@ -4673,7 +4673,11 @@ if_enforce_apparmor_profiles() {
         || [ -z "${_AA_TEST_C}" ] \
         || [ -z "${_AA_TEST_D}" ] \
         || [ ! -z "${_AA_TEST_E}" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "ARMR: Restarting services to switch them to the enforced mode"
+        fi
         mrun "bash /var/xdrago/move_sql.sh" 2> /dev/null
+        wait
         mrun "service redis-server reload" 2> /dev/null
         mrun "killall unbound" 2> /dev/null
         mrun "killall pure-ftpd" 2> /dev/null
