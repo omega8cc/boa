@@ -28,6 +28,7 @@
   /opt/php80/sbin/php-fpm mrix,
 
   # Allow PHP-FPM to read its configuration files
+  /etc/postfix/main.cf r,
   /home/*/.drush/** r,
   /data/conf/** r,
   /etc/ImageMagick-6/log.xml r,
@@ -58,6 +59,7 @@
   /usr/sbin/sendmail mrix,
 
   # Allow PHP-FPM to access some /dev
+  /dev/tty wr,
   /dev/urandom r,
   /dev/random r,
   /dev/null rw,
