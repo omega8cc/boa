@@ -22,8 +22,8 @@ export tRee="${tRee}"
 
 _AEGIR_VERSION="${tRee}"
 _BRANCH_BOA="5.x-${tRee}"
-_X_SE="520devT02"
 _X_VERSION="BOA-5.3.0-${tRee}"
+_X_SE="530devT00"
 _MYSQLTUNER_VRN=1.9.4
 _PHP_FPM_WORKERS=AUTO
 _RESERVED_RAM=0
