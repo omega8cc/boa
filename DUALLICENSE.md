@@ -20,7 +20,7 @@ The `BOA-5.3.0` release will be the last parallel release including all features
 
 In the future, new features will be regularly added to **PRO**, while **LTS** will receive only security updates and critical fixes. There may be exceptions, and some new features may find their way to **LTS**, but only as exceptions.
 
-The **PRO** will be available in three main variants, and while all **PRO** licenses will grant access to the same **BOA** branch and features, they will differ in terms of available support levels.
+The **PRO** will be available in three main variants, and while all **BOA PRO** licenses will grant access to the same **BOA PRO** branch and features, they will differ in terms of available support levels.
 
 ### **PRO** with **Basic Support**
 
