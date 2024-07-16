@@ -40,6 +40,7 @@
   /var/log/mysql/** rw,
 
   # Allow mysqld_safe to access tmp directories
+  /tmp/ r,
   /tmp/** rw,
   /var/tmp/** rw,
 

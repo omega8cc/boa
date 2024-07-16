@@ -40,6 +40,7 @@
   /etc/resolv.conf r,
 
   # Temporary files and directories
+  /tmp/ r,
   /tmp/** rw,
   /var/tmp/** rw,
 

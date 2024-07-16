@@ -46,6 +46,7 @@
   /run/mysqld/** rw,
 
   # Allow MySQL to access its tmp directory
+  /tmp/ r,
   /tmp/** rw,
 
   # Allow MySQL to read system libraries

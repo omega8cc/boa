@@ -62,6 +62,7 @@
   owner /usr/share/GeoIP/GeoIP.dat r,
   owner /proc/sys/kernel/random/boot_id r,
   owner /run/nginx.pid rw,
+  owner /run/nginx.pid.oldbin wc,
   owner /data/conf/ r,
 
   # Catchall to deny everything else

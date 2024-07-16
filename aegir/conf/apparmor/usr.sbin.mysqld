@@ -58,6 +58,7 @@
   /var/log/mysql/** rw,
 
   # Allow MySQL to access its tmp directories
+  /tmp/ r,
   /tmp/** rw,
   /var/tmp/** rw,
 

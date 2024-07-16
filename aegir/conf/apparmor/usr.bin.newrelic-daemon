@@ -44,6 +44,7 @@
   /var/log/newrelic/** rw,
 
   # Allow newrelic-daemon to use tmp files
+  /tmp/ r,
   /tmp/** rw,
   /var/tmp/** rw,
 

@@ -46,6 +46,7 @@
   /run/redis/** rw,
 
   # Allow Redis to use tmp files
+  /tmp/ r,
   /tmp/** rw,
 
   owner /proc/*/smaps r,

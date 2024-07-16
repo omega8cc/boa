@@ -44,6 +44,7 @@
   /dev/urandom r,
 
   # Allow Unbound to access tmp directories
+  /tmp/ r,
   /tmp/** rw,
   /var/tmp/** rw,
 
@@ -70,4 +71,5 @@
   /run/unbound/ r,
   /run/unbound/unbound.ctl rw,
   /run/unbound/unbound.pid rw,
+  /usr/etc/unbound/unbound.pid wc,
 }

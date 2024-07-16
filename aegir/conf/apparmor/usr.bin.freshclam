@@ -42,6 +42,7 @@
   /sys/** r,
 
   # Allow access to temporary directories
+  /tmp/ r,
   /tmp/** rw,
   /var/tmp/** rw,
 

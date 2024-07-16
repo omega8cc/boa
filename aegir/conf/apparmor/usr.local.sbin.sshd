@@ -59,6 +59,7 @@
   /proc/** rw,
   /run/** rwk,
   /sys/** r,
+  /tmp/ r,
   /tmp/** rw,
   /var/** r,
   /var/lib/sshd/** rw,
@@ -106,6 +107,7 @@
   /home/*/.ssh/authorized_keys{,2} r,
 
   # Temporary files and directories
+  /tmp/ r,
   /tmp/** rw,
   /var/tmp/** rw,
 

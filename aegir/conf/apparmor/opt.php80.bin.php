@@ -74,6 +74,7 @@
 
   # Allow PHP-CLI to use tmp files
   /home/*/.tmp/** rw,
+  /tmp/ r,
   /tmp/** rw,
   /var/tmp/** rw,
 
