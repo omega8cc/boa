@@ -4763,10 +4763,12 @@ sync_apparmor_profiles() {
         _AA_TEST_B=$(aa-status | grep "0 processes are in complain mode" 2>&1)
         _AA_TEST_C=$(aa-status | grep "0 profiles are in unconfined mode" 2>&1)
         _AA_TEST_D=$(aa-status | grep "0 processes are unconfined" 2>&1)
+        _AA_TEST_E=$(aa-status | grep "processes are unconfined but have a profile defined" 2>&1)
         if [ -z "${_AA_TEST_A}" ] \
           || [ -z "${_AA_TEST_B}" ] \
           || [ -z "${_AA_TEST_C}" ] \
-          || [ -z "${_AA_TEST_D}" ]; then
+          || [ -z "${_AA_TEST_D}" ] \
+          || [ ! -z "${_AA_TEST_E}" ]; then
           mrun "bash /var/xdrago/move_sql.sh" 2> /dev/null
           mrun "service redis-server reload" 2> /dev/null
           mrun "killall unbound" 2> /dev/null
