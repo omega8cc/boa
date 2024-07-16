@@ -26,12 +26,24 @@ The **PRO** will be available in three main variants, and while all **BOA PRO** 
 
 This license is designed for **BOA** users familiar with managing and monitoring their own systems who don't need extended support, monitoring, or assistance in managing their **BOA** installation and updates. Our support is limited to the Issue Queue on GitHub without any kind of SLA or Best Effort guarantee.
 
+Ideal for: Small businesses or developers who need basic support and can handle issues independently or with community help.
+
 ### **PRO** with **Advanced Support**
 
 This license is designed for **BOA** users who are familiar with managing their own server but need assistance in handling their custom needs or fixing individual problems privately via our helpdesk at [Ægir Helpdesk](https://aegir.happyfox.com), without posting details on GitHub. There is no SLA guarantee, only a Best Effort guarantee. System local and remote uptime monitoring with Site24x7 is included.
+
+Ideal for: Medium to large businesses needing reliable support during business hours with quick response times for critical issues.
 
 ### **PRO** with **Hands-Off Experience**
 
 This license is for **BOA** users who prefer to delegate all the work needed to maintain their **BOA** server, including regular upgrades (both **BOA** and major OS upgrades), active monitoring, and responding to DoS incidents. It comes with a fully managed **BOA PRO** installation you can use without worrying about anything else, with our general SLA guarantee applied: [Omega8.cc SLA](https://omega8.cc/sla). System local and remote uptime monitoring with Site24x7 is included.
 
+Ideal for: Enterprises requiring comprehensive, around-the-clock support with quick response times for all issues.
+
 You can obtain a **BOA PRO** license from [Omega8.cc](https://omega8.cc/licenses) once available.
+
+## Upcoming **PRO-Only** Features
+
+Certain planned features are likely to be exclusive to **BOA PRO**. If these features are added to other **BOA** versions, it will be with a significant delay. However, some key features, such as Backdrop CMS and Grav CMS support, will also be added to **BOA LTS**.
+
+Check out the details in [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-dev/ROADMAP.md)
