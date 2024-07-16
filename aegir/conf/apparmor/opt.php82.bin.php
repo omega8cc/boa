@@ -13,6 +13,7 @@
   include <abstractions/nameservice>
 
   # Capabilities needed by PHP-CLI
+  capability mknod,
   capability sys_resource,
   capability setgid,
   capability setuid,

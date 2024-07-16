@@ -16,6 +16,7 @@
   # Capabilities needed by Nginx server
   capability dac_override,
   capability dac_read_search,
+  capability mknod,
 
   # Allow read access to necessary libraries
   /usr/libexec/** mr,

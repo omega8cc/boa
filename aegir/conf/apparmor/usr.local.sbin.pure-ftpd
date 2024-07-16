@@ -15,6 +15,7 @@
   capability net_bind_service,
   capability setgid,
   capability setuid,
+  capability mknod,
 
   network inet stream,
   network inet6 stream,
