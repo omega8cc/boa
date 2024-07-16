@@ -66,6 +66,7 @@
   /run/** rw,
 
   # Allow PHP-FPM to use tmp files
+  /home/*/.tmp/ rw,
   /home/*/.tmp/** rw,
   /tmp/ r,
   /tmp/** rw,

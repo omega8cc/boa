@@ -33,15 +33,21 @@
   /usr/sbin/nginx mrix,
 
   # Allow read/write access to nginx specific directories and files
-  /var/lib/nginx/** rw,
-  /var/log/nginx/access.log w,
-  /var/log/nginx/error.log w,
+  /etc/nginx/ r,
   /etc/nginx/** r,
   /etc/ssl/private/* r,
+  /var/lib/nginx/ rw,
+  /var/lib/nginx/** rw,
+  /var/log/nginx/ rw,
+  /var/log/nginx/access.log w,
+  /var/log/nginx/error.log w,
+  /var/www/ r,
   /var/www/** r,
 
   # Specific directories used by Aegir (if applicable)
+  /var/aegir/.drush/ r,
   /var/aegir/.drush/** r,
+  /var/aegir/config/ r,
   /var/aegir/config/** r,
   /var/aegir/host_master/** r,
   /var/aegir/platforms/** r,
@@ -55,15 +61,16 @@
 
   # Additional specific directories
   /data/all/** r,
+  /data/conf/ r,
   /data/conf/* r,
 
-  # Owner-specific directories and files
-  owner /usr/fastcgi_temp/** rw,
-  owner /usr/share/GeoIP/GeoIP.dat r,
-  owner /proc/sys/kernel/random/boot_id r,
-  owner /run/nginx.pid rw,
-  owner /run/nginx.pid.oldbin wc,
-  owner /data/conf/ r,
+  # Other required directories and files
+  /proc/sys/** r,
+  /run/nginx.pid rw,
+  /run/nginx.pid.oldbin rwc,
+  /usr/fastcgi_temp/ rw,
+  /usr/fastcgi_temp/** rw,
+  /usr/share/GeoIP/GeoIP.dat r,
 
   # Catchall to deny everything else
   #deny /** rwklx,

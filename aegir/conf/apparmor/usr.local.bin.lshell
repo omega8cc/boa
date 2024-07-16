@@ -16,29 +16,38 @@
   include <abstractions/wutmp>
 
   # Read/write access to user home
+  /home/*/ rw,
   /home/*/** rw,
 
   # Read/write access to SSH client files
+  /home/*/.ssh/ rw,
   /home/*/.ssh/** rw,
 
   # Read-only access to Drush aliases and php.ini files
+  /home/*/.drush/ r,
   /home/*/.drush/** r,
 
   # Drush access
   /opt/tools/drush/** mrix,
 
   # Read-only access to Octopus directories
+  /data/disk/*/.drush/ r,
   /data/disk/*/.drush/** r,
+  /data/disk/*/backups/ r,
   /data/disk/*/backups/** r,
+  /data/disk/*/clients/ r,
   /data/disk/*/clients/** r,
   /data/disk/*/distro/** r,
+  /data/disk/*/static/ r,
   /data/disk/*/static/** r,
 
   # Allow write access to Octopus user directories and files
   owner /data/disk/*/distro/** rw,
+  owner /data/disk/*/static/ rw,
   owner /data/disk/*/static/** rw,
 
   # Read/write access to Drush cache
+  /home/*/.drush/cache/ rw,
   /home/*/.drush/cache/** rw,
 
   # Deny access to critical system files
@@ -54,6 +63,7 @@
   /etc/resolv.conf r,
 
   # Temporary files and directories
+  /home/*/.tmp/ rw,
   /home/*/.tmp/** rw,
 
   # Allow execution of necessary binaries
@@ -92,6 +102,7 @@
   /usr/bin/lftp mrix,
   /usr/bin/mysql mrix,
   /usr/bin/mysqldump mrix,
+  /usr/bin/node,
   /usr/bin/openssl mrix,
   /usr/bin/passwd mrix,
   /usr/bin/patch mrix,
@@ -103,6 +114,7 @@
   /usr/bin/wget mrix,
   /usr/local/bin/composer mrix,
   /usr/local/bin/curl mrix,
+  /usr/local/bin/gem mrix,
   /usr/local/bin/git mrix,
   /usr/local/bin/git-receive-pack mrix,
   /usr/local/bin/git-upload-archive mrix,
@@ -113,7 +125,6 @@
   /usr/local/bin/sftp mrix,
   /usr/local/bin/ssh mrix,
   /usr/local/bin/ssh-keygen mrix,
-  /usr/local/bin/gem mrix,
   owner /opt/user/gems/*/** mrix,
   owner /opt/user/npm/*/** mrix,
 

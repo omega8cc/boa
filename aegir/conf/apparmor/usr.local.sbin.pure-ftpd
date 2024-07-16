@@ -56,7 +56,7 @@
 
   # Allow access to run directory
   /run/pure-ftpd.pid rw,
-  /run/pure-ftpd/ rw,
+  /run/pure-ftpd/ rwc,
 
   # Allow access to temporary directories
   /tmp/ r,
@@ -71,18 +71,26 @@
   /usr/local/sbin/pure-config.pl mrix,
 
   # Allow read access to Octopus user directories and files
+  /data/disk/*/.drush/ r,
   /data/disk/*/.drush/** r,
+  /data/disk/*/backups/ r,
   /data/disk/*/backups/** r,
+  /data/disk/*/clients/ r,
   /data/disk/*/clients/** r,
   /data/disk/*/distro/** r,
+  /data/disk/*/static/ r,
   /data/disk/*/static/** r,
+  /home/*/.drush/ r,
   /home/*/.drush/** r,
   /opt/tools/drush/** r,
 
   # Allow write access to Octopus user directories and files
   owner /data/disk/*/distro/** rw,
+  owner /data/disk/*/static/ rw,
   owner /data/disk/*/static/** rw,
-  owner /home/*/.drush/cache/** rw,
+  owner /home/*/ rw,
+  owner /home/*/.drush/cache/ rwc,
+  owner /home/*/.drush/cache/** rwc,
   owner /home/*/** rw,
 
   # Catchall to deny everything else
