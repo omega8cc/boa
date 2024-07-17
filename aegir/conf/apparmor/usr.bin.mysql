@@ -31,6 +31,7 @@
   /bin/ r,
   /usr/bin/ r,
   /usr/sbin/ r,
+  /etc/inputrc r,
 
   # Allow MySQL to read its configuration files
   /etc/mysql/** r,
@@ -42,7 +43,7 @@
   /var/lib/mysql/** rwk,
 
   # Allow MySQL to access its run directory
-  /run/mysqld/ rw,
+  /run/mysqld/ r,
   /run/mysqld/** rw,
 
   # Allow MySQL to access its tmp directory
@@ -68,7 +69,7 @@
 
   # Allow MySQL to use /dev/shm for temporary storage
   /dev/shm/** rw,
-  /dev/shm/ rw,
+  /dev/shm/ r,
 
   # Allow MySQL to read network-related configurations
   /etc/hosts.allow r,
@@ -94,6 +95,7 @@
 
   # Allow writing to log files in user's home directory
   /home/*/.mysql_history rw,
+  /root/.mysql_history rw,
 
   # Catchall to deny everything else
   #deny /** rwklx,

@@ -36,11 +36,11 @@
   /usr/local/ssl3/** mr,
 
   # Read/write access to user home
-  /home/*/ rw,
+  /home/*/ r,
   /home/*/** rw,
 
   # Read/write access to SSH client files
-  /home/*/.ssh/ rw,
+  /home/*/.ssh/ r,
   /home/*/.ssh/** rw,
 
   # Read-only access to Drush aliases and php.ini files
@@ -63,11 +63,11 @@
 
   # Allow write access to Octopus user directories and files
   owner /data/disk/*/distro/** rw,
-  owner /data/disk/*/static/ rw,
+  owner /data/disk/*/static/ r,
   owner /data/disk/*/static/** rw,
 
   # Read/write access to Drush cache
-  /home/*/.drush/cache/ rw,
+  /home/*/.drush/cache/ r,
   /home/*/.drush/cache/** rw,
 
   # Deny access to critical system files
@@ -83,7 +83,7 @@
   /etc/resolv.conf r,
 
   # Temporary files and directories
-  /home/*/.tmp/ rw,
+  /home/*/.tmp/ r,
   /home/*/.tmp/** rw,
 
   # Allow execution of necessary binaries

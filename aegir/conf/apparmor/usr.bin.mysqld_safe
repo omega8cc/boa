@@ -32,7 +32,7 @@
   /var/lib/mysql/** rwk,
 
   # Allow mysqld_safe to access its run directory
-  /run/mysqld/ rw,
+  /run/mysqld/ r,
   /run/mysqld/** rw,
 
   # Allow mysqld_safe to write to its log files
@@ -63,7 +63,7 @@
 
   # Allow mysqld_safe to use /dev/shm for temporary storage
   /dev/shm/** rw,
-  /dev/shm/ rw,
+  /dev/shm/ r,
 
   # Allow execution of mysqld_safe
   /usr/bin/mysqld_safe mrix,

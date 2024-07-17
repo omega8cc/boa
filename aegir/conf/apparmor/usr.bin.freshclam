@@ -72,9 +72,9 @@
   @{PROC}/filesystems r,
 
   # Allow read/write access to ClamAV user directories
-  owner /home/*/.clamtk/db/ rw,
+  owner /home/*/.clamtk/db/ r,
   owner /home/*/.clamtk/db/** rwk,
-  owner /home/*/.klamav/database/ rw,
+  owner /home/*/.klamav/database/ r,
   owner /home/*/.klamav/database/** rwk,
   owner @{PROC}/[0-9]*/status r,
 

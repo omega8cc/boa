@@ -43,11 +43,11 @@
   owner /data/disk/*/static/** rwk,
   owner /var/www/** rwk,
 
-  /home/*.web/.aws/ rw,
+  /home/*.web/.aws/ r,
   /home/*.web/.aws/* rw,
   /home/*.web/.drush/ r,
   /home/*.web/.drush/* r,
-  /home/*.web/.tmp/ rw,
+  /home/*.web/.tmp/ r,
   /home/*.web/.tmp/* rw,
 
   # Catchall to deny everything else

@@ -88,10 +88,10 @@
 
   # Allow write access to Octopus user directories and files
   owner /data/disk/*/distro/** rw,
-  owner /data/disk/*/static/ rw,
+  owner /data/disk/*/static/ r,
   owner /data/disk/*/static/** rw,
-  owner /home/*/ rw,
-  owner /home/*/.drush/cache/ rw,
+  owner /home/*/ r,
+  owner /home/*/.drush/cache/ r,
   owner /home/*/.drush/cache/** rw,
   owner /home/*/** rw,
 

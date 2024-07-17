@@ -53,7 +53,7 @@
 
   # Allow newrelic-daemon to access shared memory
   /dev/shm/** rw,
-  /dev/shm/ rw,
+  /dev/shm/ r,
 
   # Disallow execution of binaries from /tmp and /var/tmp
   deny /tmp/** m,

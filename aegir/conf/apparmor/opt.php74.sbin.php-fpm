@@ -75,7 +75,7 @@
   /run/** rw,
 
   # Allow PHP-FPM to use tmp files
-  /home/*/.tmp/ rw,
+  /home/*/.tmp/ r,
   /home/*/.tmp/** rw,
   /tmp/ r,
   /tmp/** rw,
@@ -105,7 +105,7 @@
 
   # Allow PHP-FPM to use /dev/shm for temporary storage
   /dev/shm/** rw,
-  /dev/shm/ rw,
+  /dev/shm/ r,
 
   # Deny execution of binaries from these directories
   deny /home/*/.tmp/** m,
@@ -138,11 +138,11 @@
   owner /data/disk/*/static/** rw,
   owner /var/www/** rw,
 
-  /home/*.web/.aws/ rw,
+  /home/*.web/.aws/ r,
   /home/*.web/.aws/* rw,
   /home/*.web/.drush/ r,
   /home/*.web/.drush/* r,
-  /home/*.web/.tmp/ rw,
+  /home/*.web/.tmp/ r,
   /home/*.web/.tmp/* rw,
 
   # Deny access to various sensitive directories and files

@@ -50,7 +50,7 @@
   /var/lib/mysql/** rwk,
 
   # Allow MySQL to access its run directory
-  /run/mysqld/ rw,
+  /run/mysqld/ r,
   /run/mysqld/** rw,
 
   # Allow MySQL to write to its log files
@@ -81,7 +81,7 @@
 
   # Allow MySQL to use /dev/shm for temporary storage
   /dev/shm/** rw,
-  /dev/shm/ rw,
+  /dev/shm/ r,
 
   # Allow MySQL to read network-related configurations
   /etc/hosts.allow r,

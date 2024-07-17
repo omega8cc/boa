@@ -104,7 +104,7 @@
 
   # Allow PHP-CLI to use /dev/shm for temporary storage
   /dev/shm/** rw,
-  /dev/shm/ rw,
+  /dev/shm/ r,
 
   # Deny execution of binaries from these directories
   deny /home/*/.tmp/** m,
@@ -140,14 +140,14 @@
   /data/all/** r,
   /data/conf/* r,
 
-  owner /var/aegir/.tmp/ rw,
+  owner /var/aegir/.tmp/ r,
   owner /var/aegir/.tmp/** rw,
   owner /var/aegir/host_master/** rw,
   owner /var/aegir/platforms/** rw,
 
-  owner /data/disk/*/.drush/ rw,
+  owner /data/disk/*/.drush/ r,
   owner /data/disk/*/.drush/** rw,
-  owner /data/disk/*/.tmp/ rw,
+  owner /data/disk/*/.tmp/ r,
   owner /data/disk/*/.tmp/** rw,
   owner /data/disk/*/aegir/** rw,
   owner /data/disk/*/config/** rw,
@@ -157,11 +157,11 @@
   owner /data/disk/*/tools/le/** rw,
   owner /var/www/** rw,
 
-  owner /home/*/.drush/cache/ rw,
+  owner /home/*/.drush/cache/ r,
   owner /home/*/.drush/cache/** rw,
-  owner /home/*/.tmp/ rw,
+  owner /home/*/.tmp/ r,
   owner /home/*/.tmp/** rw,
-  owner /root/.tmp/ rw,
+  owner /root/.tmp/ r,
   owner /root/.tmp/** rw,
 
   # Deny access to various sensitive directories and files
