@@ -356,7 +356,6 @@ install_unbound_src() {
       --sysconfdir=/etc \
       --localstatedir=/var \
       --with-pidfile=/run/unbound/unbound.pid \
-      --with-chroot-dir=/run/unbound
       --with-ssl=/usr/local/ssl3" 2> /dev/null
   elif [ -e "/usr/local/ssl/" ]; then
     mrun "bash ./configure \
@@ -364,7 +363,6 @@ install_unbound_src() {
       --sysconfdir=/etc \
       --localstatedir=/var \
       --with-pidfile=/run/unbound/unbound.pid \
-      --with-chroot-dir=/run/unbound
       --with-ssl=/usr/local/ssl" 2> /dev/null
   fi
   mrun "make -j $(nproc) --quiet" 2> /dev/null
