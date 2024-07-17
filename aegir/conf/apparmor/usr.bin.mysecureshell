@@ -15,6 +15,26 @@
   include <abstractions/python>
   include <abstractions/wutmp>
 
+  # Read access to its own config and logs
+  /etc/ssh/sftp_config r,
+  /etc/lshell.conf r,
+  /var/log/lsh/ r,
+  /var/log/lsh/* rw,
+
+  # Allow read access to necessary libraries
+  /usr/libexec/** mr,
+  /lib/** mr,
+  /lib64/** mr,
+  /opt/php*/lib/php/** mr,
+  /usr/lib/** mr,
+  /usr/lib/x86_64-linux-gnu/** mr,
+  /lib/x86_64-linux-gnu/** mr,
+  /usr/local/include/** mr,
+  /usr/local/ioncube/ioncube_loader_lin_*.so mr,
+  /usr/local/lib/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
+
   # Read/write access to user home
   /home/*/ rw,
   /home/*/** rw,
@@ -74,6 +94,7 @@
   /usr/local/bin/lshell mrix,
 
   # Additional binaries allowed in Limited Shell
+  /bin/websh mrix,
   /bin/bzip2 mrix,
   /bin/cat mrix,
   /bin/chmod mrix,
