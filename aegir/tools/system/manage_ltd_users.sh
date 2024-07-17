@@ -445,24 +445,27 @@ enable_chattr() {
       ###
       if [ -e "/root/.allow.node.lshell.cnf" ] \
         && [ "$1" = "${_USER}.ftp" ] \
-        && [ -e "/home/${UQ}/static/control" ] \
-        && [ ! -e "${dscUsr}/log/.npm.build.${UQ}.${_X_SE}.txt" ]; then
-        [ ! -d "/opt/user/npm" ] && mkdir -p /opt/user/npm
-        chown root:root /opt/user/npm
-        chmod 1777 /opt/user/npm
-        [ ! -d "/opt/user/npm/${UQ}" ] && mkdir -p /opt/user/npm/${UQ}
-        [ ! -e "/home/${UQ}/.npmrc" ] && su -s /bin/bash - ${UQ} -c "echo 'prefix = /opt/user/npm/${UQ}/.npm-packages' > ~/.npmrc"
-        [ -e "/home/${UQ}/.npmrc" ] && chattr +i /home/${UQ}/.npmrc
-        mkdir -p /opt/user/npm/${UQ}/.bundle
-        mkdir -p /opt/user/npm/${UQ}/.composer
-        mkdir -p /opt/user/npm/${UQ}/.config
-        mkdir -p /opt/user/npm/${UQ}/.npm
-        mkdir -p /opt/user/npm/${UQ}/.npm-packages/bin
-        mkdir -p /opt/user/npm/${UQ}/.npm-packages/lib/node_modules
-        mkdir -p /opt/user/npm/${UQ}/.sass-cache
-        chown -R ${UQ}:users /opt/user/npm/${UQ}
-        [ -e "${dscUsr}/log" ] && rm -f ${dscUsr}/log/.npm.build*
-        touch ${dscUsr}/log/.npm.build.${UQ}.${_X_SE}.txt
+        && [ -x "/usr/bin/node" ] \
+        && [ -e "/home/${UQ}/static/control" ]; then
+        if [ ! -e "/opt/user/npm/${UQ}/.npm-packages/bin" ] \
+          || [ ! -e "${dscUsr}/log/.npm.build.${UQ}.${_X_SE}.txt" ]; then
+          [ ! -d "/opt/user/npm" ] && mkdir -p /opt/user/npm
+          chown root:root /opt/user/npm
+          chmod 1777 /opt/user/npm
+          [ ! -d "/opt/user/npm/${UQ}" ] && mkdir -p /opt/user/npm/${UQ}
+          [ ! -e "/home/${UQ}/.npmrc" ] && su -s /bin/bash - ${UQ} -c "echo 'prefix = /opt/user/npm/${UQ}/.npm-packages' > ~/.npmrc"
+          [ -e "/home/${UQ}/.npmrc" ] && chattr +i /home/${UQ}/.npmrc
+          mkdir -p /opt/user/npm/${UQ}/.bundle
+          mkdir -p /opt/user/npm/${UQ}/.composer
+          mkdir -p /opt/user/npm/${UQ}/.config
+          mkdir -p /opt/user/npm/${UQ}/.npm
+          mkdir -p /opt/user/npm/${UQ}/.npm-packages/bin
+          mkdir -p /opt/user/npm/${UQ}/.npm-packages/lib/node_modules
+          mkdir -p /opt/user/npm/${UQ}/.sass-cache
+          chown -R ${UQ}:users /opt/user/npm/${UQ}
+          [ -e "${dscUsr}/log" ] && rm -f ${dscUsr}/log/.npm.build*
+          touch ${dscUsr}/log/.npm.build.${UQ}.${_X_SE}.txt
+        fi
       else
         [ -e "/home/${UQ}/.npm" ] && rm -rf /home/${UQ}/.npm*
         [ -e "/opt/user/npm/${UQ}" ] && rm -rf /opt/user/npm/${UQ}
