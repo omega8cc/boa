@@ -410,6 +410,10 @@ enable_chattr() {
         || [ ! -e "${dscUsr}/log/.gems.build.rb.${UQ}.${_X_SE}.txt" ]; then
         _UPDATE_GEMS=YES
       fi
+      if [ ! -e "/opt/user/npm/${UQ}/.npm-packages/bin" ] \
+        && [ -e "/root/.allow.node.lshell.cnf" ]; then
+        _UPDATE_GEMS=YES
+      fi
     else
       ###
       ### Remove no longer used Ruby Gems and NPM access
