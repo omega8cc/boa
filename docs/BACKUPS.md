@@ -1,6 +1,6 @@
 # Automated, encrypted backups to Amazon S3 bucket
 
-  * This feature is available on self-hosted BOA and hosted Phantom+ Engines.
+  * This feature is available on self-hosted **BOA** and hosted Phantom+ Engines.
   * Note that provided `backboa` tool uses symmetric password-only encryption.
   * You can configure AWS Region you prefer to use and Backup Rotation policy.
 
@@ -12,13 +12,13 @@
 ```
 
   It will start to run nightly at 1:15 AM (server time) only once you will add
-  all required `_AWS_*` variables in the /root/.barracuda.cnf file and run the
-  special command 'backboa install' while logged in as root.
+  all required `_AWS_*` variables in the `/root/.barracuda.cnf` file and run the
+  special command `backboa install` while logged in as root.
 
   Full backups are scheduled on Sunday, unless `_AWS_FLC` is set to custom value.
 
   To restore any file from backups created with `backboa` tool, you can use
-  the same script on the same or any other BOA server.
+  the same script on the same or any other **BOA** server.
 
   Please read below for details.
 
@@ -67,7 +67,7 @@
     (before attempting to run initial backup!) to create S3 bucket in the
     desired region with correct name as shown below.
 
-    Replace only the srv-foo-bar part after daily-boa- static prefix with
+    Replace only the `srv-foo-bar` part after `daily-boa-` static prefix with
     your system hostname, typically displayed when you type `uname -n`
     where all dots are replaced with dashes, for compatibility reasons:
 
