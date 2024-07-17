@@ -71,5 +71,5 @@
   /run/unbound/ r,
   /run/unbound/unbound.ctl rw,
   /run/unbound/unbound.pid rw,
-  /usr/etc/unbound/unbound.pid wc,
+  /usr/etc/unbound/unbound.pid rw,
 }
