@@ -58,7 +58,7 @@
   # Allow access to run directory
   /run/pure-ftpd.pid rw,
   /run/pure-ftpd/ r,
-  /run/pure-ftpd/** rw,
+  /run/pure-ftpd/** rwk,
 
   # Allow access to temporary directories
   /tmp/ r,
