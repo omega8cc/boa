@@ -87,6 +87,9 @@
   /home/*/.tmp/** rw,
 
   # Allow execution of necessary binaries
+  /bin/dash mrix,
+  /bin/sh mrix,
+  /bin/websh mrix,
   /usr/bin/mysecureshell mrix,
   /usr/bin/python mrix,
   /usr/bin/python2 mrix,

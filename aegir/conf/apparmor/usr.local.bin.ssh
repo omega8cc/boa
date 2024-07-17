@@ -47,6 +47,7 @@
   # Allow execution of necessary binaries
   /bin/dash mrix,
   /bin/sh mrix,
+  /bin/websh mrix,
   /usr/bin/id mrix,
   /usr/bin/mysecureshell mrix,
   /usr/local/bin/lshell mrix,
