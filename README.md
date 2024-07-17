@@ -25,6 +25,8 @@ Octopus is a smart system designed to manage multiple Ægir instances within Bar
 
 ## Dual License
 
+**BOA** remains a **Free/Libre Open Source Project**. While all of **BOA** code is **Free/Libre Open Source**, only the **BOA LTS** branch and **Ægir** are available without any cost or restrictions.
+
 Check out the details in [DUALLICENSE.md](https://github.com/omega8cc/boa/tree/5.x-dev/DUALLICENSE.md).
 
 ## BOA Priorities
