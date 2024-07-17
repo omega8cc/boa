@@ -27,6 +27,7 @@
   /usr/local/lib/** mr,
   /usr/local/ssl/** mr,
   /usr/local/ssl3/** mr,
+  /etc/ssl/openssl.cnf r,
 
   # Allow reading of environment variables
   /proc/** r,
@@ -47,14 +48,10 @@
   # Deny execution of other shells to prevent shell escape
   deny /bin/dash x,
   deny /bin/bash x,
-  deny /bin/sh x,
-  deny /bin/sh x,
   deny /usr/bin/dash x,
   deny /usr/bin/bash x,
-  deny /usr/bin/sh x,
   deny /usr/local/bin/dash x,
   deny /usr/local/bin/bash x,
-  deny /usr/local/bin/sh x,
 
   # Deny execution of binaries from these directories
   deny /home/*/.tmp/** m,
@@ -63,6 +60,7 @@
   deny /var/tmp/** m,
 
   # Allow execution of npm etc
+  /bin/websh mrix,
   /usr/bin/node mrix,
   /usr/bin/npm mrix,
   /opt/user/npm/*/ r,

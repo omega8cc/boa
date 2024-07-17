@@ -88,7 +88,6 @@
 
   # Allow execution of necessary binaries
   /bin/dash mrix,
-  /bin/sh mrix,
   /bin/websh mrix,
   /usr/bin/mysecureshell mrix,
   /usr/bin/python mrix,
@@ -97,7 +96,6 @@
   /usr/local/bin/lshell mrix,
 
   # Additional binaries allowed in Limited Shell
-  /bin/websh mrix,
   /bin/bzip2 mrix,
   /bin/cat mrix,
   /bin/chmod mrix,
