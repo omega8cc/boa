@@ -120,7 +120,6 @@ if (-e "/usr/sbin/unbound" && !$unboundsumar) {
   if (-e "/etc/resolvconf/update.d/unbound") {
     system("chmod -x /etc/resolvconf/update.d/unbound");
   }
-  system("killall -9 unbound");
   system("service unbound restart");
   system("unbound-control reload");
 }

@@ -450,7 +450,6 @@ dns_unbound_install_upgrade() {
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     resolvconf -u &> /dev/null
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
-    mrun "killall -9 unbound" 2> /dev/null
     mrun "service unbound restart" 2> /dev/null
   fi
   check_dns_settings
@@ -482,7 +481,6 @@ dns_unbound_install_upgrade() {
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 8.8.4.4" >> /etc/resolv.conf
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
-      mrun "killall -9 unbound" 2> /dev/null
       mrun "service unbound restart" 2> /dev/null
       unbound-control reload &> /dev/null
     fi
@@ -498,7 +496,6 @@ dns_unbound_install_upgrade() {
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 8.8.4.4" >> /etc/resolv.conf
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
-    mrun "killall -9 unbound" 2> /dev/null
     mrun "service unbound restart" 2> /dev/null
     unbound-control reload &> /dev/null
   fi
@@ -548,7 +545,6 @@ dns_unbound_install_upgrade() {
       mv -f ${isPdnsd} /var/backups
     fi
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
-    mrun "killall -9 unbound" 2> /dev/null
     mrun "service unbound restart" 2> /dev/null
   fi
   if [ -x "${isUnbnd}" ] \
@@ -556,7 +552,6 @@ dns_unbound_install_upgrade() {
     && [ -e "/etc/resolvconf/interface-order" ]; then
     sed -i "s/pdnsd/unbound/g" /etc/resolvconf/interface-order
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
-    mrun "killall -9 unbound" 2> /dev/null
     mrun "service unbound restart" 2> /dev/null
   fi
 }
