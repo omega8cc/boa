@@ -21,6 +21,7 @@
   capability setuid,
   capability sys_chroot,
   capability sys_resource,
+  capability net_admin,
 
   # Allow to open TCP sockets on any address
   network inet stream,
@@ -70,6 +71,8 @@
   /usr/sbin/unbound mrix,
 
   # Allow Unbound to access its pid and control socket
+  /run/unbound.ctl rw,
+  /run/unbound.pid rw,
   /run/unbound/ r,
   /run/unbound/** r,
   /run/unbound/unbound.ctl rw,

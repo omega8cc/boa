@@ -353,15 +353,11 @@ install_unbound_src() {
   if [ -e "/usr/local/ssl3/" ]; then
     mrun "bash ./configure \
       --prefix=/usr \
-      --sysconfdir=/etc \
-      --localstatedir=/var \
       --with-pidfile=/run/unbound/unbound.pid \
       --with-ssl=/usr/local/ssl3" 2> /dev/null
   elif [ -e "/usr/local/ssl/" ]; then
     mrun "bash ./configure \
       --prefix=/usr \
-      --sysconfdir=/etc \
-      --localstatedir=/var \
       --with-pidfile=/run/unbound/unbound.pid \
       --with-ssl=/usr/local/ssl" 2> /dev/null
   fi
