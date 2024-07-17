@@ -924,6 +924,12 @@ EOF
     export LC_MEASUREMENT=en_US.UTF-8 &> /dev/null
     export LC_IDENTIFICATION=en_US.UTF-8 &> /dev/null
     export LC_ALL= &> /dev/null
+    _PIPX_TEST=$(grep "PIPX" /root/.bashrc 2>&1)
+    if [[ ! "${_PIPX_TEST}" =~ "PIPX" ]]; then
+      echo "export PIPX_BIN_DIR=/usr/local/bin" >> /root/.bashrc
+      echo "export PIPX_HOME=/opt/pipx/venvs" >> /root/.bashrc
+      printf "\n" >> /root/.bashrc
+    fi
   else
     if [ -e "${locCnf}/boa.bashrc.txt" ]; then
       cp -af /root/.bashrc /root/.bashrc.bak.${_NOW}
@@ -974,6 +980,12 @@ EOF
     echo "export LC_MEASUREMENT=en_US.UTF-8" >> /root/.bashrc
     echo "export LC_IDENTIFICATION=en_US.UTF-8" >> /root/.bashrc
     echo "export LC_ALL=" >> /root/.bashrc
+    printf "\n" >> /root/.bashrc
+  fi
+  _PIPX_TEST=$(grep "PIPX" /root/.bashrc 2>&1)
+  if [[ ! "${_PIPX_TEST}" =~ "PIPX" ]]; then
+    echo "export PIPX_BIN_DIR=/usr/local/bin" >> /root/.bashrc
+    echo "export PIPX_HOME=/opt/pipx/venvs" >> /root/.bashrc
     printf "\n" >> /root/.bashrc
   fi
   if [ -e "/root/.dont.use.fancy.bash.login.cnf" ]; then
