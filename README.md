@@ -23,6 +23,10 @@ Barracuda is a specially tuned hosting environment for Ægir, designed to be lig
 
 Octopus is a smart system designed to manage multiple Ægir instances within Barracuda. Just like the sea creature with eight limbs, Octopus allows you to create and manage many separate but connected Ægir instances, showcasing its intelligence and adaptability in efficiently handling complex hosting environments.
 
+## Dual License
+
+Check out the details in [DUALLICENSE.md](https://github.com/omega8cc/boa/tree/5.x-dev/DUALLICENSE.md).
+
 ## BOA Priorities
 
 - **High Performance**: Ensure your sites run fast.
@@ -128,10 +132,6 @@ Check out the details in [ROADMAP](https://github.com/omega8cc/boa/tree/5.x-dev/
 
 - BOA User Handbook (legacy): [Learn BOA](https://learn.omega8.cc/library/good-to-know)
 - Ægir Docs (legacy): [Ægir Project](https://docs.aegirproject.org)
-
-## Dual License
-
-Check out the details in [DUALLICENSE.md](https://github.com/omega8cc/boa/tree/5.x-dev/DUALLICENSE.md).
 
 ## Maintainers
 
