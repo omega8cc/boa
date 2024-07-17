@@ -457,6 +457,8 @@ if_install_node() {
         _NODE_INSTALL=YES
         _L_ST="install"
       fi
+      [ ! -d "/opt/user/npm" ] && _NODE_INSTALL=YES
+      [ -d "/opt/user/npm" ] && _NODE_INSTALL=NO
       if [ "${_NODE_INSTALL}" = "YES" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: Node ${_NODE_VRN} ${_L_ST}"
