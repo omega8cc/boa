@@ -1,0 +1,91 @@
+# AppArmor profile for Node/NPM
+# This profile restricts Limited Shell (lshell) to essential operations only.
+
+#include <tunables/global>
+
+/usr/bin/node flags=(complain) {
+
+  # Include common AppArmor abstractions
+  include <abstractions/base>
+  include <abstractions/nameservice>
+
+  # Capability permissions
+  capability ipc_lock,
+  capability sys_resource,
+
+  # Network access
+  network inet,
+
+  # Allow read access to necessary libraries
+  /usr/libexec/** mr,
+  /lib/** mr,
+  /lib64/** mr,
+  /usr/lib/** mr,
+  /usr/lib/x86_64-linux-gnu/** mr,
+  /lib/x86_64-linux-gnu/** mr,
+  /usr/local/include/** mr,
+  /usr/local/lib/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
+
+  # Allow reading of environment variables
+  /proc/** r,
+  /sys/** r,
+
+  # Specific file permissions
+  owner /home/*/.npmrc r,
+
+  # Temporary files and directories
+  owner /home/*/.tmp/ r,
+  owner /home/*/.tmp/** rw,
+
+  # Miscellaneous
+  /dev/urandom rw,
+  /dev/null rw,
+  /dev/tty rw,
+
+  # Deny execution of other shells to prevent shell escape
+  deny /bin/dash x,
+  deny /bin/bash x,
+  deny /bin/sh x,
+  deny /bin/sh x,
+  deny /usr/bin/dash x,
+  deny /usr/bin/bash x,
+  deny /usr/bin/sh x,
+  deny /usr/local/bin/dash x,
+  deny /usr/local/bin/bash x,
+  deny /usr/local/bin/sh x,
+
+  # Deny execution of binaries from these directories
+  deny /home/*/.tmp/** m,
+  deny /home/*/** m,
+  deny /tmp/** m,
+  deny /var/tmp/** m,
+
+  # Allow execution of npm etc
+  /usr/bin/node mrix,
+  /usr/bin/npm mrix,
+  /opt/user/npm/*/ r,
+  /opt/user/npm/*/** mrix,
+
+  # Allow to read and write in the custom web root directories
+
+  /data/disk/*/distro/** r,
+  /data/disk/*/platforms/** r,
+  /data/disk/*/static/** r,
+
+  owner /data/disk/*/distro/** rw,
+  owner /data/disk/*/platforms/** rw,
+  owner /data/disk/*/static/** rw,
+
+  # Deny access to various sensitive directories and files
+  deny /boot/** mrwklx,
+  deny /root/** mrwklx,
+  deny /etc/shadow* rwlx,
+  deny /etc/passwd* rwlx,
+
+  # Catchall to deny everything else
+  #deny /** rwklx,
+
+  # Site-specific additions and overrides can be added below
+}
