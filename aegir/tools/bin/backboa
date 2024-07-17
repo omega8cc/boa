@@ -20,7 +20,7 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-_DUPLICITY_VRN="0.7.19"
+_DUPLICITY_VRN="3.0.0"
 _BOTO_VRN="2.49.0"
 _FASTENERS_VRN="0.14.1"
 _LOGPTH="/var/xdrago/log"
@@ -150,7 +150,7 @@ install() {
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
   if [ "${_DUPLICITY_ITD}" = "${_DUPLICITY_VRN}" ] \
-    && [ -e "${_LOGPTH}/boto-${_BOTO_VRN}.log" ]; then
+    && [ -x "/usr/local/bin/aws" ]; then
     echo "Latest duplicity version ${_DUPLICITY_VRN} already installed"
   else
     echo "Installing duplicity dependencies..."
@@ -169,19 +169,16 @@ install() {
     mkdir -p /usr/local/lib/python3.9/dist-packages/
     mkdir -p /usr/local/lib/python3.11/dist-packages/
     rm -f /usr/local/bin/duplicity
-    apt-get install librsync-dev -y
-    apt-get install python-dev -y
-    apt-get install python-lockfile -y
-    apt-get install python-setuptools -y
-    apt-get install python-monotonic -y
-    apt-get install s4cmd -y
-    mkdir -p /var/opt
-    rm -rf /var/opt/{fasteners*,boto*,duplicity*}
-    cd /var/opt
-    fe="fasteners-${_FASTENERS_VRN}.tar.gz"
-    curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
-    tar xzf ${fe}
-    cd /var/opt/fasteners-${_FASTENERS_VRN}
+    apt-get install -y \
+        intltool \
+        libffi-dev \
+        par2 \
+        python3-pip \
+        python3-venv \
+        python3 \
+        rclone \
+        rdiff \
+        tzdata
     isPythonTwo=$(which python2 2>&1)
     isPythonThree=$(which python3 2>&1)
     if [ -x "${isPythonThree}" ]; then
@@ -189,35 +186,55 @@ install() {
     elif [ -x "${isPythonTwo}" ]; then
       usePyth=python2
     fi
-    ${usePyth} setup.py build
-    ${usePyth} setup.py install
-    echo ${_FASTENERS_VRN} > ${_LOGPTH}/fasteners-${_FASTENERS_VRN}.log
-    cd /var/opt
-    fe="boto-${_BOTO_VRN}.tar.gz"
-    curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
-    tar xzf ${fe}
-    cd /var/opt/boto-${_BOTO_VRN}
-    ${usePyth} setup.py build
-    ${usePyth} setup.py install
-    echo ${_BOTO_VRN} > ${_LOGPTH}/boto-${_BOTO_VRN}.log
-    echo "Building duplicity version ${_DUPLICITY_VRN} from sources..."
-    cd /var/opt
-    fe="duplicity-${_DUPLICITY_VRN}.tar.gz"
-    curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
-    tar xzf ${fe}
-    rm -rf /usr/local/lib/python*/dist-packages/duplicity*
-    cd /var/opt/duplicity-${_DUPLICITY_VRN}
-    ${usePyth} setup.py build
-    ${usePyth} setup.py install
-    cd
+    _PYTHON_TEST=$(${usePyth} --version 2>&1)
+    if [[ "${_PYTHON_TEST}" =~ "Python 3." ]]; then
+      python3 -m pip install --user pipx --break-system-packages
+      python3 -m pipx ensurepath
+      export PIPX_BIN_DIR=/usr/local/bin
+      export PIPX_HOME=/opt/pipx/venvs
+      pipx install duplicity
+      pipx install awscli
+    else
+      mkdir -p /var/opt
+      rm -rf /var/opt/{fasteners*,boto*,duplicity*}
+      cd /var/opt
+      fe="fasteners-${_FASTENERS_VRN}.tar.gz"
+      curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
+      tar xzf ${fe}
+      cd /var/opt/fasteners-${_FASTENERS_VRN}
+      ${usePyth} setup.py build
+      ${usePyth} setup.py install
+      echo ${_FASTENERS_VRN} > ${_LOGPTH}/fasteners-${_FASTENERS_VRN}.log
+      cd /var/opt
+      fe="boto-${_BOTO_VRN}.tar.gz"
+      curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
+      tar xzf ${fe}
+      cd /var/opt/boto-${_BOTO_VRN}
+      ${usePyth} setup.py build
+      ${usePyth} setup.py install
+      echo ${_BOTO_VRN} > ${_LOGPTH}/boto-${_BOTO_VRN}.log
+      echo "Building duplicity version ${_DUPLICITY_VRN} from sources..."
+      cd /var/opt
+      fe="duplicity-${_DUPLICITY_VRN}.tar.gz"
+      curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
+      tar xzf ${fe}
+      rm -rf /usr/local/lib/python*/dist-packages/duplicity*
+      cd /var/opt/duplicity-${_DUPLICITY_VRN}
+      ${usePyth} setup.py build
+      ${usePyth} setup.py install
+      apt_clean_update
+      apt-get install python-pip -y
+      pip install awscli
+      cd
+    fi
     rm -rf /var/opt/{boto*,duplicity*}
     echo "Installation complete!"
   fi
 }
 
-check_boto() {
-  if [ ! -e "${_LOGPTH}/boto-${_BOTO_VRN}.log" ]; then
-    echo "Upgrade to boto ${_BOTO_VRN} required..."
+check_aws() {
+  if [ ! -x "/usr/local/bin/aws" ]; then
+    echo "Upgrade to add AWS tools required..."
     install
   fi
 }
@@ -390,9 +407,6 @@ if [ -e "${_LOGPTH}/${BUCKET_DOT}.archive.log" ]; then
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
   fi
-  apt_clean_update
-  apt-get install python-pip -y
-  pip install awscli
   aws s3 mb s3://${BUCKET} --region ${_AWS_REG}
   aws s3 sync s3://${BUCKET_DOT} s3://${BUCKET}
 fi
@@ -613,7 +627,7 @@ if [ "$1" = "backup" ]; then
   else
     touch /run/${_HST}_backup.pid
     echo "The duplicity backup is starting now..."
-    check_boto
+    check_aws
     backup
     echo "The duplicity backup is complete!"
     touch ${_LOGPTH}/run_${_HST}_backup.log
@@ -641,7 +655,7 @@ elif [ "$1" = "retrieve" ]; then
     exit 1
   fi
 elif [ "$1" = "status" ]; then
-  check_boto
+  check_aws
   status
 elif [ "$1" = "test" ]; then
   conn_test
