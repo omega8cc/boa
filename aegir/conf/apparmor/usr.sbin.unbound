@@ -52,6 +52,8 @@
   /usr/share/dns/root.* r,
 
   # Unbound configuration paths
+  /etc/unbound/ r,
+  /etc/unbound/** r,
   /usr/etc/unbound/ r,
   /usr/etc/unbound/** r,
   /var/lib/unbound/ r,
@@ -69,7 +71,7 @@
 
   # Allow Unbound to access its pid and control socket
   /run/unbound/ r,
+  /run/unbound/** r,
   /run/unbound/unbound.ctl rw,
   /run/unbound/unbound.pid rw,
-  /usr/etc/unbound/unbound.pid rw,
 }

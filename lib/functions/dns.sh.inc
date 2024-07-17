@@ -441,7 +441,7 @@ dns_unbound_install_upgrade() {
     [ ! -e "/var/lib/unbound/" ] && mkdir -p /var/lib/unbound/
     [ -e "/usr/share/dns/" ] && cp -a /usr/share/dns/* /var/lib/unbound/
     [ -e "/var/lib/unbound/" ] && chown -R unbound:unbound /var/lib/unbound
-    [ ! -e "/usr/etc/unbound/unbound_control.key" ] && mrun "unbound-control-setup" 2> /dev/null
+    [ ! -e "/etc/unbound/unbound_control.key" ] && mrun "unbound-control-setup" 2> /dev/null
     cp -af ${locCnf}/unbound /etc/init.d/unbound
     chmod 755 /etc/init.d/unbound
     mrun "update-rc.d unbound defaults" 2> /dev/null
