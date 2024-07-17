@@ -10,7 +10,7 @@
 
 - **OMM**: This private branch is managed separately, with some unused components removed and others added. It is generally simplified for easier maintenance and adheres to modern coding standards.
 
-You can install only **BOA LTS** and then upgrade to **PRO** with a license from [Omega8.cc](https://omega8.cc/licenses) once available.
+You can install only **BOA LTS** and then upgrade to **PRO** with a license from [Omega8.cc](https://omega8.cc/licenses).
 
 ## Practical Differences Between **LTS** and **PRO**
 
@@ -40,7 +40,7 @@ This license is for **BOA** users who prefer to delegate all the work needed to 
 
 Ideal for: Enterprises requiring comprehensive, around-the-clock support with quick response times for all issues.
 
-You can obtain a **BOA PRO** license from [Omega8.cc](https://omega8.cc/licenses) once available.
+You can obtain a **BOA PRO** license from [Omega8.cc](https://omega8.cc/licenses).
 
 ## Upcoming **PRO-Only** Features
 
