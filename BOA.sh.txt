@@ -2665,6 +2665,7 @@ if [ `whoami` = "root" ]; then
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     resolvconf -u &> /dev/null
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
+    killall -9 unbound
     service unbound restart &> /dev/null
     unbound-control reload &> /dev/null
   fi

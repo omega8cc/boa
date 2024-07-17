@@ -100,6 +100,7 @@ check_unbound() {
     mkdir -p /etc/resolvconf/run/interface
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
+    killall -9 unbound
     resolvconf -u &> /dev/null
     service unbound restart &> /dev/null
     unbound-control reload &> /dev/null
@@ -129,6 +130,7 @@ check_unbound() {
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 8.8.4.4" >> /etc/resolv.conf
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
+      killall -9 unbound
       service unbound restart &> /dev/null
       unbound-control reload &> /dev/null
     fi
