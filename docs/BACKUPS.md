@@ -161,4 +161,4 @@
   The format of both files should be as described in the documentation of
   duplicity:
 
-  See: https://duplicity.gitlab.io
+  See also: https://duplicity.gitlab.io
