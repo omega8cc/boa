@@ -22,6 +22,7 @@
   capability sys_chroot,
   capability sys_resource,
   capability net_admin,
+  capability dac_override,
 
   # Allow to open TCP sockets on any address
   network inet stream,
