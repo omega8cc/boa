@@ -351,9 +351,21 @@ install_unbound_src() {
   get_dev_src "unbound-${_UNBOUND_VRN}.tar.gz"
   cd unbound-${_UNBOUND_VRN}
   if [ -e "/usr/local/ssl3/" ]; then
-    mrun "bash ./configure --prefix=/usr --with-ssl=/usr/local/ssl3" 2> /dev/null
+    mrun "bash ./configure \
+      --prefix=/usr \
+      --sysconfdir=/etc \
+      --localstatedir=/var \
+      --with-pidfile=/run/unbound/unbound.pid \
+      --with-chroot-dir=/run/unbound
+      --with-ssl=/usr/local/ssl3" 2> /dev/null
   elif [ -e "/usr/local/ssl/" ]; then
-    mrun "bash ./configure --prefix=/usr --with-ssl=/usr/local/ssl" 2> /dev/null
+    mrun "bash ./configure \
+      --prefix=/usr \
+      --sysconfdir=/etc \
+      --localstatedir=/var \
+      --with-pidfile=/run/unbound/unbound.pid \
+      --with-chroot-dir=/run/unbound
+      --with-ssl=/usr/local/ssl" 2> /dev/null
   fi
   mrun "make -j $(nproc) --quiet" 2> /dev/null
   mrun "make --quiet install" 2> /dev/null
@@ -421,7 +433,6 @@ dns_unbound_install_upgrade() {
     mrun "${_INSTAPP} unbound-host" 2> /dev/null
     mrun "${_INSTAPP} dns-root-data" 2> /dev/null
     ###
-    [ -e "/usr/etc/unbound/unbound.pid" ] && rm -f /usr/etc/unbound/unbound.pid
     [ ! -e "/run/unbound" ] && mkdir -p /run/unbound
     chown -R unbound:unbound /run/unbound
     [ ! -e "/var/log/unbound/" ] && mkdir -p /var/log/unbound/
@@ -527,6 +538,8 @@ dns_unbound_install_upgrade() {
   else
     _UNBOUND_INSTALL_REQUIRED=YES
   fi
+  [ -e "/usr/etc/unbound/unbound.pid" ] && _UNBOUND_INSTALL_REQUIRED=YES
+  [ -e "/usr/etc/unbound/unbound.pid" ] && rm -f /usr/etc/unbound/unbound.pid
   if [ "${_UNBOUND_INSTALL_REQUIRED}" = "YES" ]; then
     install_unbound_src
   fi
