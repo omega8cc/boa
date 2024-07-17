@@ -45,6 +45,8 @@
   /opt/php73/** r,
 
   # Allow PHP-CLI to execute some other binaries
+  /usr/local/bin/mydumper mrix,
+  /usr/local/bin/myloader mrix,
   /usr/sbin/postdrop mrix,
   /usr/sbin/sendmail mrix,
   /usr/bin/wget mrix,
