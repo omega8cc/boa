@@ -23,7 +23,7 @@
   Please read below for details.
 
 
-## CONFIGURATION:
+## CONFIGURATION
 
   Add listed below four (4) required lines to your `/root/.barracuda.cnf` file.
   Required lines are marked with `[R]` and optional with `[O]`:
@@ -78,13 +78,13 @@
 
     Please run: `backboa test` to make sure that the connection works.
 
-## INSTALLATION:
+## INSTALLATION
 
 ```sh
   $ backboa install
 ```
 
-## USAGE:
+## USAGE
 
 ```sh
   $ backboa backup
@@ -96,7 +96,7 @@
   $ backboa retrieve file [time] destination hostname
 ```
 
-## RESTORE EXAMPLES:
+## RESTORE EXAMPLES
 
   Note: Be careful while restoring not to prepend a slash to the path!
 
