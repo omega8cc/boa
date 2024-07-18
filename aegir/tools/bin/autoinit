@@ -273,7 +273,7 @@ disable_apparmor_utils() {
   if [ -x "/usr/sbin/aa-teardown" ]; then
     aa-teardown >> ${logSlt}
   fi
-   [ ! -e "/root/.disable.apparmor.cnf" ] && touch /root/.disable.apparmor.cnf
+  [ ! -e "/root/.disable.apparmor.cnf" ] && touch /root/.disable.apparmor.cnf
 }
 
 install_apparmor_utils() {
