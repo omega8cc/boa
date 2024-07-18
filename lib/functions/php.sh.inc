@@ -2234,13 +2234,14 @@ check_php_rebuild() {
     || [ "${_OS_CODE}" = "beowulf" ] \
     || [ "${_OS_CODE}" = "bookworm" ] \
     || [ "${_OS_CODE}" = "bullseye" ] \
-    || [ "${_OS_CODE}" = "buster" ] \
-    || [ "${_OS_CODE}" = "stretch" ]; then
+    || [ "${_OS_CODE}" = "buster" ]; then
     _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"
     if [ -e "/root/.install.modern.openssl.cnf" ] \
       && [ -e "/usr/local/ssl3/lib64/libssl.so.3" ]; then
       _OPENSSL_USE_VRN="${_OPENSSL_MODERN_VRN}"
     fi
+  elif [ "${_OS_CODE}" = "stretch" ]; then
+    _OPENSSL_USE_VRN="${_OPENSSL_EOL_VRN}"
   else
     _OPENSSL_USE_VRN="${_OPENSSL_LEGACY_VRN}"
   fi

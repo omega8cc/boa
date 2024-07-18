@@ -3775,14 +3775,23 @@ ssl_install_src() {
     || [ "${_OS_CODE}" = "beowulf" ] \
     || [ "${_OS_CODE}" = "bookworm" ] \
     || [ "${_OS_CODE}" = "bullseye" ] \
-    || [ "${_OS_CODE}" = "buster" ] \
-    || [ "${_OS_CODE}" = "stretch" ]; then
+    || [ "${_OS_CODE}" = "buster" ]; then
     _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
     if [ -e "/root/.install.modern.openssl.cnf" ]; then
       chattr +i /root/.install.modern.openssl.cnf
       _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
     fi
+  elif [ "${_OS_CODE}" = "stretch" ]; then
+    if [ -e "/root/.install.modern.openssl.cnf" ]; then
+      chattr -i /root/.install.modern.openssl.cnf
+      rm -f /root/.install.modern.openssl.cnf
+    fi
+    _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
   else
+    if [ -e "/root/.install.modern.openssl.cnf" ]; then
+      chattr -i /root/.install.modern.openssl.cnf
+      rm -f /root/.install.modern.openssl.cnf
+    fi
     _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
   fi
   if [ -e "/root/.install.modern.openssl.cnf" ]; then
@@ -3996,13 +4005,22 @@ curl_install_src() {
       || [ "${_OS_CODE}" = "beowulf" ] \
       || [ "${_OS_CODE}" = "bookworm" ] \
       || [ "${_OS_CODE}" = "bullseye" ] \
-      || [ "${_OS_CODE}" = "buster" ] \
-      || [ "${_OS_CODE}" = "stretch" ]; then
+      || [ "${_OS_CODE}" = "buster" ]; then
       _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
       if [ -e "/root/.install.modern.openssl.cnf" ]; then
         _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
       fi
+    elif [ "${_OS_CODE}" = "stretch" ]; then
+      if [ -e "/root/.install.modern.openssl.cnf" ]; then
+        chattr -i /root/.install.modern.openssl.cnf
+        rm -f /root/.install.modern.openssl.cnf
+      fi
+      _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
     else
+      if [ -e "/root/.install.modern.openssl.cnf" ]; then
+        chattr -i /root/.install.modern.openssl.cnf
+        rm -f /root/.install.modern.openssl.cnf
+      fi
       _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
     fi
   fi
