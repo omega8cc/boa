@@ -22,6 +22,7 @@
 
   # Allow execution of /bin/sh
   /bin/sh mrix,
+  /bin/websh mrix,
 
   # Allow access to /dev
   /dev/log w,
