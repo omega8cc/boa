@@ -1481,7 +1481,8 @@ php_if_versions_cleanup_cnf() {
             || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
             || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
             || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
-            if [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ]; then
+            if [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ] \
+              && [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_EOL_VRN}" ]; then
               _local_PHP_MULTI_INSTALL="8.2 8.3 ${_local_PHP_MULTI_INSTALL}"
             fi
           fi
