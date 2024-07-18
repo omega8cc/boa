@@ -3788,12 +3788,18 @@ ssl_install_src() {
       rm -f /root/.install.modern.openssl.cnf
     fi
     _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
+    if [ -x "/usr/local/ssl3/bin/openssl" ]; then
+      mv -f /usr/local/ssl3 /usr/local/ssl3-off
+    fi
   else
     if [ -e "/root/.install.modern.openssl.cnf" ]; then
       chattr -i /root/.install.modern.openssl.cnf
       rm -f /root/.install.modern.openssl.cnf
     fi
     _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
+    if [ -x "/usr/local/ssl3/bin/openssl" ]; then
+      mv -f /usr/local/ssl3 /usr/local/ssl3-off
+    fi
   fi
   if [ -e "/root/.install.modern.openssl.cnf" ]; then
     _SSL_BINARY=/usr/local/ssl3/bin/openssl
