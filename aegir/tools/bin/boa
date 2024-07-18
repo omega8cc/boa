@@ -1054,20 +1054,21 @@ init_setup() {
   # Define the BOA log file for use after autoinit
   _BOA_LOGFILE="/root/.boa.install.command.cnf"
 
-  # Capture the complete command with arguments
-  _BOA_COMMAND="$0 $@"
-
   if [ "${cmmand}" = "in-lts" ] \
     || [ "${cmmand}" = "in-dev" ] \
     || [ "${cmmand}" = "in-cluster" ]; then
     if [ ! -e "/root/.autoinit.log" ] || [ -e "/lib/systemd/systemd" ]; then
       # Write the command to the log file
-      echo "${_BOA_COMMAND}" > "${_BOA_LOGFILE}"
+      echo "${_BOA_COMMAND}" > ${_BOA_LOGFILE}
       # Explain the procedure
       echo
       echo "  Since this system is not ready for BOA installation yet,"
       echo "  we will run the 'autoinit' for you first, reboot and then"
       echo "  your original boa command will be run in a silent mode"
+      echo
+      echo "  The command to run once autonit is complete:"
+      echo
+      echo "    ${_BOA_COMMAND}"
       echo
       echo "  NOTE: All those steps are automated"
       echo
@@ -2040,6 +2041,8 @@ case "$1" in
              check_root_keys_pwd
              check_virt
              check_dns_curl
+             # Capture the complete command with arguments
+             _BOA_COMMAND="$0 $@"
              init_setup
   ;;
   in-dev)    cmmand="$1"
@@ -2054,6 +2057,8 @@ case "$1" in
              check_root_keys_pwd
              check_virt
              check_dns_curl
+             # Capture the complete command with arguments
+             _BOA_COMMAND="$0 $@"
              init_setup
   ;;
   in-cluster) cmmand="$1"
@@ -2069,6 +2074,8 @@ case "$1" in
              check_root_keys_pwd
              check_virt
              check_dns_curl
+             # Capture the complete command with arguments
+             _BOA_COMMAND="$0 $@"
              init_setup
   ;;
   in-octopus) cmmand="$1"
@@ -2083,6 +2090,8 @@ case "$1" in
              check_root_keys_pwd
              check_virt
              check_dns_curl
+             # Capture the complete command with arguments
+             _BOA_COMMAND="$0 $@"
              init_setup
   ;;
   in-oct)    cmmand="$1"
@@ -2099,6 +2108,8 @@ case "$1" in
              check_root_keys_pwd
              check_virt
              check_dns_curl
+             # Capture the complete command with arguments
+             _BOA_COMMAND="$0 $@"
              init_setup
   ;;
   *)         echo
