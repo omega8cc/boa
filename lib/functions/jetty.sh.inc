@@ -1,8 +1,8 @@
 
 
-if_install_jetty() {
+if_install_solr_jetty() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "PROC: if_install_jetty"
+    msg "PROC: if_install_solr_jetty"
   fi
   if_to_do_fix
   if [[ "${_XTRAS_LIST}" =~ "SR7" ]] \

@@ -525,7 +525,7 @@ if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
     if_install_git_src
     if_install_ffmpeg
     if_install_bzr
-    if_install_jetty
+    if_install_solr_jetty
     if_install_adminer
     if_install_chive
     if_install_sqlbuddy
