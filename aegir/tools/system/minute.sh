@@ -27,6 +27,40 @@ check_root() {
 }
 check_root
 
+if_fix_locked_sshd() {
+  _SSH_LOG="/var/log/auth.log"
+  if [ `tail --lines=50 ${_SSH_LOG} \
+    | grep --count "error: Bind to port 22"` -gt "0" ]; then
+    kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
+    service ssh start
+  fi
+}
+if_fix_locked_sshd
+
+if_fix_dhcp() {
+  if [ -e "/var/log/daemon.log" ]; then
+    _DHCP_LOG="/var/log/daemon.log"
+  else
+    _DHCP_LOG="/var/log/syslog"
+  fi
+  if [ -e "${_DHCP_LOG}" ]; then
+    if [ `tail --lines=100 ${_DHCP_LOG} \
+      | grep --count "dhclient.*Failed"` -gt "0" ]; then
+      sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
+      wait
+      sed -i "/^$/d" /etc/csf/csf.allow
+      _DHCP_TEST=$(grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq 2>&1)
+      if [[ "${_DHCP_TEST}" =~ "port" ]]; then
+        for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+      else
+        for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+      fi
+      csf -q &> /dev/null
+    fi
+  fi
+}
+if_fix_dhcp
+
 if [ -e "/root/.step.init.systemd.two.cnf" ]; then
   kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}') &> /dev/null
 fi

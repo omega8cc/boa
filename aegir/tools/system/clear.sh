@@ -214,7 +214,16 @@ if [ -d "/data/u" ]; then
 fi
 
 renice ${_B_NICE} -p $$ &> /dev/null
-service ssh restart &> /dev/null
+service ssh restart
+if_fix_locked_sshd() {
+  _SSH_LOG="/var/log/auth.log"
+  if [ `tail --lines=50 ${_SSH_LOG} \
+    | grep --count "error: Bind to port 22"` -gt "0" ]; then
+    kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}')
+    service ssh start
+  fi
+}
+if_fix_locked_sshd
 touch /var/xdrago/log/clear.done.pid
 exit 0
 ###EOF2024###
