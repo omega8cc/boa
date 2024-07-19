@@ -1077,6 +1077,7 @@ init_setup() {
       echo "  PLEASE DON'T REBOOT THIS SERVER WHILE THE PROCEDURE IS RUNNING!"
       echo
       echo "  You should receive an email once the installation is complete"
+      echo
       echo "  Bye!"
       echo
       # Execute the autonit and exit
