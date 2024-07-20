@@ -5791,31 +5791,31 @@ satellite_child_b_letsencrypt() {
     cp -af ${pthLe} ${exeLe}
     if [ -e "${exeLe}" ]; then
       chmod 0700 ${exeLe}
-      if [ "${_STATUS}" = "INIT" ] \
-        || [ "${leSetup}" = "YES" ] \
-        || [ -e "${leRoot}/.ctrl/ssl-demo-mode.pid" ]; then
-        touch ${leRoot}/.ctrl/ssl-demo-mode.pid
-        echo -e 'CA="https://acme-staging-v02.api.letsencrypt.org/directory"\n' > ${leRoot}/config.sh
-        cp -af ${leRoot}/config.sh ${leRoot}/config
-        if [ -e "${leKeyJ}" ]; then
-          mv -f ${leKeyJ} "${leKeyJ}-prev"
-        fi
-        if [ -e "${leKeyP}" ]; then
-          mv -f ${leKeyP} "${leKeyP}-prev"
-        fi
-        echo ""
-        msg "${_STATUS} B: Letsencrypt SSL initial mode: DEMO"
-        msg "${_STATUS} B: LE -- No real SSL certs will be generated"
-        msg "${_STATUS} B: LE -- To enable live SSL mode, please create file:"
-        msg "${_STATUS} B: LE -- ${_ROOT}/static/control/ssl-live-mode.info"
-        msg "${_STATUS} B: LE -- Then wait 5 min and run octopus forced upgrade"
-        echo ""
-        msg "${_STATUS} B: LE -- !!! WARNING"
-        msg "${_STATUS} B: LE -- Don't enable SSL option for the Hostmaster site in Aegir"
-        msg "${_STATUS} B: LE -- SSL for Aegir control panel is handled outside of it"
-        msg "${_STATUS} B: LE -- !!! WARNING"
-        echo ""
-      fi
+      # if [ "${_STATUS}" = "INIT" ] \
+      #   || [ "${leSetup}" = "YES" ] \
+      #   || [ -e "${leRoot}/.ctrl/ssl-demo-mode.pid" ]; then
+      #   touch ${leRoot}/.ctrl/ssl-demo-mode.pid
+      #   echo -e 'CA="https://acme-staging-v02.api.letsencrypt.org/directory"\n' > ${leRoot}/config.sh
+      #   cp -af ${leRoot}/config.sh ${leRoot}/config
+      #   if [ -e "${leKeyJ}" ]; then
+      #     mv -f ${leKeyJ} "${leKeyJ}-prev"
+      #   fi
+      #   if [ -e "${leKeyP}" ]; then
+      #     mv -f ${leKeyP} "${leKeyP}-prev"
+      #   fi
+      #   echo ""
+      #   msg "${_STATUS} B: Letsencrypt SSL initial mode: DEMO"
+      #   msg "${_STATUS} B: LE -- No real SSL certs will be generated"
+      #   msg "${_STATUS} B: LE -- To enable live SSL mode, please create file:"
+      #   msg "${_STATUS} B: LE -- ${_ROOT}/static/control/ssl-live-mode.info"
+      #   msg "${_STATUS} B: LE -- Then wait 5 min and run octopus forced upgrade"
+      #   echo ""
+      #   msg "${_STATUS} B: LE -- !!! WARNING"
+      #   msg "${_STATUS} B: LE -- Don't enable SSL option for the Hostmaster site in Aegir"
+      #   msg "${_STATUS} B: LE -- SSL for Aegir control panel is handled outside of it"
+      #   msg "${_STATUS} B: LE -- !!! WARNING"
+      #   echo ""
+      # fi
     else
       msg "${_STATUS} B: LE -- Missing ${exeLe} file?"
     fi

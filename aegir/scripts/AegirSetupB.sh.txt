@@ -200,11 +200,11 @@ satellite_child_b_drush_xts_install
 satellite_child_b_drush_test
 satellite_child_b_aegir_build
 satellite_child_b_aegir_health_check
-satellite_child_b_letsencrypt
 satellite_child_b_aegir_ui_enhance
 satellite_child_b_vhosts_hotfix
 satellite_child_b_symlink_global_inc
 satellite_child_b_redis_enable_finalize
+satellite_child_b_letsencrypt
 
 
 ###----------------------------------------###
