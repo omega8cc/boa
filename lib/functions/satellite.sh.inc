@@ -412,8 +412,12 @@ satellite_tune_fpm_config() {
     sed -i "s/180s/${_PHP_TO}/g" \
       /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
     wait
-    if [ ! -z "${_CHILD_MAX_FPM}" ]; then
+    if [ ! -z "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge "8" ]; then
       sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
+        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+      wait
+    else
+      sed -i "s/pm.max_children =.*/pm.max_children = 8/g" \
         /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       wait
     fi

@@ -2031,8 +2031,12 @@ switch_php() {
                   /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
                 wait
               fi
-              if [ ! -z "${_CHILD_MAX_FPM}" ]; then
+              if [ ! -z "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge "8" ]; then
                 sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
+                  /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+                wait
+              else
+                sed -i "s/pm.max_children =.*/pm.max_children = 8/g" \
                   /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
                 wait
               fi

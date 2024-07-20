@@ -596,9 +596,15 @@ tune_web_server_config() {
     _PHP_V="83 82 81 80 74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
-    sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
-      /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
-    wait
+    if [ ! -z "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge "8" ]; then
+      sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
+         /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
+      wait
+    else
+      sed -i "s/pm.max_children =.*/pm.max_children = 8/g" \
+         /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
+      wait
+    fi
     if [ ! -z "${_PHP_FPM_DENY}" ]; then
       sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
         /opt/php${e}/etc/pool.d/www${e}.conf &> /dev/null
