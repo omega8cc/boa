@@ -870,3 +870,28 @@ barracuda_log_update() {
     msg "INFO: New entry added to /var/log/barracuda_log.txt"
   fi
 }
+
+#
+# Turn Off AppArmor In Octopus.
+turn_off_apparmor_in_octopus() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: turn_off_apparmor_in_octopus"
+  fi
+  isAppArmOn=N
+  if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
+    isAppArmOn=$(cat /sys/module/apparmor/parameters/enabled 2>&1)
+    isAppArmOn=$(echo -n ${isAppArmOn} | tr -d "\n" 2>&1)
+  fi
+  if [ "${isAppArmOn}" = "Y" ] && [ ! -e "/root/.turn_off_apparmor_in_octopus.cnf" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "ARMR: Turning off AppArmor temporarily..."
+    fi
+    rm -rf /var/cache/apparmor/*
+    mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
+    mrun "aa-complain /etc/apparmor.d/*" 2> /dev/null
+    mrun "service apparmor stop" 2> /dev/null
+    mrun "aa-teardown" 2> /dev/null
+    mrun "service auditd stop" 2> /dev/null
+    touch /root/.turn_off_apparmor_in_octopus.cnf
+  fi
+}

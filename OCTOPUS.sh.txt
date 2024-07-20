@@ -230,6 +230,12 @@ sleep 3
 
 
 ###
+### Turn Off AppArmor while running octopus
+###
+turn_off_apparmor_in_octopus
+
+
+###
 ### More local default variables
 ###
 _LASTNUM=001
