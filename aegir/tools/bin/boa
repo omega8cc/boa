@@ -633,6 +633,23 @@ octopus_install() {
       wait
     fi
 
+    if [ "${cmmand}" = "in-octopus" ] \
+      || [ "${cmmand}" = "in-oct" ]; then
+      if [ -x "/opt/php83/bin/php" ]; then
+        _USE_PHP=8.3
+      elif [ -x "/opt/php82/bin/php" ]; then
+        _USE_PHP=8.2
+      elif [ -x "/opt/php81/bin/php" ]; then
+        _USE_PHP=8.1
+      elif [ -x "/opt/php74/bin/php" ]; then
+        _USE_PHP=7.4
+      fi
+      sed -i "s/^_PHP_FPM.*/_PHP_FPM_VERSION=${_USE_PHP}/g"    ${vBs}/${filIncO}
+      wait
+      sed -i "s/^_PHP_CLI.*/_PHP_CLI_VERSION=${_USE_PHP}/g"    ${vBs}/${filIncO}
+      wait
+    fi
+
     if [ -e "${vBs}/${octName}" ]; then
       if [ "${output}" = "logged" ] || [ "${output}" = "onlylogged" ]; then
         bash ${vBs}/${octName} >${_IN_OCTOPUS_LOG} 2>&1
