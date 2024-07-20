@@ -1049,6 +1049,13 @@ init_setup() {
       echo Waiting 15 seconds...
       echo
     fi
+    if [ "${extra}" = "dev" ]; then
+      tRee=dev
+    elif [ "${extra}" = "pro" ]; then
+      tRee=pro
+    elif [ "${extra}" = "lts" ]; then
+      tRee=lts
+    fi
   fi
 
   # Define the BOA log file for use after autoinit
@@ -2080,7 +2087,6 @@ case "$1" in
              init_setup
   ;;
   in-octopus) cmmand="$1"
-             tRee=lts
              email="$2"
              user="$3"
              extra="$4"
@@ -2096,7 +2102,6 @@ case "$1" in
              init_setup
   ;;
   in-oct)    cmmand="$1"
-             tRee=lts
              email="$2"
              user="$3"
              extra="$4"
@@ -2116,7 +2121,7 @@ case "$1" in
   *)         echo
              echo "Installation commands"
              echo "Usage: $(basename "$0") {version} {kind} {fqdn} {email} {user} {extra} {output}"
-             echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {lts|dev} {output}"
+             echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {lts|dev|pro} {output}"
              echo
              echo "Other available commands"
              echo "Usage: $(basename "$0") version"
@@ -2132,7 +2137,7 @@ case "$1" in
   {version}
       in-lts <------- install BOA LTS release (no license)
       in-dev <------- install BOA Cutting Edge (requires license)
-      in-octopus <--- install extra Octopus instance (lts|dev)
+      in-octopus <--- install extra Octopus instance (lts|dev|pro)
 
   {kind}
       public <------- recommended for general use

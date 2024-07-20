@@ -126,7 +126,7 @@ Usage: cluster {in-all} {stable|head}
 Usage: cluster {up-dbs} {stable|head}
 Usage: cluster {up-web} {stable|head}
 Usage: cluster {up-all} {stable|head}
-Usage: cluster {in-oct} {email} {o2} {lts|dev}
+Usage: cluster {in-oct} {email} {o2} {lts|dev|pro}
 Usage: cluster {in-pxy} {id} {ip} force-reinstall
 Usage: cluster {check} {more|report} {backups|octopus}
 ```
