@@ -88,7 +88,6 @@ as explained in this document further below.
   Yes, there are some:
 
   * Let's Encrypt leverages TLS/SNI, which works only with modern browsers
-  * Let's Encrypt doesn't support wildcard names
   * All aliases must have valid DNS names pointing to your server IP address
   * Even with aliases redirection enabled all aliases are listed as SAN names
 
