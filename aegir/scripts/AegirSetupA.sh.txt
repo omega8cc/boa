@@ -196,7 +196,7 @@ fi
 
 
 ###
-### Run all pre/child/post procedures
+### Run key pre/child/post procedures
 ###
 satellite_hot_sauce_check
 satellite_add_user_dirs
@@ -204,6 +204,22 @@ satellite_prepare_child_scripts
 satellite_run_pre_install
 satellite_download_for_local_build
 satellite_run_child_b
+
+
+###
+### Run accelerated tasks queue
+###
+msg "${_STATUS} A: Aegir accelerated task queue will run for 60 seconds..."
+su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ${vSet} hosting_queue_tasks_items 3"
+[ ! -e "/root/.force.queue.runner.cnf" ] && touch /root/.force.queue.runner.cnf
+bash /var/xdrago/runner.sh
+wait
+[ -e "/root/.force.queue.runner.cnf" ] && rm -f /root/.force.queue.runner.cnf
+
+
+###
+### Run more pre/child/post procedures
+###
 satellite_if_create_local_bin
 satellite_run_post_install
 satellite_set_permissions_for_all
