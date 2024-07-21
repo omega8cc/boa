@@ -2210,7 +2210,7 @@ case "$1" in
       cleanup <------ (detect|purge) cancelled Octopus instances files (no dbs)
       reboot <------- run accelerated system reboot
 
-  See docs/INSTALL.txt for more details.
+  See docs/INSTALL.md for more details.
 
 EOF
              clean_pid_exit cmmand_a

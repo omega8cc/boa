@@ -763,7 +763,7 @@ _PERMISSIONS_FIX=YES
 ### weekly script to enable/disable modules in
 ### all hosted sites without '.testing.' or
 ### '.temporary.' keywords in their main name,
-### as listed in the docs/MODULES.txt
+### as listed in the docs/MODULES.md
 ###
 ### This options is now smart enough to check
 ### if the module is defined as required by any
@@ -779,7 +779,7 @@ _MODULES_FIX=YES
 ### daily script to enable/disable modules in
 ### all hosted sites without 'dev.' in their
 ### main domain name, as listed in the
-### docs/MODULES.txt
+### docs/MODULES.md
 ###
 ### Requires: _MODULES_FIX=YES
 ###

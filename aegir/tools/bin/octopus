@@ -1194,7 +1194,7 @@ case "$1" in
       both <--------- upgrade both Aegir Hostmaster and Platforms
       force <-------- force upgrade of either specified instance or all
 
-  See docs/UPGRADE.txt for more details.
+  See docs/UPGRADE.md for more details.
 
 EOF
              clean_pid_exit cmmand_a

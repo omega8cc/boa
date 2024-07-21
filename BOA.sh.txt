@@ -2322,7 +2322,7 @@ if_update_boa_key_tools_only() {
   if [ "${1}" = "verbose" ] || [ -z "${1}" ]; then
     echo
     echo "BOA Meta Installers setup completed"
-    echo "Please check INSTALL.txt and UPGRADE.txt at http://bit.ly/boa-docs"
+    echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"
     echo "Bye"
     echo
   fi
@@ -2443,7 +2443,7 @@ setup() {
   update_boa_tools
   echo
   echo "BOA Meta Installers setup completed"
-  echo "Please check INSTALL.txt and UPGRADE.txt at http://bit.ly/boa-docs"
+  echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"
   echo "Bye"
   echo
 }

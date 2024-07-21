@@ -2,7 +2,7 @@
 ### Barracuda
 ###
 ### Configuration stored in the /root/.barracuda.cnf file.
-### This example is for public install mode - see docs/INSTALL.txt
+### This example is for public install mode - see docs/INSTALL.md
 ###
 ### NOTE: the group of settings displayed below will *not* be overridden
 ### on upgrade by the Barracuda script nor by this configuration file.
@@ -25,7 +25,7 @@ _THIS_DB_HOST=localhost #------- Allows to use hostname in DB grants when FQDN
 _AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
 _DEBUG_MODE=NO #---------------- Allows to enable Drush debugging when YES
 _MY_EMAIL="my@email" #---------- System admin email
-_XTRAS_LIST="" #---------------- See docs/NOTES.txt for details on add-ons
+_XTRAS_LIST="" #---------------- See docs/NOTES.md for details on add-ons
 ###
 _MODULES_FIX=YES #-------------- Allows to skip weekly modules en/dis when NO
 _MODULES_SKIP="" #-------------- Modules (machine names) to never auto-disable
@@ -291,7 +291,7 @@ _BOOKWORM_TO_DAEDALUS=NO
 ###
 ### Use YES to run migration from Tomcat 6
 ### to Jetty 7 with Apache Solr 1.4.1
-### See also docs/SOLR.txt
+### See also docs/SOLR.md
 ###
 _TOMCAT_TO_JETTY=NO
 
