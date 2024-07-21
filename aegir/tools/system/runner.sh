@@ -100,27 +100,31 @@ done
 
 if [ -e "/run/boa_wait.pid" ] \
   || [ -e "/run/boa_cron_wait.pid" ]; then
+  if [ ! -e "/root/.force.queue.runner.cnf" ]; then
   touch /var/xdrago/log/wait-runner.pid
   echo "Another BOA task is running, we will try again later..."
   exit 0
+  fi
 elif [ `ps aux | grep -v "grep" \
   | grep --count "n7 bash.*runner"` -gt "8" ]; then
+  if [ ! -e "/root/.force.queue.runner.cnf" ]; then
   touch /var/xdrago/log/wait-runner.pid
   echo "Too many Aegir tasks running now, we will try again later..."
   exit 0
+  fi
 else
   if [ -e "/root/.wbhd.clstr.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
     echo "Aegir tasks ignored on this cluster node"
     exit 0
   fi
-  if [ -e "/root/.slow.cron.cnf" ]; then
+  if [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.force.queue.runner.cnf" ]; then
     touch /run/boa_cron_wait.pid
     sleep 15
     action
     sleep 15
     rm -f /run/boa_cron_wait.pid
-  elif [ -e "/root/.fast.cron.cnf" ]; then
+  elif [ -e "/root/.fast.cron.cnf" ] || [ -e "/root/.force.queue.runner.cnf" ]; then
     rm -f /run/boa_cron_wait.pid
     action
     sleep 5
