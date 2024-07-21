@@ -351,7 +351,7 @@ hostmaster_mi_up() {
     msg "INFO: Fixing broken Entity module..."
     rm -rf ${_PREV_HM_ROOT}/${pthA}
     cd ${_PREV_HM_ROOT}/profiles/hostmaster/modules/contrib
-    get_dev_stc "entity-7.x-1.10.tar.gz"
+    get_dev_stc "entity-7.x-1.11.tar.gz"
     ${_DRUSHCMD} @hostmaster en entity -y
     ${_DRUSHCMD} @hostmaster dis hosting_ssl -y
     ${_DRUSHCMD} @hostmaster dis hosting_le -y

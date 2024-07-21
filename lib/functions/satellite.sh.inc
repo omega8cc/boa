@@ -2597,7 +2597,7 @@ satellite_download_for_local_build() {
     get_dev_stc "admin_menu-7.x-3.0-rc7.tar.gz"
     get_dev_stc "betterlogin-7.x-1.5.tar.gz"
     get_dev_stc "ctools-7.x-1.21.tar.gz"
-    get_dev_stc "entity-7.x-1.10.tar.gz"
+    get_dev_stc "entity-7.x-1.11.tar.gz"
     get_dev_stc "libraries-7.x-2.5.tar.gz"
     get_dev_stc "module_filter-7.x-2.3.tar.gz"
     get_dev_stc "openidadmin-7.x-1.0.tar.gz"
@@ -5524,7 +5524,7 @@ satellite_child_b_aegir_build() {
       msg "${_STATUS} B: Fixing broken Entity module..."
       rm -rf ${_PREV_HM_ROOT}/${pthA}
       cd ${_PREV_HM_ROOT}/profiles/hostmaster/modules/contrib
-      get_dev_stc "entity-7.x-1.10.tar.gz"
+      get_dev_stc "entity-7.x-1.11.tar.gz"
       ${_DRUSHCMD} @hostmaster en entity -y
       ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_service WHERE service LIKE 'http'" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "INSERT INTO hosting_service (nid, vid, service, type, restart_cmd, port, available) VALUES ('2', '2', 'http', 'nginx_ssl', 'sudo /etc/init.d/nginx reload', '80', '1')" &> /dev/null

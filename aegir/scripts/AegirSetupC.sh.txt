@@ -2689,7 +2689,7 @@ ubercart7_install() {
               cd ${_SHRD_PRPATH}/modules
               get_dev_contrib "colorbox-7.x-2.13.tar.gz"
               get_dev_contrib "ctools-7.x-1.21.tar.gz"
-              get_dev_contrib "entity-7.x-1.10.tar.gz"
+              get_dev_contrib "entity-7.x-1.11.tar.gz"
               get_dev_contrib "google_analytics-7.x-2.6.tar.gz"
               get_dev_contrib "libraries-7.x-2.5.tar.gz"
               get_dev_contrib "pathauto-7.x-1.3.tar.gz"
@@ -2759,7 +2759,7 @@ ubercart7_testing_install() {
               cd ${_SHRD_PRPATH}/modules
               get_dev_contrib "colorbox-7.x-2.13.tar.gz"
               get_dev_contrib "ctools-7.x-1.21.tar.gz"
-              get_dev_contrib "entity-7.x-1.10.tar.gz"
+              get_dev_contrib "entity-7.x-1.11.tar.gz"
               get_dev_contrib "google_analytics-7.x-2.6.tar.gz"
               get_dev_contrib "libraries-7.x-2.5.tar.gz"
               get_dev_contrib "pathauto-7.x-1.3.tar.gz"
