@@ -955,6 +955,18 @@ check_etc_apt_preferences() {
   fi
 }
 
+init_cleanup() {
+  rm -f /root/BOA.sh*
+  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
+  [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
+  rm -f ${vBs}/*.sh.cnf*
+  rm -f ${vBs}/BARRACUDA.sh*
+  rm -f ${vBs}/OCTOPUS.sh*
+  rm -rf /opt/tmp/*
+}
+
 init_finish() {
   rm -f /root/BOA.sh*
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
@@ -1261,7 +1273,17 @@ init_setup() {
   if [ "${output}" = "logged" ]; then
     send_report
   fi
-  init_finish
+  if [ "${_OCTOPUS_ONLY}" = "YES" ]; then
+    init_cleanup
+    # Execute post-install octopus upgrade and exit
+    touch /data/disk/${user}/static/control/ssl-live-mode.info
+    rm -f /data/disk/${user}/tools/le/.ctrl/ssl-demo-mode.pid
+    nohup /opt/local/bin/octopus up-${tRee} ${user} force > /dev/null 2>&1 &
+    sleep 1
+    exit 0
+  else
+    init_finish
+  fi
 }
 
 find_fast_mirror_early() {
