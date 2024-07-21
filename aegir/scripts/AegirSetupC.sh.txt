@@ -3373,6 +3373,8 @@ save_verify_platforms() {
   rm -f make_platform.php
 }
 
+drupal10_4_install
+drupal10_3_install
 drupal10_2_install
 drupal10_1_install
 drupal10_0_install
