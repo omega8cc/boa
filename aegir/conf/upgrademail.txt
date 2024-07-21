@@ -1,13 +1,16 @@
 Hello,
 
-Your Aegir instance has been just upgraded to version boa.version
+We are pleased to inform you that your Aegir instance has been successfully upgraded to version [boa.version].
 
-  https://aegir.url.name
+You can access your upgraded Aegir instance at the following URL:
 
-For details please check the built-in docs in your account:
+https://aegir.url.name
 
-  ~/static/control/README.txt
+For detailed information about the upgrade, please refer to the built-in documentation in your account:
 
-Thank you!
+~/static/control/README.txt
 
-BOA Dev Team
+Thank you for choosing Aegir!
+
+Best regards,
+The BOA Dev Team
