@@ -7,13 +7,6 @@ Your Aegir control panel [version boa.version] is available at:
 
   https://aegir.url.name
 
-Note:
-
-  Your Aegir control panel is using self-signed SSL certificate,
-  so your browser can display warning. Please add this certificate
-  as accepted in your system settings to avoid displaying it
-  each time you are trying to log in.
-
 The following topics are covered within this email:
 
 1. Logging into your Aegir control panel
