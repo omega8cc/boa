@@ -1042,11 +1042,23 @@ init_setup() {
     else
       output="verbose"
     fi
+
+    if [ -e "/root/.auto.up.cnf" ] \
+      || [ -e "/root/.host8.cnf" ] \
+      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+      defaultOption=EDGE
+    else
+      defaultOption=POWER
+    fi
+
     if [ "${output}" = "logged" ] \
       || [ -z "${copt}" ] \
       || [ -z "${csub}" ] \
       || [ -z "${ccor}" ]; then
-      copt=MICRO
+      copt=${defaultOption}
       csub=Q
       ccor=1
     fi
@@ -1054,7 +1066,7 @@ init_setup() {
       || [ -z "${copt}" ] \
       || [ -z "${csub}" ] \
       || [ -z "${ccor}" ]; then
-      copt=MICRO
+      copt=${defaultOption}
       csub=Q
       ccor=1
     fi
