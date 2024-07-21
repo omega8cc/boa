@@ -5808,16 +5808,12 @@ satellite_child_b_letsencrypt() {
           mv -f ${leKeyP} "${leKeyP}-prev"
         fi
         echo ""
-        msg "${_STATUS} B: Letsencrypt SSL initial mode: DEMO"
-        msg "${_STATUS} B: LE -- No real SSL certs will be generated"
-        msg "${_STATUS} B: LE -- To enable live SSL mode, please create file:"
-        msg "${_STATUS} B: LE -- ${_ROOT}/static/control/ssl-live-mode.info"
-        msg "${_STATUS} B: LE -- Then wait 5 min and run octopus forced upgrade"
+        msg "${_STATUS} B: Letsencrypt SSL mode: LIVE after auto-upgrade"
         echo ""
-        msg "${_STATUS} B: LE -- !!! WARNING"
-        msg "${_STATUS} B: LE -- Don't enable SSL option for the Hostmaster site in Aegir"
-        msg "${_STATUS} B: LE -- SSL for Aegir control panel is handled outside of it"
-        msg "${_STATUS} B: LE -- !!! WARNING"
+        msg "${_STATUS} B: LE -- !!! ATTENTION"
+        msg "${_STATUS} B: LE -- Never enable SSL for the Hostmaster site in Aegir"
+        msg "${_STATUS} B: LE -- The Hostmaster site SSL is auto-managed separately"
+        msg "${_STATUS} B: LE -- !!! ATTENTION"
         echo ""
       fi
     else
