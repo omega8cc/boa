@@ -739,6 +739,8 @@ _F_DRUPAL9="Drupal ${_SMALLCORE9_V} [${_THIS_CORE}]"
 _F_DRUPAL10_0="Drupal ${_SMALLCORE10_0_V} [${_THIS_CORE}]"
 _F_DRUPAL10_1="Drupal ${_SMALLCORE10_1_V} [${_THIS_CORE}]"
 _F_DRUPAL10_2="Drupal ${_SMALLCORE10_2_V} [${_THIS_CORE}]"
+_F_DRUPAL10_3="Drupal ${_SMALLCORE10_3_V} [${_THIS_CORE}]"
+_F_DRUPAL10_4="Drupal ${_SMALLCORE10_4_V} [${_THIS_CORE}]"
 _F_ERPAL="ERPAL ${_ERPAL} ${_SMALLCORE7_V} [${_THIS_CORE}]"
 _F_FSERVER="Feature Server 1.3 ${_SMALLCORE6_V} [${_THIS_CORE}]"
 _F_GUARDR="Guardr ${_GUARDR} ${_SMALLCORE7_V} [${_THIS_CORE}]"
@@ -3031,7 +3033,7 @@ save_verify_platforms() {
     fi
   fi
 
-  if [ -d "${pthDst}/${_DRUPAL10_2_D}/web" ]; then
+  if [ -d "${pthDst}/${_DRUPAL10_3_D}/web" ]; then
     if [ ! -e "${pthDst}/${_DRUPAL10_3_D}/web/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_3_D}" standard \
         ${pthDst}/${_DRUPAL10_3_D}/web &> /dev/null
