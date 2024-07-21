@@ -7,7 +7,7 @@ This feature disables global New Relic monitoring by deactivating the server-lev
 ```text
 ;enable_newrelic_integration = FALSE
 ;;
-;;  When set to TRUE it will enable New Relic monitoring for all sites on the
+;;  When set to TRUE it will enable New Relic monitoring for all sites on this
 ;;  platform, but only if there is a valid New Relic license key present in the
 ;;  ~/static/control/newrelic.info control file.
 ```
