@@ -8,9 +8,13 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
+[ ! -d "/var/backups/csf/water" ]&& mkdir -p /var/backups/csf/water
+
 whitelist_ip_pingdom() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing pingdom ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-pingdom-${_NOW}
     sed -i "s/.*pingdom.*//g" /etc/csf/csf.allow
     wait
   fi
@@ -45,6 +49,8 @@ whitelist_ip_pingdom() {
 whitelist_ip_cloudflare() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing cloudflare ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-cloudflare-${_NOW}
     sed -i "s/.*cloudflare.*//g" /etc/csf/csf.allow
     wait
   fi
@@ -78,6 +84,8 @@ whitelist_ip_cloudflare() {
 whitelist_ip_imperva() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing imperva ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-imperva-${_NOW}
     sed -i "s/.*imperva.*//g" /etc/csf/csf.allow
     wait
   fi
@@ -111,6 +119,8 @@ whitelist_ip_imperva() {
 whitelist_ip_googlebot() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing googlebot ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-googlebot-${_NOW}
     sed -i "s/.*googlebot.*//g" /etc/csf/csf.allow
     wait
   fi
@@ -142,6 +152,8 @@ whitelist_ip_googlebot() {
 whitelist_ip_microsoft() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing microsoft ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-microsoft-${_NOW}
     sed -i "s/.*microsoft.*//g" /etc/csf/csf.allow
     wait
   fi
@@ -175,6 +187,8 @@ whitelist_ip_microsoft() {
 whitelist_ip_sucuri() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing sucuri ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-sucuri-${_NOW}
     sed -i "s/.*sucuri.*//g" /etc/csf/csf.allow
     wait
   fi
@@ -204,6 +218,8 @@ whitelist_ip_sucuri() {
 whitelist_ip_authzero() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing authzero ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-authzero-${_NOW}
     sed -i "s/.*authzero.*//g" /etc/csf/csf.allow
     wait
   fi
@@ -275,6 +291,8 @@ whitelist_ip_site24x7_extra() {
 whitelist_ip_site24x7() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
     echo removing site24x7 ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-site24x7-${_NOW}
     sed -i "s/.*site24x7.*//g" /etc/csf/csf.allow
     wait
     echo removing site24x7 ips from csf.ignore
@@ -368,15 +386,19 @@ local_ip_rg() {
       | sort \
       | uniq \
       | tr -d "\s"`; do
-      echo removing ${_IP} from d/t firewall rules
-      csf -ar ${_IP} &> /dev/null
-      csf -dr ${_IP} &> /dev/null
-      csf -tr ${_IP} &> /dev/null
-      if [ ! -e "/root/.local.IP.csf.listed" ]; then
+      if [ ! -z "${_IP}" ]; then
+        echo removing ${_IP} from d/t firewall rules
+        csf -ar ${_IP} &> /dev/null
+        csf -dr ${_IP} &> /dev/null
+        csf -tr ${_IP} &> /dev/null
+      fi
+      if [ ! -e "/root/.local.IP.csf.listed" ] && [ ! -z "${_IP}" ]; then
         echo removing ${_IP} from csf.ignore
         sed -i "s/^${_IP} .*//g" /etc/csf/csf.ignore
         wait
         echo removing ${_IP} from csf.allow
+        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-local-${_NOW}
         sed -i "s/^${_IP} .*//g" /etc/csf/csf.allow
         wait
         echo adding ${_IP} to csf.ignore
@@ -543,6 +565,8 @@ whitelist_ip_dns() {
   csf -tr 1.0.0.1
   csf -dr 1.1.1.1
   csf -dr 1.0.0.1
+  _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+  cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-dns-${_NOW}
   sed -i "s/.*1.1.1.1.*//g"  /etc/csf/csf.allow
   wait
   sed -i "s/.*1.1.1.1.*//g"  /etc/csf/csf.ignore
@@ -684,8 +708,12 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   rm -f /etc/csf/csf.error
   service lfd restart
   wait
+  _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+  cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-dhcp-${_NOW}
   sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
   wait
+  _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+  cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-clear-${_NOW}
   sed -i "/^$/d" /etc/csf/csf.allow
   wait
   sed -i "/^$/d" /etc/csf/csf.ignore
