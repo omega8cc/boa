@@ -8,7 +8,7 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-[ ! -d "/var/backups/csf/water" ]&& mkdir -p /var/backups/csf/water
+[ ! -d "/var/backups/csf/water" ] && mkdir -p /var/backups/csf/water
 
 whitelist_ip_pingdom() {
   if [ ! -e "/root/.whitelist.dont.cleanup.cnf" ]; then
