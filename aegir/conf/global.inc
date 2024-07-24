@@ -1283,6 +1283,8 @@ if ($redis_up && $use_redis && !$custom_cache) {
         $settings['redis_compress_length']       = 100;
         $settings['redis_compress_level']        = 5;
       }
+      $settings['cache']['bins']['state']        = 'cache.backend.redis';
+      $settings['state_cache']                   = TRUE;
       $settings['bootstrap_container_definition'] = [
         'parameters' => [],
         'services' => [
