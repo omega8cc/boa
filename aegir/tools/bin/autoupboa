@@ -123,7 +123,7 @@ system_hostname_check_fix() {
 }
 system_hostname_check_fix
 
-rm -f /var/run/clear_m.pid
+rm -f /run/clear_m.pid
 
 _ADD_XTRA=YES
 _CRON_TEST=$(grep "clear.sh" /var/spool/cron/crontabs/root 2>&1)
@@ -166,7 +166,7 @@ send_boa_system_report() {
       _BCC_EMAIL="notify@omega8.cc"
     fi
     if [ ! -z "${_RCPT_EMAIL}" ] \
-      && [ ! -z "${_RCPT_EMAIL}" ] \
+      && [ ! -z "${_BCC_EMAIL}" ] \
       && [ -e "/root/.run.example.report.cnf" ]; then
       repSub="BOA Status on ${_CHECK_HOST}"
       repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
@@ -406,7 +406,9 @@ if [ -e "/var/aegir/drush" ]; then
         _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
         if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
           _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
-          echo _CHECK_REPAIR 1 ${_CHECK_REPAIR}
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            echo _CHECK_REPAIR 1 ${_CHECK_REPAIR}
+          fi
           if [[ "${_CHECK_REPAIR}" =~ "corrupted" ]]; then
             mysqlcheck -u root -A --auto-repair --silent
             mysql_upgrade -u root --force
@@ -416,7 +418,9 @@ if [ -e "/var/aegir/drush" ]; then
             mysql_upgrade -u root --force
           fi
           _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
-          echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
+          fi
         fi
         mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
         mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
@@ -462,7 +466,7 @@ if [ -e "/var/aegir/drush" ]; then
       [ -e "/root/.debug-boa-installer.cnf" ] && rm -f /root/.debug-boa-installer.cnf
       [ -e "/root/.debug-octopus-installer.cnf" ] && rm -f /root/.debug-octopus-installer.cnf
     fi
-    if [ -e "/var/run/boa_run.pid" ]; then
+    if [ -e "/run/boa_run.pid" ]; then
       touch /root/.pause_tasks_maint.cnf
     else
       [ -e "/root/.pause_tasks_maint.cnf" ] && rm -f /root/.pause_tasks_maint.cnf
@@ -528,11 +532,11 @@ if [ -e "/var/aegir/drush" ]; then
 #   fi
 
   if [ -e "/root/.dev.server.cnf" ]; then
-    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl.${tRee}.${_X_SE}.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f3.${tRee}.${_X_SE}.pid" ]; then
       rm -f /var/xdrago/log/.*etc_crontab_update_dev_ctrl*
       crontab_cleanup
       service cron restart
-      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl.${tRee}.${_X_SE}.pid
+      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl_f3.${tRee}.${_X_SE}.pid
     fi
   else
     if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl_f3.${tRee}.${_X_SE}.pid" ]; then
@@ -649,9 +653,9 @@ if [ -e "/var/aegir/drush" ]; then
     fi
   fi
 
-  rm -f /var/run/solr_jetty.pid
-  rm -f /var/run/solr-jetty.pid
-  rm -f /var/run/fmp_wait.pid
+  rm -f /run/solr_jetty.pid
+  rm -f /run/solr-jetty.pid
+  rm -f /run/fmp_wait.pid
 
   _IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
