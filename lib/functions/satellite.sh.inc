@@ -6052,9 +6052,9 @@ satellite_child_b_aegir_ui_enhance() {
       SET hidden=1 WHERE plid='0' AND menu_name LIKE 'user-menu'" &> /dev/null
 
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats"
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"  &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats" &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"         &> /dev/null
       ${_DRUSHCMD} @hostmaster en hosting_le -y
       ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y
       ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
