@@ -991,17 +991,19 @@ EOF
   if [ -e "/root/.dont.use.fancy.bash.login.cnf" ]; then
     _FANCY_TEST=$(grep "fancynow" /root/.bashrc 2>&1)
     if [[ "${_FANCY_TEST}" =~ "fancynow" ]]; then
-      sed -i "s/.*fancynow.*//g" /root/.bashrc &> /dev/null
+      sed -i "s/.*fancynow.*/  \/usr\/bin\/true/g" /root/.bashrc &> /dev/null
       wait
-      sed -i "s/.*screenfetch.*//g" /root/.bashrc &> /dev/null
+      sed -i "s/.*screenfetch.*/  \/usr\/bin\/true/g" /root/.bashrc &> /dev/null
       wait
     fi
   else
     if [ -e "/usr/bin/screenfetch" ]; then
       _FANCY_TEST=$(grep "fancynow" /root/.bashrc 2>&1)
       if [[ ! "${_FANCY_TEST}" =~ "fancynow" ]]; then
-        echo "/opt/local/bin/fancynow" >> /root/.bashrc
-        echo "/usr/bin/screenfetch" >> /root/.bashrc
+        echo "if [ ! -z "\$PS1" ]; then" >> /root/.bashrc
+        echo "  /opt/local/bin/fancynow" >> /root/.bashrc
+        echo "  /usr/bin/screenfetch" >> /root/.bashrc
+        echo "fi" >> /root/.bashrc
         printf "\n" >> /root/.bashrc
       fi
     fi
