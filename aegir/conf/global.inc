@@ -379,20 +379,28 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
 /**
  * Core version detection
  */
-if (file_exists('web.config')) {
+if (file_exists('web.config') || file_exists('index.php')) { // Check for the main entry point file
   if (file_exists('core')) {
     if (file_exists('vendor/symfony') ||
       file_exists('core/vendor/symfony') ||
       file_exists('autoload.php')) {
       $drupal_eight = TRUE;
+      $drupal_version = '8';
       $drupal_id = 'A1';
       if (file_exists('core/themes/olivero') && file_exists('core/themes/classy')) {
         $drupal_nine = TRUE;
+        $drupal_version = '9';
         $drupal_id = 'A2';
       }
       if (file_exists('core/themes/olivero') && !file_exists('core/themes/classy')) {
         $drupal_ten = TRUE;
+        $drupal_version = '10';
         $drupal_id = 'A3';
+      }
+      if (file_exists('core/themes/stark')) { // Hypothetical check for Drupal 11
+        $drupal_eleven = TRUE;
+        $drupal_version = '11';
+        $drupal_id = 'A4';
       }
       if ($is_dev && !$is_backend) {
         header('X-Backend: ' . $drupal_id);
@@ -408,6 +416,7 @@ if (file_exists('web.config')) {
   }
   else {
     $drupal_seven = TRUE;
+    $drupal_version = '7';
     $use_redis = TRUE;
     if ($is_dev && !$is_backend) {
       header('X-Backend: C');
@@ -416,6 +425,7 @@ if (file_exists('web.config')) {
 }
 elseif (file_exists('modules/path_alias_cache')) {
   $drupal_six = TRUE;
+  $drupal_version = '6';
   $use_redis = TRUE;
   if ($is_dev && !$is_backend) {
     header('X-Backend: D');
@@ -423,12 +433,14 @@ elseif (file_exists('modules/path_alias_cache')) {
 }
 elseif (file_exists('modules/watchdog')) {
   $drupal_five = TRUE;
+  $drupal_version = '5';
   if ($is_dev && !$is_backend) {
     header('X-Backend: E');
   }
 }
 else {
   $drupal_unknown = TRUE;
+  $drupal_version = FALSE;
   if ($is_dev && !$is_backend) {
     header('X-Backend: U');
   }
@@ -964,28 +976,34 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
       isset($_SERVER['REMOTE_ADDR']) &&
       isset($_SERVER['HTTP_USER_AGENT']) &&
       !preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
+
+    // Determine if the site is running on HTTPS
+    $is_https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+
+    // Create a unique identifier for the request
     $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['SERVER_NAME'] . $_SERVER['HTTP_USER_AGENT'];
-    $identity = 'BD' . md5("$identity");
-    if ($drupal_seven || $drupal_eight) {
-      $conf['https'] = TRUE;
-      $sess_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
-      $test_sess_name = $sess_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
+    $identity = 'BD' . md5($identity);
+
+    // Determine the appropriate session cookie prefix and name
+    $cookie_prefix = $is_https ? 'SSESS' : 'SESS';
+    $cookie_domain = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'];
+
+    if ($drupal_version >= 8) {
+      // For Drupal 8 and above, use sha256 hash
+      $test_sess_name = $cookie_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
     }
     else {
-      $test_sess_name = 'SESS' . md5($cookie_domain);
-    }
-    if (!isset($_COOKIE[$test_sess_name]) && !$drupal_eight) {
-      if ($all_ini['speed_booster_anon_cache_ttl'] && preg_match("/^[0-9]{2,}$/", $all_ini['speed_booster_anon_cache_ttl'])) {
-        if ($all_ini['speed_booster_anon_cache_ttl'] > 10) {
-          $expire_in_seconds = $all_ini['speed_booster_anon_cache_ttl'];
-          header('X-Limit-Booster:' . $all_ini['speed_booster_anon_cache_ttl']);
-        }
+      // For Drupal 6 and 7, use md5 hash
+      $test_sess_name = $cookie_prefix . md5($cookie_domain);
       }
-    }
-    if (!isset($_COOKIE[$test_sess_name]) && !$drupal_eight) {
+
+    // Check if the session cookie is present
+    $is_anon = !isset($_COOKIE[$test_sess_name]);
+
+    // Additional security headers for anonymous users or bots
+    if ($is_anon) {
       if (preg_match("/\/(?:node\/[0-9]+\/edit|node\/add)/", $_SERVER['REQUEST_URI'])) {
-        if (!$all_ini['allow_anon_node_add']) {
-          $deny_anon = TRUE;
+        if (empty($all_ini['allow_anon_node_add'])) {
           header("HTTP/1.1 301 Moved Permanently");
           header("Location: " . $base_url . "/");
           header("Connection: close");
@@ -993,8 +1011,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
         }
       }
       if (preg_match("/^\/(?:[a-z]{2}\/)?(?:admin|logout|privatemsg|approve)/", $_SERVER['REQUEST_URI'])) {
-        if (!$all_ini['disable_admin_dos_protection']) {
-          $deny_anon = TRUE;
+        if (empty($all_ini['disable_admin_dos_protection'])) {
           header("HTTP/1.1 301 Moved Permanently");
           header("Location: " . $base_url . "/");
           header("Connection: close");
@@ -1002,6 +1019,15 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
         }
       }
     }
+
+    // Additional logic for caching or other needs
+    if ($is_anon && !empty($all_ini['speed_booster_anon_cache_ttl']) && preg_match("/^[0-9]{2,}$/", $all_ini['speed_booster_anon_cache_ttl'])) {
+      if ($all_ini['speed_booster_anon_cache_ttl'] > 10) {
+        $expire_in_seconds = $all_ini['speed_booster_anon_cache_ttl'];
+        header('X-Limit-Booster:' . $all_ini['speed_booster_anon_cache_ttl']);
+      }
+    }
+
     // Prevent turning the feature server site into a spam machine
     // Disable self-registration also on hostmaster
     if ($conf['install_profile'] == 'feature_server' ||
