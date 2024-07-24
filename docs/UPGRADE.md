@@ -10,10 +10,7 @@ If you haven't run a full barracuda+octopus upgrade to the latest BOA edition ye
 screen
 wget -qO- http://files.aegir.cc/BOA.sh.txt | bash
 barracuda up-lts
-barracuda up-lts system               # Recommended on major upgrade
 octopus up-lts all force
-bash /var/xdrago/manage_ltd_users.sh  # Recommended on major upgrade
-bash /var/xdrago/daily.sh             # Recommended on major upgrade
 ```
 
 For silent, logged mode with an email message sent once the upgrade is complete, but no progress displayed in the terminal window, you can alternatively run:
