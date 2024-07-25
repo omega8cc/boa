@@ -991,9 +991,9 @@ EOF
   if [ -e "/root/.dont.use.fancy.bash.login.cnf" ]; then
     _FANCY_TEST=$(grep "fancynow" /root/.bashrc 2>&1)
     if [[ "${_FANCY_TEST}" =~ "fancynow" ]]; then
-      sed -i "s/.*fancynow.*/  \/usr\/bin\/true/g" /root/.bashrc &> /dev/null
+      sed -i "s/.*fancynow.*/  \/bin\/true/g" /root/.bashrc &> /dev/null
       wait
-      sed -i "s/.*screenfetch.*/  \/usr\/bin\/true/g" /root/.bashrc &> /dev/null
+      sed -i "s/.*screenfetch.*/  \/bin\/true/g" /root/.bashrc &> /dev/null
       wait
     fi
   else
