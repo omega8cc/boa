@@ -1122,10 +1122,12 @@ satellite_sub_satellite_force_advanced_nginx_config() {
       _SITES_COLLATION_SQL=${_CUSTOM_COLLATION_SQL}
     fi
     if [ ! -z "${_SITES_COLLATION_SQL}" ]; then
+      sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${octSetTpl}/provision_drupal_settings_10.tpl.php &> /dev/null
       sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${octSetTpl}/provision_drupal_settings_9.tpl.php &> /dev/null
       sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${octSetTpl}/provision_drupal_settings_8.tpl.php &> /dev/null
       sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${octSetTpl}/provision_drupal_settings_7.tpl.php &> /dev/null
       sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${octSetTpl}/provision_drupal_settings_6.tpl.php &> /dev/null
+      sed -i "s/utf8mb4_general_ci/${_SITES_COLLATION_SQL}/g" ${octSetTpl}/provision_drupal_settings_10.tpl.php &> /dev/null
       sed -i "s/utf8mb4_general_ci/${_SITES_COLLATION_SQL}/g" ${octSetTpl}/provision_drupal_settings_9.tpl.php &> /dev/null
       sed -i "s/utf8mb4_general_ci/${_SITES_COLLATION_SQL}/g" ${octSetTpl}/provision_drupal_settings_8.tpl.php &> /dev/null
       sed -i "s/utf8mb4_general_ci/${_SITES_COLLATION_SQL}/g" ${octSetTpl}/provision_drupal_settings_7.tpl.php &> /dev/null
