@@ -397,7 +397,7 @@ if (file_exists('web.config') || file_exists('index.php')) { // Check for the ma
         $drupal_version = '10';
         $drupal_id = 'A3';
       }
-      if (file_exists('core/themes/stark')) { // Hypothetical check for Drupal 11
+      if (!file_exists('web.config')) { // Hypothetical check for Drupal 11
         $drupal_eleven = TRUE;
         $drupal_version = '11';
         $drupal_id = 'A4';
