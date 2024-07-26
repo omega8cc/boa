@@ -385,21 +385,21 @@ if (file_exists('web.config') || file_exists('index.php')) { // Check for the ma
       file_exists('core/vendor/symfony') ||
       file_exists('autoload.php')) {
       $drupal_eight = TRUE;
-      $drupal_version = '8';
+      $drupal_core = '8';
       $drupal_id = 'A1';
       if (file_exists('core/themes/olivero') && file_exists('core/themes/classy')) {
         $drupal_nine = TRUE;
-        $drupal_version = '9';
+        $drupal_core = '9';
         $drupal_id = 'A2';
       }
       if (file_exists('core/themes/olivero') && !file_exists('core/themes/classy')) {
         $drupal_ten = TRUE;
-        $drupal_version = '10';
+        $drupal_core = '10';
         $drupal_id = 'A3';
       }
       if (!file_exists('web.config')) { // Hypothetical check for Drupal 11
         $drupal_eleven = TRUE;
-        $drupal_version = '11';
+        $drupal_core = '11';
         $drupal_id = 'A4';
       }
       if ($is_dev && !$is_backend) {
@@ -416,7 +416,7 @@ if (file_exists('web.config') || file_exists('index.php')) { // Check for the ma
   }
   else {
     $drupal_seven = TRUE;
-    $drupal_version = '7';
+    $drupal_core = '7';
     $use_redis = TRUE;
     if ($is_dev && !$is_backend) {
       header('X-Backend: C');
@@ -425,7 +425,7 @@ if (file_exists('web.config') || file_exists('index.php')) { // Check for the ma
 }
 elseif (file_exists('modules/path_alias_cache')) {
   $drupal_six = TRUE;
-  $drupal_version = '6';
+  $drupal_core = '6';
   $use_redis = TRUE;
   if ($is_dev && !$is_backend) {
     header('X-Backend: D');
@@ -433,14 +433,14 @@ elseif (file_exists('modules/path_alias_cache')) {
 }
 elseif (file_exists('modules/watchdog')) {
   $drupal_five = TRUE;
-  $drupal_version = '5';
+  $drupal_core = '5';
   if ($is_dev && !$is_backend) {
     header('X-Backend: E');
   }
 }
 else {
   $drupal_unknown = TRUE;
-  $drupal_version = FALSE;
+  $drupal_core = FALSE;
   if ($is_dev && !$is_backend) {
     header('X-Backend: U');
   }
@@ -456,7 +456,7 @@ error_reporting(0);
 /**
  * Forced default settings
  */
-if ($drupal_eight) {
+if ($drupal_core >= 8) {
   //
   // Drupal 8 behaviour is confusing, because while it is possible
   // to force settings listed below, they will not be shown in the
@@ -546,7 +546,7 @@ if (!$is_backend) {
     if (!$is_backend) {
       header("X-Opcache-Revalidate-Freq: 0");
     }
-    if ($drupal_eight) {
+    if ($drupal_core >= 8) {
       unset($config['system.logging']['error_level']);            // Stop hardcoding no errors on screen
       unset($config['system.performance']['cache.page.max_age']); // Stop hardcoding internal page cache
       unset($config['system.performance']['css']['preprocess']);  // Stop hardcoding CSS aggregation
@@ -622,7 +622,7 @@ if (!$is_backend) {
  */
 if (!$is_backend && !$is_dev) {
   if (!$is_bot && $all_ini['disable_drupal_page_cache']) {
-    if ($drupal_eight) {
+    if ($drupal_core >= 8) {
       $config['system.performance']['cache.page.max_age'] = 0;
     }
     else {
@@ -630,7 +630,7 @@ if (!$is_backend && !$is_dev) {
     }
   }
   else {
-    if ($drupal_eight) {
+    if ($drupal_core >= 8) {
       $config['system.performance']['cache.page.max_age'] = 60;
     }
     else {
@@ -645,7 +645,7 @@ if (!$is_backend && !$is_dev) {
  */
 if (!$is_bot && isset($_SERVER['REQUEST_URI']) &&
     preg_match("/nocache=1/", $_SERVER['REQUEST_URI'])) {
-  if ($drupal_eight) {
+  if ($drupal_core >= 8) {
     $config['system.performance']['cache.page.max_age'] = 0;
   }
   else {
@@ -790,7 +790,7 @@ if ($all_ini['auto_detect_domain_access_integration']) {
  * Use site specific composer_manager dir
  */
 if ($all_ini['set_composer_manager_vendor_dir'] && !$is_install) {
-  if ($drupal_eight) {
+  if ($drupal_core >= 8) {
     $config['composer_manager.settings']['vendor_dir'] = 'sites/' . $_SERVER['SERVER_NAME'] . '/vendor';
   }
   else {
@@ -865,7 +865,7 @@ if (!$is_dev) {
         $conf['preprocess_js'] = 1;
       }
     }
-    elseif ($drupal_eight) {
+    elseif ($drupal_core >= 8) {
       if (is_readable('modules/o_contrib_eight/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('modules/o_contrib_nine/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('modules/o_contrib_ten/advagg/advagg_bundler/advagg_bundler.module') ||
@@ -988,14 +988,14 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     $cookie_prefix = $is_https ? 'SSESS' : 'SESS';
     $cookie_domain = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'];
 
-    if ($drupal_version >= 8) {
+    if ($drupal_core >= 8) {
       // For Drupal 8 and above, use sha256 hash
       $test_sess_name = $cookie_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
     }
     else {
       // For Drupal 6 and 7, use md5 hash
       $test_sess_name = $cookie_prefix . md5($cookie_domain);
-      }
+    }
 
     // Check if the session cookie is present
     $is_anon = !isset($_COOKIE[$test_sess_name]);
@@ -1112,7 +1112,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
   $cache_redis = FALSE;
   $all_ini['redis_use_modern'] = TRUE;
   if ($all_ini['redis_use_modern']) {
-    if ($drupal_eight) {
+    if ($drupal_core >= 8) {
       $redis_dirname = 'redis_eight';
       if (!$all_ini['redis_old_eight_mode']) {
         $redis_dirname = 'redis_compr';
@@ -1134,7 +1134,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
       header("X-Redis-Dir-Is: " . $redis_dirname);
     }
     if ($all_ini['redis_flush_forced_mode']) {
-      if ($drupal_eight) {
+      if ($drupal_core >= 8) {
         $settings['redis_perm_ttl']                 = 86400; // 24 hours max
         $settings['redis_flush_mode']               = 1; // Redis default is 0
         $settings['redis_flush_mode_cache_page']    = 2; // Redis default is 1
@@ -1163,7 +1163,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
       header("X-Redis-Dir-Is: " . $redis_dirname);
     }
   }
-  if ($drupal_eight) {
+  if ($drupal_core >= 8) {
     if (file_exists('sites/' . $_SERVER['SERVER_NAME'] . '/.redisLegacyOff')) {
       if ($is_dev && !$is_backend) {
         header("X-Redis-Off-Ctrl-Exists: .redisLegacyOff");
@@ -1280,7 +1280,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
     }
   }
   if ($cache_redis) {
-    if ($drupal_eight) {
+    if ($drupal_core >= 8) {
       if (is_readable('modules/o_contrib_ten/' . $redis_dirname . '/redis.services.yml')) {
         $class_loader->addPsr4('Drupal\\redis\\', 'modules/o_contrib_ten/' . $redis_dirname . '/src');
       }
@@ -1421,7 +1421,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
       foreach ($excludes as $exclude) {
         $exclude = rtrim($exclude);
         $exclude = ltrim($exclude);
-        if ($drupal_eight) {
+        if ($drupal_core >= 8) {
           $bin_exclude = $exclude;
           $settings['cache']['bins'][$bin_exclude] = 'cache.backend.database';
         }

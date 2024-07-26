@@ -436,7 +436,7 @@ dns_unbound_install_upgrade() {
     [ -e "/usr/share/dns/" ] && cp -a /usr/share/dns/* /var/lib/unbound/
     [ -e "/var/lib/unbound/" ] && chown -R unbound:unbound /var/lib/unbound
     [ ! -e "/etc/unbound/unbound_control.key" ] && mrun "unbound-control-setup" 2> /dev/null
-    cp -af ${locCnf}/unbound /etc/init.d/unbound
+    cp -af ${locCnf}/dns/unbound /etc/init.d/unbound
     chmod 755 /etc/init.d/unbound
     mrun "update-rc.d unbound defaults" 2> /dev/null
     ###
@@ -445,7 +445,7 @@ dns_unbound_install_upgrade() {
       chmod 644 /etc/apparmor.d/usr.sbin.unbound
     fi
     ###
-    cat ${locCnf}/unbound.conf > /etc/unbound/unbound.conf.d/unbound.conf
+    cat ${locCnf}/dns/unbound.conf > /etc/unbound/unbound.conf.d/unbound.conf
     if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
       && [ -e "${vBs}/resolv.conf.vanilla" ]; then
       cat ${vBs}/resolv.conf.vanilla > /etc/resolvconf/resolv.conf.d/base

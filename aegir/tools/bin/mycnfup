@@ -514,7 +514,7 @@ sysctl_update() {
     mkdir -p /var/backups
     cd /var/backups
     rm -f /var/backups/sysctl.conf
-    curl ${crlGet} "${urlHmr}/conf/sysctl.conf" -o sysctl.conf
+    curl ${crlGet} "${urlHmr}/conf/var/sysctl.conf" -o sysctl.conf
     if [ -e "/var/backups/sysctl.conf" ]; then
       cp -af /var/backups/sysctl.conf /etc/sysctl.conf
     fi

@@ -178,7 +178,7 @@ fix_php_ini_newrelic() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: fix_php_ini_newrelic $1"
   fi
-  _NR_TPL="${locCnf}/newrelic.ini"
+  _NR_TPL="${locCnf}/php/newrelic.ini"
   if [ -e "${_THIS_FILE}" ]; then
     _NEWRELIC_INI_TEST_A=$(grep "^extension=newrelic.so" ${_THIS_FILE} 2>&1)
     if [[ "${_NEWRELIC_INI_TEST_A}" =~ "extension=newrelic.so" ]]; then
@@ -461,7 +461,7 @@ php_conf_update() {
     || [ ! -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     mkdir -p /opt/etc/fpm
   fi
-  cp -af ${locCnf}/fpm-pool-common.conf /opt/etc/fpm/fpm-pool-common.conf
+  cp -af ${locCnf}/php/fpm-pool-common.conf /opt/etc/fpm/fpm-pool-common.conf
   sed -i "s/127.0.0.1/127.0.0.1,${_THISHTIP}/g" /opt/etc/fpm/fpm-pool-common.conf
   wait
   sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
@@ -478,16 +478,16 @@ php_conf_update() {
     if [ ! -e "/opt/php${e}/etc/php${e}.ini" ] \
       || [ ! -e "/opt/php${e}/etc/pool.d/www${e}.conf" ]; then
       mkdir -p /opt/php${e}/etc/pool.d
-      cp -af ${locCnf}/php${e}.ini /opt/php${e}/etc/php${e}.ini
+      cp -af ${locCnf}/php/php${e}.ini /opt/php${e}/etc/php${e}.ini
     fi
-    cp -af ${locCnf}/fpm${e}-pool-www.conf /opt/php${e}/etc/pool.d/www${e}.conf
+    cp -af ${locCnf}/php/fpm${e}-pool-www.conf /opt/php${e}/etc/pool.d/www${e}.conf
     if [ ! -e "/opt/php${e}/lib/php.ini" ]; then
       mkdir -p /opt/php${e}/lib
-      cp -af ${locCnf}/php${e}-cli.ini /opt/php${e}/lib/php.ini
+      cp -af ${locCnf}/php/php${e}-cli.ini /opt/php${e}/lib/php.ini
     fi
-    cp -af ${locCnf}/php${e}.ini /opt/php${e}/etc/php${e}.ini
-    cp -af ${locCnf}/php${e}-cli.ini /opt/php${e}/lib/php.ini
-    cp -af ${locCnf}/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
+    cp -af ${locCnf}/php/php${e}.ini /opt/php${e}/etc/php${e}.ini
+    cp -af ${locCnf}/php/php${e}-cli.ini /opt/php${e}/lib/php.ini
+    cp -af ${locCnf}/php/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
 
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     if [ "${e}" != "56" ]; then
@@ -1797,7 +1797,7 @@ install_php_multi() {
     fi
     touch ${pthLog}/installed-${_PHP_VERSION}-${_T_DBS_VRN}-${_DB_SERVER}.log
     rm -f /etc/init.d/php$1-fpm*
-    cp -af ${locCnf}/php$1-fpm /etc/init.d/php$1-fpm
+    cp -af ${locCnf}/php/php$1-fpm /etc/init.d/php$1-fpm
     chmod 755 /etc/init.d/php$1-fpm
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       touch ${pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info

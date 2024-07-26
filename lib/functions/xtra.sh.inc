@@ -70,7 +70,7 @@ if_install_adminer() {
         mv -f adminer-${_ADMINER_VRN}-mysql.php index.php
         validate_public_ip &> /dev/null
         validate_xtras_ip &> /dev/null
-        cp -af ${locCnf}/nginx_sql_adminer.conf ${_ADMINER_VHOST}
+        cp -af ${locCnf}/nginx/nginx_sql_adminer.conf ${_ADMINER_VHOST}
         sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"               ${_ADMINER_VHOST}
         wait
         sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g"             ${_ADMINER_VHOST}
@@ -118,7 +118,7 @@ if_install_chive() {
         get_dev_arch "chive_${_CHIVE_VRN}.tar.gz"
         validate_public_ip &> /dev/null
         validate_xtras_ip &> /dev/null
-        cp -af ${locCnf}/nginx_sql_chive.conf ${_CHIVE_VHOST}
+        cp -af ${locCnf}/nginx/nginx_sql_chive.conf ${_CHIVE_VHOST}
         sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"    ${_CHIVE_VHOST}
         wait
         sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g"  ${_CHIVE_VHOST}
@@ -165,7 +165,7 @@ if_install_sqlbuddy() {
         get_dev_arch "sqlbuddy_1_3_3.tar.gz"
         validate_public_ip &> /dev/null
         validate_xtras_ip &> /dev/null
-        cp -af ${locCnf}/nginx_sql_buddy.conf ${_SQLBUDDY_VHOST}
+        cp -af ${locCnf}/nginx/nginx_sql_buddy.conf ${_SQLBUDDY_VHOST}
         sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"   ${_SQLBUDDY_VHOST}
         wait
         sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_SQLBUDDY_VHOST}
@@ -263,7 +263,7 @@ if_install_collectd() {
           wait
           validate_public_ip &> /dev/null
           validate_xtras_ip &> /dev/null
-          cp -af ${locCnf}/nginx_sql_cgp.conf ${_CGP_VHOST}
+          cp -af ${locCnf}/nginx/nginx_sql_cgp.conf ${_CGP_VHOST}
           sed -i "s/127.0.0.1:80/${_XTRAS_THISHTIP}:80/g"    ${_CGP_VHOST}
           wait
           sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g"  ${_CGP_VHOST}
@@ -418,7 +418,7 @@ if_install_bind() {
         st_runner "${_INSTAPP} bind9" 2> /dev/null
         cp -af /etc/bind/named.conf.options \
           ${vBs}/named.conf.options.pre-${_X_SE}-${_X_VERSION}-${_NOW}
-        cp -af ${locCnf}/named.conf.options /etc/bind/named.conf.options
+        cp -af ${locCnf}/var/named.conf.options /etc/bind/named.conf.options
         sed -i "s/127.0.1.1/${_THISHTIP}/g" /etc/bind/named.conf.options &> /dev/null
         mrun "service bind9 restart" 2> /dev/null
         if [ ! -e "/etc/init.d/bind" ]; then

@@ -144,7 +144,7 @@ csf_install() {
     fi
     mv -f /etc/csf/csf.conf \
       /etc/csf/csf.conf-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-    cp -af ${locCnf}/csf.conf /etc/csf/csf.conf
+    cp -af ${locCnf}/var/csf.conf /etc/csf/csf.conf
     sed -i "s/notify\@omega8.cc/${_MY_EMAIL}/g" /etc/csf/csf.conf &> /dev/null
     wait
     sed -i "s/TCP_IN = \"20,21,22,/TCP_IN = \"20,21,${_SSH_PORT},/g" \

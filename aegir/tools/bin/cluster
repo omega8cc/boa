@@ -565,7 +565,7 @@ if_firewall_update() {
     cp -af /opt/fire.sh      ${_WFC}/fire.sh-pre
     cp -af /etc/csf/csf.conf ${_WFC}/csf.conf-pre
     cd ${_WFC}
-    curl ${crlGet} "${urlHmr}/conf/sysctl.conf"          -o sysctl.conf
+    curl ${crlGet} "${urlHmr}/conf/var/sysctl.conf"      -o sysctl.conf
     curl ${crlGet} "${urlHmr}/tools/host/host-water.sh"  -o host-water.sh
     curl ${crlGet} "${urlHmr}/tools/host/host-fire.sh"   -o host-fire.sh
     curl ${crlGet} "http://${_USE_MIR}/cluster/csf.conf" -o csf.conf

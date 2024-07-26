@@ -594,7 +594,7 @@ aegir_master_upgrade() {
         ${mtrInc}/global.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     fi
     mkdir -p /data/conf
-    cp -af ${locCnf}/global.inc /data/conf/global.inc
+    cp -af ${locCnf}/global/global.inc /data/conf/global.inc
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
     if [ -e "${mtrInc}" ] && [ ! -L "${mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then
@@ -989,7 +989,7 @@ EOFMYSQL
         ${mtrInc}/global.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
     fi
     mkdir -p /data/conf
-    cp -af ${locCnf}/global.inc /data/conf/global.inc
+    cp -af ${locCnf}/global/global.inc /data/conf/global.inc
     sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
     if [ -e "${mtrInc}" ] \
       && [ ! -L "${mtrInc}/global.inc" ] \
@@ -1013,9 +1013,9 @@ EOFMYSQL
     rm -f /etc/nginx/sites-available/default
     rm -f /etc/nginx/sites-enabled/default
     rm -f /etc/nginx/modules-enabled/*
-    if [ -e "${locCnf}/nginx.conf" ]; then
+    if [ -e "${locCnf}/nginx/nginx.conf" ]; then
       mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
-      cp -af ${locCnf}/nginx.conf /etc/nginx/nginx.conf
+      cp -af ${locCnf}/nginx/nginx.conf /etc/nginx/nginx.conf
     fi
     mrun "service nginx reload" 2> /dev/null
     msg "INFO: Aegir Master Instance installed"

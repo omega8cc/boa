@@ -6,15 +6,15 @@ nginx_conf_update() {
   fi
   if [ ! -e "${pthLog}/nginx-config-params-fixed-${_X_SE}-${_X_VERSION}.log" ] \
     && [ -d "/var/aegir" ]; then
-    if [ -e "${locCnf}/nginx.conf" ] \
+    if [ -e "${locCnf}/nginx/nginx.conf" ] \
       && [ -e "/etc/nginx/nginx.conf" ]; then
       mv -f /etc/nginx/nginx.conf-* ${vBs}/dragon/t/ &> /dev/null
       mv -f /etc/nginx/mime.types-pre-* ${vBs}/dragon/t/ &> /dev/null
       mv -f /etc/nginx/fastcgi_params-pre-* ${vBs}/dragon/t/ &> /dev/null
       mv -f /etc/nginx/nginx.conf ${vBs}/dragon/t/nginx.conf-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
       mv -f /etc/nginx/fastcgi_params ${vBs}/dragon/t/fastcgi_params-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-      cp -af ${locCnf}/nginx.conf /etc/nginx/nginx.conf
-      cp -af ${locCnf}/fastcgi_params.txt /etc/nginx/fastcgi_params
+      cp -af ${locCnf}/nginx/nginx.conf /etc/nginx/nginx.conf
+      cp -af ${locCnf}/nginx/fastcgi_params.txt /etc/nginx/fastcgi_params
       touch ${pthLog}/nginx-config-params-fixed-${_X_SE}-${_X_VERSION}.log
     fi
   fi
@@ -71,7 +71,7 @@ force_advanced_nginx_config() {
     mrun "openssl dhparam -out /etc/ssl/private/nginx-wild-ssl.dhp 2048" 2> /dev/null
     wait
   fi
-  cp -af ${locCnf}/nginx_compact_include.conf ${mtrInc}/nginx_compact_include.conf
+  cp -af ${locCnf}/nginx/nginx_compact_include.conf ${mtrInc}/nginx_compact_include.conf
   validate_local_ip &> /dev/null
   sub_force_advanced_nginx_config
   sed -i "s/ 90;/ 180;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
@@ -206,7 +206,7 @@ force_advanced_nginx_config() {
   chown aegir:aegir /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*
   if [ ! -e "/data/conf/nginx_high_load_off.conf" ]; then
     mkdir -p /data/conf
-    cp -af ${locCnf}/nginx_high_load_off.conf /data/conf/nginx_high_load_off.conf
+    cp -af ${locCnf}/nginx/nginx_high_load_off.conf /data/conf/nginx_high_load_off.conf
     chmod 644 /data/conf/nginx_high_load_off.conf &> /dev/null
   fi
   if [ -e "/root/.giant_traffic.cnf" ]; then
@@ -588,7 +588,7 @@ nginx_initd_check() {
   else
     mv -f /etc/init.d/nginx \
       ${vBs}/nginx-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-    cp -af ${locCnf}/nginx /etc/init.d/nginx
+    cp -af ${locCnf}/nginx/nginx /etc/init.d/nginx
     chmod 755 /etc/init.d/nginx &> /dev/null
     mrun "update-rc.d nginx defaults" 2> /dev/null
     mrun "service nginx start" 2> /dev/null
@@ -599,17 +599,17 @@ nginx_mime_check_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: nginx_mime_check_fix"
   fi
-  if [ -e "${locCnf}/mime.types" ]; then
+  if [ -e "${locCnf}/nginx/mime.types" ]; then
     mv -f /etc/nginx/mime.types \
       /etc/nginx/mime.types-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-    cp -af ${locCnf}/mime.types /etc/nginx/mime.types
+    cp -af ${locCnf}/nginx/mime.types /etc/nginx/mime.types
     if [ ! -L "/var/www/nginx-default/index.html" ] \
       && [ ! -L "/var/www/nginx-default/under_construction.jpg" ]; then
       mkdir -p /var/www/nginx-default
       mv -f /var/www/nginx-default/index.html \
         /var/www/nginx-default/index.html-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-      cp -af ${locCnf}/uc.html /var/www/nginx-default/index.html
-      cp -af ${locCnf}/under_construction.jpg \
+      cp -af ${locCnf}/tpl/uc.html /var/www/nginx-default/index.html
+      cp -af ${locCnf}/tpl/under_construction.jpg \
         /var/www/nginx-default/under_construction.jpg
     fi
     rm -f /etc/nginx/sites-available/default
@@ -635,12 +635,12 @@ nginx_wildcard_ssl_install() {
       -newkey rsa:2048 \
       -keyout /etc/ssl/private/nginx-wild-ssl.key \
       -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
-    cp -af ${locCnf}/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
+    cp -af ${locCnf}/nginx/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
     sed -i "s/127.0.0.1:80/localhost:80/g" ${_WILD_SSL_VHOST} &> /dev/null
     sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST} &> /dev/null
     mkdir -p /data/conf
-    if [ -e "${locCnf}/global.inc" ]; then
-      cp -af ${locCnf}/global.inc /data/conf/global.inc
+    if [ -e "${locCnf}/global/global.inc" ]; then
+      cp -af ${locCnf}/global/global.inc /data/conf/global.inc
     fi
     if [ -e "${mtrInc}" ] \
       && [ ! -L "${mtrInc}/global.inc" ] \
@@ -669,7 +669,7 @@ nginx_wildcard_ssl_install() {
     if [ "${_WILD_SSL_PROXY_UP}" = "YES" ]; then
       validate_public_ip &> /dev/null
       validate_xtras_ip &> /dev/null
-      cp -af ${locCnf}/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
+      cp -af ${locCnf}/nginx/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
       sed -i "s/127.0.0.1:80/localhost:80/g" ${_WILD_SSL_VHOST}
       wait
       sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST}

@@ -3060,7 +3060,7 @@ if [ -z "${_SKYNET_MODE}" ] || [ "${_SKYNET_MODE}" = "ON" ]; then
     --max-redirs 10 \
     --retry 3 \
     --retry-delay 15 -A iCab \
-    "${urlHmr}/conf/barracuda-release.txt" \
+    "${urlHmr}/conf/version/barracuda-release.txt" \
     -o /opt/tmp/barracuda-release.txt
 else
   rm -f /opt/tmp/barracuda-release.txt*

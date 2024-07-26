@@ -247,7 +247,7 @@ get_dev_contrib() {
 
 if_clean_boa_env() {
   if [ ! -x "/etc/init.d/clean-boa-env" ]; then
-    curl ${crlGet} "${urlHmr}/conf/clean-boa-env" -o /etc/init.d/clean-boa-env
+    curl ${crlGet} "${urlHmr}/conf/var/clean-boa-env" -o /etc/init.d/clean-boa-env
     if [ -e "/etc/init.d/clean-boa-env" ]; then
       chmod 700 /etc/init.d/clean-boa-env
       chown root:root /etc/init.d/clean-boa-env
@@ -500,7 +500,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/clean-boa-env.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mv -f /etc/init.d/clean-boa-env /var/xdrago/clean-boa-env.old
-    curl ${crlGet} "${urlHmr}/conf/clean-boa-env" -o /etc/init.d/clean-boa-env
+    curl ${crlGet} "${urlHmr}/conf/var/clean-boa-env" -o /etc/init.d/clean-boa-env
     if [ -e "/etc/init.d/clean-boa-env" ]; then
       chmod 700 /etc/init.d/clean-boa-env
       chown root:root /etc/init.d/clean-boa-env
@@ -829,7 +829,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/multi.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/conf/fpm-pool-foo-multi.conf /var/xdrago/conf/fpm-pool-foo-multi.conf.old
-    curl ${crlGet} "${urlHmr}/conf/fpm-pool-foo-multi.conf" \
+    curl ${crlGet} "${urlHmr}/conf/php/fpm-pool-foo-multi.conf" \
       -o /var/xdrago/conf/fpm-pool-foo-multi.conf
     if [ -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
       chmod 644 /var/xdrago/conf/fpm-pool-foo-multi.conf
@@ -845,7 +845,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/single.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf.old
-    curl ${crlGet} "${urlHmr}/conf/fpm-pool-foo.conf" \
+    curl ${crlGet} "${urlHmr}/conf/php/fpm-pool-foo.conf" \
       -o /var/xdrago/conf/fpm-pool-foo.conf
     if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
       chmod 644 /var/xdrago/conf/fpm-pool-foo.conf
@@ -864,7 +864,7 @@ update_agents() {
     chgrp root ${IsCurlBin} &> /dev/null
     cp -af /etc/ImageMagick-6/policy.xml /var/xdrago/conf/etc-ImageMagick-6-policy.xml.hf-06.old
     rm -f /var/xdrago/conf/etc-ImageMagick-6-policy.xml
-    curl ${crlGet} "${urlHmr}/conf/etc-ImageMagick-6-policy.xml" \
+    curl ${crlGet} "${urlHmr}/conf/etc/etc-ImageMagick-6-policy.xml" \
       -o /var/xdrago/conf/etc-ImageMagick-6-policy.xml
     if [ -e "/var/xdrago/conf/etc-ImageMagick-6-policy.xml" ]; then
       cp -af /var/xdrago/conf/etc-ImageMagick-6-policy.xml /etc/ImageMagick-6/policy.xml
@@ -2518,7 +2518,7 @@ sysctl_update() {
     mkdir -p /var/backups
     cd /var/backups
     rm -f /var/backups/sysctl.conf
-    curl ${crlGet} "${urlHmr}/conf/sysctl.conf" -o sysctl.conf
+    curl ${crlGet} "${urlHmr}/conf/var/sysctl.conf" -o sysctl.conf
     if [ -e "/var/backups/sysctl.conf" ]; then
       cp -af /var/backups/sysctl.conf /etc/sysctl.conf
     fi

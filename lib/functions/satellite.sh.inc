@@ -5072,6 +5072,7 @@ satellite_batch_cleanup() {
   mv -f ${_ROOT}/backups/mydropwizard-pre* ${_ROOT}/backups/system/ &> /dev/null
   mkdir -p /data/conf/arch
   mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
+  mv -f /data/conf/global/*inc-pre* /data/conf/arch/ &> /dev/null
   mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
   mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
   find ${_ROOT}/static/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null

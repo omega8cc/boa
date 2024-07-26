@@ -1,3 +1,0 @@
-Package: *
-Pin: origin ftp.osuosl.org
-Pin-Priority: 1003

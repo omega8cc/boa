@@ -237,7 +237,7 @@ tune_sql_memory_limits() {
   if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
     _DO_NOTHING=YES
   else
-    cp -af ${locCnf}/my.cnf.txt /etc/mysql/my.cnf
+    cp -af ${locCnf}/var/my.cnf.txt /etc/mysql/my.cnf
   fi
   if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
     sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf &> /dev/null

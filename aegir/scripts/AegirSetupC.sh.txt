@@ -219,8 +219,8 @@ fix_dirs_files() {
   chmod 0755 ./sites
   chmod 0755 ./sites/all
   chmod 02775 ./sites/all/{modules,libraries,themes}
-  cp -af /opt/tmp/boa/aegir/conf/get.htaccess.txt ./.htaccess
-  cp -af /opt/tmp/boa/aegir/conf/crossdomain.xml ./
+  cp -af /opt/tmp/boa/aegir/conf/var/get.htaccess.txt ./.htaccess
+  cp -af /opt/tmp/boa/aegir/conf/var/crossdomain.xml ./
 }
 #
 # Create D6 symlinks.

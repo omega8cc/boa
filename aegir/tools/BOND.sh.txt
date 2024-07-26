@@ -560,7 +560,7 @@ fix_php_ini_igbinary() {
 #
 # Fix php.ini file to add newrelic.ini
 fix_php_ini_newrelic() {
-  _NR_TPL="${locCnf}/newrelic.ini"
+  _NR_TPL="${locCnf}/php/newrelic.ini"
   if [ -e "${_THIS_FILE}" ]; then
     _NEWRELIC_INI_TEST_A=$(grep "^extension=newrelic.so" ${_THIS_FILE} 2>&1)
     if [[ "${_NEWRELIC_INI_TEST_A}" =~ "extension=newrelic.so" ]]; then
@@ -782,7 +782,7 @@ php_conf_update() {
     || [ ! -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     mkdir -p /opt/etc/fpm
   fi
-  cp -af ${locCnf}/fpm-pool-common.conf /opt/etc/fpm/fpm-pool-common.conf
+  cp -af ${locCnf}/php/fpm-pool-common.conf /opt/etc/fpm/fpm-pool-common.conf
   sed -i "s/127.0.0.1/127.0.0.1,${_THISHTIP}/g" /opt/etc/fpm/fpm-pool-common.conf
   wait
   sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf
@@ -796,16 +796,16 @@ php_conf_update() {
     if [ ! -e "/opt/php${e}/etc/php${e}.ini" ] \
       || [ ! -e "/opt/php${e}/etc/pool.d/www${e}.conf" ]; then
       mkdir -p /opt/php${e}/etc/pool.d
-      cp -af ${locCnf}/php${e}.ini /opt/php${e}/etc/php${e}.ini
+      cp -af ${locCnf}/php/php${e}.ini /opt/php${e}/etc/php${e}.ini
     fi
-    cp -af ${locCnf}/fpm${e}-pool-www.conf /opt/php${e}/etc/pool.d/www${e}.conf
+    cp -af ${locCnf}/php/fpm${e}-pool-www.conf /opt/php${e}/etc/pool.d/www${e}.conf
     if [ ! -e "/opt/php${e}/lib/php.ini" ]; then
       mkdir -p /opt/php${e}/lib
-      cp -af ${locCnf}/php${e}-cli.ini /opt/php${e}/lib/php.ini
+      cp -af ${locCnf}/php/php${e}-cli.ini /opt/php${e}/lib/php.ini
     fi
-    cp -af ${locCnf}/php${e}.ini /opt/php${e}/etc/php${e}.ini
-    cp -af ${locCnf}/php${e}-cli.ini /opt/php${e}/lib/php.ini
-    cp -af ${locCnf}/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
+    cp -af ${locCnf}/php/php${e}.ini /opt/php${e}/etc/php${e}.ini
+    cp -af ${locCnf}/php/php${e}-cli.ini /opt/php${e}/lib/php.ini
+    cp -af ${locCnf}/php/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
 
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     if [ "${e}" != "56" ]; then
@@ -877,26 +877,26 @@ php_conf_update() {
 #
 restore_default_php() {
   msg "INFO: Restoring default PHP configuration"
-  cp -af ${locCnf}/php83-cli.ini /opt/php83/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php83.ini /opt/php83/etc/php83.ini   &> /dev/null
-  cp -af ${locCnf}/php82-cli.ini /opt/php82/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php82.ini /opt/php82/etc/php82.ini   &> /dev/null
-  cp -af ${locCnf}/php81-cli.ini /opt/php81/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php81.ini /opt/php81/etc/php81.ini   &> /dev/null
-  cp -af ${locCnf}/php80-cli.ini /opt/php80/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php80.ini /opt/php80/etc/php80.ini   &> /dev/null
-  cp -af ${locCnf}/php74-cli.ini /opt/php74/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php74.ini /opt/php74/etc/php74.ini   &> /dev/null
-  cp -af ${locCnf}/php73-cli.ini /opt/php73/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php73.ini /opt/php73/etc/php73.ini   &> /dev/null
-  cp -af ${locCnf}/php72-cli.ini /opt/php72/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php72.ini /opt/php72/etc/php72.ini   &> /dev/null
-  cp -af ${locCnf}/php71-cli.ini /opt/php71/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php71.ini /opt/php71/etc/php71.ini   &> /dev/null
-  cp -af ${locCnf}/php70-cli.ini /opt/php70/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php70.ini /opt/php70/etc/php70.ini   &> /dev/null
-  cp -af ${locCnf}/php56-cli.ini /opt/php56/lib/php.ini &> /dev/null
-  cp -af ${locCnf}/php56.ini /opt/php56/etc/php56.ini   &> /dev/null
+  cp -af ${locCnf}/php/php83-cli.ini /opt/php83/lib/php.ini &> /dev/null
+  cp -af ${locCnf}/php/php83.ini /opt/php83/etc/php83.ini   &> /dev/null
+  cp -af ${locCnf}/php/php82-cli.ini /opt/php82/lib/php.ini &> /dev/null
+  cp -af ${locCnf}/php/php82.ini /opt/php82/etc/php82.ini   &> /dev/null
+  cp -af ${locCnf}/php/php81-cli.ini /opt/php81/lib/php.ini &> /dev/null
+  cp -af ${locCnf}/php/php81.ini /opt/php81/etc/php81.ini   &> /dev/null
+  cp -af ${locCnf}/php/php80-cli.ini /opt/php80/lib/php.ini &> /dev/null
+  cp -af ${locCnf}/php/php80.ini /opt/php80/etc/php80.ini   &> /dev/null
+  cp -af ${locCnf}/php/php74-cli.ini /opt/php74/lib/php.ini &> /dev/null
+  cp -af ${locCnf}/php/php74.ini /opt/php74/etc/php74.ini   &> /dev/null
+  cp -af ${locCnf}/php/php73-cli.ini /opt/php73/lib/php.ini &> /dev/null
+  cp -af ${locCnf}/php/php73.ini /opt/php73/etc/php73.ini   &> /dev/null
+  cp -af ${locCnf}/php/php72-cli.ini /opt/php72/lib/php.ini &> /dev/null
+  cp -af ${locCnf}/php/php72.ini /opt/php72/etc/php72.ini   &> /dev/null
+  cp -af ${locCnf}/php/php71-cli.ini /opt/php71/lib/php.ini &> /dev/null
+  cp -af ${locCnf}/php/php71.ini /opt/php71/etc/php71.ini   &> /dev/null
+  cp -af ${locCnf}/php/php70-cli.ini /opt/php70/lib/php.ini &> /dev/null
+  cp -af ${locCnf}/php/php70.ini /opt/php70/etc/php70.ini   &> /dev/null
+  cp -af ${locCnf}/php/php56-cli.ini /opt/php56/lib/php.ini &> /dev/null
+  cp -af ${locCnf}/php/php56.ini /opt/php56/etc/php56.ini   &> /dev/null
 }
 #
 tune_php() {
@@ -978,7 +978,7 @@ restore_default_sql() {
     else
       cp -af /etc/mysql/my.cnf \
         /var/backups/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-      cp -af ${locCnf}/my.cnf.txt /etc/mysql/my.cnf
+      cp -af ${locCnf}/var/my.cnf.txt /etc/mysql/my.cnf
       _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
       if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
@@ -1556,8 +1556,8 @@ tune_memory_limits() {
   if [ ! -e "/data/conf" ]; then
     mkdir -p /data/conf
   fi
-  cp -af ${locCnf}/fpm-pool-foo-multi.conf /var/xdrago/conf/
-  cp -af ${locCnf}/fpm-pool-foo.conf /var/xdrago/conf/
+  cp -af ${locCnf}/php/fpm-pool-foo-multi.conf /var/xdrago/conf/
+  cp -af ${locCnf}/php/fpm-pool-foo.conf /var/xdrago/conf/
   cp -af ${locCnf}/hhvm /var/xdrago/conf/
   cp -af ${locCnf}/hhvm/hhvm_intercept.php /data/conf/hhvm_intercept.php
   chmod 644 /data/conf/hhvm_intercept.php

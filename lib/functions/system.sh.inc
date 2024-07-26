@@ -381,7 +381,7 @@ fix_ftps_pam() {
     msg "PROC: fix_ftps_pam"
   fi
   if [ ! -e "/etc/ftpusers" ]; then
-    cp -af ${locCnf}/ftpusers /etc/ftpusers
+    cp -af ${locCnf}/ftpd/ftpusers /etc/ftpusers
   fi
   sed -i "s/pam_stack.so/pam_unix.so/g" /etc/pam.d/pure-ftpd &> /dev/null
   wait
@@ -413,7 +413,7 @@ sftp_ftps_modern_fix() {
       mrun "make -j $(nproc) --quiet" 2> /dev/null
       st_runner "sh ./install.sh yesall" 2> /dev/null
       touch ${pthLog}/mss-build-${_MSS_VRN}-${_X_SE}-${_X_VERSION}.log
-      cp -af ${locCnf}/sftp_config /etc/ssh/sftp_config
+      cp -af ${locCnf}/var/sftp_config /etc/ssh/sftp_config
       mrun "service ssh restart" 2> /dev/null
       _MSS_BUILD=YES
     fi
@@ -468,12 +468,12 @@ boa_ini_tpl_update() {
     msg "PROC: boa_ini_tpl_update"
   fi
   mkdir -p /data/conf
-  if [ -e "${locCnf}/default.boa_platform_control.ini" ]; then
-    cp -af ${locCnf}/default.boa_platform_control.ini /data/conf/default.boa_platform_control.ini
+  if [ -e "${locCnf}/ini/default.boa_platform_control.ini" ]; then
+    cp -af ${locCnf}/ini/default.boa_platform_control.ini /data/conf/default.boa_platform_control.ini
     rm -f /var/xdrago/conf/default.boa_platform_control.ini
   fi
-  if [ -e "${locCnf}/default.boa_site_control.ini" ]; then
-    cp -af ${locCnf}/default.boa_site_control.ini /data/conf/default.boa_site_control.ini
+  if [ -e "${locCnf}/ini/default.boa_site_control.ini" ]; then
+    cp -af ${locCnf}/ini/default.boa_site_control.ini /data/conf/default.boa_site_control.ini
     rm -f /var/xdrago/conf/default.boa_site_control.ini
   fi
 }
@@ -484,11 +484,52 @@ global_inc_conf_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: global_inc_conf_update"
   fi
+  _GL_D=/data/conf/global
+  [ ! -d "${_GL_D}" ] && mkdir -p ${_GL_D}
+  _DR_V="11 10 9 8 7 6"
+  for e in ${_DR_V}; do
+    if [ -e "${_GL_D}/global-${e}.inc" ]; then
+      cp -af ${_GL_D}/global-${e}.inc ${_GL_D}/global-${e}.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
+      cp -af ${locCnf}/global/global-${e}.inc ${_GL_D}/global-${e}.inc
+    fi
+  done
   if [ -e "/data/conf/global.inc" ]; then
-    mv -f /data/conf/global.inc /data/conf/global.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-    cp -af ${locCnf}/global.inc /data/conf/global.inc
-    sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
-    wait
+    cp -af /data/conf/global.inc /data/conf/global.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
+    cp -af ${locCnf}/global/global.inc /data/conf/global.inc
+    if [ ! -z "${_SPEED_VALID_MAX}" ]; then
+      sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
+      wait
+    fi
+  fi
+  if [ -e "${_GL_D}/global-main.inc" ]; then
+    cp -af ${locCnf}/global/global-main.inc ${_GL_D}/global-main.inc
+  fi
+  if [ -e "${_GL_D}/global-ini.inc" ]; then
+    cp -af ${locCnf}/global/global-ini.inc ${_GL_D}/global-ini.inc
+  fi
+  if [ -e "${_GL_D}/global-mode.inc" ]; then
+    cp -af ${locCnf}/global/global-mode.inc ${_GL_D}/global-mode.inc
+  fi
+  if [ -e "${_GL_D}/global-settings.inc" ]; then
+    cp -af ${locCnf}/global/global-settings.inc ${_GL_D}/global-settings.inc
+  fi
+  if [ -e "${_GL_D}/global-front-end.inc" ]; then
+    cp -af ${locCnf}/global/global-front-end.inc ${_GL_D}/global-front-end.inc
+    if [ ! -z "${_SPEED_VALID_MAX}" ]; then
+      sed -i "s/3600/${_SPEED_VALID_MAX}/g" ${_GL_D}/global-front-end.inc &> /dev/null
+    fi
+  fi
+  if [ -e "${_GL_D}/global-if-redis.inc" ]; then
+    cp -af ${locCnf}/global/global-if-redis.inc ${_GL_D}/global-if-redis.inc
+  fi
+  if [ -e "${_GL_D}/global-redis.inc" ]; then
+    cp -af ${locCnf}/global/global-redis.inc ${_GL_D}/global-redis.inc
+  fi
+  if [ -e "${_GL_D}/global-newrelic.inc" ]; then
+    cp -af ${locCnf}/global/global-newrelic.inc ${_GL_D}/global-newrelic.inc
+  fi
+  if [ -e "${_GL_D}/global-extra.inc" ]; then
+    cp -af ${locCnf}/global/global-extra.inc ${_GL_D}/global-extra.inc
   fi
 }
 
@@ -500,7 +541,7 @@ fix_on_upgrade() {
   fi
   sed -i "s/loglevel.*/loglevel warning/g" /etc/redis/redis.conf &> /dev/null
   sed -i "s/^TLS.*/TLS 2/g" /usr/local/etc/pure-ftpd.conf &> /dev/null
-  cp -af ${locCnf}/clean-boa-env /etc/init.d/clean-boa-env
+  cp -af ${locCnf}/var/clean-boa-env /etc/init.d/clean-boa-env
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
   mrun "update-rc.d clean-boa-env defaults" 2> /dev/null
   kill_nash
@@ -729,8 +770,8 @@ tune_memory_limits() {
   if [ ! -e "/data/conf" ]; then
     mkdir -p /data/conf
   fi
-  cp -af ${locCnf}/fpm-pool-foo-multi.conf /var/xdrago/conf/
-  cp -af ${locCnf}/fpm-pool-foo.conf /var/xdrago/conf/
+  cp -af ${locCnf}/php/fpm-pool-foo-multi.conf /var/xdrago/conf/
+  cp -af ${locCnf}/php/fpm-pool-foo.conf /var/xdrago/conf/
   cp -af ${locCnf}/hhvm /var/xdrago/conf/
   cp -af ${locCnf}/hhvm/hhvm_intercept.php /data/conf/hhvm_intercept.php
   chmod 644 /data/conf/hhvm_intercept.php
@@ -903,9 +944,9 @@ EOF
       LC_MEASUREMENT=en_US.UTF-8 \
       LC_IDENTIFICATION=en_US.UTF-8 \
       LC_ALL= &> /dev/null
-    if [ -e "${locCnf}/boa.bashrc.txt" ]; then
+    if [ -e "${locCnf}/var/boa.bashrc.txt" ]; then
       cp -af /root/.bashrc /root/.bashrc.bak.${_NOW}
-      cp -af ${locCnf}/boa.bashrc.txt /root/.bashrc
+      cp -af ${locCnf}/var/boa.bashrc.txt /root/.bashrc
       set_xterm
     fi
     # Define all locale settings on the fly to prevent unnecessary
@@ -931,9 +972,9 @@ EOF
       printf "\n" >> /root/.bashrc
     fi
   else
-    if [ -e "${locCnf}/boa.bashrc.txt" ]; then
+    if [ -e "${locCnf}/var/boa.bashrc.txt" ]; then
       cp -af /root/.bashrc /root/.bashrc.bak.${_NOW}
-      cp -af ${locCnf}/boa.bashrc.txt /root/.bashrc
+      cp -af ${locCnf}/var/boa.bashrc.txt /root/.bashrc
       set_xterm
     fi
     if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
@@ -4982,6 +5023,7 @@ finale() {
   #rm -rf /var/lib/apt/lists/*
   mkdir -p /data/conf/arch
   mv -f /data/conf/global.inc-pre* /data/conf/arch/     &> /dev/null
+  mv -f /data/conf/global/*inc-pre* /data/conf/arch/    &> /dev/null
   mv -f /data/conf/global.inc-before* /data/conf/arch/  &> /dev/null
   mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
   rm -f /tmp/cache.inc*
@@ -6609,7 +6651,7 @@ sys_packages_install() {
   else
     msg "INFO: Upgrading required libraries and tools..."
     if [ ! -e "/etc/init.d/php5-fpm" ]; then
-      cp -af ${locCnf}/php5-fpm-init-vanilla /etc/init.d/php5-fpm
+      cp -af ${locCnf}/php/php5-fpm-init-vanilla /etc/init.d/php5-fpm
     fi
   fi
   if [ "${_STATUS}" = "INIT" ]; then
@@ -7719,14 +7761,14 @@ if_install_ftpd() {
       mrun "make -j $(nproc) --quiet" 2> /dev/null
       mrun "make --quiet install" 2> /dev/null
       cd /usr/local/sbin/
-      cp -af ${locCnf}/pure-config.pl.txt ./
+      cp -af ${locCnf}/ftpd/pure-config.pl.txt ./
       mv -f pure-config.pl.txt pure-config.pl 2> /dev/null
       chmod 755 /usr/local/sbin/pure-config.pl 2> /dev/null
       cp -af /var/opt/pure-ftpd-${_PURE_FTPD_VRN}/pam/pure-ftpd /etc/pam.d/
       fix_ftps_pam
       cd /usr/local/etc
       rm -f pure-ftpd.conf
-      cp -af ${locCnf}/pure-ftpd.conf ./
+      cp -af ${locCnf}/ftpd/pure-ftpd.conf ./
       ln -sfn /usr/local/etc/pure-ftpd.conf /usr/local/etc/pure-ftpd.conf~
       killall -9 pure-ftpd &> /dev/null
       ftpdInit="/usr/local/sbin/pure-config.pl"
@@ -8060,7 +8102,7 @@ initd_update() {
   _THIS_DB_PORT=3306
   if [ "${_STATUS}" = "INIT" ]; then
     msg "INFO: Updating init scripts"
-    cp -af ${locCnf}/clean-boa-env /etc/init.d/clean-boa-env
+    cp -af ${locCnf}/var/clean-boa-env /etc/init.d/clean-boa-env
     chmod 755 /etc/init.d/clean-boa-env &> /dev/null
     mrun "update-rc.d clean-boa-env defaults" 2> /dev/null
     _SSH_USEDNS_TEST=$(grep "UseDNS" /etc/ssh/sshd_config 2>&1)
@@ -8344,8 +8386,8 @@ sysctl_update() {
     && [ ! -e "${pthLog}/sysctl.conf-${_X_SE}-${_X_VERSION}-${_NOW}.log" ]; then
     cp -af /etc/sysctl.conf \
       ${vBs}/dragon/t/sysctl.conf-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-    if [ -e "${locCnf}/sysctl.conf" ]; then
-      cp -af ${locCnf}/sysctl.conf /etc/sysctl.conf
+    if [ -e "${locCnf}/var/sysctl.conf" ]; then
+      cp -af ${locCnf}/var/sysctl.conf /etc/sysctl.conf
     fi
     if [ -e "/etc/security/limits.conf" ]; then
       _IF_NF=$(grep '2097152' /etc/security/limits.conf 2>&1)
@@ -8481,8 +8523,8 @@ rsyslog_config_update() {
     && [ -e "/etc/rsyslog.conf" ]; then
     mv -f /etc/rsyslog.conf \
       /var/backups/.etc.rsyslog.conf-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-    cp -af ${locCnf}/rsyslog.conf /etc/rsyslog.conf
-    cp -af ${locCnf}/logrotate.d.rsyslog.conf /etc/logrotate.d/rsyslog
+    cp -af ${locCnf}/var/rsyslog.conf /etc/rsyslog.conf
+    cp -af ${locCnf}/var/logrotate.d.rsyslog.conf /etc/logrotate.d/rsyslog
     mrun "service rsyslog restart" 2> /dev/null
   fi
 }

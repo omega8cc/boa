@@ -64,14 +64,15 @@ ssh root@target-ip
 exit
 ```
 
-### Enable site_readonly globally
+### Enable config_readonly/site_readonly globally
 
 ```sh
-cp -af /data/conf/global.inc /data/conf/global.inc.bak
-echo >> /data/conf/global.inc
-echo "\$conf['site_readonly'] = 1;" >> /data/conf/global.inc
-echo >> /data/conf/global.inc
-grep site_readonly /data/conf/global.inc
+cp -af /data/conf/global/global-extra.inc /data/conf/global/global-extra.inc.bak
+echo >> /data/conf/global/global-extra.inc
+echo "\$settings['config_readonly'] = TRUE;" >> /data/conf/global/global-extra.inc
+echo "\$conf['site_readonly'] = 1;" >> /data/conf/global/global-extra.inc
+echo >> /data/conf/global/global-extra.inc
+grep site_readonly /data/conf/global/global-extra.inc
 ```
 
 ## On the Source Host
