@@ -90,11 +90,9 @@ if ($redis_up && $use_redis && !$custom_cache) {
         }
         if (is_readable('modules/o_contrib_nine/' . $redis_dirname . '/example.services.yml')) {
           $cache_redis = TRUE;
+          $example_failover_path = 'modules/o_contrib_nine/' . $redis_dirname . '/example.failover.services.yml';
           $example_services_path = 'modules/o_contrib_nine/' . $redis_dirname . '/example.services.yml';
           $cache_gzip_path = 'modules/o_contrib_nine/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
-          if ($is_dev && !$is_backend) {
-            header("X-Example-Services-Is-Readable: " . $example_services_path);
-          }
         }
         if (is_readable('modules/o_contrib_nine/' . $redis_dirname . '/redis.services.yml')) {
           $cache_redis = TRUE;
@@ -105,11 +103,9 @@ if ($redis_up && $use_redis && !$custom_cache) {
         }
         if (is_readable('modules/o_contrib_ten/' . $redis_dirname . '/example.services.yml')) {
           $cache_redis = TRUE;
+          $example_failover_path = 'modules/o_contrib_ten/' . $redis_dirname . '/example.failover.services.yml';
           $example_services_path = 'modules/o_contrib_ten/' . $redis_dirname . '/example.services.yml';
           $cache_gzip_path = 'modules/o_contrib_ten/' . $redis_dirname . '/lib/Redis/CacheCompressed.php';
-          if ($is_dev && !$is_backend) {
-            header("X-Example-Services-Is-Readable: " . $example_services_path);
-          }
         }
         if (is_readable('modules/o_contrib_ten/' . $redis_dirname . '/redis.services.yml')) {
           $cache_redis = TRUE;
@@ -199,8 +195,25 @@ if ($redis_up && $use_redis && !$custom_cache) {
         $settings['cache']['bins']['discovery']  = 'cache.backend.database';
         $settings['cache']['bins']['config']     = 'cache.backend.database';
       }
-      $settings['container_yamls'][]             = $example_services_path;
-      $settings['container_yamls'][]             = $redis_services_path;
+      if (is_readable($example_failover_path)) {
+        $settings['container_yamls'][]           = $example_failover_path;
+        $settings['redis.failover']              = TRUE;
+        if ($is_dev && !$is_backend) {
+          header("X-Redis-Failover-Is-Readable: " . $example_failover_path);
+        }
+      }
+      elseif (is_readable($example_services_path)) {
+        $settings['container_yamls'][]           = $example_services_path;
+        if ($is_dev && !$is_backend) {
+          header("X-Redis-Example-Is-Readable: " . $example_services_path);
+        }
+      }
+      if (is_readable($redis_services_path)) {
+        $settings['container_yamls'][]           = $redis_services_path;
+        if ($is_dev && !$is_backend) {
+          header("X-Redis-Services-Is-Readable: " . $redis_services_path);
+        }
+      }
       $settings['queue_default']                 = 'queue.redis';
       if ($redis_comprs) {
         $settings['redis_compress_length']       = 100;
