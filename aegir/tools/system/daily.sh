@@ -1854,6 +1854,10 @@ cleanup_ini() {
   if [ -e "${_CTRL_F}" ]; then
     sed -i "s/^;;.*//g"   ${_CTRL_F} &> /dev/null
     wait
+    sed -i "s/^ .*//g"    ${_CTRL_F} &> /dev/null
+    wait
+    sed -i "s/^#.*//g"    ${_CTRL_F} &> /dev/null
+    wait
     sed -i "/^$/d"        ${_CTRL_F} &> /dev/null
     wait
     sed -i "s/^\[/\n\[/g" ${_CTRL_F} &> /dev/null
