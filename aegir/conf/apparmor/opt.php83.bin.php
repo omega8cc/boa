@@ -13,6 +13,7 @@
   include <abstractions/nameservice>
 
   # Capabilities needed by PHP-CLI
+  capability audit_write,
   capability mknod,
   capability sys_resource,
   capability setgid,
@@ -24,6 +25,7 @@
   /opt/php83/bin/php mrix,
 
   # Allow PHP-CLI to read its configuration files
+  /etc/postfix/dynamicmaps.cf r,
   /etc/mailname r,
   /etc/login.defs r,
   /etc/mailname r,
@@ -149,12 +151,15 @@
 
   /data/disk/*/static/**/files/css/* rw,
   /data/disk/*/static/**/files/js/* rw,
+  /data/disk/*/static/**/files/php/twig/* rw,
 
   owner /var/aegir/.tmp/ r,
   owner /var/aegir/.tmp/** rw,
   owner /var/aegir/host_master/** rw,
   owner /var/aegir/platforms/** rw,
 
+  owner /data/disk/*/clients/ r,
+  owner /data/disk/*/clients/** rw,
   owner /data/disk/*/.drush/ r,
   owner /data/disk/*/.drush/** rw,
   owner /data/disk/*/.tmp/ r,
