@@ -51,6 +51,8 @@
   /opt/php83/** r,
 
   # Allow PHP-CLI to execute some other binaries
+  /etc/init.d/nginx mrix,
+  /etc/init.d/nginx mrix,
   /usr/local/bin/fix-drupal-platform-ownership.sh mrix,
   /usr/local/bin/fix-drupal-platform-permissions.sh mrix,
   /usr/local/bin/fix-drupal-site-ownership.sh mrix,
