@@ -18,6 +18,9 @@
   capability dac_read_search,
   capability mknod,
 
+  # Allow Nginx to accept signal from PHP-CLI processes
+  signal (receive) peer=/opt/php*/bin/php,
+
   # Allow read access to necessary libraries
   /usr/libexec/** mr,
   /lib/** mr,
