@@ -18,6 +18,18 @@
   # Allow execution of the ssh binary
   /usr/local/bin/ssh mrix,
 
+  # Allow read access to necessary libraries
+  /lib/** mr,
+  /lib/x86_64-linux-gnu/** mr,
+  /lib64/** mr,
+  /usr/lib/** mr,
+  /usr/lib/x86_64-linux-gnu/** mr,
+  /usr/libexec/** mr,
+  /usr/local/include/** mr,
+  /usr/local/lib/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
+
   # Read access to SSH client configuration files
   /etc/ssh/ssh_config r,
   /etc/ssh/ssh_known_hosts r,

@@ -17,17 +17,17 @@
   network inet,
 
   # Allow read access to necessary libraries
-  /usr/libexec/** mr,
+  /etc/ssl/openssl.cnf r,
   /lib/** mr,
+  /lib/x86_64-linux-gnu/** mr,
   /lib64/** mr,
   /usr/lib/** mr,
   /usr/lib/x86_64-linux-gnu/** mr,
-  /lib/x86_64-linux-gnu/** mr,
+  /usr/libexec/** mr,
   /usr/local/include/** mr,
   /usr/local/lib/** mr,
   /usr/local/ssl/** mr,
   /usr/local/ssl3/** mr,
-  /etc/ssl/openssl.cnf r,
 
   # Allow reading of environment variables
   /proc/** r,

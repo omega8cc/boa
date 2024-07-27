@@ -32,12 +32,12 @@
   signal (receive) peer=/opt/php*/bin/php,
 
   # Allow read access to necessary libraries
-  /usr/libexec/** mr,
   /lib/** mr,
+  /lib/x86_64-linux-gnu/** mr,
   /lib64/** mr,
   /usr/lib/** mr,
   /usr/lib/x86_64-linux-gnu/** mr,
-  /lib/x86_64-linux-gnu/** mr,
+  /usr/libexec/** mr,
   /usr/local/include/** mr,
   /usr/local/lib/** mr,
   /usr/local/ssl/** mr,

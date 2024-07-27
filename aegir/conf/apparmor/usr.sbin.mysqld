@@ -64,11 +64,11 @@
 
   # Allow MySQL to read system libraries
   /lib/** mr,
+  /lib/x86_64-linux-gnu/** mr,
   /lib64/** mr,
   /usr/lib/** mr,
   /usr/lib/mysql/plugin/** mr,
   /usr/lib/x86_64-linux-gnu/** mr,
-  /lib/x86_64-linux-gnu/** mr,
   /usr/local/lib/** mr,
   /usr/local/ssl/** mr,
   /usr/local/ssl3/** mr,
