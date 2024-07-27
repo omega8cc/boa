@@ -51,6 +51,11 @@
   /opt/php73/** r,
 
   # Allow PHP-CLI to execute some other binaries
+  /usr/local/bin/fix-drupal-platform-ownership.sh mrix,
+  /usr/local/bin/fix-drupal-platform-permissions.sh mrix,
+  /usr/local/bin/fix-drupal-site-ownership.sh mrix,
+  /usr/local/bin/fix-drupal-site-permissions.sh mrix,
+  /usr/local/bin/lock-local-drush-permissions.sh mrix,
   /sbin/unix_chkpwd mrix,
   /usr/bin/tr mrix,
   /usr/local/bin/mydumper mrix,
