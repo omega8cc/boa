@@ -21,6 +21,9 @@
   capability setuid,
   capability sys_resource,
 
+  # Allow PHP-FPM to accept signal from PHP-CLI processes
+  signal (receive) peer=/opt/php*/bin/php,
+
   network inet stream,
   network inet6 stream,
 
@@ -40,10 +43,10 @@
   /etc/postfix/dynamicmaps.cf.d/* r,
   /etc/postfix/main.cf r,
   /home/*/.drush/** r,
+  /opt/etc/fpm/** r,
   /var/spool/postfix/maildrop/ r,
   /var/spool/postfix/maildrop/* rw,
   /opt/php74/** r,
-  /opt/etc/fpm/** r,
 
   # Allow PHP-FPM to execute some other binaries
   /bin/dash mrix,
@@ -66,10 +69,10 @@
   /usr/sbin/sendmail mrix,
 
   # Allow PHP-FPM to access some /dev
+  /dev/null rw,
+  /dev/random r,
   /dev/tty wr,
   /dev/urandom r,
-  /dev/random r,
-  /dev/null rw,
 
   # Allow PHP-FPM to access its run directory
   /run/** rw,
@@ -82,13 +85,13 @@
   /var/tmp/** rw,
 
   # Allow read access to necessary libraries
-  /usr/libexec/** mr,
   /lib/** mr,
+  /lib/x86_64-linux-gnu/** mr,
   /lib64/** mr,
   /opt/php*/lib/php/** mr,
   /usr/lib/** mr,
   /usr/lib/x86_64-linux-gnu/** mr,
-  /lib/x86_64-linux-gnu/** mr,
+  /usr/libexec/** mr,
   /usr/local/include/** mr,
   /usr/local/ioncube/ioncube_loader_lin_*.so mr,
   /usr/local/lib/** mr,
@@ -96,16 +99,16 @@
   /usr/local/ssl3/** mr,
 
   # Allow PHP-FPM to read and write its log files
-  /var/log/php/** rw,
   /var/log/newrelic/php_agent.log rw,
+  /var/log/php/** rw,
 
   # Allow PHP-FPM to access /proc and /sys for necessary information
   /proc/** r,
   /sys/** r,
 
   # Allow PHP-FPM to use /dev/shm for temporary storage
-  /dev/shm/** rw,
   /dev/shm/ r,
+  /dev/shm/** rw,
 
   # Deny execution of binaries from these directories
   deny /home/*/.tmp/** m,
@@ -127,7 +130,9 @@
   /data/disk/*/tools/le/** r,
 
   /data/all/** r,
+  /data/conf/ r,
   /data/conf/* r,
+  /data/conf/** r,
 
   owner /var/aegir/host_master/** rw,
   owner /var/aegir/platforms/** rw,
@@ -147,8 +152,8 @@
 
   # Deny access to various sensitive directories and files
   deny /boot/** mrwklx,
-  deny /root/** mrwklx,
   deny /etc/shadow* rwlx,
+  deny /root/** mrwklx,
 
   # Catchall to deny everything else
   #deny /** rwklx,
