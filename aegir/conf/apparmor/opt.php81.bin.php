@@ -86,6 +86,8 @@
   # Allow PHP-CLI to use tmp files
   /tmp/ r,
   /tmp/** rw,
+  /var/spool/postfix/maildrop/ r,
+  /var/spool/postfix/maildrop/* rw,
   /var/tmp/** rw,
 
   # Allow read access to necessary libraries
