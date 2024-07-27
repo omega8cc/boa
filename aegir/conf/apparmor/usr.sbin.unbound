@@ -28,6 +28,9 @@
   network inet stream,
   network inet6 stream,
 
+  # Allow Unbound to accept signal from PHP-CLI processes
+  signal (receive) peer=/opt/php*/bin/php,
+
   # Allow read access to necessary libraries
   /usr/libexec/** mr,
   /lib/** mr,

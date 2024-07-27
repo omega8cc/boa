@@ -13,6 +13,9 @@
   # Capabilities needed by Rsyslogd service
   capability syslog,
 
+  # Allow Rsyslogd to accept signal from PHP-CLI processes
+  signal (receive) peer=/opt/php*/bin/php,
+
   # Allow execution of the rsyslogd binary
   /usr/sbin/rsyslogd mrix,
 

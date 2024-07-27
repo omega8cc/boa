@@ -22,6 +22,9 @@
   network inet stream,
   network inet6 stream,
 
+  # Allow MySQLd to accept signal from PHP-CLI processes
+  signal (receive) peer=/opt/php*/bin/php,
+
   # Allow mysqld_safe to read its configuration files
   /etc/mysql/** r,
   /etc/mysql/conf.d/** r,

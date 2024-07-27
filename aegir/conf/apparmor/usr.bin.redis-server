@@ -10,6 +10,9 @@
   include <abstractions/nameservice>
   include <abstractions/user-tmp>
 
+  # Allow Redis to accept signal from PHP-CLI processes
+  signal (receive) peer=/opt/php*/bin/php,
+
   # Allow reading necessary kernel parameters
   /proc/sys/** r,
   /sys/devices/** r,

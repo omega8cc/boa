@@ -20,6 +20,9 @@
   network inet stream,
   network inet6 stream,
 
+  # Allow Pure-FTPd to accept signal from PHP-CLI processes
+  signal (receive) peer=/opt/php*/bin/php,
+
   # Allow execution of /bin/sh
   /bin/sh mrix,
   /bin/websh mrix,
