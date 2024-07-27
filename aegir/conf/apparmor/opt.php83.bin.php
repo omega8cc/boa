@@ -25,9 +25,8 @@
   /opt/php83/bin/php mrix,
 
   # Allow PHP-CLI to read its configuration files
+  /etc/postfix/dynamicmaps.cf.d/ r,
   /etc/postfix/dynamicmaps.cf r,
-  /etc/mailname r,
-  /etc/login.defs r,
   /etc/mailname r,
   /etc/login.defs r,
   /etc/pam.d/* r,
@@ -151,7 +150,7 @@
 
   /data/disk/*/static/**/files/css/* rw,
   /data/disk/*/static/**/files/js/* rw,
-  /data/disk/*/static/**/files/php/twig/* rw,
+  /data/disk/*/static/**/files/php/** rw,
 
   owner /var/aegir/.tmp/ r,
   owner /var/aegir/.tmp/** rw,
