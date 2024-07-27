@@ -40,6 +40,7 @@
   ptrace (read) peer=unconfined,
 
   # Allow PHP-CLI to read required configuration files
+  /etc/wgetrc r,
   /etc/default/nginx r,
   /etc/ImageMagick-6/log.xml r,
   /etc/ImageMagick-6/policy.xml r,
