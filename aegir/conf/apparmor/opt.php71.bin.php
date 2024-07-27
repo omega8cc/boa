@@ -24,6 +24,8 @@
   /opt/php71/bin/php mrix,
 
   # Allow PHP-CLI to read its configuration files
+  /etc/mailname r,
+  /etc/login.defs r,
   /etc/pam.d/* r,
   /etc/ldap/ldap.conf r,
   /etc/sudoers.d/ r,
@@ -46,6 +48,7 @@
   /opt/php71/** r,
 
   # Allow PHP-CLI to execute some other binaries
+  /sbin/unix_chkpwd mrix,
   /usr/bin/tr mrix,
   /usr/local/bin/mydumper mrix,
   /usr/local/bin/myloader mrix,
@@ -141,6 +144,9 @@
 
   /data/all/** r,
   /data/conf/* r,
+
+  /data/disk/*/static/**/files/css/* rw,
+  /data/disk/*/static/**/files/js/* rw,
 
   owner /var/aegir/.tmp/ r,
   owner /var/aegir/.tmp/** rw,
