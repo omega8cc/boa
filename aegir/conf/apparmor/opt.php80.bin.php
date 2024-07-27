@@ -25,6 +25,7 @@
   /opt/php80/bin/php mrix,
 
   # Allow PHP-CLI to read its configuration files
+  /etc/passwd r,
   /data/conf/** r,
   /etc/ImageMagick-6/log.xml r,
   /etc/ImageMagick-6/policy.xml r,
