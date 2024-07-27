@@ -22,12 +22,12 @@
   signal (receive) peer=/opt/php*/bin/php,
 
   # Allow read access to necessary libraries
-  /usr/libexec/** mr,
   /lib/** mr,
+  /lib/x86_64-linux-gnu/** mr,
   /lib64/** mr,
   /usr/lib/** mr,
   /usr/lib/x86_64-linux-gnu/** mr,
-  /lib/x86_64-linux-gnu/** mr,
+  /usr/libexec/** mr,
   /usr/local/include/** mr,
   /usr/local/lib/** mr,
   /usr/local/ssl/** mr,
@@ -37,14 +37,19 @@
   /usr/sbin/nginx mrix,
 
   # Allow read/write access to nginx specific directories and files
+  /etc/default/nginx r,
   /etc/nginx/ r,
   /etc/nginx/** r,
+  /etc/nginx/conf.d/ r,
+  /etc/nginx/conf.d/** r,
+  /etc/nginx/fastcgi_params r,
+  /etc/nginx/mime.types r,
+  /etc/nginx/nginx.conf r,
+  /etc/ssl/private/ r,
   /etc/ssl/private/* r,
-  /var/lib/nginx/ r,
-  /var/lib/nginx/** rw,
-  /var/log/nginx/ r,
-  /var/log/nginx/access.log w,
-  /var/log/nginx/error.log w,
+  /etc/ssl/private/nginx-wild-ssl.crt r,
+  /etc/ssl/private/nginx-wild-ssl.dhp r,
+  /etc/ssl/private/nginx-wild-ssl.key r,
   /var/www/ r,
   /var/www/** r,
 
@@ -75,6 +80,11 @@
   /usr/fastcgi_temp/ r,
   /usr/fastcgi_temp/** rw,
   /usr/share/GeoIP/GeoIP.dat r,
+  /var/lib/nginx/ r,
+  /var/lib/nginx/** rw,
+  /var/log/nginx/ r,
+  /var/log/nginx/access.log w,
+  /var/log/nginx/error.log w,
 
   # Catchall to deny everything else
   #deny /** rwklx,
