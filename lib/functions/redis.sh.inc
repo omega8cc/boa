@@ -227,6 +227,19 @@ redis_password_update() {
     else
       RPASS="${_ESC_RPASS}"
     fi
+    if [ -e "/data/conf/global/global-if-redis.inc" ]; then
+      _REDIS_PWD_TEST=$(grep "'${RPASS}'" /data/conf/global/global-if-redis.inc 2>&1)
+      if [[ "${_REDIS_PWD_TEST}" =~ "'${RPASS}'" ]]; then
+        _DO_NOTHING=YES
+      else
+        if [ ! -z "${RPASS}" ]; then
+          mkdir -p /data/conf
+          cp -af ${locCnf}/global/global-if-redis.inc /data/conf/global/global-if-redis.inc
+          sed -i "s/isfoobared/${RPASS}/g" /data/conf/global/global-if-redis.inc &> /dev/null
+          wait
+        fi
+      fi
+    fi
     if [ -e "/data/conf/global/global-redis.inc" ]; then
       _REDIS_PWD_TEST=$(grep "'${RPASS}'" /data/conf/global/global-redis.inc 2>&1)
       if [[ "${_REDIS_PWD_TEST}" =~ "'${RPASS}'" ]]; then
