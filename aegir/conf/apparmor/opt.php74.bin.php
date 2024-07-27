@@ -24,6 +24,7 @@
   /opt/php74/bin/php mrix,
 
   # Allow PHP-CLI to read its configuration files
+  /etc/pam.d/* r,
   /etc/ldap/ldap.conf r,
   /etc/sudoers.d/ r,
   /etc/sudoers.d/* r,
@@ -45,6 +46,7 @@
   /opt/php74/** r,
 
   # Allow PHP-CLI to execute some other binaries
+  /usr/bin/tr mrix,
   /usr/local/bin/mydumper mrix,
   /usr/local/bin/myloader mrix,
   /usr/sbin/postdrop mrix,
@@ -149,9 +151,12 @@
   owner /data/disk/*/.drush/** rw,
   owner /data/disk/*/.tmp/ r,
   owner /data/disk/*/.tmp/** rw,
+  owner /data/disk/*/aegir/ rw,
   owner /data/disk/*/aegir/** rw,
   owner /data/disk/*/config/** rw,
+  owner /data/disk/*/distro/ rw,
   owner /data/disk/*/distro/** rw,
+  owner /data/disk/*/platforms/ rw,
   owner /data/disk/*/platforms/** rw,
   owner /data/disk/*/static/** rw,
   owner /data/disk/*/tools/le/** rw,
