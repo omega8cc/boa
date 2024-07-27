@@ -493,44 +493,24 @@ global_inc_conf_update() {
       cp -af ${locCnf}/global/global-${e}.inc ${_GL_D}/global-${e}.inc
     fi
   done
-  if [ -e "/data/conf/global.inc" ]; then
-    cp -af /data/conf/global.inc /data/conf/global.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-    cp -af ${locCnf}/global/global.inc /data/conf/global.inc
-    if [ ! -z "${_SPEED_VALID_MAX}" ]; then
-      sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
-      wait
-    fi
+  cp -af /data/conf/global.inc /data/conf/global.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
+  cp -af ${locCnf}/global/global.inc /data/conf/global.inc
+  if [ ! -z "${_SPEED_VALID_MAX}" ]; then
+    sed -i "s/3600/${_SPEED_VALID_MAX}/g" /data/conf/global.inc &> /dev/null
+    wait
   fi
-  if [ -e "${_GL_D}/global-main.inc" ]; then
-    cp -af ${locCnf}/global/global-main.inc ${_GL_D}/global-main.inc
+  cp -af ${locCnf}/global/global-main.inc ${_GL_D}/global-main.inc
+  cp -af ${locCnf}/global/global-ini.inc ${_GL_D}/global-ini.inc
+  cp -af ${locCnf}/global/global-mode.inc ${_GL_D}/global-mode.inc
+  cp -af ${locCnf}/global/global-settings.inc ${_GL_D}/global-settings.inc
+  cp -af ${locCnf}/global/global-front-end.inc ${_GL_D}/global-front-end.inc
+  if [ ! -z "${_SPEED_VALID_MAX}" ]; then
+    sed -i "s/3600/${_SPEED_VALID_MAX}/g" ${_GL_D}/global-front-end.inc &> /dev/null
   fi
-  if [ -e "${_GL_D}/global-ini.inc" ]; then
-    cp -af ${locCnf}/global/global-ini.inc ${_GL_D}/global-ini.inc
-  fi
-  if [ -e "${_GL_D}/global-mode.inc" ]; then
-    cp -af ${locCnf}/global/global-mode.inc ${_GL_D}/global-mode.inc
-  fi
-  if [ -e "${_GL_D}/global-settings.inc" ]; then
-    cp -af ${locCnf}/global/global-settings.inc ${_GL_D}/global-settings.inc
-  fi
-  if [ -e "${_GL_D}/global-front-end.inc" ]; then
-    cp -af ${locCnf}/global/global-front-end.inc ${_GL_D}/global-front-end.inc
-    if [ ! -z "${_SPEED_VALID_MAX}" ]; then
-      sed -i "s/3600/${_SPEED_VALID_MAX}/g" ${_GL_D}/global-front-end.inc &> /dev/null
-    fi
-  fi
-  if [ -e "${_GL_D}/global-if-redis.inc" ]; then
-    cp -af ${locCnf}/global/global-if-redis.inc ${_GL_D}/global-if-redis.inc
-  fi
-  if [ -e "${_GL_D}/global-redis.inc" ]; then
-    cp -af ${locCnf}/global/global-redis.inc ${_GL_D}/global-redis.inc
-  fi
-  if [ -e "${_GL_D}/global-newrelic.inc" ]; then
-    cp -af ${locCnf}/global/global-newrelic.inc ${_GL_D}/global-newrelic.inc
-  fi
-  if [ -e "${_GL_D}/global-extra.inc" ]; then
-    cp -af ${locCnf}/global/global-extra.inc ${_GL_D}/global-extra.inc
-  fi
+  cp -af ${locCnf}/global/global-if-redis.inc ${_GL_D}/global-if-redis.inc
+  cp -af ${locCnf}/global/global-redis.inc ${_GL_D}/global-redis.inc
+  cp -af ${locCnf}/global/global-newrelic.inc ${_GL_D}/global-newrelic.inc
+  cp -af ${locCnf}/global/global-extra.inc ${_GL_D}/global-extra.inc
 }
 
 #
