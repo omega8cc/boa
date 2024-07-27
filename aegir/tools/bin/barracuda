@@ -1126,6 +1126,9 @@ up_finish() {
   if [ -e "/etc/init.d/postfix" ]; then
     service postfix restart &> /dev/null
   fi
+  # Execute the autonit and exit
+  nohup /var/xdrago/daily.sh > /dev/null 2>&1 &
+  sleep 1
   echo
   echo BARRACUDA upgrade completed
   echo Bye
