@@ -51,6 +51,7 @@
   /opt/php80/** r,
 
   # Allow PHP-CLI to execute some other binaries
+  /bin/bash mrix,
   /etc/init.d/nginx mrix,
   /usr/sbin/nginx mrix,
   /usr/local/bin/fix-drupal-platform-ownership.sh mrix,
