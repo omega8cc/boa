@@ -1448,7 +1448,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "adminer_bundle-7.x-1.2.tar.gz"
       fi
       if [ ! -d "${i}/o_contrib_seven/advagg" ]; then
-        get_dev_contrib "advagg-7.x-2.35.tar.gz"
+        get_dev_contrib "advagg-7.x-2.36.tar.gz"
       fi
       if [ ! -e "${i}/o_contrib_seven/autoslave/patches/update-pdo-7.22.patch" ]; then
         rm -rf ${i}/o_contrib_seven/autoslave
@@ -1471,7 +1471,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "entity_print-7.x-1.5.tar.gz"
       fi
       if [ ! -d "${i}/o_contrib_seven/entitycache" ]; then
-        get_dev_contrib "entitycache-7.x-1.5.tar.gz"
+        get_dev_contrib "entitycache-7.x-1.7.tar.gz"
       fi
       if [ ! -d "${i}/o_contrib_seven/file_resup" ]; then
         get_dev_contrib "file_resup-7.x-1.5.tar.gz"
@@ -1511,7 +1511,7 @@ satellite_o_contrib_seven_update_global() {
       fi
       if [ ! -e "${i}/o_contrib_seven/entitycache/includes/entitycache.node.inc" ]; then
         rm -rf ${i}/o_contrib_seven/entitycache
-        get_dev_contrib "entitycache-7.x-1.5.tar.gz"
+        get_dev_contrib "entitycache-7.x-1.7.tar.gz"
       fi
       if [ -d "${i}/o_contrib_seven/expire" ] \
         || [ -d "${i}/o_contrib_seven/purge" ]; then
@@ -1733,7 +1733,7 @@ satellite_download_o_contrib_eight() {
     msg "${_STATUS} A: Downloading o_contrib_eight modules..."
   fi
   get_dev_contrib "robotstxt-8.x-1.4.tar.gz"
-  get_dev_contrib "readonlymode-8.x-1.0.tar.gz"
+  get_dev_contrib "readonlymode-8.x-1.2.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_eight/ver-${_REDIS_N_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
@@ -1770,7 +1770,7 @@ satellite_download_o_contrib_seven() {
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/edit-textarea.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/edit-textarea.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/version-noverify.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/version-noverify.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/frames.php"
-  get_dev_contrib "advagg-7.x-2.35.tar.gz"
+  get_dev_contrib "advagg-7.x-2.36.tar.gz"
   get_dev_contrib "autoslave-7.x-1.x-dev.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.1.tar.gz"
   get_dev_contrib "boost-7.x-1.2.tar.gz"
@@ -1780,7 +1780,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "css_emimage-7.x-1.3.tar.gz"
   get_dev_contrib "display_cache-7.x-1.3.tar.gz"
   get_dev_contrib "entity_print-7.x-1.5.tar.gz"
-  get_dev_contrib "entitycache-7.x-1.5.tar.gz"
+  get_dev_contrib "entitycache-7.x-1.7.tar.gz"
   get_dev_contrib "esi-7.x-3.x-dev.tar.gz"
   get_dev_contrib "file_resup-7.x-1.5.tar.gz"
   get_dev_contrib "flood_control-7.x-1.1.tar.gz"
