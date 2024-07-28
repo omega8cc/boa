@@ -455,6 +455,7 @@ if [ -e "/var/aegir/drush" ]; then
     #if [ ! -e "/root/.silent.update.cnf" ]; then
     #  touch /root/.silent.update.cnf
     #fi
+    [ -e " /root/.my.optimize.cnf" ] && rm -f /root/.my.optimize.cnf
     [ -e "/root/.pause_tasks_maint.cnf" ] && rm -f /root/.pause_tasks_maint.cnf
     [ -e "/root/.restrict_this_vm.cnf" ] && rm -f /root/.restrict_this_vm.cnf
     [ -e "/root/.force.sites.verify.cnf" ] && rm -f /root/.force.sites.verify.cnf
