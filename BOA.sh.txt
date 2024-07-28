@@ -441,7 +441,6 @@ update_agents() {
     fi
     if [ ! -e "/root/.high_traffic.cnf" ]; then
       echo ${InTest} > /root/.high_traffic.cnf
-      echo ${InTest} > /root/.my.optimize.cnf
       echo ${InTest} > /root/.no.swap.clear.cnf
     fi
     if [ "${_RANDOMIZE}" = "YES" ]; then
