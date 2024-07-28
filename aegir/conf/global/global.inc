@@ -414,6 +414,14 @@ if (file_exists('web.config') || file_exists('index.php')) { // Check for the ma
       }
     }
   }
+  elseif (file_exists('modules/path_alias_cache')) {
+    $drupal_six = TRUE;
+    $drupal_core = '6';
+    $use_redis = TRUE;
+    if ($is_dev && !$is_backend) {
+      header('X-Backend: D');
+    }
+  }
   else {
     $drupal_seven = TRUE;
     $drupal_core = '7';
@@ -421,28 +429,6 @@ if (file_exists('web.config') || file_exists('index.php')) { // Check for the ma
     if ($is_dev && !$is_backend) {
       header('X-Backend: C');
     }
-  }
-}
-elseif (file_exists('modules/path_alias_cache')) {
-  $drupal_six = TRUE;
-  $drupal_core = '6';
-  $use_redis = TRUE;
-  if ($is_dev && !$is_backend) {
-    header('X-Backend: D');
-  }
-}
-elseif (file_exists('modules/watchdog')) {
-  $drupal_five = TRUE;
-  $drupal_core = '5';
-  if ($is_dev && !$is_backend) {
-    header('X-Backend: E');
-  }
-}
-else {
-  $drupal_unknown = TRUE;
-  $drupal_core = FALSE;
-  if ($is_dev && !$is_backend) {
-    header('X-Backend: U');
   }
 }
 
