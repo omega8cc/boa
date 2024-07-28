@@ -913,7 +913,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
       $base_url = 'https://' . $_SERVER['HTTP_HOST'];
       if ($conf['install_profile'] != 'hostmaster') {
         $_SERVER['HTTPS'] = 'on';
-        if ($drupal_seven || $drupal_eight) {
+        if ($drupal_core >= 7) {
           ini_set('session.cookie_secure', TRUE);
           if ($is_dev) {
             header('X-Cookie-Sec: YES');
@@ -977,23 +977,19 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
       isset($_SERVER['HTTP_USER_AGENT']) &&
       !preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
 
-    // Determine if the site is running on HTTPS
-    $is_https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
-
     // Create a unique identifier for the request
     $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['SERVER_NAME'] . $_SERVER['HTTP_USER_AGENT'];
     $identity = 'BD' . md5($identity);
 
-    // Determine the appropriate session cookie prefix and name
-    $cookie_prefix = $is_https ? 'SSESS' : 'SESS';
-    $cookie_domain = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'];
-
-    if ($drupal_core >= 8) {
-      // For Drupal 8 and above, use sha256 hash
+    if ($drupal_core >= 7) {
+      // For Drupal 7 and above, use sha256 hash
+      $conf['https'] = TRUE;
+      $cookie_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $test_sess_name = $cookie_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
     }
     else {
-      // For Drupal 6 and 7, use md5 hash
+      // For Drupal 6 use md5 hash
+      $cookie_prefix = 'SESS';
       $test_sess_name = $cookie_prefix . md5($cookie_domain);
     }
 
@@ -1034,7 +1030,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
         $conf['install_profile'] == 'hostmaster') {
       $conf['user_register'] = 0; // Force "Only site administrators can create new user accounts"
     }
-    if (!$is_bot && !$high_traffic && !$deny_anon) {
+    if (!$is_bot && !$high_traffic) {
       if (preg_match("/^\/(?:[a-z]{2}\/)?(?:admin|cart|checkout|logout|privatemsg)/", $_SERVER['REQUEST_URI']) ||
           preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|ajax_comments|commerce_currency_select)/", $_SERVER['REQUEST_URI']) ||
           preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/", $_SERVER['HTTP_HOST'])) {
