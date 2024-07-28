@@ -2,20 +2,20 @@
 
 
 /**
+ * Core versions init
+ */
+$drupal_core   = FALSE;
+$backdropcms   = FALSE;
+
+
+/**
  * Vars init
  */
-$backdropcms  = FALSE;
 $custom_cache = FALSE;
 $custom_da    = FALSE;
 $custom_fb    = FALSE;
 $da_inc       = FALSE;
 $deny_anon    = FALSE;
-$drupal_eight = FALSE;
-$drupal_five  = FALSE;
-$drupal_nine  = FALSE;
-$drupal_seven = FALSE;
-$drupal_six   = FALSE;
-$drupal_ten   = FALSE;
 $hidden_uri   = FALSE;
 $high_traffic = FALSE;
 $ini_loc_src  = FALSE;
@@ -384,21 +384,17 @@ if (file_exists('web.config') || file_exists('index.php')) { // Check for the ma
     if (file_exists('vendor/symfony') ||
       file_exists('core/vendor/symfony') ||
       file_exists('autoload.php')) {
-      $drupal_eight = TRUE;
       $drupal_core = '8';
       $drupal_id = 'A1';
       if (file_exists('core/themes/olivero') && file_exists('core/themes/classy')) {
-        $drupal_nine = TRUE;
         $drupal_core = '9';
         $drupal_id = 'A2';
       }
       if (file_exists('core/themes/olivero') && !file_exists('core/themes/classy')) {
-        $drupal_ten = TRUE;
         $drupal_core = '10';
         $drupal_id = 'A3';
       }
       if (!file_exists('web.config')) { // Hypothetical check for Drupal 11
-        $drupal_eleven = TRUE;
         $drupal_core = '11';
         $drupal_id = 'A4';
       }
@@ -415,7 +411,6 @@ if (file_exists('web.config') || file_exists('index.php')) { // Check for the ma
     }
   }
   elseif (file_exists('modules/path_alias_cache')) {
-    $drupal_six = TRUE;
     $drupal_core = '6';
     $use_redis = TRUE;
     if ($is_dev && !$is_backend) {
@@ -423,7 +418,6 @@ if (file_exists('web.config') || file_exists('index.php')) { // Check for the ma
     }
   }
   else {
-    $drupal_seven = TRUE;
     $drupal_core = '7';
     $use_redis = TRUE;
     if ($is_dev && !$is_backend) {
@@ -803,7 +797,7 @@ else {
 if (!$is_dev) {
   if ($all_ini['advagg_auto_configuration']) {
 
-    if ($drupal_six) {
+    if ($drupal_core == 6) {
       if (is_readable('modules/o_contrib/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module')) {
         $conf['preprocess_css'] = 0; // CSS aggregation disabled
@@ -830,7 +824,7 @@ if (!$is_dev) {
         $conf['advagg_server_addr'] = "-1";
       }
     }
-    elseif ($drupal_seven) {
+    elseif ($drupal_core == 7) {
       if (is_readable('modules/o_contrib_seven/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module')) {
         $conf['advagg_bundler_active'] = 1;
@@ -870,7 +864,7 @@ if (!$is_dev) {
       }
     }
 
-    if ($drupal_six || $drupal_seven) {
+    if ($drupal_core == 6 || $drupal_core == 7) {
       if (is_readable('modules/o_contrib/httprl/httprl.module') ||
           is_readable('modules/o_contrib_seven/httprl/httprl.module')) {
         $conf['advagg_use_httprl'] = 1;
@@ -1155,7 +1149,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
         $redis_dirname = 'redis_compr';
         $redis_comprs = TRUE;
       }
-      if ($drupal_nine || $drupal_ten) {
+      if ($drupal_core == 9 || $drupal_core == 10) {
         $redis_dirname = 'redis_nine_ten';
         $redis_comprs = TRUE;
         if ($all_ini['redis_old_nine_mode']) {
@@ -1261,7 +1255,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
       }
     }
   }
-  elseif ($drupal_seven) {
+  elseif ($drupal_core == 7) {
     if (is_readable('modules/o_contrib_seven/' . $redis_dirname . '/redis.autoload.inc')) {
       $cache_redis = TRUE;
       $cache_backport = FALSE;
@@ -1297,7 +1291,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
       }
     }
   }
-  elseif ($drupal_six) {
+  elseif ($drupal_core == 6) {
     if (is_readable('modules/o_contrib/cache_backport/cache.inc')) {
       $cache_backport = TRUE;
       $cache_backport_path = 'modules/o_contrib/cache_backport/cache.inc';
