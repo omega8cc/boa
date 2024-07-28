@@ -77,27 +77,81 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
       isset($_SERVER['HTTP_USER_AGENT']) &&
       !preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
 
+    // Determine if the site is running on HTTPS
+    $request_type = 'NONSSL';
+    if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || isset($_SERVER['HTTPS'])) {
+      $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' || $_SERVER['HTTPS'] == 'on') ? 'SSL' : 'NONSSL';
+    }
+    if ($request_type == "SSL") {
+      $is_https = TRUE;
+      if ($is_dev) {
+        header('X-Request-Type:' . $request_type);
+      }
+    }
+    else {
+      $is_https = FALSE;
+      if ($is_dev) {
+        header('X-Request-Type:' . $request_type);
+      }
+    }
+
     // Create a unique identifier for the request
     $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['SERVER_NAME'] . $_SERVER['HTTP_USER_AGENT'];
     $identity = 'BD' . md5($identity);
+    if ($is_dev) {
+      header('X-Identity:' . $identity);
+    }
 
-    if ($drupal_core >= 7) {
-      // For Drupal 7 and above, use sha256 hash
-      $conf['https'] = TRUE;
+    if ($drupal_core >= 8) {
+      // Check if the user is logged in by looking for the session cookie.
+      // The session cookie name starts with "SESS" or "SSESS" followed by a hash.
+      // This check is not site specific in Drupal 8+ like it is in Drupal 7
+      // or Drupal 6, but should be sufficient for the intended use case below.
+      $cookie_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
+      $is_logged_in = FALSE;
+      foreach ($_COOKIE as $key => $value) {
+        if (strpos($key, $cookie_prefix) === 0) {
+          $is_logged_in = TRUE;
+          break;
+        }
+      }
+      if ($is_dev) {
+        header('X-Cookie-Prefix-A:' . $cookie_prefix);
+        header('X-Is-Logged-In-A:' . $is_logged_in);
+      }
+    }
+    elseif ($drupal_core == 7) {
+      // For Drupal 7 use sha256 hash and cookie prefix based on session.cookie_secure
       $cookie_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $test_sess_name = $cookie_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
+      if ($is_dev) {
+        header('X-Cookie-Prefix-B:' . $cookie_prefix);
+        header('X-Test-Sess-Name-B:' . $test_sess_name);
+      }
     }
     else {
-      // For Drupal 6 use md5 hash
+      // For Drupal 6 use md5 hash and SESS prefix only
       $cookie_prefix = 'SESS';
       $test_sess_name = $cookie_prefix . md5($cookie_domain);
+      if ($is_dev) {
+        header('X-Cookie-Prefix-C:' . $cookie_prefix);
+        header('X-Test-Sess-Name-C:' . $test_sess_name);
+      }
     }
 
     // Check if the session cookie is present
-    $is_anon = !isset($_COOKIE[$test_sess_name]);
+    if (isset($_COOKIE[$test_sess_name]) || $is_logged_in) {
+      $is_anon = 'LOGGED';
+    }
+    else {
+      $is_anon = 'ANONYMOUS';
+    }
+    if ($is_dev) {
+      header('X-Is-Anon:' . $is_anon);
+    }
 
-    // Additional security headers for anonymous users or bots
-    if ($is_anon) {
+    // Redirect not logged in visitors to homepage to protect admin URLs from bots
+    if ($is_anon == 'ANONYMOUS') {
       if (preg_match("/\/(?:node\/[0-9]+\/edit|node\/add)/", $_SERVER['REQUEST_URI'])) {
         if (empty($all_ini['allow_anon_node_add'])) {
           header("HTTP/1.1 301 Moved Permanently");
@@ -117,7 +171,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     }
 
     // Additional logic for caching or other needs
-    if ($is_anon && !empty($all_ini['speed_booster_anon_cache_ttl']) && preg_match("/^[0-9]{2,}$/", $all_ini['speed_booster_anon_cache_ttl'])) {
+    if ($is_anon == 'ANONYMOUS' && !empty($all_ini['speed_booster_anon_cache_ttl']) && preg_match("/^[0-9]{2,}$/", $all_ini['speed_booster_anon_cache_ttl'])) {
       if ($all_ini['speed_booster_anon_cache_ttl'] > 10) {
         $expire_in_seconds = $all_ini['speed_booster_anon_cache_ttl'];
         header('X-Limit-Booster:' . $all_ini['speed_booster_anon_cache_ttl']);
