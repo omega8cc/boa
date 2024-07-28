@@ -490,8 +490,8 @@ global_inc_conf_update() {
   for e in ${_DR_V}; do
     if [ -e "${_GL_D}/global-${e}.inc" ]; then
       cp -af ${_GL_D}/global-${e}.inc ${_GL_D}/global-${e}.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
-      cp -af ${locCnf}/global/global-${e}.inc ${_GL_D}/global-${e}.inc
     fi
+    cp -af ${locCnf}/global/global-${e}.inc ${_GL_D}/global-${e}.inc
   done
   cp -af /data/conf/global.inc /data/conf/global.inc-pre-${_X_SE}-${_X_VERSION}-${_NOW} &> /dev/null
   cp -af ${locCnf}/global/global.inc /data/conf/global.inc
