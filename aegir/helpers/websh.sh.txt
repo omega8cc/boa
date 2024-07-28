@@ -201,6 +201,14 @@ if [ -z "${HOME}" ]; then
   fi
 fi
 
+if [[ "${_ARR}" =~ " aliases" ]] || [[ "${_ARR}" =~ " sa" ]]; then
+  if [[ "${_ALL}" =~ "drush10 " ]] || [[ "${_ALL}" =~ "drush11 " ]]; then
+    _ARR="sa --format=list | egrep -v \"(none|hostmaster|hm|server_|platform_|@none|@self)\""
+  elif [[ "${_ALL}" =~ "drush " ]] || [[ "${_ALL}" =~ "drush8 " ]]; then
+    _ARR="sa | egrep -v \"(none|hostmaster|hm|server_|platform_|@none|@self)\""
+  fi
+fi
+
 if [[ "${_ARR}" =~ "-c " ]]; then
   _R_M=`echo -n "${_ARR}" | grep -o "\-c "`
   _ARR=`echo ${_ARR} | sed "s/\${_R_M}//g"`
@@ -499,16 +507,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             ### echo INF 4 _DEST_DRUSH is ${_DEST_DRUSH}
           fi
         fi
-        if [[ "${_ARGS}" =~ "drush" ]] && [ ! -f "${HOME}/static/control/enable-drush-sa.info" ]; then
-          if [[ "${_ARGS}" =~ " site-alias"($) ]] \
-            || [[ "${_ARGS}" =~ " sa"($) ]]; then
-            echo
-            echo " Use 'drush aliases' to display all Drush 8 aliases"
-            echo " Use 'drush10 aliases' to display all Drush 10+ aliases"
-            echo
-            exit 0
-          fi
-        fi
         if [[ "${_ARGS}" =~ "drush make" ]] \
           || [[ "${_ARGS}" =~ "drush8 make" ]] \
           || [[ "${_ARGS}" =~ "drush cc drush" ]] \
@@ -574,8 +572,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
               || [[ "${2}" =~ (^)"sha"($) ]] \
               || [[ "${2}" =~ "shell-alias"($) ]] \
               || [[ "${2}" =~ (^)"si"($) ]] \
-              || [[ "${2}" =~ " sa"($) ]] \
-              || [[ "${2}" =~ " site-alias"($) ]] \
               || [[ "${2}" =~ "sql-create"($) ]] \
               || [[ "${2}" =~ (^)"ssh"($) ]] \
               || [[ "${2}" =~ (^)"sup"($) ]]; then
@@ -588,18 +584,26 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             fi
           elif [[ "${_ARGS}" =~ "cc drush" ]] \
             || [[ "${_ARGS}" =~ "cr drush" ]] \
+            || [[ "${_ARGS}" =~ "drush aliases" ]] \
+            || [[ "${_ARGS}" =~ "drush sa" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush8 --version" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush8 help" ]] \
             || [[ "${_ARGS}" =~ "drush8 dl" ]] \
             || [[ "${_ARGS}" =~ "drush8 pm-download" ]] \
+            || [[ "${_ARGS}" =~ "drush8 aliases" ]] \
+            || [[ "${_ARGS}" =~ "drush8 sa" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush10 --version" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush10 help" ]] \
             || [[ "${_ARGS}" =~ "drush10 dl" ]] \
             || [[ "${_ARGS}" =~ "drush10 pm-download" ]] \
+            || [[ "${_ARGS}" =~ "drush10 aliases" ]] \
+            || [[ "${_ARGS}" =~ "drush10 sa" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush11 --version" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush11 help" ]] \
             || [[ "${_ARGS}" =~ "drush11 dl" ]] \
             || [[ "${_ARGS}" =~ "drush11 pm-download" ]] \
+            || [[ "${_ARGS}" =~ "drush11 aliases" ]] \
+            || [[ "${_ARGS}" =~ "drush11 sa" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush12 --version" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush12 help" ]] \
             || [[ "${_ARGS}" =~ "drush12 dl" ]] \
@@ -667,8 +671,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "${2}" =~ (^)"sha"($) ]] \
           || [[ "${2}" =~ "shell-alias"($) ]] \
           || [[ "${2}" =~ (^)"si"($) ]] \
-          || [[ "${2}" =~ " sa"($) ]] \
-          || [[ "${2}" =~ " site-alias"($) ]] \
           || [[ "${2}" =~ "sql-create"($) ]] \
           || [[ "${2}" =~ (^)"ssh"($) ]] \
           || [[ "${2}" =~ (^)"sup"($) ]]; then
@@ -760,8 +762,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         || [[ "${2}" =~ (^)"sha"($) ]] \
         || [[ "${2}" =~ "shell-alias"($) ]] \
         || [[ "${2}" =~ (^)"si"($) ]] \
-        || [[ "${2}" =~ " sa"($) ]] \
-        || [[ "${2}" =~ " site-alias"($) ]] \
         || [[ "${2}" =~ "sql-create"($) ]] \
         || [[ "${2}" =~ (^)"ssh"($) ]] \
         || [[ "${2}" =~ (^)"sup"($) ]]; then
