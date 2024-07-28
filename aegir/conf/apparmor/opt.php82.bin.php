@@ -92,6 +92,7 @@
   /bin/dash mrix,
   /bin/date mrix,
   /bin/grep mrix,
+  /bin/egrep mrix,
   /bin/mkdir mrix,
   /bin/pidof mrix,
   /bin/rm mrix,

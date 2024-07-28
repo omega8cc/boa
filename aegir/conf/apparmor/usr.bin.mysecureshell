@@ -102,6 +102,7 @@
   /bin/cp mrix,
   /bin/echo mrix,
   /bin/grep mrix,
+  /bin/egrep mrix,
   /bin/gunzip mrix,
   /bin/gzip mrix,
   /bin/ls mrix,
