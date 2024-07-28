@@ -2761,7 +2761,7 @@ satellite_run_post_install() {
     rm -f ${_HM_ROOT}/*.txt
     mrun "service nginx reload" 2> /dev/null
     cd ${_HM_ROOT}
-    cp -af /opt/tmp/boa/aegir/conf/robots.txt ./
+    cp -af /opt/tmp/boa/aegir/conf/tpl/robots.txt ./
     cd ${_ROOT}
   fi
 }
@@ -3877,7 +3877,7 @@ satellite_prepare_setup_email_tpl() {
           mv -f ${_ROOT}/log/upgrademail.txt \
             ${_ROOT}/log/upgrademail-pre-${_THIS_CORE}.txt
         fi
-        cp -af /opt/tmp/boa/aegir/conf/upgrademail.txt ./
+        cp -af /opt/tmp/boa/aegir/conf/tpl/upgrademail.txt ./
         sed -i "s/aegir.url.name/${_DOMAIN}/g" ${_ROOT}/log/upgrademail.txt
         wait
         sed -i "s/dragon/${_USER}/g" ${_ROOT}/log/upgrademail.txt
@@ -3893,7 +3893,7 @@ satellite_prepare_setup_email_tpl() {
       fi
     elif [ "${_STATUS}" = "INIT" ]; then
      cd ${_ROOT}/log
-     cp -af /opt/tmp/boa/aegir/conf/setupmail.txt ./
+     cp -af /opt/tmp/boa/aegir/conf/tpl/setupmail.txt ./
      sed -i "s/aegir.url.name/${_DOMAIN}/g" ${_ROOT}/log/setupmail.txt
      wait
      sed -i "s/dragon/${_USER}/g" ${_ROOT}/log/setupmail.txt
