@@ -42,6 +42,8 @@
   ptrace (read) peer=unconfined,
 
   # Allow PHP-CLI to read required configuration files
+  /etc/subversion/servers r,
+  /etc/subversion/servers r,
   /etc/wgetrc r,
   /etc/default/nginx r,
   /etc/ImageMagick-6/log.xml r,
