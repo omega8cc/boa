@@ -53,10 +53,6 @@
   deny /usr/bin/python* x,
   deny /usr/local/bin/ruby x,
 
-  # Deny execution of any binary not explicitly allowed
-  deny /bin/** x,
-  deny /usr/bin/** x,
-
   # Deny certain capabilities
   deny capability sys_chroot,  # Deny changing root
   deny capability sys_admin,   # Deny various system admin privileges
@@ -93,7 +89,7 @@
   deny /etc/passwd* rwlx,
 
   # Catchall to deny everything else
-  deny /** rwklx,
+  #deny /** rwklx,
 
   # Site-specific additions and overrides can be added below
 }
