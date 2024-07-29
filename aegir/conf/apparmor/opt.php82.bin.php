@@ -212,6 +212,8 @@
   /data/disk/*/tools/drush/** r,
   /data/disk/*/tools/le/** r,
 
+  /data/all/ r,
+  /data/all/* r,
   /data/all/** r,
   /data/conf/ r,
   /data/conf/* r,
