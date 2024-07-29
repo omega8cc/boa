@@ -229,6 +229,12 @@
   owner /var/aegir/host_master/** rw,
   owner /var/aegir/platforms/** rw,
 
+  owner /data/disk/*/log/ r,
+  owner /data/disk/*/log/* rw,
+  owner /data/disk/*/.*.pass.php r,
+  owner /data/disk/*/backups/ rw,
+  owner /data/disk/*/backups/** rw,
+
   owner /data/disk/*/.drush/ r,
   owner /data/disk/*/.drush/** rw,
   owner /data/disk/*/.tmp/ r,
@@ -243,6 +249,8 @@
   owner /data/disk/*/tools/le/** rw,
   owner /var/www/** rw,
 
+  owner /home/*/.drush/sites/ r,
+  owner /home/*/.drush/sites/** rw,
   owner /home/*/.drush/cache/ r,
   owner /home/*/.drush/cache/** rw,
   owner /home/*/.tmp/ r,
