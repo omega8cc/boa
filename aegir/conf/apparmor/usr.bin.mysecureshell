@@ -95,6 +95,17 @@
   /home/*/.tmp/ r,
   /home/*/.tmp/** rw,
 
+  # Deny execution of any shell or command not explicitly allowed
+  deny /bin/bash x,
+  deny /bin/websh x,
+  deny /usr/bin/perl x,
+
+  # Deny execution of any binary not explicitly allowed
+  deny /bin/** x,
+  deny /opt/local/bin/** x,
+  deny /usr/bin/** x,
+  deny /usr/local/bin/** x,
+
   # Allow execution of necessary binaries
   /bin/dash mrix,
   /bin/websh mrix,
