@@ -25,10 +25,10 @@ This change allows you to easily unlock the local Drush using a new task availab
 To use site-local Drush, follow these steps:
 
 1. Run the 'Unlock Local Drush' task on the site's Platform in Ægir.
-2. Find the correct Drush 10+ `@sitealias` with the `drush10 aliases` command.
+2. Find the correct Drush `@site-alias` with the `drush11 aliases` command.
 3. Switch to the Platform root where `vendor` exists using `cd`.
 4. Run `vdrush --version` or install it with `composer require drush/drush`.
-5. Use `vdrush @sitealias updbst`, `vdrush @sitealias updb`, etc.
+5. Use `vdrush @site-alias updbst`, `vdrush @site-alias updb`, etc.
 6. Run the 'Platform Verify' task to restore compatibility with Drush 8.
 
 ## PHP-CLI Version Configuration is Much Smarter

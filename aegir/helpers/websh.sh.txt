@@ -534,7 +534,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
                 echo " Please cd to the valid sites/foo.com directory first"
                 echo " or use a valid @alias, like: drush @foo.com status"
                 echo " Hint: Use 'drush aliases' to display all Drush 8 aliases"
-                echo " Hint: Use 'drush10 aliases' to display all Drush 10+ aliases"
+                echo " Hint: Use 'drush11 aliases' to display all Drush 10+ aliases"
               else
                 echo " Please cd ~/static first"
               fi
@@ -625,7 +625,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
               echo " Please cd to the valid sites/foo.com directory first"
               echo " or use a valid @alias, like: drush @foo.com status"
               echo " Hint: Use 'drush aliases' to display all Drush 8 aliases"
-              echo " Hint: Use 'drush10 aliases' to display all Drush 10+ aliases"
+              echo " Hint: Use 'drush11 aliases' to display all Drush 10+ aliases"
               echo
               exit 0
             elif [ -f "${_PWD}/settings.php" ]; then
