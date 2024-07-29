@@ -35,6 +35,12 @@
   /usr/local/ssl/** mr,
   /usr/local/ssl3/** mr,
 
+  # Allow Limited Shell to access /proc and /sys for necessary information
+  /proc/ r,
+  /proc/** r,
+  /sys/ r,
+  /sys/** r,
+
   # Read/write access to user home
   /home/*/ r,
   /home/*/** rw,
@@ -65,6 +71,8 @@
   owner /data/disk/*/distro/** rw,
   owner /data/disk/*/static/ r,
   owner /data/disk/*/static/** rw,
+  owner /opt/user/npm/*/** rw,
+  owner /opt/user/gems/*/** rw,
 
   # Read/write access to Drush cache
   /home/*/.drush/cache/ r,
@@ -101,8 +109,8 @@
   /bin/chmod mrix,
   /bin/cp mrix,
   /bin/echo mrix,
-  /bin/grep mrix,
   /bin/egrep mrix,
+  /bin/grep mrix,
   /bin/gunzip mrix,
   /bin/gzip mrix,
   /bin/ls mrix,
@@ -115,14 +123,15 @@
   /bin/rmdir mrix,
   /bin/sed mrix,
   /bin/tar mrix,
+  /bin/touch mrix,
   /bin/true mrix,
+  /data/disk/*/tools/drush/drush.php mrix,
   /opt/local/bin/sqlmagic mrix,
   /usr/bin/diff mrix,
   /usr/bin/du mrix,
   /usr/bin/env mrix,
   /usr/bin/find mrix,
-  /usr/bin/less mrix,
-  /usr/bin/lftp mrix,
+  /usr/bin/id mrix,
   /usr/bin/mysql mrix,
   /usr/bin/mysqldump mrix,
   /usr/bin/node mrix,
@@ -130,11 +139,10 @@
   /usr/bin/passwd mrix,
   /usr/bin/patch mrix,
   /usr/bin/rsync mrix,
-  /usr/bin/touch mrix,
+  /usr/bin/rvim mrix,
   /usr/bin/unzip mrix,
-  /usr/bin/vi mrix,
-  /usr/bin/vim mrix,
   /usr/bin/wget mrix,
+  /usr/lib/node_modules/npm/bin/** mrix,
   /usr/local/bin/composer mrix,
   /usr/local/bin/curl mrix,
   /usr/local/bin/gem mrix,
@@ -152,6 +160,5 @@
   owner /opt/user/npm/*/** mrix,
 
   # Deny execution of any other binaries
-  #deny /** rwklx,
+  deny /** rwklx,
 }
-

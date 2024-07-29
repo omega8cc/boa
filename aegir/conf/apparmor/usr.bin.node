@@ -45,13 +45,24 @@
   /dev/null rw,
   /dev/tty rw,
 
-  # Deny execution of other shells to prevent shell escape
-  deny /bin/dash x,
+  # Deny execution of any shell or command not explicitly allowed
   deny /bin/bash x,
-  deny /usr/bin/dash x,
-  deny /usr/bin/bash x,
-  deny /usr/local/bin/dash x,
-  deny /usr/local/bin/bash x,
+  deny /bin/dash x,
+  deny /bin/websh x,
+  deny /usr/bin/perl x,
+  deny /usr/bin/python* x,
+  deny /usr/local/bin/ruby x,
+
+  # Deny execution of any binary not explicitly allowed
+  deny /bin/** x,
+  deny /usr/bin/** x,
+
+  # Deny certain capabilities
+  deny capability sys_chroot,  # Deny changing root
+  deny capability sys_admin,   # Deny various system admin privileges
+  deny capability setuid,      # Deny changing user IDs
+  deny capability setgid,      # Deny changing group IDs
+  deny capability kill,        # Deny sending signals to arbitrary processes
 
   # Deny execution of binaries from these directories
   deny /home/*/.tmp/** m,
@@ -60,7 +71,6 @@
   deny /var/tmp/** m,
 
   # Allow execution of npm etc
-  /bin/websh mrix,
   /usr/bin/node mrix,
   /usr/bin/npm mrix,
   /opt/user/npm/*/ r,
@@ -83,7 +93,7 @@
   deny /etc/passwd* rwlx,
 
   # Catchall to deny everything else
-  #deny /** rwklx,
+  deny /** rwklx,
 
   # Site-specific additions and overrides can be added below
 }
