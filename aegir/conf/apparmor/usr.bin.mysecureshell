@@ -20,6 +20,7 @@
   /etc/lshell.conf r,
   /var/log/lsh/ r,
   /var/log/lsh/* rw,
+  /opt/php*/lib/php.ini r,
 
   # Allow read access to necessary libraries
   /lib/** mr,
@@ -130,6 +131,7 @@
   /bin/true mrix,
   /data/disk/*/tools/drush/drush.php mrix,
   /opt/local/bin/sqlmagic mrix,
+  /opt/php*/bin/php mrix,
   /usr/bin/diff mrix,
   /usr/bin/du mrix,
   /usr/bin/env mrix,
@@ -143,8 +145,10 @@
   /usr/bin/patch mrix,
   /usr/bin/rsync mrix,
   /usr/bin/rvim mrix,
+  /usr/bin/tput mrix,
   /usr/bin/unzip mrix,
   /usr/bin/wget mrix,
+  /usr/bin/which.debianutils mrix,
   /usr/lib/node_modules/npm/bin/** mrix,
   /usr/local/bin/composer mrix,
   /usr/local/bin/curl mrix,
