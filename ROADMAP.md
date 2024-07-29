@@ -33,9 +33,8 @@ Certain planned features are likely to be exclusive to **BOA PRO**, as indicated
 
 - **Debian Bookworm and Devuan Daedalus**: Ensure compatibility for installation and automated upgrades (PRO/LTS)
 - **Documentation Conversion to Markdown**: Update all BOA documentation from legacy TXT to Markdown.
-- **Drush Support**: Ensure compatibility with Drush 11/12, with Redispatch to site-local Drush (PRO/LTS)
+- **Drush 12 in Aegir Tasks**: Dynamically Utilize Site-Local Drush for `updatedb` Operations on Drupal 10+ (PRO/LTS)
 - **PHP 8.3 Support**: Required for Drupal 11, enhancing performance and supporting ten PHP versions (PRO/LTS)
 - **Ruby Gems and Node/NPM Support 3x Faster**: From 15 to 5 minutes, with improved security (PRO/LTS)
 - **Super Fast System AutoInit**: Facilitate easy upgrades to the latest Devuan before BOA installation (PRO/LTS)
 - **Use OpenSSL LTS 3.0**: Maintain compatibility with OpenSSL 1.1.1 for legacy PHP versions (PRO/LTS)
-
