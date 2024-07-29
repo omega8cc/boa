@@ -29,6 +29,8 @@
   /etc/mysql/** r,
   /etc/mysql/conf.d/** r,
   /etc/mysql/mysql.conf.d/** r,
+  /etc/hosts.deny r,
+  /etc/hosts.allow r,
 
   # Allow mysqld_safe to access its data directory
   /var/lib/mysql/ rwk,
