@@ -29,6 +29,7 @@
   /opt/php80/bin/php mrix,
 
   # Allow PHP-CLI to signal/ptrace other processes
+  ptrace (read) peer=/opt/php*/bin/php,
   signal (send) peer=unconfined,
   signal (send) peer=/usr/sbin/nginx,
   ptrace (read) peer=/opt/php*/sbin/php-fpm,
