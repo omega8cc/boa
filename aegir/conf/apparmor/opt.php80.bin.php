@@ -232,6 +232,7 @@
   owner /data/disk/*/log/ r,
   owner /data/disk/*/log/* rw,
   owner /data/disk/*/.*.pass.php r,
+  owner /data/disk/*/.rnd rw,
   owner /data/disk/*/backups/ rw,
   owner /data/disk/*/backups/** rw,
 
