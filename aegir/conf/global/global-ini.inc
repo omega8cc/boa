@@ -76,29 +76,3 @@ $boa_ini = array(
   'set_composer_manager_vendor_dir' => FALSE,      // FALSE by default to not break site installation depending on custom value
 );
 
-
-/**
- * Optional site and platform level settings defined in the ini files
- * Note: the site-level ini file takes precedence over platform level ini
- */
-$all_ini = $boa_ini;
-if (is_readable('sites/all/modules/boa_platform_control.ini')) {
-  $ini_plr_src = 'sites/all/modules/boa_platform_control.ini';
-}
-if ($ini_plr_src) {
-  $usr_plr_ini = array();
-  $usr_plr_ini = parse_ini_file($ini_plr_src);
-}
-if (is_readable('sites/' . $_SERVER['SERVER_NAME'] . '/modules/boa_site_control.ini')) {
-  $ini_loc_src = 'sites/' . $_SERVER['SERVER_NAME'] . '/modules/boa_site_control.ini';
-}
-if ($ini_loc_src) {
-  $usr_loc_ini = array();
-  $usr_loc_ini = parse_ini_file($ini_loc_src);
-}
-if (is_array($usr_plr_ini) && $usr_plr_ini) {
-  $all_ini = array_merge($all_ini, $usr_plr_ini);
-}
-if (is_array($usr_loc_ini) && $usr_loc_ini) {
-  $all_ini = array_merge($all_ini, $usr_loc_ini);
-}
