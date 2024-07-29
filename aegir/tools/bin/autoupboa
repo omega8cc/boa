@@ -15,6 +15,21 @@ _X_SE="520proT02"
 tRee=pro
 export tRee="${tRee}"
 
+crontab_check_clean_race() {
+  _CSF_CRON_TEST=$(grep water /etc/crontab 2>&1)
+  if [ -e "/etc/csf/csf.deny" ] \
+    && [ -x "/usr/sbin/csf" ] \
+    && [[ "${_CSF_CRON_TEST}" =~ "water" ]]; then
+    sed -i "s/.*fire.*//g" /etc/crontab &> /dev/null
+    wait
+    sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
+    wait
+    sed -i "/^$/d" /etc/crontab &> /dev/null
+    wait
+  fi
+}
+crontab_check_clean_race
+
 bring_all_ram_cpu_online() {
   _RAM_AUTO_FILE="/sys/devices/system/memory/auto_online_blocks"
   if [ -f "${_RAM_AUTO_FILE}" ]; then
@@ -196,8 +211,6 @@ crontab_update() {
       echo "*/6 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
-      echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
-      echo "01 5    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ssh.log >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ftp.log >/dev/null 2>&1" >> /etc/crontab
@@ -264,8 +277,6 @@ crontab_cleanup() {
       echo "*/6 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
-      echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
-      echo "01 5    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ssh.log >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ftp.log >/dev/null 2>&1" >> /etc/crontab
@@ -436,17 +447,6 @@ if [ -e "/var/aegir/drush" ]; then
     _AUTO_UP_DAY=6
     _AUTO_PHP="php-min"
     _AUTO_VER="${tRee}"
-    if [ ! -e "/root/.ignore.site24x7.firewall.cnf" ]; then
-      if [ -x "/usr/sbin/csf" ]; then
-        touch /root/.ignore.site24x7.firewall.cnf
-        bash /var/xdrago/guest-water.sh
-        wait
-        csf -df
-        wait
-        csf -tf
-        wait
-      fi
-    fi
     if [ ! -e "/var/xdrago/log/.restart_site24x7_agent.${_X_SE}.pid" ]; then
       service site24x7monagent restart
       wait
