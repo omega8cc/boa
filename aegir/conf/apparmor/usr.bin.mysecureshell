@@ -73,6 +73,7 @@
   owner /data/disk/*/static/** rw,
   owner /opt/user/npm/*/** rw,
   owner /opt/user/gems/*/** rw,
+  owner /opt/user/gems/*/bin/** k,
 
   # Read/write access to Drush cache
   /home/*/.drush/cache/ r,
@@ -98,9 +99,7 @@
   /bin/dash mrix,
   /bin/websh mrix,
   /usr/bin/mysecureshell mrix,
-  /usr/bin/python mrix,
-  /usr/bin/python2 mrix,
-  /usr/bin/python3 mrix,
+  /usr/bin/python* mrix,
   /usr/local/bin/lshell mrix,
 
   # Additional binaries allowed in Limited Shell
@@ -160,5 +159,5 @@
   owner /opt/user/npm/*/** mrix,
 
   # Deny execution of any other binaries
-  deny /** rwklx,
+  #deny /** rwklx,
 }
