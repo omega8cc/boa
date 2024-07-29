@@ -96,6 +96,7 @@
   /bin/date mrix,
   /bin/egrep mrix,
   /bin/grep mrix,
+  /bin/kmod mrix,
   /bin/mkdir mrix,
   /bin/mv mrix,
   /bin/pidof mrix,
@@ -117,8 +118,10 @@
   /usr/bin/mysql mrix,
   /usr/bin/patch mrix,
   /usr/bin/sudo mrix,
+  /usr/bin/svn mrix,
   /usr/bin/tput mrix,
   /usr/bin/tr mrix,
+  /usr/bin/unzip mrix,
   /usr/bin/wget mrix,
   /usr/bin/which mrix,
   /usr/bin/which.debianutils mrix,
@@ -128,6 +131,7 @@
   /usr/local/bin/fix-drupal-platform-permissions.sh mrix,
   /usr/local/bin/fix-drupal-site-ownership.sh mrix,
   /usr/local/bin/fix-drupal-site-permissions.sh mrix,
+  /usr/local/bin/git mrix,
   /usr/local/bin/lock-local-drush-permissions.sh mrix,
   /usr/local/bin/mydumper mrix,
   /usr/local/bin/myloader mrix,
@@ -227,27 +231,35 @@
   owner /var/aegir/platforms/** rw,
 
   /data/disk/*/.bashrc r,
+
   /data/disk/*/.drush/ r,
   /data/disk/*/.drush/* r,
   /data/disk/*/.drush/** r,
+
   /data/disk/*/aegir/ r,
   /data/disk/*/aegir/* r,
   /data/disk/*/aegir/** r,
+
   /data/disk/*/config/ r,
   /data/disk/*/config/* r,
   /data/disk/*/config/** r,
+
   /data/disk/*/distro/ r,
   /data/disk/*/distro/* r,
   /data/disk/*/distro/** r,
+
   /data/disk/*/platforms/ r,
   /data/disk/*/platforms/* r,
   /data/disk/*/platforms/** r,
+
   /data/disk/*/static/ r,
   /data/disk/*/static/* r,
   /data/disk/*/static/** r,
+
   /data/disk/*/tools/drush/ r,
   /data/disk/*/tools/drush/* r,
   /data/disk/*/tools/drush/** r,
+
   /data/disk/*/tools/le/ r,
   /data/disk/*/tools/le/* r,
   /data/disk/*/tools/le/** r,
@@ -255,6 +267,7 @@
   /data/all/ r,
   /data/all/* r,
   /data/all/** r,
+
   /data/conf/ r,
   /data/conf/* r,
   /data/conf/** r,
@@ -267,45 +280,65 @@
   owner /data/disk/*/log/* rw,
   owner /data/disk/*/.*.pass.php r,
   owner /data/disk/*/.rnd rw,
+
   owner /data/disk/*/backups/ rw,
   owner /data/disk/*/backups/* rw,
   owner /data/disk/*/backups/** rw,
 
+  owner /data/disk/*/.config/ rw,
+  owner /data/disk/*/.config/* rw,
+  owner /data/disk/*/.config/** rw,
+
+  owner /data/disk/*/.cache/ rw,
+  owner /data/disk/*/.cache/* rw,
+  owner /data/disk/*/.cache/** rw,
+
   owner /data/disk/*/.drush/ rw,
   owner /data/disk/*/.drush/* rw,
   owner /data/disk/*/.drush/** rw,
+
   owner /data/disk/*/.tmp/ rw,
   owner /data/disk/*/.tmp/* rw,
   owner /data/disk/*/.tmp/** rw,
+
   owner /data/disk/*/aegir/ rw,
   owner /data/disk/*/aegir/* rw,
   owner /data/disk/*/aegir/** rw,
+
   owner /data/disk/*/clients/ rw,
   owner /data/disk/*/clients/* rw,
   owner /data/disk/*/clients/** rw,
+
   owner /data/disk/*/config/ rw,
   owner /data/disk/*/config/* rw,
   owner /data/disk/*/config/** rw,
+
   owner /data/disk/*/distro/ rw,
   owner /data/disk/*/distro/* rw,
   owner /data/disk/*/distro/** rw,
+
   owner /data/disk/*/platforms/ rw,
   owner /data/disk/*/platforms/* rw,
   owner /data/disk/*/platforms/** rw,
+
   owner /data/disk/*/tools/le/ rw,
   owner /data/disk/*/tools/le/* rw,
   owner /data/disk/*/tools/le/** rw,
+
   owner /var/www/** rw,
 
   owner /home/*/.drush/sites/ rw,
   owner /home/*/.drush/sites/* rw,
   owner /home/*/.drush/sites/** rw,
+
   owner /home/*/.drush/cache/ rw,
   owner /home/*/.drush/cache/* rw,
   owner /home/*/.drush/cache/** rw,
+
   owner /home/*/.tmp/ rw,
   owner /home/*/.tmp/* rw,
   owner /home/*/.tmp/** rw,
+
   owner /root/.tmp/ rw,
   owner /root/.tmp/* rw,
   owner /root/.tmp/** rw,
