@@ -126,6 +126,7 @@
   /bin/rm mrix,
   /bin/rmdir mrix,
   /bin/sed mrix,
+  /bin/stty mrix,
   /bin/tar mrix,
   /bin/touch mrix,
   /bin/true mrix,
