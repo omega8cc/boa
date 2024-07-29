@@ -5055,31 +5055,10 @@ finale() {
     mv -f ${vBs}/buagent-pre-${_X_SE}-${_X_VERSION}-${_NOW} \
       /etc/init.d/buagent &> /dev/null
   fi
+  _CSF_CRON_TEST=$(grep water /etc/crontab 2>&1)
   if [ -e "/etc/csf/csf.deny" ] \
     && [ -x "/usr/sbin/csf" ] \
-    && [ -e "/var/xdrago/guest-fire.sh" ] \
-    && [ -e "/var/xdrago/guest-water.sh" ]; then
-    sed -i "s/.*fire.*//g" /etc/crontab &> /dev/null
-    wait
-    sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
-    wait
-    if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io"($) ]]; then
-      if [ "${_VMFAMILY}" = "VS" ]; then
-        _DO_NOTHING=YES
-      else
-        echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1"  >> /etc/crontab
-        echo "01 5    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
-      fi
-    else
-      echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1"  >> /etc/crontab
-      echo "01 5    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
-    fi
-    sed -i "/^$/d" /etc/crontab &> /dev/null
-    wait
-  else
+    && [[ "${_CSF_CRON_TEST}" =~ "water" ]]; then
     sed -i "s/.*fire.*//g" /etc/crontab &> /dev/null
     wait
     sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
