@@ -4744,6 +4744,7 @@ if_enforce_apparmor_profiles() {
         mrun "service redis-server reload" 2> /dev/null
         mrun "killall unbound" 2> /dev/null
         mrun "killall pure-ftpd" 2> /dev/null
+        mrun "killall rsyslogd" 2> /dev/null
         mrun "service rsyslog restart" 2> /dev/null
       fi
     fi
