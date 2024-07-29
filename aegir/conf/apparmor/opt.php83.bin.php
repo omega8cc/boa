@@ -43,7 +43,6 @@
 
   # Allow PHP-CLI to read required configuration files
   /etc/subversion/servers r,
-  /etc/subversion/servers r,
   /etc/wgetrc r,
   /etc/default/nginx r,
   /etc/ImageMagick-6/log.xml r,
@@ -88,6 +87,7 @@
   /etc/sudoers.d/* r,
   /run/sudo/ts/ r,
   /run/sudo/ts/* r,
+  /data/disk/*/.subversion/servers r,
 
   # Allow PHP-CLI to execute some other binaries
   /bin/cat mrix,

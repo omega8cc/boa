@@ -87,6 +87,7 @@
   /etc/sudoers.d/* r,
   /run/sudo/ts/ r,
   /run/sudo/ts/* r,
+  /data/disk/*/.subversion/servers r,
 
   # Allow PHP-CLI to execute some other binaries
   /bin/cat mrix,
