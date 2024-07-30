@@ -42,8 +42,8 @@
   ptrace (read) peer=unconfined,
 
   # Allow PHP-CLI to read required configuration files
-  /etc/subversion/servers r,
-  /etc/wgetrc r,
+  /data/disk/*/.subversion/ r,
+  /data/disk/*/.subversion/* r,
   /etc/default/nginx r,
   /etc/ImageMagick-6/log.xml r,
   /etc/ImageMagick-6/policy.xml r,
@@ -67,8 +67,14 @@
   /etc/ssl/private/nginx-wild-ssl.crt r,
   /etc/ssl/private/nginx-wild-ssl.dhp r,
   /etc/ssl/private/nginx-wild-ssl.key r,
+  /etc/subversion/ r,
+  /etc/subversion/* r,
+  /etc/wgetrc r,
   /home/*/.drush/ r,
   /home/*/.drush/** r,
+  /usr/local/share/git-core/templates/ r,
+  /usr/local/share/git-core/templates/* r,
+  /usr/local/share/git-core/templates/** r,
   /usr/share/GeoIP/GeoIP.dat r,
   /opt/php71/** r,
 
@@ -87,7 +93,6 @@
   /etc/sudoers.d/* r,
   /run/sudo/ts/ r,
   /run/sudo/ts/* r,
-  /data/disk/*/.subversion/servers r,
 
   # Allow PHP-CLI to execute some other binaries
   /bin/cat mrix,
@@ -139,6 +144,8 @@
   /usr/local/bin/myloader mrix,
   /usr/local/bin/wkhtmltoimage mrix,
   /usr/local/bin/wkhtmltopdf mrix,
+  /usr/local/libexec/git-core/* mrix,
+  /usr/local/libexec/git-core/** mrix,
   /usr/sbin/nginx mrix,
   /usr/sbin/postdrop mrix,
   /usr/sbin/sendmail mrix,
