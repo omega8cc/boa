@@ -57,6 +57,12 @@ if (function_exists('drush_get_command')) {
     }
   }
 }
+else {
+  if (php_sapi_name() === 'cli' || PHP_SAPI === 'cli') {
+    $is_backend = TRUE;
+  }
+}
+
 
 /**
  * Detecting subdirectory mode
@@ -67,6 +73,7 @@ if (isset($_SERVER['SITE_SUBDIR'])) {
 if (isset($_SERVER['RAW_HOST'])) {
   $raw_host = $_SERVER['RAW_HOST'];
 }
+
 
 /**
  * The nodns mode detection
@@ -95,4 +102,31 @@ if (preg_match("/\/api\/hidden\//", $_SERVER['REQUEST_URI'])) {
 }
 
 
+/**
+ * Drupal core or other apps id
+ */
+if ($drupal_core == 6) {
+  $drupal_id = 'DVI';
+}
+elseif ($drupal_core == 7) {
+  $drupal_id = 'DVII';
+}
+elseif ($drupal_core == 8) {
+  $drupal_id = 'DVIII';
+}
+elseif ($drupal_core == 9) {
+  $drupal_id = 'DIX';
+}
+elseif ($drupal_core == 10) {
+  $drupal_id = 'DX';
+}
+elseif ($drupal_core == 11) {
+  $drupal_id = 'DXI';
+}
+else {
+  $drupal_id = 'ND';
+}
+if ($drupal_id && $is_dev && !$is_backend) {
+  header('X-Backend: ' . $drupal_id);
+}
 

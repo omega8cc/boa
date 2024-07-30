@@ -1,6 +1,10 @@
 <?php # global settings.php
 
 
+if ($drupal_core >= 6) {
+  $use_redis = TRUE;
+}
+
 if (isset($_SERVER['SERVER_NAME']) && $all_ini['redis_cache_disable']) {
   $use_redis = FALSE;
 }

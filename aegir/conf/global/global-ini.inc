@@ -4,8 +4,9 @@
 /**
  * Core versions init
  */
-$drupal_core   = FALSE;
 $backdropcms   = FALSE;
+$drupal_core   = FALSE;
+$drupal_id     = FALSE;
 
 
 /**

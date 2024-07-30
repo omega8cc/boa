@@ -4,40 +4,41 @@
 /**
  * Core versions init
  */
-$drupal_core   = FALSE;
 $backdropcms   = FALSE;
+$drupal_core   = FALSE;
+$drupal_id     = FALSE;
 
 
 /**
  * Vars init
  */
-$custom_cache = FALSE;
-$custom_da    = FALSE;
-$custom_fb    = FALSE;
-$da_inc       = FALSE;
-$deny_anon    = FALSE;
-$hidden_uri   = FALSE;
-$high_traffic = FALSE;
-$ini_loc_src  = FALSE;
-$ini_plr_src  = FALSE;
-$is_backend   = FALSE;
-$is_bot       = FALSE;
-$is_dev       = FALSE;
-$is_install   = FALSE;
-$is_tmp       = FALSE;
-$local_req    = FALSE;
-$no_dns       = FALSE;
-$raw_host     = FALSE;
-$redis_comprs = FALSE;
-$redis_lock   = FALSE;
-$redis_path   = FALSE;
-$redis_up     = FALSE;
-$site_subdir  = FALSE;
-$use_auto_se  = FALSE;
-$use_cache_ct = FALSE;
-$use_redis    = FALSE;
-$usr_loc_ini  = FALSE;
-$usr_plr_ini  = FALSE;
+$custom_cache  = FALSE;
+$custom_da     = FALSE;
+$custom_fb     = FALSE;
+$da_inc        = FALSE;
+$deny_anon     = FALSE;
+$hidden_uri    = FALSE;
+$high_traffic  = FALSE;
+$ini_loc_src   = FALSE;
+$ini_plr_src   = FALSE;
+$is_backend    = FALSE;
+$is_bot        = FALSE;
+$is_dev        = FALSE;
+$is_install    = FALSE;
+$is_tmp        = FALSE;
+$local_req     = FALSE;
+$no_dns        = FALSE;
+$raw_host      = FALSE;
+$redis_comprs  = FALSE;
+$redis_lock    = FALSE;
+$redis_path    = FALSE;
+$redis_up      = FALSE;
+$site_subdir   = FALSE;
+$use_auto_se   = FALSE;
+$use_cache_ct  = FALSE;
+$use_redis     = FALSE;
+$usr_loc_ini   = FALSE;
+$usr_plr_ini   = FALSE;
 
 
 /**
@@ -385,44 +386,38 @@ if (file_exists('web.config') || file_exists('index.php')) { // Check for the ma
       file_exists('core/vendor/symfony') ||
       file_exists('autoload.php')) {
       $drupal_core = '8';
-      $drupal_id = 'A1';
+      $drupal_id = 'DVIII';
       if (file_exists('core/themes/olivero') && file_exists('core/themes/classy')) {
         $drupal_core = '9';
-        $drupal_id = 'A2';
+        $drupal_id = 'DIX';
       }
       if (file_exists('core/themes/olivero') && !file_exists('core/themes/classy')) {
         $drupal_core = '10';
-        $drupal_id = 'A3';
+        $drupal_id = 'DX';
       }
       if (!file_exists('web.config')) { // Hypothetical check for Drupal 11
         $drupal_core = '11';
-        $drupal_id = 'A4';
-      }
-      if ($is_dev && !$is_backend) {
-        header('X-Backend: ' . $drupal_id);
+        $drupal_id = 'DXI';
       }
       $use_redis = TRUE;
     }
     else {
       $backdropcms = TRUE;
-      if ($is_dev && !$is_backend) {
-        header('X-Backend: B');
-      }
+      $drupal_id = 'ND';
     }
   }
   elseif (file_exists('modules/path_alias_cache')) {
     $drupal_core = '6';
+    $drupal_id = 'DVI';
     $use_redis = TRUE;
-    if ($is_dev && !$is_backend) {
-      header('X-Backend: D');
-    }
   }
   else {
     $drupal_core = '7';
+    $drupal_id = 'DVII';
     $use_redis = TRUE;
-    if ($is_dev && !$is_backend) {
-      header('X-Backend: C');
-    }
+  }
+  if ($drupal_id && $is_dev && !$is_backend) {
+    header('X-Backend: ' . $drupal_id);
   }
 }
 
