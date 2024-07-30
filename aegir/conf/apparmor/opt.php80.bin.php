@@ -285,6 +285,9 @@
   /data/disk/*/distro/** rw,
   /data/disk/*/platforms/** rw,
 
+  owner /data/disk/*/.cache/**/pack-* l,
+  owner /data/disk/*/static/**/pack-* l,
+
   owner /data/disk/*/log/ r,
   owner /data/disk/*/log/* rw,
   owner /data/disk/*/.*.pass.php r,
