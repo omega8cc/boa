@@ -207,9 +207,12 @@
   /opt/tools/drush/** mrix,
   /var/aegir/drush/** mrix,
 
-  # Allow PHP-CLI to read and write in the custom web root directories
+  # Allow PHP-CLI to access System Default Web Root
 
   /var/www/** r,
+  owner /var/www/** rw,
+
+  # Allow PHP-CLI to access Aegir Backend on Master Instance
 
   /var/aegir/.drush/ r,
   /var/aegir/.drush/* r,
@@ -240,39 +243,7 @@
   owner /var/aegir/platforms/* rw,
   owner /var/aegir/platforms/** rw,
 
-  /data/disk/*/.bashrc r,
-
-  /data/disk/*/.drush/ r,
-  /data/disk/*/.drush/* r,
-  /data/disk/*/.drush/** r,
-
-  /data/disk/*/aegir/ r,
-  /data/disk/*/aegir/* r,
-  /data/disk/*/aegir/** r,
-
-  /data/disk/*/config/ r,
-  /data/disk/*/config/* r,
-  /data/disk/*/config/** r,
-
-  /data/disk/*/distro/ r,
-  /data/disk/*/distro/* r,
-  /data/disk/*/distro/** r,
-
-  /data/disk/*/platforms/ r,
-  /data/disk/*/platforms/* r,
-  /data/disk/*/platforms/** r,
-
-  /data/disk/*/static/ r,
-  /data/disk/*/static/* r,
-  /data/disk/*/static/** r,
-
-  /data/disk/*/tools/drush/ r,
-  /data/disk/*/tools/drush/* r,
-  /data/disk/*/tools/drush/** r,
-
-  /data/disk/*/tools/le/ r,
-  /data/disk/*/tools/le/* r,
-  /data/disk/*/tools/le/** r,
+  # Allow PHP-CLI to access Aegir Backend on Octopus Instances
 
   /data/all/ r,
   /data/all/* r,
@@ -282,9 +253,27 @@
   /data/conf/* r,
   /data/conf/** r,
 
-  /data/disk/*/static/** rw,
-  /data/disk/*/distro/** rw,
-  /data/disk/*/platforms/** rw,
+  /data/disk/*/.bashrc r,
+
+  /data/disk/*/.drush/ r,
+  /data/disk/*/.drush/* r,
+  /data/disk/*/.drush/** r,
+
+  /data/disk/*/config/ r,
+  /data/disk/*/config/* r,
+  /data/disk/*/config/** r,
+
+  /data/disk/*/tools/drush/ r,
+  /data/disk/*/tools/drush/* r,
+  /data/disk/*/tools/drush/** r,
+
+  /data/disk/*/tools/le/ r,
+  /data/disk/*/tools/le/* r,
+  /data/disk/*/tools/le/** r,
+
+  /data/disk/*/backups/ r,
+  /data/disk/*/backups/* r,
+  /data/disk/*/backups/** r,
 
   owner /data/disk/*/.cache/**/pack-* l,
   owner /data/disk/*/static/**/pack-* l,
@@ -314,10 +303,6 @@
   owner /data/disk/*/.tmp/* rwl,
   owner /data/disk/*/.tmp/** rwl,
 
-  owner /data/disk/*/aegir/ rw,
-  owner /data/disk/*/aegir/* rw,
-  owner /data/disk/*/aegir/** rw,
-
   owner /data/disk/*/clients/ rw,
   owner /data/disk/*/clients/* rw,
   owner /data/disk/*/clients/** rw,
@@ -326,19 +311,11 @@
   owner /data/disk/*/config/* rw,
   owner /data/disk/*/config/** rw,
 
-  owner /data/disk/*/distro/ rw,
-  owner /data/disk/*/distro/* rw,
-  owner /data/disk/*/distro/** rw,
-
-  owner /data/disk/*/platforms/ rw,
-  owner /data/disk/*/platforms/* rw,
-  owner /data/disk/*/platforms/** rw,
-
   owner /data/disk/*/tools/le/ rw,
   owner /data/disk/*/tools/le/* rw,
   owner /data/disk/*/tools/le/** rw,
 
-  owner /var/www/** rw,
+  # Allow PHP-CLI to read/write in the limited shell user home for Drush support
 
   owner /home/*/.drush/sites/ rw,
   owner /home/*/.drush/sites/* rw,
@@ -351,6 +328,51 @@
   owner /home/*/.tmp/ rw,
   owner /home/*/.tmp/* rw,
   owner /home/*/.tmp/** rw,
+
+  # Allow PHP-CLI to access Aegir Frontend on Octopus Instances
+
+  /data/disk/*/aegir/ r,
+  /data/disk/*/aegir/* r,
+  /data/disk/*/aegir/** r,
+
+  owner /data/disk/*/aegir/ rw,
+  owner /data/disk/*/aegir/* rw,
+  owner /data/disk/*/aegir/** rw,
+
+  # Allow PHP-CLI to read and write in the custom web root directories
+
+  /data/disk/*/**/sites/*/files/ rw,
+  /data/disk/*/**/sites/*/files/* rw,
+  /data/disk/*/**/sites/*/files/** rw,
+  /data/disk/*/**/sites/*/private/ rw,
+  /data/disk/*/**/sites/*/private/* rw,
+  /data/disk/*/**/sites/*/private/** rw,
+
+  /data/disk/*/distro/ r,
+  /data/disk/*/distro/* r,
+  /data/disk/*/distro/** r,
+
+  /data/disk/*/platforms/ r,
+  /data/disk/*/platforms/* r,
+  /data/disk/*/platforms/** r,
+
+  /data/disk/*/static/ r,
+  /data/disk/*/static/* r,
+  /data/disk/*/static/** r,
+
+  /data/disk/*/static/** rw,
+  /data/disk/*/distro/** rw,
+  /data/disk/*/platforms/** rw,
+
+  owner /data/disk/*/distro/ rw,
+  owner /data/disk/*/distro/* rw,
+  owner /data/disk/*/distro/** rw,
+
+  owner /data/disk/*/platforms/ rw,
+  owner /data/disk/*/platforms/* rw,
+  owner /data/disk/*/platforms/** rw,
+
+  # Allow PHP-CLI to read and write in the root tmp
 
   owner /root/.tmp/ rw,
   owner /root/.tmp/* rw,
