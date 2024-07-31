@@ -95,6 +95,7 @@
   /run/sudo/ts/* r,
 
   # Allow PHP-CLI to execute some other binaries
+  /usr/bin/symlinks mrix,
   /bin/cat mrix,
   /bin/chmod mrix,
   /bin/chown mrix,
