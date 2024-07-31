@@ -204,8 +204,13 @@
   deny /var/tmp/** m,
 
   # Allow PHP-CLI to access drush
+  /data/disk/*/tools/drush/ r,
+  /data/disk/*/tools/drush/* mrix,
+  /data/disk/*/tools/drush/** r,
   /opt/tools/drush/** mrix,
-  /var/aegir/drush/** mrix,
+  /var/aegir/drush/ r,
+  /var/aegir/drush/* mrix,
+  /var/aegir/drush/** r,
 
   # Allow PHP-CLI to access System Default Web Root
 
@@ -214,25 +219,15 @@
 
   # Allow PHP-CLI to access Aegir Backend on Master Instance
 
-  /var/aegir/.drush/ r,
-  /var/aegir/.drush/* r,
-  /var/aegir/.drush/** r,
-  /var/aegir/config/ r,
-  /var/aegir/config/* r,
-  /var/aegir/config/** r,
-  /var/aegir/host_master/ r,
-  /var/aegir/host_master/* r,
-  /var/aegir/host_master/** r,
-  /var/aegir/platforms/ r,
-  /var/aegir/platforms/* r,
-  /var/aegir/platforms/** r,
-
   owner /var/aegir/.drush/ r,
   owner /var/aegir/.drush/* rw,
   owner /var/aegir/.drush/** rw,
   owner /var/aegir/.tmp/ r,
   owner /var/aegir/.tmp/* rw,
   owner /var/aegir/.tmp/** rw,
+  owner /var/aegir/config/ r,
+  owner /var/aegir/config/* rw,
+  owner /var/aegir/config/** rw,
   owner /var/aegir/host_master-*/ r,
   owner /var/aegir/host_master-*/* rw,
   owner /var/aegir/host_master-*/** rw,
@@ -255,26 +250,6 @@
 
   /data/disk/*/.bashrc r,
 
-  /data/disk/*/.drush/ r,
-  /data/disk/*/.drush/* r,
-  /data/disk/*/.drush/** r,
-
-  /data/disk/*/config/ r,
-  /data/disk/*/config/* r,
-  /data/disk/*/config/** r,
-
-  /data/disk/*/tools/drush/ r,
-  /data/disk/*/tools/drush/* r,
-  /data/disk/*/tools/drush/** r,
-
-  /data/disk/*/tools/le/ r,
-  /data/disk/*/tools/le/* r,
-  /data/disk/*/tools/le/** r,
-
-  /data/disk/*/backups/ r,
-  /data/disk/*/backups/* r,
-  /data/disk/*/backups/** r,
-
   owner /data/disk/*/.cache/**/pack-* l,
   owner /data/disk/*/static/**/pack-* l,
 
@@ -286,6 +261,10 @@
   owner /data/disk/*/backups/ rwl,
   owner /data/disk/*/backups/* rwl,
   owner /data/disk/*/backups/** rwl,
+
+  owner /data/disk/*/backup-exports/ rwl,
+  owner /data/disk/*/backup-exports/* rwl,
+  owner /data/disk/*/backup-exports/** rwl,
 
   owner /data/disk/*/.config/ rwl,
   owner /data/disk/*/.config/* rwl,
@@ -331,10 +310,6 @@
 
   # Allow PHP-CLI to access Aegir Frontend on Octopus Instances
 
-  /data/disk/*/aegir/ r,
-  /data/disk/*/aegir/* r,
-  /data/disk/*/aegir/** r,
-
   owner /data/disk/*/aegir/ rw,
   owner /data/disk/*/aegir/* rw,
   owner /data/disk/*/aegir/** rw,
@@ -344,33 +319,22 @@
   /data/disk/*/**/sites/*/files/ rw,
   /data/disk/*/**/sites/*/files/* rw,
   /data/disk/*/**/sites/*/files/** rw,
+
   /data/disk/*/**/sites/*/private/ rw,
   /data/disk/*/**/sites/*/private/* rw,
   /data/disk/*/**/sites/*/private/** rw,
 
-  /data/disk/*/distro/ r,
-  /data/disk/*/distro/* r,
-  /data/disk/*/distro/** r,
-
-  /data/disk/*/platforms/ r,
-  /data/disk/*/platforms/* r,
-  /data/disk/*/platforms/** r,
-
-  /data/disk/*/static/ r,
-  /data/disk/*/static/* r,
-  /data/disk/*/static/** r,
-
+  /data/disk/*/static/ rw,
+  /data/disk/*/static/* rw,
   /data/disk/*/static/** rw,
+
+  /data/disk/*/distro/ rw,
+  /data/disk/*/distro/* rw,
   /data/disk/*/distro/** rw,
+
+  /data/disk/*/platforms/ rw,
+  /data/disk/*/platforms/* rw,
   /data/disk/*/platforms/** rw,
-
-  owner /data/disk/*/distro/ rw,
-  owner /data/disk/*/distro/* rw,
-  owner /data/disk/*/distro/** rw,
-
-  owner /data/disk/*/platforms/ rw,
-  owner /data/disk/*/platforms/* rw,
-  owner /data/disk/*/platforms/** rw,
 
   # Allow PHP-CLI to read and write in the root tmp
 
