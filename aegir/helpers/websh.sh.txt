@@ -214,12 +214,12 @@ if [[ "${_ARR}" =~ "-c " ]]; then
   _ARR=`echo ${_ARR} | sed "s/\${_R_M}//g"`
 fi
 
-if [[ "${HOME}" =~ (^)"/xdata/disk/" ]] \
+if [[ "${HOME}" =~ (^)"/data/disk/" ]] \
   && [ -z "${PHP_FWD}" ] \
-  && [[ "${_ARGS}" =~ (^)"xphp ${HOME}" ]]; then
+  && [[ "${_ARGS}" =~ (^)"php ${HOME}" ]]; then
   _OCTO_SYS="${USER}"
   _OCTO_SYS_ARR=
-  if [[ "${_ARGS}" =~ "backend" ]]; then
+  if [[ "${_ARGS}" =~ "tools/drush/drush.php" ]]; then
     _R_M=`echo -n ${_ARGS} | grep -o "php /data/disk/.*/tools/drush/drush.php"`
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
@@ -238,7 +238,7 @@ else
   _OCTO_SYS=
 fi
 
-if [[ "${HOME}" =~ (^)"/data/disk/" ]]; then
+if [[ "${HOME}" =~ (^)"/yyydata/disk/" ]]; then
   _DRUSH_CLI_CTRL=
   ### echo _DRUSH_CLI_CTRL has been disabled
 fi
@@ -394,7 +394,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           _DEST_DRUSH=
         fi
         if [[ "${_ARGS}" =~ "drush12 " ]] \
-          && [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
+          && [[ ! "${HOME}" =~ (^)"/data/disk/" ]]; then
           _DEST_DRUSH="/usr/bin/drush12"
           _PHP_V="81 82 83"
           for e in ${_PHP_V}; do
@@ -416,12 +416,14 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             ### echo INF 2 _DEST_DRUSH is ${_DEST_DRUSH}
           else
             echo
-            echo "  Drush 12 requires either PHP 8.1 or 8.2"
+            echo "  Drush 12 requires either PHP 8.1 or 8.2 or 8.3"
             echo "  Please create empty control file:"
             echo
             echo "  ${_DRUSH_CLI_CTRL}/php81.info"
             echo "  or"
             echo "  ${_DRUSH_CLI_CTRL}/php82.info"
+            echo "  or"
+            echo "  ${_DRUSH_CLI_CTRL}/php83.info"
             echo
             echo "  NOTE: If you create more than one,"
             echo "        the highest version wins."
@@ -436,7 +438,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           elif [[ "${_ARGS}" =~ "drush10 " ]]; then
             _DEST_DRUSH="/usr/bin/drush10"
           fi
-          if [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
+          if [[ ! "${HOME}" =~ (^)"/data/disk/" ]]; then
             _PHP_V="74 80 81 82 83"
             for e in ${_PHP_V}; do
               if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
@@ -485,7 +487,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           if [[ "${_ARGS}" =~ "/vendor/bin/drush " ]]; then
             _DEST_DRUSH=
           fi
-          if [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
+          if [[ ! "${HOME}" =~ (^)"/data/disk/" ]]; then
             _PHP_V="56 70 71 72 73 74 80 81 82 83"
             for e in ${_PHP_V}; do
               if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
