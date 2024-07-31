@@ -217,7 +217,7 @@
   /var/www/** r,
   owner /var/www/** rw,
 
-  # Allow PHP-CLI to access Aegir Backend on Master Instance
+  # Allow PHP-CLI to read/write in the Aegir Backend on Master Instance
 
   owner /var/aegir/.drush/ r,
   owner /var/aegir/.drush/* rw,
@@ -238,7 +238,7 @@
   owner /var/aegir/platforms/* rw,
   owner /var/aegir/platforms/** rw,
 
-  # Allow PHP-CLI to access Aegir Backend on Octopus Instances
+  # Allow PHP-CLI to read/write in the Aegir Backend on Octopus Instances
 
   /data/all/ r,
   /data/all/* r,
@@ -294,6 +294,12 @@
   owner /data/disk/*/tools/le/* rw,
   owner /data/disk/*/tools/le/** rw,
 
+  # Allow PHP-CLI to read/write in the Aegir Frontend on Octopus Instances
+
+  owner /data/disk/*/aegir/ rw,
+  owner /data/disk/*/aegir/* rw,
+  owner /data/disk/*/aegir/** rw,
+
   # Allow PHP-CLI to read/write in the limited shell user home for Drush support
 
   owner /home/*/.drush/sites/ rw,
@@ -308,21 +314,7 @@
   owner /home/*/.tmp/* rw,
   owner /home/*/.tmp/** rw,
 
-  # Allow PHP-CLI to access Aegir Frontend on Octopus Instances
-
-  owner /data/disk/*/aegir/ rw,
-  owner /data/disk/*/aegir/* rw,
-  owner /data/disk/*/aegir/** rw,
-
-  # Allow PHP-CLI to read and write in the custom web root directories
-
-  /data/disk/*/**/sites/*/files/ rw,
-  /data/disk/*/**/sites/*/files/* rw,
-  /data/disk/*/**/sites/*/files/** rw,
-
-  /data/disk/*/**/sites/*/private/ rw,
-  /data/disk/*/**/sites/*/private/* rw,
-  /data/disk/*/**/sites/*/private/** rw,
+  # Allow PHP-CLI to read/write in the custom web root directories
 
   /data/disk/*/static/ rw,
   /data/disk/*/static/* rw,
