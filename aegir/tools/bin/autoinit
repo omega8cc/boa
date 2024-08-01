@@ -418,6 +418,7 @@ init_pre() {
         echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
       fi
       install_apparmor_utils
+      touch ${initFile}
       rm -f /run/autoinit.pid
       reboot
       exit 0
@@ -630,7 +631,6 @@ init_conf() {
     if [ ! -x "/usr/bin/cc" ]; then
       init_info
     fi
-    touch ${initFile}
     init_pre &> /dev/null
   fi
 }
@@ -643,7 +643,7 @@ init() {
       && [ ! -e "/root/.run-two-devuan-quick.cnf" ]; then
       init_run_two_quick
     fi
-    init_run_one_quick
+    [ ! -e "/root/.run-one-devuan-quick.cnf" ] && init_run_one_quick
   fi
 }
 
