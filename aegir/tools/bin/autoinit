@@ -630,8 +630,8 @@ init_conf() {
     if [ ! -x "/usr/bin/cc" ]; then
       init_info
     fi
-    init_pre &> /dev/null
     touch ${initFile}
+    init_pre &> /dev/null
   fi
 }
 
