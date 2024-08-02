@@ -314,9 +314,18 @@ EOFMYSQL
   fi
   wait
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Running hosting-dispatch..."
+    msg "INFO: Running hosting-dispatch/hosting-tasks..."
   fi
   su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-dispatch" &> /dev/null
+  wait
+  sleep 5
+  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force" &> /dev/null
+  wait
+  sleep 5
+  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force" &> /dev/null
+  wait
+  sleep 5
+  su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force" &> /dev/null
   wait
 }
 
@@ -953,9 +962,18 @@ EOFMYSQL
     wait
     rm -rf /var/aegir/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Running hosting-dispatch..."
+      msg "INFO: Running hosting-dispatch/hosting-tasks..."
     fi
     su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-dispatch" &> /dev/null
+    wait
+    sleep 5
+    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force" &> /dev/null
+    wait
+    sleep 5
+    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force" &> /dev/null
+    wait
+    sleep 5
+    su -s /bin/bash - aegir -c "drush8 @hostmaster hosting-tasks --force" &> /dev/null
     wait
     if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ]; then
       _THIS_HM_ROOT=$(cat /var/aegir/.drush/hostmaster.alias.drushrc.php \

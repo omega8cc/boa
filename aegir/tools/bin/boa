@@ -1291,43 +1291,25 @@ init_setup() {
     touch /data/disk/${user}/static/control/ssl-live-mode.info
     rm -f /data/disk/${user}/tools/le/.ctrl/ssl-demo-mode.pid
     echo
-    echo "Invoking several hosting-dispatch commands to complete the installation"
+    echo "Invoking hosting-dispatch/hosting-tasks to complete the installation"
     sleep 3
-    echo "Please wait, it will take about 60 seconds..."
+    echo "Please wait, it will take about 30 seconds..."
     su -s /bin/bash ${user} -c "drush @hm hosting-dispatch"  &> /dev/null
-    echo "1/11"
+    echo "1/5"
     sleep 5
     su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
-    echo "2/11"
+    echo "2/5"
     sleep 5
     su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
-    echo "3/11"
+    echo "3/5"
     sleep 5
     su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
-    echo "4/11"
+    echo "4/5"
     sleep 5
     su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
-    echo "5/11"
-    sleep 5
-    su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
-    echo "6/11"
-    sleep 5
-    su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
-    echo "7/11"
-    sleep 5
-    su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
-    echo "8/11"
-    sleep 5
-    su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
-    echo "9/11"
-    sleep 5
-    su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
-    echo "10/11"
-    sleep 5
-    su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
-    echo "11/11"
+    echo "5/5"
     sleep 3
-    echo "Now invoking post-install upgrade to complete the Let's Encrypt installation"
+    echo "Now invoking post-install upgrade to complete the Let's Encrypt setup"
     sleep 3
     echo "It will run in the background, though, for another few minutes..."
     sleep 3

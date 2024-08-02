@@ -362,6 +362,16 @@ hostmaster_mi_up() {
     ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_service SET type='nginx' WHERE service='http'"
     ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force
     ${_DRUSHCMD} @hostmaster hosting-dispatch
+    wait
+    sleep 5
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    wait
+    sleep 5
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    wait
+    sleep 5
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    wait
     msg "INFO: Waiting 15 seconds..."
     sleep 15
   fi
@@ -377,6 +387,16 @@ hostmaster_mi_up() {
     ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_service SET type='nginx' WHERE service='http'"
     ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force
     ${_DRUSHCMD} @hostmaster hosting-dispatch
+    wait
+    sleep 5
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    wait
+    sleep 5
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    wait
+    sleep 5
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    wait
     touch /var/aegir/disable_nginx_ssl.log
     msg "INFO: Waiting 5 seconds..."
     sleep 5

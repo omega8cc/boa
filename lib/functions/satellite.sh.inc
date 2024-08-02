@@ -2427,10 +2427,18 @@ EOFMYSQL
   fi
   wait
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "${_STATUS} A: Running hosting-dispatch..."
+    msg "${_STATUS} A: Running hosting-dispatch/hosting-tasks..."
   fi
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} '@hostmaster' \
-    hosting-dispatch" &> /dev/null
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-dispatch" &> /dev/null
+  wait
+  sleep 5
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force" &> /dev/null
+  wait
+  sleep 5
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force" &> /dev/null
+  wait
+  sleep 5
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force" &> /dev/null
   wait
 }
 
@@ -5413,9 +5421,19 @@ satellite_child_b_aegir_build() {
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "${_STATUS} B: Running hosting-dispatch..."
+      msg "${_STATUS} B: Running hosting-dispatch/hosting-tasks..."
     fi
-    ${_DRUSHCMD} '@hostmaster' hosting-dispatch &> /dev/null
+    ${_DRUSHCMD} @hostmaster hosting-dispatch &> /dev/null
+    wait
+    sleep 5
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
+    wait
+    sleep 5
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
+    wait
+    sleep 5
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
+    wait
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} B: Testing previous install..."
@@ -5541,6 +5559,16 @@ satellite_child_b_aegir_build() {
       ${_DRUSHCMD} @hostmaster sqlq "INSERT INTO hosting_service (nid, vid, service, type, restart_cmd, port, available) VALUES ('2', '2', 'http', 'nginx_ssl', 'sudo /etc/init.d/nginx reload', '80', '1')" &> /dev/null
       ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force
       ${_DRUSHCMD} @hostmaster hosting-dispatch
+      wait
+      sleep 5
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force
+      wait
+      sleep 5
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force
+      wait
+      sleep 5
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force
+      wait
       msg "${_STATUS} B: Waiting 15 seconds..."
       sleep 15
     fi
@@ -5633,7 +5661,17 @@ satellite_child_b_aegir_build() {
         rm -rf ${_ROOT}/.tmp/cache
         ${_DRUSHCMD} @hostmaster hosting-task @server_localhost \
           verify --force &> /dev/null
-        ${_DRUSHCMD} '@hostmaster' hosting-dispatch &> /dev/null
+        ${_DRUSHCMD} @hostmaster hosting-dispatch &> /dev/null
+        wait
+        sleep 5
+        ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
+        wait
+        sleep 5
+        ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
+        wait
+        sleep 5
+        ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
+        wait
         msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 complete"
       fi
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
