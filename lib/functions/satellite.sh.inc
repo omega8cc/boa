@@ -364,8 +364,8 @@ satellite_tune_fpm_config() {
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
     mkdir -p /var/xdrago/conf
   fi
-  cp -af ${bldPth}/aegir/conf/fpm-pool-foo-multi.conf /var/xdrago/conf/
-  cp -af ${bldPth}/aegir/conf/fpm-pool-foo.conf /var/xdrago/conf/
+  cp -af ${bldPth}/aegir/conf/php/fpm-pool-foo-multi.conf /var/xdrago/conf/
+  cp -af ${bldPth}/aegir/conf/php/fpm-pool-foo.conf /var/xdrago/conf/
   if [ ! -z "${_PHP_FPM_TIMEOUT}" ] && [ ! -z "${_PHP_SV}" ]; then
     if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
       rm -f /opt/php*/etc/pool.d/${_USER}.conf
