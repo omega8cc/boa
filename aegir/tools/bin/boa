@@ -1290,43 +1290,57 @@ init_setup() {
     # Execute post-install octopus upgrade and exit
     touch /data/disk/${user}/static/control/ssl-live-mode.info
     rm -f /data/disk/${user}/tools/le/.ctrl/ssl-demo-mode.pid
+    echo
     echo "Invoking several hosting-dispatch commands to complete the installation"
-    sleep 2
+    sleep 3
     echo "Please wait, it will take about 60 seconds..."
-    su -s /bin/bash ${user} -c "drush @hm hosting-dispatch" 2> /dev/null
+    su -s /bin/bash ${user} -c "drush @hm hosting-dispatch"  &> /dev/null
+    echo "1/11"
     sleep 5
-    su -s /bin/bash ${user} -c "drush @hm hosting-dispatch" 2> /dev/null
+    su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
+    echo "2/11"
     sleep 5
-    su -s /bin/bash ${user} -c "drush @hm hosting-dispatch" 2> /dev/null
+    su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
+    echo "3/11"
     sleep 5
-    su -s /bin/bash ${user} -c "drush @hm hosting-dispatch" 2> /dev/null
+    su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
+    echo "4/11"
     sleep 5
-    su -s /bin/bash ${user} -c "drush @hm hosting-dispatch" 2> /dev/null
+    su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
+    echo "5/11"
     sleep 5
-    su -s /bin/bash ${user} -c "drush @hm hosting-dispatch" 2> /dev/null
+    su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
+    echo "6/11"
     sleep 5
-    su -s /bin/bash ${user} -c "drush @hm hosting-dispatch" 2> /dev/null
+    su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
+    echo "7/11"
     sleep 5
-    su -s /bin/bash ${user} -c "drush @hm hosting-dispatch" 2> /dev/null
+    su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
+    echo "8/11"
     sleep 5
-    su -s /bin/bash ${user} -c "drush @hm hosting-dispatch" 2> /dev/null
+    su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
+    echo "9/11"
     sleep 5
-    su -s /bin/bash ${user} -c "drush @hm hosting-dispatch" 2> /dev/null
+    su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
+    echo "10/11"
     sleep 5
-    echo "Invoking post-install upgrade to complete the Let's Encrypt installation"
-    sleep 2
+    su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
+    echo "11/11"
+    sleep 3
+    echo "Now invoking post-install upgrade to complete the Let's Encrypt installation"
+    sleep 3
     echo "It will run in the background, though, for another few minutes..."
-    sleep 2
+    sleep 3
     echo "Please note that the initial one-time login link will no longer work"
-    sleep 2
+    sleep 3
     echo "To access your Aegir control panel once the procedure is complete"
-    sleep 2
+    sleep 3
     echo "please run this command to generate the new link:"
-    sleep 2
+    sleep 3
     echo
     echo "  su -s /bin/bash ${user} -c \"drush @hm uli\""
     echo
-    sleep 5
+    sleep 3
     echo "Bye!"
     echo
     nohup /opt/local/bin/octopus up-${tRee} ${user} force > /dev/null 2>&1 &
