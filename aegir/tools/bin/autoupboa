@@ -141,8 +141,8 @@ system_hostname_check_fix
 rm -f /run/clear_m.pid
 
 _ADD_XTRA=YES
-_CRON_TEST=$(grep "clear.sh" /var/spool/cron/crontabs/root 2>&1)
-if [[ "${_CRON_TEST}" =~ "clear.sh" ]]; then
+_CRON_TEST=$(grep "clear.xsh" /var/spool/cron/crontabs/root 2>&1)
+if [[ "${_CRON_TEST}" =~ "clear.xsh" ]]; then
   _ADD_XTRA=NO
 fi
 
@@ -208,7 +208,7 @@ crontab_update() {
     sed -i "s/.*du.*sql.*//gi" /etc/crontab &> /dev/null
     wait
     if [ "${_ADD_XTRA}" = "YES" ]; then
-      echo "*/6 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "*/19 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
@@ -274,7 +274,7 @@ crontab_cleanup() {
     sed -i "s/.*du.*sql.*//gi" /etc/crontab &> /dev/null
     wait
     if [ "${_ADD_XTRA}" = "YES" ]; then
-      echo "*/6 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "*/19 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
