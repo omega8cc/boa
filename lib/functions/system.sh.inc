@@ -118,6 +118,7 @@ define_loc_osr() {
     _NEW_OS_CODE=daedalus
     _TGT_OSN=Devuan
     _MSG_LOC="Devuan Chimaera to Devuan Daedalus"
+    [ ! -e "/root/.top-daedalus.cnf" ] && touch /root/.top-daedalus.cnf
   fi
   if [ "${_BULLSEYE_TO_CHIMAERA}" = "YES" ] \
     && [ "${_OS_CODE}" = "bullseye" ]; then
@@ -132,6 +133,7 @@ define_loc_osr() {
     _NEW_OS_CODE=daedalus
     _TGT_OSN=Devuan
     _MSG_LOC="Debian Bookworm to Devuan Daedalus"
+    [ ! -e "/root/.top-daedalus.cnf" ] && touch /root/.top-daedalus.cnf
   fi
   if [ "${_BULLSEYE_TO_BOOKWORM}" = "YES" ] \
     && [ "${_OS_CODE}" = "bullseye" ]; then
@@ -5536,6 +5538,7 @@ if_post_major_os_upgrade() {
     fi
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
+    [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y 2> /dev/null
     ### Update rsyslog configuration early
     rsyslog_config_update
     ### Reload key services if needed early

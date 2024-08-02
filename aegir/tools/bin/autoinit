@@ -516,6 +516,7 @@ init_cycle() {
     _NEW_OS_CODE=chimaera
   elif [ "${_OS_CODE}" = "chimaera" ]; then
     _NEW_OS_CODE=daedalus
+    [ ! -e "/root/.top-daedalus.cnf" ] && touch /root/.top-daedalus.cnf
   elif [ "${_OS_CODE}" = "daedalus" ]; then
     _NEW_OS_CODE=
     _NEW_SYS=
