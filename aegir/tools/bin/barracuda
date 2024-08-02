@@ -1043,8 +1043,10 @@ up_finish() {
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
   [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
-  rm -f ${vBs}/*.sh.cnf*
-  rm -f ${vBs}/BARRACUDA.sh*
+  if [ -d "/data/u" ]; then
+    rm -f ${vBs}/*.sh.cnf*
+    rm -f ${vBs}/BARRACUDA.sh*
+  fi
   if [ -e "/opt/local/bin/php" ] \
     || [ -e "/usr/local/bin/php" ]; then
     rm -f /opt/local/bin/php
@@ -1057,7 +1059,9 @@ up_finish() {
     service webmin stop &> /dev/null
     service usermin stop &> /dev/null
   fi
-  rm -rf /opt/tmp/*
+  if [ -d "/data/u" ]; then
+    rm -rf /opt/tmp/*
+  fi
   if [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
     && [ ! -x "/etc/csf/csfpost.sh" ]; then
