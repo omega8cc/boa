@@ -461,6 +461,7 @@ init_complete() {
     /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> ${logInt}
     /usr/bin/apt-get autoremove --purge -y >> ${logInt}
     /usr/bin/apt-get autoclean -y >> ${logInt}
+    [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y >> ${logInt}
   else
     /usr/bin/apt-get update -qq >> ${logSlt}
     /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logSlt}
@@ -470,6 +471,7 @@ init_complete() {
     /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
     /usr/bin/apt-get autoremove --purge -y -qq >> ${logSlt}
     /usr/bin/apt-get autoclean -y -qq >> ${logSlt}
+    [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y >> ${logSlt}
   fi
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
@@ -503,6 +505,7 @@ init_cycle() {
   if [ "${_OS_CODE}" = "bookworm" ]; then
     _NEW_OS_CODE=daedalus
     _OLD_SYS=Debian
+    [ ! -e "/root/.top-daedalus.cnf" ] && touch /root/.top-daedalus.cnf
   elif [ "${_OS_CODE}" = "bullseye" ]; then
     _NEW_OS_CODE=chimaera
     _OLD_SYS=Debian
