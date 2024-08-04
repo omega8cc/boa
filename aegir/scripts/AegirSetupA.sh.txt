@@ -215,6 +215,7 @@ su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ${vSet} hosting_queue_tasks_it
 bash /var/xdrago/runner.sh
 wait
 [ -e "/root/.force.queue.runner.cnf" ] && rm -f /root/.force.queue.runner.cnf
+su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ${vSet} hosting_queue_tasks_items 1"
 
 
 ###
