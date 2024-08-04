@@ -236,6 +236,12 @@ turn_off_apparmor_in_octopus
 
 
 ###
+### Switch to bash while running octopus
+###
+switch_to_bash_in_octopus
+
+
+###
 ### More local default variables
 ###
 _LASTNUM=001

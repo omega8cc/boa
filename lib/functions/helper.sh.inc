@@ -895,3 +895,54 @@ turn_off_apparmor_in_octopus() {
     touch /root/.turn_off_apparmor_in_octopus.cnf
   fi
 }
+
+#
+# Switch to bash while running octopus.
+switch_to_bash_in_octopus() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: switch_to_bash_in_octopus"
+  fi
+  if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
+    _WEB_SH=`readlink -n /bin/sh`
+    _WEB_SH=`echo -n ${_WEB_SH} | tr -d "\n"`
+    if [ -x "/bin/dash" ] || [ -x "/usr/bin/dash" ]; then
+      if [ "${_WEB_SH}" != "/bin/dash" ]; then
+        if [ -x "/usr/bin/dash" ] && [ ! -L "/usr/bin/dash" ]; then
+          if [ -L "/usr/bin/sh" ]; then
+            ln -sfn /usr/bin/dash /usr/bin/sh
+          fi
+          if [ -L "/bin/sh" ]; then
+            ln -sfn /usr/bin/dash /bin/sh
+          fi
+        fi
+        if [ -x "/bin/dash" ] && [ ! -L "/bin/dash" ]; then
+          if [ -L "/usr/bin/sh" ]; then
+            ln -sfn /bin/dash /usr/bin/sh
+          fi
+          if [ -L "/bin/sh" ]; then
+            ln -sfn /bin/dash /bin/sh
+          fi
+        fi
+      fi
+    elif [ -x "/bin/bash" ] || [ -x "/usr/bin/bash" ]; then
+      if [ "${_WEB_SH}" != "/bin/bash" ]; then
+        if [ -x "/usr/bin/bash" ] && [ ! -L "/usr/bin/bash" ]; then
+          if [ -L "/usr/bin/sh" ]; then
+            ln -sfn /usr/bin/bash /usr/bin/sh
+          fi
+          if [ -L "/bin/sh" ]; then
+            ln -sfn /usr/bin/bash /bin/sh
+          fi
+        fi
+        if [ -x "/bin/bash" ] && [ ! -L "/bin/bash" ]; then
+          if [ -L "/usr/bin/sh" ]; then
+            ln -sfn /bin/bash /usr/bin/sh
+          fi
+          if [ -L "/bin/sh" ]; then
+            ln -sfn /bin/bash /bin/sh
+          fi
+        fi
+      fi
+    fi
+  fi
+}

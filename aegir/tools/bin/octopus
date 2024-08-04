@@ -841,6 +841,7 @@ up_start() {
   else
     touch /run/boa_run.pid
     touch /run/boa_wait.pid
+    touch /run/octopus_install_run.pid
     mkdir -p ${_LOG_DIR}
     cd ${vBs}
     rm -f ${vBs}/OCTOPUS.sh*
@@ -877,6 +878,7 @@ up_finish() {
   [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
   [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
   [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
+  [ -e "/run/octopus_install_run.pid" ] && rm -f /run/octopus_install_run.pid
   rm -f ${vBs}/*.sh.cnf*
   rm -f ${vBs}/OCTOPUS.sh*
   if [ -e "/opt/local/bin/php" ] || [ -e "/usr/local/bin/php" ]; then

@@ -1280,6 +1280,7 @@ init_setup() {
     fi
   fi
   if [ "${_OCTOPUS_ONLY}" = "YES" ] || [ "${system}" = "bundle" ]; then
+    [ ! -e "/run/octopus_install_run.pid" ] && touch /run/octopus_install_run.pid
     octopus_install
   fi
   if [ "${output}" = "logged" ]; then
@@ -1287,6 +1288,7 @@ init_setup() {
   fi
   if [ "${_OCTOPUS_ONLY}" = "YES" ]; then
     init_cleanup
+    [ ! -e "/run/octopus_install_run.pid" ] && touch /run/octopus_install_run.pid
     # Execute post-install octopus upgrade and exit
     touch /data/disk/${user}/static/control/ssl-live-mode.info
     rm -f /data/disk/${user}/tools/le/.ctrl/ssl-demo-mode.pid
