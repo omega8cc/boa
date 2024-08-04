@@ -1309,15 +1309,15 @@ init_setup() {
     su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
     echo "5/5"
     sleep 3
-    echo "Now invoking post-install upgrade to complete the Let's Encrypt setup"
+    echo "The post-installation upgrade is now being invoked..."
+    echo "...to complete the Let's Encrypt setup."
     sleep 3
-    echo "It will run in the background, though, for another few minutes..."
+    echo "This process will take a few minutes and will run in the background."
     sleep 3
-    echo "Please note that the initial one-time login link will no longer work"
+    echo "NOTE! The initial one-time login link will no longer work."
     sleep 3
-    echo "To access your Aegir control panel once the procedure is complete"
-    sleep 3
-    echo "please run this command to generate the new link:"
+    echo "To access your Aegir control panel after the procedure is finished..."
+    echo "...please generate a new link by running the following command:"
     sleep 3
     echo
     echo "  su -s /bin/bash ${user} -c \"drush @hm uli\""
