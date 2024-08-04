@@ -2490,7 +2490,7 @@ else
       rm -f ${_THIS_LTD_CONF}
     fi
   fi
-  if [ -L "/bin/sh" ]; then
+  if [ -L "/bin/sh" ] && [ ! -e "/run/octopus_install_run.pid" ]; then
     _WEB_SH=$(readlink -n /bin/sh 2>&1)
     _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
     if [ -x "/bin/websh" ]; then
