@@ -1098,7 +1098,7 @@ satellite_tune_fpm_workers() {
     fi
   fi
   if [ -e "/root/.dev.server.cnf" ]; then
-    echo "DEBUG: _L_PHP_FPM_WORKERS is ${_L_PHP_FPM_WORKERS}"
+    echo "DEBUG: _L_PHP_FPM_WORKERS is ${_L_PHP_FPM_WORKERS}" >>/var/backups/ltd/log/users-${_NOW}.log
   fi
 }
 #
@@ -1865,8 +1865,8 @@ switch_php() {
               _PHP_FPM_WORKERS=4
             fi
             if [ -e "/root/.dev.server.cnf" ]; then
-              echo "DEBUG: _LIM_FPM is ${_LIM_FPM}"
-              echo "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}"
+              echo "DEBUG: _LIM_FPM is ${_LIM_FPM}" >>/var/backups/ltd/log/users-${_NOW}.log
+              echo "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}" >>/var/backups/ltd/log/users-${_NOW}.log
             fi
             if [ -e "${dscUsr}/log/cores.txt" ]; then
               _CLIENT_CORES=$(cat ${dscUsr}/log/cores.txt 2>&1)
@@ -1887,9 +1887,9 @@ switch_php() {
           fi
           _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
           if [ -e "/root/.dev.server.cnf" ]; then
-            echo "DEBUG: _LIM_FPM is ${_LIM_FPM}"
-            echo "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}"
-            echo "DEBUG: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}"
+            echo "DEBUG: _LIM_FPM is ${_LIM_FPM}" >>/var/backups/ltd/log/users-${_NOW}.log
+            echo "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}" >>/var/backups/ltd/log/users-${_NOW}.log
+            echo "DEBUG: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}" >>/var/backups/ltd/log/users-${_NOW}.log
           fi
           if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
             _DO_NOTHING=YES
@@ -2044,9 +2044,9 @@ switch_php() {
                 wait
               fi
               if [ -e "/root/.dev.server.cnf" ]; then
-                echo "DEBUG: _POOL is ${_POOL}"
-                echo "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}"
-                echo "DEBUG: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}"
+                echo "DEBUG: _POOL is ${_POOL}" >>/var/backups/ltd/log/users-${_NOW}.log
+                echo "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}" >>/var/backups/ltd/log/users-${_NOW}.log
+                echo "DEBUG: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}" >>/var/backups/ltd/log/users-${_NOW}.log
               fi
               if [ ! -z "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge "8" ]; then
                 sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
