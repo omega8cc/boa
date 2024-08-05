@@ -12,6 +12,7 @@ debug_proc() {
     msg "DBLS: `ls -la /usr/bin/sh`"
     msg "DBLS: `ls -la /bin/sh`"
     msg "DBLS: `ls -la /run/octopus_install_run.pid`"
+    msg "DBLS: `ls -la /data/disk/${_USER}/.tmp/cache`"
   fi
 }
 

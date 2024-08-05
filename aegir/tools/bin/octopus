@@ -744,6 +744,7 @@ up_action_all() {
         sleep $n
         rm -f ${vBs}/${tocName}
         rm -f ${vBs}/${tocIncO}
+        rm -rf ${User}/.tmp/cache
         echo "Done for ${User}"
       else
         echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
@@ -817,6 +818,7 @@ up_action_one() {
       sleep 3
       rm -f ${vBs}/${tocName}
       rm -f ${vBs}/${tocIncO}
+      rm -rf ${User}/.tmp/cache
       echo Done for ${User}
     else
       echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}

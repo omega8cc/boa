@@ -1283,6 +1283,7 @@ init_setup() {
     [ ! -e "/run/octopus_install_run.pid" ] && touch /run/octopus_install_run.pid
     sleep 3
     octopus_install
+    rm -rf /data/disk/${user}/.tmp/cache
   fi
   if [ "${output}" = "logged" ]; then
     send_report
@@ -1294,6 +1295,7 @@ init_setup() {
     # Execute post-install octopus upgrade and exit
     touch /data/disk/${user}/static/control/ssl-live-mode.info
     rm -f /data/disk/${user}/tools/le/.ctrl/ssl-demo-mode.pid
+    rm -rf /data/disk/${user}/.tmp/cache
     echo
     if [ ! -e "/root/.dont.upgrade.octopus.on.install.cnf" ]; then
       echo "Invoking hosting-dispatch/hosting-tasks to complete the installation"
@@ -1332,6 +1334,7 @@ init_setup() {
     echo "Bye!"
     echo
     if [ ! -e "/root/.dont.upgrade.octopus.on.install.cnf" ]; then
+      rm -rf /data/disk/${user}/.tmp/cache
       nohup /opt/local/bin/octopus up-${tRee} ${user} force > /dev/null 2>&1 &
     fi
     sleep 1
