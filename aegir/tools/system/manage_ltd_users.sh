@@ -95,13 +95,6 @@ count_cpu() {
   fi
 }
 
-count_ram() {
-  _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
-  if [ "${_RESERVED_RAM}" -gt "0" ]; then
-    _RAM=$(( _RAM - _RESERVED_RAM ))
-  fi
-}
-
 find_fast_mirror_early() {
   isNetc=$(which netcat 2>&1)
   if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
