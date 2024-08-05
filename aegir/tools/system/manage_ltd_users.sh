@@ -1955,18 +1955,6 @@ switch_php() {
                 sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
                   /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
                 wait
-              else
-                if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-                  || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-                  || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-                  || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-                  || [ -e "/root/.host8.cnf" ]; then
-                  _DO_NOTHING=YES
-                else
-                  sed -i "s/passthru,//g" \
-                    /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
-                  wait
-                fi
               fi
               if [ ! -z "${_PHP_FPM_TIMEOUT}" ] && [ "${_PHP_FPM_TIMEOUT}" -ge "60" ]; then
                 _PHP_TO="${_PHP_FPM_TIMEOUT}s"
