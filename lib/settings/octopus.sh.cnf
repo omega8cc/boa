@@ -646,6 +646,9 @@ export tRee="${tRee}"
 ### Determine correct _APT_UPDATE
 ###
 os_detection_minimal() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "PROC: os_detection_minimal in octopus"
+  fi
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
@@ -662,6 +665,9 @@ os_detection_minimal
 ### Apt cleanup
 ###
 apt_clean_update() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "PROC: apt_clean_update in octopus"
+  fi
   #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
   if [ -e "/root/.dev.server.cnf" ]; then
@@ -676,6 +682,9 @@ apt_clean_update() {
 ### Find the fastest mirror to use for downloads
 ###
 find_fast_mirror_cnf() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "PROC: find_fast_mirror_cnf in octopus"
+  fi
   if [ -x "/usr/sbin/unbound-control" ] \
     && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     unbound-control reload &> /dev/null
@@ -724,6 +733,9 @@ find_fast_mirror_cnf() {
 ### Verify upgrade keys
 ###
 verify_upgrade_keys() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "PROC: verify_upgrade_keys in octopus"
+  fi
   if [ "${tRee}" = "pro" ] || [ "${tRee}" = "dev" ]; then
     _allw=NO
     urlEnc="http://${_USE_MIR}/enc/2024"
@@ -774,6 +786,9 @@ verify_upgrade_keys() {
 ### Extract archive
 ###
 extract_archive_pre() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "PROC: extract_archive_pre in octopus"
+  fi
   if [ ! -z "$1" ]; then
     case $1 in
       *.tar.bz2)   tar xjf $1    ;;
@@ -799,6 +814,9 @@ extract_archive_pre() {
 ### Download and extract archive from dev/src mirror
 ###
 get_dev_src_pre() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "PROC: get_dev_src_pre in octopus"
+  fi
   if [ ! -z "$1" ]; then
     curl ${crlGet} "${urlDev}/src/$1" -o "$1"
     if [ -e "$1" ]; then
