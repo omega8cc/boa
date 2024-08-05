@@ -1097,6 +1097,9 @@ satellite_tune_fpm_workers() {
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
   fi
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "DEBUG: _L_PHP_FPM_WORKERS is ${_L_PHP_FPM_WORKERS}"
+  fi
 }
 #
 # Disable New Relic per Octopus instance.
@@ -1830,8 +1833,8 @@ switch_php() {
               fi
             elif [ "${_CLIENT_OPTION}" = "LITE" ]; then
               if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-                  _LIM_FPM=32
-                  _PHP_FPM_WORKERS=64
+                _LIM_FPM=32
+                _PHP_FPM_WORKERS=64
               fi
             elif [ "${_CLIENT_OPTION}" = "PHANTOM" ]; then
               if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
@@ -1861,6 +1864,10 @@ switch_php() {
               _LIM_FPM=2
               _PHP_FPM_WORKERS=4
             fi
+            if [ -e "/root/.dev.server.cnf" ]; then
+              echo "DEBUG: _LIM_FPM is ${_LIM_FPM}"
+              echo "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}"
+            fi
             if [ -e "${dscUsr}/log/cores.txt" ]; then
               _CLIENT_CORES=$(cat ${dscUsr}/log/cores.txt 2>&1)
               _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
@@ -1879,6 +1886,11 @@ switch_php() {
             fi
           fi
           _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
+          if [ -e "/root/.dev.server.cnf" ]; then
+            echo "DEBUG: _LIM_FPM is ${_LIM_FPM}"
+            echo "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}"
+            echo "DEBUG: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}"
+          fi
           if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
             _DO_NOTHING=YES
           else
@@ -2030,6 +2042,11 @@ switch_php() {
                 sed -i "s/180s/${_PHP_TO}/g" \
                   /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
                 wait
+              fi
+              if [ -e "/root/.dev.server.cnf" ]; then
+                echo "DEBUG: _POOL is ${_POOL}"
+                echo "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}"
+                echo "DEBUG: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}"
               fi
               if [ ! -z "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge "8" ]; then
                 sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \

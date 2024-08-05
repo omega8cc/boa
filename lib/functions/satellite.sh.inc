@@ -137,6 +137,9 @@ satellite_tune_fpm_workers() {
       _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
     fi
   fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "DEBUG: _L_PHP_FPM_WORKERS is ${_L_PHP_FPM_WORKERS}"
+  fi
 }
 
 #
@@ -325,6 +328,9 @@ satellite_tune_fpm_config() {
   fi
   satellite_tune_fpm_workers
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "DEBUG: _LIM_FPM is ${_LIM_FPM}"
+  fi
   if [[ "${_THISHOST}" =~ ".host8." ]] \
     || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
     || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
@@ -367,6 +373,10 @@ satellite_tune_fpm_config() {
       _LIM_FPM=2
       _PHP_FPM_WORKERS=4
     fi
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "DEBUG: _LIM_FPM is ${_LIM_FPM}"
+      msg "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}"
+    fi
     if [ -e "${_ROOT}/log/cores.txt" ]; then
       _CLIENT_CORES=$(cat ${_ROOT}/log/cores.txt 2>&1)
       _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
@@ -385,6 +395,11 @@ satellite_tune_fpm_config() {
     fi
   fi
   _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "DEBUG: _LIM_FPM is ${_LIM_FPM}"
+    msg "DEBUG: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}"
+    msg "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}"
+  fi
   if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
     _DO_NOTHING=YES
   else
@@ -393,6 +408,11 @@ satellite_tune_fpm_config() {
       && [ "${_PHP_FPM_WORKERS}" -gt "0" ]; then
       _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
     fi
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "DEBUG: _LIM_FPM is ${_LIM_FPM}"
+    msg "DEBUG: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}"
+    msg "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}"
   fi
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
   if [ -z "${_PHP_SV}" ]; then
