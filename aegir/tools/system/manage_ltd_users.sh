@@ -64,13 +64,6 @@ _CHECK_HOST=$(uname -n 2>&1)
 usrGroup=users
 _WEBG=www-data
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-_RUBY_VRN=3.3.4
-_VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "-beng" ]]; then
-  _VMFAMILY="VS"
-else
-  _VMFAMILY="XEN"
-fi
 if [ -x "/usr/bin/gpg2" ]; then
   _GPG=gpg2
 else
@@ -99,6 +92,13 @@ count_cpu() {
   fi
   if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt "1" ]; then
     _CPU_NR=1
+  fi
+}
+
+count_ram() {
+  _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
+  if [ "${_RESERVED_RAM}" -gt "0" ]; then
+    _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
 }
 
@@ -1029,78 +1029,99 @@ php_cli_drush_update() {
   fi
   echo OK > ${dscUsr}/static/control/.ctrl.cli.${_X_SE}.pid
 }
+
 #
-# Tune FPM workers.
-satellite_tune_fpm_workers() {
-  _VM_TEST=$(uname -a 2>&1)
-  _AWS_TEST_A=$(dmidecode -s bios-version 2>&1)
-  _AWS_TEST_B=$(head -c 3 /sys/hypervisor/uuid 2>&1)
-  if [ -e "/proc/bean_counters" ]; then
-    _VMFAMILY="VZ"
-  elif [ -e "/root/.tg.cnf" ]; then
-    _VMFAMILY="TG"
+# Set default FPM workers.
+satellite_default_fpm_workers() {
+  count_cpu
+
+  [ -z "${_PHP_FPM_WORKERS}" ] && _PHP_FPM_WORKERS=AUTO
+  [ "${_PHP_FPM_WORKERS}" -lt "2" ] && _PHP_FPM_WORKERS=AUTO
+  [ "${_PHP_FPM_WORKERS}" != "AUTO" ] && _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
+  if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+    _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
   else
-    _VMFAMILY="XEN"
-  fi
-  if [[ "${_VM_TEST}" =~ "-beng" ]]; then
-    _VMFAMILY="VS"
-  fi
-  if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
-    || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
-    _VMFAMILY="AWS"
-  fi
-  _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
-  if [ "${_RESERVED_RAM}" -gt "0" ]; then
-    _RAM=$(( _RAM - _RESERVED_RAM ))
-  fi
-  _USE=$(( _RAM / 4 ))
-  if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
-    if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-    else
-      _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-    fi
-  elif [ "${_USE}" -ge "2048" ]; then
-    if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
-      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-      else
-        _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-      fi
-    elif [ "${_VMFAMILY}" = "VS" ] || [ "${_VMFAMILY}" = "TG" ]; then
-      if [ -e "/boot/grub/grub.cfg" ] \
-        || [ -e "/boot/grub/menu.lst" ] \
-        || [ -e "/root/.tg.cnf" ]; then
-        if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-        else
-          _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-        fi
-      else
-        if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-        else
-          _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-        fi
-      fi
-    else
-      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-      else
-        _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-      fi
-    fi
-  else
-    if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-    else
-      _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-    fi
+    _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
   fi
   if [ -e "/root/.dev.server.cnf" ]; then
     echo "DEBUG: _L_PHP_FPM_WORKERS is ${_L_PHP_FPM_WORKERS}" >>/var/backups/ltd/log/users-${_NOW}.log
   fi
+
+  [ -z "${_PHP_FPM_TIMEOUT}" ] && _PHP_FPM_TIMEOUT=AUTO
+  [ "${_PHP_FPM_TIMEOUT}" != "AUTO" ] && _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
+  [ "${_PHP_FPM_TIMEOUT}" = "AUTO" ] && _PHP_FPM_TIMEOUT=180
+  [ "${_PHP_FPM_TIMEOUT}" -lt "60" ] && _PHP_FPM_TIMEOUT=60
+  [ "${_PHP_FPM_TIMEOUT}" -gt "180" ] && _PHP_FPM_TIMEOUT=180
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "DEBUG: _PHP_FPM_TIMEOUT is ${_PHP_FPM_TIMEOUT}" >>/var/backups/ltd/log/users-${_NOW}.log
+  fi
 }
+
+#
+# Tune FPM workers.
+satellite_tune_fpm_workers() {
+  satellite_default_fpm_workers
+
+  _LIM_FPM="${_L_PHP_FPM_WORKERS}"
+
+  if [ ! -z "${_CLIENT_OPTION}" ]; then
+    if [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
+      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+        _LIM_FPM=96
+      fi
+    elif [ "${_CLIENT_OPTION}" = "LITE" ]; then
+      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+        _LIM_FPM=32
+      fi
+    elif [ "${_CLIENT_OPTION}" = "PHANTOM" ]; then
+      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+        _LIM_FPM=16
+      fi
+    elif [ "${_CLIENT_OPTION}" = "POWER" ] \
+      || [ "${_CLIENT_OPTION}" = "BUS" ]; then
+      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+        _LIM_FPM=8
+      fi
+    elif [ "${_CLIENT_OPTION}" = "EDGE" ] \
+      || [ "${_CLIENT_OPTION}" = "SSD" ] \
+      || [ "${_CLIENT_OPTION}" = "CLASSIC" ]; then
+      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+        _LIM_FPM=2
+      fi
+    elif [ "${_CLIENT_OPTION}" = "MINI" ] \
+      || [ "${_CLIENT_OPTION}" = "MICRO" ]; then
+      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+        _LIM_FPM=1
+      fi
+    else
+      _LIM_FPM=2
+    fi
+  fi
+
+  if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge "1" ]; then
+    if [ -e "${dscUsr}/log/cores.txt" ]; then
+      _CLIENT_CORES=$(cat ${dscUsr}/log/cores.txt 2>&1)
+      _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
+    fi
+    _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
+    if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge "1" ]; then
+      _LIM_FPM=$(( _LIM_FPM *= _CLIENT_CORES ))
+    fi
+  fi
+
+  if [ "${_LIM_FPM}" -gt "100" ]; then
+    _LIM_FPM=100
+  fi
+
+  _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
+
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "DEBUG: _LIM_FPM is ${_LIM_FPM}" >>/var/backups/ltd/log/users-${_NOW}.log
+    echo "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}" >>/var/backups/ltd/log/users-${_NOW}.log
+    echo "DEBUG: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}" >>/var/backups/ltd/log/users-${_NOW}.log
+  fi
+}
+
 #
 # Disable New Relic per Octopus instance.
 disable_newrelic() {
@@ -1821,85 +1842,6 @@ switch_php() {
         if [ ! -z "${_T_FPM_VRN}" ] \
           && [ "${_NEW_FPM_SETUP}" = "YES" ]; then
           satellite_tune_fpm_workers
-          _LIM_FPM="${_L_PHP_FPM_WORKERS}"
-          if [[ "${_THISHOST}" =~ ".host8." ]] \
-            || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-            || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-            || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
-            if [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
-              if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-                _LIM_FPM=96
-                _PHP_FPM_WORKERS=192
-              fi
-            elif [ "${_CLIENT_OPTION}" = "LITE" ]; then
-              if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-                _LIM_FPM=32
-                _PHP_FPM_WORKERS=64
-              fi
-            elif [ "${_CLIENT_OPTION}" = "PHANTOM" ]; then
-              if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-                _LIM_FPM=16
-                _PHP_FPM_WORKERS=32
-              fi
-            elif [ "${_CLIENT_OPTION}" = "POWER" ] \
-              || [ "${_CLIENT_OPTION}" = "BUS" ]; then
-              if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-                _LIM_FPM=8
-                _PHP_FPM_WORKERS=16
-              fi
-            elif [ "${_CLIENT_OPTION}" = "EDGE" ] \
-              || [ "${_CLIENT_OPTION}" = "SSD" ] \
-              || [ "${_CLIENT_OPTION}" = "CLASSIC" ]; then
-              if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-                _LIM_FPM=2
-                _PHP_FPM_WORKERS=4
-              fi
-            elif [ "${_CLIENT_OPTION}" = "MINI" ] \
-              || [ "${_CLIENT_OPTION}" = "MICRO" ]; then
-              if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-                _LIM_FPM=1
-                _PHP_FPM_WORKERS=2
-              fi
-            else
-              _LIM_FPM=2
-              _PHP_FPM_WORKERS=4
-            fi
-            if [ -e "/root/.dev.server.cnf" ]; then
-              echo "DEBUG: _LIM_FPM is ${_LIM_FPM}" >>/var/backups/ltd/log/users-${_NOW}.log
-              echo "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}" >>/var/backups/ltd/log/users-${_NOW}.log
-            fi
-            if [ -e "${dscUsr}/log/cores.txt" ]; then
-              _CLIENT_CORES=$(cat ${dscUsr}/log/cores.txt 2>&1)
-              _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
-            fi
-            _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
-            if [ ! -z "${_CLIENT_CORES}" ] \
-              && [ "${_CLIENT_CORES}" -gt "0" ]; then
-              _LIM_FPM=$(( _LIM_FPM *= _CLIENT_CORES ))
-              _PHP_FPM_WORKERS=$(( _PHP_FPM_WORKERS *= _CLIENT_CORES ))
-            fi
-            if [ "${_LIM_FPM}" -gt "100" ]; then
-              _LIM_FPM=100
-            fi
-            if [ "${_PHP_FPM_WORKERS}" -gt "200" ]; then
-              _PHP_FPM_WORKERS=200
-            fi
-          fi
-          _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
-          if [ -e "/root/.dev.server.cnf" ]; then
-            echo "DEBUG: _LIM_FPM is ${_LIM_FPM}" >>/var/backups/ltd/log/users-${_NOW}.log
-            echo "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}" >>/var/backups/ltd/log/users-${_NOW}.log
-            echo "DEBUG: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}" >>/var/backups/ltd/log/users-${_NOW}.log
-          fi
-          if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-            _DO_NOTHING=YES
-          else
-            _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
-            if [ ! -z "${_PHP_FPM_WORKERS}" ] \
-              && [ "${_PHP_FPM_WORKERS}" -gt "0" ]; then
-              _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
-            fi
-          fi
           sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_T_FPM_VRN}/g" \
             /root/.${_USER}.octopus.cnf &> /dev/null
           wait
@@ -2026,34 +1968,13 @@ switch_php() {
                   wait
                 fi
               fi
-              if [ "${_PHP_FPM_TIMEOUT}" = "AUTO" ] \
-                || [ -z "${_PHP_FPM_TIMEOUT}" ]; then
-                _PHP_FPM_TIMEOUT=180
-              fi
-              _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
-              if [ "${_PHP_FPM_TIMEOUT}" -lt "60" ]; then
-                _PHP_FPM_TIMEOUT=60
-              fi
-              if [ "${_PHP_FPM_TIMEOUT}" -gt "180" ]; then
-                _PHP_FPM_TIMEOUT=180
-              fi
-              if [ ! -z "${_PHP_FPM_TIMEOUT}" ]; then
+              if [ ! -z "${_PHP_FPM_TIMEOUT}" ] && [ "${_PHP_FPM_TIMEOUT}" -ge "60" ]; then
                 _PHP_TO="${_PHP_FPM_TIMEOUT}s"
-                sed -i "s/180s/${_PHP_TO}/g" \
-                  /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+                sed -i "s/180s/${_PHP_TO}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
                 wait
               fi
-              if [ -e "/root/.dev.server.cnf" ]; then
-                echo "DEBUG: _POOL is ${_POOL}" >>/var/backups/ltd/log/users-${_NOW}.log
-                echo "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}" >>/var/backups/ltd/log/users-${_NOW}.log
-                echo "DEBUG: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}" >>/var/backups/ltd/log/users-${_NOW}.log
-              fi
-              if [ ! -z "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge "8" ]; then
+              if [ ! -z "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge "2" ]; then
                 sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
-                  /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
-                wait
-              else
-                sed -i "s/pm.max_children =.*/pm.max_children = 8/g" \
                   /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
                 wait
               fi
