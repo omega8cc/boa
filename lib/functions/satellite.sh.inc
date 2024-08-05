@@ -9,9 +9,9 @@ export rlsn="${rlsn}"
 # Check key things in every proc.
 debug_proc() {
   if [ -e "/root/.dev.server.cnf" ]; then
-    msg "DBLS: `ls -la /usr/bin/sh`
-    msg "DBLS: `ls -la /bin/sh`
-    msg "DBLS: `ls -la /run/octopus_install_run.pid`
+    msg "DBLS: `ls -la /usr/bin/sh`"
+    msg "DBLS: `ls -la /bin/sh`"
+    msg "DBLS: `ls -la /run/octopus_install_run.pid`"
   fi
 }
 
