@@ -573,8 +573,15 @@ tune_web_server_config() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: tune_web_server_config"
   fi
+  # Set _PHP_FPM_WORKERS to AUTO if it is empty
   [ -z "${_PHP_FPM_WORKERS}" ] && _PHP_FPM_WORKERS=AUTO
-  [ "${_PHP_FPM_WORKERS}" -lt "2" ] && _PHP_FPM_WORKERS=AUTO
+  # If _PHP_FPM_WORKERS is not AUTO and not empty, then check if it is less than 1
+  if [ "${_PHP_FPM_WORKERS}" != "AUTO" ] && [ -n "${_PHP_FPM_WORKERS}" ]; then
+    if [ "${_PHP_FPM_WORKERS}" -lt 1 ] 2>/dev/null; then
+      _PHP_FPM_WORKERS=AUTO
+    fi
+  fi
+  # If _PHP_FPM_WORKERS is not AUTO, remove non-numeric characters
   [ "${_PHP_FPM_WORKERS}" != "AUTO" ] && _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
   [ ! -z "${_L_PHP_FPM_WORKERS}" ] && _L_PHP_FPM_WORKERS=${_L_PHP_FPM_WORKERS//[^0-9]/}
   [ ! -z "${_L_PHP_FPM_WORKERS}" ] && _LIM_FPM="${_L_PHP_FPM_WORKERS}"
