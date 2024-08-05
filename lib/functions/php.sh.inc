@@ -573,7 +573,11 @@ tune_web_server_config() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: tune_web_server_config"
   fi
-  _LIM_FPM="${_L_PHP_FPM_WORKERS}"
+  [ -z "${_PHP_FPM_WORKERS}" ] && _PHP_FPM_WORKERS=AUTO
+  [ "${_PHP_FPM_WORKERS}" -lt "2" ] && _PHP_FPM_WORKERS=AUTO
+  [ "${_PHP_FPM_WORKERS}" != "AUTO" ] && _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
+  [ ! -z "${_L_PHP_FPM_WORKERS}" ] && _L_PHP_FPM_WORKERS=${_L_PHP_FPM_WORKERS//[^0-9]/}
+  [ ! -z "${_L_PHP_FPM_WORKERS}" ] && _LIM_FPM="${_L_PHP_FPM_WORKERS}"
   if [ "${_LIM_FPM}" -lt "48" ]; then
     if [[ "${_THISHOST}" =~ ".host8." ]] \
       || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
@@ -582,14 +586,21 @@ tune_web_server_config() {
       _LIM_FPM=48
     fi
   fi
-  _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
-  if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-    _DO_NOTHING=YES
-  else
+  if [ "${_PHP_FPM_WORKERS}" != "AUTO" ]; then
     _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
-    if [ ! -z "${_PHP_FPM_WORKERS}" ] && [ "${_PHP_FPM_WORKERS}" -gt "0" ]; then
-      _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
+    if [ ! -z "${_PHP_FPM_WORKERS}" ] && [ "${_PHP_FPM_WORKERS}" -ge "1" ]; then
+      _LIM_FPM="${_PHP_FPM_WORKERS}"
     fi
+  fi
+  if [ "${_LIM_FPM}" -gt "100" ]; then
+    _LIM_FPM=100
+  fi
+  _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "TUNE: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}"
+    msg "TUNE: _L_PHP_FPM_WORKERS is ${_L_PHP_FPM_WORKERS}"
+    msg "TUNE: _LIM_FPM is ${_LIM_FPM}"
+    msg "TUNE: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}"
   fi
   _PHP_V="83 82 81 80 74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "5.7" ]; then
