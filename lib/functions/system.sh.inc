@@ -558,6 +558,9 @@ tune_memory_limits() {
     || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
     _VMFAMILY="AWS"
   fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "TUNE: _VMFAMILY is ${_VMFAMILY}"
+  fi
   _CPU_MX=$(( _CPU_NR * 2 ))
   if [ "${_CPU_MX}" -lt "4" ]; then
     _CPU_MX=4
@@ -580,11 +583,27 @@ tune_memory_limits() {
       _CPU_VS=8
     fi
   fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "TUNE: PrTestPower is ${PrTestPower}"
+    msg "TUNE: PrTestPhantom is ${PrTestPhantom}"
+    msg "TUNE: PrTestCluster is ${PrTestCluster}"
+  fi
   _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
   if [ "${_RESERVED_RAM}" -gt "0" ]; then
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "TUNE: _CPU_NR is ${_CPU_NR}"
+    msg "TUNE: _CPU_MX is ${_CPU_MX}"
+    msg "TUNE: _CPU_TG is ${_CPU_TG}"
+    msg "TUNE: _CPU_VS is ${_CPU_VS}"
+    msg "TUNE: _RAM is ${_RAM}"
+    msg "TUNE: _RESERVED_RAM is ${_RESERVED_RAM}"
+  fi
   _USE=$(( _RAM / 4 ))
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "TUNE: _USE is ${_USE}"
+  fi
   if [ "${_VMFAMILY}" = "VS" ] \
     || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
     || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
@@ -608,6 +627,11 @@ tune_memory_limits() {
   _TMP_SQL="${_USE_SQL}M"
   _SRT_SQL=$(( _USE_SQL * 2 ))
   _SRT_SQL="${_SRT_SQL}K"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "TUNE: _USE_SQL is ${_USE_SQL}"
+    msg "TUNE: _TMP_SQL is ${_TMP_SQL}"
+    msg "TUNE: _SRT_SQL is ${_SRT_SQL}"
+  fi
   if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
     _USE_PHP=1024
     _USE_OPC=1024
@@ -746,6 +770,19 @@ tune_memory_limits() {
   if [ "${_USE_FPM}" -lt "1024" ]; then
     _USE_FPM=1024
   fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "TUNE: _CPU_NR is ${_CPU_NR}"
+    msg "TUNE: _L_NGX_WRKS is ${_L_NGX_WRKS}"
+    msg "TUNE: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}"
+    msg "TUNE: _L_PHP_FPM_WORKERS is ${_L_PHP_FPM_WORKERS}"
+    msg "TUNE: _USE_PHP is ${_USE_PHP}"
+    msg "TUNE: _USE_OPC is ${_USE_OPC}"
+    msg "TUNE: _USE_CLI is ${_USE_CLI}"
+    msg "TUNE: _QCE_SQL is ${_QCE_SQL}"
+    msg "TUNE: _RND_SQL is ${_RND_SQL}"
+    msg "TUNE: _JBF_SQL is ${_JBF_SQL}"
+    msg "TUNE: _MXC_SQL is ${_MXC_SQL}"
+  fi
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
     mkdir -p /var/xdrago/conf
   fi
@@ -779,6 +816,9 @@ tune_memory_limits() {
     else
       _UXC_SQL=$(echo "scale=0; ${_MXC_SQL}/2" | bc 2>&1)
     fi
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "TUNE: _UXC_SQL is ${_UXC_SQL}"
+    fi
     sed -i "s/= 191/= ${_UXC_SQL}/g"                                              /etc/mysql/my.cnf &> /dev/null
     wait
     sed -i "s/= 292/= ${_MXC_SQL}/g"                                              /etc/mysql/my.cnf &> /dev/null
@@ -806,9 +846,17 @@ tune_memory_limits() {
   _MAX_MEM_REDIS=$(( _RAM / 8 ))
   _MAX_REDIS="${_MAX_MEM_REDIS}MB"
   sed -i "s/^maxmemory .*/maxmemory ${_MAX_REDIS}/g" /etc/redis/redis.conf &> /dev/null
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "TUNE: _MAX_MEM_REDIS is ${_MAX_MEM_REDIS}"
+    msg "TUNE: _MAX_REDIS is ${_MAX_REDIS}"
+  fi
 
   _USE_JETTY_MEM=$(( _RAM / 8 ))
   _USE_JETTY="-Xmx${_USE_JETTY_MEM}m"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "TUNE: _USE_JETTY_MEM is ${_USE_JETTY_MEM}"
+    msg "TUNE: _USE_JETTY is ${_USE_JETTY}"
+  fi
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ]; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms64m ${_USE_JETTY} -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9
   fi
@@ -821,6 +869,10 @@ tune_memory_limits() {
 
   _USE_SOLR_MEM=$(( _RAM / 8 ))
   _USE_SOLR="-Xmx${_USE_SOLR_MEM}m"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "TUNE: _USE_SOLR_MEM is ${_USE_SOLR_MEM}"
+    msg "TUNE: _USE_SOLR is ${_USE_SOLR}"
+  fi
   if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
     sed -i "s/^SOLR_HEAP/#SOLR_HEAP/g" /etc/default/solr7.in.sh &> /dev/null
     wait
