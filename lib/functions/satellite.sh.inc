@@ -400,9 +400,7 @@ satellite_tune_fpm_config() {
     msg "DEBUG: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}"
     msg "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}"
   fi
-  if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-    _DO_NOTHING=YES
-  else
+  if [ "${_PHP_FPM_WORKERS}" != "AUTO" ]; then
     _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
     if [ ! -z "${_PHP_FPM_WORKERS}" ] \
       && [ "${_PHP_FPM_WORKERS}" -gt "0" ]; then
