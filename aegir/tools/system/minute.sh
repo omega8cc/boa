@@ -135,6 +135,7 @@ check_unbound() {
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
     [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
     resolvconf -u &> /dev/null
+    killall -9 unbound &> /dev/null
     service unbound restart &> /dev/null
     unbound-control reload &> /dev/null
   fi
@@ -149,6 +150,7 @@ check_unbound() {
       if [[ "${_THIS_DNS_TEST}" =~ "no servers could be reached" ]]; then
         service unbound stop &> /dev/null
         sleep 1
+        killall -9 unbound &> /dev/null
         renice ${_B_NICE} -p $$ &> /dev/null
         perl /var/xdrago/proc_num_ctrl.cgi
       fi
@@ -163,6 +165,7 @@ check_unbound() {
       echo "nameserver 8.8.8.8" >> /etc/resolv.conf
       echo "nameserver 8.8.4.4" >> /etc/resolv.conf
       [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
+      killall -9 unbound &> /dev/null
       service unbound restart &> /dev/null
       unbound-control reload &> /dev/null
     fi
