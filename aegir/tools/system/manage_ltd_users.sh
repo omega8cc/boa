@@ -1028,9 +1028,17 @@ php_cli_drush_update() {
 satellite_default_fpm_workers() {
   count_cpu
 
+  # Set _PHP_FPM_WORKERS to AUTO if it is empty
   [ -z "${_PHP_FPM_WORKERS}" ] && _PHP_FPM_WORKERS=AUTO
-  [ "${_PHP_FPM_WORKERS}" -lt "2" ] && _PHP_FPM_WORKERS=AUTO
+  # If _PHP_FPM_WORKERS is not AUTO and not empty, then check if it is less than 1
+  if [ "${_PHP_FPM_WORKERS}" != "AUTO" ] && [ -n "${_PHP_FPM_WORKERS}" ]; then
+    if [ "${_PHP_FPM_WORKERS}" -lt 1 ] 2>/dev/null; then
+      _PHP_FPM_WORKERS=AUTO
+    fi
+  fi
+  # If _PHP_FPM_WORKERS is not AUTO, remove non-numeric characters
   [ "${_PHP_FPM_WORKERS}" != "AUTO" ] && _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
+
   if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
     _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
   else
@@ -1040,11 +1048,20 @@ satellite_default_fpm_workers() {
     echo "DEBUG: _L_PHP_FPM_WORKERS is ${_L_PHP_FPM_WORKERS}" >>/var/backups/ltd/log/users-${_NOW}.log
   fi
 
+  # Set _PHP_FPM_TIMEOUT to AUTO if it is empty
   [ -z "${_PHP_FPM_TIMEOUT}" ] && _PHP_FPM_TIMEOUT=AUTO
-  [ "${_PHP_FPM_TIMEOUT}" != "AUTO" ] && _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
-  [ "${_PHP_FPM_TIMEOUT}" = "AUTO" ] && _PHP_FPM_TIMEOUT=180
-  [ "${_PHP_FPM_TIMEOUT}" -lt "60" ] && _PHP_FPM_TIMEOUT=60
-  [ "${_PHP_FPM_TIMEOUT}" -gt "180" ] && _PHP_FPM_TIMEOUT=180
+  # If _PHP_FPM_TIMEOUT is not AUTO and not empty, then check if it is between 60 and 180
+  if [ "${_PHP_FPM_TIMEOUT}" != "AUTO" ] && [ -n "${_PHP_FPM_TIMEOUT}" ]; then
+    # If _PHP_FPM_TIMEOUT is not AUTO and not empty, remove non-numeric characters
+    [ "${_PHP_FPM_TIMEOUT}" != "AUTO" ] && _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
+    # If _PHP_FPM_TIMEOUT is outside of the allowed range, use either min or max allowed
+    if [ "${_PHP_FPM_TIMEOUT}" -lt 60 ]; then
+      _PHP_FPM_TIMEOUT=60
+    elif [ "${_PHP_FPM_TIMEOUT}" -gt 180 ]; then
+      _PHP_FPM_TIMEOUT=180
+    fi
+  fi
+
   if [ -e "/root/.dev.server.cnf" ]; then
     echo "DEBUG: _PHP_FPM_TIMEOUT is ${_PHP_FPM_TIMEOUT}" >>/var/backups/ltd/log/users-${_NOW}.log
   fi
