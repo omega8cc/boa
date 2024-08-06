@@ -7689,6 +7689,7 @@ lshell_install_upgrade() {
     rm -rf /usr/local/lib/python3.5/dist-packages/lshell*
     rm -rf /usr/local/lib/python3.9/dist-packages/lshell*
     rm -rf /usr/local/lib/python3.11/dist-packages/lshell*
+    rm -rf /usr/local/lib/python3.12/dist-packages/lshell*
     isPythonTwo=$(which python2 2>&1)
     isPythonThree=$(which python3 2>&1)
     if [ -x "${isPythonThree}" ]; then
