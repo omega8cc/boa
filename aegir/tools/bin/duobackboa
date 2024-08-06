@@ -168,6 +168,7 @@ install() {
     mkdir -p /usr/local/lib/python3.5/dist-packages/
     mkdir -p /usr/local/lib/python3.9/dist-packages/
     mkdir -p /usr/local/lib/python3.11/dist-packages/
+    mkdir -p /usr/local/lib/python3.12/dist-packages/
     rm -f /usr/local/bin/duplicity
     apt-get install -y \
         intltool \
@@ -186,10 +187,23 @@ install() {
     elif [ -x "${isPythonTwo}" ]; then
       usePyth=python2
     fi
+    _PYTHON_VRN=3.12.4
     _PYTHON_TEST=$(${usePyth} --version 2>&1)
-    if [[ "${_PYTHON_TEST}" =~ "Python 3." ]]; then
-      python3 -m pip install --user pipx --break-system-packages
-      python3 -m pipx ensurepath
+    if [[ ! "${_PYTHON_TEST}" =~ "Python ${_PYTHON_VRN}" ]]; then
+      cd /var/opt
+      rm -rf Python*
+      wget -q -U iCab ${urlDev}/src/Python-${_PYTHON_VRN}.tgz
+      tar -xzf Python-${_PYTHON_VRN}.tgz
+      cd Python-${_PYTHON_VRN}
+      bash ./configure --with-openssl=/usr/local/ssl3
+      make -j $(nproc) --quiet
+      make install --quiet
+      cd
+    fi
+    _PYTHON_TEST=$(${usePyth} --version 2>&1)
+    if [[ "${_PYTHON_TEST}" =~ "Python 3.12.4" ]]; then
+      python3 -m pip install pipx --break-system-packages --root-user-action ignore
+      pip3 install --upgrade pip --root-user-action ignore
       export PIPX_BIN_DIR=/usr/local/bin
       export PIPX_HOME=/opt/pipx/venvs
       pipx install duplicity
