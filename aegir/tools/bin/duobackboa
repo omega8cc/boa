@@ -216,30 +216,30 @@ install() {
       curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
       tar xzf ${fe}
       cd /var/opt/fasteners-${_FASTENERS_VRN}
-    ${usePyth} setup.py build
-    ${usePyth} setup.py install
-    echo ${_FASTENERS_VRN} > ${_LOGPTH}/fasteners-${_FASTENERS_VRN}.log
-    cd /var/opt
-    fe="boto-${_BOTO_VRN}.tar.gz"
-    curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
-    tar xzf ${fe}
-    cd /var/opt/boto-${_BOTO_VRN}
-    ${usePyth} setup.py build
-    ${usePyth} setup.py install
-    echo ${_BOTO_VRN} > ${_LOGPTH}/boto-${_BOTO_VRN}.log
-    echo "Building duplicity version ${_DUPLICITY_VRN} from sources..."
-    cd /var/opt
-    fe="duplicity-${_DUPLICITY_VRN}.tar.gz"
-    curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
-    tar xzf ${fe}
-    rm -rf /usr/local/lib/python*/dist-packages/duplicity*
-    cd /var/opt/duplicity-${_DUPLICITY_VRN}
-    ${usePyth} setup.py build
-    ${usePyth} setup.py install
+      ${usePyth} setup.py build
+      ${usePyth} setup.py install
+      echo ${_FASTENERS_VRN} > ${_LOGPTH}/fasteners-${_FASTENERS_VRN}.log
+      cd /var/opt
+      fe="boto-${_BOTO_VRN}.tar.gz"
+      curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
+      tar xzf ${fe}
+      cd /var/opt/boto-${_BOTO_VRN}
+      ${usePyth} setup.py build
+      ${usePyth} setup.py install
+      echo ${_BOTO_VRN} > ${_LOGPTH}/boto-${_BOTO_VRN}.log
+      echo "Building duplicity version ${_DUPLICITY_VRN} from sources..."
+      cd /var/opt
+      fe="duplicity-${_DUPLICITY_VRN}.tar.gz"
+      curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
+      tar xzf ${fe}
+      rm -rf /usr/local/lib/python*/dist-packages/duplicity*
+      cd /var/opt/duplicity-${_DUPLICITY_VRN}
+      ${usePyth} setup.py build
+      ${usePyth} setup.py install
       apt_clean_update
       apt-get install python-pip -y
       pip install awscli
-    cd
+      cd
     fi
     rm -rf /var/opt/{boto*,duplicity*}
     echo "Installation complete!"
