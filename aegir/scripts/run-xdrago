@@ -106,6 +106,45 @@ load_control() {
   _O_LOAD_SPR=$(( 99 * _CPU_SPIDER_RATIO ))
 }
 
+# Remove dangerous stuff from the string.
+sanitize_string() {
+  echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'
+}
+
+# Generate new sftp password and update expiration date
+if_sftp_password_update() {
+  upCtr="/data/disk/${_H_USER}/static/control/run-sftp-password-update.pid"
+  if [ -e "${upCtr}" ]; then
+    sftpUser="${_H_USER}.ftp"
+    rm -f ${upCtr}
+    _PWD_CHARS=64
+    _RANDPASS_TEST=$(randpass -V 2>&1)
+    if [[ "${_RANDPASS_TEST}" =~ "alnum" ]]; then
+      _ESC_PASS=$(randpass "${_PWD_CHARS}" alnum 2>&1)
+    else
+      _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
+      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+      _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+    fi
+    _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+    _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
+    if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
+      _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
+      _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
+      _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
+    fi
+    _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
+    if [ ! -z "${_ESC_PASS}" ] && [ "${_LEN_PASS}" -gt "9" ]; then
+      chage -I -1 -m 0 -M 99999 -E -1 ${sftpUser}
+      echo "${sftpUser}:${_ESC_PASS}" | chpasswd
+      chage -M 90 ${sftpUser}
+      chage -W 7 ${sftpUser}
+      chage -d $(date +%Y-%m-%d) ${sftpUser}
+      echo "${_ESC_PASS}" > /data/disk/${_H_USER}/static/control/new-${sftpUser}-password.txt
+    fi
+  fi
+}
+
 if_octopus_upgrade() {
   if [ "${_O_LOAD}" -lt "${_O_LOAD_SPR}" ]; then
     upCtr="/data/disk/${_H_USER}/static/control/run-upgrade.pid"
@@ -141,6 +180,7 @@ if [ -e "/var/run/boa_wait.pid" ] \
 else
   count_cpu
   load_control
+  if_sftp_password_update
   if_octopus_upgrade
   action
   exit 0
