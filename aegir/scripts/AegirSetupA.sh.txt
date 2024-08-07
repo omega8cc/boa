@@ -188,7 +188,7 @@ if [ `whoami` = "root" ]; then
     msg "${_STATUS} A: Aegir automated install script part A"
   fi
 else
-  msg "${_STATUS} A: FATAL ERROR: This script should be ran as a root user"
+  msg "${_STATUS} A: FATAL ERROR: This script should be run as a root user"
   msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
   touch /opt/tmp/status-AegirSetupA-FAIL
   exit 1

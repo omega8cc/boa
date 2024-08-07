@@ -302,7 +302,7 @@ if_running_as_root_barracuda() {
     fi
     sleep 1
   else
-    msg "ERROR: This script should be ran as a root user"
+    msg "ERROR: This script should be run as a root user"
     clean_pid_exit if_running_as_root_barracuda_a
   fi
 }

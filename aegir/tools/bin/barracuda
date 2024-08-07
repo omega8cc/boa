@@ -1481,7 +1481,7 @@ check_root() {
       service postfix restart &> /dev/null
     fi
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     clean_pid_exit check_root_a
   fi
   _DF_TEST=$(df -kTh / -l \

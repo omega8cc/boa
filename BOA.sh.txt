@@ -2812,6 +2812,6 @@ if [ `whoami` = "root" ]; then
     exit 0
   fi
 else
-  echo "ERROR: This script should be ran as a root user"
+  echo "ERROR: This script should be run as a root user"
   exit 1
 fi

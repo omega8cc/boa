@@ -14,7 +14,7 @@ check_root() {
     renice 19 -p $$
     chmod a+w /dev/null
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
 }

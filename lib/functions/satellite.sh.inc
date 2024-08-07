@@ -4564,7 +4564,7 @@ satellite_if_running_as_root_octopus() {
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
   else
-    msg "ERROR: This script should be ran as a root user"
+    msg "ERROR: This script should be run as a root user"
     msg "Bye"
     clean_pid_exit satellite_if_running_as_root_octopus_a
   fi

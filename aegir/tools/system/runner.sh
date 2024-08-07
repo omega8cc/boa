@@ -14,7 +14,7 @@ check_root() {
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
   _DF_TEST=$(df -kTh / -l \

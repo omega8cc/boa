@@ -179,7 +179,7 @@ fi
 ### User check
 ###
 if [ `whoami` = "root" ]; then
-  msg "${_STATUS} B: FATAL ERROR: This script should be ran as a non-root user"
+  msg "${_STATUS} B: FATAL ERROR: This script should be run as a non-root user"
   msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
   touch /opt/tmp/status-AegirSetupB-FAIL
   exit 1

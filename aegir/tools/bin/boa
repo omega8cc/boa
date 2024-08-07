@@ -1577,7 +1577,7 @@ check_root() {
     sed -i "/^$/d" /etc/hosts
     wait
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     clean_pid_exit check_root_a
   fi
   _DF_TEST=$(df -kTh / -l \
@@ -1745,7 +1745,7 @@ display_version() {
     echo "${crlBoav} on ${thiSys} on ${_VIRT_IS}"
     exit 0
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
 }
@@ -2004,7 +2004,7 @@ display_info() {
     fi
     exit 0
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
 }

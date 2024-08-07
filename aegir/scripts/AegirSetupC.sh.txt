@@ -682,7 +682,7 @@ if [ "${_DEBUG_MODE}" = "YES" ]; then
   msg "${_STATUS} C: Aegir automated install script part C"
 fi
 if [ `whoami` = "root" ]; then
-  msg "${_STATUS} C: FATAL ERROR: This script should be ran as a non-root user"
+  msg "${_STATUS} C: FATAL ERROR: This script should be run as a non-root user"
   msg "${_STATUS} C: FATAL ERROR: Aborting AegirSetupC installer NOW!"
   touch /opt/tmp/status-AegirSetupC-FAIL
   exit 1

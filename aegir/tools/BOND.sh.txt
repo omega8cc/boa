@@ -225,7 +225,7 @@ check_root() {
     renice ${_B_NICE} -p $$ &> /dev/null
     ionice -c2 -n7 -p $$
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     clean_pid_exit check_root_a
   fi
 }
@@ -1750,7 +1750,7 @@ if [ `whoami` = "root" ]; then
   count_cpu
   find_fast_mirror_early
 else
-  msg "ERROR: This script should be ran as a root user"
+  msg "ERROR: This script should be run as a root user"
   msg "Bye"
   clean_pid_exit root_a
 fi
