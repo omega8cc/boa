@@ -201,7 +201,7 @@ install() {
       cd
     fi
     _PYTHON_TEST=$(${usePyth} --version 2>&1)
-    if [[ "${_PYTHON_TEST}" =~ "Python 3.12.4" ]]; then
+    if [[ "${_PYTHON_TEST}" =~ "Python ${_PYTHON_VRN}" ]]; then
       python3 -m pip install pipx --break-system-packages --root-user-action ignore
       pip3 install --upgrade pip --root-user-action ignore
       export PIPX_BIN_DIR=/usr/local/bin
