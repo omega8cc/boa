@@ -412,12 +412,11 @@ init_info() {
 }
 
 init_offsystemd() {
-  echo " " >> ${logInt}
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   msg "Running init_offsystemd procedure..." >> ${logInt}
   touch /run/autoinit.pid
-  msg "Launching a quick dist-upgrade to ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
+  msg "Launching a quick dist-upgrade..." >> ${logInt}
   if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
     rm -f /etc/apt/preferences.d/systemd
     echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
@@ -531,7 +530,6 @@ init_cycle() {
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ "${_OLD_SYS}" = "Debian" ]; then
-    msg "Your initial Debian system now runs on ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
     msg "Time for reboot and next upgrade cycle..." >> ${logInt}
     echo " " >> ${logInt}
     sleep 5
