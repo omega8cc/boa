@@ -12,6 +12,7 @@ Certain planned features are likely to be exclusive to **BOA PRO**, as indicated
 
 - **Active AppArmor Support**: Enhanced security and accounts privilege separation (PRO)
 - **Ægir Task for SQL Backup**: Enable classic mysqldump backups for individual site downloads (PRO)
+- **Amazon S3 Alternatives**: Integrate support for Amazon S3 alternatives in backboa and duobackboa (PRO)
 - **Import from Classic Ægir**: Extend xboa to import from remote classic Ægir servers using Nginx or Apache (PRO/LTS)
 - **Percona for MySQL 8.0**: Add support for Percona Server 8.0, necessary for Drupal 11 (PRO)
 - **Rsync on Clone**: Use Rsync to create separate symlinked copies during site clone tasks (PRO)
@@ -21,7 +22,6 @@ Certain planned features are likely to be exclusive to **BOA PRO**, as indicated
 
 - **Ægir Admin Interface**: Transition the Ægir admin interface to Backdrop CMS (PRO/LTS)
 - **Ægir Remote Servers**: Implement the Ægir Remote Servers feature to address user requirements (PRO)
-- **Amazon S3 Alternatives**: Integrate support for Amazon S3 alternatives in backboa and duobackboa (PRO)
 - **Backdrop CMS Support**: Implement Backdrop CMS as a supported platform (PRO/LTS)
 - **BO4D**: Offer a *BOA For Docker* version tailored for local development (PRO/LTS)
 - **DDEV Integration**: Add support for BOA-compatible configurations within DDEV (PRO/LTS)
