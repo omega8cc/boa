@@ -6762,7 +6762,10 @@ sys_packages_install() {
         _APT_XTRA="openjdk-11-jre-headless openjdk-17-jre-headless ca-certificates-java"
       elif [ "${_OS_CODE}" = "daedalus" ]; then
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java"
-        if [ ! -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
+        if [ -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
+          _JAVA_TEST=$(/usr/lib/jvm/java-11-openjdk-amd64/bin/java --version 2>&1)
+        fi
+        if [ ! -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ] || [[ ! "${_JAVA_TEST}" =~ "openjdk 11.0.24" ]]; then
           echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
           echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
           apt_clean_update
