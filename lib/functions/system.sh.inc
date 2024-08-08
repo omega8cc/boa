@@ -5590,7 +5590,7 @@ if_post_major_os_upgrade() {
     fi
     mrun "apt-get install lsb-release ${dstUpArg}" 2> /dev/null
     mrun "apt-get ${dstUpArg} install" 2> /dev/null
-    [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y 2> /dev/null
+    [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y --allow-downgrades 2> /dev/null
     ### Update rsyslog configuration early
     rsyslog_config_update
     ### Reload key services if needed early
