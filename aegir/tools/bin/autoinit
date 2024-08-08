@@ -234,12 +234,6 @@ if [ -e "/run/autoinit.pid" ]; then
   exit 1
 fi
 
-if [ -e "/root/.autoinit-verbose.cnf" ]; then
-  silentMode=verbose
-else
-  silentMode=silent
-fi
-
 if_launch_boa_install() {
   _BOA_LOGFILE="/root/.boa.install.command.cnf"
   if [[ -s "${_BOA_LOGFILE}" ]]; then
@@ -347,11 +341,7 @@ init_pre() {
     echo "OOPS, we need to fix GRUB_CMDLINE_LINUX and reboot first"
     echo "But do not worry, just log in back in five minutes"
     echo 'GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0 memhp_default_state=online"' >> /etc/default/grub
-    if [ "${silentMode}" = "verbose" ]; then
-      grub-mkconfig -o /boot/grub/grub.cfg >> ${logInt}
-    else
-      grub-mkconfig -o /boot/grub/grub.cfg >> ${logSlt}
-    fi
+    grub-mkconfig -o /boot/grub/grub.cfg >> ${logSlt}
     echo "Waiting five seconds before reboot..."
     sleep 5
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
@@ -374,41 +364,22 @@ init_pre() {
       msg "This system is ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
       msg "We need to install some tools early..." >> ${logInt}
       echo " " >> ${logInt}
-      if [ "${silentMode}" = "verbose" ]; then
-        echo " " >> ${logInt}
-        /usr/bin/apt-get update >> ${logInt}
-        _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
-        if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
-          || [ -e "/etc/cloud/cloud.cfg.d" ]; then
-          /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq >> ${logInt}
-          /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq >> ${logInt}
-          /usr/bin/apt-get autoremove --purge -y >> ${logInt}
-          /usr/bin/apt-get autoclean -y >> ${logInt}
-          if [ -e "/etc/cloud/cloud.cfg.d" ]; then
-            mv -f /etc/cloud /var/backups/
-          fi
+      echo " " >> ${logSlt}
+      /usr/bin/apt-get update >> ${logSlt}
+      _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
+      if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
+        || [ -e "/etc/cloud/cloud.cfg.d" ]; then
+        /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq >> ${logSlt}
+        /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq >> ${logSlt}
+        /usr/bin/apt-get autoremove --purge -y >> ${logSlt}
+        /usr/bin/apt-get autoclean -y >> ${logSlt}
+        if [ -e "/etc/cloud/cloud.cfg.d" ]; then
+          mv -f /etc/cloud /var/backups/
         fi
-        ${_INITINS} locales-all aptitude >> ${logInt}
-        ${_INITINS} build-essential curl git >> ${logInt}
-        ${_INITINS} libgd-dev libmagickwand-dev libcurl4-openssl-dev >> ${logInt}
-      else
-        echo " " >> ${logSlt}
-        /usr/bin/apt-get update >> ${logSlt}
-        _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
-        if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
-          || [ -e "/etc/cloud/cloud.cfg.d" ]; then
-          /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq >> ${logSlt}
-          /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq >> ${logSlt}
-          /usr/bin/apt-get autoremove --purge -y >> ${logSlt}
-          /usr/bin/apt-get autoclean -y >> ${logSlt}
-          if [ -e "/etc/cloud/cloud.cfg.d" ]; then
-            mv -f /etc/cloud /var/backups/
-          fi
-        fi
-        ${_INITINS} locales-all aptitude >> ${logSlt}
-        ${_INITINS} build-essential curl git >> ${logSlt}
-        ${_INITINS} libgd-dev libmagickwand-dev libcurl4-openssl-dev >> ${logSlt}
       fi
+      ${_INITINS} locales-all aptitude >> ${logSlt}
+      ${_INITINS} build-essential curl git >> ${logSlt}
+      ${_INITINS} libgd-dev libmagickwand-dev libcurl4-openssl-dev >> ${logSlt}
       echo "Waiting five seconds before reboot..."
       sleep 5
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
@@ -440,11 +411,11 @@ init_info() {
   echo ""
 }
 
-init_complete() {
+init_offsystemd() {
   echo " " >> ${logInt}
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-  msg "Running init_complete procedure..." >> ${logInt}
+  msg "Running init_offsystemd procedure..." >> ${logInt}
   touch /run/autoinit.pid
   msg "Launching a quick dist-upgrade to ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
   if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
@@ -452,27 +423,15 @@ init_complete() {
     echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
     echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
   fi
-  if [ "${silentMode}" = "verbose" ]; then
-    /usr/bin/apt-get update >> ${logInt}
-    /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logInt}
-    [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-    /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logInt}
-    /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logInt}
-    /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> ${logInt}
-    /usr/bin/apt-get autoremove --purge -y >> ${logInt}
-    /usr/bin/apt-get autoclean -y >> ${logInt}
-    [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y >> ${logInt}
-  else
-    /usr/bin/apt-get update -qq >> ${logSlt}
-    /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logSlt}
-    [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-    /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
-    /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
-    /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
-    /usr/bin/apt-get autoremove --purge -y -qq >> ${logSlt}
-    /usr/bin/apt-get autoclean -y -qq >> ${logSlt}
-    [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y >> ${logSlt}
-  fi
+  /usr/bin/apt-get update -qq >> ${logSlt}
+  /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logSlt}
+  [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
+  /usr/bin/apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
+  /usr/bin/apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
+  /usr/bin/apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq >> ${logSlt}
+  /usr/bin/apt-get autoremove --purge -y -qq >> ${logSlt}
+  /usr/bin/apt-get autoclean -y -qq >> ${logSlt}
+  [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y >> ${logSlt}
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
@@ -486,7 +445,7 @@ init_complete() {
   fi
   echo " " >> ${logInt}
   sleep 5
-  touch /root/.run-complete-devuan-init.cnf
+  touch /root/.run-offsystemd-devuan-init.cnf
   rm -f /run/autoinit.pid
   reboot
   exit 0
@@ -527,13 +486,8 @@ init_cycle() {
     exit 1
   fi
   if [ "${_OLD_SYS}" = "Devuan" ]; then
-    if [ "${silentMode}" = "verbose" ]; then
-      /usr/bin/apt-get update >> ${logInt}
-      /usr/bin/apt-get upgrade ${nrmUpArg} >> ${logInt}
-    else
-      /usr/bin/apt-get update -qq >> ${logSlt}
-      /usr/bin/apt-get upgrade ${nrmUpArg} >> ${logSlt}
-    fi
+    /usr/bin/apt-get update -qq >> ${logSlt}
+    /usr/bin/apt-get upgrade ${nrmUpArg} >> ${logSlt}
   fi
   if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
     msg "Launching a quick upgrade to ${_NEW_SYS}/${_NEW_OS_CODE}" >> ${logInt}
@@ -554,46 +508,24 @@ init_cycle() {
     if [ -e "/etc/apt/apt.conf" ]; then
       rm -f /etc/apt/apt.conf
     fi
-  fi
-  if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
-    if [ "${silentMode}" = "verbose" ]; then
-      if [ "${_OLD_SYS}" = "Debian" ]; then
-        /usr/bin/apt-get update --allow-insecure-repositories >> ${logInt}
-        /usr/bin/apt-get install devuan-keyring -y --allow-unauthenticated >> ${logInt}
-      fi
-      /usr/bin/apt-get update >> ${logInt}
-      /usr/bin/apt-get upgrade ${dstUpArg} >> ${logInt}
-      if [ "${_OLD_SYS}" = "Debian" ]; then
-        /usr/bin/apt-get install eudev sysvinit-core -y >> ${logInt}
-        /usr/bin/apt-get -f install -y >> ${logInt}
-      else
-        /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logInt}
-        [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-        /usr/bin/apt-get -f install -y >> ${logInt}
-        /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logInt}
-        [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-        /usr/bin/apt-get autoremove --purge -y >> ${logInt}
-        /usr/bin/apt-get autoclean -y >> ${logInt}
-      fi
+    if [ "${_OLD_SYS}" = "Debian" ]; then
+      /usr/bin/apt-get update --allow-insecure-repositories -qq >> ${logSlt}
+      /usr/bin/apt-get install devuan-keyring -y --allow-unauthenticated -qq >> ${logSlt}
+    fi
+    /usr/bin/apt-get update -qq >> ${logSlt}
+    /usr/bin/apt-get upgrade ${dstUpArg} >> ${logSlt}
+    if [ "${_OLD_SYS}" = "Debian" ]; then
+      /usr/bin/apt-get install eudev sysvinit-core -y -qq >> ${logSlt}
+      /usr/bin/apt-get -f install -y -qq >> ${logSlt}
     else
-      if [ "${_OLD_SYS}" = "Debian" ]; then
-        /usr/bin/apt-get update --allow-insecure-repositories -qq >> ${logSlt}
-        /usr/bin/apt-get install devuan-keyring -y --allow-unauthenticated -qq >> ${logSlt}
-      fi
-      /usr/bin/apt-get update -qq >> ${logSlt}
-      /usr/bin/apt-get upgrade ${dstUpArg} >> ${logSlt}
-      if [ "${_OLD_SYS}" = "Debian" ]; then
-        /usr/bin/apt-get install eudev sysvinit-core -y -qq >> ${logSlt}
-        /usr/bin/apt-get -f install -y -qq >> ${logSlt}
-      else
-        /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logSlt}
-        [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-        /usr/bin/apt-get -f install -y -qq >> ${logSlt}
-        /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logSlt}
-        [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-        /usr/bin/apt-get autoremove --purge -y -qq >> ${logSlt}
-        /usr/bin/apt-get autoclean -y -qq >> ${logSlt}
-      fi
+      /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logSlt}
+      [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
+      /usr/bin/apt-get -f install -y -qq >> ${logSlt}
+      /usr/bin/apt-get dist-upgrade ${dstUpArg} >> ${logSlt}
+      [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
+      /usr/bin/apt-get autoremove --purge -y -qq >> ${logSlt}
+      /usr/bin/apt-get autoclean -y -qq >> ${logSlt}
+      [ -e "/root/.top-daedalus.cnf" ] && /usr/bin/apt-get install base-files=12.4devuan3 -y >> ${logSlt}
     fi
   fi
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
@@ -613,6 +545,7 @@ init_cycle() {
       msg "Time for the last reboot and then you can run boa install" >> ${logInt}
       rm -f /root/.init-to-devuan-ctrl.cnf
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
+      if_launch_boa_install
     else
       msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
       msg "Time for reboot and next upgrade cycle..." >> ${logInt}
@@ -620,6 +553,7 @@ init_cycle() {
     echo " " >> ${logInt}
     sleep 5
     touch /root/.run-cycle-devuan-init.cnf
+    touch /root/.run-cycle-${_OS_CODE}-init.cnf
     rm -f /run/autoinit.pid
     reboot
     exit 0
@@ -639,8 +573,8 @@ init() {
   init_conf
   if [ -e "${initFile}" ]; then
     if [ -e "/root/.run-cycle-devuan-init.cnf" ] \
-      && [ ! -e "/root/.run-complete-devuan-init.cnf" ]; then
-      init_complete
+      && [ ! -e "/root/.run-offsystemd-devuan-init.cnf" ]; then
+      init_offsystemd
     fi
     init_cycle
   fi
