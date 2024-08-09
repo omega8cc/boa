@@ -289,6 +289,7 @@ install_apparmor_utils() {
     || [ -z "${isAppArmorStatus}" ] \
     || [ "${isAppArmorGrub}" = "NO" ]; then
     msg "Installing AppArmor Tools early" >> ${logInt}
+    echo " " >> ${logInt}
     /usr/bin/apt-get install auditd \
       apparmor \
       apparmor-utils \
@@ -361,10 +362,7 @@ init_pre() {
       ${_INITINS} lsb-release >> ${logSlt}
       _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
       _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-      msg "This system is ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
       msg "We need to install some tools early..." >> ${logInt}
-      echo " " >> ${logInt}
-      echo " " >> ${logSlt}
       /usr/bin/apt-get update >> ${logSlt}
       _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
       if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
@@ -451,7 +449,6 @@ init_offsystemd() {
 }
 
 init_cycle() {
-  echo " " >> ${logInt}
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   msg "Running init_cycle procedure..." >> ${logInt}
