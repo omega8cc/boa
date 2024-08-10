@@ -141,8 +141,8 @@ system_hostname_check_fix
 rm -f /run/clear_m.pid
 
 _ADD_XTRA=YES
-_CRON_TEST=$(grep "clear.sh" /var/spool/cron/crontabs/root 2>&1)
-if [[ "${_CRON_TEST}" =~ "clear.sh" ]]; then
+_CRON_TEST=$(grep "clear.xsh" /var/spool/cron/crontabs/root 2>&1)
+if [[ "${_CRON_TEST}" =~ "clear.xsh" ]]; then
   _ADD_XTRA=NO
 fi
 
@@ -208,7 +208,7 @@ crontab_update() {
     sed -i "s/.*du.*sql.*//gi" /etc/crontab &> /dev/null
     wait
     if [ "${_ADD_XTRA}" = "YES" ]; then
-      echo "*/6 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "*/19 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
@@ -274,7 +274,7 @@ crontab_cleanup() {
     sed -i "s/.*du.*sql.*//gi" /etc/crontab &> /dev/null
     wait
     if [ "${_ADD_XTRA}" = "YES" ]; then
-      echo "*/6 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "*/19 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
@@ -442,7 +442,7 @@ if [ -e "/var/aegir/drush" ]; then
       rm -f /etc/mysql/conf.d/mysqldump.cnf
       touch /var/xdrago/log/.custom_percona_forced.${_X_SE}.pid
     fi
-    _AUTO_UP_WEEKLY=3
+    _AUTO_UP_WEEKLY=7
     _AUTO_UP_MONTH=6
     _AUTO_UP_DAY=6
     _AUTO_PHP="php-min"
@@ -533,14 +533,14 @@ if [ -e "/var/aegir/drush" ]; then
 #   fi
 
   if [ -e "/root/.dev.server.cnf" ]; then
-    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f3.${tRee}.${_X_SE}.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f4.${tRee}.${_X_SE}.pid" ]; then
       rm -f /var/xdrago/log/.*etc_crontab_update_dev_ctrl*
       crontab_cleanup
       service cron restart
-      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl_f3.${tRee}.${_X_SE}.pid
+      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl_f4.${tRee}.${_X_SE}.pid
     fi
   else
-    if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl_f3.${tRee}.${_X_SE}.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl_f4.${tRee}.${_X_SE}.pid" ]; then
       rm -f /var/xdrago/log/.*etc_crontab_update_prod_ctrl*
       if [ ! -z "${_AUTO_UP_MONTH}" ] \
         && [ ! -z "${_AUTO_UP_DAY}" ]; then
@@ -549,7 +549,7 @@ if [ -e "/var/aegir/drush" ]; then
         crontab_cleanup
       fi
       service cron restart
-      touch /var/xdrago/log/.etc_crontab_update_prod_ctrl_f3.${tRee}.${_X_SE}.pid
+      touch /var/xdrago/log/.etc_crontab_update_prod_ctrl_f4.${tRee}.${_X_SE}.pid
     fi
   fi
 
