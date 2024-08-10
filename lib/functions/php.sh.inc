@@ -1661,7 +1661,9 @@ install_php_multi() {
       fi
     fi
   fi
-  if [ "${_OS_CODE}" != "jessie" ]; then
+  if [ "${_OS_CODE}" != "jessie" ] \
+    && [ ! -e "/root/.rebuild_src_on_auto_before_reboot.info" ] \
+    && [ ! -e "/root/.skip-aegir-master-upgrade.cnf" ]; then
     _PHP_EXTRA="${_PHP_EXTRA} \
                 --with-imap \
                 --with-imap-ssl \
