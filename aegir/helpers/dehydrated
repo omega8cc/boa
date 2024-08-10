@@ -1139,7 +1139,7 @@ sign_csr() {
     challenge="$(echo "${response}" | get_json_dict_value -p '"challenges",'"${challengeindex}")"
 
     # Gather challenge information
-    if [ "${identifier_type:-}" = "ip" ] && [ "${CHALLENGETYPE}" = "tls-alpn-01" ] ; then
+    if [ "${identifier_type:-}" = "ip" ] && [ "${CHALLENGETYPE}" = "tls-alpn-01" ]; then
       challenge_names[${idx}]="$(echo "${identifier}" | ip_to_ptr)"
     else
       challenge_names[${idx}]="${identifier}"

@@ -33,6 +33,40 @@ check_root() {
 }
 check_root
 
+if_fix_locked_sshd() {
+  _SSH_LOG="/var/log/auth.log"
+  if [ `tail --lines=50 ${_SSH_LOG} \
+    | grep --count "error: Bind to port 22"` -gt "0" ]; then
+    kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}') &> /dev/null
+    service ssh start
+  fi
+}
+if_fix_locked_sshd
+
+if_fix_dhcp() {
+  if [ -e "/var/log/daemon.log" ]; then
+    _DHCP_LOG="/var/log/daemon.log"
+  else
+    _DHCP_LOG="/var/log/syslog"
+  fi
+  if [ -e "${_DHCP_LOG}" ]; then
+    if [ `tail --lines=100 ${_DHCP_LOG} \
+      | grep --count "dhclient.*Failed"` -gt "0" ]; then
+      sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
+      wait
+      sed -i "/^$/d" /etc/csf/csf.allow
+      _DHCP_TEST=$(grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq 2>&1)
+      if [[ "${_DHCP_TEST}" =~ "port" ]]; then
+        for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+      else
+        for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+      fi
+      csf -q &> /dev/null
+    fi
+  fi
+}
+if_fix_dhcp
+
 if [ -e "/root/.step.init.systemd.two.cnf" ]; then
   kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}') &> /dev/null
 fi
@@ -123,6 +157,7 @@ if [ -e "/var/log/php" ]; then
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
     | grep --count "already listen on"` -gt "0" ]; then
     touch /var/run/fmp_wait.pid
+    touch /var/run/restarting_fmp_wait.pid
     sleep 8
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
@@ -131,7 +166,7 @@ if [ -e "/var/log/php" ]; then
     mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
     rm -f /var/run/*.fpm.socket
     renice ${_B_NICE} -p $$ &> /dev/null
-    _PHP_V="82 81 80 74 73 72 71 70 56"
+    _PHP_V="83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm start
@@ -139,12 +174,14 @@ if [ -e "/var/log/php" ]; then
     done
     sleep 8
     rm -f /var/run/fmp_wait.pid
+    rm -f /var/run/restarting_fmp_wait.pid
     echo "$(date 2>&1) FPM instances conflict detected" >> \
       /var/xdrago/log/fpm.conflict.incident.log
   fi
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
     | grep --count "process.max"` -gt "0" ]; then
     touch /var/run/fmp_wait.pid
+    touch /var/run/restarting_fmp_wait.pid
     sleep 8
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
@@ -153,7 +190,7 @@ if [ -e "/var/log/php" ]; then
     mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
     rm -f /var/run/*.fpm.socket
     renice ${_B_NICE} -p $$ &> /dev/null
-    _PHP_V="82 81 80 74 73 72 71 70 56"
+    _PHP_V="83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm start
@@ -161,6 +198,7 @@ if [ -e "/var/log/php" ]; then
     done
     sleep 8
     rm -f /var/run/fmp_wait.pid
+    rm -f /var/run/restarting_fmp_wait.pid
     echo "$(date 2>&1) Too many running FPM childs detected" >> \
       /var/xdrago/log/fpm.childs.incident.log
   fi
@@ -172,7 +210,7 @@ if [[ "${_PHPLOG_SIZE_TEST}" =~ "G" ]]; then
   touch /var/run/fmp_wait.pid
   rm -f /var/log/php/*
   renice ${_B_NICE} -p $$ &> /dev/null
-  _PHP_V="82 81 80 74 73 72 71 70 56"
+  _PHP_V="83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       service php${e}-fpm reload
@@ -269,6 +307,19 @@ elif [ "${_RAM_PCT_FREE}" -le "20" ]; then
   fi
 fi
 
+redis_bind_check() {
+  if [ `tail --lines=8 /var/log/redis/redis-server.log \
+    | grep --count "Address already in use"` -gt "0" ]; then
+    service redis-server stop &> /dev/null
+    killall -9 redis-server &> /dev/null
+    rm -f /var/lib/redis/*
+    service redis-server start &> /dev/null
+    echo "$(date 2>&1) RedisException BIND detected"
+    echo "$(date 2>&1) RedisException BIND detected" >> /var/xdrago/log/redis.watch.log
+  fi
+}
+redis_bind_check
+
 redis_oom_check() {
   if [ `tail --lines=500 /var/log/php/error_log_* \
     | grep --count "RedisException"` -gt "0" ]; then
@@ -285,7 +336,7 @@ redis_oom_check() {
     mkdir -p /var/backups/php-logs/${_NOW}/
     mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
     renice ${_B_NICE} -p $$ &> /dev/null
-    _PHP_V="82 81 80 74 73 72 71 70 56"
+    _PHP_V="83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm reload
@@ -311,7 +362,7 @@ redis_slow_check() {
     mkdir -p /var/backups/php-logs/${_NOW}/
     mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
     renice ${_B_NICE} -p $$ &> /dev/null
-    _PHP_V="82 81 80 74 73 72 71 70 56"
+    _PHP_V="83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm reload
@@ -329,6 +380,7 @@ fpm_sockets_healing() {
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
     | grep --count "Address already in use"` -gt "0" ]; then
     touch /var/run/fmp_wait.pid
+    touch /var/run/restarting_fmp_wait.pid
     sleep 8
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     _NOW=${_NOW//[^0-9-]/}
@@ -336,7 +388,7 @@ fpm_sockets_healing() {
     mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
     renice ${_B_NICE} -p $$ &> /dev/null
-    _PHP_V="82 81 80 74 73 72 71 70 56"
+    _PHP_V="83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         service php${e}-fpm start
@@ -344,6 +396,7 @@ fpm_sockets_healing() {
     done
     sleep 8
     rm -f /var/run/fmp_wait.pid
+    rm -f /var/run/restarting_fmp_wait.pid
     echo "$(date 2>&1) FPM Sockets conflict detected" >> \
       /var/xdrago/log/fpm.sockets.incident.log
   fi
@@ -404,7 +457,7 @@ if [ `ps aux | grep -v "grep" | grep --count "/usr/sbin/cron"` -gt "1" ]; then
     /var/xdrago/log/cron-count.kill.log
 fi
 
-if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt "9" ]; then
+if [ `ps aux | grep -v "grep" | grep --count "php-fpm: master process"` -gt "10" ]; then
   kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
   echo "$(date 2>&1) Too many PHP-FPM master processes killed" >> \
     /var/xdrago/log/php-fpm-master-count.kill.log

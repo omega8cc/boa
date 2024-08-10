@@ -33,7 +33,13 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
   && [[ ! "${_ARGS}" =~ "mysql" ]] \
   && [[ ! "${_ARGS}" =~ "sudo" ]]; then
   _ARR=
-  if [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
+  if [[ "${_ARGS}" =~ "vendor/drush/drush/drush" ]]; then
+    _ARR="${_ARGS}"
+    ### echo _ARR is ${_ARR}
+  elif [[ "${_ARGS}" =~ "/vendor/bin/drush" ]]; then
+    _ARR="${_ARGS}"
+    ### echo _ARR is ${_ARR}
+  elif [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
     if [[ "${_ARGS}" =~ "set -m" ]]; then
       _R_M=`echo -n ${_ARGS}  | grep -o "set -m\; vendor/bin/drush"`
     else
@@ -50,9 +56,6 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
         *) _ARR+=("$arg") ;;
       esac
     done
-    ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ "vendor/drush/drush/drush" ]]; then
-    _ARR="${_ARGS}"
     ### echo _ARR is ${_ARR}
   elif [[ "${_ARGS}" =~ "drush " ]]; then
     if [[ "${_ARGS}" =~ "set -m" ]]; then
@@ -297,7 +300,7 @@ check_php_cli_version() {
   fi
   ### echo CHK 1 _PHP_CLI is ${_PHP_CLI}
 
-  _PHP_V="56 70 71 72 73 74 80 81 82"
+  _PHP_V="56 70 71 72 73 74 80 81 82 83"
   for e in ${_PHP_V}; do
     if [[ "${_PHP_CLI}" =~ "php${e}" ]] && [ -x "/opt/php${e}/bin/php" ]; then
       DRUSH_PHP="/opt/php${e}/bin/php"
@@ -379,10 +382,13 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         if [[ "${_ARGS}" =~ "vendor/drush/drush/drush" ]]; then
           _DEST_DRUSH=
         fi
+        if [[ "${_ARGS}" =~ "/vendor/bin/drush " ]]; then
+          _DEST_DRUSH=
+        fi
         if [[ "${_ARGS}" =~ "drush12 " ]] \
           && [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
           _DEST_DRUSH="/usr/bin/drush12"
-          _PHP_V="81 82"
+          _PHP_V="81 82 83"
           for e in ${_PHP_V}; do
             if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
               DRUSH_PHP="/opt/php${e}/bin/php"
@@ -423,7 +429,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             _DEST_DRUSH="/usr/bin/drush10"
           fi
           if [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
-            _PHP_V="74 80 81 82"
+            _PHP_V="74 80 81 82 83"
             for e in ${_PHP_V}; do
               if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
                 DRUSH_PHP="/opt/php${e}/bin/php"
@@ -468,8 +474,11 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           if [[ "${_ARGS}" =~ "vendor/drush/drush/drush" ]]; then
             _DEST_DRUSH=
           fi
+          if [[ "${_ARGS}" =~ "/vendor/bin/drush " ]]; then
+            _DEST_DRUSH=
+          fi
           if [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
-            _PHP_V="56 70 71 72 73 74 80 81 82"
+            _PHP_V="56 70 71 72 73 74 80 81 82 83"
             for e in ${_PHP_V}; do
               if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
                 DRUSH_PHP="/opt/php${e}/bin/php"
@@ -856,7 +865,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ]; then
         _RUBY_VP="${_DETECTED_RUBY_VP}"
       else
-        _RUBY_VP=3.1.2
+        _RUBY_VP=3.3.4
       fi
       _SP_A="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}/bin"
       _SP_B="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}@global/bin"

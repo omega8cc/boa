@@ -684,15 +684,17 @@ check_boa_php_compatibility() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: check_boa_php_compatibility"
   fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "7.4" ]] \
-    || [[ "${_PHP_MULTI_INSTALL}" =~ "8.1" ]]; then
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "8.3" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "8.2" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "8.1" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "7.4" ]]; then
     _DO_NOTHING=YES
   else
-    msg "ERROR: This BOA version depends on PHP 7.4 or newer"
-    msg "Please add 7.4 or 8.1 to _PHP_MULTI_INSTALL"
+    msg "ERROR: This BOA version depends on PHP 8.1 or newer"
+    msg "Please add at least 8.1 to _PHP_MULTI_INSTALL"
     msg "in /root/.barracuda.cnf before trying again"
     msg "NOTE: You can still install also legacy PHP 7.x and 5.6 versions"
-    msg "NOTE: but you must also include at least 7.4 to support Drupal 9"
+    msg "NOTE: but you must also include at least 8.1 to support Drupal 10"
     msg "Bye"
     clean_pid_exit
   fi
@@ -704,6 +706,7 @@ check_boa_php_compatibility() {
     || [ "${_PHP_FPM_VERSION}" = "7.1" ] \
     || [ "${_PHP_FPM_VERSION}" = "7.2" ] \
     || [ "${_PHP_FPM_VERSION}" = "7.3" ] \
+    || [ "${_PHP_FPM_VERSION}" = "8.0" ] \
     || [ "${_PHP_CLI_VERSION}" = "5.3" ] \
     || [ "${_PHP_CLI_VERSION}" = "5.4" ] \
     || [ "${_PHP_CLI_VERSION}" = "5.5" ] \
@@ -711,12 +714,13 @@ check_boa_php_compatibility() {
     || [ "${_PHP_CLI_VERSION}" = "7.0" ] \
     || [ "${_PHP_CLI_VERSION}" = "7.1" ] \
     || [ "${_PHP_CLI_VERSION}" = "7.2" ] \
-    || [ "${_PHP_CLI_VERSION}" = "7.3" ]; then
-    msg "ERROR: This BOA version depends on PHP 7.4 or newer"
-    msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to 7.4 or 8.1"
+    || [ "${_PHP_CLI_VERSION}" = "7.3" ] \
+    || [ "${_PHP_CLI_VERSION}" = "8.0" ]; then
+    msg "ERROR: This BOA version depends on PHP 8.1 or newer"
+    msg "Please change _PHP_FPM_VERSION and _PHP_CLI_VERSION to 8.1 or newer"
     msg "in /root/.barracuda.cnf before trying again"
     msg "NOTE: You can still install also legacy PHP 7.x and 5.6 versions"
-    msg "NOTE: but you must use as default version 7.4 to support Drupal 9"
+    msg "NOTE: but you must use as default version 8.1 to support Drupal 10"
     msg "Bye"
     clean_pid_exit
   fi
@@ -771,6 +775,9 @@ check_prepare_dirs_permissions() {
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "INFO: Cleaning up temp files in /var/opt/"
+  fi
+  if [ ! -e "/root/.run_post_major_os_upgrade.info" ]; then
+    rm -f ${pthLog}/re-installed-php*-on-post_major_os_upgrade.info
   fi
   rm -rf /var/opt/*
   mkdir -p /var/log/php

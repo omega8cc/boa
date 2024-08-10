@@ -17,7 +17,7 @@ innodb_flush_log_at_trx_commit=0
 query_cache_size=0
 query_cache_type=0
 binlog_row_image=minimal
-performance_schema=ON
+performance_schema=OFF
 
 ### Basic Galera Settings
 #

@@ -52,7 +52,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### PHP MULTI INSTALL                      ###
 ###----------------------------------------###
 ###
-### By default Barracuda installs PHP 7.4/8.1
+### By default Barracuda installs PHP 8.1/2/3
 ### but this option allows you to install also
 ### other experimental PHP versions and then
 ### choose different version for PHP and
@@ -61,11 +61,13 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### and _PHP_CLI_VERSION.
 ###
 ### Available options:
-### 8.2, 8.1, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
+### 8.3, 8.2, 8.1, 8.0
+### 7.4, 7.3, 7.2, 7.1, 7.0
+### 5.6
 ###
-### NOTE: 7.4 is required
+### NOTE: 8.1 is required
 ###
-### Example: _PHP_MULTI_INSTALL="7.4 8.1 5.6"
+### Example: _PHP_MULTI_INSTALL="7.4 8.1 8.2 8.3"
 ###
 ### Note that removing any version from this
 ### list once it is already installed, will
@@ -76,7 +78,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### which are used to define version to be
 ### used by Master or Satellite Instance.
 ###
-_PHP_MULTI_INSTALL="7.4 8.1"
+_PHP_MULTI_INSTALL="7.4 8.1 8.2 8.3"
 
 
 ###----------------------------------------###
@@ -91,9 +93,9 @@ _PHP_MULTI_INSTALL="7.4 8.1"
 ### _PHP_MULTI_INSTALL
 ###
 ### Available options:
-### 8.1, 8.0, 7.4
+### 8.3, 8.2, 8.1, 7.4
 ###
-### Example: _PHP_SINGLE_INSTALL=7.4
+### Example: _PHP_SINGLE_INSTALL=8.1
 ###
 _PHP_SINGLE_INSTALL=
 
@@ -107,7 +109,9 @@ _PHP_SINGLE_INSTALL=
 ### install and upgrade.
 ###
 ### Available options (if installed):
-### 8.1, 8.0, 7.4
+### 8.3, 8.2, 8.1, 8.0
+### 7.4, 7.3, 7.2, 7.1, 7.0
+### 5.6
 ###
 ### Note that 8.1 will be set automatically
 ### if you specify any other, not installed
@@ -125,7 +129,9 @@ _PHP_FPM_VERSION=8.1
 ### install and upgrade.
 ###
 ### Available options (if installed):
-### 8.1, 8.0, 7.4
+### 8.3, 8.2, 8.1, 8.0
+### 7.4, 7.3, 7.2, 7.1, 7.0
+### 5.6
 ###
 ### Note that 8.1 will be set automatically
 ### if you specify any other, not installed
@@ -952,7 +958,7 @@ _CPU_CRIT_RATIO=9
 
 ###
 ### Set max allowed page views from one IP
-### out of last 599. Note that it will lock
+### out of last 999. Note that it will lock
 ### the access completely for 1 hour on the
 ### firewall level in /etc/csf/csf.deny
 ###
@@ -1083,7 +1089,7 @@ _BRANCH_PRN="AUTO"
 _X_VERSION="AUTO"
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="${gitHub}"
-_X_SE="520ltsT01"
+_X_SE="520proT02"
 export _X_SE="${_X_SE}"
 tRee=lts
 export tRee="${tRee}"
@@ -1093,11 +1099,11 @@ export tRee="${tRee}"
 ### Commands shortcuts
 ###
 gCb="git clone --branch"
-dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/tmp/apt.conf.noi.dist"
-nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/tmp/apt.conf.noi.nrml"
-_INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
+dstUpArg="-fuy --allow-downgrades --allow-unauthenticated -q --config-file /opt/tmp/apt.conf.noi.dist"
+nrmUpArg="-fuy --allow-downgrades --allow-unauthenticated -q --config-file /opt/tmp/apt.conf.noi.nrml"
+_INITINS="/usr/bin/apt-get -y --allow-downgrades --allow-unauthenticated install"
 _INSTALL="/usr/bin/apt-get ${nrmUpArg} install"
-aptYesUnth="-y --allow-unauthenticated"
+aptYesUnth="-y --allow-downgrades --allow-unauthenticated"
 
 
 ###

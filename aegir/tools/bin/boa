@@ -852,7 +852,33 @@ barracuda_install() {
     if [ ! -z "${rkey}" ] \
       && [ -e "${vBs}/${filIncB}" ] \
       && [ -e "${vBs}/${filIncO}" ]; then
-      if [ "${rkey}" = "php-81" ] || [ "${rkey}" = "php-8.1" ]; then
+      if [ "${rkey}" = "php-83" ] || [ "${rkey}" = "php-8.3" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.3/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.3/g"   ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.3/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.3/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.3/g" ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.3/g" ${vBs}/${filIncO}
+        wait
+      elif [ "${rkey}" = "php-82" ] || [ "${rkey}" = "php-8.2" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.2/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.2/g"   ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.2/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.2/g" ${vBs}/${filIncB}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.2/g" ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.2/g" ${vBs}/${filIncO}
+        wait
+      elif [ "${rkey}" = "php-81" ] || [ "${rkey}" = "php-8.1" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.1/g" ${vBs}/${filIncB}
         wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.1/g"   ${vBs}/${filIncB}
@@ -864,19 +890,6 @@ barracuda_install() {
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.1/g" ${vBs}/${filIncO}
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${filIncO}
-        wait
-      elif [ "${rkey}" = "php-80" ] || [ "${rkey}" = "php-8.0" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.0/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.0/g"   ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.0/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.0/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.0/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.0/g" ${vBs}/${filIncO}
         wait
       elif [ "${rkey}" = "php-74" ] || [ "${rkey}" = "php-7.4" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.4/g" ${vBs}/${filIncB}
@@ -896,9 +909,9 @@ barracuda_install() {
         || [ "${rkey}" = "php-max" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=/g"    ${vBs}/${filIncB}
         if [ "${rkey}" = "php-max" ]; then
-          pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2"
+          pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
         else
-          pA="7.4 8.1 8.2"
+          pA="7.4 8.1 8.2 8.3"
         fi
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${filIncB}
         wait
@@ -927,7 +940,25 @@ barracuda_install() {
       && [ -e "${vBs}/${barName}" ] \
       && [ -e "${vBs}/${octName}" ]; then
       ### Legacy method
-      if [ "${rkey}" = "php-81" ] || [ "${rkey}" = "php-8.1" ]; then
+      if [ "${rkey}" = "php-83" ] || [ "${rkey}" = "php-8.3" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.3/g" ${vBs}/${barName}
+        wait
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.3/g"   ${vBs}/${barName}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.3/g" ${vBs}/${octName}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.3/g" ${vBs}/${octName}
+        wait
+      elif [ "${rkey}" = "php-82" ] || [ "${rkey}" = "php-8.2" ]; then
+        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.2/g" ${vBs}/${barName}
+        wait
+        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.2/g"   ${vBs}/${barName}
+        wait
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.2/g" ${vBs}/${octName}
+        wait
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.2/g" ${vBs}/${octName}
+        wait
+      elif [ "${rkey}" = "php-81" ] || [ "${rkey}" = "php-8.1" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.1/g" ${vBs}/${barName}
         wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.1/g"   ${vBs}/${barName}
@@ -935,15 +966,6 @@ barracuda_install() {
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.1/g" ${vBs}/${octName}
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${octName}
-        wait
-      elif [ "${rkey}" = "php-80" ] || [ "${rkey}" = "php-8.0" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.0/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.0/g"   ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.0/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.0/g" ${vBs}/${octName}
         wait
       elif [ "${rkey}" = "php-74" ] || [ "${rkey}" = "php-7.4" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.4/g" ${vBs}/${barName}
@@ -959,9 +981,9 @@ barracuda_install() {
         || [ "${rkey}" = "php-max" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=/g"    ${vBs}/${barName}
         if [ "${rkey}" = "php-max" ]; then
-          pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2"
+          pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
         else
-          pA="7.4 8.1 8.2"
+          pA="7.4 8.1 8.2 8.3"
         fi
         sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${barName}
         wait
@@ -1244,6 +1266,10 @@ init_setup() {
       octb="${brnch}"
     elif [ "${copt}" = "lts" ]; then
       octb="${brnch}"
+    elif [ "${copt}" = "3.2" ]; then
+      octb="${lgcD}"
+    elif [ "${copt}" = "2.4" ]; then
+      octb="${lgcC}"
     fi
     curl ${crlGet} "${rgUrl}/${octb}/${barName}"    -o ${vBs}/${barName}
     curl ${crlGet} "${rgUrl}/${octb}/${octName}"    -o ${vBs}/${octName}
@@ -1354,6 +1380,52 @@ find_fast_mirror_early() {
   urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
 }
 
+if_reinstall_curl() {
+  _CURL_VRN=8.7.1
+  isCurl=$(curl --version 2>&1)
+  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+    echo "OOPS: cURL is broken! Re-installing.."
+    rm -f /etc/apt/sources.list.d/openssl.list
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    echo "curl install" | dpkg --set-selections &> /dev/null
+    apt_clean_update
+    apt-get remove curl ${aptYesUnth} &> /dev/null
+    apt-get install curl ${aptYesUnth} &> /dev/null
+    ldconfig &> /dev/null
+    if [ -f "/usr/bin/curl" ]; then
+      isCurl=$(/usr/bin/curl --version 2>&1)
+      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+        echo "OOPS: /usr/bin/curl is still broken, uninstalling.."
+        apt-get remove curl ${aptYesUnth} &> /dev/null
+      else
+        echo "GOOD: /usr/bin/curl works"
+      fi
+    fi
+    mkdir -p /var/opt
+    rm -rf /var/opt/curl*
+    cd /var/opt
+    wget http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
+    tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
+    cd /var/opt/curl-${_CURL_VRN}
+    sh ./configure --with-ssl --prefix=/usr/local &> /dev/null
+    make -j $(nproc) --quiet &> /dev/null
+    make --quiet install &> /dev/null
+    if [ -f "/usr/local/bin/curl" ]; then
+      isCurl=$(/usr/local/bin/curl --version 2>&1)
+      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+        echo "ERRR: /usr/local/bin/curl is broken, moving to /usr/local/bin/curl--broken"
+        rm -f /usr/local/bin/curl--broken
+        mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
+      else
+        echo "GOOD: /usr/local/bin/curl works"
+      fi
+    fi
+  fi
+}
+
 check_dns_curl() {
   if [ ! -e "/etc/resolv.conf" ]; then
     rm -f /etc/resolv.conf
@@ -1371,22 +1443,7 @@ check_dns_curl() {
     pdnsd-ctl empty-cache &> /dev/null
   fi
   find_fast_mirror_early
-  isCurl=$(curl --version 2>&1)
-  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-    echo "ERROR: cURL is broken! Re-installing.."
-    rm -f /etc/apt/sources.list.d/openssl.list
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-      && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-    fi
-    echo "curl install" | dpkg --set-selections &> /dev/null
-    apt_clean_update
-    apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
-    if [ -f "/usr/bin/curl" ] && [ -e "/usr/local/bin/curl" ]; then
-      rm -f /usr/local/bin/curl--broken
-      mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
-    fi
-  fi
+  if_reinstall_curl
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
     --retry 3 \
@@ -1394,19 +1451,8 @@ check_dns_curl() {
     -I "http://${_USE_MIR}" 2> /dev/null)
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
-      echo "ERROR: cURL libs are out of sync! Re-installing.."
-      rm -f /etc/apt/sources.list.d/openssl.list
-      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-        && [ -e "/etc/apt/apt.conf.d" ]; then
-        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-      fi
-      echo "curl install" | dpkg --set-selections &> /dev/null
-      apt_clean_update
-      apt-get install curl ${aptYesUnth} -fu --reinstall &> /dev/null
-      if [ -f "/usr/bin/curl" ] && [ -e "/usr/local/bin/curl" ]; then
-        rm -f /usr/local/bin/curl--broken
-        mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
-      fi
+      echo "ERROR: cURL libs are out of sync! Re-installing again.."
+      if_reinstall_curl
     else
       echo "ERROR: ${_USE_MIR} is not available, please try later"
       clean_pid_exit
@@ -1473,7 +1519,7 @@ csf_check_fix() {
       _SACK_TEST=$(ip6tables --list | grep tcpmss 2>&1)
       if [[ ! "${_SACK_TEST}" =~ "tcpmss" ]]; then
         sysctl net.ipv4.tcp_mtu_probing=0 &> /dev/null
-        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/sull
+        iptables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
         ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
       fi
     fi
@@ -1494,6 +1540,7 @@ check_root() {
       _B_NICE=10
     fi
     renice ${_B_NICE} -p $$ &> /dev/null
+    rm -f /var/lib/man-db/auto-update
     if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
       system_check_ready
     else
@@ -1541,17 +1588,17 @@ check_root() {
   if [ "${_VMFAMILY}" = "VS" ]; then
     if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
       mkdir -p /etc/apt/preferences.d/
-      echo -e 'Package: fuse\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
+      echo -e 'Package: fuse\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/fuse
       apt_clean_update
     fi
     if [ ! -e "/etc/apt/preferences.d/udev" ]; then
       mkdir -p /etc/apt/preferences.d/
-      echo -e 'Package: udev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/udev
+      echo -e 'Package: udev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/udev
       apt_clean_update
     fi
     if [ ! -e "/etc/apt/preferences.d/makedev" ]; then
       mkdir -p /etc/apt/preferences.d/
-      echo -e 'Package: makedev\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
+      echo -e 'Package: makedev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
       apt_clean_update
     fi
     apt-get remove fuse -y -qq &> /dev/null
@@ -1774,7 +1821,13 @@ display_info() {
           | awk '{ print $1}' 2>&1)
       fi
     fi
-    _SSL=$(openssl version 2>&1 \
+    if [ -e "/root/.install.modern.openssl.cnf" ] \
+      && [ -x "/usr/local/ssl3/bin/openssl" ]; then
+      _SSL_BINARY=/usr/local/ssl3/bin/openssl
+    else
+      _SSL_BINARY=/usr/local/ssl/bin/openssl
+    fi
+    _SSL=$(${_SSL_BINARY} version 2>&1 \
       | tr -d "\n" \
       | cut -d" " -f2 \
       | awk '{ print $1}' 2>&1)
@@ -1949,6 +2002,108 @@ display_info() {
   fi
 }
 
+octopus_cleanup() {
+  if [ `whoami` = "root" ]; then
+    if [ "${action}" = "detect" ]; then
+      echo
+      echo "Accounts marked for cleanup or active"
+      echo
+      rm -f /root/.cleanup.detect.txt
+      for Usr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
+      do
+        if [ -d "${Usr}/config/server_master/nginx/vhost.d" ] \
+          && [ -e "${Usr}/log/cores.txt" ] \
+          && [ -e "${Usr}/log/CANCELLED" ]; then
+          sIze=$(du -s -h ${Usr} | cut -d' ' -f1 | awk '{ print $1}' 2>&1)
+          echo "CANCELLED ${Usr} ${sIze}"
+          iUsr=$(echo ${Usr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+          echo "CANCELLED ${iUsr}" >> /root/.cleanup.detect.txt
+        else
+          if [ -d "${Usr}/config/server_master/nginx/vhost.d" ] \
+            && [ -e "${Usr}/log/cores.txt" ]; then
+            echo "ACTIVE ${Usr}"
+          fi
+        fi
+      done
+    elif [ "${action}" = "purge" ] \
+      && [ "${user}" = "batch" ] \
+      && [ -e "/root/.cleanup.detect.txt" ]; then
+        IFS=$'\12'
+        for p in $(cat /root/.cleanup.detect.txt 2>&1);do
+          usr_purge=`echo $p | cut -d' ' -f2 | awk '{ print $1}'`
+          boa cleanup purge ${usr_purge}
+          wait
+        done
+    elif [ "${action}" = "purge" ] \
+      && [ ! -z "${user}" ] \
+      && [ "${user}" != "batch" ] \
+      && [ -e "/root/.cleanup.detect.txt" ]; then
+      zombie_dir="/var/backups/zombie/purged/${user}/home/"
+      nginx_inc="/var/aegir/config/server_master/nginx/platform.d"
+      nginx_ssl="/var/aegir/config/server_master/nginx/pre.d"
+      nginx_prx=$(ls ${nginx_ssl}/z_${user}.*_ssl_proxy.conf 2>&1)
+      sites_nr=$(ls /data/disk/${user}/config/server_master/nginx/vhost.d | wc -l)
+      if [ -d "/data/disk/${user}/config/server_master/nginx/vhost.d" ] \
+        && [ "${sites_nr}" = "0" ] \
+        && [ -e "/data/disk/${user}/log/cores.txt" ] \
+        && [ -e "/data/disk/${user}/log/CANCELLED" ]; then
+        echo
+        echo "Account to purge: ${user}"
+        echo
+        mkdir -p ${zombie_dir}
+        mv -f "${nginx_inc}/${user}.conf" ${zombie_dir}
+        mv -f "${nginx_prx}" ${zombie_dir}
+        echo "${user}:/data/disk/${user}" > ${zombie_dir}.purge.list
+        echo "${user}.ftp:/home/${user}.ftp" >> ${zombie_dir}.purge.list
+        echo "${user}.web:/home/${user}.web" >> ${zombie_dir}.purge.list
+        _PHP_V="83 82 81 80 74 73 72 71 70 56"
+        for e in ${_PHP_V}; do
+          if [ -e "/opt/php${e}/etc/pool.d/${user}.${e}.conf" ] \
+            || [ -e "/home/${user}.${e}.web" ]; then
+            rm -f /opt/php${e}/etc/pool.d/${user}.${e}.conf
+            echo "${user}.${e}.web:/home/${user}.${e}.web" >> ${zombie_dir}.purge.list
+          fi
+          if [ -e "/opt/php${e}/etc/pool.d/${user}.conf" ] \
+            || [ -e "/home/${user}.web" ]; then
+            rm -f /opt/php${e}/etc/pool.d/${user}.conf
+            echo "${user}.web:/home/${user}.web" >> ${zombie_dir}.purge.list
+          fi
+        done
+        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+        IFS=$'\12'
+          for p in $(cat ${zombie_dir}.purge.list | grep "${user}" 2>&1);do
+            usr_name=`echo $p | cut -d':' -f1 | awk '{ print $1}'`
+            usr_home=`echo $p | cut -d':' -f2 | awk '{ print $1}'`
+            echo disabling chattr for ${usr_name} in ${usr_home}..
+            chattr -i -R ${usr_home}/ &> /dev/null
+            if [ -d "${usr_home}/.drush/" ]; then
+              chattr -i ${usr_home}/.drush/
+            fi
+            rm -rf ${usr_home}/.gnupg
+            echo purging ${usr_name}..
+            if [ -d "${usr_home}/static" ]; then
+              rm -rf ${usr_home}/backups
+              rm -rf ${usr_home}/distro
+              rm -rf ${usr_home}/src
+              rm -rf ${usr_home}/static
+              rm -rf ${usr_home}/undo
+            fi
+            deluser \
+              --remove-home \
+              --backup-to /var/backups/zombie/purged/${user}/home/ ${usr_name} &> /dev/null
+          done;
+        echo
+        echo "Cleanup complete"
+      else
+        echo
+        echo "OOPS.. ${user} is either active, with existing vhosts or does not exist"
+      fi
+    fi
+    echo
+    exit 0
+  fi
+}
+
 check_root_direct
 os_detection_minimal
 
@@ -1976,7 +2131,12 @@ case "$1" in
              check_dns_curl
              init_setup
   ;;
-  in-lts)   cmmand="$1"
+  cleanup)   cmmand="$1"
+             action="$2"
+             user="$3"
+             octopus_cleanup
+  ;;
+  in-lts)    cmmand="$1"
              tRee=lts
              kind="$2"
              fqdn="$3"
@@ -2113,6 +2273,7 @@ case "$1" in
              echo "Usage: $(basename "$0") version"
              echo "Usage: $(basename "$0") info {more}"
              echo "Usage: $(basename "$0") info report {octopus|backups|both}"
+             echo "Usage: $(basename "$0") cleanup {detect|purge} {user|batch}"
              echo "Usage: $(basename "$0") reboot"
              echo
              cat <<EOF
@@ -2146,11 +2307,9 @@ case "$1" in
 
   {extra}
       license <------ valid new relic license key
-      php-7.4 <------ single PHP version to install and use (supported)
-      php-8.1 <------ single PHP version to install and use (supported, default)
-      php-8.2 <------ single PHP version to install and use (experimental)
-      php-min <------ install PHP 7.4, 8.1, 8.2, use 8.1 by default (php-all)
-      php-max <------ install PHP 7.4, 8.1, 8.2, 8.0, 7.3, 7.2, 7.1, 7.0, 5.6
+      php-8.1 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 7.4)
+      php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.1 by default (php-all)
+      php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
 
   {mysql}

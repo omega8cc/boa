@@ -38,8 +38,8 @@ fi
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_VERSION="BOA-5.2.0-head"
-_X_SE="520ltsT01"
+_X_VERSION="BOA-5.2.0-lts"
+_X_SE="520proT02"
 #
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
@@ -47,6 +47,9 @@ aptYesUnth="-y --allow-unauthenticated"
 optBin="/opt/local/bin"
 usrBin="/usr/local/bin"
 pthLog="/var/xdrago/log"
+if [ ! -e "${pthLog}" ] && [ -e "/var/xdrago_wait/log" ]; then
+  pthLog="/var/xdrago_wait/log"
+fi
 tBn="tools/bin"
 #
 
@@ -86,6 +89,7 @@ check_root() {
         ln -s /proc/self/fd /dev/fd
       fi
     fi
+    rm -f /var/lib/man-db/auto-update
     aptYesUnth="-y --allow-unauthenticated"
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
@@ -707,7 +711,7 @@ DPkg::Options {"--force-confdef";"--force-confmiss";"--force-confold"};
 DPkg::Pre-Install-Pkgs {"/usr/sbin/dpkg-preconfigure --apt";};
 Dir::Etc::SourceList "/etc/apt/sources.list";
 ' > /vservers/${idn}/opt/tmp/apt.conf.noi.nrml
-    nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/tmp/apt.conf.noi.nrml"
+    nrmUpArg="-fuy --allow-downgrades --allow-unauthenticated -q --config-file /opt/tmp/apt.conf.noi.nrml"
     vserver ${idn} exec apt-get clean
     vserver ${idn} exec ${_APT_UPDATE} -qq
     vserver ${idn} exec ${_INSTAPP} sysbench
@@ -1150,8 +1154,11 @@ install_vps() {
         if [ -e "/vservers/${idn}/usr/share/sysvinit/inittab" ]; then
           cp -af /vservers/${idn}/usr/share/sysvinit/inittab /vservers/${idn}/etc/inittab
         fi
-        echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /vservers/${idn}/etc/apt/preferences.d/systemd
-        echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /vservers/${idn}/etc/apt/preferences.d/systemd
+        if [ ! -e "/vservers/${idn}/etc/apt/preferences.d/offsystemd" ]; then
+          rm -f /vservers/${idn}/etc/apt/preferences.d/systemd
+          echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /vservers/${idn}/etc/apt/preferences.d/offsystemd
+          echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /vservers/${idn}/etc/apt/preferences.d/offsystemd
+        fi
         vserver ${idn} exec ${_INSTAPP} sysvinit-core
         vserver ${idn} exec ${_INSTAPP} sysvinit-utils
         rm -f /vservers/${idn}/etc/apt/sources.list.d/nosystemd.list
@@ -1293,7 +1300,7 @@ binlog_row_image=minimal
 wsrep_slave_threads=${_CPU_MX}
 wsrep_log_conflicts=ON
 pxc_strict_mode=PERMISSIVE
-performance_schema=ON
+performance_schema=OFF
 show_compatibility_56=ON
 
 ### Optional Memory Settings for Galera
@@ -1358,7 +1365,7 @@ transaction-isolation   = READ-COMMITTED
 transaction-read-only   = OFF
 skip-external-locking
 skip-name-resolve
-performance_schema      = ON
+performance_schema      = OFF
 show_compatibility_56   = ON
 connect_timeout         = 60
 join_buffer_size        = 4M
@@ -2005,10 +2012,14 @@ install_host() {
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
       fi
-      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-      rm -f /etc/apt/sources.list.d/nosystemd.list
-      rm -f /etc/apt/preferences.d/nosystemd
+      if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
+        rm -f /etc/apt/sources.list.d/nosystemd.list
+        rm -f /etc/apt/preferences.d/nosystemd
+        rm -f /etc/apt/preferences.d/systemd
+        echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
+        echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
+        apt_clean_update
+      fi
       echo "sysvinit-core hold" | dpkg --set-selections &> /dev/null
       echo "sysvinit-utils hold" | dpkg --set-selections &> /dev/null
     fi
@@ -2061,10 +2072,14 @@ upgrade_host() {
       if [ -e "/usr/share/sysvinit/inittab" ]; then
         cp -af /usr/share/sysvinit/inittab /etc/inittab
       fi
-      echo -e 'Package: systemd\nPin: origin ""\nPin-Priority: -1' > /etc/apt/preferences.d/systemd
-      echo -e '\n\nPackage: *systemd*\nPin: origin ""\nPin-Priority: -1' >> /etc/apt/preferences.d/systemd
-      rm -f /etc/apt/sources.list.d/nosystemd.list
-      rm -f /etc/apt/preferences.d/nosystemd
+      if [ ! -e "/etc/apt/preferences.d/offsystemd" ]; then
+        rm -f /etc/apt/sources.list.d/nosystemd.list
+        rm -f /etc/apt/preferences.d/nosystemd
+        rm -f /etc/apt/preferences.d/systemd
+        echo -e 'Package: systemd\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/offsystemd
+        echo -e '\n\nPackage: *systemd*\nPin: release *\nPin-Priority: -1' >> /etc/apt/preferences.d/offsystemd
+        apt_clean_update
+      fi
     fi
     apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
     apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
@@ -2243,7 +2258,7 @@ check_heads() {
       echo Check Skipped for $i
     else
       if [ -e "/usr/var/run/vservers/${_THIS_VM}" ] \
-        && [ -e "${i}/var/run/crond.pid" ] ; then
+        && [ -e "${i}/var/run/crond.pid" ]; then
         _VS_HOSTNAME=`vserver ${_VS_NAME} exec hostname 2>&1`
         _VS_OS=`vserver ${_VS_NAME} exec lsb_release -sc 2>&1`
         echo "The ${_VS_HOSTNAME} ${_VS_NAME} VM is running ${_VS_OS}"

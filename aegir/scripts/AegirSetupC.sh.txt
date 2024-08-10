@@ -131,7 +131,10 @@ _PREV_HM_ROOT="${_ROOT}/aegir/distro/${_LAST_HMR}"
 _D="/data/all"
 _SRCDIR="/opt/tmp/files"
 _LOG="/var/backups/octopus-${_USER}-${_NOW}.log"
-if [ "${_PHP_CLI_VERSION}" = "8.2" ] \
+if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
+  && [ -x "/opt/php83/bin/php" ]; then
+  _T_CLI=/opt/php83/bin
+elif [ "${_PHP_CLI_VERSION}" = "8.2" ] \
   && [ -x "/opt/php82/bin/php" ]; then
   _T_CLI=/opt/php82/bin
 elif [ "${_PHP_CLI_VERSION}" = "8.1" ] \
@@ -1143,7 +1146,7 @@ drupal7_install() {
     || [[ "${_PLATFORMS_LIST}" =~ "D7S" ]] \
     || [[ "${_PLATFORMS_LIST}" =~ "D7P" ]]; then
     if [ ! -d "${_ROOT}/distro/${_THIS_CORE}/${_DRUPAL7D}" ]; then
-      if prompt_yes_no "${_F_DRUPAL7} - https://drupal.org/project/drupal/releases/7.100" ; then
+      if prompt_yes_no "${_F_DRUPAL7} - https://drupal.org/project/drupal/releases/7.101" ; then
         true
         ###---### Drupal 7 Development
         #

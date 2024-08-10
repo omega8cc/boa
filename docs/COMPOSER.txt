@@ -5,25 +5,19 @@ The only documentation source for anything Aegir on BOA related is available at:
   https://learn.omega8.cc
   https://github.com/omega8cc/boa/issues?utf8=✓&q=is%3Aissue+composer
 
-Since BOA-4.1.3 new Drupal 9 based platforms are supported:
-
- OpenLucius ------------------- https://drupal.org/project/openlucius
- Thunder ---------------------- https://drupal.org/project/thunder
- Varbase ---------------------- https://drupal.org/project/varbase
-
-IMPORTANT: You must switch your ~/static/control/cli.info to 7.4 or newer
-PHP version (BOA hosted on Omega8.cc comes with 8.2, 8.1 and 7.4), because
-D8 based distros require at least PHP 7.4 -- this also means that to run
-the sites installed after switching cli.info to 7.4 or newer, you will also
-need to either switch your ~/static/control/fpm.info to 7.4 or newer, or
-more probably, to not break any existing sites not compatible with PHP 7.4+
-you will need to list these D8/D9 sites names in ~/static/control/multi-fpm.info
+IMPORTANT: You must switch your ~/static/control/cli.info to 8.1 or newer
+PHP version (BOA hosted on Omega8.cc comes with 8.3, 8.2, 8.1 etc.), because
+D10 based distros require at least PHP 8.1 -- this also means that to run
+the sites installed after switching cli.info to 8.1 or newer, you will also
+need to either switch your ~/static/control/fpm.info to 8.1 or newer, or
+more probably, to not break any existing sites not compatible with PHP 8.1+
+you will need to list these old sites names in ~/static/control/multi-fpm.info
 
 Please check for more information:
   https://learn.omega8.cc/how-to-quickly-switch-php-to-newer-version-330
 
-BOA supports Drupal 8/9 codebases both with classic directory structure like
-in Drupal 7 and also Drupal 8/9 distros you can download from Drupal.org, but
+BOA supports Drupal 8/9/10 codebases both with classic directory structure like
+in Drupal 7 and also Drupal 8/9/10 distros you can download from Drupal.org, but
 if you use Composer based codebase with different structure, the platform path
 is not the codebase root directory, but the subdirectory where you see the
 Drupal own index.php and "core" subdirectory. It can be platform-name/web or
@@ -54,11 +48,6 @@ You should think about Composer like it was Drush Make replacement, and you
 should not re-build nor upgrade the codebase on a platform with sites already
 hosted. Just use it to build new codebases and then add them as platforms
 when the build works without errors.
-
-Remember that Drush must be removed from the codebase, or it will take over
-Aegir tasks and they will fail, but since BOA-4.1.3 our modified Aegir
-backend will automatically check and remove drush from the vendor directory
-if found, on every Verify.
 
 You can modify the default path to configuration files in the site's
 local.settings.php file. We are looking into making it easier to configure,

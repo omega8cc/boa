@@ -10,17 +10,99 @@ export HOME=${HOME}
 
 barCnf="/root/.barracuda.cnf"
 
-_X_SE="520ltsT01"
+_X_SE="520proT02"
 
 tRee=lts
 export tRee="${tRee}"
 
+crontab_check_clean_race() {
+  _CSF_CRON_TEST=$(grep water /etc/crontab 2>&1)
+  if [ -e "/etc/csf/csf.deny" ] \
+    && [ -x "/usr/sbin/csf" ] \
+    && [[ "${_CSF_CRON_TEST}" =~ "water" ]]; then
+    sed -i "s/.*fire.*//g" /etc/crontab &> /dev/null
+    wait
+    sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
+    wait
+    sed -i "/^$/d" /etc/crontab &> /dev/null
+    wait
+  fi
+}
+crontab_check_clean_race
+
+bring_all_ram_cpu_online() {
+  _RAM_AUTO_FILE="/sys/devices/system/memory/auto_online_blocks"
+  if [ -f "${_RAM_AUTO_FILE}" ]; then
+    if grep -qx offline "${_RAM_AUTO_FILE}"; then
+      echo online > "${_RAM_AUTO_FILE}"
+    fi
+  fi
+  for _CPU_DIR in /sys/devices/system/cpu/cpu[0-9]*
+  do
+    _CPU=${_CPU_DIR##*/}
+    _CPU_STATE_FILE="${_CPU_DIR}/online"
+    if [ -f "${_CPU_STATE_FILE}" ]; then
+      if grep -qx 0 "${_CPU_STATE_FILE}"; then
+        echo 1 > "${_CPU_STATE_FILE}"
+      fi
+    fi
+  done
+  for _RAM_DIR in /sys/devices/system/memory/memory[0-9]*
+  do
+    _RAM=${_RAM_DIR##*/}
+    _RAM_STATE_FILE="${_RAM_DIR}/state"
+    if [ -f "${_RAM_STATE_FILE}" ]; then
+      if grep -qx offline "${_RAM_STATE_FILE}"; then
+        echo online > "${_RAM_STATE_FILE}"
+      fi
+    fi
+  done
+}
+bring_all_ram_cpu_online
+
+if_disable_not_used_services() {
+  clearSwap=No
+  if [ ! -e "/root/.allow.clamav.cnf" ] || [ -e "/root/.deny.clamav.cnf" ]; then
+    if [ -e "/etc/init.d/clamav-daemon" ]; then
+      clearSwap=YES
+      update-rc.d -f clamav-daemon remove &> /dev/null
+      mv -f /etc/init.d/clamav-daemon /var/backups/
+    fi
+    if [ -e "/etc/init.d/clamav-freshclam" ]; then
+      clearSwap=YES
+      update-rc.d -f clamav-freshclam remove &> /dev/null
+      mv -f /etc/init.d/clamav-freshclam /var/backups/
+    fi
+    kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}') &> /dev/null
+    kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
+  fi
+  if [ -e "/root/.deny.java.cnf" ]; then
+    if [ -e "/etc/init.d/solr7" ]; then
+      clearSwap=YES
+      update-rc.d -f solr7 remove &> /dev/null
+      mv -f /etc/init.d/solr7 /var/backups/
+    fi
+    if [ -e "/etc/init.d/jetty9" ]; then
+      clearSwap=YES
+      update-rc.d -f jetty9 remove &> /dev/null
+      mv -f /etc/init.d/jetty9 /var/backups/
+    fi
+    kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
+    kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+  fi
+  if [ "${clearSwap}" = "YES" ]; then
+    swapoff -a
+    swapon -a
+  fi
+}
+if_disable_not_used_services
+
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -sc 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
-    if [ "${e}" = "${_THIS_RV}" ]; then
+    if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
@@ -28,8 +110,8 @@ os_detection_minimal() {
 os_detection_minimal
 
 apt_clean_update() {
-  apt-get clean -qq 2> /dev/null
-  rm -rf /var/lib/apt/lists/* &> /dev/null
+  #apt-get clean -qq 2> /dev/null
+  #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
@@ -56,11 +138,11 @@ system_hostname_check_fix() {
 }
 system_hostname_check_fix
 
-rm -f /var/run/clear_m.pid
+rm -f /run/clear_m.pid
 
 _ADD_XTRA=YES
-_CRON_TEST=$(grep "usage.sh" /var/spool/cron/crontabs/root 2>&1)
-if [[ "${_CRON_TEST}" =~ "usage.sh" ]]; then
+_CRON_TEST=$(grep "clear.xsh" /var/spool/cron/crontabs/root 2>&1)
+if [[ "${_CRON_TEST}" =~ "clear.xsh" ]]; then
   _ADD_XTRA=NO
 fi
 
@@ -79,12 +161,12 @@ _DAY_SYSTEM_UP=$(( _DSU + 1 ))
 if [ "${_DAY_SYSTEM_UP}" = "31" ]; then
   _DAY_SYSTEM_UP=30
   _HOUR_OCTOPUS_UP=6
-  _HOUR_SYSTEM_UP=4
+  _HOUR_SYSTEM_UP=3
   _MINUTE_OCTOPUS_UP="05"
   _MINUTE_SYSTEM_UP=30
 else
-  _HOUR_OCTOPUS_UP=4
-  _HOUR_SYSTEM_UP=2
+  _HOUR_OCTOPUS_UP=6
+  _HOUR_SYSTEM_UP=3
   _MINUTE_OCTOPUS_UP="05"
   _MINUTE_SYSTEM_UP="05"
 fi
@@ -99,7 +181,7 @@ send_boa_system_report() {
       _BCC_EMAIL="notify@omega8.cc"
     fi
     if [ ! -z "${_RCPT_EMAIL}" ] \
-      && [ ! -z "${_RCPT_EMAIL}" ] \
+      && [ ! -z "${_BCC_EMAIL}" ] \
       && [ -e "/root/.run.example.report.cnf" ]; then
       repSub="BOA Status on ${_CHECK_HOST}"
       repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
@@ -117,27 +199,23 @@ fi
 
 crontab_update() {
   if [ -e "/etc/crontab" ]; then
-    sed -i "s/.*xdrago.*//gi"    /etc/crontab &> /dev/null
+    sed -i "s/.*xdrago.*//gi" /etc/crontab &> /dev/null
     wait
-    sed -i "s/.*arracuda.*//gi"  /etc/crontab &> /dev/null
+    sed -i "s/.*arracuda.*//gi" /etc/crontab &> /dev/null
     wait
-    sed -i "s/.*ctopus.*//gi"    /etc/crontab &> /dev/null
+    sed -i "s/.*ctopus.*//gi" /etc/crontab &> /dev/null
     wait
-    sed -i "s/.*du.*sql.*//gi"   /etc/crontab &> /dev/null
+    sed -i "s/.*du.*sql.*//gi" /etc/crontab &> /dev/null
     wait
-    if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
-      echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
-      echo "01 5    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
-    fi
     if [ "${_ADD_XTRA}" = "YES" ]; then
-      echo "*/6 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "*/19 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    if [ -e "/var/xdrago/monitor/hackcheck.archive.log" ]; then
+    if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ssh.log >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ftp.log >/dev/null 2>&1" >> /etc/crontab
     fi
-    sed -i "/^$/d"                /etc/crontab &> /dev/null
+    sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
     if [ -f "/root/.mstr.clstr.cnf" ] \
       && [ ! -f "/root/.wbhd.clstr.cnf" ] \
@@ -169,17 +247,16 @@ crontab_update() {
     fi
     if [ ! -z "${_AUTO_UP_WEEKLY}" ]; then
       echo "# Barracuda weekly system only upgrade" >> /etc/crontab
-      echo "11 0    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
-      echo "14 0    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
+      echo "11 3    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
+      echo "14 3    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
     fi
     echo "# Barracuda ${_AUTO_VER} full upgrade" >> /etc/crontab
-    echo "${_MINUTE_SYSTEM_UP} ${_HOUR_SYSTEM_UP}  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
+    echo "${_MINUTE_SYSTEM_UP} ${_HOUR_SYSTEM_UP}    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
     if [ ! -e "/root/.wbhd.clstr.cnf" ] && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
       if [ ! -z "${_OCTO_FULL}" ]; then
         echo "# Octopus ${_AUTO_VER} full upgrade" >> /etc/crontab
-        echo "${_MINUTE_OCTOPUS_UP} ${_HOUR_OCTOPUS_UP}  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
-        echo "35 6  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
-        echo "55 6  ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
+        echo "${_MINUTE_OCTOPUS_UP} ${_HOUR_OCTOPUS_UP}    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
+        echo "55 7    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
       fi
     fi
     echo Cron Update Completed
@@ -188,27 +265,23 @@ crontab_update() {
 
 crontab_cleanup() {
   if [ -e "/etc/crontab" ]; then
-    sed -i "s/.*xdrago.*//gi"    /etc/crontab &> /dev/null
+    sed -i "s/.*xdrago.*//gi" /etc/crontab &> /dev/null
     wait
-    sed -i "s/.*arracuda.*//gi"  /etc/crontab &> /dev/null
+    sed -i "s/.*arracuda.*//gi" /etc/crontab &> /dev/null
     wait
-    sed -i "s/.*ctopus.*//gi"    /etc/crontab &> /dev/null
+    sed -i "s/.*ctopus.*//gi" /etc/crontab &> /dev/null
     wait
-    sed -i "s/.*du.*sql.*//gi"   /etc/crontab &> /dev/null
+    sed -i "s/.*du.*sql.*//gi" /etc/crontab &> /dev/null
     wait
-    if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
-      echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
-      echo "01 5    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
-    fi
     if [ "${_ADD_XTRA}" = "YES" ]; then
-      echo "*/6 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "*/19 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    if [ -e "/var/xdrago/monitor/hackcheck.archive.log" ]; then
+    if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ssh.log >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ftp.log >/dev/null 2>&1" >> /etc/crontab
     fi
-    sed -i "/^$/d"                /etc/crontab &> /dev/null
+    sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
     echo Cron Cleanup Completed
   fi
@@ -224,10 +297,6 @@ if [ -e "/var/xdrago/log" ]; then
   fi
 fi
 
-if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-  mkdir -p /etc/mysql/mariadb.conf.d
-fi
-
 if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   killall -9 mysqldump
   killall -9 rsync
@@ -241,13 +310,13 @@ if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
   apt_clean_update
 fi
 
-if [ -e "/data/disk/arch/sql" ]; then
-  if [ ! -e "/var/xdrago/log/.sync3_scan_nginx.pid" ]; then
+if [ -e "/var/aegir/drush" ]; then
+  if [ ! -e "/var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid" ]; then
     sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=399/g"  ${barCnf}
     sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx
     wait
-    sed -i "s/default_lines =.*/default_lines = 599;/g" /var/xdrago/monitor/check/scan_nginx
-    touch /var/xdrago/log/.sync3_scan_nginx.pid
+    sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx
+    touch /var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid
   fi
   _VM_TEST=$(uname -a 2>&1)
   [ -z "${_AUTO_VER}" ] && _AUTO_VER="${tRee}"
@@ -288,7 +357,7 @@ if [ -e "/data/disk/arch/sql" ]; then
 	  _DONT_TOUCH=OK
 	  rm -f /etc/csf/csf.conf-pre*
 	else
-	  if [ ! -e "/var/xdrago/log/.csf_legacy_cleanup.pid" ]; then
+	  if [ ! -e "/var/xdrago/log/.csf_legacy_cleanup.${_X_SE}.pid" ]; then
 	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.ignore
 	    wait
 	    sed -i "s/.*Legacy.*//g"    /etc/csf/csf.allow
@@ -304,41 +373,41 @@ if [ -e "/data/disk/arch/sql" ]; then
 	    sed -i "/^$/d" /etc/csf/csf.ignore
 	    sed -i "/^$/d" /etc/csf/csf.allow
 	    rm -f /etc/csf/csf.conf-pre*
-	    touch /var/xdrago/log/.csf_legacy_cleanup.pid
+	    touch /var/xdrago/log/.csf_legacy_cleanup.${_X_SE}.pid
 	  fi
 	fi
 	rm -f /var/xdrago/*.old
 	rm -f /var/xdrago/.*.off
-	if [ ! -e "/var/xdrago/log/.csf_dhcp_udp_cleanup.pid" ]; then
+	if [ ! -e "/var/xdrago/log/.csf_dhcp_udp_cleanup.${_X_SE}.pid" ]; then
       sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
       wait
       sed -i "/^$/d" /etc/csf/csf.allow
-      _DHCP_TEST=$(grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq 2>&1)
-      if [[ "${_DHCP_TEST}" =~ "port" ]]; then
-	    for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+      if [ -e "/var/log/daemon.log" ]; then
+        _DHCP_LOG="/var/log/daemon.log"
       else
-        for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+        _DHCP_LOG="/var/log/syslog"
+      fi
+      _DHCP_TEST=$(grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq 2>&1)
+      if [[ "${_DHCP_TEST}" =~ "port" ]]; then
+        for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+      else
+        for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
       fi
 	  csf -q
-	  touch /var/xdrago/log/.csf_dhcp_udp_cleanup.pid
+	  touch /var/xdrago/log/.csf_dhcp_udp_cleanup.${_X_SE}.pid
 	fi
-    if [ ! -e "/var/xdrago/log/.fixed_php_eight_one_default.pid" ]; then
-      sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=8.1/g"  ${barCnf}
-      sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=8.1/g"  ${barCnf}
-      touch /var/xdrago/log/.fixed_php_eight_one_default.pid
-    fi
-    if [ ! -e "/var/xdrago/log/.disabled_modules_fix.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.disabled_modules_fix.${_X_SE}.pid" ]; then
       sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=NO/g"  ${barCnf}
-      touch /var/xdrago/log/.disabled_modules_fix.pid
+      touch /var/xdrago/log/.disabled_modules_fix.${_X_SE}.pid
     fi
-    if [ ! -e "/var/xdrago/log/.sync399_scan_nginx.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid" ]; then
       sed -i "s/^_NGINX_DOS_LIMIT=.*/_NGINX_DOS_LIMIT=399/g"  ${barCnf}
       sed -i "s/default_critnumber =.*/default_critnumber = 399;/g" /var/xdrago/monitor/check/scan_nginx
       wait
-      sed -i "s/default_lines =.*/default_lines = 599;/g" /var/xdrago/monitor/check/scan_nginx
-      touch /var/xdrago/log/.sync399_scan_nginx.pid
+      sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx
+      touch /var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid
     fi
-    if [ ! -e "/var/xdrago/log/.custom_percona_forced.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.custom_percona_forced.${_X_SE}.pid" ]; then
       if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
         sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"  ${barCnf}
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"  ${barCnf}
@@ -348,7 +417,9 @@ if [ -e "/data/disk/arch/sql" ]; then
         _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
         if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
           _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
-          echo _CHECK_REPAIR 1 ${_CHECK_REPAIR}
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            echo _CHECK_REPAIR 1 ${_CHECK_REPAIR}
+          fi
           if [[ "${_CHECK_REPAIR}" =~ "corrupted" ]]; then
             mysqlcheck -u root -A --auto-repair --silent
             mysql_upgrade -u root --force
@@ -358,7 +429,9 @@ if [ -e "/data/disk/arch/sql" ]; then
             mysql_upgrade -u root --force
           fi
           _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
-          echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            echo _CHECK_REPAIR 2 ${_CHECK_REPAIR}
+          fi
         fi
         mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
         mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
@@ -367,40 +440,34 @@ if [ -e "/data/disk/arch/sql" ]; then
       fi
       sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"  ${barCnf}
       rm -f /etc/mysql/conf.d/mysqldump.cnf
-      touch /var/xdrago/log/.custom_percona_forced.pid
+      touch /var/xdrago/log/.custom_percona_forced.${_X_SE}.pid
     fi
-    _AUTO_UP_WEEKLY=5
-    _AUTO_UP_MONTH=12
-    _AUTO_UP_DAY=24
+    _AUTO_UP_WEEKLY=7
+    _AUTO_UP_MONTH=6
+    _AUTO_UP_DAY=6
     _AUTO_PHP="php-min"
     _AUTO_VER="${tRee}"
-    if [ ! -e "/root/.ignore.site24x7.firewall.cnf" ]; then
-      if [ -x "/usr/sbin/csf" ]; then
-        touch /root/.ignore.site24x7.firewall.cnf
-        bash /var/xdrago/guest-water.sh
-        wait
-        csf -df
-        wait
-        csf -tf
-        wait
-      fi
-    fi
-    if [ ! -e "/var/xdrago/log/.restart_site24x7_agent.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.restart_site24x7_agent.${_X_SE}.pid" ]; then
       service site24x7monagent restart
       wait
-      touch /var/xdrago/log/.restart_site24x7_agent.pid
+      touch /var/xdrago/log/.restart_site24x7_agent.${_X_SE}.pid
     fi
-    if [ ! -e "/root/.silent.update.cnf" ]; then
-      touch /root/.silent.update.cnf
-    fi
+    #if [ ! -e "/root/.silent.update.cnf" ]; then
+    #  touch /root/.silent.update.cnf
+    #fi
+    [ -e " /root/.my.optimize.cnf" ] && rm -f /root/.my.optimize.cnf
     [ -e "/root/.pause_tasks_maint.cnf" ] && rm -f /root/.pause_tasks_maint.cnf
     [ -e "/root/.restrict_this_vm.cnf" ] && rm -f /root/.restrict_this_vm.cnf
     [ -e "/root/.force.sites.verify.cnf" ] && rm -f /root/.force.sites.verify.cnf
     [ -e "/root/.run.example.report.cnf" ] && rm -f /root/.run.example.report.cnf
     [ -e "/var/xdrago/weekly.sh" ] && rm -f /var/xdrago/weekly.sh
-    [ -e "/root/.debug-boa-installer.cnf" ] && rm -f /root/.debug-boa-installer.cnf
-    [ -e "/root/.debug-octopus-installer.cnf" ] && rm -f /root/.debug-octopus-installer.cnf
-    if [ -e "/var/run/boa_run.pid" ]; then
+    if [ ! -e "/root/.dev.server.cnf" ] \
+      && [ -e "/var/aegir/drush" ] \
+      && [ -e "/data/all/000" ]; then
+      [ -e "/root/.debug-boa-installer.cnf" ] && rm -f /root/.debug-boa-installer.cnf
+      [ -e "/root/.debug-octopus-installer.cnf" ] && rm -f /root/.debug-octopus-installer.cnf
+    fi
+    if [ -e "/run/boa_run.pid" ]; then
       touch /root/.pause_tasks_maint.cnf
     else
       [ -e "/root/.pause_tasks_maint.cnf" ] && rm -f /root/.pause_tasks_maint.cnf
@@ -442,11 +509,11 @@ if [ -e "/data/disk/arch/sql" ]; then
     _AUTO_UP_DAY=
     _AUTO_PHP=
     _AUTO_VER="${tRee}"
-    if [ ! -e "/var/xdrago/log/.fixed_clstr_fpm.pid" ]; then
+    if [ ! -e "/var/xdrago/log/.fixed_clstr_fpm.${_X_SE}.pid" ]; then
       sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"8.1 7.4 5.6\"/g" ${barCnf}
       wait
       sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g" ${barCnf}
-      touch /var/xdrago/log/.fixed_clstr_fpm.pid
+      touch /var/xdrago/log/.fixed_clstr_fpm.${_X_SE}.pid
     fi
   fi
   if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
@@ -465,16 +532,25 @@ if [ -e "/data/disk/arch/sql" ]; then
 #     touch /root/.legacy_sys_prep_ugrade_ctrl.cnf
 #   fi
 
-  if [ ! -e "/var/xdrago/log/.etc_crontab_update_ctrl.${_X_SE}.pid" ]; then
-    rm -f /var/xdrago/log/.*_crontab_*
-    if [ ! -z "${_AUTO_UP_MONTH}" ] \
-      && [ ! -z "${_AUTO_UP_DAY}" ]; then
-      crontab_update
-    else
+  if [ -e "/root/.dev.server.cnf" ]; then
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_dev_ctrl_f4.${tRee}.${_X_SE}.pid" ]; then
+      rm -f /var/xdrago/log/.*etc_crontab_update_dev_ctrl*
       crontab_cleanup
+      service cron restart
+      touch /var/xdrago/log/.etc_crontab_update_dev_ctrl_f4.${tRee}.${_X_SE}.pid
     fi
-    service cron restart
-    touch /var/xdrago/log/.etc_crontab_update_ctrl.${_X_SE}.pid
+  else
+    if [ ! -e "/var/xdrago/log/.etc_crontab_update_prod_ctrl_f4.${tRee}.${_X_SE}.pid" ]; then
+      rm -f /var/xdrago/log/.*etc_crontab_update_prod_ctrl*
+      if [ ! -z "${_AUTO_UP_MONTH}" ] \
+        && [ ! -z "${_AUTO_UP_DAY}" ]; then
+        crontab_update
+      else
+        crontab_cleanup
+      fi
+      service cron restart
+      touch /var/xdrago/log/.etc_crontab_update_prod_ctrl_f4.${tRee}.${_X_SE}.pid
+    fi
   fi
 
   if [ ! -e "/var/xdrago/log/.etc_csf_allow_ctrl.${_X_SE}.pid" ]; then
@@ -561,6 +637,26 @@ if [ -e "/data/disk/arch/sql" ]; then
       touch /var/xdrago/log/.sqlcleanup_ctrl.${_X_SE}.pid
     fi
   fi
+
+  _IS_SOLRSTART_RUNNING=$(ps aux | grep '[s]olr start' | awk '{print $2}' 2>&1)
+  if [ ! -z "${_IS_SOLRSTART_RUNNING}" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "solr start"` -gt "2" ]; then
+      kill -9 $(ps aux | grep '[s]olr start' | awk '{print $2}') &> /dev/null
+      touch /var/xdrago/log/.solr_start_ctrl.${_X_SE}.pid
+    fi
+  fi
+
+  _IS_PROCTRL_RUNNING=$(ps aux | grep '[p]roc_num_ctrl.cgi' | awk '{print $2}' 2>&1)
+  if [ ! -z "${_IS_PROCTRL_RUNNING}" ]; then
+    if [ `ps aux | grep -v "grep" | grep --count "proc_num_ctrl.cgi"` -gt "1" ]; then
+      kill -9 $(ps aux | grep '[p]roc_num_ctrl.cgi' | awk '{print $2}') &> /dev/null
+      touch /var/xdrago/log/.proc_num_ctrl.${_X_SE}.pid
+    fi
+  fi
+
+  rm -f /run/solr_jetty.pid
+  rm -f /run/solr-jetty.pid
+  rm -f /run/fmp_wait.pid
 
   _IS_SQLBACKUP_RUNNING=$(ps aux | grep '[m]ysql_backup.sh' | awk '{print $2}' 2>&1)
   if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then

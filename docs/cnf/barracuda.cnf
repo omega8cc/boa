@@ -52,7 +52,7 @@ _ENABLE_GOACCESS=NO #----------- Generate statistics with GoAccess when YES
 ###
 _MAGICK_FROM_SOURCES=NO #------- Builds ImageMagick from sources when YES
 ###
-_NGINX_DOS_LIMIT=399 #---------- Allows to override default 399/599 limit
+_NGINX_DOS_LIMIT=399 #---------- Allows to override default 399/9999 limit
 _NGINX_EXTRA_CONF="" #---------- Allows to add custom options to Nginx build
 _NGINX_FORWARD_SECRECY=YES #---- Installs PFS Nginx support when YES (default)
 _NGINX_HEADERS=NO #------------- Installs Nginx Headers More support when YES
@@ -69,8 +69,8 @@ _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_IONCUBE=NO #--------------- Installs ionCube for all PHP versions when YES
 _PHP_GEOS=NO #------------------ Installs GEOS for all PHP versions when YES
 _PHP_MONGODB=NO #--------------- Installs MONGODB for all PHP versions when YES
-_PHP_MULTI_INSTALL="8.1 7.4" #-- PHP versions to install 8.2/1/0 7.4/3/2/1/0 5.6
-_PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 7.4
+_PHP_MULTI_INSTALL="8.1 7.4" #-- PHP versions to install 8.3/2/1/0 7.4/3/2/1/0 5.6
+_PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 8.1
 ###
 _REDIS_LISTEN_MODE=SOCKET #----- Redis listen mode: SOCKET (recommended) or PORT
 _REDIS_MAJOR_RELEASE=7 #-------- Redis major release version: 5, 6 or 7

@@ -18,12 +18,12 @@ chomp($myip);
 print "myip is $myip";
 if (-e "/root/.hr.monitor.cnf") {
   $default_critnumber = 399;
-  $default_lines = 599;
+  $default_lines = 1999;
   $default_mode = 1;
 }
 else {
   $default_critnumber = 399;
-  $default_lines = 599;
+  $default_lines = 1999;
   $default_mode = 2;
 }
 &makeactions;
@@ -47,7 +47,7 @@ sub makeactions
   }
   local(@MYARR)=`tail --lines=$default_lines /var/log/nginx/access.log 2>&1`;
   local($critnumber) = $default_critnumber;
-  local($mininumber) = $critnumber / 2;
+  local($mininumber) = $critnumber / 3;
   print "\n===[$mininumber] mininumber===\n";
   local($sumar,$li_cnt{$VISITOR},$sumarpx,$px_cnt{$PROXY});
   local($im_sumar,$im_li_cnt{$VISITOR},$im_sumarpx,$im_px_cnt{$PROXY});
@@ -74,6 +74,12 @@ sub makeactions
       print "RESTX: $RESTX\n";
     }
 
+    $block_unknown = 0;
+    if ($VISITOR =~ /^(unknown)/)
+    {
+      $block_unknown = 1;
+    }
+
     if ($VISITOR =~ /^((192\.168\.)|(172\.16\.)|(unknown)|(10\.)|(127\.0\.))/)
     {
       $VISITOR = $PROXY;
@@ -93,14 +99,51 @@ sub makeactions
         }
       }
     }
+
     $VISITOR =~ s/[^0-9\.]//g;
     if ($VISITOR !~ /^((192\.168\.)|(172\.16\.)|(10\.)|(127\.0\.))/ && $VISITOR =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
       chomp($line);
+      $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 99  if ($block_unknown > 0);
+      $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 99  if ($line =~ /\" 404 /);
+      $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 99  if ($line =~ /\" 403 /);
+      $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 99  if ($line =~ /\" 500 /);
+      $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 99  if ($line =~ /wp-(content|admin|includes)/);
+      $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 19  if ($line =~ /(POST|GET) \/user\/login/);
       if ($line =~ /(GET|HEAD|POST)/ && $line !~ /\" 301 /) {
         local($skip_post) = 0;
-        if ($line =~ /(GET|POST) \/([a-z]{2}\/)?(civicrm|batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress|files\/progress|file\/progress|elfinder\/connector)/) {
-          ### print "Not Counted Dynamic Request URI: $line\n";
+        local($ignore_admin) = 0;
+        if ($line =~ /\/admin\/content/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /POST \/quickedit/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /POST \/node\/add/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /GET \/entity_reference_autocomplete/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /POST \/entity-browser/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /POST \/contextual\/render/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /POST \/node\//) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /(GET|POST) \/([a-z]{2}\/)?(civicrm|batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress|files\/progress|file\/progress|elfinder\/connector)/) {
+          ### print "Not Counted Admin Request URI: $line\n";
           $skip_post = 1;
+          $ignore_admin = 1;
         }
         elsif ($line =~ /files\/(imagecache|styles|media)/) {
           ### print "Monitored Not Counted Dynamic Request URI: $line\n";
@@ -134,7 +177,7 @@ sub makeactions
         else {
           $li_cnt{$VISITOR}++;
         }
-        if ($skip_post < 1) {
+        if ($skip_post < 1 || $ignore_admin < 1) {
           if ($default_mode eq "1") {
             $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 5 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/(register|pass|login))|(node\/add)/);
             $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 3 if ($line =~ /GET/  && $line =~ /node\/add/);
@@ -150,19 +193,57 @@ sub makeactions
           print "Not Counted Not Supported Request Type: $line\n";
         }
         else {
-          $li_cnt{$VISITOR}++;
-          ### print "Counted Not Supported Request Type: $line\n";
+          if ($ignore_admin < 1) {
+            $li_cnt{$VISITOR}++;
+            ### print "Counted Not Supported Request Type: $line\n";
+          }
         }
       }
     }
     $PROXY =~ s/[^0-9\.]//g;
     if ($PROXY ne $VISITOR && $PROXY !~ /^((192\.168\.)|(172\.16\.)|(10\.)|(127\.0\.))/ && $PROXY =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
       chomp($line);
+      $px_cnt{$PROXY} = $px_cnt{$PROXY} + 99  if ($block_unknown > 0);
+      $px_cnt{$PROXY} = $px_cnt{$PROXY} + 99  if ($line =~ /\" 404 /);
+      $px_cnt{$PROXY} = $px_cnt{$PROXY} + 99  if ($line =~ /\" 403 /);
+      $px_cnt{$PROXY} = $px_cnt{$PROXY} + 99  if ($line =~ /\" 500 /);
+      $px_cnt{$PROXY} = $px_cnt{$PROXY} + 99  if ($line =~ /wp-(content|admin|includes)/);
+      $px_cnt{$PROXY} = $px_cnt{$PROXY} + 19  if ($line =~ /(POST|GET) \/user\/login/);
       if ($line =~ /(GET|HEAD|POST)/ && $line !~ /\" 301 /) {
         local($skip_post) = 0;
-        if ($line =~ /(GET|POST) \/([a-z]{2}\/)?(civicrm|batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress|files\/progress|file\/progress|elfinder\/connector)/) {
+        local($ignore_admin) = 0;
+        if ($line =~ /\/admin\/content/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /POST \/quickedit/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /POST \/node\/add/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /GET \/entity_reference_autocomplete/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /POST \/entity-browser/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /POST \/contextual\/render/) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /POST \/node\//) {
+          ### print "Not Counted Admin Request URI: $line\n";
+          $ignore_admin = 1;
+        }
+        elsif ($line =~ /(GET|POST) \/([a-z]{2}\/)?(civicrm|batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress|files\/progress|file\/progress|elfinder\/connector)/) {
           ### print "Not Counted Dynamic Request URI: $line\n";
           $skip_post = 1;
+          $ignore_admin = 1;
         }
         elsif ($line =~ /files\/(imagecache|styles|media)/) {
           ### print "Monitored Not Counted Dynamic Request URI: $line\n";
@@ -196,7 +277,7 @@ sub makeactions
         else {
           $px_cnt{$PROXY}++;
         }
-        if ($skip_post < 1) {
+        if ($skip_post < 1 || $ignore_admin < 1) {
           if ($default_mode eq "1") {
             $px_cnt{$PROXY} = $px_cnt{$PROXY} + 5 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/(register|pass|login))|(node\/add)/);
             $px_cnt{$PROXY} = $px_cnt{$PROXY} + 3 if ($line =~ /GET/  && $line =~ /node\/add/);
@@ -212,8 +293,10 @@ sub makeactions
           print "Not Counted Not Supported Request Type: $line\n";
         }
         else {
-          $px_cnt{$PROXY}++;
-          ### print "Counted Not Supported Request Type: $line\n";
+          if ($ignore_admin < 1) {
+            $px_cnt{$PROXY}++;
+            ### print "Counted Not Supported Request Type: $line\n";
+          }
         }
       }
     }
@@ -221,20 +304,24 @@ sub makeactions
   foreach $VISITOR (sort keys %li_cnt) {
     $sumar = $sumar + $li_cnt{$VISITOR};
     local($thissumar) = $li_cnt{$VISITOR};
+    local($critnumber) = $default_critnumber;
+    local($mininumber) = $critnumber / 3;
     if ($thissumar > $mininumber) {
       local($isloggedin) = 0;
       &check_who($VISITOR);
-      $critnumber = $critnumber - 50 if ($critnumber > 450);
-      $critnumber = 8888 if ($isloggedin); ### don't block logged in users
-      $critnumber = 8888 if ($VISITOR eq $myip); ### don't block own IP
-      print "===[$isloggedin] VISITOR li_cnt $VISITOR is logged in===\n" if ($isloggedin);
-      print "===[$critnumber] VISITOR li_cnt critnumber for $VISITOR===\n" if ($VISITOR);
+      $critnumber = 9999 if ($isloggedin); ### don't block logged in users
+      $critnumber = 9998 if ($VISITOR =~ /$myip/); ### don't block own IP
+      #print "===[DEBUG] VISITOR is $VISITOR and MYIP is $myip===\n" if ($myip);
+      print "===[$isloggedin] LOGGED li_cnt $VISITOR is logged in===\n" if ($isloggedin);
+      print "===[$critnumber] MAX li_cnt critnumber for $VISITOR===\n" if ($VISITOR);
+      print "===[$thissumar] COUNTER li_cnt counter for $VISITOR===\n" if ($VISITOR);
       local($blocked) = 0;
       &check_remote_ip($VISITOR);
       local($allowed) = 0;
       &check_own_ip($VISITOR);
       if ($thissumar > $critnumber) {
         if ($allowed ne 'ALLOWED' && !$blocked) {
+          print "===[$thissumar] BLOCK li_cnt action for $VISITOR===\n" if ($VISITOR);
           `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/web.log`;
           `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
           if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
@@ -247,20 +334,23 @@ sub makeactions
   foreach $PROXY (sort keys %px_cnt) {
     $sumarpx = $sumarpx + $px_cnt{$PROXY};
     local($thissumarpx) = $px_cnt{$PROXY};
+    local($critnumber) = $default_critnumber;
+    local($mininumber) = $critnumber / 3;
     if ($thissumarpx > $mininumber) {
       local($isloggedin) = 0;
       &check_who($PROXY);
-      $critnumber = $critnumber - 50 if ($critnumber > 450);
-      $critnumber = 7777 if ($isloggedin); ### don't block logged in users
-      $critnumber = 7777 if ($PROXY eq $myip); ### don't block own IP
-      print "===[$isloggedin] PROXY px_cnt $PROXY is logged in===\n" if ($isloggedin);
-      print "===[$critnumber] PROXY px_cnt critnumber for $PROXY===\n" if ($PROXY);
+      $critnumber = 9997 if ($isloggedin); ### don't block logged in users
+      $critnumber = 9996 if ($PROXY eq $myip); ### don't block own IP
+      print "===[$isloggedin] LOGGED px_cnt $PROXY is logged in===\n" if ($isloggedin);
+      print "===[$critnumber] MAX px_cnt critnumber for $PROXY===\n" if ($PROXY);
+      print "===[$thissumarpx] COUNTER px_cnt counter for $PROXY===\n" if ($PROXY);
       local($blocked) = 0;
       &check_remote_ip($PROXY);
       local($allowed) = 0;
       &check_own_ip($PROXY);
       if ($thissumarpx > $critnumber) {
         if ($allowed ne 'ALLOWED' && !$blocked) {
+          print "===[$thissumarpx] BLOCK px_cnt action for $PROXY===\n" if ($PROXY);
           `echo "$PROXY # [x$thissumarpx] $times" >> /var/xdrago/monitor/web.log`;
           `echo "$PROXY # [x$thissumarpx] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
           if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
@@ -273,20 +363,23 @@ sub makeactions
   foreach $VISITOR (sort keys %im_li_cnt) {
     $im_sumar = $im_sumar + $im_li_cnt{$VISITOR};
     local($thisim_sumar) = $im_li_cnt{$VISITOR};
+    local($critnumber) = $default_critnumber;
+    local($mininumber) = $critnumber / 3;
     if ($thisim_sumar > $mininumber) {
       local($isloggedin) = 0;
       &check_who($VISITOR);
-      $critnumber = $critnumber - 50 if ($critnumber > 450);
-      $critnumber = 9999 if ($isloggedin); ### don't block logged in users
-      $critnumber = 9999 if ($VISITOR eq $myip); ### don't block own IP
-      print "===[$isloggedin] VISITOR im_li_cnt $VISITOR is logged in===\n" if ($isloggedin);
-      print "===[$critnumber] VISITOR im_li_cnt critnumber for $VISITOR===\n" if ($VISITOR);
+      $critnumber = 9995 if ($isloggedin); ### don't block logged in users
+      $critnumber = 9994 if ($VISITOR eq $myip); ### don't block own IP
+      print "===[$isloggedin] LOGGED im_li_cnt $VISITOR is logged in===\n" if ($isloggedin);
+      print "===[$critnumber] MAX im_li_cnt critnumber for $VISITOR===\n" if ($VISITOR);
+      print "===[$thisim_sumar] COUNTER im_li_cnt counter for $VISITOR===\n" if ($VISITOR);
       local($blocked) = 0;
       &check_remote_ip($VISITOR);
       local($allowed) = 0;
       &check_own_ip($VISITOR);
       if ($thisim_sumar > $critnumber) {
         if ($allowed ne 'ALLOWED' && !$blocked) {
+          print "===[$thisim_sumar] BLOCK im_li_cnt action for $VISITOR===\n" if ($VISITOR);
           `echo "$VISITOR # [x$thisim_sumar] $times" >> /var/xdrago/monitor/web.log`;
           `echo "$VISITOR # [x$thisim_sumar] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
           if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
@@ -299,20 +392,23 @@ sub makeactions
   foreach $PROXY (sort keys %im_px_cnt) {
     $im_sumarpx = $im_sumarpx + $im_px_cnt{$PROXY};
     local($thisim_sumarpx) = $im_px_cnt{$PROXY};
+    local($critnumber) = $default_critnumber;
+    local($mininumber) = $critnumber / 3;
     if ($thisim_sumarpx > $mininumber) {
       local($isloggedin) = 0;
       &check_who($PROXY);
-      $critnumber = $critnumber - 50 if ($critnumber > 450);
-      $critnumber = 5555 if ($isloggedin); ### don't block logged in users
-      $critnumber = 5555 if ($PROXY eq $myip); ### don't block own IP
-      print "===[$isloggedin] PROXY im_px_cnt $PROXY is logged in===\n" if ($isloggedin);
-      print "===[$critnumber] PROXY im_px_cnt critnumber for $PROXY===\n" if ($PROXY);
+      $critnumber = 9993 if ($isloggedin); ### don't block logged in users
+      $critnumber = 9992 if ($PROXY eq $myip); ### don't block own IP
+      print "===[$isloggedin] LOGGED im_px_cnt $PROXY is logged in===\n" if ($isloggedin);
+      print "===[$critnumber] MAX im_px_cnt critnumber for $PROXY===\n" if ($PROXY);
+      print "===[$thisim_sumarpx] COUNTER im_px_cnt counter for $PROXY===\n" if ($PROXY);
       local($blocked) = 0;
       &check_remote_ip($PROXY);
       local($allowed) = 0;
       &check_own_ip($PROXY);
       if ($thisim_sumarpx > $critnumber) {
         if ($allowed ne 'ALLOWED' && !$blocked) {
+          print "===[$thisim_sumarpx] BLOCK im_px_cnt action for $PROXY===\n" if ($PROXY);
           `echo "$PROXY # [x$thisim_sumarpx] $times" >> /var/xdrago/monitor/web.log`;
           `echo "$PROXY # [x$thisim_sumarpx] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
           if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {

@@ -40,7 +40,7 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
-_X_SE="520ltsT01"
+_X_SE="520proT02"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 aptYesUnth="-y --allow-unauthenticated"
 vSet="variable-set --always-set"
@@ -626,6 +626,7 @@ fix_solr7_cnf() {
     if [ "${_IF_RESTART_SOLR}" = "YES" ] \
       || [ ! -e "${rStart}" ]; then
       echo "Restarting Solr 7..."
+      #kill -9 $(ps aux | grep '[s]olr' | awk '{print $2}') &> /dev/null
       service solr7 restart
       touch ${rStart}
     fi
