@@ -372,7 +372,7 @@ fi
 if [ -x "/usr/local/ssl/bin/openssl" ]; then
   [ -e "${_LC_SSL_CTRL}" ] && rm -f ${_LC_SSL_CTRL}
 fi
-if [ "${_STATUS}" = "INIT" ]; then
+if [ "${_STATUS}" = "INIT" ] || [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
   if [ ! -e "${_LC_SSL_CTRL}" ]; then
     if [ ! -e "${_MD_SSL_CTRL}" ]; then
       touch ${_MD_SSL_CTRL}
