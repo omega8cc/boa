@@ -379,6 +379,9 @@ dns_unbound_install_upgrade() {
     isUnbndFix=YES
   else
     isUnbndFix=NO
+    isUnbndBr=$(service unbound restart 2>&1)
+    [[ "${isUnbndBr}" =~ "fatal error" ]] && isUnbndFix=YES
+    [[ "${isUnbndBr}" =~ "not found" ]] && isUnbndFix=YES
   fi
   if [ ! -x "${isUnbnd}" ] \
     || [ -z "${isUnbnd}" ] \
