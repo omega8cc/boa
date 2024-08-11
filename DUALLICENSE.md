@@ -16,7 +16,7 @@ You can install only **BOA LTS** and then upgrade to **PRO** with a license from
 
 Over time, **PRO** will be ahead of **LTS** as its name suggests.
 
-The `BOA-5.3.0` release will be the last parallel release including all features developed in **DEV**, so both **PRO** and **LTS** users will enjoy the same extensive list of improvements, bug fixes, and new features. There are too many key features developed in **DEV** not to include them in the good and reliable **LTS** version for everyone.
+The `BOA-5.3.0` release is the last parallel release including all features developed for **PRO**, so both **PRO** and **LTS** users will enjoy the same improvements, bug fixes, and new features.
 
 In the future, new features will be regularly added to **PRO**, while **LTS** will receive only security updates and critical fixes. There may be exceptions, and some new features may find their way to **LTS**, but only as exceptions.
 
