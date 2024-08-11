@@ -38,7 +38,7 @@ fi
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_VERSION="BOA-5.2.0-lts"
+_X_VERSION="BOA-5.3.0-lts"
 _X_SE="520proT02"
 #
 barCnf="/root/.barracuda.cnf"
