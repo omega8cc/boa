@@ -549,7 +549,7 @@ aegir_master_upgrade() {
     chown -R aegir:www-data ${_THIS_HM_SITE}/files
     chmod -R 02775 ${_THIS_HM_SITE}/files
 
-    _X_SE="520proT02"
+    _X_SE="530ltsT00"
     export _X_SE="${_X_SE}"
     export _X_VERSION="${_X_VERSION}"
 
@@ -892,7 +892,7 @@ ALTER USER '${_AEGIR_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
     fi
 
-    _X_SE="520proT02"
+    _X_SE="530ltsT00"
     export _X_SE="${_X_SE}"
     export _X_VERSION="${_X_VERSION}"
 

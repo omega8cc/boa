@@ -3960,7 +3960,7 @@ satellite_make() {
     writeTo="${vBs}/${filIncO}"
   fi
 
-  _X_SE="520proT02"
+  _X_SE="530ltsT00"
   export _X_SE="${_X_SE}"
   export _X_VERSION="${_X_VERSION}"
 
