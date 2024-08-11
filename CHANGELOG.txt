@@ -1,17 +1,42 @@
 
 ###
+### Stable BOA-5.3.0-pro - Full Edition
+### Date: Sat 13 Jul 2024 02:49:37 PM EDT in New York
+###
+
+@=> New Features
+
+    * Update sFTP password and password expiration date with temporary pid file
+        ~/static/control/run-sftp-password-update.pid
+      Now the main Octopus limited shell user can easily self-update password
+      based access if still has working SSH keys but lost working password.
+      New password will be written to ~/static/control/new-USER-password.txt
+
+@=> Improvements
+
+    *
+
+@=> Changes and Upgrades
+
+    * PHP 8.3.10
+    * PHP 8.2.22
+
+@=> Important Fixes
+
+    * Always check if all /var/xdrago/* scripts are present or force update
+
+
+###
 ### Stable BOA-5.2.0 - Full Edition
 ### Date: Wed 03 Apr 2024 02:11:56 PM CEST in Warsaw
-###
-### Documenting details in progress...
 ###
 
 @=> Notes on new available BOA branches and licenses
 
     BOA is available in three main branches, but only LTS for installation:
 
-  * LTS which remains completely free to use without any kind of commercial
-    license as it was from the beginning (previously named HEAD or STABLE).
+  * LTS which remains completely free to use without any kind of license
+    as it was from the beginning (previously named HEAD or STABLE).
     This branch should be considered as BOA LTS with slow updates, focused
     on both security and bug fixes, but very limited new features additions.
 
@@ -3742,14 +3767,14 @@
   If you have 'fastcgi_pass 127.0.0.1:9090;' in any custom vhost or Nginx
   include file on the Octopus instance, you should replace it with:
 
-    fastcgi_pass unix:/run/o1.fpm.socket;
+    fastcgi_pass unix:/var/run/o1.fpm.socket;
 
   where 'o1' is your corresponding Octopus system username.
 
   Note that if you have custom vhosts or includes in the Aegir Master Instance,
   you should instead replace 'fastcgi_pass 127.0.0.1:9090;' with:
 
-    fastcgi_pass unix:/run/www53.fpm.socket;
+    fastcgi_pass unix:/var/run/www53.fpm.socket;
 
   where '53' is related to PHP version defined via _PHP_FPM_VERSION in your
   /root/.barracuda.cnf file. Note that while variable has a dot, the socket
@@ -4169,7 +4194,7 @@
   * Nginx: Detected $device is not used in Boost config, only in Speed Booster.
   * Nginx: Fix limreq also for some really old vhosts.
   * Nginx: Modify only vhosts known as included in the protected mode.
-  * Remove /run/daily-fix.pid if exists when it shouldn't.
+  * Remove /var/run/daily-fix.pid if exists when it shouldn't.
   * Remove debugging mode in old codebases cleanup.
   * Remove no longer needed/used contrib updates.
   * Restore default websh wrapper symlink as fast as possible.
@@ -4846,7 +4871,7 @@
   * Do not override lshell env_path in websh wrapper.
   * Do not use monitored bin path for custom scripts to avoid LFD false alarms.
   * Extra db GRANT for 127.0.0.1 not added when migrating site.
-  * Improve auto-healing to create required directories in /run/ if missing.
+  * Improve auto-healing to create required directories in /var/run/ if missing.
   * Issue #2230269 - New Jetty 9 version overrides JETTY_PORT=8099 with 8080.
   * Issue #2235991 - Drush make needs better exceptions in websh wrapper.
   * Issue #2236475 - Clarify what the Legacy mode really means.
