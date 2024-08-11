@@ -1,10 +1,34 @@
+###
+### Stable BOA-5.3.0-lts - Full Edition
+### Date: Mon 12 Aug 2024 05:33:46 AM AEST in Sydney
+###
 
-###
-### Stable BOA-5.3.0-pro - Full Edition
-### Date: Sat 13 Jul 2024 02:49:37 PM EDT in New York
-###
+@=> New BOA LTS Release & Comparison with PRO and DEV Branches
+
+    We are excited to announce the release of the latest BOA LTS version,
+    marking the first LTS release since the introduction of our new branch
+    structure and dual licensing model, which began with the BOA-5.2.0 release.
+
+    This LTS version brings the project up to date with BOA-5.3.0-pro, which
+    has been available for several months. Both BOA-5.3.0-pro and BOA-5.3.0-lts
+    are officially released today.
+
+    Looking ahead, BOA-5.4.0-pro will be released within the next 48 hours,
+    incorporating all recent developments from the DEV branch.
+
+    Please note that the project README and documentation displayed on GitHub
+    by default apply primarily to the BOA DEV branch, and shortly to BOA PRO.
+    These do not cover BOA LTS. If you are working with the LTS version, ensure
+    you switch to the appropriate branch to access legacy documentation
+    relevant to BOA LTS.
+
+    As always, we highlight only the most critical fixes and improvements in
+    this announcement. For a comprehensive list of changes, please refer to
+    the commit history.
 
 @=> New Features
+
+    * PHP 8.3 Support
 
     * Update sFTP password and password expiration date with temporary pid file
         ~/static/control/run-sftp-password-update.pid
@@ -12,18 +36,65 @@
       based access if still has working SSH keys but lost working password.
       New password will be written to ~/static/control/new-USER-password.txt
 
+    * Add boa cleanup {detect|purge} {user} to automate Octopus instances
+      cleanup. Requires existence of /data/disk/USER/log/CANCELLED file and
+      no vhosts existing in /data/disk/USER/config/server_master/nginx/vhost.d/
+      It will archive only config files and delete everything else, but will not
+      delete any databases nor db users (yet).
+
 @=> Improvements
 
-    *
+    * Add ltd-shell account client access to moved sites files in static/files
+    * Disable man-db/auto-update to speed up barracuda upgrades
+    * Nginx DoS-Guard: Add ignore_admin to protect site admin activity
+    * Nginx DoS-Guard: Catch typical hack probe requests early
+    * Nginx DoS-Guard: Track and block 500/403/404 flood
+    * Nginx DoS-Guard: Detect and block ‘unknown’ IPs requests
+    * MySQL: Disable performance_schema by default
+    * MySQL: Do not run mysql_cleanup.sh on servers with >100 dbs
+    * Always install legacy OpenSSL first and force new on upgrade
+    * Use cold solr7 restart only on barracuda upgrade
+    * Prepare for but do not enable http3/quic yet
 
 @=> Changes and Upgrades
 
+    * OpenSSL LTS with 3.0.13 (new default version)
+    * Nginx 1.26.0
     * PHP 8.3.10
     * PHP 8.2.22
+    * PHP 8.1.29
+    * ionCube 13.0.2
+    * Ruby 3.3.4
+    * OpenSSH 9.8p1
+    * cURL 8.7.1
+    * Drupal 7.101.1
+    * Composer 2.7.6
+    * Use phpredis 6.0.2 for 7.2 and newer
+    * PHP imagick 3.7.0
+    * PHP igbinary 3.2.15
+    * Build PHP --with-bz2
+    * PHP APCu 5.1.23
+    * Build Redis with --enable-redis-lzf --enable-redis-igbinary
+    * Use _USE_FPM=1024 as minimum
+    * Enable ClassicTrack for Aegir tasks by default
 
 @=> Important Fixes
 
     * Always check if all /var/xdrago/* scripts are present or force update
+    * Use only php-fpm reload instead of start on upgrade
+    * Add cleanup for ctrl files blocking PHP upgrade
+    * Fix for vdrush @site updb in Drush 12
+    * Restore ULIMIT in nginx init.d
+    * Sync nofile limits
+    * Add clamd/freshclam to auto-healing
+    * The adduser no longer automates —home
+    * Always install openjdk-11-jre-headless
+    * Remove old auto-healing pids if detected
+    * More protection from race conditions in auto-healing
+    * Sync autoupboa cron to not collide with sql backups
+    * Legacy PHP versions require legacy OpenSSL version
+    * Use PHP 7.4 in run_drush8_cmd if available
+    * Fix protection from duplicate sql backups
 
 
 ###
