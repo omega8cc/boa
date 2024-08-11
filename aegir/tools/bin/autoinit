@@ -246,6 +246,7 @@ if_launch_boa_install() {
     fi
     if [[ "${_BOA_COMMAND}" =~ "boa in-lts" ]] \
       || [[ "${_BOA_COMMAND}" =~ "boa in-dev" ]]; then
+      msg "Time for ${_BOA_INSTALL_COMMAND}" >> ${logInt}
       eval "${_BOA_INSTALL_COMMAND}"
       wait
       mv -f ${_BOA_LOGFILE} /var/backups/
@@ -288,7 +289,7 @@ install_apparmor_utils() {
     || [ -z "${isAppArmorComplain}" ] \
     || [ -z "${isAppArmorStatus}" ] \
     || [ "${isAppArmorGrub}" = "NO" ]; then
-    msg "Installing AppArmor Tools early" >> ${logInt}
+    msg "Installing AppArmor Tools early..." >> ${logInt}
     echo " " >> ${logInt}
     /usr/bin/apt-get install auditd \
       apparmor \
@@ -339,18 +340,16 @@ init_pre() {
   if [ -e "/etc/default/grub" ] && [[ ! "${_SYS_IFNAMES}" =~ "net.ifnames=0" ]]; then
     echo "Running init_pre procedure A..."
     touch /run/autoinit.pid
-    echo "OOPS, we need to fix GRUB_CMDLINE_LINUX and reboot first"
-    echo "But do not worry, just log in back in five minutes"
     echo 'GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0 memhp_default_state=online"' >> /etc/default/grub
     grub-mkconfig -o /boot/grub/grub.cfg >> ${logSlt}
-    echo "Waiting five seconds before reboot..."
-    sleep 5
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
     echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
     if [ -x "/opt/local/bin/killer" ]; then
       sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
       echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
     fi
+    msg "Time for reboot and next upgrade cycle..." >> ${logInt}
+    echo " " >> ${logInt}
     rm -f /run/autoinit.pid
     reboot
     exit 0
@@ -378,8 +377,6 @@ init_pre() {
       ${_INITINS} locales-all aptitude >> ${logSlt}
       ${_INITINS} build-essential curl git >> ${logSlt}
       ${_INITINS} libgd-dev libmagickwand-dev libcurl4-openssl-dev >> ${logSlt}
-      echo "Waiting five seconds before reboot..."
-      sleep 5
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
       echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
       if [ -x "/opt/local/bin/killer" ]; then
@@ -388,6 +385,8 @@ init_pre() {
       fi
       install_apparmor_utils
       touch ${initFile}
+      msg "Time for reboot and next upgrade cycle..." >> ${logInt}
+      echo " " >> ${logInt}
       rm -f /run/autoinit.pid
       reboot
       exit 0
@@ -406,7 +405,7 @@ init_info() {
   sleep 3
   echo "Let's go! It will take only ten minutes max!"
   sleep 3
-  echo ""
+  echo "..."
 }
 
 init_offsystemd() {
@@ -441,7 +440,6 @@ init_offsystemd() {
     msg "Time for reboot and next upgrade cycle..." >> ${logInt}
   fi
   echo " " >> ${logInt}
-  sleep 5
   touch /root/.run-offsystemd-devuan-init.cnf
   rm -f /run/autoinit.pid
   reboot
@@ -529,7 +527,6 @@ init_cycle() {
   if [ "${_OLD_SYS}" = "Debian" ]; then
     msg "Time for reboot and next upgrade cycle..." >> ${logInt}
     echo " " >> ${logInt}
-    sleep 5
     touch /root/.run-cycle-devuan-init.cnf
     rm -f /run/autoinit.pid
     reboot
@@ -546,7 +543,6 @@ init_cycle() {
       msg "Time for reboot and next upgrade cycle..." >> ${logInt}
     fi
     echo " " >> ${logInt}
-    sleep 5
     touch /root/.run-cycle-devuan-init.cnf
     touch /root/.run-cycle-${_OS_CODE}-init.cnf
     rm -f /run/autoinit.pid
