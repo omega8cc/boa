@@ -47,7 +47,7 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-_X_SE="520proT02"
+_X_SE="530proT00"
 _WEBG=www-data
 _OSR=$(lsb_release -sc 2>&1)
 if [ -e "/root/.install.modern.openssl.cnf" ] \
