@@ -1288,7 +1288,7 @@ init_setup() {
   if [ "${output}" = "logged" ]; then
     send_report
   fi
-  if [ "${_OCTOPUS_ONLY}" = "YES" ]; then
+  if [ "${_OCTOPUS_ONLY}" = "YES" ] || [ "${system}" = "bundle" ]; then
     init_cleanup
     [ ! -e "/run/octopus_install_run.pid" ] && touch /run/octopus_install_run.pid
     sleep 3
