@@ -6,7 +6,11 @@
 
 @=> New Features
 
-    *
+    * Update sFTP password and password expiration date with temporary pid file
+        ~/static/control/run-sftp-password-update.pid
+      Now the main Octopus limited shell user can easily self-update password
+      based access if still has working SSH keys but lost working password.
+      New password will be written to ~/static/control/new-USER-password.txt
 
 @=> Improvements
 
@@ -14,11 +18,12 @@
 
 @=> Changes and Upgrades
 
-    *
+    * PHP 8.3.10
+    * PHP 8.2.22
 
 @=> Important Fixes
 
-    *
+    * Always check if all /var/xdrago/* scripts are present or force update
 
 
 ###
