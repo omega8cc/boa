@@ -432,6 +432,7 @@ init_offsystemd() {
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   msg "Your system now runs on ${_OS_DIST}/${_OS_CODE}" >> ${logInt}
   if [ "${_OS_CODE}" = "daedalus" ]; then
+    echo " " >> ${logInt}
     msg "Time for reboot and then you can run boa install" >> ${logInt}
     rm -f /root/.init-to-devuan-ctrl.cnf
     sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
@@ -485,7 +486,6 @@ init_cycle() {
   fi
   if [ ! -z "${_NEW_OS_CODE}" ] && [ ! -z "${_NEW_SYS}" ]; then
     msg "Launching a quick upgrade to ${_NEW_SYS}/${_NEW_OS_CODE}" >> ${logInt}
-    echo " " >> ${logInt}
     aptLiSys="/etc/apt/sources.list"
     _TGT_MRR="deb.devuan.org/merged"
     echo "## DEVUAN MAIN REPOSITORIES" > ${aptLiSys}
