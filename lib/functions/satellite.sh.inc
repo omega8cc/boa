@@ -1,6 +1,6 @@
 
 tRee=pro
-rlsn="BOA-5.2.0"
+rlsn="BOA-5.3.0"
 rlse="${rlsn}-${tRee}"
 export tRee="${tRee}"
 export rlsn="${rlsn}"
