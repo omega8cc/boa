@@ -1669,7 +1669,7 @@ else
   fi
 fi
 
-rlsn="BOA-5.3.0"
+rlsn="BOA-5.4.0"
 rlse="${rlsn}-${tRee}"
 cluster="${rlse}"
 branch="5.x-${tRee}"

@@ -114,7 +114,7 @@ as explained in this document further below.
 
 ## How to enable live mode?
 
-  Live mode is enabled by default since BOA-5.3.0
+  Live mode is enabled by default since BOA-5.4.0
 
   NOTE: You may find some helpful details in the Verify task log -- look for
   lines with `[hosting_le]` prefix.

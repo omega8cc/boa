@@ -12,7 +12,7 @@ Please note that Node/NPM support, if allowed with `/root/.allow.node.lshell.cnf
 
 ## How It Works
 
-If you want to use Ruby Gems or Node/NPM to install Grunt, Gulp, or Bower, and you previously enabled Ruby Gems support, you will need to reinitialize Ruby/NPM on your account due to security and deployment improvements made in BOA-5.3.0.
+If you want to use Ruby Gems or Node/NPM to install Grunt, Gulp, or Bower, and you previously enabled Ruby Gems support, you will need to reinitialize Ruby/NPM on your account due to security and deployment improvements made in BOA-5.4.0.
 
 1. Delete the control file `~/static/control/compass.info`.
 2. Wait until you can no longer issue the `compass --version` command (5 minutes max)

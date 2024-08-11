@@ -1,6 +1,6 @@
 
 tRee=dev
-rlsn="BOA-5.3.0"
+rlsn="BOA-5.4.0"
 rlse="${rlsn}-${tRee}"
 export tRee="${tRee}"
 export rlsn="${rlsn}"
