@@ -68,7 +68,7 @@
     * OpenSSH 9.8p1
     * cURL 8.7.1
     * Drupal 7.101.1
-    * Composer 2.7.6
+    * Composer 2.7.7
     * Use phpredis 6.0.2 for 7.2 and newer
     * PHP imagick 3.7.0
     * PHP igbinary 3.2.15
