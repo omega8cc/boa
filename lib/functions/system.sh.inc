@@ -543,6 +543,42 @@ tune_memory_limits() {
     msg "PROC: tune_memory_limits"
   fi
   count_cpu
+
+  # Set _PHP_FPM_WORKERS to AUTO if it is empty
+  [ -z "${_PHP_FPM_WORKERS}" ] && _PHP_FPM_WORKERS=AUTO
+  # If _PHP_FPM_WORKERS is not AUTO and not empty, then check if it is less than 1
+  if [ "${_PHP_FPM_WORKERS}" != "AUTO" ] && [ -n "${_PHP_FPM_WORKERS}" ]; then
+    if [ "${_PHP_FPM_WORKERS}" -lt 1 ] 2>/dev/null; then
+      _PHP_FPM_WORKERS=AUTO
+    fi
+  fi
+  # If _PHP_FPM_WORKERS is not AUTO, remove non-numeric characters
+  [ "${_PHP_FPM_WORKERS}" != "AUTO" ] && _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
+  if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+    _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
+  else
+    _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
+  fi
+  # Set _PHP_FPM_TIMEOUT to AUTO if it is empty
+  [ -z "${_PHP_FPM_TIMEOUT}" ] && _PHP_FPM_TIMEOUT=AUTO
+  # If _PHP_FPM_TIMEOUT is not AUTO and not empty, then check if it is between 60 and 180
+  if [ "${_PHP_FPM_TIMEOUT}" != "AUTO" ] && [ -n "${_PHP_FPM_TIMEOUT}" ]; then
+    # If _PHP_FPM_TIMEOUT is not AUTO and not empty, remove non-numeric characters
+    [ "${_PHP_FPM_TIMEOUT}" != "AUTO" ] && _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
+    # If _PHP_FPM_TIMEOUT is outside of the allowed range, use either min or max allowed
+    if [ "${_PHP_FPM_TIMEOUT}" -lt 60 ]; then
+      _PHP_FPM_TIMEOUT=60
+    elif [ "${_PHP_FPM_TIMEOUT}" -gt 180 ]; then
+      _PHP_FPM_TIMEOUT=180
+    fi
+  fi
+  _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "TUNE: _L_PHP_FPM_WORKERS is ${_L_PHP_FPM_WORKERS}"
+    msg "TUNE: _PHP_FPM_TIMEOUT is ${_PHP_FPM_TIMEOUT}"
+    msg "TUNE: _MXC_SQL is ${_MXC_SQL}"
+  fi
+
   _VM_TEST=$(uname -a 2>&1)
   if [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
@@ -639,12 +675,6 @@ tune_memory_limits() {
     _QCE_SQL=64M
     _RND_SQL=8M
     _JBF_SQL=4M
-    if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-    else
-      _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-    fi
-    _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
     if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
       _L_NGX_WRKS=${_CPU_MX}
     else
@@ -658,12 +688,6 @@ tune_memory_limits() {
       _QCE_SQL=64M
       _RND_SQL=8M
       _JBF_SQL=4M
-      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-      else
-        _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-      fi
-      _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
       if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
         _L_NGX_WRKS=${_CPU_MX}
       else
@@ -679,12 +703,6 @@ tune_memory_limits() {
         _QCE_SQL=64M
         _RND_SQL=8M
         _JBF_SQL=4M
-        if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-        else
-          _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-        fi
-        _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
         if [ "${_MXC_SQL}" -lt "10" ]; then
           _MXC_SQL=10
         fi
@@ -710,12 +728,6 @@ tune_memory_limits() {
         _QCE_SQL=64M
         _RND_SQL=2M
         _JBF_SQL=2M
-        if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-        else
-          _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-        fi
-        _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
         if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
           _L_NGX_WRKS=${_CPU_VS}
         else
@@ -729,12 +741,6 @@ tune_memory_limits() {
       _QCE_SQL=32M
       _RND_SQL=2M
       _JBF_SQL=2M
-      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-      else
-        _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-      fi
-      _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
       if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
         _L_NGX_WRKS=${_CPU_MX}
       else
@@ -748,12 +754,6 @@ tune_memory_limits() {
     _QCE_SQL=32M
     _RND_SQL=1M
     _JBF_SQL=1M
-    if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-    else
-      _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-    fi
-    _MXC_SQL=$(( _L_PHP_FPM_WORKERS * 4 ))
     if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
       _L_NGX_WRKS=${_CPU_MX}
     else
@@ -810,6 +810,7 @@ tune_memory_limits() {
     tune_sql_memory_limits
     sql_conf_update
     if [[ "${PrTestPower}" =~ "POWER" ]] \
+      || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
       || [ -e "/root/.my.cluster_root_pwd.txt" ] \
       || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
       _UXC_SQL="${_MXC_SQL}"

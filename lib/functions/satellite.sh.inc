@@ -74,71 +74,37 @@ satellite_tune_fpm_workers() {
     debug_proc
   fi
   count_cpu
-  _VM_TEST=$(uname -a 2>&1)
-  if [ -e "/proc/bean_counters" ]; then
-    _VMFAMILY="VZ"
-  elif [ -e "/root/.tg.cnf" ]; then
-    _VMFAMILY="TG"
-  else
-    _VMFAMILY="XEN"
-  fi
-  if [[ "${_VM_TEST}" =~ "-beng" ]]; then
-    _VMFAMILY="VS"
-  fi
-  if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
-    || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
-    _VMFAMILY="AWS"
-  fi
-  _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
-  if [ "${_RESERVED_RAM}" -gt "0" ]; then
-    _RAM=$(( _RAM - _RESERVED_RAM ))
-  fi
-  _USE=$(( _RAM / 4 ))
-  if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
-    if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-    else
-      _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
+  # Set _PHP_FPM_WORKERS to AUTO if it is empty
+  [ -z "${_PHP_FPM_WORKERS}" ] && _PHP_FPM_WORKERS=AUTO
+  # If _PHP_FPM_WORKERS is not AUTO and not empty, then check if it is less than 1
+  if [ "${_PHP_FPM_WORKERS}" != "AUTO" ] && [ -n "${_PHP_FPM_WORKERS}" ]; then
+    if [ "${_PHP_FPM_WORKERS}" -lt 1 ] 2>/dev/null; then
+      _PHP_FPM_WORKERS=AUTO
     fi
-  elif [ "${_USE}" -ge "1024" ]; then
-    if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
-      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-      else
-        _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-      fi
-    elif [ "${_VMFAMILY}" = "VS" ] || [ "${_VMFAMILY}" = "TG" ]; then
-      if [ -e "/boot/grub/grub.cfg" ] \
-        || [ -e "/boot/grub/menu.lst" ] \
-        || [ -e "/root/.tg.cnf" ]; then
-        if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-        else
-          _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-        fi
-      else
-        if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-        else
-          _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-        fi
-      fi
-    else
-      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-      else
-        _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-      fi
-    fi
+  fi
+  # If _PHP_FPM_WORKERS is not AUTO, remove non-numeric characters
+  [ "${_PHP_FPM_WORKERS}" != "AUTO" ] && _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
+  if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+    _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
   else
-    if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-    else
-      _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
+    _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
+  fi
+  # Set _PHP_FPM_TIMEOUT to AUTO if it is empty
+  [ -z "${_PHP_FPM_TIMEOUT}" ] && _PHP_FPM_TIMEOUT=AUTO
+  # If _PHP_FPM_TIMEOUT is not AUTO and not empty, then check if it is between 60 and 180
+  if [ "${_PHP_FPM_TIMEOUT}" != "AUTO" ] && [ -n "${_PHP_FPM_TIMEOUT}" ]; then
+    # If _PHP_FPM_TIMEOUT is not AUTO and not empty, remove non-numeric characters
+    [ "${_PHP_FPM_TIMEOUT}" != "AUTO" ] && _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
+    # If _PHP_FPM_TIMEOUT is outside of the allowed range, use either min or max allowed
+    if [ "${_PHP_FPM_TIMEOUT}" -lt 60 ]; then
+      _PHP_FPM_TIMEOUT=60
+    elif [ "${_PHP_FPM_TIMEOUT}" -gt 180 ]; then
+      _PHP_FPM_TIMEOUT=180
     fi
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "DEBUG: _L_PHP_FPM_WORKERS is ${_L_PHP_FPM_WORKERS}"
+    msg "DEBUG: _PHP_FPM_TIMEOUT is ${_PHP_FPM_TIMEOUT}"
   fi
 }
 
@@ -327,91 +293,73 @@ satellite_tune_fpm_config() {
     debug_proc
   fi
   satellite_tune_fpm_workers
+
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "DEBUG: _LIM_FPM is ${_LIM_FPM}"
   fi
-  if [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
+
+  if [ ! -z "${_CLIENT_OPTION}" ]; then
     if [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _LIM_FPM=96
-        _PHP_FPM_WORKERS=192
       fi
     elif [ "${_CLIENT_OPTION}" = "LITE" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _LIM_FPM=32
-          _PHP_FPM_WORKERS=64
+        _LIM_FPM=32
       fi
     elif [ "${_CLIENT_OPTION}" = "PHANTOM" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _LIM_FPM=16
-        _PHP_FPM_WORKERS=32
       fi
     elif [ "${_CLIENT_OPTION}" = "POWER" ] \
       || [ "${_CLIENT_OPTION}" = "BUS" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _LIM_FPM=8
-        _PHP_FPM_WORKERS=16
       fi
     elif [ "${_CLIENT_OPTION}" = "EDGE" ] \
       || [ "${_CLIENT_OPTION}" = "SSD" ] \
       || [ "${_CLIENT_OPTION}" = "CLASSIC" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _LIM_FPM=2
-        _PHP_FPM_WORKERS=4
       fi
     elif [ "${_CLIENT_OPTION}" = "MINI" ] \
       || [ "${_CLIENT_OPTION}" = "MICRO" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _LIM_FPM=1
-        _PHP_FPM_WORKERS=2
       fi
     else
       _LIM_FPM=2
-      _PHP_FPM_WORKERS=4
     fi
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "DEBUG: _LIM_FPM is ${_LIM_FPM}"
-      msg "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}"
-    fi
+  fi
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "DEBUG: _LIM_FPM is ${_LIM_FPM}"
+    msg "DEBUG: _CLIENT_OPTION is ${_CLIENT_OPTION}"
+  fi
+
+  if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge "1" ]; then
     if [ -e "${_ROOT}/log/cores.txt" ]; then
       _CLIENT_CORES=$(cat ${_ROOT}/log/cores.txt 2>&1)
       _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
     fi
     _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
-    if [ ! -z "${_CLIENT_CORES}" ] \
-      && [ "${_CLIENT_CORES}" -gt "0" ]; then
+    if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge "1" ]; then
       _LIM_FPM=$(( _LIM_FPM *= _CLIENT_CORES ))
-      _PHP_FPM_WORKERS=$(( _PHP_FPM_WORKERS *= _CLIENT_CORES ))
-    fi
-    if [ "${_LIM_FPM}" -gt "100" ]; then
-      _LIM_FPM=100
-    fi
-    if [ "${_PHP_FPM_WORKERS}" -gt "200" ]; then
-      _PHP_FPM_WORKERS=200
     fi
   fi
+
+  if [ "${_LIM_FPM}" -gt "100" ]; then
+    _LIM_FPM=100
+  fi
+
   _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
+
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "DEBUG: _LIM_FPM is ${_LIM_FPM}"
     msg "DEBUG: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}"
-    msg "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}"
   fi
-  if [ "${_PHP_FPM_WORKERS}" != "AUTO" ]; then
-    _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
-    if [ ! -z "${_PHP_FPM_WORKERS}" ] \
-      && [ "${_PHP_FPM_WORKERS}" -gt "0" ]; then
-      _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
-    fi
-  fi
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "DEBUG: _LIM_FPM is ${_LIM_FPM}"
-    msg "DEBUG: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}"
-    msg "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}"
-  fi
+
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
   if [ -z "${_PHP_SV}" ]; then
     _PHP_SV=74
@@ -423,13 +371,6 @@ satellite_tune_fpm_config() {
       _PHP_OLD_SV=${e}
     fi
   done
-  if [ "${_PHP_FPM_TIMEOUT}" = "AUTO" ] || [ -z "${_PHP_FPM_TIMEOUT}" ]; then
-    _PHP_FPM_TIMEOUT=180
-  fi
-  _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
-  if [ "${_PHP_FPM_TIMEOUT}" -lt "60" ]; then
-    _PHP_FPM_TIMEOUT=60
-  fi
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
     mkdir -p /var/xdrago/conf
   fi

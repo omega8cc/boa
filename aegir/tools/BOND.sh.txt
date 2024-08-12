@@ -1625,7 +1625,11 @@ tune_memory_limits() {
   fi
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ]; then
     tune_sql_memory_limits
+    PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
+    PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
+    PrTestCluster=$(grep "CLUSTER" /root/.*.octopus.cnf 2>&1)
     if [[ "${PrTestPower}" =~ "POWER" ]] \
+      || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
       || [ -e "/root/.my.cluster_root_pwd.txt" ] \
       || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
       _UXC_SQL="${_MXC_SQL}"
