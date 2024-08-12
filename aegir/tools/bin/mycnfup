@@ -1387,6 +1387,7 @@ db_head_to_stretch_first()
   	  apt-get install apt dpkg aptitude util-linux ${dstUpArg}
   	  apt-get upgrade ${dstUpArg}
   	  apt-get dist-upgrade ${dstUpArg}
+  	  [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   	  apt-get install lsb-release ${dstUpArg}
   	  if [ -x "/lib/systemd/systemd" ]; then
         ls -la /lib/systemd/systemd
@@ -1438,6 +1439,7 @@ db_head_to_stretch_second()
   	  apt_clean_update
   	  apt-get upgrade ${nrmUpArg}
   	  apt-get dist-upgrade ${nrmUpArg}
+  	  [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   	  apt-get install lsb-release ${nrmUpArg}
   	  echo "Upgrade OS to Stretch 2nd stage complete!"
       echo "Bye!"
