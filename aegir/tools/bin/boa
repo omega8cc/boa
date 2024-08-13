@@ -1664,6 +1664,7 @@ check_root() {
 
 display_version() {
   if [ `whoami` = "root" ]; then
+    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
     _VIRT_TOOL=$(which virt-what 2> /dev/null)
     if [ -x "${_VIRT_TOOL}" ]; then
       _VIRT_TEST=$(virt-what 2> /dev/null)
@@ -1738,7 +1739,7 @@ display_version() {
         | sed "s/ Barracuda //g"`
       crlBoav=${crlBoav//[^a-zA-Z0-9-.]/}
     fi
-    echo "${crlBoav} on ${thiSys} on ${_VIRT_IS}"
+    echo "${crlBoav} on ${thiSys} on ${_VIRT_IS} on ${_HOST_INFO}"
     exit 0
   else
     echo "ERROR: This script should be ran as a root user"
@@ -1748,6 +1749,7 @@ display_version() {
 
 display_info() {
   if [ `whoami` = "root" ]; then
+    _HOST_INFO=$(dmidecode -s system-manufacturer 2>&1)
     _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
     _CPU_INFO=${_CPU_INFO//[^0-9]/}
     _NPROC_TEST=$(which nproc 2>&1)
@@ -1884,6 +1886,7 @@ display_info() {
     echo "Aegir ${crlBoav} on ${thiSys}"
     [ "${mode}" = "report" ] && echo "Host `hostname` check on `date`"
     [ "${mode}" = "report" ] && echo "Host uptime `uptime`"
+    [ ! -z "${_HOST_INFO}" ] && echo "  HOST ${_HOST_INFO}"
     [ ! -z "${_VIRT_IS}" ] && echo "  VPS ${_VIRT_IS}"
     [ -z "${_VIRT_IS}" ] && echo "  VPS unknown / not a virtual machine"
     echo "  DSK ${_DF_TEST}/100"
