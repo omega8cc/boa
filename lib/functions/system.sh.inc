@@ -52,6 +52,7 @@ if_fix_iptables_symlinks() {
 if_reinstall_curl_src() {
   _CURL_VRN=8.9.1
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
+  [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
     msg "OOPS: cURL is broken! Re-installing.."
@@ -4139,6 +4140,7 @@ curl_install_src() {
     _CURL_VRN=8.8.0
   fi
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
+  [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
   if [ ! -e "/root/.use.curl.from.packages.cnf" ]; then
     if [ "${_OS_CODE}" = "daedalus" ] \
       || [ "${_OS_CODE}" = "chimaera" ] \
