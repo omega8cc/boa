@@ -33,11 +33,11 @@ To use site-local Drush, follow these steps:
 
 ## PHP-CLI Version Configuration is Much Smarter
 
-The second most important improvement is that switching PHP version for Drush on the command line is now instant and managed *independently* of the Ægir backend's own PHP-CLI version. Here’s how it works:
+The second most important improvement is that switching PHP version for Drush and Composer on the command line can be instant and since BOA-5.4.0 will affect instantly also the Ægir backend's PHP-CLI version. Here’s how it works:
 
 The classic `~/static/control/cli.info` is still respected on the command line as the default version affecting not only Ægir backend tasks but also Drush — and now also Composer!
 
-But to configure PHP-CLI version to be used on the command line with Drush and Composer, you can also use an independent and new configuration system based on empty control files:
+But to configure PHP-CLI version to be used on the command line with Drush and Composer (and now also by the Ægir backend), you can also use an independent and new configuration system based on empty control files:
 
 - `~/static/control/php83.info`
 - `~/static/control/php82.info`
