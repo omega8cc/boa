@@ -111,7 +111,7 @@ find_fast_mirror_early() {
 }
 
 if_reinstall_curl_src() {
-  _CURL_VRN=8.8.0
+  _CURL_VRN=8.9.1
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
     echo "OOPS: cURL is broken! Re-installing.."
