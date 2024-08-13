@@ -13,14 +13,8 @@ check_root() {
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
   _DF_TEST=$(df -kTh / -l \
@@ -106,16 +100,16 @@ if [[ "${_VM_TEST}" =~ "-beng" ]]; then
 else
   _VMFAMILY="XEN"
 fi
-touch /var/run/boa_sql_cluster_backup.pid
+touch /run/boa_sql_cluster_backup.pid
 
 create_locks() {
   echo "Creating locks for $1"
-  touch /var/run/mysql_cluster_backup_running.pid
+  touch /run/mysql_cluster_backup_running.pid
 }
 
 remove_locks() {
   echo "Removing locks for $1"
-  rm -f /var/run/mysql_cluster_backup_running.pid
+  rm -f /run/mysql_cluster_backup_running.pid
 }
 
 check_running() {
@@ -287,10 +281,7 @@ compress_backup() {
 
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
-if [ "${_DB_SERIES}" = "10.4" ] \
-  || [ "${_DB_SERIES}" = "10.3" ] \
-  || [ "${_DB_SERIES}" = "10.2" ] \
-  || [ "${_DB_SERIES}" = "5.7" ]; then
+if [ "${_DB_SERIES}" = "5.7" ]; then
   check_running
   ${_C_SQL} -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
   ${_C_SQL} -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
@@ -384,7 +375,7 @@ for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
 done
 
 echo "INFO: Completing all dbs backups on `date`"
-rm -f /var/run/boa_sql_cluster_backup.pid
+rm -f /run/boa_sql_cluster_backup.pid
 touch /var/xdrago/log/last-run-cluster-backup
 
 echo "INFO: Starting dbs backup compress on `date`"

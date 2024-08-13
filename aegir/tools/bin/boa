@@ -25,6 +25,9 @@ _TODAY=${_TODAY//[^0-9]/}
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _CHECK_HOST=$(uname -n 2>&1)
+_LOG_DIR="${vBs}/reports/in/$(basename "$0")/${_TODAY}"
+_IN_BARRACUDA_LOG="${_LOG_DIR}/$(basename "$0")-in-barracuda-${_NOW}.log"
+_IN_OCTOPUS_LOG="${_LOG_DIR}/$(basename "$0")-in-octopus-${_NOW}.log"
 _VMFAMILY=XEN
 _VM_TEST=$(uname -a 2>&1)
 if [[ "${_VM_TEST}" =~ "-beng" ]]; then
@@ -41,27 +44,36 @@ if [ -z "${TERM+x}" ]; then
 fi
 
 clean_pid_exit() {
-  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
-  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+  echo "REASON ${e} on $(date 2>&1)" >> /root/.boa.exit.exceptions.log
+  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   service cron start &> /dev/null
   exit 1
 }
 
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -sc 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
-    if [ "${e}" = "${_THIS_RV}" ]; then
+    if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
 }
 
 apt_clean_update() {
-  apt-get clean -qq 2> /dev/null
-  rm -rf /var/lib/apt/lists/* &> /dev/null
+  #apt-get clean -qq 2> /dev/null
+  #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
+}
+
+check_no_systemd() {
+  if [ -e "/lib/systemd/systemd" ]; then
+    echo "ERROR: This script can not be used with systemd"
+    echo "ERROR: Please run 'autoinit' first"
+    clean_pid_exit check_no_systemd_a_boa
+  fi
 }
 
 not_supported_virt() {
@@ -95,7 +107,7 @@ not_supported_virt() {
   echo
   echo "Bye"
   echo
-  clean_pid_exit
+  clean_pid_exit not_supported_virt_a
 }
 
 check_virt() {
@@ -172,7 +184,7 @@ system_check_ready() {
     echo "ERROR: Please install complete BOA system before trying"
     echo "ERROR: to install additional Aegir / Octopus instances"
     echo "Bye"
-    clean_pid_exit
+    clean_pid_exit system_check_ready_a
   fi
 }
 
@@ -191,13 +203,13 @@ system_check_clean() {
     echo "/etc/nginx /etc/apache2 /etc/mysql /var/lib/mysql /var/aegir"
     if [ ! -e "/etc/nginx" ]; then
       echo
-      echo "HINT: Try to run: apt-get purge mysql-common --and then try again."
+      echo "HINT: Try to run: 'apt-get purge mysql-common' and then try again."
       echo "HINT: You can also enforce installation with empty control file:"
       echo " touch /root/.force.reinstall.cnf -- and then try again."
       echo
     fi
     echo "Bye"
-    clean_pid_exit
+    clean_pid_exit system_check_clean_a
   fi
 }
 
@@ -225,7 +237,7 @@ check_ifnames() {
     echo
     echo "Bye"
     echo
-    clean_pid_exit
+    clean_pid_exit check_ifnames_a
   fi
 }
 
@@ -253,10 +265,10 @@ check_root_direct() {
     echo
     echo "HINT:  You can always restrict access later, or"
     echo "       allow only SSH (RSA) keys for root with directive"
-    echo "         PermitRootLogin without-password"
-    echo "       in the /usr/etc/sshd_config file"
+    echo "         PermitRootLogin prohibit-password"
+    echo "       in the /etc/ssh/sshd_config file"
     echo "Bye"
-    clean_pid_exit
+    clean_pid_exit check_root_direct_a
   fi
 }
 
@@ -282,9 +294,8 @@ check_root_keys_pwd() {
     echo
     echo "Bye"
     echo
-    clean_pid_exit
+    clean_pid_exit check_root_keys_pwd_a
   fi
-  check_ifnames
 }
 
 satellite_check_id() {
@@ -295,11 +306,11 @@ satellite_check_id() {
   elif [[ "${_ID_EXISTS}" =~ "${_USER}" ]]; then
     echo "ERROR: ${_USER} username is already taken"
     echo "Please choose different username"
-    clean_pid_exit
+    clean_pid_exit satellite_check_id_a
   else
     echo "ERROR: ${_USER} username check failed"
     echo "Please try different username"
-    clean_pid_exit
+    clean_pid_exit satellite_check_id_b
   fi
   if [ "${_USER}" = "admin" ] \
     || [ "${_USER}" = "hostmaster" ] \
@@ -309,7 +320,7 @@ satellite_check_id() {
     || [ "${_USER}" = "all" ]; then
     echo "ERROR: ${_USER} is a restricted username, \
       please choose different _USER"
-    clean_pid_exit
+    clean_pid_exit satellite_check_id_c
   elif [[ "${_USER}" =~ "aegir" ]] \
     || [[ "${_USER}" =~ "drupal" ]] \
     || [[ "${_USER}" =~ "drush" ]] \
@@ -317,18 +328,17 @@ satellite_check_id() {
     || [[ "${_USER}" =~ "default" ]]; then
     echo "ERROR: ${_USER} includes restricted keyword, \
       please choose different _USER"
-    clean_pid_exit
+    clean_pid_exit satellite_check_id_d
   fi
   _REGEX="^[[:digit:]]"
   if [[ "${_USER}" =~ "${_REGEX}" ]]; then
     echo "ERROR: ${_USER} is a wrong username, \
       it should start with a letter, not digit"
-    clean_pid_exit
+    clean_pid_exit satellite_check_id_e
   fi
 }
 
 fix_dns_settings() {
-  dnsLi="/root/.local.dns.IP.list"
   mkdir -p ${vBs}
   rm -f ${vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
@@ -343,8 +353,11 @@ fix_dns_settings() {
     fi
   fi
   if [ ! -e "${vBs}/resolv.conf.tmp" ]; then
-    echo "nameserver 1.1.1.1" >${vBs}/resolv.conf.tmp
-    echo "nameserver 1.0.0.1" >>${vBs}/resolv.conf.tmp
+    echo "nameserver 127.0.0.1" > ${vBs}/resolv.conf.tmp
+    echo "nameserver 1.1.1.1" >> ${vBs}/resolv.conf.tmp
+    echo "nameserver 1.0.0.1" >> ${vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.8.8" >> ${vBs}/resolv.conf.tmp
+    echo "nameserver 8.8.4.4" >> ${vBs}/resolv.conf.tmp
   fi
   if [ ! -e "${vBs}/resolv.conf.vanilla" ] \
     && [ -e "${vBs}/resolv.conf.tmp" ]; then
@@ -367,73 +380,11 @@ fix_dns_settings() {
       cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
     fi
   fi
-  if [ -e "/etc/pdnsd.conf" ]; then
-    if [ -e "${dnsLi}" ]; then
-      sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
-      wait
-      sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
-      wait
-      _BROKEN_DNS_TEST_X=$(grep "\." ${dnsLi} 2>&1)
-      if [ -z "${_BROKEN_DNS_TEST_X}" ]; then
-        echo "        label = \"cloudflare-servers\";" > ${dnsLi}
-        echo "        ip=1.1.1.1;" >> ${dnsLi}
-        echo "        ip=1.0.0.1;" >> ${dnsLi}
-      fi
-    fi
-    _CUSTOM_DNS_TEST=$(grep 1.1.1.1 /etc/pdnsd.conf 2>&1)
-    _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
-    _MISSING_DNS_TEST=$(grep "ip=" /etc/pdnsd.conf 2>&1)
-    if [[ "${_CUSTOM_DNS_TEST}" =~ "1.1.1.1" ]] \
-      || [ ! -e "${dnsLi}" ] \
-      || [ -e "/root/.use.default.nameservers.cnf" ] \
-      || [ -e "/root/.use.local.nameservers.cnf" ] \
-      || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]] \
-      || [[ -z "${_MISSING_DNS_TEST}" ]]; then
-      echo "        label = \"cloudflare-servers\";" > ${dnsLi}
-      for _IP in `cat /etc/resolv.conf \
-        | sed 's/.*127.0.0.1.*//g; s/.*search.*//g; s/.*Dynamic.*//g' \
-        | cut -d ' ' -f2 \
-        | sort \
-        | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
-      wait
-      sed -i "s/ip=.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
-      wait
-      sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
-      wait
-      sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
-      wait
-      _BROKEN_DNS_TEST_Y=$(grep "\." ${dnsLi} 2>&1)
-      if [ -z "${_BROKEN_DNS_TEST_Y}" ]; then
-         echo "        ip=1.1.1.1;" >> ${dnsLi}
-         echo "        ip=1.0.0.1;" >> ${dnsLi}
-      fi
-      ### echo debug dns A
-      _DNS_TPL_TEST_GE=$(grep "google-servers" /etc/pdnsd.conf 2>&1)
-      _DNS_TPL_TEST_CF=$(grep "cloudflare-servers" /etc/pdnsd.conf 2>&1)
-      _DNS_RGX_TEST=$(grep "cloudflare-servers" /root/.local.dns.IP.list 2>&1)
-      if [[ "${_DNS_TPL_TEST_CF}" =~ "cloudflare-servers" ]] \
-        && [[ "${_DNS_RGX_TEST}" =~ "cloudflare-servers" ]]; then
-        sed -i '/        label = \"cloudflare-servers\";/ {r /root/.local.dns.IP.list
-d;};' /etc/pdnsd.conf
-        wait
-      fi
-      if [[ "${_DNS_TPL_TEST_GE}" =~ "google-servers" ]] \
-        && [[ "${_DNS_RGX_TEST}" =~ "cloudflare-servers" ]]; then
-        sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
-d;};' /etc/pdnsd.conf
-        wait
-      fi
-      resolvconf -u         &> /dev/null
-      service pdnsd restart &> /dev/null
-      pdnsd-ctl empty-cache &> /dev/null
-    fi
-  fi
 }
 
 check_dns_settings() {
   if [ -e "/root/.use.default.nameservers.cnf" ]; then
     _USE_DEFAULT_DNS=YES
-    [ -e "/root/.local.dns.IP.list" ] && rm -f /root/.local.dns.IP.list
   fi
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
@@ -452,6 +403,67 @@ check_dns_settings() {
         service postfix restart &> /dev/null
       fi
     fi
+  fi
+}
+
+if_extended_report() {
+  _EXTENDED=NO
+  if [ -e "/root/.run-to-daedalus.cnf" ] \
+    || [ -e "/root/.run-to-chimaera.cnf" ] \
+    || [ -e "/root/.run-to-beowulf.cnf" ] \
+    || [ -e "/root/.send-extended-report.cnf" ]; then
+    _EXTENDED=YES
+  fi
+  if [ "${_EXTENDED}" = "YES" ]; then
+    if [ -e "/root/.autodaedalus.log" ]; then
+      cat /root/.autodaedalus.log >> ${_THIS_LOG}
+    elif [ -e "/root/.autochimaera.log" ]; then
+      cat /root/.autochimaera.log >> ${_THIS_LOG}
+    elif [ -e "/root/.autobeowulf.log" ]; then
+      cat /root/.autobeowulf.log >> ${_THIS_LOG}
+    fi
+    echo            >> ${_THIS_LOG}
+    ls -ltcra /root >> ${_THIS_LOG}
+    echo            >> ${_THIS_LOG}
+    ps auxf         >> ${_THIS_LOG}
+    echo            >> ${_THIS_LOG}
+    aureport        >> ${_THIS_LOG}
+    echo            >> ${_THIS_LOG}
+    aa-status | grep loaded   >> ${_THIS_LOG}
+    aa-status | grep enforce  >> ${_THIS_LOG}
+    aa-status | grep complain >> ${_THIS_LOG}
+    echo            >> ${_THIS_LOG}
+    aa-unconfined   >> ${_THIS_LOG}
+    echo            >> ${_THIS_LOG}
+    /opt/local/bin/boa info full >> ${_THIS_LOG}
+    echo            >> ${_THIS_LOG}
+  fi
+}
+
+send_report() {
+  if [ -e "${_IN_BARRACUDA_LOG}" ]; then
+    _THIS_LOG="${_IN_BARRACUDA_LOG}"
+    _RS="Barracuda"
+  elif [ -e "${_IN_OCTOPUS_LOG}" ]; then
+    _THIS_LOG="${_IN_OCTOPUS_LOG}"
+    _RS="Octopus"
+  fi
+  _MY_EMAIL="${email}"
+  if [ -e "/root/.auto.up.cnf" ] \
+    || [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
+    _MY_EMAIL="$(basename "$0")@omega8.cc"
+  fi
+  if [ ! -z "${_MY_EMAIL}" ]; then
+    repSub="Successful ${_RS} installation"
+    repSub="REPORT: ${repSub} on ${_CHECK_HOST}"
+    repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
+    if_extended_report
+    cat ${_THIS_LOG} | s-nail -s "${repSub} at ${_NOW}" ${_MY_EMAIL}
+    echo "${repSub} sent to ${_MY_EMAIL}"
   fi
 }
 
@@ -496,12 +508,10 @@ octopus_install() {
         wait
         sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${pxyi}/g"   ${vBs}/${octName}
         wait
-        if [ -e "${vBs}/${filIncO}" ]; then
-          sed -i "s/^_THIS_DB_PORT=.*/_THIS_DB_PORT=${pxyc}/g" ${vBs}/${filIncO}
-          wait
-          sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${pxyi}/g" ${vBs}/${filIncO}
-          wait
-        fi
+        sed -i "s/^_THIS_DB_PORT=.*/_THIS_DB_PORT=${pxyc}/g"   ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${pxyi}/g"   ${vBs}/${filIncO}
+        wait
       fi
       if [ ! -z "${copt}" ]; then
         sed -i "s/^_CLIENT_OPTION=.*/_CLIENT_OPTION=${copt}/g" ${vBs}/${octName}
@@ -524,47 +534,10 @@ octopus_install() {
     sed -i "s/^_USER=.*/_USER=${user}/g"                       ${vBs}/${octName}
     wait
 
-    if [ "${mode}" = "mini" ]; then
-      if [ -e "${vBs}/${filIncO}" ]; then
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${filIncO}
-        wait
-      fi
-      ### Legacy method
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${octName}
-      wait
-    elif [ "${mode}" = "max" ]; then
-      if [ -e "${vBs}/${filIncO}" ]; then
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  ${vBs}/${filIncO}
-        wait
-      fi
-      ### Legacy method
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${octName}
-      wait
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"    ${vBs}/${octName}
-      wait
-    elif [ "${mode}" = "none" ]; then
-      if [ -e "${vBs}/${filIncO}" ]; then
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  ${vBs}/${filIncO}
-        wait
-      fi
-      ### Legacy method
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${octName}
-      wait
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"    ${vBs}/${octName}
-      wait
-    else
-      if [ -e "${vBs}/${filIncO}" ]; then
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  ${vBs}/${filIncO}
-        wait
-      fi
-      ### Legacy method
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"    ${vBs}/${octName}
-      wait
-    fi
+    sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                 ${vBs}/${filIncO}
+    wait
+    sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"      ${vBs}/${filIncO}
+    wait
 
     if [ -e "/root/.auto.up.cnf" ] \
       || [ -e "/root/.host8.cnf" ] \
@@ -573,16 +546,9 @@ octopus_install() {
       || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
       || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
       if [ ! -e "/root/.debug.cnf" ] || [ -e "/root/.default.cnf" ]; then
-        if [ -e "${vBs}/${filIncO}" ]; then
-          sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"           ${vBs}/${filIncO}
-          wait
-          sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"   ${vBs}/${filIncO}
-          wait
-        fi
-        ### Legacy method
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${octName}
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${filIncO}
         wait
-        sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"     ${vBs}/${octName}
+        sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"     ${vBs}/${filIncO}
         wait
       fi
     fi
@@ -591,7 +557,6 @@ octopus_install() {
       || [ "${cmmand}" = "in-lts" ] \
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
-      || [ "${cmmand}" = "init" ] \
       || [ "${copt}" = "dev" ] \
       || [ "${copt}" = "lts" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncO}
@@ -603,64 +568,20 @@ octopus_install() {
       sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"           ${vBs}/${filIncO}
       wait
     else
-      if [ -e "${vBs}/${filIncO}" ]; then
-        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${tRee}/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${filIncO}
-        wait
-      fi
-      ### Legacy method
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${octName}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncO}
       wait
-      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${brnch}/g"  ${vBs}/${octName}
+      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g"   ${vBs}/${filIncO}
       wait
-      if [ "${cmmand}" = "in-2.2" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcA}/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcA}/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcA}/g"         ${vBs}/${octName}
-        wait
-      elif [ "${cmmand}" = "in-2.3" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcB}/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcB}/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcB}/g"         ${vBs}/${octName}
-        wait
-      elif [ "${cmmand}" = "in-2.4" ] || [ "${copt}" = "2.4" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcC}/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${filIncO}
-        wait
-      elif [ "${cmmand}" = "in-3.2" ] || [ "${copt}" = "3.2" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcD}/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcD}/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcD}/g"         ${vBs}/${filIncO}
-        wait
-      else
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${tRee}/g" ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${filIncO}
-        wait
-      fi
+      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${tRee}/g"   ${vBs}/${filIncO}
+      wait
+      sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"           ${vBs}/${filIncO}
+      wait
     fi
 
     if [ "${cmmand}" = "in-dev" ] \
       || [ "${cmmand}" = "in-lts" ] \
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ] \
-      || [ "${cmmand}" = "init" ] \
       || [ "${copt}" = "dev" ] \
       || [ "${copt}" = "lts" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncO}
@@ -669,25 +590,18 @@ octopus_install() {
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncO}
       wait
     else
-      if [ -e "${vBs}/${filIncO}" ]; then
-        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${filIncO}
-        wait
-      fi
-      ### Legacy method
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${octName}
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncO}
       wait
     fi
 
     if [ ! -z "${dbip}" ] && [ "${cmmand}" = "in-cluster" ]; then
       if [ "${kind}" = "mstr" ] || [ "${kind}" = "wbhd" ]; then
-        if [ -e "${vBs}/${filIncO}" ]; then
-          sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g" ${vBs}/${filIncO}
-          wait
-          sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"           ${vBs}/${filIncO}
-          wait
-          sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"   ${vBs}/${filIncO}
-          wait
-        fi
+        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"   ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${filIncO}
+        wait
+        sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"     ${vBs}/${filIncO}
+        wait
       fi
     fi
 
@@ -697,8 +611,53 @@ octopus_install() {
       fi
     fi
 
-    bash ${vBs}/${octName}
-    wait
+    if [ "${output}" = "logged" ]; then
+      n=$((RANDOM%9+2))
+      echo
+      echo "Preparing to install Octopus in almost silent mode..."
+      echo
+      echo "NOTE: There will be no progress displayed in this console"
+      echo "but you will receive an email once the installation is complete"
+      echo
+      sleep $n
+      echo "Please watch the progress in another console window with command:"
+      echo "  tail -f ${_IN_OCTOPUS_LOG}"
+      echo "or wait until you will see the line: BOA ${cmmand} completed, Bye"
+      echo
+      sleep $n
+      echo "Starting now..."
+      echo
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${octName}
+      wait
+      sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"                   ${vBs}/${octName}
+      wait
+    fi
+
+    if [ "${cmmand}" = "in-octopus" ] \
+      || [ "${cmmand}" = "in-oct" ]; then
+      if [ -x "/opt/php83/bin/php" ]; then
+        _USE_PHP=8.3
+      elif [ -x "/opt/php82/bin/php" ]; then
+        _USE_PHP=8.2
+      elif [ -x "/opt/php81/bin/php" ]; then
+        _USE_PHP=8.1
+      elif [ -x "/opt/php74/bin/php" ]; then
+        _USE_PHP=7.4
+      fi
+      sed -i "s/^_PHP_FPM.*/_PHP_FPM_VERSION=${_USE_PHP}/g"    ${vBs}/${filIncO}
+      wait
+      sed -i "s/^_PHP_CLI.*/_PHP_CLI_VERSION=${_USE_PHP}/g"    ${vBs}/${filIncO}
+      wait
+    fi
+
+    if [ -e "${vBs}/${octName}" ]; then
+      if [ "${output}" = "logged" ] || [ "${output}" = "onlylogged" ]; then
+        bash ${vBs}/${octName} >${_IN_OCTOPUS_LOG} 2>&1
+      else
+        bash ${vBs}/${octName}
+      fi
+      wait
+    fi
 
     if [ ! -z "${pxyc}" ] && [ ! -z "${pxyi}" ]; then
       if [ -e "/data/disk/${user}/log/octopus_log.txt" ]; then
@@ -713,7 +672,7 @@ octopus_install() {
     wait
   else
     echo "${octName} installer not available - try again"
-    clean_pid_exit
+    clean_pid_exit octopus_install_a
   fi
 }
 
@@ -721,51 +680,21 @@ barracuda_install() {
   if [ -e "${vBs}/${barName}" ]; then
 
     sed -i "s/^127.0.1.1.*//g" /etc/hosts
-    wait
 
-    if [ -e "${vBs}/${filIncB}" ]; then
-      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"${email}\"/g"        ${vBs}/${filIncB}
-      wait
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${filIncB}
-      wait
-    fi
-    ### Legacy method
-    sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"${email}\"/g"          ${vBs}/${barName}
+    sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"${email}\"/g"          ${vBs}/${filIncB}
     wait
-    sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                 ${vBs}/${barName}
+    sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                 ${vBs}/${filIncB}
     wait
 
     if [ "${kind}" = "local" ]; then
       echo "127.0.1.1 aegir.local o1.sub.aegir.local \
         o2.sub.aegir.local o3.sub.aegir.local" >> /etc/hosts
-      if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=LOCAL/g"         ${vBs}/${filIncB}
-        wait
-      fi
-      ### Legacy method
-      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=LOCAL/g"           ${vBs}/${barName}
-      wait
-      ### Legacy variables
-      sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=YES/g"     ${vBs}/${barName}
-      wait
-      sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=NO/g"            ${vBs}/${barName}
+      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=LOCAL/g"           ${vBs}/${filIncB}
       wait
     elif [ "${kind}" = "public" ] && [ ! -z "${fqdn}" ]; then
-      if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
-        wait
-      fi
-      ### Legacy method
-      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"          ${vBs}/${barName}
+      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"          ${vBs}/${filIncB}
       wait
-      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${barName}
-      wait
-      ### Legacy variables
-      sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"      ${vBs}/${barName}
-      wait
-      sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"           ${vBs}/${barName}
+      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${filIncB}
       wait
     elif [ "${kind}" = "mstr" ] \
       && [ ! -z "${fqdn}" ] \
@@ -773,64 +702,46 @@ barracuda_install() {
       && [ ! -z "${loip}" ] \
       && [ "${cmmand}" = "in-cluster" ]; then
       touch /root/.mstr.clstr.cnf
-      if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=MSTR/g"          ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"   ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"           ${vBs}/${filIncB}
-        wait
-      fi
+      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=MSTR/g"            ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"     ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"             ${vBs}/${filIncB}
+      wait
     elif [ "${kind}" = "dbhd" ] \
       && [ ! -z "${fqdn}" ] \
       && [ ! -z "${dbip}" ] \
       && [ ! -z "${loip}" ] \
       && [ "${cmmand}" = "in-cluster" ]; then
       touch /root/.dbhd.clstr.cnf
-      if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=DBHD/g"          ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"   ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"           ${vBs}/${filIncB}
-        wait
-      fi
+      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=DBHD/g"            ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"     ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"             ${vBs}/${filIncB}
+      wait
     elif [ "${kind}" = "wbhd" ] \
       && [ ! -z "${fqdn}" ] \
       && [ ! -z "${dbip}" ] \
       && [ ! -z "${loip}" ] \
       && [ "${cmmand}" = "in-cluster" ]; then
       touch /root/.wbhd.clstr.cnf
-      if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=WBHD/g"          ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"   ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"           ${vBs}/${filIncB}
-        wait
-      fi
+      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=WBHD/g"            ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"     ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"             ${vBs}/${filIncB}
+      wait
     else
-      if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"        ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g" ${vBs}/${filIncB}
-        wait
-      fi
-      ### Legacy method
-      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"          ${vBs}/${barName}
+      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"          ${vBs}/${filIncB}
       wait
-      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${barName}
-      wait
-      ### Legacy variables
-      sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"      ${vBs}/${barName}
-      wait
-      sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"           ${vBs}/${barName}
+      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${filIncB}
       wait
     fi
 
@@ -849,10 +760,10 @@ barracuda_install() {
       fi
     fi
 
-    if [ ! -z "${rkey}" ] \
+    if [ ! -z "${extra}" ] \
       && [ -e "${vBs}/${filIncB}" ] \
       && [ -e "${vBs}/${filIncO}" ]; then
-      if [ "${rkey}" = "php-83" ] || [ "${rkey}" = "php-8.3" ]; then
+      if [ "${extra}" = "php-83" ] || [ "${extra}" = "php-8.3" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.3/g" ${vBs}/${filIncB}
         wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.3/g"   ${vBs}/${filIncB}
@@ -865,7 +776,7 @@ barracuda_install() {
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.3/g" ${vBs}/${filIncO}
         wait
-      elif [ "${rkey}" = "php-82" ] || [ "${rkey}" = "php-8.2" ]; then
+      elif [ "${extra}" = "php-82" ] || [ "${extra}" = "php-8.2" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.2/g" ${vBs}/${filIncB}
         wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.2/g"   ${vBs}/${filIncB}
@@ -878,7 +789,7 @@ barracuda_install() {
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.2/g" ${vBs}/${filIncO}
         wait
-      elif [ "${rkey}" = "php-81" ] || [ "${rkey}" = "php-8.1" ]; then
+      elif [ "${extra}" = "php-81" ] || [ "${extra}" = "php-8.1" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.1/g" ${vBs}/${filIncB}
         wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.1/g"   ${vBs}/${filIncB}
@@ -891,7 +802,7 @@ barracuda_install() {
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${filIncO}
         wait
-      elif [ "${rkey}" = "php-74" ] || [ "${rkey}" = "php-7.4" ]; then
+      elif [ "${extra}" = "php-74" ] || [ "${extra}" = "php-7.4" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.4/g" ${vBs}/${filIncB}
         wait
         sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.4/g"   ${vBs}/${filIncB}
@@ -904,11 +815,11 @@ barracuda_install() {
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${filIncO}
         wait
-      elif [ "${rkey}" = "php-all" ] \
-        || [ "${rkey}" = "php-min" ] \
-        || [ "${rkey}" = "php-max" ]; then
+      elif [ "${extra}" = "php-all" ] \
+        || [ "${extra}" = "php-min" ] \
+        || [ "${extra}" = "php-max" ]; then
         sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=/g"    ${vBs}/${filIncB}
-        if [ "${rkey}" = "php-max" ]; then
+        if [ "${extra}" = "php-max" ]; then
           pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
         else
           pA="7.4 8.1 8.2 8.3"
@@ -923,7 +834,7 @@ barracuda_install() {
         wait
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${filIncO}
         wait
-      elif [ "${rkey}" = "nodns" ]; then
+      elif [ "${extra}" = "nodns" ]; then
         sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${filIncB}
         wait
         sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${filIncB}
@@ -931,79 +842,7 @@ barracuda_install() {
         sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${filIncO}
         wait
       else
-        sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${rkey}\"/g"    ${vBs}/${filIncB}
-        wait
-      fi
-    fi
-
-    if [ ! -z "${rkey}" ] \
-      && [ -e "${vBs}/${barName}" ] \
-      && [ -e "${vBs}/${octName}" ]; then
-      ### Legacy method
-      if [ "${rkey}" = "php-83" ] || [ "${rkey}" = "php-8.3" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.3/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.3/g"   ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.3/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.3/g" ${vBs}/${octName}
-        wait
-      elif [ "${rkey}" = "php-82" ] || [ "${rkey}" = "php-8.2" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.2/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.2/g"   ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.2/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.2/g" ${vBs}/${octName}
-        wait
-      elif [ "${rkey}" = "php-81" ] || [ "${rkey}" = "php-8.1" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=8.1/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=8.1/g"   ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.1/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${octName}
-        wait
-      elif [ "${rkey}" = "php-74" ] || [ "${rkey}" = "php-7.4" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=7.4/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_MULTI_IN.*/_PHP_MULTI_INSTALL=7.4/g"   ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=7.4/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=7.4/g" ${vBs}/${octName}
-        wait
-      elif [ "${rkey}" = "php-all" ] \
-        || [ "${rkey}" = "php-min" ] \
-        || [ "${rkey}" = "php-max" ]; then
-        sed -i "s/^_PHP_SINGLE_IN.*/_PHP_SINGLE_INSTALL=/g"    ${vBs}/${barName}
-        if [ "${rkey}" = "php-max" ]; then
-          pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3"
-        else
-          pA="7.4 8.1 8.2 8.3"
-        fi
-        sed -i "s/^_PHP_MULT.*/_PHP_MULTI_INSTALL=\"${pA}\"/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.1/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=8.1/g" ${vBs}/${octName}
-        wait
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=8.1/g" ${vBs}/${octName}
-        wait
-      elif [ "${rkey}" = "nodns" ]; then
-        sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"  ${vBs}/${barName}
-        wait
-        sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${barName}
-        wait
-        sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${octName}
-        wait
-      else
-        sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${rkey}\"/g"    ${vBs}/${barName}
+        sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${extra}\"/g"    ${vBs}/${filIncB}
         wait
       fi
     fi
@@ -1011,8 +850,7 @@ barracuda_install() {
     if [ "${cmmand}" = "in-dev" ] \
       || [ "${cmmand}" = "in-lts" ] \
       || [ "${cmmand}" = "in-octopus" ] \
-      || [ "${cmmand}" = "in-oct" ] \
-      || [ "${cmmand}" = "init" ]; then
+      || [ "${cmmand}" = "in-oct" ]; then
       sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
       wait
       sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g"   ${vBs}/${filIncB}
@@ -1022,106 +860,87 @@ barracuda_install() {
       sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"           ${vBs}/${filIncB}
       wait
     else
-      if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"      ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${tRee}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${filIncB}
-        wait
-      fi
-      ### Legacy method
-      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${barName}
+      sed -i "s/^_BRANCH_PRN=.*/_BRANCH_PRN=${brnch}/g"        ${vBs}/${filIncB}
       wait
-      sed -i "s/^_BRANCH_PROV.*/_BRANCH_PROVISION=${brnch}/g"  ${vBs}/${barName}
+      sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g"   ${vBs}/${filIncB}
       wait
-      if [ "${cmmand}" = "in-2.2" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcA}/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcA}/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcA}/g"         ${vBs}/${barName}
-        wait
-      elif [ "${cmmand}" = "in-2.3" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcB}/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcB}/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcB}/g"         ${vBs}/${barName}
-        wait
-      elif [ "${cmmand}" = "in-2.4" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcC}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcC}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcC}/g"         ${vBs}/${filIncB}
-        wait
-      elif [ "${cmmand}" = "in-3.2" ]; then
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${lgcD}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${lgcD}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${lgcD}/g"         ${vBs}/${filIncB}
-        wait
-      else
-        sed -i "s/^_AEGIR_VERSION=.*/_AEGIR_VERSION=${tRee}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${tRee}/g" ${vBs}/${filIncB}
-        wait
-        sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"         ${vBs}/${filIncB}
-        wait
-      fi
+      sed -i "s/^_AEGIR_XTS_VRN=.*/_AEGIR_XTS_VRN=${tRee}/g"   ${vBs}/${filIncB}
+      wait
+      sed -i "s/^_X_VERSION=.*/_X_VERSION=${rlse}/g"           ${vBs}/${filIncB}
+      wait
     fi
 
     if [ "${cmmand}" = "in-dev" ] \
       || [ "${cmmand}" = "in-lts" ] \
       || [ "${cmmand}" = "in-octopus" ] \
-      || [ "${cmmand}" = "in-oct" ] \
-      || [ "${cmmand}" = "init" ]; then
+      || [ "${cmmand}" = "in-oct" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncB}
       wait
     elif [ "${cmmand}" = "in-cluster" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncB}
       wait
     else
-      if [ -e "${vBs}/${filIncB}" ]; then
-        sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"      ${vBs}/${filIncB}
-        wait
+      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncB}
+      wait
+    fi
+
+    if [ "${output}" = "logged" ]; then
+      n=$((RANDOM%9+2))
+      echo
+      if [ "${system}" = "bundle" ]; then
+        echo "Preparing to install Barracuda and Octopus in almost silent mode..."
+      else
+        echo "Preparing to install only Barracuda in almost silent mode..."
       fi
-      ### Legacy method
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${barName}
+      echo
+      echo "NOTE: There will be no progress displayed in this console"
+      echo "but you will receive an email once the installation is complete"
+      echo
+      sleep $n
+      echo "Please watch the progress in another console window with command:"
+      echo "  tail -f ${_IN_BARRACUDA_LOG}"
+      echo "or wait until you will see the line: BOA ${cmmand} completed, Bye"
+      echo
+      sleep $n
+      echo "Starting now..."
+      echo
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               ${vBs}/${barName}
+      wait
+      sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"                   ${vBs}/${barName}
       wait
     fi
 
     if [ -e "${vBs}/${barName}" ]; then
-      bash ${vBs}/${barName}
+      if [ "${output}" = "logged" ] || [ "${output}" = "onlylogged" ]; then
+        bash ${vBs}/${barName} >${_IN_BARRACUDA_LOG} 2>&1
+      else
+        bash ${vBs}/${barName}
+      fi
       wait
     fi
   else
     echo "${barName} installer not available - try again"
-    clean_pid_exit
+    clean_pid_exit barracuda_install_a
   fi
 }
 
 init_start() {
-  if [ -e "/var/run/boa_run.pid" ]; then
+  if [ -e "/run/boa_run.pid" ]; then
     echo
     echo "  Another BOA installer is running probably"
-    echo "  because /var/run/boa_run.pid exists"
+    echo "  because /run/boa_run.pid exists"
     echo
     exit 1
-  elif [ -e "/var/run/boa_wait.pid" ]; then
+  elif [ -e "/run/boa_wait.pid" ]; then
     echo
     echo "  Some important system task is running probably"
-    echo "  because /var/run/boa_wait.pid exists"
+    echo "  because /run/boa_wait.pid exists"
     echo
     exit 1
   else
-    touch /var/run/boa_run.pid
-    touch /var/run/boa_wait.pid
-    mkdir -p ${vBs}
+    touch /run/boa_run.pid
+    touch /run/boa_wait.pid
+    mkdir -p ${_LOG_DIR}
     cd ${vBs}
     rm -f ${vBs}/*.sh.cnf*
     rm -f ${vBs}/BARRACUDA.sh*
@@ -1129,31 +948,31 @@ init_start() {
   fi
 }
 
-set_pin_priority() {
-  if [ ! -e "/etc/apt/preferences" ] && [ -e "/etc/issue.net" ]; then
-    _IS_DEVUAN=$(grep "Devuan" /etc/issue.net 2>&1)
-    _IS_DEBIAN=$(grep "Debian" /etc/issue.net 2>&1)
-    if [[ "${_IS_DEVUAN}" =~ "Devuan" ]]; then
-      _THIS_OS=Devuan
-    elif [[ "${_IS_DEBIAN}" =~ "Debian" ]]; then
-      _THIS_OS=Debian
-    fi
-    if [ "${_THIS_OS}" = "Devuan" ]; then
-      curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-devuan.txt" \
-        -o /etc/apt/preferences
-    elif [ "${_THIS_OS}" = "Debian" ]; then
-      curl ${crlGet} "${urlHmr}/conf/etc-apt-preferences-debian.txt" \
-        -o /etc/apt/preferences
-    fi
+check_etc_apt_preferences() {
+  if [ -e "/etc/apt/preferences" ] \
+    && [ ! -e "/var/backups/old_etc_apt_preferences" ]; then
+    mv -f /etc/apt/preferences /var/backups/old_etc_apt_preferences
   fi
+}
+
+init_cleanup() {
+  rm -f /root/BOA.sh*
+  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
+  [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
+  rm -f ${vBs}/*.sh.cnf*
+  rm -f ${vBs}/BARRACUDA.sh*
+  rm -f ${vBs}/OCTOPUS.sh*
+  rm -rf /opt/tmp/*
 }
 
 init_finish() {
   rm -f /root/BOA.sh*
-  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
-  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
-  [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
-  [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
+  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
+  [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
   rm -f ${vBs}/*.sh.cnf*
   rm -f ${vBs}/BARRACUDA.sh*
   rm -f ${vBs}/OCTOPUS.sh*
@@ -1166,75 +985,240 @@ init_finish() {
 }
 
 init_setup() {
-  if [ "${kind}" = "local" ]; then
-    if [ "${email}" = "ask" ] \
-      || [ "${email}" = "mini" ] \
-      || [ "${email}" = "max" ] \
-      || [ "${email}" = "none" ]; then
-      mode="${email}"
-    else
-      mode=
+
+  if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
+
+    if [ ! -e "/root/.autoinit.log" ] || [ -e "/lib/systemd/systemd" ]; then
+      # Explain the procedure
+      echo
+      echo "  Since this system is not ready for Octopus installation yet,"
+      echo "  we will run the 'autoinit' for you first, reboot and then"
+      echo "  you can install BOA first and then add more Octopus instances"
+      echo
+      echo "  NOTE: All required autoinit steps are automated"
+      echo
+      echo "  Feel free to log out now and check back after 10 minutes"
+      echo
+      echo "  PLEASE DON'T REBOOT THIS SERVER WHILE THE PROCEDURE IS RUNNING!"
+      echo
+      echo "  Bye!"
+      echo
+      # Execute the autonit and exit
+      nohup /usr/local/bin/autoinit > /dev/null 2>&1 &
+      sleep 1
+      clean_pid_exit
     fi
-    if [ ! -z "${mode}" ] && [ ! -z "${user}" ]; then
-      rkey="${user}"
-    else
-      rkey="${email}"
+
+    if [ -e "/root/.dev.server.cnf" ]; then
+      echo
+      echo RAWV tRee is ${tRee}
+      echo RAWV email is ${email}
+      echo RAWV user is ${user}
+      echo RAWV extra is ${extra}
+      echo RAWV copt is ${copt}
+      echo RAWV csub is ${csub}
+      echo RAWV ccor is ${ccor}
+      echo
     fi
-    email="${fqdn}"
-    user="o1"
-  fi
-  if [ "${kind}" = "public" ] \
-    || [ "${kind}" = "backdrop" ] \
-    || [ "${kind}" = "cluster" ] \
-    || [ "${kind}" = "drush" ] \
-    || [ "${kind}" = "gravcms" ] \
-    || [ "${kind}" = "jessie" ] \
-    || [ "${kind}" = "system" ]; then
-    if [ "${kind}" != "public" ]; then
-      silent="${kind}"
-      echo "FEATURE MODE: ${silent}"
-      master="feature/${silent}"
-      branch="feature/${silent}"
+    if [ "${extra}" = "lts" ] \
+      || [ "${extra}" = "dev" ]; then
+      _OCTO_EXTRA=OK
     else
-      silent=
-    fi
-    kind="public"
-    if [ "${user}" = "ask" ] \
-      || [ "${user}" = "mini" ] \
-      || [ "${user}" = "max" ] \
-      || [ "${user}" = "none" ]; then
-      rkey="${mode}"
-      mode="${user}"
-      user="o1"
+      extra=lite
     fi
     satellite_check_id ${user}
-  fi
+    if [ "${copt}" = "octolog" ]; then
+      output="logged"
+      copt=
+    elif [ "${copt}" = "silent" ]; then
+      output="onlylogged"
+      copt=
+    elif [ "${copt}" = "system" ]; then
+      output="logged"
+      copt=
+    elif [ "${copt}" = "minimal" ]; then
+      output="logged"
+      copt=
+    else
+      output="verbose"
+    fi
 
-  if [[ "${cmmand}" =~ "in-2." ]] || [ "${copt}" = "2.4" ]; then
-    if [ "${cmmand}" = "in-2.4" ] || [ "${copt}" = "2.4" ]; then
-      branch="2.4.x-dev"
-    elif [ "${cmmand}" = "in-2.3" ]; then
-      branch="2.3.x-dev"
-    elif [ "${cmmand}" = "in-2.2" ]; then
-      branch="2.2.x-legacy"
+    if [ -e "/root/.auto.up.cnf" ] \
+      || [ -e "/root/.host8.cnf" ] \
+      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
+      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
+      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+      defaultOption=EDGE
+    else
+      defaultOption=POWER
+    fi
+
+    if [ "${output}" = "logged" ] \
+      || [ -z "${copt}" ] \
+      || [ -z "${csub}" ] \
+      || [ -z "${ccor}" ]; then
+      copt=${defaultOption}
+      csub=Q
+      ccor=1
+    fi
+    if [ "${output}" = "onlylogged" ] \
+      || [ -z "${copt}" ] \
+      || [ -z "${csub}" ] \
+      || [ -z "${ccor}" ]; then
+      copt=${defaultOption}
+      csub=Q
+      ccor=1
+    fi
+    if [ -e "/root/.dev.server.cnf" ]; then
+      echo MODD tRee is ${tRee}
+      echo MODD email is ${email}
+      echo MODD user is ${user}
+      echo MODD extra is ${extra}
+      echo MODD copt is ${copt}
+      echo MODD csub is ${csub}
+      echo MODD ccor is ${ccor}
+      echo
+      echo CTRL output is ${output}
+      echo
+      echo Waiting 60 seconds...
+      sleep 15
+      echo Waiting 45 seconds...
+      sleep 15
+      echo Waiting 30 seconds...
+      sleep 15
+      echo Waiting 15 seconds...
+      echo
+    fi
+    if [ "${extra}" = "dev" ]; then
+      tRee=dev
+    elif [ "${extra}" = "pro" ]; then
+      tRee=pro
+    elif [ "${extra}" = "lts" ]; then
+      tRee=lts
     fi
   fi
-  if [[ "${cmmand}" =~ "in-3." ]] || [ "${copt}" = "3.2" ]; then
-    if [ "${cmmand}" = "in-3.2" ] || [ "${copt}" = "3.2" ]; then
-      branch="3.2.x-dev"
+
+  # Define the BOA log file for use after autoinit
+  _BOA_LOGFILE="/root/.boa.install.command.cnf"
+
+  if [ "${cmmand}" = "in-lts" ] \
+    || [ "${cmmand}" = "in-dev" ] \
+    || [ "${cmmand}" = "in-cluster" ]; then
+    if [ ! -e "/root/.autoinit.log" ] || [ -e "/lib/systemd/systemd" ]; then
+      # Write the command to the log file
+      echo "${_BOA_COMMAND}" > ${_BOA_LOGFILE}
+      # Explain the procedure
+      echo
+      echo "  Since this system is not ready for BOA installation yet,"
+      echo "  we will run the 'autoinit' for you first, reboot and then"
+      echo "  your original boa command will be run in a silent mode"
+      echo
+      echo "  The command to run once autonit is complete:"
+      echo
+      echo "    ${_BOA_COMMAND}"
+      echo
+      echo "  NOTE: All those steps are automated"
+      echo
+      echo "  Feel free to log out now and check back after 30-40 minutes"
+      echo
+      echo "  PLEASE DON'T REBOOT THIS SERVER WHILE THE PROCEDURE IS RUNNING!"
+      echo
+      echo "  You should receive an email once the installation is complete"
+      echo
+      echo "  Bye!"
+      echo
+      # Execute the autonit and exit
+      nohup /usr/local/bin/autoinit > /dev/null 2>&1 &
+      sleep 1
+      clean_pid_exit
+    fi
+  fi
+
+  check_ifnames
+  check_no_systemd
+
+  if [ "${cmmand}" = "in-lts" ] \
+    || [ "${cmmand}" = "in-dev" ] \
+    || [ "${cmmand}" = "in-cluster" ]; then
+    if [ -e "/root/.dev.server.cnf" ]; then
+      echo
+      echo RAWV tRee is ${tRee}
+      echo RAWV kind is ${kind}
+      echo RAWV fqdn is ${fqdn}
+      echo RAWV email is ${email}
+      echo RAWV user is ${user}
+      echo RAWV extra is ${extra}
+      echo RAWV output is ${output}
+      echo
+    fi
+    if [ "${kind}" = "local" ]; then
+      if [[ "${email}" =~ "php" ]]; then
+        extra="${email}"
+      fi
+      email="${fqdn}"
+      user="o1"
+    fi
+    if [ "${kind}" = "public" ]; then
+      if [[ "${user}" =~ "php" ]]; then
+        extra="${user}"
+        user="o1"
+      fi
+      satellite_check_id ${user}
+    fi
+    if [ "${user}" = "silent" ] \
+      || [ "${extra}" = "silent" ] \
+      || [ "${output}" = "silent" ]; then
+      output="onlylogged"
+      system="bundle"
+    elif [ "${user}" = "minimal" ] \
+      || [ "${extra}" = "minimal" ] \
+      || [ "${output}" = "minimal" ]; then
+      output="logged"
+      system="bundle"
+    elif [ "${user}" = "octolog" ] \
+      || [ "${extra}" = "octolog" ] \
+      || [ "${output}" = "octolog" ]; then
+      output="logged"
+      system="bundle"
+    elif [ "${user}" = "system" ] \
+      || [ "${extra}" = "system" ] \
+      || [ "${output}" = "system" ]; then
+      output="logged"
+      system="barracuda"
+    else
+      output="verbose"
+      system="bundle"
+    fi
+    if [ -e "/root/.dev.server.cnf" ]; then
+      echo MODD tRee is ${tRee}
+      echo MODD kind is ${kind}
+      echo MODD fqdn is ${fqdn}
+      echo MODD email is ${email}
+      echo MODD user is ${user}
+      echo MODD extra is ${extra}
+      echo MODD output is ${output}
+      echo
+      echo CTRL output is ${output}
+      echo CTRL system is ${system}
+      echo
+      echo Waiting 60 seconds...
+      sleep 15
+      echo Waiting 45 seconds...
+      sleep 15
+      echo Waiting 30 seconds...
+      sleep 15
+      echo Waiting 15 seconds...
+      echo
     fi
   fi
 
   init_start
-  set_pin_priority
+  check_etc_apt_preferences
 
-  rlsn="BOA-5.3.0"
+  rlsn="BOA-5.4.0"
   rlse="${rlsn}-${tRee}"
   cluster="${rlse}"
-  lgcA="BOA-2.2.9"
-  lgcB="BOA-2.3.8"
-  lgcC="BOA-2.4.9"
-  lgcD="BOA-3.2.2"
   branch="5.x-${tRee}"
   brnch=${branch//\//\\\/}
 
@@ -1242,8 +1226,7 @@ init_setup() {
   export rlsn="${rlsn}"
 
   if [ "${cmmand}" = "in-dev" ] \
-    || [ "${cmmand}" = "in-lts" ] \
-    || [ "${cmmand}" = "init" ]; then
+    || [ "${cmmand}" = "in-lts" ]; then
     if [ ! -z "${silent}" ]; then
       curl ${crlGet} "${rgUrl}/feature/${silent}/${barName}" -o ${vBs}/${barName}
       curl ${crlGet} "${rgUrl}/feature/${silent}/${octName}" -o ${vBs}/${octName}
@@ -1262,83 +1245,103 @@ init_setup() {
     curl ${crlGet} "${rgUrl}/${cluster}/${pthIncO}" -o ${vBs}/${filIncO}
   elif [ "${cmmand}" = "in-octopus" ] \
     || [ "${cmmand}" = "in-oct" ]; then
-    if [ "${copt}" = "dev" ]; then
-      octb="${brnch}"
-    elif [ "${copt}" = "lts" ]; then
-      octb="${brnch}"
-    elif [ "${copt}" = "3.2" ]; then
-      octb="${lgcD}"
-    elif [ "${copt}" = "2.4" ]; then
-      octb="${lgcC}"
-    fi
-    curl ${crlGet} "${rgUrl}/${octb}/${barName}"    -o ${vBs}/${barName}
-    curl ${crlGet} "${rgUrl}/${octb}/${octName}"    -o ${vBs}/${octName}
-    curl ${crlGet} "${rgUrl}/${octb}/${pthIncB}"    -o ${vBs}/${filIncB}
-    curl ${crlGet} "${rgUrl}/${octb}/${pthIncO}"    -o ${vBs}/${filIncO}
-  elif [ "${cmmand}" = "in-3.2" ]; then
-    curl ${crlGet} "${rgUrl}/${lgcD}/${barName}"    -o ${vBs}/${barName}
-    curl ${crlGet} "${rgUrl}/${lgcD}/${octName}"    -o ${vBs}/${octName}
-    curl ${crlGet} "${rgUrl}/${lgcD}/${pthIncB}"    -o ${vBs}/${filIncB}
-    curl ${crlGet} "${rgUrl}/${lgcD}/${pthIncO}"    -o ${vBs}/${filIncO}
-  elif [ "${cmmand}" = "in-2.4" ]; then
-    curl ${crlGet} "${rgUrl}/${lgcC}/${barName}"    -o ${vBs}/${barName}
-    curl ${crlGet} "${rgUrl}/${lgcC}/${octName}"    -o ${vBs}/${octName}
-    curl ${crlGet} "${rgUrl}/${lgcC}/${pthIncB}"    -o ${vBs}/${filIncB}
-    curl ${crlGet} "${rgUrl}/${lgcC}/${pthIncO}"    -o ${vBs}/${filIncO}
-  elif [ "${cmmand}" = "in-2.3" ]; then
-    curl ${crlGet} "${rgUrl}/${lgcB}/${barName}"    -o ${vBs}/${barName}
-    curl ${crlGet} "${rgUrl}/${lgcB}/${octName}"    -o ${vBs}/${octName}
-  elif [ "${cmmand}" = "in-2.2" ]; then
-    curl ${crlGet} "${rgUrl}/${lgcA}/${barName}"    -o ${vBs}/${barName}
-    curl ${crlGet} "${rgUrl}/${lgcA}/${octName}"    -o ${vBs}/${octName}
-  fi
-  if [ "${sql}" = "percona" ]; then
-    sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"         ${vBs}/${filIncB}
-    wait
-    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"     ${vBs}/${filIncB}
-    wait
-  elif [ "${sql}" = "mariadb" ]; then
-    sed -i "s/^_DB_SERIES=.*/_DB_SERIES=10.2/g"        ${vBs}/${filIncB}
-    wait
-    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"     ${vBs}/${filIncB}
-    wait
+    curl ${crlGet} "${rgUrl}/${brnch}/${barName}"   -o ${vBs}/${barName}
+    curl ${crlGet} "${rgUrl}/${brnch}/${octName}"   -o ${vBs}/${octName}
+    curl ${crlGet} "${rgUrl}/${brnch}/${pthIncB}"   -o ${vBs}/${filIncB}
+    curl ${crlGet} "${rgUrl}/${brnch}/${pthIncO}"   -o ${vBs}/${filIncO}
   fi
   if [ -e "/root/.debug-boa-installer.cnf" ]; then
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncB}
     wait
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncO}
     wait
-  else
-    sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"        ${vBs}/${filIncB}
-    wait
-    sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"        ${vBs}/${filIncO}
-    wait
   fi
   if [ -e "/root/.debug-barracuda-installer.cnf" ]; then
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncB}
     wait
-  else
-    sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"        ${vBs}/${filIncB}
-    wait
   fi
   if [ -e "/root/.debug-octopus-installer.cnf" ]; then
     sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"       ${vBs}/${filIncO}
-    wait
-  else
-    sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"        ${vBs}/${filIncO}
     wait
   fi
   if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
     _OCTOPUS_ONLY=YES
   else
     barracuda_install
-  fi
-  if [ "${kind}" != "dbhd" ]; then
-    if [ "${cmmand}" != "init" ]; then
-      octopus_install
+    if [ "${output}" = "verbose" ]; then
+      echo
+      echo "Time for a quick barracuda system upgrade to complete installation"
+      echo
+      /opt/local/bin/barracuda up-${tRee} system
+      wait
+    else
+      /opt/local/bin/barracuda up-${tRee} system > /dev/null 2>&1
+      wait
     fi
   fi
-  init_finish
+  if [ "${_OCTOPUS_ONLY}" = "YES" ] || [ "${system}" = "bundle" ]; then
+    [ ! -e "/run/octopus_install_run.pid" ] && touch /run/octopus_install_run.pid
+    sleep 3
+    octopus_install
+    rm -rf /data/disk/${user}/.tmp/cache
+  fi
+  if [ "${output}" = "logged" ]; then
+    send_report
+  fi
+  if [ "${_OCTOPUS_ONLY}" = "YES" ] || [ "${system}" = "bundle" ]; then
+    init_cleanup
+    [ ! -e "/run/octopus_install_run.pid" ] && touch /run/octopus_install_run.pid
+    sleep 3
+    # Execute post-install octopus upgrade and exit
+    touch /data/disk/${user}/static/control/ssl-live-mode.info
+    rm -f /data/disk/${user}/tools/le/.ctrl/ssl-demo-mode.pid
+    rm -rf /data/disk/${user}/.tmp/cache
+    echo
+    if [ ! -e "/root/.dont.upgrade.octopus.on.install.cnf" ]; then
+      echo "Invoking hosting-dispatch/hosting-tasks to complete the installation"
+      sleep 3
+      echo "Please wait, it will take about 30 seconds..."
+      su -s /bin/bash ${user} -c "drush @hm hosting-dispatch"  &> /dev/null
+      echo "1/5"
+      sleep 5
+      su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
+      echo "2/5"
+      sleep 5
+      su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
+      echo "3/5"
+      sleep 5
+      su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
+      echo "4/5"
+      sleep 5
+      su -s /bin/bash ${user} -c "drush @hm hosting-tasks --force" &> /dev/null
+      echo "5/5"
+      sleep 3
+      echo "The post-installation upgrade is now being invoked..."
+      echo "...to complete the Let's Encrypt setup."
+      sleep 3
+      echo "This process will take a few minutes and will run in the background."
+      sleep 3
+    fi
+    echo "NOTE! The initial one-time login link will no longer work."
+    sleep 3
+    echo "To access your Aegir control panel after the procedure is finished..."
+    echo "...please generate a new link by running the following command:"
+    sleep 3
+    echo
+    echo "  su -s /bin/bash ${user} -c \"drush @hm uli\""
+    echo
+    sleep 3
+    echo "Bye!"
+    echo
+    if [ ! -e "/root/.dont.upgrade.octopus.on.install.cnf" ]; then
+      rm -rf /data/disk/${user}/.tmp/cache
+      nohup /opt/local/bin/octopus up-${tRee} ${user} force > /dev/null 2>&1 &
+    fi
+    sleep 1
+    exit 0
+  else
+    init_finish
+  fi
 }
 
 find_fast_mirror_early() {
@@ -1349,7 +1352,8 @@ find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install netcat ${aptYesUnth} &> /dev/null
+    apt-get install netcat ${aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
     wait
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -1381,66 +1385,87 @@ find_fast_mirror_early() {
 }
 
 if_reinstall_curl() {
-  _CURL_VRN=8.7.1
+  _CURL_VRN=8.9.1
+  if ! command -v lsb_release &> /dev/null; then
+    apt-get update -qq &> /dev/null
+    apt-get install lsb-release -y -qq &> /dev/null
+  fi
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
+  [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-    echo "OOPS: cURL is broken! Re-installing.."
-    rm -f /etc/apt/sources.list.d/openssl.list
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-      && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    if [ -e "/var/aegir/drush" ]; then
+      echo "OOPS: cURL is broken! Re-installing.."
     fi
-    echo "curl install" | dpkg --set-selections &> /dev/null
-    apt_clean_update
-    apt-get remove curl ${aptYesUnth} &> /dev/null
-    apt-get install curl ${aptYesUnth} &> /dev/null
-    ldconfig &> /dev/null
-    if [ -f "/usr/bin/curl" ]; then
-      isCurl=$(/usr/bin/curl --version 2>&1)
-      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-        echo "OOPS: /usr/bin/curl is still broken, uninstalling.."
-        apt-get remove curl ${aptYesUnth} &> /dev/null
+    if [ ! -e "/var/aegir/drush" ]; then
+      if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+        && [ -e "/etc/apt/apt.conf.d" ]; then
+        echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+      fi
+      echo "curl install" | dpkg --set-selections 2> /dev/null
+      apt_clean_update
+      apt-get install curl -y -qq 2> /dev/null
+    fi
+    isCurl=$(curl --version 2>&1)
+    if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+      if [ -e "/var/aegir/drush" ]; then
+        echo "ERRR: curl is still broken, we will install from sources"
       else
-        echo "GOOD: /usr/bin/curl works"
+        echo "ERRR: curl is still broken, please install it and debug manually"
+        echo "Bye"
+        exit 1
       fi
     fi
-    mkdir -p /var/opt
-    rm -rf /var/opt/curl*
-    cd /var/opt
-    wget http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
-    tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
-    cd /var/opt/curl-${_CURL_VRN}
-    sh ./configure --with-ssl --prefix=/usr/local &> /dev/null
-    make -j $(nproc) --quiet &> /dev/null
-    make --quiet install &> /dev/null
-    if [ -f "/usr/local/bin/curl" ]; then
-      isCurl=$(/usr/local/bin/curl --version 2>&1)
+    if [ -e "/var/aegir/drush" ]; then
+      isCurl=$(curl --version 2>&1)
       if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-        echo "ERRR: /usr/local/bin/curl is broken, moving to /usr/local/bin/curl--broken"
-        rm -f /usr/local/bin/curl--broken
-        mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
-      else
-        echo "GOOD: /usr/local/bin/curl works"
+        echo "INFO: Installing curl from sources..."
+        mkdir -p /var/opt
+        rm -rf /var/opt/curl*
+        cd /var/opt
+        wget -q -U iCab http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
+        tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
+        cd /var/opt/curl-${_CURL_VRN}
+        sh ./configure --with-ssl --prefix=/usr/local &> /dev/null
+        make -j $(nproc) --quiet &> /dev/null
+        make --quiet install &> /dev/null
+      fi
+      if [ -f "/usr/local/bin/curl" ]; then
+        isCurl=$(/usr/local/bin/curl --version 2>&1)
+        if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+          echo "ERRR: /usr/local/bin/curl is broken, moving to /usr/local/bin/curl--broken"
+          echo "ERRR: Please install it and debug manually"
+          echo "Bye"
+          rm -f /usr/local/bin/curl--broken
+          mv -f /usr/local/bin/curl /usr/local/bin/curl--broken
+          exit 1
+        else
+          echo "GOOD: /usr/local/bin/curl works"
+        fi
       fi
     fi
   fi
 }
 
 check_dns_curl() {
-  if [ ! -e "/etc/resolv.conf" ]; then
+  if [ ! -f "/etc/resolv.conf" ]; then
     rm -f /etc/resolv.conf
+    echo "nameserver 127.0.0.1" > /etc/resolv.conf
     if [ -e "${vBs}/resolv.conf.vanilla" ]; then
-      cat ${vBs}/resolv.conf.vanilla >/etc/resolv.conf
+      cat ${vBs}/resolv.conf.vanilla >> /etc/resolv.conf
     fi
-    echo "nameserver 1.1.1.1" >>/etc/resolv.conf
-    echo "nameserver 1.0.0.1" >>/etc/resolv.conf
+    echo "nameserver 1.1.1.1" >> /etc/resolv.conf
+    echo "nameserver 1.0.0.1" >> /etc/resolv.conf
+    echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
     check_dns_settings
   else
     check_dns_settings
   fi
-  if [ -d "/var/cache/pdnsd" ] \
-    && [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
-    pdnsd-ctl empty-cache &> /dev/null
+  if [ -x "/usr/sbin/unbound-control" ] \
+    && [ -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
+    unbound-control reload &> /dev/null
   fi
   find_fast_mirror_early
   if_reinstall_curl
@@ -1455,9 +1480,54 @@ check_dns_curl() {
       if_reinstall_curl
     else
       echo "ERROR: ${_USE_MIR} is not available, please try later"
-      clean_pid_exit
+      clean_pid_exit check_dns_curl_a
     fi
   fi
+}
+
+if_fix_iptables_symlinks() {
+  ###
+  ### Fix for iptables paths backward compatibility
+  ###
+  if [ -x "/sbin/iptables" ] && [ ! -e "/usr/sbin/iptables" ]; then
+    ln -s /sbin/iptables /usr/sbin/iptables
+  fi
+  if [ -x "/usr/sbin/iptables" ] && [ ! -e "/sbin/iptables" ]; then
+    ln -s /usr/sbin/iptables /sbin/iptables
+  fi
+  if [ -x "/sbin/iptables-save" ] && [ ! -e "/usr/sbin/iptables-save" ]; then
+    ln -s /sbin/iptables-save /usr/sbin/iptables-save
+  fi
+  if [ -x "/usr/sbin/iptables-save" ] && [ ! -e "/sbin/iptables-save" ]; then
+    ln -s /usr/sbin/iptables-save /sbin/iptables-save
+  fi
+  if [ -x "/sbin/iptables-restore" ] && [ ! -e "/usr/sbin/iptables-restore" ]; then
+    ln -s /sbin/iptables-restore /usr/sbin/iptables-restore
+  fi
+  if [ -x "/usr/sbin/iptables-restore" ] && [ ! -e "/sbin/iptables-restore" ]; then
+    ln -s /usr/sbin/iptables-restore /sbin/iptables-restore
+  fi
+  if [ -x "/sbin/ip6tables" ] && [ ! -e "/usr/sbin/ip6tables" ]; then
+    ln -s /sbin/ip6tables /usr/sbin/ip6tables
+  fi
+  if [ -x "/usr/sbin/ip6tables" ] && [ ! -e "/sbin/ip6tables" ]; then
+    ln -s /usr/sbin/ip6tables /sbin/ip6tables
+  fi
+  if [ -x "/sbin/ip6tables-save" ] && [ ! -e "/usr/sbin/ip6tables-save" ]; then
+    ln -s /sbin/ip6tables-save /usr/sbin/ip6tables-save
+  fi
+  if [ -x "/usr/sbin/ip6tables-save" ] && [ ! -e "/sbin/ip6tables-save" ]; then
+    ln -s /usr/sbin/ip6tables-save /sbin/ip6tables-save
+  fi
+  if [ -x "/sbin/ip6tables-restore" ] && [ ! -e "/usr/sbin/ip6tables-restore" ]; then
+    ln -s /sbin/ip6tables-restore /usr/sbin/ip6tables-restore
+  fi
+  if [ -x "/usr/sbin/ip6tables-restore" ] && [ ! -e "/sbin/ip6tables-restore" ]; then
+    ln -s /usr/sbin/ip6tables-restore /sbin/ip6tables-restore
+  fi
+  ###
+  ### Fix for iptables paths backward compatibility
+  ###
 }
 
 csf_check_fix() {
@@ -1481,6 +1551,7 @@ csf_check_fix() {
     wait
     service clean-boa-env start &> /dev/null
     wait
+    if_fix_iptables_symlinks
     csf -uf &> /dev/null
     wait
     _NFTABLES_TEST=$(iptables -V 2>&1)
@@ -1503,11 +1574,16 @@ csf_check_fix() {
     sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
     wait
     sed -i "/^$/d" /etc/csf/csf.allow
-    _DHCP_TEST=$(grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq 2>&1)
-    if [[ "${_DHCP_TEST}" =~ "port" ]]; then
-      for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+    if [ -e "/var/log/daemon.log" ]; then
+      _DHCP_LOG="/var/log/daemon.log"
     else
-      for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+      _DHCP_LOG="/var/log/syslog"
+    fi
+    _DHCP_TEST=$(grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq 2>&1)
+    if [[ "${_DHCP_TEST}" =~ "port" ]]; then
+      for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+    else
+      for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
     fi
     service lfd start &> /dev/null
     wait
@@ -1529,19 +1605,6 @@ csf_check_fix() {
 check_root() {
   if [ `whoami` = "root" ]; then
     [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
-    if [ -e "${barCnf}" ]; then
-      if [ -e "/root/.debug-boa-installer.cnf" ] \
-        || [ -e "/root/.debug-barracuda-installer.cnf" ]; then
-        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g" ${barCnf}
-      fi
-      source ${barCnf}
-      _B_NICE=${_B_NICE//[^0-9]/}
-    fi
-    if [ -z "${_B_NICE}" ]; then
-      _B_NICE=10
-    fi
-    renice ${_B_NICE} -p $$ &> /dev/null
-    rm -f /var/lib/man-db/auto-update
     if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
       system_check_ready
     else
@@ -1557,8 +1620,6 @@ check_root() {
         ln -s /proc/self/fd /dev/fd
       fi
     fi
-    sed -i "s/.*173.231.133.190.*//g" /etc/hosts
-    wait
     sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
     wait
     sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
@@ -1569,8 +1630,8 @@ check_root() {
     sed -i "/^$/d" /etc/hosts
     wait
   else
-    echo "ERROR: This script should be ran as a root user"
-    clean_pid_exit
+    echo "ERROR: This script should be run as a root user"
+    clean_pid_exit check_root_a
   fi
   _DF_TEST=$(df -kTh / -l \
     | grep '/' \
@@ -1580,11 +1641,15 @@ check_root() {
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt "90" ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
     echo "ERROR: We can not proceed until it is below 90/100"
-    clean_pid_exit
+    clean_pid_exit check_root_b
   fi
   if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
     && [ -e "/etc/apt/apt.conf.d" ]; then
     echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+  fi
+  if [ -x "/opt/local/bin/killer" ]; then
+    sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
+    echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
   fi
   if [ "${_VMFAMILY}" = "VS" ]; then
     if [ ! -e "/etc/apt/preferences.d/fuse" ]; then
@@ -1602,19 +1667,11 @@ check_root() {
       echo -e 'Package: makedev\nPin: release *\nPin-Priority: -1' > /etc/apt/preferences.d/makedev
       apt_clean_update
     fi
-    apt-get remove fuse -y -qq &> /dev/null
-    apt-get purge fuse -y -qq &> /dev/null
-    apt-get remove udev -y -qq &> /dev/null
-    apt-get purge udev -y -qq &> /dev/null
-    apt-get remove makedev -y -qq &> /dev/null
-    apt-get purge makedev -y -qq &> /dev/null
+    apt-get remove fuse -y --purge --auto-remove -qq 2> /dev/null
+    apt-get remove udev -y --purge --auto-remove -qq 2> /dev/null
+    apt-get remove makedev -y --purge --auto-remove -qq 2> /dev/null
     if [ -e "/sbin/hdparm" ]; then
-      apt-get remove hdparm -y -qq &> /dev/null
-      apt-get purge hdparm -y -qq &> /dev/null
-    fi
-    if [ -e "/sbin/auditd" ]; then
-      apt-get remove auditd -y -qq &> /dev/null
-      apt-get purge auditd -y -qq &> /dev/null
+      apt-get remove hdparm -y --purge --auto-remove -qq 2> /dev/null
     fi
     _REMOVE_LINKS="buagent \
                    checkroot.sh \
@@ -1732,7 +1789,7 @@ display_version() {
         _VIRT_IS="${_VIRT_TEST} not supported"
       fi
     fi
-    thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
+    thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
     if [ -e "/var/log/barracuda_log.txt" ]; then
       crlBoav=`tail --lines=1 /var/log/barracuda_log.txt \
         | cut -d '/' -f4 \
@@ -1742,7 +1799,7 @@ display_version() {
     echo "${crlBoav} on ${thiSys} on ${_VIRT_IS} on ${_HOST_INFO}"
     exit 0
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
 }
@@ -1847,7 +1904,7 @@ display_info() {
     _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
     [ "${mode}" = "clear" ] && clear
     echo
-    thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
+    thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
     if [ -e "/var/log/barracuda_log.txt" ]; then
       _AUT=$(grep _AUTOPILOT ${barCnf} 2>&1)
       _BIL=$(grep _BACKEND_ITEMS_LIST ${barCnf} 2>&1)
@@ -1943,7 +2000,7 @@ display_info() {
     if [ -e "/var/log/barracuda_log.txt" ]; then
       if [ "${mode}" = "report" ]; then
         display="system"
-        if [ "${extra}" = "octopus" ]; then
+        if [ "${extra}" = "octopus" ] && [ -d "/data/u" ]; then
           grep _PHP_CLI_VERSION /root/.*.octopus.cnf
           echo
           grep _PHP_FPM_VERSION /root/.*.octopus.cnf
@@ -1982,13 +2039,15 @@ display_info() {
           tail --lines=19 /var/xdrago/log/*.archive.log
           echo
         fi
-      elif [ "${mode}" = "full" ] || [ "${mode}" = "more" ]; then
+      elif [ "${mode}" = "full" ]; then
+        cat /var/log/barracuda_log.txt
+      elif [ "${mode}" = "more" ]; then
         display="default"
         cat /var/log/barracuda_log.txt | grep $(date +'%Y' -d 'last year')
         cat /var/log/barracuda_log.txt | grep $(date +%Y)
       else
         display="default"
-        tail --lines=3 /var/log/barracuda_log.txt
+        tail --lines=5 /var/log/barracuda_log.txt
       fi
     fi
     if [ "${display}" = "default" ]; then
@@ -2001,7 +2060,7 @@ display_info() {
     fi
     exit 0
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
 }
@@ -2119,7 +2178,6 @@ case "$1" in
              display_info
   ;;
   version)   cmmand="$1"
-             kind="$2"
              display_version
   ;;
   reboot)    service clean-boa-env stop
@@ -2127,32 +2185,25 @@ case "$1" in
              reboot
              exit 0
   ;;
-  init)      cmmand="$1"
-             tRee=lts
-             check_root
-             check_root_keys_pwd
-             check_virt
-             check_dns_curl
-             init_setup
-  ;;
   cleanup)   cmmand="$1"
              action="$2"
              user="$3"
              octopus_cleanup
   ;;
-  in-lts)    cmmand="$1"
+  in-lts)   cmmand="$1"
              tRee=lts
              kind="$2"
              fqdn="$3"
              email="$4"
              user="$5"
-             mode="$6"
-             rkey="$7"
-             sql="$8"
+             extra="$6"
+             output="$7"
              check_root
              check_root_keys_pwd
              check_virt
              check_dns_curl
+             # Capture the complete command with arguments
+             _BOA_COMMAND="$0 $@"
              init_setup
   ;;
   in-dev)    cmmand="$1"
@@ -2161,13 +2212,14 @@ case "$1" in
              fqdn="$3"
              email="$4"
              user="$5"
-             mode="$6"
-             rkey="$7"
-             sql="$8"
+             extra="$6"
+             output="$7"
              check_root
              check_root_keys_pwd
              check_virt
              check_dns_curl
+             # Capture the complete command with arguments
+             _BOA_COMMAND="$0 $@"
              init_setup
   ;;
   in-cluster) cmmand="$1"
@@ -2176,76 +2228,21 @@ case "$1" in
              fqdn="$3"
              email="$4"
              user="$5"
-             mode="$6"
+             extra="$6"
              dbip="$7"
              loip="$8"
              check_root
              check_root_keys_pwd
              check_virt
              check_dns_curl
-             init_setup
-  ;;
-  in-3.2)    cmmand="$1"
-             tRee=lts
-             kind="$2"
-             fqdn="$3"
-             email="$4"
-             user="$5"
-             mode="$6"
-             rkey="$7"
-             check_root
-             check_root_keys_pwd
-             check_virt
-             check_dns_curl
-             init_setup
-  ;;
-  in-2.4)    cmmand="$1"
-             tRee=lts
-             kind="$2"
-             fqdn="$3"
-             email="$4"
-             user="$5"
-             mode="$6"
-             rkey="$7"
-             check_root
-             check_root_keys_pwd
-             check_virt
-             check_dns_curl
-             init_setup
-  ;;
-  in-2.3)    cmmand="$1"
-             tRee=lts
-             kind="$2"
-             fqdn="$3"
-             email="$4"
-             user="$5"
-             mode="$6"
-             rkey="$7"
-             check_root
-             check_root_keys_pwd
-             check_virt
-             check_dns_curl
-             init_setup
-  ;;
-  in-2.2)    cmmand="$1"
-             tRee=lts
-             kind="$2"
-             fqdn="$3"
-             email="$4"
-             user="$5"
-             mode="$6"
-             rkey="$7"
-             check_root
-             check_root_keys_pwd
-             check_virt
-             check_dns_curl
+             # Capture the complete command with arguments
+             _BOA_COMMAND="$0 $@"
              init_setup
   ;;
   in-octopus) cmmand="$1"
-             tRee=lts
              email="$2"
              user="$3"
-             mode="$4"
+             extra="$4"
              copt="$5"
              csub="$6"
              ccor="$7"
@@ -2253,13 +2250,14 @@ case "$1" in
              check_root_keys_pwd
              check_virt
              check_dns_curl
+             # Capture the complete command with arguments
+             _BOA_COMMAND="$0 $@"
              init_setup
   ;;
   in-oct)    cmmand="$1"
-             tRee=lts
              email="$2"
              user="$3"
-             mode="$4"
+             extra="$4"
              copt="$5"
              csub="$6"
              ccor="$7"
@@ -2269,11 +2267,16 @@ case "$1" in
              check_root_keys_pwd
              check_virt
              check_dns_curl
+             # Capture the complete command with arguments
+             _BOA_COMMAND="$0 $@"
              init_setup
   ;;
   *)         echo
-             echo "Usage: $(basename "$0") {version} {mode} {fqdn} {email} {user} {platforms} {extra} {mysql}"
-             echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {mini|max|none} {lts|dev}"
+             echo "Installation commands"
+             echo "Usage: $(basename "$0") {version} {kind} {fqdn} {email} {user} {extra} {output}"
+             echo "Usage: $(basename "$0") {in-octopus} {email} {o2} {lts|dev|pro} {output}"
+             echo
+             echo "Other available commands"
              echo "Usage: $(basename "$0") version"
              echo "Usage: $(basename "$0") info {more}"
              echo "Usage: $(basename "$0") info report {octopus|backups|both}"
@@ -2282,15 +2285,14 @@ case "$1" in
              echo
              cat <<EOF
 
-  Accepted keywords and values in every option:
+  Accepted keywords and values for installation and other commands:
 
   {version}
       in-lts <------- install BOA LTS release (no license)
       in-dev <------- install BOA Cutting Edge (requires license)
-      in-octopus <--- install extra Octopus instance (lts|dev)
-      reboot <------- run accelerated system reboot
+      in-octopus <--- install extra Octopus instance (lts|dev|pro)
 
-  {mode}
+  {kind}
       public <------- recommended for general use
       local <-------- experimental
 
@@ -2303,12 +2305,6 @@ case "$1" in
   {user}
       o1 <----------- default Octopus system account
 
-  {platforms}
-      ask <---------- say y/n to every prompt in install (default)
-      mini <--------- install only basic Drupal platforms w/o prompt
-      max <---------- install all currently supported distros
-      none <--------- do not install platforms, just Aegir
-
   {extra}
       license <------ valid new relic license key
       php-8.1 <------ enable single-PHP mode (8.1 or 8.2 or 8.3 or 7.4)
@@ -2316,13 +2312,21 @@ case "$1" in
       php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
 
-  {mysql}
-      percona <------ database server to install (default)
-      mariadb <------ database server to install (deprecated)
+  {output}
+      verbose <------ barracuda and octopus installed (output in the console) (default)
+      minimal <------ barracuda and octopus installed (output mostly logged)
+      silent <------- barracuda and octopus installed (output only logged)
+      system <------- only barracuda is installed (output mostly logged)
 
-  See docs/INSTALL.txt for more details.
+  {other}
+      version <------ display BOA and OS version
+      info <--------- generate various system reports
+      cleanup <------ (detect|purge) cancelled Octopus instances files (no dbs)
+      reboot <------- run accelerated system reboot
+
+  See docs/INSTALL.md for more details.
 
 EOF
-             clean_pid_exit
+             clean_pid_exit cmmand_a
   ;;
 esac

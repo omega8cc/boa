@@ -20,7 +20,7 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="HHVM FastCGI Daemon foo"
 NAME=hhvm.foo
 DAEMON=/usr/bin/hhvm
-PIDFILE=/var/run/hhvm/foo/hhvm.pid
+PIDFILE=/run/hhvm/foo/hhvm.pid
 SCRIPTNAME=/etc/init.d/$NAME
 
 # Exit if the package is not installed
@@ -58,9 +58,9 @@ check_run_dir() {
     # Only perform folder creation, if the PIDFILE location was not modified
     PIDFILE_BASEDIR=$(dirname ${PIDFILE})
     # We might have a tmpfs /var/run.
-    if [ "/var/run/hhvm/foo" = "${PIDFILE_BASEDIR}" ] && [ ! -d /var/run/hhvm/foo ]; then
-        mkdir -p -m0755 /var/run/hhvm/foo
-        chown $RUN_AS_USER:$RUN_AS_GROUP /var/run/hhvm/foo
+    if [ "/run/hhvm/foo" = "${PIDFILE_BASEDIR}" ] && [ ! -d /run/hhvm/foo ]; then
+        mkdir -p -m0755 /run/hhvm/foo
+        chown $RUN_AS_USER:$RUN_AS_GROUP /run/hhvm/foo
     fi
 }
 

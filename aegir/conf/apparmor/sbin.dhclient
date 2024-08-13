@@ -1,0 +1,114 @@
+# AppArmor profile for DHCP dhclient
+# This profile restricts DHCP dhclient (dhclient) to essential operations only.
+
+#include <tunables/global>
+
+/{,usr/}sbin/dhclient flags=(complain) {
+
+  # Include common AppArmor abstractions
+  include <abstractions/base>
+  include <abstractions/nameservice>
+  include <abstractions/openssl>
+
+  # Capabilities needed by DHCP dhclient
+  capability net_bind_service,
+  capability net_raw,
+  capability dac_override,
+  capability net_admin,
+
+  network packet,
+  network raw,
+
+  @{PROC}/[0-9]*/net/ r,
+  @{PROC}/[0-9]*/net/** r,
+
+  # dhclient wants to update its threads with functional names
+  owner @{PROC}/@{pid}/task/[0-9]*/comm rw,
+
+  /{,usr/}sbin/dhclient mrix,
+  /{,usr/}bin/bash mrix,
+
+  /etc/dhclient.conf r,
+  /etc/dhcp/ r,
+  /etc/dhcp/** r,
+
+  /var/lib/dhcp{,3}/dhclient* lrw,
+  /{,var/}run/dhclient*.pid lrw,
+  /{,var/}run/dhclient*.lease* lrw,
+
+  # NetworkManager
+  /{,var/}run/nm*conf r,
+  /{,var/}run/sendsigs.omit.d/network-manager.dhclient*.pid lrw,
+  /{,var/}run/NetworkManager/dhclient*.pid lrw,
+  /var/lib/NetworkManager/dhclient*.conf lrw,
+  /var/lib/NetworkManager/dhclient*.lease* lrw,
+  signal (receive) peer=/usr/sbin/NetworkManager,
+  ptrace (readby) peer=/usr/sbin/NetworkManager,
+
+  # connman
+  /{,var/}run/connman/dhclient*.pid lrw,
+  /{,var/}run/connman/dhclient*.leases lrw,
+
+  # synce-hal
+  /usr/share/synce-hal/dhclient.conf r,
+
+  # if there is a custom script, let it run unconfined
+  /etc/dhcp/dhclient-script Uxr,
+
+  # The dhclient-script shell script sources other shell scripts rather than
+  # executing them, so we can't just use a separate profile for dhclient-script
+  # with 'Uxr' on the hook scripts. However, for the long-running dhclient3
+  # daemon to run arbitrary code via /sbin/dhclient-script, it would need to be
+  # able to subvert dhclient-script or write to the hooks.d directories. As
+  # such, if the dhclient3 daemon is subverted, this effectively limits it to
+  # only being able to run the hooks scripts.
+  /{,usr/}sbin/dhclient-script Uxr,
+
+  # Run the ELF executables under their own unrestricted profiles
+  /usr/lib/NetworkManager/nm-dhcp-client.action Pxrm,
+  /usr/lib/connman/scripts/dhclient-script Pxrm,
+
+  # Support the new executable helper from NetworkManager.
+  /usr/lib/NetworkManager/nm-dhcp-helper Pxrm,
+  signal (receive) peer=/usr/lib/NetworkManager/nm-dhcp-helper,
+}
+
+# Profile for NetworkManager action
+/usr/lib/NetworkManager/nm-dhcp-client.action flags=(complain) {
+  include <abstractions/base>
+  include <abstractions/dbus>
+  /usr/lib/NetworkManager/nm-dhcp-client.action mrix,
+
+  /var/lib/NetworkManager/*lease r,
+  signal (receive) peer=/usr/sbin/NetworkManager,
+  ptrace (readby) peer=/usr/sbin/NetworkManager,
+  network inet dgram,
+  network inet6 dgram,
+}
+
+# Profile for NetworkManager helper
+/usr/lib/NetworkManager/nm-dhcp-helper flags=(complain) {
+  include <abstractions/base>
+  include <abstractions/dbus>
+  /usr/lib/NetworkManager/nm-dhcp-helper mrix,
+
+  /run/NetworkManager/private-dhcp rw,
+  signal (send) peer=/sbin/dhclient,
+
+  /var/lib/NetworkManager/*lease r,
+  signal (receive) peer=/usr/sbin/NetworkManager,
+  ptrace (readby) peer=/usr/sbin/NetworkManager,
+  network inet dgram,
+  network inet6 dgram,
+}
+
+# Profile for connman script
+/usr/lib/connman/scripts/dhclient-script flags=(complain) {
+  include <abstractions/base>
+  include <abstractions/dbus>
+  /usr/lib/connman/scripts/dhclient-script mrix,
+  network inet dgram,
+  network inet6 dgram,
+}
+
+

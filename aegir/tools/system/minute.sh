@@ -20,14 +20,8 @@ check_root() {
       _B_NICE=10
     fi
     chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
 }
@@ -72,7 +66,7 @@ if [ -e "/root/.step.init.systemd.two.cnf" ]; then
 fi
 
 sql_restart() {
-  touch /var/run/boa_run.pid
+  touch /run/boa_run.pid
   echo "$(date 2>&1) $1 incident detected"                          >> ${pthOml}
   sleep 5
   echo "$(date 2>&1) $1 incident response started"                  >> ${pthOml}
@@ -85,12 +79,17 @@ sql_restart() {
   echo "$(date 2>&1) $1 incident response completed"                >> ${pthOml}
   echo                                                              >> ${pthOml}
   sleep 5
-  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
 }
 
 if [ -e "/var/log/daemon.log" ]; then
-  if [ `tail --lines=10 /var/log/daemon.log \
+  _SQL_LOG="/var/log/daemon.log"
+else
+  _SQL_LOG="/var/log/syslog"
+fi
+if [ -e "${_SQL_LOG}" ]; then
+  if [ `tail --lines=10 ${_SQL_LOG} \
     | grep --count "Too many connections"` -gt "0" ]; then
     sql_restart "BUSY"
   fi
@@ -107,7 +106,7 @@ if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
   fi
 fi
 
-if [ -e "/var/lib/mysql/ibtmp1" ] && [ ! -e "/var/run/boa_run.pid" ]; then
+if [ -e "/var/lib/mysql/ibtmp1" ] && [ ! -e "/run/boa_run.pid" ]; then
   _SQL_TEMP_SIZE_TEST=$(du -s -h /var/lib/mysql/ibtmp1)
   if [[ "${_SQL_TEMP_SIZE_TEST}" =~ "G" ]]; then
     echo ${_SQL_TEMP_SIZE_TEST} too big
@@ -129,42 +128,63 @@ if [ -e "/etc/cron.daily/logrotate" ]; then
   fi
 fi
 
-check_pdnsd() {
-  if [ -x "/usr/sbin/pdnsd" ] \
-    && [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+check_unbound() {
+  if [ -x "/usr/sbin/unbound" ] \
+    && [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     mkdir -p /etc/resolvconf/run/interface
-    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
-    resolvconf -u         &> /dev/null
-    service pdnsd restart &> /dev/null
-    pdnsd-ctl empty-cache &> /dev/null
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
+    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
+    resolvconf -u &> /dev/null
+    killall -9 unbound &> /dev/null
+    service unbound restart &> /dev/null
+    unbound-control reload &> /dev/null
   fi
   if [ -e "/etc/resolv.conf" ]; then
-    _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
-    if [[ "${_RESOLV_TEST}" =~ "nameserver 127.0.0.1" ]]; then
+    _RESOLV_LOC=$(grep "nameserver 127.0.0.1" /etc/resolv.conf 2>&1)
+    _RESOLV_ELN=$(grep "nameserver 1.1.1.1" /etc/resolv.conf 2>&1)
+    _RESOLV_EGT=$(grep "nameserver 8.8.8.8" /etc/resolv.conf 2>&1)
+    if [[ "${_RESOLV_LOC}" =~ "nameserver 127.0.0.1" ]] \
+      && [[ "${_RESOLV_ELN}" =~ "nameserver 1.1.1.1" ]] \
+      && [[ "${_RESOLV_EGT}" =~ "nameserver 8.8.8.8" ]]; then
       _THIS_DNS_TEST=$(host files.aegir.cc 127.0.0.1 -w 3 2>&1)
       if [[ "${_THIS_DNS_TEST}" =~ "no servers could be reached" ]]; then
-        service pdnsd stop &> /dev/null
+        service unbound stop &> /dev/null
         sleep 1
+        killall -9 unbound &> /dev/null
         renice ${_B_NICE} -p $$ &> /dev/null
         perl /var/xdrago/proc_num_ctrl.cgi
       fi
+    else
+      rm -f /etc/resolv.conf
+      echo "nameserver 127.0.0.1" > /etc/resolv.conf
+      if [ -e "${vBs}/resolv.conf.vanilla" ]; then
+        cat ${vBs}/resolv.conf.vanilla >> /etc/resolv.conf
+      fi
+      echo "nameserver 1.1.1.1" >> /etc/resolv.conf
+      echo "nameserver 1.0.0.1" >> /etc/resolv.conf
+      echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+      echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+      [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
+      killall -9 unbound &> /dev/null
+      service unbound restart &> /dev/null
+      unbound-control reload &> /dev/null
     fi
   fi
 }
-check_pdnsd
+check_unbound
 
 if [ -e "/var/log/php" ]; then
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
     | grep --count "already listen on"` -gt "0" ]; then
-    touch /var/run/fmp_wait.pid
-    touch /var/run/restarting_fmp_wait.pid
+    touch /run/fmp_wait.pid
+    touch /run/restarting_fmp_wait.pid
     sleep 8
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     _NOW=${_NOW//[^0-9-]/}
     mkdir -p /var/backups/php-logs/${_NOW}/
     mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
-    rm -f /var/run/*.fpm.socket
+    rm -f /run/*.fpm.socket
     renice ${_B_NICE} -p $$ &> /dev/null
     _PHP_V="83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
@@ -173,22 +193,22 @@ if [ -e "/var/log/php" ]; then
       fi
     done
     sleep 8
-    rm -f /var/run/fmp_wait.pid
-    rm -f /var/run/restarting_fmp_wait.pid
+    rm -f /run/fmp_wait.pid
+    rm -f /run/restarting_fmp_wait.pid
     echo "$(date 2>&1) FPM instances conflict detected" >> \
       /var/xdrago/log/fpm.conflict.incident.log
   fi
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
     | grep --count "process.max"` -gt "0" ]; then
-    touch /var/run/fmp_wait.pid
-    touch /var/run/restarting_fmp_wait.pid
+    touch /run/fmp_wait.pid
+    touch /run/restarting_fmp_wait.pid
     sleep 8
     kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     _NOW=${_NOW//[^0-9-]/}
     mkdir -p /var/backups/php-logs/${_NOW}/
     mv -f /var/log/php/* /var/backups/php-logs/${_NOW}/
-    rm -f /var/run/*.fpm.socket
+    rm -f /run/*.fpm.socket
     renice ${_B_NICE} -p $$ &> /dev/null
     _PHP_V="83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
@@ -197,8 +217,8 @@ if [ -e "/var/log/php" ]; then
       fi
     done
     sleep 8
-    rm -f /var/run/fmp_wait.pid
-    rm -f /var/run/restarting_fmp_wait.pid
+    rm -f /run/fmp_wait.pid
+    rm -f /run/restarting_fmp_wait.pid
     echo "$(date 2>&1) Too many running FPM childs detected" >> \
       /var/xdrago/log/fpm.childs.incident.log
   fi
@@ -207,7 +227,7 @@ fi
 _PHPLOG_SIZE_TEST=$(du -s -h /var/log/php 2>&1)
 if [[ "${_PHPLOG_SIZE_TEST}" =~ "G" ]]; then
   echo ${_PHPLOG_SIZE_TEST} too big
-  touch /var/run/fmp_wait.pid
+  touch /run/fmp_wait.pid
   rm -f /var/log/php/*
   renice ${_B_NICE} -p $$ &> /dev/null
   _PHP_V="83 82 81 80 74 73 72 71 70 56"
@@ -226,13 +246,13 @@ if [[ "${_PHPLOG_SIZE_TEST}" =~ "G" ]]; then
     service php53-fpm stop
   fi
   sleep 8
-  rm -f /var/run/fmp_wait.pid
+  rm -f /run/fmp_wait.pid
   echo "$(date 2>&1) Too big PHP error logs deleted: ${_PHPLOG_SIZE_TEST}" >> \
     /var/xdrago/log/php.giant.logs.incident.log
 fi
 
 almost_oom_kill() {
-  touch /var/run/boa_run.pid
+  touch /run/boa_run.pid
   echo "$(date 2>&1) Almost OOM $1 detected"                        >> ${pthOml}
   sleep 5
   echo "$(date 2>&1) Almost OOM incident response started"          >> ${pthOml}
@@ -244,12 +264,12 @@ almost_oom_kill() {
   echo "$(date 2>&1) Almost OOM incident response completed"        >> ${pthOml}
   echo                                                              >> ${pthOml}
   sleep 5
-  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
 }
 
 oom_restart() {
-  touch /var/run/boa_run.pid
+  touch /run/boa_run.pid
   echo "$(date 2>&1) OOM $1 detected"                               >> ${pthOml}
   sleep 5
   echo "$(date 2>&1) OOM incident response started"                 >> ${pthOml}
@@ -275,7 +295,7 @@ oom_restart() {
   echo "$(date 2>&1) OOM incident response completed"               >> ${pthOml}
   echo                                                              >> ${pthOml}
   sleep 5
-  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   exit 0
 }
 
@@ -329,7 +349,7 @@ redis_oom_check() {
     service redis-server start &> /dev/null
     echo "$(date 2>&1) RedisException OOM detected"
     echo "$(date 2>&1) RedisException OOM detected" >> /var/xdrago/log/redis.watch.log
-    touch /var/run/fmp_wait.pid
+    touch /run/fmp_wait.pid
     sleep 8
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     _NOW=${_NOW//[^0-9-]/}
@@ -343,7 +363,7 @@ redis_oom_check() {
       fi
     done
     sleep 8
-    rm -f /var/run/fmp_wait.pid
+    rm -f /run/fmp_wait.pid
   fi
 }
 redis_oom_check
@@ -351,7 +371,7 @@ redis_oom_check
 redis_slow_check() {
   if [ `tail --lines=500 /var/log/php/fpm-*-slow.log \
     | grep --count "PhpRedis.php"` -gt "5" ]; then
-    touch /var/run/fmp_wait.pid
+    touch /run/fmp_wait.pid
     sleep 8
     service redis-server stop &> /dev/null
     killall -9 redis-server &> /dev/null
@@ -369,7 +389,7 @@ redis_slow_check() {
       fi
     done
     sleep 8
-    rm -f /var/run/fmp_wait.pid
+    rm -f /run/fmp_wait.pid
     echo "$(date 2>&1) Slow PhpRedis detected" >> \
       /var/xdrago/log/redis.slow.incident.log
   fi
@@ -379,8 +399,8 @@ redis_slow_check
 fpm_sockets_healing() {
   if [ `tail --lines=500 /var/log/php/php*-fpm-error.log \
     | grep --count "Address already in use"` -gt "0" ]; then
-    touch /var/run/fmp_wait.pid
-    touch /var/run/restarting_fmp_wait.pid
+    touch /run/fmp_wait.pid
+    touch /run/restarting_fmp_wait.pid
     sleep 8
     _NOW=$(date +%y%m%d-%H%M%S 2>&1)
     _NOW=${_NOW//[^0-9-]/}
@@ -395,8 +415,8 @@ fpm_sockets_healing() {
       fi
     done
     sleep 8
-    rm -f /var/run/fmp_wait.pid
-    rm -f /var/run/restarting_fmp_wait.pid
+    rm -f /run/fmp_wait.pid
+    rm -f /run/restarting_fmp_wait.pid
     echo "$(date 2>&1) FPM Sockets conflict detected" >> \
       /var/xdrago/log/fpm.sockets.incident.log
   fi
@@ -404,7 +424,7 @@ fpm_sockets_healing() {
 fpm_sockets_healing
 
 jetty_restart() {
-  touch /var/run/boa_wait.pid
+  touch /run/boa_wait.pid
   sleep 5
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
   rm -f /var/log/jetty{7,8,9}/*
@@ -419,7 +439,7 @@ jetty_restart() {
     service jetty7 start
   fi
   sleep 5
-  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
+  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
 }
 
 if [ -e "/var/log/jetty9" ]; then
@@ -600,10 +620,10 @@ lsyncd_proc_control() {
   fi
 }
 
-if [ -e "/var/run/boa_sql_backup.pid" ] \
-  || [ -e "/var/run/boa_sql_cluster_backup.pid" ] \
-  || [ -e "/var/run/boa_run.pid" ] \
-  || [ -e "/var/run/mysql_restart_running.pid" ]; then
+if [ -e "/run/boa_sql_backup.pid" ] \
+  || [ -e "/run/boa_sql_cluster_backup.pid" ] \
+  || [ -e "/run/boa_run.pid" ] \
+  || [ -e "/run/mysql_restart_running.pid" ]; then
   _SQL_CTRL=NO
 else
   _SQL_CTRL=YES
@@ -619,7 +639,7 @@ if_redis_restart() {
     || [[ "${PrTestCluster}" =~ "CLUSTER" ]] \
     || [ -e "/root/.allow.redis.restart.cnf" ]; then
     if [ "${ReTest}" -ge "1" ]; then
-      service redis-server restart
+      service redis-server restart &> /dev/null
       wait
       rm -f /data/disk/*/static/control/run-redis-restart.pid
       echo "$(date 2>&1) Redis Server restart forced" >> \
@@ -627,7 +647,7 @@ if_redis_restart() {
     fi
   fi
 }
-if_redis_restart
+[ -d "/data/u" ] && if_redis_restart
 
 if_nginx_restart() {
   PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
@@ -648,7 +668,7 @@ if_nginx_restart() {
     fi
   fi
 }
-if_nginx_restart
+[ -d "/data/u" ] && if_nginx_restart
 
 if [ -e "/root/.mysqladmin.monitor.cnf" ]; then
   _SQLMONITOR=YES

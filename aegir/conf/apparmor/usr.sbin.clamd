@@ -1,0 +1,97 @@
+# AppArmor profile for Clamd service
+# This profile restricts Clamd service (clamd) to essential operations only.
+
+#include <tunables/global>
+
+/usr/sbin/clamd flags=(complain) {
+
+  # Include common AppArmor abstractions
+  include <abstractions/base>
+  include <abstractions/nameservice>
+  include <abstractions/openssl>
+
+  # Capabilities needed by Clamd service
+  capability chown,
+  capability dac_override,
+  capability dac_read_search,
+  capability setgid,
+  capability setuid,
+  capability sys_resource,
+
+  network inet stream,
+  network inet6 stream,
+  network inet dgram,
+  network inet6 dgram,
+
+  # Allow execution of necessary shells and the clamd binary
+  /bin/dash mrix,
+  /bin/bash mrix,
+  /bin/sh mrix,
+  /usr/sbin/clamd mrix,
+
+  # Allow access to /dev
+  /dev/log w,
+  /dev/null rw,
+  /dev/random r,
+  /dev/urandom r,
+
+  # Allow access to /proc and /sys for necessary information
+  /proc/** r,
+  /sys/** r,
+
+  # Allow access to temporary directories
+  /tmp/ r,
+  /tmp/** rw,
+  /var/tmp/** rw,
+
+  # Allow read access to necessary libraries
+  /lib/** mr,
+  /lib/x86_64-linux-gnu/** mr,
+  /lib64/** mr,
+  /usr/lib/** mr,
+  /usr/lib/x86_64-linux-gnu/** mr,
+  /usr/libexec/** mr,
+  /usr/local/include/** mr,
+  /usr/local/lib/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
+
+  # Allow access to ClamAV configuration and data
+  /etc/clamav/clamd.conf r,
+  /var/lib/amavis/tmp/** r,
+  /var/lib/clamav/ r,
+  /var/lib/clamav/** rwk,
+  /var/log/clamav/* rwk,
+  /var/spool/MIMEDefang/mdefang-*/Work/ r,
+  /var/spool/MIMEDefang/mdefang-*/Work/** r,
+  /var/spool/clamsmtp/* r,
+  /var/spool/exim4/** r,
+  /var/spool/havp/** r,
+  /var/spool/p3scan/children/** r,
+  /var/spool/qpsmtpd/* r,
+  /{,var/}run/clamav/clamd.ctl w,
+  /{,var/}run/clamav/clamd.pid w,
+
+  # Allow read access to user directories
+  /data/all/** r,
+  /data/conf/* r,
+  /data/disk/*/distro/** r,
+  /data/disk/*/platforms/** r,
+  /data/disk/*/static/** r,
+  /home/*/ r,
+  /home/*/** r,
+
+  # Allow reading filesystems information
+  @{PROC}/[0-9]*/status r,
+  @{PROC}/filesystems r,
+
+  # Deny access to sensitive files and directories
+  deny /etc/shadow* rwlx,
+  deny /etc/passwd* rwlx,
+  deny /root/** rwklx,
+
+  # Catchall to deny everything else
+  #deny /** rwklx,
+
+  # Site-specific additions and overrides can be added below
+}

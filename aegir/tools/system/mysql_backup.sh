@@ -13,14 +13,8 @@ check_root() {
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
   _DF_TEST=$(df -kTh / -l \
@@ -102,24 +96,24 @@ if [ -e "/root/.my.optimize.cnf" ]; then
 else
   _OPTIM=NO
 fi
-touch /var/run/boa_sql_backup.pid
+touch /run/boa_sql_backup.pid
 
 _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
 _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
 
 create_locks() {
   echo "INFO: Creating locks for $1"
-  touch /var/run/mysql_backup_running.pid
+  touch /run/mysql_backup_running.pid
 }
 
 remove_locks() {
   echo "INFO: Removing locks for $1"
-  rm -f /var/run/mysql_backup_running.pid
+  rm -f /run/mysql_backup_running.pid
 }
 
 check_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
+    || [ ! -e "/run/mysqld/mysqld.sock" ]; do
     _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       echo "INFO: Waiting for MySQLD availability..."
@@ -282,10 +276,7 @@ compress_backup() {
 
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
-if [ "${_DB_SERIES}" = "10.4" ] \
-  || [ "${_DB_SERIES}" = "10.3" ] \
-  || [ "${_DB_SERIES}" = "10.2" ] \
-  || [ "${_DB_SERIES}" = "5.7" ]; then
+if [ "${_DB_SERIES}" = "5.7" ]; then
   check_running
   mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
   mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
@@ -403,11 +394,8 @@ if [ "${_OPTIM}" = "YES" ] \
   && [ "${_DOM}" -ge "24" ] \
   && [ "${_DOM}" -lt "31" ] \
   && [ -e "/root/.my.restart_after_optimize.cnf" ] \
-  && [ ! -e "/var/run/boa_run.pid" ]; then
-  if [ "${_DB_SERIES}" = "10.4" ] \
-    || [ "${_DB_SERIES}" = "10.3" ] \
-    || [ "${_DB_SERIES}" = "10.2" ] \
-    || [ "${_DB_SERIES}" = "5.7" ]; then
+  && [ ! -e "/run/boa_run.pid" ]; then
+  if [ "${_DB_SERIES}" = "5.7" ]; then
     check_running
     mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
     mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
@@ -424,7 +412,7 @@ if [ "${_OPTIM}" = "YES" ] \
 fi
 
 echo "INFO: Completing all dbs backups on `date`"
-rm -f /var/run/boa_sql_backup.pid
+rm -f /run/boa_sql_backup.pid
 touch /var/xdrago/log/last-run-backup
 
 if [ "${_VMFAMILY}" = "VS" ]; then

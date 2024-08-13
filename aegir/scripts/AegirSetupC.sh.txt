@@ -219,8 +219,8 @@ fix_dirs_files() {
   chmod 0755 ./sites
   chmod 0755 ./sites/all
   chmod 02775 ./sites/all/{modules,libraries,themes}
-  cp -af /opt/tmp/boa/aegir/conf/get.htaccess.txt ./.htaccess
-  cp -af /opt/tmp/boa/aegir/conf/crossdomain.xml ./
+  cp -af /opt/tmp/boa/aegir/conf/var/get.htaccess.txt ./.htaccess
+  cp -af /opt/tmp/boa/aegir/conf/var/crossdomain.xml ./
 }
 #
 # Create D6 symlinks.
@@ -620,6 +620,52 @@ create_drupal10_2_basic_dev() {
   fi
 }
 
+#
+# Create D10.3 basic platform.
+create_drupal10_3_basic() {
+  if [ ! -d "${_OCTO_PLPATH}" ]; then
+    cd ${_ROOT}/distro/${_THIS_CORE}
+    get_distro_ext "${_DRUPAL10_3}.tar.gz"
+    mv -f ${_DRUPAL10_3} ${_SHRD_PLNAME}
+  fi
+}
+#
+# Create D10.3 basic platform.
+create_drupal10_3_basic_dev() {
+  echo 1 _OCTO_PLPATH is ${_OCTO_PLPATH}
+  if [ ! -d "${_OCTO_PLPATH}" ]; then
+    echo 2 CD is ${_ROOT}/distro/${_THIS_CORE}
+    cd ${_ROOT}/distro/${_THIS_CORE}
+    echo 3 GET is ${_DRUPAL10_3}.tar.gz
+    get_distro_ext "${_DRUPAL10_3}.tar.gz"
+    echo 4 MV is ${_DRUPAL10_3} to ${_SHRD_PLNAME}
+    mv -f ${_DRUPAL10_3} ${_SHRD_PLNAME}
+  fi
+}
+
+#
+# Create D10.4 basic platform.
+create_drupal10_4_basic() {
+  if [ ! -d "${_OCTO_PLPATH}" ]; then
+    cd ${_ROOT}/distro/${_THIS_CORE}
+    get_distro_ext "${_DRUPAL10_4}.tar.gz"
+    mv -f ${_DRUPAL10_4} ${_SHRD_PLNAME}
+  fi
+}
+#
+# Create D10.4 basic platform.
+create_drupal10_4_basic_dev() {
+  echo 1 _OCTO_PLPATH is ${_OCTO_PLPATH}
+  if [ ! -d "${_OCTO_PLPATH}" ]; then
+    echo 2 CD is ${_ROOT}/distro/${_THIS_CORE}
+    cd ${_ROOT}/distro/${_THIS_CORE}
+    echo 3 GET is ${_DRUPAL10_4}.tar.gz
+    get_distro_ext "${_DRUPAL10_4}.tar.gz"
+    echo 4 MV is ${_DRUPAL10_4} to ${_SHRD_PLNAME}
+    mv -f ${_DRUPAL10_4} ${_SHRD_PLNAME}
+  fi
+}
+
 ###---### Checking status.
 #
 if [ -e "${_ROOT}/log/setupmail.txt" ] \
@@ -636,7 +682,7 @@ if [ "${_DEBUG_MODE}" = "YES" ]; then
   msg "${_STATUS} C: Aegir automated install script part C"
 fi
 if [ `whoami` = "root" ]; then
-  msg "${_STATUS} C: FATAL ERROR: This script should be ran as a non-root user"
+  msg "${_STATUS} C: FATAL ERROR: This script should be run as a non-root user"
   msg "${_STATUS} C: FATAL ERROR: Aborting AegirSetupC installer NOW!"
   touch /opt/tmp/status-AegirSetupC-FAIL
   exit 1
@@ -693,6 +739,8 @@ _F_DRUPAL9="Drupal ${_SMALLCORE9_V} [${_THIS_CORE}]"
 _F_DRUPAL10_0="Drupal ${_SMALLCORE10_0_V} [${_THIS_CORE}]"
 _F_DRUPAL10_1="Drupal ${_SMALLCORE10_1_V} [${_THIS_CORE}]"
 _F_DRUPAL10_2="Drupal ${_SMALLCORE10_2_V} [${_THIS_CORE}]"
+_F_DRUPAL10_3="Drupal ${_SMALLCORE10_3_V} [${_THIS_CORE}]"
+_F_DRUPAL10_4="Drupal ${_SMALLCORE10_4_V} [${_THIS_CORE}]"
 _F_ERPAL="ERPAL ${_ERPAL} ${_SMALLCORE7_V} [${_THIS_CORE}]"
 _F_FSERVER="Feature Server 1.3 ${_SMALLCORE6_V} [${_THIS_CORE}]"
 _F_GUARDR="Guardr ${_GUARDR} ${_SMALLCORE7_V} [${_THIS_CORE}]"
@@ -713,12 +761,13 @@ _F_OPIGNOLMS9="Opigno LMS ${_OPIGNOLMS9} ${_SMALLCORE9_V} [${_THIS_CORE}]"
 _F_PANOPOLY="Panopoly ${_PANOPOLY} ${_SMALLCORE7_V} [${_THIS_CORE}]"
 _F_RECRUITER="Recruiter ${_RECRUITER} ${_SMALLCORE7_V} [${_THIS_CORE}]"
 _F_RESTAURANT="Restaurant ${_RESTAURANT} ${_SMALLCORE7_V} [${_THIS_CORE}]"
-_F_SOCIAL="Social ${_SOCIAL} ${_SMALLCORE10_2_V} [${_THIS_CORE}]"
-_F_THUNDER="Thunder ${_THUNDER} ${_SMALLCORE10_2_V} [${_THIS_CORE}]"
+_F_SOCIAL="Social ${_SOCIAL} ${_SMALLCORE10_2_6_V} [${_THIS_CORE}]"
+_F_THUNDER="Thunder ${_THUNDER} ${_SMALLCORE10_3_V} [${_THIS_CORE}]"
 _F_UBER_CART_T="Ubercart ${_UBERCART7} [ud2] ${_SMALLCORE7_V} [${_THIS_CORE}]"
 _F_UBERCART6="Ubercart ${_UBERCART6} ${_SMALLCORE6_V} [${_THIS_CORE}]"
 _F_UBERCART7="Ubercart ${_UBERCART7} [aq3] ${_SMALLCORE7_V} [${_THIS_CORE}]"
-_F_VARBASE="Varbase ${_VARBASE} ${_SMALLCORE10_2_V} [${_THIS_CORE}]"
+_F_VARBASE9="Varbase ${_VARBASE9} ${_SMALLCORE10_2_6_V} [${_THIS_CORE}]"
+_F_VARBASE10="Varbase ${_VARBASE10} ${_SMALLCORE10_3_V} [${_THIS_CORE}]"
 #
 _F_DRUPAL6_D="Drupal ${_SMALLCORE6_V} D.${_THIS_CORE}"
 _F_DRUPAL6_S="Drupal ${_SMALLCORE6_V} S.${_THIS_CORE}"
@@ -738,6 +787,12 @@ _F_DRUPAL10_1_P="Drupal ${_SMALLCORE10_1_V} P.${_THIS_CORE}"
 _F_DRUPAL10_2_D="Drupal ${_SMALLCORE10_2_V} D.${_THIS_CORE}"
 _F_DRUPAL10_2_S="Drupal ${_SMALLCORE10_2_V} S.${_THIS_CORE}"
 _F_DRUPAL10_2_P="Drupal ${_SMALLCORE10_2_V} P.${_THIS_CORE}"
+_F_DRUPAL10_3_D="Drupal ${_SMALLCORE10_3_V} D.${_THIS_CORE}"
+_F_DRUPAL10_3_S="Drupal ${_SMALLCORE10_3_V} S.${_THIS_CORE}"
+_F_DRUPAL10_3_P="Drupal ${_SMALLCORE10_3_V} P.${_THIS_CORE}"
+_F_DRUPAL10_4_D="Drupal ${_SMALLCORE10_4_V} D.${_THIS_CORE}"
+_F_DRUPAL10_4_S="Drupal ${_SMALLCORE10_4_V} S.${_THIS_CORE}"
+_F_DRUPAL10_4_P="Drupal ${_SMALLCORE10_4_V} P.${_THIS_CORE}"
 
 ###---### Create directories.
 #
@@ -1455,6 +1510,131 @@ drupal10_2_install() {
   fi
 }
 
+
+drupal10_3_install() {
+###---### Drupal 10.3
+#
+  if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+    || [[ "${_PLATFORMS_LIST}" =~ "D103D" ]] \
+    || [[ "${_PLATFORMS_LIST}" =~ "D103S" ]] \
+    || [[ "${_PLATFORMS_LIST}" =~ "D103P" ]]; then
+    if [ ! -d "${_ROOT}/distro/${_THIS_CORE}/${_DRUPAL10_3_D}" ]; then
+      if prompt_yes_no "${_F_DRUPAL10_3} - https://drupal.org/project/drupal/releases/${_SMALLCORE10_3_V}" ; then
+        true
+        ###---### Drupal 10.3 Development
+        #
+        _REAL_PRNAME="standard"
+        _SHRD_PLNAME="${_DRUPAL10_3_D}"
+        _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
+        if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+          || [[ "${_PLATFORMS_LIST}" =~ "D103D" ]]; then
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_DRUPAL10_3_D} ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && create_drupal10_3_basic_dev
+          [ "${_DEBUG_MODE}" = "NO" ] && create_drupal10_3_basic
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            msg "DISTRO: ${_F_DRUPAL10_3_D} installed"
+            _RUN_VERIFY=YES
+          fi
+        fi
+        ###---### Drupal 10.3 Staging
+        #
+        _REAL_PRNAME="standard"
+        _SHRD_PLNAME="${_DRUPAL10_3_S}"
+        _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
+        if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+          || [[ "${_PLATFORMS_LIST}" =~ "D103S" ]]; then
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_DRUPAL10_3_S} ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && create_drupal10_3_basic_dev
+          [ "${_DEBUG_MODE}" = "NO" ] && create_drupal10_3_basic
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            msg "DISTRO: ${_F_DRUPAL10_3_S} installed"
+            _RUN_VERIFY=YES
+          fi
+        fi
+        ###---### Drupal 10.3 Production
+        #
+        _REAL_PRNAME="standard"
+        _SHRD_PLNAME="${_DRUPAL10_3_P}"
+        _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
+        if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+          || [[ "${_PLATFORMS_LIST}" =~ "D103P" ]]; then
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_DRUPAL10_3_P} ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && create_drupal10_3_basic_dev
+          [ "${_DEBUG_MODE}" = "NO" ] && create_drupal10_3_basic
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            msg "DISTRO: ${_F_DRUPAL10_3_P} installed"
+            _RUN_VERIFY=YES
+          fi
+        fi
+      else
+        [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_DRUPAL10_3} ${noT}"
+      fi
+    fi
+  fi
+}
+
+
+drupal10_4_install() {
+###---### Drupal 10.4
+#
+  if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+    || [[ "${_PLATFORMS_LIST}" =~ "D104D" ]] \
+    || [[ "${_PLATFORMS_LIST}" =~ "D104S" ]] \
+    || [[ "${_PLATFORMS_LIST}" =~ "D104P" ]]; then
+    if [ ! -d "${_ROOT}/distro/${_THIS_CORE}/${_DRUPAL10_4_D}" ]; then
+      if prompt_yes_no "${_F_DRUPAL10_4} - https://drupal.org/project/drupal/releases/${_SMALLCORE10_4_V}" ; then
+        true
+        ###---### Drupal 10.4 Development
+        #
+        _REAL_PRNAME="standard"
+        _SHRD_PLNAME="${_DRUPAL10_4_D}"
+        _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
+        if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+          || [[ "${_PLATFORMS_LIST}" =~ "D104D" ]]; then
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_DRUPAL10_4_D} ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && create_drupal10_4_basic_dev
+          [ "${_DEBUG_MODE}" = "NO" ] && create_drupal10_4_basic
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            msg "DISTRO: ${_F_DRUPAL10_4_D} installed"
+            _RUN_VERIFY=YES
+          fi
+        fi
+        ###---### Drupal 10.4 Staging
+        #
+        _REAL_PRNAME="standard"
+        _SHRD_PLNAME="${_DRUPAL10_4_S}"
+        _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
+        if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+          || [[ "${_PLATFORMS_LIST}" =~ "D104S" ]]; then
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_DRUPAL10_4_S} ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && create_drupal10_4_basic_dev
+          [ "${_DEBUG_MODE}" = "NO" ] && create_drupal10_4_basic
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            msg "DISTRO: ${_F_DRUPAL10_4_S} installed"
+            _RUN_VERIFY=YES
+          fi
+        fi
+        ###---### Drupal 10.4 Production
+        #
+        _REAL_PRNAME="standard"
+        _SHRD_PLNAME="${_DRUPAL10_4_P}"
+        _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}"
+        if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+          || [[ "${_PLATFORMS_LIST}" =~ "D104P" ]]; then
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_DRUPAL10_4_P} ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && create_drupal10_4_basic_dev
+          [ "${_DEBUG_MODE}" = "NO" ] && create_drupal10_4_basic
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            msg "DISTRO: ${_F_DRUPAL10_4_P} installed"
+            _RUN_VERIFY=YES
+          fi
+        fi
+      else
+        [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_DRUPAL10_4} ${noT}"
+      fi
+    fi
+  fi
+}
 
 erpal_install() {
 ###---### ERPAL
@@ -2369,7 +2549,7 @@ thunder_install() {
 ###---### Thunder
 #
   _REAL_PRNAME="thunder"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_THUNDER}-${_SMALLCORE10_2_V}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_THUNDER}-${_SMALLCORE10_3_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/contrib/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/docroot"
@@ -2511,7 +2691,7 @@ ubercart7_install() {
               cd ${_SHRD_PRPATH}/modules
               get_dev_contrib "colorbox-7.x-2.13.tar.gz"
               get_dev_contrib "ctools-7.x-1.21.tar.gz"
-              get_dev_contrib "entity-7.x-1.10.tar.gz"
+              get_dev_contrib "entity-7.x-1.11.tar.gz"
               get_dev_contrib "google_analytics-7.x-2.6.tar.gz"
               get_dev_contrib "libraries-7.x-2.5.tar.gz"
               get_dev_contrib "pathauto-7.x-1.3.tar.gz"
@@ -2581,7 +2761,7 @@ ubercart7_testing_install() {
               cd ${_SHRD_PRPATH}/modules
               get_dev_contrib "colorbox-7.x-2.13.tar.gz"
               get_dev_contrib "ctools-7.x-1.21.tar.gz"
-              get_dev_contrib "entity-7.x-1.10.tar.gz"
+              get_dev_contrib "entity-7.x-1.11.tar.gz"
               get_dev_contrib "google_analytics-7.x-2.6.tar.gz"
               get_dev_contrib "libraries-7.x-2.5.tar.gz"
               get_dev_contrib "pathauto-7.x-1.3.tar.gz"
@@ -2611,11 +2791,42 @@ ubercart7_testing_install() {
   fi
 }
 
-varbase_install() {
-###---### Varbase
+varbase_ten_install() {
+###---### Varbase 10
 #
   _REAL_PRNAME="varbase"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_VARBASE}-${_SMALLCORE10_2_V}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_VARBASE10}-${_SMALLCORE10_3_V}"
+  _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
+  _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
+  _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/docroot"
+  if [ "${_ALLOW_ALL}" = "YES" ]; then
+    if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
+      || [[ "${_PLATFORMS_LIST}" =~ "VBX" ]]; then
+      if [ ! -d "${_OCTO_PLPATH}" ]; then
+        if prompt_yes_no "${_F_VARBASE10} - ${urlPrt}/varbase" ; then
+          true
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_VARBASE10} ${yOk}"
+          if [ ! -d "${_OCTO_PLPATH}" ]; then
+            cd ${_ROOT}/distro/${_THIS_CORE}
+            get_distro_ext "${_SHRD_PLNAME}.tar.gz"
+          fi
+          if [ -d "${_OCTO_PLPATH}" ]; then
+            msg "DISTRO: ${_F_VARBASE10} installed"
+            _RUN_VERIFY=YES
+          fi
+        else
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_VARBASE10} ${noT}"
+        fi
+      fi
+    fi
+  fi
+}
+
+varbase_nine_install() {
+###---### Varbase 9
+#
+  _REAL_PRNAME="varbase"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_VARBASE9}-${_SMALLCORE10_2_6_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/docroot"
@@ -2623,19 +2834,19 @@ varbase_install() {
     if [[ "${_PLATFORMS_LIST}" =~ "ALL" ]] \
       || [[ "${_PLATFORMS_LIST}" =~ "VBE" ]]; then
       if [ ! -d "${_OCTO_PLPATH}" ]; then
-        if prompt_yes_no "${_F_VARBASE} - ${urlPrt}/varbase" ; then
+        if prompt_yes_no "${_F_VARBASE9} - ${urlPrt}/varbase" ; then
           true
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_VARBASE} ${yOk}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_VARBASE9} ${yOk}"
           if [ ! -d "${_OCTO_PLPATH}" ]; then
             cd ${_ROOT}/distro/${_THIS_CORE}
             get_distro_ext "${_SHRD_PLNAME}.tar.gz"
           fi
           if [ -d "${_OCTO_PLPATH}" ]; then
-            msg "DISTRO: ${_F_VARBASE} installed"
+            msg "DISTRO: ${_F_VARBASE9} installed"
             _RUN_VERIFY=YES
           fi
         else
-          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_VARBASE} ${noT}"
+          [ "${_DEBUG_MODE}" = "YES" ] && msg "DISTRO: ${_F_VARBASE9} ${noT}"
         fi
       fi
     fi
@@ -2646,7 +2857,7 @@ social_install() {
 ###---### Social
 #
   _REAL_PRNAME="social"
-  _SHRD_PLNAME="${_REAL_PRNAME}-${_SOCIAL}-${_SMALLCORE10_2_V}"
+  _SHRD_PLNAME="${_REAL_PRNAME}-${_SOCIAL}-${_SMALLCORE10_2_6_V}"
   _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
   _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
   _OCTO_PLPATH="${_ROOT}/distro/${_THIS_CORE}/${_SHRD_PLNAME}/html"
@@ -2677,7 +2888,7 @@ social_install() {
 #
 save_verify_platforms() {
   _LOCAL_STATUS="NOT_SET"
-  if [ -e "/var/run/aegir_upgrade.pid" ]; then
+  if [ -e "/run/aegir_upgrade.pid" ]; then
     _LOCAL_STATUS=INIT
   fi
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
@@ -2737,6 +2948,7 @@ save_verify_platforms() {
       fi
     fi
   fi
+
   if [ -d "${pthDst}/${_DRUPAL10_0_D}/web" ]; then
     if [ ! -e "${pthDst}/${_DRUPAL10_0_D}/web/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_0_D}" standard \
@@ -2764,6 +2976,7 @@ save_verify_platforms() {
       fi
     fi
   fi
+
   if [ -d "${pthDst}/${_DRUPAL10_1_D}/web" ]; then
     if [ ! -e "${pthDst}/${_DRUPAL10_1_D}/web/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_1_D}" standard \
@@ -2791,6 +3004,7 @@ save_verify_platforms() {
       fi
     fi
   fi
+
   if [ -d "${pthDst}/${_DRUPAL10_2_D}/web" ]; then
     if [ ! -e "${pthDst}/${_DRUPAL10_2_D}/web/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_2_D}" standard \
@@ -2818,6 +3032,63 @@ save_verify_platforms() {
       fi
     fi
   fi
+
+  if [ -d "${pthDst}/${_DRUPAL10_3_D}/web" ]; then
+    if [ ! -e "${pthDst}/${_DRUPAL10_3_D}/web/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_3_D}" standard \
+        ${pthDst}/${_DRUPAL10_3_D}/web &> /dev/null
+    fi
+  fi
+  if [ -d "${pthDst}/${_DRUPAL10_3_S}/web" ]; then
+    if [ ! -e "${pthDst}/${_DRUPAL10_3_S}/web/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_3_S}" standard \
+        ${pthDst}/${_DRUPAL10_3_S}/web &> /dev/null
+    fi
+  fi
+  if [ ! -d "${pthDst}/${_DRUPAL10_3}/web" ]; then
+    if [ -d "${pthDst}/${_DRUPAL10_3_P}/web" ]; then
+      if [ ! -e "${pthDst}/${_DRUPAL10_3_P}/web/$drhSrc" ]; then
+        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_3_P}" standard \
+          ${pthDst}/${_DRUPAL10_3_P}/web &> /dev/null
+      fi
+    fi
+  elif [ ! -d "${pthDst}/${_DRUPAL10_3_P}/web" ]; then
+    if [ -d "${pthDst}/${_DRUPAL10_3}/web" ]; then
+      if [ ! -e "${pthDst}/${_DRUPAL10_3}/web/$drhSrc" ]; then
+        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_3_P}" standard \
+          ${pthDst}/${_DRUPAL10_3}/web &> /dev/null
+      fi
+    fi
+  fi
+
+  if [ -d "${pthDst}/${_DRUPAL10_4_D}/web" ]; then
+    if [ ! -e "${pthDst}/${_DRUPAL10_4_D}/web/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_4_D}" standard \
+        ${pthDst}/${_DRUPAL10_4_D}/web &> /dev/null
+    fi
+  fi
+  if [ -d "${pthDst}/${_DRUPAL10_4_S}/web" ]; then
+    if [ ! -e "${pthDst}/${_DRUPAL10_4_S}/web/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_4_S}" standard \
+        ${pthDst}/${_DRUPAL10_4_S}/web &> /dev/null
+    fi
+  fi
+  if [ ! -d "${pthDst}/${_DRUPAL10_4}/web" ]; then
+    if [ -d "${pthDst}/${_DRUPAL10_4_P}/web" ]; then
+      if [ ! -e "${pthDst}/${_DRUPAL10_4_P}/web/$drhSrc" ]; then
+        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_4_P}" standard \
+          ${pthDst}/${_DRUPAL10_4_P}/web &> /dev/null
+      fi
+    fi
+  elif [ ! -d "${pthDst}/${_DRUPAL10_4_P}/web" ]; then
+    if [ -d "${pthDst}/${_DRUPAL10_4}/web" ]; then
+      if [ ! -e "${pthDst}/${_DRUPAL10_4}/web/$drhSrc" ]; then
+        ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL10_4_P}" standard \
+          ${pthDst}/${_DRUPAL10_4}/web &> /dev/null
+      fi
+    fi
+  fi
+
   if [ -d "${pthDst}/${_DRUPAL7D}" ]; then
     if [ ! -e "${pthDst}/${_DRUPAL7D}/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL7_D}" standard \
@@ -3008,10 +3279,10 @@ save_verify_platforms() {
         ${pthDst}/restaurant-${_RESTAURANT}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_2_V}/docroot" ]; then
-    if [ ! -e "${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_2_V}/docroot/$drhSrc" ]; then
+  if [ -d "${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}/docroot" ]; then
+    if [ ! -e "${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}/docroot/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_THUNDER}" thunder \
-        ${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_2_V}/docroot &> /dev/null
+        ${pthDst}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}/docroot &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/ubercart-${_UBERCART6}-${_SMALLCORE6_V}" ]; then
@@ -3032,16 +3303,22 @@ save_verify_platforms() {
         ${pthDst}/ubercart-testing-${_UBERCART7}-${_SMALLCORE7_V} &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/varbase-${_VARBASE}-${_SMALLCORE10_2_V}/docroot" ]; then
-    if [ ! -e "${pthDst}/varbase-${_VARBASE}-${_SMALLCORE10_2_V}/docroot/$drhSrc" ]; then
-      ${_DRUSHCMD} php-script make_platform "${_F_VARBASE}" varbase \
-        ${pthDst}/varbase-${_VARBASE}-${_SMALLCORE10_2_V}/docroot &> /dev/null
+  if [ -d "${pthDst}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}/docroot" ]; then
+    if [ ! -e "${pthDst}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}/docroot/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "${_F_VARBASE9}" varbase \
+        ${pthDst}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}/docroot &> /dev/null
     fi
   fi
-  if [ -d "${pthDst}/social-${_SOCIAL}-${_SMALLCORE10_2_V}/html" ]; then
-    if [ ! -e "${pthDst}/social-${_SOCIAL}-${_SMALLCORE10_2_V}/html/$drhSrc" ]; then
+  if [ -d "${pthDst}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}/docroot" ]; then
+    if [ ! -e "${pthDst}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}/docroot/$drhSrc" ]; then
+      ${_DRUSHCMD} php-script make_platform "${_F_VARBASE10}" varbase \
+        ${pthDst}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}/docroot &> /dev/null
+    fi
+  fi
+  if [ -d "${pthDst}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}/html" ]; then
+    if [ ! -e "${pthDst}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}/html/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_SOCIAL}" social \
-        ${pthDst}/social-${_SOCIAL}-${_SMALLCORE10_2_V}/html &> /dev/null
+        ${pthDst}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}/html &> /dev/null
     fi
   fi
   if [ -d "${pthDst}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}/web" ]; then
@@ -3050,6 +3327,7 @@ save_verify_platforms() {
         ${pthDst}/opigno_lms-${_OPIGNOLMS9}-${_SMALLCORE9_V}/web &> /dev/null
     fi
   fi
+
   if [ -d "${pthDst}/pressflow-${_SMALLCORE6_V}-dev" ]; then
     if [ ! -e "${pthDst}/pressflow-${_SMALLCORE6_V}-dev/$drhSrc" ]; then
       ${_DRUSHCMD} php-script make_platform "${_F_DRUPAL6_D}" default \
@@ -3077,7 +3355,7 @@ save_verify_platforms() {
       fi
     fi
   fi
-  if [ -e "/var/run/aegir_upgrade.pid" ]; then
+  if [ -e "/run/aegir_upgrade.pid" ]; then
     _PLATF_IMP=$(ls -la /data/u \
       | grep ${_USER} \
       | cut -d'>' -f2 \
@@ -3097,6 +3375,8 @@ save_verify_platforms() {
   rm -f make_platform.php
 }
 
+drupal10_4_install
+drupal10_3_install
 drupal10_2_install
 drupal10_1_install
 drupal10_0_install
@@ -3143,7 +3423,8 @@ thunder_install
 ubercart6_install
 ubercart7_install
 ubercart7_testing_install
-varbase_install
+varbase_nine_install
+varbase_ten_install
 social_install
 opigno_lms9_install
 

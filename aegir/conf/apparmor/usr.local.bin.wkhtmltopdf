@@ -1,0 +1,55 @@
+# File: /etc/apparmor.d/usr.local.bin.wkhtmltopdf
+# Template from https://wkhtmltopdf.org/apparmor.html
+
+#include <tunables/global>
+
+/usr/local/bin/wkhtmltopdf flags=(complain) {
+
+  # Include common AppArmor abstractions
+  include <abstractions/base>
+  include <abstractions/openssl>
+  include <abstractions/fonts>
+
+  # Deny capability sys_ptrace
+  deny capability sys_ptrace,
+
+  # System paths wkhtmltopdf needs to operate
+  /proc/*/maps r,
+  /usr/local/bin/wkhtmltopdf mrix,
+  /var/cache/fontconfig/* r,
+  /tmp/** rwlk,
+
+  # Allow read access to necessary libraries
+  /lib/** mr,
+  /lib/x86_64-linux-gnu/** mr,
+  /lib64/** mr,
+  /usr/lib/** mr,
+  /usr/lib/x86_64-linux-gnu/** mr,
+  /usr/libexec/** mr,
+  /usr/local/include/** mr,
+  /usr/local/lib/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
+
+  # Allow to read and write in the web root directories
+  /var/www/** r,
+  /data/disk/*/aegir/** r,
+  /data/disk/*/distro/** r,
+  /data/disk/*/platforms/** r,
+  /data/disk/*/static/** r,
+
+  owner /data/disk/*/distro/** rwk,
+  owner /data/disk/*/platforms/** rwk,
+  owner /data/disk/*/static/** rwk,
+  owner /var/www/** rwk,
+
+  /home/*.web/.aws/ r,
+  /home/*.web/.aws/* rw,
+  /home/*.web/.drush/ r,
+  /home/*.web/.drush/* r,
+  /home/*.web/.tmp/ r,
+  /home/*.web/.tmp/* rw,
+
+  # Catchall to deny everything else
+  #deny /** rwklx,
+}

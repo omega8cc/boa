@@ -22,14 +22,8 @@ check_root() {
       _B_NICE=10
     fi
     chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
 }
@@ -37,10 +31,10 @@ check_root
 
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -sc 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
-    if [ "${e}" = "${_THIS_RV}" ]; then
+    if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
@@ -48,27 +42,27 @@ os_detection_minimal() {
 os_detection_minimal
 
 apt_clean_update() {
-  apt-get clean -qq 2> /dev/null
-  rm -rf /var/lib/apt/lists/* &> /dev/null
+  #apt-get clean -qq 2> /dev/null
+  #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
-rm -f /var/run/clear_m.pid
+rm -f /run/clear_m.pid
 
 _FIVE_MINUTES=$(date --date '5 minutes ago' +"%Y-%m-%d %H:%M:%S")
-find /var/run/solr_jetty.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \;
-find /var/run/fmp_wait.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \;
-find /var/run/restarting_fmp_wait.pid  -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \;
+find /run/solr_jetty.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
+find /run/fmp_wait.pid -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
+find /run/restarting_fmp_wait.pid  -mtime +0 -type f -not -newermt "${_FIVE_MINUTES}" -exec rm -rf {} \; &> /dev/null
 
 _ONE_HOUR=$(date --date '1 hour ago' +"%Y-%m-%d %H:%M:%S")
-find /var/run/mysql_restart_running.pid -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \;
-find /var/run/boa_wait.pid -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \;
-find /var/run/manage*users.pid  -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \;
+find /run/mysql_restart_running.pid -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \; &> /dev/null
+find /run/boa_wait.pid -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \; &> /dev/null
+find /run/manage*users.pid  -mtime +0 -type f -not -newermt "${_ONE_HOUR}" -exec rm -rf {} \; &> /dev/null
 
 _THR_HOURS=$(date --date '3 hours ago' +"%Y-%m-%d %H:%M:%S")
-find /var/run/boa_run.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \;
-find /var/run/*_backup.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \;
-find /var/run/daily-fix.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \;
+find /run/boa_run.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \; &> /dev/null
+find /run/*_backup.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \; &> /dev/null
+find /run/daily-fix.pid -mtime +0 -type f -not -newermt "${_THR_HOURS}" -exec rm -rf {} \; &> /dev/null
 
 if [ -e "/root/.proxy.cnf" ]; then
   exit 0
@@ -84,7 +78,8 @@ find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install netcat ${aptYesUnth} &> /dev/null
+    apt-get install netcat ${aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
     wait
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -115,34 +110,29 @@ find_fast_mirror_early() {
   urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
 }
 
-if_reinstall_curl() {
-  _CURL_VRN=8.7.1
+if_reinstall_curl_src() {
+  _CURL_VRN=8.9.1
+  if ! command -v lsb_release &> /dev/null; then
+    apt-get update -qq &> /dev/null
+    apt-get install lsb-release -y -qq &> /dev/null
+  fi
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
+  [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
   isCurl=$(curl --version 2>&1)
   if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
     echo "OOPS: cURL is broken! Re-installing.."
-    rm -f /etc/apt/sources.list.d/openssl.list
     if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
       && [ -e "/etc/apt/apt.conf.d" ]; then
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     echo "curl install" | dpkg --set-selections &> /dev/null
-    apt_clean_update
-    apt-get remove curl ${aptYesUnth} &> /dev/null
-    apt-get install curl ${aptYesUnth} &> /dev/null
-    ldconfig &> /dev/null
-    if [ -f "/usr/bin/curl" ]; then
-      isCurl=$(/usr/bin/curl --version 2>&1)
-      if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
-        echo "OOPS: /usr/bin/curl is still broken, uninstalling.."
-        apt-get remove curl ${aptYesUnth} &> /dev/null
-      else
-        echo "GOOD: /usr/bin/curl works"
-      fi
-    fi
+    apt_clean_update &> /dev/null
+    apt-get remove curl -y -qq &> /dev/null
     mkdir -p /var/opt
     rm -rf /var/opt/curl*
     cd /var/opt
-    wget http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
+    wget -q -U iCab http://files.aegir.cc/dev/src/curl-${_CURL_VRN}.tar.gz &> /dev/null
     tar -xzf curl-${_CURL_VRN}.tar.gz &> /dev/null
     cd /var/opt/curl-${_CURL_VRN}
     sh ./configure --with-ssl --prefix=/usr/local &> /dev/null
@@ -163,7 +153,7 @@ if_reinstall_curl() {
 
 check_dns_curl() {
   find_fast_mirror_early
-  if_reinstall_curl
+  if_reinstall_curl_src
   _CURL_TEST=$(curl -L -k -s \
     --max-redirs 10 \
     --retry 3 \
@@ -172,36 +162,24 @@ check_dns_curl() {
   if [[ ! "${_CURL_TEST}" =~ "200 OK" ]]; then
     if [[ "${_CURL_TEST}" =~ "unknown option was passed in to libcurl" ]]; then
       echo "ERROR: cURL libs are out of sync! Re-installing again.."
-      if_reinstall_curl
+      if_reinstall_curl_src
     else
       echo "ERROR: ${_USE_MIR} is not available, please try later"
-      clean_pid_exit
+      clean_pid_exit check_dns_curl_clear_a
     fi
   fi
 }
 
-if [ ! -e "/var/run/boa_run.pid" ]; then
+if [ ! -e "/run/boa_run.pid" ]; then
   check_dns_curl
   if [ -e "/root/.barracuda.cnf" ]; then
     source /root/.barracuda.cnf
   fi
   rm -f /tmp/*error*
-  rm -f /var/backups/BOA.sh.txt.hourly*
-  curl -L -k -s \
-    --max-redirs 5 \
-    --retry 5 \
-    --retry-delay 5 \
-    -A iCab "http://${_USE_MIR}/versions/${tRee}/boa/BOA.sh.txt" \
-    -o /var/backups/BOA.sh.txt.hourly
+  wget -qO- http://${_USE_MIR}/versions/${tRee}/boa/BOA.sh.txt | bash
   wait
-  if [ -e "/var/backups/BOA.sh.txt.hourly" ]; then
-    bash /var/backups/BOA.sh.txt.hourly
-    wait
-    rm -f /var/backups/BOA.sh.txt.hourly*
-  else
-    echo "Not available /var/backups/BOA.sh.txt.hourly"
-  fi
   bash /opt/local/bin/autoupboa
+  wait
 fi
 
 _OCT_NR=$(ls /data/disk | wc -l)
@@ -221,24 +199,26 @@ for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     fi
   fi
 done
-chckSts="OCT ${_OCT_NR} ${chckSts} "
-_ALL_SITES_NR=$(ls /data/disk/*/config/server_master/nginx/vhost.d | wc -l)
-_ALL_SITES_NR=$(( _ALL_SITES_NR - _OCT_NR ))
-chckSts="SST ${_ALL_SITES_NR} ${chckSts}"
-chckHst=$(hostname 2>&1)
-chckIps=$(hostname -I 2>&1)
-checkVn=$(/opt/local/bin/boa version | tr -d "\n" 2>&1)
-if [[ "${checkVn}" =~ "===" ]] || [ -z "${checkVn}" ]; then
-  if [ -e "/var/log/barracuda_log.txt" ]; then
-    checkVn=$(tail --lines=1 /var/log/barracuda_log.txt | tr -d "\n" 2>&1)
-  else
-    checkVn="whereis barracuda_log.txt"
+if [ -d "/data/u" ]; then
+  chckSts="OCT ${_OCT_NR} ${chckSts} "
+  _ALL_SITES_NR=$(ls /data/disk/*/config/server_master/nginx/vhost.d | wc -l)
+  _ALL_SITES_NR=$(( _ALL_SITES_NR - _OCT_NR ))
+  chckSts="SST ${_ALL_SITES_NR} ${chckSts}"
+  chckHst=$(hostname 2>&1)
+  chckIps=$(hostname -I 2>&1)
+  checkVn=$(/opt/local/bin/boa version | tr -d "\n" 2>&1)
+  if [[ "${checkVn}" =~ "===" ]] || [ -z "${checkVn}" ]; then
+    if [ -e "/var/log/barracuda_log.txt" ]; then
+      checkVn=$(tail --lines=1 /var/log/barracuda_log.txt | tr -d "\n" 2>&1)
+    else
+      checkVn="whereis barracuda_log.txt"
+    fi
   fi
+  crlHead="-I -k -s --retry 3 --retry-delay 3"
+  urlBpth="http://${_USE_MIR}/versions/${tRee}/boa/aegir/tools/bin"
+  curl ${crlHead} -A "${chckHst} ${chckIps} ${checkVn} ${chckSts}" "${urlBpth}/thinkdifferent" &> /dev/null
+  wait
 fi
-crlHead="-I -k -s --retry 3 --retry-delay 3"
-urlBpth="http://${_USE_MIR}/versions/${tRee}/boa/aegir/tools/bin"
-curl ${crlHead} -A "${chckHst} ${chckIps} ${checkVn} ${chckSts}" "${urlBpth}/thinkdifferent" &> /dev/null
-wait
 
 renice ${_B_NICE} -p $$ &> /dev/null
 service ssh restart

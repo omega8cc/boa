@@ -75,8 +75,14 @@ check_generate() {
           _ESC_PASS=$(sanitize_string "${_ESC_PASS}" 2>&1)
         fi
       fi
+      isPythonTwo=$(which python2 2>&1)
+      isPythonThree=$(which python3 2>&1)
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-      _ENC_PASS=$(python -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
+      if [ -x "${isPythonThree}" ]; then
+        _ENC_PASS=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''${_ESC_PASS}'''))")
+      elif [ -x "${isPythonTwo}" ]; then
+        _ENC_PASS=$(python2 -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
+      fi
       echo "${_ESC_PASS}" > ${_L_SYS}
     else
        echo "INFO: We will generate new random password using shuf tool"
@@ -104,9 +110,6 @@ check_generate() {
 do_syncpass() {
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
-  fi
   if [ ! -z "${uname}" ]; then
     find_correct_ip
     prH="/var/aegir/.drush"
@@ -275,26 +278,6 @@ EOFMYSQL
 check_root() {
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
-    sed -i "s/.*173.231.133.190.*//g" /etc/hosts
-    wait
-    sed -i "s/^127.0.0.1.*/127.0.0.1 localhost/g" /etc/hosts
-    wait
-    sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
-    wait
-    sed -i "s/.*github.*//g" /etc/hosts
-    wait
-    echo >>/etc/hosts
-    sed -i "/^$/d" /etc/hosts
-    wait
-    if [ -e "/etc/init.d/postfix" ]; then
-      service postfix restart &> /dev/null
-    fi
     if [ -e "/root/.barracuda.cnf" ]; then
       source /root/.barracuda.cnf
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
@@ -311,7 +294,7 @@ check_root() {
       fi
     fi
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
 }

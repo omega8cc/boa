@@ -6,7 +6,7 @@ $ENV{'HOME'} = '/root';
 $ENV{'PATH'} = '/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin';
 
 $| = 1;
-if (-f "/var/run/boa_wait.pid") {exit;}
+if (-f "/run/boa_wait.pid") {exit;}
 $status="CLEAN";
 $now_is=`date +%b:%d:%H:%M`;
 chomp($now_is);

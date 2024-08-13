@@ -13,14 +13,8 @@ check_root() {
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
   _DF_TEST=$(df -kTh / -l \
@@ -40,7 +34,7 @@ if [ -e "/root/.proxy.cnf" ]; then
   exit 0
 fi
 
-touch /var/run/boa_wait.pid
+touch /run/boa_wait.pid
 sleep 8
 dir=/var/xdrago/log/mysql_optimize
 mkdir -p $dir
@@ -49,6 +43,6 @@ _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
 /usr/bin/mysqlcheck -u root -Aa >> $dir/all.a.`date +%y%m%d-%H%M%S`
 /usr/bin/mysqlcheck -u root -A --auto-repair >> $dir/all.r.`date +%y%m%d-%H%M%S`
 /usr/bin/mysqlcheck -u root -Ao >> $dir/all.o.`date +%y%m%d-%H%M%S`
-[ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
+[ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
 exit 0
 ###EOF2024###

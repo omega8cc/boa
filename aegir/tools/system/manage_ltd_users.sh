@@ -8,7 +8,7 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-tRee=lts
+tRee=dev
 export tRee="${tRee}"
 
 check_root() {
@@ -16,14 +16,8 @@ check_root() {
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
   _DF_TEST=$(df -kTh / -l \
@@ -49,10 +43,10 @@ fi
 
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -sc 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
-    if [ "${e}" = "${_THIS_RV}" ]; then
+    if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
@@ -60,23 +54,16 @@ os_detection_minimal() {
 os_detection_minimal
 
 apt_clean_update() {
-  apt-get clean -qq 2> /dev/null
-  rm -rf /var/lib/apt/lists/* &> /dev/null
+  #apt-get clean -qq 2> /dev/null
+  #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
-_X_SE="530ltsT00"
+_X_SE="530devT00"
 _CHECK_HOST=$(uname -n 2>&1)
 usrGroup=users
 _WEBG=www-data
-_THIS_RV=$(lsb_release -sc 2>&1)
-_RUBY_VRN=3.3.4
-_VM_TEST=$(uname -a 2>&1)
-if [[ "${_VM_TEST}" =~ "-beng" ]]; then
-  _VMFAMILY="VS"
-else
-  _VMFAMILY="XEN"
-fi
+_OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 if [ -x "/usr/bin/gpg2" ]; then
   _GPG=gpg2
 else
@@ -116,7 +103,8 @@ find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install netcat ${aptYesUnth} &> /dev/null
+    apt-get install netcat ${aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
     wait
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -198,33 +186,11 @@ add_ltd_group_if_not_exists() {
   fi
 }
 #
-# Add to rvm group if needed.
-if_add_to_rvm_group() {
-  isTest="$1"
-  isTest=${isTest//[^a-z0-9]/}
-  if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
-    _ID_SHELLS=$(id -nG $1 2>&1)
-    if [[ ! "${_ID_SHELLS}" =~ "rvm" ]]; then
-      isRvm=$(which rvm 2>&1)
-      if [ -x "${isRvm}" ]; then
-        rvmPth="${isRvm}"
-      elif [ -x "/usr/local/rvm/bin/rvm" ]; then
-        rvmPth="/usr/local/rvm/bin/rvm"
-      fi
-      if [ -x "${rvmPth}" ]; then
-        usermod -aG rvm $1
-      fi
-    fi
-    _ID_SHELLS=""
-  fi
-}
-#
 # Enable chattr.
 enable_chattr() {
   isTest="$1"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
-    if_add_to_rvm_group $1
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
     _U_II="${_U_HD}/php.ini"
@@ -413,264 +379,97 @@ enable_chattr() {
 
     UQ="$1"
     chage -M 99999 ${UQ} &> /dev/null
-    if [ -f "${dscUsr}/static/control/compass.info" ]; then
-      if [ -d "/home/${UQ}/.rvm/src" ]; then
-        rm -rf /home/${UQ}/.rvm/src/*
-      fi
-      if [ -d "/home/${UQ}/.rvm/archives" ]; then
-        rm -rf /home/${UQ}/.rvm/archives/*
-      fi
-      if [ -d "/home/${UQ}/.rvm/log" ]; then
-        rm -rf /home/${UQ}/.rvm/log/*
-      fi
-      if [ ! -x "/home/${UQ}/.rvm/bin/rvm" ]; then
-        touch /var/run/manage_rvm_users.pid
-        if [ -d "/usr/local/rvm" ]; then
-          mv -f /usr/local/rvm /usr/local/.off_rvm
-        fi
-        if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
-          _WEB_SH=$(readlink -n /bin/sh 2>&1)
-          _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
-          if [ -x "/bin/dash" ]; then
-            if [ "${_WEB_SH}" != "/bin/dash" ]; then
-              rm -f /bin/sh
-              ln -s /bin/dash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /bin/dash /usr/bin/sh
-              fi
-            fi
-          elif [ -x "/usr/bin/dash" ]; then
-            if [ "${_WEB_SH}" != "/usr/bin/dash" ]; then
-              rm -f /bin/sh
-              ln -s /usr/bin/dash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /usr/bin/dash /usr/bin/sh
-              fi
-            fi
-          elif [ -x "/bin/bash" ]; then
-            if [ "${_WEB_SH}" != "/bin/bash" ]; then
-              rm -f /bin/sh
-              ln -s /bin/bash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /bin/bash /usr/bin/sh
-              fi
-            fi
-          elif [ -x "/usr/bin/bash" ]; then
-            if [ "${_WEB_SH}" != "/usr/bin/bash" ]; then
-              rm -f /bin/sh
-              ln -s /usr/bin/bash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /usr/bin/bash /usr/bin/sh
-              fi
-            fi
-          fi
-        fi
-        su -s /bin/bash - ${UQ} -c "\curl -k -sSL ${urlDev}/mpapis.asc | ${_GPG} --import -"
-        wait
-        su -s /bin/bash - ${UQ} -c "\curl -k -sSL ${urlDev}/pkuczynski.asc | ${_GPG} --import -"
-        wait
-        su -s /bin/bash   ${UQ} -c "\curl -k -sSL ${urlHmr}/helpers/rvm-installer.sh | bash -s stable"
-        wait
-        su -s /bin/bash - ${UQ} -c "rvm get stable --auto-dotfiles"
-        wait
-        su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
-        wait
-        su -s /bin/bash - ${UQ} -c "echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc"
-        wait
-        [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
-        if [ -d "/usr/local/.off_rvm" ]; then
-          mv -f /usr/local/.off_rvm /usr/local/rvm
-        fi
-        rm -f /bin/sh
-        ln -s /bin/websh /bin/sh
-        rm -f /usr/bin/sh
-        ln -s /bin/websh /usr/bin/sh
-      fi
-      su -s /bin/bash - ${UQ} -c "echo rvm_autoupdate_flag=0 > ~/.rvmrc"
-      wait
-      su -s /bin/bash - ${UQ} -c "echo rvm_silence_path_mismatch_check_flag=1 >> ~/.rvmrc"
-      wait
-      if [ ! -e "/home/${UQ}/.rvm/rubies/default" ]; then
-        touch /var/run/manage_rvm_users.pid
-        if [ -d "/usr/local/rvm" ]; then
-          mv -f /usr/local/rvm /usr/local/.off_rvm
-        fi
-        if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
-          _WEB_SH=$(readlink -n /bin/sh 2>&1)
-          _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
-          if [ -x "/bin/dash" ]; then
-            if [ "${_WEB_SH}" != "/bin/dash" ]; then
-              rm -f /bin/sh
-              ln -s /bin/dash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /bin/dash /usr/bin/sh
-              fi
-            fi
-          elif [ -x "/usr/bin/dash" ]; then
-            if [ "${_WEB_SH}" != "/usr/bin/dash" ]; then
-              rm -f /bin/sh
-              ln -s /usr/bin/dash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /usr/bin/dash /usr/bin/sh
-              fi
-            fi
-          elif [ -x "/bin/bash" ]; then
-            if [ "${_WEB_SH}" != "/bin/bash" ]; then
-              rm -f /bin/sh
-              ln -s /bin/bash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /bin/bash /usr/bin/sh
-              fi
-            fi
-          elif [ -x "/usr/bin/bash" ]; then
-            if [ "${_WEB_SH}" != "/usr/bin/bash" ]; then
-              rm -f /bin/sh
-              ln -s /usr/bin/bash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /usr/bin/bash /usr/bin/sh
-              fi
-            fi
-          fi
-        fi
-        su -s /bin/bash - ${UQ} -c "rvm install ${_RUBY_VRN}"
-        wait
-        su -s /bin/bash - ${UQ} -c "rvm use ${_RUBY_VRN} --default"
-        wait
-        [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
-        if [ -d "/usr/local/.off_rvm" ]; then
-          mv -f /usr/local/.off_rvm /usr/local/rvm
-        fi
-        rm -f /bin/sh
-        ln -s /bin/websh /bin/sh
-        rm -f /usr/bin/sh
-        ln -s /bin/websh /usr/bin/sh
-      fi
-      if [ ! -f "${dscUsr}/log/.gems.build.d.${UQ}.${_X_SE}.txt" ]; then
-        rm -f ${dscUsr}/log/eventmachine*
-        if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
-          _WEB_SH=$(readlink -n /bin/sh 2>&1)
-          _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
-          if [ -x "/bin/dash" ]; then
-            if [ "${_WEB_SH}" != "/bin/dash" ]; then
-              rm -f /bin/sh
-              ln -s /bin/dash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /bin/dash /usr/bin/sh
-              fi
-            fi
-          elif [ -x "/usr/bin/dash" ]; then
-            if [ "${_WEB_SH}" != "/usr/bin/dash" ]; then
-              rm -f /bin/sh
-              ln -s /usr/bin/dash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /usr/bin/dash /usr/bin/sh
-              fi
-            fi
-          elif [ -x "/bin/bash" ]; then
-            if [ "${_WEB_SH}" != "/bin/bash" ]; then
-              rm -f /bin/sh
-              ln -s /bin/bash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /bin/bash /usr/bin/sh
-              fi
-            fi
-          elif [ -x "/usr/bin/bash" ]; then
-            if [ "${_WEB_SH}" != "/usr/bin/bash" ]; then
-              rm -f /bin/sh
-              ln -s /usr/bin/bash /bin/sh
-              if [ -e "/usr/bin/sh" ]; then
-                rm -f /usr/bin/sh
-                ln -s /usr/bin/bash /usr/bin/sh
-              fi
-            fi
-          fi
-        fi
-        touch /var/run/manage_rvm_users.pid
-        if [ -d "/usr/local/rvm" ]; then
-          mv -f /usr/local/rvm /usr/local/.off_rvm
-        fi
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative bluecloth"      &> /dev/null
-        wait
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative eventmachine"   &> /dev/null
-        wait
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.0.3 eventmachine"  &> /dev/null
-        wait
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative ffi"            &> /dev/null
-        wait
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.9.3 ffi"           &> /dev/null
-        wait
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.9.18 ffi"          &> /dev/null
-        wait
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative hitimes"        &> /dev/null
-        wait
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative http_parser.rb" &> /dev/null
-        wait
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative oily_png"       &> /dev/null
-        wait
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --version 1.1.1 oily_png"      &> /dev/null
-        wait
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative yajl-ruby"      &> /dev/null
-        wait
-        touch ${dscUsr}/log/.gems.build.d.${UQ}.${_X_SE}.txt
-        [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
-        if [ -d "/usr/local/.off_rvm" ]; then
-          mv -f /usr/local/.off_rvm /usr/local/rvm
-        fi
-        rm -f /bin/sh
-        ln -s /bin/websh /bin/sh
-        rm -f /usr/bin/sh
-        ln -s /bin/websh /usr/bin/sh
-      fi
-      if [ -d "/home/${UQ}/.rvm/src" ]; then
-        rm -rf /home/${UQ}/.rvm/src/*
-      fi
-      if [ -d "/home/${UQ}/.rvm/archives" ]; then
-        rm -rf /home/${UQ}/.rvm/archives/*
-      fi
-      if [ -d "/home/${UQ}/.rvm/log" ]; then
-        rm -rf /home/${UQ}/.rvm/log/*
-      fi
-      if [ ! -d "/home/${UQ}/.npm-packages" ] || [ ! -d "/home/${UQ}/.npm" ]; then
-        su -s /bin/bash - ${UQ} -c "mkdir ~/.bundle"
-        wait
-        su -s /bin/bash - ${UQ} -c "mkdir ~/.composer"
-        wait
-        su -s /bin/bash - ${UQ} -c "mkdir ~/.config"
-        wait
-        su -s /bin/bash - ${UQ} -c "mkdir ~/.npm-packages"
-        wait
-        su -s /bin/bash - ${UQ} -c "mkdir ~/.npm"
-        wait
-        su -s /bin/bash - ${UQ} -c "mkdir ~/.sass-cache"
-        wait
-        su -s /bin/bash - ${UQ} -c "echo prefix = /home/${UQ}/.npm-packages > ~/.npmrc"
-        wait
-      fi
-      rm -f /home/${UQ}/{.profile,.bash_logout,.bash_profile,.bashrc,.zlogin,.zshrc}
-      rm -f /home/${UQ}/.rvm/scripts/notes
+    _UPDATE_GEMS=NO
+    ###
+    ### Cleanup of no longer used/allowed Ruby Gems and NPM access leftovers
+    ###
+    [ -e "/home/${UQ}/.rvm" ] && rm -rf /home/${UQ}/.rvm*
+    [ -e "/home/${UQ}/.gem" ] && rm -rf /home/${UQ}/.gem*
+    [ -e "/home/${UQ}/.npm" ] && rm -rf /home/${UQ}/.npm*
+    [ -e "/home/${UQ}/.mkshrc" ] && rm -rf /home/${UQ}/.mkshrc
+    if [ "$1" = "${_USER}.ftp" ]; then
+      [ ! -d "/home/${UQ}/.composer" ] && su -s /bin/bash - ${UQ} -c "mkdir ~/.composer"
     else
-      if [ -d "/home/${UQ}/.rvm" ] || [ -d "/home/${UQ}/.gem" ]; then
-        rm -f ${dscUsr}/log/.gems.build*
-        rm -rf /home/${UQ}/.rvm    &> /dev/null
-        rm -rf /home/${UQ}/.gem    &> /dev/null
+      [ -d "/home/${UQ}/.composer" ] && rm -rf /home/${UQ}/.composer
+    fi
+    ###
+    ### Check if Ruby Gems and NPM access should be added or removed
+    ###
+    if [ -f "${dscUsr}/static/control/compass.info" ]; then
+      ###
+      ### Check if Ruby Gems access needs an update
+      ###
+      if [ ! -e "/opt/user/gems/${UQ}/gems/oily_png-1.1.1" ] \
+        || [ ! -e "${dscUsr}/log/.gems.build.rb.${UQ}.${_X_SE}.txt" ]; then
+        _UPDATE_GEMS=YES
       fi
-      if [ -d "/home/${UQ}/.npm" ] || [ -d "/home/${UQ}/.npm-packages" ]; then
-        rm -f /home/${UQ}/.npmrc
-        rm -rf /home/${UQ}/.npm             &> /dev/null
-        rm -rf /home/${UQ}/.npm-packages    &> /dev/null
+      if [ ! -e "/opt/user/npm/${UQ}/.npm-packages/bin" ] \
+        && [ -e "/root/.allow.node.lshell.cnf" ]; then
+        _UPDATE_GEMS=YES
+      fi
+    else
+      ###
+      ### Remove no longer used Ruby Gems and NPM access
+      ###
+      [ -e "/home/${UQ}/.npm" ] && rm -rf /home/${UQ}/.npm*
+      [ -e "/opt/user/gems/${UQ}" ] && rm -rf /opt/user/gems/${UQ}
+      [ -e "/opt/user/npm/${UQ}" ] && rm -rf /opt/user/npm/${UQ}
+      [ -e "${dscUsr}/log" ] && rm -f ${dscUsr}/log/.gems.build*
+      [ -e "${dscUsr}/log" ] && rm -f ${dscUsr}/log/.npm.build*
+    fi
+    if [ "${_UPDATE_GEMS}" = "YES" ]; then
+      ###
+      ### Ruby Gems are allowed for both main and client SSH accounts
+      ###
+      [ ! -d "/opt/user/gems/${UQ}" ] && mkdir -p /opt/user/gems/${UQ}
+      chmod 1777 /opt/user/gems
+      chown -R ${UQ}:users /opt/user/gems/${UQ}
+      chown root:root /opt/user/gems
+      if [ -d "/opt/user/gems/${UQ}" ] \
+        && [ -e "/usr/local/lib/ruby/gems/3.3.0/gems/oily_png-1.1.1" ] \
+        && [ ! -e "/opt/user/gems/${UQ}/gems/oily_png-1.1.1" ]; then
+        cp -a /usr/local/lib/ruby/gems/3.3.0/gems /opt/user/gems/${UQ}/
+        cp -a /usr/local/lib/ruby/gems/3.3.0/specifications /opt/user/gems/${UQ}/
+        cp -a /usr/local/lib/ruby/gems/3.3.0/extensions /opt/user/gems/${UQ}/
+        cp -a /usr/local/lib/ruby/gems/3.3.0/doc /opt/user/gems/${UQ}/
+        chown -R ${UQ}:users /opt/user/gems/${UQ}
+        [ -e "${dscUsr}/log" ] && rm -f ${dscUsr}/log/.gems.build*
+        touch ${dscUsr}/log/.gems.build.rb.${UQ}.${_X_SE}.txt
+      fi
+      ###
+      ### Check if NPM support is allowed and if needs an update
+      ### NOTE: It will be restricted to the main SSH account only
+      ###
+      if [ -e "/root/.allow.node.lshell.cnf" ] \
+        && [ "$1" = "${_USER}.ftp" ] \
+        && [ -x "/usr/bin/node" ] \
+        && [ -e "/home/${UQ}/static/control" ]; then
+        if [ ! -e "/opt/user/npm/${UQ}/.npm-packages/bin" ] \
+          || [ ! -e "${dscUsr}/log/.npm.build.${UQ}.${_X_SE}.txt" ]; then
+          [ ! -d "/opt/user/npm" ] && mkdir -p /opt/user/npm
+          chown root:root /opt/user/npm
+          chmod 1777 /opt/user/npm
+          [ ! -d "/opt/user/npm/${UQ}" ] && mkdir -p /opt/user/npm/${UQ}
+          [ ! -e "/home/${UQ}/.npmrc" ] && su -s /bin/bash - ${UQ} -c "echo 'prefix = /opt/user/npm/${UQ}/.npm-packages' > ~/.npmrc"
+          [ -e "/home/${UQ}/.npmrc" ] && chattr +i /home/${UQ}/.npmrc
+          mkdir -p /opt/user/npm/${UQ}/.bundle
+          mkdir -p /opt/user/npm/${UQ}/.composer
+          mkdir -p /opt/user/npm/${UQ}/.config
+          mkdir -p /opt/user/npm/${UQ}/.npm
+          mkdir -p /opt/user/npm/${UQ}/.npm-packages/bin
+          mkdir -p /opt/user/npm/${UQ}/.npm-packages/lib/node_modules
+          mkdir -p /opt/user/npm/${UQ}/.sass-cache
+          chown -R ${UQ}:users /opt/user/npm/${UQ}
+          [ -e "${dscUsr}/log" ] && rm -f ${dscUsr}/log/.npm.build*
+          touch ${dscUsr}/log/.npm.build.${UQ}.${_X_SE}.txt
+        fi
+      else
+        [ -e "/home/${UQ}/.npm" ] && rm -rf /home/${UQ}/.npm*
+        [ -e "/opt/user/npm/${UQ}" ] && rm -rf /opt/user/npm/${UQ}
+        [ -e "${dscUsr}/log" ] && rm -f ${dscUsr}/log/.npm.build*
       fi
     fi
+    rm -f /home/${UQ}/{.profile,.bash_logout,.bash_profile,.bashrc,.zlogin,.zshrc}
     chage -M 90 ${UQ} &> /dev/null
 
     if [ "$1" != "${_USER}.ftp" ]; then
@@ -944,15 +743,6 @@ ok_create_user() {
       passwd -w 7 -x 90 ${usrLtd}
       usermod -aG lshellg ${usrLtd}
       usermod -aG ltd-shell ${usrLtd}
-      isRvm=$(which rvm 2>&1)
-      if [ -x "${isRvm}" ]; then
-        rvmPth="${isRvm}"
-      elif [ -x "/usr/local/rvm/bin/rvm" ]; then
-        rvmPth="/usr/local/rvm/bin/rvm"
-      fi
-      if [ -x "${rvmPth}" ]; then
-        usermod -aG rvm ${usrLtd}
-      fi
     fi
     if [ ! -e "/home/${_ADMIN}/users/${usrLtd}" ] \
       && [ ! -z "${_ESC_LUPASS}" ]; then
@@ -1032,7 +822,9 @@ for Domain in `find ${Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
   _STATIC_PRIVATE="${pthParentUsr}/static/files/${rawDom}.private"
   _PATH_DOM=$(readlink -n ${Domain} 2>&1)
   _PATH_DOM=$(echo -n ${_PATH_DOM} | tr -d "\n" 2>&1)
-  _ALLD_DIR="${_ALLD_DIR}, '${_PATH_DOM}', '${_STATIC_FILES}', '${_STATIC_PRIVATE}'"
+  _RUBY_PATH="/opt/user/gems/${usrLtd}"
+  _NPM_PATH="/opt/user/npm/${usrLtd}"
+  _ALLD_DIR="${_ALLD_DIR}, '${_PATH_DOM}', '${_STATIC_FILES}', '${_STATIC_PRIVATE}', '${_RUBY_PATH}', '${_NPM_PATH}'"
   if [ -e "${_PATH_DOM}" ]; then
     _ALLD_NUM=$(( _ALLD_NUM += 1 ))
   fi
@@ -1230,75 +1022,116 @@ php_cli_drush_update() {
   fi
   echo OK > ${dscUsr}/static/control/.ctrl.cli.${_X_SE}.pid
 }
+
+#
+# Set default FPM workers.
+satellite_default_fpm_workers() {
+  count_cpu
+
+  # Set _PHP_FPM_WORKERS to AUTO if it is empty
+  [ -z "${_PHP_FPM_WORKERS}" ] && _PHP_FPM_WORKERS=AUTO
+  # If _PHP_FPM_WORKERS is not AUTO and not empty, then check if it is less than 1
+  if [ "${_PHP_FPM_WORKERS}" != "AUTO" ] && [ -n "${_PHP_FPM_WORKERS}" ]; then
+    if [ "${_PHP_FPM_WORKERS}" -lt 1 ] 2>/dev/null; then
+      _PHP_FPM_WORKERS=AUTO
+    fi
+  fi
+  # If _PHP_FPM_WORKERS is not AUTO, remove non-numeric characters
+  [ "${_PHP_FPM_WORKERS}" != "AUTO" ] && _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
+
+  if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+    _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
+  else
+    _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
+  fi
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "DEBUG: _L_PHP_FPM_WORKERS is ${_L_PHP_FPM_WORKERS}" >>/var/backups/ltd/log/users-${_NOW}.log
+  fi
+
+  # Set _PHP_FPM_TIMEOUT to AUTO if it is empty
+  [ -z "${_PHP_FPM_TIMEOUT}" ] && _PHP_FPM_TIMEOUT=AUTO
+  # If _PHP_FPM_TIMEOUT is not AUTO and not empty, then check if it is between 60 and 180
+  if [ "${_PHP_FPM_TIMEOUT}" != "AUTO" ] && [ -n "${_PHP_FPM_TIMEOUT}" ]; then
+    # If _PHP_FPM_TIMEOUT is not AUTO and not empty, remove non-numeric characters
+    [ "${_PHP_FPM_TIMEOUT}" != "AUTO" ] && _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
+    # If _PHP_FPM_TIMEOUT is outside of the allowed range, use either min or max allowed
+    if [ "${_PHP_FPM_TIMEOUT}" -lt 60 ]; then
+      _PHP_FPM_TIMEOUT=60
+    elif [ "${_PHP_FPM_TIMEOUT}" -gt 180 ]; then
+      _PHP_FPM_TIMEOUT=180
+    fi
+  fi
+
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "DEBUG: _PHP_FPM_TIMEOUT is ${_PHP_FPM_TIMEOUT}" >>/var/backups/ltd/log/users-${_NOW}.log
+  fi
+}
+
 #
 # Tune FPM workers.
 satellite_tune_fpm_workers() {
-  _VM_TEST=$(uname -a 2>&1)
-  _AWS_TEST_A=$(dmidecode -s bios-version 2>&1)
-  _AWS_TEST_B=$(head -c 3 /sys/hypervisor/uuid 2>&1)
-  if [ -e "/proc/bean_counters" ]; then
-    _VMFAMILY="VZ"
-  elif [ -e "/root/.tg.cnf" ]; then
-    _VMFAMILY="TG"
-  else
-    _VMFAMILY="XEN"
-  fi
-  if [[ "${_VM_TEST}" =~ "-beng" ]]; then
-    _VMFAMILY="VS"
-  fi
-  if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
-    || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
-    _VMFAMILY="AWS"
-  fi
-  _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
-  if [ "${_RESERVED_RAM}" -gt "0" ]; then
-    _RAM=$(( _RAM - _RESERVED_RAM ))
-  fi
-  _USE=$(( _RAM / 4 ))
-  if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
-    if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-    else
-      _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-    fi
-  elif [ "${_USE}" -ge "2048" ]; then
-    if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
+  satellite_default_fpm_workers
+
+  _LIM_FPM="${_L_PHP_FPM_WORKERS}"
+
+  if [ ! -z "${_CLIENT_OPTION}" ]; then
+    if [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-      else
-        _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
+        _LIM_FPM=96
       fi
-    elif [ "${_VMFAMILY}" = "VS" ] || [ "${_VMFAMILY}" = "TG" ]; then
-      if [ -e "/boot/grub/grub.cfg" ] \
-        || [ -e "/boot/grub/menu.lst" ] \
-        || [ -e "/root/.tg.cnf" ]; then
-        if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-        else
-          _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-        fi
-      else
-        if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-        else
-          _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-        fi
-      fi
-    else
+    elif [ "${_CLIENT_OPTION}" = "LITE" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-      else
-        _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
+        _LIM_FPM=32
       fi
-    fi
-  else
-    if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
+    elif [ "${_CLIENT_OPTION}" = "PHANTOM" ]; then
+      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+        _LIM_FPM=16
+      fi
+    elif [ "${_CLIENT_OPTION}" = "POWER" ] \
+      || [ "${_CLIENT_OPTION}" = "BUS" ]; then
+      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+        _LIM_FPM=8
+      fi
+    elif [ "${_CLIENT_OPTION}" = "EDGE" ] \
+      || [ "${_CLIENT_OPTION}" = "SSD" ] \
+      || [ "${_CLIENT_OPTION}" = "CLASSIC" ]; then
+      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+        _LIM_FPM=2
+      fi
+    elif [ "${_CLIENT_OPTION}" = "MINI" ] \
+      || [ "${_CLIENT_OPTION}" = "MICRO" ]; then
+      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+        _LIM_FPM=1
+      fi
     else
-      _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
+      _LIM_FPM=2
     fi
+  fi
+
+  if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge "1" ]; then
+    if [ -e "${dscUsr}/log/cores.txt" ]; then
+      _CLIENT_CORES=$(cat ${dscUsr}/log/cores.txt 2>&1)
+      _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
+    fi
+    _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
+    if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge "1" ]; then
+      _LIM_FPM=$(( _LIM_FPM *= _CLIENT_CORES ))
+    fi
+  fi
+
+  if [ "${_LIM_FPM}" -gt "100" ]; then
+    _LIM_FPM=100
+  fi
+
+  _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
+
+  if [ -e "/root/.dev.server.cnf" ]; then
+    echo "DEBUG: _LIM_FPM is ${_LIM_FPM}" >>/var/backups/ltd/log/users-${_NOW}.log
+    echo "DEBUG: _PHP_FPM_WORKERS is ${_PHP_FPM_WORKERS}" >>/var/backups/ltd/log/users-${_NOW}.log
+    echo "DEBUG: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}" >>/var/backups/ltd/log/users-${_NOW}.log
   fi
 }
+
 #
 # Disable New Relic per Octopus instance.
 disable_newrelic() {
@@ -1639,7 +1472,7 @@ site_socket_inc_gen() {
         if [ ! -z "${_SITE_NAME}" ] \
           && [ ! -z "${_SITE_SOCKET}" ] \
           && [ -e "${dscUsr}/.drush/${_SITE_NAME}.alias.drushrc.php" ] \
-          && [ -e "/var/run/${_SOCKET_L_NAME}.fpm.socket" ]; then
+          && [ -e "/run/${_SOCKET_L_NAME}.fpm.socket" ]; then
           fpmInc="${fpmPth}/fpm_include_site_${_SITE_NAME}.inc"
           echo "if ( \$main_site_name = ${_SITE_NAME} ) {" > ${fpmInc}
           echo "  set \$user_socket \"${_SOCKET_L_NAME}\";" >> ${fpmInc}
@@ -1802,7 +1635,7 @@ switch_php() {
         && [ -e "/var/xdrago/conf/hhvm/server.foo.ini" ]; then
         if [ ! -e "/opt/hhvm/server.${_USER}.ini" ] \
           || [ ! -e "/etc/init.d/hhvm.${_USER}" ] \
-          || [ ! -e "/var/run/hhvm/${_USER}" ]  ; then
+          || [ ! -e "/run/hhvm/${_USER}" ]  ; then
           ### create or update special system user if needed
           satellite_create_web_user "hhvm"
           ### configure custom hhvm server init.d script
@@ -1843,7 +1676,7 @@ switch_php() {
     else
       if [ -e "/opt/hhvm/server.${_USER}.ini" ] \
         || [ -e "/etc/init.d/hhvm.${_USER}" ] \
-        || [ -e "/var/run/hhvm/${_USER}" ]  ; then
+        || [ -e "/run/hhvm/${_USER}" ]  ; then
         ### disable no longer used custom hhvm server instance
         if [ -e "/etc/init.d/hhvm.${_USER}" ]; then
           service hhvm.${_USER} stop &> /dev/null
@@ -1854,7 +1687,7 @@ switch_php() {
         satellite_remove_web_user "hhvm"
         ### delete leftovers
         rm -f /opt/hhvm/server.${_USER}.ini
-        rm -rf /var/run/hhvm/${_USER}
+        rm -rf /run/hhvm/${_USER}
         rm -rf /var/log/hhvm/${_USER}
         ### update nginx configuration
         sed -i "s/\/var\/run\/hhvm\/${_USER}\/hhvm.socket;/\/var\/run\/\$user_socket.fpm.socket;/g" \
@@ -2019,76 +1852,6 @@ switch_php() {
         if [ ! -z "${_T_FPM_VRN}" ] \
           && [ "${_NEW_FPM_SETUP}" = "YES" ]; then
           satellite_tune_fpm_workers
-          _LIM_FPM="${_L_PHP_FPM_WORKERS}"
-          if [[ "${_THISHOST}" =~ ".host8." ]] \
-            || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-            || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-            || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
-            if [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
-              if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-                _LIM_FPM=96
-                _PHP_FPM_WORKERS=192
-              fi
-            elif [ "${_CLIENT_OPTION}" = "LTS" ]; then
-              if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-                  _LIM_FPM=32
-                  _PHP_FPM_WORKERS=64
-              fi
-            elif [ "${_CLIENT_OPTION}" = "PHANTOM" ]; then
-              if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-                _LIM_FPM=16
-                _PHP_FPM_WORKERS=32
-              fi
-            elif [ "${_CLIENT_OPTION}" = "POWER" ] \
-              || [ "${_CLIENT_OPTION}" = "BUS" ]; then
-              if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-                _LIM_FPM=8
-                _PHP_FPM_WORKERS=16
-              fi
-            elif [ "${_CLIENT_OPTION}" = "EDGE" ] \
-              || [ "${_CLIENT_OPTION}" = "SSD" ] \
-              || [ "${_CLIENT_OPTION}" = "CLASSIC" ]; then
-              if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-                _LIM_FPM=2
-                _PHP_FPM_WORKERS=4
-              fi
-            elif [ "${_CLIENT_OPTION}" = "MINI" ] \
-              || [ "${_CLIENT_OPTION}" = "MICRO" ]; then
-              if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-                _LIM_FPM=1
-                _PHP_FPM_WORKERS=2
-              fi
-            else
-              _LIM_FPM=2
-              _PHP_FPM_WORKERS=4
-            fi
-            if [ -e "${dscUsr}/log/cores.txt" ]; then
-              _CLIENT_CORES=$(cat ${dscUsr}/log/cores.txt 2>&1)
-              _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
-            fi
-            _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
-            if [ ! -z "${_CLIENT_CORES}" ] \
-              && [ "${_CLIENT_CORES}" -gt "0" ]; then
-              _LIM_FPM=$(( _LIM_FPM *= _CLIENT_CORES ))
-              _PHP_FPM_WORKERS=$(( _PHP_FPM_WORKERS *= _CLIENT_CORES ))
-            fi
-            if [ "${_LIM_FPM}" -gt "100" ]; then
-              _LIM_FPM=100
-            fi
-            if [ "${_PHP_FPM_WORKERS}" -gt "200" ]; then
-              _PHP_FPM_WORKERS=200
-            fi
-          fi
-          _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
-          if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-            _DO_NOTHING=YES
-          else
-            _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
-            if [ ! -z "${_PHP_FPM_WORKERS}" ] \
-              && [ "${_PHP_FPM_WORKERS}" -gt "0" ]; then
-              _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
-            fi
-          fi
           sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_T_FPM_VRN}/g" \
             /root/.${_USER}.octopus.cnf &> /dev/null
           wait
@@ -2202,37 +1965,13 @@ switch_php() {
                 sed -i "s/passthru,/${_PHP_FPM_DENY},/g" \
                   /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
                 wait
-              else
-                if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-                  || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-                  || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-                  || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-                  || [ -e "/root/.host8.cnf" ]; then
-                  _DO_NOTHING=YES
-                else
-                  sed -i "s/passthru,//g" \
-                    /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
-                  wait
-                fi
               fi
-              if [ "${_PHP_FPM_TIMEOUT}" = "AUTO" ] \
-                || [ -z "${_PHP_FPM_TIMEOUT}" ]; then
-                _PHP_FPM_TIMEOUT=180
-              fi
-              _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
-              if [ "${_PHP_FPM_TIMEOUT}" -lt "60" ]; then
-                _PHP_FPM_TIMEOUT=60
-              fi
-              if [ "${_PHP_FPM_TIMEOUT}" -gt "180" ]; then
-                _PHP_FPM_TIMEOUT=180
-              fi
-              if [ ! -z "${_PHP_FPM_TIMEOUT}" ]; then
+              if [ ! -z "${_PHP_FPM_TIMEOUT}" ] && [ "${_PHP_FPM_TIMEOUT}" -ge "60" ]; then
                 _PHP_TO="${_PHP_FPM_TIMEOUT}s"
-                sed -i "s/180s/${_PHP_TO}/g" \
-                  /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+                sed -i "s/180s/${_PHP_TO}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
                 wait
               fi
-              if [ ! -z "${_CHILD_MAX_FPM}" ]; then
+              if [ ! -z "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge "2" ]; then
                 sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
                   /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
                 wait
@@ -2491,7 +2230,9 @@ manage_user() {
           symlinks -dr /home/${_USER}.ftp &> /dev/null
           echo >> ${_THIS_LTD_CONF}
           echo "[${_USER}.ftp]" >> ${_THIS_LTD_CONF}
-          echo "path : ['${dscUsr}/distro', \
+          echo "path : ['/opt/user/npm/${_USER}.ftp', \
+                        '/opt/user/gems/${_USER}.ftp', \
+                        '${dscUsr}/distro', \
                         '${dscUsr}/static', \
                         '${dscUsr}/backups', \
                         '${dscUsr}/clients']" \
@@ -2635,19 +2376,21 @@ _NOW=${_NOW//[^0-9-]/}
 mkdir -p /var/backups/ltd/{conf,log,old}
 mkdir -p /var/backups/zombie/deleted
 _THIS_LTD_CONF="/var/backups/ltd/conf/lshell.conf.${_NOW}"
-if [ -e "/var/run/manage_rvm_users.pid" ] \
-  || [ -e "/var/run/manage_ltd_users.pid" ] \
-  || [ -e "/var/run/boa_run.pid" ] \
-  || [ -e "/var/run/boa_wait.pid" ]; then
+if [ -e "/run/manage_ruby_users.pid" ] \
+  || [ -e "/run/manage_ltd_users.pid" ] \
+  || [ -e "/run/boa_run.pid" ] \
+  || [ -e "/run/boa_wait.pid" ] \
+  || [ -e "/run/octopus_install_run.pid" ]; then
   touch /var/xdrago/log/wait-manage-ltd-users.pid
   echo "Another BOA task is running, we have to wait"
-  sleep 10
+  sleep 3
   exit 0
 elif [ ! -e "/var/xdrago/conf/lshell.conf" ]; then
   echo "Missing /var/xdrago/conf/lshell.conf template"
   exit 0
 else
-  touch /var/run/manage_ltd_users.pid
+  rm -f /var/xdrago/log/wait-manage-ltd-users.pid
+  touch /run/manage_ltd_users.pid
   count_cpu
   find_fast_mirror_early
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
@@ -2683,54 +2426,44 @@ else
       rm -f ${_THIS_LTD_CONF}
     fi
   fi
-  if [ -L "/bin/sh" ]; then
+  if [ -L "/bin/sh" ] && [ ! -e "/run/octopus_install_run.pid" ]; then
     _WEB_SH=$(readlink -n /bin/sh 2>&1)
     _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
     if [ -x "/bin/websh" ]; then
       if [ "${_WEB_SH}" != "/bin/websh" ] \
         && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
-        rm -f /bin/sh
-        ln -s /bin/websh /bin/sh
+        ln -sfn /bin/websh /bin/sh
         if [ -e "/usr/bin/sh" ]; then
-          rm -f /usr/bin/sh
-          ln -s /bin/websh /usr/bin/sh
+          ln -sfn /bin/websh /usr/bin/sh
         fi
       fi
     else
       if [ -x "/bin/dash" ]; then
         if [ "${_WEB_SH}" != "/bin/dash" ]; then
-          rm -f /bin/sh
-          ln -s /bin/dash /bin/sh
+          ln -sfn /bin/dash /bin/sh
           if [ -e "/usr/bin/sh" ]; then
-            rm -f /usr/bin/sh
-            ln -s /bin/dash /usr/bin/sh
+            ln -sfn /bin/dash /usr/bin/sh
           fi
         fi
       elif [ -x "/usr/bin/dash" ]; then
         if [ "${_WEB_SH}" != "/usr/bin/dash" ]; then
-          rm -f /bin/sh
-          ln -s /usr/bin/dash /bin/sh
+          ln -sfn /usr/bin/dash /bin/sh
           if [ -e "/usr/bin/sh" ]; then
-            rm -f /usr/bin/sh
-            ln -s /usr/bin/dash /usr/bin/sh
+            ln -sfn /usr/bin/dash /usr/bin/sh
           fi
         fi
       elif [ -x "/bin/bash" ]; then
         if [ "${_WEB_SH}" != "/bin/bash" ]; then
-          rm -f /bin/sh
-          ln -s /bin/bash /bin/sh
+          ln -sfn /bin/bash /bin/sh
           if [ -e "/usr/bin/sh" ]; then
-            rm -f /usr/bin/sh
-            ln -s /bin/bash /usr/bin/sh
+            ln -sfn /bin/bash /usr/bin/sh
           fi
         fi
       elif [ -x "/usr/bin/bash" ]; then
         if [ "${_WEB_SH}" != "/usr/bin/bash" ]; then
-          rm -f /bin/sh
-          ln -s /usr/bin/bash /bin/sh
+          ln -sfn /usr/bin/bash /bin/sh
           if [ -e "/usr/bin/sh" ]; then
-            rm -f /usr/bin/sh
-            ln -s /usr/bin/bash /usr/bin/sh
+            ln -sfn /usr/bin/bash /usr/bin/sh
           fi
         fi
       fi
@@ -2779,16 +2512,13 @@ else
         && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
         touch /root/.remote.db.cnf
       fi
-      if [ -e "/var/run/mysqld/mysqld.pid" ] \
+      if [ -e "/run/mysqld/mysqld.pid" ] \
         && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
         ionice -c2 -n0 -p $$
         service cron stop &> /dev/null
         sleep 180
         touch /root/.remote.db.cnf
-        if [ "${_DB_SERIES}" = "10.4" ] \
-          || [ "${_DB_SERIES}" = "10.3" ] \
-          || [ "${_DB_SERIES}" = "10.2" ] \
-          || [ "${_DB_SERIES}" = "5.7" ]; then
+        if [ "${_DB_SERIES}" = "5.7" ]; then
           _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
           _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
           mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
@@ -2807,7 +2537,7 @@ else
     fi
   fi
   sleep 5
-  [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
+  [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
   exit 0
 fi
 ###EOF2024###

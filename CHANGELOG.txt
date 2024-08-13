@@ -1,5 +1,233 @@
 ###
-### Stable BOA-5.3.0-lts - Full Edition
+### Stable BOA-5.4.0-pro - Full Edition
+### Date: Wed 14 Aug 2024 06:24:03 AM AEST in Sydney
+###
+
+@=> New BOA PRO Release & Comparison with LTS and DEV Branches
+
+  We are excited to announce the release of BOA-5.4.0 PRO and BOA-5.4.0 LTS,
+  marking the second release under our new branch structure and dual licensing
+  model, which began with BOA-5.2.0.
+
+  These new PRO and LTS versions bring the project fully up to date with the
+  DEV branch, which has been actively developed over the past several months.
+
+  As always, this announcement highlights only the most significant new features,
+  critical fixes, and improvements. For a detailed list of all changes,
+  please refer to the commit history.
+
+@=> New Features
+
+    * Simplify and speed up BOA install/upgrades -- please check all details in
+      the updated and greatly improved documentation:
+
+      docs/INSTALL.md
+      docs/UPGRADE.md
+      docs/SELFUPGRADE.md
+      docs/MAJORUPGRADE.md
+
+    * AppArmor BOA integration for more strict system protection (needs docs)
+    * Barracuda install without Octopus is now possible -- docs/INSTALL.md
+    * Enable instant php-cli version switch for Aegir backend -- docs/DRUSH.md
+    * Improve Ruby Gems and Node/NPM security and speed x3 -- docs/GEM.md
+    * Let's Encrypt for Aegir Hostmaster installed automatically -- docs/SSL.md
+    * Let's Encrypt Live Mode is enabled by default -- docs/SSL.md
+    * Add three manual backup modes in Aegir (incomplete feature at the moment)
+    * New Relic support with Octopus/Platform/Site Config -- docs/NEWRELIC.md
+    * Restore _AEGIR_UPGRADE_ONLY {aegir} as supported barracuda upgrade mode
+    * Restore {aegir|platforms|both} as supported octopus upgrade modes
+    * Security Considerations for Multi-Ægir Systems -- docs/SECURITY.md
+    * Use /root/.deny.clamav.cnf to auto-disable clamav if installed
+    * Use /root/.deny.java.cnf to auto-disable Solr and Jetty if not used
+
+    * Drush 12 in Aegir Tasks: Dynamically Utilize Site-Local Drush for
+      the updatedb Operations on Drupal 10+ (needs docs).
+
+      For now here is a brief explanation on how it works:
+
+    # Both Migrate and Clone tasks in Aegir by default run the updatedb
+      with Aegir own Drush 8 in the final deploy internal procedure.
+
+    # This may cause unexpected issues in Drupal 10 and newer versions, so
+      we have added a switch which allows you to tell Aegir to skip running
+      `updatedb` on Drupal 10+ -- either globally with empty control file
+      ~/static/control/DisAutoUpDb.info or per site with empty control file
+      ~/static/control/sitename_DisAutoUpDb.info where `sitename` is the site
+      main domain name used in its Drush alias. You could then unlock the
+      Site-Local Drush and run it manually with `vdrush` in the platform
+      app root (not web root) to better control what happens on `updatedb`
+      using command: `vdrush @site-alias updatedb`
+
+    # Automatic mode does it even better for Drupal 10+ Here's how it works,
+      given no control file listed above exists:
+
+      1. Platform Verify task locks Site-Local Drush and patches Drupal core.
+
+      2. If the site is migrated to different platform or cloned to different
+         platform, Aegir will check if **both old and new** platforms have
+         the Site-Local Drush in their codebases.
+
+      3. If Site-Local Drush is detected in both platforms Aegir will unlock
+         Drush in both platforms, will also revert the Drupal core patch it
+         normally needs to use its own Drush 8.
+
+      4. Now Aegir will run the Site-Local Drush for `updatedb` command and
+         will report all details in the task log in the admin interface.
+
+      5. Once the `updatedb` is complete, Aegir will automatically apply
+         the Drupal core patch again and will lock Site-Local Drush, so you
+         could run any other tasks in the control panel as usual. Magic!
+
+@=> Drupal platforms available for installation -- docs/PLATFORMS.md
+
+    * Drupal 10.4.x-dev
+    * Drupal 10.3.1
+    * Drupal 10.2.7
+    * Drupal 10.1.8
+    * Drupal 10.0.11
+    * Social 12.4.2 (10.2.6)
+    * Thunder 7.3.0 (10.3.1)
+    * Varbase 10.0.0 (10.3.1)
+    * Varbase 9.1.3 (10.2.6)
+
+    * Drupal 9.5.11
+    * OpenLucius 2.0.0 (9.5.11)
+    * Opigno LMS 3.1.0 (9.5.11)
+
+    * Commerce 1.72
+    * Commerce 2.77
+    * Drupal 7.101.1
+    * Ubercart 3.13
+
+    * Pressflow 6.60.1
+    * Ubercart 2.15
+
+@=> Improvements
+
+    * Add better protection from duplicate sql tasks
+    * Improve Aegir tasks messages to identify new improvements in the backend
+    * Update Drush 10+ aliases on the fly within Aegir deploy procedure
+    * Add BOA Roadmap & Progress Update in ROADMAP.md
+    * Add bring_all_ram_cpu_online
+    * Add CSF self-update debugging log in /var/backups/csf/water/
+    * Add Dual License and BOA Branches Explained in DUALLICENSE.md
+    * Add INI (platform level) docs in docs/ini/platform/INI.md
+    * Add INI (site level) docs in docs/ini/site/INI.md
+    * Add killer script for hanging apt-get update
+    * Add support for /root/.force.queue.runner.cnf
+    * Add switch_to_bash_in_octopus
+    * Detect and remove stale pid faster
+    * Display also system-manufacturer in the welcome messages and reports
+    * Do not lower proc nice on init and major OS upgrades
+    * Do not restart slow starting services during major OS upgrade
+    * Execute post-install octopus auto-upgrade on boa and octopus install
+    * Explain how upgrades affect BOA special shell wrapper
+    * Improve and simplify is_logged_in early check in global.inc
+    * Improve rsyslog to use separate log files for cron, mail, lfd, iptables
+    * Limit noise printed in the console
+    * Protect csf.allow from removing custom entries
+    * Rewrite and improve all BOA project docs to use Markdown
+    * Rewrite and improve the main README.md
+    * Simplify upgrade docs
+    * Turn Off AppArmor while running octopus
+    * Update tests for Amazon EC2 environment detection
+    * Use `drush11 aliases` or `drush11 sa` for Drupal 8+ core and PHP 8.2+
+    * Use new `fancynow` welcome screen only for interactive root sessions
+    * Nginx: Sync js/css aggregation support
+    * Nginx: Sync static files regex
+
+@=> Changes and Upgrades
+
+    * Add compatibility with Redis 8.x-1.7.1
+    * Add igbinary support to PHP 5.6
+    * Add recommended security and privacy HTTP headers in Nginx config
+    * Add required now $settings['state_cache'] = TRUE; in global.inc
+    * Adjust patches and PHP versions
+    * AdvAgg is no longer added to D8+ o_contrib
+    * Barracuda upgrade after boa install is now automated
+    * Build OpenSSH from sources by default
+    * cURL 8.9.1
+    * Disable man-db/auto-update to speed up also autoinit and boa install
+    * Duplicity 3.0.0
+    * Force mysql root password update on barracuda upgrade
+    * Git 2.45.2
+    * Image Optimize toolkit binaries are now included by default
+    * Install Python 3.12.4 for Duplicity
+    * ionCube 13.0.4
+    * Launch daily.sh automatically after barracuda upgrade
+    * Lshell 0.9.18.10
+    * MySecureShell master-29-06-2024
+    * New Relic 11.0.0.13
+    * New Relic no longer supports PHP 5.6
+    * Nginx 1.27.0
+    * Nginx: http2 is now a separate directive
+    * OpenSSL 3.0.14 LTS
+    * Re-enable cleanup for GHOST distros revisions
+    * Remove /etc/apt/preferences
+    * Remove cloud-utils if detected
+    * Remove legacy i386/x32 support
+    * Remove no longer supported MariaDB code
+    * Remove not used mysql_hourly.sh
+    * Removing old boa-init no longer needed after introducing fast autoinit
+    * Removing systemd cleanup from boa, now handled by the fast autoinit
+    * Replace mail with s-nail
+    * Replace pdnsd with unbound
+    * Restrict also find/scp to prevent lshell escape
+    * Upgrade to openjdk 11.0.24
+    * Use /etc/ssh for OpenSSH built from sources (no new server keys, finally)
+    * Use maximum compatible PhpRedis versions for legacy PHP
+    * Use PermitRootLogin prohibit-password
+    * We no longer allow to install BOA on Debian to avoid confusion
+    * We no longer override server sshd keys to avoid confusion
+    * Nginx: Remove the legacy X-XSS-Protection header
+    * Nginx: block bytedance and PetalBot aggressive crawlers
+
+@=> Important Fixes
+
+    * Add python3.5 compatibility for Stretch
+    * Add second cron entry for critically important /var/xdrago/clear.sh
+    * Add support for legacy python3.4
+    * Always copy hostmaster LE cert to /etc/ssl/private/ if just updated
+    * Avoid any AppArmor code on legacy Debian systems
+    * Bash 5.2 compatibility
+    * Detect broken GIT early and reinstall from sources
+    * Do not install PHP 8.2 8.3 with _OPENSSL_EOL_VRN and _OPENSSL_LEGACY_VRN
+    * Do not use --with-http_v3_module for Nginx on legacy systems
+    * Do not use --with-imap for PHP on Jessie
+    * Do not use --with-imap for PHP on major upgrade on any OS
+    * Do not use --with-sodium for PHP on Jessie
+    * Fix confusing ICU logic
+    * Fix for ignored nofile limits
+    * Fix for iptables paths backward compatibility
+    * Fix for non-blocking ntpdate
+    * Fix New Relic APT config
+    * Fix Percona apt config logic
+    * Fix platforms symlinking in the limited shell account
+    * Fix Pure-FTPD install and config
+    * Force crontab update on major OS upgrade
+    * Improve resolvconf auto-config
+    * Let's Encrypt actually supports wildcard names already
+    * Make sure that _PHP_SINGLE_INSTALL exists before disabling other versions
+    * Modernize Percona keys logic
+    * Nginx: Sync http2 in legacy tpl
+    * Remove blocking cnf file if php-max is used
+    * Show PHP patch results on _DEBUG_MODE=YES
+    * Sync for python3.11
+    * Sync PHP extensions existence check directly, not just via ctrl files
+    * Sync PhpRedis build options with versions compatibility
+    * Sync with python3.9
+    * Update wkhtmltopdf versions logic
+    * Use cURL 7.71.1 on Jessie
+    * Use cURL 8.2.1 on Stretch
+    * Use OpenSSH 8.3p1 on Jessie
+    * Use OpenSSH 9.3p1 on Stretch
+    * Use OpenSSL 1.0.2u on Jessie
+    * Use OpenSSL 1.1.1w on Stretch
+    * Fix for composer.json and composer.lock protection
+
+
+###
+### Stable BOA-5.3.0-pro - Full Edition
 ### Date: Mon 12 Aug 2024 05:33:46 AM AEST in Sydney
 ###
 
@@ -36,7 +264,7 @@
       based access if still has working SSH keys but lost working password.
       New password will be written to ~/static/control/new-USER-password.txt
 
-    * Add boa cleanup {detect|purge} {user} to automate Octopus instances
+    * Add boa cleanup {detect|purge} {user|batch} to automate Octopus instances
       cleanup. Requires existence of /data/disk/USER/log/CANCELLED file and
       no vhosts existing in /data/disk/USER/config/server_master/nginx/vhost.d/
       It will archive only config files and delete everything else, but will not
@@ -45,56 +273,55 @@
 @=> Improvements
 
     * Add ltd-shell account client access to moved sites files in static/files
+    * Always install legacy OpenSSL first and force new on upgrade
     * Disable man-db/auto-update to speed up barracuda upgrades
-    * Nginx DoS-Guard: Add ignore_admin to protect site admin activity
-    * Nginx DoS-Guard: Catch typical hack probe requests early
-    * Nginx DoS-Guard: Track and block 500/403/404 flood
-    * Nginx DoS-Guard: Detect and block ‘unknown’ IPs requests
     * MySQL: Disable performance_schema by default
     * MySQL: Do not run mysql_cleanup.sh on servers with >100 dbs
-    * Always install legacy OpenSSL first and force new on upgrade
-    * Use cold solr7 restart only on barracuda upgrade
+    * Nginx DoS-Guard: Add ignore_admin to protect site admin activity
+    * Nginx DoS-Guard: Catch typical hack probe requests early
+    * Nginx DoS-Guard: Detect and block ‘unknown’ IPs requests
+    * Nginx DoS-Guard: Track and block 500/403/404 flood
     * Prepare for but do not enable http3/quic yet
+    * Use cold solr7 restart only on barracuda upgrade
 
 @=> Changes and Upgrades
 
-    * OpenSSL LTS with 3.0.13 (new default version)
-    * Nginx 1.26.0
-    * PHP 8.3.10
-    * PHP 8.2.22
-    * PHP 8.1.29
-    * ionCube 13.0.2
-    * Ruby 3.3.4
-    * OpenSSH 9.8p1
+    * Build PHP --with-bz2
+    * Build Redis with --enable-redis-lzf --enable-redis-igbinary
+    * Composer 2.7.7
     * cURL 8.7.1
     * Drupal 7.101.1
-    * Composer 2.7.7
-    * Use phpredis 6.0.2 for 7.2 and newer
-    * PHP imagick 3.7.0
-    * PHP igbinary 3.2.15
-    * Build PHP --with-bz2
-    * PHP APCu 5.1.23
-    * Build Redis with --enable-redis-lzf --enable-redis-igbinary
-    * Use _USE_FPM=1024 as minimum
     * Enable ClassicTrack for Aegir tasks by default
+    * ionCube 13.0.2
+    * Nginx 1.26.0
+    * OpenSSH 9.8p1
+    * OpenSSL LTS with 3.0.13 (new default version)
+    * PHP 8.1.29
+    * PHP 8.2.22
+    * PHP 8.3.10
+    * PHP APCu 5.1.23
+    * PHP igbinary 3.2.15
+    * PHP imagick 3.7.0
+    * Ruby 3.3.4
+    * Use _USE_FPM=1024 as minimum
+    * Use phpredis 6.0.2 for 7.2 and newer
 
 @=> Important Fixes
 
-    * Always check if all /var/xdrago/* scripts are present or force update
-    * Use only php-fpm reload instead of start on upgrade
-    * Add cleanup for ctrl files blocking PHP upgrade
-    * Fix for vdrush @site updb in Drush 12
-    * Restore ULIMIT in nginx init.d
-    * Sync nofile limits
     * Add clamd/freshclam to auto-healing
-    * The adduser no longer automates —home
+    * Add cleanup for ctrl files blocking PHP upgrade
+    * Always check if all /var/xdrago/* scripts are present or force update
     * Always install openjdk-11-jre-headless
-    * Remove old auto-healing pids if detected
-    * More protection from race conditions in auto-healing
-    * Sync autoupboa cron to not collide with sql backups
-    * Legacy PHP versions require legacy OpenSSL version
-    * Use PHP 7.4 in run_drush8_cmd if available
+    * Fix for vdrush @site updb in Drush 12
     * Fix protection from duplicate sql backups
+    * Legacy PHP versions require legacy OpenSSL version
+    * More protection from race conditions in auto-healing
+    * Remove old auto-healing pids if detected
+    * Restore ULIMIT in nginx init.d
+    * Sync autoupboa cron to not collide with sql backups
+    * The adduser no longer automates —home
+    * Use only php-fpm reload instead of start on upgrade
+    * Use PHP 7.4 in run_drush8_cmd if available
 
 
 ###

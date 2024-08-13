@@ -1,0 +1,282 @@
+#!/bin/bash
+
+### BEGIN INIT INFO
+# Provides:          clean-boa-env
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: safeguard to remove auto-healing pid files after reboot etc.
+# Description:       safeguard to remove auto-healing pid files after reboot etc.
+### END INIT INFO
+
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+NAME=clean-boa-env
+DESC=clean-boa-env
+PIDFILE=/run/clean-boa-env.pid
+
+set -e
+
+case "$1" in
+  start)
+    echo -n "Starting $DESC: "
+    ### service apparmor stop
+    ### service auditd stop
+    ### /usr/sbin/aa-teardown
+    _RAM_AUTO_FILE="/sys/devices/system/memory/auto_online_blocks"
+    if [ -f "${_RAM_AUTO_FILE}" ]; then
+      if grep -qx offline "${_RAM_AUTO_FILE}"; then
+        echo online > "${_RAM_AUTO_FILE}"
+      fi
+    fi
+    for _CPU_DIR in /sys/devices/system/cpu/cpu[0-9]*
+    do
+      _CPU=${_CPU_DIR##*/}
+      _CPU_STATE_FILE="${_CPU_DIR}/online"
+      if [ -f "${_CPU_STATE_FILE}" ]; then
+        if grep -qx 0 "${_CPU_STATE_FILE}"; then
+          echo 1 > "${_CPU_STATE_FILE}"
+        fi
+      fi
+    done
+    for _RAM_DIR in /sys/devices/system/memory/memory[0-9]*
+    do
+      _RAM=${_RAM_DIR##*/}
+      _RAM_STATE_FILE="${_RAM_DIR}/state"
+      if [ -f "${_RAM_STATE_FILE}" ]; then
+        if grep -qx offline "${_RAM_STATE_FILE}"; then
+          echo online > "${_RAM_STATE_FILE}"
+        fi
+      fi
+    done
+    ntpdate pool.ntp.org > /dev/null 2>&1 &
+    if [ -e "/root/.run-to-daedalus.cnf" ]; then
+      if [ -x "/opt/local/bin/autodaedalus" ]; then
+        nohup /opt/local/bin/autodaedalus > /dev/null 2>&1 &
+      fi
+    elif [ -e "/root/.run-to-chimaera.cnf" ]; then
+      if [ -x "/opt/local/bin/autochimaera" ]; then
+        nohup /opt/local/bin/autochimaera > /dev/null 2>&1 &
+      fi
+    elif [ -e "/root/.run-to-beowulf.cnf" ]; then
+      if [ -x "/opt/local/bin/autobeowulf" ]; then
+        nohup /opt/local/bin/autobeowulf > /dev/null 2>&1 &
+      fi
+    fi
+    if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
+      _WEB_SH=`readlink -n /bin/sh`
+      _WEB_SH=`echo -n ${_WEB_SH} | tr -d "\n"`
+      if [ -x "/bin/dash" ] || [ -x "/usr/bin/dash" ]; then
+        if [ "${_WEB_SH}" != "/bin/dash" ]; then
+          if [ -x "/usr/bin/dash" ] && [ ! -L "/usr/bin/dash" ]; then
+            if [ -L "/usr/bin/sh" ]; then
+              ln -sfn /usr/bin/dash /usr/bin/sh
+            fi
+            if [ -L "/bin/sh" ]; then
+              ln -sfn /usr/bin/dash /bin/sh
+            fi
+          fi
+          if [ -x "/bin/dash" ] && [ ! -L "/bin/dash" ]; then
+            if [ -L "/usr/bin/sh" ]; then
+              ln -sfn /bin/dash /usr/bin/sh
+            fi
+            if [ -L "/bin/sh" ]; then
+              ln -sfn /bin/dash /bin/sh
+            fi
+          fi
+        fi
+      elif [ -x "/bin/bash" ] || [ -x "/usr/bin/bash" ]; then
+        if [ "${_WEB_SH}" != "/bin/bash" ]; then
+          if [ -x "/usr/bin/bash" ] && [ ! -L "/usr/bin/bash" ]; then
+            if [ -L "/usr/bin/sh" ]; then
+              ln -sfn /usr/bin/bash /usr/bin/sh
+            fi
+            if [ -L "/bin/sh" ]; then
+              ln -sfn /usr/bin/bash /bin/sh
+            fi
+          fi
+          if [ -x "/bin/bash" ] && [ ! -L "/bin/bash" ]; then
+            if [ -L "/usr/bin/sh" ]; then
+              ln -sfn /bin/bash /usr/bin/sh
+            fi
+            if [ -L "/bin/sh" ]; then
+              ln -sfn /bin/bash /bin/sh
+            fi
+          fi
+        fi
+      fi
+    fi
+    touch $PIDFILE
+    if [ -e "/run/boa_wait.pid" ]; then
+      [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+      echo "$NAME 1 done."
+    else
+      echo "$NAME 1 nothing to do."
+    fi
+    if [ -e "/run/boa_run.pid" ]; then
+      [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+      echo "$NAME 2 done."
+    else
+      echo "$NAME 2 nothing to do."
+    fi
+    if [ -e "/run/manage_ltd_users.pid" ]; then
+      [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
+      echo "$NAME 3 done."
+    else
+      echo "$NAME 3 nothing to do."
+    fi
+    if [ -e "/run/daily-fix.pid" ]; then
+      rm -f /run/daily-fix.pid
+      echo "$NAME 4 done."
+    else
+      echo "$NAME 4 nothing to do."
+    fi
+    if [ -e "/run/boa_cron_wait.pid" ]; then
+      rm -f /run/boa_cron_wait.pid
+      echo "$NAME 5 done."
+    else
+      echo "$NAME 5 nothing to do."
+    fi
+  ;;
+  stop)
+    echo -n "Stopping $DESC: "
+    ### service apparmor stop
+    ### service auditd stop
+    ### /usr/sbin/aa-teardown
+    _REBOOT_ONE_TEST=$(ls -la /root/.run-auto-major-os-reboot*-one.cnf 2>&1)
+    _REBOOT_TWO_TEST=$(ls -la /root/.run-auto-major-os-reboot*-two.cnf 2>&1)
+    if [[ "${_REBOOT_ONE_TEST}" =~ "No such file" ]] \
+      && [[ "${_REBOOT_TWO_TEST}" =~ "No such file" ]]; then
+      service cron stop &> /dev/null
+      killall cron &> /dev/null
+      kill -9 $(ps aux | grep '[s]econd.sh' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[r]unner.sh' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[m]inute.sh' | awk '{print $2}') &> /dev/null
+      echo "Cron has been stopped"
+      echo "Now waiting 60 seconds for any running tasks to complete"
+      sleep 55
+      if [ -e "/etc/init.d/clamav-daemon" ]; then
+        update-rc.d -f clamav-daemon remove &> /dev/null
+      fi
+      if [ -e "/etc/init.d/clamav-freshclam" ]; then
+        update-rc.d -f clamav-freshclam remove &> /dev/null
+      fi
+      kill -9 $(ps aux | grep '[a]vahi-daemon' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
+      kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
+      echo "Java/Solr has been stopped"
+      sleep 5
+      service nginx stop &> /dev/null
+      killall nginx &> /dev/null
+      killall php &> /dev/null
+      kill -9 $(ps aux | grep '[p]hp-fpm' | awk '{print $2}') &> /dev/null
+      echo "Nginx, PHP-CLI and PHP-FPM have been stopped"
+      csf -df &> /dev/null
+      csf -tf &> /dev/null
+      echo "Firewall has been purged"
+      if [ -e "/root/.my.pass.txt" ]; then
+        _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+        _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+        _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
+        if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
+          echo "Preparing MySQLD for quick shutdown..."
+          mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+          mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
+          mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
+          mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
+          mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
+          mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+          mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+          echo "Stopping MySQLD now..."
+          service mysql stop &> /dev/null
+          wait
+          echo "MySQLD stopped"
+        else
+          echo "MySQLD already stopped"
+        fi
+      fi
+    fi
+    if [ -x "/bin/websh" ] && [ -L "/bin/sh" ]; then
+      _WEB_SH=`readlink -n /bin/sh`
+      _WEB_SH=`echo -n ${_WEB_SH} | tr -d "\n"`
+      if [ -x "/bin/dash" ]; then
+        if [ "${_WEB_SH}" != "/bin/dash" ]; then
+          ln -sfn /bin/dash /bin/sh
+          if [ -e "/usr/bin/sh" ]; then
+            ln -sfn /bin/dash /usr/bin/sh
+          fi
+        fi
+      else
+        if [ "${_WEB_SH}" != "/bin/bash" ]; then
+          ln -sfn /bin/bash /bin/sh
+          if [ -e "/usr/bin/sh" ]; then
+            ln -sfn /bin/bash /usr/bin/sh
+          fi
+        fi
+      fi
+    fi
+    if [ -e "/run/boa_wait.pid" ]; then
+      [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+      echo "$NAME done."
+    else
+      echo "$NAME nothing to do."
+    fi
+    if [ -e "/run/boa_run.pid" ]; then
+      [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+      echo "$NAME 2 done."
+    else
+      echo "$NAME 2 nothing to do."
+    fi
+    if [ -e "/run/manage_ltd_users.pid" ]; then
+      [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
+      echo "$NAME 3 done."
+    else
+      echo "$NAME 3 nothing to do."
+    fi
+    if [ -e "/run/daily-fix.pid" ]; then
+      rm -f /run/daily-fix.pid
+      echo "$NAME 4 done."
+    else
+      echo "$NAME 4 nothing to do."
+    fi
+    if [ -e "/run/boa_cron_wait.pid" ]; then
+      rm -f /run/boa_cron_wait.pid
+      echo "$NAME 5 done."
+    else
+      echo "$NAME 5 nothing to do."
+    fi
+    rm -f $PIDFILE
+  ;;
+
+  restart|force-reload)
+    ${0} stop
+    ${0} start
+  ;;
+
+  status)
+    echo -n "$DESC status: "
+    service apparmor stop
+    service auditd stop
+    /usr/sbin/aa-teardown
+    if [ -e "/run/boa_wait.pid" ]; then
+      echo "fail 1"
+    else
+      echo "OK 1"
+      exit 0
+    fi
+    if [ -e "/run/boa_run.pid" ]; then
+      echo "fail 2"
+    else
+      echo "OK 2"
+      exit 0
+    fi
+  ;;
+
+  *)
+    echo "Usage: service $NAME {start|stop|restart|force-reload}" >&2
+    exit 0
+  ;;
+esac
+
+exit 0

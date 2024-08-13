@@ -1,0 +1,74 @@
+# AppArmor profile for SSH client
+# This profile restricts the SSH client (ssh) to essential operations only.
+
+#include <tunables/global>
+
+/usr/local/bin/ssh flags=(complain) {
+
+  # Include common AppArmor abstractions
+  include <abstractions/authentication>
+  include <abstractions/base>
+  include <abstractions/bash>
+  include <abstractions/consoles>
+  include <abstractions/nameservice>
+  include <abstractions/openssl>
+  include <abstractions/python>
+  include <abstractions/wutmp>
+
+  # Allow execution of the ssh binary
+  /usr/local/bin/ssh mrix,
+
+  # Allow read access to necessary libraries
+  /lib/** mr,
+  /lib/x86_64-linux-gnu/** mr,
+  /lib64/** mr,
+  /usr/lib/** mr,
+  /usr/lib/x86_64-linux-gnu/** mr,
+  /usr/libexec/** mr,
+  /usr/local/include/** mr,
+  /usr/local/lib/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
+
+  # Read access to SSH client configuration files
+  /etc/ssh/ssh_config r,
+  /etc/ssh/ssh_known_hosts r,
+  /home/*/.ssh/** rw,
+
+  # Allow network access for making outbound connections
+  network inet stream,
+  network inet6 stream,
+
+  # Deny access to critical system files
+  deny /etc/shadow* rwlx,
+
+  # Allow read access to user information files
+  /etc/passwd r,
+  /etc/group r,
+  /etc/nsswitch.conf r,
+  /etc/hosts r,
+
+  # Allow read-only access to resolv.conf for DNS resolution
+  /etc/resolv.conf r,
+
+  # Temporary files and directories
+  /tmp/ r,
+  /tmp/** rw,
+  /var/tmp/** rw,
+
+  # Allow execution of necessary binaries
+  /bin/dash mrix,
+  /bin/sh mrix,
+  /bin/websh mrix,
+  /usr/bin/id mrix,
+  /usr/bin/mysecureshell mrix,
+  /usr/local/bin/lshell mrix,
+  /usr/local/bin/ssh-agent mrix,
+
+  # Additional binaries used by SSH (e.g., scp, sftp)
+  /usr/local/bin/scp mrix,
+  /usr/local/bin/sftp mrix,
+
+  # Deny execution of any other binaries
+  #deny /** rwklx,
+}

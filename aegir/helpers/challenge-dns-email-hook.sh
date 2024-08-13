@@ -124,7 +124,7 @@ EOF
         MESSAGE="$(printf '%s\n  %s. IN TXT %s\n' "$MESSAGE" "${RECORDS[$i]}" "${RECORDS[$(($i + 1))]}")"
     done
 
-    echo "$MESSAGE" | mail -s "$SUBJECT" "$RECIPIENT"
+    echo "$MESSAGE" | s-nail -s "$SUBJECT" "$RECIPIENT"
 
     echo " + Settling down for 10s..."
     sleep 10
@@ -166,7 +166,7 @@ EOF
         RECORDS=( "${RECORDS[@]:2}" )
     done
 
-    echo "$MESSAGE" | mail -s "$SUBJECT" "$RECIPIENT"
+    echo "$MESSAGE" | s-nail -s "$SUBJECT" "$RECIPIENT"
 
 }
 
