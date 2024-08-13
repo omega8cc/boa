@@ -1,5 +1,5 @@
 ###
-### Stable BOA-5.4.0-pro - Full Edition
+### Stable BOA-5.4.0-lts - Full Edition
 ### Date: Wed 14 Aug 2024 06:24:03 AM AEST in Sydney
 ###
 
