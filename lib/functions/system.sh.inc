@@ -1,5 +1,5 @@
 
-tRee=dev
+tRee=lts
 export tRee="${tRee}"
 
 if_fix_iptables_symlinks() {

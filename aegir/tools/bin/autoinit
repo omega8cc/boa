@@ -85,7 +85,7 @@ export APT_LISTCHANGES_FRONTEND=none
 if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
-tRee=dev
+tRee=lts
 export tRee="${tRee}"
 _INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
 dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"

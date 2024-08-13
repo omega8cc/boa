@@ -1713,7 +1713,7 @@ else
   if [ "${cmmand}" = "php-idle" ] \
     || [ "${cmmand}" = "help" ] \
     || [ "${cmmand}" = "up-distro" ]; then
-    tRee=dev
+    tRee=lts
   else
     echo
     echo "Sorry, you are trying not supported command.."

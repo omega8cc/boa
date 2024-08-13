@@ -136,7 +136,7 @@ _TUNE_PHP_CLI_TIMEOUT=9999
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-tRee=dev
+tRee=lts
 export tRee="${tRee}"
 
 _AEGIR_VERSION="${tRee}"
