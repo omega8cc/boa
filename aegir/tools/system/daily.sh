@@ -41,7 +41,7 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-_X_SE="530devT00"
+_X_SE="540proT00"
 _WEBG=www-data
 _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 if [ -e "/root/.install.modern.openssl.cnf" ] \
