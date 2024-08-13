@@ -1322,8 +1322,6 @@ tune_sql_memory_limits() {
 tune_memory_limits() {
   msg "INFO: Default Memory Tuning"
   _VM_TEST=$(uname -a 2>&1)
-  _AWS_TEST_A=$(dmidecode -s bios-version 2>&1)
-  _AWS_TEST_B=$(head -c 3 /sys/hypervisor/uuid 2>&1)
   if [ -e "/proc/bean_counters" ]; then
     _VMFAMILY="VZ"
   elif [ -e "/root/.tg.cnf" ]; then
@@ -1334,8 +1332,8 @@ tune_memory_limits() {
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
-  if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
-    || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
+  # Check for Amazon EC2 in the system manufacturer field
+  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
     _VMFAMILY="AWS"
   fi
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)

@@ -315,10 +315,13 @@ if_running_as_root_barracuda() {
     touch /var/run/boa_run.pid
     mkdir -p ${pthLog}
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
-    _AWS_TEST_A=$(dmidecode -s bios-version 2>&1)
-    _AWS_TEST_B=$(head -c 3 /sys/hypervisor/uuid 2>&1)
-    if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
-      || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
+    # Check if dmidecode is available
+    if ! command -v dmidecode &> /dev/null; then
+      apt_clean_update
+      ${_INITINS} dmidecode &> /dev/null
+    fi
+    # Check for Amazon EC2 in the system manufacturer field
+    if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
       _VMFAMILY="AWS"
     fi
     _VM_TEST=$(uname -a 2>&1)
@@ -597,8 +600,13 @@ tune_memory_limits() {
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _VMFAMILY="VS"
   fi
-  if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
-    || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
+  # Check if dmidecode is available
+  if ! command -v dmidecode &> /dev/null; then
+    apt_clean_update
+    ${_INITINS} dmidecode &> /dev/null
+  fi
+  # Check for Amazon EC2 in the system manufacturer field
+  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
     _VMFAMILY="AWS"
   fi
   _CPU_MX=$(( _CPU_NR * 2 ))
