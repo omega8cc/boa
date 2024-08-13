@@ -259,7 +259,7 @@ if_running_as_root_barracuda
 ### Welcome msg
 ###
 echo " "
-msg "Skynet Agent v.${_X_VERSION} welcomes you aboard!"
+msg "Skynet Agent v.${_X_VERSION} on $(dmidecode -s system-manufacturer 2>&1) welcomes you aboard!"
 echo " "
 sleep 3
 
