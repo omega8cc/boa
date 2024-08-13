@@ -88,6 +88,48 @@ csf_install() {
   if [ -x "/usr/sbin/ipset" ] && [ ! -e "/sbin/ipset" ]; then
     ln -s /usr/sbin/ipset /sbin/ipset
   fi
+  ###
+  ### Fix for iptables paths backward compatibility
+  ###
+  if [ -x "/sbin/iptables" ] && [ ! -e "/usr/sbin/iptables" ]; then
+    ln -s /sbin/iptables /usr/sbin/iptables
+  fi
+  if [ -x "/usr/sbin/iptables" ] && [ ! -e "/sbin/iptables" ]; then
+    ln -s /usr/sbin/iptables /sbin/iptables
+  fi
+  if [ -x "/sbin/iptables-save" ] && [ ! -e "/usr/sbin/iptables-save" ]; then
+    ln -s /sbin/iptables-save /usr/sbin/iptables-save
+  fi
+  if [ -x "/usr/sbin/iptables-save" ] && [ ! -e "/sbin/iptables-save" ]; then
+    ln -s /usr/sbin/iptables-save /sbin/iptables-save
+  fi
+  if [ -x "/sbin/iptables-restore" ] && [ ! -e "/usr/sbin/iptables-restore" ]; then
+    ln -s /sbin/iptables-restore /usr/sbin/iptables-restore
+  fi
+  if [ -x "/usr/sbin/iptables-restore" ] && [ ! -e "/sbin/iptables-restore" ]; then
+    ln -s /usr/sbin/iptables-restore /sbin/iptables-restore
+  fi
+  if [ -x "/sbin/ip6tables" ] && [ ! -e "/usr/sbin/ip6tables" ]; then
+    ln -s /sbin/ip6tables /usr/sbin/ip6tables
+  fi
+  if [ -x "/usr/sbin/ip6tables" ] && [ ! -e "/sbin/ip6tables" ]; then
+    ln -s /usr/sbin/ip6tables /sbin/ip6tables
+  fi
+  if [ -x "/sbin/ip6tables-save" ] && [ ! -e "/usr/sbin/ip6tables-save" ]; then
+    ln -s /sbin/ip6tables-save /usr/sbin/ip6tables-save
+  fi
+  if [ -x "/usr/sbin/ip6tables-save" ] && [ ! -e "/sbin/ip6tables-save" ]; then
+    ln -s /usr/sbin/ip6tables-save /sbin/ip6tables-save
+  fi
+  if [ -x "/sbin/ip6tables-restore" ] && [ ! -e "/usr/sbin/ip6tables-restore" ]; then
+    ln -s /sbin/ip6tables-restore /usr/sbin/ip6tables-restore
+  fi
+  if [ -x "/usr/sbin/ip6tables-restore" ] && [ ! -e "/sbin/ip6tables-restore" ]; then
+    ln -s /usr/sbin/ip6tables-restore /sbin/ip6tables-restore
+  fi
+  ###
+  ### Fix for iptables paths backward compatibility
+  ###
   rm -f ${pthLog}/lastFire
   ### from https://download.configserver.com/csf.tgz
   get_dev_src "csf-${_CSF_VRN}.tgz"

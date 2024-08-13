@@ -2037,7 +2037,67 @@ cleanup_ghost_drushrc() {
   done
 }
 
+if_le_hm_ssl_old() {
+  # Get the current time in seconds since epoch
+  current_time=$(date +%s)
+  # Path to the file you want to check
+  filePath="$1"
+  # Check if the path is a symlink
+  if [ -L "${filePath}" ]; then
+    target_file=$(readlink -f "${filePath}")
+    # Get the file's modification time in seconds since epoch
+    file_mod_time=$(stat -c %Y "$target_file")
+  else
+    # Get the file's modification time in seconds since epoch
+    file_mod_time=$(stat -c %Y "${filePath}")
+  fi
+  # Calculate the time difference in minutes
+  time_diff=$(( (current_time - file_mod_time) / 60 ))
+  # Check if the file was modified within the last 30 minutes
+  if [ $time_diff -lt 30 ]; then
+    crtLastMod=NEW
+  else
+    crtLastMod=OLD
+  fi
+}
+
+if_le_hm_ssl_crt_key_copy() {
+  if [ -e "${leCrtPath}/fullchain.pem" ]; then
+    crtPath="${leCrtPath}/fullchain.pem"
+  elif [ -e "${leCrtPath}/cert.pem" ]; then
+    crtPath="${leCrtPath}/cert.pem"
+  fi
+  if [ -e "${crtPath}" ]; then
+    if [ -L "${crtPath}" ]; then
+      crtPathR=$(readlink -n ${crtPath} 2>&1)
+      crtPathR=$(echo -n ${crtPathR} | tr -d "\n" 2>&1)
+      if [ -f "${leCrtPath}/${crtPathR}" ]; then
+        rm -f /etc/ssl/private/${hmFront}.crt
+        cp -a ${leCrtPath}/${crtPathR} /etc/ssl/private/${hmFront}.crt
+      fi
+    else
+      rm -f /etc/ssl/private/${hmFront}.crt
+      cp -a ${crtPath} /etc/ssl/private/${hmFront}.crt
+    fi
+  fi
+  keyPath="${leCrtPath}/privkey.pem"
+  if [ -e "${keyPath}" ]; then
+    if [ -L "${keyPath}" ]; then
+      keyPathR=$(readlink -n ${keyPath} 2>&1)
+      keyPathR=$(echo -n ${keyPathR} | tr -d "\n" 2>&1)
+      if [ -f "${leCrtPath}/${keyPathR}" ]; then
+        rm -f /etc/ssl/private/${hmFront}.key
+        cp -a ${leCrtPath}/${keyPathR} /etc/ssl/private/${hmFront}.key
+      fi
+    else
+      rm -f /etc/ssl/private/${hmFront}.key
+      cp -a ${keyPath} /etc/ssl/private/${hmFront}.key
+    fi
+  fi
+}
+
 le_hm_ssl_check_update() {
+  leCrtPath=
   exeLe="${User}/tools/le/dehydrated"
   if [ -e "${User}/log/domain.txt" ]; then
     hmFront=$(cat ${User}/log/domain.txt 2>&1)
@@ -2056,9 +2116,12 @@ le_hm_ssl_check_update() {
         | sed "s/[\,']//g" 2>&1)
     fi
   fi
+  if [ ! -z "${hmFront}" ]; then
+    leCrtPath="${User}/tools/le/certs/${hmFront}"
+  fi
   if [ -x "${exeLe}" ] \
     && [ ! -z "${hmFront}" ] \
-    && [ -e "${User}/tools/le/certs/${hmFront}/fullchain.pem" ]; then
+    && [ -e "${leCrtPath}/fullchain.pem" ]; then
     _DOM=$(date +%e 2>&1)
     _DOM=${_DOM//[^0-9]/}
     _RDM=$((RANDOM%25+6))
@@ -2082,6 +2145,14 @@ le_hm_ssl_check_update() {
       su -s /bin/bash - ${_HM_U} -c "${exeLe} ${leParams} --domain ${hmFront}"
       wait
     fi
+  fi
+  crtLastMod=OLD
+  if_le_hm_ssl_old "${leCrtPath}/fullchain.pem"
+  if [ "${crtLastMod}" = "NEW" ]; then
+    echo "Copying NEW LE cert for hostmaster ${hmFront} to /etc/ssl/private/"
+    if_le_hm_ssl_crt_key_copy
+  else
+    echo "No new LE cert for hostmaster ${hmFront} to copy"
   fi
 }
 
