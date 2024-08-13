@@ -51,6 +51,11 @@ if_fix_iptables_symlinks() {
 # Re-install curl if broken.
 if_reinstall_curl_src() {
   _CURL_VRN=8.9.1
+  if ! command -v lsb_release &> /dev/null; then
+    apt-get update -qq &> /dev/null
+    apt-get install lsb-release -y -qq &> /dev/null
+  fi
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
   isCurl=$(curl --version 2>&1)
@@ -4134,11 +4139,11 @@ curl_install_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: curl_install_src"
   fi
-  if [ "${_OS_CODE}" = "precise" ] || [ "${_OS_CODE}" = "jessie" ]; then
-    #touch /root/.use.curl.from.packages.cnf
-    #chattr +i /root/.use.curl.from.packages.cnf
-    _CURL_VRN=8.8.0
+  if ! command -v lsb_release &> /dev/null; then
+    apt-get update -qq &> /dev/null
+    apt-get install lsb-release -y -qq &> /dev/null
   fi
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
   if [ ! -e "/root/.use.curl.from.packages.cnf" ]; then
