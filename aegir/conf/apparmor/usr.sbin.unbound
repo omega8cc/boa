@@ -1,0 +1,84 @@
+# AppArmor profile for Unbound server
+# This profile restricts Unbound server (unbound) to essential operations only.
+
+#include <tunables/global>
+
+/usr/sbin/unbound flags=(complain) {
+
+  # Include common AppArmor abstractions
+  include <abstractions/base>
+  include <abstractions/consoles>
+  include <abstractions/nameservice>
+  include <abstractions/openssl>
+
+  # Capabilities needed by Unbound server
+  capability chown,
+  capability fowner,
+  capability fsetid,
+  capability kill,
+  capability net_bind_service,
+  capability setgid,
+  capability setuid,
+  capability sys_chroot,
+  capability sys_resource,
+  capability net_admin,
+  capability dac_override,
+
+  # Allow to open TCP sockets on any address
+  network inet stream,
+  network inet6 stream,
+
+  # Allow Unbound to accept signal from PHP-CLI processes
+  signal (receive) peer=/opt/php*/bin/php,
+
+  # Allow read access to necessary libraries
+  /lib/** mr,
+  /lib/x86_64-linux-gnu/** mr,
+  /lib64/** mr,
+  /usr/lib/** mr,
+  /usr/lib/x86_64-linux-gnu/** mr,
+  /usr/libexec/** mr,
+  /usr/local/include/** mr,
+  /usr/local/lib/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
+
+  # Allow Unbound to access some /dev
+  /dev/log w,
+  /dev/random r,
+  /dev/urandom r,
+
+  # Allow Unbound to access tmp directories
+  /tmp/ r,
+  /tmp/** rw,
+  /var/tmp/** rw,
+
+  # Access root hints from dns-data-root
+  /usr/share/dns/root.* r,
+
+  # Unbound configuration paths
+  /etc/unbound/ r,
+  /etc/unbound/** r,
+  /usr/etc/unbound/ r,
+  /usr/etc/unbound/** r,
+  /var/lib/unbound/ r,
+  /var/lib/unbound/** r,
+
+  # Unbound logs
+  /var/log/unbound/ r,
+  /var/log/unbound/** rw,
+
+  # Unbound keys (if write access is needed)
+  /usr/etc/unbound/keys/** rw,
+
+  # Allow Unbound to execute its own binary
+  /usr/sbin/unbound mrix,
+
+  # Allow Unbound to access its pid and control socket
+  /run/unbound.ctl rw,
+  /run/unbound.pid rw,
+  /run/unbound/ r,
+  /run/unbound/** r,
+  /run/unbound/unbound.ctl rw,
+  /run/unbound/unbound.pid rw,
+}

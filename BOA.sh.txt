@@ -49,7 +49,7 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-tRee=pro
+tRee=dev
 export tRee="${tRee}"
 
 ###
@@ -63,7 +63,7 @@ fi
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_SE="530proT00"
+_X_SE="530devT00"
 #
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
@@ -131,7 +131,6 @@ find_correct_ip() {
 }
 
 fix_dns_settings() {
-  dnsLi="/root/.local.dns.IP.list"
   mkdir -p ${vBs}
   rm -f ${vBs}/resolv.conf.tmp
   if [ -e "/etc/resolv.conf" ]; then
@@ -173,73 +172,11 @@ fix_dns_settings() {
       cp -a ${vBs}/resolv.conf.tmp /etc/resolv.conf
     fi
   fi
-  if [ -e "/etc/pdnsd.conf" ]; then
-    if [ -e "${dnsLi}" ]; then
-      sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
-      wait
-      sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
-      wait
-      _BROKEN_DNS_TEST_X=$(grep "\." ${dnsLi} 2>&1)
-      if [ -z "${_BROKEN_DNS_TEST_X}" ]; then
-        echo "        label = \"cloudflare-servers\";" > ${dnsLi}
-        echo "        ip=1.1.1.1;" >> ${dnsLi}
-        echo "        ip=1.0.0.1;" >> ${dnsLi}
-      fi
-    fi
-    _CUSTOM_DNS_TEST=$(grep 1.1.1.1 /etc/pdnsd.conf 2>&1)
-    _BROKEN_DNS_CONF=$(grep "ip=Dynamic" /etc/pdnsd.conf 2>&1)
-    _MISSING_DNS_TEST=$(grep "ip=" /etc/pdnsd.conf 2>&1)
-    if [[ "${_CUSTOM_DNS_TEST}" =~ "1.1.1.1" ]] \
-      || [ ! -e "${dnsLi}" ] \
-      || [ -e "/root/.use.default.nameservers.cnf" ] \
-      || [ -e "/root/.use.local.nameservers.cnf" ] \
-      || [[ "${_BROKEN_DNS_CONF}" =~ "Dynamic" ]] \
-      || [[ -z "${_MISSING_DNS_TEST}" ]]; then
-      echo "        label = \"cloudflare-servers\";" > ${dnsLi}
-      for _IP in `cat /etc/resolv.conf \
-        | sed 's/.*127.0.0.1.*//g; s/.*search.*//g; s/.*Dynamic.*//g' \
-        | cut -d ' ' -f2 \
-        | sort \
-        | uniq`;do echo "        ip=${_IP};" >> ${dnsLi};done
-      wait
-      sed -i "s/ip=.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
-      wait
-      sed -i "s/.*127.0.0.1.*//g; s/ *$//g; /^$/d" ${dnsLi}
-      wait
-      sed -i "s/.*Dynamic.*//g; s/ *$//g; /^$/d"   ${dnsLi}
-      wait
-      _BROKEN_DNS_TEST_Y=$(grep "\." ${dnsLi} 2>&1)
-      if [ -z "${_BROKEN_DNS_TEST_Y}" ]; then
-         echo "        ip=1.1.1.1;" >> ${dnsLi}
-         echo "        ip=1.0.0.1;" >> ${dnsLi}
-      fi
-      ### echo debug dns A
-      _DNS_TPL_TEST_GE=$(grep "google-servers" /etc/pdnsd.conf 2>&1)
-      _DNS_TPL_TEST_CF=$(grep "cloudflare-servers" /etc/pdnsd.conf 2>&1)
-      _DNS_RGX_TEST=$(grep "cloudflare-servers" /root/.local.dns.IP.list 2>&1)
-      if [[ "${_DNS_TPL_TEST_CF}" =~ "cloudflare-servers" ]] \
-        && [[ "${_DNS_RGX_TEST}" =~ "cloudflare-servers" ]]; then
-        sed -i '/        label = \"cloudflare-servers\";/ {r /root/.local.dns.IP.list
-d;};' /etc/pdnsd.conf
-        wait
-      fi
-      if [[ "${_DNS_TPL_TEST_GE}" =~ "google-servers" ]] \
-        && [[ "${_DNS_RGX_TEST}" =~ "cloudflare-servers" ]]; then
-        sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
-d;};' /etc/pdnsd.conf
-        wait
-      fi
-      resolvconf -u         &> /dev/null
-      service pdnsd restart &> /dev/null
-      pdnsd-ctl empty-cache &> /dev/null
-    fi
-  fi
 }
 
 check_dns_settings() {
   if [ -e "/root/.use.default.nameservers.cnf" ]; then
     _USE_DEFAULT_DNS=YES
-    [ -e "/root/.local.dns.IP.list" ] && rm -f /root/.local.dns.IP.list
   fi
   if [ -e "/root/.use.local.nameservers.cnf" ]; then
     _USE_PROVIDER_DNS=YES
@@ -581,7 +518,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/clean-boa-env.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mv -f /etc/init.d/clean-boa-env /var/xdrago/clean-boa-env.old
-    curl ${crlGet} "${urlHmr}/conf/clean-boa-env" -o /etc/init.d/clean-boa-env
+    curl ${crlGet} "${urlHmr}/conf/var/clean-boa-env" -o /etc/init.d/clean-boa-env
     if [ -e "/etc/init.d/clean-boa-env" ]; then
       chmod 700 /etc/init.d/clean-boa-env
       chown root:root /etc/init.d/clean-boa-env
@@ -910,7 +847,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/multi.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/conf/fpm-pool-foo-multi.conf /var/xdrago/conf/fpm-pool-foo-multi.conf.old
-    curl ${crlGet} "${urlHmr}/conf/fpm-pool-foo-multi.conf" \
+    curl ${crlGet} "${urlHmr}/conf/php/fpm-pool-foo-multi.conf" \
       -o /var/xdrago/conf/fpm-pool-foo-multi.conf
     if [ -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
       chmod 644 /var/xdrago/conf/fpm-pool-foo-multi.conf
@@ -926,7 +863,7 @@ update_agents() {
     && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/single.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf.old
-    curl ${crlGet} "${urlHmr}/conf/fpm-pool-foo.conf" \
+    curl ${crlGet} "${urlHmr}/conf/php/fpm-pool-foo.conf" \
       -o /var/xdrago/conf/fpm-pool-foo.conf
     if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
       chmod 644 /var/xdrago/conf/fpm-pool-foo.conf
@@ -945,7 +882,7 @@ update_agents() {
     chgrp root ${IsCurlBin} &> /dev/null
     cp -af /etc/ImageMagick-6/policy.xml /var/xdrago/conf/etc-ImageMagick-6-policy.xml.hf-06.old
     rm -f /var/xdrago/conf/etc-ImageMagick-6-policy.xml
-    curl ${crlGet} "${urlHmr}/conf/etc-ImageMagick-6-policy.xml" \
+    curl ${crlGet} "${urlHmr}/conf/etc/etc-ImageMagick-6-policy.xml" \
       -o /var/xdrago/conf/etc-ImageMagick-6-policy.xml
     if [ -e "/var/xdrago/conf/etc-ImageMagick-6-policy.xml" ]; then
       cp -af /var/xdrago/conf/etc-ImageMagick-6-policy.xml /etc/ImageMagick-6/policy.xml
@@ -2527,7 +2464,7 @@ setup() {
   update_boa_tools
   echo
   echo "BOA Meta Installers setup completed"
-  echo "Please check INSTALL.txt and UPGRADE.txt at http://bit.ly/boa-docs"
+  echo "Please check INSTALL.md and UPGRADE.md at https://github.com/omega8cc/boa"
   echo "Bye"
   echo
 }
@@ -2602,7 +2539,7 @@ sysctl_update() {
     mkdir -p /var/backups
     cd /var/backups
     rm -f /var/backups/sysctl.conf
-    curl ${crlGet} "${urlHmr}/conf/sysctl.conf" -o sysctl.conf
+    curl ${crlGet} "${urlHmr}/conf/var/sysctl.conf" -o sysctl.conf
     if [ -e "/var/backups/sysctl.conf" ]; then
       cp -af /var/backups/sysctl.conf /etc/sysctl.conf
     fi
@@ -2743,13 +2680,15 @@ if [ `whoami` = "root" ]; then
     rmmod dccp_probe &> /dev/null
   fi
 
-  if [ -x "/usr/sbin/pdnsd" ] \
-    && [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ]; then
+  if [ -x "/usr/sbin/unbound" ] \
+    && [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     mkdir -p /etc/resolvconf/run/interface
-    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
-    resolvconf -u         &> /dev/null
-    service pdnsd restart &> /dev/null
-    pdnsd-ctl empty-cache &> /dev/null
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.unbound
+    resolvconf -u &> /dev/null
+    [ -e "/etc/resolvconf/update.d/unbound" ] && chmod -x /etc/resolvconf/update.d/unbound
+    killall -9 unbound &> /dev/null
+    service unbound restart &> /dev/null
+    unbound-control reload &> /dev/null
   fi
 
   if [ ! -e "/data/all/cpuinfo" ]; then

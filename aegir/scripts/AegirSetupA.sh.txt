@@ -174,7 +174,7 @@ if [ -e "${_ROOT}/aegir.sh" ]; then
   rm -f ${_ROOT}/AegirSetupC.sh.txt*
   rm -f ${_ROOT}/AegirSetupB.sh.txt*
   _LOCAL_STATUS="${_STATUS}"
-  if [ -e "/var/run/aegir_upgrade.pid" ]; then
+  if [ -e "/run/aegir_upgrade.pid" ]; then
     _LOCAL_STATUS=INIT
   fi
 fi
@@ -188,7 +188,7 @@ if [ `whoami` = "root" ]; then
     msg "${_STATUS} A: Aegir automated install script part A"
   fi
 else
-  msg "${_STATUS} A: FATAL ERROR: This script should be ran as a root user"
+  msg "${_STATUS} A: FATAL ERROR: This script should be run as a root user"
   msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
   touch /opt/tmp/status-AegirSetupA-FAIL
   exit 1
@@ -196,7 +196,7 @@ fi
 
 
 ###
-### Run all pre/child/post procedures
+### Run key pre/child/post procedures
 ###
 satellite_hot_sauce_check
 satellite_add_user_dirs
@@ -204,6 +204,23 @@ satellite_prepare_child_scripts
 satellite_run_pre_install
 satellite_download_for_local_build
 satellite_run_child_b
+
+
+###
+### Run accelerated tasks queue
+###
+msg "${_STATUS} A: Aegir accelerated task queue will run for 60 seconds..."
+su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ${vSet} hosting_queue_tasks_items 3"
+[ ! -e "/root/.force.queue.runner.cnf" ] && touch /root/.force.queue.runner.cnf
+bash /var/xdrago/runner.sh
+wait
+[ -e "/root/.force.queue.runner.cnf" ] && rm -f /root/.force.queue.runner.cnf
+su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ${vSet} hosting_queue_tasks_items 1"
+
+
+###
+### Run more pre/child/post procedures
+###
 satellite_if_create_local_bin
 satellite_run_post_install
 satellite_set_permissions_for_all
@@ -211,7 +228,6 @@ satellite_run_child_c
 satellite_if_legacy_permissions_fix
 satellite_child_scripts_cleanup
 satellite_if_add_ftps_lshell_access
-satellite_if_add_to_rvm_group
 satellite_if_add_update_user_symlinks
 satellite_if_add_update_user_dot_dirs
 satellite_if_read_create_pass_txt

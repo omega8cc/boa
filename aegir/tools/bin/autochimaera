@@ -31,7 +31,7 @@
 
 
 ###----------------------------------------###
-### HOW-TO: Launch auto-upgrade properly   ###
+### How To: Launch auto-upgrade properly   ###
 ###----------------------------------------###
 ###
 ###  Start with manual barracuda upgrade.
@@ -95,29 +95,20 @@ if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi
 
-tRee=pro
+tRee=dev
 export tRee="${tRee}"
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_SE="530proT00"
-_THIS_SYS=check
+_X_SE="530devT00"
+_OS_CODE=check
 #
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    ionice -c2 -n7 -p $$
-    renice 19 -p $$
-    chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
-    rm -f /var/lib/man-db/auto-update
+    [ -e "/var/lib/man-db/auto-update" ] && rm -f /var/lib/man-db/auto-update
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
   _DF_TEST=$(df -kTh / -l \
@@ -134,11 +125,16 @@ check_root() {
 check_root
 cd /root/
 
+if [ "${tRee}" = "dev" ]; then
+  touch /root/.debug-boa-installer.cnf
+  touch /root/.debug-octopus-installer.cnf
+fi
+
 ###
 ### Noticeable messages
 ###
 msg() {
-  echo "AutoChimaera [$(date +%T 2>&1)] ==> $*"
+  echo "AutoChimaera v.${tRee} [$(date +%T 2>&1)] ==> $*"
 }
 
 ###
@@ -196,26 +192,49 @@ faster_reboot() {
   msg "Faster reboot done" >> ${logAch}
 }
 
-if [ ! -e "/root/.run-to-chimaera.cnf" ] \
-  || [ ! -e "${barCnf}" ]; then
+if [ ! -e "/root/.run-to-chimaera.cnf" ]; then
+  echo "ERROR: /root/.run-to-chimaera.cnf is required!"
   exit 1
 fi
 
-_CHECK_SYS=$(lsb_release -sc 2>&1)
-if [ -e "/root/.auto-upgraded-to-chimaera.cnf" ] \
-  && [ "${_CHECK_SYS}" = "chimaera" ]; then
-  exit 1
-fi
+[ ! -e "/root/.mysql.yes.new.password.cnf" ] && touch /root/.mysql.yes.new.password.cnf
 
-check_sql_running() {
-  while [ -z "${_IS_MYSQLD_RUNNING}" ] \
-    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
-    msg "INFO: Waiting for MySQLD availability..." >> ${logAch}
-    sleep 3
-  done
+check_os_compatibility() {
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  if [ "${_OS_CODE}" = "chimaera" ] \
+    && [ ! -e "/root/.run-auto-major-os-reboot-chimaera-one.cnf" ] \
+    && [ ! -e "/root/.run-auto-major-os-reboot-chimaera-two.cnf" ]; then
+    echo "This server already runs ${_OS_DIST}/${_OS_CODE}"
+    echo "Bye!"
+    exit 1
+  elif [ "${_OS_CODE}" = "daedalus" ] || [ "${_OS_CODE}" = "bookworm" ]; then
+    echo "This server already runs newer ${_OS_DIST}/${_OS_CODE}"
+    echo "Bye!"
+    exit 1
+  fi
+  if [ "${_OS_CODE}" = "beowulf" ]; then
+    _NEXT_OS_CODE=chimaera
+  elif [ "${_OS_CODE}" = "bullseye" ]; then
+    _NEXT_OS_CODE=chimaera
+  elif [ "${_OS_CODE}" = "buster" ]; then
+    _NEXT_OS_CODE=beowulf
+  elif [ "${_OS_CODE}" = "stretch" ]; then
+    _NEXT_OS_CODE=beowulf
+  elif [ "${_OS_CODE}" = "jessie" ]; then
+    _NEXT_OS_CODE=beowulf
+  else
+    if [ ! -e "/root/.run-auto-major-os-reboot-chimaera-one.cnf" ] \
+      && [ ! -e "/root/.run-auto-major-os-reboot-chimaera-two.cnf" ]; then
+      echo "This procedure does not support ${_OS_DIST}/${_OS_CODE}"
+      echo "The minimum supported system is Debian/jessie"
+      echo "The maximum supported system is Debian/bullseye or Devuan/beowulf"
+      echo "Bye!"
+      exit 1
+    fi
+  fi
 }
-###check_sql_running
+check_os_compatibility
 
 _DB_SERIES=5.7
 _DB_SERVER_TEST=$(mysql -V 2>&1)
@@ -224,15 +243,85 @@ if [[ ! "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
   exit 1
 fi
 
+if [ -x "/opt/local/bin/killer" ]; then
+  sed -i "s/.*killer.*//gi" /etc/crontab &> /dev/null
+  echo "*/1 *   * * *   root    bash /opt/local/bin/killer" >> /etc/crontab
+fi
+
+if_remove_cloud_utils() {
+  _INITD_TEST=$(ls -la /etc/init.d/*cloud* 2>&1)
+  if [[ ! "${_INITD_TEST}" =~ "No such file" ]] \
+    || [ -e "/etc/cloud/cloud.cfg.d" ]; then
+    msg "Removing problematic cloud-utils detected on this system" >> ${logAch}
+    /usr/bin/apt-get update 2> /dev/null
+    /usr/bin/apt-get remove cloud-utils cloud-init -y --purge --auto-remove -qq 2> /dev/null
+    /usr/bin/apt-get remove cloud-image-utils cloud-guest-utils -y --purge --auto-remove -qq 2> /dev/null
+    /usr/bin/apt-get autoremove --purge -y 2> /dev/null
+    /usr/bin/apt-get autoclean -y 2> /dev/null
+    if [ -e "/etc/cloud/cloud.cfg.d" ]; then
+      mv -f /etc/cloud /var/backups/
+    fi
+  fi
+}
+if_remove_cloud_utils
+
+if_clean_boa_env() {
+  if [ ! -x "/etc/init.d/clean-boa-env" ] \
+    || [ ! -e "/root/.run-auto-update-clean-boa-env.cnf" ]; then
+    if [ -e "/etc/init.d/clean-boa-env" ]; then
+      mv -f /etc/init.d/clean-boa-env /var/backups/clean-boa-env-bak
+    fi
+    crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+    urlHmr="http://files.aegir.cc/versions/${tRee}/boa/aegir"
+    curl ${crlGet} "${urlHmr}/conf/var/clean-boa-env" -o /etc/init.d/clean-boa-env
+    if [ -e "/etc/init.d/clean-boa-env" ]; then
+      chmod 700 /etc/init.d/clean-boa-env
+      chown root:root /etc/init.d/clean-boa-env
+      update-rc.d clean-boa-env defaults &> /dev/null
+      touch /root/.run-auto-update-clean-boa-env.cnf
+    else
+      if [ -e "/var/backups/clean-boa-env-bak" ]; then
+        mv -f /var/backups/clean-boa-env-bak /etc/init.d/clean-boa-env
+      fi
+    fi
+  fi
+}
+if_clean_boa_env
+
+if_fix_dhcp() {
+  if [ -e "/var/log/daemon.log" ]; then
+    _DHCP_LOG="/var/log/daemon.log"
+  else
+    _DHCP_LOG="/var/log/syslog"
+  fi
+  if [ -e "${_DHCP_LOG}" ]; then
+    if [ `tail --lines=100 ${_DHCP_LOG} \
+      | grep --count "dhclient.*Failed"` -gt "0" ]; then
+      sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
+      wait
+      sed -i "/^$/d" /etc/csf/csf.allow
+      _DHCP_TEST=$(grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq 2>&1)
+      if [[ "${_DHCP_TEST}" =~ "port" ]]; then
+        for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+      else
+        for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+      fi
+      csf -q &> /dev/null
+    fi
+  fi
+}
+
 if [ -e "/root/.run-to-chimaera.cnf" ]; then
   echo " " >> ${logAch}
-  if [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
-    || [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
-    msg "Waiting 99 seconds for the system start scripts to finish" >> ${logAch}
-    sleep 99
+  if [ -e "/root/.run-auto-major-os-reboot-chimaera-one.cnf" ] \
+    || [ -e "/root/.run-auto-major-os-reboot-chimaera-two.cnf" ]; then
+    msg "Waiting 30 seconds for the system start scripts to finish" >> ${logAch}
+    sleep 30
+    if_fix_dhcp
   else
     msg "Automatic BOA System Major Upgrade Tool welcomes you aboard!" >> ${logAch}
     sleep 3
+    if_fix_dhcp
   fi
 fi
 
@@ -242,52 +331,46 @@ if [[ ! "${_AUTO_CHIMAERA_TEST}" =~ "_AUTO_CHIMAERA" ]]; then
 fi
 
 if [ -e "/root/.run-to-chimaera.cnf" ] \
-  && [ ! -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
-  && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
+  && [ ! -e "/root/.run-auto-major-os-reboot-chimaera-one.cnf" ] \
+  && [ ! -e "/root/.run-auto-major-os-reboot-chimaera-two.cnf" ]; then
   echo " " >> ${logAch}
   msg "Running barracuda php-idle disable to speed up upgrades" >> ${logAch}
   barracuda php-idle disable >> ${logAch}
   wait
   msg "The barracuda php-idle disable completed" >> ${logAch}
   msg "Launching standard barracuda up-${tRee} system now" >> ${logAch}
-  barracuda up-${tRee} system >> ${logAch}
+  [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
+  /opt/local/bin/barracuda up-${tRee} system >> ${logAch}
   wait
   msg "The standard barracuda up-${tRee} system completed" >> ${logAch}
   if [ -e "/root/.latest-barracuda-upgrade-finale.info" ]; then
-    _THIS_OS=$(lsb_release -si 2>&1)
-    _THIS_SYS=$(lsb_release -sc 2>&1)
-    if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
-      || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
-      _REAL_OS="Devuan"
-      _REAL_OSR="chimaera"
-    else
-      _REAL_OS="${_THIS_OS}"
-      _REAL_OSR="${_THIS_SYS}"
-    fi
-    if [ "${_REAL_OSR}" = "jessie" ]; then
+    _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+    _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+    if [ "${_OS_CODE}" = "jessie" ]; then
       echo "_JESSIE_TO_BEOWULF=YES" >> ${barCnf}
-      msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf" >> ${logAch}
-    elif [ "${_REAL_OSR}" = "stretch" ]; then
+      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> ${logAch}
+    elif [ "${_OS_CODE}" = "stretch" ]; then
       echo "_STRETCH_TO_BEOWULF=YES" >> ${barCnf}
-      msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf" >> ${logAch}
-    elif [ "${_REAL_OSR}" = "buster" ]; then
+      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> ${logAch}
+    elif [ "${_OS_CODE}" = "buster" ]; then
       echo "_BUSTER_TO_BEOWULF=YES" >> ${barCnf}
-      msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/beowulf" >> ${logAch}
-    elif [ "${_REAL_OSR}" = "bullseye" ]; then
+      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/beowulf" >> ${logAch}
+    elif [ "${_OS_CODE}" = "bullseye" ]; then
       echo "_BULLSEYE_TO_CHIMAERA=YES" >> ${barCnf}
-      msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/chimaera" >> ${logAch}
-    elif [ "${_REAL_OSR}" = "beowulf" ]; then
+      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> ${logAch}
+    elif [ "${_OS_CODE}" = "beowulf" ]; then
       echo "_BEOWULF_TO_CHIMAERA=YES" >> ${barCnf}
-      msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/chimaera" >> ${logAch}
+      msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> ${logAch}
     fi
     msg "The first stage of major OS upgrade will start now" >> ${logAch}
-    barracuda up-${tRee} system >> ${logAch}
+    [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
+    /opt/local/bin/barracuda up-${tRee} system >> ${logAch}
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       msg "The first stage of major OS upgrade completed" >> ${logAch}
       msg "The system will reboot now" >> ${logAch}
       rm -f /root/.latest-barracuda-upgrade-finale.info
-      touch /root/.run-auto-major-os-reboot-one.cnf
+      touch /root/.run-auto-major-os-reboot-chimaera-one.cnf
       update-grub >> ${logAch}
       faster_reboot
       reboot
@@ -297,25 +380,22 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
 fi
 
 if [ -e "/root/.run-to-chimaera.cnf" ] \
-  && [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
-  && [ ! -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
+  && [ -e "/root/.run-auto-major-os-reboot-chimaera-one.cnf" ] \
+  && [ ! -e "/root/.run-auto-major-os-reboot-chimaera-two.cnf" ]; then
   echo " " >> ${logAch}
   msg "Launching post-reboot barracuda up-${tRee} system" >> ${logAch}
   msg "to complete the first stage of major OS upgrade" >> ${logAch}
-  barracuda up-${tRee} system >> ${logAch}
+  [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
+  /opt/local/bin/barracuda up-${tRee} system >> ${logAch}
   wait
   msg "The post-reboot barracuda up-${tRee} system completed" >> ${logAch}
   echo " " >> ${logAch}
-  _THIS_OS=$(lsb_release -si 2>&1)
-  _THIS_SYS=$(lsb_release -sc 2>&1)
+  _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ -e "/root/.beowulf_to_chimaera_major_os_upgrade.info" ] \
     || [ -e "/root/.bullseye_to_chimaera_major_os_upgrade.info" ]; then
-    _REAL_OS="Devuan"
-    _REAL_OSR="chimaera"
     _FURTHER_UPGRADE=NO
   else
-    _REAL_OS="${_THIS_OS}"
-    _REAL_OSR="${_THIS_SYS}"
     _FURTHER_UPGRADE=YES
   fi
   if [ "${_FURTHER_UPGRADE}" = "NO" ]; then
@@ -323,29 +403,30 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
       msg "The single stage major OS upgrade completed" >> ${logAch}
       msg "The system will reboot now for a final upgrade" >> ${logAch}
       rm -f /root/.latest-barracuda-upgrade-finale.info
-      touch /root/.run-auto-major-os-reboot-two.cnf
+      touch /root/.run-auto-major-os-reboot-chimaera-two.cnf
       update-grub >> ${logAch}
       faster_reboot
       reboot
       exit 0
     fi
   fi
-  if [ "${_REAL_OSR}" = "bullseye" ] && [ "${_FURTHER_UPGRADE}" = "YES" ]; then
+  if [ "${_OS_CODE}" = "bullseye" ] && [ "${_FURTHER_UPGRADE}" = "YES" ]; then
     echo "_BULLSEYE_TO_CHIMAERA=YES" >> ${barCnf}
-    msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/chimaera" >> ${logAch}
-  elif [ "${_REAL_OSR}" = "beowulf" ] && [ "${_FURTHER_UPGRADE}" = "YES" ]; then
+    msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> ${logAch}
+  elif [ "${_OS_CODE}" = "beowulf" ] && [ "${_FURTHER_UPGRADE}" = "YES" ]; then
     echo "_BEOWULF_TO_CHIMAERA=YES" >> ${barCnf}
-    msg "Launching major upgrade from ${_REAL_OS}/${_REAL_OSR} to Devuan/chimaera" >> ${logAch}
+    msg "Launching major upgrade from ${_OS_DIST}/${_OS_CODE} to Devuan/chimaera" >> ${logAch}
   fi
   if [ "${_FURTHER_UPGRADE}" = "YES" ]; then
     msg "The second stage of major OS upgrade will start now" >> ${logAch}
-    barracuda up-${tRee} system >> ${logAch}
+    [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
+    /opt/local/bin/barracuda up-${tRee} system >> ${logAch}
     wait
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       msg "The second stage of major OS upgrade completed" >> ${logAch}
       msg "The system will reboot now" >> ${logAch}
       rm -f /root/.latest-barracuda-upgrade-finale.info
-      touch /root/.run-auto-major-os-reboot-two.cnf
+      touch /root/.run-auto-major-os-reboot-chimaera-two.cnf
       update-grub >> ${logAch}
       faster_reboot
       reboot
@@ -355,16 +436,19 @@ if [ -e "/root/.run-to-chimaera.cnf" ] \
 fi
 
 if [ -e "/root/.run-to-chimaera.cnf" ] \
-  && [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] \
-  && [ -e "/root/.run-auto-major-os-reboot-two.cnf" ]; then
+  && [ -e "/root/.run-auto-major-os-reboot-chimaera-one.cnf" ] \
+  && [ -e "/root/.run-auto-major-os-reboot-chimaera-two.cnf" ]; then
   echo " " >> ${logAch}
+  touch /root/.auto-upgraded-to-chimaera.cnf
   msg "Launching the final post-second-reboot barracuda up-${tRee} system" >> ${logAch}
-  barracuda up-${tRee} system >> ${logAch}
+  [ ! -e "/root/.allow.apparmor.cnf" ] && touch /root/.allow.apparmor.cnf
+  [ ! -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && touch /root/.force.rebuild.src.on.auto.now.cnf
+  /opt/local/bin/barracuda up-${tRee} system >> ${logAch}
   wait
   [ -e "/root/.run-to-chimaera.cnf" ] && rm -f /root/.run-to-chimaera.cnf
-  [ -e "/root/.run-auto-major-os-reboot-one.cnf" ] && rm -f /root/.run-auto-major-os-reboot-one.cnf
-  [ -e "/root/.run-auto-major-os-reboot-two.cnf" ] && rm -f /root/.run-auto-major-os-reboot-two.cnf
-  touch /root/.auto-upgraded-to-chimaera.cnf
+  [ -e "/root/.force.rebuild.src.on.auto.now.cnf" ] && rm -f /root/.force.rebuild.src.on.auto.now.cnf
+  [ -e "/root/.run-auto-major-os-reboot-chimaera-one.cnf" ] && rm -f /root/.run-auto-major-os-reboot-chimaera-one.cnf
+  [ -e "/root/.run-auto-major-os-reboot-chimaera-two.cnf" ] && rm -f /root/.run-auto-major-os-reboot-chimaera-two.cnf
   sed -i "s/^_AUTO_CHIMAERA.*//g" /root/.barracuda.cnf
   msg "The final post-reboot barracuda up-${tRee} system completed" >> ${logAch}
   msg "That's all folks!" >> ${logAch}

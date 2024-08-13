@@ -10,7 +10,7 @@ export HOME=${HOME}
 
 barCnf="/root/.barracuda.cnf"
 
-_X_SE="530proT00"
+_X_SE="530devT00"
 
 tRee=pro
 export tRee="${tRee}"
@@ -186,7 +186,7 @@ send_boa_system_report() {
       repSub="BOA Status on ${_CHECK_HOST}"
       repSub=$(echo -n ${repSub} | fmt -su -w 2500 2>&1)
       boa info report both > ${repBodFile}
-      cat ${repBodFile} | mail -e -b ${_BCC_EMAIL} -s "${repSub} at ${_NOW}" ${_RCPT_EMAIL}
+      cat ${repBodFile} | s-nail -b ${_BCC_EMAIL} -s "${repSub} at ${_NOW}" ${_RCPT_EMAIL}
       rm -f ${repBodFile}
     fi
   fi
@@ -208,7 +208,7 @@ crontab_update() {
     sed -i "s/.*du.*sql.*//gi" /etc/crontab &> /dev/null
     wait
     if [ "${_ADD_XTRA}" = "YES" ]; then
-      echo "*/19 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
@@ -274,7 +274,7 @@ crontab_cleanup() {
     sed -i "s/.*du.*sql.*//gi" /etc/crontab &> /dev/null
     wait
     if [ "${_ADD_XTRA}" = "YES" ]; then
-      echo "*/19 *   * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab

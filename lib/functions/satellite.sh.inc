@@ -1,13 +1,28 @@
 
-tRee=pro
-rlsn="BOA-5.3.0"
+tRee=dev
+rlsn="BOA-5.4.0"
 rlse="${rlsn}-${tRee}"
 export tRee="${tRee}"
 export rlsn="${rlsn}"
 
 #
+# Check key things in every proc.
+debug_proc() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    msg "DBLS: `ls -la /usr/bin/sh`"
+    msg "DBLS: `ls -la /bin/sh`"
+    msg "DBLS: `ls -la /run/octopus_install_run.pid`"
+    [ -e "/data/disk/${_USER}/.tmp/cache" ] && msg "DBLS: `ls -la /data/disk/${_USER}/.tmp/cache`"
+  fi
+}
+
+#
 # Count system CPUs.
 count_cpu() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: count_cpu"
+    debug_proc
+  fi
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
   _NPROC_TEST=$(which nproc 2>&1)
@@ -31,6 +46,10 @@ count_cpu() {
 #
 # Find correct IP.
 find_correct_ip() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: find_correct_ip"
+    debug_proc
+  fi
   if [ -e "/root/.found_correct_ipv4.cnf" ]; then
     _LOC_IP=$(cat /root/.found_correct_ipv4.cnf 2>&1)
     _LOC_IP=$(echo -n ${_LOC_IP} | tr -d "\n" 2>&1)
@@ -50,75 +69,52 @@ find_correct_ip() {
 #
 # Tune FPM workers.
 satellite_tune_fpm_workers() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_tune_fpm_workers"
+    debug_proc
+  fi
   count_cpu
-  _VM_TEST=$(uname -a 2>&1)
-  if [ -e "/proc/bean_counters" ]; then
-    _VMFAMILY="VZ"
-  elif [ -e "/root/.tg.cnf" ]; then
-    _VMFAMILY="TG"
+  # Set _PHP_FPM_WORKERS to AUTO if it is empty
+  [ -z "${_PHP_FPM_WORKERS}" ] && _PHP_FPM_WORKERS=AUTO
+  # If _PHP_FPM_WORKERS is not AUTO and not empty, then check if it is less than 1
+  if [ "${_PHP_FPM_WORKERS}" != "AUTO" ] && [ -n "${_PHP_FPM_WORKERS}" ]; then
+    if [ "${_PHP_FPM_WORKERS}" -lt 1 ] 2>/dev/null; then
+      _PHP_FPM_WORKERS=AUTO
+    fi
+  fi
+  # If _PHP_FPM_WORKERS is not AUTO, remove non-numeric characters
+  [ "${_PHP_FPM_WORKERS}" != "AUTO" ] && _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
+  if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
+    _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
   else
-    _VMFAMILY="XEN"
+    _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
   fi
-  if [[ "${_VM_TEST}" =~ "-beng" ]]; then
-    _VMFAMILY="VS"
-  fi
-  if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
-    || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
-    _VMFAMILY="AWS"
-  fi
-  _RAM=$(free -mt | grep Mem: | awk '{ print $2 }' 2>&1)
-  if [ "${_RESERVED_RAM}" -gt "0" ]; then
-    _RAM=$(( _RAM - _RESERVED_RAM ))
-  fi
-  _USE=$(( _RAM / 4 ))
-  if [ "${_USE}" -ge "512" ] && [ "${_USE}" -lt "2048" ]; then
-    if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-    else
-      _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
+  # Set _PHP_FPM_TIMEOUT to AUTO if it is empty
+  [ -z "${_PHP_FPM_TIMEOUT}" ] && _PHP_FPM_TIMEOUT=AUTO
+  # If _PHP_FPM_TIMEOUT is not AUTO and not empty, then check if it is between 60 and 180
+  if [ "${_PHP_FPM_TIMEOUT}" != "AUTO" ] && [ -n "${_PHP_FPM_TIMEOUT}" ]; then
+    # If _PHP_FPM_TIMEOUT is not AUTO and not empty, remove non-numeric characters
+    [ "${_PHP_FPM_TIMEOUT}" != "AUTO" ] && _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
+    # If _PHP_FPM_TIMEOUT is outside of the allowed range, use either min or max allowed
+    if [ "${_PHP_FPM_TIMEOUT}" -lt 60 ]; then
+      _PHP_FPM_TIMEOUT=60
+    elif [ "${_PHP_FPM_TIMEOUT}" -gt 180 ]; then
+      _PHP_FPM_TIMEOUT=180
     fi
-  elif [ "${_USE}" -ge "1024" ]; then
-    if [ "${_VMFAMILY}" = "XEN" ] || [ "${_VMFAMILY}" = "AWS" ]; then
-      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-      else
-        _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-      fi
-    elif [ "${_VMFAMILY}" = "VS" ] || [ "${_VMFAMILY}" = "TG" ]; then
-      if [ -e "/boot/grub/grub.cfg" ] \
-        || [ -e "/boot/grub/menu.lst" ] \
-        || [ -e "/root/.tg.cnf" ]; then
-        if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-        else
-          _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-        fi
-      else
-        if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-        else
-          _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-        fi
-      fi
-    else
-      if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-        _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-      else
-        _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-      fi
-    fi
-  else
-    if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-      _L_PHP_FPM_WORKERS=$(( _CPU_NR * 4 ))
-    else
-      _L_PHP_FPM_WORKERS=${_PHP_FPM_WORKERS}
-    fi
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "DEBUG: _L_PHP_FPM_WORKERS is ${_L_PHP_FPM_WORKERS}"
+    msg "DEBUG: _PHP_FPM_TIMEOUT is ${_PHP_FPM_TIMEOUT}"
   fi
 }
 
 #
 # Update web user.
 satellite_web_user_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_web_user_update"
+    debug_proc
+  fi
   isTest="${_WEB}"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ]; then
@@ -126,7 +122,9 @@ satellite_web_user_update() {
     _T_TP="/home/${_WEB}/.tmp"
     _T_TS="/home/${_WEB}/.aws"
     _T_II="${_T_HD}/php.ini"
-    ### msg "DEBUG: ${_WEB} in satellite_web_user_update A"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "DEBUG: ${_WEB} in satellite_web_user_update A"
+    fi
     if [ -d "/home/${_WEB}/" ] && [ ! -e "/home/${_WEB}/.lock" ]; then
       if [ -d "/home/${_WEB}/" ]; then
         chattr -i -R /home/${_WEB}/ &> /dev/null
@@ -139,8 +137,10 @@ satellite_web_user_update() {
       fi
       mkdir -p /home/${_WEB}/.{tmp,drush,aws}
       touch /home/${_WEB}/.lock
-      ### msg "DEBUG: ${_WEB} in satellite_web_user_update B"
-      ### msg "DEBUG: ARG1 is $1 in satellite_web_user_update B"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "DEBUG: ${_WEB} in satellite_web_user_update B"
+        msg "DEBUG: ARG1 is $1 in satellite_web_user_update B"
+      fi
       isTest="$1"
       isTest=${isTest//[^a-z0-9]/}
       if [ ! -z "${isTest}" ]; then
@@ -152,12 +152,16 @@ satellite_web_user_update() {
           fi
         else
           _T_PV=$1
-          ### msg "DEBUG: _T_PV is ${_T_PV} in satellite_web_user_update C"
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "DEBUG: _T_PV is ${_T_PV} in satellite_web_user_update C"
+          fi
         fi
       fi
       if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
         cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
-        ### msg "DEBUG: _T_PV is ${_T_PV} in satellite_web_user_update D"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "DEBUG: _T_PV is ${_T_PV} in satellite_web_user_update D"
+        fi
       else
         _PHP_V="83 82 81 80 74 73 72 71 70 56"
         for e in ${_PHP_V}; do
@@ -238,6 +242,10 @@ satellite_web_user_update() {
 #
 # Remove web user.
 satellite_remove_web_user() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_remove_web_user"
+    debug_proc
+  fi
   if [ -d "/home/${_WEB}/" ] || [ "$1" = "clean" ]; then
     chattr -i -R /home/${_WEB}/ &> /dev/null
     if [ -d "/home/${_WEB}/.drush/" ]; then
@@ -255,14 +263,22 @@ satellite_remove_web_user() {
 #
 # Add web user.
 satellite_create_web_user() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_create_web_user"
+    debug_proc
+  fi
   _T_HD="/home/${_WEB}/.drush"
   _T_II="${_T_HD}/php.ini"
   _T_ID_EXISTS=$(getent passwd ${_WEB} 2>&1)
   if [ ! -z "${_T_ID_EXISTS}" ] && [ -e "${_T_II}" ]; then
-    ### msg "DEBUG: ARG1 is $1 in satellite_create_web_user B"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "DEBUG: ARG1 is $1 in satellite_create_web_user B"
+    fi
     satellite_web_user_update "$1"
   elif [ -z "${_T_ID_EXISTS}" ] || [ ! -e "${_T_II}" ]; then
-    ### msg "DEBUG: ARG1 is $1 in satellite_create_web_user C"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "DEBUG: ARG1 is $1 in satellite_create_web_user C"
+    fi
     satellite_remove_web_user "clean"
     adduser --force-badname --system --ingroup www-data --home /home/${_WEB} ${_WEB} &> /dev/null
     satellite_web_user_update "$1"
@@ -272,77 +288,78 @@ satellite_create_web_user() {
 #
 # Tune FPM configuration.
 satellite_tune_fpm_config() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_tune_fpm_config"
+    debug_proc
+  fi
   satellite_tune_fpm_workers
+
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
-  if [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "DEBUG: _LIM_FPM is ${_LIM_FPM}"
+  fi
+
+  if [ ! -z "${_CLIENT_OPTION}" ]; then
     if [ "${_CLIENT_OPTION}" = "CLUSTER" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _LIM_FPM=96
-        _PHP_FPM_WORKERS=192
       fi
-    elif [ "${_CLIENT_OPTION}" = "LTS" ]; then
+    elif [ "${_CLIENT_OPTION}" = "LITE" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-          _LIM_FPM=32
-          _PHP_FPM_WORKERS=64
+        _LIM_FPM=32
       fi
     elif [ "${_CLIENT_OPTION}" = "PHANTOM" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _LIM_FPM=16
-        _PHP_FPM_WORKERS=32
       fi
     elif [ "${_CLIENT_OPTION}" = "POWER" ] \
       || [ "${_CLIENT_OPTION}" = "BUS" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _LIM_FPM=8
-        _PHP_FPM_WORKERS=16
       fi
     elif [ "${_CLIENT_OPTION}" = "EDGE" ] \
       || [ "${_CLIENT_OPTION}" = "SSD" ] \
       || [ "${_CLIENT_OPTION}" = "CLASSIC" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _LIM_FPM=2
-        _PHP_FPM_WORKERS=4
       fi
     elif [ "${_CLIENT_OPTION}" = "MINI" ] \
       || [ "${_CLIENT_OPTION}" = "MICRO" ]; then
       if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
         _LIM_FPM=1
-        _PHP_FPM_WORKERS=2
       fi
     else
       _LIM_FPM=2
-      _PHP_FPM_WORKERS=4
     fi
+  fi
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "DEBUG: _LIM_FPM is ${_LIM_FPM}"
+    msg "DEBUG: _CLIENT_OPTION is ${_CLIENT_OPTION}"
+  fi
+
+  if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge "1" ]; then
     if [ -e "${_ROOT}/log/cores.txt" ]; then
       _CLIENT_CORES=$(cat ${_ROOT}/log/cores.txt 2>&1)
       _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
     fi
     _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
-    if [ ! -z "${_CLIENT_CORES}" ] \
-      && [ "${_CLIENT_CORES}" -gt "0" ]; then
+    if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge "1" ]; then
       _LIM_FPM=$(( _LIM_FPM *= _CLIENT_CORES ))
-      _PHP_FPM_WORKERS=$(( _PHP_FPM_WORKERS *= _CLIENT_CORES ))
-    fi
-    if [ "${_LIM_FPM}" -gt "100" ]; then
-      _LIM_FPM=100
-    fi
-    if [ "${_PHP_FPM_WORKERS}" -gt "200" ]; then
-      _PHP_FPM_WORKERS=200
     fi
   fi
+
+  if [ "${_LIM_FPM}" -gt "100" ]; then
+    _LIM_FPM=100
+  fi
+
   _CHILD_MAX_FPM=$(( _LIM_FPM * 2 ))
-  if [ "${_PHP_FPM_WORKERS}" = "AUTO" ]; then
-    _DO_NOTHING=YES
-  else
-    _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
-    if [ ! -z "${_PHP_FPM_WORKERS}" ] \
-      && [ "${_PHP_FPM_WORKERS}" -gt "0" ]; then
-      _CHILD_MAX_FPM="${_PHP_FPM_WORKERS}"
-    fi
+
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "DEBUG: _LIM_FPM is ${_LIM_FPM}"
+    msg "DEBUG: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}"
   fi
+
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
   if [ -z "${_PHP_SV}" ]; then
     _PHP_SV=74
@@ -354,18 +371,11 @@ satellite_tune_fpm_config() {
       _PHP_OLD_SV=${e}
     fi
   done
-  if [ "${_PHP_FPM_TIMEOUT}" = "AUTO" ] || [ -z "${_PHP_FPM_TIMEOUT}" ]; then
-    _PHP_FPM_TIMEOUT=180
-  fi
-  _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
-  if [ "${_PHP_FPM_TIMEOUT}" -lt "60" ]; then
-    _PHP_FPM_TIMEOUT=60
-  fi
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
     mkdir -p /var/xdrago/conf
   fi
-  cp -af ${bldPth}/aegir/conf/fpm-pool-foo-multi.conf /var/xdrago/conf/
-  cp -af ${bldPth}/aegir/conf/fpm-pool-foo.conf /var/xdrago/conf/
+  cp -af ${bldPth}/aegir/conf/php/fpm-pool-foo-multi.conf /var/xdrago/conf/
+  cp -af ${bldPth}/aegir/conf/php/fpm-pool-foo.conf /var/xdrago/conf/
   if [ ! -z "${_PHP_FPM_TIMEOUT}" ] && [ ! -z "${_PHP_SV}" ]; then
     if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
       rm -f /opt/php*/etc/pool.d/${_USER}.conf
@@ -386,7 +396,9 @@ satellite_tune_fpm_config() {
           fi
         done
       else
-        ### msg "DEBUG: _PHP_SV is ${_PHP_SV} in satellite_create_web_user A"
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "DEBUG: _PHP_SV is ${_PHP_SV} in satellite_create_web_user A"
+        fi
         satellite_create_web_user "${_PHP_SV}"
       fi
       ### create or update special system user if needed
@@ -412,8 +424,12 @@ satellite_tune_fpm_config() {
     sed -i "s/180s/${_PHP_TO}/g" \
       /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
     wait
-    if [ ! -z "${_CHILD_MAX_FPM}" ]; then
+    if [ ! -z "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge "8" ]; then
       sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" \
+        /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+      wait
+    else
+      sed -i "s/pm.max_children =.*/pm.max_children = 8/g" \
         /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       wait
     fi
@@ -423,10 +439,10 @@ satellite_tune_fpm_config() {
     fi
     if [ ! -z "${_PHP_OLD_SV}" ] \
       && [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ]; then
-      mrun "service php${_PHP_OLD_SV}-fpm reload" &> /dev/null
+      mrun "service php${_PHP_OLD_SV}-fpm reload" 2> /dev/null
     fi
     if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ]; then
-      mrun "service php${_PHP_SV}-fpm reload" &> /dev/null
+      mrun "service php${_PHP_SV}-fpm reload" 2> /dev/null
     fi
   fi
 }
@@ -434,17 +450,21 @@ satellite_tune_fpm_config() {
 #
 # Make sure that username is unique and not restricted.
 satellite_check_id() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_check_id"
+    debug_proc
+  fi
   _ID_EXISTS=$(getent passwd ${_USER} 2>&1)
   if [ -z "${_ID_EXISTS}" ]; then
     _DO_NOTHING=YES
   elif [[ "${_ID_EXISTS}" =~ "${_USER}" ]]; then
     msg "ERROR: ${_USER} username is already taken"
     msg "Please choose different _USER"
-    clean_pid_exit
+    clean_pid_exit satellite_check_id_a
   else
     msg "ERROR: ${_USER} username check failed"
     msg "Please try different _USER"
-    clean_pid_exit
+    clean_pid_exit satellite_check_id_b
   fi
   if [ "${_USER}" = "admin" ] \
     || [ "${_USER}" = "hostmaster" ] \
@@ -454,26 +474,30 @@ satellite_check_id() {
     || [ "${_USER}" = "all" ]; then
     msg "ERROR: ${_USER} is a restricted username"
     msg "ERROR: Please choose a different _USER"
-    clean_pid_exit
+    clean_pid_exit satellite_check_id_c
   elif [[ "${_USER}" =~ "drupal" ]] \
     || [[ "${_USER}" =~ "drush" ]] \
     || [[ "${_USER}" =~ "sites" ]] \
     || [[ "${_USER}" =~ "default" ]]; then
     msg "ERROR: ${_USER} includes restricted keyword"
     msg "ERROR: Please choose a different _USER"
-    clean_pid_exit
+    clean_pid_exit satellite_check_id_d
   fi
   _REGEX="^[[:digit:]]"
   if [[ "${_USER}" =~ "${_REGEX}" ]]; then
     msg "ERROR: ${_USER} is a wrong username"
     msg "ERROR: The correct username should start with a letter, not digit"
-    clean_pid_exit
+    clean_pid_exit satellite_check_id_e
   fi
 }
 
 #
 # Enable chattr.
 enable_chattr() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: enable_chattr"
+    debug_proc
+  fi
   isTest="$1"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
@@ -499,6 +523,10 @@ enable_chattr() {
 #
 # Disable chattr.
 disable_chattr() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: disable_chattr"
+    debug_proc
+  fi
   isTest="$1"
   isTest=${isTest//[^a-z0-9]/}
   if [ ! -z "${isTest}" ] && [ -d "/home/$1/" ]; then
@@ -525,7 +553,8 @@ disable_chattr() {
 # Read or create Octopus cnf file.
 satellite_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    echo "PROC: satellite_cnf"
+    msg "PROC: satellite_cnf"
+    debug_proc
   fi
   if [ ! -e "${octCnf}" ]; then
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]] \
@@ -541,7 +570,7 @@ satellite_cnf() {
       else
         msg "EXIT: You must enter **your** valid email address"
         msg "EXIT: in the _MY_EMAIL **and** _CLIENT_EMAIL variables"
-        clean_pid_exit
+        clean_pid_exit satellite_cnf_a
       fi
     fi
     msg "INFO: Creating your ${octCnf} config file"
@@ -631,15 +660,6 @@ satellite_cnf() {
       _LD_DOM=YES
     else
       _LD_DOM=NO
-    fi
-
-    if [ -e "/root/.debug-boa-installer.cnf" ] \
-      || [ -e "/root/.debug-octopus-installer.cnf" ]; then
-      _DEBUG_MODE=YES
-      sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g" ${octCnf}
-    else
-      _DEBUG_MODE=NO
-      sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g" ${octCnf}
     fi
 
     if [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
@@ -927,7 +947,7 @@ satellite_cnf() {
       else
         msg "EXIT: You must enter **your** valid email address in the"
         msg "EXIT: _MY_EMAIL variable in the ${octCnf} file"
-        clean_pid_exit
+        clean_pid_exit satellite_cnf_b
       fi
     fi
     if [ "${_PHP_FPM_VERSION}" = "8.3" ] \
@@ -1047,7 +1067,7 @@ satellite_cnf() {
     if [ -z "${_PHP_FPM_VERSION}" ] || [ -z "${_PHP_CLI_VERSION}" ]; then
       msg "EXIT: You must specify already installed PHP version"
       msg "EXIT: in both _PHP_FPM_VERSION and _PHP_CLI_VERSION"
-      clean_pid_exit
+      clean_pid_exit satellite_cnf_c
     fi
   fi
 
@@ -1061,6 +1081,10 @@ satellite_cnf() {
 #
 # Fix advanced cron IP for cURL requests.
 satellite_fix_cron_curl() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_fix_cron_curl"
+    debug_proc
+  fi
   if [ -e "${_ROOT}/.drush/hostmaster.alias.drushrc.php" ]; then
     _THIS_HM_ROOT=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
       | grep "root'" \
@@ -1078,6 +1102,10 @@ satellite_fix_cron_curl() {
 #
 # Fix multi-IP cron access.
 satellite_fix_multi_ip_cron_access() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_fix_multi_ip_cron_access"
+    debug_proc
+  fi
   [ -e "/root/.local.IP.list.allow" ] && rm -f /root/.local.IP.list.allow
   for _IP in `cat /root/.local.IP.list \
     | cut -d '#' -f1 \
@@ -1113,6 +1141,10 @@ d;};' ${octInc}/nginx_vhost_common.conf
 #
 # Sub Force advanced Nginx configuration.
 satellite_sub_satellite_force_advanced_nginx_config() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_sub_satellite_force_advanced_nginx_config"
+    debug_proc
+  fi
   if [ -d "${octInc}" ]; then
     _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
     if [ -z "${_PHP_SV}" ]; then
@@ -1127,10 +1159,12 @@ satellite_sub_satellite_force_advanced_nginx_config() {
       _SITES_COLLATION_SQL=${_CUSTOM_COLLATION_SQL}
     fi
     if [ ! -z "${_SITES_COLLATION_SQL}" ]; then
+      sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${octSetTpl}/provision_drupal_settings_10.tpl.php &> /dev/null
       sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${octSetTpl}/provision_drupal_settings_9.tpl.php &> /dev/null
       sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${octSetTpl}/provision_drupal_settings_8.tpl.php &> /dev/null
       sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${octSetTpl}/provision_drupal_settings_7.tpl.php &> /dev/null
       sed -i "s/utf8mb4_unicode_ci/${_SITES_COLLATION_SQL}/g" ${octSetTpl}/provision_drupal_settings_6.tpl.php &> /dev/null
+      sed -i "s/utf8mb4_general_ci/${_SITES_COLLATION_SQL}/g" ${octSetTpl}/provision_drupal_settings_10.tpl.php &> /dev/null
       sed -i "s/utf8mb4_general_ci/${_SITES_COLLATION_SQL}/g" ${octSetTpl}/provision_drupal_settings_9.tpl.php &> /dev/null
       sed -i "s/utf8mb4_general_ci/${_SITES_COLLATION_SQL}/g" ${octSetTpl}/provision_drupal_settings_8.tpl.php &> /dev/null
       sed -i "s/utf8mb4_general_ci/${_SITES_COLLATION_SQL}/g" ${octSetTpl}/provision_drupal_settings_7.tpl.php &> /dev/null
@@ -1164,6 +1198,10 @@ satellite_sub_satellite_force_advanced_nginx_config() {
 #
 # Force advanced Nginx configuration.
 satellite_force_advanced_nginx_config() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_force_advanced_nginx_config"
+    debug_proc
+  fi
   satellite_sub_satellite_force_advanced_nginx_config
   if [ -e "${_ROOT}/config/includes/nginx_vhost_common.conf" ]; then
     rm -f ${_ROOT}/config/includes/nginx_advanced_include.conf
@@ -1177,6 +1215,10 @@ satellite_force_advanced_nginx_config() {
 #
 # Update local INI for PHP CLI on the Aegir Satellite Instance.
 satellite_child_b_update_ini_php_cli() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_child_b_update_ini_php_cli"
+    debug_proc
+  fi
   _U_HD="${_ROOT}/.drush"
   _U_TP="${_ROOT}/.tmp"
   _U_II="${_U_HD}/php.ini"
@@ -1259,6 +1301,10 @@ satellite_child_b_update_ini_php_cli() {
 #
 # Update php-cli for Drush.
 satellite_child_b_update_php_cli() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_child_b_update_php_cli"
+    debug_proc
+  fi
   _DRUSH_FILE="${_ROOT}/tools/drush/drush.php"
   if [ "${_PHP_CLI_VERSION}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php83\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
@@ -1292,6 +1338,10 @@ satellite_child_b_update_php_cli() {
 # Create shared dirs.
 satellite_create_shared_dirs() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_create_shared_dirs"
+    debug_proc
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Creating shared directories..."
   fi
   mkdir -p ${_D}/000/{core,modules}
@@ -1311,6 +1361,10 @@ satellite_create_shared_dirs() {
 #
 # Update o_contrib.
 satellite_o_contrib_update_global() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_o_contrib_update_global"
+    debug_proc
+  fi
 
   _RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 \
     cookie_cache_bypass_adv module_supports imageinfo_cache redis"
@@ -1418,6 +1472,10 @@ satellite_o_contrib_update_global() {
 #
 # Update o_contrib_seven.
 satellite_o_contrib_seven_update_global() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_o_contrib_seven_update_global"
+    debug_proc
+  fi
 
   _RMMODULES="session443 cookie_cache_bypass_adv agrcache speedy redis"
 
@@ -1451,7 +1509,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "adminer_bundle-7.x-1.2.tar.gz"
       fi
       if [ ! -d "${i}/o_contrib_seven/advagg" ]; then
-        get_dev_contrib "advagg-7.x-2.35.tar.gz"
+        get_dev_contrib "advagg-7.x-2.36.tar.gz"
       fi
       if [ ! -e "${i}/o_contrib_seven/autoslave/patches/update-pdo-7.22.patch" ]; then
         rm -rf ${i}/o_contrib_seven/autoslave
@@ -1474,7 +1532,7 @@ satellite_o_contrib_seven_update_global() {
         get_dev_contrib "entity_print-7.x-1.5.tar.gz"
       fi
       if [ ! -d "${i}/o_contrib_seven/entitycache" ]; then
-        get_dev_contrib "entitycache-7.x-1.5.tar.gz"
+        get_dev_contrib "entitycache-7.x-1.7.tar.gz"
       fi
       if [ ! -d "${i}/o_contrib_seven/file_resup" ]; then
         get_dev_contrib "file_resup-7.x-1.5.tar.gz"
@@ -1514,7 +1572,7 @@ satellite_o_contrib_seven_update_global() {
       fi
       if [ ! -e "${i}/o_contrib_seven/entitycache/includes/entitycache.node.inc" ]; then
         rm -rf ${i}/o_contrib_seven/entitycache
-        get_dev_contrib "entitycache-7.x-1.5.tar.gz"
+        get_dev_contrib "entitycache-7.x-1.7.tar.gz"
       fi
       if [ -d "${i}/o_contrib_seven/expire" ] \
         || [ -d "${i}/o_contrib_seven/purge" ]; then
@@ -1545,6 +1603,10 @@ satellite_o_contrib_seven_update_global() {
 #
 # Update o_contrib_eight.
 satellite_o_contrib_eight_update_global() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_o_contrib_eight_update_global"
+    debug_proc
+  fi
 
   _RMMODULES="some_foo_bar"
 
@@ -1595,6 +1657,10 @@ satellite_o_contrib_eight_update_global() {
 #
 # Update o_contrib_nine.
 satellite_o_contrib_nine_update_global() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_o_contrib_nine_update_global"
+    debug_proc
+  fi
 
   _RMMODULES="some_foo_bar"
 
@@ -1639,6 +1705,10 @@ satellite_o_contrib_nine_update_global() {
 #
 # Update o_contrib_ten.
 satellite_o_contrib_ten_update_global() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_o_contrib_ten_update_global"
+    debug_proc
+  fi
 
   _RMMODULES="some_foo_bar"
 
@@ -1682,6 +1752,10 @@ satellite_o_contrib_ten_update_global() {
 #
 # Download o_contrib_ten.
 satellite_download_o_contrib_ten() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_download_o_contrib_ten"
+    debug_proc
+  fi
   touch update-${_X_SE}-${_X_VERSION}.info
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_ten modules..."
@@ -1703,6 +1777,10 @@ satellite_download_o_contrib_ten() {
 #
 # Download o_contrib_nine.
 satellite_download_o_contrib_nine() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_download_o_contrib_nine"
+    debug_proc
+  fi
   touch update-${_X_SE}-${_X_VERSION}.info
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_nine modules..."
@@ -1731,12 +1809,16 @@ satellite_download_o_contrib_nine() {
 #
 # Download o_contrib_eight.
 satellite_download_o_contrib_eight() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_download_o_contrib_eight"
+    debug_proc
+  fi
   touch update-${_X_SE}-${_X_VERSION}.info
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_eight modules..."
   fi
   get_dev_contrib "robotstxt-8.x-1.4.tar.gz"
-  get_dev_contrib "readonlymode-8.x-1.0.tar.gz"
+  get_dev_contrib "readonlymode-8.x-1.2.tar.gz"
   if [ ! -e "${_D}/000/modules/redis_eight/ver-${_REDIS_N_VERSION}.${_X_SE}.info" ]; then
     mkdir -p ${_D}/000/modules
     cd ${_D}/000/modules
@@ -1759,6 +1841,10 @@ satellite_download_o_contrib_eight() {
 #
 # Download o_contrib_seven.
 satellite_download_o_contrib_seven() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_download_o_contrib_seven"
+    debug_proc
+  fi
   touch update-${_X_SE}-${_X_VERSION}.info
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib_seven modules..."
@@ -1773,7 +1859,7 @@ satellite_download_o_contrib_seven() {
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/edit-textarea.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/edit-textarea.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/version-noverify.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/version-noverify.php"
   # curl ${crlGet} "https://raw.githubusercontent.com/vrana/adminer/v${_ADMINER_VRN}/plugins/frames.php" -o "${_CORE}/${i}/o_contrib_seven/adminer/adminer/plugins/frames.php"
-  get_dev_contrib "advagg-7.x-2.35.tar.gz"
+  get_dev_contrib "advagg-7.x-2.36.tar.gz"
   get_dev_contrib "autoslave-7.x-1.x-dev.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.1.tar.gz"
   get_dev_contrib "boost-7.x-1.2.tar.gz"
@@ -1783,7 +1869,7 @@ satellite_download_o_contrib_seven() {
   get_dev_contrib "css_emimage-7.x-1.3.tar.gz"
   get_dev_contrib "display_cache-7.x-1.3.tar.gz"
   get_dev_contrib "entity_print-7.x-1.5.tar.gz"
-  get_dev_contrib "entitycache-7.x-1.5.tar.gz"
+  get_dev_contrib "entitycache-7.x-1.7.tar.gz"
   get_dev_contrib "esi-7.x-3.x-dev.tar.gz"
   get_dev_contrib "file_resup-7.x-1.5.tar.gz"
   get_dev_contrib "flood_control-7.x-1.1.tar.gz"
@@ -1836,6 +1922,10 @@ satellite_download_o_contrib_seven() {
 #
 # Download o_contrib_six.
 satellite_download_o_contrib_six() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_download_o_contrib_six"
+    debug_proc
+  fi
   touch update-${_X_SE}-${_X_VERSION}.info
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Downloading o_contrib modules..."
@@ -1908,6 +1998,10 @@ satellite_download_o_contrib_six() {
 #
 # Upgrade o_contrib.
 satellite_check_fix_o_contrib() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_check_fix_o_contrib"
+    debug_proc
+  fi
   if [ -e "${_CORE}/o_contrib_ten" ]; then
     if [ ! -d "${_CORE}/o_contrib_ten/redis_nine_ten" ] \
       || [ -e "${_CORE}/o_contrib_ten/advagg" ] \
@@ -2005,6 +2099,10 @@ satellite_check_fix_o_contrib() {
 #
 # Manage o_contrib.
 satellite_manage_o_contrib() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_manage_o_contrib"
+    debug_proc
+  fi
   if [ ! -e "${_CORE}/o_contrib_ten" ]; then
     mkdir -p ${_CORE}/o_contrib_ten
     cd ${_CORE}/o_contrib_ten
@@ -2052,6 +2150,10 @@ satellite_manage_o_contrib() {
 }
 
 satellite_hot_sauce_check() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_hot_sauce_check"
+    debug_proc
+  fi
   mNewC="Shared platforms code v.${_ALL_DISTRO} (new) will be created"
   mLstC="Shared platforms code v.${_LAST_ALL} will be used"
   if [ "${_HOT_SAUCE}" = "NO" ]; then
@@ -2081,6 +2183,10 @@ satellite_hot_sauce_check() {
 
 satellite_add_user_dirs() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_add_user_dirs"
+    debug_proc
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Creating directories with correct permissions"
   fi
   mkdir -p /data/u
@@ -2106,6 +2212,10 @@ satellite_add_user_dirs() {
 }
 
 satellite_prepare_child_scripts() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_prepare_child_scripts"
+    debug_proc
+  fi
   chmod 0711 ${_ROOT}
   cd ${_ROOT}
   AegirSetupB="${bldPth}/aegir/scripts/AegirSetupB.sh.txt"
@@ -2117,6 +2227,10 @@ satellite_prepare_child_scripts() {
 #
 # Generate provision backend db_passwd.
 provision_backend_dbpass_generate() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: provision_backend_dbpass_generate"
+    debug_proc
+  fi
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
@@ -2168,8 +2282,14 @@ provision_backend_dbpass_generate() {
         _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
       fi
     fi
+    isPythonTwo=$(which python2 2>&1)
+    isPythonThree=$(which python3 2>&1)
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
-    _ENC_PASS=$(python -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
+    if [ -x "${isPythonThree}" ]; then
+      _ENC_PASS=$(python3 -c "import urllib.parse; print(urllib.parse.quote('''${_ESC_PASS}'''))")
+    elif [ -x "${isPythonTwo}" ]; then
+      _ENC_PASS=$(python2 -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
+    fi
     _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
   fi
   if [ -z "${_ESC_PASS}" ] || [ "${_LEN_PASS}" -lt "9" ]; then
@@ -2206,9 +2326,6 @@ provision_backend_dbpass_generate() {
   chmod 0600 ${_L_SYS_PHP}
 
   _ESC="*.*"
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
-  fi
 
   if [ "${_THIS_DB_HOST}" = "localhost" ] \
     || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -2329,9 +2446,6 @@ EOFMYSQL
       fi
     fi
   fi
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
-  fi
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
@@ -2344,6 +2458,10 @@ EOFMYSQL
 #
 # Sync provision backend db_passwd.
 provision_backend_dbpass_sync() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: provision_backend_dbpass_sync"
+    debug_proc
+  fi
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
   find_correct_ip
@@ -2411,9 +2529,6 @@ EOFMYSQL
   else
     msg "CRIT: _ESC_PASS empty or not generated"
   fi
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
-  fi
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
@@ -2433,16 +2548,28 @@ EOFMYSQL
   fi
   wait
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "${_STATUS} A: Running hosting-dispatch..."
+    msg "${_STATUS} A: Running hosting-dispatch/hosting-tasks..."
   fi
-  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} '@hostmaster' \
-    hosting-dispatch" &> /dev/null
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-dispatch" &> /dev/null
+  wait
+  sleep 5
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force" &> /dev/null
+  wait
+  sleep 5
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force" &> /dev/null
+  wait
+  sleep 5
+  su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster hosting-tasks --force" &> /dev/null
   wait
 }
 
 #
 # Sync hostmaster frontend db_passwd.
 hostmaster_frontend_dbpass_sync() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: hostmaster_frontend_dbpass_sync"
+    debug_proc
+  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: Syncing hostmaster frontend db_passwd..."
   fi
@@ -2509,9 +2636,6 @@ ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
 EOFMYSQL
   fi
-  if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-    mkdir -p /etc/mysql/mariadb.conf.d/
-  fi
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
     _THIS_DB_PORT=6033
@@ -2522,6 +2646,10 @@ EOFMYSQL
 }
 
 satellite_run_pre_install() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_run_pre_install"
+    debug_proc
+  fi
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
   find_correct_ip
@@ -2534,9 +2662,6 @@ satellite_run_pre_install() {
     _THIS_DB_PORT=3306
   fi
   if [ "${_STATUS}" = "INIT" ]; then
-    if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-      mkdir -p /etc/mysql/mariadb.conf.d/
-    fi
     if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
       _SQL_CONNECT=127.0.0.1
       _THIS_DB_PORT=6033
@@ -2564,9 +2689,6 @@ satellite_run_pre_install() {
         chmod 0440 /etc/sudoers.d/${SCRIPT}
       fi
     done
-    if [ ! -e "/etc/mysql/mariadb.conf.d" ]; then
-      mkdir -p /etc/mysql/mariadb.conf.d/
-    fi
     if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
       _SQL_CONNECT=127.0.0.1
       _THIS_DB_PORT=6033
@@ -2583,6 +2705,10 @@ satellite_run_pre_install() {
 #
 # Download for Drush Make Local build.
 satellite_download_for_local_build() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_download_for_local_build"
+    debug_proc
+  fi
   mL="/opt/tmp/make_local"
   if [ ! -e "${mL}/hosting/hosting.info" ] \
     || [ ! -e "${mL}/hosting_custom_settings/hosting_custom_settings.info" ]; then
@@ -2614,7 +2740,7 @@ satellite_download_for_local_build() {
     get_dev_stc "admin_menu-7.x-3.0-rc7.tar.gz"
     get_dev_stc "betterlogin-7.x-1.5.tar.gz"
     get_dev_stc "ctools-7.x-1.21.tar.gz"
-    get_dev_stc "entity-7.x-1.10.tar.gz"
+    get_dev_stc "entity-7.x-1.11.tar.gz"
     get_dev_stc "libraries-7.x-2.5.tar.gz"
     get_dev_stc "module_filter-7.x-2.3.tar.gz"
     get_dev_stc "openidadmin-7.x-1.0.tar.gz"
@@ -2641,6 +2767,10 @@ satellite_download_for_local_build() {
 #
 # Run child B.
 satellite_run_child_b() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_run_child_b"
+    debug_proc
+  fi
   find_correct_ip
   _USE_RESOLVEIP="${_LOC_IP}"
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
@@ -2671,8 +2801,7 @@ satellite_run_child_b() {
         mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
         rm -rf ${_ROOT}/.drush/provision
         rm -rf ${_ROOT}/.drush/sys/provision
-        ${gCb} ${_BRANCH_PRN} \
-          https://github.com/omega8cc/provision.git \
+        ${gCb} ${_BRANCH_PRN} ${gitHub}/provision.git \
           ${_ROOT}/.drush/sys/provision &> /dev/null
         sed -i "s/files.aegir.cc/${_USE_MIR}/g" \
           ${_ROOT}/.drush/sys/provision/aegir.make &> /dev/null
@@ -2740,6 +2869,10 @@ satellite_run_child_b() {
 }
 
 satellite_if_create_local_bin() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_if_create_local_bin"
+    debug_proc
+  fi
   _L_BIN="${_ROOT}/bin"
   if [ ! -d "${_L_BIN}" ]; then
     mkdir -p ${_L_BIN}
@@ -2754,8 +2887,12 @@ satellite_if_create_local_bin() {
 #
 # Run standard post-install.
 satellite_run_post_install() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_run_post_install"
+    debug_proc
+  fi
   _LOCAL_STATUS="${_STATUS}"
-  if [ -e "/var/run/aegir_upgrade.pid" ]; then
+  if [ -e "/run/aegir_upgrade.pid" ]; then
     _LOCAL_STATUS=INIT
   fi
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
@@ -2775,9 +2912,9 @@ satellite_run_post_install() {
     rm -rf ${_HM_ROOT}/scripts
     rm -f ${_HM_ROOT}/themes/README.txt
     rm -f ${_HM_ROOT}/*.txt
-    mrun "service nginx reload" &> /dev/null
+    mrun "service nginx reload" 2> /dev/null
     cd ${_HM_ROOT}
-    cp -af /opt/tmp/boa/aegir/conf/robots.txt ./
+    cp -af /opt/tmp/boa/aegir/conf/tpl/robots.txt ./
     cd ${_ROOT}
   fi
 }
@@ -2785,6 +2922,10 @@ satellite_run_post_install() {
 #
 # Set permissions for all.
 satellite_set_permissions_for_all() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_set_permissions_for_all"
+    debug_proc
+  fi
   chmod 0755 ${_HM_ROOT} &> /dev/null
   find ${_ROOT}/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
   find ${_ROOT}/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
@@ -2815,8 +2956,12 @@ satellite_set_permissions_for_all() {
 #
 # Run child C.
 satellite_run_child_c() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_run_child_c"
+    debug_proc
+  fi
   _LOCAL_STATUS="${_STATUS}"
-  if [ -e "/var/run/aegir_upgrade.pid" ]; then
+  if [ -e "/run/aegir_upgrade.pid" ]; then
     _LOCAL_STATUS=INIT
   fi
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
@@ -2888,7 +3033,11 @@ satellite_run_child_c() {
 }
 
 satellite_if_legacy_permissions_fix() {
-  if [ -e "/var/run/aegir_upgrade.pid" ]; then
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_if_legacy_permissions_fix"
+    debug_proc
+  fi
+  if [ -e "/run/aegir_upgrade.pid" ]; then
     _PLATF_IMP=$(ls -la /data/u \
       | grep ${_USER} \
       | cut -d'>' -f2 \
@@ -2907,6 +3056,10 @@ satellite_if_legacy_permissions_fix() {
 }
 
 satellite_child_scripts_cleanup() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_child_scripts_cleanup"
+    debug_proc
+  fi
   rm -f ${_ROOT}/AegirSetupC.sh.txt*
   rm -f ${_ROOT}/AegirSetupB.sh.txt*
   rm -f ${_ROOT}/*.sh.txt
@@ -2914,6 +3067,10 @@ satellite_child_scripts_cleanup() {
 }
 
 satellite_if_add_ftps_lshell_access() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_if_add_ftps_lshell_access"
+    debug_proc
+  fi
   _USERFTP="${_USER}.ftp"
   _USERFTP_ROOT="/home/${_USERFTP}"
   if [ -e "/usr/bin/mysecureshell" ] && [ -e "/etc/ssh/sftp_config" ]; then
@@ -2983,31 +3140,20 @@ satellite_if_add_ftps_lshell_access() {
   chsh -s ${_PATH_LSHELL} ${_USERFTP} &> /dev/null
   echo >> /etc/lshell.conf
   echo "[${_USERFTP}]" >> /etc/lshell.conf
-  echo "path : ['${_ROOT}/distro', '${_ROOT}/static', \
-    '${_ROOT}/backups', '${_ROOT}/clients']" \
+  echo "path : ['/opt/user/gems/${_USERFTP}', \
+    '/opt/user/npm/${_USERFTP}', \
+    '${_ROOT}/distro', \
+    '${_ROOT}/static', \
+    '${_ROOT}/backups', \
+    '${_ROOT}/clients']" \
     | fmt -su -w 2500 >> /etc/lshell.conf
 }
 
-satellite_if_add_to_rvm_group() {
-  ###---### Add to rvm group if needed.
-  #
-  _USERFTP="${_USER}.ftp"
-  _ID_SHELLS=$(id -nG ${_USERFTP} 2>&1)
-  if [[ ! "${_ID_SHELLS}" =~ "rvm" ]]; then
-    isRvm=$(which rvm 2>&1)
-    if [ -x "${isRvm}" ]; then
-      rvmPth="${isRvm}"
-    elif [ -x "/usr/local/rvm/bin/rvm" ]; then
-      rvmPth="/usr/local/rvm/bin/rvm"
-    fi
-    if [ -x "${rvmPth}" ]; then
-      usermod -aG rvm ${_USERFTP}
-    fi
-  fi
-  _ID_SHELLS=""
-}
-
 satellite_if_add_update_user_symlinks() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_if_add_update_user_symlinks"
+    debug_proc
+  fi
   ###---### Add symlink to the sites backups.
   #
   _USERFTP="${_USER}.ftp"
@@ -3154,6 +3300,10 @@ satellite_if_add_update_user_symlinks() {
 }
 
 satellite_if_add_update_user_dot_dirs() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_if_add_update_user_dot_dirs"
+    debug_proc
+  fi
   ###---### Create .tmp dir if not exists.
   #
   _USER_TMP="${_USER_HD}/.tmp"
@@ -3199,6 +3349,10 @@ satellite_if_add_update_user_dot_dirs() {
 ###---### Reading or creating pass.txt.
 #
 satellite_if_read_create_pass_txt() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_if_read_create_pass_txt"
+    debug_proc
+  fi
   if [ "${_HM_ONLY}" = "YES" ]; then
     _DO_NOTHING=YES
   else
@@ -3262,6 +3416,10 @@ satellite_if_read_create_pass_txt() {
 ###---### Creating platforms symlinks.
 #
 satellite_if_add_update_user_platforms_symlinks() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_if_add_update_user_platforms_symlinks"
+    debug_proc
+  fi
   if [ "${_DIST_INSTALL}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} A: Creating ftp symlinks"
@@ -3272,9 +3430,13 @@ satellite_if_add_update_user_platforms_symlinks() {
 
     if [ ! -d "${_QH}" ]; then
       mkdir -p ${_QH}
-      ### msg "DEBUG: _QH is ${_QH} in action symlinks 1"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "DEBUG: _QH is ${_QH} in action symlinks 1"
+      fi
     fi
-    ### msg "DEBUG: _QH is ${_QH} in action symlinks 2"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "DEBUG: _QH is ${_QH} in action symlinks 2"
+    fi
     chown -R ${_USER}:${_USRG} /home/${_USERFTP}/platforms &> /dev/null
     chmod 700 /home/${_USERFTP} &> /dev/null
     rm -f ${_QH}/{cod,commerce,commons,openatrium,openscholar,drupal6,drupal7}
@@ -3335,6 +3497,7 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
+
     if [ -d "${_QR}/pressflow-${_SMALLCORE6_V}-dev/sites" ]; then
       if [ ! -L "${_QH}/pressflow-${_SMALLCORE6_V}-dev" ]; then
         _A="${_QR}/pressflow-${_SMALLCORE6_V}-dev/sites"
@@ -3366,6 +3529,7 @@ satellite_if_add_update_user_platforms_symlinks() {
         fi
       fi
     fi
+
     if [ -d "${_QR}/${_DRUPAL7D}/sites" ]; then
       if [ ! -L "${_QH}/${_DRUPAL7}-dev" ]; then
         _A="${_QR}/${_DRUPAL7D}/sites"
@@ -3397,6 +3561,7 @@ satellite_if_add_update_user_platforms_symlinks() {
         fi
       fi
     fi
+
     if [ -d "${_QR}/${_DRUPAL9_D}/sites" ]; then
       if [ ! -L "${_QH}/${_DRUPAL9}-dev" ]; then
         _A="${_QR}/${_DRUPAL9_D}/sites"
@@ -3428,6 +3593,7 @@ satellite_if_add_update_user_platforms_symlinks() {
         fi
       fi
     fi
+
     if [ -d "${_QR}/${_DRUPAL10_0_D}/sites" ]; then
       if [ ! -L "${_QH}/${_DRUPAL10_0}-dev" ]; then
         _A="${_QR}/${_DRUPAL10_0_D}/sites"
@@ -3459,6 +3625,7 @@ satellite_if_add_update_user_platforms_symlinks() {
         fi
       fi
     fi
+
     if [ -d "${_QR}/${_DRUPAL10_1_D}/sites" ]; then
       if [ ! -L "${_QH}/${_DRUPAL10_1}-dev" ]; then
         _A="${_QR}/${_DRUPAL10_1_D}/sites"
@@ -3490,6 +3657,7 @@ satellite_if_add_update_user_platforms_symlinks() {
         fi
       fi
     fi
+
     if [ -d "${_QR}/${_DRUPAL10_2_D}/sites" ]; then
       if [ ! -L "${_QH}/${_DRUPAL10_2}-dev" ]; then
         _A="${_QR}/${_DRUPAL10_2_D}/sites"
@@ -3521,6 +3689,71 @@ satellite_if_add_update_user_platforms_symlinks() {
         fi
       fi
     fi
+
+    if [ -d "${_QR}/${_DRUPAL10_3_D}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_3}-dev" ]; then
+        _A="${_QR}/${_DRUPAL10_3_D}/sites"
+        _B="${_QH}/${_DRUPAL10_3}-dev"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ -d "${_QR}/${_DRUPAL10_3_S}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_3}-stage" ]; then
+        _A="${_QR}/${_DRUPAL10_3_S}/sites"
+        _B="${_QH}/${_DRUPAL10_3}-stage"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ ! -d "${_QR}/${_DRUPAL10_3}" ]; then
+      if [ -d "${_QR}/${_DRUPAL10_3_P}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_3}-prod" ]; then
+          _A="${_QR}/${_DRUPAL10_3_P}/sites"
+          _B="${_QH}/${_DRUPAL10_3}-prod"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    elif [ ! -d "${_QR}/${_DRUPAL10_3_P}" ]; then
+      if [ -d "${_QR}/${_DRUPAL10_3}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_3}-prod" ]; then
+          _A="${_QR}/${_DRUPAL10_3}/sites"
+          _B="${_QH}/${_DRUPAL10_3}-prod"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    fi
+
+    if [ -d "${_QR}/${_DRUPAL10_4_D}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_4}-dev" ]; then
+        _A="${_QR}/${_DRUPAL10_4_D}/sites"
+        _B="${_QH}/${_DRUPAL10_4}-dev"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ -d "${_QR}/${_DRUPAL10_4_S}/sites" ]; then
+      if [ ! -L "${_QH}/${_DRUPAL10_4}-stage" ]; then
+        _A="${_QR}/${_DRUPAL10_4_S}/sites"
+        _B="${_QH}/${_DRUPAL10_4}-stage"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ ! -d "${_QR}/${_DRUPAL10_4}" ]; then
+      if [ -d "${_QR}/${_DRUPAL10_4_P}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_4}-prod" ]; then
+          _A="${_QR}/${_DRUPAL10_4_P}/sites"
+          _B="${_QH}/${_DRUPAL10_4}-prod"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    elif [ ! -d "${_QR}/${_DRUPAL10_4_P}" ]; then
+      if [ -d "${_QR}/${_DRUPAL10_4}/sites" ]; then
+        if [ ! -L "${_QH}/${_DRUPAL10_4}-prod" ]; then
+          _A="${_QR}/${_DRUPAL10_4}/sites"
+          _B="${_QH}/${_DRUPAL10_4}-prod"
+          ln -sfn ${_A} ${_B}
+        fi
+      fi
+    fi
+
     if [ -d "${_QR}/erpal-${_ERPAL}-${_SMALLCORE7_V}/sites" ]; then
       if [ ! -L "${_QH}/erpal-${_ERPAL}-${_SMALLCORE7_V}" ]; then
         _A="${_QR}/erpal-${_ERPAL}-${_SMALLCORE7_V}/sites"
@@ -3654,10 +3887,10 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/thunder-${_THUNDER}-${_SMALLCORE10_2_V}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_SMALLCORE10_2_V}" ]; then
-        _A="${_QR}/thunder-${_THUNDER}-${_SMALLCORE10_2_V}/docroot/sites"
-        _B="${_QH}/thunder-${_THUNDER}-${_SMALLCORE10_2_V}"
+    if [ -d "${_QR}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}" ]; then
+        _A="${_QR}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}/docroot/sites"
+        _B="${_QH}/thunder-${_THUNDER}-${_SMALLCORE10_3_V}"
         ln -sfn ${_A} ${_B}
       fi
     fi
@@ -3682,17 +3915,24 @@ satellite_if_add_update_user_platforms_symlinks() {
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/varbase-${_VARBASE}-${_SMALLCORE10_2_V}/docroot/sites" ]; then
-      if [ ! -L "${_QH}/varbase-${_VARBASE}-${_SMALLCORE10_2_V}" ]; then
-        _A="${_QR}/varbase-${_VARBASE}-${_SMALLCORE10_2_V}/docroot/sites"
-        _B="${_QH}/varbase-${_VARBASE}-${_SMALLCORE10_2_V}"
+    if [ -d "${_QR}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}" ]; then
+        _A="${_QR}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}/docroot/sites"
+        _B="${_QH}/varbase-${_VARBASE9}-${_SMALLCORE10_2_6_V}"
         ln -sfn ${_A} ${_B}
       fi
     fi
-    if [ -d "${_QR}/social-${_SOCIAL}-${_SMALLCORE10_2_V}/html/sites" ]; then
-      if [ ! -L "${_QH}/social-${_SOCIAL}-${_SMALLCORE10_2_V}" ]; then
-        _A="${_QR}/social-${_SOCIAL}-${_SMALLCORE10_2_V}/html/sites"
-        _B="${_QH}/social-${_SOCIAL}-${_SMALLCORE10_2_V}"
+    if [ -d "${_QR}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}/docroot/sites" ]; then
+      if [ ! -L "${_QH}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}" ]; then
+        _A="${_QR}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}/docroot/sites"
+        _B="${_QH}/varbase-${_VARBASE10}-${_SMALLCORE10_3_V}"
+        ln -sfn ${_A} ${_B}
+      fi
+    fi
+    if [ -d "${_QR}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}/html/sites" ]; then
+      if [ ! -L "${_QH}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}" ]; then
+        _A="${_QR}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}/html/sites"
+        _B="${_QH}/social-${_SOCIAL}-${_SMALLCORE10_2_6_V}"
         ln -sfn ${_A} ${_B}
       fi
     fi
@@ -3707,6 +3947,10 @@ satellite_if_add_update_user_platforms_symlinks() {
 }
 
 satellite_if_add_update_backend_user_dirs_files_clean() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_if_add_update_backend_user_dirs_files_clean"
+    debug_proc
+  fi
   ###---### Create ~/static dir if not exists.
   #
   if [ ! -d "${_ROOT}/static" ]; then
@@ -3813,6 +4057,10 @@ satellite_if_add_update_backend_user_dirs_files_clean() {
 ###---### Preparing setupmail.txt.
 #
 satellite_prepare_setup_email_tpl() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_prepare_setup_email_tpl"
+    debug_proc
+  fi
   if [ "${_HM_ONLY}" = "YES" ]; then
     _DO_NOTHING=YES
   else
@@ -3830,7 +4078,7 @@ satellite_prepare_setup_email_tpl() {
           mv -f ${_ROOT}/log/upgrademail.txt \
             ${_ROOT}/log/upgrademail-pre-${_THIS_CORE}.txt
         fi
-        cp -af /opt/tmp/boa/aegir/conf/upgrademail.txt ./
+        cp -af /opt/tmp/boa/aegir/conf/tpl/upgrademail.txt ./
         sed -i "s/aegir.url.name/${_DOMAIN}/g" ${_ROOT}/log/upgrademail.txt
         wait
         sed -i "s/dragon/${_USER}/g" ${_ROOT}/log/upgrademail.txt
@@ -3846,7 +4094,7 @@ satellite_prepare_setup_email_tpl() {
       fi
     elif [ "${_STATUS}" = "INIT" ]; then
      cd ${_ROOT}/log
-     cp -af /opt/tmp/boa/aegir/conf/setupmail.txt ./
+     cp -af /opt/tmp/boa/aegir/conf/tpl/setupmail.txt ./
      sed -i "s/aegir.url.name/${_DOMAIN}/g" ${_ROOT}/log/setupmail.txt
      wait
      sed -i "s/dragon/${_USER}/g" ${_ROOT}/log/setupmail.txt
@@ -3864,7 +4112,11 @@ satellite_prepare_setup_email_tpl() {
 ###---### Sending setup email.
 #
 satellite_send_welcome_email() {
-  _MAILX_TEST=$(mail -V 2>&1)
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_send_welcome_email"
+    debug_proc
+  fi
+  _MAILX_TEST=$(s-nail -V 2>&1)
   if [ "${_STATUS}" = "INIT" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} A: Sending setup email on init..."
@@ -3875,19 +4127,10 @@ satellite_send_welcome_email() {
     if [ -e "${_ROOT}/log/setupmail.txt" ] \
       || [ -e "${_ROOT}/log/legacy_setupmail.txt" ] \
       || [ -e "${_ROOT}/log/latest_setupmail.txt" ]; then
-      if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
+      if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
         cat ${_ROOT}/log/setupmail.txt \
           | sed "s/[\~]//g" \
-          | mail -a "From: ${_MY_EMAIL}" \
-          -a "Bcc: ${_MY_EMAIL}" -e -s "${_Q}" ${_AT_CLIENT_EMAIL}
-      elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-        cat ${_ROOT}/log/setupmail.txt \
-          | mail -a "From: ${_MY_EMAIL}" \
-          -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
-      else
-        cat ${_ROOT}/log/setupmail.txt \
-          | mail -r ${_MY_EMAIL} \
-          -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
+          | s-nail -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
       fi
     fi
   else
@@ -3899,34 +4142,16 @@ satellite_send_welcome_email() {
       _Q="[${_X_VERSION}] Aegir Upgrade [${_USER}]"
       echo ${TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
       if [ -e "${_ROOT}/log/upgrademail.txt" ]; then
-        if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
+        if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
           cat ${_ROOT}/log/upgrademail.txt \
             | sed "s/[\~]//g" \
-            | mail -a "From: ${_MY_EMAIL}" \
-            -a "Bcc: ${_MY_EMAIL}" -e -s "${_Q}" ${_AT_CLIENT_EMAIL}
-        elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-          cat ${_ROOT}/log/upgrademail.txt \
-            | mail -a "From: ${_MY_EMAIL}" \
-            -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
-        else
-          cat ${_ROOT}/log/upgrademail.txt \
-            | mail -r ${_MY_EMAIL} \
-            -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
+            | s-nail -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
         fi
       else
-        if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
+        if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
           cat ${_ROOT}/log/setupmail.txt \
             | sed "s/[\~]//g" \
-            | mail -a "From: ${_MY_EMAIL}" \
-            -a "Bcc: ${_MY_EMAIL}" -e -s "${_Q}" ${_AT_CLIENT_EMAIL}
-        elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-          cat ${_ROOT}/log/setupmail.txt \
-            | mail -a "From: ${_MY_EMAIL}" \
-            -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
-        else
-          cat ${_ROOT}/log/setupmail.txt \
-            | mail -r ${_MY_EMAIL} \
-            -e -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
+            | s-nail -b ${_MY_EMAIL} -s "${_Q}" ${_AT_CLIENT_EMAIL}
         fi
       fi
     else
@@ -3939,10 +4164,11 @@ satellite_send_welcome_email() {
 # Satellite start.
 satellite_make() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    echo "PROC: satellite_make"
+    msg "PROC: satellite_make"
+    debug_proc
   fi
-  export _THIS_OS=$(lsb_release -si 2>&1)
-  export _OSR=$(lsb_release -sc 2>&1)
+  export _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+  export _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   if [ -d "/data/all/000" ]; then
     if [ ! -e "/data/all/000/core-v-${_SMALLCORE6_V}.txt" ] \
       || [ ! -e "/data/all/000/core-v-${_SMALLCORE7_V}.txt" ]; then
@@ -3960,7 +4186,7 @@ satellite_make() {
     writeTo="${vBs}/${filIncO}"
   fi
 
-  _X_SE="530proT00"
+  _X_SE="530devT00"
   export _X_SE="${_X_SE}"
   export _X_VERSION="${_X_VERSION}"
 
@@ -4007,6 +4233,14 @@ satellite_make() {
   echo "_DRUPAL10_2_D=\"${_DRUPAL10_2}-dev\""         >> ${writeTo}
   echo "_DRUPAL10_2_P=\"${_DRUPAL10_2}-prod\""        >> ${writeTo}
   echo "_DRUPAL10_2_S=\"${_DRUPAL10_2}-stage\""       >> ${writeTo}
+  echo "_DRUPAL10_3=\"${_DRUPAL10_3}\""               >> ${writeTo}
+  echo "_DRUPAL10_3_D=\"${_DRUPAL10_3}-dev\""         >> ${writeTo}
+  echo "_DRUPAL10_3_P=\"${_DRUPAL10_3}-prod\""        >> ${writeTo}
+  echo "_DRUPAL10_3_S=\"${_DRUPAL10_3}-stage\""       >> ${writeTo}
+  echo "_DRUPAL10_4=\"${_DRUPAL10_4}\""               >> ${writeTo}
+  echo "_DRUPAL10_4_D=\"${_DRUPAL10_4}-dev\""         >> ${writeTo}
+  echo "_DRUPAL10_4_P=\"${_DRUPAL10_4}-prod\""        >> ${writeTo}
+  echo "_DRUPAL10_4_S=\"${_DRUPAL10_4}-stage\""       >> ${writeTo}
   echo "_DRUSH_VERSION=\"${_DRUSH_VERSION}\""         >> ${writeTo}
   echo "_ERPAL=\"${_ERPAL}\""                         >> ${writeTo}
   echo "_F_TIME=\"${_F_TIME}\""                       >> ${writeTo}
@@ -4034,7 +4268,7 @@ satellite_make() {
   echo "_OPENSCHOLAR=\"${_OPENSCHOLAR}\""             >> ${writeTo}
   echo "_OPIGNOLMS7=\"${_OPIGNOLMS7}\""               >> ${writeTo}
   echo "_OPIGNOLMS9=\"${_OPIGNOLMS9}\""               >> ${writeTo}
-  echo "_OSR=\"${_OSR}\""                             >> ${writeTo}
+  echo "_OS_CODE=\"${_OS_CODE}\""                     >> ${writeTo}
   echo "_PANOPOLY=\"${_PANOPOLY}\""                   >> ${writeTo}
   echo "_PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${writeTo}
   echo "_PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${writeTo}
@@ -4052,6 +4286,9 @@ satellite_make() {
   echo "_SMALLCORE10_0_V=\"${_SMALLCORE10_0_V}\""     >> ${writeTo}
   echo "_SMALLCORE10_1_V=\"${_SMALLCORE10_1_V}\""     >> ${writeTo}
   echo "_SMALLCORE10_2_V=\"${_SMALLCORE10_2_V}\""     >> ${writeTo}
+  echo "_SMALLCORE10_2_6_V=\"${_SMALLCORE10_2_6_V}\"" >> ${writeTo}
+  echo "_SMALLCORE10_3_V=\"${_SMALLCORE10_3_V}\""     >> ${writeTo}
+  echo "_SMALLCORE10_4_V=\"${_SMALLCORE10_4_V}\""     >> ${writeTo}
   echo "_SMALLCORE6_V=\"${_SMALLCORE6_V}\""           >> ${writeTo}
   echo "_SMALLCORE7_V=\"${_SMALLCORE7_V}\""           >> ${writeTo}
   echo "_SMALLCORE9_V=\"${_SMALLCORE9_V}\""           >> ${writeTo}
@@ -4061,7 +4298,7 @@ satellite_make() {
   echo "_T_BUILD=\"${_T_BUILD}\""                     >> ${writeTo}
   echo "_THIS_DB_HOST=\"${_THIS_DB_HOST}\""           >> ${writeTo}
   echo "_THIS_DB_PORT=\"${_THIS_DB_PORT}\""           >> ${writeTo}
-  echo "_THIS_OS=\"${_THIS_OS}\""                     >> ${writeTo}
+  echo "_OS_DIST=\"${_OS_DIST}\""                     >> ${writeTo}
   echo "_THISHTIP=\"${_THISHTIP}\""                   >> ${writeTo}
   echo "_THUNDER=\"${_THUNDER}\""                     >> ${writeTo}
   echo "_TODAY=\"${_TODAY}\""                         >> ${writeTo}
@@ -4071,7 +4308,8 @@ satellite_make() {
   echo "_USE_MIR=\"${_USE_MIR}\""                     >> ${writeTo}
   echo "_USER=\"${_USER}\""                           >> ${writeTo}
   echo "_USRG=\"${_USRG}\""                           >> ${writeTo}
-  echo "_VARBASE=\"${_VARBASE}\""                     >> ${writeTo}
+  echo "_VARBASE9=\"${_VARBASE9}\""                   >> ${writeTo}
+  echo "_VARBASE10=\"${_VARBASE10}\""                 >> ${writeTo}
   echo "_WEBG=\"${_WEBG}\""                           >> ${writeTo}
   echo "_X_SE=\"${_X_SE}\""                           >> ${writeTo}
   echo "_X_VERSION=\"${_X_VERSION}\""                 >> ${writeTo}
@@ -4120,7 +4358,7 @@ satellite_make() {
     msg "FATAL ERROR: AegirSetupA installer failed"
     msg "FATAL ERROR: Aborting Octopus installer NOW!"
     touch /opt/tmp/status-Octopus-FAIL
-    clean_pid_exit
+    clean_pid_exit satellite_make_a
   fi
 
   if [ ! -e "${_ROOT}/log/email.txt" ]; then
@@ -4186,13 +4424,14 @@ satellite_make() {
       satellite_tune_fpm_config
     fi
     satellite_force_advanced_nginx_config
-    mrun "service nginx reload" &> /dev/null
+    mrun "service nginx reload" 2> /dev/null
   fi
 }
 
 satellite_if_head_github_connection_test() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    echo "PROC: satellite_if_head_github_connection_test"
+    msg "PROC: satellite_if_head_github_connection_test"
+    debug_proc
   fi
   ###--------------------###
   if [ "${_AEGIR_VERSION}" != "static" ]; then
@@ -4207,7 +4446,7 @@ satellite_if_head_github_connection_test() {
       msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
-      clean_pid_exit
+      clean_pid_exit satellite_if_head_github_connection_test_a
     fi
     _GITHUB_TEST=$(git clone ${gitHub}/hostmaster.git \
       /opt/tmp/test-hostmaster 2>&1)
@@ -4218,7 +4457,7 @@ satellite_if_head_github_connection_test() {
       msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
-      clean_pid_exit
+      clean_pid_exit satellite_if_head_github_connection_test_b
     fi
     rm -rf /opt/tmp/test-*
   fi
@@ -4235,7 +4474,7 @@ satellite_if_head_github_connection_test() {
       msg "You may want to check https://www.githubstatus.com"
       msg "Bye"
       rm -rf /opt/tmp/test-*
-      clean_pid_exit
+      clean_pid_exit satellite_if_head_github_connection_test_c
     fi
     rm -rf /opt/tmp/test-*
   fi
@@ -4243,42 +4482,39 @@ satellite_if_head_github_connection_test() {
 
 satellite_if_sql_exception_test() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    echo "PROC: satellite_if_sql_exception_test"
+    msg "PROC: satellite_if_sql_exception_test"
+    debug_proc
   fi
   ###--------------------###
-  if [ ! -e "/var/run/mysqld/mysqld.pid" ] \
-    || [ ! -e "/var/run/mysqld/mysqld.sock" ]; then
+  if [ ! -e "/run/mysqld/mysqld.pid" ] \
+    || [ ! -e "/run/mysqld/mysqld.sock" ]; then
     msg "ALRT! ${_DB_SERVER} server not running properly!"
     msg "EXIT: We can't proceed and will exit now"
     msg "HINT: Please check ${_LOG} for more information,"
     msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
     msg "Bye"
-    clean_pid_exit
+    clean_pid_exit satellite_if_sql_exception_test_a
   fi
 }
 
 satellite_if_running_as_root_octopus() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    echo "PROC: satellite_if_running_as_root_octopus"
+    msg "PROC: satellite_if_running_as_root_octopus"
+    debug_proc
   fi
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
   else
-    msg "ERROR: This script should be ran as a root user"
+    msg "ERROR: This script should be run as a root user"
     msg "Bye"
-    clean_pid_exit
+    clean_pid_exit satellite_if_running_as_root_octopus_a
   fi
 }
 
 satellite_check_sanitize_user_name() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    echo "PROC: satellite_check_sanitize_user_name"
+    msg "PROC: satellite_check_sanitize_user_name"
+    debug_proc
   fi
   _USER=${_USER//[^a-zA-Z0-9-.]/}
   _USER=$(echo -n ${_USER} | tr A-Z a-z 2>&1)
@@ -4294,7 +4530,8 @@ satellite_check_sanitize_user_name() {
 
 satellite_if_localhost_mode_magic() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    echo "PROC: satellite_if_localhost_mode_magic"
+    msg "PROC: satellite_if_localhost_mode_magic"
+    debug_proc
   fi
   _THIS_HOST=$(uname -n 2>&1)
   if [ "${_THIS_HOST}" = "aegir.local" ] && [ ! -d "${_ROOT}" ]; then
@@ -4309,7 +4546,8 @@ satellite_if_localhost_mode_magic() {
 
 satellite_check_sanitize_domain_name() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    echo "PROC: satellite_check_sanitize_domain_name"
+    msg "PROC: satellite_check_sanitize_domain_name"
+    debug_proc
   fi
   _DOMAIN=${_DOMAIN//[^a-zA-Z0-9-.]/}
   _DOMAIN=$(echo -n ${_DOMAIN} | tr A-Z a-z 2>&1)
@@ -4319,13 +4557,14 @@ satellite_check_sanitize_domain_name() {
     msg "ERROR: ${_DOMAIN} is already used on the Aegir Master Instance"
     msg "Please change the value for _DOMAIN to make it unique"
     msg "Bye"
-    clean_pid_exit
+    clean_pid_exit satellite_check_sanitize_domain_name_a
   fi
 }
 
 satellite_detect_vm_family() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    echo "PROC: satellite_detect_vm_family"
+    msg "PROC: satellite_detect_vm_family"
+    debug_proc
   fi
   _VM_TEST=$(uname -a 2>&1)
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
@@ -4353,7 +4592,8 @@ satellite_detect_vm_family() {
 
 satellite_check_php_compatibility() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    echo "PROC: satellite_check_php_compatibility"
+    msg "PROC: satellite_check_php_compatibility"
+    debug_proc
   fi
   if [ -e "${_ROOT}/static/control/fpm.info" ]; then
     _T_FPM_VRN=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
@@ -4410,20 +4650,21 @@ satellite_check_php_compatibility() {
     msg "Please switch FPM and CLI on ${_USER} to PHP 5.6 or newer"
     msg "Then please run the octopus upgrade again"
     msg "Bye"
-    clean_pid_exit
+    clean_pid_exit satellite_check_php_compatibility_a
   fi
 }
 
 satellite_check_octopus_vs_barracuda_ver() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    echo "PROC: satellite_check_octopus_vs_barracuda_ver"
+    msg "PROC: satellite_check_octopus_vs_barracuda_ver"
+    debug_proc
   fi
   if [ ! -f "/var/log/barracuda_log.txt" ]; then
     msg "ERROR: This octopus installer can be used only when the same version"
     msg "of boa or barracuda installer was used before. Your system must be"
     msg "upgraded with barracuda installer version ${_X_VERSION} first!"
     msg "Bye"
-    clean_pid_exit
+    clean_pid_exit satellite_check_octopus_vs_barracuda_ver_a
   else
     _VERSIONS_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_VERSIONS_TEST}" =~ "${_X_VERSION}" ]]; then
@@ -4433,7 +4674,7 @@ satellite_check_octopus_vs_barracuda_ver() {
       msg "of boa or barracuda installer was used before. Your system must be"
       msg "upgraded with barracuda installer version ${_X_VERSION} first!"
       msg "Bye"
-      clean_pid_exit
+      clean_pid_exit satellite_check_octopus_vs_barracuda_ver_b
     fi
   fi
   if [ -e "${_ROOT}/log/octopus_log.txt" ]; then
@@ -4452,7 +4693,7 @@ satellite_check_octopus_vs_barracuda_ver() {
       msg "Please run 'octopus up-lts/pro/dev ${_USER} force' upgrade first!"
       msg "Display all supported commands with: octopus help"
       msg "Bye"
-      clean_pid_exit
+      clean_pid_exit satellite_check_octopus_vs_barracuda_ver_c
     fi
     if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-4." ]]; then
@@ -4469,16 +4710,17 @@ satellite_check_octopus_vs_barracuda_ver() {
       msg "Please use 'octopus up-pro ${_USER} force' to upgrade"
       msg "Display all supported commands with: octopus help"
       msg "Bye"
-      clean_pid_exit
+      clean_pid_exit satellite_check_octopus_vs_barracuda_ver_d
     fi
   fi
-  rm -f /var/run/aegir_upgrade.pid
+  rm -f /run/aegir_upgrade.pid
   rm -f /opt/tmp/testecho*
 }
 
 satellite_if_init_or_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    echo "PROC: satellite_if_init_or_upgrade"
+    msg "PROC: satellite_if_init_or_upgrade"
+    debug_proc
   fi
   if [ -d "${_ROOT}" ]; then
     msg "Octopus Satellite Instance Upgrade in progress..."
@@ -4489,11 +4731,11 @@ satellite_if_init_or_upgrade() {
       fi
       if [ -z "${_DOMAIN}" ]; then
         msg "ALERT! _DOMAIN is e-m-p-t-y, exit now"
-        clean_pid_exit
+        clean_pid_exit satellite_if_init_or_upgrade_a
       fi
       if [ -z "${_USER}" ]; then
         msg "ALERT! _USER is e-m-p-t-y, exit now"
-        clean_pid_exit
+        clean_pid_exit satellite_if_init_or_upgrade_b
       fi
       _CHECK_HOST=$(uname -n 2>&1)
       if [ -e "/root/.auto.up.cnf" ] \
@@ -4542,7 +4784,7 @@ satellite_if_init_or_upgrade() {
           msg "EXIT: ${octCnf} file and in the"
           msg "EXIT: ${_ROOT}/log/email.txt file"
           msg "EXIT: Bye (1)"
-          clean_pid_exit
+          clean_pid_exit satellite_if_init_or_upgrade_c
         fi
         _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
       fi
@@ -4561,7 +4803,7 @@ satellite_if_init_or_upgrade() {
           msg "EXIT: ${octCnf} file and in the"
           msg "EXIT: ${_ROOT}/log/email.txt file"
           msg "EXIT: Bye (2)"
-          clean_pid_exit
+          clean_pid_exit satellite_if_init_or_upgrade_d
         fi
       fi
       #
@@ -4572,7 +4814,7 @@ satellite_if_init_or_upgrade() {
         last=${list[@]: -1}
         _LASTNUM=$last
         _BASH_TEST=$(bash --version 2>&1)
-        if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+        if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
           nextnum=00$((10#0${last%%[^0-9]*} + 1))
         else
           nextnum=00$((10#${last%%[^0-9]*} + 1))
@@ -4588,7 +4830,7 @@ satellite_if_init_or_upgrade() {
         lastx=${listx[@]: -1}
         _LAST_HMR=$lastx
         _BASH_TEST=$(bash --version 2>&1)
-        if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+        if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
           nextnumx=00$((10#0${lastx%%[^0-9]*} + 1))
         else
           nextnumx=00$((10#${lastx%%[^0-9]*} + 1))
@@ -4604,7 +4846,7 @@ satellite_if_init_or_upgrade() {
         lastl=${listl[@]: -1}
         export _LAST_ALL=$lastl
         _BASH_TEST=$(bash --version 2>&1)
-        if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+        if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
           nextnuml=00$((10#0${lastl%%[^0-9]*} + 1))
         else
           nextnuml=00$((10#${lastl%%[^0-9]*} + 1))
@@ -4630,7 +4872,7 @@ satellite_if_init_or_upgrade() {
       lastl=${listl[@]: -1}
       export _LAST_ALL=$lastl
       _BASH_TEST=$(bash --version 2>&1)
-      if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+      if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
         nextnuml=00$((10#0${lastl%%[^0-9]*} + 1))
       else
         nextnuml=00$((10#${lastl%%[^0-9]*} + 1))
@@ -4643,7 +4885,8 @@ satellite_if_init_or_upgrade() {
 
 satellite_if_major_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    echo "PROC: satellite_if_major_upgrade"
+    msg "PROC: satellite_if_major_upgrade"
+    debug_proc
   fi
   if [ "${_CLIENT_OPTION}" = "POWER" ] \
     && [ -e "${_ROOT}/log/octopus_log.txt" ]; then
@@ -4656,7 +4899,7 @@ satellite_if_major_upgrade() {
         msg "ERROR: Major version upgrade requires control file:"
         msg "${_ROOT}/log/satellite_major_upgrade_ok.txt"
         msg "Bye"
-        clean_pid_exit
+        clean_pid_exit satellite_if_major_upgrade_a
       fi
     fi
   fi
@@ -4671,7 +4914,7 @@ satellite_if_major_upgrade() {
         msg "ERROR: Major version upgrade requires control file:"
         msg "${_ROOT}/log/satellite_major_upgrade_ok.txt"
         msg "Bye"
-        clean_pid_exit
+        clean_pid_exit satellite_if_major_upgrade_b
       fi
     fi
   fi
@@ -4679,7 +4922,8 @@ satellite_if_major_upgrade() {
 
 satellite_if_check_dns() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    echo "PROC: satellite_if_check_dns"
+    msg "PROC: satellite_if_check_dns"
+    debug_proc
   fi
   if [ "${_DNS_SETUP_TEST}" = "YES" ]; then
     if [ "${_VMFAMILY}" = "AWS" ]; then
@@ -4707,7 +4951,7 @@ satellite_if_check_dns() {
       msg "Please make sure you have a valid A record in your DNS"
       msg "It is also possible that DNS change didn't propagate yet"
       msg "Bye"
-      clean_pid_exit
+      clean_pid_exit satellite_if_check_dns_a
     fi
   else
     if [ -z "${_MY_OWNIP}" ]; then
@@ -4724,7 +4968,8 @@ satellite_if_check_dns() {
 
 satellite_checkpoint() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    echo "PROC: satellite_checkpoint"
+    msg "PROC: satellite_checkpoint"
+    debug_proc
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     echo " "
@@ -4763,7 +5008,7 @@ EOF
 EOF
     else
       echo " "
-      thiSys="$(lsb_release -si 2>&1)/$(lsb_release -sc 2>&1) $(uname -m 2>&1)"
+      thiSys="$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) $(uname -m 2>&1)"
       msg "This Octopus System is ${thiSys}"
       msg "This Octopus PHP FPM/CLI version is ${_PHP_FPM_VERSION}/${_PHP_CLI_VERSION}"
       msg "This Octopus URL address is ${_DOMAIN}"
@@ -4786,7 +5031,8 @@ EOF
 
 satellite_pre_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    echo "PROC: satellite_pre_cleanup"
+    msg "PROC: satellite_pre_cleanup"
+    debug_proc
   fi
   rm -f /tmp/cache.inc*
   rm -f /opt/tmp/status-*
@@ -4800,7 +5046,8 @@ satellite_pre_cleanup() {
 
 satellite_post_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    echo "PROC: satellite_post_cleanup"
+    msg "PROC: satellite_post_cleanup"
+    debug_proc
   fi
   if [ -d "/home/${_USER}.ftp/" ]; then
     enable_chattr ${_USER}.ftp
@@ -4810,13 +5057,17 @@ satellite_post_cleanup() {
   rm -rf /tmp/drush_make_tmp*
   rm -rf /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
-  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   rm -rf ${_ROOT}/.tmp/cache
-  [ -e "/var/run/manage_ltd_users.pid" ] && rm -f /var/run/manage_ltd_users.pid
-  [ -e "/var/run/manage_rvm_users.pid" ] && rm -f /var/run/manage_rvm_users.pid
+  [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
+  [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
 }
 
 satellite_letsencrypt_crt_key_copy() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_letsencrypt_crt_key_copy"
+    debug_proc
+  fi
   if [ -e "${leCrtPath}/fullchain.pem" ]; then
     crtPath="${leCrtPath}/fullchain.pem"
   elif [ -e "${leCrtPath}/cert.pem" ]; then
@@ -4852,6 +5103,10 @@ satellite_letsencrypt_crt_key_copy() {
 }
 
 satellite_letsencrypt_vhost_setup() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_letsencrypt_vhost_setup"
+    debug_proc
+  fi
   ifvHst="YES"
   leRoot="${_ROOT}/tools/le"
   leKeyJ="${leRoot}/tools/le/private_key.json"
@@ -4868,7 +5123,7 @@ satellite_letsencrypt_vhost_setup() {
         msg "${_STATUS} A: Reloading Nginx..."
         service nginx reload
       else
-        service nginx reload &> /dev/null
+        mrun "service nginx reload" 2> /dev/null
       fi
     fi
   fi
@@ -4935,7 +5190,7 @@ satellite_letsencrypt_vhost_setup() {
             msg "${_STATUS} A: Reloading Nginx..."
             service nginx reload
           else
-            service nginx reload &> /dev/null
+            mrun "service nginx reload" 2> /dev/null
           fi
         else
           msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf doesn't exist!"
@@ -4950,13 +5205,17 @@ satellite_letsencrypt_vhost_setup() {
 }
 
 satellite_log_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_log_update"
+    debug_proc
+  fi
   if [ "${_STATUS}" = "INIT" ]; then
     echo ${_F_TIME} > ${_ROOT}/log/date-init.txt
   else
     echo ${_F_TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
   fi
   _OCTOPUS_VERSION_INFO="${_F_TIME} / \
-    ${_THIS_OS}.${_OSR} $(uname -m 2>&1) \
+    ${_OS_DIST}.${_OS_CODE} $(uname -m 2>&1) \
     / Aegir ${_AEGIR_VERSION} / Octopus ${_X_VERSION} \
     / FPM ${_PHP_FPM_VERSION} / CLI ${_PHP_CLI_VERSION}"
   echo "${_OCTOPUS_VERSION_INFO}" | fmt -su -w 2500 >> \
@@ -4967,6 +5226,10 @@ satellite_log_update() {
 }
 
 satellite_batch_cleanup() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_batch_cleanup"
+    debug_proc
+  fi
   if [ "${_STATUS}" = "INIT" ]; then
     _L_ST="install"
   else
@@ -5046,6 +5309,7 @@ satellite_batch_cleanup() {
   mv -f ${_ROOT}/backups/mydropwizard-pre* ${_ROOT}/backups/system/ &> /dev/null
   mkdir -p /data/conf/arch
   mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
+  mv -f /data/conf/global/*inc-pre* /data/conf/arch/ &> /dev/null
   mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
   mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
   find ${_ROOT}/static/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null
@@ -5060,6 +5324,10 @@ satellite_batch_cleanup() {
 }
 
 satellite_display_url_finalize() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_display_url_finalize"
+    debug_proc
+  fi
   if [ "${_STATUS}" = "INIT" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _DO_NOTHING=YES
@@ -5089,7 +5357,7 @@ satellite_display_url_finalize() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} A: Starting the cron now"
     fi
-    service cron start &> /dev/null
+    mrun "service cron start" 2> /dev/null
   fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} A: All done!"
@@ -5101,6 +5369,10 @@ satellite_display_url_finalize() {
 
 
 satellite_child_b_prepare_dirs_permissions() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_child_b_prepare_dirs_permissions"
+    debug_proc
+  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} B: Creating directories with correct permissions"
   fi
@@ -5155,6 +5427,10 @@ satellite_child_b_prepare_dirs_permissions() {
 
 satellite_child_b_install_drush() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_child_b_install_drush"
+    debug_proc
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} B: Running standard installer"
   fi
   if [ "${_STATUS}" = "UPGRADE" ]; then
@@ -5194,6 +5470,10 @@ satellite_child_b_install_drush() {
 }
 
 satellite_child_b_drush_xts_cleanup() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_child_b_drush_xts_cleanup"
+    debug_proc
+  fi
   if [ "${_STATUS}" = "UPGRADE" ]; then
     mkdir -p ${_ROOT}/backups/system
     chmod 700 ${_ROOT}/backups/system
@@ -5229,6 +5509,10 @@ satellite_child_b_drush_xts_cleanup() {
 }
 
 satellite_child_b_drush_xts_install() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_child_b_drush_xts_install"
+    debug_proc
+  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "${_STATUS} B: Installing Aegir Provision backend..."
   fi
@@ -5285,6 +5569,10 @@ satellite_child_b_drush_xts_install() {
 }
 
 satellite_child_b_drush_test() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_child_b_drush_test"
+    debug_proc
+  fi
   drush8 cc drush &> /dev/null
   rm -rf ${_ROOT}/.tmp/cache
   if ${_DRUSHCMD} help | grep "^ provision-install" > /dev/null ; then
@@ -5300,8 +5588,12 @@ satellite_child_b_drush_test() {
 }
 
 satellite_child_b_aegir_build() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_child_b_aegir_build"
+    debug_proc
+  fi
   _LOCAL_STATUS="${_STATUS}"
-  if [ -e "/var/run/aegir_upgrade.pid" ]; then
+  if [ -e "/run/aegir_upgrade.pid" ]; then
     _LOCAL_STATUS=INIT
   fi
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
@@ -5386,9 +5678,19 @@ satellite_child_b_aegir_build() {
     ${_DRUSHCMD} cc drush &> /dev/null
     rm -rf ${_ROOT}/.tmp/cache
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "${_STATUS} B: Running hosting-dispatch..."
+      msg "${_STATUS} B: Running hosting-dispatch/hosting-tasks..."
     fi
-    ${_DRUSHCMD} '@hostmaster' hosting-dispatch &> /dev/null
+    ${_DRUSHCMD} @hostmaster hosting-dispatch &> /dev/null
+    wait
+    sleep 5
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
+    wait
+    sleep 5
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
+    wait
+    sleep 5
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
+    wait
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "${_STATUS} B: Testing previous install..."
@@ -5448,7 +5750,7 @@ satellite_child_b_aegir_build() {
       last=${list[@]: -1}
       _L_LAST_HMR=$last
       _BASH_TEST=$(bash --version 2>&1)
-      if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+      if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
         nextnum=00$((10#0${last%%[^0-9]*} + 1))
       else
         nextnum=00$((10#${last%%[^0-9]*} + 1))
@@ -5469,7 +5771,7 @@ satellite_child_b_aegir_build() {
         last=${list[@]: -1}
         _L_LAST_HMR=$last
         _BASH_TEST=$(bash --version 2>&1)
-        if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+        if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
           nextnum=00$((10#0${last%%[^0-9]*} + 1))
         else
           nextnum=00$((10#${last%%[^0-9]*} + 1))
@@ -5508,12 +5810,22 @@ satellite_child_b_aegir_build() {
       msg "${_STATUS} B: Fixing broken Entity module..."
       rm -rf ${_PREV_HM_ROOT}/${pthA}
       cd ${_PREV_HM_ROOT}/profiles/hostmaster/modules/contrib
-      get_dev_stc "entity-7.x-1.10.tar.gz"
+      get_dev_stc "entity-7.x-1.11.tar.gz"
       ${_DRUSHCMD} @hostmaster en entity -y
-      ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_service WHERE service LIKE 'http'"
-      ${_DRUSHCMD} @hostmaster sqlq "INSERT INTO hosting_service (nid, vid, service, type, restart_cmd, port, available) VALUES ('2', '2', 'http', 'nginx_ssl', 'sudo /etc/init.d/nginx reload', '80', '1')"
+      ${_DRUSHCMD} @hostmaster sqlq "DELETE FROM hosting_service WHERE service LIKE 'http'" &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "INSERT INTO hosting_service (nid, vid, service, type, restart_cmd, port, available) VALUES ('2', '2', 'http', 'nginx_ssl', 'sudo /etc/init.d/nginx reload', '80', '1')" &> /dev/null
       ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force
       ${_DRUSHCMD} @hostmaster hosting-dispatch
+      wait
+      sleep 5
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force
+      wait
+      sleep 5
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force
+      wait
+      sleep 5
+      ${_DRUSHCMD} @hostmaster hosting-tasks --force
+      wait
       msg "${_STATUS} B: Waiting 15 seconds..."
       sleep 15
     fi
@@ -5606,7 +5918,17 @@ satellite_child_b_aegir_build() {
         rm -rf ${_ROOT}/.tmp/cache
         ${_DRUSHCMD} @hostmaster hosting-task @server_localhost \
           verify --force &> /dev/null
-        ${_DRUSHCMD} '@hostmaster' hosting-dispatch &> /dev/null
+        ${_DRUSHCMD} @hostmaster hosting-dispatch &> /dev/null
+        wait
+        sleep 5
+        ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
+        wait
+        sleep 5
+        ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
+        wait
+        sleep 5
+        ${_DRUSHCMD} @hostmaster hosting-tasks --force &> /dev/null
+        wait
         msg "${_STATUS} B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 complete"
       fi
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_site \
@@ -5725,6 +6047,10 @@ satellite_child_b_aegir_build() {
 }
 
 satellite_child_b_aegir_health_check() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_child_b_aegir_health_check"
+    debug_proc
+  fi
   ###--------------------###
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
     _MSG_STATUS="install"
@@ -5754,6 +6080,10 @@ satellite_child_b_aegir_health_check() {
 }
 
 satellite_child_b_letsencrypt() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_child_b_letsencrypt"
+    debug_proc
+  fi
   leParams="--cron --ipv4"
   leRoot="${_ROOT}/tools/le"
   leKeyJ="${leRoot}/tools/le/private_key.json"
@@ -5792,16 +6122,12 @@ satellite_child_b_letsencrypt() {
           mv -f ${leKeyP} "${leKeyP}-prev"
         fi
         echo ""
-        msg "${_STATUS} B: Letsencrypt SSL initial mode: DEMO"
-        msg "${_STATUS} B: LE -- No real SSL certs will be generated"
-        msg "${_STATUS} B: LE -- To enable live SSL mode, please create file:"
-        msg "${_STATUS} B: LE -- ${_ROOT}/static/control/ssl-live-mode.info"
-        msg "${_STATUS} B: LE -- Then wait 5 min and run octopus forced upgrade"
+        msg "${_STATUS} B: Letsencrypt SSL mode: LIVE after auto-upgrade"
         echo ""
-        msg "${_STATUS} B: LE -- !!! WARNING"
-        msg "${_STATUS} B: LE -- Don't enable SSL option for the Hostmaster site in Aegir"
-        msg "${_STATUS} B: LE -- SSL for Aegir control panel is handled outside of it"
-        msg "${_STATUS} B: LE -- !!! WARNING"
+        msg "${_STATUS} B: LE -- !!! ATTENTION"
+        msg "${_STATUS} B: LE -- Never enable SSL for the Hostmaster site in Aegir"
+        msg "${_STATUS} B: LE -- The Hostmaster site SSL is auto-managed separately"
+        msg "${_STATUS} B: LE -- !!! ATTENTION"
         echo ""
       fi
     else
@@ -5870,6 +6196,10 @@ satellite_child_b_letsencrypt() {
 }
 
 satellite_child_b_aegir_ui_enhance() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_child_b_aegir_ui_enhance"
+    debug_proc
+  fi
   msg "${_STATUS} B: Enhancing Aegir UI, please wait..."
   mkdir -p ${_HM_ROOT}/sites/all/{modules,themes,libraries}
   mkdir -p ${_HM_ROOT}/profiles/hostmaster/modules/{aegir,contrib}
@@ -5969,7 +6299,7 @@ satellite_child_b_aegir_ui_enhance() {
       "command" => "command",
       "debug" => "none",
       "debugnotify" => "none",
-      "queue" => "queue"))'
+      "queue" => "queue"))' &> /dev/null
 
     if [ "${_LOCAL_STATUS}" = "INIT" ]; then
       pBy="Octopus System powered by Barracuda"
@@ -6000,14 +6330,14 @@ satellite_child_b_aegir_ui_enhance() {
       ### rm -f make_client.php
     else
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-        SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%'"
+        SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%'" &> /dev/null
       _THIS_HM_PLR=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
           | grep "root'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
-        SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'"
+        SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'" &> /dev/null
       _CHECK_HOST=$(uname -n 2>&1)
       if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
         || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
@@ -6032,9 +6362,9 @@ satellite_child_b_aegir_ui_enhance() {
       SET hidden=1 WHERE plid='0' AND menu_name LIKE 'user-menu'" &> /dev/null
 
     if [ "${_DEBUG_MODE}" = "YES" ]; then
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats"
-      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"  &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats" &> /dev/null
+      ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"         &> /dev/null
       ${_DRUSHCMD} @hostmaster en hosting_le -y
       ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y
       ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y
@@ -6045,12 +6375,12 @@ satellite_child_b_aegir_ui_enhance() {
       ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_format"  &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter_formats" &> /dev/null
       ${_DRUSHCMD} @hostmaster sqlq "TRUNCATE filter"         &> /dev/null
-      ${_DRUSHCMD} @hostmaster en hosting_le -y &> /dev/null
-      ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster en hosting_le -y               &> /dev/null
+      ${_DRUSHCMD} @hostmaster en hosting_le_vhost -y         &> /dev/null
       ${_DRUSHCMD} @hostmaster en hosting_custom_settings -y  &> /dev/null
       ${_DRUSHCMD} @hostmaster fr hosting_custom_settings -y  &> /dev/null
-      ${_DRUSHCMD} @hostmaster cache-clear all &> /dev/null
-      ${_DRUSHCMD} @hostmaster updb -y &> /dev/null
+      ${_DRUSHCMD} @hostmaster cache-clear all                &> /dev/null
+      ${_DRUSHCMD} @hostmaster updb -y                        &> /dev/null
     fi
 
     if [ "${_LOCAL_STATUS}" = "INIT" ]; then
@@ -6095,6 +6425,10 @@ satellite_child_b_aegir_ui_enhance() {
 }
 
 satellite_child_b_vhosts_hotfix() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_child_b_vhosts_hotfix"
+    debug_proc
+  fi
   ###---### Make sure there are no ghost or disabled vhost which still listen on IP.
   #
   rPth="${_ROOT}/config/server"
@@ -6113,6 +6447,10 @@ satellite_child_b_vhosts_hotfix() {
 }
 
 satellite_child_b_symlink_global_inc() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_child_b_symlink_global_inc"
+    debug_proc
+  fi
   cd ${_ROOT}
   if [ -e "/data/conf/global.inc" ]; then
     ln -sfn /data/conf/global.inc ${_ROOT}/config/includes/global.inc
@@ -6120,6 +6458,10 @@ satellite_child_b_symlink_global_inc() {
 }
 
 satellite_child_b_redis_enable_finalize() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: satellite_child_b_redis_enable_finalize"
+    debug_proc
+  fi
   if [ -e "${_HM_ROOT}/modules/o_contrib" ]; then
     rm -rf ${_HM_ROOT}/modules/o_contrib
   fi

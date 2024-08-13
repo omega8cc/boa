@@ -1,0 +1,96 @@
+# AppArmor profile for MySQLd starter
+# This profile restricts MySQLd starter (mysqld_safe) to essential operations only.
+
+#include <tunables/global>
+
+/usr/bin/mysqld_safe flags=(complain) {
+
+  # Include common AppArmor abstractions
+  include <abstractions/base>
+  include <abstractions/bash>
+  include <abstractions/mysql>
+  include <abstractions/nameservice>
+
+  # Capabilities needed by MySQLd starter
+  capability dac_override,
+  capability dac_read_search,
+  capability setgid,
+  capability setuid,
+  capability sys_resource,
+  capability sys_nice,
+
+  network inet stream,
+  network inet6 stream,
+
+  # Allow MySQLd to accept signal from PHP-CLI processes
+  signal (receive) peer=/opt/php*/bin/php,
+
+  # Allow mysqld_safe to read its configuration files
+  /etc/mysql/** r,
+  /etc/mysql/conf.d/** r,
+  /etc/mysql/mysql.conf.d/** r,
+  /etc/hosts.deny r,
+  /etc/hosts.allow r,
+
+  # Allow mysqld_safe to access its data directory
+  /var/lib/mysql/ rwk,
+  /var/lib/mysql/** rwk,
+
+  # Allow mysqld_safe to access its run directory
+  /run/mysqld/ r,
+  /run/mysqld/** rw,
+
+  # Allow mysqld_safe to write to its log files
+  /var/log/mysql/ r,
+  /var/log/mysql/** rw,
+
+  # Allow mysqld_safe to access tmp directories
+  /tmp/ r,
+  /tmp/** rw,
+  /var/tmp/** rw,
+
+  # Allow mysqld_safe to read system libraries
+  /lib/** mr,
+  /lib/x86_64-linux-gnu/** mr,
+  /lib64/** mr,
+  /usr/lib/** mr,
+  /usr/lib/mysql/plugin/** mr,
+  /usr/lib/x86_64-linux-gnu/** mr,
+  /usr/local/lib/** mr,
+  /usr/local/ssl/** mr,
+  /usr/local/ssl3/** mr,
+  /usr/share/mysql/** r,
+  /usr/share/zoneinfo/** r,
+
+  # Allow mysqld_safe to access /proc and /sys for necessary information
+  /proc/** r,
+  /sys/** r,
+
+  # Allow mysqld_safe to use /dev/shm for temporary storage
+  /dev/shm/** rw,
+  /dev/shm/ r,
+
+  # Allow execution of mysqld_safe
+  /usr/bin/mysqld_safe mrix,
+
+  # Allow execution of the mysql binary
+  /usr/bin/mysql mrix,
+
+  # Allow execution of the mysqld binary
+  /usr/sbin/mysqld mrix,
+
+  # Allow execution of necessary utilities
+  /bin/** mrix,
+  /usr/bin/** mrix,
+  /usr/sbin/** mrix,
+
+  # Allow reading necessary directories
+  /bin/ r,
+  /usr/bin/ r,
+  /usr/sbin/ r,
+
+  # Catchall to deny everything else
+  #deny /** rwklx,
+
+  # Site-specific additions and overrides can be added below
+}

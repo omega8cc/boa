@@ -39,7 +39,7 @@ _CGP_VRN=master-22-07-2020
 _CHIVE_VRN=1.3
 _COMPOSER_VRN=2.7.7
 _CSF_VRN=14.20
-_CURL_VRN=8.7.1
+_CURL_VRN=8.8.0
 _DB_SRC=repo.percona.com
 ###
 ###
@@ -52,14 +52,14 @@ _DRUSH_EIGHT_TEST_VRN=8.4.12-force
 ###
 _GALERA_10_VRN=10.0.37
 _GEOS_VRN=3.7.1
-_GIT_VRN=2.20.1
+_GIT_VRN=2.45.2
 _GOACCESS_VRN=1.7.1
 _ICU_LEGACY_VRN=52_2
 _ICU_MODERN_VRN=73-1
 _IMAGE_MAGICK_VRN=7.1.1-7
 _IMAGICK_OLD_VRN=3.1.2
 _IMAGICK_VRN=3.7.0
-_IONCUBE_VRN=13.0.2
+_IONCUBE_VRN=13.0.4
 _JETTY_7_VRN=7.6.17.v20150415
 _JETTY_8_VRN=8.1.17.v20150415
 _JETTY_9_VRN=9.2.16.v20160414
@@ -68,22 +68,20 @@ _JSMIN_PHP_MODERN_VRN=3.1.0
 _LIB_TIDY_VRN=5.2.0
 _LIB_YAML_VRN=0.2.5
 _LOGJ4_VRN=1.2.17
-_LSHELL_VRN=0.9.18.9
+_LSHELL_VRN=0.9.18.10
 _MAILPARSE_VRN=2.1.6
-_MARIADB_10_2_VRN=10.2.44
-_MARIADB_10_3_VRN=10.3.38
-_MARIADB_10_4_VRN=10.4.28
-_NEW_RELIC_VRN=10.21.0.11
+_NEW_RELIC_VRN=11.0.0.13
+_NODE_VRN=v22.5.0
 _MONGO_VRN=1.6.14
 _MONGODB_VRN=1.2.5
-_MSS_VRN=master-20-03-2015
+_MSS_VRN=master-29-06-2024
 _MYQUICK_VRN=0.11.5-2
 _MYSQLTUNER_VRN=1.9.4
-_NGINX_VRN=1.26.0
+_NGINX_VRN=1.27.0
 _OPENSSH_VRN=9.8p1
 _OPENSSL_LEGACY_VRN=1.0.2u
 _OPENSSL_EOL_VRN=1.1.1w
-_OPENSSL_MODERN_VRN=3.0.13
+_OPENSSL_MODERN_VRN=3.0.14
 _PDNSD_VRN=1.2.9a
 _PERCONA_5_7_VRN=5.7
 _PHP56_API=20131226
@@ -107,11 +105,13 @@ _PHP82_VRN=8.2.22
 _PHP83_API=20230831
 _PHP83_VRN=8.3.10
 _PHP_APCU=5.1.23
-_PHP_IGBINARY=3.2.15
+_PHP_IGBINARY_THREE=3.2.15
+_PHP_IGBINARY_TWO=2.0.8
 _PHP_MCRYPT=1.0.6
 _PHPREDIS_SIX_VRN=6.0.2
 _PHPREDIS_FIVE_VRN=5.3.7
 _PHPREDIS_FOUR_VRN=4.3.0
+_PHPREDIS_THREE_VRN=3.1.6
 _PURE_FTPD_VRN=1.0.51
 _PXC_VRN=1.4.16
 _REDIS_FOUR_VRN=4.0.14
@@ -125,6 +125,7 @@ _SOLR_3_VRN=3.6.2
 _SOLR_4_VRN=4.9.1
 _SOLR_7_VRN=7.7.3
 _TWIGC_VRN=1.24.0
+_UNBOUND_VRN=1.20.0
 _UPROGRESS_LEGACY_VRN=1.0.3.1
 _UPROGRESS_SEVEN_VRN=2.0.1.6
 _UPROGRESS_EIGHT_VRN=2.0.2
@@ -133,7 +134,7 @@ _WKHTMLTOX_VRN=12.6-1
 _YAML_PHP_LEGACY_VRN=1.3.2
 _YAML_PHP_SEVENO_VRN=2.1.0
 _YAML_PHP_MODERN_VRN=2.2.3
-_ZLIB_VRN=1.2.11
+_ZLIB_VRN=1.3.1
 
 
 ###
@@ -143,7 +144,7 @@ _CUSTOM_NAME="nginx"
 _DRUSH_VERSION="${_DRUSH_EIGHT_VRN}"
 _DRUSH_VERSION_TEST="${_DRUSH_EIGHT_TEST_VRN}"
 _FORCE_REDIS_RESTART=NO
-_LOC_OSR=""
+_LOC_OS_CODE=""
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
 _PURGE_ALL_THISHTIP=NO
@@ -203,8 +204,9 @@ fi
 ### Clean pid files on exit
 ###
 clean_pid_exit() {
-  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
-  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+  echo "REASON ${e} on $(date 2>&1)" >> /root/.barracuda.sh.exit.exceptions.log
+  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   service cron start &> /dev/null
   exit 1
 }
@@ -220,7 +222,7 @@ panic_exit() {
   echo " EXIT: Cannot continue"
   echo " EXIT: Bye (0)"
   echo
-  clean_pid_exit
+  clean_pid_exit panic_exit_a
 }
 
 
@@ -271,6 +273,8 @@ check_exception_mycnf
 virt_detection
 os_detection
 os_detection_minimal
+if_rebuild_src_on_major_os_upgrade
+if_long_generate_on_major_os_upgrade
 
 
 ###
@@ -280,7 +284,7 @@ if_php_idle_on_off
 
 
 ###
-### Packages update on init
+### Packages install/update on init
 ###
 sources_list_update
 basic_packages_install_on_init
@@ -289,21 +293,27 @@ run_aptitude_full_upgrade
 
 
 ###
-### Systemd cleanup on init
-###
-systemd_cleanup_on_init
-
-
-###
 ### Misc checks
 ###
 check_boa_php_compatibility
 check_boa_version
-check_github_for_aegir_head_mode
-check_db_src
-check_git_repos
+if [ "${_CHECKS_REMOTE_REPOS}" = "YES" ]; then
+  check_github_for_aegir_head_mode
+  check_db_src
+  check_git_repos
+fi
 check_ip_hostname
 check_prepare_dirs_permissions
+
+
+###
+### Turn Off AppArmor temporarily while running barracuda
+###
+if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
+  [ ! -e "/root/.turn_off_apparmor_in_octopus.cnf" ] && touch /root/.turn_off_apparmor_in_octopus.cnf
+else
+  turn_off_apparmor_temporarily
+fi
 
 
 ###
@@ -318,8 +328,9 @@ normal_sys_ctrl_mark
 ###
 ### Upgrade only Aegir Master Instance (obsolete mode)
 ###
-if_upgrade_only_aegir_master
-
+if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+  if_upgrade_only_aegir_master
+fi
 
 ###
 ### System packages install and update
@@ -329,6 +340,7 @@ if_proxysql_update
 sys_packages_install
 java_check_fix
 locales_check_fix
+find_server_city
 
 
 ###
@@ -336,6 +348,111 @@ locales_check_fix
 ###
 if [ "${_LOCALE_TEST}" = "BROKEN" ]; then
   _STRONG_PASSWORDS=NO
+fi
+
+
+###
+### Install key packages first
+###
+run_aptitude_full_upgrade
+run_aptitude_deps_install
+kill_nash
+
+
+###
+### OpenSSL modern and legacy support
+###
+_LC_SSL_CTRL="/root/.install.legacy.openssl.cnf"
+_MD_SSL_CTRL="/root/.install.modern.openssl.cnf"
+if [ "${_STATUS}" = "INIT" ] || [ ! -x "/usr/local/ssl/bin/openssl" ]; then
+  if [ -e "${_MD_SSL_CTRL}" ]; then
+    chattr -i ${_MD_SSL_CTRL}
+    rm -f ${_MD_SSL_CTRL}
+  fi
+  touch ${_LC_SSL_CTRL}
+  ssl_install_src
+  ssl_crypto_lib_fix
+fi
+if [ -x "/usr/local/ssl/bin/openssl" ]; then
+  [ -e "${_LC_SSL_CTRL}" ] && rm -f ${_LC_SSL_CTRL}
+fi
+if [ "${_STATUS}" = "INIT" ] || [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
+  if [ ! -e "${_LC_SSL_CTRL}" ]; then
+    if [ ! -e "${_MD_SSL_CTRL}" ]; then
+      touch ${_MD_SSL_CTRL}
+      chattr +i ${_MD_SSL_CTRL}
+    fi
+  fi
+elif [ "${_STATUS}" = "UPGRADE" ]; then
+  if [ ! -e "/opt/php73/bin/php" ] \
+    && [ ! -e "/opt/php72/bin/php" ] \
+    && [ ! -e "/opt/php71/bin/php" ] \
+    && [ ! -e "/opt/php70/bin/php" ] \
+    && [ ! -e "/opt/php56/bin/php" ]; then
+    if [ ! -e "${_MD_SSL_CTRL}" ] \
+      && [ ! -e "${_LC_SSL_CTRL}" ]; then
+      touch ${_MD_SSL_CTRL}
+      chattr +i ${_MD_SSL_CTRL}
+    fi
+  fi
+  if [ ! -x "/usr/local/ssl/bin/openssl" ] \
+    && [ -e "${_LC_SSL_CTRL}" ]; then
+    if [ -e "${_MD_SSL_CTRL}" ]; then
+      chattr -i ${_MD_SSL_CTRL}
+      rm -f ${_MD_SSL_CTRL}
+    fi
+  fi
+fi
+if [ -x "/usr/local/ssl/bin/openssl" ] \
+  && [ -x "/usr/local/ssl3/bin/openssl" ]; then
+  if [ ! -e "${_MD_SSL_CTRL}" ]; then
+    touch ${_MD_SSL_CTRL}
+    chattr +i ${_MD_SSL_CTRL}
+  fi
+fi
+
+
+###
+### Install OpenSSL and cURL from sources
+###
+if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+  ssl_install_src
+  ssl_crypto_lib_fix
+  curl_install_src
+fi
+
+
+###
+### Upgrade MyQuick Tools and sync OpenSSL and cURL if needed
+###
+if [ "${_STATUS}" = "UPGRADE" ] && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+  myquick_install_upgrade
+  ssl_install_src
+  ssl_crypto_lib_fix
+  curl_install_src
+fi
+
+
+###
+### Install OpenSSH from sources
+###
+if [ "${_SSH_FROM_SOURCES}" = "YES" ] && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+  if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
+    if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
+      sshd_install_src
+      sshd_armour
+    fi
+  fi
+fi
+
+
+###
+### DNS cache server
+###
+if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
+  if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+    dns_unbound_install_upgrade
+  fi
 fi
 
 
@@ -356,61 +473,31 @@ mytop_install
 ###
 ### Install other services
 ###
-run_aptitude_full_upgrade
-run_aptitude_deps_install
-kill_nash
-if [ "${_STATUS}" = "UPGRADE" ]; then
-  if [ ! -e "/root/.install.modern.openssl.cnf" ]; then
-    touch /root/.install.modern.openssl.cnf
-    chattr +i /root/.install.modern.openssl.cnf
+if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+  nginx_install_upgrade
+  nginx_initd_check
+  nginx_mime_check_fix
+  redis_install_upgrade
+  lshell_install_upgrade
+  if [ "${_STATUS}" = "INIT" ]; then
+    myquick_install_upgrade
   fi
+  magick_install_upgrade
+  php_install_deps
+  php_libs_fix
+  php_if_versions_cleanup_cnf
+  if [ "${_STATUS}" = "UPGRADE" ]; then
+    php_ioncube_check_if_update
+    php_check_if_rebuild
+  fi
+  php_install_upgrade
+  php_config_check_update
+  php_upgrade_all
+  if_install_php_newrelic
+  newrelic_check_fix
 fi
-ssl_install_src
-ssl_crypto_lib_fix
-curl_install_src
-nginx_install_upgrade
-nginx_initd_check
-redis_install_upgrade
-vnstat_install
-lshell_install_upgrade
-myquick_install_upgrade
-magick_install_upgrade
-php_install_deps
-php_libs_fix
-php_if_versions_cleanup_cnf
-if [ "${_STATUS}" = "UPGRADE" ]; then
-  php_check_if_rebuild
-fi
-php_install_upgrade
-php_config_check_update
-php_upgrade_all
-if_install_php_newrelic
-newrelic_check_fix
 smtp_check
 xdrago_install_upgrade
-
-
-###
-### Optional add-on services installed on upgrade
-###
-if [ "${_STATUS}" = "UPGRADE" ]; then
-  if_install_wkhtmltox
-  if_install_git_src
-  if_install_ffmpeg
-  if_install_bzr
-  if_install_jetty
-  if_install_adminer
-  if_install_chive
-  if_install_sqlbuddy
-  if_install_collectd
-  if_install_hhvm
-  if_install_webmin
-  if_install_bind
-  if_install_rvm
-  if_install_ftpd
-  if_install_pdnsd
-  sftp_ftps_modern_fix
-fi
 
 
 ###
@@ -422,21 +509,37 @@ drush_system_install_update
 ###
 ### Install or upgrade Aegir Master Instance
 ###
-aegir_master_install_upgrade
-aegir_bin_extra_check_fix
-nginx_mime_check_fix
-nginx_wildcard_ssl_install
-nginx_config_update_fix
-aegir_master_display_login_link
+if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+  aegir_master_install_upgrade
+  aegir_bin_extra_check_fix
+  nginx_wildcard_ssl_install
+  nginx_config_update_fix
+  aegir_master_display_login_link
+fi
 
 
 ###
-### Install OpenSSH from sources on upgrade
+### Optional add-on services
 ###
-if [ "${_SSH_FROM_SOURCES}" = "YES" ] && [ "${_STATUS}" = "UPGRADE" ]; then
-  if [ "${_THIS_OS}" = "Debian" ] || [ "${_THIS_OS}" = "Devuan" ]; then
-    sshd_install_src
-    sshd_armour
+if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
+  if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+    if_install_ftpd
+    if_install_vnstat
+    if_install_wkhtmltox
+    if_install_git_src
+    if_install_ffmpeg
+    if_install_bzr
+    if_install_solr_jetty
+    if_install_adminer
+    if_install_chive
+    if_install_sqlbuddy
+    if_install_collectd
+    if_install_hhvm
+    if_install_webmin
+    if_install_bind
+    if_install_ruby
+    if_install_node
+    sftp_ftps_modern_fix
   fi
 fi
 
@@ -448,9 +551,32 @@ csf_lfd_install_upgrade
 
 
 ###
+### Update rsyslog configuration
+###
+rsyslog_config_update
+
+
+###
+### Install or uninstall AppArmor after barracuda install and upgrade
+###
+if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
+  [ ! -e "/root/.allow.apparmor.cnf" ] && touch /root/.allow.apparmor.cnf
+  [ -e "/root/.deny.apparmor.cnf" ] && rm -f /root/.allow.apparmor.cnf
+  if [ ! -e "/root/.run-to-daedalus.cnf" ] \
+    && [ ! -e "/root/.run-to-chimaera.cnf" ] \
+    && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
+    if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
+      if_install_apparmor
+    fi
+  fi
+fi
+
+
+###
 ### Update barracuda log, tools and system settings
 ###
-umask_check_fix
+pam_umask_check_fix
+pam_many_check_fix
 avatars_check_fix
 sysctl_update
 initd_update

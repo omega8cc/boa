@@ -8,7 +8,7 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-tRee=pro
+tRee=dev
 export tRee="${tRee}"
 
 check_root() {
@@ -16,14 +16,8 @@ check_root() {
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
   _DF_TEST=$(df -kTh / -l \
@@ -47,9 +41,9 @@ if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
 fi
 
-_X_SE="530proT00"
+_X_SE="530devT00"
 _WEBG=www-data
-_OSR=$(lsb_release -sc 2>&1)
+_OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 if [ -e "/root/.install.modern.openssl.cnf" ] \
   && [ -x "/usr/local/ssl3/bin/openssl" ]; then
   _SSL_BINARY=/usr/local/ssl3/bin/openssl
@@ -78,10 +72,10 @@ vSet="variable-set --always-set"
 
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -sc 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
-    if [ "${e}" = "${_THIS_RV}" ]; then
+    if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
@@ -89,8 +83,8 @@ os_detection_minimal() {
 os_detection_minimal
 
 apt_clean_update() {
-  apt-get clean -qq 2> /dev/null
-  rm -rf /var/lib/apt/lists/* &> /dev/null
+  #apt-get clean -qq 2> /dev/null
+  #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
@@ -102,7 +96,8 @@ find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install netcat ${aptYesUnth} &> /dev/null
+    apt-get install netcat ${aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
     wait
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -657,83 +652,9 @@ send_shutdown_notice() {
   else
     _BCC_EMAIL="${_MY_EMAIL}"
   fi
-  _MAILX_TEST=$(mail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
-    -s "ALERT! Shutdown of Hacked ${Dom} Site on ${_CHECK_HOST}" \
-    ${_ALRT_EMAIL}
-Hello,
-
-Because you have not fixed this site despite several alerts
-sent before, this site is scheduled for automated shutdown
-to prevent further damage for the site owner and visitors.
-
-Once the site is disabled, the only way to re-enable it again
-is to run the Verify task in your Aegir control panel.
-
-But if you will enable the site and not fix it immediately,
-it will be shut down automatically again.
-
-Common signatures of an attack which triggered this alert:
-
-${_DETECTED}
-
-The platform root directory for this site is:
-
-  ${Plr}
-
-The system hostname is:
-
-  ${_CHECK_HOST}
-
-To learn more on what happened, how it was possible and
-how to survive #Drupageddon, please read:
-
-  https://omega8.cc/drupageddon-psa-2014-003-342
-
---
-This email has been sent by your Aegir automatic system monitor.
-
-EOF
-  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
-    -s "ALERT! Shutdown of Hacked ${Dom} Site on ${_CHECK_HOST}" \
-    ${_ALRT_EMAIL}
-Hello,
-
-Because you have not fixed this site despite several alerts
-sent before, this site is scheduled for automated shutdown
-to prevent further damage for the site owner and visitors.
-
-Once the site is disabled, the only way to re-enable it again
-is to run the Verify task in your Aegir control panel.
-
-But if you will enable the site and not fix it immediately,
-it will be shut down automatically again.
-
-Common signatures of an attack which triggered this alert:
-
-${_DETECTED}
-
-The platform root directory for this site is:
-
-  ${Plr}
-
-The system hostname is:
-
-  ${_CHECK_HOST}
-
-To learn more on what happened, how it was possible and
-how to survive #Drupageddon, please read:
-
-  https://omega8.cc/drupageddon-psa-2014-003-342
-
---
-This email has been sent by your Aegir automatic system monitor.
-
-EOF
-  else
-  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+  _MAILX_TEST=$(s-nail -V 2>&1)
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
+  cat <<EOF | s-nail -b ${_BCC_EMAIL} \
     -s "ALERT! Shutdown of Hacked ${Dom} Site on ${_CHECK_HOST}" \
     ${_ALRT_EMAIL}
 Hello,
@@ -794,107 +715,9 @@ send_hacked_alert() {
   else
     _BCC_EMAIL="${_MY_EMAIL}"
   fi
-  _MAILX_TEST=$(mail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
-    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} has been HACKED!" \
-    ${_ALRT_EMAIL}
-Hello,
-
-Our monitoring detected that the site ${Dom} has been hacked!
-
-Common signatures of an attack which triggered this alert:
-
-${_DETECTED}
-
-The platform root directory for this site is:
-
-  ${Plr}
-
-The system hostname is:
-
-  ${_CHECK_HOST}
-
-To learn more on what happened, how it was possible and
-how to survive #Drupageddon, please read:
-
-  https://omega8.cc/drupageddon-psa-2014-003-342
-
-We have restarted these daily checks on May 7, 2016 to make sure that
-no one stays on some too old Drupal version with many known security
-vulnerabilities.
-
-You will receive Drupageddon alert for every site with outdated and
-not secure codebase, even if it was not affected by Drupageddon bug
-directly.
-
-Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-4.1.3. As a bonus, you will be able to speed up your sites
-considerably by switching PHP-FPM to 7.0
-
-We recommend to follow this upgrade how-to:
-
-  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
-
-The how-to for PHP-FPM version switch can be found at:
-
-  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
-
---
-This email has been sent by your Aegir automatic system monitor.
-
-EOF
-  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
-    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} has been HACKED!" \
-    ${_ALRT_EMAIL}
-Hello,
-
-Our monitoring detected that the site ${Dom} has been hacked!
-
-Common signatures of an attack which triggered this alert:
-
-${_DETECTED}
-
-The platform root directory for this site is:
-
-  ${Plr}
-
-The system hostname is:
-
-  ${_CHECK_HOST}
-
-To learn more on what happened, how it was possible and
-how to survive #Drupageddon, please read:
-
-  https://omega8.cc/drupageddon-psa-2014-003-342
-
-We have restarted these daily checks on May 7, 2016 to make sure that
-no one stays on some too old Drupal version with many known security
-vulnerabilities.
-
-You will receive Drupageddon alert for every site with outdated and
-not secure codebase, even if it was not affected by Drupageddon bug
-directly.
-
-Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-4.1.3. As a bonus, you will be able to speed up your sites
-considerably by switching PHP-FPM to 7.0
-
-We recommend to follow this upgrade how-to:
-
-  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
-
-The how-to for PHP-FPM version switch can be found at:
-
-  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
-
---
-This email has been sent by your Aegir automatic system monitor.
-
-EOF
-  else
-  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+  _MAILX_TEST=$(s-nail -V 2>&1)
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
+  cat <<EOF | s-nail -b ${_BCC_EMAIL} \
     -s "URGENT: The ${Dom} site on ${_CHECK_HOST} has been HACKED!" \
     ${_ALRT_EMAIL}
 Hello,
@@ -967,131 +790,9 @@ send_core_alert() {
   else
     _BCC_EMAIL="${_MY_EMAIL}"
   fi
-  _MAILX_TEST=$(mail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "GNU Mailutils" ]]; then
-  cat <<EOF | mail -e -a "From: ${_MY_EMAIL}" -a "Bcc: ${_BCC_EMAIL}" \
-    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core!" \
-    ${_ALRT_EMAIL}
-Hello,
-
-Our monitoring detected that this site runs on not secure Drupal core:
-
-  ${Dom}
-
-The Drupageddon check result which triggered this alert:
-
-${_DETECTED}
-
-The platform root directory for this site is:
-
-  ${Plr}
-
-The system hostname is:
-
-  ${_CHECK_HOST}
-
-Does it mean that your site is vulnerable to Drupageddon attack, recently
-made famous again by Panama Papers leak?
-
-  https://www.drupal.org/node/2718467
-
-It depends on the Drupal core version you are using, and if it has been
-patched already to close the known attack vectors. You can find more
-details on our website at:
-
-  https://omega8.cc/drupageddon-psa-2014-003-342
-
-Even if the Drupal core version used in this site is not vulnerable
-to Drupageddon attack, it is still vulnerable to other attacks,
-because you have missed Drupal core security release(s).
-
-We have restarted these daily checks on May 7, 2016 to make sure that
-no one stays on some too old Drupal version with many known security
-vulnerabilities.
-
-You will receive Drupageddon alert for every site with outdated and
-not secure codebase, even if it was not affected by Drupageddon bug
-directly.
-
-Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-4.1.3. As a bonus, you will be able to speed up your sites
-considerably by switching PHP-FPM to 7.0
-
-We recommend to follow this upgrade how-to:
-
-  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
-
-The how-to for PHP-FPM version switch can be found at:
-
-  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
-
---
-This email has been sent by your Aegir automatic system monitor.
-
-EOF
-  elif [[ "${_MAILX_TEST}" =~ "invalid" ]]; then
-  cat <<EOF | mail -a "From: ${_MY_EMAIL}" -e -b ${_BCC_EMAIL} \
-    -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core!" \
-    ${_ALRT_EMAIL}
-Hello,
-
-Our monitoring detected that this site runs on not secure Drupal core:
-
-  ${Dom}
-
-The Drupageddon check result which triggered this alert:
-
-${_DETECTED}
-
-The platform root directory for this site is:
-
-  ${Plr}
-
-The system hostname is:
-
-  ${_CHECK_HOST}
-
-Does it mean that your site is vulnerable to Drupageddon attack, recently
-made famous again by Panama Papers leak?
-
-  https://www.drupal.org/node/2718467
-
-It depends on the Drupal core version you are using, and if it has been
-patched already to close the known attack vectors. You can find more
-details on our website at:
-
-  https://omega8.cc/drupageddon-psa-2014-003-342
-
-Even if the Drupal core version used in this site is not vulnerable
-to Drupageddon attack, it is still vulnerable to other attacks,
-because you have missed Drupal core security release(s).
-
-We have restarted these daily checks on May 7, 2016 to make sure that
-no one stays on some too old Drupal version with many known security
-vulnerabilities.
-
-You will receive Drupageddon alert for every site with outdated and
-not secure codebase, even if it was not affected by Drupageddon bug
-directly.
-
-Please be a good web citizen and upgrade to latest Drupal core provided
-by BOA-4.1.3. As a bonus, you will be able to speed up your sites
-considerably by switching PHP-FPM to 7.0
-
-We recommend to follow this upgrade how-to:
-
-  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
-
-The how-to for PHP-FPM version switch can be found at:
-
-  https://omega8.cc/how-to-quickly-switch-php-to-newer-version-330
-
---
-This email has been sent by your Aegir automatic system monitor.
-
-EOF
-  else
-  cat <<EOF | mail -r ${_MY_EMAIL} -e -b ${_BCC_EMAIL} \
+  _MAILX_TEST=$(s-nail -V 2>&1)
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
+  cat <<EOF | s-nail -b ${_BCC_EMAIL} \
     -s "URGENT: The ${Dom} site on ${_CHECK_HOST} runs on not secure Drupal core!" \
     ${_ALRT_EMAIL}
 Hello,
@@ -2153,6 +1854,10 @@ cleanup_ini() {
   if [ -e "${_CTRL_F}" ]; then
     sed -i "s/^;;.*//g"   ${_CTRL_F} &> /dev/null
     wait
+    sed -i "s/^ .*//g"    ${_CTRL_F} &> /dev/null
+    wait
+    sed -i "s/^#.*//g"    ${_CTRL_F} &> /dev/null
+    wait
     sed -i "/^$/d"        ${_CTRL_F} &> /dev/null
     wait
     sed -i "s/^\[/\n\[/g" ${_CTRL_F} &> /dev/null
@@ -2475,11 +2180,9 @@ le_ssl_check_update() {
 }
 
 if_gen_goaccess() {
-  PrTestPower=$(grep "POWER" /root/.${_HM_U}.octopus.cnf 2>&1)
   PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
   PrTestCluster=$(grep "CLUSTER" /root/.${_HM_U}.octopus.cnf 2>&1)
-  if [[ "${PrTestPower}" =~ "POWER" ]] \
-    || [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
+  if [[ "${PrTestPhantom}" =~ "PHANTOM" ]] \
     || [[ "${PrTestCluster}" =~ "CLUSTER" ]]; then
     isWblgx=$(which weblogx 2>&1)
     if [ -x "${isWblgx}" ]; then
@@ -2492,6 +2195,7 @@ if_gen_goaccess() {
         cp -af /var/www/adminer/access/${_HM_U}/${1} /data/disk/${_HM_U}/static/goaccess/
       else
         rm -rf /var/www/adminer/access/${_HM_U}/${1}
+        rm -rf /data/disk/${_HM_U}/static/goaccess/${1}
       fi
     fi
   fi
@@ -2601,7 +2305,9 @@ process() {
                 fix_robots_txt
               fi
               le_ssl_check_update
-              if_gen_goaccess ${Dom}
+              if [ -e "${User}/static/control/goaccess/${Dom}.info" ]; then
+                if_gen_goaccess ${Dom}
+              fi
               ;;
             esac
             fix_site_control_files
@@ -2907,7 +2613,10 @@ purge_cruft_machine() {
           chattr -i /home/${_HM_U}.ftp/platforms
           chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
         fi
-        rm -rf ${i}
+        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
+        echo "Moving ${i} to /var/backups/ghost/${_HM_U}/${_NOW}"
+        mv -f ${i} /var/backups/ghost/${_HM_U}/${_NOW}/
       fi
     fi
   done
@@ -2919,26 +2628,40 @@ purge_cruft_machine() {
       fi
       RevisionTest=$(ls ${i} | wc -l 2>&1)
       if [ "${RevisionTest}" -lt "2" ] && [ ! -z "${RevisionTest}" ]; then
+        echo "RevisionTest is ${RevisionTest}"
         _NOW=$(date +%y%m%d-%H%M%S 2>&1)
         mkdir -p ${User}/undo/dist/${_NOW}
-        ### mv -f ${i} ${User}/undo/dist/${_NOW}/ &> /dev/null
+        mv -f ${i} ${User}/undo/dist/${_NOW}/ &> /dev/null
         echo "GHOST revision ${i} detected and moved to ${User}/undo/dist/${_NOW}/"
       fi
     fi
   done
 
   for i in `dir -d ${User}/distro/*`; do
-    if [ -e "${i}" ] \
-      && [ ! -e "/home/${_HM_U}.ftp/platforms/${i}" ]; then
+    if [ -e "${i}" ]; then
+      distTrNr=$(echo ${i} \
+        | cut -d'/' -f6 \
+        | awk '{ print $1}' 2> /dev/null)
       if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
         chattr -i /home/${_HM_U}.ftp/platforms
         chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
       fi
-      mkdir -p /home/${_HM_U}.ftp/platforms/${i}
-      mkdir -p ${i}/keys
-      chown ${_HM_U}.ftp:${_WEBG} ${i}/keys &> /dev/null
-      chmod 02775 ${i}/keys &> /dev/null
-      ln -sfn ${i}/keys /home/${_HM_U}.ftp/platforms/${i}/keys
+      if [ ! -e "${i}/keys" ]; then
+        mkdir -p ${i}/keys
+        chown ${_HM_U}.ftp:${_WEBG} ${i}/keys &> /dev/null
+        chmod 02775 ${i}/keys &> /dev/null
+      fi
+      if [ ! -e "/home/${_HM_U}.ftp/platforms/${distTrNr}" ]; then
+        mkdir -p /home/${_HM_U}.ftp/platforms/${distTrNr}
+      fi
+      if [ -e "${i}/keys" ] && [ ! -e "/home/${_HM_U}.ftp/platforms/${distTrNr}/keys" ]; then
+        ln -sfn ${i}/keys /home/${_HM_U}.ftp/platforms/${distTrNr}/keys
+      fi
+      if [ -e "/home/${_HM_U}.ftp/platforms/data" ]; then
+        _NOW=$(date +%y%m%d-%H%M%S 2>&1)
+        [ ! -e "/var/backups/ghost/${_HM_U}/${_NOW}" ] && mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
+        mv -f /home/${_HM_U}.ftp/platforms/data /var/backups/ghost/${_HM_U}/${_NOW}/platforms_data
+      fi
       for Codebase in `find ${i}/* \
         -maxdepth 1 \
         -mindepth 1 \
@@ -2947,8 +2670,8 @@ purge_cruft_machine() {
         CodebaseName=$(echo ${Codebase} \
           | cut -d'/' -f7 \
           | awk '{ print $1}' 2> /dev/null)
-        ln -sfn ${Codebase} /home/${_HM_U}.ftp/platforms/${i}/${CodebaseName}
-        echo "Fixed symlink to ${Codebase} for ${_HM_U}.ftp"
+        ln -sfn ${Codebase} /home/${_HM_U}.ftp/platforms/${distTrNr}/${CodebaseName}
+        echo "Fixed ${CodebaseName} in ${distTrNr} symlink to ${Codebase} for ${_HM_U}.ftp"
       done
     fi
   done
@@ -3204,7 +2927,9 @@ action() {
           rm -f /home/${_HM_U}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
         fi
         le_hm_ssl_check_update ${_HM_U}
-        ### if_gen_goaccess "ALL"
+        if [ -e "${User}/static/control/goaccess/ALL.info" ]; then
+          if_gen_goaccess "ALL"
+        fi
         echo "Done for ${User}"
         enable_chattr ${_HM_U}.ftp
       else
@@ -3222,8 +2947,9 @@ action() {
 }
 
 ###--------------------###
+[ ! -d "/data/u" ] && exit 1
 echo "INFO: Daily maintenance start"
-while [ -e "/var/run/boa_wait.pid" ]; do
+while [ -e "/run/boa_wait.pid" ]; do
   echo "Waiting for BOA queue availability..."
   sleep 5
 done
@@ -3338,7 +3064,7 @@ if [ -z "${_SKYNET_MODE}" ] || [ "${_SKYNET_MODE}" = "ON" ]; then
     --max-redirs 10 \
     --retry 3 \
     --retry-delay 15 -A iCab \
-    "${urlHmr}/conf/barracuda-release.txt" \
+    "${urlHmr}/conf/version/barracuda-release.txt" \
     -o /opt/tmp/barracuda-release.txt
 else
   rm -f /opt/tmp/barracuda-release.txt*
@@ -3356,7 +3082,7 @@ if [ -e "/opt/tmp/barracuda-release.txt" ]; then
       echo "INFO: Version test result: OK"
     else
       sT="Newer BOA available"
-      cat <<EOF | mail -e -s "New ${_X_VERSION} ${sT}" ${_MY_EMAIL}
+      cat <<EOF | s-nail -s "New ${_X_VERSION} ${sT}" ${_MY_EMAIL}
 
  There is new ${_X_VERSION} version available.
 
@@ -3374,13 +3100,13 @@ EOF
   fi
 fi
 #
-if [ -e "/var/run/daily-fix.pid" ]; then
+if [ -e "/run/daily-fix.pid" ]; then
   touch /var/xdrago/log/wait-for-daily
   exit 1
 elif [ -e "/root/.wbhd.clstr.cnf" ]; then
   exit 1
 else
-  touch /var/run/daily-fix.pid
+  touch /run/daily-fix.pid
   if [ "${_VMFAMILY}" = "VS" ]; then
     n=$((RANDOM%180+80))
     echo "waiting $n sec"
@@ -3499,22 +3225,29 @@ else
         fi
       fi
     done
-    sed -i "s/.*ssl_stapling .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf               &> /dev/null
-    wait
-    sed -i "s/.*ssl_stapling_verify .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf        &> /dev/null
-    wait
-    sed -i "s/.*resolver .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf                   &> /dev/null
-    wait
-    sed -i "s/.*resolver_timeout .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf           &> /dev/null
-    wait
-    sed -i "s/ssl_prefer_server_ciphers .*/ssl_prefer_server_ciphers on;\n  ssl_stapling on;\n  ssl_stapling_verify on;\n  resolver 1.1.1.1 1.0.0.1 valid=300s;\n  resolver_timeout 5s;/g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
-    wait
-    sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf                      &> /dev/null
-    wait
-    sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /data/disk/*/config/server_*/nginx/vhost.d/*
-    sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx.conf
-    sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/vhost.d/*
-    sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf
+    if [ -e "/var/aegir/config" ]; then
+      sed -i "s/.*ssl_stapling .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf               &> /dev/null
+      wait
+      sed -i "s/.*ssl_stapling_verify .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf        &> /dev/null
+      wait
+      sed -i "s/.*resolver .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf                   &> /dev/null
+      wait
+      sed -i "s/.*resolver_timeout .*//g" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf           &> /dev/null
+      wait
+      sed -i "s/ssl_prefer_server_ciphers .*/ssl_prefer_server_ciphers on;\n  ssl_stapling on;\n  ssl_stapling_verify on;\n  resolver 1.1.1.1 1.0.0.1 valid=300s;\n  resolver_timeout 5s;/g" \
+        /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf &> /dev/null
+      wait
+      sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_*/nginx/pre.d/*ssl_proxy.conf                      &> /dev/null
+      wait
+    fi
+    if [ -d "/data/u" ]; then
+      sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /data/disk/*/config/server_*/nginx/vhost.d/*
+    fi
+    if [ -e "/var/aegir/config" ]; then
+      sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx.conf
+      sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/vhost.d/*
+      sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf
+    fi
     service nginx reload
   fi
 fi
@@ -3578,8 +3311,8 @@ rm -f /data/disk/*/.tmp/.busy.*.pid
 ###
 ### Delete duplicity ghost pid file if older than 2 days
 ###
-find /var/run/*_backup.pid -mtime +1 -exec rm -rf {} \; &> /dev/null
-rm -f /var/run/daily-fix.pid
+find /run/*_backup.pid -mtime +1 -exec rm -rf {} \; &> /dev/null
+rm -f /run/daily-fix.pid
 echo "INFO: Daily maintenance complete"
 exit 0
 ###EOF2024###

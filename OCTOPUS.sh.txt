@@ -54,15 +54,17 @@ export _USER="${_USER}"
 _DRUSH_VERSION=8.4.12.9
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
-_PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
 _REDIS_C_VERSION=com-19-04-2021
 _REDIS_L_VERSION=7.x-3.19.1
 _REDIS_N_VERSION=com-19-04-2021
-_REDIS_T_VERSION=8.x-1.6.1
+_REDIS_T_VERSION=8.x-1.7.1
 _SMALLCORE10_0_V=10.0.11
 _SMALLCORE10_1_V=10.1.8
-_SMALLCORE10_2_V=10.2.4
+_SMALLCORE10_2_6_V=10.2.6
+_SMALLCORE10_2_V=10.2.7
+_SMALLCORE10_3_V=10.3.1
+_SMALLCORE10_4_V=10.4.x-dev
 _SMALLCORE6_V=6.60.1
 _SMALLCORE7_V=7.101.1
 _SMALLCORE9_V=9.5.11
@@ -123,6 +125,8 @@ _DRUPAL9="drupal-${_SMALLCORE9_V}"
 _DRUPAL10_0="drupal-${_SMALLCORE10_0_V}"
 _DRUPAL10_1="drupal-${_SMALLCORE10_1_V}"
 _DRUPAL10_2="drupal-${_SMALLCORE10_2_V}"
+_DRUPAL10_3="drupal-${_SMALLCORE10_3_V}"
+_DRUPAL10_4="drupal-${_SMALLCORE10_4_V}"
 _ERPAL=2.3
 _GUARDR=2.57
 _OPENACADEMY=1.1
@@ -142,11 +146,12 @@ _OPIGNOLMS9=3.1.0
 _PANOPOLY=1.94
 _RECRUITER=1.7
 _RESTAURANT=1.15
-_THUNDER=7.2.0
+_THUNDER=7.3.0
 _UBERCART6=2.15
 _UBERCART7=3.13
-_VARBASE=9.1.1
-_SOCIAL=12.2.2
+_VARBASE9=9.1.3
+_VARBASE10=10.0.0
+_SOCIAL=12.4.2
 
 
 ###
@@ -163,8 +168,9 @@ fi
 ### Clean pid files on exit
 ###
 clean_pid_exit() {
-  [ -e "/var/run/boa_wait.pid" ] && rm -f /var/run/boa_wait.pid
-  [ -e "/var/run/boa_run.pid" ] && rm -f /var/run/boa_run.pid
+  echo "REASON ${e} on $(date 2>&1)" >> /root/.octopus.sh.exit.exceptions.log
+  [ -e "/run/boa_wait.pid" ] && rm -f /run/boa_wait.pid
+  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   service cron start &> /dev/null
   exit 1
 }
@@ -180,7 +186,7 @@ panic_exit() {
   echo " EXIT: Cannot continue"
   echo " EXIT: Bye (0)"
   echo
-  clean_pid_exit
+  clean_pid_exit panic_exit_a
 }
 
 
@@ -221,6 +227,18 @@ echo " "
 msg "Skynet Agent v.${_X_VERSION} on $(dmidecode -s system-manufacturer 2>&1) welcomes you aboard!"
 echo " "
 sleep 3
+
+
+###
+### Turn Off AppArmor while running octopus
+###
+turn_off_apparmor_in_octopus
+
+
+###
+### Switch to bash while running octopus
+###
+switch_to_bash_in_octopus
 
 
 ###

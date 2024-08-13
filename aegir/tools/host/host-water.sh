@@ -602,7 +602,7 @@ if [ -e "/vservers" ] \
   fi
 
   n=$((RANDOM%120+90))
-  touch /var/run/water.pid
+  touch /run/water.pid
   echo Waiting $n seconds...
   sleep $n
 
@@ -670,11 +670,16 @@ if [ -e "/vservers" ] \
   sed -i "s/.*DHCP.*//g" /etc/csf/csf.allow
   wait
   sed -i "/^$/d" /etc/csf/csf.allow
-  _DHCP_TEST=$(grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq 2>&1)
-  if [[ "${_DHCP_TEST}" =~ "port" ]]; then
-    for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+  if [ -e "/var/log/daemon.log" ]; then
+    _DHCP_LOG="/var/log/daemon.log"
   else
-    for _IP in `grep DHCPREQUEST /var/log/syslog | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+    _DHCP_LOG="/var/log/syslog"
+  fi
+  _DHCP_TEST=$(grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq 2>&1)
+  if [[ "${_DHCP_TEST}" =~ "port" ]]; then
+    for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f12 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
+  else
+    for _IP in `grep DHCPREQUEST ${_DHCP_LOG} | cut -d ' ' -f13 | sort | uniq`;do echo "udp|out|d=67|d=${_IP} # Local DHCP out" >> /etc/csf/csf.allow;done
   fi
   csf -e
   wait
@@ -691,10 +696,10 @@ if [ -e "/vservers" ] \
       ip6tables -A INPUT -p tcp -m tcpmss --mss 1:500 -j DROP &> /dev/null
     fi
   fi
-  rm -f /var/run/water.pid
+  rm -f /run/water.pid
   echo guard fin `date`
 fi
-ntpdate pool.ntp.org
+ntpdate pool.ntp.org > /dev/null 2>&1 &
 _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}')
 if [ -z "${_IF_CDP}" ] && [ ! -e "/root/.no.swap.clear.cnf" ]; then
   swapoff -a

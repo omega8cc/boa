@@ -13,17 +13,32 @@ _PROXYSQL_VRN="1.3.5-debian8_amd64"
 _UTIL_VRN="0.30.216-pre3126"
 _VNSTAT_VRN="2.7"
 _APT_XTR="-y"
-_INST="/usr/bin/apt-get -y --allow-unauthenticated install"
-_THIS_OS=$(lsb_release -si 2>&1)
-_OSR=$(lsb_release -sc 2>&1)
+dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
+nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
+_INSTALL_DIST="/usr/bin/apt-get ${dstUpArg} install"
+_INSTALL_NRML="/usr/bin/apt-get ${nrmUpArg} install"
+_INITINS="/usr/bin/apt-get -y --allow-unauthenticated install"
+aptYesUnth="-y --allow-unauthenticated"
+_OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
+_OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
 aptLiSys="/etc/apt/sources.list"
-tRee=pro
+tRee=dev
 export tRee="${tRee}"
-
+if [ -e "/var/aegir/drush" ]; then
+  _DPKG_CNF="confold"
+else
+  _DPKG_CNF="confnew"
+fi
+_INSTALL_DIST="/usr/bin/apt-get ${dstUpArg} install"
+_INSTALL_NRML="/usr/bin/apt-get ${nrmUpArg} install"
 _INSTAPP="/usr/bin/aptitude -f -y -q \
   --allow-untrusted \
+  -o Dpkg::Options::=--force-confmiss \
   -o Dpkg::Options::=--force-confdef \
-  -o Dpkg::Options::=--force-confold install"
+  -o Dpkg::Options::=--force-${_DPKG_CNF} install"
+if [ ! -e "/var/aegir/drush" ]; then
+  _INSTAPP="${_INSTALL_DIST}"
+fi
 
 _NOSTRICT="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
@@ -38,8 +53,8 @@ fi
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_VERSION="BOA-5.3.0-head"
-_X_SE="530proT00"
+_X_VERSION="BOA-5.4.0-${tRee}"
+_X_SE="530devT00"
 #
 barCnf="/root/.barracuda.cnf"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
@@ -56,32 +71,31 @@ tBn="tools/bin"
 ###-------------SYSTEM-----------------###
 
 clean_pid_exit() {
-  rm -f /var/run/cluster_run.pid
+  echo "REASON ${e} on $(date 2>&1)" >> /root/.cluster.exit.exceptions.log
+  rm -f /run/cluster_run.pid
   service cron start
   exit 1
 }
 
 os_detection_minimal() {
   _APT_UPDATE="apt-get update"
-  _THIS_RV=$(lsb_release -sc 2>&1)
+  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   _OS_LIST="daedalus chimaera beowulf buster bullseye bookworm"
   for e in ${_OS_LIST}; do
-    if [ "${e}" = "${_THIS_RV}" ]; then
+    if [ "${e}" = "${_OS_CODE}" ]; then
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
 }
 
 apt_clean_update() {
-  apt-get clean -qq 2> /dev/null
-  rm -rf /var/lib/apt/lists/* &> /dev/null
+  #apt-get clean -qq 2> /dev/null
+  #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
 check_root() {
   if [ `whoami` = "root" ]; then
-    _REAL_OSR="${_OSR}"
-    _REAL_OS="${_THIS_OS}"
     chmod a+w /dev/null
     if [ ! -e "/dev/fd" ]; then
       if [ -e "/proc/self/fd" ]; then
@@ -102,37 +116,37 @@ check_root() {
     fi
     _LSB_TEST=$(which lsb_release 2> /dev/null)
     if [ -x "${_LSB_TEST}" ]; then
-      if [ "${_THIS_OS}" = "Devuan" ] || [ "${_THIS_OS}" = "Debian" ]; then
+      if [ "${_OS_DIST}" = "Devuan" ] || [ "${_OS_DIST}" = "Debian" ]; then
         _SUPPORTED_OS=YES
       else
-        echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
+        echo "ERROR: Not supported OS detected: ${_OS_DIST}/${_OS_CODE}"
         exit 1
       fi
       echo
-      if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
+      if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
         _APT_MIRROR="archive.debian.org/debian"
-        _APT_REPSRC="${_OSR}-backports"
+        _APT_REPSRC="${_OS_CODE}-backports"
         _SEC_MIRROR="archive.debian.org/debian-security"
-        _SEC_REPSRC="${_OSR}/updates"
-      elif [ "${_OSR}" = "buster" ]; then
+        _SEC_REPSRC="${_OS_CODE}/updates"
+      elif [ "${_OS_CODE}" = "buster" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OSR}-updates"
+        _APT_REPSRC="${_OS_CODE}-updates"
         _SEC_MIRROR="security.debian.org"
-        _SEC_REPSRC="${_OSR}/updates"
-      elif [ "${_OSR}" = "bullseye" ]; then
+        _SEC_REPSRC="${_OS_CODE}/updates"
+      elif [ "${_OS_CODE}" = "bullseye" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OSR}-updates"
+        _APT_REPSRC="${_OS_CODE}-updates"
         _SEC_MIRROR="security.debian.org/debian-security"
-        _SEC_REPSRC="${_OSR}-security"
-      elif [ "${_OSR}" = "bookworm" ]; then
+        _SEC_REPSRC="${_OS_CODE}-security"
+      elif [ "${_OS_CODE}" = "bookworm" ]; then
         _APT_MIRROR="${_MIRROR}/debian"
-        _APT_REPSRC="${_OSR}-updates"
+        _APT_REPSRC="${_OS_CODE}-updates"
         _SEC_MIRROR="security.debian.org/debian-security"
-        _SEC_REPSRC="${_OSR}-security"
+        _SEC_REPSRC="${_OS_CODE}-security"
       fi
       echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
-      echo "deb http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
-      echo "deb-src http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
+      echo "deb http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${aptLiSys}
+      echo "deb-src http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${aptLiSys}
       echo "" >> ${aptLiSys}
       echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
       echo "deb http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
@@ -144,33 +158,33 @@ check_root() {
       echo
       apt_clean_update
     fi
-    if [ "${_THIS_OS}" = "Devuan" ] || [ "${_THIS_OS}" = "Debian" ]; then
+    if [ "${_OS_DIST}" = "Devuan" ] || [ "${_OS_DIST}" = "Debian" ]; then
       _SUPPORTED_OS=YES
     else
-      echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
+      echo "ERROR: Not supported OS detected: ${_OS_DIST}/${_OS_CODE}"
       exit 1
     fi
-    if [ "${_OSR}" = "jessie" ]; then
+    if [ "${_OS_CODE}" = "jessie" ]; then
       _BENG_SERIES="4.9"
       _BNG_VERSION="4.9.202-vs2.3.9.9"
-    elif [ "${_OSR}" = "stretch" ]; then
+    elif [ "${_OS_CODE}" = "stretch" ]; then
       _BENG_SERIES="4.9"
       _BNG_VERSION="4.9.202-vs2.3.9.9"
-    elif [ "${_OSR}" = "buster" ]; then
+    elif [ "${_OS_CODE}" = "buster" ]; then
       _BENG_SERIES="4.9"
       _BNG_VERSION="4.9.202-vs2.3.9.9"
-    elif [ "${_OSR}" = "bullseye" ]; then
+    elif [ "${_OS_CODE}" = "bullseye" ]; then
       _BENG_SERIES="4.9"
       _BNG_VERSION="4.9.202-vs2.3.9.9"
-    elif [ "${_OSR}" = "bookworm" ]; then
+    elif [ "${_OS_CODE}" = "bookworm" ]; then
       _BENG_SERIES="4.9"
       _BNG_VERSION="4.9.202-vs2.3.9.9"
     else
-      echo "ERROR: Not supported OS detected: ${_THIS_OS}/${_OSR}"
+      echo "ERROR: Not supported OS detected: ${_OS_DIST}/${_OS_CODE}"
       exit 1
     fi
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
 }
@@ -178,8 +192,8 @@ check_root() {
 check_no_systemd() {
   if [ -e "/lib/systemd/systemd" ]; then
     echo "ERROR: This script can not be used with systemd"
-    echo "ERROR: Please run 'boa init' first"
-    clean_pid_exit
+    echo "ERROR: Please run 'autoinit' first"
+    clean_pid_exit check_no_systemd_a_cluster
   fi
 }
 
@@ -207,7 +221,7 @@ check_ifnames() {
     echo
     echo "Bye"
     echo
-    clean_pid_exit
+    clean_pid_exit check_ifnames_a
   fi
 }
 
@@ -235,10 +249,10 @@ check_root_direct() {
     echo
     echo "HINT:  You can always restrict access later, or"
     echo "       allow only SSH (RSA) keys for root with directive"
-    echo "         PermitRootLogin without-password"
-    echo "       in the /usr/etc/sshd_config file"
+    echo "         PermitRootLogin prohibit-password"
+    echo "       in the /etc/ssh/sshd_config file"
     echo "Bye"
-    clean_pid_exit
+    clean_pid_exit check_root_direct_a
   fi
   check_ifnames
 }
@@ -265,7 +279,7 @@ check_root_keys_pwd() {
     echo
     echo "Bye"
     echo
-    clean_pid_exit
+    clean_pid_exit check_root_keys_pwd_a
   fi
 }
 
@@ -279,14 +293,14 @@ system_check_clean() {
     echo "ERROR: The only acceptable exceptions are: sshd and mail servers"
     echo "ERROR: This script must be run on a bare metal server main OS level"
     echo "Bye"
-    clean_pid_exit
+    clean_pid_exit system_check_clean_a
   fi
 }
 
 #
 # Fix locales.
 locales_check_fix() {
-  ${_INST} locales &> /dev/null
+  ${_INITINS} locales &> /dev/null
   if [ -e "/etc/ssh/sshd_config" ]; then
     _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /etc/ssh/sshd_config 2>&1)
     if [[ "${_SSH_LC_TEST}" =~ "AcceptEnv LANG LC_" ]]; then
@@ -295,16 +309,6 @@ locales_check_fix() {
       sed -i "s/.*AcceptEnv.*//g" /etc/ssh/sshd_config
       wait
       echo "AcceptEnv LANG LC_*" >> /etc/ssh/sshd_config
-    fi
-  fi
-  if [ -e "/usr/etc/sshd_config" ]; then
-    _SSH_LC_TEST=$(grep "^AcceptEnv LANG LC_" /usr/etc/sshd_config 2>&1)
-    if [[ "${_SSH_LC_TEST}" =~ "AcceptEnv LANG LC_" ]]; then
-      _DO_NOTHING=YES
-    else
-      sed -i "s/.*AcceptEnv.*//g" /usr/etc/sshd_config
-      wait
-      echo "AcceptEnv LANG LC_*" >> /usr/etc/sshd_config
     fi
   fi
   _LOC_TEST=$(locale 2>&1)
@@ -517,7 +521,8 @@ find_fast_mirror_early() {
       echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
     fi
     apt_clean_update
-    apt-get install netcat ${aptYesUnth} &> /dev/null
+    apt-get install netcat ${aptYesUnth} 2> /dev/null
+    apt-get install netcat-traditional ${aptYesUnth} 2> /dev/null
     wait
   fi
   ffMirr=$(which ffmirror 2>&1)
@@ -560,7 +565,7 @@ if_firewall_update() {
     cp -af /opt/fire.sh      ${_WFC}/fire.sh-pre
     cp -af /etc/csf/csf.conf ${_WFC}/csf.conf-pre
     cd ${_WFC}
-    curl ${crlGet} "${urlHmr}/conf/sysctl.conf"          -o sysctl.conf
+    curl ${crlGet} "${urlHmr}/conf/var/sysctl.conf"      -o sysctl.conf
     curl ${crlGet} "${urlHmr}/tools/host/host-water.sh"  -o host-water.sh
     curl ${crlGet} "${urlHmr}/tools/host/host-fire.sh"   -o host-fire.sh
     curl ${crlGet} "http://${_USE_MIR}/cluster/csf.conf" -o csf.conf
@@ -670,7 +675,6 @@ install_proxysql() {
       vserver ${idn} exec apt-get clean
       vserver ${idn} exec ${_APT_UPDATE}
       vserver ${idn} exec apt-get remove proxysql -y -qq
-      vserver ${idn} exec apt-get purge proxysql -y -qq
       rm -rf /vservers/${idn}/var/lib/proxysql
       rm -rf /vservers/${idn}/var/log/proxysql
       rm -f ${pXcnf}
@@ -701,6 +705,7 @@ install_proxysql() {
     echo "\$writer_node_ip = \"${_DB_NODE_IP[1]}\";"     >> /vservers/${idn}/opt/tools/drush/proxysql_adm_pwd.inc
     echo "ProxySQL" > /vservers/${idn}/data/conf/clstr.cnf
     mkdir -p /vservers/${idn}/opt/tmp
+    mkdir -p /vservers/${idn}/opt/apt
     echo '
 APT::Get::Assume-Yes "true";
 APT::Get::Show-Upgraded "true";
@@ -710,8 +715,8 @@ APT::Quiet "true";
 DPkg::Options {"--force-confdef";"--force-confmiss";"--force-confold"};
 DPkg::Pre-Install-Pkgs {"/usr/sbin/dpkg-preconfigure --apt";};
 Dir::Etc::SourceList "/etc/apt/sources.list";
-' > /vservers/${idn}/opt/tmp/apt.conf.noi.nrml
-    nrmUpArg="-fuy --allow-downgrades --allow-unauthenticated -q --config-file /opt/tmp/apt.conf.noi.nrml"
+' > /vservers/${idn}/opt/apt/apt.conf.noi.nrml
+    nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
     vserver ${idn} exec apt-get clean
     vserver ${idn} exec ${_APT_UPDATE} -qq
     vserver ${idn} exec ${_INSTAPP} sysbench
@@ -948,9 +953,7 @@ Dir::Etc::SourceList "/etc/apt/sources.list";
       pxyCmd="proxysql_galera_checker --log=/var/lib/proxysql/pxc_test_proxysql_galera_check.log --debug"
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCmd}"
       cat /vservers/${idn}/var/lib/proxysql/pxc_test_proxysql_galera_check.log
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        echo "INFO: Restarting ProxySQL server..."
-      fi
+      echo "INFO: Restarting ProxySQL server..."
       vserver ${idn} exec service proxysql restart
       pxyCmd="SELECT * FROM runtime_scheduler\\G"
       ssh ${_NOSTRICT} root@${_WEB_NODE_IP} "${pxyCtx} -e \"${pxyCmd}\""
@@ -1345,13 +1348,13 @@ wsrep_node_name=\"'${IP}'\"
   	ssh ${_NOSTRICT} root@${IP} "echo '
 [client]
 port                    = 3306
-socket                  = /var/run/mysqld/mysqld.sock
+socket                  = /run/mysqld/mysqld.sock
 default-character-set   = utf8mb4
 
 [mysqld]
 user                    = mysql
-pid-file                = /var/run/mysqld/mysqld.pid
-socket                  = /var/run/mysqld/mysqld.sock
+pid-file                = /run/mysqld/mysqld.pid
+socket                  = /run/mysqld/mysqld.sock
 port                    = 3306
 basedir                 = /usr
 datadir                 = /var/lib/mysql
@@ -1400,8 +1403,6 @@ sync_binlog             = 0
 open_files_limit        = 294912
 innodb_autoinc_lock_mode= 2
 group_concat_max_len    = 10000
-#log_bin                 = /var/log/mysql/mariadb-bin
-#log_bin_index           = /var/log/mysql/mariadb-bin.index
 #expire_logs_days        = 1
 #max_binlog_size         = 100M
 #binlog_row_image        = minimal
@@ -1447,7 +1448,7 @@ innodb_flush_log_at_timeout = 5
 innodb_temp_data_file_path = ibtmp1:12M:autoextend:max:900M
 
 [mysqld_safe]
-socket                  = /var/run/mysqld/mysqld.sock
+socket                  = /run/mysqld/mysqld.sock
 nice                    = 0
 open_files_limit        = 294912
 syslog
@@ -1483,14 +1484,14 @@ interactive-timeout
 install_db_cluster() {
   check_config_cluster
 
-  if [ "${_OSR}" = "daedalus" ]; then
-    _SQL_OSR=bookworm
-  elif [ "${_OSR}" = "chimaera" ]; then
-    _SQL_OSR=bullseye
-  elif [ "${_OSR}" = "beowulf" ]; then
-    _SQL_OSR=buster
+  if [ "${_OS_CODE}" = "daedalus" ]; then
+    _SQL_OS_CODE=bookworm
+  elif [ "${_OS_CODE}" = "chimaera" ]; then
+    _SQL_OS_CODE=bullseye
+  elif [ "${_OS_CODE}" = "beowulf" ]; then
+    _SQL_OS_CODE=buster
   else
-    _SQL_OSR="${_OSR}"
+    _SQL_OS_CODE="${_OS_CODE}"
   fi
 
   if [ -x "/vservers/${idn}/usr/bin/gpg2" ]; then
@@ -1564,20 +1565,33 @@ install_db_cluster() {
     vserver ${idn} exec ${_INSTAPP} debian-keyring
     vserver ${idn} exec ${_INSTAPP} debian-archive-keyring
   	vserver ${idn} exec apt-get upgrade -y -qq
-  	vserver ${idn} exec apt-get full-upgrade -y -qq
-  	vserver ${idn} exec apt-get remove apparmor -y -qq
   	vserver ${idn} exec ${_INSTAPP} software-properties-common dirmngr
     rm -f /vservers/${idn}/etc/apt/sources.list.d/percona-.*
     rm -f /vservers/${idn}/etc/apt/sources.list.d/xtrabackup.*
+    _PERCONA_KEYS_SIG="8507EFA5"
+    if [ ! -e "/vservers/${idn}/etc/apt/keyrings/percona.gpg" ]; then
+      if [ ! -e "/vservers/${idn}/etc/apt/keyrings" ]; then
+        mkdir -m 0755 -p /vservers/${idn}/etc/apt/keyrings
+      fi
+      if [ -e "/vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg" ]; then
+        rm -f /vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg
+      fi
+      vserver ${idn} exec apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
+      if [ ! -e "/vservers/${idn}/etc/apt/keyrings/percona.gpg" ]; then
+        curl -fsSL ${urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /vservers/${idn}/etc/apt/keyrings/percona.gpg
+      fi
+      chmod 644 /vservers/${idn}/etc/apt/keyrings/percona.gpg
+    fi
     echo "## Percona Cluster APT Repository" > /vservers/${idn}${percList}
-    echo "deb http://${percRepo} ${_SQL_OSR} main" >> /vservers/${idn}${percList}
+    if [ -e "/vservers/${idn}/etc/apt/keyrings/percona.gpg" ]; then
+      echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> /vservers/${idn}${percList}
+      echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> /vservers/${idn}${percList}
+    else
+      echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> /vservers/${idn}${percList}
+      echo "deb-src http://${percRepo} ${_SQL_OS_CODE} main" >> /vservers/${idn}${percList}
+    fi
+    chmod 644 /vservers/${idn}${percList}
     echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /vservers/${idn}/etc/apt/preferences.d/00percona.pref
-    _KEYS_SIG="8507EFA5"
-    vserver ${idn} exec wget -q -U iCab ${urlDev}/percona-key.gpg -O /var/backups/percona-key.gpg
-    vserver ${idn} exec cat /var/backups/percona-key.gpg | ${_GPG} --import &> /dev/null
-    vserver ${idn} exec ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG}
-    vserver ${idn} exec ${_GPG} -a --export ${_KEYS_SIG} | apt-key add -
-    vserver ${idn} exec ${_GPG} --list-keys ${_KEYS_SIG}
   	vserver ${idn} exec ${_APT_UPDATE} -qq
   	vserver ${idn} exec ${_INSTAPP} percona-xtradb-cluster-57
   	##vserver ${idn} exec ${_INSTAPP} percona-xtrabackup-24
@@ -1606,12 +1620,12 @@ install_db_cluster() {
 host     = localhost
 user     = debian-sys-maint
 password = '${_MAINT_USER_PWD}'
-socket   = /var/run/mysqld/mysqld.sock
+socket   = /run/mysqld/mysqld.sock
 [mysql_upgrade]
 host     = localhost
 user     = debian-sys-maint
 password = '${_MAINT_USER_PWD}'
-socket   = /var/run/mysqld/mysqld.sock
+socket   = /run/mysqld/mysqld.sock
 basedir  = /usr
 ' > /etc/mysql/debian.cnf"
 
@@ -1760,29 +1774,22 @@ upgrade_db_cluster() {
     else
       _GPG=gpg
     fi
-    _KEYS_SIG="8507EFA5"
-    _KEYS_SERVER_TEST=FALSE
-    until [[ "${_KEYS_SERVER_TEST}" =~ "Percona" ]]; do
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        echo "INFO: Retrieving ${_KEYS_SIG} key on ${idn}/${IP}..."
+    _PERCONA_KEYS_SIG="8507EFA5"
+
+    echo "INFO: Retrieving ${_PERCONA_KEYS_SIG} key on ${idn}/${IP}..."
+    if [ ! -e "/vservers/${idn}/etc/apt/keyrings/percona.gpg" ]; then
+      if [ ! -e "/vservers/${idn}/etc/apt/keyrings" ]; then
+        mkdir -m 0755 -p /vservers/${idn}/etc/apt/keyrings
       fi
-      vserver ${idn} exec wget -q -U iCab ${urlDev}/percona-key.gpg -O /var/backups/percona-key.gpg
-      vserver ${idn} exec cat /var/backups/percona-key.gpg | ${_GPG} --import &> /dev/null
-      vserver ${idn} exec ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG}
-      vserver ${idn} exec ${_GPG} -a --export ${_KEYS_SIG} | apt-key add -
-      _KEYS_SERVER_TEST=$(vserver ${idn} exec ${_GPG} --list-keys ${_KEYS_SIG} 2>&1)
-      sleep 2
-      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
-        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-        echo "$(date 2>&1) Too many dirmngr processes killed" >> \
-          /var/xdrago/log/dirmngr-count.kill.log
+      if [ -e "/vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg" ]; then
+        rm -f /vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg
       fi
-    done
-    vserver ${idn} exec wget -q -U iCab ${urlDev}/percona-key.gpg -O /var/backups/percona-key.gpg
-    vserver ${idn} exec cat /var/backups/percona-key.gpg | ${_GPG} --import &> /dev/null
-    vserver ${idn} exec ${_GPG} --keyserver pgpkeys.mit.edu --recv-key ${_KEYS_SIG}
-    vserver ${idn} exec ${_GPG} -a --export ${_KEYS_SIG} | apt-key add -
-    vserver ${idn} exec ${_GPG} --list-keys ${_KEYS_SIG}
+      vserver ${idn} exec apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
+      if [ ! -e "/vservers/${idn}/etc/apt/keyrings/percona.gpg" ]; then
+        curl -fsSL ${urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /vservers/${idn}/etc/apt/keyrings/percona.gpg
+      fi
+      chmod 644 /vservers/${idn}/etc/apt/keyrings/percona.gpg
+    fi
   	vserver ${idn} exec ${_APT_UPDATE} -qq
   	vserver ${idn} exec ${_INSTAPP} bc
   	vserver ${idn} exec apt-get upgrade ${_APT_XTR}
@@ -1816,13 +1823,16 @@ upgrade_db_cluster() {
 
 install_host() {
 
-  _CUSTOM_DNS_TEST=$(grep 1.1.1.1 /etc/resolv.conf 2>&1)
-  if [[ ! "${_CUSTOM_DNS_TEST}" =~ "1.1.1.1" ]]; then
+  _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/resolv.conf 2>&1)
+  if [[ ! "${_CUSTOM_DNS_TEST}" =~ "8.8.8.8" ]]; then
     echo "Fixing resolver..."
     cp -af /etc/resolv.conf /etc/resolv.conf.prev
-    echo "nameserver 1.1.1.1" >/etc/resolv.conf
-    echo "nameserver 1.0.0.1" >>/etc/resolv.conf
-    cat /etc/resolv.conf.prev >>/etc/resolv.conf
+    echo "nameserver 127.0.0.1" > /etc/resolv.conf
+    echo "nameserver 1.1.1.1" >> /etc/resolv.conf
+    echo "nameserver 1.0.0.1" >> /etc/resolv.conf
+    echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+    cat /etc/resolv.conf.prev >> /etc/resolv.conf
     cat /etc/resolv.conf
     echo
   fi
@@ -1833,30 +1843,30 @@ install_host() {
 
   cat /etc/apt/sources.list
   echo
-  if [ "${_OSR}" = "stretch" ] || [ "${_OSR}" = "jessie" ]; then
+  if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
     _APT_MIRROR="archive.debian.org/debian"
-    _APT_REPSRC="${_OSR}-backports"
+    _APT_REPSRC="${_OS_CODE}-backports"
     _SEC_MIRROR="archive.debian.org/debian-security"
-    _SEC_REPSRC="${_OSR}/updates"
-  elif [ "${_OSR}" = "buster" ]; then
+    _SEC_REPSRC="${_OS_CODE}/updates"
+  elif [ "${_OS_CODE}" = "buster" ]; then
     _APT_MIRROR="${_MIRROR}/debian"
-    _APT_REPSRC="${_OSR}-updates"
+    _APT_REPSRC="${_OS_CODE}-updates"
     _SEC_MIRROR="security.debian.org"
-    _SEC_REPSRC="${_OSR}/updates"
-  elif [ "${_OSR}" = "bullseye" ]; then
+    _SEC_REPSRC="${_OS_CODE}/updates"
+  elif [ "${_OS_CODE}" = "bullseye" ]; then
     _APT_MIRROR="${_MIRROR}/debian"
-    _APT_REPSRC="${_OSR}-updates"
+    _APT_REPSRC="${_OS_CODE}-updates"
     _SEC_MIRROR="security.debian.org/debian-security"
-    _SEC_REPSRC="${_OSR}-security"
-  elif [ "${_OSR}" = "bookworm" ]; then
+    _SEC_REPSRC="${_OS_CODE}-security"
+  elif [ "${_OS_CODE}" = "bookworm" ]; then
     _APT_MIRROR="${_MIRROR}/debian"
-    _APT_REPSRC="${_OSR}-updates"
+    _APT_REPSRC="${_OS_CODE}-updates"
     _SEC_MIRROR="security.debian.org/debian-security"
-    _SEC_REPSRC="${_OSR}-security"
+    _SEC_REPSRC="${_OS_CODE}-security"
   fi
   echo "## DEBIAN MAIN REPOSITORIES" > ${aptLiSys}
-  echo "deb http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
-  echo "deb-src http://${_APT_MIRROR} ${_OSR} main contrib non-free" >> ${aptLiSys}
+  echo "deb http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${aptLiSys}
+  echo "deb-src http://${_APT_MIRROR} ${_OS_CODE} main contrib non-free" >> ${aptLiSys}
   echo "" >> ${aptLiSys}
   echo "## MAJOR BUG FIX UPDATES produced after the final release" >> ${aptLiSys}
   echo "deb http://${_APT_MIRROR} ${_APT_REPSRC} main contrib non-free" >> ${aptLiSys}
@@ -1871,7 +1881,6 @@ install_host() {
   echo "Installing basic tools..."
   apt_clean_update
   apt-get upgrade ${nrmUpArg}
-  apt-get full-upgrade ${nrmUpArg}
   ${_INSTAPP} locales
   ${_INSTAPP} lsb-release
   ${_INSTAPP} dnsutils
@@ -1929,7 +1938,7 @@ install_host() {
   if_firewall_update
 
   echo "Improving sshd configuration..."
-  sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" /etc/ssh/sshd_config
+  sed -i "s/^PermitRootLogin.*/PermitRootLogin prohibit-password/g" /etc/ssh/sshd_config
   sed -i "s/^IgnoreUserKnownHosts.*//g" /etc/ssh/sshd_config
   sed -i "s/^PasswordAuthentication.*//g" /etc/ssh/sshd_config
   sed -i "s/^UseDNS.*//g" /etc/ssh/sshd_config
@@ -1974,7 +1983,7 @@ install_host() {
 
   if [ ! -e "/boot/vmlinuz-${_BNG_VERSION}-beng" ]; then
     echo "Installing beng vserver kernel..."
-    echo "deb http://repo.psand.net/ ${_OSR} main" > /etc/apt/sources.list.d/vserver.list
+    echo "deb http://repo.psand.net/ ${_OS_CODE} main" > /etc/apt/sources.list.d/vserver.list
     cd /var/backups
     _KEYS_SERVER_TEST=FALSE
     until [[ "${_KEYS_SERVER_TEST}" =~ "GnuPG" ]]; do
@@ -1999,7 +2008,7 @@ install_host() {
   fi
 
   if [ -x "/lib/systemd/systemd" ]; then
-    echo "Installing sysvinit-core in ${_REAL_OS}/${_REAL_OSR}..."
+    echo "Installing sysvinit-core in ${_OS_DIST}/${_OS_CODE}..."
     if [ "${osx}" = "jessie" ] \
       || [ "${osx}" = "stretch" ] \
       || [ "${osx}" = "buster" ] \
@@ -2059,7 +2068,7 @@ upgrade_host() {
   fi
 
   if [ -x "/lib/systemd/systemd" ]; then
-    echo "Removing systemd in ${_REAL_OS}/${_REAL_OSR}..."
+    echo "Removing systemd in ${_OS_DIST}/${_OS_CODE}..."
     apt_clean_update
     echo "sysvinit-core install" | dpkg --set-selections
     echo "sysvinit-utils install" | dpkg --set-selections
@@ -2082,11 +2091,11 @@ upgrade_host() {
         apt_clean_update
       fi
     fi
-    apt-get remove systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-    apt-get remove libnss-systemd -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-    apt-get remove systemd-sysv -y -qq --purge --auto-remove --allow-remove-essential &> /dev/null
-    apt-get autoremove --purge -y -qq &> /dev/null
-    apt-get autoclean -y -qq &> /dev/null
+    apt-get remove systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+    apt-get remove libnss-systemd -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+    apt-get remove systemd-sysv -y --purge --auto-remove --allow-remove-essential -qq 2> /dev/null
+    apt-get autoremove --purge -y -qq 2> /dev/null
+    apt-get autoclean -y -qq 2> /dev/null
     echo "sysvinit-core hold" | dpkg --set-selections &> /dev/null
     echo "sysvinit-utils hold" | dpkg --set-selections &> /dev/null
   fi
@@ -2113,7 +2122,7 @@ upgrade_host() {
     service irqbalance start
 
     echo "Installing vserver tools..."
-    apt-get remove util-vserver -y -qq
+    apt-get remove util-vserver -y --purge --auto-remove -qq
     apt-get autoremove -y
     cd /var/opt
     rm -rf util-vserver*
@@ -2209,8 +2218,7 @@ upgrade_host() {
     ${_INSTAPP} postfix
     lSmtp="localhost:25      inet  n       -       -       -       -       smtpd"
     sed -i "s/^smtp.*inet.*n.*smtpd/${lSmtp}/g" /etc/postfix/master.cf
-    apt-get remove exim -y
-    apt-get purge exim -y
+    apt-get remove exim -y --purge --auto-remove -qq
     apt-get autoremove -y
     service postfix restart
   fi
@@ -2219,8 +2227,9 @@ upgrade_host() {
   apt_clean_update
   apt-get install aptitude ${_APT_XTR} \
     && aptitude full-upgrade -f -y -q \
+      -o Dpkg::Options::=--force-confmiss \
       -o Dpkg::Options::=--force-confdef \
-      -o Dpkg::Options::=--force-confold \
+      -o Dpkg::Options::=--force-confnew \
     && apt-get dist-upgrade ${_APT_XTR}
 
   if_firewall_update
@@ -2258,10 +2267,10 @@ check_heads() {
     if [[ ${_THIS_VM} =~ v168q ]]; then
       echo Check Skipped for $i
     else
-      if [ -e "/usr/var/run/vservers/${_THIS_VM}" ] \
-        && [ -e "${i}/var/run/crond.pid" ]; then
+      if [ -e "/usr/run/vservers/${_THIS_VM}" ] \
+        && [ -e "${i}/run/crond.pid" ]; then
         _VS_HOSTNAME=`vserver ${_VS_NAME} exec hostname 2>&1`
-        _VS_OS=`vserver ${_VS_NAME} exec lsb_release -sc 2>&1`
+        _VS_OS=`vserver ${_VS_NAME} exec lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1`
         echo "The ${_VS_HOSTNAME} ${_VS_NAME} VM is running ${_VS_OS}"
         vserver ${_VS_NAME} exec ${optBin}/boa info ${mod} ${ext}
       fi

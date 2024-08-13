@@ -151,6 +151,20 @@ if [[ ! "${_ARGS}" =~ "composer" ]] \
 	  esac
     done
     ### echo _ARR is ${_ARR}
+  elif [[ "${_ARGS}" =~ "php /data/disk/" ]]; then
+    _R_M=`echo -n ${_ARGS} | grep -o "php /data/disk/.*/tools/drush/drush.php"`
+    ### echo _R_M is ${_R_M}
+    _R_M=${_R_M//\//\\\/}
+    ### echo _R_M is ${_R_M}
+    _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
+    _ARR=() # the buffer array for filtered parameters
+    for arg in "${_CLR}"; do
+      case ${_R_M} in
+        $arg\ * | *\ $arg | *\ $arg\ *) ;;
+        *) _ARR+=("$arg") ;;
+	  esac
+    done
+    ### echo _ARR is ${_ARR}
   fi
 fi
 
@@ -201,17 +215,25 @@ if [ -z "${HOME}" ]; then
   fi
 fi
 
+if [[ "${_ARR}" =~ " aliases" ]] || [[ "${_ARR}" =~ " sa" ]]; then
+  if [[ "${_ALL}" =~ "drush10 " ]] || [[ "${_ALL}" =~ "drush11 " ]]; then
+    _ARR="sa --format=list | egrep -v \"(none|hostmaster|hm|server_|platform_|@none|@self)\""
+  elif [[ "${_ALL}" =~ "drush " ]] || [[ "${_ALL}" =~ "drush8 " ]]; then
+    _ARR="sa | egrep -v \"(none|hostmaster|hm|server_|platform_|@none|@self)\""
+  fi
+fi
+
 if [[ "${_ARR}" =~ "-c " ]]; then
   _R_M=`echo -n "${_ARR}" | grep -o "\-c "`
   _ARR=`echo ${_ARR} | sed "s/\${_R_M}//g"`
 fi
 
-if [[ "${HOME}" =~ (^)"/xdata/disk/" ]] \
+if [[ "${HOME}" =~ (^)"/data/disk/" ]] \
   && [ -z "${PHP_FWD}" ] \
-  && [[ "${_ARGS}" =~ (^)"xphp ${HOME}" ]]; then
+  && [[ "${_ARGS}" =~ (^)"php ${HOME}" ]]; then
   _OCTO_SYS="${USER}"
   _OCTO_SYS_ARR=
-  if [[ "${_ARGS}" =~ "backend" ]]; then
+  if [[ "${_ARGS}" =~ "tools/drush/drush.php" ]]; then
     _R_M=`echo -n ${_ARGS} | grep -o "php /data/disk/.*/tools/drush/drush.php"`
     ### echo _R_M is ${_R_M}
     _R_M=${_R_M//\//\\\/}
@@ -230,7 +252,7 @@ else
   _OCTO_SYS=
 fi
 
-if [[ "${HOME}" =~ (^)"/data/disk/" ]]; then
+if [[ "${HOME}" =~ (^)"/yyydata/disk/" ]]; then
   _DRUSH_CLI_CTRL=
   ### echo _DRUSH_CLI_CTRL has been disabled
 fi
@@ -386,7 +408,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           _DEST_DRUSH=
         fi
         if [[ "${_ARGS}" =~ "drush12 " ]] \
-          && [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
+          && [[ ! "${HOME}" =~ (^)"/data/disk/" ]]; then
           _DEST_DRUSH="/usr/bin/drush12"
           _PHP_V="81 82 83"
           for e in ${_PHP_V}; do
@@ -408,12 +430,14 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             ### echo INF 2 _DEST_DRUSH is ${_DEST_DRUSH}
           else
             echo
-            echo "  Drush 12 requires either PHP 8.1 or 8.2"
+            echo "  Drush 12 requires either PHP 8.1 or 8.2 or 8.3"
             echo "  Please create empty control file:"
             echo
             echo "  ${_DRUSH_CLI_CTRL}/php81.info"
             echo "  or"
             echo "  ${_DRUSH_CLI_CTRL}/php82.info"
+            echo "  or"
+            echo "  ${_DRUSH_CLI_CTRL}/php83.info"
             echo
             echo "  NOTE: If you create more than one,"
             echo "        the highest version wins."
@@ -428,7 +452,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           elif [[ "${_ARGS}" =~ "drush10 " ]]; then
             _DEST_DRUSH="/usr/bin/drush10"
           fi
-          if [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
+          if [[ ! "${HOME}" =~ (^)"/data/disk/" ]]; then
             _PHP_V="74 80 81 82 83"
             for e in ${_PHP_V}; do
               if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
@@ -477,7 +501,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           if [[ "${_ARGS}" =~ "/vendor/bin/drush " ]]; then
             _DEST_DRUSH=
           fi
-          if [[ ! "${HOME}" =~ (^)"/xdata/disk/" ]]; then
+          if [[ ! "${HOME}" =~ (^)"/data/disk/" ]]; then
             _PHP_V="56 70 71 72 73 74 80 81 82 83"
             for e in ${_PHP_V}; do
               if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
@@ -497,16 +521,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             ### echo INF 4 PHP_INI is ${PHP_INI}
             ### echo INF 4 PHPRC is ${PHPRC}
             ### echo INF 4 _DEST_DRUSH is ${_DEST_DRUSH}
-          fi
-        fi
-        if [[ "${_ARGS}" =~ "drush" ]] && [ ! -f "${HOME}/static/control/enable-drush-sa.info" ]; then
-          if [[ "${_ARGS}" =~ " site-alias"($) ]] \
-            || [[ "${_ARGS}" =~ " sa"($) ]]; then
-            echo
-            echo " Use 'drush aliases' to display all Drush 8 aliases"
-            echo " Use 'drush10 aliases' to display all Drush 10+ aliases"
-            echo
-            exit 0
           fi
         fi
         if [[ "${_ARGS}" =~ "drush make" ]] \
@@ -536,7 +550,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
                 echo " Please cd to the valid sites/foo.com directory first"
                 echo " or use a valid @alias, like: drush @foo.com status"
                 echo " Hint: Use 'drush aliases' to display all Drush 8 aliases"
-                echo " Hint: Use 'drush10 aliases' to display all Drush 10+ aliases"
+                echo " Hint: Use 'drush11 aliases' to display all Drush 10+ aliases"
               else
                 echo " Please cd ~/static first"
               fi
@@ -574,8 +588,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
               || [[ "${2}" =~ (^)"sha"($) ]] \
               || [[ "${2}" =~ "shell-alias"($) ]] \
               || [[ "${2}" =~ (^)"si"($) ]] \
-              || [[ "${2}" =~ " sa"($) ]] \
-              || [[ "${2}" =~ " site-alias"($) ]] \
               || [[ "${2}" =~ "sql-create"($) ]] \
               || [[ "${2}" =~ (^)"ssh"($) ]] \
               || [[ "${2}" =~ (^)"sup"($) ]]; then
@@ -588,18 +600,26 @@ if [ "${_LTD_GID}" = "www-data users" ] \
             fi
           elif [[ "${_ARGS}" =~ "cc drush" ]] \
             || [[ "${_ARGS}" =~ "cr drush" ]] \
+            || [[ "${_ARGS}" =~ "drush aliases" ]] \
+            || [[ "${_ARGS}" =~ "drush sa" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush8 --version" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush8 help" ]] \
             || [[ "${_ARGS}" =~ "drush8 dl" ]] \
             || [[ "${_ARGS}" =~ "drush8 pm-download" ]] \
+            || [[ "${_ARGS}" =~ "drush8 aliases" ]] \
+            || [[ "${_ARGS}" =~ "drush8 sa" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush10 --version" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush10 help" ]] \
             || [[ "${_ARGS}" =~ "drush10 dl" ]] \
             || [[ "${_ARGS}" =~ "drush10 pm-download" ]] \
+            || [[ "${_ARGS}" =~ "drush10 aliases" ]] \
+            || [[ "${_ARGS}" =~ "drush10 sa" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush11 --version" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush11 help" ]] \
             || [[ "${_ARGS}" =~ "drush11 dl" ]] \
             || [[ "${_ARGS}" =~ "drush11 pm-download" ]] \
+            || [[ "${_ARGS}" =~ "drush11 aliases" ]] \
+            || [[ "${_ARGS}" =~ "drush11 sa" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush12 --version" ]] \
             || [[ "${_ARGS}" =~ "set -m; drush12 help" ]] \
             || [[ "${_ARGS}" =~ "drush12 dl" ]] \
@@ -621,7 +641,7 @@ if [ "${_LTD_GID}" = "www-data users" ] \
               echo " Please cd to the valid sites/foo.com directory first"
               echo " or use a valid @alias, like: drush @foo.com status"
               echo " Hint: Use 'drush aliases' to display all Drush 8 aliases"
-              echo " Hint: Use 'drush10 aliases' to display all Drush 10+ aliases"
+              echo " Hint: Use 'drush11 aliases' to display all Drush 10+ aliases"
               echo
               exit 0
             elif [ -f "${_PWD}/settings.php" ]; then
@@ -667,8 +687,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
           || [[ "${2}" =~ (^)"sha"($) ]] \
           || [[ "${2}" =~ "shell-alias"($) ]] \
           || [[ "${2}" =~ (^)"si"($) ]] \
-          || [[ "${2}" =~ " sa"($) ]] \
-          || [[ "${2}" =~ " site-alias"($) ]] \
           || [[ "${2}" =~ "sql-create"($) ]] \
           || [[ "${2}" =~ (^)"ssh"($) ]] \
           || [[ "${2}" =~ (^)"sup"($) ]]; then
@@ -760,8 +778,6 @@ if [ "${_LTD_GID}" = "www-data users" ] \
         || [[ "${2}" =~ (^)"sha"($) ]] \
         || [[ "${2}" =~ "shell-alias"($) ]] \
         || [[ "${2}" =~ (^)"si"($) ]] \
-        || [[ "${2}" =~ " sa"($) ]] \
-        || [[ "${2}" =~ " site-alias"($) ]] \
         || [[ "${2}" =~ "sql-create"($) ]] \
         || [[ "${2}" =~ (^)"ssh"($) ]] \
         || [[ "${2}" =~ (^)"sup"($) ]]; then
@@ -849,48 +865,29 @@ if [ "${_LTD_GID}" = "www-data users" ] \
     fi
   fi
   if [ "${_IN_PATH}" = "YES" ]; then
-    if [ -x "/home/${USER}/.rvm/bin/rvm" ]; then
+    if [ -x "/usr/local/bin/ruby" ] && [ -x "/usr/local/bin/gem" ]; then
       if [[ "${_ARGS}" =~ "set -m; " ]] || [ ! -z "${SSH_CLIENT}" ]; then
         _RUBY_ALLOW=YES
       fi
     fi
     if [ "${_RUBY_ALLOW}" = "YES" ]; then
-      _DETECTED_RUBY_VP=$(grep 'RUBY_VERSION' \
-        /home/${USER}/.rvm/environments/default \
-        | cut -d= -f2 \
-        | awk '{ print $1}' \
-        | sed "s/'//g" \
-        | sed "s/ruby-//g" 2>&1)
-      if [ ! -z "${_DETECTED_RUBY_VP}" ] \
-        && [ -e "/home/${USER}/.rvm/gems/ruby-${_DETECTED_RUBY_VP}" ]; then
-        _RUBY_VP="${_DETECTED_RUBY_VP}"
-      else
-        _RUBY_VP=3.3.4
+      if [ -d "/opt/user/gems/${USER}" ]; then
+        export GEM_HOME="/opt/user/gems/${USER}"
+        export GEM_PATH="/opt/user/gems/${USER}"
+        export PATH="/opt/user/gems/${USER}/bin:$PATH"
       fi
-      _SP_A="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}/bin"
-      _SP_B="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}@global/bin"
-      _SP_C="/home/${USER}/.rvm/rubies/ruby-${_RUBY_VP}/bin"
-      _SP_D="/home/${USER}/.rvm/bin"
-      export PATH="${_SP_A}:${_SP_B}:${_SP_C}:${_SP_D}:${PATH}"
-      export GEM_HOME="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}"
-      _GP_A="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}"
-      _GP_B="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}@global"
-      export GEM_PATH="${_GP_A}:${_GP_B}"
-      export MY_RUBY_HOME="/home/${USER}/.rvm/rubies/ruby-${_RUBY_VP}"
-      export IRBRC="/home/${USER}/.rvm/rubies/ruby-${_RUBY_VP}/.irbrc"
-      unset MAGLEV_HOME
-      unset RBXOPT
-      export RUBY_VERSION="ruby-${_RUBY_VP}"
     fi
-    if [ -x "/usr/bin/npm" ] && [ -d "/home/${USER}/.npm-packages" ]; then
+    if [ -x "/usr/bin/npm" ] && [ -e "/home/${USER}/.npmrc" ]; then
       if [[ "${_ARGS}" =~ "set -m; " ]] || [ ! -z "${SSH_CLIENT}" ]; then
         _NPM_ALLOW=YES
       fi
     fi
     if [ "${_NPM_ALLOW}" = "YES" ]; then
-      export NPM_PACKAGES="/home/${USER}/.npm-packages"
-      export PATH="${NPM_PACKAGES}/bin:${PATH}"
-      export NODE_PATH="${NPM_PACKAGES}/lib/node_modules:${NODE_PATH}"
+      if [ -d "/opt/user/npm/${USER}" ]; then
+        export NPM_PACKAGES="/opt/user/npm/${USER}/.npm-packages"
+        export PATH="${NPM_PACKAGES}/bin:${PATH}"
+        export NODE_PATH="${NPM_PACKAGES}/lib/node_modules:${NODE_PATH}"
+      fi
     fi
     if [ "$0" = "/bin/sh" ] \
       || [ "$0" = "/usr/bin/sh" ] \

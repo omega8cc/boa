@@ -115,7 +115,6 @@ elif [ "${_PHP_CLI_VERSION}" = "5.6" ] \
   && [ -x "/opt/php56/bin/php" ]; then
   _T_CLI=/opt/php56/bin
 fi
-_OSR=$(lsb_release -sc 2>&1)
 _ROOT="${HOME}"
 _DRUSHCMD="${_T_CLI}/php ${_ROOT}/drush/drush.php"
 #
@@ -352,7 +351,7 @@ hostmaster_mi_up() {
     msg "INFO: Fixing broken Entity module..."
     rm -rf ${_PREV_HM_ROOT}/${pthA}
     cd ${_PREV_HM_ROOT}/profiles/hostmaster/modules/contrib
-    get_dev_stc "entity-7.x-1.10.tar.gz"
+    get_dev_stc "entity-7.x-1.11.tar.gz"
     ${_DRUSHCMD} @hostmaster en entity -y
     ${_DRUSHCMD} @hostmaster dis hosting_ssl -y
     ${_DRUSHCMD} @hostmaster dis hosting_le -y
@@ -363,6 +362,16 @@ hostmaster_mi_up() {
     ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_service SET type='nginx' WHERE service='http'"
     ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force
     ${_DRUSHCMD} @hostmaster hosting-dispatch
+    wait
+    sleep 5
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    wait
+    sleep 5
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    wait
+    sleep 5
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    wait
     msg "INFO: Waiting 15 seconds..."
     sleep 15
   fi
@@ -378,6 +387,16 @@ hostmaster_mi_up() {
     ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_service SET type='nginx' WHERE service='http'"
     ${_DRUSHCMD} @hostmaster hosting-task @server_master verify --force
     ${_DRUSHCMD} @hostmaster hosting-dispatch
+    wait
+    sleep 5
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    wait
+    sleep 5
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    wait
+    sleep 5
+    ${_DRUSHCMD} @hostmaster hosting-tasks --force
+    wait
     touch /var/aegir/disable_nginx_ssl.log
     msg "INFO: Waiting 5 seconds..."
     sleep 5
@@ -483,7 +502,7 @@ if [ -d "${_ROOT}/host_master/000" ]; then
   last=${list[@]: -1}
   _LASTNUM=$last
   _BASH_TEST=$(bash --version 2>&1)
-  if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+  if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
     nextnum=00$((10#0${last%%[^0-9]*} + 1))
   else
     nextnum=00$((10#${last%%[^0-9]*} + 1))
@@ -511,7 +530,7 @@ if [ -d "${_ROOT}/host_master/000" ]; then
     last=${list[@]: -1}
     _LASTNUM=$last
     _BASH_TEST=$(bash --version 2>&1)
-    if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+    if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
       nextnum=00$((10#0${last%%[^0-9]*} + 1))
     else
       nextnum=00$((10#${last%%[^0-9]*} + 1))
@@ -536,7 +555,7 @@ if [ -d "${_ROOT}/host_master/000" ]; then
       last=${list[@]: -1}
       _LASTNUM=$last
       _BASH_TEST=$(bash --version 2>&1)
-      if [[ "${_BASH_TEST}" =~ "version 5.1" ]]; then
+      if [[ "${_BASH_TEST}" =~ "version 5.1" ]] || [[ "${_BASH_TEST}" =~ "version 5.2" ]]; then
         nextnum=00$((10#0${last%%[^0-9]*} + 1))
       else
         nextnum=00$((10#${last%%[^0-9]*} + 1))

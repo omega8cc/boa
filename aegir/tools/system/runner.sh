@@ -13,14 +13,8 @@ export HOME=${HOME}
 check_root() {
   if [ `whoami` = "root" ]; then
     chmod a+w /dev/null
-    if [ ! -e "/dev/fd" ]; then
-      if [ -e "/proc/self/fd" ]; then
-        rm -rf /dev/fd
-        ln -s /proc/self/fd /dev/fd
-      fi
-    fi
   else
-    echo "ERROR: This script should be ran as a root user"
+    echo "ERROR: This script should be run as a root user"
     exit 1
   fi
   _DF_TEST=$(df -kTh / -l \
@@ -87,8 +81,7 @@ for Runner in `find /var/xdrago -maxdepth 1 -mindepth 1 -type f \
   load_control
   if [ "${_O_LOAD}" -lt "${_O_LOAD_MAX}" ]; then
     echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
-    if [ ! -e "/var/run/boa_wait.pid" ] \
-      && [ ! -e "/var/run/manage_rvm_users.pid" ]; then
+    if [ ! -e "/run/boa_wait.pid" ]; then
       echo running ${Runner}
       bash ${Runner}
       n=$((RANDOM%9+2))
@@ -105,31 +98,34 @@ done
 
 ###-------------SYSTEM-----------------###
 
-if [ -e "/var/run/boa_wait.pid" ] \
-  || [ -e "/var/run/manage_rvm_users.pid" ] \
-  || [ -e "/var/run/boa_cron_wait.pid" ]; then
+if [ -e "/run/boa_wait.pid" ] \
+  || [ -e "/run/boa_cron_wait.pid" ]; then
+  if [ ! -e "/root/.force.queue.runner.cnf" ]; then
   touch /var/xdrago/log/wait-runner.pid
   echo "Another BOA task is running, we will try again later..."
   exit 0
+  fi
 elif [ `ps aux | grep -v "grep" \
   | grep --count "n7 bash.*runner"` -gt "8" ]; then
+  if [ ! -e "/root/.force.queue.runner.cnf" ]; then
   touch /var/xdrago/log/wait-runner.pid
   echo "Too many Aegir tasks running now, we will try again later..."
   exit 0
+  fi
 else
   if [ -e "/root/.wbhd.clstr.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
     echo "Aegir tasks ignored on this cluster node"
     exit 0
   fi
-  if [ -e "/root/.slow.cron.cnf" ]; then
-    touch /var/run/boa_cron_wait.pid
+  if [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.force.queue.runner.cnf" ]; then
+    touch /run/boa_cron_wait.pid
     sleep 15
     action
     sleep 15
-    rm -f /var/run/boa_cron_wait.pid
-  elif [ -e "/root/.fast.cron.cnf" ]; then
-    rm -f /var/run/boa_cron_wait.pid
+    rm -f /run/boa_cron_wait.pid
+  elif [ -e "/root/.fast.cron.cnf" ] || [ -e "/root/.force.queue.runner.cnf" ]; then
+    rm -f /run/boa_cron_wait.pid
     action
     sleep 5
     action
