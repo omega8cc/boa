@@ -78,6 +78,30 @@
          the Drupal core patch again and will lock Site-Local Drush, so you
          could run any other tasks in the control panel as usual. Magic!
 
+@=> Drupal platforms available for installation -- docs/PLATFORMS.md
+
+    * Drupal 10.4.x-dev
+    * Drupal 10.3.1
+    * Drupal 10.2.7
+    * Drupal 10.1.8
+    * Drupal 10.0.11
+    * Social 12.4.2 (10.2.6)
+    * Thunder 7.3.0 (10.3.1)
+    * Varbase 10.0.0 (10.3.1)
+    * Varbase 9.1.3 (10.2.6)
+
+    * Drupal 9.5.11
+    * OpenLucius 2.0.0 (9.5.11)
+    * Opigno LMS 3.1.0 (9.5.11)
+
+    * Commerce 1.72
+    * Commerce 2.77
+    * Drupal 7.101.1
+    * Ubercart 3.13
+
+    * Pressflow 6.60.1
+    * Ubercart 2.15
+
 @=> Improvements
 
     * Add better protection from duplicate sql tasks
