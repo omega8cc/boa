@@ -102,7 +102,7 @@ export tRee="${tRee}"
 
 _TODAY=$(date +%y%m%d 2>&1)
 _TODAY=${_TODAY//[^0-9]/}
-_X_SE="530devT00"
+_X_SE="540ltsT00"
 _OS_CODE=check
 #
 
