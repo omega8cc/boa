@@ -309,7 +309,11 @@ check_prepare_dirs_permissions
 ###
 ### Turn Off AppArmor temporarily while running barracuda
 ###
-turn_off_apparmor_temporarily
+if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
+  [ ! -e "/root/.turn_off_apparmor_in_octopus.cnf" ] && touch /root/.turn_off_apparmor_in_octopus.cnf
+else
+  turn_off_apparmor_temporarily
+fi
 
 
 ###
@@ -561,7 +565,9 @@ if [ "${_STATUS}" = "INIT" ] || [ "${_STATUS}" = "UPGRADE" ]; then
   if [ ! -e "/root/.run-to-daedalus.cnf" ] \
     && [ ! -e "/root/.run-to-chimaera.cnf" ] \
     && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
-    if_install_apparmor
+    if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
+      if_install_apparmor
+    fi
   fi
 fi
 

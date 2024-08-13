@@ -4910,7 +4910,9 @@ sync_apparmor_profiles() {
         fi
         mrun "apparmor_parser -r /etc/apparmor.d/*" 2> /dev/null
         mrun "aa-enforce /etc/apparmor.d/*" 2> /dev/null
-        if_enforce_apparmor_profiles
+        if [ "${_OS_CODE}" != "stretch" ] && [ "${_OS_CODE}" != "jessie" ]; then
+          if_enforce_apparmor_profiles
+        fi
       elif [ -e "/root/.disable.apparmor.cnf" ] \
         || [ ! -e "/root/.activate.apparmor.cnf" ] \
         || [ ! -e "/root/.enforce.apparmor.cnf" ]; then
