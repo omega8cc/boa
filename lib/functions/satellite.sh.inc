@@ -4333,11 +4333,11 @@ satellite_detect_vm_family() {
   else
     _VMFAMILY="XEN"
   fi
-  _AWS_TEST_A=$(dmidecode -s bios-version 2>&1)
-  _AWS_TEST_B=$(head -c 3 /sys/hypervisor/uuid 2>&1)
-  if [[ "${_AWS_TEST_A}" =~ "amazon" ]] \
-    || [[ "${_AWS_TEST_B}" =~ "ec2" ]]; then
+  # Check for Amazon EC2 in the system manufacturer field
+  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
     _VMFAMILY="AWS"
+  fi
+  if [ "${_VMFAMILY}" = "AWS" ]; then
     if [ "${_STATUS}" = "INIT" ]; then
       _THIS_DB_HOST=localhost
     fi
