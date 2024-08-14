@@ -275,13 +275,13 @@ elsif (-f "/etc/init.d/inetutils-syslogd") {
     system("service inetutils-syslogd restart");
   }
 }
-if ((!$clamdsumar || !-f "/run/clamav/clamd.pid") && -f "/etc/init.d/clamav-daemon") {
+if ((!$clamdsumar || !-f "/run/clamav/clamd.pid") && -f "/etc/init.d/clamav-daemon" && -e "/data/u") {
   if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
     system("killall -9 clamd");
     system("service clamav-daemon start");
   }
 }
-if ((!$freshclamsumar || !-f "/run/clamav/freshclam.pid") && -f "/etc/init.d/clamav-freshclam") {
+if ((!$freshclamsumar || !-f "/run/clamav/freshclam.pid") && -f "/etc/init.d/clamav-freshclam" && -e "/data/u") {
   if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
     system("killall -9 freshclam");
     system("service clamav-freshclam start");
