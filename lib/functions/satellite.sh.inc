@@ -5340,6 +5340,15 @@ satellite_display_url_finalize() {
         echo " "
         msg "LINK: ${_AEGIR_LOGIN_URL}"
         echo " "
+        msg "NOTE! The initial one-time login link will no longer work."
+        sleep 3
+        msg "To access your Octopus Aegir control panel after the procedure is finished..."
+        msg "...please generate a new link by running the following command:"
+        sleep 3
+        echo " "
+        echo "  su -s /bin/bash ${_USER} -c \"drush @hm uli\""
+        echo " "
+        sleep 3
       else
         msg "ALRT! Something went wrong"
         msg "ALRT! Please check the install log for details:"
