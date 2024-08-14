@@ -326,7 +326,6 @@ sub global_action
     $li_cnt{$USER}++ if ($PID);
     $li_cnt{$X}++ if ($PID && $COMMAND =~ /php-fpm/ && $X =~ /php/);
     $li_cnt{$K}++ if ($PID && $COMMAND =~ /^(\|)/ && $K =~ /convert/);
-    local($fpm_result) = "CTRL";
 
     if ($PID)
     {
