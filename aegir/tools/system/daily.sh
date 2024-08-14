@@ -3152,18 +3152,19 @@ if [ -e "/opt/tmp/barracuda-release.txt" ]; then
       _VERSIONS_TEST_RESULT=OK
       echo "INFO: Version test result: OK"
     else
-      sT="Newer BOA available"
+      sT="release available, upgrade now!"
       cat <<EOF | s-nail -s "New ${_X_VERSION} ${sT}" ${_MY_EMAIL}
 
- There is new ${_X_VERSION} version available.
+ There is new ${_X_VERSION} release available!
 
- Please review the changelog and upgrade as soon as possible
- to receive all security updates and new features.
+ Please review the changelog and upgrade as soon as possible to receive all security updates and new features.
 
- Changelog: https://github.com/omega8cc/boa/commits/master
+ BOA Changelog: https://bit.ly/boa-changelog
 
- --
- This email has been sent by your Barracuda server upgrade monitor.
+ BOA Upgrade: https://bit.ly/boa-upgrade-docs
+
+ ---
+ This email has been sent by your BOA system release monitor
 
 EOF
     echo "INFO: Update notice sent: OK"
