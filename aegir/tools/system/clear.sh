@@ -224,7 +224,7 @@ renice ${_B_NICE} -p $$ &> /dev/null
 service ssh restart
 if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
-  if [ `tail --lines=50 ${_SSH_LOG} \
+  if [ `tail --lines=100 ${_SSH_LOG} \
     | grep --count "error: Bind to port 22"` -gt "0" ]; then
     kill -9 $(ps aux | grep '[s]tartups' | awk '{print $2}')
     service ssh start
