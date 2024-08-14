@@ -276,7 +276,7 @@ elsif (-f "/etc/init.d/inetutils-syslogd") {
   }
 }
 
-use strict;
+#use strict;
 use warnings;
 use File::Spec;
 
