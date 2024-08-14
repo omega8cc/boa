@@ -1122,9 +1122,19 @@ aegir_master_display_login_link() {
       if [ ! -z "${_AEGIR_LOGIN_URL}" ]; then
         echo " "
         msg "INFO: Congratulations, Aegir have been installed successfully!"
-        msg "NOTE! Please wait 2 min before visiting Aegir at:"
+        msg "NOTE! Please wait 3 min before visiting Aegir at:"
         echo " "
         msg "LINK: ${_AEGIR_LOGIN_URL}"
+        echo " "
+        msg "NOTE! The initial one-time login link will no longer work."
+        sleep 3
+        msg "To access your Barracuda Aegir control panel after the procedure is finished..."
+        msg "...please generate a new link by running the following command:"
+        sleep 3
+        echo " "
+        echo "  su -s /bin/bash aegir -c \"drush @hm uli\""
+        echo " "
+        sleep 3
       else
         msg "ALRT! Something went wrong"
         msg "ALRT! Please check the install log for details:"
