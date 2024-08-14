@@ -903,7 +903,7 @@ up_proceed() {
   elif [ "${cmmand}" = "up-lts" ]; then
     tRee=lts
   elif [ "${cmmand}" = "help" ]; then
-    tRee=dev
+    tRee=lts
   else
     echo
     echo "Sorry, you are trying not supported command.."
