@@ -10,7 +10,7 @@ export HOME=${HOME}
 
 barCnf="/root/.barracuda.cnf"
 
-_X_SE="540ltsT00"
+_X_SE="540ltsT01"
 
 tRee=lts
 export tRee="${tRee}"
