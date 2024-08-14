@@ -210,12 +210,12 @@ satellite_run_child_b
 ### Run accelerated tasks queue
 ###
 msg "${_STATUS} A: Aegir accelerated task queue will run for 60 seconds..."
-su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ${vSet} hosting_queue_tasks_items 3"
+su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ${vSet} hosting_queue_tasks_items 3" &> /dev/null
 [ ! -e "/root/.force.queue.runner.cnf" ] && touch /root/.force.queue.runner.cnf
 bash /var/xdrago/runner.sh
 wait
 [ -e "/root/.force.queue.runner.cnf" ] && rm -f /root/.force.queue.runner.cnf
-su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ${vSet} hosting_queue_tasks_items 1"
+su -s /bin/bash - ${_USER} -c "drush8 @hostmaster ${vSet} hosting_queue_tasks_items 1" &> /dev/null
 
 
 ###
