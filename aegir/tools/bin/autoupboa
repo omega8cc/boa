@@ -12,7 +12,7 @@ barCnf="/root/.barracuda.cnf"
 
 _X_SE="540devT00"
 
-tRee=pro
+tRee=dev
 export tRee="${tRee}"
 
 crontab_check_clean_race() {
