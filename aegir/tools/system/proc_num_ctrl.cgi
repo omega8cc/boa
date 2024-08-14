@@ -275,18 +275,44 @@ elsif (-f "/etc/init.d/inetutils-syslogd") {
     system("service inetutils-syslogd restart");
   }
 }
-if ((!$clamdsumar || !-f "/run/clamav/clamd.pid") && -f "/etc/init.d/clamav-daemon" && -e "/data/u") {
-  if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
-    system("killall -9 clamd");
-    system("service clamav-daemon start");
+
+use strict;
+use warnings;
+use File::Spec;
+
+# Define file paths as variables for easy modification and clarity
+my $allow_conf   = "/root/.allow.clamav.cnf";
+my $deny_conf    = "/root/.deny.clamav.cnf";
+my $data_dir     = "/data/u";
+my $run_to_files = [ "/root/.run-to-daedalus.cnf", "/root/.run-to-chimaera.cnf", "/root/.run-to-beowulf.cnf" ];
+my $freshclam_pid = "/run/clamav/freshclam.pid";
+my $clamd_pid     = "/run/clamav/clamd.pid";
+my $freshclam_service = "/etc/init.d/clamav-freshclam";
+my $clamd_service     = "/etc/init.d/clamav-daemon";
+
+# Check if all conditions are met
+if (-f $allow_conf && !-f $deny_conf && -d $data_dir && !any_file_exists($run_to_files)) {
+  restart_service('freshclam', $freshclam_pid, $freshclam_service) if !$freshclamsumar;
+  restart_service('clamd', $clamd_pid, $clamd_service) if !$clamdsumar;
+}
+
+sub any_file_exists {
+  my ($files) = @_;
+  for my $file (@$files) {
+    return 1 if -f $file;
+  }
+  return 0;
+}
+
+sub restart_service {
+  my ($service_name, $pid_file, $service_script) = @_;
+  if (!-f $pid_file && -f $service_script) {
+    system("killall -9 $service_name") == 0 or warn "Failed to kill $service_name: $!";
+    system("service $service_name start") == 0 or warn "Failed to start $service_name: $!";
+    sleep(9) if $service_name eq 'freshclam'; # Add a delay if restarting freshclam
   }
 }
-if ((!$freshclamsumar || !-f "/run/clamav/freshclam.pid") && -f "/etc/init.d/clamav-freshclam" && -e "/data/u") {
-  if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
-    system("killall -9 freshclam");
-    system("service clamav-freshclam start");
-  }
-}
+
 exit;
 
 #############################################################################
