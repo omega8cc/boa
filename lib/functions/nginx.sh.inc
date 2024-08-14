@@ -77,33 +77,17 @@ force_advanced_nginx_config() {
   sed -i "s/ 90;/ 180;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
   wait
   if [ "${_NGINX_SPDY}" = "YES" ]; then
-    if [ "${_OS_CODE}" = "none" ]; then
-      sed -i "s/:443;/:443 ssl spdy;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
-      wait
-      sed -i "s/:443;/:443 ssl spdy;/g" ${mtrNgx}/vhost.d/* &> /dev/null
-      wait
-      sed -i "s/:443 ssl http2;/:443 ssl spdy;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
-      wait
-      sed -i "s/:443 ssl http2;/:443 ssl spdy;/g" ${mtrNgx}/vhost.d/* &> /dev/null
-      wait
-    else
-      sed -i "s/:443;/:443 ssl;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
-      wait
-      sed -i "s/:443;/:443 ssl;/g" ${mtrNgx}/vhost.d/* &> /dev/null
-      wait
-      sed -i "s/:443 ssl spdy;/:443 ssl;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
-      wait
-      sed -i "s/:443 ssl spdy;/:443 ssl;/g" ${mtrNgx}/vhost.d/* &> /dev/null
-      wait
-    fi
-  else
-    sed -i "s/:443 ssl http2;/:443;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
+    sed -i "s/:443;/:443 ssl;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
     wait
-    sed -i "s/:443 ssl http2;/:443;/g" ${mtrNgx}/vhost.d/* &> /dev/null
+    sed -i "s/:443;/:443 ssl;/g" ${mtrNgx}/vhost.d/* &> /dev/null
     wait
-    sed -i "s/:443 ssl spdy;/:443;/g"  ${mtrNgx}/pre.d/*.conf &> /dev/null
+    sed -i "s/:443 ssl spdy;/:443 ssl;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
     wait
-    sed -i "s/:443 ssl spdy;/:443;/g"  ${mtrNgx}/vhost.d/* &> /dev/null
+    sed -i "s/:443 ssl spdy;/:443 ssl;/g" ${mtrNgx}/vhost.d/* &> /dev/null
+    wait
+    sed -i "s/:443 ssl http2;/:443 ssl;/g" ${mtrNgx}/pre.d/*.conf &> /dev/null
+    wait
+    sed -i "s/:443 ssl http2;/:443 ssl;/g" ${mtrNgx}/vhost.d/* &> /dev/null
     wait
   fi
   if [ -e "/root/.install.modern.openssl.cnf" ] \
@@ -777,33 +761,17 @@ nginx_config_update_fix() {
       wait
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
-      if [ "${_OS_CODE}" = "none" ]; then
-        sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
-        wait
-        sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
-        wait
-        sed -i "s/:443 ssl http2;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
-        wait
-        sed -i "s/:443 ssl http2;/:443 ssl spdy;/g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
-        wait
-      else
-        sed -i "s/:443;/:443 ssl;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
-        wait
-        sed -i "s/:443;/:443 ssl;/g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
-        wait
-        sed -i "s/:443 ssl spdy;/:443 ssl;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
-        wait
-        sed -i "s/:443 ssl spdy;/:443 ssl;/g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
-        wait
-      fi
-    else
-      sed -i "s/:443 ssl http2;/:443;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/:443;/:443 ssl;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
       wait
-      sed -i "s/:443 ssl http2;/:443;/g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+      sed -i "s/:443;/:443 ssl;/g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
       wait
-      sed -i "s/:443 ssl spdy;/:443;/g"  /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      sed -i "s/:443 ssl spdy;/:443 ssl;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
       wait
-      sed -i "s/:443 ssl spdy;/:443;/g"  /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+      sed -i "s/:443 ssl spdy;/:443 ssl;/g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
+      wait
+      sed -i "s/:443 ssl http2;/:443 ssl;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
+      wait
+      sed -i "s/:443 ssl http2;/:443 ssl;/g" /var/aegir/config/server_*/nginx/vhost.d/* &> /dev/null
       wait
     fi
     if [ -e "/root/.install.modern.openssl.cnf" ] \
