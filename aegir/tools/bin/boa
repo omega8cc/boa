@@ -1335,7 +1335,11 @@ init_setup() {
     echo
     if [ ! -e "/root/.dont.upgrade.octopus.on.install.cnf" ]; then
       rm -rf /data/disk/${user}/.tmp/cache
-      nohup /opt/local/bin/octopus up-${tRee} ${user} force > /dev/null 2>&1 &
+      if [ "${_OCTOPUS_ONLY}" = "YES" ]; then
+        nohup /opt/local/bin/octopus up-${tRee} ${user} force > /dev/null 2>&1 &
+      else
+        /opt/local/bin/octopus up-${tRee} ${user} force > /dev/null 2>&1
+      fi
     fi
     sleep 1
     exit 0
