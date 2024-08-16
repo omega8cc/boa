@@ -194,9 +194,6 @@ else {
     system("killall -9 php-fpm");
     `echo "$timedate KILL FPM $fpmsumar" >> /var/xdrago/log/fpm.kill.log`;
   }
-#   if (!-f "/run/fmp_wait.pid" && !-f "/run/restarting_fmp_wait.pid") {
-#     system("touch /run/fmp_wait.pid");
-#     sleep(3);
     system("service php83-fpm start") if ((!$php83lives || !$fpmsumar || !-f "/run/php83-fpm.pid") && -f "/etc/init.d/php83-fpm");
     system("service php82-fpm start") if ((!$php82lives || !$fpmsumar || !-f "/run/php82-fpm.pid") && -f "/etc/init.d/php82-fpm");
     system("service php81-fpm start") if ((!$php81lives || !$fpmsumar || !-f "/run/php81-fpm.pid") && -f "/etc/init.d/php81-fpm");
@@ -207,14 +204,9 @@ else {
     system("service php71-fpm start") if ((!$php71lives || !$fpmsumar || !-f "/run/php71-fpm.pid") && -f "/etc/init.d/php71-fpm");
     system("service php70-fpm start") if ((!$php70lives || !$fpmsumar || !-f "/run/php70-fpm.pid") && -f "/etc/init.d/php70-fpm");
     system("service php56-fpm start") if ((!$php56lives || !$fpmsumar || !-f "/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
-#     sleep(3);
-#     system("rm -f /run/fmp_wait.pid");
-#   }
 }
 
 if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
-  # if (!-f "/run/solr_jetty.pid") {
-  #   system("touch /run/solr_jetty.pid");
   system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7");
   system("service jetty8 start") if (!$jetty8sumar && -f "/etc/init.d/jetty8");
   system("service jetty9 start") if (!$jetty9sumar && -f "/etc/init.d/jetty9");
@@ -223,9 +215,6 @@ if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f 
   system("service xinetd start") if (!$xinetdsumar && -f "/etc/init.d/xinetd");
   system("service lsyncd start") if (!$lsyncdsumar && -f "/etc/init.d/lsyncd");
   system("service postfix restart") if (!-f "/var/spool/postfix/pid/master.pid");
-  #   sleep(9);
-  #   system("rm -f /run/solr_jetty.pid");
-  # }
 }
 
 $ftpdinit="/usr/local/sbin/pure-config.pl";
