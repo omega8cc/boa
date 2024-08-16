@@ -307,8 +307,10 @@ sub any_file_exists {
 sub restart_service {
   my ($service_name, $pid_file, $service_script) = @_;
   if (!-f $pid_file && -f $service_script) {
-    system("killall -9 $service_name") == 0 or warn "Failed to kill $service_name: $!";
-    system("service $service_name start") == 0 or warn "Failed to start $service_name: $!";
+    my $kill_command = "killall -9 $service_name";
+    system($kill_command) == 0 or warn "Failed to kill $service_name: $!";
+    my $start_command = "$service_script start";
+    system($start_command) == 0 or warn "Failed to start $service_name: $!";
     sleep(9) if $service_name eq 'freshclam'; # Add a delay if restarting freshclam
   }
 }
