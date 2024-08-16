@@ -5,6 +5,9 @@
 $ENV{'HOME'} = '/root';
 $ENV{'PATH'} = '/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin';
 
+use warnings;
+use File::Spec;
+
 $| = 1;
 if (-f "/run/boa_wait.pid") {exit;}
 $status="CLEAN";

@@ -5,6 +5,9 @@
 $ENV{'HOME'} = '/root';
 $ENV{'PATH'} = '/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin';
 
+use warnings;
+use File::Spec;
+
 ###
 ### System Services Monitor running every 5 seconds
 ###
@@ -264,10 +267,6 @@ elsif (-f "/etc/init.d/inetutils-syslogd") {
     system("service inetutils-syslogd restart");
   }
 }
-
-#use strict;
-use warnings;
-use File::Spec;
 
 # Define file paths as variables for easy modification and clarity
 my $allow_conf   = "/root/.allow.clamav.cnf";

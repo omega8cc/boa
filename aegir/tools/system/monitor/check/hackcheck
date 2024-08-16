@@ -9,6 +9,9 @@ $ENV{'PATH'} = '/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin
 ### This is an auth abuse monitor for ssh.
 ###
 
+use warnings;
+use File::Spec;
+
 $| = 1;
 $this_filename = "hackcheck";
 $times=`date +%y%m%d-%H%M%S`;
