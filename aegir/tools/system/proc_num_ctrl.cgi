@@ -5,6 +5,9 @@
 $ENV{'HOME'} = '/root';
 $ENV{'PATH'} = '/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin';
 
+use warnings;
+use File::Spec;
+
 ###
 ### System Services Monitor running every 5 seconds
 ###
@@ -72,7 +75,7 @@ print "\n $sumar ALL procs\t\tGLOBAL";
 print "\n $lfdsumar LFD procs\t\tGLOBAL" if ($lfdlives && -f "/etc/init.d/lfd");
 print "\n $namedsumar Bind procs\t\tGLOBAL" if ($namedlives);
 print "\n $clamdsumar Clamd procs\t\tGLOBAL" if ($clamdlives);
-print "\n $freshclamsumar Freshclam procs\t\tGLOBAL" if ($freshclamlives);
+print "\n $freshclamsumar Freshclam\t\tGLOBAL" if ($freshclamlives);
 print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
 print "\n $collectdsumar Collectd\t\tGLOBAL" if ($collectdlives);
 print "\n $dhcpcdsumar dhcpcd procs\t\tGLOBAL" if ($dhcpcdlives);
@@ -194,9 +197,6 @@ else {
     system("killall -9 php-fpm");
     `echo "$timedate KILL FPM $fpmsumar" >> /var/xdrago/log/fpm.kill.log`;
   }
-#   if (!-f "/run/fmp_wait.pid" && !-f "/run/restarting_fmp_wait.pid") {
-#     system("touch /run/fmp_wait.pid");
-#     sleep(3);
     system("service php83-fpm start") if ((!$php83lives || !$fpmsumar || !-f "/run/php83-fpm.pid") && -f "/etc/init.d/php83-fpm");
     system("service php82-fpm start") if ((!$php82lives || !$fpmsumar || !-f "/run/php82-fpm.pid") && -f "/etc/init.d/php82-fpm");
     system("service php81-fpm start") if ((!$php81lives || !$fpmsumar || !-f "/run/php81-fpm.pid") && -f "/etc/init.d/php81-fpm");
@@ -207,14 +207,9 @@ else {
     system("service php71-fpm start") if ((!$php71lives || !$fpmsumar || !-f "/run/php71-fpm.pid") && -f "/etc/init.d/php71-fpm");
     system("service php70-fpm start") if ((!$php70lives || !$fpmsumar || !-f "/run/php70-fpm.pid") && -f "/etc/init.d/php70-fpm");
     system("service php56-fpm start") if ((!$php56lives || !$fpmsumar || !-f "/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
-#     sleep(3);
-#     system("rm -f /run/fmp_wait.pid");
-#   }
 }
 
 if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
-  # if (!-f "/run/solr_jetty.pid") {
-  #   system("touch /run/solr_jetty.pid");
   system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7");
   system("service jetty8 start") if (!$jetty8sumar && -f "/etc/init.d/jetty8");
   system("service jetty9 start") if (!$jetty9sumar && -f "/etc/init.d/jetty9");
@@ -223,9 +218,6 @@ if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f 
   system("service xinetd start") if (!$xinetdsumar && -f "/etc/init.d/xinetd");
   system("service lsyncd start") if (!$lsyncdsumar && -f "/etc/init.d/lsyncd");
   system("service postfix restart") if (!-f "/var/spool/postfix/pid/master.pid");
-  #   sleep(9);
-  #   system("rm -f /run/solr_jetty.pid");
-  # }
 }
 
 $ftpdinit="/usr/local/sbin/pure-config.pl";
@@ -276,10 +268,6 @@ elsif (-f "/etc/init.d/inetutils-syslogd") {
   }
 }
 
-#use strict;
-use warnings;
-use File::Spec;
-
 # Define file paths as variables for easy modification and clarity
 my $allow_conf   = "/root/.allow.clamav.cnf";
 my $deny_conf    = "/root/.deny.clamav.cnf";
@@ -307,8 +295,10 @@ sub any_file_exists {
 sub restart_service {
   my ($service_name, $pid_file, $service_script) = @_;
   if (!-f $pid_file && -f $service_script) {
-    system("killall -9 $service_name") == 0 or warn "Failed to kill $service_name: $!";
-    system("service $service_name start") == 0 or warn "Failed to start $service_name: $!";
+    my $kill_command = "killall -9 $service_name";
+    system($kill_command) == 0 or warn "Failed to kill $service_name: $!";
+    my $start_command = "$service_script start";
+    system($start_command) == 0 or warn "Failed to start $service_name: $!";
     sleep(9) if $service_name eq 'freshclam'; # Add a delay if restarting freshclam
   }
 }
