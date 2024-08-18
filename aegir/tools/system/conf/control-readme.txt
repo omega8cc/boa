@@ -85,23 +85,6 @@
 
 
 ###
-### Let's Encrypt support for live certificates
-###
-### Your Aegir system by default comes with Let's Encrypt support in demo mode,
-### so you won't hit LE limits for real certificates just by playing around.
-### This means that unless you have already added the control file, Aegir will
-### create a "demo" or "fake" LE certificates. Once you are ready to go live,
-### simply add an empty control file and run Verify task on the site with
-### enabled Encryption. Once the tasks completes in all-green, you can edit
-### the site's node again to make the Encryption Required, if you prefer.
-###
-###  ~/static/control/ssl-live-mode.info
-###
-### It is a one-time operation, so even if you will delete this control file
-### later, the system will not switch your instance back to LE demo mode.
-###
-
-
 ### Aegir version provided by BOA is now fully compatible with PHP 8.0 and 8.1,
 ### so both can be used as default versions in the Aegir PHP configuration files
 ### ~/static/control/cli.info and ~/static/control/fpm.info
