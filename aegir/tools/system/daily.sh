@@ -2053,6 +2053,8 @@ if_le_hm_ssl_old() {
   fi
   # Calculate the time difference in minutes
   time_diff=$(( (current_time - file_mod_time) / 60 ))
+  # Round time_diff to the nearest integer
+  time_diff=$(printf "%.0f" "$time_diff")
   # Check if the file was modified within the last 30 minutes
   if [ $time_diff -lt 30 ]; then
     crtLastMod=NEW
