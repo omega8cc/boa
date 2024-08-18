@@ -1757,7 +1757,6 @@ fix_python() {
 }
 
 fix_lshell() {
-  fix_python
   _LSHELL_VRN=0.9.18.10
   _PATH_LSHELL="${usrBin}/lshell"
   _LSHELL_LIB_TWO="/usr/local/lib/python2.7/dist-packages/lshell/checkconfig.py"
@@ -1812,7 +1811,10 @@ fix_lshell() {
     elif [ -x "${isPythonTwo}" ]; then
       usePyth=python2
     fi
-    ${usePyth} setup.py install --no-compile --break-system-packages --root-user-action ignore
+    if [ -x "/usr/bin/python3" ]; then
+      usePyth=/usr/bin/python3
+    fi
+    ${usePyth} setup.py install --no-compile
     cp -af /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5 /etc/lshell.conf
     rm -f /etc/logrotate.d/lshell
     addgroup --system lshellg &> /dev/null
@@ -2844,6 +2846,7 @@ if [ `whoami` = "root" ]; then
     && [ -e "/var/log/barracuda_log.txt" ]; then
     fix_ping_perms
     fix_fpm_process_max
+    fix_python
     fix_lshell
     fix_node_in_lshell_access
     fix_authorized_keys
