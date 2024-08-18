@@ -7780,7 +7780,7 @@ lshell_install_upgrade() {
     elif [ -x "${isPythonTwo}" ]; then
       usePyth=python2
     fi
-    mrun "${usePyth} setup.py install --no-compile" 2> /dev/null
+    mrun "${usePyth} setup.py install --no-compile --break-system-packages --root-user-action ignore" 2> /dev/null
     if [ "${_STATUS}" = "UPGRADE" ]; then
       cp -af /etc/lshell.conf-bak-${_NOW} /etc/lshell.conf &> /dev/null
     else
