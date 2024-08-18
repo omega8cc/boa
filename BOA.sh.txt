@@ -1721,7 +1721,58 @@ fix_node_in_lshell_access() {
   fi
 }
 
+fix_python() {
+  _LSHELL_VRN=0.9.18
+  isLshell=$(which lshell 2>&1)
+  _LSHELL_ITD=$(${isLshell} --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d"-" -f2 \
+    | awk '{ print $1}' 2>&1)
+  if [ "${_LSHELL_ITD}" != "${_LSHELL_VRN}" ] || [[ "${_LSHELL_ITD}" =~ "Traceback" ]]; then
+    _LSHELL_FORCE_REINSTALL=YES
+  fi
+  isPythonThree=$(which python3 2>&1)
+  if [ -x "${isPythonThree}" ]; then
+    usePyth=python3
+  elif [ -x "${isPythonTwo}" ]; then
+    usePyth=python2
+  fi
+  _PYTHON_VRN=3.12.5
+  _PYTHON_TEST=$(${usePyth} --version 2>&1)
+  if [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ] \
+    || [[ ! "${_PYTHON_TEST}" =~ "Python ${_PYTHON_VRN}" ]]; then
+    apt_clean_update
+    apt-get install -y \
+        intltool \
+        libffi-dev \
+        par2 \
+        python3-pip \
+        python3-venv \
+        python3 \
+        rclone \
+        rdiff \
+        tzdata
+    if [ -d "/usr/local/ssl3" ]; then
+      cd /var/opt
+      rm -rf Python*
+      get_dev_src "Python-${_PYTHON_VRN}.tgz"
+      tar -xzf Python-${_PYTHON_VRN}.tgz
+      cd Python-${_PYTHON_VRN}
+      bash ./configure --with-openssl=/usr/local/ssl3
+      make -j $(nproc) --quiet
+      make install --quiet
+      cd
+    fi
+    _PYTHON_TEST=$(${usePyth} --version 2>&1)
+    if [[ "${_PYTHON_TEST}" =~ "Python ${_PYTHON_VRN}" ]]; then
+      python3 -m pip install pipx --break-system-packages --root-user-action ignore
+      pip3 install --upgrade pip --root-user-action ignore
+    fi
+  fi
+}
+
 fix_lshell() {
+  fix_python
   _LSHELL_VRN=0.9.18.10
   _PATH_LSHELL="${usrBin}/lshell"
   _LSHELL_LIB_TWO="/usr/local/lib/python2.7/dist-packages/lshell/checkconfig.py"
