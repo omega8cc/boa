@@ -26,7 +26,7 @@
 ;;  The value (in seconds) of the session_cookie_ttl variable is used as
 ;;  session.cookie_lifetime value.
 ;;
-;;  BOA default defined in the system level global.inc file is 86400 == 24h.
+;;  BOA default defined in the system level global.inc file is 86400 === 24h.
 ;;
 ;;  We also recommend that you enable and configure built-in session_expire
 ;;  module, which allows you to keep the sessions DB table tidy. Make sure that
@@ -44,7 +44,7 @@
 ;;  data will be seen as 'garbage' and potentially cleaned up, resulting with
 ;;  $_SESSION variable discarded and affected authenticated users logged out.
 ;;
-;;  BOA default defined in the system level global.inc file is 86400 == 24h.
+;;  BOA default defined in the system level global.inc file is 86400 === 24h.
 ```
 
 ### INI (site level) for Redis Cache Settings Control
