@@ -35,19 +35,19 @@ if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI']) ||
  */
 if (isset($_SERVER['REMOTE_ADDR'])) {
   if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) &&
-      $_SERVER['HTTP_X_FORWARDED_FOR'] != "127.0.0.1") {
+      $_SERVER['HTTP_X_FORWARDED_FOR'] !== "127.0.0.1") {
     $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_FORWARDED_FOR'];
   }
   if (isset($_SERVER['HTTP_X_REAL_IP']) &&
-      $_SERVER['HTTP_X_REAL_IP'] != "127.0.0.1") {
+      $_SERVER['HTTP_X_REAL_IP'] !== "127.0.0.1") {
     $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_REAL_IP'];
   }
   if (isset($_SERVER['HTTP_CF_CONNECTING_IP']) &&
-      $_SERVER['HTTP_CF_CONNECTING_IP'] != "127.0.0.1") {
+      $_SERVER['HTTP_CF_CONNECTING_IP'] !== "127.0.0.1") {
     $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
   }
   if (isset($_SERVER['HTTP_TRUE_CLIENT_IP']) &&
-      $_SERVER['HTTP_TRUE_CLIENT_IP'] != "127.0.0.1") {
+      $_SERVER['HTTP_TRUE_CLIENT_IP'] !== "127.0.0.1") {
     $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_TRUE_CLIENT_IP'];
   }
 }
@@ -173,7 +173,7 @@ if ($conf['install_profile'] === 'hostmaster') {
     if (!file_exists('/data/conf/no-https-aegir.inc')) {
       $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https' ||
       $_SERVER['HTTPS'] === 'on') ? 'SSL' : 'NONSSL';
-      if ($request_type != "SSL" &&
+      if ($request_type !== "SSL" &&
           !preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI'])) { // we force secure connection here
         header('X-Accel-Expires: 5');
         header("HTTP/1.1 301 Moved Permanently");

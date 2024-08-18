@@ -11,7 +11,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https' || $_SERVER['HTTPS'] === 'on') ? 'SSL' : 'NONSSL';
     if ($request_type === "SSL") { // we check for secure connection to set correct base_url
       $base_url = 'https://' . $_SERVER['HTTP_HOST'];
-      if ($conf['install_profile'] != 'hostmaster') {
+      if ($conf['install_profile'] !== 'hostmaster') {
         $_SERVER['HTTPS'] = 'on';
         if ($drupal_core >= 7) {
           ini_set('session.cookie_secure', TRUE);
@@ -226,7 +226,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
         }
       }
     }
-    if ($conf['install_profile'] != 'hostmaster' && ($expire_in_seconds > -1)) {
+    if ($conf['install_profile'] !== 'hostmaster' && ($expire_in_seconds > -1)) {
       header("X-Accel-Expires: " . $expire_in_seconds);
       if ($expire_in_seconds > -1 && $expire_in_seconds < 2) {
         $conf['cache'] = 0; // Disable page caching on the fly

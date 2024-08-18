@@ -31,8 +31,8 @@ if (isset($_SERVER['HTTP_HOST']) &&
 if (isset($_SERVER['HTTP_HOST']) &&
     isset($_SERVER['MAIN_SITE_NAME']) &&
     preg_match("/(?:^dev\.|^devel\.|\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) &&
-    $_SERVER['HTTP_HOST'] != $_SERVER['MAIN_SITE_NAME'] &&
-    $_SERVER['HTTP_HOST'] != $_SERVER['SERVER_NAME'] &&
+    $_SERVER['HTTP_HOST'] !== $_SERVER['MAIN_SITE_NAME'] &&
+    $_SERVER['HTTP_HOST'] !== $_SERVER['SERVER_NAME'] &&
     !$is_backend) {
   $is_dev = TRUE;
 }
