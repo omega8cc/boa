@@ -1757,7 +1757,6 @@ fix_python() {
 }
 
 fix_lshell() {
-  fix_python
   _LSHELL_VRN=0.9.18.10
   _PATH_LSHELL="${usrBin}/lshell"
   _LSHELL_LIB_TWO="/usr/local/lib/python2.7/dist-packages/lshell/checkconfig.py"
@@ -2844,6 +2843,7 @@ if [ `whoami` = "root" ]; then
     && [ -e "/var/log/barracuda_log.txt" ]; then
     fix_ping_perms
     fix_fpm_process_max
+    fix_python
     fix_lshell
     fix_node_in_lshell_access
     fix_authorized_keys
