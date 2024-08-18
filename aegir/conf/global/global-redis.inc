@@ -318,12 +318,12 @@ if ($redis_up && $use_redis && !$custom_cache) {
       $conf['redis_client_password']            = 'isfoobared';
       $conf['redis_client_base']                = '8';
       $conf['cache_prefix']                     = $this_prefix;
-      $conf['page_cache_invoke_hooks']          = TRUE;  // D7 == Do not use Aggressive Mode
-      $conf['page_cache_without_database']      = FALSE; // D7 == Do not use Aggressive Mode
-      $conf['page_cache_maximum_age']           = 0;     // D7 == max-age in the Cache-Control header (ignored by Speed Booster)
-      $conf['page_cache_max_age']               = 0;     // D6 == max-age in the Cache-Control header (ignored by Speed Booster)
-      $conf['cache_lifetime']                   = 0;     // D7 == BOA uses Speed Booster / Nginx micro-caching instead
-      $conf['page_cache_lifetime']              = 0;     // D6 == BOA uses Speed Booster / Nginx micro-caching instead
+      $conf['page_cache_invoke_hooks']          = TRUE;  // D7 === Do not use Aggressive Mode
+      $conf['page_cache_without_database']      = FALSE; // D7 === Do not use Aggressive Mode
+      $conf['page_cache_maximum_age']           = 0;     // D7 === max-age in the Cache-Control header (ignored by Speed Booster)
+      $conf['page_cache_max_age']               = 0;     // D6 === max-age in the Cache-Control header (ignored by Speed Booster)
+      $conf['cache_lifetime']                   = 0;     // D7 === BOA uses Speed Booster / Nginx micro-caching instead
+      $conf['page_cache_lifetime']              = 0;     // D6 === BOA uses Speed Booster / Nginx micro-caching instead
     }
     if ($all_ini['redis_exclude_bins'] && !is_readable('/data/conf/clstr.cnf')) {
       $excludes = array();

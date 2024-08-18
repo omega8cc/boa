@@ -187,7 +187,7 @@ install() {
     elif [ -x "${isPythonTwo}" ]; then
       usePyth=python2
     fi
-    _PYTHON_VRN=3.12.4
+    _PYTHON_VRN=3.12.5
     _PYTHON_TEST=$(${usePyth} --version 2>&1)
     if [[ ! "${_PYTHON_TEST}" =~ "Python ${_PYTHON_VRN}" ]]; then
       cd /var/opt
@@ -206,8 +206,8 @@ install() {
       pip3 install --upgrade pip --root-user-action ignore
       export PIPX_BIN_DIR=/usr/local/bin
       export PIPX_HOME=/opt/pipx/venvs
-      pipx install duplicity
-      pipx install awscli
+      pipx install duplicity --force
+      pipx install awscli --force
     else
       mkdir -p /var/opt
       rm -rf /var/opt/{fasteners*,boto*,duplicity*}
