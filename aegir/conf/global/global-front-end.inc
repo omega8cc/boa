@@ -120,7 +120,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
         header('X-Is-Logged-In-A:' . $is_logged_in);
       }
     }
-    elseif ($drupal_core === 7) {
+    elseif ($drupal_core == 7) {
       // For Drupal 7 use sha256 hash and cookie prefix based on session.cookie_secure
       $cookie_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $test_sess_name = $cookie_prefix . substr(hash('sha256', $cookie_domain), 0, 32);

@@ -236,7 +236,7 @@ else {
 if (!$is_dev) {
   if ($all_ini['advagg_auto_configuration']) {
 
-    if ($drupal_core === 6) {
+    if ($drupal_core == 6) {
       if (is_readable('modules/o_contrib/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module')) {
         $conf['preprocess_css'] = 0; // CSS aggregation disabled
@@ -263,7 +263,7 @@ if (!$is_dev) {
         $conf['advagg_server_addr'] = "-1";
       }
     }
-    elseif ($drupal_core === 7) {
+    elseif ($drupal_core == 7) {
       if (is_readable('modules/o_contrib_seven/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module')) {
         $conf['advagg_bundler_active'] = 1;
@@ -303,7 +303,7 @@ if (!$is_dev) {
       }
     }
 
-    if ($drupal_core === 6 || $drupal_core === 7) {
+    if ($drupal_core == 6 || $drupal_core == 7) {
       if (is_readable('modules/o_contrib/httprl/httprl.module') ||
           is_readable('modules/o_contrib_seven/httprl/httprl.module')) {
         $conf['advagg_use_httprl'] = 1;
