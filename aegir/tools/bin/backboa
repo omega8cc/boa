@@ -206,8 +206,8 @@ install() {
       pip3 install --upgrade pip --root-user-action ignore
       export PIPX_BIN_DIR=/usr/local/bin
       export PIPX_HOME=/opt/pipx/venvs
-      pipx install duplicity
-      pipx install awscli
+      pipx install duplicity --force
+      pipx install awscli --force
     else
       mkdir -p /var/opt
       rm -rf /var/opt/{fasteners*,boto*,duplicity*}
