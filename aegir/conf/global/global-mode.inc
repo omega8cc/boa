@@ -105,22 +105,22 @@ if (preg_match("/\/api\/hidden\//", $_SERVER['REQUEST_URI'])) {
 /**
  * Drupal core or other apps id
  */
-if ($drupal_core == 6) {
+if ($drupal_core === 6) {
   $drupal_id = 'DVI';
 }
-elseif ($drupal_core == 7) {
+elseif ($drupal_core === 7) {
   $drupal_id = 'DVII';
 }
-elseif ($drupal_core == 8) {
+elseif ($drupal_core === 8) {
   $drupal_id = 'DVIII';
 }
-elseif ($drupal_core == 9) {
+elseif ($drupal_core === 9) {
   $drupal_id = 'DIX';
 }
-elseif ($drupal_core == 10) {
+elseif ($drupal_core === 10) {
   $drupal_id = 'DX';
 }
-elseif ($drupal_core == 11) {
+elseif ($drupal_core === 11) {
   $drupal_id = 'DXI';
 }
 else {

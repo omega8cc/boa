@@ -162,7 +162,7 @@ error_reporting(0);
 /**
  * Hostmaster specific settings
  */
-if ($conf['install_profile'] == 'hostmaster') {
+if ($conf['install_profile'] === 'hostmaster') {
   $conf['hosting_require_disable_before_delete'] = 0;
   $conf['hosting_task_refresh_timeout'] = 5555;
   $conf['theme_link'] = FALSE;
@@ -171,8 +171,8 @@ if ($conf['install_profile'] == 'hostmaster') {
     ini_set('session.cookie_lifetime', 0); // Force log-out on browser quit
     header('X-Accel-Expires: 1');
     if (!file_exists('/data/conf/no-https-aegir.inc')) {
-      $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' ||
-      $_SERVER['HTTPS'] == 'on') ? 'SSL' : 'NONSSL';
+      $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https' ||
+      $_SERVER['HTTPS'] === 'on') ? 'SSL' : 'NONSSL';
       if ($request_type != "SSL" &&
           !preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI'])) { // we force secure connection here
         header('X-Accel-Expires: 5');

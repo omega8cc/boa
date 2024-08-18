@@ -6,7 +6,7 @@
 // for proper HTTP/HTTPS redirects.
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:domain\.com|another-domain\.com)/", $_SERVER['HTTP_HOST']) &&
     isset($_SERVER['REQUEST_URI']) && isset($_SERVER['HTTP_USER_AGENT'])) {
-  $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
+  $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'SSL' : 'NONSSL';
   $conf['https'] = TRUE;
   if (preg_match("/^\/(?:[a-z]{2}\/)?(?:cart.*|checkout.*|admin.*|donate.*|civicrm.*|node\/add.*|node\/.*\/edit)$/", $_SERVER['REQUEST_URI']) ||
       preg_match("/^\/(?:user.*|user\/.*\/edit.*|user\/reset.*|user\/register.*|user\/logout|user\/password|user\/login)$/", $_SERVER['REQUEST_URI'])) {
@@ -23,7 +23,7 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:domain\.com|another-domain\.
   }
   else {
     $base_url = 'http://' . $_SERVER['HTTP_HOST'];
-    if ($request_type == "SSL" && !preg_match("/(?:x-progress-id|ahah|filefield_nginx_progress\/*|tinybrowser|f?ckeditor|tinymce|flowplayer|jwplayer|videomanager|autocomplete|ajax|batch|js\/.*)/", $_SERVER['REQUEST_URI'])) {
+    if ($request_type === "SSL" && !preg_match("/(?:x-progress-id|ahah|filefield_nginx_progress\/*|tinybrowser|f?ckeditor|tinymce|flowplayer|jwplayer|videomanager|autocomplete|ajax|batch|js\/.*)/", $_SERVER['REQUEST_URI'])) {
       header('X-Accel-Expires: 1');
       // Note: never use header('X-Accel-Expires: 0'); to disable Speed Booster completely.
       // You always want that one second or you will be vulnerable to DoS attacks.
