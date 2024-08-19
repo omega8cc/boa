@@ -5,7 +5,7 @@
  */
 function drush_provision_hosting_le_post_provision_verify() {
 
-  if (d()->type === 'site') {
+  if (d()->type == 'site') {
     $le_root = d('@server_master')->aegir_root . "/tools/le";
     $le_cert = d('@server_master')->aegir_root . "/tools/le/certs";
     $le_acme = d('@server_master')->aegir_root . "/tools/le/.acme-challenges";
@@ -25,7 +25,7 @@ function drush_provision_hosting_le_post_provision_verify() {
     }
 
     $main_name = $real_name = substr(d()->name, 1);
-    if ($real_name === 'hostmaster') {
+    if ($real_name == 'hostmaster') {
       $real_name = $main_name = d()->uri;
     }
 
@@ -94,7 +94,7 @@ function drush_provision_hosting_le_post_provision_verify() {
     }
   }
 
-  if (d()->type === 'site' &&
+  if (d()->type == 'site' &&
      !d()->ssl_enabled &&
      !provision_file()->exists($immutable)->status()) {
     if (file_exists($cert_dir)) {
@@ -107,7 +107,7 @@ function drush_provision_hosting_le_post_provision_verify() {
       drush_log('[hosting_le] ACME Cleanup Symlinks: ' . $acme_result_c, 'info');
     }
   }
-  elseif (d()->type === 'site' &&
+  elseif (d()->type == 'site' &&
           d()->ssl_enabled) {
 
     provision_file()->create_dir($le_root, dt('[hosting_le] LE root'), 0711);
@@ -281,10 +281,10 @@ function drush_provision_hosting_le_post_provision_verify() {
       $redirect_result = '';
       $http_service_type = $web_server->http_service_type;
 
-      if ($http_service_type === 'nginx_ssl') {
+      if ($http_service_type == 'nginx_ssl') {
         exec("/bin/grep  \"alias redirection virtual host\" " . $site_vhost, $grep_output);
       }
-      elseif ($http_service_type === 'apache_ssl') {
+      elseif ($http_service_type == 'apache_ssl') {
         exec("/bin/grep  \"Redirect all aliases\" " . $site_vhost, $grep_output);
       }
 
