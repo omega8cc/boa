@@ -1752,6 +1752,9 @@ fix_python() {
       make -j $(nproc) --quiet
       make install --quiet
       cd
+      apt_clean_update
+      apt-get install python3-pip -y
+      pip3 install --upgrade pip --root-user-action ignore
     fi
   fi
 }
@@ -1759,34 +1762,22 @@ fix_python() {
 fix_lshell() {
   _LSHELL_VRN=0.9.18.10
   _PATH_LSHELL="${usrBin}/lshell"
-  _LSHELL_LIB_TWO="/usr/local/lib/python2.7/dist-packages/lshell/checkconfig.py"
-  _LSHELL_LIB_TFR="/usr/local/lib/python3.4/dist-packages/lshell/checkconfig.py"
-  _LSHELL_LIB_TFV="/usr/local/lib/python3.5/dist-packages/lshell/checkconfig.py"
-  _LSHELL_LIB_TNE="/usr/local/lib/python3.9/dist-packages/lshell/checkconfig.py"
-  _LSHELL_LIB_TEL="/usr/local/lib/python3.11/dist-packages/lshell/checkconfig.py"
-  _LSHELL_LIB_TWL="/usr/local/lib/python3.12/dist-packages/lshell/checkconfig.py"
-  if [ ! -e "${_LSHELL_LIB_TWO}" ] \
-    && [ ! -e "${_LSHELL_LIB_TFR}" ] \
-    && [ ! -e "${_LSHELL_LIB_TFV}" ] \
-    && [ ! -e "${_LSHELL_LIB_TNE}" ] \
-    && [ ! -e "${_LSHELL_LIB_TEL}" ] \
-    && [ ! -e "${_LSHELL_LIB_TWL}" ]; then
-    _LSHELL_FORCE_REINSTALL=YES
-  else
-    _LSHELL_FORCE_REINSTALL=NO
-  fi
-  _LSHELL_VRN=0.9.18
+  _LSHELL_CHK_VRN=0.9.18
   isLshell=$(which lshell 2>&1)
   _LSHELL_ITD=$(${isLshell} --version 2>&1 \
     | tr -d "\n" \
     | cut -d"-" -f2 \
     | awk '{ print $1}' 2>&1)
-  if [ "${_LSHELL_ITD}" != "${_LSHELL_VRN}" ] || [[ "${_LSHELL_ITD}" =~ "Traceback" ]]; then
+  if [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
+    || [[ "${_LSHELL_ITD}" =~ "Traceback" ]]; then
     _LSHELL_FORCE_REINSTALL=YES
   fi
   if [ -e "${_PATH_LSHELL}" ] \
     && [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ]; then
     cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5
+    apt_clean_update
+    apt-get install python3-pip -y
+    pip3 install --upgrade pip --root-user-action ignore
     cd /var/opt
     rm -rf lshell*
     get_dev_src "lshell-${_LSHELL_VRN}.tar.gz"
@@ -1804,17 +1795,7 @@ fix_lshell() {
     rm -rf /usr/local/lib/python3.9/dist-packages/lshell*
     rm -rf /usr/local/lib/python3.11/dist-packages/lshell*
     rm -rf /usr/local/lib/python3.12/dist-packages/lshell*
-    isPythonTwo=$(which python2 2>&1)
-    isPythonThree=$(which python3 2>&1)
-    if [ -x "${isPythonThree}" ]; then
-      usePyth=python3
-    elif [ -x "${isPythonTwo}" ]; then
-      usePyth=python2
-    fi
-    if [ -x "/usr/bin/python3" ]; then
-      usePyth=/usr/bin/python3
-    fi
-    ${usePyth} setup.py install --no-compile
+    pip install . --break-system-packages --root-user-action ignore
     cp -af /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5 /etc/lshell.conf
     rm -f /etc/logrotate.d/lshell
     addgroup --system lshellg &> /dev/null
