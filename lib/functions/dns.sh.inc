@@ -382,12 +382,14 @@ dns_unbound_install_upgrade() {
     isUnbndBr=$(service unbound restart 2>&1)
     [[ "${isUnbndBr}" =~ "fatal error" ]] && isUnbndFix=YES
     [[ "${isUnbndBr}" =~ "not found" ]] && isUnbndFix=YES
+    [[ "${isUnbndBr}" =~ "address already in use" ]] && killPdnsd=YES
   fi
   if [ ! -x "${isUnbnd}" ] \
     || [ -z "${isUnbnd}" ] \
     || [ "${isUnbndFix}" = "YES" ] \
     || [ -e "/usr/etc/unbound/unbound.pid" ] \
     || [ ! -e "/run/unbound" ] \
+    || [ ! -x "/usr/libexec/unbound-helper" ] \
     || [ ! -x "/etc/init.d/unbound" ] \
     || [ ! -e "/etc/resolvconf/run/interface/lo.unbound" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -448,6 +450,7 @@ dns_unbound_install_upgrade() {
       chmod 644 /etc/apparmor.d/usr.sbin.unbound
     fi
     ###
+    cp -a ${locCnf}/dns/unbound-helper > /usr/libexec/unbound-helper
     cat ${locCnf}/dns/unbound.conf > /etc/unbound/unbound.conf.d/unbound.conf
     if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
       && [ -e "${vBs}/resolv.conf.vanilla" ]; then
@@ -549,7 +552,7 @@ dns_unbound_install_upgrade() {
   else
     isUnbndFix=NO
   fi
-  if [ "${isUnbndFix}" = "NO" ]; then
+  if [ "${isUnbndFix}" = "NO" ] || [ "${killPdnsd}" = "YES" ]; then
     isPdnsd=$(which pdnsd 2>&1)
     if [ -x "${isPdnsd}" ]; then
       mrun "service pdnsd stop" 2> /dev/null
