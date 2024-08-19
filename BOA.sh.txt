@@ -1759,22 +1759,6 @@ fix_python() {
 fix_lshell() {
   _LSHELL_VRN=0.9.18.10
   _PATH_LSHELL="${usrBin}/lshell"
-  _LSHELL_LIB_TWO="/usr/local/lib/python2.7/dist-packages/lshell/checkconfig.py"
-  _LSHELL_LIB_TFR="/usr/local/lib/python3.4/dist-packages/lshell/checkconfig.py"
-  _LSHELL_LIB_TFV="/usr/local/lib/python3.5/dist-packages/lshell/checkconfig.py"
-  _LSHELL_LIB_TNE="/usr/local/lib/python3.9/dist-packages/lshell/checkconfig.py"
-  _LSHELL_LIB_TEL="/usr/local/lib/python3.11/dist-packages/lshell/checkconfig.py"
-  _LSHELL_LIB_TWL="/usr/local/lib/python3.12/dist-packages/lshell/checkconfig.py"
-  if [ ! -e "${_LSHELL_LIB_TWO}" ] \
-    && [ ! -e "${_LSHELL_LIB_TFR}" ] \
-    && [ ! -e "${_LSHELL_LIB_TFV}" ] \
-    && [ ! -e "${_LSHELL_LIB_TNE}" ] \
-    && [ ! -e "${_LSHELL_LIB_TEL}" ] \
-    && [ ! -e "${_LSHELL_LIB_TWL}" ]; then
-    _LSHELL_FORCE_REINSTALL=YES
-  else
-    _LSHELL_FORCE_REINSTALL=NO
-  fi
   _LSHELL_VRN=0.9.18
   isLshell=$(which lshell 2>&1)
   _LSHELL_ITD=$(${isLshell} --version 2>&1 \
@@ -1804,16 +1788,6 @@ fix_lshell() {
     rm -rf /usr/local/lib/python3.9/dist-packages/lshell*
     rm -rf /usr/local/lib/python3.11/dist-packages/lshell*
     rm -rf /usr/local/lib/python3.12/dist-packages/lshell*
-    isPythonTwo=$(which python2 2>&1)
-    isPythonThree=$(which python3 2>&1)
-    if [ -x "${isPythonThree}" ]; then
-      usePyth=python3
-    elif [ -x "${isPythonTwo}" ]; then
-      usePyth=python2
-    fi
-    if [ -x "/usr/bin/python3" ]; then
-      usePyth=/usr/bin/python3
-    fi
     pip install . --break-system-packages --root-user-action ignore
     cp -af /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5 /etc/lshell.conf
     rm -f /etc/logrotate.d/lshell

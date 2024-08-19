@@ -7783,16 +7783,6 @@ lshell_install_upgrade() {
     rm -rf /usr/local/lib/python3.9/dist-packages/lshell*
     rm -rf /usr/local/lib/python3.11/dist-packages/lshell*
     rm -rf /usr/local/lib/python3.12/dist-packages/lshell*
-    isPythonTwo=$(which python2 2>&1)
-    isPythonThree=$(which python3 2>&1)
-    if [ -x "${isPythonThree}" ]; then
-      usePyth=python3
-    elif [ -x "${isPythonTwo}" ]; then
-      usePyth=python2
-    fi
-    if [ -x "/usr/bin/python3" ]; then
-      usePyth=/usr/bin/python3
-    fi
     mrun "pip install . --break-system-packages --root-user-action ignore" 2> /dev/null
     if [ "${_STATUS}" = "UPGRADE" ]; then
       cp -af /etc/lshell.conf-bak-${_NOW} /etc/lshell.conf &> /dev/null
