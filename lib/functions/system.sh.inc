@@ -7746,8 +7746,18 @@ lshell_install_upgrade() {
     msg "PROC: lshell_install_upgrade"
   fi
   _PATH_LSHELL="/usr/local/bin/lshell"
+  _LSHELL_VRN=0.9.18
+  isLshell=$(which lshell 2>&1)
+  _LSHELL_ITD=$(${isLshell} --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d"-" -f2 \
+    | awk '{ print $1}' 2>&1)
+  if [ "${_LSHELL_ITD}" != "${_LSHELL_VRN}" ] || [[ "${_LSHELL_ITD}" =~ "Traceback" ]]; then
+    _LSHELL_FORCE_REINSTALL=YES
+  fi
   if [ ! -e "${_PATH_LSHELL}" ] \
     || [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}.log" ] \
+    || [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
     if [ "${_STATUS}" = "UPGRADE" ]; then
