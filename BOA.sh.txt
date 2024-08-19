@@ -1787,15 +1787,16 @@ fix_lshell() {
       sed -i "s/Kicked/Logged/g" $Files &> /dev/null
       wait
     done
+    rm -rf /usr/local/lib/python*/site-packages/lshell*
+    rm -rf /usr/local/lib/python*/dist-packages/lshell*
     cd /var/opt/lshell-${_LSHELL_VRN}
-    rm -rf /usr/local/lib/python2.6/dist-packages/lshell*
-    rm -rf /usr/local/lib/python2.7/dist-packages/lshell*
-    rm -rf /usr/local/lib/python3.4/dist-packages/lshell*
-    rm -rf /usr/local/lib/python3.5/dist-packages/lshell*
-    rm -rf /usr/local/lib/python3.9/dist-packages/lshell*
-    rm -rf /usr/local/lib/python3.11/dist-packages/lshell*
-    rm -rf /usr/local/lib/python3.12/dist-packages/lshell*
-    pip install . --break-system-packages --root-user-action ignore
+    _PIP_TEST=$(/usr/bin/pip --version 2>&1)
+    if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
+      || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
+      /usr/bin/pip install . --break-system-packages --root-user-action ignore
+    else
+      /usr/bin/pip install .
+    fi
     cp -af /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5 /etc/lshell.conf
     rm -f /etc/logrotate.d/lshell
     addgroup --system lshellg &> /dev/null
