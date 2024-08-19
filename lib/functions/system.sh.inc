@@ -7779,15 +7779,16 @@ lshell_install_upgrade() {
       sed -i "s/Kicked/Logged/g" $Files &> /dev/null
       wait
     done
+    rm -rf /usr/local/lib/python*/site-packages/lshell*
+    rm -rf /usr/local/lib/python*/dist-packages/lshell*
     cd /var/opt/lshell-${_LSHELL_VRN}
-    rm -rf /usr/local/lib/python2.6/dist-packages/lshell*
-    rm -rf /usr/local/lib/python2.7/dist-packages/lshell*
-    rm -rf /usr/local/lib/python3.4/dist-packages/lshell*
-    rm -rf /usr/local/lib/python3.5/dist-packages/lshell*
-    rm -rf /usr/local/lib/python3.9/dist-packages/lshell*
-    rm -rf /usr/local/lib/python3.11/dist-packages/lshell*
-    rm -rf /usr/local/lib/python3.12/dist-packages/lshell*
-    mrun "pip install . --break-system-packages --root-user-action ignore" 2> /dev/null
+    _PIP_TEST=$(/usr/bin/pip --version 2>&1)
+    if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
+      || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
+      mrun "/usr/bin/pip install . --break-system-packages --root-user-action ignore" 2> /dev/null
+    else
+      mrun "/usr/bin/pip install . " 2> /dev/null
+    fi
     if [ "${_STATUS}" = "UPGRADE" ]; then
       cp -af /etc/lshell.conf-bak-${_NOW} /etc/lshell.conf &> /dev/null
     else
