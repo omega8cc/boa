@@ -7746,13 +7746,14 @@ lshell_install_upgrade() {
     msg "PROC: lshell_install_upgrade"
   fi
   _PATH_LSHELL="/usr/local/bin/lshell"
-  _LSHELL_VRN=0.9.18
+  _LSHELL_CHK_VRN=0.9.18
   isLshell=$(which lshell 2>&1)
   _LSHELL_ITD=$(${isLshell} --version 2>&1 \
     | tr -d "\n" \
     | cut -d"-" -f2 \
     | awk '{ print $1}' 2>&1)
-  if [ "${_LSHELL_ITD}" != "${_LSHELL_VRN}" ] || [[ "${_LSHELL_ITD}" =~ "Traceback" ]]; then
+  if [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
+    || [[ "${_LSHELL_ITD}" =~ "Traceback" ]]; then
     _LSHELL_FORCE_REINSTALL=YES
   fi
   if [ ! -e "${_PATH_LSHELL}" ] \
