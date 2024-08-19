@@ -7782,12 +7782,17 @@ lshell_install_upgrade() {
     rm -rf /usr/local/lib/python*/site-packages/lshell*
     rm -rf /usr/local/lib/python*/dist-packages/lshell*
     cd /var/opt/lshell-${_LSHELL_VRN}
-    _PIP_TEST=$(/usr/bin/pip --version 2>&1)
+    if [ -x "/usr/bin/pip" ]; then
+      usePip=/usr/bin/pip
+    elif [ -x "/usr/local/bin/pip" ]; then
+      usePip=/usr/local/bin/pip
+    fi
+    _PIP_TEST=$(${usePip} --version 2>&1)
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.12" ]]; then
-      mrun "/usr/bin/pip install . --break-system-packages --root-user-action ignore" 2> /dev/null
+      mrun "${usePip} install . --break-system-packages --root-user-action ignore" 2> /dev/null
     else
-      mrun "/usr/bin/pip install . " 2> /dev/null
+      mrun "${usePip} install . " 2> /dev/null
     fi
     if [ "${_STATUS}" = "UPGRADE" ]; then
       cp -af /etc/lshell.conf-bak-${_NOW} /etc/lshell.conf &> /dev/null
