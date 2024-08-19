@@ -8,8 +8,8 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     isset($_SERVER['SERVER_NAME'])) {
   if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || isset($_SERVER['HTTPS'])) {
     $conf['https'] = TRUE;
-    $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https' || $_SERVER['HTTPS'] === 'on') ? 'SSL' : 'NONSSL';
-    if ($request_type === "SSL") { // we check for secure connection to set correct base_url
+    $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' || $_SERVER['HTTPS'] == 'on') ? 'SSL' : 'NONSSL';
+    if ($request_type == "SSL") { // we check for secure connection to set correct base_url
       $base_url = 'https://' . $_SERVER['HTTP_HOST'];
       if ($conf['install_profile'] != 'hostmaster') {
         $_SERVER['HTTPS'] = 'on';
@@ -80,9 +80,9 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     // Determine if the site is running on HTTPS
     $request_type = 'NONSSL';
     if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || isset($_SERVER['HTTPS'])) {
-      $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https' || $_SERVER['HTTPS'] === 'on') ? 'SSL' : 'NONSSL';
+      $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' || $_SERVER['HTTPS'] == 'on') ? 'SSL' : 'NONSSL';
     }
-    if ($request_type === "SSL") {
+    if ($request_type == "SSL") {
       $is_https = TRUE;
       if ($is_dev) {
         header('X-Request-Type:' . $request_type);
@@ -120,7 +120,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
         header('X-Is-Logged-In-A:' . $is_logged_in);
       }
     }
-    elseif ($drupal_core === 7) {
+    elseif ($drupal_core == 7) {
       // For Drupal 7 use sha256 hash and cookie prefix based on session.cookie_secure
       $cookie_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $test_sess_name = $cookie_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
@@ -151,7 +151,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     }
 
     // Redirect not logged in visitors to homepage to protect admin URLs from bots
-    if ($is_anon === 'ANONYMOUS') {
+    if ($is_anon == 'ANONYMOUS') {
       if (preg_match("/\/(?:node\/[0-9]+\/edit|node\/add)/", $_SERVER['REQUEST_URI'])) {
         if (empty($all_ini['allow_anon_node_add'])) {
           header("HTTP/1.1 301 Moved Permanently");
@@ -171,7 +171,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     }
 
     // Additional logic for caching or other needs
-    if ($is_anon === 'ANONYMOUS' && !empty($all_ini['speed_booster_anon_cache_ttl']) && preg_match("/^[0-9]{2,}$/", $all_ini['speed_booster_anon_cache_ttl'])) {
+    if ($is_anon == 'ANONYMOUS' && !empty($all_ini['speed_booster_anon_cache_ttl']) && preg_match("/^[0-9]{2,}$/", $all_ini['speed_booster_anon_cache_ttl'])) {
       if ($all_ini['speed_booster_anon_cache_ttl'] > 10) {
         $expire_in_seconds = $all_ini['speed_booster_anon_cache_ttl'];
         header('X-Limit-Booster:' . $all_ini['speed_booster_anon_cache_ttl']);
@@ -180,8 +180,8 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
 
     // Prevent turning the feature server site into a spam machine
     // Disable self-registration also on hostmaster
-    if ($conf['install_profile'] === 'feature_server' ||
-        $conf['install_profile'] === 'hostmaster') {
+    if ($conf['install_profile'] == 'feature_server' ||
+        $conf['install_profile'] == 'hostmaster') {
       $conf['user_register'] = 0; // Force "Only site administrators can create new user accounts"
     }
     if (!$is_bot && !$high_traffic) {
@@ -206,7 +206,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
         }
       }
       if (isset($_SERVER['REQUEST_METHOD']) &&
-          $_SERVER['REQUEST_METHOD'] === 'POST') {
+          $_SERVER['REQUEST_METHOD'] == 'POST') {
         if (!isset($_COOKIE['NoCacheID'])) {
           $lifetime = '15';
           setcookie('NoCacheID', 'POST' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
