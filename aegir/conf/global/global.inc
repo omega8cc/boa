@@ -792,7 +792,7 @@ else {
 if (!$is_dev) {
   if ($all_ini['advagg_auto_configuration']) {
 
-    if ($drupal_core == 6) {
+    if ($drupal_core === 6) {
       if (is_readable('modules/o_contrib/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module')) {
         $conf['preprocess_css'] = 0; // CSS aggregation disabled
@@ -819,7 +819,7 @@ if (!$is_dev) {
         $conf['advagg_server_addr'] = "-1";
       }
     }
-    elseif ($drupal_core == 7) {
+    elseif ($drupal_core === 7) {
       if (is_readable('modules/o_contrib_seven/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module')) {
         $conf['advagg_bundler_active'] = 1;
@@ -859,7 +859,7 @@ if (!$is_dev) {
       }
     }
 
-    if ($drupal_core == 6 || $drupal_core == 7) {
+    if ($drupal_core === 6 || $drupal_core === 7) {
       if (is_readable('modules/o_contrib/httprl/httprl.module') ||
           is_readable('modules/o_contrib_seven/httprl/httprl.module')) {
         $conf['advagg_use_httprl'] = 1;
@@ -996,7 +996,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
         header('X-Is-Logged-In-A:' . $is_logged_in);
       }
     }
-    elseif ($drupal_core == 7) {
+    elseif ($drupal_core === 7) {
       // For Drupal 7 use sha256 hash and cookie prefix based on session.cookie_secure
       $cookie_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $test_sess_name = $cookie_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
@@ -1144,7 +1144,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
         $redis_dirname = 'redis_compr';
         $redis_comprs = TRUE;
       }
-      if ($drupal_core == 9 || $drupal_core == 10) {
+      if ($drupal_core === 9 || $drupal_core === 10) {
         $redis_dirname = 'redis_nine_ten';
         $redis_comprs = TRUE;
         if ($all_ini['redis_old_nine_mode']) {
@@ -1250,7 +1250,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
       }
     }
   }
-  elseif ($drupal_core == 7) {
+  elseif ($drupal_core === 7) {
     if (is_readable('modules/o_contrib_seven/' . $redis_dirname . '/redis.autoload.inc')) {
       $cache_redis = TRUE;
       $cache_backport = FALSE;
@@ -1286,7 +1286,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
       }
     }
   }
-  elseif ($drupal_core == 6) {
+  elseif ($drupal_core === 6) {
     if (is_readable('modules/o_contrib/cache_backport/cache.inc')) {
       $cache_backport = TRUE;
       $cache_backport_path = 'modules/o_contrib/cache_backport/cache.inc';
