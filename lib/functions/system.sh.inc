@@ -7783,7 +7783,7 @@ lshell_install_upgrade() {
     if [ -x "/usr/bin/python3" ]; then
       usePyth=/usr/bin/python3
     fi
-    mrun "${usePyth} setup.py install --no-compile" 2> /dev/null
+    mrun "pip install . --break-system-packages --root-user-action ignore" 2> /dev/null
     if [ "${_STATUS}" = "UPGRADE" ]; then
       cp -af /etc/lshell.conf-bak-${_NOW} /etc/lshell.conf &> /dev/null
     else

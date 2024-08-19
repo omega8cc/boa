@@ -1814,7 +1814,7 @@ fix_lshell() {
     if [ -x "/usr/bin/python3" ]; then
       usePyth=/usr/bin/python3
     fi
-    ${usePyth} setup.py install --no-compile
+    pip install . --break-system-packages --root-user-action ignore
     cp -af /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5 /etc/lshell.conf
     rm -f /etc/logrotate.d/lshell
     addgroup --system lshellg &> /dev/null
