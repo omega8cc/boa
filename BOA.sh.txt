@@ -1752,6 +1752,9 @@ fix_python() {
       make -j $(nproc) --quiet
       make install --quiet
       cd
+      apt_clean_update
+      apt-get install python3-pip -y
+      pip3 install --upgrade pip --root-user-action ignore
     fi
   fi
 }
@@ -1771,6 +1774,9 @@ fix_lshell() {
   if [ -e "${_PATH_LSHELL}" ] \
     && [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ]; then
     cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}-hotfix5
+    apt_clean_update
+    apt-get install python3-pip -y
+    pip3 install --upgrade pip --root-user-action ignore
     cd /var/opt
     rm -rf lshell*
     get_dev_src "lshell-${_LSHELL_VRN}.tar.gz"

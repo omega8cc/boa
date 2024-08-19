@@ -7766,6 +7766,9 @@ lshell_install_upgrade() {
     else
       msg "INFO: Installing Limited Shell ${_LSHELL_VRN}..."
     fi
+    apt_clean_update
+    mrun "${_INSTAPP} python3-pip" 2> /dev/null
+    mrun "pip3 install --upgrade pip --root-user-action ignore" 2> /dev/null
     cd /var/opt
     rm -rf lshell*
     get_dev_src "lshell-${_LSHELL_VRN}.tar.gz"
