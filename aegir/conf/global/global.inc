@@ -986,7 +986,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
       $cookie_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $is_logged_in = FALSE;
       foreach ($_COOKIE as $key => $value) {
-        if (strpos($key, $cookie_prefix) === 0) {
+        if (strpos($key, $cookie_prefix) == 0) {
           $is_logged_in = TRUE;
           break;
         }
