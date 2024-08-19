@@ -1,0 +1,114 @@
+#!/bin/dash -e
+
+UNBOUND_CONF="/etc/unbound/unbound.conf"
+UNBOUND_BASE_DIR="${UNBOUND_CONF%/*}"
+CHROOT_DIR="$(unbound-checkconf -o chroot)"
+
+DNS_ROOT_KEY_FILE="/usr/share/dns/root.key"
+ROOT_TRUST_ANCHOR_FILE="/var/lib/unbound/root.key"
+
+# Override these variables by editing or creating /etc/default/unbound.
+RESOLVCONF=true
+ROOT_TRUST_ANCHOR_UPDATE=true
+
+if [ -f /etc/default/unbound ]; then
+    . /etc/default/unbound
+
+    case "$RESOLVCONF" in false|0|no)
+        RESOLVCONF=false ;;
+    esac
+
+    case "$ROOT_TRUST_ANCHOR_UPDATE" in false|0|no)
+        ROOT_TRUST_ANCHOR_UPDATE=false ;;
+    esac
+fi
+
+do_resolvconf_start() {
+    [ false != "$RESOLVCONF" -a -x /sbin/resolvconf ] || return 0
+
+    unbound-checkconf $CHROOT_DIR/$UNBOUND_CONF -o interface | {
+        default=yes
+        while read interface; do
+            default=
+            # XXXX here, only localhost and all-zero addresses are handled
+            # in case some other IP is specified it will not work
+            case "$interface" in
+              ( 0.0.0.0 | 127.0.0.1 ) echo "nameserver 127.0.0.1" ;;
+              ( ::0 | ::1 ) echo "nameserver ::1" ;;
+            esac
+        done
+        [ -z "$default" ] ||
+            # unbound defaults to listening on localhost
+            echo "nameserver 127.0.0.1"
+    } | /sbin/resolvconf -a lo.unbound
+}
+
+do_resolvconf_stop() {
+    [ false != "$RESOLVCONF" -a -x /sbin/resolvconf ] || return 0
+
+    /sbin/resolvconf -d lo.unbound
+}
+
+do_chroot_setup() {
+    [ -n "$CHROOT_DIR" -a -d "$CHROOT_DIR" ] || return 0
+    if [ "$CHROOT_DIR" != "$UNBOUND_BASE_DIR" ]; then
+        # we probably should not do the force-recreate but just a refresh
+        rm -rf   "$CHROOT_DIR/$UNBOUND_BASE_DIR"
+        mkdir -p "$CHROOT_DIR/$UNBOUND_BASE_DIR"
+        tar -C "$UNBOUND_BASE_DIR" -c . |
+            tar -C "$CHROOT_DIR/$UNBOUND_BASE_DIR" -x
+    fi
+    if [ -S "/run/systemd/notify" ]; then
+        if [ ! -e "$CHROOT_DIR/run/systemd/notify" ]; then
+            mkdir -p "$CHROOT_DIR/run/systemd"
+            touch "$CHROOT_DIR/run/systemd/notify"
+        fi
+        if ! mountpoint -q "$CHROOT_DIR/run/systemd/notify"; then
+            mount --bind "/run/systemd/notify" "$CHROOT_DIR/run/systemd/notify"
+        fi
+    fi
+}
+
+do_chroot_teardown() {
+    if [ -n "$CHROOT_DIR" -a -d "$CHROOT_DIR" ] &&
+       mountpoint -q "$CHROOT_DIR/run/systemd/notify"; then
+        umount "$CHROOT_DIR/run/systemd/notify"
+    fi
+}
+
+do_root_trust_anchor_update() {
+    [ false != "$ROOT_TRUST_ANCHOR_UPDATE" -a \
+      -n "$ROOT_TRUST_ANCHOR_FILE"  -a \
+      -r "$DNS_ROOT_KEY_FILE" ] || return
+
+    if [ ! -e "$ROOT_TRUST_ANCHOR_FILE" ] ||
+       # we do not want to copy if unbound's file is more recent
+       [ "$DNS_ROOT_KEY_FILE" -nt "$ROOT_TRUST_ANCHOR_FILE" ]; then
+
+        echo "Updating $ROOT_TRUST_ANCHOR_FILE from $DNS_ROOT_KEY_FILE"
+        # Copy to temp first and do mv only when done to ensure the file is in
+        # good condition.  Can use install(1) here to set correct owner but need
+        # mv anyway, and doing both as root in an untrusted dir seems risky.
+        setpriv --reuid=unbound --regid=unbound --clear-groups \
+          sh -c "\
+            cp --remove-destination --preserve \
+                 \"$DNS_ROOT_KEY_FILE\" \"$ROOT_TRUST_ANCHOR_FILE.tmp\" && \
+            mv -f \"$ROOT_TRUST_ANCHOR_FILE.tmp\" \"$ROOT_TRUST_ANCHOR_FILE\""
+    fi
+}
+
+case "$1" in
+    ( resolvconf_start \
+    | resolvconf_stop \
+    | chroot_setup \
+    | chroot_teardown \
+    | root_trust_anchor_update \
+    )
+        do_$1
+        ;;
+
+    (*)
+        echo "Usage: $0 {resolvconf_start|resolvconf_stop|chroot_setup|chroot_teardown|root_trust_anchor_update}" >&2
+        exit 1
+        ;;
+esac
