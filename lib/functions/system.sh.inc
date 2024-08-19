@@ -7746,8 +7746,19 @@ lshell_install_upgrade() {
     msg "PROC: lshell_install_upgrade"
   fi
   _PATH_LSHELL="/usr/local/bin/lshell"
+  _LSHELL_CHK_VRN=0.9.18
+  isLshell=$(which lshell 2>&1)
+  _LSHELL_ITD=$(${isLshell} --version 2>&1 \
+    | tr -d "\n" \
+    | cut -d"-" -f2 \
+    | awk '{ print $1}' 2>&1)
+  if [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
+    || [[ "${_LSHELL_ITD}" =~ "Traceback" ]]; then
+    _LSHELL_FORCE_REINSTALL=YES
+  fi
   if [ ! -e "${_PATH_LSHELL}" ] \
     || [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}.log" ] \
+    || [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
     if [ "${_STATUS}" = "UPGRADE" ]; then
@@ -7756,6 +7767,9 @@ lshell_install_upgrade() {
     else
       msg "INFO: Installing Limited Shell ${_LSHELL_VRN}..."
     fi
+    apt_clean_update
+    mrun "${_INSTAPP} python3-pip" 2> /dev/null
+    mrun "pip3 install --upgrade pip --root-user-action ignore" 2> /dev/null
     cd /var/opt
     rm -rf lshell*
     get_dev_src "lshell-${_LSHELL_VRN}.tar.gz"
@@ -7773,17 +7787,7 @@ lshell_install_upgrade() {
     rm -rf /usr/local/lib/python3.9/dist-packages/lshell*
     rm -rf /usr/local/lib/python3.11/dist-packages/lshell*
     rm -rf /usr/local/lib/python3.12/dist-packages/lshell*
-    isPythonTwo=$(which python2 2>&1)
-    isPythonThree=$(which python3 2>&1)
-    if [ -x "${isPythonThree}" ]; then
-      usePyth=python3
-    elif [ -x "${isPythonTwo}" ]; then
-      usePyth=python2
-    fi
-    if [ -x "/usr/bin/python3" ]; then
-      usePyth=/usr/bin/python3
-    fi
-    mrun "${usePyth} setup.py install --no-compile" 2> /dev/null
+    mrun "pip install . --break-system-packages --root-user-action ignore" 2> /dev/null
     if [ "${_STATUS}" = "UPGRADE" ]; then
       cp -af /etc/lshell.conf-bak-${_NOW} /etc/lshell.conf &> /dev/null
     else
