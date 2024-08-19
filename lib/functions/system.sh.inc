@@ -5111,11 +5111,11 @@ finale() {
   mv -f /etc/motd ${vBs}/dragon/t/motd-pre-${_X_SE}-${_MTD_VR}-${_NOW} &> /dev/null
   mv -f /etc/motd-pre-* ${vBs}/dragon/t/ &> /dev/null
   echo > /etc/motd
-  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)/$(dmidecode -s system-manufacturer 2>&1) \
+  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
     welcomes you aboard" | fmt -su -w 2500 >> /etc/motd
   echo >> /etc/motd
   echo > /etc/motd.tail
-  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)/$(dmidecode -s system-manufacturer 2>&1) \
+  echo " Skynet Agent v.${_MTD_VR} on $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)/$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
     welcomes you aboard" | fmt -su -w 2500 >> /etc/motd.tail
   echo >> /etc/motd.tail
   apt-get autoclean -y &> /dev/null
