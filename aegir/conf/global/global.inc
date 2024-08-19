@@ -130,8 +130,8 @@ if (isset($_SERVER['HTTP_HOST']) &&
 if (isset($_SERVER['HTTP_HOST']) &&
     isset($_SERVER['MAIN_SITE_NAME']) &&
     preg_match("/(?:^dev\.|^devel\.|\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) &&
-    $_SERVER['HTTP_HOST'] !== $_SERVER['MAIN_SITE_NAME'] &&
-    $_SERVER['HTTP_HOST'] !== $_SERVER['SERVER_NAME'] &&
+    $_SERVER['HTTP_HOST'] != $_SERVER['MAIN_SITE_NAME'] &&
+    $_SERVER['HTTP_HOST'] != $_SERVER['SERVER_NAME'] &&
     !$is_backend) {
   $is_dev = TRUE;
 }
@@ -142,19 +142,19 @@ if (isset($_SERVER['HTTP_HOST']) &&
  */
 if (isset($_SERVER['REMOTE_ADDR'])) {
   if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) &&
-      $_SERVER['HTTP_X_FORWARDED_FOR'] !== "127.0.0.1") {
+      $_SERVER['HTTP_X_FORWARDED_FOR'] != "127.0.0.1") {
     $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_FORWARDED_FOR'];
   }
   if (isset($_SERVER['HTTP_X_REAL_IP']) &&
-      $_SERVER['HTTP_X_REAL_IP'] !== "127.0.0.1") {
+      $_SERVER['HTTP_X_REAL_IP'] != "127.0.0.1") {
     $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_REAL_IP'];
   }
   if (isset($_SERVER['HTTP_CF_CONNECTING_IP']) &&
-      $_SERVER['HTTP_CF_CONNECTING_IP'] !== "127.0.0.1") {
+      $_SERVER['HTTP_CF_CONNECTING_IP'] != "127.0.0.1") {
     $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
   }
   if (isset($_SERVER['HTTP_TRUE_CLIENT_IP']) &&
-      $_SERVER['HTTP_TRUE_CLIENT_IP'] !== "127.0.0.1") {
+      $_SERVER['HTTP_TRUE_CLIENT_IP'] != "127.0.0.1") {
     $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_TRUE_CLIENT_IP'];
   }
 }
@@ -664,7 +664,7 @@ if ($conf['install_profile'] === 'hostmaster') {
     if (!file_exists('/data/conf/no-https-aegir.inc')) {
       $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https' ||
       $_SERVER['HTTPS'] === 'on') ? 'SSL' : 'NONSSL';
-      if ($request_type !== "SSL" &&
+      if ($request_type != "SSL" &&
           !preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI'])) { // we force secure connection here
         header('X-Accel-Expires: 5');
         header("HTTP/1.1 301 Moved Permanently");
@@ -887,7 +887,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https' || $_SERVER['HTTPS'] === 'on') ? 'SSL' : 'NONSSL';
     if ($request_type === "SSL") { // we check for secure connection to set correct base_url
       $base_url = 'https://' . $_SERVER['HTTP_HOST'];
-      if ($conf['install_profile'] !== 'hostmaster') {
+      if ($conf['install_profile'] != 'hostmaster') {
         $_SERVER['HTTPS'] = 'on';
         if ($drupal_core >= 7) {
           ini_set('session.cookie_secure', TRUE);
@@ -1102,7 +1102,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
         }
       }
     }
-    if ($conf['install_profile'] !== 'hostmaster' && ($expire_in_seconds > -1)) {
+    if ($conf['install_profile'] != 'hostmaster' && ($expire_in_seconds > -1)) {
       header("X-Accel-Expires: " . $expire_in_seconds);
       if ($expire_in_seconds > -1 && $expire_in_seconds < 2) {
         $conf['cache'] = 0; // Disable page caching on the fly
