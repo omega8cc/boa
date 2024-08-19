@@ -1769,6 +1769,7 @@ fix_lshell() {
     | cut -d"-" -f2 \
     | awk '{ print $1}' 2>&1)
   if [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
+    || [ ! -e "${pthLog}/lshell-fix-build-${_LSHELL_VRN}.log" ] \
     || [[ "${_LSHELL_ITD}" =~ "Traceback" ]]; then
     _LSHELL_FORCE_REINSTALL=YES
   fi
@@ -1805,6 +1806,7 @@ fix_lshell() {
     chmod 770 /var/log/lsh &> /dev/null
     touch ${pthLog}/lshell-build-${_LSHELL_VRN}.log-hotfix5
     who | awk '$1 !~ /root/{ cmd="pkill -KILL -u " $1; system(cmd) }'
+    touch ${pthLog}/lshell-fix-build-${_LSHELL_VRN}.log
   fi
   if [ -f "${usrBin}/lshell" ]; then
     if [ ! -L "/usr/bin/lshell" ]; then
