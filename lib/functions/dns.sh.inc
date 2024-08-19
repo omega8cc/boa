@@ -450,7 +450,7 @@ dns_unbound_install_upgrade() {
       chmod 644 /etc/apparmor.d/usr.sbin.unbound
     fi
     ###
-    cp -a ${locCnf}/dns/unbound-helper > /usr/libexec/unbound-helper
+    [ ! -e "/usr/libexec/unbound-helper"} && cp -a ${locCnf}/dns/unbound-helper /usr/libexec/
     cat ${locCnf}/dns/unbound.conf > /etc/unbound/unbound.conf.d/unbound.conf
     if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
       && [ -e "${vBs}/resolv.conf.vanilla" ]; then
