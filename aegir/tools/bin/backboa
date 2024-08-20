@@ -68,7 +68,7 @@ _HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
 
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
 aptYesUnth="-y --allow-unauthenticated"
-tRee=dev
+tRee=lts
 export tRee="${tRee}"
 
 if [ -e "/root/.barracuda.cnf" ]; then
