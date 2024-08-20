@@ -20,7 +20,7 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-_DUPLICITY_VRN="3.0.0"
+_DUPLICITY_VRN="3.0.2"
 _BOTO_VRN="2.49.0"
 _FASTENERS_VRN="0.14.1"
 _LOGPTH="/var/xdrago/log"
