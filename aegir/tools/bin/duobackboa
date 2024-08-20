@@ -278,7 +278,6 @@ if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
     _AWS_TTL='Your Backup Rotation'       ### [O] By default '30D'
     _AWS_FLC='Your Backup Full Cycle'     ### [O] By default '7D'
     _AWS_VLV='Your Backup Log Verbosity'  ### [O] By default '1'
-    _AWS_PRG='Your Backup Progress'       ### [O] By default 'NO' -- can be YES/NO
     _AWS_EXB='Exclude Drush Archives'     ### [O] By default 'NO' -- can be YES/NO
 
     Supported values to use as _AWS_REG (without the # comment):
@@ -396,9 +395,6 @@ if [ -f "/root/.duobackboa.exclude" ]; then
   USER_EXCLUDE="--exclude-filelist /root/.duobackboa.exclude"
 fi
 
-_AWS_PRG=${_AWS_PRG//[^A-Z]/}
-_AWS_OPX="--s3-use-new-style"
-
 export AWS_ACCESS_KEY_ID="${_AWS_KEY}"
 export AWS_SECRET_ACCESS_KEY="${_AWS_SEC}"
 export PASSPHRASE="${_AWS_PWD}"
@@ -426,9 +422,6 @@ if [ -e "${_LOGPTH}/${BUCKET_DOT}.archive.log" ]; then
 fi
 
 backup_prepare() {
-  if [ ! -z "${_AWS_PRG}" ] && [ "${_AWS_PRG}" = "YES" ]; then
-    _AWS_OPX="--s3-use-new-style --progress"
-  fi
   INCLUDE=""
   for CDIR in ${SOURCE}; do
     TMP=" --include  ${CDIR}"
@@ -469,7 +462,7 @@ monthly_cleanup() {
       sleep $n
     fi
     echo "Running cleanup --force on `date`" >> ${LOGFILE}
-    duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${_NAME} ${TARGET}
+    duplicity -v ${_AWS_VLV} cleanup --force ${_NAME} ${TARGET}
     rm -f ${_LOGPTH}/${BUCKET}.randomize.full.log
     rm -f ${_LOGPTH}/${BUCKET}.randomize.cleanup.log
   fi
@@ -525,7 +518,7 @@ run_backup() {
   duplicity ${_MODE} -v ${_AWS_VLV} --volsize 300 \
     --allow-source-mismatch \
     --full-if-older-than ${_AWS_FLC} \
-    --asynchronous-upload ${_AWS_OPX} ${_NAME} \
+    --asynchronous-upload ${_NAME} \
     ${EXCLUDE} ${USER_EXCLUDE} ${INCLUDE} ${USER_INCLUDE} --exclude '**' / ${TARGET} >> ${LOGFILE}
 }
 
@@ -537,7 +530,7 @@ remove_older_than() {
   fi
   echo "Running remove-older-than on `date`" >> ${LOGFILE}
   duplicity -v ${_AWS_VLV} remove-older-than ${_AWS_TTL} \
-    --force ${_AWS_OPX} ${_NAME} ${TARGET} >> ${LOGFILE}
+    --force ${_NAME} ${TARGET} >> ${LOGFILE}
 }
 
 collection_status() {
@@ -547,7 +540,7 @@ collection_status() {
     sleep $n
   fi
   echo "Running collection-status on `date`" >> ${LOGFILE}
-  duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${_NAME} ${TARGET} >> ${LOGFILE}
+  duplicity -v ${_AWS_VLV} collection-status ${_NAME} ${TARGET} >> ${LOGFILE}
 }
 
 backup() {
@@ -577,7 +570,7 @@ conn_test() {
   fi
   echo "Running AWS connection test, please wait..."
   ConnTest=$(duplicity -v 2 cleanup --dry-run \
-    --timeout 1 ${_AWS_OPX} ${_NAME} ${TARGET} 2>&1)
+    --timeout 1 ${_NAME} ${TARGET} 2>&1)
   ### echo ConnTest is STR ${ConnTest} END
   if [[ "${ConnTest}" =~ "No connection to backend" ]] \
     || [[ "${ConnTest}" =~ "IllegalLocationConstraintException" ]]; then
@@ -595,25 +588,25 @@ conn_test() {
 }
 
 status() {
-  duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${_NAME} ${TARGET}
+  duplicity -v ${_AWS_VLV} collection-status ${_NAME} ${TARGET}
 }
 
 cleanup() {
-  duplicity -v ${_AWS_VLV} cleanup --force ${_AWS_OPX} ${_NAME} ${TARGET}
-  duplicity -v ${_AWS_VLV} collection-status ${_AWS_OPX} ${_NAME} ${TARGET}
+  duplicity -v ${_AWS_VLV} cleanup --force ${_NAME} ${TARGET}
+  duplicity -v ${_AWS_VLV} collection-status ${_NAME} ${TARGET}
 }
 
 list() {
-  duplicity -v ${_AWS_VLV} list-current-files ${_AWS_OPX} ${_NAME} ${TARGET}
+  duplicity -v ${_AWS_VLV} list-current-files ${_NAME} ${TARGET}
 }
 
 restore() {
   if [ $# = 2 ]; then
     duplicity -v ${_AWS_VLV} restore \
-      --file-to-restore $1 ${_AWS_OPX} ${_NAME} ${TARGET} $2
+      --file-to-restore $1 ${_NAME} ${TARGET} $2
   else
     duplicity -v ${_AWS_VLV} restore \
-      --file-to-restore $1 --time $2 ${_AWS_OPX} ${_NAME} ${TARGET} $3
+      --file-to-restore $1 --time $2 ${_NAME} ${TARGET} $3
   fi
 }
 
@@ -622,12 +615,12 @@ retrieve() {
     _HST_DASH=$(echo -n $3 | tr . - 2>&1)
     BUCKET="daily-remote-${_HST_DASH}"
     TARGET="s3://${_AWS_URL}/${BUCKET}"
-    duplicity restore --file-to-restore $1 ${_AWS_OPX} ${_NAME} ${TARGET} $2
+    duplicity restore --file-to-restore $1 ${_NAME} ${TARGET} $2
   elif [ $# = 4 ]; then
     _HST_DASH=$(echo -n $4 | tr . - 2>&1)
     BUCKET="daily-remote-${_HST_DASH}"
     TARGET="s3://${_AWS_URL}/${BUCKET}"
-    duplicity restore --file-to-restore $1 --time $2 ${_AWS_OPX} ${_NAME} ${TARGET} $3
+    duplicity restore --file-to-restore $1 --time $2 ${_NAME} ${TARGET} $3
   fi
 }
 
