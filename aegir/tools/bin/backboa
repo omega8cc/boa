@@ -20,26 +20,6 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-_DUPLICITY_VRN="3.0.2"
-_BOTO_VRN="2.49.0"
-_FASTENERS_VRN="0.14.1"
-_LOGPTH="/var/xdrago/log"
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
-_NOW=${_NOW//[^0-9-]/}
-_DOW=$(date +%u 2>&1)
-_DOW=${_DOW//[^1-7]/}
-_DOM=$(date +%e 2>&1)
-_DOM=${_DOM//[^0-9]/}
-_HST=$(uname -n 2>&1)
-_HST=${_HST//[^a-zA-Z0-9-.]/}
-_HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
-_HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
-
-crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
-aptYesUnth="-y --allow-unauthenticated"
-tRee=pro
-export tRee="${tRee}"
-
 check_root() {
   if [ `whoami` = "root" ]; then
     ionice -c2 -n7 -p $$
@@ -64,6 +44,54 @@ check_root
 
 if [ -e "/root/.pause_heavy_tasks_maint.cnf" ]; then
   exit 0
+fi
+
+# New OpenSSL 3.x version is required
+if [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
+  echo "New OpenSSL 3.x version is required"
+  exit 1
+fi
+
+_PTN_VRN="3.12.5"
+_DCY_VRN="3.0.2"
+_LOGPTH="/var/xdrago/log"
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+_NOW=${_NOW//[^0-9-]/}
+_DOW=$(date +%u 2>&1)
+_DOW=${_DOW//[^1-7]/}
+_DOM=$(date +%e 2>&1)
+_DOM=${_DOM//[^0-9]/}
+_HST=$(uname -n 2>&1)
+_HST=${_HST//[^a-zA-Z0-9-.]/}
+_HST=$(echo -n ${_HST} | tr A-Z a-z 2>&1)
+_HST_DASH=$(echo -n ${_HST} | tr . - 2>&1)
+
+crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
+aptYesUnth="-y --allow-unauthenticated"
+tRee=dev
+export tRee="${tRee}"
+
+if [ -e "/root/.barracuda.cnf" ]; then
+  source /root/.barracuda.cnf
+fi
+
+_AWS_VLV=${_AWS_VLV//[^a-z0-9]/}
+if [ -z "${_AWS_VLV}" ]; then
+  _AWS_VLV="info"
+fi
+
+# Set extra environment variables
+export PYTHONPATH="/usr/local/lib/python3.12/site-packages"
+export _DCY_PTN="/usr/local/bin/python3"
+export _DCY_CMD="/usr/local/bin/duplicity -v ${_AWS_VLV}"
+
+if [ "$1" != "help" ]; then
+  # Check the Python version to ensure we're using the correct one
+  echo "Checking expected Python ${_PTN_VRN} version..."
+  ${_DCY_PTN} --version
+  # Check the Duplicity version to ensure we're using the correct one
+  echo "Checking expected Duplicity ${_DCY_VRN} version..."
+  ${_DCY_CMD} --version
 fi
 
 os_detection_minimal() {
@@ -149,9 +177,11 @@ install() {
     | tr -d "\n" \
     | cut -d" " -f2 \
     | awk '{ print $1}' 2>&1)
-  if [ "${_DUPLICITY_ITD}" = "${_DUPLICITY_VRN}" ] \
-    && [ -x "/usr/local/bin/aws" ]; then
-    echo "Latest duplicity version ${_DUPLICITY_VRN} already installed"
+  if [ "${_DUPLICITY_ITD}" = "${_DCY_VRN}" ] \
+    && [ -L "/usr/local/bin/jp.py" ] \
+    && [ -L "/usr/local/bin/duplicity" ] \
+    && [ -L "/usr/local/bin/aws" ]; then
+    echo "Latest duplicity version ${_DCY_VRN} already installed"
   else
     echo "Installing duplicity dependencies..."
     cd
@@ -162,14 +192,9 @@ install() {
     fi
     apt_clean_update
     aptitude purge duplicity -y
-    rm -rf /usr/local/lib/python*/dist-packages/{fasteners*,duplicity*,boto*}
-    mkdir -p /usr/local/lib/python2.7/dist-packages/
-    mkdir -p /usr/local/lib/python3.4/dist-packages/
-    mkdir -p /usr/local/lib/python3.5/dist-packages/
-    mkdir -p /usr/local/lib/python3.9/dist-packages/
-    mkdir -p /usr/local/lib/python3.11/dist-packages/
-    mkdir -p /usr/local/lib/python3.12/dist-packages/
     rm -f /usr/local/bin/duplicity
+    rm -f /usr/local/bin/jp.py
+    rm -f /usr/local/bin/aws*
     apt-get install -y \
         intltool \
         libffi-dev \
@@ -180,69 +205,38 @@ install() {
         rclone \
         rdiff \
         tzdata
-    isPythonTwo=$(which python2 2>&1)
-    isPythonThree=$(which python3 2>&1)
-    if [ -x "${isPythonThree}" ]; then
-      usePyth=python3
-    elif [ -x "${isPythonTwo}" ]; then
-      usePyth=python2
-    fi
-    _PYTHON_VRN=3.12.5
-    _PYTHON_TEST=$(${usePyth} --version 2>&1)
-    if [[ ! "${_PYTHON_TEST}" =~ "Python ${_PYTHON_VRN}" ]]; then
+    _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
+    if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
       cd /var/opt
       rm -rf Python*
-      wget -q -U iCab ${urlDev}/src/Python-${_PYTHON_VRN}.tgz
-      tar -xzf Python-${_PYTHON_VRN}.tgz
-      cd Python-${_PYTHON_VRN}
+      wget -q -U iCab ${urlDev}/src/Python-${_PTN_VRN}.tgz
+      tar -xzf Python-${_PTN_VRN}.tgz
+      cd Python-${_PTN_VRN}
       bash ./configure --with-openssl=/usr/local/ssl3
       make -j $(nproc) --quiet
       make install --quiet
       cd
     fi
-    _PYTHON_TEST=$(${usePyth} --version 2>&1)
-    if [[ "${_PYTHON_TEST}" =~ "Python ${_PYTHON_VRN}" ]]; then
+    _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
+    if [[ "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
       python3 -m pip install pipx --break-system-packages --root-user-action ignore
       pip3 install --upgrade pip --root-user-action ignore
       export PIPX_BIN_DIR=/usr/local/bin
       export PIPX_HOME=/opt/pipx/venvs
-      pipx install duplicity --force
-      pipx install awscli --force
+      pipx install duplicity --include-deps --force
+      pipx install awscli --include-deps --force
+      pipx install boto3 --include-deps --force
     else
-      mkdir -p /var/opt
-      rm -rf /var/opt/{fasteners*,boto*,duplicity*}
-      cd /var/opt
-      fe="fasteners-${_FASTENERS_VRN}.tar.gz"
-      curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
-      tar xzf ${fe}
-      cd /var/opt/fasteners-${_FASTENERS_VRN}
-      ${usePyth} setup.py build
-      ${usePyth} setup.py install
-      echo ${_FASTENERS_VRN} > ${_LOGPTH}/fasteners-${_FASTENERS_VRN}.log
-      cd /var/opt
-      fe="boto-${_BOTO_VRN}.tar.gz"
-      curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
-      tar xzf ${fe}
-      cd /var/opt/boto-${_BOTO_VRN}
-      ${usePyth} setup.py build
-      ${usePyth} setup.py install
-      echo ${_BOTO_VRN} > ${_LOGPTH}/boto-${_BOTO_VRN}.log
-      echo "Building duplicity version ${_DUPLICITY_VRN} from sources..."
-      cd /var/opt
-      fe="duplicity-${_DUPLICITY_VRN}.tar.gz"
-      curl ${crlGet} "${urlDev}/src/${fe}" -o ${fe}
-      tar xzf ${fe}
-      rm -rf /usr/local/lib/python*/dist-packages/duplicity*
-      cd /var/opt/duplicity-${_DUPLICITY_VRN}
-      ${usePyth} setup.py build
-      ${usePyth} setup.py install
-      apt_clean_update
-      apt-get install python-pip -y
-      pip install awscli
-      cd
+      echo "Python ${_PTN_VRN} installation failed with ${_PTN_TEST}"
+      exit 1
     fi
-    rm -rf /var/opt/{boto*,duplicity*}
-    echo "Installation complete!"
+    _DCY_TEST=$(${_DCY_CMD} --version 2>&1)
+    if [[ "${_DCY_TEST}" =~ "duplicity ${_DCY_VRN}" ]]; then
+      echo "Installation complete!"
+    else
+      echo "Installation failed with ${_DCY_TEST}"
+      exit 1
+    fi
   fi
 }
 
@@ -259,10 +253,6 @@ if [ `ps aux | grep -v "grep" | grep --count "duplicity"` -gt "0" ]; then
   exit 1
 fi
 
-if [ -e "/root/.barracuda.cnf" ]; then
-  source /root/.barracuda.cnf
-fi
-
 if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
   echo "
 
@@ -277,7 +267,7 @@ if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
     _AWS_REG='Your AWS Region ID'         ### [R] By default 'us-east-1'
     _AWS_TTL='Your Backup Rotation'       ### [O] By default '30D'
     _AWS_FLC='Your Backup Full Cycle'     ### [O] By default '7D'
-    _AWS_VLV='Your Backup Log Verbosity'  ### [O] By default '1'
+    _AWS_VLV='Your Backup Log Verbosity'  ### [O] By default 'notice' -- can be 0-9 or e,w,n,i,d
     _AWS_EXB='Exclude Drush Archives'     ### [O] By default 'NO' -- can be YES/NO
 
     Supported values to use as _AWS_REG (without the # comment):
@@ -374,11 +364,6 @@ if [ "${_VMFAMILY}" = "HOSTED" ] \
   _AWS_FLC="14D"
 fi
 
-_AWS_VLV=${_AWS_VLV//[^0-9]/}
-if [ -z "${_AWS_VLV}" ]; then
-  _AWS_VLV="1"
-fi
-
 if [ ! -z "${_AWS_EXB}" ] && [ "${_AWS_EXB}" = "YES" ]; then
   EXCLUDE="--exclude /data/conf/arch --exclude /data/disk/*/backups/"
 else
@@ -462,7 +447,8 @@ monthly_cleanup() {
       sleep $n
     fi
     echo "Running cleanup --force on `date`" >> ${LOGFILE}
-    duplicity -v ${_AWS_VLV} cleanup --force ${_NAME} ${TARGET}
+    echo "Command is ${_DCY_CMD} cleanup --force ${_NAME} ${TARGET}"
+    ${_DCY_CMD} cleanup --force ${_NAME} ${TARGET}
     rm -f ${_LOGPTH}/${BUCKET}.randomize.full.log
     rm -f ${_LOGPTH}/${BUCKET}.randomize.cleanup.log
   fi
@@ -515,7 +501,7 @@ run_backup() {
     sleep $n
   fi
   echo "Running ${_MODE} backup on `date`" >> ${LOGFILE}
-  duplicity ${_MODE} -v ${_AWS_VLV} --volsize 300 \
+  ${_DCY_CMD} ${_MODE} --volsize 300 \
     --allow-source-mismatch \
     --full-if-older-than ${_AWS_FLC} \
     --asynchronous-upload ${_NAME} \
@@ -529,8 +515,8 @@ remove_older_than() {
     sleep $n
   fi
   echo "Running remove-older-than on `date`" >> ${LOGFILE}
-  duplicity -v ${_AWS_VLV} remove-older-than ${_AWS_TTL} \
-    --force ${_NAME} ${TARGET} >> ${LOGFILE}
+  echo "Command is ${_DCY_CMD} remove-older-than ${_AWS_TTL} --force ${_NAME} ${TARGET}"
+  ${_DCY_CMD} remove-older-than ${_AWS_TTL} --force ${_NAME} ${TARGET} >> ${LOGFILE}
 }
 
 collection_status() {
@@ -540,7 +526,8 @@ collection_status() {
     sleep $n
   fi
   echo "Running collection-status on `date`" >> ${LOGFILE}
-  duplicity -v ${_AWS_VLV} collection-status ${_NAME} ${TARGET} >> ${LOGFILE}
+  echo "Command is ${_DCY_CMD} collection-status ${_NAME} ${TARGET}"
+  ${_DCY_CMD} collection-status ${_NAME} ${TARGET} >> ${LOGFILE}
 }
 
 backup() {
@@ -555,9 +542,11 @@ backup() {
     remove_older_than
     collection_status
   fi
-  if [ -n "${_MY_EMAIL}" ] && [ "${_AWS_VLV}" -lt "3" ]; then
-    echo "Sending email report on `date`" >> ${LOGFILE}
-    mail -s "Daily backup: ${_MODE} ${_HST} $(date 2>&1)" ${_MY_EMAIL} < ${LOGFILE}
+  if [ -n "${_MY_EMAIL}" ]; then
+    if [ "${_AWS_VLV}" -lt "6" ] || [ "${_AWS_VLV}" = "notice" ]; then
+      echo "Sending email report on `date`" >> ${LOGFILE}
+      mail -s "Daily backup: ${_MODE} ${_HST} $(date 2>&1)" ${_MY_EMAIL} < ${LOGFILE}
+    fi
   fi
   cat ${LOGFILE} >> ${_LOGPTH}/${BUCKET}.archive.log
   rm -f ${LOGFILE}
@@ -569,8 +558,8 @@ conn_test() {
     TARGET="s3://${_AWS_URL}/${BUCKET}"
   fi
   echo "Running AWS connection test, please wait..."
-  ConnTest=$(duplicity -v 2 cleanup --dry-run \
-    --timeout 1 ${_NAME} ${TARGET} 2>&1)
+  echo "Command is ${_DCY_CMD} cleanup --dry-run --timeout 1 ${_NAME} ${TARGET}"
+  ConnTest=$(${_DCY_CMD} cleanup --dry-run --timeout 1 ${_NAME} ${TARGET} 2>&1)
   ### echo ConnTest is STR ${ConnTest} END
   if [[ "${ConnTest}" =~ "No connection to backend" ]] \
     || [[ "${ConnTest}" =~ "IllegalLocationConstraintException" ]]; then
@@ -588,25 +577,29 @@ conn_test() {
 }
 
 status() {
-  duplicity -v ${_AWS_VLV} collection-status ${_NAME} ${TARGET}
+  echo "Command is ${_DCY_CMD} collection-status ${_NAME} ${TARGET}"
+  ${_DCY_CMD} collection-status ${_NAME} ${TARGET}
 }
 
 cleanup() {
-  duplicity -v ${_AWS_VLV} cleanup --force ${_NAME} ${TARGET}
-  duplicity -v ${_AWS_VLV} collection-status ${_NAME} ${TARGET}
+  echo "Command is ${_DCY_CMD} cleanup --force ${_NAME} ${TARGET}"
+  ${_DCY_CMD} cleanup --force ${_NAME} ${TARGET}
+  echo "Command is ${_DCY_CMD} collection-status ${_NAME} ${TARGET}"
+  ${_DCY_CMD} collection-status ${_NAME} ${TARGET}
 }
 
 list() {
-  duplicity -v ${_AWS_VLV} list-current-files ${_NAME} ${TARGET}
+  echo "Command is ${_DCY_CMD} list-current-files ${_NAME} ${TARGET}"
+  ${_DCY_CMD} list-current-files ${_NAME} ${TARGET}
 }
 
 restore() {
   if [ $# = 2 ]; then
-    duplicity -v ${_AWS_VLV} restore \
-      --file-to-restore $1 ${_NAME} ${TARGET} $2
+    echo "Command is ${_DCY_CMD} restore --file-to-restore $1 ${_NAME} ${TARGET} $2"
+    ${_DCY_CMD} restore --file-to-restore $1 ${_NAME} ${TARGET} $2
   else
-    duplicity -v ${_AWS_VLV} restore \
-      --file-to-restore $1 --time $2 ${_NAME} ${TARGET} $3
+    echo "Command is ${_DCY_CMD} restore --file-to-restore $1 --time $2 ${_NAME} ${TARGET} $3"
+    ${_DCY_CMD} restore --file-to-restore $1 --time $2 ${_NAME} ${TARGET} $3
   fi
 }
 
@@ -615,12 +608,14 @@ retrieve() {
     _HST_DASH=$(echo -n $3 | tr . - 2>&1)
     BUCKET="daily-boa-${_HST_DASH}"
     TARGET="s3://${_AWS_URL}/${BUCKET}"
-    duplicity restore --file-to-restore $1 ${_NAME} ${TARGET} $2
+    echo "Command is ${_DCY_CMD} restore --file-to-restore $1 ${_NAME} ${TARGET} $2"
+    ${_DCY_CMD} restore --file-to-restore $1 ${_NAME} ${TARGET} $2
   elif [ $# = 4 ]; then
     _HST_DASH=$(echo -n $4 | tr . - 2>&1)
     BUCKET="daily-boa-${_HST_DASH}"
     TARGET="s3://${_AWS_URL}/${BUCKET}"
-    duplicity restore --file-to-restore $1 --time $2 ${_NAME} ${TARGET} $3
+    echo "Command is ${_DCY_CMD} restore --file-to-restore $1 --time $2 ${_NAME} ${TARGET} $3"
+    ${_DCY_CMD} restore --file-to-restore $1 --time $2 ${_NAME} ${TARGET} $3
   fi
 }
 
