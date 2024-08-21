@@ -2568,7 +2568,7 @@ mytop_install() {
     rm -f /usr/bin/mytop
   fi
   _MYTOP_REINSTALL=NO
-  _MYTOP_TEST=$(mytop --version 2>&1)
+  _MYTOP_TEST=$(mytop -b 2>&1)
   if [[ "${_MYTOP_TEST}" =~ "you may need to install" ]]; then
     _MYTOP_REINSTALL=YES
   fi
