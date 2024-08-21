@@ -408,15 +408,6 @@ _TARGET="boto3+s3://${_BUCKET}/"
 _LOGFILE="${_LOGPTH}/${_BUCKET}.log"
 _NAME="--name=daily-remote"
 
-_DCY_UP_CMD="/usr/local/bin/duplicity ${_MODE} -v ${_AWS_VLV} \
-  --allow-source-mismatch \
-  --concurrency 4 \
-  --full-if-older-than ${_AWS_FLC} \
-  --s3-endpoint-url https://s3.dualstack.${_AWS_REG}.amazonaws.com \
-  --s3-region-name ${_AWS_REG} \
-  --s3-use-ia \
-  --volsize 300"
-
 _DCY_MN_CMD="/usr/local/bin/duplicity -v ${_AWS_VLV} \
   --concurrency 4 \
   --s3-endpoint-url https://s3.dualstack.${_AWS_REG}.amazonaws.com \
@@ -519,6 +510,17 @@ set_mode() {
   fi
 }
 
+set_cmd() {
+  _DCY_UP_CMD="/usr/local/bin/duplicity ${_MODE} -v ${_AWS_VLV} \
+    --allow-source-mismatch \
+    --concurrency 4 \
+    --full-if-older-than ${_AWS_FLC} \
+    --s3-endpoint-url https://s3.dualstack.${_AWS_REG}.amazonaws.com \
+    --s3-region-name ${_AWS_REG} \
+    --s3-use-ia \
+    --volsize 300"
+}
+
 run_backup() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
     if [ ! -e "/root/tmp/home/" ]; then
@@ -575,6 +577,7 @@ backup() {
   monthly_cleanup
   randomize_full
   set_mode
+  set_cmd
   run_backup
   if [ -e "${_LOGPTH}/${_BUCKET}.archive.log" ] \
     && [ "${_DOW}" = "${_RDW}" ] \
