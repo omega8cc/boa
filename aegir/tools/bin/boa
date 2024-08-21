@@ -988,7 +988,7 @@ init_setup() {
 
   if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
 
-    if [ ! -e "/root/.autoinit.log" ] || [ -e "/lib/systemd/systemd" ]; then
+    if [ -e "/lib/systemd/systemd" ]; then
       # Explain the procedure
       echo
       echo "  Since this system is not ready for Octopus installation yet,"
