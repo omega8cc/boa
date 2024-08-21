@@ -384,7 +384,7 @@ fi
 if [ ! -z "${_AWS_EXB}" ] && [ "${_AWS_EXB}" = "NO" ]; then
   _EXCLUDE="--exclude /data/conf/arch"
 else
-  _EXCLUDE="--exclude /data/conf/arch --exclude /data/disk/*/backups/"
+  _EXCLUDE="--exclude /data/conf/arch --exclude-regexp '^/data/disk/.*/backups/'"
 fi
 
 _USER_INCLUDE=""
@@ -404,7 +404,7 @@ export PASSPHRASE="${_AWS_PWD}"
 _SOURCE="/etc /var/aegir /var/www /home /data"
 _BUCKET="daily-boa-${_HST_DASH}"
 _BUCKET_DOT="daily.boa.${_HST}"
-_TARGET="boto3+s3://${_BUCKET}/"
+_TARGET="boto3+s3://${_BUCKET}"
 _LOGFILE="${_LOGPTH}/${_BUCKET}.log"
 _NAME="--name=daily-boa"
 
@@ -598,7 +598,7 @@ backup() {
 conn_test() {
   if [ $# = 1 ]; then
     _BUCKET="daily-boa-$1"
-    _TARGET="boto3+s3://${_BUCKET}/"
+    _TARGET="boto3+s3://${_BUCKET}"
   fi
   echo "Running AWS connection test, please wait..."
   echo "Command is ${_DCY_MN_CMD} cleanup --dry-run --timeout 5 ${_NAME} ${_TARGET}"
@@ -650,13 +650,13 @@ retrieve() {
   if [ $# = 3 ]; then
     _HST_DASH=$(echo -n $3 | tr . - 2>&1)
     _BUCKET="daily-boa-${_HST_DASH}"
-    _TARGET="boto3+s3://${_BUCKET}/"
+    _TARGET="boto3+s3://${_BUCKET}"
     echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 ${_NAME} ${_TARGET} $2"
     ${_DCY_MN_CMD} restore --file-to-restore $1 ${_NAME} ${_TARGET} $2
   elif [ $# = 4 ]; then
     _HST_DASH=$(echo -n $4 | tr . - 2>&1)
     _BUCKET="daily-boa-${_HST_DASH}"
-    _TARGET="boto3+s3://${_BUCKET}/"
+    _TARGET="boto3+s3://${_BUCKET}"
     echo "Command is ${_DCY_MN_CMD} restore --file-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3"
     ${_DCY_MN_CMD} restore --file-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3
   fi
