@@ -384,7 +384,7 @@ fi
 if [ ! -z "${_AWS_EXB}" ] && [ "${_AWS_EXB}" = "NO" ]; then
   _EXCLUDE="--exclude /data/conf/arch"
 else
-  _EXCLUDE="--exclude /data/conf/arch --exclude /data/disk/*/backups/"
+  _EXCLUDE="--exclude /data/conf/arch --exclude-regexp '^/data/disk/.*/backups/'"
 fi
 
 _USER_INCLUDE=""
