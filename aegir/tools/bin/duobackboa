@@ -408,7 +408,7 @@ _TARGET="boto3+s3://${_BUCKET}/"
 _LOGFILE="${_LOGPTH}/${_BUCKET}.log"
 _NAME="--name=daily-remote"
 
-_DCY_UP_CMD="/usr/local/bin/duplicity -v ${_AWS_VLV} \
+_DCY_UP_CMD="/usr/local/bin/duplicity backup -v ${_AWS_VLV} \
   --allow-source-mismatch \
   --concurrency 4 \
   --full-if-older-than ${_AWS_FLC} \
