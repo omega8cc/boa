@@ -76,9 +76,9 @@ if [ -e "/root/.duobackboa.cnf" ]; then
   source /root/.duobackboa.cnf
 fi
 
-_AWS_VLV=${_AWS_VLV//[^a-z0-9]/}
+_AWS_VLV=${_AWS_VLV//[^0-9]/}
 if [ -z "${_AWS_VLV}" ]; then
-  _AWS_VLV="info"
+  _AWS_VLV="5"
 fi
 
 # Set extra environment variables
