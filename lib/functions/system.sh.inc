@@ -2567,16 +2567,26 @@ mytop_install() {
     mrun "apt-get remove mytop -y -qq" 2> /dev/null
     rm -f /usr/bin/mytop
   fi
-  if [ ! -e "/usr/local/bin/mytop" ] && [ -e "/usr/bin/mysql" ]; then
-    msg "INFO: Building MyTop from sources..."
-    cd /var/opt
-    rm -rf git*
-    get_dev_src "mytop-1.6.tar.gz"
-    cd /var/opt/mytop-1.6
-    mrun "perl Makefile.PL" 2> /dev/null
-    mrun "make -j $(nproc) --quiet" 2> /dev/null
-    mrun "make --quiet install" 2> /dev/null
-    ldconfig 2> /dev/null
+  _MYTOP_REINSTALL=NO
+  _MYTOP_TEST=$(mytop --version 2>&1)
+  if [[ "${_MYTOP_TEST}" =~ "you may need to install" ]]; then
+    _MYTOP_REINSTALL=YES
+  fi
+  if [ -e "/usr/bin/mysql" ]; then
+    if [ ! -e "/usr/local/bin/mytop" ] || [ "${_MYTOP_REINSTALL}" = "YES" ]; then
+      msg "INFO: Building MyTop from sources..."
+      apt_clean_update
+      mrun "${_INSTAPP} cpanminus" 2> /dev/null
+      mrun "cpanm DBD::mysql@4.050" 2> /dev/null
+      cd /var/opt
+      rm -rf git*
+      get_dev_src "mytop-1.6.tar.gz"
+      cd /var/opt/mytop-1.6
+      mrun "perl Makefile.PL" 2> /dev/null
+      mrun "make -j $(nproc) --quiet" 2> /dev/null
+      mrun "make --quiet install" 2> /dev/null
+      ldconfig 2> /dev/null
+    fi
   fi
 }
 

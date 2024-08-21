@@ -661,6 +661,9 @@ install_with_aptitude_sql() {
   fi
   if [ ! -e "/usr/local/bin/mytop" ] && [ -e "/usr/bin/mysql" ]; then
     msg "INFO: Building MyTop from sources..."
+    apt_clean_update
+    mrun "${_INSTAPP} cpanminus" 2> /dev/null
+    mrun "cpanm DBD::mysql@4.050" 2> /dev/null
     cd /var/opt
     rm -rf git*
     get_dev_src "mytop-1.6.tar.gz"
