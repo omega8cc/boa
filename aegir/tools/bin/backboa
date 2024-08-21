@@ -401,14 +401,14 @@ export AWS_ACCESS_KEY_ID="${_AWS_KEY}"
 export AWS_SECRET_ACCESS_KEY="${_AWS_SEC}"
 export PASSPHRASE="${_AWS_PWD}"
 
-SOURCE="/etc /var/aegir /var/www /home /data"
+_SOURCE="/etc /var/aegir /var/www /home /data"
 _BUCKET="daily-boa-${_HST_DASH}"
 _BUCKET_DOT="daily.boa.${_HST}"
 _TARGET="boto3+s3://${_BUCKET}/"
 _LOGFILE="${_LOGPTH}/${_BUCKET}.log"
 _NAME="--name=daily-boa"
 
-_DCY_UP_CMD="/usr/local/bin/duplicity -v ${_AWS_VLV} \
+_DCY_UP_CMD="/usr/local/bin/duplicity backup -v ${_AWS_VLV} \
   --allow-source-mismatch \
   --concurrency 4 \
   --full-if-older-than ${_AWS_FLC} \
@@ -440,8 +440,8 @@ fi
 
 backup_prepare() {
   _INCLUDE=""
-  for CDIR in ${SOURCE}; do
-    TMP=" --include  ${CDIR}"
+  for _CDIR in ${_SOURCE}; do
+    TMP=" --include  ${_CDIR}"
     _INCLUDE="${_INCLUDE}${TMP}"
   done
   if [ -e "/root/.cache/duplicity" ]; then
