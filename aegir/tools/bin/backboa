@@ -408,15 +408,14 @@ _TARGET="boto3+s3://${_BUCKET}/"
 _LOGFILE="${_LOGPTH}/${_BUCKET}.log"
 _NAME="--name=daily-boa"
 
-_DCY_UP_CMD="/usr/local/bin/duplicity backup -v ${_AWS_VLV} \
+_DCY_UP_CMD="/usr/local/bin/duplicity ${_MODE} -v ${_AWS_VLV} \
   --allow-source-mismatch \
   --concurrency 4 \
   --full-if-older-than ${_AWS_FLC} \
   --s3-endpoint-url https://s3.dualstack.${_AWS_REG}.amazonaws.com \
   --s3-region-name ${_AWS_REG} \
   --s3-use-ia \
-  --volsize 300 \
-  ${_MODE}"
+  --volsize 300"
 
 _DCY_MN_CMD="/usr/local/bin/duplicity -v ${_AWS_VLV} \
   --concurrency 4 \
