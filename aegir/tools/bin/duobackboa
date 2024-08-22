@@ -76,9 +76,9 @@ if [ -e "/root/.duobackboa.cnf" ]; then
   source /root/.duobackboa.cnf
 fi
 
-_AWS_VLV=${_AWS_VLV//[^0-9]/}
+_AWS_VLV=${_AWS_VLV//[^a-z]/}
 if [ -z "${_AWS_VLV}" ]; then
-  _AWS_VLV="3"
+  _AWS_VLV="warning"
 fi
 
 # Set extra environment variables
@@ -271,7 +271,7 @@ if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
 
     _AWS_TTL='Your Backup Rotation'       ### [O] By default '30D'
     _AWS_FLC='Your Backup Full Cycle'     ### [O] By default '7D'
-    _AWS_VLV='Your Backup Log Verbosity'  ### [O] By default '3' -- can be 0-9
+    _AWS_VLV='Your Backup Log Verbosity'  ### [O] By default 'warning' -- [ewnid]
     _AWS_EXB='Exclude Aegir Backups'      ### [O] By default 'YES' -- can be YES/NO
 
     Supported values to use as _AWS_REG (the symbol after the # comment):
