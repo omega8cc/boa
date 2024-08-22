@@ -209,7 +209,8 @@ install() {
         rdiff \
         tzdata
     _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
-    if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
+    if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
+      || [ ! -x "${_DCY_PTN}" ]; then
       cd /var/opt
       rm -rf Python*
       wget -q -U iCab ${urlDev}/src/Python-${_PTN_VRN}.tgz
