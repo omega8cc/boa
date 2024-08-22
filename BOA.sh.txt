@@ -1762,8 +1762,16 @@ fix_node_in_lshell_access() {
 
 fix_python() {
   _PYTHON_VRN=3.12.5
-  _PYTHON_TEST=$(${usePyth} --version 2>&1)
-  if [[ ! "${_PYTHON_TEST}" =~ "Python ${_PYTHON_VRN}" ]]; then
+  _DCY_PTN="/usr/local/bin/python3"
+  if [ -x "${_DCY_PTN}" ]; then
+    _PYTHON_TEST=$(${_DCY_PTN} --version 2>&1)
+  fi
+  if [[ ! "${_PYTHON_TEST}" =~ "Python ${_PYTHON_VRN}" ]] \
+    || [ ! -x "${_DCY_PTN}" ]; then
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
     apt_clean_update
     apt-get install -y \
         intltool \
@@ -1775,21 +1783,47 @@ fix_python() {
         rclone \
         rdiff \
         tzdata
-    if [ -d "/usr/local/ssl3" ]; then
-      cd /var/opt
-      rm -rf Python*
-      get_dev_src "Python-${_PYTHON_VRN}.tgz"
-      tar -xzf Python-${_PYTHON_VRN}.tgz
-      cd Python-${_PYTHON_VRN}
-      bash ./configure --with-openssl=/usr/local/ssl3
-      make -j $(nproc) --quiet
-      make install --quiet
-      cd
-      apt_clean_update
-      apt-get install python3-pip -y
-      pip3 install --upgrade pip --root-user-action ignore
+    cd /var/opt
+    rm -rf Python*
+    get_dev_src "Python-${_PYTHON_VRN}.tgz"
+    tar -xzf Python-${_PYTHON_VRN}.tgz
+    cd Python-${_PYTHON_VRN}
+    bash ./configure --with-openssl=/usr/local/ssl3
+    make -j $(nproc) --quiet
+    make install --quiet
+    cd
+    apt_clean_update
+    apt-get install python3-pip -y
+    pip3 install --upgrade pip --root-user-action ignore
+  fi
+}
+
+if_fix_python() {
+  _PYTHON_FIX=NO
+  _LSHELL_CHK_VRN=0.9.18
+  isLshell=$(which lshell 2>&1)
+  if [ -x "${isLshell}" ]; then
+    _LSHELL_ITD=$(${isLshell} --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d"-" -f2 \
+      | awk '{ print $1}' 2>&1)
+    if [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
+      || [[ "${_LSHELL_ITD}" =~ "Traceback" ]]; then
+      _PYTHON_FIX=YES
     fi
   fi
+  _DUPLICITY_CHK_VRN=3.0.2
+  isDuplicity=$(which duplicity 2>&1)
+  if [ -x "${isDuplicity}" ]; then
+    _DUPLICITY_ITD=$(${isDuplicity} --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f2 \
+      | awk '{ print $1}' 2>&1)
+    if [ "${_DUPLICITY_ITD}" != "${_DUPLICITY_CHK_VRN}" ]; then
+      _PYTHON_FIX=YES
+    fi
+  fi
+  [ "${_PYTHON_FIX}" = "YES" ] && fix_python
 }
 
 fix_lshell() {
@@ -2831,7 +2865,7 @@ if [ `whoami` = "root" ]; then
     && [ -e "/var/log/barracuda_log.txt" ]; then
     fix_ping_perms
     fix_fpm_process_max
-    fix_python
+    if_fix_python
     fix_lshell
     fix_node_in_lshell_access
     fix_authorized_keys
