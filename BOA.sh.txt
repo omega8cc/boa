@@ -1722,12 +1722,6 @@ fix_node_in_lshell_access() {
 }
 
 fix_python() {
-  isPythonThree=$(which python3 2>&1)
-  if [ -x "${isPythonThree}" ]; then
-    usePyth=python3
-  elif [ -x "${isPythonTwo}" ]; then
-    usePyth=python2
-  fi
   _PYTHON_VRN=3.12.5
   _PYTHON_TEST=$(${usePyth} --version 2>&1)
   if [[ ! "${_PYTHON_TEST}" =~ "Python ${_PYTHON_VRN}" ]]; then
