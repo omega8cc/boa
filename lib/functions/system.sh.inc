@@ -7757,6 +7757,7 @@ lshell_install_upgrade() {
   fi
   _PATH_LSHELL="/usr/local/bin/lshell"
   _LSHELL_CHK_VRN=0.9.18
+  _LSHELL_FORCE_REINSTALL=NO
   isLshell=$(which lshell 2>&1)
   _LSHELL_ITD=$(${isLshell} --version 2>&1 \
     | tr -d "\n" \

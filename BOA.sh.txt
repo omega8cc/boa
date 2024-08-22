@@ -1796,6 +1796,7 @@ fix_lshell() {
   _LSHELL_VRN=0.9.18.10
   _PATH_LSHELL="${usrBin}/lshell"
   _LSHELL_CHK_VRN=0.9.18
+  _LSHELL_FORCE_REINSTALL=NO
   isLshell=$(which lshell 2>&1)
   _LSHELL_ITD=$(${isLshell} --version 2>&1 \
     | tr -d "\n" \
