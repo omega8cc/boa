@@ -53,8 +53,8 @@ if [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
   exit 1
 fi
 
-_PTN_VRN="3.12.5"
-_DCY_VRN="3.0.2"
+_PTN_VRN=3.12.5
+_DCY_VRN=3.0.2
 _LOGPTH="/var/xdrago/log"
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
