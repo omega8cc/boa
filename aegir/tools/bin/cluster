@@ -8,10 +8,10 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
-_CSF_VRN="14.20"
+_CSF_VRN=14.20
 _PROXYSQL_VRN="1.3.5-debian8_amd64"
 _UTIL_VRN="0.30.216-pre3126"
-_VNSTAT_VRN="2.7"
+_VNSTAT_VRN=2.7
 _APT_XTR="-y"
 dstUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.dist"
 nrmUpArg="-fuy --allow-unauthenticated -q --config-file /opt/apt/apt.conf.noi.nrml"
