@@ -596,19 +596,19 @@ lsyncd_proc_control() {
     fi
     if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log \
       | grep --count "TRM lsyncd"` -gt "3" ] && [ -n "${_MY_EMAIL}" ]; then
-      mail -s "ALERT! lsyncd TRM failure on $(uname -n 2>&1)" ${_MY_EMAIL} < \
+      s-nail -s "ALERT! lsyncd TRM failure on $(uname -n 2>&1)" ${_MY_EMAIL} < \
         /var/xdrago/log/lsyncd.monitor.log
       _ARCHIVE_LOG=YES
     fi
     if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log \
       | grep --count "ERR lsyncd"` -gt "3" ] && [ -n "${_MY_EMAIL}" ]; then
-      mail -s "ALERT! lsyncd ERR failure on $(uname -n 2>&1)" ${_MY_EMAIL} < \
+      s-nail -s "ALERT! lsyncd ERR failure on $(uname -n 2>&1)" ${_MY_EMAIL} < \
         /var/xdrago/log/lsyncd.monitor.log
       _ARCHIVE_LOG=YES
     fi
     if [ `tail --lines=10 /var/xdrago/log/lsyncd.monitor.log \
       | grep --count "NRM lsyncd"` -gt "3" ] && [ -n "${_MY_EMAIL}" ]; then
-      mail -s "NOTICE: lsyncd NRM problem on $(uname -n 2>&1)" ${_MY_EMAIL} < \
+      s-nail -s "NOTICE: lsyncd NRM problem on $(uname -n 2>&1)" ${_MY_EMAIL} < \
         /var/xdrago/log/lsyncd.monitor.log
       _ARCHIVE_LOG=YES
     fi
