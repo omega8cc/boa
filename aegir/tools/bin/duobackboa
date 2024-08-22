@@ -25,7 +25,7 @@ check_root() {
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
-    chmod 700 /root/.gnupg
+    [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
   else
     echo "ERROR: This script should be run as a root user"
     exit 1
@@ -175,7 +175,7 @@ install() {
   if [ ! -d "${_LOGPTH}" ]; then
     mkdir -p ${_LOGPTH}
   fi
-  chmod 700 /root/.gnupg
+  [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
   _DUPLICITY_ITD=$(duplicity --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f2 \
