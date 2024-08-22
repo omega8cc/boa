@@ -2288,6 +2288,7 @@ update_boa_tools() {
     chmod 700 ${optBin}/{backboa,duobackboa}
     if [ ! -e "${pthLog}/duplicity.ctrl.${tRee}.${_X_SE}.pid" ] \
       && [ -x "/usr/local/bin/duplicity" ] \
+      && [ -e "/root/.cache/duplicity" ] \
       && [ -e "/var/aegir/drush" ] \
       && [ -e "/var/xdrago" ]; then
       backboa install
