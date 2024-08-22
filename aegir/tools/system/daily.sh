@@ -2040,8 +2040,14 @@ cleanup_ghost_drushrc() {
 if_le_hm_ssl_old() {
   # Get the current time in seconds since epoch
   current_time=$(date +%s)
+
   # Path to the file you want to check
   filePath="$1"
+
+  # Define the thresholds
+  recent_threshold_days=60  # 60 days to consider for new updates
+  update_check_days=30      # Don't update NEW if it was already set within the last 30 days
+
   # Check if the path is a symlink
   if [ -L "${filePath}" ]; then
     target_file=$(readlink -f "${filePath}")
@@ -2051,13 +2057,29 @@ if_le_hm_ssl_old() {
     # Get the file's modification time in seconds since epoch
     file_mod_time=$(stat -c %Y "${filePath}")
   fi
+
   # Calculate the time difference in minutes
-  time_diff=$(( (current_time - file_mod_time) / 60 ))
-  # Round time_diff to the nearest integer
-  time_diff=$(printf "%.0f" "$time_diff")
+  time_diff_minutes=$(( (current_time - file_mod_time) / 60 ))
+
+  # Calculate the time difference in days
+  time_diff_days=$(( time_diff_minutes / 1440 ))
+
+  # Calculate the last update check time (from some state file, if exists)
+  if [ -f "${filePath}.lastupdate" ]; then
+    last_update_time=$(cat "${filePath}.lastupdate")
+  else
+    last_update_time=0
+  fi
+
+  last_update_diff_days=$(( (current_time - last_update_time) / 86400 ))  # 86400 seconds in a day
+
   # Check if the file was modified within the last 30 minutes
-  if [ $time_diff -lt 30 ]; then
+  if [ $time_diff_minutes -lt 30 ]; then
     crtLastMod=NEW
+  # Check if the file was modified within the last 60 days and not marked NEW in the last 30 days
+  elif [ $time_diff_days -le $recent_threshold_days ] && [ $last_update_diff_days -ge $update_check_days ]; then
+    crtLastMod=NEW
+    echo $current_time > "${filePath}.lastupdate"
   else
     crtLastMod=OLD
   fi
