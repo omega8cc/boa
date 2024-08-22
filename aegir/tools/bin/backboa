@@ -25,7 +25,7 @@ check_root() {
     ionice -c2 -n7 -p $$
     renice 19 -p $$
     chmod a+w /dev/null
-    chmod 700 /root/.gnupg
+    [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
   else
     echo "ERROR: This script should be run as a root user"
     exit 1
@@ -53,8 +53,8 @@ if [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
   exit 1
 fi
 
-_PTN_VRN="3.12.5"
-_DCY_VRN="3.0.2"
+_PTN_VRN=3.12.5
+_DCY_VRN=3.0.2
 _LOGPTH="/var/xdrago/log"
 _NOW=$(date +%y%m%d-%H%M%S 2>&1)
 _NOW=${_NOW//[^0-9-]/}
@@ -76,9 +76,9 @@ if [ -e "/root/.barracuda.cnf" ]; then
   source /root/.barracuda.cnf
 fi
 
-_AWS_VLV=${_AWS_VLV//[^0-9]/}
+_AWS_VLV=${_AWS_VLV//[^a-z]/}
 if [ -z "${_AWS_VLV}" ]; then
-  _AWS_VLV="3"
+  _AWS_VLV="warning"
 fi
 
 # Set extra environment variables
@@ -175,7 +175,7 @@ install() {
   if [ ! -d "${_LOGPTH}" ]; then
     mkdir -p ${_LOGPTH}
   fi
-  chmod 700 /root/.gnupg
+  [ -e "/root/.gnupg" ] && chmod 700 /root/.gnupg
   _DUPLICITY_ITD=$(duplicity --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f2 \
@@ -209,7 +209,8 @@ install() {
         rdiff \
         tzdata
     _PTN_TEST=$(${_DCY_PTN} --version 2>&1)
-    if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]]; then
+    if [[ ! "${_PTN_TEST}" =~ "Python ${_PTN_VRN}" ]] \
+      || [ ! -x "${_DCY_PTN}" ]; then
       cd /var/opt
       rm -rf Python*
       wget -q -U iCab ${urlDev}/src/Python-${_PTN_VRN}.tgz
@@ -271,7 +272,7 @@ if [ -z "${_AWS_KEY}" ] || [ -z "${_AWS_SEC}" ] || [ -z "${_AWS_PWD}" ]; then
 
     _AWS_TTL='Your Backup Rotation'       ### [O] By default '30D'
     _AWS_FLC='Your Backup Full Cycle'     ### [O] By default '7D'
-    _AWS_VLV='Your Backup Log Verbosity'  ### [O] By default '3' -- can be 0-9
+    _AWS_VLV='Your Backup Log Verbosity'  ### [O] By default 'warning' -- [ewnid]
     _AWS_EXB='Exclude Aegir Backups'      ### [O] By default 'YES' -- can be YES/NO
 
     Supported values to use as _AWS_REG (the symbol after the # comment):
@@ -586,10 +587,8 @@ backup() {
     collection_status
   fi
   if [ -n "${_MY_EMAIL}" ]; then
-    if [ "${_AWS_VLV}" -lt "6" ]; then
-      echo "Sending email report on `date`" >> ${_LOGFILE}
-      mail -s "Daily backup: ${_MODE} ${_HST} $(date 2>&1)" ${_MY_EMAIL} < ${_LOGFILE}
-    fi
+    echo "Sending email report on `date`" >> ${_LOGFILE}
+    s-nail -s "Daily backup: ${_MODE} ${_HST} $(date 2>&1)" ${_MY_EMAIL} < ${_LOGFILE}
   fi
   cat ${_LOGFILE} >> ${_LOGPTH}/${_BUCKET}.archive.log
   rm -f ${_LOGFILE}

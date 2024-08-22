@@ -198,6 +198,45 @@ check_dns_settings() {
   fi
 }
 
+find_fast_mirror_early() {
+  isNetc=$(which netcat 2>&1)
+  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
+    apt_clean_update
+    apt-get install netcat ${aptYesUnth} &> /dev/null
+    apt-get install netcat-traditional ${aptYesUnth} &> /dev/null
+  fi
+  ffMirr=$(which ffmirror 2>&1)
+  if [ -x "${ffMirr}" ]; then
+    ffList="/var/backups/boa-mirrors-2024-01.txt"
+    mkdir -p /var/backups
+    if [ ! -e "${ffList}" ]; then
+      echo "de.files.aegir.cc"  > ${ffList}
+      echo "ny.files.aegir.cc" >> ${ffList}
+      echo "sg.files.aegir.cc" >> ${ffList}
+    fi
+    if [ -e "${ffList}" ]; then
+      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${ffMirr} 2>&1)
+      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+        _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
+        _USE_MIR="${_CHECK_MIRROR}"
+        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
+      else
+        _USE_MIR="files.aegir.cc"
+      fi
+    else
+      _USE_MIR="files.aegir.cc"
+    fi
+  else
+    _USE_MIR="files.aegir.cc"
+  fi
+  urlDev="http://${_USE_MIR}/dev"
+  urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
+}
+
 extract_archive() {
   if [ ! -z "$1" ]; then
     case $1 in
@@ -1722,15 +1761,17 @@ fix_node_in_lshell_access() {
 }
 
 fix_python() {
-  isPythonThree=$(which python3 2>&1)
-  if [ -x "${isPythonThree}" ]; then
-    usePyth=python3
-  elif [ -x "${isPythonTwo}" ]; then
-    usePyth=python2
-  fi
   _PYTHON_VRN=3.12.5
-  _PYTHON_TEST=$(${usePyth} --version 2>&1)
-  if [[ ! "${_PYTHON_TEST}" =~ "Python ${_PYTHON_VRN}" ]]; then
+  _DCY_PTN="/usr/local/bin/python3"
+  if [ -x "${_DCY_PTN}" ]; then
+    _PYTHON_TEST=$(${_DCY_PTN} --version 2>&1)
+  fi
+  if [[ ! "${_PYTHON_TEST}" =~ "Python ${_PYTHON_VRN}" ]] \
+    || [ ! -x "${_DCY_PTN}" ]; then
+    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
+      && [ -e "/etc/apt/apt.conf.d" ]; then
+      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
+    fi
     apt_clean_update
     apt-get install -y \
         intltool \
@@ -1742,34 +1783,60 @@ fix_python() {
         rclone \
         rdiff \
         tzdata
-    if [ -d "/usr/local/ssl3" ]; then
-      cd /var/opt
-      rm -rf Python*
-      get_dev_src "Python-${_PYTHON_VRN}.tgz"
-      tar -xzf Python-${_PYTHON_VRN}.tgz
-      cd Python-${_PYTHON_VRN}
-      bash ./configure --with-openssl=/usr/local/ssl3
-      make -j $(nproc) --quiet
-      make install --quiet
-      cd
-      apt_clean_update
-      apt-get install python3-pip -y
-      pip3 install --upgrade pip --root-user-action ignore
+    cd /var/opt
+    rm -rf Python*
+    get_dev_src "Python-${_PYTHON_VRN}.tgz"
+    tar -xzf Python-${_PYTHON_VRN}.tgz
+    cd Python-${_PYTHON_VRN}
+    bash ./configure --with-openssl=/usr/local/ssl3
+    make -j $(nproc) --quiet
+    make install --quiet
+    cd
+    apt_clean_update
+    apt-get install python3-pip -y
+    pip3 install --upgrade pip --root-user-action ignore
+  fi
+}
+
+if_fix_python() {
+  _PYTHON_FIX=NO
+  _LSHELL_CHK_VRN=0.9.18
+  isLshell=$(which lshell 2>&1)
+  if [ -x "${isLshell}" ]; then
+    _LSHELL_ITD=$(${isLshell} --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d"-" -f2 \
+      | awk '{ print $1}' 2>&1)
+    if [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
+      || [[ "${_LSHELL_ITD}" =~ "Traceback" ]]; then
+      _PYTHON_FIX=YES
     fi
   fi
+  _DUPLICITY_CHK_VRN=3.0.2
+  isDuplicity=$(which duplicity 2>&1)
+  if [ -x "${isDuplicity}" ]; then
+    _DUPLICITY_ITD=$(${isDuplicity} --version 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f2 \
+      | awk '{ print $1}' 2>&1)
+    if [ "${_DUPLICITY_ITD}" != "${_DUPLICITY_CHK_VRN}" ]; then
+      _PYTHON_FIX=YES
+    fi
+  fi
+  [ "${_PYTHON_FIX}" = "YES" ] && fix_python
 }
 
 fix_lshell() {
   _LSHELL_VRN=0.9.18.10
   _PATH_LSHELL="${usrBin}/lshell"
   _LSHELL_CHK_VRN=0.9.18
+  _LSHELL_FORCE_REINSTALL=NO
   isLshell=$(which lshell 2>&1)
   _LSHELL_ITD=$(${isLshell} --version 2>&1 \
     | tr -d "\n" \
     | cut -d"-" -f2 \
     | awk '{ print $1}' 2>&1)
   if [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
-    || [ ! -e "${pthLog}/lshell-fix-build-${_LSHELL_VRN}.log" ] \
     || [[ "${_LSHELL_ITD}" =~ "Traceback" ]]; then
     _LSHELL_FORCE_REINSTALL=YES
   fi
@@ -2254,6 +2321,7 @@ update_boa_tools() {
     chmod 700 ${optBin}/{backboa,duobackboa}
     if [ ! -e "${pthLog}/duplicity.ctrl.${tRee}.${_X_SE}.pid" ] \
       && [ -x "/usr/local/bin/duplicity" ] \
+      && [ -e "/root/.cache/duplicity" ] \
       && [ -e "/var/aegir/drush" ] \
       && [ -e "/var/xdrago" ]; then
       backboa install
@@ -2584,45 +2652,6 @@ count_cpu() {
   chmod 644 /data/all/cpuinfo
 }
 
-find_fast_mirror_early() {
-  isNetc=$(which netcat 2>&1)
-  if [ ! -x "${isNetc}" ] || [ -z "${isNetc}" ]; then
-    if [ ! -e "/etc/apt/apt.conf.d/00sandboxoff" ] \
-      && [ -e "/etc/apt/apt.conf.d" ]; then
-      echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
-    fi
-    apt_clean_update
-    apt-get install netcat ${aptYesUnth} &> /dev/null
-    apt-get install netcat-traditional ${aptYesUnth} &> /dev/null
-  fi
-  ffMirr=$(which ffmirror 2>&1)
-  if [ -x "${ffMirr}" ]; then
-    ffList="/var/backups/boa-mirrors-2024-01.txt"
-    mkdir -p /var/backups
-    if [ ! -e "${ffList}" ]; then
-      echo "de.files.aegir.cc"  > ${ffList}
-      echo "ny.files.aegir.cc" >> ${ffList}
-      echo "sg.files.aegir.cc" >> ${ffList}
-    fi
-    if [ -e "${ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${ffMirr} 2>&1)
-      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
-        _CHECK_MIRROR=$(bash ${ffMirr} < ${ffList} 2>&1)
-        _USE_MIR="${_CHECK_MIRROR}"
-        [[ "${_USE_MIR}" =~ "printf" ]] && _USE_MIR="files.aegir.cc"
-      else
-        _USE_MIR="files.aegir.cc"
-      fi
-    else
-      _USE_MIR="files.aegir.cc"
-    fi
-  else
-    _USE_MIR="files.aegir.cc"
-  fi
-  urlDev="http://${_USE_MIR}/dev"
-  urlHmr="http://${_USE_MIR}/versions/${tRee}/boa/aegir"
-}
-
 sysctl_update() {
   if [ ! -e "/root/.no.sysctl.update.cnf" ] \
     && [ ! -e "/var/backups/sysctl.conf.up-hf01-${_X_SE}.log" ]; then
@@ -2835,7 +2864,7 @@ if [ `whoami` = "root" ]; then
     && [ -e "/var/log/barracuda_log.txt" ]; then
     fix_ping_perms
     fix_fpm_process_max
-    fix_python
+    if_fix_python
     fix_lshell
     fix_node_in_lshell_access
     fix_authorized_keys
