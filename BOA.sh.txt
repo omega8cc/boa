@@ -1837,7 +1837,6 @@ fix_lshell() {
     | cut -d"-" -f2 \
     | awk '{ print $1}' 2>&1)
   if [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
-    || [ ! -e "${pthLog}/lshell-fix-build-${_LSHELL_VRN}.log" ] \
     || [[ "${_LSHELL_ITD}" =~ "Traceback" ]]; then
     _LSHELL_FORCE_REINSTALL=YES
   fi

@@ -7768,7 +7768,6 @@ lshell_install_upgrade() {
     _LSHELL_FORCE_REINSTALL=YES
   fi
   if [ ! -e "${_PATH_LSHELL}" ] \
-    || [ ! -e "${pthLog}/lshell-build-${_LSHELL_VRN}.log" ] \
     || [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
