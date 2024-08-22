@@ -658,13 +658,13 @@ update_agents() {
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/var/aegir/drush" ] \
-    && [ ! -e "${pthLog}/daily.ctrl.hfx03.${_X_SE}.pid" ]; then
+    && [ ! -e "${pthLog}/daily.ctrl.hfx04.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/daily.sh /var/xdrago/daily.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/daily.sh" -o /var/xdrago/daily.sh
     if [ -e "/var/xdrago/daily.sh" ]; then
       chmod 700 /var/xdrago/daily.sh
       chown root:root /var/xdrago/daily.sh
-      touch ${pthLog}/daily.ctrl.hfx03.${_X_SE}.pid
+      touch ${pthLog}/daily.ctrl.hfx04.${_X_SE}.pid
     else
       mv -f /var/xdrago/daily.sh.old /var/xdrago/daily.sh
     fi
