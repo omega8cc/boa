@@ -1,4 +1,91 @@
 #
+# Update for keyrings/percona.gpg
+if_sql_keyring_apt_update() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "PROC: if_sql_keyring_apt_update"
+  fi
+
+  if [ "${_DB_SERVER}" = "Percona" ]; then
+    _SQL_KEYRING_UPDATE=NO
+    if [ -e "/etc/apt/trusted.gpg.d/percona.gpg" ] \
+      || [ ! -e "/etc/apt/keyrings/percona.gpg" ] \
+      || [ -e "/etc/apt/trusted.gpg.d/percona-keyring.gpg~" ]; then
+      _SQL_KEYRING_UPDATE=YES
+    fi
+  fi
+
+  if [ "${_DB_SERVER}" = "Percona" ] && [ "${_SQL_KEYRING_UPDATE}" = "YES" ]; then
+    if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
+      if [ ! -e "/etc/apt/keyrings" ]; then
+        mkdir -m 0755 -p /etc/apt/keyrings
+      fi
+      if [ -e "/etc/apt/trusted.gpg.d/percona.gpg" ] \
+        || [ -e "/etc/apt/trusted.gpg.d/percona-keyring.gpg~" ]; then
+        rm -f /etc/apt/trusted.gpg.d/percona*
+      fi
+      _PERCONA_KEYS_SIG="8507EFA5"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: Retrieving ${_PERCONA_KEYS_SIG} key..."
+      fi
+      apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
+      if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
+        curl -fsSL ${urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/percona.gpg
+      fi
+      chmod 644 /etc/apt/keyrings/percona.gpg
+      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
+        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
+        echo "$(date 2>&1) Too many dirmngr processes killed" >> \
+          /var/xdrago/log/dirmngr-count.kill.log
+      fi
+      if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
+        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
+        echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
+          /var/xdrago/log/gpg-agent-count.kill.log
+      fi
+    fi
+    apt_clean_update
+  fi
+
+  [ ! -z "${_SQL_NEW_OS_CODE}" ] && _SQL_OS_CODE=${_SQL_NEW_OS_CODE}
+
+  if [ "${_DB_SERVER}" = "Percona" ]; then
+    _DB_SRC="repo.percona.com"
+    _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
+      /etc/apt/sources.list.d/percona-release.list 2>&1)
+    _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} \
+      /etc/apt/sources.list.d/percona-release.list 2>&1)
+  fi
+  if [[ "${_SQL_DEB_SRC_TEST_A}" =~ "${_DB_SRC}" ]] \
+    && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_SQL_OS_CODE}" ]] \
+    && [ -e "/etc/apt/keyrings/percona.gpg" ] \
+    && [ -e "/etc/apt/preferences.d/00percona.pref" ]; then
+    _SQL_DEB_SRC_UPDATE=NO
+  else
+    _SQL_DEB_SRC_UPDATE=YES
+  fi
+
+  if [ "${_DB_SERVER}" = "Percona" ] && [ "${_SQL_DEB_SRC_UPDATE}" = "YES" ]; then
+    rm -f /etc/apt/sources.list.d/mariadb*
+    rm -f /etc/apt/sources.list.d/ourdelta*
+    rm -f /etc/apt/sources.list.d/percona*
+    rm -f /etc/apt/sources.list.d/xtrabackup*
+    percList="/etc/apt/sources.list.d/percona-release.list"
+    percRepo="${_DB_SRC}/percona/apt"
+    echo "## Percona APT Repository" > ${percList}
+    if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
+      echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
+      echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
+    else
+      echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
+      echo "deb-src http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
+    fi
+    chmod 644 ${percList}
+    echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
+    apt_clean_update
+  fi
+}
+
+#
 # Only supported upgrade path allowed.
 sql_strict_upgrade_path() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -503,105 +590,24 @@ prep_for_install_db_sql() {
   fi
   st_runner "${_INSTAPP} software-properties-common dirmngr" 2> /dev/null
 
-  if [ "${_DB_SERVER}" = "Percona" ] && [ "${_DB_SERIES}" = "5.7" ]; then
-    if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
-      if [ ! -e "/etc/apt/keyrings" ]; then
-        mkdir -m 0755 -p /etc/apt/keyrings
-      fi
-      if [ -e "/etc/apt/trusted.gpg.d/percona.gpg" ]; then
-        rm -f /etc/apt/trusted.gpg.d/percona.gpg*
-      fi
-      _PERCONA_KEYS_SIG="8507EFA5"
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Retrieving ${_PERCONA_KEYS_SIG} key..."
-      fi
-      apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
-      if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
-        curl -fsSL ${urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/percona.gpg
-      fi
-      chmod 644 /etc/apt/keyrings/percona.gpg
-      if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
-        kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-        echo "$(date 2>&1) Too many dirmngr processes killed" >> \
-          /var/xdrago/log/dirmngr-count.kill.log
-      fi
-      if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
-        kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
-        echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
-          /var/xdrago/log/gpg-agent-count.kill.log
-      fi
-    fi
-    apt_clean_update
-  fi
-  if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
-    _OSN=debian
-  fi
   if [ -e "/root/.mstr.clstr.cnf" ] \
     || [ -e "/root/.wbhd.clstr.cnf" ] \
     || [ -e "/root/.dbhd.clstr.cnf" ]; then
     _DBS_VRN="${_GALERA_10_VRN}"
   else
-    if [ "${_DB_SERIES}" = "5.7" ] \
+    if [ "${_DB_SERVER}" = "Percona" ] \
       && [ "${_SQL_MAJOR_UP_ALLOW}" = "YES" ]; then
-      _DB_SERVER=Percona
       _DBS_VRN="${_PERCONA_5_7_VRN}"
-      rm -f /etc/apt/sources.list.d/percona*
-      rm -f /etc/apt/sources.list.d/xtrabackup*
-      percList="/etc/apt/sources.list.d/percona-release.list"
-      percRepo="${_DB_SRC}/percona/apt"
-      echo "## Percona APT Repository" > ${percList}
-      if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
-        echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-        echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-      else
-        echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-        echo "deb-src http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-      fi
-      chmod 644 ${percList}
-      echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
-      apt_clean_update
-    else
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
-      rm -f /etc/apt/sources.list.d/percona*
-      rm -f /etc/apt/sources.list.d/xtrabackup*
-      percList="/etc/apt/sources.list.d/percona-release.list"
-      percRepo="${_DB_SRC}/percona/apt"
-      echo "## Percona APT Repository" > ${percList}
-      if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
-        echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-        echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-      else
-        echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-        echo "deb-src http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-      fi
-      chmod 644 ${percList}
-      echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
-      apt_clean_update
     fi
   fi
   msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_OS_DIST}/${_OS_CODE}"
 
+  ### Update keyring and apt if needed
+  if_sql_keyring_apt_update
+
   ### Only supported upgrade path allowed
   sql_strict_upgrade_path
 
-  percRepo="${_DB_SRC}/percona/apt"
-  percList="/etc/apt/sources.list.d/percona-release.list"
-  rm -f /etc/apt/sources.list.d/mariadb*
-  rm -f /etc/apt/sources.list.d/percona*
-  rm -f /etc/apt/sources.list.d/xtrabackup*
-  echo "## Percona APT Repository" > ${percList}
-  if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
-    echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-    echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-  else
-    echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-    echo "deb-src http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-  fi
-  chmod 644 ${percList}
-  echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
-  apt_clean_update
   if [ -e "/usr/bin/mytop" ]; then
     mrun "apt-get remove mytop -y --purge --auto-remove -qq" 2> /dev/null
     rm -f /usr/bin/mytop
@@ -930,42 +936,13 @@ db_server_install() {
     install_with_aptitude_sql
     db_server_apt_cleanup
   else
+    ###
+    ### Update keyring and apt if needed
+    if_sql_keyring_apt_update
+    ###
     ### Only supported upgrade path allowed
     sql_strict_upgrade_path
-    if [ "${_DB_SERVER}" = "Percona" ] && [ "${_DB_SERIES}" = "5.7" ]; then
-      _DB_SRC="repo.percona.com"
-      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
-      _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} \
-        /etc/apt/sources.list.d/percona-release.list 2>&1)
-    fi
-    if [[ "${_SQL_DEB_SRC_TEST_A}" =~ "${_DB_SRC}" ]] \
-      && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_SQL_OS_CODE}" ]] \
-      && [ -e "/etc/apt/keyrings/percona.gpg" ] \
-      && [ -e "/etc/apt/preferences.d/00percona.pref" ]; then
-      _SQL_DEB_SRC_UPDATE=NO
-    else
-      if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
-        _OSN=debian
-      fi
-      if [ "${_DB_SERVER}" = "Percona" ] && [ "${_DB_SERIES}" = "5.7" ]; then
-        percList="/etc/apt/sources.list.d/percona-release.list"
-        percRepo="${_DB_SRC}/percona/apt"
-        rm -f /etc/apt/sources.list.d/percona*
-        rm -f /etc/apt/sources.list.d/xtrabackup*
-        echo "## Percona APT Repository" > ${percList}
-        if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
-          echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-          echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-        else
-          echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-          echo "deb-src http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
-        fi
-        chmod 644 ${percList}
-        echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
-      fi
-      apt_clean_update
-    fi
+    ###
     if [ "${_SQL_UPGRADE}" = "YES" ]; then
       msg "INFO: Running ${_DB_SERVER} upgrade..."
       msg "WAIT: This may take a while, please wait..."
@@ -979,40 +956,6 @@ db_server_install() {
           _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
           mrun "mysql_upgrade -u root --force" &> /dev/null
         fi
-      fi
-      rm -f /etc/apt/sources.list.d/ourdelta.list
-      if [ "${_DB_SERVER}" = "Percona" ] && [ "${_DB_SERIES}" = "5.7" ]; then
-        if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
-          if [ ! -e "/etc/apt/keyrings" ]; then
-            mkdir -m 0755 -p /etc/apt/keyrings
-          fi
-          if [ -e "/etc/apt/trusted.gpg.d/percona.gpg" ]; then
-            rm -f /etc/apt/trusted.gpg.d/percona.gpg*
-          fi
-          _PERCONA_KEYS_SIG="8507EFA5"
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: Retrieving ${_PERCONA_KEYS_SIG} key..."
-          fi
-          apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
-          if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
-            curl -fsSL ${urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/percona.gpg
-          fi
-          chmod 644 /etc/apt/keyrings/percona.gpg
-          if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
-            kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-            echo "$(date 2>&1) Too many dirmngr processes killed" >> \
-              /var/xdrago/log/dirmngr-count.kill.log
-          fi
-          if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
-            kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
-            echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
-              /var/xdrago/log/gpg-agent-count.kill.log
-          fi
-        fi
-        apt_clean_update
-      fi
-      if [ "${_OS_DIST}" = "Debian" ] || [ "${_OS_DIST}" = "Devuan" ]; then
-        _OSN=debian
       fi
       st_runner "apt-get autoclean -y" &> /dev/null
       apt_clean_update

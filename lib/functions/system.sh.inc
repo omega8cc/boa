@@ -6069,54 +6069,7 @@ if_major_os_upgrade() {
     fi
     ###
     ### Now overwriting db gears apt sources.
-    if [ "${_DB_SERVER}" = "Percona" ] && [ "${_DB_SERIES}" = "5.7" ]; then
-      if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
-        if [ ! -e "/etc/apt/keyrings" ]; then
-          mkdir -m 0755 -p /etc/apt/keyrings
-        fi
-        if [ -e "/etc/apt/trusted.gpg.d/percona.gpg" ]; then
-          rm -f /etc/apt/trusted.gpg.d/percona.gpg*
-        fi
-        _PERCONA_KEYS_SIG="8507EFA5"
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Retrieving ${_PERCONA_KEYS_SIG} key..."
-        fi
-        apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
-        if [ -x "/usr/bin/gpg2" ]; then
-          _GPG=gpg2
-        else
-          _GPG=gpg
-        fi
-        if [ ! -e "/etc/apt/keyrings/percona.gpg" ]; then
-          curl -fsSL ${urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/percona.gpg
-        fi
-        chmod 644 /etc/apt/keyrings/percona.gpg
-        if [ `ps aux | grep -v "grep" | grep --count "dirmngr"` -gt "5" ]; then
-          kill -9 $(ps aux | grep '[d]irmngr' | awk '{print $2}') &> /dev/null
-          echo "$(date 2>&1) Too many dirmngr processes killed" >> \
-            /var/xdrago/log/dirmngr-count.kill.log
-        fi
-        if [ `ps aux | grep -v "grep" | grep --count "gpg-agent"` -gt "5" ]; then
-          kill -9 $(ps aux | grep '[g]pg-agent' | awk '{print $2}') &> /dev/null
-          echo "$(date 2>&1) Too many gpg-agent processes killed" >> \
-            /var/xdrago/log/gpg-agent-count.kill.log
-        fi
-      fi
-      percRepo="${_DB_SRC}/percona/apt"
-      percList="/etc/apt/sources.list.d/percona-release.list"
-      rm -f /etc/apt/sources.list.d/percona*
-      rm -f /etc/apt/sources.list.d/xtrabackup*
-      echo "## Percona APT Repository" > ${percList}
-      if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
-        echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
-        echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
-      else
-        echo "deb http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
-        echo "deb-src http://${percRepo} ${_SQL_NEW_OS_CODE} main" >> ${percList}
-      fi
-      chmod 644 ${percList}
-      echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
-    fi
+    if_sql_keyring_apt_update
     ###
     ### Switching system gears on the fly.
     if [ "${_TGT_OSN}" = "Devuan" ]; then

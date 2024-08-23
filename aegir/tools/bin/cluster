@@ -1566,15 +1566,18 @@ install_db_cluster() {
     vserver ${idn} exec ${_INSTAPP} debian-archive-keyring
   	vserver ${idn} exec apt-get upgrade -y -qq
   	vserver ${idn} exec ${_INSTAPP} software-properties-common dirmngr
-    rm -f /vservers/${idn}/etc/apt/sources.list.d/percona-.*
-    rm -f /vservers/${idn}/etc/apt/sources.list.d/xtrabackup.*
+    rm -f /vservers/${idn}/etc/apt/sources.list.d/mariadb*
+    rm -f /vservers/${idn}/etc/apt/sources.list.d/ourdelta*
+    rm -f /vservers/${idn}/etc/apt/sources.list.d/percona*
+    rm -f /vservers/${idn}/etc/apt/sources.list.d/xtrabackup*
     _PERCONA_KEYS_SIG="8507EFA5"
     if [ ! -e "/vservers/${idn}/etc/apt/keyrings/percona.gpg" ]; then
       if [ ! -e "/vservers/${idn}/etc/apt/keyrings" ]; then
         mkdir -m 0755 -p /vservers/${idn}/etc/apt/keyrings
       fi
-      if [ -e "/vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg" ]; then
-        rm -f /vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg
+      if [ -e "/vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg" ] \
+        || [ -e "/vservers/${idn}/etc/apt/trusted.gpg.d/percona-keyring.gpg~" ]; then
+        rm -f /vservers/${idn}/etc/apt/trusted.gpg.d/percona*
       fi
       vserver ${idn} exec apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
       if [ ! -e "/vservers/${idn}/etc/apt/keyrings/percona.gpg" ]; then
@@ -1781,8 +1784,9 @@ upgrade_db_cluster() {
       if [ ! -e "/vservers/${idn}/etc/apt/keyrings" ]; then
         mkdir -m 0755 -p /vservers/${idn}/etc/apt/keyrings
       fi
-      if [ -e "/vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg" ]; then
-        rm -f /vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg
+      if [ -e "/vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg" ] \
+        || [ -e "/vservers/${idn}/etc/apt/trusted.gpg.d/percona-keyring.gpg~" ]; then
+        rm -f /vservers/${idn}/etc/apt/trusted.gpg.d/percona*
       fi
       vserver ${idn} exec apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
       if [ ! -e "/vservers/${idn}/etc/apt/keyrings/percona.gpg" ]; then
