@@ -1297,8 +1297,6 @@ innodb_autoinc_lock_mode=2
 ### Recommended for Galera
 #
 innodb_flush_log_at_trx_commit=0
-query_cache_size=0
-query_cache_type=0
 binlog_row_image=minimal
 wsrep_slave_threads=${_CPU_MX}
 wsrep_log_conflicts=ON
@@ -1379,9 +1377,6 @@ max_connect_errors      = 300
 max_connections         = 300
 max_user_connections    = 150
 myisam_sort_buffer_size = 256K
-query_cache_limit       = 256K
-query_cache_size        = 0
-query_cache_type        = 0
 read_buffer_size        = 8M
 read_rnd_buffer_size    = 8M
 sort_buffer_size        = 256K
