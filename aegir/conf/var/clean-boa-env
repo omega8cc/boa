@@ -165,7 +165,8 @@ case "$1" in
       kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}') &> /dev/null
       kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
       kill -9 $(ps aux | grep '[j]ava' | awk '{print $2}') &> /dev/null
-      echo "Java/Solr has been stopped"
+      rm -f /run/clamav/*
+      echo "Java/Solr/Clamav have been stopped"
       sleep 5
       service nginx stop &> /dev/null
       killall nginx &> /dev/null

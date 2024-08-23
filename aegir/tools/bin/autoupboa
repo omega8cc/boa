@@ -75,6 +75,7 @@ if_disable_not_used_services() {
     fi
     kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}') &> /dev/null
     kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
+    rm -f /run/clamav/*
   fi
   if [ -e "/root/.deny.java.cnf" ]; then
     if [ -e "/etc/init.d/solr7" ]; then
