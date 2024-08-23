@@ -6333,7 +6333,17 @@ if_major_os_upgrade() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "TRCK: Installing now libldap packages from Chimaera"
         fi
-        echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
+        echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/chimaera.list
+        echo "deb http://deb.devuan.org/merged chimaera main" >> /etc/apt/sources.list.d/chimaera.list
+        echo "deb-src http://deb.devuan.org/merged chimaera main" >> /etc/apt/sources.list.d/chimaera.list
+        echo "" >> /etc/apt/sources.list.d/chimaera.list
+        echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/chimaera.list
+        echo "deb http://deb.devuan.org/merged chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
+        echo "deb-src http://deb.devuan.org/merged chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
+        echo "" >> /etc/apt/sources.list.d/chimaera.list
+        echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/chimaera.list
+        echo "deb http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
+        echo "deb-src http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
         echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
         apt_clean_update
         mrun "apt-get install -t chimaera libldap-common -y" 2> /dev/null
@@ -6794,7 +6804,17 @@ sys_packages_install() {
       elif [ "${_OS_CODE}" = "daedalus" ]; then
         _APT_XTRA="openjdk-17-jre-headless ca-certificates-java nginx"
         if [ ! -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ]; then
-          echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
+          echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/chimaera.list
+          echo "deb http://deb.devuan.org/merged chimaera main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb-src http://deb.devuan.org/merged chimaera main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "" >> /etc/apt/sources.list.d/chimaera.list
+          echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb http://deb.devuan.org/merged chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb-src http://deb.devuan.org/merged chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "" >> /etc/apt/sources.list.d/chimaera.list
+          echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb-src http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
           echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
           apt_clean_update
           if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -6856,7 +6876,17 @@ sys_packages_install() {
           _JAVA_TEST=$(/usr/lib/jvm/java-11-openjdk-amd64/bin/java --version 2>&1)
         fi
         if [ ! -x "/usr/lib/jvm/java-11-openjdk-amd64/bin/java" ] || [[ ! "${_JAVA_TEST}" =~ "openjdk 11.0.24" ]]; then
-          echo "deb http://deb.devuan.org/merged chimaera main" > /etc/apt/sources.list.d/chimaera.list
+          echo "## DEVUAN MAIN REPOSITORIES" > /etc/apt/sources.list.d/chimaera.list
+          echo "deb http://deb.devuan.org/merged chimaera main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb-src http://deb.devuan.org/merged chimaera main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "" >> /etc/apt/sources.list.d/chimaera.list
+          echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb http://deb.devuan.org/merged chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb-src http://deb.devuan.org/merged chimaera-updates main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "" >> /etc/apt/sources.list.d/chimaera.list
+          echo "## DEVUAN SECURITY UPDATES" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
+          echo "deb-src http://deb.devuan.org/merged chimaera-security main" >> /etc/apt/sources.list.d/chimaera.list
           echo "Acquire::Check-Valid-Until \"false\";" >> /etc/apt/apt.conf
           apt_clean_update
           if [ "${_DEBUG_MODE}" = "YES" ]; then
