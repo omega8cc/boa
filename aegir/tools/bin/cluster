@@ -1642,7 +1642,11 @@ basedir  = /usr
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
     pxyCmd="GRANT ALL ON *.* TO 'root'@'${IP}' WITH GRANT OPTION;"
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
-    pxyCmd="ALTER USER 'root'@'${IP}' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+    if [ "${_DB_SERIES}" = "8.0" ] || [ "${_DB_SERIES}" = "8.3" ]; then
+      pxyCmd="ALTER USER 'root'@'${IP}' IDENTIFIED WITH caching_sha2_password BY '${_ROOT_SQL_PASWD}';"
+    else
+      pxyCmd="ALTER USER 'root'@'${IP}' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+    fi
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
     pxyCmd="CREATE USER IF NOT EXISTS 'sstuser'@'${IP}';"
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
@@ -1691,11 +1695,23 @@ basedir  = /usr
     ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
   pxyCmd="GRANT ALL ON *.* TO 'root'@'${_WEB_NODE_IP}' WITH GRANT OPTION;"
     ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
-  pxyCmd="ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+  if [ "${_DB_SERIES}" = "8.0" ] || [ "${_DB_SERIES}" = "8.3" ]; then
+    pxyCmd="ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${_ROOT_SQL_PASWD}';"
+  else
+    pxyCmd="ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+  fi
     ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
-  pxyCmd="ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+  if [ "${_DB_SERIES}" = "8.0" ] || [ "${_DB_SERIES}" = "8.3" ]; then
+    pxyCmd="ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH caching_sha2_password BY '${_ROOT_SQL_PASWD}';"
+  else
+    pxyCmd="ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+  fi
     ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
-  pxyCmd="ALTER USER 'root'@'${_WEB_NODE_IP}' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+  if [ "${_DB_SERIES}" = "8.0" ] || [ "${_DB_SERIES}" = "8.3" ]; then
+    pxyCmd="ALTER USER 'root'@'${_WEB_NODE_IP}' IDENTIFIED WITH caching_sha2_password BY '${_ROOT_SQL_PASWD}';"
+  else
+    pxyCmd="ALTER USER 'root'@'${_WEB_NODE_IP}' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+  fi
     ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
 
   pxyCmd="SHOW STATUS LIKE 'wsrep_%';"

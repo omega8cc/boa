@@ -775,6 +775,8 @@ forced_mysql_root_password_update() {
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
     if [ "${_DB_SERIES}" = "5.7" ]; then
       mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
+    elif [ "${_DB_SERIES}" = "8.0" ] || [ "${_DB_SERIES}" = "8.3" ]; then
+      mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${_ESC_PASS}';"
     else
       mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${_ESC_PASS}';"
     fi
@@ -854,6 +856,10 @@ forced_mysql_root_password_update() {
       mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
       mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
       mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
+    elif [ "${_DB_SERIES}" = "8.0" ] || [ "${_DB_SERIES}" = "8.3" ]; then
+      mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH caching_sha2_password BY '${_ESC_PASS}';"
+      mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH caching_sha2_password BY '${_ESC_PASS}';"
+      mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH caching_sha2_password BY '${_ESC_PASS}';"
     else
       mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}';"
       mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED BY '${_ESC_PASS}';"
@@ -1222,6 +1228,8 @@ sql_root_credentials_update() {
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
         if [ "${_DB_SERIES}" = "5.7" ]; then
           mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
+        elif [ "${_DB_SERIES}" = "8.0" ] || [ "${_DB_SERIES}" = "8.3" ]; then
+          mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${PASWD}';"
         else
           mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${PASWD}';"
         fi
@@ -1282,6 +1290,10 @@ sql_root_credentials_update() {
           mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
           mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
           mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
+        elif [ "${_DB_SERIES}" = "8.0" ] || [ "${_DB_SERIES}" = "8.3" ]; then
+          mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH caching_sha2_password BY '${PASWD}';"
+          mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH caching_sha2_password BY '${PASWD}';"
+          mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH caching_sha2_password BY '${PASWD}';"
         else
           mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${PASWD}';"
           mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED BY '${PASWD}';"
@@ -1344,6 +1356,8 @@ sql_root_credentials_update() {
               mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_IP}' WITH GRANT OPTION;"
               if [ "${_DB_SERIES}" = "5.7" ]; then
                 mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
+              elif [ "${_DB_SERIES}" = "8.0" ] || [ "${_DB_SERIES}" = "8.3" ]; then
+                mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED WITH caching_sha2_password BY '${PASWD}';"
               else
                 mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
               fi
@@ -1406,6 +1420,8 @@ sql_root_credentials_update() {
           mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_IP}' WITH GRANT OPTION;"
           if [ "${_DB_SERIES}" = "5.7" ]; then
             mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED WITH mysql_native_password BY '${_SQL_PSWD}';"
+          elif [ "${_DB_SERIES}" = "8.0" ] || [ "${_DB_SERIES}" = "8.3" ]; then
+            mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED WITH caching_sha2_password BY '${_SQL_PSWD}';"
           else
             mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED BY '${_SQL_PSWD}';"
           fi
