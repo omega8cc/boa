@@ -135,10 +135,6 @@ innodb_log_file_size_update() {
     msg "PROC: innodb_log_file_size_update"
   fi
   msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
-  if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
-    sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf &> /dev/null
-      wait
-  fi
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
@@ -182,10 +178,6 @@ sql_conf_update() {
   fi
   sed -i "s/.*innodb_force_recovery/#innodb_force_recovery/g" /etc/mysql/my.cnf &> /dev/null
     wait
-  if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
-    sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf &> /dev/null
-      wait
-  fi
   sed -i "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" /etc/mysql/my.cnf &> /dev/null
     wait
   sed -i "s/^thread_concurrency.*//g" /etc/mysql/my.cnf &> /dev/null
@@ -325,10 +317,6 @@ tune_sql_memory_limits() {
     _DO_NOTHING=YES
   else
     cp -af ${locCnf}/var/my.cnf.txt /etc/mysql/my.cnf
-  fi
-  if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
-    sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf &> /dev/null
-      wait
   fi
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
   pthTun="/var/opt/mysqltuner.pl"
@@ -974,10 +962,6 @@ db_server_install() {
         sed -i "s/.*innodb_lazy_drop_table.*//g" /etc/mysql/my.cnf &> /dev/null
           wait
       fi
-      if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
-        sed -i "s/^show_compatibility_56/#show_compatibility_56/g" /etc/mysql/my.cnf &> /dev/null
-          wait
-      fi
       if [ -e "/etc/mysql/my.cnf" ]; then
         sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
           wait
@@ -1076,7 +1060,6 @@ db_server_install() {
           fi
           mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
           mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
-          mysql -u root -e "SET GLOBAL show_compatibility_56=ON;" &> /dev/null
           mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
           rm -f /etc/mysql/conf.d/mysqldump.cnf
         fi

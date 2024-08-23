@@ -817,17 +817,6 @@ up_action() {
             # fi
             if [ -e "/etc/init.d/redis-server" ]; then
               sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"      ${barCnf}
-              if [ ! -e "/root/.run-to-daedalus.cnf" ] \
-                 && [ ! -e "/root/.run-to-chimaera.cnf" ] \
-                 && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
-                if [[ "${_DB_SERVER}" =~ "Percona" ]]; then
-                  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-                  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-                  mysql -u root -e "SET GLOBAL show_compatibility_56=ON;" &> /dev/null
-                fi
-              fi
-            else
-              sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"      ${barCnf}
             fi
             wait
           fi

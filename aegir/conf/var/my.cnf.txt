@@ -21,7 +21,6 @@ transaction-read-only   = OFF
 skip-external-locking
 skip-name-resolve
 performance_schema      = OFF
-show_compatibility_56   = ON
 symbolic-links          = 0
 connect_timeout         = 60
 join_buffer_size        = 1M
