@@ -17,9 +17,9 @@ if (!-d "/run/mysqld") {
 }
 &cpu_count_load;
 &global_action;
+$sumar = 0;
 foreach $USER (sort keys %li_cnt) {
   print " $li_cnt{$USER}\t$USER\n";
-  push(@donetable," $li_cnt{$USER}\t$USER");
   $sumar = $sumar + $li_cnt{$USER};
   if ($USER eq "mysql") {$mysqlives = "YES"; $mysqlsumar = $li_cnt{$USER};}
   if ($USER eq "jetty7") {$jetty7lives = "YES"; $jetty7sumar = $li_cnt{$USER};}
@@ -64,6 +64,7 @@ foreach $X (sort keys %li_cnt) {
   if ($X =~ /php70/) {$php70lives = "YES";}
   if ($X =~ /php56/) {$php56lives = "YES";}
 }
+$convertsumar = 0;
 foreach $K (sort keys %li_cnt) {
   if ($K =~ /convert/) {$convertlives = "YES"; $convertsumar = $li_cnt{$K};}
 }

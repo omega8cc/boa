@@ -52,12 +52,9 @@ sub makeactions
     system("echo \"#!/bin/bash\" > $fixfile");
     system("echo \" \" >> $fixfile");
   }
-  open (NOT,"<$fixfile");
-  @rectable = <NOT>;
-  close (NOT);
   local(@MYARR)=`tail --lines=999999999 $logfile 2>&1`;
-  local($maxnumber,$critnumber,$alert);
-  local($sumar,$li_cnt{$DOMAIN},$li_cndx{$DOMAIN});
+  local($maxnumber) = 0;
+  local($sumar) = 0;
   foreach $line (@MYARR) {
     if ($line =~ /(Table \'\.\/)/i) {
       $status="ERROR";
@@ -74,7 +71,6 @@ sub makeactions
   foreach $TABLE (sort keys %li_cnt) {
     $sumar = $sumar + $li_cnt{$TABLE};
     local($thissumar) = $li_cnt{$TABLE};
-    $maxnumber = 0;
     if ($thissumar > $maxnumber) {
       &repair_this_action($TABLE,$thissumar);
     }
@@ -87,7 +83,7 @@ sub makeactions
 sub repair_this_action
 {
   local($FIXTABLE,$COUNTER) = @_;
-  print "$FIXTABLE [$COUNTER] recorded... $REMOTE_HOST\n";
+  print "$FIXTABLE [$COUNTER] recorded...\n";
   system("echo \"#-- BELOW --# $FIXTABLE [$COUNTER] recorded...\" >> $fixfile");
   system("echo \"/usr/bin/mysqlcheck -u root -r $FIXTABLE\" >> $fixfile");
   system("echo \"/usr/bin/mysqlcheck -u root -o $FIXTABLE\" >> $fixfile");
