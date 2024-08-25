@@ -2851,8 +2851,7 @@ if [ `whoami` = "root" ]; then
       fi
     fi
   else
-    if [ -e "/root/.step.init.systemd.two.cnf" ] \
-      && [ -e "/root/.step.init.systemd.one.cnf" ]; then
+    if [ -z "$STY" ]; then
       _SCREEN_INIT=YES
     fi
   fi
