@@ -251,13 +251,7 @@ sql_conf_update() {
       sed -i "s/.*binlog_format/binlog_format/g"       /etc/mysql/my.cnf &> /dev/null
         wait
     fi
-    _LEGACY_CLSTR=NO
-    if [ -f "/root/.mstr.clstr.cnf" ] \
-      || [ -f "/root/.wbhd.clstr.cnf" ] \
-      || [ -f "/root/.dbhd.clstr.cnf" ]; then
-      _LEGACY_CLSTR=YES
-    fi
-    if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ] && [ "${_LEGACY_CLSTR}" = "NO" ]; then
+    if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
       if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
         _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
         _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
@@ -321,11 +315,6 @@ tune_sql_memory_limits() {
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
   pthTun="/var/opt/mysqltuner.pl"
   outTun="/var/opt/mysqltuner-${_X_SE}-${_X_VERSION}-${_NOW}.txt"
-  if [ -e "/root/.mstr.clstr.cnf" ] \
-    || [ -e "/root/.wbhd.clstr.cnf" ] \
-    || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    _GALERA_COMP=NO
-  fi
   if [ -e "/root/.run-to-daedalus.cnf" ] \
     || [ -e "/root/.run-to-chimaera.cnf" ] \
     || [ -e "/root/.run-to-beowulf.cnf" ]; then
@@ -333,8 +322,7 @@ tune_sql_memory_limits() {
   fi
   if [ ! -e "${outTun}" ] \
     && [ "${_USE_MYSQLTUNER}" != "NO" ] \
-    && [ "${_STATUS}" = "UPGRADE" ] \
-    && [ -z "${_GALERA_COMP}" ]; then
+    && [ "${_STATUS}" = "UPGRADE" ]; then
     msg "INFO: Running MySQLTuner check on all databases"
     msg "WAIT: This may take a while, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
@@ -494,8 +482,7 @@ tune_sql_memory_limits() {
   else
     _THIS_USE_MEM="${_USE_SQL}M"
     if [ "${_MYSQLTUNER_TEST_RESULT}" = "FAIL" ] \
-      && [ "${_STATUS}" = "UPGRADE" ] \
-      && [ -z "${_GALERA_COMP}" ]; then
+      && [ "${_STATUS}" = "UPGRADE" ]; then
       msg "NOTE: _USE_MYISAM_MEM is ${_THIS_USE_MEM} because _REC_MYISAM_MEM was empty!"
       msg "NOTE: _USE_INNODB_MEM is ${_THIS_USE_MEM} because _REC_INNODB_MEM was empty!"
     fi
@@ -578,16 +565,6 @@ prep_for_install_db_sql() {
   fi
   st_runner "${_INSTAPP} software-properties-common dirmngr" 2> /dev/null
 
-  if [ -e "/root/.mstr.clstr.cnf" ] \
-    || [ -e "/root/.wbhd.clstr.cnf" ] \
-    || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    _DBS_VRN="${_GALERA_10_VRN}"
-  else
-    if [ "${_DB_SERVER}" = "Percona" ] \
-      && [ "${_SQL_MAJOR_UP_ALLOW}" = "YES" ]; then
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
-    fi
-  fi
   msg "INFO: Installing ${_DB_SERVER} ${_DBS_VRN} in ${_OS_DIST}/${_OS_CODE}"
 
   ### Update keyring and apt if needed
@@ -630,18 +607,8 @@ install_with_aptitude_sql() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: install_with_aptitude_sql"
   fi
-  if [ "${_EASY_SETUP}" = "MSTR" ] \
-    || [ "${_EASY_SETUP}" = "DBHD" ] \
-    || [ "${_EASY_SETUP}" = "WBHD" ] \
-    || [ -e "/etc/mysql/conf.d/galera.cnf" ] \
-    || [ -e "/root/.mstr.clstr.cnf" ] \
-    || [ -e "/root/.dbhd.clstr.cnf" ] \
-    || [ -e "/root/.wbhd.clstr.cnf" ]; then
-    msg "INFO: Installing ${_DB_SERVER} Galera Cluster..."
-  else
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      msg "INFO: Installing ${_DB_SERVER}..."
-    fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    msg "INFO: Installing ${_DB_SERVER}..."
   fi
   prep_for_install_db_sql
   if [ "${_SQL_SCR}" = "APT" ]; then
@@ -666,21 +633,6 @@ install_with_aptitude_sql() {
     mrun "make -j $(nproc) --quiet" 2> /dev/null
     mrun "make --quiet install" 2> /dev/null
     ldconfig 2> /dev/null
-  fi
-  if [ "${_EASY_SETUP}" = "DBHD" ] \
-    || [ -e "/etc/mysql/conf.d/galera.cnf" ] \
-    || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    _DB_SERVER_TEST=$(mysql -V 2>&1)
-    if [[ "${_DB_SERVER_TEST}" =~ "${_DB_SERIES}" ]]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        msg "INFO: Running ${_DB_SERVER} system tables check..."
-      fi
-      if [ -x "/usr/bin/mysql_upgrade" ]; then
-        _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-        _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-        mrun "mysql_upgrade -u root --force" &> /dev/null
-      fi
-    fi
   fi
   if [ "${_DB_SERVER}" = "Percona" ] \
     && [ "${_DB_SERIES}" = "5.7" ] \
@@ -1311,70 +1263,7 @@ sql_root_credentials_update() {
         fi
         if [ "${_THIS_DB_HOST}" = "localhost" ] \
           || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
-          || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \
-          || [ "${_THIS_DB_HOST}" = "FQDN" ]; then
-          _DO_NOTHING=YES
-        else
-          if [ -e "/etc/mysql/debian.cnf" ] && [ "${_STATUS}" = "INIT" ]; then
-            mySysMn="debian-sys-maint"
-            mysql -u root -e "CREATE USER IF NOT EXISTS '${mySysMn}'@'localhost';"
-            mysql -u root -e "CREATE USER IF NOT EXISTS '${mySysMn}'@'127.0.0.1';"
-            mysql -u root -e "CREATE USER IF NOT EXISTS '${mySysMn}'@'${_MY_OWNIP}';"
-            mysql -u root -e "GRANT ALL ON ${_ESC} TO '${mySysMn}'@'localhost' WITH GRANT OPTION;"
-            mysql -u root -e "GRANT ALL ON ${_ESC} TO '${mySysMn}'@'127.0.0.1' WITH GRANT OPTION;"
-            mysql -u root -e "GRANT ALL ON ${_ESC} TO '${mySysMn}'@'${_MY_OWNIP}' WITH GRANT OPTION;"
-            mysql -u root -e "ALTER USER '${mySysMn}'@'localhost' IDENTIFIED BY '${PASWD}';"
-            mysql -u root -e "ALTER USER '${mySysMn}'@'127.0.0.1' IDENTIFIED BY '${PASWD}';"
-            mysql -u root -e "ALTER USER '${mySysMn}'@'${_MY_OWNIP}' IDENTIFIED BY '${PASWD}';"
-            mkdir -p ${vBs}
-            cp -af /etc/mysql/debian.cnf \
-              ${vBs}/debian.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}.txt
-            chmod 400 ${vBs}/debian.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}.txt
-            sed -i "s/^password =.*/password = ${PASWD}/g" \
-              /etc/mysql/debian.cnf &> /dev/null
-              wait
-          fi
-          if [ -e "/root/.remote.IP.list" ]; then
-            _ESC="*.*"
-            for _IP in `cat /root/.remote.IP.list \
-              | cut -d '#' -f1 \
-              | sort \
-              | uniq \
-              | tr -d "\s"`; do
-              mysql -u root -e "CREATE USER IF NOT EXISTS 'aegir_root'@'${_IP}';"
-              mysql -u root -e "GRANT ALL ON ${_ESC} TO 'aegir_root'@'${_IP}' WITH GRANT OPTION;"
-              mysql -u root -e "ALTER USER 'aegir_root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
-            done
-          fi
-          if [ -e "/root/.cluster.IP.list" ]; then
-            for _IP in `cat /root/.cluster.IP.list \
-              | cut -d '#' -f1 \
-              | sort \
-              | uniq \
-              | tr -d "\s"`; do
-              mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_IP}';"
-              mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_IP}' WITH GRANT OPTION;"
-              if [ "${_DB_SERIES}" = "5.7" ]; then
-                mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
-              elif [ "${_DB_SERIES}" = "8.0" ] || [ "${_DB_SERIES}" = "8.3" ]; then
-                mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED WITH caching_sha2_password BY '${PASWD}';"
-              else
-                mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED BY '${PASWD}';"
-              fi
-            done
-            mysql -u root -e "CREATE USER IF NOT EXISTS 'wsrep'@'%';"
-            mysql -u root -e "GRANT ALL ON ${_ESC} TO 'wsrep'@'%' WITH GRANT OPTION;"
-            mysql -u root -e "ALTER USER 'wsrep'@'%' IDENTIFIED BY '${PASWD}';"
-          fi
-          touch ${pthLog}/fixed-cluster-ip-grants.log
-        fi
-        if [ "${_THIS_DB_HOST}" = "localhost" ] \
-          || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
           || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
-          echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
-        elif [ -e "/root/.mstr.clstr.cnf" ] \
-          || [ -e "/root/.wbhd.clstr.cnf" ] \
-          || [ -e "/root/.dbhd.clstr.cnf" ]; then
           echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
         else
           sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf &> /dev/null
@@ -1394,44 +1283,6 @@ sql_root_credentials_update() {
       fi
     fi
   else
-    if [ ! -e "${pthLog}/fixed-cluster-ip-grants.log" ] \
-      && [ -e "/root/.dbhd.clstr.cnf" ]; then
-      _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-      _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-      if [ -e "/root/.remote.IP.list" ]; then
-        _ESC="*.*"
-        for _IP in `cat /root/.remote.IP.list \
-          | cut -d '#' -f1 \
-          | sort \
-          | uniq \
-          | tr -d "\s"`; do
-          mysql -u root -e "CREATE USER IF NOT EXISTS 'aegir_root'@'${_IP}';"
-          mysql -u root -e "GRANT ALL ON ${_ESC} TO 'aegir_root'@'${_IP}' WITH GRANT OPTION;"
-          mysql -u root -e "ALTER USER 'aegir_root'@'${_IP}' IDENTIFIED BY '${_SQL_PSWD}';"
-        done
-      fi
-      if [ -e "/root/.cluster.IP.list" ]; then
-        for _IP in `cat /root/.cluster.IP.list \
-          | cut -d '#' -f1 \
-          | sort \
-          | uniq \
-          | tr -d "\s"`; do
-          mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'${_IP}';"
-          mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_IP}' WITH GRANT OPTION;"
-          if [ "${_DB_SERIES}" = "5.7" ]; then
-            mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED WITH mysql_native_password BY '${_SQL_PSWD}';"
-          elif [ "${_DB_SERIES}" = "8.0" ] || [ "${_DB_SERIES}" = "8.3" ]; then
-            mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED WITH caching_sha2_password BY '${_SQL_PSWD}';"
-          else
-            mysql -u root -e "ALTER USER 'root'@'${_IP}' IDENTIFIED BY '${_SQL_PSWD}';"
-          fi
-        done
-        mysql -u root -e "CREATE USER IF NOT EXISTS 'wsrep'@'%';"
-        mysql -u root -e "GRANT ALL ON ${_ESC} TO 'wsrep'@'%' WITH GRANT OPTION;"
-        mysql -u root -e "ALTER USER 'wsrep'@'%' IDENTIFIED BY '${_SQL_PSWD}';"
-      fi
-      touch ${pthLog}/fixed-cluster-ip-grants.log
-    fi
     if [ "${_THIS_DB_HOST}" = "localhost" ] \
       || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ] \

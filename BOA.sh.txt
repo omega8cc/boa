@@ -557,11 +557,6 @@ update_agents() {
     [ -e "/root/.giant_traffic.cnf" ] && rm -f /root/.giant_traffic.cnf
     [ -e "/root/.default.cnf" ] && rm -f /root/.default.cnf
     [ -e "/root/.debug.cnf" ] && rm -f /root/.debug.cnf
-    if [ ! -e "/root/.fixed_scout.pid" ]; then
-      sed -i "s/_SCOUT_KEY=.*/_SCOUT_KEY=/g" ${barCnf}
-      sed -i "s/.*scout.*//g" /etc/crontab
-      touch /root/.fixed_scout.pid
-    fi
     if [ -e "/data/conf/override.global.inc" ] \
       && [ ! -e "/data/conf/.prev6.override.global.inc.off" ]; then
       mv -f /data/conf/override.global.inc /data/conf/.prev6.override.global.inc.off

@@ -2430,8 +2430,7 @@ else
     _WEB_SH=$(readlink -n /bin/sh 2>&1)
     _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
     if [ -x "/bin/websh" ]; then
-      if [ "${_WEB_SH}" != "/bin/websh" ] \
-        && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
+      if [ "${_WEB_SH}" != "/bin/websh" ]; then
         ln -sfn /bin/websh /bin/sh
         if [ -e "/usr/bin/sh" ]; then
           ln -sfn /bin/websh /usr/bin/sh
@@ -2487,55 +2486,6 @@ else
     -type d -exec chmod 0700 {} \; &> /dev/null
   find /var/aegir/config/server_master \
     -type f -exec chmod 0600 {} \; &> /dev/null
-  if [ -e "/var/scout" ]; then
-    _SCOUT_CRON_OFF=$(grep "OFFscoutOFF" /etc/crontab 2>&1)
-    if [[ "${_SCOUT_CRON_OFF}" =~ "OFFscoutOFF" ]]; then
-      sleep 5
-      sed -i "s/OFFscoutOFF/scout/g" /etc/crontab &> /dev/null
-      wait
-    fi
-  fi
-  if [ -e "/var/backups/reports/up/barracuda" ]; then
-    if [ -e "/root/.mstr.clstr.cnf" ] \
-      || [ -e "/root/.wbhd.clstr.cnf" ] \
-      || [ -e "/root/.dbhd.clstr.cnf" ]; then
-      if [ -e "/var/spool/cron/crontabs/aegir" ]; then
-        sleep 180
-        rm -f /var/spool/cron/crontabs/aegir
-        ionice -c2 -n0 -p $$
-        service cron reload &> /dev/null
-      fi
-    fi
-    if [ -e "/root/.mstr.clstr.cnf" ] \
-      || [ -e "/root/.wbhd.clstr.cnf" ]; then
-      if [ ! -e "/root/.remote.db.cnf" ] \
-        && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
-        touch /root/.remote.db.cnf
-      fi
-      if [ -e "/run/mysqld/mysqld.pid" ] \
-        && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
-        ionice -c2 -n0 -p $$
-        service cron stop &> /dev/null
-        sleep 180
-        touch /root/.remote.db.cnf
-        if [ "${_DB_SERIES}" = "5.7" ]; then
-          _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-          _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-          mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
-        fi
-        service mysql stop &> /dev/null
-        wait
-        service cron start &> /dev/null
-        wait
-      fi
-    fi
-  fi
   sleep 5
   [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
   exit 0

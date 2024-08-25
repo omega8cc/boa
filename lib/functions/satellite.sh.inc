@@ -2180,11 +2180,6 @@ satellite_add_user_dirs() {
   mkdir -p /data/u
   mkdir -p /data/disk
   mkdir -p /data/conf
-  if [ -e "/root/.mstr.clstr.cnf" ] \
-    || [ -e "/root/.wbhd.clstr.cnf" ] \
-    || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    touch /data/conf/clstr.cnf &> /dev/null
-  fi
   chown root:root /data &> /dev/null
   chown root:root /data/disk &> /dev/null
   if [ ! -d "${_ROOT}" ]; then

@@ -562,9 +562,6 @@ up_one() {
       || [ "${cmmand}" = "up-lts" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${tocIncO}
       wait
-    elif [ "${cmmand}" = "up-cluster" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${tocIncO}
-      wait
     fi
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${tocIncO}
     wait
@@ -863,17 +860,6 @@ up_start() {
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/php
   fi
-  if [ "${cmmand}" = "up-cluster" ]; then
-    if [ ! -e "/run/mysqld/mysqld.pid" ] \
-      && [ ! -e "/root/.dbhd.clstr.cnf" ] \
-      && [ -e "/etc/init.d/mysql" ]; then
-      [ -e "/root/.remote.db.cnf" ] && rm -f /root/.remote.db.cnf
-      sleep 5
-      if [ ! -e "/run/mysqld/mysqld.sock" ]; then
-        service mysql start &> /dev/null
-      fi
-    fi
-  fi
   orgCmmand="${cmmand}"
 }
 
@@ -917,7 +903,6 @@ up_proceed() {
   fi
   rlsn="BOA-5.4.0"
   rlse="${rlsn}-${tRee}"
-  cluster="${rlse}"
   branch="5.x-${tRee}"
   brnch=${branch//\//\\\/}
   export tRee="${tRee}"

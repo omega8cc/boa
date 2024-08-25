@@ -244,15 +244,6 @@ csf_lfd_install_upgrade() {
   if [ -x "/usr/sbin/ipset" ] && [ ! -e "/sbin/ipset" ]; then
     ln -s /usr/sbin/ipset /sbin/ipset
   fi
-  if [ -e "/root/.mstr.clstr.cnf" ] \
-    || [ -e "/root/.wbhd.clstr.cnf" ] \
-    || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    if [ "${_USE_CSF_ON_CLSTR}" = "YES" ]; then
-      _CSF_CLSTR=YES
-    else
-      _CSF_CLSTR=NO
-    fi
-  fi
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "CSF" ]] \
     || [ "${_CSF_CLSTR}" = "YES" ]; then

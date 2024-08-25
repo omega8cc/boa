@@ -20,8 +20,6 @@ _MY_EMAIL="notify@omega8.cc"
 ### options and associated settings:
 ###
 ###  NO (requires manual configuration)
-###  WBHD (experimental for web heads)
-###  DBHD (experimental for db heads)
 ###  LOCAL (experimental for local testing)
 ###  PUBLIC (default)
 ###

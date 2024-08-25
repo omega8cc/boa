@@ -735,9 +735,6 @@ up_action() {
       || [ "${cmmand}" = "php-idle" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncB}
       wait
-    elif [ "${cmmand}" = "up-cluster" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncB}
-      wait
     else
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncB}
       wait
@@ -833,17 +830,6 @@ up_action() {
       fi
     fi
     if [ -e "${vBs}/${barName}" ]; then
-      if [ "${cmmand}" = "up-cluster" ]; then
-        if [ ! -e "/run/mysqld/mysqld.pid" ] \
-          && [ ! -e "/root/.dbhd.clstr.cnf" ] \
-          && [ -e "/etc/init.d/mysql" ]; then
-          [ -e "/root/.remote.db.cnf" ] && rm -f /root/.remote.db.cnf
-          sleep 5
-          if [ ! -e "/run/mysqld/mysqld.sock" ]; then
-            service mysql start &> /dev/null
-          fi
-        fi
-      fi
       if [ "${silent}" = "log" ] \
         || [ "${silent}" = "system" ] \
         || [ "${silent}" = "disable" ] \
@@ -856,9 +842,6 @@ up_action() {
           fi
         else
           n=8
-        fi
-        if [ -e "/root/.dbhd.clstr.cnf" ]; then
-          n=$((RANDOM%300+80))
         fi
         if [ "${silent}" = "log" ] \
           || [ "${silent}" = "system" ] \
@@ -1611,20 +1594,8 @@ proceed() {
     || [ "${cmmand}" = "up-lts" ] \
     || [ "${cmmand}" = "up-distro" ] \
     || [ "${cmmand}" = "php-idle" ]; then
-    if [ "${silent}" = "cluster" ] \
-      || [ "${silent}" = "foobar" ]; then
-      echo "FEATURE MODE: ${silent}"
-      master="feature/${silent}"
-      branch="feature/${silent}"
-      _SCRIPT_URL="${rgUrl}/feature/${silent}/${barName}"
-      curl ${crlGet} "${rgUrl}/feature/${silent}/${pthIncB}" -o ${vBs}/${filIncB}
-    else
-      _SCRIPT_URL="${rgUrl}/${brnch}/${barName}"
-      curl ${crlGet} "${rgUrl}/${brnch}/${pthIncB}" -o ${vBs}/${filIncB}
-    fi
-  elif [ "${cmmand}" = "up-cluster" ]; then
-    _SCRIPT_URL="${rgUrl}/${cluster}/${barName}"
-    curl ${crlGet} "${rgUrl}/${cluster}/${pthIncB}" -o ${vBs}/${filIncB}
+    _SCRIPT_URL="${rgUrl}/${brnch}/${barName}"
+    curl ${crlGet} "${rgUrl}/${brnch}/${pthIncB}" -o ${vBs}/${filIncB}
   elif [ "${cmmand}" = "help" ]; then
     echo
     echo "Usage: $(basename "$0") {version} {mode} {options}"
@@ -1658,12 +1629,6 @@ proceed() {
 EOF
     clean_pid_exit proceed_a
   fi
-  if [ -e "/root/.mstr.clstr.cnf" ] \
-    || [ -e "/root/.wbhd.clstr.cnf" ] \
-    || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    _SCRIPT_URL="${rgUrl}/${cluster}/${barName}"
-    cmmand="up-cluster"
-  fi
   curl ${crlGet} ${_SCRIPT_URL} -o ${vBs}/${barName}
   up_action
   up_finish
@@ -1676,7 +1641,6 @@ debug="$4"
 sql="$5"
 if [ ! -z "${silent}" ]; then
   if [ "${silent}" = "log" ] \
-    || [ "${silent}" = "cluster" ] \
     || [ "${silent}" = "disable" ] \
     || [ "${silent}" = "enable" ] \
     || [ "${silent}" = "system" ] \
@@ -1712,7 +1676,6 @@ fi
 
 rlsn="BOA-5.4.0"
 rlse="${rlsn}-${tRee}"
-cluster="${rlse}"
 branch="5.x-${tRee}"
 brnch=${branch//\//\\\/}
 

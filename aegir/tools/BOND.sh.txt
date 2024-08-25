@@ -1217,14 +1217,8 @@ tune_sql_memory_limits() {
   # https://raw.githubusercontent.com/major/MySQLTuner-perl/master/mysqltuner.pl
   pthTun="/var/opt/mysqltuner.pl"
   outTun="/var/opt/mysqltuner-${_X_SE}-${_X_VERSION}-${_NOW}.txt"
-  if [ -e "/root/.mstr.clstr.cnf" ] \
-    || [ -e "/root/.wbhd.clstr.cnf" ] \
-    || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    _GALERA_COMP=NO
-  fi
   if [ ! -e "${outTun}" ] \
-    && [ "${_STATUS}" = "UPGRADE" ] \
-    && [ -z "${_GALERA_COMP}" ]; then
+    && [ "${_STATUS}" = "UPGRADE" ]; then
     msg "INFO: Running MySQLTuner check on all databases"
     msg "WAIT: This may take a while, please wait..."
     _MYSQLTUNER_TEST_RESULT=OK
@@ -1323,8 +1317,7 @@ tune_sql_memory_limits() {
   else
     _THIS_USE_MEM="${_USE_SQL}M"
     if [ "${_MYSQLTUNER_TEST_RESULT}" = "FAIL" ] \
-      && [ "${_STATUS}" = "UPGRADE" ] \
-      && [ -z "${_GALERA_COMP}" ]; then
+      && [ "${_STATUS}" = "UPGRADE" ]; then
       msg "NOTE: _USE_MYISAM_MEM is ${_THIS_USE_MEM} because _REC_MYISAM_MEM was empty!"
       msg "NOTE: _USE_INNODB_MEM is ${_THIS_USE_MEM} because _REC_INNODB_MEM was empty!"
     fi

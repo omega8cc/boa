@@ -221,55 +221,44 @@ crontab_update() {
     if [ "${_ADD_XTRA}" = "YES" ]; then
       echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
+    if [ -e "/etc/csf" ]; then
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ssh.log >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ftp.log >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
-    if [ -f "/root/.mstr.clstr.cnf" ] \
-      && [ ! -f "/root/.wbhd.clstr.cnf" ] \
-      && [ ! -f "/root/.dbhd.clstr.cnf" ]; then
-      _BCDA_FULL="up-cluster log"
-      _BCDA_SYST="up-cluster system"
-      _OCTO_FULL="up-cluster all both log"
-    elif [ -e "/root/.wbhd.clstr.cnf" ]; then
-      _BCDA_FULL="up-cluster log"
-      _BCDA_SYST="up-cluster system"
-    elif [ -e "/root/.dbhd.clstr.cnf" ]; then
-      _BCDA_FULL="up-cluster log"
-      _BCDA_SYST="up-cluster system"
+
+    if [ "${_AUTO_PHP}" = "php-all" ]; then
+      _BCDA_FULL="up-${_AUTO_VER} log php-all"
+      _BCDA_SYST="up-${_AUTO_VER} system php-all"
+    elif [ "${_AUTO_PHP}" = "php-min" ]; then
+      _BCDA_FULL="up-${_AUTO_VER} log php-min"
+      _BCDA_SYST="up-${_AUTO_VER} system php-min"
+    elif [ "${_AUTO_PHP}" = "php-max" ]; then
+      _BCDA_FULL="up-${_AUTO_VER} log php-max"
+      _BCDA_SYST="up-${_AUTO_VER} system php-max"
     else
-      if [ "${_AUTO_PHP}" = "php-all" ]; then
-        _BCDA_FULL="up-${_AUTO_VER} log php-all"
-        _BCDA_SYST="up-${_AUTO_VER} system php-all"
-      elif [ "${_AUTO_PHP}" = "php-min" ]; then
-        _BCDA_FULL="up-${_AUTO_VER} log php-min"
-        _BCDA_SYST="up-${_AUTO_VER} system php-min"
-      elif [ "${_AUTO_PHP}" = "php-max" ]; then
-        _BCDA_FULL="up-${_AUTO_VER} log php-max"
-        _BCDA_SYST="up-${_AUTO_VER} system php-max"
-      else
-        _BCDA_FULL="up-${_AUTO_VER} log"
-        _BCDA_SYST="up-${_AUTO_VER} system"
-      fi
-      _OCTO_FULL="up-${_AUTO_VER} all force log"
+      _BCDA_FULL="up-${_AUTO_VER} log"
+      _BCDA_SYST="up-${_AUTO_VER} system"
     fi
+    _OCTO_FULL="up-${_AUTO_VER} all force log"
+
     if [ ! -z "${_AUTO_UP_WEEKLY}" ]; then
       echo "# Barracuda weekly system only upgrade" >> /etc/crontab
       echo "11 3    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
       echo "14 3    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
     fi
+
     echo "# Barracuda ${_AUTO_VER} full upgrade" >> /etc/crontab
     echo "${_MINUTE_SYSTEM_UP} ${_HOUR_SYSTEM_UP}    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
-    if [ ! -e "/root/.wbhd.clstr.cnf" ] && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
-      if [ ! -z "${_OCTO_FULL}" ]; then
-        echo "# Octopus ${_AUTO_VER} full upgrade" >> /etc/crontab
-        echo "${_MINUTE_OCTOPUS_UP} ${_HOUR_OCTOPUS_UP}    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
-        echo "55 7    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
-      fi
+
+    if [ ! -z "${_OCTO_FULL}" ]; then
+      echo "# Octopus ${_AUTO_VER} full upgrade" >> /etc/crontab
+      echo "${_MINUTE_OCTOPUS_UP} ${_HOUR_OCTOPUS_UP}    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
+      echo "55 7    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
     fi
+
     echo Cron Update Completed
   fi
 }
@@ -287,7 +276,7 @@ crontab_cleanup() {
     if [ "${_ADD_XTRA}" = "YES" ]; then
       echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
+    if [ -e "/etc/csf" ]; then
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ssh.log >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ftp.log >/dev/null 2>&1" >> /etc/crontab
@@ -506,21 +495,6 @@ if [ -e "/var/aegir/drush" ]; then
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
     _AUTO_VER="${tRee}"
-  fi
-  if [ -e "/root/.mstr.clstr.cnf" ] \
-    || [ -e "/root/.wbhd.clstr.cnf" ] \
-    || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    _AUTO_UP_WEEKLY=
-    _AUTO_UP_MONTH=
-    _AUTO_UP_DAY=
-    _AUTO_PHP=
-    _AUTO_VER="${tRee}"
-    if [ ! -e "/var/xdrago/log/.fixed_clstr_fpm.${_X_SE}.pid" ]; then
-      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"8.1 7.4 5.6\"/g" ${barCnf}
-      wait
-      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g" ${barCnf}
-      touch /var/xdrago/log/.fixed_clstr_fpm.${_X_SE}.pid
-    fi
   fi
   if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
     _AUTO_UP_WEEKLY=

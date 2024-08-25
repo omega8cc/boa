@@ -646,17 +646,13 @@ php_cli_cron_update() {
     msg "PROC: php_cli_cron_update"
   fi
   rm -f /var/spool/cron/crontabs/aegir
-  if [ ! -e "/root/.mstr.clstr.cnf" ] \
-    && [ ! -e "/root/.wbhd.clstr.cnf" ] \
-    && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
-    if [ ! -e "/var/spool/cron/crontabs/aegir" ]; then
-      echo -e \
-        "SHELL=/bin/sh\nPATH=/opt/php56/bin:/usr/bin\n*/1 * * * * \
-        /usr/bin/env php /var/aegir/drush/drush.php '@hostmaster' \
-        hosting-dispatch >/dev/null 2>&1" \
-        | fmt -su -w 2500 \
-        | tee -a /var/spool/cron/crontabs/aegir >/dev/null 2>&1
-    fi
+  if [ ! -e "/var/spool/cron/crontabs/aegir" ]; then
+    echo -e \
+    "SHELL=/bin/sh\nPATH=/opt/php56/bin:/usr/bin\n*/1 * * * * \
+    /usr/bin/env php /var/aegir/drush/drush.php '@hostmaster' \
+    hosting-dispatch >/dev/null 2>&1" \
+    | fmt -su -w 2500 \
+    | tee -a /var/spool/cron/crontabs/aegir >/dev/null 2>&1
   fi
   if [ -e "/var/spool/cron/crontabs/aegir" ]; then
     sed -i "s/hosting-dispatch.*/hosting-dispatch \>\/dev\/null 2\>\&1/g" \
@@ -703,11 +699,6 @@ aegir_master_install_upgrade() {
 
   ###--------------------###
     msg "INFO: Installing Aegir Master Instance..."
-    if [ -e "/root/.mstr.clstr.cnf" ] \
-      || [ -e "/root/.wbhd.clstr.cnf" ] \
-      || [ -e "/root/.dbhd.clstr.cnf" ]; then
-      touch /data/conf/clstr.cnf &> /dev/null
-    fi
     adduser --system --group --home /var/aegir aegir &> /dev/null
     usermod -aG www-data aegir
     usermod -aG users aegir
@@ -1076,11 +1067,6 @@ EOFMYSQL
         msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
         msg "Bye"
         clean_pid_exit aegir_master_install_upgrade_g
-      fi
-      if [ -e "/root/.mstr.clstr.cnf" ] \
-        || [ -e "/root/.wbhd.clstr.cnf" ] \
-        || [ -e "/root/.dbhd.clstr.cnf" ]; then
-        touch /data/conf/clstr.cnf &> /dev/null
       fi
       php_cli_cron_update
       aegir_master_upgrade

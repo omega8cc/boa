@@ -333,55 +333,6 @@ mode_detection() {
       _MY_FRONT="master.${_EASY_HOSTNAME}"
       validate_public_ip &> /dev/null
       _MY_OWNIP="${_THISHTIP}"
-    elif [ "${_EASY_SETUP}" = "MSTR" ]; then
-      msg "INFO: Cluster Master Mode Active"
-      _XTRAS_LIST=""
-      _AUTOPILOT=YES
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _SSH_PORT=22
-      _DNS_SETUP_TEST=NO
-      _SMTP_RELAY_TEST=NO
-      _MY_HOSTN="${_EASY_HOSTNAME}"
-      _MY_FRONT="master.${_EASY_HOSTNAME}"
-      validate_public_ip &> /dev/null
-      _MY_OWNIP="${_THISHTIP}"
-      if [ ! -e "/root/.mstr.clstr.cnf" ]; then
-        touch /root/.mstr.clstr.cnf
-      fi
-    elif [ "${_EASY_SETUP}" = "WBHD" ]; then
-      msg "INFO: Cluster WEB Head Mode Active"
-      _XTRAS_LIST=""
-      _AUTOPILOT=YES
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _SSH_PORT=22
-      _DNS_SETUP_TEST=NO
-      _SMTP_RELAY_TEST=NO
-      _MY_HOSTN="${_EASY_HOSTNAME}"
-      _MY_FRONT="master.${_EASY_HOSTNAME}"
-      validate_public_ip &> /dev/null
-      _MY_OWNIP="${_THISHTIP}"
-      if [ ! -e "/root/.wbhd.clstr.cnf" ]; then
-        touch /root/.wbhd.clstr.cnf
-      fi
-    elif [ "${_EASY_SETUP}" = "DBHD" ]; then
-      msg "INFO: Cluster DB Head Mode Active"
-      _XTRAS_LIST=""
-      _AUTOPILOT=YES
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _SSH_PORT=22
-      _DNS_SETUP_TEST=NO
-      _SMTP_RELAY_TEST=NO
-      _MY_HOSTN="${_EASY_HOSTNAME}"
-      _MY_FRONT="master.${_EASY_HOSTNAME}"
-      validate_public_ip &> /dev/null
-      _MY_OWNIP="${_THISHTIP}"
-      if [ ! -e "/root/.dbhd.clstr.cnf" ]; then
-        touch /root/.dbhd.clstr.cnf
-      fi
-    fi
     fi
     barracuda_cnf
   fi

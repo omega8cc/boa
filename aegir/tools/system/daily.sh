@@ -3185,8 +3185,6 @@ fi
 if [ -e "/run/daily-fix.pid" ]; then
   touch /var/xdrago/log/wait-for-daily
   exit 1
-elif [ -e "/root/.wbhd.clstr.cnf" ]; then
-  exit 1
 else
   touch /run/daily-fix.pid
   if [ "${_VMFAMILY}" = "VS" ]; then

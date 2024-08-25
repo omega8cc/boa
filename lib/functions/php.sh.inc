@@ -1790,11 +1790,6 @@ install_php_multi() {
         msg "WARN: _THIS_PHP_EXT_DIR for PHP $1 empty in install_php_multi"
       fi
     fi
-    if [ -e "/root/.mstr.clstr.cnf" ] \
-      || [ -e "/root/.wbhd.clstr.cnf" ] \
-      || [ -e "/root/.dbhd.clstr.cnf" ]; then
-      _T_DBS_VRN="${_GALERA_10_VRN}"
-    else
       if [ "${_DB_SERIES}" = "5.7" ]; then
         if [ "${_DB_SERIES}" = "5.7" ]; then
           _DB_SERVER=Percona

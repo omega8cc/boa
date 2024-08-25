@@ -1566,221 +1566,201 @@ php_if_versions_cleanup_cnf() {
   fi
   if [ -e "/var/aegir/host_master/000/placeholder_dont_remove.txt" ] \
     && [ "${_AUTO_PHP_CLEANUP}" = "YES" ]; then
-    if [ -e "/root/.mstr.clstr.cnf" ] \
-      || [ -e "/root/.wbhd.clstr.cnf" ] \
-      || [ -e "/root/.dbhd.clstr.cnf" ]; then
-      _PHP_OVERRIDE=$(grep _PHP_FPM_VERSION ${barCnf} \
-        | cut -d= -f2 \
-        | awk '{ print $1}' \
-        | sed "s/[\"]//g" 2>&1)
-      _CLSTR_PHP_MULTI_INSTALL="${_PHP_OVERRIDE}"
-      if [ ! -z "${_CLSTR_PHP_MULTI_INSTALL}" ]; then
-        _PHP_MULTI_INSTALL="${_CLSTR_PHP_MULTI_INSTALL}"
-      else
-        ### Use default mini-legacy list if empty
-        _PHP_MULTI_INSTALL="8.1 7.4 5.6"
+    ### Make sure that _PHP_SINGLE_INSTALL takes precedence
+    if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
+      if [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ]; then
+        _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
+        _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
+        _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
       fi
     else
-      ### Make sure that _PHP_SINGLE_INSTALL takes precedence
-      if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-        if [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] \
-          || [ "${_PHP_SINGLE_INSTALL}" = "8.2" ] \
-          || [ "${_PHP_SINGLE_INSTALL}" = "8.1" ] \
-          || [ "${_PHP_SINGLE_INSTALL}" = "7.4" ]; then
-          _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
-          _PHP_CLI_VERSION=${_PHP_SINGLE_INSTALL}
-          _PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}
-        fi
-      else
-        ### Make sure that _PHP_MULTI_INSTALL includes _PHP_FPM_VERSION
-        if [ "${_OPENSSL_NEW_VRN}" = "${_OPENSSL_LEGACY_VRN}" ]; then
-          _PHP_CLI_VERSION=7.4
-          _PHP_FPM_VERSION=7.4
-        fi
-        _local_PHP_MULTI_INSTALL="${_PHP_FPM_VERSION}"
+      ### Make sure that _PHP_MULTI_INSTALL includes _PHP_FPM_VERSION
+      if [ "${_OPENSSL_NEW_VRN}" = "${_OPENSSL_LEGACY_VRN}" ]; then
+        _PHP_CLI_VERSION=7.4
+        _PHP_FPM_VERSION=7.4
+      fi
+      _local_PHP_MULTI_INSTALL="${_PHP_FPM_VERSION}"
 
-        ### Include only used PHP versions on major automated OS upgrades
-        _STRICT_LIMIT_PHP=NO
-        if [ -e "/root/.run-to-daedalus.cnf" ] \
-          || [ -e "/root/.run-to-chimaera.cnf" ] \
-          || [ -e "/root/.run-to-beowulf.cnf" ]; then
-          _STRICT_LIMIT_PHP=YES
-        fi
+      ### Include only used PHP versions on major automated OS upgrades
+      _STRICT_LIMIT_PHP=NO
+      if [ -e "/root/.run-to-daedalus.cnf" ] \
+        || [ -e "/root/.run-to-chimaera.cnf" ] \
+        || [ -e "/root/.run-to-beowulf.cnf" ]; then
+        _STRICT_LIMIT_PHP=YES
+      fi
 
-        ### Include latest PHP 8.2 and 8.3 if conditions are met
-        if [ "${_STRICT_LIMIT_PHP}" = "NO" ]; then
-          if [ -e "/root/.include-php-latest.cnf" ] \
-            || [ -e "/root/.auto.up.cnf" ] \
-            || [ -e "/root/.host8.cnf" ] \
-            || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-            || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-            || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-            || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
-            if [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ] \
-              && [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_EOL_VRN}" ]; then
-              _local_PHP_MULTI_INSTALL="8.2 8.3 ${_local_PHP_MULTI_INSTALL}"
-            fi
+      ### Include latest PHP 8.2 and 8.3 if conditions are met
+      if_hosted_sys
+      if [ "${_STRICT_LIMIT_PHP}" = "NO" ]; then
+        if [ -e "/root/.include-php-latest.cnf" ] \
+          || [ "${hostedSys}" = "YES" ]; then
+          if [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_LEGACY_VRN}" ] \
+            && [ "${_OPENSSL_NEW_VRN}" != "${_OPENSSL_EOL_VRN}" ]; then
+            _local_PHP_MULTI_INSTALL="8.2 8.3 ${_local_PHP_MULTI_INSTALL}"
           fi
         fi
-
-        ### Add PHP 5.6 if used
-        _is_PHP_multi_five_six=$(grep "5\.6" /data/disk/*/static/control/multi-fpm.info 2>&1)
-        _is_PHP_FPM_five_six=$(grep "5\.6" /data/disk/*/static/control/fpm.info 2>&1)
-        _is_PHP_CLI_five_six=$(grep "5\.6" /data/disk/*/static/control/cli.info 2>&1)
-        _is_PHP_five_six=
-        if [[ "${_is_PHP_multi_five_six}" =~ "5.6" ]] \
-          || [[ "${_is_PHP_FPM_five_six}" =~ "5.6" ]] \
-          || [[ "${_is_PHP_CLI_five_six}" =~ "5.6" ]]; then
-          _is_PHP_five_six=5.6
-          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_five_six}"
-        fi
-
-        ### Add PHP 7.0 if used
-        _is_PHP_multi_seven_zero=$(grep "7\.0" /data/disk/*/static/control/multi-fpm.info 2>&1)
-        _is_PHP_FPM_seven_zero=$(grep "7\.0" /data/disk/*/static/control/fpm.info 2>&1)
-        _is_PHP_CLI_seven_zero=$(grep "7\.0" /data/disk/*/static/control/cli.info 2>&1)
-        _is_PHP_seven_zero=
-        if [[ "${_is_PHP_multi_seven_zero}" =~ "7.0" ]] \
-          || [[ "${_is_PHP_FPM_seven_zero}" =~ "7.0" ]] \
-          || [[ "${_is_PHP_CLI_seven_zero}" =~ "7.0" ]]; then
-          _is_PHP_seven_zero=7.0
-          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_zero}"
-        fi
-
-        ### Add PHP 7.1 if used
-        _is_PHP_multi_seven_one=$(grep "7\.1" /data/disk/*/static/control/multi-fpm.info 2>&1)
-        _is_PHP_FPM_seven_one=$(grep "7\.1" /data/disk/*/static/control/fpm.info 2>&1)
-        _is_PHP_CLI_seven_one=$(grep "7\.1" /data/disk/*/static/control/cli.info 2>&1)
-        _is_PHP_seven_one=
-        if [[ "${_is_PHP_multi_seven_one}" =~ "7.1" ]] \
-          || [[ "${_is_PHP_FPM_seven_one}" =~ "7.1" ]] \
-          || [[ "${_is_PHP_CLI_seven_one}" =~ "7.1" ]]; then
-          _is_PHP_seven_one=7.1
-          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_one}"
-        fi
-
-        ### Add PHP 7.2 if used
-        _is_PHP_multi_seven_two=$(grep "7\.2" /data/disk/*/static/control/multi-fpm.info 2>&1)
-        _is_PHP_FPM_seven_two=$(grep "7\.2" /data/disk/*/static/control/fpm.info 2>&1)
-        _is_PHP_CLI_seven_two=$(grep "7\.2" /data/disk/*/static/control/cli.info 2>&1)
-        _is_PHP_seven_two=
-        if [[ "${_is_PHP_multi_seven_two}" =~ "7.2" ]] \
-          || [[ "${_is_PHP_FPM_seven_two}" =~ "7.2" ]] \
-          || [[ "${_is_PHP_CLI_seven_two}" =~ "7.2" ]]; then
-          _is_PHP_seven_two=7.2
-          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_two}"
-        fi
-
-        ### Add PHP 7.3 if used
-        _is_PHP_multi_seven_three=$(grep "7\.3" /data/disk/*/static/control/multi-fpm.info 2>&1)
-        _is_PHP_FPM_seven_three=$(grep "7\.3" /data/disk/*/static/control/fpm.info 2>&1)
-        _is_PHP_CLI_seven_three=$(grep "7\.3" /data/disk/*/static/control/cli.info 2>&1)
-        _is_PHP_seven_three=
-        if [[ "${_is_PHP_multi_seven_three}" =~ "7.3" ]] \
-          || [[ "${_is_PHP_FPM_seven_three}" =~ "7.3" ]] \
-          || [[ "${_is_PHP_CLI_seven_three}" =~ "7.3" ]]; then
-          _is_PHP_seven_three=7.3
-          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_three}"
-        fi
-
-        ### Add PHP 7.4 if used
-        _is_PHP_multi_seven_four=$(grep "7\.4" /data/disk/*/static/control/multi-fpm.info 2>&1)
-        _is_PHP_FPM_seven_four=$(grep "7\.4" /data/disk/*/static/control/fpm.info 2>&1)
-        _is_PHP_CLI_seven_four=$(grep "7\.4" /data/disk/*/static/control/cli.info 2>&1)
-        _is_PHP_seven_four=
-        if [[ "${_is_PHP_multi_seven_four}" =~ "7.4" ]] \
-          || [[ "${_is_PHP_FPM_seven_four}" =~ "7.4" ]] \
-          || [[ "${_is_PHP_CLI_seven_four}" =~ "7.4" ]]; then
-          _is_PHP_seven_four=7.4
-          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_four}"
-        fi
-
-        ### Add PHP 8.0 if used
-        _is_PHP_multi_eight_zero=$(grep "8\.0" /data/disk/*/static/control/multi-fpm.info 2>&1)
-        _is_PHP_FPM_eight_zero=$(grep "8\.0" /data/disk/*/static/control/fpm.info 2>&1)
-        _is_PHP_CLI_eight_zero=$(grep "8\.0" /data/disk/*/static/control/cli.info 2>&1)
-        _is_PHP_eight_zero=
-        if [[ "${_is_PHP_multi_eight_zero}" =~ "8.0" ]] \
-          || [[ "${_is_PHP_FPM_eight_zero}" =~ "8.0" ]] \
-          || [[ "${_is_PHP_CLI_eight_zero}" =~ "8.0" ]]; then
-          _is_PHP_eight_zero=8.0
-          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_zero}"
-        fi
-
-        ### Add PHP 8.1 if used
-        _is_PHP_multi_eight_one=$(grep "8\.1" /data/disk/*/static/control/multi-fpm.info 2>&1)
-        _is_PHP_FPM_eight_one=$(grep "8\.1" /data/disk/*/static/control/fpm.info 2>&1)
-        _is_PHP_CLI_eight_one=$(grep "8\.1" /data/disk/*/static/control/cli.info 2>&1)
-        _is_PHP_eight_one=
-        if [[ "${_is_PHP_multi_eight_one}" =~ "8.1" ]] \
-          || [[ "${_is_PHP_FPM_eight_one}" =~ "8.1" ]] \
-          || [[ "${_is_PHP_CLI_eight_one}" =~ "8.1" ]]; then
-          _is_PHP_eight_one=8.1
-          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_one}"
-        fi
-
-        ### Add PHP 8.2 if used
-        _is_PHP_multi_eight_two=$(grep "8\.2" /data/disk/*/static/control/multi-fpm.info 2>&1)
-        _is_PHP_FPM_eight_two=$(grep "8\.2" /data/disk/*/static/control/fpm.info 2>&1)
-        _is_PHP_CLI_eight_two=$(grep "8\.2" /data/disk/*/static/control/cli.info 2>&1)
-        _is_PHP_eight_two=
-        if [[ "${_is_PHP_multi_eight_two}" =~ "8.2" ]] \
-          || [[ "${_is_PHP_FPM_eight_two}" =~ "8.2" ]] \
-          || [[ "${_is_PHP_CLI_eight_two}" =~ "8.2" ]]; then
-          _is_PHP_eight_two=8.2
-          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_two}"
-        fi
-
-        ### Add PHP 8.3 if used
-        _is_PHP_multi_eight_three=$(grep "8\.3" /data/disk/*/static/control/multi-fpm.info 3>&1)
-        _is_PHP_FPM_eight_three=$(grep "8\.3" /data/disk/*/static/control/fpm.info 3>&1)
-        _is_PHP_CLI_eight_three=$(grep "8\.3" /data/disk/*/static/control/cli.info 3>&1)
-        _is_PHP_eight_three=
-        if [[ "${_is_PHP_multi_eight_three}" =~ "8.3" ]] \
-          || [[ "${_is_PHP_FPM_eight_three}" =~ "8.3" ]] \
-          || [[ "${_is_PHP_CLI_eight_three}" =~ "8.3" ]]; then
-          _is_PHP_eight_three=8.3
-          _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_three}"
-        fi
-
-        ### Overwrite _PHP_MULTI_INSTALL with the list of used PHP versions
-        _PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL}"
-
-        if [ -z "${_PHP_MULTI_INSTALL}" ]; then
-          ### Use default mini-legacy list if empty
-          _PHP_MULTI_INSTALL="8.1 7.4 5.6"
-        else
-          ### Sort and remove duplicates from _PHP_MULTI_INSTALL
-          php_multi_uniq
-        fi
-        export _PHP_MULTI_INSTALL="${_PHP_MULTI_INSTALL}"
-
-        ### Remove previous _PHP_MULTI_INSTALL in /root/.barracuda.cnf
-        _PHP_MULTI_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
-        if [[ "${_PHP_MULTI_TEST}" =~ "_PHP_MULTI_INSTALL" ]]; then
-          sed -i "s/^_PHP_MULTI_INSTALL.*//g" ${barCnf}
-          wait
-          sed -i "s/^_PHP_ORIG_MULTI.*//g" ${barCnf}
-          wait
-          sed -i "/^$/d" ${barCnf}
-          wait
-        fi
-
-        ### Add optimized _PHP_MULTI_INSTALL in /root/.barracuda.cnf
-        echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
-
-        ### Export optimized list as a new var
-        _PHP_MULTI_OPTIM="${_PHP_MULTI_INSTALL}"
-        export _PHP_MULTI_OPTIM="${_PHP_MULTI_OPTIM}"
-
-        ### Disable not used PHP versions
-        php_not_used_disable
-
-        ### Ctrl files cleanup
-        touch /root/.sorted.multi.php.cnf
-        [ -e "/root/.updated.multi.php.cnf" ] && rm -f /root/.updated.multi.php.cnf
-        [ -e "/root/.fixed.multi.php.cnf" ] && rm -f /root/.fixed.multi.php.cnf
       fi
+
+      ### Add PHP 5.6 if used
+      _is_PHP_multi_five_six=$(grep "5\.6" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_five_six=$(grep "5\.6" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_five_six=$(grep "5\.6" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_five_six=
+      if [[ "${_is_PHP_multi_five_six}" =~ "5.6" ]] \
+        || [[ "${_is_PHP_FPM_five_six}" =~ "5.6" ]] \
+        || [[ "${_is_PHP_CLI_five_six}" =~ "5.6" ]]; then
+        _is_PHP_five_six=5.6
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_five_six}"
+      fi
+
+      ### Add PHP 7.0 if used
+      _is_PHP_multi_seven_zero=$(grep "7\.0" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_seven_zero=$(grep "7\.0" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_seven_zero=$(grep "7\.0" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_seven_zero=
+      if [[ "${_is_PHP_multi_seven_zero}" =~ "7.0" ]] \
+        || [[ "${_is_PHP_FPM_seven_zero}" =~ "7.0" ]] \
+        || [[ "${_is_PHP_CLI_seven_zero}" =~ "7.0" ]]; then
+        _is_PHP_seven_zero=7.0
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_zero}"
+      fi
+
+      ### Add PHP 7.1 if used
+      _is_PHP_multi_seven_one=$(grep "7\.1" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_seven_one=$(grep "7\.1" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_seven_one=$(grep "7\.1" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_seven_one=
+      if [[ "${_is_PHP_multi_seven_one}" =~ "7.1" ]] \
+        || [[ "${_is_PHP_FPM_seven_one}" =~ "7.1" ]] \
+        || [[ "${_is_PHP_CLI_seven_one}" =~ "7.1" ]]; then
+        _is_PHP_seven_one=7.1
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_one}"
+      fi
+
+      ### Add PHP 7.2 if used
+      _is_PHP_multi_seven_two=$(grep "7\.2" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_seven_two=$(grep "7\.2" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_seven_two=$(grep "7\.2" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_seven_two=
+      if [[ "${_is_PHP_multi_seven_two}" =~ "7.2" ]] \
+        || [[ "${_is_PHP_FPM_seven_two}" =~ "7.2" ]] \
+        || [[ "${_is_PHP_CLI_seven_two}" =~ "7.2" ]]; then
+        _is_PHP_seven_two=7.2
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_two}"
+      fi
+
+      ### Add PHP 7.3 if used
+      _is_PHP_multi_seven_three=$(grep "7\.3" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_seven_three=$(grep "7\.3" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_seven_three=$(grep "7\.3" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_seven_three=
+      if [[ "${_is_PHP_multi_seven_three}" =~ "7.3" ]] \
+        || [[ "${_is_PHP_FPM_seven_three}" =~ "7.3" ]] \
+        || [[ "${_is_PHP_CLI_seven_three}" =~ "7.3" ]]; then
+        _is_PHP_seven_three=7.3
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_three}"
+      fi
+
+      ### Add PHP 7.4 if used
+      _is_PHP_multi_seven_four=$(grep "7\.4" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_seven_four=$(grep "7\.4" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_seven_four=$(grep "7\.4" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_seven_four=
+      if [[ "${_is_PHP_multi_seven_four}" =~ "7.4" ]] \
+        || [[ "${_is_PHP_FPM_seven_four}" =~ "7.4" ]] \
+        || [[ "${_is_PHP_CLI_seven_four}" =~ "7.4" ]]; then
+        _is_PHP_seven_four=7.4
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_seven_four}"
+      fi
+
+      ### Add PHP 8.0 if used
+      _is_PHP_multi_eight_zero=$(grep "8\.0" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_eight_zero=$(grep "8\.0" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_eight_zero=$(grep "8\.0" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_eight_zero=
+      if [[ "${_is_PHP_multi_eight_zero}" =~ "8.0" ]] \
+        || [[ "${_is_PHP_FPM_eight_zero}" =~ "8.0" ]] \
+        || [[ "${_is_PHP_CLI_eight_zero}" =~ "8.0" ]]; then
+        _is_PHP_eight_zero=8.0
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_zero}"
+      fi
+
+      ### Add PHP 8.1 if used
+      _is_PHP_multi_eight_one=$(grep "8\.1" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_eight_one=$(grep "8\.1" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_eight_one=$(grep "8\.1" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_eight_one=
+      if [[ "${_is_PHP_multi_eight_one}" =~ "8.1" ]] \
+        || [[ "${_is_PHP_FPM_eight_one}" =~ "8.1" ]] \
+        || [[ "${_is_PHP_CLI_eight_one}" =~ "8.1" ]]; then
+        _is_PHP_eight_one=8.1
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_one}"
+      fi
+
+      ### Add PHP 8.2 if used
+      _is_PHP_multi_eight_two=$(grep "8\.2" /data/disk/*/static/control/multi-fpm.info 2>&1)
+      _is_PHP_FPM_eight_two=$(grep "8\.2" /data/disk/*/static/control/fpm.info 2>&1)
+      _is_PHP_CLI_eight_two=$(grep "8\.2" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_eight_two=
+      if [[ "${_is_PHP_multi_eight_two}" =~ "8.2" ]] \
+        || [[ "${_is_PHP_FPM_eight_two}" =~ "8.2" ]] \
+        || [[ "${_is_PHP_CLI_eight_two}" =~ "8.2" ]]; then
+        _is_PHP_eight_two=8.2
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_two}"
+      fi
+
+      ### Add PHP 8.3 if used
+      _is_PHP_multi_eight_three=$(grep "8\.3" /data/disk/*/static/control/multi-fpm.info 3>&1)
+      _is_PHP_FPM_eight_three=$(grep "8\.3" /data/disk/*/static/control/fpm.info 3>&1)
+      _is_PHP_CLI_eight_three=$(grep "8\.3" /data/disk/*/static/control/cli.info 3>&1)
+      _is_PHP_eight_three=
+      if [[ "${_is_PHP_multi_eight_three}" =~ "8.3" ]] \
+        || [[ "${_is_PHP_FPM_eight_three}" =~ "8.3" ]] \
+        || [[ "${_is_PHP_CLI_eight_three}" =~ "8.3" ]]; then
+        _is_PHP_eight_three=8.3
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_three}"
+      fi
+
+      ### Overwrite _PHP_MULTI_INSTALL with the list of used PHP versions
+      _PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL}"
+
+      if [ -z "${_PHP_MULTI_INSTALL}" ]; then
+        ### Use default mini-legacy list if empty
+        _PHP_MULTI_INSTALL="8.1 7.4 5.6"
+      else
+        ### Sort and remove duplicates from _PHP_MULTI_INSTALL
+        php_multi_uniq
+      fi
+      export _PHP_MULTI_INSTALL="${_PHP_MULTI_INSTALL}"
+
+      ### Remove previous _PHP_MULTI_INSTALL in /root/.barracuda.cnf
+      _PHP_MULTI_TEST=$(grep _PHP_MULTI_INSTALL ${barCnf} 2>&1)
+      if [[ "${_PHP_MULTI_TEST}" =~ "_PHP_MULTI_INSTALL" ]]; then
+        sed -i "s/^_PHP_MULTI_INSTALL.*//g" ${barCnf}
+        wait
+        sed -i "s/^_PHP_ORIG_MULTI.*//g" ${barCnf}
+        wait
+        sed -i "/^$/d" ${barCnf}
+        wait
+      fi
+
+      ### Add optimized _PHP_MULTI_INSTALL in /root/.barracuda.cnf
+      echo "_PHP_MULTI_INSTALL=\"${_PHP_MULTI_INSTALL}\"" >> ${barCnf}
+
+      ### Export optimized list as a new var
+      _PHP_MULTI_OPTIM="${_PHP_MULTI_INSTALL}"
+      export _PHP_MULTI_OPTIM="${_PHP_MULTI_OPTIM}"
+
+      ### Disable not used PHP versions
+      php_not_used_disable
+
+      ### Ctrl files cleanup
+      touch /root/.sorted.multi.php.cnf
+      [ -e "/root/.updated.multi.php.cnf" ] && rm -f /root/.updated.multi.php.cnf
+      [ -e "/root/.fixed.multi.php.cnf" ] && rm -f /root/.fixed.multi.php.cnf
     fi
   fi
 }
@@ -1859,30 +1839,6 @@ barracuda_cnf() {
         msg "EXIT: Invalid email address defined in the _MY_EMAIL variable"
         msg "EXIT: Bye (1)"
         clean_pid_exit barracuda_cnf_a
-      fi
-    fi
-    if [ "${_DB_SERIES}" = "5.7" ]; then
-      if [ -e "/root/.mstr.clstr.cnf" ] \
-        || [ -e "/root/.wbhd.clstr.cnf" ] \
-        || [ -e "/root/.dbhd.clstr.cnf" ]; then
-        _DBS_VRN="${_GALERA_10_VRN}"
-      else
-        if [ "${_DB_SERIES}" = "5.7" ]; then
-          _DB_SERVER=Percona
-          _DBS_VRN="${_PERCONA_5_7_VRN}"
-        else
-          _DB_SERVER=Percona
-          _DB_SERIES=5.7
-          _DBS_VRN="${_PERCONA_5_7_VRN}"
-        fi
-      fi
-    else
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
-      if [ -e "${barCnf}" ]; then
-        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g" ${barCnf}
-        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g" ${barCnf}
       fi
     fi
 
@@ -5171,9 +5127,6 @@ finale() {
     wait
     sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
-  fi
-  if [ -e "/root/.dbhd.clstr.cnf" ]; then
-    mrun "service clean-boa-env start" 2> /dev/null
   fi
   killall -9 memcached &> /dev/null
   php_deprecated_cleanup
