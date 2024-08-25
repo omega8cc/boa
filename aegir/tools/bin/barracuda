@@ -1211,7 +1211,9 @@ if_reinstall_curl() {
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
   isCurl=$(curl --version 2>&1)
-  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+  if [[ ! "${isCurl}" =~ "OpenSSL" ]] \
+    || [[ "${isCurl}" =~ "libcurl.so.4" ]] \
+    || [ -z "${isCurl}" ]; then
     if [ -e "/var/aegir/drush" ]; then
       echo "OOPS: cURL is broken! Re-installing.."
     fi
@@ -1223,6 +1225,11 @@ if_reinstall_curl() {
       echo "curl install" | dpkg --set-selections 2> /dev/null
       apt_clean_update
       apt-get install curl -y -qq 2> /dev/null
+      apt-get build-dep curl -y 2> /dev/null
+      apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
+      apt-get autoremove -y 2> /dev/null
+      apt-get install libssl-dev -y -qq 2> /dev/null
+      apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
     fi
     isCurl=$(curl --version 2>&1)
     if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
