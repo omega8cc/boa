@@ -598,9 +598,9 @@ prep_for_install_db_sql() {
     sed -i "s/^thread_concurrency.*//g" /etc/mysql/my.cnf &> /dev/null
   fi
   if [ "${_DB_SERIES}" = "5.7" ]; then
-    SQLADD="libperconaserverclient20-dev \
-            percona-toolkit"
-    SQLXTR="libdbi-perl"
+    SQLADD="libperconaserverclient20-dev"
+  else
+    SQLADD="libperconaserverclient21-dev"
   fi
 }
 

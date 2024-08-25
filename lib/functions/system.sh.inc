@@ -7205,8 +7205,12 @@ install_myquick_src() {
     mrun "${_INSTAPP} libssl-dev" 2> /dev/null
     mrun "${_INSTAPP} libcurl4" 2> /dev/null
     mrun "${_INSTAPP} libcurl4-gnutls-dev" 2> /dev/null
-    if [ "${_DB_SERVER}" = "Percona" ] && [ "${_DB_SERIES}" = "5.7" ]; then
-      mrun "${_INSTAPP} libperconaserverclient20-dev" 2> /dev/null
+    if [ "${_DB_SERVER}" = "Percona" ]; then
+      if [ "${_DB_SERIES}" = "5.7" ]; then
+        mrun "${_INSTAPP} libperconaserverclient20-dev" 2> /dev/null
+      else
+        mrun "${_INSTAPP} libperconaserverclient21-dev" 2> /dev/null
+      fi
     fi
     ldconfig 2> /dev/null
     cd /var/opt
