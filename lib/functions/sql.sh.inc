@@ -122,6 +122,15 @@ sql_strict_upgrade_path() {
   else
     _ALL_FORCE_REINSTALL=NO
   fi
+  if [[ "${_NOW_DB_V}" =~ (^)"5.7" ]] \
+    && [ ! -z "${_DB_SERIES}" ] \
+    && [ "${_DB_SERIES}" != "5.7" ] \
+    && [ "${_DB_SERIES}" != "8.0" ]; then
+    _DB_SERIES=8.0
+    export _DB_SERIES=8.0
+    sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.0/g" ${barCnf}
+    _SQL_UPGRADE=YES
+  fi
   if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
     _SQL_UPGRADE=YES
