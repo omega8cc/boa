@@ -111,6 +111,15 @@ apt_clean_update() {
   ${_APT_UPDATE} -qq &> /dev/null
 }
 
+if_hosted_sys() {
+  if [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    hostedSys=YES
+  else
+    hostedSys=NO
+  fi
+}
+
 #
 # Find correct IP.
 find_correct_ip() {
@@ -437,8 +446,11 @@ if_fix_iptables_symlinks() {
 
 update_agents() {
 
-  if [ -e "/root/.host8.cnf" ] && [ ! -e "/root/.extended.firewall.exceptions.cnf" ]; then
-    echo host8 > /root/.extended.firewall.exceptions.cnf
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
+    if [ ! -e "/root/.extended.firewall.exceptions.cnf" ]; then
+      echo host8 > /root/.extended.firewall.exceptions.cnf
+    fi
   fi
 
   if [ "${_VMFAMILY}" = "HOSTED" ] \
@@ -545,11 +557,6 @@ update_agents() {
     [ -e "/root/.giant_traffic.cnf" ] && rm -f /root/.giant_traffic.cnf
     [ -e "/root/.default.cnf" ] && rm -f /root/.default.cnf
     [ -e "/root/.debug.cnf" ] && rm -f /root/.debug.cnf
-    if [ ! -e "/root/.fixed_scout.pid" ]; then
-      sed -i "s/_SCOUT_KEY=.*/_SCOUT_KEY=/g" ${barCnf}
-      sed -i "s/.*scout.*//g" /etc/crontab
-      touch /root/.fixed_scout.pid
-    fi
     if [ -e "/data/conf/override.global.inc" ] \
       && [ ! -e "/data/conf/.prev6.override.global.inc.off" ]; then
       mv -f /data/conf/override.global.inc /data/conf/.prev6.override.global.inc.off
@@ -876,8 +883,11 @@ update_agents() {
       wait
       sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx
       wait
-      if [ -e "/root/.host8.cnf" ] && [ -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
-        _NGINX_DONTCOUNT_KEYWORDS="doccomment"
+      if_hosted_sys
+      if [ "${hostedSys}" = "YES" ]; then
+        if [ -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
+          _NGINX_DONTCOUNT_KEYWORDS="doccomment"
+        fi
       fi
       if [ ! -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
         _NGINX_DONTCOUNT_KEYWORDS=${_NGINX_DONTCOUNT_KEYWORDS//[^a-zA-Z0-9|-]/}
@@ -898,6 +908,7 @@ update_agents() {
         if [ -e "/var/xdrago/monitor/scan_nginx.archive.log" ]; then
           mv -f /var/xdrago/monitor/scan_nginx.archive.log /var/xdrago/monitor/scan_nginx.archive.${_X_SE}.log
         fi
+        rm -f /var/xdrago/monitor/.scan_nginx_arch*
         touch /var/xdrago/monitor/.scan_nginx_arch.${_X_SE}.pid
         csf -df
         wait
@@ -2168,7 +2179,9 @@ if_reinstall_curl() {
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
   isCurl=$(curl --version 2>&1)
-  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+  if [[ ! "${isCurl}" =~ "OpenSSL" ]] \
+    || [[ "${isCurl}" =~ "libcurl.so.4" ]] \
+    || [ -z "${isCurl}" ]; then
     if [ -e "/var/aegir/drush" ]; then
       echo "OOPS: cURL is broken! Re-installing.."
     fi
@@ -2177,9 +2190,14 @@ if_reinstall_curl() {
         && [ -e "/etc/apt/apt.conf.d" ]; then
         echo "APT::Sandbox::User \"root\";" > /etc/apt/apt.conf.d/00sandboxoff
       fi
-      echo "curl install" | dpkg --set-selections &> /dev/null
+      echo "curl install" | dpkg --set-selections 2> /dev/null
       apt_clean_update
-      apt-get install curl -y -qq &> /dev/null
+      apt-get install curl -y -qq 2> /dev/null
+      apt-get build-dep curl -y 2> /dev/null
+      apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
+      apt-get autoremove -y 2> /dev/null
+      apt-get install libssl-dev -y -qq 2> /dev/null
+      apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
     fi
     isCurl=$(curl --version 2>&1)
     if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
@@ -2520,10 +2538,8 @@ setup() {
   else
     _RANDOMIZE=NO
   fi
-  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
     _VMFAMILY=HOSTED
   fi
   sed -i "s/.*files.aegir.cc.*//g" /etc/hosts
@@ -2842,8 +2858,7 @@ if [ `whoami` = "root" ]; then
       fi
     fi
   else
-    if [ -e "/root/.step.init.systemd.two.cnf" ] \
-      && [ -e "/root/.step.init.systemd.one.cnf" ]; then
+    if [ -z "$STY" ]; then
       _SCREEN_INIT=YES
     fi
   fi
