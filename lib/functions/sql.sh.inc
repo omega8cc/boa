@@ -582,9 +582,10 @@ prep_for_install_db_sql() {
     sed -i "s/.*innodb_force_recovery.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf &> /dev/null
     wait
   fi
-  if [ "${_DB_SERIES}" = "5.7" ]; then
-    SQLDEB="percona-server-server-${_DB_SERIES}"
-  fi
+
+  SQLDEB="percona-server-server-${_DB_SERIES}"
+  SQLXTR="libdbi-perl percona-toolkit"
+
   if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
     mkdir -p ${vBs}/old-sql-ib-log-${_NOW}
@@ -635,7 +636,6 @@ install_with_aptitude_sql() {
     ldconfig 2> /dev/null
   fi
   if [ "${_DB_SERVER}" = "Percona" ] \
-    && [ "${_DB_SERIES}" = "5.7" ] \
     && [ "${_SQL_FORCE_REINSTALL}" = "YES" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Running ${_DB_SERVER} tables fix, check and upgrade..."
@@ -717,9 +717,7 @@ forced_mysql_root_password_update() {
       msg "DBEF: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
-      if [ "${_DB_SERIES}" = "5.7" ]; then
-        mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
-      fi
+      mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
     fi
     cp -af /root/.my.cnf /root/.my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}
     cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-${_X_SE}-${_X_VERSION}-${_NOW}
@@ -818,9 +816,7 @@ forced_mysql_root_password_update() {
       mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'::1';"
-      if [ "${_DB_SERIES}" = "5.7" ]; then
-        mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
-      fi
+      mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
     fi
     echo " "
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1166,9 +1162,7 @@ sql_root_credentials_update() {
           msg "DBEF: ${_DB_SERVER} PASWD ${PASWD}"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
-          if [ "${_DB_SERIES}" = "5.7" ]; then
-            mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
-          fi
+          mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
         fi
         mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
@@ -1245,9 +1239,7 @@ sql_root_credentials_update() {
           msg "DAFT: ${_DB_SERVER} PASWD ${PASWD}"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
-          if [ "${_DB_SERIES}" = "5.7" ]; then
-            mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
-          fi
+          mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
         fi
         if [ "${_THIS_DB_HOST}" = "localhost" ] \
           || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
