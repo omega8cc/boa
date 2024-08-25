@@ -2337,21 +2337,20 @@ barracuda_cnf() {
     fi
 
     if [ "${_DB_SERVER}" = "Percona" ]; then
-      if [ "${_DB_SERIES}" = "5.7" ] || [ -e "/root/.percona.5.7.cnf" ]; then
+      if [ "${_DB_SERIES}" = "5.7" ]; then
         _DBS_VRN="${_PERCONA_5_7_VRN}"
-      elif [ "${_DB_SERIES}" = "8.0" ] || [ -e "/root/.percona.8.0.cnf" ]; then
+      elif [ "${_DB_SERIES}" = "8.0" ]; then
         _DBS_VRN="${_PERCONA_8_0_VRN}"
-      elif [ "${_DB_SERIES}" = "8.1" ] || [ -e "/root/.percona.8.1.cnf" ]; then
+      elif [ "${_DB_SERIES}" = "8.1" ]; then
         _DBS_VRN="${_PERCONA_8_1_VRN}"
-      elif [ "${_DB_SERIES}" = "8.2" ] || [ -e "/root/.percona.8.2.cnf" ]; then
+      elif [ "${_DB_SERIES}" = "8.2" ]; then
         _DBS_VRN="${_PERCONA_8_2_VRN}"
-      elif [ "${_DB_SERIES}" = "8.3" ] || [ -e "/root/.percona.8.3.cnf" ]; then
+      elif [ "${_DB_SERIES}" = "8.3" ]; then
         _DBS_VRN="${_PERCONA_8_3_VRN}"
       else
         _DB_SERIES=5.7
         _DBS_VRN="${_PERCONA_5_7_VRN}"
       fi
-      _T_DBS_VRN="${_DBS_VRN}"
     else
       _DB_SERVER=Percona
       _DB_SERIES=5.7
