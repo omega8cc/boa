@@ -1790,24 +1790,29 @@ install_php_multi() {
         msg "WARN: _THIS_PHP_EXT_DIR for PHP $1 empty in install_php_multi"
       fi
     fi
-      if [ "${_DB_SERIES}" = "5.7" ]; then
-        if [ "${_DB_SERIES}" = "5.7" ]; then
-          _DB_SERVER=Percona
-          _DBS_VRN="${_PERCONA_5_7_VRN}"
-        else
-          _DB_SERVER=Percona
-          _DB_SERIES=5.7
-          _DBS_VRN="${_PERCONA_5_7_VRN}"
-        fi
-        _T_DBS_VRN="${_DBS_VRN}"
+    if [ "${_DB_SERVER}" = "Percona" ]; then
+      if [ "${_DB_SERIES}" = "5.7" ] || [ -e "/root/.percona.5.7.cnf" ]; then
+        _DBS_VRN="${_PERCONA_5_7_VRN}"
+      elif [ "${_DB_SERIES}" = "8.0" ] || [ -e "/root/.percona.8.0.cnf" ]; then
+        _DBS_VRN="${_PERCONA_8_0_VRN}"
+      elif [ "${_DB_SERIES}" = "8.1" ] || [ -e "/root/.percona.8.1.cnf" ]; then
+        _DBS_VRN="${_PERCONA_8_1_VRN}"
+      elif [ "${_DB_SERIES}" = "8.2" ] || [ -e "/root/.percona.8.2.cnf" ]; then
+        _DBS_VRN="${_PERCONA_8_2_VRN}"
+      elif [ "${_DB_SERIES}" = "8.3" ] || [ -e "/root/.percona.8.3.cnf" ]; then
+        _DBS_VRN="${_PERCONA_8_3_VRN}"
       else
-        _DB_SERVER=Percona
         _DB_SERIES=5.7
         _DBS_VRN="${_PERCONA_5_7_VRN}"
-        if [ -e "${barCnf}" ]; then
-          sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g" ${barCnf}
-          sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g" ${barCnf}
-        fi
+      fi
+      _T_DBS_VRN="${_DBS_VRN}"
+    else
+      _DB_SERVER=Percona
+      _DB_SERIES=5.7
+      _DBS_VRN="${_PERCONA_5_7_VRN}"
+      if [ -e "${barCnf}" ]; then
+        sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g" ${barCnf}
+        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g" ${barCnf}
       fi
     fi
     touch ${pthLog}/installed-${_PHP_VERSION}-${_T_DBS_VRN}-${_DB_SERVER}.log
@@ -2421,12 +2426,18 @@ check_php_rebuild() {
       fi
     fi
   fi
-  if [ "${_DB_SERIES}" = "5.7" ]; then
-    if [ "${_DB_SERIES}" = "5.7" ]; then
-      _DB_SERVER=Percona
+  if [ "${_DB_SERVER}" = "Percona" ]; then
+    if [ "${_DB_SERIES}" = "5.7" ] || [ -e "/root/.percona.5.7.cnf" ]; then
       _DBS_VRN="${_PERCONA_5_7_VRN}"
+    elif [ "${_DB_SERIES}" = "8.0" ] || [ -e "/root/.percona.8.0.cnf" ]; then
+      _DBS_VRN="${_PERCONA_8_0_VRN}"
+    elif [ "${_DB_SERIES}" = "8.1" ] || [ -e "/root/.percona.8.1.cnf" ]; then
+      _DBS_VRN="${_PERCONA_8_1_VRN}"
+    elif [ "${_DB_SERIES}" = "8.2" ] || [ -e "/root/.percona.8.2.cnf" ]; then
+      _DBS_VRN="${_PERCONA_8_2_VRN}"
+    elif [ "${_DB_SERIES}" = "8.3" ] || [ -e "/root/.percona.8.3.cnf" ]; then
+      _DBS_VRN="${_PERCONA_8_3_VRN}"
     else
-      _DB_SERVER=Percona
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
     fi
@@ -2435,7 +2446,6 @@ check_php_rebuild() {
     _DB_SERVER=Percona
     _DB_SERIES=5.7
     _DBS_VRN="${_PERCONA_5_7_VRN}"
-    _T_DBS_VRN="${_DBS_VRN}"
     if [ -e "${barCnf}" ]; then
       sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g" ${barCnf}
       sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g" ${barCnf}
