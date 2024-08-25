@@ -8303,7 +8303,7 @@ initd_update() {
           wait
           msg "INFO: ${_DB_SERVER} server restart completed"
         fi
-        if [[ "${_DB_SERIES}" =~ "5.7" ]]; then
+        if [ "${_DB_SERIES}" = "5.7" ]; then
           _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
           if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
             _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
