@@ -2,6 +2,15 @@
 tRee=dev
 export tRee="${tRee}"
 
+if_hosted_sys() {
+  if [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    hostedSys=YES
+  else
+    hostedSys=NO
+  fi
+}
+
 ###
 ### Noticeable messages
 ###
