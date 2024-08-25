@@ -569,29 +569,19 @@ up_one() {
     wait
     sed -i "s/^_USER=o1/_USER=${octUsr}/g"                     ${vBs}/${tocName}
     wait
-    if [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ] \
-      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-      if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
-        _DO_NOTHING=YES
-      else
-        sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${vBs}/${tocIncO}
-        wait
-        sed -i "s/^_PLATFORMS_LIST.*/_PLATFORMS_LIST=none/g"   ${vBs}/${tocIncO}
-        wait
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  ${octCnf}
-        wait
-        sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             ${octCnf}
-        wait
-        sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"   ${octCnf}
-        wait
-        sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${octCnf}
-        wait
-      fi
-    fi
+    sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"        ${vBs}/${tocIncO}
+    wait
+    sed -i "s/^_PLATFORMS_LIST.*/_PLATFORMS_LIST=none/g"       ${vBs}/${tocIncO}
+    wait
+    sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"      ${octCnf}
+    wait
+    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${octCnf}
+    wait
+    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"       ${octCnf}
+    wait
+    sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"        ${octCnf}
+    wait
+
     if [ -e "${vBs}/${tocName}" ]; then
       if [ -e "${User}/.drush/sys/provision/http" ]; then
         _IS_OLD=$(find ${User}/.drush/sys/provision/ \

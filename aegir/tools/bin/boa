@@ -761,7 +761,7 @@ barracuda_install() {
         sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${filIncO}
         wait
       else
-        sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${extra}\"/g"    ${vBs}/${filIncB}
+        sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${extra}\"/g"   ${vBs}/${filIncB}
         wait
       fi
     fi

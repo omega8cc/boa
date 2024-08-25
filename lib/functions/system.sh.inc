@@ -1944,94 +1944,58 @@ barracuda_cnf() {
     ### Force ImageMagick from packages
     sed -i "s/^_MAGICK_FROM_S.*/_MAGICK_FROM_SOURCES=NO/g"       ${barCnf}
     wait
-    if [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ] \
-      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-      ### Force latest OpenSSH from sources on supported systems
-      sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"   ${barCnf}
+    sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${barCnf}
+    wait
+    sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g"           ${barCnf}
+    wait
+
+    devM="deb.devuan.org"
+    debM="deb.debian.org"
+
+    sed -i "s/^_LOCAL_DEVUAN_.*/_LOCAL_DEVUAN_MIRROR=${devM}/g"  ${barCnf}
+    wait
+    sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=${debM}/g"  ${barCnf}
+    wait
+    sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"     ${barCnf}
+    wait
+    sed -i "s/^_STRICT_BIN_.*/_STRICT_BIN_PERMISSIONS=YES/g"     ${barCnf}
+    wait
+    sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"           ${barCnf}
+    wait
+    sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"       ${barCnf}
+    wait
+    sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g" /root/.*.octopus.cnf &> /dev/null
+    wait
+    sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g" /root/.*.octopus.cnf &> /dev/null
+    wait
+    sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"      ${barCnf}
+    wait
+    if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
+      sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
       wait
-      if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
-        _DO_NOTHING=YES
-      else
-        devM="deb.devuan.org"
-        debM="deb.debian.org"
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
-        wait
-        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  ${barCnf}
-        wait
-        sed -i "s/^_LOCAL_DEVUAN_MIRROR=.*/_LOCAL_DEVUAN_MIRROR=${devM}/g"         ${barCnf}
-        wait
-        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=${debM}/g"         ${barCnf}
-        wait
-        sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
-        wait
-        sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       ${barCnf}
-        wait
-        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   ${barCnf}
-        wait
-        sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                     ${barCnf}
-        wait
-        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  /root/.*.octopus.cnf &> /dev/null
-        wait
-        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   /root/.*.octopus.cnf &> /dev/null
-        wait
-        if [ -e "/root/.mstr.clstr.cnf" ] \
-          || [ -e "/root/.wbhd.clstr.cnf" ] \
-          || [ -e "/root/.dbhd.clstr.cnf" ] \
-          || [ -e "/root/.test.clstr.cnf" ]; then
-          _DO_NOTHING=YES
-        else
-          sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"            ${barCnf}
-          wait
-        fi
-        if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
-          sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
-          wait
-          sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
-          wait
-        fi
-        # if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        #   || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-        #   || [ "${_VMFAMILY}" = "VS" ]; then
-        #   if [ "${_VMFAMILY}" = "VS" ]; then
-        #     sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                     ${barCnf}
-        #     wait
-        #     sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                       ${barCnf}
-        #     wait
-        #     sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                 ${barCnf}
-        #     wait
-        #   fi
-        # fi
-      fi
+      sed -i "s/^_PHP_FPM_VERSION=5.6/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_CLI_VERSION=7.0/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_FPM_VERSION=7.0/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_CLI_VERSION=7.1/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_FPM_VERSION=7.1/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_CLI_VERSION=7.2/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_FPM_VERSION=7.2/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_CLI_VERSION=7.3/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_FPM_VERSION=7.3/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_CLI_VERSION=8.0/_PHP_CLI_VERSION=8.1/g"    ${barCnf}
+      wait
+      sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=8.1/g"    ${barCnf}
+      wait
     fi
-    if [ "${_LOCAL_DEBIAN_MIRROR}" = "deb.debian.org" ] \
-      || [ "${_LOCAL_DEBIAN_MIRROR}" = "httpredir.debian.org" ] \
-      || [ "${_LOCAL_DEBIAN_MIRROR}" = "ftp.debian.org" ]; then
-      _LOCAL_DEBIAN_MIRROR="deb.debian.org"
-      sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=deb.debian.org/g"     ${barCnf}
     if_hosted_sys
     if [ "${hostedSys}" = "YES" ]; then
       sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" ${barCnf}
@@ -2294,18 +2258,10 @@ barracuda_cnf() {
     ### Force ImageMagick from packages
     sed -i "s/^_MAGICK_FROM_S.*/_MAGICK_FROM_SOURCES=NO/g"       ${barCnf}
     wait
-    if [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ] \
-      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
       ### Force latest OpenSSH from sources on supported systems
       sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"   ${barCnf}
       wait
-      if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
-        _DO_NOTHING=YES
-      else
+
         devM="deb.devuan.org"
         debM="deb.debian.org"
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                 ${barCnf}
@@ -2360,19 +2316,6 @@ barracuda_cnf() {
           sed -i "s/^_PHP_FPM_VERSION=8.0/_PHP_FPM_VERSION=8.1/g"                  ${barCnf}
           wait
         fi
-        # if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        #   || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-        #   || [ "${_VMFAMILY}" = "VS" ]; then
-        #   if [ "${_VMFAMILY}" = "VS" ]; then
-        #     sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                     ${barCnf}
-        #     wait
-        #     sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                       ${barCnf}
-        #     wait
-        #     sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                 ${barCnf}
-        #     wait
-        #   fi
-        # fi
-      fi
 
     if_hosted_sys
     if [ "${hostedSys}" = "YES" ]; then
