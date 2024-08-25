@@ -645,9 +645,11 @@ install_with_aptitude_sql() {
     _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
     mrun "mysqlcheck -u root -A --auto-repair --silent" &> /dev/null
     mrun "mysql_upgrade -u root --force" &> /dev/null
-    mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;" &> /dev/null
-    mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;" &> /dev/null
-    mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;" &> /dev/null
+    if [ "${_DB_SERIES}" = "5.7" ]; then
+      mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;" &> /dev/null
+      mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;" &> /dev/null
+      mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;" &> /dev/null
+    fi
     mrun "mysql_upgrade -u root --force" &> /dev/null
   fi
   usermod -aG users mysql
