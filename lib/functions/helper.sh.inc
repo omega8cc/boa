@@ -280,11 +280,6 @@ mode_detection() {
       || [ -e "/root/.host8.cnf" ]; then
       _XTRAS_LIST="ADM CSF FTP IMG"
     fi
-  elif [ ! -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] \
-    && [ -e "/lib/systemd/systemd" ]; then
-    _STATUS=SYSTEMD
-    msg "MODE: SYSTEMD"
-    touch /run/boa_wait.pid
   else
     _STATUS=INIT
     [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
@@ -387,15 +382,12 @@ mode_detection() {
         touch /root/.dbhd.clstr.cnf
       fi
     fi
-    if [ "${_STATUS}" != "SYSTEMD" ]; then
-      barracuda_cnf
     fi
+    barracuda_cnf
   fi
-  if [ "${_STATUS}" != "SYSTEMD" ]; then
-    [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
-    [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
-    kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}') &> /dev/null
-  fi
+  [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
+  [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
+  kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}') &> /dev/null
   if [ "${_AEGIR_VERSION}" != "static" ]; then
     _USE_AEGIR_VER=SRC
   else

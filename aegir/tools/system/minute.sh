@@ -61,10 +61,6 @@ if_fix_dhcp() {
 }
 if_fix_dhcp
 
-if [ -e "/root/.step.init.systemd.two.cnf" ]; then
-  kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}') &> /dev/null
-fi
-
 sql_restart() {
   touch /run/boa_run.pid
   echo "$(date 2>&1) $1 incident detected"                          >> ${pthOml}
