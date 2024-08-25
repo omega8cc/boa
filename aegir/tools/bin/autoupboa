@@ -423,7 +423,7 @@ if [ -e "/var/aegir/drush" ]; then
       if [[ ! "${_DB_SERVER}" =~ "Percona" ]] || [ -z "${_DB_V}" ]; then
         sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"  ${barCnf}
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"  ${barCnf}
-      elif [ ! -z "${_DB_V} ] && [ ${_DB_V}" = "5.7" ]; then
+      elif [ ! -z "${_DB_V}" ] && [ "${_DB_V}" = "5.7" ]; then
         _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
         _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
         _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
