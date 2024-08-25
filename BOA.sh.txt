@@ -111,6 +111,15 @@ apt_clean_update() {
   ${_APT_UPDATE} -qq &> /dev/null
 }
 
+if_hosted_sys() {
+  if [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    hostedSys=YES
+  else
+    hostedSys=NO
+  fi
+}
+
 #
 # Find correct IP.
 find_correct_ip() {
@@ -437,8 +446,11 @@ if_fix_iptables_symlinks() {
 
 update_agents() {
 
-  if [ -e "/root/.host8.cnf" ] && [ ! -e "/root/.extended.firewall.exceptions.cnf" ]; then
-    echo host8 > /root/.extended.firewall.exceptions.cnf
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
+    if [ ! -e "/root/.extended.firewall.exceptions.cnf" ]; then
+      echo host8 > /root/.extended.firewall.exceptions.cnf
+    fi
   fi
 
   if [ "${_VMFAMILY}" = "HOSTED" ] \
@@ -876,8 +888,11 @@ update_agents() {
       wait
       sed -i "s/default_lines =.*/default_lines = 1999;/g" /var/xdrago/monitor/check/scan_nginx
       wait
-      if [ -e "/root/.host8.cnf" ] && [ -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
-        _NGINX_DONTCOUNT_KEYWORDS="doccomment"
+      if_hosted_sys
+      if [ "${hostedSys}" = "YES" ]; then
+        if [ -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
+          _NGINX_DONTCOUNT_KEYWORDS="doccomment"
+        fi
       fi
       if [ ! -z "${_NGINX_DONTCOUNT_KEYWORDS}" ]; then
         _NGINX_DONTCOUNT_KEYWORDS=${_NGINX_DONTCOUNT_KEYWORDS//[^a-zA-Z0-9|-]/}
@@ -2520,10 +2535,8 @@ setup() {
   else
     _RANDOMIZE=NO
   fi
-  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
     _VMFAMILY=HOSTED
   fi
   sed -i "s/.*files.aegir.cc.*//g" /etc/hosts

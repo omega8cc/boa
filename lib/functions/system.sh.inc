@@ -506,11 +506,8 @@ disable_old_purge_cruft_machine() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: disable_old_purge_cruft_machine"
   fi
-  if [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-    || [ -e "/root/.host8.cnf" ]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
     sed -i "s/.*purge_cruft.*//g" /etc/crontab &> /dev/null
     wait
     sed -i "/^$/d" /etc/crontab &> /dev/null
@@ -1857,18 +1854,8 @@ barracuda_cnf() {
   fi
   if [ ! -e "${barCnf}" ]; then
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
-      if [ -e "/root/.auto.up.cnf" ] \
-        || [ -e "/root/.host8.cnf" ] \
-        || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-        if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
-          _DO_NOTHING=YES
-        else
-          _DO_NOTHING=YES
-        fi
-      else
+      if_hosted_sys
+      if [ "${hostedSys}" != "YES" ]; then
         msg "EXIT: Invalid email address defined in the _MY_EMAIL variable"
         msg "EXIT: Bye (1)"
         clean_pid_exit barracuda_cnf_a
@@ -2089,6 +2076,9 @@ barracuda_cnf() {
       || [ "${_LOCAL_DEBIAN_MIRROR}" = "ftp.debian.org" ]; then
       _LOCAL_DEBIAN_MIRROR="deb.debian.org"
       sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=deb.debian.org/g"     ${barCnf}
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
+      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" ${barCnf}
       wait
     fi
   else
@@ -2382,15 +2372,8 @@ barracuda_cnf() {
         wait
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   /root/.*.octopus.cnf &> /dev/null
         wait
-        if [ -e "/root/.mstr.clstr.cnf" ] \
-          || [ -e "/root/.wbhd.clstr.cnf" ] \
-          || [ -e "/root/.dbhd.clstr.cnf" ] \
-          || [ -e "/root/.test.clstr.cnf" ]; then
-          _DO_NOTHING=YES
-        else
-          sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"            ${barCnf}
-          wait
-        fi
+        sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"              ${barCnf}
+        wait
         if [ -z "${_PHP_SINGLE_INSTALL}" ]; then
           sed -i "s/^_PHP_CLI_VERSION=5.6/_PHP_CLI_VERSION=8.1/g"                  ${barCnf}
           wait
@@ -2434,7 +2417,13 @@ barracuda_cnf() {
         #   fi
         # fi
       fi
+
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
+      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 ${barCnf}
+      wait
     fi
+
     sed -i "/^$/d" ${barCnf}
     wait
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2478,20 +2467,11 @@ barracuda_cnf() {
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g" ${barCnf}
       fi
     fi
+
     _CHECK_HOST=$(uname -n 2>&1)
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
-      if [ -e "/root/.auto.up.cnf" ] \
-        || [ -e "/root/.host8.cnf" ] \
-        || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-        if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
-          _DO_NOTHING=YES
-        else
-          _DO_NOTHING=YES
-        fi
-      else
+      if_hosted_sys
+      if [ "${hostedSys}" != "YES" ]; then
         msg "EXIT: Invalid email address defined in the _MY_EMAIL variable"
         msg "EXIT: Bye (2)"
         clean_pid_exit barracuda_cnf_b
@@ -5108,10 +5088,7 @@ finale() {
       # fix_core_dgd
     fi
   fi
-  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
+  if [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
     _MTD_VR="BOA-5.4.0-omm"
   elif [ -e "/root/.host8.cnf" ]; then
     _MTD_VR="BOA-5.4.0-aln"
@@ -6723,13 +6700,9 @@ sys_packages_install() {
     fi
   fi
   if [ "${_STATUS}" = "INIT" ]; then
+    if_hosted_sys
     if [[ "${_XTRAS_LIST}" =~ "SR" ]] \
-      || [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-      || [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ]; then
+      || [ "${hostedSys}" = "YES" ]; then
       if [ "${_OS_CODE}" = "jessie" ]; then
         _APT_XTRA="openjdk-7-jre-headless ca-certificates-java nginx"
       elif [ "${_OS_CODE}" = "stretch" ]; then
@@ -6792,13 +6765,9 @@ sys_packages_install() {
     if [[ "${_APT_ITEM}" =~ "install" ]]; then
       mrun "apt-get remove openjdk-7-jdk -y --purge --auto-remove -qq" 2> /dev/null
     fi
+    if_hosted_sys
     if [[ "${_XTRAS_LIST}" =~ "SR" ]] \
-      || [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-      || [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ]; then
+      || [ "${hostedSys}" = "YES" ]; then
       if [ "${_OS_CODE}" = "jessie" ]; then
         _APT_XTRA="openjdk-7-jre-headless ca-certificates-java"
       elif [ "${_OS_CODE}" = "stretch" ]; then
@@ -7079,14 +7048,10 @@ sys_packages_install() {
                    libwebp-dev \
                    ${_EXTRA_PACKAGES}"
 
+  if_hosted_sys
   if [[ "${_XTRAS_LIST}" =~ "IMG" ]] \
     || [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
-    || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-    || [ -e "/root/.auto.up.cnf" ] \
-    || [ -e "/root/.host8.cnf" ]; then
+    || [ "${hostedSys}" = "YES" ]; then
     _EXTRA_PACKAGES="advancecomp \
                      jpegoptim \
                      libjpeg-progs \
@@ -7478,12 +7443,8 @@ xdrago_install_upgrade() {
       find_correct_ip
       _THISHTIP="${_LOC_IP}"
     fi
-    if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-      || [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       if [ ! -e "/etc/init.d/redis-server" ]; then
         _NGINX_DOS_LIMIT=888
       else
@@ -7563,12 +7524,8 @@ xdrago_install_upgrade() {
       find_correct_ip
       _THISHTIP="${_LOC_IP}"
     fi
-    if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-      || [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       if [ ! -e "/etc/init.d/redis-server" ]; then
         _NGINX_DOS_LIMIT=888
       else

@@ -76,6 +76,15 @@ check_no_systemd() {
   fi
 }
 
+if_hosted_sys() {
+  if [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    hostedSys=YES
+  else
+    hostedSys=NO
+  fi
+}
+
 not_supported_virt() {
   echo
   echo "=== OOPS! ==="
@@ -449,12 +458,8 @@ send_report() {
     _RS="Octopus"
   fi
   _MY_EMAIL="${email}"
-  if [ -e "/root/.auto.up.cnf" ] \
-    || [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
     _MY_EMAIL="$(basename "$0")@omega8.cc"
   fi
   if [ ! -z "${_MY_EMAIL}" ]; then
@@ -476,14 +481,8 @@ octopus_install() {
       user=$(echo -n ${user} | tr A-Z a-z 2>&1)
     fi
     if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
-      if [ -e "/root/.auto.up.cnf" ] \
-        || [ -e "/root/.host8.cnf" ] \
-        || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-        _DO_NOTHING=YES
-      else
+      if_hosted_sys
+      if [ "${hostedSys}" != "YES" ]; then
         if [ -e "${barCnf}" ]; then
           source ${barCnf}
         fi
@@ -539,19 +538,10 @@ octopus_install() {
     sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"      ${vBs}/${filIncO}
     wait
 
-    if [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ] \
-      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-      if [ ! -e "/root/.debug.cnf" ] || [ -e "/root/.default.cnf" ]; then
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"     ${vBs}/${filIncO}
-        wait
-      fi
-    fi
+    sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                 ${vBs}/${filIncO}
+    wait
+    sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"         ${vBs}/${filIncO}
+    wait
 
     if [ "${cmmand}" = "in-dev" ] \
       || [ "${cmmand}" = "in-lts" ] \
@@ -1043,12 +1033,8 @@ init_setup() {
       output="verbose"
     fi
 
-    if [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ] \
-      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       defaultOption=EDGE
     else
       defaultOption=POWER

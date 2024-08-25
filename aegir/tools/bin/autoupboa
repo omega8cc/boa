@@ -172,12 +172,22 @@ else
   _MINUTE_SYSTEM_UP="05"
 fi
 
+if_hosted_sys() {
+  if [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    hostedSys=YES
+  else
+    hostedSys=NO
+  fi
+}
+
 send_boa_system_report() {
   if [ -e "${barCnf}" ]; then
     _RCPT_EMAIL=
     _BCC_EMAIL=
     repBodFile=/var/backups/hosted-boa-status.txt
-    if [ -e "/root/.host8.cnf" ]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       _RCPT_EMAIL="systems@omega8.cc"
       _BCC_EMAIL="notify@omega8.cc"
     fi
@@ -348,12 +358,8 @@ if [ -e "/var/aegir/drush" ]; then
       [ -e "/root/.auto.up.cnf" ] && rm -f /root/.auto.up.cnf
     fi
   fi
-  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-    || [ -e "/root/.host8.cnf" ] \
-    || [ "${_AUTO_UP}" = "YES" ]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
 	if [[ "${_CHECK_HOST}" =~ ^(lcy1.ao.|lcy15.uk.) ]]; then
 	  _DONT_TOUCH=OK
 	  rm -f /etc/csf/csf.conf-pre*

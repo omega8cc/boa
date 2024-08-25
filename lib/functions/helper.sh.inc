@@ -323,8 +323,8 @@ mode_detection() {
     elif [ "${_EASY_SETUP}" = "PUBLIC" ]; then
       msg "INFO: Public Setup Mode Active"
       _XTRAS_LIST="ADM CSF FTP IMG"
-      if [ -e "/root/.auto.up.cnf" ] \
-        || [ -e "/root/.host8.cnf" ]; then
+      if_hosted_sys
+      if [ "${hostedSys}" = "YES" ]; then
         _XTRAS_LIST="ADM CSF FTP IMG"
       fi
       _AUTOPILOT=YES
