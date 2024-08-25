@@ -135,6 +135,9 @@ sql_strict_upgrade_path() {
     || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
     _SQL_UPGRADE=YES
   fi
+  if [ "${_SQL_UPGRADE}" = "YES" ]; then
+    mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
+  fi
 }
 
 #
