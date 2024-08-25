@@ -2335,28 +2335,23 @@ barracuda_cnf() {
     if [ -e "${barCnf}" ]; then
       source ${barCnf}
     fi
-    if [ "${_LOCAL_DEBIAN_MIRROR}" = "deb.debian.org" ] \
-      || [ "${_LOCAL_DEBIAN_MIRROR}" = "httpredir.debian.org" ] \
-      || [ "${_LOCAL_DEBIAN_MIRROR}" = "ftp.debian.org" ]; then
-      _LOCAL_DEBIAN_MIRROR="deb.debian.org"
-      sed -i "s/^_LOCAL_DEBIAN_.*/_LOCAL_DEBIAN_MIRROR=deb.debian.org/g"     ${barCnf}
-      wait
-    fi
-    if [ "${_DB_SERIES}" = "5.7" ]; then
-      if [ -e "/root/.mstr.clstr.cnf" ] \
-        || [ -e "/root/.wbhd.clstr.cnf" ] \
-        || [ -e "/root/.dbhd.clstr.cnf" ]; then
-        _DBS_VRN="${_GALERA_10_VRN}"
+
+    if [ "${_DB_SERVER}" = "Percona" ]; then
+      if [ "${_DB_SERIES}" = "5.7" ] || [ -e "/root/.percona.5.7.cnf" ]; then
+        _DBS_VRN="${_PERCONA_5_7_VRN}"
+      elif [ "${_DB_SERIES}" = "8.0" ] || [ -e "/root/.percona.8.0.cnf" ]; then
+        _DBS_VRN="${_PERCONA_8_0_VRN}"
+      elif [ "${_DB_SERIES}" = "8.1" ] || [ -e "/root/.percona.8.1.cnf" ]; then
+        _DBS_VRN="${_PERCONA_8_1_VRN}"
+      elif [ "${_DB_SERIES}" = "8.2" ] || [ -e "/root/.percona.8.2.cnf" ]; then
+        _DBS_VRN="${_PERCONA_8_2_VRN}"
+      elif [ "${_DB_SERIES}" = "8.3" ] || [ -e "/root/.percona.8.3.cnf" ]; then
+        _DBS_VRN="${_PERCONA_8_3_VRN}"
       else
-        if [ "${_DB_SERIES}" = "5.7" ]; then
-          _DB_SERVER=Percona
-          _DBS_VRN="${_PERCONA_5_7_VRN}"
-        else
-          _DB_SERVER=Percona
-          _DB_SERIES=5.7
-          _DBS_VRN="${_PERCONA_5_7_VRN}"
-        fi
+        _DB_SERIES=5.7
+        _DBS_VRN="${_PERCONA_5_7_VRN}"
       fi
+      _T_DBS_VRN="${_DBS_VRN}"
     else
       _DB_SERVER=Percona
       _DB_SERIES=5.7
