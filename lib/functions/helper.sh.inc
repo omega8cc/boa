@@ -595,22 +595,14 @@ os_detection() {
   fi
   _OS_DIST=$(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1)
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
+  _DB_SERVER=Percona
   if [ "${_OS_DIST}" = "Debian" ]; then
     if [ "${_OS_CODE}" = "bookworm" ]; then
       _OS_CODE="bookworm"
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
     elif [ "${_OS_CODE}" = "bullseye" ]; then
       _OS_CODE="bullseye"
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
     elif [ "${_OS_CODE}" = "buster" ]; then
       _OS_CODE="buster"
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
     elif [ "${_OS_CODE}" = "stretch" ]; then
       _OS_CODE="stretch"
     elif [ "${_OS_CODE}" = "jessie" ]; then
@@ -620,11 +612,17 @@ os_detection() {
     fi
     _NGINX_FORWARD_SECRECY=YES
     _NGINX_SPDY=YES
-    if [ "${_DB_SERIES}" = "5.7" ]; then
-      _DB_SERVER=Percona
+    if [ "${_DB_SERIES}" = "8.3" ]; then
+      _DBS_VRN="${_PERCONA_8_3_VRN}"
+    elif [ "${_DB_SERIES}" = "8.2" ]; then
+      _DBS_VRN="${_PERCONA_8_2_VRN}"
+    elif [ "${_DB_SERIES}" = "8.1" ]; then
+      _DBS_VRN="${_PERCONA_8_1_VRN}"
+    elif [ "${_DB_SERIES}" = "8.0" ]; then
+      _DBS_VRN="${_PERCONA_8_0_VRN}"
+    elif [ "${_DB_SERIES}" = "5.7" ]; then
       _DBS_VRN="${_PERCONA_5_7_VRN}"
     else
-      _DB_SERVER=Percona
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
     fi
@@ -633,29 +631,26 @@ os_detection() {
   elif [ "${_OS_DIST}" = "Devuan" ]; then
     if [ "${_OS_CODE}" = "daedalus" ]; then
       _OS_CODE="daedalus"
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
     elif [ "${_OS_CODE}" = "chimaera" ]; then
       _OS_CODE="chimaera"
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
     elif [ "${_OS_CODE}" = "beowulf" ]; then
       _OS_CODE="beowulf"
-      _DB_SERVER=Percona
-      _DB_SERIES=5.7
-      _DBS_VRN="${_PERCONA_5_7_VRN}"
     else
       not_supported_os
     fi
     _NGINX_FORWARD_SECRECY=YES
     _NGINX_SPDY=YES
-    if [ "${_DB_SERIES}" = "5.7" ]; then
-      _DB_SERVER=Percona
+    if [ "${_DB_SERIES}" = "8.3" ]; then
+      _DBS_VRN="${_PERCONA_8_3_VRN}"
+    elif [ "${_DB_SERIES}" = "8.2" ]; then
+      _DBS_VRN="${_PERCONA_8_2_VRN}"
+    elif [ "${_DB_SERIES}" = "8.1" ]; then
+      _DBS_VRN="${_PERCONA_8_1_VRN}"
+    elif [ "${_DB_SERIES}" = "8.0" ]; then
+      _DBS_VRN="${_PERCONA_8_0_VRN}"
+    elif [ "${_DB_SERIES}" = "5.7" ]; then
       _DBS_VRN="${_PERCONA_5_7_VRN}"
     else
-      _DB_SERVER=Percona
       _DB_SERIES=5.7
       _DBS_VRN="${_PERCONA_5_7_VRN}"
     fi

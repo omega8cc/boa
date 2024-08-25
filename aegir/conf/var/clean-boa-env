@@ -182,6 +182,21 @@ case "$1" in
         _IS_MYSQLD_RUNNING=$(ps aux | grep '[m]ysqld' | awk '{print $2}' 2>&1)
         if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ ! -z "${_SQL_PSWD}" ]; then
           echo "Preparing MySQLD for quick shutdown..."
+          _DBS_TEST=$(which mysql 2>&1)
+          if [ ! -z "${_DBS_TEST}" ]; then
+            _DB_SERVER_TEST=$(mysql -V 2>&1)
+          fi
+          if [[ "${_DB_SERVER_TEST}" =~ "Distrib 8.3." ]]; then
+            _DB_V=8.3
+          elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 8.2." ]]; then
+            _DB_V=8.2
+          elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 8.1." ]]; then
+            _DB_V=8.1
+          elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 8.0." ]]; then
+            _DB_V=8.0
+          elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
+            _DB_V=5.7
+          fi
           mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
           mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
           mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null

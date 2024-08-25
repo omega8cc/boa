@@ -281,16 +281,38 @@ compress_backup() {
 
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
-if [ "${_DB_SERIES}" = "5.7" ]; then
-  check_running
-  ${_C_SQL} -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
-  ${_C_SQL} -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
-  ${_C_SQL} -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-  ${_C_SQL} -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
-  ${_C_SQL} -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
-  ${_C_SQL} -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-  ${_C_SQL} -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
-fi
+check_mysql_version() {
+  _DBS_TEST=$(which mysql 2>&1)
+  if [ ! -z "${_DBS_TEST}" ]; then
+    _DB_SERVER_TEST=$(mysql -V 2>&1)
+  fi
+  if [[ "${_DB_SERVER_TEST}" =~ "Distrib 8.3." ]]; then
+    _DB_V=8.3
+  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 8.2." ]]; then
+    _DB_V=8.2
+  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 8.1." ]]; then
+    _DB_V=8.1
+  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 8.0." ]]; then
+    _DB_V=8.0
+  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
+    _DB_V=5.7
+  fi
+  if [ ! -z "${_DB_V}" ]; then
+    ${_C_SQL} -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+    ${_C_SQL} -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
+    ${_C_SQL} -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
+    ${_C_SQL} -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
+    ${_C_SQL} -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
+    if [ "${_DB_V}" = "5.7" ]; then
+      ${_C_SQL} -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+      ${_C_SQL} -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+    fi
+    ${_C_SQL} -e -e "SET GLOBAL innodb_fast_shutdown = 1;" &> /dev/null
+  fi
+}
+
+check_running
+check_mysql_version
 
 _MYQUICK_STATUS=
 if [ -x "/usr/local/bin/mydumper" ]; then
