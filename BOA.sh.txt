@@ -908,6 +908,7 @@ update_agents() {
         if [ -e "/var/xdrago/monitor/scan_nginx.archive.log" ]; then
           mv -f /var/xdrago/monitor/scan_nginx.archive.log /var/xdrago/monitor/scan_nginx.archive.${_X_SE}.log
         fi
+        rm -f /var/xdrago/monitor/.scan_nginx_arch*
         touch /var/xdrago/monitor/.scan_nginx_arch.${_X_SE}.pid
         csf -df
         wait
