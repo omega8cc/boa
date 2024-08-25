@@ -754,10 +754,43 @@ up_action() {
     ### Force latest OpenSSH from sources on supported systems
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"           ${barCnf}
     wait
-    if [ "${sql}" = "percona" ] \
-      || [ "${rkey}" = "percona" ] \
-      || [ "${debug}" = "percona" ]; then
+    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"             ${vBs}/${filIncB}
+    wait
+    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"                     ${barCnf}
+    wait
+    if [ "${sql}" = "percona-8.3" ] \
+      || [ "${rkey}" = "percona-8.3" ] \
+      || [ "${debug}" = "percona-8.3" ] \
+      || [ -e "/root/.percona.8.3.cnf" ]; then
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.3/g"               ${vBs}/${filIncB}
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.3/g"                       ${barCnf}
+    elif [ "${sql}" = "percona-8.2" ] \
+      || [ "${rkey}" = "percona-8.2" ] \
+      || [ "${debug}" = "percona-8.2" ] \
+      || [ -e "/root/.percona.8.2.cnf" ]; then
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.2/g"               ${vBs}/${filIncB}
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.2/g"                       ${barCnf}
+    elif [ "${sql}" = "percona-8.1" ] \
+      || [ "${rkey}" = "percona-8.1" ] \
+      || [ "${debug}" = "percona-8.1" ] \
+      || [ -e "/root/.percona.8.1.cnf" ]; then
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.1/g"               ${vBs}/${filIncB}
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.1/g"                       ${barCnf}
+    elif [ "${sql}" = "percona-8.0" ] \
+      || [ "${rkey}" = "percona-8.0" ] \
+      || [ "${debug}" = "percona-8.0" ] \
+      || [ -e "/root/.percona.8.0.cnf" ]; then
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.0/g"               ${vBs}/${filIncB}
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.0/g"                       ${barCnf}
+    elif [ "${sql}" = "percona-5.7" ] \
+      || [ "${rkey}" = "percona-5.7" ] \
+      || [ "${debug}" = "percona-5.7" ] \
+      || [ -e "/root/.percona.5.7.cnf" ]; then
       sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"               ${vBs}/${filIncB}
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"                       ${barCnf}
+    fi
+
+    if [ -e "${barCnf}" ]; then
       wait
       sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                       ${barCnf}
       wait
@@ -1175,7 +1208,6 @@ if_reinstall_curl() {
     apt-get update -qq &> /dev/null
     apt-get install lsb-release -y -qq &> /dev/null
   fi
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
   isCurl=$(curl --version 2>&1)
@@ -1589,6 +1621,7 @@ proceed() {
       php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.1 by default (php-all)
       php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
+      percona-8.3 <-- specify Percona version to use (8.3, 8.2, 8.1, 8.0, 5.7)
 
   See docs/UPGRADE.md for more details.
 
