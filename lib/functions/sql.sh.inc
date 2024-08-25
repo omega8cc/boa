@@ -727,10 +727,8 @@ forced_mysql_root_password_update() {
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
     if [ "${_DB_SERIES}" = "5.7" ]; then
       mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
-    elif [ "${_DB_SERIES}" = "8.0" ] || [ "${_DB_SERIES}" = "8.3" ]; then
-      mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${_ESC_PASS}';"
     else
-      mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${_ESC_PASS}';"
+      mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${_ESC_PASS}';"
     fi
     echo "[client]" > /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
@@ -808,14 +806,10 @@ forced_mysql_root_password_update() {
       mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
       mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
       mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
-    elif [ "${_DB_SERIES}" = "8.0" ] || [ "${_DB_SERIES}" = "8.3" ]; then
+    else
       mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH caching_sha2_password BY '${_ESC_PASS}';"
       mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH caching_sha2_password BY '${_ESC_PASS}';"
       mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH caching_sha2_password BY '${_ESC_PASS}';"
-    else
-      mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}';"
-      mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED BY '${_ESC_PASS}';"
-      mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${_ESC_PASS}';"
     fi
     mysqladmin -u root flush-privileges &> /dev/null
     mysqladmin -u root flush-hosts &> /dev/null
@@ -1180,10 +1174,8 @@ sql_root_credentials_update() {
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
         if [ "${_DB_SERIES}" = "5.7" ]; then
           mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
-        elif [ "${_DB_SERIES}" = "8.0" ] || [ "${_DB_SERIES}" = "8.3" ]; then
-          mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${PASWD}';"
         else
-          mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${PASWD}';"
+          mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${PASWD}';"
         fi
         echo "[client]" > /root/.my.cnf
         echo "user=root" >> /root/.my.cnf
@@ -1242,14 +1234,10 @@ sql_root_credentials_update() {
           mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
           mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
           mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
-        elif [ "${_DB_SERIES}" = "8.0" ] || [ "${_DB_SERIES}" = "8.3" ]; then
+        else
           mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH caching_sha2_password BY '${PASWD}';"
           mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH caching_sha2_password BY '${PASWD}';"
           mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH caching_sha2_password BY '${PASWD}';"
-        else
-          mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '${PASWD}';"
-          mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED BY '${PASWD}';"
-          mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED BY '${PASWD}';"
         fi
         mysqladmin -u root flush-privileges
         mysqladmin -u root flush-hosts
