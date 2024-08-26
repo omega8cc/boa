@@ -288,11 +288,9 @@ install_redis_src() {
   rm -f /var/lib/redis/*
   mkdir -p /etc/redis
   if [ -e "/etc/redis/redis.conf" ] && [ "${_STATUS}" = "UPGRADE" ]; then
+    if_hosted_sys
     if [ "${_CUSTOM_CONFIG_REDIS}" = "NO" ] \
-      || [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
+      || [ "${hostedSys}" = "YES" ]; then
       if [ "${_CUSTOM_CONFIG_REDIS}" = "YES" ]; then
         _DO_NOTHING=YES
       else

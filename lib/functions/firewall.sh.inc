@@ -151,10 +151,8 @@ csf_install() {
     fi
   fi
   cd /var/opt
-  if [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
     _SSH_PORT=22
   fi
   _CSF_COMPATIBILITY_TEST=$(perl /etc/csf/csftest.pl 2>&1)

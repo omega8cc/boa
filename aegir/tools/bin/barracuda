@@ -208,6 +208,7 @@ check_sql_access() {
   fi
 }
 
+_CHECK_HOST=$(uname -n 2>&1)
 if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
     || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
@@ -1066,10 +1067,8 @@ up_finish() {
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/php
   fi
-  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
     service webmin stop &> /dev/null
     service usermin stop &> /dev/null
   fi

@@ -249,6 +249,16 @@ apt_clean_update() {
   mrun "${_APT_UPDATE} -qq" 2> /dev/null
 }
 
+if_hosted_sys() {
+  _CHECK_HOST=$(uname -n 2>&1)
+  if [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    hostedSys=YES
+  else
+    hostedSys=NO
+  fi
+}
+
 check_sql_running() {
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
@@ -986,11 +996,9 @@ restore_default_sql() {
   msg "INFO: Restoring default SQL configuration"
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
   wait
+  if_hosted_sys
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
-    || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
+    || [ "${hostedSys}" = "YES" ]; then
     if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
       _DO_NOTHING=YES
     else
@@ -1156,10 +1164,8 @@ restart_services() {
 tune_web_server_config() {
   _LIM_FPM="${_L_PHP_FPM_WORKERS}"
   if [ "${_LIM_FPM}" -lt "48" ]; then
-    if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       _LIM_FPM=48
     fi
   fi
@@ -1395,11 +1401,9 @@ tune_memory_limits() {
     _RAM=$(( _RAM - _RESERVED_RAM ))
   fi
   _USE=$(( _RAM / 4 ))
+  if_hosted_sys
   if [ "${_VMFAMILY}" = "VS" ] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".host8." ]]; then
+    || [ "${hostedSys}" = "YES" ]; then
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.tg.cnf" ]; then
         _USE_SQL=$(( _RAM / 12 ))

@@ -697,11 +697,9 @@ tune_memory_limits() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "TUNE: _USE is ${_USE}"
   fi
+  if_hosted_sys
   if [ "${_VMFAMILY}" = "VS" ] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".host8." ]]; then
+    || [ "${hostedSys}" = "YES" ]; then
     if [ "${_VMFAMILY}" = "VS" ]; then
       if [ -e "/root/.tg.cnf" ]; then
         _USE_SQL=$(( _RAM / 12 ))
@@ -5011,10 +5009,8 @@ finale() {
   rm -rf /var/opt/*
   rm -f /var/xdrago/monitor/acrashsql.sh
   rm -f /var/xdrago/acrashsql.sh
-  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
     _MY_USAGE=YES
   else
     _MY_USAGE=NO
@@ -7388,10 +7384,8 @@ xdrago_install_upgrade() {
     fi
     chown root:crontab /var/spool/cron/crontabs/root
     chmod 600 /var/spool/cron/crontabs/root
-    if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
       wait
       sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
@@ -7463,10 +7457,8 @@ xdrago_install_upgrade() {
       fi
     fi
     mv -f /etc/cron.daily/mlocate ${vBs}/ &> /dev/null
-    if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
         _DO_NOTHING=YES
       else
@@ -8138,10 +8130,8 @@ initd_update() {
       mrun "service nginx start" 2> /dev/null
     fi
   else
-    if [[ "${_THISHOST}" =~ ".host8." ]] \
-      || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]] \
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ] \
       || [ -e "/root/.ssh.root.auth.keys.only.cnf" ]; then
       sed -i "s/^#PermitRootLogin.*/PermitRootLogin prohibit-password/g" \
         /etc/ssh/sshd_config &> /dev/null

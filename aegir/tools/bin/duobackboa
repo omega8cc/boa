@@ -114,6 +114,16 @@ apt_clean_update() {
   ${_APT_UPDATE} -qq 2> /dev/null
 }
 
+_CHECK_HOST=$(uname -n 2>&1)
+if_hosted_sys() {
+  if [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    hostedSys=YES
+  else
+    hostedSys=NO
+  fi
+}
+
 check_vps() {
   _BENG_VS=NO
   _VMFAMILY=NO
@@ -122,10 +132,8 @@ check_vps() {
   if [[ "${_VM_TEST}" =~ "-beng" ]]; then
     _BENG_VS=YES
   fi
-  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
     _VMFAMILY=HOSTED
   fi
 }

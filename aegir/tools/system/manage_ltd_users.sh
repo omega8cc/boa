@@ -74,6 +74,16 @@ aptYesUnth="-y --allow-unauthenticated"
 
 ###-------------SYSTEM-----------------###
 
+_CHECK_HOST=$(uname -n 2>&1)
+if_hosted_sys() {
+  if [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    hostedSys=YES
+  else
+    hostedSys=NO
+  fi
+}
+
 count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
@@ -195,10 +205,8 @@ enable_chattr() {
     _U_TP="/home/$1/.tmp"
     _U_II="${_U_HD}/php.ini"
     if [ ! -e "${_U_HD}/.ctrl.${_X_SE}.pid" ]; then
-      if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+      if_hosted_sys
+      if [ "${hostedSys}" = "YES" ]; then
         rm -rf ${_U_HD}/
       else
         rm -f ${_U_HD}/{drush_make,registry_rebuild,clean_missing_modules}

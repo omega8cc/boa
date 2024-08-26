@@ -236,11 +236,10 @@ sql_conf_update() {
     wait
   sed -i "s/^thread_concurrency.*//g" /etc/mysql/my.cnf &> /dev/null
     wait
+  if_hosted_sys
+  check_mysql_version
   if [ "${_CUSTOM_CONFIG_SQL}" = "NO" ] \
-    || [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
+    || [ "${hostedSys}" = "YES" ]; then
     if [ "${_CUSTOM_CONFIG_SQL}" = "YES" ]; then
       _DO_NOTHING=YES
     else

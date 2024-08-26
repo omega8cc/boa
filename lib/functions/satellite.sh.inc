@@ -647,10 +647,8 @@ satellite_cnf() {
       echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}" >> ${octCnf}
     fi
     _CHECK_HOST=$(uname -n 2>&1)
-    if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       _LD_DOM=YES
     else
       _LD_DOM=NO
