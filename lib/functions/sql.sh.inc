@@ -629,7 +629,7 @@ prep_for_install_db_sql() {
   fi
 
   SQLDEB="percona-server-server-${_DB_SERIES}"
-  SQLXTR="libdbi-perl percona-toolkit"
+  SQLXTR="libdbi-perl"
 
   if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
     || [ "${_ALL_FORCE_REINSTALL}" = "YES" ]; then
