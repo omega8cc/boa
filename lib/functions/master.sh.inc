@@ -647,12 +647,12 @@ php_cli_cron_update() {
   fi
   rm -f /var/spool/cron/crontabs/aegir
   if [ ! -e "/var/spool/cron/crontabs/aegir" ]; then
-    _DRUSH_HOSTING_DISPATCH_CMD="/usr/bin/env php /var/aegir/drush/drush.php @hostmaster hosting-dispatch;"
-    _DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force"
+    _DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force;"
+    _DRUSH_HOSTING_DISPATCH_CMD="/usr/bin/env php /var/aegir/drush/drush.php @hostmaster hosting-dispatch"
     echo -e \
-    "SHELL=/bin/sh\n\nPATH=/opt/php74/bin:/usr/bin\n*/5 * * * * \
-    ${_DRUSH_HOSTING_DISPATCH_CMD} \
-    ${_DRUSH_HOSTING_TASKS_CMD}" \
+    "\nSHELL=/bin/sh\nPATH=/opt/php74/bin:/usr/bin\n\n*/1 * * * * \
+    ${_DRUSH_HOSTING_TASKS_CMD} \
+    ${_DRUSH_HOSTING_DISPATCH_CMD}" \
     | fmt -su -w 2500 \
     | tee -a /var/spool/cron/crontabs/aegir >/dev/null 2>&1
   fi
