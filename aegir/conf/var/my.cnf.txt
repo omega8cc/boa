@@ -68,6 +68,7 @@ group_concat_max_len    = 10000
 sql_mode                = NO_ENGINE_SUBSTITUTION
 # you can't just change log file size, requires special procedure
 #innodb_log_file_size   = 50M
+#innodb_redo_log_capacity = 50M
 innodb_buffer_pool_instances = 8
 innodb_page_cleaners    = 8
 innodb_lru_scan_depth   = 100
