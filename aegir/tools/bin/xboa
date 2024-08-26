@@ -423,6 +423,8 @@ delete_this_platform() {
   run_drush8_hmr_cmd "hosting-task @platform_${_T_PFM_NAME} delete --force"
   echo "Old empty platform_${_T_PFM_NAME} will be deleted"
   run_drush8_hmr_cmd "hosting-dispatch"
+  sleep 5
+  run_drush8_hmr_cmd "hosting-tasks --force"
   sleep 1
 }
 
@@ -702,6 +704,8 @@ migrate_prepare() {
         rm -rf ${_USR}/.tmp/cache
         run_drush8_hmr_cmd "hosting-task @server_localhost verify --force" &> /dev/null
         run_drush8_hmr_cmd "hosting-dispatch" &> /dev/null
+        sleep 5
+        run_drush8_hmr_cmd "hosting-tasks --force" &> /dev/null
         echo "HOTFIX B: Hostmaster STATUS: Fix for migrated/merged instance 1/2 complete"
       fi
       run_drush8_hmr_cmd "sqlq \"UPDATE hosting_site SET client='1' WHERE profile='7'\"" &> /dev/null

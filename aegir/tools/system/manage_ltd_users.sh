@@ -1017,13 +1017,17 @@ php_cli_drush_update() {
     _T_CLI=/foo/bar
   fi
   if [ -x "${_T_CLI}/php" ]; then
-    _DRUSHCMD="${_T_CLI}/php ${dscUsr}/tools/drush/drush.php"
+    _DRUSH_HOSTING_DISPATCH_CMD="${_T_CLI}/php ${dscUsr}/tools/drush/drush.php @hostmaster hosting-dispatch"
+    _DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force"
     if [ -e "${dscUsr}/aegir.sh" ]; then
       rm -f ${dscUsr}/aegir.sh
     fi
     touch ${dscUsr}/aegir.sh
-    echo -e "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n${_DRUSHCMD} \
-      '@hostmaster' hosting-dispatch\ntouch ${dscUsr}/${_USER}-task.done" \
+    echo -e "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n \
+      \n${_DRUSH_HOSTING_DISPATCH_CMD} \
+      \nsleep 5
+      \n${_DRUSH_HOSTING_TASKS_CMD} \
+      \ntouch ${dscUsr}/${_USER}-task.done" \
       | fmt -su -w 2500 | tee -a ${dscUsr}/aegir.sh >/dev/null 2>&1
     chown ${_USER}:${usrGroup} ${dscUsr}/aegir.sh &> /dev/null
     chmod 0700 ${dscUsr}/aegir.sh &> /dev/null

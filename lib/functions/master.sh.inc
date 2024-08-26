@@ -647,16 +647,16 @@ php_cli_cron_update() {
   fi
   rm -f /var/spool/cron/crontabs/aegir
   if [ ! -e "/var/spool/cron/crontabs/aegir" ]; then
+    _DRUSH_HOSTING_DISPATCH_CMD="/usr/bin/env php /var/aegir/drush/drush.php @hostmaster hosting-dispatch;"
+    _DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force"
     echo -e \
-    "SHELL=/bin/sh\nPATH=/opt/php56/bin:/usr/bin\n*/1 * * * * \
-    /usr/bin/env php /var/aegir/drush/drush.php '@hostmaster' \
-    hosting-dispatch >/dev/null 2>&1" \
+    "SHELL=/bin/sh\n\nPATH=/opt/php74/bin:/usr/bin\n*/5 * * * * \
+    ${_DRUSH_HOSTING_DISPATCH_CMD} \
+    ${_DRUSH_HOSTING_TASKS_CMD}" \
     | fmt -su -w 2500 \
     | tee -a /var/spool/cron/crontabs/aegir >/dev/null 2>&1
   fi
   if [ -e "/var/spool/cron/crontabs/aegir" ]; then
-    sed -i "s/hosting-dispatch.*/hosting-dispatch \>\/dev\/null 2\>\&1/g" \
-      /var/spool/cron/crontabs/aegir &> /dev/null
     if [ "${_PHP_CLI_VERSION}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php83\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
         /var/spool/cron/crontabs/aegir &> /dev/null
