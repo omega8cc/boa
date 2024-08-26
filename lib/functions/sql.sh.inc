@@ -1,3 +1,22 @@
+
+check_mysql_version() {
+  _DBS_TEST=$(which mysql 2>&1)
+  if [ ! -z "${_DBS_TEST}" ]; then
+    _DB_SERVER_TEST=$(mysql -V 2>&1)
+  fi
+  if [[ "${_DB_SERVER_TEST}" =~ "Distrib 8.3." ]]; then
+    _DB_V=8.3
+  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 8.2." ]]; then
+    _DB_V=8.2
+  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 8.1." ]]; then
+    _DB_V=8.1
+  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 8.0." ]]; then
+    _DB_V=8.0
+  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
+    _DB_V=5.7
+  fi
+}
+
 #
 # Update for keyrings/percona.gpg
 if_sql_keyring_apt_update() {
@@ -726,7 +745,8 @@ forced_mysql_root_password_update() {
     _ROOT_SQL_PASWD=$(echo -n ${_ROOT_SQL_PASWD} | tr -d "\n" 2>&1)
     _ESC_PASS="${_ROOT_SQL_PASWD}"
   fi
-  if [ ! -z "${_ESC_PASS}" ]; then
+  check_mysql_version
+  if [ ! -z "${_DB_V}" ] && [ ! -z "${_ESC_PASS}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "DBEF: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
@@ -737,7 +757,7 @@ forced_mysql_root_password_update() {
     cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-${_X_SE}-${_X_VERSION}-${_NOW}
     mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
-    if [ "${_DB_SERIES}" = "5.7" ]; then
+    if [ "${_DB_V}" = "5.7" ]; then
       mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
     else
       mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${_ESC_PASS}';"
@@ -814,7 +834,7 @@ forced_mysql_root_password_update() {
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'::1' WITH GRANT OPTION;"
     mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_OWNIP}' WITH GRANT OPTION;"
-    if [ "${_DB_SERIES}" = "5.7" ]; then
+    if [ "${_DB_V}" = "5.7" ]; then
       mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
       mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
       mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH mysql_native_password BY '${_ESC_PASS}';"
@@ -1161,6 +1181,7 @@ sql_root_credentials_update() {
       init_sql_root_credentials
     fi
     if [ -e "/root/.my.pass.txt" ]; then
+      check_mysql_version
       myUsrTbl="mysql.user"
       if [ -z "${_ESC_PASS}" ]; then
         PXSWD=$(cat /root/.my.pass.txt 2>&1)
@@ -1171,6 +1192,8 @@ sql_root_credentials_update() {
       _ESC="*.*"
       if [ -z "${PASWD}" ]; then
         msg "CRIT: PASWD for ${_DB_SERVER} is empty!"
+      elif [ -z "${_DB_V}" ]; then
+        msg "CRIT: _DB_V for ${_DB_SERVER} is empty!"
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "DBEF: ${_DB_SERVER} PASWD ${PASWD}"
@@ -1180,7 +1203,7 @@ sql_root_credentials_update() {
         fi
         mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
-        if [ "${_DB_SERIES}" = "5.7" ]; then
+        if [ "${_DB_V}" = "5.7" ]; then
           mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
         else
           mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${PASWD}';"
@@ -1238,7 +1261,7 @@ sql_root_credentials_update() {
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'127.0.0.1' WITH GRANT OPTION;"
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'::1' WITH GRANT OPTION;"
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'${_MY_OWNIP}' WITH GRANT OPTION;"
-        if [ "${_DB_SERIES}" = "5.7" ]; then
+        if [ "${_DB_V}" = "5.7" ]; then
           mysql -u root -e "ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
           mysql -u root -e "ALTER USER 'root'@'::1' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"
           mysql -u root -e "ALTER USER 'root'@'${_MY_OWNIP}' IDENTIFIED WITH mysql_native_password BY '${PASWD}';"

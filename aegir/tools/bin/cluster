@@ -89,6 +89,24 @@ os_detection_minimal() {
   done
 }
 
+check_mysql_version() {
+  _DBS_TEST=$(which mysql 2>&1)
+  if [ ! -z "${_DBS_TEST}" ]; then
+    _DB_SERVER_TEST=$(mysql -V 2>&1)
+  fi
+  if [[ "${_DB_SERVER_TEST}" =~ "Distrib 8.3." ]]; then
+    _DB_V=8.3
+  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 8.2." ]]; then
+    _DB_V=8.2
+  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 8.1." ]]; then
+    _DB_V=8.1
+  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 8.0." ]]; then
+    _DB_V=8.0
+  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
+    _DB_V=5.7
+  fi
+}
+
 apt_clean_update() {
   #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
@@ -1638,15 +1656,16 @@ basedir  = /usr
   sleep 180
 
   echo "Adding grants for Galera sstuser on Percona Cluster..."
+  check_mysql_version
   for IP in "${_DB_NODE_IP[@]}"; do
     pxyCmd="CREATE USER IF NOT EXISTS 'root'@'${IP}';"
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
     pxyCmd="GRANT ALL ON *.* TO 'root'@'${IP}' WITH GRANT OPTION;"
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
-    if [ "${_DB_SERIES}" = "8.0" ] || [ "${_DB_SERIES}" = "8.3" ]; then
-      pxyCmd="ALTER USER 'root'@'${IP}' IDENTIFIED WITH caching_sha2_password BY '${_ROOT_SQL_PASWD}';"
-    else
+    if [ "${_DB_V}" = "5.7" ]; then
       pxyCmd="ALTER USER 'root'@'${IP}' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+    else
+      pxyCmd="ALTER USER 'root'@'${IP}' IDENTIFIED WITH caching_sha2_password BY '${_ROOT_SQL_PASWD}';"
     fi
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
     pxyCmd="CREATE USER IF NOT EXISTS 'sstuser'@'${IP}';"
@@ -1696,22 +1715,22 @@ basedir  = /usr
     ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
   pxyCmd="GRANT ALL ON *.* TO 'root'@'${_WEB_NODE_IP}' WITH GRANT OPTION;"
     ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
-  if [ "${_DB_SERIES}" = "8.0" ] || [ "${_DB_SERIES}" = "8.3" ]; then
-    pxyCmd="ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${_ROOT_SQL_PASWD}';"
-  else
+  if [ "${_DB_V}" = "5.7" ]; then
     pxyCmd="ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+  else
+    pxyCmd="ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${_ROOT_SQL_PASWD}';"
   fi
     ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
-  if [ "${_DB_SERIES}" = "8.0" ] || [ "${_DB_SERIES}" = "8.3" ]; then
-    pxyCmd="ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH caching_sha2_password BY '${_ROOT_SQL_PASWD}';"
-  else
+  if [ "${_DB_V}" = "5.7" ]; then
     pxyCmd="ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+  else
+    pxyCmd="ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH caching_sha2_password BY '${_ROOT_SQL_PASWD}';"
   fi
     ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
-  if [ "${_DB_SERIES}" = "8.0" ] || [ "${_DB_SERIES}" = "8.3" ]; then
-    pxyCmd="ALTER USER 'root'@'${_WEB_NODE_IP}' IDENTIFIED WITH caching_sha2_password BY '${_ROOT_SQL_PASWD}';"
-  else
+  if [ "${_DB_V}" = "5.7" ]; then
     pxyCmd="ALTER USER 'root'@'${_WEB_NODE_IP}' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+  else
+    pxyCmd="ALTER USER 'root'@'${_WEB_NODE_IP}' IDENTIFIED WITH caching_sha2_password BY '${_ROOT_SQL_PASWD}';"
   fi
     ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
 
