@@ -685,10 +685,15 @@ prep_for_install_db_sql() {
     mrun "apt-get remove mytop -y --purge --auto-remove -qq" 2> /dev/null
     rm -f /usr/bin/mytop
   fi
-  if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
-    || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
-    sed -i "s/.*innodb_force_recovery.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf &> /dev/null
-    wait
+
+  check_mysql_version
+
+  if [ "${_DB_SERIES}" = "${_DB_V}" ]; then
+    if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
+      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
+      sed -i "s/.*innodb_force_recovery.*/innodb_force_recovery = 3/g" /etc/mysql/my.cnf &> /dev/null
+      wait
+    fi
   fi
 
   ###SQLDEB="percona-server-server-${_DB_SERIES}"
