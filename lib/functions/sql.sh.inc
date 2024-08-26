@@ -188,6 +188,7 @@ innodb_log_file_size_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: innodb_log_file_size_update"
   fi
+  check_mysql_version
   msg "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
   _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
@@ -200,7 +201,19 @@ innodb_log_file_size_update() {
     mrun "sleep 1"
     mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
-    sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf &> /dev/null
+    if [ "${_DB_V}" = "5.7" ]; then
+      sed -i "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+      wait
+      sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+      wait
+      echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+    else
+      sed -i "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+      wait
+      sed -i "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+      wait
+      echo "innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+    fi
     mrun "bash /var/xdrago/move_sql.sh start" &> /dev/null
     wait
   else
@@ -214,7 +227,19 @@ innodb_log_file_size_update() {
       mrun "sleep 1"
       mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
-      sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf &> /dev/null
+      if [ "${_DB_V}" = "5.7" ]; then
+        sed -i "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+        wait
+        sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+        wait
+        echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+      else
+        sed -i "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+        wait
+        sed -i "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+        wait
+        echo "innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+      fi
       mrun "bash /var/xdrago/move_sql.sh start" &> /dev/null
       wait
     else
@@ -247,8 +272,13 @@ sql_conf_update() {
       if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
         if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
           _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
-          _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
-            ${vBs}/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW} 2>&1)
+          if [ "${_DB_V}" = "5.7" ]; then
+            _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
+              ${vBs}/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW} 2>&1)
+          else
+            _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_redo_log_capacity" \
+              ${vBs}/dragon/t/my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW} 2>&1)
+          fi
           if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
             _INNODB_LOG_FILE_SIZE_SAME=YES
           else
@@ -307,14 +337,30 @@ sql_conf_update() {
     if [ ! -z "${_INNODB_LOG_FILE_SIZE}" ]; then
       if [ "${_INNODB_LOG_FILE_SIZE}" -ge "50" ]; then
         _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
-        _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
-          /etc/mysql/my.cnf 2>&1)
+        if [ "${_DB_V}" = "5.7" ]; then
+          _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" \
+            /etc/mysql/my.cnf 2>&1)
+        else
+          _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_redo_log_capacity" \
+            /etc/mysql/my.cnf 2>&1)
+        fi
         if [[ "${_INNODB_LOG_FILE_SIZE_TEST}" =~ "= ${_INNODB_LOG_FILE_SIZE_MB}" ]]; then
           _DO_NOTHING=YES
         else
           if [ "${_INNODB_LOG_FILE_SIZE_SAME}" = "YES" ]; then
-            sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf &> /dev/null
+            if [ "${_DB_V}" = "5.7" ]; then
+              sed -i "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
               wait
+              sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+              wait
+              echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+            else
+              sed -i "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+              wait
+              sed -i "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+              wait
+              echo "innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+            fi
           else
             innodb_log_file_size_update
           fi

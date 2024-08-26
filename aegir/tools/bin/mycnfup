@@ -852,6 +852,7 @@ EOFMYSQL
 #
 # Update innodb_log_file_size.
 innodb_log_file_size_update() {
+  check_mysql_version
   echo "running ${tVr} `hostname` innodb_log_file_size_update procedure..."
   echo "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
@@ -862,9 +863,20 @@ innodb_log_file_size_update() {
     sleep 1
     mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
     mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
-    sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+    if [ "${_DB_V}" = "5.7" ]; then
+      sed -i "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+      wait
+      sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+      wait
+      echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+    else
+      sed -i "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+      wait
+      sed -i "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+      wait
+      echo "innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+    fi
     wait
-    echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
     start_sql "chain"
   else
     echo "INFO: Waiting 180s for ${_DB_SERVER} clean shutdown..."
@@ -876,9 +888,19 @@ innodb_log_file_size_update() {
       mrun "sleep 1"
       mv -f /var/lib/mysql/ib_logfile0 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
       mv -f /var/lib/mysql/ib_logfile1 ${vBs}/old-sql-ib-log-${_NOW}/ &> /dev/null
-      sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
-      wait
-      echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+      if [ "${_DB_V}" = "5.7" ]; then
+        sed -i "s/.*innodb_redo_log_capacity.*/#innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+        wait
+        sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+        wait
+        echo "innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+      else
+        sed -i "s/.*innodb_redo_log_capacity.*/innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+        wait
+        sed -i "s/.*innodb_log_file_size.*/#innodb_log_file_size    = ${_INNODB_LOG_FILE_SIZE_MB}/g" /etc/mysql/my.cnf
+        wait
+        echo "innodb_redo_log_capacity    = ${_INNODB_LOG_FILE_SIZE_MB}" > /root/.my.cluster_innodb_log_file_size.txt
+      fi
       start_sql "chain"
     else
       echo "WARN: ${_DB_SERVER} refused to stop, InnoDB log file size not updated"
