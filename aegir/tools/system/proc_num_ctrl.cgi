@@ -17,9 +17,9 @@ if (!-d "/run/mysqld") {
 }
 &cpu_count_load;
 &global_action;
+$sumar = 0;
 foreach $USER (sort keys %li_cnt) {
   print " $li_cnt{$USER}\t$USER\n";
-  push(@donetable," $li_cnt{$USER}\t$USER");
   $sumar = $sumar + $li_cnt{$USER};
   if ($USER eq "mysql") {$mysqlives = "YES"; $mysqlsumar = $li_cnt{$USER};}
   if ($USER eq "jetty7") {$jetty7lives = "YES"; $jetty7sumar = $li_cnt{$USER};}
@@ -64,6 +64,7 @@ foreach $X (sort keys %li_cnt) {
   if ($X =~ /php70/) {$php70lives = "YES";}
   if ($X =~ /php56/) {$php56lives = "YES";}
 }
+$convertsumar = 0;
 foreach $K (sort keys %li_cnt) {
   if ($K =~ /convert/) {$convertlives = "YES"; $convertsumar = $li_cnt{$K};}
 }
@@ -131,29 +132,13 @@ if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/run/mysql_restart_running.pid" 
   system("bash /var/xdrago/move_sql.sh");
 }
 
-if (-f "/root/.mstr.clstr.cnf" || -f "/root/.wbhd.clstr.cnf") {
-  if ($mysqlives && -f "/root/.remote.db.cnf") {
-    $mysqlrootpass=`cat /root/.my.pass.txt`;
-    chomp($mysqlrootpass);
-    system("mysql -u root -e \"SET GLOBAL innodb_max_dirty_pages_pct = 0\;\"");
-    system("mysql -u root -e \"SET GLOBAL innodb_change_buffering = \'none\'\;\"");
-    system("mysql -u root -e \"SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1\;\"");
-    system("mysql -u root -e \"SET GLOBAL innodb_io_capacity = 2000\;\"");
-    system("mysql -u root -e \"SET GLOBAL innodb_io_capacity_max = 4000\;\"");
-    system("mysql -u root -e \"SET GLOBAL innodb_buffer_pool_dump_pct = 100\;\"");
-    system("mysql -u root -e \"SET GLOBAL innodb_buffer_pool_dump_now = ON\;\"");
-    system("service mysql stop");
-  }
-}
-
-if (!-f "/root/.dbhd.clstr.cnf") {
+if (-f "/etc/init.d/redis-server") {
   if (!-d "/run/redis") {
     system("mkdir -p /run/redis");
     system("chown -R redis:redis /run/redis");
   }
-  if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis")) {
-    if (-f "/etc/init.d/redis-server") { system("service redis-server start"); }
-    elsif (-f "/etc/init.d/redis") { system("service redis start"); }
+  if (!$redissumar) {
+    system("service redis-server start");
   }
   local(@RSARR)=`grep -e redis_client_socket /data/conf/global.inc`;
   foreach $line (@RSARR) {
@@ -171,43 +156,26 @@ if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f 
   system("service postfix restart") if (!$postfixsumar && -f "/etc/init.d/postfix");
 }
 
-if (!$nginxsumar && -f "/etc/init.d/nginx" && !-f "/root/.dbhd.clstr.cnf") {
+if (!$nginxsumar && -f "/etc/init.d/nginx") {
   system("killall -9 nginx");
   system("service nginx start");
 }
 
-if ($nginxsumar) {
-  if (-f "/root/.dbhd.clstr.cnf") {
-    if (!-f "/root/.mstr.clstr.cnf" && !-f "/root/.wbhd.clstr.cnf") {
-      system("killall -9 nginx");
-    }
-  }
+if ($fpmsumar > 10 ) {
+  system("killall -9 php-fpm");
+  `echo "$timedate KILL FPM $fpmsumar" >> /var/xdrago/log/fpm.kill.log`;
 }
+system("service php83-fpm start") if ((!$php83lives || !$fpmsumar || !-f "/run/php83-fpm.pid") && -f "/etc/init.d/php83-fpm");
+system("service php82-fpm start") if ((!$php82lives || !$fpmsumar || !-f "/run/php82-fpm.pid") && -f "/etc/init.d/php82-fpm");
+system("service php81-fpm start") if ((!$php81lives || !$fpmsumar || !-f "/run/php81-fpm.pid") && -f "/etc/init.d/php81-fpm");
+system("service php80-fpm start") if ((!$php80lives || !$fpmsumar || !-f "/run/php80-fpm.pid") && -f "/etc/init.d/php80-fpm");
+system("service php74-fpm start") if ((!$php74lives || !$fpmsumar || !-f "/run/php74-fpm.pid") && -f "/etc/init.d/php74-fpm");
+system("service php73-fpm start") if ((!$php73lives || !$fpmsumar || !-f "/run/php73-fpm.pid") && -f "/etc/init.d/php73-fpm");
+system("service php72-fpm start") if ((!$php72lives || !$fpmsumar || !-f "/run/php72-fpm.pid") && -f "/etc/init.d/php72-fpm");
+system("service php71-fpm start") if ((!$php71lives || !$fpmsumar || !-f "/run/php71-fpm.pid") && -f "/etc/init.d/php71-fpm");
+system("service php70-fpm start") if ((!$php70lives || !$fpmsumar || !-f "/run/php70-fpm.pid") && -f "/etc/init.d/php70-fpm");
+system("service php56-fpm start") if ((!$php56lives || !$fpmsumar || !-f "/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
 
-if (-f "/root/.dbhd.clstr.cnf") {
-  if ($php83lives || $php82lives || $php81lives || $php80lives || $php74lives || $php73lives || $php72lives || $php71lives || $php70lives || $php56lives) {
-    system("killall -9 php-fpm");
-  }
-  if ($redislives) {
-    system("killall -9 redis-server");
-  }
-}
-else {
-  if ($fpmsumar > 10 ) {
-    system("killall -9 php-fpm");
-    `echo "$timedate KILL FPM $fpmsumar" >> /var/xdrago/log/fpm.kill.log`;
-  }
-    system("service php83-fpm start") if ((!$php83lives || !$fpmsumar || !-f "/run/php83-fpm.pid") && -f "/etc/init.d/php83-fpm");
-    system("service php82-fpm start") if ((!$php82lives || !$fpmsumar || !-f "/run/php82-fpm.pid") && -f "/etc/init.d/php82-fpm");
-    system("service php81-fpm start") if ((!$php81lives || !$fpmsumar || !-f "/run/php81-fpm.pid") && -f "/etc/init.d/php81-fpm");
-    system("service php80-fpm start") if ((!$php80lives || !$fpmsumar || !-f "/run/php80-fpm.pid") && -f "/etc/init.d/php80-fpm");
-    system("service php74-fpm start") if ((!$php74lives || !$fpmsumar || !-f "/run/php74-fpm.pid") && -f "/etc/init.d/php74-fpm");
-    system("service php73-fpm start") if ((!$php73lives || !$fpmsumar || !-f "/run/php73-fpm.pid") && -f "/etc/init.d/php73-fpm");
-    system("service php72-fpm start") if ((!$php72lives || !$fpmsumar || !-f "/run/php72-fpm.pid") && -f "/etc/init.d/php72-fpm");
-    system("service php71-fpm start") if ((!$php71lives || !$fpmsumar || !-f "/run/php71-fpm.pid") && -f "/etc/init.d/php71-fpm");
-    system("service php70-fpm start") if ((!$php70lives || !$fpmsumar || !-f "/run/php70-fpm.pid") && -f "/etc/init.d/php70-fpm");
-    system("service php56-fpm start") if ((!$php56lives || !$fpmsumar || !-f "/run/php56-fpm.pid") && -f "/etc/init.d/php56-fpm");
-}
 
 if (!-f "/root/.run-to-daedalus.cnf" && !-f "/root/.run-to-chimaera.cnf" && !-f "/root/.run-to-beowulf.cnf") {
   system("service jetty7 start") if (!$jetty7sumar && -f "/etc/init.d/jetty7");
@@ -225,16 +193,9 @@ $ftpdconf="/usr/local/etc/pure-ftpd.conf";
 $ftpdbind="/usr/local/sbin/pure-ftpd";
 
 if (-f "$ftpdbind" && -f "$ftpdconf") {
-  if (-f "/root/.mstr.clstr.cnf" || -f "/root/.wbhd.clstr.cnf" || -f "/root/.dbhd.clstr.cnf") {
-    if ($ftpsumar) {
-      system("killall -9 pure-ftpd");
-    }
-  }
-  else {
-    if (!$ftpsumar) {
-      if (-f "$ftpdinit") { system("$ftpdinit $ftpdconf"); }
-      else { system("$ftpdbind $ftpdconf"); }
-    }
+  if (!$ftpsumar) {
+    if (-f "$ftpdinit") { system("$ftpdinit $ftpdconf"); }
+    else { system("$ftpdbind $ftpdconf"); }
   }
 }
 
