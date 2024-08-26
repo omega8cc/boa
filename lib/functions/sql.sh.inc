@@ -628,7 +628,8 @@ prep_for_install_db_sql() {
     wait
   fi
 
-  SQLDEB="percona-server-server-${_DB_SERIES}"
+  ###SQLDEB="percona-server-server-${_DB_SERIES}"
+  SQLDEB="percona-server-server"
   SQLXTR="libdbi-perl"
 
   if [ "${_SQL_FORCE_REINSTALL}" = "YES" ] \
