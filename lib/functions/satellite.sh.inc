@@ -5359,7 +5359,7 @@ satellite_child_b_prepare_dirs_permissions() {
   if [ -e "${_ROOT}/aegir.sh" ]; then
     rm -f ${_ROOT}/aegir.sh
   fi
-  _DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force"
+  #_DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force"
   _DRUSH_HOSTING_DISPATCH_CMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php @hostmaster hosting-dispatch"
   touch ${_ROOT}/aegir.sh
   chmod 0700 ${_ROOT}/aegir.sh &> /dev/null

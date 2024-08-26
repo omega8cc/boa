@@ -352,7 +352,7 @@ php_cli_drush_update() {
     _T_CLI=/opt/php74/bin
   fi
   if [ -x "${_T_CLI}/php" ]; then
-    _DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force"
+    #_DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force"
     _DRUSH_HOSTING_DISPATCH_CMD="${_T_CLI}/php ${User}/tools/drush/drush.php @hostmaster hosting-dispatch"
     if [ -e "${User}/aegir.sh" ]; then
       rm -f ${User}/aegir.sh
