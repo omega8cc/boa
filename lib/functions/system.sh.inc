@@ -7268,6 +7268,15 @@ myquick_install_upgrade() {
       | cut -d"-" -f1 \
       | awk '{ print $1}' \
       | sed "s/[\,']//g" 2>&1)
+    if [ "${_DB_V}" = "Linux" ]; then
+      _DB_V=$(mysql -V 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f4 \
+        | awk '{ print $1}' \
+        | cut -d"-" -f1 \
+        | awk '{ print $1}' \
+        | sed "s/[\,']//g" 2>&1)
+    fi
     _MD_V=$(mydumper --version 2>&1 \
       | tr -d "\n" \
       | cut -d" " -f6 \

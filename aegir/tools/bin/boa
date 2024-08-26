@@ -1777,6 +1777,15 @@ display_info() {
       | cut -d"-" -f1 \
       | awk '{ print $1}' \
       | sed "s/[\,']//g" 2>&1)
+    if [ "${_DBV}" = "Linux" ]; then
+      _DBV=$(mysql -V 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f4 \
+        | awk '{ print $1}' \
+        | cut -d"-" -f1 \
+        | awk '{ print $1}' \
+        | sed "s/[\,']//g" 2>&1)
+    fi
     if [ -x "/usr/bin/proxysql" ]; then
       _PXY=$(proxysql --version 2>&1 \
         | tr -d "\n" \

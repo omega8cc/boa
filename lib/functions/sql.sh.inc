@@ -4,13 +4,13 @@ check_mysql_version() {
   if [ ! -z "${_DBS_TEST}" ]; then
     _DB_SERVER_TEST=$(mysql -V 2>&1)
   fi
-  if [[ "${_DB_SERVER_TEST}" =~ "Distrib 8.3." ]]; then
+  if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
     _DB_V=8.3
-  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 8.2." ]]; then
+  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.2." ]]; then
     _DB_V=8.2
-  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 8.1." ]]; then
+  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.1." ]]; then
     _DB_V=8.1
-  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 8.0." ]]; then
+  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
     _DB_V=8.0
   elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
     _DB_V=5.7
@@ -134,6 +134,15 @@ sql_strict_upgrade_path() {
       | cut -d"-" -f1 \
       | awk '{ print $1}' \
       | sed "s/[\,']//g" 2>&1)
+    if [ "${_NOW_DB_V}" = "Linux" ]; then
+      _NOW_DB_V=$(mysql -V 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f4 \
+        | awk '{ print $1}' \
+        | cut -d"-" -f1 \
+        | awk '{ print $1}' \
+        | sed "s/[\,']//g" 2>&1)
+    fi
   fi
   if [ ! -z "${_NOW_DB_V}" ]; then
     if [[ ! "${_NOW_DB_V}" =~ (^)"${_DB_SERIES}" ]]; then
@@ -587,6 +596,15 @@ prep_for_install_db_sql() {
       | cut -d"-" -f1 \
       | awk '{ print $1}' \
       | sed "s/[\,']//g" 2>&1)
+    if [ "${_NOW_DB_V}" = "Linux" ]; then
+      _NOW_DB_V=$(mysql -V 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f4 \
+        | awk '{ print $1}' \
+        | cut -d"-" -f1 \
+        | awk '{ print $1}' \
+        | sed "s/[\,']//g" 2>&1)
+    fi
   fi
   if [ -e "/usr/bin/php" ]; then
     _PHP_MYSQLND_TEST=$(/usr/bin/php -i | grep "with-mysqli=mysqlnd" 2>&1)

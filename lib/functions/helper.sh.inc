@@ -797,6 +797,15 @@ barracuda_log_update() {
     | cut -d"-" -f1 \
     | awk '{ print $1}' \
     | sed "s/[\,']//g" 2>&1)
+  if [ "${_LOG_DB_V}" = "Linux" ]; then
+    _LOG_DB_V=$(mysql -V 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f4 \
+      | awk '{ print $1}' \
+      | cut -d"-" -f1 \
+      | awk '{ print $1}' \
+      | sed "s/[\,']//g" 2>&1)
+  fi
   _BARRACUDA_VERSION_INFO="$(date 2>&1) / \
     $(lsb_release -ar 2>/dev/null | grep -i distributor | cut -s -f2 2>&1).$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1) \
     $(uname -m 2>&1) ${_VIRT_IS} / \
