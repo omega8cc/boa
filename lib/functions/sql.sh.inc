@@ -1019,6 +1019,8 @@ db_server_install() {
     if [ "${_SQL_UPGRADE}" = "YES" ]; then
       msg "INFO: Running ${_DB_SERVER} upgrade..."
       msg "WAIT: This may take a while, please wait..."
+      bash -c 'echo -e "#!/bin/bash\ntrue" > /bin/systemctl'
+      chmod +x /bin/systemctl
       if [ ! -e "/root/.proxy.cnf" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "INFO: Running ${_DB_SERVER} system tables check..."
@@ -1149,6 +1151,7 @@ db_server_install() {
           rm -f /etc/mysql/conf.d/mysqldump.cnf
         fi
       fi
+      [ -e "/bin/systemctl" ] && rm /bin/systemctl
       if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
         mrun "csf -e" &> /dev/null
         wait
