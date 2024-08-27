@@ -1024,8 +1024,6 @@ php_cli_drush_update() {
     fi
     touch ${dscUsr}/aegir.sh
     echo -e "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n \
-      \n${_DRUSH_HOSTING_TASKS_CMD} \
-      \nsleep 5
       \n${_DRUSH_HOSTING_DISPATCH_CMD} \
       \ntouch ${dscUsr}/${_USER}-task.done" \
       | fmt -su -w 2500 | tee -a ${dscUsr}/aegir.sh >/dev/null 2>&1

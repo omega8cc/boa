@@ -651,7 +651,6 @@ php_cli_cron_update() {
     _DRUSH_HOSTING_DISPATCH_CMD="/usr/bin/env php /var/aegir/drush/drush.php @hostmaster hosting-dispatch"
     echo -e \
     "\nSHELL=/bin/sh\nPATH=/opt/php74/bin:/usr/bin\n\n*/1 * * * * \
-    ${_DRUSH_HOSTING_TASKS_CMD} \
     ${_DRUSH_HOSTING_DISPATCH_CMD}" \
     | fmt -su -w 2500 \
     | tee -a /var/spool/cron/crontabs/aegir >/dev/null 2>&1
