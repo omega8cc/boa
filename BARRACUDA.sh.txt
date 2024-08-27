@@ -429,7 +429,6 @@ fi
 ### Upgrade MyQuick Tools and sync OpenSSL and cURL if needed
 ###
 if [ "${_STATUS}" = "UPGRADE" ] && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
-  myquick_install_upgrade
   ssl_install_src
   ssl_crypto_lib_fix
   curl_install_src
@@ -466,11 +465,12 @@ db_server_install
 
 
 ###
-### Finalize initial Percona server setup
+### Finalize initial Percona server and tools setup
 ###
 init_sql_root_credentials
 sql_root_credentials_update
 mytop_install
+myquick_install_upgrade
 
 
 ###
@@ -482,9 +482,6 @@ if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   nginx_mime_check_fix
   redis_install_upgrade
   lshell_install_upgrade
-  if [ "${_STATUS}" = "INIT" ]; then
-    myquick_install_upgrade
-  fi
   magick_install_upgrade
   php_install_deps
   php_libs_fix
