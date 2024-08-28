@@ -3504,7 +3504,7 @@ sshd_install_src() {
     mrun "service ssh restart" 2> /dev/null
   fi
   _SSH_FORCE_REINSTALL=NO
-  mrun "apt-get remove libselinux1-dev -y --purge --auto-remove -qq" 2> /dev/null
+  #mrun "apt-get remove libselinux1-dev -y --purge --auto-remove -qq" 2> /dev/null
 }
 
 #
