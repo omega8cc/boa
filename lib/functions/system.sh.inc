@@ -3440,7 +3440,7 @@ sshd_install_src() {
   if [ "${_SSH_INSTALL_REQUIRED}" = "YES" ]; then
     msg "INFO: Building OpenSSH ${_OPENSSH_VRN} from sources..."
     msg "WAIT: This may take a while, please wait..."
-    mrun "${_INITINS} libpam0g-dev libselinux1-dev" &> /dev/null
+    mrun "${_INITINS} libpam0g-dev" &> /dev/null
     if [ ! -e "/var/lib/sshd" ]; then
       mkdir -p /var/lib/sshd
       chmod -R 700 /var/lib/sshd/
@@ -3500,6 +3500,7 @@ sshd_install_src() {
     mrun "service ssh restart" 2> /dev/null
   fi
   _SSH_FORCE_REINSTALL=NO
+  mrun "apt-get remove libselinux1-dev -y --purge --auto-remove -qq" 2> /dev/null
 }
 
 #
