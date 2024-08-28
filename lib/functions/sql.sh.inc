@@ -957,9 +957,11 @@ forced_mysql_root_password_update() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "DAFT: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
-      mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
-      mysql -u root -e "SHOW GRANTS FOR 'root'@'::1';"
-      mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
+      if [ "${_SQL_DEBUG_MODE}" = "YES" ]; then
+        mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
+        mysql -u root -e "SHOW GRANTS FOR 'root'@'::1';"
+        mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
+      fi
     fi
     echo " "
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1399,8 +1401,11 @@ sql_root_credentials_update() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "DAFT: ${_DB_SERVER} PASWD ${PASWD}"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
-          mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
-          mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
+          if [ "${_SQL_DEBUG_MODE}" = "YES" ]; then
+            mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
+            mysql -u root -e "SHOW GRANTS FOR 'root'@'::1';"
+            mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
+          fi
         fi
         if [ "${_THIS_DB_HOST}" = "localhost" ] \
           || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
