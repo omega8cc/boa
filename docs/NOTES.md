@@ -16,11 +16,11 @@
 
 - **HVM**: HHVM Engine—once installed, use `~/static/control/hhvm.info` to enable per Octopus instance. (deprecated)
 - **BDD**: SQL Buddy DB Manager (deprecated)
-- **BND**: Bind9 DNS Server
+- **BND**: Bind9 DNS Server (deprecated)
 - **BZR**: Bazaar
 - **CGP**: Collectd Graph Panel (deprecated)
 - **CHV**: Chive DB Manager (deprecated)
-- **FMG**: FFmpeg support
+- **FMG**: FFmpeg support (deprecated)
 - **SR1**: Apache Solr 1 with Jetty 7 (deprecated)
 - **SR3**: Apache Solr 3 with Jetty 8 (deprecated)
 - **SR4**: Apache Solr 4 with Jetty 9
