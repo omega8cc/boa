@@ -5247,11 +5247,11 @@ basic_packages_install_on_init() {
   fi
   apt_clean_update
   if [ ! -e "/var/aegir/drush" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
-    mrun "apt-get remove unscd -y --purge --auto-remove -qq" 2> /dev/null
-    mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
-    if [ -e "/usr/share/dbus-1" ]; then
-      rm -f /usr/share/dbus-1/*/*freedesktop*
-    fi
+#     mrun "apt-get remove unscd -y --purge --auto-remove -qq" 2> /dev/null
+#     mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
+#     if [ -e "/usr/share/dbus-1" ]; then
+#       rm -f /usr/share/dbus-1/*/*freedesktop*
+#     fi
     userdel -r debian &> /dev/null
   fi
   usermod -aG users _apt &> /dev/null
@@ -5775,10 +5775,10 @@ if_major_os_upgrade() {
       kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
     fi
     apt_clean_update_no_releaseinfo_change
-    mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
-    if [ -e "/usr/share/dbus-1" ]; then
-      rm -f /usr/share/dbus-1/*/*freedesktop*
-    fi
+#     mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
+#     if [ -e "/usr/share/dbus-1" ]; then
+#       rm -f /usr/share/dbus-1/*/*freedesktop*
+#     fi
     mrun "apt-get remove collectd -y --purge --auto-remove -qq" 2> /dev/null
     mrun "apt-get remove libc-client2007b-dev -y --purge --auto-remove -qq" 2> /dev/null
     ###
@@ -6054,10 +6054,10 @@ if_major_os_upgrade() {
     mrun "apt-get install libc-client2007e-dev ${dstUpArg}" 2> /dev/null
     ###
     ### Make sure that org.freedesktop.systemd1 was not atempted by dbus.
-    mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
-    if [ -e "/usr/share/dbus-1" ]; then
-      rm -f /usr/share/dbus-1/*/*freedesktop*
-    fi
+#     mrun "apt-get remove dbus -y --purge --auto-remove -qq" 2> /dev/null
+#     if [ -e "/usr/share/dbus-1" ]; then
+#       rm -f /usr/share/dbus-1/*/*freedesktop*
+#     fi
     ###
     ### Fix any broken packages.
     apt_clean_update_no_releaseinfo_change

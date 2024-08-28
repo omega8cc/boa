@@ -2596,11 +2596,11 @@ setup() {
   apt_clean_update
 
   if [ ! -e "/var/aegir/drush" ] && [ ! -e "/var/xdrago/manage_solr_config.sh" ]; then
-    apt-get remove unscd -y --purge --auto-remove -qq &> /dev/null
-    apt-get remove dbus -y --purge --auto-remove -qq &> /dev/null
-    if [ -e "/usr/share/dbus-1" ]; then
-      rm -f /usr/share/dbus-1/*/*freedesktop*
-    fi
+#     apt-get remove unscd -y --purge --auto-remove -qq &> /dev/null
+#     apt-get remove dbus -y --purge --auto-remove -qq &> /dev/null
+#     if [ -e "/usr/share/dbus-1" ]; then
+#       rm -f /usr/share/dbus-1/*/*freedesktop*
+#     fi
     userdel -r debian &> /dev/null
     sed -i "s/^#startup_message off/startup_message off/g" /etc/screenrc &> /dev/null
   fi
