@@ -2440,15 +2440,22 @@ mytop_install() {
   fi
   _MYTOP_REINSTALL=NO
   _MYTOP_TEST=$(mytop -b 2>&1)
-  if [[ "${_MYTOP_TEST}" =~ "you may need to install" ]]; then
+  if [[ "${_MYTOP_TEST}" =~ "cannot open shared object file" ]] \
+    || [[ "${_MYTOP_TEST}" =~ "you may need to install" ]]; then
     _MYTOP_REINSTALL=YES
   fi
   if [ -e "/usr/bin/mysql" ]; then
     if [ ! -e "/usr/local/bin/mytop" ] || [ "${_MYTOP_REINSTALL}" = "YES" ]; then
       msg "INFO: Building MyTop from sources..."
+      check_mysql_version
       apt_clean_update
+      mrun "${_INSTAPP} libperl-dev" 2> /dev/null
       mrun "${_INSTAPP} cpanminus" 2> /dev/null
-      mrun "cpanm DBD::mysql@4.050" 2> /dev/null
+      if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
+        mrun "cpanm cpanm DBD::mysql" 2> /dev/null
+      else
+        mrun "cpanm DBD::mysql@4.050" 2> /dev/null
+      fi
       cd /var/opt
       rm -rf git*
       get_dev_src "mytop-1.6.tar.gz"
