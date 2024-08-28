@@ -67,24 +67,48 @@ if_sql_keyring_apt_update() {
 
   [ ! -z "${_SQL_NEW_OS_CODE}" ] && _SQL_OS_CODE=${_SQL_NEW_OS_CODE}
 
-  if [ "${_DB_SERVER}" = "Percona" ]; then
-    _DB_SRC="repo.percona.com"
-    percNodot="${_DB_SERIES//./}"
-    _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
-      /etc/apt/sources.list.d/percona-release.list 2>&1)
-    _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} \
-      /etc/apt/sources.list.d/percona-release.list 2>&1)
-    _SQL_DEB_SRC_TEST_C=$(grep ps-${percNodot} \
-      /etc/apt/sources.list.d/percona-release.list 2>&1)
-  fi
-  if [[ "${_SQL_DEB_SRC_TEST_A}" =~ "${_DB_SRC}" ]] \
-    && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_SQL_OS_CODE}" ]] \
-    && [[ "${_SQL_DEB_SRC_TEST_C}" =~ "ps-${percNodot}" ]] \
-    && [ -e "/etc/apt/keyrings/percona.gpg" ] \
-    && [ -e "/etc/apt/preferences.d/00percona.pref" ]; then
-    _SQL_DEB_SRC_UPDATE=NO
+  if [ "${_DB_V}" = "8.3" ] || [ "${_DB_SERIES}" = "8.3" ]; then
+    if [ "${_DB_SERVER}" = "Percona" ]; then
+      _DB_SRC="repo.percona.com"
+      percNodot="${_DB_SERIES//./}"
+      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
+        /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} \
+        /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_C=$(grep ps-${percNodot} \
+        /etc/apt/sources.list.d/percona-release.list 2>&1)
+    fi
+    if [[ "${_SQL_DEB_SRC_TEST_A}" =~ "${_DB_SRC}" ]] \
+      && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_SQL_OS_CODE}" ]] \
+      && [ -e "/etc/apt/keyrings/percona.gpg" ] \
+      && [ -e "/etc/apt/preferences.d/00percona.pref" ]; then
+      _SQL_DEB_SRC_UPDATE=NO
+    else
+      _SQL_DEB_SRC_UPDATE=YES
+    fi
+    if [[ "${_SQL_DEB_SRC_TEST_C}" =~ "ps-${percNodot}" ]]; then
+      _SQL_DEB_SRC_UPDATE=YES
+    fi
   else
-    _SQL_DEB_SRC_UPDATE=YES
+    if [ "${_DB_SERVER}" = "Percona" ]; then
+      _DB_SRC="repo.percona.com"
+      percNodot="${_DB_SERIES//./}"
+      _SQL_DEB_SRC_TEST_A=$(grep ${_DB_SRC} \
+        /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_B=$(grep ${_SQL_OS_CODE} \
+        /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_C=$(grep ps-${percNodot} \
+        /etc/apt/sources.list.d/percona-release.list 2>&1)
+    fi
+    if [[ "${_SQL_DEB_SRC_TEST_A}" =~ "${_DB_SRC}" ]] \
+      && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_SQL_OS_CODE}" ]] \
+      && [[ "${_SQL_DEB_SRC_TEST_C}" =~ "ps-${percNodot}" ]] \
+      && [ -e "/etc/apt/keyrings/percona.gpg" ] \
+      && [ -e "/etc/apt/preferences.d/00percona.pref" ]; then
+      _SQL_DEB_SRC_UPDATE=NO
+    else
+      _SQL_DEB_SRC_UPDATE=YES
+    fi
   fi
 
   if [ "${_DB_SERVER}" = "Percona" ] && [ "${_SQL_DEB_SRC_UPDATE}" = "YES" ]; then
@@ -93,7 +117,11 @@ if_sql_keyring_apt_update() {
     rm -f /etc/apt/sources.list.d/percona*
     rm -f /etc/apt/sources.list.d/xtrabackup*
     percList="/etc/apt/sources.list.d/percona-release.list"
-    percRepo="${_DB_SRC}/ps-${percNodot}/apt"
+    if [ "${_DB_V}" = "8.3" ] || [ "${_DB_SERIES}" = "8.3" ]; then
+      percRepo="${_DB_SRC}/apt"
+    else
+      percRepo="${_DB_SRC}/ps-${percNodot}/apt"
+    fi
     percTools="${_DB_SRC}/tools/apt"
     echo "## Percona Server APT Repository" > ${percList}
     if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
@@ -714,8 +742,11 @@ prep_for_install_db_sql() {
     fi
   fi
 
-  ###SQLDEB="percona-server-server-${_DB_SERIES}"
-  SQLDEB="percona-server-server"
+  if [ "${_DB_SERIES}" = "8.3" ]; then
+    SQLDEB="percona-server-server-${_DB_SERIES}"
+  else
+    SQLDEB="percona-server-server"
+  fi
   SQLXTR="libdbi-perl"
 
   if [ "${_DB_SERIES}" = "${_DB_V}" ]; then
