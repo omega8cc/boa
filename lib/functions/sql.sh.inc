@@ -103,14 +103,16 @@ if_sql_keyring_apt_update() {
       echo "deb http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
       echo "deb-src http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
     fi
-    echo " " >> ${percList}
-    echo "## Percona Tools APT Repository" >> ${percList}
-    if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
-      echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percTools} ${_SQL_OS_CODE} main" >> ${percList}
-      echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percTools} ${_SQL_OS_CODE} main" >> ${percList}
-    else
-      echo "deb http://${percTools} ${_SQL_OS_CODE} main" >> ${percList}
-      echo "deb-src http://${percTools} ${_SQL_OS_CODE} main" >> ${percList}
+    if [ "${_SQL_DEBUG_MODE}" = "YES" ]; then
+      echo " " >> ${percList}
+      echo "## Percona Tools APT Repository" >> ${percList}
+      if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
+        echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percTools} ${_SQL_OS_CODE} main" >> ${percList}
+        echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percTools} ${_SQL_OS_CODE} main" >> ${percList}
+      else
+        echo "deb http://${percTools} ${_SQL_OS_CODE} main" >> ${percList}
+        echo "deb-src http://${percTools} ${_SQL_OS_CODE} main" >> ${percList}
+      fi
     fi
     chmod 644 ${percList}
     echo -e 'Package: *\nPin: release o=Percona Development Team\nPin-Priority: 1001' > /etc/apt/preferences.d/00percona.pref
