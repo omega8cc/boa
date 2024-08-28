@@ -77,9 +77,12 @@ if_sql_keyring_apt_update() {
         /etc/apt/sources.list.d/percona-release.list 2>&1)
       _SQL_DEB_SRC_TEST_C=$(grep ps-${percNodot} \
         /etc/apt/sources.list.d/percona-release.list 2>&1)
+      _SQL_DEB_SRC_TEST_D=$(grep ps-8x-innovation \
+        /etc/apt/sources.list.d/percona-release.list 2>&1)
     fi
     if [[ "${_SQL_DEB_SRC_TEST_A}" =~ "${_DB_SRC}" ]] \
       && [[ "${_SQL_DEB_SRC_TEST_B}" =~ "${_SQL_OS_CODE}" ]] \
+      && [[ "${_SQL_DEB_SRC_TEST_D}" =~ "ps-8x-innovation" ]] \
       && [ -e "/etc/apt/keyrings/percona.gpg" ] \
       && [ -e "/etc/apt/preferences.d/00percona.pref" ]; then
       _SQL_DEB_SRC_UPDATE=NO
@@ -118,7 +121,7 @@ if_sql_keyring_apt_update() {
     rm -f /etc/apt/sources.list.d/xtrabackup*
     percList="/etc/apt/sources.list.d/percona-release.list"
     if [ "${_DB_V}" = "8.3" ] || [ "${_DB_SERIES}" = "8.3" ]; then
-      percRepo="${_DB_SRC}/apt"
+      percRepo="${_DB_SRC}/ps-8x-innovation/apt"
     else
       percRepo="${_DB_SRC}/ps-${percNodot}/apt"
     fi
