@@ -3393,6 +3393,7 @@ sshd_install_src() {
     | tr -d "\n" \
     | cut -d" " -f3 \
     | awk '{ print $1}' 2>&1)
+  _SSH_IF_SELINUX=$(ldd /usr/sbin/sshd | grep selinux 2>&1)
   if [ -e "/usr/etc/sshd_config" ]; then
     _SSH_FORCE_REINSTALL=YES
     _OLD_SYSCONFDIR="/usr/etc"
@@ -3416,6 +3417,12 @@ sshd_install_src() {
   if [ "${_SSH_SSL_ITD}" != "${_SSL_ITD}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: OpenSSL in SSH is ${_SSH_SSL_ITD}, rebuild to ${_SSL_ITD} required"
+    fi
+    _SSH_INSTALL_REQUIRED=YES
+  fi
+  if [[ "${_SSH_IF_SELINUX}" =~ "libselinux" ]]
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: SSH was built --with-selinux, rebuild --without-selinux required"
     fi
     _SSH_INSTALL_REQUIRED=YES
   fi
@@ -3451,7 +3458,7 @@ sshd_install_src() {
       --sysconfdir=${_SYSCONFDIR} \
       --prefix=${_PREFIX_SSH} \
       --without-openssl-header-check \
-      --with-selinux \
+      --without-selinux \
       --with-md5-passwords \
       --with-pam &> /dev/null
     mrun "make -j $(nproc)" 2> /dev/null
