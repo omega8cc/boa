@@ -2437,7 +2437,8 @@ mytop_install() {
   _MYTOP_REINSTALL=NO
   _MYTOP_TEST=$(mytop -b 2>&1)
   if [[ "${_MYTOP_TEST}" =~ "cannot open shared object file" ]] \
-    || [[ "${_MYTOP_TEST}" =~ "you may need to install" ]]; then
+    || [[ "${_MYTOP_TEST}" =~ "you may need to install" ]] \
+    || [[ "${_MYTOP_TEST}" =~ "failed" ]]; then
     _MYTOP_REINSTALL=YES
   fi
   if [ -e "/usr/bin/mysql" ]; then
@@ -2448,9 +2449,12 @@ mytop_install() {
       mrun "${_INSTAPP} libperl-dev" 2> /dev/null
       mrun "${_INSTAPP} cpanminus" 2> /dev/null
       if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
-        mrun "cpanm cpanm DBD::mysql" 2> /dev/null
+        mrun "cpanm DBD::mysql" 2> /dev/null
+        mrun "cpanm DBI" 2> /dev/null
+        mrun "cpanm Term::ReadKey" 2> /dev/null
       else
         mrun "cpanm DBD::mysql@4.050" 2> /dev/null
+        mrun "cpanm Term::ReadKey" 2> /dev/null
       fi
       cd /var/opt
       rm -rf git*
