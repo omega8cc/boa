@@ -2486,10 +2486,10 @@ if_update_boa_key_tools_only() {
     fi
   fi
   if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.conf" ]; then
-    _CC_SRC_TEST=$(grep CC_SRC /etc/csf/csf.conf 2>&1)
-    echo _CC_SRC_TEST 1 is ${_CC_SRC_TEST}
-    if [[ ! "${_CC_SRC_TEST}" =~ "CC_SRC =.*2" ]]; then
-      echo _CC_SRC_TEST 2 is ${_CC_SRC_TEST}
+    _CC_SRC_TEST=$(grep 'CC_SRC\ =' /etc/csf/csf.conf 2>&1)
+    echo _CC_SRC_TEST 1 is "${_CC_SRC_TEST}"
+    if [[ ! ${_CC_SRC_TEST} =~ CC_SRC\ =\ \"2\" ]]; then
+      echo _CC_SRC_TEST 2 is "${_CC_SRC_TEST}"
       service clean-boa-env start &> /dev/null
       wait
       if_fix_iptables_symlinks
