@@ -636,6 +636,20 @@ update_agents() {
 
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -e "/var/aegir/drush" ] \
+    && [ ! -e "${pthLog}/mysql_cleanup.ctrl.hf01.${_X_SE}.pid" ]; then
+    mv -f /var/xdrago/mysql_cleanup.sh /var/xdrago/mysql_cleanup.sh.old
+    curl ${crlGet} "${urlHmr}/tools/system/mysql_cleanup.sh" -o /var/xdrago/mysql_cleanup.sh
+    if [ -e "/var/xdrago/mysql_cleanup.sh" ]; then
+      chmod 700 /var/xdrago/mysql_cleanup.sh
+      chown root:root /var/xdrago/mysql_cleanup.sh
+      touch ${pthLog}/mysql_cleanup.ctrl.hf01.${_X_SE}.pid
+    else
+      mv -f /var/xdrago/mysql_cleanup.sh.old /var/xdrago/mysql_cleanup.sh
+    fi
+  fi
+
+  if [ -e "/var/xdrago/manage_solr_config.sh" ] \
+    && [ -e "/var/aegir/drush" ] \
     && [ ! -e "${pthLog}/mysql_cluster_backup.ctrl.${tRee}.${_X_SE}.pid" ]; then
     mv -f /var/xdrago/mysql_cluster_backup.sh /var/xdrago/mysql_cluster_backup.sh.old
     curl ${crlGet} "${urlHmr}/tools/system/mysql_cluster_backup.sh" -o /var/xdrago/mysql_cluster_backup.sh
