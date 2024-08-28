@@ -126,6 +126,8 @@ if_sql_keyring_apt_update() {
       percRepo="${_DB_SRC}/ps-${percNodot}/apt"
     fi
     percTools="${_DB_SRC}/tools/apt"
+    percTelem="${_DB_SRC}/telemetry/apt"
+    percPrelr="${_DB_SRC}/prel/apt"
     echo "## Percona Server APT Repository" > ${percList}
     if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
       echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percRepo} ${_SQL_OS_CODE} main" >> ${percList}
@@ -143,6 +145,24 @@ if_sql_keyring_apt_update() {
       else
         echo "deb http://${percTools} ${_SQL_OS_CODE} main" >> ${percList}
         echo "deb-src http://${percTools} ${_SQL_OS_CODE} main" >> ${percList}
+      fi
+      echo " " >> ${percList}
+      echo "## Percona Telemetry APT Repository" >> ${percList}
+      if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
+        echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percTelem} ${_SQL_OS_CODE} main" >> ${percList}
+        echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percTelem} ${_SQL_OS_CODE} main" >> ${percList}
+      else
+        echo "deb http://${percTelem} ${_SQL_OS_CODE} main" >> ${percList}
+        echo "deb-src http://${percTelem} ${_SQL_OS_CODE} main" >> ${percList}
+      fi
+      echo " " >> ${percList}
+      echo "## Percona Release APT Repository" >> ${percList}
+      if [ -e "/etc/apt/keyrings/percona.gpg" ]; then
+        echo "deb [signed-by=/etc/apt/keyrings/percona.gpg] http://${percPrelr} ${_SQL_OS_CODE} main" >> ${percList}
+        echo "deb-src [signed-by=/etc/apt/keyrings/percona.gpg] http://${percPrelr} ${_SQL_OS_CODE} main" >> ${percList}
+      else
+        echo "deb http://${percPrelr} ${_SQL_OS_CODE} main" >> ${percList}
+        echo "deb-src http://${percPrelr} ${_SQL_OS_CODE} main" >> ${percList}
       fi
     fi
     chmod 644 ${percList}
