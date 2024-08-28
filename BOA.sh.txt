@@ -111,6 +111,7 @@ apt_clean_update() {
   ${_APT_UPDATE} -qq &> /dev/null
 }
 
+_CHECK_HOST=$(uname -n 2>&1)
 if_hosted_sys() {
   if [ -e "/root/.host8.cnf" ] \
     || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
@@ -730,10 +731,8 @@ update_agents() {
     fi
   fi
 
-  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
     _MY_USAGE=YES
   else
     _MY_USAGE=NO
@@ -1024,73 +1023,75 @@ update_agents() {
     && [ -d "/data/u" ] \
     && [ ! -e "${pthLog}/fpm-cli.ctrl.${tRee}.${_X_SE}.pid" ]; then
     usrGroup=users
-    cp -a /var/backups/off-run/run* /var/xdrago/
+    [ -e "/var/backups/off-run/" ] && cp -a /var/backups/off-run/run* /var/xdrago/ &> /dev/null
     for pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       tUsr=
       tUsr=$(echo ${pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
-      if [ ! -e "${pthSysUsr}/static/control/MyQuick.info" ] \
-        && [ ! -e "${pthSysUsr}/static/control/MyClassic.info" ]; then
-        echo ON > ${pthSysUsr}/static/control/MyQuick.info
-      fi
-      if [ ! -e "${pthSysUsr}/static/control/.disFastTrack.pid" ]; then
-        rm -f ${pthSysUsr}/static/control/FastTrack.info
-        touch ${pthSysUsr}/static/control/.disFastTrack.pid
-      fi
-      if [ ! -e "${pthSysUsr}/static/control/FastTrack.info" ] \
-        && [ ! -e "${pthSysUsr}/static/control/ClassicTrack.info" ]; then
-        echo ON > ${pthSysUsr}/static/control/ClassicTrack.info
-      fi
-      if [ -e "${pthSysUsr}/static/control/fpm.info" ] \
-        && [ ! -e "${pthSysUsr}/static/control/cli.info" ]; then
-        cp ${pthSysUsr}/static/control/fpm.info ${pthSysUsr}/static/control/cli.info
-      fi
-      if [ -e "${pthSysUsr}/log/CANCELLED" ] \
-        || [ -e "${pthSysUsr}/log/proxied.pid" ] \
-        || [ ! -e "${pthSysUsr}/static/control/cli.info" ]; then
-        if [ -e "/var/xdrago/run-${tUsr}" ] \
-          && [ -e "/var/aegir/drush" ]; then
-          if [ ! -e "/var/backups/off-run" ]; then
-            mkdir -p /var/backups/off-run/
-          fi
-          mv -f /var/xdrago/run-${tUsr} /var/backups/off-run/
+      if [ "${tUsr}" != "arch" ]; then
+        if [ ! -e "${pthSysUsr}/static/control/MyQuick.info" ] \
+          && [ ! -e "${pthSysUsr}/static/control/MyClassic.info" ]; then
+          echo ON > ${pthSysUsr}/static/control/MyQuick.info
         fi
-      else
-        dscUsr="/data/disk/${tUsr}"
-        ngxCnf="${dscUsr}/config/includes/nginx_vhost_common.conf"
-        _NGINX_CNF_TEST=$(grep "foobaroff" ${ngxCnf} 2>&1)
-        if [[ "${_NGINX_CNF_TEST}" =~ "foobaroff" ]]; then
-          _DO_NOTHING=YES
+        if [ ! -e "${pthSysUsr}/static/control/.disFastTrack.pid" ]; then
+          rm -f ${pthSysUsr}/static/control/FastTrack.info
+          touch ${pthSysUsr}/static/control/.disFastTrack.pid
+        fi
+        if [ ! -e "${pthSysUsr}/static/control/FastTrack.info" ] \
+          && [ ! -e "${pthSysUsr}/static/control/ClassicTrack.info" ]; then
+          echo ON > ${pthSysUsr}/static/control/ClassicTrack.info
+        fi
+        if [ -e "${pthSysUsr}/static/control/fpm.info" ] \
+          && [ ! -e "${pthSysUsr}/static/control/cli.info" ]; then
+          cp ${pthSysUsr}/static/control/fpm.info ${pthSysUsr}/static/control/cli.info
+        fi
+        if [ -e "${pthSysUsr}/log/CANCELLED" ] \
+          || [ -e "${pthSysUsr}/log/proxied.pid" ] \
+          || [ ! -e "${pthSysUsr}/static/control/cli.info" ]; then
+          if [ -e "/var/xdrago/run-${tUsr}" ] \
+            && [ -e "/var/aegir/drush" ]; then
+            if [ ! -e "/var/backups/off-run" ]; then
+              mkdir -p /var/backups/off-run/
+            fi
+            mv -f /var/xdrago/run-${tUsr} /var/backups/off-run/
+          fi
         else
-          sed -i "s/args.*q=/args ~* \"foobaroff=/g" ${ngxCnf}
-        fi
-        if [ ! -e "${dscUsr}/static/control/fpm.info" ] \
-          && [ -e "/var/aegir/drush" ]; then
-          echo 5.6 > ${dscUsr}/static/control/fpm.info
-          chown ${tUsr}.ftp:${usrGroup} ${dscUsr}/static/control/fpm.info
-          chmod 0644 ${dscUsr}/static/control/fpm.info
-        fi
-        if [ ! -e "${dscUsr}/static/control/cli.info" ] \
-          && [ -e "/var/aegir/drush" ]; then
-          if [ -e "${dscUsr}/static/control/fpm.info" ]; then
-            cp -af ${dscUsr}/static/control/fpm.info ${dscUsr}/static/control/cli.info
+          dscUsr="/data/disk/${tUsr}"
+          ngxCnf="${dscUsr}/config/includes/nginx_vhost_common.conf"
+          _NGINX_CNF_TEST=$(grep "foobaroff" ${ngxCnf} 2>&1)
+          if [[ "${_NGINX_CNF_TEST}" =~ "foobaroff" ]]; then
+            _DO_NOTHING=YES
           else
-            echo 5.6 > ${dscUsr}/static/control/cli.info
-            chown ${tUsr}.ftp:${usrGroup} ${dscUsr}/static/control/cli.info
-            chmod 0644 ${dscUsr}/static/control/cli.info
+            sed -i "s/args.*q=/args ~* \"foobaroff=/g" ${ngxCnf}
           fi
-        fi
-        if [ ! -e "${dscUsr}/static/control/.ctrl.${tRee}.${_X_SE}.pid" ] \
-          && [ -e "/home/${tUsr}.ftp/clients" ]; then
-          mkdir -p ${dscUsr}/static/control
-          chmod 755 ${dscUsr}/static/control
-          if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
-            cp -af /var/xdrago/conf/control-readme.txt \
-              ${dscUsr}/static/control/README.txt &> /dev/null
-            chmod 0644 ${dscUsr}/static/control/README.txt
+          if [ ! -e "${dscUsr}/static/control/fpm.info" ] \
+            && [ -e "/var/aegir/drush" ]; then
+            echo 8.1 > ${dscUsr}/static/control/fpm.info
+            chown ${tUsr}.ftp:${usrGroup} ${dscUsr}/static/control/fpm.info
+            chmod 0644 ${dscUsr}/static/control/fpm.info
           fi
-          chown -R ${tUsr}.ftp:${usrGroup} ${dscUsr}/static/control
-          rm -f ${dscUsr}/static/control/.ctrl.*
-          echo OK > ${dscUsr}/static/control/.ctrl.${tRee}.${_X_SE}.pid
+          if [ ! -e "${dscUsr}/static/control/cli.info" ] \
+            && [ -e "/var/aegir/drush" ]; then
+            if [ -e "${dscUsr}/static/control/fpm.info" ]; then
+              cp -af ${dscUsr}/static/control/fpm.info ${dscUsr}/static/control/cli.info
+            else
+              echo 8.1 > ${dscUsr}/static/control/cli.info
+              chown ${tUsr}.ftp:${usrGroup} ${dscUsr}/static/control/cli.info
+              chmod 0644 ${dscUsr}/static/control/cli.info
+            fi
+          fi
+          if [ ! -e "${dscUsr}/static/control/.ctrl.${tRee}.${_X_SE}.pid" ] \
+            && [ -e "/home/${tUsr}.ftp/clients" ]; then
+            mkdir -p ${dscUsr}/static/control
+            chmod 755 ${dscUsr}/static/control
+            if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
+              cp -af /var/xdrago/conf/control-readme.txt \
+                ${dscUsr}/static/control/README.txt &> /dev/null
+              chmod 0644 ${dscUsr}/static/control/README.txt
+            fi
+            chown -R ${tUsr}.ftp:${usrGroup} ${dscUsr}/static/control
+            rm -f ${dscUsr}/static/control/.ctrl.*
+            echo OK > ${dscUsr}/static/control/.ctrl.${tRee}.${_X_SE}.pid
+          fi
         fi
       fi
     done
@@ -2485,10 +2486,10 @@ if_update_boa_key_tools_only() {
     fi
   fi
   if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.conf" ]; then
-    _CC_SRC_TEST=$(grep CC_SRC /etc/csf/csf.conf 2>&1)
-    echo _CC_SRC_TEST 1 is ${_CC_SRC_TEST}
-    if [[ ! "${_CC_SRC_TEST}" =~ "CC_SRC =.*2" ]]; then
-      echo _CC_SRC_TEST 2 is ${_CC_SRC_TEST}
+    _CC_SRC_TEST=$(grep 'CC_SRC\ =' /etc/csf/csf.conf 2>&1)
+    echo _CC_SRC_TEST 1 is "${_CC_SRC_TEST}"
+    if [[ ! ${_CC_SRC_TEST} =~ CC_SRC\ =\ \"2\" ]]; then
+      echo _CC_SRC_TEST 2 is "${_CC_SRC_TEST}"
       service clean-boa-env start &> /dev/null
       wait
       if_fix_iptables_symlinks
