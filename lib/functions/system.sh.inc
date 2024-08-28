@@ -8230,15 +8230,18 @@ initd_update() {
       mrun "service nginx quietupgrade" 2> /dev/null
       _DB_SERVER_TEST=$(mysql -V 2>&1)
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Running ${_DB_SERVER} system tables (2) upgrade..."
-        fi
-        rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-        if [ -x "/usr/bin/mysql_upgrade" ]; then
-          _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-          _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-          mrun "mysql_upgrade -u root --force" &> /dev/null
-          mrun "mysql_upgrade -u root --force" &> /dev/null
+        check_mysql_version
+        if [ "${_DB_V}" = "5.7" ]; then
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: Running ${_DB_SERVER} system tables (2) upgrade..."
+          fi
+          rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
+          if [ -x "/usr/bin/mysql_upgrade" ]; then
+            _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+            _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+            mrun "mysql_upgrade -u root --force" &> /dev/null
+            mrun "mysql_upgrade -u root --force" &> /dev/null
+          fi
         fi
       fi
       myCnf="/etc/mysql/my.cnf"
@@ -8309,7 +8312,8 @@ initd_update() {
           wait
           msg "INFO: ${_DB_SERVER} server restart completed"
         fi
-        if [ "${_DB_SERIES}" = "5.7" ]; then
+        check_mysql_version
+        if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
           _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
           if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
             _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)

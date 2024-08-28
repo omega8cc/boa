@@ -783,13 +783,14 @@ install_with_aptitude_sql() {
     _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
     _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
     mrun "mysqlcheck -u root -A --auto-repair --silent" &> /dev/null
-    mrun "mysql_upgrade -u root --force" &> /dev/null
-    if [ "${_DB_SERIES}" = "5.7" ]; then
+    check_mysql_version
+    if [ "${_DB_V}" = "5.7" ]; then
+      mrun "mysql_upgrade -u root --force" &> /dev/null
       mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;" &> /dev/null
       mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;" &> /dev/null
       mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN max_statement_time;" &> /dev/null
+      mrun "mysql_upgrade -u root --force" &> /dev/null
     fi
-    mrun "mysql_upgrade -u root --force" &> /dev/null
   fi
   usermod -aG users mysql
 }
@@ -1031,14 +1032,17 @@ db_server_install() {
       mrun "update-rc.d mysql defaults" 2> /dev/null
       sql_conf_update
       if [ ! -e "/root/.proxy.cnf" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Running ${_DB_SERVER} system tables check..."
-        fi
-        rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-        if [ -x "/usr/bin/mysql_upgrade" ]; then
-          _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-          _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-          mrun "mysql_upgrade -u root --force" &> /dev/null
+        check_mysql_version
+        if [ "${_DB_V}" = "5.7" ]; then
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: Running ${_DB_SERVER} system tables check..."
+          fi
+          rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
+          if [ -x "/usr/bin/mysql_upgrade" ]; then
+            _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+            _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+            mrun "mysql_upgrade -u root --force" &> /dev/null
+          fi
         fi
       fi
       st_runner "apt-get autoclean -y" &> /dev/null
@@ -1068,15 +1072,18 @@ db_server_install() {
       mrun "sleep 8"
       _DB_SERVER_TEST=$(mysql -V 2>&1)
       if [[ "${_DB_SERVER_TEST}" =~ "Distrib ${_DB_SERIES}." ]]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Running ${_DB_SERVER} system tables (1) upgrade..."
-        fi
-        rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-        if [ -x "/usr/bin/mysql_upgrade" ]; then
-          _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-          _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-          mrun "mysql_upgrade -u root --force" &> /dev/null
-          mrun "mysql_upgrade -u root --force" &> /dev/null
+        check_mysql_version
+        if [ "${_DB_V}" = "5.7" ]; then
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: Running ${_DB_SERVER} system tables (1) upgrade..."
+          fi
+          rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
+          if [ -x "/usr/bin/mysql_upgrade" ]; then
+            _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
+            _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
+            mrun "mysql_upgrade -u root --force" &> /dev/null
+            mrun "mysql_upgrade -u root --force" &> /dev/null
+          fi
         fi
       fi
       tune_memory_limits
@@ -1134,7 +1141,8 @@ db_server_install() {
           msg "INFO: ${_DB_SERVER} server restart completed"
           myRstrd=YES
         fi
-        if [ "${_DB_SERIES}" = "5.7" ]; then
+        check_mysql_version
+        if [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; then
           _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
           if [[ "${_CHECK_EXISTS}" =~ "0" ]]; then
             _CHECK_REPAIR=$(mysql -u root -e "CREATE USER IF NOT EXISTS 'drandom_2test'@'localhost';" 2>&1)
@@ -1143,6 +1151,7 @@ db_server_install() {
             fi
             if [[ "${_CHECK_REPAIR}" =~ "corrupted" ]]; then
               mysqlcheck -u root -A --auto-repair --silent
+              check_mysql_version
               mysql_upgrade -u root --force
               mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN default_role;"
               mysql -u root -e "ALTER TABLE mysql.user DROP COLUMN is_role;"

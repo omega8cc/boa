@@ -480,7 +480,10 @@ aegir_master_upgrade() {
     true
     msg "INFO: Running Aegir Master Instance upgrade"
     if [ -x "/usr/bin/mysql_upgrade" ]; then
-      mrun "mysql_upgrade -u root --force" &> /dev/null
+      check_mysql_version
+      if [ "${_DB_V}" = "5.7" ]; then
+        mrun "mysql_upgrade -u root --force" &> /dev/null
+      fi
     fi
     if [ -e "/var/aegir/use_proxysql.txt" ]; then
       _SQL_CONNECT=127.0.0.1
