@@ -7271,6 +7271,12 @@ install_myquick_deb() {
   if [ -e "/var/opt/mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb" ]; then
     mrun "dpkg -i mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb" 2> /dev/null
   fi
+  if [ -x "/usr/bin/mydumper" ]; then
+    [ -e "/usr/local/bin/mydumper" ] && rm -f /usr/local/bin/mydumper
+    [ -e "/usr/local/bin/myloader" ] && rm -f /usr/local/bin/myloader
+    ln -sfn /usr/bin/mydumper /usr/local/bin/mydumper
+    ln -sfn /usr/bin/myloader /usr/local/bin/myloader
+  fi
 }
 
 myquick_install_upgrade() {
