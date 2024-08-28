@@ -20,6 +20,10 @@ check_root() {
 }
 check_root
 
+if [ -e "/root/.disable_mysql_cleanup.cnf" ]; then
+  exit 0
+fi
+
 if [ -e "/root/.proxy.cnf" ]; then
   echo "Ooops, that is a proxy server, we do not run this task on sql proxy"
   exit 0
