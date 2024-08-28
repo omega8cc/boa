@@ -756,9 +756,15 @@ install_with_aptitude_sql() {
   fi
   if [ ! -e "/usr/local/bin/mytop" ] && [ -e "/usr/bin/mysql" ]; then
     msg "INFO: Building MyTop from sources..."
+    check_mysql_version
     apt_clean_update
+    mrun "${_INSTAPP} libperl-dev" 2> /dev/null
     mrun "${_INSTAPP} cpanminus" 2> /dev/null
-    mrun "cpanm DBD::mysql@4.050" 2> /dev/null
+    if [ "${_DB_V}" != "5.7" ] || [ "${_SQL_UPGRADE}" = "YES" ]; then
+      mrun "cpanm cpanm DBD::mysql" 2> /dev/null
+    else
+      mrun "cpanm DBD::mysql@4.050" 2> /dev/null
+    fi
     cd /var/opt
     rm -rf git*
     get_dev_src "mytop-1.6.tar.gz"
