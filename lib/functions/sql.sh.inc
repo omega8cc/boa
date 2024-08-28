@@ -911,8 +911,13 @@ forced_mysql_root_password_update() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "DBEF: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
-      mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
-      mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
+      if [ "${_SQL_DEBUG_MODE}" = "YES" ]; then
+        mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
+        mysql -u root -e "SHOW GRANTS FOR 'root'@'::1';"
+        if [ "${_DB_V}" = "5.7" ]; then
+          mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
+        fi
+      fi
     fi
     cp -af /root/.my.cnf /root/.my.cnf-pre-${_X_SE}-${_X_VERSION}-${_NOW}
     cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-${_X_SE}-${_X_VERSION}-${_NOW}
@@ -1012,7 +1017,9 @@ forced_mysql_root_password_update() {
       if [ "${_SQL_DEBUG_MODE}" = "YES" ]; then
         mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
         mysql -u root -e "SHOW GRANTS FOR 'root'@'::1';"
-        mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
+        if [ "${_DB_V}" = "5.7" ]; then
+          mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
+        fi
       fi
     fi
     echo " "
@@ -1376,8 +1383,13 @@ sql_root_credentials_update() {
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           msg "DBEF: ${_DB_SERVER} PASWD ${PASWD}"
           mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
-          mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
-          mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
+          if [ "${_SQL_DEBUG_MODE}" = "YES" ]; then
+            mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
+            mysql -u root -e "SHOW GRANTS FOR 'root'@'::1';"
+            if [ "${_DB_V}" = "5.7" ]; then
+              mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
+            fi
+          fi
         fi
         mysql -u root -e "CREATE USER IF NOT EXISTS 'root'@'localhost';"
         mysql -u root -e "GRANT ALL ON ${_ESC} TO 'root'@'localhost' WITH GRANT OPTION;"
@@ -1456,7 +1468,9 @@ sql_root_credentials_update() {
           if [ "${_SQL_DEBUG_MODE}" = "YES" ]; then
             mysql -u root -e "SHOW GRANTS FOR 'root'@'127.0.0.1';"
             mysql -u root -e "SHOW GRANTS FOR 'root'@'::1';"
-            mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
+            if [ "${_DB_V}" = "5.7" ]; then
+              mysql -u root -e "SELECT host,user,authentication_string FROM mysql.user;"
+            fi
           fi
         fi
         if [ "${_THIS_DB_HOST}" = "localhost" ] \
