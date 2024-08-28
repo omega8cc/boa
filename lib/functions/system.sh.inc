@@ -2339,8 +2339,6 @@ barracuda_cnf() {
         _DBS_VRN="${_PERCONA_5_7_VRN}"
       elif [ "${_DB_SERIES}" = "8.0" ]; then
         _DBS_VRN="${_PERCONA_8_0_VRN}"
-      elif [ "${_DB_SERIES}" = "8.1" ]; then
-        _DBS_VRN="${_PERCONA_8_1_VRN}"
       elif [ "${_DB_SERIES}" = "8.3" ]; then
         _DBS_VRN="${_PERCONA_8_3_VRN}"
       else

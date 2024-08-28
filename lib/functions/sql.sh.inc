@@ -6,10 +6,6 @@ check_mysql_version() {
   fi
   if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
     _DB_V=8.3
-  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.2." ]]; then
-    _DB_V=8.2
-  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.1." ]]; then
-    _DB_V=8.1
   elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
     _DB_V=8.0
   elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then

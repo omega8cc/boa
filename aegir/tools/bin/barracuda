@@ -765,12 +765,6 @@ up_action() {
       || [ -e "/root/.percona.8.3.cnf" ]; then
       sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.3/g"               ${vBs}/${filIncB}
       sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.3/g"                       ${barCnf}
-    elif [ "${sql}" = "percona-8.1" ] \
-      || [ "${rkey}" = "percona-8.1" ] \
-      || [ "${debug}" = "percona-8.1" ] \
-      || [ -e "/root/.percona.8.1.cnf" ]; then
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.1/g"               ${vBs}/${filIncB}
-      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.1/g"                       ${barCnf}
     elif [ "${sql}" = "percona-8.0" ] \
       || [ "${rkey}" = "percona-8.0" ] \
       || [ "${debug}" = "percona-8.0" ] \
@@ -1621,7 +1615,7 @@ proceed() {
       php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.1 by default (php-all)
       php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
-      percona-8.0 <-- specify Percona version to use (8.3, 8.1, 8.0, 5.7)
+      percona-8.0 <-- specify Percona version to use (8.3, 8.0, 5.7)
 
   See docs/UPGRADE.md for more details.
 
