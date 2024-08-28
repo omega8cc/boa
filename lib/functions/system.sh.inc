@@ -3420,7 +3420,7 @@ sshd_install_src() {
     fi
     _SSH_INSTALL_REQUIRED=YES
   fi
-  if [[ "${_SSH_IF_SELINUX}" =~ "libselinux" ]]
+  if [[ "${_SSH_IF_SELINUX}" =~ "libselinux" ]]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: SSH was built --with-selinux, rebuild --without-selinux required"
     fi
