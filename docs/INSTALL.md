@@ -77,9 +77,11 @@
 
    If you wish to later define your own set of installed PHP versions, you can do so by modifying variables in the `/root/.barracuda.cnf` file, where you can find `_PHP_MULTI_INSTALL`, `_PHP_CLI_VERSION`, and `_PHP_FPM_VERSION` -- note that the `_PHP_SINGLE_INSTALL` variable must be set empty to not override other related variables. However, you also need to add dummy entries for versions not installed and not used yet to any octopus instance `~/static/control/multi-fpm.info` file, because otherwise `barracuda` will ignore versions not used yet and will automatically remove them from `_PHP_MULTI_INSTALL` on upgrade. These dummy entries should look like this:
 
-   `place.holder1.dont.remove 7.3`
-   `place.holder2.dont.remove 8.0`
-   `place.holder3.dont.remove 7.1`
+   ```sh
+   place.holder1.dont.remove 7.3
+   place.holder2.dont.remove 8.0
+   place.holder3.dont.remove 7.1
+   ```
 
    The same logic protects existing and used versions from being removed even if they are not listed in the `_PHP_MULTI_INSTALL` variable (they will be re-added automatically if needed).
 
