@@ -4030,6 +4030,43 @@ ssl_install_src() {
 }
 
 #
+# Check and move disallowed versions
+check_and_move() {
+  local dir=$1
+
+  # Determine the name of the backup subdirectory based on the source directory
+  local backup_dir="${backLegBase}$(echo "${dir}" | tr '/' '_')"
+
+  # Find any libcurl.so files in the directory, excluding the allowed version and those without a complete version number
+  found_versions=$(find "${dir}" -maxdepth 1 -type f -name "libcurl.so.*" ! -name "${allowedFile}" | grep -E "libcurl\.so\.[0-9]+\.[0-9]+\.[0-9]+$")
+
+  if [ -n "${found_versions}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "CLNP: Moving the following disallowed versions from ${dir} to ${backup_dir}:"
+      msg "CLNP: ${found_versions}"
+    fi
+
+    # Create the backup directory if it doesn't exist
+    mkdir -p "${backup_dir}"
+
+    # Move each found version to the backup directory
+    for file in ${found_versions}; do
+      mv -f "${file}" "${backup_dir}/"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "CLNP: Moved ${file} to ${backup_dir}/"
+      fi
+    done
+
+    # Set the ifAnyCleaned variable to true since we moved files
+    ifAnyCleaned=YES
+  else
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "CLNP: Only the allowed version (${allowedFile}) is present in ${dir}"
+    fi
+  fi
+}
+
+#
 # Install cURL from sources.
 curl_install_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
