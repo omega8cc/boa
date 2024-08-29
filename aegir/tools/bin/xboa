@@ -264,8 +264,13 @@ EOFMYSQL
               _THIS_DB_PORT=6033
             fi
             [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL4 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
-            _MYQUICK_STATUS=
             if [ -x "/usr/local/bin/mydumper" ]; then
+              _MYQUICK_ITD=$(mydumper -V 2>&1 \
+                | tr -d "\n" \
+                | tr -d "," \
+                | tr -d "v" \
+                | cut -d" " -f2 \
+                | awk '{ print $1}' 2>&1)
               _DB_V=$(mysql -V 2>&1 \
                 | tr -d "\n" \
                 | cut -d" " -f6 \
@@ -289,11 +294,8 @@ EOFMYSQL
                 | cut -d"-" -f1 \
                 | awk '{ print $1}' \
                 | sed "s/[\,']//g" 2>&1)
-              if [ "${_DB_V}" = "${_MD_V}" ]; then
-                _MYQUICK_STATUS=OK
-                if [ "${_DEBUG_MODE}" = "YES" ]; then
-                  echo "INFO: Installed MyQuick for ${_MD_V} (${_DB_V}) looks fine"
-                fi
+              if [ "${_DEBUG_MODE}" = "YES" ]; then
+                echo "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V})"
               fi
             fi
             myloader \
@@ -334,8 +336,13 @@ EOFMYSQL
         ### run_drush8_nosilent_cmd "variable-set --always-set site_readonly 1"
         ###
         echo "INFO: site ${Dom} readonlymode module on ${oct} enabled"
-        _MYQUICK_STATUS=
         if [ -x "/usr/local/bin/mydumper" ]; then
+          _MYQUICK_ITD=$(mydumper -V 2>&1 \
+            | tr -d "\n" \
+            | tr -d "," \
+            | tr -d "v" \
+            | cut -d" " -f2 \
+            | awk '{ print $1}' 2>&1)
           _DB_V=$(mysql -V 2>&1 \
             | tr -d "\n" \
             | cut -d" " -f6 \
@@ -359,11 +366,8 @@ EOFMYSQL
             | cut -d"-" -f1 \
             | awk '{ print $1}' \
             | sed "s/[\,']//g" 2>&1)
-          if [ "${_DB_V}" = "${_MD_V}" ]; then
-            _MYQUICK_STATUS=OK
-            if [ "${_DEBUG_MODE}" = "YES" ]; then
-              echo "INFO: Installed MyQuick for ${_MD_V} (${_DB_V}) looks fine"
-            fi
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            echo "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V})"
           fi
         fi
         mkdir -p ${_USR}/src/${_DBN}
