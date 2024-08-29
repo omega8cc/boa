@@ -4072,6 +4072,7 @@ curl_install_src() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: curl_install_src"
   fi
+
   if ! command -v lsb_release &> /dev/null; then
     apt-get update -qq &> /dev/null
     apt-get install lsb-release -y -qq &> /dev/null
@@ -4079,32 +4080,33 @@ curl_install_src() {
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
-  if [ ! -e "/root/.use.curl.from.packages.cnf" ]; then
-    if [ "${_OS_CODE}" = "daedalus" ] \
-      || [ "${_OS_CODE}" = "chimaera" ] \
-      || [ "${_OS_CODE}" = "beowulf" ] \
-      || [ "${_OS_CODE}" = "bookworm" ] \
-      || [ "${_OS_CODE}" = "bullseye" ] \
-      || [ "${_OS_CODE}" = "buster" ]; then
-      _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
-      if [ -e "/root/.install.modern.openssl.cnf" ]; then
-        _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
-      fi
-    elif [ "${_OS_CODE}" = "stretch" ]; then
-      if [ -e "/root/.install.modern.openssl.cnf" ]; then
-        chattr -i /root/.install.modern.openssl.cnf
-        rm -f /root/.install.modern.openssl.cnf
-      fi
-      _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
-    else
-      if [ -e "/root/.install.modern.openssl.cnf" ]; then
-        chattr -i /root/.install.modern.openssl.cnf
-        rm -f /root/.install.modern.openssl.cnf
-      fi
-      _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
+
+  if [ "${_OS_CODE}" = "daedalus" ] \
+    || [ "${_OS_CODE}" = "chimaera" ] \
+    || [ "${_OS_CODE}" = "beowulf" ] \
+    || [ "${_OS_CODE}" = "bookworm" ] \
+    || [ "${_OS_CODE}" = "bullseye" ] \
+    || [ "${_OS_CODE}" = "buster" ]; then
+    _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
+    if [ -e "/root/.install.modern.openssl.cnf" ]; then
+      _OPENSSL_NEW_VRN="${_OPENSSL_MODERN_VRN}"
     fi
+  elif [ "${_OS_CODE}" = "stretch" ]; then
+    if [ -e "/root/.install.modern.openssl.cnf" ]; then
+      chattr -i /root/.install.modern.openssl.cnf
+      rm -f /root/.install.modern.openssl.cnf
+    fi
+    _OPENSSL_NEW_VRN="${_OPENSSL_EOL_VRN}"
+  else
+    if [ -e "/root/.install.modern.openssl.cnf" ]; then
+      chattr -i /root/.install.modern.openssl.cnf
+      rm -f /root/.install.modern.openssl.cnf
+    fi
+    _OPENSSL_NEW_VRN="${_OPENSSL_LEGACY_VRN}"
   fi
+
   _CURL_INSTALL_REQUIRED=NO
+
   _CURL_GET_DPKG=$(dpkg --get-selections | grep curl | grep 'hold$' 2>&1)
   _CURL_ITD=$(curl --version 2>&1 \
     | tr -d "\n" \
@@ -4122,55 +4124,76 @@ curl_install_src() {
     | awk '{ print $1}' \
     | cut -d"/" -f2 \
     | awk '{ print $1}' 2>&1)
+
   if [ "${_CURL_ITD}" != "${_CURL_VRN}" ]; then
     _CURL_INSTALL_REQUIRED=YES
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Installed cURL/lib ${_CURL_ITD}/${_CURL_LIB_ITD}, upgrade required"
     fi
   fi
+
   if [ "${_CURL_LIB_ITD}" != "${_CURL_VRN}" ]; then
     _CURL_INSTALL_REQUIRED=YES
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Installed cURL/lib ${_CURL_ITD}/${_CURL_LIB_ITD}, rebuild required"
     fi
   fi
+
   if [ "${_CURL_SSL_ITD}" != "${_OPENSSL_NEW_VRN}" ]; then
     _CURL_INSTALL_REQUIRED=YES
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: cURL ${_CURL_ITD} with OpenSSL ${_CURL_SSL_ITD}, rebuild forced"
     fi
   fi
+
   _BROKEN_CURL_TEST=$(curl --version 2>&1)
   if [[ "${_BROKEN_CURL_TEST}" =~ "libcurl.so.4" ]]; then
     _CURL_INSTALL_REQUIRED=YES
-    touch /root/.use.curl.from.packages.cnf
-    chattr +i /root/.use.curl.from.packages.cnf
-    sed -i "s/.*ssl.*//g" /etc/ld.so.conf.d/libc.conf
-    sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
-    grep lib /etc/ld.so.conf.d/libc.conf
-    ldconfig 2> /dev/null
-    [ -e "/root/.sorted.multi.php.cnf" ] && rm -f /root/.sorted.multi.php.cnf
-    msg "INFO: libcurl is broken, cURL re-install from packages required"
   fi
+
   if [ "${_PHP_BIN_BROKEN}" = "YES" ] && [ -z "${_CURL_ALREADY_REBUILT}" ]; then
     _CURL_INSTALL_REQUIRED=YES
   fi
+
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     _CURL_INSTALL_REQUIRED=YES
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "INFO: Installed cURL version ${_CURL_ITD} but re-install forced"
     fi
   fi
-  if [ -e "/usr/lib/x86_64-linux-gnu/libcurl.so.4.4.0" ] \
-    || [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ] \
-    || [ ! -L "/usr/lib/libcurl.so.4" ]; then
-    _CURL_INSTALL_REQUIRED=YES
+
+  if [ "${_OS_CODE}" != "jessie" ] && [ "${_OS_CODE}" != "stretch" ]; then
+
+    # Target version
+    allowedFile="libcurl.so.4.8.0"
+
+    # Directories to check
+    dirsToClean=("/usr/lib" "/usr/local/lib" "/usr/lib/x86_64-linux-gnu")
+
+    # Backup base directory
+    backLegBase="/var/backups/legacy-libcurl-${_X_VERSION}-${_NOW}"
+
+    # Variable to track if any files were moved
+    ifAnyCleaned=NO
+
+    # Iterate over the directories and apply the check_and_move function
+    for dir in "${dirsToClean[@]}"; do
+      check_and_move "${dir}"
+    done
+
+    # Export the ifAnyCleaned variable for later use
+    export ifAnyCleaned
+
   fi
-  if [ -e "/usr/lib/x86_64-linux-gnu/libcurl.so.4.3.0" ] \
-    || [ ! -L "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ] \
-    || [ ! -L "/usr/lib/libcurl.so.4" ]; then
+
+  if [ "${ifAnyCleaned}" = "YES" ] || [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     _CURL_INSTALL_REQUIRED=YES
+    mkdir -p /var/backups/legacy-libcurl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.so* /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.la /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.a /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
   fi
+
   if [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     ###--------------------###
     if [ -e "/root/.use.curl.from.packages.cnf" ]; then
@@ -4254,50 +4277,36 @@ curl_install_src() {
         msg "OOPS: cURL ${_CURL_VRN} could not be extracted..."
       fi
       if [ -x "/usr/local/bin/curl" ] \
-        && [ -e "/usr/local/lib/libcurl.so" ] \
-        && [ -e "/usr/local/include/curl/header.h" ] \
         && [ ! -e "/var/xdrago/log/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid" ]; then
-        _X86_64_TEST=$(uname -m 2>&1)
-        if [ "${_X86_64_TEST}" = "x86_64" ]; then
-          if [ "${_DEBUG_MODE}" = "YES" ]; then
-            msg "INFO: Updating cURL ${_CURL_VRN} libs symlinks..."
-          fi
-          mkdir -p /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}
-          mv -f /usr/lib/x86_64-linux-gnu/libcurl.so* /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
-          mv -f /usr/lib/x86_64-linux-gnu/libcurl.la /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
-          mv -f /usr/lib/x86_64-linux-gnu/libcurl.a /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
-          if [ -e "/usr/include/x86_64-linux-gnu/curl" ] \
-            && [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
-            mv -f /usr/include/x86_64-linux-gnu/curl /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/
-          fi
-          if [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
-            ln -sfn /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl
-          fi
-          if [ -e "/usr/local/lib/libcurl.so.4.8.0" ]; then
-            ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/x86_64-linux-gnu/libcurl.so.4.8.0
-            ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/libcurl.so.4.8.0
-          fi
-          if [ -e "/usr/local/lib/libcurl.so" ]; then
-            ln -sfn /usr/local/lib/libcurl.so /usr/lib/x86_64-linux-gnu/libcurl.so
-            ln -sfn /usr/local/lib/libcurl.so /usr/lib/libcurl.so
-          fi
-          if [ -e "/usr/local/lib/libcurl.so.4" ]; then
-            ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/x86_64-linux-gnu/libcurl.so.4
-            ln -sfn /usr/local/lib/libcurl.so.4 /usr/lib/libcurl.so.4
-          fi
-          if [ -e "/usr/local/lib/libcurl.la" ]; then
-            ln -sfn /usr/local/lib/libcurl.la /usr/lib/x86_64-linux-gnu/libcurl.la
-            ln -sfn /usr/local/lib/libcurl.la /usr/lib/libcurl.la
-          fi
-          if [ -e "/usr/local/lib/libcurl.a" ]; then
-            ln -sfn /usr/local/lib/libcurl.a /usr/lib/x86_64-linux-gnu/libcurl.a
-            ln -sfn /usr/local/lib/libcurl.a /usr/lib/libcurl.a
-          fi
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          msg "INFO: Updating cURL ${_CURL_VRN} libs symlinks..."
         fi
-        mrun "apt-get remove curl ${aptYesUnth}" 2> /dev/null
+        if [ -e "/usr/local/lib/libcurl.so.4.8.0" ]; then
+          ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/libcurl.so
+          ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/libcurl.so.4
+          ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/libcurl.so.4.8.0
+          ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/x86_64-linux-gnu/libcurl.so
+          ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/x86_64-linux-gnu/libcurl.so.4
+          ln -sfn /usr/local/lib/libcurl.so.4.8.0 /usr/lib/x86_64-linux-gnu/libcurl.so.4.8.0
+        fi
+        if [ -e "/usr/local/lib/libcurl.a" ]; then
+          ln -sfn /usr/local/lib/libcurl.a /usr/lib/x86_64-linux-gnu/libcurl.a
+          ln -sfn /usr/local/lib/libcurl.a /usr/lib/libcurl.a
+        fi
+        if [ -e "/usr/local/lib/libcurl.la" ]; then
+          ln -sfn /usr/local/lib/libcurl.la /usr/lib/x86_64-linux-gnu/libcurl.la
+          ln -sfn /usr/local/lib/libcurl.la /usr/lib/libcurl.la
+        fi
+      fi
+      ldconfig 2> /dev/null
+      touch /var/xdrago/log/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid &> /dev/null
+      _CURL_ALREADY_REBUILT=YES
+      if [ -d "/usr/local/include/curl" ] \
+        && [ -d "/usr/include/x86_64-linux-gnu/curl" ] \
+        && [ ! -L "/usr/include/x86_64-linux-gnu/curl" ]; then
+        mrun "apt-get remove libcurl4-openssl-dev -y --purge --auto-remove -qq" 2> /dev/null
+        ln -sfn /usr/local/include/curl /usr/include/x86_64-linux-gnu/curl
         ldconfig 2> /dev/null
-        touch /var/xdrago/log/.curl_libs_fix_${_CURL_VRN}-${_X_VERSION}-${_NOW}.pid &> /dev/null
-        _CURL_ALREADY_REBUILT=YES
       fi
     fi
   else
