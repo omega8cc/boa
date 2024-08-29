@@ -68,7 +68,6 @@ _SMALLCORE7_V=7.101.1
 _SMALLCORE9_V=9.5.11
 _SPINNER=NO
 _T_BUILD=SRC
-_F_TIME=$(date 2>&1)
 _USRG=users
 _WEBG=www-data
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
@@ -76,6 +75,8 @@ SHELL=/bin/bash
 if [ -n "${STY+x}" ]; then
   _SPINNER=NO
 fi
+
+export _F_TIME=$(date 2>&1)
 
 
 ###
