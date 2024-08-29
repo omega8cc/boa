@@ -780,10 +780,10 @@ prep_for_install_db_sql() {
 
   if [ "${_DB_SERIES}" = "5.7" ]; then
     SQLADD="libperconaserverclient20 libperconaserverclient20-dev"
-  elif [ "${_DB_SERIES}" = "8.3" ]; then
-    SQLADD="libperconaserverclient22 libperconaserverclient22-dev"
-  else
+  elif [ "${_DB_SERIES}" = "8.0" ]; then
     SQLADD="libperconaserverclient21 libperconaserverclient21-dev"
+  else
+    SQLADD="libperconaserverclient22 libperconaserverclient22-dev"
   fi
 }
 

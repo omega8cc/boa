@@ -7219,10 +7219,10 @@ install_myquick_src() {
     if [ "${_DB_SERVER}" = "Percona" ]; then
       if [ "${_DB_SERIES}" = "5.7" ]; then
         mrun "${_INSTAPP} libperconaserverclient20 libperconaserverclient20-dev" 2> /dev/null
-      elif [ "${_DB_SERIES}" = "8.3" ]; then
-        mrun "${_INSTAPP} libperconaserverclient22 libperconaserverclient22-dev" 2> /dev/null
-      else
+      elif [ "${_DB_SERIES}" = "8.0" ]; then
         mrun "${_INSTAPP} libperconaserverclient21 libperconaserverclient21-dev" 2> /dev/null
+      else
+        mrun "${_INSTAPP} libperconaserverclient22 libperconaserverclient22-dev" 2> /dev/null
       fi
     fi
     ldconfig 2> /dev/null
