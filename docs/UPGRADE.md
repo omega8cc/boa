@@ -147,4 +147,4 @@ The same logic protects existing and used versions from being removed even if th
 
 ## NOTE on Ægir Platforms
 
-Since BOA no longer installs all bundled Ægir platforms during Octopus installation and upgrades, you will need to add some keywords to `~/static/control/platforms.info` and run the Octopus upgrade to have these platforms added as explained in the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs) you can find in the file `~/control/README.txt` within your Octopus account.
+Since BOA no longer installs all bundled Ægir platforms during Octopus installation and upgrades, you will need to add some keywords to `~/static/control/platforms.info` and run the Octopus upgrade to have these platforms added as explained in the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs) you can find in the file `~/static/control/README.txt` within your Octopus account.

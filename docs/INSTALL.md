@@ -124,7 +124,7 @@
      boa in-lts public server.mydomain.org my@email system
      ```
 
-   **NOTE:** Since BOA no longer installs all bundled Ægir platforms during initial system installation, you will need to add some keywords to `~/static/control/platforms.info` and run Octopus upgrade to have these platforms added as explained in the docs you can find in the file `~/control/README.txt` within your Octopus account or online at [docs/PLATFORMS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/PLATFORMS.md)
+   **NOTE:** Since BOA no longer installs all bundled Ægir platforms during initial system installation, you will need to add some keywords to `~/static/control/platforms.info` and run Octopus upgrade to have these platforms added as explained in the docs you can find in the file `~/static/control/README.txt` within your Octopus account or online at [docs/PLATFORMS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/PLATFORMS.md)
 
 # Installing More Octopus Instances
 
