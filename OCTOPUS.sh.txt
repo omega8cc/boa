@@ -52,8 +52,6 @@ export _USER="${_USER}"
 ### Variables
 ###
 _DRUSH_VERSION=8.4.12.9
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
-_NOW=${_NOW//[^0-9-]/}
 _PURGE_FOR_SEVEN=YES
 _REDIS_C_VERSION=com-19-04-2021
 _REDIS_L_VERSION=7.x-3.19.1
@@ -70,8 +68,6 @@ _SMALLCORE7_V=7.101.1
 _SMALLCORE9_V=9.5.11
 _SPINNER=NO
 _T_BUILD=SRC
-_TODAY=$(date +%y%m%d 2>&1)
-_TODAY=${_TODAY//[^0-9]/}
 _F_TIME=$(date 2>&1)
 _USRG=users
 _WEBG=www-data
