@@ -374,6 +374,7 @@ if [ "${_STATUS}" = "INIT" ] || [ ! -x "/usr/local/ssl/bin/openssl" ]; then
   touch ${_LC_SSL_CTRL}
   ssl_install_src
   ssl_crypto_lib_fix
+  curl_install_src
 fi
 if [ -x "/usr/local/ssl/bin/openssl" ]; then
   [ -e "${_LC_SSL_CTRL}" ] && rm -f ${_LC_SSL_CTRL}
