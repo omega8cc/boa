@@ -7252,8 +7252,6 @@ install_myquick_src() {
       mrun "make --quiet install" 2> /dev/null
     fi
     ldconfig 2> /dev/null
-    ssl_install_src
-    ssl_crypto_lib_fix
   fi
 }
 

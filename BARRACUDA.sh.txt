@@ -418,17 +418,7 @@ fi
 ###
 ### Install OpenSSL and cURL from sources
 ###
-if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
-  ssl_install_src
-  ssl_crypto_lib_fix
-  curl_install_src
-fi
-
-
-###
-### Upgrade MyQuick Tools and sync OpenSSL and cURL if needed
-###
-if [ "${_STATUS}" = "UPGRADE" ] && [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
+if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ] || [ ! -x "/usr/local/ssl3/bin/openssl" ]; then
   ssl_install_src
   ssl_crypto_lib_fix
   curl_install_src
