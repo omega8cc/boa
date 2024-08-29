@@ -55,9 +55,29 @@
 
    Specifying Octopus `username` is optional. It will use `o1` if empty.
 
-   The last `{newrelickey|php-8.1|php-min|php-max|nodns}` part is optional and can be used either to install New Relic Apps Monitor (you should replace the `newrelickey` keyword with a valid license key), or to define a single PHP version to install and use both for Ægir Master and Satellite instances.
+   The last `{newrelickey|php-8.2|php-min|php-max|nodns}` part is optional and can be used either to install New Relic Apps Monitor (you should replace the `newrelickey` keyword with a valid license key), or to define a single PHP version to install and use both for Ægir Master and Satellite instances.
 
-   When `php-min` is defined, then 4 versions will be installed: `8.3`, `8.2`, `7.4`, plus `8.1`, configured as default. You can later install or modify PHP versions used via `_PHP_MULTI_INSTALL`, `_PHP_CLI_VERSION`, and `_PHP_FPM_VERSION`, but the `_PHP_SINGLE_INSTALL` variable must be set empty to not override other related variables. The `nodns` option allows skipping DNS and SMTP checks.
+   The `nodns` option allows skipping DNS and SMTP checks.
+
+   When `php-min` is defined, then only 4 versions will be installed: `8.3`, `8.2`, `7.4`, plus `8.1`, configured as default.
+
+   When `php-max` is defined, then all supported versions will be installed and `8.1` configured as default.
+
+   You can later install or modify PHP versions active on your system during `barracuda` upgrade with commands like:
+
+   `barracuda php-idle disable` -- disables versions not used by any site on the system
+   `barracuda php-idle enable` -- re-enables and re-builds versions previously disabled
+   `barracuda up-lts php-8.2` -- forces the system to use only single version (will cause sites brief downtime)
+   `barracuda up-lts php-max` -- installs all supported versions if not installed before
+   `barracuda up-lts php-min` -- installs PHP 8.1, 8.2, 8.3, 7.4, and uses 8.1 by default
+
+   If you wish to later define your own set of installed PHP versions, you can do so by modifying variables in the `/root/.barracuda.cnf` file, where you can find `_PHP_MULTI_INSTALL`, `_PHP_CLI_VERSION`, and `_PHP_FPM_VERSION` -- note that the `_PHP_SINGLE_INSTALL` variable must be set empty to not override other related variables. However, you also need to add dummy entries for versions not installed and not used yet to any octopus instance `~/static/control/multi-fpm.info` file, because otherwise `barracuda` will ignore versions not used yet and will automatically remove them from `_PHP_MULTI_INSTALL` on upgrade. These dummy entries should look like this:
+
+   `place.holder1.dont.remove 7.3`
+   `place.holder2.dont.remove 8.0`
+   `place.holder3.dont.remove 7.1`
+
+   The same logic protects existing and used versions from being removed even if they are not listed in the `_PHP_MULTI_INSTALL` variable (they will be re-added automatically if needed).
 
    You can enable much more verbose reporting in the console during installation and upgrades for either barracuda or octopus (or both with -boa-) by adding these control files before running installation/upgrade:
 
@@ -147,5 +167,5 @@ boa in-octopus my@email o2 lts silent
 
    - Barracuda and Octopus with single PHP version
      ```sh
-     boa in-lts local my@email php-8.1
+     boa in-lts local my@email php-8.2
      ```
