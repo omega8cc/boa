@@ -376,7 +376,7 @@ init_pre() {
       fi
       ${_INITINS} locales-all aptitude >> ${logSlt}
       ${_INITINS} build-essential curl git >> ${logSlt}
-      ${_INITINS} libgd-dev libmagickwand-dev libcurl4-openssl-dev >> ${logSlt}
+      ${_INITINS} libgd-dev libmagickwand-dev >> ${logSlt}
       sed -i "s/.*autoinit.*//gi" /etc/crontab &> /dev/null
       echo "*/1 *   * * *   root    bash /opt/local/bin/autoinit" >> /etc/crontab
       if [ -x "/opt/local/bin/killer" ]; then

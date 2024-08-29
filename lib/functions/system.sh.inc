@@ -2549,9 +2549,9 @@ do_install_latest_git() {
     msg "INFO: Building Git ${_GIT_VRN} from sources..."
     msg "WAIT: This may take a while, please wait..."
     apt_clean_update
-    mrun "apt-get install libcurl4 -y --allow-unauthenticated" 2> /dev/null
-    mrun "apt-get install libcurl4-openssl-dev -y --allow-unauthenticated" 2> /dev/null
-    mrun "apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated" 2> /dev/null
+#     mrun "apt-get install libcurl4 -y --allow-unauthenticated" 2> /dev/null
+#     mrun "apt-get install libcurl4-openssl-dev -y --allow-unauthenticated" 2> /dev/null
+#     mrun "apt-get install libcurl4-gnutls-dev -y --allow-unauthenticated" 2> /dev/null
     mrun "apt-get remove git-core -y --purge --auto-remove" 2> /dev/null
     mrun "apt-get remove git -y --purge --auto-remove" 2> /dev/null
     mkdir -p /var/opt
@@ -2765,7 +2765,7 @@ php_install_deps() {
   apt_clean_update
   mrun "${_INSTAPP} cmake" 2> /dev/null
   mrun "${_INSTAPP} lbzip2" 2> /dev/null
-  mrun "${_INSTAPP} libcurl4-openssl-dev" 2> /dev/null
+#   mrun "${_INSTAPP} libcurl4-openssl-dev" 2> /dev/null
   mrun "${_INSTAPP} libgd-dev" 2> /dev/null
   mrun "${_INSTAPP} libgd3" 2> /dev/null
   mrun "${_INSTAPP} libjpeg-dev" 2> /dev/null
@@ -7214,8 +7214,8 @@ install_myquick_src() {
     apt_clean_update
     mrun "${_INSTAPP} cmake" 2> /dev/null
     mrun "${_INSTAPP} libssl-dev" 2> /dev/null
-    mrun "${_INSTAPP} libcurl4" 2> /dev/null
-    mrun "${_INSTAPP} libcurl4-gnutls-dev" 2> /dev/null
+#     mrun "${_INSTAPP} libcurl4" 2> /dev/null
+#     mrun "${_INSTAPP} libcurl4-gnutls-dev" 2> /dev/null
     if [ "${_DB_SERVER}" = "Percona" ]; then
       if [ "${_DB_SERIES}" = "5.7" ]; then
         mrun "${_INSTAPP} libperconaserverclient20 libperconaserverclient20-dev" 2> /dev/null
