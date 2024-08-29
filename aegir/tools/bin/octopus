@@ -8,6 +8,12 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
+_TODAY=$(date +%y%m%d 2>&1)
+export _TODAY=${_TODAY//[^0-9]/}
+
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+export _NOW=${_NOW//[^0-9-]/}
+
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
 bldPth="/opt/tmp/boa"
@@ -22,10 +28,6 @@ pthIncO="lib/settings/${filIncO}"
 rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
 vBs="/var/backups"
 
-_TODAY=$(date +%y%m%d 2>&1)
-_TODAY=${_TODAY//[^0-9]/}
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
-_NOW=${_NOW//[^0-9-]/}
 _CHECK_HOST=$(uname -n 2>&1)
 _LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _VMFAMILY=XEN
