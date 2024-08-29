@@ -251,7 +251,7 @@ backup_this_database_with_mysqldump() {
 }
 
 compress_backup() {
-  if [ "${_MYQUICK_STATUS}" = "OK" ]; then
+  if [ "${_MYQUICK_USE}" = "YES" ]; then
     for DbPath in `find ${_SAVELOCATION}/ -maxdepth 1 -mindepth 1 | sort`; do
       if [ -e "${DbPath}/metadata" ]; then
         DbName=$(echo ${DbPath} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
@@ -305,8 +305,14 @@ check_mysql_version() {
 check_running
 check_mysql_version
 
-_MYQUICK_STATUS=
+_MYQUICK_USE=NO
 if [ -x "/usr/local/bin/mydumper" ]; then
+  _MYQUICK_ITD=$(mydumper -V 2>&1 \
+    | tr -d "\n" \
+    | tr -d "," \
+    | tr -d "v" \
+    | cut -d" " -f2 \
+    | awk '{ print $1}' 2>&1)
   _DB_V=$(mysql -V 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f6 \
@@ -330,10 +336,9 @@ if [ -x "/usr/local/bin/mydumper" ]; then
     | cut -d"-" -f1 \
     | awk '{ print $1}' \
     | sed "s/[\,']//g" 2>&1)
-  if [ "${_DB_V}" = "${_MD_V}" ] \
-    && [ ! -e "/root/.mysql.force.legacy.backup.cnf" ]; then
-    _MYQUICK_STATUS=OK
-    echo "INFO: Installed MyQuick for ${_MD_V} (${_DB_V}) looks fine"
+  if [ ! -e "/root/.mysql.force.legacy.backup.cnf" ]; then
+    _MYQUICK_USE=YES
+    echo "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V})"
   fi
 fi
 
@@ -401,7 +406,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
         echo "INFO: All cache tables in ${_DB} truncated"
       fi
     fi
-    if [ "${_MYQUICK_STATUS}" = "OK" ]; then
+    if [ "${_MYQUICK_USE}" = "YES" ]; then
       backup_this_database_with_mydumper &> /dev/null
     else
       backup_this_database_with_mysqldump &> /dev/null
