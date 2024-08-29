@@ -51,6 +51,12 @@
    screen
    ```
 
+   To make sure that you are using all available arguments in the correct order please always check the built-in how-to:
+
+   ```sh
+   boa help
+   ```
+
    You must specify the version of install with `in-lts` plus kind with `public`, your `hostname` and `email` address, as shown further below.
 
    Specifying Octopus `username` is optional. It will use `o1` if empty.
