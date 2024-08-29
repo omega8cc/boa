@@ -4030,6 +4030,36 @@ ssl_install_src() {
 }
 
 #
+# Detect, remove, and report broken symlinks
+check_and_remove_broken_symlinks() {
+  local dir=$1
+
+  # Find broken symlinks in the directory
+  broken_symlinks=$(find "${dir}" -maxdepth 1 -type l ! -exec test -e {} \; -print)
+
+  if [ -n "${broken_symlinks}" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "CLNP: Removing the following broken symlinks from ${dir}:"
+      msg "CLNP: ${broken_symlinks}"
+    fi
+
+    for symlink in $broken_symlinks; do
+      rm "${symlink}"
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "CLNP: Removed broken symlink: ${symlink}"
+      fi
+    done
+
+    # Set the ifAnySymlinksCleaned variable to true since we removed broken symlinks
+    ifAnySymlinksCleaned=YES
+  else
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "CLNP: No broken symlinks found in ${dir}"
+    fi
+  fi
+}
+
+#
 # Check and move disallowed versions
 check_and_move() {
   local dir=$1
@@ -4057,8 +4087,8 @@ check_and_move() {
       fi
     done
 
-    # Set the ifAnyCleaned variable to true since we moved files
-    ifAnyCleaned=YES
+    # Set the ifAnyFilesCleaned variable to true since we moved files
+    ifAnyFilesCleaned=YES
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       msg "CLNP: Only the allowed version (${allowedFile}) is present in ${dir}"
@@ -4174,19 +4204,32 @@ curl_install_src() {
     backLegBase="/var/backups/legacy-libcurl-${_X_VERSION}-${_NOW}"
 
     # Variable to track if any files were moved
-    ifAnyCleaned=NO
+    ifAnyFilesCleaned=NO
+
+    # Variable to track if any broken symlinks were found and removed
+    ifAnySymlinksCleaned=NO
 
     # Iterate over the directories and apply the check_and_move function
     for dir in "${dirsToClean[@]}"; do
       check_and_move "${dir}"
     done
 
-    # Export the ifAnyCleaned variable for later use
-    export ifAnyCleaned
+    # Iterate over the directories and apply the check_and_remove_broken_symlinks function
+    for dir in "${dirsToClean[@]}"; do
+      check_and_remove_broken_symlinks "${dir}"
+    done
+
+    # Export the ifAnyFilesCleaned variable for later use
+    export ifAnyFilesCleaned
+
+    # Export the ifAnySymlinksCleaned variable for later use
+    export ifAnySymlinksCleaned
 
   fi
 
-  if [ "${ifAnyCleaned}" = "YES" ] || [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
+  if [ "${ifAnySymlinksCleaned}" = "YES" ] \
+    || [ "${ifAnyFilesCleaned}" = "YES" ] \
+    || [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     _CURL_INSTALL_REQUIRED=YES
     mkdir -p /var/backups/legacy-libcurl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}
     mv -f /usr/lib/x86_64-linux-gnu/libcurl.so* /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
