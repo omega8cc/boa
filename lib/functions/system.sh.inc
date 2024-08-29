@@ -7259,27 +7259,25 @@ install_myquick_deb() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: install_myquick_deb"
   fi
-  if [ "${_SQL_OS_CODE}" = "bookworm" ]; then
-    _USE_CODE=bookworm
-  elif [ "${_SQL_OS_CODE}" = "bullseye" ]; then
-    _USE_CODE=bullseye
-  elif [ "${_SQL_OS_CODE}" = "buster" ]; then
-    _USE_CODE=buster
-  fi
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    msg "INFO: Installing MyQuick ${_MYQUICK_VRN_EIGHT} from ${_USE_CODE} packages"
-  fi
-  cd /var/opt
-  rm -rf mydumper_*
-  get_dev_arch "mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb.gz"
-  if [ -e "/var/opt/mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb" ]; then
-    mrun "dpkg -i mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb" 2> /dev/null
-  fi
-  if [ -x "/usr/bin/mydumper" ]; then
-    [ -e "/usr/local/bin/mydumper" ] && rm -f /usr/local/bin/mydumper
-    [ -e "/usr/local/bin/myloader" ] && rm -f /usr/local/bin/myloader
-    ln -sfn /usr/bin/mydumper /usr/local/bin/mydumper
-    ln -sfn /usr/bin/myloader /usr/local/bin/myloader
+  if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      msg "INFO: Installing MyQuick ${_MYQUICK_VRN_EIGHT} from ${_USE_CODE} packages"
+    fi
+    cd /var/opt
+    rm -rf mydumper_*
+    get_dev_arch "mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb.gz"
+    if [ -e "/var/opt/mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb" ]; then
+      mrun "dpkg -i mydumper_${_MYQUICK_VRN_EIGHT}.${_USE_CODE}_amd64.deb" 2> /dev/null
+    fi
+    if [ -x "/usr/bin/mydumper" ]; then
+      [ -e "/usr/local/bin/mydumper" ] && rm -f /usr/local/bin/mydumper
+      [ -e "/usr/local/bin/myloader" ] && rm -f /usr/local/bin/myloader
+      ln -sfn /usr/bin/mydumper /usr/local/bin/mydumper
+      ln -sfn /usr/bin/myloader /usr/local/bin/myloader
+    fi
+  else
+    _MYQUICK_INSTALL_REQUIRED=YES
+    install_myquick_src
   fi
 }
 
@@ -7287,18 +7285,28 @@ myquick_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     msg "PROC: myquick_install_upgrade"
   fi
+  _MYQUICK_SRC_INSTALL_REQUIRED=NO
+  if [ "${_SQL_OS_CODE}" = "bookworm" ]; then
+    _USE_CODE=bookworm
+  elif [ "${_SQL_OS_CODE}" = "bullseye" ]; then
+    _USE_CODE=bullseye
+  elif [ "${_SQL_OS_CODE}" = "buster" ]; then
+    _USE_CODE=buster
+  else
+    _MYQUICK_SRC_INSTALL_REQUIRED=YES
+  fi
   check_mysql_version
   isMyQuick=$(which mydumper 2>&1)
   if [ ! -x "${isMyQuick}" ] \
     || [ -z "${isMyQuick}" ]; then
-    if [ "${_DB_V}" = "5.7" ]; then
-      install_myquick_src
-    else
+    if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
       install_myquick_deb
+    else
+      install_myquick_src
     fi
   fi
   if [ "${_STATUS}" = "UPGRADE" ]; then
-    _MYQUICK_UPGRADE_REQUIRED=NO
+    _MYQUICK_INSTALL_REQUIRED=NO
     _MYQUICK_ITD=$(mydumper -V 2>&1 \
       | tr -d "\n" \
       | tr -d "," \
@@ -7329,39 +7337,31 @@ myquick_install_upgrade() {
       | awk '{ print $1}' \
       | sed "s/[\,']//g" 2>&1)
     if [ -x "${isMyQuick}" ]; then
-      if [ "${_DB_V}" = "5.7" ] && [ "${_DB_V}" != "${_MD_V}" ]; then
-        _MYQUICK_INSTALL_REQUIRED=YES
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V}), rebuild required"
+      if [ "${_MYQUICK_SRC_INSTALL_REQUIRED}" = "NO" ]; then
+        if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN_EIGHT}" ]; then
+          _MYQUICK_INSTALL_REQUIRED=YES
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
+          fi
+          install_myquick_deb
         fi
-        install_myquick_src
-      elif [ "${_DB_V}" = "5.7" ] && [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN_FIVE}" ]; then
-        _MYQUICK_INSTALL_REQUIRED=YES
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
+      else
+        if [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN_FIVE}" ] || [ "${_MD_V}" != "${_DB_V}" ]; then
+          _MYQUICK_INSTALL_REQUIRED=YES
+          if [ "${_DEBUG_MODE}" = "YES" ]; then
+            msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
+          fi
+          install_myquick_src
         fi
-        install_myquick_src
-      elif [ "${_DB_V}" != "5.7" ] && [ "${_MYQUICK_ITD}" != "${_MYQUICK_VRN_EIGHT}" ]; then
-        _MYQUICK_INSTALL_REQUIRED=YES
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: Installed MyQuick version ${_MYQUICK_ITD}, upgrade required"
-        fi
-        install_myquick_deb
       fi
     fi
+    isMyQuick=$(which mydumper 2>&1)
     if [ ! -e "${isMyQuick}" ]; then
       _MYQUICK_INSTALL_REQUIRED=YES
-      if [ "${_DB_V}" = "5.7" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: MyQuick ${_MYQUICK_VRN_FIVE} not installed yet..."
-        fi
-        install_myquick_src
-      else
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          msg "INFO: MyQuick ${_MYQUICK_VRN_EIGHT} not installed yet..."
-        fi
-        install_myquick_deb
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        msg "INFO: MyQuick not installed yet"
       fi
+      install_myquick_deb
     fi
   fi
 }
