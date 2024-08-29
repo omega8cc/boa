@@ -66,9 +66,13 @@
    You can later install or modify PHP versions active on your system during `barracuda` upgrade with commands like:
 
    `barracuda php-idle disable` -- disables versions not used by any site on the system
+
    `barracuda php-idle enable` -- re-enables and re-builds versions previously disabled
+
    `barracuda up-lts php-8.2` -- forces the system to use only single version (will cause sites brief downtime)
+
    `barracuda up-lts php-max` -- installs all supported versions if not installed before
+
    `barracuda up-lts php-min` -- installs PHP 8.1, 8.2, 8.3, 7.4, and uses 8.1 by default
 
    If you wish to later define your own set of installed PHP versions, you can do so by modifying variables in the `/root/.barracuda.cnf` file, where you can find `_PHP_MULTI_INSTALL`, `_PHP_CLI_VERSION`, and `_PHP_FPM_VERSION` -- note that the `_PHP_SINGLE_INSTALL` variable must be set empty to not override other related variables. However, you also need to add dummy entries for versions not installed and not used yet to any octopus instance `~/static/control/multi-fpm.info` file, because otherwise `barracuda` will ignore versions not used yet and will automatically remove them from `_PHP_MULTI_INSTALL` on upgrade. These dummy entries should look like this:
