@@ -408,6 +408,7 @@ dns_unbound_install_upgrade() {
       echo "nameserver 8.8.4.4" >> /etc/resolv.conf
     fi
     apt_clean_update
+    [ -e "/usr/etc/unbound/unbound.pid" ] && isUnbndFix=YES
     if [ "${isUnbndFix}" = "YES" ]; then
       mrun "apt-get remove unbound -y --purge --auto-remove -qq" 2> /dev/null
       mrun "apt-get remove unbound-anchor -y --purge --auto-remove -qq" 2> /dev/null
