@@ -4231,10 +4231,11 @@ curl_install_src() {
     || [ "${ifAnyFilesCleaned}" = "YES" ] \
     || [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
     _CURL_INSTALL_REQUIRED=YES
-    mkdir -p /var/backups/legacy-libcurl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}
-    mv -f /usr/lib/x86_64-linux-gnu/libcurl.so* /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
-    mv -f /usr/lib/x86_64-linux-gnu/libcurl.la /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
-    mv -f /usr/lib/x86_64-linux-gnu/libcurl.a /var/backups/legacy-curl-pre-${_CURL_VRN}-${_X_VERSION}-${_NOW}/ &> /dev/null
+    bkLibcurlPre="/var/backups/legacy-libcurl-pre-${_CURL_VRN}-${_NOW}"
+    mkdir -p ${bkLibcurlPre}
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.so* ${bkLibcurlPre}/ &> /dev/null
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.la ${bkLibcurlPre}/ &> /dev/null
+    mv -f /usr/lib/x86_64-linux-gnu/libcurl.a ${bkLibcurlPre}/ &> /dev/null
   fi
 
   if [ "${_CURL_INSTALL_REQUIRED}" = "YES" ]; then
