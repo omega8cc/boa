@@ -408,6 +408,7 @@ dns_unbound_install_upgrade() {
       echo "nameserver 8.8.4.4" >> /etc/resolv.conf
     fi
     apt_clean_update
+    [ -e "/usr/etc/unbound/unbound.pid" ] && isUnbndFix=YES
     if [ "${isUnbndFix}" = "YES" ]; then
       mrun "apt-get remove unbound -y --purge --auto-remove -qq" 2> /dev/null
       mrun "apt-get remove unbound-anchor -y --purge --auto-remove -qq" 2> /dev/null
@@ -451,6 +452,7 @@ dns_unbound_install_upgrade() {
     fi
     ###
     [ ! -e "/usr/libexec/unbound-helper" ] && cp -a ${locCnf}/dns/unbound-helper /usr/libexec/
+    [ -e "/usr/libexec/unbound-helper" ] && chmod 755 /usr/libexec/unbound-helper
     cat ${locCnf}/dns/unbound.conf > /etc/unbound/unbound.conf.d/unbound.conf
     if [ "${_USE_PROVIDER_DNS}" = "YES" ] \
       && [ -e "${vBs}/resolv.conf.vanilla" ]; then
