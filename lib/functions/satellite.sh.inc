@@ -4167,7 +4167,7 @@ satellite_make() {
     writeTo="${vBs}/${filIncO}"
   fi
 
-  _X_SE="540proT01"
+  _X_SE="540proT02"
   export _X_SE="${_X_SE}"
   export _X_VERSION="${_X_VERSION}"
 
