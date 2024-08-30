@@ -8,6 +8,7 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
+_DB_SERIES=5.7
 _CSF_VRN=14.20
 _PROXYSQL_VRN="1.3.5-debian8_amd64"
 _UTIL_VRN="0.30.216-pre3126"
@@ -86,6 +87,20 @@ os_detection_minimal() {
       _APT_UPDATE="apt-get update --allow-releaseinfo-change"
     fi
   done
+}
+
+check_mysql_version() {
+  _DBS_TEST=$(which mysql 2>&1)
+  if [ ! -z "${_DBS_TEST}" ]; then
+    _DB_SERVER_TEST=$(mysql -V 2>&1)
+  fi
+  if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
+    _DB_V=8.3
+  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
+    _DB_V=8.0
+  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
+    _DB_V=5.7
+  fi
 }
 
 apt_clean_update() {
@@ -1291,20 +1306,17 @@ default_my_cnf_copy() {
 ### Mandatory for Galera
 #
 binlog_format=ROW
-default_storage_engine=InnoDB
+#default_storage_engine=InnoDB
 innodb_autoinc_lock_mode=2
 
 ### Recommended for Galera
 #
 innodb_flush_log_at_trx_commit=0
-query_cache_size=0
-query_cache_type=0
 binlog_row_image=minimal
 wsrep_slave_threads=${_CPU_MX}
 wsrep_log_conflicts=ON
 pxc_strict_mode=PERMISSIVE
 performance_schema=OFF
-show_compatibility_56=ON
 
 ### Optional Memory Settings for Galera
 #
@@ -1359,7 +1371,7 @@ port                    = 3306
 basedir                 = /usr
 datadir                 = /var/lib/mysql
 tmpdir                  = /tmp
-default_storage_engine  = InnoDB
+#default_storage_engine  = InnoDB
 lc_messages_dir         = /usr/share/mysql
 lc_messages             = en_US
 character_set_server    = utf8mb4
@@ -1369,19 +1381,14 @@ transaction-read-only   = OFF
 skip-external-locking
 skip-name-resolve
 performance_schema      = OFF
-show_compatibility_56   = ON
 connect_timeout         = 60
 join_buffer_size        = 4M
 key_buffer_size         = 1024M
-log_warnings            = 2
 max_allowed_packet      = 256M
 max_connect_errors      = 300
 max_connections         = 300
 max_user_connections    = 150
 myisam_sort_buffer_size = 256K
-query_cache_limit       = 256K
-query_cache_size        = 0
-query_cache_type        = 0
 read_buffer_size        = 8M
 read_rnd_buffer_size    = 8M
 sort_buffer_size        = 256K
@@ -1396,9 +1403,10 @@ max_heap_table_size     = 1024M
 low_priority_updates    = 1
 concurrent_insert       = 2
 userstat                = 1
-max_tmp_tables          = 16384
+#max_tmp_tables          = 16384
 server-id               = '${inc}'
-myisam-recover-options  = BACKUP
+#myisam-recover-options  = BACKUP
+#myisam_recover          = BACKUP
 sync_binlog             = 0
 open_files_limit        = 294912
 innodb_autoinc_lock_mode= 2
@@ -1417,35 +1425,32 @@ group_concat_max_len    = 10000
 sql_mode                = NO_ENGINE_SUBSTITUTION
 innodb_buffer_pool_instances = 8
 innodb_page_cleaners    = 8
-innodb_lru_scan_depth   = 10
-innodb_log_file_size    = 1024M
+innodb_lru_scan_depth   = 1024
+#innodb_redo_log_capacity = 1024M
+#innodb_log_file_size    = 1024M
 innodb_buffer_pool_size = 2048M
 innodb_log_buffer_size  = 256M
 innodb_file_per_table   = 1
-innodb_use_native_aio   = 1
-innodb_large_prefix     = 1
-innodb_file_format      = Barracuda
+#innodb_use_native_aio   = 1
 innodb_open_files       = 196608
 innodb_io_capacity      = 1000
-innodb_flush_method     = O_DIRECT
+#innodb_flush_method     = O_DSYNC
 innodb_flush_log_at_trx_commit = 0
 innodb_thread_concurrency = 0
 innodb_lock_wait_timeout = 300
 innodb_buffer_pool_dump_at_shutdown = 1
 innodb_buffer_pool_load_at_startup = 1
-innodb_buffer_pool_dump_pct = 100
-innodb_buffer_pool_dump_now = ON
+#innodb_buffer_pool_dump_pct = 100
+#innodb_buffer_pool_dump_now = ON
 innodb_stats_on_metadata = OFF
 innodb_adaptive_hash_index = 0
 innodb_default_row_format = dynamic
-innodb_write_io_threads = 64
-innodb_read_io_threads = 64
 innodb_print_all_deadlocks = ON
 innodb_doublewrite = 0
-innodb_checksum_algorithm=NONE
+#innodb_checksum_algorithm=crc32
 innodb_flush_log_at_timeout = 5
 #innodb_force_recovery = 3
-innodb_temp_data_file_path = ibtmp1:12M:autoextend:max:900M
+#innodb_temp_data_file_path = ibtmp1:12M:autoextend:max:900M
 
 [mysqld_safe]
 socket                  = /run/mysqld/mysqld.sock
@@ -1510,7 +1515,9 @@ install_db_cluster() {
 
   percList="/etc/apt/sources.list.d/percona-release.list"
   _DB_SRC="repo.percona.com"
-  percRepo="${_DB_SRC}/percona/apt"
+  percNodot="${_DB_SERIES//./}"
+  percRepo="${_DB_SRC}/ps-${percNodot}/apt"
+  percTools="${_DB_SRC}/tools/apt"
 
   for IP in "${_DB_NODE_IP[@]}"; do
     echo "${IP} # Cluster Galera Node" >> /etc/csf/csf.allow
@@ -1566,15 +1573,18 @@ install_db_cluster() {
     vserver ${idn} exec ${_INSTAPP} debian-archive-keyring
   	vserver ${idn} exec apt-get upgrade -y -qq
   	vserver ${idn} exec ${_INSTAPP} software-properties-common dirmngr
-    rm -f /vservers/${idn}/etc/apt/sources.list.d/percona-.*
-    rm -f /vservers/${idn}/etc/apt/sources.list.d/xtrabackup.*
+    rm -f /vservers/${idn}/etc/apt/sources.list.d/mariadb*
+    rm -f /vservers/${idn}/etc/apt/sources.list.d/ourdelta*
+    rm -f /vservers/${idn}/etc/apt/sources.list.d/percona*
+    rm -f /vservers/${idn}/etc/apt/sources.list.d/xtrabackup*
     _PERCONA_KEYS_SIG="8507EFA5"
     if [ ! -e "/vservers/${idn}/etc/apt/keyrings/percona.gpg" ]; then
       if [ ! -e "/vservers/${idn}/etc/apt/keyrings" ]; then
         mkdir -m 0755 -p /vservers/${idn}/etc/apt/keyrings
       fi
-      if [ -e "/vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg" ]; then
-        rm -f /vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg
+      if [ -e "/vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg" ] \
+        || [ -e "/vservers/${idn}/etc/apt/trusted.gpg.d/percona-keyring.gpg~" ]; then
+        rm -f /vservers/${idn}/etc/apt/trusted.gpg.d/percona*
       fi
       vserver ${idn} exec apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
       if [ ! -e "/vservers/${idn}/etc/apt/keyrings/percona.gpg" ]; then
@@ -1604,7 +1614,7 @@ install_db_cluster() {
     vserver ${idn} exec update-rc.d -f mysql remove
 
     ##echo "Running mysql_secure_installation procedure on ${IP} DB node..."
-    ##vserver ${idn} exec mysql -u root -e "FLUSH HOSTS;"
+    ##vserver ${idn} exec mysqladmin -u root flush-hosts"
     ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='';"
     ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
     ##vserver ${idn} exec mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
@@ -1645,12 +1655,17 @@ basedir  = /usr
   sleep 180
 
   echo "Adding grants for Galera sstuser on Percona Cluster..."
+  check_mysql_version
   for IP in "${_DB_NODE_IP[@]}"; do
     pxyCmd="CREATE USER IF NOT EXISTS 'root'@'${IP}';"
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
     pxyCmd="GRANT ALL ON *.* TO 'root'@'${IP}' WITH GRANT OPTION;"
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
-    pxyCmd="ALTER USER 'root'@'${IP}' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+    if [ "${_DB_V}" = "5.7" ]; then
+      pxyCmd="ALTER USER 'root'@'${IP}' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+    else
+      pxyCmd="ALTER USER 'root'@'${IP}' IDENTIFIED WITH caching_sha2_password BY '${_ROOT_SQL_PASWD}';"
+    fi
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
     pxyCmd="CREATE USER IF NOT EXISTS 'sstuser'@'${IP}';"
       ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
@@ -1699,11 +1714,23 @@ basedir  = /usr
     ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
   pxyCmd="GRANT ALL ON *.* TO 'root'@'${_WEB_NODE_IP}' WITH GRANT OPTION;"
     ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
-  pxyCmd="ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+  if [ "${_DB_V}" = "5.7" ]; then
+    pxyCmd="ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+  else
+    pxyCmd="ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${_ROOT_SQL_PASWD}';"
+  fi
     ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
-  pxyCmd="ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+  if [ "${_DB_V}" = "5.7" ]; then
+    pxyCmd="ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+  else
+    pxyCmd="ALTER USER 'root'@'127.0.0.1' IDENTIFIED WITH caching_sha2_password BY '${_ROOT_SQL_PASWD}';"
+  fi
     ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
-  pxyCmd="ALTER USER 'root'@'${_WEB_NODE_IP}' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+  if [ "${_DB_V}" = "5.7" ]; then
+    pxyCmd="ALTER USER 'root'@'${_WEB_NODE_IP}' IDENTIFIED WITH mysql_native_password BY '${_ROOT_SQL_PASWD}';"
+  else
+    pxyCmd="ALTER USER 'root'@'${_WEB_NODE_IP}' IDENTIFIED WITH caching_sha2_password BY '${_ROOT_SQL_PASWD}';"
+  fi
     ssh ${_NOSTRICT} root@${_DB_NODE_IP[1]} "mysql -u root -e \"${pxyCmd}\""
 
   pxyCmd="SHOW STATUS LIKE 'wsrep_%';"
@@ -1781,8 +1808,9 @@ upgrade_db_cluster() {
       if [ ! -e "/vservers/${idn}/etc/apt/keyrings" ]; then
         mkdir -m 0755 -p /vservers/${idn}/etc/apt/keyrings
       fi
-      if [ -e "/vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg" ]; then
-        rm -f /vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg
+      if [ -e "/vservers/${idn}/etc/apt/trusted.gpg.d/percona.gpg" ] \
+        || [ -e "/vservers/${idn}/etc/apt/trusted.gpg.d/percona-keyring.gpg~" ]; then
+        rm -f /vservers/${idn}/etc/apt/trusted.gpg.d/percona*
       fi
       vserver ${idn} exec apt-key del ${_PERCONA_KEYS_SIG} &> /dev/null
       if [ ! -e "/vservers/${idn}/etc/apt/keyrings/percona.gpg" ]; then

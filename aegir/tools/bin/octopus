@@ -8,6 +8,12 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
+_TODAY=$(date +%y%m%d 2>&1)
+export _TODAY=${_TODAY//[^0-9]/}
+
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+export _NOW=${_NOW//[^0-9-]/}
+
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
 bldPth="/opt/tmp/boa"
@@ -22,10 +28,6 @@ pthIncO="lib/settings/${filIncO}"
 rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
 vBs="/var/backups"
 
-_TODAY=$(date +%y%m%d 2>&1)
-_TODAY=${_TODAY//[^0-9]/}
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
-_NOW=${_NOW//[^0-9-]/}
 _CHECK_HOST=$(uname -n 2>&1)
 _LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _VMFAMILY=XEN
@@ -67,6 +69,16 @@ apt_clean_update() {
   #apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/* &> /dev/null
   ${_APT_UPDATE} -qq 2> /dev/null
+}
+
+_CHECK_HOST=$(uname -n 2>&1)
+if_hosted_sys() {
+  if [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    hostedSys=YES
+  else
+    hostedSys=NO
+  fi
 }
 
 check_sql_running() {
@@ -223,12 +235,8 @@ get_dev_ext() {
 send_report() {
   if [ -e "${barCnf}" ]; then
     source ${barCnf}
-    if [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ] \
-      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
@@ -244,12 +252,8 @@ send_report() {
 send_alert() {
   if [ -e "${barCnf}" ]; then
     source ${barCnf}
-    if [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ] \
-      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
@@ -350,13 +354,16 @@ php_cli_drush_update() {
     _T_CLI=/opt/php74/bin
   fi
   if [ -x "${_T_CLI}/php" ]; then
-    _DRUSHCMD="${_T_CLI}/php ${User}/tools/drush/drush.php"
+    #_DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force"
+    _DRUSH_HOSTING_DISPATCH_CMD="${_T_CLI}/php ${User}/tools/drush/drush.php @hostmaster hosting-dispatch"
     if [ -e "${User}/aegir.sh" ]; then
       rm -f ${User}/aegir.sh
     fi
     touch ${User}/aegir.sh
-    echo -e "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n${_DRUSHCMD} \
-      '@hostmaster' hosting-dispatch\ntouch ${User}/${_USER}-task.done" \
+    echo -e \
+      "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n \
+       \n${_DRUSH_HOSTING_DISPATCH_CMD} \
+       \ntouch ${User}/${_USER}-task.done" \
       | fmt -su -w 2500 | tee -a ${User}/aegir.sh >/dev/null 2>&1
     chown ${_USER}:${usrGroup} ${User}/aegir.sh &> /dev/null
     chmod 0700 ${User}/aegir.sh &> /dev/null
@@ -561,9 +568,6 @@ up_one() {
       || [ "${cmmand}" = "up-lts" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${tocIncO}
       wait
-    elif [ "${cmmand}" = "up-cluster" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${tocIncO}
-      wait
     fi
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${vBs}/${tocIncO}
     wait
@@ -571,29 +575,19 @@ up_one() {
     wait
     sed -i "s/^_USER=o1/_USER=${octUsr}/g"                     ${vBs}/${tocName}
     wait
-    if [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ] \
-      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-      if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
-        _DO_NOTHING=YES
-      else
-        sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${vBs}/${tocIncO}
-        wait
-        sed -i "s/^_PLATFORMS_LIST.*/_PLATFORMS_LIST=none/g"   ${vBs}/${tocIncO}
-        wait
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"  ${octCnf}
-        wait
-        sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             ${octCnf}
-        wait
-        sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"   ${octCnf}
-        wait
-        sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"    ${octCnf}
-        wait
-      fi
-    fi
+    sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"        ${vBs}/${tocIncO}
+    wait
+    sed -i "s/^_PLATFORMS_LIST.*/_PLATFORMS_LIST=none/g"       ${vBs}/${tocIncO}
+    wait
+    sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"      ${octCnf}
+    wait
+    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                 ${octCnf}
+    wait
+    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"       ${octCnf}
+    wait
+    sed -i "s/^_STRONG_PASSW.*/_STRONG_PASSWORDS=YES/g"        ${octCnf}
+    wait
+
     if [ -e "${vBs}/${tocName}" ]; then
       if [ -e "${User}/.drush/sys/provision/http" ]; then
         _IS_OLD=$(find ${User}/.drush/sys/provision/ \
@@ -862,17 +856,6 @@ up_start() {
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/php
   fi
-  if [ "${cmmand}" = "up-cluster" ]; then
-    if [ ! -e "/run/mysqld/mysqld.pid" ] \
-      && [ ! -e "/root/.dbhd.clstr.cnf" ] \
-      && [ -e "/etc/init.d/mysql" ]; then
-      [ -e "/root/.remote.db.cnf" ] && rm -f /root/.remote.db.cnf
-      sleep 5
-      if [ ! -e "/run/mysqld/mysqld.sock" ]; then
-        service mysql start &> /dev/null
-      fi
-    fi
-  fi
   orgCmmand="${cmmand}"
 }
 
@@ -916,7 +899,6 @@ up_proceed() {
   fi
   rlsn="BOA-5.4.0"
   rlse="${rlsn}-${tRee}"
-  cluster="${rlse}"
   branch="5.x-${tRee}"
   brnch=${branch//\//\\\/}
   export tRee="${tRee}"
@@ -983,7 +965,9 @@ if_reinstall_curl() {
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
   isCurl=$(curl --version 2>&1)
-  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+  if [[ ! "${isCurl}" =~ "OpenSSL" ]] \
+    || [[ "${isCurl}" =~ "libcurl.so.4" ]] \
+    || [ -z "${isCurl}" ]; then
     if [ -e "/var/aegir/drush" ]; then
       echo "OOPS: cURL is broken! Re-installing.."
     fi
@@ -995,6 +979,11 @@ if_reinstall_curl() {
       echo "curl install" | dpkg --set-selections 2> /dev/null
       apt_clean_update
       apt-get install curl -y -qq 2> /dev/null
+      apt-get build-dep curl -y 2> /dev/null
+      apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
+      apt-get autoremove -y 2> /dev/null
+      apt-get install libssl-dev -y -qq 2> /dev/null
+      apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
     fi
     isCurl=$(curl --version 2>&1)
     if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then

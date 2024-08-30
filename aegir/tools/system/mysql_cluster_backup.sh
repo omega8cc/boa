@@ -256,7 +256,7 @@ backup_this_database_with_mysqldump() {
 }
 
 compress_backup() {
-  if [ "${_MYQUICK_STATUS}" = "OK" ]; then
+  if [ "${_MYQUICK_USE}" = "YES" ]; then
     for DbPath in `find ${_SAVELOCATION}/ -maxdepth 1 -mindepth 1 | sort`; do
       if [ -e "${DbPath}/metadata" ]; then
         DbName=$(echo ${DbPath} | cut -d'/' -f7 | awk '{ print $1}' 2>&1)
@@ -281,19 +281,43 @@ compress_backup() {
 
 [ ! -a ${_SAVELOCATION} ] && mkdir -p ${_SAVELOCATION};
 
-if [ "${_DB_SERIES}" = "5.7" ]; then
-  check_running
-  ${_C_SQL} -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
-  ${_C_SQL} -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
-  ${_C_SQL} -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-  ${_C_SQL} -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
-  ${_C_SQL} -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
-  ${_C_SQL} -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-  ${_C_SQL} -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
-fi
+check_mysql_version() {
+  _DBS_TEST=$(which mysql 2>&1)
+  if [ ! -z "${_DBS_TEST}" ]; then
+    _DB_SERVER_TEST=$(mysql -V 2>&1)
+  fi
+  if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
+    _DB_V=8.3
+  elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
+    _DB_V=8.0
+  elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
+    _DB_V=5.7
+  fi
+  if [ ! -z "${_DB_V}" ]; then
+    ${_C_SQL} -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
+    ${_C_SQL} -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
+    ${_C_SQL} -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
+    ${_C_SQL} -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
+    ${_C_SQL} -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
+    if [ "${_DB_V}" = "5.7" ]; then
+      ${_C_SQL} -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
+      ${_C_SQL} -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
+    fi
+    ${_C_SQL} -e -e "SET GLOBAL innodb_fast_shutdown = 1;" &> /dev/null
+  fi
+}
 
-_MYQUICK_STATUS=
+check_running
+check_mysql_version
+
+_MYQUICK_USE=NO
 if [ -x "/usr/local/bin/mydumper" ]; then
+  _MYQUICK_ITD=$(mydumper -V 2>&1 \
+    | tr -d "\n" \
+    | tr -d "," \
+    | tr -d "v" \
+    | cut -d" " -f2 \
+    | awk '{ print $1}' 2>&1)
   _DB_V=$(mysql -V 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f6 \
@@ -301,6 +325,15 @@ if [ -x "/usr/local/bin/mydumper" ]; then
     | cut -d"-" -f1 \
     | awk '{ print $1}' \
     | sed "s/[\,']//g" 2>&1)
+  if [ "${_DB_V}" = "Linux" ]; then
+    _DB_V=$(mysql -V 2>&1 \
+      | tr -d "\n" \
+      | cut -d" " -f4 \
+      | awk '{ print $1}' \
+      | cut -d"-" -f1 \
+      | awk '{ print $1}' \
+      | sed "s/[\,']//g" 2>&1)
+  fi
   _MD_V=$(mydumper --version 2>&1 \
     | tr -d "\n" \
     | cut -d" " -f6 \
@@ -308,10 +341,9 @@ if [ -x "/usr/local/bin/mydumper" ]; then
     | cut -d"-" -f1 \
     | awk '{ print $1}' \
     | sed "s/[\,']//g" 2>&1)
-  if [ "${_DB_V}" = "${_MD_V}" ] \
-    && [ ! -e "/root/.mysql.force.legacy.backup.cnf" ]; then
-    _MYQUICK_STATUS=OK
-    echo "INFO: Installed MyQuick for ${_MD_V} (${_DB_V}) looks fine"
+  if [ ! -e "/root/.mysql.force.legacy.backup.cnf" ]; then
+    _MYQUICK_USE=YES
+    echo "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V})"
   fi
 fi
 
@@ -363,7 +395,7 @@ for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
         echo "INFO: All cache tables in ${_DB} truncated"
       fi
     fi
-    if [ "${_MYQUICK_STATUS}" = "OK" ]; then
+    if [ "${_MYQUICK_USE}" = "YES" ]; then
       backup_this_database_with_mydumper &> /dev/null
     else
       backup_this_database_with_mysqldump &> /dev/null

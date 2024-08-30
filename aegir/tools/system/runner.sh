@@ -113,11 +113,6 @@ elif [ `ps aux | grep -v "grep" \
   exit 0
   fi
 else
-  if [ -e "/root/.wbhd.clstr.cnf" ] \
-    || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    echo "Aegir tasks ignored on this cluster node"
-    exit 0
-  fi
   if [ -e "/root/.slow.cron.cnf" ] && [ ! -e "/root/.force.queue.runner.cnf" ]; then
     touch /run/boa_cron_wait.pid
     sleep 15

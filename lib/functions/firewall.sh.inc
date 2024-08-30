@@ -151,10 +151,8 @@ csf_install() {
     fi
   fi
   cd /var/opt
-  if [[ "${_THISHOST}" =~ ".host8." ]] \
-    || [[ "${_THISHOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_THISHOST}" =~ ".aegir.cc"($) ]]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
     _SSH_PORT=22
   fi
   _CSF_COMPATIBILITY_TEST=$(perl /etc/csf/csftest.pl 2>&1)
@@ -244,15 +242,6 @@ csf_lfd_install_upgrade() {
   if [ -x "/usr/sbin/ipset" ] && [ ! -e "/sbin/ipset" ]; then
     ln -s /usr/sbin/ipset /sbin/ipset
   fi
-  if [ -e "/root/.mstr.clstr.cnf" ] \
-    || [ -e "/root/.wbhd.clstr.cnf" ] \
-    || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    if [ "${_USE_CSF_ON_CLSTR}" = "YES" ]; then
-      _CSF_CLSTR=YES
-    else
-      _CSF_CLSTR=NO
-    fi
-  fi
   if [[ "${_XTRAS_LIST}" =~ "ALL" ]] \
     || [[ "${_XTRAS_LIST}" =~ "CSF" ]] \
     || [ "${_CSF_CLSTR}" = "YES" ]; then
@@ -301,23 +290,14 @@ csf_lfd_install_upgrade() {
         _CSF_MODE=upgrade
         csf_install
       fi
-      if [ -e "/root/.host8.cnf" ] \
-        || [ -e "/root/.auto.up.cnf" ] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".host8." ]]; then
-        sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"0\"/g" \
-          /etc/csf/csf.conf &> /dev/null
-        wait
-      fi
+      sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"0\"/g" /etc/csf/csf.conf &> /dev/null
+      wait
       if [ "${_VMFAMILY}" = "VZ" ]; then
         sed -i "s/^PORTFLOOD .*/PORTFLOOD = \"\"/g" /etc/csf/csf.conf &> /dev/null
         wait
         sed -i "s/^CONNLIMIT .*/CONNLIMIT = \"\"/g" /etc/csf/csf.conf &> /dev/null
         wait
-        sed -i "s/^USE_CONNTRACK .*/USE_CONNTRACK = \"0\"/g" \
-          /etc/csf/csf.conf &> /dev/null
+        sed -i "s/^USE_CONNTRACK .*/USE_CONNTRACK = \"0\"/g" /etc/csf/csf.conf &> /dev/null
         wait
       fi
       if [ -e "${pthLog}/lastFire" ]; then

@@ -8,6 +8,12 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
+_TODAY=$(date +%y%m%d 2>&1)
+export _TODAY=${_TODAY//[^0-9]/}
+
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+export _NOW=${_NOW//[^0-9-]/}
+
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
@@ -21,10 +27,6 @@ pthIncO="lib/settings/${filIncO}"
 rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
 vBs="/var/backups"
 
-_TODAY=$(date +%y%m%d 2>&1)
-_TODAY=${_TODAY//[^0-9]/}
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
-_NOW=${_NOW//[^0-9-]/}
 _CHECK_HOST=$(uname -n 2>&1)
 _LOG_DIR="${vBs}/reports/up/$(basename "$0")/${_TODAY}"
 _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_NOW}.log"
@@ -208,6 +210,16 @@ check_sql_access() {
   fi
 }
 
+_CHECK_HOST=$(uname -n 2>&1)
+if_hosted_sys() {
+  if [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    hostedSys=YES
+  else
+    hostedSys=NO
+  fi
+}
+
 fix_dns_settings() {
   mkdir -p ${vBs}
   rm -f ${vBs}/resolv.conf.tmp
@@ -357,12 +369,8 @@ if_extended_report() {
 send_report() {
   if [ -e "${barCnf}" ]; then
     source ${barCnf}
-    if [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ] \
-      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
@@ -379,12 +387,8 @@ send_report() {
 send_alert() {
   if [ -e "${barCnf}" ]; then
     source ${barCnf}
-    if [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ] \
-      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "${_MY_EMAIL}" ]; then
@@ -695,14 +699,8 @@ up_action() {
         fi
       fi
     fi
-    if [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ] \
-      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-      _DO_NOTHING=YES
-    else
+    if_hosted_sys
+    if [ "${hostedSys}" != "YES" ]; then
       mkdir -p ${vBs}/old-firewall-monitor/${_NOW}
       mv -f /var/xdrago/monitor/*.log \
         ${vBs}/old-firewall-monitor/${_NOW}/ &> /dev/null
@@ -740,9 +738,6 @@ up_action() {
       || [ "${cmmand}" = "php-idle" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncB}
       wait
-    elif [ "${cmmand}" = "up-cluster" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncB}
-      wait
     else
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncB}
       wait
@@ -762,104 +757,69 @@ up_action() {
     ### Force latest OpenSSH from sources on supported systems
     sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"           ${barCnf}
     wait
-    if [ "${sql}" = "percona" ] \
-      || [ "${rkey}" = "percona" ] \
-      || [ "${debug}" = "percona" ]; then
+    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"             ${vBs}/${filIncB}
+    wait
+    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"                     ${barCnf}
+    wait
+    if [ "${sql}" = "percona-8.3" ] \
+      || [ "${rkey}" = "percona-8.3" ] \
+      || [ "${debug}" = "percona-8.3" ] \
+      || [ -e "/root/.percona.8.3.cnf" ]; then
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.3/g"               ${vBs}/${filIncB}
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.3/g"                       ${barCnf}
+    elif [ "${sql}" = "percona-8.0" ] \
+      || [ "${rkey}" = "percona-8.0" ] \
+      || [ "${debug}" = "percona-8.0" ] \
+      || [ -e "/root/.percona.8.0.cnf" ]; then
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.0/g"               ${vBs}/${filIncB}
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=8.0/g"                       ${barCnf}
+    elif [ "${sql}" = "percona-5.7" ] \
+      || [ "${rkey}" = "percona-5.7" ] \
+      || [ "${debug}" = "percona-5.7" ] \
+      || [ -e "/root/.percona.5.7.cnf" ]; then
       sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"               ${vBs}/${filIncB}
-      wait
-      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"           ${vBs}/${filIncB}
-      wait
       sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"                       ${barCnf}
-      wait
-      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"                   ${barCnf}
-      wait
     fi
-    if [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ] \
-      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-      if [ -e "/root/.debug.cnf" ] && [ ! -e "/root/.default.cnf" ]; then
-        _DO_NOTHING=YES
-      else
-        if [ -e "${barCnf}" ]; then
-          sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${barCnf}
-          wait
-          sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=YES/g"         ${barCnf}
-          wait
-          sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"        ${barCnf}
-          wait
-          sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"     ${barCnf}
-          wait
-          sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"       ${barCnf}
-          wait
-          if [ -e "/root/.mstr.clstr.cnf" ] \
-            || [ -e "/root/.wbhd.clstr.cnf" ] \
-            || [ -e "/root/.dbhd.clstr.cnf" ] \
-            || [ -e "/root/.test.clstr.cnf" ]; then
-            _DO_NOTHING=YES
-          else
-            sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"    ${barCnf}
-            wait
-          fi
-          if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-            || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-            || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-            || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-            # if [ "${_VMFAMILY}" = "VS" ]; then
-            #   sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"       ${barCnf}
-            #   wait
-            #   sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"         ${barCnf}
-            #   wait
-            #   sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"   ${barCnf}
-            #   wait
-            # fi
-            if [ -e "/etc/init.d/redis-server" ]; then
-              sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"      ${barCnf}
-              if [ ! -e "/root/.run-to-daedalus.cnf" ] \
-                 && [ ! -e "/root/.run-to-chimaera.cnf" ] \
-                 && [ ! -e "/root/.run-to-beowulf.cnf" ]; then
-                if [[ "${_DB_SERVER}" =~ "Percona" ]]; then
-                  _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-                  _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-                  mysql -u root -e "SET GLOBAL show_compatibility_56=ON;" &> /dev/null
-                fi
-              fi
-            else
-              sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"      ${barCnf}
-            fi
-            wait
-          fi
-        fi
+
+    if [ -e "${barCnf}" ]; then
+      wait
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                       ${barCnf}
+      wait
+      sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=YES/g"             ${barCnf}
+      wait
+      sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"            ${barCnf}
+      wait
+      sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"         ${barCnf}
+      wait
+      sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"           ${barCnf}
+      wait
+      sed -i "s/^_REDIS_LISTEN.*/_REDIS_LISTEN_MODE=SOCKET/g"          ${barCnf}
+      wait
+      if [ -e "/etc/init.d/redis-server" ]; then
+        sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"            ${barCnf}
+        wait
       fi
+    fi
+
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"       ${barCnf}
       wait
-      _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
-      if [ -e "/etc/default/tomcat" ] \
-        && [ -e "/etc/init.d/tomcat" ] \
-        && [ -e "${barCnf}" ]; then
-        sed -i "s/^_TOMCAT_TO_JETTY=.*/_TOMCAT_TO_JETTY=YES/g" ${vBs}/${barName}
-        wait
-        sed -i "s/^_TOMCAT_TO_JETTY.*//g"                              ${barCnf}
-        wait
-        sed -i "/^$/d"                                                 ${barCnf}
-        wait
-        echo "_TOMCAT_TO_JETTY=YES" >>                                 ${barCnf}
-      fi
     fi
+
+    if [ -e "/etc/default/tomcat" ] \
+      && [ -e "/etc/init.d/tomcat" ] \
+      && [ -e "${barCnf}" ]; then
+      sed -i "s/^_TOMCAT_TO_JETTY=.*/_TOMCAT_TO_JETTY=YES/g"   ${vBs}/${barName}
+      wait
+      sed -i "s/^_TOMCAT_TO_JETTY.*//g"                                ${barCnf}
+      wait
+      sed -i "/^$/d"                                                   ${barCnf}
+      wait
+      echo "_TOMCAT_TO_JETTY=YES" >>                                   ${barCnf}
+    fi
+
     if [ -e "${vBs}/${barName}" ]; then
-      if [ "${cmmand}" = "up-cluster" ]; then
-        if [ ! -e "/run/mysqld/mysqld.pid" ] \
-          && [ ! -e "/root/.dbhd.clstr.cnf" ] \
-          && [ -e "/etc/init.d/mysql" ]; then
-          [ -e "/root/.remote.db.cnf" ] && rm -f /root/.remote.db.cnf
-          sleep 5
-          if [ ! -e "/run/mysqld/mysqld.sock" ]; then
-            service mysql start &> /dev/null
-          fi
-        fi
-      fi
       if [ "${silent}" = "log" ] \
         || [ "${silent}" = "system" ] \
         || [ "${silent}" = "disable" ] \
@@ -872,9 +832,6 @@ up_action() {
           fi
         else
           n=8
-        fi
-        if [ -e "/root/.dbhd.clstr.cnf" ]; then
-          n=$((RANDOM%300+80))
         fi
         if [ "${silent}" = "log" ] \
           || [ "${silent}" = "system" ] \
@@ -1100,10 +1057,8 @@ up_finish() {
     rm -f /opt/local/bin/php
     rm -f /usr/local/bin/php
   fi
-  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
     service webmin stop &> /dev/null
     service usermin stop &> /dev/null
   fi
@@ -1242,11 +1197,12 @@ if_reinstall_curl() {
     apt-get update -qq &> /dev/null
     apt-get install lsb-release -y -qq &> /dev/null
   fi
-  _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2 2>&1)
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
   isCurl=$(curl --version 2>&1)
-  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+  if [[ ! "${isCurl}" =~ "OpenSSL" ]] \
+    || [[ "${isCurl}" =~ "libcurl.so.4" ]] \
+    || [ -z "${isCurl}" ]; then
     if [ -e "/var/aegir/drush" ]; then
       echo "OOPS: cURL is broken! Re-installing.."
     fi
@@ -1258,6 +1214,11 @@ if_reinstall_curl() {
       echo "curl install" | dpkg --set-selections 2> /dev/null
       apt_clean_update
       apt-get install curl -y -qq 2> /dev/null
+      apt-get build-dep curl -y 2> /dev/null
+      apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
+      apt-get autoremove -y 2> /dev/null
+      apt-get install libssl-dev -y -qq 2> /dev/null
+      apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
     fi
     isCurl=$(curl --version 2>&1)
     if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
@@ -1627,20 +1588,8 @@ proceed() {
     || [ "${cmmand}" = "up-lts" ] \
     || [ "${cmmand}" = "up-distro" ] \
     || [ "${cmmand}" = "php-idle" ]; then
-    if [ "${silent}" = "cluster" ] \
-      || [ "${silent}" = "foobar" ]; then
-      echo "FEATURE MODE: ${silent}"
-      master="feature/${silent}"
-      branch="feature/${silent}"
-      _SCRIPT_URL="${rgUrl}/feature/${silent}/${barName}"
-      curl ${crlGet} "${rgUrl}/feature/${silent}/${pthIncB}" -o ${vBs}/${filIncB}
-    else
-      _SCRIPT_URL="${rgUrl}/${brnch}/${barName}"
-      curl ${crlGet} "${rgUrl}/${brnch}/${pthIncB}" -o ${vBs}/${filIncB}
-    fi
-  elif [ "${cmmand}" = "up-cluster" ]; then
-    _SCRIPT_URL="${rgUrl}/${cluster}/${barName}"
-    curl ${crlGet} "${rgUrl}/${cluster}/${pthIncB}" -o ${vBs}/${filIncB}
+    _SCRIPT_URL="${rgUrl}/${brnch}/${barName}"
+    curl ${crlGet} "${rgUrl}/${brnch}/${pthIncB}" -o ${vBs}/${filIncB}
   elif [ "${cmmand}" = "help" ]; then
     echo
     echo "Usage: $(basename "$0") {version} {mode} {options}"
@@ -1668,17 +1617,12 @@ proceed() {
       php-min <------ install PHP 8.1, 8.2, 8.3, 7.4, use 8.1 by default (php-all)
       php-max <------ install PHP 8.1, 8.2, 8.3, 8.0, 7.4, 7.3, 7.2, 7.1, 7.0, 5.6
       nodns <-------- disable DNS/SMTP checks on the fly
+      percona-8.0 <-- specify Percona version to use (8.3, 8.0, 5.7)
 
   See docs/UPGRADE.md for more details.
 
 EOF
     clean_pid_exit proceed_a
-  fi
-  if [ -e "/root/.mstr.clstr.cnf" ] \
-    || [ -e "/root/.wbhd.clstr.cnf" ] \
-    || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    _SCRIPT_URL="${rgUrl}/${cluster}/${barName}"
-    cmmand="up-cluster"
   fi
   curl ${crlGet} ${_SCRIPT_URL} -o ${vBs}/${barName}
   up_action
@@ -1692,7 +1636,6 @@ debug="$4"
 sql="$5"
 if [ ! -z "${silent}" ]; then
   if [ "${silent}" = "log" ] \
-    || [ "${silent}" = "cluster" ] \
     || [ "${silent}" = "disable" ] \
     || [ "${silent}" = "enable" ] \
     || [ "${silent}" = "system" ] \
@@ -1728,7 +1671,6 @@ fi
 
 rlsn="BOA-5.4.0"
 rlse="${rlsn}-${tRee}"
-cluster="${rlse}"
 branch="5.x-${tRee}"
 brnch=${branch//\//\\\/}
 

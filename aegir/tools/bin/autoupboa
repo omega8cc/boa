@@ -75,6 +75,7 @@ if_disable_not_used_services() {
     fi
     kill -9 $(ps aux | grep '[c]lamd' | awk '{print $2}') &> /dev/null
     kill -9 $(ps aux | grep '[f]reshclam' | awk '{print $2}') &> /dev/null
+    rm -f /run/clamav/*
   fi
   if [ -e "/root/.deny.java.cnf" ]; then
     if [ -e "/etc/init.d/solr7" ]; then
@@ -171,12 +172,23 @@ else
   _MINUTE_SYSTEM_UP="05"
 fi
 
+_CHECK_HOST=$(uname -n 2>&1)
+if_hosted_sys() {
+  if [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    hostedSys=YES
+  else
+    hostedSys=NO
+  fi
+}
+
 send_boa_system_report() {
   if [ -e "${barCnf}" ]; then
     _RCPT_EMAIL=
     _BCC_EMAIL=
     repBodFile=/var/backups/hosted-boa-status.txt
-    if [ -e "/root/.host8.cnf" ]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       _RCPT_EMAIL="systems@omega8.cc"
       _BCC_EMAIL="notify@omega8.cc"
     fi
@@ -210,55 +222,44 @@ crontab_update() {
     if [ "${_ADD_XTRA}" = "YES" ]; then
       echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
+    if [ -e "/etc/csf" ]; then
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ssh.log >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ftp.log >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d" /etc/crontab &> /dev/null
     wait
-    if [ -f "/root/.mstr.clstr.cnf" ] \
-      && [ ! -f "/root/.wbhd.clstr.cnf" ] \
-      && [ ! -f "/root/.dbhd.clstr.cnf" ]; then
-      _BCDA_FULL="up-cluster log"
-      _BCDA_SYST="up-cluster system"
-      _OCTO_FULL="up-cluster all both log"
-    elif [ -e "/root/.wbhd.clstr.cnf" ]; then
-      _BCDA_FULL="up-cluster log"
-      _BCDA_SYST="up-cluster system"
-    elif [ -e "/root/.dbhd.clstr.cnf" ]; then
-      _BCDA_FULL="up-cluster log"
-      _BCDA_SYST="up-cluster system"
+
+    if [ "${_AUTO_PHP}" = "php-all" ]; then
+      _BCDA_FULL="up-${_AUTO_VER} log php-all"
+      _BCDA_SYST="up-${_AUTO_VER} system php-all"
+    elif [ "${_AUTO_PHP}" = "php-min" ]; then
+      _BCDA_FULL="up-${_AUTO_VER} log php-min"
+      _BCDA_SYST="up-${_AUTO_VER} system php-min"
+    elif [ "${_AUTO_PHP}" = "php-max" ]; then
+      _BCDA_FULL="up-${_AUTO_VER} log php-max"
+      _BCDA_SYST="up-${_AUTO_VER} system php-max"
     else
-      if [ "${_AUTO_PHP}" = "php-all" ]; then
-        _BCDA_FULL="up-${_AUTO_VER} log php-all"
-        _BCDA_SYST="up-${_AUTO_VER} system php-all"
-      elif [ "${_AUTO_PHP}" = "php-min" ]; then
-        _BCDA_FULL="up-${_AUTO_VER} log php-min"
-        _BCDA_SYST="up-${_AUTO_VER} system php-min"
-      elif [ "${_AUTO_PHP}" = "php-max" ]; then
-        _BCDA_FULL="up-${_AUTO_VER} log php-max"
-        _BCDA_SYST="up-${_AUTO_VER} system php-max"
-      else
-        _BCDA_FULL="up-${_AUTO_VER} log"
-        _BCDA_SYST="up-${_AUTO_VER} system"
-      fi
-      _OCTO_FULL="up-${_AUTO_VER} all force log"
+      _BCDA_FULL="up-${_AUTO_VER} log"
+      _BCDA_SYST="up-${_AUTO_VER} system"
     fi
+    _OCTO_FULL="up-${_AUTO_VER} all force log"
+
     if [ ! -z "${_AUTO_UP_WEEKLY}" ]; then
       echo "# Barracuda weekly system only upgrade" >> /etc/crontab
       echo "11 3    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
       echo "14 3    * * ${_AUTO_UP_WEEKLY}   root    /opt/local/bin/barracuda ${_BCDA_SYST}" >> /etc/crontab
     fi
+
     echo "# Barracuda ${_AUTO_VER} full upgrade" >> /etc/crontab
     echo "${_MINUTE_SYSTEM_UP} ${_HOUR_SYSTEM_UP}    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/barracuda ${_BCDA_FULL}" >> /etc/crontab
-    if [ ! -e "/root/.wbhd.clstr.cnf" ] && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
-      if [ ! -z "${_OCTO_FULL}" ]; then
-        echo "# Octopus ${_AUTO_VER} full upgrade" >> /etc/crontab
-        echo "${_MINUTE_OCTOPUS_UP} ${_HOUR_OCTOPUS_UP}    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
-        echo "55 7    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
-      fi
+
+    if [ ! -z "${_OCTO_FULL}" ]; then
+      echo "# Octopus ${_AUTO_VER} full upgrade" >> /etc/crontab
+      echo "${_MINUTE_OCTOPUS_UP} ${_HOUR_OCTOPUS_UP}    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /opt/local/bin/octopus ${_OCTO_FULL}" >> /etc/crontab
+      echo "55 7    ${_AUTO_UP_DAY} ${_AUTO_UP_MONTH} *   root    /var/xdrago/daily.sh >/dev/null 2>&1" >> /etc/crontab
     fi
+
     echo Cron Update Completed
   fi
 }
@@ -276,7 +277,7 @@ crontab_cleanup() {
     if [ "${_ADD_XTRA}" = "YES" ]; then
       echo "*/19 *  * * *   root    bash /var/xdrago/clear.sh >/dev/null 2>&1" >> /etc/crontab
     fi
-    if [ -e "/etc/csf" ] || [ -e "/root/.dbhd.clstr.cnf" ]; then
+    if [ -e "/etc/csf" ]; then
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/web.log >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ssh.log >/dev/null 2>&1" >> /etc/crontab
       echo "01 *    * * *   root    rm -f /var/xdrago/monitor/ftp.log >/dev/null 2>&1" >> /etc/crontab
@@ -347,12 +348,8 @@ if [ -e "/var/aegir/drush" ]; then
       [ -e "/root/.auto.up.cnf" ] && rm -f /root/.auto.up.cnf
     fi
   fi
-  if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-    || [ -e "/root/.host8.cnf" ] \
-    || [ "${_AUTO_UP}" = "YES" ]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
 	if [[ "${_CHECK_HOST}" =~ ^(lcy1.ao.|lcy15.uk.) ]]; then
 	  _DONT_TOUCH=OK
 	  rm -f /etc/csf/csf.conf-pre*
@@ -408,10 +405,22 @@ if [ -e "/var/aegir/drush" ]; then
       touch /var/xdrago/log/.sync_1999_scan_nginx.${_X_SE}.pid
     fi
     if [ ! -e "/var/xdrago/log/.custom_percona_forced.${_X_SE}.pid" ]; then
-      if [[ ! "${_DB_SERVER}" =~ "Percona" ]]; then
+      _DBS_TEST=$(which mysql 2>&1)
+      if [ ! -z "${_DBS_TEST}" ]; then
+        _DB_SERVER_TEST=$(mysql -V 2>&1)
+      fi
+      _DB_V=
+      if [[ "${_DB_SERVER_TEST}" =~ "Ver 8.3." ]]; then
+        _DB_V=8.3
+      elif [[ "${_DB_SERVER_TEST}" =~ "Ver 8.0." ]]; then
+        _DB_V=8.0
+      elif [[ "${_DB_SERVER_TEST}" =~ "Distrib 5.7." ]]; then
+        _DB_V=5.7
+      fi
+      if [[ ! "${_DB_SERVER}" =~ "Percona" ]] || [ -z "${_DB_V}" ]; then
         sed -i "s/^_DB_SERIES=.*/_DB_SERIES=5.7/g"  ${barCnf}
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=Percona/g"  ${barCnf}
-      else
+      elif [ ! -z "${_DB_V}" ] && [ "${_DB_V}" = "5.7" ]; then
         _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
         _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
         _CHECK_EXISTS=$(mysql -u root -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'drandom_2test')" | grep "0" 2>&1)
@@ -435,7 +444,6 @@ if [ -e "/var/aegir/drush" ]; then
         fi
         mysql -u root -e "SET GLOBAL innodb_flush_log_at_trx_commit=2;" &> /dev/null
         mysql -u root -e "SET GLOBAL innodb_flush_log_at_timeout=5;" &> /dev/null
-        mysql -u root -e "SET GLOBAL show_compatibility_56=ON;" &> /dev/null
         mysql -u root -e "SET GLOBAL innodb_stats_on_metadata=0;" &> /dev/null
       fi
       sed -i "s/^_USE_MYSQLTUNER=.*/_USE_MYSQLTUNER=NO/g"  ${barCnf}
@@ -500,21 +508,6 @@ if [ -e "/var/aegir/drush" ]; then
     _AUTO_UP_MONTH=
     _AUTO_UP_DAY=
     _AUTO_VER="${tRee}"
-  fi
-  if [ -e "/root/.mstr.clstr.cnf" ] \
-    || [ -e "/root/.wbhd.clstr.cnf" ] \
-    || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    _AUTO_UP_WEEKLY=
-    _AUTO_UP_MONTH=
-    _AUTO_UP_DAY=
-    _AUTO_PHP=
-    _AUTO_VER="${tRee}"
-    if [ ! -e "/var/xdrago/log/.fixed_clstr_fpm.${_X_SE}.pid" ]; then
-      sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"8.1 7.4 5.6\"/g" ${barCnf}
-      wait
-      sed -i "s/^_PHP_SINGLE_INSTALL=.*/_PHP_SINGLE_INSTALL=/g" ${barCnf}
-      touch /var/xdrago/log/.fixed_clstr_fpm.${_X_SE}.pid
-    fi
   fi
   if [ -e "/root/.my.cluster_root_pwd.txt" ]; then
     _AUTO_UP_WEEKLY=

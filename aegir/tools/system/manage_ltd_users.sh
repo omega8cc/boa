@@ -74,6 +74,16 @@ aptYesUnth="-y --allow-unauthenticated"
 
 ###-------------SYSTEM-----------------###
 
+_CHECK_HOST=$(uname -n 2>&1)
+if_hosted_sys() {
+  if [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    hostedSys=YES
+  else
+    hostedSys=NO
+  fi
+}
+
 count_cpu() {
   _CPU_INFO=$(grep -c processor /proc/cpuinfo 2>&1)
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
@@ -195,10 +205,8 @@ enable_chattr() {
     _U_TP="/home/$1/.tmp"
     _U_II="${_U_HD}/php.ini"
     if [ ! -e "${_U_HD}/.ctrl.${_X_SE}.pid" ]; then
-      if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+      if_hosted_sys
+      if [ "${hostedSys}" = "YES" ]; then
         rm -rf ${_U_HD}/
       else
         rm -f ${_U_HD}/{drush_make,registry_rebuild,clean_missing_modules}
@@ -1009,13 +1017,15 @@ php_cli_drush_update() {
     _T_CLI=/foo/bar
   fi
   if [ -x "${_T_CLI}/php" ]; then
-    _DRUSHCMD="${_T_CLI}/php ${dscUsr}/tools/drush/drush.php"
+    #_DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force"
+    _DRUSH_HOSTING_DISPATCH_CMD="${_T_CLI}/php ${dscUsr}/tools/drush/drush.php @hostmaster hosting-dispatch"
     if [ -e "${dscUsr}/aegir.sh" ]; then
       rm -f ${dscUsr}/aegir.sh
     fi
     touch ${dscUsr}/aegir.sh
-    echo -e "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n${_DRUSHCMD} \
-      '@hostmaster' hosting-dispatch\ntouch ${dscUsr}/${_USER}-task.done" \
+    echo -e "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n \
+      \n${_DRUSH_HOSTING_DISPATCH_CMD} \
+      \ntouch ${dscUsr}/${_USER}-task.done" \
       | fmt -su -w 2500 | tee -a ${dscUsr}/aegir.sh >/dev/null 2>&1
     chown ${_USER}:${usrGroup} ${dscUsr}/aegir.sh &> /dev/null
     chmod 0700 ${dscUsr}/aegir.sh &> /dev/null
@@ -2430,8 +2440,7 @@ else
     _WEB_SH=$(readlink -n /bin/sh 2>&1)
     _WEB_SH=$(echo -n ${_WEB_SH} | tr -d "\n" 2>&1)
     if [ -x "/bin/websh" ]; then
-      if [ "${_WEB_SH}" != "/bin/websh" ] \
-        && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
+      if [ "${_WEB_SH}" != "/bin/websh" ]; then
         ln -sfn /bin/websh /bin/sh
         if [ -e "/usr/bin/sh" ]; then
           ln -sfn /bin/websh /usr/bin/sh
@@ -2487,55 +2496,6 @@ else
     -type d -exec chmod 0700 {} \; &> /dev/null
   find /var/aegir/config/server_master \
     -type f -exec chmod 0600 {} \; &> /dev/null
-  if [ -e "/var/scout" ]; then
-    _SCOUT_CRON_OFF=$(grep "OFFscoutOFF" /etc/crontab 2>&1)
-    if [[ "${_SCOUT_CRON_OFF}" =~ "OFFscoutOFF" ]]; then
-      sleep 5
-      sed -i "s/OFFscoutOFF/scout/g" /etc/crontab &> /dev/null
-      wait
-    fi
-  fi
-  if [ -e "/var/backups/reports/up/barracuda" ]; then
-    if [ -e "/root/.mstr.clstr.cnf" ] \
-      || [ -e "/root/.wbhd.clstr.cnf" ] \
-      || [ -e "/root/.dbhd.clstr.cnf" ]; then
-      if [ -e "/var/spool/cron/crontabs/aegir" ]; then
-        sleep 180
-        rm -f /var/spool/cron/crontabs/aegir
-        ionice -c2 -n0 -p $$
-        service cron reload &> /dev/null
-      fi
-    fi
-    if [ -e "/root/.mstr.clstr.cnf" ] \
-      || [ -e "/root/.wbhd.clstr.cnf" ]; then
-      if [ ! -e "/root/.remote.db.cnf" ] \
-        && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
-        touch /root/.remote.db.cnf
-      fi
-      if [ -e "/run/mysqld/mysqld.pid" ] \
-        && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
-        ionice -c2 -n0 -p $$
-        service cron stop &> /dev/null
-        sleep 180
-        touch /root/.remote.db.cnf
-        if [ "${_DB_SERIES}" = "5.7" ]; then
-          _SQL_PSWD=$(cat /root/.my.pass.txt 2>&1)
-          _SQL_PSWD=$(echo -n ${_SQL_PSWD} | tr -d "\n" 2>&1)
-          mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_change_buffering = 'none';" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_at_shutdown = 1;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_io_capacity = 2000;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_io_capacity_max = 4000;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_pct = 100;" &> /dev/null
-          mysql -u root -e "SET GLOBAL innodb_buffer_pool_dump_now = ON;" &> /dev/null
-        fi
-        service mysql stop &> /dev/null
-        wait
-        service cron start &> /dev/null
-        wait
-      fi
-    fi
-  fi
   sleep 5
   [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
   exit 0

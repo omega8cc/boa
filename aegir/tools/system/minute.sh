@@ -61,10 +61,6 @@ if_fix_dhcp() {
 }
 if_fix_dhcp
 
-if [ -e "/root/.step.init.systemd.two.cnf" ]; then
-  kill -9 $(ps aux | grep '[s]ystemd-udevd' | awk '{print $2}') &> /dev/null
-fi
-
 sql_restart() {
   touch /run/boa_run.pid
   echo "$(date 2>&1) $1 incident detected"                          >> ${pthOml}
@@ -127,6 +123,74 @@ if [ -e "/etc/cron.daily/logrotate" ]; then
       /var/xdrago/log/giant.syslog.incident.log
   fi
 fi
+
+# Function to restart Nginx if needed
+restart_nginx() {
+  touch /run/boa_run.pid
+  echo "$(date 2>&1) NGX $1 detected" >> ${pthOml}
+  sleep 5
+  echo "$(date 2>&1) NGX $1 incident response started" >> ${pthOml}
+  echo "Killing all Nginx processes and restarting Nginx..."
+  killall -9 nginx
+  wait
+  service nginx start
+  wait
+  if pidof nginx > /dev/null; then
+    echo "Nginx restarted successfully."
+    _NGINX_RESTARTED=true
+    echo "$(date 2>&1) NGX $1 incident nginx restarted" >> ${pthOml}
+  else
+    echo "Failed to restart Nginx."
+    echo "$(date 2>&1) NGX $1 incident nginx restart failed" >> ${pthOml}
+  fi
+  sleep 5
+  [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
+  echo "$(date 2>&1) NGX $1 incident response completed" >> ${pthOml}
+  exit 0
+}
+
+nginx_heatlh_check_fix() {
+  # Initialize a flag to indicate whether Nginx has been restarted
+  _NGINX_RESTARTED=false
+
+  # Check if Nginx is running and capture the process details
+  _NGINX_PROCESSES=$(ps aux | grep 'nginx: ' | grep -v 'grep')
+
+  # Check for multiple master processes (shouldn't happen)
+  if [ "${_NGINX_RESTARTED}" = false ]; then
+    _MASTER_COUNT=$(echo "${_NGINX_PROCESSES}" | grep 'nginx: master process' | wc -l)
+    if [ "${_MASTER_COUNT}" -gt 1 ]; then
+      echo "Multiple Nginx master processes detected. Possible stuck processes."
+      restart_nginx "_MASTER_COUNT ${_MASTER_COUNT}"
+    fi
+  fi
+
+  # Check the state of the master process
+  if [ "${_NGINX_RESTARTED}" = false ]; then
+    _MASTER_STATE=$(echo "${_NGINX_PROCESSES}" | grep 'nginx: master process' | awk '{print $8}')
+    if [ "${_MASTER_STATE}" != "SNs" ] && [ "${_MASTER_STATE}" != "S" ] && [ "${_MASTER_STATE}" != "R" ]; then
+      echo "Nginx master process is in an abnormal state: ${_MASTER_STATE}."
+      restart_nginx "_MASTER_STATE ${_MASTER_STATE}"
+    fi
+  fi
+
+  # Check the state of the worker processes
+  if [ "${_NGINX_RESTARTED}" = false ]; then
+    _ABNORMAL_WORKERS=$(echo "${_NGINX_PROCESSES}" | grep 'nginx: worker process' | awk '{if ($8 != "SN" && $8 != "S" && $8 != "R") print $2}')
+    if [ -n "${_ABNORMAL_WORKERS}" ]; then
+      echo "Detected worker processes in abnormal state(s): ${_ABNORMAL_WORKERS}."
+      restart_nginx "_ABNORMAL_WORKERS ${_ABNORMAL_WORKERS}"
+    fi
+  fi
+
+  # Final status message
+  if [ "${_NGINX_RESTARTED}" = false ]; then
+    echo "Nginx is running normally. No anomalies detected."
+  else
+    echo "Nginx was restarted due to detected anomalies."
+  fi
+}
+nginx_heatlh_check_fix
 
 check_unbound() {
   if [ -x "/usr/sbin/unbound" ] \

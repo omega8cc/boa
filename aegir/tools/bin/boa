@@ -8,6 +8,12 @@ export PATH=${PATH}
 export SHELL=${SHELL}
 export HOME=${HOME}
 
+_TODAY=$(date +%y%m%d 2>&1)
+export _TODAY=${_TODAY//[^0-9]/}
+
+_NOW=$(date +%y%m%d-%H%M%S 2>&1)
+export _NOW=${_NOW//[^0-9-]/}
+
 barCnf="/root/.barracuda.cnf"
 barName="BARRACUDA.sh.txt"
 crlGet="-L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab"
@@ -20,10 +26,6 @@ pthIncO="lib/settings/${filIncO}"
 rgUrl="https://raw.githubusercontent.com/omega8cc/boa"
 vBs="/var/backups"
 
-_TODAY=$(date +%y%m%d 2>&1)
-_TODAY=${_TODAY//[^0-9]/}
-_NOW=$(date +%y%m%d-%H%M%S 2>&1)
-_NOW=${_NOW//[^0-9-]/}
 _CHECK_HOST=$(uname -n 2>&1)
 _LOG_DIR="${vBs}/reports/in/$(basename "$0")/${_TODAY}"
 _IN_BARRACUDA_LOG="${_LOG_DIR}/$(basename "$0")-in-barracuda-${_NOW}.log"
@@ -73,6 +75,16 @@ check_no_systemd() {
     echo "ERROR: This script can not be used with systemd"
     echo "ERROR: Please run 'autoinit' first"
     clean_pid_exit check_no_systemd_a_boa
+  fi
+}
+
+_CHECK_HOST=$(uname -n 2>&1)
+if_hosted_sys() {
+  if [ -e "/root/.host8.cnf" ] \
+    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    hostedSys=YES
+  else
+    hostedSys=NO
   fi
 }
 
@@ -449,12 +461,8 @@ send_report() {
     _RS="Octopus"
   fi
   _MY_EMAIL="${email}"
-  if [ -e "/root/.auto.up.cnf" ] \
-    || [ -e "/root/.host8.cnf" ] \
-    || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-    || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-    || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]]; then
+  if_hosted_sys
+  if [ "${hostedSys}" = "YES" ]; then
     _MY_EMAIL="$(basename "$0")@omega8.cc"
   fi
   if [ ! -z "${_MY_EMAIL}" ]; then
@@ -476,14 +484,8 @@ octopus_install() {
       user=$(echo -n ${user} | tr A-Z a-z 2>&1)
     fi
     if [ "${cmmand}" = "in-octopus" ] || [ "${cmmand}" = "in-oct" ]; then
-      if [ -e "/root/.auto.up.cnf" ] \
-        || [ -e "/root/.host8.cnf" ] \
-        || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-        _DO_NOTHING=YES
-      else
+      if_hosted_sys
+      if [ "${hostedSys}" != "YES" ]; then
         if [ -e "${barCnf}" ]; then
           source ${barCnf}
         fi
@@ -539,19 +541,10 @@ octopus_install() {
     sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=none/g"      ${vBs}/${filIncO}
     wait
 
-    if [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ] \
-      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-      if [ ! -e "/root/.debug.cnf" ] || [ -e "/root/.default.cnf" ]; then
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"     ${vBs}/${filIncO}
-        wait
-      fi
-    fi
+    sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                 ${vBs}/${filIncO}
+    wait
+    sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"         ${vBs}/${filIncO}
+    wait
 
     if [ "${cmmand}" = "in-dev" ] \
       || [ "${cmmand}" = "in-lts" ] \
@@ -586,23 +579,9 @@ octopus_install() {
       || [ "${copt}" = "lts" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncO}
        wait
-    elif [ "${cmmand}" = "in-cluster" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncO}
-      wait
     else
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncO}
       wait
-    fi
-
-    if [ ! -z "${dbip}" ] && [ "${cmmand}" = "in-cluster" ]; then
-      if [ "${kind}" = "mstr" ] || [ "${kind}" = "wbhd" ]; then
-        sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"   ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             ${vBs}/${filIncO}
-        wait
-        sed -i "s/^_STRONG_PASS.*/_STRONG_PASSWORDS=YES/g"     ${vBs}/${filIncO}
-        wait
-      fi
     fi
 
     if [ ! -z "${pxyc}" ] && [ ! -z "${pxyi}" ]; then
@@ -696,68 +675,11 @@ barracuda_install() {
       wait
       sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${filIncB}
       wait
-    elif [ "${kind}" = "mstr" ] \
-      && [ ! -z "${fqdn}" ] \
-      && [ ! -z "${dbip}" ] \
-      && [ ! -z "${loip}" ] \
-      && [ "${cmmand}" = "in-cluster" ]; then
-      touch /root/.mstr.clstr.cnf
-      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=MSTR/g"            ${vBs}/${filIncB}
-      wait
-      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${filIncB}
-      wait
-      sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"     ${vBs}/${filIncB}
-      wait
-      sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"             ${vBs}/${filIncB}
-      wait
-    elif [ "${kind}" = "dbhd" ] \
-      && [ ! -z "${fqdn}" ] \
-      && [ ! -z "${dbip}" ] \
-      && [ ! -z "${loip}" ] \
-      && [ "${cmmand}" = "in-cluster" ]; then
-      touch /root/.dbhd.clstr.cnf
-      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=DBHD/g"            ${vBs}/${filIncB}
-      wait
-      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${filIncB}
-      wait
-      sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"     ${vBs}/${filIncB}
-      wait
-      sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"             ${vBs}/${filIncB}
-      wait
-    elif [ "${kind}" = "wbhd" ] \
-      && [ ! -z "${fqdn}" ] \
-      && [ ! -z "${dbip}" ] \
-      && [ ! -z "${loip}" ] \
-      && [ "${cmmand}" = "in-cluster" ]; then
-      touch /root/.wbhd.clstr.cnf
-      sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=WBHD/g"            ${vBs}/${filIncB}
-      wait
-      sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${filIncB}
-      wait
-      sed -i "s/^_THIS_DB_HOST=.*/_THIS_DB_HOST=${dbip}/g"     ${vBs}/${filIncB}
-      wait
-      sed -i "s/^_MY_OWNIP=.*/_MY_OWNIP=${loip}/g"             ${vBs}/${filIncB}
-      wait
     else
       sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g"          ${vBs}/${filIncB}
       wait
       sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=${fqdn}/g"   ${vBs}/${filIncB}
       wait
-    fi
-
-    if [ ! -z "${fqdn}" ] \
-      && [ ! -z "${loip}" ] \
-      && [ "${cmmand}" = "in-cluster" ]; then
-      if [ "${kind}" = "mstr" ] \
-        || [ "${kind}" = "dbhd" ] \
-        || [ "${kind}" = "wbhd" ]; then
-        sed -i "s/.*${loip}.*${fqdn}.*//g" /etc/hosts
-        wait
-        echo >>/etc/hosts
-        ### echo "${loip} ${fqdn}" >>/etc/hosts
-        sed -i "/^$/d" /etc/hosts
-        wait
-      fi
     fi
 
     if [ ! -z "${extra}" ] \
@@ -842,7 +764,7 @@ barracuda_install() {
         sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"    ${vBs}/${filIncO}
         wait
       else
-        sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${extra}\"/g"    ${vBs}/${filIncB}
+        sed -i "s/^_NEWRELIC.*/_NEWRELIC_KEY=\"${extra}\"/g"   ${vBs}/${filIncB}
         wait
       fi
     fi
@@ -875,9 +797,6 @@ barracuda_install() {
       || [ "${cmmand}" = "in-octopus" ] \
       || [ "${cmmand}" = "in-oct" ]; then
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncB}
-      wait
-    elif [ "${cmmand}" = "in-cluster" ]; then
-      sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${cluster}/g"      ${vBs}/${filIncB}
       wait
     else
       sed -i "s/^_BRANCH_BOA=.*/_BRANCH_BOA=${brnch}/g"        ${vBs}/${filIncB}
@@ -1043,12 +962,8 @@ init_setup() {
       output="verbose"
     fi
 
-    if [ -e "/root/.auto.up.cnf" ] \
-      || [ -e "/root/.host8.cnf" ] \
-      || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       defaultOption=EDGE
     else
       defaultOption=POWER
@@ -1103,8 +1018,7 @@ init_setup() {
   _BOA_LOGFILE="/root/.boa.install.command.cnf"
 
   if [ "${cmmand}" = "in-lts" ] \
-    || [ "${cmmand}" = "in-dev" ] \
-    || [ "${cmmand}" = "in-cluster" ]; then
+    || [ "${cmmand}" = "in-dev" ]; then
     if [ ! -e "/root/.autoinit.log" ] || [ -e "/lib/systemd/systemd" ]; then
       # Write the command to the log file
       echo "${_BOA_COMMAND}" > ${_BOA_LOGFILE}
@@ -1139,8 +1053,7 @@ init_setup() {
   check_no_systemd
 
   if [ "${cmmand}" = "in-lts" ] \
-    || [ "${cmmand}" = "in-dev" ] \
-    || [ "${cmmand}" = "in-cluster" ]; then
+    || [ "${cmmand}" = "in-dev" ]; then
     if [ -e "/root/.dev.server.cnf" ]; then
       echo
       echo RAWV tRee is ${tRee}
@@ -1218,7 +1131,6 @@ init_setup() {
 
   rlsn="BOA-5.4.0"
   rlse="${rlsn}-${tRee}"
-  cluster="${rlse}"
   branch="5.x-${tRee}"
   brnch=${branch//\//\\\/}
 
@@ -1238,11 +1150,6 @@ init_setup() {
       curl ${crlGet} "${rgUrl}/${brnch}/${pthIncB}"  -o ${vBs}/${filIncB}
       curl ${crlGet} "${rgUrl}/${brnch}/${pthIncO}"  -o ${vBs}/${filIncO}
     fi
-  elif [ "${cmmand}" = "in-cluster" ]; then
-    curl ${crlGet} "${rgUrl}/${cluster}/${barName}" -o ${vBs}/${barName}
-    curl ${crlGet} "${rgUrl}/${cluster}/${octName}" -o ${vBs}/${octName}
-    curl ${crlGet} "${rgUrl}/${cluster}/${pthIncB}" -o ${vBs}/${filIncB}
-    curl ${crlGet} "${rgUrl}/${cluster}/${pthIncO}" -o ${vBs}/${filIncO}
   elif [ "${cmmand}" = "in-octopus" ] \
     || [ "${cmmand}" = "in-oct" ]; then
     curl ${crlGet} "${rgUrl}/${brnch}/${barName}"   -o ${vBs}/${barName}
@@ -1398,7 +1305,9 @@ if_reinstall_curl() {
   [ "${_OS_CODE}" = "jessie" ] && _CURL_VRN=7.71.1
   [ "${_OS_CODE}" = "stretch" ] && _CURL_VRN=8.2.1
   isCurl=$(curl --version 2>&1)
-  if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
+  if [[ ! "${isCurl}" =~ "OpenSSL" ]] \
+    || [[ "${isCurl}" =~ "libcurl.so.4" ]] \
+    || [ -z "${isCurl}" ]; then
     if [ -e "/var/aegir/drush" ]; then
       echo "OOPS: cURL is broken! Re-installing.."
     fi
@@ -1410,6 +1319,11 @@ if_reinstall_curl() {
       echo "curl install" | dpkg --set-selections 2> /dev/null
       apt_clean_update
       apt-get install curl -y -qq 2> /dev/null
+      apt-get build-dep curl -y 2> /dev/null
+      apt-get remove libssl1.0-dev -y --purge --auto-remove -qq 2> /dev/null
+      apt-get autoremove -y 2> /dev/null
+      apt-get install libssl-dev -y -qq 2> /dev/null
+      apt-get install libc-client2007e libc-client2007e-dev -y -qq 2> /dev/null
     fi
     isCurl=$(curl --version 2>&1)
     if [[ ! "${isCurl}" =~ "OpenSSL" ]] || [ -z "${isCurl}" ]; then
@@ -1866,6 +1780,15 @@ display_info() {
       | cut -d"-" -f1 \
       | awk '{ print $1}' \
       | sed "s/[\,']//g" 2>&1)
+    if [ "${_DBV}" = "Linux" ]; then
+      _DBV=$(mysql -V 2>&1 \
+        | tr -d "\n" \
+        | cut -d" " -f4 \
+        | awk '{ print $1}' \
+        | cut -d"-" -f1 \
+        | awk '{ print $1}' \
+        | sed "s/[\,']//g" 2>&1)
+    fi
     if [ -x "/usr/bin/proxysql" ]; then
       _PXY=$(proxysql --version 2>&1 \
         | tr -d "\n" \
@@ -2218,23 +2141,6 @@ case "$1" in
              user="$5"
              extra="$6"
              output="$7"
-             check_root
-             check_root_keys_pwd
-             check_virt
-             check_dns_curl
-             # Capture the complete command with arguments
-             _BOA_COMMAND="$0 $@"
-             init_setup
-  ;;
-  in-cluster) cmmand="$1"
-             tRee=lts
-             kind="$2"
-             fqdn="$3"
-             email="$4"
-             user="$5"
-             extra="$6"
-             dbip="$7"
-             loip="$8"
              check_root
              check_root_keys_pwd
              check_virt

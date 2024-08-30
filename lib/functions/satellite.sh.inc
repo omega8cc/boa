@@ -560,14 +560,8 @@ satellite_cnf() {
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]] \
       || [[ "${_CLIENT_EMAIL}" =~ "omega8.cc" ]]; then
       _CHECK_HOST=$(uname -n 2>&1)
-      if [ -e "/root/.auto.up.cnf" ] \
-        || [ -e "/root/.host8.cnf" ] \
-        || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-        _DO_NOTHING=YES
-      else
+      if_hosted_sys
+      if [ "${hostedSys}" != "YES" ]; then
         msg "EXIT: You must enter **your** valid email address"
         msg "EXIT: in the _MY_EMAIL **and** _CLIENT_EMAIL variables"
         clean_pid_exit satellite_cnf_a
@@ -653,10 +647,8 @@ satellite_cnf() {
       echo "_PHP_CLI_VERSION=${_PHP_CLI_VERSION}" >> ${octCnf}
     fi
     _CHECK_HOST=$(uname -n 2>&1)
-    if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-      || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-      || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+    if_hosted_sys
+    if [ "${hostedSys}" = "YES" ]; then
       _LD_DOM=YES
     else
       _LD_DOM=NO
@@ -937,14 +929,8 @@ satellite_cnf() {
       fi
     fi
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
-      if [ -e "/root/.auto.up.cnf" ] \
-        || [ -e "/root/.host8.cnf" ] \
-        || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-        _DO_NOTHING=YES
-      else
+      if_hosted_sys
+      if [ "${hostedSys}" != "YES" ]; then
         msg "EXIT: You must enter **your** valid email address in the"
         msg "EXIT: _MY_EMAIL variable in the ${octCnf} file"
         clean_pid_exit satellite_cnf_b
@@ -2192,11 +2178,6 @@ satellite_add_user_dirs() {
   mkdir -p /data/u
   mkdir -p /data/disk
   mkdir -p /data/conf
-  if [ -e "/root/.mstr.clstr.cnf" ] \
-    || [ -e "/root/.wbhd.clstr.cnf" ] \
-    || [ -e "/root/.dbhd.clstr.cnf" ]; then
-    touch /data/conf/clstr.cnf &> /dev/null
-  fi
   chown root:root /data &> /dev/null
   chown root:root /data/disk &> /dev/null
   if [ ! -d "${_ROOT}" ]; then
@@ -4738,12 +4719,8 @@ satellite_if_init_or_upgrade() {
         clean_pid_exit satellite_if_init_or_upgrade_b
       fi
       _CHECK_HOST=$(uname -n 2>&1)
-      if [ -e "/root/.auto.up.cnf" ] \
-        || [ -e "/root/.host8.cnf" ] \
-        || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
+      if_hosted_sys
+      if [ "${hostedSys}" = "YES" ]; then
         if [ -e "${_ROOT}/log/amazing_upgrade.txt" ] \
           && [ ! -e "${_ROOT}/log/amazing_upgrade_complete.txt" ]; then
           if [ -e "${_ROOT}/log/original_option.txt" ]; then
@@ -4790,14 +4767,8 @@ satellite_if_init_or_upgrade() {
       fi
       if [[ "${_CLIENT_EMAIL}" =~ "omega8.cc" ]]; then
         _CHECK_HOST=$(uname -n 2>&1)
-        if [ -e "/root/.auto.up.cnf" ] \
-          || [ -e "/root/.host8.cnf" ] \
-          || [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-          || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-          || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-          || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]]; then
-          _DO_NOTHING=YES
-        else
+        if_hosted_sys
+        if [ "${hostedSys}" != "YES" ]; then
           msg "EXIT: You must enter your valid email address in the"
           msg "EXIT: _CLIENT_EMAIL variable written both in the"
           msg "EXIT: ${octCnf} file and in the"
@@ -5388,12 +5359,15 @@ satellite_child_b_prepare_dirs_permissions() {
   if [ -e "${_ROOT}/aegir.sh" ]; then
     rm -f ${_ROOT}/aegir.sh
   fi
+  #_DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force"
+  _DRUSH_HOSTING_DISPATCH_CMD="${_T_CLI}/php ${_ROOT}/tools/drush/drush.php @hostmaster hosting-dispatch"
   touch ${_ROOT}/aegir.sh
   chmod 0700 ${_ROOT}/aegir.sh &> /dev/null
   echo -e \
-    "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n\n${_DRUSHCMD} \
-     '@hostmaster' hosting-dispatch\ntouch ${_ROOT}/${_USER}-task.done" \
-    | fmt -su -w 2500 | tee -a ${_ROOT}/aegir.sh >/dev/null 2>&1
+    "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n \
+     \n${_DRUSH_HOSTING_DISPATCH_CMD} \
+     \ntouch ${_ROOT}/${_USER}-task.done" \
+     | fmt -su -w 2500 | tee -a ${_ROOT}/aegir.sh >/dev/null 2>&1
 
   mkdir -p ${_ROOT}/aegir/distro
   mkdir -p ${_ROOT}/distro/${_DISTRO}
@@ -6348,12 +6322,8 @@ satellite_child_b_aegir_ui_enhance() {
       ${_DRUSHCMD} @hostmaster sqlq "UPDATE hosting_platform \
         SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'" &> /dev/null
       _CHECK_HOST=$(uname -n 2>&1)
-      if [[ "${_CHECK_HOST}" =~ ".host8." ]] \
-        || [[ "${_CHECK_HOST}" =~ ".boa.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".o8.io"($) ]] \
-        || [[ "${_CHECK_HOST}" =~ ".aegir.cc"($) ]] \
-        || [ -e "/root/.host8.cnf" ] \
-        || [ "${_AUTO_UP}" = "YES" ]; then
+      if_hosted_sys
+      if [ "${hostedSys}" = "YES" ]; then
         pBy="Octopus System powered by Barracuda"
         ${_DRUSHCMD} @hostmaster ${vSet} site_name "${pBy}" &> /dev/null
         cp -af /opt/tmp/boa/aegir/helpers/make_home.php.txt ./

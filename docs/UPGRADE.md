@@ -33,6 +33,16 @@ All commands will honor settings in their respective config files:
 
 However, arguments specified on the command line will take precedence. See the upgrade modes explained below.
 
+To make sure that you are using all available arguments in the correct order please always check the built-in how-to:
+
+```sh
+barracuda help
+```
+
+```sh
+octopus help
+```
+
 ## Available Standard Upgrade Modes
 
 Download and run (as root) BOA Meta Installers first:
@@ -109,6 +119,32 @@ octopus up-lts all aegir log
 octopus up-lts all platforms
 ```
 
+## NOTE on PHP versions management
+
+You can install or modify PHP versions active on your system during `barracuda` upgrade with commands like:
+
+`barracuda php-idle disable` -- disables versions not used by any site on the system
+
+`barracuda php-idle enable` -- re-enables and re-builds versions previously disabled
+
+`barracuda up-lts php-8.2` -- forces the system to use only single version (will cause sites brief downtime)
+
+`barracuda up-lts php-max` -- installs all supported versions if not installed before
+
+`barracuda up-lts php-min` -- installs PHP 8.1, 8.2, 8.3, 7.4, and uses 8.1 by default
+
+If you wish to define your own set of installed PHP versions, you can do so by modifying variables in the `/root/.barracuda.cnf` file before running the upgrade, where you can find `_PHP_MULTI_INSTALL`, `_PHP_CLI_VERSION`, and `_PHP_FPM_VERSION` -- note that the `_PHP_SINGLE_INSTALL` variable must be set empty to not override other related variables.
+
+However, you will also need to add dummy entries for versions not installed and not used yet to `~/static/control/multi-fpm.info` file (on any Octopus instance), because otherwise `barracuda` will ignore versions not used yet and will automatically remove them from `_PHP_MULTI_INSTALL` on upgrade. These dummy entries should look like this:
+
+```sh
+place.holder1.dont.remove 7.3
+place.holder2.dont.remove 8.0
+place.holder3.dont.remove 7.1
+```
+
+The same logic protects existing and used versions from being removed even if they are not listed in the `_PHP_MULTI_INSTALL` variable (they will be re-added automatically if needed).
+
 ## NOTE on Ægir Platforms
 
-Since BOA no longer installs all bundled Ægir platforms during Octopus installation and upgrades, you will need to add some keywords to `~/static/control/platforms.info` and run the Octopus upgrade to have these platforms added as explained in the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs) you can find in the file `~/control/README.txt` within your Octopus account.
+Since BOA no longer installs all bundled Ægir platforms during Octopus installation and upgrades, you will need to add some keywords to `~/static/control/platforms.info` and run the Octopus upgrade to have these platforms added as explained in the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs) you can find in the file `~/static/control/README.txt` within your Octopus account.

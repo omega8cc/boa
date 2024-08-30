@@ -48,12 +48,20 @@ sub makeactions
     @local_ips_table = <LOC>;
     close (LOC);
   }
+  $PROXY = 0;
+  $VISITOR = 0;
   local(@MYARR)=`tail --lines=$default_lines /var/log/nginx/access.log 2>&1`;
+  local($im_li_cnt{$VISITOR}) = 0;
+  local($im_px_cnt{$PROXY}) = 0;
+  local($im_sumar) = 0;
+  local($im_sumarpx) = 0;
+  local($li_cnt{$VISITOR}) = 0;
+  local($px_cnt{$PROXY}) = 0;
+  local($sumar) = 0;
+  local($sumarpx) = 0;
   local($critnumber) = $default_critnumber;
   local($mininumber) = $critnumber / 3;
   print "\n===[$mininumber] mininumber===\n";
-  local($sumar,$li_cnt{$VISITOR},$sumarpx,$px_cnt{$PROXY});
-  local($im_sumar,$im_li_cnt{$VISITOR},$im_sumarpx,$im_px_cnt{$PROXY});
   foreach $line (@MYARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
     local($VISITOR, $PROXY, $XREAL, $YREAL, $ZREAL, $RESTX) = split(/\s+/,$line);
@@ -112,9 +120,9 @@ sub makeactions
       $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 99  if ($line =~ /\" 500 /);
       $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 99  if ($line =~ /wp-(content|admin|includes)/);
       $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 19  if ($line =~ /(POST|GET) \/user\/login/);
+      local($ignore_admin) = 0;
+      local($skip_post) = 0;
       if ($line =~ /(GET|HEAD|POST)/ && $line !~ /\" 301 /) {
-        local($skip_post) = 0;
-        local($ignore_admin) = 0;
         if ($line =~ /\/admin\/content/) {
           ### print "Not Counted Admin Request URI: $line\n";
           $ignore_admin = 1;
@@ -212,9 +220,9 @@ sub makeactions
       $px_cnt{$PROXY} = $px_cnt{$PROXY} + 99  if ($line =~ /\" 500 /);
       $px_cnt{$PROXY} = $px_cnt{$PROXY} + 99  if ($line =~ /wp-(content|admin|includes)/);
       $px_cnt{$PROXY} = $px_cnt{$PROXY} + 19  if ($line =~ /(POST|GET) \/user\/login/);
+      local($skip_post) = 0;
+      local($ignore_admin) = 0;
       if ($line =~ /(GET|HEAD|POST)/ && $line !~ /\" 301 /) {
-        local($skip_post) = 0;
-        local($ignore_admin) = 0;
         if ($line =~ /\/admin\/content/) {
           ### print "Not Counted Admin Request URI: $line\n";
           $ignore_admin = 1;

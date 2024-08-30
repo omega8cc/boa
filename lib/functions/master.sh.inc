@@ -480,7 +480,10 @@ aegir_master_upgrade() {
     true
     msg "INFO: Running Aegir Master Instance upgrade"
     if [ -x "/usr/bin/mysql_upgrade" ]; then
-      mrun "mysql_upgrade -u root --force" &> /dev/null
+      check_mysql_version
+      if [ "${_DB_V}" = "5.7" ]; then
+        mrun "mysql_upgrade -u root --force" &> /dev/null
+      fi
     fi
     if [ -e "/var/aegir/use_proxysql.txt" ]; then
       _SQL_CONNECT=127.0.0.1
@@ -646,21 +649,16 @@ php_cli_cron_update() {
     msg "PROC: php_cli_cron_update"
   fi
   rm -f /var/spool/cron/crontabs/aegir
-  if [ ! -e "/root/.mstr.clstr.cnf" ] \
-    && [ ! -e "/root/.wbhd.clstr.cnf" ] \
-    && [ ! -e "/root/.dbhd.clstr.cnf" ]; then
-    if [ ! -e "/var/spool/cron/crontabs/aegir" ]; then
-      echo -e \
-        "SHELL=/bin/sh\nPATH=/opt/php56/bin:/usr/bin\n*/1 * * * * \
-        /usr/bin/env php /var/aegir/drush/drush.php '@hostmaster' \
-        hosting-dispatch >/dev/null 2>&1" \
-        | fmt -su -w 2500 \
-        | tee -a /var/spool/cron/crontabs/aegir >/dev/null 2>&1
-    fi
+  if [ ! -e "/var/spool/cron/crontabs/aegir" ]; then
+    #_DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force;"
+    _DRUSH_HOSTING_DISPATCH_CMD="/usr/bin/env php /var/aegir/drush/drush.php @hostmaster hosting-dispatch"
+    echo -e \
+    "\nSHELL=/bin/sh\nPATH=/opt/php74/bin:/usr/bin\n\n*/1 * * * * \
+    ${_DRUSH_HOSTING_DISPATCH_CMD}" \
+    | fmt -su -w 2500 \
+    | tee -a /var/spool/cron/crontabs/aegir >/dev/null 2>&1
   fi
   if [ -e "/var/spool/cron/crontabs/aegir" ]; then
-    sed -i "s/hosting-dispatch.*/hosting-dispatch \>\/dev\/null 2\>\&1/g" \
-      /var/spool/cron/crontabs/aegir &> /dev/null
     if [ "${_PHP_CLI_VERSION}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php83\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
         /var/spool/cron/crontabs/aegir &> /dev/null
@@ -703,11 +701,6 @@ aegir_master_install_upgrade() {
 
   ###--------------------###
     msg "INFO: Installing Aegir Master Instance..."
-    if [ -e "/root/.mstr.clstr.cnf" ] \
-      || [ -e "/root/.wbhd.clstr.cnf" ] \
-      || [ -e "/root/.dbhd.clstr.cnf" ]; then
-      touch /data/conf/clstr.cnf &> /dev/null
-    fi
     adduser --system --group --home /var/aegir aegir &> /dev/null
     usermod -aG www-data aegir
     usermod -aG users aegir
@@ -1076,11 +1069,6 @@ EOFMYSQL
         msg "HINT: (re)start ${_DB_SERVER} server, then run the installer again"
         msg "Bye"
         clean_pid_exit aegir_master_install_upgrade_g
-      fi
-      if [ -e "/root/.mstr.clstr.cnf" ] \
-        || [ -e "/root/.wbhd.clstr.cnf" ] \
-        || [ -e "/root/.dbhd.clstr.cnf" ]; then
-        touch /data/conf/clstr.cnf &> /dev/null
       fi
       php_cli_cron_update
       aegir_master_upgrade

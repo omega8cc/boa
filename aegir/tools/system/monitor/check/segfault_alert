@@ -56,12 +56,14 @@ INTROX
     #`echo "$intrx" >> $this_path`;
   }
   $this_archive="/var/xdrago/monitor/segfault_alert_archive";
+  if (!-f "$this_archive") {
+    `touch $this_archive`;
+  }
   open (NOT,"<$this_archive");
   @banetable = <NOT>;
   close (NOT);
   local(@MYARR)=`tail --lines=999 /var/log/syslog 2>&1`;
-  local($maxnumber,$critnumber,$alert);
-  local($sumar,$li_cnt{$DOMAIN},$li_cndx{$DOMAIN});
+  local($sumar) = 0;
   foreach $line (@MYARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
     if ($line =~ /php\-.*: segfault/i) {

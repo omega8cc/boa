@@ -8,14 +8,12 @@
 ### Mandatory for Galera
 #
 binlog_format=ROW
-default_storage_engine=InnoDB
+#default_storage_engine=InnoDB
 innodb_autoinc_lock_mode=2
 
 ### Recommended for Galera
 #
 innodb_flush_log_at_trx_commit=0
-query_cache_size=0
-query_cache_type=0
 binlog_row_image=minimal
 performance_schema=OFF
 
