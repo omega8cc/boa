@@ -7075,7 +7075,6 @@ php_libs_fix() {
   if [ ! -L "/usr/lib/librtmp.so" ] \
     || [ ! -e "/usr/lib/libwebpmux.so" ] \
     || [ ! -e "/usr/lib/libonig.so" ] \
-    || [ ! -e "/usr/lib/libcurl.so" ] \
     || [ ! -e "/usr/lib/libicuio.so" ] \
     || [ ! -e "/usr/lib/liblber.so" ] \
     || [ ! -e "/var/xdrago/log/.php_libs_fix_${_OS_CODE}_${_LIB_NOW}.pid" ] \
@@ -7116,7 +7115,6 @@ php_libs_fix() {
       ln -sfn /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
       ln -sfn /usr/lib/x86_64-linux-gnu/libXpm.so  /usr/lib/libXpm.so
       ln -sfn /usr/lib/x86_64-linux-gnu/librtmp.so /usr/lib/librtmp.so
-      ln -sfn /usr/lib/x86_64-linux-gnu/libcurl.so /usr/lib/libcurl.so
       ln -sfn /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so
       ln -sfn /usr/lib/x86_64-linux-gnu/libwebpmux.so /usr/lib/libwebpmux.so.2
       ln -sfn /usr/lib/x86_64-linux-gnu/libonig.so /usr/lib/libonig.so
